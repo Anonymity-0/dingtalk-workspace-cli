@@ -7,6 +7,10 @@ description: 钉钉个人 IM 事件长连接监听、订阅与消费，覆盖 @�
 
 实时监听必须使用事件长连接，不写轮询脚本，不用历史消息查询模拟事件。高频 IM 意图优先交给 `dws event +listen-im`；它在 CLI 内解析自然目标、选择 EventKey，并复用现有订阅与 bus 生命周期。
 
+<!-- dws-intent: event.listen.im -->消息、reaction、已读和撤回的默认监听入口是 `dws event +listen-im`；
+只有群生命周期、Filter DSL、原始 envelope 或底层订阅控制才使用
+`event consume` fallback。
+
 ## Golden Route
 
 | 用户意图 | 唯一推荐入口 |
@@ -16,7 +20,7 @@ description: 钉钉个人 IM 事件长连接监听、订阅与消费，覆盖 @�
 | 监听指定群消息 | `dws event +listen-im --kind group --chat-query <群名>` |
 | 同一人/群的消息、表情、已读或撤回 | `dws event +listen-im --kind <sender|group> --events message,reaction,read,recall ...` |
 | 监听全部单聊或全部群消息 | `dws event +listen-im --kind <all-direct|all-group>`；只有用户明确要求“全部”时使用 |
-| 群改名、成员进退、群解散 | 读取 [references/event-im.md](references/event-im.md)，使用精确 `event consume` EventKey |
+| 群改名、成员进退、群解散 | 读取 [EventKey 索引](references/event-im-keys.md)，使用精确 `event consume` EventKey |
 | 已知 EventKey 或需要底层订阅控制 | `dws event consume`；参数与约束以 leaf Schema 为准 |
 | 查看状态 / 停止 | `dws event status` / `dws event stop <subscribe_id> --dry-run`，确认后再 `--yes` |
 
@@ -68,7 +72,7 @@ kind + events + target
 - 有界任务使用 `--max-events N` 或 `--duration 10m`；无界任务需要宿主管理进程并持续读取 stdout。
 - 干净退出会取消本次新建的订阅；使用 SIGTERM、关闭符合条件的管道 stdin，或 Runtime 的 bounded exit。不要 `kill -9`。
 - 当前用户自己发送的消息会被 self-loop 过滤；自测事件应由另一用户或机器人发送。
-- 事件只负责监听；需要回复时把真实 `conversation_id` 或 `sender_open_dingtalk_id` 交给 `dws chat +messages-send`，不要从显示名猜 ID。
+- 事件只负责监听；需要回复时按 [输出与 Chat 交接](references/event-im-output.md) 把真实 `conversation_id` 或 `sender_open_dingtalk_id` 交给 `dws chat +messages-send`，不要从显示名猜 ID。
 - 扁平消息/动作字段按事件类型读取：已读为 `reader_open_dingtalk_id`，撤回为 `recaller_open_dingtalk_id`，回应为 `reaction_name`、`operation_type`。媒体优先通过聊天读取命令加 `--download-resources`；已知消息 ID 的底层降级入口是 `dws chat message download-media`。
 
 ## 安全与失败处理
@@ -77,7 +81,7 @@ kind + events + target
 - 多事件属于一次原始操作；任一订阅启动失败时 Runtime 回滚本次已创建项，不拆成新命令绕过重试预算。
 - 这套 `0/2/1` 是 **Agent/host** 编排预算，适用于 16 个 EventKey：`retryable=false` 对应 `max_additional_attempts=0`；`retryable=true` 对应 `max_additional_attempts=2`；`retryable=unknown` 对应 `max_additional_attempts=1`。它不是 CLI 持久化硬总次数上限；每次调用最多创建一次，进程内不会自动重试，CLI 也不持久化或计算跨调用的 Agent/host 尝试次数。
 - 重试必须遵守 `retry_after_seconds` / `next_retry_at`。遇到 `in_flight`、`cooldown`、`terminal_hold` 不并发或递归重启同一逻辑订阅，也不换 `subscribe_id` / `trace_id` 绕过保护。
-- 认证、profile、订阅保护状态和 bus 排障按失败类型读取 [references/event-im.md](references/event-im.md)，不要在正常路径预加载完整运维手册。
+- 认证、profile、订阅保护状态和 bus 排障按失败类型读取 [订阅运维](references/event-im-operations.md)，不要在正常路径预加载完整运维手册。
 
 ### 本地订阅保护契约
 
@@ -97,4 +101,8 @@ kind + events + target
 
 | Topic | Reference | 何时读取 |
 |---|---|---|
-| 低频 EventKey、群生命周期、原始输出、订阅运维与排障 | [references/event-im.md](references/event-im.md) | Golden Route 不覆盖、需要字段细节，或 Runtime 返回明确失败时 |
+| 任务索引 | [event-im.md](references/event-im.md) | 还不能判断应该加载哪一个子 reference |
+| EventKey、目标规则与底层 consume | [event-im-keys.md](references/event-im-keys.md) | 群生命周期、显式 EventKey 或多事件组合 |
+| ready、bounded consume 与退出清理 | [event-im-lifecycle.md](references/event-im-lifecycle.md) | 启动/托管/关闭 consumer |
+| 扁平字段与事件到 Chat 交接 | [event-im-output.md](references/event-im-output.md) | 解析事件或自动回复 |
+| Filter、status/stop、重试与排障 | [event-im-operations.md](references/event-im-operations.md) | 订阅控制或失败恢复 |

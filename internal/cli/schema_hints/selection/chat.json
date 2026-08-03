@@ -22,7 +22,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.add_custom_group_role",
+        "internal/cli/schema_command_registry/products/chat.json#chat.add_custom_group_role",
         "cobra-help:dws chat group-role add",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -42,7 +42,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.add_emoji_reaction",
+        "internal/cli/schema_command_registry/products/chat.json#chat.add_emoji_reaction",
         "cobra-help:dws chat message add-emoji",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -62,7 +62,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.add_group_member",
+        "internal/cli/schema_command_registry/products/chat.json#chat.add_group_member",
         "cobra-help:dws chat group members add",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -82,7 +82,7 @@
       "reviewed": true,
       "review_reason": "依据新增的真实 Cobra leaf、消息收藏实现和 chat 产品参考补齐 reviewed Agent 选择语义；不改变执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.add_message_favorite",
+        "internal/cli/schema_command_registry/products/chat.json#chat.add_message_favorite",
         "cobra-help:dws chat message add-favorite --help",
         "skills/mono/references/products/chat.md"
       ]
@@ -102,7 +102,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.add_robot_to_group",
+        "internal/cli/schema_command_registry/products/chat.json#chat.add_robot_to_group",
         "cobra-help:dws chat group members add-bot",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -123,7 +123,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.add_text_emotion",
+        "internal/cli/schema_command_registry/products/chat.json#chat.add_text_emotion",
         "cobra-help:dws chat message add-text-emotion",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -143,7 +143,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.combine_forward_messages",
+        "internal/cli/schema_command_registry/products/chat.json#chat.combine_forward_messages",
         "cobra-help:dws chat message combine-forward",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -163,19 +163,19 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.create_and_send_card",
+        "internal/cli/schema_command_registry/products/chat.json#chat.create_and_send_card",
         "cobra-help:dws chat message send-card",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
       ]
     },
     "chat.create_group_conversation": {
-      "agent_summary": "创建群聊并可指定群名与初始成员",
+      "agent_summary": "使用底层字段创建群聊并可指定群名与初始成员",
       "use_when": [
-        "需要新建内部/外部群或话题圈，并带上初始成员",
-        "用户明确要建群且已给出群名与成员标识"
+        "只有需要 +chat-create 尚未发布的 thread 等底层创建字段，并已取得稳定成员 ID 时使用"
       ],
       "avoid_when": [
+        "普通内部/外部群创建或成员姓名需要唯一解析时使用 +chat-create",
         "已有群只需加人时使用 chat group members add",
         "只是搜索已有群时使用 chat search"
       ],
@@ -185,7 +185,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.create_group_conversation",
+        "internal/cli/schema_command_registry/products/chat.json#chat.create_group_conversation",
         "cobra-help:dws chat group create",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -206,7 +206,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.create_smart_conv_category",
+        "internal/cli/schema_command_registry/products/chat.json#chat.create_smart_conv_category",
         "cobra-help:dws chat category create-smart",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -226,7 +226,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.create_text_emotion",
+        "internal/cli/schema_command_registry/products/chat.json#chat.create_text_emotion",
         "cobra-help:dws chat message create-text-emotion",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -249,7 +249,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.dismiss_group",
+        "internal/cli/schema_command_registry/products/chat.json#chat.dismiss_group",
         "cobra-help:dws chat group dismiss",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -271,7 +271,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.download_media",
+        "internal/cli/schema_command_registry/products/chat.json#chat.download_media",
         "cobra-help:dws chat message download-media",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -291,7 +291,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.forward_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.forward_message",
         "cobra-help:dws chat message forward",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -311,7 +311,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.forward_topic",
+        "internal/cli/schema_command_registry/products/chat.json#chat.forward_topic",
         "cobra-help:dws chat message forward-topic",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -331,7 +331,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.get_conv_info_by_group_id",
+        "internal/cli/schema_command_registry/products/chat.json#chat.get_conv_info_by_group_id",
         "cobra-help:dws chat group get-by-group-id",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -351,7 +351,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.get_conversation_info",
+        "internal/cli/schema_command_registry/products/chat.json#chat.get_conversation_info",
         "cobra-help:dws chat conversation-info",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -371,7 +371,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.get_group_invite_url",
+        "internal/cli/schema_command_registry/products/chat.json#chat.get_group_invite_url",
         "cobra-help:dws chat group invite-url",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -380,9 +380,10 @@
     "chat.list_conversation_message_v2": {
       "agent_summary": "分页读取指定会话消息及其引用上下文",
       "use_when": [
-        "用户明确指定某个会话，并要读取消息或追溯引用回复中的原消息上下文时"
+        "需要 +chat-messages 未投影的原始响应字段或显式手工 continuation 时使用"
       ],
       "avoid_when": [
+        "普通指定会话浏览、稳定消息投影或资源下载使用 +chat-messages",
         "跨全部会话按时间查询时使用 chat message list-all"
       ],
       "examples": [
@@ -391,7 +392,7 @@
       "reviewed": true,
       "review_reason": "复核 dws-wukong 2026-07-14 读取能力同步：指定会话查询应保留 quotedMessage，并覆盖被引用的合并转发与图片内容；不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_conversation_message_v2",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_conversation_message_v2",
         "cobra-help:dws chat message list",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -411,7 +412,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_conversations_by_category",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_conversations_by_category",
         "cobra-help:dws chat category list-conversations",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -431,7 +432,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_custom_group_roles",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_custom_group_roles",
         "cobra-help:dws chat group-role list",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -451,7 +452,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_group_bots",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_group_bots",
         "cobra-help:dws chat group bots",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -472,7 +473,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_individual_chat_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_individual_chat_message",
         "cobra-help:dws chat message list-direct",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -492,7 +493,7 @@
       "reviewed": true,
       "review_reason": "依据新增的真实 Cobra leaf、数字游标分页契约和 chat 产品参考补齐 reviewed Agent 选择语义与示例。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_message_favorites",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_message_favorites",
         "cobra-help:dws chat message list-favorites --help",
         "skills/mono/references/products/chat.md"
       ]
@@ -511,7 +512,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_messages_by_ids",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_messages_by_ids",
         "cobra-help:dws chat message list-by-ids",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -531,7 +532,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_owned_or_admin_groups",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_owned_or_admin_groups",
         "cobra-help:dws chat group list-my-groups",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -551,7 +552,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_pin_messages",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_pin_messages",
         "cobra-help:dws chat message list-pin-msg",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -571,18 +572,19 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_special_focus_messages",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_special_focus_messages",
         "cobra-help:dws chat message list-focused",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
       ]
     },
     "chat.list_top_conversations": {
-      "agent_summary": "列出当前用户置顶的会话",
+      "agent_summary": "以原始响应列出当前用户置顶的会话",
       "use_when": [
-        "需要查看现有置顶会话清单时"
+        "需要 +conversation-list-top 未投影的底层原始响应字段时使用"
       ],
       "avoid_when": [
+        "普通查看置顶会话清单或按群聊/单聊过滤时使用 +conversation-list-top",
         "设置或取消某个会话置顶时使用 chat set-top"
       ],
       "examples": [
@@ -591,7 +593,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_top_conversations",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_top_conversations",
         "cobra-help:dws chat list-top-conversations",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -611,7 +613,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_topic_replies",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_topic_replies",
         "cobra-help:dws chat message list-topic-replies",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -631,7 +633,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.list_user_define_conv_categories",
+        "internal/cli/schema_command_registry/products/chat.json#chat.list_user_define_conv_categories",
         "cobra-help:dws chat category list",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -651,7 +653,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.query_custom_user_roles",
+        "internal/cli/schema_command_registry/products/chat.json#chat.query_custom_user_roles",
         "cobra-help:dws chat group-role query-user",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -671,7 +673,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.query_message_send_status",
+        "internal/cli/schema_command_registry/products/chat.json#chat.query_message_send_status",
         "cobra-help:dws chat message query-send-status",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -691,7 +693,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.query_msg_read_status",
+        "internal/cli/schema_command_registry/products/chat.json#chat.query_msg_read_status",
         "cobra-help:dws chat message read-status",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -712,7 +714,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.quit_group",
+        "internal/cli/schema_command_registry/products/chat.json#chat.quit_group",
         "cobra-help:dws chat group quit",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -734,7 +736,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.recall_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.recall_message",
         "cobra-help:dws chat message recall",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -755,7 +757,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.recall_robot_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.recall_robot_message",
         "cobra-help:dws chat message recall-by-bot",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -775,7 +777,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.remove_custom_group_role",
+        "internal/cli/schema_command_registry/products/chat.json#chat.remove_custom_group_role",
         "cobra-help:dws chat group-role remove",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -795,7 +797,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.remove_custom_user_roles",
+        "internal/cli/schema_command_registry/products/chat.json#chat.remove_custom_user_roles",
         "cobra-help:dws chat group-role remove-user",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -815,7 +817,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.remove_emoji_reaction",
+        "internal/cli/schema_command_registry/products/chat.json#chat.remove_emoji_reaction",
         "cobra-help:dws chat message remove-emoji",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -835,7 +837,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.remove_group_member",
+        "internal/cli/schema_command_registry/products/chat.json#chat.remove_group_member",
         "cobra-help:dws chat group members remove",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -855,7 +857,7 @@
       "reviewed": true,
       "review_reason": "依据新增的真实 Cobra leaf、取消收藏实现和 chat 产品参考补齐 reviewed Agent 选择语义；明确其不会删除原消息。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.remove_message_favorite",
+        "internal/cli/schema_command_registry/products/chat.json#chat.remove_message_favorite",
         "cobra-help:dws chat message remove-favorite --help",
         "skills/mono/references/products/chat.md"
       ]
@@ -875,7 +877,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.remove_robot_in_group",
+        "internal/cli/schema_command_registry/products/chat.json#chat.remove_robot_in_group",
         "cobra-help:dws chat group members remove-bot",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -896,18 +898,19 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.remove_text_emotion",
+        "internal/cli/schema_command_registry/products/chat.json#chat.remove_text_emotion",
         "cobra-help:dws chat message remove-text-emotion",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
       ]
     },
     "chat.reply_personal_message": {
-      "agent_summary": "引用指定消息发送个人回复",
+      "agent_summary": "使用底层引用字段发送个人回复",
       "use_when": [
-        "用户要针对某条已有消息进行引用回复时"
+        "只有 +messages-reply 未发布必需的底层引用字段，且 Runtime confirmation 已对齐时使用"
       ],
       "avoid_when": [
+        "普通纯文本引用回复使用 +messages-reply",
         "无需引用上下文的普通消息使用 chat message send"
       ],
       "examples": [
@@ -916,7 +919,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.reply_personal_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.reply_personal_message",
         "cobra-help:dws chat message reply",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -936,7 +939,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.search_at_me_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.search_at_me_message",
         "cobra-help:dws chat message list-mentions",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -957,7 +960,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.search_bots",
+        "internal/cli/schema_command_registry/products/chat.json#chat.search_bots",
         "cobra-help:dws chat bot find",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -979,7 +982,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.search_common_groups",
+        "internal/cli/schema_command_registry/products/chat.json#chat.search_common_groups",
         "cobra-help:dws chat search-common",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1002,7 +1005,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.search_groups",
+        "internal/cli/schema_command_registry/products/chat.json#chat.search_groups",
         "cobra-help:dws chat search",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -1010,12 +1013,12 @@
       ]
     },
     "chat.search_messages": {
-      "agent_summary": "按时间、关键词、发送者、@ 或会话等多维度搜索消息",
+      "agent_summary": "使用底层原始过滤字段搜索消息",
       "use_when": [
-        "需要组合时间范围、关键词、发送者、@我/@某人、指定会话等条件搜消息"
+        "需要 +search-msg 尚未发布的原始过滤字段或原始响应时使用"
       ],
       "avoid_when": [
-        "只需按关键词在会话里搜时优先评估 chat message search",
+        "普通跨会话关键词、发送者、@、会话或消息类型组合搜索使用 +search-msg",
         "只需拉取某会话时间线时使用 chat message list",
         "只需某人发给我的消息时使用 chat message list-by-sender"
       ],
@@ -1025,7 +1028,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.search_messages",
+        "internal/cli/schema_command_registry/products/chat.json#chat.search_messages",
         "cobra-help:dws chat message search-advanced",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -1033,11 +1036,12 @@
       ]
     },
     "chat.search_messages_by_keyword": {
-      "agent_summary": "按关键词和时间范围搜索消息",
+      "agent_summary": "使用底层简单查询接口按关键词和时间范围搜索消息",
       "use_when": [
-        "需要用关键词查找消息且过滤条件较简单时"
+        "只有 +search-msg 无法表达且明确需要底层简单搜索接口原始响应时使用"
       ],
       "avoid_when": [
+        "普通关键词搜索和全量翻页使用 +search-msg",
         "需要多会话、发送者或 @维度组合时使用 search-advanced"
       ],
       "examples": [
@@ -1046,7 +1050,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.search_messages_by_keyword",
+        "internal/cli/schema_command_registry/products/chat.json#chat.search_messages_by_keyword",
         "cobra-help:dws chat message search",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1066,7 +1070,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.search_messages_by_sender",
+        "internal/cli/schema_command_registry/products/chat.json#chat.search_messages_by_sender",
         "cobra-help:dws chat message list-by-sender",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1086,7 +1090,7 @@
       "reviewed": true,
       "review_reason": "复核 dws-wukong 2026-07-14 搜索能力同步：跨会话消息搜索遇到权益限制时应向用户展示服务端指引，而不是解释为空结果；不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.search_messages_by_time_range",
+        "internal/cli/schema_command_registry/products/chat.json#chat.search_messages_by_time_range",
         "cobra-help:dws chat message list-all",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1106,7 +1110,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.search_my_robots",
+        "internal/cli/schema_command_registry/products/chat.json#chat.search_my_robots",
         "cobra-help:dws chat bot search",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -1114,11 +1118,12 @@
       ]
     },
     "chat.send_message_by_custom_robot": {
-      "agent_summary": "用自定义机器人 Webhook 向群发送消息",
+      "agent_summary": "使用底层 Webhook 接口向群发送消息",
       "use_when": [
-        "已有自定义机器人 webhook token，需要向群发告警或通知"
+        "只有 +messages-send 未发布必需的 Webhook 底层字段，且 Runtime confirmation 已对齐时使用"
       ],
       "avoid_when": [
+        "普通 Webhook 文本、Markdown 和 @发送使用 +messages-send --as webhook",
         "使用企业机器人 robot-code 发消息时用 chat message send-by-bot",
         "以个人身份发消息时用 chat message send"
       ],
@@ -1128,7 +1133,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.send_message_by_custom_robot",
+        "internal/cli/schema_command_registry/products/chat.json#chat.send_message_by_custom_robot",
         "cobra-help:dws chat message send-by-webhook",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md",
@@ -1136,11 +1141,13 @@
       ]
     },
     "chat.send_personal_message": {
-      "agent_summary": "以当前用户身份发送群聊或单聊消息",
+      "agent_summary": "使用当前用户底层消息类型或原始响应发送群聊或单聊消息",
       "use_when": [
-        "用户明确要以个人身份发送文本或媒体消息时"
+        "只有 +messages-send 未发布的位置、名片等底层消息类型，且 Runtime confirmation 已对齐时使用"
       ],
       "avoid_when": [
+        "按姓名发送简单文本使用 +dm，按群名发送简单文本使用 +send-to-group",
+        "已知 ID、文件、复杂 @ 或幂等发送使用 +messages-send",
         "机器人身份或 Webhook 发送应使用对应命令"
       ],
       "examples": [
@@ -1149,18 +1156,19 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.send_personal_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.send_personal_message",
         "cobra-help:dws chat message send",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
       ]
     },
     "chat.send_robot_message": {
-      "agent_summary": "以应用机器人身份发送群消息或批量单聊",
+      "agent_summary": "使用底层机器人接口发送群消息或批量单聊",
       "use_when": [
-        "已有 robotCode 且需要机器人身份投递消息时"
+        "只有 +messages-send 未发布必需的机器人底层字段，且 Runtime confirmation 已对齐时使用"
       ],
       "avoid_when": [
+        "普通 robotCode 文本、Markdown、群聊、批量单聊或 @发送使用 +messages-send --as bot",
         "个人身份发送或自定义 Webhook 告警不要使用"
       ],
       "examples": [
@@ -1169,7 +1177,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.send_robot_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.send_robot_message",
         "cobra-help:dws chat message send-by-bot",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1189,7 +1197,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.set_custom_user_roles",
+        "internal/cli/schema_command_registry/products/chat.json#chat.set_custom_user_roles",
         "cobra-help:dws chat group-role set-user",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1209,7 +1217,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.set_group_member_mute_list",
+        "internal/cli/schema_command_registry/products/chat.json#chat.set_group_member_mute_list",
         "cobra-help:dws chat group-mute-member",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1229,7 +1237,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.set_group_mute",
+        "internal/cli/schema_command_registry/products/chat.json#chat.set_group_mute",
         "cobra-help:dws chat group-mute",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1249,7 +1257,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.set_pin_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.set_pin_message",
         "cobra-help:dws chat message set-pin-msg",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1269,7 +1277,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.set_top_conversation",
+        "internal/cli/schema_command_registry/products/chat.json#chat.set_top_conversation",
         "cobra-help:dws chat set-top",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1289,7 +1297,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.transfer_group_owner",
+        "internal/cli/schema_command_registry/products/chat.json#chat.transfer_group_owner",
         "cobra-help:dws chat group transfer-owner",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1309,7 +1317,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.unread_message_conversation_list",
+        "internal/cli/schema_command_registry/products/chat.json#chat.unread_message_conversation_list",
         "cobra-help:dws chat message list-unread-conversations",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1329,7 +1337,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.unset_pin_message",
+        "internal/cli/schema_command_registry/products/chat.json#chat.unset_pin_message",
         "cobra-help:dws chat message unset-pin-msg",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1349,7 +1357,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.update_conv_member_roles",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_conv_member_roles",
         "cobra-help:dws chat group set-admin",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1369,7 +1377,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.update_custom_group_role",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_custom_group_role",
         "cobra-help:dws chat group-role update",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1389,7 +1397,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.update_group_icon",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_group_icon",
         "cobra-help:dws chat group update-icon",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1409,7 +1417,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.update_group_name",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_group_name",
         "cobra-help:dws chat group rename",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1429,7 +1437,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.update_group_settings",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_group_settings",
         "cobra-help:dws chat group update-settings",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1449,7 +1457,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.update_notification_off",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_notification_off",
         "cobra-help:dws chat mute",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1469,7 +1477,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.update_show_history_msg_option",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_show_history_msg_option",
         "cobra-help:dws chat group set-history",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1489,7 +1497,7 @@
       "reviewed": true,
       "review_reason": "AI 生成并复核的 Agent 选择语义，依据精确 CommandRegistry identity、真实 Cobra help 与产品参考，不改写执行、安全或接口事实。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.update_streaming_card",
+        "internal/cli/schema_command_registry/products/chat.json#chat.update_streaming_card",
         "cobra-help:dws chat message update-card",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/chat.md"
@@ -1610,7 +1618,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_bot_search",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_bot_search",
         "cobra-help:dws chat +bot-search",
         "ShortcutRegistry:chat +bot-search"
       ]
@@ -1629,7 +1637,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_bot_find",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_bot_find",
         "cobra-help:dws chat +bot-find",
         "ShortcutRegistry:chat +bot-find"
       ]
@@ -1648,7 +1656,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_conversation_info",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_conversation_info",
         "cobra-help:dws chat +conversation-info",
         "ShortcutRegistry:chat +conversation-info"
       ]
@@ -1667,26 +1675,26 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_conversation_clear_all_red_point",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_conversation_clear_all_red_point",
         "cobra-help:dws chat +conversation-clear-all-red-point",
         "ShortcutRegistry:chat +conversation-clear-all-red-point"
       ]
     },
     "chat.shortcut_conversation_list": {
-      "agent_summary": "分页获取当前用户的全部会话列表（单聊+群聊）",
+      "agent_summary": "分页或一键全量获取当前用户的会话列表（单聊+群聊）",
       "use_when": [
-        "当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；只读分页返回，可用 --exclude-muted 排除已免打扰会话。"
+        "当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；默认读取一页，明确要求全部时使用 --page-all，CLI 会按服务端每页上限自动翻页并公开完整性 ledger；可用 --exclude-muted 排除已免打扰会话。"
       ],
       "avoid_when": [
-        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+        "只查看置顶会话时使用 +conversation-list-top；不要用原子 list-all-conversations 加超出服务端上限的 --limit 冒充全量。"
       ],
       "examples": [
-        "dws chat +conversation-list --limit 50"
+        "dws chat +conversation-list --page-all --limit 100"
       ],
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_conversation_list",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_conversation_list",
         "cobra-help:dws chat +conversation-list",
         "ShortcutRegistry:chat +conversation-list"
       ]
@@ -1706,7 +1714,7 @@
       "reviewed": true,
       "review_reason": "Reviewed after live testing list_top_conversations: singleChat is present on every tested row and is normalized locally to group/direct without adding a lower-service parameter.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_conversation_list_top",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_conversation_list_top",
         "cobra-help:dws chat +conversation-list-top",
         "ShortcutRegistry:chat +conversation-list-top"
       ]
@@ -1725,7 +1733,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_category_list",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_category_list",
         "cobra-help:dws chat +category-list",
         "ShortcutRegistry:chat +category-list"
       ]
@@ -1744,7 +1752,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_category_create",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_category_create",
         "cobra-help:dws chat +category-create",
         "ShortcutRegistry:chat +category-create"
       ]
@@ -1763,7 +1771,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_category_delete",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_category_delete",
         "cobra-help:dws chat +category-delete",
         "ShortcutRegistry:chat +category-delete"
       ]
@@ -1782,7 +1790,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_category_rename",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_category_rename",
         "cobra-help:dws chat +category-rename",
         "ShortcutRegistry:chat +category-rename"
       ]
@@ -1793,7 +1801,7 @@
         "当你只记得群名称关键词、需要拿到群 openConversationId 以便发消息或管理该群时使用；按群名模糊搜索，只读分页返回匹配的群列表。"
       ],
       "avoid_when": [
-        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+        "发送、读取、成员、邀请链接或机器人命令已接受自然群名时直接使用对应 Shortcut，不要先手工搜索并抄 ID。"
       ],
       "examples": [
         "dws chat +chat-search --query \"项目冲刺\""
@@ -1801,7 +1809,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_search",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_search",
         "cobra-help:dws chat +chat-search",
         "ShortcutRegistry:chat +chat-search"
       ]
@@ -1809,18 +1817,18 @@
     "chat.shortcut_chat_invite_url": {
       "agent_summary": "获取群邀请链接",
       "use_when": [
-        "当你想拿到一条群邀请链接分享给别人加群时使用；只读生成链接，需传群 openConversationId，可用 --expires-seconds 设置有效期（0 表示永久）。"
+        "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
       ],
       "avoid_when": [
-        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+        "用户要把邀请卡片直接发到另一个会话时使用 share-invite；不要先尝试 +chat-list 或不存在的搜索入口。"
       ],
       "examples": [
-        "dws chat +chat-invite-url --group <openConversationId>"
+        "dws chat +chat-invite-url --chat-query \"项目群\""
       ],
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_invite_url",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_invite_url",
         "cobra-help:dws chat +chat-invite-url",
         "ShortcutRegistry:chat +chat-invite-url"
       ]
@@ -1839,7 +1847,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_dismiss",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_dismiss",
         "cobra-help:dws chat +chat-dismiss",
         "ShortcutRegistry:chat +chat-dismiss"
       ]
@@ -1858,7 +1866,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_set_history",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_set_history",
         "cobra-help:dws chat +chat-set-history",
         "ShortcutRegistry:chat +chat-set-history"
       ]
@@ -1877,7 +1885,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_update_nick",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_update_nick",
         "cobra-help:dws chat +chat-update-nick",
         "ShortcutRegistry:chat +chat-update-nick"
       ]
@@ -1896,7 +1904,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_update_alias",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_update_alias",
         "cobra-help:dws chat +chat-update-alias",
         "ShortcutRegistry:chat +chat-update-alias"
       ]
@@ -1915,7 +1923,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_list_mine",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_list_mine",
         "cobra-help:dws chat +chat-list-mine",
         "ShortcutRegistry:chat +chat-list-mine"
       ]
@@ -1934,7 +1942,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_list_all",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_list_all",
         "cobra-help:dws chat +chat-list-all",
         "ShortcutRegistry:chat +chat-list-all"
       ]
@@ -1953,7 +1961,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_list_join_requests",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_list_join_requests",
         "cobra-help:dws chat +chat-list-join-requests",
         "ShortcutRegistry:chat +chat-list-join-requests"
       ]
@@ -1961,18 +1969,18 @@
     "chat.shortcut_chat_bots": {
       "agent_summary": "查看群内所有机器人",
       "use_when": [
-        "当你想查看某个群里已添加了哪些机器人时使用；需传群 openConversationId，只读返回群内机器人列表（含 openBotId，供后续移除）。"
+        "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
       ],
       "avoid_when": [
-        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+        "用户要搜索当前账号可用或创建的机器人而非群内机器人时，使用 bot find/search；不要先走 chat group search + group bots 原子链。"
       ],
       "examples": [
-        "dws chat +chat-bots --group <openConversationId>"
+        "dws chat +chat-bots --group \"项目群\""
       ],
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_bots",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_bots",
         "cobra-help:dws chat +chat-bots",
         "ShortcutRegistry:chat +chat-bots"
       ]
@@ -1991,7 +1999,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_set_admin",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_set_admin",
         "cobra-help:dws chat +chat-set-admin",
         "ShortcutRegistry:chat +chat-set-admin"
       ]
@@ -2010,7 +2018,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_mute",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_mute",
         "cobra-help:dws chat +chat-mute",
         "ShortcutRegistry:chat +chat-mute"
       ]
@@ -2029,7 +2037,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_role_list",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_role_list",
         "cobra-help:dws chat +chat-role-list",
         "ShortcutRegistry:chat +chat-role-list"
       ]
@@ -2048,7 +2056,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_role_add",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_role_add",
         "cobra-help:dws chat +chat-role-add",
         "ShortcutRegistry:chat +chat-role-add"
       ]
@@ -2067,7 +2075,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_role_update",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_role_update",
         "cobra-help:dws chat +chat-role-update",
         "ShortcutRegistry:chat +chat-role-update"
       ]
@@ -2086,7 +2094,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_role_set_user",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_role_set_user",
         "cobra-help:dws chat +chat-role-set-user",
         "ShortcutRegistry:chat +chat-role-set-user"
       ]
@@ -2105,47 +2113,67 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_role_query_user",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_role_query_user",
         "cobra-help:dws chat +chat-role-query-user",
         "ShortcutRegistry:chat +chat-role-query-user"
       ]
     },
     "chat.shortcut_chat_create": {
-      "agent_summary": "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
+      "agent_summary": "按成员和可选群主全量预检后创建一个钉钉群聊",
       "use_when": [
-        "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。"
+        "当你要创建钉钉群聊时使用；成员可传稳定 ID 或 --member-query 姓名，群主默认当前用户，也可用 --owner-open-dingtalk-id 或 --owner-query 明确指定。所有自然身份会在唯一解析并去重后才执行一次创建，任一零命中或多命中都会整体停止。"
       ],
       "avoid_when": [
-        "需要指定其他 owner、群 description、初始机器人、幂等查重或 Lark public/private 可见性时不要使用；这些语义当前没有可靠底层能力"
+        "需要群 description、初始机器人、幂等查重或 Lark public/private 可见性时不要使用；这些语义当前没有可靠底层能力"
       ],
       "examples": [
         "dws chat +chat-create --name \"项目冲刺群\" --users <userId1>,<userId2>",
         "dws chat +chat-create --name \"合作群\" --member-query \"张三,李四\" --type EXTERNAL"
       ],
       "reviewed": true,
-      "review_reason": "Agent-authored from the executable all-or-nothing natural member resolver, stable-ID member path, current-owner invariant, single-write boundary, dry-run parity, and deliberately unsupported Lark-only creation fields.",
+      "review_reason": "Agent-authored from the executable all-or-nothing member/owner resolver, stable-ID de-duplication, explicit ownerOpenDingTalkId mapping, current-owner fallback, single-write boundary, dry-run parity, and deliberately unsupported description/initial-bot/visibility fields.",
       "source_refs": [
         "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_create",
         "cobra-help:dws chat +chat-create",
         "ShortcutRegistry:chat +chat-create"
       ]
     },
-    "chat.shortcut_chat_messages": {
-      "agent_summary": "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
+    "chat.shortcut_chat_members_list": {
+      "agent_summary": "列出群成员并把用户与机器人分桶（支持群名语义解析）",
       "use_when": [
-        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+        "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；可直接传 --conversation-id，或传 --group 群名让命令先做唯一匹配。默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。"
+      ],
+      "avoid_when": [
+        "只需要按群名列出真人用户时可用较小入口 +group-members；不要把 complete=false 或 partial=true 的结果称为完整成员列表"
+      ],
+      "examples": [
+        "dws chat +chat-members-list --group \"项目冲刺\"",
+        "dws chat +chat-members-list --conversation-id <openConversationId> --member-types user,bot"
+      ],
+      "reviewed": true,
+      "review_reason": "Agent-authored from full user pagination, stable-ID de-duplication, separate all-bot projection, deterministic group resolution, typed bucket completeness, and partial failure facts.",
+      "source_refs": [
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_members_list",
+        "cobra-help:dws chat +chat-members-list",
+        "ShortcutRegistry:chat +chat-members-list"
+      ]
+    },
+    "chat.shortcut_chat_messages": {
+      "agent_summary": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
+      "use_when": [
+        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
       ],
       "avoid_when": [
         "要跨多个会话按关键词、发送者或消息类型检索时使用 +search-msg；已有一批精确消息 ID 时使用 +messages-mget"
       ],
       "examples": [
-        "dws chat +chat-messages --group <openConversationId> --direction older",
-        "dws chat +chat-messages --open-dingtalk-id <openDingTalkId> --download-resources --output-dir ./downloads"
+        "dws chat +chat-messages --group <openConversationId> --direction older --page-all --page-limit 50",
+        "dws chat +chat-messages --open-dingtalk-id <openDingTalkId> --page-all --output ./exports/messages.json"
       ],
       "reviewed": true,
-      "review_reason": "Agent-authored from the verified stable-ID and deterministic natural-target group/direct routing, structured ambiguity behavior, stable projection, pagination, and optional safe resource workflow; it distinguishes one-conversation history from cross-conversation search and exact-ID mget.",
+      "review_reason": "Agent-authored from stable-ID/natural-target routing, bounded all-page collection, message-ID de-duplication, fail-closed continuation, im.message-list.v1 completeness facts, atomic JSON export, and the optional safe resource workflow.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_chat_messages",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_chat_messages",
         "cobra-help:dws chat +chat-messages",
         "ShortcutRegistry:chat +chat-messages"
       ]
@@ -2170,31 +2198,32 @@
       ]
     },
     "chat.shortcut_messages_send": {
-      "agent_summary": "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+      "agent_summary": "按身份和目标统一发送消息，Bot 多群返回逐目标 ledger",
       "use_when": [
-        "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。"
+        "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。"
       ],
       "avoid_when": [
-        "只需按姓名或群名发送简单文本时分别使用 +dm 或 +send-to-group；bot/webhook 不支持自然目标或媒体，卡片和 thread 回复使用真实存在的专用入口"
+        "只需按姓名或群名发送简单文本时分别使用 +dm 或 +send-to-group；bot/webhook 不支持自然目标或富媒体，卡片使用 +messages-send-card，当前没有 thread writer"
       ],
       "examples": [
         "dws chat +messages-send --as user --chat-id <openConversationId> --markdown \"## 周报\" --idempotency-key <key>",
-        "dws chat +messages-send --as user --user <userId> --msg-type file --file ./report.pdf"
+        "dws chat +messages-send --as bot --robot-code <robotCode> --groups <openConversationId1>,<openConversationId2> --text \"请提交周报\""
       ],
       "reviewed": true,
-      "review_reason": "Agent-authored from the verified Golden Route boundary, identity/content capability matrix, structured user/chat resolution with dry-run parity, native local-file upload flow, and fail-closed rejection of unsupported bot/webhook natural targets or media.",
+      "review_reason": "Agent-authored from the typed identity/content matrix, structured user/chat resolution, native current-user file flow, bot multi-group safe file input and im.batch-write.v1 per-target ledger, and fail-closed rejection of unsupported bot/webhook natural targets or rich media.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_send",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_send",
         "cobra-help:dws chat +messages-send",
         "ShortcutRegistry:chat +messages-send"
       ]
     },
     "chat.shortcut_messages_send_by_webhook": {
-      "agent_summary": "自定义机器人 Webhook 发送群消息",
+      "agent_summary": "兼容旧入口的自定义机器人 Webhook 群消息发送",
       "use_when": [
-        "当你只有自定义机器人的 Webhook token、想往其所在群推送消息时使用；会实际通过 Webhook 发群消息，需传 token、标题、正文，可 @手机号/userId 或 @所有人。"
+        "只有既有自动化明确依赖 +messages-send-by-webhook 兼容路径、暂时不能迁移统一身份入口时使用"
       ],
       "avoid_when": [
+        "新的 Webhook 文本、Markdown 和 @发送使用 +messages-send --as webhook",
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
       ],
       "examples": [
@@ -2203,7 +2232,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_send_by_webhook",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_send_by_webhook",
         "cobra-help:dws chat +messages-send-by-webhook",
         "ShortcutRegistry:chat +messages-send-by-webhook"
       ]
@@ -2211,10 +2240,10 @@
     "chat.shortcut_messages_send_card": {
       "agent_summary": "创建流式卡片，可在同一次调用中写入内容并结束",
       "use_when": [
-        "当你要发送一张流式卡片消息时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。"
+        "当你要发送一张流式文本卡片时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成。当前只支持 streaming text，不支持 Card JSON 组件或 action callback。"
       ],
       "avoid_when": [
-        "已有 bizId、只需要追加或更新现有卡片内容时使用 +messages-update-card"
+        "已有 bizId、只需要追加或更新现有卡片内容时使用 +messages-update-card；需要 Card JSON 组件或 action callback 时停止，当前没有底层能力"
       ],
       "examples": [
         "dws chat +messages-send-card --group <openConversationId> --content \"任务已完成\"",
@@ -2223,7 +2252,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored from the verified create-only and create-then-update lifecycle, live-compatible contact search with exact userId matching, explicit userId/openDingTalkId routing, two-action dry-run, bizId extraction, and partial-failure reporting.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_send_card",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_send_card",
         "cobra-help:dws chat +messages-send-card",
         "ShortcutRegistry:chat +messages-send-card"
       ]
@@ -2242,7 +2271,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_list_direct",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_list_direct",
         "cobra-help:dws chat +messages-list-direct",
         "ShortcutRegistry:chat +messages-list-direct"
       ]
@@ -2261,7 +2290,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_list_unread_conversations",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_list_unread_conversations",
         "cobra-help:dws chat +messages-list-unread-conversations",
         "ShortcutRegistry:chat +messages-list-unread-conversations"
       ]
@@ -2280,7 +2309,7 @@
       "reviewed": true,
       "review_reason": "Reviewed against the built-in Shortcut, executable Cobra flags, safe relative-path download contract, and per-resource failure ledger; this selection update advertises the new optional resource workflow without changing its runtime safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_mget",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_mget",
         "cobra-help:dws chat +messages-mget",
         "ShortcutRegistry:chat +messages-mget"
       ]
@@ -2299,7 +2328,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_query_send_status",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_query_send_status",
         "cobra-help:dws chat +messages-query-send-status",
         "ShortcutRegistry:chat +messages-query-send-status"
       ]
@@ -2318,7 +2347,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_read_status",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_read_status",
         "cobra-help:dws chat +messages-read-status",
         "ShortcutRegistry:chat +messages-read-status"
       ]
@@ -2326,10 +2355,10 @@
     "chat.shortcut_messages_update_card": {
       "agent_summary": "流式更新卡片内容（最后一次 --flow-status 应为 3）",
       "use_when": [
-        "当你要向已发送的流式卡片持续追加/更新内容时使用；会实际更新卡片，需传 send-card 返回的 bizId、新内容及 flowStatus（最后一次应为 3 表示完成）。"
+        "当你要向已发送的流式文本卡片持续追加/更新内容时使用；会实际更新卡片，需传 send-card 返回的 bizId、新内容及 flowStatus 1-5（最后一次应为 3 表示完成）。当前不支持 Card JSON 组件或 action callback。"
       ],
       "avoid_when": [
-        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+        "需要 Card JSON 组件、action callback 或范围外 flowStatus 时不要使用；当前没有等价底层能力"
       ],
       "examples": [
         "dws chat +messages-update-card --biz-id <bizId> --content \"内容\" --flow-status 3"
@@ -2337,7 +2366,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_update_card",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_update_card",
         "cobra-help:dws chat +messages-update-card",
         "ShortcutRegistry:chat +messages-update-card"
       ]
@@ -2356,7 +2385,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_messages_list_pin",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_messages_list_pin",
         "cobra-help:dws chat +messages-list-pin",
         "ShortcutRegistry:chat +messages-list-pin"
       ]
@@ -2367,16 +2396,16 @@
         "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"
       ],
       "avoid_when": [
-        "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+        "按发送者、关键词或消息类型搜索时使用 +search-msg；不要拉取全部消息后本地猜测 @。"
       ],
       "examples": [
         "dws chat +at-me",
-        "dws chat +at-me --days 3"
+        "dws chat +at-me --chat-query \"项目群\" --days 30"
       ],
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_at_me",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_at_me",
         "cobra-help:dws chat +at-me",
         "ShortcutRegistry:chat +at-me"
       ]
@@ -2395,7 +2424,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_broadcast",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_broadcast",
         "cobra-help:dws chat +broadcast",
         "ShortcutRegistry:chat +broadcast"
       ]
@@ -2414,15 +2443,15 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_dm",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_dm",
         "cobra-help:dws chat +dm",
         "ShortcutRegistry:chat +dm"
       ]
     },
     "chat.shortcut_group_members": {
-      "agent_summary": "按群名列出群成员（自动搜群解析 openConversationId）",
+      "agent_summary": "按群名唯一解析后全量列出用户成员并公开分页完整性",
       "use_when": [
-        "当你只知道群的名字、想看看这个群里有哪些成员，而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。群名匹配到多个群时会列出候选让你区分、绝不自行假定。只读，不改动任何数据。"
+        "当你只知道群的名字、想看看这个群里有哪些成员，而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。群名匹配到多个群时会列出候选让你区分、绝不自行假定。用户成员会自动翻页、稳定 ID 去重，并公开 complete/hasMore/nextCursor；--page-limit 保证有界。只读，不改动任何数据。"
       ],
       "avoid_when": [
         "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
@@ -2431,9 +2460,9 @@
         "dws chat +group-members --group 项目冲刺"
       ],
       "reviewed": true,
-      "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
+      "review_reason": "Agent-authored from full paginated member collection, stable-ID de-duplication, explicit page-limit continuation and fail-closed group-name resolution.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_group_members",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_group_members",
         "cobra-help:dws chat +group-members",
         "ShortcutRegistry:chat +group-members"
       ]
@@ -2453,7 +2482,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_my_groups",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_my_groups",
         "cobra-help:dws chat +my-groups",
         "ShortcutRegistry:chat +my-groups"
       ]
@@ -2473,7 +2502,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_search_msg",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_search_msg",
         "cobra-help:dws chat +search-msg",
         "ShortcutRegistry:chat +search-msg"
       ]
@@ -2492,7 +2521,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_send_to_group",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_send_to_group",
         "cobra-help:dws chat +send-to-group",
         "ShortcutRegistry:chat +send-to-group"
       ]
@@ -2512,7 +2541,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored from the verified thread/topic alias, lower list_topic_replies mapping, stable projection, group-context fallback, and optional safe resource workflow.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_thread_replies",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_thread_replies",
         "cobra-help:dws chat +thread-replies",
         "ShortcutRegistry:chat +thread-replies"
       ]
@@ -2532,7 +2561,7 @@
       "reviewed": true,
       "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#chat.shortcut_unread_chats",
+        "internal/cli/schema_command_registry/products/chat.json#chat.shortcut_unread_chats",
         "cobra-help:dws chat +unread-chats",
         "ShortcutRegistry:chat +unread-chats"
       ]
@@ -2631,7 +2660,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json",
+        "internal/cli/schema_command_registry/registry.json",
         "skills/mono/references/products/chat.md",
         "CommandRegistry:product=chat",
         "Skill:skills/mono/references/products/chat.md",

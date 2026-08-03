@@ -153,6 +153,106 @@ func TestCrossPlatformCoverageChatMembersListOutcomes(t *testing.T) {
 	}
 }
 
+func TestChatMembersListPaginatesUserBucketAndDeduplicates(t *testing.T) {
+	caller := &smartCoverageCaller{responses: map[string][]string{
+		"chat/get_group_members": {
+			`{"result":{"hasMore":true,"nextCursor":"2","list":[{"memberEmpName":"A","openDingtalkId":"D1"}]}}`,
+			`{"result":{"hasMore":false,"list":[{"memberEmpName":"A","openDingtalkId":"D1"},{"memberEmpName":"B","openDingtalkId":"D2"}]}}`,
+		},
+		"bot/list_group_bots": {`{"result":{"bots":[{"robotName":"R","robotCode":"robot"}]}}`},
+	}}
+	helpers.InitDeps(caller)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{"chat", "+chat-members-list", "--conversation-id", "cid"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if caller.counts["chat/get_group_members"] != 2 {
+		t.Fatalf("member page calls = %#v", caller.counts)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	counts, _ := payload["counts"].(map[string]any)
+	buckets, _ := payload["buckets"].(map[string]any)
+	users, _ := buckets["users"].(map[string]any)
+	if payload["contractVersion"] != groupMembersContractVersion || payload["complete"] != true ||
+		counts["users"] != float64(2) || counts["bots"] != float64(1) ||
+		users["pagesFetched"] != float64(2) || users["complete"] != true {
+		t.Fatalf("member buckets = %#v", payload)
+	}
+}
+
+func TestChatMembersListPageLimitPublishesContinuation(t *testing.T) {
+	caller := &smartCoverageCaller{responses: map[string][]string{
+		"chat/get_group_members": {
+			`{"result":{"hasMore":true,"nextCursor":"2","list":[{"memberEmpName":"A","openDingtalkId":"D1"}]}}`,
+		},
+	}}
+	helpers.InitDeps(caller)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+chat-members-list", "--conversation-id", "cid",
+		"--member-types", "user", "--page-limit", "1",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["complete"] != false || payload["hasMore"] != true || payload["nextCursor"] != "2" {
+		t.Fatalf("bounded member payload = %#v", payload)
+	}
+	buckets := payload["buckets"].(map[string]any)
+	users := buckets["users"].(map[string]any)
+	if users["stopReason"] != "page_limit" || users["failedCount"] != float64(0) {
+		t.Fatalf("bounded user bucket = %#v", users)
+	}
+}
+
+func TestChatMembersListKeepsEarlierPagesWhenLaterReadFails(t *testing.T) {
+	caller := &smartCoverageCaller{
+		responses: map[string][]string{
+			"chat/get_group_members": {
+				`{"result":{"hasMore":true,"nextCursor":"2","list":[{"memberEmpName":"A","openDingtalkId":"D1"}]}}`,
+			},
+		},
+		failAt: map[string]int{"chat/get_group_members": 2},
+	}
+	helpers.InitDeps(caller)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+chat-members-list", "--conversation-id", "cid", "--member-types", "user",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["complete"] != false || payload["partial"] != true ||
+		payload["hasMore"] != true || payload["nextCursor"] != "2" ||
+		payload["failedCount"] != float64(1) {
+		t.Fatalf("partial member payload = %#v", payload)
+	}
+	buckets := payload["buckets"].(map[string]any)
+	users := buckets["users"].(map[string]any)
+	if users["count"] != float64(1) || users["pagesFetched"] != float64(1) ||
+		users["stopReason"] != "read_failure" || users["partial"] != true {
+		t.Fatalf("partial user bucket = %#v", users)
+	}
+}
+
 func TestCrossPlatformCoverageChatMembersGroupResolutionAndProjection(t *testing.T) {
 	cases := []struct {
 		name      string

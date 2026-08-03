@@ -16,25 +16,28 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
-// ChatCreate creates a DingTalk group as the current user. It intentionally
-// does not advertise Lark-only owner, description, initial-bot, or visibility
-// semantics.
+// ChatCreate creates a DingTalk group after resolving every natural member and
+// the optional owner to stable DingTalk identities. Description, initial-bot,
+// idempotency, and Lark visibility semantics remain deliberately unsupported.
 var ChatCreate = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+chat-create",
 	Product:     "im",
-	Description: "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
-	Intent:      "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。",
+	Description: "按成员和可选群主全量预检后创建一个钉钉群聊",
+	Intent:      "当你要创建钉钉群聊时使用；成员可传稳定 ID 或 --member-query 姓名，群主默认当前用户，也可用 --owner-open-dingtalk-id 或 --owner-query 明确指定。所有自然身份会在唯一解析并去重后才执行一次创建，任一零命中或多命中都会整体停止。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "name", Type: shortcut.FlagString, Desc: "群名称", Required: true},
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "初始成员 userId 或 openDingTalkId 列表"},
 		{Name: "member-query", Type: shortcut.FlagStringSlice, Desc: "按姓名/花名唯一解析的初始成员，可逗号分隔或重复传入"},
+		{Name: "owner-open-dingtalk-id", Type: shortcut.FlagString, Desc: "明确指定群主 openDingTalkId（与 --owner-query 互斥；省略时群主为当前用户）"},
+		{Name: "owner-query", Type: shortcut.FlagString, Desc: "按姓名唯一解析群主 openDingTalkId（与 --owner-open-dingtalk-id 互斥）"},
 		{Name: "type", Type: shortcut.FlagString, Default: "INTERNAL", Desc: "群类型", Enum: []string{"INTERNAL", "EXTERNAL", "NORMAL"}},
 		{Name: "thread", Type: shortcut.FlagBool, Desc: "创建为话题群"},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"users", "member-query"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"owner-open-dingtalk-id", "owner-query"}},
 	},
 	Tips: []string{
 		`dws chat +chat-create --name "项目冲刺群" --users userId1,userId2`,
@@ -49,15 +52,29 @@ var ChatCreate = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		profile, err := rt.CallMCPData("contact", "get_current_user_profile", nil)
-		if err != nil {
-			return fmt.Errorf("读取当前用户以设置群主失败: %w", err)
+		ownerOpenID := rt.Str("owner-open-dingtalk-id")
+		if query := rt.Str("owner-query"); query != "" {
+			resolvedOwner, resolveErr := targetresolver.ResolveUser(
+				rt, query, targetresolver.IdentityOpenDingTalkID)
+			if resolveErr != nil {
+				return resolveErr
+			}
+			ownerOpenID = resolvedOwner.Selected.OpenDingTalkID
 		}
-		currentUserID := currentProfileUserID(profile)
-		if currentUserID == "" {
-			return apperrors.NewValidation("当前用户资料缺少 userId，无法保证群主属于初始成员列表")
+		members := make([]string, 0, len(rt.StrSlice("users"))+len(resolvedMembers)+1)
+		if ownerOpenID != "" {
+			members = append(members, ownerOpenID)
+		} else {
+			profile, profileErr := rt.CallMCPData("contact", "get_current_user_profile", nil)
+			if profileErr != nil {
+				return fmt.Errorf("读取当前用户以设置群主失败: %w", profileErr)
+			}
+			currentUserID := currentProfileUserID(profile)
+			if currentUserID == "" {
+				return apperrors.NewValidation("当前用户资料缺少 userId，无法保证群主属于初始成员列表")
+			}
+			members = append(members, currentUserID)
 		}
-		members := []string{currentUserID}
 		for _, member := range rt.StrSlice("users") {
 			member = strings.TrimSpace(member)
 			if member != "" {
@@ -78,6 +95,9 @@ var ChatCreate = shortcut.Shortcut{
 		}
 		if rt.Bool("thread") {
 			params["convThreadEnabled"] = true
+		}
+		if ownerOpenID != "" {
+			params["ownerOpenDingTalkId"] = ownerOpenID
 		}
 		if rt.DryRun() {
 			return rt.CallMCP("create_group_conversation", params)

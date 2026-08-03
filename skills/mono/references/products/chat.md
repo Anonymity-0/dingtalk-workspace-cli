@@ -8,15 +8,16 @@
 
 | 意图 | 首选 |
 |---|---|
-| 以 current-user / bot / webhook 身份发消息 | `dws chat +messages-send --as <identity> ...` |
-| 拉取单个群聊或单聊的消息 | `dws chat +chat-messages ...` |
+| 以 current-user / bot / webhook 身份发消息 | `dws chat +messages-send --as <identity> ...`；Bot 多群用 `--groups/--groups-file` |
+| 拉取单个群聊或单聊的消息 | `dws chat +chat-messages ...`；全量加 `--page-all`，导出加 `--output` |
 | 按关键词、发送者、@对象、会话、类型或时间组合搜索 | `dws chat +search-msg ...` |
 | 查询 @我的消息 | `dws chat +at-me ...` |
 | 根据消息 ID 批量取详情与 reaction | `dws chat +messages-mget ...` |
 | 读取已知 thread/topic 的全部回复 | `dws chat +thread-replies ...` |
 | 下载单个 mediaId/fileId | `dws chat +messages-resource-download ...` |
 
-- `+messages-send` 只暴露下层真实支持的身份能力：user 支持文本/Markdown、已有 mediaId 图片、本地文件和幂等键；bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。
+- `+messages-send` 只暴露下层真实支持的身份能力：user 支持文本/Markdown、已有 mediaId 图片、本地文件和幂等键；bot 支持群聊、最多 100 个稳定群 ID 的逐项 ledger 或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。Bot/Webhook 不支持富媒体。
+- `+chat-messages --page-all` 连续读取 typed `nextPage.time`，按消息 ID 去重并受 `--page-limit/--max-results` 约束；`--output` 将同一完整性 ledger 原子写入工作目录内 JSON。
 - `+messages-send` 会自动规范化并补齐 @ 占位符。user 使用 `<@id>` / `<@all>`；bot/webhook 使用 `@id` / `@手机号` / `@all`。声明 `--at-*` / `--at-all` 即可，不要为统一 Shortcut 手工拼 `@10`。
 - `+search-msg --page-all` 连续翻页并默认按消息 ID 批量富化；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger。
 - `+at-me`、`+chat-messages`、`+messages-mget`、`+search-msg`、`+thread-replies` 可用 `--download-resources` 下载资源。引用、回复、合并转发中的资源使用结果 `resourceRefs` 自带的子消息 `messageId`；仅当子消息缺会话 ID 时继承父消息 `openConversationId`。
@@ -2320,12 +2321,11 @@ Flags:
 - `chat group-mute-member` 指定群成员禁言，需传 --group、--user/--users（userId，逗号分隔）、--mute-time（毫秒，仅禁言时必填，支持 300000/3600000/86400000/604800000/2592000000），传 --off 解除禁言；CLI 会自动把 userId 解析成 openDingTalkId 再调用，直接传 userId 即可；禁言群主会被服务端拒绝
 - `chat group set-admin` 设置/取消群管理员，需传 --group（openConversationId）、--user/--users（userId，逗号分隔），默认设为管理员，传 --off 取消
 
-## 自动化脚本
+## Runtime 替代旧 Chat 脚本
 
-| 脚本 | 场景 | 用法 |
-|------|------|------|
-| [chat_export_messages.py](../../scripts/chat_export_messages.py) | 导出群聊消息到 JSON 文件 | `python chat_export_messages.py --query "项目冲刺" --time "2026-03-10 00:00:00"` |
-| [chat_history_with_user.py](../../scripts/chat_history_with_user.py) | 查询与某人的单聊聊天记录 | `python chat_history_with_user.py --name "张三" --time "2026-03-10 00:00:00"` |
+- 群聊/单聊全量导出：`dws chat +chat-messages --page-all --output <相对.json>`；目标可用稳定 ID 或唯一自然查询。
+- Bot 多群广播：`dws chat +messages-send --as bot --groups ...` 或 `--groups-file ...`；输出 `im.batch-write.v1` 逐项 ledger。
+- 旧 Chat 导出与广播脚本已停止发布，不能在执行计划中引用。
 
 ## 相关产品
 

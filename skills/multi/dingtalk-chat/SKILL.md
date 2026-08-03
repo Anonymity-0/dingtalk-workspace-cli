@@ -39,13 +39,18 @@ metadata:
 
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
-| 按姓名发简单文本或 Markdown | `dws chat +dm --to <姓名> --text <内容>` | CLI 解析唯一用户；多候选时停止，不先手工查 ID |
-| 按群名发简单文本或 Markdown | `dws chat +send-to-group --group <群名> --text <内容>` | CLI 精确匹配优先；多候选时停止，不先手工查群 ID |
-| 文件、Bot、Webhook、复杂 @、已知 ID 或自然目标的高级发送 | `dws chat +messages-send` | user 可用 `--user-query` / `--chat-query`；具体身份矩阵以 leaf Schema/Runtime 为准 |
-| 读取一个指定群聊或单聊 | `dws chat +chat-messages` | ID、`--chat-query`、`--user-query` 均可；`--time` 可省略 |
-| 跨会话、多维过滤或自动翻页搜索 | `dws chat +search-msg` | 支持 `--chat-query` / `--sender-query`；全量时用 `--page-all` 并检查 `complete` |
+| <!-- dws-intent: chat.send.dm -->按姓名发简单文本或 Markdown | `dws chat +dm --to <姓名> --text <内容>` | CLI 解析唯一用户；多候选时停止，不先手工查 ID |
+| <!-- dws-intent: chat.send.group -->按群名发简单文本或 Markdown | `dws chat +send-to-group --group <群名> --text <内容>` | CLI 精确匹配优先；多候选时停止，不先手工查群 ID |
+| <!-- dws-intent: chat.send.advanced -->文件、Bot、Webhook、复杂 @、已知 ID 或自然目标的高级发送 | `dws chat +messages-send` | user 可用自然目标；Bot 多群用 `--groups/--groups-file` 并检查逐项 ledger |
+| <!-- dws-intent: chat.read.conversation -->读取一个指定群聊或单聊 | `dws chat +chat-messages` | 全量加 `--page-all`；导出加 `--output <相对.json>`，检查完整性 ledger |
+| <!-- dws-intent: chat.search.cross-conversation -->跨会话、多维过滤或自动翻页搜索 | `dws chat +search-msg` | 支持 `--chat-query` / `--sender-query`；全量时用 `--page-all` 并检查 `complete` |
+| 查看指定群成员（用户/机器人） | `dws chat +chat-members-list --group <群名>` | 唯一解析并全量读取 |
+| 获取群邀请链接 | `dws chat +chat-invite-url --group <群名或ID>` | 多候选时停止 |
+| 查看群机器人 | `dws chat +chat-bots --group <群名或ID>` | 返回稳定 `bots[]` |
+| 查看指定群内 @我的消息 | `dws chat +at-me --chat-query <群名>` | 空结果仍返回数组 |
+| 查看全部会话 | `dws chat +conversation-list --page-all` | 检查 `complete` / `failures` |
 | 读取并下载消息资源 | 查询命令加 `--download-resources` | 不另起手工下载循环；下载失败项保留在结果中 |
-| 查看置顶会话 | `dws chat +conversation-list-top` | 会话 Top 与消息 Pin、消息 Top、Favorite 不同 |
+| <!-- dws-intent: chat.conversation.list-top -->查看置顶会话 | `dws chat +conversation-list-top` | 会话 Top 与消息 Pin、消息 Top、Favorite 不同 |
 | 监听 IM 事件 | 切换 `dingtalk-event` | 由事件 Skill 选择确定的 EventKey 和生命周期 |
 
 以下次级入口在意图明确时直接使用，不需要先加载完整 Catalog：
@@ -54,19 +59,20 @@ metadata:
 |---|---|
 | 已知消息 ID 批量读取详情 | `dws chat +messages-mget` |
 | 已知资源引用单独下载 | `dws chat +messages-resource-download` |
-| 引用回复 | `dws chat +messages-reply`；成功结果保留新消息/会话/投递与原消息来源上下文 |
+| <!-- dws-intent: chat.reply.quote -->引用回复 | `dws chat +messages-reply`；成功结果保留新消息/会话/投递与原消息来源上下文 |
+| 撤回当前用户消息 | `dws chat +messages-recall --msg-id <openMessageId>`；可省略会话 ID，由 CLI 只读补齐；兼容单值 `--message-ids` |
 | 已知 thread/topic ID 读取回复 | `dws chat +thread-replies` |
-| 按成员 ID 或姓名创建群聊 | `dws chat +chat-create`；姓名用 `--member-query`，任一歧义都会在创建前整体停止 |
-| @我的消息 | `dws chat +at-me` |
+| <!-- dws-intent: chat.create.group -->按成员 ID 或姓名创建群聊 | `dws chat +chat-create`；成员/群主均可自然解析，任一歧义都会在创建前整体停止 |
+| 跨全部会话查看 @我的消息 | `dws chat +at-me` |
 
 ### 发送入口边界
 
 - `+dm`：姓名目标的简单文本/Markdown，参数空间最小。
 - `+send-to-group`：群名目标的简单文本/Markdown，避免暴露无关身份矩阵。
-- `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。user 已知 ID 可直接传，也可用 `--user-query` / `--chat-query` 运行同一只读解析链；bot/webhook 只使用下层真实支持的文本/Markdown 能力。
+- `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。user 已知 ID 可直接传，也可用 `--user-query` / `--chat-query` 运行同一只读解析链；Bot 多群使用 `--groups/--groups-file`，返回 `im.batch-write.v1`；bot/webhook 只使用下层真实支持的文本/Markdown 能力。
 - 文件直接传 `+messages-send --file <相对路径>`；不要先独立上传并提取 mediaId。
 - Webhook 使用 `+messages-send --as webhook --webhook-token <token>`；不要退回原子 Webhook 命令。
-- 流式卡片不是普通消息内容，使用 `+messages-send-card`，并按精确 leaf Schema 选择群或单聊目标。
+- 流式卡片不是普通消息内容，使用 `+messages-send-card`；当前只支持 streaming text create/update，不支持 Card JSON 或 callback。
 
 ## 关键结果语义
 
@@ -90,6 +96,11 @@ metadata:
 | 会话置顶、分类、红点、免打扰和隐藏 | [chat-conversation.md](references/chat/chat-conversation.md) |
 | 低频意图之间仍需消歧 | [intent-guide.md](references/intent-guide.md) |
 | 表情名称与 ID | [chat-emoji-list.md](references/chat-emoji-list.md) |
+| 稳定结果、身份矩阵与能力边界 | [contracts.md](references/contracts.md) |
+| 流式卡片创建 | [card/create.md](references/card/create.md) |
+| 流式卡片更新 | [card/update.md](references/card/update.md) |
+| 卡片 callback 是否可用 | [card/callback.md](references/card/callback.md) |
+| 卡片公开 Schema 边界 | [card/schema.md](references/card/schema.md) |
 | 只有上述 reference 仍无法定位的原子能力 | [chat.md](references/chat.md) 的对应章节 |
 
 不要预加载这些 reference。完整 Shortcut Catalog 只在根路由和精确 reference 都无法定位低频能力时使用。

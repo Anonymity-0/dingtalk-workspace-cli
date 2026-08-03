@@ -13,17 +13,23 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/profilectx"
 )
 
 // Status is the stable resolution outcome used in successful plans and errors.
 type Status string
 
 const (
-	StatusResolved  Status = "resolved"
-	StatusAmbiguous Status = "ambiguous"
-	StatusNotFound  Status = "not_found"
+	StatusResolved   Status = "resolved"
+	StatusAmbiguous  Status = "ambiguous"
+	StatusNotFound   Status = "not_found"
+	StatusIncomplete Status = "incomplete"
+)
+
+const (
+	chatResolutionPageSize  = 10
+	chatResolutionPageLimit = 40
 )
 
 // IdentityRequirement filters contacts to identities accepted by the
@@ -101,7 +107,7 @@ func ResolveUser(rt Reader, query string, requirement IdentityRequirement) (User
 		Query:      query,
 		MatchType:  matchType,
 		Selected:   selected[0],
-		Profile:    auth.RuntimeProfile(),
+		Profile:    profilectx.Get(),
 	}, nil
 }
 
@@ -110,15 +116,72 @@ func ResolveUser(rt Reader, query string, requirement IdentityRequirement) (User
 // exact names remain ambiguous.
 func ResolveChat(rt Reader, query string) (ChatResolution, error) {
 	query = strings.TrimSpace(query)
-	data, err := rt.CallMCPData("im", "search_groups", map[string]any{
-		"keyword": query,
-		"limit":   10,
-		"cursor":  "0",
-	})
-	if err != nil {
-		return ChatResolution{}, err
+	if LooksLikeOpenConversationID(query) {
+		return ChatResolution{}, apperrors.NewValidation(fmt.Sprintf(
+			"%q 看起来是群 openConversationId；请通过稳定 ID 参数（如 --group 或 --chat）传入，不要作为群名搜索",
+			query,
+		))
 	}
-	chats := dedupeChats(ExtractChats(data))
+	cursor := "0"
+	seenCursors := map[string]bool{cursor: true}
+	chats := make([]Chat, 0)
+	complete := false
+	for pageNumber := 1; pageNumber <= chatResolutionPageLimit; pageNumber++ {
+		data, err := rt.CallMCPData("im", "search_groups", map[string]any{
+			"keyword": query,
+			"limit":   chatResolutionPageSize,
+			"cursor":  cursor,
+		})
+		if err != nil {
+			return ChatResolution{}, err
+		}
+		rows := firstList(data, "result", "items", "groups", "list")
+		chats = append(chats, ExtractChats(data)...)
+		page := extractChatPagination(data)
+		switch {
+		case page.hasMoreKnown && !page.hasMore:
+			complete = true
+		case page.hasMoreKnown && page.hasMore:
+			// A usable cursor is required below.
+		case page.nextCursor != "":
+			// Some versions omit hasMore but still publish a continuation cursor.
+		case len(rows) < chatResolutionPageSize:
+			// Compatibility for older responses that return a short bare array
+			// without pagination metadata.
+			complete = true
+		default:
+			return ChatResolution{}, newIncompleteChatResolutionError(
+				query,
+				dedupeChats(chats),
+				"群搜索返回了满页结果，但没有 hasMore 或 nextCursor，无法证明候选已完整读取",
+			)
+		}
+		if complete {
+			break
+		}
+		nextCursor := strings.TrimSpace(page.nextCursor)
+		if nextCursor == "" || seenCursors[nextCursor] {
+			reason := "群搜索声明仍有更多结果，但没有返回可继续的 nextCursor"
+			if nextCursor != "" {
+				reason = fmt.Sprintf("群搜索分页游标停滞在 %q，无法证明候选已完整读取", nextCursor)
+			}
+			return ChatResolution{}, newIncompleteChatResolutionError(
+				query,
+				dedupeChats(chats),
+				reason,
+			)
+		}
+		seenCursors[nextCursor] = true
+		cursor = nextCursor
+	}
+	chats = dedupeChats(chats)
+	if !complete {
+		return ChatResolution{}, newIncompleteChatResolutionError(
+			query,
+			chats,
+			fmt.Sprintf("群搜索达到安全页数上限 %d，仍无法证明候选已完整读取", chatResolutionPageLimit),
+		)
+	}
 	selected, matchType := preferExactChats(chats, query)
 	if len(selected) == 0 {
 		return ChatResolution{}, newResolutionError(StatusNotFound, "chat", query, chats)
@@ -132,8 +195,69 @@ func ResolveChat(rt Reader, query string) (ChatResolution, error) {
 		Query:      query,
 		MatchType:  matchType,
 		Selected:   selected[0],
-		Profile:    auth.RuntimeProfile(),
+		Profile:    profilectx.Get(),
 	}, nil
+}
+
+// LooksLikeOpenConversationID identifies the opaque group-conversation IDs
+// returned by DingTalk. It is deliberately conservative: only the stable
+// "cid..." form is recognized, so ordinary short names are still resolved by
+// search and ambiguity checks.
+func LooksLikeOpenConversationID(value string) bool {
+	value = strings.TrimSpace(value)
+	return len(value) >= 12 && strings.HasPrefix(strings.ToLower(value), "cid")
+}
+
+type chatPagination struct {
+	hasMore      bool
+	hasMoreKnown bool
+	nextCursor   string
+}
+
+func extractChatPagination(data map[string]any) chatPagination {
+	if data == nil {
+		return chatPagination{}
+	}
+	scopes := []map[string]any{data}
+	for _, wrapper := range []string{"result", "data"} {
+		if nested, ok := data[wrapper].(map[string]any); ok {
+			scopes = append(scopes, nested)
+		}
+	}
+	page := chatPagination{}
+	for _, scope := range scopes {
+		if !page.hasMoreKnown {
+			for _, key := range []string{"hasMore", "has_more"} {
+				if value, ok := scope[key].(bool); ok {
+					page.hasMore = value
+					page.hasMoreKnown = true
+					break
+				}
+			}
+		}
+		if page.nextCursor == "" {
+			for _, key := range []string{"nextCursor", "next_cursor", "nextToken", "next_token"} {
+				if value, ok := scope[key]; ok {
+					page.nextCursor = paginationString(value)
+					if page.nextCursor != "" {
+						break
+					}
+				}
+			}
+		}
+	}
+	return page
+}
+
+func paginationString(value any) string {
+	if value == nil {
+		return ""
+	}
+	text := strings.TrimSpace(fmt.Sprint(value))
+	if text == "" || text == "<nil>" {
+		return ""
+	}
+	return text
 }
 
 // ResolveUsers resolves every query before returning. Resolution failures are
@@ -379,7 +503,7 @@ func newResolutionError(status Status, entityType, query string, candidates any)
 		"query":      query,
 		"candidates": candidates,
 	}
-	if profile := auth.RuntimeProfile(); profile != "" {
+	if profile := profilectx.Get(); profile != "" {
 		details["profile"] = profile
 	}
 	if status == StatusNotFound {
@@ -396,6 +520,27 @@ func newResolutionError(status Status, entityType, query string, candidates any)
 		apperrors.WithReason("resolution_ambiguous"),
 		apperrors.WithRetryable(false),
 		apperrors.WithHint("禁止默认选择第一个候选"),
+		apperrors.WithDetails(details),
+	)
+}
+
+func newIncompleteChatResolutionError(query string, candidates []Chat, cause string) error {
+	details := map[string]any{
+		"type":       "resolution",
+		"subtype":    StatusIncomplete,
+		"entityType": "chat",
+		"query":      query,
+		"candidates": candidates,
+		"cause":      cause,
+	}
+	if profile := profilectx.Get(); profile != "" {
+		details["profile"] = profile
+	}
+	return apperrors.NewAPI(
+		fmt.Sprintf("群名 %q 的候选未能完整读取，已停止后续操作", query),
+		apperrors.WithReason("resolution_incomplete"),
+		apperrors.WithRetryable(true),
+		apperrors.WithHint("请重试，或直接传 openConversationId 跳过群名解析"),
 		apperrors.WithDetails(details),
 	)
 }

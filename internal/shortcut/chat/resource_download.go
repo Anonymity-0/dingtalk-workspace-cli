@@ -58,7 +58,7 @@ var MessagesResourceDownload = shortcut.Shortcut{
 	Description: "安全下载消息资源（图片/视频/语音/文件）到本地",
 	Intent: "当你需要拿到消息里的实际图片、视频、语音或钉盘文件，而不只是资源 ID 时使用；" +
 		"mediaId 用消息和会话身份换取下载地址，fileId 复用钉盘下载能力，再安全写入工作目录内的相对路径。" +
-		"默认不覆盖已有文件，只有显式传 --overwrite 才覆盖；按既有安全本地下载约定无需交互确认。",
+		"默认不覆盖已有文件，只有显式传 --overwrite 才覆盖；下载采用整文件临时落盘后原子发布，不支持 Range 断点续传。按既有安全本地下载约定无需交互确认。",
 	Risk: shortcut.RiskRead,
 	Flags: []shortcut.Flag{
 		{Name: "type", Type: shortcut.FlagString, Default: "mediaId", Desc: "资源类型", Enum: []string{"mediaId", "fileId"}},
@@ -66,7 +66,7 @@ var MessagesResourceDownload = shortcut.Shortcut{
 		{Name: "message-id", Type: shortcut.FlagString, Desc: "mediaId 所属消息的 openMessageId"},
 		{Name: "open-conversation-id", Type: shortcut.FlagString, Desc: "mediaId 所属会话的 openConversationId"},
 		{Name: "output", Type: shortcut.FlagString, Default: ".", Desc: "工作目录内的相对文件或目录路径"},
-		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖已存在的目标文件（默认拒绝）"},
+		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖工作目录内已存在的目标文件（默认拒绝）"},
 	},
 	Constraints: []shortcut.Constraint{
 		{

@@ -11,7 +11,7 @@ metadata:
 
 # DWS 共享执行契约
 
-本文件只在泛称 DWS、跨产品流程、URL 预检或意图不清时作为入口。明确单产品请求直接使用对应 `dingtalk-*` skill；产品根 Skill 已从同一来源内嵌最小执行契约，不需要先完整读取本文件。
+本文件只在泛称 DWS、跨产品流程、URL 预检或意图不清时作为入口。明确单产品请求直接使用对应 `dingtalk-*` skill；已经内嵌最小执行契约的产品根 Skill 不需要先完整读取本文件。
 
 <!-- DWS_RUNTIME_CONTRACT_START -->
 ## 最小 DWS 执行契约
@@ -72,8 +72,9 @@ metadata:
 
 ## 错误最短路径
 
-1. `unknown command` / `unknown flag`：运行对应层级 `--help`，修正后最多重试一次。
+1. `unknown command` / `unknown flag`：运行对应层级 `--help`，按公开 flag 修正后最多重试一次。
 2. 认证或权限错误：读取 `global-reference.md` 与 `error-codes.md` 对应章节。
-3. 其他错误：加 `--verbose` 重试一次；仍失败则停止并报告真实错误，不连续尝试替代
-   命令。
+3. 其他错误：优先读取 JSON 错误中的 `retryable`、`retry_after_seconds`、
+   `next_retry_at`、`hint` 和 `actions`。只有明确 `retryable=true` 时才按服务端节奏重试；
+   缺少重试语义时用 `--verbose` 获取诊断并停止，不连续尝试替代命令。
 4. 明确不支持的能力：说明边界，不通过其他接口绕过。

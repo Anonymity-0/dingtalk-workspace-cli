@@ -21,6 +21,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	chatshortcut "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chat"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
 // AtMe: pull the messages that recently @-mentioned ME across chats in one step.
@@ -55,18 +56,41 @@ var AtMe = shortcut.Shortcut{
 		"默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。",
 	Risk: shortcut.RiskRead,
 	Flags: append([]shortcut.Flag{
+		{Name: "group", Type: shortcut.FlagString, Desc: "仅查看指定群；可传 openConversationId 或群名"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一 openConversationId 后筛选"},
+		{Name: "group-query", Type: shortcut.FlagString, Desc: "--chat-query 的兼容别名", Hidden: true},
 		{Name: "days", Type: shortcut.FlagInt, Desc: "回溯天数（可选，默认 7）", Default: "7", Required: false},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量（默认 50）", Default: "50"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，翻页传上次的 nextCursor", Default: "0"},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
 	}, chatshortcut.MessageResourceDownloadFlags()...),
-	Constraints: chatshortcut.MessageResourceDownloadConstraints(),
+	Constraints: append([]shortcut.Constraint{
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-query", "group-query"}},
+	}, chatshortcut.MessageResourceDownloadConstraints()...),
 	Tips: []string{
 		`dws chat +at-me`,
 		`dws chat +at-me --days 3`,
+		`dws chat +at-me --chat-query "项目群"`,
 	},
 	Validate: chatshortcut.ValidateMessageResourceDownload,
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		groupID := ""
+		groupQuery := strings.TrimSpace(rt.StrFirst("chat-query", "group-query"))
+		if groupQuery == "" {
+			groupQuery = strings.TrimSpace(rt.Str("group"))
+			if targetresolver.LooksLikeOpenConversationID(groupQuery) {
+				groupID = groupQuery
+				groupQuery = ""
+			}
+		}
+		if groupQuery != "" {
+			resolved, err := targetresolver.ResolveChat(rt, groupQuery)
+			if err != nil {
+				return err
+			}
+			groupID = resolved.Selected.OpenConversationID
+		}
+
 		// Step 1 — look-back window [now-Nd, now] in epoch millis. days defaults
 		// to 7; guard against non-positive overrides so the window stays sane.
 		days := rt.Int("days")
@@ -80,33 +104,59 @@ var AtMe = shortcut.Shortcut{
 		// Step 2 — search @me messages. startTime/endTime/limit/cursor and the
 		// first-page defaults (limit 50, cursor "0") mirror
 		// helpers.chatMessageListMentionsCmd's search_at_me_message call.
-		data, err := rt.CallMCPData("chat", "search_at_me_message", map[string]any{
+		params := map[string]any{
 			"startTime": startMs,
 			"endTime":   endMs,
 			"limit":     rt.Int("limit"),
 			"cursor":    rt.Str("cursor"),
-		})
+		}
+		if groupID != "" {
+			params["openConversationId"] = groupID
+		}
+		data, err := rt.CallMCPData("chat", "search_at_me_message", params)
 		if err != nil {
 			return err
 		}
 
-		// Step 3 — project matched messages; fall back to the raw payload when we
-		// cannot locate a recognisable message list.
+		// Step 3 — always publish the stable list envelope, including for an empty
+		// or newly-shaped response. This keeps common .messages[]/.items[] jq
+		// projections deterministic instead of turning absence into null.
 		items := atMeMessageItems(data)
-		if len(items) == 0 {
-			return rt.Output(data)
-		}
 		results := make([]map[string]any, 0, len(items))
 		for _, m := range items {
 			results = append(results, atMeProjectWithReactions(m, !rt.Bool("no-reactions")))
 		}
-		payload := map[string]any{"messages": results}
+		payload := chatmsg.NewMessageListPayload(results)
+		payload["items"] = atMeCompatibilityItems(results)
 		chatmsg.ApplyPagination(payload, data)
 		if rt.Bool("download-resources") {
-			payload["resourceDownloads"] = chatshortcut.DownloadMessageResources(rt, items, "")
+			payload["resourceDownloads"] = chatshortcut.DownloadMessageResources(rt, items, groupID)
 		}
 		return rt.Output(payload)
 	},
+}
+
+// atMeCompatibilityItems preserves the common list/items projection used by
+// older Agent snippets while keeping messages as the canonical v1 contract.
+// Its conversation field is an object so `.items[].conversation.name` is safe.
+func atMeCompatibilityItems(messages []map[string]any) []map[string]any {
+	items := make([]map[string]any, 0, len(messages))
+	for _, message := range messages {
+		item := make(map[string]any, len(message))
+		for key, value := range message {
+			item[key] = value
+		}
+		conversation := map[string]any{}
+		if name := atMeString(message["conversation"]); name != "" {
+			conversation["name"] = name
+		}
+		if id := atMeString(message["conversationId"]); id != "" {
+			conversation["openConversationId"] = id
+		}
+		item["conversation"] = conversation
+		items = append(items, item)
+	}
+	return items
 }
 
 // atMeMessageItems locates the message list inside a search_at_me_message

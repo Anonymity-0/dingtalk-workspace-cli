@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -20,6 +21,11 @@ import (
 
 const messagesSendFileUploadTimeout = 10 * time.Minute
 
+const (
+	messagesSendMaxBotGroups     = 100
+	messagesSendMaxGroupFileSize = 1 << 20
+)
+
 // MessagesSend is the identity-aware common sending entry point. The current
 // user branch reuses the native message leaf's reviewed file-upload flow and
 // existing-mediaId image path. Bot and webhook remain text/Markdown-only
@@ -28,14 +34,16 @@ var MessagesSend = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+messages-send",
 	Product:     "chat",
-	Description: "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
-	Intent:      "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。",
+	Description: "按身份和目标统一发送消息，Bot 多群返回逐目标 ledger",
+	Intent:      "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "identity", Type: shortcut.FlagString, Default: "user", Enum: []string{"user", "bot", "webhook"}, Desc: "发送身份；目标、凭据和幂等参数受发送身份能力矩阵约束"},
 		{Name: "as", Type: shortcut.FlagString, Enum: []string{"user", "bot", "webhook"}, Desc: "--identity 的 lark-cli 对齐别名；受发送身份能力矩阵约束"},
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId（user/bot 群聊）；受发送身份能力矩阵约束"},
 		{Name: "chat-id", Type: shortcut.FlagString, Desc: "--group 的 lark-cli 对齐别名；受发送身份能力矩阵约束"},
+		{Name: "groups", Type: shortcut.FlagStringSlice, Desc: "多个群 openConversationId（仅 bot；受发送身份能力矩阵约束，逐群返回 typed ledger，最多 100 个）"},
+		{Name: "groups-file", Type: shortcut.FlagString, Desc: "工作目录内相对文本文件（仅 bot；受发送身份能力矩阵约束），每行或逗号分隔一个群 openConversationId"},
 		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一群聊（仅 user 的高级发送场景）；受发送身份能力矩阵约束"},
 		{Name: "user", Type: shortcut.FlagString, Desc: "单聊接收者 userId（user；包括 --dry-run 也会先通过通讯录搜索精确匹配 openDingTalkId）；受发送身份能力矩阵约束"},
 		{Name: "user-query", Type: shortcut.FlagString, Desc: "按姓名解析唯一 openDingTalkId（仅 user 的高级发送场景）；受发送身份能力矩阵约束"},
@@ -64,18 +72,19 @@ var MessagesSend = shortcut.Shortcut{
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"text", "markdown", "media-id", "file", "file-path"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"identity", "as"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-id"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"groups", "groups-file"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"user", "open-dingtalk-id"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"uuid", "idempotency-key"}},
 		{
 			Kind:        shortcut.ConstraintCustom,
-			Flags:       []string{"identity", "as", "group", "chat-id", "chat-query", "user", "user-query", "open-dingtalk-id", "users", "open-dingtalk-ids", "robot-code", "webhook-token", "uuid", "idempotency-key"},
-			Description: "目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持",
+			Flags:       []string{"identity", "as", "group", "chat-id", "groups", "groups-file", "chat-query", "user", "user-query", "open-dingtalk-id", "users", "open-dingtalk-ids", "robot-code", "webhook-token", "uuid", "idempotency-key"},
+			Description: "目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持",
 		},
 	},
 	Tips: []string{
 		`dws chat +messages-send --as user --chat-id <openConversationId> --markdown "## 周报" --idempotency-key <key>`,
 		`dws chat +messages-send --as user --user <userId> --msg-type file --file ./report.pdf --idempotency-key <key>`,
-		`dws chat +messages-send --as bot --robot-code <robotCode> --users userId1,userId2 --text "请提交周报"`,
+		`dws chat +messages-send --as bot --robot-code <robotCode> --groups <openConversationId1>,<openConversationId2> --text "请提交周报"`,
 	},
 	Validate: validateMessagesSend,
 	Execute:  executeMessagesSend,
@@ -84,6 +93,10 @@ var MessagesSend = shortcut.Shortcut{
 func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 	identity := messagesSendIdentity(rt)
 	group := rt.StrFirst("chat-id", "group")
+	botGroups, botGroupsErr := messagesSendBotGroups(rt)
+	if botGroupsErr != nil {
+		return botGroupsErr
+	}
 	chatQuery := rt.Str("chat-query")
 	userID := rt.Str("user")
 	userQuery := rt.Str("user-query")
@@ -109,7 +122,7 @@ func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 		if targetCount != 1 {
 			return apperrors.NewValidation("--identity user 时 --group/--chat-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个")
 		}
-		if len(users) > 0 || len(openIDs) > 0 || rt.Str("robot-code") != "" || rt.Str("webhook-token") != "" {
+		if len(users) > 0 || len(openIDs) > 0 || len(botGroups) > 0 || rt.Str("robot-code") != "" || rt.Str("webhook-token") != "" {
 			return apperrors.NewValidation("--identity user 不接受 bot/webhook 凭据或批量目标")
 		}
 		if len(atUserIDs) > 0 || len(atMobiles) > 0 {
@@ -129,8 +142,12 @@ func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 			return apperrors.NewValidation("--identity bot 必须指定 --robot-code")
 		}
 		hasDirect := len(users)+len(openIDs) > 0
-		if (group != "") == hasDirect {
-			return apperrors.NewValidation("--identity bot 时 --group 与批量单聊目标必须且只能指定一类")
+		hasGroup := group != "" || len(botGroups) > 0
+		if hasGroup == hasDirect {
+			return apperrors.NewValidation("--identity bot 时单群/多群与批量单聊目标必须且只能指定一类")
+		}
+		if group != "" && len(botGroups) > 0 {
+			return apperrors.NewValidation("--identity bot 时 --group/--chat-id 与 --groups/--groups-file 不能同时使用")
 		}
 		if userID != "" || openID != "" || rt.Str("webhook-token") != "" {
 			return apperrors.NewValidation("--identity bot 不接受 --user、--open-dingtalk-id 或 --webhook-token")
@@ -144,7 +161,7 @@ func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 		if messagesSendIdempotencyKey(rt) != "" {
 			return apperrors.NewValidation("--uuid 当前仅 user 身份的下层支持")
 		}
-		if contentType != "text" && contentType != "markdown" {
+		if !messageIdentitySupportsContent(identity, contentType) {
 			return apperrors.NewValidation("--identity bot 当前下层只支持 text/markdown")
 		}
 	case "webhook":
@@ -154,7 +171,7 @@ func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 		if rt.Str("webhook-token") == "" {
 			return apperrors.NewValidation("--identity webhook 必须指定 --webhook-token")
 		}
-		if group != "" || userID != "" || openID != "" || len(users) > 0 || len(openIDs) > 0 || rt.Str("robot-code") != "" {
+		if group != "" || len(botGroups) > 0 || userID != "" || openID != "" || len(users) > 0 || len(openIDs) > 0 || rt.Str("robot-code") != "" {
 			return apperrors.NewValidation("--identity webhook 的目标由 token 所在群决定，不接受其他目标或 bot Code")
 		}
 		if len(atOpenIDs) > 0 {
@@ -163,7 +180,7 @@ func validateMessagesSend(rt *shortcut.RuntimeContext) error {
 		if messagesSendIdempotencyKey(rt) != "" {
 			return apperrors.NewValidation("--uuid 当前仅 user 身份的下层支持")
 		}
-		if contentType != "text" && contentType != "markdown" {
+		if !messageIdentitySupportsContent(identity, contentType) {
 			return apperrors.NewValidation("--identity webhook 当前下层只支持 text/markdown")
 		}
 	}
@@ -234,6 +251,31 @@ func executeMessagesSend(rt *shortcut.RuntimeContext) error {
 				params["isAtAll"] = "true"
 			}
 			return executeUnifiedMessageWrite(rt, "bot", "send_robot_group_message", params)
+		}
+		groups, err := messagesSendBotGroups(rt)
+		if err != nil {
+			return err
+		}
+		if len(groups) > 0 {
+			items := make([]shortcutBatchWrite, 0, len(groups))
+			for _, group := range groups {
+				arguments := make(map[string]any, len(params)+1)
+				for key, value := range params {
+					arguments[key] = value
+				}
+				arguments["openConversationId"] = group
+				if values := uniqueShortcutStrings(rt.StrSlice("at-user-ids")); len(values) > 0 {
+					arguments["atUserIds"] = values
+				}
+				if values := uniqueShortcutStrings(rt.StrSlice("at-open-dingtalk-ids")); len(values) > 0 {
+					arguments["atOpendingtalkIds"] = values
+				}
+				if rt.Bool("at-all") {
+					arguments["isAtAll"] = "true"
+				}
+				items = append(items, shortcutBatchWrite{target: group, arguments: arguments})
+			}
+			return executeShortcutBatchWrite(rt, "bot", "send_robot_group_message", items)
 		}
 		if values := uniqueShortcutStrings(rt.StrSlice("users")); len(values) > 0 {
 			params["userIds"] = values
@@ -570,6 +612,49 @@ func nonEmptyStringCount(values ...string) int {
 
 func messagesSendIdempotencyKey(rt *shortcut.RuntimeContext) string {
 	return rt.StrFirst("idempotency-key", "uuid")
+}
+
+func messagesSendBotGroups(rt *shortcut.RuntimeContext) ([]string, error) {
+	groups := uniqueShortcutStrings(rt.StrSlice("groups"))
+	if path := rt.Str("groups-file"); path != "" {
+		safePath, err := apperrors.SafeInputPath(path)
+		if err != nil {
+			return nil, fmt.Errorf("校验 --groups-file 失败: %w", err)
+		}
+		info, err := os.Stat(safePath)
+		if err != nil {
+			return nil, fmt.Errorf("读取 --groups-file 失败: %w", err)
+		}
+		if !info.Mode().IsRegular() {
+			return nil, apperrors.NewValidation("--groups-file 必须是普通文本文件")
+		}
+		if info.Size() > messagesSendMaxGroupFileSize {
+			return nil, apperrors.NewValidation("--groups-file 不能超过 1 MiB")
+		}
+		raw, err := os.ReadFile(safePath)
+		if err != nil {
+			return nil, fmt.Errorf("读取 --groups-file 失败: %w", err)
+		}
+		values := make([]string, 0)
+		for _, line := range strings.Split(string(raw), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			values = append(values, strings.Split(line, ",")...)
+		}
+		groups = uniqueShortcutStrings(values)
+	}
+	if len(groups) > messagesSendMaxBotGroups {
+		return nil, apperrors.NewValidation(fmt.Sprintf(
+			"bot 多群发送最多支持 %d 个群，当前 %d 个",
+			messagesSendMaxBotGroups, len(groups),
+		))
+	}
+	if (rt.Changed("groups") || rt.Changed("groups-file")) && len(groups) == 0 {
+		return nil, apperrors.NewValidation("bot 多群发送至少需要一个 openConversationId")
+	}
+	return groups, nil
 }
 
 func shortcutMessageTitle(text string) string {

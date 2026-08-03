@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strings"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 )
@@ -107,8 +108,8 @@ var MessagesSendByWebhook = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+messages-send-by-webhook",
 	Product:     "bot",
-	Description: "自定义机器人 Webhook 发送群消息",
-	Intent:      "当你只有自定义机器人的 Webhook token、想往其所在群推送消息时使用；会实际通过 Webhook 发群消息，需传 token、标题、正文，可 @手机号/userId 或 @所有人。",
+	Description: "兼容旧入口的自定义机器人 Webhook 群消息发送",
+	Intent:      "只有既有自动化明确依赖 +messages-send-by-webhook 兼容路径、暂时不能迁移统一身份入口时使用",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "token", Type: shortcut.FlagString, Desc: "Webhook token", Required: true},
@@ -144,17 +145,56 @@ var MessagesRecall = shortcut.Shortcut{
 	Command:     "+messages-recall",
 	Product:     "im",
 	Description: "撤回当前用户发送的消息",
-	Intent:      "当你想撤回当前用户刚发出的某条消息时使用；会实际撤回消息，需传会话 openConversationId 和消息 openMessageId。",
+	Intent:      "当你想撤回当前用户刚发出的某条消息时使用；会实际撤回消息。推荐同时传会话 openConversationId 和消息 openMessageId；若只传一个消息 ID，CLI 会先只读查询消息详情并补齐会话 ID。兼容 --message-id/--message-ids 的单值写法。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId", Required: true},
-		{Name: "msg-id", Type: shortcut.FlagString, Desc: "消息 openMessageId", Required: true},
+		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId；省略时从消息详情解析"},
+		{Name: "group", Type: shortcut.FlagString, Desc: "--conversation-id 的兼容别名", Hidden: true},
+		{Name: "id", Type: shortcut.FlagString, Desc: "--conversation-id 的兼容别名", Hidden: true},
+		{Name: "chat", Type: shortcut.FlagString, Desc: "--conversation-id 的兼容别名", Hidden: true},
+		{Name: "msg-id", Type: shortcut.FlagString, Desc: "消息 openMessageId"},
+		{Name: "message-id", Type: shortcut.FlagString, Desc: "--msg-id 的兼容别名", Hidden: true},
+		{Name: "message-ids", Type: shortcut.FlagStringSlice, Desc: "--msg-id 的兼容单值别名；不支持批量撤回", Hidden: true},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"msg-id", "message-id", "message-ids"}},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"msg-id", "message-id", "message-ids"}, Description: "一次只能撤回一个消息 ID；--message-ids 仅接受单值"},
 	},
 	Tips: []string{`dws chat +messages-recall --conversation-id <openConversationId> --msg-id <openMessageId>`},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		messageIDs := uniqueShortcutStrings(append(
+			[]string{rt.StrFirst("msg-id", "message-id")},
+			rt.StrSlice("message-ids")...,
+		))
+		if len(messageIDs) != 1 {
+			return apperrors.NewValidation("撤回一次只接受一个消息 ID；请通过 --msg-id 或单值 --message-ids 传入")
+		}
+		return nil
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		messageIDs := uniqueShortcutStrings(append(
+			[]string{rt.StrFirst("msg-id", "message-id")},
+			rt.StrSlice("message-ids")...,
+		))
+		messageID := messageIDs[0]
+		conversationID := strings.TrimSpace(rt.StrFirst("conversation-id", "group", "id", "chat"))
+		if conversationID == "" {
+			data, err := rt.CallMCPData("im", "list_messages_by_ids", map[string]any{"openMsgIds": []string{messageID}})
+			if err != nil {
+				return err
+			}
+			messages := listMessagesResolveMaps(data)
+			if len(messages) == 0 {
+				return apperrors.NewValidation("无法根据消息 ID 查询到会话；请补充 --conversation-id")
+			}
+			conversationID = strings.TrimSpace(fmt.Sprint(chatmsg.ConversationID(messages[0])))
+			if conversationID == "" || conversationID == "<nil>" {
+				return apperrors.NewValidation("消息详情未返回会话 ID；请补充 --conversation-id")
+			}
+		}
 		return rt.CallMCP("recall_message", map[string]any{
-			"openConversationId": rt.Str("conversation-id"),
-			"openMessageId":      rt.Str("msg-id"),
+			"openConversationId": conversationID,
+			"openMessageId":      messageID,
 		})
 	},
 }
@@ -578,7 +618,7 @@ func MessageResourceDownloadFlags() []shortcut.Flag {
 	return []shortcut.Flag{
 		{Name: "download-resources", Type: shortcut.FlagBool, Desc: "自动下载消息中的全部可识别 mediaId/fileId 资源"},
 		{Name: "output-dir", Type: shortcut.FlagString, Default: "./downloads", Desc: "资源输出目录；必须是工作目录内的相对路径，禁止绝对路径和 .. 逃逸"},
-		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖同名资源文件（默认拒绝）"},
+		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖工作目录内已存在的本地输出文件（默认拒绝）"},
 	}
 }
 
@@ -1047,7 +1087,7 @@ var MessagesSendCard = shortcut.Shortcut{
 	Command:     "+messages-send-card",
 	Product:     "im",
 	Description: "创建流式卡片，可在同一次调用中写入内容并结束",
-	Intent:      "当你要发送一张流式卡片消息时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。",
+	Intent:      "当你要发送一张流式文本卡片时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成。当前只支持 streaming text，不支持 Card JSON 组件或 action callback。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId（与两个单聊接收者参数互斥）"},
@@ -1069,7 +1109,7 @@ var MessagesSendCard = shortcut.Shortcut{
 		`dws chat +messages-send-card --group <openConversationId> --content "任务已完成"`,
 	},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		if status := rt.Int("flow-status"); status < 1 || status > 5 {
+		if status := rt.Int("flow-status"); !validCardFlowStatus(status) {
 			return fmt.Errorf("--flow-status 必须在 1-5 之间")
 		}
 		if rt.Changed("flow-status") && rt.Str("content") == "" {
@@ -1101,11 +1141,12 @@ var MessagesSendCard = shortcut.Shortcut{
 		status := rt.Int("flow-status")
 		if rt.DryRun() {
 			return rt.Output(map[string]any{
-				"dry_run":      true,
-				"executed":     false,
-				"preview_kind": "plan",
-				"actionCount":  2,
-				"failedCount":  0,
+				"contractVersion": currentCardWorkflowContract.Version,
+				"dry_run":         true,
+				"executed":        false,
+				"preview_kind":    "plan",
+				"actionCount":     2,
+				"failedCount":     0,
 				"actions": []map[string]any{
 					{
 						"tool":      "create_and_send_card",
@@ -1139,11 +1180,12 @@ var MessagesSendCard = shortcut.Shortcut{
 			return fmt.Errorf("卡片已创建（bizId=%s），但自动更新失败: %w", bizID, err)
 		}
 		return rt.Output(map[string]any{
-			"ok":         true,
-			"bizId":      bizID,
-			"flowStatus": status,
-			"created":    created,
-			"updated":    updated,
+			"contractVersion": currentCardWorkflowContract.Version,
+			"ok":              true,
+			"bizId":           bizID,
+			"flowStatus":      status,
+			"created":         created,
+			"updated":         updated,
 		})
 	},
 }
@@ -1210,14 +1252,23 @@ var MessagesUpdateCard = shortcut.Shortcut{
 	Command:     "+messages-update-card",
 	Product:     "im",
 	Description: "流式更新卡片内容（最后一次 --flow-status 应为 3）",
-	Intent:      "当你要向已发送的流式卡片持续追加/更新内容时使用；会实际更新卡片，需传 send-card 返回的 bizId、新内容及 flowStatus（最后一次应为 3 表示完成）。",
+	Intent:      "当你要向已发送的流式文本卡片持续追加/更新内容时使用；会实际更新卡片，需传 send-card 返回的 bizId、新内容及 flowStatus 1-5（最后一次应为 3 表示完成）。当前不支持 Card JSON 组件或 action callback。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "biz-id", Type: shortcut.FlagString, Desc: "send-card 返回的卡片业务 ID", Required: true},
 		{Name: "content", Type: shortcut.FlagString, Desc: "卡片消息内容", Required: true},
-		{Name: "flow-status", Type: shortcut.FlagInt, Desc: "流式状态 1处理中/2输入中/3完成/4执行中/5错误", Required: true},
+		{Name: "flow-status", Type: shortcut.FlagInt, Desc: "流式状态 1处理中/2输入中/3完成/4执行中/5错误；--flow-status 必须在 1-5 之间", Required: true},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"flow-status"}, Description: "--flow-status 必须在 1-5 之间"},
 	},
 	Tips: []string{`dws chat +messages-update-card --biz-id <bizId> --content "内容" --flow-status 3`},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if !validCardFlowStatus(rt.Int("flow-status")) {
+			return fmt.Errorf("--flow-status 必须在 1-5 之间")
+		}
+		return nil
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		return rt.CallMCP("update_streaming_card", map[string]any{
 			"bizId":      rt.Str("biz-id"),

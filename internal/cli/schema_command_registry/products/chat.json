@@ -83,7 +83,11 @@
     },
     {
       "canonical_path": "chat.shortcut_chat_search",
-      "cli_path": "chat +chat-search"
+      "cli_path": "chat +chat-search",
+      "aliases": [
+        "chat +chat-group-search",
+        "chat +search-group"
+      ]
     },
     {
       "canonical_path": "chat.shortcut_chat_set_admin",
@@ -487,7 +491,10 @@
     },
     {
       "canonical_path": "chat.search_groups",
-      "cli_path": "chat search"
+      "cli_path": "chat search",
+      "aliases": [
+        "chat group search"
+      ]
     },
     {
       "canonical_path": "chat.search_common_groups",
@@ -500,6 +507,13 @@
     {
       "canonical_path": "chat.shortcut_chat_create",
       "cli_path": "chat +chat-create"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_members_list",
+      "cli_path": "chat +chat-members-list",
+      "aliases": [
+        "chat +chat-group-members"
+      ]
     },
     {
       "canonical_path": "chat.shortcut_chat_messages",

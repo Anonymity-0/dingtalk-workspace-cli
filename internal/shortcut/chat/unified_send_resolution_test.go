@@ -94,6 +94,51 @@ func TestMessagesSendNaturalTargetAmbiguityHasNoWrite(t *testing.T) {
 	}
 }
 
+func TestMessagesSendChatQueryResolvesAllPagesBeforeWrite(t *testing.T) {
+	fake := &larkAlignmentCaller{sequenceResponses: map[string][]string{
+		"im/search_groups": {
+			`{"result":[{"title":"项目群-归档","openConversationId":"archive"}],"hasMore":true,"nextCursor":"page-2"}`,
+			`{"result":[{"title":"项目群","openConversationId":"active"}],"hasMore":false}`,
+		},
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+messages-send", "--as", "user",
+		"--chat-query", "项目群", "--text", "你好", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 3 || fake.calls[0].tool != "search_groups" ||
+		fake.calls[1].tool != "search_groups" || fake.calls[2].tool != "send_personal_message" {
+		t.Fatalf("calls = %#v, want two resolution pages then one write", fake.calls)
+	}
+	if fake.calls[1].args["cursor"] != "page-2" || fake.calls[2].args["openConversationId"] != "active" {
+		t.Fatalf("calls = %#v", fake.calls)
+	}
+}
+
+func TestMessagesSendIncompleteChatResolutionHasNoWrite(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"im/search_groups": `{"result":[{"title":"项目群","openConversationId":"c1"}],"hasMore":true}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+messages-send", "--as", "user",
+		"--chat-query", "项目群", "--text", "你好", "--yes",
+	})
+	err := root.Execute()
+	var typed *apperrors.Error
+	if !stderrors.As(err, &typed) || typed.Reason != "resolution_incomplete" {
+		t.Fatalf("error = %#v", err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "search_groups" {
+		t.Fatalf("incomplete resolution reached write: %#v", fake.calls)
+	}
+}
+
 func TestMessagesSendDryRunUsesRealNaturalTargetResolution(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"im/search_groups": `{"result":[{"title":"项目群","openConversationId":"c1"}]}`,

@@ -6,6 +6,7 @@ package smart
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
@@ -63,6 +64,33 @@ func TestChatMessagesNaturalUserAmbiguityStopsBeforeMessageRead(t *testing.T) {
 		t.Fatal("ambiguous user unexpectedly reached message read")
 	}
 	if len(fake.calls) != 1 || fake.calls[0].tool != "search_contact_by_key_word" {
+		t.Fatalf("calls = %#v", fake.calls)
+	}
+}
+
+func TestChatMessagesRejectsConversationIDInPeerIdentityFlag(t *testing.T) {
+	fake := &platformCoverageCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+chat-messages", "--open-dingtalk-id", "cidACeQ0fCtKfLsFGvA47gXaQ=="})
+	err := root.Execute()
+	if err == nil || !strings.Contains(err.Error(), "--group") {
+		t.Fatalf("error = %v", err)
+	}
+	if len(fake.calls) != 0 {
+		t.Fatalf("invalid identity reached lower API: %#v", fake.calls)
+	}
+}
+
+func TestAtMeResolvesNaturalGroupBeforeSearch(t *testing.T) {
+	fake := &platformCoverageCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+at-me", "--chat-query", "项目冲刺"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 || fake.calls[1].tool != "search_at_me_message" || fake.calls[1].args["openConversationId"] != "cid-1" {
 		t.Fatalf("calls = %#v", fake.calls)
 	}
 }

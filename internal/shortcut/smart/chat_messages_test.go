@@ -13,7 +13,16 @@
 
 package smart
 
-import "testing"
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"os"
+	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
+)
 
 // TestProjectChatMessageExpandsForwarded guards that a forwarded chat record
 // ("聊天记录") exposes its nested messages under "forwarded" instead of
@@ -84,5 +93,180 @@ func TestProjectChatMessageExpandsForwarded(t *testing.T) {
 	}, false)
 	if _, has := withoutReactions["reactions"]; has {
 		t.Errorf("no-reactions projection leaked reactions: %#v", withoutReactions)
+	}
+}
+
+type chatMessagesPagingCaller struct {
+	responses []string
+	args      []map[string]any
+}
+
+func (c *chatMessagesPagingCaller) CallTool(
+	_ context.Context,
+	_, _ string,
+	args map[string]any,
+) (*edition.ToolResult, error) {
+	copied := make(map[string]any, len(args))
+	for key, value := range args {
+		copied[key] = value
+	}
+	c.args = append(c.args, copied)
+	index := len(c.args) - 1
+	if index >= len(c.responses) {
+		index = len(c.responses) - 1
+	}
+	return &edition.ToolResult{Content: []edition.ContentBlock{{
+		Type: "text",
+		Text: c.responses[index],
+	}}}, nil
+}
+
+func (c *chatMessagesPagingCaller) CallReadTool(
+	ctx context.Context,
+	product, tool string,
+	args map[string]any,
+) (*edition.ToolResult, error) {
+	return c.CallTool(ctx, product, tool, args)
+}
+
+func (*chatMessagesPagingCaller) Format() string { return "json" }
+func (*chatMessagesPagingCaller) DryRun() bool   { return false }
+func (*chatMessagesPagingCaller) Fields() string { return "" }
+func (*chatMessagesPagingCaller) JQ() string     { return "" }
+
+func TestChatMessagesPageAllUsesTypedBoundaryAndDeduplicates(t *testing.T) {
+	caller := &chatMessagesPagingCaller{responses: []string{
+		`{"result":{"hasMore":true,"messages":[{"openMessageId":"m2","createTime":"2026-01-02 00:00:00"},{"openMessageId":"m1","createTime":"2026-01-01 00:00:00"}]}}`,
+		`{"result":{"hasMore":false,"messages":[{"openMessageId":"m1","createTime":"2026-01-01 00:00:00"},{"openMessageId":"m0","createTime":"2025-12-31 00:00:00"}]}}`,
+	}}
+	helpers.InitDeps(caller)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+chat-messages", "--group", "cid",
+		"--time", "2026-01-03 00:00:00", "--page-all", "--page-limit", "5",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(caller.args) != 2 || caller.args[1]["time"] != "2026-01-01 00:00:00" {
+		t.Fatalf("pagination calls = %#v", caller.args)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["complete"] != true || payload["hasMore"] != false ||
+		payload["count"] != float64(3) || payload["pagesFetched"] != float64(2) ||
+		payload["stopReason"] != "source_complete" {
+		t.Fatalf("all-page payload = %#v", payload)
+	}
+}
+
+func TestChatMessagesPageAllPublishesBoundedContinuation(t *testing.T) {
+	caller := &chatMessagesPagingCaller{responses: []string{
+		`{"result":{"hasMore":true,"messages":[{"openMessageId":"m1","createTime":"2026-01-01 00:00:00"}]}}`,
+	}}
+	helpers.InitDeps(caller)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+chat-messages", "--group", "cid",
+		"--page-all", "--page-limit", "1",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	next, _ := payload["nextPage"].(map[string]any)
+	if payload["complete"] != false || payload["hasMore"] != true ||
+		payload["truncatedByPageLimit"] != true || payload["stopReason"] != "page_limit" ||
+		next["time"] != "2026-01-01 00:00:00" {
+		t.Fatalf("bounded payload = %#v", payload)
+	}
+}
+
+func TestChatMessagesPageAllFailsClosedOnStalledBoundary(t *testing.T) {
+	caller := &chatMessagesPagingCaller{responses: []string{
+		`{"result":{"hasMore":true,"messages":[{"openMessageId":"m1"}]}}`,
+	}}
+	helpers.InitDeps(caller)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cid", "--page-all"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["complete"] != false || payload["failedCount"] != float64(1) ||
+		payload["stopReason"] != "pagination_error" {
+		t.Fatalf("stalled payload = %#v", payload)
+	}
+}
+
+func TestChatMessagesExportIsAtomicAndNoClobber(t *testing.T) {
+	t.Chdir(t.TempDir())
+	newCaller := func() *chatMessagesPagingCaller {
+		return &chatMessagesPagingCaller{responses: []string{
+			`{"result":{"hasMore":false,"messages":[{"openMessageId":"m1","createTime":"2026-01-01 00:00:00"}]}}`,
+		}}
+	}
+	run := func(overwrite bool) error {
+		helpers.InitDeps(newCaller())
+		root := newPlatformCoverageRoot()
+		root.SetOut(&bytes.Buffer{})
+		args := []string{"chat", "+chat-messages", "--group", "cid", "--page-all", "--output", "exports/messages.json"}
+		if overwrite {
+			args = append(args, "--overwrite")
+		}
+		root.SetArgs(args)
+		return root.Execute()
+	}
+	if err := run(false); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile("exports/messages.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var exported map[string]any
+	if err := json.Unmarshal(raw, &exported); err != nil {
+		t.Fatal(err)
+	}
+	if exported["complete"] != true || exported["count"] != float64(1) {
+		t.Fatalf("exported ledger = %#v", exported)
+	}
+	if err := run(false); err == nil {
+		t.Fatal("existing export was overwritten without --overwrite")
+	}
+	if err := run(true); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestChatMessagesExportRejectsNonJSONPlaceholder(t *testing.T) {
+	t.Chdir(t.TempDir())
+	helpers.InitDeps(&chatMessagesPagingCaller{responses: []string{
+		`{"result":{"hasMore":false,"messages":[]}}`,
+	}})
+	root := newPlatformCoverageRoot()
+	root.SetOut(&bytes.Buffer{})
+	root.SetArgs([]string{
+		"chat", "+chat-messages", "--group", "cid", "--output", "{}",
+	})
+	if err := root.Execute(); err == nil {
+		t.Fatal("non-JSON placeholder output unexpectedly succeeded")
+	}
+	if _, err := os.Lstat("{}"); !os.IsNotExist(err) {
+		t.Fatalf("placeholder output was created: %v", err)
 	}
 }

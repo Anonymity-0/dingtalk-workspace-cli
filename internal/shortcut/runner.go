@@ -222,10 +222,14 @@ func (rt *RuntimeContext) Output(payload any) error {
 // mount compiles a Shortcut into a cobra command.
 func mount(s Shortcut) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    s.Command,
-		Short:  s.Description,
-		Long:   shortcutLongHelp(s),
-		Hidden: s.Hidden,
+		Use:     s.Command,
+		Aliases: append([]string(nil), s.Aliases...),
+		Short:   s.Description,
+		Long:    shortcutLongHelp(s),
+		Hidden:  s.Hidden,
+	}
+	if s.SinglePositionalAliasFor != "" {
+		cmd.Args = cobra.MaximumNArgs(1)
 	}
 	if len(s.Tips) > 0 {
 		cmd.Example = "  " + strings.Join(s.Tips, "\n  ")
@@ -233,7 +237,23 @@ func mount(s Shortcut) *cobra.Command {
 	registerFlags(cmd, s.Flags)
 	annotateRuntimeSchemaContract(cmd, s)
 
-	cmd.RunE = func(c *cobra.Command, _ []string) error {
+	cmd.RunE = func(c *cobra.Command, args []string) error {
+		if s.SinglePositionalAliasFor != "" && len(args) == 1 {
+			flag := c.Flags().Lookup(s.SinglePositionalAliasFor)
+			if flag == nil {
+				return apperrors.NewInternal(fmt.Sprintf(
+					"shortcut %s %s 的位置参数目标 --%s 不存在",
+					s.Service, s.Command, s.SinglePositionalAliasFor))
+			}
+			if flag.Changed {
+				return apperrors.NewValidation(fmt.Sprintf(
+					"位置参数与 --%s 不能同时指定", s.SinglePositionalAliasFor))
+			}
+			if err := c.Flags().Set(s.SinglePositionalAliasFor, args[0]); err != nil {
+				return apperrors.NewValidation(fmt.Sprintf(
+					"无法把位置参数归一化为 --%s: %v", s.SinglePositionalAliasFor, err))
+			}
+		}
 		rt := &RuntimeContext{cmd: c, shortcut: s}
 		if err := validateFlags(rt, s); err != nil {
 			return err

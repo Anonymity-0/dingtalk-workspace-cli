@@ -23,7 +23,7 @@ import (
 
 func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 	want := []string{
-		"identity", "as", "group", "chat-id", "chat-query", "user", "user-query", "open-dingtalk-id",
+		"identity", "as", "group", "chat-id", "groups", "groups-file", "chat-query", "user", "user-query", "open-dingtalk-id",
 		"users", "open-dingtalk-ids", "robot-code", "webhook-token",
 		"uuid", "idempotency-key",
 	}
@@ -51,6 +51,167 @@ func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 		if flag.Name == "user" && !strings.Contains(flag.Desc, "--dry-run") {
 			t.Errorf("--user does not publish dry-run contact resolution: %q", flag.Desc)
 		}
+	}
+}
+
+func TestMessagesSendIdentityDescriptorMatchesRuntimeSurface(t *testing.T) {
+	capabilities := MessageIdentityCapabilities()
+	if len(capabilities) != 3 {
+		t.Fatalf("identity capabilities = %#v", capabilities)
+	}
+	byIdentity := make(map[string]MessageIdentityCapability, len(capabilities))
+	for _, capability := range capabilities {
+		byIdentity[capability.Identity] = capability
+	}
+	if !byIdentity["user"].IdempotencyKeys || byIdentity["user"].BatchLedger {
+		t.Fatalf("user capability = %#v", byIdentity["user"])
+	}
+	if !byIdentity["bot"].BatchLedger || byIdentity["bot"].IdempotencyKeys ||
+		!reflect.DeepEqual(byIdentity["bot"].ContentTypes, []string{"text", "markdown"}) {
+		t.Fatalf("bot capability = %#v", byIdentity["bot"])
+	}
+	if byIdentity["webhook"].BatchLedger || byIdentity["webhook"].IdempotencyKeys {
+		t.Fatalf("webhook capability = %#v", byIdentity["webhook"])
+	}
+	capabilities[0].ContentTypes[0] = "mutated"
+	if MessageIdentityCapabilities()[0].ContentTypes[0] == "mutated" {
+		t.Fatal("identity capability descriptor leaked mutable storage")
+	}
+}
+
+func TestIMWorkflowContractsPublishRealPositiveAndNegativeBoundaries(t *testing.T) {
+	card := CurrentCardWorkflowContract()
+	if card.Version != "im.streaming-card.v1" || card.CallbackSupported ||
+		!reflect.DeepEqual(card.ContentTypes, []string{"streaming-text"}) || len(card.FlowStatuses) != 5 {
+		t.Fatalf("card contract = %#v", card)
+	}
+	card.Targets[0] = "mutated"
+	if CurrentCardWorkflowContract().Targets[0] == "mutated" {
+		t.Fatal("card contract leaked mutable storage")
+	}
+
+	boundaries := CurrentIMCapabilityBoundaries()
+	byName := make(map[string]bool, len(boundaries))
+	for _, boundary := range boundaries {
+		byName[boundary.Capability] = boundary.Supported
+		if boundary.Alternative == "" {
+			t.Errorf("boundary %s lacks alternative", boundary.Capability)
+		}
+	}
+	for _, unsupported := range []string{"thread-write", "bot-rich-media", "card-action-callback", "resource-resume"} {
+		if byName[unsupported] {
+			t.Errorf("unsupported boundary %s was advertised", unsupported)
+		}
+	}
+	for _, supported := range []string{"group-member-full-pagination", "group-owner-selection"} {
+		if !byName[supported] {
+			t.Errorf("supported boundary %s was hidden", supported)
+		}
+	}
+}
+
+func TestMessagesSendBotMultiGroupPublishesPerTargetLedger(t *testing.T) {
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+messages-send", "--as", "bot", "--robot-code", "robot",
+		"--groups", "cid-a,cid-b,cid-a", "--markdown", "通知", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("multi-group calls = %#v", fake.calls)
+	}
+	for index, target := range []string{"cid-a", "cid-b"} {
+		if fake.calls[index].tool != "send_robot_group_message" ||
+			fake.calls[index].args["openConversationId"] != target {
+			t.Fatalf("multi-group call[%d] = %#v", index, fake.calls[index])
+		}
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["contractVersion"] != "im.batch-write.v1" || payload["ok"] != true ||
+		payload["requestedCount"] != float64(2) || payload["succeededCount"] != float64(2) ||
+		payload["failedCount"] != float64(0) {
+		t.Fatalf("multi-group ledger = %#v", payload)
+	}
+}
+
+func TestMessagesSendBotGroupsFileUsesSafeDeduplicatedTargets(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.WriteFile("groups.txt", []byte("# comment\ncid-a,cid-b\ncid-a\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetOut(&bytes.Buffer{})
+	root.SetArgs([]string{
+		"chat", "+messages-send", "--as", "bot", "--robot-code", "robot",
+		"--groups-file", "groups.txt", "--text", "通知", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("groups-file calls = %#v", fake.calls)
+	}
+}
+
+func TestChatCreateExplicitOwnerSkipsCurrentProfileAndDeduplicatesMember(t *testing.T) {
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetOut(&bytes.Buffer{})
+	root.SetArgs([]string{
+		"chat", "+chat-create", "--name", "测试群", "--users", "D-owner,user-1",
+		"--owner-open-dingtalk-id", "D-owner", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "create_group_conversation" {
+		t.Fatalf("explicit owner calls = %#v", fake.calls)
+	}
+	create := fake.calls[0].args
+	if create["ownerOpenDingTalkId"] != "D-owner" {
+		t.Fatalf("ownerOpenDingTalkId = %#v", create["ownerOpenDingTalkId"])
+	}
+	if got, want := create["groupMembers"], []string{"D-owner", "user-1"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("groupMembers = %#v, want %#v", got, want)
+	}
+}
+
+func TestChatCreateOwnerQueryResolvesBeforeSingleCreate(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"owner-user","openDingTalkId":"D-owner"}]}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetOut(&bytes.Buffer{})
+	root.SetArgs([]string{
+		"chat", "+chat-create", "--name", "测试群", "--users", "user-1",
+		"--owner-query", "张三", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 || fake.calls[0].tool != "search_contact_by_key_word" ||
+		fake.calls[1].tool != "create_group_conversation" {
+		t.Fatalf("owner query calls = %#v", fake.calls)
+	}
+	create := fake.calls[1].args
+	if create["ownerOpenDingTalkId"] != "D-owner" {
+		t.Fatalf("ownerOpenDingTalkId = %#v", create["ownerOpenDingTalkId"])
+	}
+	if got, want := create["groupMembers"], []string{"D-owner", "user-1"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("groupMembers = %#v, want %#v", got, want)
 	}
 }
 

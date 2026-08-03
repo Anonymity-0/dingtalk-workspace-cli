@@ -28,3 +28,13 @@ func TestCrossPlatformCoverageAISearchRemainingFallbackBranches(t *testing.T) {
 		}
 	}
 }
+
+func TestAisearchPersonAcceptsRedundantTypeSelector(t *testing.T) {
+	installScriptedCaller(t, &scriptedToolCaller{dry: true})
+	if err := executeFilterCoverage(t, newAisearchCommand(), "search", "--query", "陈邦杰", "--type", "person"); err != nil {
+		t.Fatal(err)
+	}
+	if err := executeFilterCoverage(t, newAisearchCommand(), "search", "--query", "陈邦杰", "--type", "document"); err == nil {
+		t.Fatal("invalid person type selector unexpectedly succeeded")
+	}
+}

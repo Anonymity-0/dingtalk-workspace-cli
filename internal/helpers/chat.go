@@ -18,6 +18,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -51,6 +52,35 @@ func resolveMessageForward(cmd *cobra.Command, defaultForward bool) (bool, error
 	}
 }
 
+type nativeChatTargetReader struct{}
+
+func (nativeChatTargetReader) CallMCPData(product, tool string, params map[string]any) (map[string]any, error) {
+	text, err := CallMCPReadToolTextOnServer(product, tool, params)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(text) == "" {
+		return map[string]any{}, nil
+	}
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text), &data); err != nil {
+		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", tool, err))
+	}
+	return data, nil
+}
+
+func resolveNativeChatTarget(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if targetresolver.LooksLikeOpenConversationID(raw) {
+		return raw, nil
+	}
+	resolved, err := targetresolver.ResolveChat(nativeChatTargetReader{}, raw)
+	if err != nil {
+		return "", err
+	}
+	return resolved.Selected.OpenConversationID, nil
+}
+
 const maxConversationCategoryTitleRunes = 15
 
 func validatedConversationCategoryTitle(raw string) (string, error) {
@@ -74,6 +104,61 @@ func chatIntFlagOrFallback(cmd *cobra.Command, primary string, aliases ...string
 	}
 	v, _ := cmd.Flags().GetInt(primary)
 	return v
+}
+
+func runChatGroupSearch(cmd *cobra.Command, args []string) error {
+	keyword := flagOrFallback(cmd, "query", "keyword", "name", "group")
+	if len(args) == 1 {
+		if keyword != "" {
+			return apperrors.NewValidation("群搜索位置参数与 --query/--keyword 不能同时指定")
+		}
+		keyword = strings.TrimSpace(args[0])
+	}
+	if keyword == "" {
+		return apperrors.NewValidation("flag --query is required\n  hint: dws chat search --query \"test\"")
+	}
+	limit := chatIntFlagOrFallback(cmd, "limit", "size")
+	cursor, _ := cmd.Flags().GetString("cursor")
+	toolArgs := map[string]any{
+		"keyword": keyword,
+		"limit":   limit,
+		"cursor":  cursor,
+	}
+	if v, _ := cmd.Flags().GetBool("exclude-muted"); v {
+		toolArgs["excludeMuted"] = true
+	}
+	return callMCPToolOnServer("im", "search_groups", toolArgs)
+}
+
+func newChatGroupSearchCommand(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "search [query]",
+		Short:  "根据关键词搜索群聊",
+		Hidden: hidden,
+		Long: `根据关键词搜索群聊列表。分页参数 --limit（默认 20）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
+
+注意：
+1. query 不要拆分得太细，应使用群名称中连续的核心词作为关键词（如群名"项目冲刺群"应搜"项目冲刺"而非拆成"项目"+"冲刺"分别搜索）。
+2. 当搜索结果返回多个群聊时，应列出候选群让用户确认目标群聊，不要自行假定并直接进行后续操作。`,
+		Example: `  dws chat search --query "项目冲刺"
+  dws chat search "项目冲刺"
+  dws chat search --query "项目冲刺" --limit 20 --cursor 0`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: runChatGroupSearch,
+	}
+	cmd.Flags().String("query", "", "搜索关键词 (必填)")
+	cmd.Flags().String("keyword", "", "--query 的别名")
+	_ = cmd.Flags().MarkHidden("keyword")
+	cmd.Flags().String("name", "", "--query 的兼容别名")
+	_ = cmd.Flags().MarkHidden("name")
+	cmd.Flags().String("group", "", "--query 的兼容别名")
+	_ = cmd.Flags().MarkHidden("group")
+	cmd.Flags().Int("limit", 20, "每页返回数量（默认 20）")
+	cmd.Flags().Int("size", 0, "--limit 的旧版别名")
+	_ = cmd.Flags().MarkHidden("size")
+	cmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"，翻页传 nextCursor）")
+	cmd.Flags().Bool("exclude-muted", false, "是否排除已设置免打扰的群聊（默认 false）")
+	return cmd
 }
 
 func runChatSearchCommon(cmd *cobra.Command, _ []string) error {
@@ -1222,34 +1307,23 @@ func newChatCommand() *cobra.Command {
 		},
 	}
 
-	chatSearchCmd := &cobra.Command{
-		Use:   "search",
-		Short: "根据关键词搜索群聊",
-		Long: `根据关键词搜索群聊列表。分页参数 --limit（默认 20）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
-
-注意：
-1. query 不要拆分得太细，应使用群名称中连续的核心词作为关键词（如群名"项目冲刺群"应搜"项目冲刺"而非拆成"项目"+"冲刺"分别搜索）。
-2. 当搜索结果返回多个群聊时，应列出候选群让用户确认目标群聊，不要自行假定并直接进行后续操作。`,
-		Example: `  dws chat search --query "项目冲刺"
-  dws chat search --query "项目冲刺" --limit 20 --cursor 0`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			keyword := flagOrFallback(cmd, "query", "keyword")
-			if keyword == "" {
-				return fmt.Errorf("flag --query is required\n  hint: dws chat search --query \"test\"")
-			}
-			limit := chatIntFlagOrFallback(cmd, "limit", "size")
-			cursor, _ := cmd.Flags().GetString("cursor")
-			toolArgs := map[string]any{
-				"keyword": keyword,
-				"limit":   limit,
-				"cursor":  cursor,
-			}
-			if v, _ := cmd.Flags().GetBool("exclude-muted"); v {
-				toolArgs["excludeMuted"] = true
-			}
-			return callMCPToolOnServer("im", "search_groups", toolArgs)
+	chatSearchCmd := newChatGroupSearchCommand(false)
+	chatGroupSearchCompatibilityCmd := newChatGroupSearchCommand(true)
+	cli.AttachRuntimeSchema(
+		chatGroupSearchCompatibilityCmd,
+		"chat",
+		"search_groups",
+		"reviewed-compatibility:chat-group-search",
+	)
+	cli.AnnotateRuntimeCompatibilityEquivalence(
+		chatSearchCmd,
+		chatGroupSearchCompatibilityCmd,
+		cli.RuntimeCompatibilityEquivalence{
+			ID:       "chat-group-search-compatibility-v1",
+			Reason:   "Both leaves share the same constructor, flags, positional normalization, read-only search_groups transport, and result contract.",
+			Reviewed: true,
 		},
-	}
+	)
 
 	chatGroupMembersCmd := &cobra.Command{
 		Use:   "members",
@@ -2475,15 +2549,6 @@ func newChatCommand() *cobra.Command {
 	chatGroupCreateCmd.Flags().String("type", "INTERNAL", "群类型: INTERNAL(内部群,默认)/EXTERNAL(外部群)/NORMAL(普通群)")
 	chatGroupCreateCmd.Flags().Bool("thread", false, "开启话题模式，将创建话题圈")
 
-	chatSearchCmd.Flags().String("query", "", "搜索关键词 (必填)")
-	chatSearchCmd.Flags().String("keyword", "", "--query 的别名")
-	_ = chatSearchCmd.Flags().MarkHidden("keyword")
-	chatSearchCmd.Flags().Int("limit", 20, "每页返回数量（默认 20）")
-	chatSearchCmd.Flags().Int("size", 0, "--limit 的旧版别名")
-	_ = chatSearchCmd.Flags().MarkHidden("size")
-	chatSearchCmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"，翻页传 nextCursor）")
-	chatSearchCmd.Flags().Bool("exclude-muted", false, "是否排除已设置免打扰的群聊（默认 false）")
-
 	chatGroupMembersCmd.Flags().String("id", "", "群 ID / openconversation_id (必填)")
 	_ = chatGroupMembersCmd.MarkFlagRequired("id")
 	chatGroupMembersCmd.Flags().String("cursor", "", "分页游标，首次从 0 开始")
@@ -2509,7 +2574,7 @@ func newChatCommand() *cobra.Command {
 	_ = chatGroupMemberRemoveCmd.MarkFlagRequired("users")
 
 	chatGroupCmd.AddCommand(chatGroupCreateCmd, chatGroupMembersCmd, chatGroupRenameCmd)
-	chatGroupCmd.AddCommand(hintSubCmd("search", "use: dws chat search --query <关键词>"))
+	chatGroupCmd.AddCommand(chatGroupSearchCompatibilityCmd)
 	chatGroupMembersCmd.AddCommand(chatGroupMemberAddCmd, chatGroupMemberRemoveCmd, chatGroupMembersAddBotCmd)
 
 	// message 子命令 flags
@@ -4250,12 +4315,16 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
 				return err
 			}
+			groupID, err := resolveNativeChatTarget(mustGetFlag(cmd, "group"))
+			if err != nil {
+				return err
+			}
 			return callMCPToolOnServer("bot", "list_group_bots", map[string]any{
-				"openConversationId": mustGetFlag(cmd, "group"),
+				"openConversationId": groupID,
 			})
 		},
 	}
-	chatGroupBotsCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
+	chatGroupBotsCmd.Flags().String("group", "", "群聊 openConversationId 或需唯一解析的群名 (必填)")
 	_ = chatGroupBotsCmd.MarkFlagRequired("group")
 
 	chatGroupMembersRemoveBotCmd := &cobra.Command{

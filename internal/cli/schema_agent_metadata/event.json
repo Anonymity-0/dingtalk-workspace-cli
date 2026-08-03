@@ -257,7 +257,8 @@
         "internal/cli/schema_command_registry/products/event.json#event.listen_im",
         "internal/cli/schema_hints/metadata/event.json",
         "internal/cli/schema_hints/selection/event.json",
-        "internal/event/personal/registry.go"
+        "internal/event/personal/registry.go",
+        "skills/mono/references/products/event.md"
       ],
       "use_when": [
         "已知要监听 @我、指定发送人、指定群、全部单聊或全部群聊的 message/reaction/read/recall 事件时使用；姓名用 --user-query、群名用 --chat-query，CLI 会唯一解析目标并把多个兼容事件合并到一个消费生命周期。"
@@ -268,6 +269,7 @@
       "agent_summary_source": "dws-agent-selection/event",
       "availability": "available",
       "avoid_when": [
+        "普通 @我、指定发送人、指定群、全部单聊/群消息以及 message/reaction/read/recall 组合使用 +listen-im",
         "只查历史聊天记录时用 chat 查询命令",
         "只看事件目录/字段时用 event list / event schema"
       ],
@@ -313,6 +315,7 @@
         },
         "avoid_when": {
           "value": [
+            "普通 @我、指定发送人、指定群、全部单聊/群消息以及 message/reaction/read/recall 组合使用 +listen-im",
             "只查历史聊天记录时用 chat 查询命令",
             "只看事件目录/字段时用 event list / event schema"
           ],
@@ -323,6 +326,7 @@
           "candidates": [
             {
               "value": [
+                "普通 @我、指定发送人、指定群、全部单聊/群消息以及 message/reaction/read/recall 组合使用 +listen-im",
                 "只查历史聊天记录时用 chat 查询命令",
                 "只看事件目录/字段时用 event list / event schema"
               ],
@@ -492,12 +496,8 @@
         },
         "use_when": {
           "value": [
-            "需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
-            "用户明确要求监听当前身份的所有单聊或所有群消息",
-            "需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
             "需要监听指定群的标题变更、成员进退群或群解散事件",
-            "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
-            "同一目标、同一过滤条件需要同时监听多个兼容事件"
+            "需要显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制"
           ],
           "source": "internal/cli/schema_hints/selection/event.json",
           "precedence": "reviewed_explicit",
@@ -506,12 +506,8 @@
           "candidates": [
             {
               "value": [
-                "需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
-                "用户明确要求监听当前身份的所有单聊或所有群消息",
-                "需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
                 "需要监听指定群的标题变更、成员进退群或群解散事件",
-                "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
-                "同一目标、同一过滤条件需要同时监听多个兼容事件"
+                "需要显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制"
               ],
               "source": "internal/cli/schema_hints/selection/event.json",
               "precedence": "reviewed_explicit",
@@ -529,7 +525,7 @@
       "source_refs": [
         "cobra-help:dws event consume",
         "cobra-help:dws event consume --help",
-        "internal/cli/schema_command_registry.json#event.consume",
+        "internal/cli/schema_command_registry/products/event.json#event.consume",
         "internal/cli/schema_hints/metadata/event.json",
         "internal/cli/schema_hints/selection/event.json",
         "live-dws-schema:event.consume#FAILED",
@@ -537,12 +533,8 @@
         "skills/mono/references/products/event.md"
       ],
       "use_when": [
-        "需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
-        "用户明确要求监听当前身份的所有单聊或所有群消息",
-        "需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
         "需要监听指定群的标题变更、成员进退群或群解散事件",
-        "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
-        "同一目标、同一过滤条件需要同时监听多个兼容事件"
+        "需要显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制"
       ]
     },
     "event list": {
@@ -797,7 +789,7 @@
       "risk": "low",
       "source_refs": [
         "cobra-help:dws event list --help",
-        "internal/cli/schema_command_registry.json#event.list",
+        "internal/cli/schema_command_registry/products/event.json#event.list",
         "internal/cli/schema_hints/metadata/event.json",
         "internal/cli/schema_hints/selection/event.json",
         "live-dws-schema:event.list#FAILED",
@@ -1060,7 +1052,7 @@
       "risk": "low",
       "source_refs": [
         "cobra-help:dws event schema --help",
-        "internal/cli/schema_command_registry.json#event.schema",
+        "internal/cli/schema_command_registry/products/event.json#event.schema",
         "internal/cli/schema_hints/metadata/event.json",
         "internal/cli/schema_hints/selection/event.json",
         "live-dws-schema:event.schema#FAILED",
@@ -1344,7 +1336,7 @@
       "risk": "low",
       "source_refs": [
         "cobra-help:dws event status --help",
-        "internal/cli/schema_command_registry.json#event.status",
+        "internal/cli/schema_command_registry/products/event.json#event.status",
         "internal/cli/schema_hints/metadata/event.json",
         "internal/cli/schema_hints/selection/event.json",
         "live-dws-schema:event.status#FAILED",
@@ -1631,7 +1623,7 @@
       "risk": "high",
       "source_refs": [
         "cobra-help:dws event stop --help",
-        "internal/cli/schema_command_registry.json#event.stop",
+        "internal/cli/schema_command_registry/products/event.json#event.stop",
         "internal/cli/schema_hints/metadata/event.json",
         "internal/cli/schema_hints/selection/event.json",
         "live-dws-schema:event.stop#FAILED",

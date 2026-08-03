@@ -23,11 +23,12 @@ type larkAlignmentCall struct {
 }
 
 type larkAlignmentCaller struct {
-	calls           []larkAlignmentCall
-	failTarget      string
-	failProductTool string
-	category        string
-	responses       map[string]string
+	calls             []larkAlignmentCall
+	failTarget        string
+	failProductTool   string
+	category          string
+	responses         map[string]string
+	sequenceResponses map[string][]string
 }
 
 func (f *larkAlignmentCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -75,6 +76,10 @@ func (f *larkAlignmentCaller) CallTool(_ context.Context, product, tool string, 
 	if response, ok := f.responses[key]; ok {
 		text = response
 	}
+	if responses := f.sequenceResponses[key]; len(responses) > 0 {
+		text = responses[0]
+		f.sequenceResponses[key] = responses[1:]
+	}
 	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
 }
 
@@ -86,6 +91,52 @@ func (f *larkAlignmentCaller) Format() string { return "json" }
 func (f *larkAlignmentCaller) DryRun() bool   { return false }
 func (f *larkAlignmentCaller) Fields() string { return "" }
 func (f *larkAlignmentCaller) JQ() string     { return "" }
+
+func TestEvaluationRegressionNaturalGroupTargetsAndRecallInference(t *testing.T) {
+	t.Run("group name to bots", func(t *testing.T) {
+		fake := &larkAlignmentCaller{responses: map[string]string{
+			"im/search_groups":    `{"result":[{"openConversationId":"cid-project","title":"项目群"}],"hasMore":false}`,
+			"bot/list_group_bots": `{"result":{"bots":[]}}`,
+		}}
+		helpers.InitDeps(fake)
+		root := newPlatformCoverageRoot()
+		root.SetArgs([]string{"chat", "+chat-bots", "--group", "项目群"})
+		if err := root.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if len(fake.calls) != 2 || fake.calls[1].tool != "list_group_bots" || fake.calls[1].args["openConversationId"] != "cid-project" {
+			t.Fatalf("calls = %#v", fake.calls)
+		}
+	})
+
+	t.Run("group query to invite url", func(t *testing.T) {
+		fake := &larkAlignmentCaller{responses: map[string]string{
+			"im/search_groups": `{"result":[{"openConversationId":"cid-project","title":"项目群"}],"hasMore":false}`,
+		}}
+		helpers.InitDeps(fake)
+		root := newPlatformCoverageRoot()
+		root.SetArgs([]string{"chat", "+chat-invite-url", "--chat-query", "项目群"})
+		if err := root.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if len(fake.calls) != 2 || fake.calls[1].tool != "get_group_invite_url" || fake.calls[1].args["openConversationId"] != "cid-project" {
+			t.Fatalf("calls = %#v", fake.calls)
+		}
+	})
+
+	t.Run("message id fills conversation before recall", func(t *testing.T) {
+		fake := &larkAlignmentCaller{}
+		helpers.InitDeps(fake)
+		root := newPlatformCoverageRoot()
+		root.SetArgs([]string{"chat", "+messages-recall", "--message-ids", "msg", "--yes"})
+		if err := root.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if len(fake.calls) != 2 || fake.calls[0].tool != "list_messages_by_ids" || fake.calls[1].tool != "recall_message" || fake.calls[1].args["openConversationId"] != "cid" {
+			t.Fatalf("calls = %#v", fake.calls)
+		}
+	})
+}
 
 func TestChatCreateAddsCurrentUserAndNormalizesResult(t *testing.T) {
 	fake := &larkAlignmentCaller{}

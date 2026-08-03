@@ -1,25 +1,61 @@
-# 错误码说明
-全产品错误参考 + 调试流程。Agent 遇到错误时查阅此文档。
+# 错误与恢复说明
+
+只查当前错误对应章节。先读取结构化字段，再决定修正、重试、请求用户介入或停止。
 
 ## 错误返回格式
 
 ```json
-{"success": false, "code": "InvalidParameter", "message": "baseId is required"}
-{"success": false, "code": "AUTH_TOKEN_EXPIRED", "message": "Token验证失败"}
-{"success": false, "code": "PermissionDenied", "message": "无权限访问该资源"}
+{
+  "error": {
+    "code": 3,
+    "category": "validation",
+    "message": "missing required flag(s): --base-id",
+    "reason": "...",
+    "retryable": false,
+    "hint": "...",
+    "actions": ["..."]
+  }
+}
 ```
+
+错误写到 stderr。`code` 是 CLI 退出码，`category` 是稳定大类：`api`、`auth`、
+`validation`、`discovery`、`internal`。其他字段按错误类型出现，不保证每次都有。
 
 ## 错误分类与 Agent 行为
 
 ### 可自行修复
-- 参数缺失 / 格式错误 / ID 无效 → 检查参数后修正重试
+
+- `category=validation` 且 `available_flags`/`hint` 给出明确修正：核对 leaf Help，修正
+  一次；不要猜 flag。
+- 自然目标返回 `details.candidates`：零命中或多候选都停止并消歧，禁止选择第一项。
+- `reason=confirmation_required`：核对最终 Schema 和用户意图；用户确认后才追加
+  `--yes`，不能换成确认更弱的底层命令。
 
 ### 需用户介入
-- 权限不足 / 资源不存在 / 配额超限 → 报告完整错误信息给用户，不要自行尝试替代方案
 
-## 通用错误
-- 请求超时 — 网络慢或服务端响应慢 → `--timeout 60` 重试
-- 网络连接失败 — 无法连接 MCP Server → 用最简命令验证: `dws contact user get-self --format json`
+- 权限不足、资源不存在、配额/权益不足：报告 `server_error_code`、`trace_id`、`hint`
+  和 `action_url`（如有），不自行改身份或尝试替代接口。
+- profile 不存在或同组织多账号无默认：让用户指定 `corpId:userId`，不要选最近账号。
+- 未知投递状态：停止重发，先查询状态；没有状态查询能力时如实报告未知。
+
+## 重试规则
+
+- `retryable=true`：遵守 `retry_after_seconds` 或 `next_retry_at`；运行时可能已经完成
+  HTTP 重试，调用方只做一次有界重试并保留相同幂等键。
+- `retryable=false`：不要重试。
+- 未出现 `retryable`：不要从 `category`、HTTP 文案或“看起来像临时错误”推断可重试；
+  使用 `--verbose` 收集诊断后停止。
+- 超时不会因为盲目增大 `--timeout` 自动变安全。只有任务确实允许更长等待且操作状态可判定时，
+  才显式调整超时。
+
+## 认证与权限
+
+- 精确的 access-token 拒绝信号会由 Runtime 自动刷新并最多重放一次；不要再包一层“重试两次”。
+- `reason=auth_refresh_failed` 或 `auth status` 返回 `authenticated=false`：保留原错误，运行
+  `dws auth status --profile <same-profile> --format json`；按返回 `hint` 恢复，必要时请用户登录。
+- HTTP/RPC 403 与普通权限不足不会触发 token 刷新；不要通过切 profile、bot 或 webhook
+  身份绕过。
+- AppKey/AppSecret 缺失只用于应用凭据配置问题；不要向普通业务用户索要凭据。
 
 ---
 
@@ -64,10 +100,18 @@
 
 ## chat 高频错误
 
-- 参数互斥报错 — `--group` 与 `--user` / `--users` 同时传入 → 群聊用 `--group`，单聊用 `--user`/`--users`，二者互斥
-- 群不存在 — openconversation_id 不正确 → `chat search --query "群名"` 获取正确 ID
-- 机器人无法添加到群 — 当前用户非群管理员 → 报告给用户，需群管理员操作
-- `send` 消息 text 参数缺失 — text 是位置参数，不是 flag → text 直接跟在 flags 后: `send --group <ID> "内容"`
+- 普通单聊/群聊读取优先 `chat +chat-messages --user-query/--chat-query`；自然目标多候选时
+  读取 `details.candidates` 并让用户消歧，不手工搜索后取第一项。
+- 普通发送优先 `chat +dm`、`chat +send-to-group` 或 `chat +messages-send`；发送类 Shortcut
+  的最终 Schema 要求确认时，必须先确认再加 `--yes`。
+- `--group`、`--user`、`--open-dingtalk-id` 等目标参数互斥：按 leaf Help 只传一类目标。
+- `+messages-send` 的 `--text`/`--markdown`/`--media-id`/`--file` 互斥；身份、目标、
+  凭据和幂等参数还受 user/bot/webhook 能力矩阵约束。
+- `ok=false`、`partial=true`、非空 `failures` 或分页仍有 continuation 都不是完整成功；
+  必须保留 ledger，不能只返回已成功部分。
+- 机器人不在群或当前用户无管理权限：报告真实失败，需要群管理员处理；不改用当前用户身份发送。
+- 原子 `chat message send` 只用于 Shortcut 未覆盖的底层消息类型/原始字段。其正文可用
+  `--text`，不要把某个历史位置参数写法当成所有发送入口的规则。
 
 ---
 

@@ -21,6 +21,28 @@ func TestCrossPlatformCoverageSafeResourceQueryDownloadsStayReadOnly(t *testing.
 	}
 }
 
+func TestAtMeEmptyResultKeepsMessagesAndItemsIterable(t *testing.T) {
+	caller := &platformCoverageCaller{}
+	helpers.InitDeps(caller)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{"chat", "+at-me", "--format", "json"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatalf("decode output: %v\n%s", err, output.String())
+	}
+	for _, key := range []string{"messages", "items"} {
+		rows, ok := payload[key].([]any)
+		if !ok || len(rows) != 0 {
+			t.Fatalf("%s = %#v, want empty array", key, payload[key])
+		}
+	}
+}
+
 func TestCrossPlatformCoverageMessageReadShortcutsPublishResourceDownloadPlans(t *testing.T) {
 	message := `{"openMessageId":"msg","openConversationId":"cid","content":"{\"mediaId\":\"@image\"}","quotedMessage":{"openMessageId":"quoted","content":"{\"fileId\":\"@quoted-file\"}"}}`
 	tests := []struct {

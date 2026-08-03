@@ -87,3 +87,37 @@ func TestConversationListTopRejectsInvalidType(t *testing.T) {
 		t.Fatalf("invalid --type reached lower tool %s/%s", fake.product, fake.tool)
 	}
 }
+
+func TestConversationListProjectUnwrapsGatewayTuple(t *testing.T) {
+	data := map[string]any{
+		"result": []any{
+			[]any{map[string]any{"openConversationId": "cid-1", "title": "项目群"}},
+			float64(2),
+			true,
+		},
+	}
+	if got := conversationListProject(data); len(got) != 1 || got[0]["openConversationId"] != "cid-1" {
+		t.Fatalf("conversation tuple projection = %#v", got)
+	}
+	if got := conversationListTopProject(data); len(got) != 1 || got[0]["openConversationId"] != "cid-1" {
+		t.Fatalf("top tuple projection = %#v", got)
+	}
+}
+
+func TestConversationListPageAllFollowsTypedCursor(t *testing.T) {
+	fake := &larkAlignmentCaller{sequenceResponses: map[string][]string{
+		"im/list_all_conversations": {
+			`{"result":{"conversationList":[{"openConversationId":"cid-1","title":"一"}],"hasMore":true,"nextCursor":2}}`,
+			`{"result":{"conversationList":[{"openConversationId":"cid-2","title":"二"}],"hasMore":false}}`,
+		},
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+conversation-list", "--page-all"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 || fake.calls[1].args["cursor"] != int64(2) {
+		t.Fatalf("calls = %#v", fake.calls)
+	}
+}

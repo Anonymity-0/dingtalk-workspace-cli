@@ -17,7 +17,7 @@ import (
 
 const (
 	publicShortcutCount          = 265
-	schemaPublishedShortcutCount = 217
+	schemaPublishedShortcutCount = 218
 )
 
 func TestEmbeddedSchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
@@ -106,7 +106,7 @@ func TestEmbeddedShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 
 	product := executeShortcutSchemaQuery(t, "chat")
 	productPayload, _ := product["product"].(map[string]any)
-	if got, want := int(product["count"].(float64)), 131; got != want {
+	if got, want := int(product["count"].(float64)), 132; got != want {
 		t.Fatalf("schema chat count = %d, want %d", got, want)
 	}
 	summaries := schemaContractObjectSlice(productPayload["tools"])
@@ -116,8 +116,8 @@ func TestEmbeddedShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 			shortcutCount++
 		}
 	}
-	if shortcutCount != 49 {
-		t.Fatalf("schema chat shortcut summaries = %d, want 49", shortcutCount)
+	if shortcutCount != 50 {
+		t.Fatalf("schema chat shortcut summaries = %d, want 50", shortcutCount)
 	}
 }
 

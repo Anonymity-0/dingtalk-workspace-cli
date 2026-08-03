@@ -166,7 +166,6 @@
         "chat +chat-audit-join",
         "chat +chat-get-by-id",
         "chat +chat-members-get",
-        "chat +chat-members-list",
         "chat +chat-mute-member",
         "chat +chat-quit",
         "chat +chat-remove-bot",

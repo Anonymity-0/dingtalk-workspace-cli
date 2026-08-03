@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "surface_hash": "sha256:6823217b0d98e1cdebdea7e1b421a6920ce30a985016cf164ade5e14f69a6c30",
-  "source_hash": "sha256:480a0b5b5a8d323b73bd8efc07799c52e18980f0c0f0c334e23fbbb95d5ae7e0",
+  "surface_hash": "sha256:4891325eea3c74dcdbc3590139e69f38e39cfabd9491c3de75a09aed01d39cae",
+  "source_hash": "sha256:bcc29fd37a6f54daa88aa0824ade6c50176a58bcd14d7cc86ad05751428d4ce4",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:78125a5eb3b3621bcbe2c0f504379fe80f1e0f14bd0ebba32c775958af505c5d",
-      "surface_hash": "sha256:6823217b0d98e1cdebdea7e1b421a6920ce30a985016cf164ade5e14f69a6c30",
+      "source_hash": "sha256:61d739bfc037130d350e6ff1b8279262f22c73335c2b0ebda227f4dadb594de7",
+      "surface_hash": "sha256:4891325eea3c74dcdbc3590139e69f38e39cfabd9491c3de75a09aed01d39cae",
       "surface_products": 26,
-      "surface_tools": 848,
-      "tools_with_agent_summary": 848,
-      "tools_with_metadata": 848,
+      "surface_tools": 849,
+      "tools_with_agent_summary": 849,
+      "tools_with_metadata": 849,
       "unmatched_skill_tools": 122,
       "version": 1
     },
@@ -7653,7 +7653,7 @@
           "CommandRegistry:product=chat",
           "Skill:skills/mono/references/products/chat.md",
           "dws-wukong-envelope@4574f7022c32:dws-wukong-discovery.chat.prod.json",
-          "internal/cli/schema_command_registry.json",
+          "internal/cli/schema_command_registry/registry.json",
           "internal/cli/schema_hints/imported/wukong.json",
           "internal/cli/schema_hints/selection/chat.json",
           "live-dws-schema:product-batch-2026-07-14",
@@ -7722,7 +7722,7 @@
         "id": "chat",
         "name": "群聊 / 消息 / 机器人",
         "runtime": true,
-        "tool_count": 131,
+        "tool_count": 132,
         "tools": [
           {
             "agent_metadata_source": "embedded-skill-metadata",
@@ -8025,10 +8025,11 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "创建群聊并可指定群名与初始成员",
+            "agent_summary": "使用底层字段创建群聊并可指定群名与初始成员",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
+              "普通内部/外部群创建或成员姓名需要唯一解析时使用 +chat-create",
               "已有群只需加人时使用 chat group members add",
               "只是搜索已有群时使用 chat search"
             ],
@@ -8052,8 +8053,7 @@
             "risk": "medium",
             "title": "创建群（支持内部群/外部群/普通群/话题圈）",
             "use_when": [
-              "需要新建内部/外部群或话题圈，并带上初始成员",
-              "用户明确要建群且已给出群名与成员标识"
+              "只有需要 +chat-create 尚未发布的 thread 等底层创建字段，并已取得稳定成员 ID 时使用"
             ]
           },
           {
@@ -8446,6 +8446,7 @@
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
+              "普通指定会话浏览、稳定消息投影或资源下载使用 +chat-messages",
               "跨全部会话按时间查询时使用 chat message list-all"
             ],
             "canonical_path": "chat.list_conversation_message_v2",
@@ -8468,7 +8469,7 @@
             "risk": "low",
             "title": "拉取会话消息内容",
             "use_when": [
-              "用户明确指定某个会话，并要读取消息或追溯引用回复中的原消息上下文时"
+              "需要 +chat-messages 未投影的原始响应字段或显式手工 continuation 时使用"
             ]
           },
           {
@@ -8748,10 +8749,11 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "列出当前用户置顶的会话",
+            "agent_summary": "以原始响应列出当前用户置顶的会话",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
+              "普通查看置顶会话清单或按群聊/单聊过滤时使用 +conversation-list-top",
               "设置或取消某个会话置顶时使用 chat set-top"
             ],
             "canonical_path": "chat.list_top_conversations",
@@ -8773,7 +8775,7 @@
             "risk": "low",
             "title": "拉取置顶会话列表",
             "use_when": [
-              "需要查看现有置顶会话清单时"
+              "需要 +conversation-list-top 未投影的底层原始响应字段时使用"
             ]
           },
           {
@@ -9238,10 +9240,11 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "引用指定消息发送个人回复",
+            "agent_summary": "使用底层引用字段发送个人回复",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
+              "普通纯文本引用回复使用 +messages-reply",
               "无需引用上下文的普通消息使用 chat message send"
             ],
             "canonical_path": "chat.reply_personal_message",
@@ -9264,7 +9267,7 @@
             "risk": "medium",
             "title": "引用回复消息（支持单聊/群聊）",
             "use_when": [
-              "用户要针对某条已有消息进行引用回复时"
+              "只有 +messages-reply 未发布必需的底层引用字段，且 Runtime confirmation 已对齐时使用"
             ]
           },
           {
@@ -9364,6 +9367,9 @@
             "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "按关键词搜索群聊并拿到 openConversationId",
             "agent_summary_source": "dws-agent-selection/chat",
+            "aliases": [
+              "chat group search"
+            ],
             "availability": "available",
             "avoid_when": [
               "已有群号时用 chat group get-by-group-id",
@@ -9391,11 +9397,11 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "按时间、关键词、发送者、@ 或会话等多维度搜索消息",
+            "agent_summary": "使用底层原始过滤字段搜索消息",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "只需按关键词在会话里搜时优先评估 chat message search",
+              "普通跨会话关键词、发送者、@、会话或消息类型组合搜索使用 +search-msg",
               "只需拉取某会话时间线时使用 chat message list",
               "只需某人发给我的消息时使用 chat message list-by-sender"
             ],
@@ -9419,15 +9425,16 @@
             "risk": "low",
             "title": "多维度搜索消息",
             "use_when": [
-              "需要组合时间范围、关键词、发送者、@我/@某人、指定会话等条件搜消息"
+              "需要 +search-msg 尚未发布的原始过滤字段或原始响应时使用"
             ]
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "按关键词和时间范围搜索消息",
+            "agent_summary": "使用底层简单查询接口按关键词和时间范围搜索消息",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
+              "普通关键词搜索和全量翻页使用 +search-msg",
               "需要多会话、发送者或 @维度组合时使用 search-advanced"
             ],
             "canonical_path": "chat.search_messages_by_keyword",
@@ -9450,7 +9457,7 @@
             "risk": "low",
             "title": "按关键词搜索消息",
             "use_when": [
-              "需要用关键词查找消息且过滤条件较简单时"
+              "只有 +search-msg 无法表达且明确需要底层简单搜索接口原始响应时使用"
             ]
           },
           {
@@ -9548,10 +9555,11 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "用自定义机器人 Webhook 向群发送消息",
+            "agent_summary": "使用底层 Webhook 接口向群发送消息",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
+              "普通 Webhook 文本、Markdown 和 @发送使用 +messages-send --as webhook",
               "使用企业机器人 robot-code 发消息时用 chat message send-by-bot",
               "以个人身份发消息时用 chat message send"
             ],
@@ -9575,15 +9583,17 @@
             "risk": "medium",
             "title": "自定义机器人 Webhook 发送群消息",
             "use_when": [
-              "已有自定义机器人 webhook token，需要向群发告警或通知"
+              "只有 +messages-send 未发布必需的 Webhook 底层字段，且 Runtime confirmation 已对齐时使用"
             ]
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "以当前用户身份发送群聊或单聊消息",
+            "agent_summary": "使用当前用户底层消息类型或原始响应发送群聊或单聊消息",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
+              "按姓名发送简单文本使用 +dm，按群名发送简单文本使用 +send-to-group",
+              "已知 ID、文件、复杂 @ 或幂等发送使用 +messages-send",
               "机器人身份或 Webhook 发送应使用对应命令"
             ],
             "canonical_path": "chat.send_personal_message",
@@ -9606,15 +9616,16 @@
             "risk": "medium",
             "title": "以当前用户身份发送消息（--group 群聊 / --user 或 --open-dingtalk-id 单聊）",
             "use_when": [
-              "用户明确要以个人身份发送文本或媒体消息时"
+              "只有 +messages-send 未发布的位置、名片等底层消息类型，且 Runtime confirmation 已对齐时使用"
             ]
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "以应用机器人身份发送群消息或批量单聊",
+            "agent_summary": "使用底层机器人接口发送群消息或批量单聊",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
+              "普通 robotCode 文本、Markdown、群聊、批量单聊或 @发送使用 +messages-send --as bot",
               "个人身份发送或自定义 Webhook 告警不要使用"
             ],
             "canonical_path": "chat.send_robot_message",
@@ -9633,7 +9644,7 @@
             "risk": "medium",
             "title": "机器人发送消息（--group 群聊 / --users 单聊）",
             "use_when": [
-              "已有 robotCode 且需要机器人身份投递消息时"
+              "只有 +messages-send 未发布必需的机器人底层字段，且 Runtime confirmation 已对齐时使用"
             ]
           },
           {
@@ -9794,13 +9805,13 @@
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              "按发送者、关键词或消息类型搜索时使用 +search-msg；不要拉取全部消息后本地猜测 @。"
             ],
             "canonical_path": "chat.shortcut_at_me",
             "cli_name": "+at-me",
             "cli_path": "chat +at-me",
             "confirmation": "not_required",
-            "description": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "description": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -9856,7 +9867,7 @@
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+            "interface_reason": "Reviewed paginated member adapter: it resolves a complete unique group candidate set, follows get_group_members cursors to completion or a reviewed hard page limit, de-duplicates stable member identities, and publishes im.group-members.v1 completeness facts.",
             "name": "shortcut_bot_search",
             "primary_cli_path": "chat +bot-search",
             "reviewed": true,
@@ -10002,13 +10013,13 @@
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              "用户要搜索当前账号可用或创建的机器人而非群内机器人时，使用 bot find/search；不要先走 chat group search + group bots 原子链。"
             ],
             "canonical_path": "chat.shortcut_chat_bots",
             "cli_name": "+chat-bots",
             "cli_path": "chat +chat-bots",
             "confirmation": "not_required",
-            "description": "当你想查看某个群里已添加了哪些机器人时使用；需传群 openConversationId，只读返回群内机器人列表（含 openBotId，供后续移除）。",
+            "description": "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -10019,33 +10030,33 @@
             "risk": "low",
             "title": "查看群内所有机器人",
             "use_when": [
-              "当你想查看某个群里已添加了哪些机器人时使用；需传群 openConversationId，只读返回群内机器人列表（含 openBotId，供后续移除）。"
+              "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
             ]
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
+            "agent_summary": "按成员和可选群主全量预检后创建一个钉钉群聊",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "需要指定其他 owner、群 description、初始机器人、幂等查重或 Lark public/private 可见性时不要使用；这些语义当前没有可靠底层能力"
+              "需要群 description、初始机器人、幂等查重或 Lark public/private 可见性时不要使用；这些语义当前没有可靠底层能力"
             ],
             "canonical_path": "chat.shortcut_chat_create",
             "cli_name": "+chat-create",
             "cli_path": "chat +chat-create",
             "confirmation": "user_required",
-            "description": "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。\n\n参数约束：\n  - --users、--member-query 至少指定一个",
+            "description": "当你要创建钉钉群聊时使用；成员可传稳定 ID 或 --member-query 姓名，群主默认当前用户，也可用 --owner-open-dingtalk-id 或 --owner-query 明确指定。所有自然身份会在唯一解析并去重后才执行一次创建，任一零命中或多命中都会整体停止。\n\n参数约束：\n  - --users、--member-query 至少指定一个\n  - --owner-open-dingtalk-id、--owner-query 互斥，最多指定一个",
             "effect": "write",
             "idempotency": "unknown",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed create-chat adapter: it batch-resolves every natural member query, reads the current profile to guarantee owner membership, de-duplicates stable member identities, creates one group, and normalizes the public conversation identity.",
+            "interface_reason": "Reviewed create-chat adapter: it batch-resolves every natural member and optional owner query, maps an explicit owner to ownerOpenDingTalkId or reads the current profile as fallback, de-duplicates stable member identities, creates one group, and normalizes the public conversation identity.",
             "name": "shortcut_chat_create",
             "primary_cli_path": "chat +chat-create",
             "reviewed": true,
             "risk": "medium",
-            "title": "按成员 ID 或姓名全量预检后创建一个钉钉群聊",
+            "title": "按成员和可选群主全量预检后创建一个钉钉群聊",
             "use_when": [
-              "当你要创建基础钉钉群聊时使用；已知成员 userId/openDingTalkId 传 --users，只知道姓名/花名传 --member-query，也可混合使用。所有自然成员会先完成唯一解析并按稳定 ID 去重，任一零命中或多命中都会在读取当前用户和创建群前整体停止；成功后自动把当前用户加入成员并作为群主。"
+              "当你要创建钉钉群聊时使用；成员可传稳定 ID 或 --member-query 姓名，群主默认当前用户，也可用 --owner-open-dingtalk-id 或 --owner-query 明确指定。所有自然身份会在唯一解析并去重后才执行一次创建，任一零命中或多命中都会整体停止。"
             ]
           },
           {
@@ -10080,13 +10091,13 @@
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              "用户要把邀请卡片直接发到另一个会话时使用 share-invite；不要先尝试 +chat-list 或不存在的搜索入口。"
             ],
             "canonical_path": "chat.shortcut_chat_invite_url",
             "cli_name": "+chat-invite-url",
             "cli_path": "chat +chat-invite-url",
             "confirmation": "not_required",
-            "description": "当你想拿到一条群邀请链接分享给别人加群时使用；只读生成链接，需传群 openConversationId，可用 --expires-seconds 设置有效期（0 表示永久）。",
+            "description": "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -10097,7 +10108,7 @@
             "risk": "low",
             "title": "获取群邀请链接",
             "use_when": [
-              "当你想拿到一条群邀请链接分享给别人加群时使用；只读生成链接，需传群 openConversationId，可用 --expires-seconds 设置有效期（0 表示永久）。"
+              "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
             ]
           },
           {
@@ -10180,7 +10191,36 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
+            "agent_summary": "列出群成员并把用户与机器人分桶（支持群名语义解析）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "aliases": [
+              "chat +chat-group-members"
+            ],
+            "availability": "available",
+            "avoid_when": [
+              "只需要按群名列出真人用户时可用较小入口 +group-members；不要把 complete=false 或 partial=true 的结果称为完整成员列表"
+            ],
+            "canonical_path": "chat.shortcut_chat_members_list",
+            "cli_name": "+chat-members-list",
+            "cli_path": "chat +chat-members-list",
+            "confirmation": "not_required",
+            "description": "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；可直接传 --conversation-id，或传 --group 群名让命令先做唯一匹配。默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。\n\n参数约束：\n  - --group、--conversation-id 必须且只能指定一个\n  - --member-types 仅接受 user/bot\n  - --page-limit 必须在 1-500 之间",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed member-bucket adapter: it accepts a stable conversation ID or resolves one complete group-name candidate set, fully paginates and de-duplicates user members, reads the lower all-bot list, and publishes im.group-members.v1 bucket completeness and partial-failure facts.",
+            "name": "shortcut_chat_members_list",
+            "primary_cli_path": "chat +chat-members-list",
+            "reviewed": true,
+            "risk": "low",
+            "title": "列出群成员并把用户与机器人分桶（支持群名语义解析）",
+            "use_when": [
+              "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；可直接传 --conversation-id，或传 --group 群名让命令先做唯一匹配。默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
@@ -10190,18 +10230,18 @@
             "cli_name": "+chat-messages",
             "cli_path": "chat +chat-messages",
             "confirmation": "not_required",
-            "description": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "description": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed built-in Shortcut adapter: it accepts a stable group/user identity or deterministically resolves one natural group/user query, routes the resulting group or direct-message history read, projects the additive im.message-list.v1 shape, publishes proof-oriented pagination facts, and optionally orchestrates safe resource downloads whose failures fold into task completeness.",
+            "interface_reason": "Reviewed history adapter: it accepts a stable group/user identity or deterministically resolves one natural query, routes the group/direct read, optionally follows bounded typed nextPage.time pages with stable-ID de-duplication, projects im.message-list.v1 completeness facts, atomically exports JSON, and optionally orchestrates safe resource downloads.",
             "name": "shortcut_chat_messages",
             "primary_cli_path": "chat +chat-messages",
             "reviewed": true,
             "risk": "low",
-            "title": "按会话 ID、群名或姓名读取一个群聊/单聊的消息并输出稳定投影",
+            "title": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
             "use_when": [
-              "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+              "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
             ]
           },
           {
@@ -10364,9 +10404,13 @@
             "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "按关键词搜索群聊",
             "agent_summary_source": "dws-agent-selection/chat",
+            "aliases": [
+              "chat +chat-group-search",
+              "chat +search-group"
+            ],
             "availability": "available",
             "avoid_when": [
-              "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              "发送、读取、成员、邀请链接或机器人命令已接受自然群名时直接使用对应 Shortcut，不要先手工搜索并抄 ID。"
             ],
             "canonical_path": "chat.shortcut_chat_search",
             "cli_name": "+chat-search",
@@ -10544,17 +10588,17 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "分页获取当前用户的全部会话列表（单聊+群聊）",
+            "agent_summary": "分页或一键全量获取当前用户的会话列表（单聊+群聊）",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              "只查看置顶会话时使用 +conversation-list-top；不要用原子 list-all-conversations 加超出服务端上限的 --limit 冒充全量。"
             ],
             "canonical_path": "chat.shortcut_conversation_list",
             "cli_name": "+conversation-list",
             "cli_path": "chat +conversation-list",
             "confirmation": "not_required",
-            "description": "当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；只读分页返回，可用 --exclude-muted 排除已免打扰会话。",
+            "description": "当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；默认读取一页，明确要求全部时使用 --page-all，CLI 会按服务端每页上限自动翻页并公开完整性 ledger；可用 --exclude-muted 排除已免打扰会话。\n\n参数约束：\n  - --limit 必须在 1-100\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -10563,9 +10607,9 @@
             "primary_cli_path": "chat +conversation-list",
             "reviewed": true,
             "risk": "low",
-            "title": "分页获取当前用户的全部会话列表（单聊+群聊）",
+            "title": "分页或一键全量获取当前用户的会话列表（单聊+群聊）",
             "use_when": [
-              "当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；只读分页返回，可用 --exclude-muted 排除已免打扰会话。"
+              "当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；默认读取一页，明确要求全部时使用 --page-all，CLI 会按服务端每页上限自动翻页并公开完整性 ledger；可用 --exclude-muted 排除已免打扰会话。"
             ]
           },
           {
@@ -10622,7 +10666,7 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "按群名列出群成员（自动搜群解析 openConversationId）",
+            "agent_summary": "按群名唯一解析后全量列出用户成员并公开分页完整性",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
@@ -10632,7 +10676,7 @@
             "cli_name": "+group-members",
             "cli_path": "chat +group-members",
             "confirmation": "not_required",
-            "description": "当你只知道群的名字、想看看这个群里有哪些成员，而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。群名匹配到多个群时会列出候选让你区分、绝不自行假定。只读，不改动任何数据。",
+            "description": "当你只知道群的名字、想看看这个群里有哪些成员，而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。群名匹配到多个群时会列出候选让你区分、绝不自行假定。用户成员会自动翻页、稳定 ID 去重，并公开 complete/hasMore/nextCursor；--page-limit 保证有界。只读，不改动任何数据。\n\n参数约束：\n  - --page-limit 必须在 1-500 之间",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -10641,9 +10685,9 @@
             "primary_cli_path": "chat +group-members",
             "reviewed": true,
             "risk": "low",
-            "title": "按群名列出群成员（自动搜群解析 openConversationId）",
+            "title": "按群名唯一解析后全量列出用户成员并公开分页完整性",
             "use_when": [
-              "当你只知道群的名字、想看看这个群里有哪些成员，而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。群名匹配到多个群时会列出候选让你区分、绝不自行假定。只读，不改动任何数据。"
+              "当你只知道群的名字、想看看这个群里有哪些成员，而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。群名匹配到多个群时会列出候选让你区分、绝不自行假定。用户成员会自动翻页、稳定 ID 去重，并公开 complete/hasMore/nextCursor；--page-limit 保证有界。只读，不改动任何数据。"
             ]
           },
           {
@@ -10830,43 +10874,44 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+            "agent_summary": "按身份和目标统一发送消息，Bot 多群返回逐目标 ledger",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "只需按姓名或群名发送简单文本时分别使用 +dm 或 +send-to-group；bot/webhook 不支持自然目标或媒体，卡片和 thread 回复使用真实存在的专用入口"
+              "只需按姓名或群名发送简单文本时分别使用 +dm 或 +send-to-group；bot/webhook 不支持自然目标或富媒体，卡片使用 +messages-send-card，当前没有 thread writer"
             ],
             "canonical_path": "chat.shortcut_messages_send",
             "cli_name": "+messages-send",
             "cli_path": "chat +messages-send",
             "confirmation": "user_required",
-            "description": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标；webhook 必须指定 webhook-token；幂等键仅 user 支持",
+            "description": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --groups、--groups-file 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持",
             "effect": "write",
             "idempotency": "unknown",
             "interface_mode": "composite",
-            "interface_reason": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports deterministic user/chat query resolution, live-compatible exact userId conversion, mediaId images, and the native init/upload/commit local-file flow.",
+            "interface_reason": "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user supports deterministic natural resolution, mediaId images and native local-file upload, while bot supports bounded stable-ID multi-group input with an im.batch-write.v1 per-target ledger.",
             "name": "shortcut_messages_send",
             "primary_cli_path": "chat +messages-send",
             "reviewed": true,
             "risk": "medium",
-            "title": "按身份和目标统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+            "title": "按身份和目标统一发送消息，Bot 多群返回逐目标 ledger",
             "use_when": [
-              "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。文件上传和已有 mediaId 图片仅 current-user 支持；bot/webhook 只支持文本或 Markdown，webhook 目标由 token 所在群决定。"
+              "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。"
             ]
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "自定义机器人 Webhook 发送群消息",
+            "agent_summary": "兼容旧入口的自定义机器人 Webhook 群消息发送",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
+              "新的 Webhook 文本、Markdown 和 @发送使用 +messages-send --as webhook",
               "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
             ],
             "canonical_path": "chat.shortcut_messages_send_by_webhook",
             "cli_name": "+messages-send-by-webhook",
             "cli_path": "chat +messages-send-by-webhook",
             "confirmation": "user_required",
-            "description": "当你只有自定义机器人的 Webhook token、想往其所在群推送消息时使用；会实际通过 Webhook 发群消息，需传 token、标题、正文，可 @手机号/userId 或 @所有人。",
+            "description": "只有既有自动化明确依赖 +messages-send-by-webhook 兼容路径、暂时不能迁移统一身份入口时使用",
             "effect": "write",
             "idempotency": "unknown",
             "interface_mode": "composite",
@@ -10875,9 +10920,9 @@
             "primary_cli_path": "chat +messages-send-by-webhook",
             "reviewed": true,
             "risk": "medium",
-            "title": "自定义机器人 Webhook 发送群消息",
+            "title": "兼容旧入口的自定义机器人 Webhook 群消息发送",
             "use_when": [
-              "当你只有自定义机器人的 Webhook token、想往其所在群推送消息时使用；会实际通过 Webhook 发群消息，需传 token、标题、正文，可 @手机号/userId 或 @所有人。"
+              "只有既有自动化明确依赖 +messages-send-by-webhook 兼容路径、暂时不能迁移统一身份入口时使用"
             ]
           },
           {
@@ -10886,13 +10931,13 @@
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "已有 bizId、只需要追加或更新现有卡片内容时使用 +messages-update-card"
+              "已有 bizId、只需要追加或更新现有卡片内容时使用 +messages-update-card；需要 Card JSON 组件或 action callback 时停止，当前没有底层能力"
             ],
             "canonical_path": "chat.shortcut_messages_send_card",
             "cli_name": "+messages-send-card",
             "cli_path": "chat +messages-send-card",
             "confirmation": "user_required",
-            "description": "当你要发送一张流式卡片消息时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。\n\n参数约束：\n  - --group、--receiver、--receiver-open-dingtalk-id 必须且只能指定一个\n  - --flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content",
+            "description": "当你要发送一张流式文本卡片时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成。当前只支持 streaming text，不支持 Card JSON 组件或 action callback。\n\n参数约束：\n  - --group、--receiver、--receiver-open-dingtalk-id 必须且只能指定一个\n  - --flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content",
             "effect": "write",
             "idempotency": "unknown",
             "interface_mode": "composite",
@@ -10903,7 +10948,7 @@
             "risk": "medium",
             "title": "创建流式卡片，可在同一次调用中写入内容并结束",
             "use_when": [
-              "当你要发送一张流式卡片消息时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成，避免卡片停留在加载中。"
+              "当你要发送一张流式文本卡片时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成。当前只支持 streaming text，不支持 Card JSON 组件或 action callback。"
             ]
           },
           {
@@ -10912,13 +10957,13 @@
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
-              "需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"
+              "需要 Card JSON 组件、action callback 或范围外 flowStatus 时不要使用；当前没有等价底层能力"
             ],
             "canonical_path": "chat.shortcut_messages_update_card",
             "cli_name": "+messages-update-card",
             "cli_path": "chat +messages-update-card",
             "confirmation": "user_required",
-            "description": "当你要向已发送的流式卡片持续追加/更新内容时使用；会实际更新卡片，需传 send-card 返回的 bizId、新内容及 flowStatus（最后一次应为 3 表示完成）。",
+            "description": "当你要向已发送的流式文本卡片持续追加/更新内容时使用；会实际更新卡片，需传 send-card 返回的 bizId、新内容及 flowStatus 1-5（最后一次应为 3 表示完成）。当前不支持 Card JSON 组件或 action callback。\n\n参数约束：\n  - --flow-status 必须在 1-5 之间",
             "effect": "write",
             "idempotency": "unknown",
             "interface_mode": "composite",
@@ -10929,7 +10974,7 @@
             "risk": "medium",
             "title": "流式更新卡片内容（最后一次 --flow-status 应为 3）",
             "use_when": [
-              "当你要向已发送的流式卡片持续追加/更新内容时使用；会实际更新卡片，需传 send-card 返回的 bizId、新内容及 flowStatus（最后一次应为 3 表示完成）。"
+              "当你要向已发送的流式文本卡片持续追加/更新内容时使用；会实际更新卡片，需传 send-card 返回的 bizId、新内容及 flowStatus 1-5（最后一次应为 3 表示完成）。当前不支持 Card JSON 组件或 action callback。"
             ]
           },
           {
@@ -17574,7 +17619,7 @@
           "CommandRegistry:product=event",
           "Skill:skills/mono/references/products/event.md",
           "cobra-help:dws event --help",
-          "internal/cli/schema_command_registry.json#event",
+          "internal/cli/schema_command_registry/registry.json",
           "internal/cli/schema_hints/selection/event.json",
           "live-dws-schema:product-batch-2026-07-14",
           "skills/mono/SKILL.md",
@@ -17649,6 +17694,7 @@
             "agent_summary_source": "dws-agent-selection/event",
             "availability": "available",
             "avoid_when": [
+              "普通 @我、指定发送人、指定群、全部单聊/群消息以及 message/reaction/read/recall 组合使用 +listen-im",
               "只查历史聊天记录时用 chat 查询命令",
               "只看事件目录/字段时用 event list / event schema"
             ],
@@ -17667,12 +17713,8 @@
             "risk": "medium",
             "title": "订阅事件流并输出到 stdout",
             "use_when": [
-              "需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
-              "用户明确要求监听当前身份的所有单聊或所有群消息",
-              "需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
               "需要监听指定群的标题变更、成员进退群或群解散事件",
-              "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
-              "同一目标、同一过滤条件需要同时监听多个兼容事件"
+              "需要显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制"
             ]
           },
           {
@@ -26722,6 +26764,6 @@
       }
     ],
     "source": "embedded-command-catalog",
-    "tool_count": 848
+    "tool_count": 849
   }
 }

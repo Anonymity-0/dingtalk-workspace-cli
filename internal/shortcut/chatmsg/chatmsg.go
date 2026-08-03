@@ -42,6 +42,94 @@ import (
 // public envelope shared by message list/search/mget/thread projections.
 const MessageListContractVersion = "im.message-list.v1"
 
+// MessageResultContract is the reviewed additive contract shared by message
+// list, search, mget, @me and thread projections. Keep this descriptor small:
+// Runtime owns the values, while Skill references and policy checks consume a
+// copy of these field names so prose cannot silently invent another result
+// shape.
+type MessageResultContract struct {
+	Version        string
+	MessageFields  []string
+	EnvelopeFields []string
+}
+
+var messageResultContractV1 = MessageResultContract{
+	Version: MessageListContractVersion,
+	MessageFields: []string{
+		"messageId",
+		"conversationId",
+		"threadId",
+		"sender",
+		"senderId",
+		"senderType",
+		"messageType",
+		"text",
+		"createTime",
+		"updateTime",
+		"reactions",
+		"quotedMessage",
+		"forwarded",
+		"resourceRefs",
+	},
+	EnvelopeFields: []string{
+		"contractVersion",
+		"messages",
+		"count",
+		"pagesFetched",
+		"paginationKnown",
+		"complete",
+		"hasMore",
+		"nextPage",
+		"stopReason",
+		"truncatedByPageLimit",
+		"truncatedByResultLimit",
+		"failedCount",
+		"failures",
+		"partial",
+		"resourceDownloads",
+	},
+}
+
+// CurrentMessageResultContract returns defensive copies so callers cannot
+// mutate the process-wide reviewed descriptor.
+func CurrentMessageResultContract() MessageResultContract {
+	contract := messageResultContractV1
+	contract.MessageFields = append([]string(nil), contract.MessageFields...)
+	contract.EnvelopeFields = append([]string(nil), contract.EnvelopeFields...)
+	return contract
+}
+
+// NewMessageListPayload initializes the common result ledger before a caller
+// adds pagination or resource-download facts.
+func NewMessageListPayload(messages []map[string]any) map[string]any {
+	if messages == nil {
+		messages = []map[string]any{}
+	}
+	return map[string]any{
+		"contractVersion": MessageListContractVersion,
+		"messages":        messages,
+		"count":           len(messages),
+		"pagesFetched":    0,
+		"paginationKnown": false,
+		"complete":        false,
+		"hasMore":         false,
+		"failedCount":     0,
+		"failures":        []map[string]any{},
+		"partial":         false,
+	}
+}
+
+// StableMessageID returns the normalized message identity used for
+// cross-page deduplication. An empty value means the lower response did not
+// publish a stable identity; callers must keep that row rather than guessing.
+func StableMessageID(message map[string]any) string {
+	value := MessageID(message)
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(value))
+}
+
 // Sender reads a message's speaker display name, tolerating common sender-name
 // keys. The message-list responses carry the display name under the bare
 // "sender" key (verified live), so it is probed first; the remaining aliases and

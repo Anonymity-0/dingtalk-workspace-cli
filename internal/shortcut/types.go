@@ -125,6 +125,16 @@ type Shortcut struct {
 	Service string
 	// Command is the leaf name including its "+" prefix, e.g. "+search-user".
 	Command string
+	// Aliases are hidden, compatibility-only Cobra spellings for the same
+	// command identity. Agent-facing Skill and Schema examples must continue to
+	// use Command; reviewed Schema aliases are declared separately in the
+	// CommandRegistry.
+	Aliases []string
+	// SinglePositionalAliasFor optionally treats one positional argument as the
+	// value of the named string flag. It is intended only for unambiguous search
+	// compatibility such as `+chat-search "群名"`; it never changes the
+	// canonical flag-based contract published to Agents.
+	SinglePositionalAliasFor string
 	// Product is the canonical MCP product id used to build the invocation.
 	// Defaults to Service when empty.
 	Product string

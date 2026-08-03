@@ -28,7 +28,6 @@ SHARED_SKILL = ROOT / "skills" / "multi" / "dws-shared" / "SKILL.md"
 RUNTIME_CONTRACT_SOURCE = (
     ROOT / "skills" / "multi" / "dws-shared" / "references" / "runtime-contract.md"
 )
-
 SERVICE_TO_SKILL = {
     "aitable": ROOT / "skills" / "multi" / "dingtalk-aitable" / "SKILL.md",
     "attendance": ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "attendance.md",

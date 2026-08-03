@@ -95,6 +95,13 @@ func TestCrossPlatformCoverageCompatibilityAliases(t *testing.T) {
 			wantArgs:    map[string]any{"keyword": "树莓派", "limit": 5},
 		},
 		{
+			name:        "chat search command alias and positional query",
+			argv:        []string{"chat", "+search-group", "树莓派", "--yes"},
+			wantProduct: "im",
+			wantTool:    "search_groups",
+			wantArgs:    map[string]any{"keyword": "树莓派", "limit": 20},
+		},
+		{
 			name:        "bot find keyword",
 			argv:        []string{"chat", "+bot-find", "--keyword", "日报", "--yes"},
 			wantProduct: "bot",
@@ -173,6 +180,16 @@ func TestCrossPlatformCoverageCompatibilityAliases(t *testing.T) {
 				"resourceId":         "resource-1",
 				"openMessageId":      "msg-1",
 				"openConversationId": "cid-1",
+			},
+		},
+		{
+			name:        "message recall plural single id alias",
+			argv:        []string{"chat", "+messages-recall", "--conversation-id", "cid-1", "--message-ids", "msg-1", "--yes"},
+			wantProduct: "im",
+			wantTool:    "recall_message",
+			wantArgs: map[string]any{
+				"openConversationId": "cid-1",
+				"openMessageId":      "msg-1",
 			},
 		},
 	}

@@ -6,10 +6,28 @@ package targetresolver
 
 import (
 	stderrors "errors"
+	"reflect"
+	"strings"
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 )
+
+type chatResolutionReader struct {
+	responses []map[string]any
+	calls     []map[string]any
+}
+
+func (r *chatResolutionReader) CallMCPData(product, tool string, params map[string]any) (map[string]any, error) {
+	r.calls = append(r.calls, params)
+	if product != "im" || tool != "search_groups" {
+		return nil, stderrors.New("unexpected resolver tool")
+	}
+	if len(r.calls) > len(r.responses) {
+		return nil, stderrors.New("unexpected resolver page")
+	}
+	return r.responses[len(r.calls)-1], nil
+}
 
 func TestExtractUsersKeepsUsableExternalContacts(t *testing.T) {
 	users := ExtractUsers(map[string]any{
@@ -25,6 +43,28 @@ func TestExtractUsersKeepsUsableExternalContacts(t *testing.T) {
 	}
 	if users[1].OpenDingTalkID != "D2" || users[1].Name != "外部张三" {
 		t.Fatalf("external user = %#v", users[1])
+	}
+}
+
+func TestOpenConversationIDIsNeverSearchedAsAGroupName(t *testing.T) {
+	for _, value := range []string{"cidACeQ0fCtKfLsFGvA47gXaQ==", " CIDO123456789 "} {
+		if !LooksLikeOpenConversationID(value) {
+			t.Fatalf("LooksLikeOpenConversationID(%q) = false", value)
+		}
+	}
+	for _, value := range []string{"cid", "项目cid群", "conversation-1"} {
+		if LooksLikeOpenConversationID(value) {
+			t.Fatalf("LooksLikeOpenConversationID(%q) = true", value)
+		}
+	}
+
+	reader := &chatResolutionReader{}
+	_, err := ResolveChat(reader, "cidACeQ0fCtKfLsFGvA47gXaQ==")
+	if err == nil || !strings.Contains(err.Error(), "--group") {
+		t.Fatalf("ResolveChat(stable id) error = %v", err)
+	}
+	if len(reader.calls) != 0 {
+		t.Fatalf("stable id unexpectedly reached search: %#v", reader.calls)
 	}
 }
 
@@ -50,6 +90,113 @@ func TestChatSelectionKeepsMultipleExactMatchesAmbiguous(t *testing.T) {
 	selected, matchType := preferExactChats(chats, "项目群")
 	if len(selected) != 2 || matchType != "exact" {
 		t.Fatalf("selected = %#v, matchType = %q", selected, matchType)
+	}
+}
+
+func TestResolveChatPagesBeforeApplyingExactPreference(t *testing.T) {
+	reader := &chatResolutionReader{responses: []map[string]any{
+		{
+			"result": []any{
+				map[string]any{"openConversationId": "archive", "title": "项目群-归档"},
+			},
+			"hasMore":    true,
+			"nextCursor": "page-2",
+		},
+		{
+			"result": []any{
+				map[string]any{"openConversationId": "active", "title": "项目群"},
+			},
+			"hasMore": false,
+		},
+	}}
+	resolved, err := ResolveChat(reader, "项目群")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Selected.OpenConversationID != "active" || resolved.MatchType != "exact" {
+		t.Fatalf("resolved = %#v", resolved)
+	}
+	wantCursors := []any{"0", "page-2"}
+	gotCursors := []any{reader.calls[0]["cursor"], reader.calls[1]["cursor"]}
+	if !reflect.DeepEqual(gotCursors, wantCursors) {
+		t.Fatalf("cursors = %#v, want %#v", gotCursors, wantCursors)
+	}
+}
+
+func TestResolveChatKeepsExactNamesakesAcrossPagesAmbiguous(t *testing.T) {
+	reader := &chatResolutionReader{responses: []map[string]any{
+		{
+			"result": []any{
+				map[string]any{"openConversationId": "c1", "title": "项目群"},
+			},
+			"hasMore":    true,
+			"nextCursor": "page-2",
+		},
+		{
+			"result": map[string]any{
+				"items": []any{
+					map[string]any{"openConversationId": "c2", "title": "项目群"},
+				},
+				"hasMore": false,
+			},
+		},
+	}}
+	_, err := ResolveChat(reader, "项目群")
+	var typed *apperrors.Error
+	if !stderrors.As(err, &typed) || typed.Reason != "resolution_ambiguous" {
+		t.Fatalf("error = %#v", err)
+	}
+	candidates, ok := typed.Details["candidates"].([]Chat)
+	if !ok || len(candidates) != 2 {
+		t.Fatalf("details = %#v", typed.Details)
+	}
+}
+
+func TestResolveChatFailsClosedWhenPaginationCannotAdvance(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		nextCursor   any
+		wantFragment string
+	}{
+		{name: "missing cursor", wantFragment: "没有返回可继续"},
+		{name: "stalled cursor", nextCursor: "0", wantFragment: "游标停滞"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			response := map[string]any{
+				"result": []any{
+					map[string]any{"openConversationId": "c1", "title": "项目群"},
+				},
+				"hasMore": true,
+			}
+			if tc.nextCursor != nil {
+				response["nextCursor"] = tc.nextCursor
+			}
+			reader := &chatResolutionReader{responses: []map[string]any{response}}
+			_, err := ResolveChat(reader, "项目群")
+			var typed *apperrors.Error
+			if !stderrors.As(err, &typed) || typed.Reason != "resolution_incomplete" || !typed.Retryable {
+				t.Fatalf("error = %#v", err)
+			}
+			if typed.Details["subtype"] != StatusIncomplete {
+				t.Fatalf("details = %#v", typed.Details)
+			}
+			cause, _ := typed.Details["cause"].(string)
+			if cause == "" || !strings.Contains(cause, tc.wantFragment) {
+				t.Fatalf("cause = %q, want fragment %q", cause, tc.wantFragment)
+			}
+		})
+	}
+}
+
+func TestResolveChatAcceptsShortLegacyPageWithoutPaginationMetadata(t *testing.T) {
+	reader := &chatResolutionReader{responses: []map[string]any{{
+		"result": []any{
+			map[string]any{"openConversationId": "c1", "title": "项目群"},
+		},
+	}}}
+	resolved, err := ResolveChat(reader, "项目群")
+	if err != nil || resolved.Selected.OpenConversationID != "c1" {
+		t.Fatalf("resolved = %#v, err = %v", resolved, err)
 	}
 }
 

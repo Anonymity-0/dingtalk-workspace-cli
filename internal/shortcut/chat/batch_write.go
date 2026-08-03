@@ -28,14 +28,15 @@ func executeShortcutBatchWrite(rt *shortcut.RuntimeContext, product, tool string
 			})
 		}
 		return rt.Output(map[string]any{
-			"dry_run":        true,
-			"executed":       false,
-			"preview_kind":   "plan",
-			"tool":           tool,
-			"actionCount":    len(actions),
-			"failedCount":    0,
-			"actions":        actions,
-			"requestedCount": len(items),
+			"contractVersion": "im.batch-write.v1",
+			"dry_run":         true,
+			"executed":        false,
+			"preview_kind":    "plan",
+			"tool":            tool,
+			"actionCount":     len(actions),
+			"failedCount":     0,
+			"actions":         actions,
+			"requestedCount":  len(items),
 		})
 	}
 
@@ -57,12 +58,13 @@ func executeShortcutBatchWrite(rt *shortcut.RuntimeContext, product, tool string
 		succeeded = append(succeeded, entry)
 	}
 	return rt.Output(map[string]any{
-		"ok":             len(failures) == 0,
-		"partial":        len(succeeded) > 0 && len(failures) > 0,
-		"requestedCount": len(items),
-		"succeededCount": len(succeeded),
-		"failedCount":    len(failures),
-		"succeeded":      succeeded,
-		"failures":       failures,
+		"contractVersion": "im.batch-write.v1",
+		"ok":              len(failures) == 0,
+		"partial":         len(succeeded) > 0 && len(failures) > 0,
+		"requestedCount":  len(items),
+		"succeededCount":  len(succeeded),
+		"failedCount":     len(failures),
+		"succeeded":       succeeded,
+		"failures":        failures,
 	})
 }

@@ -32,14 +32,11 @@
     "event.consume": {
       "agent_summary": "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
       "use_when": [
-        "需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
-        "用户明确要求监听当前身份的所有单聊或所有群消息",
-        "需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
         "需要监听指定群的标题变更、成员进退群或群解散事件",
-        "监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
-        "同一目标、同一过滤条件需要同时监听多个兼容事件"
+        "需要显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制"
       ],
       "avoid_when": [
+        "普通 @我、指定发送人、指定群、全部单聊/群消息以及 message/reaction/read/recall 组合使用 +listen-im",
         "只查历史聊天记录时用 chat 查询命令",
         "只看事件目录/字段时用 event list / event schema"
       ],
@@ -50,7 +47,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#event.consume",
+        "internal/cli/schema_command_registry/products/event.json#event.consume",
         "cobra-help:dws event consume --help",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/event.md",
@@ -73,7 +70,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#event.list",
+        "internal/cli/schema_command_registry/products/event.json#event.list",
         "cobra-help:dws event list --help",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/event.md",
@@ -95,7 +92,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#event.schema",
+        "internal/cli/schema_command_registry/products/event.json#event.schema",
         "cobra-help:dws event schema --help",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/event.md",
@@ -116,7 +113,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#event.status",
+        "internal/cli/schema_command_registry/products/event.json#event.status",
         "cobra-help:dws event status --help",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/event.md",
@@ -138,7 +135,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#event.stop",
+        "internal/cli/schema_command_registry/products/event.json#event.stop",
         "cobra-help:dws event stop --help",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/event.md",
@@ -159,7 +156,7 @@
       "reviewed": true,
       "review_reason": "人工依据实时 dws schema（或 Skill/Cobra/pinned MCP 对照）决策化选型文案与门禁；不改写命令身份与参数契约；示例不含 --yes。",
       "source_refs": [
-        "internal/cli/schema_command_registry.json#event",
+        "internal/cli/schema_command_registry/registry.json",
         "cobra-help:dws event --help",
         "skills/mono/SKILL.md",
         "skills/mono/references/products/event.md",

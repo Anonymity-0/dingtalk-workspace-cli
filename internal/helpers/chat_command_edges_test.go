@@ -43,6 +43,41 @@ func runChatCoverageDirect(t *testing.T, path []string, flags map[string]string)
 	return command.RunE(command, nil)
 }
 
+func TestEvaluationRegressionChatSearchSpellingsAndNaturalBotTarget(t *testing.T) {
+	t.Run("group search path accepts query", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":[]}`}}}
+		if err := runChatCoverageCommand(t, caller, "group", "search", "--query", "项目群"); err != nil {
+			t.Fatal(err)
+		}
+		if caller.calls != 1 {
+			t.Fatalf("calls = %d", caller.calls)
+		}
+	})
+
+	t.Run("group search accepts positional", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":[]}`}}}
+		if err := runChatCoverageCommand(t, caller, "group", "search", "项目群"); err != nil {
+			t.Fatal(err)
+		}
+		if caller.calls != 1 {
+			t.Fatalf("calls = %d", caller.calls)
+		}
+	})
+
+	t.Run("native bots resolves group name", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{
+			{text: `{"result":[{"openConversationId":"cid-project","title":"项目群"}],"hasMore":false}`},
+			{text: `{"result":{"bots":[]}}`},
+		}}
+		if err := runChatCoverageCommand(t, caller, "group", "bots", "--group", "项目群"); err != nil {
+			t.Fatal(err)
+		}
+		if caller.calls != 2 {
+			t.Fatalf("calls = %d", caller.calls)
+		}
+	})
+}
+
 func TestCrossPlatformCoverageChatGroupUpdateIconAcceptsUploadedMediaIDPrefixes(t *testing.T) {
 	previousDeps, previousArgs := deps, os.Args
 	os.Args = []string{"dws", "chat"}

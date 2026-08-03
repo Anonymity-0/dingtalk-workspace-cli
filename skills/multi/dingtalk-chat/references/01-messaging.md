@@ -11,21 +11,36 @@
 
 ## 群聊消息
 
+<!-- dws-intent: chat.read.conversation -->读取指定群聊或单聊默认使用 `dws chat +chat-messages`；它负责目标唯一解析、稳定消息投影和完整性 ledger。
+
 已知群 ID 时直接读取：
 
 ```bash
 dws chat +chat-messages --group <openConversationId> --format json
 ```
 
+要求全量或导出时直接使用 Runtime 能力：
+
+```bash
+dws chat +chat-messages --group <openConversationId> \
+  --page-all --page-limit 50 \
+  --output ./exports/messages.json \
+  --format json
+```
+
+必须检查 `complete/hasMore/nextPage/stopReason/failures`；达到页数或结果上限不是来源完整。
+
 只有群名时，读取历史直接用 `+chat-messages --chat-query <群名>`，普通文本发送直接用 `+send-to-group`。其它尚不接受群名的高级动作才先用 `+chat-search --query <群名>`；只有唯一候选才把 `openConversationId` 传给下一步。查询结果需要资源时在读取命令上加 `--download-resources`，不要让 Agent 手工遍历资源引用。按姓名读取单聊同理使用 `+chat-messages --user-query <姓名>`。
 
 ## 发送消息
 
-- 姓名 + 简单文本：`+dm`。
-- 群名 + 简单文本：`+send-to-group`。
-- 已知 ID、文件、Bot、Webhook、复杂 @ 或幂等：`+messages-send`。
+- <!-- dws-intent: chat.send.dm -->姓名 + 简单文本：`dws chat +dm`。
+- <!-- dws-intent: chat.send.group -->群名 + 简单文本：`dws chat +send-to-group`。
+- <!-- dws-intent: chat.send.advanced -->已知 ID、文件、Bot、Webhook、复杂 @ 或幂等：`dws chat +messages-send`。
 - 姓名 + 文件/高级控制：`+messages-send --as user --user-query <姓名> --file <相对路径>`。
 - 群名 + 文件/高级控制：`+messages-send --as user --chat-query <群名> --file <相对路径>`。
+- Bot 多群文本/Markdown：`+messages-send --as bot --robot-code <code> --groups <cid1,cid2>`；
+  Runtime 去重并返回 `im.batch-write.v1` 逐目标 ledger，最多 100 个稳定群 ID。
 
 `--user-query` 和 `--chat-query` 会在 CLI 内运行真实只读解析；零命中或多候选时在上传或发送前停止。Bot/Webhook 不接受这两个自然目标参数。
 
@@ -33,7 +48,7 @@ dws chat +chat-messages --group <openConversationId> --format json
 
 ## 创建群聊
 
-`+chat-create` 同时接受 `--users` 稳定 ID 和 `--member-query` 姓名/花名。自然成员解析、候选消歧、稳定 ID 去重和创建前预检都由 CLI 完成：
+<!-- dws-intent: chat.create.group -->基础建群默认使用 `dws chat +chat-create`；它同时接受 `--users` 稳定 ID 和 `--member-query` 姓名/花名。群主默认当前用户，也可用 `--owner-open-dingtalk-id` 或 `--owner-query` 明确指定。自然身份解析、候选消歧、稳定 ID 去重和创建前预检都由 CLI 完成：
 
 ```text
 传入全部姓名
@@ -42,15 +57,15 @@ dws chat +chat-messages --group <openConversationId> --format json
 → 全部成功后执行一次 +chat-create
 ```
 
-任一成员未唯一解析时不会读取当前用户或创建群；`--dry-run` 也走同一解析链。不要用群名预搜索伪装幂等，因为业务上允许同名群。
+任一成员或群主未唯一解析时不会创建群；显式群主会加入初始成员且不再读取当前用户，省略群主时才以当前用户兜底。`--dry-run` 也走同一解析链。不要用群名预搜索伪装幂等，因为业务上允许同名群。
 
 ## 机器人消息
 
-已知 `robotCode` 时使用 `+messages-send --as bot`。未知机器人、机器人入群、批量群发或撤回读取 [chat-bot.md](chat/chat-bot.md)。Bot 不继承 user 的文件能力；只使用 leaf Schema 明确发布的文本/Markdown 能力。
+已知 `robotCode` 时使用 `+messages-send --as bot`；单群用 `--group`，多群用 `--groups` 或工作目录内安全的 `--groups-file`。未知机器人、机器人入群或撤回读取 [chat-bot.md](chat/chat-bot.md)。Bot 不继承 user 的文件/图片能力；只使用 leaf Schema 明确发布的文本/Markdown 能力。
 
 ## 引用与转发
 
-- 引用回复：`+messages-reply`；优先继续使用结果中的 `messageId`、`conversationId`、`deliveryStatus` 和 `referencedMessage`，未知投递状态不得写成成功送达。
+- <!-- dws-intent: chat.reply.quote -->引用回复：`dws chat +messages-reply`；优先继续使用结果中的 `messageId`、`conversationId`、`deliveryStatus` 和 `referencedMessage`，未知投递状态不得写成成功送达。
 - 单条转发：`+messages-forward`。
 - 合并转发：`+messages-combine-forward`。
 - 话题转发：`+messages-forward-topic`。
