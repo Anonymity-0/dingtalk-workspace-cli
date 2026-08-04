@@ -41,9 +41,9 @@ metadata:
 |---|---|---|
 | <!-- dws-intent: chat.send.dm -->按姓名发简单文本或 Markdown | `dws chat +dm --to <姓名> --text <内容>` | CLI 解析唯一用户；多候选时停止，不先手工查 ID |
 | <!-- dws-intent: chat.send.group -->按群名或 ID 发简单文本或 Markdown | `dws chat +send-to-group --group <群名或ID> --text <内容>` | 稳定 ID 直接使用；群名多候选时停止 |
-| <!-- dws-intent: chat.send.advanced -->文件、Bot、Webhook、复杂 @、已知 ID 或自然目标的高级发送 | `dws chat +messages-send` | user 可用自然目标；Bot 多群用 `--groups/--groups-file` 并检查逐项 ledger |
-| <!-- dws-intent: chat.read.conversation -->读取一个指定群聊或单聊 | `dws chat +chat-messages` | 群聊 `--group` 可传群名或 ID；全量加 `--page-all`，检查完整性 ledger |
-| <!-- dws-intent: chat.search.cross-conversation -->跨会话、多维过滤或自动翻页搜索 | `dws chat +search-msg` | 内容用 `--query`，自然目标用 `--chat-query` / `--sender-query`；检查 `complete` |
+| <!-- dws-intent: chat.send.advanced -->文件、Bot、Webhook、复杂 @ 或高级发送 | `dws chat +messages-send` | Bot 多群用 `--groups/--groups-file` 并检查逐项 ledger |
+| <!-- dws-intent: chat.read.conversation -->读取指定群聊或单聊 | `dws chat +chat-messages` | 全量加 `--page-all`，检查完整性 ledger |
+| <!-- dws-intent: chat.search.cross-conversation -->跨会话多维搜索 | `dws chat +search-msg` | 内容用 `--query`；检查 `complete` |
 | 查看指定群成员（用户/机器人） | `dws chat +chat-members-list --group <群名或ID>` | 唯一解析并全量读取 |
 | 获取群邀请链接 | `dws chat +chat-invite-url --group <群名或ID>` | 多候选时停止 |
 | 查看群机器人 | `dws chat +chat-bots --group <群名或ID>` | 返回稳定 `bots[]` |
@@ -77,10 +77,10 @@ metadata:
 
 ## 关键结果语义
 
-- 发送成功返回的 `openTaskId` 是发送任务 ID，可查询投递状态，但不是回复或撤回使用的消息 ID；需要消息 ID 时从真实消息查询结果取得。
-- `+chat-messages`、`+search-msg`、`+messages-mget` 默认保留 `messageId`、conversation/thread、sender、文本、时间、reaction、引用、转发和 `resourceRefs`；`--no-reactions` 可关闭 reaction。
+- `openTaskId` 是发送任务 ID，不是回复或撤回所需的消息 ID；消息 ID 必须来自真实查询结果。
+- 消息查询默认保留稳定 ID、会话/thread、发送者、文本、时间、reaction、引用、转发和 `resourceRefs`；`--no-reactions` 可关闭 reaction。
 - 查询结果必须检查 `complete`、`hasMore`、`failures` 和资源下载 ledger；partial result 不得表述为完整成功。
-- 引用、转发或合并消息中的子消息使用子消息自己的 `messageId`；只有子消息缺会话 ID 时才继承父消息的 `conversationId`。
+- 子消息使用自己的 `messageId`；仅缺会话 ID 时继承父消息的 `conversationId`。
 - 下载只允许工作目录内安全相对路径，默认不覆盖并原子落盘；覆盖必须由用户显式传 `--overwrite`。读取和下载不需要 `--yes`。
 - Favorite、消息 Pin、消息 Top、会话 Top 是不同对象层级，不能互换。
 

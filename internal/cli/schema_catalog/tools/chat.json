@@ -67449,7 +67449,7 @@
           "type": "integer"
         },
         "time": {
-          "description": "时间边界；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；省略时从当前时间向前读取最近消息",
+          "description": "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -67457,7 +67457,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "时间边界；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；省略时从当前时间向前读取最近消息"
+                  "value": "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息"
                 },
                 {
                   "precedence": "default",
@@ -67469,27 +67469,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "时间边界；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；省略时从当前时间向前读取最近消息"
-            },
-            "format": {
-              "candidates": [
-                {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "usage_format_inference",
-                  "value": "date-time"
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "usage_format_inference",
-              "value": "date-time"
+              "value": "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息"
             },
             "property": {
               "candidates": [
@@ -67548,7 +67528,6 @@
               "value": "string"
             }
           },
-          "format": "date-time",
           "property": "time",
           "required": false,
           "type": "string"
@@ -116465,7 +116444,7 @@
           "type": "string"
         },
         "time": {
-          "description": "起始时间；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD",
+          "description": "起始时间，如 \"2025-03-01 00:00:00\"（可选）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -116473,7 +116452,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "起始时间；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD"
+                  "value": "起始时间，如 \"2025-03-01 00:00:00\"（可选）"
                 },
                 {
                   "precedence": "default",
@@ -116485,27 +116464,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "起始时间；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD"
-            },
-            "format": {
-              "candidates": [
-                {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "usage_format_inference",
-                  "value": "date-time"
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "usage_format_inference",
-              "value": "date-time"
+              "value": "起始时间，如 \"2025-03-01 00:00:00\"（可选）"
             },
             "property": {
               "candidates": [
@@ -116564,7 +116523,6 @@
               "value": "string"
             }
           },
-          "format": "date-time",
           "property": "time",
           "required": false,
           "type": "string"

@@ -63,7 +63,7 @@ var ChatMessages = shortcut.Shortcut{
 		{Name: "user", Type: shortcut.FlagString, Desc: "单聊对方的 userId，与 --group 互斥"},
 		{Name: "user-query", Type: shortcut.FlagString, Desc: "按姓名解析唯一 openDingTalkId"},
 		{Name: "open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊对方的 openDingTalkId，与 --group/--user 互斥"},
-		{Name: "time", Type: shortcut.FlagString, Desc: "时间边界；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；省略时从当前时间向前读取最近消息"},
+		{Name: "time", Type: shortcut.FlagString, Desc: "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的消息条数；显式页大小必须大于 0"},
 		{Name: "size", Type: shortcut.FlagInt, Desc: "--limit 的旧版别名", Hidden: true},
 		{Name: "page-size", Type: shortcut.FlagInt, Desc: "--limit 的兼容别名", Hidden: true},

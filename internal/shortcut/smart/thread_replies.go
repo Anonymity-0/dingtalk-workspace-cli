@@ -50,7 +50,7 @@ var ThreadReplies = shortcut.Shortcut{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群会话 ID（openConversationId，必填）", Required: true},
 		{Name: "thread-id", Type: shortcut.FlagString, Desc: "话题/线程 ID（可直接使用消息列表返回的 threadId）"},
 		{Name: "topic-id", Type: shortcut.FlagString, Desc: "--thread-id 的兼容别名"},
-		{Name: "time", Type: shortcut.FlagString, Desc: "起始时间；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD"},
+		{Name: "time", Type: shortcut.FlagString, Desc: "起始时间，如 \"2025-03-01 00:00:00\"（可选）"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的回复条数；--limit 必须大于 0"},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出回复 reaction（默认输出）"},
 	}, chatshortcut.MessageResourceDownloadFlags()...),
