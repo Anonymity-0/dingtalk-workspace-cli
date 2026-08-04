@@ -72,7 +72,7 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "missing source_hash") {
 			t.Fatalf("missing source_hash error = %v", err)
 		}
-		snapshot.SourceHash = "hash"
+		snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
 		testseam.Swap(t, &loadCatalogValidateInterfaces, func(SchemaRegistry) error { return nil })
 		testseam.Swap(t, &loadCatalogValidateProvenance, func(SchemaRegistry) error { return fmt.Errorf("provenance boom") })
 		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "provenance boom") {
@@ -84,6 +84,7 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 			"id":    "sample",
 			"tools": []any{map[string]any{"canonical_path": "missing.run"}},
 		}}
+		snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
 		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "load typed Schema registry") {
 			t.Fatalf("typed registry error = %v", err)
 		}
@@ -235,11 +236,11 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 
 	t.Run("loadSchemaCatalogSnapshot registry decode failure", func(t *testing.T) {
 		snapshot := SchemaCatalogSnapshot{
-			Version:    SchemaCatalogSnapshotVersion,
-			SourceHash: "deadbeef",
-			Catalog:    map[string]any{"products": "not-a-list"},
-			Tools:      map[string]map[string]any{"a": {"canonical_path": "a"}},
+			Version: SchemaCatalogSnapshotVersion,
+			Catalog: map[string]any{"products": "not-a-list"},
+			Tools:   map[string]map[string]any{"a": {"canonical_path": "a"}},
 		}
+		snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
 		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "load typed Schema registry") {
 			t.Fatalf("snapshot load error = %v", err)
 		}

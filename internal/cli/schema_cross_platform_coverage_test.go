@@ -369,6 +369,19 @@ func TestCrossPlatformCoverageSchemaCatalogLoaderEdges(t *testing.T) {
 		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "empty") {
 			t.Fatalf("empty error = %v", err)
 		}
+		base := mustDeliverySchemaCatalogMaps(t).Snapshot
+		raw, err := json.Marshal(base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var tampered SchemaCatalogSnapshot
+		if err := json.Unmarshal(raw, &tampered); err != nil {
+			t.Fatal(err)
+		}
+		tampered.Catalog["tampered"] = true
+		if _, err := loadSchemaCatalogSnapshot(tampered); err == nil || !strings.Contains(err.Error(), "source_hash does not match") {
+			t.Fatalf("stale source_hash error = %v", err)
+		}
 	})
 
 	t.Run("delivery snapshot and helpers", func(t *testing.T) {
@@ -705,7 +718,9 @@ func TestCrossPlatformCoverageParamAliasRealFlagsByMorph(t *testing.T) {
 
 func TestCrossPlatformCoverageSchemaCatalogSnapshotLoadRoundTrip(t *testing.T) {
 	loaded := mustDeliverySchemaCatalogMaps(t)
-	data, err := json.Marshal(loaded.Snapshot)
+	snapshot := loaded.Snapshot
+	snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
+	data, err := json.Marshal(snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -812,7 +827,9 @@ func TestCrossPlatformCoverageLoadTypedSchemaCatalogSuccess(t *testing.T) {
 		t.Fatal("loaded delivery catalog is empty")
 	}
 	// Round-trip through untyped snapshot decode (CI dump path).
-	raw, err := json.Marshal(loaded.Snapshot)
+	snapshot := loaded.Snapshot
+	snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
+	raw, err := json.Marshal(snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}

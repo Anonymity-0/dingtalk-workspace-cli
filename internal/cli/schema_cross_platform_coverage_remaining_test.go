@@ -545,7 +545,7 @@ func TestCrossPlatformCoverageSchemaCatalogRemainingBranches(t *testing.T) {
 	t.Run("loadSchemaCatalogSnapshot interface validation failure", func(t *testing.T) {
 		testseam.Swap(t, &validateSchemaSnapshotTypedRoundTrip, false)
 		snapshot := SchemaCatalogSnapshot{
-			Version: SchemaCatalogSnapshotVersion, SourceHash: "x",
+			Version: SchemaCatalogSnapshotVersion,
 			Catalog: map[string]any{
 				"kind": "schema", "level": "catalog", "source": "t",
 				"count": float64(1), "tool_count": float64(1),
@@ -561,6 +561,7 @@ func TestCrossPlatformCoverageSchemaCatalogRemainingBranches(t *testing.T) {
 				},
 			},
 		}
+		snapshot.SourceHash = schemaCatalogSnapshotHash(snapshot)
 		testseam.Swap(t, &loadCatalogValidateInterfaces, func(SchemaRegistry) error { return fmt.Errorf("interface boom") })
 		if _, err := loadSchemaCatalogSnapshot(snapshot); err == nil || !strings.Contains(err.Error(), "validate final Schema interface disposition") {
 			t.Fatalf("interface validation error = %v", err)
