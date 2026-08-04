@@ -99,12 +99,13 @@ func TestSchemaSourceRootPreservesRuntimeDepsAndPluginEndpoints(t *testing.T) {
 	}
 }
 
-// TestSchemaSourceRootKeepsStaticServerProductsVisibleWithoutInject proves the
-// declaration-only Schema source root does not need injectStaticServers to keep
-// StaticServers products visible for completeness/help. VisibleProducts may be
-// unset; StaticServers alone must still prevent hideNonDirectRuntimeCommands
-// from marking those products Hidden — without mutating dynamic endpoints.
-func TestSchemaSourceRootKeepsStaticServerProductsVisibleWithoutInject(t *testing.T) {
+// TestCrossPlatformCoverageSchemaSourceRootStaticServerVisibilityWithoutInject
+// proves the declaration-only Schema source root does not need
+// injectStaticServers to keep StaticServers products visible. VisibleProducts
+// may be unset; StaticServers alone must still prevent
+// hideNonDirectRuntimeCommands from marking those products Hidden — without
+// mutating dynamic endpoints.
+func TestCrossPlatformCoverageSchemaSourceRootStaticServerVisibilityWithoutInject(t *testing.T) {
 	previous := edition.Get()
 	t.Cleanup(func() { edition.Override(previous) })
 
@@ -126,11 +127,11 @@ func TestSchemaSourceRootKeepsStaticServerProductsVisibleWithoutInject(t *testin
 	edition.Override(&edition.Hooks{
 		Name: "schema-source-root-static-visibility",
 		StaticServers: func() []edition.ServerInfo {
-			return []edition.ServerInfo{{
-				ID:       "doc",
-				Name:     "Doc",
-				Endpoint: "https://schema-source-root-static.example/doc",
-			}}
+			return []edition.ServerInfo{
+				{ID: "", Name: "ignored-empty", Endpoint: "https://schema-source-root-static.example/empty"},
+				{ID: "  ", Name: "ignored-blank", Endpoint: "https://schema-source-root-static.example/blank"},
+				{ID: "doc", Name: "Doc", Endpoint: "https://schema-source-root-static.example/doc"},
+			}
 		},
 		// VisibleProducts intentionally nil: declaration-only visibility must
 		// still derive from StaticServers without SetDynamicServers.
