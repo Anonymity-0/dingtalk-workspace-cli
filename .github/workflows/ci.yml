@@ -808,6 +808,7 @@ jobs:
         run: ./scripts/policy/run-platform-coverage-gate.sh --base-ref "$COVERAGE_BASE_REF" --profile coverage-windows.txt
 
       - name: Upload Windows coverage artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-windows
