@@ -2,6 +2,10 @@
   "id": "wiki",
   "tools": [
     {
+      "canonical_path": "wiki.list_workspace_feeds",
+      "cli_path": "wiki feed list"
+    },
+    {
       "canonical_path": "wiki.add_member",
       "cli_path": "wiki member add"
     },
