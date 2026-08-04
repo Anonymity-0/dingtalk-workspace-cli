@@ -310,24 +310,6 @@ func topLevelCommand(cmd *cobra.Command) *cobra.Command {
 	return top
 }
 
-func schemaProductToolCount(product map[string]any) int {
-	switch value := product["tool_count"].(type) {
-	case int:
-		return value
-	case int64:
-		return int(value)
-	case float64:
-		return int(value)
-	}
-	if tools, ok := product["tools"].([]map[string]any); ok {
-		return len(tools)
-	}
-	if tools, ok := product["tools"].([]any); ok {
-		return len(tools)
-	}
-	return 0
-}
-
 type runtimeSchemaFieldCandidate struct {
 	Value        any
 	Present      bool
@@ -1027,22 +1009,6 @@ func normalizeRuntimeSchemaConstraints(constraints RuntimeSchemaConstraints) Run
 	return runtimeannotate.NormalizeConstraints(constraints)
 }
 
-func normalizeRuntimeSchemaGroups(groups [][]string, minimum int) [][]string {
-	// Test-facing thin wrapper over NormalizeConstraints group rules.
-	c := RuntimeSchemaConstraints{}
-	switch minimum {
-	case 1:
-		c.RequireOneOf = groups
-	default:
-		c.MutuallyExclusive = groups
-	}
-	out := runtimeannotate.NormalizeConstraints(c)
-	if minimum == 1 {
-		return out.RequireOneOf
-	}
-	return out.MutuallyExclusive
-}
-
 func runtimeSchemaConstraintsEmpty(constraints RuntimeSchemaConstraints) bool {
 	return runtimeannotate.ConstraintsEmpty(constraints)
 }
@@ -1089,26 +1055,6 @@ func runtimeFlagCLIType(flag *pflag.Flag) string {
 	default:
 		return "string"
 	}
-}
-
-func runtimeFlagRequiredState(flag *pflag.Flag) (bool, bool) {
-	// This helper reports the projected Schema annotation first. Cobra's
-	// executable marker is retained as a lower-priority observation; the typed
-	// contract exposes both candidates when an explicit overlay lowers it.
-	if raw := firstFlagAnnotation(flag, runtimeSchemaFlagRequiredAnnotation); raw != "" {
-		required, err := strconv.ParseBool(raw)
-		if err == nil {
-			return required, true
-		}
-	}
-	if runtimeFlagCobraHardRequired(flag) {
-		return true, true
-	}
-	usage := strings.ToLower(strings.TrimSpace(flag.Usage))
-	if usageImpliesRequired(usage) {
-		return true, true
-	}
-	return false, false
 }
 
 func usageImpliesRequired(usage string) bool {

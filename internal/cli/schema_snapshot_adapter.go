@@ -217,14 +217,6 @@ func schemaToolWireFromPayload(payload map[string]any) (schemaToolWire, error) {
 	return wire, nil
 }
 
-func schemaToolSpecFromPayload(payload map[string]any) (ToolSpec, error) {
-	wire, err := schemaToolWireFromPayload(payload)
-	if err != nil {
-		return ToolSpec{}, err
-	}
-	return schemaToolSpecFromWire(wire)
-}
-
 func schemaToolSpecFromWire(wire schemaToolWire) (ToolSpec, error) {
 	parameterNames := make([]string, 0, len(wire.Parameters))
 	for name := range wire.Parameters {

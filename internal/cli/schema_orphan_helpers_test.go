@@ -1,0 +1,135 @@
+// Copyright 2026 Alibaba Group
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package cli
+
+// Test-only helpers relocated from production schema files; none of these
+// functions has a production caller.
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
+)
+
+func schemaProductToolCount(product map[string]any) int {
+	switch value := product["tool_count"].(type) {
+	case int:
+		return value
+	case int64:
+		return int(value)
+	case float64:
+		return int(value)
+	}
+	if tools, ok := product["tools"].([]map[string]any); ok {
+		return len(tools)
+	}
+	if tools, ok := product["tools"].([]any); ok {
+		return len(tools)
+	}
+	return 0
+}
+
+func normalizeRuntimeSchemaGroups(groups [][]string, minimum int) [][]string {
+	// Test-facing thin wrapper over NormalizeConstraints group rules.
+	c := RuntimeSchemaConstraints{}
+	switch minimum {
+	case 1:
+		c.RequireOneOf = groups
+	default:
+		c.MutuallyExclusive = groups
+	}
+	out := runtimeannotate.NormalizeConstraints(c)
+	if minimum == 1 {
+		return out.RequireOneOf
+	}
+	return out.MutuallyExclusive
+}
+
+func runtimeFlagRequiredState(flag *pflag.Flag) (bool, bool) {
+	// This helper reports the projected Schema annotation first. Cobra's
+	// executable marker is retained as a lower-priority observation; the typed
+	// contract exposes both candidates when an explicit overlay lowers it.
+	if raw := firstFlagAnnotation(flag, runtimeSchemaFlagRequiredAnnotation); raw != "" {
+		required, err := strconv.ParseBool(raw)
+		if err == nil {
+			return required, true
+		}
+	}
+	if runtimeFlagCobraHardRequired(flag) {
+		return true, true
+	}
+	usage := strings.ToLower(strings.TrimSpace(flag.Usage))
+	if usageImpliesRequired(usage) {
+		return true, true
+	}
+	return false, false
+}
+
+func deliverySchemaCatalogAvailable() bool {
+	return deliverySchemaCatalogError() == nil && len(deliverySchemaCatalog().Index.CanonicalPaths()) > 0
+}
+
+func exactSchemaCommand(root *cobra.Command, rawPath string) *cobra.Command {
+	if root == nil {
+		return nil
+	}
+	parts := strings.Fields(strings.TrimSpace(rawPath))
+	if len(parts) > 0 && parts[0] == root.Name() {
+		parts = parts[1:]
+	}
+	current := root
+	for _, part := range parts {
+		var next *cobra.Command
+		for _, child := range current.Commands() {
+			if child.Name() == part {
+				next = child
+				break
+			}
+		}
+		if next == nil {
+			return nil
+		}
+		current = next
+	}
+	if current == root {
+		return nil
+	}
+	return current
+}
+
+func schemaMap(value any) map[string]map[string]any {
+	input, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	out := make(map[string]map[string]any, len(input))
+	for key, value := range input {
+		if item, ok := value.(map[string]any); ok {
+			out[key] = item
+		}
+	}
+	return out
+}
+
+func schemaToolSpecFromPayload(payload map[string]any) (ToolSpec, error) {
+	wire, err := schemaToolWireFromPayload(payload)
+	if err != nil {
+		return ToolSpec{}, err
+	}
+	return schemaToolSpecFromWire(wire)
+}

@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
-	"github.com/spf13/cobra"
 )
 
 const SchemaCatalogSnapshotVersion = 1
@@ -205,10 +204,6 @@ func loadSchemaCatalogSnapshot(snapshot SchemaCatalogSnapshot) (loadedSchemaCata
 	return loadedSchemaCatalog{Snapshot: snapshot, Registry: registry, Index: index}, nil
 }
 
-func deliverySchemaCatalogAvailable() bool {
-	return deliverySchemaCatalogError() == nil && len(deliverySchemaCatalog().Index.CanonicalPaths()) > 0
-}
-
 func deliverySchemaAllPayload() (map[string]any, error) {
 	if err := deliverySchemaCatalogError(); err != nil {
 		return nil, err
@@ -245,34 +240,6 @@ func schemaOverviewPayloadFromLoaded(loaded loadedSchemaCatalog) (map[string]any
 		payload["surface_hash"] = loaded.Snapshot.SurfaceHash
 	}
 	return payload, nil
-}
-
-func exactSchemaCommand(root *cobra.Command, rawPath string) *cobra.Command {
-	if root == nil {
-		return nil
-	}
-	parts := strings.Fields(strings.TrimSpace(rawPath))
-	if len(parts) > 0 && parts[0] == root.Name() {
-		parts = parts[1:]
-	}
-	current := root
-	for _, part := range parts {
-		var next *cobra.Command
-		for _, child := range current.Commands() {
-			if child.Name() == part {
-				next = child
-				break
-			}
-		}
-		if next == nil {
-			return nil
-		}
-		current = next
-	}
-	if current == root {
-		return nil
-	}
-	return current
 }
 
 // queryDeliverySchemaPayload serves dws schema queries through the production
@@ -386,20 +353,6 @@ func schemaMapSlice(value any) []map[string]any {
 	default:
 		return nil
 	}
-}
-
-func schemaMap(value any) map[string]map[string]any {
-	input, ok := value.(map[string]any)
-	if !ok {
-		return nil
-	}
-	out := make(map[string]map[string]any, len(input))
-	for key, value := range input {
-		if item, ok := value.(map[string]any); ok {
-			out[key] = item
-		}
-	}
-	return out
 }
 
 func schemaString(value any) string {
