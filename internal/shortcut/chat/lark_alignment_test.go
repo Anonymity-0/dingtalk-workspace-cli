@@ -547,8 +547,8 @@ func TestCrossPlatformCoverageFlagBatchContinuesAndPublishesFailureLedger(t *tes
 		"--conversation-id", "cid",
 		"--yes",
 	})
-	if err := root.Execute(); err != nil {
-		t.Fatal(err)
+	if err := root.Execute(); err == nil {
+		t.Fatal("partial batch failure returned success")
 	}
 	if len(fake.calls) != 2 {
 		t.Fatalf("calls = %#v", fake.calls)

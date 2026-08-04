@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -145,6 +146,66 @@ func TestCrossPlatformCoverageMessagesSendBotMultiGroupPublishesPerTargetLedger(
 		payload["requestedCount"] != float64(2) || payload["succeededCount"] != float64(2) ||
 		payload["failedCount"] != float64(0) {
 		t.Fatalf("multi-group ledger = %#v", payload)
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendBotMultiGroupFailuresReturnNonzero(t *testing.T) {
+	tests := []struct {
+		name          string
+		fake          *larkAlignmentCaller
+		wantSucceeded float64
+		wantFailed    float64
+		wantPartial   bool
+	}{
+		{
+			name: "partial failure",
+			fake: &larkAlignmentCaller{failProductToolAt: map[string]int{
+				"bot/send_robot_group_message": 2,
+			}},
+			wantSucceeded: 1,
+			wantFailed:    1,
+			wantPartial:   true,
+		},
+		{
+			name:          "all failed",
+			fake:          &larkAlignmentCaller{failProductTool: "bot/send_robot_group_message"},
+			wantSucceeded: 0,
+			wantFailed:    2,
+			wantPartial:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			helpers.InitDeps(tt.fake)
+			root := newPlatformCoverageRoot()
+			var output bytes.Buffer
+			root.SetOut(&output)
+			root.SetArgs([]string{
+				"chat", "+messages-send", "--as", "bot", "--robot-code", "robot",
+				"--groups", "cid-a,cid-b", "--markdown", "通知", "--yes",
+			})
+
+			err := root.Execute()
+			if err == nil {
+				t.Fatal("failed multi-group delivery returned success")
+			}
+			var typed *apperrors.Error
+			if !errors.As(err, &typed) || typed.Category != apperrors.CategoryAPI ||
+				typed.Reason != "batch_write_failed" || typed.ExitCode() == 0 {
+				t.Fatalf("batch error = %#v (%v)", typed, err)
+			}
+
+			var payload map[string]any
+			if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload["ok"] != false || payload["partial"] != tt.wantPartial ||
+				payload["succeededCount"] != tt.wantSucceeded ||
+				payload["failedCount"] != tt.wantFailed {
+				t.Fatalf("failure ledger = %#v", payload)
+			}
+		})
 	}
 }
 
