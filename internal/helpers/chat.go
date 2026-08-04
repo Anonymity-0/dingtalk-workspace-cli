@@ -3672,7 +3672,6 @@ func newChatCommand() *cobra.Command {
 	chatMessageSendByBotCmd.Flags().String("at-open-dingtalk-ids", "", "@指定成员的 openDingtalkId 列表，逗号分隔（仅群聊时生效，可选）")
 	chatMessageSendByBotCmd.Flags().Bool("at-all", false, "@所有人（可选），服务端接收字符串 true/false")
 	cli.AnnotateRuntimeFlagFormat(chatMessageSendByBotCmd, "file-path", "file-path")
-	cli.AnnotateRuntimeFlagRequiredWhen(chatMessageSendByBotCmd, "text", "msg-type is markdown or omitted")
 
 	chatMessageRecallByBotCmd.Flags().String("robot-code", "", "机器人 Code (必填)")
 	_ = chatMessageRecallByBotCmd.MarkFlagRequired("robot-code")
