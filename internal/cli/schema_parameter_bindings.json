@@ -2,8 +2,8 @@
   "version": 3,
   "baseline": {
     "manifest": "schema-parameter-bindings-v3",
-    "sha256": "sha256:50f417873ca33f7d5bd9e3a2df4e852f3713a64fd2f6340f06e7a9e9c05b81d3",
-    "reason": "Reviewed v3 baseline after binding the OA full-request flags to their pinned request-wrapper parameters and recording simple-mode wrapper inputs as exact mapping exclusions.",
+    "sha256": "sha256:157aaf77922525f0cc010ce25432282c27c87f9b8ce2ef877a43724f2bc6d15b",
+    "reason": "Reviewed v3 baseline after combining the OA full-request wrapper bindings and exclusions with wiki.list_workspace_feeds workspaceId/maxResults/nextToken/excludeFile bindings.",
     "reviewed": true
   },
   "removals": {
@@ -1328,6 +1328,12 @@
       "cursor": "pageToken",
       "folder": "folderId",
       "limit": "pageSize",
+      "workspace": "workspaceId"
+    },
+    "wiki.list_workspace_feeds": {
+      "cursor": "nextToken",
+      "exclude-file": "excludeFile",
+      "limit": "maxResults",
       "workspace": "workspaceId"
     },
     "wiki.node_copy": {

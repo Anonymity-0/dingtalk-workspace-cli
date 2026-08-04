@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "surface_hash": "sha256:b25b48bd12d6d2d370d2f1e7176c67d6e3d786e5c2f4508c8fe63ccda052696c",
-  "source_hash": "sha256:d93f9b5eab2252571e7e4df737df03f960125fdc51b2c48e86c4bd20578d0d0b",
+  "surface_hash": "sha256:beeddac7cd934e409e47e5b4552dbc188840ad46205d8d48340569a97c51b59b",
+  "source_hash": "sha256:6fe48c19b11a2d917fad3d59c96b40bf1b7620ed4334d96cef6544dbe3742e30",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:aff243e285acc854ea29c265591108c2e0ee5585139b465f5bcf9c26ec5681a5",
-      "surface_hash": "sha256:b25b48bd12d6d2d370d2f1e7176c67d6e3d786e5c2f4508c8fe63ccda052696c",
+      "source_hash": "sha256:9a6bc544f78424a85d7465cbb8ce20ee80c954de7ec3f7657eb42b05679d663d",
+      "surface_hash": "sha256:beeddac7cd934e409e47e5b4552dbc188840ad46205d8d48340569a97c51b59b",
       "surface_products": 26,
-      "surface_tools": 849,
-      "tools_with_agent_summary": 849,
-      "tools_with_metadata": 849,
+      "surface_tools": 850,
+      "tools_with_agent_summary": 850,
+      "tools_with_metadata": 850,
       "unmatched_skill_tools": 122,
       "version": 1
     },
@@ -33,7 +33,7 @@
       "source": "mcp-tools-list+cli-registry",
       "source_hash": "sha256:17251f74a4f76142457cc0e87251ecb86c1e3bda0cdf2edc02f351589716ecbc",
       "source_revision": "4574f7022c32cf4c033e9b7b4156e2fec815fed8",
-      "tool_count": 422,
+      "tool_count": 423,
       "version": 1
     },
     "kind": "schema",
@@ -26200,7 +26200,7 @@
         "avoid_when": [
           "需要编辑在线文档正文时使用 doc；只管理钉盘普通文件时使用 drive"
         ],
-        "description": "知识库 / 空间管理 / 节点管理 / 成员管理",
+        "description": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
         "field_provenance": {
           "agent_summary": {
             "candidates": [
@@ -26254,9 +26254,9 @@
           }
         },
         "id": "wiki",
-        "name": "知识库 / 空间管理 / 节点管理 / 成员管理",
+        "name": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
         "runtime": true,
-        "tool_count": 16,
+        "tool_count": 17,
         "tools": [
           {
             "agent_metadata_source": "embedded-skill-metadata",
@@ -26545,6 +26545,39 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "查询知识库的活动动态：谁在什么时间更新/上传/评论了哪些文档",
+            "agent_summary_source": "dws-agent-selection/wiki",
+            "availability": "available",
+            "avoid_when": [
+              "要看知识库当前有哪些节点用 node list；库内按关键词找文档用 node search",
+              "要读某篇文档正文用 doc read；跨库全局找文件用 drive search"
+            ],
+            "canonical_path": "wiki.list_workspace_feeds",
+            "cli_name": "list",
+            "cli_path": "wiki feed list",
+            "confirmation": "not_required",
+            "description": "查询指定知识库的动态列表，返回动态类型、时间、内容摘要等信息。\n\n通过 --workspace 指定知识库，支持传入知识库 ID 或知识库 URL。\n支持分页，通过 --cursor 传入上次返回的 nextToken 获取下一页。\n\n权限要求：调用者需具备知识库的成员权限，非成员会被拒绝访问。",
+            "effect": "read",
+            "group": "feed",
+            "idempotency": "idempotent",
+            "interface_mode": "mcp",
+            "interface_ref": {
+              "product_id": "wiki",
+              "rpc_name": "list_workspace_feeds"
+            },
+            "metadata_source": "embedded-mcp-metadata",
+            "name": "list_workspace_feeds",
+            "primary_cli_path": "wiki feed list",
+            "reviewed": true,
+            "risk": "low",
+            "title": "查询知识库动态列表",
+            "use_when": [
+              "用户问某个知识库最近有什么更新、谁改了什么、有哪些评论等协作动态时",
+              "需要巡检知识库变更并按时间线汇总成动态摘要时"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "将知识库中的节点复制到指定位置",
             "agent_summary_source": "dws-agent-selection/wiki",
             "availability": "available",
@@ -26764,6 +26797,6 @@
       }
     ],
     "source": "embedded-command-catalog",
-    "tool_count": 849
+    "tool_count": 850
   }
 }

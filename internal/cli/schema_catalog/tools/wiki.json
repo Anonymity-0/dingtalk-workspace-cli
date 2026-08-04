@@ -28,7 +28,7 @@
       "cli_path": "wiki member add",
       "confirmation": "not_required",
       "description": "为指定知识库添加一个或多个成员，并授予指定角色。\n\n通过 --users 传入逗号分隔的 userId 列表，多个用户将被授予同一角色。\n\n支持的角色 (--role)（必须大写）：\n  MANAGER     管理员，可读写、管理成员\n  EDITOR      编辑者，可查看、编辑、上传内容\n  DOWNLOADER  查看下载者，可查看并下载内容\n  READER      仅可查看者，仅可查看，不可下载\n\n注意：\n- OWNER 角色不可通过此接口添加，知识库创建者默认为所有者。\n- 操作者需具备知识库的 OWNER 或 MANAGER 权限。\n- 单次请求最多 30 个成员，超出请分批调用。\n\n支持通过 --workspace 传入知识库 ID 或知识库 URL，系统自动识别。\n用户 uid 可通过「钉钉通讯录」相关命令检索，如:\n  dws contact user search --keyword \"姓名\"",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "write",
       "effect_source": "command-verb",
       "examples": [
@@ -732,7 +732,7 @@
       "cli_path": "wiki node create",
       "confirmation": "not_required",
       "description": "在指定知识库中创建文档、文件夹或其他类型的节点。\n\n通过 --type 指定节点类型（服务端支持以下值，asheet 不被支持）：\n  adoc      在线文档 (默认)\n  axls      在线电子表格\n  able      多维表\n  appt      在线演示\n  adraw     白板/画板\n  amind     脑图\n  folder    文件夹\n\n通过 --folder 指定父节点，不传则创建在知识库根目录。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "write",
       "effect_source": "command-verb",
       "examples": [
@@ -1501,7 +1501,7 @@
       "cli_path": "wiki space create",
       "confirmation": "not_required",
       "description": "创建一个新的钉钉文档知识库（WikiSpace）。\n\n创建成功后返回新知识库的 workspaceId，可用于后续在该知识库下创建文档或遍历文件。\n操作受权限控制，仅当调用者具备在当前组织内创建知识库的权限时可成功创建。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "write",
       "effect_source": "command-verb",
       "examples": [
@@ -2149,7 +2149,7 @@
       "cli_path": "wiki node delete",
       "confirmation": "user_required",
       "description": "将知识库中的节点移入回收站。\n\n注意: 这是一个危险操作。执行前需要确认，或传入 --yes 跳过确认。\n删除后节点会进入回收站，有保留期限可恢复。\n\n权限要求: 对节点有\"管理\"权限。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "destructive",
       "effect_source": "agent-hint",
       "examples": [
@@ -2737,7 +2737,7 @@
       "cli_path": "wiki space delete",
       "confirmation": "user_required",
       "description": "将指定知识库移入回收站。\n\n删除后知识库会进入回收站，可在回收站中恢复（有保留期限）。\n支持传入知识库 ID 或知识库 URL，系统自动识别。\n知识库 URL 格式：https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview\n\n注意：\n- 操作者必须具备知识库的 OWNER 角色。\n- 这是一个危险操作，执行前请确认。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "destructive",
       "effect_source": "agent-hint",
       "examples": [
@@ -3219,7 +3219,7 @@
       "cli_path": "wiki space get",
       "confirmation": "not_required",
       "description": "获取指定知识库的详细信息，包括名称、描述、创建者、创建时间、成员数量等。\n\n支持传入知识库 ID 或知识库 URL，系统自动识别。\n知识库 URL 格式：https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "read",
       "effect_source": "command-verb",
       "examples": [
@@ -3676,7 +3676,7 @@
       "cli_path": "wiki member list",
       "confirmation": "not_required",
       "description": "查询指定知识库的成员列表，返回每位成员的 userId、姓名、角色等信息。\n\n注意：底层不支持游标分页，--limit 仅控制单次返回的最大条数（最大 200）。\n若结果被截断（出参 truncated=true），可通过 --filter-role 收窄查询范围；\nORG 类型授权不会出现在查询结果中。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "read",
       "effect_source": "command-verb",
       "examples": [
@@ -4379,7 +4379,7 @@
       "cli_path": "wiki node list",
       "confirmation": "not_required",
       "description": "列出指定知识库下的直接子节点（文档、文件夹、表格等）。\n\n通过 --folder 指定父节点可列出子目录内容；不传 --folder 则列出知识库根目录。\n支持分页，通过 --cursor 传入上次返回的 pageToken 获取下一页。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "read",
       "effect_source": "command-verb",
       "examples": [
@@ -5163,7 +5163,7 @@
       "cli_path": "wiki space list",
       "confirmation": "not_required",
       "description": "获取当前用户有权访问的空间列表。统一管理两种空间类型。\n\n通过 --type 参数控制返回范围：\n  orgWikiSpace  — 组织知识库列表（默认，支持分页）\n  myWikiSpace   — 当前用户的「我的文档」个人空间（固定 1 条）\n  orgSpace      — 钉盘企业空间（团队文件）列表\n  mySpace       — 钉盘「我的文件」个人空间",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "read",
       "effect_source": "command-verb",
       "examples": [
@@ -5796,6 +5796,793 @@
         "需要 workspaceId / rootFolderId 作为后续 node/drive 操作前置时"
       ]
     },
+    "wiki.list_workspace_feeds": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "CommandRegistry:canonical_path=wiki.list_workspace_feeds",
+        "Skill:skills/mono/references/products/wiki.md",
+        "cobra-help:dws wiki feed list",
+        "internal/cli/schema_hints/metadata/wiki.json",
+        "internal/cli/schema_hints/selection/wiki.json",
+        "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds",
+        "live-mcp-tools-list:wiki.list_workspace_feeds",
+        "skills/mono/references/products/wiki.md"
+      ],
+      "agent_summary": "查询知识库的活动动态：谁在什么时间更新/上传/评论了哪些文档",
+      "agent_summary_source": "dws-agent-selection/wiki",
+      "availability": "available",
+      "avoid_when": [
+        "要看知识库当前有哪些节点用 node list；库内按关键词找文档用 node search",
+        "要读某篇文档正文用 doc read；跨库全局找文件用 drive search"
+      ],
+      "canonical_path": "wiki.list_workspace_feeds",
+      "cli_name": "list",
+      "cli_path": "wiki feed list",
+      "confirmation": "not_required",
+      "description": "查询指定知识库的动态列表，返回动态类型、时间、内容摘要等信息。\n\n通过 --workspace 指定知识库，支持传入知识库 ID 或知识库 URL。\n支持分页，通过 --cursor 传入上次返回的 nextToken 获取下一页。\n\n权限要求：调用者需具备知识库的成员权限，非成员会被拒绝访问。",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
+      "effect": "read",
+      "effect_source": "command-verb",
+      "examples": [
+        "dws wiki feed list --workspace \u003cworkspaceId\u003e --format json",
+        "dws wiki feed list --workspace \u003cworkspaceId\u003e --limit 10 --format json"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "value": "查询知识库的活动动态：谁在什么时间更新/上传/评论了哪些文档"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+          "source": "internal/cli/schema_hints/selection/wiki.json",
+          "value": "查询知识库的活动动态：谁在什么时间更新/上传/评论了哪些文档"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/wiki.json",
+              "value": "available"
+            },
+            {
+              "precedence": "mcp_fallback",
+              "selected": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds.interface_ref",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands.",
+          "source": "internal/cli/schema_hints/metadata/wiki.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "value": [
+                "要看知识库当前有哪些节点用 node list；库内按关键词找文档用 node search",
+                "要读某篇文档正文用 doc read；跨库全局找文件用 drive search"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+          "source": "internal/cli/schema_hints/selection/wiki.json",
+          "value": [
+            "要看知识库当前有哪些节点用 node list；库内按关键词找文档用 node search",
+            "要读某篇文档正文用 doc read；跨库全局找文件用 drive search"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "wiki feed list",
+              "value": "wiki.list_workspace_feeds"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "wiki feed list",
+          "value": "wiki.list_workspace_feeds"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "inference_or_default",
+              "selected": true,
+              "source": "risk-default",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "inference_or_default",
+          "resolution": "highest_precedence",
+          "source": "risk-default",
+          "value": "not_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "查询指定知识库的动态列表，返回动态类型、时间、内容摘要等信息。\n\n通过 --workspace 指定知识库，支持传入知识库 ID 或知识库 URL。\n支持分页，通过 --cursor 传入上次返回的 nextToken 获取下一页。\n\n权限要求：调用者需具备知识库的成员权限，非成员会被拒绝访问。"
+            },
+            {
+              "precedence": "mcp_metadata",
+              "selected": false,
+              "source": "mcp_metadata",
+              "value": "功能概述：\r\n查询指定钉钉文档知识库的活动动态，包括谁在什么时间对哪些文档进行了更新、上传、评论等操作。通过传入 workspaceId（知识库 ID 或知识库 URL）定位目标知识库，返回动态列表，每条包含动态类型（type）、发生时间（time）和内容摘要（content）。支持游标分页（nextToken），可选排除文件相关动态（excludeFile）。\r\n\r\n适用场景：\r\n– 需要了解知识库最近有哪些文档被更新或上传了新文件。\r\n– 需要追踪知识库内的协作活动，如谁评论了哪篇文档。\r\n– 定期巡检知识库变更情况，生成动态摘要报告。\r\n\r\n注意事项：\r\n– 权限要求：操作者需具备知识库的成员权限，非成员会被拒绝访问。\r\n– 通过 workspaceId 定位知识库，支持知识库 ID（纯字符串）或知识库 URL（如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview），系统自动提取。\r\n– 每页默认返回 20 条动态，通过 maxResults 调整，最大 50 条。首页不传 nextToken，翻页时传入上次返回的 nextToken 值。\r\n– excludeFile 设为 true 可过滤掉文件相关的动态，默认 false 即返回全部动态类型。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "查询指定知识库的动态列表，返回动态类型、时间、内容摘要等信息。\n\n通过 --workspace 指定知识库，支持传入知识库 ID 或知识库 URL。\n支持分页，通过 --cursor 传入上次返回的 nextToken 获取下一页。\n\n权限要求：调用者需具备知识库的成员权限，非成员会被拒绝访问。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "inference_or_default",
+              "selected": true,
+              "source": "command-verb",
+              "value": "read"
+            }
+          ],
+          "precedence": "inference_or_default",
+          "resolution": "highest_precedence",
+          "source": "command-verb",
+          "value": "read"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "value": [
+                "dws wiki feed list --workspace \u003cworkspaceId\u003e --format json",
+                "dws wiki feed list --workspace \u003cworkspaceId\u003e --limit 10 --format json"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+          "source": "internal/cli/schema_hints/selection/wiki.json",
+          "value": [
+            "dws wiki feed list --workspace \u003cworkspaceId\u003e --format json",
+            "dws wiki feed list --workspace \u003cworkspaceId\u003e --limit 10 --format json"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "inference_or_default",
+              "selected": true,
+              "source": "effect-default",
+              "value": "idempotent"
+            }
+          ],
+          "precedence": "inference_or_default",
+          "resolution": "highest_precedence",
+          "source": "effect-default",
+          "value": "idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/wiki.json",
+              "value": "mcp"
+            },
+            {
+              "precedence": "mcp_fallback",
+              "selected": false,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds.interface_ref",
+              "value": "mcp"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands.",
+          "source": "internal/cli/schema_hints/metadata/wiki.json",
+          "value": "mcp"
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "mcp_fallback",
+              "selected": true,
+              "source": "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds.interface_ref",
+              "value": {
+                "product_id": "wiki",
+                "rpc_name": "list_workspace_feeds"
+              }
+            }
+          ],
+          "precedence": "mcp_fallback",
+          "resolution": "highest_precedence",
+          "source": "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds.interface_ref",
+          "value": {
+            "product_id": "wiki",
+            "rpc_name": "list_workspace_feeds"
+          }
+        },
+        "metadata_source": {
+          "candidates": [
+            {
+              "precedence": "derived_resolution",
+              "selected": true,
+              "source": "metadata_source_resolution",
+              "value": "embedded-mcp-metadata"
+            }
+          ],
+          "precedence": "derived_resolution",
+          "resolution": "highest_precedence",
+          "source": "metadata_source_resolution",
+          "value": "embedded-mcp-metadata"
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/wiki.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands.",
+          "source": "internal/cli/schema_hints/metadata/wiki.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "inference_or_default",
+              "selected": true,
+              "source": "effect-default",
+              "value": "low"
+            }
+          ],
+          "precedence": "inference_or_default",
+          "resolution": "highest_precedence",
+          "source": "effect-default",
+          "value": "low"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "查询知识库动态列表"
+            },
+            {
+              "precedence": "mcp_metadata",
+              "selected": false,
+              "source": "mcp_metadata",
+              "value": "list_workspace_feeds"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "查询知识库动态列表"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "value": [
+                "用户问某个知识库最近有什么更新、谁改了什么、有哪些评论等协作动态时",
+                "需要巡检知识库变更并按时间线汇总成动态摘要时"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+          "source": "internal/cli/schema_hints/selection/wiki.json",
+          "value": [
+            "用户问某个知识库最近有什么更新、谁改了什么、有哪些评论等协作动态时",
+            "需要巡检知识库变更并按时间线汇总成动态摘要时"
+          ]
+        }
+      },
+      "group": "feed",
+      "has_parameters": true,
+      "idempotency": "idempotent",
+      "interface_mode": "mcp",
+      "interface_ref": {
+        "product_id": "wiki",
+        "rpc_name": "list_workspace_feeds"
+      },
+      "is_alias": false,
+      "metadata_source": "embedded-mcp-metadata",
+      "name": "list_workspace_feeds",
+      "parameter_count": 4,
+      "parameters": {
+        "cursor": {
+          "description": "分页游标 (首页留空)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "分页游标 (首页留空)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "分页游标，首次查询不传，后续翻页时传入上次返回的 nextToken。"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "分页游标 (首页留空)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "versioned_binding",
+                  "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "nextToken"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "cursor"
+                }
+              ],
+              "precedence": "versioned_binding",
+              "resolution": "highest_precedence",
+              "source": "versioned_parameter_binding",
+              "value": "nextToken"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "interface_description": "分页游标，首次查询不传，后续翻页时传入上次返回的 nextToken。",
+          "property": "nextToken",
+          "required": false,
+          "type": "string"
+        },
+        "exclude-file": {
+          "description": "是否排除文件相关的动态 (默认 false)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "是否排除文件相关的动态 (默认 false)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "是否排除文件相关的动态，选填，默认 false。"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "是否排除文件相关的动态 (默认 false)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "versioned_binding",
+                  "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "excludeFile"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "excludeFile"
+                }
+              ],
+              "precedence": "versioned_binding",
+              "resolution": "highest_precedence",
+              "source": "versioned_parameter_binding",
+              "value": "excludeFile"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "interface_description": "是否排除文件相关的动态，选填，默认 false。",
+          "property": "excludeFile",
+          "required": false,
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "每页数量 (默认 20，最大 50)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "每页数量 (默认 20，最大 50)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "期望返回的最大动态条数，默认 20，最大 50。"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "每页数量 (默认 20，最大 50)"
+            },
+            "interface_type": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": "number"
+                },
+                {
+                  "precedence": "fallback",
+                  "selected": false,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": "number"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "versioned_binding",
+                  "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "maxResults"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "limit"
+                }
+              ],
+              "precedence": "versioned_binding",
+              "resolution": "highest_precedence",
+              "source": "versioned_parameter_binding",
+              "value": "maxResults"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "interface_description": "期望返回的最大动态条数，默认 20，最大 50。",
+          "interface_type": "number",
+          "property": "maxResults",
+          "required": false,
+          "type": "integer"
+        },
+        "workspace": {
+          "description": "知识库 ID 或 URL (必填)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "知识库 ID 或 URL (必填)"
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
+                  "source": "mcp_metadata",
+                  "value": "目标知识库的标识，支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "知识库 ID 或 URL (必填)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "versioned_binding",
+                  "selected": true,
+                  "source": "versioned_parameter_binding",
+                  "value": "workspaceId"
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "flag_name_inference",
+                  "value": "workspace"
+                }
+              ],
+              "precedence": "versioned_binding",
+              "resolution": "highest_precedence",
+              "source": "versioned_parameter_binding",
+              "value": "workspaceId"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": true,
+                  "source": "mcp_metadata",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "mcp_metadata",
+              "resolution": "highest_precedence",
+              "source": "mcp_metadata",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "interface_description": "目标知识库的标识，支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。",
+          "property": "workspaceId",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "wiki.list_workspace_feeds",
+      "primary_cli_path": "wiki feed list",
+      "product_id": "wiki",
+      "reviewed": true,
+      "risk": "low",
+      "source": "reviewed_command_registry",
+      "title": "查询知识库动态列表",
+      "use_when": [
+        "用户问某个知识库最近有什么更新、谁改了什么、有哪些评论等协作动态时",
+        "需要巡检知识库变更并按时间线汇总成动态摘要时"
+      ]
+    },
     "wiki.node_copy": {
       "agent_metadata_source": "embedded-skill-metadata",
       "agent_source_refs": [
@@ -5822,7 +6609,7 @@
       "cli_path": "wiki node copy",
       "confirmation": "not_required",
       "description": "将知识库中的节点复制到指定位置。\n\n通过 --node 指定源节点，通过 --folder 指定目标文件夹。\n不传 --folder 时复制到 --workspace 指定知识库的根目录。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "write",
       "effect_source": "command-verb",
       "examples": [
@@ -6488,7 +7275,7 @@
       "cli_path": "wiki node move",
       "confirmation": "not_required",
       "description": "将知识库中的节点移动到指定位置。\n\n通过 --node 指定源节点，通过 --folder 指定目标文件夹。\n不传 --folder 时移动到 --workspace 指定知识库的根目录。\n\n注意：跨知识库移动需要同时具备源和目标的相应权限。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "write",
       "effect_source": "command-verb",
       "examples": [
@@ -7153,7 +7940,7 @@
       "cli_path": "wiki node search",
       "confirmation": "not_required",
       "description": "在指定知识库内搜索文档/文件夹/表格等节点。\n\n通过 --workspace 限定搜索范围到某个知识库，通过 --query 指定搜索关键词。\n支持按文件扩展名过滤（--extensions），如 adoc、asheet、pdf 等。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "read",
       "effect_source": "command-verb",
       "examples": [
@@ -8051,7 +8838,7 @@
       "cli_path": "wiki member remove",
       "confirmation": "not_required",
       "description": "从指定知识库中移除一个或多个成员（仅支持 USER 类型）。\n\n移除后相关用户将无法访问该知识库下的内容（除非通过节点级权限另行授权）。\n\n注意：\n- OWNER 角色不可通过此接口移除。\n- 操作者需具备知识库的 OWNER 或 MANAGER 权限。\n- 单次请求最多 30 个成员，超出请分批调用。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
@@ -8671,7 +9458,7 @@
         ]
       },
       "description": "根据关键词搜索当前用户有权限访问的知识库列表，匹配知识库名称和描述。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "read",
       "effect_source": "command-verb",
       "examples": [
@@ -9370,7 +10157,7 @@
       "cli_path": "wiki +space-search",
       "confirmation": "not_required",
       "description": "当你只记得知识库名称的部分关键词、想快速按名称定位某个知识库时使用；输入关键词返回匹配的知识库列表，比逐页 +space-list 更快找到目标 workspaceId。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
@@ -9880,7 +10667,7 @@
       "cli_path": "wiki member update",
       "confirmation": "not_required",
       "description": "更新指定知识库已有成员的角色。\n\n支持的角色 (--role)（必须大写）：\n  MANAGER     管理员\n  EDITOR      编辑者\n  DOWNLOADER  查看下载者\n  READER      仅可查看者\n\n注意：\n- OWNER 角色不可通过此接口变更。\n- 同一成员在同一知识库只能拥有一个角色，变更后旧角色自动替换。\n- 操作者需具备知识库的 OWNER 或 MANAGER 权限。\n\n仅可更新已存在成员关系的成员，新增成员请使用 dws wiki member add。",
-      "display": "知识库 / 空间管理 / 节点管理 / 成员管理",
+      "display": "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
       "effect": "write",
       "effect_source": "command-verb",
       "examples": [
