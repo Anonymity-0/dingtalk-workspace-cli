@@ -547,6 +547,16 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		}
 	}
 
+	darwinStart := strings.Index(admission, "\n  test-darwin:\n")
+	darwinEnd := strings.Index(admission, "\n  test-windows:\n")
+	if darwinStart < 0 || darwinEnd <= darwinStart {
+		t.Fatal("Code Admission workflow missing macOS test job boundaries")
+	}
+	darwinJob := admission[darwinStart:darwinEnd]
+	if !strings.Contains(darwinJob, `go test -v -race -count=1 -timeout=12m ./internal/keychain ./internal/auth ./internal/app`) {
+		t.Error("macOS race tests must retain enough package-level time for internal/app")
+	}
+
 	coverageStart := strings.Index(admission, "\n  coverage:\n")
 	coverageEnd := strings.Index(admission, "\n  policy:\n")
 	if coverageStart < 0 || coverageEnd <= coverageStart {
