@@ -49,7 +49,7 @@ V1 采用严格校验：
 ## 3. DWS 命令一览
 
 | 命令 | 所需权限 | 效果 |
-| --- | --- | --- | --- |
+| --- | --- | --- |
 | `dws whiteboard query --node ... --part-id ...` | 可查看白板 | 读取单页白板，不修改内容。 |
 | `dws whiteboard update --node ... --part-id ... --source ... --yes` | 可编辑白板 | 追加节点或整页重建；所有更新都需先取得用户确认。 |
 
