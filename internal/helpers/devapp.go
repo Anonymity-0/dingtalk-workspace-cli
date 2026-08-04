@@ -2232,7 +2232,9 @@ func splitDevAppList(raw string) []string {
 }
 
 // transformDevAppListParam splits a comma/semicolon list for LeafFlag.Transform.
-// Empty input returns nil so the key is omitted from toolArgs.
+// Empty input (including separator-only) returns nil so optional flags omit the
+// key from toolArgs. Required flags that collapse to empty are rejected by
+// corecmd.BuildArgs after transform.
 func transformDevAppListParam(raw string) (any, error) {
 	values := splitDevAppList(raw)
 	if len(values) == 0 {
