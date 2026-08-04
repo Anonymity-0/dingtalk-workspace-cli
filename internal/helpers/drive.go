@@ -697,6 +697,10 @@ func newDriveCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "fileId"},
+				// CLI-local multipart transfer knobs (not MCP properties; see mapping exclusions).
+				{Name: "part-size", Description: "分片下载的分片大小（如 8MB/16MB/1GB）"},
+				{Name: "parallel", Description: "分片下载并发数（1-8）"},
+				{Name: "no-resume", Description: "关闭断点续传"},
 			},
 		},
 	})
@@ -833,6 +837,12 @@ func newDriveCommand() *cobra.Command {
 					"在线表格（axls）历史版本用 sheet version 系列命令",
 				},
 				Examples: []string{"dws drive download-version --node <dentryUuid> --version 3 --output ./report_v3.pdf"},
+			},
+			Parameters: []contract.ParamDecl{
+				// CLI-local multipart transfer knobs (not interface properties; see mapping exclusions).
+				{Name: "part-size", Description: "分片下载的分片大小（如 8MB/16MB/1GB）"},
+				{Name: "parallel", Description: "分片下载并发数（1-8）"},
+				{Name: "no-resume", Description: "关闭断点续传"},
 			},
 		},
 	})
