@@ -6,6 +6,20 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.56-beta.4] - 2026-08-04
+
+This beta adds PR #852 on top of v1.0.56-beta.3. It makes Drive downloads
+resilient for large files through parallel transfer, validated resumable
+checkpoints, and automatic credential refresh.
+
+### Added
+
+- **Multipart Drive downloads** (#852) — adds `--part-size`, `--parallel`, and
+  `--no-resume` to `drive download` and `drive download-version`. Files above
+  the part-size threshold use a Range probe and parallel chunks, resume from a
+  fingerprint-validated checkpoint, refresh credentials on 401/403, and keep
+  the checkpoint when Ctrl+C interrupts a transfer.
+
 ## [1.0.56-beta.3] - 2026-08-03
 
 This beta adds PRs #846 and #851 on top of v1.0.56-beta.2. It adds a
@@ -16,7 +30,6 @@ validated private runtime directory.
 ### Added
 
 - **Aitable workflow editing reference** (#851) — adds `dws aitable workflow edit-example`, a parameter-free read command that returns the service-provided workflow editing documentation and `workflow-dsl/v1` examples through `aitable/edit_workflow_example`.
-- **Multipart download engine** — adds `--part-size`, `--parallel`, and `--no-resume` flags to `drive download` and `drive download-version`. Files exceeding the part-size threshold are downloaded in parallel chunks with automatic Range probe, checkpoint-based resume, and credential refresh on 401/403. Ctrl+C gracefully preserves the checkpoint for later resume.
 
 ### Fixed
 
