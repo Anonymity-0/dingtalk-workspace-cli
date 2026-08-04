@@ -544,8 +544,8 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	}
 	darwinJob := admission[darwinStart:darwinEnd]
 	for _, want := range []string{
-		`go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth`,
-		`go test -v -race -count=1 -timeout=5m ./internal/app -run '^TestAuth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch)'`,
+		`go test -v -race -count=1 -timeout=6m ./internal/keychain ./internal/auth`,
+		`go test -v -race -count=1 -timeout=5m ./internal/app -run '^(TestValidateNewBinary_RecoversFromUnsignedDarwin|Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch))'`,
 	} {
 		if !strings.Contains(darwinJob, want) {
 			t.Errorf("macOS native test job missing focused auth contract %q", want)
