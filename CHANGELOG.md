@@ -6,6 +6,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Fixed
+
+- **Chat media download JSON compatibility** — `dws chat message download-media --format json` once again returns a clean `{success, downloadUrl, output}` result after the file is saved, preserving the temporary URL and resolved local path without progress text corrupting JSON stdout.
+
 ## [1.0.56] - 2026-08-04
 
 This stable release promotes the fully delivered `v1.0.56-beta.4` baseline.
