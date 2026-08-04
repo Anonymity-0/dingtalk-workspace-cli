@@ -45,7 +45,7 @@ var (
 	resourceCopy         = io.Copy
 	resourceTempSync     = (*os.File).Sync
 	resourceTempClose    = (*os.File).Close
-	resourceRename       = os.Rename
+	resourceRename       = replaceFileAtomically
 	resourceLink         = os.Link
 	resourceDownload     = downloadResourceAtomically
 )

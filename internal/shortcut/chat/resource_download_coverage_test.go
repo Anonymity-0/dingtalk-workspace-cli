@@ -783,3 +783,37 @@ func TestCrossPlatformCoverageMessageExportFailureBoundaries(t *testing.T) {
 		})
 	}
 }
+
+func TestCrossPlatformCoverageMessageExportOverwriteReplacesExistingFile(t *testing.T) {
+	resetResourceDownloadHooks(t)
+	base := t.TempDir()
+	resourceGetwd = func() (string, error) { return base, nil }
+	resourceAbs = filepath.Abs
+	resourceEvalSymlinks = filepath.EvalSymlinks
+	resourceLstat = os.Lstat
+	resourceRel = filepath.Rel
+	resourceCreateTemp = os.CreateTemp
+	resourceTempSync = (*os.File).Sync
+	resourceTempClose = (*os.File).Close
+	resourceRename = replaceFileAtomically
+	resourceLink = os.Link
+
+	target := filepath.Join(base, "out.json")
+	if err := os.WriteFile(target, []byte("old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	relative, size, err := WriteMessageExportJSON(
+		"out.json", true, map[string]any{"value": "new"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "{\n  \"value\": \"new\"\n}\n"
+	if relative != "out.json" || size != len(want) || string(data) != want {
+		t.Fatalf("relative=%q size=%d data=%q", relative, size, data)
+	}
+}
