@@ -48,7 +48,7 @@ metadata:
 | 获取群邀请链接 | `dws chat +chat-invite-url --group <群名或ID>` | 多候选时停止 |
 | 查看群机器人 | `dws chat +chat-bots --group <群名或ID>` | 返回稳定 `bots[]` |
 | 修改群名称 | `dws chat group rename --id <openConversationId> --name <新名称>` | 只知群名时先用 `+chat-search --query <群名>` 唯一解析 ID；不猜 `+chat-rename` |
-| 查看指定群内 @我的消息 | `dws chat +at-me --chat-query <群名>` | 空结果仍返回数组 |
+| 查看指定群内 @我的消息 | `dws chat +at-me --group <群名>` | 空结果仍返回数组 |
 | 查看全部会话 | `dws chat +conversation-list --page-all` | 检查 `complete` / `failures` |
 | 读取并下载消息资源 | 查询命令加 `--download-resources` | 不另起手工下载循环；下载失败项保留在结果中 |
 | <!-- dws-intent: chat.conversation.list-top -->查看置顶会话 | `dws chat +conversation-list-top` | 会话 Top 与消息 Pin、消息 Top、Favorite 不同 |

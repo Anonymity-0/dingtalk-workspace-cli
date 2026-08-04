@@ -13,7 +13,7 @@
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +at-me",
-        "dws chat +at-me --chat-query \"项目群\" --days 30"
+        "dws chat +at-me --group \"项目群\" --days 30"
       ],
       "field_provenance": {
         "agent_summary": {
@@ -103,7 +103,7 @@
         "examples": {
           "value": [
             "dws chat +at-me",
-            "dws chat +at-me --chat-query \"项目群\" --days 30"
+            "dws chat +at-me --group \"项目群\" --days 30"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -113,7 +113,7 @@
             {
               "value": [
                 "dws chat +at-me",
-                "dws chat +at-me --chat-query \"项目群\" --days 30"
+                "dws chat +at-me --group \"项目群\" --days 30"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -4408,7 +4408,7 @@
       "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
-        "dws chat +chat-invite-url --chat-query \"项目群\""
+        "dws chat +chat-invite-url --group \"项目群\""
       ],
       "field_provenance": {
         "agent_summary": {
@@ -4497,7 +4497,7 @@
         },
         "examples": {
           "value": [
-            "dws chat +chat-invite-url --chat-query \"项目群\""
+            "dws chat +chat-invite-url --group \"项目群\""
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -4506,7 +4506,7 @@
           "candidates": [
             {
               "value": [
-                "dws chat +chat-invite-url --chat-query \"项目群\""
+                "dws chat +chat-invite-url --group \"项目群\""
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -4620,7 +4620,7 @@
         },
         "use_when": {
           "value": [
-            "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
+            "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -4629,7 +4629,7 @@
           "candidates": [
             {
               "value": [
-                "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
+                "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -4652,7 +4652,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
+        "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
       ]
     },
     "chat +chat-list-all": {
@@ -5949,7 +5949,7 @@
       ]
     },
     "chat +chat-messages": {
-      "agent_summary": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
+      "agent_summary": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
@@ -5964,14 +5964,14 @@
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
+          "value": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "Agent-authored from stable-ID/natural-target routing, bounded all-page collection, message-ID de-duplication, fail-closed continuation, im.message-list.v1 completeness facts, atomic JSON export, and the optional safe resource workflow.",
           "candidates": [
             {
-              "value": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
+              "value": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -6174,7 +6174,7 @@
         },
         "use_when": {
           "value": [
-            "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+            "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -6183,7 +6183,7 @@
           "candidates": [
             {
               "value": [
-                "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+                "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -6207,7 +6207,7 @@
         "skills/mono/references/intent-guide.md"
       ],
       "use_when": [
-        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
       ]
     },
     "chat +chat-mute": {
@@ -24083,7 +24083,7 @@
       ]
     },
     "chat +search-msg": {
-      "agent_summary": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
+      "agent_summary": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
@@ -24098,18 +24098,18 @@
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
+          "value": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "candidates": [
             {
-              "value": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
+              "value": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         },
@@ -24136,7 +24136,7 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "candidates": [
             {
               "value": [
@@ -24145,7 +24145,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         },
@@ -24189,7 +24189,7 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "candidates": [
             {
               "value": [
@@ -24199,7 +24199,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         },
@@ -24286,7 +24286,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         },
@@ -24308,21 +24308,21 @@
         },
         "use_when": {
           "value": [
-            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
+            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "candidates": [
             {
               "value": [
-                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
+                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow."
             }
           ]
         }
@@ -24341,7 +24341,7 @@
         "skills/mono/references/intent-guide.md"
       ],
       "use_when": [
-        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
+        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
       ]
     },
     "chat +send-to-group": {

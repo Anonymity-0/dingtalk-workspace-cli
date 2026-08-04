@@ -30,7 +30,7 @@ dws chat +chat-messages --group <openConversationId> \
 
 必须检查 `complete/hasMore/nextPage/stopReason/failures`；达到页数或结果上限不是来源完整。
 
-只有群名时，读取历史直接用 `+chat-messages --chat-query <群名>`，普通文本发送直接用 `+send-to-group`。其它尚不接受群名的高级动作才先用 `+chat-search --query <群名>`；只有唯一候选才把 `openConversationId` 传给下一步。查询结果需要资源时在读取命令上加 `--download-resources`，不要让 Agent 手工遍历资源引用。按姓名读取单聊同理使用 `+chat-messages --user-query <姓名>`。
+只有群名时，读取历史直接用 `+chat-messages --group <群名>`，普通文本发送直接用 `+send-to-group`。其它尚不接受群名的高级动作才先用 `+chat-search --query <群名>`；只有唯一候选才把 `openConversationId` 传给下一步。查询结果需要资源时在读取命令上加 `--download-resources`，不要让 Agent 手工遍历资源引用。按姓名读取单聊时先解析唯一用户 ID，再传给 `+chat-messages --user`。
 
 ## 发送消息
 

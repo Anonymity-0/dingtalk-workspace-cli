@@ -122,20 +122,20 @@ var ChatInviteURL = shortcut.Shortcut{
 	Command:     "+chat-invite-url",
 	Product:     "im",
 	Description: "获取群邀请链接",
-	Intent:      "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。",
+	Intent:      "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。",
 	Risk:        shortcut.RiskRead,
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId；兼容直接传群名并唯一解析"},
-		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一 openConversationId"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "--group 的旧版自然名称入口", Hidden: true},
 		{Name: "group-query", Type: shortcut.FlagString, Desc: "--chat-query 的兼容别名", Hidden: true},
 		{Name: "expires-seconds", Type: shortcut.FlagInt, Desc: "链接有效期（秒），0 表示永久"},
 	},
 	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "chat-query", "group-query"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-query", "group-query"}},
 	},
 	Tips: []string{
 		`dws chat +chat-invite-url --group <openConversationId>`,
-		`dws chat +chat-invite-url --chat-query "项目群"`,
+		`dws chat +chat-invite-url --group "项目群"`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		groupID, err := resolveStableOrNamedChat(rt)
@@ -564,19 +564,19 @@ var ChatBots = shortcut.Shortcut{
 	Command:     "+chat-bots",
 	Product:     "bot",
 	Description: "查看群内所有机器人",
-	Intent:      "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。",
+	Intent:      "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。",
 	Risk:        shortcut.RiskRead,
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId；兼容直接传群名并唯一解析"},
-		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一 openConversationId"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "--group 的旧版自然名称入口", Hidden: true},
 		{Name: "group-query", Type: shortcut.FlagString, Desc: "--chat-query 的兼容别名", Hidden: true},
 	},
 	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "chat-query", "group-query"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-query", "group-query"}},
 	},
 	Tips: []string{
 		`dws chat +chat-bots --group <openConversationId>`,
-		`dws chat +chat-bots --chat-query "项目群"`,
+		`dws chat +chat-bots --group "项目群"`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		groupID, err := resolveStableOrNamedChat(rt)

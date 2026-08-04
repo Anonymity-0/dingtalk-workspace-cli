@@ -49,7 +49,7 @@ var ChatMessages = shortcut.Shortcut{
 	Product:     "chat",
 	Description: "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
 	Intent: "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；" +
-		"群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。" +
+		"群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。" +
 		"省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。" +
 		"全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。" +
 		"默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。",
@@ -59,9 +59,9 @@ var ChatMessages = shortcut.Shortcut{
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},
 		{Name: "id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},
 		{Name: "open-conversation-id", Type: shortcut.FlagString, Desc: "--conversation-id 的兼容别名", Hidden: true},
-		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一 openConversationId"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "--group 的旧版自然名称入口", Hidden: true},
 		{Name: "user", Type: shortcut.FlagString, Desc: "单聊对方的 userId，与 --group 互斥"},
-		{Name: "user-query", Type: shortcut.FlagString, Desc: "按姓名解析唯一 openDingTalkId"},
+		{Name: "user-query", Type: shortcut.FlagString, Desc: "按姓名解析唯一 openDingTalkId 的兼容入口", Hidden: true},
 		{Name: "open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊对方的 openDingTalkId，与 --group/--user 互斥"},
 		{Name: "time", Type: shortcut.FlagString, Desc: "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的消息条数；显式页大小必须大于 0"},

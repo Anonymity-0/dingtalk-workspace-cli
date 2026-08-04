@@ -16,7 +16,7 @@
 | <!-- dws-intent: chat.read.conversation -->读取一个指定群聊或单聊 | `dws chat +chat-messages` |
 | <!-- dws-intent: chat.search.cross-conversation -->跨会话、多条件或全量翻页搜索 | `dws chat +search-msg` |
 | <!-- dws-intent: chat.reply.quote -->引用回复已有消息 | `dws chat +messages-reply` |
-| 查看指定群内 @我的消息 | `dws chat +at-me --chat-query <群名>` |
+| 查看指定群内 @我的消息 | `dws chat +at-me --group <群名>` |
 | 撤回当前用户消息 | `dws chat +messages-recall --msg-id <openMessageId>` |
 
 以下原子命令只用于 Shortcut 未暴露的底层字段、原始响应或精确分页控制。不得把它们重新写成

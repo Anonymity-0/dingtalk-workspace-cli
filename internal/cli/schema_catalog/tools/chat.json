@@ -52656,21 +52656,13 @@
       "cli_name": "+at-me",
       "cli_path": "chat +at-me",
       "confirmation": "not_required",
-      "constraints": {
-        "mutually_exclusive": [
-          [
-            "group",
-            "chat-query"
-          ]
-        ]
-      },
       "description": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个\n  - --days 必须在 1-3650 之间\n  - --limit 必须大于 0\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
         "dws chat +at-me",
-        "dws chat +at-me --chat-query \"项目群\" --days 30"
+        "dws chat +at-me --group \"项目群\" --days 30"
       ],
       "field_provenance": {
         "agent_summary": {
@@ -52796,7 +52788,7 @@
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
                 "dws chat +at-me",
-                "dws chat +at-me --chat-query \"项目群\" --days 30"
+                "dws chat +at-me --group \"项目群\" --days 30"
               ]
             }
           ],
@@ -52806,7 +52798,7 @@
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
             "dws chat +at-me",
-            "dws chat +at-me --chat-query \"项目群\" --days 30"
+            "dws chat +at-me --group \"项目群\" --days 30"
           ]
         },
         "idempotency": {
@@ -52953,92 +52945,8 @@
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "is_alias": false,
       "name": "shortcut_at_me",
-      "parameter_count": 9,
+      "parameter_count": 8,
       "parameters": {
-        "chat-query": {
-          "description": "按群名解析唯一 openConversationId 后筛选",
-          "field_provenance": {
-            "description": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_usage",
-                  "value": "按群名解析唯一 openConversationId 后筛选"
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_usage",
-              "value": "按群名解析唯一 openConversationId 后筛选"
-            },
-            "property": {
-              "candidates": [
-                {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "flag_name_inference",
-                  "value": "chatQuery"
-                }
-              ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "chatQuery"
-            },
-            "required": {
-              "candidates": [
-                {
-                  "precedence": "default",
-                  "selected": true,
-                  "source": "default",
-                  "value": false
-                }
-              ],
-              "precedence": "default",
-              "resolution": "fallback",
-              "source": "default",
-              "value": false
-            },
-            "required_when": {
-              "candidates": [
-                {
-                  "precedence": "default",
-                  "selected": true,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "default",
-              "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
-            },
-            "type": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_flag_type",
-              "value": "string"
-            }
-          },
-          "property": "chatQuery",
-          "required": false,
-          "type": "string"
-        },
         "cursor": {
           "default": "0",
           "description": "分页游标，翻页传上次的 nextCursor",
@@ -60156,21 +60064,7 @@
       "cli_name": "+chat-bots",
       "cli_path": "chat +chat-bots",
       "confirmation": "not_required",
-      "constraints": {
-        "mutually_exclusive": [
-          [
-            "group",
-            "chat-query"
-          ]
-        ],
-        "require_one_of": [
-          [
-            "group",
-            "chat-query"
-          ]
-        ]
-      },
-      "description": "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个",
+      "description": "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
@@ -60268,13 +60162,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个"
+              "value": "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个"
+          "value": "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个"
         },
         "effect": {
           "candidates": [
@@ -60456,98 +60350,8 @@
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "is_alias": false,
       "name": "shortcut_chat_bots",
-      "parameter_count": 2,
+      "parameter_count": 1,
       "parameters": {
-        "chat-query": {
-          "description": "按群名解析唯一 openConversationId",
-          "field_provenance": {
-            "description": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_usage",
-                  "value": "按群名解析唯一 openConversationId"
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_usage",
-              "value": "按群名解析唯一 openConversationId"
-            },
-            "property": {
-              "candidates": [
-                {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "flag_name_inference",
-                  "value": "chatQuery"
-                }
-              ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "chatQuery"
-            },
-            "required": {
-              "candidates": [
-                {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": false
-                }
-              ],
-              "precedence": "command_constraint",
-              "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
-              "value": false
-            },
-            "required_when": {
-              "candidates": [
-                {
-                  "precedence": "default",
-                  "selected": true,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "default",
-              "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
-            },
-            "type": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_flag_type",
-              "value": "string"
-            }
-          },
-          "property": "chatQuery",
-          "required": false,
-          "type": "string"
-        },
         "group": {
           "description": "群 openConversationId；兼容直接传群名并唯一解析",
           "field_provenance": {
@@ -60588,21 +60392,15 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
-              "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
               "value": false
             },
             "required_when": {
@@ -62487,26 +62285,12 @@
       "cli_name": "+chat-invite-url",
       "cli_path": "chat +chat-invite-url",
       "confirmation": "not_required",
-      "constraints": {
-        "mutually_exclusive": [
-          [
-            "group",
-            "chat-query"
-          ]
-        ],
-        "require_one_of": [
-          [
-            "group",
-            "chat-query"
-          ]
-        ]
-      },
-      "description": "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个",
+      "description": "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
-        "dws chat +chat-invite-url --chat-query \"项目群\""
+        "dws chat +chat-invite-url --group \"项目群\""
       ],
       "field_provenance": {
         "agent_summary": {
@@ -62599,13 +62383,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个"
+              "value": "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个"
+          "value": "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个"
         },
         "effect": {
           "candidates": [
@@ -62631,7 +62415,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "dws chat +chat-invite-url --chat-query \"项目群\""
+                "dws chat +chat-invite-url --group \"项目群\""
               ]
             }
           ],
@@ -62640,7 +62424,7 @@
           "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "dws chat +chat-invite-url --chat-query \"项目群\""
+            "dws chat +chat-invite-url --group \"项目群\""
           ]
         },
         "idempotency": {
@@ -62768,7 +62552,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
+                "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
               ]
             }
           ],
@@ -62777,7 +62561,7 @@
           "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
+            "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
           ]
         }
       },
@@ -62787,98 +62571,8 @@
       "interface_reason": "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
       "is_alias": false,
       "name": "shortcut_chat_invite_url",
-      "parameter_count": 3,
+      "parameter_count": 2,
       "parameters": {
-        "chat-query": {
-          "description": "按群名解析唯一 openConversationId",
-          "field_provenance": {
-            "description": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_usage",
-                  "value": "按群名解析唯一 openConversationId"
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_usage",
-              "value": "按群名解析唯一 openConversationId"
-            },
-            "property": {
-              "candidates": [
-                {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "flag_name_inference",
-                  "value": "chatQuery"
-                }
-              ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "chatQuery"
-            },
-            "required": {
-              "candidates": [
-                {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": false
-                }
-              ],
-              "precedence": "command_constraint",
-              "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
-              "value": false
-            },
-            "required_when": {
-              "candidates": [
-                {
-                  "precedence": "default",
-                  "selected": true,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "default",
-              "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
-            },
-            "type": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_flag_type",
-              "value": "string"
-            }
-          },
-          "property": "chatQuery",
-          "required": false,
-          "type": "string"
-        },
         "expires-seconds": {
           "description": "链接有效期（秒），0 表示永久",
           "field_provenance": {
@@ -63003,21 +62697,15 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "command_constraint",
-              "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
               "value": false
             },
             "required_when": {
@@ -63062,7 +62750,7 @@
       "source": "reviewed_command_registry",
       "title": "获取群邀请链接",
       "use_when": [
-        "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
+        "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
       ]
     },
     "chat.shortcut_chat_list_all": {
@@ -65961,7 +65649,7 @@
         "internal/cli/schema_hints/selection/chat.json",
         "skills/mono/references/intent-guide.md"
       ],
-      "agent_summary": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
+      "agent_summary": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
@@ -65975,23 +65663,19 @@
         "mutually_exclusive": [
           [
             "group",
-            "chat-query",
             "user",
-            "user-query",
             "open-dingtalk-id"
           ]
         ],
         "require_one_of": [
           [
             "group",
-            "chat-query",
             "user",
-            "user-query",
             "open-dingtalk-id"
           ]
         ]
       },
-      "description": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - 显式页大小必须大于 0\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+      "description": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - 显式页大小必须大于 0\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
@@ -66007,14 +65691,14 @@
               "review_reason": "Agent-authored from stable-ID/natural-target routing, bounded all-page collection, message-ID de-duplication, fail-closed continuation, im.message-list.v1 completeness facts, atomic JSON export, and the optional safe resource workflow.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
-              "value": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出"
+              "value": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出"
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "Agent-authored from stable-ID/natural-target routing, bounded all-page collection, message-ID de-duplication, fail-closed continuation, im.message-list.v1 completeness facts, atomic JSON export, and the optional safe resource workflow.",
           "source": "internal/cli/schema_hints/selection/chat.json",
-          "value": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出"
+          "value": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出"
         },
         "availability": {
           "candidates": [
@@ -66090,13 +65774,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - 显式页大小必须大于 0\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+              "value": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - 显式页大小必须大于 0\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - 显式页大小必须大于 0\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+          "value": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - 显式页大小必须大于 0\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
         },
         "effect": {
           "candidates": [
@@ -66261,7 +65945,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+                "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
               ]
             }
           ],
@@ -66270,7 +65954,7 @@
           "review_reason": "Agent-authored from stable-ID/natural-target routing, bounded all-page collection, message-ID de-duplication, fail-closed continuation, im.message-list.v1 completeness facts, atomic JSON export, and the optional safe resource workflow.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+            "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
           ]
         }
       },
@@ -66280,98 +65964,8 @@
       "interface_reason": "Reviewed history adapter: it accepts a stable group/user identity or deterministically resolves one natural query, routes the group/direct read, optionally follows bounded typed nextPage.time pages with stable-ID de-duplication, projects im.message-list.v1 completeness facts, atomically exports JSON, and optionally orchestrates safe resource downloads.",
       "is_alias": false,
       "name": "shortcut_chat_messages",
-      "parameter_count": 16,
+      "parameter_count": 14,
       "parameters": {
-        "chat-query": {
-          "description": "按群名解析唯一 openConversationId",
-          "field_provenance": {
-            "description": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_usage",
-                  "value": "按群名解析唯一 openConversationId"
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_usage",
-              "value": "按群名解析唯一 openConversationId"
-            },
-            "property": {
-              "candidates": [
-                {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "flag_name_inference",
-                  "value": "chatQuery"
-                }
-              ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "chatQuery"
-            },
-            "required": {
-              "candidates": [
-                {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": false
-                }
-              ],
-              "precedence": "command_constraint",
-              "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
-              "value": false
-            },
-            "required_when": {
-              "candidates": [
-                {
-                  "precedence": "default",
-                  "selected": true,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "default",
-              "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
-            },
-            "type": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_flag_type",
-              "value": "string"
-            }
-          },
-          "property": "chatQuery",
-          "required": false,
-          "type": "string"
-        },
         "direction": {
           "description": "时间方向 newer/older；省略时为 older，从时间边界向前读取（可选值: newer, older）",
           "enum": [
@@ -67621,96 +67215,6 @@
           "property": "user",
           "required": false,
           "type": "string"
-        },
-        "user-query": {
-          "description": "按姓名解析唯一 openDingTalkId",
-          "field_provenance": {
-            "description": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_usage",
-                  "value": "按姓名解析唯一 openDingTalkId"
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_usage",
-              "value": "按姓名解析唯一 openDingTalkId"
-            },
-            "property": {
-              "candidates": [
-                {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "flag_name_inference",
-                  "value": "userQuery"
-                }
-              ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "userQuery"
-            },
-            "required": {
-              "candidates": [
-                {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": false
-                }
-              ],
-              "precedence": "command_constraint",
-              "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
-              "value": false
-            },
-            "required_when": {
-              "candidates": [
-                {
-                  "precedence": "default",
-                  "selected": true,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "default",
-              "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
-            },
-            "type": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_flag_type",
-                  "value": "string"
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_flag_type",
-              "value": "string"
-            }
-          },
-          "property": "userQuery",
-          "required": false,
-          "type": "string"
         }
       },
       "path": "chat.shortcut_chat_messages",
@@ -67721,7 +67225,7 @@
       "source": "reviewed_command_registry",
       "title": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
       "use_when": [
-        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
       ]
     },
     "chat.shortcut_chat_mute": {
@@ -103197,10 +102701,6 @@
             "chat-id"
           ],
           [
-            "groups",
-            "groups-file"
-          ],
-          [
             "user",
             "open-dingtalk-id"
           ],
@@ -103219,7 +102719,7 @@
           ]
         ]
       },
-      "description": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --groups、--groups-file 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持",
+      "description": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持",
       "display": "群聊 / 消息 / 机器人",
       "effect": "write",
       "effect_source": "agent-hint",
@@ -103324,13 +102824,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --groups、--groups-file 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持"
+              "value": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --groups、--groups-file 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持"
+          "value": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持"
         },
         "effect": {
           "candidates": [
@@ -111916,7 +111416,7 @@
         "internal/cli/schema_hints/selection/chat.json",
         "skills/mono/references/intent-guide.md"
       ],
-      "agent_summary": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
+      "agent_summary": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
@@ -111959,10 +111459,8 @@
             "group",
             "groups",
             "chat-id",
-            "chat-query",
             "senders",
             "sender",
-            "sender-query",
             "at-me",
             "is-at-me",
             "at-ids",
@@ -111973,7 +111471,7 @@
           ]
         ]
       },
-      "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --query、--keyword、--text、--text-query 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+      "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --query、--keyword、--text、--text-query 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
       "display": "群聊 / 消息 / 机器人",
       "effect": "read",
       "effect_source": "agent-hint",
@@ -111986,17 +111484,17 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
-              "value": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化"
+              "value": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化"
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "source": "internal/cli/schema_hints/selection/chat.json",
-          "value": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化"
+          "value": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化"
         },
         "availability": {
           "candidates": [
@@ -112018,7 +111516,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
@@ -112028,7 +111526,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
             "只想读取一个已知会话的连续历史时使用 +chat-messages；已有精确消息 ID 时使用 +messages-mget"
@@ -112072,13 +111570,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --query、--keyword、--text、--text-query 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+              "value": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --query、--keyword、--text、--text-query 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --query、--keyword、--text、--text-query 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
+          "value": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --query、--keyword、--text、--text-query 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸"
         },
         "effect": {
           "candidates": [
@@ -112100,7 +111598,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
@@ -112111,7 +111609,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
             "dws chat +search-msg --query \"周报\" --senders \u003copenDingTalkId\u003e --days 3 --page-all",
@@ -112193,7 +111691,7 @@
             },
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
               "selected": false,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": true
@@ -112227,32 +111725,32 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化"
+              "value": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化"
+          "value": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化"
         },
         "use_when": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+              "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
+                "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
               ]
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "Agent-authored from the verified all-or-nothing natural group/sender resolution, stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
+          "review_reason": "Agent-authored from stable-ID filter mapping, cursor pagination, batched mget enrichment, completeness ledger, and shared safe resource workflow.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
+            "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
           ]
         }
       },
@@ -112262,7 +111760,7 @@
       "interface_reason": "Reviewed search adapter: it batch-resolves natural group and sender queries before search, combines resolved stable IDs with explicit filters, cursor pagination and batched mget enrichment, projects im.message-list.v1, and folds search/enrichment/resource failures into completeness accounting.",
       "is_alias": false,
       "name": "shortcut_search_msg",
-      "parameter_count": 29,
+      "parameter_count": 27,
       "parameters": {
         "at-ids": {
           "description": "@对象 userId/openDingTalkId 列表",
@@ -112531,96 +112029,6 @@
             }
           },
           "property": "chatId",
-          "required": false,
-          "type": "array"
-        },
-        "chat-query": {
-          "description": "按群名解析一个或多个唯一 openConversationId",
-          "field_provenance": {
-            "description": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_usage",
-                  "value": "按群名解析一个或多个唯一 openConversationId"
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_usage",
-              "value": "按群名解析一个或多个唯一 openConversationId"
-            },
-            "property": {
-              "candidates": [
-                {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "flag_name_inference",
-                  "value": "chatQuery"
-                }
-              ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "chatQuery"
-            },
-            "required": {
-              "candidates": [
-                {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": false
-                }
-              ],
-              "precedence": "command_constraint",
-              "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
-              "value": false
-            },
-            "required_when": {
-              "candidates": [
-                {
-                  "precedence": "default",
-                  "selected": true,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "default",
-              "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
-            },
-            "type": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_flag_type",
-                  "value": "array"
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_flag_type",
-              "value": "array"
-            }
-          },
-          "property": "chatQuery",
           "required": false,
           "type": "array"
         },
@@ -114594,96 +114002,6 @@
           "required": false,
           "type": "array"
         },
-        "sender-query": {
-          "description": "按姓名解析一个或多个唯一发送者",
-          "field_provenance": {
-            "description": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_usage",
-                  "value": "按姓名解析一个或多个唯一发送者"
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_usage",
-              "value": "按姓名解析一个或多个唯一发送者"
-            },
-            "property": {
-              "candidates": [
-                {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "flag_name_inference",
-                  "value": "senderQuery"
-                }
-              ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "flag_name_inference",
-              "value": "senderQuery"
-            },
-            "required": {
-              "candidates": [
-                {
-                  "precedence": "command_constraint",
-                  "selected": true,
-                  "source": "require_one_of_constraint",
-                  "value": false
-                },
-                {
-                  "precedence": "default",
-                  "selected": false,
-                  "source": "default",
-                  "value": false
-                }
-              ],
-              "precedence": "command_constraint",
-              "resolution": "highest_precedence",
-              "source": "require_one_of_constraint",
-              "value": false
-            },
-            "required_when": {
-              "candidates": [
-                {
-                  "precedence": "default",
-                  "selected": true,
-                  "source": "default",
-                  "value": ""
-                }
-              ],
-              "precedence": "default",
-              "resolution": "highest_precedence",
-              "source": "default",
-              "value": ""
-            },
-            "type": {
-              "candidates": [
-                {
-                  "precedence": "cobra_contract",
-                  "selected": true,
-                  "source": "cobra_flag_type",
-                  "value": "array"
-                }
-              ],
-              "precedence": "cobra_contract",
-              "resolution": "highest_precedence",
-              "source": "cobra_flag_type",
-              "value": "array"
-            }
-          },
-          "property": "senderQuery",
-          "required": false,
-          "type": "array"
-        },
         "senders": {
           "description": "发送者 userId/openDingTalkId 列表",
           "field_provenance": {
@@ -114886,9 +114204,9 @@
       "reviewed": true,
       "risk": "low",
       "source": "reviewed_command_registry",
-      "title": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
+      "title": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化",
       "use_when": [
-        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
+        "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
       ]
     },
     "chat.shortcut_send_to_group": {

@@ -35,9 +35,8 @@ var SearchMsg = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+search-msg",
 	Product:     "im",
-	Description: "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
-	Intent: "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，" +
-		"多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。" +
+	Description: "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化",
+	Intent: "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。" +
 		"--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。" +
 		"--download-resources 使用安全本地路径、默认不覆盖和原子落盘。",
 	Risk: shortcut.RiskRead,
@@ -51,10 +50,10 @@ var SearchMsg = shortcut.Shortcut{
 		{Name: "id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},
 		{Name: "groups", Type: shortcut.FlagStringSlice, Desc: "多个会话 openConversationId"},
 		{Name: "chat-id", Type: shortcut.FlagStringSlice, Desc: "--groups 的 lark-cli 对齐别名"},
-		{Name: "chat-query", Type: shortcut.FlagStringSlice, Desc: "按群名解析一个或多个唯一 openConversationId"},
+		{Name: "chat-query", Type: shortcut.FlagStringSlice, Desc: "按群名解析会话的兼容入口", Hidden: true},
 		{Name: "senders", Type: shortcut.FlagStringSlice, Desc: "发送者 userId/openDingTalkId 列表"},
 		{Name: "sender", Type: shortcut.FlagStringSlice, Desc: "--senders 的 lark-cli 对齐别名"},
-		{Name: "sender-query", Type: shortcut.FlagStringSlice, Desc: "按姓名解析一个或多个唯一发送者"},
+		{Name: "sender-query", Type: shortcut.FlagStringSlice, Desc: "按姓名解析发送者的兼容入口", Hidden: true},
 		{Name: "at-me", Type: shortcut.FlagBool, Desc: "只搜索 @我 的消息"},
 		{Name: "is-at-me", Type: shortcut.FlagBool, Desc: "--at-me 的 lark-cli 对齐别名"},
 		{Name: "at-ids", Type: shortcut.FlagStringSlice, Desc: "@对象 userId/openDingTalkId 列表"},

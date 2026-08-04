@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface_hash": "sha256:ae4288a29f237ab41d080695d94794133143ad1efc0899f71f05047443ab09c0",
-  "source_hash": "sha256:939b7fecb8c1e96d48a642ddbb2b76e3260acdda93b471bd2c2f33125009845f",
+  "source_hash": "sha256:061bccdda8236eab6dbfd9a8ee2a7d20b383ef493caa95f5c784c74937d79742",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:0f520e9217cdca505d6f80fb362edfebb6a319f4b8d9e4e2eb86935ec18d424b",
+      "source_hash": "sha256:6f4ff004d7060db709d732e4c5884586f71b1947c61352a8281d0664398c150b",
       "surface_hash": "sha256:ae4288a29f237ab41d080695d94794133143ad1efc0899f71f05047443ab09c0",
       "surface_products": 26,
       "surface_tools": 897,
@@ -10176,7 +10176,7 @@
             "cli_name": "+chat-bots",
             "cli_path": "chat +chat-bots",
             "confirmation": "not_required",
-            "description": "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个",
+            "description": "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -10280,7 +10280,7 @@
             "cli_name": "+chat-invite-url",
             "cli_path": "chat +chat-invite-url",
             "confirmation": "not_required",
-            "description": "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。\n\n参数约束：\n  - --group、--chat-query、--group-query 必须且只能指定一个",
+            "description": "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -10291,7 +10291,7 @@
             "risk": "low",
             "title": "获取群邀请链接",
             "use_when": [
-              "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
+              "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"
             ]
           },
           {
@@ -10429,7 +10429,7 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
+            "agent_summary": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
@@ -10439,7 +10439,7 @@
             "cli_name": "+chat-messages",
             "cli_path": "chat +chat-messages",
             "confirmation": "not_required",
-            "description": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - 显式页大小必须大于 0\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "description": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - 显式页大小必须大于 0\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -10450,7 +10450,7 @@
             "risk": "low",
             "title": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
             "use_when": [
-              "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+              "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
             ]
           },
           {
@@ -12003,7 +12003,7 @@
             "cli_name": "+messages-send",
             "cli_path": "chat +messages-send",
             "confirmation": "user_required",
-            "description": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --groups、--groups-file 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持",
+            "description": "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。\n\n参数约束：\n  - --text、--markdown、--media-id、--file、--file-path 至少指定一个\n  - --text、--markdown、--media-id、--file、--file-path 互斥，最多指定一个\n  - --identity、--as 互斥，最多指定一个\n  - --group、--chat-id 互斥，最多指定一个\n  - --user、--open-dingtalk-id 互斥，最多指定一个\n  - --uuid、--idempotency-key 互斥，最多指定一个\n  - 目标、凭据和幂等参数受发送身份能力矩阵约束：user 必须指定一个群聊或单聊目标；bot 必须指定 robot-code 和一类目标，多群最多 100 个并逐项返回 ledger；webhook 必须指定 webhook-token；幂等键仅 user 支持",
             "effect": "write",
             "idempotency": "unknown",
             "interface_mode": "composite",
@@ -12254,7 +12254,7 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
-            "agent_summary": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
+            "agent_summary": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
             "avoid_when": [
@@ -12264,7 +12264,7 @@
             "cli_name": "+search-msg",
             "cli_path": "chat +search-msg",
             "confirmation": "not_required",
-            "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --query、--keyword、--text、--text-query 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "description": "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - 至少指定一个内容、身份、会话或消息类型过滤条件\n  - 需与 --end 一起传\n  - 需与 --start 一起传\n  - --groups、--chat-id 互斥，最多指定一个\n  - --senders、--sender 互斥，最多指定一个\n  - --at-me、--is-at-me 互斥，最多指定一个\n  - --conversation-type、--chat-type 互斥，最多指定一个\n  - --query、--keyword、--text、--text-query 互斥，最多指定一个\n  - --limit、--page-size 互斥，最多指定一个\n  - --cursor、--page-token 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -12273,9 +12273,9 @@
             "primary_cli_path": "chat +search-msg",
             "reviewed": true,
             "risk": "low",
-            "title": "按 ID、群名、姓名和内容等条件跨会话搜索消息，可全量翻页并批量富化",
+            "title": "按稳定 ID 和内容等条件跨会话搜索消息，可全量翻页并批量富化",
             "use_when": [
-              "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话可传稳定 ID 或 --chat-query，发送者可传稳定 ID 或 --sender-query，多个自然目标会先做全量解析，任一零命中/多命中都会在搜索前返回结构化失败。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
+              "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
             ]
           },
           {

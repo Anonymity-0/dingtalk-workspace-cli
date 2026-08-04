@@ -100,8 +100,8 @@
 
 ## chat 高频错误
 
-- 普通单聊/群聊读取优先 `chat +chat-messages --user-query/--chat-query`；自然目标多候选时
-  读取 `details.candidates` 并让用户消歧，不手工搜索后取第一项。
+- 群聊读取优先 `chat +chat-messages --group <群名或ID>`；单聊先解析唯一用户 ID 再读取。
+  自然群名多候选时读取 `details.candidates` 并让用户消歧，不取第一项。
 - 普通发送优先 `chat +dm`、`chat +send-to-group` 或 `chat +messages-send`；发送类 Shortcut
   的最终 Schema 要求确认时，必须先确认再加 `--yes`。
 - `--group`、`--user`、`--open-dingtalk-id` 等目标参数互斥：按 leaf Help 只传一类目标。

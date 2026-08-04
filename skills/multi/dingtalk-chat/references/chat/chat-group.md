@@ -82,7 +82,7 @@ dws chat group create --name "话题圈" --users userId1,userId2 --thread
 |------|------|----------|
 | `group transfer-owner` | 转让群主 | `--group` + `--user`(userId) 或 `--new-owner`(openDingTalkId) |
 | `group upgrade-to-external` | 将普通群升级为外部群（不可逆，需先确认） | `--group` `--yes`；可选 `--extension`（拓展字段） |
-| `+chat-invite-url` | 获取群邀请链接 | `--group <群名或openConversationId>` 或 `--chat-query <群名>`；可选 `--expires-seconds` |
+| `+chat-invite-url` | 获取群邀请链接 | `--group <群名或openConversationId>`；可选 `--expires-seconds` |
 | `group share-invite` | 将指定群的邀请链接分享到另一个会话或单聊用户 | `--source` + `--target` / `--receiver` 二选一 |
 | `group update-icon` | 更新群头像 | `--group` `--icon-media-id` |
 | `group update-settings` | 更新管理员级别的群功能开关 | `--group` `--setting-key` `--status` |

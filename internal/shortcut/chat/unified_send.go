@@ -72,7 +72,6 @@ var MessagesSend = shortcut.Shortcut{
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"text", "markdown", "media-id", "file", "file-path"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"identity", "as"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-id"}},
-		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"groups", "groups-file"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"user", "open-dingtalk-id"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"uuid", "idempotency-key"}},
 		{
@@ -615,6 +614,9 @@ func messagesSendIdempotencyKey(rt *shortcut.RuntimeContext) string {
 }
 
 func messagesSendBotGroups(rt *shortcut.RuntimeContext) ([]string, error) {
+	if rt.Changed("groups") && rt.Changed("groups-file") {
+		return nil, apperrors.NewValidation("--groups 与 --groups-file 不能同时指定")
+	}
 	groups := uniqueShortcutStrings(rt.StrSlice("groups"))
 	if path := rt.Str("groups-file"); path != "" {
 		safePath, err := apperrors.SafeInputPath(path)
