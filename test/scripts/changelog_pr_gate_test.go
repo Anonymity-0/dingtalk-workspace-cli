@@ -553,8 +553,15 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		t.Fatal("Code Admission workflow missing macOS test job boundaries")
 	}
 	darwinJob := admission[darwinStart:darwinEnd]
-	if !strings.Contains(darwinJob, `go test -v -race -count=1 -timeout=12m ./internal/keychain ./internal/auth ./internal/app`) {
-		t.Error("macOS race tests must retain enough package-level time for internal/app")
+	// Full ./internal/app race coverage lives in race:app; darwin stays focused on
+	// native auth/keychain plus a narrow auth-migration slice of internal/app.
+	for _, want := range []string{
+		`go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth`,
+		`go test -v -race -count=1 -timeout=5m ./internal/app -run '^Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch|ExportRejectsWindowsDPAPIBackend|ImportRejectsWindowsDPAPIBackend)'`,
+	} {
+		if !strings.Contains(darwinJob, want) {
+			t.Errorf("macOS auth/keychain job missing contract %q", want)
+		}
 	}
 
 	coverageStart := strings.Index(admission, "\n  coverage:\n")
