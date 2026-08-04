@@ -16,6 +16,7 @@ validated private runtime directory.
 ### Added
 
 - **Aitable workflow editing reference** (#851) — adds `dws aitable workflow edit-example`, a parameter-free read command that returns the service-provided workflow editing documentation and `workflow-dsl/v1` examples through `aitable/edit_workflow_example`.
+- **Multipart download engine** — adds `--part-size`, `--parallel`, and `--no-resume` flags to `drive download` and `drive download-version`. Files exceeding the part-size threshold are downloaded in parallel chunks with automatic Range probe, checkpoint-based resume, and credential refresh on 401/403. Ctrl+C gracefully preserves the checkpoint for later resume.
 
 ### Fixed
 
