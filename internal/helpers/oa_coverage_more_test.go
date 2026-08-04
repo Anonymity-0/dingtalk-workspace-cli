@@ -60,7 +60,7 @@ func TestCrossPlatformCoverageOARemainingTimeAndRevertBranches(t *testing.T) {
 	}
 }
 
-func TestOAApprovalCreateInstanceMapsInternalSimpleOptions(t *testing.T) {
+func TestCrossPlatformCoverageOAApprovalCreateInstanceMapsInternalSimpleOptions(t *testing.T) {
 	caller := &scriptedToolCaller{}
 	err := executeOACommand(t, caller,
 		"approval", "create-instance",
@@ -101,7 +101,7 @@ func TestOAApprovalCreateInstanceMapsInternalSimpleOptions(t *testing.T) {
 	}
 }
 
-func TestOAApprovalCreateInstanceRejectsMixedRequestModes(t *testing.T) {
+func TestCrossPlatformCoverageOAApprovalCreateInstanceRejectsMixedRequestModes(t *testing.T) {
 	caller := &scriptedToolCaller{}
 	err := executeOACommand(t, caller,
 		"approval", "create-instance",
@@ -117,7 +117,7 @@ func TestOAApprovalCreateInstanceRejectsMixedRequestModes(t *testing.T) {
 	}
 }
 
-func TestOAApprovalCreateInstanceRequiresExplicitYes(t *testing.T) {
+func TestCrossPlatformCoverageOAApprovalCreateInstanceRequiresExplicitYes(t *testing.T) {
 	caller := &scriptedToolCaller{}
 	err := executeOACommand(t, caller,
 		"approval", "create-instance",
@@ -131,7 +131,7 @@ func TestOAApprovalCreateInstanceRequiresExplicitYes(t *testing.T) {
 	}
 }
 
-func TestOAApprovalNewCommandValidationAndRequestModes(t *testing.T) {
+func TestCrossPlatformCoverageOAApprovalNewCommandValidationAndRequestModes(t *testing.T) {
 	validCases := []struct {
 		name string
 		args []string
