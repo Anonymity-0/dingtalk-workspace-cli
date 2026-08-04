@@ -80,6 +80,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding."
+            },
+            {
+              "value": "not_required",
+              "source": "risk-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -96,6 +102,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding."
+            },
+            {
+              "value": "read",
+              "source": "command-verb",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -132,6 +144,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding."
+            },
+            {
+              "value": "idempotent",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -219,6 +237,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding."
+            },
+            {
+              "value": "low",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -253,7 +277,8 @@
         "cobra-help:dws whiteboard query",
         "dws-wukong@e2da8ab947c6:wukong/products/whiteboard.go",
         "internal/cli/schema_hints/metadata/whiteboard.json",
-        "internal/cli/schema_hints/selection/whiteboard.json"
+        "internal/cli/schema_hints/selection/whiteboard.json",
+        "skills/mono/references/products/whiteboard/open-nodes-v1/02-query.md"
       ],
       "use_when": [
         "已知承载文档 nodeId 和白板 partId，需要检查当前白板节点、布局或写入支持时"

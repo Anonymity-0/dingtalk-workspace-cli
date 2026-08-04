@@ -3,6 +3,10 @@
 `dws whiteboard` 读取和更新已存在于在线文档中的单页白板。创建白板卡片使用
 `dws doc whiteboard insert`；删除卡片使用已有的 `dws doc block delete`。
 
+OpenNodes V1 的完整字段、节点类型、目录枚举和错误语义按需读取
+[协议索引](./whiteboard/open-nodes-v1.md)；不要根据本页概要猜测节点字段或
+`geometry`、`catalogId` 等枚举值。
+
 ## 标准流程
 
 1. 从用户输入或真实文档 JSONML 取得 `nodeId` 和 card `metadata.id`（partId）。

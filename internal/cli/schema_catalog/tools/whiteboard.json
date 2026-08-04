@@ -8,7 +8,8 @@
         "cobra-help:dws whiteboard query",
         "dws-wukong@e2da8ab947c6:wukong/products/whiteboard.go",
         "internal/cli/schema_hints/metadata/whiteboard.json",
-        "internal/cli/schema_hints/selection/whiteboard.json"
+        "internal/cli/schema_hints/selection/whiteboard.json",
+        "skills/mono/references/products/whiteboard/open-nodes-v1/02-query.md"
       ],
       "agent_summary": "读取钉钉文档内已有白板的 OpenNodes 内容",
       "agent_summary_source": "dws-agent-selection/whiteboard",
@@ -112,6 +113,12 @@
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/whiteboard.json",
               "value": "not_required"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "risk-default",
+              "value": "not_required"
             }
           ],
           "precedence": "reviewed_explicit",
@@ -141,6 +148,12 @@
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "read"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "command-verb",
               "value": "read"
             }
           ],
@@ -177,6 +190,12 @@
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "idempotent"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
               "value": "idempotent"
             }
           ],
@@ -264,6 +283,12 @@
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "low"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
               "value": "low"
             }
           ],

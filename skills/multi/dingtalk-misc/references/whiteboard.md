@@ -3,6 +3,10 @@
 `dws whiteboard` 只操作已经存在于钉钉在线文档中的单页内嵌白板。创建白板卡片使用
 `dws doc whiteboard insert`；普通文档块仍使用 `dws doc block`。
 
+OpenNodes V1 的完整字段、节点类型、目录枚举和错误语义按需读取
+[协议索引](./whiteboard/open-nodes-v1.md)；不要根据本页概要猜测节点字段或
+`geometry`、`catalogId` 等枚举值。
+
 ## 定位白板
 
 每次操作都需要真实的文档 `nodeId` 和白板 `partId`。缺少 `partId` 时先读取文档
