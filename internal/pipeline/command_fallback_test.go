@@ -164,6 +164,45 @@ func TestCommandPathFallbackRejectsInvalidGeneratedMode(t *testing.T) {
 	}
 }
 
+func TestRunPreParseArgsKeepsCommandErrorWhenPresentationPrimingFails(t *testing.T) {
+	fallbackRoot, _ := commandFallbackPipelineRoot()
+	fallbackEngine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
+		"chat +choose": {
+			From:       "chat +choose",
+			Mode:       "ambiguous",
+			Candidates: []string{"chat +good", "chat +other"},
+		},
+	})
+	_, err := RunPreParseArgs(fallbackRoot, fallbackEngine, []string{"chat", "+choose", "--format"})
+	requireCommandResolutionError(t, err, "ambiguous_command_fallback")
+
+	resolutionRoot, _ := commandFallbackPipelineRoot()
+	_, err = RunPreParseArgs(resolutionRoot, nil, []string{"chat", "+missing", "--format"})
+	requireCommandResolutionError(t, err, "unknown_shortcut")
+}
+
+func TestRewriteCommandPathTokensLeavesArgsWhenRewriteIsEmpty(t *testing.T) {
+	raw := []string{"chat", "+bad", "--query", "project"}
+	for name, test := range map[string]struct {
+		positions []int
+		tokens    []string
+	}{
+		"no command positions": {tokens: []string{"chat", "+good"}},
+		"no canonical tokens":  {positions: []int{0, 1}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := rewriteCommandPathTokens(raw, test.positions, test.tokens)
+			if !reflect.DeepEqual(got, raw) {
+				t.Fatalf("rewriteCommandPathTokens() = %v, want %v", got, raw)
+			}
+			got[0] = "mutated"
+			if raw[0] != "chat" {
+				t.Fatal("empty rewrite returned aliased argv")
+			}
+		})
+	}
+}
+
 func commandFallbackPipelineEngine(entries map[string]CommandPathFallback) *Engine {
 	engine := NewEngine()
 	engine.SetCommandPathFallbackLookup(func(path string) (CommandPathFallback, bool) {

@@ -123,6 +123,34 @@ func TestCommandSuggestionHintIsBoundedAndFallsBack(t *testing.T) {
 	}
 }
 
+func TestCommandResolutionDefensiveAndExplicitSuggestionPaths(t *testing.T) {
+	root := &cobra.Command{Use: "dws"}
+	service := &cobra.Command{Use: "demo"}
+	group := &cobra.Command{Use: "nested"}
+	service.AddCommand(group)
+	root.AddCommand(service)
+
+	if isExplicitShortcutCandidate(root, "+missing") {
+		t.Fatal("root command was treated as a shortcut service")
+	}
+	if isExplicitShortcutCandidate(group, "+missing") {
+		t.Fatal("nested command was treated as a top-level shortcut service")
+	}
+	if got := commandSuggestions(nil, "missing"); got != nil {
+		t.Fatalf("commandSuggestions(nil) = %#v", got)
+	}
+
+	service.SuggestionsMinimumDistance = 1
+	service.AddCommand(&cobra.Command{
+		Use:        "canonical",
+		SuggestFor: []string{"invented"},
+		Run:        func(*cobra.Command, []string) {},
+	})
+	if got := commandSuggestions(service, "invented"); len(got) != 1 || got[0] != "canonical" {
+		t.Fatalf("explicit SuggestFor suggestions = %#v", got)
+	}
+}
+
 func requireCommandResolutionError(t *testing.T, err error, reason string) *apperrors.Error {
 	t.Helper()
 	var structured *apperrors.Error

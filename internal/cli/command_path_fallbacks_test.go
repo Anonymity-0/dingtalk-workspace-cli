@@ -72,6 +72,10 @@ func TestDecodeCommandPathFallbacksStrictContract(t *testing.T) {
 			data: commandFallbackJSON(`[{"from":"chat +bad","mode":"rewrite","to":"chat +good","candidates":["chat +one","chat +two"],"reviewed":true,"review_reason":"x"}]`),
 			want: "must not declare candidates",
 		},
+		"empty rewrite target": {
+			data: commandFallbackJSON(`[{"from":"chat +bad","mode":"rewrite","reviewed":true,"review_reason":"x"}]`),
+			want: "path is empty",
+		},
 		"ambiguous target": {
 			data: commandFallbackJSON(`[{"from":"chat +bad","mode":"ambiguous","to":"chat +good","candidates":["chat +one","chat +two"],"reviewed":true,"review_reason":"x"}]`),
 			want: "must not declare to",
@@ -79,6 +83,10 @@ func TestDecodeCommandPathFallbacksStrictContract(t *testing.T) {
 		"ambiguous too small": {
 			data: commandFallbackJSON(`[{"from":"chat +bad","mode":"ambiguous","candidates":["chat +one"],"reviewed":true,"review_reason":"x"}]`),
 			want: "at least two",
+		},
+		"empty ambiguous candidate": {
+			data: commandFallbackJSON(`[{"from":"chat +bad","mode":"ambiguous","candidates":["chat +one",""],"reviewed":true,"review_reason":"x"}]`),
+			want: "path is empty",
 		},
 		"duplicate candidate": {
 			data: commandFallbackJSON(`[{"from":"chat +bad","mode":"ambiguous","candidates":["chat +one","chat +one"],"reviewed":true,"review_reason":"x"}]`),
@@ -226,6 +234,13 @@ func TestReduceCommandPathFallbacksRejectsUnsafeMappings(t *testing.T) {
 			},
 			want: "chained fallbacks are forbidden",
 		},
+		"chained ambiguous candidate": {
+			entries: []CommandPathFallback{
+				{From: "chat +choose", Mode: CommandPathFallbackAmbiguous, Candidates: []string{"chat +good", "chat +next"}},
+				{From: "chat +next", Mode: CommandPathFallbackRewrite, To: "chat +other"},
+			},
+			want: "is another fallback source",
+		},
 		"missing ambiguous candidate": {
 			entries: []CommandPathFallback{{From: "chat +choose", Mode: CommandPathFallbackAmbiguous, Candidates: []string{"chat +good", "chat +missing"}}},
 			want:    "does not exist",
@@ -240,6 +255,32 @@ func TestReduceCommandPathFallbacksRejectsUnsafeMappings(t *testing.T) {
 		"target is alias": {
 			entries: []CommandPathFallback{{From: "chat +bad", Mode: CommandPathFallbackRewrite, To: "chat +official-alias"}},
 			want:    "must use canonical Cobra names",
+		},
+		"ambiguous source command": {
+			entries: []CommandPathFallback{{From: "chat +bad", Mode: CommandPathFallbackRewrite, To: "chat +good"}},
+			mutate: func(root *cobra.Command) {
+				chat := exactSchemaCommand(root, "chat")
+				chat.AddCommand(
+					&cobra.Command{Use: "+bad", Run: func(*cobra.Command, []string) {}},
+					&cobra.Command{Use: "+bad", Run: func(*cobra.Command, []string) {}},
+				)
+			},
+			want: "cannot be resolved safely",
+		},
+		"ambiguous target command": {
+			entries: []CommandPathFallback{{From: "chat +bad", Mode: CommandPathFallbackRewrite, To: "chat +duplicate"}},
+			mutate: func(root *cobra.Command) {
+				chat := exactSchemaCommand(root, "chat")
+				chat.AddCommand(
+					&cobra.Command{Use: "+duplicate", Run: func(*cobra.Command, []string) {}},
+					&cobra.Command{Use: "+duplicate", Run: func(*cobra.Command, []string) {}},
+				)
+			},
+			want: "target \"chat +duplicate\" cannot be resolved safely",
+		},
+		"unsupported reduced mode": {
+			entries: []CommandPathFallback{{From: "chat +bad", Mode: CommandPathFallbackMode("invalid")}},
+			want:    "unsupported mode",
 		},
 	}
 	for name, test := range tests {
@@ -265,6 +306,9 @@ func TestReduceCommandPathFallbacksRejectsUnsafeMappings(t *testing.T) {
 	}
 	if _, err := ReduceCommandPathFallbacks(nil); err == nil || !strings.Contains(err.Error(), "root is nil") {
 		t.Fatalf("nil root error = %v", err)
+	}
+	if got := commandFallbackService(""); got != "" {
+		t.Fatalf("commandFallbackService(empty) = %q", got)
 	}
 }
 
