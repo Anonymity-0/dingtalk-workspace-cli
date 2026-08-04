@@ -21,7 +21,7 @@ func TestCrossPlatformCoverageSafeResourceQueryDownloadsStayReadOnly(t *testing.
 	}
 }
 
-func TestAtMeEmptyResultKeepsMessagesAndItemsIterable(t *testing.T) {
+func TestCrossPlatformCoverageAtMeEmptyResultKeepsMessagesAndItemsIterable(t *testing.T) {
 	caller := &platformCoverageCaller{}
 	helpers.InitDeps(caller)
 	root := newPlatformCoverageRoot()
@@ -168,7 +168,7 @@ func TestCrossPlatformCoverageChatMessagesDefaultsToRecentHistory(t *testing.T) 
 	}
 }
 
-func TestFormatDingTalkMessageBoundaryDoesNotDependOnProcessTimezone(t *testing.T) {
+func TestCrossPlatformCoverageFormatDingTalkMessageBoundaryDoesNotDependOnProcessTimezone(t *testing.T) {
 	now := time.Date(2026, time.July, 29, 1, 2, 3, 0, time.UTC)
 	if got := formatDingTalkMessageBoundary(now); got != "2026-07-29 09:02:03" {
 		t.Fatalf("UTC process boundary = %q, want DingTalk UTC+8 wall time", got)

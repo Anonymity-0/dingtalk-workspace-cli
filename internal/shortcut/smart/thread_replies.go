@@ -14,6 +14,8 @@
 package smart
 
 import (
+	"strings"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	chatshortcut "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chat"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
@@ -48,8 +50,8 @@ var ThreadReplies = shortcut.Shortcut{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群会话 ID（openConversationId，必填）", Required: true},
 		{Name: "thread-id", Type: shortcut.FlagString, Desc: "话题/线程 ID（可直接使用消息列表返回的 threadId）"},
 		{Name: "topic-id", Type: shortcut.FlagString, Desc: "--thread-id 的兼容别名"},
-		{Name: "time", Type: shortcut.FlagString, Desc: "起始时间，如 \"2025-03-01 00:00:00\"（可选）"},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的回复条数（可选）"},
+		{Name: "time", Type: shortcut.FlagString, Desc: "起始时间；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD"},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的回复条数；--limit 必须大于 0"},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出回复 reaction（默认输出）"},
 	}, chatshortcut.MessageResourceDownloadFlags()...),
 	Constraints: append([]shortcut.Constraint{
@@ -58,12 +60,14 @@ var ThreadReplies = shortcut.Shortcut{
 			Flags:       []string{"thread-id", "topic-id"},
 			Description: "--thread-id 与兼容参数 --topic-id 必须且只能指定一个",
 		},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"time"}, Description: "--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须大于 0"},
 	}, chatshortcut.MessageResourceDownloadConstraints()...),
 	Tips: []string{
 		`dws chat +thread-replies --group <openconversationId> --thread-id <threadId>`,
 		`dws chat +thread-replies --group <openconversationId> --thread-id <threadId> --time "2025-03-01 00:00:00" --limit 20`,
 	},
-	Validate: chatshortcut.ValidateMessageResourceDownload,
+	Validate: validateThreadReplies,
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		// Step 1 — fetch the topic replies. Param keys (openconversationId /
 		// topicId / startTime / pageSize) are copied verbatim from chat.go's
@@ -106,6 +110,19 @@ var ThreadReplies = shortcut.Shortcut{
 		}
 		return rt.Output(payload)
 	},
+}
+
+func validateThreadReplies(rt *shortcut.RuntimeContext) error {
+	if err := chatshortcut.ValidateMessageResourceDownload(rt); err != nil {
+		return err
+	}
+	if rt.Changed("limit") && rt.Int("limit") <= 0 {
+		return localChatOptionError("invalid_page_size", "+thread-replies 的 --limit 必须大于 0", "--limit")
+	}
+	if value := strings.TrimSpace(rt.Str("time")); value != "" && !validChatTime(value) {
+		return localChatOptionError("invalid_time_boundary", "+thread-replies 的 --time 格式无效", "--time")
+	}
+	return nil
 }
 
 // threadReplyItems defensively unwraps the reply list from the response,

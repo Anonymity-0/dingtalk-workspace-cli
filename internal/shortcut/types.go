@@ -76,6 +76,8 @@ const (
 type Flag struct {
 	// Name is the long flag name (kebab-case), e.g. "user-ids".
 	Name string `json:"name"`
+	// Shorthand is the optional one-character CLI spelling, e.g. "o" for --output.
+	Shorthand string `json:"shorthand,omitempty"`
 	// Type is the value type; defaults to FlagString when empty.
 	Type FlagType `json:"type"`
 	// Default is the default value rendered as a string.

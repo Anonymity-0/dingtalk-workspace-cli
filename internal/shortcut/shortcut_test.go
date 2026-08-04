@@ -83,7 +83,7 @@ func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 		Command:     "+search-user",
 		Description: "search",
 		Flags: []Flag{
-			{Name: "query", Type: FlagString, Required: true, Enum: []string{"name", "mobile"}},
+			{Name: "query", Shorthand: "q", Type: FlagString, Required: true, Enum: []string{"name", "mobile"}},
 			{Name: "limit", Type: FlagInt, Default: "20"},
 			{Name: "verbose", Type: FlagBool},
 			{Name: "ids", Type: FlagStringSlice, Default: "self,team"},
@@ -122,6 +122,9 @@ func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 		t.Errorf("ids default = %#v, want [self team]", v)
 	}
 	query := cmd.Flags().Lookup("query")
+	if query.Shorthand != "q" {
+		t.Fatalf("query shorthand = %q, want q", query.Shorthand)
+	}
 	if got := query.Annotations["dws.schema.required"]; len(got) != 1 || got[0] != "true" {
 		t.Fatalf("required annotation = %#v", got)
 	}
@@ -130,6 +133,40 @@ func TestCrossPlatformCoverageMountRegistersFlagsAndUse(t *testing.T) {
 	}
 	if raw := cmd.Annotations["dws.schema.constraints"]; raw != `{"mutually_exclusive":[["query","ids"],["start","end"]],"require_one_of":[["query","ids"],["mode","start"]]}` {
 		t.Fatalf("constraints annotation = %q", raw)
+	}
+}
+
+func TestCrossPlatformCoveragePositionalAliasFailureBranches(t *testing.T) {
+	missing := mount(Shortcut{
+		Service:                  "chat",
+		Command:                  "+missing",
+		SinglePositionalAliasFor: "target",
+	})
+	if err := missing.RunE(missing, []string{"value"}); err == nil {
+		t.Fatal("missing positional target flag unexpectedly accepted")
+	}
+
+	changed := mount(Shortcut{
+		Service:                  "chat",
+		Command:                  "+changed",
+		SinglePositionalAliasFor: "target",
+		Flags:                    []Flag{{Name: "target", Type: FlagString}},
+	})
+	if err := changed.Flags().Set("target", "flag-value"); err != nil {
+		t.Fatal(err)
+	}
+	if err := changed.RunE(changed, []string{"positional-value"}); err == nil {
+		t.Fatal("duplicate positional and flag targets unexpectedly accepted")
+	}
+
+	invalid := mount(Shortcut{
+		Service:                  "chat",
+		Command:                  "+invalid",
+		SinglePositionalAliasFor: "target",
+		Flags:                    []Flag{{Name: "target", Type: FlagInt}},
+	})
+	if err := invalid.RunE(invalid, []string{"not-an-integer"}); err == nil {
+		t.Fatal("invalid positional normalization unexpectedly accepted")
 	}
 }
 
@@ -367,7 +404,7 @@ func TestCrossPlatformCoverageBuildGroupsByService(t *testing.T) {
 	}
 }
 
-func TestBuiltInCommandsExcludeUserDefinedShortcuts(t *testing.T) {
+func TestCrossPlatformCoverageBuiltInCommandsExcludeUserDefinedShortcuts(t *testing.T) {
 	previous := append([]Shortcut(nil), allShortcuts...)
 	t.Cleanup(func() { allShortcuts = previous })
 	allShortcuts = nil

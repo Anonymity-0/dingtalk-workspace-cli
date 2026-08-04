@@ -31,6 +31,11 @@ var (
 	intentIDPattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
 	reasonCodePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 	intentMarker      = regexp.MustCompile(`<!--\s*dws-intent:\s*([a-z0-9][a-z0-9._-]*)\s*-->`)
+	mainGetwd         = os.Getwd
+	mainExit          = os.Exit
+	markerOpen        = os.Open
+	buildEffective    = cli.BuildEffectiveCommandRegistry
+	bindEffective     = cli.BindEffectiveCommandRegistry
 )
 
 type routeManifest struct {
@@ -75,12 +80,13 @@ type selectionEntry struct {
 }
 
 func main() {
-	rootPath, err := os.Getwd()
+	rootPath, err := mainGetwd()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		mainExit(2)
+		return
 	}
-	os.Exit(run(rootPath, app.NewRootCommand(), os.Stdout, os.Stderr))
+	mainExit(run(rootPath, app.NewRootCommand(), os.Stdout, os.Stderr))
 }
 
 func run(rootPath string, root *cobra.Command, stdout, stderr io.Writer) int {
@@ -89,12 +95,12 @@ func run(rootPath string, root *cobra.Command, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
-	effective, err := cli.BuildEffectiveCommandRegistry(root)
+	effective, err := buildEffective(root)
 	if err != nil {
 		fmt.Fprintf(stderr, "build effective CommandRegistry: %v\n", err)
 		return 2
 	}
-	bound, err := cli.BindEffectiveCommandRegistry(root, effective)
+	bound, err := bindEffective(root, effective)
 	if err != nil {
 		fmt.Fprintf(stderr, "bind effective CommandRegistry: %v\n", err)
 		return 2
@@ -454,7 +460,7 @@ func scanMarkers(rootPath string, roots []string, intents map[string]intentRoute
 			if entry.IsDir() || filepath.Ext(path) != ".md" {
 				return nil
 			}
-			file, err := os.Open(path)
+			file, err := markerOpen(path)
 			if err != nil {
 				return err
 			}

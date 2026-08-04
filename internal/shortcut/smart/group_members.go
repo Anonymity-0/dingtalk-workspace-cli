@@ -212,9 +212,7 @@ type groupUserMembersResult struct {
 }
 
 func collectGroupUserMembers(rt *shortcut.RuntimeContext, groupID string, pageLimit int) (groupUserMembersResult, error) {
-	if pageLimit == 0 {
-		pageLimit = groupMembersDefaultPageLimit
-	}
+	pageLimit = defaultChatPageLimit(pageLimit, groupMembersDefaultPageLimit)
 	result := groupUserMembersResult{
 		members:    []map[string]any{},
 		failures:   []map[string]any{},

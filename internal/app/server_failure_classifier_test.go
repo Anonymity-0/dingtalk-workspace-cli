@@ -27,7 +27,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
 )
 
-func TestServerFailureClassifierBackendMetadataUnavailable(t *testing.T) {
+func TestCrossPlatformCoverageServerFailureClassifierBackendMetadataUnavailable(t *testing.T) {
 	retryable := true
 	err := newServerFailureAPIError(
 		"business error: success=false",
@@ -60,7 +60,7 @@ func TestServerFailureClassifierBackendMetadataUnavailable(t *testing.T) {
 	}
 }
 
-func TestServerFailureClassifierRequiredConversationID(t *testing.T) {
+func TestCrossPlatformCoverageServerFailureClassifierRequiredConversationID(t *testing.T) {
 	err := newServerFailureAPIError(
 		"openCid or cid is required",
 		"business_error",
@@ -80,7 +80,7 @@ func TestServerFailureClassifierRequiredConversationID(t *testing.T) {
 	}
 }
 
-func TestServerFailureClassifierUnknownFallsBack(t *testing.T) {
+func TestCrossPlatformCoverageServerFailureClassifierUnknownFallsBack(t *testing.T) {
 	err := newServerFailureAPIError(
 		"business error: success=false",
 		"business_error",
@@ -97,7 +97,7 @@ func TestServerFailureClassifierUnknownFallsBack(t *testing.T) {
 	}
 }
 
-func TestServerFailureReasonUsesTypedClassification(t *testing.T) {
+func TestCrossPlatformCoverageServerFailureReasonUsesTypedClassification(t *testing.T) {
 	err := newServerFailureAPIError(
 		"business error: success=false",
 		"business_error",
@@ -113,7 +113,7 @@ func TestServerFailureReasonUsesTypedClassification(t *testing.T) {
 	}
 }
 
-func TestMultiProfileErrorPayloadPreservesFailureSemantics(t *testing.T) {
+func TestCrossPlatformCoverageMultiProfileErrorPayloadPreservesFailureSemantics(t *testing.T) {
 	retryable := true
 	err := newServerFailureAPIError(
 		"business error: success=false",
@@ -145,7 +145,7 @@ func TestMultiProfileErrorPayloadPreservesFailureSemantics(t *testing.T) {
 	}
 }
 
-func TestMultiProfileErrorPayloadPreservesResolutionDetails(t *testing.T) {
+func TestCrossPlatformCoverageMultiProfileErrorPayloadPreservesResolutionDetails(t *testing.T) {
 	err := apperrors.NewValidation(
 		"群目标不唯一",
 		apperrors.WithReason("resolution_ambiguous"),
@@ -172,7 +172,7 @@ func TestMultiProfileErrorPayloadPreservesResolutionDetails(t *testing.T) {
 	}
 }
 
-func TestExecuteInvocationClassifiesObservedMCPMetadataFailure(t *testing.T) {
+func TestCrossPlatformCoverageExecuteInvocationClassifiesObservedMCPMetadataFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
 			ID int `json:"id"`

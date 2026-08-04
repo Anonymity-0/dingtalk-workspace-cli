@@ -15,7 +15,9 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/consume"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/personal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +25,37 @@ type listenIMFakeReader struct {
 	responses map[string]map[string]any
 	calls     []string
 }
+
+type listenIMErrorReader struct{ err error }
+
+func (r listenIMErrorReader) CallMCPData(string, string, map[string]any) (map[string]any, error) {
+	return nil, r.err
+}
+
+type listenIMHelperCaller struct {
+	text string
+	err  error
+}
+
+func (c listenIMHelperCaller) CallTool(context.Context, string, string, map[string]any) (*edition.ToolResult, error) {
+	return c.result()
+}
+
+func (c listenIMHelperCaller) CallReadTool(context.Context, string, string, map[string]any) (*edition.ToolResult, error) {
+	return c.result()
+}
+
+func (c listenIMHelperCaller) result() (*edition.ToolResult, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: c.text}}}, nil
+}
+
+func (listenIMHelperCaller) Format() string { return "json" }
+func (listenIMHelperCaller) DryRun() bool   { return false }
+func (listenIMHelperCaller) Fields() string { return "" }
+func (listenIMHelperCaller) JQ() string     { return "" }
 
 func (f *listenIMFakeReader) CallMCPData(product, tool string, _ map[string]any) (map[string]any, error) {
 	key := product + "/" + tool
@@ -33,7 +66,7 @@ func (f *listenIMFakeReader) CallMCPData(product, tool string, _ map[string]any)
 	return map[string]any{}, nil
 }
 
-func TestCompileListenIMPlanResolvesGroupAndMapsMultipleEvents(t *testing.T) {
+func TestCrossPlatformCoverageCompileListenIMPlanResolvesGroupAndMapsMultipleEvents(t *testing.T) {
 	reader := &listenIMFakeReader{responses: map[string]map[string]any{
 		"im/search_groups": {
 			"result": []any{map[string]any{"title": "项目群", "openConversationId": "cid-1"}},
@@ -56,7 +89,7 @@ func TestCompileListenIMPlanResolvesGroupAndMapsMultipleEvents(t *testing.T) {
 	}
 }
 
-func TestCompileListenIMPlanReturnsStructuredAmbiguityBeforeSubscription(t *testing.T) {
+func TestCrossPlatformCoverageCompileListenIMPlanReturnsStructuredAmbiguityBeforeSubscription(t *testing.T) {
 	reader := &listenIMFakeReader{responses: map[string]map[string]any{
 		"contact/search_contact_by_key_word": {
 			"result": []any{
@@ -79,7 +112,7 @@ func TestCompileListenIMPlanReturnsStructuredAmbiguityBeforeSubscription(t *test
 	}
 }
 
-func TestEventListenIMCommandDelegatesOneCompiledConsumeLifecycle(t *testing.T) {
+func TestCrossPlatformCoverageEventListenIMCommandDelegatesOneCompiledConsumeLifecycle(t *testing.T) {
 	reader := &listenIMFakeReader{responses: map[string]map[string]any{
 		"im/search_groups": {
 			"result": []any{map[string]any{"title": "项目群", "openConversationId": "cid-1"}},
@@ -122,7 +155,7 @@ func TestEventListenIMCommandDelegatesOneCompiledConsumeLifecycle(t *testing.T) 
 	}
 }
 
-func TestCompileListenIMPlanRejectsIncompatibleKindAndTargets(t *testing.T) {
+func TestCrossPlatformCoverageCompileListenIMPlanRejectsIncompatibleKindAndTargets(t *testing.T) {
 	reader := &listenIMFakeReader{}
 	cases := []listenIMOptions{
 		{Kind: "at-me", Events: []string{"reaction"}},
@@ -138,7 +171,64 @@ func TestCompileListenIMPlanRejectsIncompatibleKindAndTargets(t *testing.T) {
 	}
 }
 
-func TestEventListenIME2ELifecycleCleansAndRollsBack(t *testing.T) {
+func TestCrossPlatformCoverageListenIMCompletionBranches(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		text string
+		err  error
+		ok   bool
+	}{
+		{name: "transport", err: errors.New("transport")},
+		{name: "empty", text: "  ", ok: true},
+		{name: "invalid json", text: "{invalid"},
+		{name: "valid", text: `{"result":{"ok":true}}`, ok: true},
+	} {
+		t.Run("reader "+tc.name, func(t *testing.T) {
+			helpers.InitDeps(listenIMHelperCaller{text: tc.text, err: tc.err})
+			data, err := (eventTargetReader{}).CallMCPData("im", "search_groups", nil)
+			if (err == nil) != tc.ok {
+				t.Fatalf("data=%#v error=%v ok=%v", data, err, tc.ok)
+			}
+		})
+	}
+
+	if plan, err := compileListenIMPlan(&listenIMFakeReader{}, listenIMOptions{Events: []string{" MESSAGE ", "message"}}); err != nil || len(plan.EventKeys) != 1 {
+		t.Fatalf("default/deduplicated plan = %#v, %v", plan, err)
+	}
+	if _, err := compileListenIMPlan(&listenIMFakeReader{}, listenIMOptions{Kind: "at-me"}); err == nil {
+		t.Fatal("empty event set unexpectedly accepted")
+	}
+	if _, err := compileListenIMPlan(&listenIMFakeReader{}, listenIMOptions{Kind: "unknown", Events: []string{"message"}}); err == nil {
+		t.Fatal("unknown kind unexpectedly accepted")
+	}
+
+	reader := &listenIMFakeReader{responses: map[string]map[string]any{
+		"contact/search_contact_by_key_word": {
+			"result": []any{map[string]any{"name": "甲", "openDingTalkId": "D-user"}},
+		},
+	}}
+	plan, err := compileListenIMPlan(reader, listenIMOptions{Kind: "sender", Events: []string{"message"}, UserQuery: "甲"})
+	if err != nil || plan.UserID != "" || plan.OpenDingTalkID != "D-user" {
+		t.Fatalf("open-id sender plan = %#v, %v", plan, err)
+	}
+	wantErr := errors.New("resolution failed")
+	if _, err := compileListenIMPlan(listenIMErrorReader{err: wantErr}, listenIMOptions{Kind: "sender", Events: []string{"message"}, UserQuery: "甲"}); !errors.Is(err, wantErr) {
+		t.Fatalf("sender resolution error = %v", err)
+	}
+	if _, err := compileListenIMPlan(listenIMErrorReader{err: wantErr}, listenIMOptions{Kind: "group", Events: []string{"message"}, ChatQuery: "群"}); !errors.Is(err, wantErr) {
+		t.Fatalf("group resolution error = %v", err)
+	}
+
+	cmd := newEventListenIMCommand()
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+	cmd.SetArgs([]string{"--kind", "sender"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "event +listen-im") {
+		t.Fatalf("command compile error = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageEventListenIME2ELifecycleCleansAndRollsBack(t *testing.T) {
 	newReader := func() *listenIMFakeReader {
 		return &listenIMFakeReader{responses: map[string]map[string]any{
 			"im/search_groups": {

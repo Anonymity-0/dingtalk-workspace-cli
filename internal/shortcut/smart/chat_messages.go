@@ -63,8 +63,8 @@ var ChatMessages = shortcut.Shortcut{
 		{Name: "user", Type: shortcut.FlagString, Desc: "单聊对方的 userId，与 --group 互斥"},
 		{Name: "user-query", Type: shortcut.FlagString, Desc: "按姓名解析唯一 openDingTalkId"},
 		{Name: "open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊对方的 openDingTalkId，与 --group/--user 互斥"},
-		{Name: "time", Type: shortcut.FlagString, Desc: "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息"},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的消息条数（可选）"},
+		{Name: "time", Type: shortcut.FlagString, Desc: "时间边界；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；省略时从当前时间向前读取最近消息"},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的消息条数；显式页大小必须大于 0"},
 		{Name: "size", Type: shortcut.FlagInt, Desc: "--limit 的旧版别名", Hidden: true},
 		{Name: "page-size", Type: shortcut.FlagInt, Desc: "--limit 的兼容别名", Hidden: true},
 		{Name: "direction", Type: shortcut.FlagString, Enum: []string{"newer", "older"}, Desc: "时间方向 newer/older；省略时为 older，从时间边界向前读取"},
@@ -72,11 +72,13 @@ var ChatMessages = shortcut.Shortcut{
 		{Name: "page-all", Type: shortcut.FlagBool, Desc: "沿 typed nextPage.time 自动读取后续页；--page-limit 仅与 --page-all 一起使用且范围 1-500；--max-results 仅与 --page-all 一起使用且不能为负数"},
 		{Name: "page-limit", Type: shortcut.FlagInt, Default: "50", Desc: "--page-limit 仅与 --page-all 一起使用且范围 1-500"},
 		{Name: "max-results", Type: shortcut.FlagInt, Desc: "--max-results 仅与 --page-all 一起使用且不能为负数；0 表示仅受页数上限约束"},
-		{Name: "output", Type: shortcut.FlagString, Desc: "把完整结构化 ledger 原子写入工作目录内的相对 JSON 文件"},
+		{Name: "output", Shorthand: "o", Type: shortcut.FlagString, Desc: "把完整结构化 ledger 原子写入工作目录内的相对 JSON 文件"},
 	}, chatshortcut.MessageResourceDownloadFlags()...),
 	Constraints: append([]shortcut.Constraint{
 		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "conversation-id", "id", "open-conversation-id", "chat-query", "user", "user-query", "open-dingtalk-id"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"limit", "size", "page-size"}},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"time"}, Description: "--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit", "size", "page-size"}, Description: "显式页大小必须大于 0"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-all", "page-limit"}, Description: "--page-limit 仅与 --page-all 一起使用且范围 1-500"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-all", "max-results"}, Description: "--max-results 仅与 --page-all 一起使用且不能为负数"},
 		{
@@ -97,6 +99,14 @@ var ChatMessages = shortcut.Shortcut{
 func validateChatMessages(rt *shortcut.RuntimeContext) error {
 	if err := chatshortcut.ValidateMessageResourceDownload(rt); err != nil {
 		return err
+	}
+	if rt.Changed("time") && strings.TrimSpace(rt.Str("time")) != "" && !validChatTime(rt.Str("time")) {
+		return localChatOptionError("invalid_time_boundary", "+chat-messages 的 --time 格式无效", "--time")
+	}
+	for _, name := range []string{"limit", "size", "page-size"} {
+		if rt.Changed(name) && rt.Int(name) <= 0 {
+			return localChatOptionError("invalid_page_size", "+chat-messages 的 --"+name+" 必须大于 0", "--"+name)
+		}
 	}
 	if !rt.Bool("page-all") && (rt.Changed("page-limit") || rt.Changed("max-results")) {
 		return apperrors.NewValidation("--page-limit/--max-results 仅与 --page-all 一起使用")
@@ -246,10 +256,7 @@ func collectOneChatMessagesPage(rt *shortcut.RuntimeContext, request chatMessage
 }
 
 func collectAllChatMessages(rt *shortcut.RuntimeContext, request chatMessagesRequest) (map[string]any, []map[string]any, error) {
-	pageLimit := rt.Int("page-limit")
-	if pageLimit == 0 {
-		pageLimit = chatMessagesDefaultPageLimit
-	}
+	pageLimit := defaultChatPageLimit(rt.Int("page-limit"), chatMessagesDefaultPageLimit)
 	maxResults := rt.Int("max-results")
 	seenIDs := map[string]bool{}
 	seenBoundaries := map[string]bool{fmt.Sprint(request.params["time"]): true}

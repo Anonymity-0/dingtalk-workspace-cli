@@ -59,20 +59,22 @@ var AtMe = shortcut.Shortcut{
 		{Name: "group", Type: shortcut.FlagString, Desc: "仅查看指定群；可传 openConversationId 或群名"},
 		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一 openConversationId 后筛选"},
 		{Name: "group-query", Type: shortcut.FlagString, Desc: "--chat-query 的兼容别名", Hidden: true},
-		{Name: "days", Type: shortcut.FlagInt, Desc: "回溯天数（可选，默认 7）", Default: "7", Required: false},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量（默认 50）", Default: "50"},
+		{Name: "days", Type: shortcut.FlagInt, Desc: "回溯天数（默认 7）；--days 必须在 1-3650 之间", Default: "7", Required: false},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量（默认 50）；--limit 必须大于 0", Default: "50"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，翻页传上次的 nextCursor", Default: "0"},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
 	}, chatshortcut.MessageResourceDownloadFlags()...),
 	Constraints: append([]shortcut.Constraint{
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-query", "group-query"}},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"days"}, Description: "--days 必须在 1-3650 之间"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须大于 0"},
 	}, chatshortcut.MessageResourceDownloadConstraints()...),
 	Tips: []string{
 		`dws chat +at-me`,
 		`dws chat +at-me --days 3`,
 		`dws chat +at-me --chat-query "项目群"`,
 	},
-	Validate: chatshortcut.ValidateMessageResourceDownload,
+	Validate: validateAtMe,
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		groupID := ""
 		directTarget := strings.TrimSpace(rt.Str("group"))
@@ -128,6 +130,20 @@ var AtMe = shortcut.Shortcut{
 		}
 		return rt.Output(payload)
 	},
+}
+
+func validateAtMe(rt *shortcut.RuntimeContext) error {
+	if err := chatshortcut.ValidateMessageResourceDownload(rt); err != nil {
+		return err
+	}
+	days := rt.Int("days")
+	if days < 1 || days > 3650 {
+		return localChatOptionError("invalid_lookback_window", "+at-me 的 --days 必须在 1-3650 之间", "--days")
+	}
+	if rt.Int("limit") <= 0 {
+		return localChatOptionError("invalid_page_size", "+at-me 的 --limit 必须大于 0", "--limit")
+	}
+	return nil
 }
 
 // atMeCompatibilityItems preserves the common list/items projection used by

@@ -29,7 +29,7 @@ import (
 // collapsing to the lossy top-level "[卡片]" summary, recursing through nested
 // forwards, and that the string-"null" sender is nulled out. The per-field
 // behaviour (sender/text/encryption) is covered in the chatmsg package tests.
-func TestProjectChatMessageExpandsForwarded(t *testing.T) {
+func TestCrossPlatformCoverageProjectChatMessageExpandsForwarded(t *testing.T) {
 	row := projectChatMessage(map[string]any{
 		"sender":             "hugozhu",
 		"openMessageId":      "msg-top",
@@ -134,7 +134,7 @@ func (*chatMessagesPagingCaller) DryRun() bool   { return false }
 func (*chatMessagesPagingCaller) Fields() string { return "" }
 func (*chatMessagesPagingCaller) JQ() string     { return "" }
 
-func TestChatMessagesPageAllUsesTypedBoundaryAndDeduplicates(t *testing.T) {
+func TestCrossPlatformCoverageChatMessagesPageAllUsesTypedBoundaryAndDeduplicates(t *testing.T) {
 	caller := &chatMessagesPagingCaller{responses: []string{
 		`{"result":{"hasMore":true,"messages":[{"openMessageId":"m2","createTime":"2026-01-02 00:00:00"},{"openMessageId":"m1","createTime":"2026-01-01 00:00:00"}]}}`,
 		`{"result":{"hasMore":false,"messages":[{"openMessageId":"m1","createTime":"2026-01-01 00:00:00"},{"openMessageId":"m0","createTime":"2025-12-31 00:00:00"}]}}`,
@@ -164,7 +164,7 @@ func TestChatMessagesPageAllUsesTypedBoundaryAndDeduplicates(t *testing.T) {
 	}
 }
 
-func TestChatMessagesPageAllPublishesBoundedContinuation(t *testing.T) {
+func TestCrossPlatformCoverageChatMessagesPageAllPublishesBoundedContinuation(t *testing.T) {
 	caller := &chatMessagesPagingCaller{responses: []string{
 		`{"result":{"hasMore":true,"messages":[{"openMessageId":"m1","createTime":"2026-01-01 00:00:00"}]}}`,
 	}}
@@ -191,7 +191,7 @@ func TestChatMessagesPageAllPublishesBoundedContinuation(t *testing.T) {
 	}
 }
 
-func TestChatMessagesPageAllFailsClosedOnStalledBoundary(t *testing.T) {
+func TestCrossPlatformCoverageChatMessagesPageAllFailsClosedOnStalledBoundary(t *testing.T) {
 	caller := &chatMessagesPagingCaller{responses: []string{
 		`{"result":{"hasMore":true,"messages":[{"openMessageId":"m1"}]}}`,
 	}}
@@ -213,7 +213,7 @@ func TestChatMessagesPageAllFailsClosedOnStalledBoundary(t *testing.T) {
 	}
 }
 
-func TestChatMessagesExportIsAtomicAndNoClobber(t *testing.T) {
+func TestCrossPlatformCoverageChatMessagesExportIsAtomicAndNoClobber(t *testing.T) {
 	t.Chdir(t.TempDir())
 	newCaller := func() *chatMessagesPagingCaller {
 		return &chatMessagesPagingCaller{responses: []string{
@@ -253,7 +253,7 @@ func TestChatMessagesExportIsAtomicAndNoClobber(t *testing.T) {
 	}
 }
 
-func TestChatMessagesExportRejectsNonJSONPlaceholder(t *testing.T) {
+func TestCrossPlatformCoverageChatMessagesExportRejectsNonJSONPlaceholder(t *testing.T) {
 	t.Chdir(t.TempDir())
 	helpers.InitDeps(&chatMessagesPagingCaller{responses: []string{
 		`{"result":{"hasMore":false,"messages":[]}}`,

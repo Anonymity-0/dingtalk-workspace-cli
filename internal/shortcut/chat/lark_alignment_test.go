@@ -26,6 +26,8 @@ type larkAlignmentCaller struct {
 	calls             []larkAlignmentCall
 	failTarget        string
 	failProductTool   string
+	failProductToolAt map[string]int
+	callCounts        map[string]int
 	category          string
 	responses         map[string]string
 	sequenceResponses map[string][]string
@@ -37,8 +39,15 @@ func (f *larkAlignmentCaller) CallTool(_ context.Context, product, tool string, 
 		return nil, errors.New("fixture write failed")
 	}
 	key := product + "/" + tool
+	if f.callCounts == nil {
+		f.callCounts = map[string]int{}
+	}
+	f.callCounts[key]++
 	if f.failProductTool == key {
 		return nil, errors.New("fixture lower call failed")
+	}
+	if f.failProductToolAt[key] == f.callCounts[key] {
+		return nil, errors.New("fixture sequenced lower call failed")
 	}
 	text := `{"success":true}`
 	switch key {
@@ -92,7 +101,7 @@ func (f *larkAlignmentCaller) DryRun() bool   { return false }
 func (f *larkAlignmentCaller) Fields() string { return "" }
 func (f *larkAlignmentCaller) JQ() string     { return "" }
 
-func TestEvaluationRegressionNaturalGroupTargetsAndRecallInference(t *testing.T) {
+func TestCrossPlatformCoverageEvaluationRegressionNaturalGroupTargetsAndRecallInference(t *testing.T) {
 	t.Run("group name to bots", func(t *testing.T) {
 		fake := &larkAlignmentCaller{responses: map[string]string{
 			"im/search_groups":    `{"result":[{"openConversationId":"cid-project","title":"项目群"}],"hasMore":false}`,
@@ -152,7 +161,7 @@ func TestEvaluationRegressionNaturalGroupTargetsAndRecallInference(t *testing.T)
 	})
 }
 
-func TestChatCreateAddsCurrentUserAndNormalizesResult(t *testing.T) {
+func TestCrossPlatformCoverageChatCreateAddsCurrentUserAndNormalizesResult(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -192,7 +201,7 @@ func TestChatCreateAddsCurrentUserAndNormalizesResult(t *testing.T) {
 	}
 }
 
-func TestChatCreateResolvesEveryNaturalMemberBeforeCreating(t *testing.T) {
+func TestCrossPlatformCoverageChatCreateResolvesEveryNaturalMemberBeforeCreating(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"resolved-user","openDingTalkId":"D-resolved"}]}`,
 	}}
@@ -221,7 +230,7 @@ func TestChatCreateResolvesEveryNaturalMemberBeforeCreating(t *testing.T) {
 	}
 }
 
-func TestChatCreateNaturalMemberAmbiguityStopsBeforeProfileAndCreate(t *testing.T) {
+func TestCrossPlatformCoverageChatCreateNaturalMemberAmbiguityStopsBeforeProfileAndCreate(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"u1"},{"name":"张三","userId":"u2"}]}`,
 	}}
@@ -241,7 +250,7 @@ func TestChatCreateNaturalMemberAmbiguityStopsBeforeProfileAndCreate(t *testing.
 	}
 }
 
-func TestChatCreateNaturalMemberDryRunUsesSameResolutionChain(t *testing.T) {
+func TestCrossPlatformCoverageChatCreateNaturalMemberDryRunUsesSameResolutionChain(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"resolved-user"}]}`,
 	}}
@@ -265,7 +274,7 @@ func TestChatCreateNaturalMemberDryRunUsesSameResolutionChain(t *testing.T) {
 	}
 }
 
-func TestMessagesSendRoutesIdentitySpecificTransports(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendRoutesIdentitySpecificTransports(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    []string
@@ -339,7 +348,7 @@ func TestMessagesSendRoutesIdentitySpecificTransports(t *testing.T) {
 	}
 }
 
-func TestMessagesSendRejectsUnsupportedIdentityCapability(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendRejectsUnsupportedIdentityCapability(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -360,7 +369,7 @@ func TestMessagesSendRejectsUnsupportedIdentityCapability(t *testing.T) {
 	}
 }
 
-func TestLarkAlignmentWriteMappings(t *testing.T) {
+func TestCrossPlatformCoverageLarkAlignmentWriteMappings(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     []string
@@ -429,7 +438,7 @@ func TestLarkAlignmentWriteMappings(t *testing.T) {
 	}
 }
 
-func TestObservedChatRenameAliasResolvesNameBeforeWrite(t *testing.T) {
+func TestCrossPlatformCoverageObservedChatRenameAliasResolvesNameBeforeWrite(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"im/search_groups": `{"result":[{"openConversationId":"cid-project","title":"项目评测群"}],"hasMore":false}`,
 	}}
@@ -447,7 +456,7 @@ func TestObservedChatRenameAliasResolvesNameBeforeWrite(t *testing.T) {
 	}
 }
 
-func TestMessagesReplyPublishesPlainTextBoundary(t *testing.T) {
+func TestCrossPlatformCoverageMessagesReplyPublishesPlainTextBoundary(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"chat/send_personal_message": `{"result":{"openMessageId":"new-msg","openConvThreadId":"thread-1","sendStatus":"accepted"}}`,
 	}}
@@ -505,7 +514,7 @@ func TestMessagesReplyPublishesPlainTextBoundary(t *testing.T) {
 	}
 }
 
-func TestMessagesReplyDryRunStopsBeforeWrite(t *testing.T) {
+func TestCrossPlatformCoverageMessagesReplyDryRunStopsBeforeWrite(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -526,7 +535,7 @@ func TestMessagesReplyDryRunStopsBeforeWrite(t *testing.T) {
 	}
 }
 
-func TestFlagBatchContinuesAndPublishesFailureLedger(t *testing.T) {
+func TestCrossPlatformCoverageFlagBatchContinuesAndPublishesFailureLedger(t *testing.T) {
 	fake := &larkAlignmentCaller{failTarget: "m2"}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -556,7 +565,7 @@ func TestFlagBatchContinuesAndPublishesFailureLedger(t *testing.T) {
 	}
 }
 
-func TestConversationSetTopBatchDryRunPublishesActionsWithoutWrites(t *testing.T) {
+func TestCrossPlatformCoverageConversationSetTopBatchDryRunPublishesActionsWithoutWrites(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -587,7 +596,7 @@ func TestConversationSetTopBatchDryRunPublishesActionsWithoutWrites(t *testing.T
 	}
 }
 
-func TestMessagesMgetDryRunPublishesMultiResourceDownloadPlan(t *testing.T) {
+func TestCrossPlatformCoverageMessagesMgetDryRunPublishesMultiResourceDownloadPlan(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -647,7 +656,7 @@ func TestCrossPlatformCoverageMessagesReplyResolvesUserIDBeforeExecution(t *test
 	}
 }
 
-func TestMessagesReplyInfersSenderFromReferencedMessage(t *testing.T) {
+func TestCrossPlatformCoverageMessagesReplyInfersSenderFromReferencedMessage(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -676,7 +685,7 @@ func TestMessagesReplyInfersSenderFromReferencedMessage(t *testing.T) {
 	}
 }
 
-func TestFindMessageSenderOpenDingTalkIDIgnoresUnrelatedNestedIdentity(t *testing.T) {
+func TestCrossPlatformCoverageFindMessageSenderOpenDingTalkIDIgnoresUnrelatedNestedIdentity(t *testing.T) {
 	message := map[string]any{
 		"content": map[string]any{
 			"mentions": []any{
@@ -696,7 +705,7 @@ func TestFindMessageSenderOpenDingTalkIDIgnoresUnrelatedNestedIdentity(t *testin
 	}
 }
 
-func TestFeedGroupQueryProjectPreservesRequestOrderAndMissingLedger(t *testing.T) {
+func TestCrossPlatformCoverageFeedGroupQueryProjectPreservesRequestOrderAndMissingLedger(t *testing.T) {
 	conversations := []map[string]any{
 		{"openConversationId": "cid-a", "conversationName": "A"},
 		{"openConversationId": "cid-b", "conversationName": "B"},
@@ -714,7 +723,7 @@ func TestFeedGroupQueryProjectPreservesRequestOrderAndMissingLedger(t *testing.T
 	}
 }
 
-func TestFeedGroupQueryDoesNotMisreportMissingItemWhenSourceHasMore(t *testing.T) {
+func TestCrossPlatformCoverageFeedGroupQueryDoesNotMisreportMissingItemWhenSourceHasMore(t *testing.T) {
 	fake := &larkAlignmentCaller{
 		category: `{"result":{"hasMore":true,"list":[{"openConversationId":"cid-a","conversationName":"A"}]}}`,
 	}

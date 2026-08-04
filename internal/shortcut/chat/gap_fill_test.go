@@ -21,7 +21,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
-func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 	want := []string{
 		"identity", "as", "group", "chat-id", "groups", "groups-file", "chat-query", "user", "user-query", "open-dingtalk-id",
 		"users", "open-dingtalk-ids", "robot-code", "webhook-token",
@@ -54,7 +54,7 @@ func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 	}
 }
 
-func TestMessagesSendIdentityDescriptorMatchesRuntimeSurface(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendIdentityDescriptorMatchesRuntimeSurface(t *testing.T) {
 	capabilities := MessageIdentityCapabilities()
 	if len(capabilities) != 3 {
 		t.Fatalf("identity capabilities = %#v", capabilities)
@@ -77,9 +77,14 @@ func TestMessagesSendIdentityDescriptorMatchesRuntimeSurface(t *testing.T) {
 	if MessageIdentityCapabilities()[0].ContentTypes[0] == "mutated" {
 		t.Fatal("identity capability descriptor leaked mutable storage")
 	}
+	if !messageIdentitySupportsContent("user", "audio") ||
+		!messageIdentitySupportsContent("user", "video") ||
+		messageIdentitySupportsContent("missing", "text") {
+		t.Fatal("identity content normalization or unknown-identity guard drifted")
+	}
 }
 
-func TestIMWorkflowContractsPublishRealPositiveAndNegativeBoundaries(t *testing.T) {
+func TestCrossPlatformCoverageIMWorkflowContractsPublishRealPositiveAndNegativeBoundaries(t *testing.T) {
 	card := CurrentCardWorkflowContract()
 	if card.Version != "im.streaming-card.v1" || card.CallbackSupported ||
 		!reflect.DeepEqual(card.ContentTypes, []string{"streaming-text"}) || len(card.FlowStatuses) != 5 {
@@ -110,7 +115,7 @@ func TestIMWorkflowContractsPublishRealPositiveAndNegativeBoundaries(t *testing.
 	}
 }
 
-func TestMessagesSendBotMultiGroupPublishesPerTargetLedger(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendBotMultiGroupPublishesPerTargetLedger(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -143,7 +148,7 @@ func TestMessagesSendBotMultiGroupPublishesPerTargetLedger(t *testing.T) {
 	}
 }
 
-func TestMessagesSendBotGroupsFileUsesSafeDeduplicatedTargets(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendBotGroupsFileUsesSafeDeduplicatedTargets(t *testing.T) {
 	t.Chdir(t.TempDir())
 	if err := os.WriteFile("groups.txt", []byte("# comment\ncid-a,cid-b\ncid-a\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -164,7 +169,7 @@ func TestMessagesSendBotGroupsFileUsesSafeDeduplicatedTargets(t *testing.T) {
 	}
 }
 
-func TestChatCreateExplicitOwnerSkipsCurrentProfileAndDeduplicatesMember(t *testing.T) {
+func TestCrossPlatformCoverageChatCreateExplicitOwnerSkipsCurrentProfileAndDeduplicatesMember(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -188,7 +193,7 @@ func TestChatCreateExplicitOwnerSkipsCurrentProfileAndDeduplicatesMember(t *test
 	}
 }
 
-func TestChatCreateOwnerQueryResolvesBeforeSingleCreate(t *testing.T) {
+func TestCrossPlatformCoverageChatCreateOwnerQueryResolvesBeforeSingleCreate(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"owner-user","openDingTalkId":"D-owner"}]}`,
 	}}

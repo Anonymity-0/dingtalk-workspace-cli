@@ -3041,12 +3041,21 @@ func newChatCommand() *cobra.Command {
 	chatCategoryDeleteCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "删除用户自定义会话分组",
+		Long:  "删除用户自定义会话分组。该操作不可逆；必须先获得用户确认，再追加 --yes 执行。",
 		Example: `  dws chat category delete --category-id <分组ID>
   # 分组ID 可通过 dws chat category list 获取`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			categoryId, _ := cmd.Flags().GetInt64("category-id")
 			if categoryId == 0 {
 				return fmt.Errorf("flag --category-id is required")
+			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"删除会话分组不可逆；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认目标分组及影响范围；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认目标会话分组", "获得用户确认后使用 --yes 执行"),
+				)
 			}
 			return callMCPToolOnServer("im", "delete_conv_category", map[string]any{
 				"categoryId": categoryId,
@@ -4405,7 +4414,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		Use:   "dismiss",
 		Short: "解散群聊",
 		Long:  `解散指定群聊。该操作不可逆，需要群主权限；必须先获得用户确认，再追加 --yes 执行。`,
-		Example: `  dws chat group dismiss --group <openConversationId> --yes
+		Example: `  dws chat group dismiss --group <openConversationId>
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
@@ -4920,7 +4929,7 @@ status 可选值:
 	chatClearMessagesCmd := &cobra.Command{
 		Use:   "clear-messages",
 		Short: "清空当前用户指定会话的聊天记录",
-		Long: `清空当前用户在指定会话中的聊天记录。仅清空当前用户视角的消息，不影响其他成员。
+		Long: `清空当前用户在指定会话中的聊天记录。仅清空当前用户视角的消息，不影响其他成员。该操作不可逆；必须先获得用户确认，再追加 --yes 执行。
 
 如何获取 openConversationId（如果上层已有则直接使用，不必再查）：
   - 群聊：dws chat search --query "群名"
@@ -4931,6 +4940,14 @@ status 可选值:
 			convID := flagOrFallback(cmd, "conversation-id", "id", "chat")
 			if convID == "" {
 				return fmt.Errorf("flag --conversation-id is required\n  hint: dws chat clear-messages --conversation-id <openConversationId>")
+			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"清空会话聊天记录不可逆；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认目标会话及影响范围；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认目标会话", "获得用户确认后使用 --yes 执行"),
+				)
 			}
 			return callMCPToolOnServer("im", "clear_conversation_messages", map[string]any{
 				"openConversationId": convID,
@@ -5373,8 +5390,8 @@ status 可选值:
 本命令升级已有普通群；新建外部群请使用 chat group create --type EXTERNAL。
 
 该操作不可逆，仅群主可执行。正式执行必须通过 --yes 显式确认，可先使用 --dry-run 预览。`,
-		Example: `  dws chat group upgrade-to-external --group <openConversationId> --yes
-  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --yes
+		Example: `  dws chat group upgrade-to-external --group <openConversationId> --dry-run
+  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --dry-run
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
@@ -5580,11 +5597,6 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 	chatMessageCmd.AddCommand(chatMessageListDirectCmd, chatMessageSearchCommonCmd, chatMessageCombineForwardCmd, chatMessageForwardTopicCmd, chatMessageSetPinCmd, chatMessageUnsetPinCmd, chatMessageListPinCmd, chatMessageAddFavoriteCmd, chatMessageRemoveFavoriteCmd, chatMessageListFavoritesCmd, chatMessageSetTopMsgCmd, chatMessageUnsetTopMsgCmd, chatMessageListEmotionRepliesCmd)
 
 	root.AddCommand(chatChmodCmd, chatDataAuthCmd, chatGroupCmd, chatSearchCmd, chatSearchCommonCmd, chatMessageCmd, chatFileCmd, newChatMediaGroup(), chatBotCmd, chatMessageListTopConversationsCmd, chatConversationInfoCmd, chatCategoryCmd, chatGroupRoleCmd, chatMuteCmd, chatSetTopCmd, chatGroupMuteCmd, chatGroupMuteMemberCmd, chatHideCmd, chatMuteAtAllCmd, chatMuteRedEnvelopeCmd, chatMarkUnreadCmd, chatClearRedPointCmd, chatClearAllRedPointCmd, chatListAllConversationsCmd, chatClearMessagesCmd, chatMarkReadCmd, chatTextCmd)
-
-	// hint: dws chat send → dws chat message send
-	root.AddCommand(hintSubCmd("send", "use: dws chat message send"))
-	// hint: dws chat history → dws chat message list
-	root.AddCommand(hintSubCmd("history", "use: dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"))
 
 	return root
 }

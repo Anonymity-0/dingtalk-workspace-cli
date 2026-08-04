@@ -6,12 +6,20 @@ package targetresolver
 
 import (
 	stderrors "errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/profilectx"
 )
+
+type resolverReaderFunc func(product, tool string, params map[string]any) (map[string]any, error)
+
+func (f resolverReaderFunc) CallMCPData(product, tool string, params map[string]any) (map[string]any, error) {
+	return f(product, tool, params)
+}
 
 type chatResolutionReader struct {
 	responses []map[string]any
@@ -29,7 +37,7 @@ func (r *chatResolutionReader) CallMCPData(product, tool string, params map[stri
 	return r.responses[len(r.calls)-1], nil
 }
 
-func TestExtractUsersKeepsUsableExternalContacts(t *testing.T) {
+func TestCrossPlatformCoverageExtractUsersKeepsUsableExternalContacts(t *testing.T) {
 	users := ExtractUsers(map[string]any{
 		"result": []any{
 			map[string]any{"userId": "u1", "openDingTalkId": "D1", "name": "张三"},
@@ -46,7 +54,7 @@ func TestExtractUsersKeepsUsableExternalContacts(t *testing.T) {
 	}
 }
 
-func TestOpenConversationIDIsNeverSearchedAsAGroupName(t *testing.T) {
+func TestCrossPlatformCoverageOpenConversationIDIsNeverSearchedAsAGroupName(t *testing.T) {
 	for _, value := range []string{"cid-fixture-chat-0001", " CIDO123456789 "} {
 		if !LooksLikeOpenConversationID(value) {
 			t.Fatalf("LooksLikeOpenConversationID(%q) = false", value)
@@ -75,7 +83,7 @@ func TestOpenConversationIDIsNeverSearchedAsAGroupName(t *testing.T) {
 	}
 }
 
-func TestResolveChatTargetStableIDBypassesSearch(t *testing.T) {
+func TestCrossPlatformCoverageResolveChatTargetStableIDBypassesSearch(t *testing.T) {
 	reader := &chatResolutionReader{}
 	resolved, err := ResolveChatTarget(reader, " cid-fixture-chat-0001 ", "")
 	if err != nil {
@@ -89,7 +97,7 @@ func TestResolveChatTargetStableIDBypassesSearch(t *testing.T) {
 	}
 }
 
-func TestResolveChatTargetNaturalDirectValueUsesResolver(t *testing.T) {
+func TestCrossPlatformCoverageResolveChatTargetNaturalDirectValueUsesResolver(t *testing.T) {
 	reader := &chatResolutionReader{responses: []map[string]any{{
 		"result":  []any{map[string]any{"openConversationId": "cid-project-1", "title": "项目群"}},
 		"hasMore": false,
@@ -103,7 +111,7 @@ func TestResolveChatTargetNaturalDirectValueUsesResolver(t *testing.T) {
 	}
 }
 
-func TestResolveChatTargetQueryStableIDAlsoBypassesSearch(t *testing.T) {
+func TestCrossPlatformCoverageResolveChatTargetQueryStableIDAlsoBypassesSearch(t *testing.T) {
 	reader := &chatResolutionReader{}
 	resolved, err := ResolveChatTarget(reader, "", "cid-query-123456")
 	if err != nil {
@@ -114,7 +122,7 @@ func TestResolveChatTargetQueryStableIDAlsoBypassesSearch(t *testing.T) {
 	}
 }
 
-func TestUserSelectionDedupesButDoesNotHideNamesakes(t *testing.T) {
+func TestCrossPlatformCoverageUserSelectionDedupesButDoesNotHideNamesakes(t *testing.T) {
 	users := dedupeUsers([]User{
 		{UserID: "u1", OpenDingTalkID: "D1", Name: "张三"},
 		{UserID: "u1", OpenDingTalkID: "D1", Name: "duplicate"},
@@ -126,7 +134,7 @@ func TestUserSelectionDedupesButDoesNotHideNamesakes(t *testing.T) {
 	}
 }
 
-func TestChatSelectionKeepsMultipleExactMatchesAmbiguous(t *testing.T) {
+func TestCrossPlatformCoverageChatSelectionKeepsMultipleExactMatchesAmbiguous(t *testing.T) {
 	chats := dedupeChats([]Chat{
 		{OpenConversationID: "c1", Name: "项目群"},
 		{OpenConversationID: "c1", Name: "项目群"},
@@ -139,7 +147,7 @@ func TestChatSelectionKeepsMultipleExactMatchesAmbiguous(t *testing.T) {
 	}
 }
 
-func TestResolveChatPagesBeforeApplyingExactPreference(t *testing.T) {
+func TestCrossPlatformCoverageResolveChatPagesBeforeApplyingExactPreference(t *testing.T) {
 	reader := &chatResolutionReader{responses: []map[string]any{
 		{
 			"result": []any{
@@ -169,7 +177,7 @@ func TestResolveChatPagesBeforeApplyingExactPreference(t *testing.T) {
 	}
 }
 
-func TestResolveChatKeepsExactNamesakesAcrossPagesAmbiguous(t *testing.T) {
+func TestCrossPlatformCoverageResolveChatKeepsExactNamesakesAcrossPagesAmbiguous(t *testing.T) {
 	reader := &chatResolutionReader{responses: []map[string]any{
 		{
 			"result": []any{
@@ -198,7 +206,7 @@ func TestResolveChatKeepsExactNamesakesAcrossPagesAmbiguous(t *testing.T) {
 	}
 }
 
-func TestResolveChatFailsClosedWhenPaginationCannotAdvance(t *testing.T) {
+func TestCrossPlatformCoverageResolveChatFailsClosedWhenPaginationCannotAdvance(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
 		nextCursor   any
@@ -237,7 +245,7 @@ func TestResolveChatFailsClosedWhenPaginationCannotAdvance(t *testing.T) {
 	}
 }
 
-func TestResolveChatAcceptsShortLegacyPageWithoutPaginationMetadata(t *testing.T) {
+func TestCrossPlatformCoverageResolveChatAcceptsShortLegacyPageWithoutPaginationMetadata(t *testing.T) {
 	reader := &chatResolutionReader{responses: []map[string]any{{
 		"result": []any{
 			map[string]any{"openConversationId": "c1", "title": "项目群"},
@@ -249,7 +257,7 @@ func TestResolveChatAcceptsShortLegacyPageWithoutPaginationMetadata(t *testing.T
 	}
 }
 
-func TestResolutionErrorCarriesStructuredCandidates(t *testing.T) {
+func TestCrossPlatformCoverageResolutionErrorCarriesStructuredCandidates(t *testing.T) {
 	err := newResolutionError(StatusAmbiguous, "chat", "项目群", []Chat{
 		{OpenConversationID: "c1", Name: "项目群"},
 		{OpenConversationID: "c2", Name: "项目群"},
@@ -271,4 +279,198 @@ func TestResolutionErrorCarriesStructuredCandidates(t *testing.T) {
 	if !ok || len(candidates) != 2 {
 		t.Fatalf("candidates = %#v", typed.Details["candidates"])
 	}
+}
+
+func TestCrossPlatformCoverageResolverCompletionBranches(t *testing.T) {
+	t.Run("user transport and selection", func(t *testing.T) {
+		upstream := stderrors.New("upstream")
+		if _, err := ResolveUser(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+			return nil, upstream
+		}), "张三", IdentityAny); !stderrors.Is(err, upstream) {
+			t.Fatalf("transport error = %v", err)
+		}
+
+		reader := resolverReaderFunc(func(_ string, _ string, params map[string]any) (map[string]any, error) {
+			switch params["keyword"] {
+			case "missing":
+				return map[string]any{"result": []any{}}, nil
+			case "external":
+				return map[string]any{"result": []any{map[string]any{"openDingTalkId": "D1", "name": "外部"}}}, nil
+			default:
+				return map[string]any{"result": []any{map[string]any{"userId": "u1", "openDingTalkId": "D1", "name": "张三"}}}, nil
+			}
+		})
+		if _, err := ResolveUser(reader, "missing", IdentityAny); err == nil {
+			t.Fatal("missing user unexpectedly resolved")
+		}
+		if resolved, err := ResolveUser(reader, "张三", IdentityUserID); err != nil || resolved.MatchType != "exact" {
+			t.Fatalf("exact user = %#v, %v", resolved, err)
+		}
+		if resolved, err := ResolveUser(reader, "external", IdentityOpenDingTalkID); err != nil || resolved.Selected.OpenDingTalkID != "D1" {
+			t.Fatalf("external user = %#v, %v", resolved, err)
+		}
+		ambiguous := resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+			return map[string]any{"result": []any{
+				map[string]any{"userId": "u1", "name": "甲"},
+				map[string]any{"userId": "u2", "name": "乙"},
+			}}, nil
+		})
+		if _, err := ResolveUser(ambiguous, "用户", IdentityAny); err == nil {
+			t.Fatal("ambiguous user unexpectedly resolved")
+		}
+	})
+
+	t.Run("chat transport metadata and page limit", func(t *testing.T) {
+		upstream := stderrors.New("upstream")
+		if _, err := ResolveChat(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+			return nil, upstream
+		}), "群"); !stderrors.Is(err, upstream) {
+			t.Fatalf("transport error = %v", err)
+		}
+
+		fullPage := make([]any, chatResolutionPageSize)
+		for i := range fullPage {
+			fullPage[i] = map[string]any{"openConversationId": fmt.Sprintf("c%d", i), "title": fmt.Sprintf("群%d", i)}
+		}
+		if _, err := ResolveChat(&chatResolutionReader{responses: []map[string]any{{"result": fullPage}}}, "群"); err == nil {
+			t.Fatal("full page without continuation unexpectedly resolved")
+		}
+
+		pages := 0
+		limitReader := resolverReaderFunc(func(_ string, _ string, _ map[string]any) (map[string]any, error) {
+			pages++
+			return map[string]any{
+				"result":     []any{map[string]any{"openConversationId": fmt.Sprintf("c%d", pages), "title": "群"}},
+				"hasMore":    true,
+				"nextCursor": fmt.Sprintf("page-%d", pages),
+			}, nil
+		})
+		if _, err := ResolveChat(limitReader, "群"); err == nil || pages != chatResolutionPageLimit {
+			t.Fatalf("page limit error = %v, pages=%d", err, pages)
+		}
+	})
+
+	t.Run("target and pagination validation", func(t *testing.T) {
+		reader := &chatResolutionReader{}
+		if _, err := ResolveChatTarget(reader, "cid-123456789", "群"); err == nil {
+			t.Fatal("conflicting targets unexpectedly resolved")
+		}
+		if _, err := ResolveChatTarget(reader, "", ""); err == nil {
+			t.Fatal("missing target unexpectedly resolved")
+		}
+		if page := extractChatPagination(nil); page.hasMoreKnown || page.nextCursor != "" {
+			t.Fatalf("nil pagination = %#v", page)
+		}
+		page := extractChatPagination(map[string]any{"data": map[string]any{"has_more": true, "next_token": 42}})
+		if !page.hasMoreKnown || !page.hasMore || page.nextCursor != "42" {
+			t.Fatalf("nested pagination = %#v", page)
+		}
+		for _, value := range []any{nil, "", "<nil>"} {
+			if got := paginationString(value); got != "" {
+				t.Fatalf("paginationString(%#v) = %q", value, got)
+			}
+		}
+	})
+
+	t.Run("batch resolution", func(t *testing.T) {
+		reader := resolverReaderFunc(func(product, _ string, params map[string]any) (map[string]any, error) {
+			query := fmt.Sprint(params["keyword"])
+			if query == "upstream" {
+				return nil, stderrors.New("upstream")
+			}
+			if product == "contact" {
+				if query == "missing" {
+					return map[string]any{"result": []any{}}, nil
+				}
+				return map[string]any{"result": []any{map[string]any{"userId": "u1", "name": query}}}, nil
+			}
+			if query == "missing" {
+				return map[string]any{"result": []any{}, "hasMore": false}, nil
+			}
+			return map[string]any{"result": []any{map[string]any{"openConversationId": "cid-shared-123", "title": query}}, "hasMore": false}, nil
+		})
+		if users, err := ResolveUsers(reader, []string{"张三", " 张三 "}, IdentityUserID); err != nil || len(users) != 1 {
+			t.Fatalf("deduped users = %#v, %v", users, err)
+		}
+		if _, err := ResolveUsers(reader, []string{"missing"}, IdentityUserID); err == nil {
+			t.Fatal("batch missing user unexpectedly resolved")
+		}
+		if _, err := ResolveUsers(reader, []string{"upstream"}, IdentityUserID); err == nil {
+			t.Fatal("batch user transport error missing")
+		}
+		if chats, err := ResolveChats(reader, []string{"群一", "群二"}); err != nil || len(chats) != 1 {
+			t.Fatalf("deduped chats = %#v, %v", chats, err)
+		}
+		if _, err := ResolveChats(reader, []string{"missing"}); err == nil {
+			t.Fatal("batch missing chat unexpectedly resolved")
+		}
+		if _, err := ResolveChats(reader, []string{"upstream"}); err == nil {
+			t.Fatal("batch chat transport error missing")
+		}
+	})
+
+	t.Run("public projections and internal helpers", func(t *testing.T) {
+		users := ExtractUsers(map[string]any{"items": []any{"bad", map[string]any{"name": "missing"}, map[string]any{"orgUserId": "u1", "staffName": "张三"}}})
+		if got := UsersWithUserID(users); len(got) != 1 {
+			t.Fatalf("users = %#v", got)
+		}
+		chats := ExtractChats(map[string]any{"groups": []any{"bad", map[string]any{"title": "missing"}, map[string]any{"id": "c1"}}})
+		if len(chats) != 1 || len(PreferExactChats(chats, "none")) != 1 {
+			t.Fatalf("chats = %#v", chats)
+		}
+		if labels := UserLabels([]User{{OpenDingTalkID: "D1", Name: "外部"}}); !reflect.DeepEqual(labels, []string{"外部(D1)"}) {
+			t.Fatalf("user labels = %#v", labels)
+		}
+		if labels := ChatLabels([]Chat{{OpenConversationID: "c1"}}); !strings.Contains(labels[0], "未命名") {
+			t.Fatalf("chat labels = %#v", labels)
+		}
+		if _, ok := resolutionDetails(stderrors.New("plain")); ok {
+			t.Fatal("plain error reported resolution details")
+		}
+		if label := candidateLabels(1); label != "候选" {
+			t.Fatalf("candidate label = %q", label)
+		}
+		if label := candidateLabels([]User{{UserID: "u1", Name: "甲"}}); label != "甲(u1)" {
+			t.Fatalf("user candidate label = %q", label)
+		}
+		if firstList(nil, "result") != nil {
+			t.Fatal("nil firstList should return nil")
+		}
+		if firstList(map[string]any{"result": "not-a-list"}, "result") != nil {
+			t.Fatal("missing firstList should return nil")
+		}
+		if got := filterUsersByIdentity([]User{{OpenDingTalkID: "D1"}}, IdentityUserID); len(got) != 0 {
+			t.Fatalf("user-id filter = %#v", got)
+		}
+		if got := filterUsersByIdentity([]User{{UserID: "u1"}}, IdentityOpenDingTalkID); len(got) != 0 {
+			t.Fatalf("open-id filter = %#v", got)
+		}
+
+		profilectx.Set("fixture")
+		t.Cleanup(func() { profilectx.Set("") })
+		for _, err := range []error{
+			newResolutionError(StatusNotFound, "user", "missing", nil),
+			newIncompleteChatResolutionError("群", nil, "fixture"),
+		} {
+			var typed *apperrors.Error
+			if !stderrors.As(err, &typed) || typed.Details["profile"] != "fixture" {
+				t.Fatalf("profile details = %#v", err)
+			}
+		}
+	})
+
+	t.Run("batch deduplicates shared open ids", func(t *testing.T) {
+		reader := resolverReaderFunc(func(_ string, _ string, params map[string]any) (map[string]any, error) {
+			query := fmt.Sprint(params["keyword"])
+			return map[string]any{"result": []any{map[string]any{
+				"userId":         "user-" + query,
+				"openDingTalkId": "D-shared",
+				"name":           query,
+			}}}, nil
+		})
+		resolved, err := ResolveUsers(reader, []string{"甲", "乙"}, IdentityAny)
+		if err != nil || len(resolved) != 1 {
+			t.Fatalf("shared open-id result = %#v, %v", resolved, err)
+		}
+	})
 }

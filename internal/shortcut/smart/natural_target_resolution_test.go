@@ -12,7 +12,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 )
 
-func TestChatMessagesResolvesNaturalChatAndUserTargets(t *testing.T) {
+func TestCrossPlatformCoverageChatMessagesResolvesNaturalChatAndUserTargets(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      []string
@@ -62,7 +62,7 @@ func TestChatMessagesResolvesNaturalChatAndUserTargets(t *testing.T) {
 	}
 }
 
-func TestChatMessagesStableGroupBypassesNaturalResolution(t *testing.T) {
+func TestCrossPlatformCoverageChatMessagesStableGroupBypassesNaturalResolution(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -76,7 +76,7 @@ func TestChatMessagesStableGroupBypassesNaturalResolution(t *testing.T) {
 	}
 }
 
-func TestChatMessagesNaturalUserAmbiguityStopsBeforeMessageRead(t *testing.T) {
+func TestCrossPlatformCoverageChatMessagesNaturalUserAmbiguityStopsBeforeMessageRead(t *testing.T) {
 	fake := &platformCoverageCaller{contactSearchResult: `{"result":[{"name":"张三","userId":"u1","openDingTalkId":"D1"},{"name":"张三","userId":"u2","openDingTalkId":"D2"}]}`}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -89,7 +89,7 @@ func TestChatMessagesNaturalUserAmbiguityStopsBeforeMessageRead(t *testing.T) {
 	}
 }
 
-func TestChatMessagesRejectsConversationIDInPeerIdentityFlag(t *testing.T) {
+func TestCrossPlatformCoverageChatMessagesRejectsConversationIDInPeerIdentityFlag(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -103,7 +103,7 @@ func TestChatMessagesRejectsConversationIDInPeerIdentityFlag(t *testing.T) {
 	}
 }
 
-func TestAtMeResolvesNaturalGroupBeforeSearch(t *testing.T) {
+func TestCrossPlatformCoverageAtMeResolvesNaturalGroupBeforeSearch(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -116,7 +116,7 @@ func TestAtMeResolvesNaturalGroupBeforeSearch(t *testing.T) {
 	}
 }
 
-func TestAtMeStableIDInQueryBypassesNaturalResolution(t *testing.T) {
+func TestCrossPlatformCoverageAtMeStableIDInQueryBypassesNaturalResolution(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -130,7 +130,7 @@ func TestAtMeStableIDInQueryBypassesNaturalResolution(t *testing.T) {
 	}
 }
 
-func TestSendToGroupStableIDBypassesNaturalResolution(t *testing.T) {
+func TestCrossPlatformCoverageSendToGroupStableIDBypassesNaturalResolution(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -144,7 +144,7 @@ func TestSendToGroupStableIDBypassesNaturalResolution(t *testing.T) {
 	}
 }
 
-func TestSearchMsgResolvesNaturalChatAndSenderBeforeSearch(t *testing.T) {
+func TestCrossPlatformCoverageSearchMsgResolvesNaturalChatAndSenderBeforeSearch(t *testing.T) {
 	fake := &platformCoverageCaller{contactSearchResult: `{"result":[{"name":"张三","userId":"u1","openDingTalkId":"D1"}]}`}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -172,7 +172,7 @@ func TestSearchMsgResolvesNaturalChatAndSenderBeforeSearch(t *testing.T) {
 	}
 }
 
-func TestSearchMsgAcceptsStableIDInChatQuery(t *testing.T) {
+func TestCrossPlatformCoverageSearchMsgAcceptsStableIDInChatQuery(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -196,7 +196,7 @@ func TestSearchMsgAcceptsStableIDInChatQuery(t *testing.T) {
 	}
 }
 
-func TestChatMembersListGroupAcceptsNameAndStableID(t *testing.T) {
+func TestCrossPlatformCoverageChatMembersListGroupAcceptsNameAndStableID(t *testing.T) {
 	for _, tt := range []struct {
 		name      string
 		args      []string
@@ -221,7 +221,7 @@ func TestChatMembersListGroupAcceptsNameAndStableID(t *testing.T) {
 	}
 }
 
-func TestSearchMsgNaturalSenderAmbiguityStopsBeforeSearch(t *testing.T) {
+func TestCrossPlatformCoverageSearchMsgNaturalSenderAmbiguityStopsBeforeSearch(t *testing.T) {
 	fake := &platformCoverageCaller{contactSearchResult: `{"result":[{"name":"张三","userId":"u1","openDingTalkId":"D1"},{"name":"张三","userId":"u2","openDingTalkId":"D2"}]}`}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()

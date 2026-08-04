@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestEventCommandRemainsVisibleAsBuiltInPublicGroup(t *testing.T) {
+func TestCrossPlatformCoverageEventCommandRemainsVisibleAsBuiltInPublicGroup(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	event := newEventCommand()
 	markdown := &cobra.Command{Use: "markdown"}
@@ -48,7 +48,7 @@ func TestEventCommandRemainsVisibleAsBuiltInPublicGroup(t *testing.T) {
 	}
 }
 
-func TestPluginCannotReplaceBuiltInEventCommand(t *testing.T) {
+func TestCrossPlatformCoveragePluginCannotReplaceBuiltInEventCommand(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	builtIn := newEventCommand()
 	root.AddCommand(builtIn)

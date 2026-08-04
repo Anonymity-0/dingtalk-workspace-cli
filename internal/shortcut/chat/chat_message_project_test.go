@@ -20,7 +20,7 @@ import (
 
 const testCipher = "SwzNkAraDE6lUHUNlVT3mjFdbxL6dWvmt77XtjACdpJx9VFibzTbW9KtDbkzGOYP||2||1||1"
 
-func TestListMessageProjectOne(t *testing.T) {
+func TestCrossPlatformCoverageListMessageProjectOne(t *testing.T) {
 	// full field mapping + forwarded expansion; an encrypted body is marked (no
 	// cross-conversation recovery), not leaked as base64.
 	row := listMessageProjectOne(map[string]any{
@@ -75,7 +75,7 @@ func TestListMessageProjectOne(t *testing.T) {
 	}
 }
 
-func TestAttachMessageResourceDownloadsPreservesMessagesAndMarksIncomplete(t *testing.T) {
+func TestCrossPlatformCoverageAttachMessageResourceDownloadsPreservesMessagesAndMarksIncomplete(t *testing.T) {
 	payload := map[string]any{
 		"messages":    []map[string]any{{"messageId": "msg-1"}},
 		"complete":    true,
@@ -103,7 +103,7 @@ func TestAttachMessageResourceDownloadsPreservesMessagesAndMarksIncomplete(t *te
 	}
 }
 
-func TestListPinProjectPreservesThreadIdentity(t *testing.T) {
+func TestCrossPlatformCoverageListPinProjectPreservesThreadIdentity(t *testing.T) {
 	got := listPinProject(map[string]any{
 		"result": map[string]any{
 			"messages": []any{

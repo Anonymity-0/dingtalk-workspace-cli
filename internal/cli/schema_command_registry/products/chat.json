@@ -538,6 +538,194 @@
     {
       "canonical_path": "chat.shortcut_thread_replies",
       "cli_path": "chat +thread-replies"
+    },
+    {
+      "canonical_path": "chat.shortcut_category_add_conversation",
+      "cli_path": "chat +category-add-conversation"
+    },
+    {
+      "canonical_path": "chat.shortcut_category_list_conversations",
+      "cli_path": "chat +category-list-conversations"
+    },
+    {
+      "canonical_path": "chat.shortcut_category_remove_conversation",
+      "cli_path": "chat +category-remove-conversation"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_add_bot",
+      "cli_path": "chat +chat-add-bot"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_audit_join",
+      "cli_path": "chat +chat-audit-join"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_get_by_id",
+      "cli_path": "chat +chat-get-by-id"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_members_get",
+      "cli_path": "chat +chat-members-get"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_mute_member",
+      "cli_path": "chat +chat-mute-member"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_quit",
+      "cli_path": "chat +chat-quit"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_remove_bot",
+      "cli_path": "chat +chat-remove-bot"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_role_remove",
+      "cli_path": "chat +chat-role-remove"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_role_remove_user",
+      "cli_path": "chat +chat-role-remove-user"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_transfer_owner",
+      "cli_path": "chat +chat-transfer-owner"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_update",
+      "cli_path": "chat +chat-update"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_update_icon",
+      "cli_path": "chat +chat-update-icon"
+    },
+    {
+      "canonical_path": "chat.shortcut_chat_update_settings",
+      "cli_path": "chat +chat-update-settings"
+    },
+    {
+      "canonical_path": "chat.shortcut_conversation_clear_messages",
+      "cli_path": "chat +conversation-clear-messages"
+    },
+    {
+      "canonical_path": "chat.shortcut_conversation_clear_red_point",
+      "cli_path": "chat +conversation-clear-red-point"
+    },
+    {
+      "canonical_path": "chat.shortcut_conversation_hide",
+      "cli_path": "chat +conversation-hide"
+    },
+    {
+      "canonical_path": "chat.shortcut_conversation_mark_read",
+      "cli_path": "chat +conversation-mark-read"
+    },
+    {
+      "canonical_path": "chat.shortcut_conversation_mark_unread",
+      "cli_path": "chat +conversation-mark-unread"
+    },
+    {
+      "canonical_path": "chat.shortcut_conversation_mute",
+      "cli_path": "chat +conversation-mute"
+    },
+    {
+      "canonical_path": "chat.shortcut_conversation_set_top",
+      "cli_path": "chat +conversation-set-top"
+    },
+    {
+      "canonical_path": "chat.shortcut_feed_group_query_item",
+      "cli_path": "chat +feed-group-query-item"
+    },
+    {
+      "canonical_path": "chat.shortcut_flag_cancel",
+      "cli_path": "chat +flag-cancel"
+    },
+    {
+      "canonical_path": "chat.shortcut_flag_create",
+      "cli_path": "chat +flag-create"
+    },
+    {
+      "canonical_path": "chat.shortcut_flag_list",
+      "cli_path": "chat +flag-list"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_add_emoji",
+      "cli_path": "chat +messages-add-emoji"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_add_text_emotion",
+      "cli_path": "chat +messages-add-text-emotion"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_batch_recall_by_bot",
+      "cli_path": "chat +messages-batch-recall-by-bot"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_batch_send_by_bot",
+      "cli_path": "chat +messages-batch-send-by-bot"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_combine_forward",
+      "cli_path": "chat +messages-combine-forward"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_create_text_emotion",
+      "cli_path": "chat +messages-create-text-emotion"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_forward",
+      "cli_path": "chat +messages-forward"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_forward_topic",
+      "cli_path": "chat +messages-forward-topic"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_list",
+      "cli_path": "chat +messages-list"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_recall",
+      "cli_path": "chat +messages-recall"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_recall_by_bot",
+      "cli_path": "chat +messages-recall-by-bot"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_remove_emoji",
+      "cli_path": "chat +messages-remove-emoji"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_remove_text_emotion",
+      "cli_path": "chat +messages-remove-text-emotion"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_resource_download",
+      "cli_path": "chat +messages-resource-download"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_resource_url",
+      "cli_path": "chat +messages-resource-url"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_send_by_bot",
+      "cli_path": "chat +messages-send-by-bot"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_set_pin",
+      "cli_path": "chat +messages-set-pin"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_set_top",
+      "cli_path": "chat +messages-set-top"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_unset_pin",
+      "cli_path": "chat +messages-unset-pin"
+    },
+    {
+      "canonical_path": "chat.shortcut_messages_unset_top",
+      "cli_path": "chat +messages-unset-top"
     }
   ]
 }

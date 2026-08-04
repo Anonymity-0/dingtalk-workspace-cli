@@ -173,7 +173,7 @@ var paramAliasRepresentativePayloadCases = map[string]bool{
 	paramAliasPayloadCaseKey("report list", "from-date"):              true, // date-range concept alias
 }
 
-func TestReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads(t *testing.T) {
+func TestCrossPlatformCoverageReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads(t *testing.T) {
 	concepts, err := cli.LoadParamConcepts()
 	if err != nil {
 		t.Fatalf("LoadParamConcepts() error = %v", err)
@@ -224,6 +224,7 @@ func TestReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads
 			if ctx == nil {
 				t.Fatal("complete alias command skipped PreParse")
 			}
+			normalizeParamAliasVolatileDefaults(fixture.Command, canonicalCaller, aliasCaller)
 			if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
 				t.Fatalf("final transport calls differ\ncanonical args: %v\nalias args: %v\ncanonical calls: %#v\nalias calls: %#v", canonicalArgs, aliasArgs, canonicalCaller.calls, aliasCaller.calls)
 			}
@@ -256,7 +257,7 @@ func TestReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads
 	}
 }
 
-func TestNewIMParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
+func TestCrossPlatformCoverageNewIMParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
 	activeAliases := 0
 	for _, test := range paramAliasNewIMCases {
 		test := test
@@ -296,6 +297,7 @@ func TestNewIMParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
 			if ctx == nil {
 				t.Fatal("complete alias command skipped PreParse")
 			}
+			normalizeParamAliasVolatileDefaults(test.command, canonicalCaller, aliasCaller)
 			if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
 				t.Fatalf("final transport calls differ\ncanonical args: %v\nalias args: %v\ncanonical calls: %#v\nalias calls: %#v", canonicalArgs, aliasArgs, canonicalCaller.calls, aliasCaller.calls)
 			}
@@ -303,6 +305,23 @@ func TestNewIMParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
 	}
 	if activeAliases != len(paramAliasNewIMCases) {
 		t.Fatalf("new IM aliases active in embedded table = %d, want %d", activeAliases, len(paramAliasNewIMCases))
+	}
+}
+
+// +chat-messages supplies the current wall-clock time when callers omit
+// --time. Alias equivalence concerns the resolved target and transport shape;
+// a suite crossing a second boundary must not make that default appear
+// alias-dependent.
+func normalizeParamAliasVolatileDefaults(command string, callers ...*paramAliasCaptureCaller) {
+	if command != "chat +chat-messages" {
+		return
+	}
+	for _, caller := range callers {
+		for i := range caller.calls {
+			if caller.calls[i].tool == "list_conversation_message_v2" || caller.calls[i].tool == "list_individual_chat_message" {
+				delete(caller.calls[i].args, "time")
+			}
+		}
 	}
 }
 

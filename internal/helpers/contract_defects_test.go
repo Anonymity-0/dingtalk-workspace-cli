@@ -9,12 +9,47 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
+
+func TestCrossPlatformCoverageChatConversationDestructiveCommandsRequireConfirmation(t *testing.T) {
+	for _, args := range [][]string{
+		{"category", "delete", "--category-id", "42"},
+		{"clear-messages", "--conversation-id", "cid-1"},
+	} {
+		caller := &guardedMutationCaller{}
+		err := executeGuardedMutationCommand(t, caller, newChatCommand, args...)
+		requireTypedConfirmationError(t, err)
+		if len(caller.calls) != 0 {
+			t.Fatalf("chat %v made tool calls before confirmation: %#v", args, caller.calls)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageChatConversationDestructiveCommandsRunAfterConfirmation(t *testing.T) {
+	for _, tc := range []struct {
+		args     []string
+		toolName string
+		wantArgs map[string]any
+	}{
+		{[]string{"category", "delete", "--category-id", "42", "--yes"}, "delete_conv_category", map[string]any{"categoryId": int64(42)}},
+		{[]string{"clear-messages", "--conversation-id", "cid-1", "--yes"}, "clear_conversation_messages", map[string]any{"openConversationId": "cid-1"}},
+	} {
+		caller := &guardedMutationCaller{}
+		if err := executeGuardedMutationCommand(t, caller, newChatCommand, tc.args...); err != nil {
+			t.Fatalf("chat %v error = %v", tc.args, err)
+		}
+		want := guardedMutationCall{productID: "im", toolName: tc.toolName, args: tc.wantArgs}
+		if len(caller.calls) != 1 || !reflect.DeepEqual(caller.calls[0], want) {
+			t.Fatalf("chat %v calls = %#v, want %#v", tc.args, caller.calls, want)
+		}
+	}
+}
 
 type contractDefectCaller struct {
 	dryRun    bool
@@ -65,7 +100,7 @@ func executeContractDefectCommand(t *testing.T, caller *contractDefectCaller, bu
 	return stdout.String(), err
 }
 
-func TestApprovalRevokeDryRunSkipsConfirmationAndEmitsPreview(t *testing.T) {
+func TestCrossPlatformCoverageApprovalRevokeDryRunSkipsConfirmationAndEmitsPreview(t *testing.T) {
 	caller := &contractDefectCaller{dryRun: true}
 	output, err := executeContractDefectCommand(t, caller, newOaCommand,
 		"approval", "revoke", "--instance-id", "instance-dry-run", "--dry-run")
@@ -81,7 +116,7 @@ func TestApprovalRevokeDryRunSkipsConfirmationAndEmitsPreview(t *testing.T) {
 	}
 }
 
-func TestDocVersionRevertDryRunSkipsRemotePreflightAndEmitsPreview(t *testing.T) {
+func TestCrossPlatformCoverageDocVersionRevertDryRunSkipsRemotePreflightAndEmitsPreview(t *testing.T) {
 	caller := &contractDefectCaller{dryRun: true}
 	output, err := executeContractDefectCommand(t, caller, newDocCommand,
 		"version", "revert", "--node", "node-dry-run", "--version", "7", "--dry-run")
@@ -97,7 +132,7 @@ func TestDocVersionRevertDryRunSkipsRemotePreflightAndEmitsPreview(t *testing.T)
 	}
 }
 
-func TestDocRenamePreservesCallerProvidedDisplayName(t *testing.T) {
+func TestCrossPlatformCoverageDocRenamePreservesCallerProvidedDisplayName(t *testing.T) {
 	renameCmd, remaining, err := newDocCommand().Find([]string{"rename"})
 	if err != nil || len(remaining) != 0 {
 		t.Fatalf("find doc rename: command=%v remaining=%v err=%v", renameCmd, remaining, err)
@@ -125,7 +160,7 @@ func TestDocRenamePreservesCallerProvidedDisplayName(t *testing.T) {
 	}
 }
 
-func TestDriveRenameUsesNodeTypeAndCurrentExtension(t *testing.T) {
+func TestCrossPlatformCoverageDriveRenameUsesNodeTypeAndCurrentExtension(t *testing.T) {
 	tests := []struct {
 		name        string
 		metadata    string
@@ -191,7 +226,7 @@ func TestDriveRenameUsesNodeTypeAndCurrentExtension(t *testing.T) {
 	}
 }
 
-func TestDriveRenameMetadataFailuresDoNotMutate(t *testing.T) {
+func TestCrossPlatformCoverageDriveRenameMetadataFailuresDoNotMutate(t *testing.T) {
 	tests := []struct {
 		name      string
 		responses map[string]string
@@ -225,7 +260,7 @@ func TestDriveRenameMetadataFailuresDoNotMutate(t *testing.T) {
 	}
 }
 
-func TestDriveRenameDryRunDefersMetadataNormalization(t *testing.T) {
+func TestCrossPlatformCoverageDriveRenameDryRunDefersMetadataNormalization(t *testing.T) {
 	caller := &contractDefectCaller{dryRun: true}
 	output, err := executeContractDefectCommand(t, caller, newDriveCommand,
 		"rename", "--node", "node-1", "--name", "photo.heic", "--dry-run")
@@ -240,7 +275,7 @@ func TestDriveRenameDryRunDefersMetadataNormalization(t *testing.T) {
 	}
 }
 
-func TestDriveRenameBaseNameConservativeEdges(t *testing.T) {
+func TestCrossPlatformCoverageDriveRenameBaseNameConservativeEdges(t *testing.T) {
 	tests := []struct {
 		name      string
 		nodeType  string
@@ -261,7 +296,7 @@ func TestDriveRenameBaseNameConservativeEdges(t *testing.T) {
 	}
 }
 
-func TestDriveInfoRestoresFileSizeWhenDocMetadataIsNull(t *testing.T) {
+func TestCrossPlatformCoverageDriveInfoRestoresFileSizeWhenDocMetadataIsNull(t *testing.T) {
 	caller := &contractDefectCaller{responses: map[string]string{
 		"drive/get_file_info":   `{"result":{"fileId":"node-1","extension":"adoc","fileSize":93682}}`,
 		"doc/get_document_info": `{"result":{"title":"Doc","fileSize":null}}`,

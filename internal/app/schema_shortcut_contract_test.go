@@ -17,10 +17,10 @@ import (
 
 const (
 	publicShortcutCount          = 265
-	schemaPublishedShortcutCount = 218
+	schemaPublishedShortcutCount = 265
 )
 
-func TestEmbeddedSchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
+func TestCrossPlatformCoverageEmbeddedSchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
 	tools := embeddedSchemaAllToolsForHelpFlagTest(t, NewRootCommand())
 	public := make([]shortcut.Shortcut, 0, publicShortcutCount)
 	for _, candidate := range shortcut.All() {
@@ -80,7 +80,7 @@ func TestEmbeddedSchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *tes
 	}
 }
 
-func TestEmbeddedShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T) {
+func TestCrossPlatformCoverageEmbeddedShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T) {
 	leaf := executeShortcutSchemaQuery(t, "--cli-path", "chat +messages-read-status")
 	if got, want := schemaContractString(leaf["canonical_path"]), "chat.shortcut_messages_read_status"; got != want {
 		t.Fatalf("shortcut leaf canonical_path = %q, want %q", got, want)
@@ -106,7 +106,7 @@ func TestEmbeddedShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 
 	product := executeShortcutSchemaQuery(t, "chat")
 	productPayload, _ := product["product"].(map[string]any)
-	if got, want := int(product["count"].(float64)), 132; got != want {
+	if got, want := int(product["count"].(float64)), 179; got != want {
 		t.Fatalf("schema chat count = %d, want %d", got, want)
 	}
 	summaries := schemaContractObjectSlice(productPayload["tools"])
@@ -116,8 +116,8 @@ func TestEmbeddedShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 			shortcutCount++
 		}
 	}
-	if shortcutCount != 50 {
-		t.Fatalf("schema chat shortcut summaries = %d, want 50", shortcutCount)
+	if shortcutCount != 97 {
+		t.Fatalf("schema chat shortcut summaries = %d, want 97", shortcutCount)
 	}
 }
 

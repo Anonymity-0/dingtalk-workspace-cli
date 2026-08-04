@@ -99,7 +99,7 @@ func newPlatformCoverageRoot() *cobra.Command {
 	return root
 }
 
-func TestIMObservedCompatibilityAliasesReachCanonicalInvocation(t *testing.T) {
+func TestCrossPlatformCoverageIMObservedCompatibilityAliasesReachCanonicalInvocation(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      []string
@@ -138,7 +138,7 @@ func TestIMObservedCompatibilityAliasesReachCanonicalInvocation(t *testing.T) {
 	}
 }
 
-func TestIMObservedCompatibilityAliasesConflictWithCanonicalFlags(t *testing.T) {
+func TestCrossPlatformCoverageIMObservedCompatibilityAliasesConflictWithCanonicalFlags(t *testing.T) {
 	for _, args := range [][]string{
 		{"chat", "+chat-messages", "--limit", "5", "--page-size", "5", "--conversation-id", "cid"},
 		{"chat", "+search-msg", "--query", "评测", "--text", "评测", "--no-enrich"},
@@ -153,6 +153,35 @@ func TestIMObservedCompatibilityAliasesConflictWithCanonicalFlags(t *testing.T) 
 		if len(fake.calls) != 0 {
 			t.Fatalf("conflicting aliases reached transport: %#v", fake.calls)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageChatShortcutsRejectInvalidLocalOptions(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		argv []string
+	}{
+		{name: "at me non-positive days", argv: []string{"chat", "+at-me", "--days", "0"}},
+		{name: "at me excessive days", argv: []string{"chat", "+at-me", "--days", "3651"}},
+		{name: "at me non-positive limit", argv: []string{"chat", "+at-me", "--limit", "0"}},
+		{name: "chat messages invalid time", argv: []string{"chat", "+chat-messages", "--group", "cid-1", "--time", "not-a-time"}},
+		{name: "chat messages non-positive limit", argv: []string{"chat", "+chat-messages", "--group", "cid-1", "--limit", "0"}},
+		{name: "thread replies invalid time", argv: []string{"chat", "+thread-replies", "--group", "cid-1", "--thread-id", "thread-1", "--time", "not-a-time"}},
+		{name: "thread replies non-positive limit", argv: []string{"chat", "+thread-replies", "--group", "cid-1", "--thread-id", "thread-1", "--limit", "0"}},
+		{name: "unread chats non-positive count", argv: []string{"chat", "+unread-chats", "--count", "0"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &platformCoverageCaller{}
+			helpers.InitDeps(fake)
+			root := newPlatformCoverageRoot()
+			root.SetArgs(tc.argv)
+			if err := root.Execute(); err == nil {
+				t.Fatalf("invalid options unexpectedly succeeded: %v", tc.argv)
+			}
+			if len(fake.calls) != 0 {
+				t.Fatalf("invalid options reached transport: %#v", fake.calls)
+			}
+		})
 	}
 }
 

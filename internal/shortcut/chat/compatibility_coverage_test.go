@@ -220,7 +220,7 @@ func TestCrossPlatformCoverageCompatibilityAliases(t *testing.T) {
 	}
 }
 
-func TestConversationNotificationSubSwitchesPublishMutePrerequisite(t *testing.T) {
+func TestCrossPlatformCoverageConversationNotificationSubSwitchesPublishMutePrerequisite(t *testing.T) {
 	for _, command := range []shortcut.Shortcut{ConversationMuteAtAll, ConversationMuteRedEnvelope} {
 		if !strings.Contains(command.Intent, "+conversation-mute") ||
 			!strings.Contains(command.Intent, "NotificationOffNotEnabled") {
@@ -274,7 +274,7 @@ func TestCrossPlatformCoverageChatIDHelpers(t *testing.T) {
 	})
 }
 
-func TestChatMuteMemberResolvesUserIDToOpenDingTalkID(t *testing.T) {
+func TestCrossPlatformCoverageChatMuteMemberResolvesUserIDToOpenDingTalkID(t *testing.T) {
 	fake := &muteMemberResolutionCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -303,7 +303,7 @@ func TestChatMuteMemberResolvesUserIDToOpenDingTalkID(t *testing.T) {
 	}
 }
 
-func TestConversationCategoryTitleValidation(t *testing.T) {
+func TestCrossPlatformCoverageConversationCategoryTitleValidation(t *testing.T) {
 	tests := []struct {
 		name      string
 		argv      []string

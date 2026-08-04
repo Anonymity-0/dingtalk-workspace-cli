@@ -12,7 +12,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 )
 
-func TestMessagesSendResolvesNaturalUserAndChatTargets(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendResolvesNaturalUserAndChatTargets(t *testing.T) {
 	tests := []struct {
 		name       string
 		args       []string
@@ -68,7 +68,7 @@ func TestMessagesSendResolvesNaturalUserAndChatTargets(t *testing.T) {
 	}
 }
 
-func TestMessagesSendNaturalTargetAmbiguityHasNoWrite(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendNaturalTargetAmbiguityHasNoWrite(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"u1","openDingTalkId":"D1"},{"name":"张三","userId":"u2","openDingTalkId":"D2"}]}`,
 	}}
@@ -94,7 +94,7 @@ func TestMessagesSendNaturalTargetAmbiguityHasNoWrite(t *testing.T) {
 	}
 }
 
-func TestMessagesSendChatQueryResolvesAllPagesBeforeWrite(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendChatQueryResolvesAllPagesBeforeWrite(t *testing.T) {
 	fake := &larkAlignmentCaller{sequenceResponses: map[string][]string{
 		"im/search_groups": {
 			`{"result":[{"title":"项目群-归档","openConversationId":"archive"}],"hasMore":true,"nextCursor":"page-2"}`,
@@ -119,7 +119,7 @@ func TestMessagesSendChatQueryResolvesAllPagesBeforeWrite(t *testing.T) {
 	}
 }
 
-func TestMessagesSendIncompleteChatResolutionHasNoWrite(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendIncompleteChatResolutionHasNoWrite(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"im/search_groups": `{"result":[{"title":"项目群","openConversationId":"c1"}],"hasMore":true}`,
 	}}
@@ -139,7 +139,7 @@ func TestMessagesSendIncompleteChatResolutionHasNoWrite(t *testing.T) {
 	}
 }
 
-func TestMessagesSendDryRunUsesRealNaturalTargetResolution(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendDryRunUsesRealNaturalTargetResolution(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
 		"im/search_groups": `{"result":[{"title":"项目群","openConversationId":"c1"}]}`,
 	}}
@@ -160,7 +160,7 @@ func TestMessagesSendDryRunUsesRealNaturalTargetResolution(t *testing.T) {
 	}
 }
 
-func TestMessagesSendRejectsNaturalTargetForUnsupportedIdentity(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendRejectsNaturalTargetForUnsupportedIdentity(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()

@@ -335,17 +335,17 @@ func registerFlags(cmd *cobra.Command, flags []Flag) {
 		desc := flagHelp(f)
 		switch f.Type {
 		case FlagBool:
-			cmd.Flags().Bool(f.Name, f.Default == "true", desc)
+			cmd.Flags().BoolP(f.Name, f.Shorthand, f.Default == "true", desc)
 		case FlagInt:
-			cmd.Flags().Int(f.Name, atoiDefault(f.Default), desc)
+			cmd.Flags().IntP(f.Name, f.Shorthand, atoiDefault(f.Default), desc)
 		case FlagStringSlice:
 			var defaults []string
 			if value := strings.TrimSpace(f.Default); value != "" {
 				defaults = strings.Split(value, ",")
 			}
-			cmd.Flags().StringSlice(f.Name, defaults, desc)
+			cmd.Flags().StringSliceP(f.Name, f.Shorthand, defaults, desc)
 		default: // FlagString and empty
-			cmd.Flags().String(f.Name, f.Default, desc)
+			cmd.Flags().StringP(f.Name, f.Shorthand, f.Default, desc)
 		}
 		if f.Hidden {
 			_ = cmd.Flags().MarkHidden(f.Name)

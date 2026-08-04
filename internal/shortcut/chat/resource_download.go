@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -204,14 +205,33 @@ func validateResourceDownloadOutputFlag(output, flagName string) error {
 	if output == "" {
 		return apperrors.NewValidation(flagName + " 不能为空")
 	}
-	if filepath.IsAbs(output) {
+	if resourcePathIsAbsolute(output) {
 		return apperrors.NewValidation(flagName + " 只接受工作目录内的相对路径")
 	}
-	clean := filepath.Clean(output)
-	if clean == ".." || strings.HasPrefix(clean, ".."+string(os.PathSeparator)) {
+	if resourcePathEscapesBase(output) {
 		return apperrors.NewValidation(flagName + " 不允许使用 .. 逃逸工作目录")
 	}
 	return nil
+}
+
+func resourcePathIsAbsolute(value string) bool {
+	if filepath.IsAbs(value) {
+		return true
+	}
+	portable := strings.ReplaceAll(strings.TrimSpace(value), "\\", "/")
+	if pathpkg.IsAbs(portable) {
+		return true
+	}
+	return len(portable) >= 2 &&
+		((portable[0] >= 'a' && portable[0] <= 'z') ||
+			(portable[0] >= 'A' && portable[0] <= 'Z')) &&
+		portable[1] == ':'
+}
+
+func resourcePathEscapesBase(value string) bool {
+	portable := strings.ReplaceAll(strings.TrimSpace(value), "\\", "/")
+	clean := pathpkg.Clean(portable)
+	return clean == ".." || strings.HasPrefix(clean, "../")
 }
 
 func resourceDownloadInfo(data map[string]any) (string, map[string]string, error) {
@@ -364,8 +384,7 @@ func resolveResourceDownloadPath(
 		return "", "", apperrors.NewInternal(fmt.Sprintf("解析输出目录失败: %v", err))
 	}
 	parentRel, err := resourceRel(realBase, realParent)
-	if err != nil || parentRel == ".." ||
-		strings.HasPrefix(parentRel, ".."+string(os.PathSeparator)) {
+	if err != nil || resourcePathEscapesBase(parentRel) {
 		return "", "", apperrors.NewValidation("--output 解析后逃逸工作目录")
 	}
 
@@ -393,8 +412,7 @@ func resolveResourceDownloadPath(
 
 func ensureResourceDownloadParent(baseDir, parent string) error {
 	relative, err := resourceRel(baseDir, parent)
-	if err != nil || relative == ".." ||
-		strings.HasPrefix(relative, ".."+string(os.PathSeparator)) {
+	if err != nil || resourcePathEscapesBase(relative) {
 		return apperrors.NewValidation("--output 解析后逃逸工作目录")
 	}
 	if relative == "." {

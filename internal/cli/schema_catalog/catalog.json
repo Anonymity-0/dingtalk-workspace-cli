@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "surface_hash": "sha256:c90a5ccbf3f7e23523c6465ddd5c5000c707980d63e64ef5f5c11ee60869920b",
-  "source_hash": "sha256:bc5c7b2be2d964f857cb66338927ae93810f5a2c7c6943b4f0a3508bf547f2da",
+  "surface_hash": "sha256:ae4288a29f237ab41d080695d94794133143ad1efc0899f71f05047443ab09c0",
+  "source_hash": "sha256:1e467b051dec8cd208e3787820a528c2b6ff5ae3f2fa286c8f56fced3e2f2477",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:e1437aaa9c52a6da5f3702759249285a4adceae057a5e050c1cce9a3f8672a2b",
-      "surface_hash": "sha256:c90a5ccbf3f7e23523c6465ddd5c5000c707980d63e64ef5f5c11ee60869920b",
+      "source_hash": "sha256:0f520e9217cdca505d6f80fb362edfebb6a319f4b8d9e4e2eb86935ec18d424b",
+      "surface_hash": "sha256:ae4288a29f237ab41d080695d94794133143ad1efc0899f71f05047443ab09c0",
       "surface_products": 26,
-      "surface_tools": 850,
-      "tools_with_agent_summary": 850,
-      "tools_with_metadata": 850,
+      "surface_tools": 897,
+      "tools_with_agent_summary": 897,
+      "tools_with_metadata": 897,
       "unmatched_skill_tools": 122,
       "version": 1
     },
@@ -7749,7 +7749,7 @@
         "id": "chat",
         "name": "群聊 / 消息 / 机器人",
         "runtime": true,
-        "tool_count": 132,
+        "tool_count": 179,
         "tools": [
           {
             "agent_metadata_source": "embedded-skill-metadata",
@@ -9838,7 +9838,7 @@
             "cli_name": "+at-me",
             "cli_path": "chat +at-me",
             "confirmation": "not_required",
-            "description": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "description": "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --group、--chat-query、--group-query 互斥，最多指定一个\n  - --days 必须在 1-3650 之间\n  - --limit 必须大于 0\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -9932,6 +9932,32 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "将会话移动到指定的自定义分组中",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要新建、改名或删除分组时分别使用 +category-create、+category-rename、+category-delete；要移出分组使用 +category-remove-conversation"
+            ],
+            "canonical_path": "chat.shortcut_category_add_conversation",
+            "cli_name": "+category-add-conversation",
+            "cli_path": "chat +category-add-conversation",
+            "confirmation": "user_required",
+            "description": "当你想把某个会话归入一个或多个自定义分组时使用；会实际把会话加入指定分组，需传会话 openConversationId 和目标分组 ID 列表。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command owns validation, lower-call argument mapping, result projection, and confirmation rather than exposing one pinned RPC contract.",
+            "name": "shortcut_category_add_conversation",
+            "primary_cli_path": "chat +category-add-conversation",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "将会话移动到指定的自定义分组中",
+            "use_when": [
+              "当你想把某个会话归入一个或多个自定义分组时使用；会实际把会话加入指定分组，需传会话 openConversationId 和目标分组 ID 列表。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "创建用户自定义会话分组",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
@@ -10010,6 +10036,58 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "拉取指定自定义会话分组下的会话",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只想列出分组本身使用 +category-list；要按多个会话 ID 精确检查分组项使用 +feed-group-query-item"
+            ],
+            "canonical_path": "chat.shortcut_category_list_conversations",
+            "cli_name": "+category-list-conversations",
+            "cli_path": "chat +category-list-conversations",
+            "confirmation": "not_required",
+            "description": "当你想查看某个自定义会话分组里都归入了哪些会话时使用；只读，需传 categoryId，可用 --exclude-muted 排除已免打扰会话。",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command owns validation and the category conversation projection rather than exposing one pinned RPC contract.",
+            "name": "shortcut_category_list_conversations",
+            "primary_cli_path": "chat +category-list-conversations",
+            "reviewed": true,
+            "risk": "low",
+            "title": "拉取指定自定义会话分组下的会话",
+            "use_when": [
+              "当你想查看某个自定义会话分组里都归入了哪些会话时使用；只读，需传 categoryId，可用 --exclude-muted 排除已免打扰会话。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "将会话从指定的自定义分组中移出",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要把会话加入分组使用 +category-add-conversation；要删除整个分组使用 +category-delete；本命令不会删除或隐藏会话"
+            ],
+            "canonical_path": "chat.shortcut_category_remove_conversation",
+            "cli_name": "+category-remove-conversation",
+            "cli_path": "chat +category-remove-conversation",
+            "confirmation": "user_required",
+            "description": "当你想把某个会话从指定自定义分组中移出时使用；会实际从分组移除该会话（不删除会话本身），需传会话 openConversationId 和分组 ID 列表。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command owns validation, lower-call argument mapping, result projection, and confirmation rather than exposing one pinned RPC contract.",
+            "name": "shortcut_category_remove_conversation",
+            "primary_cli_path": "chat +category-remove-conversation",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "将会话从指定的自定义分组中移出",
+            "use_when": [
+              "当你想把某个会话从指定自定义分组中移出时使用；会实际从分组移除该会话（不删除会话本身），需传会话 openConversationId 和分组 ID 列表。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "更新用户自定义会话分组的名称",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
@@ -10032,6 +10110,58 @@
             "title": "更新用户自定义会话分组的名称",
             "use_when": [
               "当你想重命名已有的自定义会话分组时使用；会实际更新分组名称，需传 categoryId 和最多 15 个字符的新名称 --title。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "将机器人添加到群中",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只是发送机器人消息使用 +messages-send-by-bot；查看群机器人使用 +chat-bots；移除机器人使用 +chat-remove-bot"
+            ],
+            "canonical_path": "chat.shortcut_chat_add_bot",
+            "cli_name": "+chat-add-bot",
+            "cli_path": "chat +chat-add-bot",
+            "confirmation": "user_required",
+            "description": "当你想把某个机器人添加进群（比如让日报机器人进群播报）时使用；会实际把机器人加入群聊，需传机器人 robotCode 和群 openConversationId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command owns bot and conversation validation, lower-call mapping, and confirmation rather than exposing one pinned RPC contract.",
+            "name": "shortcut_chat_add_bot",
+            "primary_cli_path": "chat +chat-add-bot",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "将机器人添加到群中",
+            "use_when": [
+              "当你想把某个机器人添加进群（比如让日报机器人进群播报）时使用；会实际把机器人加入群聊，需传机器人 robotCode 和群 openConversationId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "审批入群验证（通过/拒绝/删除/忽略/拉黑）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "先查看申请使用 +chat-list-join-requests；普通添加成员或群权限调整不要使用入群审批命令"
+            ],
+            "canonical_path": "chat.shortcut_chat_audit_join",
+            "cli_name": "+chat-audit-join",
+            "cli_path": "chat +chat-audit-join",
+            "confirmation": "user_required",
+            "description": "当你要处理某条入群申请时使用；会实际执行通过/拒绝/删除/忽略/拉黑动作，需传群 openConversationId、recordId、申请人与邀请人 userId 及 status。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates the join record, actors and audit disposition before one confirmed moderation action.",
+            "name": "shortcut_chat_audit_join",
+            "primary_cli_path": "chat +chat-audit-join",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "审批入群验证（通过/拒绝/删除/忽略/拉黑）",
+            "use_when": [
+              "当你要处理某条入群申请时使用；会实际执行通过/拒绝/删除/忽略/拉黑动作，需传群 openConversationId、recordId、申请人与邀请人 userId 及 status。"
             ]
           },
           {
@@ -10110,6 +10240,32 @@
             "title": "解散群聊（不可逆，需群主权限）",
             "use_when": [
               "当你要彻底解散一个群时使用；会实际销毁群聊，不可逆且需群主权限，仅需传群 openConversationId，操作前务必确认。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "根据群号获取群聊信息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只有群名时使用 +chat-search 或支持自然群名解析的 Golden Route；已经有 openConversationId 时无需再次按群号查询"
+            ],
+            "canonical_path": "chat.shortcut_chat_get_by_id",
+            "cli_name": "+chat-get-by-id",
+            "cli_path": "chat +chat-get-by-id",
+            "confirmation": "not_required",
+            "description": "当你只知道群号（数字）、需要换取群 openConversationId 及群信息时使用；只读，需传 --group-id。",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates the numeric group identifier and projects the returned conversation identity.",
+            "name": "shortcut_chat_get_by_id",
+            "primary_cli_path": "chat +chat-get-by-id",
+            "reviewed": true,
+            "risk": "low",
+            "title": "根据群号获取群聊信息",
+            "use_when": [
+              "当你只知道群号（数字）、需要换取群 openConversationId 及群信息时使用；只读，需传 --group-id。"
             ]
           },
           {
@@ -10218,6 +10374,32 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "根据成员 openDingTalkId 批量查询群成员详情",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要完整遍历群成员并区分用户和机器人使用 +chat-members-list；只有姓名或 userId 时先走对应解析链"
+            ],
+            "canonical_path": "chat.shortcut_chat_members_get",
+            "cli_name": "+chat-members-get",
+            "cli_path": "chat +chat-members-get",
+            "confirmation": "not_required",
+            "description": "当你已有若干成员的 openDingTalkId、需要批量获取他们在该群内的详情（群昵称、角色等）时使用；只读，需传群 openConversationId 和成员 openDingTalkId 列表。",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates a conversation and stable member identifiers, then projects member details.",
+            "name": "shortcut_chat_members_get",
+            "primary_cli_path": "chat +chat-members-get",
+            "reviewed": true,
+            "risk": "low",
+            "title": "根据成员 openDingTalkId 批量查询群成员详情",
+            "use_when": [
+              "当你已有若干成员的 openDingTalkId、需要批量获取他们在该群内的详情（群昵称、角色等）时使用；只读，需传群 openConversationId 和成员 openDingTalkId 列表。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "列出群成员并把用户与机器人分桶（支持群名语义解析）",
             "agent_summary_source": "dws-agent-selection/chat",
             "aliases": [
@@ -10257,7 +10439,7 @@
             "cli_name": "+chat-messages",
             "cli_path": "chat +chat-messages",
             "confirmation": "not_required",
-            "description": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "description": "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。\n\n参数约束：\n  - --group、--conversation-id、--id、--open-conversation-id、--chat-query、--user、--user-query、--open-dingtalk-id 必须且只能指定一个\n  - --limit、--size、--page-size 互斥，最多指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - 显式页大小必须大于 0\n  - --page-limit 仅与 --page-all 一起使用且范围 1-500\n  - --max-results 仅与 --page-all 一起使用且不能为负数\n  - --output 必须是工作目录内的相对 JSON 文件；默认不覆盖，--overwrite 仅与 --output 一起使用\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -10295,6 +10477,84 @@
             "title": "全员禁言 / 取消全员禁言",
             "use_when": [
               "当你想对整个群开启或取消全员禁言时使用；会实际切换群的全员禁言状态，需传群 openConversationId，加 --off 取消禁言。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "指定群成员禁言 / 取消禁言",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要开启全员禁言使用群级 mute 命令；只调整当前用户的会话免打扰使用 +conversation-mute"
+            ],
+            "canonical_path": "chat.shortcut_chat_mute_member",
+            "cli_name": "+chat-mute-member",
+            "cli_path": "chat +chat-mute-member",
+            "confirmation": "user_required",
+            "description": "当你想只禁言或解禁群里的指定成员时使用；会实际把成员加入或移出禁言名单，需传群 openConversationId 和成员列表，禁言时还需 --mute-time（毫秒）。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed member-mute adapter: the executable command resolves supported member identities, validates mute/off semantics, maps the lower call, and requires confirmation.",
+            "name": "shortcut_chat_mute_member",
+            "primary_cli_path": "chat +chat-mute-member",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "指定群成员禁言 / 取消禁言",
+            "use_when": [
+              "当你想只禁言或解禁群里的指定成员时使用；会实际把成员加入或移出禁言名单，需传群 openConversationId 和成员列表，禁言时还需 --mute-time（毫秒）。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "退出群聊",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要解散整个群使用 +chat-dismiss；要移除其他成员使用成员管理命令；退出前需要处理群主转让时先使用 +chat-transfer-owner"
+            ],
+            "canonical_path": "chat.shortcut_chat_quit",
+            "cli_name": "+chat-quit",
+            "cli_path": "chat +chat-quit",
+            "confirmation": "user_required",
+            "description": "当你想让当前用户主动退出某个群时使用；会实际退群，需传群 openConversationId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates the target group and requires confirmation before the current user leaves it.",
+            "name": "shortcut_chat_quit",
+            "primary_cli_path": "chat +chat-quit",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "退出群聊",
+            "use_when": [
+              "当你想让当前用户主动退出某个群时使用；会实际退群，需传群 openConversationId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "从群内移除机器人",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只是暂停机器人发送或查看机器人列表不要移除；添加机器人使用 +chat-add-bot"
+            ],
+            "canonical_path": "chat.shortcut_chat_remove_bot",
+            "cli_name": "+chat-remove-bot",
+            "cli_path": "chat +chat-remove-bot",
+            "confirmation": "user_required",
+            "description": "当你想把某个机器人从群里移除时使用；会实际移除机器人，不可逆，需传群 openConversationId 和机器人 openBotId。",
+            "effect": "destructive",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates stable group and bot identities and gates the destructive removal before the lower call.",
+            "name": "shortcut_chat_remove_bot",
+            "primary_cli_path": "chat +chat-remove-bot",
+            "reviewed": true,
+            "risk": "high",
+            "title": "从群内移除机器人",
+            "use_when": [
+              "当你想把某个机器人从群里移除时使用；会实际移除机器人，不可逆，需传群 openConversationId 和机器人 openBotId。"
             ]
           },
           {
@@ -10373,6 +10633,58 @@
             "title": "查询群成员的群身份",
             "use_when": [
               "当你想查看某个群成员当前拥有哪些群身份时使用；只读，需传群 openConversationId 和用户 userId 或 openDingTalkId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "删除群身份",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只从某个成员移除身份使用 +chat-role-remove-user；修改身份使用 +chat-role-update；先查看身份使用 +chat-role-list"
+            ],
+            "canonical_path": "chat.shortcut_chat_role_remove",
+            "cli_name": "+chat-role-remove",
+            "cli_path": "chat +chat-role-remove",
+            "confirmation": "user_required",
+            "description": "当你想删除某个自定义群身份时使用；会实际删除群身份，不可逆，需传群 openConversationId 和身份 openRoleId。",
+            "effect": "destructive",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates stable group and role identities and gates permanent role deletion before the lower call.",
+            "name": "shortcut_chat_role_remove",
+            "primary_cli_path": "chat +chat-role-remove",
+            "reviewed": true,
+            "risk": "high",
+            "title": "删除群身份",
+            "use_when": [
+              "当你想删除某个自定义群身份时使用；会实际删除群身份，不可逆，需传群 openConversationId 和身份 openRoleId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "移除用户的指定群身份",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要删除身份定义使用 +chat-role-remove；完全重设成员身份可评估 +chat-role-set-user；新增身份使用 +chat-role-add"
+            ],
+            "canonical_path": "chat.shortcut_chat_role_remove_user",
+            "cli_name": "+chat-role-remove-user",
+            "cli_path": "chat +chat-role-remove-user",
+            "confirmation": "user_required",
+            "description": "当你只想撤销某成员的部分群身份、保留其余时使用；会实际移除指定的群身份，需传群、用户和要移除的 openRoleId 列表。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates group, member and role identities before a confirmed role-assignment update.",
+            "name": "shortcut_chat_role_remove_user",
+            "primary_cli_path": "chat +chat-role-remove-user",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "移除用户的指定群身份",
+            "use_when": [
+              "当你只想撤销某成员的部分群身份、保留其余时使用；会实际移除指定的群身份，需传群、用户和要移除的 openRoleId 列表。"
             ]
           },
           {
@@ -10511,6 +10823,58 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "转让群主",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只需要设置管理员使用 +chat-set-admin；当前用户要退群但仍是群主时先转让再使用 +chat-quit"
+            ],
+            "canonical_path": "chat.shortcut_chat_transfer_owner",
+            "cli_name": "+chat-transfer-owner",
+            "cli_path": "chat +chat-transfer-owner",
+            "confirmation": "user_required",
+            "description": "当你要把群主身份转让给他人时使用；会实际变更群主（自己不再是群主），需传群 openConversationId 和新群主的 userId 或 openDingTalkId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed ownership-transfer adapter: the executable command validates the group and new owner identity and requires confirmation before changing ownership.",
+            "name": "shortcut_chat_transfer_owner",
+            "primary_cli_path": "chat +chat-transfer-owner",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "转让群主",
+            "use_when": [
+              "当你要把群主身份转让给他人时使用；会实际变更群主（自己不再是群主），需传群 openConversationId 和新群主的 userId 或 openDingTalkId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "更新群名称（仅名称，不支持 description）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "修改群头像使用 +chat-update-icon，群设置使用 +chat-update-settings，个人群备注或群昵称使用 +chat-update-alias/+chat-update-nick"
+            ],
+            "canonical_path": "chat.shortcut_chat_update",
+            "cli_name": "+chat-update",
+            "cli_path": "chat +chat-update",
+            "confirmation": "user_required",
+            "description": "当你只需要修改群名称时使用；--group 可传群名或 openConversationId，群名必须唯一解析后才会写入。修改群 description、个人备注、群昵称或其他群设置时不要使用。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed group-name adapter: the executable command resolves a stable or unique natural group target, validates the new name, and performs one confirmed update.",
+            "name": "shortcut_chat_update",
+            "primary_cli_path": "chat +chat-update",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "更新群名称（仅名称，不支持 description）",
+            "use_when": [
+              "当你只需要修改群名称时使用；--group 可传群名或 openConversationId，群名必须唯一解析后才会写入。修改群 description、个人备注、群昵称或其他群设置时不要使用。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "设置群备注（仅自己可见）",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
@@ -10533,6 +10897,32 @@
             "title": "设置群备注（仅自己可见）",
             "use_when": [
               "当你想给某个群设置仅自己可见的备注名以便区分同名群时使用；会实际保存本人对该群的备注，需传群 openConversationId 和备注标题。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "更新群头像",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "本地图片尚未上传时先走支持的上传流程；修改群名称或开关分别使用 +chat-update、+chat-update-settings"
+            ],
+            "canonical_path": "chat.shortcut_chat_update_icon",
+            "cli_name": "+chat-update-icon",
+            "cli_path": "chat +chat-update-icon",
+            "confirmation": "user_required",
+            "description": "当你想更换群头像时使用；会实际更新群头像，需传群 openConversationId 和已上传头像的 mediaId（以 @ 开头）。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates the group and uploaded icon media identifier before a confirmed update.",
+            "name": "shortcut_chat_update_icon",
+            "primary_cli_path": "chat +chat-update-icon",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "更新群头像",
+            "use_when": [
+              "当你想更换群头像时使用；会实际更新群头像，需传群 openConversationId 和已上传头像的 mediaId（以 @ 开头）。"
             ]
           },
           {
@@ -10563,6 +10953,32 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "更新群设置（settingKey + status）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "当前用户自己的置顶、免打扰、群昵称或备注使用会话用户设置；群名称、头像分别使用 +chat-update、+chat-update-icon"
+            ],
+            "canonical_path": "chat.shortcut_chat_update_settings",
+            "cli_name": "+chat-update-settings",
+            "cli_path": "chat +chat-update-settings",
+            "confirmation": "user_required",
+            "description": "当你想调整群的某项开关设置（如是否可被搜索 searchable、是否仅管理员可@所有人 onlyAdminCanAtAll）时使用；会实际修改群设置，需传 settingKey 和 status（0关/1开）。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates a supported setting key and binary status before one confirmed group-setting update.",
+            "name": "shortcut_chat_update_settings",
+            "primary_cli_path": "chat +chat-update-settings",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "更新群设置（settingKey + status）",
+            "use_when": [
+              "当你想调整群的某项开关设置（如是否可被搜索 searchable、是否仅管理员可@所有人 onlyAdminCanAtAll）时使用；会实际修改群设置，需传 settingKey 和 status（0关/1开）。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "清除所有会话红点（全部已读）",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
@@ -10585,6 +11001,84 @@
             "title": "清除所有会话红点（全部已读）",
             "use_when": [
               "当你想一键把全部会话标记为已读、清空所有红点时使用；会实际清除当前用户所有会话的红点，无需任何参数。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "清空当前用户指定会话的聊天记录（仅本人视角，不可逆）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只是隐藏会话使用 +conversation-hide；清除未读红点使用 +conversation-clear-red-point；撤回单条自己发送的消息使用 +messages-recall"
+            ],
+            "canonical_path": "chat.shortcut_conversation_clear_messages",
+            "cli_name": "+conversation-clear-messages",
+            "cli_path": "chat +conversation-clear-messages",
+            "confirmation": "user_required",
+            "description": "当你要清空自己在某个会话里的聊天记录时使用；仅影响本人视角，但会实际删除且不可逆，需传 openConversationId，务必谨慎操作。",
+            "effect": "destructive",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed destructive Shortcut adapter: the executable command validates one conversation and requires explicit confirmation before irreversibly clearing the current user's message history view.",
+            "name": "shortcut_conversation_clear_messages",
+            "primary_cli_path": "chat +conversation-clear-messages",
+            "reviewed": true,
+            "risk": "high",
+            "title": "清空当前用户指定会话的聊天记录（仅本人视角，不可逆）",
+            "use_when": [
+              "当你要清空自己在某个会话里的聊天记录时使用；仅影响本人视角，但会实际删除且不可逆，需传 openConversationId，务必谨慎操作。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "清除会话红点",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "需要精确推进消息已读位置使用 +conversation-mark-read；要保留提醒使用 +conversation-mark-unread；清空记录不要使用本命令"
+            ],
+            "canonical_path": "chat.shortcut_conversation_clear_red_point",
+            "cli_name": "+conversation-clear-red-point",
+            "cli_path": "chat +conversation-clear-red-point",
+            "confirmation": "user_required",
+            "description": "当你想消除某个会话上的未读红点（小圆点）时使用；会实际清除该会话红点，需传 openConversationId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates one conversation and requires confirmation before clearing its unread indicator.",
+            "name": "shortcut_conversation_clear_red_point",
+            "primary_cli_path": "chat +conversation-clear-red-point",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "清除会话红点",
+            "use_when": [
+              "当你想消除某个会话上的未读红点（小圆点）时使用；会实际清除该会话红点，需传 openConversationId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "会话列表中隐藏会话（收到新消息会重新出现）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "不想接收提醒使用 +conversation-mute；只清除红点使用 +conversation-clear-red-point；永久清空本人记录使用 +conversation-clear-messages"
+            ],
+            "canonical_path": "chat.shortcut_conversation_hide",
+            "cli_name": "+conversation-hide",
+            "cli_path": "chat +conversation-hide",
+            "confirmation": "user_required",
+            "description": "当你想把某个会话从会话列表中暂时隐藏、让列表更清爽时使用；会实际隐藏该会话（收到新消息会自动重新出现），需传 openConversationId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates one conversation and requires confirmation before hiding it from the current user's list.",
+            "name": "shortcut_conversation_hide",
+            "primary_cli_path": "chat +conversation-hide",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "会话列表中隐藏会话（收到新消息会重新出现）",
+            "use_when": [
+              "当你想把某个会话从会话列表中暂时隐藏、让列表更清爽时使用；会实际隐藏该会话（收到新消息会自动重新出现），需传 openConversationId。"
             ]
           },
           {
@@ -10667,6 +11161,110 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "标记消息已读（该消息及之前的消息都标记为已读）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只想清除红点使用 +conversation-clear-red-point；要提醒自己稍后处理使用 +conversation-mark-unread"
+            ],
+            "canonical_path": "chat.shortcut_conversation_mark_read",
+            "cli_name": "+conversation-mark-read",
+            "cli_path": "chat +conversation-mark-read",
+            "confirmation": "user_required",
+            "description": "当你想把某会话中某条消息及其之前的所有消息都标记为已读时使用；会实际更新已读位置，需传 openConversationId 和该消息 openMessageId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates a conversation/message read boundary and requires confirmation before moving the read position.",
+            "name": "shortcut_conversation_mark_read",
+            "primary_cli_path": "chat +conversation-mark-read",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "标记消息已读（该消息及之前的消息都标记为已读）",
+            "use_when": [
+              "当你想把某会话中某条消息及其之前的所有消息都标记为已读时使用；会实际更新已读位置，需传 openConversationId 和该消息 openMessageId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "标记会话为未读",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要推进到精确消息的已读位置使用 +conversation-mark-read；只清除红点使用 +conversation-clear-red-point"
+            ],
+            "canonical_path": "chat.shortcut_conversation_mark_unread",
+            "cli_name": "+conversation-mark-unread",
+            "cli_path": "chat +conversation-mark-unread",
+            "confirmation": "user_required",
+            "description": "当你想把某个已读会话重新标记为未读（提醒自己稍后再处理）时使用；会实际改变该会话的未读状态，需传 openConversationId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates one conversation and requires confirmation before changing its unread state.",
+            "name": "shortcut_conversation_mark_unread",
+            "primary_cli_path": "chat +conversation-mark-unread",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "标记会话为未读",
+            "use_when": [
+              "当你想把某个已读会话重新标记为未读（提醒自己稍后再处理）时使用；会实际改变该会话的未读状态，需传 openConversationId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "会话消息免打扰（支持单聊/群聊）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要禁言群成员使用 +chat-mute-member；要调整群级全员禁言使用群管理命令；置顶状态使用 +conversation-set-top"
+            ],
+            "canonical_path": "chat.shortcut_conversation_mute",
+            "cli_name": "+conversation-mute",
+            "cli_path": "chat +conversation-mute",
+            "confirmation": "user_required",
+            "description": "当你想对某个会话开启或关闭消息免打扰时使用；会实际更改该会话的免打扰设置，需传 openConversationId，加 --off 表示关闭免打扰。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates one conversation and on/off mode before a confirmed notification-setting update.",
+            "name": "shortcut_conversation_mute",
+            "primary_cli_path": "chat +conversation-mute",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "会话消息免打扰（支持单聊/群聊）",
+            "use_when": [
+              "当你想对某个会话开启或关闭消息免打扰时使用；会实际更改该会话的免打扰设置，需传 openConversationId，加 --off 表示关闭免打扰。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "批量会话置顶 / 取消置顶（最多 10 个）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要置顶会话里的某条消息使用 +messages-set-top；Pin 消息使用 +messages-set-pin；Favorite 消息使用 +flag-create"
+            ],
+            "canonical_path": "chat.shortcut_conversation_set_top",
+            "cli_name": "+conversation-set-top",
+            "cli_path": "chat +conversation-set-top",
+            "confirmation": "user_required",
+            "description": "当你想把一个或多个单聊/群聊置顶到会话列表顶部、或取消置顶时使用；支持 1-10 个 openConversationId，逐项执行并返回成功/失败 ledger，某一项失败不阻断其余项。\n\n参数约束：\n  - --conversation-id、--conversation-ids 至少指定一个\n  - 会话 ID 去重后必须为 1-10 个",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed batch Shortcut adapter: the executable command validates and de-duplicates up to ten conversations, performs confirmed per-target updates, and returns a success/failure ledger.",
+            "name": "shortcut_conversation_set_top",
+            "primary_cli_path": "chat +conversation-set-top",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "批量会话置顶 / 取消置顶（最多 10 个）",
+            "use_when": [
+              "当你想把一个或多个单聊/群聊置顶到会话列表顶部、或取消置顶时使用；支持 1-10 个 openConversationId，逐项执行并返回成功/失败 ledger，某一项失败不阻断其余项。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "按姓名直接给某人发单聊消息（自动解析唯一 openDingTalkId）",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
@@ -10693,6 +11291,110 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "在会话分组结果中按会话 ID 精确查询多项",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要浏览分组全部会话使用 +category-list-conversations；要查询 Lark feed-layer deleted_items 或服务端多 ID 语义不要使用"
+            ],
+            "canonical_path": "chat.shortcut_feed_group_query_item",
+            "cli_name": "+feed-group-query-item",
+            "cli_path": "chat +feed-group-query-item",
+            "confirmation": "not_required",
+            "description": "当你已知一个钉钉会话分组 ID 和若干 openConversationId、想精确取回这些分组项时使用；先读取该分组，再按 ID 本地过滤并返回未找到清单。若下层表明结果仍有后续页但未提供可执行游标，本命令会把缺失项标为 unresolved 并返回失败 ledger，不会误报 notFound。它不提供 Lark deleted_items 或服务端多 ID 查询语义。",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed composite read adapter: the executable command reads a category page, filters requested conversation IDs locally, and publishes unresolved pagination facts rather than inventing a server-side multi-ID RPC.",
+            "name": "shortcut_feed_group_query_item",
+            "primary_cli_path": "chat +feed-group-query-item",
+            "reviewed": true,
+            "risk": "low",
+            "title": "在会话分组结果中按会话 ID 精确查询多项",
+            "use_when": [
+              "当你已知一个钉钉会话分组 ID 和若干 openConversationId、想精确取回这些分组项时使用；先读取该分组，再按 ID 本地过滤并返回未找到清单。若下层表明结果仍有后续页但未提供可执行游标，本命令会把缺失项标为 unresolved 并返回失败 ledger，不会误报 notFound。它不提供 Lark deleted_items 或服务端多 ID 查询语义。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "取消收藏一条或多条消息（最多 10 条）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "取消消息 Pin 使用 +messages-unset-pin；取消消息置顶使用 +messages-unset-top；本命令不会删除或撤回消息"
+            ],
+            "canonical_path": "chat.shortcut_flag_cancel",
+            "cli_name": "+flag-cancel",
+            "cli_path": "chat +flag-cancel",
+            "confirmation": "user_required",
+            "description": "当你要移除当前用户对同一会话中一条或多条消息的个人收藏标记时使用；逐项返回成功/失败 ledger，只影响 message favorite，不删除原消息，也不会修改 Pin 或会话置顶。\n\n参数约束：\n  - --message-id、--message-ids 至少指定一个\n  - 消息 ID 去重后必须为 1-10 条",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed batch favorite adapter: the executable command validates up to ten message IDs, performs confirmed per-item updates, and returns a typed success/failure ledger.",
+            "name": "shortcut_flag_cancel",
+            "primary_cli_path": "chat +flag-cancel",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "取消收藏一条或多条消息（最多 10 条）",
+            "use_when": [
+              "当你要移除当前用户对同一会话中一条或多条消息的个人收藏标记时使用；逐项返回成功/失败 ledger，只影响 message favorite，不删除原消息，也不会修改 Pin 或会话置顶。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "收藏一条或多条消息（最多 10 条）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要让群成员共同看到固定消息使用 +messages-set-pin 或 +messages-set-top；要收藏文件到 Drive 不使用消息 Favorite"
+            ],
+            "canonical_path": "chat.shortcut_flag_create",
+            "cli_name": "+flag-create",
+            "cli_path": "chat +flag-create",
+            "confirmation": "user_required",
+            "description": "当你要把同一会话中的一条或多条消息加入当前用户的个人收藏时使用；逐项返回成功/失败 ledger。这是消息 favorite，不是消息 Pin、会话置顶或 feed-layer thread flag。\n\n参数约束：\n  - --message-id、--message-ids 至少指定一个\n  - 消息 ID 去重后必须为 1-10 条",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed batch favorite adapter: the executable command validates up to ten message IDs, performs confirmed per-item updates, and returns a typed success/failure ledger.",
+            "name": "shortcut_flag_create",
+            "primary_cli_path": "chat +flag-create",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "收藏一条或多条消息（最多 10 条）",
+            "use_when": [
+              "当你要把同一会话中的一条或多条消息加入当前用户的个人收藏时使用；逐项返回成功/失败 ledger。这是消息 favorite，不是消息 Pin、会话置顶或 feed-layer thread flag。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "分页查询当前用户收藏的消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "查询 Pin 消息使用 +messages-list-pin；会话置顶使用 +conversation-list-top；不要把 Favorite 当成 Lark feed-layer thread flag"
+            ],
+            "canonical_path": "chat.shortcut_flag_list",
+            "cli_name": "+flag-list",
+            "cli_path": "chat +flag-list",
+            "confirmation": "not_required",
+            "description": "当你要查看当前用户的 DingTalk message favorite 列表时使用；返回下层分页结果，不把 message favorite 与 Pin、会话置顶或 Lark feed-layer thread flag 混为一谈。\n\n参数约束：\n  - --cursor 必须大于等于 0，--size 必须在 1-100 之间",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed built-in Shortcut adapter: the executable command validates pagination and projects the current user's message favorites without conflating them with Pin or conversation top state.",
+            "name": "shortcut_flag_list",
+            "primary_cli_path": "chat +flag-list",
+            "reviewed": true,
+            "risk": "low",
+            "title": "分页查询当前用户收藏的消息",
+            "use_when": [
+              "当你要查看当前用户的 DingTalk message favorite 列表时使用；返回下层分页结果，不把 message favorite 与 Pin、会话置顶或 Lark feed-layer thread flag 混为一谈。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "按群名唯一解析后全量列出用户成员并公开分页完整性",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
@@ -10715,6 +11417,240 @@
             "title": "按群名唯一解析后全量列出用户成员并公开分页完整性",
             "use_when": [
               "当你只知道群的名字、想看看这个群里有哪些成员，而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。群名匹配到多个群时会列出候选让你区分、绝不自行假定。用户成员会自动翻页、稳定 ID 去重，并公开 complete/hasMore/nextCursor；--page-limit 保证有界。只读，不改动任何数据。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "对消息添加 emoji 表情回应",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "取消回应使用 +messages-remove-emoji；自定义文字表情使用 +messages-create-text-emotion 和 +messages-add-text-emotion"
+            ],
+            "canonical_path": "chat.shortcut_messages_add_emoji",
+            "cli_name": "+messages-add-emoji",
+            "cli_path": "chat +messages-add-emoji",
+            "confirmation": "user_required",
+            "description": "当你想给某条消息点一个 emoji 表情回应时使用；会实际添加表情回应，需传会话 openConversationId、消息 openMsgId 和表情名称。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed reaction adapter: the executable command validates stable conversation/message identifiers and emoji name before one confirmed reaction update.",
+            "name": "shortcut_messages_add_emoji",
+            "primary_cli_path": "chat +messages-add-emoji",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "对消息添加 emoji 表情回应",
+            "use_when": [
+              "当你想给某条消息点一个 emoji 表情回应时使用；会实际添加表情回应，需传会话 openConversationId、消息 openMsgId 和表情名称。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "对消息添加文字表情回应",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "尚无 emotionId 时先创建；普通 emoji 使用 +messages-add-emoji；移除文字表情使用 +messages-remove-text-emotion"
+            ],
+            "canonical_path": "chat.shortcut_messages_add_text_emotion",
+            "cli_name": "+messages-add-text-emotion",
+            "cli_path": "chat +messages-add-text-emotion",
+            "confirmation": "user_required",
+            "description": "当你想给某条消息添加自定义文字表情回应时使用；会实际添加文字表情，需传会话、消息 openMsgId 及由 create-text-emotion 得到的 emotionId 等参数。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed text-emotion adapter: the executable command validates the message and complete emotion payload before one confirmed update.",
+            "name": "shortcut_messages_add_text_emotion",
+            "primary_cli_path": "chat +messages-add-text-emotion",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "对消息添加文字表情回应",
+            "use_when": [
+              "当你想给某条消息添加自定义文字表情回应时使用；会实际添加文字表情，需传会话、消息 openMsgId 及由 create-text-emotion 得到的 emotionId 等参数。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "机器人撤回单聊消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "机器人群消息撤回使用 +messages-recall-by-bot；当前用户消息撤回使用 +messages-recall；没有 processQueryKey 时不能按消息 ID 猜测"
+            ],
+            "canonical_path": "chat.shortcut_messages_batch_recall_by_bot",
+            "cli_name": "+messages-batch-recall-by-bot",
+            "cli_path": "chat +messages-batch-recall-by-bot",
+            "confirmation": "user_required",
+            "description": "当你要批量撤回机器人此前发出的单聊消息时使用；会实际撤回机器人单聊消息，需传 robotCode 和发送时返回的 processQueryKey 列表。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed bot batch adapter: the executable command validates robot identity and process keys, requires one confirmation, and delegates the bounded batch recall.",
+            "name": "shortcut_messages_batch_recall_by_bot",
+            "primary_cli_path": "chat +messages-batch-recall-by-bot",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "机器人撤回单聊消息",
+            "use_when": [
+              "当你要批量撤回机器人此前发出的单聊消息时使用；会实际撤回机器人单聊消息，需传 robotCode 和发送时返回的 processQueryKey 列表。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "机器人批量向用户发送单聊 Markdown 消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "机器人群发使用 +messages-send-by-bot；需要 current-user、Webhook、文件或复杂身份矩阵使用 +messages-send"
+            ],
+            "canonical_path": "chat.shortcut_messages_batch_send_by_bot",
+            "cli_name": "+messages-batch-send-by-bot",
+            "cli_path": "chat +messages-batch-send-by-bot",
+            "confirmation": "user_required",
+            "description": "当你要用机器人给多个人分别发单聊 Markdown 消息（如批量提醒交周报）时使用；会实际批量发送单聊消息，需传 robotCode、接收人列表（userId 或 openDingTalkId）及标题正文。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed bot batch adapter: the executable command validates robot identity, exactly one recipient identity list and Markdown payload before the confirmed batch send.",
+            "name": "shortcut_messages_batch_send_by_bot",
+            "primary_cli_path": "chat +messages-batch-send-by-bot",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "机器人批量向用户发送单聊 Markdown 消息",
+            "use_when": [
+              "当你要用机器人给多个人分别发单聊 Markdown 消息（如批量提醒交周报）时使用；会实际批量发送单聊消息，需传 robotCode、接收人列表（userId 或 openDingTalkId）及标题正文。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "合并转发多条消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只转发一条消息使用 +messages-forward；转发话题线程使用 +messages-forward-topic；跨源会话消息不能混在一次合并转发"
+            ],
+            "canonical_path": "chat.shortcut_messages_combine_forward",
+            "cli_name": "+messages-combine-forward",
+            "cli_path": "chat +messages-combine-forward",
+            "confirmation": "user_required",
+            "description": "当你想把多条消息合并成一条转发到目标会话时使用；会实际合并转发，需传源会话、源消息 openMessageId 列表和目标会话 openConversationId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed forwarding adapter: the executable command validates one source conversation, multiple source messages, one destination and optional idempotency value before confirmed combined forwarding.",
+            "name": "shortcut_messages_combine_forward",
+            "primary_cli_path": "chat +messages-combine-forward",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "合并转发多条消息",
+            "use_when": [
+              "当你想把多条消息合并成一条转发到目标会话时使用；会实际合并转发，需传源会话、源消息 openMessageId 列表和目标会话 openConversationId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "创建文字表情（获取 emotionId）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "已有 emotionId 时直接使用 +messages-add-text-emotion；普通 emoji 不需要创建文字表情模板"
+            ],
+            "canonical_path": "chat.shortcut_messages_create_text_emotion",
+            "cli_name": "+messages-create-text-emotion",
+            "cli_path": "chat +messages-create-text-emotion",
+            "confirmation": "user_required",
+            "description": "当你要先创建一个文字表情模板（拿到 emotionId 供 add-text-emotion 使用）时使用；会实际创建文字表情，需传表情名称和文字内容。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed text-emotion adapter: the executable command validates the template name, text and optional background before one confirmed creation.",
+            "name": "shortcut_messages_create_text_emotion",
+            "primary_cli_path": "chat +messages-create-text-emotion",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "创建文字表情（获取 emotionId）",
+            "use_when": [
+              "当你要先创建一个文字表情模板（拿到 emotionId 供 add-text-emotion 使用）时使用；会实际创建文字表情，需传表情名称和文字内容。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "转发单条消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "合并转发多条消息使用 +messages-combine-forward；话题线程消息使用 +messages-forward-topic；只复制文本内容可重新发送"
+            ],
+            "canonical_path": "chat.shortcut_messages_forward",
+            "cli_name": "+messages-forward",
+            "cli_path": "chat +messages-forward",
+            "confirmation": "user_required",
+            "description": "当你想把一条消息转发到另一个会话时使用；会实际转发消息，需传源会话 openConversationId、源消息 openMessageId 和目标会话 openConversationId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed forwarding adapter: the executable command validates source conversation/message, destination conversation and optional idempotency value before one confirmed forward.",
+            "name": "shortcut_messages_forward",
+            "primary_cli_path": "chat +messages-forward",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "转发单条消息",
+            "use_when": [
+              "当你想把一条消息转发到另一个会话时使用；会实际转发消息，需传源会话 openConversationId、源消息 openMessageId 和目标会话 openConversationId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "转发话题消息到目标会话",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "普通单条消息使用 +messages-forward；合并多条普通消息使用 +messages-combine-forward；本命令不是 thread writer"
+            ],
+            "canonical_path": "chat.shortcut_messages_forward_topic",
+            "cli_name": "+messages-forward-topic",
+            "cli_path": "chat +messages-forward-topic",
+            "confirmation": "user_required",
+            "description": "当你要把某条群话题消息转发到目标会话时使用；会实际转发话题消息，需传源消息、源会话、话题 threadId 和目标会话 openConversationId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed topic-forward adapter: the executable command validates source message/conversation/thread and destination conversation before one confirmed forward.",
+            "name": "shortcut_messages_forward_topic",
+            "primary_cli_path": "chat +messages-forward-topic",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "转发话题消息到目标会话",
+            "use_when": [
+              "当你要把某条群话题消息转发到目标会话时使用；会实际转发话题消息，需传源消息、源会话、话题 threadId 和目标会话 openConversationId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "拉取群聊会话消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要统一读取群聊或单聊并支持有界全量分页、原子导出和资源下载使用 +chat-messages；跨会话检索使用 +search-msg"
+            ],
+            "canonical_path": "chat.shortcut_messages_list",
+            "cli_name": "+messages-list",
+            "cli_path": "chat +messages-list",
+            "confirmation": "not_required",
+            "description": "当你想按时间拉取某个群的历史聊天记录（做回顾或分析）时使用；只读，需传群 openConversationId 和起始时间，--forward 控制往新还是往旧方向翻。\n\n参数约束：\n  - --group、--conversation-id、--id 必须且只能指定一个",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed history adapter: the executable command validates group/time/direction/pagination and projects conversation messages with optional reactions.",
+            "name": "shortcut_messages_list",
+            "primary_cli_path": "chat +messages-list",
+            "reviewed": true,
+            "risk": "low",
+            "title": "拉取群聊会话消息",
+            "use_when": [
+              "当你想按时间拉取某个群的历史聊天记录（做回顾或分析）时使用；只读，需传群 openConversationId 和起始时间，--forward 控制往新还是往旧方向翻。"
             ]
           },
           {
@@ -10875,6 +11811,110 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "撤回当前用户发送的消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "机器人消息分别使用 +messages-recall-by-bot 或 +messages-batch-recall-by-bot；清空本人会话记录使用 +conversation-clear-messages"
+            ],
+            "canonical_path": "chat.shortcut_messages_recall",
+            "cli_name": "+messages-recall",
+            "cli_path": "chat +messages-recall",
+            "confirmation": "user_required",
+            "description": "当你想撤回当前用户刚发出的某条消息时使用；会实际撤回消息。推荐同时传会话 openConversationId 和消息 openMessageId；若只传一个消息 ID，CLI 会先只读查询消息详情并补齐会话 ID。兼容 --message-id/--message-ids 的单值写法。\n\n参数约束：\n  - --msg-id、--message-id、--message-ids 必须且只能指定一个\n  - 一次只能撤回一个消息 ID；--message-ids 仅接受单值",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed recall adapter: the executable command accepts a stable conversation/message pair or performs a read-only message lookup to complete it, then requires confirmation before recall.",
+            "name": "shortcut_messages_recall",
+            "primary_cli_path": "chat +messages-recall",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "撤回当前用户发送的消息",
+            "use_when": [
+              "当你想撤回当前用户刚发出的某条消息时使用；会实际撤回消息。推荐同时传会话 openConversationId 和消息 openMessageId；若只传一个消息 ID，CLI 会先只读查询消息详情并补齐会话 ID。兼容 --message-id/--message-ids 的单值写法。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "机器人撤回群消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "机器人单聊消息撤回使用 +messages-batch-recall-by-bot；当前用户消息撤回使用 +messages-recall"
+            ],
+            "canonical_path": "chat.shortcut_messages_recall_by_bot",
+            "cli_name": "+messages-recall-by-bot",
+            "cli_path": "chat +messages-recall-by-bot",
+            "confirmation": "user_required",
+            "description": "当你要撤回机器人此前发到群里的消息时使用；会实际撤回机器人群消息，需传 robotCode、群 openConversationId 和发送时返回的 processQueryKey 列表。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed bot recall adapter: the executable command validates robot, group and process-key identities before one confirmed group-message recall.",
+            "name": "shortcut_messages_recall_by_bot",
+            "primary_cli_path": "chat +messages-recall-by-bot",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "机器人撤回群消息",
+            "use_when": [
+              "当你要撤回机器人此前发到群里的消息时使用；会实际撤回机器人群消息，需传 robotCode、群 openConversationId 和发送时返回的 processQueryKey 列表。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "移除消息的 emoji 表情回应",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "添加回应使用 +messages-add-emoji；自定义文字表情移除使用 +messages-remove-text-emotion"
+            ],
+            "canonical_path": "chat.shortcut_messages_remove_emoji",
+            "cli_name": "+messages-remove-emoji",
+            "cli_path": "chat +messages-remove-emoji",
+            "confirmation": "user_required",
+            "description": "当你想取消此前给某条消息添加的 emoji 表情回应时使用；会实际移除表情回应，需传会话 openConversationId、消息 openMsgId 和表情名称。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed reaction adapter: the executable command validates stable conversation/message identifiers and emoji name before one confirmed reaction removal.",
+            "name": "shortcut_messages_remove_emoji",
+            "primary_cli_path": "chat +messages-remove-emoji",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "移除消息的 emoji 表情回应",
+            "use_when": [
+              "当你想取消此前给某条消息添加的 emoji 表情回应时使用；会实际移除表情回应，需传会话 openConversationId、消息 openMsgId 和表情名称。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "移除消息的文字表情回应",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "普通 emoji 使用 +messages-remove-emoji；要替换文字表情可使用原地 update-text-emotion；添加使用 +messages-add-text-emotion"
+            ],
+            "canonical_path": "chat.shortcut_messages_remove_text_emotion",
+            "cli_name": "+messages-remove-text-emotion",
+            "cli_path": "chat +messages-remove-text-emotion",
+            "confirmation": "user_required",
+            "description": "当你想移除此前给某条消息添加的文字表情回应时使用；会实际移除文字表情，需传会话、消息 openMsgId 及对应的表情参数。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed text-emotion adapter: the executable command validates the message and complete emotion payload before one confirmed removal.",
+            "name": "shortcut_messages_remove_text_emotion",
+            "primary_cli_path": "chat +messages-remove-text-emotion",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "移除消息的文字表情回应",
+            "use_when": [
+              "当你想移除此前给某条消息添加的文字表情回应时使用；会实际移除文字表情，需传会话、消息 openMsgId 及对应的表情参数。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "引用回复一条已有消息，并返回可继续查询或撤回的发送上下文",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
@@ -10901,6 +11941,58 @@
           },
           {
             "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "安全下载消息资源（图片/视频/语音/文件）到本地",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "只需要临时下载链接使用 +messages-resource-url；需要 Range 断点续传或写到绝对路径时不要使用本命令"
+            ],
+            "canonical_path": "chat.shortcut_messages_resource_download",
+            "cli_name": "+messages-resource-download",
+            "cli_path": "chat +messages-resource-download",
+            "confirmation": "not_required",
+            "description": "当你需要拿到消息里的实际图片、视频、语音或钉盘文件，而不只是资源 ID 时使用；mediaId 用消息和会话身份换取下载地址，fileId 复用钉盘下载能力，再安全写入工作目录内的相对路径。默认不覆盖已有文件，只有显式传 --overwrite 才覆盖；下载采用整文件临时落盘后原子发布，不支持 Range 断点续传。按既有安全本地下载约定无需交互确认。\n\n参数约束：\n  - --output 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸\n  - --type mediaId 时必须同时提供 --message-id 和 --open-conversation-id；fileId 不需要消息上下文",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed resource adapter: the executable command resolves a mediaId or fileId URL, validates trusted HTTPS redirects and portable workspace-relative paths, downloads to a temporary file, and atomically publishes without overwrite by default.",
+            "name": "shortcut_messages_resource_download",
+            "primary_cli_path": "chat +messages-resource-download",
+            "reviewed": true,
+            "risk": "low",
+            "title": "安全下载消息资源（图片/视频/语音/文件）到本地",
+            "use_when": [
+              "当你需要拿到消息里的实际图片、视频、语音或钉盘文件，而不只是资源 ID 时使用；mediaId 用消息和会话身份换取下载地址，fileId 复用钉盘下载能力，再安全写入工作目录内的相对路径。默认不覆盖已有文件，只有显式传 --overwrite 才覆盖；下载采用整文件临时落盘后原子发布，不支持 Range 断点续传。按既有安全本地下载约定无需交互确认。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "获取消息资源（图片/视频/语音）下载链接",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "需要安全下载并原子写入工作目录使用 +messages-resource-download；钉盘 fileId 下载也优先使用下载命令"
+            ],
+            "canonical_path": "chat.shortcut_messages_resource_url",
+            "cli_name": "+messages-resource-url",
+            "cli_path": "chat +messages-resource-url",
+            "confirmation": "not_required",
+            "description": "当你想下载消息里的图片/视频/语音等资源时使用；只读换取临时下载链接，需传资源 mediaId、消息 openMessageId 和会话 openConversationId。\n\n参数约束：\n  - --message-id、--msg-id、--open-message-id 至少指定一个",
+            "effect": "read",
+            "idempotency": "idempotent",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed resource adapter: the executable command validates resource type plus message/conversation context and projects the temporary download URL response.",
+            "name": "shortcut_messages_resource_url",
+            "primary_cli_path": "chat +messages-resource-url",
+            "reviewed": true,
+            "risk": "low",
+            "title": "获取消息资源（图片/视频/语音）下载链接",
+            "use_when": [
+              "当你想下载消息里的图片/视频/语音等资源时使用；只读换取临时下载链接，需传资源 mediaId、消息 openMessageId 和会话 openConversationId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
             "agent_summary": "按身份和目标统一发送消息，Bot 多群返回逐目标 ledger",
             "agent_summary_source": "dws-agent-selection/chat",
             "availability": "available",
@@ -10923,6 +12015,32 @@
             "title": "按身份和目标统一发送消息，Bot 多群返回逐目标 ledger",
             "use_when": [
               "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "机器人向群聊发送 Markdown 消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "机器人批量单聊使用 +messages-batch-send-by-bot；多群 ledger、current-user、Webhook、文件或自然目标使用 +messages-send"
+            ],
+            "canonical_path": "chat.shortcut_messages_send_by_bot",
+            "cli_name": "+messages-send-by-bot",
+            "cli_path": "chat +messages-send-by-bot",
+            "confirmation": "user_required",
+            "description": "当你要用机器人向某群推送 Markdown 消息（如日报、告警播报）时使用；会实际以机器人身份发群消息，需传 robotCode、群 openConversationId、标题与正文，可 @人或 @所有人。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed bot send adapter: the executable command validates robot/group identity, Markdown content and @ targets before one confirmed group send.",
+            "name": "shortcut_messages_send_by_bot",
+            "primary_cli_path": "chat +messages-send-by-bot",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "机器人向群聊发送 Markdown 消息",
+            "use_when": [
+              "当你要用机器人向某群推送 Markdown 消息（如日报、告警播报）时使用；会实际以机器人身份发群消息，需传 robotCode、群 openConversationId、标题与正文，可 @人或 @所有人。"
             ]
           },
           {
@@ -10976,6 +12094,110 @@
             "title": "创建流式卡片，可在同一次调用中写入内容并结束",
             "use_when": [
               "当你要发送一张流式文本卡片时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成。当前只支持 streaming text，不支持 Card JSON 组件或 action callback。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "钉住消息（Pin）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要把消息显示在会话顶部使用 +messages-set-top；当前用户个人收藏使用 +flag-create；会话列表置顶使用 +conversation-set-top"
+            ],
+            "canonical_path": "chat.shortcut_messages_set_pin",
+            "cli_name": "+messages-set-pin",
+            "cli_path": "chat +messages-set-pin",
+            "confirmation": "user_required",
+            "description": "当你想把某条消息钉在会话中（Pin）以便成员随时查看时使用；会实际钉住消息，需传会话 openConversationId 和消息 openMessageId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed message-state adapter: the executable command validates stable conversation/message identifiers and requires confirmation before setting Pin state.",
+            "name": "shortcut_messages_set_pin",
+            "primary_cli_path": "chat +messages-set-pin",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "钉住消息（Pin）",
+            "use_when": [
+              "当你想把某条消息钉在会话中（Pin）以便成员随时查看时使用；会实际钉住消息，需传会话 openConversationId 和消息 openMessageId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "置顶消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "要加入消息 Pin 区域使用 +messages-set-pin；个人收藏使用 +flag-create；置顶整个会话使用 +conversation-set-top"
+            ],
+            "canonical_path": "chat.shortcut_messages_set_top",
+            "cli_name": "+messages-set-top",
+            "cli_path": "chat +messages-set-top",
+            "confirmation": "user_required",
+            "description": "当你想把某条消息置顶到会话顶部时使用；会实际置顶消息，需传会话 openConversationId 和消息 openMessageId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed message-state adapter: the executable command validates stable conversation/message identifiers and requires confirmation before setting message Top state.",
+            "name": "shortcut_messages_set_top",
+            "primary_cli_path": "chat +messages-set-top",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "置顶消息",
+            "use_when": [
+              "当你想把某条消息置顶到会话顶部时使用；会实际置顶消息，需传会话 openConversationId 和消息 openMessageId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "取消钉住消息（Unpin）",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "取消消息 Top 使用 +messages-unset-top；取消个人收藏使用 +flag-cancel；本命令不会删除或撤回消息"
+            ],
+            "canonical_path": "chat.shortcut_messages_unset_pin",
+            "cli_name": "+messages-unset-pin",
+            "cli_path": "chat +messages-unset-pin",
+            "confirmation": "user_required",
+            "description": "当你想取消此前钉住的消息时使用；会实际取消 Pin，需传会话 openConversationId 和消息 openMessageId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed message-state adapter: the executable command validates stable conversation/message identifiers and requires confirmation before clearing Pin state.",
+            "name": "shortcut_messages_unset_pin",
+            "primary_cli_path": "chat +messages-unset-pin",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "取消钉住消息（Unpin）",
+            "use_when": [
+              "当你想取消此前钉住的消息时使用；会实际取消 Pin，需传会话 openConversationId 和消息 openMessageId。"
+            ]
+          },
+          {
+            "agent_metadata_source": "embedded-skill-metadata",
+            "agent_summary": "取消置顶消息",
+            "agent_summary_source": "dws-agent-selection/chat",
+            "availability": "available",
+            "avoid_when": [
+              "取消消息 Pin 使用 +messages-unset-pin；取消会话列表置顶使用 +conversation-set-top --off；取消收藏使用 +flag-cancel"
+            ],
+            "canonical_path": "chat.shortcut_messages_unset_top",
+            "cli_name": "+messages-unset-top",
+            "cli_path": "chat +messages-unset-top",
+            "confirmation": "user_required",
+            "description": "当你想取消此前置顶的消息时使用；会实际取消置顶，需传会话 openConversationId 和消息 openMessageId。",
+            "effect": "write",
+            "idempotency": "unknown",
+            "interface_mode": "composite",
+            "interface_reason": "Reviewed message-state adapter: the executable command validates stable conversation/message identifiers and requires confirmation before clearing message Top state.",
+            "name": "shortcut_messages_unset_top",
+            "primary_cli_path": "chat +messages-unset-top",
+            "reviewed": true,
+            "risk": "medium",
+            "title": "取消置顶消息",
+            "use_when": [
+              "当你想取消此前置顶的消息时使用；会实际取消置顶，需传会话 openConversationId 和消息 openMessageId。"
             ]
           },
           {
@@ -11094,7 +12316,7 @@
             "cli_name": "+thread-replies",
             "cli_path": "chat +thread-replies",
             "confirmation": "not_required",
-            "description": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
+            "description": "当你已经拿到某个群里一条「话题消息」的 threadId/topicId、想快速看这条话题下的全部回复（谁在什么时间回复了什么），而不想拿到一大坨原始消息字段时使用；内部按 --group（群会话 ID）和 --thread-id（兼容 --topic-id）拉取该话题的回复列表，可选 --time 指定起始时间、--limit 指定每页条数，再在本地投影出每条回复的发言人、文本和回复时间。默认只读且不会发送或修改任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。\n\n参数约束：\n  - --thread-id 与兼容参数 --topic-id 必须且只能指定一个\n  - --time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD\n  - --limit 必须大于 0\n  - --output-dir 必须是工作目录内的相对路径，不允许绝对路径或 .. 逃逸",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -11120,7 +12342,7 @@
             "cli_name": "+unread-chats",
             "cli_path": "chat +unread-chats",
             "confirmation": "not_required",
-            "description": "当你想快速看清自己当前有哪些会话还有未读消息、方便逐个处理时使用；内部调用未读会话列表接口，可用 --count 控制返回的会话条数（不传则用服务端默认值），用 --exclude-muted 排除你已设置免打扰的会话；再在本地把每个会话投影成会话名、未读数和会话 ID 三个关键字段。这是纯只读操作，只做列表与本地投影，不会把任何会话标记为已读或未读；若没有未读会话则返回空列表。",
+            "description": "当你想快速看清自己当前有哪些会话还有未读消息、方便逐个处理时使用；内部调用未读会话列表接口，可用 --count 控制返回的会话条数（不传则用服务端默认值），用 --exclude-muted 排除你已设置免打扰的会话；再在本地把每个会话投影成会话名、未读数和会话 ID 三个关键字段。这是纯只读操作，只做列表与本地投影，不会把任何会话标记为已读或未读；若没有未读会话则返回空列表。\n\n参数约束：\n  - 显式 --count 必须大于 0",
             "effect": "read",
             "idempotency": "idempotent",
             "interface_mode": "composite",
@@ -26791,6 +28013,6 @@
       }
     ],
     "source": "embedded-command-catalog",
-    "tool_count": 850
+    "tool_count": 897
   }
 }

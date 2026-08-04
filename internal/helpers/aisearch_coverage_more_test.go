@@ -29,7 +29,7 @@ func TestCrossPlatformCoverageAISearchRemainingFallbackBranches(t *testing.T) {
 	}
 }
 
-func TestAisearchPersonAcceptsRedundantTypeSelector(t *testing.T) {
+func TestCrossPlatformCoverageAisearchPersonAcceptsRedundantTypeSelector(t *testing.T) {
 	installScriptedCaller(t, &scriptedToolCaller{dry: true})
 	if err := executeFilterCoverage(t, newAisearchCommand(), "search", "--query", "张三", "--type", "person"); err != nil {
 		t.Fatal(err)

@@ -314,12 +314,12 @@ var ConversationList = shortcut.Shortcut{
 				complete = true
 				break
 			}
-			if !rt.Bool("page-all") {
-				break
-			}
 			nextCursor, err = conversationPaginationCursor(page["nextCursor"])
 			if err != nil || nextCursor == 0 || seenCursors[nextCursor] {
 				failures = append(failures, map[string]any{"stage": "conversation-pagination", "error": "hasMore=true 但 nextCursor 缺失、无效或未前进"})
+				break
+			}
+			if !rt.Bool("page-all") {
 				break
 			}
 			seenCursors[nextCursor] = true

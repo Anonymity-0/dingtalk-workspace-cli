@@ -151,8 +151,7 @@ Usage:
   dws chat group upgrade-to-external [flags]
 Example:
   dws chat group upgrade-to-external --group <openConversationId> --dry-run
-  dws chat group upgrade-to-external --group <openConversationId> --yes
-  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --yes
+  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --dry-run
 Flags:
       --group string      待升级普通群的 openConversationId (必填)
       --extension string  预留扩展字段 JSON 对象；对象值必须是字符串 (可选)
