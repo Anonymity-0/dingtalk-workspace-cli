@@ -6,7 +6,6 @@ package cli
 
 import (
 	"strings"
-
 )
 
 const (
