@@ -111,7 +111,7 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 		t.Fatalf("schema header = %#v", schema)
 	}
 	entries, err := LoadCommandPathFallbacks()
-	if err != nil || len(entries) != 20 {
+	if err != nil || len(entries) != 26 {
 		t.Fatalf("LoadCommandPathFallbacks() = %#v, %v", entries, err)
 	}
 	if got, ok := LookupCommandPathFallback("dws chat +search-group"); !ok || got.To != "chat +chat-search" {
@@ -133,6 +133,7 @@ func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 		"chat +list-group-bots":    "chat +chat-bots",
 		"chat +list-robot":         "chat +chat-bots",
 		"chat +list-robots":        "chat +chat-bots",
+		"chat +rename-group":       "chat +chat-update",
 		"chat group search":        "chat search",
 	}
 	for from, to := range rewrites {
@@ -143,16 +144,21 @@ func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 	}
 
 	ambiguous := map[string][]string{
-		"chat +chat-list":    {"chat +my-groups", "chat +chat-list-mine", "chat +chat-list-all", "chat +conversation-list"},
-		"chat +message-list": {"chat +chat-messages", "chat +messages-list-direct", "chat +search-msg", "chat +unread-chats"},
-		"chat +send":         {"chat +messages-send", "chat +dm", "chat +send-to-group"},
-		"chat +send-message": {"chat +messages-send", "chat +dm", "chat +send-to-group"},
-		"chat +send-text":    {"chat +messages-send", "chat +dm", "chat +send-to-group"},
-		"chat +send-to":      {"chat +messages-send", "chat +dm", "chat +send-to-group"},
-		"chat +send-file":    {"chat +messages-send", "chat message send"},
-		"chat +send-image":   {"chat +messages-send", "chat message send"},
-		"chat +send-media":   {"chat +messages-send", "chat message send"},
-		"oa +list-processes": {"oa +list-forms", "oa +my-initiated", "oa approval list-initiated"},
+		"chat +chat-list":       {"chat +my-groups", "chat +chat-list-mine", "chat +chat-list-all", "chat +conversation-list"},
+		"chat +group-send-text": {"chat +send-to-group", "chat +messages-send"},
+		"chat +message-list":    {"chat +chat-messages", "chat +messages-list-direct", "chat +search-msg", "chat +unread-chats"},
+		"chat +read-single":     {"chat +messages-list-direct", "chat +chat-messages"},
+		"chat +send":            {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-by-bot":     {"chat +messages-send", "chat message send-by-bot"},
+		"chat +send-dm":         {"chat +dm", "chat +messages-send"},
+		"chat +send-message":    {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-single":     {"chat +dm", "chat +messages-send"},
+		"chat +send-text":       {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-to":         {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-file":       {"chat +messages-send", "chat message send"},
+		"chat +send-image":      {"chat +messages-send", "chat message send"},
+		"chat +send-media":      {"chat +messages-send", "chat message send"},
+		"oa +list-processes":    {"oa +list-forms", "oa +my-initiated", "oa approval list-initiated"},
 	}
 	for from, candidates := range ambiguous {
 		entry, ok := LookupCommandPathFallback(from)
@@ -161,17 +167,8 @@ func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 		}
 	}
 
-	for _, path := range []string{
-		"chat +read-single",
-		"chat +send-dm",
-		"chat +send-single",
-		"chat +group-send-text",
-		"chat +send-by-bot",
-		"chat +rename-group",
-	} {
-		if entry, ok := LookupCommandPathFallback(path); ok {
-			t.Errorf("unsafe or contract-incomplete path %q unexpectedly falls back: %#v", path, entry)
-		}
+	if entry, ok := LookupCommandPathFallback("chat +definitely-unknown"); ok {
+		t.Errorf("unreviewed path unexpectedly falls back: %#v", entry)
 	}
 }
 

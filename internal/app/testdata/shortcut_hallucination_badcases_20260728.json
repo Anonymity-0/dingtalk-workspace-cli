@@ -48,7 +48,7 @@
       "command_index": 1,
       "turn": 1,
       "source_path": "chat +send-dm",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +send-dm --open-dingtalk-id DCumk1qOOIgsjxMVAxenQsyiPzt5zTjyzS --content \"评测任务更新了，稍后同步\" --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -60,7 +60,7 @@
       "command_index": 2,
       "turn": 1,
       "source_path": "chat +send-dm",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +send-dm --dingtalk-id DCumk1qOOIgsjxMVAxenQsyiPzt5zTjyzS --content \"评测任务更新了，稍后同步\" --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -72,7 +72,7 @@
       "command_index": 4,
       "turn": 1,
       "source_path": "chat +send-single",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +send-single --user-id \"DCumk1qOOIgsjxMVAxenQsyiPzt5zTjyzS\" --content \"评测任务更新了，稍后同步\" --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -84,7 +84,7 @@
       "command_index": 0,
       "turn": 1,
       "source_path": "chat +send-by-bot",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +send-by-bot --open-dingtalk-id \"段旭彬\" --message \"评测任务更新了，稍后同步\" --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -96,7 +96,7 @@
       "command_index": 1,
       "turn": 1,
       "source_path": "chat +send-by-bot",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +send-by-bot --open-id \"段旭彬\" --msg \"评测任务更新了，稍后同步\" --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -108,7 +108,7 @@
       "command_index": 2,
       "turn": 1,
       "source_path": "chat +send-by-bot",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +send-by-bot \"段旭彬\" \"评测任务更新了，稍后同步\" --format json",
       "original_exit_code": 5,
       "is_help": false
@@ -312,7 +312,7 @@
       "command_index": 7,
       "turn": 3,
       "source_path": "chat +rename-group",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "rewrite",
       "raw": "dws chat +rename-group --id \"cideWy3UCPNZ4k8Mr4BL/8KRQ==\" --name \"测试废物群-20260713\" --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -396,7 +396,7 @@
       "command_index": 8,
       "turn": 2,
       "source_path": "chat +group-send-text",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +group-send-text --group-id \"cidACeQ0fCtKfLsFGvA47gXaQ==\" --text \"@陈邦杰 请确认下评测环境\" --at-open-dingtalk-ids \"DCumk1qOOIgvuN6zOZeehqYdii06QhlcIl\" --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -516,7 +516,7 @@
       "command_index": 3,
       "turn": 1,
       "source_path": "chat +read-single",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +read-single --user-id 550582 --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -528,7 +528,7 @@
       "command_index": 4,
       "turn": 1,
       "source_path": "chat +read-single",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +read-single --uid 550582 --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -540,7 +540,7 @@
       "command_index": 5,
       "turn": 1,
       "source_path": "chat +read-single",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +read-single --staff-id 550582 --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -552,7 +552,7 @@
       "command_index": 6,
       "turn": 1,
       "source_path": "chat +read-single",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +read-single --open-dingtalk-id \"DCumk1qOOIgsjxMVAxenQsyiPzt5zTjyzS\" --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -564,7 +564,7 @@
       "command_index": 7,
       "turn": 1,
       "source_path": "chat +read-single",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +read-single --target 550582 --format json",
       "original_exit_code": 3,
       "is_help": false
@@ -576,7 +576,7 @@
       "command_index": 8,
       "turn": 1,
       "source_path": "chat +read-single",
-      "expected_outcome": "unknown_shortcut",
+      "expected_outcome": "ambiguous",
       "raw": "dws chat +read-single 550582 --format json",
       "original_exit_code": 5,
       "is_help": false

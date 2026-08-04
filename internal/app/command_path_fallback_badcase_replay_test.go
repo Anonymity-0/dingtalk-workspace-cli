@@ -58,9 +58,8 @@ func TestShortcutHallucinationBadcases20260728Replay(t *testing.T) {
 	}
 
 	wantOutcomeCounts := map[string]int{
-		"rewrite":          7,
-		"ambiguous":        31,
-		"unknown_shortcut": 14,
+		"rewrite":   8,
+		"ambiguous": 44,
 	}
 	wantSourceCounts := map[string]int{
 		"chat +group-member-list": 1,
@@ -89,6 +88,7 @@ func TestShortcutHallucinationBadcases20260728Replay(t *testing.T) {
 		"chat +list-group-bots":   "chat +chat-bots",
 		"chat +list-robot":        "chat +chat-bots",
 		"chat +list-robots":       "chat +chat-bots",
+		"chat +rename-group":      "chat +chat-update",
 	}
 
 	seenIDs := make(map[string]bool, len(corpus.Badcases))

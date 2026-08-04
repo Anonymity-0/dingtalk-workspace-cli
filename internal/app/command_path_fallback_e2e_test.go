@@ -151,15 +151,39 @@ func TestReviewedReadFallbacksResolveCanonicalLeafBeforeParameterValidation(t *t
 	}
 }
 
+func TestReviewedRenameFallbackResolvesCanonicalLeafBeforeParameterValidation(t *testing.T) {
+	args := []string{"chat", "+rename-group", "--id", "cid-fixture", "--name", "Fixture Group"}
+	root := NewSchemaSourceRootCommand()
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs(args)
+	ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ctx == nil || ctx.Command != "dws chat +chat-update" || len(ctx.Corrections) == 0 {
+		t.Fatalf("rename fallback context = %#v", ctx)
+	}
+	wantPrefix := []string{"chat", "+chat-update"}
+	if len(ctx.Args) < len(wantPrefix) || !reflect.DeepEqual(ctx.Args[:len(wantPrefix)], wantPrefix) {
+		t.Fatalf("rename fallback args = %v, want prefix %v", ctx.Args, wantPrefix)
+	}
+}
+
 func TestReviewedAmbiguousCommandFallbackNeverDispatches(t *testing.T) {
 	tests := []struct {
 		path       string
 		candidates []string
 	}{
 		{path: "chat +chat-list", candidates: []string{"chat +my-groups", "chat +chat-list-mine", "chat +chat-list-all", "chat +conversation-list"}},
+		{path: "chat +group-send-text", candidates: []string{"chat +send-to-group", "chat +messages-send"}},
 		{path: "chat +message-list", candidates: []string{"chat +chat-messages", "chat +messages-list-direct", "chat +search-msg", "chat +unread-chats"}},
+		{path: "chat +read-single", candidates: []string{"chat +messages-list-direct", "chat +chat-messages"}},
 		{path: "chat +send", candidates: []string{"chat +messages-send", "chat +dm", "chat +send-to-group"}},
+		{path: "chat +send-by-bot", candidates: []string{"chat +messages-send", "chat message send-by-bot"}},
+		{path: "chat +send-dm", candidates: []string{"chat +dm", "chat +messages-send"}},
 		{path: "chat +send-message", candidates: []string{"chat +messages-send", "chat +dm", "chat +send-to-group"}},
+		{path: "chat +send-single", candidates: []string{"chat +dm", "chat +messages-send"}},
 		{path: "chat +send-text", candidates: []string{"chat +messages-send", "chat +dm", "chat +send-to-group"}},
 		{path: "chat +send-to", candidates: []string{"chat +messages-send", "chat +dm", "chat +send-to-group"}},
 		{path: "chat +send-file", candidates: []string{"chat +messages-send", "chat message send"}},
@@ -265,13 +289,19 @@ func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T)
 		"+list-robot":         true,
 		"+list-robots":        true,
 		"+message-list":       true,
+		"+read-single":        true,
+		"+rename-group":       true,
 		"+send":               true,
+		"+send-by-bot":        true,
+		"+send-dm":            true,
 		"+send-message":       true,
+		"+send-single":        true,
 		"+send-text":          true,
 		"+send-to":            true,
 		"+send-file":          true,
 		"+send-image":         true,
 		"+send-media":         true,
+		"+group-send-text":    true,
 	}
 	root := NewSchemaSourceRootCommand()
 	chat := exactAppCommand(root, "chat")

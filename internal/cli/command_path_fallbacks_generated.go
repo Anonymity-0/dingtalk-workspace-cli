@@ -44,6 +44,13 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 		ReviewReason: "0803 evaluation badcase: the model emitted +group-search with --query; +chat-search provides the same group-name search operation.",
 	},
 	{
+		From:         "chat +group-send-text",
+		Mode:         "ambiguous",
+		Candidates:   []string{"chat +send-to-group", "chat +messages-send"},
+		Reviewed:     true,
+		ReviewReason: "20260728 evaluation emitted +group-send-text for a group text operation, but the invented name does not choose between name-resolved group text and the unified identifier-aware workflow; the write operation must not dispatch automatically.",
+	},
+	{
 		From:         "chat +list-group-bots",
 		Mode:         "rewrite",
 		To:           "chat +chat-bots",
@@ -79,6 +86,20 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 		ReviewReason: "20260728 evaluation emitted +message-list without identifying group versus direct history, conversation history versus cross-chat search, or ordinary versus unread conversations; no candidate may be selected automatically.",
 	},
 	{
+		From:         "chat +read-single",
+		Mode:         "ambiguous",
+		Candidates:   []string{"chat +messages-list-direct", "chat +chat-messages"},
+		Reviewed:     true,
+		ReviewReason: "20260728 evaluation emitted +read-single six times for direct-message history, but the invented name does not choose between the focused direct-history shortcut and the broader group/direct history workflow; command recovery must stop before parameter validation or dispatch.",
+	},
+	{
+		From:         "chat +rename-group",
+		Mode:         "rewrite",
+		To:           "chat +chat-update",
+		Reviewed:     true,
+		ReviewReason: "20260728 evaluation emitted +rename-group for the unique group-name update intent; +chat-update is the reviewed shortcut with that exact command-level operation. Parameter compatibility remains the canonical target's responsibility.",
+	},
+	{
 		From:         "chat +search-group",
 		Mode:         "rewrite",
 		To:           "chat +chat-search",
@@ -91,6 +112,20 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 		Candidates:   []string{"chat +messages-send", "chat +dm", "chat +send-to-group"},
 		Reviewed:     true,
 		ReviewReason: "20260728 evaluation emitted +send without a stable recipient type or sending identity; the write operation must stop until the caller chooses the unified, resolved-direct, or resolved-group workflow.",
+	},
+	{
+		From:         "chat +send-by-bot",
+		Mode:         "ambiguous",
+		Candidates:   []string{"chat +messages-send", "chat message send-by-bot"},
+		Reviewed:     true,
+		ReviewReason: "20260728 evaluation emitted +send-by-bot three times without a complete sending-identity contract; stop and present the unified identity-aware shortcut and the exact native bot sender instead of selecting a write path.",
+	},
+	{
+		From:         "chat +send-dm",
+		Mode:         "ambiguous",
+		Candidates:   []string{"chat +dm", "chat +messages-send"},
+		Reviewed:     true,
+		ReviewReason: "20260728 evaluation emitted +send-dm twice, but the invented name does not choose between the resolved-name text shortcut and the unified identifier-aware sending workflow; the write operation must not dispatch automatically.",
 	},
 	{
 		From:         "chat +send-file",
@@ -119,6 +154,13 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 		Candidates:   []string{"chat +messages-send", "chat +dm", "chat +send-to-group"},
 		Reviewed:     true,
 		ReviewReason: "20260728 evaluation emitted +send-message without a stable recipient type or sending identity; the write operation must stop until the caller chooses the unified, resolved-direct, or resolved-group workflow.",
+	},
+	{
+		From:         "chat +send-single",
+		Mode:         "ambiguous",
+		Candidates:   []string{"chat +dm", "chat +messages-send"},
+		Reviewed:     true,
+		ReviewReason: "20260728 evaluation emitted +send-single for a direct message, but the invented name does not choose between the resolved-name text shortcut and the unified identifier-aware sending workflow; the write operation must not dispatch automatically.",
 	},
 	{
 		From:         "chat +send-text",
