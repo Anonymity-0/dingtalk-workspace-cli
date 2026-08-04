@@ -535,6 +535,7 @@ func TestCrossPlatformCoverageUnifiedSendGroupFileAndBatchBoundaries(t *testing.
 		{"--identity", "bot", "--robot-code", "r", "--groups", "", "--text", "x"},
 		{"--identity", "bot", "--robot-code", "r", "--groups", strings.Join(makeIDs(101), ","), "--text", "x"},
 		{"--identity", "bot", "--robot-code", "r", "--groups-file", "/absolute.txt", "--text", "x"},
+		{"--identity", "bot", "--robot-code", "r", "--groups-file", "../escape.txt", "--text", "x"},
 		{"--identity", "bot", "--robot-code", "r", "--groups-file", "missing.txt", "--text", "x"},
 	} {
 		helpers.InitDeps(&larkAlignmentCaller{})
