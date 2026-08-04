@@ -10666,6 +10666,33 @@
         "rpc_name": "list_wikiSpaces"
       }
     },
+    "wiki.list_workspace_feeds": {
+      "title": "list_workspace_feeds",
+      "description": "功能概述：\r\n查询指定钉钉文档知识库的活动动态，包括谁在什么时间对哪些文档进行了更新、上传、评论等操作。通过传入 workspaceId（知识库 ID 或知识库 URL）定位目标知识库，返回动态列表，每条包含动态类型（type）、发生时间（time）和内容摘要（content）。支持游标分页（nextToken），可选排除文件相关动态（excludeFile）。\r\n\r\n适用场景：\r\n– 需要了解知识库最近有哪些文档被更新或上传了新文件。\r\n– 需要追踪知识库内的协作活动，如谁评论了哪篇文档。\r\n– 定期巡检知识库变更情况，生成动态摘要报告。\r\n\r\n注意事项：\r\n– 权限要求：操作者需具备知识库的成员权限，非成员会被拒绝访问。\r\n– 通过 workspaceId 定位知识库，支持知识库 ID（纯字符串）或知识库 URL（如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview），系统自动提取。\r\n– 每页默认返回 20 条动态，通过 maxResults 调整，最大 50 条。首页不传 nextToken，翻页时传入上次返回的 nextToken 值。\r\n– excludeFile 设为 true 可过滤掉文件相关的动态，默认 false 即返回全部动态类型。",
+      "parameters": {
+        "excludeFile": {
+          "type": "boolean",
+          "description": "是否排除文件相关的动态，选填，默认 false。"
+        },
+        "maxResults": {
+          "type": "number",
+          "description": "期望返回的最大动态条数，默认 20，最大 50。"
+        },
+        "nextToken": {
+          "type": "string",
+          "description": "分页游标，首次查询不传，后续翻页时传入上次返回的 nextToken。"
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "目标知识库的标识，支持两种格式：1) 知识库 ID（纯字符串）；2) 知识库 URL，如 https://alidocs.dingtalk.com/i/spaces/{workspaceId}/overview，系统自动提取其中的 workspaceId。",
+          "required": true
+        }
+      },
+      "interface_ref": {
+        "product_id": "wiki",
+        "rpc_name": "list_workspace_feeds"
+      }
+    },
     "wiki.node_copy": {
       "title": "将指定节点复制到目标文件夹",
       "description": "将指定节点复制到目标文件夹。\r\n\r\n支持的节点类型：知识库节点（文档、文件夹）、钉盘文件/文件夹。\r\nnodeId 支持文档 URL 或 dentryUuid（32 位字母数字字符串）。\r\ntargetFolderId 为目标文件夹的 dentryUuid；workspaceId 为目标知识库标识，不传 targetFolderId 时复制到该知识库根目录，如果不传 targetFolderId 和 workspaceId，默认到当前用户所在组织的「我的文档」下\r\n\r\n权限要求：\r\n- 对源节点有可查看下载权限\r\n- 对目标文件夹有写入权限\r\n\r\n注意：复制操作底层可能异步执行，异步时操作已提交但新节点 ID 无法立即返回，请稍后查看目标文件夹确认结果。",
