@@ -537,6 +537,32 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		t.Error("full race shards must retain enough package-level time for internal/app")
 	}
 
+	darwinStart := strings.Index(admission, "\n  test-darwin:\n")
+	darwinEnd := strings.Index(admission, "\n  test-windows:\n")
+	if darwinStart < 0 || darwinEnd <= darwinStart {
+		t.Fatal("Code Admission workflow missing macOS test job boundaries")
+	}
+	darwinJob := admission[darwinStart:darwinEnd]
+	// The macOS job no longer runs ./internal/app as a whole package, so it does
+	// not need the package-level race budget the Ubuntu shard gets — the Ubuntu
+	// "race: app" shard already covers everything except the natively-gated
+	// tests. Pinning the two focused commands replaces that budget assertion:
+	// it locks the per-step timeouts and blocks a whole-package regression.
+	for _, want := range []string{
+		`go test -v -race -count=1 -timeout=6m ./internal/keychain ./internal/auth`,
+		`go test -v -race -count=1 -timeout=5m ./internal/app -run '^(TestValidateNewBinary_RecoversFromUnsignedDarwin|Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch))'`,
+	} {
+		if !strings.Contains(darwinJob, want) {
+			t.Errorf("macOS native test job missing focused auth contract %q", want)
+		}
+	}
+	if strings.Contains(darwinJob, "./internal/keychain ./internal/auth ./internal/app") {
+		t.Error("macOS native test job must not repeat the complete internal/app race shard")
+	}
+	if count := strings.Count(darwinJob, "./internal/app"); count != 1 {
+		t.Errorf("macOS native test job internal/app invocation count = %d, want 1 focused invocation", count)
+	}
+
 	coverageStart := strings.Index(admission, "\n  coverage:\n")
 	coverageEnd := strings.Index(admission, "\n  policy:\n")
 	if coverageStart < 0 || coverageEnd <= coverageStart {
