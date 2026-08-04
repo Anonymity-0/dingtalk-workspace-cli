@@ -702,14 +702,14 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Full ./internal/app (including schema --all assembly) already runs in the
-      # race:app shard. Keep this job focused on native auth/keychain paths so
-      # heavy Schema completeness tests cannot exhaust the 10m budget.
-      - name: Test macOS auth and Keychain paths with Race Detection
-        run: go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth
+      # Full app-package race (including schema --all assembly) already runs in
+      # the race:app shard. Keep this job focused on native auth/keychain paths
+      # so heavy Schema completeness tests cannot exhaust the budget.
+      - name: Test macOS auth and Keychain packages with Race Detection
+        run: go test -v -race -count=1 -timeout=6m ./internal/keychain ./internal/auth
 
-      - name: Test macOS auth migration and portable auth diagnostics
-        run: go test -v -race -count=1 -timeout=5m ./internal/app -run '^Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch|ExportRejectsWindowsDPAPIBackend|ImportRejectsWindowsDPAPIBackend)'
+      - name: Test macOS auth migration, Keychain diagnostics, and upgrade self-heal with Race Detection
+        run: go test -v -race -count=1 -timeout=5m ./internal/app -run '^(TestValidateNewBinary_RecoversFromUnsignedDarwin|Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch|ExportRejectsWindowsDPAPIBackend|ImportRejectsWindowsDPAPIBackend))'
 
   test-windows:
     name: Test (Windows)
