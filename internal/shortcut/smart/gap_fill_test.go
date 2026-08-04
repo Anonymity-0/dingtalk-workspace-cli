@@ -56,7 +56,7 @@ func TestCrossPlatformCoverageMessageReadShortcutsPublishResourceDownloadPlans(t
 			name:      "chat messages",
 			tool:      "chat/list_conversation_message_v2",
 			response:  `{"result":{"messages":[` + message + `]}}`,
-			args:      []string{"chat", "+chat-messages", "--group", "cid"},
+			args:      []string{"chat", "+chat-messages", "--conversation-id", "cid"},
 			resultKey: "messages",
 		},
 		{
@@ -124,7 +124,7 @@ func TestCrossPlatformCoverageMessageReadShortcutsPublishResourceDownloadPlans(t
 
 func TestCrossPlatformCoverageMessageReadShortcutResourceOutputValidation(t *testing.T) {
 	for _, args := range [][]string{
-		{"chat", "+chat-messages", "--group", "cid"},
+		{"chat", "+chat-messages", "--conversation-id", "cid"},
 		{"chat", "+search-msg", "--query", "x", "--no-enrich"},
 		{"chat", "+at-me"},
 		{"chat", "+thread-replies", "--group", "cid", "--thread-id", "thread"},
@@ -143,7 +143,7 @@ func TestCrossPlatformCoverageChatMessagesDefaultsToRecentHistory(t *testing.T) 
 	helpers.InitDeps(caller)
 	root := newPlatformCoverageRoot()
 	before := time.Now().Add(-2 * time.Second)
-	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cid", "--limit", "5"})
+	root.SetArgs([]string{"chat", "+chat-messages", "--conversation-id", "cid", "--limit", "5"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +181,7 @@ func TestCrossPlatformCoverageChatMessagesPreservesExplicitTime(t *testing.T) {
 	root := newPlatformCoverageRoot()
 	root.SetArgs([]string{
 		"chat", "+chat-messages",
-		"--group", "cid",
+		"--conversation-id", "cid",
 		"--time", "2026-07-01 12:34:56",
 		"--yes",
 	})

@@ -92,7 +92,8 @@ dws chat message send --group <openConversationId> --msg-type profile --contact-
 
 ### 拉取消息的底层 fallback
 
-默认使用 `dws chat +chat-messages`。全量读取加 `--page-all`，必要时用 `--page-limit`、
+默认使用 `dws chat +chat-messages`。群聊的 `--group` 可传群名或 openConversationId；
+也可用 `--chat-query` 显式按群名解析、用 `--conversation-id` 显式传稳定 ID。全量读取加 `--page-all`，必要时用 `--page-limit`、
 `--max-results` 控制边界，用 `--output <相对.json>` 原子导出。只有需要原始响应或显式手工
 continuation 时才使用下表；原子 `message list` 不代表自动全量分页。
 
@@ -116,7 +117,8 @@ continuation 时才使用下表；原子 `message list` 不代表自动全量分
 
 ### 搜索消息的底层 fallback
 
-默认使用 `dws chat +search-msg`；需要 Shortcut 未暴露的原始过滤字段或响应时，才评估
+默认使用 `dws chat +search-msg`；搜索内容使用 canonical `--query`，群名和发送者姓名分别使用
+`--chat-query` / `--sender-query`。需要 Shortcut 未暴露的原始过滤字段或响应时，才评估
 `message search-advanced`。它是原子 `message search` 的严格超集，但不是 Agent 高频默认入口。
 
 ```bash

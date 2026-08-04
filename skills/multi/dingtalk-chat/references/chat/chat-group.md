@@ -59,7 +59,7 @@ dws chat group create --name "话题圈" --users userId1,userId2 --thread
 
 | 命令 | 用途 | 必填参数 |
 |------|------|----------|
-| `group rename` | 更新群名称 | `--id` `--name` |
+| `group rename` | 更新群名称 | `--id` `--name`；只知群名时先用 `+chat-search --query <群名>` 唯一解析 ID，不猜 `+chat-rename` |
 | `group quit` | 当前用户退出群聊 | `--group` |
 | `group dismiss` | 解散群聊，不可逆 | `--group` |
 
@@ -67,7 +67,7 @@ dws chat group create --name "话题圈" --users userId1,userId2 --thread
 
 | 命令 | 用途 | 示例 |
 |------|------|------|
-| `+chat-members-list` | 全量查看群成员并分桶用户/机器人 | `dws chat +chat-members-list --group <群名>` 或 `--conversation-id <openConversationId>`；检查 buckets/complete/failures，`--page-limit` 保证有界 |
+| `+chat-members-list` | 全量查看群成员并分桶用户/机器人 | `--group <群名或openConversationId>`；显式 ID 也可用 `--conversation-id`，检查 buckets/complete/failures |
 | `group members add` | 添加群成员 | `dws chat group members add --id <openConversationId> --users userId1,userId2` |
 | `group members remove` | 移除群成员 | `dws chat group members remove --id <openConversationId> --users userId1,userId2` |
 | `group members list-by-ids` | 按 openDingTalkId 批量查成员详情 | `dws chat group members list-by-ids --id <openConversationId> --users openDingTalkId1,openDingTalkId2` |

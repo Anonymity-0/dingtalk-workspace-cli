@@ -144,7 +144,7 @@ func TestChatMessagesPageAllUsesTypedBoundaryAndDeduplicates(t *testing.T) {
 	var output bytes.Buffer
 	root.SetOut(&output)
 	root.SetArgs([]string{
-		"chat", "+chat-messages", "--group", "cid",
+		"chat", "+chat-messages", "--conversation-id", "cid",
 		"--time", "2026-01-03 00:00:00", "--page-all", "--page-limit", "5",
 	})
 	if err := root.Execute(); err != nil {
@@ -173,7 +173,7 @@ func TestChatMessagesPageAllPublishesBoundedContinuation(t *testing.T) {
 	var output bytes.Buffer
 	root.SetOut(&output)
 	root.SetArgs([]string{
-		"chat", "+chat-messages", "--group", "cid",
+		"chat", "+chat-messages", "--conversation-id", "cid",
 		"--page-all", "--page-limit", "1",
 	})
 	if err := root.Execute(); err != nil {
@@ -199,7 +199,7 @@ func TestChatMessagesPageAllFailsClosedOnStalledBoundary(t *testing.T) {
 	root := newPlatformCoverageRoot()
 	var output bytes.Buffer
 	root.SetOut(&output)
-	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cid", "--page-all"})
+	root.SetArgs([]string{"chat", "+chat-messages", "--conversation-id", "cid", "--page-all"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestChatMessagesExportIsAtomicAndNoClobber(t *testing.T) {
 		helpers.InitDeps(newCaller())
 		root := newPlatformCoverageRoot()
 		root.SetOut(&bytes.Buffer{})
-		args := []string{"chat", "+chat-messages", "--group", "cid", "--page-all", "--output", "exports/messages.json"}
+		args := []string{"chat", "+chat-messages", "--conversation-id", "cid", "--page-all", "--output", "exports/messages.json"}
 		if overwrite {
 			args = append(args, "--overwrite")
 		}
@@ -261,7 +261,7 @@ func TestChatMessagesExportRejectsNonJSONPlaceholder(t *testing.T) {
 	root := newPlatformCoverageRoot()
 	root.SetOut(&bytes.Buffer{})
 	root.SetArgs([]string{
-		"chat", "+chat-messages", "--group", "cid", "--output", "{}",
+		"chat", "+chat-messages", "--conversation-id", "cid", "--output", "{}",
 	})
 	if err := root.Execute(); err == nil {
 		t.Fatal("non-JSON placeholder output unexpectedly succeeded")

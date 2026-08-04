@@ -154,18 +154,23 @@ func normalizeCreatedConversation(data map[string]any) {
 var ChatUpdate = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+chat-update",
+	Aliases:     []string{"+chat-rename"},
 	Product:     "chat",
 	Description: "更新群名称（仅名称，不支持 description）",
-	Intent:      "当你只需要修改群名称时使用；这是 lark-cli +chat-update 的诚实子集，只接受群 openConversationId 和新名称。修改群 description、个人备注、群昵称或其他群设置时不要使用。",
+	Intent:      "当你只需要修改群名称时使用；--group 可传群名或 openConversationId，群名必须唯一解析后才会写入。修改群 description、个人备注、群昵称或其他群设置时不要使用。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
+		{Name: "group", Type: shortcut.FlagString, Desc: "群名称或 openConversationId", Required: true},
 		{Name: "name", Type: shortcut.FlagString, Desc: "新的群名称", Required: true},
 	},
-	Tips: []string{`dws chat +chat-update --group <openConversationId> --name "新群名"`},
+	Tips: []string{`dws chat +chat-update --group <群名或openConversationId> --name "新群名"`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		resolved, err := targetresolver.ResolveChatTarget(rt, rt.Str("group"), "")
+		if err != nil {
+			return err
+		}
 		return rt.CallMCP("update_group_name", map[string]any{
-			"openconversation_id": rt.Str("group"),
+			"openconversation_id": resolved.Selected.OpenConversationID,
 			"group_name":          rt.Str("name"),
 		})
 	},

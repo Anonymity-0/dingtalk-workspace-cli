@@ -49,15 +49,16 @@ var ChatMessages = shortcut.Shortcut{
 	Product:     "chat",
 	Description: "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
 	Intent: "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；" +
-		"群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。" +
+		"群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。" +
 		"省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。" +
 		"全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。" +
 		"默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。",
 	Risk: shortcut.RiskRead,
 	Flags: append([]shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群会话 ID（openConversationId），与 --user 互斥"},
+		{Name: "group", Type: shortcut.FlagString, Desc: "群名称或 openConversationId，与单聊目标互斥"},
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},
 		{Name: "id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},
+		{Name: "open-conversation-id", Type: shortcut.FlagString, Desc: "--conversation-id 的兼容别名", Hidden: true},
 		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一 openConversationId"},
 		{Name: "user", Type: shortcut.FlagString, Desc: "单聊对方的 userId，与 --group 互斥"},
 		{Name: "user-query", Type: shortcut.FlagString, Desc: "按姓名解析唯一 openDingTalkId"},
@@ -65,6 +66,7 @@ var ChatMessages = shortcut.Shortcut{
 		{Name: "time", Type: shortcut.FlagString, Desc: "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页拉取的消息条数（可选）"},
 		{Name: "size", Type: shortcut.FlagInt, Desc: "--limit 的旧版别名", Hidden: true},
+		{Name: "page-size", Type: shortcut.FlagInt, Desc: "--limit 的兼容别名", Hidden: true},
 		{Name: "direction", Type: shortcut.FlagString, Enum: []string{"newer", "older"}, Desc: "时间方向 newer/older；省略时为 older，从时间边界向前读取"},
 		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
 		{Name: "page-all", Type: shortcut.FlagBool, Desc: "沿 typed nextPage.time 自动读取后续页；--page-limit 仅与 --page-all 一起使用且范围 1-500；--max-results 仅与 --page-all 一起使用且不能为负数"},
@@ -73,7 +75,8 @@ var ChatMessages = shortcut.Shortcut{
 		{Name: "output", Type: shortcut.FlagString, Desc: "把完整结构化 ledger 原子写入工作目录内的相对 JSON 文件"},
 	}, chatshortcut.MessageResourceDownloadFlags()...),
 	Constraints: append([]shortcut.Constraint{
-		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "conversation-id", "id", "chat-query", "user", "user-query", "open-dingtalk-id"}},
+		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "conversation-id", "id", "open-conversation-id", "chat-query", "user", "user-query", "open-dingtalk-id"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"limit", "size", "page-size"}},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-all", "page-limit"}, Description: "--page-limit 仅与 --page-all 一起使用且范围 1-500"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-all", "max-results"}, Description: "--max-results 仅与 --page-all 一起使用且不能为负数"},
 		{
@@ -124,7 +127,7 @@ type chatMessagesRequest struct {
 }
 
 func resolveChatMessagesRequest(rt *shortcut.RuntimeContext) (chatMessagesRequest, error) {
-	groupID := rt.StrFirst("group", "conversation-id", "id")
+	groupID := strings.TrimSpace(rt.StrFirst("conversation-id", "id", "open-conversation-id"))
 	userID := rt.Str("user")
 	openID := rt.Str("open-dingtalk-id")
 	if targetresolver.LooksLikeOpenConversationID(openID) {
@@ -132,8 +135,8 @@ func resolveChatMessagesRequest(rt *shortcut.RuntimeContext) (chatMessagesReques
 			"--open-dingtalk-id 收到的是群 openConversationId；群聊请改用 --group（兼容别名 --chat）",
 		)
 	}
-	if query := rt.Str("chat-query"); query != "" {
-		resolved, err := targetresolver.ResolveChat(rt, query)
+	if groupID == "" && (rt.Str("group") != "" || rt.Str("chat-query") != "") {
+		resolved, err := targetresolver.ResolveChatTarget(rt, rt.Str("group"), rt.Str("chat-query"))
 		if err != nil {
 			return chatMessagesRequest{}, err
 		}
@@ -158,7 +161,7 @@ func resolveChatMessagesRequest(rt *shortcut.RuntimeContext) (chatMessagesReques
 	if rt.Changed("time") && rt.Str("time") != "" {
 		params["time"] = rt.Str("time")
 	}
-	if limit := rt.IntFirst("limit", "size"); limit > 0 {
+	if limit := rt.IntFirst("limit", "size", "page-size"); limit > 0 {
 		params["limit"] = limit
 	} else if rt.Bool("page-all") {
 		params["limit"] = chatMessagesAllPageSize

@@ -83,18 +83,21 @@ var ChatMembersList = shortcut.Shortcut{
 	Product:     "chat",
 	Description: "列出群成员并把用户与机器人分桶（支持群名语义解析）",
 	Intent: "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；" +
-		"可直接传 --conversation-id，或传 --group 群名让命令先做唯一匹配。" +
+		"--group 可传群名或 openConversationId，也可用 --conversation-id 显式传稳定 ID、用 --chat-query 显式按群名解析。" +
 		"默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；" +
 		"用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。",
 	Risk: shortcut.RiskRead,
 	Flags: []shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群名称（与 --conversation-id 二选一）"},
-		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "群 openConversationId（与 --group 二选一）"},
+		{Name: "group", Type: shortcut.FlagString, Desc: "群名称或 openConversationId"},
+		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "显式群 openConversationId"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "按群名解析唯一 openConversationId"},
+		{Name: "chat", Type: shortcut.FlagString, Desc: "--conversation-id 的兼容别名", Hidden: true},
+		{Name: "open-conversation-id", Type: shortcut.FlagString, Desc: "--conversation-id 的兼容别名", Hidden: true},
 		{Name: "member-types", Type: shortcut.FlagStringSlice, Desc: "成员类型；--member-types 仅接受 user/bot；不传则同时返回"},
 		{Name: "page-limit", Type: shortcut.FlagInt, Default: "50", Desc: "用户成员桶最大页数；--page-limit 必须在 1-500 之间"},
 	},
 	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "conversation-id"}},
+		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"group", "conversation-id", "chat-query", "chat", "open-conversation-id"}},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"member-types"}, Description: "--member-types 仅接受 user/bot"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-limit"}, Description: "--page-limit 必须在 1-500 之间"},
 	},
@@ -104,14 +107,13 @@ var ChatMembersList = shortcut.Shortcut{
 	},
 	Validate: validateGroupMembersPageLimit,
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		groupID := strings.TrimSpace(rt.Str("conversation-id"))
-		groupName := strings.TrimSpace(rt.Str("group"))
+		groupID := strings.TrimSpace(rt.StrFirst("conversation-id", "chat", "open-conversation-id"))
 		if groupID == "" {
-			resolved, err := resolveGroupName(rt, groupName)
+			resolved, err := targetresolver.ResolveChatTarget(rt, rt.Str("group"), rt.Str("chat-query"))
 			if err != nil {
 				return err
 			}
-			groupID = resolved
+			groupID = resolved.Selected.OpenConversationID
 		}
 
 		wantUsers, wantBots, err := resolveMemberTypes(rt.StrSlice("member-types"))
@@ -190,14 +192,6 @@ var ChatMembersList = shortcut.Shortcut{
 		}
 		return rt.Output(payload)
 	},
-}
-
-func resolveGroupName(rt *shortcut.RuntimeContext, groupName string) (string, error) {
-	resolved, err := targetresolver.ResolveChat(rt, groupName)
-	if err != nil {
-		return "", err
-	}
-	return resolved.Selected.OpenConversationID, nil
 }
 
 func validateGroupMembersPageLimit(rt *shortcut.RuntimeContext) error {

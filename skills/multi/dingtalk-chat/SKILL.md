@@ -40,13 +40,14 @@ metadata:
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
 | <!-- dws-intent: chat.send.dm -->按姓名发简单文本或 Markdown | `dws chat +dm --to <姓名> --text <内容>` | CLI 解析唯一用户；多候选时停止，不先手工查 ID |
-| <!-- dws-intent: chat.send.group -->按群名发简单文本或 Markdown | `dws chat +send-to-group --group <群名> --text <内容>` | CLI 精确匹配优先；多候选时停止，不先手工查群 ID |
+| <!-- dws-intent: chat.send.group -->按群名或 ID 发简单文本或 Markdown | `dws chat +send-to-group --group <群名或ID> --text <内容>` | 稳定 ID 直接使用；群名多候选时停止 |
 | <!-- dws-intent: chat.send.advanced -->文件、Bot、Webhook、复杂 @、已知 ID 或自然目标的高级发送 | `dws chat +messages-send` | user 可用自然目标；Bot 多群用 `--groups/--groups-file` 并检查逐项 ledger |
-| <!-- dws-intent: chat.read.conversation -->读取一个指定群聊或单聊 | `dws chat +chat-messages` | 全量加 `--page-all`；导出加 `--output <相对.json>`，检查完整性 ledger |
-| <!-- dws-intent: chat.search.cross-conversation -->跨会话、多维过滤或自动翻页搜索 | `dws chat +search-msg` | 支持 `--chat-query` / `--sender-query`；全量时用 `--page-all` 并检查 `complete` |
-| 查看指定群成员（用户/机器人） | `dws chat +chat-members-list --group <群名>` | 唯一解析并全量读取 |
+| <!-- dws-intent: chat.read.conversation -->读取一个指定群聊或单聊 | `dws chat +chat-messages` | 群聊 `--group` 可传群名或 ID；全量加 `--page-all`，检查完整性 ledger |
+| <!-- dws-intent: chat.search.cross-conversation -->跨会话、多维过滤或自动翻页搜索 | `dws chat +search-msg` | 内容用 `--query`，自然目标用 `--chat-query` / `--sender-query`；检查 `complete` |
+| 查看指定群成员（用户/机器人） | `dws chat +chat-members-list --group <群名或ID>` | 唯一解析并全量读取 |
 | 获取群邀请链接 | `dws chat +chat-invite-url --group <群名或ID>` | 多候选时停止 |
 | 查看群机器人 | `dws chat +chat-bots --group <群名或ID>` | 返回稳定 `bots[]` |
+| 修改群名称 | `dws chat group rename --id <openConversationId> --name <新名称>` | 只知群名时先用 `+chat-search --query <群名>` 唯一解析 ID；不猜 `+chat-rename` |
 | 查看指定群内 @我的消息 | `dws chat +at-me --chat-query <群名>` | 空结果仍返回数组 |
 | 查看全部会话 | `dws chat +conversation-list --page-all` | 检查 `complete` / `failures` |
 | 读取并下载消息资源 | 查询命令加 `--download-resources` | 不另起手工下载循环；下载失败项保留在结果中 |
@@ -68,7 +69,7 @@ metadata:
 ### 发送入口边界
 
 - `+dm`：姓名目标的简单文本/Markdown，参数空间最小。
-- `+send-to-group`：群名目标的简单文本/Markdown，避免暴露无关身份矩阵。
+- `+send-to-group`：群名或稳定 ID 目标的简单文本/Markdown，避免暴露无关身份矩阵。
 - `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。user 已知 ID 可直接传，也可用 `--user-query` / `--chat-query` 运行同一只读解析链；Bot 多群使用 `--groups/--groups-file`，返回 `im.batch-write.v1`；bot/webhook 只使用下层真实支持的文本/Markdown 能力。
 - 文件直接传 `+messages-send --file <相对路径>`；不要先独立上传并提取 mediaId。
 - Webhook 使用 `+messages-send --as webhook --webhook-token <token>`；不要退回原子 Webhook 命令。
@@ -111,4 +112,5 @@ metadata:
 2. `unknown command` / `unknown flag`：读取精确 leaf Help，修正后最多重试一次。
 3. 参数约束或 confirmation 不清楚：读取精确 leaf Schema，以 Runtime gate 为准。
 4. 认证、权限、profile 或 confirmation 错误：读取 `dws-shared` 的对应 reference；正常 IM 不读取完整 shared Skill。
-5. 其他错误：保留真实错误和已完成/失败项；不要连续尝试同义原子命令。
+5. `backend_dependency_unavailable`：保持原参数，对只读命令最多重试一次；不要改 flag、猜认证命令或切换同义原子命令，持续失败时保留 Trace ID。
+6. 其他错误：保留真实错误和已完成/失败项；不要连续尝试同义原子命令。

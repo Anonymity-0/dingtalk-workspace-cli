@@ -124,6 +124,20 @@ func TestEvaluationRegressionNaturalGroupTargetsAndRecallInference(t *testing.T)
 		}
 	})
 
+	t.Run("stable id in group query bypasses search", func(t *testing.T) {
+		fake := &larkAlignmentCaller{}
+		helpers.InitDeps(fake)
+		root := newPlatformCoverageRoot()
+		root.SetArgs([]string{"chat", "+chat-invite-url", "--chat-query", "cidACeQ0fCtKfLsFGvA47gXaQ=="})
+		if err := root.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if len(fake.calls) != 1 || fake.calls[0].tool != "get_group_invite_url" ||
+			fake.calls[0].args["openConversationId"] != "cidACeQ0fCtKfLsFGvA47gXaQ==" {
+			t.Fatalf("calls = %#v", fake.calls)
+		}
+	})
+
 	t.Run("message id fills conversation before recall", func(t *testing.T) {
 		fake := &larkAlignmentCaller{}
 		helpers.InitDeps(fake)
@@ -356,11 +370,11 @@ func TestLarkAlignmentWriteMappings(t *testing.T) {
 	}{
 		{
 			name:    "chat-update-name-only",
-			args:    []string{"chat", "+chat-update", "--group", "cid", "--name", "新群名", "--yes"},
+			args:    []string{"chat", "+chat-update", "--group", "cidACeQ0fCtKfLsFGvA47gXaQ==", "--name", "新群名", "--yes"},
 			product: "chat",
 			tool:    "update_group_name",
 			wantArgs: map[string]any{
-				"openconversation_id": "cid",
+				"openconversation_id": "cidACeQ0fCtKfLsFGvA47gXaQ==",
 				"group_name":          "新群名",
 			},
 		},
@@ -412,6 +426,24 @@ func TestLarkAlignmentWriteMappings(t *testing.T) {
 				t.Fatalf("call = %#v, want %s/%s %#v", call, tt.product, tt.tool, tt.wantArgs)
 			}
 		})
+	}
+}
+
+func TestObservedChatRenameAliasResolvesNameBeforeWrite(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"im/search_groups": `{"result":[{"openConversationId":"cid-project","title":"dws测试群02"}],"hasMore":false}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+chat-rename", "--group", "dws测试群02", "--name", "测试群02-技术讨论", "--yes"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 || fake.calls[0].tool != "search_groups" || fake.calls[1].tool != "update_group_name" {
+		t.Fatalf("calls = %#v", fake.calls)
+	}
+	if fake.calls[1].args["openconversation_id"] != "cid-project" || fake.calls[1].args["group_name"] != "测试群02-技术讨论" {
+		t.Fatalf("write args = %#v", fake.calls[1].args)
 	}
 }
 

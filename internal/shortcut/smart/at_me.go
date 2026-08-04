@@ -75,16 +75,10 @@ var AtMe = shortcut.Shortcut{
 	Validate: chatshortcut.ValidateMessageResourceDownload,
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		groupID := ""
-		groupQuery := strings.TrimSpace(rt.StrFirst("chat-query", "group-query"))
-		if groupQuery == "" {
-			groupQuery = strings.TrimSpace(rt.Str("group"))
-			if targetresolver.LooksLikeOpenConversationID(groupQuery) {
-				groupID = groupQuery
-				groupQuery = ""
-			}
-		}
-		if groupQuery != "" {
-			resolved, err := targetresolver.ResolveChat(rt, groupQuery)
+		directTarget := strings.TrimSpace(rt.Str("group"))
+		queryTarget := strings.TrimSpace(rt.StrFirst("chat-query", "group-query"))
+		if directTarget != "" || queryTarget != "" {
+			resolved, err := targetresolver.ResolveChatTarget(rt, directTarget, queryTarget)
 			if err != nil {
 				return err
 			}

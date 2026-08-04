@@ -28,6 +28,13 @@ func TestChatMessagesResolvesNaturalChatAndUserTargets(t *testing.T) {
 			wantValue: "cid-1",
 		},
 		{
+			name:      "natural group through group flag",
+			args:      []string{"chat", "+chat-messages", "--group", "项目冲刺"},
+			wantTool:  "list_conversation_message_v2",
+			wantKey:   "openconversation_id",
+			wantValue: "cid-1",
+		},
+		{
 			name:      "user query",
 			args:      []string{"chat", "+chat-messages", "--user-query", "张三"},
 			wantTool:  "list_individual_chat_message",
@@ -52,6 +59,20 @@ func TestChatMessagesResolvesNaturalChatAndUserTargets(t *testing.T) {
 				t.Fatalf("read = %#v", read)
 			}
 		})
+	}
+}
+
+func TestChatMessagesStableGroupBypassesNaturalResolution(t *testing.T) {
+	fake := &platformCoverageCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cidACeQ0fCtKfLsFGvA47gXaQ=="})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "list_conversation_message_v2" ||
+		fake.calls[0].args["openconversation_id"] != "cidACeQ0fCtKfLsFGvA47gXaQ==" {
+		t.Fatalf("calls = %#v", fake.calls)
 	}
 }
 
@@ -95,6 +116,34 @@ func TestAtMeResolvesNaturalGroupBeforeSearch(t *testing.T) {
 	}
 }
 
+func TestAtMeStableIDInQueryBypassesNaturalResolution(t *testing.T) {
+	fake := &platformCoverageCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+at-me", "--chat-query", "cidACeQ0fCtKfLsFGvA47gXaQ=="})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "search_at_me_message" ||
+		fake.calls[0].args["openConversationId"] != "cidACeQ0fCtKfLsFGvA47gXaQ==" {
+		t.Fatalf("calls = %#v", fake.calls)
+	}
+}
+
+func TestSendToGroupStableIDBypassesNaturalResolution(t *testing.T) {
+	fake := &platformCoverageCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+send-to-group", "--group", "cidACeQ0fCtKfLsFGvA47gXaQ==", "--text", "评测", "--yes"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "send_personal_message" ||
+		fake.calls[0].args["openConversationId"] != "cidACeQ0fCtKfLsFGvA47gXaQ==" {
+		t.Fatalf("calls = %#v", fake.calls)
+	}
+}
+
 func TestSearchMsgResolvesNaturalChatAndSenderBeforeSearch(t *testing.T) {
 	fake := &platformCoverageCaller{contactSearchResult: `{"result":[{"name":"张三","userId":"u1","openDingTalkId":"D1"}]}`}
 	helpers.InitDeps(fake)
@@ -120,6 +169,55 @@ func TestSearchMsgResolvesNaturalChatAndSenderBeforeSearch(t *testing.T) {
 	}
 	if got, want := search.args["senderOpenDingTakIds"], []string{"D1"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("senderOpenDingTakIds = %#v, want %#v", got, want)
+	}
+}
+
+func TestSearchMsgAcceptsStableIDInChatQuery(t *testing.T) {
+	fake := &platformCoverageCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+search-msg",
+		"--chat-query", "cidRYtcWlwRzUKMD1/o2/J4PA==",
+		"--text", "评测",
+		"--no-enrich",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "search_messages" {
+		t.Fatalf("calls = %#v", fake.calls)
+	}
+	if got, want := fake.calls[0].args["openConversationIds"], []string{"cidRYtcWlwRzUKMD1/o2/J4PA=="}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("openConversationIds = %#v, want %#v", got, want)
+	}
+	if fake.calls[0].args["keyword"] != "评测" {
+		t.Fatalf("keyword = %#v", fake.calls[0].args["keyword"])
+	}
+}
+
+func TestChatMembersListGroupAcceptsNameAndStableID(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		args      []string
+		wantCalls int
+	}{
+		{name: "name", args: []string{"chat", "+chat-members-list", "--group", "项目冲刺", "--member-types", "user"}, wantCalls: 2},
+		{name: "stable id", args: []string{"chat", "+chat-members-list", "--group", "cidACeQ0fCtKfLsFGvA47gXaQ==", "--member-types", "user"}, wantCalls: 1},
+		{name: "compat alias", args: []string{"chat", "+chat-members-list", "--open-conversation-id", "cid-short-placeholder", "--member-types", "user"}, wantCalls: 1},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := &platformCoverageCaller{}
+			helpers.InitDeps(fake)
+			root := newPlatformCoverageRoot()
+			root.SetArgs(tt.args)
+			if err := root.Execute(); err != nil {
+				t.Fatal(err)
+			}
+			if len(fake.calls) != tt.wantCalls || fake.calls[len(fake.calls)-1].tool != "get_group_members" {
+				t.Fatalf("calls = %#v", fake.calls)
+			}
+		})
 	}
 }
 

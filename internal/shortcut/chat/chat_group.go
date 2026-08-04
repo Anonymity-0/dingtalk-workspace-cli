@@ -596,15 +596,11 @@ var ChatBots = shortcut.Shortcut{
 // contract. Stable cid values bypass search; natural names always go through
 // the shared exact-match, full-pagination and ambiguity rules.
 func resolveStableOrNamedChat(rt *shortcut.RuntimeContext) (string, error) {
-	query := strings.TrimSpace(rt.StrFirst("chat-query", "group-query"))
-	if query == "" {
-		group := strings.TrimSpace(rt.Str("group"))
-		if targetresolver.LooksLikeOpenConversationID(group) {
-			return group, nil
-		}
-		query = group
-	}
-	resolved, err := targetresolver.ResolveChat(rt, query)
+	resolved, err := targetresolver.ResolveChatTarget(
+		rt,
+		strings.TrimSpace(rt.Str("group")),
+		strings.TrimSpace(rt.StrFirst("chat-query", "group-query")),
+	)
 	if err != nil {
 		return "", err
 	}

@@ -118,9 +118,21 @@ func ResolveChat(rt Reader, query string) (ChatResolution, error) {
 	query = strings.TrimSpace(query)
 	if LooksLikeOpenConversationID(query) {
 		return ChatResolution{}, apperrors.NewValidation(fmt.Sprintf(
-			"%q 看起来是群 openConversationId；请通过稳定 ID 参数（如 --group 或 --chat）传入，不要作为群名搜索",
+			"群目标参数类型不匹配：%q 符合 openConversationId 格式，当前参数仅接受群名称",
 			query,
-		))
+		),
+			apperrors.WithReason("target_type_mismatch"),
+			apperrors.WithOrigin("client"),
+			apperrors.WithFailureStage("target_resolution"),
+			apperrors.WithExecutionStarted(false),
+			apperrors.WithHint("请使用当前命令的稳定 ID 参数；运行当前 leaf --help 可查看准确参数名。"),
+			apperrors.WithDetails(map[string]any{
+				"type":         "resolution",
+				"entityType":   "chat",
+				"providedType": "openConversationId",
+				"expectedType": "chatName",
+			}),
+		)
 	}
 	cursor := "0"
 	seenCursors := map[string]bool{cursor: true}
@@ -197,6 +209,48 @@ func ResolveChat(rt Reader, query string) (ChatResolution, error) {
 		Selected:   selected[0],
 		Profile:    profilectx.Get(),
 	}, nil
+}
+
+// ResolveChatTarget accepts either a stable openConversationId or a natural
+// group name and returns one normalized ChatResolution. Stable IDs never reach
+// search_groups; natural names retain ResolveChat's complete-pagination and
+// fail-closed ambiguity semantics.
+func ResolveChatTarget(rt Reader, directValue, queryValue string) (ChatResolution, error) {
+	directValue = strings.TrimSpace(directValue)
+	queryValue = strings.TrimSpace(queryValue)
+	if directValue != "" && queryValue != "" {
+		return ChatResolution{}, apperrors.NewValidation(
+			"稳定群目标与群名查询参数不能同时指定",
+			apperrors.WithReason("target_arguments_conflict"),
+			apperrors.WithOrigin("client"),
+			apperrors.WithFailureStage("request_validation"),
+			apperrors.WithExecutionStarted(false),
+		)
+	}
+	value := directValue
+	if value == "" {
+		value = queryValue
+	}
+	if value == "" {
+		return ChatResolution{}, apperrors.NewValidation(
+			"必须指定群名或 openConversationId",
+			apperrors.WithReason("missing_target"),
+			apperrors.WithOrigin("client"),
+			apperrors.WithFailureStage("request_validation"),
+			apperrors.WithExecutionStarted(false),
+		)
+	}
+	if LooksLikeOpenConversationID(value) {
+		return ChatResolution{
+			Status:     StatusResolved,
+			EntityType: "chat",
+			Query:      value,
+			MatchType:  "stable_id",
+			Selected:   Chat{OpenConversationID: value},
+			Profile:    profilectx.Get(),
+		}, nil
+	}
+	return ResolveChat(rt, value)
 }
 
 // LooksLikeOpenConversationID identifies the opaque group-conversation IDs
@@ -510,6 +564,9 @@ func newResolutionError(status Status, entityType, query string, candidates any)
 		return apperrors.NewValidation(
 			fmt.Sprintf("没有找到与 %q 唯一匹配且可用于当前操作的%s", query, entityLabel(entityType)),
 			apperrors.WithReason("resolution_not_found"),
+			apperrors.WithOrigin("client"),
+			apperrors.WithFailureStage("target_resolution"),
+			apperrors.WithExecutionStarted(false),
 			apperrors.WithRetryable(false),
 			apperrors.WithHint("请提供更完整的名称或直接传稳定 ID"),
 			apperrors.WithDetails(details),
@@ -518,6 +575,9 @@ func newResolutionError(status Status, entityType, query string, candidates any)
 	return apperrors.NewValidation(
 		fmt.Sprintf("%q 匹配到多个%s：%s；请提供更精确的名称或直接传稳定 ID", query, entityLabel(entityType), candidateLabels(candidates)),
 		apperrors.WithReason("resolution_ambiguous"),
+		apperrors.WithOrigin("client"),
+		apperrors.WithFailureStage("target_resolution"),
+		apperrors.WithExecutionStarted(false),
 		apperrors.WithRetryable(false),
 		apperrors.WithHint("禁止默认选择第一个候选"),
 		apperrors.WithDetails(details),
@@ -539,6 +599,9 @@ func newIncompleteChatResolutionError(query string, candidates []Chat, cause str
 	return apperrors.NewAPI(
 		fmt.Sprintf("群名 %q 的候选未能完整读取，已停止后续操作", query),
 		apperrors.WithReason("resolution_incomplete"),
+		apperrors.WithOrigin("mcp_gateway"),
+		apperrors.WithFailureStage("target_resolution"),
+		apperrors.WithExecutionStarted(false),
 		apperrors.WithRetryable(true),
 		apperrors.WithHint("请重试，或直接传 openConversationId 跳过群名解析"),
 		apperrors.WithDetails(details),
@@ -549,6 +612,9 @@ func batchResolutionError(entityType string, failures []map[string]any) error {
 	return apperrors.NewValidation(
 		fmt.Sprintf("%d 个%s目标未能唯一解析；已停止后续操作", len(failures), entityLabel(entityType)),
 		apperrors.WithReason("resolution_batch_failed"),
+		apperrors.WithOrigin("client"),
+		apperrors.WithFailureStage("target_resolution"),
+		apperrors.WithExecutionStarted(false),
 		apperrors.WithRetryable(false),
 		apperrors.WithHint("请逐项消歧或直接传稳定 ID"),
 		apperrors.WithDetails(map[string]any{

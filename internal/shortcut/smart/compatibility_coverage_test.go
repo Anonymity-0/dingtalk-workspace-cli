@@ -99,6 +99,63 @@ func newPlatformCoverageRoot() *cobra.Command {
 	return root
 }
 
+func TestIMObservedCompatibilityAliasesReachCanonicalInvocation(t *testing.T) {
+	tests := []struct {
+		name      string
+		args      []string
+		wantTool  string
+		wantKey   string
+		wantValue any
+	}{
+		{
+			name:      "chat messages open conversation id",
+			args:      []string{"chat", "+chat-messages", "--open-conversation-id", "cid-placeholder", "--page-size", "5"},
+			wantTool:  "list_conversation_message_v2",
+			wantKey:   "limit",
+			wantValue: 5,
+		},
+		{
+			name:      "search text query",
+			args:      []string{"chat", "+search-msg", "--text-query", "评测", "--no-enrich"},
+			wantTool:  "search_messages",
+			wantKey:   "keyword",
+			wantValue: "评测",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := &platformCoverageCaller{}
+			helpers.InitDeps(fake)
+			root := newPlatformCoverageRoot()
+			root.SetArgs(tt.args)
+			if err := root.Execute(); err != nil {
+				t.Fatal(err)
+			}
+			if len(fake.calls) != 1 || fake.calls[0].tool != tt.wantTool || !reflect.DeepEqual(fake.calls[0].args[tt.wantKey], tt.wantValue) {
+				t.Fatalf("calls = %#v", fake.calls)
+			}
+		})
+	}
+}
+
+func TestIMObservedCompatibilityAliasesConflictWithCanonicalFlags(t *testing.T) {
+	for _, args := range [][]string{
+		{"chat", "+chat-messages", "--limit", "5", "--page-size", "5", "--conversation-id", "cid"},
+		{"chat", "+search-msg", "--query", "评测", "--text", "评测", "--no-enrich"},
+	} {
+		fake := &platformCoverageCaller{}
+		helpers.InitDeps(fake)
+		root := newPlatformCoverageRoot()
+		root.SetArgs(args)
+		if err := root.Execute(); err == nil {
+			t.Fatalf("conflicting aliases unexpectedly succeeded: %#v", args)
+		}
+		if len(fake.calls) != 0 {
+			t.Fatalf("conflicting aliases reached transport: %#v", fake.calls)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageAIMessageTag(t *testing.T) {
 	t.Setenv(agentproduct.EnvName, "qwenwork")
 

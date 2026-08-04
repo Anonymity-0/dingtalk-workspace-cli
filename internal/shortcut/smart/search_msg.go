@@ -44,6 +44,8 @@ var SearchMsg = shortcut.Shortcut{
 	Flags: append([]shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "搜索关键词"},
 		{Name: "keyword", Type: shortcut.FlagString, Desc: "--query 的别名", Hidden: true},
+		{Name: "text", Type: shortcut.FlagString, Desc: "--query 的兼容别名", Hidden: true},
+		{Name: "text-query", Type: shortcut.FlagString, Desc: "--query 的兼容别名", Hidden: true},
 		{Name: "group", Type: shortcut.FlagString, Desc: "单个会话 openConversationId"},
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},
 		{Name: "id", Type: shortcut.FlagString, Desc: "--group 的别名", Hidden: true},
@@ -75,7 +77,7 @@ var SearchMsg = shortcut.Shortcut{
 	Constraints: append([]shortcut.Constraint{
 		{
 			Kind:        shortcut.ConstraintAtLeastOne,
-			Flags:       []string{"query", "keyword", "group", "conversation-id", "id", "groups", "chat-id", "chat-query", "senders", "sender", "sender-query", "at-me", "is-at-me", "at-ids", "message-type", "only-robot", "conversation-type", "chat-type"},
+			Flags:       []string{"query", "keyword", "text", "text-query", "group", "conversation-id", "id", "groups", "chat-id", "chat-query", "senders", "sender", "sender-query", "at-me", "is-at-me", "at-ids", "message-type", "only-robot", "conversation-type", "chat-type"},
 			Description: "至少指定一个内容、身份、会话或消息类型过滤条件",
 		},
 		{
@@ -92,6 +94,7 @@ var SearchMsg = shortcut.Shortcut{
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"senders", "sender"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"at-me", "is-at-me"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"conversation-type", "chat-type"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"query", "keyword", "text", "text-query"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"limit", "page-size"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"cursor", "page-token"}},
 	}, chatshortcut.MessageResourceDownloadConstraints()...),
@@ -234,7 +237,7 @@ func validateSearchMsgWithResources(rt *shortcut.RuntimeContext) error {
 }
 
 func validateSearchMsg(rt *shortcut.RuntimeContext) error {
-	hasFilter := rt.StrFirst("query", "keyword", "group", "conversation-id", "id", "message-type", "conversation-type", "chat-type") != "" ||
+	hasFilter := rt.StrFirst("query", "keyword", "text", "text-query", "group", "conversation-id", "id", "message-type", "conversation-type", "chat-type") != "" ||
 		len(rt.StrSlice("groups")) > 0 ||
 		len(rt.StrSlice("chat-id")) > 0 ||
 		len(rt.StrSlice("chat-query")) > 0 ||
@@ -266,7 +269,7 @@ func validateSearchMsg(rt *shortcut.RuntimeContext) error {
 
 func searchMsgParams(rt *shortcut.RuntimeContext) (map[string]any, error) {
 	params := map[string]any{"limit": rt.IntFirst("limit", "page-size")}
-	if value := rt.StrFirst("query", "keyword"); value != "" {
+	if value := rt.StrFirst("query", "keyword", "text", "text-query"); value != "" {
 		params["keyword"] = value
 	}
 	conversationIDs := append([]string{}, rt.StrSlice("groups")...)
@@ -275,11 +278,11 @@ func searchMsgParams(rt *shortcut.RuntimeContext) (map[string]any, error) {
 		conversationIDs = append(conversationIDs, value)
 	}
 	if queries := rt.StrSlice("chat-query"); len(queries) > 0 {
-		resolvedChats, err := targetresolver.ResolveChats(rt, queries)
-		if err != nil {
-			return nil, err
-		}
-		for _, resolved := range resolvedChats {
+		for _, query := range queries {
+			resolved, err := targetresolver.ResolveChatTarget(rt, "", query)
+			if err != nil {
+				return nil, err
+			}
 			conversationIDs = append(conversationIDs, resolved.Selected.OpenConversationID)
 		}
 	}

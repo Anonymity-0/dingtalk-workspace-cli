@@ -461,6 +461,33 @@ func multiProfileErrorPayload(err error) map[string]any {
 		if typed.Operation != "" {
 			payload["operation"] = typed.Operation
 		}
+		if typed.Origin != "" {
+			payload["origin"] = typed.Origin
+		}
+		if typed.FailureStage != "" {
+			payload["stage"] = typed.FailureStage
+		}
+		if typed.ExecutionStarted != nil {
+			payload["execution_started"] = *typed.ExecutionStarted
+		}
+		if typed.RetryableSet {
+			payload["retryable"] = typed.Retryable
+		}
+		if typed.Hint != "" {
+			payload["hint"] = typed.Hint
+		}
+		if len(typed.Actions) > 0 {
+			payload["actions"] = append([]string(nil), typed.Actions...)
+		}
+		if len(typed.Details) > 0 {
+			payload["details"] = typed.Details
+		}
+		if typed.ServerDiag.TraceID != "" {
+			payload["trace_id"] = typed.ServerDiag.TraceID
+		}
+		if typed.ServerDiag.ServerErrorCode != "" {
+			payload["server_error_code"] = typed.ServerDiag.ServerErrorCode
+		}
 		if code := typed.ExitCode(); code != 0 {
 			payload["exitCode"] = code
 		}
@@ -720,7 +747,6 @@ func (r *runtimeRunner) executeInvocation(ctx context.Context, endpoint string, 
 
 	if callResult.IsError {
 		diag := transport.ExtractServerDiagnosticsFromMap(callResult.Content)
-		logBusinessError(r.transport.FileLogger, "mcp_tool_error", invocation, callResult.Content, diag)
 
 		// ClassifyToolResult hook: let the overlay intercept known error
 		// patterns (PAT permission, gateway-auth) before generic handling.
@@ -737,14 +763,14 @@ func (r *runtimeRunner) executeInvocation(ctx context.Context, endpoint string, 
 			}
 		}
 
-		mcpErr := apperrors.NewAPI(
+		mcpErr := newServerFailureAPIError(
 			extractMCPErrorMessage(callResult),
-			apperrors.WithOperation("tools/call"),
-			apperrors.WithReason("mcp_tool_error"),
-			apperrors.WithServerKey(invocation.CanonicalProduct),
-			apperrors.WithHint("MCP tool returned a business error; check tool parameters and refer to skill documentation."),
-			apperrors.WithServerDiag(diag),
+			"mcp_tool_error",
+			"MCP tool returned a business error; check tool parameters and refer to skill documentation.",
+			invocation.CanonicalProduct,
+			diag,
 		)
+		logBusinessError(r.transport.FileLogger, serverFailureReason(mcpErr, "mcp_tool_error"), invocation, callResult.Content, diag)
 		// PAT scope error in business response: offer human-readable output and retry
 		if isPatScopeError(mcpErr) {
 			scopeErr := extractPatScopeError(mcpErr)
@@ -762,14 +788,15 @@ func (r *runtimeRunner) executeInvocation(ctx context.Context, endpoint string, 
 
 	if bizErr := detectBusinessError(callResult.Content); bizErr != "" {
 		diag := transport.ExtractServerDiagnosticsFromMap(callResult.Content)
-		logBusinessError(r.transport.FileLogger, "business_error", invocation, callResult.Content, diag)
-		return executor.Result{}, apperrors.NewAPI(bizErr,
-			apperrors.WithOperation("tools/call"),
-			apperrors.WithReason("business_error"),
-			apperrors.WithServerKey(invocation.CanonicalProduct),
-			apperrors.WithHint("The API returned a business-level error. Check required parameters and values."),
-			apperrors.WithServerDiag(diag),
+		classifiedErr := newServerFailureAPIError(
+			bizErr,
+			"business_error",
+			"The API returned a business-level error. Check required parameters and values.",
+			invocation.CanonicalProduct,
+			diag,
 		)
+		logBusinessError(r.transport.FileLogger, serverFailureReason(classifiedErr, "business_error"), invocation, callResult.Content, diag)
+		return executor.Result{}, classifiedErr
 	}
 
 	invocation.Implemented = true

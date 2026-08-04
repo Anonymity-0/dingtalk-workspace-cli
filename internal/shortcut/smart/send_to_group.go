@@ -19,10 +19,11 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
-// SendToGroup: message a group by its NAME, no openConversationId juggling.
+// SendToGroup: message a group by its name or stable openConversationId.
 //
-// Steps: search groups by name → resolve to a single openConversationId
-// (disambiguate on multiple matches, never guess) → send a markdown message.
+// Steps: normalize a stable ID, or search a name and resolve it to a single
+// openConversationId (disambiguate on multiple matches, never guess), then
+// send a markdown message.
 // Replaces `chat search --query <群名>` (copy openConversationId) →
 // `chat +messages-send --group <openConversationId>`.
 //
@@ -35,12 +36,11 @@ var SendToGroup = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+send-to-group",
 	Product:     "chat",
-	Description: "按群名直接给群发消息（自动搜群解析 openConversationId）",
-	Intent: "当你只知道群的名字、想直接往这个群里发一条消息而不想先手动查群 ID 时使用；" +
-		"内部先按群名搜索群聊解析出唯一 openConversationId 再发送，群名匹配到多个群时会列出候选让你区分、绝不自行假定。会真实发出群消息。",
-	Risk: shortcut.RiskWrite,
+	Description: "按群名或 openConversationId 直接给群发消息",
+	Intent:      "当你有群名或 openConversationId、想直接往该群发送简单文本或 Markdown 时使用；稳定 ID 不进入搜索，群名则必须唯一解析，零命中或多候选都会在发送前停止。会真实发出群消息。",
+	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群名称（搜群关键词，用群名里连续的核心词）", Required: true},
+		{Name: "group", Type: shortcut.FlagString, Desc: "群名称或 openConversationId", Required: true},
 		{Name: "text", Type: shortcut.FlagString, Desc: "消息内容（支持 Markdown）", Required: true},
 		shortcut.AIMessageTagFlag(),
 	},
@@ -49,7 +49,7 @@ var SendToGroup = shortcut.Shortcut{
 		groupName := rt.Str("group")
 		text := rt.Str("text")
 
-		resolved, err := targetresolver.ResolveChat(rt, groupName)
+		resolved, err := targetresolver.ResolveChatTarget(rt, groupName, "")
 		if err != nil {
 			return err
 		}

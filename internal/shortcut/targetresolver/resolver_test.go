@@ -60,11 +60,57 @@ func TestOpenConversationIDIsNeverSearchedAsAGroupName(t *testing.T) {
 
 	reader := &chatResolutionReader{}
 	_, err := ResolveChat(reader, "cidACeQ0fCtKfLsFGvA47gXaQ==")
-	if err == nil || !strings.Contains(err.Error(), "--group") {
+	var typed *apperrors.Error
+	if err == nil || !stderrors.As(err, &typed) || typed.Reason != "target_type_mismatch" {
 		t.Fatalf("ResolveChat(stable id) error = %v", err)
+	}
+	if strings.Contains(typed.Message, "看起来是") || !strings.Contains(typed.Message, "群目标参数类型不匹配") {
+		t.Fatalf("ResolveChat(stable id) message = %q", typed.Message)
+	}
+	if typed.Details["providedType"] != "openConversationId" || typed.Details["expectedType"] != "chatName" {
+		t.Fatalf("ResolveChat(stable id) details = %#v", typed.Details)
 	}
 	if len(reader.calls) != 0 {
 		t.Fatalf("stable id unexpectedly reached search: %#v", reader.calls)
+	}
+}
+
+func TestResolveChatTargetStableIDBypassesSearch(t *testing.T) {
+	reader := &chatResolutionReader{}
+	resolved, err := ResolveChatTarget(reader, " cidACeQ0fCtKfLsFGvA47gXaQ== ", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Selected.OpenConversationID != "cidACeQ0fCtKfLsFGvA47gXaQ==" || resolved.MatchType != "stable_id" {
+		t.Fatalf("resolved = %#v", resolved)
+	}
+	if len(reader.calls) != 0 {
+		t.Fatalf("stable id unexpectedly reached search: %#v", reader.calls)
+	}
+}
+
+func TestResolveChatTargetNaturalDirectValueUsesResolver(t *testing.T) {
+	reader := &chatResolutionReader{responses: []map[string]any{{
+		"result":  []any{map[string]any{"openConversationId": "cid-project-1", "title": "项目群"}},
+		"hasMore": false,
+	}}}
+	resolved, err := ResolveChatTarget(reader, "项目群", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Selected.OpenConversationID != "cid-project-1" || len(reader.calls) != 1 {
+		t.Fatalf("resolved = %#v calls = %#v", resolved, reader.calls)
+	}
+}
+
+func TestResolveChatTargetQueryStableIDAlsoBypassesSearch(t *testing.T) {
+	reader := &chatResolutionReader{}
+	resolved, err := ResolveChatTarget(reader, "", "cid-query-123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Selected.OpenConversationID != "cid-query-123456" || len(reader.calls) != 0 {
+		t.Fatalf("resolved = %#v calls = %#v", resolved, reader.calls)
 	}
 }
 
@@ -180,6 +226,9 @@ func TestResolveChatFailsClosedWhenPaginationCannotAdvance(t *testing.T) {
 			if typed.Details["subtype"] != StatusIncomplete {
 				t.Fatalf("details = %#v", typed.Details)
 			}
+			if typed.Origin != "mcp_gateway" || typed.FailureStage != "target_resolution" || typed.ExecutionStarted == nil || *typed.ExecutionStarted {
+				t.Fatalf("failure semantics = origin %q stage %q execution_started %v", typed.Origin, typed.FailureStage, typed.ExecutionStarted)
+			}
 			cause, _ := typed.Details["cause"].(string)
 			if cause == "" || !strings.Contains(cause, tc.wantFragment) {
 				t.Fatalf("cause = %q, want fragment %q", cause, tc.wantFragment)
@@ -211,6 +260,9 @@ func TestResolutionErrorCarriesStructuredCandidates(t *testing.T) {
 	}
 	if typed.Reason != "resolution_ambiguous" {
 		t.Fatalf("reason = %q", typed.Reason)
+	}
+	if typed.Origin != "client" || typed.FailureStage != "target_resolution" || typed.ExecutionStarted == nil || *typed.ExecutionStarted {
+		t.Fatalf("failure semantics = origin %q stage %q execution_started %v", typed.Origin, typed.FailureStage, typed.ExecutionStarted)
 	}
 	if typed.Details["type"] != "resolution" || typed.Details["subtype"] != StatusAmbiguous {
 		t.Fatalf("details = %#v", typed.Details)

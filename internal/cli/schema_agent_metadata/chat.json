@@ -4104,7 +4104,7 @@
         },
         "use_when": {
           "value": [
-            "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；可直接传 --conversation-id，或传 --group 群名让命令先做唯一匹配。默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。"
+            "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；--group 可传群名或 openConversationId，也可用 --conversation-id 显式传稳定 ID、用 --chat-query 显式按群名解析。默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -4113,7 +4113,7 @@
           "candidates": [
             {
               "value": [
-                "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；可直接传 --conversation-id，或传 --group 群名让命令先做唯一匹配。默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。"
+                "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；--group 可传群名或 openConversationId，也可用 --conversation-id 显式传稳定 ID、用 --chat-query 显式按群名解析。默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -4136,7 +4136,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；可直接传 --conversation-id，或传 --group 群名让命令先做唯一匹配。默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。"
+        "当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；--group 可传群名或 openConversationId，也可用 --conversation-id 显式传稳定 ID、用 --chat-query 显式按群名解析。默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。"
       ]
     },
     "chat +chat-messages": {
@@ -4365,7 +4365,7 @@
         },
         "use_when": {
           "value": [
-            "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+            "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -4374,7 +4374,7 @@
           "candidates": [
             {
               "value": [
-                "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+                "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -4398,7 +4398,7 @@
         "skills/mono/references/intent-guide.md"
       ],
       "use_when": [
-        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊可传 --group 或 --chat-query，单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
+        "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，也可用 --chat-query 显式按群名解析、用 --conversation-id 显式传稳定 ID；单聊可传 --user、--open-dingtalk-id 或 --user-query，所有目标参数互斥且必须选一个。自然目标只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
       ]
     },
     "chat +chat-mute": {
@@ -12186,7 +12186,7 @@
       ]
     },
     "chat +send-to-group": {
-      "agent_summary": "按群名直接给群发消息（自动搜群解析 openConversationId）",
+      "agent_summary": "按群名或 openConversationId 直接给群发消息",
       "agent_summary_source": "dws-agent-selection/chat",
       "availability": "available",
       "avoid_when": [
@@ -12200,14 +12200,14 @@
       ],
       "field_provenance": {
         "agent_summary": {
-          "value": "按群名直接给群发消息（自动搜群解析 openConversationId）",
+          "value": "按群名或 openConversationId 直接给群发消息",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
           "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
           "candidates": [
             {
-              "value": "按群名直接给群发消息（自动搜群解析 openConversationId）",
+              "value": "按群名或 openConversationId 直接给群发消息",
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
               "selected": true,
@@ -12408,7 +12408,7 @@
         },
         "use_when": {
           "value": [
-            "当你只知道群的名字、想直接往这个群里发一条消息而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId 再发送，群名匹配到多个群时会列出候选让你区分、绝不自行假定。会真实发出群消息。"
+            "当你有群名或 openConversationId、想直接往该群发送简单文本或 Markdown 时使用；稳定 ID 不进入搜索，群名则必须唯一解析，零命中或多候选都会在发送前停止。会真实发出群消息。"
           ],
           "source": "internal/cli/schema_hints/selection/chat.json",
           "precedence": "reviewed_explicit",
@@ -12417,7 +12417,7 @@
           "candidates": [
             {
               "value": [
-                "当你只知道群的名字、想直接往这个群里发一条消息而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId 再发送，群名匹配到多个群时会列出候选让你区分、绝不自行假定。会真实发出群消息。"
+                "当你有群名或 openConversationId、想直接往该群发送简单文本或 Markdown 时使用；稳定 ID 不进入搜索，群名则必须唯一解析，零命中或多候选都会在发送前停止。会真实发出群消息。"
               ],
               "source": "internal/cli/schema_hints/selection/chat.json",
               "precedence": "reviewed_explicit",
@@ -12440,7 +12440,7 @@
         "internal/cli/schema_hints/selection/chat.json"
       ],
       "use_when": [
-        "当你只知道群的名字、想直接往这个群里发一条消息而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId 再发送，群名匹配到多个群时会列出候选让你区分、绝不自行假定。会真实发出群消息。"
+        "当你有群名或 openConversationId、想直接往该群发送简单文本或 Markdown 时使用；稳定 ID 不进入搜索，群名则必须唯一解析，零命中或多候选都会在发送前停止。会真实发出群消息。"
       ]
     },
     "chat +thread-replies": {

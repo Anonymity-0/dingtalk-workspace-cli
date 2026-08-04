@@ -49,6 +49,9 @@ func TestPrintJSON(t *testing.T) {
 	if err := PrintJSON(&b, NewValidation(
 		"bad flag",
 		WithReason("missing_required_flag"),
+		WithOrigin("client"),
+		WithFailureStage("request_validation"),
+		WithExecutionStarted(false),
 		WithHint("Pass the required flag and retry."),
 		WithRetryable(true),
 		WithActions("dws schema doc.create_document", "retry command"),
@@ -70,6 +73,11 @@ func TestPrintJSON(t *testing.T) {
 	}
 	if !strings.Contains(got, "\"reason\": \"missing_required_flag\"") {
 		t.Fatalf("expected reason in output, got %q", got)
+	}
+	if !strings.Contains(got, "\"origin\": \"client\"") ||
+		!strings.Contains(got, "\"stage\": \"request_validation\"") ||
+		!strings.Contains(got, "\"execution_started\": false") {
+		t.Fatalf("expected failure provenance in output, got %q", got)
 	}
 	if !strings.Contains(got, "\"retryable\": true") {
 		t.Fatalf("expected retryable in output, got %q", got)
