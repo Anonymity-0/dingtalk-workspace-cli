@@ -1265,7 +1265,8 @@
         "internal/cli/schema_hints/metadata/oa.json",
         "internal/cli/schema_hints/selection/oa.json",
         "internal/cli/schema_mcp_metadata.json#tools.oa.forecast_process",
-        "live-mcp-tools-list:oa.forecast_process"
+        "live-mcp-tools-list:oa.forecast_process",
+        "skills/mono/references/products/oa.md"
       ],
       "agent_summary": "预测审批流程与自选审批节点",
       "agent_summary_source": "dws-agent-selection/oa",
@@ -4381,7 +4382,8 @@
         "internal/cli/schema_hints/metadata/oa.json",
         "internal/cli/schema_hints/selection/oa.json",
         "internal/cli/schema_mcp_metadata.json#tools.oa.get_process_schema",
-        "live-mcp-tools-list:oa.get_process_schema"
+        "live-mcp-tools-list:oa.get_process_schema",
+        "skills/mono/references/products/oa.md"
       ],
       "agent_summary": "查询审批模板的表单 Schema",
       "agent_summary_source": "dws-agent-selection/oa",
@@ -15303,7 +15305,8 @@
         "internal/cli/schema_hints/metadata/oa.json",
         "internal/cli/schema_hints/selection/oa.json",
         "internal/cli/schema_mcp_metadata.json#tools.oa.start_process_instance",
-        "live-mcp-tools-list:oa.start_process_instance"
+        "live-mcp-tools-list:oa.start_process_instance",
+        "skills/mono/references/products/oa.md"
       ],
       "agent_summary": "发起新的审批实例",
       "agent_summary_source": "dws-agent-selection/oa",
@@ -15405,6 +15408,12 @@
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": "user_required"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "risk-default",
+              "value": "not_required"
             }
           ],
           "precedence": "reviewed_explicit",
@@ -15440,6 +15449,12 @@
               "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
+              "value": "write"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "command-verb",
               "value": "write"
             }
           ],
@@ -15477,6 +15492,12 @@
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": "non_idempotent"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
+              "value": "unknown"
             }
           ],
           "precedence": "reviewed_explicit",
@@ -15572,6 +15593,12 @@
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": "high"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
+              "value": "medium"
             }
           ],
           "precedence": "reviewed_explicit",

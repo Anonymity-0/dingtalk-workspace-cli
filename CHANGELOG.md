@@ -6,6 +6,38 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Fixed
+
+- **Chat media download JSON compatibility** — `dws chat message download-media --format json` once again returns a clean `{success, downloadUrl, output}` result after the file is saved, preserving the temporary URL and resolved local path without progress text corrupting JSON stdout.
+
+## [1.0.56] - 2026-08-04
+
+This stable release promotes the fully delivered `v1.0.56-beta.4` baseline.
+It includes PR #852's resilient multipart Drive download implementation,
+together with the v1.0.56 beta-line command, Schema, Skill, and runtime
+improvements already validated through the prerelease channel.
+
+### Added
+
+- **Resilient multipart Drive downloads** (#852) — `drive download` and
+  `drive download-version` support parallel chunk transfer, Range probing,
+  fingerprint-validated checkpoint resume, automatic 401/403 credential
+  refresh, and graceful interruption with checkpoint preservation.
+
+## [1.0.56-beta.4] - 2026-08-04
+
+This beta adds PR #852 on top of v1.0.56-beta.3. It makes Drive downloads
+resilient for large files through parallel transfer, validated resumable
+checkpoints, and automatic credential refresh.
+
+### Added
+
+- **Multipart Drive downloads** (#852) — adds `--part-size`, `--parallel`, and
+  `--no-resume` to `drive download` and `drive download-version`. Files above
+  the part-size threshold use a Range probe and parallel chunks, resume from a
+  fingerprint-validated checkpoint, refresh credentials on 401/403, and keep
+  the checkpoint when Ctrl+C interrupts a transfer.
+
 ## [1.0.56-beta.3] - 2026-08-03
 
 This beta adds PRs #846 and #851 on top of v1.0.56-beta.2. It adds a

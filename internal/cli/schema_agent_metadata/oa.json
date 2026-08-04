@@ -2162,6 +2162,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            },
+            {
+              "value": "not_required",
+              "source": "risk-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -2178,6 +2184,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            },
+            {
+              "value": "write",
+              "source": "command-verb",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -2214,6 +2226,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            },
+            {
+              "value": "unknown",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -2289,6 +2307,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+            },
+            {
+              "value": "medium",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -2327,7 +2351,8 @@
         "internal/cli/schema_hints/metadata/oa.json",
         "internal/cli/schema_hints/selection/oa.json",
         "internal/cli/schema_mcp_metadata.json#tools.oa.start_process_instance",
-        "live-mcp-tools-list:oa.start_process_instance"
+        "live-mcp-tools-list:oa.start_process_instance",
+        "skills/mono/references/products/oa.md"
       ],
       "use_when": [
         "用户确认要发起审批，且已查询表单 Schema、核对字段及审批路径后使用"
@@ -2849,7 +2874,8 @@
         "internal/cli/schema_hints/metadata/oa.json",
         "internal/cli/schema_hints/selection/oa.json",
         "internal/cli/schema_mcp_metadata.json#tools.oa.forecast_process",
-        "live-mcp-tools-list:oa.forecast_process"
+        "live-mcp-tools-list:oa.forecast_process",
+        "skills/mono/references/products/oa.md"
       ],
       "use_when": [
         "已知道 processCode 且已根据表单 Schema 组装字段，需要在发起前确认审批路径或自选节点时"
@@ -3105,7 +3131,8 @@
         "internal/cli/schema_hints/metadata/oa.json",
         "internal/cli/schema_hints/selection/oa.json",
         "internal/cli/schema_mcp_metadata.json#tools.oa.get_process_schema",
-        "live-mcp-tools-list:oa.get_process_schema"
+        "live-mcp-tools-list:oa.get_process_schema",
+        "skills/mono/references/products/oa.md"
       ],
       "use_when": [
         "已从 list-forms 或 search-forms 获得 processCode，需要读取字段、选项和必填规则后再填写审批时"
