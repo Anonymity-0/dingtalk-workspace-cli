@@ -173,3 +173,11 @@ func walkLeafCommands(cmd *cobra.Command, fn func(*cobra.Command)) {
 		walkLeafCommands(sub, fn)
 	}
 }
+
+func decodeSchemaMetaIndexLookup(data []byte) (map[string]CommandMeta, error) {
+	index, err := DecodeSchemaMetaIndex(data)
+	if err != nil {
+		return nil, err
+	}
+	return commandMetaLookupFromIndex(index)
+}

@@ -217,14 +217,6 @@ func commandMetaLookupFromIndex(index SchemaMetaIndexSnapshot) (map[string]Comma
 	return registerCommandMetaAliases(lookup, metas), nil
 }
 
-func decodeSchemaMetaIndexLookup(data []byte) (map[string]CommandMeta, error) {
-	index, err := DecodeSchemaMetaIndex(data)
-	if err != nil {
-		return nil, err
-	}
-	return commandMetaLookupFromIndex(index)
-}
-
 // ValidateSchemaMetaIndexAgainstSnapshot proves the summary index matches the
 // Identity / Safety / Selection projection of every ToolSpec in a Catalog
 // snapshot (generation-time gate before writing the index).
