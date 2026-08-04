@@ -24,12 +24,14 @@
 //   4. schema_mcp_metadata.json            MCP server tool definitions
 //   5. schema_parameter_bindings.json      parameter type/property mappings
 //   6. param_concepts.json + schema       reviewed parameter synonym policy
-//   7. cobra command tree (Go runtime)     flags/usage/required (reflected)
+//   7. command_path_fallbacks.json         reviewed recovery-only invalid paths
+//   8. cobra command tree (Go runtime)     flags/usage/required (reflected)
 //
 // Generation outputs (embedded at build):
 //   - schema_agent_metadata/*.json         per-product agent metadata
 //   - schema_catalog/                      per-product catalog shards
 //   - param_aliases_generated.go           per-command parameter normalization
+//   - command_path_fallbacks_generated.go  invalid-path recovery normalization
 
 package cli
 
@@ -39,3 +41,4 @@ package cli
 // JSON files.
 //go:generate go run -a ../generator/cmd_schema_catalog -root ../.. -output schema_catalog
 //go:generate go run ../generator/cmd_param_aliases -root ../.. -output param_aliases_generated.go
+//go:generate go run ../generator/cmd_command_path_fallbacks -root ../.. -output command_path_fallbacks_generated.go

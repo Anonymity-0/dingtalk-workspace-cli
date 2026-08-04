@@ -1,0 +1,206 @@
+// Copyright 2026 Alibaba Group
+// Licensed under the Apache License, Version 2.0
+
+package pipeline
+
+import (
+	"errors"
+	"reflect"
+	"strings"
+	"testing"
+
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
+	"github.com/spf13/cobra"
+)
+
+func TestRunPreParseArgsRewritesReviewedCommandBeforeFlags(t *testing.T) {
+	root, executed := commandFallbackPipelineRoot()
+	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
+		"chat +bad": {From: "chat +bad", Mode: "rewrite", To: "chat +good"},
+	})
+	raw := []string{"--format", "json", "chat", "+bad", "--query", "project"}
+	ctx, err := RunPreParseArgs(root, engine, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantArgs := []string{"--format", "json", "chat", "+good", "--query", "project"}
+	if ctx == nil || !reflect.DeepEqual(ctx.Args, wantArgs) || ctx.Command != "dws chat +good" {
+		t.Fatalf("context = %#v, want args=%v command=dws chat +good", ctx, wantArgs)
+	}
+	if len(ctx.Corrections) != 1 || ctx.Corrections[0].Handler != "command-path-fallback" ||
+		ctx.Corrections[0].Original != "chat +bad" || ctx.Corrections[0].Corrected != "chat +good" {
+		t.Fatalf("corrections = %#v", ctx.Corrections)
+	}
+	if _, err := root.ExecuteC(); err != nil {
+		t.Fatal(err)
+	}
+	if *executed != "dws chat +good:project" {
+		t.Fatalf("executed = %q", *executed)
+	}
+}
+
+func TestRunPreParseArgsRewritesMultiTokenPathAroundPersistentFlags(t *testing.T) {
+	root, executed := commandFallbackPipelineRoot()
+	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
+		"chat group search": {From: "chat group search", Mode: "rewrite", To: "chat search"},
+	})
+	raw := []string{"chat", "--format", "json", "group", "search", "--query", "project"}
+	ctx, err := RunPreParseArgs(root, engine, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantArgs := []string{"chat", "search", "--format", "json", "--query", "project"}
+	if ctx == nil || !reflect.DeepEqual(ctx.Args, wantArgs) {
+		t.Fatalf("rewritten args = %#v, want %v", ctx, wantArgs)
+	}
+	if _, err := root.ExecuteC(); err != nil {
+		t.Fatal(err)
+	}
+	if *executed != "dws chat search:project" {
+		t.Fatalf("executed = %q", *executed)
+	}
+}
+
+func TestRunPreParseArgsRejectsAmbiguousCommandFallbackWithoutDispatch(t *testing.T) {
+	root, executed := commandFallbackPipelineRoot()
+	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
+		"chat +choose": {
+			From:       "chat +choose",
+			Mode:       "ambiguous",
+			Candidates: []string{"chat +good", "chat +other"},
+		},
+	})
+	ctx, err := RunPreParseArgs(root, engine, []string{"--format", "json", "chat", "+choose", "--query", "project"})
+	if ctx == nil {
+		t.Fatal("ambiguous fallback returned nil context")
+	}
+	structured := requireCommandResolutionError(t, err, "ambiguous_command_fallback")
+	if len(structured.Actions) != 2 || !strings.Contains(structured.Hint, "dws chat +good") || !strings.Contains(structured.Hint, "dws chat +other") {
+		t.Fatalf("ambiguous recovery = %#v", structured)
+	}
+	if *executed != "" {
+		t.Fatalf("ambiguous fallback dispatched %q", *executed)
+	}
+	if format, getErr := root.PersistentFlags().GetString("format"); getErr != nil || format != "json" {
+		t.Fatalf("format = %q, %v; want primed json", format, getErr)
+	}
+}
+
+func TestCommandPathFallbackLeavesUnknownAndCanonicalFlagErrorsDistinct(t *testing.T) {
+	root, _ := commandFallbackPipelineRoot()
+	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
+		"chat +bad": {From: "chat +bad", Mode: "rewrite", To: "chat +good"},
+	})
+	_, err := RunPreParseArgs(root, engine, []string{"chat", "+missing", "--query", "project"})
+	requireCommandResolutionError(t, err, "unknown_shortcut")
+
+	validRoot, _ := commandFallbackPipelineRoot()
+	validRaw := []string{"chat", "+good", "--not-a-flag", "value"}
+	if ctx, err := RunPreParseArgs(validRoot, engine, validRaw); ctx != nil || err != nil {
+		t.Fatalf("valid command preparse = %#v, %v", ctx, err)
+	}
+	validRoot.SetArgs(validRaw)
+	_, executeErr := validRoot.ExecuteC()
+	if executeErr == nil || !strings.Contains(executeErr.Error(), "unknown flag") {
+		t.Fatalf("canonical bad flag error = %v", executeErr)
+	}
+}
+
+func TestCommandPathFallbackCannotBypassCanonicalConfirmation(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		args         []string
+		wantDispatch int
+		wantErr      bool
+	}{
+		{name: "confirmation missing", args: []string{"chat", "+danger"}, wantErr: true},
+		{name: "confirmed", args: []string{"chat", "+danger", "--yes"}, wantDispatch: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			dispatches := 0
+			root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
+			chat := &cobra.Command{Use: "chat"}
+			write := &cobra.Command{
+				Use: "+write",
+				RunE: func(cmd *cobra.Command, _ []string) error {
+					confirmed, _ := cmd.Flags().GetBool("yes")
+					if !confirmed {
+						return apperrors.NewValidation("confirmation required", apperrors.WithReason("confirmation_required"))
+					}
+					dispatches++
+					return nil
+				},
+			}
+			write.Flags().Bool("yes", false, "")
+			chat.AddCommand(write)
+			root.AddCommand(chat)
+			engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
+				"chat +danger": {From: "chat +danger", Mode: "rewrite", To: "chat +write"},
+			})
+			if _, err := RunPreParseArgs(root, engine, test.args); err != nil {
+				t.Fatal(err)
+			}
+			_, err := root.ExecuteC()
+			if (err != nil) != test.wantErr || dispatches != test.wantDispatch {
+				t.Fatalf("execute error=%v dispatches=%d, want error=%v dispatches=%d", err, dispatches, test.wantErr, test.wantDispatch)
+			}
+		})
+	}
+}
+
+func TestCommandPathFallbackRejectsInvalidGeneratedMode(t *testing.T) {
+	root, _ := commandFallbackPipelineRoot()
+	for _, entry := range []CommandPathFallback{
+		{From: "chat +bad", Mode: "rewrite"},
+		{From: "chat +bad", Mode: "invalid", To: "chat +good"},
+	} {
+		engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{"chat +bad": entry})
+		_, err := RunPreParseArgs(root, engine, []string{"chat", "+bad"})
+		var structured *apperrors.Error
+		if !errors.As(err, &structured) || structured.Category != apperrors.CategoryInternal {
+			t.Fatalf("invalid entry error = %T %v", err, err)
+		}
+	}
+}
+
+func commandFallbackPipelineEngine(entries map[string]CommandPathFallback) *Engine {
+	engine := NewEngine()
+	engine.SetCommandPathFallbackLookup(func(path string) (CommandPathFallback, bool) {
+		entry, ok := entries[path]
+		return entry, ok
+	})
+	return engine
+}
+
+func commandFallbackPipelineRoot() (*cobra.Command, *string) {
+	executed := new(string)
+	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
+	root.PersistentFlags().String("format", "table", "")
+	chat := &cobra.Command{Use: "chat"}
+	good := &cobra.Command{
+		Use: "+good",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			query, _ := cmd.Flags().GetString("query")
+			*executed = cmd.CommandPath() + ":" + query
+			return nil
+		},
+	}
+	good.Flags().String("query", "", "")
+	good.Flags().String("keyword", "", "")
+	other := &cobra.Command{Use: "+other", Run: func(cmd *cobra.Command, _ []string) { *executed = cmd.CommandPath() }}
+	search := &cobra.Command{
+		Use: "search",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			query, _ := cmd.Flags().GetString("query")
+			*executed = cmd.CommandPath() + ":" + query
+			return nil
+		},
+	}
+	search.Flags().String("query", "", "")
+	group := &cobra.Command{Use: "group"}
+	group.AddCommand(cmdutil.HintSubCmd("search", "use dws chat search"))
+	chat.AddCommand(good, other, search, group)
+	root.AddCommand(chat)
+	return root, executed
+}

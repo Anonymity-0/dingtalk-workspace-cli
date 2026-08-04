@@ -15,6 +15,7 @@ package helpers
 
 import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -55,6 +56,7 @@ func (devHandler) Command(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(root)
 
 	doc := &cobra.Command{
 		Use:               "doc",
@@ -66,6 +68,7 @@ func (devHandler) Command(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(doc)
 	doc.AddCommand(newDevdocArticleSearchCommand())
 
 	root.AddCommand(

@@ -98,3 +98,65 @@ func TestPreParseConflictHonorsErrorPresentationFlags(t *testing.T) {
 		t.Fatalf("--debug details missing from early error:\n%s", rendered)
 	}
 }
+
+func TestCommandResolutionPrecedesFlagErrorsOnProductionTree(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        []string
+		wantReason  string
+		wantCommand string
+	}{
+		{
+			name:        "unknown shortcut",
+			args:        []string{"chat", "+chat-mesages", "--keyword", "x", "--format", "json"},
+			wantReason:  "unknown_shortcut",
+			wantCommand: "dws chat",
+		},
+		{
+			name:        "unknown dev app subcommand",
+			args:        []string{"dev", "app", "search", "--keyword", "x", "--format", "json"},
+			wantReason:  "unknown_subcommand",
+			wantCommand: "dws dev app",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := NewSchemaSourceRootCommand()
+			ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), test.args)
+			if ctx == nil || ctx.Command != test.wantCommand {
+				t.Fatalf("Context = %#v, want command %q", ctx, test.wantCommand)
+			}
+			err = newPreParseValidationError(err)
+			var structured *apperrors.Error
+			if !stderrors.As(err, &structured) {
+				t.Fatalf("error = %T %v", err, err)
+			}
+			if structured.Reason != test.wantReason || structured.ExitCode() != 3 {
+				t.Fatalf("structured error = %#v", structured)
+			}
+			if len(structured.AvailableFlags) != 0 || strings.Contains(structured.Message, "unknown flag") {
+				t.Fatalf("command error leaked flag classification: %#v", structured)
+			}
+		})
+	}
+}
+
+func TestResolvedShortcutStillUsesExactLeafFlagError(t *testing.T) {
+	root := NewSchemaSourceRootCommand()
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	args := []string{"chat", "+chat-messages", "--keyword", "x", "--format", "json"}
+	if ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), args); err != nil {
+		t.Fatalf("valid shortcut path failed PreParse: %#v, %v", ctx, err)
+	}
+	root.SetArgs(args)
+	err := root.Execute()
+	var structured *apperrors.Error
+	if !stderrors.As(err, &structured) {
+		t.Fatalf("error = %T %v", err, err)
+	}
+	if structured.Reason != "unknown_flag" || !strings.Contains(structured.Message, "dws chat +chat-messages --help") {
+		t.Fatalf("resolved shortcut flag error = %#v", structured)
+	}
+}

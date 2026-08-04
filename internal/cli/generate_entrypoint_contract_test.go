@@ -51,6 +51,7 @@ func TestGoGenerateDirectivesStayInUnifiedEntryPoint(t *testing.T) {
 		"cmd_schema_agent_metadata",
 		"cmd_schema_catalog",
 		"cmd_param_aliases",
+		"cmd_command_path_fallbacks",
 	} {
 		if !bytes.Contains(content, []byte("//go:generate go run")) || !bytes.Contains(content, []byte(generator)) {
 			t.Errorf("gen.go does not register %s", generator)

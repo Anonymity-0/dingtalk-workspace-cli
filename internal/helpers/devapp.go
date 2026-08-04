@@ -21,6 +21,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cobracmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -94,6 +95,7 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(root)
 
 	webapp := &cobra.Command{
 		Use:               "webapp",
@@ -105,6 +107,7 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(webapp)
 	webapp.AddCommand(
 		newDevAppWebappGetCommand(runner),
 		newDevAppWebappConfigCommand(runner),
@@ -120,6 +123,7 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(permission)
 	permission.AddCommand(
 		newDevAppPermissionListCommand(runner),
 		newDevAppPermissionAddCommand(runner),
@@ -136,6 +140,7 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(credentials)
 	credentials.AddCommand(newDevAppCredentialsGetCommand(runner))
 
 	member := &cobra.Command{
@@ -148,6 +153,7 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(member)
 	member.AddCommand(
 		newDevAppMemberListCommand(runner),
 		newDevAppMemberAddCommand(runner),
@@ -164,6 +170,7 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(security)
 	security.AddCommand(newDevAppSecurityConfigCommand(runner))
 
 	robot := &cobra.Command{
@@ -176,6 +183,7 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(robot)
 	robot.AddCommand(
 		newDevAppRobotSubmitCommand(runner),
 		newDevAppRobotResultCommand(runner),
@@ -195,6 +203,7 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(version)
 	version.AddCommand(
 		newDevAppVersionCreateCommand(runner),
 		newDevAppVersionListCommand(runner),
@@ -214,6 +223,7 @@ func newDevAppCommand(runner executor.Runner) *cobra.Command {
 			return cmd.Help()
 		},
 	}
+	cmdutil.MarkGroup(event)
 	event.AddCommand(
 		newDevAppEventListCommand(runner),
 		newDevAppEventSubscribeCommand(runner),
