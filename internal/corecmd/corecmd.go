@@ -25,12 +25,12 @@
 //   - Execute = Validate / Invoke / Orchestrate / RunE / PostMount. Hooks
 //     consume assembled args; they must not invent the CLI surface.
 //   - Annotate = explicit cobra annotations when a fact is not (yet) a Contract
-//     field (e.g. write-guard runtime_gate). Inference-only Schema/help is
-//     forbidden.
+//     field (e.g. a cross-flag constraint or parameter metadata fact).
+//     Inference-only Schema/help is forbidden.
 //   - Selection / product routing prose is declared on ContractDecl /
 //     ProductDecl (delivered as contract_final). schema_hints/ is retired.
-//     Identity remains the reviewed CommandRegistry. Interface / dry-run
-//     reviewed sources must not create CLI flags.
+//     Identity is collected from ContractFinal.Identity on the live leaves.
+//     Interface / dry-run reviewed sources must not create CLI flags.
 //
 // Full ToolSpec field authority: RFC §5.0.4 / homology §1.4.
 //
@@ -95,10 +95,9 @@ const (
 // followed immediately by that flag's Enum validation.
 type FlagValidationMode string
 
-const (
-	ValidationEffective FlagValidationMode = ""
-	ValidationShortcut  FlagValidationMode = "shortcut"
-)
+// ValidationShortcut is the declaration-order explicit-token mode described on
+// FlagValidationMode.
+const ValidationShortcut FlagValidationMode = "shortcut"
 
 // FlagSpec declares how a flag is registered and bound into MCP toolArgs. Its
 // fields intentionally mirror the former helpers.LeafFlag one-for-one so that
@@ -119,7 +118,8 @@ type FlagSpec struct {
 	RequiredError  string // exact missing-token error for ValidationShortcut
 	RequiredHint   string
 	// MarkRequired, when true, calls cobra MarkFlagRequired (the hard floor for
-	// the catalog required projection); cobra errors before RunE.
+	// the catalog required projection); cobra errors before RunE. It cannot be
+	// combined with Aliases (RegisterFlags panics on that declaration).
 	MarkRequired bool
 
 	Aliases []string // hidden aliases, registered with the main flag's Kind; used in order when the main flag is not explicitly provided
@@ -183,13 +183,11 @@ type Constraint struct {
 }
 
 // ParameterProjectionMode selects how declared flags are embedded into Runtime
-// Schema annotations.
+// Schema annotations. The zero value makes the declaration the final parameter
+// authority (the LeafSpec/command default).
 type ParameterProjectionMode string
 
 const (
-	// ProjectDeclaredParameters makes the declaration the final parameter
-	// authority. This is the LeafSpec/command default.
-	ProjectDeclaredParameters ParameterProjectionMode = ""
 	// ProjectCobraParameters preserves Cobra usage/type/default provenance and
 	// annotates only facts Cobra cannot express: Required and Enum. Shortcut
 	// uses this mode to converge its runtime without rewriting Catalog facts.
@@ -544,6 +542,15 @@ func validateSafetySpec(spec Spec) {
 // declared by the spec set onto cmd.
 func RegisterFlags(cmd *cobra.Command, flags []FlagSpec) {
 	for _, flag := range flags {
+		// MarkFlagRequired only knows the main name: a user passing a declared
+		// alias would get Cobra's "required flag(s) not set" even though the
+		// framework validation considers the alias provided. The combination is
+		// unsupported and rejected at build time.
+		if flag.MarkRequired && len(flag.Aliases) > 0 {
+			panic(fmt.Sprintf(
+				"flag %q: MarkRequired cannot be combined with Aliases: cobra MarkFlagRequired only recognizes the main name, so a value passed via an alias would be rejected",
+				flag.Name))
+		}
 		RegisterFlag(cmd, flag.Kind, flag.Name, flag.Default, flag.Usage)
 		// Aliases are registered with the main flag's Kind, otherwise an integer
 		// alias's value would never be readable (silently dropped).
@@ -678,15 +685,34 @@ func ValidateEnums(cmd *cobra.Command, flags []FlagSpec) error {
 	return nil
 }
 
+// validateEnum enforces the declared accepted values. Explicit CLI tokens
+// (main name or alias) are always validated. An env-sourced value is validated
+// too when the flag was not explicitly provided but resolves a non-empty
+// EnvVar value: the env path feeds Required checks and BuildArgs, so an
+// out-of-enum env value must not ship to the backend (bool flags are skipped —
+// booleans have no env fallback). Env still never counts as "provided" for
+// explicit-token checks; this only closes the enum gap. Registration defaults
+// remain unvalidated.
 func validateEnum(cmd *cobra.Command, flag FlagSpec) error {
-	if len(flag.Enum) == 0 || !flagNameProvided(cmd, flag) {
+	if len(flag.Enum) == 0 {
 		return nil
 	}
 	var values []string
-	if flag.Kind == KindStringSlice {
-		values = sliceValue(cmd, flag)
-	} else {
-		values = []string{EffectiveValue(cmd, flag)}
+	switch {
+	case flagNameProvided(cmd, flag):
+		if flag.Kind == KindStringSlice {
+			values = sliceValue(cmd, flag)
+		} else {
+			values = []string{EffectiveValue(cmd, flag)}
+		}
+	case flag.Kind != KindBool && flag.EnvVar != "":
+		// Not explicitly provided: validate the env fallback when it resolves
+		// a non-empty string-ish value. (A value invalid for the flag kind —
+		// e.g. a non-integer env value on KindInt — is left to the integer
+		// parse path, which reports the precise error.)
+		if env := strings.TrimSpace(os.Getenv(flag.EnvVar)); env != "" {
+			values = []string{env}
+		}
 	}
 	for _, value := range values {
 		value = strings.TrimSpace(value)
@@ -708,9 +734,10 @@ func validateEnum(cmd *cobra.Command, flag FlagSpec) error {
 
 // flagNameProvided reports whether the flag was explicitly passed on the
 // command line under its main name or any declared alias. Registration
-// defaults and environment variables do not count: those feed the
+// defaults and environment variables do not count as provided: those feed the
 // effective-value chain, not the explicit-token checks used by Shortcut
-// Required and enum validation.
+// Required. validateEnum additionally validates a resolved EnvVar value, but
+// env still never counts as provided.
 func flagNameProvided(cmd *cobra.Command, flag FlagSpec) bool {
 	if cmd.Flags().Changed(flag.Name) {
 		return true
@@ -737,7 +764,9 @@ func hasEffectiveValue(cmd *cobra.Command, flag FlagSpec) bool {
 		}
 		return v != 0
 	case KindBool:
-		return cmd.Flags().Changed(flag.Name)
+		// Bool presence is any declared name changed (booleans have no
+		// env/default fallback semantics).
+		return flagNameProvided(cmd, flag)
 	case KindStringSlice:
 		return sliceValue(cmd, flag) != nil
 	}
@@ -821,10 +850,18 @@ func BuildArgs(cmd *cobra.Command, flags []FlagSpec) (map[string]any, error) {
 			continue
 		}
 		if flag.Kind == KindBool {
-			// Enter on Changed only: explicit false is still sent (matching the
-			// handwritten "transmit on Changed" semantics).
-			if cmd.Flags().Changed(flag.Name) {
+			// Enter on Changed only (main OR alias): explicit false is still
+			// sent (matching the handwritten "transmit on Changed" semantics).
+			if flagNameProvided(cmd, flag) {
 				v, _ := cmd.Flags().GetBool(flag.Name)
+				if !cmd.Flags().Changed(flag.Name) {
+					for _, alias := range flag.Aliases {
+						if cmd.Flags().Changed(alias) {
+							v, _ = cmd.Flags().GetBool(alias)
+							break
+						}
+					}
+				}
 				toolArgs[bind] = v
 			}
 			continue
@@ -965,12 +1002,13 @@ func ValidateConstraintDecls(use string, flags []FlagSpec, constraints []Constra
 // constraintProvided decides whether a flag is "provided" for constraint
 // purposes: an explicit main flag, explicit alias, or env var counts; the
 // registration default/ArgDefault does not — otherwise a defaulted flag would
-// always satisfy at_least_one and always trip mutually_exclusive. KindBool only
-// counts Changed (booleans have no alias/env fallback semantics).
+// always satisfy at_least_one and always trip mutually_exclusive. KindBool
+// counts Changed on any declared name (booleans have no env fallback
+// semantics).
 func constraintProvided(cmd *cobra.Command, flag FlagSpec) bool {
 	switch flag.Kind {
 	case KindBool:
-		return cmd.Flags().Changed(flag.Name)
+		return flagNameProvided(cmd, flag)
 	case KindStringSlice:
 		if cmd.Flags().Changed(flag.Name) {
 			if v, _ := cmd.Flags().GetStringSlice(flag.Name); sliceHasValue(v) {
@@ -1137,15 +1175,13 @@ func BoolFlag(cmd *cobra.Command, name string) bool {
 }
 
 // confirmationBypass reports whether any flagset on the command tree has
-// --yes / --dry-run / --user-say-yes set true. OR across flagsets matters:
-// a leaf-local --dry-run defaulting to false must not shadow a root
-// persistent --dry-run=true (markdown overwrite / agent global dry-run).
+// --yes / --dry-run / --user-say-yes set true. BoolFlag already ORs across
+// flagsets, so a leaf-local --dry-run defaulting to false cannot shadow a
+// root persistent --dry-run=true (markdown overwrite / agent global dry-run).
 func confirmationBypass(cmd *cobra.Command) bool {
 	for _, name := range []string{"yes", "dry-run", "user-say-yes"} {
-		for _, get := range boolFlagGetters(cmd) {
-			if v, err := get(name); err == nil && v {
-				return true
-			}
+		if BoolFlag(cmd, name) {
+			return true
 		}
 	}
 	return false
@@ -1166,8 +1202,9 @@ func boolFlagGetters(cmd *cobra.Command) []func(string) (bool, error) {
 }
 
 // embedContractIntoSchema projects Spec declaration onto the live Cobra
-// leaf as the final Schema payload (dws.schema.*). Assembly pass-throughs these
-// annotations; declared fields do not compete with reviewed hints.
+// leaf as the final Schema payload (dws.schema.*). Assembly pass-throughs
+// these annotations; declared fields are the final source with no parallel
+// authority.
 func embedContractIntoSchema(cmd *cobra.Command, spec Spec) {
 	if spec.ParameterProjection == ProjectCobraParameters {
 		for _, flag := range spec.Flags {
@@ -1200,7 +1237,7 @@ func embedContractIntoSchema(cmd *cobra.Command, spec Spec) {
 			continue
 		}
 		requiredFlag := flag.Required || flag.MarkRequired
-		runtimeannotate.AnnotateRuntimeFlag(cmd, name, strings.TrimSpace(flag.Bind), flagKindSchemaType(flag.Kind), requiredFlag, "")
+		runtimeannotate.AnnotateRuntimeFlag(cmd, name, strings.TrimSpace(flag.Bind), flagKindSchemaType(flag.Kind), requiredFlag)
 		desc := strings.TrimSpace(flag.SchemaDescription)
 		if desc == "" {
 			desc = strings.TrimSpace(flag.Usage)

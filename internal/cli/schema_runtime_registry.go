@@ -500,7 +500,6 @@ func validateContractFinalIdentity(entry runtimeSchemaEntry, id contract.ToolIde
 	return nil
 }
 
-
 func marshalSchemaRaw(value any) (json.RawMessage, error) {
 	data, err := json.Marshal(value)
 	if err != nil {

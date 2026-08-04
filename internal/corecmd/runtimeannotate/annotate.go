@@ -50,7 +50,7 @@ func AttachRuntimeSchema(cmd *cobra.Command, productID, toolName, source string)
 }
 
 // AnnotateRuntimeFlag adds parameter metadata to an already-registered flag.
-func AnnotateRuntimeFlag(cmd *cobra.Command, flagName, propertyName, paramType string, required bool, _ string) {
+func AnnotateRuntimeFlag(cmd *cobra.Command, flagName, propertyName, paramType string, required bool) {
 	if cmd == nil {
 		return
 	}

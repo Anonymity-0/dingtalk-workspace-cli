@@ -29,7 +29,8 @@ const (
 )
 
 // ProductSelectionDecl is the product-level Agent routing prose declared in
-// code. Fields align with the former schema_hints/selection products{} shape.
+// code. Fields mirror the leaf SelectionSpec routing triple: agent summary,
+// use-when, and avoid-when.
 type ProductSelectionDecl struct {
 	AgentSummary string
 	UseWhen      []string

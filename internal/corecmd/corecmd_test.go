@@ -1592,6 +1592,133 @@ func TestCrossPlatformCoverageValidateAliasAwareShortcutAndEnum(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageBuildArgsHonorsBoolAlias(t *testing.T) {
+	// C1: a KindBool alias is honored wherever bool presence is checked —
+	// BuildArgs transmits the alias value, hasEffectiveValue reports it as
+	// provided, and constraintProvided counts it.
+	flags := []FlagSpec{{Name: "force", Usage: "F", Kind: KindBool, Bind: "force", Aliases: []string{"force-alias"}}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("force-alias", "true")
+	args, err := BuildArgs(cmd, flags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if args["force"] != true {
+		t.Fatalf("bool alias must enter toolArgs as true, got %#v", args)
+	}
+	if !hasEffectiveValue(cmd, flags[0]) {
+		t.Fatal("bool alias must count as an effective value")
+	}
+	if !constraintProvided(cmd, flags[0]) {
+		t.Fatal("bool alias must count as constraint-provided")
+	}
+
+	// Explicit false via the alias is still transmitted (Changed semantics).
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("force-alias", "false")
+	args, err = BuildArgs(cmd, flags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := args["force"]; !ok || v != false {
+		t.Fatalf("explicit false via bool alias must be sent, got %#v", args)
+	}
+
+	// The main flag keeps precedence when both names are changed.
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	_ = cmd.Flags().Set("force", "false")
+	_ = cmd.Flags().Set("force-alias", "true")
+	args, err = BuildArgs(cmd, flags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if args["force"] != false {
+		t.Fatalf("main bool flag must win over the alias, got %#v", args)
+	}
+
+	// An untouched bool flag stays out of toolArgs.
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	args, err = BuildArgs(cmd, flags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := args["force"]; ok {
+		t.Fatalf("untouched bool must not enter toolArgs: %#v", args)
+	}
+}
+
+func TestCrossPlatformCoverageValidateEnumEnvValue(t *testing.T) {
+	// C3: an env-sourced enum value is validated even though env never counts
+	// as provided.
+	flags := []FlagSpec{{Name: "mode", Usage: "M", Enum: []string{"a", "b"}, EnvVar: "DWS_CMDCORE_ENUM_MODE"}}
+	cmd := newTestCommand()
+	RegisterFlags(cmd, flags)
+	t.Setenv("DWS_CMDCORE_ENUM_MODE", "zzz")
+	if err := ValidateEnums(cmd, flags); err == nil || !strings.Contains(err.Error(), `参数 --mode 取值 "zzz" 不合法`) {
+		t.Fatalf("env enum violation must be rejected, got %v", err)
+	}
+
+	// A valid env value passes.
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	t.Setenv("DWS_CMDCORE_ENUM_MODE", "a")
+	if err := ValidateEnums(cmd, flags); err != nil {
+		t.Fatalf("valid env enum value err = %v", err)
+	}
+
+	// Env still never counts as provided: Shortcut Required keeps demanding
+	// the explicit token.
+	shortcut := []FlagSpec{{
+		Name: "mode", Usage: "M", Required: true, ValidationMode: ValidationShortcut,
+		Enum: []string{"a", "b"}, EnvVar: "DWS_CMDCORE_ENUM_MODE",
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, shortcut)
+	t.Setenv("DWS_CMDCORE_ENUM_MODE", "a")
+	if err := ValidateRequired(cmd, shortcut); err == nil || err.Error() != "缺少必填参数 --mode" {
+		t.Fatalf("env must not count as provided, got %v", err)
+	}
+
+	// An explicit token wins over the env fallback: an invalid env value does
+	// not surface while the explicit value is valid.
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	t.Setenv("DWS_CMDCORE_ENUM_MODE", "zzz")
+	_ = cmd.Flags().Set("mode", "b")
+	if err := ValidateEnums(cmd, flags); err != nil {
+		t.Fatalf("explicit token must shadow the invalid env value, got %v", err)
+	}
+
+	// Empty env stays unvalidated.
+	cmd = newTestCommand()
+	RegisterFlags(cmd, flags)
+	t.Setenv("DWS_CMDCORE_ENUM_MODE", "")
+	if err := ValidateEnums(cmd, flags); err != nil {
+		t.Fatalf("empty env must not validate, got %v", err)
+	}
+}
+
+func TestRegisterFlagsMarkRequiredWithAliasesPanics(t *testing.T) {
+	// C2: MarkRequired + Aliases is rejected at build time — cobra
+	// MarkFlagRequired only knows the main name.
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic for MarkRequired combined with Aliases")
+		}
+		if msg, _ := r.(string); !strings.Contains(msg, "MarkRequired cannot be combined with Aliases") {
+			t.Fatalf("panic = %v", r)
+		}
+	}()
+	RegisterFlags(newTestCommand(), []FlagSpec{{
+		Name: "req", Usage: "R", MarkRequired: true, Aliases: []string{"req-alias"},
+	}})
+}
+
 func TestCrossPlatformCoverageBuildArgsInvalidArgDefault(t *testing.T) {
 	flags := []FlagSpec{{Name: "page-size", Usage: "P", Kind: KindInt, ArgDefault: "not-a-number"}}
 	cmd := newTestCommand()

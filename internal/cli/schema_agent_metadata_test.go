@@ -353,7 +353,7 @@ func buildRuntimeSchemaTestRoot() *cobra.Command {
 	create := &cobra.Command{Use: "create", Short: "Create document", Run: func(*cobra.Command, []string) {}}
 	create.Flags().String("title", "", "Document title")
 	AttachRuntimeSchema(create, "doc", "create_document", "runtime:doc")
-	AnnotateRuntimeFlag(create, "title", "title", "string", true, "")
+	AnnotateRuntimeFlag(create, "title", "title", "string", true)
 	doc := &cobra.Command{Use: "doc", Short: "Docs"}
 	doc.AddCommand(create)
 	root.AddCommand(doc)

@@ -49,16 +49,16 @@ type ContractDecl struct {
 
 // validateContractDecl enforces authoring-time homology for declared commands.
 // A declared Contract is the sole final source for its fields: downstream
-// catalog/Agent gates hard-require description and the reviewed selection
-// prose for every effective tool, and declared tools are exempt from
-// hint-file coverage — so a declaration missing any of these fields could
+// catalog/Agent gates hard-require description and the selection prose for
+// every effective tool — so a declaration missing any of these fields could
 // only fail later, opaquely, in generated artifacts. Failing at construction
 // keeps the error next to the authoring mistake and prevents silent drift
 // between cobra prose (Short/Long/Example) and the published Contract values.
 //
-// Identity is required on every declared Contract as a pin/self-description
-// against the reviewed CommandRegistry. Registry remains the identity
-// authority; binder/assembly reject any declared Identity that disagrees.
+// Identity is required on every declared Contract as the leaf's
+// self-description: identity is collected from ContractFinal on the live
+// leaves, so an incomplete or inconsistent declared Identity fails collection,
+// binding, and policy downstream.
 func validateContractDecl(spec Spec) {
 	if spec.Contract.empty() {
 		return

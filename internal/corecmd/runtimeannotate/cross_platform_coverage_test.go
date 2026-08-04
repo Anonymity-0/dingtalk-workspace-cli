@@ -14,7 +14,7 @@ import (
 func TestCrossPlatformCoverageAnnotateRuntimeAPIs(t *testing.T) {
 	AttachRuntimeSchema(nil, "p", "t", "s")
 	AttachRuntimeSchema(&cobra.Command{}, "", "", "")
-	AnnotateRuntimeFlag(nil, "x", "x", "string", false, "")
+	AnnotateRuntimeFlag(nil, "x", "x", "string", false)
 	AnnotateRuntimeFlagProperty(nil, "x", "x")
 	AnnotateRuntimeRequiredFlags(nil, "x")
 	AnnotateRuntimeFlagRequiredValue(nil, "x", false)
@@ -45,9 +45,9 @@ func TestCrossPlatformCoverageAnnotateRuntimeAPIs(t *testing.T) {
 		t.Fatalf("AttachRuntimeSchema annotations = %#v", cmd.Annotations)
 	}
 
-	AnnotateRuntimeFlag(cmd, "", "property", "string", true, "")
-	AnnotateRuntimeFlag(cmd, "missing", "property", "string", true, "")
-	AnnotateRuntimeFlag(cmd, "value", " property ", " string ", true, "")
+	AnnotateRuntimeFlag(cmd, "", "property", "string", true)
+	AnnotateRuntimeFlag(cmd, "missing", "property", "string", true)
+	AnnotateRuntimeFlag(cmd, "value", " property ", " string ", true)
 	AnnotateRuntimeFlagProperty(cmd, "missing", "property")
 	AnnotateRuntimeFlagProperty(cmd, "value", "property2")
 	AnnotateRuntimeRequiredFlags(cmd, "missing", "value")

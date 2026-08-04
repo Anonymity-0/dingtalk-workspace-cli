@@ -28,7 +28,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalPassThrough(t *tes
 	cmd := &cobra.Command{Use: "create", Short: "s", Long: "l"}
 	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(cmd) })
 	cmd.Flags().String("mode", "", "usage")
-	runtimeannotate.AnnotateRuntimeFlag(cmd, "mode", "mode", "string", false, "")
+	runtimeannotate.AnnotateRuntimeFlag(cmd, "mode", "mode", "string", false)
 	contractfinal.RegisterRuntimeContractFinal(cmd, contract.ContractFinalPayload{
 		Title: "Final Title",
 		Safety: &contract.SafetySpec{
