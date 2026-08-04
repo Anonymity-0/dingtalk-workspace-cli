@@ -5,7 +5,8 @@
 
 OpenNodes V1 的完整字段、节点类型、目录枚举和错误语义按需读取
 [协议索引](./whiteboard/open-nodes-v1.md)；不要根据本页概要猜测节点字段或
-`geometry`、`catalogId` 等枚举值。
+`geometry`、`catalogId` 等枚举值。渐变卡片、Frame 分支、SVG/Vector 等完整
+工作流见 [常用 Recipes](./whiteboard/recipes.md)。
 
 ## 定位白板
 
@@ -37,7 +38,22 @@ CLI 会把服务端 `resultJson` 字符串解析为结构化 JSON。白板命令
     "schemaVersion": "1.0",
     "catalogVersion": "dml-v1",
     "nodes": [
-      {"id":"title","type":"text","x":40,"y":40,"text":"方案"}
+      {
+        "id": "title",
+        "type": "text",
+        "x": 40,
+        "y": 40,
+        "width": 240,
+        "height": 48,
+        "text": {
+          "blocks": [
+            {
+              "type": "paragraph",
+              "runs": [{"text": "方案"}]
+            }
+          ]
+        }
+      }
     ]
   }
 }

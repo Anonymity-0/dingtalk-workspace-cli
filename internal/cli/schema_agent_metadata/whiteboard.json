@@ -278,7 +278,8 @@
         "dws-wukong@e2da8ab947c6:wukong/products/whiteboard.go",
         "internal/cli/schema_hints/metadata/whiteboard.json",
         "internal/cli/schema_hints/selection/whiteboard.json",
-        "skills/mono/references/products/whiteboard/open-nodes-v1/02-query.md"
+        "skills/mono/references/products/whiteboard/open-nodes-v1/02-query.md",
+        "skills/mono/references/products/whiteboard/recipes.md"
       ],
       "use_when": [
         "已知承载文档 nodeId 和白板 partId，需要检查当前白板节点、布局或写入支持时"
@@ -363,6 +364,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes."
+            },
+            {
+              "value": "not_required",
+              "source": "risk-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -379,6 +386,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes."
+            },
+            {
+              "value": "write",
+              "source": "command-verb",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -415,6 +428,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes."
+            },
+            {
+              "value": "unknown",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -502,6 +521,12 @@
               "precedence": "reviewed_explicit",
               "selected": true,
               "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes."
+            },
+            {
+              "value": "medium",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
             }
           ]
         },
@@ -536,7 +561,8 @@
         "cobra-help:dws whiteboard update",
         "dws-wukong@e2da8ab947c6:wukong/products/whiteboard.go",
         "internal/cli/schema_hints/metadata/whiteboard.json",
-        "internal/cli/schema_hints/selection/whiteboard.json"
+        "internal/cli/schema_hints/selection/whiteboard.json",
+        "skills/mono/references/products/whiteboard/recipes.md"
       ],
       "use_when": [
         "已有 nodeId、partId 和合规 OpenNodes V1 文件，用户确认后要追加图形、文本、连接线或整页替换时"
