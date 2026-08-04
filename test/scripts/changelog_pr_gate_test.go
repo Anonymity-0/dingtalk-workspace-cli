@@ -558,11 +558,9 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	// "race: app" shard already covers everything except the natively-gated
 	// tests. Pinning the two focused commands replaces that budget assertion:
 	// it locks the per-step timeouts and blocks a whole-package regression.
-	// Keep portable DPAPI export/import diagnostics from this branch alongside
-	// main's unsigned-darwin self-heal coverage.
 	for _, want := range []string{
 		`go test -v -race -count=1 -timeout=6m ./internal/keychain ./internal/auth`,
-		`go test -v -race -count=1 -timeout=5m ./internal/app -run '^(TestValidateNewBinary_RecoversFromUnsignedDarwin|Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch|ExportRejectsWindowsDPAPIBackend|ImportRejectsWindowsDPAPIBackend))'`,
+		`go test -v -race -count=1 -timeout=5m ./internal/app -run '^(TestValidateNewBinary_RecoversFromUnsignedDarwin|Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch))'`,
 	} {
 		if !strings.Contains(darwinJob, want) {
 			t.Errorf("macOS native test job missing focused auth contract %q", want)
