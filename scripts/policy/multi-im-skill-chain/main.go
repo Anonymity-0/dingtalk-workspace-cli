@@ -314,6 +314,7 @@ func validateTypedContractReference(rootPath, relative string) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("read typed contract reference %s: %v", relative, err)}
 	}
+	data = bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
 	blocks := []struct {
 		name     string
 		expected string
@@ -354,6 +355,7 @@ func validateEventHandoffReference(rootPath, relative string) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("read event handoff reference %s: %v", relative, err)}
 	}
+	data = bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
 	const expected = `<!-- DWS_EVENT_CHAT_HANDOFF_START -->
 | event field | exact chat target |
 |---|---|

@@ -26,6 +26,8 @@ const (
 	messagesSendMaxGroupFileSize = 1 << 20
 )
 
+var messagesSendReadGroupFile = os.ReadFile
+
 // MessagesSend is the identity-aware common sending entry point. The current
 // user branch reuses the native message leaf's reviewed file-upload flow and
 // existing-mediaId image path. Bot and webhook remain text/Markdown-only
@@ -633,7 +635,7 @@ func messagesSendBotGroups(rt *shortcut.RuntimeContext) ([]string, error) {
 		if info.Size() > messagesSendMaxGroupFileSize {
 			return nil, apperrors.NewValidation("--groups-file 不能超过 1 MiB")
 		}
-		raw, err := os.ReadFile(safePath)
+		raw, err := messagesSendReadGroupFile(safePath)
 		if err != nil {
 			return nil, fmt.Errorf("读取 --groups-file 失败: %w", err)
 		}

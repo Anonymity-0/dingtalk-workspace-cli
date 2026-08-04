@@ -741,7 +741,10 @@ func TestCrossPlatformCoverageMessageExportFailureBoundaries(t *testing.T) {
 			resourceTempSync = func(*os.File) error { return errors.New("sync") }
 		}},
 		{name: "close", payload: map[string]any{}, setup: func(t *testing.T, _ string) {
-			resourceTempClose = func(*os.File) error { return errors.New("close") }
+			resourceTempClose = func(file *os.File) error {
+				_ = file.Close()
+				return errors.New("close")
+			}
 		}},
 		{name: "rename", overwrite: true, payload: map[string]any{}, setup: func(t *testing.T, base string) {
 			if err := os.WriteFile(filepath.Join(base, "out.json"), []byte("old"), 0o600); err != nil {

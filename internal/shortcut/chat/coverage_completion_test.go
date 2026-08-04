@@ -525,8 +525,12 @@ func TestCrossPlatformCoverageUnifiedSendUnsupportedIdentityGuard(t *testing.T) 
 }
 
 func TestCrossPlatformCoverageUnifiedSendGroupFileAndBatchBoundaries(t *testing.T) {
+	readGroupFile := messagesSendReadGroupFile
+	t.Cleanup(func() { messagesSendReadGroupFile = readGroupFile })
+
 	for _, tail := range [][]string{
 		{"--identity", "bot", "--robot-code", "r", "--group", "cid", "--groups", "c1", "--text", "x"},
+		{"--identity", "bot", "--robot-code", "r", "--groups", "c1", "--groups-file", "groups.txt", "--text", "x"},
 		{"--identity", "webhook", "--webhook-token", "token", "--chat-query", "群", "--text", "x"},
 		{"--identity", "bot", "--robot-code", "r", "--groups", "", "--text", "x"},
 		{"--identity", "bot", "--robot-code", "r", "--groups", strings.Join(makeIDs(101), ","), "--text", "x"},
@@ -548,8 +552,14 @@ func TestCrossPlatformCoverageUnifiedSendGroupFileAndBatchBoundaries(t *testing.
 	if err := os.WriteFile(filepath.Join(temp, "large.txt"), make([]byte, messagesSendMaxGroupFileSize+1), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(temp, "unreadable.txt"), []byte("cid"), 0o000); err != nil {
+	if err := os.WriteFile(filepath.Join(temp, "unreadable.txt"), []byte("cid"), 0o600); err != nil {
 		t.Fatal(err)
+	}
+	messagesSendReadGroupFile = func(path string) ([]byte, error) {
+		if filepath.Base(path) == "unreadable.txt" {
+			return nil, os.ErrPermission
+		}
+		return readGroupFile(path)
 	}
 	t.Chdir(temp)
 	for _, path := range []string{"groups-dir", "large.txt", "unreadable.txt"} {

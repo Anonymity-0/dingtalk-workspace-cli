@@ -230,6 +230,32 @@ func TestCrossPlatformCoverageValidateEventHandoffReferenceRejectsNaturalTargetD
 	}
 }
 
+func TestCrossPlatformCoverageValidateReferencesAcceptCRLF(t *testing.T) {
+	root := t.TempDir()
+	for _, tc := range []struct {
+		path     string
+		write    func(*testing.T, string, string)
+		validate func(string, string) []string
+	}{
+		{path: "contracts.md", write: writeTypedContractReference, validate: validateTypedContractReference},
+		{path: "handoff.md", write: writeEventHandoffReference, validate: validateEventHandoffReference},
+	} {
+		tc.write(t, root, tc.path)
+		path := filepath.Join(root, tc.path)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data = bytes.ReplaceAll(data, []byte("\n"), []byte("\r\n"))
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if failures := tc.validate(root, tc.path); len(failures) != 0 {
+			t.Errorf("%s CRLF failures = %v", tc.path, failures)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageManifestFailureMatrix(t *testing.T) {
 	root := t.TempDir()
 	writeTypedContractReference(t, root, "contracts.md")
