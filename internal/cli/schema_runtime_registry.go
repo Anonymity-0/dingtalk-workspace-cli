@@ -490,7 +490,7 @@ func validateContractFinalIdentity(entry runtimeSchemaEntry, id contract.ToolIde
 	checkOptional("cli_name", id.CLIName, entry.CLIName)
 	checkOptional("group", id.Group, entry.Group)
 	checkOptional("source", id.Source, entry.Source)
-	if !stringSetsEqual(id.Aliases, entry.Aliases) {
+	if !stringSlicesEqualAsSet(id.Aliases, entry.Aliases) {
 		mismatches = append(mismatches, fmt.Sprintf("aliases: declared %v, bound %v", id.Aliases, entry.Aliases))
 	}
 	if len(mismatches) > 0 {
@@ -500,23 +500,6 @@ func validateContractFinalIdentity(entry runtimeSchemaEntry, id contract.ToolIde
 	return nil
 }
 
-func stringSetsEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	counts := make(map[string]int, len(a))
-	for _, v := range a {
-		counts[strings.TrimSpace(v)]++
-	}
-	for _, v := range b {
-		k := strings.TrimSpace(v)
-		counts[k]--
-		if counts[k] < 0 {
-			return false
-		}
-	}
-	return true
-}
 
 func marshalSchemaRaw(value any) (json.RawMessage, error) {
 	data, err := json.Marshal(value)
