@@ -14,8 +14,6 @@
 package cli
 
 import (
-	"github.com/spf13/pflag"
-
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
@@ -52,12 +50,4 @@ var (
 
 func resolvedFieldProvenance(value any, source, sourceRef, precedence, resolution, reviewReason string) contract.FieldProvenance {
 	return contract.ResolvedFieldProvenance(value, source, sourceRef, precedence, resolution, reviewReason)
-}
-
-func setFlagAnnotation(flag *pflag.Flag, key, value string) {
-	runtimeannotate.SetFlagAnnotation(flag, key, value)
-}
-
-func setFlagAnnotationValues(flag *pflag.Flag, key string, values ...string) {
-	runtimeannotate.SetFlagAnnotationValues(flag, key, values...)
 }

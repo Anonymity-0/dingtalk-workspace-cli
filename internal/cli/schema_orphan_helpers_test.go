@@ -237,3 +237,11 @@ func publicRunnableSchemaLeaf(command *cobra.Command) bool {
 	}
 	return true
 }
+
+func setFlagAnnotation(flag *pflag.Flag, key, value string) {
+	runtimeannotate.SetFlagAnnotation(flag, key, value)
+}
+
+func setFlagAnnotationValues(flag *pflag.Flag, key string, values ...string) {
+	runtimeannotate.SetFlagAnnotationValues(flag, key, values...)
+}
