@@ -499,6 +499,28 @@ func TestCrossPlatformCoverageBuildArgsTransformAndErrors(t *testing.T) {
 	if _, err := BuildArgs(cmd, requiredEmptyAnySlice); err == nil || !strings.Contains(err.Error(), "必填参数 --codes 不能为空") {
 		t.Fatalf("required empty []any transform err = %v", err)
 	}
+	requiredErrorHint := []FlagSpec{{
+		Name: "codes", Usage: "C", Required: true, RequiredError: "codes missing after transform",
+		Transform: func(string) (any, error) { return nil, nil },
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, requiredErrorHint)
+	_ = cmd.Flags().Set("codes", ",")
+	if _, err := BuildArgs(cmd, requiredErrorHint); err == nil || !strings.Contains(err.Error(), "codes missing after transform") {
+		t.Fatalf("required RequiredError transform err = %v", err)
+	}
+	// Non-empty non-list transform result is kept (covers emptyTransformResult default).
+	keepScalar := []FlagSpec{{
+		Name: "n", Usage: "N", Required: true, Bind: "count",
+		Transform: func(string) (any, error) { return 3, nil },
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, keepScalar)
+	_ = cmd.Flags().Set("n", "x")
+	args, err = BuildArgs(cmd, keepScalar)
+	if err != nil || args["count"] != 3 {
+		t.Fatalf("scalar transform args = %#v err = %v", args, err)
+	}
 
 	// Transform error propagates
 	boom := errors.New("transform boom")
