@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -23,10 +24,9 @@ func (fortestCoverageCaller) JQ() string     { return "" }
 // TestCrossPlatformCoverageInitDepsForTestRestoresPriorDeps covers the
 // ForTest deps restore helper used by declaration-only Schema probes.
 func TestCrossPlatformCoverageInitDepsForTestRestoresPriorDeps(t *testing.T) {
-	previous := deps
-	t.Cleanup(func() { deps = previous })
-
+	testseam.Protect(t, &deps)
 	deps = nil
+
 	marker := fortestCoverageCaller{}
 	InitDepsForTest(t, marker)
 	if got := GetCaller(); got != marker {
