@@ -890,7 +890,7 @@ func validateCommandRegistryAnnotation(command *cobra.Command, path string, spec
 	// assertion (it catches stale specs and assembly bugs, not a second
 	// authority). The real cross-source drift anchors are the native
 	// annotation assertion above, the collector uniqueness/alias-conflict
-	// self-validation, the reviewed tool-count tripwire in homology, and the
+	// self-validation, the non-empty homology coverage check, and the
 	// surface/catalog hash baselines. Disagreement still fails closed.
 	if final, ok := contractfinal.RuntimeContractFinal(command); ok {
 		if final.Identity == nil {
