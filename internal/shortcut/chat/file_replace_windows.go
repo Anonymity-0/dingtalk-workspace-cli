@@ -8,6 +8,4 @@ package chat
 
 import "golang.org/x/sys/windows"
 
-func replaceFileAtomically(source, target string) error {
-	return windows.Rename(source, target)
-}
+var replaceFileAtomically = windows.Rename

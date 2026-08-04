@@ -8,6 +8,4 @@ package chat
 
 import "os"
 
-func replaceFileAtomically(source, target string) error {
-	return os.Rename(source, target)
-}
+var replaceFileAtomically = os.Rename
