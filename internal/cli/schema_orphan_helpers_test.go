@@ -155,3 +155,21 @@ func runtimeCommandParameters(cmd *cobra.Command, canonicalPath string, pinnedPa
 	}
 	return parameters, nil
 }
+
+// walkLeafCommands invokes fn for every runnable leaf command in the tree.
+// Test-only: production traversals use their own walkers.
+func walkLeafCommands(cmd *cobra.Command, fn func(*cobra.Command)) {
+	if cmd.Runnable() && !cmd.HasSubCommands() {
+		fn(cmd)
+		return
+	}
+	for _, sub := range cmd.Commands() {
+		if sub.Name() == "help" {
+			continue
+		}
+		if !sub.IsAvailableCommand() && !hasRuntimeSchemaCommand(sub) {
+			continue
+		}
+		walkLeafCommands(sub, fn)
+	}
+}
