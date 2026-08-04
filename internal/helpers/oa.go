@@ -512,11 +512,6 @@ func newOaCommand() *cobra.Command {
 		Example: "dws oa approval forecast-process --process-code <processCode> --dept-id -1 --form-values '{\"金额\":\"100\"}'",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if raw, _ := cmd.Flags().GetString("request"); raw != "" {
-				for _, name := range []string{"process-code", "dept-id", "form-values"} {
-					if cmd.Flags().Changed(name) {
-						return fmt.Errorf("--request 不能与 --%s 同时使用", name)
-					}
-				}
 				request, err := decodeOARequest(raw)
 				if err != nil {
 					return fmt.Errorf("--request JSON 解析失败: %w", err)
@@ -549,11 +544,6 @@ func newOaCommand() *cobra.Command {
 			}
 			var request map[string]any
 			if raw, _ := cmd.Flags().GetString("request"); raw != "" {
-				for _, name := range []string{"process-code", "dept-id", "form-values", "originator-user-id", "approvers", "approvers-action-type", "cc-list", "cc-position"} {
-					if cmd.Flags().Changed(name) {
-						return fmt.Errorf("--request 不能与 --%s 同时使用", name)
-					}
-				}
 				var err error
 				request, err = decodeOARequest(raw)
 				if err != nil {
