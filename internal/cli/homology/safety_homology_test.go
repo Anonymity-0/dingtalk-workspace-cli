@@ -46,10 +46,9 @@ func (homologyProbeCaller) JQ() string     { return "" }
 func TestUserRequiredSafetyHomologyWithRuntimeGate(t *testing.T) {
 	// Declaration-only Schema roots intentionally skip InitDeps. Probes Execute
 	// live leaves (including deprecated doc wrappers), so install a local
-	// throwaway caller without touching SetDynamicServers.
-	previousCaller := helpers.GetCaller()
-	helpers.InitDeps(homologyProbeCaller{})
-	t.Cleanup(func() { helpers.InitDeps(previousCaller) })
+	// throwaway caller without touching SetDynamicServers. Restore the prior
+	// deps pointer (including nil) — InitDeps(previousCaller) cannot.
+	helpers.InitDepsForTest(t, homologyProbeCaller{})
 
 	root := app.NewSchemaSourceRootCommand()
 	if root.PersistentFlags().Lookup("yes") == nil {

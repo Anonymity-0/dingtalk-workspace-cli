@@ -11,6 +11,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/mcptypes"
+	"github.com/spf13/cobra"
 )
 
 // schemaSourceRootMarkerCaller is a recognizable ToolCaller used to detect
@@ -35,7 +36,6 @@ func TestSchemaSourceRootPreservesRuntimeDepsAndPluginEndpoints(t *testing.T) {
 		pluginEndpoint = "https://schema-source-root-plugin.example/mcp"
 	)
 
-	previousCaller := helpers.GetCaller()
 	dynamicMu.RLock()
 	previousEndpoints := dynamicEndpoints
 	previousProducts := dynamicProducts
@@ -43,7 +43,6 @@ func TestSchemaSourceRootPreservesRuntimeDepsAndPluginEndpoints(t *testing.T) {
 	previousToolEndpoints := dynamicToolEndpoints
 	dynamicMu.RUnlock()
 	t.Cleanup(func() {
-		helpers.InitDeps(previousCaller)
 		dynamicMu.Lock()
 		dynamicEndpoints = previousEndpoints
 		dynamicProducts = previousProducts
@@ -53,7 +52,7 @@ func TestSchemaSourceRootPreservesRuntimeDepsAndPluginEndpoints(t *testing.T) {
 	})
 
 	marker := schemaSourceRootMarkerCaller{}
-	helpers.InitDeps(marker)
+	helpers.InitDepsForTest(t, marker)
 	SetDynamicServers(nil)
 	AppendDynamicServer(mcptypes.ServerDescriptor{
 		Key:      pluginID,
@@ -97,5 +96,67 @@ func TestSchemaSourceRootPreservesRuntimeDepsAndPluginEndpoints(t *testing.T) {
 	gotEndpoint, ok = directRuntimeEndpoint(pluginID, "")
 	if !ok || gotEndpoint != pluginEndpoint {
 		t.Fatalf("plugin endpoint after ResolveMeta delivery = %q ok=%v, want %q preserved", gotEndpoint, ok, pluginEndpoint)
+	}
+}
+
+// TestSchemaSourceRootKeepsStaticServerProductsVisibleWithoutInject proves the
+// declaration-only Schema source root does not need injectStaticServers to keep
+// StaticServers products visible for completeness/help. VisibleProducts may be
+// unset; StaticServers alone must still prevent hideNonDirectRuntimeCommands
+// from marking those products Hidden — without mutating dynamic endpoints.
+func TestSchemaSourceRootKeepsStaticServerProductsVisibleWithoutInject(t *testing.T) {
+	previous := edition.Get()
+	t.Cleanup(func() { edition.Override(previous) })
+
+	dynamicMu.RLock()
+	previousEndpoints := dynamicEndpoints
+	previousProducts := dynamicProducts
+	previousAliases := dynamicAliases
+	previousToolEndpoints := dynamicToolEndpoints
+	dynamicMu.RUnlock()
+	t.Cleanup(func() {
+		dynamicMu.Lock()
+		dynamicEndpoints = previousEndpoints
+		dynamicProducts = previousProducts
+		dynamicAliases = previousAliases
+		dynamicToolEndpoints = previousToolEndpoints
+		dynamicMu.Unlock()
+	})
+
+	edition.Override(&edition.Hooks{
+		Name: "schema-source-root-static-visibility",
+		StaticServers: func() []edition.ServerInfo {
+			return []edition.ServerInfo{{
+				ID:       "doc",
+				Name:     "Doc",
+				Endpoint: "https://schema-source-root-static.example/doc",
+			}}
+		},
+		// VisibleProducts intentionally nil: declaration-only visibility must
+		// still derive from StaticServers without SetDynamicServers.
+	})
+	SetDynamicServers(nil)
+
+	root := NewSchemaSourceRootCommand()
+	var doc *cobra.Command
+	for _, cmd := range root.Commands() {
+		if cmd.Name() == "doc" {
+			doc = cmd
+			break
+		}
+	}
+	if doc == nil {
+		t.Fatal("doc command missing from Schema source root")
+	}
+	if doc.Hidden {
+		t.Fatal("declaration-only Schema source root hid doc despite StaticServers")
+	}
+	// Endpoint resolution may still read StaticServers directly; the invariant
+	// is that declaration-only construction must not mutate the dynamic registry.
+	dynamicMu.RLock()
+	_, injected := dynamicProducts["doc"]
+	dynamicMu.RUnlock()
+	if injected {
+		t.Fatal("declaration-only Schema source root must not inject StaticServers into dynamicProducts")
 	}
 }

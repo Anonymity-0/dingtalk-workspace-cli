@@ -136,6 +136,33 @@ func TestDocVersionRevertDryRunDoesNotRejectMissingVersionRemotely(t *testing.T)
 	}
 }
 
+func TestDocVersionRevertNonDryRunPreflightsVersion(t *testing.T) {
+	caller := &contractDefectCaller{
+		responses: map[string]string{
+			"doc/list_doc_versions":  `{"versions":[{"version":7}]}`,
+			"doc/revert_doc_version": `{}`,
+		},
+	}
+	output, err := executeContractDefectCommand(t, caller, newDocCommand,
+		"version", "revert", "--node", "node-live", "--version", "7", "--yes")
+	if err != nil {
+		t.Fatalf("doc version revert returned error: %v", err)
+	}
+	if len(caller.readCalls) != 1 ||
+		caller.readCalls[0].productID != "doc" ||
+		caller.readCalls[0].toolName != "list_doc_versions" {
+		t.Fatalf("non-dry-run read calls = %#v, want doc/list_doc_versions preflight", caller.readCalls)
+	}
+	if len(caller.calls) != 1 ||
+		caller.calls[0].productID != "doc" ||
+		caller.calls[0].toolName != "revert_doc_version" {
+		t.Fatalf("non-dry-run mutation calls = %#v, want doc/revert_doc_version", caller.calls)
+	}
+	if strings.Contains(output, `"dry_run": true`) {
+		t.Fatalf("non-dry-run output unexpectedly previewed: %q", output)
+	}
+}
+
 func TestDocVersionRevertPublishesRuntimeSafety(t *testing.T) {
 	cmd, remaining, err := newDocCommand().Find([]string{"version", "revert"})
 	if err != nil || len(remaining) != 0 {
