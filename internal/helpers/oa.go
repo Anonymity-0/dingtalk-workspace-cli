@@ -46,7 +46,8 @@ func oaFormValues(raw string) ([]map[string]string, error) {
 // approve_processInstance, reject_processInstance, revoke_processInstance,
 // get_processInstance_records, list_initiated_instances, list_pending_tasks,
 // list_user_visible_process, append_task, search_form, oa_ding_user, revert_task,
-// get_inst_revert_activities
+// get_inst_revert_activities, get_process_schema, forecast_process,
+// start_process_instance
 // ──────────────────────────────────────────────────────────
 
 func newOaCommand() *cobra.Command {
