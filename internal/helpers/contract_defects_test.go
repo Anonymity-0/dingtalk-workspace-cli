@@ -148,15 +148,12 @@ func TestDocVersionRevertNonDryRunPreflightsVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("doc version revert returned error: %v", err)
 	}
-	if len(caller.readCalls) != 1 ||
-		caller.readCalls[0].productID != "doc" ||
-		caller.readCalls[0].toolName != "list_doc_versions" {
-		t.Fatalf("non-dry-run read calls = %#v, want doc/list_doc_versions preflight", caller.readCalls)
-	}
-	if len(caller.calls) != 1 ||
-		caller.calls[0].productID != "doc" ||
-		caller.calls[0].toolName != "revert_doc_version" {
-		t.Fatalf("non-dry-run mutation calls = %#v, want doc/revert_doc_version", caller.calls)
+	// Outside --dry-run, list_doc_versions rides the normal CallTool channel
+	// (CallReadTool is dry-run-only). Expect preflight then mutation.
+	if len(caller.calls) != 2 ||
+		caller.calls[0].productID != "doc" || caller.calls[0].toolName != "list_doc_versions" ||
+		caller.calls[1].productID != "doc" || caller.calls[1].toolName != "revert_doc_version" {
+		t.Fatalf("non-dry-run calls = %#v, want list_doc_versions then revert_doc_version", caller.calls)
 	}
 	if strings.Contains(output, `"dry_run": true`) {
 		t.Fatalf("non-dry-run output unexpectedly previewed: %q", output)
