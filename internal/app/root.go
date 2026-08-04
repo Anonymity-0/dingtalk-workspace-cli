@@ -374,19 +374,21 @@ func NewRootCommand(ctx ...context.Context) *cobra.Command {
 	if len(ctx) > 0 && ctx[0] != nil {
 		rootCtx = ctx[0]
 	}
-	return newRootCommandWithEngine(rootCtx, nil, true)
+	return newRootCommandWithEngine(rootCtx, nil, true, false)
 }
 
 // NewSchemaSourceRootCommand constructs the distribution-owned command tree
 // used as the Schema assembly source root (RegisterSchemaSourceRoot →
 // ResolveSchemaBuild) and by command-surface policy. Installed plugins and
 // user-defined shortcuts must not change the reviewed Schema surface.
+// declarationOnly skips injectStaticServers / helpers.InitDeps so Schema
+// assembly cannot clobber a live process's ToolCaller or plugin endpoints.
 func NewSchemaSourceRootCommand(ctx ...context.Context) *cobra.Command {
 	var rootCtx context.Context
 	if len(ctx) > 0 && ctx[0] != nil {
 		rootCtx = ctx[0]
 	}
-	return newRootCommandWithEngine(rootCtx, nil, false)
+	return newRootCommandWithEngine(rootCtx, nil, false, true)
 }
 
 // NewRootCommandWithEngine constructs the root CLI command with an
@@ -394,10 +396,10 @@ func NewSchemaSourceRootCommand(ctx ...context.Context) *cobra.Command {
 // no pipeline processing is applied.
 func NewRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine) *cobra.Command {
 	registerSchemaRuntimeDelivery()
-	return newRootCommandWithEngine(rootCtx, engine, true)
+	return newRootCommandWithEngine(rootCtx, engine, true, false)
 }
 
-func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, loadRuntimeExtensions bool) *cobra.Command {
+func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, loadRuntimeExtensions bool, declarationOnly bool) *cobra.Command {
 	if rootCtx == nil {
 		rootCtx = context.Background()
 	}
@@ -488,7 +490,14 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 	}
 	root.AddCommand(utilityCommands...)
 
-	root.AddCommand(newLegacyPublicCommands(runner, patCaller, loadRuntimeExtensions)...)
+	if declarationOnly {
+		// Schema / surface assembly: mount the reviewed tree only. Do not
+		// injectStaticServers or InitDeps — those mutate process globals and
+		// would clobber a live runtime's caller and plugin endpoints.
+		root.AddCommand(mountLegacyPublicCommands(runner, loadRuntimeExtensions)...)
+	} else {
+		root.AddCommand(newLegacyPublicCommands(runner, patCaller, loadRuntimeExtensions)...)
+	}
 
 	// PAT authorization commands (open-source core)
 	pat.RegisterCommands(root, patCaller)

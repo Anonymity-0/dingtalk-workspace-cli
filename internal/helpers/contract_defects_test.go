@@ -98,13 +98,8 @@ func TestApprovalRevokeDryRunSkipsConfirmationAndEmitsPreview(t *testing.T) {
 	}
 }
 
-func TestDocVersionRevertDryRunPreflightsVersionAndEmitsPreview(t *testing.T) {
-	caller := &contractDefectCaller{
-		dryRun: true,
-		responses: map[string]string{
-			"doc/list_doc_versions": `{"versions":[{"version":7}]}`,
-		},
-	}
+func TestDocVersionRevertDryRunSkipsRemotePreflightAndEmitsPreview(t *testing.T) {
+	caller := &contractDefectCaller{dryRun: true}
 	output, err := executeContractDefectCommand(t, caller, newDocCommand,
 		"version", "revert", "--node", "node-dry-run", "--version", "7", "--dry-run")
 	if err != nil {
@@ -113,10 +108,8 @@ func TestDocVersionRevertDryRunPreflightsVersionAndEmitsPreview(t *testing.T) {
 	if len(caller.calls) != 0 {
 		t.Fatalf("dry-run mutation calls = %#v, want none", caller.calls)
 	}
-	if len(caller.readCalls) != 1 ||
-		caller.readCalls[0].productID != "doc" ||
-		caller.readCalls[0].toolName != "list_doc_versions" {
-		t.Fatalf("dry-run read calls = %#v, want doc/list_doc_versions", caller.readCalls)
+	if len(caller.readCalls) != 0 {
+		t.Fatalf("dry-run read calls = %#v, want none (no remote version preflight)", caller.readCalls)
 	}
 	if !strings.Contains(output, `"tool": "revert_doc_version"`) ||
 		!strings.Contains(output, `"version": 7`) {
@@ -124,30 +117,22 @@ func TestDocVersionRevertDryRunPreflightsVersionAndEmitsPreview(t *testing.T) {
 	}
 }
 
-func TestDocVersionRevertDryRunRejectsMissingVersionBeforePreview(t *testing.T) {
-	caller := &contractDefectCaller{
-		dryRun: true,
-		responses: map[string]string{
-			"doc/list_doc_versions": `{"versions":[{"version":7}]}`,
-		},
-	}
+func TestDocVersionRevertDryRunDoesNotRejectMissingVersionRemotely(t *testing.T) {
+	caller := &contractDefectCaller{dryRun: true}
 	output, err := executeContractDefectCommand(t, caller, newDocCommand,
 		"version", "revert", "--node", "node-dry-run", "--version", "999", "--dry-run")
-	if err == nil || !strings.Contains(err.Error(), "文档版本 999 不存在") {
-		t.Fatalf("missing version error = %v, want explicit rejection", err)
+	if err != nil {
+		t.Fatalf("doc version revert dry-run returned error: %v", err)
 	}
-	var appErr *apperrors.Error
-	if !errors.As(err, &appErr) || appErr.Reason != "version_not_found" {
-		t.Fatalf("missing version error = %#v, want typed version_not_found", err)
-	}
-	if len(caller.readCalls) != 1 {
-		t.Fatalf("dry-run read calls = %#v, want one version lookup", caller.readCalls)
+	if len(caller.readCalls) != 0 {
+		t.Fatalf("dry-run read calls = %#v, want none (no remote version preflight)", caller.readCalls)
 	}
 	if len(caller.calls) != 0 {
 		t.Fatalf("dry-run mutation calls = %#v, want none", caller.calls)
 	}
-	if strings.Contains(output, `"tool": "revert_doc_version"`) {
-		t.Fatalf("missing version emitted a misleading mutation preview: %q", output)
+	if !strings.Contains(output, `"tool": "revert_doc_version"`) ||
+		!strings.Contains(output, `"version": 999`) {
+		t.Fatalf("dry-run output = %q, want preview without remote missing-version rejection", output)
 	}
 }
 
