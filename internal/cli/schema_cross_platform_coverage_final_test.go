@@ -246,11 +246,9 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 	})
 
 	t.Run("schemaOverviewPayloadFromLoaded render failure", func(t *testing.T) {
-		prev := renderDeliverySchemaOverview
-		t.Cleanup(func() { renderDeliverySchemaOverview = prev })
-		renderDeliverySchemaOverview = func(SchemaRegistry) (map[string]any, error) {
+		testseam.Swap(t, &renderDeliverySchemaOverview, func(SchemaRegistry) (map[string]any, error) {
 			return nil, errors.New("overview failed")
-		}
+		})
 		if _, err := schemaOverviewPayloadFromLoaded(loadedSchemaCatalog{}); err == nil || !strings.Contains(err.Error(), "overview failed") {
 			t.Fatalf("overview error = %v", err)
 		}
