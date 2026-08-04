@@ -130,7 +130,10 @@ func TestCrossPlatformCoverageValidateResourceDownloadOutputUsesOwningFlagName(t
 }
 
 func TestCrossPlatformCoverageValidateResourceDownloadOutputRejectsPortableAbsolutePaths(t *testing.T) {
-	for _, output := range []string{"/absolute", `\\absolute`, `C:\\absolute`, "C:/absolute"} {
+	for _, output := range []string{
+		"/absolute", `\\absolute`, `C:\\absolute`, "C:/absolute",
+		"C:relative", "c:relative",
+	} {
 		if err := validateResourceDownloadOutput(output); err == nil {
 			t.Errorf("portable absolute output %q unexpectedly accepted", output)
 		}
