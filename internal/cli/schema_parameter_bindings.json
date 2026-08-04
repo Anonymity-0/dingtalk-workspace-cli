@@ -2,8 +2,8 @@
   "version": 3,
   "baseline": {
     "manifest": "schema-parameter-bindings-v3",
-    "sha256": "sha256:ff0f76145dd27da5429434a348344c9cdf74c44eaf6f4ea5411d29d904a9066f",
-    "reason": "Reviewed v3 baseline after binding sheet.info --include to the include property while porting the wukong sheet info expansion flag.",
+    "sha256": "sha256:43147fbb7881204bc9cf9662543c7d49d7aefdfa82a2f9e684923547e0b8a0bd",
+    "reason": "Reviewed v3 baseline after binding wiki.list_workspace_feeds --workspace/--limit/--cursor/--exclude-file to the workspaceId/maxResults/nextToken/excludeFile properties while porting the wukong knowledge base feed query command.",
     "reviewed": true
   },
   "removals": {
@@ -1322,6 +1322,12 @@
       "cursor": "pageToken",
       "folder": "folderId",
       "limit": "pageSize",
+      "workspace": "workspaceId"
+    },
+    "wiki.list_workspace_feeds": {
+      "cursor": "nextToken",
+      "exclude-file": "excludeFile",
+      "limit": "maxResults",
       "workspace": "workspaceId"
     },
     "wiki.node_copy": {

@@ -220,6 +220,29 @@
         "live-mcp:dws schema wiki.list_wikiSpaces"
       ]
     },
+    "wiki.list_workspace_feeds": {
+      "agent_summary": "查询知识库的活动动态：谁在什么时间更新/上传/评论了哪些文档",
+      "use_when": [
+        "用户问某个知识库最近有什么更新、谁改了什么、有哪些评论等协作动态时",
+        "需要巡检知识库变更并按时间线汇总成动态摘要时"
+      ],
+      "avoid_when": [
+        "要看知识库当前有哪些节点用 node list；库内按关键词找文档用 node search",
+        "要读某篇文档正文用 doc read；跨库全局找文件用 drive search"
+      ],
+      "examples": [
+        "dws wiki feed list --workspace <workspaceId> --format json",
+        "dws wiki feed list --workspace <workspaceId> --limit 10 --format json"
+      ],
+      "reviewed": true,
+      "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+      "source_refs": [
+        "CommandRegistry:canonical_path=wiki.list_workspace_feeds",
+        "cobra-help:dws wiki feed list",
+        "Skill:skills/mono/references/products/wiki.md",
+        "live-mcp-tools-list:wiki.list_workspace_feeds"
+      ]
+    },
     "wiki.node_copy": {
       "agent_summary": "将知识库中的节点复制到指定位置",
       "use_when": [
