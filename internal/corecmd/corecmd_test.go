@@ -1700,6 +1700,16 @@ func TestCrossPlatformCoverageValidateEnumEnvValue(t *testing.T) {
 	if err := ValidateEnums(cmd, flags); err != nil {
 		t.Fatalf("empty env must not validate, got %v", err)
 	}
+
+	// Slice flags never consume env (explicit tokens only), so an out-of-enum
+	// env value must not be rejected for them.
+	sliceFlags := []FlagSpec{{Name: "mode", Usage: "M", Kind: KindStringSlice, Enum: []string{"a", "b"}, EnvVar: "DWS_CMDCORE_ENUM_MODE"}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, sliceFlags)
+	t.Setenv("DWS_CMDCORE_ENUM_MODE", "zzz")
+	if err := ValidateEnums(cmd, sliceFlags); err != nil {
+		t.Fatalf("slice flags must not validate env values, got %v", err)
+	}
 }
 
 func TestRegisterFlagsMarkRequiredWithAliasesPanics(t *testing.T) {

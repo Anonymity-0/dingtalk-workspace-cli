@@ -705,11 +705,12 @@ func validateEnum(cmd *cobra.Command, flag FlagSpec) error {
 		} else {
 			values = []string{EffectiveValue(cmd, flag)}
 		}
-	case flag.Kind != KindBool && flag.EnvVar != "":
+	case flag.Kind != KindBool && flag.Kind != KindStringSlice && flag.EnvVar != "":
 		// Not explicitly provided: validate the env fallback when it resolves
-		// a non-empty string-ish value. (A value invalid for the flag kind —
-		// e.g. a non-integer env value on KindInt — is left to the integer
-		// parse path, which reports the precise error.)
+		// a non-empty string-ish value. Slices never consume env (explicit
+		// tokens only), and a value invalid for the flag kind — e.g. a
+		// non-integer env value on KindInt — is left to the integer parse
+		// path, which reports the precise error.
 		if env := strings.TrimSpace(os.Getenv(flag.EnvVar)); env != "" {
 			values = []string{env}
 		}
