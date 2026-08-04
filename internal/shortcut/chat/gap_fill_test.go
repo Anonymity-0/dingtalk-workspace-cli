@@ -22,6 +22,14 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
+type chatOutputErrorWriter struct {
+	err error
+}
+
+func (w chatOutputErrorWriter) Write([]byte) (int, error) {
+	return 0, w.err
+}
+
 func TestCrossPlatformCoverageMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 	want := []string{
 		"identity", "as", "group", "chat-id", "groups", "groups-file", "chat-query", "user", "user-query", "open-dingtalk-id",
@@ -206,6 +214,25 @@ func TestCrossPlatformCoverageMessagesSendBotMultiGroupFailuresReturnNonzero(t *
 				t.Fatalf("failure ledger = %#v", payload)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendBotMultiGroupPropagatesOutputFailure(t *testing.T) {
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	wantErr := errors.New("fixture output failed")
+	root := newPlatformCoverageRoot()
+	root.SetOut(chatOutputErrorWriter{err: wantErr})
+	root.SetArgs([]string{
+		"chat", "+messages-send", "--as", "bot", "--robot-code", "robot",
+		"--groups", "cid-a,cid-b", "--markdown", "通知", "--yes",
+	})
+
+	if err := root.Execute(); !errors.Is(err, wantErr) {
+		t.Fatalf("output error = %v, want %v", err, wantErr)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("multi-group calls = %#v", fake.calls)
 	}
 }
 
