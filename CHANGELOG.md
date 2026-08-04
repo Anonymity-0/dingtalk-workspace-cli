@@ -10,6 +10,20 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 - **Chat media download JSON compatibility** — `dws chat message download-media --format json` once again returns a clean `{success, downloadUrl, output}` result after the file is saved, preserving the temporary URL and resolved local path without progress text corrupting JSON stdout.
 
+## [1.0.56-beta.4] - 2026-08-04
+
+This beta adds PR #852 on top of v1.0.56-beta.3. It makes Drive downloads
+resilient for large files through parallel transfer, validated resumable
+checkpoints, and automatic credential refresh.
+
+### Added
+
+- **Multipart Drive downloads** (#852) — adds `--part-size`, `--parallel`, and
+  `--no-resume` to `drive download` and `drive download-version`. Files above
+  the part-size threshold use a Range probe and parallel chunks, resume from a
+  fingerprint-validated checkpoint, refresh credentials on 401/403, and keep
+  the checkpoint when Ctrl+C interrupts a transfer.
+
 ## [1.0.56-beta.3] - 2026-08-03
 
 This beta adds PRs #846 and #851 on top of v1.0.56-beta.2. It adds a
