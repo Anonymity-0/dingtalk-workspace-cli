@@ -30,28 +30,25 @@ import (
 type RuntimeSchemaConstraints = runtimeannotate.RuntimeSchemaConstraints
 
 var (
-	AttachRuntimeSchema                 = runtimeannotate.AttachRuntimeSchema
-	AnnotateRuntimeFlag                 = runtimeannotate.AnnotateRuntimeFlag
-	AnnotateRuntimeFlagProperty         = runtimeannotate.AnnotateRuntimeFlagProperty
-	AnnotateRuntimeRequiredFlags        = runtimeannotate.AnnotateRuntimeRequiredFlags
-	AnnotateRuntimeFlagRequiredValue    = runtimeannotate.AnnotateRuntimeFlagRequiredValue
-	AnnotateRuntimeFlagDescription      = runtimeannotate.AnnotateRuntimeFlagDescription
-	AnnotateRuntimeFlagRequiredWhen     = runtimeannotate.AnnotateRuntimeFlagRequiredWhen
-	AnnotateRuntimeFlagFormat           = runtimeannotate.AnnotateRuntimeFlagFormat
-	AnnotateRuntimeFlagInterfaceType    = runtimeannotate.AnnotateRuntimeFlagInterfaceType
-	AnnotateRuntimeFlagEnum             = runtimeannotate.AnnotateRuntimeFlagEnum
-	AnnotateRuntimeFlagExample          = runtimeannotate.AnnotateRuntimeFlagExample
-	AnnotateRuntimeContract             = runtimeannotate.AnnotateRuntimeContract
-	RuntimeContractRisk                 = runtimeannotate.RuntimeContractRisk
-	RuntimeContractGate                 = runtimeannotate.RuntimeContractGate
-	AnnotateRuntimeConstraints          = runtimeannotate.AnnotateRuntimeConstraints
-	AnnotateRuntimePositionals          = runtimeannotate.AnnotateRuntimePositionals
-	HasDeclaredOrAnnotatedConfirmation  = contractfinal.HasDeclaredOrAnnotatedConfirmation
-	RuntimeContractFinal                = contractfinal.RuntimeContractFinal
-	HasRuntimeContractFinal             = contractfinal.HasRuntimeContractFinal
-	ClearRuntimeContractFinalForTest    = contractfinal.ClearRuntimeContractFinalForTest
-	StoreRuntimeContractFinalRawForTest = contractfinal.StoreRuntimeContractFinalRawForTest
-	ApplyParamDecls                     = contractfinal.ApplyParamDecls
+	AttachRuntimeSchema                = runtimeannotate.AttachRuntimeSchema
+	AnnotateRuntimeFlag                = runtimeannotate.AnnotateRuntimeFlag
+	AnnotateRuntimeFlagProperty        = runtimeannotate.AnnotateRuntimeFlagProperty
+	AnnotateRuntimeRequiredFlags       = runtimeannotate.AnnotateRuntimeRequiredFlags
+	AnnotateRuntimeFlagRequiredValue   = runtimeannotate.AnnotateRuntimeFlagRequiredValue
+	AnnotateRuntimeFlagRequiredWhen    = runtimeannotate.AnnotateRuntimeFlagRequiredWhen
+	AnnotateRuntimeFlagFormat          = runtimeannotate.AnnotateRuntimeFlagFormat
+	AnnotateRuntimeFlagInterfaceType   = runtimeannotate.AnnotateRuntimeFlagInterfaceType
+	AnnotateRuntimeFlagEnum            = runtimeannotate.AnnotateRuntimeFlagEnum
+	AnnotateRuntimeFlagExample         = runtimeannotate.AnnotateRuntimeFlagExample
+	RuntimeContractRisk                = runtimeannotate.RuntimeContractRisk
+	RuntimeContractGate                = runtimeannotate.RuntimeContractGate
+	AnnotateRuntimeConstraints         = runtimeannotate.AnnotateRuntimeConstraints
+	AnnotateRuntimePositionals         = runtimeannotate.AnnotateRuntimePositionals
+	HasDeclaredOrAnnotatedConfirmation = contractfinal.HasDeclaredOrAnnotatedConfirmation
+	RuntimeContractFinal               = contractfinal.RuntimeContractFinal
+	HasRuntimeContractFinal            = contractfinal.HasRuntimeContractFinal
+	ClearRuntimeContractFinalForTest   = contractfinal.ClearRuntimeContractFinalForTest
+	ApplyParamDecls                    = contractfinal.ApplyParamDecls
 )
 
 func resolvedFieldProvenance(value any, source, sourceRef, precedence, resolution, reviewReason string) contract.FieldProvenance {
