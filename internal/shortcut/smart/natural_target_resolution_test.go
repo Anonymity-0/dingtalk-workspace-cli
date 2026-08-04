@@ -66,12 +66,12 @@ func TestChatMessagesStableGroupBypassesNaturalResolution(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
-	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cidACeQ0fCtKfLsFGvA47gXaQ=="})
+	root.SetArgs([]string{"chat", "+chat-messages", "--group", "cid-fixture-chat-0001"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	if len(fake.calls) != 1 || fake.calls[0].tool != "list_conversation_message_v2" ||
-		fake.calls[0].args["openconversation_id"] != "cidACeQ0fCtKfLsFGvA47gXaQ==" {
+		fake.calls[0].args["openconversation_id"] != "cid-fixture-chat-0001" {
 		t.Fatalf("calls = %#v", fake.calls)
 	}
 }
@@ -93,7 +93,7 @@ func TestChatMessagesRejectsConversationIDInPeerIdentityFlag(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
-	root.SetArgs([]string{"chat", "+chat-messages", "--open-dingtalk-id", "cidACeQ0fCtKfLsFGvA47gXaQ=="})
+	root.SetArgs([]string{"chat", "+chat-messages", "--open-dingtalk-id", "cid-fixture-chat-0001"})
 	err := root.Execute()
 	if err == nil || !strings.Contains(err.Error(), "--group") {
 		t.Fatalf("error = %v", err)
@@ -120,12 +120,12 @@ func TestAtMeStableIDInQueryBypassesNaturalResolution(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
-	root.SetArgs([]string{"chat", "+at-me", "--chat-query", "cidACeQ0fCtKfLsFGvA47gXaQ=="})
+	root.SetArgs([]string{"chat", "+at-me", "--chat-query", "cid-fixture-chat-0001"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	if len(fake.calls) != 1 || fake.calls[0].tool != "search_at_me_message" ||
-		fake.calls[0].args["openConversationId"] != "cidACeQ0fCtKfLsFGvA47gXaQ==" {
+		fake.calls[0].args["openConversationId"] != "cid-fixture-chat-0001" {
 		t.Fatalf("calls = %#v", fake.calls)
 	}
 }
@@ -134,12 +134,12 @@ func TestSendToGroupStableIDBypassesNaturalResolution(t *testing.T) {
 	fake := &platformCoverageCaller{}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
-	root.SetArgs([]string{"chat", "+send-to-group", "--group", "cidACeQ0fCtKfLsFGvA47gXaQ==", "--text", "评测", "--yes"})
+	root.SetArgs([]string{"chat", "+send-to-group", "--group", "cid-fixture-chat-0001", "--text", "评测", "--yes"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	if len(fake.calls) != 1 || fake.calls[0].tool != "send_personal_message" ||
-		fake.calls[0].args["openConversationId"] != "cidACeQ0fCtKfLsFGvA47gXaQ==" {
+		fake.calls[0].args["openConversationId"] != "cid-fixture-chat-0001" {
 		t.Fatalf("calls = %#v", fake.calls)
 	}
 }
@@ -178,7 +178,7 @@ func TestSearchMsgAcceptsStableIDInChatQuery(t *testing.T) {
 	root := newPlatformCoverageRoot()
 	root.SetArgs([]string{
 		"chat", "+search-msg",
-		"--chat-query", "cidRYtcWlwRzUKMD1/o2/J4PA==",
+		"--chat-query", "cid-fixture-chat-0002",
 		"--text", "评测",
 		"--no-enrich",
 	})
@@ -188,7 +188,7 @@ func TestSearchMsgAcceptsStableIDInChatQuery(t *testing.T) {
 	if len(fake.calls) != 1 || fake.calls[0].tool != "search_messages" {
 		t.Fatalf("calls = %#v", fake.calls)
 	}
-	if got, want := fake.calls[0].args["openConversationIds"], []string{"cidRYtcWlwRzUKMD1/o2/J4PA=="}; !reflect.DeepEqual(got, want) {
+	if got, want := fake.calls[0].args["openConversationIds"], []string{"cid-fixture-chat-0002"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("openConversationIds = %#v, want %#v", got, want)
 	}
 	if fake.calls[0].args["keyword"] != "评测" {
@@ -203,7 +203,7 @@ func TestChatMembersListGroupAcceptsNameAndStableID(t *testing.T) {
 		wantCalls int
 	}{
 		{name: "name", args: []string{"chat", "+chat-members-list", "--group", "项目冲刺", "--member-types", "user"}, wantCalls: 2},
-		{name: "stable id", args: []string{"chat", "+chat-members-list", "--group", "cidACeQ0fCtKfLsFGvA47gXaQ==", "--member-types", "user"}, wantCalls: 1},
+		{name: "stable id", args: []string{"chat", "+chat-members-list", "--group", "cid-fixture-chat-0001", "--member-types", "user"}, wantCalls: 1},
 		{name: "compat alias", args: []string{"chat", "+chat-members-list", "--open-conversation-id", "cid-short-placeholder", "--member-types", "user"}, wantCalls: 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

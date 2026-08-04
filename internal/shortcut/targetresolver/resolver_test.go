@@ -47,7 +47,7 @@ func TestExtractUsersKeepsUsableExternalContacts(t *testing.T) {
 }
 
 func TestOpenConversationIDIsNeverSearchedAsAGroupName(t *testing.T) {
-	for _, value := range []string{"cidACeQ0fCtKfLsFGvA47gXaQ==", " CIDO123456789 "} {
+	for _, value := range []string{"cid-fixture-chat-0001", " CIDO123456789 "} {
 		if !LooksLikeOpenConversationID(value) {
 			t.Fatalf("LooksLikeOpenConversationID(%q) = false", value)
 		}
@@ -59,7 +59,7 @@ func TestOpenConversationIDIsNeverSearchedAsAGroupName(t *testing.T) {
 	}
 
 	reader := &chatResolutionReader{}
-	_, err := ResolveChat(reader, "cidACeQ0fCtKfLsFGvA47gXaQ==")
+	_, err := ResolveChat(reader, "cid-fixture-chat-0001")
 	var typed *apperrors.Error
 	if err == nil || !stderrors.As(err, &typed) || typed.Reason != "target_type_mismatch" {
 		t.Fatalf("ResolveChat(stable id) error = %v", err)
@@ -77,11 +77,11 @@ func TestOpenConversationIDIsNeverSearchedAsAGroupName(t *testing.T) {
 
 func TestResolveChatTargetStableIDBypassesSearch(t *testing.T) {
 	reader := &chatResolutionReader{}
-	resolved, err := ResolveChatTarget(reader, " cidACeQ0fCtKfLsFGvA47gXaQ== ", "")
+	resolved, err := ResolveChatTarget(reader, " cid-fixture-chat-0001 ", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.Selected.OpenConversationID != "cidACeQ0fCtKfLsFGvA47gXaQ==" || resolved.MatchType != "stable_id" {
+	if resolved.Selected.OpenConversationID != "cid-fixture-chat-0001" || resolved.MatchType != "stable_id" {
 		t.Fatalf("resolved = %#v", resolved)
 	}
 	if len(reader.calls) != 0 {
