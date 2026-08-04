@@ -675,6 +675,10 @@ func TestRuntimeSchemaFormatPrecedenceMatrix(t *testing.T) {
 			wantSource:  "usage_format_inference",
 			wantSources: []string{"usage_format_inference", "default"},
 		},
+		{
+			name:  "mixed accepted time syntaxes stay untyped",
+			usage: "RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD",
+		},
 		{name: "empty default stays omitted"},
 	}
 	for _, test := range tests {

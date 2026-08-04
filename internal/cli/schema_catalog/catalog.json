@@ -1,12 +1,12 @@
 {
   "version": 1,
   "surface_hash": "sha256:ae4288a29f237ab41d080695d94794133143ad1efc0899f71f05047443ab09c0",
-  "source_hash": "sha256:061bccdda8236eab6dbfd9a8ee2a7d20b383ef493caa95f5c784c74937d79742",
+  "source_hash": "sha256:6b900a4082db317578dcfff43560e6e0ba075caf859e4858d9d591545fb6fa76",
   "catalog": {
     "agent_metadata": {
       "products_with_metadata": 26,
       "source": "embedded-skill-metadata",
-      "source_hash": "sha256:6f4ff004d7060db709d732e4c5884586f71b1947c61352a8281d0664398c150b",
+      "source_hash": "sha256:495401fa3a29d8bbeb2a0b7c989f01bb50793764d0e0e7d467c07718db05808d",
       "surface_hash": "sha256:ae4288a29f237ab41d080695d94794133143ad1efc0899f71f05047443ab09c0",
       "surface_products": 26,
       "surface_tools": 897,
@@ -10187,7 +10187,7 @@
             "risk": "low",
             "title": "查看群内所有机器人",
             "use_when": [
-              "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
+              "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
             ]
           },
           {
@@ -10448,7 +10448,7 @@
             "primary_cli_path": "chat +chat-messages",
             "reviewed": true,
             "risk": "low",
-            "title": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
+            "title": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出",
             "use_when": [
               "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
             ]

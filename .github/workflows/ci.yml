@@ -694,7 +694,10 @@ jobs:
           go-version-file: go.mod
 
       - name: Test macOS auth and Keychain paths with Race Detection
-        run: go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth ./internal/app
+        run: go test -v -race -count=1 -timeout=5m ./internal/keychain ./internal/auth
+
+      - name: Test macOS app paths with Race Detection
+        run: go test -v -race -count=1 -timeout=12m ./internal/app
 
   test-windows:
     name: Test (Windows)

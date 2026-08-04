@@ -60331,7 +60331,7 @@
               "selected": true,
               "source": "internal/cli/schema_hints/selection/chat.json",
               "value": [
-                "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
+                "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
               ]
             }
           ],
@@ -60340,7 +60340,7 @@
           "review_reason": "Agent-authored and reviewed from the built-in Shortcut intent, executable Cobra path, and declared outcome; it affects selection only and does not alter execution or safety facts.",
           "source": "internal/cli/schema_hints/selection/chat.json",
           "value": [
-            "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
+            "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
           ]
         }
       },
@@ -60445,7 +60445,7 @@
       "source": "reviewed_command_registry",
       "title": "查看群内所有机器人",
       "use_when": [
-        "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，也可显式用 --chat-query 按群名唯一解析；多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
+        "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"
       ]
     },
     "chat.shortcut_chat_create": {
@@ -65929,13 +65929,13 @@
               "precedence": "cobra_help",
               "selected": true,
               "source": "cobra_help",
-              "value": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出"
+              "value": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出"
             }
           ],
           "precedence": "cobra_help",
           "resolution": "highest_precedence",
           "source": "cobra_help",
-          "value": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出"
+          "value": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出"
         },
         "use_when": {
           "candidates": [
@@ -67043,7 +67043,7 @@
           "type": "integer"
         },
         "time": {
-          "description": "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息",
+          "description": "时间边界，如 \"2025-03-01 00:00:00\"；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；省略时从当前时间向前读取最近消息",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -67051,7 +67051,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息"
+                  "value": "时间边界，如 \"2025-03-01 00:00:00\"；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；省略时从当前时间向前读取最近消息"
                 },
                 {
                   "precedence": "default",
@@ -67063,7 +67063,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "时间边界，如 \"2025-03-01 00:00:00\"；省略时从当前时间向前读取最近消息"
+              "value": "时间边界，如 \"2025-03-01 00:00:00\"；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD；省略时从当前时间向前读取最近消息"
             },
             "property": {
               "candidates": [
@@ -67223,7 +67223,7 @@
       "reviewed": true,
       "risk": "low",
       "source": "reviewed_command_registry",
-      "title": "按会话 ID、群名或姓名读取消息，支持有界全量分页与原子 JSON 导出",
+      "title": "按会话 ID、群名或用户 ID 读取消息，支持有界全量分页与原子 JSON 导出",
       "use_when": [
         "当你想快速看一个群聊或单聊里的消息（谁在什么时间说了什么），而不想拿到大段原始消息字段时使用；群聊的 --group 可传群名或 openConversationId，单聊可传 --user 或 --open-dingtalk-id，所有目标参数互斥且必须选一个。自然群名只在唯一解析后读取，多候选会返回结构化 candidates。省略 --time 时默认从当前时间向前读取最近消息；也可指定时间边界并用 --direction newer/older 控制方向。全量读取用 --page-all，并由 --page-limit/--max-results 保持有界；结果公开 complete、hasMore、nextPage、stopReason、截断和逐页失败，不能把部分结果称为完整。--output 把同一 ledger 原子写为工作目录内 JSON。默认只读；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘。"
       ]
@@ -115762,7 +115762,7 @@
           "type": "string"
         },
         "time": {
-          "description": "起始时间，如 \"2025-03-01 00:00:00\"（可选）",
+          "description": "起始时间，如 \"2025-03-01 00:00:00\"；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD（可选）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -115770,7 +115770,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "起始时间，如 \"2025-03-01 00:00:00\"（可选）"
+                  "value": "起始时间，如 \"2025-03-01 00:00:00\"；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD（可选）"
                 },
                 {
                   "precedence": "default",
@@ -115782,7 +115782,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "起始时间，如 \"2025-03-01 00:00:00\"（可选）"
+              "value": "起始时间，如 \"2025-03-01 00:00:00\"；--time 必须是 RFC3339、YYYY-MM-DD HH:mm:ss 或 YYYY-MM-DD（可选）"
             },
             "property": {
               "candidates": [
