@@ -4232,6 +4232,16 @@ CLI 内部自动完成全部流程:
 	return root
 }
 
+// printDocDeprecationWarning emits a deprecation warning when shared deps are
+// initialized. Schema declaration-only roots skip InitDeps; homology and other
+// Execute probes must remain nil-safe on that path.
+func printDocDeprecationWarning(msg string) {
+	if deps == nil || deps.Out == nil {
+		return
+	}
+	deps.Out.PrintWarning(msg)
+}
+
 // wrapDocDeprecated wraps a doc command's RunE to print a deprecation warning
 // directing users to the corresponding drive command. The original command
 // continues to function normally during the transition period.
@@ -4239,7 +4249,7 @@ func wrapDocDeprecated(cmd *cobra.Command, driveSubCmd string) {
 	originalRunE := cmd.RunE
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		if strings.HasPrefix(c.CommandPath(), "dws doc ") {
-			deps.Out.PrintWarning(fmt.Sprintf(
+			printDocDeprecationWarning(fmt.Sprintf(
 				"⚠️  'dws doc %s' is deprecated, use 'dws drive %s' instead.",
 				c.CommandPath()[8:], // strip "dws doc " prefix
 				driveSubCmd,
@@ -4255,7 +4265,7 @@ func wrapDocDeprecatedToWiki(cmd *cobra.Command, wikiSubCmd string) {
 	originalRunE := cmd.RunE
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		if strings.HasPrefix(c.CommandPath(), "dws doc ") {
-			deps.Out.PrintWarning(fmt.Sprintf(
+			printDocDeprecationWarning(fmt.Sprintf(
 				"⚠️  'dws doc %s' is deprecated, use 'dws %s' instead.",
 				c.CommandPath()[8:],
 				wikiSubCmd,
@@ -4271,7 +4281,7 @@ func wrapDocDeprecatedToTarget(cmd *cobra.Command, targetCmd string) {
 	originalRunE := cmd.RunE
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		if strings.HasPrefix(c.CommandPath(), "dws doc ") {
-			deps.Out.PrintWarning(fmt.Sprintf(
+			printDocDeprecationWarning(fmt.Sprintf(
 				"⚠️  'dws doc %s' is deprecated, use 'dws %s' instead.",
 				c.CommandPath()[8:],
 				targetCmd,

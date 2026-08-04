@@ -4,6 +4,7 @@
 package homology
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -19,7 +20,21 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
+
+// homologyProbeCaller is a throwaway ToolCaller for Execute-based confirmation
+// probes. Schema source roots stay declaration-only (no InitDeps); the probe
+// path initializes deps locally so leaf RunE wrappers do not nil-deref.
+type homologyProbeCaller struct{}
+
+func (homologyProbeCaller) CallTool(context.Context, string, string, map[string]any) (*edition.ToolResult, error) {
+	return &edition.ToolResult{}, nil
+}
+func (homologyProbeCaller) Format() string { return "json" }
+func (homologyProbeCaller) DryRun() bool   { return false }
+func (homologyProbeCaller) Fields() string { return "" }
+func (homologyProbeCaller) JQ() string     { return "" }
 
 // TestUserRequiredSafetyHomologyWithRuntimeGate proves Catalog Safety and the
 // executable confirmation gate share one source for every live user_required leaf:
@@ -29,6 +44,13 @@ import (
 //     Sheet protect marker, or framework NewCommand/Shortcut RunE (verified by
 //     closed-stdin Execute → confirmation_required / 用户取消了操作 without --yes)
 func TestUserRequiredSafetyHomologyWithRuntimeGate(t *testing.T) {
+	// Declaration-only Schema roots intentionally skip InitDeps. Probes Execute
+	// live leaves (including deprecated doc wrappers), so install a local
+	// throwaway caller without touching SetDynamicServers.
+	previousCaller := helpers.GetCaller()
+	helpers.InitDeps(homologyProbeCaller{})
+	t.Cleanup(func() { helpers.InitDeps(previousCaller) })
+
 	root := app.NewSchemaSourceRootCommand()
 	if root.PersistentFlags().Lookup("yes") == nil {
 		root.PersistentFlags().Bool("yes", false, "")
