@@ -4785,6 +4785,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			conversationID := mustGetFlag(cmd, "open-conversation-id")
 			messageID := mustGetFlag(cmd, "message-id")
 			outputPath := mustGetFlag(cmd, "output")
+			jsonMode := deps.Caller.Format() == "json"
 
 			switch resourceType {
 			case "mediaId":
@@ -4806,7 +4807,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			ctx := context.Background()
 
 			// Step 1: 获取下载 URL
-			deps.Out.PrintInfo("[1/2] 获取资源下载链接...")
+			if !jsonMode {
+				deps.Out.PrintInfo("[1/2] 获取资源下载链接...")
+			}
 			text, err := callMCPToolReturnTextOnServer(ctx, "im", "get_resource_download_url", map[string]any{
 				"resourceType":       resourceType,
 				"resourceId":         resourceID,
@@ -4839,11 +4842,20 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			}
 
 			// Step 2: HTTP GET 下载文件
-			deps.Out.PrintInfo(fmt.Sprintf("[2/2] 下载资源到 %s ...", outputPath))
+			if !jsonMode {
+				deps.Out.PrintInfo(fmt.Sprintf("[2/2] 下载资源到 %s ...", outputPath))
+			}
 			if err := httpGetFile(ctx, resourceURL, dlHeaders, outputPath); err != nil {
 				return err
 			}
 
+			if jsonMode {
+				return deps.Out.PrintJSONUnescaped(map[string]any{
+					"success":     true,
+					"downloadUrl": resourceURL,
+					"output":      outputPath,
+				})
+			}
 			deps.Out.PrintInfo(fmt.Sprintf("下载完成: %s", outputPath))
 			return nil
 		},
