@@ -93,41 +93,101 @@ func TestReviewedCommandFallbacksReachCanonicalDryRunPayload(t *testing.T) {
 	}
 }
 
-func TestReviewedMemberFallbackResolvesCanonicalLeafBeforeParameterValidation(t *testing.T) {
-	root := NewSchemaSourceRootCommand()
-	root.SetOut(io.Discard)
-	root.SetErr(io.Discard)
-	args := []string{
-		"chat", "+chat-group-members",
-		"--conversation-id", "cid-fixture",
-		"--member-types", "user",
+func TestReviewedReadFallbacksResolveCanonicalLeafBeforeParameterValidation(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   []string
+		target string
+	}{
+		{
+			name:   "full group members",
+			args:   []string{"chat", "+chat-group-members", "--conversation-id", "cid-fixture", "--member-types", "user"},
+			target: "chat +chat-members-list",
+		},
+		{
+			name:   "members",
+			args:   []string{"chat", "+members", "--group", "Fixture Group"},
+			target: "chat +group-members",
+		},
+		{
+			name:   "group member list",
+			args:   []string{"chat", "+group-member-list", "--group-name", "Fixture Group"},
+			target: "chat +group-members",
+		},
+		{
+			name:   "list group bots",
+			args:   []string{"chat", "+list-group-bots", "--group", "cid-fixture"},
+			target: "chat +chat-bots",
+		},
+		{
+			name:   "list robot",
+			args:   []string{"chat", "+list-robot", "--group", "cid-fixture"},
+			target: "chat +chat-bots",
+		},
+		{
+			name:   "list robots",
+			args:   []string{"chat", "+list-robots", "--group", "cid-fixture"},
+			target: "chat +chat-bots",
+		},
 	}
-	root.SetArgs(args)
-	ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), args)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ctx == nil || ctx.Command != "dws chat +chat-members-list" || len(ctx.Corrections) == 0 {
-		t.Fatalf("member fallback context = %#v", ctx)
-	}
-	wantPrefix := []string{"chat", "+chat-members-list"}
-	if len(ctx.Args) < len(wantPrefix) || !reflect.DeepEqual(ctx.Args[:len(wantPrefix)], wantPrefix) {
-		t.Fatalf("member fallback args = %v", ctx.Args)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := NewSchemaSourceRootCommand()
+			root.SetOut(io.Discard)
+			root.SetErr(io.Discard)
+			root.SetArgs(test.args)
+			ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), test.args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ctx == nil || ctx.Command != "dws "+test.target || len(ctx.Corrections) == 0 {
+				t.Fatalf("read fallback context = %#v", ctx)
+			}
+			wantPrefix := strings.Fields(test.target)
+			if len(ctx.Args) < len(wantPrefix) || !reflect.DeepEqual(ctx.Args[:len(wantPrefix)], wantPrefix) {
+				t.Fatalf("read fallback args = %v, want prefix %v", ctx.Args, wantPrefix)
+			}
+		})
 	}
 }
 
 func TestReviewedAmbiguousCommandFallbackNeverDispatches(t *testing.T) {
-	caller := &paramAliasCaptureCaller{}
-	ctx, err := executeParamAliasE2E(t, caller, "chat", "+chat-list", "--format", "json")
-	if ctx == nil {
-		t.Fatal("ambiguous command fallback returned nil context")
+	tests := []struct {
+		path       string
+		candidates []string
+	}{
+		{path: "chat +chat-list", candidates: []string{"chat +my-groups", "chat +chat-list-mine", "chat +chat-list-all", "chat +conversation-list"}},
+		{path: "chat +message-list", candidates: []string{"chat +chat-messages", "chat +messages-list-direct", "chat +search-msg", "chat +unread-chats"}},
+		{path: "chat +send", candidates: []string{"chat +messages-send", "chat +dm", "chat +send-to-group"}},
+		{path: "chat +send-message", candidates: []string{"chat +messages-send", "chat +dm", "chat +send-to-group"}},
+		{path: "chat +send-text", candidates: []string{"chat +messages-send", "chat +dm", "chat +send-to-group"}},
+		{path: "chat +send-to", candidates: []string{"chat +messages-send", "chat +dm", "chat +send-to-group"}},
+		{path: "chat +send-file", candidates: []string{"chat +messages-send", "chat message send"}},
+		{path: "chat +send-image", candidates: []string{"chat +messages-send", "chat message send"}},
+		{path: "chat +send-media", candidates: []string{"chat +messages-send", "chat message send"}},
+		{path: "oa +list-processes", candidates: []string{"oa +list-forms", "oa +my-initiated", "oa approval list-initiated"}},
 	}
-	var structured *apperrors.Error
-	if !stderrors.As(err, &structured) || structured.Reason != "ambiguous_command_fallback" || structured.ExitCode() != 3 {
-		t.Fatalf("ambiguous error = %T %#v", err, err)
-	}
-	if len(structured.Actions) != 4 || len(caller.calls) != 0 {
-		t.Fatalf("ambiguous actions=%v calls=%#v", structured.Actions, caller.calls)
+	for _, test := range tests {
+		t.Run(test.path, func(t *testing.T) {
+			caller := &paramAliasCaptureCaller{}
+			args := append(strings.Fields(test.path), "--format", "json")
+			ctx, err := executeParamAliasE2E(t, caller, args...)
+			if ctx == nil {
+				t.Fatal("ambiguous command fallback returned nil context")
+			}
+			var structured *apperrors.Error
+			if !stderrors.As(err, &structured) || structured.Reason != "ambiguous_command_fallback" || structured.ExitCode() != 3 {
+				t.Fatalf("ambiguous error = %T %#v", err, err)
+			}
+			if len(structured.Actions) != len(test.candidates) || len(caller.calls) != 0 {
+				t.Fatalf("ambiguous actions=%v calls=%#v", structured.Actions, caller.calls)
+			}
+			for _, candidate := range test.candidates {
+				if !strings.Contains(structured.Hint, "dws "+candidate) {
+					t.Errorf("ambiguous hint %q missing candidate %q", structured.Hint, candidate)
+				}
+			}
+		})
 	}
 }
 
@@ -199,6 +259,19 @@ func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T)
 		"+chat-group-search":  true,
 		"+chat-group-members": true,
 		"+chat-list":          true,
+		"+members":            true,
+		"+group-member-list":  true,
+		"+list-group-bots":    true,
+		"+list-robot":         true,
+		"+list-robots":        true,
+		"+message-list":       true,
+		"+send":               true,
+		"+send-message":       true,
+		"+send-text":          true,
+		"+send-to":            true,
+		"+send-file":          true,
+		"+send-image":         true,
+		"+send-media":         true,
 	}
 	root := NewSchemaSourceRootCommand()
 	chat := exactAppCommand(root, "chat")
@@ -223,6 +296,14 @@ func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T)
 	for _, declared := range shortcut.All() {
 		if declared.Service == "chat" && invalidShortcuts[declared.Command] {
 			t.Fatalf("fallback name %q leaked into shortcut catalog", declared.Command)
+		}
+	}
+	if _, ok := cli.ResolveMeta("oa +list-processes"); ok {
+		t.Fatal("fallback path oa +list-processes leaked into embedded Schema")
+	}
+	for _, declared := range shortcut.All() {
+		if declared.Service == "oa" && declared.Command == "+list-processes" {
+			t.Fatal("fallback name +list-processes leaked into shortcut catalog")
 		}
 	}
 

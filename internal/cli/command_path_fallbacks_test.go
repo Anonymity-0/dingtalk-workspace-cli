@@ -111,7 +111,7 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 		t.Fatalf("schema header = %#v", schema)
 	}
 	entries, err := LoadCommandPathFallbacks()
-	if err != nil || len(entries) != 6 {
+	if err != nil || len(entries) != 20 {
 		t.Fatalf("LoadCommandPathFallbacks() = %#v, %v", entries, err)
 	}
 	if got, ok := LookupCommandPathFallback("dws chat +search-group"); !ok || got.To != "chat +chat-search" {
@@ -122,12 +122,66 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 	}
 }
 
+func TestCommandPathFallbackAuditCoverage(t *testing.T) {
+	rewrites := map[string]string{
+		"chat +search-group":       "chat +chat-search",
+		"chat +group-search":       "chat +chat-search",
+		"chat +chat-group-search":  "chat +chat-search",
+		"chat +chat-group-members": "chat +chat-members-list",
+		"chat +members":            "chat +group-members",
+		"chat +group-member-list":  "chat +group-members",
+		"chat +list-group-bots":    "chat +chat-bots",
+		"chat +list-robot":         "chat +chat-bots",
+		"chat +list-robots":        "chat +chat-bots",
+		"chat group search":        "chat search",
+	}
+	for from, to := range rewrites {
+		entry, ok := LookupCommandPathFallback(from)
+		if !ok || entry.Mode != CommandPathFallbackRewrite || entry.To != to {
+			t.Errorf("rewrite %q = %#v, %v; want %q", from, entry, ok, to)
+		}
+	}
+
+	ambiguous := map[string][]string{
+		"chat +chat-list":    {"chat +my-groups", "chat +chat-list-mine", "chat +chat-list-all", "chat +conversation-list"},
+		"chat +message-list": {"chat +chat-messages", "chat +messages-list-direct", "chat +search-msg", "chat +unread-chats"},
+		"chat +send":         {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-message": {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-text":    {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-to":      {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-file":    {"chat +messages-send", "chat message send"},
+		"chat +send-image":   {"chat +messages-send", "chat message send"},
+		"chat +send-media":   {"chat +messages-send", "chat message send"},
+		"oa +list-processes": {"oa +list-forms", "oa +my-initiated", "oa approval list-initiated"},
+	}
+	for from, candidates := range ambiguous {
+		entry, ok := LookupCommandPathFallback(from)
+		if !ok || entry.Mode != CommandPathFallbackAmbiguous || !reflect.DeepEqual(entry.Candidates, candidates) {
+			t.Errorf("ambiguous %q = %#v, %v; want %v", from, entry, ok, candidates)
+		}
+	}
+
+	for _, path := range []string{
+		"chat +read-single",
+		"chat +send-dm",
+		"chat +send-single",
+		"chat +group-send-text",
+		"chat +send-by-bot",
+		"chat +rename-group",
+	} {
+		if entry, ok := LookupCommandPathFallback(path); ok {
+			t.Errorf("unsafe or contract-incomplete path %q unexpectedly falls back: %#v", path, entry)
+		}
+	}
+}
+
 func TestReduceCommandPathFallbacksValidatesLiveTree(t *testing.T) {
 	root := commandFallbackTestRoot()
 	entries := []CommandPathFallback{
 		{From: "chat +bad", Mode: CommandPathFallbackRewrite, To: "chat +good", Reviewed: true, ReviewReason: "fixture"},
 		{From: "chat group search", Mode: CommandPathFallbackRewrite, To: "chat search", Reviewed: true, ReviewReason: "fixture"},
 		{From: "chat +choose", Mode: CommandPathFallbackAmbiguous, Candidates: []string{"chat +good", "chat +other"}, Reviewed: true, ReviewReason: "fixture"},
+		{From: "chat +mixed", Mode: CommandPathFallbackAmbiguous, Candidates: []string{"chat +good", "chat search"}, Reviewed: true, ReviewReason: "fixture"},
 	}
 	withCommandFallbackSource(t, entries)
 	got, err := ReduceCommandPathFallbacks(root)

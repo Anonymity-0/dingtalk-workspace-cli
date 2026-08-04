@@ -58,6 +58,7 @@
           "type": "array",
           "minItems": 2,
           "uniqueItems": true,
+          "description": "Canonical public runnable paths offered for an ambiguous source. Because ambiguous recovery never dispatches, candidates may mix reviewed shortcuts and native leaves within the same service.",
           "items": {
             "$ref": "#/$defs/commandPath"
           }

@@ -43,6 +43,138 @@
       "review_reason": "H12 evaluation badcase: chat-list does not identify whether the user wants joined groups, managed groups, every group, or all group/direct conversations."
     },
     {
+      "from": "chat +members",
+      "mode": "rewrite",
+      "to": "chat +group-members",
+      "reviewed": true,
+      "review_reason": "20260728 evaluation badcases emitted +members three times for listing members of a group selected by name; +group-members is the unique reviewed read-only shortcut for that intent."
+    },
+    {
+      "from": "chat +group-member-list",
+      "mode": "rewrite",
+      "to": "chat +group-members",
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +group-member-list for a group-name member lookup; +group-members is the unique reviewed read-only shortcut and canonical parameter validation remains authoritative."
+    },
+    {
+      "from": "chat +list-group-bots",
+      "mode": "rewrite",
+      "to": "chat +chat-bots",
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +list-group-bots for listing robots in one group; +chat-bots is the unique reviewed read-only shortcut. The fallback preserves flags and does not reinterpret generic IDs."
+    },
+    {
+      "from": "chat +list-robot",
+      "mode": "rewrite",
+      "to": "chat +chat-bots",
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted singular +list-robot for listing robots in one group; +chat-bots is the unique reviewed read-only shortcut. The fallback preserves flags and does not reinterpret generic IDs."
+    },
+    {
+      "from": "chat +list-robots",
+      "mode": "rewrite",
+      "to": "chat +chat-bots",
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +list-robots for listing robots in one group; +chat-bots is the unique reviewed read-only shortcut. The fallback preserves flags and does not reinterpret generic IDs."
+    },
+    {
+      "from": "chat +message-list",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +chat-messages",
+        "chat +messages-list-direct",
+        "chat +search-msg",
+        "chat +unread-chats"
+      ],
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +message-list without identifying group versus direct history, conversation history versus cross-chat search, or ordinary versus unread conversations; no candidate may be selected automatically."
+    },
+    {
+      "from": "chat +send",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +messages-send",
+        "chat +dm",
+        "chat +send-to-group"
+      ],
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +send without a stable recipient type or sending identity; the write operation must stop until the caller chooses the unified, resolved-direct, or resolved-group workflow."
+    },
+    {
+      "from": "chat +send-message",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +messages-send",
+        "chat +dm",
+        "chat +send-to-group"
+      ],
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +send-message without a stable recipient type or sending identity; the write operation must stop until the caller chooses the unified, resolved-direct, or resolved-group workflow."
+    },
+    {
+      "from": "chat +send-text",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +messages-send",
+        "chat +dm",
+        "chat +send-to-group"
+      ],
+      "reviewed": true,
+      "review_reason": "20260728 evaluation identified text content but not a stable recipient type or sending identity; the write operation must stop until the caller chooses the unified, resolved-direct, or resolved-group workflow."
+    },
+    {
+      "from": "chat +send-to",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +messages-send",
+        "chat +dm",
+        "chat +send-to-group"
+      ],
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +send-to without proving whether the recipient denotes a user, group, or low-level identifier; the write operation must not choose a target workflow automatically."
+    },
+    {
+      "from": "chat +send-file",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +messages-send",
+        "chat message send"
+      ],
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +send-file fifteen times with incompatible target and file parameter spellings; stop before dispatch and let the caller choose the unified shortcut or native current-user file workflow."
+    },
+    {
+      "from": "chat +send-image",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +messages-send",
+        "chat message send"
+      ],
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +send-image without proving whether the input is an existing mediaId or a local file; stop before dispatch and let the caller choose the reviewed unified or native workflow."
+    },
+    {
+      "from": "chat +send-media",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +messages-send",
+        "chat message send"
+      ],
+      "reviewed": true,
+      "review_reason": "20260728 evaluation emitted +send-media without a concrete media type, sending identity, or compatible parameter contract; stop before dispatch and let the caller choose the reviewed unified or native workflow."
+    },
+    {
+      "from": "oa +list-processes",
+      "mode": "ambiguous",
+      "candidates": [
+        "oa +list-forms",
+        "oa +my-initiated",
+        "oa approval list-initiated"
+      ],
+      "reviewed": true,
+      "review_reason": "20260720 merged evaluation emitted +list-processes, but process can mean approval forms/templates or approval instances initiated by the current user; stop and present both shortcut workflows plus the exact native instance leaf."
+    },
+    {
       "from": "chat group search",
       "mode": "rewrite",
       "to": "chat search",

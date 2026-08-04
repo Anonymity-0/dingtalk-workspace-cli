@@ -215,13 +215,16 @@ func ReduceCommandPathFallbacks(root *cobra.Command) ([]CommandPathFallback, err
 			if _, chained := byFrom[entry.To]; chained {
 				problems = append(problems, fmt.Sprintf("rewrite %q targets fallback source %q; chained fallbacks are forbidden", entry.From, entry.To))
 			}
-			problems = append(problems, validateCommandFallbackTarget(root, entry.From, entry.To)...)
+			problems = append(problems, validateCommandFallbackTarget(root, entry.From, entry.To, true)...)
 		case CommandPathFallbackAmbiguous:
 			for _, candidate := range entry.Candidates {
 				if _, chained := byFrom[candidate]; chained {
 					problems = append(problems, fmt.Sprintf("ambiguous fallback %q candidate %q is another fallback source", entry.From, candidate))
 				}
-				problems = append(problems, validateCommandFallbackTarget(root, entry.From, candidate)...)
+				// Ambiguous recovery never dispatches. It may therefore point the
+				// caller at both canonical shortcuts and native leaves, while exact
+				// rewrites keep the stricter +shortcut identity boundary.
+				problems = append(problems, validateCommandFallbackTarget(root, entry.From, candidate, false)...)
 			}
 		default:
 			problems = append(problems, fmt.Sprintf("fallback %q has unsupported mode %q", entry.From, entry.Mode))
@@ -235,12 +238,12 @@ func ReduceCommandPathFallbacks(root *cobra.Command) ([]CommandPathFallback, err
 	return cloneCommandPathFallbacks(entries), nil
 }
 
-func validateCommandFallbackTarget(root *cobra.Command, from, target string) []string {
+func validateCommandFallbackTarget(root *cobra.Command, from, target string, requireShortcutParity bool) []string {
 	var problems []string
 	if commandFallbackService(from) != commandFallbackService(target) {
 		problems = append(problems, fmt.Sprintf("fallback %q crosses service boundary to %q", from, target))
 	}
-	if commandFallbackHasShortcut(from) != commandFallbackHasShortcut(target) {
+	if requireShortcutParity && commandFallbackHasShortcut(from) != commandFallbackHasShortcut(target) {
 		problems = append(problems, fmt.Sprintf("fallback %q and target %q disagree on +shortcut identity", from, target))
 	}
 	match, err := resolveExactCobraPath(root, target)

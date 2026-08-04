@@ -79,9 +79,29 @@ var paramAliasCompleteCommands = map[string][]string{
 	"ding +receiver-status":                    {"ding", "+receiver-status", "--ding-id", "ding-1"},
 	"ding message receiver-status":             {"ding", "message", "receiver-status", "--ding-id", "ding-1"},
 	"ding message send":                        {"ding", "message", "send", "--robot-code", "robot-1", "--content", "fixture", "--users", "user-1", "--yes"},
+	"doc +comment-create":                      {"doc", "+comment-create", "--node", "node-1", "--content", "fixture comment", "--yes"},
+	"doc +comment-list":                        {"doc", "+comment-list", "--node", "node-1", "--limit", "7", "--cursor", "cursor-1"},
+	"doc +comment-reply":                       {"doc", "+comment-reply", "--node", "node-1", "--comment-key", "comment-1", "--content", "fixture reply", "--yes"},
+	"doc +copy":                                {"doc", "+copy", "--node", "node-1", "--workspace", "workspace-1", "--yes"},
+	"doc +doc-append":                          {"doc", "+doc-append", "--doc", "node-1", "--text", "fixture appendix", "--yes"},
+	"doc +export-submit":                       {"doc", "+export-submit", "--node", "node-1", "--export-format", "docx"},
+	"doc +find-doc":                            {"doc", "+find-doc", "--query", "fixture", "--limit", "7"},
+	"doc +list":                                {"doc", "+list", "--folder", "folder-1", "--cursor", "cursor-1"},
+	"doc +move":                                {"doc", "+move", "--node", "node-1", "--folder", "folder-1", "--yes"},
+	"doc +search":                              {"doc", "+search", "--query", "fixture", "--limit", "7", "--cursor", "cursor-1"},
+	"doc +template-list":                       {"doc", "+template-list", "--source", "MY", "--limit", "7", "--cursor", "cursor-1"},
 	"doc +template-search":                     {"doc", "+template-search", "--query", "fixture", "--source", "MY", "--limit", "7"},
+	"doc +version-list":                        {"doc", "+version-list", "--node", "node-1", "--limit", "7", "--cursor", "cursor-1"},
+	"doc +version-revert":                      {"doc", "+version-revert", "--node", "node-1", "--version", "3", "--yes"},
+	"doc +version-save":                        {"doc", "+version-save", "--node", "node-1", "--yes"},
 	"doc block insert":                         {"doc", "block", "insert", "--node", "node-1", "--text", "fixture paragraph", "--yes"},
 	"doc block update":                         {"doc", "block", "update", "--node", "node-1", "--block-id", "block-1", "--text", "fixture paragraph", "--yes"},
+	"doc comment create":                       {"doc", "comment", "create", "--node", "node-1", "--content", "fixture comment", "--yes"},
+	"doc comment create-inline":                {"doc", "comment", "create-inline", "--node", "node-1", "--block-id", "block-1", "--start", "0", "--end", "7", "--content", "fixture comment", "--yes"},
+	"doc comment delete":                       {"doc", "comment", "delete", "--node", "node-1", "--comment-key", "comment-1", "--yes"},
+	"doc comment reply":                        {"doc", "comment", "reply", "--node", "node-1", "--comment-key", "comment-1", "--content", "fixture reply", "--mentioned-open-conversation-id", "cid-1,cid-2", "--yes"},
+	"doc comment update":                       {"doc", "comment", "update", "--node", "node-1", "--comment-key", "comment-1", "--content", "fixture update", "--yes"},
+	"doc version revert":                       {"doc", "version", "revert", "--node", "node-1", "--version", "3", "--yes"},
 	"drive info":                               {"drive", "info", "--node", "node-1", "--space-id", "space-1"},
 	"drive list":                               {"drive", "list", "--folder", "folder-1", "--limit", "7"},
 	"mail +find-mail-user":                     {"mail", "+find-mail-user", "--query", "fixture", "--limit", "7"},
@@ -99,6 +119,13 @@ var paramAliasCompleteCommands = map[string][]string{
 // that case the shared command template above cannot contain every canonical
 // flag at once, so select a fixture-specific complete invocation here.
 var paramAliasCompleteCommandVariants = map[string]map[string][]string{
+	"doc +copy": {
+		"folder":    {"doc", "+copy", "--node", "node-1", "--folder", "folder-1", "--yes"},
+		"workspace": {"doc", "+copy", "--node", "node-1", "--workspace", "workspace-1", "--yes"},
+	},
+	"doc block insert": {
+		"parent-block": {"doc", "block", "insert", "--node", "node-1", "--parent-block", "parent-block-1", "--index", "0", "--text", "fixture paragraph", "--yes"},
+	},
 	"chat message list": {
 		"user": {"chat", "message", "list", "--user", "user-1", "--time", "2026-03-10 00:00:00", "--limit", "7"},
 	},
@@ -159,14 +186,23 @@ var paramAliasNewIMCases = []struct {
 // That duplicated command construction was enough to push the pre-existing
 // macOS app suite beyond its package-level 10-minute timeout.
 var paramAliasRepresentativePayloadCases = map[string]bool{
-	paramAliasPayloadCaseKey("aitable +record-query", "base"):         true, // concept alias on a shortcut read
-	paramAliasPayloadCaseKey("attendance check result", "user-ids"):   true, // list-valued concept alias
-	paramAliasPayloadCaseKey("calendar event list", "date"):           true, // time concept alias
-	paramAliasPayloadCaseKey("chat message add-favorite", "msg-id"):   true, // scoped IM identifier alias
-	paramAliasPayloadCaseKey("contact user profile get", "user-id"):   true, // native compatibility flag
-	paramAliasPayloadCaseKey("devdoc article search", "current-page"): true, // command override
-	paramAliasPayloadCaseKey("mail folder update", "folder-id"):       true, // write-command identifier alias
-	paramAliasPayloadCaseKey("report list", "from-date"):              true, // date-range concept alias
+	paramAliasPayloadCaseKey("aitable +record-query", "base"):                        true, // concept alias on a shortcut read
+	paramAliasPayloadCaseKey("attendance check result", "user-ids"):                  true, // list-valued concept alias
+	paramAliasPayloadCaseKey("calendar event list", "date"):                          true, // time concept alias
+	paramAliasPayloadCaseKey("chat message add-favorite", "msg-id"):                  true, // scoped IM identifier alias
+	paramAliasPayloadCaseKey("contact user profile get", "user-id"):                  true, // native compatibility flag
+	paramAliasPayloadCaseKey("devdoc article search", "current-page"):                true, // command override
+	paramAliasPayloadCaseKey("doc +comment-create", "body"):                          true, // write shortcut content alias
+	paramAliasPayloadCaseKey("doc +copy", "parent-folder-id"):                        true, // Doc folder role on a write shortcut
+	paramAliasPayloadCaseKey("doc +export-submit", "doc-id"):                         true, // Doc node identifier alias
+	paramAliasPayloadCaseKey("doc +template-list", "next-token"):                     true, // Doc cursor alias on a read shortcut
+	paramAliasPayloadCaseKey("doc +version-revert", "version-number"):                true, // high-write version role with canonical confirmation
+	paramAliasPayloadCaseKey("doc block insert", "content"):                          true, // block write content alias
+	paramAliasPayloadCaseKey("doc block insert", "parent-block-id"):                  true, // scoped block-role alias
+	paramAliasPayloadCaseKey("doc comment delete", "comment-id"):                     true, // destructive comment-key alias
+	paramAliasPayloadCaseKey("doc comment reply", "mentioned-open-conversation-ids"): true, // list-valued group mention role
+	paramAliasPayloadCaseKey("mail folder update", "folder-id"):                      true, // write-command identifier alias
+	paramAliasPayloadCaseKey("report list", "from-date"):                             true, // date-range concept alias
 }
 
 func TestReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads(t *testing.T) {
