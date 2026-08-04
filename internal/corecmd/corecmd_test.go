@@ -1729,6 +1729,10 @@ func TestRegisterFlagsMarkRequiredWithAliasesPanics(t *testing.T) {
 	}})
 }
 
+func TestCrossPlatformCoverageRegisterFlagsMarkRequiredWithAliasesPanics(t *testing.T) {
+	TestRegisterFlagsMarkRequiredWithAliasesPanics(t)
+}
+
 func TestCrossPlatformCoverageBuildArgsInvalidArgDefault(t *testing.T) {
 	flags := []FlagSpec{{Name: "page-size", Usage: "P", Kind: KindInt, ArgDefault: "not-a-number"}}
 	cmd := newTestCommand()

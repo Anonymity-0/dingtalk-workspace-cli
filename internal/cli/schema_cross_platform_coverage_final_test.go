@@ -245,6 +245,23 @@ func TestCrossPlatformCoverageFinalChangedStatementGaps(t *testing.T) {
 		}
 	})
 
+	t.Run("schemaOverviewPayloadFromLoaded render failure", func(t *testing.T) {
+		prev := renderDeliverySchemaOverview
+		t.Cleanup(func() { renderDeliverySchemaOverview = prev })
+		renderDeliverySchemaOverview = func(SchemaRegistry) (map[string]any, error) {
+			return nil, errors.New("overview failed")
+		}
+		if _, err := schemaOverviewPayloadFromLoaded(loadedSchemaCatalog{}); err == nil || !strings.Contains(err.Error(), "overview failed") {
+			t.Fatalf("overview error = %v", err)
+		}
+	})
+
+	t.Run("marshalSchemaRaw marshal failure", func(t *testing.T) {
+		if _, err := marshalSchemaRaw(map[string]any{"bad": func() {}}); err == nil {
+			t.Fatal("unmarshalable value must fail marshalSchemaRaw")
+		}
+	})
+
 }
 
 func TestCrossPlatformCoverageDeliverySchemaPayloadAndResolveMetaFactory(t *testing.T) {
