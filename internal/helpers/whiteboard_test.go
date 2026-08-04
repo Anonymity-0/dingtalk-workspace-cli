@@ -22,6 +22,7 @@ type whiteboardTestCall struct {
 type whiteboardTestCaller struct {
 	dry      bool
 	format   string
+	err      func(whiteboardTestCall, int) error
 	response func(whiteboardTestCall, int) string
 	calls    []whiteboardTestCall
 }
@@ -29,6 +30,11 @@ type whiteboardTestCaller struct {
 func (c *whiteboardTestCaller) CallTool(_ context.Context, server, tool string, args map[string]any) (*edition.ToolResult, error) {
 	call := whiteboardTestCall{server: server, tool: tool, args: args}
 	c.calls = append(c.calls, call)
+	if c.err != nil {
+		if err := c.err(call, len(c.calls)-1); err != nil {
+			return nil, err
+		}
+	}
 	text := `{}`
 	if c.response != nil {
 		text = c.response(call, len(c.calls)-1)

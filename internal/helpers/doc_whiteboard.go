@@ -21,6 +21,8 @@ const (
 var (
 	whiteboardRetryDelays = []time.Duration{500 * time.Millisecond, time.Second, 2 * time.Second}
 	whiteboardSleep       = time.Sleep
+	whiteboardJSONMarshal = json.Marshal
+	prepareWhiteboardCard = prepareJsonMLNode
 )
 
 func buildWhiteboardCardJSONML(blockUUID, whiteboardID string) string {
@@ -35,7 +37,7 @@ func buildWhiteboardCardJSONML(blockUUID, whiteboardID string) string {
 		[]any{"span", map[string]any{"data-type": "text"},
 			[]any{"span", map[string]any{"data-type": "leaf"}, ""}},
 	}
-	out, err := json.Marshal(node)
+	out, err := whiteboardJSONMarshal(node)
 	if err != nil {
 		return ""
 	}
@@ -111,7 +113,7 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 	blockUUID := uuid.New().String()
 	whiteboardID := uuid.New().String()
 	element := buildWhiteboardCardJSONML(blockUUID, whiteboardID)
-	normalized, err := prepareJsonMLNode(cmd, element)
+	normalized, err := prepareWhiteboardCard(cmd, element)
 	if err != nil {
 		return fmt.Errorf("内部错误: 白板卡片模板未通过 JSONML 校验: %w", err)
 	}

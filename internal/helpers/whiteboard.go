@@ -32,6 +32,8 @@ type whiteboardOpenSource struct {
 	Nodes          json.RawMessage `json:"nodes"`
 }
 
+var compactWhiteboardJSON = json.Compact
+
 func newWhiteboardCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "whiteboard",
@@ -197,7 +199,7 @@ func validateWhiteboardNodes(raw json.RawMessage) (string, int, error) {
 	}
 
 	var compact bytes.Buffer
-	if err := json.Compact(&compact, raw); err != nil {
+	if err := compactWhiteboardJSON(&compact, raw); err != nil {
 		return "", 0, invalidWhiteboardSourceJSON(err)
 	}
 	return compact.String(), len(nodes), nil
