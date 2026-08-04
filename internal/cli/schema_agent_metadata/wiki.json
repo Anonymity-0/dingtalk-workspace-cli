@@ -259,6 +259,265 @@
         "当你只记得知识库名称的部分关键词、想快速按名称定位某个知识库时使用；输入关键词返回匹配的知识库列表，比逐页 +space-list 更快找到目标 workspaceId。"
       ]
     },
+    "wiki feed list": {
+      "agent_summary": "查询知识库的活动动态：谁在什么时间更新/上传/评论了哪些文档",
+      "agent_summary_source": "dws-agent-selection/wiki",
+      "availability": "available",
+      "avoid_when": [
+        "要看知识库当前有哪些节点用 node list；库内按关键词找文档用 node search",
+        "要读某篇文档正文用 doc read；跨库全局找文件用 drive search"
+      ],
+      "confirmation": "not_required",
+      "effect": "read",
+      "effect_source": "command-verb",
+      "examples": [
+        "dws wiki feed list --workspace \u003cworkspaceId\u003e --format json",
+        "dws wiki feed list --workspace \u003cworkspaceId\u003e --limit 10 --format json"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "查询知识库的活动动态：谁在什么时间更新/上传/评论了哪些文档",
+          "source": "internal/cli/schema_hints/selection/wiki.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+          "candidates": [
+            {
+              "value": "查询知识库的活动动态：谁在什么时间更新/上传/评论了哪些文档",
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。"
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/wiki.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/wiki.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands."
+            },
+            {
+              "value": "available",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": false
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "要看知识库当前有哪些节点用 node list；库内按关键词找文档用 node search",
+            "要读某篇文档正文用 doc read；跨库全局找文件用 drive search"
+          ],
+          "source": "internal/cli/schema_hints/selection/wiki.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+          "candidates": [
+            {
+              "value": [
+                "要看知识库当前有哪些节点用 node list；库内按关键词找文档用 node search",
+                "要读某篇文档正文用 doc read；跨库全局找文件用 drive search"
+              ],
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。"
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "not_required",
+          "source": "risk-default",
+          "precedence": "inference_or_default",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": "not_required",
+              "source": "risk-default",
+              "precedence": "inference_or_default",
+              "selected": true
+            }
+          ]
+        },
+        "effect": {
+          "value": "read",
+          "source": "command-verb",
+          "precedence": "inference_or_default",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": "read",
+              "source": "command-verb",
+              "precedence": "inference_or_default",
+              "selected": true
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws wiki feed list --workspace \u003cworkspaceId\u003e --format json",
+            "dws wiki feed list --workspace \u003cworkspaceId\u003e --limit 10 --format json"
+          ],
+          "source": "internal/cli/schema_hints/selection/wiki.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+          "candidates": [
+            {
+              "value": [
+                "dws wiki feed list --workspace \u003cworkspaceId\u003e --format json",
+                "dws wiki feed list --workspace \u003cworkspaceId\u003e --limit 10 --format json"
+              ],
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。"
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "idempotent",
+          "source": "effect-default",
+          "precedence": "inference_or_default",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": "idempotent",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": true
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "mcp",
+          "source": "internal/cli/schema_hints/metadata/wiki.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands.",
+          "candidates": [
+            {
+              "value": "mcp",
+              "source": "internal/cli/schema_hints/metadata/wiki.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands."
+            },
+            {
+              "value": "mcp",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": false
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": "wiki.list_workspace_feeds",
+          "source": "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds.interface_ref",
+          "precedence": "mcp_fallback",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": "wiki.list_workspace_feeds",
+              "source": "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds.interface_ref",
+              "precedence": "mcp_fallback",
+              "selected": true
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/wiki.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/wiki.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Live wiki MCP tools/list exposes list_workspace_feeds as a read-only knowledge base activity query. The reviewed CLI leaf forwards workspaceId/maxResults/nextToken/excludeFile to the native wiki server and adds no side effects, so it keeps the same read-only posture as the sibling wiki list commands."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。"
+            }
+          ]
+        },
+        "risk": {
+          "value": "low",
+          "source": "effect-default",
+          "precedence": "inference_or_default",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": "low",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": true
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "用户问某个知识库最近有什么更新、谁改了什么、有哪些评论等协作动态时",
+            "需要巡检知识库变更并按时间线汇总成动态摘要时"
+          ],
+          "source": "internal/cli/schema_hints/selection/wiki.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。",
+          "candidates": [
+            {
+              "value": [
+                "用户问某个知识库最近有什么更新、谁改了什么、有哪些评论等协作动态时",
+                "需要巡检知识库变更并按时间线汇总成动态摘要时"
+              ],
+              "source": "internal/cli/schema_hints/selection/wiki.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "人工审阅：依据 wiki MCP 实时 tools/list 的 list_workspace_feeds description/inputSchema 与 Cobra Long 手写选型文案，并与 node list / node search / doc read / drive search 划清路由边界；不改变命令身份、参数契约或接口绑定。"
+            }
+          ]
+        }
+      },
+      "idempotency": "idempotent",
+      "interface_mode": "mcp",
+      "interface_ref": {
+        "product_id": "wiki",
+        "rpc_name": "list_workspace_feeds"
+      },
+      "reviewed": true,
+      "risk": "low",
+      "source_refs": [
+        "CommandRegistry:canonical_path=wiki.list_workspace_feeds",
+        "Skill:skills/mono/references/products/wiki.md",
+        "cobra-help:dws wiki feed list",
+        "internal/cli/schema_hints/metadata/wiki.json",
+        "internal/cli/schema_hints/selection/wiki.json",
+        "internal/cli/schema_mcp_metadata.json#tools.wiki.list_workspace_feeds",
+        "live-mcp-tools-list:wiki.list_workspace_feeds",
+        "skills/mono/references/products/wiki.md"
+      ],
+      "use_when": [
+        "用户问某个知识库最近有什么更新、谁改了什么、有哪些评论等协作动态时",
+        "需要巡检知识库变更并按时间线汇总成动态摘要时"
+      ]
+    },
     "wiki member add": {
       "agent_summary": "为指定知识库添加一个或多个成员，并授予指定角色",
       "agent_summary_source": "dws-agent-selection/wiki",

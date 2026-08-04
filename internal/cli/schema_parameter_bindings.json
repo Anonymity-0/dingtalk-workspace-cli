@@ -2,8 +2,8 @@
   "version": 3,
   "baseline": {
     "manifest": "schema-parameter-bindings-v3",
-    "sha256": "sha256:ff0f76145dd27da5429434a348344c9cdf74c44eaf6f4ea5411d29d904a9066f",
-    "reason": "Reviewed v3 baseline after binding sheet.info --include to the include property while porting the wukong sheet info expansion flag.",
+    "sha256": "sha256:43147fbb7881204bc9cf9662543c7d49d7aefdfa82a2f9e684923547e0b8a0bd",
+    "reason": "Reviewed v3 baseline after binding wiki.list_workspace_feeds --workspace/--limit/--cursor/--exclude-file to the workspaceId/maxResults/nextToken/excludeFile properties while porting the wukong knowledge base feed query command.",
     "reviewed": true
   },
   "removals": {
@@ -1324,6 +1324,12 @@
       "limit": "pageSize",
       "workspace": "workspaceId"
     },
+    "wiki.list_workspace_feeds": {
+      "cursor": "nextToken",
+      "exclude-file": "excludeFile",
+      "limit": "maxResults",
+      "workspace": "workspaceId"
+    },
     "wiki.node_copy": {
       "folder": "targetFolderId",
       "node": "nodeId",
@@ -1790,9 +1796,15 @@
     "drive.apply_permission --reason": "Reviewed unpinned adapter: drive.apply_permission has no singular pinned interface_ref; --reason is a CLI wrapper input and does not publish a direct interface property.",
     "drive.apply_permission --role": "Reviewed unpinned adapter: drive.apply_permission has no singular pinned interface_ref; --role is a CLI wrapper input and does not publish a direct interface property.",
     "drive.apply_permission --users": "Reviewed unpinned adapter: drive.apply_permission has no singular pinned interface_ref; --users is a CLI wrapper input and does not publish a direct interface property.",
+    "drive.download_file --no-resume": "CLI-only transfer-layer flag controlling download resume behaviour; not an MCP interface parameter.",
     "drive.download_file --output": "local output path",
+    "drive.download_file --parallel": "CLI-only transfer-layer flag controlling parallel chunk downloads; not an MCP interface parameter.",
+    "drive.download_file --part-size": "CLI-only transfer-layer flag controlling download chunk size; not an MCP interface parameter.",
+    "drive.download_file_version --no-resume": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --no-resume is a CLI wrapper input and does not publish a direct interface property.",
     "drive.download_file_version --node": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --node is a CLI wrapper input and does not publish a direct interface property.",
     "drive.download_file_version --output": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --output is a CLI wrapper input and does not publish a direct interface property.",
+    "drive.download_file_version --parallel": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --parallel is a CLI wrapper input and does not publish a direct interface property.",
+    "drive.download_file_version --part-size": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --part-size is a CLI wrapper input and does not publish a direct interface property.",
     "drive.download_file_version --version": "Reviewed unpinned adapter: drive.download_file_version has no singular pinned interface_ref; --version is a CLI wrapper input and does not publish a direct interface property.",
     "drive.get_cover --node": "Reviewed unpinned adapter: drive.get_cover has no singular pinned interface_ref; --node is a CLI wrapper input and does not publish a direct interface property.",
     "drive.get_star_list --content-types": "Reviewed unpinned adapter: drive.get_star_list has no singular pinned interface_ref; --content-types is a CLI wrapper input and does not publish a direct interface property.",

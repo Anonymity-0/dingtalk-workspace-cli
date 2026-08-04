@@ -132,6 +132,9 @@ func TestCrossPlatformCoverageWikiRoutingAndValidationEdges(t *testing.T) {
 		{"space", "list", "--type", "orgSpace", "--limit", "3", "--cursor", "next"},
 		{"space", "list", "--type", "mySpace", "--limit", "not-a-number"},
 		{"space", "search", "--type", "myWikiSpace"},
+		{"feed", "list", "--workspace", "space"},
+		{"feed", "list", "--workspace", "space", "--limit", "3", "--cursor", "next", "--exclude-file"},
+		{"feed", "list", "--workspace-id", "space", "--page-token", "next"},
 	} {
 		if err := executeWikiEdge(t, args...); err != nil {
 			t.Fatalf("Execute(%v): %v", args, err)
@@ -142,6 +145,7 @@ func TestCrossPlatformCoverageWikiRoutingAndValidationEdges(t *testing.T) {
 		{"node", "create", "--workspace", "space", "--name", "name", "--folder", "123"},
 		{"node", "copy", "--workspace", "space", "--node", "node", "--folder", "123"},
 		{"node", "move", "--workspace", "space", "--node", "node", "--folder", "123"},
+		{"feed", "list"},
 	} {
 		if err := executeWikiEdge(t, args...); err == nil {
 			t.Fatalf("Execute(%v) returned nil", args)

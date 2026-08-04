@@ -1,20 +1,20 @@
 {
   "version": 1,
-  "source_hash": "sha256:b513a679eb51b64afa3f31364b45c29bc4590f0568908650f426ac8f4b041b2b",
-  "surface_hash": "sha256:41044fe1b6723564c40d684381ac6d6f23c4dfd58f9769350f02f223f02fa894",
+  "source_hash": "sha256:1f76aa71b00f7b807b863ced6e98aca76dc4bda65107ea2a6c67eb4ec629db43",
+  "surface_hash": "sha256:89bc72d0a5ff03df634d733dc8b71c3010572524542538552c33c657ae012562",
   "source_files": 160,
   "hint_files": 54,
   "hint_products": 43,
-  "hint_tools": 1844,
+  "hint_tools": 1846,
   "interface_metadata": {
     "source": "mcp-tools-list+cli-registry",
     "revision": "4574f7022c32cf4c033e9b7b4156e2fec815fed8",
     "source_hash": "sha256:17251f74a4f76142457cc0e87251ecb86c1e3bda0cdf2edc02f351589716ecbc",
-    "source_tools": 419,
-    "surface_tools": 414,
-    "eligible_summaries": 413,
+    "source_tools": 420,
+    "surface_tools": 415,
+    "eligible_summaries": 414,
     "applied_summaries": 0,
-    "preserved_summaries": 413,
+    "preserved_summaries": 414,
     "rejected_tools": [
       "chat.unread_message_conversation_list"
     ],
@@ -29,13 +29,13 @@
   "coverage": {
     "surface_products": 26,
     "products_with_metadata": 26,
-    "surface_tools": 846,
-    "tools_with_metadata": 846,
-    "tools_with_agent_summary": 846,
-    "tools_with_use_when": 846,
-    "tools_with_avoid_when": 846,
-    "tools_with_examples": 846,
-    "tools_with_interface_mode": 846,
+    "surface_tools": 847,
+    "tools_with_metadata": 847,
+    "tools_with_agent_summary": 847,
+    "tools_with_use_when": 847,
+    "tools_with_avoid_when": 847,
+    "tools_with_examples": 847,
+    "tools_with_interface_mode": 847,
     "unmatched_skill_tools": 122,
     "unreviewed_skill_tools": 11
   },
@@ -155,8 +155,8 @@
       "tool_path": "wiki",
       "candidates": [
         "wiki +space-search",
-        "wiki member add",
-        "wiki member list"
+        "wiki feed list",
+        "wiki member add"
       ],
       "review": {
         "status": "group",
