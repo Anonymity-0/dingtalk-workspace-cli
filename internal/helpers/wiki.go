@@ -158,8 +158,8 @@ func newWikiCommand() *cobra.Command {
 	})
 	root := &cobra.Command{
 		Use:   "wiki",
-		Short: "知识库 / 空间管理 / 节点管理 / 成员管理",
-		Long:  `管理钉钉文档知识库：空间管理（创建/查看/列出/搜索/删除）、节点管理（列出/创建/复制/移动/删除）、成员管理（添加/更新/列出/移除）。`,
+		Short: "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
+		Long:  `管理钉钉文档知识库：空间管理（创建/查看/列出/搜索/删除）、节点管理（列出/创建/复制/移动/删除）、成员管理（添加/更新/列出/移除）、动态查询（知识库活动动态）。`,
 		RunE:  groupRunE,
 	}
 
@@ -1305,6 +1305,102 @@ ORG 类型授权不会出现在查询结果中。`,
 	nodeCmd.AddCommand(nodeListCmd, nodeCreateCmd, nodeCopyCmd, nodeMoveCmd, nodeDeleteCmd, nodeSearchCmd)
 
 	root.AddCommand(nodeCmd)
+
+	// ── feed (知识库动态查询) ─────────────────────────────────
+	feedCmd := &cobra.Command{
+		Use:   "feed",
+		Short: "知识库动态查询",
+		Long:  `查询知识库的动态：谁在什么时间更新/上传/评论了哪些文档。`,
+		RunE:  groupRunE,
+	}
+
+	feedListCmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "查询知识库动态列表",
+		Long: `查询指定知识库的动态列表，返回动态类型、时间、内容摘要等信息。
+
+通过 --workspace 指定知识库，支持传入知识库 ID 或知识库 URL。
+支持分页，通过 --cursor 传入上次返回的 nextToken 获取下一页。
+
+权限要求：调用者需具备知识库的成员权限，非成员会被拒绝访问。`,
+		Example: `  dws wiki feed list --workspace <workspaceId>
+  dws wiki feed list --workspace <workspaceId> --limit 10
+  dws wiki feed list --workspace <workspaceId> --cursor <nextToken>`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			workspaceID, err := mustFlagOrFallback(cmd, "workspace", "workspace-id")
+			if err != nil {
+				return err
+			}
+			toolArgs := map[string]any{
+				"workspaceId": workspaceID,
+			}
+			if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
+				toolArgs["maxResults"] = v
+			}
+			if v := flagOrFallback(cmd, "cursor", "page-token"); v != "" {
+				toolArgs["nextToken"] = v
+			}
+			if cmd.Flags().Changed("exclude-file") {
+				v, _ := cmd.Flags().GetBool("exclude-file")
+				toolArgs["excludeFile"] = v
+			}
+			return callMCPTool("list_workspace_feeds", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(feedListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "wiki",
+				Name:           "list_workspace_feeds",
+				CanonicalPath:  "wiki.list_workspace_feeds",
+				CLIPath:        "wiki feed list",
+				PrimaryCLIPath: "wiki feed list",
+			},
+			Description: "查询指定知识库的动态列表，返回动态类型、时间、内容摘要等信息",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "wiki", RPCName: "list_workspace_feeds"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询知识库的活动动态：谁在什么时间更新/上传/评论了哪些文档",
+				UseWhen: []string{
+					"用户问某个知识库最近有什么更新、谁改了什么、有哪些评论等协作动态时",
+					"需要巡检知识库变更并按时间线汇总成动态摘要时",
+				},
+				AvoidWhen: []string{
+					"要看知识库当前有哪些节点用 node list；库内按关键词找文档用 node search",
+					"要读某篇文档正文用 doc read；跨库全局找文件用 drive search",
+				},
+				Examples: []string{
+					"dws wiki feed list --workspace <workspaceId> --format json",
+					"dws wiki feed list --workspace <workspaceId> --limit 10 --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "exclude-file", Property: "excludeFile"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
+	feedListCmd.Flags().String("workspace", "", "知识库 ID 或 URL (必填)")
+	feedListCmd.Flags().Int("limit", 0, "每页数量 (默认 20，最大 50)")
+	feedListCmd.Flags().String("cursor", "", "分页游标 (首页留空)")
+	feedListCmd.Flags().Bool("exclude-file", false, "是否排除文件相关的动态 (默认 false)")
+	feedListCmd.Flags().String("workspace-id", "", "")
+	_ = feedListCmd.Flags().MarkHidden("workspace-id")
+	RegisterCrossProductAliases(feedListCmd)
+
+	feedCmd.AddCommand(feedListCmd)
+
+	root.AddCommand(feedCmd)
 
 	// ── [PROXY] wiki create/get/list/search → wiki space create/get/list/search ──
 	// Agent 常省略 "space" 直接输入 dws wiki list，透明转发到 wiki space 对应命令
