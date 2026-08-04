@@ -8,6 +8,30 @@
     "reviewed": true
   },
   "tools": {
+    "doc.media_upload": {
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "The CLI obtains a temporary document upload credential, performs the OSS PUT locally, and exposes only the stable node-bound resource contract.",
+      "interface_ref": null
+    },
+    "doc.whiteboard_insert": {
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "The CLI generates both card and whiteboard UUIDs, inserts canonical JSONML, then reads the block back to verify the persisted metadata.id.",
+      "interface_ref": null
+    },
+    "whiteboard.query": {
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed explicit whiteboard server adapter; the endpoint is helper-only and intentionally absent from the pinned public discovery snapshot.",
+      "interface_ref": null
+    },
+    "whiteboard.update": {
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "Reviewed explicit whiteboard server adapter with local OpenNodes validation and an unconditional public runtime confirmation gate; no single pinned public interface entry represents the full wrapper contract.",
+      "interface_ref": null
+    },
     "chat.create_smart_conv_category": {
       "interface_mode": "composite",
       "availability": "available",

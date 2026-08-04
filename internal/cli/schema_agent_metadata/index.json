@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "source_hash": "sha256:f3d5e5d6ca3c613b1d004d68eca89679d0f8cffe882d7fed0fbb1bcef078fdc9",
-  "surface_hash": "sha256:41044fe1b6723564c40d684381ac6d6f23c4dfd58f9769350f02f223f02fa894",
+  "source_hash": "sha256:506d4c074744862167b39ecef82d13a2d5ff3ab0faad74673063fd3918c4733b",
+  "surface_hash": "sha256:975584f4331c3b79aff4ee9b1b0f747ae8b67b184e8fb0b54c08996756b836c0",
   "coverage": {
-    "surface_products": 26,
-    "products_with_metadata": 26,
-    "surface_tools": 846,
-    "tools_with_metadata": 846,
-    "tools_with_agent_summary": 846,
-    "tools_with_use_when": 846,
-    "tools_with_avoid_when": 846,
-    "tools_with_examples": 846,
-    "tools_with_interface_mode": 846,
+    "surface_products": 27,
+    "products_with_metadata": 27,
+    "surface_tools": 850,
+    "tools_with_metadata": 850,
+    "tools_with_agent_summary": 850,
+    "tools_with_use_when": 850,
+    "tools_with_avoid_when": 850,
+    "tools_with_examples": 850,
+    "tools_with_interface_mode": 850,
     "unmatched_skill_tools": 122,
     "unreviewed_skill_tools": 11
   },
@@ -1796,6 +1796,74 @@
         "查询、创建或更新个人待办及其协作信息时"
       ]
     },
+    "whiteboard": {
+      "agent_summary": "读取和更新钉钉在线文档中的内嵌白板",
+      "agent_summary_source": "dws-agent-selection/whiteboard",
+      "avoid_when": [
+        "普通文档正文和块使用 doc；创建白板卡片先用 doc whiteboard insert"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "读取和更新钉钉在线文档中的内嵌白板",
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": "读取和更新钉钉在线文档中的内嵌白板",
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "precedence": "reviewed_explicit",
+              "selected": true
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "普通文档正文和块使用 doc；创建白板卡片先用 doc whiteboard insert"
+          ],
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": [
+                "普通文档正文和块使用 doc；创建白板卡片先用 doc whiteboard insert"
+              ],
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "precedence": "reviewed_explicit",
+              "selected": true
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "操作已有文档内嵌白板的 OpenNodes 内容时"
+          ],
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "candidates": [
+            {
+              "value": [
+                "操作已有文档内嵌白板的 OpenNodes 内容时"
+              ],
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "precedence": "reviewed_explicit",
+              "selected": true
+            }
+          ]
+        }
+      },
+      "source_refs": [
+        "CommandRegistry:product=whiteboard",
+        "Skill:skills/mono/references/products/whiteboard.md",
+        "internal/cli/schema_hints/selection/whiteboard.json",
+        "skills/mono/SKILL.md"
+      ],
+      "use_when": [
+        "操作已有文档内嵌白板的 OpenNodes 内容时"
+      ]
+    },
     "wiki": {
       "agent_summary": "管理钉钉知识库空间、节点与成员权限",
       "agent_summary_source": "dws-agent-selection/wiki",
@@ -1891,6 +1959,7 @@
     "report",
     "sheet",
     "todo",
+    "whiteboard",
     "wiki"
   ]
 }

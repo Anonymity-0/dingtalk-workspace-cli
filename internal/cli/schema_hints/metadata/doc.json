@@ -642,6 +642,39 @@
       "interface_reason": "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
       "reviewed": true,
       "runtime_gate": "none"
+    },
+    "doc.media_upload": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "The CLI obtains a temporary document upload credential, performs the OSS PUT locally, and exposes only the stable node-bound resource contract.",
+      "reviewed": true,
+      "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+      "cli_path": "doc media upload",
+      "runtime_gate": "confirm_dangerous",
+      "parameters": {
+        "node": {"required": true},
+        "file": {"required": true}
+      }
+    },
+    "doc.whiteboard_insert": {
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "non_idempotent",
+      "interface_mode": "composite",
+      "availability": "available",
+      "interface_reason": "The CLI generates both card and whiteboard UUIDs, inserts canonical JSONML, then reads the block back to verify the persisted metadata.id.",
+      "reviewed": true,
+      "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+      "cli_path": "doc whiteboard insert",
+      "runtime_gate": "confirm_dangerous",
+      "parameters": {
+        "node": {"required": true}
+      }
     }
   }
 }

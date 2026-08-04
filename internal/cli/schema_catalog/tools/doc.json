@@ -17289,6 +17289,819 @@
         "把本地文件/图片作为附件块插入文档正文（自动 prepare+PUT+insert）时"
       ]
     },
+    "doc.media_upload": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "CommandRegistry:canonical_path=doc.media_upload",
+        "cobra-help:dws doc media upload",
+        "dws-wukong@e2da8ab947c6:wukong/products/doc.go",
+        "internal/cli/schema_hints/metadata/doc.json",
+        "internal/cli/schema_hints/selection/doc.json",
+        "skills/mono/references/products/doc.md"
+      ],
+      "agent_summary": "经用户确认后上传绑定到文档 nodeId 的可复用媒体资源而不插入正文",
+      "agent_summary_source": "dws-agent-selection/doc",
+      "availability": "available",
+      "avoid_when": [
+        "需要把附件直接插入文档正文时用 doc media insert；不要跨 nodeId 复用资源"
+      ],
+      "canonical_path": "doc.media_upload",
+      "cli_name": "upload",
+      "cli_path": "doc media upload",
+      "confirmation": "user_required",
+      "description": "将本地文件上传为绑定到目标 nodeId 的文档媒体资源，但不插入文档正文。\n\n成功输出稳定的 resourceId 和 resourceUrl，可供同一 nodeId 下的白板 Vector/SVG\n等后续写入使用；临时 uploadUrl 不会输出。",
+      "display": "钉钉文档管理",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws doc media upload --node \u003cDOC_ID\u003e --file ./icon.svg --mime-type image/svg+xml --format json"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": "经用户确认后上传绑定到文档 nodeId 的可复用媒体资源而不插入正文"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "value": "经用户确认后上传绑定到文档 nodeId 的可复用媒体资源而不插入正文"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": [
+                "需要把附件直接插入文档正文时用 doc media insert；不要跨 nodeId 复用资源"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "value": [
+            "需要把附件直接插入文档正文时用 doc media insert；不要跨 nodeId 复用资源"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "doc media upload",
+              "value": "doc.media_upload"
+            },
+            {
+              "precedence": "reviewed_manual",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "selected": false,
+              "source": "reviewed_manual_hint",
+              "source_ref": "doc media upload",
+              "value": "doc.media_upload"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "doc media upload",
+          "value": "doc.media_upload"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "user_required"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "risk-default",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "user_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "将本地文件上传为绑定到目标 nodeId 的文档媒体资源，但不插入文档正文。\n\n成功输出稳定的 resourceId 和 resourceUrl，可供同一 nodeId 下的白板 Vector/SVG\n等后续写入使用；临时 uploadUrl 不会输出。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "将本地文件上传为绑定到目标 nodeId 的文档媒体资源，但不插入文档正文。\n\n成功输出稳定的 resourceId 和 resourceUrl，可供同一 nodeId 下的白板 Vector/SVG\n等后续写入使用；临时 uploadUrl 不会输出。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "write"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "command-verb",
+              "value": "write"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "write"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": [
+                "dws doc media upload --node \u003cDOC_ID\u003e --file ./icon.svg --mime-type image/svg+xml --format json"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "value": [
+            "dws doc media upload --node \u003cDOC_ID\u003e --file ./icon.svg --mime-type image/svg+xml --format json"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "unknown"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
+              "value": "unknown"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "unknown"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "The CLI obtains a temporary document upload credential, performs the OSS PUT locally, and exposes only the stable node-bound resource contract."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "The CLI obtains a temporary document upload credential, performs the OSS PUT locally, and exposes only the stable node-bound resource contract."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "medium"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
+              "value": "medium"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "medium"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "上传可复用的文档媒体资源"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "上传可复用的文档媒体资源"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": [
+                "为同一文档内白板的 Vector/SVG 写入准备 resourceId 和 resourceUrl 时"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "value": [
+            "为同一文档内白板的 Vector/SVG 写入准备 resourceId 和 resourceUrl 时"
+          ]
+        }
+      },
+      "group": "media",
+      "has_parameters": true,
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "interface_reason": "The CLI obtains a temporary document upload credential, performs the OSS PUT locally, and exposes only the stable node-bound resource contract.",
+      "is_alias": false,
+      "name": "media_upload",
+      "parameter_count": 5,
+      "parameters": {
+        "file": {
+          "description": "本地文件路径 (必填)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "本地文件路径 (必填)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "本地文件路径 (必填)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "file"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "file"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_manual",
+                  "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+                  "selected": true,
+                  "source": "reviewed_manual_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "reviewed_manual",
+              "resolution": "highest_precedence",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "source": "reviewed_manual_hint",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "file",
+          "required": true,
+          "type": "string"
+        },
+        "mime-type": {
+          "description": "文件 MIME 类型 (默认根据扩展名推断)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "文件 MIME 类型 (默认根据扩展名推断)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "文件 MIME 类型 (默认根据扩展名推断)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "mimeType"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "mimeType"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "mimeType",
+          "required": false,
+          "type": "string"
+        },
+        "name": {
+          "description": "资源文件名 (默认使用本地文件名)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "资源文件名 (默认使用本地文件名)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "资源文件名 (默认使用本地文件名)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "name"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "name"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "name",
+          "required": false,
+          "type": "string"
+        },
+        "node": {
+          "description": "绑定媒体资源的文档标识，支持传入 URL 或 ID (必填)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "绑定媒体资源的文档标识，支持传入 URL 或 ID (必填)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "绑定媒体资源的文档标识，支持传入 URL 或 ID (必填)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "node"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "node"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_manual",
+                  "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+                  "selected": true,
+                  "source": "reviewed_manual_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "reviewed_manual",
+              "resolution": "highest_precedence",
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+              "source": "reviewed_manual_hint",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "node",
+          "required": true,
+          "type": "string"
+        },
+        "yes": {
+          "description": "确认上传可复用文档媒体资源",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "确认上传可复用文档媒体资源"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "确认上传可复用文档媒体资源"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "yes"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "yes"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "property": "yes",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "doc.media_upload",
+      "primary_cli_path": "doc media upload",
+      "product_id": "doc",
+      "reviewed": true,
+      "risk": "medium",
+      "source": "reviewed_command_registry",
+      "title": "上传可复用的文档媒体资源",
+      "use_when": [
+        "为同一文档内白板的 Vector/SVG 写入准备 resourceId 和 resourceUrl 时"
+      ]
+    },
     "doc.move_document": {
       "agent_metadata_source": "embedded-skill-metadata",
       "agent_source_refs": [
@@ -43854,6 +44667,883 @@
       "title": "手动保存文档版本快照",
       "use_when": [
         "手动保存当前文档版本快照时"
+      ]
+    },
+    "doc.whiteboard_insert": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "CommandRegistry:canonical_path=doc.whiteboard_insert",
+        "cobra-help:dws doc whiteboard insert",
+        "dws-wukong@e2da8ab947c6:wukong/products/doc_whiteboard.go",
+        "internal/cli/schema_hints/metadata/doc.json",
+        "internal/cli/schema_hints/selection/doc.json",
+        "skills/mono/references/products/doc.md"
+      ],
+      "agent_summary": "经用户确认后向钉钉文档插入空白板卡片并返回块 ID 与白板 part ID",
+      "agent_summary_source": "dws-agent-selection/doc",
+      "availability": "available",
+      "avoid_when": [
+        "已有白板只需读取或编辑时使用 whiteboard query/update；删除卡片使用 doc block delete"
+      ],
+      "canonical_path": "doc.whiteboard_insert",
+      "cli_name": "insert",
+      "cli_path": "doc whiteboard insert",
+      "confirmation": "user_required",
+      "description": "向文档插入一个空白板卡片（hetu draw card），并返回 blockId 与 whiteboardId。\n\nCLI 生成卡片块 UUID 与白板资源 ID，插入后按块 UUID 回查并验证 metadata.id 落库。\n如果回查暂时未取得白板 ID，插入仍成功并返回 blockId，whiteboardId 为 null。",
+      "display": "钉钉文档管理",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws doc whiteboard insert --node \u003cDOC_ID\u003e --format json"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": "经用户确认后向钉钉文档插入空白板卡片并返回块 ID 与白板 part ID"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "value": "经用户确认后向钉钉文档插入空白板卡片并返回块 ID 与白板 part ID"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": [
+                "已有白板只需读取或编辑时使用 whiteboard query/update；删除卡片使用 doc block delete"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "value": [
+            "已有白板只需读取或编辑时使用 whiteboard query/update；删除卡片使用 doc block delete"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "doc whiteboard insert",
+              "value": "doc.whiteboard_insert"
+            },
+            {
+              "precedence": "reviewed_manual",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "selected": false,
+              "source": "reviewed_manual_hint",
+              "source_ref": "doc whiteboard insert",
+              "value": "doc.whiteboard_insert"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "doc whiteboard insert",
+          "value": "doc.whiteboard_insert"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "user_required"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "risk-default",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "user_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "向文档插入一个空白板卡片（hetu draw card），并返回 blockId 与 whiteboardId。\n\nCLI 生成卡片块 UUID 与白板资源 ID，插入后按块 UUID 回查并验证 metadata.id 落库。\n如果回查暂时未取得白板 ID，插入仍成功并返回 blockId，whiteboardId 为 null。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "向文档插入一个空白板卡片（hetu draw card），并返回 blockId 与 whiteboardId。\n\nCLI 生成卡片块 UUID 与白板资源 ID，插入后按块 UUID 回查并验证 metadata.id 落库。\n如果回查暂时未取得白板 ID，插入仍成功并返回 blockId，whiteboardId 为 null。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "write"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "command-verb",
+              "value": "write"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "write"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": [
+                "dws doc whiteboard insert --node \u003cDOC_ID\u003e --format json"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "value": [
+            "dws doc whiteboard insert --node \u003cDOC_ID\u003e --format json"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "non_idempotent"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
+              "value": "unknown"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "non_idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "The CLI generates both card and whiteboard UUIDs, inserts canonical JSONML, then reads the block back to verify the persisted metadata.id."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "The CLI generates both card and whiteboard UUIDs, inserts canonical JSONML, then reads the block back to verify the persisted metadata.id."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "value": "medium"
+            },
+            {
+              "precedence": "inference_or_default",
+              "selected": false,
+              "source": "effect-default",
+              "value": "medium"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "value": "medium"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "插入白板卡片"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "插入白板卡片"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "value": [
+                "目标文档还没有可操作白板，需要创建空白板卡片并取得后续 query/update 使用的 partId 时"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "value": [
+            "目标文档还没有可操作白板，需要创建空白板卡片并取得后续 query/update 使用的 partId 时"
+          ]
+        }
+      },
+      "group": "whiteboard",
+      "has_parameters": true,
+      "idempotency": "non_idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "The CLI generates both card and whiteboard UUIDs, inserts canonical JSONML, then reads the block back to verify the persisted metadata.id.",
+      "is_alias": false,
+      "name": "whiteboard_insert",
+      "parameter_count": 6,
+      "parameters": {
+        "index": {
+          "description": "位置索引 (从 0 开始)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "位置索引 (从 0 开始)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "位置索引 (从 0 开始)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "index"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "index"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "integer"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "integer"
+            }
+          },
+          "property": "index",
+          "required": false,
+          "type": "integer"
+        },
+        "node": {
+          "description": "文档 ID 或 URL (必填)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "文档 ID 或 URL (必填)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "文档 ID 或 URL (必填)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "node"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "node"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_manual",
+                  "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+                  "selected": true,
+                  "source": "reviewed_manual_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "reviewed_manual",
+              "resolution": "highest_precedence",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+              "source": "reviewed_manual_hint",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "node",
+          "required": true,
+          "type": "string"
+        },
+        "parent-block": {
+          "description": "父容器 UUID（容器内插入，与 --index 配合）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "父容器 UUID（容器内插入，与 --index 配合）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "父容器 UUID（容器内插入，与 --index 配合）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "parentBlock"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "parentBlock"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "parentBlock",
+          "required": false,
+          "type": "string"
+        },
+        "ref-block": {
+          "description": "参照块 UUID（同级插入，配合 --where）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "参照块 UUID（同级插入，配合 --where）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "参照块 UUID（同级插入，配合 --where）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "refBlock"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "refBlock"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "refBlock",
+          "required": false,
+          "type": "string"
+        },
+        "where": {
+          "description": "插入方向: before / after (默认 after，配合 --ref-block)",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "插入方向: before / after (默认 after，配合 --ref-block)"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "插入方向: before / after (默认 after，配合 --ref-block)"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "where"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "where"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_nonzero_default",
+                  "value": false
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_nonzero_default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "where",
+          "required": false,
+          "type": "string"
+        },
+        "yes": {
+          "description": "确认插入白板卡片",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "确认插入白板卡片"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "确认插入白板卡片"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "yes"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "yes"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "property": "yes",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "doc.whiteboard_insert",
+      "primary_cli_path": "doc whiteboard insert",
+      "product_id": "doc",
+      "reviewed": true,
+      "risk": "medium",
+      "source": "reviewed_command_registry",
+      "title": "插入白板卡片",
+      "use_when": [
+        "目标文档还没有可操作白板，需要创建空白板卡片并取得后续 query/update 使用的 partId 时"
       ]
     }
   }

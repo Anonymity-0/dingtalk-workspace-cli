@@ -1,0 +1,13 @@
+{
+  "id": "whiteboard",
+  "tools": [
+    {
+      "canonical_path": "whiteboard.query",
+      "cli_path": "whiteboard query"
+    },
+    {
+      "canonical_path": "whiteboard.update",
+      "cli_path": "whiteboard update"
+    }
+  ]
+}

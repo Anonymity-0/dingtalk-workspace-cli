@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "source": {
+    "kind": "explicit",
+    "name": "dws-agent-selection/whiteboard",
+    "repository": "DingTalk-Real-AI/dingtalk-workspace-cli",
+    "channel": "open-source",
+    "reviewed": true
+  },
+  "tools": {
+    "whiteboard.query": {
+      "agent_summary": "读取钉钉文档内已有白板的 OpenNodes 内容",
+      "use_when": [
+        "已知承载文档 nodeId 和白板 partId，需要检查当前白板节点、布局或写入支持时"
+      ],
+      "avoid_when": [
+        "创建新白板卡片用 doc whiteboard insert；缺少 partId 时先从文档 card metadata.id 定位"
+      ],
+      "examples": [
+        "dws whiteboard query --node <DOC_ID> --part-id <WHITEBOARD_PART_ID> --format json"
+      ],
+      "reviewed": true,
+      "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+      "source_refs": [
+        "CommandRegistry:canonical_path=whiteboard.query",
+        "cobra-help:dws whiteboard query",
+        "dws-wukong@e2da8ab947c6:wukong/products/whiteboard.go"
+      ]
+    },
+    "whiteboard.update": {
+      "agent_summary": "经用户确认后向已有白板追加 OpenNodes 或整页重建",
+      "use_when": [
+        "已有 nodeId、partId 和合规 OpenNodes V1 文件，用户确认后要追加图形、文本、连接线或整页替换时"
+      ],
+      "avoid_when": [
+        "只读取内容用 whiteboard query；创建白板卡片用 doc whiteboard insert；不要用真实节点 ID 做局部修改"
+      ],
+      "examples": [
+        "dws whiteboard update --node <DOC_ID> --part-id <WHITEBOARD_PART_ID> --source ./whiteboard.json --format json"
+      ],
+      "reviewed": true,
+      "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+      "source_refs": [
+        "CommandRegistry:canonical_path=whiteboard.update",
+        "cobra-help:dws whiteboard update",
+        "dws-wukong@e2da8ab947c6:wukong/products/whiteboard.go"
+      ]
+    }
+  },
+  "products": {
+    "whiteboard": {
+      "agent_summary": "读取和更新钉钉在线文档中的内嵌白板",
+      "use_when": [
+        "操作已有文档内嵌白板的 OpenNodes 内容时"
+      ],
+      "avoid_when": [
+        "普通文档正文和块使用 doc；创建白板卡片先用 doc whiteboard insert"
+      ],
+      "reviewed": true,
+      "review_reason": "依据公开命令面与 Wukong 白板协议文档审阅产品路由边界。",
+      "source_refs": [
+        "CommandRegistry:product=whiteboard",
+        "Skill:skills/mono/references/products/whiteboard.md"
+      ]
+    }
+  }
+}

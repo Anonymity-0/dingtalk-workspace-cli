@@ -1,0 +1,1233 @@
+{
+  "product": "whiteboard",
+  "tools": {
+    "whiteboard.query": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "CommandRegistry:canonical_path=whiteboard.query",
+        "cobra-help:dws whiteboard query",
+        "dws-wukong@e2da8ab947c6:wukong/products/whiteboard.go",
+        "internal/cli/schema_hints/metadata/whiteboard.json",
+        "internal/cli/schema_hints/selection/whiteboard.json"
+      ],
+      "agent_summary": "读取钉钉文档内已有白板的 OpenNodes 内容",
+      "agent_summary_source": "dws-agent-selection/whiteboard",
+      "availability": "available",
+      "avoid_when": [
+        "创建新白板卡片用 doc whiteboard insert；缺少 partId 时先从文档 card metadata.id 定位"
+      ],
+      "canonical_path": "whiteboard.query",
+      "cli_name": "query",
+      "cli_path": "whiteboard query",
+      "confirmation": "not_required",
+      "description": "读取白板内容",
+      "display": "钉钉文档内嵌白板管理",
+      "effect": "read",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws whiteboard query --node \u003cDOC_ID\u003e --part-id \u003cWHITEBOARD_PART_ID\u003e --format json"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": "读取钉钉文档内已有白板的 OpenNodes 内容"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "value": "读取钉钉文档内已有白板的 OpenNodes 内容"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": [
+                "创建新白板卡片用 doc whiteboard insert；缺少 partId 时先从文档 card metadata.id 定位"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "value": [
+            "创建新白板卡片用 doc whiteboard insert；缺少 partId 时先从文档 card metadata.id 定位"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "whiteboard query",
+              "value": "whiteboard.query"
+            },
+            {
+              "precedence": "reviewed_manual",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "selected": false,
+              "source": "reviewed_manual_hint",
+              "source_ref": "whiteboard query",
+              "value": "whiteboard.query"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "whiteboard query",
+          "value": "whiteboard.query"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "not_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "not_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "读取白板内容"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "读取白板内容"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "read"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "read"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": [
+                "dws whiteboard query --node \u003cDOC_ID\u003e --part-id \u003cWHITEBOARD_PART_ID\u003e --format json"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "value": [
+            "dws whiteboard query --node \u003cDOC_ID\u003e --part-id \u003cWHITEBOARD_PART_ID\u003e --format json"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "idempotent"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "idempotent"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "Reviewed explicit whiteboard server adapter; the endpoint is helper-only and intentionally absent from the pinned public discovery snapshot."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "Reviewed explicit whiteboard server adapter; the endpoint is helper-only and intentionally absent from the pinned public discovery snapshot."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "low"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "low"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "读取白板内容"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "读取白板内容"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": [
+                "已知承载文档 nodeId 和白板 partId，需要检查当前白板节点、布局或写入支持时"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 最终分支 tip 的真实 Cobra 路由与 OpenNodes 协议人工迁移。",
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "value": [
+            "已知承载文档 nodeId 和白板 partId，需要检查当前白板节点、布局或写入支持时"
+          ]
+        }
+      },
+      "has_parameters": true,
+      "idempotency": "idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed explicit whiteboard server adapter; the endpoint is helper-only and intentionally absent from the pinned public discovery snapshot.",
+      "is_alias": false,
+      "name": "query",
+      "parameter_count": 2,
+      "parameters": {
+        "node": {
+          "description": "承载白板的钉钉文档 ID 或 URL（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "承载白板的钉钉文档 ID 或 URL（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "承载白板的钉钉文档 ID 或 URL（必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "node"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "node"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_manual",
+                  "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+                  "selected": true,
+                  "source": "reviewed_manual_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "reviewed_manual",
+              "resolution": "highest_precedence",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "source": "reviewed_manual_hint",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "node",
+          "required": true,
+          "type": "string"
+        },
+        "part-id": {
+          "description": "文档内白板 part ID（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "文档内白板 part ID（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "文档内白板 part ID（必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "partId"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "partId"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_manual",
+                  "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+                  "selected": true,
+                  "source": "reviewed_manual_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "reviewed_manual",
+              "resolution": "highest_precedence",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 with exact nodeId and partId routing and structured resultJson decoding.",
+              "source": "reviewed_manual_hint",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "partId",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "whiteboard.query",
+      "primary_cli_path": "whiteboard query",
+      "product_id": "whiteboard",
+      "reviewed": true,
+      "risk": "low",
+      "source": "reviewed_command_registry",
+      "title": "读取白板内容",
+      "use_when": [
+        "已知承载文档 nodeId 和白板 partId，需要检查当前白板节点、布局或写入支持时"
+      ]
+    },
+    "whiteboard.update": {
+      "agent_metadata_source": "embedded-skill-metadata",
+      "agent_source_refs": [
+        "CommandRegistry:canonical_path=whiteboard.update",
+        "cobra-help:dws whiteboard update",
+        "dws-wukong@e2da8ab947c6:wukong/products/whiteboard.go",
+        "internal/cli/schema_hints/metadata/whiteboard.json",
+        "internal/cli/schema_hints/selection/whiteboard.json"
+      ],
+      "agent_summary": "经用户确认后向已有白板追加 OpenNodes 或整页重建",
+      "agent_summary_source": "dws-agent-selection/whiteboard",
+      "availability": "available",
+      "avoid_when": [
+        "只读取内容用 whiteboard query；创建白板卡片用 doc whiteboard insert；不要用真实节点 ID 做局部修改"
+      ],
+      "canonical_path": "whiteboard.update",
+      "cli_name": "update",
+      "cli_path": "whiteboard update",
+      "confirmation": "user_required",
+      "description": "从 JSON 文件读取 OpenNodes V1 更新请求并更新已有白板。\n\n更新模式由文件顶层的 overwrite 字段决定。overwrite=false 表示追加，\noverwrite=true 表示整页重建。两种模式都会写入远端白板，必须同时传入 --yes。",
+      "display": "钉钉文档内嵌白板管理",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws whiteboard update --node \u003cDOC_ID\u003e --part-id \u003cWHITEBOARD_PART_ID\u003e --source ./whiteboard.json --format json"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": "经用户确认后向已有白板追加 OpenNodes 或整页重建"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "value": "经用户确认后向已有白板追加 OpenNodes 或整页重建"
+        },
+        "availability": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "available"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "available"
+        },
+        "avoid_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": [
+                "只读取内容用 whiteboard query；创建白板卡片用 doc whiteboard insert；不要用真实节点 ID 做局部修改"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "value": [
+            "只读取内容用 whiteboard query；创建白板卡片用 doc whiteboard insert；不要用真实节点 ID 做局部修改"
+          ]
+        },
+        "canonical_path": {
+          "candidates": [
+            {
+              "precedence": "command_registry",
+              "selected": true,
+              "source": "reviewed_command_registry",
+              "source_ref": "whiteboard update",
+              "value": "whiteboard.update"
+            },
+            {
+              "precedence": "reviewed_manual",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "selected": false,
+              "source": "reviewed_manual_hint",
+              "source_ref": "whiteboard update",
+              "value": "whiteboard.update"
+            }
+          ],
+          "precedence": "command_registry",
+          "resolution": "registry_identity",
+          "source": "reviewed_command_registry",
+          "source_ref": "whiteboard update",
+          "value": "whiteboard.update"
+        },
+        "confirmation": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "user_required"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "user_required"
+        },
+        "description": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "从 JSON 文件读取 OpenNodes V1 更新请求并更新已有白板。\n\n更新模式由文件顶层的 overwrite 字段决定。overwrite=false 表示追加，\noverwrite=true 表示整页重建。两种模式都会写入远端白板，必须同时传入 --yes。"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "从 JSON 文件读取 OpenNodes V1 更新请求并更新已有白板。\n\n更新模式由文件顶层的 overwrite 字段决定。overwrite=false 表示追加，\noverwrite=true 表示整页重建。两种模式都会写入远端白板，必须同时传入 --yes。"
+        },
+        "effect": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "write"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "write"
+        },
+        "examples": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": [
+                "dws whiteboard update --node \u003cDOC_ID\u003e --part-id \u003cWHITEBOARD_PART_ID\u003e --source ./whiteboard.json --format json"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "value": [
+            "dws whiteboard update --node \u003cDOC_ID\u003e --part-id \u003cWHITEBOARD_PART_ID\u003e --source ./whiteboard.json --format json"
+          ]
+        },
+        "idempotency": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "unknown"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "unknown"
+        },
+        "interface_mode": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "composite"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "composite"
+        },
+        "interface_reason": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "Reviewed explicit whiteboard server adapter with local OpenNodes validation and an unconditional public runtime confirmation gate; no single pinned public interface entry represents the full wrapper contract."
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "Reviewed explicit whiteboard server adapter with local OpenNodes validation and an unconditional public runtime confirmation gate; no single pinned public interface entry represents the full wrapper contract."
+        },
+        "interface_ref": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": null
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": null
+        },
+        "reviewed": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": true
+            },
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+              "selected": false,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": true
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": true
+        },
+        "risk": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "selected": true,
+              "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+              "value": "high"
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+          "source": "internal/cli/schema_hints/metadata/whiteboard.json",
+          "value": "high"
+        },
+        "title": {
+          "candidates": [
+            {
+              "precedence": "cobra_help",
+              "selected": true,
+              "source": "cobra_help",
+              "value": "追加或整页重建白板内容"
+            }
+          ],
+          "precedence": "cobra_help",
+          "resolution": "highest_precedence",
+          "source": "cobra_help",
+          "value": "追加或整页重建白板内容"
+        },
+        "use_when": {
+          "candidates": [
+            {
+              "precedence": "reviewed_explicit",
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+              "selected": true,
+              "source": "internal/cli/schema_hints/selection/whiteboard.json",
+              "value": [
+                "已有 nodeId、partId 和合规 OpenNodes V1 文件，用户确认后要追加图形、文本、连接线或整页替换时"
+              ]
+            }
+          ],
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的 OpenNodes 校验迁移，并按公网命令级安全模型收紧为每次更新均需确认。",
+          "source": "internal/cli/schema_hints/selection/whiteboard.json",
+          "value": [
+            "已有 nodeId、partId 和合规 OpenNodes V1 文件，用户确认后要追加图形、文本、连接线或整页替换时"
+          ]
+        }
+      },
+      "has_parameters": true,
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "interface_reason": "Reviewed explicit whiteboard server adapter with local OpenNodes validation and an unconditional public runtime confirmation gate; no single pinned public interface entry represents the full wrapper contract.",
+      "is_alias": false,
+      "name": "update",
+      "parameter_count": 4,
+      "parameters": {
+        "node": {
+          "description": "承载白板的钉钉文档 ID 或 URL（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "承载白板的钉钉文档 ID 或 URL（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "承载白板的钉钉文档 ID 或 URL（必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "node"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "node"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_manual",
+                  "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+                  "selected": true,
+                  "source": "reviewed_manual_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "reviewed_manual",
+              "resolution": "highest_precedence",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "source": "reviewed_manual_hint",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "node",
+          "required": true,
+          "type": "string"
+        },
+        "part-id": {
+          "description": "文档内白板 part ID（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "文档内白板 part ID（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "文档内白板 part ID（必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "partId"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "partId"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_manual",
+                  "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+                  "selected": true,
+                  "source": "reviewed_manual_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "reviewed_manual",
+              "resolution": "highest_precedence",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "source": "reviewed_manual_hint",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "partId",
+          "required": true,
+          "type": "string"
+        },
+        "source": {
+          "description": "OpenNodes V1 更新请求 JSON 文件（必填）",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "OpenNodes V1 更新请求 JSON 文件（必填）"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "OpenNodes V1 更新请求 JSON 文件（必填）"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "source"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "source"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "reviewed_manual",
+                  "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+                  "selected": true,
+                  "source": "reviewed_manual_hint",
+                  "value": true
+                },
+                {
+                  "precedence": "inference",
+                  "selected": false,
+                  "source": "usage_required_inference",
+                  "value": true
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "reviewed_manual",
+              "resolution": "highest_precedence",
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 and tightened for the public command-level safety model: every remote whiteboard update requires --yes.",
+              "source": "reviewed_manual_hint",
+              "value": true
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "string"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "string"
+            }
+          },
+          "property": "source",
+          "required": true,
+          "type": "string"
+        },
+        "yes": {
+          "description": "确认写入远端白板",
+          "field_provenance": {
+            "description": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_usage",
+                  "value": "确认写入远端白板"
+                },
+                {
+                  "precedence": "default",
+                  "selected": false,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_usage",
+              "value": "确认写入远端白板"
+            },
+            "property": {
+              "candidates": [
+                {
+                  "precedence": "inference",
+                  "selected": true,
+                  "source": "flag_name_inference",
+                  "value": "yes"
+                }
+              ],
+              "precedence": "inference",
+              "resolution": "highest_precedence",
+              "source": "flag_name_inference",
+              "value": "yes"
+            },
+            "required": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": false
+                }
+              ],
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
+            },
+            "required_when": {
+              "candidates": [
+                {
+                  "precedence": "default",
+                  "selected": true,
+                  "source": "default",
+                  "value": ""
+                }
+              ],
+              "precedence": "default",
+              "resolution": "highest_precedence",
+              "source": "default",
+              "value": ""
+            },
+            "type": {
+              "candidates": [
+                {
+                  "precedence": "cobra_contract",
+                  "selected": true,
+                  "source": "cobra_flag_type",
+                  "value": "boolean"
+                }
+              ],
+              "precedence": "cobra_contract",
+              "resolution": "highest_precedence",
+              "source": "cobra_flag_type",
+              "value": "boolean"
+            }
+          },
+          "property": "yes",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "whiteboard.update",
+      "primary_cli_path": "whiteboard update",
+      "product_id": "whiteboard",
+      "reviewed": true,
+      "risk": "high",
+      "source": "reviewed_command_registry",
+      "title": "追加或整页重建白板内容",
+      "use_when": [
+        "已有 nodeId、partId 和合规 OpenNodes V1 文件，用户确认后要追加图形、文本、连接线或整页替换时"
+      ]
+    }
+  }
+}

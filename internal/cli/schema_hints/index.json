@@ -33,7 +33,8 @@
     "report": "metadata/report.json",
     "sheet": "metadata/sheet.json",
     "todo": "metadata/todo.json",
-    "wiki": "metadata/wiki.json"
+    "wiki": "metadata/wiki.json",
+    "whiteboard": "metadata/whiteboard.json"
   },
   "selection": {
     "aisearch": "selection/aisearch.json",
@@ -61,7 +62,8 @@
     "report": "selection/report.json",
     "sheet": "selection/sheet.json",
     "todo": "selection/todo.json",
-    "wiki": "selection/wiki.json"
+    "wiki": "selection/wiki.json",
+    "whiteboard": "selection/whiteboard.json"
   },
   "reference_review": {
     "agoal contract detail": {

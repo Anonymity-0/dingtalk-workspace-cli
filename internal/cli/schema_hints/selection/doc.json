@@ -1321,6 +1321,44 @@
         "cobra-help:dws doc style get",
         "wukong-develop:wukong/products"
       ]
+    },
+    "doc.media_upload": {
+      "agent_summary": "经用户确认后上传绑定到文档 nodeId 的可复用媒体资源而不插入正文",
+      "use_when": [
+        "为同一文档内白板的 Vector/SVG 写入准备 resourceId 和 resourceUrl 时"
+      ],
+      "avoid_when": [
+        "需要把附件直接插入文档正文时用 doc media insert；不要跨 nodeId 复用资源"
+      ],
+      "examples": [
+        "dws doc media upload --node <DOC_ID> --file ./icon.svg --mime-type image/svg+xml --format json"
+      ],
+      "reviewed": true,
+      "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+      "source_refs": [
+        "CommandRegistry:canonical_path=doc.media_upload",
+        "cobra-help:dws doc media upload",
+        "dws-wukong@e2da8ab947c6:wukong/products/doc.go"
+      ]
+    },
+    "doc.whiteboard_insert": {
+      "agent_summary": "经用户确认后向钉钉文档插入空白板卡片并返回块 ID 与白板 part ID",
+      "use_when": [
+        "目标文档还没有可操作白板，需要创建空白板卡片并取得后续 query/update 使用的 partId 时"
+      ],
+      "avoid_when": [
+        "已有白板只需读取或编辑时使用 whiteboard query/update；删除卡片使用 doc block delete"
+      ],
+      "examples": [
+        "dws doc whiteboard insert --node <DOC_ID> --format json"
+      ],
+      "reviewed": true,
+      "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+      "source_refs": [
+        "CommandRegistry:canonical_path=doc.whiteboard_insert",
+        "cobra-help:dws doc whiteboard insert",
+        "dws-wukong@e2da8ab947c6:wukong/products/doc_whiteboard.go"
+      ]
     }
   },
   "products": {

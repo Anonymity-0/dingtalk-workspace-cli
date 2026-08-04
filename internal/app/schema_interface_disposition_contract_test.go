@@ -205,7 +205,7 @@ func TestReviewedInterfaceDispositionSourceOwnsRuntimeSurface(t *testing.T) {
 	legacyDispositionKeys := load("../cli/schema_hints/zz-interface-disposition-review.json").Tools
 	dispositions := hintFile{Source: map[string]any{"reviewed": true}, Tools: map[string]map[string]any{}}
 	for _, product := range []string{
-		"attendance", "aitable", "chat", "drive", "event", "sheet", "wiki", "doc", "mail", "todo", "calendar", "conference", "contact", "dev", "devdoc", "ding", "live", "minutes", "oa", "pat", "report", "aisearch",
+		"attendance", "aitable", "chat", "drive", "event", "sheet", "wiki", "doc", "whiteboard", "mail", "todo", "calendar", "conference", "contact", "dev", "devdoc", "ding", "live", "minutes", "oa", "pat", "report", "aisearch",
 	} {
 		path := "../cli/schema_hints/metadata/" + product + ".json"
 		if _, err := os.Stat(path); err != nil {

@@ -154,6 +154,10 @@
       "cli_path": "doc media download"
     },
     {
+      "canonical_path": "doc.media_upload",
+      "cli_path": "doc media upload"
+    },
+    {
       "canonical_path": "doc.media_insert",
       "cli_path": "doc media insert"
     },
@@ -240,6 +244,10 @@
     {
       "canonical_path": "doc.version_save",
       "cli_path": "doc version save"
+    },
+    {
+      "canonical_path": "doc.whiteboard_insert",
+      "cli_path": "doc whiteboard insert"
     }
   ]
 }

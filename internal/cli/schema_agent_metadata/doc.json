@@ -10441,6 +10441,289 @@
         "把本地文件/图片作为附件块插入文档正文（自动 prepare+PUT+insert）时"
       ]
     },
+    "doc media upload": {
+      "agent_summary": "经用户确认后上传绑定到文档 nodeId 的可复用媒体资源而不插入正文",
+      "agent_summary_source": "dws-agent-selection/doc",
+      "availability": "available",
+      "avoid_when": [
+        "需要把附件直接插入文档正文时用 doc media insert；不要跨 nodeId 复用资源"
+      ],
+      "confirmation": "user_required",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws doc media upload --node \u003cDOC_ID\u003e --file ./icon.svg --mime-type image/svg+xml --format json"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "经用户确认后上传绑定到文档 nodeId 的可复用媒体资源而不插入正文",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+          "candidates": [
+            {
+              "value": "经用户确认后上传绑定到文档 nodeId 的可复用媒体资源而不插入正文",
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。"
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "需要把附件直接插入文档正文时用 doc media insert；不要跨 nodeId 复用资源"
+          ],
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+          "candidates": [
+            {
+              "value": [
+                "需要把附件直接插入文档正文时用 doc media insert；不要跨 nodeId 复用资源"
+              ],
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。"
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "user_required",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "candidates": [
+            {
+              "value": "user_required",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal."
+            },
+            {
+              "value": "not_required",
+              "source": "risk-default",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "effect": {
+          "value": "write",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "candidates": [
+            {
+              "value": "write",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal."
+            },
+            {
+              "value": "write",
+              "source": "command-verb",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws doc media upload --node \u003cDOC_ID\u003e --file ./icon.svg --mime-type image/svg+xml --format json"
+          ],
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+          "candidates": [
+            {
+              "value": [
+                "dws doc media upload --node \u003cDOC_ID\u003e --file ./icon.svg --mime-type image/svg+xml --format json"
+              ],
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。"
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "unknown",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "candidates": [
+            {
+              "value": "unknown",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal."
+            },
+            {
+              "value": "unknown",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "The CLI obtains a temporary document upload credential, performs the OSS PUT locally, and exposes only the stable node-bound resource contract.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "candidates": [
+            {
+              "value": "The CLI obtains a temporary document upload credential, performs the OSS PUT locally, and exposes only the stable node-bound resource contract.",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。"
+            }
+          ]
+        },
+        "risk": {
+          "value": "medium",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal.",
+          "candidates": [
+            {
+              "value": "medium",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated as the resource preparation step required by Wukong whiteboard Vector and SVG writes; the public wrapper requires confirmation and keeps temporary uploadUrl internal."
+            },
+            {
+              "value": "medium",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "为同一文档内白板的 Vector/SVG 写入准备 resourceId 和 resourceUrl 时"
+          ],
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。",
+          "candidates": [
+            {
+              "value": [
+                "为同一文档内白板的 Vector/SVG 写入准备 resourceId 和 resourceUrl 时"
+              ],
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "依据 Wukong 白板资源准备链人工迁移，公网运行时增加用户确认，临时上传地址不进入稳定输出。"
+            }
+          ]
+        }
+      },
+      "idempotency": "unknown",
+      "interface_mode": "composite",
+      "interface_reason": "The CLI obtains a temporary document upload credential, performs the OSS PUT locally, and exposes only the stable node-bound resource contract.",
+      "reviewed": true,
+      "risk": "medium",
+      "source_refs": [
+        "CommandRegistry:canonical_path=doc.media_upload",
+        "cobra-help:dws doc media upload",
+        "dws-wukong@e2da8ab947c6:wukong/products/doc.go",
+        "internal/cli/schema_hints/metadata/doc.json",
+        "internal/cli/schema_hints/selection/doc.json",
+        "skills/mono/references/products/doc.md"
+      ],
+      "use_when": [
+        "为同一文档内白板的 Vector/SVG 写入准备 resourceId 和 resourceUrl 时"
+      ]
+    },
     "doc move": {
       "agent_summary": "兼容入口：移动文档或文件；文件移动能力已迁移到 drive。",
       "agent_summary_source": "dws-agent-selection/doc",
@@ -16025,6 +16308,289 @@
       ],
       "use_when": [
         "手动保存当前文档版本快照时"
+      ]
+    },
+    "doc whiteboard insert": {
+      "agent_summary": "经用户确认后向钉钉文档插入空白板卡片并返回块 ID 与白板 part ID",
+      "agent_summary_source": "dws-agent-selection/doc",
+      "availability": "available",
+      "avoid_when": [
+        "已有白板只需读取或编辑时使用 whiteboard query/update；删除卡片使用 doc block delete"
+      ],
+      "confirmation": "user_required",
+      "effect": "write",
+      "effect_source": "agent-hint",
+      "examples": [
+        "dws doc whiteboard insert --node \u003cDOC_ID\u003e --format json"
+      ],
+      "field_provenance": {
+        "agent_summary": {
+          "value": "经用户确认后向钉钉文档插入空白板卡片并返回块 ID 与白板 part ID",
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+          "candidates": [
+            {
+              "value": "经用户确认后向钉钉文档插入空白板卡片并返回块 ID 与白板 part ID",
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。"
+            }
+          ]
+        },
+        "availability": {
+          "value": "available",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "candidates": [
+            {
+              "value": "available",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command."
+            }
+          ]
+        },
+        "avoid_when": {
+          "value": [
+            "已有白板只需读取或编辑时使用 whiteboard query/update；删除卡片使用 doc block delete"
+          ],
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+          "candidates": [
+            {
+              "value": [
+                "已有白板只需读取或编辑时使用 whiteboard query/update；删除卡片使用 doc block delete"
+              ],
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。"
+            }
+          ]
+        },
+        "confirmation": {
+          "value": "user_required",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "candidates": [
+            {
+              "value": "user_required",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command."
+            },
+            {
+              "value": "not_required",
+              "source": "risk-default",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "effect": {
+          "value": "write",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "candidates": [
+            {
+              "value": "write",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command."
+            },
+            {
+              "value": "write",
+              "source": "command-verb",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "examples": {
+          "value": [
+            "dws doc whiteboard insert --node \u003cDOC_ID\u003e --format json"
+          ],
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+          "candidates": [
+            {
+              "value": [
+                "dws doc whiteboard insert --node \u003cDOC_ID\u003e --format json"
+              ],
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。"
+            }
+          ]
+        },
+        "idempotency": {
+          "value": "non_idempotent",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "candidates": [
+            {
+              "value": "non_idempotent",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command."
+            },
+            {
+              "value": "unknown",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "interface_mode": {
+          "value": "composite",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "candidates": [
+            {
+              "value": "composite",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command."
+            }
+          ]
+        },
+        "interface_reason": {
+          "value": "The CLI generates both card and whiteboard UUIDs, inserts canonical JSONML, then reads the block back to verify the persisted metadata.id.",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "candidates": [
+            {
+              "value": "The CLI generates both card and whiteboard UUIDs, inserts canonical JSONML, then reads the block back to verify the persisted metadata.id.",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command."
+            }
+          ]
+        },
+        "interface_ref": {
+          "value": null,
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "interface_disposition_matrix",
+          "review_reason": "final interface mode composite forbids a direct MCP interface_ref",
+          "candidates": [
+            {
+              "value": null,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "final interface mode composite forbids a direct MCP interface_ref"
+            }
+          ]
+        },
+        "reviewed": {
+          "value": true,
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "candidates": [
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command."
+            },
+            {
+              "value": true,
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": false,
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。"
+            }
+          ]
+        },
+        "risk": {
+          "value": "medium",
+          "source": "internal/cli/schema_hints/metadata/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command.",
+          "candidates": [
+            {
+              "value": "medium",
+              "source": "internal/cli/schema_hints/metadata/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "Migrated from dws-wukong e2da8ab947c6 as a confirmed create-and-verify orchestration; deletion remains the existing confirmed doc block delete command."
+            },
+            {
+              "value": "medium",
+              "source": "effect-default",
+              "precedence": "inference_or_default",
+              "selected": false
+            }
+          ]
+        },
+        "use_when": {
+          "value": [
+            "目标文档还没有可操作白板，需要创建空白板卡片并取得后续 query/update 使用的 partId 时"
+          ],
+          "source": "internal/cli/schema_hints/selection/doc.json",
+          "precedence": "reviewed_explicit",
+          "resolution": "highest_precedence",
+          "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。",
+          "candidates": [
+            {
+              "value": [
+                "目标文档还没有可操作白板，需要创建空白板卡片并取得后续 query/update 使用的 partId 时"
+              ],
+              "source": "internal/cli/schema_hints/selection/doc.json",
+              "precedence": "reviewed_explicit",
+              "selected": true,
+              "review_reason": "依据 Wukong feat/support-whiteboard-2 的客户端 UUID、JSONML 插入和落库回查流程人工迁移，并按公网安全模型增加确认。"
+            }
+          ]
+        }
+      },
+      "idempotency": "non_idempotent",
+      "interface_mode": "composite",
+      "interface_reason": "The CLI generates both card and whiteboard UUIDs, inserts canonical JSONML, then reads the block back to verify the persisted metadata.id.",
+      "reviewed": true,
+      "risk": "medium",
+      "source_refs": [
+        "CommandRegistry:canonical_path=doc.whiteboard_insert",
+        "cobra-help:dws doc whiteboard insert",
+        "dws-wukong@e2da8ab947c6:wukong/products/doc_whiteboard.go",
+        "internal/cli/schema_hints/metadata/doc.json",
+        "internal/cli/schema_hints/selection/doc.json",
+        "skills/mono/references/products/doc.md"
+      ],
+      "use_when": [
+        "目标文档还没有可操作白板，需要创建空白板卡片并取得后续 query/update 使用的 partId 时"
       ]
     }
   }

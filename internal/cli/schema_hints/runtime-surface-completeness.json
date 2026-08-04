@@ -7,8 +7,8 @@
     "channel": "open-source"
   },
   "coverage": {
-    "source_tools": 846,
-    "matched_tools": 71
+    "source_tools": 850,
+    "matched_tools": 75
   },
   "tools": {
     "aitable.form_create": {
@@ -877,6 +877,40 @@
       "idempotency": "unknown",
       "reviewed": false
     },
+    "doc.media_upload": {
+      "agent_summary": "上传绑定到文档 nodeId 的可复用媒体资源",
+      "use_when": [
+        "为同一文档内白板 Vector 或 SVG 写入准备稳定资源时"
+      ],
+      "avoid_when": [
+        "需要直接插入正文附件时使用 doc media insert"
+      ],
+      "examples": [
+        "dws doc media upload --node <DOC_ID> --file ./icon.svg --format json"
+      ],
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
+      "reviewed": false
+    },
+    "doc.whiteboard_insert": {
+      "agent_summary": "向文档插入空白板卡片并返回白板 part ID",
+      "use_when": [
+        "目标文档尚无可操作白板，需要创建空白板卡片时"
+      ],
+      "avoid_when": [
+        "已有白板内容操作使用 whiteboard query 或 update"
+      ],
+      "examples": [
+        "dws doc whiteboard insert --node <DOC_ID> --format json"
+      ],
+      "effect": "write",
+      "risk": "medium",
+      "confirmation": "user_required",
+      "idempotency": "non_idempotent",
+      "reviewed": false
+    },
     "doc.import_get": {
       "agent_summary": "根据 taskId 查询文档导入任务的执行结果",
       "use_when": [
@@ -1307,6 +1341,40 @@
       "risk": "low",
       "confirmation": "not_required",
       "idempotency": "idempotent",
+      "reviewed": false
+    },
+    "whiteboard.query": {
+      "agent_summary": "读取文档内已有白板的 OpenNodes 内容",
+      "use_when": [
+        "已知文档 nodeId 和白板 partId，需要读取当前白板结构时"
+      ],
+      "avoid_when": [
+        "创建白板卡片使用 doc whiteboard insert"
+      ],
+      "examples": [
+        "dws whiteboard query --node <DOC_ID> --part-id <PART_ID> --format json"
+      ],
+      "effect": "read",
+      "risk": "low",
+      "confirmation": "not_required",
+      "idempotency": "idempotent",
+      "reviewed": false
+    },
+    "whiteboard.update": {
+      "agent_summary": "经确认后向已有白板追加节点或整页重建",
+      "use_when": [
+        "已有合规 OpenNodes V1 文件并准备写入目标白板时"
+      ],
+      "avoid_when": [
+        "只读取白板内容时使用 whiteboard query"
+      ],
+      "examples": [
+        "dws whiteboard update --node <DOC_ID> --part-id <PART_ID> --source ./whiteboard.json --format json"
+      ],
+      "effect": "write",
+      "risk": "high",
+      "confirmation": "user_required",
+      "idempotency": "unknown",
       "reviewed": false
     }
   }
