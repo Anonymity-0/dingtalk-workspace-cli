@@ -563,6 +563,9 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 			t.Errorf("macOS auth/keychain job missing contract %q", want)
 		}
 	}
+	if strings.Contains(darwinJob, "./internal/keychain ./internal/auth ./internal/app") {
+		t.Error("macOS native test job must not repeat the complete internal/app race shard")
+	}
 
 	coverageStart := strings.Index(admission, "\n  coverage:\n")
 	coverageEnd := strings.Index(admission, "\n  policy:\n")
