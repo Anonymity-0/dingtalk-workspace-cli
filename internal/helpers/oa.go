@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -668,19 +669,45 @@ func newOaCommand() *cobra.Command {
 	approvalRevertTaskCmd.Flags().String("action", "", "退回方式：REVERT_FOR_APPROVAL（退回到审批人）/ REVERT_FOR_RESUBMIT（退回到发起人）(必填)")
 	approvalRevertTaskCmd.Flags().String("remark", "", "退回说明 (可选)")
 	approvalFormSchemaCmd.Flags().String("process-code", "", "审批模板 processCode (必填)")
-	approvalForecastCmd.Flags().String("process-code", "", "审批模板 processCode（简单模式必填）")
-	approvalForecastCmd.Flags().String("dept-id", "", "发起人部门 ID（简单模式必填）")
-	approvalForecastCmd.Flags().String("form-values", "", "表单值 JSON（简单模式必填）")
-	approvalForecastCmd.Flags().String("request", "", "完整请求 JSON（与简单模式互斥）")
-	approvalCreateCmd.Flags().String("process-code", "", "审批模板 processCode（简单模式必填）")
+	approvalForecastCmd.Flags().String("process-code", "", "审批模板 processCode（简单模式使用；与 --request 互斥）")
+	approvalForecastCmd.Flags().String("dept-id", "", "发起人部门 ID（简单模式使用；与 --request 互斥）")
+	approvalForecastCmd.Flags().String("form-values", "", "表单值 JSON（简单模式使用；与 --request 互斥）")
+	approvalForecastCmd.Flags().String("request", "", "完整请求 JSON（高级模式；与简单模式参数互斥）")
+	approvalForecastCmd.MarkFlagsOneRequired("request", "process-code")
+	approvalForecastCmd.MarkFlagsRequiredTogether("process-code", "dept-id", "form-values")
+	forecastMutuallyExclusive := make([][]string, 0, 3)
+	for _, name := range []string{"process-code", "dept-id", "form-values"} {
+		approvalForecastCmd.MarkFlagsMutuallyExclusive("request", name)
+		forecastMutuallyExclusive = append(forecastMutuallyExclusive, []string{"request", name})
+	}
+	cli.AnnotateRuntimeConstraints(approvalForecastCmd, cli.RuntimeSchemaConstraints{
+		MutuallyExclusive: forecastMutuallyExclusive,
+		RequireOneOf:      [][]string{{"request", "process-code"}},
+		RequireTogether:   [][]string{{"process-code", "dept-id", "form-values"}},
+	})
+
+	approvalCreateCmd.Flags().String("process-code", "", "审批模板 processCode（简单模式使用；与 --request 互斥）")
 	approvalCreateCmd.Flags().String("dept-id", "-1", "发起人部门 ID")
-	approvalCreateCmd.Flags().String("form-values", "", "表单值 JSON（简单模式必填）")
-	approvalCreateCmd.Flags().String("request", "", "完整请求 JSON（与简单模式互斥）")
+	approvalCreateCmd.Flags().String("form-values", "", "表单值 JSON（简单模式使用；与 --request 互斥）")
+	approvalCreateCmd.Flags().String("request", "", "完整请求 JSON（高级模式；与简单模式参数互斥）")
 	approvalCreateCmd.Flags().String("originator-user-id", "", "审批发起人 userId")
 	approvalCreateCmd.Flags().String("approvers", "", "审批人 userId 列表，多个用逗号分隔")
 	approvalCreateCmd.Flags().String("approvers-action-type", "OR", "审批类型：AND、OR 或 NONE")
 	approvalCreateCmd.Flags().String("cc-list", "", "抄送人 userId 列表，多个用逗号分隔")
 	approvalCreateCmd.Flags().String("cc-position", "START", "抄送时点：START、FINISH 或 START_FINISH")
+	approvalCreateCmd.MarkFlagsOneRequired("request", "process-code")
+	approvalCreateCmd.MarkFlagsRequiredTogether("process-code", "form-values")
+	createSimpleFlags := []string{"process-code", "dept-id", "form-values", "originator-user-id", "approvers", "approvers-action-type", "cc-list", "cc-position"}
+	createMutuallyExclusive := make([][]string, 0, len(createSimpleFlags))
+	for _, name := range createSimpleFlags {
+		approvalCreateCmd.MarkFlagsMutuallyExclusive("request", name)
+		createMutuallyExclusive = append(createMutuallyExclusive, []string{"request", name})
+	}
+	cli.AnnotateRuntimeConstraints(approvalCreateCmd, cli.RuntimeSchemaConstraints{
+		MutuallyExclusive: createMutuallyExclusive,
+		RequireOneOf:      [][]string{{"request", "process-code"}},
+		RequireTogether:   [][]string{{"process-code", "form-values"}},
+	})
 
 	approvalCmd.AddCommand(
 		approvalListPendingCmd,

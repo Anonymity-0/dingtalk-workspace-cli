@@ -1278,19 +1278,49 @@
       "cli_name": "forecast-process",
       "cli_path": "oa approval forecast-process",
       "confirmation": "not_required",
+      "constraints": {
+        "mutually_exclusive": [
+          [
+            "request",
+            "process-code"
+          ],
+          [
+            "request",
+            "dept-id"
+          ],
+          [
+            "request",
+            "form-values"
+          ]
+        ],
+        "require_one_of": [
+          [
+            "request",
+            "process-code"
+          ]
+        ],
+        "require_together": [
+          [
+            "process-code",
+            "dept-id",
+            "form-values"
+          ]
+        ]
+      },
       "description": "根据表单值预测审批流程与自选节点",
       "display": "OA 审批 / 同意 / 拒绝 / 撤销",
       "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
-        "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'"
+        "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'",
+        "dws oa approval forecast-process --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[[{\"name\":\"金额\",\"value\":\"100\"}]]}'"
       ],
       "field_provenance": {
         "agent_summary": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": "预测审批流程与自选审批节点"
@@ -1298,7 +1328,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
           "source": "internal/cli/schema_hints/selection/oa.json",
           "value": "预测审批流程与自选审批节点"
         },
@@ -1328,7 +1358,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": [
@@ -1338,7 +1368,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
           "source": "internal/cli/schema_hints/selection/oa.json",
           "value": [
             "需要真正创建审批单时改用 create-instance；未获得字段定义时先用 form-schema"
@@ -1416,20 +1446,22 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": [
-                "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'"
+                "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'",
+                "dws oa approval forecast-process --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[[{\"name\":\"金额\",\"value\":\"100\"}]]}'"
               ]
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
           "source": "internal/cli/schema_hints/selection/oa.json",
           "value": [
-            "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'"
+            "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'",
+            "dws oa approval forecast-process --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[[{\"name\":\"金额\",\"value\":\"100\"}]]}'"
           ]
         },
         "idempotency": {
@@ -1515,7 +1547,7 @@
             },
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
               "selected": false,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": true
@@ -1567,7 +1599,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": [
@@ -1577,7 +1609,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
           "source": "internal/cli/schema_hints/selection/oa.json",
           "value": [
             "已知道 processCode 且已根据表单 Schema 组装字段，需要在发起前确认审批路径或自选节点时"
@@ -1598,7 +1630,7 @@
       "parameter_count": 4,
       "parameters": {
         "dept-id": {
-          "description": "发起人部门 ID（简单模式必填）",
+          "description": "发起人部门 ID（简单模式使用；与 --request 互斥）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -1606,7 +1638,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "发起人部门 ID（简单模式必填）"
+                  "value": "发起人部门 ID（简单模式使用；与 --request 互斥）"
                 },
                 {
                   "precedence": "default",
@@ -1618,7 +1650,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "发起人部门 ID（简单模式必填）"
+              "value": "发起人部门 ID（简单模式使用；与 --request 互斥）"
             },
             "property": {
               "candidates": [
@@ -1645,22 +1677,16 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "usage_required_inference",
-                  "value": true
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
             },
             "required_when": {
               "candidates": [
@@ -1691,11 +1717,11 @@
               "value": "string"
             }
           },
-          "required": true,
+          "required": false,
           "type": "string"
         },
         "form-values": {
-          "description": "表单值 JSON（简单模式必填）",
+          "description": "表单值 JSON（简单模式使用；与 --request 互斥）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -1703,7 +1729,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "表单值 JSON（简单模式必填）"
+                  "value": "表单值 JSON（简单模式使用；与 --request 互斥）"
                 },
                 {
                   "precedence": "default",
@@ -1715,7 +1741,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "表单值 JSON（简单模式必填）"
+              "value": "表单值 JSON（简单模式使用；与 --request 互斥）"
             },
             "property": {
               "candidates": [
@@ -1742,22 +1768,16 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "usage_required_inference",
-                  "value": true
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
             },
             "required_when": {
               "candidates": [
@@ -1788,11 +1808,11 @@
               "value": "string"
             }
           },
-          "required": true,
+          "required": false,
           "type": "string"
         },
         "process-code": {
-          "description": "审批模板 processCode（简单模式必填）",
+          "description": "审批模板 processCode（简单模式使用；与 --request 互斥）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -1800,7 +1820,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "审批模板 processCode（简单模式必填）"
+                  "value": "审批模板 processCode（简单模式使用；与 --request 互斥）"
                 },
                 {
                   "precedence": "default",
@@ -1812,7 +1832,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "审批模板 processCode（简单模式必填）"
+              "value": "审批模板 processCode（简单模式使用；与 --request 互斥）"
             },
             "property": {
               "candidates": [
@@ -1839,10 +1859,10 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "usage_required_inference",
-                  "value": true
+                  "source": "require_one_of_constraint",
+                  "value": false
                 },
                 {
                   "precedence": "default",
@@ -1851,10 +1871,10 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "source": "require_one_of_constraint",
+              "value": false
             },
             "required_when": {
               "candidates": [
@@ -1885,11 +1905,11 @@
               "value": "string"
             }
           },
-          "required": true,
+          "required": false,
           "type": "string"
         },
         "request": {
-          "description": "完整请求 JSON（与简单模式互斥）",
+          "description": "完整请求 JSON（高级模式；与简单模式参数互斥）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -1897,7 +1917,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "完整请求 JSON（与简单模式互斥）"
+                  "value": "完整请求 JSON（高级模式；与简单模式参数互斥）"
                 },
                 {
                   "precedence": "mcp_metadata",
@@ -1915,7 +1935,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "完整请求 JSON（与简单模式互斥）"
+              "value": "完整请求 JSON（高级模式；与简单模式参数互斥）"
             },
             "interface_type": {
               "candidates": [
@@ -1960,8 +1980,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "mcp_metadata",
+                  "precedence": "command_constraint",
                   "selected": true,
+                  "source": "require_one_of_constraint",
+                  "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
                   "source": "mcp_metadata",
                   "value": false
                 },
@@ -1972,9 +1998,9 @@
                   "value": false
                 }
               ],
-              "precedence": "mcp_metadata",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "source": "mcp_metadata",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {
@@ -15318,19 +15344,68 @@
       "cli_name": "create-instance",
       "cli_path": "oa approval create-instance",
       "confirmation": "user_required",
+      "constraints": {
+        "mutually_exclusive": [
+          [
+            "request",
+            "process-code"
+          ],
+          [
+            "request",
+            "dept-id"
+          ],
+          [
+            "request",
+            "form-values"
+          ],
+          [
+            "request",
+            "originator-user-id"
+          ],
+          [
+            "request",
+            "approvers"
+          ],
+          [
+            "request",
+            "approvers-action-type"
+          ],
+          [
+            "request",
+            "cc-list"
+          ],
+          [
+            "request",
+            "cc-position"
+          ]
+        ],
+        "require_one_of": [
+          [
+            "request",
+            "process-code"
+          ]
+        ],
+        "require_together": [
+          [
+            "process-code",
+            "form-values"
+          ]
+        ]
+      },
       "description": "发起审批实例（需要 --yes 确认）",
       "display": "OA 审批 / 同意 / 拒绝 / 撤销",
       "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
-        "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'"
+        "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'",
+        "dws oa approval create-instance --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[{\"name\":\"事由\",\"value\":\"测试\"}],\"targetSelectActioners\":[{\"actionerKey\":\"manual-node\",\"actionerStaffIds\":[\"user-id\"]}]}'"
       ],
       "field_provenance": {
         "agent_summary": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": "发起新的审批实例"
@@ -15338,7 +15413,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
           "source": "internal/cli/schema_hints/selection/oa.json",
           "value": "发起新的审批实例"
         },
@@ -15346,7 +15421,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": "available"
@@ -15360,7 +15435,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "value": "available"
         },
@@ -15368,7 +15443,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": [
@@ -15378,7 +15453,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
           "source": "internal/cli/schema_hints/selection/oa.json",
           "value": [
             "只需预测流程时使用 forecast-process；用户尚未确认或字段未按 Schema 核对时不要发起"
@@ -15404,7 +15479,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": "user_required"
@@ -15418,7 +15493,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "value": "user_required"
         },
@@ -15446,7 +15521,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": "write"
@@ -15460,7 +15535,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "value": "write"
         },
@@ -15468,27 +15543,29 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": [
-                "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'"
+                "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'",
+                "dws oa approval create-instance --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[{\"name\":\"事由\",\"value\":\"测试\"}],\"targetSelectActioners\":[{\"actionerKey\":\"manual-node\",\"actionerStaffIds\":[\"user-id\"]}]}'"
               ]
             }
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
           "source": "internal/cli/schema_hints/selection/oa.json",
           "value": [
-            "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'"
+            "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'",
+            "dws oa approval create-instance --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[{\"name\":\"事由\",\"value\":\"测试\"}],\"targetSelectActioners\":[{\"actionerKey\":\"manual-node\",\"actionerStaffIds\":[\"user-id\"]}]}'"
           ]
         },
         "idempotency": {
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": "non_idempotent"
@@ -15502,7 +15579,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "value": "non_idempotent"
         },
@@ -15510,7 +15587,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": "mcp"
@@ -15524,7 +15601,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "value": "mcp"
         },
@@ -15566,14 +15643,14 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": true
             },
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
               "selected": false,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": true
@@ -15581,7 +15658,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "value": true
         },
@@ -15589,7 +15666,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
               "selected": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "value": "high"
@@ -15603,7 +15680,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "value": "high"
         },
@@ -15631,7 +15708,7 @@
           "candidates": [
             {
               "precedence": "reviewed_explicit",
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
               "selected": true,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "value": [
@@ -15641,7 +15718,7 @@
           ],
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
           "source": "internal/cli/schema_hints/selection/oa.json",
           "value": [
             "用户确认要发起审批，且已查询表单 Schema、核对字段及审批路径后使用"
@@ -16138,7 +16215,7 @@
           "type": "string"
         },
         "form-values": {
-          "description": "表单值 JSON（简单模式必填）",
+          "description": "表单值 JSON（简单模式使用；与 --request 互斥）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -16146,7 +16223,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "表单值 JSON（简单模式必填）"
+                  "value": "表单值 JSON（简单模式使用；与 --request 互斥）"
                 },
                 {
                   "precedence": "default",
@@ -16158,7 +16235,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "表单值 JSON（简单模式必填）"
+              "value": "表单值 JSON（简单模式使用；与 --request 互斥）"
             },
             "property": {
               "candidates": [
@@ -16185,22 +16262,16 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
-                  "selected": true,
-                  "source": "usage_required_inference",
-                  "value": true
-                },
-                {
                   "precedence": "default",
-                  "selected": false,
+                  "selected": true,
                   "source": "default",
                   "value": false
                 }
               ],
-              "precedence": "inference",
-              "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "precedence": "default",
+              "resolution": "fallback",
+              "source": "default",
+              "value": false
             },
             "required_when": {
               "candidates": [
@@ -16231,7 +16302,7 @@
               "value": "string"
             }
           },
-          "required": true,
+          "required": false,
           "type": "string"
         },
         "originator-user-id": {
@@ -16326,7 +16397,7 @@
           "type": "string"
         },
         "process-code": {
-          "description": "审批模板 processCode（简单模式必填）",
+          "description": "审批模板 processCode（简单模式使用；与 --request 互斥）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -16334,7 +16405,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "审批模板 processCode（简单模式必填）"
+                  "value": "审批模板 processCode（简单模式使用；与 --request 互斥）"
                 },
                 {
                   "precedence": "default",
@@ -16346,7 +16417,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "审批模板 processCode（简单模式必填）"
+              "value": "审批模板 processCode（简单模式使用；与 --request 互斥）"
             },
             "property": {
               "candidates": [
@@ -16373,10 +16444,10 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "inference",
+                  "precedence": "command_constraint",
                   "selected": true,
-                  "source": "usage_required_inference",
-                  "value": true
+                  "source": "require_one_of_constraint",
+                  "value": false
                 },
                 {
                   "precedence": "default",
@@ -16385,10 +16456,10 @@
                   "value": false
                 }
               ],
-              "precedence": "inference",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "source": "usage_required_inference",
-              "value": true
+              "source": "require_one_of_constraint",
+              "value": false
             },
             "required_when": {
               "candidates": [
@@ -16419,11 +16490,11 @@
               "value": "string"
             }
           },
-          "required": true,
+          "required": false,
           "type": "string"
         },
         "request": {
-          "description": "完整请求 JSON（与简单模式互斥）",
+          "description": "完整请求 JSON（高级模式；与简单模式参数互斥）",
           "field_provenance": {
             "description": {
               "candidates": [
@@ -16431,7 +16502,7 @@
                   "precedence": "cobra_contract",
                   "selected": true,
                   "source": "cobra_usage",
-                  "value": "完整请求 JSON（与简单模式互斥）"
+                  "value": "完整请求 JSON（高级模式；与简单模式参数互斥）"
                 },
                 {
                   "precedence": "mcp_metadata",
@@ -16449,7 +16520,7 @@
               "precedence": "cobra_contract",
               "resolution": "highest_precedence",
               "source": "cobra_usage",
-              "value": "完整请求 JSON（与简单模式互斥）"
+              "value": "完整请求 JSON（高级模式；与简单模式参数互斥）"
             },
             "interface_type": {
               "candidates": [
@@ -16494,8 +16565,14 @@
             "required": {
               "candidates": [
                 {
-                  "precedence": "mcp_metadata",
+                  "precedence": "command_constraint",
                   "selected": true,
+                  "source": "require_one_of_constraint",
+                  "value": false
+                },
+                {
+                  "precedence": "mcp_metadata",
+                  "selected": false,
                   "source": "mcp_metadata",
                   "value": false
                 },
@@ -16506,9 +16583,9 @@
                   "value": false
                 }
               ],
-              "precedence": "mcp_metadata",
+              "precedence": "command_constraint",
               "resolution": "highest_precedence",
-              "source": "mcp_metadata",
+              "source": "require_one_of_constraint",
               "value": false
             },
             "required_when": {

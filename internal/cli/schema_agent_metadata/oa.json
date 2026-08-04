@@ -2088,7 +2088,8 @@
       "effect": "write",
       "effect_source": "agent-hint",
       "examples": [
-        "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'"
+        "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'",
+        "dws oa approval create-instance --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[{\"name\":\"事由\",\"value\":\"测试\"}],\"targetSelectActioners\":[{\"actionerKey\":\"manual-node\",\"actionerStaffIds\":[\"user-id\"]}]}'"
       ],
       "field_provenance": {
         "agent_summary": {
@@ -2096,14 +2097,14 @@
           "source": "internal/cli/schema_hints/selection/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
           "candidates": [
             {
               "value": "发起新的审批实例",
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。"
             }
           ]
         },
@@ -2112,14 +2113,14 @@
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "candidates": [
             {
               "value": "available",
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。"
             },
             {
               "value": "available",
@@ -2136,7 +2137,7 @@
           "source": "internal/cli/schema_hints/selection/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
           "candidates": [
             {
               "value": [
@@ -2145,7 +2146,7 @@
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。"
             }
           ]
         },
@@ -2154,14 +2155,14 @@
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "candidates": [
             {
               "value": "user_required",
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。"
             },
             {
               "value": "not_required",
@@ -2176,14 +2177,14 @@
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "candidates": [
             {
               "value": "write",
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。"
             },
             {
               "value": "write",
@@ -2195,21 +2196,23 @@
         },
         "examples": {
           "value": [
-            "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'"
+            "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'",
+            "dws oa approval create-instance --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[{\"name\":\"事由\",\"value\":\"测试\"}],\"targetSelectActioners\":[{\"actionerKey\":\"manual-node\",\"actionerStaffIds\":[\"user-id\"]}]}'"
           ],
           "source": "internal/cli/schema_hints/selection/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
           "candidates": [
             {
               "value": [
-                "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'"
+                "dws oa approval create-instance --process-code \u003cprocessCode\u003e --form-values '{\"事由\":\"测试\"}'",
+                "dws oa approval create-instance --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[{\"name\":\"事由\",\"value\":\"测试\"}],\"targetSelectActioners\":[{\"actionerKey\":\"manual-node\",\"actionerStaffIds\":[\"user-id\"]}]}'"
               ],
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。"
             }
           ]
         },
@@ -2218,14 +2221,14 @@
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "candidates": [
             {
               "value": "non_idempotent",
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。"
             },
             {
               "value": "unknown",
@@ -2240,14 +2243,14 @@
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "candidates": [
             {
               "value": "mcp",
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。"
             },
             {
               "value": "mcp",
@@ -2276,21 +2279,21 @@
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "candidates": [
             {
               "value": true,
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。"
             },
             {
               "value": true,
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。"
             }
           ]
         },
@@ -2299,14 +2302,14 @@
           "source": "internal/cli/schema_hints/metadata/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。",
           "candidates": [
             {
               "value": "high",
               "source": "internal/cli/schema_hints/metadata/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。"
             },
             {
               "value": "medium",
@@ -2323,7 +2326,7 @@
           "source": "internal/cli/schema_hints/selection/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。",
+          "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
           "candidates": [
             {
               "value": [
@@ -2332,7 +2335,7 @@
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；高风险写入命令必须显式 --yes。"
+              "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。"
             }
           ]
         }
@@ -2635,7 +2638,8 @@
       "effect": "read",
       "effect_source": "agent-hint",
       "examples": [
-        "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'"
+        "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'",
+        "dws oa approval forecast-process --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[[{\"name\":\"金额\",\"value\":\"100\"}]]}'"
       ],
       "field_provenance": {
         "agent_summary": {
@@ -2643,14 +2647,14 @@
           "source": "internal/cli/schema_hints/selection/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
           "candidates": [
             {
               "value": "预测审批流程与自选审批节点",
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。"
             }
           ]
         },
@@ -2683,7 +2687,7 @@
           "source": "internal/cli/schema_hints/selection/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
           "candidates": [
             {
               "value": [
@@ -2692,7 +2696,7 @@
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。"
             }
           ]
         },
@@ -2730,21 +2734,23 @@
         },
         "examples": {
           "value": [
-            "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'"
+            "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'",
+            "dws oa approval forecast-process --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[[{\"name\":\"金额\",\"value\":\"100\"}]]}'"
           ],
           "source": "internal/cli/schema_hints/selection/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
           "candidates": [
             {
               "value": [
-                "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'"
+                "dws oa approval forecast-process --process-code \u003cprocessCode\u003e --dept-id -1 --form-values '{\"金额\":\"100\"}'",
+                "dws oa approval forecast-process --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[[{\"name\":\"金额\",\"value\":\"100\"}]]}'"
               ],
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。"
             }
           ]
         },
@@ -2819,7 +2825,7 @@
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": false,
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。"
             }
           ]
         },
@@ -2846,7 +2852,7 @@
           "source": "internal/cli/schema_hints/selection/oa.json",
           "precedence": "reviewed_explicit",
           "resolution": "highest_precedence",
-          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。",
+          "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
           "candidates": [
             {
               "value": [
@@ -2855,7 +2861,7 @@
               "source": "internal/cli/schema_hints/selection/oa.json",
               "precedence": "reviewed_explicit",
               "selected": true,
-              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process，示例遵循 Cobra 简单模式。"
+              "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。"
             }
           ]
         }

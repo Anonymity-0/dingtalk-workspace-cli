@@ -3,6 +3,7 @@ package helpers
 import (
 	"io"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -113,6 +114,20 @@ func TestOAApprovalCreateInstanceRejectsMixedRequestModes(t *testing.T) {
 	}
 	if caller.calls != 0 {
 		t.Fatalf("unexpected MCP call count: %d", caller.calls)
+	}
+}
+
+func TestOAApprovalCreateInstanceRequiresExplicitYes(t *testing.T) {
+	caller := &scriptedToolCaller{}
+	err := executeOACommand(t, caller,
+		"approval", "create-instance",
+		"--request", `{"processCode":"PROC"}`,
+	)
+	if err == nil || !strings.Contains(err.Error(), "--yes") {
+		t.Fatalf("create instance without --yes error = %v, want explicit --yes requirement", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("create instance without --yes made %d MCP calls", caller.calls)
 	}
 }
 

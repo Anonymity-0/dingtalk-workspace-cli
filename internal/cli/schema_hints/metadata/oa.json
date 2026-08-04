@@ -103,8 +103,8 @@
     },
     "oa.start_process_instance": {
       "effect": "write", "risk": "high", "confirmation": "user_required", "idempotency": "non_idempotent",
-      "interface_mode": "mcp", "availability": "available", "reviewed": true, "runtime_gate": "confirm_dangerous",
-      "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes。"
+      "interface_mode": "mcp", "availability": "available", "reviewed": true, "runtime_gate": "typed_yes",
+      "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；命令在调用前强制显式 --yes，未提供时直接拒绝，不进入交互确认。"
     },
     "oa.shortcut_list_pending": {
       "effect": "read",

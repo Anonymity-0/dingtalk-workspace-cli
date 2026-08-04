@@ -322,7 +322,7 @@ Flags:
       --cc-list string                   抄送人 userId 列表，多个用逗号分隔（可选）
       --cc-position string               抄送时间点：START/FINISH/START_FINISH（可选，默认 START）
       --request string                   完整请求体 JSON（高级模式，与简单模式互斥）
-      --yes                              跳过交互确认，直接发起审批（Agent 必须在汇总用户确认后传入）
+      --yes                              显式确认并发起审批；未提供时命令直接拒绝，不进入交互确认（Agent 必须先汇总并获得用户确认）
 ```
 
 #### 两种模式
