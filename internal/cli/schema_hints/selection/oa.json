@@ -32,6 +32,39 @@
         "live-dws-schema:oa.approve_processInstance"
       ]
     },
+    "oa.get_process_schema": {
+      "agent_summary": "查询审批模板的表单 Schema",
+      "use_when": ["已从 list-forms 或 search-forms 获得 processCode，需要读取字段、选项和必填规则后再填写审批时"],
+      "avoid_when": ["只需列出可用模板时使用 list-forms；不要把返回的 Schema 当作可直接提交的实例请求"],
+      "examples": ["dws oa approval form-schema --process-code <processCode>"],
+      "reviewed": true,
+      "review_reason": "公开 OA MCP tools/list 已验证 get_process_schema，按 GitHub OA 命令树手写选型。",
+      "source_refs": ["CommandRegistry:canonical_path=oa.get_process_schema", "cobra-help:dws oa approval form-schema", "live-mcp-tools-list:oa.get_process_schema"]
+    },
+    "oa.forecast_process": {
+      "agent_summary": "预测审批流程与自选审批节点",
+      "use_when": ["已知道 processCode 且已根据表单 Schema 组装字段，需要在发起前确认审批路径或自选节点时"],
+      "avoid_when": ["需要真正创建审批单时改用 create-instance；未获得字段定义时先用 form-schema"],
+      "examples": [
+        "dws oa approval forecast-process --process-code <processCode> --dept-id -1 --form-values '{\"金额\":\"100\"}'",
+        "dws oa approval forecast-process --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[[{\"name\":\"金额\",\"value\":\"100\"}]]}'"
+      ],
+      "reviewed": true,
+      "review_reason": "公开 OA MCP tools/list 已验证 forecast_process；示例覆盖 Cobra 简单模式与完整请求高级模式。",
+      "source_refs": ["CommandRegistry:canonical_path=oa.forecast_process", "cobra-help:dws oa approval forecast-process", "live-mcp-tools-list:oa.forecast_process"]
+    },
+    "oa.start_process_instance": {
+      "agent_summary": "发起新的审批实例",
+      "use_when": ["用户确认要发起审批，且已查询表单 Schema、核对字段及审批路径后使用"],
+      "avoid_when": ["只需预测流程时使用 forecast-process；用户尚未确认或字段未按 Schema 核对时不要发起"],
+      "examples": [
+        "dws oa approval create-instance --process-code <processCode> --form-values '{\"事由\":\"测试\"}'",
+        "dws oa approval create-instance --request '{\"processCode\":\"PROC-xxx\",\"deptId\":-1,\"formComponentValues\":[{\"name\":\"事由\",\"value\":\"测试\"}],\"targetSelectActioners\":[{\"actionerKey\":\"manual-node\",\"actionerStaffIds\":[\"user-id\"]}]}'"
+      ],
+      "reviewed": true,
+      "review_reason": "公开 OA MCP tools/list 已验证 start_process_instance；示例覆盖简单与高级请求契约，真实执行仍须在用户确认后显式添加 --yes。",
+      "source_refs": ["CommandRegistry:canonical_path=oa.start_process_instance", "cobra-help:dws oa approval create-instance", "live-mcp-tools-list:oa.start_process_instance"]
+    },
     "oa.dingflow_comments": {
       "agent_summary": "用户添加审批评论",
       "use_when": [

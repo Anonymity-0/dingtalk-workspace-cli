@@ -1,20 +1,20 @@
 {
   "version": 1,
-  "source_hash": "sha256:1f76aa71b00f7b807b863ced6e98aca76dc4bda65107ea2a6c67eb4ec629db43",
-  "surface_hash": "sha256:89bc72d0a5ff03df634d733dc8b71c3010572524542538552c33c657ae012562",
-  "source_files": 160,
+  "source_hash": "sha256:9a6bc544f78424a85d7465cbb8ce20ee80c954de7ec3f7657eb42b05679d663d",
+  "surface_hash": "sha256:beeddac7cd934e409e47e5b4552dbc188840ad46205d8d48340569a97c51b59b",
+  "source_files": 162,
   "hint_files": 54,
   "hint_products": 43,
-  "hint_tools": 1846,
+  "hint_tools": 1852,
   "interface_metadata": {
     "source": "mcp-tools-list+cli-registry",
     "revision": "4574f7022c32cf4c033e9b7b4156e2fec815fed8",
     "source_hash": "sha256:17251f74a4f76142457cc0e87251ecb86c1e3bda0cdf2edc02f351589716ecbc",
-    "source_tools": 420,
-    "surface_tools": 415,
-    "eligible_summaries": 414,
+    "source_tools": 423,
+    "surface_tools": 418,
+    "eligible_summaries": 417,
     "applied_summaries": 0,
-    "preserved_summaries": 414,
+    "preserved_summaries": 417,
     "rejected_tools": [
       "chat.unread_message_conversation_list"
     ],
@@ -29,13 +29,13 @@
   "coverage": {
     "surface_products": 26,
     "products_with_metadata": 26,
-    "surface_tools": 847,
-    "tools_with_metadata": 847,
-    "tools_with_agent_summary": 847,
-    "tools_with_use_when": 847,
-    "tools_with_avoid_when": 847,
-    "tools_with_examples": 847,
-    "tools_with_interface_mode": 847,
+    "surface_tools": 850,
+    "tools_with_metadata": 850,
+    "tools_with_agent_summary": 850,
+    "tools_with_use_when": 850,
+    "tools_with_avoid_when": 850,
+    "tools_with_examples": 850,
+    "tools_with_interface_mode": 850,
     "unmatched_skill_tools": 122,
     "unreviewed_skill_tools": 11
   },
@@ -3671,8 +3671,8 @@
       "line": 114,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3685,8 +3685,8 @@
       "line": 115,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3696,11 +3696,11 @@
     {
       "tool_path": "oa approval ding-info",
       "source": "skills/mono/references/products/oa.md",
-      "line": 128,
+      "line": 485,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3710,11 +3710,11 @@
     {
       "tool_path": "oa approval ding-info",
       "source": "skills/mono/references/products/oa.md",
-      "line": 149,
+      "line": 506,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3724,11 +3724,11 @@
     {
       "tool_path": "oa approval revert-activities",
       "source": "skills/mono/references/products/oa.md",
-      "line": 164,
+      "line": 521,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3738,11 +3738,11 @@
     {
       "tool_path": "oa approval append-task",
       "source": "skills/mono/references/products/oa.md",
-      "line": 276,
+      "line": 633,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3752,11 +3752,11 @@
     {
       "tool_path": "oa approval append-task",
       "source": "skills/mono/references/products/oa.md",
-      "line": 277,
+      "line": 634,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3766,11 +3766,11 @@
     {
       "tool_path": "oa approval revert-task",
       "source": "skills/mono/references/products/oa.md",
-      "line": 297,
+      "line": 654,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3780,11 +3780,67 @@
     {
       "tool_path": "oa approval revert-task",
       "source": "skills/mono/references/products/oa.md",
-      "line": 299,
+      "line": 656,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
+      ],
+      "review": {
+        "status": "stale",
+        "reason": "旧版 Skill 或说明性引用，当前公开命令面无等价 leaf，禁止词法模糊映射"
+      }
+    },
+    {
+      "tool_path": "oa approval search-forms",
+      "source": "skills/mono/references/products/oa.md",
+      "line": 676,
+      "candidates": [
+        "oa approval approve",
+        "oa approval create-instance",
+        "oa approval detail"
+      ],
+      "review": {
+        "status": "stale",
+        "reason": "旧版 Skill 或说明性引用，当前公开命令面无等价 leaf，禁止词法模糊映射"
+      }
+    },
+    {
+      "tool_path": "oa approval search-forms",
+      "source": "skills/mono/references/products/oa.md",
+      "line": 682,
+      "candidates": [
+        "oa approval approve",
+        "oa approval create-instance",
+        "oa approval detail"
+      ],
+      "review": {
+        "status": "stale",
+        "reason": "旧版 Skill 或说明性引用，当前公开命令面无等价 leaf，禁止词法模糊映射"
+      }
+    },
+    {
+      "tool_path": "oa approval search-forms",
+      "source": "skills/mono/references/products/oa.md",
+      "line": 724,
+      "candidates": [
+        "oa approval approve",
+        "oa approval create-instance",
+        "oa approval detail"
+      ],
+      "review": {
+        "status": "stale",
+        "reason": "旧版 Skill 或说明性引用，当前公开命令面无等价 leaf，禁止词法模糊映射"
+      }
+    },
+    {
+      "tool_path": "oa approval search-forms",
+      "source": "skills/mono/references/products/oa.md",
+      "line": 754,
+      "candidates": [
+        "oa approval approve",
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "stale",
@@ -3839,8 +3895,8 @@
       "line": 102,
       "candidates": [
         "oa approval approve",
-        "oa approval detail",
-        "oa approval list-cc"
+        "oa approval create-instance",
+        "oa approval detail"
       ],
       "review": {
         "status": "group",

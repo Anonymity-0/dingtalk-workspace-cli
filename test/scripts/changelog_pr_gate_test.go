@@ -543,6 +543,11 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		t.Fatal("Code Admission workflow missing macOS test job boundaries")
 	}
 	darwinJob := admission[darwinStart:darwinEnd]
+	// The macOS job no longer runs ./internal/app as a whole package, so it does
+	// not need the package-level race budget the Ubuntu shard gets — the Ubuntu
+	// "race: app" shard already covers everything except the natively-gated
+	// tests. Pinning the two focused commands replaces that budget assertion:
+	// it locks the per-step timeouts and blocks a whole-package regression.
 	for _, want := range []string{
 		`go test -v -race -count=1 -timeout=6m ./internal/keychain ./internal/auth`,
 		`go test -v -race -count=1 -timeout=5m ./internal/app -run '^(TestValidateNewBinary_RecoversFromUnsignedDarwin|Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch))'`,

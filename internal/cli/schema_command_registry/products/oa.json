@@ -62,6 +62,18 @@
       "cli_path": "oa approval tasks"
     },
     {
+      "canonical_path": "oa.get_process_schema",
+      "cli_path": "oa approval form-schema"
+    },
+    {
+      "canonical_path": "oa.forecast_process",
+      "cli_path": "oa approval forecast-process"
+    },
+    {
+      "canonical_path": "oa.start_process_instance",
+      "cli_path": "oa approval create-instance"
+    },
+    {
       "canonical_path": "oa.shortcut_list_pending",
       "cli_path": "oa +list-pending"
     },
