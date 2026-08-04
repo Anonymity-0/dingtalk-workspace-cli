@@ -715,8 +715,8 @@ func (c runtimeParameterFieldContext) exampleCandidates() []runtimeSchemaFieldCa
 // runtimeCommandParameterSpecs resolves every source into the typed contract
 // model. Most fields use value-neutral source precedence: a higher-priority
 // source may intentionally raise or lower type/mapping/description semantics.
-// required is different: Cobra MarkFlagRequired is a hard floor that cannot be
-// lowered by manual/hint overlays (see resolveRequiredProjection).
+// required is different: Cobra MarkFlagRequired is a hard floor that no
+// lower-priority source may demote (see resolveRequiredProjection).
 func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinnedParams map[string]embeddedMCPParamMeta, constraints RuntimeSchemaConstraints) ([]ParameterSpec, error) {
 	if cmd == nil {
 		return nil, nil
