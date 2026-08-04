@@ -1341,6 +1341,9 @@ func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl Contrac
 		copied.SourceRefs = []string{"corecmd.ContractDecl"}
 		copied.MetadataSource = "corecmd.contract"
 		copied.Reviewed = nil
+		// Match the product path: trim-free, deduped selection lists so leaf
+		// and product pass-throughs never diverge.
+		copied = copied.Normalized()
 		payload.Selection = &copied
 	}
 	if id := decl.Identity; strings.TrimSpace(id.ProductID) != "" || strings.TrimSpace(id.Name) != "" ||
@@ -1350,6 +1353,7 @@ func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl Contrac
 		copied.ProductID = strings.TrimSpace(id.ProductID)
 		copied.SourceProductID = strings.TrimSpace(id.SourceProductID)
 		copied.Name = strings.TrimSpace(id.Name)
+		copied.Path = strings.TrimSpace(id.Path)
 		copied.CLIName = strings.TrimSpace(id.CLIName)
 		copied.CanonicalPath = strings.TrimSpace(id.CanonicalPath)
 		copied.CLIPath = strings.TrimSpace(id.CLIPath)
@@ -1363,7 +1367,10 @@ func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl Contrac
 		copied.Group = strings.TrimSpace(id.Group)
 		copied.Source = strings.TrimSpace(id.Source)
 		if len(id.Aliases) > 0 {
-			copied.Aliases = append([]string(nil), id.Aliases...)
+			copied.Aliases = make([]string, 0, len(id.Aliases))
+			for _, alias := range id.Aliases {
+				copied.Aliases = append(copied.Aliases, strings.TrimSpace(alias))
+			}
 		}
 		payload.Identity = &copied
 	}
