@@ -42,9 +42,6 @@ const (
 	runtimeSchemaFlagRequiredAnnotation     = runtimeannotate.AnnotationFlagRequired
 	runtimeSchemaFlagRequiredWhenAnnotation = runtimeannotate.AnnotationFlagReqWhen
 	runtimeSchemaFlagExampleAnnotation      = runtimeannotate.AnnotationFlagExample
-	runtimeSchemaContractAnnotation         = runtimeannotate.AnnotationContract
-	runtimeSchemaRiskAnnotation             = runtimeannotate.AnnotationRisk
-	runtimeSchemaRuntimeGateAnnotation      = runtimeannotate.AnnotationRuntimeGate
 )
 
 type embeddedMCPMetadata struct {
@@ -80,8 +77,8 @@ type embeddedMCPParamMeta struct {
 var runtimeSchemaConstraintsByCanonical = map[string]RuntimeSchemaConstraints{}
 
 // RegisterRuntimeSchemaConstraints records reviewed cross-parameter CLI rules
-// independently from the generated Catalog, preventing stale Catalog data
-// from becoming the source of its own next generation.
+// independently from the delivered Catalog so reviewed constraints always
+// apply, regardless of which snapshot is shipped.
 func RegisterRuntimeSchemaConstraints(canonicalPath string, constraints RuntimeSchemaConstraints) {
 	canonicalPath = strings.TrimSpace(canonicalPath)
 	constraints = normalizeRuntimeSchemaConstraints(constraints)
@@ -695,13 +692,15 @@ func (c runtimeParameterFieldContext) formatCandidates() []runtimeSchemaFieldCan
 }
 
 func (c runtimeParameterFieldContext) enumCandidates() []runtimeSchemaFieldCandidate {
-	return []runtimeSchemaFieldCandidate{
+	candidates := []runtimeSchemaFieldCandidate{
 		runtimeSchemaEnumCandidate(c.metadata.Enums[c.flag.Name], "typed_parameter_metadata"),
 		runtimeSchemaEnumCandidate(runtimeFlagEnumAnnotation(c.flag, runtimeSchemaFlagMetadataEnumAnnotation), "typed_parameter_metadata"),
 		runtimeSchemaEnumCandidate(runtimeFlagEnum(c.flag), "native_annotation"),
-		runtimeSchemaEnumCandidate(c.pinnedParam.Enum, "mcp_metadata"),
-		runtimeSchemaCandidate([]string{}, true, "default"),
 	}
+	if c.hasPinned {
+		candidates = append(candidates, runtimeSchemaEnumCandidate(c.pinnedParam.Enum, "mcp_metadata"))
+	}
+	return append(candidates, runtimeSchemaCandidate([]string{}, true, "default"))
 }
 
 func (c runtimeParameterFieldContext) exampleCandidates() []runtimeSchemaFieldCandidate {
@@ -905,30 +904,9 @@ func runtimeSchemaJSONString(value string) json.RawMessage {
 	return encoded
 }
 
-// runtimeCommandParameters is the compatibility wire adapter for callers that
-// have not yet moved to ToolSpec. Resolution happens only in the typed path;
-// this wrapper serializes the resulting ParameterSpecs without re-merging or
-// re-interpreting any source.
+// runtimeCommandParameterSpecsForPayload is a test seam; tests swap it to
+// simulate parameter-resolution failures.
 var runtimeCommandParameterSpecsForPayload = runtimeCommandParameterSpecs
-
-func runtimeCommandParameters(cmd *cobra.Command, canonicalPath string, pinnedParams map[string]embeddedMCPParamMeta, constraints RuntimeSchemaConstraints) (map[string]any, error) {
-	specs, err := runtimeCommandParameterSpecsForPayload(cmd, canonicalPath, pinnedParams, constraints)
-	if err != nil {
-		return nil, err
-	}
-	if len(specs) == 0 {
-		return nil, nil
-	}
-	parameters := make(map[string]any, len(specs))
-	for _, spec := range specs {
-		payload, payloadErr := spec.ToPayload()
-		if payloadErr != nil {
-			return nil, fmt.Errorf("serialize Schema parameter %q: %w", spec.Name, payloadErr)
-		}
-		parameters[spec.Name] = payload
-	}
-	return parameters, nil
-}
 
 func runtimeSchemaRequireOneOfContains(constraints RuntimeSchemaConstraints, names ...string) bool {
 	wanted := map[string]bool{}

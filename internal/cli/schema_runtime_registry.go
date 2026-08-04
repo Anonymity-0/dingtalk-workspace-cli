@@ -97,8 +97,8 @@ func ResolveSchemaBuild(root *cobra.Command) (ResolvedSchemaBuild, error) {
 	}, nil
 }
 
-// AssembleSchemaRegistry is retained for non-Catalog callers that only need
-// the typed registry. Catalog production must use ResolveSchemaBuild so the
+// AssembleSchemaRegistry is a test/homology gate entry that only needs the
+// typed registry. Catalog production must use ResolveSchemaBuild so the
 // bound/effective views remain attached to the exact same resolution pass.
 func AssembleSchemaRegistry(root *cobra.Command) (SchemaRegistry, error) {
 	resolved, err := ResolveSchemaBuild(root)
@@ -316,9 +316,9 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 		selection = *final.Selection
 	}
 	// Declared selection provenance metadata: the declaration lives in reviewed
-	// source code, so the catalog keeps the same uniform agent_* shape as
-	// legacy-path tools. Reviewed is assembly-derived (declarations are
-	// code-reviewed by construction), never author-provided.
+	// source code, so the catalog keeps the same uniform agent_* shape across
+	// all tools. Reviewed is assembly-derived (declarations are code-reviewed
+	// by construction), never author-provided.
 	if strings.TrimSpace(selection.AgentSummarySource) == "" && strings.TrimSpace(selection.AgentSummary) != "" {
 		selection.AgentSummarySource = "corecmd.ContractDecl"
 	}
@@ -569,7 +569,13 @@ func validateSchemaRegistryAgainstCommandRegistry(registry SchemaRegistry, comma
 	if got, want := len(index.CanonicalPaths()), len(publicCommands); got != want {
 		return fmt.Errorf("typed Schema registry contains %d canonical tools, reviewed CommandRegistry contains %d", got, want)
 	}
-	for canonical, expected := range publicCommands {
+	canonicals := make([]string, 0, len(publicCommands))
+	for canonical := range publicCommands {
+		canonicals = append(canonicals, canonical)
+	}
+	sort.Strings(canonicals)
+	for _, canonical := range canonicals {
+		expected := publicCommands[canonical]
 		tool, ok := index.Resolve(canonical)
 		if !ok {
 			return fmt.Errorf("reviewed CommandRegistry canonical %s is missing from typed Schema registry", canonical)

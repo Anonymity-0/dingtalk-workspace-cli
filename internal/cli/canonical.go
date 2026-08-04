@@ -28,12 +28,12 @@ import (
 // Schema Catalog embed fallback.
 var schemaCommandCatalogError = deliverySchemaCatalogError
 
-// NewMCPCommand returns a stub command since the canonical discovery
-// surface has been removed. The command tree is now built from plugins
-// and static endpoint registration only.
+// NewMCPCommand registers the mcp product declaration and returns its root
+// command. The app layer attaches reviewed static MCP helpers as
+// subcommands; live discovery surfaces are retired.
 func NewMCPCommand() *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/mcp.json
-	// products.mcp). DiscoveryCatalog assembly stamps provenance contract_final.
+	// products.mcp). Schema assembly stamps provenance contract_final.
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "mcp",
 		Selection: contract.ProductSelectionDecl{

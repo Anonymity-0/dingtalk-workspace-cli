@@ -17,6 +17,7 @@ package cli
 // functions has a production caller.
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -132,4 +133,25 @@ func schemaToolSpecFromPayload(payload map[string]any) (ToolSpec, error) {
 		return ToolSpec{}, err
 	}
 	return schemaToolSpecFromWire(wire)
+}
+
+// runtimeCommandParameters is the compatibility wire adapter used only by
+// tests; resolution happens in runtimeCommandParameterSpecs.
+func runtimeCommandParameters(cmd *cobra.Command, canonicalPath string, pinnedParams map[string]embeddedMCPParamMeta, constraints RuntimeSchemaConstraints) (map[string]any, error) {
+	specs, err := runtimeCommandParameterSpecsForPayload(cmd, canonicalPath, pinnedParams, constraints)
+	if err != nil {
+		return nil, err
+	}
+	if len(specs) == 0 {
+		return nil, nil
+	}
+	parameters := make(map[string]any, len(specs))
+	for _, spec := range specs {
+		payload, payloadErr := spec.ToPayload()
+		if payloadErr != nil {
+			return nil, fmt.Errorf("serialize Schema parameter %q: %w", spec.Name, payloadErr)
+		}
+		parameters[spec.Name] = payload
+	}
+	return parameters, nil
 }

@@ -218,15 +218,22 @@ func deliverySchemaOverviewPayload() (map[string]any, error) {
 	return schemaOverviewPayloadFromLoaded(deliverySchemaCatalog())
 }
 
+// stampSnapshotHashes writes the protected catalog_hash / surface_hash pair
+// onto a delivery payload. Every envelope that exposes snapshot hashes must
+// go through this helper so the two keys never drift apart.
+func stampSnapshotHashes(payload map[string]any, loaded loadedSchemaCatalog) {
+	payload["catalog_hash"] = loaded.Snapshot.SourceHash
+	if loaded.Snapshot.SurfaceHash != "" {
+		payload["surface_hash"] = loaded.Snapshot.SurfaceHash
+	}
+}
+
 func schemaAllPayloadFromLoaded(loaded loadedSchemaCatalog) (map[string]any, error) {
 	payload, err := renderDeliverySchemaAll(loaded.Registry)
 	if err != nil {
 		return nil, err
 	}
-	payload["catalog_hash"] = loaded.Snapshot.SourceHash
-	if loaded.Snapshot.SurfaceHash != "" {
-		payload["surface_hash"] = loaded.Snapshot.SurfaceHash
-	}
+	stampSnapshotHashes(payload, loaded)
 	return payload, nil
 }
 
@@ -235,10 +242,7 @@ func schemaOverviewPayloadFromLoaded(loaded loadedSchemaCatalog) (map[string]any
 	if err != nil {
 		return nil, err
 	}
-	payload["catalog_hash"] = loaded.Snapshot.SourceHash
-	if loaded.Snapshot.SurfaceHash != "" {
-		payload["surface_hash"] = loaded.Snapshot.SurfaceHash
-	}
+	stampSnapshotHashes(payload, loaded)
 	return payload, nil
 }
 
@@ -264,10 +268,7 @@ func schemaPayloadFromLoadedCatalog(loaded loadedSchemaCatalog, args []string) (
 			return nil, err
 		}
 		payload := snapshot.Catalog
-		payload["catalog_hash"] = loaded.Snapshot.SourceHash
-		if loaded.Snapshot.SurfaceHash != "" {
-			payload["surface_hash"] = loaded.Snapshot.SurfaceHash
-		}
+		stampSnapshotHashes(payload, loaded)
 		return payload, nil
 	}
 	raw := strings.TrimSpace(args[0])
