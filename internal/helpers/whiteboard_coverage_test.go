@@ -40,6 +40,16 @@ func TestWhiteboardInjectedEncodingFailures(t *testing.T) {
 	}
 }
 
+func TestDocWhiteboardInsertDryRun(t *testing.T) {
+	caller := &whiteboardTestCaller{dry: true}
+	installWhiteboardTestCaller(t, caller)
+	cmd := newDocWhiteboardCommand()
+	cmd.SetArgs([]string{"insert", "--node", "n"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func writeWhiteboardFixture(t *testing.T, content string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "whiteboard.json")
@@ -78,6 +88,9 @@ func TestLoadWhiteboardUpdateFileRejectsInvalidInputs(t *testing.T) {
 	}
 	if _, _, err := loadWhiteboardUpdateFile(t.TempDir()); err == nil {
 		t.Fatal("expected directory read error")
+	}
+	if _, _, err := validateWhiteboardNodes(json.RawMessage(`[`)); err == nil {
+		t.Fatal("expected malformed nodes array error")
 	}
 	input, nodes, err := loadWhiteboardUpdateFile(writeWhiteboardFixture(t,
 		`{"overwrite":true,"source":{"schemaVersion":"1.0","catalogVersion":"dml-v1","nodes":[]}}`))
