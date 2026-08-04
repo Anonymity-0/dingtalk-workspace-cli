@@ -181,3 +181,59 @@ func decodeSchemaMetaIndexLookup(data []byte) (map[string]CommandMeta, error) {
 	}
 	return commandMetaLookupFromIndex(index)
 }
+
+func applyRuntimeSchemaParameterBindingsFrom(cmd *cobra.Command, canonical string, bindings map[string]map[string]string) {
+	for flagName, propertyName := range bindings[strings.TrimSpace(canonical)] {
+		if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
+			setFlagAnnotation(flag, runtimeSchemaFlagBindingPropertyAnnotation, strings.TrimSpace(propertyName))
+		}
+	}
+}
+
+func setRuntimeCommandAnnotation(cmd *cobra.Command, key, value string) {
+	runtimeannotate.SetCommandAnnotation(cmd, key, value)
+}
+
+func applyRuntimeSchemaParameterMetadata(cmd *cobra.Command, canonicalPath string) {
+	metadata, ok := runtimeSchemaParameterMetadataByCanonical[strings.TrimSpace(canonicalPath)]
+	if !ok {
+		return
+	}
+	for _, flagName := range metadata.Required {
+		if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
+			setFlagAnnotation(flag, runtimeSchemaFlagMetadataRequiredAnnotation, "true")
+		}
+	}
+	for flagName, expression := range metadata.RequiredWhen {
+		if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
+			setFlagAnnotation(flag, runtimeSchemaFlagMetadataRequiredWhenAnnotation, strings.TrimSpace(expression))
+		}
+	}
+	for flagName, format := range metadata.Formats {
+		if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
+			setFlagAnnotation(flag, runtimeSchemaFlagMetadataFormatAnnotation, strings.TrimSpace(format))
+		}
+	}
+	for flagName, values := range metadata.Enums {
+		if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
+			setFlagAnnotationValues(flag, runtimeSchemaFlagMetadataEnumAnnotation, values...)
+		}
+	}
+	for flagName, example := range metadata.Examples {
+		if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
+			setFlagAnnotation(flag, runtimeSchemaFlagMetadataExampleAnnotation, strings.TrimSpace(example))
+		}
+	}
+}
+
+func publicRunnableSchemaLeaf(command *cobra.Command) bool {
+	if command == nil || !command.Runnable() || command.HasSubCommands() {
+		return false
+	}
+	for current := command; current != nil; current = current.Parent() {
+		if current.Hidden {
+			return false
+		}
+	}
+	return true
+}

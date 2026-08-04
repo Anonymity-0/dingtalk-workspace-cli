@@ -22,7 +22,6 @@ import (
 	"sync/atomic"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
-	"github.com/spf13/cobra"
 )
 
 const runtimeSchemaFlagBindingPropertyAnnotation = "dws.schema.binding.property"
@@ -315,14 +314,6 @@ func validateSchemaParameterBindingAuditKey(key string) error {
 		return fmt.Errorf("invalid exact binding key %q", key)
 	}
 	return nil
-}
-
-func applyRuntimeSchemaParameterBindingsFrom(cmd *cobra.Command, canonical string, bindings map[string]map[string]string) {
-	for flagName, propertyName := range bindings[strings.TrimSpace(canonical)] {
-		if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
-			setFlagAnnotation(flag, runtimeSchemaFlagBindingPropertyAnnotation, strings.TrimSpace(propertyName))
-		}
-	}
 }
 
 // LoadSchemaParameterBindings returns a defensive copy of the reviewed

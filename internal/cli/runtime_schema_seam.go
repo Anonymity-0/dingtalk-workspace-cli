@@ -14,7 +14,6 @@
 package cli
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -53,10 +52,6 @@ var (
 
 func resolvedFieldProvenance(value any, source, sourceRef, precedence, resolution, reviewReason string) contract.FieldProvenance {
 	return contract.ResolvedFieldProvenance(value, source, sourceRef, precedence, resolution, reviewReason)
-}
-
-func setRuntimeCommandAnnotation(cmd *cobra.Command, key, value string) {
-	runtimeannotate.SetCommandAnnotation(cmd, key, value)
 }
 
 func setFlagAnnotation(flag *pflag.Flag, key, value string) {

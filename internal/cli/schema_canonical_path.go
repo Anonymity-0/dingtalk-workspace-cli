@@ -15,8 +15,6 @@ package cli
 
 import (
 	"strings"
-
-	"github.com/spf13/cobra"
 )
 
 // SchemaVisibility is the reviewed CommandRegistry visibility class for a
@@ -45,16 +43,4 @@ func splitSchemaCanonicalPath(path string) (string, string, bool) {
 // splitManualSchemaCanonicalPath is a compatibility alias.
 func splitManualSchemaCanonicalPath(path string) (string, string, bool) {
 	return splitSchemaCanonicalPath(path)
-}
-
-func publicRunnableSchemaLeaf(command *cobra.Command) bool {
-	if command == nil || !command.Runnable() || command.HasSubCommands() {
-		return false
-	}
-	for current := command; current != nil; current = current.Parent() {
-		if current.Hidden {
-			return false
-		}
-	}
-	return true
 }
