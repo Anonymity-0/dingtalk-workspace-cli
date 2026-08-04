@@ -22,7 +22,9 @@ import (
 )
 
 // HasDeclaredOrAnnotatedConfirmation reports whether confirmation semantics are
-// covered by typed Contract SafetySpec, legacy Shortcut Risk, or runtime_gate.
+// covered by typed Contract SafetySpec. The risk/gate annotation branches are
+// residual bridges: their production writers are retired, so they only fire
+// for hand-built annotations (tests and overlay-bridge probes).
 func HasDeclaredOrAnnotatedConfirmation(cmd *cobra.Command) bool {
 	if final, ok := RuntimeContractFinal(cmd); ok && final.Safety != nil &&
 		strings.TrimSpace(final.Safety.Confirmation) != "" {
