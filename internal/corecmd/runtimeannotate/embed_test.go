@@ -66,3 +66,11 @@ func TestCrossPlatformCoverageRuntimeContractAnnotationNilGuards(t *testing.T) {
 	AnnotateRuntimeFlagDescription(nil, "flag", "description")
 	AnnotateRuntimeContract(nil)
 }
+
+func TestSetCommandAnnotationInitializesNilMap(t *testing.T) {
+	cmd := &cobra.Command{Use: "x"}
+	SetCommandAnnotation(cmd, "key", "value")
+	if cmd.Annotations == nil || cmd.Annotations["key"] != "value" {
+		t.Fatalf("annotations = %#v", cmd.Annotations)
+	}
+}
