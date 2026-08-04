@@ -1034,6 +1034,63 @@ func uploadConversationLocalFile(ctx context.Context, targetArgs map[string]any,
 	return callMCPToolReturnTextOnServer(ctx, "im", "commit_conversation_file_upload", commitArgs)
 }
 
+func parseConversationFileDownloadURL(text string) (string, error) {
+	var data map[string]any
+	if err := unmarshalJSONUseNumber(text, &data); err != nil {
+		return "", fmt.Errorf("failed to parse uploaded file response JSON: %w", err)
+	}
+	if result, ok := data["result"].(map[string]any); ok {
+		data = result
+	}
+	downloadURL := firstStringField(data, "downloadUrl")
+	if downloadURL == "" {
+		return "", fmt.Errorf("uploaded file response missing downloadUrl")
+	}
+	return downloadURL, nil
+}
+
+func uploadRobotMessageLocalFile(
+	cmd *cobra.Command,
+	filePath string,
+	groupID string,
+	userIDs []string,
+	openDingTalkIDs []string,
+) (string, error) {
+	uploadTarget := map[string]any{}
+	if groupID != "" {
+		uploadTarget["openConversationId"] = groupID
+	} else {
+		if len(userIDs)+len(openDingTalkIDs) != 1 {
+			return "", fmt.Errorf("--file-path requires exactly one --users or --open-dingtalk-ids recipient")
+		}
+		if len(userIDs) == 1 {
+			uploadTarget["userId"] = userIDs[0]
+		} else {
+			uploadTarget["openDingTalkId"] = openDingTalkIDs[0]
+		}
+	}
+
+	meta, err := buildConversationLocalFileMeta(filePath, "", "")
+	if err != nil {
+		return "", err
+	}
+	if deps.Caller.DryRun() {
+		deps.Out.PrintKeyValue("操作", "上传本地文件并由机器人发送")
+		deps.Out.PrintKeyValue("文件", meta.LocalPath)
+		deps.Out.PrintKeyValue("名称", meta.FileName)
+		deps.Out.PrintKeyValue("大小", fmt.Sprintf("%d bytes", meta.FileSize))
+		return "", nil
+	}
+
+	ctx, cancel := context.WithTimeout(cmd.Context(), 10*time.Minute)
+	defer cancel()
+	commitText, err := uploadConversationLocalFile(ctx, uploadTarget, meta, "")
+	if err != nil {
+		return "", err
+	}
+	return parseConversationFileDownloadURL(commitText)
+}
+
 func buildConversationFileContent(dentryID, spaceID int64, meta conversationLocalFileMeta) (string, error) {
 	content := struct {
 		DentryID int64  `json:"dentryId"`
@@ -2105,14 +2162,18 @@ func newChatCommand() *cobra.Command {
 		},
 	})
 
-	// send-by-bot: 群聊传 --group，单聊传 --users/--open-dingtalk-ids；--text 支持 Markdown
+	// send-by-bot: 群聊传 --group，单聊传 --users/--open-dingtalk-ids。
+	// Markdown 使用 --text（--title 可选），图片使用 --msg-type image/--image-url，
+	// 文件使用 --msg-type file/--file-path，CLI 上传后发送。
 	chatMessageSendByBotCmd := &cobra.Command{
 		Use:   "send-by-bot",
 		Short: "机器人发送消息（--group 群聊 / --users 单聊）",
-		Long: `群聊：传 --group 指定群；单聊：传 --users 或 --open-dingtalk-ids 指定用户列表，与 --group 只能选其一，不能同时指定。--text 支持 Markdown。
+		Long: `群聊：传 --group 指定群；单聊：传 --users 或 --open-dingtalk-ids 指定用户列表，与 --group 只能选其一，不能同时指定。省略 --msg-type 时发送 Markdown；图片使用 --msg-type image --image-url；本地文件使用 --msg-type file --file-path，CLI 完成上传后发送。
 
 ⚠️ 重要：该接口会真实发送消息到目标会话，不可用于测试或试探性调用。调用前必须确认消息内容和接收对象无误。`,
 		Example: `  dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --title "日报" --text "## 今日完成..."
+  dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --msg-type image --image-url "https://example.com/image.png"
+  dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --msg-type file --file-path ./report.pdf
   dws chat message send-by-bot --robot-code <robot-code> --users userId1,userId2 --title "提醒" --text "请提交周报"
   dws chat message send-by-bot --robot-code <robot-code> --open-dingtalk-ids openDingtalkId1,openDingtalkId2 --title "提醒" --text "请提交周报"
   dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --at-user-ids userId1,userId2 --title "提醒" --text "@userId1 @userId2 请查收本周报告"
@@ -2122,9 +2183,42 @@ func newChatCommand() *cobra.Command {
   # 查询 userId: dws contact user search --query "姓名"
   # robot-code: $DINGTALK_CHAT_ROBOT_CODE`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "robot-code", "title", "text"); err != nil {
+			msgType := strings.TrimSpace(mustGetFlag(cmd, "msg-type"))
+			title := mustGetFlag(cmd, "title")
+			text := mustGetFlag(cmd, "text")
+			imageURL := strings.TrimSpace(mustGetFlag(cmd, "image-url"))
+			filePath := mustGetFlag(cmd, "file-path")
+
+			if err := validateRequiredFlags(cmd, "robot-code"); err != nil {
 				return err
 			}
+			if msgType == "" {
+				if imageURL != "" {
+					return fmt.Errorf("--msg-type image is required when using --image-url")
+				}
+				if filePath != "" {
+					return fmt.Errorf("--msg-type file is required when using --file-path")
+				}
+				msgType = "markdown"
+			}
+			switch msgType {
+			case "markdown":
+				if err := validateRequiredFlags(cmd, "text"); err != nil {
+					return err
+				}
+			case "image":
+				if imageURL == "" {
+					return fmt.Errorf("--image-url is required for --msg-type image")
+				}
+			case "file":
+				if filePath == "" {
+					return fmt.Errorf("--file-path is required for --msg-type file")
+				}
+			default:
+				return fmt.Errorf("unsupported --msg-type %q, must be one of: markdown, image, file", msgType)
+			}
+			isMarkdownMessage := msgType == "markdown"
+
 			chatID := flagOrFallback(cmd, "group", "conversation-id", "id", "chat")
 			usersStr, _ := cmd.Flags().GetString("users")
 			openDingtalkIdsStr, _ := cmd.Flags().GetString("open-dingtalk-ids")
@@ -2135,6 +2229,38 @@ func newChatCommand() *cobra.Command {
 			if chatID == "" && !hasDirectTarget {
 				return fmt.Errorf("--group or --users/--open-dingtalk-ids is required")
 			}
+
+			userIDs := splitCommaList(usersStr)
+			openDingTalkIDs := splitCommaList(openDingtalkIdsStr)
+			fileURL := ""
+			if msgType == "file" {
+				var err error
+				fileURL, err = uploadRobotMessageLocalFile(
+					cmd, filePath, chatID, userIDs, openDingTalkIDs)
+				if err != nil {
+					return err
+				}
+				if deps.Caller.DryRun() {
+					return nil
+				}
+			}
+
+			buildRobotMessageArgs := func(markdown string) map[string]any {
+				toolArgs := map[string]any{
+					"robotCode": mustGetFlag(cmd, "robot-code"),
+				}
+				switch msgType {
+				case "image":
+					toolArgs["photoURL"] = imageURL
+				case "file":
+					toolArgs["fileUrl"] = fileURL
+				default:
+					toolArgs["title"] = title
+					toolArgs["markdown"] = markdown
+				}
+				return toolArgs
+			}
+
 			if chatID != "" {
 				var atUserIds []string
 				if atUserIdsStr, _ := cmd.Flags().GetString("at-user-ids"); atUserIdsStr != "" {
@@ -2152,17 +2278,23 @@ func newChatCommand() *cobra.Command {
 						}
 					}
 				}
-				// 机器人发消息要求 @ 占位符为裸 @id；模型若写成 <@id> 会导致 @ 不生效，主动剥离尖括号
-				markdown := mustGetFlag(cmd, "text")
-				markdown = normalizeAtPlaceholders(markdown, atUserIds, false)
-				markdown = normalizeAtPlaceholders(markdown, atOpenDingtalkIds, false)
-				markdown = strings.ReplaceAll(markdown, "<@all>", "@all")
-				toolArgs := map[string]any{
-					"robotCode":          mustGetFlag(cmd, "robot-code"),
-					"openConversationId": chatID,
-					"title":              mustGetFlag(cmd, "title"),
-					"markdown":           markdown,
+				markdown := text
+				if isMarkdownMessage {
+					// 机器人发消息要求 @ 占位符为裸 @id；模型若写成 <@id> 会导致 @ 不生效，主动剥离尖括号
+					markdown = normalizeAtPlaceholders(markdown, atUserIds, false)
+					markdown = normalizeAtPlaceholders(markdown, atOpenDingtalkIds, false)
+					markdown = strings.ReplaceAll(markdown, "<@all>", "@all")
 				}
+				toolArgs := buildRobotMessageArgs(markdown)
+				switch msgType {
+				case "image":
+					toolArgs["msgKey"] = "sampleImageMsg"
+				case "file":
+					toolArgs["msgKey"] = "sampleDingtalkDriveFile"
+				default:
+					toolArgs["msgKey"] = "sampleMarkdownDX"
+				}
+				toolArgs["openConversationId"] = chatID
 				if len(atUserIds) > 0 {
 					toolArgs["atUserIds"] = atUserIds
 				}
@@ -2174,28 +2306,21 @@ func newChatCommand() *cobra.Command {
 				}
 				return callMCPToolOnServer("bot", "send_robot_group_message", toolArgs)
 			}
-			toolArgs := map[string]any{
-				"robotCode": mustGetFlag(cmd, "robot-code"),
-				"title":     mustGetFlag(cmd, "title"),
-				"markdown":  mustGetFlag(cmd, "text"),
+
+			toolArgs := buildRobotMessageArgs(text)
+			switch msgType {
+			case "image":
+				toolArgs["msgType"] = "sampleImageMsg"
+			case "file":
+				toolArgs["msgType"] = "sampleDingtalkDriveFile"
+			default:
+				toolArgs["msgType"] = "sampleMarkdown"
 			}
-			if usersStr != "" {
-				var userIds []string
-				for _, u := range strings.Split(usersStr, ",") {
-					if s := strings.TrimSpace(u); s != "" {
-						userIds = append(userIds, s)
-					}
-				}
-				toolArgs["userIds"] = userIds
+			if len(userIDs) > 0 {
+				toolArgs["userIds"] = userIDs
 			}
-			if openDingtalkIdsStr != "" {
-				var openDingtalkIds []string
-				for _, id := range strings.Split(openDingtalkIdsStr, ",") {
-					if s := strings.TrimSpace(id); s != "" {
-						openDingtalkIds = append(openDingtalkIds, s)
-					}
-				}
-				toolArgs["openDingtalkIds"] = openDingtalkIds
+			if len(openDingTalkIDs) > 0 {
+				toolArgs["openDingtalkIds"] = openDingTalkIDs
 			}
 			if isAtAll, _ := cmd.Flags().GetBool("at-all"); isAtAll {
 				toolArgs["isAtAll"] = "true"
@@ -2216,17 +2341,22 @@ func newChatCommand() *cobra.Command {
 				CLIPath:        "chat message send-by-bot",
 				PrimaryCLIPath: "chat message send-by-bot",
 			},
-			Description: "以应用机器人身份发送群消息或批量单聊",
+			Description: "以应用机器人身份发送 Markdown、图片或文件群消息或批量单聊",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
 				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "以应用机器人身份发送群消息或批量单聊",
-				UseWhen:      []string{"已有 robotCode 且需要机器人身份投递消息时"},
+				AgentSummary: "以应用机器人身份发送 Markdown、图片或文件群消息或批量单聊",
+				UseWhen:      []string{"已有 robotCode 且需要机器人身份投递 Markdown、图片或文件时"},
 				AvoidWhen:    []string{"个人身份发送或自定义 Webhook 告警不要使用"},
 				Examples:     []string{"dws chat message send-by-bot --robot-code <robotCode> --group <openConversationId> --title \"日报\" --text \"今日进展\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "msg-type", RequiredWhen: "image-url or file-path is provided", Enum: []string{"markdown", "image", "file"}},
+				{Name: "image-url", RequiredWhen: "msg-type is image"},
+				{Name: "file-path", RequiredWhen: "msg-type is file"},
 			},
 		},
 	})
@@ -3532,14 +3662,17 @@ func newChatCommand() *cobra.Command {
 	_ = chatMessageSendByBotCmd.MarkFlagRequired("robot-code")
 	chatMessageSendByBotCmd.Flags().String("group", "", "群聊 openConversationId（群聊时必填）")
 	chatMessageSendByBotCmd.Flags().String("users", "", "用户 userId 列表，逗号分隔，最多20个（单聊时必填）")
-	chatMessageSendByBotCmd.Flags().String("title", "", "消息标题 (必填)")
-	_ = chatMessageSendByBotCmd.MarkFlagRequired("title")
-	chatMessageSendByBotCmd.Flags().String("text", "", "消息内容 Markdown (必填)")
-	_ = chatMessageSendByBotCmd.MarkFlagRequired("text")
+	chatMessageSendByBotCmd.Flags().String("msg-type", "", "消息类型: markdown/image/file（省略时为 markdown；图片使用 image --image-url；本地文件使用 file --file-path）")
+	chatMessageSendByBotCmd.Flags().String("title", "", "Markdown 消息标题（可选）")
+	chatMessageSendByBotCmd.Flags().String("text", "", "Markdown 消息内容（发送 Markdown 时必填；稳定换行用空行，转义形式写 \\n\\n，不要只写 \\n）")
+	chatMessageSendByBotCmd.Flags().String("image-url", "", "公网图片 URL（msgType=image 时必填）")
+	chatMessageSendByBotCmd.Flags().String("file-path", "", "本地文件路径（msgType=file 时直接上传并按 file 消息发送）")
 	chatMessageSendByBotCmd.Flags().String("at-user-ids", "", "@指定成员的 userId 列表，逗号分隔（仅群聊时生效，可选），--text 中需包含 @userId 对应文本")
 	chatMessageSendByBotCmd.Flags().String("open-dingtalk-ids", "", "用户 openDingtalkId 列表，逗号分隔（单聊时可替代 --users，可选）")
 	chatMessageSendByBotCmd.Flags().String("at-open-dingtalk-ids", "", "@指定成员的 openDingtalkId 列表，逗号分隔（仅群聊时生效，可选）")
 	chatMessageSendByBotCmd.Flags().Bool("at-all", false, "@所有人（可选），服务端接收字符串 true/false")
+	cli.AnnotateRuntimeFlagFormat(chatMessageSendByBotCmd, "file-path", "file-path")
+	cli.AnnotateRuntimeFlagRequiredWhen(chatMessageSendByBotCmd, "text", "msg-type is markdown or omitted")
 
 	chatMessageRecallByBotCmd.Flags().String("robot-code", "", "机器人 Code (必填)")
 	_ = chatMessageRecallByBotCmd.MarkFlagRequired("robot-code")
