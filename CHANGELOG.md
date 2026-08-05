@@ -6,6 +6,19 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.57-beta.2] - 2026-08-05
+
+### Fixed
+
+- **Stable Chat command compatibility** (#876) — restores the hidden migration
+  entries for `chat send`, `chat history`, and their `im` aliases, preserving
+  the v1.0.56 command surface while directing callers to the supported
+  `chat message send/list` commands. Legacy flags now reach the same migration
+  hints instead of failing during flag parsing.
+- **Drive download cancellation-test stability** (#876) — replaces a
+  timing-sensitive worker-cancellation coverage test with a deterministic seam,
+  reducing flaky CI without changing download behavior.
+
 ## [1.0.57-beta.1] - 2026-08-05
 
 This beta starts the v1.0.57 line on top of v1.0.56. It packages the unified
