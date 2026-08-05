@@ -13,43 +13,80 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
-// ChatCreate creates a DingTalk group as the current user. It intentionally
-// does not advertise Lark-only owner, description, initial-bot, or visibility
-// semantics.
+// ChatCreate creates a DingTalk group after resolving every natural member and
+// the optional owner to stable DingTalk identities. Description, initial-bot,
+// idempotency, and Lark visibility semantics remain deliberately unsupported.
 var ChatCreate = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+chat-create",
 	Product:     "im",
-	Description: "以当前用户身份创建钉钉群聊",
-	Intent:      "当你要创建一个基础钉钉群聊时使用；自动把当前用户加入成员列表并作为群主，支持 INTERNAL、EXTERNAL、NORMAL 和话题模式。它不支持指定其他 owner、群 description、初始机器人或 Lark public/private 语义。",
+	Description: "按成员和可选群主全量预检后创建一个钉钉群聊",
+	Intent:      "当你要创建钉钉群聊时使用；成员可传稳定 ID 或 --member-query 姓名，群主默认当前用户，也可用 --owner-open-dingtalk-id 或 --owner-query 明确指定。所有自然身份会在唯一解析并去重后才执行一次创建，任一零命中或多命中都会整体停止。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "name", Type: shortcut.FlagString, Desc: "群名称", Required: true},
-		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "初始成员 userId 或 openDingTalkId 列表", Required: true},
+		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "初始成员 userId 或 openDingTalkId 列表"},
+		{Name: "member-query", Type: shortcut.FlagStringSlice, Desc: "按姓名/花名唯一解析的初始成员，可逗号分隔或重复传入"},
+		{Name: "owner-open-dingtalk-id", Type: shortcut.FlagString, Desc: "明确指定群主 openDingTalkId（与 --owner-query 互斥；省略时群主为当前用户）"},
+		{Name: "owner-query", Type: shortcut.FlagString, Desc: "按姓名唯一解析群主 openDingTalkId（与 --owner-open-dingtalk-id 互斥）"},
 		{Name: "type", Type: shortcut.FlagString, Default: "INTERNAL", Desc: "群类型", Enum: []string{"INTERNAL", "EXTERNAL", "NORMAL"}},
 		{Name: "thread", Type: shortcut.FlagBool, Desc: "创建为话题群"},
 	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"users", "member-query"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"owner-open-dingtalk-id", "owner-query"}},
+	},
 	Tips: []string{
 		`dws chat +chat-create --name "项目冲刺群" --users userId1,userId2`,
-		`dws chat +chat-create --name "合作群" --users userId1,userId2 --type EXTERNAL`,
+		`dws chat +chat-create --name "合作群" --member-query "张三,李四" --type EXTERNAL`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		profile, err := rt.CallMCPData("contact", "get_current_user_profile", nil)
+		resolvedMembers, err := targetresolver.ResolveUsers(
+			rt,
+			rt.StrSlice("member-query"),
+			targetresolver.IdentityAny,
+		)
 		if err != nil {
-			return fmt.Errorf("读取当前用户以设置群主失败: %w", err)
+			return err
 		}
-		currentUserID := currentProfileUserID(profile)
-		if currentUserID == "" {
-			return apperrors.NewValidation("当前用户资料缺少 userId，无法保证群主属于初始成员列表")
+		ownerOpenID := rt.Str("owner-open-dingtalk-id")
+		if query := rt.Str("owner-query"); query != "" {
+			resolvedOwner, resolveErr := targetresolver.ResolveUser(
+				rt, query, targetresolver.IdentityOpenDingTalkID)
+			if resolveErr != nil {
+				return resolveErr
+			}
+			ownerOpenID = resolvedOwner.Selected.OpenDingTalkID
 		}
-		members := []string{currentUserID}
+		members := make([]string, 0, len(rt.StrSlice("users"))+len(resolvedMembers)+1)
+		if ownerOpenID != "" {
+			members = append(members, ownerOpenID)
+		} else {
+			profile, profileErr := rt.CallMCPData("contact", "get_current_user_profile", nil)
+			if profileErr != nil {
+				return fmt.Errorf("读取当前用户以设置群主失败: %w", profileErr)
+			}
+			currentUserID := currentProfileUserID(profile)
+			if currentUserID == "" {
+				return apperrors.NewValidation("当前用户资料缺少 userId，无法保证群主属于初始成员列表")
+			}
+			members = append(members, currentUserID)
+		}
 		for _, member := range rt.StrSlice("users") {
 			member = strings.TrimSpace(member)
 			if member != "" {
 				members = appendUniqueShortcutString(members, member)
 			}
+		}
+		for _, resolved := range resolvedMembers {
+			member := resolved.Selected.UserID
+			if member == "" {
+				member = resolved.Selected.OpenDingTalkID
+			}
+			members = appendUniqueShortcutString(members, member)
 		}
 		params := map[string]any{
 			"groupName":    rt.Str("name"),
@@ -58,6 +95,9 @@ var ChatCreate = shortcut.Shortcut{
 		}
 		if rt.Bool("thread") {
 			params["convThreadEnabled"] = true
+		}
+		if ownerOpenID != "" {
+			params["ownerOpenDingTalkId"] = ownerOpenID
 		}
 		if rt.DryRun() {
 			return rt.CallMCP("create_group_conversation", params)
@@ -114,18 +154,23 @@ func normalizeCreatedConversation(data map[string]any) {
 var ChatUpdate = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+chat-update",
+	Aliases:     []string{"+chat-rename"},
 	Product:     "chat",
 	Description: "更新群名称（仅名称，不支持 description）",
-	Intent:      "当你只需要修改群名称时使用；这是 lark-cli +chat-update 的诚实子集，只接受群 openConversationId 和新名称。修改群 description、个人备注、群昵称或其他群设置时不要使用。",
+	Intent:      "当你只需要修改群名称时使用；--group 可传群名或 openConversationId，群名必须唯一解析后才会写入。修改群 description、个人备注、群昵称或其他群设置时不要使用。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
+		{Name: "group", Type: shortcut.FlagString, Desc: "群名称或 openConversationId", Required: true},
 		{Name: "name", Type: shortcut.FlagString, Desc: "新的群名称", Required: true},
 	},
-	Tips: []string{`dws chat +chat-update --group <openConversationId> --name "新群名"`},
+	Tips: []string{`dws chat +chat-update --group <群名或openConversationId> --name "新群名"`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		resolved, err := targetresolver.ResolveChatTarget(rt, rt.Str("group"), "")
+		if err != nil {
+			return err
+		}
 		return rt.CallMCP("update_group_name", map[string]any{
-			"openconversation_id": rt.Str("group"),
+			"openconversation_id": resolved.Selected.OpenConversationID,
 			"group_name":          rt.Str("name"),
 		})
 	},
@@ -138,8 +183,8 @@ var MessagesReply = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+messages-reply",
 	Product:     "chat",
-	Description: "以当前用户身份引用回复消息（自动补全原发送者）",
-	Intent:      "当你要以当前用户身份对已有消息发送纯文本引用回复时使用；提供会话和被引用消息即可，默认通过 mget 自动读取原发送者，也可显式传 openDingTalkId/userId；userId 会通过通讯录搜索精确匹配 openDingTalkId。它不支持 bot 身份、富媒体、卡片或 thread 内回复。",
+	Description: "引用回复一条已有消息，并返回可继续查询或撤回的发送上下文",
+	Intent:      "当你要以当前用户身份对一条已有消息发送纯文本引用回复时使用；传会话和原消息 ID，CLI 会先读取原发送者，也可显式传 --ref-sender。成功结果在保留下层响应的同时增量返回 messageId（下层提供时）、conversationId、threadId（适用时）、deliveryStatus、idempotencyKey 和 referencedMessage 来源上下文。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId", Required: true},
@@ -175,8 +220,77 @@ var MessagesReply = shortcut.Shortcut{
 		if value := rt.StrFirst("idempotency-key", "uuid"); value != "" {
 			params["uuid"] = value
 		}
-		return rt.CallMCP("send_personal_message", params)
+		if rt.DryRun() {
+			return rt.Output(map[string]any{
+				"contractVersion": "im.message-reply.v1",
+				"dryRun":          true,
+				"willSend":        false,
+				"transport":       "chat/send_personal_message",
+				"arguments":       params,
+				"conversationId":  rt.Str("conversation-id"),
+				"referencedMessage": map[string]any{
+					"messageId":            replyMessageID(rt),
+					"senderOpenDingTalkId": refSender,
+				},
+			})
+		}
+		data, err := rt.CallMCPWriteData("chat", "send_personal_message", params)
+		if err != nil {
+			return err
+		}
+		enrichReplyResult(data, rt, refSender)
+		return rt.Output(data)
 	},
+}
+
+func enrichReplyResult(data map[string]any, rt *shortcut.RuntimeContext, refSender string) {
+	data["contractVersion"] = "im.message-reply.v1"
+	data["conversationId"] = rt.Str("conversation-id")
+	data["referencedMessage"] = map[string]any{
+		"messageId":            replyMessageID(rt),
+		"senderOpenDingTalkId": refSender,
+		"resolutionSource": func() string {
+			if rt.Str("ref-sender") != "" {
+				return "explicit"
+			}
+			return "message_lookup"
+		}(),
+	}
+	if key := rt.StrFirst("idempotency-key", "uuid"); key != "" {
+		data["idempotencyKey"] = key
+	}
+	if value := replyResponseValue(data, "openMessageId", "openMsgId", "messageId", "msgId"); value != nil {
+		data["messageId"] = value
+	}
+	if value := replyResponseValue(data, "openConvThreadId", "threadId", "topicId"); value != nil {
+		data["threadId"] = value
+	}
+	if value := replyResponseValue(data, "deliveryStatus", "sendStatus", "status"); value != nil {
+		data["deliveryStatus"] = value
+		data["deliveryStatusKnown"] = true
+	} else {
+		data["deliveryStatus"] = "unknown"
+		data["deliveryStatusKnown"] = false
+	}
+}
+
+func replyResponseValue(data map[string]any, keys ...string) any {
+	scopes := []map[string]any{data}
+	for _, wrapper := range []string{"result", "data"} {
+		if nested, ok := data[wrapper].(map[string]any); ok {
+			scopes = append(scopes, nested)
+		}
+	}
+	for _, scope := range scopes {
+		for _, key := range keys {
+			if value, ok := scope[key]; ok && value != nil {
+				if text, isString := value.(string); !isString || strings.TrimSpace(text) != "" {
+					return value
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func resolveReplySender(rt *shortcut.RuntimeContext) (string, error) {
@@ -303,8 +417,8 @@ var FlagCreate = shortcut.Shortcut{
 	Intent:      "当你要把同一会话中的一条或多条消息加入当前用户的个人收藏时使用；逐项返回成功/失败 ledger。这是消息 favorite，不是消息 Pin、会话置顶或 feed-layer thread flag。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "message-id", Type: shortcut.FlagString, Desc: "单条消息 openMessageId"},
-		{Name: "message-ids", Type: shortcut.FlagStringSlice, Desc: "多条消息 openMessageId（最多 10 条）"},
+		{Name: "message-id", Type: shortcut.FlagString, Desc: "单条消息 openMessageId；消息 ID 去重后必须为 1-10 条"},
+		{Name: "message-ids", Type: shortcut.FlagStringSlice, Desc: "多条消息 openMessageId；消息 ID 去重后必须为 1-10 条"},
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "消息所在会话 openConversationId", Required: true},
 	},
 	Constraints: []shortcut.Constraint{
@@ -330,8 +444,8 @@ var FlagCancel = shortcut.Shortcut{
 	Intent:      "当你要移除当前用户对同一会话中一条或多条消息的个人收藏标记时使用；逐项返回成功/失败 ledger，只影响 message favorite，不删除原消息，也不会修改 Pin 或会话置顶。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "message-id", Type: shortcut.FlagString, Desc: "单条消息 openMessageId"},
-		{Name: "message-ids", Type: shortcut.FlagStringSlice, Desc: "多条消息 openMessageId（最多 10 条）"},
+		{Name: "message-id", Type: shortcut.FlagString, Desc: "单条消息 openMessageId；消息 ID 去重后必须为 1-10 条"},
+		{Name: "message-ids", Type: shortcut.FlagStringSlice, Desc: "多条消息 openMessageId；消息 ID 去重后必须为 1-10 条"},
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "消息所在会话 openConversationId", Required: true},
 	},
 	Constraints: []shortcut.Constraint{
@@ -389,8 +503,8 @@ var FlagList = shortcut.Shortcut{
 	Intent:      "当你要查看当前用户的 DingTalk message favorite 列表时使用；返回下层分页结果，不把 message favorite 与 Pin、会话置顶或 Lark feed-layer thread flag 混为一谈。",
 	Risk:        shortcut.RiskRead,
 	Flags: []shortcut.Flag{
-		{Name: "cursor", Type: shortcut.FlagInt, Default: "0", Desc: "数字分页游标，首次传 0"},
-		{Name: "size", Type: shortcut.FlagInt, Default: "20", Desc: "每页数量，范围 1-100"},
+		{Name: "cursor", Type: shortcut.FlagInt, Default: "0", Desc: "数字分页游标；--cursor 必须大于等于 0，--size 必须在 1-100 之间"},
+		{Name: "size", Type: shortcut.FlagInt, Default: "20", Desc: "每页数量；--cursor 必须大于等于 0，--size 必须在 1-100 之间"},
 	},
 	Constraints: []shortcut.Constraint{{
 		Kind:        shortcut.ConstraintCustom,
@@ -516,10 +630,10 @@ var ChatList = shortcut.Shortcut{
 		"不支持 lark 的 sort/sort-type，也不模拟 bot 身份剥离 p2p。",
 	Risk: shortcut.RiskRead,
 	Flags: []shortcut.Flag{
-		{Name: "types", Type: shortcut.FlagStringSlice, Desc: "会话类型：group、p2p；省略时默认只返回群聊"},
-		{Name: "page-size", Type: shortcut.FlagInt, Default: "20", Desc: "每页数量（1-100）"},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "--page-size 的别名"},
-		{Name: "page-token", Type: shortcut.FlagString, Desc: "分页游标（钉钉为整数游标的字符串形式）"},
+		{Name: "types", Type: shortcut.FlagStringSlice, Desc: "会话类型只能包含 group 和/或 p2p；省略时默认只返回群聊"},
+		{Name: "page-size", Type: shortcut.FlagInt, Default: "20", Desc: "每页数量，必须在 1-100 之间"},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "--page-size 的别名，必须在 1-100 之间"},
+		{Name: "page-token", Type: shortcut.FlagString, Desc: "分页游标；若提供则必须是非负整数"},
 		{Name: "cursor", Type: shortcut.FlagInt, Desc: "--page-token 的整数别名"},
 		{Name: "exclude-muted", Type: shortcut.FlagBool, Desc: "排除已免打扰会话"},
 	},
@@ -721,7 +835,7 @@ func chatListFilterTypes(chats []map[string]any, types []string) []map[string]an
 }
 
 func init() {
-	shortcut.Register(
+	shortcut.Register(withReviewedChatShortcutContracts(
 		ChatCreate,
 		ChatList,
 		ChatUpdate,
@@ -730,5 +844,5 @@ func init() {
 		FlagCancel,
 		FlagList,
 		FeedGroupQueryItem,
-	)
+	)...)
 }

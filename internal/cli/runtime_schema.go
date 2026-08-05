@@ -1142,6 +1142,12 @@ func inferredRuntimeFlagFormat(flag *pflag.Flag) string {
 	}
 	usage := strings.ToLower(strings.TrimSpace(flag.Usage))
 	if strings.Contains(usage, "iso-8601") || strings.Contains(usage, "rfc3339") {
+		// JSON Schema's date-time format means one RFC3339 value. Do not publish
+		// that narrower wire contract when the CLI also accepts local timestamps
+		// or date-only values alongside RFC3339.
+		if strings.Contains(usage, "yyyy-mm-dd") {
+			return ""
+		}
 		return "date-time"
 	}
 	if strings.Contains(usage, "a1") {

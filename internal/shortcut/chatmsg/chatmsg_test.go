@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-func TestSender(t *testing.T) {
+func TestCrossPlatformCoverageSender(t *testing.T) {
 	// The display name lives under the bare "sender" key.
 	if got := Sender(map[string]any{"sender": "念晨", "senderOpenDingTalkId": "D1"}); got != "念晨" {
 		t.Fatalf("sender = %v, want 念晨", got)
@@ -48,7 +48,37 @@ func TestSender(t *testing.T) {
 	}
 }
 
-func TestCleanText(t *testing.T) {
+func TestCrossPlatformCoverageProjectMessageV1PublishesSharedIdentityAndContext(t *testing.T) {
+	row := ProjectMessageV1(map[string]any{
+		"openMessageId":      "msg-1",
+		"openConversationId": "cid-1",
+		"openConvThreadId":   "thread-1",
+		"sender": map[string]any{
+			"name":           "张三",
+			"openDingTalkId": "D1",
+			"senderType":     "user",
+		},
+		"msgType":    "text",
+		"content":    "你好",
+		"createTime": "2026-08-03 10:00:00",
+	}, true)
+	for key, want := range map[string]any{
+		"messageId":      "msg-1",
+		"conversationId": "cid-1",
+		"threadId":       "thread-1",
+		"sender":         "张三",
+		"senderId":       "D1",
+		"senderType":     "user",
+		"messageType":    "text",
+		"text":           "你好",
+	} {
+		if row[key] != want {
+			t.Errorf("%s = %#v, want %#v; row=%#v", key, row[key], want, row)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageCleanText(t *testing.T) {
 	// Out-of-office auto-reply: readable body lives in items[].data.text; the
 	// decorative preview/config JSON lines and "empty" placeholder are dropped.
 	autoReply := "* 仅你和对方可见\n" +
@@ -98,7 +128,7 @@ func TestCleanText(t *testing.T) {
 	}
 }
 
-func TestIsEncryptedAndMarker(t *testing.T) {
+func TestCrossPlatformCoverageIsEncryptedAndMarker(t *testing.T) {
 	cipher := "SwzNkAraDE6lUHUNlVT3mjFdbxL6dWvmt77XtjACdpJx9VFibzTbW9KtDbkzGOYP\n" +
 		"7oDptklFO+YzDltH+myErV6rkc8URHYykpeSDsMP6kznFa9E320NsIntfY771dx+\n" +
 		"||2||1||196"
@@ -121,7 +151,7 @@ func TestIsEncryptedAndMarker(t *testing.T) {
 	}
 }
 
-func TestText(t *testing.T) {
+func TestCrossPlatformCoverageText(t *testing.T) {
 	if got := Text(map[string]any{"content": "你好"}); got != "你好" {
 		t.Errorf("Text string = %v", got)
 	}
@@ -136,7 +166,7 @@ func TestText(t *testing.T) {
 	}
 }
 
-func TestCreateTime(t *testing.T) {
+func TestCrossPlatformCoverageCreateTime(t *testing.T) {
 	if got := CreateTime(map[string]any{"sendTime": "2026-07-19 13:37:03"}); got != "2026-07-19 13:37:03" {
 		t.Errorf("CreateTime = %v", got)
 	}
@@ -145,7 +175,7 @@ func TestCreateTime(t *testing.T) {
 	}
 }
 
-func TestStableMessageIdentity(t *testing.T) {
+func TestCrossPlatformCoverageStableMessageIdentity(t *testing.T) {
 	message := map[string]any{
 		"openMessageId":      "msg-1",
 		"openConversationId": "cid-1",
@@ -166,7 +196,31 @@ func TestStableMessageIdentity(t *testing.T) {
 	}
 }
 
-func TestQuotedMessageIsBoundedAndSemantic(t *testing.T) {
+func TestCrossPlatformCoverageMessageLedgerNilAndCursorOnlyBoundaries(t *testing.T) {
+	contract := CurrentMessageResultContract()
+	if contract.Version != MessageListContractVersion || len(contract.MessageFields) == 0 || len(contract.EnvelopeFields) == 0 {
+		t.Fatalf("message result contract = %#v", contract)
+	}
+	contract.MessageFields[0] = "mutated"
+	contract.EnvelopeFields[0] = "mutated"
+	second := CurrentMessageResultContract()
+	if second.MessageFields[0] == "mutated" || second.EnvelopeFields[0] == "mutated" {
+		t.Fatal("message result contract leaked mutable storage")
+	}
+	payload := NewMessageListPayload(nil)
+	if payload["count"] != 0 || payload["messages"] == nil {
+		t.Fatalf("nil message ledger = %#v", payload)
+	}
+	if StableMessageID(map[string]any{}) != "" {
+		t.Fatal("missing message identity was fabricated")
+	}
+	ApplyMessagePagination(payload, map[string]any{"result": map[string]any{"nextCursor": "next"}}, nil, "older")
+	if payload["paginationKnown"] != false || payload["failedCount"] != 1 {
+		t.Fatalf("cursor-only pagination = %#v", payload)
+	}
+}
+
+func TestCrossPlatformCoverageQuotedMessageIsBoundedAndSemantic(t *testing.T) {
 	got := QuotedMessage(map[string]any{
 		"quotedMessage": map[string]any{
 			"openMessageId":      "quoted-1",
@@ -294,7 +348,7 @@ func TestCrossPlatformCoverageResourceBoundaryHelpers(t *testing.T) {
 	}
 }
 
-func TestUpdateTimeOmitsUneditedEcho(t *testing.T) {
+func TestCrossPlatformCoverageUpdateTimeOmitsUneditedEcho(t *testing.T) {
 	if got := UpdateTime(map[string]any{
 		"createTime": "2026-07-19 13:37:03",
 		"updateTime": "2026-07-19 13:37:03",
@@ -309,7 +363,7 @@ func TestUpdateTimeOmitsUneditedEcho(t *testing.T) {
 	}
 }
 
-func TestReactionsNormalizesEmotionReplyList(t *testing.T) {
+func TestCrossPlatformCoverageReactionsNormalizesEmotionReplyList(t *testing.T) {
 	got := Reactions(map[string]any{
 		"emotionReplyList": []any{
 			map[string]any{
@@ -345,7 +399,7 @@ func TestReactionsNormalizesEmotionReplyList(t *testing.T) {
 	}
 }
 
-func TestApplyPaginationReadsNestedEnvelope(t *testing.T) {
+func TestCrossPlatformCoverageApplyPaginationReadsNestedEnvelope(t *testing.T) {
 	payload := map[string]any{"count": 98}
 	ApplyPagination(payload, map[string]any{
 		"result": map[string]any{
@@ -369,7 +423,7 @@ func TestApplyPaginationReadsNestedEnvelope(t *testing.T) {
 	}
 }
 
-func TestApplyMessagePaginationUsesExecutableTimeBoundary(t *testing.T) {
+func TestCrossPlatformCoverageApplyMessagePaginationUsesExecutableTimeBoundary(t *testing.T) {
 	payload := map[string]any{}
 	ApplyMessagePagination(payload, map[string]any{
 		"result": map[string]any{
@@ -389,7 +443,21 @@ func TestApplyMessagePaginationUsesExecutableTimeBoundary(t *testing.T) {
 	}
 }
 
-func TestResourcesBuildsActionableDownloadReferences(t *testing.T) {
+func TestCrossPlatformCoverageApplyMessagePaginationFailsClosedWhenCompletenessIsUnknown(t *testing.T) {
+	payload := map[string]any{}
+	ApplyMessagePagination(payload, map[string]any{"result": map[string]any{"messages": []any{}}}, nil, "older")
+	if payload["contractVersion"] != MessageListContractVersion ||
+		payload["complete"] != false || payload["paginationKnown"] != false ||
+		payload["failedCount"] != 1 {
+		t.Fatalf("unknown pagination contract = %#v", payload)
+	}
+	failures, _ := payload["failures"].([]map[string]any)
+	if len(failures) != 1 || failures[0]["stage"] != "pagination" {
+		t.Fatalf("unknown pagination failures = %#v", failures)
+	}
+}
+
+func TestCrossPlatformCoverageResourcesBuildsActionableDownloadReferences(t *testing.T) {
 	resources := Resources(map[string]any{
 		"openMessageId":      "msg-1",
 		"openConversationId": "cid-1",
@@ -416,7 +484,7 @@ func TestResourcesBuildsActionableDownloadReferences(t *testing.T) {
 	}
 }
 
-func TestResourcesReportsMissingDownloadContext(t *testing.T) {
+func TestCrossPlatformCoverageResourcesReportsMissingDownloadContext(t *testing.T) {
 	resources := Resources(map[string]any{"content": `{"mediaId":"@image-a"}`})
 	if len(resources) != 1 {
 		t.Fatalf("resources = %#v", resources)
@@ -431,7 +499,7 @@ func TestResourcesReportsMissingDownloadContext(t *testing.T) {
 	}
 }
 
-func TestResourcesTextMediaIDRequiresWordBoundary(t *testing.T) {
+func TestCrossPlatformCoverageResourcesTextMediaIDRequiresWordBoundary(t *testing.T) {
 	resources := Resources(map[string]any{
 		"openMessageId":      "msg-1",
 		"openConversationId": "cid-1",
@@ -442,7 +510,7 @@ func TestResourcesTextMediaIDRequiresWordBoundary(t *testing.T) {
 	}
 }
 
-func TestForwarded(t *testing.T) {
+func TestCrossPlatformCoverageForwarded(t *testing.T) {
 	var project func(m map[string]any) map[string]any
 	project = func(m map[string]any) map[string]any {
 		row := map[string]any{"text": Text(m)}
