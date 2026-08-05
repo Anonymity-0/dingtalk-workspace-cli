@@ -424,6 +424,30 @@ func applyCurrentUserGroupMentions(params map[string]any, text, rawOpenIDs strin
 	return text
 }
 
+func addMissingCurrentUserMentionPlaceholders(text, rawOpenIDs string) string {
+	if rawOpenIDs == "" {
+		return text
+	}
+	missing := make([]string, 0)
+	probeText := text
+	for _, id := range parseCSVValues(rawOpenIDs) {
+		placeholder := "<@" + id + ">"
+		if strings.Contains(probeText, placeholder) {
+			continue
+		}
+		missing = append(missing, placeholder)
+		probeText += placeholder
+	}
+	if len(missing) == 0 {
+		return text
+	}
+	prefix := strings.Join(missing, " ")
+	if strings.HasPrefix(text, "<@all> ") {
+		return "<@all> " + prefix + " " + strings.TrimPrefix(text, "<@all> ")
+	}
+	return prefix + " " + text
+}
+
 func containsMessageMention(text, placeholder string) bool {
 	if strings.HasPrefix(placeholder, "<") {
 		return strings.Contains(text, placeholder)
@@ -5382,14 +5406,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatMessageReplyCmd := &cobra.Command{
 		Use:   "reply",
 		Short: "引用回复消息（支持单聊/群聊）",
-		Long: `以当前用户身份引用某条消息并回复。需要指定会话 ID、被引用消息 ID、原消息发送者 openDingTalkId，以及回复内容。群聊回复可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人；正文中的裸 @openDingTalkId 会自动规范化为 <@openDingTalkId>，缺少 <@all> 时会自动补齐。
+		Long: `以当前用户身份引用某条消息并回复。需要指定会话 ID、被引用消息 ID、原消息发送者 openDingTalkId，以及回复内容。群聊回复可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人；正文中的裸 @openDingTalkId 会自动规范化为 <@openDingTalkId>，缺少对应成员或 <@all> 占位符时会自动补齐。
 
 如何获取 openConversationId（如果上层已有则直接使用，不必再查）：
   - 群聊：dws chat search --query "群名"
   - 单聊：dws chat conversation-info --open-dingtalk-id <openDingTalkId>
           （人员信息可通过 dws contact user search --keyword "姓名" --format json 获取）`,
 		Example: `  dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text "收到，马上处理"
-  dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text "<@mentionedOpenDingTalkId> 请看一下" --at-open-dingtalk-ids <mentionedOpenDingTalkId>`,
+  dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text "请看一下" --at-open-dingtalk-ids <mentionedOpenDingTalkId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "conversation-id", "ref-msg-id", "ref-sender", "text"); err != nil {
 				return err
@@ -5413,12 +5437,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				"clawType":           clawType,
 			}
 			atAll, _ := cmd.Flags().GetBool("at-all")
+			atOpenIDs := mustGetFlag(cmd, "at-open-dingtalk-ids")
 			replyText := applyCurrentUserGroupMentions(
 				toolArgs,
 				mustGetFlag(cmd, "text"),
-				mustGetFlag(cmd, "at-open-dingtalk-ids"),
+				atOpenIDs,
 				atAll,
 			)
+			replyText = addMissingCurrentUserMentionPlaceholders(replyText, atOpenIDs)
 			replyContent := map[string]string{
 				"referenceOpenMessageId":   mustGetFlag(cmd, "ref-msg-id"),
 				"srcMsgSendOpenDingTalkId": refSender,
@@ -5477,7 +5503,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatMessageReplyCmd.Flags().String("uuid", "", "幂等键（可选）")
 	chatMessageReplyCmd.Flags().Bool("ai-tag", true, "消息是否带 AI 发送角标（默认 true）")
 	chatMessageReplyCmd.Flags().Bool("at-all", false, "@所有人（仅群聊时生效；正文缺少 <@all> 时自动补齐）")
-	chatMessageReplyCmd.Flags().String("at-open-dingtalk-ids", "", "@指定成员的 openDingTalkId 列表，逗号分隔（仅群聊时生效；正文中的裸 @id 自动规范化为 <@id>）")
+	chatMessageReplyCmd.Flags().String("at-open-dingtalk-ids", "", "@指定成员的 openDingTalkId 列表，逗号分隔（仅群聊时生效；正文缺少对应 <@id> 时自动补齐，裸 @id 自动规范化）")
 	cli.AttachRuntimeSchema(chatMessageReplyCmd, "chat", "reply_personal_message", "hardcoded:chat")
 
 	// ── message forward: 转发单条消息 ────────────────────────

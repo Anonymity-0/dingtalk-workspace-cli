@@ -309,6 +309,17 @@ func TestCrossPlatformCoverageChatCurrentUserSendAndReplyMentions(t *testing.T) 
 			wantOpenIDs:  []string{"D-target", "D-second"},
 		},
 		{
+			name: "send keeps missing member placeholders unchanged",
+			args: []string{
+				"message", "send", "--group", "cid",
+				"--text", "DWS 发消息自测",
+				"--at-open-dingtalk-ids", "D-target",
+			},
+			contentField: "text",
+			wantContent:  "DWS 发消息自测",
+			wantOpenIDs:  []string{"D-target"},
+		},
+		{
 			name: "reply",
 			args: []string{
 				"message", "reply",
@@ -323,6 +334,36 @@ func TestCrossPlatformCoverageChatCurrentUserSendAndReplyMentions(t *testing.T) 
 			wantContent:  "<@all> 收到 <@D-target> 和 <@D-second>",
 			wantAtAll:    true,
 			wantOpenIDs:  []string{"D-target", "D-second"},
+		},
+		{
+			name: "reply adds missing member placeholders",
+			args: []string{
+				"message", "reply",
+				"--conversation-id", "cid",
+				"--ref-msg-id", "mid",
+				"--ref-sender", "D-sender",
+				"--text", "DWS 回复艾特前津（非主用）自测",
+				"--at-open-dingtalk-ids", "D-target,D-second,D-target",
+			},
+			contentField: "content",
+			wantContent:  "<@D-target> <@D-second> DWS 回复艾特前津（非主用）自测",
+			wantOpenIDs:  []string{"D-target", "D-second", "D-target"},
+		},
+		{
+			name: "reply adds missing member placeholders after at-all",
+			args: []string{
+				"message", "reply",
+				"--conversation-id", "cid",
+				"--ref-msg-id", "mid",
+				"--ref-sender", "D-sender",
+				"--text", "请大家确认",
+				"--at-open-dingtalk-ids", "D-target",
+				"--at-all",
+			},
+			contentField: "content",
+			wantContent:  "<@all> <@D-target> 请大家确认",
+			wantAtAll:    true,
+			wantOpenIDs:  []string{"D-target"},
 		},
 		{
 			name: "reply at-all preserves alliance word",

@@ -185,10 +185,10 @@ dws chat message edit --group <openConversationId> --msg-id <openMessageId> --co
 | `message combine-forward` | 多条消息合并为一条转发 | `--src-conversation-id` `--msg-ids` `--dest-conversation-id`，可选 `--uuid` |
 | `message forward-topic` | 转发话题消息 | `--src-msg-id` `--src-conversation-id` `--src-thread-id` `--dest-conversation-id` |
 
-群聊引用回复的 @ 规则与当前用户发消息一致：`--at-open-dingtalk-ids` 会传 `atOpenDingTalkIds`，正文中的裸 `@openDingTalkId` 自动规范化为 `<@openDingTalkId>`；`--at-all` 会传 `atAll=true`，正文缺少 `<@all>` 时自动补齐。
+群聊引用回复使用 `--at-open-dingtalk-ids` 传 `atOpenDingTalkIds`；正文缺少对应 `<@openDingTalkId>` 时自动补齐，已有裸 `@openDingTalkId` 会规范化。`--at-all` 会传 `atAll=true`，正文缺少 `<@all>` 时自动补齐。
 
 ```bash
-dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <senderOpenDingTalkId> --text "<@mentionedOpenDingTalkId> 请看一下" --at-open-dingtalk-ids <mentionedOpenDingTalkId>
+dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <senderOpenDingTalkId> --text "请看一下" --at-open-dingtalk-ids <mentionedOpenDingTalkId>
 dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <senderOpenDingTalkId> --text "请大家确认" --at-all
 ```
 
