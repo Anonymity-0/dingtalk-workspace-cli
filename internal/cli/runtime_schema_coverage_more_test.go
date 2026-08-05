@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
@@ -63,39 +62,6 @@ func TestCrossPlatformCoverageCollectRuntimeSchemaEntriesErrorsAndOrdering(t *te
 }
 
 func TestCrossPlatformCoverageRuntimeSchemaMetadataLookupEdges(t *testing.T) {
-	if _, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{}, agentMetadata{}, embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}); ok {
-		t.Fatal("empty lookup unexpectedly matched")
-	}
-
-	leaf := &cobra.Command{Use: "reply"}
-	contractfinal.RegisterRuntimeContractFinal(leaf, contract.ContractFinalPayload{
-		Identity: &contract.ToolIdentitySpec{
-			ProductID: "sample", Name: "run", CanonicalPath: "sample.run",
-			CLIPath: "sample run", PrimaryCLIPath: "sample run",
-		},
-
-		Interface: &contract.InterfaceSpec{
-			Mode:         contract.InterfaceModeMCP,
-			Availability: contract.InterfaceAvailable,
-			Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "send_personal_message"},
-		},
-	})
-	t.Cleanup(func() { ClearRuntimeContractFinalForTest(leaf) })
-	mcp := embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{
-		"chat.send_personal_message": {
-			Parameters: map[string]embeddedMCPParamMeta{
-				"clawType": {Type: "string"},
-			},
-		},
-	}}
-	got, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{Command: leaf, ProductID: "chat", ToolName: "reply_personal_message"}, agentMetadata{}, mcp)
-	if !ok || got.Parameters["clawType"].Type != "string" {
-		t.Fatalf("ContractFinal Interface.Ref MCP remap = %#v ok=%v", got, ok)
-	}
-	if got.InterfaceRef == nil || got.InterfaceRef.RPCName != "send_personal_message" {
-		t.Fatalf("InterfaceRef = %#v", got.InterfaceRef)
-	}
-
 	for _, test := range []struct {
 		value any
 		want  int
@@ -155,13 +121,13 @@ func TestCrossPlatformCoverageRuntimeCommandParameterErrorEdges(t *testing.T) {
 	cmd.Flags().String("value", "", "value")
 	flag := cmd.Flags().Lookup("value")
 
-	if specs, err := runtimeCommandParameterSpecs(nil, "sample.run", nil, RuntimeSchemaConstraints{}); err != nil || specs != nil {
+	if specs, err := runtimeCommandParameterSpecs(nil, "sample.run", RuntimeSchemaConstraints{}); err != nil || specs != nil {
 		t.Fatalf("nil command specs = %#v, err = %v", specs, err)
 	}
 	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
 		return schemaParameterBindingSnapshot{}, errors.New("load failed")
 	})
-	if _, err := runtimeCommandParameterSpecs(cmd, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), "load failed") {
+	if _, err := runtimeCommandParameterSpecs(cmd, "sample.run", RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), "load failed") {
 		t.Fatalf("binding load error = %v", err)
 	}
 	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
@@ -179,7 +145,7 @@ func TestCrossPlatformCoverageRuntimeCommandParameterErrorEdges(t *testing.T) {
 			MappingExclusions: map[string]string{"sample.run --value": " "},
 		}, nil
 	})
-	if _, err := runtimeCommandParameterSpecs(cmd, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), "mapping exclusion") {
+	if _, err := runtimeCommandParameterSpecs(cmd, "sample.run", RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), "mapping exclusion") {
 		t.Fatalf("mapping exclusion error = %v", err)
 	}
 	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
@@ -194,22 +160,22 @@ func TestCrossPlatformCoverageRuntimeCommandParameterErrorEdges(t *testing.T) {
 			}
 			return resolveRuntimeSchemaCandidate(field, candidates...)
 		})
-		if _, err := runtimeCommandParameterSpecs(cmd, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), target) {
+		if _, err := runtimeCommandParameterSpecs(cmd, "sample.run", RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), target) {
 			t.Fatalf("%s resolution error = %v", target, err)
 		}
 	}
 	resolveRuntimeSchemaField = realResolver
 
-	if specs, err := runtimeCommandParameterSpecs(&cobra.Command{Use: "empty"}, "sample.empty", nil, RuntimeSchemaConstraints{}); err != nil || specs != nil {
+	if specs, err := runtimeCommandParameterSpecs(&cobra.Command{Use: "empty"}, "sample.empty", RuntimeSchemaConstraints{}); err != nil || specs != nil {
 		t.Fatalf("empty specs = %#v, err = %v", specs, err)
 	}
-	if payload, err := runtimeCommandParameters(nil, "", nil, RuntimeSchemaConstraints{}); err != nil || payload != nil {
+	if payload, err := runtimeCommandParameters(nil, "", RuntimeSchemaConstraints{}); err != nil || payload != nil {
 		t.Fatalf("empty payload = %#v, err = %v", payload, err)
 	}
-	testseam.Swap(t, &runtimeCommandParameterSpecsForPayload, func(*cobra.Command, string, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+	testseam.Swap(t, &runtimeCommandParameterSpecsForPayload, func(*cobra.Command, string, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
 		return []ParameterSpec{{Name: "bad", Example: json.RawMessage("{")}}, nil
 	})
-	if _, err := runtimeCommandParameters(cmd, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), "serialize Schema parameter") {
+	if _, err := runtimeCommandParameters(cmd, "sample.run", RuntimeSchemaConstraints{}); err == nil || !strings.Contains(err.Error(), "serialize Schema parameter") {
 		t.Fatalf("payload serialization error = %v", err)
 	}
 
@@ -218,32 +184,21 @@ func TestCrossPlatformCoverageRuntimeCommandParameterErrorEdges(t *testing.T) {
 		t.Fatalf("required annotation = %v/%v", required, present)
 	}
 
-	// Fixture MCP-shaped maps still participate when explicitly injected.
+	// Binding snapshot still supplies reviewed property mappings without MCP pin.
 	testseam.Swap(t, &schemaParameterBindingData, func() (schemaParameterBindingSnapshot, error) {
 		return schemaParameterBindingSnapshot{
 			Bindings: map[string]map[string]string{"sample.run": {"value": "clawType"}},
 		}, nil
 	})
-	requiredTrue := true
-	specs, err := runtimeCommandParameterSpecs(cmd, "sample.run", map[string]embeddedMCPParamMeta{
-		"clawType": {
-			Type:        "string",
-			Description: "fixture description",
-			Required:    &requiredTrue,
-			Default:     "fixture-default",
-		},
-	}, RuntimeSchemaConstraints{})
+	specs, err := runtimeCommandParameterSpecs(cmd, "sample.run", RuntimeSchemaConstraints{})
 	if err != nil {
-		t.Fatalf("fixture pinned parameter specs error = %v", err)
+		t.Fatalf("parameter specs error = %v", err)
 	}
-	if len(specs) != 1 || specs[0].Property != "clawType" || specs[0].InterfaceDescription != "fixture description" {
-		t.Fatalf("fixture pinned parameter specs = %#v", specs)
+	if len(specs) != 1 || specs[0].Property != "clawType" {
+		t.Fatalf("parameter specs = %#v", specs)
 	}
-	if len(specs[0].InterfaceDefault) == 0 {
-		t.Fatalf("fixture interface_default missing: %#v", specs[0])
-	}
-	if prov := specs[0].FieldProvenance["required"]; prov.Source == "" {
-		t.Fatalf("fixture required provenance missing: %#v", specs[0].FieldProvenance)
+	if prov := specs[0].FieldProvenance["property"]; prov.Source == "" {
+		t.Fatalf("property provenance missing: %#v", specs[0].FieldProvenance)
 	}
 }
 
@@ -272,9 +227,6 @@ func TestCrossPlatformCoverageRuntimeSchemaPureHelperEdges(t *testing.T) {
 	}).RequireOneOf
 	if !reflect.DeepEqual(groups, [][]string{{"one"}}) {
 		t.Fatalf("normalized groups = %#v", groups)
-	}
-	if meta, ok := lookupPinnedMCPParam(map[string]embeddedMCPParamMeta{"flag": {Type: "string"}}, "property", "flag"); !ok || meta.Type != "string" {
-		t.Fatalf("flag fallback metadata = %#v/%v", meta, ok)
 	}
 	if isGenericPayloadFlag(nil) {
 		t.Fatal("nil flag cannot be a generic payload")

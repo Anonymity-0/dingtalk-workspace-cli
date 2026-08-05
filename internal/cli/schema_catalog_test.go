@@ -1304,7 +1304,7 @@ func TestDeliveryCatalogContactParamDeclsMatchMergeBaseContract(t *testing.T) {
 			}
 			if want.interfaceType != "" {
 				prov := schemaMap(param["field_provenance"])["interface_type"]
-				if src, _ := prov["source"].(string); src != "native_annotation" && src != "mcp_metadata" {
+				if src, _ := prov["source"].(string); src != "native_annotation" {
 					t.Fatalf("%s --%s interface_type source = %#v", tc.path, flagName, prov)
 				}
 			}
