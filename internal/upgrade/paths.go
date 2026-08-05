@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strings"
 )
 
 // Permission constants following Unix best practices.
@@ -55,6 +57,7 @@ var (
 	upgradeEvalSymlinks = filepath.EvalSymlinks
 	upgradeCopyDir      = copyDir
 	upgradeEnsureDir    = ensureDir
+	upgradeRemoveAll    = os.RemoveAll
 )
 
 // skillDirBlacklist contains parent directories whose skills are managed by
@@ -108,20 +111,38 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 }
 
 // UpgradeSkillLocations installs skills from extractedDir into all locations
-// where they are currently installed or expected.
+// where they are currently installed or expected. extractedDir may point at a
+// multi-skill bundle root (subdirectories each containing SKILL.md) or at a
+// legacy mono root (SKILL.md at its top level); multi is preferred whenever
+// the layout is detected.
 //
 // Strategy (matches npm install.js installSkillsToHomes):
-//   - ~/.agents/skills/dws/ is ALWAYS updated (primary install location)
+//   - ~/.agents/skills/ is ALWAYS updated (primary install location)
 //   - Other agent dirs (claude, cursor, ...) are updated only when the parent
 //     directory exists (e.g. ~/.claude/ exists => user has Claude)
 //   - ~/.real/ and other blacklisted paths are NEVER touched
-//   - If no location was updated at all, fall back to ~/.agents/skills/dws/
+//   - If no location was updated at all, fall back to ~/.agents/skills/
+//
+// Multi-mode semantics: the legacy mono directory (<agent>/dws) and any
+// stale dingtalk-* skill not present in the new bundle are removed so mono
+// and multi never co-exist after an upgrade. After a successful install the
+// ~/.dws/skills/{multi,mono} caches are refreshed best-effort (the mono cache
+// comes from the sibling mono/ tree when the zip ships both).
 func UpgradeSkillLocations(extractedDir string) (*SkillUpgradeResult, error) {
 	homeDir, err := upgradeUserHomeDir()
 	if err != nil {
 		return nil, err
 	}
 
+	if skills := bundleSkillNames(extractedDir); len(skills) > 0 {
+		return upgradeMultiSkillLocations(homeDir, extractedDir, skills)
+	}
+	return upgradeMonoSkillLocations(homeDir, extractedDir)
+}
+
+// upgradeMonoSkillLocations is the legacy mono behavior: one dws/ directory
+// per agent home.
+func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, error) {
 	result := &SkillUpgradeResult{}
 
 	for i, agentDir := range knownSkillDirs {
@@ -140,19 +161,35 @@ func UpgradeSkillLocations(extractedDir string) (*SkillUpgradeResult, error) {
 			}
 		}
 
+		// Mutual exclusion: installing mono removes multi leftovers. A base
+		// directory that exists but cannot be read fails the home instead of
+		// silently installing mono alongside multi.
+		if err := cleanupMultiLeftovers(filepath.Join(homeDir, agentDir)); err != nil {
+			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
+			continue
+		}
+
 		os.RemoveAll(destDir)
-		if err := upgradeCopyDir(extractedDir, destDir); err != nil {
+		if err := upgradeCopyDir(skillSrc, destDir); err != nil {
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
 			continue
 		}
 		result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirOK})
 	}
 
-	// Fallback: if nothing succeeded, force the primary location
+	// Fallback: if nothing succeeded, force the primary location. The multi
+	// leftovers under the primary base are the usual reason the primary
+	// install failed, so clean them first — failing loud like the multi
+	// fallback — instead of letting mono and multi co-exist marked OK.
 	if len(result.Succeeded()) == 0 {
-		dest := filepath.Join(homeDir, ".agents", "skills", "dws")
-		os.MkdirAll(filepath.Dir(dest), dirPermShared)
-		if err := upgradeCopyDir(extractedDir, dest); err != nil {
+		destBase := filepath.Join(homeDir, ".agents", "skills")
+		os.MkdirAll(destBase, dirPermShared)
+		if err := cleanupMultiLeftovers(destBase); err != nil {
+			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录清理残留也失败: %w", err)
+		}
+		dest := filepath.Join(destBase, "dws")
+		os.RemoveAll(dest)
+		if err := upgradeCopyDir(skillSrc, dest); err != nil {
 			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
 		}
 		// Replace the earlier failed entry for this dir (if any) or append a new one
@@ -169,7 +206,212 @@ func UpgradeSkillLocations(extractedDir string) (*SkillUpgradeResult, error) {
 		}
 	}
 
+	// Best-effort: refresh the user-level mono cache so that
+	// `dws skill setup --mode mono` fallbacks stay on the upgraded version
+	// (symmetric with the multi cache refresh in upgradeMultiSkillLocations).
+	refreshSkillCache(homeDir, "mono", skillSrc)
+
 	return result, nil
+}
+
+// upgradeMultiSkillLocations installs every skill of the multi bundle into
+// each agent home as sibling directories and removes the opposite-mode
+// leftovers. A home is marked failed (and multi is NOT installed into it)
+// when leftover removal fails, so mono and multi never co-exist.
+func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*SkillUpgradeResult, error) {
+	skillSet := make(map[string]bool, len(skills))
+	for _, s := range skills {
+		skillSet[s] = true
+	}
+
+	result := &SkillUpgradeResult{}
+
+	for i, agentDir := range knownSkillDirs {
+		destBase := filepath.Join(homeDir, agentDir)
+
+		if isBlacklisted(agentDir) {
+			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirBlacklisted})
+			continue
+		}
+
+		if i > 0 {
+			parentGate := filepath.Dir(destBase)
+			if _, err := os.Stat(parentGate); os.IsNotExist(err) {
+				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirSkipped})
+				continue
+			}
+		}
+
+		if err := cleanupOppositeModeLeftovers(destBase, skillSet); err != nil {
+			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
+			continue
+		}
+
+		failed := false
+		for _, name := range skills {
+			subDest := filepath.Join(destBase, name)
+			os.RemoveAll(subDest)
+			if err := upgradeCopyDir(filepath.Join(multiRoot, name), subDest); err != nil {
+				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
+				failed = true
+				break
+			}
+		}
+		if failed {
+			continue
+		}
+		result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirOK})
+	}
+
+	// Fallback: if nothing succeeded, force the primary location
+	if len(result.Succeeded()) == 0 {
+		destBase := filepath.Join(homeDir, ".agents", "skills")
+		os.MkdirAll(destBase, dirPermShared)
+		if err := cleanupOppositeModeLeftovers(destBase, skillSet); err != nil {
+			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录清理残留也失败: %w", err)
+		}
+		for _, name := range skills {
+			subDest := filepath.Join(destBase, name)
+			os.RemoveAll(subDest)
+			if err := upgradeCopyDir(filepath.Join(multiRoot, name), subDest); err != nil {
+				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
+			}
+		}
+		// Replace the earlier failed entry for this dir (if any) or append a new one
+		replaced := false
+		for idx, r := range result.Results {
+			if r.Dir == destBase {
+				result.Results[idx] = SkillDirResult{Dir: destBase, Status: SkillDirOK}
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirOK})
+		}
+	}
+
+	// Best-effort: refresh the user-level caches so that `dws skill setup`
+	// fallbacks stay on the upgraded version. The release zip ships both
+	// trees, so when the sibling mono/ tree is present the mono cache is
+	// refreshed as well.
+	refreshSkillCache(homeDir, "multi", multiRoot)
+	if monoSrc := filepath.Join(filepath.Dir(multiRoot), "mono"); skillTreeHasRoot(monoSrc) {
+		refreshSkillCache(homeDir, "mono", monoSrc)
+	}
+
+	return result, nil
+}
+
+// refreshSkillCache best-effort mirrors src into ~/.dws/skills/<name>/ so
+// that `dws skill setup --mode <name>` can fall back to the cache and stay on
+// the upgraded version. All errors are swallowed by design.
+func refreshSkillCache(homeDir, name, src string) {
+	cacheDir := filepath.Join(homeDir, ".dws", "skills", name)
+	os.RemoveAll(cacheDir)
+	if err := os.MkdirAll(filepath.Dir(cacheDir), dirPermShared); err == nil {
+		_ = upgradeCopyDir(src, cacheDir)
+	}
+}
+
+// skillTreeHasRoot reports whether dir carries a top-level SKILL.md.
+func skillTreeHasRoot(dir string) bool {
+	info, err := os.Stat(filepath.Join(dir, "SKILL.md"))
+	return err == nil && !info.IsDir()
+}
+
+// cleanupMultiLeftovers removes every multi-mode skill directory (dingtalk-*
+// or dws-shared) inside one agent home before mono is installed. A missing
+// base directory simply means no leftovers; any other read failure is
+// reported so mono never silently co-exists with multi.
+func cleanupMultiLeftovers(baseDir string) error {
+	entries, err := os.ReadDir(baseDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("读取技能目录失败 %s: %w", baseDir, err)
+	}
+	for _, e := range entries {
+		if !e.IsDir() || !isMultiSkillDirName(e.Name()) {
+			continue
+		}
+		stale := filepath.Join(baseDir, e.Name())
+		if err := upgradeRemoveAll(stale); err != nil {
+			return fmt.Errorf("清理 multi 残留失败 %s: %w", stale, err)
+		}
+	}
+	return nil
+}
+
+// cleanupOppositeModeLeftovers removes, inside one agent home, the legacy
+// mono directory (dws/) and every multi skill directory (dingtalk-* or
+// dws-shared) that is not part of the new bundle. The dingtalk- prefix and
+// the dws-shared name are reserved for DWS product skills; market-installed
+// skills do not use them (see skill_command.go).
+func cleanupOppositeModeLeftovers(destBase string, skillSet map[string]bool) error {
+	if err := upgradeRemoveAll(filepath.Join(destBase, "dws")); err != nil {
+		return fmt.Errorf("清理 mono 残留失败 %s: %w", filepath.Join(destBase, "dws"), err)
+	}
+	entries, err := os.ReadDir(destBase)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("读取技能目录失败 %s: %w", destBase, err)
+	}
+	for _, e := range entries {
+		if !e.IsDir() || !isMultiSkillDirName(e.Name()) || skillSet[e.Name()] {
+			continue
+		}
+		stale := filepath.Join(destBase, e.Name())
+		if err := upgradeRemoveAll(stale); err != nil {
+			return fmt.Errorf("清理过期技能失败 %s: %w", stale, err)
+		}
+	}
+	return nil
+}
+
+// isMultiSkillDirName reports whether name belongs to a DWS multi-mode skill
+// directory (product skills use the dingtalk- prefix; dws-shared is the
+// mandatory shared bundle).
+func isMultiSkillDirName(name string) bool {
+	return strings.HasPrefix(name, "dingtalk-") || name == "dws-shared"
+}
+
+// bundleSkillNames returns the sorted names of subdirectories of dir that
+// contain a SKILL.md. It returns nil when dir itself carries a top-level
+// SKILL.md (mono layout) so callers can distinguish the two layouts.
+func bundleSkillNames(dir string) []string {
+	if _, err := os.Stat(filepath.Join(dir, "SKILL.md")); err == nil {
+		return nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(dir, e.Name(), "SKILL.md")); err == nil {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+// LocateSkillsRoot resolves the skill root inside an extracted dws-skills.zip,
+// preferring the multi bundle ({extractDir}/multi) over the legacy mono
+// layouts handled by LocateSkillMD.
+func LocateSkillsRoot(extractDir string) string {
+	multiRoot := filepath.Join(extractDir, "multi")
+	if skills := bundleSkillNames(multiRoot); len(skills) > 0 {
+		return multiRoot
+	}
+	return LocateSkillMD(extractDir)
 }
 
 // LocateSkillMD finds the directory containing SKILL.md in an extracted zip.

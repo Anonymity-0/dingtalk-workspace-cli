@@ -70,17 +70,17 @@ The installer ships skills in one of two layouts. CLI commands (`dws aitable ...
 
 | Mode | What gets installed | Best for |
 |------|----------------------|----------|
-| **mono** (stable, default) | One `dws` skill covering all products | Cross-product workflows; single entry point |
-| **multi** 🧪 **EXPERIMENTAL** | Per-product skills (`dingtalk-aitable`, `dingtalk-calendar`, `dingtalk-chat`, ...) | Single-product tasks; smaller context per call |
+| **multi** (default) | Per-product skills (`dingtalk-aitable`, `dingtalk-calendar`, `dingtalk-chat`, ...) | Single-product tasks; smaller context per call |
+| **mono** (legacy) | One `dws` skill covering all products | Cross-product workflows; single entry point |
 
-> 🧪 **`multi` is currently EXPERIMENTAL / preview.** All product-scoped skills pass the dispatch verifier, but interface, naming and cross-skill references may change in future releases. For production / shared environments, prefer `mono`. File issues if you hit problems.
+> Installs and upgrades default to `multi`. `mono` remains available via `DWS_SKILL_MODE=mono` or `dws skill setup --mode mono`. File issues if you hit problems.
 
 How to pick:
 
-- **Quick install** (one-liner above): non-interactive, installs `mono`.
-- **TTY install** (download then run): `curl -O .../install.sh && bash install.sh` — prompts `1) mono  2) multi` (default 1).
-- **Override via env**: `DWS_SKILL_MODE=multi curl -fsSL ... | sh`.
-- **Switch later**: `dws skill setup --mode multi` (or `--mode mono`) — re-run any time.
+- **Quick install** (one-liner above): non-interactive, installs `multi`.
+- **TTY install** (download then run): `curl -O .../install.sh && bash install.sh` — prompts `1) multi  2) mono` (default 1).
+- **Override via env**: `DWS_SKILL_MODE=mono curl -fsSL ... | sh`.
+- **Switch later**: `dws skill setup --mode mono` (or `--mode multi`) — re-run any time.
 
 </details>
 
@@ -393,19 +393,19 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 
 The repo ships a complete Agent Skill system under `skills/`, organized into two layouts:
 
-- `skills/mono/` — single-skill layout (one `SKILL.md` + `references/products/`), recommended default.
-- `skills/multi/` — per-product skills (`dingtalk-aitable/`, `dingtalk-calendar/`, `dingtalk-chat/`, ...), each with its own `SKILL.md`. 🧪 **EXPERIMENTAL / preview — see banner in each multi `SKILL.md` for caveats.**
+- `skills/mono/` — single-skill layout (one `SKILL.md` + `references/products/`), legacy.
+- `skills/multi/` — per-product skills (`dingtalk-aitable/`, `dingtalk-calendar/`, `dingtalk-chat/`, ...), each with its own `SKILL.md`. Default layout.
 
 Leaf safety/parameters/selection prose for Schema generation come from ProductDecl / ContractFinal declarations in Go. The former `internal/cli/schema_hints/` HintFile tree is fully retired and must not reappear.
 
 After installing, AI tools like Claude Code / Cursor can operate DingTalk directly through natural language:
 
 ```bash
-# Install skills into current project (defaults to mono)
+# Install skills into current project (defaults to multi; DWS_SKILL_MODE=mono switches back)
 curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/main/scripts/install-skills.sh | sh
 ```
 
-> `install.sh` installs to `$HOME/.agents/skills/dws` (global); `install-skills.sh` installs to `./.agents/skills/dws` (current project).
+> `install.sh` installs under `$HOME/.agents/skills/` (global; multi layout is per-product siblings, mono is the `dws/` subdirectory); `install-skills.sh` installs under `./.agents/skills/` (current project).
 >
 > China users: prefix `DWS_GITEE_REPO` to use the Gitee mirror — see [China mirror](#china-mirror).
 
@@ -719,7 +719,7 @@ See [`docs/robot-quickstart.md`](./docs/robot-quickstart.md) for the full 4-step
 <summary>Coming soon</summary>
 
 - `conference` (video meetings)
-- Multi-skill mode (experimental) — per-product skills under `skills/multi/`; opt in via `dws skill setup --mode multi`
+- Multi-skill mode (default) — per-product skills under `skills/multi/`; installs and upgrades default to it, `dws skill setup --mode mono` switches back
 
 </details>
 

@@ -14,7 +14,7 @@
 #   DWS_VERSION       — version to install             (default: latest)
 #   DWS_NO_SKILLS     — set to 1 to skip skills install
 #   DWS_SKILLS_ONLY   — set to 1 to install only skills (skip binary)
-#   DWS_SKILL_MODE    — mono | multi (default: prompt if TTY, else mono)
+#   DWS_SKILL_MODE    — mono | multi (default: prompt if TTY, else multi)
 #   DWS_GITEE_REPO    — "owner/repo" on Gitee; when set, version + assets resolve
 #                       via the Gitee API instead of GitHub (China mirror)
 #
@@ -215,8 +215,8 @@ print_banner() {
 #
 # Priority (highest first):
 #   1. DWS_SKILL_MODE env var (mono | multi, case-insensitive)
-#   2. Interactive prompt when both stdin and stdout are TTYs (default: mono)
-#   3. Fallback: mono (non-TTY without env var, e.g. curl | sh)
+#   2. Interactive prompt when both stdin and stdout are TTYs (default: multi)
+#   3. Fallback: multi (non-TTY without env var, e.g. curl | sh)
 resolve_skill_mode() {
   if [ -n "${DWS_SKILL_MODE:-}" ]; then
     raw="$DWS_SKILL_MODE"
@@ -237,36 +237,23 @@ resolve_skill_mode() {
   if [ -t 0 ] && [ -t 1 ]; then
     printf '\n'
     say "Select skill installation mode:"
-    say "  1) mono                  — install one bundled dws skill (stable / recommended)"
-    say "  2) multi 🧪 EXPERIMENTAL — split each product into its own skill (preview; run 'dws skill setup --mode multi' afterwards)"
-    say "     ⚠ multi is not yet stable — interface, naming and cross-skill references may change"
+    say "  1) multi (default) — split each product into its own skill (dingtalk-*)"
+    say "  2) mono            — install one bundled dws skill (legacy)"
     printf '  Choice [1]: '
     read choice || choice=""
     case "$choice" in
-      ""|1|mono)  SKILL_MODE="mono" ;;
-      2|multi)    SKILL_MODE="multi" ;;
+      ""|1|multi) SKILL_MODE="multi" ;;
+      2|mono)     SKILL_MODE="mono" ;;
       *)
-        say "Unrecognized choice '${choice}', defaulting to mono."
-        SKILL_MODE="mono"
+        say "Unrecognized choice '${choice}', defaulting to multi."
+        SKILL_MODE="multi"
         ;;
     esac
     say "Skill mode: ${SKILL_MODE}"
     return 0
   fi
 
-  SKILL_MODE="mono"
-}
-
-print_multi_mode_notice() {
-  say ""
-  say "🧪 Skill mode: multi (EXPERIMENTAL / preview) — automatic skill install skipped."
-  say "   ⚠ multi is not yet stable. All product-scoped skills pass dispatch verifier,"
-  say "     but interface, naming and cross-skill references may change in future releases."
-  say "     For production / shared environments, use mono mode (--mode mono)."
-  say ""
-  say "   To install split skills, run:"
-  say "     ${BIN_NAME} skill setup --mode multi"
-  say "   (One skill per product family; requires the dws binary installed above.)"
+  SKILL_MODE="multi"
 }
 
 install_binary_from_source() {
@@ -301,16 +288,25 @@ install_skills_local() {
   skill_src="${root}/skills/mono"
   multi_src="${root}/skills/multi"
 
-  if [ ! -d "$skill_src" ]; then
-    say "⚠️  Local skills directory not found: ${skill_src}"
-    say "   Skipping skills installation."
-    return 1
+  if [ "$SKILL_MODE" = "multi" ] && multi_tree_has_skills "$multi_src"; then
+    say ""
+    say "📦 Installing agent skills (multi) from local source: ${multi_src}"
+    install_multi_skills_to_homes "$multi_src"
+  else
+    if [ "$SKILL_MODE" = "multi" ]; then
+      say "⚠️  Multi skill tree not found or empty at ${multi_src}; falling back to mono."
+    fi
+    if [ ! -d "$skill_src" ]; then
+      say "⚠️  Local skills directory not found: ${skill_src}"
+      say "   Skipping skills installation."
+      return 1
+    fi
+
+    say ""
+    say "📦 Installing agent skills from local source: ${skill_src}"
+
+    install_skills_to_homes "$skill_src"
   fi
-
-  say ""
-  say "📦 Installing agent skills from local source: ${skill_src}"
-
-  install_skills_to_homes "$skill_src"
 
   # Cache multi source for later `dws skill setup --mode multi`.
   if [ -d "$multi_src" ]; then
@@ -331,9 +327,8 @@ cache_multi_skills() {
   src="$1"
   cache_dir="${HOME}/.dws/skills/multi"
 
-  if [ ! -d "$src" ]; then
-    return 0
-  fi
+  # Never let an empty/corrupt multi/ tree wipe a previously good cache.
+  multi_tree_has_skills "$src" || return 0
 
   rm -rf "$cache_dir"
   mkdir -p "$cache_dir"
@@ -354,7 +349,9 @@ cache_mono_skills() {
   src="$1"
   cache_dir="${HOME}/.dws/skills/mono"
 
-  if [ ! -d "$src" ]; then
+  # Only refresh when the new bundle actually carries a mono tree — a
+  # multi-only bundle must never wipe a previously good mono cache.
+  if [ ! -f "$src/SKILL.md" ]; then
     return 0
   fi
 
@@ -364,6 +361,8 @@ cache_mono_skills() {
 }
 
 # Install skill tree into all agent homes (same rules as build/npm/install.js installSkillsToHomes).
+# Installing mono removes multi leftovers (dingtalk-*) for mutual exclusion,
+# mirroring `dws skill setup --mode mono`.
 install_skills_to_homes() {
   skill_src="$1"
   root="${HOME}"
@@ -393,6 +392,12 @@ install_skills_to_homes() {
       idx=$((idx + 1))
       continue
     fi
+    # Mutual exclusion: remove multi leftovers before laying down mono.
+    rm -rf "$base_dir/dws-shared"
+    for existing in "$base_dir"/dingtalk-*/; do
+      [ -d "$existing" ] || continue
+      rm -rf "$existing"
+    done
     dest="$base_dir/$SKILL_NAME"
     case "$root" in
       "$HOME")
@@ -421,6 +426,105 @@ install_skills_to_homes() {
     esac
     _copy_skill "$skill_src" "$root/.agents/skills/$SKILL_NAME" "$flabel"
   fi
+}
+
+# multi_tree_has_skills returns 0 only when the given multi bundle directory
+# contains at least one product skill (a subdirectory with a SKILL.md). An
+# empty or corrupt multi/ tree must never select the multi branch: installing
+# it would delete existing dws/ + dingtalk-* skills and lay down nothing.
+# (Go bundleSkillNames and install.js multiTreeHasSkills guard the same way.)
+multi_tree_has_skills() {
+  _dir="$1"
+  [ -d "$_dir" ] || return 1
+  for _sub in "$_dir"/*/; do
+    if [ -f "${_sub}SKILL.md" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Install the multi skill bundle (one subdirectory per product skill) into all
+# agent homes as sibling directories, mirroring `dws skill setup --mode multi`.
+# Mutual exclusion: the mono leftover (<home>/dws) and any stale dingtalk-*
+# skill not present in the new bundle are removed first.
+install_multi_skills_to_homes() {
+  multi_src="$1"
+  root="${HOME}"
+  installed=0
+  idx=0
+  for agent_dir in \
+    ".agents/skills" \
+    ".claude/skills" \
+    ".cursor/skills" \
+    ".qoder/skills" \
+    ".qoderwork/skills" \
+    ".gemini/skills" \
+    ".codex/skills" \
+    ".github/skills" \
+    ".windsurf/skills" \
+    ".augment/skills" \
+    ".cline/skills" \
+    ".amp/skills" \
+    ".kiro/skills" \
+    ".trae/skills" \
+    ".openclaw/skills" \
+    ".hermes/skills"
+  do
+    base_dir="$root/$agent_dir"
+    parent_gate="$(dirname "$base_dir")"
+    if [ "$idx" -gt 0 ] && [ ! -e "$parent_gate" ]; then
+      idx=$((idx + 1))
+      continue
+    fi
+    _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"
+    installed=$((installed + 1))
+    idx=$((idx + 1))
+  done
+  if [ "$installed" -eq 0 ]; then
+    _install_multi_to_base "$multi_src" "$root/.agents/skills" "$root" ".agents/skills"
+  fi
+}
+
+_install_multi_to_base() {
+  _msrc="$1"
+  _base="$2"
+  _root="$3"
+  _agent_dir="$4"
+
+  mkdir -p "$_base"
+
+  # Mutual exclusion: remove the mono leftover.
+  rm -rf "$_base/$SKILL_NAME"
+
+  # Remove stale multi skills (dingtalk-* or dws-shared) not in the new bundle.
+  for existing in "$_base"/dingtalk-*/; do
+    [ -d "$existing" ] || continue
+    _name="$(basename "$existing")"
+    if [ ! -f "$_msrc/$_name/SKILL.md" ]; then
+      rm -rf "$existing"
+    fi
+  done
+  if [ -d "$_base/dws-shared" ] && [ ! -f "$_msrc/dws-shared/SKILL.md" ]; then
+    rm -rf "$_base/dws-shared"
+  fi
+
+  _count=0
+  for skill_dir in "$_msrc"/*/; do
+    [ -f "${skill_dir}SKILL.md" ] || continue
+    _name="$(basename "$skill_dir")"
+    _dest="$_base/$_name"
+    rm -rf "$_dest"
+    mkdir -p "$_dest"
+    cp -R "${skill_dir}." "$_dest/" 2>/dev/null || cp -r "${skill_dir}." "$_dest/"
+    _count=$((_count + 1))
+  done
+
+  case "$_root" in
+    "$HOME") _label="~/$_agent_dir/" ;;
+    *)       _label="$_root/$_agent_dir/" ;;
+  esac
+  say "✅ Skills → ${_label} (${_count} product skills)"
 }
 
 # One-line summary copy (used for 2nd+ agent targets).
@@ -598,20 +702,30 @@ install_skills() {
   elif [ -f "$extract_root/$SKILL_NAME/SKILL.md" ]; then
     skill_src="$extract_root/$SKILL_NAME"
   fi
-  if [ ! -f "$skill_src/SKILL.md" ]; then
-    say "⚠️  Skills not found in release asset. Trying local source..."
-    rm -rf "$tmpdir_skills"
-    local_root="$(resolve_source_root || true)"
-    if [ -n "$local_root" ]; then
-      install_skills_local "$local_root"
-      return
-    else
-      say "⚠️  No local source checkout found either. Skipping skills installation."
-      return
+  # Multi first: a release may ship only the multi/ tree without the root
+  # mono copy, so the mono SKILL.md gate must never block a multi install.
+  # An empty/corrupt multi/ tree (no */SKILL.md) falls back to mono with a
+  # warning — installing it would wipe existing skills and lay down nothing.
+  if [ "$SKILL_MODE" = "multi" ] && multi_tree_has_skills "$extract_root/multi"; then
+    install_multi_skills_to_homes "$extract_root/multi"
+  else
+    if [ "$SKILL_MODE" = "multi" ]; then
+      say "⚠️  Multi skill tree not found or empty in release asset; falling back to mono."
     fi
+    if [ ! -f "$skill_src/SKILL.md" ]; then
+      say "⚠️  Skills not found in release asset. Trying local source..."
+      rm -rf "$tmpdir_skills"
+      local_root="$(resolve_source_root || true)"
+      if [ -n "$local_root" ]; then
+        install_skills_local "$local_root"
+        return
+      else
+        say "⚠️  No local source checkout found either. Skipping skills installation."
+        return
+      fi
+    fi
+    install_skills_to_homes "$skill_src"
   fi
-
-  install_skills_to_homes "$skill_src"
 
   # Cache the multi tree (if present in the release asset) so a later
   # `dws skill setup --mode multi` can find a source without re-downloading.
@@ -647,32 +761,20 @@ main() {
   if [ -n "$source_root" ]; then
     install_binary_from_source "$source_root"
     if [ "$NO_SKILLS" != "1" ]; then
-      if [ "$SKILL_MODE" = "multi" ]; then
-        print_multi_mode_notice
-      else
-        install_skills_local "$source_root"
-      fi
+      install_skills_local "$source_root"
     fi
   elif [ "$SKILLS_ONLY" = "1" ]; then
-    if [ "$SKILL_MODE" = "multi" ]; then
-      print_multi_mode_notice
+    local_root="$(resolve_source_root || true)"
+    if [ -n "$local_root" ]; then
+      install_skills_local "$local_root"
     else
-      local_root="$(resolve_source_root || true)"
-      if [ -n "$local_root" ]; then
-        install_skills_local "$local_root"
-      else
-        install_skills
-      fi
+      install_skills
     fi
   elif [ "$NO_SKILLS" = "1" ]; then
     install_binary
   else
     install_binary
-    if [ "$SKILL_MODE" = "multi" ]; then
-      print_multi_mode_notice
-    else
-      install_skills
-    fi
+    install_skills
   fi
 
   printf '\n'

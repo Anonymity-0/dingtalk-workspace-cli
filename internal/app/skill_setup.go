@@ -75,15 +75,14 @@ func newSkillSetupCommand() *cobra.Command {
 		Long: `安装 dws 自身 skill 文档到 AI Agent 目录（如 ~/.claude/skills/、~/.cursor/skills/ 等）。
 
 支持两种模式：
-  mono                  单 skill（稳定 / 推荐）—— 总入口 SKILL.md + references/products/
-  multi  🧪 EXPERIMENTAL  多 skill（试验版 / Preview）—— 按产品拆 N 个独立 skill
-                         尚未达到 stable 标准，接口、命名与跨 skill 引用可能变动；
-                         生产前请评估，问题请提 issue 反馈
+  multi                 多 skill（默认）—— 按产品拆 N 个独立 skill（dingtalk-*）
+  mono                  单 skill（legacy）—— 总入口 SKILL.md + references/products/
 
 multi 模式支持按产品挑选：
   -s/--skill   只装指定子 skill（可重复，短名 aitable 或全名 dingtalk-aitable 均可）
   -x/--exclude 从全装里剔除指定子 skill（可重复，与 --skill 互斥）
-  未列出的已有 dingtalk-* skill 会保留（additive 叠加语义）
+  用 -s/-x 挑选时未列出的已有 dingtalk-* skill 会保留（additive 叠加语义）；
+  不带过滤条件的全量安装会清理不在 bundle 内的过期 dingtalk-* / dws-shared。
 
 不带 --mode 时进入交互式询问；不带 --target 时铺到所有检测到的 Agent 目录。
 skill 源默认取二进制内嵌的版本（升级二进制即升级 skill）；--source / DWS_SKILL_SOURCE 可显式覆盖。`,
@@ -168,8 +167,13 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	// filtered 决定 multi 安装的清理语义：带 -s/--skill 或 -x/--exclude
+	// 时保持 additive（不动未列出的 sibling）；全量安装与 install.sh /
+	// install.js 对齐，清掉不在 bundle 内的过期 dingtalk-* / dws-shared。
+	filtered := len(includeRaw) > 0 || len(excludeRaw) > 0
+
 	if !autoYes {
-		ok, err := skillSetupConfirm(out, mode, skillSrc, dests, multiSkillNames)
+		ok, err := skillSetupConfirm(out, mode, skillSrc, dests, multiSkillNames, filtered)
 		if err != nil {
 			return err
 		}
@@ -177,8 +181,6 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 			fmt.Fprintln(out, "已取消。")
 			return nil
 		}
-	} else if mode == skillSetupModeMulti {
-		fmt.Fprintln(errOut, "🧪 multi 模式当前为 EXPERIMENTAL（试验版 / Preview）—— 接口与布局可能变动，稳定版请用 --mode mono")
 	}
 
 	var installed, skipped int
@@ -186,7 +188,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 	case skillSetupModeMono:
 		installed, skipped, err = skillSetupInstallMono(skillSrc, dests, out, errOut)
 	case skillSetupModeMulti:
-		installed, skipped, err = skillSetupInstallMulti(skillSrc, multiSkillNames, dests, out, errOut)
+		installed, skipped, err = skillSetupInstallMulti(skillSrc, multiSkillNames, dests, out, errOut, filtered)
 	default:
 		return fmt.Errorf("内部错误：未知 mode %q", mode)
 	}
@@ -251,10 +253,10 @@ func normalizeMultiSkillName(name string) string {
 //   - both lists empty → return `all` (install everything)
 //   - exclude that drops every name → error (avoid silent no-op install)
 //
-// The caller is responsible for additive installation: install only the
-// returned names, leaving any other already-installed dingtalk-* siblings
-// untouched (handled by installMultiSkillToHomes which does not enumerate
-// the destination).
+// The caller threads whether a filter was used into installMultiSkillToHomes:
+// filtered installs stay additive (already-installed dingtalk-* siblings are
+// left untouched); a full unfiltered install also removes stale dingtalk-* /
+// dws-shared directories that are no longer part of the bundle.
 func filterMultiSkillNames(all, include, exclude []string) ([]string, error) {
 	if len(include) > 0 && len(exclude) > 0 {
 		return nil, fmt.Errorf("--skill 与 --exclude 不能同时使用")
@@ -356,8 +358,8 @@ func resolveSkillSetupMode(mode string, autoYes bool, out io.Writer) (string, er
 	}
 
 	if autoYes || !skillSetupInteractive() {
-		fmt.Fprintln(out, "未指定 --mode，非交互环境下默认使用 mono")
-		return skillSetupModeMono, nil
+		fmt.Fprintln(out, "未指定 --mode，非交互环境下默认使用 multi")
+		return skillSetupModeMulti, nil
 	}
 
 	var choice string
@@ -365,10 +367,10 @@ func resolveSkillSetupMode(mode string, autoYes bool, out io.Writer) (string, er
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("选择 dws skill 安装模式").
-				Description("mono = 单 skill 入口（稳定 / 推荐）\nmulti = 按产品拆分（🧪 EXPERIMENTAL / 试验版，未达 stable，接口可能变动）").
+				Description("multi = 按产品拆分（默认）\nmono = 单 skill 入口（legacy）").
 				Options(
-					huh.NewOption("mono — 单 skill（稳定 / 推荐）", skillSetupModeMono),
-					huh.NewOption("multi — 多 skill（🧪 EXPERIMENTAL · 试验版）", skillSetupModeMulti),
+					huh.NewOption("multi — 多 skill（默认）", skillSetupModeMulti),
+					huh.NewOption("mono — 单 skill（legacy）", skillSetupModeMono),
 				).
 				Value(&choice),
 		),
@@ -380,8 +382,10 @@ func resolveSkillSetupMode(mode string, autoYes bool, out io.Writer) (string, er
 }
 
 // resolveSkillSetupSource finds the local skill source directory for the
-// given mode. PR 1 supports only mono; multi is reserved for a later PR
-// and currently returns an error before reaching this function.
+// given mode ("mono" or "multi"). Explicit overrides (--source flag or
+// DWS_SKILL_SOURCE) win and never fall back to another source; without an
+// override the ordered candidate list (binary-adjacent, working directory,
+// ~/.dws/skills user cache) is probed for a valid skill root of that mode.
 func resolveSkillSetupSource(explicit, mode string) (string, error) {
 	subdir := mode // "mono" or "multi"
 
@@ -525,16 +529,7 @@ func detectExistingAgentHomes(home, mode string) []string {
 	return out
 }
 
-func confirmSkillSetup(out io.Writer, mode, src string, dests []string, multiSkillNames []string) (bool, error) {
-	if mode == skillSetupModeMulti {
-		fmt.Fprintln(out, "\n🧪 ─────────────────────────────────────────────────────────────")
-		fmt.Fprintln(out, "    multi 模式当前为 EXPERIMENTAL（试验版 / Preview）")
-		fmt.Fprintf(out, "    · 当前选择的 %d 个独立 skill 均跑过 verifier，可用但未达 stable\n", len(multiSkillNames))
-		fmt.Fprintln(out, "    · 跨 skill 引用、bundle 命名、目录布局后续可能调整")
-		fmt.Fprintln(out, "    · 不建议在生产 / 共享环境直接落地；问题请提 issue 反馈")
-		fmt.Fprintln(out, "    稳定版请用 --mode mono")
-		fmt.Fprintln(out, "🧪 ─────────────────────────────────────────────────────────────")
-	}
+func confirmSkillSetup(out io.Writer, mode, src string, dests []string, multiSkillNames []string, filtered bool) (bool, error) {
 	fmt.Fprintf(out, "\n📦 将安装 skill：\n  mode: %s\n  source: %s\n", mode, src)
 	if mode == skillSetupModeMulti {
 		fmt.Fprintf(out, "  将装 %d 个独立 skill（按子目录平铺到 <agent-home>/<skill-name>/）：\n", len(multiSkillNames))
@@ -549,8 +544,19 @@ func confirmSkillSetup(out io.Writer, mode, src string, dests []string, multiSki
 	// 列出互斥清理：装 mode 前要把对面 mode 的残留删掉
 	fmt.Fprintln(out, "  互斥清理（确认后才执行）：")
 	for _, d := range dests {
-		for _, victim := range mutualExclusionVictims(d, mode) {
+		victims, _ := mutualExclusionVictims(d, mode) // 预览只读，扫描失败不阻塞确认
+		for _, victim := range victims {
 			fmt.Fprintf(out, "    × 将删除 %s\n", victim)
+		}
+	}
+	// 全量 multi 安装还会清掉不在 bundle 内的过期 dingtalk-* / dws-shared
+	// （removeStaleMultiSkills）；这些删除同样必须先进入确认预览。带
+	// -s/-x 的 filtered 安装是 additive 语义，不会动未列出的 sibling。
+	if mode == skillSetupModeMulti && !filtered {
+		for _, d := range dests {
+			for _, victim := range staleMultiSkillVictims(d, multiSkillNames) {
+				fmt.Fprintf(out, "    × 将删除过期 skill %s\n", victim)
+			}
 		}
 	}
 
@@ -580,38 +586,49 @@ func confirmSkillSetup(out io.Writer, mode, src string, dests []string, multiSki
 //
 //   - mono dest is <agent-home>/dws  → multi 残留是 <agent-home>/dingtalk-*
 //   - multi dest is <agent-home>     → mono 残留是 <agent-home>/dws
-func mutualExclusionVictims(dest, mode string) []string {
+//
+// A scan failure (e.g. unreadable agent home) is returned as a non-nil error
+// so callers can surface a warning instead of silently skipping cleanup.
+func mutualExclusionVictims(dest, mode string) ([]string, error) {
 	switch mode {
 	case skillSetupModeMono:
 		// dest = <agent-home>/dws → agent-home = parent
 		agentHome := filepath.Dir(dest)
 		entries, err := skillSetupReadDir(agentHome)
 		if err != nil {
-			return nil
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("扫描 multi 残留失败 %s: %w", agentHome, err)
 		}
 		var victims []string
 		for _, e := range entries {
-			if e.IsDir() && strings.HasPrefix(e.Name(), "dingtalk-") {
+			if e.IsDir() && (strings.HasPrefix(e.Name(), multiSkillPrefix) || e.Name() == multiSharedSkill) {
 				victims = append(victims, filepath.Join(agentHome, e.Name()))
 			}
 		}
 		sort.Strings(victims)
-		return victims
+		return victims, nil
 	case skillSetupModeMulti:
 		// dest = <agent-home> → mono 残留是 dest/dws
 		monoPath := filepath.Join(dest, "dws")
 		if _, err := skillSetupStat(monoPath); err == nil {
-			return []string{monoPath}
+			return []string{monoPath}, nil
 		}
-		return nil
+		return nil, nil
 	}
-	return nil
+	return nil, nil
 }
 
 // cleanupMutualExclusion best-effort removes the opposite-mode leftovers.
-// Failures emit a warning to errOut but never abort the install.
+// Failures — including a failed victim scan — emit a warning to errOut but
+// never abort the install.
 func cleanupMutualExclusion(dest, mode string, out, errOut io.Writer) {
-	for _, victim := range mutualExclusionVictims(dest, mode) {
+	victims, scanErr := mutualExclusionVictims(dest, mode)
+	if scanErr != nil {
+		fmt.Fprintf(errOut, "  ⚠️  互斥清理扫描失败（继续安装） %s: %v\n", dest, scanErr)
+	}
+	for _, victim := range victims {
 		if err := skillSetupRemoveAll(victim); err != nil {
 			fmt.Fprintf(errOut, "  ⚠️  互斥清理失败（继续安装） %s: %v\n", victim, err)
 			continue
@@ -650,7 +667,13 @@ func installSkillToHomes(src string, dests []string, out, errOut io.Writer) (ins
 // installMultiSkillToHomes installs each subdir of src (dingtalk-*) into
 // dest as a sibling skill directory. installed/skipped is counted per
 // (agent-home × sub-skill) pair so the user sees granular progress.
-func installMultiSkillToHomes(src string, skillNames []string, dests []string, out, errOut io.Writer) (installed, skipped int, err error) {
+//
+// filtered mirrors whether runSkillSetup saw -s/--skill or -x/--exclude:
+// a filtered install stays additive and never touches siblings outside the
+// requested set; a full (unfiltered) install additionally removes stale
+// dingtalk-* / dws-shared directories that are no longer in the bundle,
+// matching install.sh / install.ps1 / install.js / upgrade paths.
+func installMultiSkillToHomes(src string, skillNames []string, dests []string, out, errOut io.Writer, filtered bool) (installed, skipped int, err error) {
 	sort.Strings(dests)
 	for _, dest := range dests {
 		// 互斥清理：装 multi 前先把 dest/dws/ 整个删除（mono 残留）
@@ -660,6 +683,10 @@ func installMultiSkillToHomes(src string, skillNames []string, dests []string, o
 			fmt.Fprintf(errOut, "  ✗ Agent 目录创建失败 %s: %v\n", dest, err)
 			skipped += len(skillNames)
 			continue
+		}
+
+		if !filtered {
+			removeStaleMultiSkills(dest, skillNames, out, errOut)
 		}
 
 		for _, name := range skillNames {
@@ -680,6 +707,65 @@ func installMultiSkillToHomes(src string, skillNames []string, dests []string, o
 		}
 	}
 	return installed, skipped, nil
+}
+
+// staleMultiSkillVictims lists the dingtalk-* / dws-shared directories under
+// dest that a full (unfiltered) multi install would delete because they are
+// not part of the bundle. It is the read-only preview companion of
+// removeStaleMultiSkills; scan failures degrade to a nil list so the
+// confirmation prompt is never blocked by an unreadable agent home.
+func staleMultiSkillVictims(dest string, keep []string) []string {
+	entries, err := skillSetupReadDir(dest)
+	if err != nil {
+		return nil
+	}
+	keepSet := make(map[string]bool, len(keep))
+	for _, n := range keep {
+		keepSet[n] = true
+	}
+	var victims []string
+	for _, e := range entries {
+		if !e.IsDir() || keepSet[e.Name()] {
+			continue
+		}
+		if !strings.HasPrefix(e.Name(), multiSkillPrefix) && e.Name() != multiSharedSkill {
+			continue
+		}
+		victims = append(victims, filepath.Join(dest, e.Name()))
+	}
+	sort.Strings(victims)
+	return victims
+}
+
+// removeStaleMultiSkills deletes dingtalk-* / dws-shared directories under
+// dest that are not part of the current bundle. Best-effort: scan/removal
+// failures warn on errOut and never abort the install.
+func removeStaleMultiSkills(dest string, keep []string, out, errOut io.Writer) {
+	entries, err := skillSetupReadDir(dest)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(errOut, "  ⚠️  过期 skill 扫描失败（继续安装） %s: %v\n", dest, err)
+		}
+		return
+	}
+	keepSet := make(map[string]bool, len(keep))
+	for _, n := range keep {
+		keepSet[n] = true
+	}
+	for _, e := range entries {
+		if !e.IsDir() || keepSet[e.Name()] {
+			continue
+		}
+		if !strings.HasPrefix(e.Name(), multiSkillPrefix) && e.Name() != multiSharedSkill {
+			continue
+		}
+		stale := filepath.Join(dest, e.Name())
+		if err := skillSetupRemoveAll(stale); err != nil {
+			fmt.Fprintf(errOut, "  ⚠️  过期 skill 清理失败（继续安装） %s: %v\n", stale, err)
+			continue
+		}
+		fmt.Fprintf(out, "  × 已清理过期 skill %s\n", stale)
+	}
 }
 
 func copyDir(src, dst string) error {

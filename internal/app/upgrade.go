@@ -57,7 +57,7 @@ var (
 	downloadUpgradeProgress = upgrade.DownloadWithProgress
 	extractUpgradeZip       = upgrade.ExtractZip
 	findExtractedBinary     = upgrade.FindBinaryInDir
-	locateUpgradeSkill      = upgrade.LocateSkillMD
+	locateUpgradeSkill      = upgrade.LocateSkillsRoot
 	replaceUpgradeSelf      = upgrade.ReplaceSelf
 	installUpgradeSkills    = upgrade.UpgradeSkillLocations
 	upgradeMkdirTemp        = os.MkdirTemp

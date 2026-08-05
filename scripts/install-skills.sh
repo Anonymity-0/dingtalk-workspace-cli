@@ -13,6 +13,7 @@ set -eu
 # Environment variables (optional):
 #   DWS_VERSION        — release tag (default: latest)
 #   DWS_SKILLS_ROOT    — base path for agent dirs (default: $PWD)
+#   DWS_SKILL_MODE     — mono | multi (default: multi)
 #   DWS_GITEE_REPO     — "owner/repo" on Gitee; resolve version + assets via the
 #                        Gitee API instead of GitHub (China mirror)
 
@@ -25,6 +26,11 @@ VERSION="${DWS_VERSION:-latest}"
 SKILL_NAME="dws"
 ROOT="${DWS_SKILLS_ROOT:-$PWD}"
 DWS_CACHE_ROOT="${DWS_CACHE_ROOT:-$HOME/.dws}"
+SKILL_MODE="$(printf '%s' "${DWS_SKILL_MODE:-multi}" | tr '[:upper:]' '[:lower:]')"
+case "$SKILL_MODE" in
+  mono|multi) ;;
+  *) printf '❌ Invalid DWS_SKILL_MODE=%s. Use mono or multi.\n' "${DWS_SKILL_MODE:-}" >&2; exit 1 ;;
+esac
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -151,6 +157,103 @@ _copy_skill() {
   done
 }
 
+# multi_tree_has_skills returns 0 only when the given multi bundle directory
+# contains at least one product skill (a subdirectory with a SKILL.md). An
+# empty or corrupt multi/ tree must never select the multi branch: installing
+# it would delete existing dws/ + dingtalk-* skills and lay down nothing.
+# (Go bundleSkillNames and install.js multiTreeHasSkills guard the same way.)
+multi_tree_has_skills() {
+  _dir="$1"
+  [ -d "$_dir" ] || return 1
+  for _sub in "$_dir"/*/; do
+    if [ -f "${_sub}SKILL.md" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Same semantics as build/npm/install.js installMultiSkillsToHomes (root = DWS_SKILLS_ROOT or PWD).
+install_multi_skills_to_root() {
+  multi_src="$1"
+  root="$2"
+  installed=0
+  idx=0
+  for agent_dir in \
+    ".agents/skills" \
+    ".claude/skills" \
+    ".cursor/skills" \
+    ".qoder/skills" \
+    ".qoderwork/skills" \
+    ".gemini/skills" \
+    ".codex/skills" \
+    ".github/skills" \
+    ".windsurf/skills" \
+    ".augment/skills" \
+    ".cline/skills" \
+    ".amp/skills" \
+    ".kiro/skills" \
+    ".trae/skills" \
+    ".openclaw/skills" \
+    ".hermes/skills"
+  do
+    base_dir="$root/$agent_dir"
+    parent_gate="$(dirname "$base_dir")"
+    if [ "$idx" -gt 0 ] && [ ! -e "$parent_gate" ]; then
+      idx=$((idx + 1))
+      continue
+    fi
+    _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"
+    installed=$((installed + 1))
+    idx=$((idx + 1))
+  done
+  if [ "$installed" -eq 0 ]; then
+    _install_multi_to_base "$multi_src" "$root/.agents/skills" "$root" ".agents/skills"
+  fi
+}
+
+_install_multi_to_base() {
+  _msrc="$1"
+  _base="$2"
+  _root="$3"
+  _agent_dir="$4"
+
+  mkdir -p "$_base"
+
+  # Mutual exclusion: remove the mono leftover.
+  rm -rf "$_base/$SKILL_NAME"
+
+  # Remove stale multi skills (dingtalk-* or dws-shared) not in the new bundle.
+  for existing in "$_base"/dingtalk-*/; do
+    [ -d "$existing" ] || continue
+    _name="$(basename "$existing")"
+    if [ ! -f "$_msrc/$_name/SKILL.md" ]; then
+      rm -rf "$existing"
+    fi
+  done
+  if [ -d "$_base/dws-shared" ] && [ ! -f "$_msrc/dws-shared/SKILL.md" ]; then
+    rm -rf "$_base/dws-shared"
+  fi
+
+  _count=0
+  for skill_dir in "$_msrc"/*/; do
+    [ -f "${skill_dir}SKILL.md" ] || continue
+    _name="$(basename "$skill_dir")"
+    _dest="$_base/$_name"
+    rm -rf "$_dest"
+    mkdir -p "$_dest"
+    cp -R "${skill_dir}." "$_dest/" 2>/dev/null || cp -r "${skill_dir}." "$_dest/"
+    _count=$((_count + 1))
+  done
+
+  if [ "$_root" = "$HOME" ]; then
+    _label="~/$_agent_dir/"
+  else
+    _label="$_root/$_agent_dir/"
+  fi
+  printf '  ✅ Skills → %s (%s product skills)\n' "$_label" "$_count"
+}
+
 # Same semantics as build/npm/install.js installSkillsToHomes (root = DWS_SKILLS_ROOT or PWD).
 install_skills_to_root() {
   skill_src="$1"
@@ -181,6 +284,12 @@ install_skills_to_root() {
       idx=$((idx + 1))
       continue
     fi
+    # Mutual exclusion: remove multi leftovers before laying down mono.
+    rm -rf "$base_dir/dws-shared"
+    for existing in "$base_dir"/dingtalk-*/; do
+      [ -d "$existing" ] || continue
+      rm -rf "$existing"
+    done
     dest="$base_dir/$SKILL_NAME"
     if [ "$root" = "$HOME" ]; then
       label="~/$agent_dir/$SKILL_NAME"
@@ -236,18 +345,29 @@ main() {
     SKILL_SRC="$TMPDIR_WORK/extracted/${SKILL_NAME}"
   fi
 
-  if [ ! -f "$SKILL_SRC/SKILL.md" ]; then
-    printf '  ❌ Skill source not found in release asset\n' >&2
-    exit 1
+  printf '\n'
+  printf '  Installing under root: %s (mode: %s)\n' "$ROOT" "$SKILL_MODE"
+  # Multi first: a release may ship only the multi/ tree without the root
+  # mono copy, so the mono SKILL.md gate must never block a multi install.
+  # An empty/corrupt multi/ tree (no */SKILL.md) falls back to mono with a
+  # warning — installing it would wipe existing skills and lay down nothing.
+  if [ "$SKILL_MODE" = "multi" ] && multi_tree_has_skills "$TMPDIR_WORK/extracted/multi"; then
+    install_multi_skills_to_root "$TMPDIR_WORK/extracted/multi" "$ROOT"
+  else
+    if [ "$SKILL_MODE" = "multi" ]; then
+      printf '  ⚠️  Multi skill tree not found or empty in release asset; falling back to mono.\n'
+    fi
+    if [ ! -f "$SKILL_SRC/SKILL.md" ]; then
+      printf '  ❌ Skill source not found in release asset\n' >&2
+      exit 1
+    fi
+    install_skills_to_root "$SKILL_SRC" "$ROOT"
   fi
 
-  printf '\n'
-  printf '  Installing under root: %s\n' "$ROOT"
-  install_skills_to_root "$SKILL_SRC" "$ROOT"
-
   # Cache multi/ (and a mono copy) under ~/.dws/skills so that subsequent
-  # `dws skill setup --mode multi|mono` invocations can find a source.
-  if [ -d "$TMPDIR_WORK/extracted/multi" ]; then
+  # `dws skill setup --mode multi|mono` invocations can find a source. An
+  # empty/corrupt tree must never wipe a previously good cache.
+  if multi_tree_has_skills "$TMPDIR_WORK/extracted/multi"; then
     cache_dir="${DWS_CACHE_ROOT}/skills/multi"
     rm -rf "$cache_dir"
     mkdir -p "$cache_dir"
@@ -256,11 +376,13 @@ main() {
     file_count="$(find "$cache_dir" -type f | wc -l | tr -d ' ')"
     printf '  ✅ Cached multi skills → %s (%s files)\n' "$cache_dir" "$file_count"
   fi
-  mono_cache="${DWS_CACHE_ROOT}/skills/mono"
-  rm -rf "$mono_cache"
-  mkdir -p "$mono_cache"
-  cp -R "$SKILL_SRC/"* "$mono_cache/" 2>/dev/null || \
-    cp -r "$SKILL_SRC/"* "$mono_cache/" 2>/dev/null || true
+  if [ -f "$SKILL_SRC/SKILL.md" ]; then
+    mono_cache="${DWS_CACHE_ROOT}/skills/mono"
+    rm -rf "$mono_cache"
+    mkdir -p "$mono_cache"
+    cp -R "$SKILL_SRC/"* "$mono_cache/" 2>/dev/null || \
+      cp -r "$SKILL_SRC/"* "$mono_cache/" 2>/dev/null || true
+  fi
 
   printf '\n'
   printf '  📖 Skill includes:\n'

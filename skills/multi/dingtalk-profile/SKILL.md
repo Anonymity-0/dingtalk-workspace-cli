@@ -12,7 +12,7 @@ metadata:
 
 # 钉钉多组织 / profile Skill
 
-> 🧪 **EXPERIMENTAL · 试验版 / Preview** — multi 模式当前未达 stable 标准；接口、命名、跨 skill 引用后续可能调整。生产 / 共享环境请优先使用 mono 模式（`dws skill setup --mode mono`）。
+> **multi 为默认安装模式** — 全部 dingtalk-* skill 已通过 dispatch verifier。单 skill（mono）模式仍可用：`dws skill setup --mode mono`。问题请提 issue 反馈。
 
 > **PREREQUISITE:** Read the `dws-shared` skill first for auth, global flags, product routing, URL preflight, error codes, and safety rules. The `dws` binary must be on PATH.
 

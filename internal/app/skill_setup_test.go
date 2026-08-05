@@ -2,6 +2,8 @@ package app
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,14 +38,14 @@ func TestResolveSkillSetupModeFlagDirect(t *testing.T) {
 	}
 }
 
-func TestResolveSkillSetupModeNonInteractiveDefaultsMono(t *testing.T) {
+func TestResolveSkillSetupModeNonInteractiveDefaultsMulti(t *testing.T) {
 	var buf bytes.Buffer
 	got, err := resolveSkillSetupMode("", true, &buf)
-	if err != nil || got != skillSetupModeMono {
-		t.Fatalf("non-interactive empty mode should default to mono, got %q err=%v", got, err)
+	if err != nil || got != skillSetupModeMulti {
+		t.Fatalf("non-interactive empty mode should default to multi, got %q err=%v", got, err)
 	}
-	if !strings.Contains(buf.String(), "mono") {
-		t.Fatalf("expected output to mention mono fallback, got %q", buf.String())
+	if !strings.Contains(buf.String(), "multi") {
+		t.Fatalf("expected output to mention multi fallback, got %q", buf.String())
 	}
 }
 
@@ -210,7 +212,7 @@ func TestInstallMultiSkillToHomes(t *testing.T) {
 	dst2 := filepath.Join(t.TempDir(), ".cursor", "skills")
 
 	var stdout, stderr bytes.Buffer
-	installed, skipped, err := installMultiSkillToHomes(src, got, []string{dst1, dst2}, &stdout, &stderr)
+	installed, skipped, err := installMultiSkillToHomes(src, got, []string{dst1, dst2}, &stdout, &stderr, false)
 	if err != nil {
 		t.Fatalf("installMultiSkillToHomes err: %v", err)
 	}
@@ -254,13 +256,16 @@ func TestSkillSetupMutualExclusion(t *testing.T) {
 	}
 
 	// Confirm mutualExclusionVictims sees the leftover
-	victims := mutualExclusionVictims(agentHome, skillSetupModeMulti)
+	victims, vErr := mutualExclusionVictims(agentHome, skillSetupModeMulti)
+	if vErr != nil {
+		t.Fatalf("mutualExclusionVictims err: %v", vErr)
+	}
 	if len(victims) != 1 || victims[0] != monoLeftover {
 		t.Fatalf("expected victims=[%s], got %v", monoLeftover, victims)
 	}
 
 	var stdout, stderr bytes.Buffer
-	installed, skipped, err := installMultiSkillToHomes(src, names, []string{agentHome}, &stdout, &stderr)
+	installed, skipped, err := installMultiSkillToHomes(src, names, []string{agentHome}, &stdout, &stderr, false)
 	if err != nil {
 		t.Fatalf("install err: %v (stderr=%s)", err, stderr.String())
 	}
@@ -482,7 +487,7 @@ func TestSkillSetupMultiAdditivePreservesSiblings(t *testing.T) {
 	}
 
 	var stdout, stderr bytes.Buffer
-	installed, skipped, err := installMultiSkillToHomes(src, filtered, []string{agentHome}, &stdout, &stderr)
+	installed, skipped, err := installMultiSkillToHomes(src, filtered, []string{agentHome}, &stdout, &stderr, true)
 	if err != nil {
 		t.Fatalf("install err: %v (stderr=%s)", err, stderr.String())
 	}
@@ -547,5 +552,116 @@ func TestResolveSkillSetupSourceMultiFinds(t *testing.T) {
 	}
 	if got != multiDir {
 		t.Fatalf("expected %s, got %s", multiDir, got)
+	}
+}
+
+// TestSkillSetupMultiFullInstallCleansStale verifies that a full (unfiltered)
+// multi install removes stale dingtalk-* / dws-shared directories that are no
+// longer part of the bundle, matching install.sh / install.js / upgrade paths.
+// The additive counterpart (filtered install) is covered by
+// TestSkillSetupMultiAdditivePreservesSiblings.
+func TestSkillSetupMultiFullInstallCleansStale(t *testing.T) {
+	names := []string{"dingtalk-aitable"}
+	src := writeMultiSkillSource(t, names)
+
+	agentHome := filepath.Join(t.TempDir(), ".claude", "skills")
+	// Stale multi skills absent from the bundle, plus a non-DWS dir that must survive.
+	for _, n := range []string{"dingtalk-stale", "dws-shared", "other-skill"} {
+		dir := filepath.Join(agentHome, n)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("OLD "+n), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var stdout, stderr bytes.Buffer
+	installed, skipped, err := installMultiSkillToHomes(src, names, []string{agentHome}, &stdout, &stderr, false)
+	if err != nil {
+		t.Fatalf("install err: %v (stderr=%s)", err, stderr.String())
+	}
+	if installed != 1 || skipped != 0 {
+		t.Fatalf("expected installed=1 skipped=0, got %d/%d", installed, skipped)
+	}
+
+	if _, err := os.Stat(filepath.Join(agentHome, "dingtalk-aitable", "SKILL.md")); err != nil {
+		t.Errorf("missing installed skill: %v", err)
+	}
+	for _, stale := range []string{"dingtalk-stale", "dws-shared"} {
+		if _, err := os.Stat(filepath.Join(agentHome, stale)); !os.IsNotExist(err) {
+			t.Errorf("stale %q should be removed by a full multi install (stat err=%v)", stale, err)
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(agentHome, "other-skill", "SKILL.md"))
+	if err != nil || !strings.HasPrefix(string(body), "OLD ") {
+		t.Errorf("non-DWS dir must be preserved (body=%q, err=%v)", string(body), err)
+	}
+	if !strings.Contains(stdout.String(), "已清理过期 skill") {
+		t.Errorf("expected stale cleanup log line, got stdout=%q", stdout.String())
+	}
+}
+
+// TestSkillSetupMutualExclusionScanWarning verifies that a victim-scan failure
+// surfaces as an errOut warning instead of silently skipping cleanup.
+func TestSkillSetupMutualExclusionScanWarning(t *testing.T) {
+	oldReadDir := skillSetupReadDir
+	t.Cleanup(func() { skillSetupReadDir = oldReadDir })
+	scanFail := errors.New("scan boom")
+	skillSetupReadDir = func(string) ([]os.DirEntry, error) { return nil, scanFail }
+
+	monoDest := filepath.Join(t.TempDir(), "agent", "dws")
+	if _, err := mutualExclusionVictims(monoDest, skillSetupModeMono); err == nil {
+		t.Fatal("scan failure should surface as an error")
+	}
+
+	var out, errOut bytes.Buffer
+	cleanupMutualExclusion(monoDest, skillSetupModeMono, &out, &errOut)
+	if !strings.Contains(errOut.String(), "互斥清理扫描失败") {
+		t.Fatalf("expected scan warning on errOut, got %q", errOut.String())
+	}
+}
+
+// TestRunSkillSetupThreadsFilteredFlag verifies runSkillSetup tells
+// installMultiSkillToHomes whether -s/--skill or -x/--exclude was used, so a
+// full install cleans stale siblings while a filtered install stays additive.
+func TestRunSkillSetupThreadsFilteredFlag(t *testing.T) {
+	oldMode, oldSource, oldTargets := skillSetupResolveMode, skillSetupResolveSource, skillSetupResolveTargets
+	oldList, oldFilter, oldMulti := skillSetupListMulti, skillSetupFilterMulti, skillSetupInstallMulti
+	t.Cleanup(func() {
+		skillSetupResolveMode, skillSetupResolveSource, skillSetupResolveTargets = oldMode, oldSource, oldTargets
+		skillSetupListMulti, skillSetupFilterMulti, skillSetupInstallMulti = oldList, oldFilter, oldMulti
+	})
+
+	skillSetupResolveMode = func(mode string, _ bool, _ io.Writer) (string, error) { return mode, nil }
+	skillSetupResolveSource = func(string, string) (string, func(), error) { return "source", func() {}, nil }
+	skillSetupResolveTargets = func(string, string) ([]string, error) {
+		return []string{filepath.Join(t.TempDir(), "dest")}, nil
+	}
+	skillSetupListMulti = func(string) ([]string, error) { return []string{"dingtalk-aitable", "dws-shared"}, nil }
+	skillSetupFilterMulti = filterMultiSkillNames
+	var gotFiltered []bool
+	skillSetupInstallMulti = func(_ string, _ []string, _ []string, _, _ io.Writer, filtered bool) (int, int, error) {
+		gotFiltered = append(gotFiltered, filtered)
+		return 1, 0, nil
+	}
+
+	// Full install (no -s/-x): filtered must be false.
+	cmd := skillSetupCoverageCommand(t, skillSetupModeMulti, true)
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatalf("full install run err: %v", err)
+	}
+
+	// Filtered install: filtered must be true.
+	cmd = skillSetupCoverageCommand(t, skillSetupModeMulti, true)
+	if err := cmd.Flags().Set("skill", "aitable"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatalf("filtered install run err: %v", err)
+	}
+
+	if len(gotFiltered) != 2 || gotFiltered[0] != false || gotFiltered[1] != true {
+		t.Fatalf("filtered flag threading = %v, want [false true]", gotFiltered)
 	}
 }

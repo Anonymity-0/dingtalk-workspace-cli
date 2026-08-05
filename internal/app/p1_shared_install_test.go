@@ -58,7 +58,7 @@ func TestP1SharedAlwaysIncludedWithSkillFilter(t *testing.T) {
 	// Actually install with the filtered+mandatory set and assert dws-shared landed.
 	dest := t.TempDir()
 	var out, errOut bytes.Buffer
-	if _, _, err := installMultiSkillToHomes(src, final, []string{dest}, &out, &errOut); err != nil {
+	if _, _, err := installMultiSkillToHomes(src, final, []string{dest}, &out, &errOut, true); err != nil {
 		t.Fatalf("install: %v (%s)", err, errOut.String())
 	}
 	if _, err := os.Stat(filepath.Join(dest, "dws-shared", "SKILL.md")); err != nil {

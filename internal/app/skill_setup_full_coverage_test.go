@@ -86,12 +86,12 @@ func TestCrossPlatformCoverageSkillSetupHighLevelRemainingCoverage(t *testing.T)
 		t.Fatal(err)
 	}
 
-	skillSetupConfirm = func(io.Writer, string, string, []string, []string) (bool, error) { return false, fail }
+	skillSetupConfirm = func(io.Writer, string, string, []string, []string, bool) (bool, error) { return false, fail }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMono, false)
 	if err := cmd.RunE(cmd, nil); err == nil {
 		t.Fatal("confirmation failure should propagate")
 	}
-	skillSetupConfirm = func(io.Writer, string, string, []string, []string) (bool, error) { return false, nil }
+	skillSetupConfirm = func(io.Writer, string, string, []string, []string, bool) (bool, error) { return false, nil }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMono, false)
 	if err := cmd.RunE(cmd, nil); err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestCrossPlatformCoverageSkillSetupHighLevelRemainingCoverage(t *testing.T)
 	if err := cmd.RunE(cmd, nil); err != nil {
 		t.Fatal(err)
 	}
-	skillSetupInstallMulti = func(string, []string, []string, io.Writer, io.Writer) (int, int, error) { return 0, 0, fail }
+	skillSetupInstallMulti = func(string, []string, []string, io.Writer, io.Writer, bool) (int, int, error) { return 0, 0, fail }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMulti, true)
 	if err := cmd.RunE(cmd, nil); err == nil {
 		t.Fatal("multi install failure should propagate")
@@ -143,7 +143,7 @@ func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) 
 		t.Fatal("interactive mode failure should propagate")
 	}
 	skillSetupRunForm = func(*huh.Form) error { return nil }
-	if got, err := resolveSkillSetupMode("", false, io.Discard); err != nil || got != skillSetupModeMono {
+	if got, err := resolveSkillSetupMode("", false, io.Discard); err != nil || got != skillSetupModeMulti {
 		t.Fatalf("interactive default choice = %q, %v", got, err)
 	}
 
@@ -202,11 +202,11 @@ func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) 
 	skillSetupReadDir, skillSetupStat = oldReadDir, oldStat
 	var out, errOut bytes.Buffer
 	skillSetupRunForm = func(*huh.Form) error { return fail }
-	if _, err := confirmSkillSetup(&out, skillSetupModeMulti, "src", []string{monoDest}, []string{"dingtalk-doc"}); err == nil {
+	if _, err := confirmSkillSetup(&out, skillSetupModeMulti, "src", []string{monoDest}, []string{"dingtalk-doc"}, false); err == nil {
 		t.Fatal("confirmation form failure should propagate")
 	}
 	skillSetupRunForm = func(*huh.Form) error { return nil }
-	if ok, err := confirmSkillSetup(&out, skillSetupModeMono, "src", []string{monoDest}, nil); err != nil || ok {
+	if ok, err := confirmSkillSetup(&out, skillSetupModeMono, "src", []string{monoDest}, nil, false); err != nil || ok {
 		t.Fatalf("EOF confirmation = %v, %v", ok, err)
 	}
 	skillSetupRemoveAll = func(string) error { return fail }
@@ -231,18 +231,18 @@ func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) 
 	}
 
 	skillSetupMkdirAll = func(string, os.FileMode) error { return fail }
-	_, skipped, _ = installMultiSkillToHomes("src", []string{"one", "two"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut)
+	_, skipped, _ = installMultiSkillToHomes("src", []string{"one", "two"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut, true)
 	if skipped != 2 {
 		t.Fatal("multi mkdir failure count mismatch")
 	}
 	skillSetupMkdirAll = func(string, os.FileMode) error { return nil }
 	skillSetupRemoveAll = func(string) error { return fail }
-	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut)
+	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut, true)
 	if skipped != 1 {
 		t.Fatal("multi remove failure count mismatch")
 	}
 	skillSetupRemoveAll = func(string) error { return nil }
-	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut)
+	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut, true)
 	if skipped != 1 {
 		t.Fatal("multi copy failure count mismatch")
 	}

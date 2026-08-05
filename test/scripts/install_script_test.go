@@ -45,6 +45,7 @@ func newInstallSourceFixture(t *testing.T) *installSourceFixture {
 	mustWriteFile(t, filepath.Join(root, "cmd", ".keep"), nil, 0o644)
 	mustWriteFile(t, filepath.Join(root, "skills", "mono", "SKILL.md"), []byte("# Test skill\n"), 0o644)
 	mustWriteFile(t, filepath.Join(root, "skills", "multi", "dingtalk-test", "SKILL.md"), []byte("# Test split skill\n"), 0o644)
+	mustWriteFile(t, filepath.Join(root, "skills", "multi", "dws-shared", "SKILL.md"), []byte("# Test shared skill\n"), 0o644)
 
 	stubRoot := filepath.Join(root, "stubs")
 	makeStub := `#!/bin/sh
@@ -70,13 +71,29 @@ done
 }
 
 func (f *installSourceFixture) env(extra ...string) []string {
-	env := append(os.Environ(),
+	return f.envWithSkillMode("mono", extra...)
+}
+
+// envWithSkillMode builds the fixture environment. An empty mode omits
+// DWS_SKILL_MODE entirely so the installer exercises its own default (multi)
+// resolution; any inherited DWS_SKILL_MODE is filtered out either way.
+func (f *installSourceFixture) envWithSkillMode(mode string, extra ...string) []string {
+	var env []string
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "DWS_SKILL_MODE=") {
+			continue
+		}
+		env = append(env, kv)
+	}
+	env = append(env,
 		"HOME="+f.fakeHome,
 		"PATH="+f.stubRoot+":"+os.Getenv("PATH"),
 		"DWS_VERSION=latest",
 		"DWS_SKILLS_ONLY=0",
-		"DWS_SKILL_MODE=mono",
 	)
+	if mode != "" {
+		env = append(env, "DWS_SKILL_MODE="+mode)
+	}
 	return append(env, extra...)
 }
 
@@ -739,6 +756,165 @@ func TestInstallScriptCachesMultiEndToEnd(t *testing.T) {
 	if _, err := os.Stat(monoCacheSkill); err != nil {
 		t.Fatalf("missing mono cache SKILL.md at %s: %v", monoCacheSkill, err)
 	}
+}
+
+// seedAgentHome pre-creates <fakeHome>/.agents/skills/<name>/SKILL.md with the
+// given content, simulating a pre-existing skill installation.
+func seedAgentHome(t *testing.T, fakeHome, name, content string) string {
+	t.Helper()
+	p := filepath.Join(fakeHome, ".agents", "skills", name, "SKILL.md")
+	mustWriteFile(t, p, []byte(content), 0o644)
+	return p
+}
+
+func runInstallScript(t *testing.T, scriptPath string, env []string) string {
+	t.Helper()
+	cmd := exec.Command("sh", scriptPath)
+	cmd.Env = env
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("install.sh error = %v\noutput:\n%s", err, string(output))
+	}
+	return string(output)
+}
+
+// TestInstallScriptSourceModeDefaultMultiInstall exercises the default (no
+// DWS_SKILL_MODE, non-TTY) path: multi must win, the mono leftover (dws/) and
+// a stale dingtalk-* skill absent from the bundle must be removed, and
+// dws-shared must land alongside the product skill.
+func TestInstallScriptSourceModeDefaultMultiInstall(t *testing.T) {
+	t.Parallel()
+
+	fixture := newInstallSourceFixture(t)
+	installDir := filepath.Join(fixture.root, "bin")
+
+	seedAgentHome(t, fixture.fakeHome, "dws", "old mono\n")
+	seedAgentHome(t, fixture.fakeHome, "dingtalk-stale", "stale\n")
+	seedAgentHome(t, fixture.fakeHome, "other-skill", "not dws\n")
+
+	output := runInstallScript(t, fixture.scriptPath, fixture.envWithSkillMode("",
+		"DWS_INSTALL_DIR="+installDir,
+		"DWS_NO_SKILLS=0",
+	))
+
+	if !strings.Contains(output, "Installing agent skills (multi) from local source") {
+		t.Fatalf("expected multi install branch, output:\n%s", output)
+	}
+
+	base := filepath.Join(fixture.fakeHome, ".agents", "skills")
+	for _, name := range []string{"dingtalk-test", "dws-shared"} {
+		if _, err := os.Stat(filepath.Join(base, name, "SKILL.md")); err != nil {
+			t.Errorf("multi skill %q not installed: %v\noutput:\n%s", name, err, output)
+		}
+	}
+	for _, gone := range []string{"dws", "dingtalk-stale"} {
+		if _, err := os.Stat(filepath.Join(base, gone)); !os.IsNotExist(err) {
+			t.Errorf("%q should be removed by the multi install, stat err=%v\noutput:\n%s", gone, err, output)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(base, "other-skill", "SKILL.md")); err != nil {
+		t.Errorf("non-DWS skill must be preserved: %v", err)
+	}
+}
+
+// TestInstallScriptSourceModeEmptyMultiFallsBackToMono pins the empty-bundle
+// guard: a multi/ tree without any */SKILL.md must fall back to the mono
+// branch (with a warning) instead of wiping the user's existing skills and
+// installing nothing. The outcome must equal a normal mono install: dws/ is
+// replaced with the new mono content and dingtalk-* leftovers are removed by
+// mono mutual exclusion — the failure mode being guarded against is the
+// empty-state wipe.
+func TestInstallScriptSourceModeEmptyMultiFallsBackToMono(t *testing.T) {
+	t.Parallel()
+
+	fixture := newInstallSourceFixture(t)
+	installDir := filepath.Join(fixture.root, "bin")
+
+	// Corrupt the multi tree: subdirs exist but no SKILL.md anywhere.
+	if err := os.Remove(filepath.Join(fixture.root, "skills", "multi", "dingtalk-test", "SKILL.md")); err != nil {
+		t.Fatalf("Remove(dingtalk-test/SKILL.md) error = %v", err)
+	}
+	if err := os.RemoveAll(filepath.Join(fixture.root, "skills", "multi", "dws-shared")); err != nil {
+		t.Fatalf("RemoveAll(dws-shared) error = %v", err)
+	}
+
+	seedAgentHome(t, fixture.fakeHome, "dws", "old mono\n")
+	seedAgentHome(t, fixture.fakeHome, "dingtalk-keep", "keep\n")
+	seedAgentHome(t, fixture.fakeHome, "other-skill", "not dws\n")
+
+	output := runInstallScript(t, fixture.scriptPath, fixture.envWithSkillMode("multi",
+		"DWS_INSTALL_DIR="+installDir,
+		"DWS_NO_SKILLS=0",
+	))
+
+	if !strings.Contains(output, "falling back to mono") {
+		t.Fatalf("expected mono fallback warning, output:\n%s", output)
+	}
+
+	base := filepath.Join(fixture.fakeHome, ".agents", "skills")
+	data, err := os.ReadFile(filepath.Join(base, "dws", "SKILL.md"))
+	if err != nil || !strings.Contains(string(data), "# Test skill") {
+		t.Fatalf("mono dws/ not (re)installed from skills/mono (data=%q, err=%v) — empty multi must not wipe skills\noutput:\n%s", string(data), err, output)
+	}
+	// Mono mutual exclusion legitimately removes dingtalk-* leftovers.
+	if _, err := os.Stat(filepath.Join(base, "dingtalk-keep")); !os.IsNotExist(err) {
+		t.Errorf("dingtalk-keep should be removed by mono mutual exclusion, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "dingtalk-test")); !os.IsNotExist(err) {
+		t.Errorf("dingtalk-test must not be installed from the empty multi tree, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "other-skill", "SKILL.md")); err != nil {
+		t.Errorf("non-DWS skill must be preserved: %v", err)
+	}
+}
+
+// TestInstallScriptSourceModeMonoMultiMonoExclusion runs mono → multi → mono
+// against the same fake HOME and asserts mutual exclusion in both directions,
+// including the dws-shared shared bundle.
+func TestInstallScriptSourceModeMonoMultiMonoExclusion(t *testing.T) {
+	t.Parallel()
+
+	fixture := newInstallSourceFixture(t)
+	installDir := filepath.Join(fixture.root, "bin")
+	base := filepath.Join(fixture.fakeHome, ".agents", "skills")
+
+	run := func(mode string) string {
+		t.Helper()
+		return runInstallScript(t, fixture.scriptPath, fixture.envWithSkillMode(mode,
+			"DWS_INSTALL_DIR="+installDir,
+			"DWS_NO_SKILLS=0",
+		))
+	}
+	assertPresent := func(rel string) {
+		t.Helper()
+		if _, err := os.Stat(filepath.Join(base, rel, "SKILL.md")); err != nil {
+			t.Errorf("%s/SKILL.md should exist: %v", rel, err)
+		}
+	}
+	assertAbsent := func(rel string) {
+		t.Helper()
+		if _, err := os.Stat(filepath.Join(base, rel)); !os.IsNotExist(err) {
+			t.Errorf("%s should be absent, stat err=%v", rel, err)
+		}
+	}
+
+	run("mono")
+	assertPresent("dws")
+	assertAbsent("dingtalk-test")
+	assertAbsent("dws-shared")
+
+	out := run("multi")
+	if !strings.Contains(out, "Installing agent skills (multi)") {
+		t.Fatalf("expected multi branch, output:\n%s", out)
+	}
+	assertAbsent("dws")
+	assertPresent("dingtalk-test")
+	assertPresent("dws-shared")
+
+	run("mono")
+	assertPresent("dws")
+	assertAbsent("dingtalk-test")
+	assertAbsent("dws-shared")
 }
 
 func writeTarGz(t *testing.T, path string, files map[string]string) {

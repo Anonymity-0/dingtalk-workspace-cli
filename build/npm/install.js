@@ -127,6 +127,15 @@ function installSkillsToHomes(skillRoot) {
     if (index > 0 && !fs.existsSync(parentGate)) {
       return;
     }
+    // Mutual exclusion: remove multi leftovers before laying down mono.
+    // Directories only — a stray file named dingtalk-x.md must survive.
+    if (fs.existsSync(baseDir)) {
+      for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
+        if (entry.isDirectory() && (entry.name.startsWith("dingtalk-") || entry.name === "dws-shared")) {
+          fs.rmSync(path.join(baseDir, entry.name), { recursive: true, force: true });
+        }
+      }
+    }
     const destDir = path.join(baseDir, "dws");
     fs.rmSync(destDir, { recursive: true, force: true });
     copyChildren(skillRoot, destDir);
@@ -138,23 +147,122 @@ function installSkillsToHomes(skillRoot) {
   }
 }
 
+// multiTreeHasSkills mirrors multi_tree_has_skills in scripts/install.sh and
+// Test-MultiTreeHasSkills in scripts/install.ps1: true only when the multi
+// bundle carries at least one product skill (a subdir with SKILL.md). An
+// empty or corrupt multi/ tree must never select the multi branch nor refresh
+// the multi cache — installing it would wipe existing skills and lay down
+// nothing.
+function multiTreeHasSkills(dir) {
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+    return false;
+  }
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .some((e) => e.isDirectory() && fs.existsSync(path.join(dir, e.name, "SKILL.md")));
+}
+
+// installMultiSkillsToHomes mirrors installSkillsToHomes for the multi bundle:
+// every product skill becomes a sibling directory of the agent home. Mutual
+// exclusion: the mono leftover (dws/) and stale dingtalk-* skills not present
+// in the new bundle are removed first.
+function installMultiSkillsToHomes(multiRoot) {
+  const homeDir = os.homedir();
+  const skills = fs
+    .readdirSync(multiRoot, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && fs.existsSync(path.join(multiRoot, e.name, "SKILL.md")))
+    .map((e) => e.name);
+  if (skills.length === 0) {
+    throw new Error(`no product skills found under ${multiRoot}`);
+  }
+  const skillSet = new Set(skills);
+  let installed = 0;
+
+  const installToBase = (baseDir) => {
+    fs.mkdirSync(baseDir, { recursive: true });
+    fs.rmSync(path.join(baseDir, "dws"), { recursive: true, force: true });
+    for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
+      if (
+        entry.isDirectory() &&
+        (entry.name.startsWith("dingtalk-") || entry.name === "dws-shared") &&
+        !skillSet.has(entry.name)
+      ) {
+        fs.rmSync(path.join(baseDir, entry.name), { recursive: true, force: true });
+      }
+    }
+    for (const name of skills) {
+      const destDir = path.join(baseDir, name);
+      fs.rmSync(destDir, { recursive: true, force: true });
+      copyChildren(path.join(multiRoot, name), destDir);
+    }
+  };
+
+  AGENT_DIRS.forEach((agentDir, index) => {
+    const baseDir = path.join(homeDir, agentDir);
+    const parentGate = path.dirname(baseDir);
+    if (index > 0 && !fs.existsSync(parentGate)) {
+      return;
+    }
+    installToBase(baseDir);
+    installed += 1;
+  });
+
+  if (installed === 0) {
+    installToBase(path.join(homeDir, ".agents", "skills"));
+  }
+}
+
+// resolveSkillMode mirrors scripts/install.sh: DWS_SKILL_MODE (mono|multi)
+// wins; multi is the default. The --skill-mode flag accepts both the space
+// form (`--skill-mode mono`) and the equals form (`--skill-mode=mono`).
+function resolveSkillMode() {
+  const raw = (process.env.DWS_SKILL_MODE || "").trim().toLowerCase();
+  if (raw === "mono" || raw === "multi") {
+    return raw;
+  }
+  if (raw !== "") {
+    throw new Error(`invalid DWS_SKILL_MODE='${process.env.DWS_SKILL_MODE}'. Use 'mono' or 'multi'.`);
+  }
+  let fromFlag;
+  const flagIndex = process.argv.indexOf("--skill-mode");
+  if (flagIndex !== -1 && process.argv[flagIndex + 1]) {
+    fromFlag = process.argv[flagIndex + 1];
+  } else {
+    const equalsArg = process.argv.find((arg) => arg.startsWith("--skill-mode="));
+    if (equalsArg) {
+      fromFlag = equalsArg.slice("--skill-mode=".length);
+    }
+  }
+  if (fromFlag !== undefined) {
+    const mode = fromFlag.trim().toLowerCase();
+    if (mode === "mono" || mode === "multi") {
+      return mode;
+    }
+    throw new Error(`invalid --skill-mode '${fromFlag}'. Use 'mono' or 'multi'.`);
+  }
+  return "multi";
+}
+
 // cacheUserSkills copies the mono and multi trees out of the freshly extracted
 // dws-skills.zip into ~/.dws/skills/{mono,multi}/ so that `dws skill setup`
-// can fall back to a user-local cache when --source is not provided. mono is
-// already installed into agent homes by installSkillsToHomes; the cache is
-// purely a source-of-truth for the setup command.
+// can fall back to a user-local cache when --source is not provided. A cache
+// is only refreshed when the new bundle actually carries that tree — an
+// empty/corrupt multi/ (or a missing mono tree) must never wipe a previously
+// good cache.
 function cacheUserSkills(extractedSkillsRoot) {
   const cacheBase = path.join(os.homedir(), ".dws", "skills");
 
   const monoSource = fs.existsSync(path.join(extractedSkillsRoot, "mono", "SKILL.md"))
     ? path.join(extractedSkillsRoot, "mono")
     : extractedSkillsRoot;
-  const monoCache = path.join(cacheBase, "mono");
-  fs.rmSync(monoCache, { recursive: true, force: true });
-  copyChildren(monoSource, monoCache);
+  if (fs.existsSync(path.join(monoSource, "SKILL.md"))) {
+    const monoCache = path.join(cacheBase, "mono");
+    fs.rmSync(monoCache, { recursive: true, force: true });
+    copyChildren(monoSource, monoCache);
+  }
 
   const multiSource = path.join(extractedSkillsRoot, "multi");
-  if (fs.existsSync(multiSource) && fs.statSync(multiSource).isDirectory()) {
+  if (multiTreeHasSkills(multiSource)) {
     const multiCache = path.join(cacheBase, "multi");
     fs.rmSync(multiCache, { recursive: true, force: true });
     copyChildren(multiSource, multiCache);
@@ -191,7 +299,25 @@ function main() {
   const monoRoot = fs.existsSync(path.join(skillsStaging, "mono", "SKILL.md"))
     ? path.join(skillsStaging, "mono")
     : skillsStaging;
-  installSkillsToHomes(monoRoot);
+  // A mono install requires an actual SKILL.md at the root of monoRoot. On a
+  // multi-only zip monoRoot would degrade to the staging root and copy the
+  // whole bundle (multi/ included) into a dws/ directory — skip instead.
+  const monoHasSkill = fs.existsSync(path.join(monoRoot, "SKILL.md"));
+  const multiRoot = path.join(skillsStaging, "multi");
+  const skillMode = resolveSkillMode();
+  if (skillMode === "multi" && multiTreeHasSkills(multiRoot)) {
+    console.log(`Skill mode: multi — installing per-product skills`);
+    installMultiSkillsToHomes(multiRoot);
+  } else {
+    if (skillMode === "multi") {
+      console.log("multi skill tree not found or empty in bundle; falling back to mono.");
+    }
+    if (monoHasSkill) {
+      installSkillsToHomes(monoRoot);
+    } else {
+      console.log("mono skill tree not found in bundle; skipping skill install.");
+    }
+  }
   cacheUserSkills(skillsStaging);
 }
 

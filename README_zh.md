@@ -70,17 +70,17 @@ irm https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/ma
 
 | 模式 | 安装内容 | 适合场景 |
 |------|----------|----------|
-| **mono**（稳定，默认） | 一个 `dws` skill，覆盖全部产品 | 跨产品组合操作；单一入口召唤 |
-| **multi** 🧪 **试验版 / Preview** | 按产品拆分的独立 skill（`dingtalk-aitable` / `dingtalk-calendar` / `dingtalk-chat` ...） | 单产品任务；每次召唤上下文更小 |
+| **multi**（默认） | 按产品拆分的独立 skill（`dingtalk-aitable` / `dingtalk-calendar` / `dingtalk-chat` ...） | 单产品任务；每次召唤上下文更小 |
+| **mono**（legacy） | 一个 `dws` skill，覆盖全部产品 | 跨产品组合操作；单一入口召唤 |
 
-> 🧪 **multi 模式当前为 EXPERIMENTAL（试验版 / Preview）**。全部独立 skill 均通过 dispatch verifier，但接口、命名、跨 skill 引用后续可能调整。生产 / 共享环境建议优先用 `mono`。问题请提 issue 反馈。
+> 安装与升级默认均为 multi。mono 仍可通过 `DWS_SKILL_MODE=mono` 或 `dws skill setup --mode mono` 使用。问题请提 issue 反馈。
 
 怎么选：
 
-- **快速安装**（上方一行 curl）：非交互，默认装 `mono`。
-- **TTY 安装**（先下载再执行）：`curl -O .../install.sh && bash install.sh`，会弹出 `1) mono  2) multi` 选项（默认 1）。
-- **环境变量覆盖**：`DWS_SKILL_MODE=multi curl -fsSL ... | sh`。
-- **装完之后再切换**：`dws skill setup --mode multi`（或 `--mode mono`），随时重跑都行。
+- **快速安装**（上方一行 curl）：非交互，默认装 `multi`。
+- **TTY 安装**（先下载再执行）：`curl -O .../install.sh && bash install.sh`，会弹出 `1) multi  2) mono` 选项（默认 1）。
+- **环境变量覆盖**：`DWS_SKILL_MODE=mono curl -fsSL ... | sh`。
+- **装完之后再切换**：`dws skill setup --mode mono`（或 `--mode multi`），随时重跑都行。
 
 </details>
 
@@ -387,19 +387,19 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 
 仓库内置完整的 Agent Skill 体系（`skills/` 目录），分为两套布局：
 
-- `skills/mono/` — 单 skill 布局（一个 `SKILL.md` + `references/products/`），默认推荐。
-- `skills/multi/` — 每个产品一个独立 skill（`dingtalk-aitable/` / `dingtalk-calendar/` / `dingtalk-chat/` ...），每个 skill 自带 `SKILL.md`。🧪 **试验版 / Preview — 各 multi `SKILL.md` 头部有详细注意事项。**
+- `skills/mono/` — 单 skill 布局（一个 `SKILL.md` + `references/products/`），legacy。
+- `skills/multi/` — 每个产品一个独立 skill（`dingtalk-aitable/` / `dingtalk-calendar/` / `dingtalk-chat/` ...），每个 skill 自带 `SKILL.md`。默认布局。
 
 Schema 生成的叶子 safety/参数/选型文案由 Go 中的 ProductDecl / ContractFinal 声明驱动。原 `internal/cli/schema_hints/` HintFile 目录已完全退役，不得重新引入。
 
 安装之后，Claude Code / Cursor 等 AI 工具就能通过自然语言直接操作钉钉：
 
 ```bash
-# 安装 skills 到当前项目（默认 mono）
+# 安装 skills 到当前项目（默认 multi；DWS_SKILL_MODE=mono 可切回）
 curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/main/scripts/install-skills.sh | sh
 ```
 
-> `install.sh` 安装到 `$HOME/.agents/skills/dws`（全局）；`install-skills.sh` 安装到 `./.agents/skills/dws`（当前项目）。
+> `install.sh` 安装到 `$HOME/.agents/skills/`（全局，multi 为按产品平铺，mono 为 `dws/` 子目录）；`install-skills.sh` 安装到 `./.agents/skills/`（当前项目）。
 >
 > 国内用户加 `DWS_GITEE_REPO` 走 Gitee 镜像，见 [国内加速安装](#国内加速安装)。
 
@@ -708,7 +708,7 @@ dws dev connect --channel auto --robot-client-id <id> --robot-client-secret <sec
 <summary>即将推出</summary>
 
 - `conference`（视频会议）
-- 多 skill 模式（实验中）— 每产品一个独立 skill，位于 `skills/multi/`，通过 `dws skill setup --mode multi` 启用
+- 多 skill 模式（默认）— 每产品一个独立 skill，位于 `skills/multi/`，安装与升级默认启用；`dws skill setup --mode mono` 可切回单 skill
 
 </details>
 
