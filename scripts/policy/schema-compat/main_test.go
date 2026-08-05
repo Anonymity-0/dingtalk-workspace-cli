@@ -532,35 +532,8 @@ func TestCrossPlatformCoverageSchemaCompatMCPRetirementAndConstraintExpansion(t 
 		t.Fatalf("hidden-sibling constraint expansion should pass: %v", failures)
 	}
 
-	if compatibleConstraintMemberExpansion("{", `{"require_one_of":[["a"]]}`) {
-		t.Fatal("invalid old constraints must not expand")
-	}
-	if compatibleConstraintMemberExpansion(`{"require_one_of":[["a"]]}`, "{") {
-		t.Fatal("invalid new constraints must not expand")
-	}
 	if groups, ok := parseConstraintGroups(""); !ok || len(groups["require_one_of"]) != 0 {
 		t.Fatalf("empty constraints parse = %#v ok=%v", groups, ok)
-	}
-	if constraintGroupsAreMemberExpansions([][]string{{}}, [][]string{{"a"}}) {
-		t.Fatal("empty old group must not expand")
-	}
-	if constraintGroupsAreMemberExpansions(
-		[][]string{{"a"}, {"b"}},
-		[][]string{{"a", "b"}},
-	) {
-		t.Fatal("group-count reduction must not expand")
-	}
-	if constraintGroupsAreMemberExpansions(
-		[][]string{{"a"}, {"c"}},
-		[][]string{{"a", "b"}, {"x", "y"}},
-	) {
-		t.Fatal("unmatched old group must not expand")
-	}
-	if !constraintGroupsAreMemberExpansions(
-		[][]string{{"a"}, {"b"}},
-		[][]string{{"a", "b", "extra"}, {"b", "other"}},
-	) {
-		t.Fatal("used-group skip should still allow alternate match")
 	}
 	if !stringSetContainsAll(map[string]bool{"a": true, "b": true}, map[string]bool{"a": true}) ||
 		stringSetContainsAll(map[string]bool{"a": true}, map[string]bool{"a": true, "b": true}) {
@@ -666,6 +639,37 @@ func TestCrossPlatformCoverageSchemaCompatAdditiveConstraintEvolution(t *testing
 	emptyHistoricalGroup.Constraints = `{"require_one_of":[[]]}`
 	if compatibleAdditiveConstraintEvolution(emptyHistoricalGroup, compatible) {
 		t.Fatal("empty historical constraint group must fail closed")
+	}
+	historicalMutex := oldTool
+	historicalMutex.Constraints = `{"mutually_exclusive":[["target","legacy-target"]]}`
+	historicalMutexExpanded := oldTool
+	historicalMutexExpanded.Constraints = `{"mutually_exclusive":[["target","legacy-target","limit"]]}`
+	if compatibleAdditiveConstraintEvolution(historicalMutex, historicalMutexExpanded) {
+		t.Fatal("adding a historical parameter to an existing mutex group must fail")
+	}
+	historicalTogether := oldTool
+	historicalTogether.Constraints = `{"require_together":[["target","legacy-target"]]}`
+	historicalTogetherExpanded := oldTool
+	historicalTogetherExpanded.Constraints = `{"require_together":[["target","legacy-target","limit"]]}`
+	if compatibleAdditiveConstraintEvolution(historicalTogether, historicalTogetherExpanded) {
+		t.Fatal("adding a historical parameter to an existing require-together group must fail")
+	}
+	historicalOneOf := oldTool
+	historicalOneOf.Constraints = `{"require_one_of":[["target","legacy-target","limit"]]}`
+	if !compatibleAdditiveConstraintEvolution(oldTool, historicalOneOf) {
+		t.Fatal("adding a historical parameter to require-one-of only loosens the contract")
+	}
+	gateBaseline := baselineContract()
+	mutateTool(&gateBaseline, func(tool *toolSchema) {
+		tool.Parameters["folder"] = parameterSchema{Type: `"string"`}
+		tool.Constraints = `{"mutually_exclusive":[["title","format"]]}`
+	})
+	gateCurrent := cloneContract(gateBaseline)
+	mutateTool(&gateCurrent, func(tool *toolSchema) {
+		tool.Constraints = `{"mutually_exclusive":[["title","format","folder"]]}`
+	})
+	if failures := checkCompatibility(gateBaseline, gateCurrent); len(failures) == 0 {
+		t.Fatal("compatibility gate must reject an existing mutex group gaining a historical parameter")
 	}
 	multipleHistoricalGroups := oldTool
 	multipleHistoricalGroups.Constraints = `{"require_one_of":[["target"],["limit"]]}`

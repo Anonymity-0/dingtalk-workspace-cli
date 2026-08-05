@@ -492,7 +492,6 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 	}
 	if oldTool.Constraints != newTool.Constraints &&
 		!compatibleHiddenSiblingConstraintExpansion(oldTool, newTool) &&
-		!compatibleConstraintMemberExpansion(oldTool.Constraints, newTool.Constraints) &&
 		!compatibleAdditiveConstraintEvolution(oldTool, newTool) {
 		failures = append(failures, fmt.Sprintf("schema tool %q changed constraints", toolPath))
 	}
@@ -517,12 +516,15 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 
 // compatibleAdditiveConstraintEvolution accepts constraint evolution that
 // cannot invalidate an invocation expressible by the historical public
-// parameter contract. Existing groups may only gain members. A newly added
-// mutually-exclusive group is safe when it contains at most one historical
-// public parameter: aliases and newly added parameters could not have appeared
-// together in an old invocation. A new require-together group is safe only
-// when it contains no historical public parameter. A new require-one-of group
-// always adds a requirement and is therefore incompatible here.
+// parameter contract. Existing groups may only gain members; additions to a
+// mutually-exclusive or require-together group must not be historical public
+// parameters, because that would reject an invocation expressible by the old
+// contract. Adding a member to require-one-of only loosens the group. A newly
+// added mutually-exclusive group is safe when it contains at most one
+// historical public parameter: aliases and newly added parameters could not
+// have appeared together in an old invocation. A new require-together group is
+// safe only when it contains no historical public parameter. A new
+// require-one-of group always adds a requirement and is therefore incompatible.
 func compatibleAdditiveConstraintEvolution(oldTool, newTool toolSchema) bool {
 	oldGroups, okOld := parseConstraintGroups(oldTool.Constraints)
 	newGroups, okNew := parseConstraintGroups(newTool.Constraints)
@@ -538,8 +540,24 @@ func compatibleAdditiveConstraintEvolution(oldTool, newTool toolSchema) bool {
 			}
 			matched := false
 			for index, newGroup := range newGroups[key] {
-				if used[index] || !stringSetContainsAll(stringSet(newGroup), oldSet) {
+				newSet := stringSet(newGroup)
+				if used[index] || !stringSetContainsAll(newSet, oldSet) {
 					continue
+				}
+				if key == "mutually_exclusive" || key == "require_together" {
+					safe := true
+					for member := range newSet {
+						if oldSet[member] {
+							continue
+						}
+						if _, historical := oldTool.Parameters[member]; historical {
+							safe = false
+							break
+						}
+					}
+					if !safe {
+						continue
+					}
 				}
 				used[index] = true
 				matched = true
@@ -636,23 +654,6 @@ func compatibleHiddenSiblingConstraintExpansion(oldTool, newTool toolSchema) boo
 	return true
 }
 
-// compatibleConstraintMemberExpansion allows declare≡execute / alias-surface
-// repairs that only add members to existing constraint groups. Removing a
-// member, dropping a group, or adding a new group remains incompatible.
-func compatibleConstraintMemberExpansion(oldConstraints, newConstraints string) bool {
-	oldGroups, okOld := parseConstraintGroups(oldConstraints)
-	newGroups, okNew := parseConstraintGroups(newConstraints)
-	if !okOld || !okNew {
-		return false
-	}
-	for _, key := range []string{"mutually_exclusive", "require_one_of", "require_together"} {
-		if !constraintGroupsAreMemberExpansions(oldGroups[key], newGroups[key]) {
-			return false
-		}
-	}
-	return true
-}
-
 func parseConstraintGroups(raw string) (map[string][][]string, bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -671,36 +672,6 @@ func parseConstraintGroups(raw string) (map[string][][]string, bool) {
 		"require_one_of":     projected.RequireOneOf,
 		"require_together":   projected.RequireTogether,
 	}, true
-}
-
-func constraintGroupsAreMemberExpansions(oldGroups, newGroups [][]string) bool {
-	if len(oldGroups) != len(newGroups) {
-		return false
-	}
-	used := make([]bool, len(newGroups))
-	for _, oldGroup := range oldGroups {
-		oldSet := stringSet(oldGroup)
-		if len(oldSet) == 0 {
-			return false
-		}
-		matched := false
-		for index, newGroup := range newGroups {
-			if used[index] {
-				continue
-			}
-			newSet := stringSet(newGroup)
-			if !stringSetContainsAll(newSet, oldSet) {
-				continue
-			}
-			used[index] = true
-			matched = true
-			break
-		}
-		if !matched {
-			return false
-		}
-	}
-	return true
 }
 
 func stringSetContainsAll(superset, subset map[string]bool) bool {
