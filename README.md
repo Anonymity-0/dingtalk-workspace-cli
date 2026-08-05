@@ -538,7 +538,7 @@ For one-to-one and specified-sender events, use exactly one target identity: `--
 | Observability | `status` shows remote subscriptions, the personal bus, and local consumers |
 | Cross-platform | Unix Socket on macOS/Linux, Windows Named Pipe on Windows |
 
-See `skills/multi/dingtalk-event/SKILL.md` for the Agent workflow and supported event parameters.
+See `skills/multi/dingtalk-misc/references/event.md` for the Agent workflow and supported event parameters.
 
 </details>
 

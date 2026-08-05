@@ -225,5 +225,6 @@ dws event stop --all --yes
 
 ## Full reference
 
-- multi skill: `skills/multi/dingtalk-event/SKILL.md`
-- IM reference: `skills/multi/dingtalk-event/references/event-im.md`
+- multi skill: `skills/multi/dingtalk-misc/SKILL.md`（产品索引 → event）
+- IM reference: `skills/multi/dingtalk-misc/references/event.md`
+- IM task index: `skills/multi/dingtalk-misc/references/event-im.md`

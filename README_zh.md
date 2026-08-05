@@ -532,7 +532,7 @@ dws event stop <subscribe_id>
 | 状态可观测 | `status` 同时显示服务端订阅、personal bus 和本地 consumers |
 | 跨平台 | macOS/Linux 使用 Unix Socket，Windows 使用 Named Pipe |
 
-Agent 工作流和事件参数详见 `skills/multi/dingtalk-event/SKILL.md`。
+Agent 工作流和事件参数详见 `skills/multi/dingtalk-misc/references/event.md`。
 
 </details>
 
