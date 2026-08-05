@@ -402,6 +402,16 @@ func TestCrossPlatformCoverageChatBotRichMediaCoverage(t *testing.T) {
 		})
 	}
 
+	t.Run("group and direct targets are mutually exclusive", func(t *testing.T) {
+		err := runChatCoverageCommand(t, &scriptedToolCaller{},
+			"message", "send-by-bot", "--robot-code", "robot",
+			"--group", "group", "--users", "user", "--text", "message",
+		)
+		if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+			t.Fatalf("mutually exclusive target error = %v", err)
+		}
+	})
+
 	t.Run("direct image", func(t *testing.T) {
 		caller := &scriptedToolCaller{}
 		if err := runChatCoverageCommand(t, caller,
