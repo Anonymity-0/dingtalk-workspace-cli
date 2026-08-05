@@ -9,7 +9,7 @@
 | 树 | 路径 | 角色 |
 |---|---|---|
 | **mono**（单 skill） | `skills/mono/` | 单一 `SKILL.md` 入口 + `references/products/*` 产品面 + 全局协议 |
-| **multi**（多 skill） | `skills/multi/` | 平铺 `dingtalk-*` 产品 skill + 必选 `dws-shared` |
+| **multi**（多 skill） | `skills/multi/` | 平铺 `dingtalk-*` 产品 skill + 必选 `dingtalk-shared` |
 
 Agent / 安装面选哪棵树由**行为分支**决定；本文件只规定树内合同。
 
@@ -19,7 +19,7 @@ Agent / 安装面选哪棵树由**行为分支**决定；本文件只规定树�
 
 1. **命名**
    - 产品 skill：`dingtalk-<product>`（小写、连字符）
-   - 共享 skill：仅允许 `dws-shared`
+   - 共享 skill：仅允许 `dingtalk-shared`
 2. **根文件**
    - 必有 `SKILL.md`（YAML frontmatter + 正文）
    - `references/` 推荐；无 reference 的 skill（如极简 profile）须在质检 omit 表登记
@@ -30,8 +30,8 @@ Agent / 安装面选哪棵树由**行为分支**决定；本文件只规定树�
    - `metadata.category`：`product` 或 `shared`（允许历史写法把 `cli_version` 放在 frontmatter 顶层）
    - `metadata.requires.bins`：含 `dws`
 4. **契约块**
-   - 产品 skill 推荐内嵌 `<!-- DWS_RUNTIME_CONTRACT_START -->…END -->` **或** 明确 PREREQUISITE 指向 `dws-shared`
-   - `dws-shared` 承载跨产品路由与全局协议落点
+   - 产品 skill 推荐内嵌 `<!-- DWS_RUNTIME_CONTRACT_START -->…END -->` **或** 明确 PREREQUISITE 指向 `dingtalk-shared`
+   - `dingtalk-shared` 承载跨产品路由与全局协议落点
 5. **与 mono 映射**
    - 每个 mono `references/products/<stem>`（文件或目录）必须在
      `skills/content-qa/mono-multi-coverage.yaml` 有 `coverage` 或 `omit_coverage` 行
@@ -64,7 +64,7 @@ skills/mono/
 - `references/products/` 下每个顶层 stem（`.md` 去后缀或子目录名）计入覆盖索引。
 - 同 stem 的 `.md` + 子目录视为同一产品面（如 `doc.md` + `doc/`）。
 
-## 4. 共享内容（`dws-shared`）
+## 4. 共享内容（`dingtalk-shared`）
 
 | 职责 | 落点 |
 |---|---|
@@ -91,7 +91,7 @@ skills/mono/
 
 | 维度 | DWS `skills/multi` | 悟空 `dingtalk-skills/`（develop） |
 |---|---|---|
-| 布局 | flat `dingtalk-*` + `dws-shared` | 同构 flat |
+| 布局 | flat `dingtalk-*` + `dingtalk-shared` | 同构 flat |
 | 集合 | 产品 skill + shared（含 event/profile/…；dev/skill 等长尾落在 misc） | 更小产品集（如 attendance/report 独立目录） |
 | 质检权威 | **mono 单 skill 树** | 不作为 DWS 覆盖基准 |
 | 不移植 | `_install.sh` / bundle / dual / Qwen overlay | — |

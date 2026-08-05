@@ -491,7 +491,7 @@ dws report outbox list --cursor 0 --size 20 --format json
 
 ## 跨产品协作
 
-- 日报内容来源（待办 / 听记 / OA / 邮件 / 群消息）→ 多源采集，按 dws-shared 的 conventions.md 并行执行
+- 日报内容来源（待办 / 听记 / OA / 邮件 / 群消息）→ 多源采集，按 dingtalk-shared 的 conventions.md 并行执行
 - 把汇总写文档 → 切到 `dingtalk-doc`（`dws doc create` + `dws doc update --mode append`）
 - 注意：`submit-report` 走 report 模版提交，**不要**走 doc 写文档
 ## 局部意图与 Recipe

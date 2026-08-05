@@ -13,7 +13,7 @@
 | 本地 xlsx/xls 导入为在线表格 | `dws sheet import --file <路径>`（单命令一站式：创建会话→上传→确认→轮询，产出在线电子表格） |
 | 在线表格导出为 xlsx | `dws sheet export`（axls → xlsx 格式转换） |
 
-用户贴原始 `alidocs` URL 时必须先 probe：`dws drive info --node <URL> --format json`，按 [链接规范](../../dws-shared/references/url-patterns.md#alidocs-url-类型探测流程) 校验：
+用户贴原始 `alidocs` URL 时必须先 probe：`dws drive info --node <URL> --format json`，按 [链接规范](../../dingtalk-shared/references/url-patterns.md#alidocs-url-类型探测流程) 校验：
 - `extension=axls` → 继续走 `sheet`
 - `extension=xlsx` / `xls` / `xlsm` / `csv` → 转 `dws drive download`，告知用户"这是本地表格文件，已为你下载到本地处理"
 

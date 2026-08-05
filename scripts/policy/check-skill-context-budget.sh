@@ -9,7 +9,7 @@ python3 scripts/gen_skill_shortcut_sections.py --check
 chat_skill="skills/multi/dingtalk-chat/SKILL.md"
 event_skill="skills/multi/dingtalk-misc/references/event.md"
 mono_skill="skills/mono/SKILL.md"
-runtime_contract="skills/multi/dws-shared/references/runtime-contract.md"
+runtime_contract="skills/multi/dingtalk-shared/references/runtime-contract.md"
 chat_max_bytes=10000
 event_max_bytes=10000
 runtime_contract_max_bytes=3000
@@ -93,9 +93,9 @@ do
 	fi
 done
 
-if grep -Fq "../dws-shared/SKILL.md" "$chat_skill"; then
+if grep -Fq "../dingtalk-shared/SKILL.md" "$chat_skill"; then
 	printf '%s\n' \
-		"skill context regression: $chat_skill requires full dws-shared cold-start loading" >&2
+		"skill context regression: $chat_skill requires full dingtalk-shared cold-start loading" >&2
 	exit 1
 fi
 

@@ -1,5 +1,9 @@
 # Markdown 文件 (markdown) 命令参考
 
+> 🧪 **EXPERIMENTAL** — 接口、命名或跨 skill 引用可能调整；以当前 `dws` 二进制与 leaf Schema 为准。问题请提 issue。
+>
+> 本文件为 `dingtalk-misc` 内原生 Markdown 产品入口。命令前缀：`dws markdown`。Distinct from `dingtalk-doc`（在线富文本文档与块编辑）、`dingtalk-drive`（任意类型文件的一般存储与传输）。
+
 `markdown` 面向钉盘或文档空间中的原生 `.md` 文件，把内容作为单个纯文本文件读写。在线富文本文档（`adoc`）仍使用 [`dingtalk-doc`](../../dingtalk-doc/references/doc.md)。
 
 ## 命令总览

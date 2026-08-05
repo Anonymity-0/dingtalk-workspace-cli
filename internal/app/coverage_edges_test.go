@@ -2005,7 +2005,7 @@ func TestCrossPlatformCoverageSkillSetupRuntimeCoverage(t *testing.T) {
 	}
 	_ = os.Symlink(filepath.Join(mono, "SKILL.md"), filepath.Join(mono, "linked.md"))
 	multi := filepath.Join(t.TempDir(), "multi")
-	for _, name := range []string{"dws-shared", "dingtalk-a", "dingtalk-b"} {
+	for _, name := range []string{"dingtalk-shared", "dingtalk-a", "dingtalk-b"} {
 		dir := filepath.Join(multi, name)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -2033,7 +2033,7 @@ func TestCrossPlatformCoverageSkillSetupRuntimeCoverage(t *testing.T) {
 	if output, warnings, err := run("--mode", "multi", "--source", multi, "--target", "agents", "--yes", "--skill", "a"); err != nil || !strings.Contains(output, "installed=2") || warnings == "" {
 		t.Fatalf("multi setup = %q / %q, %v", output, warnings, err)
 	}
-	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dws-shared", "SKILL.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dingtalk-shared", "SKILL.md")); err != nil {
 		t.Fatal(err)
 	}
 	if output, _, err := run("--mode", "multi", "--source", multi, "--target", "agents", "--yes", "--dry-run", "--exclude", "b"); err != nil || !strings.Contains(output, "DRY-RUN") {
@@ -2057,7 +2057,7 @@ func TestCrossPlatformCoverageSkillSetupRuntimeCoverage(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageSkillSetupPureCoverage(t *testing.T) {
-	all := []string{"dingtalk-a", "dingtalk-b", "dws-shared"}
+	all := []string{"dingtalk-a", "dingtalk-b", "dingtalk-shared"}
 	for _, tc := range []struct {
 		include []string
 		exclude []string
@@ -2075,7 +2075,7 @@ func TestCrossPlatformCoverageSkillSetupPureCoverage(t *testing.T) {
 			t.Errorf("filter %#v/%#v = %v", tc.include, tc.exclude, err)
 		}
 	}
-	for _, selected := range [][]string{nil, {"dws-shared"}, {"dingtalk-a"}} {
+	for _, selected := range [][]string{nil, {"dingtalk-shared"}, {"dingtalk-a"}} {
 		_ = ensureMandatorySharedSkill(selected, all)
 	}
 	_ = ensureMandatorySharedSkill([]string{"dingtalk-a"}, []string{"dingtalk-a"})

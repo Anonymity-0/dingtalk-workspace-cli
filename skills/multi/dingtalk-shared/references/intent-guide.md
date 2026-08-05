@@ -432,7 +432,7 @@ dws chat message send --group <openConversationId> --msg-type location --latitud
 
 用户说“给张三发封邮件”，但只知道名字不知道邮箱地址：
 
-> 有脚本: 加载 `dingtalk-mail` sub-skill 后使用其邮件发送辅助脚本；该脚本不在 `dws-shared` 包内。
+> 有脚本: 加载 `dingtalk-mail` sub-skill 后使用其邮件发送辅助脚本；该脚本不在 `dingtalk-shared` 包内。
 
 ```bash
 # 1. 搜人获取 userId（多人同名须 contact user get 消歧，禁止默认选第一个，详见 08-directory.md「多命中」）
@@ -451,7 +451,7 @@ dws mail message send --from my@company.com --to zhangsan@company.com \
 
 用户说“约张三明天下午开会”：
 
-> 有脚本: 加载 `dingtalk-calendar` sub-skill 后使用其日程创建辅助脚本；该脚本不在 `dws-shared` 包内。
+> 有脚本: 加载 `dingtalk-calendar` sub-skill 后使用其日程创建辅助脚本；该脚本不在 `dingtalk-shared` 包内。
 
 ```bash
 # 手动流程（脚本不可用时）:

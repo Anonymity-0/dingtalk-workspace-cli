@@ -44,15 +44,21 @@ coverage:
     multi_refs:
       - references/event.md
   - mono: hrbrain
-    multi_skill: dingtalk-hrbrain
+    multi_skill: dingtalk-misc
+    multi_refs:
+      - references/hrbrain.md
   - mono: mail
     multi_skill: dingtalk-mail
   - mono: markdown
-    multi_skill: dingtalk-markdown
+    multi_skill: dingtalk-misc
+    multi_refs:
+      - references/markdown.md
   - mono: minutes
     multi_skill: dingtalk-minutes
   - mono: pat
-    multi_skill: dingtalk-pat
+    multi_skill: dingtalk-misc
+    multi_refs:
+      - references/pat.md
   - mono: todo
     multi_skill: dingtalk-todo
   - mono: wiki
@@ -111,23 +117,23 @@ omit_coverage:
 # Global protocol files: multi path must exist unless omit_global.
 global_protocols:
   - id: error-codes
-    multi_path: dws-shared/references/error-codes.md
+    multi_path: dingtalk-shared/references/error-codes.md
   - id: url-patterns
-    multi_path: dws-shared/references/url-patterns.md
+    multi_path: dingtalk-shared/references/url-patterns.md
   - id: capability-limits
-    multi_path: dws-shared/references/capability-limits.md
+    multi_path: dingtalk-shared/references/capability-limits.md
   - id: channel-login
-    multi_path: dws-shared/references/channel-login.md
+    multi_path: dingtalk-shared/references/channel-login.md
   - id: global-reference
-    multi_path: dws-shared/references/global-reference.md
+    multi_path: dingtalk-shared/references/global-reference.md
   - id: intent-guide
-    multi_path: dws-shared/references/intent-guide.md
+    multi_path: dingtalk-shared/references/intent-guide.md
   - id: runtime-contract
-    multi_path: dws-shared/references/runtime-contract.md
+    multi_path: dingtalk-shared/references/runtime-contract.md
   - id: confirmation-protocol
-    multi_path: dws-shared/references/confirmation.md
+    multi_path: dingtalk-shared/references/confirmation.md
   - id: schema-usage
-    multi_path: dws-shared/references/schema-usage.md
+    multi_path: dingtalk-shared/references/schema-usage.md
 
 omit_global:
   - id: field-rules-global
@@ -156,5 +162,4 @@ orphan_scripts_allowlist:
     reason: "pending report.md reference"
 
 # Skills allowed to omit references/ directory.
-skills_without_references_allowlist:
-  - dingtalk-profile
+skills_without_references_allowlist: []

@@ -2,7 +2,7 @@
 
 > 🧪 **EXPERIMENTAL** — 接口、命名或跨 skill 引用可能调整；以当前 `dws` 二进制与 leaf Schema 为准。问题请提 issue。
 >
-> 这是元能力：只管理 dws 平台上的技能资源。Distinct from `dws-shared`（钉钉产品路由入口）、其他 `dingtalk-*` 产品 skill（执行具体业务能力）、本地 Codex skill 开发。命令前缀：`dws skill`。
+> 这是元能力：只管理 dws 平台上的技能资源。Distinct from `dingtalk-shared`（钉钉产品路由入口）、其他 `dingtalk-*` 产品 skill（执行具体业务能力）、本地 Codex skill 开发。命令前缀：`dws skill`。
 
 ## 意图表
 

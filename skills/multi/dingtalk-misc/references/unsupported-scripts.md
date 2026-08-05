@@ -7,7 +7,7 @@
 
 1. **默认不要调用**这些脚本完成用户任务；优先公开 `dws` 命令 / Shortcut。
 2. 仅当用户**明确点名**某脚本文件名，或明确要求「跑仓库里的 yida/finance/aiapp 辅助脚本」时才考虑。
-3. 调用前用 `--help` / 脚本头注释确认参数；写操作仍遵守 [confirmation.md](../../dws-shared/references/confirmation.md)。
+3. 调用前用 `--help` / 脚本头注释确认参数；写操作仍遵守 [confirmation.md](../../dingtalk-shared/references/confirmation.md)。
 4. 若脚本依赖的 `dws <product>` 子命令在当前二进制不存在，向用户说明能力未暴露，不要改用 HTTP/curl 绕过。
 
 ## AI 应用（aiapp）

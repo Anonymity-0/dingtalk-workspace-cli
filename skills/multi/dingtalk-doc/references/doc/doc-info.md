@@ -2,9 +2,9 @@
 
 > **前置条件（MUST READ）：** 执行本命令前，必须先用 Read 工具读取以下文件：
 > 1. [`../doc.md`](../doc.md) — 命令路由 + 场景索引 + 意图判断 + 工作流
-> 2. [`url-patterns.md`](../../../dws-shared/references/url-patterns.md) — 仅当用户原始 `alidocs` URL 需要 probe 时
+> 2. [`url-patterns.md`](../../../dingtalk-shared/references/url-patterns.md) — 仅当用户原始 `alidocs` URL 需要 probe 时
 >
-> **探测入口变更**：alidocs URL 的类型探测现在统一走 `dws drive info`（详见 [链接规范](../../../dws-shared/references/url-patterns.md#alidocs-url-类型探测流程)）。`drive info` 检测到 `extension=adoc/axls/able` 时会自动调用 `doc info` 返回更详细的文档信息。**仅在 `drive info` 已确认是 ALIDOC 类型后**，才需要直接使用 `doc info`。
+> **探测入口变更**：alidocs URL 的类型探测现在统一走 `dws drive info`（详见 [链接规范](../../../dingtalk-shared/references/url-patterns.md#alidocs-url-类型探测流程)）。`drive info` 检测到 `extension=adoc/axls/able` 时会自动调用 `doc info` 返回更详细的文档信息。**仅在 `drive info` 已确认是 ALIDOC 类型后**，才需要直接使用 `doc info`。
 >
 > **同任务常配合**：`dws drive search` / `dws wiki node search`（先定位 nodeId）/ [`doc-read.md`](doc-read.md)（确认是 ALIDOC 后读正文）
 
@@ -26,7 +26,7 @@ Flags:
 
 当用户输入包含钉钉文档 URL 时，**必须先识别并提取 DOC_ID**，再判断意图。
 
-补充：如果这是用户直接提供的原始 `alidocs` URL，必须先按 [链接规范](../../../dws-shared/references/url-patterns.md#alidocs-url-类型探测流程) 用 `dws drive info` 探测真实类型。只有 `extension=adoc` 时才继续走 `doc`；其他类型（pdf/docx/txt/md/xlsx 等）走 `drive`。
+补充：如果这是用户直接提供的原始 `alidocs` URL，必须先按 [链接规范](../../../dingtalk-shared/references/url-patterns.md#alidocs-url-类型探测流程) 用 `dws drive info` 探测真实类型。只有 `extension=adoc` 时才继续走 `doc`；其他类型（pdf/docx/txt/md/xlsx 等）走 `drive`。
 
 ### 支持的 URL 格式
 
@@ -40,7 +40,7 @@ Flags:
 1. 匹配 URL 中 `alidocs.dingtalk.com` 域名
 2. 取 URL path 的最后一段作为 DOC_ID（去掉 query string 和 fragment）
 3. 提取出的 DOC_ID 可直接用于所有 `--node` 参数，也可将完整 URL 传给 `--node`（CLI 会自动解析）
-4. 对用户直接提供的原始 `alidocs` URL，先按 [链接规范](../../../dws-shared/references/url-patterns.md#alidocs-url-类型探测流程) 用 `dws drive info` 探测；只有探测确认 `extension=adoc` 时，才继续走 `doc`
+4. 对用户直接提供的原始 `alidocs` URL，先按 [链接规范](../../../dingtalk-shared/references/url-patterns.md#alidocs-url-类型探测流程) 用 `dws drive info` 探测；只有探测确认 `extension=adoc` 时，才继续走 `doc`
 
 ## ID 边界与参数映射
 
@@ -136,4 +136,4 @@ dws doc info --node <WS_ID>   # 错误
 - [`../doc.md` §意图判断](../doc.md#意图判断)（如何路由到本命令）
 - `dws drive search` / `dws wiki node search`（前置：定位 nodeId 的搜索入口，详见 [`../drive.md`](../../../dingtalk-drive/references/drive.md) / [`../wiki.md`](../../../dingtalk-wiki/references/wiki.md)）
 - [`./doc-read.md`](doc-read.md)（extension=adoc 的后续命令）
-- [`url-patterns.md`](../../../dws-shared/references/url-patterns.md)（用户原始 alidocs URL 的 probe 流程）
+- [`url-patterns.md`](../../../dingtalk-shared/references/url-patterns.md)（用户原始 alidocs URL 的 probe 流程）

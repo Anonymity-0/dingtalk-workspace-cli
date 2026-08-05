@@ -36,8 +36,8 @@
 |---|---|
 | 内容树结构 | `skills/mono/` 与 `skills/multi/<name>/` 目录合同 |
 | 单 skill 约定 | `SKILL.md` frontmatter / 契约块 / Golden Route；`references/`；可选 `scripts/` |
-| 共享内容 | `dws-shared` 职责与被引用方式；与 mono 全局文映射（文档级） |
-| 命名与集合 | `dingtalk-*` + `dws-shared`；相对悟空的共有/独有清单（文档） |
+| 共享内容 | `dingtalk-shared` 职责与被引用方式；与 mono 全局文映射（文档级） |
+| 命名与集合 | `dingtalk-*` + `dingtalk-shared`；相对悟空的共有/独有清单（文档） |
 | Zip **内容布局合同** | `mono/` / `multi/` / 根 mono 副本的内容含义与树形状；不改安装默认 |
 | **Mono↔multi 内容质检** | 覆盖、结构、漂移三类门禁；复用/扩展现有 policy 与测试；缺口修复属内容编辑（另批或同分支内容 Phase） |
 | 内容架构文档 | 本文件 + 可选短文（架构合同 + 质检矩阵） |
@@ -73,7 +73,7 @@ skills/mono/
 
 ```text
 skills/multi/
-├── dws-shared/     # 跨产品契约 / routing / 全局协议应落点
+├── dingtalk-shared/     # 跨产品契约 / routing / 全局协议应落点
 └── dingtalk-*/     # 19 产品 + 各 references、scripts
 ```
 
@@ -81,7 +81,7 @@ skills/multi/
 
 ### 1.3 悟空 `dingtalk-skills/`（内容组织对照，非质检权威）
 
-Flat `dingtalk-*` + `dws-shared`；单 skill 骨架同构。**不作为 mono 覆盖基准**（集合更小、不同源）。
+Flat `dingtalk-*` + `dingtalk-shared`；单 skill 骨架同构。**不作为 mono 覆盖基准**（集合更小、不同源）。
 
 ### 1.4 Zip 内容布局合同
 
@@ -98,7 +98,7 @@ Flat `dingtalk-*` + `dws-shared`；单 skill 骨架同构。**不作为 mono 覆
 | 资产 | 作用 | 与 mono↔multi 质检关系 |
 |---|---|---|
 | `scripts/policy/check-skill-commands.sh` + `skill-command-check/` | Skill 文内 `dws …` 命令路径存在性 | **复用**（命令真实性）；非覆盖映射 |
-| `scripts/policy/check-skill-context-budget.sh` | chat/event/mono/`dws-shared` 上下文预算与冷启动约束 | **复用**（结构/预算）；可扩展 shared 引用规则 |
+| `scripts/policy/check-skill-context-budget.sh` | chat/event/mono/`dingtalk-shared` 上下文预算与冷启动约束 | **复用**（结构/预算）；可扩展 shared 引用规则 |
 | `scripts/policy/check-multi-im-skill-chain.sh` + `multi-im-skill-chain/` | IM 意图单默认路由、retired scripts、handoff | **复用**（chat/event 链）；面窄 |
 | `test/unit/skill_docs_policy_test.go` | 退役命令、event 扁平输出契约等 | **复用**；可加 mono↔multi 断言 |
 | `test/unit/whiteboard_skill_docs_test.go` | mono/multi whiteboard recipes **字节一致** | **样板**：产品面「同源文件」门禁范式 |
@@ -123,15 +123,15 @@ Flat `dingtalk-*` + `dws-shared`；单 skill 骨架同构。**不作为 mono 覆
 
 ### 2.1 已同构
 
-Flat `dingtalk-*` + `dws-shared`；`SKILL.md` + `references/`（+ 可选 `scripts/`）。
+Flat `dingtalk-*` + `dingtalk-shared`；`SKILL.md` + `references/`（+ 可选 `scripts/`）。
 
 ### 2.2 分叉与已知内容风险（质检要盯的）
 
 | 风险 ID | 现象（线索） | 质检类型 |
 |---|---|---|
 | **C-cov** | mono `products/*` 能力面在 multi 无对应 skill/reference，或未登记「有意省略」 | 覆盖 |
-| **C-struct** | multi 缺 frontmatter 字段、`references/`、`DWS_RUNTIME_CONTRACT`、对 `dws-shared` 引用不一致 | 结构 |
-| **C-drift-global** | 曾关注 recovery / 确认 / Schema；现确认与 Schema 已在 `dws-shared`，**recovery skill 文档已删除** | 漂移（协议） |
+| **C-struct** | multi 缺 frontmatter 字段、`references/`、`DWS_RUNTIME_CONTRACT`、对 `dingtalk-shared` 引用不一致 | 结构 |
+| **C-drift-global** | 曾关注 recovery / 确认 / Schema；现确认与 Schema 已在 `dingtalk-shared`，**recovery skill 文档已删除** | 漂移（协议） |
 | **C-drift-orphan** | multi（或 mono）scripts/refs 无文档引用；或 routing 指向无索引产品（留档 X1/M6） | 漂移（孤儿） |
 | **C-pair** | 应对齐的成对文件（如 whiteboard recipes）内容不一致 | 漂移（成对） |
 
@@ -213,7 +213,7 @@ Flat `dingtalk-*` + `dws-shared`；`SKILL.md` + `references/`（+ 可选 `script
 
 | 项 | 决策 | 说明 |
 |---|---|---|
-| flat + `dws-shared` 内容模型 | **Port** | 已有；合同 + 质检加固 |
+| flat + `dingtalk-shared` 内容模型 | **Port** | 已有；合同 + 质检加固 |
 | 悟空 bundle frontmatter/断链/requires 检查维度 | **Adapt** | 做成 DWS 源树门禁，不校验 bundle zip/安装 |
 | whiteboard 式 mono/multi 成对一致 | **Port（范式）** | 推广到 reviewed 文件对 |
 | `validate-multiskill-bundle.py` 整脚本 | **Reject** | 绑定悟空 zip/Qwen 语义 |

@@ -89,10 +89,10 @@ func TestMonoMultiSkillContentG1Shape(t *testing.T) {
 			continue
 		}
 		name := e.Name()
-		if name != "dws-shared" && !strings.HasPrefix(name, "dingtalk-") {
-			t.Errorf("G1: invalid skill directory name %q (want dingtalk-* or dws-shared)", name)
+		if !strings.HasPrefix(name, "dingtalk-") {
+			t.Errorf("G1: invalid skill directory name %q (want dingtalk-*)", name)
 		}
-		if name == "dws-shared" {
+		if name == "dingtalk-shared" {
 			foundShared = true
 		}
 		skillMD := filepath.Join(multiRoot, name, "SKILL.md")
@@ -110,7 +110,7 @@ func TestMonoMultiSkillContentG1Shape(t *testing.T) {
 		}
 	}
 	if !foundShared {
-		t.Error("G1: skills/multi must contain dws-shared")
+		t.Error("G1: skills/multi must contain dingtalk-shared")
 	}
 }
 
@@ -150,7 +150,7 @@ func TestMonoMultiSkillContentG2Frontmatter(t *testing.T) {
 			t.Errorf("G2: %s: metadata.category %q want product|shared", name, category)
 		}
 		wantCat := "product"
-		if name == "dws-shared" {
+		if name == "dingtalk-shared" {
 			wantCat = "shared"
 		}
 		if category != "" && category != wantCat {

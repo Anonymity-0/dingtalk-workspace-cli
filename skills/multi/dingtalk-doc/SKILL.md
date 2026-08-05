@@ -13,7 +13,7 @@ metadata:
 
 ## 前置条件 — 执行操作前必读
 
-> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dws-shared`](../dws-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
+> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dingtalk-shared`](../dingtalk-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
 
 > 命令参考：[doc.md](references/doc.md)；剧本：[04-document.md](references/04-document.md)。
 
@@ -82,7 +82,7 @@ metadata:
 2. **探测（必须）**：对选中的候选执行 `dws drive info --node <nodeId> --format json`，从真实返回读取 `extension`；不得因为搜索结果标题像“文档”就跳过探测。
 3. **按类型读取（必须）**：
    - `extension=adoc`：`dws doc read --node <nodeId> --format json`；大文档只抽取用户需要的章节。
-   - `extension=md`：切到 `dingtalk-markdown` 用 `dws markdown fetch --node <nodeId> --format json` 读取原文；仅需文件实体下载时切 `dingtalk-drive` 用 `drive download`。
+   - `extension=md`：切到 `dingtalk-misc` 的 `references/markdown.md`，用 `dws markdown fetch --node <nodeId> --format json` 读取原文；仅需文件实体下载时切 `dingtalk-drive` 用 `drive download`。
    - `extension=axls`：切到 `dingtalk-misc`，读取 `references/sheet.md` 后按电子表格意图执行。
    - `extension=able`：切到 `dingtalk-aitable`。
    - `extension=xlsx` / `xls` / `xlsm` / `csv` 或其他普通文件：切到 `dingtalk-drive`；不得执行 `dws doc read`。
@@ -158,7 +158,7 @@ metadata:
 - 文件存储 / 上传下载 → 切到 `dingtalk-drive`
 - 知识库空间管理 → 切到 `dingtalk-wiki`
 - 数据表 → 切到 `dingtalk-aitable`
-- 原生 `.md` 文件读取、创建、全量覆盖或局部替换 → 切到 `dingtalk-markdown`
+- 原生 `.md` 文件读取、创建、全量覆盖或局部替换 → 切到 `dingtalk-misc` 的 `references/markdown.md`
 - 长篇报告生成（多源采集 + 写文档）→ 此 skill 提供 `doc_create_and_write.py` 脚本
 ## 局部意图与短流程
 

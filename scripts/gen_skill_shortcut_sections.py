@@ -24,9 +24,9 @@ import gen_shortcut_comparison as shortcut_source  # noqa: E402
 
 CATALOG_PATH = ROOT / "docs" / "shortcut-public-catalog.json"
 MONO_SKILL = ROOT / "skills" / "mono" / "SKILL.md"
-SHARED_SKILL = ROOT / "skills" / "multi" / "dws-shared" / "SKILL.md"
+SHARED_SKILL = ROOT / "skills" / "multi" / "dingtalk-shared" / "SKILL.md"
 RUNTIME_CONTRACT_SOURCE = (
-    ROOT / "skills" / "multi" / "dws-shared" / "references" / "runtime-contract.md"
+    ROOT / "skills" / "multi" / "dingtalk-shared" / "references" / "runtime-contract.md"
 )
 SERVICE_TO_SKILL = {
     "aitable": ROOT / "skills" / "multi" / "dingtalk-aitable" / "SKILL.md",

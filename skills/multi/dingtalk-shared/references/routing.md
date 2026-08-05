@@ -19,7 +19,10 @@
 | 知识库/钉盘空间、空间节点和成员管理 | [`dingtalk-wiki`](../../dingtalk-wiki/SKILL.md) |
 | 姓名模糊找人、负责人、上下级、工号、手机号语义线索、企业知识和行为记录搜索 | [`dingtalk-aisearch`](../../dingtalk-aisearch/SKILL.md) |
 | 完整手机号精确反查，或已有 userId 后查人员详情、部门和角色 | [`dingtalk-contact`](../../dingtalk-contact/SKILL.md) |
-| Markdown / `.md` 内容读取、创建、覆盖、局部修改或版本差异比较 | [`dingtalk-markdown`](../../dingtalk-markdown/SKILL.md) |
+| Markdown / `.md` 内容读取、创建、覆盖、局部修改或版本差异比较 | [`dingtalk-misc`](../../dingtalk-misc/SKILL.md) → [`markdown.md`](../../dingtalk-misc/references/markdown.md) |
+| 组织大脑、人才池、员工档案专项、职业历程、绩效、结构化人才搜索 | [`dingtalk-misc`](../../dingtalk-misc/SKILL.md) → [`hrbrain.md`](../../dingtalk-misc/references/hrbrain.md) |
+| PAT 行为授权、scope 授权、授权浏览器策略 | [`dingtalk-misc`](../../dingtalk-misc/SKILL.md) → [`pat.md`](../../dingtalk-misc/references/pat.md) |
+| 切换组织、跨组织、多组织、profile 管理 | [`dingtalk-misc`](../../dingtalk-misc/SKILL.md) → [`profile.md`](../../dingtalk-misc/references/profile.md) |
 | 审批、考勤、会议、电子表格、日志、DING、直播、开放平台应用、技能市场安装、个人 IM 事件等长尾产品 | [`dingtalk-misc`](../../dingtalk-misc/SKILL.md) |
 | 宜搭 / AI 应用创建脚本 / 财务辅助脚本（无稳定产品面） | [`dingtalk-misc`](../../dingtalk-misc/SKILL.md) → [`unsupported-scripts.md`](../../dingtalk-misc/references/unsupported-scripts.md)；默认说明未产品化，勿当正式 CLI |
 
@@ -32,9 +35,7 @@ reference，不要加载全部长尾产品文档。
   完整手机号精确反查，或拿到 userId 后查详情、部门和角色；`mail`：邮件内容与收发。
 - `drive`：对任何文件都成立的存储操作；`doc`：文档正文和块内容；`wiki`：空间与
   节点组织。
-- `.md` 文件按普通文件走 `drive`：先 `dws drive download --node <ID> --output <PATH> --format json`
-  下载到本地读取或修改，再用 `dws drive upload` 回传；复制、移动、删除同样走
-  `drive`。
+- `.md` 内容读写走 `markdown`（`dingtalk-misc`）；复制、移动、删除等实体操作走 `drive`。
 - `aitable`：字段/记录式数据表；`sheet`：单元格、公式、多工作表。`sheet` 位于
   [`dingtalk-misc`](../../dingtalk-misc/references/sheet.md)。
 - `calendar`：日历事件、参会人和会议室；`conference`：预约/发起视频会议及会控；
@@ -42,6 +43,7 @@ reference，不要加载全部长尾产品文档。
 - `report`：钉钉日志系统中的日报/周报；`doc`：普通文档创作；`todo`：个人任务。
 - `chat`：普通会话和消息；`event`：个人 IM 事件长连接监听；`ding`：强提醒。
   `event` 与 `ding` 位于 `dingtalk-misc`。
+- `hrbrain` / `markdown` / `pat` / `profile` 均位于 `dingtalk-misc`。
 - 请假、加班、外出、出差、补卡等考勤业务审批优先走 `attendance`；其他通用审批
   走 `oa`。两者均位于 `dingtalk-misc`。
 

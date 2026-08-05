@@ -375,7 +375,7 @@ Flags:
 
 **.md 文件的内容操作路由**: 当 `drive info` 返回 `extension=md` 时，文件管理操作（移动/重命名/删除/下载文件）留在 `drive`，但**读取或改写原文内容必须切换到 `markdown` 产品**：
 - 用户说"读取/看一下 markdown 内容/获取 .md 原文" → `dws markdown fetch --node <ID>`（非 `drive download`）
-- 详见 `dingtalk-markdown` 的 [markdown.md](../../dingtalk-markdown/references/markdown.md)
+- 详见 `dingtalk-misc` 的 [markdown.md](../../dingtalk-misc/references/markdown.md)
 
 ## 核心工作流
 
@@ -780,5 +780,5 @@ dws drive copy --node <源文件dentryUuid> --folder <目标文件夹fileId> --f
 ## 相关产品
 
 - [doc](../../dingtalk-doc/references/doc.md) — 文档内容读写/知识库空间，不是文件存储
-- [markdown](../../dingtalk-markdown/references/markdown.md) — `.md` 文件的内容读取（fetch），非文件管理
+- [markdown](../../dingtalk-misc/references/markdown.md) — `.md` 文件的内容读取（fetch），非文件管理
 - [chat](../../dingtalk-chat/references/chat.md) — 上传文件到 drive 后可通过 Markdown 语法发送图片/文件消息

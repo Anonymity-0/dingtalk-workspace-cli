@@ -150,7 +150,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		if filterErr != nil {
 			return filterErr
 		}
-		// dws-shared carries the global rules every product skill declares as a
+		// dingtalk-shared carries the global rules every product skill declares as a
 		// PREREQUISITE; it must ship even when --skill / --exclude narrows the set.
 		multiSkillNames = ensureMandatorySharedSkill(filtered, allMultiSkillNames)
 	}
@@ -205,8 +205,8 @@ const multiSkillPrefix = "dingtalk-"
 // multiSharedSkill is the shared, non-product skill that every per-product
 // skill declares as a PREREQUISITE. It must always be installed in multi mode
 // regardless of --skill / --exclude, otherwise the product skills reference a
-// dws-shared that was never installed.
-const multiSharedSkill = "dws-shared"
+// dingtalk-shared that was never installed.
+const multiSharedSkill = "dingtalk-shared"
 
 // ensureMandatorySharedSkill guarantees the shared dependency skill is included
 // whenever it exists in the source, even if --skill / --exclude narrowed it out.

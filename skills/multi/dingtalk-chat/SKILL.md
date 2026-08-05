@@ -22,7 +22,7 @@ metadata:
 - 写操作必须符合用户明确意图。是否需要确认以最终 Runtime gate 和 Schema 为准；需要确认时先说明对象、动作与影响，再追加 `--yes`。
 - 写后按任务结果契约验证；不能仅凭退出码宣称成功。部分结果、未知投递状态和失败项必须如实保留。
 - 时间戳面向用户展示时转换为带时区的可读时间；默认使用当前会话时区，必要时同时保留原值。
-- 遇到认证、权限、profile、confirmation 或未知错误时，只加载 `dws-shared` 中对应 reference；不要连续猜测替代命令。
+- 遇到认证、权限、profile、confirmation 或未知错误时，只加载 `dingtalk-shared` 中对应 reference；不要连续猜测替代命令。
 <!-- DWS_RUNTIME_CONTRACT_END -->
 
 <!-- VISIBLE_SHORTCUTS_START -->
@@ -111,6 +111,6 @@ metadata:
 1. resolution 返回零命中或多候选：停止写操作，展示候选并让用户消歧；禁止默认第一项。
 2. `unknown command` / `unknown flag`：读取精确 leaf Help，修正后最多重试一次。
 3. 参数约束或 confirmation 不清楚：读取精确 leaf Schema，以 Runtime gate 为准。
-4. 认证、权限、profile 或 confirmation 错误：读取 `dws-shared` 的对应 reference；正常 IM 不读取完整 shared Skill。
+4. 认证、权限、profile 或 confirmation 错误：读取 `dingtalk-shared` 的对应 reference；正常 IM 不读取完整 shared Skill。
 5. `backend_dependency_unavailable`：保持原参数，对只读命令最多重试一次；不要改 flag、猜认证命令或切换同义原子命令，持续失败时保留 Trace ID。
 6. 其他错误：保留真实错误和已完成/失败项；不要连续尝试同义原子命令。

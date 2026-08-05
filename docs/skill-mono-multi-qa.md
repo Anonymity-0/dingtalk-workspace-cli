@@ -8,7 +8,7 @@
 
 | ID | 类型 | 输入 | 通过准则 |
 |---|---|---|---|
-| **G1 形状** | 结构 | `skills/multi/*` | 仅 `dingtalk-*` / `dws-shared`；每目录有 `SKILL.md`；必有 `dws-shared` |
+| **G1 形状** | 结构 | `skills/multi/*` | 仅 `dingtalk-*`（含必选 `dingtalk-shared`）；每目录有 `SKILL.md` |
 | **G2 结构** | 结构 | 各 `SKILL.md` frontmatter | `name`==目录名；非空 `description`；`category`∈{product,shared}；`requires.bins` 含 `dws` |
 | **G3 覆盖** | 覆盖 | mono `references/products/*` 顶层 stem | 每 stem ∈ `coverage` 或 `omit_coverage`；coverage 目标 skill/refs 存在 |
 | **G4 漂移** | 漂移 | scripts、成对文件、全局协议 | orphan 脚本 ∈ allowlist；paired 一致；全局协议存在或 ∈ `omit_global` |
@@ -46,14 +46,14 @@ orphan_scripts_allowlist:
 | ID | 项 | disposition | 说明 |
 |---|---|---|---|
 | M1 | recovery-guide / RECOVERY_EVENT_ID 闭环 | **removed** | 已从 mono/multi skill 文档删除；不做移植 |
-| M2 | confirmation_required 全局协议 | **done** | `dws-shared/references/confirmation.md` + SKILL 导航 |
-| M3 | Schema 渐进查询教学 | **done** | `dws-shared/references/schema-usage.md` |
+| M2 | confirmation_required 全局协议 | **done** | `dingtalk-shared/references/confirmation.md` + SKILL 导航 |
+| M3 | Schema 渐进查询教学 | **done** | `dingtalk-shared/references/schema-usage.md` |
 | M4 | `report_inbox_today.py` | `defer` / orphan 侧 | 验证后迁 misc 或删 |
 | M5 | multi LICENSE/NOTICE | `defer` | 内容或打包注入 |
 | M6 | aiapp 路由 vs orphan 脚本 | **done（标明未产品化）** | mono 死链移除；`unsupported-scripts.md` |
 | X1 | yida/finance/aiapp orphan scripts | **done（登记）** | 由 unsupported-scripts 具名引用 |
 | X2 | chat 死链 `extract_media_id.py` | n/a | 现仅为反模式提及 |
-| X3 | routing → markdown 错路径 | **done** | 已指 `dingtalk-markdown`；drive 尾链已修 |
+| X3 | routing → markdown 错路径 | **done** | 已指 `dingtalk-misc/references/markdown.md`；drive 尾链已修 |
 | X4 | event 缺 metadata | **done** | |
 | X5 | EXPERIMENTAL「优先 mono」文案 | **done** | 五 skill 已去「优先 mono」 |
 | X6 | SAFETY_PREAMBLE_INJECT 无注入器 | **done** | 标记已移除 |

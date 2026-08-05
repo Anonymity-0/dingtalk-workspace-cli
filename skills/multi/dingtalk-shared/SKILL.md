@@ -1,5 +1,5 @@
 ---
-name: dws-shared
+name: dingtalk-shared
 description: 钉钉(DingTalk) MultiSkill 的轻量共享入口。Use when 用户泛称 DWS/钉钉操作但未明确产品、请求跨产品编排、需要 URL 类型预检或产品边界消歧。清晰的单产品操作优先使用对应 dingtalk-* 子 skill；本 skill 只提供全局执行契约和按需 reference 导航，不承载产品命令全集。
 metadata:
   cli_version: ">=0.2.14"
@@ -24,10 +24,10 @@ metadata:
 - 写操作必须符合用户明确意图。是否需要确认以最终 Runtime gate 和 Schema 为准；需要确认时先说明对象、动作与影响，再追加 `--yes`。
 - 写后按任务结果契约验证；不能仅凭退出码宣称成功。部分结果、未知投递状态和失败项必须如实保留。
 - 时间戳面向用户展示时转换为带时区的可读时间；默认使用当前会话时区，必要时同时保留原值。
-- 遇到认证、权限、profile、confirmation 或未知错误时，只加载 `dws-shared` 中对应 reference；不要连续猜测替代命令。
+- 遇到认证、权限、profile、confirmation 或未知错误时，只加载 `dingtalk-shared` 中对应 reference；不要连续猜测替代命令。
 <!-- DWS_RUNTIME_CONTRACT_END -->
 
-产品或跨产品规则在最小契约之上增量加载。用户已明确产品内容意图时，意图优先于 URL 形态；多账号选择与跨组织规则读取 `../dingtalk-profile/SKILL.md`。本地文件、产品边界和跨产品传递规则只在对应任务中加载，避免把全局手册放入每个单产品请求。
+产品或跨产品规则在最小契约之上增量加载。用户已明确产品内容意图时，意图优先于 URL 形态；多账号选择与跨组织规则读取 [`../dingtalk-misc/references/profile.md`](../dingtalk-misc/references/profile.md)。本地文件、产品边界和跨产品传递规则只在对应任务中加载，避免把全局手册放入每个单产品请求。
 
 ## 渐进加载
 
@@ -48,7 +48,7 @@ metadata:
 | 批量/多源采集 | [conventions.md](references/best_practices/_common/conventions.md) |
 | 固定短流程 | [lite-recipes.md](references/best_practices/_common/lite-recipes.md) 对应章节 |
 
-产品命令、脚本和字段细节位于对应产品 skill，不在 `dws-shared` 重复维护。
+产品命令、脚本和字段细节位于对应产品 skill，不在 `dingtalk-shared` 重复维护。
 
 ## 本 skill 作为入口时的路由顺序
 
