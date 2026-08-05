@@ -724,6 +724,14 @@ func resolutionDetails(err error) (map[string]any, bool) {
 	if !stderrors.As(err, &typed) || typed.Details["type"] != "resolution" {
 		return nil, false
 	}
+	switch typed.Reason {
+	case "resolution_not_found", "resolution_ambiguous":
+		// These are client-side disambiguation outcomes and may be combined
+		// into one batch response. Incomplete/API/auth failures must retain
+		// their original category and retryability and stop immediately.
+	default:
+		return nil, false
+	}
 	return typed.Details, true
 }
 

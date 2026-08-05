@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
 	"strings"
@@ -40,10 +41,14 @@ type platformCoverageCaller struct {
 	dry                 bool
 	contactSearchResult string
 	aisearchResult      string
+	failTool            string
 }
 
 func (f *platformCoverageCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
 	f.calls = append(f.calls, platformCoverageCall{product: product, tool: tool, args: args})
+	if product+"/"+tool == f.failTool {
+		return nil, errors.New("fixture failure")
+	}
 	text := `{"result":[]}`
 	switch product + "/" + tool {
 	case "contact/search_contact_by_key_word":
@@ -321,6 +326,49 @@ func TestCrossPlatformCoverageBroadcastUsesEnterpriseAliasAndUserIDFallback(t *t
 	if _, ok := arguments["receiverOpenDingTalkId"]; ok {
 		t.Fatalf("unexpected open id fallback = %#v", arguments)
 	}
+}
+
+func TestCrossPlatformCoverageBroadcastRecipientFallbackAndSendFailure(t *testing.T) {
+	t.Run("missing display name falls back to query", func(t *testing.T) {
+		fake := &platformCoverageCaller{
+			dry:            true,
+			aisearchResult: `{"result":[{"userId":"user-no-name"}]}`,
+		}
+		helpers.InitDeps(fake)
+		root := newPlatformCoverageRoot()
+		var output bytes.Buffer
+		root.SetOut(&output)
+		root.SetArgs([]string{
+			"chat", "+broadcast", "--to", "无名用户", "--text", "你好", "--dry-run", "--yes",
+		})
+		if err := root.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		actions, _ := payload["actions"].([]any)
+		action, _ := actions[0].(map[string]any)
+		if action["recipient"] != "无名用户" {
+			t.Fatalf("action = %#v", action)
+		}
+	})
+
+	t.Run("send failure remains non-zero", func(t *testing.T) {
+		fake := &platformCoverageCaller{failTool: "chat/send_personal_message"}
+		helpers.InitDeps(fake)
+		root := newPlatformCoverageRoot()
+		root.SetArgs([]string{
+			"chat", "+broadcast", "--to", "张三", "--text", "你好", "--yes",
+		})
+		if err := root.Execute(); err == nil {
+			t.Fatal("send failure unexpectedly succeeded")
+		}
+		if len(fake.calls) != 2 || fake.calls[1].tool != "send_personal_message" {
+			t.Fatalf("calls = %#v", fake.calls)
+		}
+	})
 }
 
 func TestCrossPlatformCoverageCompatibilityAliases(t *testing.T) {

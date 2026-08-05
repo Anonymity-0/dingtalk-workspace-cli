@@ -537,6 +537,35 @@ func TestCrossPlatformCoverageResolverCompletionBranches(t *testing.T) {
 		if _, err := ResolveChats(reader, []string{"upstream"}); err == nil {
 			t.Fatal("batch chat transport error missing")
 		}
+
+		assertIncomplete := func(label string, err error) {
+			t.Helper()
+			var typed *apperrors.Error
+			if !stderrors.As(err, &typed) || typed.Category != apperrors.CategoryAPI ||
+				typed.Reason != "resolution_incomplete" || !typed.Retryable {
+				t.Fatalf("%s error = %#v", label, err)
+			}
+		}
+		fullUsers := make([]any, userSearchDefaultResultLimit)
+		for i := range fullUsers {
+			fullUsers[i] = map[string]any{"userId": fmt.Sprintf("u%d", i), "name": "张三"}
+		}
+		_, err := ResolveUsers(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+			return map[string]any{"result": fullUsers}, nil
+		}), []string{"张三", "李四"}, IdentityUserID)
+		assertIncomplete("batch user", err)
+
+		fullChats := make([]any, chatResolutionPageSize)
+		for i := range fullChats {
+			fullChats[i] = map[string]any{
+				"openConversationId": fmt.Sprintf("cid-%d", i),
+				"title":              "项目群",
+			}
+		}
+		_, err = ResolveChats(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+			return map[string]any{"result": fullChats}, nil
+		}), []string{"项目群", "研发群"})
+		assertIncomplete("batch chat", err)
 	})
 
 	t.Run("public projections and internal helpers", func(t *testing.T) {

@@ -240,6 +240,14 @@ func executeChatMessages(rt *shortcut.RuntimeContext) error {
 		payload, rawItems, err = collectOneChatMessagesPage(rt, request)
 	}
 	if err != nil {
+		// Full-page collection returns its failure ledger together with a
+		// non-zero error. Publish that ledger for diagnosis, but stop before
+		// resource downloads or a requested export can look successful.
+		if payload != nil {
+			if outputErr := rt.Output(payload); outputErr != nil {
+				return outputErr
+			}
+		}
 		return err
 	}
 	if rt.Bool("download-resources") {
@@ -417,6 +425,29 @@ func collectAllChatMessages(rt *shortcut.RuntimeContext, request chatMessagesReq
 	payload["partial"] = len(failures) > 0 && len(results) > 0
 	if hasMore && nextPage != nil {
 		payload["nextPage"] = nextPage
+	}
+	if len(failures) > 0 {
+		failureStage := "pagination"
+		if stopReason == "read_failure" {
+			failureStage = "read"
+		}
+		return payload, allItems, apperrors.NewAPI(
+			fmt.Sprintf("全量消息读取未完成：%d 页成功，%d 个页面失败", pagesFetched, len(failures)),
+			apperrors.WithOperation("chat/"+request.tool),
+			apperrors.WithReason("chat_messages_incomplete"),
+			apperrors.WithOrigin("mcp_gateway"),
+			apperrors.WithFailureStage(failureStage),
+			apperrors.WithExecutionStarted(true),
+			apperrors.WithRetryable(true),
+			apperrors.WithHint("请根据 failures 和 nextPage 重试；失败 ledger 不会写入 --output 文件"),
+			apperrors.WithDetails(map[string]any{
+				"pagesFetched": pagesFetched,
+				"failedCount":  len(failures),
+				"failures":     failures,
+				"partial":      len(results) > 0,
+				"stopReason":   stopReason,
+			}),
+		)
 	}
 	return payload, allItems, nil
 }

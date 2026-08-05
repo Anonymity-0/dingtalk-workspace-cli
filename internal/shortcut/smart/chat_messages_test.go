@@ -17,9 +17,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"os"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -99,6 +101,13 @@ func TestCrossPlatformCoverageProjectChatMessageExpandsForwarded(t *testing.T) {
 type chatMessagesPagingCaller struct {
 	responses []string
 	args      []map[string]any
+	failAt    int
+}
+
+type chatMessagesFailWriter struct{}
+
+func (chatMessagesFailWriter) Write([]byte) (int, error) {
+	return 0, stderrors.New("fixture output failure")
 }
 
 func (c *chatMessagesPagingCaller) CallTool(
@@ -112,6 +121,9 @@ func (c *chatMessagesPagingCaller) CallTool(
 	}
 	c.args = append(c.args, copied)
 	index := len(c.args) - 1
+	if c.failAt > 0 && len(c.args) == c.failAt {
+		return nil, stderrors.New("fixture read failure")
+	}
 	if index >= len(c.responses) {
 		index = len(c.responses) - 1
 	}
@@ -200,8 +212,12 @@ func TestCrossPlatformCoverageChatMessagesPageAllFailsClosedOnStalledBoundary(t 
 	var output bytes.Buffer
 	root.SetOut(&output)
 	root.SetArgs([]string{"chat", "+chat-messages", "--conversation-id", "cid", "--page-all"})
-	if err := root.Execute(); err != nil {
-		t.Fatal(err)
+	err := root.Execute()
+	var typed *apperrors.Error
+	if !stderrors.As(err, &typed) || typed.Category != apperrors.CategoryAPI ||
+		typed.Reason != "chat_messages_incomplete" || !typed.Retryable ||
+		typed.ExecutionStarted == nil || !*typed.ExecutionStarted {
+		t.Fatalf("error = %#v", err)
 	}
 	var payload map[string]any
 	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
@@ -210,6 +226,52 @@ func TestCrossPlatformCoverageChatMessagesPageAllFailsClosedOnStalledBoundary(t 
 	if payload["complete"] != false || payload["failedCount"] != float64(1) ||
 		payload["stopReason"] != "pagination_error" {
 		t.Fatalf("stalled payload = %#v", payload)
+	}
+}
+
+func TestCrossPlatformCoverageChatMessagesFailedPageDoesNotExportPartialLedger(t *testing.T) {
+	t.Chdir(t.TempDir())
+	caller := &chatMessagesPagingCaller{
+		responses: []string{
+			`{"result":{"hasMore":true,"messages":[{"openMessageId":"m1","createTime":"2026-01-01 00:00:00"}]}}`,
+		},
+		failAt: 2,
+	}
+	helpers.InitDeps(caller)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+chat-messages", "--conversation-id", "cid", "--page-all",
+		"--output", "exports/partial.json",
+	})
+	err := root.Execute()
+	var typed *apperrors.Error
+	if !stderrors.As(err, &typed) || typed.Reason != "chat_messages_incomplete" {
+		t.Fatalf("error = %#v", err)
+	}
+	if _, statErr := os.Lstat("exports/partial.json"); !os.IsNotExist(statErr) {
+		t.Fatalf("partial export exists: %v", statErr)
+	}
+	var ledger map[string]any
+	if err := json.Unmarshal(output.Bytes(), &ledger); err != nil {
+		t.Fatal(err)
+	}
+	if ledger["partial"] != true || ledger["failedCount"] != float64(1) || ledger["count"] != float64(1) {
+		t.Fatalf("failure ledger = %#v", ledger)
+	}
+}
+
+func TestCrossPlatformCoverageChatMessagesFailureLedgerOutputErrorIsNonZero(t *testing.T) {
+	caller := &chatMessagesPagingCaller{responses: []string{
+		`{"result":{"hasMore":true,"messages":[{"openMessageId":"m1"}]}}`,
+	}}
+	helpers.InitDeps(caller)
+	root := newPlatformCoverageRoot()
+	root.SetOut(chatMessagesFailWriter{})
+	root.SetArgs([]string{"chat", "+chat-messages", "--conversation-id", "cid", "--page-all"})
+	if err := root.Execute(); err == nil || err.Error() != "fixture output failure" {
+		t.Fatalf("error = %v", err)
 	}
 }
 
