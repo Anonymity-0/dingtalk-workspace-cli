@@ -730,6 +730,8 @@ func newDriveCommand() *cobra.Command {
 				{Name: "part-size", Description: "分片下载的分片大小（如 8MB/16MB/1GB）"},
 				{Name: "parallel", Description: "分片下载并发数（1-8）"},
 				{Name: "no-resume", Description: "关闭断点续传"},
+				// Wukong compat alias: routes to download-version; not a download_file property.
+				{Name: "version", Description: "下载指定历史版本号（兼容别名，等价 download-version）"},
 			},
 		},
 	})
