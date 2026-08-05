@@ -143,6 +143,7 @@ overwrite=true 表示整页重建。两种模式都会写入远端白板，必�
 	updateCmd.Flags().String("part-id", "", "文档内白板 part ID（必填）")
 	updateCmd.Flags().String("source", "", "OpenNodes V1 更新请求 JSON 文件（必填）")
 	updateCmd.Flags().Bool("yes", false, "确认写入远端白板")
+	updateExampleIndex := 0
 	DeclareLeafMetadata(updateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
@@ -168,6 +169,13 @@ overwrite=true 表示整页重建。两种模式都会写入远端白板，必�
 				UseWhen:      []string{"已有 nodeId、partId 和合规 OpenNodes V1 文件，用户确认后要追加图形、文本、连接线或整页替换时"},
 				AvoidWhen:    []string{"只读取内容用 whiteboard query；创建白板卡片用 doc whiteboard insert；不要用真实节点 ID 做局部修改"},
 				Examples:     []string{"dws whiteboard update --node <DOC_ID> --part-id <WHITEBOARD_PART_ID> --source ./whiteboard.json --format json"},
+				ExampleDispositions: []contract.ExampleDisposition{{
+					Index:      &updateExampleIndex,
+					Mode:       contract.ExampleDispositionModeContractOnly,
+					ReasonCode: contract.ExampleDispositionReasonLocalState,
+					Reason:     "运行时需要用户提供可读且通过 OpenNodes V1 校验的本地 JSON 文件",
+					Reviewed:   true,
+				}},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
