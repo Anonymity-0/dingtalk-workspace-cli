@@ -12,13 +12,11 @@ metadata:
 
 # DWS 技能管理 Skill
 
-> 🧪 **EXPERIMENTAL · 试验版 / Preview** — multi 模式当前未达 stable 标准。全部 dingtalk-* skill 已通过 dispatch verifier，但接口、命名、跨 skill 引用后续可能调整；生产 / 共享环境请优先使用 mono 模式（`dws skill setup --mode mono`）。问题请提 issue 反馈。
+> **multi 为默认安装模式** — 全部 dingtalk-* skill 已通过 dispatch verifier。单 skill（mono）模式仍可用：`dws skill setup --mode mono`。问题请提 issue 反馈。
 
 ## 前置条件
 
 > **`use_skill(dws-shared)`** — 认证、全局参数、错误码与安全规则。执行网络请求前先读；本地 `skill setup` 可直接使用本 skill。
-
-<!-- SAFETY_PREAMBLE_INJECT -->
 
 > 详细命令：[skill.md](references/skill.md)。
 

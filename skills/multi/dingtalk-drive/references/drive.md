@@ -780,5 +780,5 @@ dws drive copy --node <源文件dentryUuid> --folder <目标文件夹fileId> --f
 ## 相关产品
 
 - [doc](../../dingtalk-doc/references/doc.md) — 文档内容读写/知识库空间，不是文件存储
-- [markdown](../../dingtalk-misc/references/markdown.md) — `.md` 文件的内容读取（fetch），非文件管理
+- [markdown](../../dingtalk-markdown/references/markdown.md) — `.md` 文件的内容读取（fetch），非文件管理
 - [chat](../../dingtalk-chat/references/chat.md) — 上传文件到 drive 后可通过 Markdown 语法发送图片/文件消息

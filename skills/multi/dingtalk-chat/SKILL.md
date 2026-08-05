@@ -128,7 +128,7 @@ metadata:
 ## 跨产品协作
 
 - 收件人是人名 → 先用 `dingtalk-contact` 或 `dingtalk-aisearch` 拿 `openDingTalkId` / `userId`
-- 要发图片/文件 → 先 `dt_media_upload` 上传 → `python scripts/extract_media_id.py "<URL>"` 提取 mediaId → 再用 `--media-id`
+- 要发图片/文件 → `dws chat message send --msg-type file|audio|video --file-path <path>`（已有 mediaId 的旧图片链路才用 `--msg-type image --media-id`）
 - 紧急升级（应用内/短信/电话）→ 切到 `dingtalk-misc`（`references/ding.md`）
 - 发邮件 → 切到 `dingtalk-mail`
 ## 局部意图与短流程

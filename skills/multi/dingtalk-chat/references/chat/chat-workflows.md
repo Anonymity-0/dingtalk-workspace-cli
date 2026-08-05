@@ -168,7 +168,6 @@ dws chat text translate --query "你好世界" --to en_US --format json
 |------|------|------|
 | [chat_export_messages.py](../../scripts/chat_export_messages.py) | 导出群聊消息到 JSON 文件 | `python chat_export_messages.py --query "项目冲刺" --time "2026-03-10 00:00:00"` |
 | [chat_history_with_user.py](../../scripts/chat_history_with_user.py) | 查询与某人的单聊聊天记录 | `python chat_history_with_user.py --name "张三" --time "2026-03-10 00:00:00"` |
-| [extract_media_id.py](../../scripts/extract_media_id.py) | 旧链路：从 dt_media_upload URL 提取 mediaId | 新场景不要用，文件/音视频直接 `--msg-type file|audio|video --file-path` |
 
 ## 常见错误与回退
 
