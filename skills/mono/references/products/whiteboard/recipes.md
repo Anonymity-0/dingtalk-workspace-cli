@@ -1,6 +1,7 @@
 # 钉钉白板常用 Recipes
 
-以下文件都传给。执行任何远端写入前，必须先向用户展示影响并取得明确确认；确认后
+以下各 Recipe 的 JSON 都写入本地文件，再通过 `dws whiteboard update --source <FILE.json>`
+传给白板。执行任何远端写入前，必须先向用户展示影响并取得明确确认；确认后
 才可添加 `--yes`：
 
 ```bash

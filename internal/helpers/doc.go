@@ -816,6 +816,8 @@ func newDocCommand() *cobra.Command {
   dws doc create                        创建文档
   dws doc update                        更新文档内容
   dws doc block [list|insert|update|delete]  块级编辑
+  dws doc whiteboard insert             插入空白板卡片 (返回 blockId 与白板 partId)
+  dws doc media [upload|download]       文档媒体资源 (上传可复用资源 / 下载附件)
   dws doc comment [list|create|reply|update|delete|create-inline]  文档评论管理
   dws doc export                        导出在线文档 (支持 docx / markdown / pdf，自动完成提交→轮询→下载)
   dws doc export get                    查询导出任务结果 (手动兜底)

@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -159,6 +161,192 @@ func TestDocWhiteboardInsertBuildsCardAndReturnsPersistedPartID(t *testing.T) {
 	result, _ := payload["result"].(map[string]any)
 	if result["whiteboardId"] != "part-real" {
 		t.Fatalf("output = %#v", payload)
+	}
+}
+
+// whiteboardCardBlockID 从 insert_document_block 的请求里取出 CLI 生成的卡片块 UUID，
+// 让回查桩可以用真实块 ID 组装响应。
+func whiteboardCardBlockID(t *testing.T, call whiteboardTestCall) string {
+	t.Helper()
+	raw, _ := call.args["jsonml"].(string)
+	var node []any
+	if err := json.Unmarshal([]byte(raw), &node); err != nil {
+		t.Fatalf("jsonml: %v", err)
+	}
+	if len(node) < 2 {
+		t.Fatalf("jsonml node missing attrs: %q", raw)
+	}
+	attrs, _ := node[1].(map[string]any)
+	id, _ := attrs["uuid"].(string)
+	if id == "" {
+		t.Fatalf("jsonml node missing uuid: %q", raw)
+	}
+	return id
+}
+
+// stubWhiteboardRetries 把重试节奏换成可观测的桩，返回已休眠次数的读取器。
+func stubWhiteboardRetries(t *testing.T, delays int) func() int {
+	t.Helper()
+	previousDelays := whiteboardRetryDelays
+	previousSleep := whiteboardSleep
+	stub := make([]time.Duration, delays)
+	for i := range stub {
+		stub[i] = time.Millisecond
+	}
+	slept := 0
+	whiteboardRetryDelays = stub
+	whiteboardSleep = func(time.Duration) { slept++ }
+	t.Cleanup(func() {
+		whiteboardRetryDelays = previousDelays
+		whiteboardSleep = previousSleep
+	})
+	return func() int { return slept }
+}
+
+// 插入成功后的回查如果自身失败（鉴权 / MCP 错误 / 响应解析失败），不能退化成
+// “暂未落库” 的 soft success，否则 Agent 会把硬失败误判成最终一致性，
+// 继续带着空 partId 调用 whiteboard query/update。
+func TestDocWhiteboardInsertFailsClosedWhenVerificationQueryFails(t *testing.T) {
+	tests := []struct {
+		name      string
+		queryErr  error
+		queryBody func(blockID string) string
+	}{
+		{name: "mcp call failed", queryErr: errors.New("unauthorized")},
+		{
+			name:      "response missing blocks field",
+			queryBody: func(string) string { return `{"success":true}` },
+		},
+		{
+			name:      "blocks field is not an array",
+			queryBody: func(string) string { return `{"blocks":{}}` },
+		},
+		{
+			name: "block jsonml unparsable",
+			queryBody: func(blockID string) string {
+				return fmt.Sprintf(`{"blocks":[{"blockId":%q,"jsonml":"{"}]}`, blockID)
+			},
+		},
+		{
+			name: "card node without attrs",
+			queryBody: func(blockID string) string {
+				encoded, _ := json.Marshal(`[]`)
+				return fmt.Sprintf(`{"blocks":[{"blockId":%q,"jsonml":%s}]}`, blockID, encoded)
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			blockID := ""
+			caller := &whiteboardTestCaller{format: "json"}
+			caller.response = func(call whiteboardTestCall, index int) string {
+				if index == 0 {
+					blockID = whiteboardCardBlockID(t, call)
+					return `{}`
+				}
+				if test.queryBody == nil {
+					return `{}`
+				}
+				return test.queryBody(blockID)
+			}
+			if test.queryErr != nil {
+				caller.err = func(_ whiteboardTestCall, index int) error {
+					if index == 0 {
+						return nil
+					}
+					return test.queryErr
+				}
+			}
+			installWhiteboardTestCaller(t, caller)
+			slept := stubWhiteboardRetries(t, 2)
+
+			cmd := newDocWhiteboardCommand()
+			cmd.SetArgs([]string{"insert", "--node", "doc-1", "--yes"})
+			err := cmd.Execute()
+			if err == nil || !strings.Contains(err.Error(), "回查验证失败") {
+				t.Fatalf("err = %v, want fail-closed verification error", err)
+			}
+			if !strings.Contains(err.Error(), blockID) {
+				t.Fatalf("err = %v, want inserted blockId %s carried in the message", err, blockID)
+			}
+			if len(caller.calls) != 2 || slept() != 0 {
+				t.Fatalf("calls = %d, slept = %d, want a single query and no retry on hard failure",
+					len(caller.calls), slept())
+			}
+		})
+	}
+}
+
+// 块暂不可见是真正的最终一致性：重试耗尽后仍按 soft success 返回 blockId，
+// whiteboardId 为 null。
+func TestDocWhiteboardInsertSoftSucceedsWhenBlockNotYetVisible(t *testing.T) {
+	caller := &whiteboardTestCaller{
+		format: "json",
+		response: func(_ whiteboardTestCall, index int) string {
+			if index == 0 {
+				return `{}`
+			}
+			return `{"blocks":[]}`
+		},
+	}
+	output := installWhiteboardTestCaller(t, caller)
+	slept := stubWhiteboardRetries(t, 2)
+
+	cmd := newDocWhiteboardCommand()
+	cmd.SetArgs([]string{"insert", "--node", "doc-1", "--yes"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("block-not-visible must stay a soft success: %v", err)
+	}
+	// 1 次插入 + 3 次回查（attempt 0..2），其间休眠 2 次。
+	if len(caller.calls) != 4 || slept() != 2 {
+		t.Fatalf("calls = %d, slept = %d, want retries to be exhausted", len(caller.calls), slept())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatalf("output = %q: %v", output.String(), err)
+	}
+	result, _ := payload["result"].(map[string]any)
+	whiteboardID, present := result["whiteboardId"]
+	if payload["success"] != true || !present || whiteboardID != nil {
+		t.Fatalf("output = %#v, want soft success with an explicit null whiteboardId", payload)
+	}
+	if result["blockId"] == "" || result["blockId"] == nil {
+		t.Fatalf("output = %#v, want blockId preserved on soft success", payload)
+	}
+}
+
+// 同级插入与容器内插入共用 MCP 的 referenceBlockId：同时传两者过去会让 parent
+// 静默覆盖 ref-block、而 --where 仍留在请求里污染容器插入语义。现在必须显式报错。
+func TestDocWhiteboardInsertRejectsConflictingBlockAnchors(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "ref-block with parent-block",
+			args: []string{"insert", "--node", "doc-1", "--ref-block", "b1", "--parent-block", "p1", "--yes"},
+		},
+		{
+			name: "where with parent-block",
+			args: []string{"insert", "--node", "doc-1", "--parent-block", "p1", "--where", "before", "--yes"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &whiteboardTestCaller{format: "json"}
+			installWhiteboardTestCaller(t, caller)
+
+			cmd := newDocWhiteboardCommand()
+			cmd.SetOut(&bytes.Buffer{})
+			cmd.SetErr(&bytes.Buffer{})
+			cmd.SetArgs(test.args)
+			err := cmd.Execute()
+			if err == nil {
+				t.Fatalf("args %v must be rejected as mutually exclusive", test.args)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("args %v reached a remote call: %#v", test.args, caller.calls)
+			}
+		})
 	}
 }
 

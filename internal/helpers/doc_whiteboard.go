@@ -6,6 +6,7 @@ package helpers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -19,6 +20,12 @@ const (
 	whiteboardDrawPluginType = "application/x-alidocs-plugin-draw"
 	whiteboardDefaultHeight  = 600
 )
+
+// errWhiteboardBlockPending 标记「块查询成功但目标块尚不可见」这一最终一致性场景。
+// 只有它允许插入后回查退化成 soft success；鉴权失败、MCP 错误、响应/JSONML 解析失败
+// 都是硬失败，必须 fail-closed，否则 Agent 会把它误判成最终一致性并带着空 partId
+// 继续调用 whiteboard query/update。
+var errWhiteboardBlockPending = errors.New("whiteboard card block is not visible yet")
 
 var (
 	whiteboardRetryDelays = []time.Duration{500 * time.Millisecond, time.Second, 2 * time.Second}
@@ -71,7 +78,14 @@ func queryWhiteboardCardNode(ctx context.Context, nodeID, blockID string) ([]any
 	if result, ok := data["result"].(map[string]any); ok {
 		data = result
 	}
-	blocks, _ := data["blocks"].([]any)
+	blocksField, ok := data["blocks"]
+	if !ok {
+		return nil, fmt.Errorf("list_document_blocks 响应缺少 blocks 字段")
+	}
+	blocks, ok := blocksField.([]any)
+	if !ok {
+		return nil, fmt.Errorf("list_document_blocks 响应的 blocks 字段不是数组")
+	}
 	var raw string
 	for _, block := range blocks {
 		entry, _ := block.(map[string]any)
@@ -82,7 +96,7 @@ func queryWhiteboardCardNode(ctx context.Context, nodeID, blockID string) ([]any
 		break
 	}
 	if raw == "" {
-		return nil, fmt.Errorf("块 %s 不存在或查询无结果", blockID)
+		return nil, fmt.Errorf("块 %s 不存在或查询无结果: %w", blockID, errWhiteboardBlockPending)
 	}
 	var node []any
 	if err := json.Unmarshal([]byte(raw), &node); err != nil {
@@ -125,6 +139,8 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 		"jsonml": normalized,
 		"format": "jsonml",
 	}
+	// --ref-block 与 --parent-block 已由 MarkFlagsMutuallyExclusive 保证互斥，
+	// 这里用 else if 让「只有一条定位分支会写 referenceBlockId/where」在代码上自证。
 	if v, _ := cmd.Flags().GetString("ref-block"); v != "" {
 		toolArgs["referenceBlockId"] = v
 		where, _ := cmd.Flags().GetString("where")
@@ -132,8 +148,7 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 			where = "after"
 		}
 		toolArgs["where"] = where
-	}
-	if v, _ := cmd.Flags().GetString("parent-block"); v != "" {
+	} else if v, _ := cmd.Flags().GetString("parent-block"); v != "" {
 		toolArgs["referenceBlockId"] = v
 	}
 	if cmd.Flags().Changed("index") {
@@ -158,8 +173,18 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 	persistedID := ""
 	for attempt := 0; attempt <= len(whiteboardRetryDelays); attempt++ {
 		attrs, queryErr := queryWhiteboardCardAttrs(ctx, nodeID, blockUUID)
-		if queryErr == nil {
+		switch {
+		case queryErr == nil:
+			// 块已可见；metadata.id 仍可能未落库，交给下方 soft success 分支重试。
 			persistedID = extractWhiteboardID(attrs)
+		case errors.Is(queryErr, errWhiteboardBlockPending):
+			// 块暂不可见，属于最终一致性，继续重试。
+		default:
+			// 查询本身失败（鉴权 / MCP / 响应解析），不是最终一致性：
+			// 必须 fail-closed，同时带出已插入的 blockId 供人工或后续回查复原。
+			return fmt.Errorf(
+				"白板卡片已插入 (blockId=%s)，但回查验证失败，无法确认 whiteboardId: %w",
+				blockUUID, queryErr)
 		}
 		if persistedID != "" {
 			break
@@ -195,7 +220,11 @@ func newDocWhiteboardCommand() *cobra.Command {
 		Long: `向文档插入一个空白板卡片（hetu draw card），并返回 blockId 与 whiteboardId。
 
 CLI 生成卡片块 UUID 与白板资源 ID，插入后按块 UUID 回查并验证 metadata.id 落库。
-如果回查暂时未取得白板 ID，插入仍成功并返回 blockId，whiteboardId 为 null。`,
+如果块暂不可见或 metadata.id 尚未落库，插入仍成功并返回 blockId，whiteboardId 为 null。
+如果回查本身失败（鉴权 / MCP 错误 / 响应解析失败），命令报错并在错误中带出已插入的 blockId。
+
+定位方式互斥: --ref-block（配合 --where 同级插入）与 --parent-block（配合 --index 容器内插入）
+不能同时使用。`,
 		Example: `  dws doc whiteboard insert --node DOC_ID
   dws doc whiteboard insert --node DOC_ID --ref-block BLOCK_ID --where before
   dws doc whiteboard insert --node DOC_ID --parent-block PARENT_ID --index 2`,
@@ -207,6 +236,11 @@ CLI 生成卡片块 UUID 与白板资源 ID，插入后按块 UUID 回查并验�
 	insertCmd.Flags().String("parent-block", "", "父容器 UUID（容器内插入，与 --index 配合）")
 	insertCmd.Flags().Int("index", 0, "位置索引 (从 0 开始)")
 	insertCmd.Flags().Bool("yes", false, "确认插入白板卡片")
+
+	// 同级插入与容器内插入共用 MCP 的 referenceBlockId：同时传两者会让 parent 静默
+	// 覆盖 ref-block、而 --where 仍留在请求里污染容器插入语义。显式互斥而非静默取舍。
+	insertCmd.MarkFlagsMutuallyExclusive("ref-block", "parent-block")
+	insertCmd.MarkFlagsMutuallyExclusive("where", "parent-block")
 
 	for _, name := range []string{"url", "id", "node-id", "doc-id", "file-id"} {
 		insertCmd.Flags().String(name, "", "--node 的兼容别名")
