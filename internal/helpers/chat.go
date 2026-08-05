@@ -2314,7 +2314,7 @@ func newChatCommand() *cobra.Command {
 			case "file":
 				toolArgs["msgType"] = "sampleDingtalkDriveFile"
 			default:
-				toolArgs["msgType"] = "sampleMarkdown"
+				toolArgs["msgType"] = "sampleMarkdownDX"
 			}
 			if len(userIDs) > 0 {
 				toolArgs["userIds"] = userIDs

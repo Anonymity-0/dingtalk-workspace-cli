@@ -412,6 +412,19 @@ func TestCrossPlatformCoverageChatBotRichMediaCoverage(t *testing.T) {
 		}
 	})
 
+	t.Run("direct markdown defaults to DX message type", func(t *testing.T) {
+		caller := &scriptedToolCaller{}
+		if err := runChatCoverageCommand(t, caller,
+			"message", "send-by-bot", "--robot-code", "robot", "--users", "user",
+			"--title", "title", "--text", "message",
+		); err != nil {
+			t.Fatal(err)
+		}
+		if caller.tool != "batch_send_robot_msg_to_users" || caller.args["msgType"] != "sampleMarkdownDX" {
+			t.Fatalf("direct markdown call = %s %#v", caller.tool, caller.args)
+		}
+	})
+
 	t.Run("direct image", func(t *testing.T) {
 		caller := &scriptedToolCaller{}
 		if err := runChatCoverageCommand(t, caller,
