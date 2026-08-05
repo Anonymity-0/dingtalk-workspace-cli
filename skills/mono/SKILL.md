@@ -21,14 +21,14 @@ cli_version: ">=1.0.15"
 - 危险操作必须先向用户确认，用户同意后才加 `--yes` 执行
 - 单次批量操作不超过 30 条记录
 - 所有命令必须**严格遵循**对应产品参考文档里面规定的参数格式（如：如果有参数值，则参数和参数值之间至少用一个空格隔开）
-- **脚本优先**：[scripts/](./scripts/) 下的 `python scripts/<name>.py` 已封装翻页/轮询/批量逻辑，遇到对应场景（如 AI 表格批量导入导出、AI 应用创建轮询、文档创建后写内容、钉盘目录树等）**优先调用脚本**而非手写多步命令。脚本均支持 `--dry-run` 预览、`--format json` 输出，失败时回退到手动步骤
-- **实时个人消息事件例外**：用户要监听消息、订阅事件、自动回复消息或事件驱动 Agent 时，必须走 `dws event consume ... --flatten` 长连接，不要写脚本轮询消息历史
+- **脚本只用于明确覆盖的复合任务**：[scripts/](./scripts/) 下的脚本可封装 AI 表格批量导入导出、AI 应用创建轮询、文档创建后写内容、钉盘目录树等流程；当公开 `+` Shortcut 已提供目标唯一解析、分页/部分失败 ledger 和确认语义时，优先 Shortcut。Chat 历史导出与机器人广播已完全下沉 Runtime，不再发布兼容脚本
+- **实时个人消息事件例外**：用户要监听消息、订阅事件、自动回复消息或事件驱动 Agent 时，默认走 `dws event +listen-im ...`；只有明确需要多个原始 EventKey、Filter DSL、subscribe_id 或原始 envelope 时才用 `dws event consume ... --flatten`，不要写脚本轮询消息历史
 
 ## Shortcut 与原子命令的使用原则
 
 `shortcut` 是对常用操作的高层封装，适合优先承担用户意图；产品参考文档和本 skill 负责判断意图、风险、跨产品流程和复杂参数，CLI 帮助负责声明当前版本真正可调用的命令。
 
-- 先按产品参考、意图表和 recipe 路由。存在精确覆盖场景的专用脚本/recipe 时继续遵循“脚本优先”；否则用户意图可由可见 shortcut 满足时，优先使用 `dws <service> +<verb> ... --format json`，不要手写等价的多步原子命令。
+- 先按产品参考、意图表和 recipe 路由。用户意图可由可见 Shortcut 满足时，优先使用 `dws <service> +<verb> ... --format json`，不要手写等价的多步原子命令。只有脚本明确补足 Shortcut 未覆盖的复合交付物且其安全/完整性契约仍适用时才选择脚本。
 - 公开内建 shortcut 同时进入 Runtime Schema。用 `dws schema --cli-path "<service> +<verb>" --format json` 读取 Agent 选择、参数、跨参数约束、risk/confirmation 与接口语义；`dws shortcut list --service <service> --format json` 只作为轻量批量发现入口。
 - 真正组装参数前用叶子帮助 `dws <service> +<verb> --help` 核对当前 Cobra 接受的 flags。父级 `dws <service> --help` 只能发现子命令，不能替代叶子参数帮助。
 - shortcut catalog 中 `confirmation=user_required` 时，必须先获得用户确认，确认后才加 `--yes`；`not_required` 不额外确认。
@@ -94,6 +94,7 @@ cli_version: ">=1.0.15"
 | `sheet`           | 在线电子表格(axls)：工作表 CRUD/区域读写/CSV 批量写入/行列增删/合并/查找替换/筛选视图/全局筛选/排序/下拉列表/条件格式/浮动图片/浮动图表/模板/导出 xlsx(单命令一站式) | [sheet.md](./references/products/sheet.md)                     |
 | `todo`            | 待办：创建(含优先级/截止时间/循环)/查询/修改/标记完成/删除                   | [todo.md](./references/products/todo.md)                       |
 | `wiki`            | 知识库：空间创建/详情/列表/搜索 + 成员管理 + 知识库动态查询                | [wiki.md](./references/products/wiki.md)                       |
+| `whiteboard`      | 文档内嵌白板：读取 OpenNodes、追加节点、整页重建                           | [whiteboard.md](./references/products/whiteboard.md)           |
 | `event`           | 个人 IM 事件：监听消息接收、指定发送人、已读、撤回、表情回应，NDJSON 输出（实时驱动 Agent）| [event.md](./references/products/event.md)                     |
 
 ## 意图判断决策树
@@ -120,9 +121,10 @@ cli_version: ">=1.0.15"
 用户提到"在线电子表格/钉钉表格/axls/工作表/单元格读写/合并单元格/筛选视图/导出 xlsx" → `sheet`
 用户提到"待办/TODO/任务提醒/循环待办" → `todo`
 用户提到"创建知识库/知识库列表/搜索知识库空间/wiki/团队空间/知识库成员管理/我的文档个人空间" → `wiki`
-用户提到"监听有人@我/监听单聊或群消息/监听所有单聊或群消息/监听某人发送的消息/监听消息已读/监听消息撤回/监听消息贴表情或表情回应/监听群成员加入/监听群成员退出/监听群改名或群解散/订阅个人 IM 事件/实时接收钉钉事件/个人事件流/event consume user_im_message_*/监听并自动回复消息/驱动 Agent 处理消息" → `event`
+用户提到"文档内嵌白板/画布/OpenNodes/白板节点/连接线/整页重建白板" → `whiteboard`；创建空白板卡片先走 `doc whiteboard insert`
+用户提到"监听有人@我/监听单聊或群消息/监听所有单聊或群消息/监听某人发送的消息/监听消息已读/监听消息撤回/监听消息贴表情或表情回应/订阅个人 IM 事件/实时接收钉钉事件/监听并自动回复消息/驱动 Agent 处理消息" → `event +listen-im`；群成员加入/退出、群改名/解散或明确原始 EventKey/Filter DSL → `event consume`
 
-事件监听中，同一目标、同一过滤条件的多个兼容事件优先生成一个 `dws event consume <event_key> [event_key...] --flatten`；不同用户、不同群或不同过滤条件拆成多个 consume 进程。
+普通消息、reaction、已读、撤回监听优先由一个 `dws event +listen-im` 进程表达目标；不同用户、不同群或不同过滤条件拆成独立进程。只有高级事件控制才生成 `dws event consume <event_key> [event_key...] --flatten`。
 
 关键区分: aitable(数据表格) vs todo(待办任务)
 关键区分: report(钉钉日志/日报周报) vs todo(待办任务)
@@ -292,7 +294,7 @@ Schema 与 Help 冲突是**契约漂移**，不得静默猜测或把两边字段
 `source` 表示最终命令 identity 的来源，不表示运行时 backing；helper/local/MCP 实现机制读取 `interface_mode`、`availability` 和 provenance，不要假定 `dev.*` 必然是 `source=mcp:<server>`，也不要假定本地命令必然是 `source=cobra`。
 
 ## 错误处理
-1. 遇到错误，加 `--verbose` 重试一次
+1. 先读取 JSON 错误的 `retryable`、`retry_after_seconds`、`next_retry_at`、`hint` 和 `actions`；只有明确 `retryable=true` 时才按服务端节奏做一次有界重试。缺少重试语义时加 `--verbose` 收集诊断后停止
 2. 若 stderr 出现 `RECOVERY_EVENT_ID=<event_id>`，优先按 [recovery-guide.md](./references/recovery-guide.md) 执行 recovery 闭环
 3. 仍然失败，报告完整错误信息给用户，禁止自行尝试替代方案
 4. 认证失败时，参考 [global-reference.md](./references/global-reference.md) 中的认证章节处理

@@ -1,8 +1,12 @@
+// Copyright 2026 Alibaba Group
+// Licensed under the Apache License, Version 2.0 (the "License");
+
 package helpers
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,34 +16,24 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
-// doc_whiteboard.go — `dws doc whiteboard insert` 白板卡片命令。
-// 关联 SPEC: .qoder/docs/specs/doc-whiteboard-commands.md
-//
-// insert: 生成 blockUuid + whiteboardId(partId) → 插入固定 hetu draw card JSONML
-//         → 回查验证 metadata.id 落库（线上 autoseed 只认已带 metadata.id 的
-//         card，无 id 会被直接跳过，因此 id 必须客户端生成）。回查按
-//         whiteboardRetryDelays 退避重试，最终拿不到时 fail-soft：输出
-//         blockId + WARN，不报错。
-// 删除白板卡片无专用命令：与普通块一致，走 `dws doc block delete`。
+const (
+	whiteboardDrawPluginType = "application/x-alidocs-plugin-draw"
+	whiteboardDefaultHeight  = 600
+)
 
-const whiteboardDrawPluginType = "application/x-alidocs-plugin-draw"
+// errWhiteboardBlockPending 标记「块查询成功但目标块尚不可见」这一最终一致性场景。
+// 只有它允许插入后回查退化成 soft success；鉴权失败、MCP 错误、响应/JSONML 解析失败
+// 都是硬失败，必须 fail-closed，否则 Agent 会把它误判成最终一致性并带着空 partId
+// 继续调用 whiteboard query/update。
+var errWhiteboardBlockPending = errors.New("whiteboard card block is not visible yet")
 
-// whiteboardDefaultHeight 是现网 draw card 的默认卡片高度；card 恒带数字
-// height 是 seed 依赖的合法形态。
-const whiteboardDefaultHeight = 600
+var (
+	whiteboardRetryDelays = []time.Duration{500 * time.Millisecond, time.Second, 2 * time.Second}
+	whiteboardSleep       = time.Sleep
+	whiteboardJSONMarshal = json.Marshal
+	prepareWhiteboardCard = prepareJsonMLNode
+)
 
-// whiteboardRetryDelays 是回查 metadata.id 的重试退避序列（首查后最多重试 len 次）。
-// 包级变量仅供测试注入，不暴露为配置。
-var whiteboardRetryDelays = []time.Duration{500 * time.Millisecond, time.Second, 2 * time.Second}
-
-// whiteboardSleep 供测试替换以避免真实等待。
-var whiteboardSleep = time.Sleep
-
-// buildWhiteboardCardJSONML 生成固定的空白板卡片 JSONML（单行 JSON 字符串）。
-// blockUUID 与 whiteboardID(partId) 均由客户端显式提供：
-//   - 白板定位依赖 uuid，不能依赖服务端补全；
-//   - 服务端 autoseed 对缺 metadata.id 的 hetu card 直接跳过（不建 part
-//     也不回填 id），因此 partId 必须随 card 一起写入。
 func buildWhiteboardCardJSONML(blockUUID, whiteboardID string) string {
 	node := []any{
 		"card",
@@ -54,20 +48,11 @@ func buildWhiteboardCardJSONML(blockUUID, whiteboardID string) string {
 	}
 	out, err := whiteboardJSONMarshal(node)
 	if err != nil {
-		// 固定模板 marshal 不应失败；防御性兜底。
 		return ""
 	}
 	return string(out)
 }
 
-// whiteboardJSONMarshal 可在测试中注入失败路径。
-var whiteboardJSONMarshal = json.Marshal
-
-// prepareWhiteboardJSONML 可在测试中注入校验失败路径。
-var prepareWhiteboardJSONML = prepareJsonMLNode
-
-// extractWhiteboardID 从 card attrs 中提取 metadata.id（白板资源 ID）。
-// 缺失 / 非 string / 空串均返回 ""。
 func extractWhiteboardID(attrs map[string]any) string {
 	meta, _ := attrs["metadata"].(map[string]any)
 	if meta == nil {
@@ -77,13 +62,8 @@ func extractWhiteboardID(attrs map[string]any) string {
 	return id
 }
 
-// queryWhiteboardCardNode 调用 list_document_blocks 读取指定块的 JSONML 子树，
-// 返回解析后的节点数组。响应兼容外层 {"result":{...}} 包裹
-// （与 parseAttachmentUploadInfo 同策略）。
-// 注意：服务端对 blockId 的过滤可能不生效（返回全文 blocks 列表），
-// 因此这里按 blockId 精确匹配目标块，不盲取 blocks[0]。
 func queryWhiteboardCardNode(ctx context.Context, nodeID, blockID string) ([]any, error) {
-	text, err := callMCPToolReturnText(ctx, "list_document_blocks", map[string]any{
+	text, err := callMCPToolReturnTextOnServer(ctx, "doc", "list_document_blocks", map[string]any{
 		"nodeId":  nodeID,
 		"blockId": blockID,
 		"format":  "jsonml",
@@ -98,10 +78,17 @@ func queryWhiteboardCardNode(ctx context.Context, nodeID, blockID string) ([]any
 	if result, ok := data["result"].(map[string]any); ok {
 		data = result
 	}
-	blocks, _ := data["blocks"].([]any)
+	blocksField, ok := data["blocks"]
+	if !ok {
+		return nil, fmt.Errorf("list_document_blocks 响应缺少 blocks 字段")
+	}
+	blocks, ok := blocksField.([]any)
+	if !ok {
+		return nil, fmt.Errorf("list_document_blocks 响应的 blocks 字段不是数组")
+	}
 	var raw string
-	for _, b := range blocks {
-		entry, _ := b.(map[string]any)
+	for _, block := range blocks {
+		entry, _ := block.(map[string]any)
 		if entry == nil || entry["blockId"] != blockID {
 			continue
 		}
@@ -109,7 +96,7 @@ func queryWhiteboardCardNode(ctx context.Context, nodeID, blockID string) ([]any
 		break
 	}
 	if raw == "" {
-		return nil, fmt.Errorf("块 %s 不存在或查询无结果", blockID)
+		return nil, fmt.Errorf("块 %s 不存在或查询无结果: %w", blockID, errWhiteboardBlockPending)
 	}
 	var node []any
 	if err := json.Unmarshal([]byte(raw), &node); err != nil {
@@ -118,7 +105,6 @@ func queryWhiteboardCardNode(ctx context.Context, nodeID, blockID string) ([]any
 	return node, nil
 }
 
-// queryWhiteboardCardAttrs 返回指定块 JSONML 节点的 attrs map。
 func queryWhiteboardCardAttrs(ctx context.Context, nodeID, blockID string) (map[string]any, error) {
 	node, err := queryWhiteboardCardNode(ctx, nodeID, blockID)
 	if err != nil {
@@ -141,12 +127,9 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 	}
 
 	blockUUID := uuid.New().String()
-	// whiteboardId(partId) 同样客户端生成：现网 partId 为 UUID 形 8-4-4-4-12 hex，
-	// uuid v4 形状兼容。
 	whiteboardID := uuid.New().String()
 	element := buildWhiteboardCardJSONML(blockUUID, whiteboardID)
-	// 固定模板也过既有校验管线，防御 schema 演进导致的静默漂移。
-	normalized, err := prepareWhiteboardJSONML(cmd, element)
+	normalized, err := prepareWhiteboardCard(cmd, element)
 	if err != nil {
 		return fmt.Errorf("内部错误: 白板卡片模板未通过 JSONML 校验: %w", err)
 	}
@@ -156,6 +139,8 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 		"jsonml": normalized,
 		"format": "jsonml",
 	}
+	// --ref-block 与 --parent-block 已由 MarkFlagsMutuallyExclusive 保证互斥，
+	// 这里用 else if 让「只有一条定位分支会写 referenceBlockId/where」在代码上自证。
 	if v, _ := cmd.Flags().GetString("ref-block"); v != "" {
 		toolArgs["referenceBlockId"] = v
 		where, _ := cmd.Flags().GetString("where")
@@ -163,44 +148,43 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 			where = "after"
 		}
 		toolArgs["where"] = where
-	}
-	if v, _ := cmd.Flags().GetString("parent-block"); v != "" {
+	} else if v, _ := cmd.Flags().GetString("parent-block"); v != "" {
 		toolArgs["referenceBlockId"] = v
 	}
 	if cmd.Flags().Changed("index") {
-		idx, _ := cmd.Flags().GetInt("index")
-		toolArgs["index"] = idx
+		index, _ := cmd.Flags().GetInt("index")
+		toolArgs["index"] = index
 	}
 
 	if deps.Caller.DryRun() {
-		return deps.Out.PrintJSON(map[string]any{
-			"dry_run":      true,
-			"executed":     false,
-			"preview_kind": "plan",
-			"tool":         "insert_document_block",
-			"arguments": map[string]any{
-				"nodeId":           toolArgs["nodeId"],
-				"format":           "jsonml",
-				"referenceBlockId": toolArgs["referenceBlockId"],
-				"where":            toolArgs["where"],
-				"index":            toolArgs["index"],
-			},
-			"note": "dry-run：将生成 blockUuid/whiteboardId 并插入 hetu draw card，随后回查 metadata.id",
-		})
+		return callMCPToolOnServer("doc", "insert_document_block", toolArgs)
 	}
 
-	ctx := context.Background()
+	// 用户确认由 DeclareLeafMetadata(user_required) 的 ConfirmSafety 门控接管：
+	// 推迟到首次 deps.Caller.CallTool（下方 insert_document_block），避免与
+	// 门控双读 stdin。--yes / --dry-run 经 confirmationBypass 跳过。
+	ctx := cmd.Context()
 	deps.Out.PrintProgress("[1/2] 插入白板卡片...")
-	if _, err := callMCPToolReturnText(ctx, "insert_document_block", toolArgs); err != nil {
+	if _, err := callMCPToolReturnTextOnServer(ctx, "doc", "insert_document_block", toolArgs); err != nil {
 		return err
 	}
 
 	deps.Out.PrintProgress("[2/2] 验证白板资源 ID 落库...")
 	persistedID := ""
 	for attempt := 0; attempt <= len(whiteboardRetryDelays); attempt++ {
-		attrs, qErr := queryWhiteboardCardAttrs(ctx, nodeID, blockUUID)
-		if qErr == nil {
+		attrs, queryErr := queryWhiteboardCardAttrs(ctx, nodeID, blockUUID)
+		switch {
+		case queryErr == nil:
+			// 块已可见；metadata.id 仍可能未落库，交给下方 soft success 分支重试。
 			persistedID = extractWhiteboardID(attrs)
+		case errors.Is(queryErr, errWhiteboardBlockPending):
+			// 块暂不可见，属于最终一致性，继续重试。
+		default:
+			// 查询本身失败（鉴权 / MCP / 响应解析），不是最终一致性：
+			// 必须 fail-closed，同时带出已插入的 blockId 供人工或后续回查复原。
+			return fmt.Errorf(
+				"白板卡片已插入 (blockId=%s)，但回查验证失败，无法确认 whiteboardId: %w",
+				blockUUID, queryErr)
 		}
 		if persistedID != "" {
 			break
@@ -212,21 +196,18 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 
 	result := map[string]any{"blockId": blockUUID}
 	if persistedID == "" {
-		// fail-soft：插入已成功，不以错误退出。
 		result["whiteboardId"] = nil
 		deps.Out.PrintWarning(fmt.Sprintf(
 			"白板已插入但未验证到 whiteboardId 落库，可稍后回查: dws doc block list --node %s --content-format jsonml --block-id %s",
 			nodeID, blockUUID))
 	} else {
-		// 输出落库真值（正常应等于客户端生成值，服务端重写时以服务端为准）。
 		result["whiteboardId"] = persistedID
 	}
 	return deps.Out.PrintJSON(map[string]any{"success": true, "result": result})
 }
 
-// newDocWhiteboardCommand 构建 `dws doc whiteboard` 命令组。
 func newDocWhiteboardCommand() *cobra.Command {
-	whiteboardCmd := &cobra.Command{
+	root := &cobra.Command{
 		Use:   "whiteboard",
 		Short: "白板卡片管理",
 		Long:  `管理钉钉文档中的白板卡片：插入空白板并获取白板资源 ID。删除白板卡片请使用 dws doc block delete。`,
@@ -238,19 +219,14 @@ func newDocWhiteboardCommand() *cobra.Command {
 		Short: "插入白板卡片",
 		Long: `向文档插入一个空白板卡片（hetu draw card），并返回 blockId 与 whiteboardId。
 
-流程:
-  1. 生成卡片 uuid 与白板资源 ID（metadata.id），插入固定白板卡片 JSONML (insert_document_block)
-  2. 按 uuid 回查块 (list_document_blocks)，验证 metadata.id 落库后返回
+CLI 生成卡片块 UUID 与白板资源 ID，插入后按块 UUID 回查并验证 metadata.id 落库。
+如果块暂不可见或 metadata.id 尚未落库，插入仍成功并返回 blockId，whiteboardId 为 null。
+如果回查本身失败（鉴权 / MCP 错误 / 响应解析失败），命令报错并在错误中带出已插入的 blockId。
 
-输出: {"success":true,"result":{"blockId":"<uuid>","whiteboardId":"<id>"}}
-若未验证到 whiteboardId 落库，命令仍成功返回 blockId（whiteboardId 为 null），可稍后回查。`,
-		Example: `  # 在文档末尾插入白板
-  dws doc whiteboard insert --node DOC_ID
-
-  # 在指定块之前插入
+定位方式互斥: --ref-block（配合 --where 同级插入）与 --parent-block（配合 --index 容器内插入）
+不能同时使用。`,
+		Example: `  dws doc whiteboard insert --node DOC_ID
   dws doc whiteboard insert --node DOC_ID --ref-block BLOCK_ID --where before
-
-  # 在容器内指定位置插入
   dws doc whiteboard insert --node DOC_ID --parent-block PARENT_ID --index 2`,
 		RunE: runWhiteboardInsert,
 	}
@@ -259,25 +235,22 @@ func newDocWhiteboardCommand() *cobra.Command {
 	insertCmd.Flags().String("where", "", "插入方向: before / after (默认 after，配合 --ref-block)")
 	insertCmd.Flags().String("parent-block", "", "父容器 UUID（容器内插入，与 --index 配合）")
 	insertCmd.Flags().Int("index", 0, "位置索引 (从 0 开始)")
+	insertCmd.Flags().Bool("yes", false, "确认插入白板卡片")
 
-	// --node 的隐藏别名（与 doc 其他子命令对齐）
-	for _, c := range []*cobra.Command{insertCmd} {
-		c.Flags().String("url", "", "--node 的别名")
-		c.Flags().String("id", "", "--node 的别名")
-		c.Flags().String("node-id", "", "--node 的别名")
-		c.Flags().String("doc-id", "", "--node 的别名")
-		c.Flags().String("file-id", "", "--node 的别名 (跨产品兼容 drive)")
-		_ = c.Flags().MarkHidden("url")
-		_ = c.Flags().MarkHidden("id")
-		_ = c.Flags().MarkHidden("node-id")
-		_ = c.Flags().MarkHidden("doc-id")
-		_ = c.Flags().MarkHidden("file-id")
+	// 同级插入与容器内插入共用 MCP 的 referenceBlockId：同时传两者会让 parent 静默
+	// 覆盖 ref-block、而 --where 仍留在请求里污染容器插入语义。显式互斥而非静默取舍。
+	insertCmd.MarkFlagsMutuallyExclusive("ref-block", "parent-block")
+	insertCmd.MarkFlagsMutuallyExclusive("where", "parent-block")
+
+	for _, name := range []string{"url", "id", "node-id", "doc-id", "file-id"} {
+		insertCmd.Flags().String(name, "", "--node 的兼容别名")
+		_ = insertCmd.Flags().MarkHidden(name)
 	}
 
 	DeclareLeafMetadata(insertCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "non_idempotent",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -287,28 +260,25 @@ func newDocWhiteboardCommand() *cobra.Command {
 				CLIPath:        "doc whiteboard insert",
 				PrimaryCLIPath: "doc whiteboard insert",
 			},
-			Description: "向文档插入空白板卡片并返回 blockId/whiteboardId",
-			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Description: "向文档插入空白板卡片并返回块 ID 与白板 part ID",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
-				Reason:       "Client generates card JSONML, calls insert_document_block, then verifies metadata.id via list_document_blocks.",
+				Reason:       "命令生成卡片与白板 UUID、插入规范 JSONML，再回读块验证 metadata.id，不能绑定为单一 interface_ref",
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "在文档中插入空白板卡片",
-				UseWhen:      []string{"需要在钉钉文档正文插入空白板（hetu draw）卡片时"},
-				AvoidWhen:    []string{"删除白板卡片请用 doc block delete；普通附件插入用 doc media insert"},
-				Examples:     []string{"dws doc whiteboard insert --node <DOC_ID>"},
+				AgentSummary: "经用户确认后向钉钉文档插入空白板卡片并返回块 ID 与白板 part ID",
+				UseWhen:      []string{"目标文档还没有可操作白板，需要创建空白板卡片并取得后续 query/update 使用的 partId 时"},
+				AvoidWhen:    []string{"已有白板只需读取或编辑时使用 whiteboard query/update；删除卡片使用 doc block delete"},
+				Examples:     []string{"dws doc whiteboard insert --node <DOC_ID> --format json"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
-				{Name: "ref-block", Property: "referenceBlockId"},
-				{Name: "where", Property: "where"},
-				{Name: "parent-block", Property: "parentBlockId"},
-				{Name: "index", Property: "index", InterfaceType: "integer"},
 			},
 		},
 	})
-	whiteboardCmd.AddCommand(insertCmd)
-	return whiteboardCmd
+
+	root.AddCommand(insertCmd)
+	return root
 }

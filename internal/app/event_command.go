@@ -99,6 +99,7 @@ func newEventCommand() *cobra.Command {
 		RunE:              func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
 	cmd.AddCommand(
+		newEventListenIMCommand(),
 		newEventConsumeCommand(),
 		newEventListCommand(),
 		newEventSchemaCommand(),

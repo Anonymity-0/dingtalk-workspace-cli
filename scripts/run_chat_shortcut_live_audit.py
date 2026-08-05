@@ -306,6 +306,23 @@ def reaction_message_count(value: Any, *, upper: bool) -> int:
     return count
 
 
+def primary_projection_for_message_metrics(value: Any) -> Any:
+    """Select one canonical projected collection for message-level metrics.
+
+    Some stable Shortcut payloads publish compatibility aliases such as
+    ``messages`` and ``items`` with the same rows. Walking the entire envelope
+    would count reactions and thread IDs once per alias and report a false
+    projection mismatch even though the lower and upper message sets agree.
+    """
+    if not isinstance(value, dict):
+        return value
+    for key in ("messages", "replies", "results", "items"):
+        items = value.get(key)
+        if isinstance(items, list):
+            return items
+    return value
+
+
 def thread_message_count(value: Any, *, upper: bool) -> int:
     keys = {"threadId"} if upper else {
         "openConvThreadId",
@@ -393,9 +410,10 @@ def summarize_capture(capture: Capture) -> dict[str, Any]:
             else 0
         )
     exact_passthrough = bool(capture.raw_calls and upper == raw)
-    upper_reactions = reaction_message_count(upper, upper=True)
+    upper_message_projection = primary_projection_for_message_metrics(upper)
+    upper_reactions = reaction_message_count(upper_message_projection, upper=True)
     lower_reactions = reaction_message_count(raw, upper=False)
-    upper_threads = thread_message_count(upper, upper=True)
+    upper_threads = thread_message_count(upper_message_projection, upper=True)
     lower_threads = thread_message_count(raw, upper=False)
     upper_pagination = pagination_meta(upper)
     lower_pagination = pagination_meta(pagination_raw)

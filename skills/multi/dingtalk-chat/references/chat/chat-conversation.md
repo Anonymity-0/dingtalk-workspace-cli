@@ -6,9 +6,14 @@
 
 用于获取会话基础信息、全部会话/置顶会话列表、会话置顶、免打扰、隐藏、红点、已读未读、清空聊天记录、自定义会话分组和智能会话分组。
 
+- <!-- dws-intent: chat.conversation.list-top -->查看置顶会话默认使用 `dws chat +conversation-list-top`；
+  原子 `list-top-conversations` 只在需要原始响应时作为 fallback。
+- <!-- dws-intent: chat.read.conversation -->取得目标会话后读取消息默认使用 `dws chat +chat-messages`；
+  不要回到原子 `message list` 作为普通路线。
+
 ## 必读约束
 
-- 会话状态类命令通常需要 `openConversationId`。群聊可由 `chat search` 获取，单聊可由 `chat conversation-info --user/--open-dingtalk-id` 获取。
+- 会话状态类命令通常需要 `openConversationId`。群聊只用 `+chat-search --query` 获取唯一候选，单聊可由 `chat conversation-info --user/--open-dingtalk-id` 获取。
 - `set-top` 是会话置顶；`message set-top-msg` 是会话内消息置顶，二者不能混用。
 - `clear-messages` 只清空当前用户视角的消息，不影响其他成员。
 - 智能分组规则中的成员使用 openDingTalkId；如果用户只给姓名，先用 `aisearch person --dimension name` 获取。
@@ -29,8 +34,8 @@ dws chat conversation-info --open-dingtalk-id <openDingTalkId> --format json
 
 | 命令 | 用途 | 参数 |
 |------|------|------|
-| `list-all-conversations` | 分页获取当前用户全部会话 | 可选 `--limit` `--cursor` `--exclude-muted` |
-| `list-top-conversations` | 获取置顶会话列表 | 可选 `--limit` `--cursor` `--exclude-muted` |
+| `+conversation-list` | 获取当前用户会话 | 要求“全部”时加 `--page-all`；检查 `complete` / `failures` |
+| `+conversation-list-top` | 获取置顶会话列表 | 可选 `--limit` `--cursor` `--exclude-muted`；使用稳定 `conversations[]` |
 | `message list-unread-conversations` | 获取未读会话列表 | 可选 `--count` `--exclude-muted` |
 | `clear-red-point` | 清除指定会话红点 | `--conversation-id`，别名 `--id` / `--chat` |
 | `clear-all-red-point` | 清除所有会话红点，一键全部已读 | 无参数 |
@@ -44,8 +49,11 @@ dws chat conversation-info --open-dingtalk-id <openDingTalkId> --format json
 | `set-top` | 设置/取消会话置顶 | `--conversation-id`；默认置顶，`--off` 取消 |
 | `mute` | 开启/关闭会话免打扰 | `--conversation-id`；默认开启，`--off` 关闭 |
 | `hide` | 隐藏会话 | `--conversation-id` |
-| `mute-at-all` | 关闭/恢复 @所有人通知 | `--conversation-id`；默认关闭，`--off` 恢复 |
-| `mute-red-envelope` | 关闭/恢复红包通知 | `--conversation-id`；默认关闭，`--off` 恢复 |
+| `mute-at-all` | 关闭/恢复 @所有人通知 | `--conversation-id`；默认关闭，`--off` 恢复；必须先开启会话总免打扰 |
+| `mute-red-envelope` | 关闭/恢复红包通知 | `--conversation-id`；默认关闭，`--off` 恢复；必须先开启会话总免打扰 |
+
+若连续操作两个子开关，优先操作红包通知；恢复 @所有人通知后，平台可能清除子开关所需的
+总免打扰状态，此时要先重新开启总免打扰，再操作红包通知。
 
 ```bash
 dws chat set-top --conversation-id <openConversationId>
@@ -108,8 +116,8 @@ dws chat set-top --conversation-id <openConversationId> --format json
 ### 查看置顶会话并拉消息
 
 ```bash
-dws chat list-top-conversations --limit 100 --format json
-dws chat message list --group <openConversationId> --time "2026-03-10 00:00:00" --direction older --format json
+dws chat +conversation-list-top --limit 100 --format json
+dws chat +chat-messages --group <openConversationId> --time "2026-03-10 00:00:00" --direction older --format json
 ```
 
 ### 会话分组
@@ -134,7 +142,7 @@ dws chat category create-smart --name "重点群" --keywords "重点" --members 
 ## 常见错误与回退
 
 - 用户说“置顶消息”：用 `message set-top-msg`，不是 `chat set-top`。
-- 用户说“置顶会话”：用 `chat set-top` 或 `list-top-conversations`。
+- 用户说“置顶会话”：设置/取消用 `chat set-top`，查看列表用 `+conversation-list-top`。
 - 单聊没有会话 ID：先 `conversation-info --user` 或 `--open-dingtalk-id`。
 - 清空聊天记录前必须确认目标会话；该操作只影响当前用户视角。
 - 智能分组没有匹配条件：至少确认分组名称；关键词和成员规则不明确时先向用户确认，不要自行猜成员。

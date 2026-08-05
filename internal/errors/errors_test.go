@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-func TestExitCodeByCategory(t *testing.T) {
+func TestCrossPlatformCoverageExitCodeByCategory(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -42,17 +42,24 @@ func TestExitCodeByCategory(t *testing.T) {
 	}
 }
 
-func TestPrintJSON(t *testing.T) {
+func TestCrossPlatformCoveragePrintJSON(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder
 	if err := PrintJSON(&b, NewValidation(
 		"bad flag",
 		WithReason("missing_required_flag"),
+		WithOrigin("client"),
+		WithFailureStage("request_validation"),
+		WithExecutionStarted(false),
 		WithHint("Pass the required flag and retry."),
 		WithRetryable(true),
 		WithActions("dws schema doc.create_document", "retry command"),
 		WithSnapshot("/tmp/dws-recovery/snapshot.json"),
+		WithDetails(map[string]any{
+			"type":  "resolution",
+			"query": "项目群",
+		}),
 	)); err != nil {
 		t.Fatalf("PrintJSON() error = %v", err)
 	}
@@ -67,6 +74,11 @@ func TestPrintJSON(t *testing.T) {
 	if !strings.Contains(got, "\"reason\": \"missing_required_flag\"") {
 		t.Fatalf("expected reason in output, got %q", got)
 	}
+	if !strings.Contains(got, "\"origin\": \"client\"") ||
+		!strings.Contains(got, "\"stage\": \"request_validation\"") ||
+		!strings.Contains(got, "\"execution_started\": false") {
+		t.Fatalf("expected failure provenance in output, got %q", got)
+	}
 	if !strings.Contains(got, "\"retryable\": true") {
 		t.Fatalf("expected retryable in output, got %q", got)
 	}
@@ -75,6 +87,9 @@ func TestPrintJSON(t *testing.T) {
 	}
 	if !strings.Contains(got, "\"snapshot_path\": \"/tmp/dws-recovery/snapshot.json\"") {
 		t.Fatalf("expected snapshot path in output, got %q", got)
+	}
+	if !strings.Contains(got, "\"type\": \"resolution\"") || !strings.Contains(got, "\"query\": \"项目群\"") {
+		t.Fatalf("expected structured details in output, got %q", got)
 	}
 }
 
@@ -171,7 +186,7 @@ func TestCrossPlatformCoverageRetryTimingOptionsIgnoreInvalidValues(t *testing.T
 	}
 }
 
-func TestPrintJSON_AvailableFlags(t *testing.T) {
+func TestCrossPlatformCoveragePrintJSON_AvailableFlags(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder
@@ -192,7 +207,7 @@ func TestPrintJSON_AvailableFlags(t *testing.T) {
 	}
 }
 
-func TestPrintHuman(t *testing.T) {
+func TestCrossPlatformCoveragePrintHuman(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder
@@ -201,6 +216,9 @@ func TestPrintHuman(t *testing.T) {
 		WithReason("missing_required_flag"),
 		WithOperation("calendar.list"),
 		WithServerKey("calendar"),
+		WithOrigin("client"),
+		WithFailureStage("request_validation"),
+		WithExecutionStarted(false),
 		WithHint("Pass the required flag and retry."),
 		WithRetryable(true),
 		WithActions("retry command"),
@@ -228,9 +246,19 @@ func TestPrintHuman(t *testing.T) {
 	if !strings.Contains(got, "Retryable: true") {
 		t.Fatalf("expected retryable marker in output, got %q", got)
 	}
+	for _, want := range []string{"Origin: client", "Stage: request_validation", "Execution Started: false"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in verbose output, got %q", want, got)
+		}
+	}
+
+	withoutDetails := NewValidation("empty", WithDetails(nil)).(*Error)
+	if withoutDetails.Details != nil {
+		t.Fatalf("empty details were retained: %#v", withoutDetails.Details)
+	}
 }
 
-func TestPrintHuman_NormalMode(t *testing.T) {
+func TestCrossPlatformCoveragePrintHuman_NormalMode(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder
@@ -254,7 +282,7 @@ func TestPrintHuman_NormalMode(t *testing.T) {
 	}
 }
 
-func TestPrintJSONIncludesServerDiag(t *testing.T) {
+func TestCrossPlatformCoveragePrintJSONIncludesServerDiag(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder
@@ -289,7 +317,7 @@ func TestPrintJSONIncludesServerDiag(t *testing.T) {
 	}
 }
 
-func TestPrintHumanIncludesServerGuidance(t *testing.T) {
+func TestCrossPlatformCoveragePrintHumanIncludesServerGuidance(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder
@@ -313,7 +341,7 @@ func TestPrintHumanIncludesServerGuidance(t *testing.T) {
 	}
 }
 
-func TestPrintJSONIncludesRPCCodeAndData(t *testing.T) {
+func TestCrossPlatformCoveragePrintJSONIncludesRPCCodeAndData(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder
@@ -335,7 +363,7 @@ func TestPrintJSONIncludesRPCCodeAndData(t *testing.T) {
 	}
 }
 
-func TestPrintHumanIncludesRPCCode_Debug(t *testing.T) {
+func TestCrossPlatformCoveragePrintHumanIncludesRPCCode_Debug(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder
@@ -356,7 +384,7 @@ func TestPrintHumanIncludesRPCCode_Debug(t *testing.T) {
 	}
 }
 
-func TestPrintHumanHidesRPCCode_Normal(t *testing.T) {
+func TestCrossPlatformCoveragePrintHumanHidesRPCCode_Normal(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder

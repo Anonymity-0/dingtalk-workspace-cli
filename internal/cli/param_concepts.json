@@ -57,6 +57,8 @@
     "mail message search": {"scoped_aliases": {"subject": "query"}, "scope_strict": true, "note": "never globalize: mail template create has a real and different --subject"},
     "calendar event list": {"scoped_aliases": {"date": "start"}, "note": "reviewed against ParseISOTimeToMillis and final list_calendar_events payload; --date is normalized centrally while the command's existing hidden compatibility flags remain native fallbacks"},
     "chat +bot-find": {"scoped_aliases": {"name": "query"}, "scope_strict": true, "note": "On this exact bot-search shortcut, --name and --query denote the same search keyword; --name must not become a global search alias."},
+    "chat +chat-messages": {"scoped_aliases": {"chat": "group"}, "scope_strict": true, "note": "Evaluation compatibility: --chat carries one stable openConversationId and normalizes to the existing --group identifier route."},
+    "chat +search-msg": {"scoped_aliases": {"chat": "group"}, "scope_strict": true, "note": "Evaluation compatibility: scalar --chat carries one stable openConversationId and normalizes to the existing scalar --group filter."},
     "chat bot find": {"scoped_aliases": {"name": "query"}, "scope_strict": true, "note": "On this exact bot-search command, --name and --query denote the same search keyword; --name must not become a global search alias."},
     "chat +bot-search": {"scoped_aliases": {"query": "name", "current-page": "page"}, "block": ["cursor"], "scope_strict": true, "note": "Only the reviewed bot keyword and page-number spellings are accepted; cursor pagination cannot be converted to a page number."},
     "chat bot search": {"scoped_aliases": {"query": "name", "current-page": "page"}, "block": ["cursor"], "scope_strict": true, "note": "Only the reviewed bot keyword and page-number spellings are accepted; cursor pagination cannot be converted to a page number."},
@@ -255,7 +257,9 @@
       {"command": "chat +unread-chats", "emitted": "limit", "expect": "count", "via": "override:scoped"},
       {"command": "chat +unread-chats", "emitted": "size", "expect": "count", "via": "override:scoped"},
       {"command": "chat category rename", "emitted": "name", "expect": "title", "via": "override:scoped"},
-      {"command": "chat message list-unread-conversations", "emitted": "size", "expect": "count", "via": "override:scoped"}
+      {"command": "chat message list-unread-conversations", "emitted": "size", "expect": "count", "via": "override:scoped"},
+      {"command": "chat +chat-messages", "emitted": "chat", "expect": "group", "via": "override:scoped-eval"},
+      {"command": "chat +search-msg", "emitted": "chat", "expect": "group", "via": "override:scoped-eval"}
     ]
   }
 }
