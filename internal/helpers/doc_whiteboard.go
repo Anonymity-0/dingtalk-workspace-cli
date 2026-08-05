@@ -168,9 +168,10 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 
 	if deps.Caller.DryRun() {
 		return deps.Out.PrintJSON(map[string]any{
-			"dry_run":  true,
-			"executed": false,
-			"tool":     "insert_document_block",
+			"dry_run":      true,
+			"executed":     false,
+			"preview_kind": "plan",
+			"tool":         "insert_document_block",
 			"arguments": map[string]any{
 				"nodeId":           toolArgs["nodeId"],
 				"format":           "jsonml",

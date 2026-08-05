@@ -2218,6 +2218,8 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			overwrite, _ := cmd.Flags().GetBool("overwrite")
 
 			if deps.Caller.DryRun() {
+				// Human plan summary (no "[DRY-RUN]" tag): Schema dry-run
+				// evidence classifies "操作:" + audited DryRun() as plan.
 				deps.Out.PrintKeyValue("操作", "导出邮件为 EML 文件")
 				deps.Out.PrintKeyValue("email", email)
 				deps.Out.PrintKeyValue("messageId", messageID)
@@ -2225,7 +2227,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 					deps.Out.PrintKeyValue("filename", filename)
 				}
 				deps.Out.PrintKeyValue("overwrite", fmt.Sprintf("%v", overwrite))
-				deps.Out.PrintInfo("[DRY-RUN] 编排: get_email_by_message_id → export_message_mime → 写入本地 .eml 文件")
+				deps.Out.PrintKeyValue("编排", "get_email_by_message_id → export_message_mime → 写入本地 .eml 文件")
 				return nil
 			}
 
@@ -2351,6 +2353,8 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			}
 			skipConfirm, _ := cmd.Flags().GetBool("yes")
 			if deps.Caller.DryRun() {
+				// Human plan summary (no "[DRY-RUN]" tag): Schema dry-run
+				// evidence classifies "操作:" + audited DryRun() as plan.
 				deps.Out.PrintKeyValue("操作", "分享邮件至 IM 聊天")
 				deps.Out.PrintKeyValue("email", mustGetFlag(cmd, "email"))
 				deps.Out.PrintKeyValue("messageId", mustGetFlag(cmd, "id"))
@@ -2358,7 +2362,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 					deps.Out.PrintKeyValue("users", users)
 				}
 				deps.Out.PrintKeyValue("yes", fmt.Sprintf("%v", skipConfirm))
-				deps.Out.PrintInfo("[DRY-RUN] 仅预览分享计划，不发起真实分享请求")
+				deps.Out.PrintKeyValue("说明", "仅预览分享计划，不发起真实分享请求")
 				return nil
 			}
 			ctx := cmd.Context()
