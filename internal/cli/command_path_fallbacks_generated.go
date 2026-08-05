@@ -23,13 +23,6 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 		ReviewReason: "H12 evaluation badcase: +chat-group-search was invented while resolving a group; +chat-search is the unique equivalent shortcut.",
 	},
 	{
-		From:         "chat +chat-list",
-		Mode:         "ambiguous",
-		Candidates:   []string{"chat +my-groups", "chat +chat-list-mine", "chat +chat-list-all", "chat +conversation-list"},
-		Reviewed:     true,
-		ReviewReason: "H12 evaluation badcase: chat-list does not identify whether the user wants joined groups, managed groups, every group, or all group/direct conversations.",
-	},
-	{
 		From:         "chat +group-member-list",
 		Mode:         "rewrite",
 		To:           "chat +group-members",

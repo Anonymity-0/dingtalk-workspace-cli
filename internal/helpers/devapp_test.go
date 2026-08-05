@@ -343,7 +343,7 @@ func TestDevAppRobotAndVersionWritesRequireGuard(t *testing.T) {
 			if err == nil {
 				t.Fatal("Execute() error = nil, want write guard")
 			}
-			if !strings.Contains(err.Error(), "写操作") {
+			if !strings.Contains(err.Error(), "需要用户确认") {
 				t.Fatalf("error = %q, want write guard", err.Error())
 			}
 			if runner.last.Tool != "" {
@@ -445,7 +445,7 @@ func TestCrossPlatformCoverageDevAppGetRequiresLocator(t *testing.T) {
 	root.SetArgs([]string{"get"})
 
 	err := root.Execute()
-	if err == nil || !strings.Contains(err.Error(), "--unified-app-id 或 --app-key") {
+	if err == nil || !strings.Contains(err.Error(), "请传入 --unified-app-id 或 --app-key") {
 		t.Fatalf("error = %v, want locator validation", err)
 	}
 }
@@ -690,6 +690,33 @@ func TestDevAppEventSubscribeRequiresEventCodes(t *testing.T) {
 	}{
 		{"subscribe", []string{"dev", "app", "event", "subscribe", "--unified-app-id", "u-1", "--yes"}},
 		{"unsubscribe", []string{"dev", "app", "event", "unsubscribe", "--unified-app-id", "u-1", "--yes"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := &captureRunner{}
+			root := newDevAppTestRoot(runner)
+			var out bytes.Buffer
+			root.SetOut(&out)
+			root.SetErr(&out)
+			root.SetArgs(tc.args)
+			err := root.Execute()
+			if err == nil || !strings.Contains(err.Error(), "--event-codes 为必填") {
+				t.Fatalf("Execute() error = %v, want --event-codes 为必填", err)
+			}
+			if runner.last.Tool != "" {
+				t.Fatalf("runner should not be called, got tool %q", runner.last.Tool)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageDevAppEventSubscribeRejectsSeparatorOnlyEventCodes(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"subscribe_comma", []string{"dev", "app", "event", "subscribe", "--unified-app-id", "u-1", "--event-codes", ",", "--yes"}},
+		{"subscribe_semicolon", []string{"dev", "app", "event", "subscribe", "--unified-app-id", "u-1", "--event-codes", ";", "--yes"}},
+		{"unsubscribe_comma", []string{"dev", "app", "event", "unsubscribe", "--unified-app-id", "u-1", "--event-codes", ",", "--yes"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			runner := &captureRunner{}
@@ -1010,7 +1037,7 @@ func TestDevAppMemberAndSecurityRequireWriteGuard(t *testing.T) {
 			if err == nil {
 				t.Fatal("Execute() error = nil, want write guard")
 			}
-			if !strings.Contains(err.Error(), "写操作") {
+			if !strings.Contains(err.Error(), "需要用户确认") {
 				t.Fatalf("error = %q, want write guard", err.Error())
 			}
 			if runner.last.Tool != "" {
@@ -1064,7 +1091,7 @@ func TestEveryDevAppWriteCommandRequiresGuard(t *testing.T) {
 			if appErr.Reason != "confirmation_required" {
 				t.Fatalf("error reason = %q, want confirmation_required", appErr.Reason)
 			}
-			for _, marker := range []string{"写操作", "--dry-run", "--yes"} {
+			for _, marker := range []string{"需要用户确认", "--dry-run", "--yes"} {
 				if !strings.Contains(err.Error(), marker) {
 					t.Fatalf("error = %q, want %q write-guard marker", err.Error(), marker)
 				}

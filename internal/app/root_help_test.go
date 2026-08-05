@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -161,9 +162,7 @@ func TestRootChatMediaUploadWithoutAppCredentialsReturnsMigrationValidation(t *t
 		"--file", filePath,
 		"--type", "image",
 	}
-	previousArgs := os.Args
-	os.Args = append([]string{"dws"}, commandArgs...)
-	t.Cleanup(func() { os.Args = previousArgs })
+	testseam.Swap(t, &os.Args, append([]string{"dws"}, commandArgs...))
 
 	root := NewRootCommand()
 	var output bytes.Buffer

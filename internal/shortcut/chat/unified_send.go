@@ -12,6 +12,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -30,6 +33,34 @@ var MessagesSend = shortcut.Shortcut{
 	Description: "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
 	Intent:      "当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_send",
+			CanonicalPath:  "chat.shortcut_messages_send",
+			CLIPath:        "chat +messages-send",
+			PrimaryCLIPath: "chat +messages-send",
+		},
+		Description: "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports live-compatible contact search with exact userId matching, mediaId images, and the native init/upload/commit local-file flow.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "统一发送文本、Markdown、当前用户文件或已有 mediaId 图片",
+			UseWhen:      []string{"当你希望用同一个入口选择 current-user、bot 或 webhook 身份发送消息时使用；命令会按身份校验目标、内容和凭据并路由到真实下层。current-user 支持文本/Markdown、已有 mediaId 图片、安全相对路径文件上传和幂等键；--user 传 userId 时包括在 --dry-run 中也会先通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId。bot 支持群聊或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。不会把 user 文件能力伪装成 bot/webhook 等价能力。"},
+			AvoidWhen:    []string{"需要 bot/webhook 发送媒体、卡片或 thread 回复时不要假设等价支持；改用真实存在的专用下层命令，缺少下层能力时停止"},
+			Examples: []string{
+				"dws chat +messages-send --as user --chat-id <openConversationId> --markdown \"## 周报\" --idempotency-key <key>",
+				"dws chat +messages-send --as user --user <userId> --msg-type file --file ./report.pdf",
+			},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "identity", Type: shortcut.FlagString, Default: "user", Enum: []string{"user", "bot", "webhook"}, Desc: "发送身份；目标、凭据和幂等参数受发送身份能力矩阵约束"},
 		{Name: "as", Type: shortcut.FlagString, Enum: []string{"user", "bot", "webhook"}, Desc: "--identity 的 lark-cli 对齐别名；受发送身份能力矩阵约束"},
@@ -39,6 +70,9 @@ var MessagesSend = shortcut.Shortcut{
 		{Name: "open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊接收者 openDingTalkId（user）；受发送身份能力矩阵约束"},
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "批量单聊接收者 userId（bot）；受发送身份能力矩阵约束"},
 		{Name: "open-dingtalk-ids", Type: shortcut.FlagStringSlice, Desc: "批量单聊接收者 openDingTalkId（bot）；受发送身份能力矩阵约束"},
+		// Keep required_when out of Schema: validateMessagesSend already enforces
+		// bot/webhook credentials, and publishing RequiredWhen breaks merge-base
+		// schema-compatibility (null → expression).
 		{Name: "robot-code", Type: shortcut.FlagString, Desc: "机器人 Code（identity=bot 时使用）；受发送身份能力矩阵约束"},
 		{Name: "webhook-token", Type: shortcut.FlagString, Desc: "自定义机器人 Webhook token（identity=webhook 时使用）；受发送身份能力矩阵约束"},
 		{Name: "title", Type: shortcut.FlagString, Desc: "消息标题（不传则从正文生成）"},

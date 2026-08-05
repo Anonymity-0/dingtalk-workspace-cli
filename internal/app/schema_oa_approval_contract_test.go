@@ -9,7 +9,7 @@ import (
 )
 
 func TestOAApprovalDualModeConstraintsReachEmbeddedSchema(t *testing.T) {
-	tools := embeddedSchemaAllToolsForHelpFlagTest(t, NewRootCommand())
+	tools := deliverySchemaAllToolsForHelpFlagTest(t, NewRootCommand())
 
 	tests := []struct {
 		canonical         string

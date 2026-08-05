@@ -111,9 +111,9 @@ dws contact user search --query "Alice" -o result.json
 
 ## Schema Introspection / Schema 查询
 
-`--help` 展示当前二进制的 Cobra 命令和可接受 flag，`dws schema` 查询同版本内嵌的 Agent 命令契约。Schema 查询不访问 MCP endpoint、不执行 `tools/list`，也不搜索钉钉文档或任何业务数据。
+`--help` 展示当前二进制的 Cobra 命令和可接受 flag，`dws schema` 查询同版本运行时组装的 Agent 命令契约。Schema 查询不访问 MCP endpoint、不执行 `tools/list`，也不搜索钉钉文档或任何业务数据。
 
-Schema 的稳定 `canonical_path`、主 CLI 路径和 aliases 来自 reviewed `CommandRegistry`，并在发布时逐项绑定当前 Cobra tree。编辑 `internal/cli/schema_command_registry.json` 时必须遵守同目录的 `schema_command_registry.schema.json`；普通生成流程只校验该 reviewed input，不会覆盖它。Native annotation 只做实现一致性校验；Catalog 是该统一强类型契约的发布输出，不作为命令发现或下一轮生成的输入。
+Schema 的稳定 `canonical_path`、主 CLI 路径和 aliases 收集自命令树叶节点上的 `ContractFinal.Identity`（`CollectIdentitySpecs`），并在发布时逐项绑定当前 Cobra tree。原 reviewed `schema_command_registry/` 已退役，身份变化通过编辑叶节点声明完成。Native annotation 只做实现一致性校验；Catalog 是该统一强类型契约的发布输出，不作为命令发现或下一轮生成的输入。
 
 ### 路径写法
 

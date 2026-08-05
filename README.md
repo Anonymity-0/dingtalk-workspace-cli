@@ -396,7 +396,7 @@ The repo ships a complete Agent Skill system under `skills/`, organized into two
 - `skills/mono/` — single-skill layout (one `SKILL.md` + `references/products/`), recommended default.
 - `skills/multi/` — per-product skills (`dingtalk-aitable/`, `dingtalk-calendar/`, `dingtalk-chat/`, ...), each with its own `SKILL.md`. 🧪 **EXPERIMENTAL / preview — see banner in each multi `SKILL.md` for caveats.**
 
-Shared reviewed inputs for Schema generation live separately under `internal/cli/schema_hints/`. They are not Agent Skills and are excluded from binaries and release skill bundles.
+Leaf safety/parameters/selection prose for Schema generation come from ProductDecl / ContractFinal declarations in Go. The former `internal/cli/schema_hints/` HintFile tree is fully retired and must not reappear.
 
 After installing, AI tools like Claude Code / Cursor can operate DingTalk directly through natural language:
 

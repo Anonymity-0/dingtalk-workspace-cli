@@ -119,7 +119,7 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 		t.Fatalf("schema header = %#v", schema)
 	}
 	entries, err := LoadCommandPathFallbacks()
-	if err != nil || len(entries) != 26 {
+	if err != nil || len(entries) != 25 {
 		t.Fatalf("LoadCommandPathFallbacks() = %#v, %v", entries, err)
 	}
 	if got, ok := LookupCommandPathFallback("dws chat +search-group"); !ok || got.To != "chat +chat-search" {
@@ -152,7 +152,6 @@ func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 	}
 
 	ambiguous := map[string][]string{
-		"chat +chat-list":       {"chat +my-groups", "chat +chat-list-mine", "chat +chat-list-all", "chat +conversation-list"},
 		"chat +group-send-text": {"chat +send-to-group", "chat +messages-send"},
 		"chat +message-list":    {"chat +chat-messages", "chat +messages-list-direct", "chat +search-msg", "chat +unread-chats"},
 		"chat +read-single":     {"chat +messages-list-direct", "chat +chat-messages"},

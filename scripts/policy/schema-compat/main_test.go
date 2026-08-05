@@ -481,3 +481,144 @@ func writeTestFile(t *testing.T, path, body string) {
 		t.Fatal(err)
 	}
 }
+
+// TestCrossPlatformCoverageSchemaCompatMCPRetirementAndConstraintExpansion covers
+// the MCP pin retirement allowance (clearing interface_type) and declare≡execute
+// constraint member expansion used by the platform coverage gate.
+func TestCrossPlatformCoverageSchemaCompatMCPRetirementAndConstraintExpansion(t *testing.T) {
+	baseline := baselineContract()
+	current := cloneContract(baseline)
+	mutateParameter(&current, func(parameter *parameterSchema) {
+		parameter.InterfaceType = ""
+	})
+	mutateTool(&current, func(tool *toolSchema) {
+		tool.Constraints = `{"require_one_of":[["title","format","legacy-format"]],"mutually_exclusive":[["title","legacy-title"]]}`
+	})
+	// Baseline has require_one_of only; expanding with a new mutually_exclusive
+	// group must remain incompatible.
+	if failures := checkCompatibility(baseline, current); len(failures) == 0 {
+		t.Fatal("adding a new constraint group must fail compatibility")
+	}
+
+	// Match baseline shape: expand require_one_of members only, clear interface_type.
+	current = cloneContract(baseline)
+	mutateParameter(&current, func(parameter *parameterSchema) {
+		parameter.InterfaceType = ""
+	})
+	mutateTool(&current, func(tool *toolSchema) {
+		tool.Constraints = `{"require_one_of":[["title","format","legacy-format"]]}`
+	})
+	if failures := checkCompatibility(baseline, current); len(failures) != 0 {
+		t.Fatalf("clearing interface_type and expanding constraint members should pass: %v", failures)
+	}
+
+	// Hidden-sibling expansion from empty historical constraints remains allowed.
+	emptyConstraints := cloneContract(baseline)
+	mutateTool(&emptyConstraints, func(tool *toolSchema) {
+		tool.Constraints = ""
+		title := tool.Parameters["title"]
+		title.Required = true
+		tool.Parameters["title"] = title
+		delete(tool.Parameters, "format")
+	})
+	expanded := cloneContract(emptyConstraints)
+	mutateTool(&expanded, func(tool *toolSchema) {
+		tool.Constraints = `{"require_one_of":[["title","hidden-alias"]],"mutually_exclusive":[["title","hidden-alias"]]}`
+		title := tool.Parameters["title"]
+		title.Required = false
+		tool.Parameters["title"] = title
+	})
+	if failures := checkCompatibility(emptyConstraints, expanded); len(failures) != 0 {
+		t.Fatalf("hidden-sibling constraint expansion should pass: %v", failures)
+	}
+
+	if compatibleConstraintMemberExpansion("{", `{"require_one_of":[["a"]]}`) {
+		t.Fatal("invalid old constraints must not expand")
+	}
+	if compatibleConstraintMemberExpansion(`{"require_one_of":[["a"]]}`, "{") {
+		t.Fatal("invalid new constraints must not expand")
+	}
+	if groups, ok := parseConstraintGroups(""); !ok || len(groups["require_one_of"]) != 0 {
+		t.Fatalf("empty constraints parse = %#v ok=%v", groups, ok)
+	}
+	if constraintGroupsAreMemberExpansions([][]string{{}}, [][]string{{"a"}}) {
+		t.Fatal("empty old group must not expand")
+	}
+	if constraintGroupsAreMemberExpansions(
+		[][]string{{"a"}, {"b"}},
+		[][]string{{"a", "b"}},
+	) {
+		t.Fatal("group-count reduction must not expand")
+	}
+	if constraintGroupsAreMemberExpansions(
+		[][]string{{"a"}, {"c"}},
+		[][]string{{"a", "b"}, {"x", "y"}},
+	) {
+		t.Fatal("unmatched old group must not expand")
+	}
+	if !constraintGroupsAreMemberExpansions(
+		[][]string{{"a"}, {"b"}},
+		[][]string{{"a", "b", "extra"}, {"b", "other"}},
+	) {
+		t.Fatal("used-group skip should still allow alternate match")
+	}
+	if !stringSetContainsAll(map[string]bool{"a": true, "b": true}, map[string]bool{"a": true}) ||
+		stringSetContainsAll(map[string]bool{"a": true}, map[string]bool{"a": true, "b": true}) {
+		t.Fatal("stringSetContainsAll classification is incorrect")
+	}
+
+	// compatibleHiddenSiblingConstraintExpansion false branches.
+	if compatibleHiddenSiblingConstraintExpansion(
+		toolSchema{Constraints: "", Parameters: map[string]parameterSchema{"a": {Required: true}}},
+		toolSchema{Constraints: "{", Parameters: map[string]parameterSchema{"a": {}}},
+	) {
+		t.Fatal("invalid projected constraints must not expand")
+	}
+	oldRequired := toolSchema{
+		Constraints: "",
+		Parameters:  map[string]parameterSchema{"a": {Required: true}},
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_together":[["a","b"]],"require_one_of":[["a","hidden"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}},
+	}) {
+		t.Fatal("require_together projection must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["a"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}},
+	}) {
+		t.Fatal("single-member group must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["a","","hidden"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}},
+	}) {
+		t.Fatal("empty constraint member must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["hidden","ghost"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}},
+	}) {
+		t.Fatal("unpublished-only group must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["a","b"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}, "b": {}},
+	}) {
+		t.Fatal("published-only group must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["a","hidden"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {Required: true}},
+	}) {
+		t.Fatal("still-required sole published member must not expand")
+	}
+
+	// Changing interface_type to a different non-empty value remains incompatible.
+	typed := cloneContract(baseline)
+	mutateParameter(&typed, func(parameter *parameterSchema) { parameter.InterfaceType = "integer" })
+	if failures := checkCompatibility(baseline, typed); !strings.Contains(strings.Join(failures, "\n"), "changed interface_type") {
+		t.Fatalf("non-empty interface_type change should fail: %v", failures)
+	}
+}

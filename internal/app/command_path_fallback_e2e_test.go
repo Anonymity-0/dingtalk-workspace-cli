@@ -175,7 +175,6 @@ func TestReviewedAmbiguousCommandFallbackNeverDispatches(t *testing.T) {
 		path       string
 		candidates []string
 	}{
-		{path: "chat +chat-list", candidates: []string{"chat +my-groups", "chat +chat-list-mine", "chat +chat-list-all", "chat +conversation-list"}},
 		{path: "chat +group-send-text", candidates: []string{"chat +send-to-group", "chat +messages-send"}},
 		{path: "chat +message-list", candidates: []string{"chat +chat-messages", "chat +messages-list-direct", "chat +search-msg", "chat +unread-chats"}},
 		{path: "chat +read-single", candidates: []string{"chat +messages-list-direct", "chat +chat-messages"}},
@@ -282,7 +281,6 @@ func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T)
 		"+group-search":       true,
 		"+chat-group-search":  true,
 		"+chat-group-members": true,
-		"+chat-list":          true,
 		"+members":            true,
 		"+group-member-list":  true,
 		"+list-group-bots":    true,

@@ -201,7 +201,7 @@ func historicalShortcutBadcaseArgv(t *testing.T, raw string) []string {
 	for _, suffix := range []string{" 2>&1 | head -50", " 2>&1"} {
 		command = strings.TrimSuffix(command, suffix)
 	}
-	argv, err := cli.ParseManualAgentExampleArgv(command)
+	argv, err := cli.ParseAgentExampleArgv(command)
 	if err != nil {
 		t.Fatalf("parse historical raw command %q without a shell: %v", raw, err)
 	}

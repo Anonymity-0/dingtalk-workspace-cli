@@ -499,9 +499,231 @@ func feedGroupQueryProject(conversations []map[string]any, requestedIDs []string
 	}
 }
 
+// ChatList is the lark-cli +chat-list alignment for DingTalk. It lists the
+// current user's conversations through list_all_conversations, defaults to
+// groups only (lark omit-types behavior), and applies --types / --exclude-muted
+// as an honest client-side subset over the current page. Sort order and bot
+// identity p2p stripping are intentionally omitted: DingTalk has no matching
+// sort_type parameter here, and DWS shortcuts run as the signed-in user.
+var ChatList = shortcut.Shortcut{
+	Service:     "chat",
+	Command:     "+chat-list",
+	Product:     "im",
+	Description: "列出当前用户加入的会话（默认群聊；可选包含单聊）",
+	Intent: "当你要像 lark-cli +chat-list 一样列出当前用户加入的会话时使用；默认只返回群聊，" +
+		"--types 可追加 p2p（钉钉投影为 conversationType=direct）。" +
+		"--exclude-muted 交给下层 excludeMuted；--types 过滤发生在当前页本地，不会伪造跨页完整性。" +
+		"不支持 lark 的 sort/sort-type，也不模拟 bot 身份剥离 p2p。",
+	Risk: shortcut.RiskRead,
+	Flags: []shortcut.Flag{
+		{Name: "types", Type: shortcut.FlagStringSlice, Desc: "会话类型：group、p2p；省略时默认只返回群聊"},
+		{Name: "page-size", Type: shortcut.FlagInt, Default: "20", Desc: "每页数量（1-100）"},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "--page-size 的别名"},
+		{Name: "page-token", Type: shortcut.FlagString, Desc: "分页游标（钉钉为整数游标的字符串形式）"},
+		{Name: "cursor", Type: shortcut.FlagInt, Desc: "--page-token 的整数别名"},
+		{Name: "exclude-muted", Type: shortcut.FlagBool, Desc: "排除已免打扰会话"},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"page-size", "limit"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"page-token", "cursor"}},
+		{
+			Kind:        shortcut.ConstraintCustom,
+			Flags:       []string{"types"},
+			Description: "只能包含 group 和/或 p2p",
+		},
+		{
+			Kind:        shortcut.ConstraintCustom,
+			Flags:       []string{"page-size", "limit"},
+			Description: "必须在 1-100 之间",
+		},
+		{
+			Kind:        shortcut.ConstraintCustom,
+			Flags:       []string{"page-token"},
+			Description: "若提供则必须是非负整数",
+		},
+	},
+	Tips: []string{
+		`dws chat +chat-list`,
+		`dws chat +chat-list --types group,p2p --exclude-muted --page-size 50`,
+	},
+	Validate: validateChatList,
+	Execute:  executeChatList,
+}
+
+func validateChatList(rt *shortcut.RuntimeContext) error {
+	if _, err := normalizeChatListTypes(rt.StrSlice("types")); err != nil {
+		return err
+	}
+	pageSize := chatListPageSize(rt)
+	if pageSize < 1 || pageSize > 100 {
+		return apperrors.NewValidation("--page-size/--limit 必须在 1-100 之间")
+	}
+	if _, err := chatListCursor(rt); err != nil {
+		return err
+	}
+	return nil
+}
+
+func executeChatList(rt *shortcut.RuntimeContext) error {
+	types, err := normalizeChatListTypes(rt.StrSlice("types"))
+	if err != nil {
+		return err
+	}
+	if len(types) == 0 {
+		types = []string{"group"}
+	}
+	cursor, err := chatListCursor(rt)
+	if err != nil {
+		return err
+	}
+	params := map[string]any{"limit": chatListPageSize(rt)}
+	if cursor > 0 {
+		params["cursor"] = cursor
+	}
+	if rt.Bool("exclude-muted") {
+		params["excludeMuted"] = true
+	}
+	data, err := rt.CallMCPData("im", "list_all_conversations", params)
+	if err != nil {
+		return err
+	}
+	chats := chatListFilterTypes(chatListProject(data), types)
+	payload := map[string]any{
+		"count":          len(chats),
+		"chats":          chats,
+		"requestedTypes": types,
+	}
+	if rt.Bool("exclude-muted") {
+		payload["filter"] = map[string]any{"excludeMuted": true}
+	}
+	chatmsg.ApplyPagination(payload, data)
+	return rt.Output(payload)
+}
+
+func chatListPageSize(rt *shortcut.RuntimeContext) int {
+	if rt.Changed("limit") {
+		return rt.Int("limit")
+	}
+	if rt.Changed("page-size") {
+		return rt.Int("page-size")
+	}
+	if size := rt.Int("page-size"); size > 0 {
+		return size
+	}
+	return 20
+}
+
+func chatListCursor(rt *shortcut.RuntimeContext) (int, error) {
+	if rt.Changed("cursor") {
+		if value := rt.Int("cursor"); value < 0 {
+			return 0, apperrors.NewValidation("--cursor 必须大于等于 0")
+		}
+		return rt.Int("cursor"), nil
+	}
+	token := strings.TrimSpace(rt.Str("page-token"))
+	if token == "" || token == "0" {
+		return 0, nil
+	}
+	value, err := strconv.Atoi(token)
+	if err != nil || value < 0 {
+		return 0, apperrors.NewValidation("--page-token 必须是非负整数")
+	}
+	return value, nil
+}
+
+func normalizeChatListTypes(raw []string) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	seen := make(map[string]struct{}, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, value := range raw {
+		normalized := strings.TrimSpace(strings.ToLower(value))
+		if normalized == "" {
+			return nil, apperrors.NewValidation("--types 不能包含空值")
+		}
+		if normalized != "group" && normalized != "p2p" {
+			return nil, apperrors.NewValidation(fmt.Sprintf("--types 含有无效值 %q：期望 group 或 p2p", value))
+		}
+		if _, dup := seen[normalized]; dup {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		out = append(out, normalized)
+	}
+	return out, nil
+}
+
+func chatListProject(data map[string]any) []map[string]any {
+	raw := conversationListResolveList(data)
+	out := make([]map[string]any, 0, len(raw))
+	for _, item := range raw {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		row := map[string]any{}
+		if v, ok := conversationListFirst(m, "openConversationId", "conversationId", "id"); ok {
+			row["openConversationId"] = v
+		}
+		if v, ok := conversationListFirst(m, "conversationName", "name", "title"); ok {
+			row["name"] = v
+		}
+		if conversationType, ok := conversationListTopType(m); ok {
+			row["conversationType"] = conversationType
+			if conversationType == "direct" {
+				row["chatMode"] = "p2p"
+			} else {
+				row["chatMode"] = "group"
+			}
+		}
+		if v, ok := conversationListFirst(m, "ownerUserId", "ownerId", "owner"); ok {
+			row["ownerUserId"] = v
+		}
+		if len(row) > 0 {
+			out = append(out, row)
+		}
+	}
+	return out
+}
+
+func chatListFilterTypes(chats []map[string]any, types []string) []map[string]any {
+	wantDirect := false
+	wantGroup := false
+	for _, value := range types {
+		switch value {
+		case "p2p":
+			wantDirect = true
+		case "group":
+			wantGroup = true
+		}
+	}
+	if !wantDirect && !wantGroup {
+		return chats
+	}
+	out := make([]map[string]any, 0, len(chats))
+	for _, chat := range chats {
+		switch chat["conversationType"] {
+		case "direct":
+			if wantDirect {
+				out = append(out, chat)
+			}
+		case "group":
+			if wantGroup {
+				out = append(out, chat)
+			}
+		default:
+			// Unknown types are dropped under an explicit type filter so agents
+			// never treat untyped rows as an approved group/p2p match.
+		}
+	}
+	return out
+}
+
 func init() {
 	shortcut.Register(
 		ChatCreate,
+		ChatList,
 		ChatUpdate,
 		MessagesReply,
 		FlagCreate,

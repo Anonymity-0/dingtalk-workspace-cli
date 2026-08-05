@@ -31,18 +31,6 @@
       "review_reason": "H10/H19 evaluation badcases repeatedly emitted +chat-group-members; +chat-members-list is the reviewed full group-member shortcut."
     },
     {
-      "from": "chat +chat-list",
-      "mode": "ambiguous",
-      "candidates": [
-        "chat +my-groups",
-        "chat +chat-list-mine",
-        "chat +chat-list-all",
-        "chat +conversation-list"
-      ],
-      "reviewed": true,
-      "review_reason": "H12 evaluation badcase: chat-list does not identify whether the user wants joined groups, managed groups, every group, or all group/direct conversations."
-    },
-    {
       "from": "chat +members",
       "mode": "rewrite",
       "to": "chat +group-members",

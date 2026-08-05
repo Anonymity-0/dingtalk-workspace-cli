@@ -17,6 +17,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 )
@@ -46,6 +49,34 @@ var MyGroups = shortcut.Shortcut{
 		"内部分页拉取你加入的群列表，把每个群防御式地投影成 会话id / 名称 / 群主 / 人数 / 类型 等关键字段，输出成干净的结果。" +
 		"可选 --type 在本地按群类型过滤（底层接口本身不带类型参数，故为客户端过滤）。这是只读操作，不会改动任何群或成员关系。",
 	Risk: shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_my_groups",
+			CanonicalPath:  "chat.shortcut_my_groups",
+			CLIPath:        "chat +my-groups",
+			PrimaryCLIPath: "chat +my-groups",
+		},
+		Description: "列出我加入的群，可按类型过滤并投影关键字段",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "列出我加入的群，可按类型过滤并投影关键字段",
+			UseWhen:      []string{"当你想快速看一眼自己都加入了哪些群、以及每个群的会话ID、名称、群主和人数，而不想翻分页或盯着原始返回时使用；内部分页拉取你加入的群列表，把每个群防御式地投影成 会话id / 名称 / 群主 / 人数 / 类型 等关键字段，输出成干净的结果。可选 --type 在本地按群类型过滤（底层接口本身不带类型参数，故为客户端过滤）。这是只读操作，不会改动任何群或成员关系。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples: []string{
+				"dws chat +my-groups",
+				"dws chat +my-groups --type group",
+			},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "type", Type: shortcut.FlagString, Desc: "按群类型过滤（可选，如返回中的 groupType/conversationType，大小写不敏感）", Required: false},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量（默认 200）", Default: "200"},
