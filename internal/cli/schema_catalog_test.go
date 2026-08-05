@@ -1412,3 +1412,57 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		}
 	}
 }
+
+// TestDeliveryCatalogDingSemanticParamDeclsSpotCheck locks the ding pilot
+// ParamDecl backfill: Execute/CallMCP keys win over flag-name inference, and
+// required stays declare/cobra-backed rather than usage_required_inference.
+func TestDeliveryCatalogDingSemanticParamDeclsSpotCheck(t *testing.T) {
+	cases := []struct {
+		path     string
+		flag     string
+		property string
+		required bool
+	}{
+		{"ding +list", "cursor", "cursor", false},
+		{"ding +list", "type", "type", false},
+		{"ding +receiver-status", "ding-id", "openDingId", true},
+		{"ding +recall-personal", "id", "openDingId", true},
+		{"ding +send-personal", "users", "receiverOpenDingTalkIds", true},
+		{"ding +send-personal", "content", "content", true},
+		{"ding +send-personal", "type", "remindType", false},
+		{"ding +send-personal", "uuid", "uuid", false},
+		{"ding message send", "content", "content", true},
+		{"ding message send", "robot-code", "robotCode", true},
+		{"ding message send", "type", "remindType", false},
+		{"ding message send", "users", "receiverUserIdList", true},
+		{"ding message recall", "id", "openDingId", true},
+		{"ding message recall", "robot-code", "robotCode", true},
+	}
+	for _, tc := range cases {
+		leaf, err := queryDeliverySchemaPayload([]string{tc.path})
+		if err != nil {
+			t.Fatalf("%s: %v", tc.path, err)
+		}
+		param := schemaMap(leaf["parameters"])[tc.flag]
+		if param == nil {
+			t.Fatalf("%s missing --%s", tc.path, tc.flag)
+		}
+		if got, _ := param["property"].(string); got != tc.property {
+			t.Fatalf("%s --%s property = %q, want %q", tc.path, tc.flag, got, tc.property)
+		}
+		propProv := schemaMap(param["field_provenance"])["property"]
+		if src, _ := propProv["source"].(string); src == "flag_name_inference" {
+			t.Fatalf("%s --%s property still flag_name_inference", tc.path, tc.flag)
+		}
+		gotRequired, _ := param["required"].(bool)
+		if gotRequired != tc.required {
+			t.Fatalf("%s --%s required = %v, want %v", tc.path, tc.flag, gotRequired, tc.required)
+		}
+		if tc.required {
+			reqProv := schemaMap(param["field_provenance"])["required"]
+			if src, _ := reqProv["source"].(string); src == "usage_required_inference" {
+				t.Fatalf("%s --%s required still usage_required_inference", tc.path, tc.flag)
+			}
+		}
+	}
+}

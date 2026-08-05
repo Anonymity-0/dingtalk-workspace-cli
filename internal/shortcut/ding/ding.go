@@ -49,6 +49,12 @@ var List = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws ding +list"},
 		},
+		// Property matches CallMCP keys in Execute; type stays optional because
+		// the CLI default ALL satisfies the server non-empty requirement.
+		Parameters: []contract.ParamDecl{
+			{Name: "cursor", Property: "cursor"},
+			{Name: "type", Property: "type"},
+		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "cursor", Type: shortcut.FlagInt, Desc: "分页游标 (可选)"},
@@ -95,6 +101,9 @@ var ReceiverStatus = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws ding +receiver-status --ding-id <DING_ID>"},
 		},
+		Parameters: []contract.ParamDecl{
+			{Name: "ding-id", Property: "openDingId", Required: boolPtr(true)},
+		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "ding-id", Type: shortcut.FlagString, Desc: "openDingId", Required: true},
@@ -132,6 +141,13 @@ var SendPersonal = shortcut.Shortcut{
 			UseWhen:      []string{"当你想以自己（而非机器人）的身份直接给某些同事发 DING 强提醒，让对方看到是本人发起时使用；需提供接收人的 openDingTalkId 列表和内容，可选提醒方式与幂等 uuid，会真实向这些人发出 DING。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws ding +send-personal --users <VALUES> --content <CONTENT>"},
+		},
+		// Property keys match send_personal_ding toolArgs (not flag-name camelCase).
+		Parameters: []contract.ParamDecl{
+			{Name: "users", Property: "receiverOpenDingTalkIds", Required: boolPtr(true)},
+			{Name: "content", Property: "content", Required: boolPtr(true)},
+			{Name: "type", Property: "remindType"},
+			{Name: "uuid", Property: "uuid"},
 		},
 	},
 	Flags: []shortcut.Flag{
@@ -204,6 +220,9 @@ var RecallPersonal = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws ding +recall-personal --id <ID>"},
 		},
+		Parameters: []contract.ParamDecl{
+			{Name: "id", Property: "openDingId", Required: boolPtr(true)},
+		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "openDingId", Required: true},
@@ -214,6 +233,8 @@ var RecallPersonal = shortcut.Shortcut{
 		})
 	},
 }
+
+func boolPtr(v bool) *bool { return &v }
 
 func init() {
 	shortcut.Register(

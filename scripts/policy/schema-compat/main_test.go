@@ -596,6 +596,92 @@ func TestCrossPlatformCoverageSchemaCompatMCPRetirementAndConstraintExpansion(t 
 	}
 }
 
+func TestReviewedDingPropertyCorrections(t *testing.T) {
+	if !compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_send_personal", "users", "users", "receiverOpenDingTalkIds",
+	) {
+		t.Fatal("reviewed ding +send-personal --users correction must be accepted")
+	}
+	if !compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_send_personal", "type", "type", "remindType",
+	) {
+		t.Fatal("reviewed ding +send-personal --type correction must be accepted")
+	}
+	if !compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_receiver_status", "ding-id", "dingId", "openDingId",
+	) {
+		t.Fatal("reviewed ding +receiver-status --ding-id correction must be accepted")
+	}
+	if !compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_recall_personal", "id", "id", "openDingId",
+	) {
+		t.Fatal("reviewed ding +recall-personal --id correction must be accepted")
+	}
+	if compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_send_personal", "users", "users", "userIds",
+	) {
+		t.Fatal("non-reviewed new property must remain incompatible")
+	}
+	if compatibleReviewedPropertyCorrection(
+		"ding/ding.send_ding_message", "users", "users", "receiverUserIdList",
+	) {
+		t.Fatal("unlisted tool/param remap must remain incompatible")
+	}
+
+	baseline := schemaContract{
+		Products: map[string]productSchema{
+			"ding": {Tools: map[string]toolSchema{
+				"ding.shortcut_send_personal": {
+					PrimaryCLIPath: "ding +send-personal",
+					InterfaceMode:  "composite",
+					Availability:   "available",
+					Effect:         "write",
+					Risk:           "medium",
+					Confirmation:   "user_required",
+					Idempotency:    "unknown",
+					Parameters: map[string]parameterSchema{
+						"users": {Type: "array", Property: "users"},
+						"type":  {Type: "string", Property: "type"},
+					},
+				},
+				"ding.shortcut_receiver_status": {
+					PrimaryCLIPath: "ding +receiver-status",
+					InterfaceMode:  "composite",
+					Availability:   "available",
+					Effect:         "read",
+					Risk:           "low",
+					Confirmation:   "not_required",
+					Idempotency:    "idempotent",
+					Parameters: map[string]parameterSchema{
+						"ding-id": {Type: "string", Property: "dingId", Required: true},
+					},
+				},
+			}},
+		},
+	}
+	corrected := cloneContract(baseline)
+	corrected.Products["ding"].Tools["ding.shortcut_send_personal"].Parameters["users"] = parameterSchema{
+		Type: "array", Property: "receiverOpenDingTalkIds",
+	}
+	corrected.Products["ding"].Tools["ding.shortcut_send_personal"].Parameters["type"] = parameterSchema{
+		Type: "string", Property: "remindType",
+	}
+	corrected.Products["ding"].Tools["ding.shortcut_receiver_status"].Parameters["ding-id"] = parameterSchema{
+		Type: "string", Property: "openDingId", Required: true,
+	}
+	if failures := checkCompatibility(baseline, corrected); len(failures) != 0 {
+		t.Fatalf("reviewed ding property corrections should pass: %v", failures)
+	}
+
+	broken := cloneContract(baseline)
+	broken.Products["ding"].Tools["ding.shortcut_send_personal"].Parameters["users"] = parameterSchema{
+		Type: "array", Property: "userIds",
+	}
+	if failures := checkCompatibility(baseline, broken); !strings.Contains(strings.Join(failures, "\n"), "changed property") {
+		t.Fatalf("unreviewed property remap should fail: %v", failures)
+	}
+}
+
 func TestCrossPlatformCoverageSchemaCompatAdditiveConstraintEvolution(t *testing.T) {
 	oldTool := toolSchema{
 		Parameters: map[string]parameterSchema{
