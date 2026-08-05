@@ -114,7 +114,18 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 
 	product := executeShortcutSchemaQuery(t, "chat")
 	productPayload, _ := product["product"].(map[string]any)
-	if got, want := int(product["count"].(float64)), 180; got != want {
+	allTools := deliverySchemaAllToolsForHelpFlagTest(t, NewRootCommand())
+	wantChatToolCount := 0
+	wantChatShortcutCount := 0
+	for canonical := range allTools {
+		if strings.HasPrefix(canonical, "chat.") {
+			wantChatToolCount++
+		}
+		if strings.HasPrefix(canonical, "chat.shortcut_") {
+			wantChatShortcutCount++
+		}
+	}
+	if got, want := int(product["count"].(float64)), wantChatToolCount; got != want {
 		t.Fatalf("schema chat count = %d, want %d", got, want)
 	}
 	summaries := schemaContractObjectSlice(productPayload["tools"])
@@ -124,8 +135,8 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 			shortcutCount++
 		}
 	}
-	if shortcutCount != 98 {
-		t.Fatalf("schema chat shortcut summaries = %d, want 98", shortcutCount)
+	if shortcutCount != wantChatShortcutCount {
+		t.Fatalf("schema chat shortcut summaries = %d, want %d", shortcutCount, wantChatShortcutCount)
 	}
 }
 
