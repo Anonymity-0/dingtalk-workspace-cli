@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -42,17 +43,11 @@ func TestCSVPutFormulaContractAndPassThrough(t *testing.T) {
 		t.Fatalf("csv-put help still advertises the old formula contract: %s", csvPut.Long)
 	}
 
-	previousDeps := deps
-	previousArgs := os.Args
 	caller := &csvPutRecordingCaller{}
-	InitDeps(caller)
+	InitDepsForTest(t, caller)
 	deps.Out.w = io.Discard
 	deps.Out.errW = io.Discard
-	os.Args = []string{"dws", "sheet", "csv-put"}
-	t.Cleanup(func() {
-		deps = previousDeps
-		os.Args = previousArgs
-	})
+	testseam.Swap(t, &os.Args, []string{"dws", "sheet", "csv-put"})
 
 	root.SilenceErrors = true
 	root.SilenceUsage = true
