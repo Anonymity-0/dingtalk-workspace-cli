@@ -705,6 +705,134 @@ func TestCrossPlatformCoverageFindMessageSenderOpenDingTalkIDIgnoresUnrelatedNes
 	}
 }
 
+func TestChatListDefaultsToGroupsAndSupportsLarkAliases(t *testing.T) {
+	fake := &larkAlignmentCaller{
+		responses: map[string]string{
+			"im/list_all_conversations": `{
+				"result":{
+					"hasMore":true,
+					"nextCursor":"7",
+					"list":[
+						{"openConversationId":"cid-group","conversationName":"项目群","singleChat":false,"ownerUserId":"owner-1"},
+						{"openConversationId":"cid-direct","title":"张三","singleChat":true},
+						{"openConversationId":"cid-unknown","title":"未知"}
+					]
+				}
+			}`,
+		},
+	}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{"chat", "+chat-list", "--exclude-muted", "--page-size", "20"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "list_all_conversations" {
+		t.Fatalf("calls = %#v", fake.calls)
+	}
+	if fake.calls[0].args["limit"] != 20 || fake.calls[0].args["excludeMuted"] != true {
+		t.Fatalf("args = %#v", fake.calls[0].args)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["count"] != float64(1) {
+		t.Fatalf("default group filter count = %#v", payload)
+	}
+	chats := payload["chats"].([]any)
+	chat := chats[0].(map[string]any)
+	if chat["openConversationId"] != "cid-group" || chat["conversationType"] != "group" || chat["chatMode"] != "group" {
+		t.Fatalf("chat = %#v", chat)
+	}
+	if !reflect.DeepEqual(payload["requestedTypes"], []any{"group"}) {
+		t.Fatalf("requestedTypes = %#v", payload["requestedTypes"])
+	}
+	if filter, _ := payload["filter"].(map[string]any); filter["excludeMuted"] != true {
+		t.Fatalf("filter = %#v", payload["filter"])
+	}
+}
+
+func TestChatListIncludesP2PAndRejectsInvalidTypes(t *testing.T) {
+	fake := &larkAlignmentCaller{
+		responses: map[string]string{
+			"im/list_all_conversations": `{
+				"result":{"list":[
+					{"openConversationId":"cid-group","name":"项目群","conversationType":"group"},
+					{"openConversationId":"cid-direct","name":"李四","conversationType":"P2P"}
+				]}
+			}`,
+		},
+	}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{"chat", "+chat-list", "--types", "group,p2p", "--page-token", "3"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.calls[0].args["cursor"] != 3 || fake.calls[0].args["limit"] != 20 {
+		t.Fatalf("args = %#v", fake.calls[0].args)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["count"] != float64(2) {
+		t.Fatalf("both types count = %#v", payload)
+	}
+	chats := payload["chats"].([]any)
+	direct := chats[1].(map[string]any)
+	if direct["conversationType"] != "direct" || direct["chatMode"] != "p2p" {
+		t.Fatalf("direct chat = %#v", direct)
+	}
+
+	helpers.InitDeps(&larkAlignmentCaller{})
+	root = newPlatformCoverageRoot()
+	root.SetArgs([]string{"chat", "+chat-list", "--types", "channel"})
+	if err := root.Execute(); err == nil {
+		t.Fatal("invalid --types unexpectedly accepted")
+	}
+}
+
+func TestChatListP2POnlyDropsGroups(t *testing.T) {
+	fake := &larkAlignmentCaller{
+		responses: map[string]string{
+			"im/list_all_conversations": `{
+				"result":{"list":[
+					{"openConversationId":"cid-group","name":"项目群","singleChat":false},
+					{"openConversationId":"cid-direct","name":"王五","singleChat":true}
+				]}
+			}`,
+		},
+	}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{"chat", "+chat-list", "--types", "p2p", "--limit", "5"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.calls[0].args["limit"] != 5 {
+		t.Fatalf("limit alias args = %#v", fake.calls[0].args)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["count"] != float64(1) {
+		t.Fatalf("p2p-only count = %#v", payload)
+	}
+	chat := payload["chats"].([]any)[0].(map[string]any)
+	if chat["openConversationId"] != "cid-direct" {
+		t.Fatalf("chat = %#v", chat)
+	}
+}
+
 func TestCrossPlatformCoverageFeedGroupQueryProjectPreservesRequestOrderAndMissingLedger(t *testing.T) {
 	conversations := []map[string]any{
 		{"openConversationId": "cid-a", "conversationName": "A"},

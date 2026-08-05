@@ -13,6 +13,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -39,6 +42,34 @@ var MessagesSend = shortcut.Shortcut{
 	Description: "按身份和目标统一发送消息，Bot 多群返回逐目标 ledger",
 	Intent:      "当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_messages_send",
+			CanonicalPath:  "chat.shortcut_messages_send",
+			CLIPath:        "chat +messages-send",
+			PrimaryCLIPath: "chat +messages-send",
+		},
+		Description: "按身份和目标统一发送消息，Bot 多群返回逐目标 ledger",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed composite send adapter: it selects current-user, bot, or webhook transport; current-user additionally supports live-compatible contact search with exact userId matching, mediaId images, and the native init/upload/commit local-file flow.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "按身份和目标统一发送消息，Bot 多群返回逐目标 ledger",
+			UseWhen:      []string{"当你需要文件、复杂 @、幂等，或选择 current-user、bot、webhook 身份发送消息时使用；current-user 可直接传稳定 ID，也可用 --user-query/--chat-query 在 CLI 内唯一解析自然目标，dry-run 与真实执行使用同一解析链。Bot 可用 --groups/--groups-file 向最多 100 个稳定群 ID 发送文本或 Markdown，去重后返回 im.batch-write.v1 逐目标 ledger；webhook 目标由 token 所在群决定。文件上传和已有 mediaId 图片仅 current-user 支持，bot/webhook 不支持富媒体。"},
+			AvoidWhen:    []string{"需要 bot/webhook 发送媒体、卡片或 thread 回复时不要假设等价支持；改用真实存在的专用下层命令，缺少下层能力时停止"},
+			Examples: []string{
+				"dws chat +messages-send --as user --chat-id <openConversationId> --markdown \"## 周报\" --idempotency-key <key>",
+				"dws chat +messages-send --as user --user <userId> --msg-type file --file ./report.pdf",
+			},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "identity", Type: shortcut.FlagString, Default: "user", Enum: []string{"user", "bot", "webhook"}, Desc: "发送身份；目标、凭据和幂等参数受发送身份能力矩阵约束"},
 		{Name: "as", Type: shortcut.FlagString, Enum: []string{"user", "bot", "webhook"}, Desc: "--identity 的 lark-cli 对齐别名；受发送身份能力矩阵约束"},
@@ -52,6 +83,9 @@ var MessagesSend = shortcut.Shortcut{
 		{Name: "open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊接收者 openDingTalkId（user）；受发送身份能力矩阵约束"},
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "批量单聊接收者 userId（bot）；受发送身份能力矩阵约束"},
 		{Name: "open-dingtalk-ids", Type: shortcut.FlagStringSlice, Desc: "批量单聊接收者 openDingTalkId（bot）；受发送身份能力矩阵约束"},
+		// Keep required_when out of Schema: validateMessagesSend already enforces
+		// bot/webhook credentials, and publishing RequiredWhen breaks merge-base
+		// schema-compatibility (null → expression).
 		{Name: "robot-code", Type: shortcut.FlagString, Desc: "机器人 Code（identity=bot 时使用）；受发送身份能力矩阵约束"},
 		{Name: "webhook-token", Type: shortcut.FlagString, Desc: "自定义机器人 Webhook token（identity=webhook 时使用）；受发送身份能力矩阵约束"},
 		{Name: "title", Type: shortcut.FlagString, Desc: "消息标题（不传则从正文生成）"},
@@ -671,5 +705,5 @@ func shortcutMessageTitle(text string) string {
 }
 
 func init() {
-	shortcut.Register(MessagesSend)
+	shortcut.Register(withReviewedChatShortcutContracts(MessagesSend)...)
 }

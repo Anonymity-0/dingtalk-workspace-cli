@@ -8,6 +8,7 @@ import (
 	"context"
 	stderrors "errors"
 	"io"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -55,6 +56,12 @@ func executeGuardedMutationCommand(t *testing.T, caller *guardedMutationCaller, 
 	}
 	root.SilenceErrors = true
 	root.SilenceUsage = true
+	// Closed stdin makes ConfirmSafety return typed confirmation_required
+	// instead of hanging on an interactive prompt — but do not clobber a
+	// fixture that already SetIn("no\n") / similar decline input.
+	if root.InOrStdin() == os.Stdin {
+		root.SetIn(strings.NewReader(""))
+	}
 	root.SetArgs(args)
 	return root.Execute()
 }

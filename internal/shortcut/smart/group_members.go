@@ -17,6 +17,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
@@ -50,6 +53,31 @@ var GroupMembers = shortcut.Shortcut{
 		"内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。" +
 		"群名匹配到多个群时会列出候选让你区分、绝不自行假定。用户成员会自动翻页、稳定 ID 去重，并公开 complete/hasMore/nextCursor；--page-limit 保证有界。只读，不改动任何数据。",
 	Risk: shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_group_members",
+			CanonicalPath:  "chat.shortcut_group_members",
+			CLIPath:        "chat +group-members",
+			PrimaryCLIPath: "chat +group-members",
+		},
+		Description: "按群名唯一解析后全量列出用户成员并公开分页完整性",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "按群名唯一解析后全量列出用户成员并公开分页完整性",
+			UseWhen:      []string{"当你只知道群的名字、想看看这个群里有哪些成员，而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。群名匹配到多个群时会列出候选让你区分、绝不自行假定。用户成员会自动翻页、稳定 ID 去重，并公开 complete/hasMore/nextCursor；--page-limit 保证有界。只读，不改动任何数据。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +group-members --group 项目冲刺"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群名称（搜群关键词，用群名里连续的核心词）", Required: true},
 		{Name: "page-limit", Type: shortcut.FlagInt, Default: "50", Desc: "最大用户成员页数；--page-limit 必须在 1-500 之间"},
@@ -87,6 +115,38 @@ var ChatMembersList = shortcut.Shortcut{
 		"默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；" +
 		"用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。",
 	Risk: shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_members_list",
+			CanonicalPath:  "chat.shortcut_chat_members_list",
+			CLIPath:        "chat +chat-members-list",
+			PrimaryCLIPath: "chat +chat-members-list",
+			Aliases:        []string{"chat +chat-group-members"},
+		},
+		Description: "列出群成员并把用户与机器人分桶（支持群名语义解析）",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed composite member adapter: the executable CLI safely resolves a group, paginates and deduplicates user members, lists bots, and publishes per-bucket completeness and failures.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "列出群成员并把用户与机器人分桶（支持群名语义解析）",
+			UseWhen: []string{"当你要完整查看一个群的参与者，并需要区分真人用户和机器人时使用；" +
+				"--group 可传群名或 openConversationId，也可用 --conversation-id 显式传稳定 ID、用 --chat-query 显式按群名解析。" +
+				"默认同时返回 users/bots 两个桶，也可用 --member-types 只取 user 或 bot；" +
+				"用户桶自动翻页并按稳定 ID 去重，结果用 buckets、complete、hasMore、nextCursor 和 failures 证明完整性；--page-limit 保证有界。机器人桶按下层全量列表投影。"},
+			AvoidWhen: []string{"只需要用户成员且已有群名时可使用 +group-members；需要原始单页响应时使用底层原子命令"},
+			Examples: []string{
+				"dws chat +chat-members-list --group \"项目冲刺\"",
+				"dws chat +chat-members-list --conversation-id <openConversationId> --member-types user,bot",
+			},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群名称或 openConversationId"},
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "显式群 openConversationId"},

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -12,6 +13,20 @@ import (
 // ──────────────────────────────────────────────────────────
 
 func newMinutesCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/minutes.json
+	// products.minutes). Catalog assembly stamps provenance contract_final.
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "minutes",
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "查询和维护钉钉听记的转写、摘要、待办、权限、录音、标签、说话人总结及文件上传会话。",
+			UseWhen: []string{
+				"用户要查找、读取、编辑或管理钉钉听记及其录音、转写、摘要和衍生内容。",
+			},
+			AvoidWhen: []string{
+				"用户要处理普通文档正文、群聊消息或日历会议安排，而不是钉钉听记。",
+			},
+		},
+	})
 	minutesListCmd := &cobra.Command{Use: "list", Short: "听记列表", RunE: groupRunE}
 
 	minutesListMineCmd := &cobra.Command{
@@ -26,6 +41,40 @@ func newMinutesCommand() *cobra.Command {
 			return callListByKeywordRange(cmd, "created")
 		},
 	}
+	DeclareLeafMetadata(minutesListMineCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_by_keyword_and_time_range",
+				CanonicalPath:  "minutes.list_by_keyword_and_time_range",
+				CLIPath:        "minutes list mine",
+				PrimaryCLIPath: "minutes list mine",
+			},
+			Description: "查询当前用户自己创建的听记列表，支持分页、关键字和时间范围筛选。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_by_keyword_and_time_range"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询当前用户自己创建的听记列表，支持分页、关键字和时间范围筛选。",
+				UseWhen:      []string{"需要按关键词/时间范围查询我自己创建的听记并提取 taskUuid 时"},
+				AvoidWhen:    []string{"只要共享听记时改用 list shared；要覆盖全部可访问时改用 list all"},
+				Examples:     []string{"dws minutes list mine --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "end", Property: "createTimeEnd", InterfaceType: "number"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "query", Property: "keyword"},
+				{Name: "start", Property: "createTimeStart", InterfaceType: "number"},
+			},
+		},
+	})
 
 	minutesListSharedCmd := &cobra.Command{
 		Use:   "shared",
@@ -38,6 +87,40 @@ func newMinutesCommand() *cobra.Command {
 			return callListByKeywordRange(cmd, "shared")
 		},
 	}
+	DeclareLeafMetadata(minutesListSharedCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_shared_minutes",
+				CanonicalPath:  "minutes.list_shared_minutes",
+				CLIPath:        "minutes list shared",
+				PrimaryCLIPath: "minutes list shared",
+			},
+			Description: "查询他人共享给当前用户的听记列表，支持分页、关键字和时间范围筛选。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_by_keyword_and_time_range"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询他人共享给当前用户的听记列表，支持分页、关键字和时间范围筛选。",
+				UseWhen:      []string{"需要查看别人共享给我的听记，或在共享范围内按关键词/时间搜索时"},
+				AvoidWhen:    []string{"只要自己创建时改用 list mine；要全部可访问时改用 list all"},
+				Examples:     []string{"dws minutes list shared --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "end", Property: "createTimeEnd", InterfaceType: "number"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "query", Property: "keyword"},
+				{Name: "start", Property: "createTimeStart", InterfaceType: "number"},
+			},
+		},
+	})
 
 	minutesListAllCmd := &cobra.Command{
 		Use:   "all",
@@ -54,6 +137,40 @@ func newMinutesCommand() *cobra.Command {
 			return callListByKeywordRange(cmd, "noLimit")
 		},
 	}
+	DeclareLeafMetadata(minutesListAllCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_accessible_minutes",
+				CanonicalPath:  "minutes.list_accessible_minutes",
+				CLIPath:        "minutes list all",
+				PrimaryCLIPath: "minutes list all",
+			},
+			Description: "查询当前用户有权限访问的全部听记，包括自己创建和他人共享的听记，并支持分页、关键字和时间范围筛选。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_by_keyword_and_time_range"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询当前用户有权限访问的全部听记，包括自己创建和他人共享的听记，并支持分页、关键字和时间范围筛选。",
+				UseWhen:      []string{"需要按关键词/时间范围覆盖全部可访问听记（含他人共享）时"},
+				AvoidWhen:    []string{"明确只要自己创建的听记时改用 list mine；只要共享给我的时改用 list shared"},
+				Examples:     []string{"dws minutes list all --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "end", Property: "createTimeEnd", InterfaceType: "number"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "query", Property: "keyword"},
+				{Name: "start", Property: "createTimeStart", InterfaceType: "number"},
+			},
+		},
+	})
 
 	minutesGetCmd := &cobra.Command{Use: "get", Short: "获取听记内容", RunE: groupRunE}
 
@@ -72,6 +189,36 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(minutesGetInfoCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_minutes_basic_info",
+				CanonicalPath:  "minutes.get_minutes_basic_info",
+				CLIPath:        "minutes get info",
+				PrimaryCLIPath: "minutes get info",
+			},
+			Description: "获取指定听记的基础元数据信息。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_minutes_basic_info"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取指定听记的基础元数据信息。",
+				UseWhen:      []string{"已知 taskUuid，需要获取创建人/起止时间/标题/访问链接等基础信息时"},
+				AvoidWhen:    []string{"要摘要或转写时改用 get summary/transcription"},
+				Examples:     []string{"dws minutes get info --id <taskUuid>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+			},
+		},
+	})
 
 	minutesGetSummaryCmd := &cobra.Command{
 		Use:   "summary",
@@ -88,6 +235,42 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(minutesGetSummaryCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_minutes_ai_summary",
+				CanonicalPath:  "minutes.get_minutes_ai_summary",
+				CLIPath:        "minutes get summary",
+				PrimaryCLIPath: "minutes get summary",
+			},
+			Description: "获取由 AI 对听记转写原文进行结构化提炼生成的摘要，返回 Markdown 格式。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_minutes_ai_summary"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取由 AI 对听记转写原文进行结构化提炼生成的摘要，返回 Markdown 格式。",
+				UseWhen:      []string{"已知 taskUuid，需要获取 AI 生成的 Markdown 听记摘要时"},
+				AvoidWhen: []string{
+					"要完整转写原文时改用 get transcription",
+					"要基础元数据时改用 get info",
+				},
+				Examples: []string{
+					"dws minutes get summary --id <taskUuid>",
+					"dws minutes get summary --id <taskUuid> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	minutesGetKeywordsCmd := &cobra.Command{
 		Use:     "keywords",
@@ -102,6 +285,36 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(minutesGetKeywordsCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_minutes_keywords",
+				CanonicalPath:  "minutes.get_minutes_keywords",
+				CLIPath:        "minutes get keywords",
+				PrimaryCLIPath: "minutes get keywords",
+			},
+			Description: "获取指定听记的关键字列表。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_minutes_keywords"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取指定听记的关键字列表。",
+				UseWhen:      []string{"已知 taskUuid，需要获取听记关键字列表时"},
+				AvoidWhen:    []string{"要摘要/转写/待办时改用对应 get 命令"},
+				Examples:     []string{"dws minutes get keywords --id <taskUuid>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+			},
+		},
+	})
 
 	minutesGetTranscriptionCmd := &cobra.Command{
 		Use:   "transcription",
@@ -137,6 +350,40 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool("get_minutes_transcription", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(minutesGetTranscriptionCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_minutes_transcription",
+				CanonicalPath:  "minutes.get_minutes_transcription",
+				CLIPath:        "minutes get transcription",
+				PrimaryCLIPath: "minutes get transcription",
+			},
+			Description: "获取指定听记的语音转写原文。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_minutes_transcription"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取指定听记的语音转写原文。",
+				UseWhen:      []string{"已知 taskUuid，需要拉取完整语音转写原文（发言人/文本/时间戳）时"},
+				AvoidWhen:    []string{"只要结构化摘要时改用 get summary"},
+				Examples: []string{
+					"dws minutes get transcription --id <taskUuid>",
+					"dws minutes get transcription --id <taskUuid> --direction 1",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "id", Property: "taskUuid"},
+			},
+		},
+	})
 
 	minutesGetTodosCmd := &cobra.Command{
 		Use:   "todos",
@@ -153,6 +400,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(minutesGetTodosCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_minutes_todos",
+				CanonicalPath:  "minutes.list_minutes_todos",
+				CLIPath:        "minutes get todos",
+				PrimaryCLIPath: "minutes get todos",
+			},
+			Description: "查询指定听记中由系统提取的待办事项列表。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_minutes_todos"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询指定听记中由系统提取的待办事项列表。",
+				UseWhen:      []string{"已知 taskUuid，需要提取听记中的待办事项列表时"},
+				AvoidWhen:    []string{"要管理钉钉个人待办时改用 todo 产品命令"},
+				Examples: []string{
+					"dws minutes get todos --id <taskUuid>",
+					"dws minutes get todos --id <taskUuid> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+			},
+		},
+	})
 
 	// minutesGetAudioCmd — 对应 MCP 工具 query_minutes_audio_url
 	// 必填参数：taskUuid(--id 或 --url)
@@ -181,6 +461,36 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(minutesGetAudioCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "query_minutes_audio_url",
+				CanonicalPath:  "minutes.query_minutes_audio_url",
+				CLIPath:        "minutes get audio",
+				PrimaryCLIPath: "minutes get audio",
+			},
+			Description: "查询听记的音频/视频文件地址（OSS 链接）。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "query_minutes_audio_url"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询听记的音频/视频文件地址（OSS 链接）。",
+				UseWhen:      []string{"已知 taskUuid 且有读权限，需要获取听记音视频地址以下载或播放时"},
+				AvoidWhen:    []string{"听记已删除、无痕模式或媒体未就绪时可能无地址；不要用本命令改内容"},
+				Examples:     []string{"dws minutes get audio --id <taskUuid> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+			},
+		},
+	})
 
 	minutesGetBatchCmd := &cobra.Command{
 		Use:   "batch",
@@ -199,6 +509,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(minutesGetBatchCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "batch_get_minutes_details",
+				CanonicalPath:  "minutes.batch_get_minutes_details",
+				CLIPath:        "minutes get batch",
+				PrimaryCLIPath: "minutes get batch",
+			},
+			Description: "根据 taskUuid 列表批量查询听记详情。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "batch_get_minutes_details"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "根据 taskUuid 列表批量查询听记详情。",
+				UseWhen:      []string{"已知多个 taskUuid，需要批量查询听记标题/时长/参与人/状态等详情时"},
+				AvoidWhen: []string{
+					"只要 AI 摘要/转写/关键字时改用 get summary/transcription/keywords",
+					"未知 uuid 时先用 list mine/shared/all",
+				},
+				Examples: []string{"dws minutes get batch --ids uuid1,uuid2,uuid3"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ids", Property: "requestBody.taskUuids"},
+			},
+		},
+	})
 
 	minutesUpdateCmd := &cobra.Command{Use: "update", Short: "更新听记信息", RunE: groupRunE}
 
@@ -216,6 +559,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(minutesUpdateTitleCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "update_minutes_title",
+				CanonicalPath:  "minutes.update_minutes_title",
+				CLIPath:        "minutes update title",
+				PrimaryCLIPath: "minutes update title",
+			},
+			Description: "修改指定听记的标题。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "update_minutes_title"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "修改指定听记的标题。",
+				UseWhen:      []string{"已知 taskUuid，需要重命名听记标题时"},
+				AvoidWhen:    []string{"要改纪要正文时改用 update summary"},
+				Examples: []string{
+					"dws minutes update title --id <taskUuid> --title \"Q2 复盘会议\"",
+					"dws minutes update title --id <taskUuid> --title \"新标题\" --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+			},
+		},
+	})
 
 	// list subcommands — mine/shared/all 共享 callListByKeywordRange 链路
 	minutesListMineCmd.Flags().Float64("limit", 10, "每页数据条数 (默认 10)")
@@ -297,6 +673,36 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool(listeningNoteCmdTool, toolArgs)
 		},
 	}
+	DeclareLeafMetadata(minutesRecordStartCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "record_start",
+				CanonicalPath:  "minutes.record_start",
+				CLIPath:        "minutes record start",
+				PrimaryCLIPath: "minutes record start",
+			},
+			Description: "发起听记并开始录音。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "发起听记并开始录音。",
+				UseWhen:      []string{"需要发起听记并开始录音，取得 taskUuid 时"},
+				AvoidWhen:    []string{"已有进行中的录音只需 pause/resume/stop 时不要重复 start"},
+				Examples: []string{
+					"dws minutes record start",
+					"dws minutes record start --session-id <sessionId>",
+				},
+			},
+		},
+	})
 
 	minutesRecordPauseCmd := &cobra.Command{
 		Use:   "pause",
@@ -317,6 +723,39 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool(listeningNoteCmdTool, toolArgs)
 		},
 	}
+	DeclareLeafMetadata(minutesRecordPauseCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "record_pause",
+				CanonicalPath:  "minutes.record_pause",
+				CLIPath:        "minutes record pause",
+				PrimaryCLIPath: "minutes record pause",
+			},
+			Description: "暂停正在进行的听记录音。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "暂停正在进行的听记录音。",
+				UseWhen:      []string{"已知进行中的听记 taskUuid，需要暂停听记录音时"},
+				AvoidWhen:    []string{"要恢复时改用 record resume；要结束时改用 record stop；要开始新听记时改用 record start"},
+				Examples: []string{
+					"dws minutes record pause --id <taskUuid>",
+					"dws minutes record pause --id <taskUuid> --session-id <sessionId>",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "uuid"},
+			},
+		},
+	})
 
 	minutesRecordResumeCmd := &cobra.Command{
 		Use:   "resume",
@@ -337,6 +776,39 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool(listeningNoteCmdTool, toolArgs)
 		},
 	}
+	DeclareLeafMetadata(minutesRecordResumeCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "record_resume",
+				CanonicalPath:  "minutes.record_resume",
+				CLIPath:        "minutes record resume",
+				PrimaryCLIPath: "minutes record resume",
+			},
+			Description: "恢复已暂停的听记录音。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "恢复已暂停的听记录音。",
+				UseWhen:      []string{"已知已暂停的听记 taskUuid，需要恢复听记录音时"},
+				AvoidWhen:    []string{"要暂停/结束/新开始时改用 pause/stop/start"},
+				Examples: []string{
+					"dws minutes record resume --id <taskUuid>",
+					"dws minutes record resume --id <taskUuid> --session-id <sessionId>",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "uuid"},
+			},
+		},
+	})
 
 	minutesRecordStopCmd := &cobra.Command{
 		Use:   "stop",
@@ -357,6 +829,39 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool(listeningNoteCmdTool, toolArgs)
 		},
 	}
+	DeclareLeafMetadata(minutesRecordStopCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "record_stop",
+				CanonicalPath:  "minutes.record_stop",
+				CLIPath:        "minutes record stop",
+				PrimaryCLIPath: "minutes record stop",
+			},
+			Description: "结束正在进行的听记录音。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "结束正在进行的听记录音。",
+				UseWhen:      []string{"已知 taskUuid，需要结束听记录音时"},
+				AvoidWhen:    []string{"只需暂停时可改用 pause；尚未 start 时不要 stop"},
+				Examples: []string{
+					"dws minutes record stop --id <taskUuid>",
+					"dws minutes record stop --id <taskUuid> --session-id <sessionId>",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "uuid"},
+			},
+		},
+	})
 
 	for _, sub := range []*cobra.Command{
 		minutesRecordStartCmd, minutesRecordPauseCmd, minutesRecordResumeCmd, minutesRecordStopCmd,
@@ -393,6 +898,43 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(minutesUpdateSummaryCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "update_minutes_summary",
+				CanonicalPath:  "minutes.update_minutes_summary",
+				CLIPath:        "minutes update summary",
+				PrimaryCLIPath: "minutes update summary",
+			},
+			Description: "用传入的摘要文本全量覆盖听记的纪要内容，不触发 AI 重新生成。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "update_minutes_summary"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "用传入的摘要文本全量覆盖听记的纪要内容，不触发 AI 重新生成。",
+				UseWhen:      []string{"已知 taskUuid，需要用新文本全量覆盖纪要且不触发 AI 重算时"},
+				AvoidWhen: []string{
+					"只要改标题时改用 update title",
+					"内容未确认时不要覆盖",
+				},
+				Examples: []string{
+					"dws minutes update summary --id <taskUuid> --content \"新的纪要内容\"",
+					"dws minutes update summary --id <taskUuid> --content \"新的纪要内容\" --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content", Property: "summaryText"},
+				{Name: "id", Property: "taskUuid"},
+			},
+		},
+	})
 	minutesUpdateSummaryCmd.Flags().String("id", "", "听记 taskUuid (必填)")
 	minutesUpdateSummaryCmd.Flags().String("content", "", "新的纪要内容 (必填)")
 
@@ -416,6 +958,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(mindGraphCreateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "create_mind_graph",
+				CanonicalPath:  "minutes.create_mind_graph",
+				CLIPath:        "minutes mind-graph create",
+				PrimaryCLIPath: "minutes mind-graph create",
+			},
+			Description: "触发创建听记思维导图任务。触发成功后，可通过 query_mind_graph_status 轮询任务状态。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "create_mind_graph"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "触发创建听记思维导图任务。触发成功后，可通过 query_mind_graph_status 轮询任务状态。",
+				UseWhen:      []string{"已知 taskUuid，需要触发听记思维导图生成任务时"},
+				AvoidWhen:    []string{"要查询任务状态时改用 mind-graph status 并轮询"},
+				Examples: []string{
+					"dws minutes mind-graph create --id <taskUuid>",
+					"dws minutes mind-graph create --id <taskUuid> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+			},
+		},
+	})
 	mindGraphCreateCmd.Flags().String("id", "", "听记 taskUuid (必填)")
 	mindGraphCreateCmd.Flags().String("url", "", "--id 的别名")
 	_ = mindGraphCreateCmd.Flags().MarkHidden("url")
@@ -439,6 +1014,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(mindGraphStatusCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "query_mind_graph_status",
+				CanonicalPath:  "minutes.query_mind_graph_status",
+				CLIPath:        "minutes mind-graph status",
+				PrimaryCLIPath: "minutes mind-graph status",
+			},
+			Description: "查询指定听记的思维导图生成状态。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "query_mind_graph_status"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询指定听记的思维导图生成状态。",
+				UseWhen:      []string{"已 create 思维导图后，需要查询任务状态（0进行中/1成功/2失败）时"},
+				AvoidWhen:    []string{"尚未触发创建时先用 mind-graph create"},
+				Examples: []string{
+					"dws minutes mind-graph status --id <taskUuid>",
+					"dws minutes mind-graph status --id <taskUuid> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+			},
+		},
+	})
 	mindGraphStatusCmd.Flags().String("id", "", "听记 taskUuid (必填)")
 	mindGraphStatusCmd.Flags().String("url", "", "--id 的别名")
 	_ = mindGraphStatusCmd.Flags().MarkHidden("url")
@@ -474,6 +1082,41 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool("replace_speaker", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(speakerReplaceCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "replace_speaker",
+				CanonicalPath:  "minutes.replace_speaker",
+				CLIPath:        "minutes speaker replace",
+				PrimaryCLIPath: "minutes speaker replace",
+			},
+			Description: "批量替换听记转写中指定发言人，将源发言人（speakerNick）精确匹配的所有段落替换为目标发言人。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "replace_speaker"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "批量替换听记转写中指定发言人，将源发言人（speakerNick）精确匹配的所有段落替换为目标发言人。",
+				UseWhen:      []string{"用户明确要求把转写中指定发言人昵称批量替换为目标发言人时"},
+				AvoidWhen:    []string{"源/目标发言人或 taskUuid 未确认时不要替换"},
+				Examples: []string{
+					"dws minutes speaker replace --id <taskUuid> --from \"张三\" --to \"李四\"",
+					"dws minutes speaker replace --id <taskUuid> --from \"张三\" --to \"李四\" --target-uid <uid>",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "from", Property: "speakerNick"},
+				{Name: "id", Property: "taskUuid"},
+				{Name: "to", Property: "targetNickName"},
+			},
+		},
+	})
 	speakerReplaceCmd.Flags().String("id", "", "听记 taskUuid (必填)")
 	speakerReplaceCmd.Flags().String("from", "", "源发言人昵称 (必填)")
 	speakerReplaceCmd.Flags().String("to", "", "目标发言人昵称 (必填)")
@@ -503,6 +1146,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(speakerSummaryCreateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "create_speaker_summary",
+				CanonicalPath:  "minutes.create_speaker_summary",
+				CLIPath:        "minutes speaker summary create",
+				PrimaryCLIPath: "minutes speaker summary create",
+			},
+			Description: "触发创建发言人的段落总结任务，将听记中每位发言人的所有发言内容汇总总结。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "create_speaker_summary"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "触发创建发言人的段落总结任务，将听记中每位发言人的所有发言内容汇总总结。",
+				UseWhen:      []string{"已知听记 uuid，需要触发发言人段落总结异步任务时"},
+				AvoidWhen:    []string{"要取结果时改用 speaker summary get（需等待后轮询）"},
+				Examples: []string{
+					"dws minutes speaker summary create --ids <uuid1,uuid2>",
+					"dws minutes speaker summary create --task-uuids <uuid1,uuid2>",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ids", Property: "uuids"},
+			},
+		},
+	})
 	speakerSummaryCreateCmd.Flags().String("ids", "", "听记 taskUuid 列表，逗号分隔 (必填)")
 	speakerSummaryCreateCmd.Flags().String("task-uuids", "", "--ids 的别名")
 	_ = speakerSummaryCreateCmd.Flags().MarkHidden("task-uuids")
@@ -525,6 +1201,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(speakerSummaryGetCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "get_speaker_summary",
+				CanonicalPath:  "minutes.get_speaker_summary",
+				CLIPath:        "minutes speaker summary get",
+				PrimaryCLIPath: "minutes speaker summary get",
+			},
+			Description: "查询发言人段落总结任务的结果，返回每位发言人的发言汇总。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "get_speaker_summary"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询发言人段落总结任务的结果，返回每位发言人的发言汇总。",
+				UseWhen:      []string{"已触发 create_speaker_summary 后，需要查询发言人段落总结结果时"},
+				AvoidWhen:    []string{"尚未 create 任务时先 create；不要把本命令当触发器"},
+				Examples: []string{
+					"dws minutes speaker summary get --ids <uuid1,uuid2>",
+					"dws minutes speaker summary get --task-uuids <uuid1,uuid2>",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ids", Property: "uuids"},
+			},
+		},
+	})
 	speakerSummaryGetCmd.Flags().String("ids", "", "听记 taskUuid 列表，逗号分隔 (必填)")
 	speakerSummaryGetCmd.Flags().String("task-uuids", "", "--ids 的别名")
 	_ = speakerSummaryGetCmd.Flags().MarkHidden("task-uuids")
@@ -551,6 +1260,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(hotWordAddCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "add_personal_hot_word",
+				CanonicalPath:  "minutes.add_personal_hot_word",
+				CLIPath:        "minutes hot-word add",
+				PrimaryCLIPath: "minutes hot-word add",
+			},
+			Description: "添加听记个人热词，用于优化语音识别中专有名词、人名等的识别准确率。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "add_personal_hot_word"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "添加听记个人热词，用于优化语音识别中专有名词、人名等的识别准确率。",
+				UseWhen:      []string{"需要添加听记个人热词以优化专有名词/人名识别时（单词不超过约10汉字）"},
+				AvoidWhen:    []string{"要查看已有热词时改用 dws minutes hot-word list"},
+				Examples: []string{
+					"dws minutes hot-word add --words \"钉钉\"",
+					"dws minutes hot-word add --words \"OKR,钉钉,Copilot\"",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "words", Property: "hotWordList"},
+			},
+		},
+	})
 	hotWordAddCmd.Flags().String("words", "", "要添加的热词，多个用逗号分隔 (必填)")
 
 	hotWordListCmd := &cobra.Command{
@@ -564,6 +1306,33 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool("list_my_hotwords", map[string]any{})
 		},
 	}
+	DeclareLeafMetadata(hotWordListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_my_hotwords",
+				CanonicalPath:  "minutes.list_my_hotwords",
+				CLIPath:        "minutes hot-word list",
+				PrimaryCLIPath: "minutes hot-word list",
+			},
+			Description: "查询当前用户配置的所有听记热词列表。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_my_hotwords"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询当前用户配置的所有听记热词列表。",
+				UseWhen:      []string{"需要查看当前用户已配置的听记个人热词列表时"},
+				AvoidWhen:    []string{"要添加热词时改用 hot-word add"},
+				Examples:     []string{"dws minutes hot-word list"},
+			},
+		},
+	})
 
 	hotWordCmd.AddCommand(hotWordAddCmd, hotWordListCmd)
 
@@ -585,6 +1354,44 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(replaceTextCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "replace_minutes_text",
+				CanonicalPath:  "minutes.replace_minutes_text",
+				CLIPath:        "minutes replace-text",
+				PrimaryCLIPath: "minutes replace-text",
+			},
+			Description: "把听记中所有出现的原文字替换为目标文字，包括转写段落和纪要摘要中出现的原文字都会被替换。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "replace_minutes_text"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "把听记中所有出现的原文字替换为目标文字，包括转写段落和纪要摘要中出现的原文字都会被替换。",
+				UseWhen:      []string{"用户明确要求在转写段落与纪要中把原文精确替换为目标文字时"},
+				AvoidWhen: []string{
+					"搜索词/替换词或 taskUuid 未确认时不要执行",
+					"只要改标题时改用 update title",
+				},
+				Examples: []string{
+					"dws minutes replace-text --id <taskUuid> --search \"旧文字\" --replace \"新文字\"",
+					"dws minutes replace-text --id <taskUuid> --search \"发言人1\" --replace \"张三\" --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+				{Name: "replace", Property: "replacedText"},
+				{Name: "search", Property: "originalText"},
+			},
+		},
+	})
 	replaceTextCmd.Flags().String("id", "", "听记 taskUuid (必填)")
 	replaceTextCmd.Flags().String("search", "", "要查找的文字 (必填)")
 	replaceTextCmd.Flags().String("replace", "", "替换为的新文字 (必填)")
@@ -654,6 +1461,41 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPToolUnescaped("create_upload_session", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(uploadCreateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "create_upload_session",
+				CanonicalPath:  "minutes.create_upload_session",
+				CLIPath:        "minutes upload create",
+				PrimaryCLIPath: "minutes upload create",
+			},
+			Description: "创建文件上传会话，获取预签名上传URL。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "create_upload_session"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "创建文件上传会话，获取预签名上传URL。",
+				UseWhen:      []string{"需要把本地音视频上传转成听记：先创建上传会话取得预签名 URL 与 sessionId 时"},
+				AvoidWhen:    []string{"会话已存在只需 complete/cancel 时不要重复 create"},
+				Examples: []string{
+					"dws minutes upload create --file-name \"meeting.mp4\" --file-size 102400",
+					"dws minutes upload create --file-name \"meeting.mp4\" --file-size 102400 --title \"周会录音\"",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "enable-message-card", Property: "minutesOption.enableMessageCard"},
+				{Name: "input-language", Property: "minutesOption.inputLanguage"},
+				{Name: "template-id", Property: "minutesOption.templateId"},
+			},
+		},
+	})
 	uploadCreateCmd.Flags().String("file-name", "", "文件名（含后缀），如 meeting.mp4 (必填)")
 	uploadCreateCmd.Flags().Int64("file-size", 0, "文件大小（字节）(必填)")
 	uploadCreateCmd.Flags().String("title", "", "听记标题，不传时默认使用文件名去掉后缀 (可选)")
@@ -685,6 +1527,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(uploadCompleteCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "complete_upload_session",
+				CanonicalPath:  "minutes.complete_upload_session",
+				CLIPath:        "minutes upload complete",
+				PrimaryCLIPath: "minutes upload complete",
+			},
+			Description: "文件上传完成后，创建听记。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "complete_upload_session"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "文件上传完成后，创建听记。",
+				UseWhen:      []string{"预签名 PUT 上传完成后，需要通知服务端完成会话并创建听记时（同 sessionId 幂等）"},
+				AvoidWhen: []string{
+					"尚未 PUT 上传文件时不要 complete",
+					"要取消会话时改用 upload cancel",
+				},
+				Examples: []string{
+					"dws minutes upload complete --session-id <sessionId>",
+					"dws minutes upload complete --session-id <sessionId> --format json",
+				},
+			},
+		},
+	})
 	uploadCompleteCmd.Flags().String("session-id", "", "上传会话 ID，来自 create 返回的 sessionId (必填)")
 
 	// upload cancel — 对应 MCP 工具 cancel_upload_session
@@ -704,6 +1579,39 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(uploadCancelCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "cancel_upload_session",
+				CanonicalPath:  "minutes.cancel_upload_session",
+				CLIPath:        "minutes upload cancel",
+				PrimaryCLIPath: "minutes upload cancel",
+			},
+			Description: "取消 create 创建的上传会话，传入要取消的会话 ID。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "cancel_upload_session"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "取消 create 创建的上传会话，传入要取消的会话 ID。",
+				UseWhen:      []string{"需要取消已创建的文件上传会话并释放资源时"},
+				AvoidWhen: []string{
+					"要完成上传创建听记时改用 upload complete",
+					"要新建上传会话时改用 upload create",
+				},
+				Examples: []string{
+					"dws minutes upload cancel --session-id <sessionId>",
+					"dws minutes upload cancel --session-id <sessionId> --format json",
+				},
+			},
+		},
+	})
 	uploadCancelCmd.Flags().String("session-id", "", "要取消的会话 sessionId (必填)")
 
 	// 注册 upload 子命令：create / complete / cancel
@@ -777,6 +1685,45 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool("add_member_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(permissionAddCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "add_member_permission",
+				CanonicalPath:  "minutes.add_member_permission",
+				CLIPath:        "minutes permission add",
+				PrimaryCLIPath: "minutes permission add",
+			},
+			Description: "批量给多个听记增加成员，并设置成员的权限。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "add_member_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "批量给多个听记增加成员，并设置成员的权限。",
+				UseWhen:      []string{"已知听记 uuid，需要批量给听记增加成员并设置权限（policy 0管理员/1所有者/2可编辑/3可查看下载/4仅查看）时"},
+				AvoidWhen: []string{
+					"要移除成员权限时改用 dws minutes permission remove",
+					"成员、权限策略或听记 id 未确认时不要添加",
+				},
+				Examples: []string{
+					"dws minutes permission add --ids <uuid1,uuid2> --member-uids 123456,789012 --policy 3",
+					"dws minutes permission add --ids <uuid> --member-uids 123456 --policy 2 --cover",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cover", Property: "coverPermission"},
+				{Name: "ids", Property: "uuids"},
+				{Name: "policy", Property: "policyId"},
+				{Name: "sub-resources", Property: "roleSubResourceIds"},
+			},
+		},
+	})
 	permissionAddCmd.Flags().String("ids", "", "听记 taskUuid 列表，逗号分隔 (必填)")
 	permissionAddCmd.Flags().String("uuids", "", "--ids 的别名")
 	_ = permissionAddCmd.Flags().MarkHidden("uuids")
@@ -813,6 +1760,42 @@ func newMinutesCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(permissionRemoveCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "remove_member_permission",
+				CanonicalPath:  "minutes.remove_member_permission",
+				CLIPath:        "minutes permission remove",
+				PrimaryCLIPath: "minutes permission remove",
+			},
+			Description: "批量移除多个听记的成员权限。移除后，对应成员将失去对这些听记的访问权限。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "remove_member_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "批量移除多个听记的成员权限。移除后，对应成员将失去对这些听记的访问权限。",
+				UseWhen:      []string{"用户明确要求批量移除听记成员权限，使其失去访问时"},
+				AvoidWhen: []string{
+					"要添加权限时改用 permission add",
+					"成员或听记 id 未确认时不要移除",
+				},
+				Examples: []string{
+					"dws minutes permission remove --ids <uuid1,uuid2> --member-uids 123456,789012",
+					"dws minutes permission remove --ids <uuid> --member-uids 123456",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "ids", Property: "uuids"},
+			},
+		},
+	})
 	permissionRemoveCmd.Flags().String("ids", "", "听记 taskUuid 列表，逗号分隔 (必填)")
 	permissionRemoveCmd.Flags().String("uuids", "", "--ids 的别名")
 	_ = permissionRemoveCmd.Flags().MarkHidden("uuids")
@@ -844,6 +1827,33 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool("query_user_tag_list", map[string]any{})
 		},
 	}
+	DeclareLeafMetadata(tagListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "query_user_tag_list",
+				CanonicalPath:  "minutes.query_user_tag_list",
+				CLIPath:        "minutes tag list",
+				PrimaryCLIPath: "minutes tag list",
+			},
+			Description: "查询当前用户的听记标签或分组列表。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "query_user_tag_list"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询当前用户的听记标签或分组列表。",
+				UseWhen:      []string{"需要列出我的听记标签或分组时"},
+				AvoidWhen:    []string{"已知 tagId 要查听记时改用 tag query"},
+				Examples:     []string{"dws minutes tag list"},
+			},
+		},
+	})
 
 	// tag query — 对应 MCP 工具 query_minutes_by_tag_id
 	// 根据用户的标签/分组 ID 查询该标签下的听记列表。
@@ -876,6 +1886,40 @@ func newMinutesCommand() *cobra.Command {
 			return callMCPTool("query_minutes_by_tag_id", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(tagQueryCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "query_minutes_by_tag_id",
+				CanonicalPath:  "minutes.query_minutes_by_tag_id",
+				CLIPath:        "minutes tag query",
+				PrimaryCLIPath: "minutes tag query",
+			},
+			Description: "根据用户的标签或分组 ID 查询该标签下的听记列表。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "query_minutes_by_tag_id"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "根据用户的标签或分组 ID 查询该标签下的听记列表。",
+				UseWhen:      []string{"已知 tagId，需要查询该标签/分组下的听记列表时"},
+				AvoidWhen:    []string{"不知道标签时先用 tag list"},
+				Examples: []string{
+					"dws minutes tag query --tag-id <tagId>",
+					"dws minutes tag query --tag-id <tagId> --limit 20",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "nextToken"},
+				{Name: "limit", Property: "maxResults"},
+			},
+		},
+	})
 	tagQueryCmd.Flags().String("tag-id", "", "标签/分组 ID，可通过 tag list 获取 (必填)")
 	tagQueryCmd.Flags().Float64("limit", 10, "每页数据条数 (默认 10)")
 	tagQueryCmd.Flags().String("cursor", "", "分页 token (首页留空)")

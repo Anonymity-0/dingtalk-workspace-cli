@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "marker_roots": [
     "skills/multi/dingtalk-chat",
     "skills/multi/dingtalk-event"
@@ -23,7 +23,6 @@
       "forbidden_default_tools": [
         "chat.send_personal_message"
       ],
-      "selection_file": "internal/cli/schema_hints/selection/chat.json",
       "references": [
         "skills/multi/dingtalk-chat/SKILL.md",
         "skills/multi/dingtalk-chat/references/01-messaging.md",
@@ -36,7 +35,6 @@
       "forbidden_default_tools": [
         "chat.send_personal_message"
       ],
-      "selection_file": "internal/cli/schema_hints/selection/chat.json",
       "references": [
         "skills/multi/dingtalk-chat/SKILL.md",
         "skills/multi/dingtalk-chat/references/01-messaging.md",
@@ -52,7 +50,6 @@
         "chat.send_message_by_custom_robot",
         "chat.shortcut_messages_send_by_webhook"
       ],
-      "selection_file": "internal/cli/schema_hints/selection/chat.json",
       "references": [
         "skills/multi/dingtalk-chat/SKILL.md",
         "skills/multi/dingtalk-chat/references/01-messaging.md",
@@ -72,7 +69,6 @@
       "forbidden_default_tools": [
         "chat.list_conversation_message_v2"
       ],
-      "selection_file": "internal/cli/schema_hints/selection/chat.json",
       "references": [
         "skills/multi/dingtalk-chat/SKILL.md",
         "skills/multi/dingtalk-chat/references/01-messaging.md",
@@ -93,7 +89,6 @@
         "chat.search_messages",
         "chat.search_messages_by_keyword"
       ],
-      "selection_file": "internal/cli/schema_hints/selection/chat.json",
       "references": [
         "skills/multi/dingtalk-chat/SKILL.md",
         "skills/multi/dingtalk-chat/references/chat/chat-message.md"
@@ -105,7 +100,6 @@
       "forbidden_default_tools": [
         "chat.create_group_conversation"
       ],
-      "selection_file": "internal/cli/schema_hints/selection/chat.json",
       "references": [
         "skills/multi/dingtalk-chat/SKILL.md",
         "skills/multi/dingtalk-chat/references/01-messaging.md",
@@ -118,7 +112,6 @@
       "forbidden_default_tools": [
         "chat.reply_personal_message"
       ],
-      "selection_file": "internal/cli/schema_hints/selection/chat.json",
       "references": [
         "skills/multi/dingtalk-chat/SKILL.md",
         "skills/multi/dingtalk-chat/references/01-messaging.md",
@@ -137,7 +130,6 @@
       "forbidden_default_tools": [
         "chat.list_top_conversations"
       ],
-      "selection_file": "internal/cli/schema_hints/selection/chat.json",
       "references": [
         "skills/multi/dingtalk-chat/SKILL.md",
         "skills/multi/dingtalk-chat/references/chat/chat-conversation.md"
@@ -155,7 +147,6 @@
       "forbidden_default_tools": [
         "event.consume"
       ],
-      "selection_file": "internal/cli/schema_hints/selection/event.json",
       "references": [
         "skills/multi/dingtalk-event/SKILL.md",
         "skills/multi/dingtalk-event/references/event-im.md"

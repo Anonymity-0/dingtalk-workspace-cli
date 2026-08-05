@@ -172,6 +172,7 @@ func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T)
 		{"message", "search", "--query=q", "--start=2026-01-02T00:00:00Z", "--end=2026-01-01T00:00:00Z"},
 		{"message", "search", "--query=q", "--start=2026-01-01T00:00:00Z", "--end=2026-01-02T00:00:00Z", "--group=cid"},
 		{"message", "recall", "--conversation-id=cid", "--msg-id=mid"},
+		{"category", "delete", "--category-id=1"},
 		{"category", "rename", "--category-id=1", "--title=renamed"},
 		{"category", "add-conv", "--group=cid", "--category-ids=1,2"},
 		{"category", "remove-conv", "--group=cid", "--category-ids=1,2"},

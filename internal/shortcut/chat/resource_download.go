@@ -62,11 +62,11 @@ var MessagesResourceDownload = shortcut.Shortcut{
 		"默认不覆盖已有文件，只有显式传 --overwrite 才覆盖；下载采用整文件临时落盘后原子发布，不支持 Range 断点续传。按既有安全本地下载约定无需交互确认。",
 	Risk: shortcut.RiskRead,
 	Flags: []shortcut.Flag{
-		{Name: "type", Type: shortcut.FlagString, Default: "mediaId", Desc: "资源类型", Enum: []string{"mediaId", "fileId"}},
+		{Name: "type", Type: shortcut.FlagString, Default: "mediaId", Desc: "资源类型；--type mediaId 时必须同时提供 --message-id 和 --open-conversation-id；fileId 不需要消息上下文", Enum: []string{"mediaId", "fileId"}},
 		{Name: "resource-id", Type: shortcut.FlagString, Desc: "消息中的 mediaId 或 fileId", Required: true},
-		{Name: "message-id", Type: shortcut.FlagString, Desc: "mediaId 所属消息的 openMessageId"},
-		{Name: "open-conversation-id", Type: shortcut.FlagString, Desc: "mediaId 所属会话的 openConversationId"},
-		{Name: "output", Type: shortcut.FlagString, Default: ".", Desc: "工作目录内的相对文件或目录路径"},
+		{Name: "message-id", Type: shortcut.FlagString, Desc: "mediaId 所属消息的 openMessageId；--type mediaId 时必须同时提供 --message-id 和 --open-conversation-id；fileId 不需要消息上下文"},
+		{Name: "open-conversation-id", Type: shortcut.FlagString, Desc: "mediaId 所属会话的 openConversationId；--type mediaId 时必须同时提供 --message-id 和 --open-conversation-id；fileId 不需要消息上下文"},
+		{Name: "output", Type: shortcut.FlagString, Default: ".", Desc: "工作目录内的相对路径；不允许绝对路径或 .. 逃逸"},
 		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖工作目录内已存在的目标文件（默认拒绝）"},
 	},
 	Constraints: []shortcut.Constraint{
@@ -228,6 +228,8 @@ func resourcePathIsAbsolute(value string) bool {
 		portable[1] == ':'
 }
 
+// resourcePathEscapesBase reports whether a relative path escapes its base.
+// Normalize both separators so the check remains portable on every host OS.
 func resourcePathEscapesBase(value string) bool {
 	portable := strings.ReplaceAll(strings.TrimSpace(value), "\\", "/")
 	clean := pathpkg.Clean(portable)
@@ -610,5 +612,5 @@ func downloadResourceAtomically(
 }
 
 func init() {
-	shortcut.Register(MessagesResourceDownload)
+	shortcut.Register(withReviewedChatShortcutContracts(MessagesResourceDownload)...)
 }

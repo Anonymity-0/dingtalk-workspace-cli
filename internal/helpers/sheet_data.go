@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -74,6 +75,39 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			return callMCPTool("find_cells", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(findCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "find_cells",
+				CanonicalPath:  "sheet.find_cells",
+				CLIPath:        "sheet find",
+				PrimaryCLIPath: "sheet find",
+			},
+			Description: "在工作表中搜索单元格（支持精确匹配/正则/搜公式）。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "find_cells"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "在工作表中搜索单元格（支持精确匹配/正则/搜公式）。",
+				UseWhen:      []string{"要查找包含某文本或公式的单元格位置时，必须用服务端 find"},
+				AvoidWhen:    []string{"不要用 range read 全量下载后客户端过滤；要替换文本用 replace"},
+				Examples:     []string{"dws sheet find --node <NODE_ID> --sheet-id <SHEET_ID> --find \"销售额\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "match-formula", Property: "matchFormulaText"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "query", Property: "text"},
+				{Name: "use-regexp", Property: "useRegExp"},
+			},
+		},
+	})
 	findCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	findCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	findCmd.Flags().String("query", "", "搜索文本 (必填，别名: --find)")
@@ -137,6 +171,39 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			return callMCPTool("replace_all", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(replaceCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "replace_all",
+				CanonicalPath:  "sheet.replace_all",
+				CLIPath:        "sheet replace",
+				PrimaryCLIPath: "sheet replace",
+			},
+			Description: "全局查找替换文本（服务端原子操作）。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "replace_all"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "全局查找替换文本（服务端原子操作）。",
+				UseWhen:      []string{"要把工作表中匹配文本批量替换为另一文本时"},
+				AvoidWhen:    []string{"不要用 find + range update 组合模拟；只查找不替换用 find"},
+				Examples:     []string{"dws sheet replace --node <NODE_ID> --sheet-id <SHEET_ID> --find \"旧文本\" --replacement \"新文本\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "find", Property: "text"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "replacement", Property: "replaceText"},
+				{Name: "use-regexp", Property: "useRegExp"},
+			},
+		},
+	})
 	replaceCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	replaceCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	replaceCmd.Flags().String("find", "", "查找文本 (必填)")
@@ -178,6 +245,36 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			})
 		},
 	}
+	DeclareLeafMetadata(appendCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "append_rows",
+				CanonicalPath:  "sheet.append_rows",
+				CLIPath:        "sheet append",
+				PrimaryCLIPath: "sheet append",
+			},
+			Description: "在工作表数据末尾追加带值的数据行。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "append_rows"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "在工作表数据末尾追加带值的数据行。",
+				UseWhen:      []string{"要在已有数据下方追加记录行（带 values）时"},
+				AvoidWhen:    []string{"末尾追加空行/空列用 add-dimension；中间插入空行用 insert-dimension；覆盖已有区域用 range update/csv-put"},
+				Examples:     []string{"dws sheet append --node <NODE_ID> --sheet-id <SHEET_ID> --values '[[\"张三\",\"销售部\",50000]]'"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 	appendCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	appendCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	appendCmd.Flags().String("values", "", "追加数据，二维 JSON 数组 (必填)")
@@ -237,6 +334,36 @@ range update 与合并区域冲突时返回 MERGED_CELLS_CONFLICT 的行为。
 			return callMCPTool("set_range_from_csv", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(csvPutCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "set_range_from_csv",
+				CanonicalPath:  "sheet.set_range_from_csv",
+				CLIPath:        "sheet csv-put",
+				PrimaryCLIPath: "sheet csv-put",
+			},
+			Description: "将 CSV 纯值写入起始单元格（可自动扩容；大批量纯值首选）。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "set_range_from_csv"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将 CSV 纯值写入起始单元格（可自动扩容；大批量纯值首选）。",
+				UseWhen:      []string{"写入纯值且超过约 5 行/20 格，或数据来自 CSV/表格文本时优先使用"},
+				AvoidWhen:    []string{"需要公式/超链接/富文本用 range update；在末尾追加数据行用 append；覆盖已有数据需 --allow-overwrite"},
+				Examples:     []string{"dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell A1 --csv @data.csv --allow-overwrite"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 	csvPutCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	csvPutCmd.Flags().String("sheet-id", "", "工作表 ID 或名称 (必填)")
 	csvPutCmd.Flags().String("csv", "", "CSV 文本、@文件路径 或 - 表示 stdin (必填)")
@@ -291,6 +418,36 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 			return callMCPTool("get_range_as_csv", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(csvGetCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "get_range_as_csv",
+				CanonicalPath:  "sheet.get_range_as_csv",
+				CLIPath:        "sheet csv-get",
+				PrimaryCLIPath: "sheet csv-get",
+			},
+			Description: "以 CSV 文本读取指定区域。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "get_range_as_csv"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "以 CSV 文本读取指定区域。",
+				UseWhen:      []string{"需要把区域导出为 CSV 文本便于管道处理时"},
+				AvoidWhen:    []string{"需要结构化 per-cell（样式/超链接/公式）用 range read；导出整份 xlsx 用 sheet export"},
+				Examples:     []string{"dws sheet csv-get --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1:D20\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 	csvGetCmd.Flags().String("node", "", "表格文档 ID 或 URL (必填)")
 	csvGetCmd.Flags().String("sheet-id", "", "工作表 ID 或名称")
 	csvGetCmd.Flags().String("range", "", "读取范围，A1 表示法 (不传则读取全部非空数据)")

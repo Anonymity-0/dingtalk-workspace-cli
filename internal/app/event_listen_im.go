@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/personal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
@@ -121,6 +122,53 @@ func newEventListenIMCommand() *cobra.Command {
 	cli.AnnotateRuntimeFlagEnum(cmd, "events", "message", "reaction", "read", "recall")
 	cli.AnnotateRuntimeConstraints(cmd, cli.RuntimeSchemaConstraints{
 		MutuallyExclusive: [][]string{{"user", "open-dingtalk-id", "user-query", "chat-id", "chat-query"}},
+	})
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "listen_im",
+				CanonicalPath:  "event.listen_im",
+				CLIPath:        "event +listen-im",
+				PrimaryCLIPath: "event +listen-im",
+			},
+			Description: "把 @我、指定发送人、指定群、全部单聊或全部群聊等用户意图确定性编译为个人 EventKey，自然姓名/群名会先唯一解析，再复用 event consume 的订阅、ready marker、NDJSON、取消、回滚和清理生命周期。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed IM event facade: it deterministically maps kind/events to public personal EventKeys, resolves one natural user/chat target with the shared typed resolver, then delegates one single- or multi-event invocation to the existing subscription, bus, ready-marker, NDJSON, rollback, cancellation, and cleanup lifecycle.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "按 @我、姓名、群名或全量范围监听一个或多个 IM 消息事件",
+				UseWhen: []string{
+					"已知要监听 @我、指定发送人、指定群、全部单聊或全部群聊的 message/reaction/read/recall 事件时使用；姓名用 --user-query、群名用 --chat-query，CLI 会唯一解析目标并把多个兼容事件合并到一个消费生命周期。",
+				},
+				AvoidWhen: []string{
+					"需要群标题/成员/解散等生命周期事件、显式 EventKey、复用 subscribe_id、Filter DSL、原始 transport envelope 或其它底层 consume 控制时使用 event consume；只查历史消息时使用 chat 查询入口",
+				},
+				Examples: []string{
+					"dws event +listen-im --kind at-me --max-events 1",
+					"dws event +listen-im --kind group --events message,reaction --chat-id <openConversationId> --duration 10m",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "chat-id", Property: "chatId"},
+				{Name: "chat-query", Property: "chatQuery"},
+				{Name: "dry-run", Property: "dryRun"},
+				{Name: "duration", Property: "duration"},
+				{Name: "events", Property: "events"},
+				{Name: "kind", Property: "kind"},
+				{Name: "max-events", Property: "maxEvents"},
+				{Name: "open-dingtalk-id", Property: "openDingtalkId"},
+				{Name: "query", Property: "query"},
+				{Name: "user", Property: "user"},
+				{Name: "user-query", Property: "userQuery"},
+			},
+		},
 	})
 	return cmd
 }

@@ -36,12 +36,22 @@ func TestCrossPlatformCoverageRunRepositoryAndSetupFailures(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	if code := run(root, &cobra.Command{Use: "dws"}, &stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), "CommandRegistry") {
+	if code := run(root, &cobra.Command{Use: "dws"}, &stdout, &stderr); code != 1 || !strings.Contains(stderr.String(), "absent from BoundCommandRegistry") {
 		t.Fatalf("unbound-root run = %d, stderr=%s", code, stderr.String())
 	}
 
-	oldBind := bindEffective
-	t.Cleanup(func() { bindEffective = oldBind })
+	oldBuild, oldBind := buildEffective, bindEffective
+	t.Cleanup(func() { buildEffective, bindEffective = oldBuild, oldBind })
+	buildEffective = func(*cobra.Command) (cli.EffectiveCommandRegistry, error) {
+		return cli.EffectiveCommandRegistry{}, os.ErrInvalid
+	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := run(root, app.NewRootCommand(), &stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), "build effective CommandRegistry") {
+		t.Fatalf("registry-build-failure run = %d, stderr=%s", code, stderr.String())
+	}
+	buildEffective = oldBuild
+
 	bindEffective = func(*cobra.Command, cli.EffectiveCommandRegistry) (cli.BoundCommandRegistry, error) {
 		return cli.BoundCommandRegistry{}, os.ErrInvalid
 	}
@@ -85,16 +95,10 @@ func TestCrossPlatformCoverageMainUsesInjectableProcessBoundaries(t *testing.T) 
 func TestCrossPlatformCoverageValidateManifestAcceptsExactReviewedRoute(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, root, "skills/multi/dingtalk-chat/SKILL.md", "| 发消息 | `dws chat +send` | <!-- dws-intent: chat.send -->\n")
-	writeTestFile(t, root, "internal/cli/schema_hints/selection/chat.json", `{
-  "tools": {
-    "chat.shortcut_send": {"use_when":["普通发送"],"avoid_when":["底层字段另选"]},
-    "chat.atomic_send": {"use_when":["底层字段"],"avoid_when":["普通发送使用 +send"]}
-  }
-}`)
 	writeTypedContractReference(t, root, "skills/multi/dingtalk-chat/references/contracts.md")
 	writeEventHandoffReference(t, root, "skills/multi/dingtalk-event/references/event-im-output.md")
 	manifest := routeManifest{
-		Version:           2,
+		Version:           3,
 		MarkerRoots:       []string{"skills/multi/dingtalk-chat"},
 		RetiredScripts:    []string{"skills/multi/dingtalk-chat/scripts/retired.py"},
 		ContractReference: "skills/multi/dingtalk-chat/references/contracts.md",
@@ -103,13 +107,12 @@ func TestCrossPlatformCoverageValidateManifestAcceptsExactReviewedRoute(t *testi
 			ID:                    "chat.send",
 			PreferredTool:         "chat.shortcut_send",
 			ForbiddenDefaultTools: []string{"chat.atomic_send"},
-			SelectionFile:         "internal/cli/schema_hints/selection/chat.json",
 			References:            []string{"skills/multi/dingtalk-chat/SKILL.md"},
 		}},
 	}
 	tools := map[string]toolFact{
-		"chat.shortcut_send": {Canonical: "chat.shortcut_send", PrimaryPath: "chat +send", Confirmation: "user_required", HasMeta: true},
-		"chat.atomic_send":   {Canonical: "chat.atomic_send", PrimaryPath: "chat message send", Confirmation: "not_required", HasMeta: true},
+		"chat.shortcut_send": {Canonical: "chat.shortcut_send", PrimaryPath: "chat +send", Confirmation: "user_required", UseWhen: []string{"普通发送"}, AvoidWhen: []string{"底层字段另选"}, HasMeta: true},
+		"chat.atomic_send":   {Canonical: "chat.atomic_send", PrimaryPath: "chat message send", Confirmation: "not_required", UseWhen: []string{"底层字段"}, AvoidWhen: []string{"普通发送使用 +send"}, HasMeta: true},
 	}
 	if failures := validateManifest(root, manifest, tools); len(failures) != 0 {
 		t.Fatalf("failures = %v", failures)
@@ -119,16 +122,10 @@ func TestCrossPlatformCoverageValidateManifestAcceptsExactReviewedRoute(t *testi
 func TestCrossPlatformCoverageValidateManifestRejectsWrongMarkerAndSafetyDowngrade(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, root, "skills/multi/dingtalk-chat/SKILL.md", "| 发消息 | `dws chat message send` | <!-- dws-intent: chat.send -->\n")
-	writeTestFile(t, root, "internal/cli/schema_hints/selection/chat.json", `{
-  "tools": {
-    "chat.shortcut_send": {"use_when":["普通发送"],"avoid_when":["底层字段另选"]},
-    "chat.atomic_send": {"use_when":["普通发送"],"avoid_when":["继续使用原子命令"]}
-  }
-}`)
 	writeTypedContractReference(t, root, "skills/multi/dingtalk-chat/references/contracts.md")
 	writeEventHandoffReference(t, root, "skills/multi/dingtalk-event/references/event-im-output.md")
 	manifest := routeManifest{
-		Version:           2,
+		Version:           3,
 		MarkerRoots:       []string{"skills/multi/dingtalk-chat"},
 		RetiredScripts:    []string{"skills/multi/dingtalk-chat/scripts/retired.py"},
 		ContractReference: "skills/multi/dingtalk-chat/references/contracts.md",
@@ -138,34 +135,18 @@ func TestCrossPlatformCoverageValidateManifestRejectsWrongMarkerAndSafetyDowngra
 			PreferredTool:         "chat.shortcut_send",
 			AllowedFallbacks:      []routeFallback{{Tool: "chat.atomic_send", ReasonCode: "raw_field"}},
 			ForbiddenDefaultTools: []string{"chat.atomic_send"},
-			SelectionFile:         "internal/cli/schema_hints/selection/chat.json",
 			References:            []string{"skills/multi/dingtalk-chat/SKILL.md"},
 		}},
 	}
 	tools := map[string]toolFact{
-		"chat.shortcut_send": {Canonical: "chat.shortcut_send", PrimaryPath: "chat +send", Confirmation: "user_required", HasMeta: true},
-		"chat.atomic_send":   {Canonical: "chat.atomic_send", PrimaryPath: "chat message send", Confirmation: "not_required", HasMeta: true},
+		"chat.shortcut_send": {Canonical: "chat.shortcut_send", PrimaryPath: "chat +send", Confirmation: "user_required", UseWhen: []string{"普通发送"}, AvoidWhen: []string{"底层字段另选"}, HasMeta: true},
+		"chat.atomic_send":   {Canonical: "chat.atomic_send", PrimaryPath: "chat message send", Confirmation: "not_required", UseWhen: []string{"普通发送"}, HasMeta: true},
 	}
 	failures := strings.Join(validateManifest(root, manifest, tools), "\n")
-	for _, want := range []string{"confirmation", "does not route ordinary use", "must contain preferred path", "uses forbidden default"} {
+	for _, want := range []string{"confirmation", "needs non-empty use_when and avoid_when", "must contain preferred path", "uses forbidden default"} {
 		if !strings.Contains(failures, want) {
 			t.Fatalf("failures = %s, want %q", failures, want)
 		}
-	}
-}
-
-func TestCrossPlatformCoverageValidateSelectionSourceRefsRejectsStaleRegistryAndMissingAnchor(t *testing.T) {
-	root := t.TempDir()
-	writeTestFile(t, root, "internal/cli/schema_command_registry/products/chat.json", `{"tools":[{"canonical_path":"chat.exists"}]}`)
-	selection := selectionFile{Tools: map[string]selectionEntry{
-		"chat.sample": {SourceRefs: []string{
-			"internal/cli/schema_command_registry.json#chat.sample",
-			"internal/cli/schema_command_registry/products/chat.json#chat.missing",
-		}},
-	}}
-	failures := strings.Join(validateSelectionSourceRefs(root, "selection/chat.json", selection, map[string]map[string]bool{}), "\n")
-	if !strings.Contains(failures, "stale source_ref") || !strings.Contains(failures, "anchor") {
-		t.Fatalf("failures = %s", failures)
 	}
 }
 
@@ -262,19 +243,12 @@ func TestCrossPlatformCoverageManifestFailureMatrix(t *testing.T) {
 	writeEventHandoffReference(t, root, "handoff.md")
 	writeTestFile(t, root, "refs/declared.md", "<!-- dws-intent: declared --> missing preferred; dws chat forbidden\n<!-- dws-intent: declared --> duplicate\n")
 	writeTestFile(t, root, "refs/markers.md", "<!-- dws-intent: unknown -->\n<!-- dws-intent: declared -->\n<!-- dws-intent: preferred-absent -->\n")
-	writeTestFile(t, root, "selection.json", `{
-  "tools": {
-    "preferred.empty": {"use_when":[],"avoid_when":[]},
-    "forbidden.no-route": {"avoid_when":["keep using lower tool"]}
-  }
-}`)
-
 	tools := map[string]toolFact{
 		"preferred.empty":    {PrimaryPath: "chat preferred", HasMeta: false},
 		"fallback.empty":     {PrimaryPath: "chat fallback", HasMeta: false},
 		"fallback.different": {PrimaryPath: "chat fallback-different", HasMeta: true, Confirmation: "not_required"},
-		"forbidden.no-route": {PrimaryPath: "chat forbidden", HasMeta: true, Confirmation: "not_required"},
-		"forbidden.no-entry": {PrimaryPath: "chat forbidden-missing", HasMeta: true, Confirmation: "not_required"},
+		"forbidden.no-route": {PrimaryPath: "chat forbidden", HasMeta: true, Confirmation: "not_required", AvoidWhen: []string{"keep using lower tool"}},
+		"forbidden.no-entry": {PrimaryPath: "chat forbidden-missing"},
 	}
 	manifest := routeManifest{
 		Version:           1,
@@ -284,12 +258,10 @@ func TestCrossPlatformCoverageManifestFailureMatrix(t *testing.T) {
 		HandoffReference:  "handoff.md",
 		Intents: []intentRoute{
 			{ID: "INVALID ID"},
-			{ID: "invalid-selection", SelectionFile: "../selection.json"},
-			{ID: "missing-selection", SelectionFile: "missing.json"},
-			{ID: "preferred-absent", SelectionFile: "selection.json", PreferredTool: "absent"},
-			{ID: "preferred-no-selection", SelectionFile: "selection.json", PreferredTool: "forbidden.no-entry"},
+			{ID: "preferred-absent", PreferredTool: "absent"},
+			{ID: "preferred-no-selection", PreferredTool: "forbidden.no-entry"},
 			{
-				ID: "declared", SelectionFile: "selection.json", PreferredTool: "preferred.empty",
+				ID: "declared", PreferredTool: "preferred.empty",
 				AllowedFallbacks: []routeFallback{
 					{},
 					{Tool: "fallback.empty", ReasonCode: "BAD-CODE"},
@@ -300,12 +272,12 @@ func TestCrossPlatformCoverageManifestFailureMatrix(t *testing.T) {
 				ForbiddenDefaultTools: []string{"", "forbidden.absent", "forbidden.no-entry", "forbidden.no-route", "forbidden.no-route"},
 				References:            []string{"../unsafe.md", "refs/wrong.txt", "refs/missing.md", "refs/declared.md", "refs/declared.md"},
 			},
-			{ID: "declared", SelectionFile: "selection.json"},
+			{ID: "declared"},
 		},
 	}
 	failures := strings.Join(validateManifest(root, manifest, tools), "\n")
 	for _, want := range []string{
-		"manifest version", "retired_scripts", "intent id", "invalid selection_file", "read selection file",
+		"manifest version", "retired_scripts", "intent id",
 		"preferred tool", "ResolveMeta", "needs non-empty", "allowed fallback", "reason_code", "fallback tool",
 		"confirmation", "forbidden default", "invalid reference", "does not exist", "repeats reference",
 		"unknown dws-intent", "undeclared dws-intent", "missing its dws-intent marker", "has 2 dws-intent markers",
@@ -320,7 +292,7 @@ func TestCrossPlatformCoverageManifestFailureMatrix(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageReferenceAndSourceRefFailureBranches(t *testing.T) {
+func TestCrossPlatformCoverageReferenceFailureBranches(t *testing.T) {
 	root := t.TempDir()
 	if got := validateTypedContractReference(root, "../unsafe.md"); len(got) == 0 || !strings.Contains(got[0], "invalid contract_reference") {
 		t.Fatalf("unsafe contract result = %#v", got)
@@ -346,35 +318,6 @@ func TestCrossPlatformCoverageReferenceAndSourceRefFailureBranches(t *testing.T)
 	if markdownCodeList(nil) != "—" || markdownBreakList(nil) != "—" {
 		t.Fatal("empty markdown list rendering drifted")
 	}
-	if _, err := loadSelection(filepath.Join(root, "missing-selection.json")); err == nil {
-		t.Fatal("missing selection unexpectedly loaded")
-	}
-	writeTestFile(t, root, "bad-selection.json", "{")
-	if _, err := loadSelection(filepath.Join(root, "bad-selection.json")); err == nil {
-		t.Fatal("invalid selection unexpectedly loaded")
-	}
-	if _, err := loadRegistryAnchors(filepath.Join(root, "missing-registry.json")); err == nil {
-		t.Fatal("missing registry unexpectedly loaded")
-	}
-	writeTestFile(t, root, "bad-registry.json", "{")
-	if _, err := loadRegistryAnchors(filepath.Join(root, "bad-registry.json")); err == nil {
-		t.Fatal("invalid registry unexpectedly loaded")
-	}
-	writeTestFile(t, root, "source.md", "source")
-	writeTestFile(t, root, "registry.json", `{"tools":[{"canonical_path":"chat.exists"}]}`)
-	writeTestFile(t, root, "internal/cli/schema_command_registry/products/bad.json", "{")
-	selection := selectionFile{
-		Products: map[string]selectionEntry{"chat": {SourceRefs: []string{"external:evidence"}}},
-		Tools: map[string]selectionEntry{"chat.sample": {SourceRefs: []string{
-			"Skill:skills/../../unsafe.md", "skills/missing.md", "registry.json#chat.missing",
-			"internal/cli/schema_command_registry/products/bad.json#chat.missing",
-		}}},
-	}
-	failures := strings.Join(validateSelectionSourceRefs(root, "selection.json", selection, map[string]map[string]bool{}), "\n")
-	if !strings.Contains(failures, "unsafe source_ref") || !strings.Contains(failures, "does not exist") {
-		t.Fatalf("source ref failures = %s", failures)
-	}
-
 	tooLong := strings.Repeat("x", 5000) + ".py"
 	if got := strings.Join(validateRetiredScripts(root, []string{tooLong}), "\n"); !strings.Contains(got, "inspect retired script") {
 		t.Fatalf("long retired script result = %s", got)
@@ -386,12 +329,6 @@ func TestCrossPlatformCoverageReferenceAndSourceRefFailureBranches(t *testing.T)
 	}
 	if containsCLIPath("run dws chat send-more", "chat send") || !containsCLIPath("run dws chat send`", "chat send") {
 		t.Fatal("CLI path boundary check drifted")
-	}
-	if lastPathToken("") != "" || lastPathToken("chat send") != "send" {
-		t.Fatal("last path token drifted")
-	}
-	if sliceContains([]string{"alpha"}, "beta") || !sliceContains([]string{"alpha beta"}, "beta") {
-		t.Fatal("slice containment drifted")
 	}
 	if stringSliceContains([]string{"a/b"}, "missing") {
 		t.Fatal("string slice containment false positive")

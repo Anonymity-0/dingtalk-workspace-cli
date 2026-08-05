@@ -15,80 +15,41 @@ package cli
 
 import (
 	"bytes"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-//go:embed schema_mcp_metadata.json
-var embeddedMCPMetadataJSON []byte
-
 const (
-	runtimeSchemaProductAnnotation = "dws.schema.product"
-	runtimeSchemaToolAnnotation    = "dws.schema.tool"
-	runtimeSchemaSourceAnnotation  = "dws.schema.source"
-	runtimeSchemaTitleAnnotation   = "dws.schema.title"
-	runtimeSchemaDescAnnotation    = "dws.schema.description"
-	runtimeSchemaMetaAnnotation    = "dws.schema.metadata_source"
-	runtimeSchemaExcludeAnnotation = "dws.schema.exclude"
-	runtimeSchemaRulesAnnotation   = "dws.schema.constraints"
-	runtimeSchemaArgsAnnotation    = "dws.schema.positionals"
-
-	runtimeSchemaFlagPropertyAnnotation     = "dws.schema.property"
-	runtimeSchemaFlagTypeAnnotation         = "dws.schema.type"
-	runtimeSchemaFlagDescriptionAnnotation  = "dws.schema.description"
-	runtimeSchemaFlagRequiredAnnotation     = "dws.schema.required"
-	runtimeSchemaFlagRequiredWhenAnnotation = "dws.schema.required_when"
-	runtimeSchemaFlagExampleAnnotation      = "dws.schema.example"
+	// Annotation keys are owned by runtimeannotate; aliases keep assembly readers stable.
+	runtimeSchemaProductAnnotation          = runtimeannotate.AnnotationProduct
+	runtimeSchemaToolAnnotation             = runtimeannotate.AnnotationTool
+	runtimeSchemaSourceAnnotation           = runtimeannotate.AnnotationSource
+	runtimeSchemaExcludeAnnotation          = runtimeannotate.AnnotationExclude
+	runtimeSchemaRulesAnnotation            = runtimeannotate.AnnotationConstraints
+	runtimeSchemaArgsAnnotation             = runtimeannotate.AnnotationPositionals
+	runtimeSchemaFlagPropertyAnnotation     = runtimeannotate.AnnotationFlagProperty
+	runtimeSchemaFlagTypeAnnotation         = runtimeannotate.AnnotationFlagType
+	runtimeSchemaFlagDescriptionAnnotation  = runtimeannotate.AnnotationDescription
+	runtimeSchemaFlagRequiredAnnotation     = runtimeannotate.AnnotationFlagRequired
+	runtimeSchemaFlagRequiredWhenAnnotation = runtimeannotate.AnnotationFlagReqWhen
+	runtimeSchemaFlagExampleAnnotation      = runtimeannotate.AnnotationFlagExample
 )
-
-// RuntimeSchemaConstraints describes cross-parameter rules that cannot be
-// represented by an individual parameter's required bit.
-type RuntimeSchemaConstraints struct {
-	MutuallyExclusive [][]string `json:"mutually_exclusive,omitempty"`
-	RequireOneOf      [][]string `json:"require_one_of,omitempty"`
-	RequireTogether   [][]string `json:"require_together,omitempty"`
-}
-
-// RuntimeSchemaPositional describes one ordered CLI argument. Name is also
-// used by RuntimeSchemaConstraints when a one-of group mixes flags and args.
-type RuntimeSchemaPositional struct {
-	Name        string `json:"name"`
-	Type        string `json:"type,omitempty"`
-	Description string `json:"description,omitempty"`
-	Required    bool   `json:"required"`
-	Variadic    bool   `json:"variadic,omitempty"`
-	Index       int    `json:"index"`
-}
 
 type embeddedMCPMetadata struct {
 	Version        int                                `json:"version"`
 	Source         string                             `json:"source"`
 	SourceRevision string                             `json:"source_revision,omitempty"`
 	SourceHash     string                             `json:"source_hash"`
-	Coverage       embeddedMCPMetadataCoverage        `json:"coverage,omitempty"`
 	Tools          map[string]embeddedMCPToolMetadata `json:"tools"`
-}
-
-type embeddedMCPMetadataCoverage struct {
-	SurfaceScope     string   `json:"surface_scope,omitempty"`
-	SourceServices   int      `json:"source_services,omitempty"`
-	SnapshotServices int      `json:"snapshot_services,omitempty"`
-	MissingServices  []string `json:"missing_services,omitempty"`
-	SourceTools      int      `json:"source_tools,omitempty"`
-	SurfaceTools     int      `json:"surface_tools,omitempty"`
-	MatchedTools     int      `json:"matched_tools,omitempty"`
-	AliasedTools     int      `json:"aliased_tools,omitempty"`
-	UnmatchedTools   int      `json:"unmatched_tools,omitempty"`
 }
 
 type embeddedMCPInterfaceRef struct {
@@ -113,18 +74,11 @@ type embeddedMCPParamMeta struct {
 	RequiredWhen string   `json:"required_when,omitempty"`
 }
 
-var runtimeEmbeddedMCPMetadataLazy struct {
-	once     sync.Once
-	metadata embeddedMCPMetadata
-}
-
-var runtimeEmbeddedMCPMetadataLazyLoadCount atomic.Uint64
-
 var runtimeSchemaConstraintsByCanonical = map[string]RuntimeSchemaConstraints{}
 
 // RegisterRuntimeSchemaConstraints records reviewed cross-parameter CLI rules
-// independently from the generated Catalog, preventing stale Catalog data
-// from becoming the source of its own next generation.
+// independently from the delivered Catalog so reviewed constraints always
+// apply, regardless of which snapshot is shipped.
 func RegisterRuntimeSchemaConstraints(canonicalPath string, constraints RuntimeSchemaConstraints) {
 	canonicalPath = strings.TrimSpace(canonicalPath)
 	constraints = normalizeRuntimeSchemaConstraints(constraints)
@@ -134,266 +88,55 @@ func RegisterRuntimeSchemaConstraints(canonicalPath string, constraints RuntimeS
 	runtimeSchemaConstraintsByCanonical[canonicalPath] = constraints
 }
 
-func loadEmbeddedMCPMetadata() embeddedMCPMetadata {
-	var metadata embeddedMCPMetadata
-	if err := json.Unmarshal(embeddedMCPMetadataJSON, &metadata); err != nil {
-		return embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}
-	}
-	if metadata.Tools == nil {
-		metadata.Tools = map[string]embeddedMCPToolMetadata{}
-	}
-	return metadata
+// emptyPinnedMCPMetadata returns the retired pin shape with no tools.
+// schema_mcp_metadata.json is deleted; production assembly does not embed or
+// load a pinned MCP snapshot. Test fixtures may still inject non-empty maps
+// through schemaRegistryForTestWithMetadata.
+func emptyPinnedMCPMetadata() embeddedMCPMetadata {
+	return embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}
 }
 
-// runtimeMCPMetadata parses the pinned interface snapshot only when Schema
-// assembly first requests it. Normal command construction and execution do
-// not cross this boundary.
-func runtimeMCPMetadata() embeddedMCPMetadata {
-	runtimeEmbeddedMCPMetadataLazy.once.Do(func() {
-		runtimeEmbeddedMCPMetadataLazyLoadCount.Add(1)
-		runtimeEmbeddedMCPMetadataLazy.metadata = loadEmbeddedMCPMetadata()
-	})
-	return runtimeEmbeddedMCPMetadataLazy.metadata
+// applyContractRiskToSafety overlays Schema Safety fields from an embedded
+// Contract Risk value. Path A: Contract wins effect/risk/confirmation for the
+// managed surface; other Safety fields (e.g. idempotency) are preserved.
+func applyContractRiskToSafety(base contract.SafetySpec, contractRisk string) contract.SafetySpec {
+	out := base
+	switch strings.TrimSpace(contractRisk) {
+	case "write":
+		out.Effect = "write"
+		out.EffectSource = "corecmd.contract"
+		out.Risk = "medium"
+		out.Confirmation = "user_required"
+	case "high-risk-write":
+		out.Effect = "destructive"
+		out.EffectSource = "corecmd.contract"
+		out.Risk = "high"
+		out.Confirmation = "user_required"
+	case "read":
+		out.Effect = "read"
+		out.EffectSource = "corecmd.contract"
+		out.Risk = "low"
+		out.Confirmation = "not_required"
+	}
+	return out
 }
 
-func interfaceMetadataSummaryFrom(metadata embeddedMCPMetadata) map[string]any {
-	summary := map[string]any{
-		"source":      strings.TrimSpace(metadata.Source),
-		"version":     metadata.Version,
-		"source_hash": strings.TrimSpace(metadata.SourceHash),
-		"tool_count":  len(metadata.Tools),
+// applyContractGateToSafety ensures a write-guard annotation cannot leave Schema
+// claiming confirmation is not required. Reviewed effect/risk are kept when set.
+func applyContractGateToSafety(base contract.SafetySpec, gate string) contract.SafetySpec {
+	out := base
+	if strings.TrimSpace(gate) == "" {
+		return out
 	}
-	if revision := strings.TrimSpace(metadata.SourceRevision); revision != "" {
-		summary["source_revision"] = revision
+	out.Confirmation = "user_required"
+	if out.Effect == "" || out.Effect == "read" {
+		out.Effect = "write"
+		out.EffectSource = "corecmd.contract_gate"
 	}
-	if metadata.Coverage.SurfaceTools > 0 {
-		summary["coverage"] = metadata.Coverage
+	if out.Risk == "" || out.Risk == "low" {
+		out.Risk = "medium"
 	}
-	return summary
-}
-
-// AttachRuntimeSchema records optional implementation-side identity evidence
-// on a runnable command. Command discovery belongs exclusively to the reviewed
-// CommandRegistry; the Cobra binder accepts an absent annotation and rejects
-// an annotation that disagrees with the registry.
-func AttachRuntimeSchema(cmd *cobra.Command, productID, toolName, source string) {
-	if cmd == nil {
-		return
-	}
-	productID = strings.TrimSpace(productID)
-	toolName = strings.TrimSpace(toolName)
-	if productID == "" || toolName == "" {
-		return
-	}
-	if cmd.Annotations == nil {
-		cmd.Annotations = map[string]string{}
-	}
-	cmd.Annotations[runtimeSchemaProductAnnotation] = productID
-	cmd.Annotations[runtimeSchemaToolAnnotation] = toolName
-	if source = strings.TrimSpace(source); source != "" {
-		cmd.Annotations[runtimeSchemaSourceAnnotation] = source
-	}
-}
-
-// AnnotateRuntimeToolMetadata preserves MCP-provided tool metadata on a Cobra
-// leaf so `dws schema` can render richer descriptions without refetching.
-func AnnotateRuntimeToolMetadata(cmd *cobra.Command, title, description, source string) {
-	if cmd == nil {
-		return
-	}
-	if cmd.Annotations == nil {
-		cmd.Annotations = map[string]string{}
-	}
-	if title = strings.TrimSpace(title); title != "" {
-		cmd.Annotations[runtimeSchemaTitleAnnotation] = title
-	}
-	if description = strings.TrimSpace(description); description != "" {
-		cmd.Annotations[runtimeSchemaDescAnnotation] = description
-	}
-	if source = strings.TrimSpace(source); source != "" {
-		cmd.Annotations[runtimeSchemaMetaAnnotation] = source
-	}
-}
-
-// AnnotateRuntimeFlag adds parameter metadata to an already-registered flag.
-// The metadata mirrors the runtime binding that produced the flag, allowing
-// schema rendering to preserve MCP parameter names while displaying CLI flags.
-func AnnotateRuntimeFlag(cmd *cobra.Command, flagName, propertyName, paramType string, required bool, _ string) {
-	if cmd == nil {
-		return
-	}
-	flagName = strings.TrimSpace(flagName)
-	if flagName == "" {
-		return
-	}
-	flag := runtimeCommandFlag(cmd, flagName)
-	if flag == nil {
-		return
-	}
-	setFlagAnnotation(flag, runtimeSchemaFlagPropertyAnnotation, strings.TrimSpace(propertyName))
-	setFlagAnnotation(flag, runtimeSchemaFlagTypeAnnotation, strings.TrimSpace(paramType))
-	setFlagAnnotation(flag, runtimeSchemaFlagRequiredAnnotation, strconv.FormatBool(required))
-}
-
-// AnnotateRuntimeFlagProperty records only the stable CLI flag to interface
-// property binding. It intentionally does not copy required or constraints
-// from an older Catalog into the current executable contract.
-func AnnotateRuntimeFlagProperty(cmd *cobra.Command, flagName, propertyName string) {
-	if cmd == nil {
-		return
-	}
-	if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
-		setFlagAnnotation(flag, runtimeSchemaFlagPropertyAnnotation, strings.TrimSpace(propertyName))
-	}
-}
-
-// AnnotateRuntimeRequiredFlags records schema-only required semantics. Unlike
-// cobra.MarkFlagRequired, it does not require the primary flag itself to be
-// changed, so helper commands can keep accepting hidden --url/--id aliases.
-func AnnotateRuntimeRequiredFlags(cmd *cobra.Command, flagNames ...string) {
-	if cmd == nil {
-		return
-	}
-	for _, name := range flagNames {
-		flag := runtimeCommandFlag(cmd, name)
-		if flag != nil {
-			setFlagAnnotation(flag, runtimeSchemaFlagRequiredAnnotation, "true")
-		}
-	}
-}
-
-// AnnotateRuntimeFlagRequiredWhen records a conditional CLI requirement. The
-// expression is descriptive metadata and does not alter Cobra validation.
-func AnnotateRuntimeFlagRequiredWhen(cmd *cobra.Command, flagName, expression string) {
-	if cmd == nil {
-		return
-	}
-	if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
-		setFlagAnnotation(flag, runtimeSchemaFlagRequiredWhenAnnotation, strings.TrimSpace(expression))
-	}
-}
-
-// AnnotateRuntimeFlagFormat records a machine-readable value format without
-// changing the Cobra flag type.
-func AnnotateRuntimeFlagFormat(cmd *cobra.Command, flagName, format string) {
-	if cmd == nil {
-		return
-	}
-	if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
-		setFlagAnnotation(flag, "x-cli-format", strings.TrimSpace(format))
-	}
-}
-
-// AnnotateRuntimeFlagEnum records the accepted values for a flag.
-func AnnotateRuntimeFlagEnum(cmd *cobra.Command, flagName string, values ...string) {
-	if cmd == nil {
-		return
-	}
-	flag := runtimeCommandFlag(cmd, flagName)
-	if flag == nil {
-		return
-	}
-	setFlagAnnotationValues(flag, "x-cli-enum", values...)
-}
-
-// AnnotateRuntimeFlagExample records a valid representative CLI value.
-func AnnotateRuntimeFlagExample(cmd *cobra.Command, flagName, example string) {
-	if cmd == nil {
-		return
-	}
-	if flag := runtimeCommandFlag(cmd, flagName); flag != nil {
-		setFlagAnnotation(flag, runtimeSchemaFlagExampleAnnotation, strings.TrimSpace(example))
-	}
-}
-
-// AnnotateRuntimeConstraints records command-level parameter relationships.
-func AnnotateRuntimeConstraints(cmd *cobra.Command, constraints RuntimeSchemaConstraints) {
-	if cmd == nil {
-		return
-	}
-	constraints = normalizeRuntimeSchemaConstraints(constraints)
-	if runtimeSchemaConstraintsEmpty(constraints) {
-		return
-	}
-	if existing := runtimeCommandConstraints(cmd); !runtimeSchemaConstraintsEmpty(existing) {
-		constraints.MutuallyExclusive = append(existing.MutuallyExclusive, constraints.MutuallyExclusive...)
-		constraints.RequireOneOf = append(existing.RequireOneOf, constraints.RequireOneOf...)
-		constraints.RequireTogether = append(existing.RequireTogether, constraints.RequireTogether...)
-		constraints = normalizeRuntimeSchemaConstraints(constraints)
-	}
-	encoded, _ := json.Marshal(constraints)
-	setRuntimeCommandAnnotation(cmd, runtimeSchemaRulesAnnotation, string(encoded))
-}
-
-// AnnotateRuntimePositionals records ordered positional arguments for agents.
-func AnnotateRuntimePositionals(cmd *cobra.Command, positionals ...RuntimeSchemaPositional) {
-	if cmd == nil {
-		return
-	}
-	clean := make([]RuntimeSchemaPositional, 0, len(positionals))
-	for _, positional := range positionals {
-		positional.Name = strings.TrimSpace(positional.Name)
-		positional.Type = strings.TrimSpace(positional.Type)
-		positional.Description = strings.TrimSpace(positional.Description)
-		if positional.Name == "" || positional.Index < 0 {
-			continue
-		}
-		if positional.Type == "" {
-			positional.Type = "string"
-		}
-		clean = append(clean, positional)
-	}
-	if len(clean) == 0 {
-		return
-	}
-	sort.SliceStable(clean, func(i, j int) bool { return clean[i].Index < clean[j].Index })
-	encoded, _ := json.Marshal(clean)
-	setRuntimeCommandAnnotation(cmd, runtimeSchemaArgsAnnotation, string(encoded))
-}
-
-// ExcludeFromRuntimeSchema keeps a human-facing hint or redirect in --help
-// while preventing it from being advertised as an executable agent tool.
-func ExcludeFromRuntimeSchema(cmd *cobra.Command) {
-	setRuntimeCommandAnnotation(cmd, runtimeSchemaExcludeAnnotation, "true")
-}
-
-func setRuntimeCommandAnnotation(cmd *cobra.Command, key, value string) {
-	if cmd == nil || strings.TrimSpace(value) == "" {
-		return
-	}
-	if cmd.Annotations == nil {
-		cmd.Annotations = map[string]string{}
-	}
-	cmd.Annotations[key] = value
-}
-
-func setFlagAnnotation(flag *pflag.Flag, key, value string) {
-	if flag == nil || strings.TrimSpace(value) == "" {
-		return
-	}
-	if flag.Annotations == nil {
-		flag.Annotations = map[string][]string{}
-	}
-	flag.Annotations[key] = []string{value}
-}
-
-func setFlagAnnotationValues(flag *pflag.Flag, key string, values ...string) {
-	if flag == nil {
-		return
-	}
-	clean := make([]string, 0, len(values))
-	for _, value := range values {
-		if value = strings.TrimSpace(value); value != "" {
-			clean = append(clean, value)
-		}
-	}
-	if len(clean) == 0 {
-		return
-	}
-	if flag.Annotations == nil {
-		flag.Annotations = map[string][]string{}
-	}
-	flag.Annotations[key] = clean
+	return out
 }
 
 type runtimeSchemaEntry struct {
@@ -404,15 +147,10 @@ type runtimeSchemaEntry struct {
 	CLIName         string
 	Group           string
 	CLIPath         string
-	Title           string
-	Description     string
 	Source          string
-	MetadataSource  string
 	Command         *cobra.Command
 	PrimaryCLIPath  string
 	Aliases         []string
-	IsAlias         bool
-	IdentityField   FieldProvenance
 }
 
 func collectRuntimeSchemaEntries(root *cobra.Command) ([]runtimeSchemaEntry, error) {
@@ -428,9 +166,9 @@ func collectRuntimeSchemaEntries(root *cobra.Command) ([]runtimeSchemaEntry, err
 }
 
 // collectRuntimeSchemaEntriesFromBound is the sole identity hand-off into the
-// Schema assembler. It never scans annotations to discover commands: the
-// reviewed registry has already selected the exact command set and the binder
-// has already proved that every path resolves to a runnable Cobra leaf.
+// Schema assembler. It never scans annotations to discover commands: identity
+// collection has already selected the exact command set and the binder has
+// already proved that every path resolves to a runnable Cobra leaf.
 func collectRuntimeSchemaEntriesFromBound(bound BoundCommandRegistry) ([]runtimeSchemaEntry, error) {
 	entries := make([]runtimeSchemaEntry, 0, len(bound.Commands))
 	for _, command := range bound.Commands {
@@ -461,14 +199,10 @@ func collectRuntimeSchemaEntriesFromBound(bound BoundCommandRegistry) ([]runtime
 			CLIName:         leaf.Name(),
 			Group:           group,
 			CLIPath:         command.PrimaryCLIPath,
-			Title:           runtimeCommandTitle(leaf),
-			Description:     runtimeCommandDescription(leaf),
 			Source:          command.Source,
-			MetadataSource:  runtimeCommandMetadataSource(leaf),
 			Command:         leaf,
 			PrimaryCLIPath:  command.PrimaryCLIPath,
 			Aliases:         append([]string(nil), command.Aliases...),
-			IdentityField:   commandRegistryIdentityProvenance(command),
 		})
 	}
 	sort.Slice(entries, func(i, j int) bool {
@@ -483,17 +217,21 @@ func collectRuntimeSchemaEntriesFromBound(bound BoundCommandRegistry) ([]runtime
 	return entries, nil
 }
 
-func runtimeSchemaHintForEntry(entry runtimeSchemaEntry) ToolSchemaHint {
-	if hint := schemaHintForCanonicalPath(entry.ProductID + "." + entry.ToolName); !isZeroToolSchemaHint(hint) {
-		return hint
+func pinnedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata agentMetadata, mcpMetadata embeddedMCPMetadata) (embeddedMCPToolMetadata, bool) {
+	// Optional test/diagnostic lookup only. Production mcpMetadata is empty;
+	// Contract/ParamDecl own interface facts. When a non-empty fixture is
+	// injected, ContractFinal Interface.Ref remaps CLI canonical names onto
+	// fixture keys (e.g. reply_personal_message → chat.send_personal_message).
+	if len(mcpMetadata.Tools) == 0 {
+		return embeddedMCPToolMetadata{}, false
 	}
-	if entry.SourceProductID != "" && entry.SourceProductID != entry.ProductID {
-		return schemaHintForCanonicalPath(entry.SourceProductID + "." + entry.ToolName)
+	if entry.Command != nil {
+		if final, ok := RuntimeContractFinal(entry.Command); ok && final.Interface != nil && final.Interface.Ref != nil {
+			if metadata, found := mcpMetadataForInterfaceRef(mcpMetadata, final.Interface.Ref.ProductID, final.Interface.Ref.RPCName); found {
+				return metadata, true
+			}
+		}
 	}
-	return ToolSchemaHint{}
-}
-
-func embeddedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata embeddedAgentMetadata, mcpMetadata embeddedMCPMetadata) (embeddedMCPToolMetadata, bool) {
 	paths := []string{
 		entry.PrimaryCLIPath,
 		entry.CLIPath,
@@ -501,11 +239,7 @@ func embeddedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata emb
 	}
 	paths = append(paths, entry.Aliases...)
 	if toolMetadata, ok := lookupAgentToolMetadataFrom(agentMetadata, paths...); ok && toolMetadata.InterfaceRef != nil {
-		productID := strings.TrimSpace(toolMetadata.InterfaceRef.ProductID)
-		rpcName := strings.TrimSpace(toolMetadata.InterfaceRef.RPCName)
-		key := strings.Trim(productID+"."+rpcName, ".")
-		if metadata, exists := mcpMetadata.Tools[key]; exists {
-			metadata.InterfaceRef = &embeddedMCPInterfaceRef{ProductID: productID, RPCName: rpcName}
+		if metadata, found := mcpMetadataForInterfaceRef(mcpMetadata, toolMetadata.InterfaceRef.ProductID, toolMetadata.InterfaceRef.RPCName); found {
 			return metadata, true
 		}
 	}
@@ -524,10 +258,19 @@ func embeddedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata emb
 	return embeddedMCPToolMetadata{}, false
 }
 
-func isZeroToolSchemaHint(hint ToolSchemaHint) bool {
-	return strings.TrimSpace(hint.Title) == "" &&
-		strings.TrimSpace(hint.Description) == "" &&
-		len(hint.Parameters) == 0
+func mcpMetadataForInterfaceRef(mcpMetadata embeddedMCPMetadata, productID, rpcName string) (embeddedMCPToolMetadata, bool) {
+	productID = strings.TrimSpace(productID)
+	rpcName = strings.TrimSpace(rpcName)
+	key := strings.Trim(productID+"."+rpcName, ".")
+	if key == "" {
+		return embeddedMCPToolMetadata{}, false
+	}
+	metadata, exists := mcpMetadata.Tools[key]
+	if !exists {
+		return embeddedMCPToolMetadata{}, false
+	}
+	metadata.InterfaceRef = &embeddedMCPInterfaceRef{ProductID: productID, RPCName: rpcName}
+	return metadata, true
 }
 
 func runtimeSchemaAnnotations(cmd *cobra.Command) (productID, toolName, source string) {
@@ -548,40 +291,6 @@ func runtimeSchemaExcluded(cmd *cobra.Command) bool {
 		strings.EqualFold(strings.TrimSpace(cmd.Annotations[runtimeSchemaExcludeAnnotation]), "true")
 }
 
-func runtimeCommandTitle(cmd *cobra.Command) string {
-	if cmd == nil {
-		return ""
-	}
-	if cmd.Annotations != nil {
-		if title := strings.TrimSpace(cmd.Annotations[runtimeSchemaTitleAnnotation]); title != "" {
-			return title
-		}
-	}
-	return strings.TrimSpace(cmd.Short)
-}
-
-func runtimeCommandDescription(cmd *cobra.Command) string {
-	if cmd == nil {
-		return ""
-	}
-	if cmd.Annotations != nil {
-		if desc := strings.TrimSpace(cmd.Annotations[runtimeSchemaDescAnnotation]); desc != "" {
-			return desc
-		}
-	}
-	if desc := strings.TrimSpace(cmd.Long); desc != "" {
-		return desc
-	}
-	return strings.TrimSpace(cmd.Short)
-}
-
-func runtimeCommandMetadataSource(cmd *cobra.Command) string {
-	if cmd == nil || cmd.Annotations == nil {
-		return ""
-	}
-	return strings.TrimSpace(cmd.Annotations[runtimeSchemaMetaAnnotation])
-}
-
 func commandPathParts(cmd *cobra.Command) []string {
 	parts := []string{}
 	for c := cmd; c != nil && c.HasParent(); c = c.Parent() {
@@ -596,80 +305,6 @@ func topLevelCommand(cmd *cobra.Command) *cobra.Command {
 		top = c
 	}
 	return top
-}
-
-func schemaProductToolCount(product map[string]any) int {
-	switch value := product["tool_count"].(type) {
-	case int:
-		return value
-	case int64:
-		return int(value)
-	case float64:
-		return int(value)
-	}
-	if tools, ok := product["tools"].([]map[string]any); ok {
-		return len(tools)
-	}
-	if tools, ok := product["tools"].([]any); ok {
-		return len(tools)
-	}
-	return 0
-}
-
-func runtimeToolTextMetadataFromMetadata(entry runtimeSchemaEntry, metadata runtimeSchemaMetadataSources) (title, description, metadataSource string, provenance map[string]FieldProvenance, err error) {
-	baseSource := "cobra_help"
-	baseTitle := runtimeSchemaStringCandidate(entry.Title, baseSource)
-	baseDescription := runtimeSchemaStringCandidate(entry.Description, baseSource)
-	if strings.TrimSpace(entry.MetadataSource) != "" {
-		baseSource = strings.TrimSpace(entry.MetadataSource)
-		baseTitle = runtimeSchemaStringCandidateAtRank(entry.Title, baseSource, runtimeSchemaRankNativeAnnotation, "native_annotation")
-		baseDescription = runtimeSchemaStringCandidateAtRank(entry.Description, baseSource, runtimeSchemaRankNativeAnnotation, "native_annotation")
-	}
-	titleCandidates := []runtimeSchemaFieldCandidate{baseTitle}
-	descriptionCandidates := []runtimeSchemaFieldCandidate{baseDescription}
-	embeddedMeta, hasEmbeddedMeta := embeddedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
-	if hasEmbeddedMeta {
-		titleCandidates = append(titleCandidates, runtimeSchemaStringCandidate(embeddedMeta.Title, "mcp_metadata"))
-		descriptionCandidates = append(descriptionCandidates, runtimeSchemaStringCandidate(embeddedMeta.Description, "mcp_metadata"))
-	}
-	hint := runtimeSchemaHintForEntry(entry)
-	titleCandidates = append(titleCandidates, runtimeSchemaStringCandidate(hint.Title, "tool_schema_hint"))
-	descriptionCandidates = append(descriptionCandidates, runtimeSchemaStringCandidate(hint.Description, "tool_schema_hint"))
-	titleWinner, err := resolveRuntimeSchemaField("title", titleCandidates...)
-	if err != nil {
-		return "", "", "", nil, err
-	}
-	descriptionWinner, err := resolveRuntimeSchemaField("description", descriptionCandidates...)
-	if err != nil {
-		return "", "", "", nil, err
-	}
-	title, _ = titleWinner.Value.(string)
-	description, _ = descriptionWinner.Value.(string)
-	selectedSource := descriptionWinner.Source
-	if selectedSource == "" {
-		selectedSource = titleWinner.Source
-	}
-	switch selectedSource {
-	case "tool_schema_hint":
-		metadataSource = "tool-schema-hint"
-	case "mcp_metadata", "pinned_mcp_metadata":
-		metadataSource = "embedded-mcp-metadata"
-	case "cobra_help":
-		metadataSource = ""
-	default:
-		metadataSource = strings.TrimSpace(selectedSource)
-	}
-	provenance = map[string]FieldProvenance{}
-	if titleWinner.Present {
-		provenance["title"] = runtimeSchemaFieldProvenance(titleWinner)
-	}
-	if descriptionWinner.Present {
-		provenance["description"] = runtimeSchemaFieldProvenance(descriptionWinner)
-	}
-	if metadataSource != "" {
-		provenance["metadata_source"] = runtimeSchemaFieldProvenance(runtimeSchemaStringCandidate(metadataSource, "metadata_source_resolution"))
-	}
-	return strings.TrimSpace(title), strings.TrimSpace(description), strings.TrimSpace(metadataSource), provenance, nil
 }
 
 type runtimeSchemaFieldCandidate struct {
@@ -689,27 +324,29 @@ const (
 	runtimeSchemaRankInference        = 100
 	runtimeSchemaRankMCP              = 400
 	runtimeSchemaRankCobraHelp        = 450
-	runtimeSchemaRankToolHint         = 500
 	runtimeSchemaRankCobraDefault     = 600
 	runtimeSchemaRankCobraContract    = 610
 	runtimeSchemaRankNativeAnnotation = 620
 	runtimeSchemaRankTypedMetadata    = 630
 	runtimeSchemaRankConstraint       = 640
 	runtimeSchemaRankVersionedBinding = 650
-	runtimeSchemaRankReviewedManual   = 700
+	// ParamDecl.Property (dws.schema.property) outranks residual versioned
+	// binding candidates (active bindings JSON is empty after Phase 2).
+	// Mapping exclusions stay highest so an explicit "no MCP property" review
+	// cannot be overridden by a leaf ParamDecl that still carries a Property.
+	runtimeSchemaRankParamDeclProperty = 655
+	runtimeSchemaRankMappingExclusion  = 660
 
 	runtimeSchemaPrecedenceDefault          = "default"
 	runtimeSchemaPrecedenceDerived          = "derived_resolution"
 	runtimeSchemaPrecedenceInference        = "inference"
 	runtimeSchemaPrecedenceMCP              = "mcp_metadata"
 	runtimeSchemaPrecedenceCobraHelp        = "cobra_help"
-	runtimeSchemaPrecedenceToolHint         = "tool_schema_hint"
 	runtimeSchemaPrecedenceCobra            = "cobra_contract"
 	runtimeSchemaPrecedenceNativeAnnotation = "native_annotation"
 	runtimeSchemaPrecedenceTypedMetadata    = "typed_metadata"
 	runtimeSchemaPrecedenceConstraint       = "command_constraint"
 	runtimeSchemaPrecedenceVersionedBinding = "versioned_binding"
-	runtimeSchemaPrecedenceReviewedManual   = "reviewed_manual"
 	runtimeSchemaPrecedenceMappingExclusion = "reviewed_mapping_exclusion"
 )
 
@@ -736,12 +373,6 @@ func runtimeSchemaStringCandidateAtPriority(value any, present bool, source stri
 		Precedence: strings.TrimSpace(precedence),
 		Resolution: "highest_precedence",
 	}
-}
-
-func runtimeSchemaManualCandidate(value any, present bool, reason string) runtimeSchemaFieldCandidate {
-	candidate := runtimeSchemaCandidate(value, present, "reviewed_manual_hint")
-	candidate.ReviewReason = strings.TrimSpace(reason)
-	return candidate
 }
 
 // resolveRuntimeSchemaCandidate is the only scalar resolver used while
@@ -843,15 +474,15 @@ func resolveRequiredProjection(cobraHard bool, candidates ...runtimeSchemaFieldC
 	return floor, nil
 }
 
-func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) FieldProvenance {
+func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) contract.FieldProvenance {
 	if !candidate.Present {
-		return FieldProvenance{}
+		return contract.FieldProvenance{}
 	}
 	value, err := json.Marshal(candidate.Value)
 	if err != nil {
 		value = json.RawMessage("null")
 	}
-	provenance := FieldProvenance{
+	provenance := contract.FieldProvenance{
 		Value:        value,
 		Source:       candidate.Source,
 		Precedence:   candidate.Precedence,
@@ -864,7 +495,7 @@ func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) FieldPr
 		copyCandidate.Compared = nil
 		compared = []runtimeSchemaFieldCandidate{copyCandidate}
 	}
-	provenance.Candidates = make([]FieldCandidateProvenance, 0, len(compared))
+	provenance.Candidates = make([]contract.FieldCandidateProvenance, 0, len(compared))
 	for idx, item := range compared {
 		selected := idx == 0
 		value, err := json.Marshal(item.Value)
@@ -874,7 +505,7 @@ func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) FieldPr
 			// that contract; the resolved typed field remains authoritative.
 			value = json.RawMessage("null")
 		}
-		provenance.Candidates = append(provenance.Candidates, FieldCandidateProvenance{
+		provenance.Candidates = append(provenance.Candidates, contract.FieldCandidateProvenance{
 			Value:        value,
 			Source:       item.Source,
 			Precedence:   item.Precedence,
@@ -888,9 +519,7 @@ func runtimeSchemaFieldProvenance(candidate runtimeSchemaFieldCandidate) FieldPr
 func runtimeSchemaSourcePriority(source string) (int, string) {
 	switch strings.TrimSpace(source) {
 	case "reviewed_mapping_exclusion":
-		return runtimeSchemaRankVersionedBinding, runtimeSchemaPrecedenceMappingExclusion
-	case "reviewed_manual_hint":
-		return runtimeSchemaRankReviewedManual, runtimeSchemaPrecedenceReviewedManual
+		return runtimeSchemaRankMappingExclusion, runtimeSchemaPrecedenceMappingExclusion
 	case "require_one_of_constraint":
 		return runtimeSchemaRankConstraint, runtimeSchemaPrecedenceConstraint
 	case "versioned_parameter_binding":
@@ -904,8 +533,6 @@ func runtimeSchemaSourcePriority(source string) (int, string) {
 			return runtimeSchemaRankCobraDefault, runtimeSchemaPrecedenceCobra
 		}
 		return runtimeSchemaRankCobraContract, runtimeSchemaPrecedenceCobra
-	case "tool_schema_hint":
-		return runtimeSchemaRankToolHint, runtimeSchemaPrecedenceToolHint
 	case "mcp_metadata", "pinned_mcp_metadata":
 		return runtimeSchemaRankMCP, runtimeSchemaPrecedenceMCP
 	case "cobra_help":
@@ -970,12 +597,127 @@ func runtimeSchemaParameterMappingCandidates(snapshot schemaParameterBindingSnap
 	return runtimeSchemaFieldCandidate{}, exclusionCandidate, nil
 }
 
+// runtimeParameterFieldContext carries the per-flag inputs shared by the
+// parameter field candidate builders. Each builder's candidate set is
+// wire-visible: sources, ranks and values flow into field_provenance, so a
+// builder may only contribute its exact reviewed candidate set — reordering
+// or rewriting candidates changes delivered provenance.
+type runtimeParameterFieldContext struct {
+	flag        *pflag.Flag
+	metadata    RuntimeSchemaParameterMetadata
+	pinnedParam embeddedMCPParamMeta
+	hasPinned   bool
+	paramType   string
+	constraints RuntimeSchemaConstraints
+	property    string
+}
+
+func (c runtimeParameterFieldContext) interfaceTypeCandidates() []runtimeSchemaFieldCandidate {
+	candidates := []runtimeSchemaFieldCandidate{
+		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagTypeAnnotation), "native_annotation"),
+	}
+	if c.hasPinned {
+		candidates = append(candidates, runtimeSchemaStringCandidate(c.pinnedParam.Type, "mcp_metadata"))
+	}
+	return append(candidates,
+		runtimeSchemaStringCandidateAtRank(c.paramType, "cobra_flag_type", runtimeSchemaRankInference, "fallback"),
+	)
+}
+
+func (c runtimeParameterFieldContext) descriptionCandidates() []runtimeSchemaFieldCandidate {
+	candidates := []runtimeSchemaFieldCandidate{
+		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagDescriptionAnnotation), "native_annotation"),
+		runtimeSchemaStringCandidate(c.flag.Usage, "cobra_usage"),
+	}
+	if c.hasPinned {
+		candidates = append(candidates, runtimeSchemaStringCandidate(c.pinnedParam.Description, "mcp_metadata"))
+	}
+	return append(candidates, runtimeSchemaCandidate("", true, "default"))
+}
+
+func (c runtimeParameterFieldContext) requiredCandidates() []runtimeSchemaFieldCandidate {
+	constraintRequired := runtimeSchemaFieldCandidate{}
+	if runtimeSchemaRequireOneOfContains(c.constraints, c.flag.Name, c.flag.Name, c.property) {
+		constraintRequired = runtimeSchemaCandidate(false, true, "require_one_of_constraint")
+	}
+	usageRequired := usageImpliesRequired(c.flag.Usage)
+	cobraDefaultOptional := (runtimeFlagDefault(c.flag) != "" || usageImpliesDefault(c.flag.Usage)) && !usageRequired
+	typedRequired := false
+	for _, name := range c.metadata.Required {
+		if strings.TrimSpace(name) == c.flag.Name {
+			typedRequired = true
+			break
+		}
+	}
+	candidates := []runtimeSchemaFieldCandidate{
+		constraintRequired,
+		runtimeSchemaCandidate(true, typedRequired, "typed_parameter_metadata"),
+		runtimeSchemaAnnotatedBoolCandidate(c.flag, runtimeSchemaFlagMetadataRequiredAnnotation, "typed_parameter_metadata"),
+		runtimeSchemaAnnotatedBoolCandidate(c.flag, runtimeSchemaFlagRequiredAnnotation, "native_annotation"),
+		runtimeSchemaCandidate(true, runtimeFlagCobraHardRequired(c.flag), "cobra_hard_required"),
+		runtimeSchemaCandidate(false, cobraDefaultOptional, "cobra_nonzero_default"),
+		runtimeSchemaCandidate(usageRequired, usageRequired, "usage_required_inference"),
+	}
+	if c.hasPinned && c.pinnedParam.Required != nil {
+		candidates = append(candidates, runtimeSchemaCandidate(*c.pinnedParam.Required, true, "mcp_metadata"))
+	}
+	return append(candidates, runtimeSchemaCandidate(false, true, "default"))
+}
+
+func (c runtimeParameterFieldContext) requiredWhenCandidates() []runtimeSchemaFieldCandidate {
+	candidates := []runtimeSchemaFieldCandidate{
+		runtimeSchemaStringCandidate(c.metadata.RequiredWhen[c.flag.Name], "typed_parameter_metadata"),
+		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagMetadataRequiredWhenAnnotation), "typed_parameter_metadata"),
+		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagRequiredWhenAnnotation), "native_annotation"),
+	}
+	if c.hasPinned {
+		candidates = append(candidates, runtimeSchemaStringCandidate(c.pinnedParam.RequiredWhen, "mcp_metadata"))
+	}
+	return append(candidates, runtimeSchemaCandidate("", true, "default"))
+}
+
+func (c runtimeParameterFieldContext) formatCandidates() []runtimeSchemaFieldCandidate {
+	candidates := []runtimeSchemaFieldCandidate{
+		runtimeSchemaStringCandidate(c.metadata.Formats[c.flag.Name], "typed_parameter_metadata"),
+		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagMetadataFormatAnnotation), "typed_parameter_metadata"),
+		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, "x-cli-format"), "native_annotation"),
+	}
+	if c.hasPinned {
+		candidates = append(candidates, runtimeSchemaStringCandidate(c.pinnedParam.Format, "mcp_metadata"))
+	}
+	return append(candidates,
+		runtimeSchemaStringCandidate(inferredRuntimeFlagFormat(c.flag), "usage_format_inference"),
+		runtimeSchemaCandidate("", true, "default"),
+	)
+}
+
+func (c runtimeParameterFieldContext) enumCandidates() []runtimeSchemaFieldCandidate {
+	candidates := []runtimeSchemaFieldCandidate{
+		runtimeSchemaEnumCandidate(c.metadata.Enums[c.flag.Name], "typed_parameter_metadata"),
+		runtimeSchemaEnumCandidate(runtimeFlagEnumAnnotation(c.flag, runtimeSchemaFlagMetadataEnumAnnotation), "typed_parameter_metadata"),
+		runtimeSchemaEnumCandidate(runtimeFlagEnum(c.flag), "native_annotation"),
+	}
+	if c.hasPinned {
+		candidates = append(candidates, runtimeSchemaEnumCandidate(c.pinnedParam.Enum, "mcp_metadata"))
+	}
+	return append(candidates, runtimeSchemaCandidate([]string{}, true, "default"))
+}
+
+func (c runtimeParameterFieldContext) exampleCandidates() []runtimeSchemaFieldCandidate {
+	return []runtimeSchemaFieldCandidate{
+		runtimeSchemaStringCandidate(c.metadata.Examples[c.flag.Name], "typed_parameter_metadata"),
+		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagMetadataExampleAnnotation), "typed_parameter_metadata"),
+		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagExampleAnnotation), "native_annotation"),
+		runtimeSchemaCandidate("", true, "default"),
+	}
+}
+
 // runtimeCommandParameterSpecs resolves every source into the typed contract
 // model. Most fields use value-neutral source precedence: a higher-priority
 // source may intentionally raise or lower type/mapping/description semantics.
-// required is different: Cobra MarkFlagRequired is a hard floor that cannot be
-// lowered by manual/hint overlays (see resolveRequiredProjection).
-func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, hints map[string]ParameterSchemaHint, embeddedParams map[string]embeddedMCPParamMeta, constraints RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+// required is different: Cobra MarkFlagRequired is a hard floor that no
+// lower-priority source may demote (see resolveRequiredProjection).
+func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinnedParams map[string]embeddedMCPParamMeta, constraints RuntimeSchemaConstraints) ([]ParameterSpec, error) {
 	if cmd == nil {
 		return nil, nil
 	}
@@ -991,15 +733,6 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, hint
 		if resolveErr != nil || flag == nil || flag.Hidden || flag.Name == "help" || isGenericPayloadFlag(flag) {
 			return
 		}
-		manual, manualReason, _, err := runtimeManualSchemaParameter(cmd, flag.Name)
-		if err != nil {
-			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
-			return
-		}
-		manualProperty := runtimeSchemaFieldCandidate{}
-		if manual.Property != nil {
-			manualProperty = runtimeSchemaManualCandidate(*manual.Property, true, manualReason)
-		}
 		bindingProperty, excludedProperty, err := runtimeSchemaParameterMappingCandidates(bindingSnapshot, canonicalPath, flag.Name)
 		if err != nil {
 			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
@@ -1007,10 +740,17 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, hint
 		}
 		propertyWinner, err := resolveRuntimeSchemaField("property",
 			excludedProperty,
-			manualProperty,
 			bindingProperty,
 			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagBindingPropertyAnnotation), "versioned_parameter_binding"),
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagPropertyAnnotation), "native_annotation"),
+			// ParamDecl.Property is authored on the leaf and applied at assembly
+			// via ApplyParamDecls. It outranks any residual versioned binding
+			// candidate; active bindings JSON rows are empty after Phase 2.
+			runtimeSchemaStringCandidateAtRank(
+				firstFlagAnnotation(flag, runtimeSchemaFlagPropertyAnnotation),
+				"native_annotation",
+				runtimeSchemaRankParamDeclProperty,
+				runtimeSchemaPrecedenceNativeAnnotation,
+			),
 			runtimeSchemaStringCandidate(lowerCamelFlagName(flag.Name), "flag_name_inference"),
 		)
 		if err != nil {
@@ -1018,101 +758,51 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, hint
 			return
 		}
 		property, _ := propertyWinner.Value.(string)
-		hint, _, hasHint := lookupParameterSchemaHint(hints, property, flag.Name)
-		embeddedParam, hasEmbeddedParam := embeddedMCPParamMeta{}, false
-		if strings.TrimSpace(property) != "" {
-			embeddedParam, hasEmbeddedParam = lookupEmbeddedMCPParam(embeddedParams, property, flag.Name)
+		// pinnedParams remains for test fixtures that inject MCP-shaped maps;
+		// production assembly always passes an empty map (pin retired).
+		pinnedParam, hasPinnedParam := embeddedMCPParamMeta{}, false
+		if len(pinnedParams) > 0 && strings.TrimSpace(property) != "" {
+			pinnedParam, hasPinnedParam = lookupPinnedMCPParam(pinnedParams, property, flag.Name)
 		}
-		flagName := flag.Name
-		if hasHint && strings.TrimSpace(hint.FlagName) != "" {
-			hintFlagName := strings.TrimSpace(hint.FlagName)
-			if hintFlagName != flag.Name {
-				resolveErr = fmt.Errorf("flag --%s: tool_schema_hint flag_name %q does not identify the existing Cobra flag", flag.Name, hintFlagName)
-				return
+		paramType := runtimeFlagCLIType(flag)
+		fieldCtx := runtimeParameterFieldContext{
+			flag:        flag,
+			metadata:    metadata,
+			pinnedParam: pinnedParam,
+			hasPinned:   hasPinnedParam,
+			paramType:   paramType,
+			constraints: constraints,
+			property:    property,
+		}
+		resolveField := func(field string, candidates []runtimeSchemaFieldCandidate) (runtimeSchemaFieldCandidate, bool) {
+			winner, fieldErr := resolveRuntimeSchemaField(field, candidates...)
+			if fieldErr != nil {
+				resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, fieldErr)
+				return runtimeSchemaFieldCandidate{}, false
 			}
+			return winner, true
 		}
 
-		paramType := runtimeFlagCLIType(flag)
-		manualInterfaceType := runtimeSchemaFieldCandidate{}
-		if manual.InterfaceType != nil {
-			manualInterfaceType = runtimeSchemaManualCandidate(*manual.InterfaceType, true, manualReason)
-		}
-		interfaceTypeWinner, err := resolveRuntimeSchemaField("interface_type",
-			manualInterfaceType,
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagTypeAnnotation), "native_annotation"),
-			runtimeSchemaStringCandidate(hint.Type, "tool_schema_hint"),
-			runtimeSchemaStringCandidate(embeddedParam.Type, "mcp_metadata"),
-			runtimeSchemaStringCandidateAtRank(paramType, "cobra_flag_type", runtimeSchemaRankInference, "fallback"),
-		)
-		if err != nil {
-			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
+		interfaceTypeWinner, ok := resolveField("interface_type", fieldCtx.interfaceTypeCandidates())
+		if !ok {
 			return
 		}
 		interfaceType, _ := interfaceTypeWinner.Value.(string)
 
-		manualDescription := runtimeSchemaFieldCandidate{}
-		if manual.Description != nil {
-			manualDescription = runtimeSchemaManualCandidate(*manual.Description, true, manualReason)
-		}
-		descriptionWinner, err := resolveRuntimeSchemaField("description",
-			manualDescription,
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagDescriptionAnnotation), "native_annotation"),
-			runtimeSchemaStringCandidate(flag.Usage, "cobra_usage"),
-			runtimeSchemaStringCandidate(hint.Description, "tool_schema_hint"),
-			runtimeSchemaStringCandidate(embeddedParam.Description, "mcp_metadata"),
-			runtimeSchemaCandidate("", true, "default"),
-		)
-		if err != nil {
-			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
+		descriptionWinner, ok := resolveField("description", fieldCtx.descriptionCandidates())
+		if !ok {
 			return
 		}
 		description, _ := descriptionWinner.Value.(string)
 		interfaceDescription := ""
-		if hasEmbeddedParam {
-			interfaceDescription = strings.TrimSpace(embeddedParam.Description)
+		if hasPinnedParam {
+			interfaceDescription = strings.TrimSpace(pinnedParam.Description)
 		}
 
-		// Required uses field-level safe merge: overlays may raise required, but
+		// Required uses field-level safe merge: higher sources may raise required, but
 		// Cobra MarkFlagRequired cannot be projected away as optional.
-		manualRequired := runtimeSchemaFieldCandidate{}
-		if manual.Required != nil {
-			manualRequired = runtimeSchemaManualCandidate(*manual.Required, true, manualReason)
-		}
-		hintRequired := runtimeSchemaFieldCandidate{}
-		if hasHint && hint.Required != nil {
-			hintRequired = runtimeSchemaCandidate(*hint.Required, true, "tool_schema_hint")
-		}
-		constraintRequired := runtimeSchemaFieldCandidate{}
-		if runtimeSchemaRequireOneOfContains(constraints, flag.Name, flagName, property) {
-			constraintRequired = runtimeSchemaCandidate(false, true, "require_one_of_constraint")
-		}
-		mcpRequired := runtimeSchemaFieldCandidate{}
-		if hasEmbeddedParam && embeddedParam.Required != nil {
-			mcpRequired = runtimeSchemaCandidate(*embeddedParam.Required, true, "mcp_metadata")
-		}
-		usageRequired := usageImpliesRequired(flag.Usage)
-		cobraDefaultOptional := (runtimeFlagDefault(flag) != "" || usageImpliesDefault(flag.Usage)) && !usageRequired
-		typedRequired := false
-		for _, name := range metadata.Required {
-			if strings.TrimSpace(name) == flag.Name {
-				typedRequired = true
-				break
-			}
-		}
 		cobraHardRequired := runtimeFlagCobraHardRequired(flag)
-		requiredWinner, err := resolveRequiredProjection(cobraHardRequired,
-			manualRequired,
-			constraintRequired,
-			runtimeSchemaCandidate(true, typedRequired, "typed_parameter_metadata"),
-			runtimeSchemaAnnotatedBoolCandidate(flag, runtimeSchemaFlagMetadataRequiredAnnotation, "typed_parameter_metadata"),
-			runtimeSchemaAnnotatedBoolCandidate(flag, runtimeSchemaFlagRequiredAnnotation, "native_annotation"),
-			runtimeSchemaCandidate(true, cobraHardRequired, "cobra_hard_required"),
-			runtimeSchemaCandidate(false, cobraDefaultOptional, "cobra_nonzero_default"),
-			runtimeSchemaCandidate(usageRequired, usageRequired, "usage_required_inference"),
-			hintRequired,
-			mcpRequired,
-			runtimeSchemaCandidate(false, true, "default"),
-		)
+		requiredWinner, err := resolveRequiredProjection(cobraHardRequired, fieldCtx.requiredCandidates()...)
 		if err != nil {
 			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
 			return
@@ -1122,18 +812,18 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, hint
 		}
 		required, _ := requiredWinner.Value.(bool)
 
-		fieldProvenance := map[string]FieldProvenance{
+		fieldProvenance := map[string]contract.FieldProvenance{
 			"type":        runtimeSchemaFieldProvenance(runtimeSchemaStringCandidate(paramType, "cobra_flag_type")),
 			"description": runtimeSchemaFieldProvenance(descriptionWinner),
 			"required":    runtimeSchemaFieldProvenance(requiredWinner),
 		}
 		parameter := ParameterSpec{
-			Name:            flagName,
+			Name:            flag.Name,
 			Type:            paramType,
 			Description:     description,
 			Property:        property,
 			Required:        required,
-			CLIRequired:     runtimeFlagCobraHardRequired(flag),
+			CLIRequired:     cobraHardRequired,
 			FieldProvenance: fieldProvenance,
 		}
 		// An explicit reviewed mapping exclusion is a present winner whose
@@ -1155,21 +845,8 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, hint
 			parameter.InterfaceType = interfaceType
 			fieldProvenance["interface_type"] = runtimeSchemaFieldProvenance(interfaceTypeWinner)
 		}
-		manualRequiredWhen := runtimeSchemaFieldCandidate{}
-		if manual.RequiredWhen != nil {
-			manualRequiredWhen = runtimeSchemaManualCandidate(*manual.RequiredWhen, true, manualReason)
-		}
-		requiredWhenWinner, err := resolveRuntimeSchemaField("required_when",
-			manualRequiredWhen,
-			runtimeSchemaStringCandidate(metadata.RequiredWhen[flag.Name], "typed_parameter_metadata"),
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagMetadataRequiredWhenAnnotation), "typed_parameter_metadata"),
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagRequiredWhenAnnotation), "native_annotation"),
-			runtimeSchemaStringCandidate(hint.RequiredWhen, "tool_schema_hint"),
-			runtimeSchemaStringCandidate(embeddedParam.RequiredWhen, "mcp_metadata"),
-			runtimeSchemaCandidate("", true, "default"),
-		)
-		if err != nil {
-			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
+		requiredWhenWinner, ok := resolveField("required_when", fieldCtx.requiredWhenCandidates())
+		if !ok {
 			return
 		}
 		requiredWhen, _ := requiredWhenWinner.Value.(string)
@@ -1178,22 +855,14 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, hint
 		if def := runtimeFlagDefault(flag); def != "" {
 			parameter.Default = runtimeSchemaJSONString(def)
 		}
-		if hasEmbeddedParam {
-			interfaceDefault := strings.TrimSpace(embeddedParam.Default)
+		if hasPinnedParam {
+			interfaceDefault := strings.TrimSpace(pinnedParam.Default)
 			if interfaceDefault != "" && interfaceDefault != runtimeFlagDefault(flag) {
 				parameter.InterfaceDefault = runtimeSchemaJSONString(interfaceDefault)
 			}
 		}
-		formatWinner, err := resolveRuntimeSchemaField("format",
-			runtimeSchemaStringCandidate(metadata.Formats[flag.Name], "typed_parameter_metadata"),
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagMetadataFormatAnnotation), "typed_parameter_metadata"),
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, "x-cli-format"), "native_annotation"),
-			runtimeSchemaStringCandidate(embeddedParam.Format, "mcp_metadata"),
-			runtimeSchemaStringCandidate(inferredRuntimeFlagFormat(flag), "usage_format_inference"),
-			runtimeSchemaCandidate("", true, "default"),
-		)
-		if err != nil {
-			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
+		formatWinner, ok := resolveField("format", fieldCtx.formatCandidates())
+		if !ok {
 			return
 		}
 		if format, _ := formatWinner.Value.(string); format != "" {
@@ -1201,15 +870,8 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, hint
 			fieldProvenance["format"] = runtimeSchemaFieldProvenance(formatWinner)
 		}
 
-		enumWinner, err := resolveRuntimeSchemaField("enum",
-			runtimeSchemaEnumCandidate(metadata.Enums[flag.Name], "typed_parameter_metadata"),
-			runtimeSchemaEnumCandidate(runtimeFlagEnumAnnotation(flag, runtimeSchemaFlagMetadataEnumAnnotation), "typed_parameter_metadata"),
-			runtimeSchemaEnumCandidate(runtimeFlagEnum(flag), "native_annotation"),
-			runtimeSchemaEnumCandidate(embeddedParam.Enum, "mcp_metadata"),
-			runtimeSchemaCandidate([]string{}, true, "default"),
-		)
-		if err != nil {
-			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
+		enumWinner, ok := resolveField("enum", fieldCtx.enumCandidates())
+		if !ok {
 			return
 		}
 		if enum, _ := enumWinner.Value.([]string); len(enum) > 0 {
@@ -1217,14 +879,8 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, hint
 			fieldProvenance["enum"] = runtimeSchemaFieldProvenance(enumWinner)
 		}
 
-		exampleWinner, err := resolveRuntimeSchemaField("example",
-			runtimeSchemaStringCandidate(metadata.Examples[flag.Name], "typed_parameter_metadata"),
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagMetadataExampleAnnotation), "typed_parameter_metadata"),
-			runtimeSchemaStringCandidate(firstFlagAnnotation(flag, runtimeSchemaFlagExampleAnnotation), "native_annotation"),
-			runtimeSchemaCandidate("", true, "default"),
-		)
-		if err != nil {
-			resolveErr = fmt.Errorf("flag --%s: %w", flag.Name, err)
+		exampleWinner, ok := resolveField("example", fieldCtx.exampleCandidates())
+		if !ok {
 			return
 		}
 		if example, _ := exampleWinner.Value.(string); example != "" {
@@ -1248,30 +904,9 @@ func runtimeSchemaJSONString(value string) json.RawMessage {
 	return encoded
 }
 
-// runtimeCommandParameters is the compatibility wire adapter for callers that
-// have not yet moved to ToolSpec. Resolution happens only in the typed path;
-// this wrapper serializes the resulting ParameterSpecs without re-merging or
-// re-interpreting any source.
+// runtimeCommandParameterSpecsForPayload is a test seam; tests swap it to
+// simulate parameter-resolution failures.
 var runtimeCommandParameterSpecsForPayload = runtimeCommandParameterSpecs
-
-func runtimeCommandParameters(cmd *cobra.Command, canonicalPath string, hints map[string]ParameterSchemaHint, embeddedParams map[string]embeddedMCPParamMeta, constraints RuntimeSchemaConstraints) (map[string]any, error) {
-	specs, err := runtimeCommandParameterSpecsForPayload(cmd, canonicalPath, hints, embeddedParams, constraints)
-	if err != nil {
-		return nil, err
-	}
-	if len(specs) == 0 {
-		return nil, nil
-	}
-	parameters := make(map[string]any, len(specs))
-	for _, spec := range specs {
-		payload, payloadErr := spec.ToPayload()
-		if payloadErr != nil {
-			return nil, fmt.Errorf("serialize Schema parameter %q: %w", spec.Name, payloadErr)
-		}
-		parameters[spec.Name] = payload
-	}
-	return parameters, nil
-}
 
 func runtimeSchemaRequireOneOfContains(constraints RuntimeSchemaConstraints, names ...string) bool {
 	wanted := map[string]bool{}
@@ -1290,26 +925,8 @@ func runtimeSchemaRequireOneOfContains(constraints RuntimeSchemaConstraints, nam
 	return false
 }
 
-// runtimeCommandFlag resolves local flags plus product/group persistent flags.
-// Root persistent flags are intentionally available only when explicitly
-// requested; they are global execution controls, not tool parameters.
 func runtimeCommandFlag(cmd *cobra.Command, name string) *pflag.Flag {
-	if cmd == nil {
-		return nil
-	}
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return nil
-	}
-	if flag := cmd.Flags().Lookup(name); flag != nil {
-		return flag
-	}
-	for current := cmd; current != nil; current = current.Parent() {
-		if flag := current.PersistentFlags().Lookup(name); flag != nil {
-			return flag
-		}
-	}
-	return nil
+	return runtimeannotate.CommandFlag(cmd, name)
 }
 
 func visitRuntimeCommandFlags(cmd *cobra.Command, inheritedNames []string, visit func(*pflag.Flag)) {
@@ -1359,77 +976,22 @@ func visitRuntimeCommandFlags(cmd *cobra.Command, inheritedNames []string, visit
 }
 
 func runtimeCommandConstraints(cmd *cobra.Command) RuntimeSchemaConstraints {
-	if cmd == nil || cmd.Annotations == nil {
-		return RuntimeSchemaConstraints{}
-	}
-	raw := strings.TrimSpace(cmd.Annotations[runtimeSchemaRulesAnnotation])
-	if raw == "" {
-		return RuntimeSchemaConstraints{}
-	}
-	var constraints RuntimeSchemaConstraints
-	if json.Unmarshal([]byte(raw), &constraints) != nil {
-		return RuntimeSchemaConstraints{}
-	}
-	return normalizeRuntimeSchemaConstraints(constraints)
+	return runtimeannotate.CommandConstraints(cmd)
 }
 
-func runtimeCommandPositionals(cmd *cobra.Command) []RuntimeSchemaPositional {
-	if cmd == nil || cmd.Annotations == nil {
-		return nil
-	}
-	raw := strings.TrimSpace(cmd.Annotations[runtimeSchemaArgsAnnotation])
-	if raw == "" {
-		return nil
-	}
-	var positionals []RuntimeSchemaPositional
-	if json.Unmarshal([]byte(raw), &positionals) != nil {
-		return nil
-	}
-	sort.SliceStable(positionals, func(i, j int) bool { return positionals[i].Index < positionals[j].Index })
-	return positionals
+func runtimeCommandPositionals(cmd *cobra.Command) []contract.RuntimeSchemaPositional {
+	return runtimeannotate.CommandPositionals(cmd)
 }
 
 func normalizeRuntimeSchemaConstraints(constraints RuntimeSchemaConstraints) RuntimeSchemaConstraints {
-	constraints.MutuallyExclusive = normalizeRuntimeSchemaGroups(constraints.MutuallyExclusive, 2)
-	constraints.RequireOneOf = normalizeRuntimeSchemaGroups(constraints.RequireOneOf, 1)
-	constraints.RequireTogether = normalizeRuntimeSchemaGroups(constraints.RequireTogether, 2)
-	return constraints
-}
-
-func normalizeRuntimeSchemaGroups(groups [][]string, minimum int) [][]string {
-	out := make([][]string, 0, len(groups))
-	seenGroups := map[string]bool{}
-	for _, group := range groups {
-		clean := make([]string, 0, len(group))
-		seenNames := map[string]bool{}
-		for _, name := range group {
-			name = strings.TrimSpace(name)
-			if name == "" || seenNames[name] {
-				continue
-			}
-			seenNames[name] = true
-			clean = append(clean, name)
-		}
-		if len(clean) < minimum {
-			continue
-		}
-		key := strings.Join(clean, "\x00")
-		if seenGroups[key] {
-			continue
-		}
-		seenGroups[key] = true
-		out = append(out, clean)
-	}
-	return out
+	return runtimeannotate.NormalizeConstraints(constraints)
 }
 
 func runtimeSchemaConstraintsEmpty(constraints RuntimeSchemaConstraints) bool {
-	return len(constraints.MutuallyExclusive) == 0 &&
-		len(constraints.RequireOneOf) == 0 &&
-		len(constraints.RequireTogether) == 0
+	return runtimeannotate.ConstraintsEmpty(constraints)
 }
 
-func lookupEmbeddedMCPParam(params map[string]embeddedMCPParamMeta, property, flagName string) (embeddedMCPParamMeta, bool) {
+func lookupPinnedMCPParam(params map[string]embeddedMCPParamMeta, property, flagName string) (embeddedMCPParamMeta, bool) {
 	if len(params) == 0 {
 		return embeddedMCPParamMeta{}, false
 	}
@@ -1471,26 +1033,6 @@ func runtimeFlagCLIType(flag *pflag.Flag) string {
 	default:
 		return "string"
 	}
-}
-
-func runtimeFlagRequiredState(flag *pflag.Flag) (bool, bool) {
-	// This helper reports the projected Schema annotation first. Cobra's
-	// executable marker is retained as a lower-priority observation; the typed
-	// contract exposes both candidates when an explicit overlay lowers it.
-	if raw := firstFlagAnnotation(flag, runtimeSchemaFlagRequiredAnnotation); raw != "" {
-		required, err := strconv.ParseBool(raw)
-		if err == nil {
-			return required, true
-		}
-	}
-	if runtimeFlagCobraHardRequired(flag) {
-		return true, true
-	}
-	usage := strings.ToLower(strings.TrimSpace(flag.Usage))
-	if usageImpliesRequired(usage) {
-		return true, true
-	}
-	return false, false
 }
 
 func usageImpliesRequired(usage string) bool {
@@ -1630,7 +1172,6 @@ var schemaCompactStripKeys = map[string]bool{
 	"metadata_source":       true,
 	"source":                true,
 	"agent_metadata":        true,
-	"interface_metadata":    true,
 	"field_provenance":      true,
 	"reviewed":              true,
 	// redundant with canonical_path / cli_path

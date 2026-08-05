@@ -9,57 +9,38 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
 
-func TestCrossPlatformCoverageChatConversationDestructiveCommandsRequireConfirmation(t *testing.T) {
-	for _, args := range [][]string{
-		{"category", "delete", "--category-id", "42"},
-		{"clear-messages", "--conversation-id", "cid-1"},
-	} {
-		caller := &guardedMutationCaller{}
-		err := executeGuardedMutationCommand(t, caller, newChatCommand, args...)
-		requireTypedConfirmationError(t, err)
-		if len(caller.calls) != 0 {
-			t.Fatalf("chat %v made tool calls before confirmation: %#v", args, caller.calls)
-		}
-	}
-}
-
-func TestCrossPlatformCoverageChatConversationDestructiveCommandsRunAfterConfirmation(t *testing.T) {
-	for _, tc := range []struct {
-		args     []string
-		toolName string
-		wantArgs map[string]any
-	}{
-		{[]string{"category", "delete", "--category-id", "42", "--yes"}, "delete_conv_category", map[string]any{"categoryId": int64(42)}},
-		{[]string{"clear-messages", "--conversation-id", "cid-1", "--yes"}, "clear_conversation_messages", map[string]any{"openConversationId": "cid-1"}},
-	} {
-		caller := &guardedMutationCaller{}
-		if err := executeGuardedMutationCommand(t, caller, newChatCommand, tc.args...); err != nil {
-			t.Fatalf("chat %v error = %v", tc.args, err)
-		}
-		want := guardedMutationCall{productID: "im", toolName: tc.toolName, args: tc.wantArgs}
-		if len(caller.calls) != 1 || !reflect.DeepEqual(caller.calls[0], want) {
-			t.Fatalf("chat %v calls = %#v, want %#v", tc.args, caller.calls, want)
-		}
-	}
-}
-
 type contractDefectCaller struct {
 	dryRun    bool
 	calls     []guardedMutationCall
+	readCalls []guardedMutationCall
 	responses map[string]string
 	errors    map[string]error
 }
 
 func (c *contractDefectCaller) CallTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
 	c.calls = append(c.calls, guardedMutationCall{productID: productID, toolName: toolName, args: args})
+	key := productID + "/" + toolName
+	if err := c.errors[key]; err != nil {
+		return nil, err
+	}
+	text := c.responses[key]
+	if text == "" {
+		text = `{}`
+	}
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
+}
+
+func (c *contractDefectCaller) CallReadTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	c.readCalls = append(c.readCalls, guardedMutationCall{productID: productID, toolName: toolName, args: args})
 	key := productID + "/" + toolName
 	if err := c.errors[key]; err != nil {
 		return nil, err
@@ -95,12 +76,13 @@ func executeContractDefectCommand(t *testing.T, caller *contractDefectCaller, bu
 	}
 	root.SilenceErrors = true
 	root.SilenceUsage = true
+	root.SetIn(strings.NewReader(""))
 	root.SetArgs(args)
 	err := root.Execute()
 	return stdout.String(), err
 }
 
-func TestCrossPlatformCoverageApprovalRevokeDryRunSkipsConfirmationAndEmitsPreview(t *testing.T) {
+func TestApprovalRevokeDryRunSkipsConfirmationAndEmitsPreview(t *testing.T) {
 	caller := &contractDefectCaller{dryRun: true}
 	output, err := executeContractDefectCommand(t, caller, newOaCommand,
 		"approval", "revoke", "--instance-id", "instance-dry-run", "--dry-run")
@@ -116,7 +98,7 @@ func TestCrossPlatformCoverageApprovalRevokeDryRunSkipsConfirmationAndEmitsPrevi
 	}
 }
 
-func TestCrossPlatformCoverageDocVersionRevertDryRunSkipsRemotePreflightAndEmitsPreview(t *testing.T) {
+func TestDocVersionRevertDryRunSkipsRemotePreflightAndEmitsPreview(t *testing.T) {
 	caller := &contractDefectCaller{dryRun: true}
 	output, err := executeContractDefectCommand(t, caller, newDocCommand,
 		"version", "revert", "--node", "node-dry-run", "--version", "7", "--dry-run")
@@ -124,7 +106,10 @@ func TestCrossPlatformCoverageDocVersionRevertDryRunSkipsRemotePreflightAndEmits
 		t.Fatalf("doc version revert dry-run returned error: %v", err)
 	}
 	if len(caller.calls) != 0 {
-		t.Fatalf("dry-run tool calls = %#v, want none", caller.calls)
+		t.Fatalf("dry-run mutation calls = %#v, want none", caller.calls)
+	}
+	if len(caller.readCalls) != 0 {
+		t.Fatalf("dry-run read calls = %#v, want none (no remote version preflight)", caller.readCalls)
 	}
 	if !strings.Contains(output, `"tool": "revert_doc_version"`) ||
 		!strings.Contains(output, `"version": 7`) {
@@ -132,7 +117,92 @@ func TestCrossPlatformCoverageDocVersionRevertDryRunSkipsRemotePreflightAndEmits
 	}
 }
 
-func TestCrossPlatformCoverageDocRenamePreservesCallerProvidedDisplayName(t *testing.T) {
+func TestDocVersionRevertDryRunDoesNotRejectMissingVersionRemotely(t *testing.T) {
+	caller := &contractDefectCaller{dryRun: true}
+	output, err := executeContractDefectCommand(t, caller, newDocCommand,
+		"version", "revert", "--node", "node-dry-run", "--version", "999", "--dry-run")
+	if err != nil {
+		t.Fatalf("doc version revert dry-run returned error: %v", err)
+	}
+	if len(caller.readCalls) != 0 {
+		t.Fatalf("dry-run read calls = %#v, want none (no remote version preflight)", caller.readCalls)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("dry-run mutation calls = %#v, want none", caller.calls)
+	}
+	if !strings.Contains(output, `"tool": "revert_doc_version"`) ||
+		!strings.Contains(output, `"version": 999`) {
+		t.Fatalf("dry-run output = %q, want preview without remote missing-version rejection", output)
+	}
+}
+
+func TestDocVersionRevertNonDryRunPreflightsVersion(t *testing.T) {
+	caller := &contractDefectCaller{
+		responses: map[string]string{
+			"doc/list_doc_versions":  `{"versions":[{"version":7}]}`,
+			"doc/revert_doc_version": `{}`,
+		},
+	}
+	output, err := executeContractDefectCommand(t, caller, newDocCommand,
+		"version", "revert", "--node", "node-live", "--version", "7", "--yes")
+	if err != nil {
+		t.Fatalf("doc version revert returned error: %v", err)
+	}
+	// Outside --dry-run, list_doc_versions rides the normal CallTool channel
+	// (CallReadTool is dry-run-only). Expect preflight then mutation.
+	if len(caller.calls) != 2 ||
+		caller.calls[0].productID != "doc" || caller.calls[0].toolName != "list_doc_versions" ||
+		caller.calls[1].productID != "doc" || caller.calls[1].toolName != "revert_doc_version" {
+		t.Fatalf("non-dry-run calls = %#v, want list_doc_versions then revert_doc_version", caller.calls)
+	}
+	if strings.Contains(output, `"dry_run": true`) {
+		t.Fatalf("non-dry-run output unexpectedly previewed: %q", output)
+	}
+}
+
+func TestDocVersionRevertPublishesRuntimeSafety(t *testing.T) {
+	cmd, remaining, err := newDocCommand().Find([]string{"version", "revert"})
+	if err != nil || len(remaining) != 0 {
+		t.Fatalf("find doc version revert: command=%v remaining=%v err=%v", cmd, remaining, err)
+	}
+	final, ok := contractfinal.RuntimeContractFinal(cmd)
+	if !ok || final.Safety == nil {
+		t.Fatal("doc version revert must publish ContractFinal Safety")
+	}
+	if safety := *final.Safety; safety.Effect != "write" || safety.Risk != "medium" ||
+		safety.Confirmation != "user_required" || safety.Idempotency != "unknown" {
+		t.Fatalf("doc version revert Safety = %#v, want write/medium/user_required/unknown", safety)
+	}
+}
+
+func TestDriveDeleteDryRunSkipsConfirmationAndEOFIsObservable(t *testing.T) {
+	caller := &contractDefectCaller{dryRun: true}
+	output, err := executeContractDefectCommand(t, caller, newDriveCommand,
+		"delete", "--node", "node-dry-run", "--dry-run")
+	if err != nil {
+		t.Fatalf("drive delete dry-run returned error: %v", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("dry-run mutation calls = %#v, want none", caller.calls)
+	}
+	if !strings.Contains(output, `"tool": "delete_document"`) ||
+		!strings.Contains(output, `"nodeId": "node-dry-run"`) {
+		t.Fatalf("dry-run output = %q, want delete preview", output)
+	}
+
+	caller = &contractDefectCaller{}
+	_, err = executeContractDefectCommand(t, caller, newDriveCommand,
+		"delete", "--node", "node-eof")
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+		t.Fatalf("closed-stdin error = %#v, want typed confirmation_required", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("closed-stdin mutation calls = %#v, want none", caller.calls)
+	}
+}
+
+func TestDocRenamePreservesCallerProvidedDisplayName(t *testing.T) {
 	renameCmd, remaining, err := newDocCommand().Find([]string{"rename"})
 	if err != nil || len(remaining) != 0 {
 		t.Fatalf("find doc rename: command=%v remaining=%v err=%v", renameCmd, remaining, err)
@@ -160,7 +230,7 @@ func TestCrossPlatformCoverageDocRenamePreservesCallerProvidedDisplayName(t *tes
 	}
 }
 
-func TestCrossPlatformCoverageDriveRenameUsesNodeTypeAndCurrentExtension(t *testing.T) {
+func TestDriveRenameUsesNodeTypeAndCurrentExtension(t *testing.T) {
 	tests := []struct {
 		name        string
 		metadata    string
@@ -226,7 +296,7 @@ func TestCrossPlatformCoverageDriveRenameUsesNodeTypeAndCurrentExtension(t *test
 	}
 }
 
-func TestCrossPlatformCoverageDriveRenameMetadataFailuresDoNotMutate(t *testing.T) {
+func TestDriveRenameMetadataFailuresDoNotMutate(t *testing.T) {
 	tests := []struct {
 		name      string
 		responses map[string]string
@@ -260,7 +330,7 @@ func TestCrossPlatformCoverageDriveRenameMetadataFailuresDoNotMutate(t *testing.
 	}
 }
 
-func TestCrossPlatformCoverageDriveRenameDryRunDefersMetadataNormalization(t *testing.T) {
+func TestDriveRenameDryRunDefersMetadataNormalization(t *testing.T) {
 	caller := &contractDefectCaller{dryRun: true}
 	output, err := executeContractDefectCommand(t, caller, newDriveCommand,
 		"rename", "--node", "node-1", "--name", "photo.heic", "--dry-run")
@@ -275,7 +345,7 @@ func TestCrossPlatformCoverageDriveRenameDryRunDefersMetadataNormalization(t *te
 	}
 }
 
-func TestCrossPlatformCoverageDriveRenameBaseNameConservativeEdges(t *testing.T) {
+func TestDriveRenameBaseNameConservativeEdges(t *testing.T) {
 	tests := []struct {
 		name      string
 		nodeType  string
@@ -296,7 +366,7 @@ func TestCrossPlatformCoverageDriveRenameBaseNameConservativeEdges(t *testing.T)
 	}
 }
 
-func TestCrossPlatformCoverageDriveInfoRestoresFileSizeWhenDocMetadataIsNull(t *testing.T) {
+func TestDriveInfoRestoresFileSizeWhenDocMetadataIsNull(t *testing.T) {
 	caller := &contractDefectCaller{responses: map[string]string{
 		"drive/get_file_info":   `{"result":{"fileId":"node-1","extension":"adoc","fileSize":93682}}`,
 		"doc/get_document_info": `{"result":{"title":"Doc","fileSize":null}}`,

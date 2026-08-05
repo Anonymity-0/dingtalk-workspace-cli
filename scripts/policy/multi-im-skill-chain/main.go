@@ -52,7 +52,6 @@ type intentRoute struct {
 	PreferredTool         string          `json:"preferred_tool"`
 	AllowedFallbacks      []routeFallback `json:"allowed_fallbacks,omitempty"`
 	ForbiddenDefaultTools []string        `json:"forbidden_default_tools,omitempty"`
-	SelectionFile         string          `json:"selection_file"`
 	References            []string        `json:"references"`
 }
 
@@ -65,18 +64,9 @@ type toolFact struct {
 	Canonical    string
 	PrimaryPath  string
 	Confirmation string
+	UseWhen      []string
+	AvoidWhen    []string
 	HasMeta      bool
-}
-
-type selectionFile struct {
-	Products map[string]selectionEntry `json:"products"`
-	Tools    map[string]selectionEntry `json:"tools"`
-}
-
-type selectionEntry struct {
-	UseWhen    []string `json:"use_when"`
-	AvoidWhen  []string `json:"avoid_when"`
-	SourceRefs []string `json:"source_refs"`
 }
 
 func main() {
@@ -113,6 +103,8 @@ func run(rootPath string, root *cobra.Command, stdout, stderr io.Writer) int {
 			Canonical:    canonical,
 			PrimaryPath:  item.PrimaryCLIPath,
 			Confirmation: meta.Safety.Confirmation,
+			UseWhen:      append([]string(nil), meta.Selection.UseWhen...),
+			AvoidWhen:    append([]string(nil), meta.Selection.AvoidWhen...),
 			HasMeta:      ok,
 		}
 	}
@@ -146,8 +138,8 @@ func loadManifest(path string) (routeManifest, error) {
 
 func validateManifest(rootPath string, manifest routeManifest, tools map[string]toolFact) []string {
 	var failures []string
-	if manifest.Version != 2 {
-		failures = append(failures, fmt.Sprintf("manifest version = %d, want 2", manifest.Version))
+	if manifest.Version != 3 {
+		failures = append(failures, fmt.Sprintf("manifest version = %d, want 3", manifest.Version))
 	}
 	if len(manifest.MarkerRoots) == 0 {
 		failures = append(failures, "manifest marker_roots must not be empty")
@@ -159,8 +151,6 @@ func validateManifest(rootPath string, manifest routeManifest, tools map[string]
 	failures = append(failures, validateTypedContractReference(rootPath, manifest.ContractReference)...)
 	failures = append(failures, validateEventHandoffReference(rootPath, manifest.HandoffReference)...)
 
-	selections := map[string]selectionFile{}
-	registryAnchors := map[string]map[string]bool{}
 	intentByID := make(map[string]intentRoute, len(manifest.Intents))
 	for _, route := range manifest.Intents {
 		if !intentIDPattern.MatchString(route.ID) {
@@ -172,22 +162,6 @@ func validateManifest(rootPath string, manifest routeManifest, tools map[string]
 			continue
 		}
 		intentByID[route.ID] = route
-		if route.SelectionFile == "" || !safeRepositoryPath(route.SelectionFile) {
-			failures = append(failures, fmt.Sprintf("intent %s has invalid selection_file %q", route.ID, route.SelectionFile))
-			continue
-		}
-		selection, ok := selections[route.SelectionFile]
-		if !ok {
-			loaded, err := loadSelection(filepath.Join(rootPath, filepath.FromSlash(route.SelectionFile)))
-			if err != nil {
-				failures = append(failures, fmt.Sprintf("intent %s: %v", route.ID, err))
-				continue
-			}
-			selection = loaded
-			selections[route.SelectionFile] = loaded
-			failures = append(failures, validateSelectionSourceRefs(rootPath, route.SelectionFile, loaded, registryAnchors)...)
-		}
-
 		preferred, ok := tools[route.PreferredTool]
 		if !ok {
 			failures = append(failures, fmt.Sprintf("intent %s preferred tool %q is absent from BoundCommandRegistry", route.ID, route.PreferredTool))
@@ -196,10 +170,7 @@ func validateManifest(rootPath string, manifest routeManifest, tools map[string]
 		if !preferred.HasMeta || preferred.Confirmation == "" {
 			failures = append(failures, fmt.Sprintf("intent %s preferred tool %q is absent from ResolveMeta delivery", route.ID, route.PreferredTool))
 		}
-		preferredSelection, ok := selection.Tools[route.PreferredTool]
-		if !ok {
-			failures = append(failures, fmt.Sprintf("intent %s preferred tool %q is absent from %s", route.ID, route.PreferredTool, route.SelectionFile))
-		} else if len(preferredSelection.UseWhen) == 0 || len(preferredSelection.AvoidWhen) == 0 {
+		if len(preferred.UseWhen) == 0 || len(preferred.AvoidWhen) == 0 {
 			failures = append(failures, fmt.Sprintf("intent %s preferred tool %q needs non-empty use_when and avoid_when", route.ID, route.PreferredTool))
 		}
 
@@ -226,24 +197,22 @@ func validateManifest(rootPath string, manifest routeManifest, tools map[string]
 		}
 
 		seenForbidden := map[string]bool{}
-		preferredLeaf := lastPathToken(preferred.PrimaryPath)
 		for _, canonical := range route.ForbiddenDefaultTools {
 			if canonical == "" || seenForbidden[canonical] {
 				failures = append(failures, fmt.Sprintf("intent %s has empty or duplicate forbidden default %q", route.ID, canonical))
 				continue
 			}
 			seenForbidden[canonical] = true
-			if _, exists := tools[canonical]; !exists {
+			entry, exists := tools[canonical]
+			if !exists {
 				failures = append(failures, fmt.Sprintf("intent %s forbidden default tool %q is absent from BoundCommandRegistry", route.ID, canonical))
 				continue
 			}
-			entry, exists := selection.Tools[canonical]
-			if !exists {
-				failures = append(failures, fmt.Sprintf("intent %s forbidden default tool %q is absent from %s", route.ID, canonical, route.SelectionFile))
-				continue
+			if !entry.HasMeta || entry.Confirmation == "" {
+				failures = append(failures, fmt.Sprintf("intent %s forbidden default tool %q is absent from ResolveMeta delivery", route.ID, canonical))
 			}
-			if !sliceContains(entry.AvoidWhen, preferredLeaf) {
-				failures = append(failures, fmt.Sprintf("intent %s forbidden default %q avoid_when does not route ordinary use to %s", route.ID, canonical, preferredLeaf))
+			if len(entry.UseWhen) == 0 || len(entry.AvoidWhen) == 0 {
+				failures = append(failures, fmt.Sprintf("intent %s forbidden default tool %q needs non-empty use_when and avoid_when", route.ID, canonical))
 			}
 		}
 
@@ -434,18 +403,6 @@ func markdownBreakList(values []string) string {
 	return strings.Join(quoted, "<br>")
 }
 
-func loadSelection(path string) (selectionFile, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return selectionFile{}, fmt.Errorf("read selection file %s: %w", path, err)
-	}
-	var selection selectionFile
-	if err := json.Unmarshal(data, &selection); err != nil {
-		return selectionFile{}, fmt.Errorf("decode selection file %s: %w", path, err)
-	}
-	return selection, nil
-}
-
 func scanMarkers(rootPath string, roots []string, intents map[string]intentRoute, tools map[string]toolFact) ([]string, map[string]int) {
 	var failures []string
 	markers := map[string]int{}
@@ -509,74 +466,6 @@ func scanMarkers(rootPath string, roots []string, intents map[string]intentRoute
 	return failures, markers
 }
 
-func validateSelectionSourceRefs(rootPath, selectionPath string, selection selectionFile, registryAnchors map[string]map[string]bool) []string {
-	var failures []string
-	check := func(owner string, refs []string) {
-		for _, ref := range refs {
-			if strings.HasPrefix(ref, "internal/cli/schema_command_registry.json") {
-				failures = append(failures, fmt.Sprintf("%s %s has stale source_ref %q", selectionPath, owner, ref))
-				continue
-			}
-			pathRef := strings.TrimPrefix(ref, "Skill:")
-			if !strings.HasPrefix(pathRef, "internal/") && !strings.HasPrefix(pathRef, "skills/") {
-				continue
-			}
-			parts := strings.SplitN(pathRef, "#", 2)
-			if !safeRepositoryPath(parts[0]) {
-				failures = append(failures, fmt.Sprintf("%s %s has unsafe source_ref %q", selectionPath, owner, ref))
-				continue
-			}
-			absolute := filepath.Join(rootPath, filepath.FromSlash(parts[0]))
-			if _, err := os.Stat(absolute); err != nil {
-				failures = append(failures, fmt.Sprintf("%s %s source_ref path %q does not exist", selectionPath, owner, parts[0]))
-				continue
-			}
-			if len(parts) == 2 && strings.Contains(parts[0], "schema_command_registry/products/") {
-				anchors, ok := registryAnchors[parts[0]]
-				if !ok {
-					loaded, err := loadRegistryAnchors(absolute)
-					if err != nil {
-						failures = append(failures, fmt.Sprintf("%s %s: %v", selectionPath, owner, err))
-						continue
-					}
-					anchors = loaded
-					registryAnchors[parts[0]] = loaded
-				}
-				if !anchors[parts[1]] {
-					failures = append(failures, fmt.Sprintf("%s %s source_ref anchor %q is absent from %s", selectionPath, owner, parts[1], parts[0]))
-				}
-			}
-		}
-	}
-	for product, entry := range selection.Products {
-		check("product "+product, entry.SourceRefs)
-	}
-	for canonical, entry := range selection.Tools {
-		check("tool "+canonical, entry.SourceRefs)
-	}
-	return failures
-}
-
-func loadRegistryAnchors(path string) (map[string]bool, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read CommandRegistry shard %s: %w", path, err)
-	}
-	var shard struct {
-		Tools []struct {
-			CanonicalPath string `json:"canonical_path"`
-		} `json:"tools"`
-	}
-	if err := json.Unmarshal(data, &shard); err != nil {
-		return nil, fmt.Errorf("decode CommandRegistry shard %s: %w", path, err)
-	}
-	anchors := make(map[string]bool, len(shard.Tools))
-	for _, tool := range shard.Tools {
-		anchors[tool.CanonicalPath] = true
-	}
-	return anchors, nil
-}
-
 func safeRepositoryPath(path string) bool {
 	path = filepath.ToSlash(strings.TrimSpace(path))
 	return path != "" && path != "." && !filepath.IsAbs(path) && path != ".." && !strings.HasPrefix(path, "../") && !strings.Contains(path, "/../")
@@ -594,23 +483,6 @@ func containsCLIPath(line, path string) bool {
 	}
 	next := line[end]
 	return next == ' ' || next == '`' || next == '<' || next == '|' || next == ','
-}
-
-func lastPathToken(path string) string {
-	parts := strings.Fields(path)
-	if len(parts) == 0 {
-		return ""
-	}
-	return parts[len(parts)-1]
-}
-
-func sliceContains(values []string, fragment string) bool {
-	for _, value := range values {
-		if strings.Contains(value, fragment) {
-			return true
-		}
-	}
-	return false
 }
 
 func stringSliceContains(values []string, target string) bool {
