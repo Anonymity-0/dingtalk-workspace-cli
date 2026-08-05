@@ -67,7 +67,7 @@ dws doc read --node "https://alidocs.dingtalk.com/i/p/Y7kmbokZp3pgGLq2/docs/AY39
 >
 > 你可以：
 > 1. 在钉钉客户端中打开该文档，将正文内容复制粘贴给我
-> 2. 如果文档已保存在你的文档空间中，可以告诉我文档名称，我通过 `dws doc search` 搜索后再读取
+> 2. 如果文档已保存在你的文档空间中，可以告诉我文档名称，我通过 `dws drive search` 搜索后再读取
 
 ---
 

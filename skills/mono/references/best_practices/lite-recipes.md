@@ -57,8 +57,9 @@
 
 ### query-doc
 
-1. `doc search --query "<关键词>"` → `nodeId`
-2. `doc read --node <nodeId>`（按需；大文档只抽章节）
+1. 全局搜索：`drive search --query "<关键词>"` → `nodeId`（聚合钉盘+文档空间；`doc search` 已弃用）
+2. 空间内搜索：`wiki node search --workspace <WS_ID> --query "<关键词>"` → `nodeId`
+3. `doc read --node <nodeId>`（按需；大文档只抽章节）
 
 ### list-folder-docs
 
