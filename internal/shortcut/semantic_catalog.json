@@ -278,6 +278,13 @@
       "public": true,
       "reviewed": true
     },
+    "+chat-list": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "对齐 lark-cli +chat-list：默认仅群聊，支持 --types group/p2p、--exclude-muted、page-size/page-token 别名，并投影 openConversationId/name/conversationType；不宣称 sort 或 bot 身份 p2p 剥离。",
+      "risk": "read",
+      "public": true,
+      "reviewed": true
+    },
     "+chat-list-mine": {
       "disposition": "schema_leaf",
       "semantic_delta": "群主/管理员群列表只做字段投影；精确角色筛选由底层 leaf 提供。",

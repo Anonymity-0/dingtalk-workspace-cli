@@ -29,8 +29,11 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	dwsevent "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/busctl"
@@ -170,12 +173,42 @@ func newEventSchemaCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&formatRaw, "format", "f", "json", "输出格式: json")
 	cmd.Flags().BoolVar(&flatten, "flatten", false, "显示 --flatten 消费模式对应的顶层业务字段 schema")
 	hideEventInternalFlags(cmd, "as")
-	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{
 		Name:        "event_key",
 		Type:        "string",
 		Description: "要查询 payload 字段定义的个人事件码",
 		Required:    true,
 		Index:       0,
+	})
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "schema",
+				CanonicalPath:  "event.schema",
+				CLIPath:        "event schema",
+				PrimaryCLIPath: "event schema",
+			},
+			Description: "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令读取 CLI 内置的个人事件 payload 定义，不绑定 pinned MCP RPC",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
+				UseWhen:      []string{"已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"},
+				AvoidWhen: []string{
+					"查询 CLI 命令参数契约时用顶层 dws schema",
+					"要实际收事件时用 event consume",
+				},
+				Examples: []string{"dws event schema user_im_message_receive_at --flatten --format json"},
+			},
+		},
 	})
 	return cmd
 }

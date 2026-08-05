@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 const (
@@ -35,6 +37,14 @@ type whiteboardOpenSource struct {
 var compactWhiteboardJSON = json.Compact
 
 func newWhiteboardCommand() *cobra.Command {
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "whiteboard",
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "读取和更新钉钉在线文档中的内嵌白板",
+			UseWhen:      []string{"操作已有文档内嵌白板的 OpenNodes 内容时"},
+			AvoidWhen:    []string{"普通文档正文和块使用 doc；创建白板卡片先用 doc whiteboard insert"},
+		},
+	})
 	root := &cobra.Command{
 		Use:   "whiteboard",
 		Short: "钉钉文档内嵌白板管理",
@@ -64,6 +74,37 @@ func newWhiteboardCommand() *cobra.Command {
 	}
 	queryCmd.Flags().String("node", "", "承载白板的钉钉文档 ID 或 URL（必填）")
 	queryCmd.Flags().String("part-id", "", "文档内白板 part ID（必填）")
+	DeclareLeafMetadata(queryCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "whiteboard",
+				Name:           "query",
+				CanonicalPath:  "whiteboard.query",
+				CLIPath:        "whiteboard query",
+				PrimaryCLIPath: "whiteboard query",
+			},
+			Description: "读取钉钉文档内已有白板的 OpenNodes 内容",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "白板端点通过显式服务适配器调用并解码 resultJson，不能绑定为单一 interface_ref",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "读取钉钉文档内已有白板的 OpenNodes 内容",
+				UseWhen:      []string{"已知承载文档 nodeId 和白板 partId，需要检查当前白板节点、布局或写入支持时"},
+				AvoidWhen:    []string{"创建新白板卡片用 doc whiteboard insert；缺少 partId 时先从文档 card metadata.id 定位"},
+				Examples:     []string{"dws whiteboard query --node <DOC_ID> --part-id <WHITEBOARD_PART_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
+				{Name: "part-id", Property: "partId", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	updateCmd := &cobra.Command{
 		Use:   "update",
@@ -86,10 +127,6 @@ overwrite=true 表示整页重建。两种模式都会写入远端白板，必�
 			if err != nil {
 				return err
 			}
-			if !deps.Caller.DryRun() && !confirmDangerousAction(cmd, "update whiteboard content", mustGetFlag(cmd, "part-id")) {
-				return fmt.Errorf("whiteboard update cancelled")
-			}
-
 			mode := "append"
 			if input.Overwrite {
 				mode = "overwrite"
@@ -106,6 +143,39 @@ overwrite=true 表示整页重建。两种模式都会写入远端白板，必�
 	updateCmd.Flags().String("part-id", "", "文档内白板 part ID（必填）")
 	updateCmd.Flags().String("source", "", "OpenNodes V1 更新请求 JSON 文件（必填）")
 	updateCmd.Flags().Bool("yes", false, "确认写入远端白板")
+	DeclareLeafMetadata(updateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "whiteboard",
+				Name:           "update",
+				CanonicalPath:  "whiteboard.update",
+				CLIPath:        "whiteboard update",
+				PrimaryCLIPath: "whiteboard update",
+			},
+			Description: "经用户确认后向已有白板追加 OpenNodes 或整页重建",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含本地 OpenNodes 校验、显式白板服务路由与结构化结果解码，不能绑定为单一 interface_ref",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "经用户确认后向已有白板追加 OpenNodes 或整页重建",
+				UseWhen:      []string{"已有 nodeId、partId 和合规 OpenNodes V1 文件，用户确认后要追加图形、文本、连接线或整页替换时"},
+				AvoidWhen:    []string{"只读取内容用 whiteboard query；创建白板卡片用 doc whiteboard insert；不要用真实节点 ID 做局部修改"},
+				Examples:     []string{"dws whiteboard update --node <DOC_ID> --part-id <WHITEBOARD_PART_ID> --source ./whiteboard.json --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
+				{Name: "part-id", Property: "partId", Required: boolPtr(true)},
+				{Name: "source", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	root.AddCommand(queryCmd, updateCmd)
 	return root

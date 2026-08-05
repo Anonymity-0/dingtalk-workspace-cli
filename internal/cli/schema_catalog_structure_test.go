@@ -20,27 +20,27 @@ import (
 	"testing"
 )
 
-// TestEmbeddedSchemaCatalogStructure gates the delivered catalog: every tool
+// TestDeliverySchemaCatalogStructure gates the delivered catalog: every tool
 // entry must conform to the unified closed structure. If this fails after
 // regeneration, either fix the generator inputs or deliberately extend the
 // whitelist in schema_catalog_structure.go.
-func TestEmbeddedSchemaCatalogStructure(t *testing.T) {
+func TestDeliverySchemaCatalogStructure(t *testing.T) {
 	// After PR #656 the catalog is embedded as per-product shards, not a single
 	// JSON file. The loaded snapshot is the reassembled result — serialize it
 	// back to JSON and validate the same closed structure.
-	loaded := embeddedSchemaCatalog()
+	loaded := mustDeliverySchemaCatalogMaps(t)
 	data, err := json.Marshal(loaded.Snapshot)
 	if err != nil {
-		t.Fatalf("marshal embedded catalog snapshot: %v", err)
+		t.Fatalf("marshal delivery catalog snapshot: %v", err)
 	}
 	if err := ValidateCatalogStructure(data); err != nil {
-		t.Fatalf("embedded schema catalog violates the unified command structure: %v", err)
+		t.Fatalf("delivery schema catalog violates the unified command structure: %v", err)
 	}
 }
 
 func validCatalogToolEntry() map[string]any {
 	return map[string]any{
-		"agent_metadata_source": "embedded-skill-metadata",
+		"agent_metadata_source": ProvenanceEmbeddedSkillMetadata,
 		"agent_source_refs":     []any{"skills/mono/references/products/aitable.md"},
 		"agent_summary":         "创建多维表格记录",
 		"agent_summary_source":  "dws-agent-selection/aitable",
@@ -100,7 +100,7 @@ func TestValidateCatalogStructureAcceptsValidEntry(t *testing.T) {
 	}
 }
 
-func TestValidateCatalogStructureRejectsViolations(t *testing.T) {
+func TestCrossPlatformCoverageValidateCatalogStructureRejectsViolations(t *testing.T) {
 	cases := []struct {
 		name   string
 		mutate func(entry map[string]any)
@@ -301,7 +301,7 @@ func TestValidateCatalogStructureRejectsViolations(t *testing.T) {
 	}
 }
 
-func TestValidateCatalogStructureRejectsBadEnvelope(t *testing.T) {
+func TestCrossPlatformCoverageValidateCatalogStructureRejectsBadEnvelope(t *testing.T) {
 	if err := ValidateCatalogStructure([]byte(`{"version":99,"tools":{}}`)); err == nil {
 		t.Fatal("ValidateCatalogStructure() = nil, want version error")
 	}
@@ -313,7 +313,7 @@ func TestValidateCatalogStructureRejectsBadEnvelope(t *testing.T) {
 	}
 }
 
-func TestValidateCatalogStructureSortsViolationsAcrossTools(t *testing.T) {
+func TestCrossPlatformCoverageValidateCatalogStructureSortsViolationsAcrossTools(t *testing.T) {
 	// 两个工具各制造两条违规，驱动排序比较器的 tool 与 message 两个分支。
 	bad1 := validCatalogToolEntry()
 	bad1["effect"] = "mutate"
@@ -342,7 +342,7 @@ func TestValidateCatalogStructureSortsViolationsAcrossTools(t *testing.T) {
 	}
 }
 
-func TestValidateCatalogStructureTruncatesViolationList(t *testing.T) {
+func TestCrossPlatformCoverageValidateCatalogStructureTruncatesViolationList(t *testing.T) {
 	// 单工具制造超过 25 条违规，验证截断提示。
 	entry := validCatalogToolEntry()
 	for i := 0; i < 30; i++ {

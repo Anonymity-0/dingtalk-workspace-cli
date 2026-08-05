@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cobracmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/logging"
@@ -677,6 +678,33 @@ func newDevAppRobotConnectStatusCommand() *cobra.Command {
 	cmd.Flags().String("robot-client-id", "", "机器人 clientId（定位守护进程）")
 	cmd.Flags().String("unified-app-id", "", "统一应用 ID（当未用 clientId 起守护进程时定位）")
 	cmd.Flags().Bool("json", false, "以 JSON 输出健康报告（供 launchd/systemd/pm2/cron 判断是否重启）")
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "connect_status",
+				CanonicalPath:  "dev.connect_status",
+				CLIPath:        "dev connect status",
+				PrimaryCLIPath: "dev connect status",
+			},
+			Description: "查看后台连接器守护进程状态",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令仅操作本地进程或策略文件，不调用 MCP 接口",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查看后台连接器守护进程状态",
+				UseWhen:      []string{"需要确认本地 connect 守护进程是否在跑、pid/日志路径"},
+				AvoidWhen:    []string{"要停止守护进程时用 dev connect stop"},
+				Examples:     []string{"dws dev connect status --unified-app-id <unifiedAppId> --json"},
+			},
+		},
+	})
 	return cmd
 }
 
@@ -700,6 +728,33 @@ func newDevAppRobotConnectStopCommand() *cobra.Command {
 	preferLegacyLeaf(cmd)
 	cmd.Flags().String("robot-client-id", "", "机器人 clientId（定位守护进程）")
 	cmd.Flags().String("unified-app-id", "", "统一应用 ID（当未用 clientId 起守护进程时定位）")
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "dev",
+				Name:           "connect_stop",
+				CanonicalPath:  "dev.connect_stop",
+				CLIPath:        "dev connect stop",
+				PrimaryCLIPath: "dev connect stop",
+			},
+			Description: "优雅停止后台连接器守护进程",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令仅操作本地进程或策略文件，不调用 MCP 接口",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "优雅停止后台连接器守护进程",
+				UseWhen:      []string{"用户明确要求停止本地 Stream/连接器守护进程"},
+				AvoidWhen:    []string{"只想查看状态时用 dev connect status"},
+				Examples:     []string{"dws dev connect stop --unified-app-id <unifiedAppId>"},
+			},
+		},
+	})
 	return cmd
 }
 

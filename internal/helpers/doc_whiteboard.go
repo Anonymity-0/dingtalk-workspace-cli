@@ -11,6 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 const (
@@ -142,10 +144,10 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 	if deps.Caller.DryRun() {
 		return callMCPToolOnServer("doc", "insert_document_block", toolArgs)
 	}
-	if !confirmDangerousAction(cmd, "insert whiteboard card into document", nodeID) {
-		return fmt.Errorf("whiteboard insert cancelled")
-	}
 
+	// 用户确认由 DeclareLeafMetadata(user_required) 的 ConfirmSafety 门控接管：
+	// 推迟到首次 deps.Caller.CallTool（下方 insert_document_block），避免与
+	// 门控双读 stdin。--yes / --dry-run 经 confirmationBypass 跳过。
 	ctx := cmd.Context()
 	deps.Out.PrintProgress("[1/2] 插入白板卡片...")
 	if _, err := callMCPToolReturnTextOnServer(ctx, "doc", "insert_document_block", toolArgs); err != nil {
@@ -210,6 +212,38 @@ CLI 生成卡片块 UUID 与白板资源 ID，插入后按块 UUID 回查并验�
 		insertCmd.Flags().String(name, "", "--node 的兼容别名")
 		_ = insertCmd.Flags().MarkHidden(name)
 	}
+
+	DeclareLeafMetadata(insertCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "whiteboard_insert",
+				CanonicalPath:  "doc.whiteboard_insert",
+				CLIPath:        "doc whiteboard insert",
+				PrimaryCLIPath: "doc whiteboard insert",
+			},
+			Description: "向文档插入空白板卡片并返回块 ID 与白板 part ID",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令生成卡片与白板 UUID、插入规范 JSONML，再回读块验证 metadata.id，不能绑定为单一 interface_ref",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "经用户确认后向钉钉文档插入空白板卡片并返回块 ID 与白板 part ID",
+				UseWhen:      []string{"目标文档还没有可操作白板，需要创建空白板卡片并取得后续 query/update 使用的 partId 时"},
+				AvoidWhen:    []string{"已有白板只需读取或编辑时使用 whiteboard query/update；删除卡片使用 doc block delete"},
+				Examples:     []string{"dws doc whiteboard insert --node <DOC_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	root.AddCommand(insertCmd)
 	return root

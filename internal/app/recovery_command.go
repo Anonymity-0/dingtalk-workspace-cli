@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/recovery"
@@ -23,7 +22,7 @@ var (
 	recoverySaveAnalysis = (*recovery.Store).SaveAnalysis
 )
 
-func newRecoveryCommand(_ context.Context, loader cli.CatalogLoader, flags *GlobalFlags) *cobra.Command {
+func newRecoveryCommand(flags *GlobalFlags) *cobra.Command {
 	var (
 		planUseLast    bool
 		planEventID    string
@@ -34,7 +33,7 @@ func newRecoveryCommand(_ context.Context, loader cli.CatalogLoader, flags *Glob
 		executionFile  string
 	)
 
-	runtime := newRecoveryRuntime(loader, flags)
+	runtime := newRecoveryRuntime(flags)
 
 	cmd := &cobra.Command{
 		Use:               "recovery",
@@ -259,12 +258,11 @@ func legacyRecoveryAttempts(count int, actions []string, result, errorSummary st
 }
 
 type recoveryRuntime struct {
-	loader    cli.CatalogLoader
 	transport *transport.Client
 	flags     *GlobalFlags
 }
 
-func newRecoveryRuntime(loader cli.CatalogLoader, flags *GlobalFlags) *recoveryRuntime {
+func newRecoveryRuntime(flags *GlobalFlags) *recoveryRuntime {
 	var httpClient *http.Client
 	if flags != nil && flags.Timeout > 0 {
 		httpClient = &http.Client{Timeout: time.Duration(flags.Timeout) * time.Second}
@@ -272,7 +270,6 @@ func newRecoveryRuntime(loader cli.CatalogLoader, flags *GlobalFlags) *recoveryR
 	client := transport.NewClient(httpClient)
 	client.ExtraHeaders = resolveIdentityHeaders()
 	return &recoveryRuntime{
-		loader:    loader,
 		transport: client,
 		flags:     flags,
 	}
@@ -353,22 +350,11 @@ func (r *recoveryRuntime) CallToolDirect(ctx context.Context, serverID, toolName
 	return &result, nil
 }
 
-func (r *recoveryRuntime) resolveEndpoint(ctx context.Context, productID, toolName string) (string, error) {
+func (r *recoveryRuntime) resolveEndpoint(_ context.Context, productID, toolName string) (string, error) {
 	if endpoint, ok := directRuntimeEndpoint(productID, toolName); ok {
 		return endpoint, nil
 	}
-	if r == nil || r.loader == nil {
-		return "", fmt.Errorf("未找到服务 %s 的 endpoint", productID)
-	}
-	catalog, err := r.loader.Load(ctx)
-	if err != nil {
-		return "", err
-	}
-	product, ok := catalog.FindProduct(productID)
-	if !ok || strings.TrimSpace(product.Endpoint) == "" {
-		return "", fmt.Errorf("未找到服务 %s 的 endpoint", productID)
-	}
-	return strings.TrimSpace(product.Endpoint), nil
+	return "", endpointNotResolvedError(productID, toolName, "no dynamic endpoint registered for product or tool")
 }
 
 func recoveryRuntimeToken(flags *GlobalFlags) string {

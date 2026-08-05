@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -49,12 +50,11 @@ func (*whiteboardTestCaller) JQ() string       { return "" }
 
 func installWhiteboardTestCaller(t *testing.T, caller *whiteboardTestCaller) *bytes.Buffer {
 	t.Helper()
-	previous := deps
+	testseam.Protect(t, &deps)
 	InitDeps(caller)
 	output := &bytes.Buffer{}
 	deps.Out.w = output
 	deps.Out.errW = &bytes.Buffer{}
-	t.Cleanup(func() { deps = previous })
 	return output
 }
 
@@ -97,7 +97,7 @@ func TestWhiteboardUpdateValidatesSourceAndRequiresConfirmation(t *testing.T) {
 	cmd := newWhiteboardCommand()
 	cmd.SetIn(strings.NewReader("no\n"))
 	cmd.SetArgs([]string{"update", "--node", "doc-1", "--part-id", "part-1", "--source", path})
-	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "cancelled") {
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
 		t.Fatalf("err = %v, want cancellation", err)
 	}
 	if len(caller.calls) != 0 {

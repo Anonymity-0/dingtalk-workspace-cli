@@ -50,10 +50,10 @@ func runDocMediaUpload(cmd *cobra.Command, _ []string) error {
 			"mimeType": mimeType,
 		})
 	}
-	if !confirmDangerousAction(cmd, "upload reusable document media", fileName) {
-		return fmt.Errorf("document media upload cancelled")
-	}
 
+	// 用户确认由 DeclareLeafMetadata(user_required) 的 ConfirmSafety 门控接管：
+	// 推迟到首次 deps.Caller.CallTool（下方 get_doc_attachment_upload_info），
+	// 避免与门控双读 stdin。--yes / --dry-run 经 confirmationBypass 跳过。
 	text, err := callMCPToolReturnTextOnServer(cmd.Context(), "doc", "get_doc_attachment_upload_info", map[string]any{
 		"nodeId":   nodeID,
 		"fileName": fileName,

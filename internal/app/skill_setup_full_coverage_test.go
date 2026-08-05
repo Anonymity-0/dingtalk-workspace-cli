@@ -61,7 +61,7 @@ func TestCrossPlatformCoverageSkillSetupHighLevelRemainingCoverage(t *testing.T)
 	fail := errors.New("failure")
 	skillSetupResolveMode = func(mode string, _ bool, _ io.Writer) (string, error) { return mode, nil }
 	skillSetupResolveSource = func(string, string) (string, func(), error) { return "source", func() {}, nil }
-	skillSetupResolveTargets = func(string, string) ([]string, error) { return []string{"dest"}, nil }
+	skillSetupResolveTargets = func(string, string) ([]string, error) { return []string{filepath.Join(t.TempDir(), "dest")}, nil }
 	skillSetupFilterMulti = func(all, _, _ []string) ([]string, error) { return all, nil }
 
 	skillSetupListMulti = func(string) ([]string, error) { return nil, fail }
@@ -231,18 +231,18 @@ func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) 
 	}
 
 	skillSetupMkdirAll = func(string, os.FileMode) error { return fail }
-	_, skipped, _ = installMultiSkillToHomes("src", []string{"one", "two"}, []string{"dest"}, &out, &errOut)
+	_, skipped, _ = installMultiSkillToHomes("src", []string{"one", "two"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut)
 	if skipped != 2 {
 		t.Fatal("multi mkdir failure count mismatch")
 	}
 	skillSetupMkdirAll = func(string, os.FileMode) error { return nil }
 	skillSetupRemoveAll = func(string) error { return fail }
-	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{"dest"}, &out, &errOut)
+	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut)
 	if skipped != 1 {
 		t.Fatal("multi remove failure count mismatch")
 	}
 	skillSetupRemoveAll = func(string) error { return nil }
-	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{"dest"}, &out, &errOut)
+	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut)
 	if skipped != 1 {
 		t.Fatal("multi copy failure count mismatch")
 	}

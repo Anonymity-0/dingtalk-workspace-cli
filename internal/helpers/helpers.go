@@ -29,7 +29,6 @@ var (
 	flagOrFallback                  = cmdutil.FlagOrFallback
 	mustFlagOrFallback              = cmdutil.MustFlagOrFallback
 	validateRequiredFlags           = cmdutil.ValidateRequiredFlags
-	missingRequiredFlagsError       = cmdutil.MissingRequiredFlagsError
 	validateRequiredFlagWithAliases = cmdutil.ValidateRequiredFlagWithAliases
 	parseISOTimeToMillis            = cmdutil.ParseISOTimeToMillis
 	validateTimeRange               = cmdutil.ValidateTimeRange
@@ -155,7 +154,10 @@ func callMCPToolReturnTextOnServer(ctx context.Context, serverID, toolName strin
 // ReadToolCaller capability; if unavailable, it fails closed instead of
 // returning a synthetic dry-run envelope that looks like business data.
 func CallMCPReadToolTextOnServer(serverID, toolName string, args map[string]any) (string, error) {
-	ctx := context.Background()
+	return callMCPReadToolReturnTextOnServer(context.Background(), serverID, toolName, args)
+}
+
+func callMCPReadToolReturnTextOnServer(ctx context.Context, serverID, toolName string, args map[string]any) (string, error) {
 	if !IsReadToolName(toolName) {
 		return "", &CLIError{
 			Code:    CodeMCPToolError,

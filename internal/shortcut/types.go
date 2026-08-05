@@ -25,6 +25,11 @@
 // dynamically-discovered MCP leaf commands and from hand-written helper commands.
 package shortcut
 
+import (
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+)
+
 // Risk classifies the side effect of running a shortcut. It drives whether a
 // confirmation prompt is required before execution (see internal/safety).
 type Risk string
@@ -84,6 +89,11 @@ type Flag struct {
 	Desc string `json:"description"`
 	// Required, when true, makes the framework error if the flag is not set.
 	Required bool `json:"required"`
+	// RequiredWhen publishes a conditional-required rule that Required cannot
+	// express, e.g. "identity=bot" for a credential only mandatory under one
+	// identity. It is published Schema metadata so an Agent can predict the
+	// failure; enforcement stays in Validate, which remains authoritative.
+	RequiredWhen string `json:"required_when,omitempty"`
 	// Enum, when non-empty, restricts the accepted values (string flags only).
 	Enum []string `json:"enum"`
 	// Hidden hides the flag from --help while keeping it usable.
@@ -137,7 +147,15 @@ type Shortcut struct {
 	// long description) and in `dws shortcut list`.
 	Intent string
 	// Risk classifies the side effect; defaults to RiskRead when empty.
+	// Kept as the runtime confirmation source when Safety is empty.
 	Risk Risk
+	// Safety is an optional explicit Schema/runtime safety declaration. When
+	// non-empty it overrides Risk expansion in FromShortcut; otherwise Risk
+	// still drives ConfirmSafety so existing Execute bodies stay unchanged.
+	Safety contract.SafetySpec
+	// Contract is the final Agent Contract overlay (selection/interface/dry-run).
+	// Empty fails Catalog assembly; every Shortcut must declare Contract.
+	Contract corecmd.ContractDecl
 	// Flags are the command-specific flags. Global flags are injected separately.
 	Flags []Flag
 	// Constraints publish and enforce relationships that individual flags cannot
