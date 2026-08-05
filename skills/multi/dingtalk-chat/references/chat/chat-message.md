@@ -180,10 +180,17 @@ dws chat message edit --group <openConversationId> --msg-id <openMessageId> --co
 
 | 命令 | 用途 | 必填参数 |
 |------|------|----------|
-| `message reply` | 引用回复，单聊/群聊均可 | `--conversation-id` `--ref-msg-id` `--ref-sender` `--text` |
+| `message reply` | 引用回复，单聊/群聊均可；群聊可 @指定成员或 @所有人 | `--conversation-id` `--ref-msg-id` `--ref-sender` `--text`；可选 `--at-open-dingtalk-ids` `--at-all` |
 | `message forward` | 转发单条消息，源/目标均支持单聊/群聊 | `--src-conversation-id` `--msg-id` `--dest-conversation-id` |
 | `message combine-forward` | 多条消息合并为一条转发 | `--src-conversation-id` `--msg-ids` `--dest-conversation-id`，可选 `--uuid` |
 | `message forward-topic` | 转发话题消息 | `--src-msg-id` `--src-conversation-id` `--src-thread-id` `--dest-conversation-id` |
+
+群聊引用回复的 @ 规则与当前用户发消息一致：`--at-open-dingtalk-ids` 会传 `atOpenDingTalkIds`，正文中的裸 `@openDingTalkId` 自动规范化为 `<@openDingTalkId>`；`--at-all` 会传 `atAll=true`，正文缺少 `<@all>` 时自动补齐。
+
+```bash
+dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <senderOpenDingTalkId> --text "<@mentionedOpenDingTalkId> 请看一下" --at-open-dingtalk-ids <mentionedOpenDingTalkId>
+dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <senderOpenDingTalkId> --text "请大家确认" --at-all
+```
 
 ### 话题与卡片
 
