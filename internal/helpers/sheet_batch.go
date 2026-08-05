@@ -423,6 +423,8 @@ CLI 层自动翻译为 MCP toolName + 参数名，无需记忆 MCP 参数名。
   range fill / range copy-to / add-dimension / delete-dimension / move-dimension
   group-dimension / ungroup-dimension
   set-dropdown / delete-dropdown / csv-put / delete-float-image
+其中 csv-put 与独立命令语义一致：CSV 字段值以 = 开头时按公式解析，
+前加单引号（例如 "'=1+1"）时写入公式文本。
 
 注意：batch-update 中 group-dimension 适合默认展开分组；需要 --group-state fold 时请使用独立
 dws sheet group-dimension 命令。
@@ -437,7 +439,8 @@ dws sheet group-dimension 命令。
   dws sheet batch-update --node NODE_ID --operations '[
     {"toolName":"range clear","input":{"sheet-id":"Sheet1","range":"A1:B3","type":"content"}},
     {"toolName":"range update","input":{"sheet-id":"Sheet1","range":"A1","values":[[{"type":"text","text":"hello"}]]}},
-    {"toolName":"merge-cells","input":{"sheet-id":"Sheet1","range":"A1:B1","merge-type":"mergeAll"}}
+    {"toolName":"merge-cells","input":{"sheet-id":"Sheet1","range":"A1:B1","merge-type":"mergeAll"}},
+    {"toolName":"csv-put","input":{"sheet-id":"Sheet1","start-cell":"C1","csv":"=1+1,\u0027=1+1"}}
   ]' --yes
 
   # 宽松模式

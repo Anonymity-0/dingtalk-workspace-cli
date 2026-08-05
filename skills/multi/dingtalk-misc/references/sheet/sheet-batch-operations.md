@@ -100,6 +100,7 @@ Notes:
   - --continue-on-error: 宽松模式，遇失败继续执行后续操作（已执行的子操作不回滚）
   - operations 最多 20 条
   - 当需要对多个区域执行相同清除时，优先使用 `range batch-clear`（更简洁）
+  - `csv-put` 子操作与独立命令语义一致：CSV 字段值以 `=` 开头时按公式解析；前加单引号时写入公式文本
   - 典型场景：先插入行列再写入数据、先清除再写入、批量合并+调整行高列宽
   - `group-dimension` 在 batch 中只适合默认展开分组；需要 `--group-state fold` 时请使用独立 `dws sheet group-dimension`
   - `table-put` 不支持放进 batch-update；结构化 table 请用独立 `dws sheet table-put`
