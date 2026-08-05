@@ -39,6 +39,7 @@ type platformCoverageCaller struct {
 	calls               []platformCoverageCall
 	dry                 bool
 	contactSearchResult string
+	aisearchResult      string
 }
 
 func (f *platformCoverageCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -49,6 +50,11 @@ func (f *platformCoverageCaller) CallTool(_ context.Context, product, tool strin
 		text = f.contactSearchResult
 		if text == "" {
 			text = `{"result":[{"userId":"u1","name":"张三","openDingTalkId":"open1"}]}`
+		}
+	case "aisearch/enterprise_person_search":
+		text = f.aisearchResult
+		if text == "" {
+			text = `{"result":[{"userId":"u1","openDingTalkId":"open1","meta":{"name":"张三","nick":"张三"}}]}`
 		}
 	case "contact/get_current_user_profile":
 		text = `{"result":{"userId":"u1"}}`
@@ -249,12 +255,12 @@ func TestCrossPlatformCoverageBroadcastDryRunPublishesExecutablePlan(t *testing.
 		"--yes",
 	})
 	if err := root.Execute(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("execute: %v; calls = %#v", err, fake.calls)
 	}
 	if len(fake.calls) != 1 ||
-		fake.calls[0].product != "contact" ||
-		fake.calls[0].tool != "search_contact_by_key_word" {
-		t.Fatalf("dry-run calls = %#v, want one read-only contact lookup", fake.calls)
+		fake.calls[0].product != "aisearch" ||
+		fake.calls[0].tool != "enterprise_person_search" {
+		t.Fatalf("dry-run calls = %#v, want one read-only enterprise-person lookup", fake.calls)
 	}
 
 	var payload map[string]any
@@ -277,6 +283,43 @@ func TestCrossPlatformCoverageBroadcastDryRunPublishesExecutablePlan(t *testing.
 		if _, ok := arguments[key]; !ok {
 			t.Errorf("dry-run action arguments missing %q: %#v", key, arguments)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageBroadcastUsesEnterpriseAliasAndUserIDFallback(t *testing.T) {
+	fake := &platformCoverageCaller{
+		dry: true,
+		aisearchResult: `{"result":[{
+			"userId":"user-alias",
+			"meta":{"name":"柏荣","nick":"大柚"}
+		}]}`,
+	}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+broadcast",
+		"--to", "大柚",
+		"--text", "你好",
+		"--dry-run",
+		"--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("execute: %v; calls = %#v", err, fake.calls)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	actions, _ := payload["actions"].([]any)
+	action, _ := actions[0].(map[string]any)
+	arguments, _ := action["arguments"].(map[string]any)
+	if arguments["receiverUserId"] != "user-alias" {
+		t.Fatalf("arguments = %#v", arguments)
+	}
+	if _, ok := arguments["receiverOpenDingTalkId"]; ok {
+		t.Fatalf("unexpected open id fallback = %#v", arguments)
 	}
 }
 

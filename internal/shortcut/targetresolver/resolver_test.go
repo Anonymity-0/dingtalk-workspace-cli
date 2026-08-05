@@ -54,6 +54,131 @@ func TestCrossPlatformCoverageExtractUsersKeepsUsableExternalContacts(t *testing
 	}
 }
 
+func TestCrossPlatformCoverageExtractUsersAcceptsEnterprisePersonMetadata(t *testing.T) {
+	users := ExtractUsers(map[string]any{
+		"result": []any{
+			map[string]any{
+				"meta": map[string]any{
+					"staffId":        "u1",
+					"openDingTalkId": "D1",
+					"name":           "柏荣",
+				},
+			},
+			map[string]any{
+				"userId":         "u2",
+				"openDingTalkId": "D2",
+				"title":          "展示名",
+			},
+		},
+	})
+	if !reflect.DeepEqual(users, []User{
+		{UserID: "u1", OpenDingTalkID: "D1", Name: "柏荣"},
+		{UserID: "u2", OpenDingTalkID: "D2", Name: "展示名"},
+	}) {
+		t.Fatalf("enterprise users = %#v", users)
+	}
+}
+
+func TestCrossPlatformCoverageResolveEnterpriseUserUsesCalibratedNameSearch(t *testing.T) {
+	reader := resolverReaderFunc(func(product, tool string, params map[string]any) (map[string]any, error) {
+		if product != "aisearch" || tool != "enterprise_person_search" {
+			t.Fatalf("tool = %s/%s", product, tool)
+		}
+		if params["keyword"] != "柏荣" || !reflect.DeepEqual(params["dimension"], []string{"name"}) {
+			t.Fatalf("params = %#v", params)
+		}
+		return map[string]any{"result": []any{map[string]any{
+			"userId":         "u1",
+			"openDingTalkId": "D1",
+			"meta":           map[string]any{"name": "柏荣"},
+		}}}, nil
+	})
+	resolved, err := ResolveEnterpriseUser(reader, " 柏荣 ", IdentityAny)
+	if err != nil || resolved.MatchType != "exact" || resolved.Selected.UserID != "u1" {
+		t.Fatalf("resolved = %#v, err = %v", resolved, err)
+	}
+}
+
+func TestCrossPlatformCoverageUserResolutionFailsClosedOnUnpageableContinuation(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		resolve func(Reader) (UserResolution, error)
+		data    map[string]any
+	}{
+		{
+			name: "contact search",
+			resolve: func(reader Reader) (UserResolution, error) {
+				return ResolveUser(reader, "张三", IdentityAny)
+			},
+			data: map[string]any{
+				"result":     []any{map[string]any{"userId": "u1", "name": "张三"}},
+				"hasMore":    true,
+				"nextCursor": "page-2",
+			},
+		},
+		{
+			name: "enterprise search",
+			resolve: func(reader Reader) (UserResolution, error) {
+				return ResolveEnterpriseUser(reader, "张三", IdentityAny)
+			},
+			data: map[string]any{
+				"result":     []any{map[string]any{"userId": "u1", "name": "张三"}},
+				"nextCursor": "page-2",
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.resolve(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+				return tc.data, nil
+			}))
+			var typed *apperrors.Error
+			if !stderrors.As(err, &typed) || typed.Reason != "resolution_incomplete" || !typed.Retryable {
+				t.Fatalf("error = %#v", err)
+			}
+			if typed.Details["entityType"] != "user" || typed.Details["subtype"] != StatusIncomplete {
+				t.Fatalf("details = %#v", typed.Details)
+			}
+		})
+	}
+
+	fullPage := make([]any, userSearchDefaultResultLimit)
+	fullPage[0] = map[string]any{
+		"openDingTalkId": "D1",
+		"name":           "张三",
+	}
+	for i := 1; i < len(fullPage); i++ {
+		// These first-page contacts do not satisfy the downstream open-ID
+		// requirement. A second-page namesake still could, so the one usable
+		// first-page candidate must not be treated as globally unique.
+		fullPage[i] = map[string]any{
+			"userId": fmt.Sprintf("u%d", i),
+			"name":   fmt.Sprintf("张三候选%d", i),
+		}
+	}
+	_, err := ResolveUser(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+		return map[string]any{"result": fullPage}, nil
+	}), "张三", IdentityOpenDingTalkID)
+	var fullPageError *apperrors.Error
+	if !stderrors.As(err, &fullPageError) || fullPageError.Reason != "resolution_incomplete" {
+		t.Fatalf("full-page error = %#v", err)
+	}
+	if cause := fmt.Sprint(fullPageError.Details["cause"]); !strings.Contains(cause, "满额 20 条") {
+		t.Fatalf("full-page cause = %q", cause)
+	}
+
+	terminalCursor := map[string]any{
+		"result":     []any{map[string]any{"userId": "u1", "name": "张三"}},
+		"hasMore":    false,
+		"nextCursor": "terminal-token",
+	}
+	resolved, err := ResolveUser(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+		return terminalCursor, nil
+	}), "张三", IdentityAny)
+	if err != nil || resolved.Selected.UserID != "u1" {
+		t.Fatalf("terminal cursor resolved = %#v, err = %v", resolved, err)
+	}
+}
+
 func TestCrossPlatformCoverageOpenConversationIDIsNeverSearchedAsAGroupName(t *testing.T) {
 	for _, value := range []string{"cid-fixture-chat-0001", " CIDO123456789 "} {
 		if !LooksLikeOpenConversationID(value) {
@@ -318,6 +443,11 @@ func TestCrossPlatformCoverageResolverCompletionBranches(t *testing.T) {
 		if _, err := ResolveUser(ambiguous, "用户", IdentityAny); err == nil {
 			t.Fatal("ambiguous user unexpectedly resolved")
 		}
+		if _, err := ResolveEnterpriseUser(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+			return nil, upstream
+		}), "张三", IdentityAny); !stderrors.Is(err, upstream) {
+			t.Fatalf("enterprise transport error = %v", err)
+		}
 	})
 
 	t.Run("chat transport metadata and page limit", func(t *testing.T) {
@@ -451,6 +581,7 @@ func TestCrossPlatformCoverageResolverCompletionBranches(t *testing.T) {
 		for _, err := range []error{
 			newResolutionError(StatusNotFound, "user", "missing", nil),
 			newIncompleteChatResolutionError("群", nil, "fixture"),
+			newIncompleteUserResolutionError("用户", nil, "fixture"),
 		} {
 			var typed *apperrors.Error
 			if !stderrors.As(err, &typed) || typed.Details["profile"] != "fixture" {

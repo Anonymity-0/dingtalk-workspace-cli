@@ -28,8 +28,9 @@ const (
 )
 
 const (
-	chatResolutionPageSize  = 10
-	chatResolutionPageLimit = 40
+	chatResolutionPageSize       = 10
+	chatResolutionPageLimit      = 40
+	userSearchDefaultResultLimit = 20
 )
 
 // IdentityRequirement filters contacts to identities accepted by the
@@ -93,7 +94,63 @@ func ResolveUser(rt Reader, query string, requirement IdentityRequirement) (User
 	if err != nil {
 		return UserResolution{}, err
 	}
-	users := filterUsersByIdentity(dedupeUsers(ExtractUsers(data)), requirement)
+	if cause := incompleteUserSearchCause(data, "通讯录搜索"); cause != "" {
+		return UserResolution{}, newIncompleteUserResolutionError(
+			query,
+			dedupeUsers(ExtractUsers(data)),
+			cause,
+		)
+	}
+	return resolveUserCandidates(ExtractUsers(data), query, requirement)
+}
+
+// ResolveEnterpriseUser resolves an organization member through the same
+// name-calibrated enterprise search used by `dws aisearch person`. Unlike the
+// contact search, this source understands organization nicknames and aliases.
+func ResolveEnterpriseUser(rt Reader, query string, requirement IdentityRequirement) (UserResolution, error) {
+	query = strings.TrimSpace(query)
+	data, err := rt.CallMCPData("aisearch", "enterprise_person_search", map[string]any{
+		"keyword":   query,
+		"dimension": []string{"name"},
+	})
+	if err != nil {
+		return UserResolution{}, err
+	}
+	if cause := incompleteUserSearchCause(data, "企业人员搜索"); cause != "" {
+		return UserResolution{}, newIncompleteUserResolutionError(
+			query,
+			dedupeUsers(ExtractUsers(data)),
+			cause,
+		)
+	}
+	return resolveUserCandidates(ExtractUsers(data), query, requirement)
+}
+
+// incompleteUserSearchCause enforces completeness for the two public user
+// search RPCs. Their discovered input contracts do not accept any cursor or
+// page parameter, while search_contact_by_key_word is observed to cap an
+// unqualified result at 20. An explicit terminal hasMore=false proves the page
+// complete; otherwise a continuation marker or a full default page must fail
+// closed instead of treating a first-page match as globally unique.
+func incompleteUserSearchCause(data map[string]any, source string) string {
+	page := extractChatPagination(data)
+	if page.hasMoreKnown {
+		if page.hasMore {
+			return source + "返回了 hasMore=true，但公开接口不接受游标参数，无法安全读取后续候选"
+		}
+		return ""
+	}
+	if page.nextCursor != "" {
+		return source + "返回了后续游标，但公开接口不接受游标参数，无法安全读取后续候选"
+	}
+	if len(firstList(data, "result", "items", "users", "list")) >= userSearchDefaultResultLimit {
+		return fmt.Sprintf("%s返回了满额 %d 条候选且没有结束标记，无法证明后续不存在同名用户", source, userSearchDefaultResultLimit)
+	}
+	return ""
+}
+
+func resolveUserCandidates(candidates []User, query string, requirement IdentityRequirement) (UserResolution, error) {
+	users := filterUsersByIdentity(dedupeUsers(candidates), requirement)
 	selected, matchType := selectUsers(users, query)
 	if len(selected) == 0 {
 		return UserResolution{}, newResolutionError(StatusNotFound, "user", query, users)
@@ -400,14 +457,26 @@ func ExtractUsers(data map[string]any) []User {
 		}
 		userID := stringValue(row, "userId", "orgUserId")
 		openID := stringValue(row, "openDingTalkId", "openDingtalkId")
+		name := stringValue(row,
+			"name", "nick", "showName", "flowerName", "staffName", "userName", "author", "title")
+		if meta, ok := row["meta"].(map[string]any); ok {
+			if userID == "" {
+				userID = stringValue(meta, "userId", "orgUserId", "staffId")
+			}
+			if openID == "" {
+				openID = stringValue(meta, "openDingTalkId", "openDingtalkId")
+			}
+			if metaName := stringValue(meta, "name", "nick"); metaName != "" {
+				name = metaName
+			}
+		}
 		if userID == "" && openID == "" {
 			continue
 		}
 		users = append(users, User{
 			UserID:         userID,
 			OpenDingTalkID: openID,
-			Name: stringValue(row,
-				"name", "nick", "showName", "flowerName", "staffName", "userName"),
+			Name:           name,
 		})
 	}
 	return users
@@ -604,6 +673,30 @@ func newIncompleteChatResolutionError(query string, candidates []Chat, cause str
 		apperrors.WithExecutionStarted(false),
 		apperrors.WithRetryable(true),
 		apperrors.WithHint("请重试，或直接传 openConversationId 跳过群名解析"),
+		apperrors.WithDetails(details),
+	)
+}
+
+func newIncompleteUserResolutionError(query string, candidates []User, cause string) error {
+	details := map[string]any{
+		"type":       "resolution",
+		"subtype":    StatusIncomplete,
+		"entityType": "user",
+		"query":      query,
+		"candidates": candidates,
+		"cause":      cause,
+	}
+	if profile := profilectx.Get(); profile != "" {
+		details["profile"] = profile
+	}
+	return apperrors.NewAPI(
+		fmt.Sprintf("用户 %q 的候选未能完整读取，已停止后续操作", query),
+		apperrors.WithReason("resolution_incomplete"),
+		apperrors.WithOrigin("mcp_gateway"),
+		apperrors.WithFailureStage("target_resolution"),
+		apperrors.WithExecutionStarted(false),
+		apperrors.WithRetryable(true),
+		apperrors.WithHint("请重试，或直接传 userId/openDingTalkId 跳过姓名解析"),
 		apperrors.WithDetails(details),
 	)
 }
