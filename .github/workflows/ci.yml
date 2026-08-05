@@ -438,7 +438,7 @@ jobs:
     needs: lint
     if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && needs.lint.outputs.full_suite != 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -483,14 +483,15 @@ jobs:
             exit 0
           fi
           mapfile -t packages <<< "$package_output"
-          go test -v -race -count=1 -timeout=8m "${packages[@]}"
+          go test -v -race -count=1 -timeout=15m "${packages[@]}"
 
   test-race:
     name: "Test (race: ${{ matrix.shard }})"
     needs: lint
     if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && needs.lint.outputs.full_suite == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # cli/smoke shards need headroom beyond go test -timeout for setup + assembly.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -498,6 +499,8 @@ jobs:
           - app
           - generators
           - helpers
+          - cli
+          - smoke
           - remaining
     steps:
       - name: Check out repository
@@ -523,7 +526,13 @@ jobs:
           test -n "$package_output"
           mapfile -t packages <<< "$package_output"
           test "${#packages[@]}" -gt 0
-          go test -v -race -count=1 -timeout=10m "${packages[@]}"
+          # cli/smoke own heavy NewRootCommand / Schema assembly under -race; give
+          # them a dedicated budget so remaining is not SIGTERM'd by OOM/timeout.
+          timeout_budget=12m
+          if [ "$TEST_SHARD" = "cli" ] || [ "$TEST_SHARD" = "smoke" ]; then
+            timeout_budget=15m
+          fi
+          go test -v -race -count=1 -timeout="$timeout_budget" "${packages[@]}"
 
   test-release-scripts:
     name: Test (workflow and release contracts)
@@ -693,8 +702,11 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Test macOS auth and Keychain paths with Race Detection
-        run: go test -v -race -count=1 -timeout=10m ./internal/keychain ./internal/auth ./internal/app
+      - name: Test macOS auth and Keychain packages with Race Detection
+        run: go test -v -race -count=1 -timeout=6m ./internal/keychain ./internal/auth
+
+      - name: Test macOS auth migration, Keychain diagnostics, and upgrade self-heal with Race Detection
+        run: go test -v -race -count=1 -timeout=5m ./internal/app -run '^(TestValidateNewBinary_RecoversFromUnsignedDarwin|Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch))'
 
   test-windows:
     name: Test (Windows)
@@ -805,6 +817,7 @@ jobs:
         run: ./scripts/policy/run-platform-coverage-gate.sh --base-ref "$COVERAGE_BASE_REF" --profile coverage-windows.txt
 
       - name: Upload Windows coverage artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-windows
@@ -1160,14 +1173,20 @@ jobs:
       - name: Enforce coverage gate
         if: needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true'
         env:
+          FULL_SUITE: ${{ needs.lint.outputs.full_suite }}
           COVERAGE_TARGET: "100"
           COVERAGE_ENFORCE_OVERALL: "false"
           COVERAGE_OVERALL_TOLERANCE: "0"
         run: |
+          policy_profile=coverage-policy.txt
+          if [ "$FULL_SUITE" != true ]; then
+            policy_profile=
+          fi
           additional_profile=
           if [ -f coverage-shortcut.txt ]; then
             additional_profile=coverage-shortcut.txt
           fi
+          COVERAGE_DIFF_PROFILE="$policy_profile" \
           COVERAGE_ADDITIONAL_DIFF_PROFILE="$additional_profile" \
             make coverage-gate BASE_REF="$COVERAGE_BASE_REF"
 

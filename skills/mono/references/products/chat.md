@@ -2,6 +2,28 @@
 
 ## 命令总览
 
+## Shortcut 优先路由
+
+常见 Agent 意图优先使用公开 `+` Shortcut；下面的原子命令章节保留给需要特定原始返回结构、兼容参数或 Shortcut 未覆盖字段的场景。执行前用 `dws schema --cli-path "chat +<shortcut>" --format json` 读取最终参数、约束和确认语义。
+
+| 意图 | 首选 |
+|---|---|
+| 以 current-user / bot / webhook 身份发消息 | `dws chat +messages-send --as <identity> ...`；Bot 多群用 `--groups/--groups-file` |
+| 拉取单个群聊或单聊的消息 | `dws chat +chat-messages ...`；全量加 `--page-all`，导出加 `--output` |
+| 按关键词、发送者、@对象、会话、类型或时间组合搜索 | `dws chat +search-msg ...` |
+| 查询 @我的消息 | `dws chat +at-me ...` |
+| 根据消息 ID 批量取详情与 reaction | `dws chat +messages-mget ...` |
+| 读取已知 thread/topic 的全部回复 | `dws chat +thread-replies ...` |
+| 下载单个 mediaId/fileId | `dws chat +messages-resource-download ...` |
+
+- `+messages-send` 只暴露下层真实支持的身份能力：user 支持文本/Markdown、已有 mediaId 图片、本地文件和幂等键；bot 支持群聊、最多 100 个稳定群 ID 的逐项 ledger 或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。Bot/Webhook 不支持富媒体。
+- `+chat-messages --page-all` 连续读取 typed `nextPage.time`，按消息 ID 去重并受 `--page-limit/--max-results` 约束；`--output` 将同一完整性 ledger 原子写入工作目录内 JSON。
+- `+messages-send` 会自动规范化并补齐 @ 占位符。user 使用 `<@id>` / `<@all>`；bot/webhook 使用 `@id` / `@手机号` / `@all`。声明 `--at-*` / `--at-all` 即可，不要为统一 Shortcut 手工拼 `@10`。
+- `+search-msg --page-all` 连续翻页并默认按消息 ID 批量富化；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger。
+- `+at-me`、`+chat-messages`、`+messages-mget`、`+search-msg`、`+thread-replies` 可用 `--download-resources` 下载资源。引用、回复、合并转发中的资源使用结果 `resourceRefs` 自带的子消息 `messageId`；仅当子消息缺会话 ID 时继承父消息 `openConversationId`。
+- 上述五个查询 Shortcut 与 `+messages-resource-download` 都沿用安全本地下载的 `read/not_required` 契约，不应添加 `--yes` 或触发交互确认。下载只允许工作目录内相对路径、默认不覆盖并原子落盘；需要覆盖时必须由用户显式传 `--overwrite`。
+- 下载器仅接受经审查的钉钉与公网 OSS HTTPS 地址并逐跳校验重定向；跨主机时不会转发下层提供的请求头。新官方域名被拒绝时记录错误中的 host 供审查，不要放宽为任意 HTTPS。
+
 ### group (群组管理)
 
 #### 创建群 — 当前登录用户自动成为群主
@@ -129,8 +151,7 @@ Usage:
   dws chat group upgrade-to-external [flags]
 Example:
   dws chat group upgrade-to-external --group <openConversationId> --dry-run
-  dws chat group upgrade-to-external --group <openConversationId> --yes
-  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --yes
+  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --dry-run
 Flags:
       --group string      待升级普通群的 openConversationId (必填)
       --extension string  预留扩展字段 JSON 对象；对象值必须是字符串 (可选)
@@ -1060,6 +1081,22 @@ Flags:
       --background-id string   背景 ID (必填)
 ```
 
+#### 原地更新消息的文字表情回应
+```
+Usage:
+  dws chat message update-text-emotion [flags]
+Example:
+  dws chat message update-text-emotion --conversation-id <openConversationId> --msg-id <openMsgId> --old-emotion-id <oldEmotionId> --emotion-id <emotionId> --emotion-name "处理中" --text "处理中 2 分钟" --background-id im_bg_5
+Flags:
+      --conversation-id string   会话 openConversationId (必填，支持单聊/群聊，别名: --group / --id / --chat)
+      --msg-id string            消息 openMsgId (必填)
+      --old-emotion-id string    待替换的原表情 ID (必填)
+      --emotion-id string        新表情 ID (必填，通过 create-text-emotion 获取)
+      --emotion-name string      新表情名称 (必填)
+      --text string              新文字内容 (必填)
+      --background-id string     新背景 ID (必填)
+```
+
 #### 移除消息的文字表情回应
 ```
 Usage:
@@ -1610,7 +1647,7 @@ Flags:
 
 #### 关闭/开启 @所有人消息提醒 — 关闭或开启会话中 @所有人的消息通知
 
-> ⚠️ 当前不可用：该命令当前调用常失败（服务端返回 1002 系统繁忙），多为服务端侧限制。命令本身参数合法，但调用不会生效。
+> 前置条件：先为会话开启总免打扰（`dws chat mute --conversation-id <openConversationId>`），否则平台返回 `NotificationOffNotEnabled`。
 ```
 Usage:
   dws chat mute-at-all [flags]
@@ -1626,6 +1663,7 @@ Flags:
 
 注意:
   - 默认行为是关闭 @所有人通知，传 --off 则恢复接收通知
+  - 该子开关依赖总免打扰；恢复 @所有人通知后，再修改红包子开关前应重新开启总免打扰
   - 支持单聊和群聊，openConversationId 可通过 chat search（群聊）或 chat conversation-info（单聊）获取
 ```
 
@@ -1633,7 +1671,7 @@ Flags:
 
 #### 关闭/开启红包消息提醒 — 关闭或开启会话中的红包消息通知
 
-> ⚠️ 当前不可用：该命令当前调用常失败（服务端返回 1002 系统繁忙），多为服务端侧限制。命令本身参数合法，但调用不会生效。
+> 前置条件：先为会话开启总免打扰（`dws chat mute --conversation-id <openConversationId>`），否则平台返回 `NotificationOffNotEnabled`。
 ```
 Usage:
   dws chat mute-red-envelope [flags]
@@ -1649,6 +1687,7 @@ Flags:
 
 注意:
   - 默认行为是关闭红包通知，传 --off 则恢复接收通知
+  - 若刚恢复了 @所有人通知，应先重新开启总免打扰，再修改红包通知
   - 支持单聊和群聊，openConversationId 可通过 chat search（群聊）或 chat conversation-info（单聊）获取
 ```
 
@@ -1911,6 +1950,7 @@ Flags:
 用户说"emoji回应/表情回应/给消息加表情" → `chat message add-emoji`
 用户说"取消emoji回应/移除表情回应" → `chat message remove-emoji`
 用户说"文字表情回应/添加文字表情" → `chat message add-text-emotion`
+用户说"修改文字表情回应/更新消息状态文字" → `chat message update-text-emotion`
 用户说"取消文字表情回应/移除文字表情" → `chat message remove-text-emotion`
 用户说"创建文字表情/新建文字表情" → `chat message create-text-emotion`
 用户说"免打扰/消息免打扰/静音/开启免打扰/关闭免打扰" → `chat mute`
@@ -1973,7 +2013,7 @@ Flags:
 - `chat message list-by-ids` — 根据消息 ID 批量查询消息（最多 50 条）
 - `chat message add-emoji` / `remove-emoji` — 对消息添加/移除 emoji 表情回应
 - `chat message list-emotion-replies` — 批量拉取消息的表情回复和文字回复
-- `chat message add-text-emotion` / `remove-text-emotion` — 对消息添加/移除文字表情回应
+- `chat message add-text-emotion` / `update-text-emotion` / `remove-text-emotion` — 对消息添加、原地更新或移除文字表情回应
 - `chat message create-text-emotion` — 创建文字表情模板，返回 emotionId 供 add-text-emotion 使用
 - `chat category list` — 获取用户自定义会话分组列表
 - `chat category list-conversations` — 拉取指定分组下的会话列表
@@ -1981,8 +2021,8 @@ Flags:
 - `chat category list-by-conv` / `chat category batch-info` — 查询会话所属分组 / 批量查询分组信息
 - `chat mute` — 开启/关闭会话消息免打扰（默认开启，--off 关闭）
 - `chat hide` — 在会话列表中隐藏会话（支持单聊/群聊，收到新消息时重新出现）
-- `chat mute-at-all` — 关闭/开启 @所有人消息提醒（默认关闭，--off 恢复）
-- `chat mute-red-envelope` — 关闭/开启红包消息提醒（默认关闭，--off 恢复）
+- `chat mute-at-all` — 关闭/开启 @所有人消息提醒（默认关闭，--off 恢复；需先开启总免打扰）
+- `chat mute-red-envelope` — 关闭/开启红包消息提醒（默认关闭，--off 恢复；需先开启总免打扰）
 - `chat mark-unread` / `chat mark-read` — 标记会话未读 / 标记指定消息及之前的消息已读
 - `chat clear-red-point` / `chat clear-all-red-point` — 清除单个会话红点 / 一键清除所有会话红点（全部已读）
 - `chat list-all-conversations` — 分页拉取当前用户全部会话列表（单聊+群聊，与 list-top-conversations 的区别是不限置顶）
@@ -2269,8 +2309,8 @@ Flags:
 - `chat category list` 无需参数；`category list-conversations` 需传 --category-id（通过 category list 获取）
 - `chat mute` 默认开启免打扰，传 --off 关闭；--conversation-id / --id / --chat 三个别名均可用于传入会话 ID
 - `chat hide` 隐藏会话，需传 --conversation-id（openConversationId，支持单聊/群聊），隐藏后不显示在列表中，收到新消息时重新出现
-- `chat mute-at-all` 关闭/开启 @所有人消息提醒，需传 --conversation-id（openConversationId），默认关闭通知，传 --off 恢复接收
-- `chat mute-red-envelope` 关闭/开启红包消息提醒，需传 --conversation-id（openConversationId），默认关闭通知，传 --off 恢复接收
+- `chat mute-at-all` 关闭/开启 @所有人消息提醒，需传 --conversation-id（openConversationId），默认关闭通知，传 --off 恢复接收；调用前需先开启总免打扰
+- `chat mute-red-envelope` 关闭/开启红包消息提醒，需传 --conversation-id（openConversationId），默认关闭通知，传 --off 恢复接收；调用前需先开启总免打扰
 - `chat message reply` 引用回复消息（**单聊/群聊均可**），需传 --conversation-id（openConversationId，单聊与群聊使用同一字段）、--ref-msg-id（被引用消息 openMessageId）、--ref-sender（被引用消息发送者 openDingTalkId）、--text（回复内容）；目前回复类型仅支持 text
 - `chat message forward` 转发单条消息（**源/目标会话均支持单聊/群聊**，常见组合：群→群、群→单、单→群、单→单），需传 --src-conversation-id（源会话 openConversationId）、--msg-id（源消息 openMessageId）、--dest-conversation-id（目标会话 openConversationId）
 - `chat set-top` 设置/取消会话置顶（**单聊/群聊均可**），需传 --conversation-id（openConversationId，单聊与群聊使用同一字段），默认置顶，传 --off 取消
@@ -2282,12 +2322,11 @@ Flags:
 - `chat group-mute-member` 指定群成员禁言，需传 --group、--user/--users（userId，逗号分隔）、--mute-time（毫秒，仅禁言时必填，支持 300000/3600000/86400000/604800000/2592000000），传 --off 解除禁言；CLI 会自动把 userId 解析成 openDingTalkId 再调用，直接传 userId 即可；禁言群主会被服务端拒绝
 - `chat group set-admin` 设置/取消群管理员，需传 --group（openConversationId）、--user/--users（userId，逗号分隔），默认设为管理员，传 --off 取消
 
-## 自动化脚本
+## Runtime 替代旧 Chat 脚本
 
-| 脚本 | 场景 | 用法 |
-|------|------|------|
-| [chat_export_messages.py](../../scripts/chat_export_messages.py) | 导出群聊消息到 JSON 文件 | `python chat_export_messages.py --query "项目冲刺" --time "2026-03-10 00:00:00"` |
-| [chat_history_with_user.py](../../scripts/chat_history_with_user.py) | 查询与某人的单聊聊天记录 | `python chat_history_with_user.py --name "张三" --time "2026-03-10 00:00:00"` |
+- 群聊/单聊全量导出：`dws chat +chat-messages --page-all --output <相对.json>`；目标可用稳定 ID 或唯一自然查询。
+- Bot 多群广播：`dws chat +messages-send --as bot --groups ...` 或 `--groups-file ...`；输出 `im.batch-write.v1` 逐项 ledger。
+- 旧 Chat 导出与广播脚本已停止发布，不能在执行计划中引用。
 
 ## 相关产品
 

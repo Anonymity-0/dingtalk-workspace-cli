@@ -5,20 +5,75 @@ unrelated work, and use `gofmt` for every modified Go file.
 
 ## Build and test
 
-- Build: `go build ./cmd`
+- Build: `make build` (wraps `scripts/dev/build.sh` → `go build -o dws ./cmd`; bare `go build ./cmd` fails because output name `cmd` collides with the directory)
 - Full test suite: `DWS_PACKAGE_VERSION=0.0.0-test go test ./...`
-- Generate Schema assets: `go generate ./internal/cli`
-- Check generated drift: `./scripts/policy/check-generated-drift.sh`
+- Param aliases generate: `go generate ./internal/cli` (entry point: `internal/cli/gen.go`; Catalog is not generated)
+- Optional diagnostic MCP dump (not a Schema pin): `make fetch-mcp-metadata` (requires `dws auth login`; writes under `artifacts/`)
+- Check generated drift + assembly determinism: `./scripts/policy/check-generated-drift.sh`
 - Check the Schema contract: `./scripts/policy/check-schema-catalog.sh`
+- Coverage-gate test naming: tests that carry coverage for the macOS platform
+  gate must be named `TestCrossPlatformCoverage*` (or `TestAllShortcuts*`);
+  `scripts/policy/run-platform-coverage-gate.sh` only selects those prefixes,
+  so a covering test with any other name silently leaves its target uncovered.
+- Package-var injection seams (e.g. `pipelineBuildEffectiveRegistry`): swap
+  them in tests only via `testseam.Swap(t, &seam, stub)` from
+  `internal/testseam` — it restores the previous value through `t.Cleanup`
+  structurally. Like the manual pattern it replaces, Swap mutates global state
+  and is **not** safe for `t.Parallel` tests.
+- Cross-package test helpers (e.g. `StoreProductDeclRawForTest`) live in
+  per-package `fortest.go` files, never scattered through production files;
+  the `ForTest` suffix is the boundary and production code must not call them.
 
-Generated Schema JSON is committed. Change its source inputs and generators,
-then regenerate; do not hand-edit generated Catalog or Agent metadata files.
-`internal/cli/schema_command_registry.json` is different: it is a reviewed
-`CommandRegistry` source, not a generated snapshot. It is the single reviewed
-source of stable canonical identity,
-primary paths, aliases, and navigation. Edit it only when reviewed exposure,
-identity, primary path, or aliases change; parameter, Skill, and metadata-only
-changes must not rewrite it mechanically.
+Schema Catalog delivery is **声明即 Catalog**: production assembles via
+`RegisterSchemaSourceRoot` → `ResolveSchemaBuild` (factory registered in
+`internal/app`). There is no
+`cmd_schema_catalog` `//go:generate` delivery step. `dws schema -f json` remains
+the wire projection. `cmd_schema_catalog` produces CI/local dumps only;
+`internal/cli/schema_catalog/`, `internal/cli/schema_meta_index.gob`, and
+`internal/cli/schema_meta_index.json` must not be committed. `schema_agent_metadata/` is retired: if that directory
+(or `schema_agent_metadata_audit.json`) is present, policy fails.
+Command identity is no longer a file input: it is collected from
+`ContractFinal.Identity` on the live Cobra leaves
+(`internal/cli/schema_identity_collect.go` → `BuildEffectiveCommandRegistry`).
+The reviewed `schema_command_registry/` was retired together with that
+switchover and must not reappear; identity changes happen by editing the leaf
+declaration. The remaining **reviewed inputs** under `internal/cli` (see Agent
+Schema contract) keep separate authorities — do not merge them with
+`param_concepts.json` or promote any of them into Catalog declaration.
+
+## Command framework declaration
+
+- Framework definition: `docs/rfc-command-framework-convergence.md` **§5.0**
+- Today: `helpers.LeafSpec` / `shortcut.Shortcut` → `corecmd.Spec` (+ optional `Contract`) → `corecmd.New`
+- **Declare = final Schema source**: `Flags` / `Constraints` / `Safety` / `ConstParams` / `Contract` (`corecmd.ContractDecl`; nested fields are `contract.*`)
+- Naming: `ContractDecl` is the authoring leaf declaration. "Schema" means Catalog / `ToolSpec` delivery — do not reintroduce `SchemaDecl`.
+- `Safety` uses `contract.SafetySpec` (`internal/corecmd/contract` only — no `cli.*` type alias). Its `confirmation` drives the runtime gate; `effect` / `risk` / `idempotency` are published unchanged. When `Contract` is set, convert once via `contractfinal.RegisterRuntimeContractFinal` (all callers — `corecmd.New` registers internally); assembly **pass-throughs** Final.
+- Package seam:
+  - types / ProductDecl → `corecmd/contract` (DTO only; **no** Cobra-keyed ContractFinal store)
+  - AnnotateRuntime* writers → `internal/corecmd/runtimeannotate` (framework-owned)
+  - ContractFinal cobra store + Register → `internal/corecmd/contractfinal` (framework-owned)
+  - homology gates → `internal/cli/homology`
+  - Catalog assembly / `ResolveMeta` (`RegisterSchemaSourceRoot` → `ResolveSchemaBuild`); go:embed only for reviewed inputs → `internal/cli` root (package-local aliases for annotate/store APIs live in `runtime_schema_seam.go`; the former `cli/runtimeannotate` / `cli/contractfinal` shim packages are removed — import `corecmd/*` directly)
+  - **Hard rule**: `internal/corecmd` (and its subpackages) must **not** import any `internal/cli` package
+- Authoring tiers (current, not aspirational):
+  - **Tier1** — `corecmd.New` / `helpers.NewLeafCommand` (fully managed declare + execute)
+  - **Tier2** — `DeclareLeafMetadata` (helpers migration; **Shortcut may also use this path — acceptable**)
+  - **Tier3** — bare Cobra (should shrink over time; reviewed exclusions where needed)
+  - Long-term outlook only: broader mcpbind / fewer hand-written `Execute` bodies. **Not** a current hard requirement to delete `Shortcut.Execute` or force mcpbind.
+- Description declare vs delivery: construction requires `ContractDecl.Description` (evidence). Catalog delivery prefers Cobra Long → provenance `cobra_help`; without Long, declared text → `contract_final`. Title: declared first, then Short, then MCP. Do **not** read this as "declare = wire final" or dual authority.
+- **Execute** = hooks (`Validate` / `Call` / `RunE` / `PostMount`) — not a second surface authority
+- Declaration path has **no reviewed parallel fields**; migration-only `runtime_gate` annotate until `Safety` is declared
+- **Do not add** new production `AnnotateRuntimeRisk` / `AnnotateRuntimeGate`
+  (`runtime_gate`) call sites; migrate leaves to declared `Safety` /
+  `ContractDecl` instead. Existing annotate sites may remain until migrated.
+
+## flag / help / schema homology
+
+- Decision (path A — Contract/LeafSpec is CLI-surface authority **and must embed into Schema**): `docs/flag-help-schema-homology.md`
+- Hard rule: every help/Schema fact is **declared** **or** **annotated**; never inference-only (§1.1–§1.3; framework §5.0).
+- Embed path: `corecmd.New` → `dws.schema.*` annotations → Schema catalog assembly
+- MCP metadata must not create CLI flags; optional 1:1 passthrough is a gated subset only.
+- Gate IDs: `HOM-P*`, `HOM-S*`, `HOM-I1`, `HOM-D1` (see that doc §3–§4). `HOM-P1`/`HOM-D1`/`HOM-S1`/`HOM-S2` are on the `check-schema-catalog.sh` policy whitelist; remaining IDs land incrementally.
 
 ## Agent Schema contract
 
@@ -27,72 +82,133 @@ The Schema data flow is one way:
 ```text
 1. app.NewRootCommand()
    └─ builds the real Cobra command tree and flags
+   └─ leaf Safety / Contract / contract.ParamDecl declare ContractFinal (declare-or-annotate)
 
-2. schema_command_registry.json
-   + schema_hints/metadata/<product>.json tool parameters (+ cli_path)
+2. CollectIdentitySpecs (ContractFinal.Identity on live Cobra leaves)
    └─ forms EffectiveCommandRegistry
       └─ binds exactly to real Cobra leaves and aliases
 
 3. Parameter resolution
    Cobra flags
-   + schema_parameter_bindings.json
-   + metadata tool parameters
+   + contract.ParamDecl.Property / native annotations (primary property authority)
+   + schema_parameter_mapping_ledger.go (mapping_exclusions / removals only;
+     active bindings JSON retired after Track 1 Phase 2)
    └─ produces ParameterSpec and constraints
 
 4. Agent and interface semantics
-   schema_hints/selection/<product>.json   (selection prose)
-   + schema_hints/metadata/<product>.json  (safety/interface/runtime_gate)
-   + pinned MCP metadata
+   ProductDecl + leaf ContractFinal Selection / Safety / Interface
+   + contract.ParamDecl (interface_type / property)
    └─ resolves Agent metadata by source precedence
       Markdown is evidence only; it is not concatenated into final prose
+   └─ schema_hints/ and schema_mcp_metadata.json are fully retired
 
-5. One typed hub
+  5. One typed hub
    BoundCommandRegistry
    + ParameterSpec
    + Agent metadata
    + Interface metadata
    └─ resolves every command exactly once into ToolSpec
-      └─ aggregates SchemaRegistry + SchemaIndex
+   └─ aggregates SchemaRegistry + SchemaIndex
+   └─ ResolveSchemaBuild assembles at runtime; deliverySchemaCatalog wraps it (lazy, sync.Once)
 
-6. One-way publication
+  6. Runtime delivery (no generate-written Catalog authority)
    SchemaRegistry
-   └─ internal/cli/schema_catalog.json
-      └─ dws schema list/product/group/leaf/--all
+   └─ dws schema list/product/group/leaf/--all (-f json wire)
+   └─ ResolveMeta projects Identity/Safety/Selection from the same registry
+   └─ CI may dump Catalog via cmd_schema_catalog for jq gates / determinism
 ```
 
-Parameter overlays from metadata are merged into `EffectiveCommandRegistry`
-*before* Cobra binding; after that point there is no second identity source and
-no identity precedence winner. The binder must reject a missing/non-runnable
-Cobra path, an alias collision, and any native identity annotation that
-disagrees with the effective registry. A missing native identity annotation is
-allowed because annotations are implementation-side assertions, not identity
-fallbacks.
+**Reviewed inputs / 评审输入** (organizational family under `internal/cli`;
+parallel peers, not one merged authority). These are assembly inputs only —
+never Catalog declaration authority, never leaf `Contract` / `ProductDecl`
+substitutes. Keep them side-by-side; do **not** fold one into another:
+
+| Input | Path | Owns |
+|---|---|---|
+| Command identity | collected from `ContractFinal.Identity` on live Cobra leaves (`schema_identity_collect.go`; not a file input) | stable identity, primary CLI path, aliases, navigation |
+| Param concepts | `param_concepts.json` (+ `.schema.json`) | argv synonym / concept dictionary (reduced to `param_aliases_generated.go`) |
+| Exclusions | `schema_command_exclusions.go` | exact reviewed CLI paths excluded from Schema (non-empty reason) |
+| Mapping ledger | `schema_parameter_mapping_ledger.go` | `mapping_exclusions` / removals (CLI flags with no direct RPC property); active bindings JSON retired |
+
+`schema_mcp_metadata.json` is retired and must not reappear. Interface facts
+(`interface_ref`, `interface_type`, …) declare on leaf `Contract` /
+`contract.ParamDecl`. Retiring the pin cleared MCP-sourced `interface_type`
+values from the wire; schema-compat deliberately accepts clearing (missing =
+unknown for consumers) while still rejecting any change to a different
+non-empty value. Re-populating a value requires an explicit `ParamDecl`
+declaration, not a new pin.
+
+**Aliases are three distinct layers** (do not conflate):
+
+| Layer | Owns |
+|---|---|
+| `FlagSpec.Aliases` / Cobra flag aliases | executable flag synonyms on a leaf |
+| `ContractFinal.Identity` `aliases` | reviewed CLI-path aliases for the same command identity |
+| `param_concepts.json` | argv synonym / concept dictionary (central preparse normalization) |
+
+**Visibility vs exclusions:** collected identity `visibility` is dormant (all
+entries default `public`); “runnable but not Agent-visible” belongs in
+`schema_command_exclusions.go`, not new `visibility` values. Native identity
+annotations are consistency assertions only — they must agree with the
+collected identity and never materialize or override it.
+
+Leaf declare (`Contract` / `ParamDecl` / `Safety` / `ProductDecl`) and the live
+Cobra tree remain separate from this table: declare owns semantics; Cobra owns
+executability and flags.
+
+After binding there is no second identity source and no identity precedence
+winner. The binder must reject a missing/non-runnable Cobra path, an alias
+collision, and any native identity annotation that disagrees with the effective
+registry. A missing native identity annotation is allowed because annotations
+are implementation-side assertions, not identity fallbacks.
 
 The assembler resolves every bound command exactly once into one `ToolSpec`.
-Build-time gates and the snapshot serializer consume that source-resolved typed
-registry/index. Runtime projections and delivery gates consume the typed
-registry/index returned by the production snapshot loader. Neither path may
-reopen annotations, merge source records, or use a previous Catalog or other
-generated JSON as a source. `schema_catalog.json` is output-only in the
-generation graph. The production loader decoding the embedded published
-snapshot is a delivery boundary, not source resolution; it must never create or
-repair a Cobra command, flag, registry entry, or later Catalog generation.
+CI determinism (`check-schema-assembly.sh`) and policy jq gates consume a
+fresh assembly dump; runtime consumes the same `ResolveSchemaBuild` path via
+`RegisterSchemaSourceRoot`. Neither path may reopen annotations, merge source
+records, or use a previous Catalog JSON as a source.
+
+### Assembly vs consumption
+
+**Assembly** (declare → typed registry; CI + runtime):
+- Runtime entry: `RegisterSchemaSourceRoot` (`internal/app`) →
+  `ResolveSchemaBuild` / `deliverySchemaCatalog` (lazy, sync.Once).
+- CI tool: `cmd_schema_catalog` dumps an assembled Catalog for jq/determinism;
+  it is **not** a `//go:generate` or committed delivery step.
+- `gen.go` only generates `param_aliases_generated.go`.
+- Inputs: **reviewed inputs** (param_concepts / exclusions / mapping ledger —
+  see table above) + ProductDecl/ContractFinal (identity is collected from
+  `ContractFinal.Identity`) + live Cobra tree.
+  `schema_hints/`, `schema_agent_metadata/`, `schema_command_registry/`, and
+  `schema_mcp_metadata.json` must not reappear.
+- Gates: `make generate-schema` (param aliases + assembly determinism),
+  `check-generated-drift.sh`, `check-schema-catalog.sh`.
+
+**Consumption** (runtime, unified API):
+- Entry point: `ResolveMeta(cliPath) → CommandMeta{Identity, Safety, Selection}`
+  in `internal/cli/command_meta.go` — projected from the assembled registry
+  when the app factory is registered.
+- Consumers: `--help` (Safety annotation via `RenderSafetyAnnotation`),
+  agent selection, future skill generation; `dws schema` uses the same
+  assembled Catalog (`-f json` wire unchanged).
+- `SafetyForCLIPath` delegates to `ResolveMeta` (backward compatible).
 
 This split is architecturally isomorphic to Lark's typed metadata registry,
 navigation catalog, and schema renderer. DWS intentionally preserves its
 existing flat JSON wire contract for compatibility; do not treat architectural
 alignment as permission to make an unversioned wire-format change.
 
-The reviewed `CommandRegistry` is the sole source of stable command identity
-and navigation. The executable Cobra tree remains the source of truth for
-whether a CLI path exists, is runnable, and which flags it accepts. Schema
-coverage is bidirectional:
+The identity collected from `ContractFinal.Identity` (via
+`CollectIdentitySpecs`) is the sole source of stable command identity and
+navigation. The executable Cobra tree remains the source of truth for whether
+a CLI path exists, is runnable, and which flags it accepts. Schema coverage is
+bidirectional:
 
 1. Every final `SchemaRegistry` tool, including its serialized Catalog
    projection, must resolve to an executable Cobra command.
 2. Every public runnable Cobra leaf must either resolve to Schema or appear as
    an exact, reviewed exclusion with a non-empty reason in
-   `internal/cli/schema_command_exclusions.json`.
+   `internal/cli/schema_command_exclusions.go` (central Go groups; not JSON).
 
 Do not use prefix or wildcard exclusions: they can silently hide future
 commands. Remove an exclusion when its command enters Schema; stale, invalid,
@@ -100,103 +216,105 @@ or duplicate exclusions must fail generation and CI.
 
 When adding or changing an Agent-visible command, review all relevant inputs:
 
-- `internal/cli/schema_command_registry.json` for the reviewed
-  `CommandRegistry`: canonical identity, primary CLI path, aliases, and stable
-  navigation. It is the identity source and is not a generated artifact.
-- `internal/cli/schema_command_registry.schema.json` is its closed,
-  machine-readable editing contract. Preserve the local `$schema` reference;
-  unknown fields, invalid visibility values, stale paths, and collisions fail
-  Go validation and policy.
-- `internal/cli/schema_hints/metadata/<product>.json` for safety, interface,
-  `runtime_gate`, and optional parameter overlays (`parameters` / `cli_path`).
-- `internal/cli/schema_hints/selection/<product>.json` for reviewed Agent
-  selection prose (`agent_summary`, `use_when`, `avoid_when`, `examples`).
-- `internal/cli/schema_hints/index.json` only maps product IDs to those files.
+- Leaf `ContractFinal.Identity` for canonical identity, primary CLI path,
+  aliases, and stable navigation. Identity is collected from the live Cobra
+  leaves (`CollectIdentitySpecs`); there is no separate identity file. Invalid
+  canonical paths, alias collisions, stale paths, and drift fail collection,
+  binding, and policy.
+- Leaf `Safety` / `Contract` (`corecmd.ContractDecl`) / `contract.ParamDecl`
+  (helpers `LeafSpec` or shortcut `Contract`) for parameter facts, interface
+  disposition, safety, and Agent selection prose. Delivered provenance is
+  `contract_final` from `corecmd.contract` (description may stamp `cobra_help`
+  when Cobra Long wins). Product routing uses `ProductDecl`
+  (`internal/corecmd/contract`; provenance label remains `cli.product_decl`).
+- `internal/cli/schema_hints/` is fully retired. Do not reintroduce HintFiles,
+  audit JSON, or `imported/` baselines; declare on ProductDecl / the owning
+  leaf instead.
 - Native Runtime Schema identity annotations, when present, as consistency
   assertions against `EffectiveCommandRegistry`. They must agree exactly and
   must never materialize, infer, or override registry identity.
 - Flag-to-interface property mappings and required/default semantics.
-- Generated files under `internal/cli/schema_agent_metadata/` and
-  `internal/cli/schema_catalog.json` after running generation.
+- Do not expect generate-written Catalog delivery. Run
+  `make generate-schema` only to refresh param aliases and prove assembly
+  determinism. Do not expect or commit `schema_agent_metadata/`.
 
 Run the reverse-completeness tests whenever the Cobra tree changes. A command
 that works through `dws <path>` but cannot be found through the matching
 `dws schema` lookup is a contract failure unless it has a reviewed exact
 exclusion.
 
-Metadata parameter overlays must reference an exact public runnable Cobra leaf
-and real flags. They may override Schema description, interface-property/type
-mapping, `required`, and `required_when`; they must not create commands or
-flags, define an interface, or advertise an unknown RPC. Every authored entry
-requires `reviewed: true` and a non-empty review reason.
+`RegisterSchemaHints` / `ToolSchemaHint` overlays are fully removed. Parameter
+and selection facts must be declared on the owning leaf (`contract.ParamDecl` /
+`Contract`) or via `ProductDecl`; do not reintroduce overlay registries.
 
-For Agent-authored metadata or selection edits:
+For Agent-authored selection edits:
 
 1. Confirm the exact command and flag names in the current Cobra tree.
-2. Edit only the owning block (`metadata/` or `selection/`); do not mix fields.
-3. Add the smallest possible entry; do not copy generated Catalog fields into
-   the input.
-4. Describe user-visible semantics in `review_reason` and parameter
-   descriptions.
-5. Run generation, drift, Schema policy, and the focused CLI tests before
+2. Declare selection prose on the owning leaf (`Contract.Selection` /
+   `DeclareLeafMetadata`) and product routing via `ProductDecl`; declare
+   safety / parameters / interface on the same leaf.
+3. Do not copy generated Catalog fields into source inputs.
+4. Run generation, drift, Schema policy, and the focused CLI tests before
    proposing the change.
 
-## Agent curation workflow (Schema hints)
+## Agent curation workflow
 
 Use this workflow when refreshing Agent selection prose and confirmation
 alignment. Prefer **agent-authored review** over bulk merge scripts that dump
-`selection-review.json` or Skill Markdown into Catalog fields.
+Skill Markdown into Catalog fields.
 
-Human-authored inputs are split into two blocks:
+Human-authored inputs:
 
 | Block | Path | Owns |
 |---|---|---|
-| **metadata** | `internal/cli/schema_hints/metadata/<product>.json` | `effect` / `risk` / `confirmation` / `idempotency` / `interface_*` / `runtime_gate` / optional `parameters` |
-| **selection** | `internal/cli/schema_hints/selection/<product>.json` | `agent_summary` / `use_when` / `avoid_when` / `examples` (+ product routing) |
+| **declaration** | helpers / shortcut `Safety` + `Contract` / `contract.ParamDecl` + `ProductDecl` | `effect` / `risk` / `confirmation` / `idempotency` / `interface_*` / parameter facts / selection prose (`contract_final`) |
 
-`index.json` only maps product IDs to those files. Do not mix selection fields
-into metadata files or metadata fields into selection files.
+`schema_hints/` is fully retired. Do not reintroduce HintFiles or audit JSON.
 
 ### Goals
 
 1. **Selection prose** is decision-oriented (Feishu/Lark style): trigger intent,
    sibling-command routing, and outcome shape — not a restatement of the
-   summary. Delivered Catalog provenance is `reviewed_explicit` from
-   `selection/`.
-2. **Safety** follows Runtime: `confirmation=user_required` iff the tool's
-   metadata `runtime_gate != none` (for example `confirm_delete`, `typed_yes`,
-   `confirm_dangerous`).
-3. **Parameter overrides** (former Manual `commands`) live on metadata tools as
-   `parameters` (+ `cli_path`) and are applied into EffectiveCommandRegistry.
+   summary. Delivered Catalog provenance is `contract_final` from leaf
+   `Contract.Selection` / `ProductDecl`.
+2. **Safety** follows Runtime: `confirmation=user_required` when the leaf
+   Contract/Safety (or remaining `runtime_gate` annotate) requires a user gate
+   (for example `confirm_delete`, `typed_yes`, `confirm_dangerous`).
+3. **Parameter facts** are declared on the leaf (`contract.ParamDecl` /
+   `Contract.Parameters` / FlagSpec). Do not reintroduce HintFile or
+   `RegisterSchemaHints` overlays.
 
 ### Authoring
 
 For every curated tool:
 
-1. Edit `metadata/<product>.json` for safety/interface/gates/parameters.
-2. Edit `selection/<product>.json` for selection prose (`reviewed: true`,
-   `review_reason`, `source_refs`).
-3. Run `make generate-schema`. Do not hand-edit generated
-   `schema_agent_metadata/` or `schema_catalog.json`.
+1. Declare safety/interface/parameters/selection on the owning leaf
+   (`DeclareLeafMetadata` / `Shortcut.Contract` / `contract.ParamDecl`) and product routing
+   via `ProductDecl` when needed.
+2. Run `make generate-schema` (param aliases + assembly determinism). Do not
+   create or commit `schema_catalog/` or Schema meta-index fixtures.
 
 ### Pull live MCP descriptions (personal token)
 
-Pinned `internal/cli/schema_mcp_metadata.json` is a sanitized baseline. Prefer
-live Schema from a logged-in personal session:
+Schema delivery no longer embeds a pinned MCP JSON. Prefer live Schema from a
+logged-in personal session when reviewing interface facts before declaring them
+on the leaf:
 
 ```bash
 dws auth status                 # token_valid should be true
-dws cache refresh               # refresh discovery / tools cache
+dws cache refresh               # deprecated no-op: prints a retirement notice (discovery cache is gone; refreshes nothing)
 dws schema <mcp-canonical> -f json
 # or CLI path: dws schema --cli-path "drive copy" -f json
 ```
 
-Resolve MCP identity via `interface_ref` when CLI canonical ≠ MCP path
+Resolve MCP identity via declared `interface_ref` when CLI canonical ≠ MCP path
 (example: CLI `drive.copy_document` → live `doc.copy_document`). On pull
-failure, fall back to Skill + Cobra Help + pinned MCP, and record evidence
+failure, fall back to Skill + Cobra Help, and record evidence
 (for example `live-dws-schema:<path>#FAILED`). Never print or commit tokens.
+`make fetch-mcp-metadata` writes an optional diagnostic dump under `artifacts/`
+only — do not commit it as a Schema pin.
 
-Precedence when sources disagree: **Runtime/Cobra > live MCP > pinned MCP >
+Precedence when sources disagree: **Runtime/Cobra / leaf Contract > live MCP >
 Skill (evidence only)**.
 
 ### Parallel product agents
@@ -205,9 +323,9 @@ Split work by product groups. Each agent must:
 
 - Read Skill, Cobra/`--help`, Runtime confirmation sites, and live `dws schema`
   for its tools.
-- Hand-write selection + metadata; forbid wholesale JSON merges from review
-  dumps.
-- Edit only its `metadata/<product>.json` and `selection/<product>.json`.
+- Hand-write selection prose and leaf Contract / ProductDecl declarations;
+  forbid wholesale JSON merges from review dumps.
+- Edit only its product’s leaf declarations (and `ProductDecl` when needed).
 - **Never** `git checkout` unrelated product files to “clean scope”.
 
 ### Regenerate and gates
@@ -218,23 +336,24 @@ make generate-schema
 go test ./internal/app -run '^TestSheetFinalSchemaConfirmationMatchesRuntimeGuards$' -count=1
 ```
 
+`check-runtime-confirmation-truth.sh` compares live ContractFinal.Safety with the assembled ToolSpec `confirmation=user_required` and probes the runtime gate.
+`schema_hints/` must stay absent.
+
 Example rules (fail generation otherwise):
 
 - At most two examples per tool; no `--yes` in stored examples.
 - Examples must match live Cobra argv (path, flags, required groups).
 - No shell comments in examples.
 
-After generation, spot-check Catalog: selection provenance is
-`reviewed_explicit` from `selection/`, and `user_required` count equals
-metadata `runtime_gate != none`.
+After generation, spot-check Catalog: selection and safety/interface
+provenance are `contract_final` from ProductDecl / leaf declarations
+(`user_required` must match Runtime confirmation gates).
 
-`make generate-schema` is a full deterministic snapshot rebuild, not an
-incremental patch over the previous Catalog. It rereads every reviewed input,
-removes stale generated product metadata, and rewrites the exact metadata and
-Catalog projections. Incremental work happens only when an Agent or human
-edits selected `metadata/` or `selection/` entries; the next publication still
-recomputes all outputs. Generated files must never be read back as merge input,
-and byte guards fail generation if it changes the hint inputs or CommandRegistry.
+`make generate-schema` refreshes `param_aliases_generated.go` and runs
+assembly determinism (`check-schema-assembly.sh`). It does not rewrite a
+committed Catalog as delivery authority — runtime reassembles from
+declarations. Byte guards fail if generation mutates parameter-concept
+inputs; policy fails if the retired `schema_command_registry/` reappears.
 
 Selection prose may choose a more or less restrictive recommendation. It cannot
 create a Cobra command or flag, change parameter facts, invent an
@@ -280,7 +399,7 @@ proves natural-language understanding.
 
 Semantic selection is an explicit opt-in live-model check. Run the smoke set
 (one positive and one negative scenario per product) with
-`DWS_AGENT_SELECTION_LIVE=1 ARK_API_KEY=... ARK_BASE_URL=... ARK_MODEL=... go test ./internal/app -run TestManualAgentSelectionArkLive -count=1`.
+`DWS_AGENT_SELECTION_LIVE=1 ARK_API_KEY=... ARK_BASE_URL=... ARK_MODEL=... go test ./internal/app -run TestAgentSelectionArkLive -count=1`.
 Add `DWS_AGENT_SELECTION_FULL=1` to evaluate every committed tool scenario, or
 set `DWS_AGENT_SELECTION_CASES` to comma-separated fixture case IDs. Normal CI
 never calls a model; its blockers remain the reproducible fixture, binding,
@@ -304,14 +423,21 @@ Preserve all candidates and the selected source in provenance, and fail
 same-precedence conflicts rather than silently merging them.
 
 `required` is the exception. Cobra `MarkFlagRequired` is a hard floor: the
-final Agent projection must keep `required=true` and cannot be lowered by
-manual/hint overlays. Overlays may still raise an optional flag to required.
-`cli_required` continues to mirror the executable Cobra marker.
+final Agent projection must keep `required=true` and cannot be lowered by a
+lower-precedence source. A higher-precedence declaration may still raise an
+optional flag to required. `cli_required` continues to mirror the executable
+Cobra marker.
 
-For command text, reviewed `ToolSchemaHint` wins first, then command-specific
-Cobra Help, then MCP metadata. Generic RPC prose may remain an unselected
-provenance candidate (and parameter-level `interface_description`); it must not
-overwrite a specialized leaf's title or description.
+For command-level description: **declare required, delivery Long may win**.
+`ContractDecl.Description` is mandatory at construction (declaration evidence).
+Catalog delivery prefers Cobra Long when present (provenance `cobra_help`,
+resolution `cobra_help_preferred`); without Long, the declared Description is
+delivered as `contract_final`. Title keeps declared ContractDecl /
+ContractFinal first, then Cobra Short, then MCP metadata. This is one authority
+chain with an explicit delivery preference — not two competing sources.
+Generic RPC prose may remain an unselected provenance candidate (and
+parameter-level `interface_description`); it must not overwrite a specialized
+leaf's title or description.
 
 For every delivered `ToolSpec` and `ParameterSpec` field, the provenance
 winner value must exactly equal the delivered value. Checking only source,

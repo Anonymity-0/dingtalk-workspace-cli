@@ -1,11 +1,11 @@
 # dws event — 个人 IM 与 OA 审批事件
 
-通过个人 Stream 长连接监听当前用户的钉钉消息接收、全量消息、已读、撤回、表情回应、群生命周期、审批实例发起/终止/完成，以及审批任务创建/完成/转交事件，NDJSON 输出到 stdout，用于驱动事件触发的 Agent。实时监听、自动回复、订阅事件都必须使用 `dws event consume`，不要写脚本轮询消息历史或审批列表。
+通过个人 Stream 长连接监听当前用户的钉钉消息接收、已读、撤回、表情回应、群生命周期，以及审批任务和审批实例事件，NDJSON 输出到 stdout，用于驱动事件触发的 Agent。普通 IM 监听默认使用 `dws event +listen-im`；OA 审批、群生命周期、显式 EventKey、Filter DSL、subscribe_id 复用或原始 envelope 使用 `dws event consume`。不要写脚本轮询消息历史或审批列表。
 
 ## 运行方式
 
-- bus 后台进程持有对钉钉的个人 Stream 长连；consume 从 bus 读事件、按 NDJSON 打到 stdout。consume 只读，不发消息（回复用 `dws chat message send`）。
-- 没有 bus 时 consume 自动拉起；通常只跑 consume。
+- bus 后台进程持有对钉钉的个人 Stream 长连；`+listen-im` 把高层意图编译为 EventKey，再复用 consume 的订阅、ready、NDJSON、取消、回滚和清理生命周期。监听本身不发消息；回复使用 `dws chat +messages-send`。
+- 没有 bus 时监听命令自动拉起；普通任务只跑 `+listen-im`。
 - 一个组织一个 bus，互不干扰、可同时跑；同组织内多个 consume 共享一个 bus。
 - 非默认组织加全局 `--profile <corpId 或 profile 名>`；漏传会退回默认 profile 而失败。
 
@@ -13,9 +13,10 @@
 
 | Command | Purpose |
 |---|---|
+| `dws event +listen-im --kind ... [flags]` | 普通 message/reaction/read/recall 监听；支持自然姓名/群名唯一解析 |
 | `dws event list --category oa` | 查看当前公开的 OA 个人事件目录 |
 | `dws event schema <event_key> --flatten` | 查看 Agent 使用的顶层业务字段 schema |
-| `dws event consume <event_key> [event_key...] --flatten [flags]` | 阻塞消费一个或多个兼容事件，事件写到 stdout，用 `-f ndjson` |
+| `dws event consume <event_key> [event_key...] --flatten [flags]` | 高级入口：阻塞消费显式 EventKey，事件写到 stdout，用 `-f ndjson` |
 | `dws event status --event <event_key>` | 查看个人订阅、bus、本地 consume |
 | `dws event stop <subscribe_id> --dry-run` / `--yes` | 先预览，再确认取消订阅并停止对应本地消费 |
 | `dws event stop --all --dry-run` / `--yes` | 先预览，再确认清理当前身份下全部个人订阅 |
@@ -55,27 +56,22 @@
 
 | 用户说 | 下一步 |
 |---|---|
-| "监听有人 @ 我的消息" | `event consume`，事件码 `user_im_message_receive_at`，参数 `--flatten -f ndjson` |
-| "监听我和 userId test-user-001 的单聊消息" | `event consume`，事件码 `user_im_message_receive_o2o`，参数 `--user test-user-001 --flatten -f ndjson` |
-| "监听我和 openDingtalkId abc 的单聊消息" | `event consume`，事件码 `user_im_message_receive_o2o`，参数 `--open-dingtalk-id abc --flatten -f ndjson` |
-| "监听 XX 群消息" | 先 `dws chat search --query "XX" --format json`，确认后 consume group |
-| "监听 userId test-user-001 发给我的消息" | `event consume`，事件码 `user_im_message_receive_user`，参数 `--user test-user-001 --flatten -f ndjson` |
-| "监听 openDingtalkId abc 发给我的消息" | `event consume`，事件码 `user_im_message_receive_user`，参数 `--open-dingtalk-id abc --flatten -f ndjson` |
-| "监听我的所有单聊消息" | `event consume`，事件码 `user_im_message_receive_o2o_all`，参数 `--flatten -f ndjson` |
-| "监听我所在的所有群消息" | `event consume`，事件码 `user_im_message_receive_group_all`，参数 `--flatten -f ndjson` |
-| "监听我发给 userId test-user-001 的消息是否已读" | `event consume`，事件码 `user_im_message_read_o2o`，参数 `--user test-user-001 --flatten -f ndjson` |
-| "监听 XX 群消息已读" | 先解析群 ID，再 consume `user_im_message_read_group --group <id>` |
-| "监听我和 userId test-user-001 的消息撤回" | `event consume`，事件码 `user_im_message_recall_o2o`，参数 `--user test-user-001 --flatten -f ndjson` |
-| "监听 XX 群消息撤回" | 先解析群 ID，再 consume `user_im_message_recall_group --group <id>` |
-| "监听我和 userId test-user-001 的消息贴表情" | `event consume`，事件码 `user_im_message_reaction_o2o`，参数 `--user test-user-001 --flatten -f ndjson` |
-| "监听 XX 群消息表情回应" | 先解析群 ID，再 consume `user_im_message_reaction_group --group <id>` |
+| "监听有人 @ 我的消息" | `dws event +listen-im --kind at-me -f ndjson` |
+| "监听我和 userId test-user-001 的单聊消息" | `dws event +listen-im --kind sender --user test-user-001 -f ndjson` |
+| "监听我和 openDingtalkId abc 的单聊消息" | `dws event +listen-im --kind sender --open-dingtalk-id abc -f ndjson` |
+| "监听 XX 群消息" | `dws event +listen-im --kind group --chat-query "XX" -f ndjson`；多候选停止消歧 |
+| "监听某人发给我的消息" | `dws event +listen-im --kind sender --user-query "<姓名>" -f ndjson` |
+| "监听我的所有单聊消息" | `dws event +listen-im --kind all-direct -f ndjson` |
+| "监听我所在的所有群消息" | `dws event +listen-im --kind all-group -f ndjson` |
+| "监听某人的消息已读/撤回/reaction" | `dws event +listen-im --kind sender --user-query "<姓名>" --events read,recall,reaction -f ndjson` |
+| "监听 XX 群消息已读/撤回/reaction" | `dws event +listen-im --kind group --chat-query "XX" --events read,recall,reaction -f ndjson` |
 | "监听 XX 群改名" | 先解析群 ID，再 consume `user_im_group_updated --group <id>` |
 | "监听有人加入 XX 群" | 先解析群 ID，再 consume `user_im_group_member_added --group <id>` |
 | "监听有人退出 XX 群" | 先解析群 ID，再 consume `user_im_group_member_exited --group <id>` |
 | "监听 XX 群解散" | 先解析群 ID，再 consume `user_im_group_disbanded --group <id>`；破坏性自测只能用测试群 |
-| "监听并自动回复某人的单聊消息" | 先解析对端 userId，再启动 o2o consume；不要写轮询脚本 |
-| "同时监听同一人的单聊、已读和撤回" | 一个 consume 放入 3 个 event key，共享同一个 `--user` |
-| "同时监听同一群的消息、改名和解散" | 一个 consume 放入 3 个 event key，共享同一个 `--group` |
+| "监听并自动回复某人的单聊消息" | `+listen-im --kind sender --user-query "<姓名>"`；事件到达后把稳定 ID 交给 `chat +messages-send` |
+| "同时监听同一人的消息、已读和撤回" | 一个 `+listen-im --kind sender --events message,read,recall` 生命周期 |
+| "同时监听同一群的消息、改名和解散" | 生命周期事件不在 Shortcut 范围；一个高级 consume 放入 3 个 EventKey，共享 `--group` |
 | "监听新的待我审批任务" / "有审批任务创建时通知我" | `event consume`，事件码 `user_oa_approval_task_created`，参数 `--flatten -f ndjson` |
 | "审批任务完成时通知我" | `event consume`，事件码 `user_oa_approval_task_finished`，参数 `--flatten -f ndjson` |
 | "审批任务被转交时通知我" | `event consume`，事件码 `user_oa_approval_task_redirected`，参数 `--flatten -f ndjson` |
@@ -93,14 +89,25 @@
 
 ## Call flow
 
-1. 从用户意图选择事件码；人名或群名先解析成必填 ID。
+1. 普通 IM 意图选择 `+listen-im` 的 `--kind` 与 `--events`；人名/群名直接用 `--user-query`/`--chat-query` 唯一解析。OA 审批与高级事件控制手选 EventKey。
 2. 需要了解字段时运行 `dws event schema <event_key> --flatten`，读取 `schema.properties`；此模式的 `jq_root_path` 为 `.`。
-3. 启动 `dws event consume <event_key> [event_key...] ... --flatten -f ndjson`。单事件等待 `ready event_key=...`；多事件记录每条 `subscription event_key=... subscribe_id=...`，再等待整体 `ready event_count=...`。不要用 `sleep` 猜测。
+3. 普通 IM 启动 `dws event +listen-im ... -f ndjson`；OA 或高级任务启动 `dws event consume <event_key> [event_key...] ... --flatten -f ndjson`。等待真实 ready marker；多事件记录每条 subscription，再等待整体 ready。不要用 `sleep` 猜测。
 4. stdout 每行是一个扁平事件 JSON；消息、动作、群成员加入/退出及 OA 审批事件读取顶层业务字段。群标题变更和群解散只读取公共字段和 `payload` 中实际存在的字段。
 5. 需要确认监听状态时运行 `dws event status --event <event_key>`，查看 `Subscriptions` 和 `Consumers`。
 6. 任务完成后优雅结束 consume；本次新建的订阅会自动取消。复用已有订阅或需要从外部主动取消时，先运行 `dws event stop <subscribe_id> --dry-run`，向用户确认后再以 `--yes` 执行；自测可在 consume 加 `--max-events` 或 `--duration` 自动退出。
 
 ## Commands
+
+普通 IM 监听：
+
+```bash
+dws event +listen-im --kind at-me -f ndjson
+dws event +listen-im --kind sender --user-query "张三" --events message,reaction -f ndjson
+dws event +listen-im --kind group --chat-query "项目冲刺" --events message,read,recall -f ndjson
+dws event +listen-im --kind all-direct --max-events 10 -f ndjson
+```
+
+以下 EventKey 与 consume 命令是高级控制面：
 
 ```bash
 dws event schema user_im_message_receive_at --flatten
@@ -206,6 +213,26 @@ dws event stop --all --yes
 - stdin 关闭 = 停机：仅当 stdin 是管道且未设 `--max-events/--duration` 时生效；交互终端和 `< /dev/null` 不触发。用管道 stdin 又要常驻就喂 `< <(tail -f /dev/null)`。
 - 订阅清理：本次新建的订阅任意退出即自动退订；`--subscribe-id` 复用的保留；`--ephemeral` 强制退订。优雅停用 SIGTERM、关 stdin，或外部先预览 `dws event stop <subscribe_id> --dry-run`、确认后加 `--yes`。不要 `kill -9`（跳过退订、泄漏服务端订阅）。
 - 一个 consume 可监听多个兼容 event key，每个事件仍有独立订阅和 consumer，共用一个 bus、远程连接及输出。`event stop <subscribe_id>` 只移除目标事件，最后一个被移除后进程退出。
+
+## 订阅创建失败与重试预算
+
+以下约束适用于上表全部 22 个公开个人事件（16 个 IM + 6 个 OA）以及多事件命令中的每一项，只治理 `[event] ready` 之前的订阅创建；ready 之后的 Stream 断线由长连接重连机制处理。
+
+- `0/2/1` 是 **Agent/host 编排约束**，不是 CLI 持久化硬总次数上限。每次 `dws event consume` 调用对每个逻辑订阅最多发送一次订阅创建 HTTP 请求，进程内不会自动重试。CLI 本地状态只持久化 `in_flight`、`cooldown`、`terminal_hold` 三种保护状态，不持久化或计算跨调用的 Agent/host 尝试次数。
+- 解析人名或群名、执行 `event consume` 以及后续 `event status/stop` 必须使用同一个 `--profile`。不得把其它 profile 下解析出的 userId、openDingtalkId 或 openConversationId 直接带入当前 profile 的订阅。
+- 同一逻辑订阅由当前 profile / 身份、event key、rule type、目标和过滤条件共同确定。`subscribe_id`、`trace_id` 以及重新启动进程都只是诊断或执行信息，不会生成新的逻辑操作；Agent/host 必须自行延续原编排预算。
+- Agent/host 收到 `retryable=false`：`max_additional_attempts=0`，立即停止，不得自动重跑。
+- Agent/host 收到 `retryable=true`：`max_additional_attempts=2`，初次失败后最多再尝试 2 次；错误若给出 `retry_after_seconds` 或 `next_retry_at`，不得提前重试。
+- 未返回 `retryable`（即 `retryable=unknown`）：Agent/host 使用 `max_additional_attempts=1`，最多补偿尝试 1 次；仍无法确认时停止并上报错误与 trace。
+- `in_flight` 表示同一逻辑订阅已有请求执行中；`cooldown` 或 `terminal_hold` 表示当前被退避或终态保护。遇到这些状态不得递归调用 `event consume`、并行启动相同订阅或通过新 subId / trace 绕过；等待原请求或保护时间结束，同时由 Agent/host 继续维护自己的编排次数。
+- 多事件命令必须作为同一次原始操作治理。不得把失败事件拆成新的单事件命令、调整顺序或反复重启来重置预算；启动中任一项失败时，由 CLI 回滚本次已经创建的订阅。
+
+### 本地保护状态运维
+
+- open 版默认状态文件为 `~/.dws/events/open/personal_stream/<identity_hash>/personal_subscription_attempts.json`。设置 `DWS_CONFIG_DIR` 后配置根目录随之变化；其它 edition 使用对应 edition 目录，不固定为 `open`。
+- identity 目录权限为 `0700`；`personal_subscription_attempts.json` 与 `personal_subscription_attempts.lock` 权限均为 `0600`。
+- 连续 24h 没有失败后失败计数重置；`terminal_hold` 持续 1h。正常处理优先等待错误中的 `next_retry_at`，不要把删状态文件当成常规重试手段。
+- 紧急恢复时，先确认该 identity 没有正在创建订阅的进程；只删除 `personal_subscription_attempts.json`，不要删除 lock 文件。删除 JSON 会清空该 identity 的全部保护记录，不只影响一个事件。
 
 ## Output parsing
 

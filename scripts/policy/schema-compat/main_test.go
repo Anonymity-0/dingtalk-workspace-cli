@@ -481,3 +481,201 @@ func writeTestFile(t *testing.T, path, body string) {
 		t.Fatal(err)
 	}
 }
+
+// TestCrossPlatformCoverageSchemaCompatMCPRetirementAndConstraintExpansion covers
+// the MCP pin retirement allowance (clearing interface_type) and declare≡execute
+// constraint member expansion used by the platform coverage gate.
+func TestCrossPlatformCoverageSchemaCompatMCPRetirementAndConstraintExpansion(t *testing.T) {
+	baseline := baselineContract()
+	current := cloneContract(baseline)
+	mutateParameter(&current, func(parameter *parameterSchema) {
+		parameter.InterfaceType = ""
+	})
+	mutateTool(&current, func(tool *toolSchema) {
+		tool.Constraints = `{"require_one_of":[["title","format","legacy-format"]],"mutually_exclusive":[["title","format","legacy-title"]]}`
+	})
+	// Baseline has require_one_of only; a new mutually-exclusive group that
+	// restricts two historical public parameters must remain incompatible.
+	if failures := checkCompatibility(baseline, current); len(failures) == 0 {
+		t.Fatal("adding a new constraint group must fail compatibility")
+	}
+
+	// Match baseline shape: expand require_one_of members only, clear interface_type.
+	current = cloneContract(baseline)
+	mutateParameter(&current, func(parameter *parameterSchema) {
+		parameter.InterfaceType = ""
+	})
+	mutateTool(&current, func(tool *toolSchema) {
+		tool.Constraints = `{"require_one_of":[["title","format","legacy-format"]]}`
+	})
+	if failures := checkCompatibility(baseline, current); len(failures) != 0 {
+		t.Fatalf("clearing interface_type and expanding constraint members should pass: %v", failures)
+	}
+
+	// Hidden-sibling expansion from empty historical constraints remains allowed.
+	emptyConstraints := cloneContract(baseline)
+	mutateTool(&emptyConstraints, func(tool *toolSchema) {
+		tool.Constraints = ""
+		title := tool.Parameters["title"]
+		title.Required = true
+		tool.Parameters["title"] = title
+		delete(tool.Parameters, "format")
+	})
+	expanded := cloneContract(emptyConstraints)
+	mutateTool(&expanded, func(tool *toolSchema) {
+		tool.Constraints = `{"require_one_of":[["title","hidden-alias"]],"mutually_exclusive":[["title","hidden-alias"]]}`
+		title := tool.Parameters["title"]
+		title.Required = false
+		tool.Parameters["title"] = title
+	})
+	if failures := checkCompatibility(emptyConstraints, expanded); len(failures) != 0 {
+		t.Fatalf("hidden-sibling constraint expansion should pass: %v", failures)
+	}
+
+	if groups, ok := parseConstraintGroups(""); !ok || len(groups["require_one_of"]) != 0 {
+		t.Fatalf("empty constraints parse = %#v ok=%v", groups, ok)
+	}
+	if !stringSetContainsAll(map[string]bool{"a": true, "b": true}, map[string]bool{"a": true}) ||
+		stringSetContainsAll(map[string]bool{"a": true}, map[string]bool{"a": true, "b": true}) {
+		t.Fatal("stringSetContainsAll classification is incorrect")
+	}
+
+	// compatibleHiddenSiblingConstraintExpansion false branches.
+	if compatibleHiddenSiblingConstraintExpansion(
+		toolSchema{Constraints: "", Parameters: map[string]parameterSchema{"a": {Required: true}}},
+		toolSchema{Constraints: "{", Parameters: map[string]parameterSchema{"a": {}}},
+	) {
+		t.Fatal("invalid projected constraints must not expand")
+	}
+	oldRequired := toolSchema{
+		Constraints: "",
+		Parameters:  map[string]parameterSchema{"a": {Required: true}},
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_together":[["a","b"]],"require_one_of":[["a","hidden"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}},
+	}) {
+		t.Fatal("require_together projection must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["a"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}},
+	}) {
+		t.Fatal("single-member group must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["a","","hidden"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}},
+	}) {
+		t.Fatal("empty constraint member must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["hidden","ghost"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}},
+	}) {
+		t.Fatal("unpublished-only group must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["a","b"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {}, "b": {}},
+	}) {
+		t.Fatal("published-only group must not expand")
+	}
+	if compatibleHiddenSiblingConstraintExpansion(oldRequired, toolSchema{
+		Constraints: `{"require_one_of":[["a","hidden"]]}`,
+		Parameters:  map[string]parameterSchema{"a": {Required: true}},
+	}) {
+		t.Fatal("still-required sole published member must not expand")
+	}
+
+	// Changing interface_type to a different non-empty value remains incompatible.
+	typed := cloneContract(baseline)
+	mutateParameter(&typed, func(parameter *parameterSchema) { parameter.InterfaceType = "integer" })
+	if failures := checkCompatibility(baseline, typed); !strings.Contains(strings.Join(failures, "\n"), "changed interface_type") {
+		t.Fatalf("non-empty interface_type change should fail: %v", failures)
+	}
+}
+
+func TestCrossPlatformCoverageSchemaCompatAdditiveConstraintEvolution(t *testing.T) {
+	oldTool := toolSchema{
+		Parameters: map[string]parameterSchema{
+			"target": {},
+			"limit":  {},
+		},
+		Constraints: `{"require_one_of":[["target","legacy-target"]]}`,
+	}
+	compatible := oldTool
+	compatible.Constraints = `{"require_one_of":[["target","legacy-target","new-target"]],"mutually_exclusive":[["target","new-target"],["new-a","new-b"]],"require_together":[["new-a","new-b"]]}`
+	if !compatibleAdditiveConstraintEvolution(oldTool, compatible) {
+		t.Fatal("member expansion and additive alias-only groups must remain compatible")
+	}
+
+	twoHistorical := compatible
+	twoHistorical.Constraints = `{"require_one_of":[["target","legacy-target","new-target"]],"mutually_exclusive":[["target","limit","new-target"]]}`
+	if compatibleAdditiveConstraintEvolution(oldTool, twoHistorical) {
+		t.Fatal("new mutex group restricting two historical parameters must fail")
+	}
+	newRequirement := compatible
+	newRequirement.Constraints = `{"require_one_of":[["target","legacy-target","new-target"],["new-a","new-b"]]}`
+	if compatibleAdditiveConstraintEvolution(oldTool, newRequirement) {
+		t.Fatal("new require_one_of group must fail")
+	}
+	requireHistoricalTogether := compatible
+	requireHistoricalTogether.Constraints = `{"require_one_of":[["target","legacy-target","new-target"]],"require_together":[["limit","new-limit"]]}`
+	if compatibleAdditiveConstraintEvolution(oldTool, requireHistoricalTogether) {
+		t.Fatal("new require_together group containing a historical parameter must fail")
+	}
+	removedOldGroup := compatible
+	removedOldGroup.Constraints = `{"mutually_exclusive":[["new-a","new-b"]]}`
+	if compatibleAdditiveConstraintEvolution(oldTool, removedOldGroup) {
+		t.Fatal("removing a historical group must fail")
+	}
+	invalid := compatible
+	invalid.Constraints = "{"
+	if compatibleAdditiveConstraintEvolution(oldTool, invalid) {
+		t.Fatal("invalid constraints must fail closed")
+	}
+	emptyHistoricalGroup := oldTool
+	emptyHistoricalGroup.Constraints = `{"require_one_of":[[]]}`
+	if compatibleAdditiveConstraintEvolution(emptyHistoricalGroup, compatible) {
+		t.Fatal("empty historical constraint group must fail closed")
+	}
+	historicalMutex := oldTool
+	historicalMutex.Constraints = `{"mutually_exclusive":[["target","legacy-target"]]}`
+	historicalMutexExpanded := oldTool
+	historicalMutexExpanded.Constraints = `{"mutually_exclusive":[["target","legacy-target","limit"]]}`
+	if compatibleAdditiveConstraintEvolution(historicalMutex, historicalMutexExpanded) {
+		t.Fatal("adding a historical parameter to an existing mutex group must fail")
+	}
+	historicalTogether := oldTool
+	historicalTogether.Constraints = `{"require_together":[["target","legacy-target"]]}`
+	historicalTogetherExpanded := oldTool
+	historicalTogetherExpanded.Constraints = `{"require_together":[["target","legacy-target","limit"]]}`
+	if compatibleAdditiveConstraintEvolution(historicalTogether, historicalTogetherExpanded) {
+		t.Fatal("adding a historical parameter to an existing require-together group must fail")
+	}
+	historicalOneOf := oldTool
+	historicalOneOf.Constraints = `{"require_one_of":[["target","legacy-target","limit"]]}`
+	if !compatibleAdditiveConstraintEvolution(oldTool, historicalOneOf) {
+		t.Fatal("adding a historical parameter to require-one-of only loosens the contract")
+	}
+	gateBaseline := baselineContract()
+	mutateTool(&gateBaseline, func(tool *toolSchema) {
+		tool.Parameters["folder"] = parameterSchema{Type: `"string"`}
+		tool.Constraints = `{"mutually_exclusive":[["title","format"]]}`
+	})
+	gateCurrent := cloneContract(gateBaseline)
+	mutateTool(&gateCurrent, func(tool *toolSchema) {
+		tool.Constraints = `{"mutually_exclusive":[["title","format","folder"]]}`
+	})
+	if failures := checkCompatibility(gateBaseline, gateCurrent); len(failures) == 0 {
+		t.Fatal("compatibility gate must reject an existing mutex group gaining a historical parameter")
+	}
+	multipleHistoricalGroups := oldTool
+	multipleHistoricalGroups.Constraints = `{"require_one_of":[["target"],["limit"]]}`
+	multipleExpandedGroups := oldTool
+	multipleExpandedGroups.Constraints = `{"require_one_of":[["target","limit"],["limit","new-limit"]]}`
+	if !compatibleAdditiveConstraintEvolution(multipleHistoricalGroups, multipleExpandedGroups) {
+		t.Fatal("each historical group must match a distinct expanded group")
+	}
+}

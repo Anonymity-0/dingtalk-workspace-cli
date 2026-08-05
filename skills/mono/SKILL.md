@@ -21,14 +21,14 @@ cli_version: ">=1.0.15"
 - 危险操作必须先向用户确认，用户同意后才加 `--yes` 执行
 - 单次批量操作不超过 30 条记录
 - 所有命令必须**严格遵循**对应产品参考文档里面规定的参数格式（如：如果有参数值，则参数和参数值之间至少用一个空格隔开）
-- **脚本优先**：[scripts/](./scripts/) 下的 `python scripts/<name>.py` 已封装翻页/轮询/批量逻辑，遇到对应场景（如 AI 表格批量导入导出、AI 应用创建轮询、文档创建后写内容、钉盘目录树等）**优先调用脚本**而非手写多步命令。脚本均支持 `--dry-run` 预览、`--format json` 输出，失败时回退到手动步骤
-- **实时个人事件例外**：用户要监听消息或 OA 审批事件、订阅事件、自动回复消息或事件驱动 Agent 时，必须走 `dws event consume ... --flatten` 长连接，不要写脚本轮询消息历史或审批列表
+- **脚本只用于明确覆盖的复合任务**：[scripts/](./scripts/) 下的脚本可封装 AI 表格批量导入导出、AI 应用创建轮询、文档创建后写内容、钉盘目录树等流程；当公开 `+` Shortcut 已提供目标唯一解析、分页/部分失败 ledger 和确认语义时，优先 Shortcut。Chat 历史导出与机器人广播已完全下沉 Runtime，不再发布兼容脚本
+- **实时个人事件例外**：普通 IM 消息、reaction、已读和撤回默认走 `dws event +listen-im ...`；OA 审批、群生命周期、明确的原始 EventKey、Filter DSL、subscribe_id 或原始 envelope 使用 `dws event consume ... --flatten`。不要写脚本轮询消息历史或审批列表
 
 ## Shortcut 与原子命令的使用原则
 
 `shortcut` 是对常用操作的高层封装，适合优先承担用户意图；产品参考文档和本 skill 负责判断意图、风险、跨产品流程和复杂参数，CLI 帮助负责声明当前版本真正可调用的命令。
 
-- 先按产品参考、意图表和 recipe 路由。存在精确覆盖场景的专用脚本/recipe 时继续遵循“脚本优先”；否则用户意图可由可见 shortcut 满足时，优先使用 `dws <service> +<verb> ... --format json`，不要手写等价的多步原子命令。
+- 先按产品参考、意图表和 recipe 路由。用户意图可由可见 Shortcut 满足时，优先使用 `dws <service> +<verb> ... --format json`，不要手写等价的多步原子命令。只有脚本明确补足 Shortcut 未覆盖的复合交付物且其安全/完整性契约仍适用时才选择脚本。
 - 公开内建 shortcut 同时进入 Runtime Schema。用 `dws schema --cli-path "<service> +<verb>" --format json` 读取 Agent 选择、参数、跨参数约束、risk/confirmation 与接口语义；`dws shortcut list --service <service> --format json` 只作为轻量批量发现入口。
 - 真正组装参数前用叶子帮助 `dws <service> +<verb> --help` 核对当前 Cobra 接受的 flags。父级 `dws <service> --help` 只能发现子命令，不能替代叶子参数帮助。
 - shortcut catalog 中 `confirmation=user_required` 时，必须先获得用户确认，确认后才加 `--yes`；`not_required` 不额外确认。
@@ -39,26 +39,26 @@ cli_version: ">=1.0.15"
 <!-- VISIBLE_SHORTCUTS_OVERVIEW_START -->
 ## Shortcut 总览
 
-下面统计当前公开 catalog 中的 shortcut。mono 模式不展开 200+ 行明细，避免 skill 过重；需要执行时先按产品路由，再用 `dws shortcut list --service <service> --format json` 读取参数、约束、风险和示例，最后用 `dws <service> +<shortcut> --help` 核对当前 Cobra flags。multi 模式的各产品 skill 会展开该产品的 shortcut 表。
+下面只统计当前公开 catalog 中的 shortcut，不展开完整明细。已知意图应先按产品 Skill、意图表或任务 reference 选择唯一命令；命令已选中时直接执行，只在参数或安全语义不确定时读取 leaf Schema，在当前 Cobra flags 不确定时读取 leaf Help。仅当现有路由和 reference 都无法定位低频能力时，才用 `dws shortcut list --service <service> --format json` 做最后回退；不要为已知高频意图加载完整产品 Catalog。
 
-| 服务 | shortcut 数 | multi skill | 发现命令 |
-|---|---:|---|---|
-| `aitable` | 29 | `dingtalk-aitable` | `dws shortcut list --service aitable --format json` |
-| `attendance` | 19 | `dingtalk-attendance` | `dws shortcut list --service attendance --format json` |
-| `calendar` | 20 | `dingtalk-calendar` | `dws shortcut list --service calendar --format json` |
-| `chat` | 42 | `dingtalk-chat` | `dws shortcut list --service chat --format json` |
-| `contact` | 14 | `dingtalk-contact` | `dws shortcut list --service contact --format json` |
-| `devapp` | 19 | `dingtalk-dev` | `dws shortcut list --service devapp --format json` |
-| `ding` | 4 | `dingtalk-ding` | `dws shortcut list --service ding --format json` |
-| `doc` | 17 | `dingtalk-doc` | `dws shortcut list --service doc --format json` |
-| `drive` | 7 | `dingtalk-drive` | `dws shortcut list --service drive --format json` |
-| `mail` | 10 | `dingtalk-mail` | `dws shortcut list --service mail --format json` |
-| `minutes` | 6 | `dingtalk-minutes` | `dws shortcut list --service minutes --format json` |
-| `oa` | 7 | `dingtalk-oa` | `dws shortcut list --service oa --format json` |
-| `report` | 2 | `dingtalk-report` | `dws shortcut list --service report --format json` |
-| `sheet` | 2 | `dingtalk-sheet` | `dws shortcut list --service sheet --format json` |
-| `todo` | 11 | `dingtalk-todo` | `dws shortcut list --service todo --format json` |
-| `wiki` | 1 | `dingtalk-wiki` | `dws shortcut list --service wiki --format json` |
+| 服务 | shortcut 数 | multi skill |
+|---|---:|---|
+| `aitable` | 29 | `dingtalk-aitable` |
+| `attendance` | 19 | `dingtalk-misc` |
+| `calendar` | 20 | `dingtalk-calendar` |
+| `chat` | 97 | `dingtalk-chat` |
+| `contact` | 14 | `dingtalk-contact` |
+| `devapp` | 19 | `dingtalk-dev` |
+| `ding` | 4 | `dingtalk-misc` |
+| `doc` | 17 | `dingtalk-doc` |
+| `drive` | 7 | `dingtalk-drive` |
+| `mail` | 10 | `dingtalk-mail` |
+| `minutes` | 6 | `dingtalk-minutes` |
+| `oa` | 7 | `dingtalk-misc` |
+| `report` | 2 | `dingtalk-misc` |
+| `sheet` | 2 | `dingtalk-misc` |
+| `todo` | 11 | `dingtalk-todo` |
+| `wiki` | 1 | `dingtalk-wiki` |
 <!-- VISIBLE_SHORTCUTS_OVERVIEW_END -->
 
 ## 多组织 / 多账号
@@ -93,8 +93,9 @@ cli_version: ">=1.0.15"
 | `mail`            | 邮箱：邮箱地址查询/邮件搜索(KQL)/邮件详情/发送邮件                        | [mail.md](./references/products/mail.md)                       |
 | `sheet`           | 在线电子表格(axls)：工作表 CRUD/区域读写/CSV 批量写入/行列增删/合并/查找替换/筛选视图/全局筛选/排序/下拉列表/条件格式/浮动图片/浮动图表/模板/导出 xlsx(单命令一站式) | [sheet.md](./references/products/sheet.md)                     |
 | `todo`            | 待办：创建(含优先级/截止时间/循环)/查询/修改/标记完成/删除                   | [todo.md](./references/products/todo.md)                       |
-| `wiki`            | 知识库：空间创建/详情/列表/搜索 + 成员管理                                | [wiki.md](./references/products/wiki.md)                       |
-| `event`           | 个人 IM/OA 事件：监听消息、群生命周期、审批实例发起/终止/完成与审批任务创建/完成/转交，NDJSON 输出（实时驱动 Agent）| [event.md](./references/products/event.md)                     |
+| `wiki`            | 知识库：空间创建/详情/列表/搜索 + 成员管理 + 知识库动态查询                | [wiki.md](./references/products/wiki.md)                       |
+| `whiteboard`      | 文档内嵌白板：读取 OpenNodes、追加节点、整页重建                           | [whiteboard.md](./references/products/whiteboard.md)           |
+| `event`           | 个人 IM/OA 事件：监听消息、群生命周期、审批任务与审批实例事件，NDJSON 输出（实时驱动 Agent）| [event.md](./references/products/event.md)                     |
 
 ## 意图判断决策树
 
@@ -120,9 +121,11 @@ cli_version: ">=1.0.15"
 用户提到"在线电子表格/钉钉表格/axls/工作表/单元格读写/合并单元格/筛选视图/导出 xlsx" → `sheet`
 用户提到"待办/TODO/任务提醒/循环待办" → `todo`
 用户提到"创建知识库/知识库列表/搜索知识库空间/wiki/团队空间/知识库成员管理/我的文档个人空间" → `wiki`
-用户提到"监听有人@我/监听单聊或群消息/监听所有单聊或群消息/监听某人发送的消息/监听消息已读/监听消息撤回/监听消息贴表情或表情回应/监听群成员加入/监听群成员退出/监听群改名或群解散/监听待我审批的任务/监听审批任务创建/完成/转交/监听审批单发起/监听审批单终止/监听我发起的审批完成/监听审批实例完成/订阅个人 IM 或 OA 事件/实时接收钉钉事件/个人事件流/event consume user_im_message_*/event consume user_oa_approval_*/监听并自动回复消息/驱动 Agent 处理消息" → `event`
+用户提到"文档内嵌白板/画布/OpenNodes/白板节点/连接线/整页重建白板" → `whiteboard`；创建空白板卡片先走 `doc whiteboard insert`
+用户提到"监听有人@我/监听单聊或群消息/监听所有单聊或群消息/监听某人发送的消息/监听消息已读/监听消息撤回/监听消息贴表情或表情回应/订阅个人 IM 事件/实时接收钉钉事件/监听并自动回复消息/驱动 Agent 处理消息" → `event +listen-im`；群成员加入/退出、群改名/解散或明确原始 EventKey/Filter DSL → `event consume`
+用户提到"监听待我审批的任务/监听审批任务创建、完成或转交/监听审批单发起或终止/监听我发起的审批完成/监听审批实例完成/订阅 OA 事件/event consume user_oa_approval_*" → `event consume`
 
-事件监听中，同一目标、同一过滤条件的多个兼容事件优先生成一个 `dws event consume <event_key> [event_key...] --flatten`；不同用户、不同群或不同过滤条件拆成多个 consume 进程。
+普通消息、reaction、已读、撤回监听优先由一个 `dws event +listen-im` 进程表达目标；不同用户、不同群或不同过滤条件拆成独立进程。只有高级事件控制才生成 `dws event consume <event_key> [event_key...] --flatten`。
 
 关键区分: aitable(数据表格) vs todo(待办任务)
 关键区分: report(钉钉日志/日报周报) vs todo(待办任务)
@@ -168,6 +171,25 @@ Step 2 → 用户明确回复确认（如 "确认" / "好的"）
 Step 3 → 加 --yes 执行命令
 ```
 
+### 确认门禁的识别与重试协议
+
+非交互环境（Agent/CI，stdin 非 TTY）下，写命令不带 `--yes` 时 CLI **不打印交互提示语**，直接失败并输出结构化错误。识别方式：
+
+- `--format json` 输出（或 stderr）中 `error.reason == "confirmation_required"`，错误信息含「当前环境无法交互确认」
+
+遇到 `confirmation_required` 时按以下协议处理：
+
+1. **不要当普通错误放弃**：把命令、风险等级（`write` / `high-risk-write`）和关键参数展示给用户，明确告知这是写/高风险操作
+2. 用户显式同意 → 在**原始命令**末尾追加 `--yes` 重试（不改动任何业务参数）
+3. 用户拒绝 → 终止，不得改写参数绕过门禁
+4. 想先让用户 review 具体请求：加 `--dry-run` 重试——它**不触发确认门禁**，会输出完整调用预览（`invocation.params`），用户确认预览后再换 `--yes` 执行
+
+**禁止**：
+
+- 看到 `confirmation_required` 就未经用户同意自动追加 `--yes` 静默重试（等于禁用门禁）
+- 把 `confirmation_required` 当网络/权限错误处理或重试
+- 用 `echo yes | dws ...` 等管道方式喂答案代替 `--yes`（管道答案技术上会被接受，但违背了让用户显式知悉的设计意图）
+
 ## 核心流程
 作为一个智能助手，你的首要任务是**理解用户的真实、完整的意图**，而不是简单地执行命令。在选择 `dws` 的产品命令前，必须严格遵循以下四步流程：
 
@@ -175,7 +197,7 @@ Step 3 → 加 --yes 执行命令
 1. 意图分类：首先，判断用户指令的核心 动词/动作 属于哪一类。这比关注名词更重要。
 2. 歧义处理与信息追问：如果用户指令模糊或包含多个产品的关键字，严禁猜测。必须主动向用户追问以澄清意图。这是你作为智能助手而非命令执行器的核心价值。
 3. 精准产品映射：在完成前两步，意图已经清晰后，参考产品总览和意图判断决策树 来选择产品。
-4. 充分阅读产品参考文件，通过编写代码或直接调用指令实现用户意图。
+4. 按任务最小化读取：已知高频意图直接使用本 Skill 或产品 reference 已给出的唯一命令，不预加载完整产品参考文件；只有路由、参数或异常恢复确实需要时，才读取对应产品或任务 reference。
 
 ## 命令发现（Schema 渐进查询 + --help 互为补充）
 
@@ -184,6 +206,8 @@ Step 3 → 加 --yes 执行命令
 `dws schema` 内嵌当前二进制公开命令面的结构化契约。**Agent 选择命令、读取参数映射/约束和安全语义时必须优先渐进查询 leaf Schema**；真正组装执行参数前，用 `--help` 确认当前 Cobra 接受的 flags：
 
 本节同时适用于基础/原子命令与公开内建 `+` shortcut。用户自定义或未公开 shortcut 不进入发布 Schema；其是否可执行仍以当前 Cobra help 为准。
+
+**已知命令路径例外**：当本 Skill、产品意图表或任务 reference 已经给出精确 CLI path 时，不要再查询产品级/分组级 Schema，也不要调用完整 Shortcut Catalog；可直接执行。只有参数、约束或安全语义不确定时才读取该命令的 leaf Schema，只有当前 Cobra flags 不确定时才补读 leaf Help。
 
 稳定 command identity、主 CLI path 和 alias 已在构建时由 reviewed registry 与真实 Cobra tree 精确绑定。Agent 不应读取 Catalog 文件、native annotation 或其他生成 JSON 来重新推断命令；所有运行时查询都以当前二进制交付的 Schema 投影为准。
 
@@ -251,7 +275,7 @@ dws schema --all --format json
 |------|--------|
 | 命令是否存在、当前 Cobra 接受哪些 flags | `dws <cli_path> --help` |
 | Agent 选择、参数映射/required/组合约束、risk/confirmation（原子/基础命令） | `dws schema "<cli_path>"`（按需加 `--compact`） |
-| shortcut 的参数、组合约束、risk/confirmation、示例 | `dws shortcut list --service <service> --format json` |
+| shortcut 的参数、组合约束、risk/confirmation、示例 | 已知路径优先 `dws schema --cli-path "<service> +<shortcut>" --compact --format json`；完整 `shortcut list` 仅用于无法定位低频能力时的最后回退 |
 | 人类可读用法 | `dws <cli_path> --help` |
 | 钉钉中的文档、文件、日程、消息等实际数据 | 真正执行对应的 `read` / `search` / `list` 命令 |
 
@@ -272,7 +296,7 @@ Schema 与 Help 冲突是**契约漂移**，不得静默猜测或把两边字段
 `source` 表示最终命令 identity 的来源，不表示运行时 backing；helper/local/MCP 实现机制读取 `interface_mode`、`availability` 和 provenance，不要假定 `dev.*` 必然是 `source=mcp:<server>`，也不要假定本地命令必然是 `source=cobra`。
 
 ## 错误处理
-1. 遇到错误，加 `--verbose` 重试一次
+1. 先读取 JSON 错误的 `retryable`、`retry_after_seconds`、`next_retry_at`、`hint` 和 `actions`；只有明确 `retryable=true` 时才按服务端节奏做一次有界重试。缺少重试语义时加 `--verbose` 收集诊断后停止
 2. 若 stderr 出现 `RECOVERY_EVENT_ID=<event_id>`，优先按 [recovery-guide.md](./references/recovery-guide.md) 执行 recovery 闭环
 3. 仍然失败，报告完整错误信息给用户，禁止自行尝试替代方案
 4. 认证失败时，参考 [global-reference.md](./references/global-reference.md) 中的认证章节处理

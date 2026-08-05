@@ -5,10 +5,12 @@ PUBLISH ?= 0
 YES ?= 0
 DWS_POLICY_TMPDIR ?= $(CURDIR)/.worktrees/policy-tmp
 POLICY_GOTMPDIR ?= $(DWS_POLICY_TMPDIR)/go
+SCHEMA_CATALOG_OUTPUT ?= artifacts/schema_catalog
+SCHEMA_META_INDEX_OUTPUT ?= artifacts/schema_meta_index.gob
 POLICY_ENV = DWS_POLICY_TMPDIR="$(DWS_POLICY_TMPDIR)" GOTMPDIR="$(POLICY_GOTMPDIR)"
 GO_SOURCE_LIST = git ls-files -z --cached --others --exclude-standard -- '*.go'
 
-.PHONY: all help build rebuild test test-plan test-auth-legacy-compat lint format-check fmt policy edition-test interface-integrity authoritative-interface-integrity coverage-gate coverage-gate-platform update-interface-baseline reset-interface-baseline schema-compatibility skill-command-integrity cli-smoke mock-mcp-smoke test-schema-agent-examples generate-schema generate-schema-agent-metadata generate-schema-catalog package release release-pre release-stable changelog-pre changelog-stable publish-homebrew-formula setup-hooks
+.PHONY: all help build rebuild test test-plan test-auth-legacy-compat lint format-check fmt policy edition-test interface-integrity authoritative-interface-integrity coverage-gate coverage-gate-platform update-interface-baseline reset-interface-baseline schema-compatibility skill-command-integrity skill-context-budget multi-im-skill-chain-integrity cli-smoke mock-mcp-smoke test-schema-agent-examples generate-schema fetch-mcp-metadata generate-schema-catalog package release release-pre release-stable changelog-pre changelog-stable publish-homebrew-formula setup-hooks
 
 all: setup-hooks fmt lint build test rebuild
 
@@ -30,12 +32,13 @@ help:
 	@printf "  make reset-interface-baseline - DANGEROUS: replace all CLI compatibility history\n"
 	@printf "  make schema-compatibility BASE_REF=<ref> - Check the complete Schema contract against the PR merge-base\n"
 	@printf "  make skill-command-integrity - Check dws commands referenced by skills exist\n"
+	@printf "  make skill-context-budget - Check generated Skill drift and common-path context budgets\n"
+	@printf "  make multi-im-skill-chain-integrity - Check reviewed IM intents keep one default Skill route\n"
 	@printf "  make cli-smoke     - Verify help for every public top-level command\n"
 	@printf "  make mock-mcp-smoke - Verify HTTP and stdio MCP request/response transport\n"
 	@printf "  make test-schema-agent-examples - Contract-check all Agent examples and dry-run the eligible subset\n"
-	@printf "  make generate-schema - Regenerate embedded Agent metadata and the release Catalog\n"
-	@printf "  make generate-schema-agent-metadata - Regenerate versioned Agent metadata\n"
-	@printf "  make generate-schema-catalog - Regenerate the embedded release Catalog\n"
+	@printf "  make generate-schema - Refresh param_aliases + verify Schema assembly determinism\n"
+	@printf "  make generate-schema-catalog - Optional assembled Catalog dump under artifacts/ (not a delivery step)\n"
 	@printf "  make package       - Build all release artifacts locally\n"
 	@printf "  make changelog-pre VERSION=vX.Y.Z-beta.N - Prepare prerelease notes\n"
 	@printf "  make changelog-stable VERSION=vX.Y.Z FROM_BETA=vX.Y.Z-beta.N - Prepare stable notes\n"
@@ -84,9 +87,13 @@ fmt:
 policy: test-auth-legacy-compat
 	@mkdir -p "$(POLICY_GOTMPDIR)"
 	@$(POLICY_ENV) ./scripts/policy/check-open-source-assets.sh
-	@$(POLICY_ENV) ./scripts/policy/check-schema-command-registry.sh
+	@$(POLICY_ENV) ./scripts/policy/check-skill-context-budget.sh
+	@$(POLICY_ENV) ./scripts/policy/check-multi-im-skill-chain.sh
 	@$(POLICY_ENV) ./scripts/policy/check-command-surface.sh --strict
 	@$(POLICY_ENV) ./scripts/policy/check-generated-drift.sh
+	@$(POLICY_ENV) ./scripts/policy/check-param-concepts.sh
+	@$(POLICY_ENV) ./scripts/policy/check-param-alias-cooccurrence.sh
+	@$(POLICY_ENV) $(GO) test -count=1 ./internal/app -run '^(TestParamAlias(FixtureThroughEmbeddedDeliveryPath|ReadCommandFinalPayload|WriteCommandFinalPayload|CanonicalConflictFailsBeforeRunE|BlockedFlagReachesReviewedFinalError)|TestFlagConflictErrorFormattingIsDeterministic)$$'
 	@$(POLICY_ENV) ./scripts/policy/check-schema-catalog.sh
 	@$(POLICY_ENV) ./scripts/policy/check-schema-binary.sh
 	@$(POLICY_ENV) $(MAKE) test-schema-agent-examples
@@ -118,6 +125,12 @@ schema-compatibility:
 skill-command-integrity:
 	@./scripts/policy/check-skill-commands.sh
 
+skill-context-budget:
+	@./scripts/policy/check-skill-context-budget.sh
+
+multi-im-skill-chain-integrity:
+	@./scripts/policy/check-multi-im-skill-chain.sh
+
 cli-smoke:
 	@./scripts/policy/check-cli-smoke.sh
 
@@ -125,42 +138,56 @@ mock-mcp-smoke:
 	$(GO) test -v -count=1 -run '^(TestHTTPClientEndToEnd|TestStdioClientEndToEnd)$$' ./internal/transport
 
 test-schema-agent-examples:
-	DWS_AGENT_EXAMPLES_DRY_RUN=1 $(GO) test -v -count=1 ./internal/app -run '^TestManualAgentExamplesDryRun$$'
+	DWS_AGENT_EXAMPLES_DRY_RUN=1 $(GO) test -v -count=1 ./internal/app -run '^TestAgentExamplesDryRun$$'
 
+# generate-schema refreshes param_aliases_generated.go and verifies that
+# ResolveSchemaBuild assembly is deterministic. Catalog is runtime-assembled
+# (声明即 Catalog); cmd_schema_catalog is not a committed delivery step.
+# schema_agent_metadata/ and schema_hints/ must stay absent.
 generate-schema:
 	@set -e; \
-	registry_guard=$$(mktemp); \
-	metadata_guard=$$(mktemp -d); \
-	selection_guard=$$(mktemp -d); \
-	trap 'rm -rf "$$registry_guard" "$$metadata_guard" "$$selection_guard"' EXIT HUP INT TERM; \
-	cp internal/cli/schema_command_registry.json "$$registry_guard"; \
-	cp -R internal/cli/schema_hints/metadata/. "$$metadata_guard/"; \
-	cp -R internal/cli/schema_hints/selection/. "$$selection_guard/"; \
+	concepts_guard=$$(mktemp); \
+	concepts_schema_guard=$$(mktemp); \
+	trap 'rm -rf "$$concepts_guard" "$$concepts_schema_guard"' EXIT HUP INT TERM; \
+	cp internal/cli/param_concepts.json "$$concepts_guard"; \
+	cp internal/cli/param_concepts.schema.json "$$concepts_schema_guard"; \
 	$(GO) generate ./internal/cli; \
-	cmp -s internal/cli/schema_command_registry.json "$$registry_guard" || { \
-		printf '%s\n' 'generation modified reviewed input internal/cli/schema_command_registry.json' >&2; \
+	rm -rf internal/cli/schema_agent_metadata internal/cli/schema_agent_metadata_audit.json; \
+	rm -f internal/cli/schema_meta_index.json; \
+	if [ -e internal/cli/schema_command_registry ]; then \
+		printf '%s\n' 'retired schema_command_registry/ must not reappear after generation' >&2; \
+		exit 1; \
+	fi; \
+	cmp -s internal/cli/param_concepts.json "$$concepts_guard" || { \
+		printf '%s\n' 'generation modified reviewed input internal/cli/param_concepts.json' >&2; \
 		exit 1; \
 	}; \
-	diff -qr internal/cli/schema_hints/metadata "$$metadata_guard" >/dev/null || { \
-		printf '%s\n' 'generation modified reviewed input internal/cli/schema_hints/metadata' >&2; \
+	cmp -s internal/cli/param_concepts.schema.json "$$concepts_schema_guard" || { \
+		printf '%s\n' 'generation modified reviewed input internal/cli/param_concepts.schema.json' >&2; \
 		exit 1; \
 	}; \
-	diff -qr internal/cli/schema_hints/selection "$$selection_guard" >/dev/null || { \
-		printf '%s\n' 'generation modified reviewed input internal/cli/schema_hints/selection' >&2; \
+	if [ -e internal/cli/schema_hints ]; then \
+		printf '%s\n' 'retired schema_hints/ must not reappear after generation' >&2; \
 		exit 1; \
-	}
+	fi; \
+	if [ -e internal/cli/schema_meta_index.json ]; then \
+		printf '%s\n' 'retired schema_meta_index.json must not remain after generation' >&2; \
+		exit 1; \
+	fi; \
+	./scripts/policy/check-schema-assembly.sh
 
-generate-schema-agent-metadata:
-	$(GO) run ./internal/generator/cmd_schema_agent_metadata \
-		-root . \
-		-registry internal/cli/schema_command_registry.json \
-		-output-dir internal/cli/schema_agent_metadata \
-		-audit-output internal/cli/schema_agent_metadata_audit.json
-
+# Optional local/CI dump of an assembled Catalog under artifacts/ by default.
+# Override SCHEMA_CATALOG_OUTPUT and SCHEMA_META_INDEX_OUTPUT as needed. This
+# is not a go:generate or production delivery step.
 generate-schema-catalog:
 	$(GO) run -a ./internal/generator/cmd_schema_catalog \
 		-root . \
-		-output internal/cli/schema_catalog.json
+		-output "$(SCHEMA_CATALOG_OUTPUT)" \
+		-meta-index "$(SCHEMA_META_INDEX_OUTPUT)"
+
+fetch-mcp-metadata:
+	@printf '  %sFetching diagnostic MCP dump (not a Schema pin)%s\n' "$(COLOR_RUN)" "$(COLOR_RESET)"
+	@./scripts/dev/fetch_mcp_metadata.sh
 
 package:
 	@version="$(if $(VERSION),$(VERSION),v0.0.0-SNAPSHOT)"; VERSION="$${version#v}" ./scripts/dev/build-all.sh

@@ -8,6 +8,7 @@ import (
 	"context"
 	stderrors "errors"
 	"io"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -55,6 +56,12 @@ func executeGuardedMutationCommand(t *testing.T, caller *guardedMutationCaller, 
 	}
 	root.SilenceErrors = true
 	root.SilenceUsage = true
+	// Closed stdin makes ConfirmSafety return typed confirmation_required
+	// instead of hanging on an interactive prompt — but do not clobber a
+	// fixture that already SetIn("no\n") / similar decline input.
+	if root.InOrStdin() == os.Stdin {
+		root.SetIn(strings.NewReader(""))
+	}
 	root.SetArgs(args)
 	return root.Execute()
 }
@@ -286,6 +293,14 @@ func TestSheetConfirmationGuardCoversEveryProtectedLeaf(t *testing.T) {
 		{
 			path: "sheet range move-to",
 			args: []string{"range", "move-to", "--node", "node-1", "--sheet-id", "sheet-1", "--source-range", "A1:B3", "--target-range", "D1"},
+		},
+		{
+			path: "sheet comment delete",
+			args: []string{"comment", "delete", "--node", "node-1", "--comment-key", "ck-1"},
+		},
+		{
+			path: "sheet version revert",
+			args: []string{"version", "revert", "--node", "node-1", "--version", "2"},
 		},
 	}
 

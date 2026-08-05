@@ -18,8 +18,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	chatshortcut "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chat"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
 // AtMe: pull the messages that recently @-mentioned ME across chats in one step.
@@ -37,9 +42,9 @@ import (
 //     so it honours --format/--jq/--fields. When the response carries no
 //     recognisable message list we fall back to printing the raw payload.
 //
-// This replaces manually working out the millisecond time window and copying the
-// list-mentions incantation. Read-only: it only searches and reshapes, never
-// sends, recalls or marks anything.
+// This replaces manually working out the millisecond time window and copying
+// the list-mentions incantation. The default path only searches and reshapes;
+// --download-resources additionally writes resource files locally.
 //
 //	dws chat +at-me
 //	dws chat +at-me --days 3
@@ -51,16 +56,68 @@ var AtMe = shortcut.Shortcut{
 	Intent: "当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；" +
 		"内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，" +
 		"再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。" +
-		"这是纯只读操作，只做搜索与本地投影，不会发送、撤回或标记任何消息。",
+		"默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。",
 	Risk: shortcut.RiskRead,
-	Flags: []shortcut.Flag{
-		{Name: "days", Type: shortcut.FlagInt, Desc: "回溯天数（可选，默认 7）", Default: "7", Required: false},
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
 	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_at_me",
+			CanonicalPath:  "chat.shortcut_at_me",
+			CLIPath:        "chat +at-me",
+			PrimaryCLIPath: "chat +at-me",
+		},
+		Description: "查最近 @我 的消息（自动算时间窗，投影发送人/时间/内容/会话）",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "查最近 @我 的消息（自动算时间窗，投影发送人/时间/内容/会话）",
+			UseWhen:      []string{"当你想快速看回最近谁在群里或单聊里 @了你、但不想手动把起止时间换算成毫秒、也不想记 list-mentions 的一堆参数时使用；内部按本地时区算出「最近 N 天」（默认 7 天，可用 --days 调整回溯天数）的时间窗，搜索这段时间内 @我 的消息，再在本地把每条消息投影成发送人、时间、内容、所在会话四个关键字段。默认只读且不会发送、撤回或标记任何消息；--download-resources 使用工作目录内安全路径、默认不覆盖和原子落盘，按既有安全下载约定无需交互确认。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples: []string{
+				"dws chat +at-me",
+				"dws chat +at-me --days 3",
+			},
+		},
+	},
+	Flags: append([]shortcut.Flag{
+		{Name: "group", Type: shortcut.FlagString, Desc: "仅查看指定群；可传 openConversationId 或群名"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "--group 的旧版自然名称入口", Hidden: true},
+		{Name: "group-query", Type: shortcut.FlagString, Desc: "--chat-query 的兼容别名", Hidden: true},
+		{Name: "days", Type: shortcut.FlagInt, Desc: "回溯天数（默认 7）；--days 必须在 1-3650 之间", Default: "7", Required: false},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量（默认 50）；--limit 必须大于 0", Default: "50"},
+		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，翻页传上次的 nextCursor", Default: "0"},
+		{Name: "no-reactions", Type: shortcut.FlagBool, Desc: "不输出消息 reaction（默认输出）"},
+	}, chatshortcut.MessageResourceDownloadFlags()...),
+	Constraints: append([]shortcut.Constraint{
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-query", "group-query"}},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"days"}, Description: "--days 必须在 1-3650 之间"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须大于 0"},
+	}, chatshortcut.MessageResourceDownloadConstraints()...),
 	Tips: []string{
 		`dws chat +at-me`,
 		`dws chat +at-me --days 3`,
+		`dws chat +at-me --group "项目群"`,
 	},
+	Validate: validateAtMe,
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		groupID := ""
+		directTarget := strings.TrimSpace(rt.Str("group"))
+		queryTarget := strings.TrimSpace(rt.StrFirst("chat-query", "group-query"))
+		if directTarget != "" || queryTarget != "" {
+			resolved, err := targetresolver.ResolveChatTarget(rt, directTarget, queryTarget)
+			if err != nil {
+				return err
+			}
+			groupID = resolved.Selected.OpenConversationID
+		}
+
 		// Step 1 — look-back window [now-Nd, now] in epoch millis. days defaults
 		// to 7; guard against non-positive overrides so the window stays sane.
 		days := rt.Int("days")
@@ -74,28 +131,73 @@ var AtMe = shortcut.Shortcut{
 		// Step 2 — search @me messages. startTime/endTime/limit/cursor and the
 		// first-page defaults (limit 50, cursor "0") mirror
 		// helpers.chatMessageListMentionsCmd's search_at_me_message call.
-		data, err := rt.CallMCPData("chat", "search_at_me_message", map[string]any{
+		params := map[string]any{
 			"startTime": startMs,
 			"endTime":   endMs,
-			"limit":     50,
-			"cursor":    "0",
-		})
+			"limit":     rt.Int("limit"),
+			"cursor":    rt.Str("cursor"),
+		}
+		if groupID != "" {
+			params["openConversationId"] = groupID
+		}
+		data, err := rt.CallMCPData("chat", "search_at_me_message", params)
 		if err != nil {
 			return err
 		}
 
-		// Step 3 — project matched messages; fall back to the raw payload when we
-		// cannot locate a recognisable message list.
+		// Step 3 — always publish the stable list envelope, including for an empty
+		// or newly-shaped response. This keeps common .messages[]/.items[] jq
+		// projections deterministic instead of turning absence into null.
 		items := atMeMessageItems(data)
-		if len(items) == 0 {
-			return rt.Output(data)
-		}
 		results := make([]map[string]any, 0, len(items))
 		for _, m := range items {
-			results = append(results, atMeProject(m))
+			results = append(results, atMeProjectWithReactions(m, !rt.Bool("no-reactions")))
 		}
-		return rt.Output(map[string]any{"messages": results})
+		payload := chatmsg.NewMessageListPayload(results)
+		payload["items"] = atMeCompatibilityItems(results)
+		chatmsg.ApplyPagination(payload, data)
+		if rt.Bool("download-resources") {
+			payload["resourceDownloads"] = chatshortcut.DownloadMessageResources(rt, items, groupID)
+		}
+		return rt.Output(payload)
 	},
+}
+
+func validateAtMe(rt *shortcut.RuntimeContext) error {
+	if err := chatshortcut.ValidateMessageResourceDownload(rt); err != nil {
+		return err
+	}
+	days := rt.Int("days")
+	if days < 1 || days > 3650 {
+		return localChatOptionError("invalid_lookback_window", "+at-me 的 --days 必须在 1-3650 之间", "--days")
+	}
+	if rt.Int("limit") <= 0 {
+		return localChatOptionError("invalid_page_size", "+at-me 的 --limit 必须大于 0", "--limit")
+	}
+	return nil
+}
+
+// atMeCompatibilityItems preserves the common list/items projection used by
+// older Agent snippets while keeping messages as the canonical v1 contract.
+// Its conversation field is an object so `.items[].conversation.name` is safe.
+func atMeCompatibilityItems(messages []map[string]any) []map[string]any {
+	items := make([]map[string]any, 0, len(messages))
+	for _, message := range messages {
+		item := make(map[string]any, len(message))
+		for key, value := range message {
+			item[key] = value
+		}
+		conversation := map[string]any{}
+		if name := atMeString(message["conversation"]); name != "" {
+			conversation["name"] = name
+		}
+		if id := atMeString(message["conversationId"]); id != "" {
+			conversation["openConversationId"] = id
+		}
+		item["conversation"] = conversation
+		items = append(items, item)
+	}
+	return items
 }
 
 // atMeMessageItems locates the message list inside a search_at_me_message
@@ -195,13 +297,46 @@ func atMeToMaps(arr []any) []map[string]any {
 // readable, ciphertext → marker) and recursively expanding any forwarded chat
 // record under "forwarded".
 func atMeProject(m map[string]any) map[string]any {
+	return atMeProjectWithReactions(m, true)
+}
+
+func atMeProjectWithReactions(m map[string]any, includeReactions bool) map[string]any {
 	row := map[string]any{
 		"sender":       atMeSender(m),
 		"time":         atMeTime(m),
 		"text":         atMeCleanText(m),
 		"conversation": atMeConversation(m),
 	}
-	if forwarded := chatmsg.Forwarded(m, atMeProject); len(forwarded) > 0 {
+	if messageID := chatmsg.MessageID(m); messageID != nil {
+		row["messageId"] = messageID
+	}
+	if conversationID := chatmsg.ConversationID(m); conversationID != nil {
+		row["conversationId"] = conversationID
+	}
+	if threadID := chatmsg.ThreadID(m); threadID != nil {
+		row["threadId"] = threadID
+	}
+	if messageType := chatmsg.MessageType(m); messageType != nil {
+		row["messageType"] = messageType
+	}
+	if updateTime := chatmsg.UpdateTime(m); updateTime != nil {
+		row["updateTime"] = updateTime
+	}
+	if includeReactions {
+		if reactions := chatmsg.Reactions(m); len(reactions) > 0 {
+			row["reactions"] = reactions
+		}
+	}
+	if quoted := chatmsg.QuotedMessage(m); len(quoted) > 0 {
+		row["quotedMessage"] = quoted
+	}
+	if resources := chatmsg.ResourcesDeep(m); len(resources) > 0 {
+		row["resourceRefs"] = resources
+	}
+	projectForwarded := func(item map[string]any) map[string]any {
+		return atMeProjectWithReactions(item, includeReactions)
+	}
+	if forwarded := chatmsg.Forwarded(m, projectForwarded); len(forwarded) > 0 {
 		row["forwarded"] = forwarded
 	}
 	return row

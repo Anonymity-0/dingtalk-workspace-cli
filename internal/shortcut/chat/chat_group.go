@@ -15,18 +15,52 @@ package chat
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
 // ChatSearch searches groups by keyword (search_groups on the im server).
 var ChatSearch = shortcut.Shortcut{
-	Service:     "chat",
-	Command:     "+chat-search",
-	Product:     "im",
-	Description: "按关键词搜索群聊",
-	Intent:      "当你只记得群名称关键词、需要拿到群 openConversationId 以便发消息或管理该群时使用；按群名模糊搜索，只读分页返回匹配的群列表。",
-	Risk:        shortcut.RiskRead,
+	Service:                  "chat",
+	Command:                  "+chat-search",
+	Aliases:                  []string{"+chat-group-search", "+search-group"},
+	SinglePositionalAliasFor: "query",
+	Product:                  "im",
+	Description:              "按关键词搜索群聊",
+	Intent:                   "当你只记得群名称关键词、需要拿到群 openConversationId 以便发消息或管理该群时使用；按群名模糊搜索，只读分页返回匹配的群列表。",
+	Risk:                     shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_search",
+			CanonicalPath:  "chat.shortcut_chat_search",
+			CLIPath:        "chat +chat-search",
+			PrimaryCLIPath: "chat +chat-search",
+		},
+		Description: "按关键词搜索群聊",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "按关键词搜索群聊",
+			UseWhen:      []string{"当你只记得群名称关键词、需要拿到群 openConversationId 以便发消息或管理该群时使用；按群名模糊搜索，只读分页返回匹配的群列表。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-search --query \"项目冲刺\""},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "群名称关键词"},
 		{Name: "keyword", Type: shortcut.FlagString, Desc: "--query 的别名", Hidden: true},
@@ -116,17 +150,54 @@ var ChatInviteURL = shortcut.Shortcut{
 	Command:     "+chat-invite-url",
 	Product:     "im",
 	Description: "获取群邀请链接",
-	Intent:      "当你想拿到一条群邀请链接分享给别人加群时使用；只读生成链接，需传群 openConversationId，可用 --expires-seconds 设置有效期（0 表示永久）。",
+	Intent:      "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。",
 	Risk:        shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_invite_url",
+			CanonicalPath:  "chat.shortcut_chat_invite_url",
+			CLIPath:        "chat +chat-invite-url",
+			PrimaryCLIPath: "chat +chat-invite-url",
+		},
+		Description: "获取群邀请链接",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "获取群邀请链接",
+			UseWhen:      []string{"当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-invite-url --group <openConversationId>"},
+		},
+	},
 	Flags: []shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
+		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId；兼容直接传群名并唯一解析"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "--group 的旧版自然名称入口", Hidden: true},
+		{Name: "group-query", Type: shortcut.FlagString, Desc: "--chat-query 的兼容别名", Hidden: true},
 		{Name: "expires-seconds", Type: shortcut.FlagInt, Desc: "链接有效期（秒），0 表示永久"},
 	},
-	Tips: []string{`dws chat +chat-invite-url --group <openConversationId>`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-query", "group-query"}},
+	},
+	Tips: []string{
+		`dws chat +chat-invite-url --group <openConversationId>`,
+		`dws chat +chat-invite-url --group "项目群"`,
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		groupID, err := resolveStableOrNamedChat(rt)
+		if err != nil {
+			return err
+		}
 		params := map[string]any{
-			"openConversationId": rt.Str("group"),
-			"cid":                rt.Str("group"),
+			"openConversationId": groupID,
+			"cid":                groupID,
 		}
 		if rt.Changed("expires-seconds") {
 			params["expiresSeconds"] = rt.Int("expires-seconds")
@@ -204,6 +275,31 @@ var ChatDismiss = shortcut.Shortcut{
 	Description: "解散群聊（不可逆，需群主权限）",
 	Intent:      "当你要彻底解散一个群时使用；会实际销毁群聊，不可逆且需群主权限，仅需传群 openConversationId，操作前务必确认。",
 	Risk:        shortcut.RiskHighWrite,
+	Safety: contract.SafetySpec{
+		Effect: "destructive", Risk: "high",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_dismiss",
+			CanonicalPath:  "chat.shortcut_chat_dismiss",
+			CLIPath:        "chat +chat-dismiss",
+			PrimaryCLIPath: "chat +chat-dismiss",
+		},
+		Description: "解散群聊（不可逆，需群主权限）",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "解散群聊（不可逆，需群主权限）",
+			UseWhen:      []string{"当你要彻底解散一个群时使用；会实际销毁群聊，不可逆且需群主权限，仅需传群 openConversationId，操作前务必确认。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-dismiss --group <openConversationId>"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 	},
@@ -221,6 +317,31 @@ var ChatSetHistory = shortcut.Shortcut{
 	Description: "设置新成员入群可查看历史消息范围",
 	Intent:      "当你想控制新成员入群后能看到多少历史消息时使用；会实际修改群配置，需传群 openConversationId 和范围（FORBIDDEN 不可见 / RECENT_100 最近100条 / ALL 全部）。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_set_history",
+			CanonicalPath:  "chat.shortcut_chat_set_history",
+			CLIPath:        "chat +chat-set-history",
+			PrimaryCLIPath: "chat +chat-set-history",
+		},
+		Description: "设置新成员入群可查看历史消息范围",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "设置新成员入群可查看历史消息范围",
+			UseWhen:      []string{"当你想控制新成员入群后能看到多少历史消息时使用；会实际修改群配置，需传群 openConversationId 和范围（FORBIDDEN 不可见 / RECENT_100 最近100条 / ALL 全部）。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-set-history --group <openConversationId> --option RECENT_100"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "option", Type: shortcut.FlagString, Desc: "可见范围", Required: true, Enum: []string{"FORBIDDEN", "RECENT_100", "ALL"}},
@@ -242,6 +363,31 @@ var ChatUpdateNick = shortcut.Shortcut{
 	Description: "设置当前用户在群内的群昵称",
 	Intent:      "当你想设置当前用户在某个群里显示的群昵称时使用；会实际更新本人在该群的昵称，需传群 openConversationId 和昵称。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_update_nick",
+			CanonicalPath:  "chat.shortcut_chat_update_nick",
+			CLIPath:        "chat +chat-update-nick",
+			PrimaryCLIPath: "chat +chat-update-nick",
+		},
+		Description: "设置当前用户在群内的群昵称",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "设置当前用户在群内的群昵称",
+			UseWhen:      []string{"当你想设置当前用户在某个群里显示的群昵称时使用；会实际更新本人在该群的昵称，需传群 openConversationId 和昵称。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-update-nick --group <openConversationId> --nick \"我的群昵称\""},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "nick", Type: shortcut.FlagString, Desc: "个人群昵称", Required: true},
@@ -263,6 +409,31 @@ var ChatUpdateAlias = shortcut.Shortcut{
 	Description: "设置群备注（仅自己可见）",
 	Intent:      "当你想给某个群设置仅自己可见的备注名以便区分同名群时使用；会实际保存本人对该群的备注，需传群 openConversationId 和备注标题。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_update_alias",
+			CanonicalPath:  "chat.shortcut_chat_update_alias",
+			CLIPath:        "chat +chat-update-alias",
+			PrimaryCLIPath: "chat +chat-update-alias",
+		},
+		Description: "设置群备注（仅自己可见）",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "设置群备注（仅自己可见）",
+			UseWhen:      []string{"当你想给某个群设置仅自己可见的备注名以便区分同名群时使用；会实际保存本人对该群的备注，需传群 openConversationId 和备注标题。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-update-alias --group <openConversationId> --alias-title \"项目A群\""},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "alias-title", Type: shortcut.FlagString, Desc: "群备注标题", Required: true},
@@ -284,6 +455,31 @@ var ChatListMine = shortcut.Shortcut{
 	Description: "拉取我创建/管理的群",
 	Intent:      "当你想查看自己作为群主或管理员在管理哪些群时使用；只读分页返回，可用 --role OWNER/ADMIN 按角色过滤。",
 	Risk:        shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_list_mine",
+			CanonicalPath:  "chat.shortcut_chat_list_mine",
+			CLIPath:        "chat +chat-list-mine",
+			PrimaryCLIPath: "chat +chat-list-mine",
+		},
+		Description: "拉取我创建/管理的群",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "拉取我创建/管理的群",
+			UseWhen:      []string{"当你想查看自己作为群主或管理员在管理哪些群时使用；只读分页返回，可用 --role OWNER/ADMIN 按角色过滤。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-list-mine --role OWNER"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "role", Type: shortcut.FlagString, Desc: "角色过滤", Enum: []string{"OWNER", "ADMIN"}},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "最多返回群数量，不传返回全部"},
@@ -306,7 +502,9 @@ var ChatListMine = shortcut.Shortcut{
 			return err
 		}
 		groups := chatListMineProject(data)
-		return rt.Output(map[string]any{"count": len(groups), "groups": groups})
+		payload := map[string]any{"count": len(groups), "groups": groups}
+		chatmsg.ApplyPagination(payload, data)
+		return rt.Output(payload)
 	},
 }
 
@@ -351,6 +549,31 @@ var ChatListAll = shortcut.Shortcut{
 	Description: "分页拉取我加入的所有群列表",
 	Intent:      "当你想遍历当前用户加入的所有群做统计或批量操作时使用；只读分页返回全部已加入的群列表。",
 	Risk:        shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_list_all",
+			CanonicalPath:  "chat.shortcut_chat_list_all",
+			CLIPath:        "chat +chat-list-all",
+			PrimaryCLIPath: "chat +chat-list-all",
+		},
+		Description: "分页拉取我加入的所有群列表",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "分页拉取我加入的所有群列表",
+			UseWhen:      []string{"当你想遍历当前用户加入的所有群做统计或批量操作时使用；只读分页返回全部已加入的群列表。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-list-all --limit 50"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "limit", Type: shortcut.FlagInt, Default: "100", Desc: "每页返回数量（最大 200）"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，翻页传 nextCursor"},
@@ -370,12 +593,7 @@ var ChatListAll = shortcut.Shortcut{
 		}
 		groups := chatListAllProject(data)
 		payload := map[string]any{"count": len(groups), "groups": groups}
-		if v, ok := chatGroupFirst(data, "nextCursor", "next_cursor", "cursor"); ok {
-			payload["nextCursor"] = v
-		}
-		if v, ok := chatGroupFirst(data, "hasMore", "has_more"); ok {
-			payload["hasMore"] = v
-		}
+		chatmsg.ApplyPagination(payload, data)
 		return rt.Output(payload)
 	},
 }
@@ -456,6 +674,31 @@ var ChatListJoinRequests = shortcut.Shortcut{
 	Description: "分页拉取入群验证记录",
 	Intent:      "当你作为群主/管理员想查看待处理的入群申请时使用；只读分页返回入群验证记录（含 recordId、申请人与邀请人 ID），供后续用 chat-audit-join 审批。",
 	Risk:        shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_list_join_requests",
+			CanonicalPath:  "chat.shortcut_chat_list_join_requests",
+			CLIPath:        "chat +chat-list-join-requests",
+			PrimaryCLIPath: "chat +chat-list-join-requests",
+		},
+		Description: "分页拉取入群验证记录",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "分页拉取入群验证记录",
+			UseWhen:      []string{"当你作为群主/管理员想查看待处理的入群申请时使用；只读分页返回入群验证记录（含 recordId、申请人与邀请人 ID），供后续用 chat-audit-join 审批。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-list-join-requests --limit 30"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "单页数量（最大 50）"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，翻页传 nextCursor"},
@@ -549,20 +792,72 @@ var ChatBots = shortcut.Shortcut{
 	Command:     "+chat-bots",
 	Product:     "bot",
 	Description: "查看群内所有机器人",
-	Intent:      "当你想查看某个群里已添加了哪些机器人时使用；需传群 openConversationId，只读返回群内机器人列表（含 openBotId，供后续移除）。",
+	Intent:      "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。",
 	Risk:        shortcut.RiskRead,
-	Flags: []shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Tips: []string{`dws chat +chat-bots --group <openConversationId>`},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_bots",
+			CanonicalPath:  "chat.shortcut_chat_bots",
+			CLIPath:        "chat +chat-bots",
+			PrimaryCLIPath: "chat +chat-bots",
+		},
+		Description: "查看群内所有机器人",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "查看群内所有机器人",
+			UseWhen:      []string{"当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-bots --group <openConversationId>"},
+		},
+	},
+	Flags: []shortcut.Flag{
+		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId；兼容直接传群名并唯一解析"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "--group 的旧版自然名称入口", Hidden: true},
+		{Name: "group-query", Type: shortcut.FlagString, Desc: "--chat-query 的兼容别名", Hidden: true},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-query", "group-query"}},
+	},
+	Tips: []string{
+		`dws chat +chat-bots --group <openConversationId>`,
+		`dws chat +chat-bots --group "项目群"`,
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		data, err := rt.CallMCPData("bot", "list_group_bots", map[string]any{"openConversationId": rt.Str("group")})
+		groupID, err := resolveStableOrNamedChat(rt)
+		if err != nil {
+			return err
+		}
+		data, err := rt.CallMCPData("bot", "list_group_bots", map[string]any{"openConversationId": groupID})
 		if err != nil {
 			return err
 		}
 		bots := chatBotsProject(data)
 		return rt.Output(map[string]any{"count": len(bots), "bots": bots})
 	},
+}
+
+// resolveStableOrNamedChat gives read-only group shortcuts one safe target
+// contract. Stable cid values bypass search; natural names always go through
+// the shared exact-match, full-pagination and ambiguity rules.
+func resolveStableOrNamedChat(rt *shortcut.RuntimeContext) (string, error) {
+	resolved, err := targetresolver.ResolveChatTarget(
+		rt,
+		strings.TrimSpace(rt.Str("group")),
+		strings.TrimSpace(rt.StrFirst("chat-query", "group-query")),
+	)
+	if err != nil {
+		return "", err
+	}
+	return resolved.Selected.OpenConversationID, nil
 }
 
 // chatBotsProject reshapes list_group_bots into a clean bot list
@@ -620,6 +915,31 @@ var ChatSetAdmin = shortcut.Shortcut{
 	Description: "设置 / 取消群管理员",
 	Intent:      "当你想把某些成员设为或取消群管理员时使用；会实际变更成员角色，需传群 openConversationId 和成员 userId/openDingTalkId 列表，加 --off 取消管理员。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_set_admin",
+			CanonicalPath:  "chat.shortcut_chat_set_admin",
+			CLIPath:        "chat +chat-set-admin",
+			PrimaryCLIPath: "chat +chat-set-admin",
+		},
+		Description: "设置 / 取消群管理员",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "设置 / 取消群管理员",
+			UseWhen:      []string{"当你想把某些成员设为或取消群管理员时使用；会实际变更成员角色，需传群 openConversationId 和成员 userId/openDingTalkId 列表，加 --off 取消管理员。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-set-admin --group <openConversationId> --users userId1,userId2"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "成员 userId 或 openDingTalkId 列表", Required: true},
@@ -650,6 +970,31 @@ var ChatMute = shortcut.Shortcut{
 	Description: "全员禁言 / 取消全员禁言",
 	Intent:      "当你想对整个群开启或取消全员禁言时使用；会实际切换群的全员禁言状态，需传群 openConversationId，加 --off 取消禁言。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_mute",
+			CanonicalPath:  "chat.shortcut_chat_mute",
+			CLIPath:        "chat +chat-mute",
+			PrimaryCLIPath: "chat +chat-mute",
+		},
+		Description: "全员禁言 / 取消全员禁言",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "全员禁言 / 取消全员禁言",
+			UseWhen:      []string{"当你想对整个群开启或取消全员禁言时使用；会实际切换群的全员禁言状态，需传群 openConversationId，加 --off 取消禁言。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-mute --group <openConversationId>"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "off", Type: shortcut.FlagBool, Desc: "取消全员禁言（不传则开启禁言）"},
@@ -681,6 +1026,19 @@ var ChatMuteMember = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		userIDs, openIDs := splitIDs(rt.StrSlice("users"))
 		off := rt.Bool("off")
+		if len(userIDs) > 0 {
+			resolved, err := resolveMuteMemberOpenIDs(rt, rt.Str("group"), userIDs)
+			if err != nil {
+				return err
+			}
+			openIDs = append(openIDs, resolved...)
+			userIDs = nil
+		}
+		deduplicatedOpenIDs := make([]string, 0, len(openIDs))
+		for _, openID := range openIDs {
+			deduplicatedOpenIDs = appendUniqueShortcutString(deduplicatedOpenIDs, openID)
+		}
+		openIDs = deduplicatedOpenIDs
 		params := map[string]any{
 			"openConversationId": rt.Str("group"),
 			"cid":                rt.Str("group"),
@@ -702,6 +1060,124 @@ var ChatMuteMember = shortcut.Shortcut{
 	},
 }
 
+// resolveMuteMemberOpenIDs mirrors the native group-mute-member compatibility
+// path. The service currently rejects its documented uids input with
+// "uids is required", while openDingTalkIds succeeds. Resolve userIds through
+// the directory and the target group's member list so the Shortcut's advertised
+// mixed-ID contract remains executable instead of forwarding a known-broken
+// parameter shape.
+func resolveMuteMemberOpenIDs(rt *shortcut.RuntimeContext, groupID string, userIDs []string) ([]string, error) {
+	contacts, err := rt.CallMCPData("contact", "get_user_info_by_user_ids", map[string]any{
+		"user_id_list": userIDs,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("解析禁言成员 userId 失败: %w", err)
+	}
+
+	requested := make(map[string]struct{}, len(userIDs))
+	for _, userID := range userIDs {
+		requested[userID] = struct{}{}
+	}
+	nameByUserID := make(map[string]string, len(userIDs))
+	for _, item := range shortcutMapSlice(contacts["result"]) {
+		employee, _ := item["orgEmployeeModel"].(map[string]any)
+		userID := shortcutString(employee, "orgUserId", "userId")
+		if _, ok := requested[userID]; !ok {
+			continue
+		}
+		nameByUserID[userID] = shortcutString(employee, "orgUserName", "name")
+	}
+	for _, userID := range userIDs {
+		if strings.TrimSpace(nameByUserID[userID]) == "" {
+			return nil, fmt.Errorf("无法从通讯录解析成员 userId %q 的姓名；请改传 openDingTalkId", userID)
+		}
+	}
+
+	openIDsByName := map[string][]string{}
+	cursor := "0"
+	for page := 0; page < 50; page++ {
+		members, callErr := rt.CallMCPData("chat", "get_group_members", map[string]any{
+			"openconversation_id": groupID,
+			"cursor":              cursor,
+		})
+		if callErr != nil {
+			return nil, fmt.Errorf("读取目标群成员以解析 userId 失败: %w", callErr)
+		}
+		result, _ := members["result"].(map[string]any)
+		for _, member := range shortcutMapSlice(result["list"]) {
+			name := shortcutString(member, "memberEmpName", "empName", "name")
+			openID := shortcutString(member, "openDingtalkId", "openDingTalkId", "memberDingtalkId")
+			if name == "" || openID == "" {
+				continue
+			}
+			openIDsByName[name] = appendUniqueShortcutString(openIDsByName[name], openID)
+		}
+		hasMore, _ := result["hasMore"].(bool)
+		if !hasMore {
+			break
+		}
+		next := shortcutString(result, "nextCursor", "cursor")
+		if next == "" || next == cursor {
+			return nil, fmt.Errorf("群成员分页返回 hasMore=true 但缺少可继续的 cursor")
+		}
+		cursor = next
+		if page == 49 {
+			return nil, fmt.Errorf("群成员分页超过 50 页，无法安全解析禁言目标")
+		}
+	}
+
+	resolved := make([]string, 0, len(userIDs))
+	for _, userID := range userIDs {
+		name := nameByUserID[userID]
+		matches := openIDsByName[name]
+		if len(matches) != 1 {
+			return nil, fmt.Errorf(
+				"群内姓名 %q 对应 %d 个成员，无法把 userId %q 唯一解析为 openDingTalkId；请直接传 openDingTalkId",
+				name, len(matches), userID)
+		}
+		resolved = append(resolved, matches[0])
+	}
+	return resolved, nil
+}
+
+func shortcutMapSlice(value any) []map[string]any {
+	items, _ := value.([]any)
+	out := make([]map[string]any, 0, len(items))
+	for _, item := range items {
+		if mapped, ok := item.(map[string]any); ok {
+			out = append(out, mapped)
+		}
+	}
+	return out
+}
+
+func shortcutString(value map[string]any, keys ...string) string {
+	for _, key := range keys {
+		switch typed := value[key].(type) {
+		case string:
+			if text := strings.TrimSpace(typed); text != "" {
+				return text
+			}
+		case float64:
+			return strconv.FormatFloat(typed, 'f', -1, 64)
+		case int:
+			return strconv.Itoa(typed)
+		case int64:
+			return strconv.FormatInt(typed, 10)
+		}
+	}
+	return ""
+}
+
+func appendUniqueShortcutString(values []string, candidate string) []string {
+	for _, value := range values {
+		if value == candidate {
+			return values
+		}
+	}
+	return append(values, candidate)
+}
+
 // ── group-role: 群身份管理 (im) ──────────────────────────────
 
 // ChatRoleList lists custom group roles (list_custom_group_roles, im).
@@ -712,6 +1188,31 @@ var ChatRoleList = shortcut.Shortcut{
 	Description: "拉取会话的群身份列表",
 	Intent:      "当你想查看某群自定义的群身份（如'班长''值日'）都有哪些时使用；需传群 openConversationId，只读返回群身份列表及 openRoleId。",
 	Risk:        shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_list",
+			CanonicalPath:  "chat.shortcut_chat_role_list",
+			CLIPath:        "chat +chat-role-list",
+			PrimaryCLIPath: "chat +chat-role-list",
+		},
+		Description: "拉取会话的群身份列表",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "拉取会话的群身份列表",
+			UseWhen:      []string{"当你想查看某群自定义的群身份（如'班长''值日'）都有哪些时使用；需传群 openConversationId，只读返回群身份列表及 openRoleId。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-role-list --group <openConversationId>"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 	},
@@ -761,6 +1262,31 @@ var ChatRoleAdd = shortcut.Shortcut{
 	Description: "添加群身份",
 	Intent:      "当你想在群里新增一个自定义群身份/头衔时使用；会实际创建群身份，需传群 openConversationId 和身份名称。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_add",
+			CanonicalPath:  "chat.shortcut_chat_role_add",
+			CLIPath:        "chat +chat-role-add",
+			PrimaryCLIPath: "chat +chat-role-add",
+		},
+		Description: "添加群身份",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "添加群身份",
+			UseWhen:      []string{"当你想在群里新增一个自定义群身份/头衔时使用；会实际创建群身份，需传群 openConversationId 和身份名称。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-role-add --group <openConversationId> --name \"管理员\""},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "name", Type: shortcut.FlagString, Desc: "群身份名称", Required: true},
@@ -782,6 +1308,31 @@ var ChatRoleUpdate = shortcut.Shortcut{
 	Description: "更新群身份名称",
 	Intent:      "当你想重命名已有的群身份时使用；会实际更新身份名称，需传群 openConversationId、身份 openRoleId 和新名称。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_update",
+			CanonicalPath:  "chat.shortcut_chat_role_update",
+			CLIPath:        "chat +chat-role-update",
+			PrimaryCLIPath: "chat +chat-role-update",
+		},
+		Description: "更新群身份名称",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "更新群身份名称",
+			UseWhen:      []string{"当你想重命名已有的群身份时使用；会实际更新身份名称，需传群 openConversationId、身份 openRoleId 和新名称。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-role-update --group <openConversationId> --role-id <openRoleId> --name \"新名称\""},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "role-id", Type: shortcut.FlagString, Desc: "群身份 openRoleId", Required: true},
@@ -826,6 +1377,31 @@ var ChatRoleSetUser = shortcut.Shortcut{
 	Description: "设置用户的群身份（覆盖该用户的全部群身份）",
 	Intent:      "当你想为某成员整体设定其在群内的身份时使用；会实际改写该用户的群身份集合（覆盖其原有全部身份），需传群、用户和 openRoleId 列表（传空则清除全部）。",
 	Risk:        shortcut.RiskWrite,
+	Safety: contract.SafetySpec{
+		Effect: "write", Risk: "medium",
+		Confirmation: "user_required", Idempotency: "unknown",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_set_user",
+			CanonicalPath:  "chat.shortcut_chat_role_set_user",
+			CLIPath:        "chat +chat-role-set-user",
+			PrimaryCLIPath: "chat +chat-role-set-user",
+		},
+		Description: "设置用户的群身份（覆盖该用户的全部群身份）",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "设置用户的群身份（覆盖该用户的全部群身份）",
+			UseWhen:      []string{"当你想为某成员整体设定其在群内的身份时使用；会实际改写该用户的群身份集合（覆盖其原有全部身份），需传群、用户和 openRoleId 列表（传空则清除全部）。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-role-set-user --group <openConversationId> --user <userId> --role-ids roleId1,roleId2"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "user", Type: shortcut.FlagString, Desc: "用户 userId 或 openDingTalkId", Required: true},
@@ -884,6 +1460,31 @@ var ChatRoleQueryUser = shortcut.Shortcut{
 	Description: "查询群成员的群身份",
 	Intent:      "当你想查看某个群成员当前拥有哪些群身份时使用；只读，需传群 openConversationId 和用户 userId 或 openDingTalkId。",
 	Risk:        shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_chat_role_query_user",
+			CanonicalPath:  "chat.shortcut_chat_role_query_user",
+			CLIPath:        "chat +chat-role-query-user",
+			PrimaryCLIPath: "chat +chat-role-query-user",
+		},
+		Description: "查询群成员的群身份",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "查询群成员的群身份",
+			UseWhen:      []string{"当你想查看某个群成员当前拥有哪些群身份时使用；只读，需传群 openConversationId 和用户 userId 或 openDingTalkId。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +chat-role-query-user --group <openConversationId> --user <userId>"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "user", Type: shortcut.FlagString, Desc: "用户 userId 或 openDingTalkId", Required: true},
@@ -902,7 +1503,7 @@ var ChatRoleQueryUser = shortcut.Shortcut{
 }
 
 func init() {
-	shortcut.Register(
+	shortcut.Register(withReviewedChatShortcutContracts(
 		ChatSearch,
 		ChatMembersGet,
 		ChatTransferOwner,
@@ -932,5 +1533,5 @@ func init() {
 		ChatRoleSetUser,
 		ChatRoleRemoveUser,
 		ChatRoleQueryUser,
-	)
+	)...)
 }

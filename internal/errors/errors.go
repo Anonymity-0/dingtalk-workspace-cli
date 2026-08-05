@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/jsonutil"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/tui"
@@ -41,20 +42,27 @@ const (
 
 // Error is the structured repository-local error model for the Go rewrite.
 type Error struct {
-	Category       Category
-	Message        string
-	Operation      string
-	ServerKey      string
-	Retryable      bool
-	Reason         string
-	Hint           string
-	Actions        []string
-	AvailableFlags []string
-	Snapshot       string
-	RPCCode        int               `json:"rpc_code,omitempty"`
-	RPCData        json.RawMessage   `json:"rpc_data,omitempty"`
-	ServerDiag     ServerDiagnostics `json:"-"`
-	Cause          error             `json:"-"`
+	Category          Category
+	Message           string
+	Operation         string
+	ServerKey         string
+	Origin            string
+	FailureStage      string
+	ExecutionStarted  *bool
+	Retryable         bool
+	RetryableSet      bool
+	RetryAfterSeconds *int64
+	NextRetryAt       *time.Time
+	Reason            string
+	Hint              string
+	Actions           []string
+	AvailableFlags    []string
+	Snapshot          string
+	Details           map[string]any
+	RPCCode           int               `json:"rpc_code,omitempty"`
+	RPCData           json.RawMessage   `json:"rpc_data,omitempty"`
+	ServerDiag        ServerDiagnostics `json:"-"`
+	Cause             error             `json:"-"`
 }
 
 func (e *Error) Error() string {
@@ -103,10 +111,61 @@ func WithServerKey(serverKey string) Option {
 	}
 }
 
+// WithOrigin records the component that produced the failure, such as the
+// client, MCP gateway, or DingTalk API. It is independent from Category,
+// which remains the stable exit-code contract.
+func WithOrigin(origin string) Option {
+	return func(err *Error) {
+		err.Origin = strings.TrimSpace(origin)
+	}
+}
+
+// WithFailureStage records the execution stage at which the failure occurred.
+func WithFailureStage(stage string) Option {
+	return func(err *Error) {
+		err.FailureStage = strings.TrimSpace(stage)
+	}
+}
+
+// WithExecutionStarted records whether the downstream business operation was
+// known to have started. Unknown state must be represented by omitting this
+// option, which is important for safe retry decisions on write operations.
+func WithExecutionStarted(started bool) Option {
+	return func(err *Error) {
+		value := started
+		err.ExecutionStarted = &value
+	}
+}
+
 // WithRetryable marks whether the error can be retried safely.
 func WithRetryable(retryable bool) Option {
 	return func(err *Error) {
 		err.Retryable = retryable
+		err.RetryableSet = true
+	}
+}
+
+// WithRetryAfterSeconds records the server-recommended delay before a retry.
+// A zero delay is meaningful and is therefore preserved; negative values are
+// ignored as invalid server guidance.
+func WithRetryAfterSeconds(seconds int64) Option {
+	return func(err *Error) {
+		if seconds < 0 {
+			return
+		}
+		value := seconds
+		err.RetryAfterSeconds = &value
+	}
+}
+
+// WithNextRetryAt records the absolute time at which a retry may be attempted.
+func WithNextRetryAt(next time.Time) Option {
+	return func(err *Error) {
+		if next.IsZero() {
+			return
+		}
+		value := next.UTC()
+		err.NextRetryAt = &value
 	}
 }
 
@@ -154,6 +213,21 @@ func WithAvailableFlags(names ...string) Option {
 func WithSnapshot(path string) Option {
 	return func(err *Error) {
 		err.Snapshot = path
+	}
+}
+
+// WithDetails records an additive machine-readable payload for errors whose
+// recovery needs typed context, such as ambiguous target-resolution
+// candidates. Callers must keep credentials and other secrets out of details.
+func WithDetails(details map[string]any) Option {
+	return func(err *Error) {
+		if len(details) == 0 {
+			return
+		}
+		err.Details = make(map[string]any, len(details))
+		for key, value := range details {
+			err.Details[key] = value
+		}
 	}
 }
 
@@ -266,8 +340,23 @@ func PrintJSON(w io.Writer, err error) error {
 		if typed.ServerKey != "" {
 			errorPayload["server_key"] = typed.ServerKey
 		}
-		if typed.Retryable {
-			errorPayload["retryable"] = true
+		if typed.Origin != "" {
+			errorPayload["origin"] = typed.Origin
+		}
+		if typed.FailureStage != "" {
+			errorPayload["stage"] = typed.FailureStage
+		}
+		if typed.ExecutionStarted != nil {
+			errorPayload["execution_started"] = *typed.ExecutionStarted
+		}
+		if typed.RetryableSet {
+			errorPayload["retryable"] = typed.Retryable
+		}
+		if typed.RetryAfterSeconds != nil {
+			errorPayload["retry_after_seconds"] = *typed.RetryAfterSeconds
+		}
+		if typed.NextRetryAt != nil {
+			errorPayload["next_retry_at"] = typed.NextRetryAt.UTC().Format(time.RFC3339)
 		}
 		if typed.Hint != "" {
 			errorPayload["hint"] = typed.Hint
@@ -280,6 +369,9 @@ func PrintJSON(w io.Writer, err error) error {
 		}
 		if typed.Snapshot != "" {
 			errorPayload["snapshot_path"] = typed.Snapshot
+		}
+		if len(typed.Details) > 0 {
+			errorPayload["details"] = typed.Details
 		}
 		if typed.RPCCode != 0 {
 			errorPayload["rpc_code"] = typed.RPCCode
@@ -383,8 +475,14 @@ func PrintHumanAt(w io.Writer, err error, v Verbosity) error {
 	if line := formatAvailableFlagsHumanLine(typed.AvailableFlags); line != "" {
 		lines = append(lines, tui.Dim(line))
 	}
-	if typed.Retryable {
-		lines = append(lines, tui.Warning("Retryable: true"))
+	if typed.RetryableSet {
+		lines = append(lines, tui.Warning(fmt.Sprintf("Retryable: %t", typed.Retryable)))
+	}
+	if typed.RetryAfterSeconds != nil {
+		lines = append(lines, tui.Warning(fmt.Sprintf("Retry After: %ds", *typed.RetryAfterSeconds)))
+	}
+	if typed.NextRetryAt != nil {
+		lines = append(lines, tui.Warning("Next Retry At: "+typed.NextRetryAt.UTC().Format(time.RFC3339)))
 	}
 
 	// Always shown when present: Trace ID, Server Code
@@ -405,6 +503,15 @@ func PrintHumanAt(w io.Writer, err error, v Verbosity) error {
 		}
 		if typed.ServerKey != "" {
 			lines = append(lines, tui.Dim(fmt.Sprintf("Server: %s", typed.ServerKey)))
+		}
+		if typed.Origin != "" {
+			lines = append(lines, tui.Dim(fmt.Sprintf("Origin: %s", typed.Origin)))
+		}
+		if typed.FailureStage != "" {
+			lines = append(lines, tui.Dim(fmt.Sprintf("Stage: %s", typed.FailureStage)))
+		}
+		if typed.ExecutionStarted != nil {
+			lines = append(lines, tui.Dim(fmt.Sprintf("Execution Started: %t", *typed.ExecutionStarted)))
 		}
 		if typed.Snapshot != "" {
 			lines = append(lines, tui.Dim(fmt.Sprintf("Snapshot: %s", typed.Snapshot)))

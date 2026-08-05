@@ -298,11 +298,11 @@ func TestCrossPlatformCoverageRootUtilityAndTimingCoverage(t *testing.T) {
 	deduplicateCommands(dedupRoot)
 	addPluginCommandsSafe(dedupRoot, []*cobra.Command{{Use: "same"}, {Use: "new"}})
 	_ = newCompletionCommand(dedupRoot)
-	_ = newCatalogCommand(nil)
+	_ = newCatalogCommand()
 	_ = newConfigCommand()
 	_ = newCacheCommand()
 	_ = newVersionCommand()
-	_ = newRecoveryCommand(context.Background(), nil, &GlobalFlags{})
+	_ = newRecoveryCommand(&GlobalFlags{})
 	_ = newAPICommand(&GlobalFlags{})
 	_ = NewRootCommand(context.Background())
 }

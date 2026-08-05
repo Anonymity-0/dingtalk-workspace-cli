@@ -29,9 +29,11 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	dwsevent "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/busctl"
@@ -73,6 +75,20 @@ var (
 // newEventCommand returns the `event` parent command and all its subcommands.
 // Wired into root.go's utilityCommands list.
 func newEventCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/event.json
+	// products.event). Catalog assembly stamps provenance contract_final.
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "event",
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "订阅/消费个人消息、动作与群生命周期事件，并管理订阅生命周期",
+			UseWhen: []string{
+				"需要实时监听个人消息接收、全量消息、已读、撤回、表情回应或群生命周期事件，或管理个人事件订阅生命周期",
+			},
+			AvoidWhen: []string{
+				"查历史聊天或主动发消息分别用 chat 查询/发送命令",
+			},
+		},
+	})
 	cmd := &cobra.Command{
 		Use:               "event",
 		Short:             "事件订阅 (DingTalk Stream 长连接)",
@@ -83,6 +99,7 @@ func newEventCommand() *cobra.Command {
 		RunE:              func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
 	cmd.AddCommand(
+		newEventListenIMCommand(),
 		newEventConsumeCommand(),
 		newEventListCommand(),
 		newEventSchemaCommand(),
@@ -161,7 +178,7 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 						"subscribe-id", "rule", "event-types", "filter",
 						"foreground", "force", "debug-raw-events",
 					); err != nil {
-						return fmt.Errorf("event consume: %w", err)
+						return fmt.Errorf("event consume: %w", personalSubscriptionValidationError(err))
 					}
 				}
 				personalOpts.Common = commonConsumeOptions{
@@ -353,13 +370,53 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 	f.StringVar(&streamOpts.TicketURL, "stream-ticket-url", strings.TrimSpace(os.Getenv("DWS_STREAM_TICKET_URL")),
 		"个人 Stream 取票 URL；当前默认预发 https://pre-mcp.dingtalk.com/stream/connections/ticket")
 	hideEventInternalFlags(cmd, "as")
-	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{
 		Name:        "event_key",
 		Type:        "string",
 		Description: "要消费的一个或多个个人事件码；多个事件必须共享同一目标和过滤上下文",
 		Required:    false,
 		Variadic:    true,
 		Index:       0,
+	})
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "consume",
+				CanonicalPath:  "event.consume",
+				CLIPath:        "event consume",
+				PrimaryCLIPath: "event consume",
+			},
+			Description: "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed composite workflow: the command creates or reuses a remote personal-event subscription and coordinates the local event bus and Stream consumer; no single pinned RPC represents the workflow.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "订阅并持续消费一个或多个兼容的个人事件；Agent 使用 --flatten 输出顶层业务 NDJSON",
+				UseWhen: []string{
+					"需要实时监听 @我、指定单聊、指定群或指定发送人的后续消息事件",
+					"用户明确要求监听当前身份的所有单聊或所有群消息",
+					"需要监听指定单聊或群聊中的消息已读、撤回或表情回应事件",
+					"需要监听指定群的标题变更、成员进退群或群解散事件",
+					"监听机器人、外部联系人等以 openDingtalkId 标识的单聊目标",
+					"同一目标、同一过滤条件需要同时监听多个兼容事件",
+				},
+				AvoidWhen: []string{
+					"只查历史聊天记录时用 chat 查询命令",
+					"只看事件目录/字段时用 event list / event schema",
+				},
+				Examples: []string{
+					"dws event consume user_im_message_receive_user --open-dingtalk-id open-example --flatten --max-events 1 --format ndjson",
+					"dws event consume user_im_message_receive_o2o user_im_message_read_o2o --user test-user-001 --flatten --max-events 2 --format ndjson",
+				},
+			},
+		},
 	})
 	return cmd
 }
@@ -728,6 +785,36 @@ func newEventListCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&enabledOnly, "enabled-only", false, "个人事件目录只显示 enabled")
 	cmd.Flags().BoolVar(&includePending, "include-pending", false, "个人事件目录包含 pending 项")
 	hideEventInternalFlags(cmd, "as", "all", "all-editions", "client-id")
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "list",
+				CanonicalPath:  "event.list",
+				CLIPath:        "event list",
+				PrimaryCLIPath: "event list",
+			},
+			Description: "列出支持的个人事件目录与状态说明",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "local",
+				Availability: "available",
+				Reason:       "命令读取 CLI 内置的个人事件目录，不绑定 pinned MCP RPC",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "列出支持的个人事件目录与状态说明",
+				UseWhen:      []string{"尚不知道可用 event_key，需要先盘点个人事件目录"},
+				AvoidWhen: []string{
+					"已知 event_key 要看 payload 字段时用 event schema",
+					"要开始监听时用 event consume",
+				},
+				Examples: []string{"dws event list --format json"},
+			},
+		},
+	})
 	return cmd
 }
 
@@ -796,6 +883,33 @@ func newEventStatusCommand() *cobra.Command {
 	cmd.Flags().StringVar(&personalOpts.StreamSourceID, "stream-source-id", strings.TrimSpace(os.Getenv("DWS_STREAM_SOURCE_ID")),
 		"个人事件 sourceId；开源版默认 open，可由 edition 覆盖")
 	hideEventInternalFlags(cmd, "as", "all", "all-editions", "client-id", "fail-on-orphan")
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "status",
+				CanonicalPath:  "event.status",
+				CLIPath:        "event status",
+				PrimaryCLIPath: "event status",
+			},
+			Description: "查看个人事件订阅、本地 bus 与消费进程状态",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed composite workflow: the command reads the remote personal-event subscription control plane and combines it with local bus and consumer state; no single pinned RPC represents the result.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查看个人事件订阅、本地 bus 与消费进程状态",
+				UseWhen:      []string{"需要确认订阅是否活跃、bus/consume 是否仍在运行"},
+				AvoidWhen:    []string{"取消订阅用 event stop；列事件目录用 event list"},
+				Examples:     []string{"dws event status --format json"},
+			},
+		},
+	})
 	return cmd
 }
 
@@ -1037,38 +1151,21 @@ func newEventStopCommand() *cobra.Command {
 		Args:              cobra.MaximumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(c *cobra.Command, args []string) error {
+			// Local validation runs in DeclareLeafMetadata Validate (PreRunE)
+			// before ConfirmSafety. Confirmation is the framework wrap.
 			as, err := eventNormalizeAs(asIdentity)
 			if err != nil {
 				return err
 			}
 			if as == "user" {
 				opts.SubscribeID = firstArg(args)
-				hasSubscribeID := strings.TrimSpace(opts.SubscribeID) != ""
-				if hasSubscribeID && opts.All {
-					return fmt.Errorf("event stop --as user: subscribe_id and --all are mutually exclusive")
-				}
-				if !hasSubscribeID && !opts.All {
-					return fmt.Errorf("event stop --as user: subscribe_id is required unless --all is set")
-				}
 				if eventStopDryRun(c) {
 					return writeEventStopDryRun(c, as, opts)
 				}
-				if !eventStopConfirmed(c) {
-					return eventStopConfirmationRequired("event stop 会取消个人事件订阅并停止本地消费")
-				}
 				return eventRunPersonalStop(c, opts)
-			}
-			if err := rejectChangedFlags(c, "user", "all", "personal-event-base-url", "stream-source-id"); err != nil {
-				return fmt.Errorf("event stop: %w", err)
-			}
-			if len(args) > 0 {
-				return fmt.Errorf("event stop: subscribe_id is only supported with --as user")
 			}
 			if eventStopDryRun(c) {
 				return writeEventStopDryRun(c, as, opts)
-			}
-			if !eventStopConfirmed(c) {
-				return eventStopConfirmationRequired("event stop 会停止事件消费")
 			}
 			configDir := defaultConfigDir()
 			clientID, _, _, _, err := eventResolveAppCredentials(configDir)
@@ -1095,12 +1192,67 @@ func newEventStopCommand() *cobra.Command {
 		"个人事件 sourceId；开源版默认 open，可由 edition 覆盖")
 	cmd.Flags().BoolVar(&opts.All, "all", false, "取消当前身份下本地记录的所有个人订阅")
 	hideEventInternalFlags(cmd, "as")
-	cli.AnnotateRuntimePositionals(cmd, cli.RuntimeSchemaPositional{
+	cli.AnnotateRuntimePositionals(cmd, contract.RuntimeSchemaPositional{
 		Name:        "subscribe_id",
 		Type:        "string",
 		Description: "要取消的个人事件订阅 ID；与 --all 二选一",
 		Required:    false,
 		Index:       0,
+	})
+	helpers.DeclareLeafMetadata(cmd, helpers.LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Validate: func(c *cobra.Command, args []string) error {
+			as, err := eventNormalizeAs(asIdentity)
+			if err != nil {
+				return err
+			}
+			if as == "user" {
+				subscribeID := firstArg(args)
+				hasSubscribeID := strings.TrimSpace(subscribeID) != ""
+				if hasSubscribeID && opts.All {
+					return fmt.Errorf("event stop --as user: subscribe_id and --all are mutually exclusive")
+				}
+				if !hasSubscribeID && !opts.All {
+					return fmt.Errorf("event stop --as user: subscribe_id is required unless --all is set")
+				}
+				return nil
+			}
+			if err := rejectChangedFlags(c, "user", "all", "personal-event-base-url", "stream-source-id"); err != nil {
+				return fmt.Errorf("event stop: %w", err)
+			}
+			if len(args) > 0 {
+				return fmt.Errorf("event stop: subscribe_id is only supported with --as user")
+			}
+			return nil
+		},
+		Contract: helpers.LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "event",
+				Name:           "stop",
+				CanonicalPath:  "event.stop",
+				CLIPath:        "event stop",
+				PrimaryCLIPath: "event stop",
+			},
+			Description: "取消个人事件订阅并停止对应本地消费",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed composite workflow: the command deletes remote personal-event subscriptions, interrupts local consumers, updates local state, and may stop the local bus; no single pinned RPC represents the workflow.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "取消个人事件订阅并停止对应本地消费",
+				UseWhen:      []string{"用户明确要求取消已知 subscribe_id（或清理全部）并停止消费"},
+				AvoidWhen: []string{
+					"只需检查状态时用 event status",
+					"目标订阅不明确或用户未确认时不要停止",
+				},
+				Examples: []string{"dws event stop SUBSCRIBE_ID --dry-run"},
+			},
+		},
 	})
 	return cmd
 }
@@ -1108,20 +1260,6 @@ func newEventStopCommand() *cobra.Command {
 func eventStopDryRun(cmd *cobra.Command) bool {
 	value, _ := cmd.Flags().GetBool("dry-run")
 	return value
-}
-
-func eventStopConfirmed(cmd *cobra.Command) bool {
-	value, _ := cmd.Flags().GetBool("yes")
-	return value
-}
-
-func eventStopConfirmationRequired(action string) error {
-	return apperrors.NewValidation(
-		action+"；请先使用 --dry-run 预览，确认后加 --yes 执行",
-		apperrors.WithReason("confirmation_required"),
-		apperrors.WithHint("先以相同参数加 --dry-run 预览；获得用户确认后改用 --yes 执行"),
-		apperrors.WithActions("使用 --dry-run 生成预览", "获得用户确认后使用 --yes 执行"),
-	)
 }
 
 func writeEventStopDryRun(cmd *cobra.Command, identity string, opts personalStopOptions) error {
@@ -1274,7 +1412,3 @@ func eventTypesWithDefault(types []string) []string {
 	}
 	return registry.CatchAllEventTypes()
 }
-
-// compile-time guard: avoid "imported and not used" if any of these
-// indirect imports become unused after future refactors.
-var _ = io.Discard

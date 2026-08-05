@@ -202,13 +202,22 @@ Usage:
 Example:
   dws drive download --node <dentryUuid> --output ./report.pdf
   dws drive download --node <dentryUuid> --output ~/downloads/
+  dws drive download --node <dentryUuid> --output ./big.zip --part-size 32MB --parallel 8
 Flags:
       --node string       文件 ID (dentryUuid) (必填)
       --output string     本地保存路径 (必填)，可以是文件路径或目录；如果指定目录，文件名从下载 URL 中自动推断
       --space-id string   文件所属空间 ID (可选)
+      --part-size string  分片下载的分片大小，支持 KB/MB/GB 单位，范围 1MB-1GB (默认 16MB)
+      --parallel int      分片下载并发数，范围 1-8 (默认 4)
+      --no-resume         关闭断点续传，忽略历史下载进度从头下载 (默认开启续传)
 ```
 
 > **注意**：`--output` 是必填参数，不传会报错。
+
+> **大文件分片下载**：
+> - 大文件自动分片并发下载，小文件整流下载，行为对用户透明，无需任何额外操作。
+> - 断点续传默认开启：下载中断后重跑同一命令会自动跳过已完成部分继续下载（`<目标文件>.dwspart` 为临时进度文件，下载完成后自动清理）；不需要续传时加 `--no-resume`。
+> - 下载凭证过期会自动刷新并继续下载，已完成的部分不会重下；单个分片失败会自动重试，无需手动处理。
 
 ### 创建文件夹
 
@@ -425,7 +434,7 @@ Flags:
       --name string        新名称 (仅 rename 必填)
 ```
 
-> **rename 只传主名，不要带扩展名**：服务端会按文件原扩展名自动补一个后缀。若 `--name` 里已带扩展名（如 `报告.txt`），回读会变成双扩展名 `报告.txt.txt`。正确做法：`dws drive rename --node <ID> --name "报告"`（不含 `.txt`），系统自动补回 `报告.txt`。
+> **rename 会按真实节点元数据处理扩展名**：实际执行前先读取节点类型和当前扩展名。文件的新名称若以当前扩展名结尾，只去掉完全匹配的一层再交给会保留原后缀的服务端；文件夹（包括 `release.v2` 这类带点名称）保持原样，也不再依赖扩展名白名单。`--dry-run` 不读取远端元数据，因此预览保留输入名称。
 
 权限要求：copy 需对源文档有"阅读"权限且对目标文件夹有"编辑"权限；move 需对源文档有"管理"权限且对目标文件夹有"编辑"权限；rename 需对文档有"编辑"权限。
 

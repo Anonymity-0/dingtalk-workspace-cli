@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -71,6 +72,39 @@ func TestCalendarEventCreateHelpKeepsRoomsStringMetavar(t *testing.T) {
 
 func TestRootKeepsMainBranchChatCompatibilityCommands(t *testing.T) {
 	root := NewRootCommand()
+	for _, path := range []string{
+		"chat send",
+		"chat history",
+		"im send",
+		"im history",
+	} {
+		command, remaining, err := root.Find(strings.Fields(path))
+		if err != nil {
+			t.Fatalf("find %s: %v", path, err)
+		}
+		if len(remaining) != 0 || !command.Hidden || !command.Runnable() {
+			t.Fatalf("%s compatibility contract: remaining=%v hidden=%v runnable=%v", path, remaining, command.Hidden, command.Runnable())
+		}
+	}
+	for _, tc := range []struct {
+		args []string
+		hint string
+	}{
+		{args: []string{"chat", "send", "--group", "cid-stable", "--text", "hello"}, hint: "dws chat message send"},
+		{args: []string{"im", "send", "--group", "cid-stable", "--text", "hello"}, hint: "dws chat message send"},
+		{args: []string{"chat", "history", "--group", "cid-stable", "--limit", "20"}, hint: "dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"},
+		{args: []string{"im", "history", "--group", "cid-stable", "--limit", "20"}, hint: "dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"},
+	} {
+		command := NewRootCommand()
+		command.SilenceErrors = true
+		command.SilenceUsage = true
+		command.SetArgs(tc.args)
+		err := command.Execute()
+		if err == nil || !strings.Contains(err.Error(), "ambiguous command") || !strings.Contains(err.Error(), tc.hint) {
+			t.Fatalf("dws %s error = %v, want migration hint %q", strings.Join(tc.args, " "), err, tc.hint)
+		}
+	}
+
 	listDirect := mustFindCommand(t, root, "chat", "message", "list-direct")
 	for _, flag := range []string{"user", "open-dingtalk-id", "time", "forward", "limit"} {
 		if listDirect.Flags().Lookup(flag) == nil {
@@ -161,9 +195,7 @@ func TestRootChatMediaUploadWithoutAppCredentialsReturnsMigrationValidation(t *t
 		"--file", filePath,
 		"--type", "image",
 	}
-	previousArgs := os.Args
-	os.Args = append([]string{"dws"}, commandArgs...)
-	t.Cleanup(func() { os.Args = previousArgs })
+	testseam.Swap(t, &os.Args, append([]string{"dws"}, commandArgs...))
 
 	root := NewRootCommand()
 	var output bytes.Buffer
@@ -380,7 +412,7 @@ func TestRootKeepsSVIPChatCompatibilityFlags(t *testing.T) {
 	}
 
 	searchAdvanced := mustFindCommand(t, root, "chat", "message", "search-advanced")
-	for _, flag := range []string{"sender", "senders", "sender-ids"} {
+	for _, flag := range []string{"sender", "senders", "sender-ids", "message-type", "only-robot", "conversation-type"} {
 		if searchAdvanced.Flags().Lookup(flag) == nil {
 			t.Fatalf("chat message search-advanced missing --%s", flag)
 		}

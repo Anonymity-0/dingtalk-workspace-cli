@@ -14,13 +14,11 @@
 package shortcut
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
@@ -142,11 +140,15 @@ func (rt *RuntimeContext) CallMCP(tool string, params map[string]any) error {
 // The product is explicit (not the shortcut's own) because smart shortcuts
 // routinely cross services — e.g. resolve a name via `contact` then act via
 // `chat`. Reads run even under --dry-run so a preview can still resolve inputs.
-// Write tools that need parsed responses must use CallMCPWriteData instead; as
-// a backstop, obvious write-like tool names are rejected here under --dry-run.
+// Write tools that need parsed responses must use CallMCPWriteData instead.
+// Under --dry-run this path fails closed unless the tool name belongs to the
+// narrow read-only naming contract used by the current MCP registry.
 func (rt *RuntimeContext) CallMCPData(product, tool string, params map[string]any) (map[string]any, error) {
-	if rt.DryRun() && looksWriteTool(tool) {
-		return nil, dryRunWriteError(product, tool)
+	if rt.DryRun() {
+		if !looksReadTool(tool) {
+			return nil, dryRunWriteError(product, tool)
+		}
+		return rt.callMCPReadData(product, tool, params)
 	}
 	return rt.callMCPData(product, tool, params)
 }
@@ -163,23 +165,12 @@ func (rt *RuntimeContext) CallMCPWriteData(product, tool string, params map[stri
 
 func dryRunWriteError(product, tool string) error {
 	return apperrors.NewValidation(fmt.Sprintf(
-		"--dry-run 下禁止执行写操作 %s/%s；请在 shortcut 中输出 preview 后返回", product, tool))
+		"--dry-run 下禁止执行未明确分类为只读的工具 %s/%s；请在 shortcut 中输出 preview 后返回",
+		product, tool))
 }
 
-func looksWriteTool(tool string) bool {
-	tool = strings.TrimSpace(strings.ToLower(tool))
-	for _, prefix := range []string{
-		"add_", "append_", "approve_", "archive_", "cancel_", "create_",
-		"delete_", "disable_", "enable_", "grant_", "import_", "insert_",
-		"invite_", "move_", "publish_", "reject_", "remove_", "replace_",
-		"respond", "revoke_", "send_", "set_", "submit_", "update_",
-		"upload_", "write_",
-	} {
-		if strings.HasPrefix(tool, prefix) {
-			return true
-		}
-	}
-	return false
+func looksReadTool(tool string) bool {
+	return helpers.IsReadToolName(tool)
 }
 
 func (rt *RuntimeContext) callMCPData(product, tool string, params map[string]any) (map[string]any, error) {
@@ -187,6 +178,24 @@ func (rt *RuntimeContext) callMCPData(product, tool string, params map[string]an
 		params = map[string]any{}
 	}
 	text, err := helpers.CallMCPToolTextOnServer(product, tool, params)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(text) == "" {
+		return map[string]any{}, nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal([]byte(text), &out); err != nil {
+		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", tool, err))
+	}
+	return out, nil
+}
+
+func (rt *RuntimeContext) callMCPReadData(product, tool string, params map[string]any) (map[string]any, error) {
+	if params == nil {
+		params = map[string]any{}
+	}
+	text, err := helpers.CallMCPReadToolTextOnServer(product, tool, params)
 	if err != nil {
 		return nil, err
 	}
@@ -208,118 +217,16 @@ func (rt *RuntimeContext) Output(payload any) error {
 	return output.WriteCommandPayload(rt.cmd, payload, output.FormatJSON)
 }
 
-// mount compiles a Shortcut into a cobra command.
+// mount compiles a Shortcut into a cobra command through the unified command
+// path. FromShortcut expands the legacy Risk only when Safety is absent; when
+// Safety is explicit the same value drives both ConfirmSafety and ContractFinal.
 func mount(s Shortcut) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:    s.Command,
-		Short:  s.Description,
-		Long:   shortcutLongHelp(s),
-		Hidden: s.Hidden,
-	}
-	if len(s.Tips) > 0 {
-		cmd.Example = "  " + strings.Join(s.Tips, "\n  ")
-	}
-	registerFlags(cmd, s.Flags)
-	annotateRuntimeSchemaContract(cmd, s)
-
-	cmd.RunE = func(c *cobra.Command, _ []string) error {
-		rt := &RuntimeContext{cmd: c, shortcut: s}
-		if err := validateFlags(rt, s); err != nil {
-			return err
-		}
-		if err := validateConstraints(rt, s); err != nil {
-			return err
-		}
-		if s.Validate != nil {
-			if err := s.Validate(rt); err != nil {
-				return err
-			}
-		}
-		if !confirmRisk(rt, s) {
-			return nil
-		}
-		if s.Execute == nil {
-			return apperrors.NewInternal(fmt.Sprintf("shortcut %s %s 未实现 Execute", s.Service, s.Command))
-		}
-		return s.Execute(rt)
-	}
+	cmd := corecmd.New(FromShortcut(s))
+	// Preserve the historical Shortcut help surface: Tips, rather than Agent
+	// selection examples, own cobra's Example block. The Schema declaration still
+	// carries its reviewed examples in ContractFinal.
+	cmd.Example = shortcutExamples(s.Tips)
 	return cmd
-}
-
-// annotateRuntimeSchemaContract projects the declarative shortcut invocation
-// contract onto its real Cobra leaf. Stable identity still comes exclusively
-// from the reviewed CommandRegistry; these annotations only preserve parameter
-// and constraint facts that Cobra cannot represent by itself.
-func annotateRuntimeSchemaContract(cmd *cobra.Command, s Shortcut) {
-	publicFlags := make(map[string]bool, len(s.Flags))
-	requiredFlags := make([]string, 0)
-	for _, flag := range s.Flags {
-		if flag.Hidden {
-			continue
-		}
-		publicFlags[flag.Name] = true
-		if flag.Required {
-			requiredFlags = append(requiredFlags, flag.Name)
-		}
-		if len(flag.Enum) > 0 {
-			cli.AnnotateRuntimeFlagEnum(cmd, flag.Name, flag.Enum...)
-		}
-	}
-
-	var constraints cli.RuntimeSchemaConstraints
-	for _, constraint := range s.Constraints {
-		flags := make([]string, 0, len(constraint.Flags))
-		for _, flagName := range constraint.Flags {
-			if publicFlags[flagName] {
-				flags = append(flags, flagName)
-			}
-		}
-		switch constraint.Kind {
-		case ConstraintAtLeastOne:
-			if len(flags) == 1 {
-				requiredFlags = append(requiredFlags, flags[0])
-			} else if len(flags) > 1 {
-				constraints.RequireOneOf = append(constraints.RequireOneOf, flags)
-			}
-		case ConstraintExactlyOne:
-			if len(flags) == 1 {
-				requiredFlags = append(requiredFlags, flags[0])
-			} else if len(flags) > 1 {
-				constraints.RequireOneOf = append(constraints.RequireOneOf, flags)
-				constraints.MutuallyExclusive = append(constraints.MutuallyExclusive, flags)
-			}
-		case ConstraintMutuallyExclusive:
-			if len(flags) > 1 {
-				constraints.MutuallyExclusive = append(constraints.MutuallyExclusive, flags)
-			}
-		}
-	}
-	cli.AnnotateRuntimeRequiredFlags(cmd, requiredFlags...)
-	cli.AnnotateRuntimeConstraints(cmd, constraints)
-}
-
-// registerFlags declares each Flag on the command with its type/default/desc.
-func registerFlags(cmd *cobra.Command, flags []Flag) {
-	for _, f := range flags {
-		desc := flagHelp(f)
-		switch f.Type {
-		case FlagBool:
-			cmd.Flags().Bool(f.Name, f.Default == "true", desc)
-		case FlagInt:
-			cmd.Flags().Int(f.Name, atoiDefault(f.Default), desc)
-		case FlagStringSlice:
-			var defaults []string
-			if value := strings.TrimSpace(f.Default); value != "" {
-				defaults = strings.Split(value, ",")
-			}
-			cmd.Flags().StringSlice(f.Name, defaults, desc)
-		default: // FlagString and empty
-			cmd.Flags().String(f.Name, f.Default, desc)
-		}
-		if f.Hidden {
-			_ = cmd.Flags().MarkHidden(f.Name)
-		}
-	}
 }
 
 func flagHelp(f Flag) string {
@@ -339,72 +246,6 @@ func flagHelp(f Flag) string {
 	return f.Desc + "（" + strings.Join(parts, "；") + "）"
 }
 
-func shortcutLongHelp(s Shortcut) string {
-	long := strings.TrimSpace(s.Intent)
-	if long == "" {
-		long = strings.TrimSpace(s.Description)
-	}
-	if len(s.Constraints) == 0 {
-		return long
-	}
-	lines := make([]string, 0, len(s.Constraints))
-	for _, constraint := range s.Constraints {
-		lines = append(lines, "  - "+constraintHelp(constraint))
-	}
-	return long + "\n\n参数约束：\n" + strings.Join(lines, "\n")
-}
-
-func constraintHelp(constraint Constraint) string {
-	if strings.TrimSpace(constraint.Description) != "" {
-		return constraint.Description
-	}
-	switch constraint.Kind {
-	case ConstraintAtLeastOne:
-		return fmt.Sprintf("%s 至少指定一个", dashed(constraint.Flags))
-	case ConstraintExactlyOne:
-		return fmt.Sprintf("%s 必须且只能指定一个", dashed(constraint.Flags))
-	case ConstraintMutuallyExclusive:
-		return fmt.Sprintf("%s 互斥，最多指定一个", dashed(constraint.Flags))
-	default:
-		return fmt.Sprintf("%s 使用未识别的约束类型 %q", dashed(constraint.Flags), constraint.Kind)
-	}
-}
-
-// validateFlags enforces the declarative Required and Enum constraints.
-func validateFlags(rt *RuntimeContext, s Shortcut) error {
-	for _, f := range s.Flags {
-		if f.Required && !rt.Changed(f.Name) {
-			return apperrors.NewValidation(fmt.Sprintf("缺少必填参数 --%s：%s", f.Name, f.Desc))
-		}
-		if f.Required && rt.Changed(f.Name) {
-			switch f.Type {
-			case FlagStringSlice:
-				if !hasNonEmptyString(rt.StrSlice(f.Name)) {
-					return apperrors.NewValidation(fmt.Sprintf("必填参数 --%s 不能为空", f.Name))
-				}
-			case FlagString, "":
-				if rt.Str(f.Name) == "" {
-					return apperrors.NewValidation(fmt.Sprintf("必填参数 --%s 不能为空", f.Name))
-				}
-			}
-		}
-		if len(f.Enum) > 0 && rt.Changed(f.Name) {
-			values := []string{rt.Str(f.Name)}
-			if f.Type == FlagStringSlice {
-				values = rt.StrSlice(f.Name)
-			}
-			for _, val := range values {
-				val = strings.TrimSpace(val)
-				if !contains(f.Enum, val) {
-					return apperrors.NewValidation(fmt.Sprintf(
-						"参数 --%s 取值 %q 不合法，允许值：%s", f.Name, val, strings.Join(f.Enum, ", ")))
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func hasNonEmptyString(values []string) bool {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {
@@ -412,52 +253,6 @@ func hasNonEmptyString(values []string) bool {
 		}
 	}
 	return false
-}
-
-func validateConstraints(rt *RuntimeContext, s Shortcut) error {
-	for _, constraint := range s.Constraints {
-		if len(constraint.Flags) == 0 {
-			return apperrors.NewInternal(fmt.Sprintf(
-				"shortcut %s %s 的约束 %q 未声明参数", s.Service, s.Command, constraint.Kind))
-		}
-		switch constraint.Kind {
-		case ConstraintAtLeastOne:
-			if err := rt.AtLeastOne(constraint.Flags...); err != nil {
-				return err
-			}
-		case ConstraintExactlyOne:
-			if err := rt.ExactlyOne(constraint.Flags...); err != nil {
-				return err
-			}
-		case ConstraintMutuallyExclusive:
-			if err := rt.MutuallyExclusive(constraint.Flags...); err != nil {
-				return err
-			}
-		case ConstraintCustom:
-			if strings.TrimSpace(constraint.Description) == "" {
-				return apperrors.NewInternal(fmt.Sprintf(
-					"shortcut %s %s 的 custom 约束缺少描述", s.Service, s.Command))
-			}
-		default:
-			return apperrors.NewInternal(fmt.Sprintf(
-				"shortcut %s %s 使用未知约束类型 %q", s.Service, s.Command, constraint.Kind))
-		}
-	}
-	return nil
-}
-
-// confirmRisk prompts before a write/high-risk-write shortcut unless --yes or
-// --dry-run is set. Read-only shortcuts never prompt. Returns false when the
-// user declines.
-func confirmRisk(rt *RuntimeContext, s Shortcut) bool {
-	if s.risk() == RiskRead || rt.DryRun() || rt.Yes() {
-		return true
-	}
-	fmt.Fprintf(rt.cmd.ErrOrStderr(), "即将执行 %s %s（%s），确认继续？(yes/no): ", s.Service, s.Command, s.risk())
-	reader := bufio.NewReader(os.Stdin)
-	answer, _ := reader.ReadString('\n')
-	answer = strings.TrimSpace(strings.ToLower(answer))
-	return answer == "yes" || answer == "y"
 }
 
 // globalBool reads a bool flag that may live on the command, inherited flags, or

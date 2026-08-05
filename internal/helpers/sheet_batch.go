@@ -336,11 +336,23 @@ func requireSheetMutationConfirmation(cmd *cobra.Command, operation, targetHint 
 
 const sheetMutationConfirmationGuardAnnotation = "dws.sheet.confirmation-guard"
 
-// protectSheetMutationCommand installs the command-local execution guard used
-// by Sheet leaves whose final Schema contract declares
-// confirmation=user_required. Keeping the annotation and the wrapper in the
-// same function makes the Schema-to-runtime coverage gate structural: a
-// command cannot advertise the marker without also running the guard.
+// protectSheetMutationCommand marks a Sheet leaf as covered by the Schema→runtime
+// confirmation gate and installs the Sheet --yes-only runtime guard.
+//
+// Sheet destructive commands intentionally do NOT honor interactive or piped
+// stdin answers (unlike corecmd.ConfirmSafety). Agent/CI must pass --yes.
+// When DeclareLeafMetadata already wrapped ConfirmSafety, this outer guard
+// still wraps outside that pipeline. Order: ContractValidate (if any) →
+// requireSheetMutationTargets (--node) → requireSheetMutationConfirmation →
+// inner contract wrap. Missing --node fails before the Sheet --yes-only
+// prompt. With --yes both confirmation layers bypass.
+//
+// Transitional dual gate: two runtime confirmation sources (outer Sheet
+// --yes-only + inner ConfirmSafety). Do not remove the outer guard without
+// proving ConfirmSafety alone keeps the --yes-only Sheet policy
+// (see TestSheetMutationGuardRejectsPipedYesEvenWithContractConfirmSafety and
+// the declare_leaf+sheet_marker assertion in
+// TestUserRequiredSafetyHomologyWithRuntimeGate).
 func protectSheetMutationCommand(cmd *cobra.Command, operation, targetHint string) {
 	if cmd == nil {
 		panic("protect sheet mutation command: nil command")
@@ -348,20 +360,40 @@ func protectSheetMutationCommand(cmd *cobra.Command, operation, targetHint strin
 	if cmd.Annotations != nil && cmd.Annotations[sheetMutationConfirmationGuardAnnotation] == "true" {
 		panic(fmt.Sprintf("protect sheet mutation command: duplicate guard on %q", cmd.CommandPath()))
 	}
-	originalRunE := cmd.RunE
-	if originalRunE == nil {
-		panic(fmt.Sprintf("protect sheet mutation command: %q has no RunE", cmd.CommandPath()))
-	}
 	if cmd.Annotations == nil {
 		cmd.Annotations = make(map[string]string)
 	}
 	cmd.Annotations[sheetMutationConfirmationGuardAnnotation] = "true"
+	originalRunE := cmd.RunE
+	if originalRunE == nil {
+		panic(fmt.Sprintf("protect sheet mutation command: %q has no RunE", cmd.CommandPath()))
+	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if validate := ContractValidate(cmd); validate != nil {
+			if err := validate(cmd, args); err != nil {
+				return err
+			}
+		}
+		// Local target checks before the Sheet --yes-only prompt (RFC §5.1).
+		// Most destructive Sheet leaves require --node (with URL/id aliases).
+		if err := requireSheetMutationTargets(cmd); err != nil {
+			return err
+		}
 		if err := requireSheetMutationConfirmation(cmd, operation, targetHint); err != nil {
 			return err
 		}
 		return originalRunE(cmd, args)
 	}
+}
+
+// requireSheetMutationTargets fails closed on missing document identity before
+// any confirmation prompt. Commands without a --node flag are skipped.
+func requireSheetMutationTargets(cmd *cobra.Command) error {
+	if cmd == nil || cmd.Flags().Lookup("node") == nil {
+		return nil
+	}
+	_, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+	return err
 }
 
 // HasSheetMutationConfirmationGuard reports whether a Sheet command is

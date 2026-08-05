@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -18,6 +20,51 @@ import (
 // MCP tools: list_files, get_file_info, download_file, create_folder,
 //            get_upload_info, commit_upload
 // ──────────────────────────────────────────────────────────
+
+func driveRenameBaseName(name, nodeType, currentExtension string) string {
+	trimmed := strings.TrimSpace(name)
+	switch strings.ToLower(strings.TrimSpace(nodeType)) {
+	case "folder", "dir", "directory":
+		return trimmed
+	}
+
+	extension := strings.TrimLeft(strings.TrimSpace(currentExtension), ".")
+	if extension == "" {
+		return trimmed
+	}
+	suffix := "." + extension
+	if len(trimmed) <= len(suffix) || !strings.EqualFold(trimmed[len(trimmed)-len(suffix):], suffix) {
+		return trimmed
+	}
+	return trimmed[:len(trimmed)-len(suffix)]
+}
+
+func resolveDriveRenameName(ctx context.Context, nodeID, name string) (string, error) {
+	fileID := nodeID
+	if parsedNodeID := extractNodeIDFromDocURL(nodeID); parsedNodeID != "" {
+		fileID = parsedNodeID
+	}
+	text, err := callMCPToolReturnTextOnServer(ctx, "drive", "get_file_info", map[string]any{
+		"fileId": fileID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("无法读取节点元数据，未执行重命名: %w", err)
+	}
+
+	var response map[string]any
+	if err := json.Unmarshal([]byte(text), &response); err != nil {
+		return "", fmt.Errorf("无法解析节点元数据，未执行重命名: %w", err)
+	}
+	result, ok := response["result"].(map[string]any)
+	if !ok {
+		return "", fmt.Errorf("节点元数据缺少 result，未执行重命名")
+	}
+	return driveRenameBaseName(
+		name,
+		firstStringField(result, "type", "nodeType", "fileType"),
+		firstStringField(result, "extension", "fileExtension", "ext"),
+	), nil
+}
 
 func runDriveUpload(cmd *cobra.Command, _ []string) error {
 	filePath := mustGetFlag(cmd, "file")
@@ -235,6 +282,20 @@ func parseDriveUploadInfo(text string) (resourceURL, uploadID string, headers ma
 }
 
 func newDriveCommand() *cobra.Command {
+	// Product-level Agent routing Decl (migrated from selection/drive.json
+	// products.drive). Catalog assembly stamps provenance contract_final.
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "drive",
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "管理钉盘及文档空间中的文件、目录、上传下载、回收站与公开发布",
+			UseWhen: []string{
+				"浏览、搜索、上传、下载或整理钉盘和文档空间文件时",
+			},
+			AvoidWhen: []string{
+				"需要读取或编辑在线文档正文时使用 doc；需要管理知识库空间或成员时使用 wiki",
+			},
+		},
+	})
 	driveCmd := &cobra.Command{
 		Use:   "drive",
 		Short: "钉盘文件管理",
@@ -257,9 +318,68 @@ func newDriveCommand() *cobra.Command {
   dws drive list --workspace <workspaceId>
   dws drive list --workspace <workspaceId> --folder <folderId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			pattern, _ := cmd.Flags().GetString("pattern")
+
+			depth, _ := cmd.Flags().GetInt("depth")
+
+			// --versions 模式：列出文件历史版本（仅普通文件）
+			// 先于 --depth 校验执行：versions 模式合法使用 --limit，
+			// 不应被「--limit 与 --depth 不兼容」的误导性报错拦截。
+			if cmd.Flags().Changed("versions") {
+				if cmd.Flags().Changed("depth") && depth > 1 {
+					return &CLIError{
+						Code:    CodeInvalidParam,
+						Message: "--versions 与 --depth 不能同时使用",
+					}
+				}
+				if pattern != "" {
+					return &CLIError{
+						Code:    CodeInvalidParam,
+						Message: "--versions 与 --pattern 不能同时使用",
+					}
+				}
+				nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+				if err != nil {
+					return err
+				}
+				toolArgs := map[string]any{"nodeId": nodeID}
+				if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
+					toolArgs["maxResults"] = v
+				}
+				if v := flagOrFallback(cmd, "cursor", "next-token", "page-token"); v != "" {
+					toolArgs["nextCursor"] = v
+				}
+				return callMCPToolOnServer("drive", "list_file_versions", toolArgs)
+			}
+
+			if cmd.Flags().Changed("depth") {
+				if err := validateDriveListDepth(cmd, depth); err != nil {
+					return err
+				}
+			}
+
 			// 如果指定了 --workspace，路由到文档空间（doc MCP server）
 			workspaceID := flagOrFallback(cmd, "workspace", "workspace-id")
 			if workspaceID != "" {
+				// depth>1 时 --pattern 放开（先递归后过滤）；--order-by/--space-id/--thumbnail
+				// 知识库无对应参数，静默忽略。
+				if depth > 1 {
+					quiet, _ := cmd.Flags().GetBool("quiet")
+					baseArgs := map[string]any{"workspaceId": workspaceID}
+					rootFolder := docFolderFlag(cmd, "node", "file-id")
+					if rootFolder != "" {
+						if err := validateDocFolderID(rootFolder); err != nil {
+							return err
+						}
+					}
+					return runDriveListDepth(cmd, newDocDepthRoute(), baseArgs, rootFolder, depth, pattern, quiet)
+				}
+				if pattern != "" {
+					return &CLIError{
+						Code:    CodeInvalidParam,
+						Message: "--pattern 仅适用于钉盘文件列表，不能与 --workspace 同时使用",
+					}
+				}
 				toolArgs := map[string]any{"workspaceId": workspaceID}
 				if folder := docFolderFlag(cmd, "node", "file-id"); folder != "" {
 					if err := validateDocFolderID(folder); err != nil {
@@ -274,6 +394,30 @@ func newDriveCommand() *cobra.Command {
 					toolArgs["pageToken"] = v
 				}
 				return callMCPToolOnServer("doc", "list_nodes", toolArgs)
+			}
+
+			if depth > 1 {
+				quiet, _ := cmd.Flags().GetBool("quiet")
+				baseArgs := map[string]any{}
+				if v, _ := cmd.Flags().GetString("space-id"); v != "" {
+					baseArgs["spaceId"] = v
+				}
+				if v, _ := cmd.Flags().GetString("order-by"); v != "" {
+					baseArgs["orderBy"] = v
+				}
+				if v, _ := cmd.Flags().GetString("order"); v != "" {
+					baseArgs["order"] = v
+				}
+				if v, _ := cmd.Flags().GetBool("thumbnail"); v {
+					baseArgs["withThumbnail"] = true
+				}
+				rootFolder := flagOrFallback(cmd, "folder", "parent-id")
+				if rootFolder != "" {
+					if err := validateDriveParentID(rootFolder); err != nil {
+						return err
+					}
+				}
+				return runDriveListDepth(cmd, newDrivePanDepthRoute(), baseArgs, rootFolder, depth, pattern, quiet)
 			}
 
 			// 默认路由：钉盘文件列表
@@ -314,6 +458,44 @@ func newDriveCommand() *cobra.Command {
 			return callMCPTool("list_files", argsMap)
 		},
 	}
+	DeclareLeafMetadata(driveListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "list_files",
+				CanonicalPath:  "drive.list_files",
+				CLIPath:        "drive list",
+				PrimaryCLIPath: "drive list",
+			},
+			Description: "获取文件/文件夹列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "The CLI command routes by --workspace between drive/list_files and doc/list_nodes, so the reviewed executable wrapper has no single direct MCP interface.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取文件/文件夹列表",
+				UseWhen: []string{
+					"用户要浏览「我的文件」/钉盘/网盘某目录下有哪些文件或文件夹时",
+					"已知父文件夹 dentryUuid，要列出其子项以便继续 download/copy/move 时",
+					"传 --workspace 时要列出文档空间/知识库根或子目录（与 wiki node list 场景重叠时，用户说钉盘/我的文件优先本命令）",
+				},
+				AvoidWhen: []string{
+					"只记得关键词、不知道所在目录时改用 dws drive search",
+					"明确要在某个知识库内按目录浏览且已有 workspaceId 时可用 dws wiki node list",
+					"要找最近打开/编辑过的文档改用 dws drive recent",
+				},
+				Examples: []string{
+					"dws drive list --limit 20 --format json",
+					"dws drive list --folder <dentryUuid> --limit 20 --format json",
+				},
+			},
+		},
+	})
 
 	driveInfoCmd := &cobra.Command{
 		Use:   "info",
@@ -335,6 +517,43 @@ func newDriveCommand() *cobra.Command {
 			return driveInfoWithDocFallback(fileID, argsMap)
 		},
 	}
+	DeclareLeafMetadata(driveInfoCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_file_info",
+				CanonicalPath:  "drive.get_file_info",
+				CLIPath:        "drive info",
+				PrimaryCLIPath: "drive info",
+			},
+			Description: "获取文件元数据信息",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "get_file_info"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取文件元数据信息",
+				UseWhen: []string{
+					"用户要查看钉盘文件/文件夹元信息（名称、类型、大小、路径、时间）时",
+					"准备读内容前需先判断 extension/是否在线文档，再路由到 doc read / sheet / download 时",
+				},
+				AvoidWhen: []string{
+					"要读在线文档正文改用 dws doc read（先本命令或 doc info 确认类型）",
+					"要下载普通文件改用 dws drive download",
+					"只要目录列表改用 dws drive list",
+				},
+				Examples: []string{"dws drive info --node <dentryUuid> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "fileId"},
+			},
+		},
+	})
 
 	driveDownloadCmd := &cobra.Command{
 		Use:   "download",
@@ -348,7 +567,8 @@ func newDriveCommand() *cobra.Command {
 --output 指定本地保存路径，可以是文件路径或目录。
 如果指定目录，文件名从下载 URL 中自动推断。`,
 		Example: `  dws drive download --node <dentryUuid> --output ./report.pdf
-  dws drive download --node <dentryUuid> --output ~/downloads/`,
+  dws drive download --node <dentryUuid> --output ~/downloads/
+  dws drive download --node <dentryUuid> --output ./big.zip --part-size 32MB --parallel 8`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fileID := flagOrFallback(cmd, "node", "file-id")
 			if fileID == "" {
@@ -364,6 +584,15 @@ func newDriveCommand() *cobra.Command {
 				argsMap["spaceId"] = v
 			}
 
+			// fail-fast：分片下载参数校验
+			dlOpts, err := driveDownloadOptionsFromFlags(cmd)
+			if err != nil {
+				return err
+			}
+			dlOpts.logf = func(format string, a ...any) {
+				deps.Out.PrintInfo(fmt.Sprintf(format, a...))
+			}
+
 			if deps.Caller.DryRun() {
 				deps.Out.PrintKeyValue("操作", "下载钉盘文件")
 				deps.Out.PrintKeyValue("文件ID", fileID)
@@ -371,7 +600,7 @@ func newDriveCommand() *cobra.Command {
 				return nil
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			// Step 1: 获取下载 URL 和签名请求头
 			deps.Out.PrintInfo("[1/2] 获取下载链接...")
@@ -380,7 +609,7 @@ func newDriveCommand() *cobra.Command {
 				return err
 			}
 
-			resourceURL, dlHeaders, err := parseDownloadInfo(text)
+			resourceURL, dlHeaders, err := parseDriveDownloadInfo(text)
 			if err != nil {
 				return err
 			}
@@ -395,9 +624,34 @@ func newDriveCommand() *cobra.Command {
 				outputPath = filepath.Join(outputPath, filename)
 			}
 
-			// Step 2: HTTP GET 下载文件
+			// Step 2: 分片下载（自动分派 + 401/403 凭证刷新重试）
 			deps.Out.PrintInfo(fmt.Sprintf("[2/2] 下载文件到 %s ...", outputPath))
-			if err := httpGetFile(ctx, resourceURL, dlHeaders, outputPath); err != nil {
+			dlOpts.knownSize = parseDownloadFileSize(text)
+			dlOpts.nodeID = fileID
+			dlOpts.version = parseDownloadFileVersion(text)
+			fetchCred := func(fctx context.Context) (string, map[string]string, int, error) {
+				t, ferr := callMCPToolReturnText(fctx, "download_file", argsMap)
+				if ferr != nil {
+					return "", nil, 0, ferr
+				}
+				u, h, perr := parseDriveDownloadInfo(t)
+				if perr != nil {
+					return "", nil, 0, perr
+				}
+				return u, h, parseDownloadFileVersion(t), nil
+			}
+			if err := driveTransferDownload(ctx, fetchCred, resourceURL, dlHeaders, outputPath, dlOpts); err != nil {
+				if errors.Is(err, context.Canceled) || ctx.Err() == context.Canceled {
+					partSize, _ := cmd.Flags().GetString("part-size")
+					noResume, _ := cmd.Flags().GetBool("no-resume")
+					if partSize != "" && !noResume {
+						fmt.Fprintf(cmd.ErrOrStderr(), "\n[INFO] 下载中断，已保存断点（可重新执行相同命令续传）\n")
+					} else {
+						fmt.Fprintf(cmd.ErrOrStderr(), "\n[INFO] 下载中断\n")
+					}
+					cmd.SilenceErrors = true
+					return err
+				}
 				return err
 			}
 
@@ -405,6 +659,193 @@ func newDriveCommand() *cobra.Command {
 			return nil
 		},
 	}
+	DeclareLeafMetadata(driveDownloadCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "download_file",
+				CanonicalPath:  "drive.download_file",
+				CLIPath:        "drive download",
+				PrimaryCLIPath: "drive download",
+			},
+			Description: "下载钉盘或文档空间文件到本地",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "download_file"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "下载钉盘或文档空间文件到本地",
+				UseWhen: []string{
+					"用户要把钉盘普通文件（PDF/图片/Office 等非在线文档）下载到本地路径时",
+					"已确认 contentType 非 ALIDOC，需要落盘本地查看时",
+				},
+				AvoidWhen: []string{
+					"在线文档(adoc)要导出为 Word/docx 改用 dws doc export，不要用 download 代替导出",
+					"只要临时下载链接语义且走文档附件块时用 dws doc media download",
+					"未指定 --output 不要调用（CLI 必填）",
+				},
+				Examples: []string{
+					"dws drive download --node <dentryUuid> --output ./report.pdf --format json",
+					"dws drive download --node <dentryUuid> --output ~/downloads/ --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "fileId"},
+				// CLI-local multipart transfer knobs (not MCP properties; see mapping exclusions).
+				{Name: "part-size", Description: "分片下载的分片大小（如 8MB/16MB/1GB）"},
+				{Name: "parallel", Description: "分片下载并发数（1-8）"},
+				{Name: "no-resume", Description: "关闭断点续传"},
+			},
+		},
+	})
+
+	driveDownloadVersionCmd := &cobra.Command{
+		Use:   "download-version",
+		Short: "下载文件历史版本到本地",
+		Long: `下载钉盘文件的指定历史版本到本地（两步下载流程）。
+
+仅适用于普通文件（如 pdf、docx、xlsx、png 等）：
+  钉钉在线文档（adoc）请使用 dws doc version 系列命令
+  钉钉在线表格（axls）请使用 dws sheet version 系列命令
+
+流程:
+  1. 获取历史版本下载 URL 和签名请求头 (download_file_version)
+  2. HTTP GET 下载文件二进制内容到本地
+
+版本号从 dws drive list --node <dentryUuid> --versions 获取。`,
+		Example: `  dws drive download-version --node <dentryUuid> --version 3 --output ./report_v3.pdf
+  dws drive download-version --node <dentryUuid> --version 3 --output ~/downloads/`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fileID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			versionNum, _ := cmd.Flags().GetInt("version")
+			if versionNum <= 0 {
+				return fmt.Errorf("--version 必须为正整数，当前值: %d（版本号从 drive list --versions 获取）", versionNum)
+			}
+			outputPath, _ := cmd.Flags().GetString("output")
+			if outputPath == "" {
+				return fmt.Errorf("flag --output is required")
+			}
+
+			// fail-fast：分片下载参数校验
+			dlOpts, err := driveDownloadOptionsFromFlags(cmd)
+			if err != nil {
+				return err
+			}
+			dlOpts.logf = func(format string, a ...any) {
+				deps.Out.PrintInfo(fmt.Sprintf(format, a...))
+			}
+
+			if deps.Caller.DryRun() {
+				deps.Out.PrintKeyValue("操作", "下载文件历史版本")
+				deps.Out.PrintKeyValue("节点ID", fileID)
+				deps.Out.PrintKeyValue("版本号", fmt.Sprintf("%d", versionNum))
+				deps.Out.PrintKeyValue("输出", outputPath)
+				return nil
+			}
+
+			ctx := cmd.Context()
+			deps.Out.PrintInfo("[1/2] 获取历史版本下载链接...")
+			dlArgsMap := map[string]any{
+				"nodeId":  fileID,
+				"version": versionNum,
+			}
+			text, err := callMCPToolReturnTextOnServer(ctx, "drive", "download_file_version", dlArgsMap)
+			if err != nil {
+				return err
+			}
+			resourceURL, dlHeaders, err := parseDriveDownloadInfo(text)
+			if err != nil {
+				return err
+			}
+			if fi, statErr := os.Stat(outputPath); statErr == nil && fi.IsDir() {
+				filename := extractFileNameFromResponse(text)
+				if filename == "" {
+					filename = inferFilename(resourceURL)
+				}
+				outputPath = filepath.Join(outputPath, filename)
+			}
+			deps.Out.PrintInfo(fmt.Sprintf("[2/2] 下载文件到 %s ...", outputPath))
+			dlOpts.knownSize = parseDownloadFileSize(text)
+			dlOpts.nodeID = fileID
+			dlOpts.version = versionNum
+			fetchCred := func(fctx context.Context) (string, map[string]string, int, error) {
+				t, ferr := callMCPToolReturnTextOnServer(fctx, "drive", "download_file_version", dlArgsMap)
+				if ferr != nil {
+					return "", nil, 0, ferr
+				}
+				u, h, perr := parseDriveDownloadInfo(t)
+				if perr != nil {
+					return "", nil, 0, perr
+				}
+				return u, h, parseDownloadFileVersion(t), nil
+			}
+			if err := driveTransferDownload(ctx, fetchCred, resourceURL, dlHeaders, outputPath, dlOpts); err != nil {
+				if errors.Is(err, context.Canceled) || ctx.Err() == context.Canceled {
+					partSize, _ := cmd.Flags().GetString("part-size")
+					noResume, _ := cmd.Flags().GetBool("no-resume")
+					if partSize != "" && !noResume {
+						fmt.Fprintf(cmd.ErrOrStderr(), "\n[INFO] 下载中断，已保存断点（可重新执行相同命令续传）\n")
+					} else {
+						fmt.Fprintf(cmd.ErrOrStderr(), "\n[INFO] 下载中断\n")
+					}
+					cmd.SilenceErrors = true
+					return err
+				}
+				return err
+			}
+			deps.Out.PrintInfo(fmt.Sprintf("下载完成: %s", outputPath))
+			return nil
+		},
+	}
+	DeclareLeafMetadata(driveDownloadVersionCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "download_file_version",
+				CanonicalPath:  "drive.download_file_version",
+				CLIPath:        "drive download-version",
+				PrimaryCLIPath: "drive download-version",
+			},
+			Description: "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "下载钉盘普通文件的指定历史版本到本地（两步下载：取签名 URL 后 HTTP GET）",
+				UseWhen: []string{
+					"用户要下载文件的历史版本/旧版本",
+					"版本号已通过 drive list --versions 获取",
+				},
+				AvoidWhen: []string{
+					"下载最新版本用 drive download",
+					"在线文档（adoc）历史版本用 doc version 系列命令",
+					"在线表格（axls）历史版本用 sheet version 系列命令",
+				},
+				Examples: []string{"dws drive download-version --node <dentryUuid> --version 3 --output ./report_v3.pdf"},
+			},
+			Parameters: []contract.ParamDecl{
+				// CLI-local multipart transfer knobs (not interface properties; see mapping exclusions).
+				{Name: "part-size", Description: "分片下载的分片大小（如 8MB/16MB/1GB）"},
+				{Name: "parallel", Description: "分片下载并发数（1-8）"},
+				{Name: "no-resume", Description: "关闭断点续传"},
+			},
+		},
+	})
 
 	driveMkdirCmd := &cobra.Command{
 		Use:   "mkdir",
@@ -428,6 +869,45 @@ func newDriveCommand() *cobra.Command {
 			return callMCPTool("create_folder", argsMap)
 		},
 	}
+	DeclareLeafMetadata(driveMkdirCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "create_folder",
+				CanonicalPath:  "drive.create_folder",
+				CLIPath:        "drive mkdir",
+				PrimaryCLIPath: "drive mkdir",
+			},
+			Description: "创建文件夹",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "create_folder"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "创建文件夹",
+				UseWhen: []string{
+					"用户要在钉盘/「我的文件」下新建普通文件夹时",
+					"已知父目录 dentryUuid，要在其下建子目录时",
+				},
+				AvoidWhen: []string{
+					"要在知识库内建文件夹改用 dws wiki node create --type folder --workspace <id>",
+					"要创建在线文档(adoc)改用 dws doc create 或 wiki node create --type adoc",
+				},
+				Examples: []string{
+					"dws drive mkdir --name \"项目资料\" --format json",
+					"dws drive mkdir --name \"子目录\" --folder <dentryUuid> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "parentId"},
+			},
+		},
+	})
 
 	driveUploadInfoCmd := &cobra.Command{
 		Use:   "upload-info",
@@ -461,6 +941,39 @@ func newDriveCommand() *cobra.Command {
 			return callMCPTool("get_upload_info", argsMap)
 		},
 	}
+	DeclareLeafMetadata(driveUploadInfoCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_upload_info",
+				CanonicalPath:  "drive.get_upload_info",
+				CLIPath:        "drive upload-info",
+				PrimaryCLIPath: "drive upload-info",
+			},
+			Description: "获取文件上传信息",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "get_upload_info"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取文件上传信息",
+				UseWhen:      []string{"仅当无法使用 drive upload 一条命令、需要自定义流式上传时，获取 OSS 预签名上传凭证"},
+				AvoidWhen: []string{
+					"普通上传请直接用 dws drive upload，不要手动走三步",
+					"拿到凭证后须 HTTP PUT 再 dws drive commit；本命令本身不完成入库",
+				},
+				Examples: []string{"dws drive upload-info --file-name \"report.pdf\" --file-size 102400 --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "parentId"},
+			},
+		},
+	})
 
 	driveCommitCmd := &cobra.Command{
 		Use:     "commit",
@@ -491,6 +1004,39 @@ func newDriveCommand() *cobra.Command {
 			return callMCPTool("commit_upload", argsMap)
 		},
 	}
+	DeclareLeafMetadata(driveCommitCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "commit_upload",
+				CanonicalPath:  "drive.commit_upload",
+				CLIPath:        "drive commit",
+				PrimaryCLIPath: "drive commit",
+			},
+			Description: "提交文件上传",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "commit_upload"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "提交文件上传",
+				UseWhen:      []string{"手动三步上传的最后一步：已 PUT 到 OSS，用 upload-info 返回的 uploadId 提交入库时"},
+				AvoidWhen: []string{
+					"普通上传请用 dws drive upload",
+					"尚未 PUT 成功或 uploadId 过期时不要 commit；需重新 upload-info",
+				},
+				Examples: []string{"dws drive commit --file-name \"report.pdf\" --file-size 102400 --upload-id <UPLOAD_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "parentId"},
+			},
+		},
+	})
 
 	driveListCmd.Flags().Int("limit", 20, "每页返回数量，默认 20，最大 50")
 	driveListCmd.Flags().Int("max", 0, "--limit 的别名（向后兼容）")
@@ -502,6 +1048,11 @@ func newDriveCommand() *cobra.Command {
 	driveListCmd.Flags().String("order-by", "", "排序字段: createTime|modifyTime|name (可选，仅钉盘)")
 	driveListCmd.Flags().String("order", "", "排序方向: asc|desc，默认 desc (可选，仅钉盘)")
 	driveListCmd.Flags().Bool("thumbnail", false, "是否返回缩略图信息 (可选，仅钉盘)")
+	driveListCmd.Flags().Bool("versions", false, "列出文件历史版本而非文件列表 (需配合 --node)")
+	driveListCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (--versions 模式下必填)")
+	driveListCmd.Flags().String("pattern", "", "按名称通配过滤结果，如 \"*日报*\" (客户端过滤) (可选)")
+	driveListCmd.Flags().Int("depth", 1, "递归列出子目录层级，默认 1(仅当前层)，最大 5；与 --cursor/--limit 互斥；与 --workspace 组合时走知识库递归 (可选)")
+	driveListCmd.Flags().Bool("quiet", false, "关闭递归进度输出(stderr)，不影响 stdout JSON (仅 --depth>1 时有效) (可选)")
 
 	driveInfoCmd.Flags().String("node", "", "节点 ID (dentryUuid) (必填)")
 	driveInfoCmd.Flags().String("space-id", "", "节点所属空间 ID (可选)")
@@ -509,6 +1060,20 @@ func newDriveCommand() *cobra.Command {
 	driveDownloadCmd.Flags().String("node", "", "文件 ID (dentryUuid) (必填)")
 	driveDownloadCmd.Flags().String("space-id", "", "文件所属空间 ID (可选)")
 	driveDownloadCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+	driveDownloadCmd.Flags().String("part-size", "16MB", "分片下载的分片大小，如 8MB/16MB/1GB，范围 1MB-1GB (可选)")
+	driveDownloadCmd.Flags().Int("parallel", 4, "分片下载并发数，范围 1-8 (可选)")
+	driveDownloadCmd.Flags().Bool("no-resume", false, "关闭断点续传 (可选)")
+
+	driveDownloadVersionCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (必填)")
+	driveDownloadVersionCmd.Flags().Int("version", 0, "历史版本号 (必填，正整数，从 drive list --versions 获取)")
+	driveDownloadVersionCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+	driveDownloadVersionCmd.Flags().String("part-size", "16MB", "分片下载的分片大小，如 8MB/16MB/1GB，范围 1MB-1GB (可选)")
+	driveDownloadVersionCmd.Flags().Int("parallel", 4, "分片下载并发数，范围 1-8 (可选)")
+	driveDownloadVersionCmd.Flags().Bool("no-resume", false, "关闭断点续传 (可选)")
+	for _, alias := range []string{"url", "id", "node-id", "doc-id", "file-id"} {
+		driveDownloadVersionCmd.Flags().String(alias, "", "")
+		_ = driveDownloadVersionCmd.Flags().MarkHidden(alias)
+	}
 
 	driveMkdirCmd.Flags().String("name", "", "文件夹名称，最长 50 字符 (必填)")
 	driveMkdirCmd.Flags().String("space-id", "", "目标空间 ID，不传则使用「我的文件」 (可选)")
@@ -550,6 +1115,52 @@ func newDriveCommand() *cobra.Command {
   dws drive upload --file ./data.xlsx --workspace <workspaceId> --convert`,
 		RunE: runDriveUpload,
 	}
+	DeclareLeafMetadata(driveUploadCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "upload",
+				CanonicalPath:  "drive.upload",
+				CLIPath:        "drive upload",
+				PrimaryCLIPath: "drive upload",
+			},
+			Description: "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "上传本地文件到钉盘或文档空间，或按节点 ID 确认覆盖已有文件",
+				UseWhen: []string{
+					"用户要把本地文件上传到钉盘/我的文件（首选一条命令自动完成凭证+PUT+提交）时",
+					"上传到知识库/文档空间时加 --workspace；需要转在线文档时加 --convert",
+					"用户明确要求用本地文件替换已有钉盘/文档空间文件时传 --node；该模式会覆盖远端内容并要求确认",
+				},
+				AvoidWhen: []string{
+					"常规场景不要拆成 upload-info + 手动 PUT + commit；仅自定义流式上传才用三步",
+					"要把文件作为文档正文附件插入改用 dws doc media insert",
+					"用户明确说文档空间且走 doc 兼容入口时可用 dws doc upload，默认仍推荐本命令",
+					"用户没有明确同意替换目标文件时不要使用 --node；新建上传应使用 --folder 或目标根目录",
+				},
+				Examples: []string{
+					"dws drive upload --file ./report.pdf --format json",
+					"dws drive upload --file ./README.md --node <dentryUuid> --format json",
+				},
+			},
+			// Composite multi-step leaf (get_upload_info → PUT → commit_upload):
+			// no single RPCName / interface_ref. Keep --node→nodeId on this leaf
+			// only; do not hang it on upload-info or commit.
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(false)},
+			},
+		},
+	})
 	driveUploadCmd.Flags().String("file", "", "本地文件路径 (必填)")
 	driveUploadCmd.Flags().String("file-name", "", "文件显示名称 (默认使用文件名)")
 	driveUploadCmd.Flags().String("space-id", "", "目标钉盘空间 ID，不传则使用「我的文件」 (可选)")
@@ -591,6 +1202,46 @@ func newDriveCommand() *cobra.Command {
 			return callMCPTool("list_spaces", argsMap)
 		},
 	}
+	DeclareLeafMetadata(driveListSpacesCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "list_spaces",
+				CanonicalPath:  "drive.list_spaces",
+				CLIPath:        "drive list-spaces",
+				PrimaryCLIPath: "drive list-spaces",
+			},
+			Description: "兼容查询钉盘空间列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "list_spaces"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "兼容查询钉盘空间列表",
+				UseWhen:      []string{"兼容入口：枚举钉盘企业空间或「我的文件」空间以拿 spaceId/rootFolderId 时"},
+				AvoidWhen: []string{
+					"推荐改用 dws wiki space list --type orgSpace 或 --type mySpace（本命令已 deprecated）",
+					"要列知识库列表改用 dws wiki space list（默认 orgWikiSpace）",
+				},
+				Examples: []string{
+					"dws drive list-spaces --space-type orgSpace --limit 20 --format json",
+					"dws drive list-spaces --space-type mySpace --format json",
+				},
+			},
+			// MCP pins maxResults as number while the Cobra flag is integer. Publishing
+			// interface_type=number is a merge-base contract change; declare integer so
+			// resolution equals cobra_flag_type and omits a separate interface_type field.
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "maxResults", InterfaceType: "integer"},
+				{Name: "cursor", Property: "nextToken"},
+			},
+		},
+	})
 	driveListSpacesCmd.Flags().Int("limit", 20, "每页返回数量 (默认 20，最大 50)，仅 spaceType 为 orgSpace 时有效")
 	driveListSpacesCmd.Flags().Int("max", 0, "--limit 的别名（向后兼容）")
 	_ = driveListSpacesCmd.Flags().MarkHidden("max")
@@ -718,6 +1369,55 @@ func newDriveCommand() *cobra.Command {
 			return nil
 		},
 	}
+	DeclareLeafMetadata(driveSearchCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "search_files",
+				CanonicalPath:  "drive.search_files",
+				CLIPath:        "drive search",
+				PrimaryCLIPath: "drive search",
+			},
+			Description: "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "drive", RPCName: "search_files"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "全局搜索文件，默认同时搜索钉盘和文档空间，合并返回结果",
+				UseWhen: []string{
+					"用户要在钉盘/我的文件里按关键词找文件、文件夹或团队空间，且不知道具体路径时",
+					"需要按扩展名/文件类型/创建者/时间缩小范围的全局搜索（默认 target=all 聚合钉盘+文档空间）",
+					"明确搜团队空间名以拿 spaceId/rootFolderId 时用 --target space",
+				},
+				AvoidWhen: []string{
+					"已明确知识库 workspaceId、只在该库内搜时改用 dws wiki node search --workspace <id>",
+					"已知目录、只需浏览子项时改用 dws drive list，不要用搜索代替目录遍历",
+					"首页未命中时优先改关键词/过滤条件，而不是反复翻页",
+				},
+				Examples: []string{
+					"dws drive search --query \"季度汇报\" --format json",
+					"dws drive search --query \"合同\" --target file --extensions pdf,docx --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "created-from", Property: "createdTimeFrom"},
+				{Name: "created-to", Property: "createdTimeTo"},
+				{Name: "creator-uids", Property: "creatorUserIds"},
+				{Name: "cursor", Property: "pageToken"},
+				{Name: "limit", Property: "pageSize"},
+				{Name: "modified-from", Property: "modifiedTimeFrom"},
+				{Name: "modified-to", Property: "modifiedTimeTo"},
+				{Name: "query", Property: "keyword"},
+				{Name: "target", Property: "searchTarget"},
+			},
+		},
+	})
 	driveSearchCmd.Flags().String("query", "", "搜索关键词 (必填)")
 	driveSearchCmd.Flags().String("keyword", "", "--query 的别名（向后兼容）")
 	_ = driveSearchCmd.Flags().MarkHidden("keyword")
@@ -752,9 +1452,6 @@ func newDriveCommand() *cobra.Command {
 			if fileID == "" {
 				return fmt.Errorf("flag --node is required")
 			}
-			if !confirmDelete("钉盘节点", fileID) {
-				return nil
-			}
 			// 同 dws doc delete：delete_document 工具仅注册在 doc MCP server 上，
 			// 钉盘节点（fileId）与文档节点共用同一套 dentryUuid 体系，因此显式
 			// 路由到 doc server 才能找到该工具。若使用 callMCPTool 让 resolveProductID
@@ -764,6 +1461,40 @@ func newDriveCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(driveDeleteCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "delete_document",
+				CanonicalPath:  "drive.delete_document",
+				CLIPath:        "drive delete",
+				PrimaryCLIPath: "drive delete",
+			},
+			Description: "将钉盘中的文件或文件夹移入回收站",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "delete_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将钉盘中的文件或文件夹移入回收站",
+				UseWhen:      []string{"用户明确要求把钉盘/文档空间中的文件或文件夹移入回收站，且已确认目标节点时"},
+				AvoidWhen: []string{
+					"用户未确认删除目标或只是想移走位置时不要删；搬迁用 dws drive move",
+					"要删整个知识库改用 dws wiki space delete",
+					"要永久删评论改用 dws doc comment delete",
+				},
+				Examples: []string{"dws drive delete --node <dentryUuid> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 	driveDeleteCmd.Flags().String("node", "", "文件/文件夹 ID (dentryUuid)，即 drive list 返回的 fileId (必填)")
 
 	// ── 文档空间代理命令（从 doc 迁入，显式路由到 doc MCP server）──
@@ -796,6 +1527,52 @@ func newDriveCommand() *cobra.Command {
 			return callMCPToolOnServer("doc", "copy_document", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(driveCopyCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "copy_document",
+				CanonicalPath:  "drive.copy_document",
+				CLIPath:        "drive copy",
+				PrimaryCLIPath: "drive copy",
+			},
+			Description: "将文件或文档复制到目标文件夹或知识库（保留原位置；默认「我的文档」）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "copy_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将文件或文档复制到目标文件夹或知识库（保留原位置；默认「我的文档」）",
+				UseWhen: []string{
+					"用户要复制/拷贝一份文件或文档到新位置，且原位置仍需保留副本时（copy≠move）",
+					"目标是指定文件夹：传 --folder <目标文件夹 dentryUuid/fileId>",
+					"目标是知识库根目录：只传 --workspace <workspaceId 或知识库 URL>，不传 --folder",
+					"用户未指定目标时：默认落到当前组织「我的文档」；若需钉盘「我的文件」根目录，先 wiki space list --type mySpace 取 rootFolderId 再 --folder",
+					"跨钉盘 space 复制到子文件夹：先 list 取目标文件夹 fileId，再 --folder 传入",
+				},
+				AvoidWhen: []string{
+					"用户意图是搬走/迁移且原位置不再保留时改用 dws drive move（move 需更高源权限）",
+					"只要快捷方式入口、不要独立副本时改用 dws drive shortcut",
+					"已在明确知识库上下文内复制节点且需带 --workspace/--node 的 wiki 入口时可用 dws wiki node copy；跨产品默认用本命令",
+					"目标文件夹或知识库尚未确认时不要复制",
+				},
+				Examples: []string{
+					"dws drive copy --node <源dentryUuid> --folder <目标文件夹fileId> --format json",
+					"dws drive copy --node <源dentryUuid> --workspace <TARGET_WS_ID> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 	driveCopyCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
 	driveCopyCmd.Flags().String("folder", "", "目标文件夹 nodeId")
 	driveCopyCmd.Flags().String("workspace", "", "目标知识库 ID")
@@ -827,6 +1604,49 @@ func newDriveCommand() *cobra.Command {
 			return callMCPToolOnServer("doc", "move_document", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(driveMoveCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "move_document",
+				CanonicalPath:  "drive.move_document",
+				CLIPath:        "drive move",
+				PrimaryCLIPath: "drive move",
+			},
+			Description: "将文件或文档移动到目标文件夹或知识库（原位置不再保留）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "move_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将文件或文档移动到目标文件夹或知识库（原位置不再保留）",
+				UseWhen: []string{
+					"用户要移动/搬走文件或文档到新位置，且原位置不再保留时（move≠copy）",
+					"目标文件夹用 --folder；目标知识库根用 --workspace；都不传则默认「我的文档」",
+					"移动到其他钉盘 space 根目录时传目标 space 的 rootFolderId 到 --folder（通常不传 --workspace）",
+				},
+				AvoidWhen: []string{
+					"需要保留原位置副本时改用 dws drive copy",
+					"目标未确认或用户只是想复制时不要 move",
+					"知识库内节点移动且走 wiki 入口时可用 dws wiki node move",
+				},
+				Examples: []string{
+					"dws drive move --node <源dentryUuid> --folder <目标文件夹fileId> --format json",
+					"dws drive move --node <源dentryUuid> --workspace <TARGET_WS_ID> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 	driveMoveCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
 	driveMoveCmd.Flags().String("folder", "", "目标文件夹 nodeId")
 	driveMoveCmd.Flags().String("workspace", "", "目标知识库 ID")
@@ -834,7 +1654,9 @@ func newDriveCommand() *cobra.Command {
 	driveRenameCmd := &cobra.Command{
 		Use:   "rename",
 		Short: "重命名文件/文档",
-		Long: `修改文档空间中文档或文件的名称。
+		Long: `修改文档空间中文档、文件或文件夹的名称。
+实际执行前会读取节点类型和当前扩展名：文件的新名称仅在末尾扩展名与当前扩展名一致时去掉一层，
+避免 report.txt.txt；文件夹和扩展名不匹配的名称保持不变。dry-run 不读取远端元数据，因此保留输入名称。
 
 权限要求: 对文档有"编辑"权限。`,
 		Example: `  dws drive rename --node DOC_ID --name "新名称"`,
@@ -846,14 +1668,58 @@ func newDriveCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			newName := flagOrFallback(cmd, "name", "title")
+			if !commandDryRun(cmd) {
+				newName, err = resolveDriveRenameName(cmd.Context(), nodeID, newName)
+				if err != nil {
+					return err
+				}
+			}
 			return callMCPToolOnServer("doc", "rename_document", map[string]any{
 				"nodeId":  nodeID,
-				"newName": flagOrFallback(cmd, "name", "title"),
+				"newName": newName,
 			})
 		},
 	}
+	DeclareLeafMetadata(driveRenameCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "rename_document",
+				CanonicalPath:  "drive.rename_document",
+				CLIPath:        "drive rename",
+				PrimaryCLIPath: "drive rename",
+			},
+			Description: "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "rename_document"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "安全重命名文档空间中的文档、文件或文件夹，并按节点真实扩展名避免双后缀",
+				UseWhen:      []string{"用户要重命名钉盘/文档空间中的文件、文档或文件夹时；实际执行会读取节点类型和当前扩展名，仅去掉完全匹配的一层后缀"},
+				AvoidWhen: []string{
+					"要改正文里的标题/章节 H1 改用 dws doc block update，不要用 rename",
+					"只要复制或移动改用 copy/move",
+					"dry-run 不读取节点元数据，输出名称尚未做基于当前扩展名的规范化",
+				},
+				Examples: []string{"dws drive rename --node <ID> --name \"新名称\" --format json"},
+			},
+			// Shared RPC rename_document with doc rename; keep this description
+			// on the drive leaf only (doc rename does not strip extensions).
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Property: "newName", Description: "新显示名称；实际执行前读取节点类型与当前扩展名，仅对非文件夹且末尾后缀与当前扩展名一致的名称去掉一层，避免双扩展名"},
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 	driveRenameCmd.Flags().String("node", "", "文档/文件 ID 或 URL (必填)")
-	driveRenameCmd.Flags().String("name", "", "新名称 (必填)")
+	driveRenameCmd.Flags().String("name", "", "新名称 (必填；实际执行时仅去掉与节点当前扩展名完全匹配的一层后缀)")
 
 	driveStatsCmd := &cobra.Command{
 		Use:   "stats",
@@ -871,6 +1737,39 @@ func newDriveCommand() *cobra.Command {
 			return callMCPToolOnServer("drive", "get_node_stats", map[string]any{"nodeId": nodeID})
 		},
 	}
+	DeclareLeafMetadata(driveStatsCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_node_stats",
+				CanonicalPath:  "drive.get_node_stats",
+				CLIPath:        "drive stats",
+				PrimaryCLIPath: "drive stats",
+			},
+			Description: "读取指定钉盘或文档空间节点的阅读、编辑、评论、点赞、预览与下载等统计。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "读取指定钉盘或文档空间节点的阅读、编辑、评论、点赞、预览与下载等统计。",
+				UseWhen:      []string{"用户要查看节点阅读/编辑/评论/点赞/预览/下载等统计维度时"},
+				AvoidWhen: []string{
+					"要改文件内容或权限不要用本命令；本命令只读",
+					"只要元信息（名称/类型）改用 dws drive info 或 dws doc info",
+				},
+				Examples: []string{"dws drive stats --node <NODE_ID_OR_URL> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+			},
+		},
+	})
 	driveStatsCmd.Flags().String("node", "", "节点 ID 或文档 URL (必填)")
 
 	driveShortcutCmd := &cobra.Command{
@@ -901,6 +1800,44 @@ func newDriveCommand() *cobra.Command {
 			return callMCPToolOnServer("drive", "create_shortcut", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(driveShortcutCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "create_shortcut",
+				CanonicalPath:  "drive.create_shortcut",
+				CLIPath:        "drive shortcut",
+				PrimaryCLIPath: "drive shortcut",
+			},
+			Description: "为钉盘或文档空间中的现有节点创建快捷方式。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "为钉盘或文档空间中的现有节点创建快捷方式。",
+				UseWhen:      []string{"用户要给已有节点建快捷方式/软链接到目标文件夹或知识库时"},
+				AvoidWhen: []string{
+					"要复制一份独立副本改用 dws drive copy（copy≠shortcut）",
+					"要移动原文件改用 dws drive move",
+				},
+				Examples: []string{
+					"dws drive shortcut --node <SOURCE_NODE> --format json",
+					"dws drive shortcut --node <SOURCE_NODE> --folder <TARGET_FOLDER> --format json",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "folder", Property: "targetFolderId"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 	driveShortcutCmd.Flags().String("node", "", "源节点 ID 或文档 URL (必填)")
 	driveShortcutCmd.Flags().String("folder", "", "目标文件夹 nodeId (可选)")
 	driveShortcutCmd.Flags().String("workspace", "", "目标知识库 ID (可选)")
@@ -946,6 +1883,46 @@ func newDriveCommand() *cobra.Command {
 			return callMCPToolOnServer("doc", "add_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(drivePermAddCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "add_permission",
+				CanonicalPath:  "drive.add_permission",
+				CLIPath:        "drive permission add",
+				PrimaryCLIPath: "drive permission add",
+			},
+			Description: "为文档空间节点添加协作成员并授予指定角色",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "add_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "为文档空间节点添加协作成员并授予指定角色",
+				UseWhen: []string{
+					"给单篇文档/文件夹/文件做节点级授权（USER + 角色 MANAGER/EDITOR/DOWNLOADER/READER）时",
+					"用户说把某篇文档分享给某人看/可编辑时（含「我的文档」下的节点）",
+				},
+				AvoidWhen: []string{
+					"给整个知识库加成员改用 dws wiki member add（「我的文档」不支持容器成员）",
+					"只查已有权限改用 dws drive permission list",
+					"改角色/移除分别用 permission update / remove",
+				},
+				Examples: []string{"dws drive permission add --node <ID> --users uid1,uid2 --role READER --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 	drivePermAddCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
 	drivePermAddCmd.Flags().String("users", "", "用户 userId 列表，逗号分隔 (必填)")
 	drivePermAddCmd.Flags().String("user", "", "")
@@ -983,6 +1960,42 @@ func newDriveCommand() *cobra.Command {
 			return callMCPToolOnServer("doc", "update_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(drivePermUpdateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "permission_update",
+				CanonicalPath:  "drive.permission_update",
+				CLIPath:        "drive permission update",
+				PrimaryCLIPath: "drive permission update",
+			},
+			Description: "更新文档空间节点已有协作者的权限角色",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "update_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "更新文档空间节点已有协作者的权限角色",
+				UseWhen:      []string{"调整已有节点成员角色（如 READER→EDITOR）时"},
+				AvoidWhen: []string{
+					"成员尚无权限时改用 permission add",
+					"要移除访问改用 permission remove",
+				},
+				Examples: []string{"dws drive permission update --node <ID> --users uid1 --role EDITOR --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "role", Property: "roleId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 	drivePermUpdateCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
 	drivePermUpdateCmd.Flags().String("users", "", "用户 userId 列表，逗号分隔 (必填)")
 	drivePermUpdateCmd.Flags().String("user", "", "")
@@ -1019,6 +2032,42 @@ func newDriveCommand() *cobra.Command {
 			return callMCPToolOnServer("doc", "list_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(drivePermListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "list_permission",
+				CanonicalPath:  "drive.list_permission",
+				CLIPath:        "drive permission list",
+				PrimaryCLIPath: "drive permission list",
+			},
+			Description: "查询文档空间节点的协作者列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "list_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询文档空间节点的协作者列表",
+				UseWhen:      []string{"查看某文档/文件夹节点当前有哪些成员及角色时"},
+				AvoidWhen: []string{
+					"要新增/修改/移除权限分别用 permission add/update/remove",
+					"查知识库容器成员改用 dws wiki member list",
+				},
+				Examples: []string{"dws drive permission list --node <ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "filter-role", Property: "filterRoleIds"},
+				{Name: "limit", Property: "maxResults"},
+				{Name: "node", Property: "nodeId"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 	drivePermListCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
 	drivePermListCmd.Flags().Int("limit", 30, "返回成员数上限，默认 30，最大 200")
 	drivePermListCmd.Flags().String("filter-role", "", "按角色过滤: OWNER / MANAGER / EDITOR / DOWNLOADER / READER")
@@ -1050,6 +2099,41 @@ func newDriveCommand() *cobra.Command {
 			return callMCPToolOnServer("doc", "remove_permission", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(drivePermRemoveCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "permission_remove",
+				CanonicalPath:  "drive.permission_remove",
+				CLIPath:        "drive permission remove",
+				PrimaryCLIPath: "drive permission remove",
+			},
+			Description: "从文档空间节点移除协作成员的权限",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "doc", RPCName: "remove_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "从文档空间节点移除协作成员的权限",
+				UseWhen:      []string{"从节点移除指定用户的直接授权时"},
+				AvoidWhen: []string{
+					"要改角色用 permission update；要加权限用 add",
+					"移除知识库容器成员用 dws wiki member remove",
+				},
+				Examples: []string{"dws drive permission remove --node <ID> --users uid1 --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId"},
+				{Name: "users", Property: "userIds"},
+				{Name: "workspace", Property: "workspaceId"},
+			},
+		},
+	})
 	drivePermRemoveCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
 	drivePermRemoveCmd.Flags().String("users", "", "用户 userId 列表，逗号分隔 (必填)")
 	drivePermRemoveCmd.Flags().String("user", "", "")
@@ -1070,7 +2154,226 @@ func newDriveCommand() *cobra.Command {
 		_ = c.Flags().MarkHidden("file-id")
 	}
 
-	drivePermissionCmd.AddCommand(drivePermAddCmd, drivePermUpdateCmd, drivePermListCmd, drivePermRemoveCmd)
+	drivePermTransferOwnerCmd := &cobra.Command{
+		Use:   "transfer-owner",
+		Short: "[危险] 转交所有者",
+		Long: `转交文档或知识库的所有者给指定用户。此操作不可逆，执行前需要确认。
+
+--node 和 --workspace 二选一。转交后原所有者保留角色由 --reserve-role 指定。
+使用 --yes 跳过确认时，--reserve-role 和 --recursive 必须显式指定。`,
+		Example: `  dws drive permission transfer-owner --node DOC_ID --new-owner uid123 --reserve-role EDITOR --recursive=false --yes`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, _ := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			workspaceID := flagOrFallback(cmd, "workspace", "workspace-id")
+			if nodeID == "" && workspaceID == "" {
+				return fmt.Errorf("--node or --workspace is required")
+			}
+			// 不可逆高危操作：帮助文档承诺二选一，两者同传直接失败，绝不静默择一。
+			if nodeID != "" && workspaceID != "" {
+				return fmt.Errorf("--node and --workspace are mutually exclusive; specify exactly one")
+			}
+			if err := validateRequiredFlags(cmd, "new-owner"); err != nil {
+				return err
+			}
+			newOwnerID := mustGetFlag(cmd, "new-owner")
+
+			yesMode, _ := cmd.Flags().GetBool("yes")
+			if yesMode {
+				if !cmd.Flags().Changed("reserve-role") {
+					return fmt.Errorf("--reserve-role is required when using --yes")
+				}
+				if !cmd.Flags().Changed("recursive") {
+					return fmt.Errorf("--recursive is required when using --yes")
+				}
+			}
+
+			if commandDryRun(cmd) {
+				if deps.Caller.Format() == "json" {
+					payload := map[string]any{
+						"dry_run":    true,
+						"executed":   false,
+						"operation":  "转交所有者",
+						"newOwnerId": newOwnerID,
+					}
+					if nodeID != "" {
+						payload["nodeId"] = nodeID
+					} else {
+						payload["workspaceId"] = workspaceID
+					}
+					return deps.Out.PrintJSON(payload)
+				}
+				deps.Out.PrintKeyValue("操作", "转交所有者")
+				deps.Out.PrintKeyValue("新所有者", newOwnerID)
+				return nil
+			}
+
+			reserveRole := mustGetFlag(cmd, "reserve-role")
+			recursive, _ := cmd.Flags().GetBool("recursive")
+
+			target := nodeID
+			if target == "" {
+				target = workspaceID
+			}
+
+			toolArgs := map[string]any{"newOwnerId": newOwnerID}
+			if nodeID != "" {
+				toolArgs["nodeId"] = nodeID
+			} else {
+				toolArgs["workspaceId"] = workspaceID
+			}
+			if reserveRole != "" {
+				toolArgs["reserveOldOwnerRole"] = reserveRole
+			}
+			if cmd.Flags().Changed("recursive") {
+				toolArgs["recursiveChange"] = recursive
+			}
+			return callMCPToolOnServer("doc", "transfer_owner", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(drivePermTransferOwnerCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "high",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "transfer_owner",
+				CanonicalPath:  "drive.transfer_owner",
+				CLIPath:        "drive permission transfer-owner",
+				PrimaryCLIPath: "drive permission transfer-owner",
+			},
+			Description: "转交文档或知识库所有者给指定用户（不可逆）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "转交文档或知识库所有者给指定用户（不可逆）",
+				UseWhen:      []string{"用户明确要求转交文档/知识库所有权"},
+				AvoidWhen:    []string{"普通协作权限变更用 permission add/update/remove"},
+				Examples:     []string{"dws drive permission transfer-owner --node <DOC_ID> --new-owner <userId> --reserve-role EDITOR --recursive=false --format json"},
+			},
+		},
+	})
+	drivePermTransferOwnerCmd.Flags().String("node", "", "目标节点 ID 或 URL（与 --workspace 二选一）")
+	drivePermTransferOwnerCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL（与 --node 二选一）")
+	drivePermTransferOwnerCmd.Flags().String("new-owner", "", "新所有者的用户 userId (必填)")
+	drivePermTransferOwnerCmd.Flags().String("reserve-role", "", "转交后原所有者保留角色: MANAGER / EDITOR / DOWNLOADER / READER / NONE")
+	drivePermTransferOwnerCmd.Flags().Bool("recursive", false, "是否递归变更所有子节点的所有者")
+
+	drivePermApplyInfoCmd := &cobra.Command{
+		Use:     "apply-info",
+		Short:   "查询节点可申请的角色与审批人",
+		Example: `  dws drive permission apply-info --node DOC_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			return callMCPToolOnServer("drive", "query_permission_apply_info", map[string]any{"nodeId": nodeID})
+		},
+	}
+	DeclareLeafMetadata(drivePermApplyInfoCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "query_permission_apply_info",
+				CanonicalPath:  "drive.query_permission_apply_info",
+				CLIPath:        "drive permission apply-info",
+				PrimaryCLIPath: "drive permission apply-info",
+			},
+			Description: "查询节点可申请的权限角色列表与审批人列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询节点可申请的权限角色列表与审批人列表",
+				UseWhen:      []string{"无权限访问文档时，先查可申请角色与审批人"},
+				AvoidWhen:    []string{"实际发起申请用 apply_permission"},
+				Examples:     []string{"dws drive permission apply-info --node <DOC_ID> --format json"},
+			},
+		},
+	})
+	drivePermApplyInfoCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
+
+	drivePermApplyCmd := &cobra.Command{
+		Use:   "apply",
+		Short: "发起权限申请",
+		Long: `向指定节点的审批人发起权限申请。建议先用 apply-info 获取可申请角色与审批人。
+
+注意: 本命令会真实通知审批人，Agent 必须先获得用户明确同意后再执行。`,
+		Example: `  dws drive permission apply --node DOC_ID --role READER --users uid1
+  dws drive permission apply --node DOC_ID --role EDITOR --users uid1,uid2 --reason "需要编辑该文档"`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			if err := validateRequiredFlags(cmd, "role"); err != nil {
+				return err
+			}
+			userIds, err := collectUserIDs(cmd)
+			if err != nil {
+				return err
+			}
+			toolArgs := map[string]any{
+				"nodeId":    nodeID,
+				"roleId":    normalizePermissionRole(mustGetFlag(cmd, "role")),
+				"receivers": userIds,
+			}
+			if v := mustGetFlag(cmd, "notify-mode"); v != "" {
+				toolArgs["notifyMode"] = v
+			}
+			if v := mustGetFlag(cmd, "reason"); v != "" {
+				toolArgs["reason"] = v
+			}
+			return callMCPToolOnServer("drive", "apply_permission", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(drivePermApplyCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "apply_permission",
+				CanonicalPath:  "drive.apply_permission",
+				CLIPath:        "drive permission apply",
+				PrimaryCLIPath: "drive permission apply",
+			},
+			Description: "向审批人发起文档权限申请（会真实通知审批人）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "向审批人发起文档权限申请（会真实通知审批人）",
+				UseWhen:      []string{"用户确认要为无权限文档发起权限申请"},
+				AvoidWhen:    []string{"先用 apply-info 查可申请角色与审批人；未经用户确认不得自行提交"},
+				Examples:     []string{"dws drive permission apply --node <DOC_ID> --role READER --users <审批人userId> --format json"},
+			},
+		},
+	})
+	drivePermApplyCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
+	drivePermApplyCmd.Flags().String("role", "", "申请的角色: EDITOR / DOWNLOADER / READER (必填)")
+	drivePermApplyCmd.Flags().String("users", "", "审批人 userId 列表，逗号分隔 (必填)")
+	drivePermApplyCmd.Flags().String("user", "", "")
+	_ = drivePermApplyCmd.Flags().MarkHidden("user")
+	drivePermApplyCmd.Flags().String("notify-mode", "", "通知方式: DEFAULT / MSG_ACCOUNT / SINGLE_CHAT")
+	drivePermApplyCmd.Flags().String("reason", "", "申请理由，最长 200 字符")
+
+	drivePermissionCmd.AddCommand(drivePermAddCmd, drivePermUpdateCmd, drivePermListCmd, drivePermRemoveCmd, drivePermTransferOwnerCmd, drivePermApplyInfoCmd, drivePermApplyCmd)
 
 	// --node 隐藏别名（保持与迁移前 doc 命令一致）
 	driveNodeAliasCmds := []*cobra.Command{
@@ -1121,6 +2424,39 @@ func newDriveCommand() *cobra.Command {
 			return callMCPTool("list_recycle_items", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(recycleListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "recycle_list",
+				CanonicalPath:  "drive.recycle_list",
+				CLIPath:        "drive recycle list",
+				PrimaryCLIPath: "drive recycle list",
+			},
+			Description: "查看回收站文件列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查看回收站文件列表",
+				UseWhen:      []string{"用户要查看钉盘回收站里有哪些已删文件时"},
+				AvoidWhen: []string{
+					"要从回收站还原改用 dws drive recycle restore",
+					"要删除进回收站改用 dws drive delete",
+				},
+				Examples: []string{
+					"dws drive recycle list --format json",
+					"dws drive recycle list --space-id 12345 --limit 10 --format json",
+				},
+			},
+		},
+	})
 	recycleListCmd.Flags().String("space-id", "", "钉盘空间 ID (选填，不传则返回所有空间)")
 	recycleListCmd.Flags().Int("limit", 0, "返回条数上限 (默认20，最大50)")
 	recycleListCmd.Flags().String("cursor", "", "分页游标")
@@ -1139,6 +2475,36 @@ func newDriveCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(recycleRestoreCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "recycle_restore",
+				CanonicalPath:  "drive.recycle_restore",
+				CLIPath:        "drive recycle restore",
+				PrimaryCLIPath: "drive recycle restore",
+			},
+			Description: "还原回收站中的文件",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "还原回收站中的文件",
+				UseWhen:      []string{"用户要从回收站还原指定回收项（已从 recycle list 拿到 id）时"},
+				AvoidWhen: []string{
+					"尚未确认还原哪一项时先 dws drive recycle list",
+					"要删除文件改用 dws drive delete，不要用 restore",
+				},
+				Examples: []string{"dws drive recycle restore --id <recycleItemId> --format json"},
+			},
+		},
+	})
 	recycleRestoreCmd.Flags().String("id", "", "回收项 ID (必填，从 recycle list 获取)")
 
 	recycleCmd.AddCommand(recycleListCmd, recycleRestoreCmd)
@@ -1198,9 +2564,6 @@ func newDriveCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if !confirmDangerousAction(cmd, "enable internet publishing", nodeID) {
-				return nil
-			}
 			toolArgs := map[string]any{
 				"fileId":    nodeID,
 				"published": true,
@@ -1211,6 +2574,44 @@ func newDriveCommand() *cobra.Command {
 			return callMCPTool("set_file_publish", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(drivePublishSetCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Validate: func(cmd *cobra.Command, args []string) error {
+			_, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
+			return err
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "publish_set",
+				CanonicalPath:  "drive.publish_set",
+				CLIPath:        "drive publish set",
+				PrimaryCLIPath: "drive publish set",
+			},
+			Description: "开启文件的互联网公开发布",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "开启文件的互联网公开发布",
+				UseWhen:      []string{"用户明确要求将文件设为互联网公开（任何人凭链接可访问，无需登录）时"},
+				AvoidWhen: []string{
+					"只查公开状态用 publish get；要关闭公开用 publish unset",
+					"目标文件或公开权限范围未确认时不要开启",
+					"只要企业内部同事权限用 permission add，不要用互联网公开",
+				},
+				Examples: []string{
+					"dws drive publish set --node <fileId> --format json",
+					"dws drive publish set --node <fileId> --permission READER --format json",
+				},
+			},
+		},
+	})
 	drivePublishSetCmd.Flags().String("node", "", "目标文件 ID (dentryUuid) 或 URL (必填)")
 	drivePublishSetCmd.Flags().String("permission", "", "公开后的权限: READER / DOWNLOADER(默认) / EDITOR")
 
@@ -1226,15 +2627,46 @@ func newDriveCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if !confirmDangerousAction(cmd, "disable internet publishing", nodeID) {
-				return nil
-			}
 			return callMCPTool("set_file_publish", map[string]any{
 				"fileId":    nodeID,
 				"published": false,
 			})
 		},
 	}
+	DeclareLeafMetadata(drivePublishUnsetCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Validate: func(cmd *cobra.Command, args []string) error {
+			_, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
+			return err
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "publish_unset",
+				CanonicalPath:  "drive.publish_unset",
+				CLIPath:        "drive publish unset",
+				PrimaryCLIPath: "drive publish unset",
+			},
+			Description: "关闭文件的互联网公开发布",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "关闭文件的互联网公开发布",
+				UseWhen:      []string{"用户明确要求关闭文件的互联网公开发布，使外部链接失效时"},
+				AvoidWhen: []string{
+					"只查状态用 publish get；要开启用 publish set",
+					"目标文件未确认时不要关闭",
+				},
+				Examples: []string{"dws drive publish unset --node <fileId> --format json"},
+			},
+		},
+	})
 	drivePublishUnsetCmd.Flags().String("node", "", "目标文件 ID (dentryUuid) 或 URL (必填)")
 
 	drivePublishGetCmd := &cobra.Command{
@@ -1253,6 +2685,36 @@ func newDriveCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(drivePublishGetCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "publish_get",
+				CanonicalPath:  "drive.publish_get",
+				CLIPath:        "drive publish get",
+				PrimaryCLIPath: "drive publish get",
+			},
+			Description: "查询文件当前是否处于互联网公开发布状态",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询文件当前是否处于互联网公开发布状态",
+				UseWhen:      []string{"查询文件是否已互联网公开发布及公开权限（READER/DOWNLOADER/EDITOR）时"},
+				AvoidWhen: []string{
+					"要开启公开改用 dws drive publish set（需确认）",
+					"要关闭公开改用 dws drive publish unset（需确认）",
+				},
+				Examples: []string{"dws drive publish get --node <fileId> --format json"},
+			},
+		},
+	})
 	drivePublishGetCmd.Flags().String("node", "", "目标文件 ID (dentryUuid) 或 URL (必填)")
 
 	// publish 子命令 --node 隐藏别名
@@ -1332,6 +2794,42 @@ func newDriveCommand() *cobra.Command {
 			return callMCPToolOnServer("doc", "get_recent_list", toolArgs)
 		},
 	}
+	DeclareLeafMetadata(driveRecentCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "recent",
+				CanonicalPath:  "drive.recent",
+				CLIPath:        "drive recent",
+				PrimaryCLIPath: "drive recent",
+			},
+			Description: "获取当前用户最近访问或编辑过的文档列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取当前用户最近访问或编辑过的文档列表",
+				UseWhen: []string{
+					"用户要看最近访问或最近编辑的文档列表时（默认最近访问 operate-type=0）",
+					"需要按我创建/他人创建或文档类型过滤最近项时",
+				},
+				AvoidWhen: []string{
+					"按关键词全局搜文件改用 dws drive search",
+					"浏览某目录内容改用 dws drive list",
+				},
+				Examples: []string{
+					"dws drive recent --format json",
+					"dws drive recent --operate-type 1 --format json",
+				},
+			},
+		},
+	})
 	driveRecentCmd.Flags().IntSlice("file-types", nil, "按文档类型过滤，逗号分隔 (参考 RecentAccessType 枚举)")
 	driveRecentCmd.Flags().IntSlice("operate-type", nil, "按操作类型过滤: 0=最近访问(默认), 1=最近编辑; 不传默认仅最近访问")
 	driveRecentCmd.Flags().Int("creator-type", 0, "按创建人过滤: 0=全部, 1=我创建, 2=他人创建")
@@ -1343,11 +2841,259 @@ func newDriveCommand() *cobra.Command {
 	driveRecentCmd.Flags().String("page-token", "", "")
 	_ = driveRecentCmd.Flags().MarkHidden("page-token")
 
+	// ── drive star (文档收藏管理) ──
+	driveStarCmd := &cobra.Command{
+		Use:   "star",
+		Short: "文档收藏管理",
+		RunE:  groupRunE,
+	}
+	driveStarAddCmd := &cobra.Command{
+		Use:     "add",
+		Short:   "收藏文档",
+		Example: `  dws drive star add --node <nodeId_or_URL>`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			return callMCPToolOnServer("drive", "mark_star", map[string]any{"nodeId": nodeID})
+		},
+	}
+	DeclareLeafMetadata(driveStarAddCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "mark_star",
+				CanonicalPath:  "drive.mark_star",
+				CLIPath:        "drive star add",
+				PrimaryCLIPath: "drive star add",
+			},
+			Description: "收藏文档/文件到当前用户收藏列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "收藏文档/文件到当前用户收藏列表",
+				UseWhen:      []string{"用户说 收藏这个文档/加个收藏/标星"},
+				AvoidWhen:    []string{"取消收藏用 unmark_star；查看收藏列表用 get_star_list"},
+				Examples:     []string{"dws drive star add --node <nodeId> --format json"},
+			},
+		},
+	})
+	driveStarAddCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
+	driveStarRemoveCmd := &cobra.Command{
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "取消收藏文档",
+		Example: `  dws drive star remove --node <nodeId_or_URL>`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			return callMCPToolOnServer("drive", "unmark_star", map[string]any{"nodeId": nodeID})
+		},
+	}
+	DeclareLeafMetadata(driveStarRemoveCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "unmark_star",
+				CanonicalPath:  "drive.unmark_star",
+				CLIPath:        "drive star remove",
+				PrimaryCLIPath: "drive star remove",
+			},
+			Description: "将文档/文件从当前用户收藏列表移除",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将文档/文件从当前用户收藏列表移除",
+				UseWhen:      []string{"用户说 取消收藏/去掉收藏/不收藏了"},
+				AvoidWhen:    []string{"添加收藏用 mark_star"},
+				Examples:     []string{"dws drive star remove --node <nodeId> --format json"},
+			},
+		},
+	})
+	driveStarRemoveCmd.Flags().String("node", "", "文档 ID 或 URL (必填)")
+	driveStarListCmd := &cobra.Command{
+		Use:   "list",
+		Short: "获取收藏列表",
+		Example: `  dws drive star list
+  dws drive star list --content-types doc,sheet --limit 10`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			toolArgs := map[string]any{}
+			if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
+				toolArgs["limit"] = v
+			}
+			if v, _ := cmd.Flags().GetString("cursor"); v != "" {
+				toolArgs["cursor"] = v
+			}
+			if v, _ := cmd.Flags().GetString("order-by"); v != "" {
+				toolArgs["orderBy"] = v
+			}
+			if v, _ := cmd.Flags().GetString("sort"); v != "" {
+				toolArgs["sortType"] = v
+			}
+			if v, _ := cmd.Flags().GetStringSlice("resource-types"); len(v) > 0 {
+				toolArgs["supportResourceTypes"] = v
+			}
+			if v, _ := cmd.Flags().GetStringSlice("content-types"); len(v) > 0 {
+				toolArgs["contentTypes"] = v
+			}
+			return callMCPToolOnServer("drive", "get_star_list", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(driveStarListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_star_list",
+				CanonicalPath:  "drive.get_star_list",
+				CLIPath:        "drive star list",
+				PrimaryCLIPath: "drive star list",
+			},
+			Description: "获取当前用户的收藏列表，支持分页与按内容类型筛选",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取当前用户的收藏列表，支持分页与按内容类型筛选",
+				UseWhen:      []string{"用户说 我的收藏/收藏列表/收藏了哪些文档"},
+				AvoidWhen:    []string{"操作单个收藏用 mark_star/unmark_star"},
+				Examples: []string{
+					"dws drive star list --format json",
+					"dws drive star list --content-types doc,sheet --limit 10 --format json",
+				},
+			},
+		},
+	})
+	driveStarListCmd.Flags().Int("limit", 0, "每页条数 (默认 20，最大 20)")
+	driveStarListCmd.Flags().String("cursor", "", "分页游标")
+	driveStarListCmd.Flags().String("order-by", "", "排序字段: createTime")
+	driveStarListCmd.Flags().String("sort", "", "排序方向: asc|desc")
+	driveStarListCmd.Flags().StringSlice("resource-types", nil, "资源大类: DENTRY, TEAM, WORKSPACE")
+	driveStarListCmd.Flags().StringSlice("content-types", nil, "内容类型: doc,sheet,ppt,whiteboard,mind,notable,pdf,other,folder")
+	driveStarCmd.AddCommand(driveStarAddCmd, driveStarRemoveCmd, driveStarListCmd)
+
+	// ── drive cover (获取节点封面地址) ──
+	driveCoverCmd := &cobra.Command{
+		Use:     "cover",
+		Short:   "获取节点封面地址",
+		Example: "  dws drive cover --node <dentryUuid>",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			return callMCPToolOnServer("drive", "get_cover", map[string]any{"nodeId": nodeID})
+		},
+	}
+	DeclareLeafMetadata(driveCoverCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "get_cover",
+				CanonicalPath:  "drive.get_cover",
+				CLIPath:        "drive cover",
+				PrimaryCLIPath: "drive cover",
+			},
+			Description: "获取节点封面图片地址（文档首图/图片缩略图/类型图标）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取节点封面图片地址（文档首图/图片缩略图/类型图标）",
+				UseWhen:      []string{"用户说 封面/封面图/缩略图/预览图"},
+				AvoidWhen:    []string{"设置文档封面用 doc style cover set"},
+				Examples:     []string{"dws drive cover --node <dentryUuid> --format json"},
+			},
+		},
+	})
+	driveCoverCmd.Flags().String("node", "", "节点 ID (dentryUuid) 或文档 URL (必填)")
+
+	// ── drive revert (回滚文件到指定历史版本) ──
+	driveRevertCmd := &cobra.Command{
+		Use:   "revert",
+		Short: "[危险] 回滚文件到指定历史版本",
+		Long: `将指定文件回滚到某个历史版本。仅支持普通文件（Word、Excel、PDF、图片等）。
+在线文档请用 dws doc version revert，在线表格请用 dws sheet version revert。`,
+		Example: `  dws drive revert --node <dentryUuid> --version 3 --yes`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
+			if err != nil {
+				return err
+			}
+			versionNum, err := cmd.Flags().GetInt("version")
+			if err != nil || versionNum <= 0 {
+				return fmt.Errorf("flag --version is required and must be a positive integer")
+			}
+			return callMCPToolOnServer("drive", "revert_file_version", map[string]any{
+				"nodeId":  nodeID,
+				"version": versionNum,
+			})
+		},
+	}
+	DeclareLeafMetadata(driveRevertCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "drive",
+				Name:           "revert_file_version",
+				CanonicalPath:  "drive.revert_file_version",
+				CLIPath:        "drive revert",
+				PrimaryCLIPath: "drive revert",
+			},
+			Description: "回滚普通文件到指定历史版本（生成新最新版本，历史不丢失）",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "回滚普通文件到指定历史版本（生成新最新版本，历史不丢失）",
+				UseWhen:      []string{"用户说 回滚版本/恢复到某个版本/版本回退，且目标是普通文件"},
+				AvoidWhen:    []string{"在线文档回滚用 doc version revert；在线表格用 sheet version revert"},
+				Examples:     []string{"dws drive revert --node <dentryUuid> --version 3 --format json"},
+			},
+		},
+	})
+	driveRevertCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (必填)")
+	driveRevertCmd.Flags().Int("version", 0, "要回滚到的历史版本号 (必填，正整数)")
+
 	driveCmd.AddCommand(
 		driveListCmd,
 		driveListSpacesCmd,
 		driveInfoCmd,
 		driveDownloadCmd,
+		driveDownloadVersionCmd,
 		driveMkdirCmd,
 		driveUploadInfoCmd,
 		driveCommitCmd,
@@ -1364,6 +3110,9 @@ func newDriveCommand() *cobra.Command {
 		drivePermissionCmd,
 		drivePublishCmd,
 		recycleCmd,
+		driveStarCmd,
+		driveCoverCmd,
+		driveRevertCmd,
 		// deprecated 兼容命令（Phase 2）— 隐藏，保留向后兼容
 		driveFolderCmd,
 	)
@@ -1383,7 +3132,7 @@ func driveInfoWithDocFallback(fileID string, driveArgs map[string]any) error {
 	ctx := context.Background()
 
 	// Step 1: 调用 drive get_file_info
-	driveText, err := callMCPToolReturnText(ctx, "get_file_info", driveArgs)
+	driveText, err := callMCPToolReturnTextOnServer(ctx, "drive", "get_file_info", driveArgs)
 	if err != nil {
 		return err
 	}
@@ -1444,7 +3193,8 @@ func driveInfoWithDocFallback(fileID string, driveArgs map[string]any) error {
 	driveOnlyFields := []string{"dentryId", "path", "fileSize", "extension", "type"}
 	for _, field := range driveOnlyFields {
 		if val, ok := driveResult[field]; ok {
-			if _, exists := docResult[field]; !exists {
+			current, exists := docResult[field]
+			if (!exists || current == nil) && val != nil {
 				docResult[field] = val
 			}
 		}
@@ -1528,11 +3278,11 @@ func uploadToDrive(ctx context.Context, filePath, fileName string, fileSize int6
 	if err != nil {
 		return err
 	}
-	resourceURL, uploadID, headers, err := parseDriveUploadInfo(text)
+	// HTTP PUT 上传文件（OSS 与中心协议同路径；headers 透传，401/403 重取凭证重试一次）
+	uploadID, err := driveUploadPut(ctx, text, func(rctx context.Context) (string, error) {
+		return callMCPToolReturnTextOnServer(rctx, "drive", "get_upload_info", step1Args)
+	}, filePath, fileSize)
 	if err != nil {
-		return err
-	}
-	if err := httpPutFile(ctx, resourceURL, headers, filePath, fileSize); err != nil {
 		return err
 	}
 
@@ -1740,4 +3490,50 @@ func isPermissionCLIError(err error) bool {
 	}
 	var patErr *PATError
 	return errors.As(err, &patErr)
+}
+
+// parseDriveDownloadInfo 从 drive 的 download_file 返回里取下载 URL 与请求头。
+// drive 返回形如 {"result":{"downloadUrl":"https://..."}}；OSS 预签名 URL 自带签名参数、
+// 无额外请求头；中心协议（httpToCenterWithToken）返回的 headers 含 dentry-token，
+// 需原样透传。对历史字段名（resourceUrl / resourceUrls[].url）做 fallback。
+func parseDriveDownloadInfo(text string) (string, map[string]string, error) {
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text), &data); err != nil {
+		return "", nil, fmt.Errorf("解析 download_file 返回失败: %w", err)
+	}
+	if result, ok := data["result"].(map[string]any); ok {
+		data = result
+	}
+
+	headers := make(map[string]string)
+	if h, ok := data["headers"].(map[string]any); ok {
+		for k, v := range h {
+			if s, ok := v.(string); ok {
+				headers[k] = s
+			}
+		}
+	}
+
+	dlURL, _ := data["downloadUrl"].(string)
+	if dlURL == "" {
+		dlURL, _ = data["resourceUrl"].(string)
+	}
+	if dlURL == "" {
+		if arr, ok := data["resourceUrls"].([]any); ok && len(arr) > 0 {
+			if first, ok := arr[0].(map[string]any); ok {
+				dlURL, _ = first["url"].(string)
+				if h, ok := first["headers"].(map[string]any); ok {
+					for k, v := range h {
+						if s, ok := v.(string); ok {
+							headers[k] = s
+						}
+					}
+				}
+			}
+		}
+	}
+	if dlURL == "" {
+		return "", nil, fmt.Errorf("download_file 未返回下载链接（downloadUrl 为空）")
+	}
+	return dlURL, headers, nil
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -113,6 +114,18 @@ func TestCrossPlatformCoverageChatDirectionAndScalarCoverage(t *testing.T) {
 	_ = appendChatIDArgs(args, []string{"u1", "D1"}, "users", "open")
 	for _, wrap := range []bool{true, false} {
 		_ = normalizeAtPlaceholders("hello @u1 <@u2>", []string{"", "u1", "u2"}, wrap)
+	}
+	if got := NormalizeMessageMentions("hello @u1", []string{"u1"}, true, true); got != "<@all> hello <@u1>" {
+		t.Fatalf("current-user mention normalization = %q", got)
+	}
+	if got := NormalizeMessageMentions("<@all> <@u1>", []string{"u1"}, true, false); got != "@all @u1" {
+		t.Fatalf("bot mention normalization = %q", got)
+	}
+	if got := NormalizeMessageMentions("@alliance hello", nil, true, false); got != "@all @alliance hello" {
+		t.Fatalf("bot @all token detection = %q", got)
+	}
+	if got := NormalizeMessageMentions("hello @all", nil, true, false); got != "hello @all" {
+		t.Fatalf("trailing bot @all detection = %q", got)
 	}
 }
 
@@ -325,12 +338,11 @@ func TestCrossPlatformCoverageChatFileUtilityCoverage(t *testing.T) {
 	_ = unmarshalJSONUseNumber(`{"n":1}`, &map[string]any{})
 	_ = firstStringField(map[string]any{"one": "", "two": 2}, "one", "two")
 
-	previous := deps
+	testseam.Protect(t, &deps)
 	caller := &helpersCoreCaller{format: "json"}
 	InitDeps(caller)
 	deps.Out.w = io.Discard
 	deps.Out.errW = io.Discard
-	t.Cleanup(func() { deps = previous })
 	caller.format = "raw"
 }
 

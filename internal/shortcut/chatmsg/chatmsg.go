@@ -31,9 +31,104 @@ package chatmsg
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 )
+
+// MessageListContractVersion identifies the additive, compatibility-preserving
+// public envelope shared by message list/search/mget/thread projections.
+const MessageListContractVersion = "im.message-list.v1"
+
+// MessageResultContract is the reviewed additive contract shared by message
+// list, search, mget, @me and thread projections. Keep this descriptor small:
+// Runtime owns the values, while Skill references and policy checks consume a
+// copy of these field names so prose cannot silently invent another result
+// shape.
+type MessageResultContract struct {
+	Version        string
+	MessageFields  []string
+	EnvelopeFields []string
+}
+
+var messageResultContractV1 = MessageResultContract{
+	Version: MessageListContractVersion,
+	MessageFields: []string{
+		"messageId",
+		"conversationId",
+		"threadId",
+		"sender",
+		"senderId",
+		"senderType",
+		"messageType",
+		"text",
+		"createTime",
+		"updateTime",
+		"reactions",
+		"quotedMessage",
+		"forwarded",
+		"resourceRefs",
+	},
+	EnvelopeFields: []string{
+		"contractVersion",
+		"messages",
+		"count",
+		"pagesFetched",
+		"paginationKnown",
+		"complete",
+		"hasMore",
+		"nextPage",
+		"stopReason",
+		"truncatedByPageLimit",
+		"truncatedByResultLimit",
+		"failedCount",
+		"failures",
+		"partial",
+		"resourceDownloads",
+	},
+}
+
+// CurrentMessageResultContract returns defensive copies so callers cannot
+// mutate the process-wide reviewed descriptor.
+func CurrentMessageResultContract() MessageResultContract {
+	contract := messageResultContractV1
+	contract.MessageFields = append([]string(nil), contract.MessageFields...)
+	contract.EnvelopeFields = append([]string(nil), contract.EnvelopeFields...)
+	return contract
+}
+
+// NewMessageListPayload initializes the common result ledger before a caller
+// adds pagination or resource-download facts.
+func NewMessageListPayload(messages []map[string]any) map[string]any {
+	if messages == nil {
+		messages = []map[string]any{}
+	}
+	return map[string]any{
+		"contractVersion": MessageListContractVersion,
+		"messages":        messages,
+		"count":           len(messages),
+		"pagesFetched":    0,
+		"paginationKnown": false,
+		"complete":        false,
+		"hasMore":         false,
+		"failedCount":     0,
+		"failures":        []map[string]any{},
+		"partial":         false,
+	}
+}
+
+// StableMessageID returns the normalized message identity used for
+// cross-page deduplication. An empty value means the lower response did not
+// publish a stable identity; callers must keep that row rather than guessing.
+func StableMessageID(message map[string]any) string {
+	value := MessageID(message)
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(value))
+}
 
 // Sender reads a message's speaker display name, tolerating common sender-name
 // keys. The message-list responses carry the display name under the bare
@@ -114,6 +209,678 @@ func CreateTime(m map[string]any) any {
 		}
 	}
 	return nil
+}
+
+// MessageID preserves the stable message identity needed by follow-up reply,
+// reaction, resource and deduplication operations.
+func MessageID(m map[string]any) any {
+	return firstMessageValue(m, "openMessageId", "openMsgId", "messageId", "message_id", "msgId", "msg_id", "id")
+}
+
+// ConversationID preserves the stable conversation identity carried by list
+// and search responses.
+func ConversationID(m map[string]any) any {
+	return firstMessageValue(m, "openConversationId", "openconversation_id", "conversationId", "conversation_id", "chatId", "chat_id")
+}
+
+// ThreadID preserves the stable topic/thread identity needed to continue from
+// a message-list result into the thread-replies command.
+func ThreadID(m map[string]any) any {
+	return firstMessageValue(
+		m,
+		"openConvThreadId",
+		"openConversationThreadId",
+		"threadId",
+		"thread_id",
+		"topicId",
+		"topic_id",
+	)
+}
+
+// MessageType preserves the lower message type when present.
+func MessageType(m map[string]any) any {
+	return firstMessageValue(m, "msgType", "messageType", "message_type", "type")
+}
+
+// SenderID preserves the stable sender identity without replacing the legacy
+// scalar sender display field. Nested sender records and both userId families
+// are accepted because list/search/mget currently expose different shapes.
+func SenderID(m map[string]any) any {
+	for _, key := range []string{"sender", "from", "senderUser"} {
+		if nested, ok := m[key].(map[string]any); ok {
+			if value := firstMessageValue(nested,
+				"openDingTalkId", "openDingtalkId", "userId", "senderId", "id"); value != nil {
+				return value
+			}
+		}
+	}
+	return firstMessageValue(m,
+		"senderOpenDingTalkId", "senderOpenDingtalkId", "senderUserId",
+		"senderId", "sender_id", "senderStaffId", "openDingTalkId", "userId")
+}
+
+// SenderType returns only an explicitly published lower sender type. It does
+// not guess that every sender identity is a user because bot/system messages
+// can share the same generic senderId key.
+func SenderType(m map[string]any) any {
+	for _, key := range []string{"sender", "from", "senderUser"} {
+		if nested, ok := m[key].(map[string]any); ok {
+			if value := firstMessageValue(nested, "senderType", "type", "entityType"); value != nil {
+				return value
+			}
+		}
+	}
+	return firstMessageValue(m, "senderType", "sender_type", "fromType", "from_type")
+}
+
+// ProjectMessageV1 is the single compatibility-preserving core projection for
+// list, search, mget, @me, and thread readers. Public wrappers may retain
+// legacy aliases such as time or msgType, but the underlying identity,
+// context, reaction, quote, forward, and resource semantics come from here.
+func ProjectMessageV1(m map[string]any, includeReactions bool) map[string]any {
+	row := map[string]any{
+		"sender":     Sender(m),
+		"text":       Text(m),
+		"createTime": CreateTime(m),
+	}
+	if value := MessageID(m); value != nil {
+		row["messageId"] = value
+	}
+	if value := ConversationID(m); value != nil {
+		row["conversationId"] = value
+	}
+	if value := ThreadID(m); value != nil {
+		row["threadId"] = value
+	}
+	if value := SenderID(m); value != nil {
+		row["senderId"] = value
+	}
+	if value := SenderType(m); value != nil {
+		row["senderType"] = value
+	}
+	if value := MessageType(m); value != nil {
+		row["messageType"] = value
+	}
+	if value := UpdateTime(m); value != nil {
+		row["updateTime"] = value
+	}
+	if includeReactions {
+		if reactions := Reactions(m); len(reactions) > 0 {
+			row["reactions"] = reactions
+		}
+	}
+	if quoted := QuotedMessage(m); len(quoted) > 0 {
+		row["quotedMessage"] = quoted
+	}
+	if resources := ResourcesDeep(m); len(resources) > 0 {
+		row["resourceRefs"] = resources
+	}
+	projectForwarded := func(item map[string]any) map[string]any {
+		return ProjectMessageV1(item, includeReactions)
+	}
+	if forwarded := Forwarded(m, projectForwarded); len(forwarded) > 0 {
+		row["forwarded"] = forwarded
+	}
+	return row
+}
+
+// QuotedMessage projects one level of quoted/replied-to context. It is
+// deliberately non-recursive: a reply chain may be arbitrarily deep or even
+// cyclic after gateway reshaping, while an Agent primarily needs the quoted
+// message's stable identity, speaker, readable body and time.
+func QuotedMessage(m map[string]any) map[string]any {
+	var quoted map[string]any
+	for _, key := range []string{"quotedMessage", "replyMessage", "quoted", "replyToMessage"} {
+		if value, ok := m[key].(map[string]any); ok {
+			quoted = value
+			break
+		}
+	}
+	if quoted == nil {
+		return nil
+	}
+	out := map[string]any{}
+	if value := MessageID(quoted); value != nil {
+		out["messageId"] = value
+	}
+	if value := ConversationID(quoted); value != nil {
+		out["conversationId"] = value
+	}
+	if value := ThreadID(quoted); value != nil {
+		out["threadId"] = value
+	}
+	if value := Sender(quoted); value != nil {
+		out["sender"] = value
+	}
+	if value := Text(quoted); value != nil {
+		out["text"] = value
+	}
+	if value := CreateTime(quoted); value != nil {
+		out["createTime"] = value
+	}
+	if value := MessageType(quoted); value != nil {
+		out["messageType"] = value
+	}
+	if resources := Resources(quoted); len(resources) > 0 {
+		out["resourceRefs"] = resources
+	}
+	return out
+}
+
+func firstMessageValue(m map[string]any, keys ...string) any {
+	for _, key := range keys {
+		value, ok := m[key]
+		if !ok || value == nil {
+			continue
+		}
+		if text, isString := value.(string); isString && strings.TrimSpace(text) == "" {
+			continue
+		}
+		return value
+	}
+	return nil
+}
+
+// Resources extracts actionable media and drive-file references from both
+// structured message fields and the textual mediaId/fileId notation returned
+// by older DingTalk message APIs. Every reference publishes the exact Shortcut
+// arguments already known from the message, plus ready=false and missing fields
+// when a follow-up lookup is still required. This shared shape is used by list,
+// search, mget, quoted messages and thread replies.
+func Resources(m map[string]any) []map[string]any {
+	if m == nil {
+		return nil
+	}
+	mediaIDs := make([]string, 0)
+	collectResourceIDs(m, "mediaid", mediaIDTextRE, &mediaIDs)
+	mediaIDs = uniqueResourceIDs(mediaIDs)
+	sort.Strings(mediaIDs)
+	fileIDs := make([]string, 0)
+	collectResourceIDs(m, "fileid", fileIDTextRE, &fileIDs)
+	fileIDs = uniqueResourceIDs(fileIDs)
+	sort.Strings(fileIDs)
+	if len(mediaIDs) == 0 && len(fileIDs) == 0 {
+		return nil
+	}
+
+	messageID := strings.TrimSpace(fmt.Sprint(MessageID(m)))
+	conversationID := strings.TrimSpace(fmt.Sprint(ConversationID(m)))
+	if messageID == "<nil>" {
+		messageID = ""
+	}
+	if conversationID == "<nil>" {
+		conversationID = ""
+	}
+
+	out := make([]map[string]any, 0, len(mediaIDs)+len(fileIDs))
+	for _, id := range mediaIDs {
+		arguments := map[string]any{
+			"type":        "mediaId",
+			"resource-id": id,
+		}
+		missing := make([]string, 0, 2)
+		if messageID != "" {
+			arguments["message-id"] = messageID
+		} else {
+			missing = append(missing, "message-id")
+		}
+		if conversationID != "" {
+			arguments["open-conversation-id"] = conversationID
+		} else {
+			missing = append(missing, "open-conversation-id")
+		}
+		out = append(out, map[string]any{
+			"type":       "mediaId",
+			"resourceId": id,
+			"download": map[string]any{
+				"shortcut":  "+messages-resource-download",
+				"arguments": arguments,
+				"ready":     len(missing) == 0,
+				"missing":   missing,
+			},
+		})
+	}
+	for _, id := range fileIDs {
+		out = append(out, map[string]any{
+			"type":       "fileId",
+			"resourceId": id,
+			"download": map[string]any{
+				"shortcut": "+messages-resource-download",
+				"arguments": map[string]any{
+					"type":        "fileId",
+					"resource-id": id,
+				},
+				"ready":   true,
+				"missing": []string{},
+			},
+		})
+	}
+	return out
+}
+
+// ResourcesDeep returns resources from a message and each nested quoted,
+// replied-to or forwarded message. Every nested resource is projected from the
+// child message that owns it, so its download arguments never reuse the parent
+// message ID. A missing child conversation ID inherits the enclosing
+// conversation because quoted and forwarded records often omit that duplicate
+// field.
+func ResourcesDeep(m map[string]any) []map[string]any {
+	return resourcesDeep(m, "", 0)
+}
+
+const maxResourceMessageDepth = 32
+
+func resourcesDeep(m map[string]any, inheritedConversationID string, depth int) []map[string]any {
+	if m == nil || depth > maxResourceMessageDepth {
+		return nil
+	}
+	conversationID := strings.TrimSpace(fmt.Sprint(ConversationID(m)))
+	if conversationID == "" || conversationID == "<nil>" {
+		conversationID = inheritedConversationID
+	}
+	owned := m
+	if ConversationID(m) == nil && conversationID != "" {
+		owned = make(map[string]any, len(m)+1)
+		for key, value := range m {
+			owned[key] = value
+		}
+		owned["openConversationId"] = conversationID
+	}
+	out := append([]map[string]any(nil), Resources(owned)...)
+	if depth == maxResourceMessageDepth {
+		return out
+	}
+	for _, child := range nestedMessageChildren(m) {
+		out = append(out, resourcesDeep(child, conversationID, depth+1)...)
+	}
+	return out
+}
+
+var mediaIDTextRE = regexp.MustCompile(`(?i)\bmedia[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
+var fileIDTextRE = regexp.MustCompile(`(?i)\bfile[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
+
+func collectResourceIDs(value any, targetKey string, textPattern *regexp.Regexp, out *[]string) {
+	switch typed := value.(type) {
+	case map[string]any:
+		resourceType := strings.TrimSpace(fmt.Sprint(firstMessageValue(typed, "resourceType", "resource_type")))
+		for key, child := range typed {
+			normalizedKey := normalizeMessageKey(key)
+			if normalizedKey == targetKey ||
+				(normalizedKey == "resourceid" && strings.EqualFold(resourceType, targetKey)) {
+				if id := resourceIDScalar(child); id != "" {
+					*out = append(*out, id)
+				}
+			}
+			if isNestedMessageBoundaryKey(normalizedKey) {
+				continue
+			}
+			collectResourceIDs(child, targetKey, textPattern, out)
+		}
+	case []any:
+		for _, child := range typed {
+			collectResourceIDs(child, targetKey, textPattern, out)
+		}
+	case []map[string]any:
+		for _, child := range typed {
+			collectResourceIDs(child, targetKey, textPattern, out)
+		}
+	case string:
+		for _, match := range textPattern.FindAllStringSubmatch(typed, -1) {
+			if len(match) > 1 {
+				if id := resourceIDScalar(match[1]); id != "" {
+					*out = append(*out, id)
+				}
+			}
+		}
+		trimmed := strings.TrimSpace(typed)
+		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+			var decoded any
+			if json.Unmarshal([]byte(trimmed), &decoded) == nil {
+				collectResourceIDs(decoded, targetKey, textPattern, out)
+			}
+		}
+	}
+}
+
+func normalizeMessageKey(key string) string {
+	return strings.ToLower(strings.NewReplacer("_", "", "-", "").Replace(key))
+}
+
+func isNestedMessageBoundaryKey(key string) bool {
+	switch key {
+	case "quotedmessage", "replymessage", "quoted", "replytomessage",
+		"forwardmessages", "forwardedmessages", "forwarded":
+		return true
+	default:
+		return false
+	}
+}
+
+func nestedMessageMaps(value any) []map[string]any {
+	switch typed := value.(type) {
+	case map[string]any:
+		return []map[string]any{typed}
+	case []map[string]any:
+		return typed
+	case []any:
+		out := make([]map[string]any, 0, len(typed))
+		for _, item := range typed {
+			if child, ok := item.(map[string]any); ok {
+				out = append(out, child)
+			}
+		}
+		return out
+	case string:
+		var decoded any
+		if json.Unmarshal([]byte(strings.TrimSpace(typed)), &decoded) == nil {
+			return nestedMessageMaps(decoded)
+		}
+	}
+	return nil
+}
+
+func nestedMessageChildren(value any) []map[string]any {
+	out := make([]map[string]any, 0)
+	switch typed := value.(type) {
+	case map[string]any:
+		for key, child := range typed {
+			if isNestedMessageBoundaryKey(normalizeMessageKey(key)) {
+				out = append(out, nestedMessageMaps(child)...)
+				continue
+			}
+			out = append(out, nestedMessageChildren(child)...)
+		}
+	case []any:
+		for _, child := range typed {
+			out = append(out, nestedMessageChildren(child)...)
+		}
+	case []map[string]any:
+		for _, child := range typed {
+			out = append(out, nestedMessageChildren(child)...)
+		}
+	case string:
+		trimmed := strings.TrimSpace(typed)
+		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+			var decoded any
+			if json.Unmarshal([]byte(trimmed), &decoded) == nil {
+				out = append(out, nestedMessageChildren(decoded)...)
+			}
+		}
+	}
+	return out
+}
+
+func resourceIDScalar(value any) string {
+	text, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return strings.Trim(strings.TrimSpace(text), `"'`)
+}
+
+func uniqueResourceIDs(values []string) []string {
+	out := make([]string, 0, len(values))
+	seen := map[string]bool{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	return out
+}
+
+// UpdateTime reads an edited message's update time. Gateways sometimes echo
+// createTime as updateTime even when the message was never edited; omit that
+// duplicate so Agents do not infer a nonexistent edit.
+func UpdateTime(m map[string]any) any {
+	createTime := CreateTime(m)
+	for _, key := range []string{"updateTime", "modifiedTime", "gmtModified", "editTime"} {
+		if v, ok := m[key]; ok && v != nil {
+			if createTime != nil && reflect.DeepEqual(v, createTime) {
+				return nil
+			}
+			return v
+		}
+	}
+	return nil
+}
+
+// Reactions normalises DingTalk's inline emotionReplyList into one compact,
+// Agent-friendly block. Unlike Lark, DingTalk already returns these reactions
+// with message-list responses, so this projection performs no extra network
+// request.
+//
+// Output shape:
+//
+//	"reactions": {
+//	  "counts":  [{"emoji": "赞", "count": 3}],
+//	  "details": [{"emoji": "赞", "replyUsers": ["..."]}]
+//	}
+func Reactions(m map[string]any) map[string]any {
+	var raw []any
+	for _, key := range []string{"emotionReplyList", "reactionList", "reactions"} {
+		switch value := m[key].(type) {
+		case []any:
+			raw = value
+		case []map[string]any:
+			raw = make([]any, 0, len(value))
+			for _, item := range value {
+				raw = append(raw, item)
+			}
+		}
+		if len(raw) > 0 {
+			break
+		}
+	}
+	if len(raw) == 0 {
+		return nil
+	}
+
+	counts := make([]map[string]any, 0, len(raw))
+	details := make([]map[string]any, 0, len(raw))
+	for _, item := range raw {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		emoji := firstReactionValue(entry, "emoji", "emojiName", "reactionType", "emotionName", "text")
+		users := reactionUsers(entry)
+		count := reactionCount(entry, len(users))
+		if emoji == nil && count == 0 && len(users) == 0 {
+			continue
+		}
+
+		countRow := map[string]any{"count": count}
+		detailRow := map[string]any{}
+		if emoji != nil {
+			countRow["emoji"] = emoji
+			detailRow["emoji"] = emoji
+		}
+		if len(users) > 0 {
+			detailRow["replyUsers"] = users
+		}
+		counts = append(counts, countRow)
+		if len(detailRow) > 0 {
+			details = append(details, detailRow)
+		}
+	}
+	if len(counts) == 0 && len(details) == 0 {
+		return nil
+	}
+	out := map[string]any{}
+	if len(counts) > 0 {
+		out["counts"] = counts
+	}
+	if len(details) > 0 {
+		out["details"] = details
+	}
+	return out
+}
+
+func firstReactionValue(m map[string]any, keys ...string) any {
+	for _, key := range keys {
+		value, ok := m[key]
+		if !ok || value == nil {
+			continue
+		}
+		if text, isString := value.(string); isString && strings.TrimSpace(text) == "" {
+			continue
+		}
+		return value
+	}
+	return nil
+}
+
+func reactionUsers(m map[string]any) []any {
+	for _, key := range []string{"replyUsers", "users", "operators"} {
+		switch value := m[key].(type) {
+		case []any:
+			return value
+		case []string:
+			out := make([]any, 0, len(value))
+			for _, item := range value {
+				out = append(out, item)
+			}
+			return out
+		}
+	}
+	return nil
+}
+
+func reactionCount(m map[string]any, fallback int) any {
+	for _, key := range []string{"count", "replyCount", "reactionCount"} {
+		switch value := m[key].(type) {
+		case int, int32, int64, float32, float64, json.Number:
+			return value
+		case string:
+			if strings.TrimSpace(value) != "" {
+				return value
+			}
+		}
+	}
+	return fallback
+}
+
+// ApplyPagination carries lower-layer completeness facts into a projected
+// Shortcut payload. It intentionally preserves cursor values only in the
+// command output (where callers need them to continue); audit reports redact
+// those values and retain only their presence.
+func ApplyPagination(payload, data map[string]any) {
+	for key, value := range Pagination(data) {
+		payload[key] = value
+	}
+}
+
+// ApplyMessagePagination publishes message-list completeness without claiming
+// the lower response's nextCursor is a valid CLI input. DingTalk's executable
+// message-list contract paginates with the boundary message createTime, so the
+// resume object uses exactly that accepted parameter.
+func ApplyMessagePagination(payload, data map[string]any, messages []map[string]any, direction string) {
+	payload["contractVersion"] = MessageListContractVersion
+	payload["pagesFetched"] = 1
+	payload["enrichedCount"] = 0
+	payload["failedCount"] = 0
+	payload["failures"] = []map[string]any{}
+	payload["hasMore"] = false
+	payload["complete"] = false
+	page := Pagination(data)
+	if len(page) == 0 {
+		payload["paginationKnown"] = false
+		payload["failedCount"] = 1
+		payload["failures"] = []map[string]any{{
+			"stage": "pagination",
+			"error": "下层未返回可靠的 hasMore/nextCursor，无法证明结果完整",
+		}}
+		return
+	}
+	value, hasMoreKnown := page["hasMore"]
+	if !hasMoreKnown {
+		payload["paginationKnown"] = false
+		payload["failedCount"] = 1
+		payload["failures"] = []map[string]any{{
+			"stage": "pagination",
+			"error": "下层仅返回 cursor、未返回 hasMore，无法证明结果完整",
+		}}
+		return
+	}
+	payload["paginationKnown"] = true
+	payload["hasMore"] = value
+	if value, ok := page["complete"]; ok {
+		payload["complete"] = value
+	}
+	hasMore, _ := page["hasMore"].(bool)
+	if !hasMore || len(messages) == 0 {
+		return
+	}
+	boundary := CreateTime(messages[len(messages)-1])
+	if boundary == nil {
+		payload["failedCount"] = 1
+		payload["failures"] = []map[string]any{{
+			"stage": "pagination",
+			"error": "下层返回 hasMore=true，但末条消息缺少可继续读取的 createTime",
+		}}
+		return
+	}
+	next := map[string]any{"time": boundary}
+	if strings.TrimSpace(direction) != "" {
+		next["direction"] = direction
+	}
+	payload["nextPage"] = next
+}
+
+// Pagination extracts hasMore/nextCursor from the response root or a common
+// result/data envelope. When hasMore is present it also emits the explicit
+// inverse "complete", making truncation hard for an Agent to overlook.
+func Pagination(data map[string]any) map[string]any {
+	if data == nil {
+		return nil
+	}
+	scopes := []map[string]any{data}
+	for _, key := range []string{"result", "data"} {
+		if inner, ok := data[key].(map[string]any); ok {
+			scopes = append(scopes, inner)
+		}
+	}
+	for _, scope := range scopes {
+		out := map[string]any{}
+		for _, key := range []string{"hasMore", "has_more"} {
+			if value, ok := scope[key].(bool); ok {
+				out["hasMore"] = value
+				out["complete"] = !value
+				break
+			}
+		}
+		for _, key := range []string{"nextCursor", "next_cursor", "nextToken", "next_token", "pageToken", "page_token"} {
+			if value, ok := scope[key]; ok && paginationValuePresent(value) {
+				out["nextCursor"] = value
+				break
+			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
+	return nil
+}
+
+func paginationValuePresent(value any) bool {
+	switch typed := value.(type) {
+	case nil:
+		return false
+	case string:
+		return strings.TrimSpace(typed) != "" && strings.TrimSpace(typed) != "0"
+	case int:
+		return typed != 0
+	case int64:
+		return typed != 0
+	case float64:
+		return typed != 0
+	default:
+		return true
+	}
 }
 
 // Forwarded projects the nested messages of a forwarded chat record. The caller

@@ -41,6 +41,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/plugin"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/recovery"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/usage"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/agentproduct"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/mcptypes"
@@ -75,6 +76,7 @@ var (
 	rootPluginLoadHooks             = (*plugin.Plugin).LoadHooks
 	rootPluginSyncSkills            = plugin.SyncSkills
 	rootAuthLoadTokenData           = authpkg.LoadTokenData
+	rootNewCommandRunnerWithFlags   = newCommandRunnerWithFlags
 )
 
 // Execute runs the root command and returns the process exit code.
@@ -113,7 +115,11 @@ func Execute() (exitCode int) {
 	// Run PreParse handlers on raw argv before Cobra parses flags.
 	// This corrects model-generated errors like --userId → --user-id
 	// and --limit100 → --limit 100.
-	rootRunPreParse(root, engine)
+	if err := rootRunPreParse(root, engine); err != nil {
+		err = newPreParseValidationError(err)
+		_ = printExecutionError(root, os.Stdout, os.Stderr, err)
+		return apperrors.ExitCode(err)
+	}
 
 	executed, err := rootExecuteCommand(root)
 	if err != nil {
@@ -133,6 +139,22 @@ func Execute() (exitCode int) {
 		return apperrors.ExitCode(err)
 	}
 	return 0
+}
+
+// newPreParseValidationError keeps pipeline handler identity in internal logs
+// while exposing only the underlying parameter-domain error to CLI users.
+func newPreParseValidationError(err error) error {
+	userErr := err
+	var handlerErr *pipeline.HandlerError
+	if stderrors.As(err, &handlerErr) && handlerErr.Unwrap() != nil {
+		userErr = handlerErr.Unwrap()
+	}
+	return apperrors.NewValidation(
+		userErr.Error(),
+		apperrors.WithReason("parameter_conflict"),
+		apperrors.WithHint("Remove the duplicate alias/canonical spelling and pass the parameter exactly once."),
+		apperrors.WithCause(userErr),
+	)
 }
 
 func isUnknownCommandError(err error) bool {
@@ -182,6 +204,22 @@ func flagErrorWithSuggestions(cmd *cobra.Command, err error) error {
 	// 无论哪种格式，子串 "--help' for usage." 都可被检索到。
 	tail := fmt.Sprintf("\nSee '%s --help' for usage.", cmd.CommandPath())
 	msgWithTail := errMsg + tail
+	if flag, protection, ok := reviewedFlagProtection(cmd, errMsg); ok {
+		hint := fmt.Sprintf("Parameter --%s is blocked from automatic normalization on %q; choose an explicit flag from --help.", flag, cmd.CommandPath())
+		reason := "blocked_flag"
+		if protection == pipeline.FlagProtectionAmbiguous {
+			hint = fmt.Sprintf("Parameter --%s is ambiguous on %q and cannot be normalized safely; choose the intended explicit flag from --help.", flag, cmd.CommandPath())
+			reason = "ambiguous_flag"
+		}
+		return apperrors.NewValidation(
+			msgWithTail,
+			apperrors.WithHint(hint),
+			apperrors.WithReason(reason),
+			apperrors.WithCause(err),
+			apperrors.WithActions(fmt.Sprintf("Run '%s --help' for valid flags", cmd.CommandPath())),
+			apperrors.WithAvailableFlags(cmdutil.VisibleFlagNames(cmd)...),
+		)
+	}
 
 	// Common flag aliases and suggestions
 	suggestions := map[string]string{
@@ -228,6 +266,33 @@ func flagErrorWithSuggestions(cmd *cobra.Command, err error) error {
 	// （missing required / ambiguous / unknown shorthand 等），仍包尾部 hint，
 	// 行为对齐 wukong / docker / kubectl。
 	return fmt.Errorf("%s%s", errMsg, tail)
+}
+
+func reviewedFlagProtection(cmd *cobra.Command, errMsg string) (string, pipeline.FlagProtection, bool) {
+	if cmd == nil {
+		return "", "", false
+	}
+	const prefix = "unknown flag: --"
+	idx := strings.Index(errMsg, prefix)
+	if idx < 0 {
+		return "", "", false
+	}
+	flag := strings.TrimSpace(errMsg[idx+len(prefix):])
+	if i := strings.IndexAny(flag, " =\n\t"); i >= 0 {
+		flag = flag[:i]
+	}
+	entry, ok := cli.LookupParamAlias(cmd.CommandPath())
+	if !ok {
+		return "", "", false
+	}
+	morphed := cmdutil.Morph(flag)
+	if entry.IsBlocked(morphed) {
+		return flag, pipeline.FlagProtectionBlocked, true
+	}
+	if entry.IsAmbiguous(morphed) {
+		return flag, pipeline.FlagProtectionAmbiguous, true
+	}
+	return "", "", false
 }
 
 func printExecutionError(root *cobra.Command, stdout, stderr io.Writer, err error) error {
@@ -304,41 +369,43 @@ func commandRequestsJSONErrors(cmd *cobra.Command) bool {
 // is propagated to background goroutines and the Cobra command tree so
 // that SIGINT/SIGTERM can cancel in-flight work.
 func NewRootCommand(ctx ...context.Context) *cobra.Command {
+	registerSchemaRuntimeDelivery()
 	var rootCtx context.Context
 	if len(ctx) > 0 && ctx[0] != nil {
 		rootCtx = ctx[0]
 	}
-	return newRootCommandWithEngine(rootCtx, nil, true)
+	return newRootCommandWithEngine(rootCtx, nil, true, false)
 }
 
 // NewSchemaSourceRootCommand constructs the distribution-owned command tree
-// used by Schema generation and command-surface policy. Installed plugins and
-// user-defined shortcuts must not change the reviewed embedded Schema.
+// used as the Schema assembly source root (RegisterSchemaSourceRoot →
+// ResolveSchemaBuild) and by command-surface policy. Installed plugins and
+// user-defined shortcuts must not change the reviewed Schema surface.
+// declarationOnly skips injectStaticServers / helpers.InitDeps so Schema
+// assembly cannot clobber a live process's ToolCaller or plugin endpoints.
 func NewSchemaSourceRootCommand(ctx ...context.Context) *cobra.Command {
 	var rootCtx context.Context
 	if len(ctx) > 0 && ctx[0] != nil {
 		rootCtx = ctx[0]
 	}
-	return newRootCommandWithEngine(rootCtx, nil, false)
+	return newRootCommandWithEngine(rootCtx, nil, false, true)
 }
 
 // NewRootCommandWithEngine constructs the root CLI command with an
 // optional pipeline engine for input correction. When engine is nil,
 // no pipeline processing is applied.
 func NewRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine) *cobra.Command {
-	return newRootCommandWithEngine(rootCtx, engine, true)
+	registerSchemaRuntimeDelivery()
+	return newRootCommandWithEngine(rootCtx, engine, true, false)
 }
 
-func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, loadRuntimeExtensions bool) *cobra.Command {
+func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, loadRuntimeExtensions bool, declarationOnly bool) *cobra.Command {
 	if rootCtx == nil {
 		rootCtx = context.Background()
 	}
 	flags := &GlobalFlags{}
 	authpkg.SetRuntimeProfile(preparseProfileFlag(os.Args[1:]))
-	loader := cli.EnvironmentLoader{
-		LookupEnv: os.LookupEnv,
-	}
-	runner := newCommandRunnerWithFlags(loader, flags)
+	runner := rootNewCommandRunnerWithFlags(flags)
 
 	root := &cobra.Command{
 		Use:               "dws",
@@ -353,6 +420,16 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 			return cmd.Help()
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Validate caller-provided identity labels before any edition hook
+			// or command network activity can run. Header-only library callers
+			// use the best-effort path in resolveIdentityHeaders instead.
+			if _, err := parseAgentHost(os.Getenv(envDWSAgentHost)); err != nil {
+				return err
+			}
+			if _, err := parseAgentProduct(os.Getenv(agentproduct.EnvName)); err != nil {
+				return err
+			}
+
 			authpkg.SetRuntimeProfile(flags.Profile)
 			// Apply OAuth credential overrides from CLI flags (highest priority).
 			if flags.ClientID != "" {
@@ -383,13 +460,8 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 
 	bindPersistentFlags(root, flags)
 
-	schemaCmd := newSchemaCommand(loader)
-	mcpCmd := newMCPCommand(rootCtx, loader, runner, engine)
-	// The legacy dynamic MCP surface remains disabled, but reviewed static MCP
-	// helpers registered below are part of the public CLI and Schema surface.
-	mcpCmd.Hidden = false
-	mcpCmd.Short = "管理 MCP 服务连接信息"
-	mcpCmd.Long = "管理经过审核并纳入 Schema 的 MCP 服务连接辅助能力。"
+	schemaCmd := cli.NewSchemaCommand()
+	mcpCmd := cli.NewMCPCommand()
 	// Wrap the caller so every MCP tool call's shape is recorded to the local
 	// usage log (privacy-preserving; see internal/shortcut/usage). Powers
 	// `dws shortcut stats` and future high-frequency shortcut distillation.
@@ -402,13 +474,13 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 		newAPICommand(flags),
 		newSkillCommand(),
 		newCacheCommand(),
-		newCatalogCommand(loader),
+		newCatalogCommand(),
 		newConfigCommand(),
 		newDoctorCommand(),
 		newEventCommand(),
 		newAuditCommand(),
 		newCompletionCommand(root),
-		newRecoveryCommand(rootCtx, loader, flags),
+		newRecoveryCommand(flags),
 		newUpgradeCommand(),
 		newVersionCommand(),
 		newPluginCommand(),
@@ -418,8 +490,14 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 	}
 	root.AddCommand(utilityCommands...)
 
-	root.AddCommand(newLegacyPublicCommands(runner, patCaller, loadRuntimeExtensions)...)
-	root.AddCommand(newLegacyHiddenCommands(runner)...)
+	if declarationOnly {
+		// Schema / surface assembly: mount the reviewed tree only. Do not
+		// injectStaticServers or InitDeps — those mutate process globals and
+		// would clobber a live runtime's caller and plugin endpoints.
+		root.AddCommand(mountLegacyPublicCommands(runner, loadRuntimeExtensions)...)
+	} else {
+		root.AddCommand(newLegacyPublicCommands(runner, patCaller, loadRuntimeExtensions)...)
+	}
 
 	// PAT authorization commands (open-source core)
 	pat.RegisterCommands(root, patCaller)
@@ -442,9 +520,36 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 	configureRootHelp(root)
 	// Set custom flag error handler for better UX
 	root.SetFlagErrorFunc(flagErrorWithSuggestions)
+	installReviewedFlagProtectionHandlers(root)
 	root.SetContext(rootCtx)
 
 	return root
+}
+
+// installReviewedFlagProtectionHandlers makes reviewed blocked/ambiguous
+// parameters authoritative even when an older command subtree has installed a
+// local FlagErrorFunc. Commands without a reviewed guard keep their existing
+// handler or inherit the root handler as before.
+func installReviewedFlagProtectionHandlers(root *cobra.Command) {
+	if root == nil {
+		return
+	}
+	var visit func(*cobra.Command)
+	visit = func(cmd *cobra.Command) {
+		if entry, ok := cli.LookupParamAlias(cmd.CommandPath()); ok && (len(entry.Blocked) > 0 || len(entry.Ambiguous) > 0) {
+			previous := cmd.FlagErrorFunc()
+			cmd.SetFlagErrorFunc(func(current *cobra.Command, err error) error {
+				if _, _, guarded := reviewedFlagProtection(current, err.Error()); guarded {
+					return flagErrorWithSuggestions(current, err)
+				}
+				return previous(current, err)
+			})
+		}
+		for _, child := range cmd.Commands() {
+			visit(child)
+		}
+	}
+	visit(root)
 }
 
 func preparseProfileFlag(args []string) string {
@@ -590,18 +695,6 @@ func newVersionCommand() *cobra.Command {
 	}
 }
 
-func newSchemaCommand(loader cli.CatalogLoader) *cobra.Command {
-	return cli.NewSchemaCommand(loader)
-}
-
-// buildMCPCommandFn is a test seam for newMCPCommand.
-var buildMCPCommandFn = cli.NewMCPCommand
-
-// newMCPCommand builds the `dws mcp` command tree.
-func newMCPCommand(ctx context.Context, loader cli.CatalogLoader, runner executor.Runner, engine *pipeline.Engine) *cobra.Command {
-	return buildMCPCommandFn(ctx, loader, runner, engine)
-}
-
 // hideNonDirectRuntimeCommands marks top-level product commands as hidden
 // unless they correspond to a static endpoint product or an edition-visible
 // compatibility command.
@@ -609,27 +702,6 @@ func newMCPCommand(ctx context.Context, loader cli.CatalogLoader, runner executo
 // stay hidden.
 func hideNonDirectRuntimeCommands(root *cobra.Command) {
 	allowedProducts := resolveVisibleProducts()
-	staticCommands := map[string]bool{
-		"auth":       true,
-		"api":        true,
-		"audit":      true,
-		"cache":      true,
-		"config":     true,
-		"dev":        true,
-		"doctor":     true,
-		"event":      true,
-		"completion": true,
-		"skill":      true,
-		"plugin":     true,
-		"profile":    true,
-		"version":    true,
-		"help":       true,
-		"markdown":   true,
-		"recovery":   true,
-		"schema":     true,
-		"mcp":        true,
-		"upgrade":    true,
-	}
 	for _, cmd := range root.Commands() {
 		name := cmd.Name()
 		if cmd.Hidden {
@@ -645,16 +717,40 @@ func hideNonDirectRuntimeCommands(root *cobra.Command) {
 	}
 }
 
+// builtinCommandNames is the shared base set of built-in command names. Both
+// staticCommands (the visibility allow-list used by
+// hideNonDirectRuntimeCommands) and reservedCommands (the plugin-override
+// blocklist) derive from this single set so they cannot drift apart.
+var builtinCommandNames = map[string]bool{
+	"auth": true, "api": true, "audit": true, "cache": true, "config": true,
+	"doctor": true, "event": true, "completion": true, "skill": true,
+	"plugin": true, "profile": true, "version": true, "help": true,
+	"recovery": true, "schema": true, "mcp": true, "upgrade": true,
+}
+
+// commandNameSet returns a new set containing every name in base plus extras.
+func commandNameSet(base map[string]bool, extras ...string) map[string]bool {
+	set := make(map[string]bool, len(base)+len(extras))
+	for name := range base {
+		set[name] = true
+	}
+	for _, extra := range extras {
+		set[extra] = true
+	}
+	return set
+}
+
+// staticCommands is the set of built-in commands that stay visible even when
+// they are not backed by a static endpoint product. Asymmetry with
+// reservedCommands is intentional: dev/markdown stay visible but are not
+// plugin-reserved, while login/logout are plugin-reserved but are not static
+// top-level commands.
+var staticCommands = commandNameSet(builtinCommandNames, "dev", "markdown")
+
 // reservedCommands is the set of built-in command names that plugins must
 // not override. This protects core CLI functionality from being hijacked
 // by a malicious or misconfigured plugin.
-var reservedCommands = map[string]bool{
-	"auth": true, "api": true, "audit": true, "login": true, "logout": true,
-	"plugin": true, "profile": true, "skill": true, "cache": true,
-	"config": true, "doctor": true, "event": true, "completion": true,
-	"recovery": true, "upgrade": true, "version": true,
-	"schema": true, "mcp": true, "help": true,
-}
+var reservedCommands = commandNameSet(builtinCommandNames, "login", "logout")
 
 var replaceablePluginFallbacks = map[string]bool{
 	"conference": true,
@@ -1230,7 +1326,7 @@ func registerPluginAuthFromHeaders(srv mcptypes.ServerDescriptor) {
 // Register → PreParse → PostParse → PreRequest → PostResponse.
 //
 // Phases are invoked at their respective integration points:
-//   - Register:     during command tree construction (newMCPCommand)
+//   - Register:     during command tree construction (cli.NewMCPCommand)
 //   - PreParse:     before Cobra parses raw argv (RunPreParse)
 //   - PostParse:    after Cobra parsing, before validation (canonical RunE)
 //   - PreRequest:   after validation, before JSON-RPC dispatch (canonical RunE)
@@ -1241,13 +1337,27 @@ func newPipelineEngine() *pipeline.Engine {
 		// Register handler runs during command tree building.
 		handlers.RegisterHandler{},
 
-		// PreParse handlers run in order: alias → sticky → paramname.
-		// Alias normalises case first (--userId → --user-id), then
-		// sticky splits glued values (--limit100 → --limit 100), then
-		// paramname fixes near-miss typos (--limt → --limit).
+		// PreParse handlers run in order: alias → semantic → sticky → paramname
+		// → boolvalue.
+		// Alias normalises case first (--userId → --user-id), then semantic
+		// resolves reviewed synonyms to the real flag (--keyword → --query),
+		// then sticky splits glued values (--limit100 → --limit 100), then
+		// paramname fixes near-miss typos (--limt → --limit). Boolvalue runs
+		// last so detached values for every real boolean flag (for example
+		// `--dry-run false`) become explicit `--flag=false` tokens before pflag
+		// can interpret the bare flag as true.
 		handlers.AliasHandler{},
+		handlers.SemanticAliasHandler{
+			// Inject the build-time reduced alias table with native types so
+			// the handler package stays decoupled from cli.
+			Lookup: func(rawCommandPath string) (map[string]string, []string, []string, bool) {
+				e, ok := cli.LookupParamAlias(rawCommandPath)
+				return e.Aliases, e.Blocked, e.Ambiguous, ok
+			},
+		},
 		handlers.StickyHandler{},
 		handlers.ParamNameHandler{},
+		handlers.BoolValueHandler{},
 
 		// PostParse handlers normalise structured values.
 		handlers.ParamValueHandler{},
