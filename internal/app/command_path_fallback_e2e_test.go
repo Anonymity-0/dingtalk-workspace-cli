@@ -158,6 +158,16 @@ func TestReviewedReadFallbacksResolveCanonicalLeafBeforeParameterValidation(t *t
 			args:   []string{"chat", "+list-robots", "--group", "cid-fixture"},
 			target: "chat +chat-bots",
 		},
+		{
+			name:   "bot list",
+			args:   []string{"chat", "+bot-list", "--group", "cid-fixture"},
+			target: "chat +chat-bots",
+		},
+		{
+			name:   "conversation detail",
+			args:   []string{"chat", "+conversation-detail", "--group", "cid-fixture"},
+			target: "chat +conversation-info",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -233,6 +243,9 @@ func TestReviewedAmbiguousCommandFallbackNeverDispatches(t *testing.T) {
 		{path: "chat +send-file", candidates: []string{"chat +messages-send", "chat message send"}},
 		{path: "chat +send-image", candidates: []string{"chat +messages-send", "chat message send"}},
 		{path: "chat +send-media", candidates: []string{"chat +messages-send", "chat message send"}},
+		{path: "chat +conversation-category-list", candidates: []string{"chat +category-list", "chat +category-list-conversations"}},
+		{path: "chat +conversation-group-list", candidates: []string{"chat +category-list-conversations", "chat +conversation-list"}},
+		{path: "chat +list-my-groups", candidates: []string{"chat +my-groups", "chat +chat-list-mine", "chat +chat-list"}},
 		{path: "oa +list-processes", candidates: []string{"oa +list-forms", "oa +my-initiated", "oa approval list-initiated"}},
 	}
 	for _, test := range tests {
@@ -322,26 +335,31 @@ func TestRewrittenShortcutStillUsesCanonicalParameterErrors(t *testing.T) {
 
 func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T) {
 	invalidShortcuts := map[string]bool{
-		"+group-search":      true,
-		"+members":           true,
-		"+group-member-list": true,
-		"+list-group-bots":   true,
-		"+list-robot":        true,
-		"+list-robots":       true,
-		"+message-list":      true,
-		"+read-single":       true,
-		"+rename-group":      true,
-		"+send":              true,
-		"+send-by-bot":       true,
-		"+send-dm":           true,
-		"+send-message":      true,
-		"+send-single":       true,
-		"+send-text":         true,
-		"+send-to":           true,
-		"+send-file":         true,
-		"+send-image":        true,
-		"+send-media":        true,
-		"+group-send-text":   true,
+		"+bot-list":                   true,
+		"+conversation-detail":        true,
+		"+conversation-category-list": true,
+		"+conversation-group-list":    true,
+		"+list-my-groups":             true,
+		"+group-search":               true,
+		"+members":                    true,
+		"+group-member-list":          true,
+		"+list-group-bots":            true,
+		"+list-robot":                 true,
+		"+list-robots":                true,
+		"+message-list":               true,
+		"+read-single":                true,
+		"+rename-group":               true,
+		"+send":                       true,
+		"+send-by-bot":                true,
+		"+send-dm":                    true,
+		"+send-message":               true,
+		"+send-single":                true,
+		"+send-text":                  true,
+		"+send-to":                    true,
+		"+send-file":                  true,
+		"+send-image":                 true,
+		"+send-media":                 true,
+		"+group-send-text":            true,
 	}
 	root := NewSchemaSourceRootCommand()
 	chat := exactAppCommand(root, "chat")

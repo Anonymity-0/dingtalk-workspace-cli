@@ -197,6 +197,51 @@
       ],
       "reviewed": true,
       "review_reason": "20260720 merged evaluation emitted +list-processes, but process can mean approval forms/templates or approval instances initiated by the current user; stop and present both shortcut workflows plus the exact native instance leaf."
+    },
+    {
+      "from": "chat +conversation-detail",
+      "mode": "rewrite",
+      "to": "chat +conversation-info",
+      "reviewed": true,
+      "review_reason": "20260804 multi-im badcase requested one conversation's details. +conversation-info is the unique current read-only shortcut for that operation. The rewrite changes only the command path and preserves every flag/value for target validation."
+    },
+    {
+      "from": "chat +bot-list",
+      "mode": "rewrite",
+      "to": "chat +chat-bots",
+      "reviewed": true,
+      "review_reason": "20260804 multi-im badcase requested the robot list for one group. +chat-bots is the unique current read-only shortcut. The fallback must not reinterpret the accompanying group flag."
+    },
+    {
+      "from": "chat +conversation-category-list",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +category-list",
+        "chat +category-list-conversations"
+      ],
+      "reviewed": true,
+      "review_reason": "The invented name can mean listing the user's categories or listing conversations inside one category. No candidate may execute before the caller chooses the intended object level."
+    },
+    {
+      "from": "chat +conversation-group-list",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +category-list-conversations",
+        "chat +conversation-list"
+      ],
+      "reviewed": true,
+      "review_reason": "The invented name can mean conversations in a custom category or the general conversation list. The command name alone does not identify the requested collection."
+    },
+    {
+      "from": "chat +list-my-groups",
+      "mode": "ambiguous",
+      "candidates": [
+        "chat +my-groups",
+        "chat +chat-list-mine",
+        "chat +chat-list"
+      ],
+      "reviewed": true,
+      "review_reason": "The invented name does not choose between the established resolver shortcut, the legacy personal-group list and the current Schema-complete chat list. Recovery must stop instead of silently changing pagination or output semantics."
     }
   ]
 }

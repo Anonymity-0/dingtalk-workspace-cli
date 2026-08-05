@@ -119,7 +119,7 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 		t.Fatalf("schema header = %#v", schema)
 	}
 	entries, err := LoadCommandPathFallbacks()
-	if err != nil || len(entries) != 21 {
+	if err != nil || len(entries) != 26 {
 		t.Fatalf("LoadCommandPathFallbacks() = %#v, %v", entries, err)
 	}
 	if got, ok := LookupCommandPathFallback("dws chat +group-search"); !ok || got.To != "chat +chat-search" {
@@ -132,13 +132,15 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 
 func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 	rewrites := map[string]string{
-		"chat +group-search":      "chat +chat-search",
-		"chat +members":           "chat +group-members",
-		"chat +group-member-list": "chat +group-members",
-		"chat +list-group-bots":   "chat +chat-bots",
-		"chat +list-robot":        "chat +chat-bots",
-		"chat +list-robots":       "chat +chat-bots",
-		"chat +rename-group":      "chat +chat-update",
+		"chat +bot-list":            "chat +chat-bots",
+		"chat +conversation-detail": "chat +conversation-info",
+		"chat +group-search":        "chat +chat-search",
+		"chat +members":             "chat +group-members",
+		"chat +group-member-list":   "chat +group-members",
+		"chat +list-group-bots":     "chat +chat-bots",
+		"chat +list-robot":          "chat +chat-bots",
+		"chat +list-robots":         "chat +chat-bots",
+		"chat +rename-group":        "chat +chat-update",
 	}
 	for from, to := range rewrites {
 		entry, ok := LookupCommandPathFallback(from)
@@ -148,20 +150,23 @@ func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 	}
 
 	ambiguous := map[string][]string{
-		"chat +group-send-text": {"chat +send-to-group", "chat +messages-send"},
-		"chat +message-list":    {"chat +chat-messages", "chat +messages-list-direct", "chat +search-msg", "chat +unread-chats"},
-		"chat +read-single":     {"chat +messages-list-direct", "chat +chat-messages"},
-		"chat +send":            {"chat +messages-send", "chat +dm", "chat +send-to-group"},
-		"chat +send-by-bot":     {"chat +messages-send", "chat message send-by-bot"},
-		"chat +send-dm":         {"chat +dm", "chat +messages-send"},
-		"chat +send-message":    {"chat +messages-send", "chat +dm", "chat +send-to-group"},
-		"chat +send-single":     {"chat +dm", "chat +messages-send"},
-		"chat +send-text":       {"chat +messages-send", "chat +dm", "chat +send-to-group"},
-		"chat +send-to":         {"chat +messages-send", "chat +dm", "chat +send-to-group"},
-		"chat +send-file":       {"chat +messages-send", "chat message send"},
-		"chat +send-image":      {"chat +messages-send", "chat message send"},
-		"chat +send-media":      {"chat +messages-send", "chat message send"},
-		"oa +list-processes":    {"oa +list-forms", "oa +my-initiated", "oa approval list-initiated"},
+		"chat +conversation-category-list": {"chat +category-list", "chat +category-list-conversations"},
+		"chat +conversation-group-list":    {"chat +category-list-conversations", "chat +conversation-list"},
+		"chat +group-send-text":            {"chat +send-to-group", "chat +messages-send"},
+		"chat +list-my-groups":             {"chat +my-groups", "chat +chat-list-mine", "chat +chat-list"},
+		"chat +message-list":               {"chat +chat-messages", "chat +messages-list-direct", "chat +search-msg", "chat +unread-chats"},
+		"chat +read-single":                {"chat +messages-list-direct", "chat +chat-messages"},
+		"chat +send":                       {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-by-bot":                {"chat +messages-send", "chat message send-by-bot"},
+		"chat +send-dm":                    {"chat +dm", "chat +messages-send"},
+		"chat +send-message":               {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-single":                {"chat +dm", "chat +messages-send"},
+		"chat +send-text":                  {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-to":                    {"chat +messages-send", "chat +dm", "chat +send-to-group"},
+		"chat +send-file":                  {"chat +messages-send", "chat message send"},
+		"chat +send-image":                 {"chat +messages-send", "chat message send"},
+		"chat +send-media":                 {"chat +messages-send", "chat message send"},
+		"oa +list-processes":               {"oa +list-forms", "oa +my-initiated", "oa approval list-initiated"},
 	}
 	for from, candidates := range ambiguous {
 		entry, ok := LookupCommandPathFallback(from)

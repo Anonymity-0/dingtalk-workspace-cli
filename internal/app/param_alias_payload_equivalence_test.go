@@ -30,13 +30,34 @@ var paramAliasCompleteCommands = map[string][]string{
 	"attendance +check-result":                 {"attendance", "+check-result", "--users", "user-1,user-2", "--start", "2026-03-01", "--end", "2026-03-02"},
 	"calendar event list":                      {"calendar", "event", "list", "--start", "2026-03-10T14:00:00+08:00", "--end", "2026-03-10T18:00:00+08:00", "--calendar-id", "primary", "--cursor", "cursor-1", "--limit", "7"},
 	"chat +chat-messages":                      {"chat", "+chat-messages", "--group", "fixture-conversation"},
+	"chat +chat-add-bot":                       {"chat", "+chat-add-bot", "--id", "fixture-conversation", "--robot-code", "robot-1", "--yes"},
+	"chat +chat-audit-join":                    {"chat", "+chat-audit-join", "--group", "fixture-conversation", "--record-id", "7", "--applicant", "user-1", "--inviter", "user-2", "--status", "AuditApprove", "--yes"},
+	"chat +chat-members-get":                   {"chat", "+chat-members-get", "--id", "fixture-conversation", "--users", "D-user-1,D-user-2"},
+	"chat +chat-members-list":                  {"chat", "+chat-members-list", "--conversation-id", "fixture-conversation", "--member-types", "user,bot"},
+	"chat +chat-mute-member":                   {"chat", "+chat-mute-member", "--group", "fixture-conversation", "--users", "D-user-1,D-user-2", "--mute-time", "3600000", "--yes"},
+	"chat +chat-remove-bot":                    {"chat", "+chat-remove-bot", "--id", "fixture-conversation", "--bot-id", "bot-1", "--yes"},
+	"chat +chat-role-remove-user":              {"chat", "+chat-role-remove-user", "--group", "fixture-conversation", "--user", "D-user-1", "--role-ids", "role-1", "--yes"},
+	"chat +chat-transfer-owner":                {"chat", "+chat-transfer-owner", "--group", "fixture-conversation", "--new-owner", "D-user-1", "--yes"},
+	"chat +chat-update":                        {"chat", "+chat-update", "--group", "fixture-conversation", "--name", "Fixture Renamed Group", "--yes"},
 	"chat +bot-find":                           {"chat", "+bot-find", "--query", "fixture", "--limit", "7"},
 	"chat +bot-search":                         {"chat", "+bot-search", "--name", "Fixture Bot", "--page", "2", "--size", "7"},
 	"chat +category-create":                    {"chat", "+category-create", "--title", "Fixture Cat", "--yes"},
 	"chat +category-rename":                    {"chat", "+category-rename", "--category-id", "7", "--title", "Renamed Cat", "--yes"},
 	"chat +group-members":                      {"chat", "+group-members", "--group", "Fixture Group"},
+	"chat +conversation-set-top":               {"chat", "+conversation-set-top", "--conversation-id", "fixture-conversation", "--yes"},
+	"chat +feed-group-query-item":              {"chat", "+feed-group-query-item", "--category-id", "7", "--conversation-ids", "fixture-conversation"},
+	"chat +flag-cancel":                        {"chat", "+flag-cancel", "--conversation-id", "fixture-conversation", "--message-id", "message-1", "--yes"},
+	"chat +flag-create":                        {"chat", "+flag-create", "--conversation-id", "fixture-conversation", "--message-id", "message-1", "--yes"},
+	"chat +flag-list":                          {"chat", "+flag-list", "--cursor", "0", "--size", "7"},
+	"chat +messages-combine-forward":           {"chat", "+messages-combine-forward", "--src-conversation-id", "fixture-source", "--msg-ids", "message-1,message-2", "--dest-conversation-id", "fixture-destination", "--yes"},
+	"chat +messages-forward":                   {"chat", "+messages-forward", "--src-conversation-id", "fixture-source", "--msg-id", "message-1", "--dest-conversation-id", "fixture-destination", "--yes"},
+	"chat +messages-forward-topic":             {"chat", "+messages-forward-topic", "--src-msg-id", "message-1", "--src-conversation-id", "fixture-source", "--src-thread-id", "convThread-fixture", "--dest-conversation-id", "fixture-destination", "--yes"},
+	"chat +messages-list":                      {"chat", "+messages-list", "--group", "fixture-conversation", "--time", "2026-03-10 00:00:00", "--limit", "7"},
 	"chat +messages-list-direct":               {"chat", "+messages-list-direct", "--user", "user-1", "--time", "2026-03-10 00:00:00", "--limit", "7"},
 	"chat +messages-list-unread-conversations": {"chat", "+messages-list-unread-conversations", "--count", "7", "--exclude-muted"},
+	"chat +messages-reply":                     {"chat", "+messages-reply", "--conversation-id", "fixture-conversation", "--ref-msg-id", "message-1", "--ref-sender", "D-sender", "--text", "hello fixture", "--yes"},
+	"chat +messages-resource-download":         {"chat", "+messages-resource-download", "--resource-id", "resource-1", "--message-id", "message-1", "--open-conversation-id", "fixture-conversation", "--output", "downloads/fixture.bin"},
+	"chat +messages-set-pin":                   {"chat", "+messages-set-pin", "--open-conversation-id", "fixture-conversation", "--msg-id", "message-1", "--yes"},
 	"chat +messages-send-by-webhook":           {"chat", "+messages-send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--text", "fixture", "--at-users", "user-1,user-2", "--yes"},
 	"chat +search-msg":                         {"chat", "+search-msg", "--group", "fixture-conversation", "--query", "fixture", "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-11T00:00:00+08:00", "--no-enrich"},
 	"chat +send-to-group":                      {"chat", "+send-to-group", "--group", "Fixture Group", "--text", "hello fixture", "--yes"},
@@ -138,6 +159,9 @@ var paramAliasCompleteCommandVariants = map[string]map[string][]string{
 		"group":     {"chat", "message", "send", "--group", "fixture-conversation", "--text", "hello fixture", "--uuid", "param-alias-equivalence-group", "--yes"},
 		"file-path": {"chat", "message", "send", "--group", "fixture-conversation", "--msg-type", "file", "--file-path", "../../go.mod", "--dentry-id", "1", "--space-id", "2", "--uuid", "param-alias-equivalence-file", "--yes"},
 	},
+	"chat +conversation-set-top": {
+		"conversation-ids": {"chat", "+conversation-set-top", "--conversation-ids", "fixture-conversation-1,fixture-conversation-2", "--yes"},
+	},
 }
 
 // paramAliasNewIMCases is the exact set of aliases added by the reviewed IM
@@ -176,6 +200,38 @@ var paramAliasNewIMCases = []struct {
 	{command: "chat message send", emitted: "file", canonical: "file-path"},
 	{command: "chat message send-by-bot", emitted: "at-users", canonical: "at-user-ids"},
 	{command: "chat message send-by-webhook", emitted: "at-user-ids", canonical: "at-users"},
+	{command: "chat +chat-update", emitted: "chat-id", canonical: "group"},
+	{command: "chat +chat-update", emitted: "conversation-id", canonical: "group"},
+	{command: "chat +chat-update", emitted: "open-conversation-id", canonical: "group"},
+	{command: "chat +chat-update", emitted: "title", canonical: "name"},
+	{command: "chat +chat-update", emitted: "new-title", canonical: "name"},
+	{command: "chat +flag-list", emitted: "limit", canonical: "size"},
+	{command: "chat +chat-members-list", emitted: "chat-id", canonical: "conversation-id"},
+	{command: "chat +chat-members-list", emitted: "id", canonical: "conversation-id"},
+	{command: "chat +conversation-set-top", emitted: "open-conversation-id", canonical: "conversation-id"},
+	{command: "chat +conversation-set-top", emitted: "chat-ids", canonical: "conversation-ids"},
+	{command: "chat +chat-members-get", emitted: "conversation-id", canonical: "id"},
+	{command: "chat +chat-members-get", emitted: "open-dingtalk-ids", canonical: "users"},
+	{command: "chat +chat-members-get", emitted: "chat", canonical: "id"},
+	{command: "chat +messages-list", emitted: "start", canonical: "time"},
+	{command: "chat +messages-reply", emitted: "msg-id", canonical: "ref-msg-id"},
+	{command: "chat +messages-reply", emitted: "chat", canonical: "conversation-id"},
+	{command: "chat +flag-cancel", emitted: "group", canonical: "conversation-id"},
+	{command: "chat +flag-cancel", emitted: "chat", canonical: "conversation-id"},
+	{command: "chat +flag-create", emitted: "group", canonical: "conversation-id"},
+	{command: "chat +chat-add-bot", emitted: "conversation-id", canonical: "id"},
+	{command: "chat +chat-add-bot", emitted: "robot", canonical: "robot-code"},
+	{command: "chat +chat-audit-join", emitted: "applicant-user-id", canonical: "applicant"},
+	{command: "chat +chat-mute-member", emitted: "user-ids", canonical: "users"},
+	{command: "chat +chat-remove-bot", emitted: "open-bot-id", canonical: "bot-id"},
+	{command: "chat +chat-role-remove-user", emitted: "open-dingtalk-id", canonical: "user"},
+	{command: "chat +chat-transfer-owner", emitted: "user-id", canonical: "new-owner"},
+	{command: "chat +feed-group-query-item", emitted: "chat-ids", canonical: "conversation-ids"},
+	{command: "chat +messages-combine-forward", emitted: "src-open-cid", canonical: "src-conversation-id"},
+	{command: "chat +messages-forward", emitted: "source-message-id", canonical: "msg-id"},
+	{command: "chat +messages-forward-topic", emitted: "src-open-message-id", canonical: "src-msg-id"},
+	{command: "chat +messages-resource-download", emitted: "conversation-id", canonical: "open-conversation-id"},
+	{command: "chat +messages-set-pin", emitted: "conversation-id", canonical: "open-conversation-id"},
 }
 
 // paramAliasRepresentativePayloadCases keeps final transport coverage across
@@ -309,8 +365,9 @@ func TestCrossPlatformCoverageNewIMParamAliasesReachCanonicalEquivalentFinalPayl
 			}
 
 			canonicalCaller := &paramAliasCaptureCaller{}
-			if _, err := executeParamAliasPayloadE2E(t, canonicalCaller, canonicalArgs...); err != nil {
-				t.Fatalf("complete canonical command failed: %v\nargs=%v\ncalls=%#v", err, canonicalArgs, canonicalCaller.calls)
+			_, canonicalErr := executeParamAliasPayloadE2E(t, canonicalCaller, canonicalArgs...)
+			if canonicalErr != nil && !paramAliasExpectedCaptureBoundaryError(test.command, canonicalErr) {
+				t.Fatalf("complete canonical command failed: %v\nargs=%v\ncalls=%#v", canonicalErr, canonicalArgs, canonicalCaller.calls)
 			}
 			if len(canonicalCaller.calls) == 0 {
 				t.Fatalf("complete canonical command reached no final transport payload: args=%v", canonicalArgs)
@@ -326,12 +383,15 @@ func TestCrossPlatformCoverageNewIMParamAliasesReachCanonicalEquivalentFinalPayl
 			}
 			activeAliases++
 			aliasCaller := &paramAliasCaptureCaller{}
-			ctx, err := executeParamAliasPayloadE2E(t, aliasCaller, aliasArgs...)
-			if err != nil {
-				t.Fatalf("complete alias command failed: %v\nargs=%v\ncalls=%#v", err, aliasArgs, aliasCaller.calls)
+			ctx, aliasErr := executeParamAliasPayloadE2E(t, aliasCaller, aliasArgs...)
+			if aliasErr != nil && !paramAliasExpectedCaptureBoundaryError(test.command, aliasErr) {
+				t.Fatalf("complete alias command failed: %v\nargs=%v\ncalls=%#v", aliasErr, aliasArgs, aliasCaller.calls)
 			}
 			if ctx == nil {
 				t.Fatal("complete alias command skipped PreParse")
+			}
+			if (canonicalErr == nil) != (aliasErr == nil) || (canonicalErr != nil && canonicalErr.Error() != aliasErr.Error()) {
+				t.Fatalf("canonical and alias completion errors differ: canonical=%v alias=%v", canonicalErr, aliasErr)
 			}
 			normalizeParamAliasVolatileDefaults(test.command, canonicalCaller, aliasCaller)
 			if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
@@ -342,6 +402,16 @@ func TestCrossPlatformCoverageNewIMParamAliasesReachCanonicalEquivalentFinalPayl
 	if activeAliases != len(paramAliasNewIMCases) {
 		t.Fatalf("new IM aliases active in embedded table = %d, want %d", activeAliases, len(paramAliasNewIMCases))
 	}
+}
+
+// Resource download deliberately continues from the transport call into a
+// local HTTPS download. The generic capture caller returns an empty object, so
+// this command's stable post-transport validation error is the expected test
+// boundary; canonical and alias calls must still produce the same request and
+// the same error.
+func paramAliasExpectedCaptureBoundaryError(command string, err error) bool {
+	return command == "chat +messages-resource-download" && err != nil &&
+		strings.Contains(err.Error(), "资源下载接口未返回合法的 HTTPS 下载地址")
 }
 
 // +chat-messages supplies the current wall-clock time when callers omit

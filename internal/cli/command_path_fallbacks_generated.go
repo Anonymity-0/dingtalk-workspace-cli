@@ -9,6 +9,34 @@ package cli
 
 var generatedCommandPathFallbacks = []CommandPathFallback{
 	{
+		From:         "chat +bot-list",
+		Mode:         "rewrite",
+		To:           "chat +chat-bots",
+		Reviewed:     true,
+		ReviewReason: "20260804 multi-im badcase requested the robot list for one group. +chat-bots is the unique current read-only shortcut. The fallback must not reinterpret the accompanying group flag.",
+	},
+	{
+		From:         "chat +conversation-category-list",
+		Mode:         "ambiguous",
+		Candidates:   []string{"chat +category-list", "chat +category-list-conversations"},
+		Reviewed:     true,
+		ReviewReason: "The invented name can mean listing the user's categories or listing conversations inside one category. No candidate may execute before the caller chooses the intended object level.",
+	},
+	{
+		From:         "chat +conversation-detail",
+		Mode:         "rewrite",
+		To:           "chat +conversation-info",
+		Reviewed:     true,
+		ReviewReason: "20260804 multi-im badcase requested one conversation's details. +conversation-info is the unique current read-only shortcut for that operation. The rewrite changes only the command path and preserves every flag/value for target validation.",
+	},
+	{
+		From:         "chat +conversation-group-list",
+		Mode:         "ambiguous",
+		Candidates:   []string{"chat +category-list-conversations", "chat +conversation-list"},
+		Reviewed:     true,
+		ReviewReason: "The invented name can mean conversations in a custom category or the general conversation list. The command name alone does not identify the requested collection.",
+	},
+	{
 		From:         "chat +group-member-list",
 		Mode:         "rewrite",
 		To:           "chat +group-members",
@@ -35,6 +63,13 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 		To:           "chat +chat-bots",
 		Reviewed:     true,
 		ReviewReason: "20260728 evaluation emitted +list-group-bots for listing robots in one group; +chat-bots is the unique reviewed read-only shortcut. The fallback preserves flags and does not reinterpret generic IDs.",
+	},
+	{
+		From:         "chat +list-my-groups",
+		Mode:         "ambiguous",
+		Candidates:   []string{"chat +my-groups", "chat +chat-list-mine", "chat +chat-list"},
+		Reviewed:     true,
+		ReviewReason: "The invented name does not choose between the established resolver shortcut, the legacy personal-group list and the current Schema-complete chat list. Recovery must stop instead of silently changing pagination or output semantics.",
 	},
 	{
 		From:         "chat +list-robot",
