@@ -688,11 +688,11 @@ func TestCrossPlatformCoverageWhiteboardSeams(t *testing.T) {
 		t.Fatal("expected empty on marshal fail")
 	}
 
-	testseam.Swap(t, &prepareWhiteboardJSONML, func(*cobra.Command, string) (string, error) {
+	testseam.Swap(t, &prepareWhiteboardCard, func(*cobra.Command, string) (string, error) {
 		return "", errors.New("bad template")
 	})
 	installScriptedCaller(t, &scriptedToolCaller{})
-	if err := executeWhiteboardCommand(t, "insert", "--node", "doc-1"); err == nil || !strings.Contains(err.Error(), "白板卡片模板") {
+	if err := executeWhiteboardCommand(t, "insert", "--node", "doc-1", "--yes"); err == nil || !strings.Contains(err.Error(), "白板卡片模板") {
 		t.Fatalf("expected prepare fail, got %v", err)
 	}
 

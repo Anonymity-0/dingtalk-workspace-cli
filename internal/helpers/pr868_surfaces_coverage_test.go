@@ -369,25 +369,22 @@ func TestCrossPlatformCoverageWhiteboardInsertPaths(t *testing.T) {
 		InitDeps(caller)
 		deps.Out.w = io.Discard
 		deps.Out.errW = io.Discard
-		prevSleep := whiteboardSleep
-		whiteboardSleep = func(time.Duration) {}
-		t.Cleanup(func() { whiteboardSleep = prevSleep })
+		testseam.Swap(t, &whiteboardSleep, func(time.Duration) {})
 		if err := executeWhiteboardCommand(t,
-			"insert", "--node", "doc-1", "--ref-block", "ref", "--where", "before", "--index", "2"); err != nil {
+			"insert", "--node", "doc-1", "--ref-block", "ref", "--where", "before", "--index", "2", "--yes"); err != nil {
 			t.Fatalf("whiteboard insert: %v", err)
 		}
 	})
-	t.Run("fail soft when verify empty", func(t *testing.T) {
+	t.Run("soft success when verify empty", func(t *testing.T) {
+		// Empty blocks are eventual-consistency pending, not hard query failure.
 		caller := &pr868FlexibleCaller{emptyVerify: true}
 		testseam.Protect(t, &deps)
 		InitDeps(caller)
 		deps.Out.w = io.Discard
 		deps.Out.errW = io.Discard
-		prevSleep := whiteboardSleep
-		whiteboardSleep = func(time.Duration) {}
-		t.Cleanup(func() { whiteboardSleep = prevSleep })
-		if err := executeWhiteboardCommand(t, "insert", "--node", "doc-1"); err != nil {
-			t.Fatalf("fail-soft insert: %v", err)
+		testseam.Swap(t, &whiteboardSleep, func(time.Duration) {})
+		if err := executeWhiteboardCommand(t, "insert", "--node", "doc-1", "--yes"); err != nil {
+			t.Fatalf("pending-block soft success: %v", err)
 		}
 	})
 	t.Run("helpers", func(t *testing.T) {
