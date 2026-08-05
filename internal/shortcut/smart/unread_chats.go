@@ -82,13 +82,22 @@ var UnreadChats = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "count", Type: shortcut.FlagInt, Desc: "返回未读会话条数（可选，不传则使用服务端默认值）", Required: false},
+		{Name: "count", Type: shortcut.FlagInt, Desc: "返回未读会话条数；显式 --count 必须大于 0，不传则使用服务端默认值", Required: false},
 		{Name: "exclude-muted", Type: shortcut.FlagBool, Desc: "是否排除已设置免打扰的会话（可选，默认 false）", Required: false},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"count"}, Description: "显式 --count 必须大于 0"},
 	},
 	Tips: []string{
 		`dws chat +unread-chats`,
 		`dws chat +unread-chats --count 20`,
 		`dws chat +unread-chats --exclude-muted`,
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Changed("count") && rt.Int("count") <= 0 {
+			return localChatOptionError("invalid_page_size", "+unread-chats 的 --count 必须大于 0", "--count")
+		}
+		return nil
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		// Build params exactly like chatMessageListUnreadConversationsCmd: count is

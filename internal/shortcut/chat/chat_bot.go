@@ -228,8 +228,8 @@ func botFindProject(data map[string]any) []map[string]any {
 
 // SearchCommonGroups searches groups shared with given people (search_common_groups, chat server).
 func init() {
-	shortcut.Register(
+	shortcut.Register(withReviewedChatShortcutContracts(
 		BotSearch,
 		BotFind,
-	)
+	)...)
 }

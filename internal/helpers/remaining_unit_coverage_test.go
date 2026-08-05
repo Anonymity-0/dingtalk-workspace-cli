@@ -271,6 +271,10 @@ func TestCrossPlatformCoverageProtectSheetMutationCommandPanics(t *testing.T) {
 func TestSheetMutationGuardRejectsPipedYesEvenWithContractConfirmSafety(t *testing.T) {
 	// Sheet agent hardening: outer --yes-only gate must win over ConfirmSafety
 	// honoring piped stdin yes (review: delete-sheet / range clear / version revert).
+	// This fixture exercises the no-caller fallback. Isolate it from commands
+	// built by earlier tests, which may initialize the package-level deps.
+	testseam.Protect(t, &deps)
+	deps = nil
 	ran := false
 	cmd := &cobra.Command{
 		Use: "delete-sheet",
