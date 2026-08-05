@@ -100,7 +100,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='从听记中提取待办事项'
     )
-    parser.add_argument('--limit', '--max', dest='max', type=int, default=5)
+    parser.add_argument('--max', type=int, default=5)
     parser.add_argument('--id', default='', help='指定听记 UUID')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
@@ -112,7 +112,7 @@ def main():
         print('🎙️ 获取听记列表...')
         data = run_dws([
             'minutes', 'list', 'mine',
-            '--limit', str(args.max),
+            '--max', str(args.max),
             '--format', 'json',
         ], dry_run=args.dry_run)
         if args.dry_run:

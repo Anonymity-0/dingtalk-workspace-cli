@@ -59,7 +59,7 @@ metadata:
    scenario skill。
 3. 请求是单产品操作但产品不明确：读取 `routing.md`，再显式读取目标产品
    `SKILL.md`。
-4. `doc/drive/wiki`、`aitable/sheet`、`calendar/minutes` 等边界仍不清楚（`conference` 当前 CLI 不支持）：
+4. `doc/drive/wiki`、`aitable/sheet`、`calendar/conference/minutes` 等边界仍不清楚：
    只读取 `intent-guide.md` 的对应章节。
 5. 仍无法判断时向用户追问，不要猜测产品或命令。
 

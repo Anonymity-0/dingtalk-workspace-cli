@@ -49,7 +49,7 @@ def main():
         description='获取最近听记的 AI 摘要'
     )
     parser.add_argument(
-        '--limit', '--max', dest='max', type=int, default=5, help='获取条数 (默认 5)'
+        '--max', type=int, default=5, help='获取条数 (默认 5)'
     )
     parser.add_argument(
         '--output', default='', help='输出到 Markdown 文件'
@@ -60,7 +60,7 @@ def main():
     print('🎙️ 获取听记列表...')
     list_data = run_dws([
         'minutes', 'list', 'mine',
-        '--limit', str(args.max),
+        '--max', str(args.max),
         '--format', 'json',
     ], dry_run=args.dry_run)
 

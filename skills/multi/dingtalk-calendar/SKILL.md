@@ -103,7 +103,7 @@ metadata:
 
 ## 跨产品协作
 
-- 视频会议发起 / 入会链接 / 邀请入会 / 会中控制 → 当前 CLI **不支持**（无 `conference.md`）；请在钉钉客户端操作，不要试探 `dws conference`
+- 视频会议发起 / 入会链接 / 邀请入会 / 会中控制 → 切到 `dingtalk-misc`（`references/conference.md`）
 - 会后摘要 / 待办 → 切到 `dingtalk-minutes`
 - 参会人按人名 → 先用 `dingtalk-aisearch` 解析
 

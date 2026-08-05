@@ -7,8 +7,8 @@ minutes 模块的命令是**两级或三级结构**，不同层级之间不能�
 > **默认 scope 规则**：`dws minutes list` 后**必须**跟 scope 子命令。若用户未明确指定查询范围，**一律默认补 `all`**（查询我可访问的所有听记 = 我创建的 + 他人共享给我的，覆盖面最广）。
 >
 > **`list` 不带 scope 的陷阱（0519 P2 Golden Case 提炼）**：
-> - 裸 `dws minutes list`（不跟 mine/shared/all）**不会返回任何听记数据**——它只打印该命令的帮助/用法信息（Usage、Available Commands: all/mine/shared、Flags），等于什么都没查到
-> - 必须带 scope 子命令（`dws minutes list all` / `list mine` / `list shared`）才会真正返回听记列表
+> - 裸 `dws minutes list`（不跟 mine/shared/all）虽然不会报错，但返回结果**不完整**（仅返回最近少量条目，约 913 字节）
+> - `dws minutes list all` 才能返回完整列表（约 3362 字节）
 > - **AI 严禁使用裸 `dws minutes list`**，必须始终带 scope 子命令
 > - 如果 LLM 不确定用哪个 scope，**一律用 `all`**
 >
@@ -31,11 +31,11 @@ minutes 模块的命令是**两级或三级结构**，不同层级之间不能�
 ```
 dws minutes
 ├── list <scope>                     # 查询听记列表（list 后必须跟 mine / shared / all）
-│   ├── mine [--query] [--start] [--end] [--limit] [--cursor]       # 仅查询我自己创建/发起的听记（不含他人共享给我的）
-│   ├── shared [--query] [--start] [--end] [--limit] [--cursor]     # 仅查询他人共享给我的听记（不含我自己创建的）
-│   └── all [--query] [--start] [--end] [--limit] [--cursor]        # 查询我可访问的所有听记（= mine ∪ shared，覆盖面最广，默认 scope）
+│   ├── mine [--query] [--start] [--end] [--max] [--next-token]       # 仅查询我自己创建/发起的听记（不含他人共享给我的）
+│   ├── shared [--query] [--start] [--end] [--max] [--next-token]     # 仅查询他人共享给我的听记（不含我自己创建的）
+│   └── all [--query] [--start] [--end] [--max] [--next-token]        # 查询我可访问的所有听记（= mine ∪ shared，覆盖面最广，默认 scope）
 ├── get <subcommand>                 # 获取听记详情（get 后必须跟子命令名）
-│   ├── info --id <uuid>             # 获取听记基础信息（标题、时长、开始时间、taskUuid、访问链接；不含参会人）
+│   ├── info --id <uuid>             # 获取听记基础信息（标题、时长、参与人、状态等）
 │   ├── summary --id <uuid>          # 获取听记 AI 摘要（结构化纪要）
 │   ├── transcription --id <uuid>    # 获取听记语音转写原文（逐字稿，支持分页）
 │   ├── keywords --id <uuid>         # 获取听记关键词
@@ -87,22 +87,22 @@ dws minutes
 | `minutes list --start "2026-04-01"` | `list` 后缺少 scope（mine/shared/all），**缺省时默认补 `all`** | `dws minutes list all --start "2026-04-01"` |
 | `dws minutes list all --start-time "..."` | 参数名是 `--start` 不是 `--start-time` | `dws minutes list all --start "2026-04-01"` |
 | `dws minutes list all --end-time "..."` | 参数名是 `--end` 不是 `--end-time` | `dws minutes list all --end "2026-04-30"` |
-| `minutes list --page-size 10` | `--page-size` 不存在，分页用 `--limit`；且 `list` 后缺 scope | `dws minutes list mine --limit 10` |
+| `minutes list --page-size 10` | `--page-size` 不存在，分页用 `--max`；且 `list` 后缺 scope | `dws minutes list mine --max 10` |
 | `minutes list --date-range 2026-05-04 2026-05-10` | `--date-range` 不存在，时间范围用 `--start` + `--end` 两个参数；且 `list` 后缺 scope | `dws minutes list mine --start "2026-05-04T00:00:00+08:00" --end "2026-05-10T23:59:59+08:00"` |
-| `dws minutes list mine --max 10` | 不报错——`--max` 是 `--limit` 的隐藏兼容别名；**推荐写 `--limit`**（`--limit 3` 与 `--max 3` 返回相同条数） | `dws minutes list mine --limit 10` |
+| `dws minutes list mine --limit 10` | `--limit` 尚未注册（跨产品规约 Primary 为 `--limit`，但 minutes CLI 当前只接受 `--max`）。**待 alias 注册后两者等价** | `dws minutes list mine --max 10` |
 | `dws minutes upload create --json '{"fileName":...}'` | `--json` 不存在，cli 不接受 JSON 作为输入格式 | `dws minutes upload create --file-name "xxx.mp3" --file-size 61565431` |
 | `dws minutes upload create -f json '{"fileName":...}'` | `-f json` / `--format json` 是**输出格式**控制，不是输入参数 | `dws minutes upload create --file-name "xxx.mp3" --file-size 61565431 --format json` |
 | `dws minutes get transcription --id <uuid> \| head -c 2000` | Windows 沙箱无 `head` 命令，**严禁使用 shell 管道截断** | `dws minutes get transcription --id <uuid> --format json`（由 AI 在内存中截断处理） |
 | `dws minutes get summary --id "https://shanji.dingtalk.com/app/transcribes/xxx"` | `--id` 只接受 taskUuid（hex 字符串），**不接受完整 URL**。AI 必须自动提取，不要让用户手动抠 | AI 自动从 URL 提取 taskUuid，再 `dws minutes get summary --id <taskUuid>`（详见「URL → taskUuid 自动提取规则」） |
 | `dws minutes get transcription --id "https://shanji.dingtalk.com/meeting/minutes?taskUuid=xxx"` | 同上，`--id` 不接受 URL，且这是 `?taskUuid=` 格式的 URL | AI 自动提取 `taskUuid=` 后的值，再 `dws minutes get transcription --id <taskUuid> --format json` |
-| `dws minutes get transcription --id <uuid>` 只调用一次就"总结整篇听记" | **单次调用最多返回 50 段**，不翻页就只能看到前 1/3~1/8 的内容 | **必须自动循环翻页**：检查返回中的 `nextToken`，非空则继续调用 `--cursor <token>`（`--next-token` 为兼容别名），直到拉完（详见「转写接口分页机制」） |
+| `dws minutes get transcription --id <uuid>` 只调用一次就"总结整篇听记" | **单次调用最多返回 50 段**，不翻页就只能看到前 1/3~1/8 的内容 | **必须自动循环翻页**：检查返回中的 `nextToken`，非空则继续调用 `--next-token <token>`，直到拉完（详见「转写接口分页机制」） |
 | `dws minutes get summary --id A & dws minutes get summary --id B & wait` | Windows cmd 下 `&` 是命令分隔符不是 background，`wait` 不存在 | 逐条串行调用，或让 AI 在内存中合并结果；**严禁使用 shell 并行/管道/重定向** |
-| `dws minutes get transcription --id <uuid> --next-token <token>` 报 unknown flag | **不会报错**——`--next-token` 是 `--cursor` 的隐藏兼容别名；推荐 `--cursor` | 确保写法正确：`dws minutes get transcription --id <uuid> --cursor <token> --format json` |
-| `minutes get transcription --id <uuid> --page-token <token>` | `--page-token` 不存在，正确参数名是 `--cursor`（`--next-token` 为兼容别名） | `dws minutes get transcription --id <uuid> --cursor <token>` |
+| `dws minutes get transcription --id <uuid> --next-token <token>` 报 unknown flag | **不会报错**——`--next-token` 是 `get transcription` 的合法参数（见命令总览） | 确保写法正确：`dws minutes get transcription --id <uuid> --next-token <token> --format json` |
+| `minutes get transcription --id <uuid> --page-token <token>` | `--page-token` 不存在，正确参数名是 `--next-token` | `dws minutes get transcription --id <uuid> --next-token <token>` |
 | `dws minutes transcribe --url <听记url>` | `transcribe` 不是合法子命令，`--url` 参数也不存在。LLM 凭印象编造 | 先从 URL 提取 taskUuid（见「URL → taskUuid 自动提取规则」），再 `dws minutes get transcription --id <taskUuid> --format json` |
 | `dws minutes get transcription --url <听记url>` | `--url` 参数不存在，`--id` 只接受纯 taskUuid | 同上：从 URL 提取 taskUuid 后用 `--id` |
 | `dws minutes summary --uuid <uuid>` | `summary` 不是顶层子命令（应在 `get` 下），且顶层不识别 `--uuid`。**0519 高频错误** | `dws minutes get summary --id <uuid>` |
-| `dws minutes list`（不跟 scope） | `list` 后**必须**跟 scope（mine/shared/all）。裸 `list` 只打印帮助信息，不返回任何听记数据 | `dws minutes list all`（默认 scope） |
+| `dws minutes list`（不跟 scope） | `list` 后**必须**跟 scope（mine/shared/all）。裸 `list` 返回结果不完整且行为未文档化 | `dws minutes list all`（默认 scope） |
 | `dws report inbox --format json`（无时间窗口） | `inbox` 是兼容入口，等价于 `inbox list`；仍必须带 `--start` / `--end` | `dws report inbox list --start "2026-05-06T00:00:00+08:00" --end "2026-05-13T23:59:59+08:00" --format json` |
 | `dws report inbox list --format json`（不带 --start） | inbox list **必须**带 `--start` / `--end` 参数，否则报 "flag --start is required" | `dws report inbox list --start "2026-05-06T00:00:00+08:00" --end "2026-05-13T23:59:59+08:00" --format json` |
 
@@ -114,15 +114,15 @@ dws minutes
 >
 > | 语义 | 规约 Primary | minutes 当前 CLI 实际参数 | alias 注册状态 | 说明 |
 > |------|-------------|------------------------|--------------|------|
-> | 单页大小 (Group 13) | `--limit` | `--limit`（`--max` 为隐藏兼容别名） | 已对齐 | 推荐 `--limit`；`--max` 仍可用 |
-> | 续页标识 (Group 14) | `--cursor` | `--cursor`（`--next-token` 为隐藏兼容别名） | 已对齐 | 推荐 `--cursor`；`--next-token` 仍可用 |
+> | 单页大小 (Group 13) | `--limit` | `--max` | `--limit` 未注册 | minutes 用 `--max`，其他模块用 `--limit`。**跨模块切换时注意差异** |
+> | 续页标识 (Group 14) | `--cursor` | `--next-token` | `--next-token` 在 alias 池中 | minutes 用 `--next-token`，合法 alias |
 > | 搜索关键词 (Group 11) | `--query` | `--query` | 已对齐 | 无差异 |
 > | 起始时间 (Group 15) | `--start` | `--start` | 已对齐 | 无差异 |
 > | 结束时间 (Group 16) | `--end` | `--end` | 已对齐 | 无差异 |
 >
 > **跨模块参数名差异速查（防止混用）：**
-> - 分页大小：minutes / aitable / calendar / chat / drive 均推荐 `--limit`（minutes 额外保留隐藏别名 `--max`）
-> - 续页标识：minutes / aitable / drive / doc 均推荐 `--cursor`（minutes 额外保留隐藏别名 `--next-token`）
+> - 分页大小：minutes 用 `--max`，aitable/calendar/chat/drive 用 `--limit`
+> - 续页标识：minutes 用 `--next-token`，aitable/drive/doc 用 `--cursor`
 > - 起止时间：minutes/report 用 `--start`/`--end`，calendar 用 `--start-time`/`--end-time`（跨模块最高频错误）
 
 **铁律：禁止编造 taskUuid（0512 P0 Golden Case 提炼）**
@@ -239,7 +239,7 @@ dws minutes
 **多数据源全覆盖约束（0609 P1 点踩 case 提炼，trace: f3197dd）：**
 
 > 用户枚举多个数据源（如「数据源包含：日历、聊天、听记、文档」）时：
-> 1. **每个来源都必须生成对应工具调用**：`calendar event list` + `chat message list` + `minutes list all` → `get summary/transcription` + `drive search` / `doc read`
+> 1. **每个来源都必须生成对应工具调用**：`calendar event list` + `chat message list` + `minutes list all` → `get summary/transcription` + `doc search/read`
 > 2. **瞬时错误（超时/网络抖动）自动重试**（最多 2 次），不得一次失败即放弃该数据源
 > 3. 最终交付物**如实声明各来源取数情况**：成功获取了哪些、哪些因超时/权限失败被跳过
 > 4. **严禁**用训练记忆 / 常识填充失败数据源的空缺——编造无来源的精确数字是最严重的幻觉
@@ -380,9 +380,9 @@ dws minutes
 ```
 dws minutes
 ├── list <scope>                     # 二级：list 后必须跟 mine / shared / all
-│   ├── mine [--query] [--start] [--end] [--limit] [--cursor]
-│   ├── shared [--query] [--start] [--end] [--limit] [--cursor]
-│   └── all [--query] [--start] [--end] [--limit] [--cursor]
+│   ├── mine [--query] [--start] [--end] [--max] [--next-token]
+│   ├── shared [--query] [--start] [--end] [--max] [--next-token]
+│   └── all [--query] [--start] [--end] [--max] [--next-token]
 ├── get <subcommand>                 # 二级：get 后必须跟子命令名
 │   ├── info --id <uuid>
 │   ├── summary --id <uuid>
@@ -431,18 +431,18 @@ Usage:
   dws minutes list mine [flags]
 Example:
   dws minutes list mine
-  dws minutes list mine --limit 10
-  dws minutes list mine --limit 10 --cursor <nextToken>
+  dws minutes list mine --max 10
+  dws minutes list mine --max 10 --next-token <nextToken>
   dws minutes list mine --query "周会"
 Flags:
-      --limit float       每页数据条数 (默认 10)
-      --cursor string     分页 token (首页留空，后续填写前次返回的 nextToken)
+      --max float         查询的听记篇数 (默认 10)
+      --next-token string 分页 token (首页留空，后续填写前次返回的 nextToken)
       --query string      关键字筛选 (可选)
       --start string      开始时间 ISO-8601 (可选)
       --end string        结束时间 ISO-8601 (可选)
 ```
 
-查询我创建的听记列表，支持 `--limit` 和 `--cursor` 分页，支持按关键字和时间范围筛选。
+查询我创建的听记列表，支持 `--max` 和 `--next-token` 分页，支持按关键字和时间范围筛选。
 
 ### 查询他人共享给我的听记列表
 ```
@@ -450,17 +450,17 @@ Usage:
   dws minutes list shared [flags]
 Example:
   dws minutes list shared
-  dws minutes list shared --limit 20
-  dws minutes list shared --limit 5 --cursor <nextToken>
+  dws minutes list shared --max 20
+  dws minutes list shared --max 5 --next-token <nextToken>
 Flags:
-      --limit float       每页数据条数 (默认 10)
-      --cursor string     分页 token (首页留空，后续填写前次返回的 nextToken)
+      --max float         查询的听记篇数 (默认 10)
+      --next-token string 分页 token (首页留空，后续填写前次返回的 nextToken)
       --query string      关键字筛选 (可选)
       --start string      开始时间 ISO-8601 (可选)
       --end string        结束时间 ISO-8601 (可选)
 ```
 
-查询他人共享给我的听记列表，支持 `--limit` 和 `--cursor` 分页，支持按关键字和时间范围筛选。
+查询他人共享给我的听记列表，支持 `--max` 和 `--next-token` 分页，支持按关键字和时间范围筛选。
 
 ### 查询我有权限访问的所有听记列表
 ```
@@ -468,19 +468,19 @@ Usage:
   dws minutes list all [flags]
 Example:
   dws minutes list all
-  dws minutes list all --limit 20
-  dws minutes list all --query "周会" --limit 20
+  dws minutes list all --max 20
+  dws minutes list all --query "周会" --max 20
   dws minutes list all --start "2026-03-01T00:00:00+08:00" --end "2026-03-20T23:59:59+08:00"
-  dws minutes list all --limit 10 --cursor <nextToken>
+  dws minutes list all --max 10 --next-token <nextToken>
 Flags:
       --end string        结束时间 ISO-8601 (可选)
       --query string      关键字筛选 (可选)
-      --limit float       每页数据条数 (默认 10)
-      --cursor string     分页 token (首页留空，后续填写前次返回的 nextToken)
+      --max float         查询的听记篇数 (默认 10)
+      --next-token string 分页 token (首页留空，后续填写前次返回的 nextToken)
       --start string      开始时间 ISO-8601 (可选)
 ```
 
-查询我有权限访问的所有听记列表（包括我创建的、他人共享给我的等所有有权限的听记）。支持按关键字和时间范围筛选。时间范围和关键字为可选参数，不传则返回所有有权限的听记。支持使用 `--limit` 和 `--cursor` 进行分页查询。
+查询我有权限访问的所有听记列表（包括我创建的、他人共享给我的等所有有权限的听记）。支持按关键字和时间范围筛选。时间范围和关键字为可选参数，不传则返回所有有权限的听记。支持使用 `--max` 和 `--next-token` 进行分页查询。
 
 ### 获取听记基础信息
 ```
@@ -522,7 +522,7 @@ Flags:
    > 4. **跳过** — 暂不处理发言人识别
 
    根据用户选择分别处理：
-   - 选 1 → 进入 `minutes-speaker-summarize` recipe 的智能推断流程（见 [10-minutes-speaker-match.md](10-minutes-speaker-match.md)）。**智能匹配核心：同时发起三路查询、不串行等待**：① 人员+组织架构 `dws aisearch person --keyword <姓名> --dimension name` → userId，再用 `dws contact user get --ids <userId>` 补部门/职级；② 聊天记录 `dws chat message list` → 工作内容/语言风格/职责线索；③ 本人文档 `dws drive search --query <姓名>` 前 3 篇 → 角色精确信号。**判定**：通讯录+聊天两路一致即可确认角色（通常无需查文档），仅一路或矛盾时补查文档兜底、两路以上一致才下结论；部门名 ≠ 角色。**文档角色对照**：PRD/需求/商业化方案→产品经理，视觉规范/原型/交互评审→产品设计师，技术方案/架构→研发，分析报告/底表→数据分析师。**置信度分支**：> 70% 输出匹配结果并执行替换，< 70% 不输出、请用户补充信息或改用手动设置
+   - 选 1 → 进入 `minutes-speaker-summarize` recipe 的智能推断流程（见 [10-minutes-speaker-match.md](10-minutes-speaker-match.md)）。**智能匹配核心：同时发起三路查询、不串行等待**：① 人员+组织架构 `dws aisearch person --keyword <姓名> --dimension name` → userId，再用 `dws contact user get --ids <userId>` 补部门/职级；② 聊天记录 `dws chat message list` → 工作内容/语言风格/职责线索；③ 本人文档 `dws doc search --keyword <姓名>` 前 3 篇 → 角色精确信号。**判定**：通讯录+聊天两路一致即可确认角色（通常无需查文档），仅一路或矛盾时补查文档兜底、两路以上一致才下结论；部门名 ≠ 角色。**文档角色对照**：PRD/需求/商业化方案→产品经理，视觉规范/原型/交互评审→产品设计师，技术方案/架构→研发，分析报告/底表→数据分析师。**置信度分支**：> 70% 输出匹配结果并执行替换，< 70% 不输出、请用户补充信息或改用手动设置
    - 选 2 → 请用户提供日程链接或参会人姓名列表：
      - 有日程链接 → 从链接提取 eventId → `dws calendar participant list --event <eventId>` 获取参与人 → 与转写发言人数量/顺序对照匹配 → 展示匹配结果请用户确认 → 确认后逐条执行 `speaker replace`
      - 有参会人名单（用户直接列出姓名）→ 与转写中匿名发言人做数量对照 → 结合发言内容/角色推断匹配 → 展示匹配结果请用户确认 → 确认后逐条执行 `speaker replace`
@@ -566,11 +566,11 @@ Usage:
 Example:
   dws minutes get transcription --id <taskUuid>
   dws minutes get transcription --id <taskUuid> --direction 1
-  dws minutes get transcription --id <taskUuid> --cursor <nextToken> --format json
+  dws minutes get transcription --id <taskUuid> --next-token <nextToken> --format json
 Flags:
       --direction string   排序方向: 0=正序, 1=倒序 (默认 0)
       --id string          听记 taskUuid (必填)，取值逻辑参考 ## 注意事项
-      --cursor string     分页 token（首页留空；`--next-token` 为兼容别名）
+      --next-token string 下一页的token 首次查询可空 后续查询需填写前次请求返回的nextToken
 ```
 
 每条记录包含: 发言人信息、转写文本、对应时间戳
@@ -580,9 +580,9 @@ Flags:
 > **这是最高频的 silent failure：** `get transcription` 单次调用**最多只返回 50 段**。一篇 30 分钟会议的转写通常有 150-400 段，如果不翻页就只能看到前 1/3 甚至 1/8 的内容。
 >
 > **分页机制（必须掌握）：**
-> - 首次调用：`dws minutes get transcription --id <uuid> --format json`（不传 `--cursor`）
+> - 首次调用：`dws minutes get transcription --id <uuid> --format json`（不传 `--next-token`）
 > - 检查返回 JSON 中是否包含 `nextToken` 字段（非空字符串）
-> - 如果有 `nextToken`：**必须立即发起下一次调用**，传入 `--cursor <上次返回的nextToken值>`
+> - 如果有 `nextToken`：**必须立即发起下一次调用**，传入 `--next-token <上次返回的nextToken值>`
 > - 循环直到返回中**不再包含 `nextToken`**（或 `nextToken` 为空），表示所有段落已拉取完毕
 > - **拼合所有页的段落**后，才算拿到了完整转写原文
 >
@@ -594,7 +594,7 @@ Flags:
 >     if next_token == "":
 >         result = dws minutes get transcription --id <uuid> --format json
 >     else:
->         result = dws minutes get transcription --id <uuid> --cursor <next_token> --format json
+>         result = dws minutes get transcription --id <uuid> --next-token <next_token> --format json
 >     all_paragraphs.append(result.paragraphs)
 >     next_token = result.nextToken   # 可能为空或不存在
 >     if next_token 为空或不存在:
@@ -604,8 +604,8 @@ Flags:
 >
 > **典型错误（导致"总结整篇听记"只看到前 50 段的 P0 bug）：**
 > - [错误] 只调用一次 `get transcription`，看到返回了内容就以为拿全了 → 实际只有前 50 段
-> - [错误] 看到返回 JSON 里有 `nextToken` 字段但不知道这是什么、不知道要传 `--cursor` → 默默丢弃了后续页
-> - [错误] 用 `--help` 查参数但在 Windows 下输出被截断，没看到 `--cursor` 参数 → 以为不支持分页
+> - [错误] 看到返回 JSON 里有 `nextToken` 字段但不知道这是什么、不知道要传 `--next-token` → 默默丢弃了后续页
+> - [错误] 用 `--help` 查参数但在 Windows 下输出被截断，没看到 `--next-token` 参数 → 以为不支持分页
 > - [正确] **正确做法：无条件按上述循环逻辑自动翻页，直到 nextToken 为空**
 
 **重要 — 转写原文拉取策略（AI 必须严格遵守）：**
@@ -614,7 +614,7 @@ Flags:
 
 1. **用户明确要求查看/分析转写原文时 → 默认拉取全部原文**（自动翻页，不需要用户手动说"第一页"）
    - 示例："帮我看看转写原文"、"分析一下这篇听记的原文"、"把逐字稿给我"、"转写内容是什么"
-   - 实现：首次调用不传 `--cursor`，如果返回中包含 `nextToken`，**自动继续调用**直到拉取完所有页，最终拼合后展示给用户
+   - 实现：首次调用不传 `--next-token`，如果返回中包含 `nextToken`，**自动继续调用**直到拉取完所有页，最终拼合后展示给用户
    - **字符上限保护**：在循环拉取过程中，如果已累积的转写文本总量**超过 12000 字符（1.2w）**，必须**暂停自动翻页**，向用户提示当前已处理的字符数已达到上限，并询问是否继续拉取后续分页内容。用户确认后才继续拉取，用户拒绝则停止并展示已拉取的内容
 
 **超长会议翻页优化策略（0519 P0 Golden Case 提炼 — 70min 会议翻页 15+ 次）：**
@@ -727,7 +727,7 @@ AI 基于已拉取的转写数据，**本地完成**聚类与摘要（无需新�
 > **铁律 2：严禁用 AI 摘要里的"参与人/参会人"字段判断某人是否参会**
 > - AI 摘要中的"参与人"字段往往**只截取最显著的 1-2 个名字**（通常是创建人或发言最多的人），**不是完整参会人列表**
 > - "AI 摘要参与人只有故愚 → 灵麦没参会" 是典型的错误推理链
-> - 如果一定要列出参会人，只能从 `get transcription` 的转写发言人（`speakerName`/`speakerId`）汇总——`get info` / `get batch` **均不返回** `participants` 结构化字段（get info 只返回 duration/startTime/taskUuid/title/url，get batch 只返回 creatorNick/creatorUnionId/status 等），别指望从它们拿参会名单
+> - 如果一定要列出参会人，应使用 `dws minutes get info` / `get batch` 返回的 `participants` 字段，而不是摘要文本里的描述
 >
 > **铁律 3：通讯录查询是 Step 4 的强制起点，不依赖 Step 3 是否成功**
 > - Step 2 一旦返回"未命中真名标注"，**Step 3 与 Step 4 ① 必须并发触发**，不要等 Step 3 失败再补查
@@ -776,7 +776,7 @@ Step 7: 引导用户替换发言人（调用 speaker replace 写回听记）
 > - **未命中真名标注 ≠ 目标人物没参会**——绝大多数听记的发言人都是匿名编号，"未命中"是**默认场景**，恰恰是发言人识别功能要解决的问题
 > - **不要在转写文本里 grep 目标人名**作为存在性判断——花名/真名通常不会出现在 TA 自己的发言里（参见铁律 1）
 > - **不要把 `dws minutes get summary` 摘要文本里写到的"参与人"当作完整参会列表**——AI 摘要里的"参与人"字段只截取最显著的 1-2 个名字，不是完整名册（参见铁律 2）
-> - 听记各接口都拿不到权威的完整参会名册：`get info` / `get batch` **均不返回** `participants` 字段，转写发言人列表又常是匿名编号。因此**几乎无法**仅凭听记数据下"目标人物没参会"的结论；只有当转写发言人已全部实名标注且不含目标、且 `dws aisearch person` 也搜不到该人时，才可谨慎告知"未在可见发言人中找到该人"
+> - 唯一能下"目标人物没参会"结论的场景是：`get info` / `get batch` 返回的结构化 `participants` 字段里**完整列出参会人且不含目标**，且 `dws aisearch person` 也搜不到该人 → 才允许告知用户"该人不在参会列表"
 
 ##### Step 3: 转写原文内推断（优先）
 
@@ -810,7 +810,7 @@ Step 7: 引导用户替换发言人（调用 speaker replace 写回听记）
 | 路径 | 命令 | 得到什么 |
 |------|------|----------|
 | ① 人员与组织架构 | `dws aisearch person --keyword "目标人名" --dimension name` → userId，再用 `dws contact user get --ids <userId>` 补详情 | 职能大类（技术/产品/设计/管理）+ 是否存在该人 |
-| ② 本人创建的文档 | `dws drive search --query "目标人名/真名"` 至少获取 3 篇标题 | 角色精确信号（PM写PRD、研发写技术方案、设计师写视觉规范）|
+| ② 本人创建的文档 | `dws doc search --keyword "目标人名/真名"` 至少获取 3 篇标题 | 角色精确信号（PM写PRD、研发写技术方案、设计师写视觉规范）|
 | ③ 近期日程类型 | `dws calendar event list` | 职能边界（参加什么类型的会）|
 | ④ 聊天记录 | `dws chat message list` 获取与目标人的近期 IM 消息 | 语言风格/工作内容/职责线索 |
 
@@ -922,7 +922,7 @@ Flags:
       --ids string   听记 taskUuid 列表，逗号分隔 (必填)
 ```
 
-返回字段: `result.minutesDetails` 数组，每项含 `title`(标题)、`durationMicros`(时长, 微秒)、`startTime`(开始时间, 毫秒)、`taskUuid`、`status`(状态)、`creatorNick`(创建人昵称)、`creatorUnionId`、`size`、`bizType`、`isDeleted`。**不返回参会人列表**。
+返回字段: 听记标题、时长、参与人列表、创建时间、taskUuid、听记状态
 
 **批量查询容错铁律（0030 P2 badcase 提炼）：**
 > - `get batch` 部分条目权限失败时，**展示成功条目的完整信息 + 列出失败条目的 id 与错误原因**，不要因部分失败就整批放弃改为逐个查询
@@ -1780,11 +1780,11 @@ dws minutes record start --format json
 
 # 1. 查看我的听记列表 — 提取 taskUuid
 dws minutes list mine --format json
-dws minutes list mine --limit 10 --cursor <nextToken> --format json
+dws minutes list mine --max 10 --next-token <nextToken> --format json
 dws minutes list mine --query "周会" --format json
 
 # 1b. 查看共享给我的听记
-dws minutes list shared --limit 20 --format json
+dws minutes list shared --max 20 --format json
 dws minutes list shared --query "日报" --format json
 
 # 1c. 查看我有权限访问的所有听记（支持关键字和时间范围筛选）
@@ -1851,9 +1851,9 @@ dws minutes upload cancel --session-id <sessionId> --format json
 
 | 操作 | 从返回中提取 | 用于 |
 |------|-------------|------|
-| `list mine` | `taskUuid`、`nextToken` | get/update 的 --id；翻页时 --cursor |
-| `list shared` | `taskUuid`、`nextToken` | get/update 的 --id；翻页时 --cursor |
-| `list all` | `taskUuid`、`nextToken` | get/update 的 --id；翻页时 --cursor |
+| `list mine` | `taskUuid`、`nextToken` | get/update 的 --id；翻页时 --next-token |
+| `list shared` | `taskUuid`、`nextToken` | get/update 的 --id；翻页时 --next-token |
+| `list all` | `taskUuid`、`nextToken` | get/update 的 --id；翻页时 --next-token |
 | `get batch` | 各听记 `taskUuid` | 进一步查询详情 |
 | `get audio` | 音频/视频 OSS 地址 | 用 HTTP GET 下载录音文件 / 在浏览器播放 |
 | `record start` | `taskUuid`/`uuid` | record pause/resume/stop 的 --id |
@@ -1868,7 +1868,7 @@ dws minutes upload cancel --session-id <sessionId> --format json
 
 | 错误现象 | 可能原因 | 正确处理 | 禁止动作 |
 |----------|----------|----------|----------|
-| `dingOpenErrcode=300` 且 `error_msg` 含 "taskUuid is invalid" | taskUuid 格式错误、不存在、或从上下文猜测/拼凑而来 | **立即停止当前 uuid，切换到 list 策略**：调用 `dws minutes list mine --limit 10 --format json` 获取真实 uuid 列表，让用户选择或自动匹配最相关的一条。**严禁用同一个无效 uuid 重试**——真实案例中模型用同一个错 uuid 重试了 20 次全部失败 | 禁止用同一个无效 ID 重试哪怕 1 次；禁止从历史对话/文档/链接中猜测 uuid；禁止从十六进制编码字符串里截取数字拼凑新 uuid |
+| `dingOpenErrcode=300` 且 `error_msg` 含 "taskUuid is invalid" | taskUuid 格式错误、不存在、或从上下文猜测/拼凑而来 | **立即停止当前 uuid，切换到 list 策略**：调用 `dws minutes list mine --max 10 --format json` 获取真实 uuid 列表，让用户选择或自动匹配最相关的一条。**严禁用同一个无效 uuid 重试**——真实案例中模型用同一个错 uuid 重试了 20 次全部失败 | 禁止用同一个无效 ID 重试哪怕 1 次；禁止从历史对话/文档/链接中猜测 uuid；禁止从十六进制编码字符串里截取数字拼凑新 uuid |
 | stdout 完全为空，error_msg 也为空 | 鉴权过期 / 服务端临时不可用 | 最多重试 1 次；仍为空则告知用户「服务暂时不可用，请稍后再试」 | 禁止连续重试超过 2 次 |
 | `dingOpenErrcode=403` 或含 "permission" / "forbidden" | 无权限访问该听记 | 告知用户无权限，建议联系听记创建者共享权限 | 禁止重试（权限问题不会因重试改变） |
 | `dingOpenErrcode=404` 或含 "not found" | 听记已被删除或不存在 | 告知用户该听记不存在或已被删除 | 禁止重试 |
@@ -1910,7 +1910,7 @@ dws minutes upload cancel --session-id <sessionId> --format json
 | "今天的听记" | `--start` 今日 00:00 `--end` 当前时间 | `dws minutes list all --start "2026-05-11T00:00:00+08:00" --end "2026-05-11T23:59:59+08:00"` |
 | "上周的听记" | `--start` 上周一 00:00 `--end` 上周日 23:59 | `dws minutes list all --start "2026-05-04T00:00:00+08:00" --end "2026-05-10T23:59:59+08:00"` |
 | "上月的听记" | `--start` 上月 1 日 `--end` 上月最后一天 | `dws minutes list all --start "2026-04-01T00:00:00+08:00" --end "2026-04-30T23:59:59+08:00"` |
-| "最近的听记" | 不传时间参数，使用默认排序 | `dws minutes list mine --limit 10` |
+| "最近的听记" | 不传时间参数，使用默认排序 | `dws minutes list mine --max 10` |
 | "关于XX的听记" | `--query "XX"` | `dws minutes list all --query "双叶汽车"` |
 | "找XX相关的听记" | `--query "XX"` | `dws minutes list all --query "安利"` |
 | "本月关于XX的听记" | `--query` + `--start` + `--end` | `dws minutes list all --query "ROI" --start "2026-05-01T00:00:00+08:00" --end "2026-05-31T23:59:59+08:00"` |
@@ -1932,7 +1932,7 @@ dws minutes list all --start "2026-04-01T00:00:00+08:00" --end "2026-04-30T23:59
 dws minutes list all --query "精益生产" --start "2026-04-01T00:00:00+08:00" --end "2026-04-30T23:59:59+08:00" --format json
 
 # 按关键词搜索共享听记
-dws minutes list shared --query "安利" --limit 20 --format json
+dws minutes list shared --query "安利" --max 20 --format json
 
 # 从我的听记里按关键词 + 今日时间范围搜索（"帮我从今天听记里找需求评审"）
 dws minutes list mine --query "需求评审" --start "2026-05-11T00:00:00+08:00" --end "2026-05-11T23:59:59+08:00" --format json
@@ -1955,7 +1955,7 @@ dws minutes list mine --query "技术方案" --format json
 
 ### 翻页空响应防御规则（必须遵守）
 
-`get transcription` 使用 `--cursor` 进行分页查询（`--next-token` 为兼容别名）。在自动翻页过程中，可能遇到以下异常情况：
+`get transcription` 使用 `--next-token` 进行分页查询。在自动翻页过程中，可能遇到以下异常情况：
 
 | 异常现象 | 含义 | 处理方式 |
 |----------|------|----------|
@@ -1973,7 +1973,7 @@ dws minutes list mine --query "技术方案" --format json
 上一次token = null
 
 loop:
-  调用 get transcription --id <uuid> [--cursor 当前token]
+  调用 get transcription --id <uuid> [--next-token 当前token]
 
   if stdout 为空 or 返回无效:
     if 当前token == 上一次token:
@@ -2004,7 +2004,7 @@ loop:
 ### 严禁的翻页行为
 
 - [禁止] 同一个 next-token 值连续重试超过 2 次
-- [禁止] 翻页失败后换用不同的 flag 名（如 --cursor 换成 --nextToken）重试
+- [禁止] 翻页失败后换用不同的 flag 名（如 --next-token 换成 --nextToken）重试
 - [禁止] 累积超过 12000 字符后不暂停，继续拉取所有页
 - [禁止] 拉到空页就立即放弃全部已累积内容，应基于已有内容进行分析
 
@@ -2014,7 +2014,7 @@ loop:
 - `record pause` / `record resume` / `record stop` 对应 `cmd=pause/resume/end`，需要传入 `--id`（映射 MCP 入参 `uuid`）
 - 如果用户传入听记 URL（格式: `https://shanji.dingtalk.com/app/transcribes/<taskUuid>`），直接从路径末段提取 taskUuid 作为 `--id` 参数，无需再调用 list 查询
 - `list mine`、`list shared`、`list all` 统一走 `list_by_keyword_and_time_range` 链路，通过 `belongingConditionId` 区分（`created` / `shared` / `noLimit`）
-- 三个 list 命令均支持 `--limit`、`--cursor` 分页及 `--query`、`--start`、`--end` 筛选
+- 三个 list 命令均支持 `--max`、`--next-token` 分页及 `--query`、`--start`、`--end` 筛选
 - `list mine`、`list shared` 默认每页 20 条，`list all` 默认每页 10 条
 - `get summary` 返回 AI 生成的结构化 Markdown 摘要
 - `get transcription` 的 `--direction` 控制时间排序: 0=正序(默认), 1=倒序；当用户明确要求查看/分析转写原文时，默认自动翻页拉取全部原文（不需要用户手动说"拉第一页"），如果用户意图不是专门看原文（如查列表、看摘要），则不应主动调用此命令
@@ -2030,10 +2030,10 @@ loop:
 - `upload create` 返回的 `presignedUrl` 用于 HTTP PUT 上传文件，上传时不需要带任何 HEADER
 - 所有需要 taskUuid 的子命令均支持 --task-uuid / --uuid / --url 作为 --id 的隐藏别名，传入后自动降级，无需报错重试
 - 同一个 taskUuid + 同一个命令，最多重试 1 次（总计最多调用 2 次），dingOpenErrcode=300/403/404 为不可重试错误
-- 当用户提供关键词或时间范围时，必须使用 --query / --start / --end 在服务端筛选，严禁全量拉取后本地过滤。**严禁在 dws 命令后拼接 shell 管道做本地过滤**（如 `| grep "关键词"` / `| head -50` / `python -c "import json;..."` / `> /tmp/xxx.txt && grep ...`），这些写法在 Windows 沙箱里 100% 失败（`head`/`grep`/`wait` 不是 Windows 内置命令），即使在 macOS 上也会因 list 本身失败导致整个管道链路断掉。正确做法是始终使用 `--query` / `--start` / `--end` / `--limit` 等 cli 内置参数在服务端完成筛选
+- 当用户提供关键词或时间范围时，必须使用 --query / --start / --end 在服务端筛选，严禁全量拉取后本地过滤。**严禁在 dws 命令后拼接 shell 管道做本地过滤**（如 `| grep "关键词"` / `| head -50` / `python -c "import json;..."` / `> /tmp/xxx.txt && grep ...`），这些写法在 Windows 沙箱里 100% 失败（`head`/`grep`/`wait` 不是 Windows 内置命令），即使在 macOS 上也会因 list 本身失败导致整个管道链路断掉。正确做法是始终使用 `--query` / `--start` / `--end` / `--max` 等 cli 内置参数在服务端完成筛选
 - `dws minutes list` 后面**必须跟 `mine` / `shared` / `all` 子命令**，不能直接 `dws minutes list --start ... --end ...`（会报 `unknown flag: --start`）。正确写法：`dws minutes list mine --start ... --end ...` 或 `dws minutes list all --query "关键词" --start ... --end ...`
 - get transcription 翻页时，同一个 next-token 连续返回空 2 次即终止翻页，不再重试
-- **跨平台兼容性**：悟空运行环境可能是 Windows cmd / PowerShell / macOS bash，**严禁在 dws 命令中使用任何依赖特定 shell 的工具或管道**，包括但不限于：`| head`、`| grep`、`| tail`、`| wc`、`& wait`、`> %TEMP%\xxx`、`timeout /t 5`、`Start-Sleep`、`python -c "..."` 等。所有数据筛选、截断、过滤都必须通过 dws cli 自身的参数完成（`--query`/`--start`/`--end`/`--limit`/`--cursor`）
+- **跨平台兼容性**：悟空运行环境可能是 Windows cmd / PowerShell / macOS bash，**严禁在 dws 命令中使用任何依赖特定 shell 的工具或管道**，包括但不限于：`| head`、`| grep`、`| tail`、`| wc`、`& wait`、`> %TEMP%\xxx`、`timeout /t 5`、`Start-Sleep`、`python -c "..."` 等。所有数据筛选、截断、过滤都必须通过 dws cli 自身的参数完成（`--query`/`--start`/`--end`/`--max`/`--next-token`）
 
 ### 错误恢复策略（AI 遇到以下错误时必须自动执行对应恢复动作）
 
@@ -2041,9 +2041,9 @@ loop:
 |----------|-------------|----------|----------|
 | 命令结构错误 | `unknown command "info"` / `unknown command "get"` (后无子命令) / `error[validation]: unknown flag: --start` (在 `list` 而非 `list mine/shared/all` 上) | **立即参照本文档顶部"命令层级结构"纠正**。常见错误：① `dws minutes info` → 应为 `dws minutes get info`；② `minutes get --id` → `get` 后缺子命令，应为 `get info/summary/transcription` 等；③ `minutes list --start` → `list` 后缺 scope，应为 `list mine/shared/all --start` | 严禁在命令结构报错后只换参数名不修正命令层级；严禁把 `get` 当作独立命令使用（后面必须跟 info/summary/transcription/keywords/todos/audio/batch） |
 | 参数名错误 | `unknown flag: --task-uuid` / `unknown flag: --uuid` / `unknown flag: --start-time` / `unknown flag: --end-time` | 立即调用 `dws minutes <子命令> --help` 查询正确参数名；minutes 模块统一用 `--id`，时间统一用 `--start` / `--end`（不是 `--start-time` / `--end-time`） | 严禁用同一个错误的参数名重试；严禁在不同子命令间尝试 --uuid / --task-uuid / --id 三种名称反复试错；严禁凭记忆猜测参数名，必须查 --help |
-| UUID 无效 | `taskUuid is invalid` / `dingOpenErrcode=300` | **第一时间切换策略**：调用 `dws minutes list mine --limit 10 --format json` 获取真实可用的 uuid 列表，让用户选择或自动匹配最相关的一条。**真实案例中模型用同一个错 uuid 重试了 20 次全部失败——这是 minutes 模块失败率最高的错误模式，必须零容忍** | 严禁用同一个无效 uuid 重试哪怕 1 次（errcode=300 是不可重试错误）；严禁从历史对话/文档/链接中猜测 uuid；严禁从十六进制编码字符串里截取部分数字拼凑新 uuid；严禁不切 list 就放弃 |
+| UUID 无效 | `taskUuid is invalid` / `dingOpenErrcode=300` | **第一时间切换策略**：调用 `dws minutes list mine --max 10 --format json` 获取真实可用的 uuid 列表，让用户选择或自动匹配最相关的一条。**真实案例中模型用同一个错 uuid 重试了 20 次全部失败——这是 minutes 模块失败率最高的错误模式，必须零容忍** | 严禁用同一个无效 uuid 重试哪怕 1 次（errcode=300 是不可重试错误）；严禁从历史对话/文档/链接中猜测 uuid；严禁从十六进制编码字符串里截取部分数字拼凑新 uuid；严禁不切 list 就放弃 |
 | 命令返回空 stdout | `get summary` / `get transcription` 返回空内容（stdout 为空，error_msg 也为空） | 1) 先调用 `dws minutes get info --id <uuid> --format json` 确认听记是否存在且状态正常；2) 如果 info 也为空或报错，说明 uuid 本身有问题，回退到 list 命令重新获取 | 严禁在 stdout 为空时重复调用同一命令超过 2 次；严禁把空返回当作"没有内容"直接告知用户而不做任何排查 |
-| 翻页 cursor 返回空 | `get transcription --cursor xxx` 返回空内容 | 同一个 cursor 返回空 **1 次**即视为到达末尾（has_more=false），立即终止翻页，基于已累积内容继续处理 | 严禁同一个 cursor 连续重试超过 2 次；严禁换不同的 cursor 值盲目尝试 |
+| 翻页 next-token 返回空 | `get transcription --next-token xxx` 返回空内容 | 同一个 next-token 返回空 **1 次**即视为到达末尾（has_more=false），立即终止翻页，基于已累积内容继续处理 | 严禁同一个 next-token 连续重试超过 2 次；严禁换不同的 next-token 值盲目尝试 |
 | 时间格式解析失败 | `cannot parse time` / `parse fail` | 标准格式三选一：`2026-03-23T14:00:00+08:00`（ISO-8601 带时区）/ `2026-03-23 14:00:00`（无时区默认 +08:00）/ `2026-03-23`（纯日期） | 严禁使用 Unix 时间戳、`2026/03/23`、`Mar 23, 2026` 等非标准格式 |
 | 权限不足 | `AUTH_PERMISSION_DENIED` / `Permission denied` / `user is not minutes creator` | 1) 如果是 `get transcription` 报权限错误，**自动降级**尝试 `get summary`（摘要通常不需要下载权限）；2) 如果降级也失败，引导用户："这份听记是别人分享给你的，你可以让原作者将你加为协作者，或者用 `dws minutes list shared` 查看共享给你的听记"；3) 如果需要其他人的听记内容，可先用 `dws minutes list shared` 确认有无共享记录 | 严禁权限报错后用同一 uuid 反复重试；严禁只回复"Permission denied"而不给用户可操作的下一步 |
 | 资源不存在 | `P_DataNotFound` / `dingOpenErrcode=404` | 与 `taskUuid is invalid`（uuid 格式错误）**区分对待**：`P_DataNotFound` 表示 uuid 格式正确但对应的听记不存在（可能已被删除或过期）。告知用户"该听记可能已被删除或已过期"，然后建议用 `dws minutes list mine` 或 `list all` 查找替代 | 严禁把 `P_DataNotFound` 和 `taskUuid is invalid` 混为一谈；严禁 `P_DataNotFound` 后还换 uuid 格式重试 |
@@ -2060,13 +2060,13 @@ loop:
 
 | 用户 query 模式 | 典型真实 query 示例 | 隐含的听记需求 | 正确的第一步 |
 |----------------|-------------------|---------------|-------------|
-| **报告/分析类**：要求基于某个主题或业务重新撰写报告 | "从悟空的商业模式分析，重新写一下市场感知报告" | 用户的报告素材来源于历史会议讨论，需要从听记中提取相关主题的会议内容作为写作输入 | `dws minutes list all --query "<主题关键词>" --limit 20 --format json` → 对匹配的听记逐篇 `get summary` 提取素材 → 再基于素材撰写报告 |
+| **报告/分析类**：要求基于某个主题或业务重新撰写报告 | "从悟空的商业模式分析，重新写一下市场感知报告" | 用户的报告素材来源于历史会议讨论，需要从听记中提取相关主题的会议内容作为写作输入 | `dws minutes list all --query "<主题关键词>" --max 20 --format json` → 对匹配的听记逐篇 `get summary` 提取素材 → 再基于素材撰写报告 |
 | **分类总结类**：要求按类别（问题/事故/AI工作等）汇总工作成果 | "根据我的工作情况总结，分成问题应收、异常事故处理、ai相关工作和其他几部分总结"；"最新文档啥也没有啊，我要你根据我的工作情况总结" | 用户需要的"工作情况"不仅存在于文档中——会议讨论、评审结论、决策记录都在听记里。尤其当用户明确说"文档啥也没有"时，听记是**唯一剩余的结构化工作记录来源** | `dws minutes list mine --start <起始日期> --end <截止日期> --format json` → 逐篇 `get summary` → 按用户要求的分类维度（问题应收/事故处理/AI工作/其他）对摘要内容进行归类整理 |
 | **多源聚合类**：用户明确要求补充听记/会议数据源，或抱怨当前数据源不全 | "你这个好像只是基于日程，我要的是我的对话、私聊、群聊、日程、会议、文档修改等相关的所有动作"；"根据今天的聊天记录和听记总结工作日报" | 用户**点名要求**多数据源聚合，其中"会议"对应的数据源就是听记。即使 query 中还提到了聊天、日程、文档等，听记侧的数据采集**不能被省略** | 听记侧**必跑**：`dws minutes list mine --start <起始日期> --end <截止日期> --format json` → 逐篇 `get summary`；再并行采集其他数据源（聊天/日程/文档）→ 最终汇总 |
 | **Skill 封装类**：要求把数据聚合逻辑封装成可复用的 skill 或脚本 | "把这个封装成日报skill"；"做成自动化脚本" | 封装之前必须先**验证底层数据获取链路是否通畅**，不能跳过数据验证直接写 skill 框架 | 先用 `dws minutes list mine --start <today> --format json` 验证听记数据可达且格式正确，再设计 skill 结构 |
 | **日报/周报/月报类**：要求生成工作汇报 | "帮我写日报/周报"；"帮我生成本周工作汇报" | 近期听记摘要是工作记录的核心来源之一 | `dws minutes list mine --start <起始日期> --end <截止日期> --format json` → 逐篇 `get summary` → 汇总写入报告 |
 | **客户/项目类**：按客户名或项目名搜索相关信息 | "外资背景的客户信息总结"；"某某客户相关的所有信息" | 需要按关键词搜索听记 | `dws minutes list all --query "<客户名/项目名>" --format json` → `get summary` |
-| **时间范围批量类**：梳理一段时间内的所有会议记录 | "梳理 4 月至今所有会议记录"；"本周所有听记" | 明确时间范围的批量听记获取 | `dws minutes list mine --start "2026-04-01T00:00:00+08:00" --end "2026-05-08T23:59:59+08:00" --limit 50 --format json` |
+| **时间范围批量类**：梳理一段时间内的所有会议记录 | "梳理 4 月至今所有会议记录"；"本周所有听记" | 明确时间范围的批量听记获取 | `dws minutes list mine --start "2026-04-01T00:00:00+08:00" --end "2026-05-08T23:59:59+08:00" --max 50 --format json` |
 
 #### 间接意图识别的三条铁律
 
@@ -2182,7 +2182,7 @@ https://shanji.dingtalk.com/app/transcribes/76327569643236343831373737345f363438
 
 **[正确] 正确处理：**
 1. 调用 `get transcription --id <taskUuid>`，拿到第一页和 `nextToken`
-2. **自动继续调用** `get transcription --id <taskUuid> --cursor <nextToken>`
+2. **自动继续调用** `get transcription --id <taskUuid> --next-token <nextToken>`
 3. 每次拼合后检查累积字符数：
    - **未超过 12000 字符** → 继续自动翻页
    - **超过 12000 字符** → 暂停，提示用户："当前已拉取约 X 字符的转写内容，已达到单次处理上限。是否继续拉取后续内容？"
@@ -2434,7 +2434,7 @@ Step 2 **[禁止]** 看到全是匿名编号 → 没有继续走 Step 3-4，反�
 
 1. **"在转写里搜不到目标人名"绝不构成"没参会"的证据**：花名/真名通常不出现在 TA 自己的发言里，这是默认场景而非例外。99% 的听记发言人都是匿名编号——这正是发言人识别功能要解决的问题。
 
-2. **AI 摘要的"参与人"字段是低保真信号，不能作为参会判断依据**：`get summary` 返回的是 AI 生成的自然语言摘要，里面提到的"参与人"通常只是最显著的 1-2 人。而 `get info` / `get batch` **均不返回**结构化 `participants` 字段，无法从中拿完整参会列表；能拿到的只有 `get transcription` 的转写发言人（常为匿名编号）。
+2. **AI 摘要的"参与人"字段是低保真信号，不能作为参会判断依据**：`get summary` 返回的是 AI 生成的自然语言摘要，里面提到的"参与人"通常只是最显著的 1-2 人；要拿完整参会列表，应使用 `get info` / `get batch` 返回的结构化 `participants` 字段。
 
 3. **`dws aisearch person` 是 Step 4 ① 的必跑项**：先找到人员并取得 userId，再用 `dws contact user get` 补部门等详情；拿到"木兰=王佳明，产品设计部"后，Step 5 的角色匹配才有可靠锚点。
 
