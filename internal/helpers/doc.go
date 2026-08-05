@@ -4227,7 +4227,8 @@ CLI 内部自动完成全部流程:
 	folderCmd.Hidden = true
 	permissionCmd.Hidden = true
 
-	root.AddCommand(searchCmd, listCmd, infoCmd, readCmd, createCmd, updateCmd, uploadCmd, downloadCmd, copyCmd, moveCmd, renameCmd, deleteCmd, fileCmd, folderCmd, blockCmd, commentCmd, mediaCmd, permissionCmd, exportCmd, importCmd, versionCmd, templateCmd, newDocStyleCommand())
+	whiteboardCmd := newDocWhiteboardCommand()
+	root.AddCommand(searchCmd, listCmd, infoCmd, readCmd, createCmd, updateCmd, uploadCmd, downloadCmd, copyCmd, moveCmd, renameCmd, deleteCmd, fileCmd, folderCmd, blockCmd, commentCmd, mediaCmd, permissionCmd, exportCmd, importCmd, versionCmd, templateCmd, newDocStyleCommand(), whiteboardCmd)
 
 	return root
 }
