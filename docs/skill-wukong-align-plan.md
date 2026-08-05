@@ -1,8 +1,12 @@
 # DWS multi-skill **内容框架**对齐方案（相对 dws-wukong develop）
 
-> 状态：**方案待 owner 按 §7 重新批准后编码**。本文只做内容架构与 **mono↔multi 内容质检**盘点/分期，**不含实现**。
+> 状态：**执行中** — Phase 1–3 已落地；M2/M3 已补；**M1 recovery 闭环已从 skill 删除（不做移植）**。  
+> 合同短文：[skill-content-framework.md](skill-content-framework.md)  
+> 质检规格：[skill-mono-multi-qa.md](skill-mono-multi-qa.md)  
+> 机读合同：`skills/content-qa/mono-multi-coverage.yaml`  
+> 门禁：`make skill-mono-multi-content`（已入 `make policy`）
 >
-> 撰写 / 收窄 / 质检增补：2026-08-05  
+> 撰写 / 收窄 / 质检增补 / 执行：2026-08-05  
 > 工作树：`/Users/john/GolandProjects/open-source/dws-multi-skill-align`  
 > 分支：`feat/multi-skill-framework-align`（自 `origin/main` @ `a37e6e68`）  
 > **本分支范围：只做 skill 内容的这个框架**（目录布局、文档契约、共享内容约定、zip 内容树合同、**相对 mono 的内容质检**）。  
@@ -60,7 +64,7 @@ skills/mono/
 ├── SKILL.md
 ├── references/
 │   ├── products/<area>.md|…/   # 产品能力面（质检「覆盖」主源）
-│   ├── recovery-guide.md、error-codes.md、…  # 全局协议
+│   ├── error-codes.md、…  # 全局协议（无 recovery 闭环）
 │   └── best_practices/…
 └── scripts/
 ```
@@ -102,7 +106,7 @@ Flat `dingtalk-*` + `dws-shared`；单 skill 骨架同构。**不作为 mono 覆
 | `test/skill_e2e` / `test/run_skill_tests.py` | 执行层 / 用例驱动 | **偏行为**；本分支质检默认不依赖 e2e |
 | `Makefile` → `policy` 含 context-budget、multi-im-skill-chain；`skill-command-integrity` 独立 | 已有 CI 钩子 | 新门禁优先挂同类 policy / `test/unit` |
 
-**缺口（尚无的门禁）**：系统的「mono `references/products/*` → multi 目录/文」覆盖表；frontmatter 全集完备性；orphan scripts；recovery / 确认门禁等 **全局协议**是否进入 `dws-shared`。这些正是本分支质检轨要补的。
+**缺口（尚无的门禁）**：系统的「mono `references/products/*` → multi 目录/文」覆盖表；frontmatter 全集完备性；orphan scripts。全局协议中 **确认门禁 / Schema 教学已补**；**recovery 闭环已从 skill 移除（不再作为缺口）**。
 
 ### 1.6 悟空侧类比质检
 
@@ -127,7 +131,7 @@ Flat `dingtalk-*` + `dws-shared`；`SKILL.md` + `references/`（+ 可选 `script
 |---|---|---|
 | **C-cov** | mono `products/*` 能力面在 multi 无对应 skill/reference，或未登记「有意省略」 | 覆盖 |
 | **C-struct** | multi 缺 frontmatter 字段、`references/`、`DWS_RUNTIME_CONTRACT`、对 `dws-shared` 引用不一致 | 结构 |
-| **C-drift-global** | mono 有 recovery / 确认门禁 / Schema 教学等全局协议，multi/`dws-shared` 缺失或断链（留档 M1/M2 等） | 漂移（协议） |
+| **C-drift-global** | 曾关注 recovery / 确认 / Schema；现确认与 Schema 已在 `dws-shared`，**recovery skill 文档已删除** | 漂移（协议） |
 | **C-drift-orphan** | multi（或 mono）scripts/refs 无文档引用；或 routing 指向无索引产品（留档 X1/M6） | 漂移（孤儿） |
 | **C-pair** | 应对齐的成对文件（如 whiteboard recipes）内容不一致 | 漂移（成对） |
 
@@ -155,51 +159,45 @@ Flat `dingtalk-*` + `dws-shared`；`SKILL.md` + `references/`（+ 可选 `script
 
 ## 4. 分期（内容框架 + 质检 · 均无安装引擎）
 
-> 批准前 **零编码**（含不实现新 gates）。
+> 批准前 **零编码**（含不实现新 gates）。**已执行**：Phase 1–3 见文首状态。
 
 ### Phase 0 — 方案冻结（本文）
 
 | | |
 |---|---|
 | **范围** | 本文件；§7（含质检轨）勾选 |
-| **验收** | owner 重新批准 |
+| **验收** | owner 重新批准 → ✅「现在开始执行」 |
 
-### Phase 1 — Multi 内容目录合同 + 架构短文
+### Phase 1 — Multi 内容目录合同 + 架构短文 ✅
 
 | | |
 |---|---|
 | **范围** | `skills/multi` 目录合同；与悟空内容树对照表；zip `multi/` 同构合同 |
-| **触达** | `docs/` 短文；极小约定级文案 |
+| **触达** | `docs/skill-content-framework.md` |
 | **验收** | 可指导「如何新增 dingtalk-* 内容目录」 |
 
-### Phase 2 — Mono↔multi **内容质检规格**（矩阵 + 缺口基线）
+### Phase 2 — Mono↔multi **内容质检规格**（矩阵 + 缺口基线） ✅
 
 | | |
 |---|---|
-| **范围** | 写出质检规格文档（可并入架构短文附录）：三类门禁的输入源、通过准则、有意省略登记格式；固化覆盖映射初表（mono `references/products/*` ↔ multi skill/reference）；收录已知缺口基线（recovery、确认门禁、orphan scripts 等，对齐留档 M1/M2/X1…） |
-| **触达** | 仅文档 / 登记表（YAML/Markdown allowlist 亦可，仍属内容合同） |
-| **不碰** | Go 安装代码；本阶段 **仍不实现** 新 CI gate（实现在 Phase 3） |
-| **验收** | owner 能按矩阵人工抽查；缺口基线列表完整且每条有「修内容 / 登记省略 / 延后」 disposition |
+| **范围** | 质检规格 + 覆盖/omit 机读表 + 缺口 disposition |
+| **触达** | `docs/skill-mono-multi-qa.md`、`skills/content-qa/mono-multi-coverage.yaml` |
+| **验收** | 矩阵可人工抽查；缺口均有 disposition |
 
-### Phase 3 — 质检落地：CI 内容护栏（复用 + 新 gate）
+### Phase 3 — 质检落地：CI 内容护栏（复用 + 新 gate） ✅
 
 | | |
 |---|---|
-| **范围** | 实现 **content-only** 自动门禁，建议分层： |
-| | **G1 形状**：multi 子目录命名、`SKILL.md` 存在、必有 `dws-shared` |
-| | **G2 结构**：frontmatter 最小集（name/description/metadata.category 等，DWS 自定；可借鉴悟空允许键但不照搬）；产品 skill 契约块/对 shared 引用规则（与 context-budget 协调） |
-| | **G3 覆盖**：mono products 索引 ↔ multi 映射表强制完整（未映射必须在 reviewed omit 表） |
-| | **G4 漂移**：orphan scripts（无 md 引用）；可选成对文件哈希/一致（推广 whiteboard 样板）；全局协议文件存在性（如 `recovery-guide` 在 shared 或 omit） |
-| **复用** | 保持 skill-commands / context-budget / multi-im / skill_docs_policy；新逻辑优先 `test/unit` 或 `scripts/policy/check-mono-multi-skill-content.sh` |
-| **不碰** | install 默认值、`LocateSkillsRoot`、upgrade |
-| **验收** | `make policy`（或约定 target）失败当且仅当内容合同破；故意破坏夹具测试；无安装行为 diff |
+| **范围** | G1–G4 自动门禁 |
+| **触达** | `test/unit/mono_multi_skill_content_test.go`、`scripts/policy/check-mono-multi-skill-content.sh`、`Makefile` |
+| **验收** | `make skill-mono-multi-content` 绿；已知缺口走 reviewed omit |
 
 ### Phase 4 — 可选：内容包元数据 + 缺口修复波次
 
 | | |
 |---|---|
 | **范围 A** | 纯内容 layout/skill 列表元数据（人不读安装器） |
-| **范围 B** | 按 Phase 2 disposition **修内容**（如 shared 补 recovery/确认协议、清 orphan）——属内容编辑，可与门禁分 PR |
+| **范围 B** | 按 Phase 2 disposition **修内容**（recovery/确认/orphan 等）——未在本迭代全量做；仅修了 event G2（X4）与 routing markdown 死链（X3） |
 | **验收** | 元数据不驱动安装；修复项关闭对应质检失败或转入 omit |
 
 ### 延期登记（非本分支）
@@ -265,10 +263,10 @@ Flat `dingtalk-*` + `dws-shared`；`SKILL.md` + `references/`（+ 可选 `script
 
 ## 8. 下一步
 
-**请 owner 按 §7（含质检轨）重新批准。**  
-批准前不实现新 gates、不改安装代码。  
-批准后建议顺序：Phase 1 合同 → Phase 2 质检规格 →（勾选后）Phase 3 护栏 → Phase 4 按需。
+**Phase 1–3 已落地**（合同短文 + 质检规格 + `skills/content-qa` + CI 门禁）。  
+剩余可选：Phase 4B 按 `omit_global` / orphan allowlist 收口 M1–M3 / X1 等内容缺口（另 PR 亦可）。  
+安装默认 multi 等行为仍走 **另一分支**。
 
 ---
 
-*锚点：`skills/mono`、`skills/multi`、§1.5 policy/测试、wukong `dingtalk-skills/` + `validate-multiskill-bundle.py`（思路 only）。*
+*锚点：`skills/mono`、`skills/multi`、§1.5 policy/测试、wukong `dingtalk-skills/`（组织对照 only）。*

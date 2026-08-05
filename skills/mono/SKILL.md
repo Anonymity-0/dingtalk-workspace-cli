@@ -73,7 +73,6 @@ cli_version: ">=1.0.15"
 
 | 产品                | 用途                                                   | 参考文件                                                           |
 |-------------------|------------------------------------------------------|----------------------------------------------------------------|
-| `aiapp`           | AI应用：创建/查询/修改AI应用                                       | [aiapp.md](./references/products/aiapp.md)                     |
 | `aisearch`        | AI搜问（通用找人首选）：按姓名/部门/职位/职责/上级/下级/手机号/工号维度找人，"谁负责 XX/XX 的负责人/某事项/某项目的人"统一走本产品；不含人才池/绩效/职业历程等专项 HR 场景（那些去 `hrbrain`） | [aisearch.md](./references/products/aisearch.md)               |
 | `aitable`         | AI表格：Base/数据表/字段/记录/视图/附件/图表/仪表盘/导入导出/模板搜索            | [aitable.md](./references/products/aitable.md)                 |
 | `attendance`      | 考勤：打卡结果/打卡流水/考勤组查询/考勤规则/汇总统计/假期类型/假期余额（P0 已落地，部分管理类命令仍属 P1） | [attendance.md](./references/products/attendance.md)           |
@@ -99,7 +98,7 @@ cli_version: ">=1.0.15"
 
 ## 意图判断决策树
 
-用户提到"AI应用/创建应用/生成系统/做工具/管理后台/低代码" → `aiapp`
+用户提到"AI应用/创建应用/生成系统/做工具/管理后台/低代码/宜搭" → **当前无稳定产品参考**（勿猜 `aiapp` 命令）；向用户说明能力未以产品文档发布，multi 布局见 `dingtalk-misc` 的 `unsupported-scripts.md`
 用户提到"目标管理/Agoal/战略解码/经营合约/计分卡/目标模板/周月报提交统计" → `agoal`
 用户提到"找人/搜人/谁负责 XX/某事项的负责人/某项目的人/团队成员/上级/下级/按工号找人/按手机号找人" → `aisearch`（通用语义找人；若明确涉及人才池/绩效/职业历程/结构化高级条件，去 `hrbrain`）
 用户提到"表格/多维表/AI表格/记录/数据/视图/图表/仪表盘" → `aitable`
@@ -295,11 +294,10 @@ Schema 与 Help 冲突是**契约漂移**，不得静默猜测或把两边字段
 
 ## 错误处理
 1. 先读取 JSON 错误的 `retryable`、`retry_after_seconds`、`next_retry_at`、`hint` 和 `actions`；只有明确 `retryable=true` 时才按服务端节奏做一次有界重试。缺少重试语义时加 `--verbose` 收集诊断后停止
-2. 若 stderr 出现 `RECOVERY_EVENT_ID=<event_id>`，优先按 [recovery-guide.md](./references/recovery-guide.md) 执行 recovery 闭环
-3. 仍然失败，报告完整错误信息给用户，禁止自行尝试替代方案
-4. 认证失败时，参考 [global-reference.md](./references/global-reference.md) 中的认证章节处理
-5. 各产品高频错误及排查流程见 [error-codes.md](./references/error-codes.md)
-6. 遇到 [capability-limits.md](./references/capability-limits.md) 中列出的「已知不支持操作」时，**直接告知用户不支持并建议在钉钉客户端操作**，不要重试或变通
+2. 仍然失败，报告完整错误信息给用户，禁止自行尝试替代方案
+3. 认证失败时，参考 [global-reference.md](./references/global-reference.md) 中的认证章节处理
+4. 各产品高频错误及排查流程见 [error-codes.md](./references/error-codes.md)
+5. 遇到 [capability-limits.md](./references/capability-limits.md) 中列出的「已知不支持操作」时，**直接告知用户不支持并建议在钉钉客户端操作**，不要重试或变通
 
 
 ## 详细参考 (按需读取)
@@ -310,8 +308,7 @@ Schema 与 Help 冲突是**契约漂移**，不得静默猜测或把两边字段
 - [references/global-reference.md](./references/global-reference.md) — 全局标志、认证、输出格式
 - [references/field-rules.md](./references/field-rules.md) — AI表格字段类型规则
 - [references/error-codes.md](./references/error-codes.md) — 错误码 + 调试流程
-- [references/recovery-guide.md](./references/recovery-guide.md) — recovery 闭环、`RECOVERY_EVENT_ID`、`execute/finalize` 规范
-- [scripts/](./scripts/) — 各产品批量/复合操作脚本（AI表格批量导入导出、AI应用创建轮询、日历、机器人消息、通讯录、考勤、日志、待办、文档创建并写入、钉盘目录树等）
+- [scripts/](./scripts/) — 各产品批量/复合操作脚本（AI表格批量导入导出、日历、机器人消息、通讯录、考勤、日志、待办、文档创建并写入、钉盘目录树等）
 - [references/products/aitable/](./references/products/aitable/) — AI表格细分章节（单元格值/字段属性/公式/筛选排序/导入导出/仪表盘/记录增删改查/错误恢复/最佳实践）
 - [references/products/aitable-record-ops.md](./references/products/aitable-record-ops.md) — AI表格记录操作专项说明
 - [references/products/pat.md](./references/products/pat.md) — PAT 浏览器策略、行为 scope 预览与授权安全要求

@@ -12,11 +12,10 @@ metadata:
 
 # 钉钉多组织 / profile Skill
 
-> 🧪 **EXPERIMENTAL · 试验版 / Preview** — multi 模式当前未达 stable 标准；接口、命名、跨 skill 引用后续可能调整。生产 / 共享环境请优先使用 mono 模式（`dws skill setup --mode mono`）。
+> 🧪 **EXPERIMENTAL** — 接口、命名或跨 skill 引用可能调整；以当前 `dws` 二进制与 leaf Schema 为准。问题请提 issue。
 
 > **PREREQUISITE:** Read the `dws-shared` skill first for auth, global flags, product routing, URL preflight, error codes, and safety rules. The `dws` binary must be on PATH.
 
-<!-- SAFETY_PREAMBLE_INJECT -->
 
 dws 可同时登录多个钉钉账号，同一组织也可保留多个账号。一个 profile = 一个 `corpId + userId` 身份；当前 profile 决定本次命令注入哪个身份。
 

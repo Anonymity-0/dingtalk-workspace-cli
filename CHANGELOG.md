@@ -6,6 +6,12 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Removed
+
+- **`dws recovery` CLI** — removes the unused recovery plan/execute/finalize
+  command surface and `internal/recovery` package. Transport errors keep
+  generic retry/auth guidance without pointing at the removed commands.
+
 ## [1.0.57-beta.2] - 2026-08-05
 
 ### Fixed

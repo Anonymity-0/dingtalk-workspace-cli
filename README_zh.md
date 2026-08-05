@@ -437,7 +437,6 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 | 意图指南 | `skills/mono/references/intent-guide.md` | 易混淆场景消歧（如 report vs todo） |
 | 全局参考 | `skills/mono/references/global-reference.md` | 认证、输出格式、全局 flag |
 | 错误码 | `skills/mono/references/error-codes.md` | 错误码 + 调试流程 |
-| Recovery 指南 | `skills/mono/references/recovery-guide.md` | `RECOVERY_EVENT_ID` 处理 |
 | 现成脚本 | `skills/mono/scripts/*.py` | 13 个批量操作脚本（见下方） |
 
 <details>

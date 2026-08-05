@@ -335,12 +335,6 @@ func TestCrossPlatformCoverageOverlayRecoveryHostAndHelperRemainingCoverage(t *t
 	edition.Override(&edition.Hooks{ConfigDir: func() string { return "" }})
 	captureRuntimeFailure(executor.Invocation{}, nil, nil)
 	captureRuntimeFailure(executor.Invocation{}, errors.New("raw"), nil)
-	oldArgs := os.Args
-	os.Args = []string{"dws", "doc", "download", "--node", "n"}
-	if got := runtimeCommandPath(executor.Invocation{}); len(got) != 2 {
-		t.Fatalf("runtime command path = %#v", got)
-	}
-	os.Args = oldArgs
 
 	t.Setenv(authpkg.AgentCodeEnv, "")
 	if hostControlProviderFromEnv() != "" {

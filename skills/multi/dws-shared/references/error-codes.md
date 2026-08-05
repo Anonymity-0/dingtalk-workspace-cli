@@ -28,8 +28,8 @@
 - `category=validation` 且 `available_flags`/`hint` 给出明确修正：核对 leaf Help，修正
   一次；不要猜 flag。
 - 自然目标返回 `details.candidates`：零命中或多候选都停止并消歧，禁止选择第一项。
-- `reason=confirmation_required`：核对最终 Schema 和用户意图；用户确认后才追加
-  `--yes`，不能换成确认更弱的底层命令。
+- `reason=confirmation_required`：完整协议见 [confirmation.md](./confirmation.md)
+  （展示摘要 → 用户显式同意 → 原始命令追加 `--yes`；禁止静默重试、管道喂答案、换成更弱命令）。
 
 ### 需用户介入
 

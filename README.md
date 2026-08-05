@@ -443,7 +443,6 @@ Env vars: `DWS_SKILL_MODE=mono|multi` (also honored by `install.sh` / `install.p
 | Intent guide | `skills/mono/references/intent-guide.md` | Disambiguation for confusing scenarios (e.g. report vs todo) |
 | Global reference | `skills/mono/references/global-reference.md` | Auth, output formats, global flags |
 | Error codes | `skills/mono/references/error-codes.md` | Error codes + debugging workflows |
-| Recovery guide | `skills/mono/references/recovery-guide.md` | `RECOVERY_EVENT_ID` handling |
 | Ready-made scripts | `skills/mono/scripts/*.py` | 13 batch operation scripts (see below) |
 
 <details>

@@ -88,6 +88,7 @@ policy: test-auth-legacy-compat
 	@mkdir -p "$(POLICY_GOTMPDIR)"
 	@$(POLICY_ENV) ./scripts/policy/check-open-source-assets.sh
 	@$(POLICY_ENV) ./scripts/policy/check-skill-context-budget.sh
+	@$(POLICY_ENV) ./scripts/policy/check-mono-multi-skill-content.sh
 	@$(POLICY_ENV) ./scripts/policy/check-multi-im-skill-chain.sh
 	@$(POLICY_ENV) ./scripts/policy/check-command-surface.sh --strict
 	@$(POLICY_ENV) ./scripts/policy/check-generated-drift.sh
@@ -130,6 +131,9 @@ skill-context-budget:
 
 multi-im-skill-chain-integrity:
 	@./scripts/policy/check-multi-im-skill-chain.sh
+
+skill-mono-multi-content:
+	@./scripts/policy/check-mono-multi-skill-content.sh
 
 cli-smoke:
 	@./scripts/policy/check-cli-smoke.sh

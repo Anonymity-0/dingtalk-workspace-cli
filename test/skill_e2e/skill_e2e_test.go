@@ -85,7 +85,7 @@ var (
 	mockUnsupportedRoots = map[string]bool{
 		"api": true, "auth": true, "cache": true, "catalog": true,
 		"completion": true, "config": true, "doctor": true, "event": true,
-		"mcp": true, "plugin": true, "profile": true, "recovery": true,
+		"mcp": true, "plugin": true, "profile": true,
 		"schema": true, "skill": true, "upgrade": true, "version": true,
 	}
 )

@@ -42,6 +42,8 @@ metadata:
 | 产品边界仍然难以判断 | [intent-guide.md](references/intent-guide.md) 的相关章节 |
 | 认证、全局 flag 或输出格式问题 | [global-reference.md](references/global-reference.md) |
 | 命令已经返回错误 | [error-codes.md](references/error-codes.md)；只查错误对应章节 |
+| `confirmation_required` / 写操作确认 | [confirmation.md](references/confirmation.md) |
+| 命令发现、Schema / `--compact` / `--all` | [schema-usage.md](references/schema-usage.md) |
 | 怀疑能力不支持 | [capability-limits.md](references/capability-limits.md) |
 | 批量/多源采集 | [conventions.md](references/best_practices/_common/conventions.md) |
 | 固定短流程 | [lite-recipes.md](references/best_practices/_common/lite-recipes.md) 对应章节 |
@@ -72,9 +74,10 @@ metadata:
 
 ## 错误最短路径
 
-1. `unknown command` / `unknown flag`：运行对应层级 `--help`，按公开 flag 修正后最多重试一次。
-2. 认证或权限错误：读取 `global-reference.md` 与 `error-codes.md` 对应章节。
-3. 其他错误：优先读取 JSON 错误中的 `retryable`、`retry_after_seconds`、
+1. `unknown command` / `unknown flag`：运行对应层级 `--help`，按公开 flag 修正后最多重试一次；命令选择不确定时读 [schema-usage.md](references/schema-usage.md)。
+2. `reason=confirmation_required`：按 [confirmation.md](references/confirmation.md) 处理，不要当普通校验错误放弃或静默加 `--yes`。
+3. 认证或权限错误：读取 `global-reference.md` 与 `error-codes.md` 对应章节。
+4. 其他错误：优先读取 JSON 错误中的 `retryable`、`retry_after_seconds`、
    `next_retry_at`、`hint` 和 `actions`。只有明确 `retryable=true` 时才按服务端节奏重试；
    缺少重试语义时用 `--verbose` 获取诊断并停止，不连续尝试替代命令。
-4. 明确不支持的能力：说明边界，不通过其他接口绕过。
+5. 明确不支持的能力：说明边界，不通过其他接口绕过。

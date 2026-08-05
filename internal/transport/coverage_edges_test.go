@@ -397,7 +397,7 @@ func TestCrossPlatformCoverageHTTPStatusAndDiagnosticsEdges(t *testing.T) {
 			t.Fatalf("HTTP %d returned nil", tc.code)
 		}
 	}
-	if got := networkActions("snap"); len(got) != 3 {
+	if got := networkActions("snap"); len(got) != 2 {
 		t.Fatalf("network actions = %#v", got)
 	}
 	if err := jsonrpcEnvelopeError("tools/list", &RPCError{Code: -1, Message: "failed"}, "", "header-trace"); err == nil {

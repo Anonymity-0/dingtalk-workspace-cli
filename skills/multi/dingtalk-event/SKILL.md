@@ -1,9 +1,17 @@
 ---
 name: dingtalk-event
 description: 钉钉个人 IM 事件长连接监听、订阅与消费，覆盖 @我、指定发送人、指定群、全部单聊/群消息，以及消息已读、撤回、表情回应和群生命周期。Use when 用户提到实时监听消息、被@消息、监听某人或某群、监听已读/撤回/表情回应、群成员加入、群成员退出、群状态变化、事件驱动 Agent。命令前缀：dws event。
+metadata:
+  cli_version: ">=0.2.14"
+  category: product
+  requires:
+    bins:
+      - dws
 ---
 
 # 钉钉个人 IM 事件
+
+> **PREREQUISITE:** Read the `dws-shared` skill first for auth, global flags, product routing, URL preflight, error codes, and safety rules. The `dws` binary must be on PATH.
 
 实时监听必须使用事件长连接，不写轮询脚本，不用历史消息查询模拟事件。高频 IM 意图优先交给 `dws event +listen-im`；它在 CLI 内解析自然目标、选择 EventKey，并复用现有订阅与 bus 生命周期。
 
