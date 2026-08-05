@@ -2337,7 +2337,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 服务端可能返回风险提示（riskMessage）和 sign，此时需要用户确认后
 携带 sign 重新请求。默认会展示风险提示并中止，传入 --yes 可跳过确认。`,
 		Example: `  dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1,uid2
-  dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1 --yes`,
+  dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "email", "id"); err != nil {
 				return err
@@ -2416,7 +2416,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				AgentSummary: "把邮件分享到钉钉单聊",
 				UseWhen:      []string{"需要将指定邮件分享给钉钉用户（单聊）时"},
 				AvoidWhen:    []string{"仅导出本地备份用 mail message export；群聊发消息用 chat message send"},
-				Examples:     []string{"dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1 --yes"},
+				Examples:     []string{"dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "email", Property: "email", Required: boolPtr(true)},
