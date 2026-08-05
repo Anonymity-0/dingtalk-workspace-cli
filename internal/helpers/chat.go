@@ -54,6 +54,14 @@ func resolveMessageForward(cmd *cobra.Command, defaultForward bool) (bool, error
 	}
 }
 
+func chatCompatibilityHintSubCmd(use, hint string) *cobra.Command {
+	command := hintSubCmd(use, hint)
+	// Legacy callers may still pass the old command's flags. Let the migration
+	// command consume them so Cobra reaches RunE and returns the replacement path.
+	command.DisableFlagParsing = true
+	return command
+}
+
 type nativeChatTargetReader struct{}
 
 func (nativeChatTargetReader) CallMCPData(product, tool string, params map[string]any) (map[string]any, error) {
@@ -8165,6 +8173,12 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 	chatMessageCmd.AddCommand(chatMessageListDirectCmd, chatMessageSearchCommonCmd, chatMessageCombineForwardCmd, chatMessageForwardTopicCmd, chatMessageSetPinCmd, chatMessageUnsetPinCmd, chatMessageListPinCmd, chatMessageAddFavoriteCmd, chatMessageRemoveFavoriteCmd, chatMessageListFavoritesCmd, chatMessageSetTopMsgCmd, chatMessageUnsetTopMsgCmd, chatMessageListEmotionRepliesCmd)
 
 	root.AddCommand(chatChmodCmd, chatDataAuthCmd, chatGroupCmd, chatSearchCmd, chatSearchCommonCmd, chatMessageCmd, chatFileCmd, newChatMediaGroup(), chatBotCmd, chatMessageListTopConversationsCmd, chatConversationInfoCmd, chatCategoryCmd, chatGroupRoleCmd, chatMuteCmd, chatSetTopCmd, chatGroupMuteCmd, chatGroupMuteMemberCmd, chatHideCmd, chatMuteAtAllCmd, chatMuteRedEnvelopeCmd, chatMarkUnreadCmd, chatClearRedPointCmd, chatClearAllRedPointCmd, chatListAllConversationsCmd, chatClearMessagesCmd, chatMarkReadCmd, chatTextCmd)
+
+	// Keep the v1.0.56 command surface recognizable while directing callers to
+	// the supported nested commands. The chat root's "im" alias makes these
+	// compatibility hints available through both chat and im.
+	root.AddCommand(chatCompatibilityHintSubCmd("send", "use: dws chat message send"))
+	root.AddCommand(chatCompatibilityHintSubCmd("history", "use: dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"))
 
 	return root
 }
