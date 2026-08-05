@@ -1,11 +1,11 @@
 # DWS multi-skill **内容框架**对齐方案（相对 dws-wukong develop）
 
-> 状态：**方案待 owner 按 §7 重新批准后编码**。本文只做内容架构盘点与分期建议，**不含实现**。
+> 状态：**方案待 owner 按 §7 重新批准后编码**。本文只做内容架构与 **mono↔multi 内容质检**盘点/分期，**不含实现**。
 >
-> 撰写 / 二次收窄：2026-08-05  
+> 撰写 / 收窄 / 质检增补：2026-08-05  
 > 工作树：`/Users/john/GolandProjects/open-source/dws-multi-skill-align`  
 > 分支：`feat/multi-skill-framework-align`（自 `origin/main` @ `a37e6e68`）  
-> **本分支范围：只做 skill 内容的这个框架**（目录布局、文档契约、共享内容约定、zip 内内容树合同）。  
+> **本分支范围：只做 skill 内容的这个框架**（目录布局、文档契约、共享内容约定、zip 内容树合同、**相对 mono 的内容质检**）。  
 > **不做**安装/升级引擎、agent-home、脚本 skill-install 行为翻转。
 >
 > 对照仓：
@@ -15,264 +15,260 @@
 > | DWS OSS CLI（本工作树） | `dws-multi-skill-align` | `origin/main` |
 > | dws-wukong | `~/GolandProjects/open-source/dws-wukong` | `origin/develop` @ `ab76629a`（调研时） |
 > | 行为参考（**另一分支**） | `dws-skill-mode-migration` @ `402429ac`/`d5c8982c` | 安装默认 multi / upgrade 强制 multi —— **不在本分支排期** |
+> | 内容缺口留档（参考） | 同迁移分支 `docs/skill-capability-completion.md`（M1–M6 / X1 等） | **仅作质检目标线索**，非本分支权威 |
 
 ---
 
 ## 0. TL;DR
 
-1. **本分支 = skill 内容框架**：`skills/mono` 与尤其 `skills/multi` 如何组织（目录、`SKILL.md`、references、共享层、跨 skill 约定），以及 `dws-skills.zip` 里 multi/mono **内容树布局合同**（不是 Go 安装引擎）。
-2. **对齐对象**：dws-wukong develop 的 **skill 内容树**（`dingtalk-skills/`、flat `dingtalk-*` + `dws-shared`、references 分层），只取对 DWS 内容组织有用的概念；**不**对齐客户端 `_install.sh` / dual 包 / RewindDesktop。
-3. **安装/升级行为**（默认 multi、`LocateSkillsRoot`、`skill_setup`、`paths.go`、install 脚本、`402429ac`/`d5c8982c`）→ **单独 follow-up 分支**，本方案只登记延期，不进 Phase。
-4. 可选「内容包元数据」（如树内 `manifest` 仅描述内容版本/布局）与安装运行时 manifest **分开**；后者不在本分支。
+1. **本分支 = skill 内容框架 + 相对 mono 的内容质检**：固化 `skills/multi` 组织合同，并用 **mono 单 skill 布局作对照基准**做覆盖/结构/漂移门禁（文档 + CI 内容护栏）。
+2. **对齐悟空**：只取内容树组织概念；质检以 **DWS-native** 设计为主（已有 policy/测试可复用）。悟空 `validate-multiskill-bundle.py` 仅借鉴「frontmatter / 断链 / requires」类检查思路，**不**移植 bundle/安装校验。
+3. **安装/升级行为**与 `402429ac`/`d5c8982c` → **单独 follow-up 分支**，本方案只登记。
+4. 质检 **不改**默认安装哪棵树；只保证 multi 内容相对 mono **可解释、可覆盖、可回归**。
 
-### 0.1 IN SCOPE（本分支唯一交付面）
+### 0.1 IN SCOPE
 
 | 类别 | 包含 |
 |---|---|
-| 内容树结构 | `skills/mono/`（单入口 + `references/products/*`）与 `skills/multi/<name>/`（平铺产品 skill）的目录合同 |
-| 单 skill 内部约定 | `SKILL.md` frontmatter / 运行时契约块 / Golden Route；`references/` 分层与索引；可选 `scripts/` 归属规则 |
-| 共享内容 | `skills/multi/dws-shared/` 职责边界、被产品 skill 引用的方式、与 mono 共享文的映射关系（文档级） |
-| 命名与集合 | `dingtalk-<product>` + `dws-shared`；相对悟空树的「共有 / 仅 DWS」清单（**文档与缺口表**，不强制内容抄库） |
-| Zip **内容布局合同** | 发布物中 `mono/`、`multi/`、根 mono 副本各自代表什么内容树（描述与必要时校验「树形状」）；**不改**安装谁、默认装哪棵 |
-| 内容架构文档 | 本文件 + 可选短文：multi 内容架构 / mono↔multi 内容映射约定 |
+| 内容树结构 | `skills/mono/` 与 `skills/multi/<name>/` 目录合同 |
+| 单 skill 约定 | `SKILL.md` frontmatter / 契约块 / Golden Route；`references/`；可选 `scripts/` |
+| 共享内容 | `dws-shared` 职责与被引用方式；与 mono 全局文映射（文档级） |
+| 命名与集合 | `dingtalk-*` + `dws-shared`；相对悟空的共有/独有清单（文档） |
+| Zip **内容布局合同** | `mono/` / `multi/` / 根 mono 副本的内容含义与树形状；不改安装默认 |
+| **Mono↔multi 内容质检** | 覆盖、结构、漂移三类门禁；复用/扩展现有 policy 与测试；缺口修复属内容编辑（另批或同分支内容 Phase） |
+| 内容架构文档 | 本文件 + 可选短文（架构合同 + 质检矩阵） |
 
-### 0.2 OUT OF SCOPE（本分支不做 → 另分支 / 延期）
+### 0.2 OUT OF SCOPE
 
 | 类别 | 去向 |
 |---|---|
-| 安装默认 multi、upgrade 有 multi 则强制刷 multi | **Follow-up 分支**（可基于 `402429ac` / `d5c8982c`） |
-| `LocateSkillsRoot`、`skill_setup.go`、`internal/upgrade/paths.go` | 同上 |
-| `internal/skillhome`（agent-home / 互斥 / stale 安装逻辑） | 同上 |
-| `install.sh` / `install.ps1` / `install.js` / `install-skills.sh` 的 skill-install 行为 | 同上 |
-| Cherry-pick `402429ac` / `d5c8982c` 作为本分支 Phase 1 | **明确不排期**；§6 仅作指针 |
-| 面向安装/运行时的 manifest、state.json、`dws skill mode`、telemetry header | 拒绝或属行为分支；已取消产品仍拒绝 |
-| 悟空 `_install.sh` symlink、dual/Qwen/RewindDesktop/pod | 拒绝 |
-| Schema catalog / chat shortcut 代码 / whiteboard等非 skill-内容工作 | 拒绝（除非某 reference **正文**本身是本分支内容编辑任务且 owner 点名） |
+| 安装默认 multi、upgrade always-multi | Follow-up 分支（`402429ac`/`d5c8982c`） |
+| `LocateSkillsRoot` / `skill_setup` / `paths.go` / `skillhome` / install 脚本行为 | 同上 |
+| 安装/运行时 manifest、state.json、mode 切换、telemetry header | 拒绝或行为分支 |
+| 悟空 `_install.sh` / dual / Qwen / RewindDesktop / pod | 拒绝 |
+| 非 skill 内容的 CLI 功能（schema/shortcut 代码等） | 拒绝 |
+| 把质检做成「改安装默认值」的后门 | 拒绝 |
 
 ---
 
 ## 1. 内容现状盘点
 
-### 1.1 DWS `skills/mono`（单 skill 内容）
+### 1.1 DWS `skills/mono`（质检对照基准 · 单 skill）
 
 ```text
 skills/mono/
-├── SKILL.md                 # 总入口
+├── SKILL.md
 ├── references/
-│   ├── products/<product>.md|
-│   ├── best_practices/…
-│   └── （全局：error-codes、intent-guide、…）
-└── scripts/                 # 可选辅助脚本
+│   ├── products/<area>.md|…/   # 产品能力面（质检「覆盖」主源）
+│   ├── recovery-guide.md、error-codes.md、…  # 全局协议
+│   └── best_practices/…
+└── scripts/
 ```
 
-特点：一个 skill id；产品能力以 `references/products/*` 挂在同一棵树下。
-
-### 1.2 DWS `skills/multi`（多 skill 内容 · 本分支重点）
+### 1.2 DWS `skills/multi`（内容主体）
 
 ```text
 skills/multi/
-├── dws-shared/
-│   ├── SKILL.md
-│   └── references/          # 全局契约、routing、error-codes、best_practices/_common、…
-└── dingtalk-<product>/      # 当前 19 个产品 skill
-    ├── SKILL.md             # frontmatter + 运行时契约块 + Golden Route / 意图表
-    ├── references/          # 产品内分层（如 chat/、card/）
-    └── scripts/             # 部分产品有
+├── dws-shared/     # 跨产品契约 / routing / 全局协议应落点
+└── dingtalk-*/     # 19 产品 + 各 references、scripts
 ```
 
-当前产品集合（调研时）：  
-aisearch, aitable, calendar, chat, contact, **dev**, doc, drive, **event**, **hrbrain**, mail, **markdown**, minutes, misc, **pat**, **profile**, **skill**, todo, wiki + `dws-shared`。  
-（加粗 = 悟空 `dingtalk-skills/` 无对应目录。）
+仅 DWS 有（悟空无）：dev, event, hrbrain, markdown, pat, profile, skill。
 
-### 1.3 dws-wukong develop `dingtalk-skills/`（内容树对照）
+### 1.3 悟空 `dingtalk-skills/`（内容组织对照，非质检权威）
 
-```text
-dingtalk-skills/
-├── dws-shared/              # 含 overlays/、package.json 等悟空侧扩展（OSS 未必需要）
-└── dingtalk-* /             # 12 产品：aisearch…wiki（无 dev/event/hrbrain/…）
-    ├── SKILL.md
-    ├── references/
-    └── scripts/
-```
+Flat `dingtalk-*` + `dws-shared`；单 skill 骨架同构。**不作为 mono 覆盖基准**（集合更小、不同源）。
 
-打包侧另有「bundle 内再套一层 `skills/` + 根 `manifest.json`」——那是 **客户端/Qwen 包形态**，本分支只关心 **子树本身的内容组织**（`SKILL.md` + `references` + 命名），不移植 bundle 外壳。
-
-### 1.4 Zip 内容布局（内容合同，非安装行为）
-
-`dws-skills.zip` 现行内容形状（`post-goreleaser.sh` 注释）：
+### 1.4 Zip 内容布局合同
 
 | Zip 路径 | 内容含义 |
 |---|---|
-| `<root>/`（SKILL.md + references + …） | mono 树副本（兼容旧消费者看根） |
+| `<root>/` | mono 副本（兼容） |
 | `<root>/mono/` | 显式 mono 内容源 |
-| `<root>/multi/` | multi 平铺内容源（与 `skills/multi/` 同构） |
+| `<root>/multi/` | 与 `skills/multi/` 同构 |
 
-本分支若动打包，**仅**为澄清/加固「内容树合同」（例如校验 multi 下每个子目录含 `SKILL.md`、命名符合 `dingtalk-*|dws-shared`）。**不**在此改变「默认安装哪棵树」。
+质检可断言「源树形状」；**不**断言安装面默认选哪棵。
+
+### 1.5 现有 DWS skill 内容质检资产（复用清单）
+
+| 资产 | 作用 | 与 mono↔multi 质检关系 |
+|---|---|---|
+| `scripts/policy/check-skill-commands.sh` + `skill-command-check/` | Skill 文内 `dws …` 命令路径存在性 | **复用**（命令真实性）；非覆盖映射 |
+| `scripts/policy/check-skill-context-budget.sh` | chat/event/mono/`dws-shared` 上下文预算与冷启动约束 | **复用**（结构/预算）；可扩展 shared 引用规则 |
+| `scripts/policy/check-multi-im-skill-chain.sh` + `multi-im-skill-chain/` | IM 意图单默认路由、retired scripts、handoff | **复用**（chat/event 链）；面窄 |
+| `test/unit/skill_docs_policy_test.go` | 退役命令、event 扁平输出契约等 | **复用**；可加 mono↔multi 断言 |
+| `test/unit/whiteboard_skill_docs_test.go` | mono/multi whiteboard recipes **字节一致** | **样板**：产品面「同源文件」门禁范式 |
+| `test/skill_static`（`-tags skill_verify`） | 文内命令 vs Cobra；multi 查 flag | **复用**（opt-in 深度）；非 CI 默认全量时可保持 tags |
+| `test/skill_e2e` / `test/run_skill_tests.py` | 执行层 / 用例驱动 | **偏行为**；本分支质检默认不依赖 e2e |
+| `Makefile` → `policy` 含 context-budget、multi-im-skill-chain；`skill-command-integrity` 独立 | 已有 CI 钩子 | 新门禁优先挂同类 policy / `test/unit` |
+
+**缺口（尚无的门禁）**：系统的「mono `references/products/*` → multi 目录/文」覆盖表；frontmatter 全集完备性；orphan scripts；recovery / 确认门禁等 **全局协议**是否进入 `dws-shared`。这些正是本分支质检轨要补的。
+
+### 1.6 悟空侧类比质检
+
+| 悟空 | 说明 | 本分支 |
+|---|---|---|
+| `scripts/validate-multiskill-bundle.py` | 校验 **已打好的 bundle zip**：frontmatter keys/category、`requires`、markdown 断链、scenario 编排 | **Adapt 思路** → DWS 源树（`skills/multi` + 对照 mono），不跑 zip 安装语义 |
+| `sync-monolith-to-multiskill.py` | mono→multi 派生 | **不**作默认质检手段；DWS 直接维护 multi |
+
+结论：**DWS-native mono↔multi 质检**；悟空仅参考检查维度。
 
 ---
 
-## 2. Diff：内容组织已对齐 / 分叉 / 勿移植
+## 2. Diff（内容组织 + 质检视角）
 
-### 2.1 已大致同构
+### 2.1 已同构
 
-| 概念 | DWS multi | 悟空 dingtalk-skills |
+Flat `dingtalk-*` + `dws-shared`；`SKILL.md` + `references/`（+ 可选 `scripts/`）。
+
+### 2.2 分叉与已知内容风险（质检要盯的）
+
+| 风险 ID | 现象（线索） | 质检类型 |
 |---|---|---|
-| 目录名 | `dingtalk-<product>` | 同 |
-| 共享层目录 | `dws-shared` | 同 |
-| 单 skill 骨架 | `SKILL.md` + `references/`（+ 可选 `scripts/`） | 同 |
-| 平铺多 skill | `skills/multi/*` | `dingtalk-skills/*`（再被打进 bundle 的 `skills/*`） |
+| **C-cov** | mono `products/*` 能力面在 multi 无对应 skill/reference，或未登记「有意省略」 | 覆盖 |
+| **C-struct** | multi 缺 frontmatter 字段、`references/`、`DWS_RUNTIME_CONTRACT`、对 `dws-shared` 引用不一致 | 结构 |
+| **C-drift-global** | mono 有 recovery / 确认门禁 / Schema 教学等全局协议，multi/`dws-shared` 缺失或断链（留档 M1/M2 等） | 漂移（协议） |
+| **C-drift-orphan** | multi（或 mono）scripts/refs 无文档引用；或 routing 指向无索引产品（留档 X1/M6） | 漂移（孤儿） |
+| **C-pair** | 应对齐的成对文件（如 whiteboard recipes）内容不一致 | 漂移（成对） |
 
-### 2.2 内容分叉（本分支可讨论）
+### 2.3 Reject
 
-| 维度 | DWS | 悟空内容树 | 本分支态度 |
-|---|---|---|---|
-| 产品数量 | 19 + shared | 12 + shared | **保留 DWS 超集**；文档化共有/独有，不合一抄库 |
-| mono 形态 | 独立完整树 `skills/mono` | 另有 `dingtalk-workspace/` mono 源 | 文档化 mono↔multi **内容映射**；不删 mono |
-| `dws-shared` | 无 overlays/package.json | 有 overlays、package.json | **不**移植悟空 overlay 流水线；可借鉴「共享层只放跨产品契约」边界 |
-| references 命名 | 产品自洽（如 `chat/`、`01-*.md` 混用） | 部分产品有 `01-messaging`、`lite-recipes` 等 | 订 **DWS multi 内容约定**（索引方式、是否统一编号），不对齐抄文件名 |
-| 运行时契约块 | multi `SKILL.md` 含 `DWS_RUNTIME_CONTRACT` 等标记块 | 文案可能不同源 | 以 DWS 契约为准；只统一 **内容框架标记** 是否每个产品 skill 必有 |
-| Zip 外壳 | 三树（根+mono+multi） | bundle = manifest + skills/ | **保持 DWS 三树**；不改为悟空 bundle 外壳 |
-
-### 2.3 内容侧 Reject
-
-- 悟空 symlink 安装记账、dual 包、Qwen overlay、pod 链路  
-- 为「像悟空」而删掉 DWS 独有 7 个产品 skill  
-- 把 mono 产品文机械搬进 multi 而不经内容评审（若做映射，走内容 Phase，不走安装 Phase）
+悟空安装包校验整文件照搬、内容集 19→12 砍产品、安装行为门禁冒充内容质检。
 
 ---
 
 ## 3. Goals / Non-goals
 
-### 3.1 Goals（内容框架）
+### 3.1 Goals
 
-1. **写清并固化** multi 内容目录合同：合法子树名、必有文件、`dws-shared` 边界、产品 skill 最小 `SKILL.md`/references 结构。  
-2. **文档化** mono ↔ multi 内容关系（哪些全局文在 shared、哪些在产品树、与 `references/products/*` 的对应），便于后续演进，而非本分支做安装切换。  
-3. **对照悟空内容树**产出「共有 12 / 仅 DWS 7」与结构差异表；只吸收有用的组织概念（flat + shared），不抄客户端包。  
-4. **（可选）** zip/源树级 **内容元数据**（例如 `multi/CONTENT_LAYOUT.md` 或纯内容 `manifest`：layout 版本、skill 列表）——标明 content-only，**不**驱动 setup/upgrade。  
-5. **（可选）** 内容形状校验脚本/测试：multi 下每个 skill 含 `SKILL.md`、命名合法、shared 存在——仍属内容合同，不碰安装默认值。
+1. 固化 multi **内容目录合同**与 mono↔multi **映射说明**。  
+2. 建立 **质检矩阵**（覆盖 / 结构 / 漂移）并以 mono 为对照基准；有意省略必须 reviewed 登记。  
+3. **复用** §1.5 资产；新增门禁走 `scripts/policy` 或 `test/unit`，内容-only。  
+4. （可选）纯内容元数据；**禁止**被安装引擎读取改行为。  
+5. 质检失败 → 修 **内容**或更新「有意省略」表，不改 setup/upgrade。
 
-### 3.2 Non-goals（本分支）
+### 3.2 Non-goals
 
-| 项 | 说明 |
-|---|---|
-| 安装/升级行为翻转 | 另分支；见 §6 |
-| Go skill 安装引擎重构 | 另分支 |
-| Cherry-pick `402429ac`/`d5c8982c` | 另分支，**不**作本分支 Phase 1 |
-| 取消产品（mode / state.json / header） | 仍拒绝 |
-| 悟空客户端打包与安装器 | 拒绝 |
-| 非 skill 内容的 CLI 功能开发 | 拒绝 |
+安装/升级翻转；cherry-pick 行为提交；取消产品；悟空客户端；非 skill CLI 功能；用质检驱动默认 multi 安装。
 
 ---
 
-## 4. 分期（全部为内容-only）
+## 4. 分期（内容框架 + 质检 · 均无安装引擎）
 
-> 批准前 **零编码**。下列阶段 **均不包含** install/upgrade Go/脚本行为变更。
+> 批准前 **零编码**（含不实现新 gates）。
 
 ### Phase 0 — 方案冻结（本文）
 
 | | |
 |---|---|
-| **范围** | 本文件；§7 勾选 |
-| **文件** | 仅 `docs/skill-wukong-align-plan.md` |
-| **验收** | owner 按「内容框架 only」重新批准 |
+| **范围** | 本文件；§7（含质检轨）勾选 |
+| **验收** | owner 重新批准 |
 
 ### Phase 1 — Multi 内容目录合同 + 架构短文
 
 | | |
 |---|---|
-| **范围** | 成文：`skills/multi` 目录合同（命名、必有 `SKILL.md`、`references/` 约定、`dws-shared` 职责）；与悟空内容树对照表（共有/独有/结构差异）；明确 zip 内 `multi/` 与源树同构的 **内容合同** |
-| **可能触达** | `docs/` 下 skill 内容架构短文（新建）；必要时各 `SKILL.md` **仅**目录/约定说明级极小修订（非产品能力扩写） |
-| **不碰** | 任何 `internal/app`、`internal/upgrade`、install 脚本行为 |
-| **验收** | 文档可独立指导「如何新增一个 dingtalk-* 内容目录」；对照表完整；§0.2 未破线 |
+| **范围** | `skills/multi` 目录合同；与悟空内容树对照表；zip `multi/` 同构合同 |
+| **触达** | `docs/` 短文；极小约定级文案 |
+| **验收** | 可指导「如何新增 dingtalk-* 内容目录」 |
 
-### Phase 2 — Mono↔multi 内容映射与缺口表
-
-| | |
-|---|---|
-| **范围** | 盘点 mono `references/products/*`（及全局文）与 multi 各树的覆盖/重复/缺口；输出缺口表与「共享层 vs 产品层」归属建议 |
-| **可能触达** | 文档；可选在 `dws-shared` 或产品 references **补索引/链接**（内容导航），不做安装逻辑 |
-| **验收** | 缺口表经 owner 过目；无安装行为 diff |
-
-### Phase 3 — 内容形状护栏（可选）
+### Phase 2 — Mono↔multi **内容质检规格**（矩阵 + 缺口基线）
 
 | | |
 |---|---|
-| **范围** | 测试或轻量脚本：断言 multi 子目录命名、`SKILL.md` 存在、必有 shared；可选检查 zip staging 树形状与源树一致（**内容合同**） |
-| **可能触达** | `test/unit/*skill*content*` 或 `scripts/policy/check-multi-skill-content.sh` 一类；**不**改 `LocateSkillsRoot`/默认 mode |
-| **验收** | 故意破坏目录合同会失败；CI 仅绑内容护栏 |
+| **范围** | 写出质检规格文档（可并入架构短文附录）：三类门禁的输入源、通过准则、有意省略登记格式；固化覆盖映射初表（mono `references/products/*` ↔ multi skill/reference）；收录已知缺口基线（recovery、确认门禁、orphan scripts 等，对齐留档 M1/M2/X1…） |
+| **触达** | 仅文档 / 登记表（YAML/Markdown allowlist 亦可，仍属内容合同） |
+| **不碰** | Go 安装代码；本阶段 **仍不实现** 新 CI gate（实现在 Phase 3） |
+| **验收** | owner 能按矩阵人工抽查；缺口基线列表完整且每条有「修内容 / 登记省略 / 延后」 disposition |
 
-### Phase 4 — 可选内容包元数据（content-only）
+### Phase 3 — 质检落地：CI 内容护栏（复用 + 新 gate）
 
 | | |
 |---|---|
-| **范围** | 若需要：在 `skills/multi/`（或 zip `multi/`）增加 **纯内容** 元数据文件（layout 版本、skill 列表），供人/校验脚本阅读 |
-| **禁止** | 被 setup/upgrade/install 脚本读取并改变安装行为（那属行为分支） |
-| **验收** | 元数据缺省不影响现行安装；文档写明「非运行时合同」 |
+| **范围** | 实现 **content-only** 自动门禁，建议分层： |
+| | **G1 形状**：multi 子目录命名、`SKILL.md` 存在、必有 `dws-shared` |
+| | **G2 结构**：frontmatter 最小集（name/description/metadata.category 等，DWS 自定；可借鉴悟空允许键但不照搬）；产品 skill 契约块/对 shared 引用规则（与 context-budget 协调） |
+| | **G3 覆盖**：mono products 索引 ↔ multi 映射表强制完整（未映射必须在 reviewed omit 表） |
+| | **G4 漂移**：orphan scripts（无 md 引用）；可选成对文件哈希/一致（推广 whiteboard 样板）；全局协议文件存在性（如 `recovery-guide` 在 shared 或 omit） |
+| **复用** | 保持 skill-commands / context-budget / multi-im / skill_docs_policy；新逻辑优先 `test/unit` 或 `scripts/policy/check-mono-multi-skill-content.sh` |
+| **不碰** | install 默认值、`LocateSkillsRoot`、upgrade |
+| **验收** | `make policy`（或约定 target）失败当且仅当内容合同破；故意破坏夹具测试；无安装行为 diff |
 
-### 延期登记（不在本分支 Phase）
+### Phase 4 — 可选：内容包元数据 + 缺口修复波次
 
-| 主题 | 建议载体 |
+| | |
 |---|---|
-| 默认 multi + upgrade always-multi | 新分支，cherry-pick/移植 `402429ac` → `d5c8982c`（skill 行为 diff only） |
-| `skillhome` / agent-home / 互斥安装 | 行为/框架分支（安装向） |
-| 安装面 skill-install bootstrap | 同上 |
+| **范围 A** | 纯内容 layout/skill 列表元数据（人不读安装器） |
+| **范围 B** | 按 Phase 2 disposition **修内容**（如 shared 补 recovery/确认协议、清 orphan）——属内容编辑，可与门禁分 PR |
+| **验收** | 元数据不驱动安装；修复项关闭对应质检失败或转入 omit |
+
+### 延期登记（非本分支）
+
+| 主题 | 载体 |
+|---|---|
+| 默认 multi + upgrade always-multi | 行为分支 ← `402429ac`/`d5c8982c` |
+| skillhome / 安装面 bootstrap | 行为分支 |
 
 ---
 
-## 5. Port / Adapt / Reject（悟空 · **内容树**）
+## 5. Port / Adapt / Reject
 
-| 悟空内容相关 | 决策 | 说明 |
+| 项 | 决策 | 说明 |
 |---|---|---|
-| flat `dingtalk-*` + `dws-shared` 目录模型 | **Port（内容语义）** | DWS 已具备；固化为合同 |
-| 单 skill = `SKILL.md` + `references/` + 可选 `scripts/` | **Port** | 已同构 |
-| `dws-shared` 放跨产品契约/routing | **Adapt** | 对齐职责边界；不抄 overlays |
-| references 编号/文件名习惯 | **Adapt（可选）** | 订 DWS 自己的索引约定，不强制改名大爆发 |
-| 12 产品内容正文 | **Reject（抄库）** | 不合一；缺口用文档跟踪 |
-| bundle `manifest` + `_install.sh` + 外层 `skills/` | **Reject** | 安装/客户端包形态 |
-| `sync-monolith-to-multiskill.py` | **Reject / 另议** | 派生流水线属内容工程化，仅当 Phase 2 证明需要「从 mono 生成 multi」再开题；默认直接维护 multi |
-| dual / Qwen overlay / pod | **Reject** | 非内容树 |
+| flat + `dws-shared` 内容模型 | **Port** | 已有；合同 + 质检加固 |
+| 悟空 bundle frontmatter/断链/requires 检查维度 | **Adapt** | 做成 DWS 源树门禁，不校验 bundle zip/安装 |
+| whiteboard 式 mono/multi 成对一致 | **Port（范式）** | 推广到 reviewed 文件对 |
+| `validate-multiskill-bundle.py` 整脚本 | **Reject** | 绑定悟空 zip/Qwen 语义 |
+| `_install.sh` / dual / overlay | **Reject** | 非内容 |
+| 行为 cherry-pick | **Defer** | 另分支 |
 
 ---
 
-## 6. 与 `402429ac` / `d5c8982c` 的关系
+## 6. 与 `402429ac` / `d5c8982c`
 
-| 问题 | 结论 |
+| | |
 |---|---|
-| 本分支是否 cherry-pick？ | **否** |
-| 是否作为 Phase 1？ | **否** |
-| 它们是什么？ | 安装/升级 **行为**（默认 multi、upgrade 强制 multi、脚本真装） |
-| 何时做？ | **单独 follow-up 分支**（建议仍从 `origin/main` 拉出，例如 `feat/multi-skill-install-default`），且只带 skill 行为 diff、不绑内容大改 |
-| 本分支与行为分支顺序？ | 可并行；内容合同稳定有利于行为分支少踩「目录假设」；**不**要求内容分支先合并才能做行为分支 |
+| 本分支 cherry-pick？ | **否** |
+| 质检是否替代行为翻转？ | **否** |
+| 行为分支 | 另开；可与内容/质检并行 |
 
 ---
 
-## 7. 批准清单（内容框架 only · 请重新勾选）
+## 7. 批准清单（请重新勾选）
 
 **范围**
 
-- [ ] 认可本分支 **仅** skill **内容**框架（§0.1）  
-- [ ] 认可 §0.2：安装/升级/`skill_setup`/`paths`/`skillhome`/install 脚本/`402429ac`·`d5c8982c` **均不在本分支**  
-- [ ] 认可取消产品与悟空客户端链路仍拒绝  
+- [ ] 本分支 = skill **内容**框架 + **mono↔multi 内容质检**（§0.1）；无安装/升级引擎  
+- [ ] `402429ac`/`d5c8982c` 及 setup/paths/install 脚本行为 **不在本分支**  
+- [ ] 取消产品与悟空客户端链路仍拒绝  
 
-**Phase（内容）**
+**内容框架 Phase**
 
-- [ ] **Phase 1**：multi 内容目录合同 + 与悟空内容树对照短文（可执行）  
-- [ ] **Phase 2**：mono↔multi 内容映射与缺口表 —— 本迭代做 / 拆后续  
-- [ ] **Phase 3**：内容形状护栏（测试/policy）—— 做 / 不做 / 以后  
-- [ ] **Phase 4**：纯内容元数据文件 —— 做 / 不做 / 以后  
+- [ ] **Phase 1**：multi 目录合同 + 悟空内容树对照短文  
 
-**Follow-up（仅登记，不批准即不在本分支做）**
+**质检轨 Phase**
 
-- [ ] 知悉安装默认 multi + upgrade always-multi 将走 **另一分支**（可基于 `402429ac`/`d5c8982c`）  
+- [ ] **Phase 2**：质检矩阵 + mono↔multi 覆盖/缺口基线规格（先文档，可执行）  
+- [ ] **Phase 3**：CI 内容护栏（G1–G4）—— 本迭代做 / 拆 PR / 只要规格暂不落地  
+- [ ] 质检失败处置原则：修内容或 reviewed omit，**不**改安装默认  
+
+**可选**
+
+- [ ] **Phase 4A** 纯内容元数据：做 / 不做 / 以后  
+- [ ] **Phase 4B** 按缺口基线修内容（recovery/确认/orphan 等）：本分支做 / 另开内容 PR / 以后  
+
+**Follow-up 知悉**
+
+- [ ] 安装默认 multi + upgrade always-multi → **另一分支**  
 
 ---
 
 ## 8. 下一步
 
-**请 owner 按 §7 对「内容框架 only」重新批准。**  
-批准前不编码。批准后默认推进 Phase 1 文档/合同；Phase 2–4 按勾选。  
-安装/升级 cherry-pick **等待另开分支指令**，不在本方案 Phase 内启动。
+**请 owner 按 §7（含质检轨）重新批准。**  
+批准前不实现新 gates、不改安装代码。  
+批准后建议顺序：Phase 1 合同 → Phase 2 质检规格 →（勾选后）Phase 3 护栏 → Phase 4 按需。
 
 ---
 
-*内容路径锚点：`skills/mono`、`skills/multi`、wukong `dingtalk-skills/`（`git show origin/develop:…`）。*
+*锚点：`skills/mono`、`skills/multi`、§1.5 policy/测试、wukong `dingtalk-skills/` + `validate-multiskill-bundle.py`（思路 only）。*
