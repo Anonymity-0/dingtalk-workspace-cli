@@ -23,11 +23,11 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/profilectx"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/config"
 )
 
@@ -117,23 +117,14 @@ type Profile struct {
 	UpdatedAt         string   `json:"updatedAt,omitempty"`
 }
 
-var (
-	runtimeProfileMu sync.RWMutex
-	runtimeProfile   string
-)
-
 // SetRuntimeProfile sets a process-local one-shot profile override.
 func SetRuntimeProfile(profile string) {
-	runtimeProfileMu.Lock()
-	defer runtimeProfileMu.Unlock()
-	runtimeProfile = strings.TrimSpace(profile)
+	profilectx.Set(profile)
 }
 
 // RuntimeProfile returns the process-local one-shot profile override.
 func RuntimeProfile() string {
-	runtimeProfileMu.RLock()
-	defer runtimeProfileMu.RUnlock()
-	return runtimeProfile
+	return profilectx.Get()
 }
 
 // ProfilesPath returns the profile metadata path for a config dir.

@@ -6,13 +6,22 @@
 
 用于搜索机器人、机器人发送/撤回消息、Webhook 告警、机器人加入/移出群，以及给机器人发单聊消息。
 
+<!-- dws-intent: chat.send.advanced -->Bot/Webhook 默认统一使用 `dws chat +messages-send`，通过
+`--as bot|webhook` 选择身份；原子发送命令只保留 Shortcut 未发布字段的底层 fallback。
+
 ## 必读约束
 
-- 用户明确要求“用机器人/机器人身份/robot”发送时，必须用 `chat message send-by-bot`，严禁改用 `chat message send`。
+- 用户明确要求“用机器人/机器人身份/robot”发送时，使用
+  `dws chat +messages-send --as bot --robot-code <robotCode>`；不得改成当前用户身份。
 - `chat bot search` 只返回我创建的机器人，没有 `openDingTalkId`；给机器人发单聊必须用 `chat bot find`。
 - 机器人发群消息前需确认机器人已在群中；报“机器人不存在”时先 `group members add-bot`。
 - `send-by-bot --text` 支持 Markdown；需要稳定换行时用空行分隔段落。若以转义形式组织文本，写 `\n\n`，不要只写 `\n`。
 - `recall-by-bot` 使用 `processQueryKey`，不是 `openMessageId`。
+- Bot 多群文本/Markdown 直接使用 `+messages-send --groups <cid...>` 或
+  `--groups-file <工作目录内相对文件>`；最多 100 个稳定 ID，Runtime 去重并返回
+  `im.batch-write.v1` 逐目标 ledger。
+- Bot/Webhook 没有与 current-user 等价的文件、图片、音视频发送接口；不得把富媒体转成文本
+  或换身份静默发送。
 
 ## 命令明细
 
@@ -33,7 +42,20 @@ dws chat bot find --query "日报" --limit 20 --cursor <nextCursor>
 
 ### 机器人发送与撤回
 
-#### `dws chat message send-by-bot`
+多群正式入口：
+
+```bash
+dws chat +messages-send --as bot --robot-code <robot-code> \
+  --groups <openConversationId1>,<openConversationId2> \
+  --markdown "## 通知\n\n请提交周报" --format json
+```
+
+读取 `requestedCount/succeededCount/failedCount/results/failures`；unknown 或失败目标不自动重发。
+
+#### `dws chat message send-by-bot`（底层 fallback）
+
+普通文本/Markdown、群聊/批量单聊和 @ 已由 `+messages-send --as bot` 覆盖。只有 Shortcut
+缺失真实必需字段且精确 leaf Schema 允许时才使用以下原子命令。
 
 ```bash
 # 群聊
@@ -74,6 +96,14 @@ dws chat message recall-by-bot --robot-code <robot-code> --keys key1,key2
 
 ### Webhook
 
+默认使用：
+
+```bash
+dws chat +messages-send --as webhook --webhook-token <webhook-token> --title "告警" --text "CPU 超 90% @10" --at-all
+```
+
+以下是底层 fallback，不作为默认选路：
+
 ```bash
 dws chat message send-by-webhook --token <webhook-token> --title "告警" --text "CPU 超 90% @10" --at-all
 dws chat message send-by-webhook --token <webhook-token> --title "test" --text "hi @118785" --at-users 118785
@@ -91,11 +121,11 @@ dws chat message send-by-webhook --token <webhook-token> --title "test" --text "
 |------|------|----------|
 | `group members add-bot` | 将自定义机器人加入群 | `--id` `--robot-code` |
 | `group members remove-bot` | 从群移除机器人 | `--id` `--bot-id` |
-| `group bots` | 查看群内机器人列表 | `--group` |
+| `+chat-bots` | 查看群内机器人列表 | `--group <群名或openConversationId>`；自然群名内部唯一解析 |
 
 ```bash
 dws chat group members add-bot --id <openConversationId> --robot-code <robot-code>
-dws chat group bots --group <openConversationId>
+dws chat +chat-bots --group "项目群"
 dws chat group members remove-bot --id <openConversationId> --bot-id <openBotId>
 ```
 
@@ -105,7 +135,7 @@ dws chat group members remove-bot --id <openConversationId> --bot-id <openBotId>
 
 ```bash
 dws chat bot search --name "日报" --format json
-dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --title "日报" --text "## 今日完成\n\n- 事项 A\n\n- 事项 B" --format json
+dws chat +messages-send --as bot --robot-code <robot-code> --group <openConversationId> --title "日报" --markdown "## 今日完成\n\n- 事项 A\n\n- 事项 B" --format json
 dws chat message recall-by-bot --robot-code <robot-code> --group <openConversationId> --keys <processQueryKey> --format json
 ```
 
@@ -114,7 +144,7 @@ dws chat message recall-by-bot --robot-code <robot-code> --group <openConversati
 ```bash
 dws chat bot search --name "日报" --format json
 dws chat group members add-bot --id <openConversationId> --robot-code <robot-code> --format json
-dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --title "通知" --text "内容" --format json
+dws chat +messages-send --as bot --robot-code <robot-code> --group <openConversationId> --title "通知" --text "内容" --format json
 ```
 
 ### 给机器人发单聊
@@ -128,7 +158,7 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --text "你好" --form
 
 ```bash
 dws aisearch person --keyword "张三" --dimension name --format json
-dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --at-user-ids userId1 --title "提醒" --text "@userId1 请查收" --format json
+dws chat +messages-send --as bot --robot-code <robot-code> --group <openConversationId> --at-user-ids userId1 --title "提醒" --text "@userId1 请查收" --format json
 ```
 
 ## 常见错误与回退
@@ -137,3 +167,4 @@ dws chat message send-by-bot --robot-code <robot-code> --group <openConversation
 - 机器人发群消息报“机器人不存在”：先 `group members add-bot`。
 - 撤回失败：确认使用 `processQueryKey`，不是 `openMessageId`。
 - @ 不生效：检查正文是否包含 `@userId` / `@openDingTalkId` / `@10`。
+- 需要 Bot 图片/文件/音视频：停止并说明当前身份矩阵不支持；只有用户明确同意改为当前用户身份时，才重新确认目标和内容。

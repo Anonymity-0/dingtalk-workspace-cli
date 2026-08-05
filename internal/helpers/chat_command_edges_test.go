@@ -43,6 +43,66 @@ func runChatCoverageDirect(t *testing.T, path []string, flags map[string]string)
 	return command.RunE(command, nil)
 }
 
+func TestCrossPlatformCoverageEvaluationRegressionChatSearchSpellingsAndNaturalBotTarget(t *testing.T) {
+	if got, err := resolveNativeChatTarget("  cid123456789  "); err != nil || got != "cid123456789" {
+		t.Fatalf("stable native chat target = %q, %v", got, err)
+	}
+	t.Run("group search path accepts query", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":[]}`}}}
+		if err := runChatCoverageCommand(t, caller, "group", "search", "--query", "项目群"); err != nil {
+			t.Fatal(err)
+		}
+		if caller.calls != 1 {
+			t.Fatalf("calls = %d", caller.calls)
+		}
+	})
+
+	t.Run("group search accepts positional", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":[]}`}}}
+		if err := runChatCoverageCommand(t, caller, "group", "search", "项目群"); err != nil {
+			t.Fatal(err)
+		}
+		if caller.calls != 1 {
+			t.Fatalf("calls = %d", caller.calls)
+		}
+	})
+
+	t.Run("native bots resolves group name", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{
+			{text: `{"result":[{"openConversationId":"cid-project","title":"项目群"}],"hasMore":false}`},
+			{text: `{"result":{"bots":[]}}`},
+		}}
+		if err := runChatCoverageCommand(t, caller, "group", "bots", "--group", "项目群"); err != nil {
+			t.Fatal(err)
+		}
+		if caller.calls != 2 {
+			t.Fatalf("calls = %d", caller.calls)
+		}
+	})
+}
+
+func TestCrossPlatformCoverageChatMisroutedPathsRemainUnknownSubcommands(t *testing.T) {
+	for _, tc := range []struct {
+		path string
+		flag string
+	}{
+		{path: "send", flag: "--group"},
+		{path: "history", flag: "--group"},
+	} {
+		caller := &productExampleCaller{}
+		err := runChatCoverageCommand(t, caller, tc.path, tc.flag, "cid")
+		if err == nil || !strings.Contains(err.Error(), "unknown command") || !strings.Contains(err.Error(), tc.path) {
+			t.Fatalf("chat %s error = %v, want unknown command", tc.path, err)
+		}
+		if strings.Contains(err.Error(), "unknown flag") {
+			t.Fatalf("chat %s was misreported as a flag error: %v", tc.path, err)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("chat %s tool calls = %d, want 0", tc.path, caller.calls)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageChatGroupUpdateIconAcceptsUploadedMediaIDPrefixes(t *testing.T) {
 	previousDeps, previousArgs := deps, os.Args
 	os.Args = []string{"dws", "chat"}
@@ -112,6 +172,7 @@ func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T)
 		{"message", "search", "--query=q", "--start=2026-01-02T00:00:00Z", "--end=2026-01-01T00:00:00Z"},
 		{"message", "search", "--query=q", "--start=2026-01-01T00:00:00Z", "--end=2026-01-02T00:00:00Z", "--group=cid"},
 		{"message", "recall", "--conversation-id=cid", "--msg-id=mid"},
+		{"category", "delete", "--category-id=1"},
 		{"category", "rename", "--category-id=1", "--title=renamed"},
 		{"category", "add-conv", "--group=cid", "--category-ids=1,2"},
 		{"category", "remove-conv", "--group=cid", "--category-ids=1,2"},
