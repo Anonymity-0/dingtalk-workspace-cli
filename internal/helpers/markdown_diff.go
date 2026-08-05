@@ -337,8 +337,12 @@ func newMarkdownDiffCmd() *cobra.Command {
 				changed bool
 			}
 			resultCh := make(chan diffOutput, 1)
+			// Capture seams before the goroutine so test restorers cannot race
+			// against a still-running compute after the timeout path returns.
+			computeDiff := runMarkdownUnifiedDiff
+			marshalIndent := diffJSONMarshalIndent
 			go func() {
-				text, added, deleted, hunks, changed := runMarkdownUnifiedDiff(leftContent, rightContent, contextLines)
+				text, added, deleted, hunks, changed := computeDiff(leftContent, rightContent, contextLines)
 				resultCh <- diffOutput{text, added, deleted, hunks, changed}
 			}()
 			select {
@@ -355,7 +359,7 @@ func newMarkdownDiffCmd() *cobra.Command {
 
 				// 输出
 				if isJSON {
-					data, err := diffJSONMarshalIndent(result, "", "  ")
+					data, err := marshalIndent(result, "", "  ")
 					if err != nil {
 						return fmt.Errorf("JSON 序列化失败: %w", err)
 					}
