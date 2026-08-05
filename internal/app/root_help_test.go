@@ -72,6 +72,21 @@ func TestCalendarEventCreateHelpKeepsRoomsStringMetavar(t *testing.T) {
 
 func TestRootKeepsMainBranchChatCompatibilityCommands(t *testing.T) {
 	root := NewRootCommand()
+	for _, path := range []string{
+		"chat send",
+		"chat history",
+		"im send",
+		"im history",
+	} {
+		command, remaining, err := root.Find(strings.Fields(path))
+		if err != nil {
+			t.Fatalf("find %s: %v", path, err)
+		}
+		if len(remaining) != 0 || !command.Hidden || !command.Runnable() {
+			t.Fatalf("%s compatibility contract: remaining=%v hidden=%v runnable=%v", path, remaining, command.Hidden, command.Runnable())
+		}
+	}
+
 	listDirect := mustFindCommand(t, root, "chat", "message", "list-direct")
 	for _, flag := range []string{"user", "open-dingtalk-id", "time", "forward", "limit"} {
 		if listDirect.Flags().Lookup(flag) == nil {

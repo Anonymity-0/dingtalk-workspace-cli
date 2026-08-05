@@ -8166,5 +8166,11 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 
 	root.AddCommand(chatChmodCmd, chatDataAuthCmd, chatGroupCmd, chatSearchCmd, chatSearchCommonCmd, chatMessageCmd, chatFileCmd, newChatMediaGroup(), chatBotCmd, chatMessageListTopConversationsCmd, chatConversationInfoCmd, chatCategoryCmd, chatGroupRoleCmd, chatMuteCmd, chatSetTopCmd, chatGroupMuteCmd, chatGroupMuteMemberCmd, chatHideCmd, chatMuteAtAllCmd, chatMuteRedEnvelopeCmd, chatMarkUnreadCmd, chatClearRedPointCmd, chatClearAllRedPointCmd, chatListAllConversationsCmd, chatClearMessagesCmd, chatMarkReadCmd, chatTextCmd)
 
+	// Keep the v1.0.56 command surface recognizable while directing callers to
+	// the supported nested commands. The chat root's "im" alias makes these
+	// compatibility hints available through both chat and im.
+	root.AddCommand(hintSubCmd("send", "use: dws chat message send"))
+	root.AddCommand(hintSubCmd("history", "use: dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"))
+
 	return root
 }
