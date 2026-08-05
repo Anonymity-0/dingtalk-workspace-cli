@@ -94,7 +94,7 @@ kind + events + target
 
 - 已知 Golden Route 时直接执行，不先跑 `event list`。
 - 只有解析业务字段时才用 `dws event schema <event_key> --flatten`。
-- 只有参数或安全不确定时才用 `dws schema --cli-path "event +listen-im"` 或对应 leaf。
+- 只有参数或安全不确定时才用 `dws schema --cli-path "event +listen-im" --compact` 或对应 compact leaf。
 - `event schema` 描述事件 payload；顶层 `dws schema` 描述 CLI 命令，两者不要混用。
 
 ## Reference

@@ -1162,67 +1162,85 @@ func strconvQuote(value string) string {
 
 // ─── --compact mode ──────────────────────────────────────────────────────────
 
-// schemaCompactStripKeys are top-level tool/product keys removed in --compact mode.
-var schemaCompactStripKeys = map[string]bool{
-	// provenance / debug
-	"agent_metadata_source": true,
-	"agent_source_refs":     true,
-	"agent_summary_source":  true,
-	"effect_source":         true,
-	"metadata_source":       true,
-	"source":                true,
-	"agent_metadata":        true,
-	"field_provenance":      true,
-	"reviewed":              true,
-	// redundant with canonical_path / cli_path
-	"name":              true,
-	"path":              true,
-	"cli_name":          true,
-	"primary_cli_path":  true,
-	"is_alias":          true,
-	"has_parameters":    true,
-	"parameter_count":   true,
-	"product_id":        true,
-	"display":           true,
-	"title":             true,
-	"group":             true,
-	"source_product_id": true,
-	"aliases":           true,
-	"catalog_hash":      true,
-	"surface_hash":      true,
-	"workflow_refs":     true,
-	"prerequisites":     true,
-	"tips":              true,
-	"interface_ref":     true,
+// schemaCompactPayloadKeys is the reviewed Agent-view allowlist. Keep this a
+// positive list: a new full/audit field must not silently expand routine Agent
+// context just because it was added to ToolSpec.ToPayload.
+var schemaCompactPayloadKeys = map[string]bool{
+	// Navigation envelopes.
+	"kind": true, "level": true, "count": true, "tool_count": true,
+	"products": true, "product": true, "tools": true,
+	"id": true, "schema_path": true, "runtime": true,
+	// Leaf identity and execution semantics.
+	"canonical_path": true, "cli_path": true,
+	"agent_summary": true, "description": true,
+	"effect": true, "risk": true, "confirmation": true, "idempotency": true,
+	"interface_mode": true, "availability": true, "interface_reason": true,
+	"parameters": true, "constraints": true, "positionals": true, "dry_run": true,
+	"examples": true, "use_when": true, "avoid_when": true,
 }
 
-// schemaCompactParamStripKeys are per-parameter keys removed in --compact mode.
-var schemaCompactParamStripKeys = map[string]bool{
-	"interface_description": true,
-	"interface_type":        true,
-	"property":              true,
-	"field_provenance":      true,
+// schemaCompactParamKeys is the reviewed parameter allowlist for Agent command
+// construction. RPC mapping and provenance fields intentionally remain in the
+// full/audit view.
+var schemaCompactParamKeys = map[string]bool{
+	"type": true, "description": true, "required": true,
+	"cli_required": true, "required_when": true,
+	"default": true, "interface_default": true, "example": true,
+	"format": true, "enum": true,
 }
 
-// stripSchemaPayloadCompact walks a schema payload map and removes provenance,
-// debug and redundant keys so that only agent-essential fields remain.
-// It operates recursively on nested maps, slices, and parameter objects.
+// stripSchemaPayloadCompact projects a full Schema payload onto the reviewed
+// Agent-view allowlist. Structural product/tool children are projected
+// recursively; constraint, positional and dry-run values are already typed
+// contract data and are retained verbatim.
 func stripSchemaPayloadCompact(payload map[string]any) map[string]any {
 	if payload == nil {
 		return nil
 	}
 	result := make(map[string]any, len(payload))
 	for k, v := range payload {
-		if schemaCompactStripKeys[k] {
+		if !schemaCompactPayloadKeys[k] {
 			continue
 		}
-		if k == "parameters" {
+		switch k {
+		case "parameters":
 			result[k] = stripSchemaParametersCompact(v)
-			continue
+		case "product":
+			if product, ok := v.(map[string]any); ok {
+				result[k] = stripSchemaPayloadCompact(product)
+			} else {
+				result[k] = v
+			}
+		case "products", "tools":
+			result[k] = stripSchemaPayloadCollectionCompact(v)
+		default:
+			result[k] = v
 		}
-		result[k] = stripSchemaValueCompact(v)
 	}
 	return result
+}
+
+func stripSchemaPayloadCollectionCompact(value any) any {
+	switch values := value.(type) {
+	case []map[string]any:
+		result := make([]map[string]any, len(values))
+		for i, item := range values {
+			result[i] = stripSchemaPayloadCompact(item)
+		}
+		return result
+	case []any:
+		result := make([]any, len(values))
+		for i, item := range values {
+			if payload, ok := item.(map[string]any); ok {
+				result[i] = stripSchemaPayloadCompact(payload)
+			} else {
+				result[i] = item
+			}
+		}
+		return result
+	default:
+		return value
+	}
 }
 
 func stripSchemaParametersCompact(value any) any {
@@ -1278,7 +1296,7 @@ func stripSchemaValueCompact(v any) any {
 func stripSchemaParamCompact(param map[string]any) map[string]any {
 	result := make(map[string]any, len(param))
 	for k, v := range param {
-		if schemaCompactParamStripKeys[k] {
+		if !schemaCompactParamKeys[k] {
 			continue
 		}
 		result[k] = v

@@ -8,6 +8,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"sort"
 	"strings"
 	"testing"
@@ -508,6 +509,10 @@ func TestStripSchemaPayloadCompactLeaf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	leaf["future_audit_field"] = "must not leak into Agent view"
+	for _, raw := range schemaMap(leaf["parameters"]) {
+		raw["future_mapping_field"] = "must not leak into Agent view"
+	}
 	stripped := stripSchemaPayloadCompact(leaf)
 
 	// Must keep agent-essential fields.
@@ -518,7 +523,7 @@ func TestStripSchemaPayloadCompactLeaf(t *testing.T) {
 	}
 
 	// Must strip provenance / redundant fields.
-	for _, key := range []string{"agent_metadata_source", "agent_source_refs", "agent_summary_source", "effect_source", "metadata_source", "primary_cli_path", "parameter_count", "has_parameters", "interface_ref", "source", "title", "display"} {
+	for _, key := range []string{"agent_metadata_source", "agent_source_refs", "agent_summary_source", "effect_source", "metadata_source", "primary_cli_path", "parameter_count", "has_parameters", "interface_ref", "source", "title", "display", "future_audit_field"} {
 		if _, ok := stripped[key]; ok {
 			t.Fatalf("compact leaf still contains stripped key %q", key)
 		}
@@ -528,7 +533,7 @@ func TestStripSchemaPayloadCompactLeaf(t *testing.T) {
 	if params, ok := stripped["parameters"].(map[string]any); ok {
 		for name, p := range params {
 			if pm, ok := p.(map[string]any); ok {
-				for _, stripped := range []string{"interface_description", "interface_type", "property"} {
+				for _, stripped := range []string{"interface_description", "interface_type", "property", "future_mapping_field"} {
 					if _, present := pm[stripped]; present {
 						t.Fatalf("compact param %q still contains %q", name, stripped)
 					}
@@ -568,6 +573,33 @@ func TestStripSchemaPayloadCompactPreservesParameterIdentity(t *testing.T) {
 			t.Errorf("compact projection dropped parameter identity %q", parameterName)
 		}
 	}
+}
+
+func TestCompactSchemaAgentLeafBudget(t *testing.T) {
+	const maxAgentLeafBytes = 12 * 1024
+	loaded := deliverySchemaCatalog()
+	worstCanonical := ""
+	worstBytes := 0
+	for _, product := range loaded.Registry.Products {
+		for _, tool := range product.Tools {
+			full, err := tool.ToPayload()
+			if err != nil {
+				t.Fatalf("render %s full leaf: %v", tool.Identity.CanonicalPath, err)
+			}
+			encoded, err := json.Marshal(stripSchemaPayloadCompact(full))
+			if err != nil {
+				t.Fatalf("encode %s compact leaf: %v", tool.Identity.CanonicalPath, err)
+			}
+			if len(encoded) > worstBytes {
+				worstCanonical = tool.Identity.CanonicalPath
+				worstBytes = len(encoded)
+			}
+			if len(encoded) > maxAgentLeafBytes {
+				t.Errorf("compact Agent leaf %s = %d bytes, max %d; shorten Agent-visible prose/parameters or keep audit-only fields out of the allowlist", tool.Identity.CanonicalPath, len(encoded), maxAgentLeafBytes)
+			}
+		}
+	}
+	t.Logf("largest compact Agent leaf: %s=%d bytes (max %d)", worstCanonical, worstBytes, maxAgentLeafBytes)
 }
 
 func sortedSchemaKeys(values map[string]map[string]any) []string {

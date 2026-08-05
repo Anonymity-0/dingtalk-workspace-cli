@@ -9,6 +9,6 @@ DWS 当前公开的是 `im.streaming-card.v1` 工作流契约，不是任意组�
 - callback：不支持。
 
 参数、required 和 confirmation 读取
-`dws schema --cli-path "chat +messages-send-card" -f json` 或
-`dws schema --cli-path "chat +messages-update-card" -f json`。不要把 Lark card JSON 字段翻译成
+`dws schema --cli-path "chat +messages-send-card" --compact -f json` 或
+`dws schema --cli-path "chat +messages-update-card" --compact -f json`。不要把 Lark card JSON 字段翻译成
 未发布的 DWS flags。

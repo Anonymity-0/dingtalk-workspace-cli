@@ -54,5 +54,5 @@
 ## Schema 边界
 
 - 业务 payload：`dws event schema <event_key> --flatten`。
-- CLI 参数/安全：`dws schema --cli-path "event +listen-im" -f json` 或精确 consume leaf。
+- CLI 参数/安全：`dws schema --cli-path "event +listen-im" --compact -f json` 或精确 compact consume leaf。
 - `--flatten` 的 `jq_root_path` 为 `.`；兼容 transport envelope 才使用 `.data | fromjson`。

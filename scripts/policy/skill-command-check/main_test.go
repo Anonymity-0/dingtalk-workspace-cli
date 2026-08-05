@@ -169,3 +169,27 @@ func TestIsPlaceholder(t *testing.T) {
 		}
 	}
 }
+
+func TestSchemaProjectionIssue(t *testing.T) {
+	tests := []struct {
+		command string
+		wantErr bool
+	}{
+		{command: `dws schema`, wantErr: false},
+		{command: `dws schema --all --format json`, wantErr: false},
+		{command: `dws schema calendar`, wantErr: true},
+		{command: `dws schema "calendar event create" -f json`, wantErr: true},
+		{command: `dws schema "calendar event create" --compact -f json`, wantErr: false},
+		{command: `dws schema --cli-path "chat +messages-send" --compact --format json`, wantErr: false},
+		{command: `dws schema --cli-path="chat +messages-send" --jq '.parameters'`, wantErr: false},
+		{command: `dws schema "ding message send" --fields parameters`, wantErr: false},
+		{command: `dws doc read --node <DOC_ID>`, wantErr: false},
+	}
+	for _, test := range tests {
+		t.Run(test.command, func(t *testing.T) {
+			if got := schemaProjectionIssue(test.command); (got != "") != test.wantErr {
+				t.Fatalf("schemaProjectionIssue() = %q, wantErr=%v", got, test.wantErr)
+			}
+		})
+	}
+}
