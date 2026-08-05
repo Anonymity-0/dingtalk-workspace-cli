@@ -3607,11 +3607,13 @@ CLI 内部自动完成全部流程：
   PROCESSING  处理中
   SUCCESS     导出成功，返回 downloadUrl
   FAILED      导出失败`,
-		Example: `  dws doc export get --job-id <JOB_ID>`,
+		Example: `  dws doc export get --job-id <JOB_ID>
+  dws doc export get --task-id <TASK_ID>`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			jobID := mustGetFlag(cmd, "job-id")
-			if jobID == "" {
-				return fmt.Errorf("flag --job-id is required")
+			// Keep --job-id as the visible primary; --task-id is an add-only synonym.
+			jobID, err := mustFlagOrFallback(cmd, "job-id", "task-id")
+			if err != nil {
+				return err
 			}
 
 			if deps.Caller.DryRun() {
@@ -3678,9 +3680,14 @@ CLI 内部自动完成全部流程：
 				AvoidWhen:    []string{"常规导出请直接 dws doc export（一体化提交+轮询+下载），不要先查 job"},
 				Examples:     []string{"dws doc export get --job-id <JOB_ID> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "job-id", Property: "jobId"},
+			},
 		},
 	})
 	exportGetCmd.Flags().String("job-id", "", "导出任务 ID (必填)")
+	exportGetCmd.Flags().String("task-id", "", "--job-id 的别名")
+	_ = exportGetCmd.Flags().MarkHidden("task-id")
 
 	// --node 的隐藏别名（与 doc 下其他命令保持一致）
 	exportCmd.Flags().String("url", "", "--node 的别名")

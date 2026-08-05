@@ -3768,12 +3768,15 @@ object 与 operation 合法组合：
 		Example: `  dws mail calendar-event list --email user@company.com --id <calendarFolderId> --start "2026-07-01T00:00:00Z" --end "2026-07-31T23:59:59Z"
   dws mail calendar-event list --email user@company.com --id <calendarFolderId> --start "2026-07-01T00:00:00Z" --end "2026-07-31T23:59:59Z" --cursor <cursor>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "email", "id", "start", "end"); err != nil {
+			if err := validateRequiredFlags(cmd, "email", "start", "end"); err != nil {
+				return err
+			}
+			if err := validateRequiredFlagWithAliases(cmd, "id", "folder-id"); err != nil {
 				return err
 			}
 			toolArgs := map[string]any{
 				"email":     mustGetFlag(cmd, "email"),
-				"id":        mustGetFlag(cmd, "id"),
+				"id":        flagOrFallback(cmd, "id", "folder-id"),
 				"startTime": flagOrFallback(cmd, "start", "start-time"),
 				"endTime":   flagOrFallback(cmd, "end", "end-time"),
 			}
@@ -3819,6 +3822,8 @@ object 与 operation 合法组合：
 	})
 	calendarEventListCmd.Flags().String("email", "", "用户的邮箱地址 (必填)")
 	calendarEventListCmd.Flags().String("id", "", "日历文件夹ID (必填)")
+	calendarEventListCmd.Flags().String("folder-id", "", "--id 的别名")
+	_ = calendarEventListCmd.Flags().MarkHidden("folder-id")
 	calendarEventListCmd.Flags().String("start", "", "视图开始UTC时间 (必填)")
 	calendarEventListCmd.Flags().String("start-time", "", "--start 的别名")
 	_ = calendarEventListCmd.Flags().MarkHidden("start-time")

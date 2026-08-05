@@ -1090,6 +1090,7 @@ func newDriveCommand() *cobra.Command {
 	driveDownloadCmd.Flags().String("node", "", "文件 ID (dentryUuid) (必填)")
 	driveDownloadCmd.Flags().String("space-id", "", "文件所属空间 ID (可选)")
 	driveDownloadCmd.Flags().String("output", "", "本地保存路径 (文件路径或目录，必填)")
+	driveDownloadCmd.Flags().Int("version", 0, "下载指定历史版本号（兼容别名，等价 download-version）")
 	driveDownloadCmd.Flags().String("part-size", "16MB", "分片下载的分片大小，如 8MB/16MB/1GB，范围 1MB-1GB (可选)")
 	driveDownloadCmd.Flags().Int("parallel", 4, "分片下载并发数，范围 1-8 (可选)")
 	driveDownloadCmd.Flags().Bool("no-resume", false, "关闭断点续传 (可选)")
@@ -1103,6 +1104,14 @@ func newDriveCommand() *cobra.Command {
 	for _, alias := range []string{"url", "id", "node-id", "doc-id", "file-id"} {
 		driveDownloadVersionCmd.Flags().String(alias, "", "")
 		_ = driveDownloadVersionCmd.Flags().MarkHidden(alias)
+	}
+	// Wukong compat: `drive download --version N` routes to download-version.
+	origDriveDownloadRunE := driveDownloadCmd.RunE
+	driveDownloadCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if cmd.Flags().Changed("version") {
+			return driveDownloadVersionCmd.RunE(cmd, args)
+		}
+		return origDriveDownloadRunE(cmd, args)
 	}
 
 	driveMkdirCmd.Flags().String("name", "", "文件夹名称，最长 50 字符 (必填)")
@@ -2049,6 +2058,8 @@ func newDriveCommand() *cobra.Command {
 			limit := 0
 			if cmd.Flags().Changed("limit") {
 				limit, _ = cmd.Flags().GetInt("limit")
+			} else if cmd.Flags().Changed("max-results") {
+				limit, _ = cmd.Flags().GetInt("max-results")
 			}
 			if limit > 0 {
 				toolArgs["maxResults"] = limit
@@ -2100,6 +2111,8 @@ func newDriveCommand() *cobra.Command {
 	})
 	drivePermListCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")
 	drivePermListCmd.Flags().Int("limit", 30, "返回成员数上限，默认 30，最大 200")
+	drivePermListCmd.Flags().Int("max-results", 0, "")
+	_ = drivePermListCmd.Flags().MarkHidden("max-results")
 	drivePermListCmd.Flags().String("filter-role", "", "按角色过滤: OWNER / MANAGER / EDITOR / DOWNLOADER / READER")
 	drivePermListCmd.Flags().String("workspace", "", "知识库 ID (选填)")
 
@@ -2763,7 +2776,7 @@ func newDriveCommand() *cobra.Command {
 
 	// ── cross-product hidden aliases ──
 	for _, cmd := range []*cobra.Command{
-		driveListCmd, driveListSpacesCmd, driveInfoCmd, driveDownloadCmd,
+		driveListCmd, driveListSpacesCmd, driveInfoCmd, driveDownloadCmd, driveDownloadVersionCmd,
 		driveMkdirCmd, driveUploadInfoCmd, driveCommitCmd, driveUploadCmd, driveDeleteCmd,
 		driveSearchCmd, driveCopyCmd, driveMoveCmd, driveRenameCmd, driveStatsCmd, driveShortcutCmd,
 		driveFolderCreateCmd,
@@ -3065,6 +3078,11 @@ func newDriveCommand() *cobra.Command {
 		},
 	})
 	driveCoverCmd.Flags().String("node", "", "节点 ID (dentryUuid) 或文档 URL (必填)")
+	for _, alias := range []string{"url", "id"} {
+		driveCoverCmd.Flags().String(alias, "", "--node 的别名")
+		_ = driveCoverCmd.Flags().MarkHidden(alias)
+	}
+	RegisterCrossProductAliases(driveCoverCmd)
 
 	// ── drive revert (回滚文件到指定历史版本) ──
 	driveRevertCmd := &cobra.Command{
@@ -3117,6 +3135,21 @@ func newDriveCommand() *cobra.Command {
 	})
 	driveRevertCmd.Flags().String("node", "", "文件 ID (dentryUuid) 或 URL (必填)")
 	driveRevertCmd.Flags().Int("version", 0, "要回滚到的历史版本号 (必填，正整数)")
+	for _, alias := range []string{"url", "id"} {
+		driveRevertCmd.Flags().String(alias, "", "--node 的别名")
+		_ = driveRevertCmd.Flags().MarkHidden(alias)
+	}
+	RegisterCrossProductAliases(driveRevertCmd)
+
+	for _, child := range driveStarCmd.Commands() {
+		for _, alias := range []string{"url", "id"} {
+			if child.Flags().Lookup(alias) == nil {
+				child.Flags().String(alias, "", "--node 的别名")
+				_ = child.Flags().MarkHidden(alias)
+			}
+		}
+		RegisterCrossProductAliases(child)
+	}
 
 	driveCmd.AddCommand(
 		driveListCmd,

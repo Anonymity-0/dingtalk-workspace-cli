@@ -3,6 +3,7 @@ package helpers
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
@@ -18,7 +19,7 @@ func newMinutesCommand() *cobra.Command {
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "minutes",
 		Selection: contract.ProductSelectionDecl{
-			AgentSummary: "查询和维护钉钉听记的转写、摘要、待办、权限、录音、标签、说话人总结及文件上传会话。",
+			AgentSummary: "查询和维护钉钉听记的转写、摘要、待办、权限、录音、标签、说话人总结、语音备忘及文件上传会话。",
 			UseWhen: []string{
 				"用户要查找、读取、编辑或管理钉钉听记及其录音、转写、摘要和衍生内容。",
 			},
@@ -1282,7 +1283,10 @@ func newMinutesCommand() *cobra.Command {
 			Selection: contract.SelectionSpec{
 				AgentSummary: "添加听记个人热词，用于优化语音识别中专有名词、人名等的识别准确率。",
 				UseWhen:      []string{"需要添加听记个人热词以优化专有名词/人名识别时（单词不超过约10汉字）"},
-				AvoidWhen:    []string{"要查看已有热词时改用 dws minutes hot-word list"},
+				AvoidWhen: []string{
+					"要查看已有热词时改用 dws minutes hot-word list",
+					"要删除热词时改用 dws minutes hot-word delete",
+				},
 				Examples: []string{
 					"dws minutes hot-word add --words \"钉钉\"",
 					"dws minutes hot-word add --words \"OKR,钉钉,Copilot\"",
@@ -1328,13 +1332,70 @@ func newMinutesCommand() *cobra.Command {
 			Selection: contract.SelectionSpec{
 				AgentSummary: "查询当前用户配置的所有听记热词列表。",
 				UseWhen:      []string{"需要查看当前用户已配置的听记个人热词列表时"},
-				AvoidWhen:    []string{"要添加热词时改用 hot-word add"},
-				Examples:     []string{"dws minutes hot-word list"},
+				AvoidWhen: []string{
+					"要添加热词时改用 hot-word add",
+					"要删除热词时改用 hot-word delete",
+				},
+				Examples: []string{"dws minutes hot-word list"},
 			},
 		},
 	})
 
-	hotWordCmd.AddCommand(hotWordAddCmd, hotWordListCmd)
+	hotWordDeleteCmd := &cobra.Command{
+		Use:   "delete",
+		Short: "批量删除个人热词",
+		Long: `批量删除听记个人热词。
+支持一次删除多个热词（逗号分隔）。删除后对应热词不再参与后续语音识别优化。`,
+		Example: `  dws minutes hot-word delete --words "钉钉"
+  dws minutes hot-word delete --words "OKR,钉钉,Copilot"`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "words"); err != nil {
+				return err
+			}
+			return callMCPTool("delete_personal_hotword", map[string]any{
+				"hotWordList": parseCSVValues(mustGetFlag(cmd, "words")),
+			})
+		},
+	}
+	DeclareLeafMetadata(hotWordDeleteCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "delete_personal_hotword",
+				CanonicalPath:  "minutes.delete_personal_hotword",
+				CLIPath:        "minutes hot-word delete",
+				PrimaryCLIPath: "minutes hot-word delete",
+			},
+			Description: "批量删除听记个人热词。删除后对应热词不再参与后续语音识别优化。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "delete_personal_hotword"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "批量删除听记个人热词，清理误加或过时热词。",
+				UseWhen:      []string{"用户要删除/移除已配置的听记个人热词时"},
+				AvoidWhen: []string{
+					"要添加热词时改用 hot-word add",
+					"不确定现有热词时先用 hot-word list",
+				},
+				Examples: []string{
+					"dws minutes hot-word delete --words \"钉钉\"",
+					"dws minutes hot-word delete --words \"OKR,钉钉,Copilot\"",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "words", Property: "hotWordList"},
+			},
+		},
+	})
+	hotWordDeleteCmd.Flags().String("words", "", "要删除的热词，多个用逗号分隔 (必填)")
+
+	hotWordCmd.AddCommand(hotWordAddCmd, hotWordListCmd, hotWordDeleteCmd)
 
 	// ── replace-text 命令 ───────────────────────────────────────
 	replaceTextCmd := &cobra.Command{
@@ -1618,8 +1679,8 @@ func newMinutesCommand() *cobra.Command {
 	uploadCmd.AddCommand(uploadCreateCmd, uploadCompleteCmd, uploadCancelCmd)
 
 	// ── permission 子组 ─────────────────────────────────────────
-	// 听记成员权限管理：批量添加/移除成员及其权限。
-	// 对应 MCP 工具 add_member_permission / remove_member_permission。
+	// 听记成员权限管理：批量添加/移除成员及其权限、为当前用户申请权限。
+	// 对应 MCP 工具 add_member_permission / remove_member_permission / apply_minutes_permission。
 	permissionCmd := &cobra.Command{Use: "permission", Short: "听记成员权限管理", RunE: groupRunE}
 
 	// permission add — 对应 MCP 工具 add_member_permission
@@ -1709,6 +1770,7 @@ func newMinutesCommand() *cobra.Command {
 				UseWhen:      []string{"已知听记 uuid，需要批量给听记增加成员并设置权限（policy 0管理员/1所有者/2可编辑/3可查看下载/4仅查看）时"},
 				AvoidWhen: []string{
 					"要移除成员权限时改用 dws minutes permission remove",
+					"当前用户自己申请访问权限时改用 dws minutes permission apply",
 					"成员、权限策略或听记 id 未确认时不要添加",
 				},
 				Examples: []string{
@@ -1784,6 +1846,7 @@ func newMinutesCommand() *cobra.Command {
 				UseWhen:      []string{"用户明确要求批量移除听记成员权限，使其失去访问时"},
 				AvoidWhen: []string{
 					"要添加权限时改用 permission add",
+					"当前用户自己申请访问权限时改用 permission apply",
 					"成员或听记 id 未确认时不要移除",
 				},
 				Examples: []string{
@@ -1803,7 +1866,85 @@ func newMinutesCommand() *cobra.Command {
 	_ = permissionRemoveCmd.Flags().MarkHidden("task-uuids")
 	permissionRemoveCmd.Flags().String("member-uids", "", "成员钉钉 UID 列表，逗号分隔 (必填)")
 
-	permissionCmd.AddCommand(permissionAddCmd, permissionRemoveCmd)
+	// permission apply — 对应 MCP 工具 apply_minutes_permission
+	permissionApplyCmd := &cobra.Command{
+		Use:   "apply",
+		Short: "为当前用户申请听记权限",
+		Long: `为当前登录用户申请指定听记的权限。
+适用于用户无权限访问某听记（如打开分享链接提示无权限）时，主动向听记所有者发起权限申请。
+
+权限类型 (--policy):
+  2 = 可编辑
+  3 = 可查看/下载
+  4 = 仅查看`,
+		Example: `  dws minutes permission apply --id <taskUuid> --policy 4
+  dws minutes permission apply --id <taskUuid> --policy 2`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlagWithAliases(cmd, "id", "url", "task-uuid", "uuid"); err != nil {
+				return err
+			}
+			if err := validateRequiredFlags(cmd, "policy"); err != nil {
+				return err
+			}
+
+			policyID, err := strconv.ParseInt(mustGetFlag(cmd, "policy"), 10, 64)
+			if err != nil || policyID < 2 || policyID > 4 {
+				return fmt.Errorf("flag --policy must be an integer between 2 and 4 (2=可编辑, 3=可查看/下载, 4=仅查看)")
+			}
+
+			return callMCPTool("apply_minutes_permission", map[string]any{
+				"taskUuid": flagOrFallback(cmd, "id", "url", "task-uuid", "uuid"),
+				"policyId": float64(policyID),
+			})
+		},
+	}
+	DeclareLeafMetadata(permissionApplyCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "apply_minutes_permission",
+				CanonicalPath:  "minutes.apply_minutes_permission",
+				CLIPath:        "minutes permission apply",
+				PrimaryCLIPath: "minutes permission apply",
+			},
+			Description: "为当前登录用户申请指定听记的权限。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "apply_minutes_permission"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "为当前登录用户申请指定听记的访问权限（可编辑/可查看下载/仅查看）。",
+				UseWhen:      []string{"当前用户对某听记无权限，需要向所有者申请访问（policy 2/3/4）时"},
+				AvoidWhen: []string{
+					"所有者批量给他人加权限时改用 permission add",
+					"要移除他人权限时改用 permission remove",
+				},
+				Examples: []string{
+					"dws minutes permission apply --id <taskUuid> --policy 4",
+					"dws minutes permission apply --id <taskUuid> --policy 2",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "taskUuid"},
+				{Name: "policy", Property: "policyId"},
+			},
+		},
+	})
+	permissionApplyCmd.Flags().String("id", "", "听记 taskUuid (必填)")
+	permissionApplyCmd.Flags().String("url", "", "--id 的别名")
+	_ = permissionApplyCmd.Flags().MarkHidden("url")
+	permissionApplyCmd.Flags().String("task-uuid", "", "--id 的别名 (兼容 OpenAPI 字段名)")
+	_ = permissionApplyCmd.Flags().MarkHidden("task-uuid")
+	permissionApplyCmd.Flags().String("uuid", "", "--id 的别名")
+	_ = permissionApplyCmd.Flags().MarkHidden("uuid")
+	permissionApplyCmd.Flags().String("policy", "", "权限类型: 2=可编辑, 3=可查看/下载, 4=仅查看 (必填)")
+
+	permissionCmd.AddCommand(permissionAddCmd, permissionRemoveCmd, permissionApplyCmd)
 
 	// ── tag 子组 ────────────────────────────────────────────────
 	// 听记标签/分组管理：查询用户标签列表、按标签查询听记。
@@ -1928,13 +2069,124 @@ func newMinutesCommand() *cobra.Command {
 
 	tagCmd.AddCommand(tagListCmd, tagQueryCmd)
 
+	// ── audio-memo 子组 ────────────────────────────
+	// 语音备忘查询：对应 MCP 工具 list_audio_memos。
+	// 用户身份由网关按登录态注入 uid，agent/CLI 无需传入。
+	// 返回值 items[].audioUrl 为带签名的音频 URL（含 &），因此使用
+	// callMCPToolUnescaped 输出，避免 & 被转义为 \u0026（与 upload 一致）。
+	audioMemoCmd := &cobra.Command{Use: "audio-memo", Short: "语音备忘查询", RunE: groupRunE}
+
+	audioMemoListCmd := &cobra.Command{
+		Use:   "list",
+		Short: "查询语音备忘列表",
+		Long: `查询当前用户的语音备忘列表，支持分页和时间范围筛选。
+分页：首页 --cursor 留空（或 0），后续把上一页返回的 nextCursor 回填到 --cursor。
+时间范围：--start/--end 为 ISO-8601（可选），不传默认查询近一年。`,
+		Example: `  dws minutes audio-memo list
+  dws minutes audio-memo list --max 500
+  dws minutes audio-memo list --start "2026-01-01T00:00:00+08:00" --end "2026-07-21T23:59:59+08:00"
+  dws minutes audio-memo list --cursor 1740000000000`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			toolArgs := map[string]any{}
+
+			max, _ := cmd.Flags().GetFloat64("max")
+			if max <= 0 || max > 1000 {
+				return fmt.Errorf("flag --max must be between 1 and 1000")
+			}
+			toolArgs["pageSize"] = max
+
+			if cmd.Flags().Changed("cursor") {
+				cursor, _ := cmd.Flags().GetInt64("cursor")
+				if cursor < 0 {
+					return fmt.Errorf("flag --cursor must be >= 0")
+				}
+				toolArgs["cursor"] = float64(cursor)
+			}
+
+			startStr, _ := cmd.Flags().GetString("start")
+			endStr, _ := cmd.Flags().GetString("end")
+			loc, _ := time.LoadLocation("Asia/Shanghai")
+			if loc == nil {
+				loc = time.Local
+			}
+			var startMs, endMs int64
+			if startStr != "" {
+				var err error
+				startMs, err = parseISOTimeToMillis("start", startStr)
+				if err != nil {
+					return err
+				}
+				toolArgs["startTime"] = time.UnixMilli(startMs).In(loc).Format(time.RFC3339)
+			}
+			if endStr != "" {
+				var err error
+				endMs, err = parseISOTimeToMillis("end", endStr)
+				if err != nil {
+					return err
+				}
+				toolArgs["endTime"] = time.UnixMilli(endMs).In(loc).Format(time.RFC3339)
+			}
+			if startStr != "" && endStr != "" {
+				if err := validateTimeRange(startMs, endMs); err != nil {
+					return err
+				}
+			}
+
+			return callMCPToolUnescaped("list_audio_memos", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(audioMemoListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "minutes",
+				Name:           "list_audio_memos",
+				CanonicalPath:  "minutes.list_audio_memos",
+				CLIPath:        "minutes audio-memo list",
+				PrimaryCLIPath: "minutes audio-memo list",
+			},
+			Description: "查询当前用户的语音备忘列表，支持分页和时间范围筛选。",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "minutes", RPCName: "list_audio_memos"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询当前用户的语音备忘列表（独立于听记列表与 get audio）。",
+				UseWhen:      []string{"用户要查看语音备忘/录音备忘列表时（可带时间范围或翻页）"},
+				AvoidWhen: []string{
+					"要查听记列表改用 minutes list",
+					"只要某篇听记的音频地址改用 minutes get audio",
+				},
+				Examples: []string{
+					"dws minutes audio-memo list",
+					"dws minutes audio-memo list --start \"2026-01-01T00:00:00+08:00\" --end \"2026-07-21T23:59:59+08:00\"",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "max", Property: "pageSize"},
+				{Name: "cursor", Property: "cursor"},
+				{Name: "start", Property: "startTime"},
+				{Name: "end", Property: "endTime"},
+			},
+		},
+	})
+	audioMemoListCmd.Flags().Float64("max", 200, "每页数据条数 (默认 200，上限 1000)")
+	audioMemoListCmd.Flags().Int64("cursor", 0, "翻页游标，回填上一页返回的 nextCursor (首页留空)")
+	audioMemoListCmd.Flags().String("start", "", "开始时间 ISO-8601 (可选，默认近一年)")
+	audioMemoListCmd.Flags().String("end", "", "结束时间 ISO-8601 (可选)")
+	audioMemoCmd.AddCommand(audioMemoListCmd)
+
 	minutesCmd := &cobra.Command{
 		Use:   "minutes",
 		Short: "AI 听记 / 会议纪要",
-		Long:  `管理钉钉AI听记：查询列表、获取详情、摘要、转写、待办、关键字、音频地址、思维导图、发言人管理、文件上传、成员权限管理，以及修改标题和纪要内容。`,
+		Long:  `管理钉钉AI听记：查询列表、获取详情、摘要、转写、待办、关键字、音频地址、思维导图、发言人管理、文件上传、成员权限管理、语音备忘查询，以及修改标题和纪要内容。`,
 		RunE:  groupRunE,
 	}
-	minutesCmd.AddCommand(minutesListCmd, minutesGetCmd, minutesUpdateCmd, minutesRecordCmd, mindGraphCmd, speakerCmd, hotWordCmd, replaceTextCmd, uploadCmd, permissionCmd, tagCmd)
+	minutesCmd.AddCommand(minutesListCmd, minutesGetCmd, minutesUpdateCmd, minutesRecordCmd, mindGraphCmd, speakerCmd, hotWordCmd, replaceTextCmd, audioMemoCmd, uploadCmd, permissionCmd, tagCmd)
 	return minutesCmd
 }
 
