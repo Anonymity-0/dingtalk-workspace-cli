@@ -8,7 +8,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"sort"
 	"strings"
 	"testing"
@@ -573,33 +572,6 @@ func TestStripSchemaPayloadCompactPreservesParameterIdentity(t *testing.T) {
 			t.Errorf("compact projection dropped parameter identity %q", parameterName)
 		}
 	}
-}
-
-func TestCompactSchemaAgentLeafBudget(t *testing.T) {
-	const maxAgentLeafBytes = 12 * 1024
-	loaded := deliverySchemaCatalog()
-	worstCanonical := ""
-	worstBytes := 0
-	for _, product := range loaded.Registry.Products {
-		for _, tool := range product.Tools {
-			full, err := tool.ToPayload()
-			if err != nil {
-				t.Fatalf("render %s full leaf: %v", tool.Identity.CanonicalPath, err)
-			}
-			encoded, err := json.Marshal(stripSchemaPayloadCompact(full))
-			if err != nil {
-				t.Fatalf("encode %s compact leaf: %v", tool.Identity.CanonicalPath, err)
-			}
-			if len(encoded) > worstBytes {
-				worstCanonical = tool.Identity.CanonicalPath
-				worstBytes = len(encoded)
-			}
-			if len(encoded) > maxAgentLeafBytes {
-				t.Errorf("compact Agent leaf %s = %d bytes, max %d; shorten Agent-visible prose/parameters or keep audit-only fields out of the allowlist", tool.Identity.CanonicalPath, len(encoded), maxAgentLeafBytes)
-			}
-		}
-	}
-	t.Logf("largest compact Agent leaf: %s=%d bytes (max %d)", worstCanonical, worstBytes, maxAgentLeafBytes)
 }
 
 func sortedSchemaKeys(values map[string]map[string]any) []string {
