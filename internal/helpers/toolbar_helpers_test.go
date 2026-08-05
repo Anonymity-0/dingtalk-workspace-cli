@@ -84,6 +84,15 @@ func TestParseExtension(t *testing.T) {
 	if err == nil {
 		t.Fatal("invalid extension format should error")
 	}
+
+	cmd3 := &cobra.Command{Use: "test3"}
+	cmd3.Flags().StringArray("extension", nil, "")
+	_ = cmd3.Flags().Set("extension", "color=blue")
+	_ = cmd3.Flags().Set("extension", "color=red")
+	_, err = parseExtension(cmd3)
+	if err == nil {
+		t.Fatal("duplicate extension keys should error")
+	}
 }
 
 func TestToolbarConversationID(t *testing.T) {

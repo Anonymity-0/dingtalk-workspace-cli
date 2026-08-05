@@ -49,9 +49,6 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 				return err
 			}
 			shortcutId, _ := cmd.Flags().GetInt64("shortcut-id")
-			if shortcutId == 0 {
-				return fmt.Errorf("flag --shortcut-id is required")
-			}
 			if err := validateRequiredFlags(cmd, "title", "url", "icon-url", "pc-url", "org-id-list"); err != nil {
 				return err
 			}
@@ -77,7 +74,8 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 			if tag, _ := cmd.Flags().GetString("tag"); tag != "" {
 				toolArgs["tag"] = tag
 			}
-			if sortIndex, _ := cmd.Flags().GetInt("sort-index"); sortIndex != 0 {
+			if cmd.Flags().Changed("sort-index") {
+				sortIndex, _ := cmd.Flags().GetInt("sort-index")
 				toolArgs["sortIndex"] = sortIndex
 			}
 
@@ -89,7 +87,11 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 				toolArgs["extension"] = ext
 			}
 
-			return callMCPToolOnServer("im", "update_chat_toolbar_custom_shortcut", toolArgs)
+			err = callMCPToolOnServer("im", "update_chat_toolbar_custom_shortcut", toolArgs)
+			if isSystemBusy(err) {
+				return toolbarNewSystemBusyError()
+			}
+			return err
 		},
 	}
 	cmd.Flags().String("conversation-id", "", "会话 openConversationId")
@@ -104,6 +106,7 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 	cmd.Flags().String("tag", "", "入口标签")
 	cmd.Flags().Int("sort-index", 0, "排序权重")
 	_ = cmd.MarkFlagRequired("conversation-id")
+	_ = cmd.MarkFlagRequired("shortcut-id")
 	_ = cmd.MarkFlagRequired("title")
 	_ = cmd.MarkFlagRequired("url")
 	_ = cmd.MarkFlagRequired("icon-url")

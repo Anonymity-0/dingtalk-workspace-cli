@@ -71,7 +71,8 @@ func newToolbarCreateCustomCommand() *cobra.Command {
 			if tag, _ := cmd.Flags().GetString("tag"); tag != "" {
 				toolArgs["tag"] = tag
 			}
-			if sortIndex, _ := cmd.Flags().GetInt("sort-index"); sortIndex != 0 {
+			if cmd.Flags().Changed("sort-index") {
+				sortIndex, _ := cmd.Flags().GetInt("sort-index")
 				toolArgs["sortIndex"] = sortIndex
 			}
 
@@ -83,7 +84,11 @@ func newToolbarCreateCustomCommand() *cobra.Command {
 				toolArgs["extension"] = ext
 			}
 
-			return callMCPToolOnServer("im", "create_chat_toolbar_custom_shortcut", toolArgs)
+			err = callMCPToolOnServer("im", "create_chat_toolbar_custom_shortcut", toolArgs)
+			if isSystemBusy(err) {
+				return toolbarNewSystemBusyError()
+			}
+			return err
 		},
 	}
 	cmd.Flags().String("conversation-id", "", "会话 openConversationId")

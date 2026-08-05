@@ -40,10 +40,14 @@ func newToolbarHideCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("--shortcut-ids: %w", err)
 			}
-			return callMCPToolOnServer("im", "hide_chat_toolbar_shortcuts", map[string]any{
+			err = callMCPToolOnServer("im", "hide_chat_toolbar_shortcuts", map[string]any{
 				"openCid":     cid,
 				"shortcutIds": ids,
 			})
+			if isSystemBusy(err) {
+				return toolbarNewSystemBusyError()
+			}
+			return err
 		},
 	}
 	cmd.Flags().String("conversation-id", "", "会话 openConversationId")

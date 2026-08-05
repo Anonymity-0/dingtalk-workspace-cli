@@ -61,6 +61,9 @@ func parseExtension(cmd *cobra.Command) (map[string]string, error) {
 		if key == "" {
 			return nil, fmt.Errorf("--extension key 不能为空: %q", pair)
 		}
+		if _, exists := result[key]; exists {
+			return nil, fmt.Errorf("--extension 重复 key %q，每个 key 只能指定一次", key)
+		}
 		result[key] = value
 	}
 	return result, nil

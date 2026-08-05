@@ -14,8 +14,6 @@
 package helpers
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -36,9 +34,6 @@ func newToolbarRemoveCustomCommand() *cobra.Command {
 				return err
 			}
 			shortcutId, _ := cmd.Flags().GetInt64("shortcut-id")
-			if shortcutId == 0 {
-				return fmt.Errorf("flag --shortcut-id is required")
-			}
 			if !commandBoolFlag(cmd, "yes") {
 				return apperrors.NewValidation(
 					"删除自定义快捷入口不可逆；获得用户确认后加 --yes 执行",
@@ -47,16 +42,21 @@ func newToolbarRemoveCustomCommand() *cobra.Command {
 					apperrors.WithActions("确认目标自定义入口", "获得用户确认后使用 --yes 执行"),
 				)
 			}
-			return callMCPToolOnServer("im", "remove_chat_toolbar_custom_shortcut", map[string]any{
+			err = callMCPToolOnServer("im", "remove_chat_toolbar_custom_shortcut", map[string]any{
 				"openCid":    cid,
 				"shortcutId": shortcutId,
 			})
+			if isSystemBusy(err) {
+				return toolbarNewSystemBusyError()
+			}
+			return err
 		},
 	}
 	cmd.Flags().String("conversation-id", "", "会话 openConversationId")
 	cmd.Flags().Int64("shortcut-id", 0, "自定义入口 ID")
 	cmd.Flags().Bool("yes", false, "确认执行删除操作")
 	_ = cmd.MarkFlagRequired("conversation-id")
+	_ = cmd.MarkFlagRequired("shortcut-id")
 	cmd.DisableAutoGenTag = true
 
 	DeclareLeafMetadata(cmd, LeafSpec{
