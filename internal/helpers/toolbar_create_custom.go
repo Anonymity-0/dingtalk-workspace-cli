@@ -112,7 +112,7 @@ func newToolbarCreateCustomCommand() *cobra.Command {
 	DeclareLeafMetadata(cmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "not_idempotent",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{

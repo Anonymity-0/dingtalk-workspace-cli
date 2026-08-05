@@ -62,7 +62,7 @@ func newToolbarRemoveCustomCommand() *cobra.Command {
 	DeclareLeafMetadata(cmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "required", Idempotency: "idempotent",
+			Confirmation: "user_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -82,7 +82,7 @@ func newToolbarRemoveCustomCommand() *cobra.Command {
 				AgentSummary: "删除自定义快捷栏入口",
 				UseWhen:      []string{"需要永久删除某个自定义快捷栏入口"},
 				AvoidWhen:    []string{"仅隐藏入口使用 chat toolbar hide；更新入口使用 chat toolbar update-custom"},
-				Examples:     []string{"dws chat toolbar remove-custom --conversation-id <cid> --shortcut-id 123 --yes"},
+				Examples:     []string{"dws chat toolbar remove-custom --conversation-id <cid> --shortcut-id 123"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "conversation-id", Property: "openCid", Required: boolPtr(true)},
