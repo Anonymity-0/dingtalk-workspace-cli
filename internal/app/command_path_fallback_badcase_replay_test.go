@@ -153,7 +153,7 @@ func TestShortcutHallucinationMerged20260720Replay(t *testing.T) {
 			id:          "dws_im_v2_0013-search-group",
 			raw:         `dws chat +search-group --name "dws测试群02" --format json`,
 			occurrences: 1,
-			outcome:     "rewrite",
+			outcome:     "official_alias",
 			target:      "chat +chat-search",
 		},
 		{
@@ -183,6 +183,8 @@ func TestShortcutHallucinationMerged20260720Replay(t *testing.T) {
 			switch test.outcome {
 			case "rewrite":
 				assertHistoricalShortcutRewrite(t, badcase, test.target, ctx, err)
+			case "official_alias":
+				assertHistoricalOfficialAlias(t, badcase, test.target, ctx, err)
 			case "ambiguous":
 				assertHistoricalShortcutReason(t, badcase, ctx, err, "ambiguous_command_fallback")
 			default:
@@ -192,6 +194,30 @@ func TestShortcutHallucinationMerged20260720Replay(t *testing.T) {
 	}
 	if totalOccurrences != 3 {
 		t.Fatalf("merged shortcut hallucination occurrences = %d, want 3", totalOccurrences)
+	}
+}
+
+func assertHistoricalOfficialAlias(
+	t *testing.T,
+	badcase shortcutHallucinationReplayBadcase,
+	wantTarget string,
+	ctx *pipeline.Context,
+	err error,
+) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("historical official alias %q returned error: %v", badcase.SourcePath, err)
+	}
+	if wantTarget == "" || ctx == nil || ctx.Command != "dws "+wantTarget {
+		t.Fatalf("historical official alias context = %#v; want command dws %s", ctx, wantTarget)
+	}
+	for _, correction := range ctx.Corrections {
+		if correction.Handler == "command-path-fallback" {
+			t.Fatalf("historical official alias received fallback correction: %#v", ctx.Corrections)
+		}
+	}
+	if entry, ok := cli.LookupCommandPathFallback(badcase.SourcePath); ok {
+		t.Fatalf("official alias unexpectedly remains in fallback table: %#v", entry)
 	}
 }
 

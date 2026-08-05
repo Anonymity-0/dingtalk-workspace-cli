@@ -19,9 +19,9 @@ const (
 	publicShortcutCount = 266
 	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
 	// including hidden leaves such as minutes.shortcut_minutes_search.
-	schemaPublishedShortcutCount = 216
+	schemaPublishedShortcutCount = 267
 	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
-	publiclyDeliveredShortcutCount = 215
+	publiclyDeliveredShortcutCount = 266
 )
 
 func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
@@ -114,7 +114,7 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 
 	product := executeShortcutSchemaQuery(t, "chat")
 	productPayload, _ := product["product"].(map[string]any)
-	if got, want := int(product["count"].(float64)), 129; got != want {
+	if got, want := int(product["count"].(float64)), 180; got != want {
 		t.Fatalf("schema chat count = %d, want %d", got, want)
 	}
 	summaries := schemaContractObjectSlice(productPayload["tools"])
@@ -124,8 +124,8 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 			shortcutCount++
 		}
 	}
-	if shortcutCount != 47 {
-		t.Fatalf("schema chat shortcut summaries = %d, want 47", shortcutCount)
+	if shortcutCount != 98 {
+		t.Fatalf("schema chat shortcut summaries = %d, want 98", shortcutCount)
 	}
 }
 

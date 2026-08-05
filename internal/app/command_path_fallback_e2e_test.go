@@ -26,19 +26,6 @@ func TestReviewedCommandFallbacksReachCanonicalDryRunPayload(t *testing.T) {
 	if err != nil || len(canonicalQueryAttempts) != 0 {
 		t.Fatalf("canonical query preview = %#v, attempts=%v, error=%v", canonicalQuery, canonicalQueryAttempts, err)
 	}
-	_, canonicalKeyword, canonicalKeywordAttempts, err := executeParamAliasDryRunE2E(t,
-		"chat", "+chat-search", "--keyword", "project", "--dry-run",
-	)
-	if err != nil || len(canonicalKeywordAttempts) != 0 {
-		t.Fatalf("canonical keyword preview = %#v, attempts=%v, error=%v", canonicalKeyword, canonicalKeywordAttempts, err)
-	}
-	_, nativeCanonical, nativeCanonicalAttempts, err := executeParamAliasDryRunE2E(t,
-		"chat", "search", "--query", "project", "--dry-run",
-	)
-	if err != nil || len(nativeCanonicalAttempts) != 0 {
-		t.Fatalf("native canonical preview = %#v, attempts=%v, error=%v", nativeCanonical, nativeCanonicalAttempts, err)
-	}
-
 	tests := []struct {
 		name        string
 		args        []string
@@ -46,28 +33,10 @@ func TestReviewedCommandFallbacksReachCanonicalDryRunPayload(t *testing.T) {
 		wantPreview paramAliasDryRunPreview
 	}{
 		{
-			name:        "search group keyword",
-			args:        []string{"chat", "+search-group", "--keyword", "project", "--dry-run"},
-			wantCommand: "dws chat +chat-search",
-			wantPreview: canonicalKeyword,
-		},
-		{
 			name:        "group search query",
 			args:        []string{"chat", "+group-search", "--query", "project", "--dry-run"},
 			wantCommand: "dws chat +chat-search",
 			wantPreview: canonicalQuery,
-		},
-		{
-			name:        "chat group search query",
-			args:        []string{"chat", "+chat-group-search", "--query", "project", "--dry-run"},
-			wantCommand: "dws chat +chat-search",
-			wantPreview: canonicalQuery,
-		},
-		{
-			name:        "native group search",
-			args:        []string{"chat", "group", "search", "--query", "project", "--dry-run"},
-			wantCommand: "dws chat search",
-			wantPreview: nativeCanonical,
 		},
 	}
 	for _, test := range tests {
@@ -93,17 +62,77 @@ func TestReviewedCommandFallbacksReachCanonicalDryRunPayload(t *testing.T) {
 	}
 }
 
+func TestOfficialCommandAliasesBypassFallbackAndReachEquivalentPayload(t *testing.T) {
+	_, canonicalQuery, canonicalQueryAttempts, err := executeParamAliasDryRunE2E(t,
+		"chat", "+chat-search", "--query", "project", "--dry-run",
+	)
+	if err != nil || len(canonicalQueryAttempts) != 0 {
+		t.Fatalf("canonical query preview = %#v, attempts=%v, error=%v", canonicalQuery, canonicalQueryAttempts, err)
+	}
+	_, canonicalKeyword, canonicalKeywordAttempts, err := executeParamAliasDryRunE2E(t,
+		"chat", "+chat-search", "--keyword", "project", "--dry-run",
+	)
+	if err != nil || len(canonicalKeywordAttempts) != 0 {
+		t.Fatalf("canonical keyword preview = %#v, attempts=%v, error=%v", canonicalKeyword, canonicalKeywordAttempts, err)
+	}
+	_, nativeCanonical, nativeCanonicalAttempts, err := executeParamAliasDryRunE2E(t,
+		"chat", "search", "--query", "project", "--dry-run",
+	)
+	if err != nil || len(nativeCanonicalAttempts) != 0 {
+		t.Fatalf("native canonical preview = %#v, attempts=%v, error=%v", nativeCanonical, nativeCanonicalAttempts, err)
+	}
+
+	tests := []struct {
+		name        string
+		args        []string
+		wantCommand string
+		wantPreview paramAliasDryRunPreview
+	}{
+		{
+			name:        "search group shortcut alias",
+			args:        []string{"chat", "+search-group", "--keyword", "project", "--dry-run"},
+			wantCommand: "dws chat +chat-search",
+			wantPreview: canonicalKeyword,
+		},
+		{
+			name:        "chat group search shortcut alias",
+			args:        []string{"chat", "+chat-group-search", "--query", "project", "--dry-run"},
+			wantCommand: "dws chat +chat-search",
+			wantPreview: canonicalQuery,
+		},
+		{
+			name:        "hidden native compatibility leaf",
+			args:        []string{"chat", "group", "search", "--query", "project", "--dry-run"},
+			wantCommand: "dws chat group search",
+			wantPreview: nativeCanonical,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, preview, attempts, executeErr := executeParamAliasDryRunE2E(t, test.args...)
+			if executeErr != nil {
+				t.Fatalf("official alias execute error = %v", executeErr)
+			}
+			if len(attempts) != 0 {
+				t.Fatalf("official alias crossed dry-run dispatch boundary: %#v", attempts)
+			}
+			if !reflect.DeepEqual(preview, test.wantPreview) {
+				t.Fatalf("official alias preview = %#v, want canonical %#v", preview, test.wantPreview)
+			}
+			if ctx == nil || ctx.Command != test.wantCommand {
+				t.Fatalf("official alias context = %#v, want command %q", ctx, test.wantCommand)
+			}
+			assertNoCommandPathFallbackCorrection(t, ctx)
+		})
+	}
+}
+
 func TestReviewedReadFallbacksResolveCanonicalLeafBeforeParameterValidation(t *testing.T) {
 	tests := []struct {
 		name   string
 		args   []string
 		target string
 	}{
-		{
-			name:   "full group members",
-			args:   []string{"chat", "+chat-group-members", "--conversation-id", "cid-fixture", "--member-types", "user"},
-			target: "chat +chat-members-list",
-		},
 		{
 			name:   "members",
 			args:   []string{"chat", "+members", "--group", "Fixture Group"},
@@ -149,6 +178,22 @@ func TestReviewedReadFallbacksResolveCanonicalLeafBeforeParameterValidation(t *t
 			}
 		})
 	}
+}
+
+func TestOfficialGroupMembersAliasBypassesCommandFallback(t *testing.T) {
+	args := []string{"chat", "+chat-group-members", "--conversation-id", "cid-fixture", "--member-types", "user"}
+	root := NewSchemaSourceRootCommand()
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs(args)
+	ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ctx == nil || ctx.Command != "dws chat +chat-members-list" {
+		t.Fatalf("official group-members alias context = %#v", ctx)
+	}
+	assertNoCommandPathFallbackCorrection(t, ctx)
 }
 
 func TestReviewedRenameFallbackResolvesCanonicalLeafBeforeParameterValidation(t *testing.T) {
@@ -245,12 +290,12 @@ func TestRewrittenShortcutStillUsesCanonicalParameterErrors(t *testing.T) {
 	}{
 		{
 			name: "missing required query",
-			args: []string{"chat", "+search-group", "--dry-run"},
+			args: []string{"chat", "+group-search", "--dry-run"},
 			want: "请至少指定 --query、--keyword 之一",
 		},
 		{
 			name: "unknown canonical flag",
-			args: []string{"chat", "+search-group", "--definitely-not-a-real-flag", "project"},
+			args: []string{"chat", "+group-search", "--definitely-not-a-real-flag", "project"},
 			want: "unknown flag",
 		},
 	}
@@ -277,29 +322,26 @@ func TestRewrittenShortcutStillUsesCanonicalParameterErrors(t *testing.T) {
 
 func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T) {
 	invalidShortcuts := map[string]bool{
-		"+search-group":       true,
-		"+group-search":       true,
-		"+chat-group-search":  true,
-		"+chat-group-members": true,
-		"+members":            true,
-		"+group-member-list":  true,
-		"+list-group-bots":    true,
-		"+list-robot":         true,
-		"+list-robots":        true,
-		"+message-list":       true,
-		"+read-single":        true,
-		"+rename-group":       true,
-		"+send":               true,
-		"+send-by-bot":        true,
-		"+send-dm":            true,
-		"+send-message":       true,
-		"+send-single":        true,
-		"+send-text":          true,
-		"+send-to":            true,
-		"+send-file":          true,
-		"+send-image":         true,
-		"+send-media":         true,
-		"+group-send-text":    true,
+		"+group-search":      true,
+		"+members":           true,
+		"+group-member-list": true,
+		"+list-group-bots":   true,
+		"+list-robot":        true,
+		"+list-robots":       true,
+		"+message-list":      true,
+		"+read-single":       true,
+		"+rename-group":      true,
+		"+send":              true,
+		"+send-by-bot":       true,
+		"+send-dm":           true,
+		"+send-message":      true,
+		"+send-single":       true,
+		"+send-text":         true,
+		"+send-to":           true,
+		"+send-file":         true,
+		"+send-image":        true,
+		"+send-media":        true,
+		"+group-send-text":   true,
 	}
 	root := NewSchemaSourceRootCommand()
 	chat := exactAppCommand(root, "chat")
@@ -336,9 +378,9 @@ func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T)
 	}
 
 	group := exactAppCommand(root, "chat group")
-	searchHint := exactAppCommand(root, "chat group search")
-	if group == nil || searchHint == nil || !searchHint.Hidden || !cmdutil.IsHintOnlyCommand(searchHint) {
-		t.Fatalf("chat group search must remain a hidden hint-only node: group=%v search=%v", group, searchHint)
+	searchCompatibility := exactAppCommand(root, "chat group search")
+	if group == nil || searchCompatibility == nil || !searchCompatibility.Hidden || cmdutil.IsHintOnlyCommand(searchCompatibility) {
+		t.Fatalf("chat group search must be a hidden executable compatibility leaf: group=%v search=%v", group, searchCompatibility)
 	}
 	var help bytes.Buffer
 	group.SetOut(&help)
@@ -347,6 +389,15 @@ func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T)
 	}
 	if strings.Contains(help.String(), "\n  search ") {
 		t.Fatalf("hidden fallback source leaked into group help:\n%s", help.String())
+	}
+}
+
+func assertNoCommandPathFallbackCorrection(t *testing.T, ctx *pipeline.Context) {
+	t.Helper()
+	for _, correction := range ctx.Corrections {
+		if correction.Handler == "command-path-fallback" {
+			t.Fatalf("official command unexpectedly received fallback correction: %#v", ctx.Corrections)
+		}
 	}
 }
 

@@ -29,6 +29,7 @@ var paramAliasCompleteCommands = map[string][]string{
 	"attendance check result":                  {"attendance", "check", "result", "--users", "user-1,user-2", "--start", "2026-03-01", "--end", "2026-03-02"},
 	"attendance +check-result":                 {"attendance", "+check-result", "--users", "user-1,user-2", "--start", "2026-03-01", "--end", "2026-03-02"},
 	"calendar event list":                      {"calendar", "event", "list", "--start", "2026-03-10T14:00:00+08:00", "--end", "2026-03-10T18:00:00+08:00", "--calendar-id", "primary", "--cursor", "cursor-1", "--limit", "7"},
+	"chat +chat-messages":                      {"chat", "+chat-messages", "--group", "fixture-conversation"},
 	"chat +bot-find":                           {"chat", "+bot-find", "--query", "fixture", "--limit", "7"},
 	"chat +bot-search":                         {"chat", "+bot-search", "--name", "Fixture Bot", "--page", "2", "--size", "7"},
 	"chat +category-create":                    {"chat", "+category-create", "--title", "Fixture Cat", "--yes"},
@@ -37,6 +38,7 @@ var paramAliasCompleteCommands = map[string][]string{
 	"chat +messages-list-direct":               {"chat", "+messages-list-direct", "--user", "user-1", "--time", "2026-03-10 00:00:00", "--limit", "7"},
 	"chat +messages-list-unread-conversations": {"chat", "+messages-list-unread-conversations", "--count", "7", "--exclude-muted"},
 	"chat +messages-send-by-webhook":           {"chat", "+messages-send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--text", "fixture", "--at-users", "user-1,user-2", "--yes"},
+	"chat +search-msg":                         {"chat", "+search-msg", "--group", "fixture-conversation", "--query", "fixture", "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-11T00:00:00+08:00", "--no-enrich"},
 	"chat +send-to-group":                      {"chat", "+send-to-group", "--group", "Fixture Group", "--text", "hello fixture", "--yes"},
 	"chat +unread-chats":                       {"chat", "+unread-chats", "--count", "7", "--exclude-muted"},
 	"chat bot find":                            {"chat", "bot", "find", "--query", "fixture", "--limit", "7"},
@@ -146,6 +148,7 @@ var paramAliasNewIMCases = []struct {
 	emitted   string
 	canonical string
 }{
+	{command: "chat +chat-messages", emitted: "chat", canonical: "group"},
 	{command: "chat +bot-find", emitted: "name", canonical: "query"},
 	{command: "chat bot find", emitted: "name", canonical: "query"},
 	{command: "chat +bot-search", emitted: "query", canonical: "name"},
@@ -156,6 +159,7 @@ var paramAliasNewIMCases = []struct {
 	{command: "chat +messages-list-unread-conversations", emitted: "limit", canonical: "count"},
 	{command: "chat +messages-list-unread-conversations", emitted: "size", canonical: "count"},
 	{command: "chat +messages-send-by-webhook", emitted: "at-user-ids", canonical: "at-users"},
+	{command: "chat +search-msg", emitted: "chat", canonical: "group"},
 	{command: "chat +unread-chats", emitted: "limit", canonical: "count"},
 	{command: "chat +unread-chats", emitted: "size", canonical: "count"},
 	{command: "chat bot search", emitted: "query", canonical: "name"},
@@ -205,7 +209,7 @@ var paramAliasRepresentativePayloadCases = map[string]bool{
 	paramAliasPayloadCaseKey("report list", "from-date"):                             true, // date-range concept alias
 }
 
-func TestReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads(t *testing.T) {
+func TestCrossPlatformCoverageReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads(t *testing.T) {
 	concepts, err := cli.LoadParamConcepts()
 	if err != nil {
 		t.Fatalf("LoadParamConcepts() error = %v", err)
@@ -256,6 +260,7 @@ func TestReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads
 			if ctx == nil {
 				t.Fatal("complete alias command skipped PreParse")
 			}
+			normalizeParamAliasVolatileDefaults(fixture.Command, canonicalCaller, aliasCaller)
 			if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
 				t.Fatalf("final transport calls differ\ncanonical args: %v\nalias args: %v\ncanonical calls: %#v\nalias calls: %#v", canonicalArgs, aliasArgs, canonicalCaller.calls, aliasCaller.calls)
 			}
@@ -288,7 +293,7 @@ func TestReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads
 	}
 }
 
-func TestNewIMParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
+func TestCrossPlatformCoverageNewIMParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
 	activeAliases := 0
 	for _, test := range paramAliasNewIMCases {
 		test := test
@@ -328,6 +333,7 @@ func TestNewIMParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
 			if ctx == nil {
 				t.Fatal("complete alias command skipped PreParse")
 			}
+			normalizeParamAliasVolatileDefaults(test.command, canonicalCaller, aliasCaller)
 			if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
 				t.Fatalf("final transport calls differ\ncanonical args: %v\nalias args: %v\ncanonical calls: %#v\nalias calls: %#v", canonicalArgs, aliasArgs, canonicalCaller.calls, aliasCaller.calls)
 			}
@@ -335,6 +341,23 @@ func TestNewIMParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
 	}
 	if activeAliases != len(paramAliasNewIMCases) {
 		t.Fatalf("new IM aliases active in embedded table = %d, want %d", activeAliases, len(paramAliasNewIMCases))
+	}
+}
+
+// +chat-messages supplies the current wall-clock time when callers omit
+// --time. Alias equivalence concerns the resolved target and transport shape;
+// a suite crossing a second boundary must not make that default appear
+// alias-dependent.
+func normalizeParamAliasVolatileDefaults(command string, callers ...*paramAliasCaptureCaller) {
+	if command != "chat +chat-messages" {
+		return
+	}
+	for _, caller := range callers {
+		for i := range caller.calls {
+			if caller.calls[i].tool == "list_conversation_message_v2" || caller.calls[i].tool == "list_individual_chat_message" {
+				delete(caller.calls[i].args, "time")
+			}
+		}
 	}
 }
 

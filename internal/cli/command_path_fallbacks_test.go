@@ -119,10 +119,10 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 		t.Fatalf("schema header = %#v", schema)
 	}
 	entries, err := LoadCommandPathFallbacks()
-	if err != nil || len(entries) != 25 {
+	if err != nil || len(entries) != 21 {
 		t.Fatalf("LoadCommandPathFallbacks() = %#v, %v", entries, err)
 	}
-	if got, ok := LookupCommandPathFallback("dws chat +search-group"); !ok || got.To != "chat +chat-search" {
+	if got, ok := LookupCommandPathFallback("dws chat +group-search"); !ok || got.To != "chat +chat-search" {
 		t.Fatalf("generated lookup = %#v, %v", got, ok)
 	}
 	if _, ok := LookupCommandPathFallback("chat +missing"); ok {
@@ -132,17 +132,13 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 
 func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 	rewrites := map[string]string{
-		"chat +search-group":       "chat +chat-search",
-		"chat +group-search":       "chat +chat-search",
-		"chat +chat-group-search":  "chat +chat-search",
-		"chat +chat-group-members": "chat +chat-members-list",
-		"chat +members":            "chat +group-members",
-		"chat +group-member-list":  "chat +group-members",
-		"chat +list-group-bots":    "chat +chat-bots",
-		"chat +list-robot":         "chat +chat-bots",
-		"chat +list-robots":        "chat +chat-bots",
-		"chat +rename-group":       "chat +chat-update",
-		"chat group search":        "chat search",
+		"chat +group-search":      "chat +chat-search",
+		"chat +members":           "chat +group-members",
+		"chat +group-member-list": "chat +group-members",
+		"chat +list-group-bots":   "chat +chat-bots",
+		"chat +list-robot":        "chat +chat-bots",
+		"chat +list-robots":       "chat +chat-bots",
+		"chat +rename-group":      "chat +chat-update",
 	}
 	for from, to := range rewrites {
 		entry, ok := LookupCommandPathFallback(from)

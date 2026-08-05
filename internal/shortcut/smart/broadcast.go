@@ -23,6 +23,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
 // Broadcast: send the SAME single-chat message to several people by NAME.
@@ -96,14 +97,28 @@ var Broadcast = shortcut.Shortcut{
 
 			// Step 1 — resolve this name to a unique userId. On failure
 			// (unknown / ambiguous) record it and keep going.
-			user, err := resolveOpenDingTalkUser(rt, name)
+			resolved, err := targetresolver.ResolveEnterpriseUser(rt, name, targetresolver.IdentityAny)
 			if err != nil {
 				failed = append(failed, fmt.Sprintf("%s（%s）", name, err.Error()))
 				continue
 			}
-			if user.openDingTalkID == "" {
-				failed = append(failed, fmt.Sprintf("%s（通讯录结果缺少 openDingTalkId）", name))
-				continue
+			user := resolved.Selected
+			targetArgs := map[string]any{}
+			if user.OpenDingTalkID != "" {
+				targetArgs["receiverOpenDingTalkId"] = user.OpenDingTalkID
+			} else {
+				targetArgs["receiverUserId"] = user.UserID
+			}
+			recipient := user.Name
+			if recipient == "" {
+				recipient = name
+			}
+			messageArgs := rt.AddAIMessageTag(map[string]any{
+				"msgType": "markdown",
+				"content": string(content),
+			})
+			for key, value := range targetArgs {
+				messageArgs[key] = value
 			}
 
 			// Step 2 — send the single-chat message to this recipient. Under
@@ -111,26 +126,18 @@ var Broadcast = shortcut.Shortcut{
 			// resolved recipient as "would send" and move on.
 			if rt.DryRun() {
 				plans = append(plans, map[string]any{
-					"recipient": user.name,
+					"recipient": recipient,
 					"tool":      "send_personal_message",
-					"arguments": rt.AddAIMessageTag(map[string]any{
-						"receiverOpenDingTalkId": user.openDingTalkID,
-						"msgType":                "markdown",
-						"content":                string(content),
-					}),
+					"arguments": messageArgs,
 				})
-				sent = append(sent, user.name)
+				sent = append(sent, recipient)
 				continue
 			}
-			if _, err := rt.CallMCPWriteData("chat", "send_personal_message", rt.AddAIMessageTag(map[string]any{
-				"receiverOpenDingTalkId": user.openDingTalkID,
-				"msgType":                "markdown",
-				"content":                string(content),
-			})); err != nil {
+			if _, err := rt.CallMCPWriteData("chat", "send_personal_message", messageArgs); err != nil {
 				failed = append(failed, fmt.Sprintf("%s（发送失败：%s）", name, err.Error()))
 				continue
 			}
-			sent = append(sent, user.name)
+			sent = append(sent, recipient)
 		}
 
 		// Summarize via rt.Output (structured, honours --format/--jq/--fields)

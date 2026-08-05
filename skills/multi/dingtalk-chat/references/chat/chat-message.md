@@ -6,21 +6,42 @@
 
 用于当前用户发消息、拉消息、搜索消息、撤回、已读状态、文件/图片/音频/视频/位置/名片发送、话题回复、转发、Pin/Top、表情回应、文本翻译和流式卡片。
 
+## 默认入口
+
+| 用户终点 | 默认入口 |
+|---|---|
+| <!-- dws-intent: chat.send.dm -->按姓名发送简单文本/Markdown | `dws chat +dm` |
+| <!-- dws-intent: chat.send.group -->按群名发送简单文本/Markdown | `dws chat +send-to-group` |
+| <!-- dws-intent: chat.send.advanced -->文件、Bot、Webhook、复杂 @、已知 ID 或幂等发送 | `dws chat +messages-send` |
+| <!-- dws-intent: chat.read.conversation -->读取一个指定群聊或单聊 | `dws chat +chat-messages` |
+| <!-- dws-intent: chat.search.cross-conversation -->跨会话、多条件或全量翻页搜索 | `dws chat +search-msg` |
+| <!-- dws-intent: chat.reply.quote -->引用回复已有消息 | `dws chat +messages-reply` |
+| 查看指定群内 @我的消息 | `dws chat +at-me --group <群名>` |
+| 撤回当前用户消息 | `dws chat +messages-recall --msg-id <openMessageId>` |
+
+以下原子命令只用于 Shortcut 未暴露的底层字段、原始响应或精确分页控制。不得把它们重新写成
+上述高频任务的默认路径；写入原子命令若与 Golden Shortcut 的 confirmation 不一致，停止并
+报告交付漂移，不以文档确认代替 Runtime gate。
+
 ## 必读约束
 
 - 发消息前必须核对接收对象、消息内容、@ 对象、附件路径和消息类型；不明确时先问用户。
 - `--group`、`--user`、`--open-dingtalk-id` 通常互斥，群聊用 `--group`，单聊用 `--user` 或 `--open-dingtalk-id`。
-- 发送本地文件、音频、视频统一用 `chat message send --msg-type file|audio|video --file-path <path>`；`audio` / `video` 底层按 `file` 链路发送；旧图片链路 `--msg-type image --media-id` 仅在已有 mediaId 时使用。
+- 发送本地文件、音频、视频默认用 `dws chat +messages-send --as user --file <相对路径>`；
+  `audio` / `video` 的具体类型以 leaf Schema 为准。只有 Shortcut 未暴露的位置、名片等底层
+  类型才进入本文件的原子 fallback。
 - 发送位置消息前必须确认纬度、经度、地址名称；地图缩略图需先通过旧媒体上传链路拿到 mediaId。
 - 分享联系人名片前必须确认联系人 `openDingTalkId`，不要把 userId 直接当 `--contact-id`。
 - 消息内容按 Markdown 渲染，换行必须是真实换行符；需要换行效果时用空行、行尾两个空格或 `<br>`。
 - 建议发送时带 `--uuid`，失败重试复用同一个值。
+- Bot/Webhook 只支持文本/Markdown；Bot 多群使用 `+messages-send --groups/--groups-file` 的逐项
+  ledger。不要把 user 文件/图片能力外推到 Bot。
 
-## 命令明细
+## 原子 fallback 命令明细
 
-### 发送消息
+### 发送消息的底层 fallback
 
-#### `dws chat message send`
+#### `dws chat message send`（非默认入口）
 
 以当前用户身份发送群聊或单聊消息。
 
@@ -65,9 +86,16 @@ dws chat message send --group <openConversationId> --msg-type profile --contact-
 | `--contact-id` | 联系人名片 openDingTalkId |
 | `--uuid` | 幂等 UUID，24h 内相同值不重复投递 |
 
-话题回复：`chat message list` 返回的 `openConvThreadId` 可直接作为 `--group` 值发送到话题内，禁止自行拼接。
+当前没有经过验证的 Thread writer。`openConvThreadId` 只用于 `+thread-replies` 读取或
+`+messages-forward-topic` 转发；不要把它作为普通 `--group` 猜测写入。引用回复使用
+`+messages-reply`，但这不等于 Thread 内新增回复。
 
-### 拉取消息
+### 拉取消息的底层 fallback
+
+默认使用 `dws chat +chat-messages`。群聊的 `--group` 可传群名或 openConversationId；
+也可用 `--chat-query` 显式按群名解析、用 `--conversation-id` 显式传稳定 ID。全量读取加 `--page-all`，必要时用 `--page-limit`、
+`--max-results` 控制边界，用 `--output <相对.json>` 原子导出。只有需要原始响应或显式手工
+continuation 时才使用下表；原子 `message list` 不代表自动全量分页。
 
 | 命令 | 用途 | 示例与要点 |
 |------|------|------------|
@@ -87,9 +115,11 @@ dws chat message send --group <openConversationId> --msg-type profile --contact-
 - `hasMore=true` 时，用结果中的边界 `createTime` 作为下次 `--time`。
 - 返回 `openConvThreadId` 表示话题消息，完整内容需再拉 `list-topic-replies`。
 
-### 搜索消息
+### 搜索消息的底层 fallback
 
-优先使用 `message search-advanced`，它是 `message search` 的严格超集。
+默认使用 `dws chat +search-msg`；搜索内容使用 canonical `--query`，群名和发送者姓名分别使用
+`--chat-query` / `--sender-query`。需要 Shortcut 未暴露的原始过滤字段或响应时，才评估
+`message search-advanced`。它是原子 `message search` 的严格超集，但不是 Agent 高频默认入口。
 
 ```bash
 dws chat message search-advanced --query "周报" --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00"
@@ -125,11 +155,11 @@ dws chat message search --query "codereview" --group <openConversationId> --star
 | 命令 | 用途 | 必填参数 |
 |------|------|----------|
 | `message query-send-status` | 查询当前用户发消息任务状态 | `--open-task-id`，来自 `message send` 返回 |
-| `message recall` | 撤回当前用户消息；群主/管理员可撤回群内他人消息 | `--conversation-id` `--msg-id` |
+| `+messages-recall` | 撤回当前用户消息 | `--msg-id`；可选 `--conversation-id`，省略时 CLI 从消息详情补齐；兼容单值 `--message-ids` |
 | `message edit` | 编辑已发送消息内容 | `--conversation-id` `--msg-id`，并在 `--text` / `--content` 中二选一；可选 `--title` `--at-all` `--at-open-dingtalk-ids` |
 | `message read-status` | 查消息已读/未读状态 | `--group` `--message-id`；可选目标用户 |
 
-`recall` 与 `recall-by-bot` 不同：前者通过 IM 接口撤回用户消息，需要 `openConversationId + openMessageId`，支持撤回自己发出的消息，也支持群主/管理员撤回群内他人消息；后者撤回机器人消息，需要 `robot-code + processQueryKey`。
+`+messages-recall` 与 `recall-by-bot` 不同：前者使用 `openMessageId`，缺少会话 ID 时先只读查询消息详情；后者撤回机器人消息，需要 `robot-code + processQueryKey`。不要把 `processQueryKey` 当 `openMessageId`。
 
 编辑消息使用 `message edit`。推荐传 `--text`，CLI 会生成 markdown content JSON：`{"title":"标题","text":"正文"}`；可选 `--title`，不传时会从正文自动生成标题。高级场景可直接传 `--content`，此时必须是完整 markdown content JSON，且不能同时传 `--text`。
 
@@ -143,7 +173,10 @@ dws chat message edit --group <openConversationId> --msg-id <openMessageId> --te
 dws chat message edit --group <openConversationId> --msg-id <openMessageId> --content '{"title":"标题","text":"更新后的内容"}'
 ```
 
-### 回复与转发
+### 回复与转发的底层 fallback
+
+引用回复默认使用 `dws chat +messages-reply`。以下原子 reply 只保留底层字段 fallback；转发
+仍按各自精确 Shortcut/leaf Schema 选择。
 
 | 命令 | 用途 | 必填参数 |
 |------|------|----------|
@@ -159,16 +192,17 @@ dws chat message edit --group <openConversationId> --msg-id <openMessageId> --co
 1. `dws chat message list --group <openConversationId> --time ...` 获取话题主消息。
 2. 如果返回 `openConvThreadId`，执行 `dws chat message list-topic-replies --group <openConversationId> --topic-id <openConvThreadId>`。
 
-流式卡片必须 `send-card` 与 `update-card` 搭配：
+流式卡片优先使用公开 Shortcut；创建可选在同一次调用中写入内容：
 
 ```bash
-dws chat message send-card --group <openConversationId>
-dws chat message send-card --receiver <openDingTalkId>
-dws chat message update-card --biz-id <bizId> --content "更新的卡片内容" --flow-status 2
-dws chat message update-card --biz-id <bizId> --content "最终内容" --flow-status 3
+dws chat +messages-send-card --group <openConversationId> --content "开始处理" --flow-status 1
+dws chat +messages-update-card --biz-id <bizId> --content "更新的卡片内容" --flow-status 2
+dws chat +messages-update-card --biz-id <bizId> --content "最终内容" --flow-status 3
 ```
 
-`flow-status`：1=处理中，2=输入中，3=完成，4=执行中，5=错误。最后一次必须设为 3，否则卡片会停留在“生成中”。
+`flow-status`：1=处理中，2=输入中，3=完成，4=执行中，5=错误，Runtime 拒绝范围外值。
+当前只支持 streaming text；不支持 Card JSON 组件或 action callback。精确边界见
+[card references](../card/schema.md)。
 
 ### Pin / Top / Favorite
 
@@ -230,16 +264,20 @@ dws chat message download-media --type mediaId --resource-id <mediaId> --message
 
 `resource-id` 来自消息内容中的 mediaId，`message-id` 来自 `openMessageId`，会话 ID 来自 `chat search` 或 `conversation-info`。
 
+公开 `+messages-resource-download` 使用工作目录内安全相对路径、默认不覆盖、整文件临时落盘后
+原子发布。当前没有 Range/断点续传；失败时保留 ledger 或错误，显式重试整个文件，不拼接残片。
+
 ## 常见工作流
 
 ### 群聊发文字与文件
 
 ```bash
-dws chat search --query "项目冲刺" --format json
-dws chat message send --group <openConversationId> --text "请大家本周五前提交周报" --uuid <uuid> --format json
-dws chat message send --group <openConversationId> --msg-type file --file-path ./report.pdf --format json
-dws chat message send --group <openConversationId> --msg-type audio --file-path ./voice.mp3 --format json
-dws chat message send --group <openConversationId> --msg-type video --file-path ./demo.mp4 --format json
+dws chat +send-to-group --group "项目冲刺" --text "请大家本周五前提交周报" --format json
+dws chat +messages-send --as user --chat-query "项目冲刺" --file ./report.pdf --uuid <uuid> --format json
+dws chat +messages-send --as user --chat-query "项目冲刺" --msg-type audio --file ./voice.mp3 --uuid <uuid> --format json
+dws chat +messages-send --as user --chat-query "项目冲刺" --msg-type video --file ./demo.mp4 --uuid <uuid> --format json
+
+# 仅 Shortcut 尚未覆盖的位置/名片底层类型才使用原子 fallback
 dws chat message send --group <openConversationId> --msg-type location --latitude <纬度> --longitude <经度> --location-name <地址名称> --map-thumbnail-url "@mediaId" --format json
 dws chat message send --group <openConversationId> --msg-type profile --contact-id <openDingTalkId> --format json
 ```
@@ -247,8 +285,8 @@ dws chat message send --group <openConversationId> --msg-type profile --contact-
 ### 查消息并撤回
 
 ```bash
-dws chat message list --group <openConversationId> --time "2026-03-10 00:00:00" --direction older --format json
-dws chat message recall --conversation-id <openConversationId> --msg-id <openMessageId> --format json
+dws chat +chat-messages --group <openConversationId> --direction older --format json
+dws chat +messages-recall --msg-id <openMessageId> --format json
 ```
 
 ### 多维度搜索
@@ -260,7 +298,7 @@ dws chat message search-advanced --message-type file --search-conv-type group_ch
 
 ## 常见错误与回退
 
-- 发送目标不唯一：先确认群/人；群用 `chat search`，单聊用 `aisearch person` + `conversation-info`。
+- 发送目标不唯一：保留 resolver 返回的候选并让用户消歧；不要退回手工搜索后选择第一项。
 - `unknown flag`：立即执行对应命令 `--help`，不要猜参数。
 - 文件/音视频发送失败：确认本地路径可读；新链路使用 `--msg-type file|audio|video --file-path`。
 - 位置消息参数不完整：先确认经纬度、地址名称和缩略图 mediaId。

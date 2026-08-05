@@ -9,20 +9,6 @@ package cli
 
 var generatedCommandPathFallbacks = []CommandPathFallback{
 	{
-		From:         "chat +chat-group-members",
-		Mode:         "rewrite",
-		To:           "chat +chat-members-list",
-		Reviewed:     true,
-		ReviewReason: "H10/H19 evaluation badcases repeatedly emitted +chat-group-members; +chat-members-list is the reviewed full group-member shortcut.",
-	},
-	{
-		From:         "chat +chat-group-search",
-		Mode:         "rewrite",
-		To:           "chat +chat-search",
-		Reviewed:     true,
-		ReviewReason: "H12 evaluation badcase: +chat-group-search was invented while resolving a group; +chat-search is the unique equivalent shortcut.",
-	},
-	{
 		From:         "chat +group-member-list",
 		Mode:         "rewrite",
 		To:           "chat +group-members",
@@ -93,13 +79,6 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 		ReviewReason: "20260728 evaluation emitted +rename-group for the unique group-name update intent; +chat-update is the reviewed shortcut with that exact command-level operation. Parameter compatibility remains the canonical target's responsibility.",
 	},
 	{
-		From:         "chat +search-group",
-		Mode:         "rewrite",
-		To:           "chat +chat-search",
-		Reviewed:     true,
-		ReviewReason: "0803 evaluation badcase: the model emitted +search-group for group-name search; +chat-search is the exact reviewed shortcut and accepts the observed --keyword spelling.",
-	},
-	{
 		From:         "chat +send",
 		Mode:         "ambiguous",
 		Candidates:   []string{"chat +messages-send", "chat +dm", "chat +send-to-group"},
@@ -168,13 +147,6 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 		Candidates:   []string{"chat +messages-send", "chat +dm", "chat +send-to-group"},
 		Reviewed:     true,
 		ReviewReason: "20260728 evaluation emitted +send-to without proving whether the recipient denotes a user, group, or low-level identifier; the write operation must not choose a target workflow automatically.",
-	},
-	{
-		From:         "chat group search",
-		Mode:         "rewrite",
-		To:           "chat search",
-		Reviewed:     true,
-		ReviewReason: "0803 evaluation report observed this non-runnable hint path 60 times; chat search is the exact native group-name search leaf.",
 	},
 	{
 		From:         "oa +list-processes",

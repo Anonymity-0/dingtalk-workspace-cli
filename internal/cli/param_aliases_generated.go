@@ -159,6 +159,12 @@ var generatedParamAliases = []ParamAliasEntry{
 		Blocked: []string{"conversation-ids", "dest-conversation-id", "group-id", "group-ids", "group-name", "id", "name", "open-conversation-ids", "source", "src-conversation-id", "target"},
 	},
 	{
+		CLIPath: "chat +chat-messages",
+		Aliases: map[string]string{
+			"chat": "group",
+		},
+	},
+	{
 		CLIPath: "chat +chat-mute",
 		Aliases: map[string]string{
 			"chat":                 "group",
@@ -334,6 +340,12 @@ var generatedParamAliases = []ParamAliasEntry{
 		CLIPath: "chat +messages-send-by-webhook",
 		Aliases: map[string]string{
 			"at-user-ids": "at-users",
+		},
+	},
+	{
+		CLIPath: "chat +search-msg",
+		Aliases: map[string]string{
+			"chat": "group",
 		},
 	},
 	{

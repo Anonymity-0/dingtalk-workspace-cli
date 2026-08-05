@@ -3,32 +3,11 @@
   "version": 1,
   "entries": [
     {
-      "from": "chat +search-group",
-      "mode": "rewrite",
-      "to": "chat +chat-search",
-      "reviewed": true,
-      "review_reason": "0803 evaluation badcase: the model emitted +search-group for group-name search; +chat-search is the exact reviewed shortcut and accepts the observed --keyword spelling."
-    },
-    {
       "from": "chat +group-search",
       "mode": "rewrite",
       "to": "chat +chat-search",
       "reviewed": true,
       "review_reason": "0803 evaluation badcase: the model emitted +group-search with --query; +chat-search provides the same group-name search operation."
-    },
-    {
-      "from": "chat +chat-group-search",
-      "mode": "rewrite",
-      "to": "chat +chat-search",
-      "reviewed": true,
-      "review_reason": "H12 evaluation badcase: +chat-group-search was invented while resolving a group; +chat-search is the unique equivalent shortcut."
-    },
-    {
-      "from": "chat +chat-group-members",
-      "mode": "rewrite",
-      "to": "chat +chat-members-list",
-      "reviewed": true,
-      "review_reason": "H10/H19 evaluation badcases repeatedly emitted +chat-group-members; +chat-members-list is the reviewed full group-member shortcut."
     },
     {
       "from": "chat +members",
@@ -218,13 +197,6 @@
       ],
       "reviewed": true,
       "review_reason": "20260720 merged evaluation emitted +list-processes, but process can mean approval forms/templates or approval instances initiated by the current user; stop and present both shortcut workflows plus the exact native instance leaf."
-    },
-    {
-      "from": "chat group search",
-      "mode": "rewrite",
-      "to": "chat search",
-      "reviewed": true,
-      "review_reason": "0803 evaluation report observed this non-runnable hint path 60 times; chat search is the exact native group-name search leaf."
     }
   ]
 }

@@ -67,16 +67,21 @@ func testDestructiveSafety() contract.SafetySpec {
 func TestCrossPlatformCoverageRegisterFlagsAllKinds(t *testing.T) {
 	cmd := newTestCommand()
 	RegisterFlags(cmd, []FlagSpec{
-		{Name: "s", Usage: "S", Default: "d"},
-		{Name: "i", Usage: "I", Kind: KindInt, Aliases: []string{"i-alias"}},
-		{Name: "b", Usage: "B", Kind: KindBool},
-		{Name: "sl", Usage: "SL", Kind: KindStringSlice, Default: "a,b", Aliases: []string{"sl-alias"}},
+		{Name: "s", Shorthand: "s", Usage: "S", Default: "d"},
+		{Name: "i", Shorthand: "i", Usage: "I", Kind: KindInt, Aliases: []string{"i-alias"}},
+		{Name: "b", Shorthand: "b", Usage: "B", Kind: KindBool},
+		{Name: "sl", Shorthand: "l", Usage: "SL", Kind: KindStringSlice, Default: "a,b", Aliases: []string{"sl-alias"}},
 		{Name: "req", Usage: "R", MarkRequired: true},
 		{Name: "hidden", Usage: "H", Hidden: true},
 	})
 
 	if f := cmd.Flags().Lookup("s"); f == nil || f.DefValue != "d" || f.Usage != "S" {
 		t.Fatalf("string flag = %#v", f)
+	}
+	for shorthand, name := range map[string]string{"s": "s", "i": "i", "b": "b", "l": "sl"} {
+		if flag := cmd.Flags().ShorthandLookup(shorthand); flag == nil || flag.Name != name {
+			t.Fatalf("shorthand -%s = %#v, want --%s", shorthand, flag, name)
+		}
 	}
 	for name, wantType := range map[string]string{"i": "int", "b": "bool", "sl": "stringSlice"} {
 		f := cmd.Flags().Lookup(name)

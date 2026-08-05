@@ -60,6 +60,8 @@
     "mail message search": {"scoped_aliases": {"subject": "query"}, "scope_strict": true, "note": "never globalize: mail template create has a real and different --subject"},
     "calendar event list": {"scoped_aliases": {"date": "start"}, "note": "reviewed against ParseISOTimeToMillis and final list_calendar_events payload; --date is normalized centrally while the command's existing hidden compatibility flags remain native fallbacks"},
     "chat +bot-find": {"scoped_aliases": {"name": "query"}, "scope_strict": true, "note": "On this exact bot-search shortcut, --name and --query denote the same search keyword; --name must not become a global search alias."},
+    "chat +chat-messages": {"scoped_aliases": {"chat": "group"}, "scope_strict": true, "note": "Evaluation compatibility: --chat carries one stable openConversationId and normalizes to the existing --group identifier route."},
+    "chat +search-msg": {"scoped_aliases": {"chat": "group"}, "scope_strict": true, "note": "Evaluation compatibility: scalar --chat carries one stable openConversationId and normalizes to the existing scalar --group filter."},
     "chat bot find": {"scoped_aliases": {"name": "query"}, "scope_strict": true, "note": "On this exact bot-search command, --name and --query denote the same search keyword; --name must not become a global search alias."},
     "chat +bot-search": {"scoped_aliases": {"query": "name", "current-page": "page"}, "block": ["cursor"], "scope_strict": true, "note": "Only the reviewed bot keyword and page-number spellings are accepted; cursor pagination cannot be converted to a page number."},
     "chat bot search": {"scoped_aliases": {"query": "name", "current-page": "page"}, "block": ["cursor"], "scope_strict": true, "note": "Only the reviewed bot keyword and page-number spellings are accepted; cursor pagination cannot be converted to a page number."},
@@ -307,7 +309,9 @@
       {"command": "doc comment create-inline", "emitted": "body", "expect": "content", "via": "concept:content_text"},
       {"command": "doc comment delete", "emitted": "comment-id", "expect": "comment-key", "via": "concept:doc_comment_key"},
       {"command": "doc comment update", "emitted": "comment-id", "expect": "comment-key", "via": "concept:doc_comment_key"},
-      {"command": "doc version revert", "emitted": "version-no", "expect": "version", "via": "concept:doc_version_number"}
+      {"command": "doc version revert", "emitted": "version-no", "expect": "version", "via": "concept:doc_version_number"},
+      {"command": "chat +chat-messages", "emitted": "chat", "expect": "group", "via": "override:scoped-eval"},
+      {"command": "chat +search-msg", "emitted": "chat", "expect": "group", "via": "override:scoped-eval"}
     ]
   }
 }
