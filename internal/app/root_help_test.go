@@ -86,6 +86,24 @@ func TestRootKeepsMainBranchChatCompatibilityCommands(t *testing.T) {
 			t.Fatalf("%s compatibility contract: remaining=%v hidden=%v runnable=%v", path, remaining, command.Hidden, command.Runnable())
 		}
 	}
+	for _, tc := range []struct {
+		args []string
+		hint string
+	}{
+		{args: []string{"chat", "send", "--group", "cid-stable", "--text", "hello"}, hint: "dws chat message send"},
+		{args: []string{"im", "send", "--group", "cid-stable", "--text", "hello"}, hint: "dws chat message send"},
+		{args: []string{"chat", "history", "--group", "cid-stable", "--limit", "20"}, hint: "dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"},
+		{args: []string{"im", "history", "--group", "cid-stable", "--limit", "20"}, hint: "dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"},
+	} {
+		command := NewRootCommand()
+		command.SilenceErrors = true
+		command.SilenceUsage = true
+		command.SetArgs(tc.args)
+		err := command.Execute()
+		if err == nil || !strings.Contains(err.Error(), "ambiguous command") || !strings.Contains(err.Error(), tc.hint) {
+			t.Fatalf("dws %s error = %v, want migration hint %q", strings.Join(tc.args, " "), err, tc.hint)
+		}
+	}
 
 	listDirect := mustFindCommand(t, root, "chat", "message", "list-direct")
 	for _, flag := range []string{"user", "open-dingtalk-id", "time", "forward", "limit"} {

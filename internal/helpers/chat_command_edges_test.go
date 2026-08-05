@@ -88,10 +88,11 @@ func TestCrossPlatformCoverageChatStableCompatibilityHintsRemainAvailable(t *tes
 	}
 	for _, tc := range []struct {
 		path string
+		args []string
 		hint string
 	}{
-		{path: "send", hint: "dws chat message send"},
-		{path: "history", hint: "dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"},
+		{path: "send", args: []string{"send", "--group", "cid-stable", "--text", "hello"}, hint: "dws chat message send"},
+		{path: "history", args: []string{"history", "--group", "cid-stable", "--limit", "20"}, hint: "dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"},
 	} {
 		command, remaining, err := root.Find([]string{tc.path})
 		if err != nil {
@@ -103,9 +104,10 @@ func TestCrossPlatformCoverageChatStableCompatibilityHintsRemainAvailable(t *tes
 		if !command.Hidden || !command.Runnable() {
 			t.Fatalf("chat %s compatibility contract: hidden=%v runnable=%v", tc.path, command.Hidden, command.Runnable())
 		}
-		err = command.RunE(command, nil)
+		root.SetArgs(tc.args)
+		err = root.ExecuteContext(context.Background())
 		if err == nil || !strings.Contains(err.Error(), "ambiguous command") || !strings.Contains(err.Error(), tc.hint) {
-			t.Fatalf("chat %s error = %v, want migration hint %q", tc.path, err, tc.hint)
+			t.Fatalf("chat %s with legacy flags error = %v, want migration hint %q", tc.path, err, tc.hint)
 		}
 	}
 }
