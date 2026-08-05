@@ -197,7 +197,7 @@ Flat `dingtalk-*` + `dws-shared`；`SKILL.md` + `references/`（+ 可选 `script
 | | |
 |---|---|
 | **范围 A** | 纯内容 layout/skill 列表元数据（人不读安装器） |
-| **范围 B** | 按 Phase 2 disposition **修内容**（recovery/确认/orphan 等）——未在本迭代全量做；仅修了 event G2（X4）与 routing markdown 死链（X3） |
+| **范围 B** | 按 Phase 2 disposition **修内容**：确认 / Schema 已补；**recovery skill 文档已删除（wontfix 移植）**；orphan 脚本仍走 allowlist（M4 等） |
 | **验收** | 元数据不驱动安装；修复项关闭对应质检失败或转入 omit |
 
 ### 延期登记（非本分支）
@@ -236,24 +236,24 @@ Flat `dingtalk-*` + `dws-shared`；`SKILL.md` + `references/`（+ 可选 `script
 
 **范围**
 
-- [ ] 本分支 = skill **内容**框架 + **mono↔multi 内容质检**（§0.1）；无安装/升级引擎  
-- [ ] `402429ac`/`d5c8982c` 及 setup/paths/install 脚本行为 **不在本分支**  
-- [ ] 取消产品与悟空客户端链路仍拒绝  
+- [x] 本分支 = skill **内容**框架 + **mono↔multi 内容质检**（§0.1）；无安装/升级引擎  
+- [x] `402429ac`/`d5c8982c` 及 setup/paths/install 脚本行为 **不在本分支**  
+- [x] 取消产品与悟空客户端链路仍拒绝  
 
 **内容框架 Phase**
 
-- [ ] **Phase 1**：multi 目录合同 + 悟空内容树对照短文  
+- [x] **Phase 1**：multi 目录合同 + 悟空内容树对照短文  
 
 **质检轨 Phase**
 
-- [ ] **Phase 2**：质检矩阵 + mono↔multi 覆盖/缺口基线规格（先文档，可执行）  
-- [ ] **Phase 3**：CI 内容护栏（G1–G4）—— 本迭代做 / 拆 PR / 只要规格暂不落地  
-- [ ] 质检失败处置原则：修内容或 reviewed omit，**不**改安装默认  
+- [x] **Phase 2**：质检矩阵 + mono↔multi 覆盖/缺口基线规格（先文档，可执行）  
+- [x] **Phase 3**：CI 内容护栏（G1–G4）—— 本迭代做 / 拆 PR / 只要规格暂不落地  
+- [x] 质检失败处置原则：修内容或 reviewed omit，**不**改安装默认  
 
 **可选**
 
 - [ ] **Phase 4A** 纯内容元数据：做 / 不做 / 以后  
-- [ ] **Phase 4B** 按缺口基线修内容（recovery/确认/orphan 等）：本分支做 / 另开内容 PR / 以后  
+- [x] **Phase 4B** recovery skill 文档 **removed/wontfix**；确认/Schema 已补；剩余 orphan（M4 等）仍 defer / allowlist  
 
 **Follow-up 知悉**
 
@@ -264,7 +264,7 @@ Flat `dingtalk-*` + `dws-shared`；`SKILL.md` + `references/`（+ 可选 `script
 ## 8. 下一步
 
 **Phase 1–3 已落地**（合同短文 + 质检规格 + `skills/content-qa` + CI 门禁）。  
-剩余可选：Phase 4B 按 `omit_global` / orphan allowlist 收口 M1–M3 / X1 等内容缺口（另 PR 亦可）。  
+Phase 4B：recovery 已删除（不做移植）；确认/Schema 已补。剩余 defer：orphan scripts（M4 等）、LICENSE/NOTICE（M5）、Phase 4A 元数据。  
 安装默认 multi 等行为仍走 **另一分支**。
 
 ---

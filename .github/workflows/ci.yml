@@ -152,7 +152,6 @@ jobs:
                 filename.startsWith('internal/interfacesnapshot/') ||
                 filename.startsWith('internal/app/upgrade') ||
                 filename.startsWith('internal/transport/') ||
-                filename.startsWith('internal/recovery/') ||
                 filename.startsWith('internal/syncdata/') ||
                 filename.includes('/testdata/') ||
                 filename.startsWith('testdata/') ||

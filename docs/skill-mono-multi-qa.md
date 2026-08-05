@@ -27,14 +27,16 @@ omit_coverage:
     reason: "拆入 oa/devdoc…"
 
 omit_global:
-  - id: recovery-guide
-    disposition: defer
-    reason: "Phase 4B C1"
+  - id: field-rules-global
+    mono_path: references/field-rules.md
+    expected_multi: dingtalk-aitable/references/field-rules.md
+    disposition: covered_by
+    reason: "AI 表格字段规则已下沉到 dingtalk-aitable；G3/coverage 不强制全局同名"
 
 orphan_scripts_allowlist:
-  - path: dingtalk-misc/scripts/yida_form_builder.py
+  - path: dingtalk-misc/scripts/report_received_today.py
     disposition: defer
-    reason: "X1 待补 reference 或移出包"
+    reason: "pending report.md reference"
 ```
 
 **处置原则**：质检失败 → 修**内容**或更新 reviewed omit；**不**改安装/升级默认。
