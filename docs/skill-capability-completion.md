@@ -49,18 +49,16 @@
 
 **`dws upgrade`（skill 刷新）**
 
-- `LocateSkillsRoot` **优先 zip 内 `multi/`**（`internal/upgrade/paths.go:363-369`，
-  接线于 `internal/app/upgrade.go:60`）；`UpgradeSkillLocations` 按包布局自动
-  识别 mono/multi（`paths.go:129-139`）。
+- `LocateSkillsRoot` **优先 zip 内 `multi/`**（`internal/upgrade/paths.go`，
+  接线于 `internal/app/upgrade.go`）；`UpgradeSkillLocations` **包驱动**：有
+  multi 树则始终 multi 刷新，否则 legacy mono 回退（不做磁盘粘性）。
 - multi 路径：平铺刷新 `<agent>/dingtalk-*`+`dws-shared`，清 `dws/` 残留与过期
-  `dingtalk-*`，best-effort 刷 `~/.dws/skills/multi` 缓存
-  （`paths.go:217-299`、`301-327`、`290-296`）。
-- **不读任何已装状态**：zip 恒含 multi/ → 存量 mono 用户升级即被**静默迁移为
-  multi**（无确认、无备份、无 state 记录），违反 plan §3.8「升级永远尊重用户
-  当前 mode」的粘性原则。`~/.dws/skills/mono` 缓存升级时不刷新。
-- skill 安装发生在**二进制替换之后**，skill 失败时二进制已换 → 半升级态
-  （`upgrade.go:593-611`）。`dws upgrade --rollback` 只回滚二进制
-  （`upgrade.go:160`、`312`）。
+  `dingtalk-*`，best-effort 刷 `~/.dws/skills/multi`（sibling `mono/` 存在时
+  亦刷 mono 缓存）。
+- **有 multi 包时存量 mono 一次性迁 multi**（2026-08-05 owner：升级不做粘性；
+  非运行时 mode-switch 产品，无确认/备份/state）。
+- skill 安装发生在**二进制替换之后**，skill 失败时二进制已换 → 半升级态。
+  `dws upgrade --rollback` 只回滚二进制。
 
 **安装脚本（7 面）**
 
@@ -176,12 +174,12 @@ P0-3 备份、P0a 的 mode-aware 一半、P0-4 请求头、P1-1 mode 命令、P1
 |---|---|---|---|---|---|
 | P0c-1 | ⬜ | agent home 清单下沉共享包，补 opencode 不对称 | 新 `internal/skillhome`（或 `internal/upgrade` 导出）：合并 `paths.go:35-52` `knownSkillDirs` + `skill_setup.go:20-37` `skillSetupAgentHomes` + `skill_command.go:119-141` `agentSkillPaths`；setup/upgrade/测试共用 | 0.5d | — |
 | P0c-2 | ⬜ | 清单同步门禁 | 新 `scripts/policy/check-agent-homes-sync.sh`（进 `make policy`）；install.sh:ps1:install.js:install-skills.sh 清单改可解析块 | 1d | P0c-1 |
-| P0b-1 | ⬜ | state.json schema + 写入 | 新 `internal/app/skill_state.go`（schema 见 plan §3.2）；`skill_setup.go` `runSkillSetup` 安装成功后记账；install.sh/ps1/install.js 写同构 JSON | 1d | — |
-| P0b-2 | ⬜ | 磁盘形态反推 + drift 报错 | `skill_state.go`：`dws/`→mono、`dingtalk-*`→multi、两者都有→报 drift 并提示 `dws skill mode set` 收敛；单测 | 0.5–1d | P0b-1 |
-| P0-3 | ⬜ | 备份式安装 + 失败整体回滚 | `skill_setup.go` `installSkillToHomes:610` / `installMultiSkillToHomes:640` / `cleanupMutualExclusion:600`：`RemoveAll`→`mv` 至 `~/.dws/skills/backup/<ts>-<mode>/`，保留 2 份，任一 home 失败自动恢复 + 非 0 退出；清理前加 SKILL.md frontmatter 校验（缺口 #8）；同步改 `skill_setup_full_coverage_test.go` 语义断言 + 故障注入测试 | 1.5–2d | — |
-| P0a-1 | 🚧 | upgrade mode-aware | `paths.go:129` `UpgradeSkillLocations(dir, mode)` 按 state.json：mono→现状逻辑+清 `dingtalk-*`+刷 mono 缓存；multi→**按 `state.installed` 增量刷新**（缺口 #6）+清 `dws/`+刷 multi 缓存；无 state 按 P0b-2 反推；复用 P0c-1 共享清单 | 1.5d | P0c-1、P0b |
-| P0a-2 | 🚧 | upgrade×multi 集成测试 | `internal/upgrade/paths_multi_test.go`（已有 6 个测试）扩：装 multi→upgrade→无 `dws/` 残留、`-x` 排除项不被装回、mono 存量不被静默迁移 | 1d | P0a-1 |
-| P0-4 | ⬜ | `x-dws-skill-mode` 请求头 | `internal/auth/oauth_helpers.go` 附近仿 `x-dws-channel`（≈30 行） | 0.5d | P0b |
+| P0b-1 | ❌ CANCELLED | state.json schema + 写入 | 2026-08-05：无运行时切换，不写 state.json | — | — |
+| P0b-2 | ❌ CANCELLED | 磁盘形态反推作 state 兜底 | 无 sticky / 无 state；upgrade 按包刷 multi | — | — |
+| P0-3 | ❌ CANCELLED | 备份式安装 + 失败整体回滚 | 2026-08-05：随切换产品线取消 | — | — |
+| P0a-1 | ✅ | upgrade 包驱动 multi | `UpgradeSkillLocations`：有 multi→始终 multi（含 mono 盘一次性迁移）；legacy 无 multi→mono；不读 state | — | — |
+| P0a-2 | ✅ | force-multi 集成 / E2E | `paths_multi_test.go`（`MonoDiskMigratesToMulti` 等）+ `upgrade_skill_multi_e2e_test.go` | — | — |
+| P0-4 | ❌ CANCELLED | `x-dws-skill-mode` 请求头 | owner 决策移除 | — | — |
 
 ### 3.2 P1 — 生命周期命令 + 内容补全（≈7–7.5d，两条线可并行）
 
@@ -189,8 +187,8 @@ P0-3 备份、P0a 的 mode-aware 一半、P0-4 请求头、P1-1 mode 命令、P1
 
 | ID | 状态 | 任务 | 文件级改动点 | 估时 | 依赖 |
 |---|---|---|---|---|---|
-| P1-1 | ⬜ | `dws skill mode` status/set/rollback/--dry-run | 新 `internal/app/skill_mode.go`（≈350 行）+ `skill_command.go:202-209` 注册；set 复用 setup 安装实现 + 备份 + 记账；rollback 回 `state.previous`；成功提示重启 AI 工具 | 2–2.5d | P0b、P0-3 |
-| P1-3 | ⬜ | `dws skill remove`（新增，缺口 #5） | `skill_mode.go` 或新文件：按 state 的 `agent_homes`×`installed` 精确删内置 skill，`--dry-run` 预览；不碰非 `installed` 目录（市场 skill 安全） | 1d | P0b |
+| P1-1 | ❌ CANCELLED | `dws skill mode` status/set/rollback/--dry-run | 2026-08-05：无运行时模式切换产品 | — | — |
+| P1-3 | ⬜ | `dws skill remove`（新增，缺口 #5） | 按磁盘/约定前缀精确删内置 skill（**不**依赖已取消的 state.json）；`--dry-run` 预览 | 1d | — |
 
 **内容补全线**（对应 Part 2 编号）
 

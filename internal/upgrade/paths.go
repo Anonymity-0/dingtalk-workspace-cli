@@ -110,11 +110,21 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 	return out
 }
 
-// UpgradeSkillLocations installs skills from extractedDir into all locations
-// where they are currently installed or expected. extractedDir may point at a
-// multi-skill bundle root (subdirectories each containing SKILL.md) or at a
-// legacy mono root (SKILL.md at its top level); multi is preferred whenever
-// the layout is detected.
+// UpgradeSkillLocations refreshes skills from extractedDir into agent homes.
+// extractedDir may be a multi-skill bundle root (subdirectories each containing
+// SKILL.md) or a legacy mono root (SKILL.md at its top level). Callers that
+// resolve a release zip usually pass LocateSkillsRoot's result (multi/
+// preferred when present).
+//
+// Package-driven layout (owner decision 2026-08-05 — no disk sticky):
+//   - release zip has multi/ → ALWAYS refresh multi (flat product skills +
+//     dws-shared), removing mono leftover dws/ and stale dingtalk-*/dws-shared.
+//     Existing mono installs are one-shot migrated to multi on upgrade.
+//   - legacy zip with no multi tree → mono refresh path (unchanged fallback)
+//
+// This is not a runtime mode-switch product. Fresh install still defaults to
+// multi with opt-in mono via `dws skill setup --mode mono`; subsequent
+// upgrades force multi when the package ships it.
 //
 // Strategy (matches npm install.js installSkillsToHomes):
 //   - ~/.agents/skills/ is ALWAYS updated (primary install location)
@@ -123,21 +133,60 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 //   - ~/.real/ and other blacklisted paths are NEVER touched
 //   - If no location was updated at all, fall back to ~/.agents/skills/
 //
-// Multi-mode semantics: the legacy mono directory (<agent>/dws) and any
-// stale dingtalk-* skill not present in the new bundle are removed so mono
-// and multi never co-exist after an upgrade. After a successful install the
-// ~/.dws/skills/{multi,mono} caches are refreshed best-effort (the mono cache
-// comes from the sibling mono/ tree when the zip ships both).
+// Opposite-mode leftovers are removed so mono and multi never co-exist after
+// an upgrade. Caches under ~/.dws/skills/{multi,mono} are refreshed
+// best-effort.
 func UpgradeSkillLocations(extractedDir string) (*SkillUpgradeResult, error) {
 	homeDir, err := upgradeUserHomeDir()
 	if err != nil {
 		return nil, err
 	}
 
-	if skills := bundleSkillNames(extractedDir); len(skills) > 0 {
-		return upgradeMultiSkillLocations(homeDir, extractedDir, skills)
+	multiRoot, skills := resolveMultiBundle(extractedDir)
+	if len(skills) > 0 {
+		return upgradeMultiSkillLocations(homeDir, multiRoot, skills)
 	}
-	return upgradeMonoSkillLocations(homeDir, extractedDir)
+	monoSrc := resolveMonoSkillSrc(extractedDir)
+	if monoSrc != "" {
+		return upgradeMonoSkillLocations(homeDir, monoSrc)
+	}
+	return nil, fmt.Errorf("升级包中找不到可安装的 skill 源")
+}
+
+// resolveMultiBundle returns the multi skill root and its skill names when
+// extractedDir is itself a bundle, or when a multi/ child of the parent
+// extract root carries one (LocateSkillsRoot already prefers that child).
+func resolveMultiBundle(extractedDir string) (string, []string) {
+	if skills := bundleSkillNames(extractedDir); len(skills) > 0 {
+		return extractedDir, skills
+	}
+	child := filepath.Join(extractedDir, "multi")
+	if skills := bundleSkillNames(child); len(skills) > 0 {
+		return child, skills
+	}
+	return "", nil
+}
+
+// resolveMonoSkillSrc finds a mono skill tree for the legacy mono-only
+// package fallback: the path itself, a sibling mono/ next to a multi root,
+// or the extract-root SKILL.md copy that release zips still ship.
+func resolveMonoSkillSrc(extractedDir string) string {
+	if skillTreeHasRoot(extractedDir) {
+		return extractedDir
+	}
+	sibling := filepath.Join(filepath.Dir(extractedDir), "mono")
+	if skillTreeHasRoot(sibling) {
+		return sibling
+	}
+	parent := filepath.Dir(extractedDir)
+	if skillTreeHasRoot(parent) {
+		return parent
+	}
+	child := filepath.Join(extractedDir, "mono")
+	if skillTreeHasRoot(child) {
+		return child
+	}
+	return ""
 }
 
 // upgradeMonoSkillLocations is the legacy mono behavior: one dws/ directory

@@ -197,17 +197,16 @@ func TestUpgradeSkillLocationsMultiFallbackPrimary(t *testing.T) {
 	}
 }
 
-func TestUpgradeSkillLocationsMonoStillWorks(t *testing.T) {
+func TestUpgradeSkillLocationsMonoOnlyPackageStillWorks(t *testing.T) {
 	home := withFakeHome(t)
 	mono := t.TempDir()
 	os.WriteFile(filepath.Join(mono, "SKILL.md"), []byte("# mono"), 0o644)
 
-	// Pre-existing multi leftovers must be removed by the mono install.
+	// Legacy mono-only package (no multi/): fall back to mono refresh even
+	// when the disk already has dws/.
 	agentsBase := filepath.Join(home, ".agents", "skills")
-	os.MkdirAll(filepath.Join(agentsBase, "dingtalk-chat"), 0o755)
-	os.WriteFile(filepath.Join(agentsBase, "dingtalk-chat", "SKILL.md"), []byte("stale"), 0o644)
-	os.MkdirAll(filepath.Join(agentsBase, "dws-shared"), 0o755)
-	os.WriteFile(filepath.Join(agentsBase, "dws-shared", "SKILL.md"), []byte("stale"), 0o644)
+	os.MkdirAll(filepath.Join(agentsBase, "dws"), 0o755)
+	os.WriteFile(filepath.Join(agentsBase, "dws", "SKILL.md"), []byte("old mono"), 0o644)
 	os.MkdirAll(filepath.Join(agentsBase, "other-skill"), 0o755)
 	os.WriteFile(filepath.Join(agentsBase, "other-skill", "SKILL.md"), []byte("not dws"), 0o644)
 
@@ -219,13 +218,12 @@ func TestUpgradeSkillLocationsMonoStillWorks(t *testing.T) {
 		t.Fatalf("expected 0 failures, got %v", result.Failed())
 	}
 	dest := filepath.Join(home, ".agents", "skills", "dws", "SKILL.md")
-	if _, err := os.Stat(dest); err != nil {
-		t.Errorf("mono install missing: %v", err)
+	data, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("mono install missing: %v", err)
 	}
-	for _, stale := range []string{"dingtalk-chat", "dws-shared"} {
-		if _, err := os.Stat(filepath.Join(agentsBase, stale)); !os.IsNotExist(err) {
-			t.Errorf("multi leftover %q should be removed by mono install", stale)
-		}
+	if string(data) != "# mono" {
+		t.Errorf("mono content = %q, want refreshed package", data)
 	}
 	if _, err := os.Stat(filepath.Join(agentsBase, "other-skill", "SKILL.md")); err != nil {
 		t.Errorf("non-DWS dir should be preserved: %v", err)
@@ -238,34 +236,141 @@ func TestUpgradeSkillLocationsMonoStillWorks(t *testing.T) {
 	}
 }
 
-// TestUpgradeSkillLocationsMonoFallbackCleansLeftovers pins the F3 fix: when
-// every home fails (here: the first cleanup attempt is injected to fail), the
-// primary-location fallback must remove the multi leftovers that caused the
-// failure instead of installing mono next to them and reporting success.
-func TestUpgradeSkillLocationsMonoFallbackCleansLeftovers(t *testing.T) {
+// TestUpgradeSkillLocationsMonoDiskMigratesToMulti pins the 2026-08-05
+// decision: upgrade does NOT stick to disk. A mono-only home is one-shot
+// migrated to multi when the release zip has multi/ (LocateSkillsRoot input).
+func TestUpgradeSkillLocationsMonoDiskMigratesToMulti(t *testing.T) {
 	home := withFakeHome(t)
 	agentsBase := filepath.Join(home, ".agents", "skills")
-	for _, name := range []string{"dingtalk-chat", "dws-shared"} {
-		if err := os.MkdirAll(filepath.Join(agentsBase, name), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(agentsBase, name, "SKILL.md"), []byte("stale"), 0o644); err != nil {
-			t.Fatal(err)
-		}
+	os.MkdirAll(filepath.Join(agentsBase, "dws"), 0o755)
+	os.WriteFile(filepath.Join(agentsBase, "dws", "SKILL.md"), []byte("old mono"), 0o644)
+	os.MkdirAll(filepath.Join(agentsBase, "other-skill"), 0o755)
+	os.WriteFile(filepath.Join(agentsBase, "other-skill", "SKILL.md"), []byte("not dws"), 0o644)
+
+	extract := t.TempDir()
+	multiRoot := writeMultiBundle(t, extract, "dingtalk-chat", "dws-shared")
+	if err := os.MkdirAll(filepath.Join(extract, "mono"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(extract, "mono", "SKILL.md"), []byte("# mono sibling"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 
-	// Fail only the first removal of the dingtalk-chat leftover: the main-loop
-	// cleanup aborts, the fallback cleanup must succeed and remove everything.
-	origRemove := upgradeRemoveAll
-	removeAttempts := 0
-	testseam.Swap(t, &upgradeRemoveAll, func(p string) error {
-		if strings.HasSuffix(p, "dingtalk-chat") {
-			removeAttempts++
-			if removeAttempts == 1 {
-				return errors.New("injected cleanup failure")
-			}
+	result, err := UpgradeSkillLocations(multiRoot)
+	if err != nil {
+		t.Fatalf("UpgradeSkillLocations() error = %v", err)
+	}
+	if len(result.Failed()) != 0 {
+		t.Fatalf("expected 0 failures, got %v", result.Failed())
+	}
+	if _, err := os.Stat(filepath.Join(agentsBase, "dws")); !os.IsNotExist(err) {
+		t.Fatalf("mono leftover dws/ must be removed after multi upgrade, stat err=%v", err)
+	}
+	for _, name := range []string{"dingtalk-chat", "dws-shared"} {
+		if _, err := os.Stat(filepath.Join(agentsBase, name, "SKILL.md")); err != nil {
+			t.Errorf("multi skill missing after mono→multi migration: %s: %v", name, err)
 		}
-		return origRemove(p)
+	}
+	if _, err := os.Stat(filepath.Join(agentsBase, "other-skill", "SKILL.md")); err != nil {
+		t.Errorf("non-DWS dir should be preserved: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".dws", "skills", "multi", "dingtalk-chat", "SKILL.md")); err != nil {
+		t.Errorf("multi cache not refreshed: %v", err)
+	}
+}
+
+// TestUpgradeSkillLocationsEmptyDiskInstallsMulti pins fresh/empty homes:
+// with a multi package, upgrade installs multi (install default) and never
+// writes dws/.
+func TestUpgradeSkillLocationsEmptyDiskInstallsMulti(t *testing.T) {
+	home := withFakeHome(t)
+	extract := t.TempDir()
+	multiRoot := writeMultiBundle(t, extract, "dingtalk-chat", "dws-shared")
+
+	result, err := UpgradeSkillLocations(multiRoot)
+	if err != nil {
+		t.Fatalf("UpgradeSkillLocations() error = %v", err)
+	}
+	if len(result.Failed()) != 0 {
+		t.Fatalf("expected 0 failures, got %v", result.Failed())
+	}
+	agentsBase := filepath.Join(home, ".agents", "skills")
+	for _, name := range []string{"dingtalk-chat", "dws-shared"} {
+		if _, err := os.Stat(filepath.Join(agentsBase, name, "SKILL.md")); err != nil {
+			t.Errorf("empty-disk multi install missing %s: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(agentsBase, "dws")); !os.IsNotExist(err) {
+		t.Errorf("empty-disk multi upgrade must not create dws/, stat err=%v", err)
+	}
+}
+
+// TestUpgradeSkillLocationsMultiDiskRefreshes pins an already-multi home:
+// product skills are refreshed, stale dingtalk-* removed, non-DWS kept,
+// and dws/ stays absent.
+func TestUpgradeSkillLocationsMultiDiskRefreshes(t *testing.T) {
+	home := withFakeHome(t)
+	agentsBase := filepath.Join(home, ".agents", "skills")
+	os.MkdirAll(filepath.Join(agentsBase, "dingtalk-chat"), 0o755)
+	os.WriteFile(filepath.Join(agentsBase, "dingtalk-chat", "SKILL.md"), []byte("OLD chat"), 0o644)
+	os.MkdirAll(filepath.Join(agentsBase, "dingtalk-stale"), 0o755)
+	os.WriteFile(filepath.Join(agentsBase, "dingtalk-stale", "SKILL.md"), []byte("stale"), 0o644)
+	os.MkdirAll(filepath.Join(agentsBase, "other-skill"), 0o755)
+	os.WriteFile(filepath.Join(agentsBase, "other-skill", "SKILL.md"), []byte("not dws"), 0o644)
+
+	extract := t.TempDir()
+	multiRoot := writeMultiBundle(t, extract, "dingtalk-chat", "dws-shared")
+
+	result, err := UpgradeSkillLocations(multiRoot)
+	if err != nil {
+		t.Fatalf("UpgradeSkillLocations() error = %v", err)
+	}
+	if len(result.Failed()) != 0 {
+		t.Fatalf("expected 0 failures, got %v", result.Failed())
+	}
+	data, err := os.ReadFile(filepath.Join(agentsBase, "dingtalk-chat", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("refreshed chat missing: %v", err)
+	}
+	if string(data) != "# dingtalk-chat" {
+		t.Errorf("chat content = %q, want refreshed package", data)
+	}
+	if _, err := os.Stat(filepath.Join(agentsBase, "dws-shared", "SKILL.md")); err != nil {
+		t.Errorf("dws-shared missing after multi refresh: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(agentsBase, "dingtalk-stale")); !os.IsNotExist(err) {
+		t.Errorf("stale multi skill should be removed, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(agentsBase, "dws")); !os.IsNotExist(err) {
+		t.Errorf("multi refresh must not create dws/, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(agentsBase, "other-skill", "SKILL.md")); err != nil {
+		t.Errorf("non-DWS dir should be preserved: %v", err)
+	}
+}
+
+// TestUpgradeSkillLocationsMonoFallbackAfterCopyFailure pins the mono primary
+// fallback: when the main-loop copy into ~/.agents/skills/dws fails, the
+// fallback retries the primary location and reports success (legacy
+// mono-only package path).
+func TestUpgradeSkillLocationsMonoFallbackAfterCopyFailure(t *testing.T) {
+	home := withFakeHome(t)
+	agentsBase := filepath.Join(home, ".agents", "skills")
+	if err := os.MkdirAll(filepath.Join(agentsBase, "dws"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(agentsBase, "dws", "SKILL.md"), []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	origCopy := upgradeCopyDir
+	copyAttempts := 0
+	testseam.Swap(t, &upgradeCopyDir, func(src, dst string) error {
+		copyAttempts++
+		if copyAttempts == 1 {
+			return errors.New("injected copy failure")
+		}
+		return origCopy(src, dst)
 	})
 
 	mono := t.TempDir()
@@ -283,13 +388,12 @@ func TestUpgradeSkillLocationsMonoFallbackCleansLeftovers(t *testing.T) {
 	if got := len(result.Succeeded()); got != 1 {
 		t.Fatalf("Succeeded() len = %d, want 1 (%v)", got, result.Results)
 	}
-	for _, stale := range []string{"dingtalk-chat", "dws-shared"} {
-		if _, err := os.Stat(filepath.Join(agentsBase, stale)); !os.IsNotExist(err) {
-			t.Errorf("multi leftover %q should be removed by the mono fallback", stale)
-		}
+	data, err := os.ReadFile(filepath.Join(agentsBase, "dws", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("mono fallback install missing: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(agentsBase, "dws", "SKILL.md")); err != nil {
-		t.Errorf("mono fallback install missing: %v", err)
+	if string(data) != "# mono" {
+		t.Errorf("mono content = %q, want refreshed package", data)
 	}
 }
 

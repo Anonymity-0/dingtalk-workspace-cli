@@ -13,11 +13,11 @@
 
 | 步 | 动作 | 层级 | 前置 |
 |---|---|---|---|
-| 1 | 把当前工作区的「五面默认 multi」拆成**版本门控默认**（beta→multi / stable→mono），同一份代码发 beta 轨先吃 | L1 | 无（本文 §2.1） |
-| 2 | 落地阶段 2 四件套：备份式安装、`state.json`、`dws skill mode`、`x-dws-skill-mode` 请求头 | L3 + kill switch | roadmap 阶段 2（P0-3/P0b/P1-1/P0-4） |
-| 3 | beta 轨观察 ≥2 周：请求头 multi 占比、issue 流入 | L3 | 步 1+2 |
-| 4 | stable 切流：直接 100%（小用户量可接受），或随 stable 连续补丁版发 `rollout.json` 5%→20%→50%→100% 粘性分桶 | L2（可选） | 步 2 的 `state.json` |
-| 5 | kill switch 常备：beta 撤回（已有）/ `pct=0` 补丁版（L2）/ 公告 `dws skill mode set mono` + 备份回滚 | — | 步 2 |
+| 1 | 把「五面默认 multi」拆成**版本门控默认**（beta→multi / stable 观察），同一份代码发 beta 轨先吃 | L1 | 无（本文 §2.1） |
+| 2 | ~~阶段 2 四件套（备份 / state.json / `dws skill mode` / 请求头）~~ | — | **❌ CANCELLED（2026-08-05）**：无运行时模式切换；upgrade 有 multi 时刷 multi（不做粘性） |
+| 3 | beta 轨观察：issue 流入 + 主动回访（**无**请求头占比） | 人工 | 步 1 |
+| 4 | stable：默认 multi 已在阶段 1 落地；L2 `rollout.json` 已砍 | — | — |
+| 5 | kill switch：beta 撤回（已有）/ 公告重装 `dws skill setup --mode mono --yes` | — | 无备份回滚产品 |
 
 ---
 
@@ -72,33 +72,24 @@ mono」。判据统一用版本号是否含 `-beta.`（release.yml 已强制版�
 | install.sh / install.ps1 / install-skills.sh | 脚本自己解析出的 `$VERSION`（`install.sh:177-198`；Gitee 侧 `install.sh:180-188`）——`case "$VERSION" in *-beta.*)` | `install.sh:220-256`、`install.ps1:293-332`、`install-skills.sh:29` |
 | npm install.js | 包内 `package.json` 的 `version`（staging 时由 `stage-npm-package.sh` 写入 release 版本） | `build/npm/install.js:197-214` |
 
-**关键发现——upgrade 路径必须同步门控，否则 stable 观察期形同虚设。**
-当前实现的 skill 升级语义是「跟着 zip 产物布局走」：`LocateSkillsRoot` 恒优先
-`multi/`（`internal/upgrade/paths.go:363-369`），而新 zip 恒含 `multi/`
-（`scripts/release/post-goreleaser.sh:220-248`），于是**任何轨的升级都会把存量
-mono 用户自动迁移到 multi**（`upgradeMultiSkillLocations` 会先删 `dws/` 残留，
-`paths.go:241-244`）。zip 布局按 D1 决策不做轨差异化（产物零改动），所以门控
-必须落在 Go 侧：
+**关键发现——upgrade 路径（2026-08-05 更新）。** skill 升级语义是「跟着 zip
+产物布局走、不做磁盘粘性」：`LocateSkillsRoot` 恒优先 `multi/`，
+`UpgradeSkillLocations` 在包内有 multi 时**始终**刷 multi（含存量 mono
+一次性迁移，清 `dws/`）。若仍要做「stable 观察期不迁 mono」，门控必须落在
+**是否发布含 multi 的 zip / 是否走 upgrade skill 刷新**，而不是磁盘粘性分支
+（粘性方案已否决）。当前产品默认接受：含 multi 的 release 上 upgrade = 迁
+multi。
 
-```
-multi preferred ⟺ (beta build) OR (磁盘已是 multi 形态)
-```
-
-即 stable build 下磁盘为 mono 的机器升级继续刷 mono（保留 `upgradeMonoSkillLocations`
-路径），磁盘已是 multi 的保持 multi 粘性——与「升级永远尊重用户当前 mode」
-（plan §3.8 原则）一致。落点：`internal/upgrade/paths.go:129-139`
-（`UpgradeSkillLocations` 分支选择）+ `paths.go:363-369`（`LocateSkillsRoot`
-优先序），门控函数下沉到 `internal/upgrade` 供 `internal/app` 复用。
-
-切 stable 时删除门控（等价于当前工作区的无条件翻转），是一个独立小 PR。
+切法 B 的安装默认门控（beta→multi / stable→mono）仍可独立存在；与 upgrade
+force-multi 正交——安装 opt-in mono 的用户一旦升级含 multi 的包会被迁走。
 
 #### 风险与回退
 
 | 风险 | 说明 | 回退 |
 |---|---|---|
 | 门控不可见 | 默认值随版本号变化，review/测试容易漏 | 每面补契约测试（beta→multi / stable→mono），`test/scripts` 已有同构先例（`test/scripts/install_script_test.go:529-576`） |
-| beta 用户被升级迁移后无法回 mono | beta 期 `dws upgrade` 会把 mono 存量迁到 multi；今天可用手动出口是 `dws skill setup --mode mono --yes`（mono 缓存由各安装面双写，`install.sh:311-318`、`install.js:216-237`；但 upgrade 只刷 multi 缓存，`paths.go:290-296`——首次经 beta 升级迁移的机器 mono 缓存可能缺失，setup 会要求 `--source`） | beta 期在 upgrade 输出加一行「已迁移至 multi，回退：…」；阶段 2 的 `dws skill mode set mono` + 备份式安装落地前不进 stable（roadmap 风险表第 1 行已是同一结论） |
-| beta 轨整体有毒 | 二进制或 skill 包级事故 | 现有撤回链：`scripts/release/withdraw-release.sh`（GitHub release 撤回 + npm deprecate + dist-tag 回拨，`withdraw-release.sh:652-665`）；stable 轨不受影响 |
+| 升级迁走 mono | **接受为产品语义**：有 multi 包时 upgrade 一次性刷 multi；需 mono 则 `dws skill setup --mode mono --yes` 重装（装完后再 upgrade 仍可能被迁回） | S1 撤回含 multi 的坏包；S3 公告重装 |
+| beta 轨整体有毒 | 二进制或 skill 包级事故 | 现有撤回链：`scripts/release/withdraw-release.sh`（GitHub release 撤回 + npm deprecate + dist-tag 回滚，`withdraw-release.sh:652-665`）；stable 轨不受影响 |
 | 版本字符串被仿造 | 本地 `go build` 无版本注入时 `version=""`，门控落 stable 分支（保守方向，正确） | — |
 
 ### 2.2 L2 确定性分桶：随 release 发 `rollout.json`
@@ -208,23 +199,13 @@ bucket = int(sha256(machineId + "|" + salt)[:8], 16) % 100
   `rollout-current.json` 放 OSS 变指针后面实现「不发版调 pct」；今天无消费
   方，不建。
 
-### 2.3 L3 可观测性：`x-dws-skill-mode` 请求头
+### 2.3 L3 可观测性：`x-dws-skill-mode` 请求头 — ❌ CANCELLED
 
-#### 设计
+**2026-08-05 owner 决策：不实现该请求头**（与运行时模式切换 / state.json
+一并取消）。原设计（注入 `resolveIdentityHeaders`、按 state/磁盘上报
+`mono|multi|unknown`）仅作历史记录，不进入排期。
 
-| 项 | 设计 |
-|---|---|
-| 头名 / 取值 | `x-dws-skill-mode: mono \| multi \| unknown` |
-| 注入点 | 唯一收口 `resolveIdentityHeaders`（`internal/app/runner.go:953-1008`），照 `x-dws-channel` 先例（`runner.go:1006-1008`）；登录权限检查侧补同名字段（`internal/auth/oauth_helpers.go:1424-1428` 旁），让未完整登录的 auth 探测也带信号 |
-| 取值来源（优先级） | ① `state.json` 的 `mode`（阶段 2 落地后）→ ② 磁盘形态反推：任一已知 agent home 下存在 `dingtalk-*/` 或 `dws-shared/` → `multi`；存在 `dws/` → `mono`；两者皆有（drift）或皆无 → `unknown`；反推逻辑与 state.json 兜底共用同一函数，不写第二份 |
-| 进程内开销 | 每进程解析一次缓存（`sync.Once`），读 1–2 个目录，可忽略 |
-| unknown 语义 | 诚实上报，不用磁盘漂移硬猜；占比看板把 unknown 单列，mono 占比 = mono/(mono+multi) 与 mono/(all) 双口径 |
-
-服务端聚合（网关按 header 计数出看板）**out of scope**——本文只定义客户端
-信号；网关侧已有 `x-dws-agent-id` 等头的聚合先例（CHANGELOG #467），加一个
-维度是既有看板的延伸。已知偏差：分母是「发 MCP 请求的活跃用户」，装而不用
-者缺席 → multi 占比会偏高估，判读下线判据（roadmap 阶段 4 判据 1「≥90%」）
-时按双口径保守取值。
+观察手段改为：**issue 反馈 + 主动回访**；不再有请求级 multi 占比判据。
 
 ### 2.4 Kill switch：四层止血
 
@@ -232,15 +213,16 @@ bucket = int(sha256(machineId + "|" + salt)[:8], 16) % 100
 |---|---|---|---|
 | S1 beta 轨整体撤回 | `scripts/release/withdraw-release.sh`：GitHub release 撤回 + npm deprecate + `beta` dist-tag 回拨（`:652-665`） | 分钟级 | **今天可用** |
 | S2 rollout.json `pct=0` | 发补丁版把 pct 打 0（immutable release 不允许原地改资产，§2.2） | 一次发版（小时级） | 依赖 L2 落地 |
-| S3 公告命令 | 公告用户执行 `dws skill mode set mono`（R1 显式优先保证其生效） | 用户触达时延 | **依赖阶段 2 P1-1（未实现）**；今天的等价物是 `dws skill setup --mode mono --yes`，但无记账无备份 |
-| S4 备份回滚 | 安装/清理从 `RemoveAll` 直删改为 `mv` 进 `~/.dws/skills/backup/<ts>-<mode>/`，失败整体回滚；`dws skill mode rollback` 一键回 | 用户单机秒级 | **依赖阶段 2 P0-3（未实现）**；现状清理失败仅 warning 继续装（`internal/app/skill_setup.go:598-630`、`internal/upgrade/paths.go:246-259`），半装无兜底 |
+| S3 公告命令 | 公告用户重装 `dws skill setup --mode mono --yes`（安装入口，非 switch 产品） | 用户触达时延 | **可用**（无 `dws skill mode`；阶段 2 切换命令已 CANCELLED） |
+| S4 备份回滚 | ~~`dws skill mode rollback` + 备份式安装~~ | — | **❌ CANCELLED（2026-08-05）** 与运行时切换一并取消 |
 
 二进制侧另有既有的 `dws upgrade --rollback`（`internal/upgrade/rollback.go`，
 备份在 `~/.dws/data/backups`、保留 5 份 `:16/:54-63`），但只回滚二进制不回滚
-skill 布局（plan §3.8 明示）——skill 止血必须靠 S3/S4，不能指望它。
+skill 布局——skill 止血靠 S1 + S3（重装 mono），**无** S4。
 
-**结论：备份式安装（S4 前置）落地前，kill switch 只有 S1 完整、S3 半残，
-不宜进 stable 全切**——与 roadmap 风险表第 1 行、决策 D2 的结论一致。
+**结论（2026-08-05）：** kill switch = S1（beta 撤回）+ S3（公告重装
+`--mode mono`）。S4 已取消；日常 upgrade 有 multi 包时**一次性刷 multi**
+（不做粘性），故「装完 mono 再 upgrade」会迁走——止血靠撤回坏包或重装。
 
 ---
 
@@ -277,25 +259,23 @@ L1 切法 B 的版本门控默认正是把「渠道差异」从纯流程下沉�
 
 ```
 L1 版本门控拆分（本工作区之上叠加，先合入）
-  → 阶段 2 四件套（备份式安装 / state.json / dws skill mode / x-dws-skill-mode）
+  → ~~阶段 2 四件套~~ ❌ CANCELLED（无运行时切换；upgrade force-multi）
   → beta 轨发版先吃（L1 自动生效）+ L3 观察 ≥2 周
   → stable 切流：小步直接 100%（删门控）；若要求渐进再上 L2 分桶
-  → 阶段 4 下线判据（roadmap 既定，含 x-dws-skill-mode ≥90%）
+  → mono retirement 判据（roadmap：issue/回访，**无**请求头占比）
 ```
 
 ### 4.2 改动点清单（文件级）
 
 | 项 | 文件 | 改动 | 估时 |
 |---|---|---|---|
-| L1-a Go 门控函数 | `internal/app/skill_setup.go`（或新 `internal/upgrade/track.go` 下沉共享） | `defaultSkillModeForVersion(version)`：含 `-beta.`→multi 否则 mono；替换 `:354-357` 非交互默认与 `:364-368` 交互排序 | 0.5d |
-| L1-b upgrade 同步门控 | `internal/upgrade/paths.go:129-139`（分支）、`:363-369`（LocateSkillsRoot 优先序）、`internal/app/upgrade.go:60/579` seam 周边 | stable build 且磁盘 mono → 走 mono 刷新；磁盘已 multi 保持 multi | 0.5d |
-| L1-c 脚本面门控 | `scripts/install.sh:220-256`、`scripts/install.ps1:293-332`、`scripts/install-skills.sh:29`、`build/npm/install.js:197-214` | 默认值解析加 `*-beta.*` 分支 | 0.5d |
-| L1-d 契约测试 | `test/scripts/install_script_test.go`、`internal/upgrade/paths_multi_test.go`、`internal/app/skill_setup*_test.go` | 每面断言 beta→multi / stable→mono | 0.5–1d |
-| L3 请求头 | `internal/app/runner.go:953-1008`、`internal/auth/oauth_helpers.go:1424-1428` 旁、磁盘反推函数（与 state.json 兜底共享，建议落 `internal/upgrade` 或新 `internal/skillmode`） | 加 `x-dws-skill-mode` 三值 | 0.5d（roadmap P0-4 同估） |
-| L2-a rollout.json 进资产 | `scripts/release/post-goreleaser.sh`（生成）、`scripts/release/verify-release-artifacts.sh:12-29`（EXPECTED_ASSETS）、`internal/generator` 无关 | 资产+校验 | 0.5d |
-| L2-b 分桶引擎（Go） | 新 `internal/skillmode/rollout.go`（复用 `internal/auth/identity.go:115-141` 的 machineId 获取）、`internal/app/skill_setup.go` / `internal/upgrade/paths.go` 决策点接入 | 拉取→哈希→决策→记 `state.rollout`；三硬规则 | 1–1.5d（依赖 P0b state.json） |
-| L2-c npm 侧分桶 | `build/npm/install.js:197-214` 周边 | node crypto 一行哈希 + 包内 rollout.json 读取 | 0.5d |
-| S3/S4 依赖（非本文新增，roadmap 阶段 2 已有估时） | 备份式安装 1.5–2d（P0-3）；`dws skill mode` 2–2.5d（P1-1）；state.json 1d + 0.5–1d（P0b-1/2） | — | roadmap 既定 |
+| L1-a Go 门控函数 | `internal/app/skill_setup.go`（或新 `internal/upgrade/track.go` 下沉共享） | `defaultSkillModeForVersion(version)`：含 `-beta.`→multi 否则 mono；替换非交互默认与交互排序 | 0.5d |
+| L1-b upgrade force-multi（已落地） | `internal/upgrade/paths.go` `UpgradeSkillLocations` | 有 multi→始终 multi（含 mono 盘迁移）；legacy 无 multi→mono | ✅ |
+| L1-c 脚本面门控 | `scripts/install.sh` / `install.ps1` / `install-skills.sh` / `build/npm/install.js` | 默认值解析加 `*-beta.*` 分支（若仍做 L1） | 0.5d |
+| L1-d 契约测试 | `test/scripts` / `internal/upgrade` / `internal/app` | 每面断言 beta→multi；upgrade mono→multi E2E | 0.5–1d |
+| L3 请求头 | — | **❌ CANCELLED** | — |
+| L2-a/b/c rollout.json | — | **已砍**（roadmap） | — |
+| S3/S4 | — | S3=重装 mono（可用）；S4 备份/rollback **❌ CANCELLED** | — |
 
 合计：L1 ≈ 2–2.5d；L3 ≈ 0.5d；L2 ≈ 2.5–3d（在 state.json 之后）。
 L1+L3 是进入 beta 观察期的最小集；L2 只在 stable 需要渐进切流时才启动，
