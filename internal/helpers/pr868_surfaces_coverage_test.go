@@ -391,6 +391,10 @@ func TestCrossPlatformCoverageWhiteboardInsertPaths(t *testing.T) {
 		}
 	})
 	t.Run("helpers", func(t *testing.T) {
+		oldArgs := os.Args
+		os.Args = []string{"dws", "doc", "whiteboard", "insert"}
+		t.Cleanup(func() { os.Args = oldArgs })
+
 		if buildWhiteboardCardJSONML("b", "w") == "" {
 			t.Fatal("empty jsonml")
 		}

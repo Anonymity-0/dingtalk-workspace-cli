@@ -30,11 +30,13 @@ type diffResult struct {
 	Diff         string `json:"diff"`
 }
 
-// diff 命令的限制常量。
-const (
-	maxDiffFileSize     = 10 * 1024 * 1024 // 单侧文件大小上限 10MB
-	diffDownloadTimeout = 10 * time.Minute // 下载远端内容超时（与项目其他下载命令一致）
-	diffComputeTimeout  = 30 * time.Second // 本地 diff 计算超时
+// diff 命令的限制（包级变量以便覆盖测试注入更小阈值）。
+var (
+	maxDiffFileSize        int64 = 10 * 1024 * 1024 // 单侧文件大小上限 10MB
+	diffDownloadTimeout          = 10 * time.Minute // 下载远端内容超时（与项目其他下载命令一致）
+	diffComputeTimeout           = 30 * time.Second // 本地 diff 计算超时
+	diffJSONMarshalIndent        = json.MarshalIndent
+	runMarkdownUnifiedDiff       = computeUnifiedDiff
 )
 
 // formatFileSize 返回人类可读的文件大小。
@@ -336,7 +338,7 @@ func newMarkdownDiffCmd() *cobra.Command {
 			}
 			resultCh := make(chan diffOutput, 1)
 			go func() {
-				text, added, deleted, hunks, changed := computeUnifiedDiff(leftContent, rightContent, contextLines)
+				text, added, deleted, hunks, changed := runMarkdownUnifiedDiff(leftContent, rightContent, contextLines)
 				resultCh <- diffOutput{text, added, deleted, hunks, changed}
 			}()
 			select {
@@ -353,7 +355,7 @@ func newMarkdownDiffCmd() *cobra.Command {
 
 				// 输出
 				if isJSON {
-					data, err := json.MarshalIndent(result, "", "  ")
+					data, err := diffJSONMarshalIndent(result, "", "  ")
 					if err != nil {
 						return fmt.Errorf("JSON 序列化失败: %w", err)
 					}

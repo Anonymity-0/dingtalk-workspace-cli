@@ -2105,10 +2105,8 @@ func newMinutesCommand() *cobra.Command {
 
 			startStr, _ := cmd.Flags().GetString("start")
 			endStr, _ := cmd.Flags().GetString("end")
-			loc, _ := time.LoadLocation("Asia/Shanghai")
-			if loc == nil {
-				loc = time.Local
-			}
+			// China Standard Time has no DST; FixedZone avoids zoneinfo nil-fallback branches.
+			loc := time.FixedZone("Asia/Shanghai", 8*3600)
 			var startMs, endMs int64
 			if startStr != "" {
 				var err error

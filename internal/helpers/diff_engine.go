@@ -23,6 +23,13 @@ import (
 // It is typically a pair of line indexes.
 type diffPair struct{ x, y int }
 
+func nonNeg(v int) int {
+	if v < 0 {
+		return 0
+	}
+	return v
+}
+
 // UnifiedDiff returns an anchored diff of the two texts old and new
 // in the "unified diff" format. If old and new are identical,
 // UnifiedDiff returns a nil slice (no output).
@@ -163,13 +170,9 @@ func UnifiedDiff(oldName string, old []byte, newName string, new []byte, context
 		}
 
 		// Otherwise start a new chunk.
-		chunk = diffPair{end.x - C, end.y - C}
-		if chunk.x < 0 {
-			chunk.x = 0
-		}
-		if chunk.y < 0 {
-			chunk.y = 0
-		}
+		// C is clamped to >= 0 above; nonNeg saturates end-C when the next
+		// hunk would start before line 0 (defensive; exercised via nonNeg tests).
+		chunk = diffPair{nonNeg(end.x - C), nonNeg(end.y - C)}
 		for _, s := range x[chunk.x:end.x] {
 			ctext = append(ctext, " "+s)
 			count.x++

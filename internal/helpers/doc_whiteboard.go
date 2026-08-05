@@ -52,13 +52,19 @@ func buildWhiteboardCardJSONML(blockUUID, whiteboardID string) string {
 		[]any{"span", map[string]any{"data-type": "text"},
 			[]any{"span", map[string]any{"data-type": "leaf"}, ""}},
 	}
-	out, err := json.Marshal(node)
+	out, err := whiteboardJSONMarshal(node)
 	if err != nil {
 		// 固定模板 marshal 不应失败；防御性兜底。
 		return ""
 	}
 	return string(out)
 }
+
+// whiteboardJSONMarshal 可在测试中注入失败路径。
+var whiteboardJSONMarshal = json.Marshal
+
+// prepareWhiteboardJSONML 可在测试中注入校验失败路径。
+var prepareWhiteboardJSONML = prepareJsonMLNode
 
 // extractWhiteboardID 从 card attrs 中提取 metadata.id（白板资源 ID）。
 // 缺失 / 非 string / 空串均返回 ""。
@@ -140,7 +146,7 @@ func runWhiteboardInsert(cmd *cobra.Command, _ []string) error {
 	whiteboardID := uuid.New().String()
 	element := buildWhiteboardCardJSONML(blockUUID, whiteboardID)
 	// 固定模板也过既有校验管线，防御 schema 演进导致的静默漂移。
-	normalized, err := prepareJsonMLNode(cmd, element)
+	normalized, err := prepareWhiteboardJSONML(cmd, element)
 	if err != nil {
 		return fmt.Errorf("内部错误: 白板卡片模板未通过 JSONML 校验: %w", err)
 	}

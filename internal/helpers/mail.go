@@ -2388,12 +2388,8 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				mcpArgs["sign"] = sign
 				return callMCPTool("share_message_to_chat", mcpArgs)
 			}
-			var parsed any
-			if err := json.Unmarshal([]byte(firstText), &parsed); err == nil {
-				return deps.Out.PrintJSON(parsed)
-			}
-			deps.Out.PrintRaw(firstText)
-			return nil
+			// firstResult is already a parsed object (possibly unwrapped from result).
+			return deps.Out.PrintJSON(firstResult)
 		},
 	}
 	DeclareLeafMetadata(messageShareToChatCmd, LeafSpec{
@@ -4380,10 +4376,14 @@ func sanitizeMailFilename(name string) string {
 	return name
 }
 
+// mailAtomicLink is the no-clobber commit for atomicWriteFile (test-injectable).
+var mailAtomicLink = os.Link
+
 // atomicWriteFile 原子写入文件：先写同目录临时文件，成功后提交到目标路径。
+// overwrite=false 使用 link(2) 实现存在即失败；overwrite=true 使用 rename 覆盖。
 func atomicWriteFile(path string, data []byte, perm os.FileMode, overwrite bool) error {
 	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".*.tmp")
+	tmp, err := atomicCreateTemp(dir, "."+filepath.Base(path)+".*.tmp")
 	if err != nil {
 		return fmt.Errorf("创建临时文件失败: %w", err)
 	}
@@ -4391,8 +4391,8 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode, overwrite bool)
 	success := false
 	defer func() {
 		if !success {
-			tmp.Close()
-			os.Remove(tmpName)
+			_ = tmp.Close()
+			_ = atomicRemove(tmpName)
 		}
 	}()
 	if err := tmp.Chmod(perm); err != nil {
@@ -4408,16 +4408,16 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode, overwrite bool)
 		return fmt.Errorf("关闭临时文件失败: %w", err)
 	}
 	if overwrite {
-		if err := os.Rename(tmpName, path); err != nil {
+		if err := atomicRename(tmpName, path); err != nil {
 			return fmt.Errorf("重命名文件失败: %w", err)
 		}
 		success = true
 		return nil
 	}
-	if err := os.Link(tmpName, path); err != nil {
+	if err := mailAtomicLink(tmpName, path); err != nil {
 		return err
 	}
-	os.Remove(tmpName)
+	_ = atomicRemove(tmpName)
 	success = true
 	return nil
 }
