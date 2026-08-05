@@ -17,14 +17,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
 func executeMarkdownDiff(t *testing.T, args ...string) error {
 	t.Helper()
-	oldArgs := os.Args
+	testseam.Protect(t, &os.Args)
 	os.Args = append([]string{"dws", "markdown"}, args...)
-	t.Cleanup(func() { os.Args = oldArgs })
 	root := newMarkdownCommand()
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -36,9 +36,7 @@ func executeMarkdownDiff(t *testing.T, args ...string) error {
 
 func TestCrossPlatformCoverageMarkdownDiffCommand(t *testing.T) {
 	t.Run("oversized local file", func(t *testing.T) {
-		prev := maxDiffFileSize
-		maxDiffFileSize = 8
-		t.Cleanup(func() { maxDiffFileSize = prev })
+		testseam.Swap(t, &maxDiffFileSize, int64(8))
 		big := filepath.Join(t.TempDir(), "big.md")
 		if err := os.WriteFile(big, []byte("0123456789"), 0o644); err != nil {
 			t.Fatal(err)
@@ -49,8 +47,7 @@ func TestCrossPlatformCoverageMarkdownDiffCommand(t *testing.T) {
 	})
 
 	t.Run("download helpers and ensure type", func(t *testing.T) {
-		prevDL := diffDownloadLimited
-		t.Cleanup(func() { diffDownloadLimited = prevDL })
+		testseam.Protect(t, &diffDownloadLimited)
 		diffDownloadLimited = func(context.Context, string, map[string]string) ([]byte, error) {
 			return []byte("left\n"), nil
 		}
@@ -121,9 +118,7 @@ func TestCrossPlatformCoverageMarkdownDiffCommand(t *testing.T) {
 			t.Fatal("expected non-200")
 		}
 
-		prev := maxDiffFileSize
-		maxDiffFileSize = 3
-		t.Cleanup(func() { maxDiffFileSize = prev })
+		testseam.Swap(t, &maxDiffFileSize, int64(3))
 		tooBigHeader := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Length", "100")
 			_, _ = w.Write([]byte("xxxx"))
@@ -226,8 +221,7 @@ func TestCrossPlatformCoverageMarkdownDiffCommand(t *testing.T) {
 	})
 
 	t.Run("remote vs local and remote vs remote execute", func(t *testing.T) {
-		prevDL := diffDownloadLimited
-		t.Cleanup(func() { diffDownloadLimited = prevDL })
+		testseam.Protect(t, &diffDownloadLimited)
 		diffDownloadLimited = func(context.Context, string, map[string]string) ([]byte, error) {
 			return []byte("alpha\n"), nil
 		}
@@ -278,16 +272,15 @@ func TestCrossPlatformCoverageMarkdownDiffCommand(t *testing.T) {
 			t.Fatal("expected type guard")
 		}
 
-		prevSize := maxDiffFileSize
+		testseam.Protect(t, &maxDiffFileSize)
 		maxDiffFileSize = 2
-		t.Cleanup(func() { maxDiffFileSize = prevSize })
 		installScriptedCaller(t, &scriptedToolCaller{steps: []scriptedToolStep{
 			{text: `{"extension":"md"}`},
 		}})
 		if err := executeMarkdownDiff(t, "diff", "--node", "n1", "--file", local); err == nil {
 			t.Fatal("expected local size fail")
 		}
-		maxDiffFileSize = prevSize
+		maxDiffFileSize = 10 * 1024 * 1024
 
 		installScriptedCaller(t, &scriptedToolCaller{steps: []scriptedToolStep{
 			{text: `{"extension":"md"}`},
@@ -325,16 +318,10 @@ func TestCrossPlatformCoverageMarkdownDiffCommand(t *testing.T) {
 	})
 
 	t.Run("json marshal and compute timeout", func(t *testing.T) {
-		prevDL := diffDownloadLimited
-		prevMarshal := diffJSONMarshalIndent
-		prevCompute := runMarkdownUnifiedDiff
-		prevTimeout := diffComputeTimeout
-		t.Cleanup(func() {
-			diffDownloadLimited = prevDL
-			diffJSONMarshalIndent = prevMarshal
-			runMarkdownUnifiedDiff = prevCompute
-			diffComputeTimeout = prevTimeout
-		})
+		testseam.Protect(t, &diffDownloadLimited)
+		testseam.Protect(t, &diffJSONMarshalIndent)
+		testseam.Protect(t, &runMarkdownUnifiedDiff)
+		testseam.Protect(t, &diffComputeTimeout)
 		diffDownloadLimited = func(context.Context, string, map[string]string) ([]byte, error) {
 			return []byte("a\n"), nil
 		}
@@ -350,7 +337,7 @@ func TestCrossPlatformCoverageMarkdownDiffCommand(t *testing.T) {
 			t.Fatalf("expected marshal err, got %v", err)
 		}
 
-		diffJSONMarshalIndent = prevMarshal
+		diffJSONMarshalIndent = json.MarshalIndent
 		runMarkdownUnifiedDiff = func(string, string, int) (string, int, int, int, bool) {
 			time.Sleep(50 * time.Millisecond)
 			return "", 0, 0, 0, false
@@ -523,10 +510,9 @@ func TestCrossPlatformCoverageMailExportShareAndAtomicWrite(t *testing.T) {
 			t.Fatal("expected create temp fail")
 		}
 
-		prevCreate, prevRemove, prevRename := atomicCreateTemp, atomicRemove, atomicRename
-		t.Cleanup(func() {
-			atomicCreateTemp, atomicRemove, atomicRename = prevCreate, prevRemove, prevRename
-		})
+		testseam.Protect(t, &atomicCreateTemp)
+		testseam.Protect(t, &atomicRemove)
+		testseam.Protect(t, &atomicRename)
 		atomicRemove = func(string) error { return nil }
 		atomicCreateTemp = func(string, string) (atomicTempFile, error) {
 			return &atomicFakeTemp{chmodErr: errors.New("chmod boom")}, nil
@@ -564,11 +550,9 @@ func TestCrossPlatformCoverageMailExportShareAndAtomicWrite(t *testing.T) {
 	t.Run("export save non-exist failure", func(t *testing.T) {
 		cwd := t.TempDir()
 		t.Chdir(cwd)
-		prev := atomicCreateTemp
-		t.Cleanup(func() { atomicCreateTemp = prev })
-		atomicCreateTemp = func(string, string) (atomicTempFile, error) {
+		testseam.Swap(t, &atomicCreateTemp, func(string, string) (atomicTempFile, error) {
 			return nil, errors.New("nospc")
-		}
+		})
 		installScriptedCaller(t, &scriptedToolCaller{steps: []scriptedToolStep{
 			{text: `{"emlContent":"body"}`},
 		}})
@@ -581,9 +565,8 @@ func TestCrossPlatformCoverageMailExportShareAndAtomicWrite(t *testing.T) {
 
 func executeMailShare(t *testing.T, in io.Reader, args ...string) error {
 	t.Helper()
-	oldArgs := os.Args
+	testseam.Protect(t, &os.Args)
 	os.Args = append([]string{"dws", "mail"}, args...)
-	t.Cleanup(func() { os.Args = oldArgs })
 	root := newMailCommand()
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -652,9 +635,8 @@ func TestCrossPlatformCoverageDriveLatestRemaining(t *testing.T) {
 		{text: `{"items":[{"name":"b.md","fileName":"b.md","fileId":"4","type":"file"}],"nextToken":""}`},
 	}}
 	installScriptedCaller(t, caller)
-	oldArgs := os.Args
+	testseam.Protect(t, &os.Args)
 	os.Args = []string{"dws", "drive", "list"}
-	t.Cleanup(func() { os.Args = oldArgs })
 	cmd := &cobra.Command{Use: "list"}
 	cmd.SetContext(context.Background())
 	if err := runDriveListLatest(cmd, map[string]any{"spaceId": "s"}, "folder", 5, "*.md", false); err != nil {
@@ -701,26 +683,21 @@ func TestCrossPlatformCoverageDriveDepthLatestTruncatedAndSortTime(t *testing.T)
 }
 
 func TestCrossPlatformCoverageWhiteboardSeams(t *testing.T) {
-	prevMarshal := whiteboardJSONMarshal
-	t.Cleanup(func() { whiteboardJSONMarshal = prevMarshal })
-	whiteboardJSONMarshal = func(any) ([]byte, error) { return nil, errors.New("boom") }
+	testseam.Swap(t, &whiteboardJSONMarshal, func(any) ([]byte, error) { return nil, errors.New("boom") })
 	if buildWhiteboardCardJSONML("b", "w") != "" {
 		t.Fatal("expected empty on marshal fail")
 	}
 
-	prevPrep := prepareWhiteboardJSONML
-	t.Cleanup(func() { prepareWhiteboardJSONML = prevPrep })
-	prepareWhiteboardJSONML = func(*cobra.Command, string) (string, error) {
+	testseam.Swap(t, &prepareWhiteboardJSONML, func(*cobra.Command, string) (string, error) {
 		return "", errors.New("bad template")
-	}
+	})
 	installScriptedCaller(t, &scriptedToolCaller{})
 	if err := executeWhiteboardCommand(t, "insert", "--node", "doc-1"); err == nil || !strings.Contains(err.Error(), "白板卡片模板") {
 		t.Fatalf("expected prepare fail, got %v", err)
 	}
 
-	oldArgs := os.Args
+	testseam.Protect(t, &os.Args)
 	os.Args = []string{"dws", "doc", "whiteboard"}
-	t.Cleanup(func() { os.Args = oldArgs })
 
 	// nil entry in blocks list
 	installScriptedCaller(t, &scriptedToolCaller{steps: []scriptedToolStep{
