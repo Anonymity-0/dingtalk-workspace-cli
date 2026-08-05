@@ -1,6 +1,6 @@
 # 安全配置
 
-> 安全配置=应用的 IP 白名单 / 登录重定向 / 端内免登 URL；见 SKILL.md 概念地图。
+> 安全配置=应用的 IP 白名单 / 登录重定向 / 端内免登 URL；见 [devapp.md](../devapp.md) 概念地图。
 
 `dws dev app security config` 配 IP 白名单（`--ip-whitelist`）、登录重定向（`--redirect-urls`）、端内免登（`--sso-urls`）。参数用 `dws dev app security config --help` 查询；至少给一个配置字段。
 

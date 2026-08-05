@@ -25,7 +25,7 @@ dev 的端到端任务都是「定位应用，改容器某节点，按审批需�
 3. 线上使用闭环：`version create` → `check-approval` → `publish` → `version status`；`SELECT_APPROVER` 时必须等用户选择审批人，不默认取第一个
 4. 本地调试/值守：`dev connect --unified-app-id <unifiedAppId>` 把机器人接到本地 agent（见 connect.md）；注意订阅事件前要先建联长连（见 event.md）
 5. 若走无绑定的 `robot submit/result`，只有结果返回明确 `unifiedAppId` 才能继续版本发布
-6. 完成态与缺 `unifiedAppId`、`SELECT_APPROVER` 等门禁判定见 [SKILL.md](../SKILL.md)「核心规则」：建联成功 + 版本进入 `RELEASE`/`AUDIT`/`UNDER_REVIEW` 才算完成
+6. 完成态与缺 `unifiedAppId`、`SELECT_APPROVER` 等门禁判定见 [devapp.md](../devapp.md)「核心规则」：建联成功 + 版本进入 `RELEASE`/`AUDIT`/`UNDER_REVIEW` 才算完成
 
 ## 重启守护进程连接器（不存密钥）
 

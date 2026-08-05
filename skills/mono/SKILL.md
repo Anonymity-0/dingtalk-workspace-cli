@@ -48,7 +48,7 @@ cli_version: ">=1.0.15"
 | `calendar` | 20 | `dingtalk-calendar` |
 | `chat` | 97 | `dingtalk-chat` |
 | `contact` | 14 | `dingtalk-contact` |
-| `devapp` | 19 | `dingtalk-dev` |
+| `devapp` | 19 | `dingtalk-misc` |
 | `ding` | 4 | `dingtalk-misc` |
 | `doc` | 17 | `dingtalk-doc` |
 | `drive` | 7 | `dingtalk-drive` |

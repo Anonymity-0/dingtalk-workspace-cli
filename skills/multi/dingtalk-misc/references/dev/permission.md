@@ -1,6 +1,6 @@
 # 权限管理
 
-> 权限点 scopeValue 是授权单元，一个权限点授权一组 OpenAPI；requiredApproval=true 的变更走版本通道生效（见 SKILL.md 生效模型）。
+> 权限点 scopeValue 是授权单元，一个权限点授权一组 OpenAPI；requiredApproval=true 的变更走版本通道生效（见 [devapp.md](../devapp.md) 生效模型）。
 
 查询、申请、取消开放平台应用的 APP 应用权限和 SNS 个人权限。参数用对应命令的 `--help` 查询。
 

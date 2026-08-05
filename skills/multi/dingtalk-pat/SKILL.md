@@ -1,6 +1,6 @@
 ---
 name: dingtalk-pat
-description: 钉钉 PAT 行为授权与本地浏览器策略管理。Use when 用户说 PAT 授权/行为权限/scope 授权/一次性授权/会话授权/永久授权/批量授权，或允许、禁止 PAT 授权流程打开浏览器。Distinct from dingtalk-dev（开放平台应用权限）。命令前缀：dws pat。
+description: 钉钉 PAT 行为授权与本地浏览器策略管理。Use when 用户说 PAT 授权/行为权限/scope 授权/一次性授权/会话授权/永久授权/批量授权，或允许、禁止 PAT 授权流程打开浏览器。Distinct from dingtalk-misc 的开放平台应用权限（devapp）。命令前缀：dws pat。
 cli_version: ">=1.0.15"
 metadata:
   category: product
@@ -31,4 +31,4 @@ metadata:
 
 - `browser-policy` 只修改本地策略，不授予业务权限。
 - `chmod` 会改变 Agent 可执行范围。先用 `--dry-run` 展示 scope、授权类型和有效期，得到用户明确确认后才可加 `--yes`。
-- PAT 行为授权不是开放平台应用权限；后者使用 `dws dev app permission`，并切到 `dingtalk-dev`。
+- PAT 行为授权不是开放平台应用权限；后者使用 `dws dev app permission`，并切到 `dingtalk-misc`（`references/devapp.md`）。

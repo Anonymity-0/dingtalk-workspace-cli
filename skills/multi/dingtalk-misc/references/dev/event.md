@@ -1,6 +1,6 @@
 # 事件订阅
 
-> 把应用关心的事件推到回调地址；见 SKILL.md 概念地图。
+> 把应用关心的事件推到回调地址；见 [devapp.md](../devapp.md) 概念地图。
 
 `dws dev app event list/subscribe/unsubscribe`，按 `--unified-app-id` 定位，订阅/退订用 `--event-codes`（逗号分隔，一次多个）。参数用对应命令的 `--help` 查询。
 

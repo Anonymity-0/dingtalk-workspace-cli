@@ -30,7 +30,9 @@ coverage:
   - mono: contact
     multi_skill: dingtalk-contact
   - mono: dev
-    multi_skill: dingtalk-dev
+    multi_skill: dingtalk-misc
+    multi_refs:
+      - references/devapp.md
   - mono: doc
     multi_skill: dingtalk-doc
     multi_refs:

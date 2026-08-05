@@ -20,7 +20,7 @@
 | 姓名模糊找人、负责人、上下级、工号、手机号语义线索、企业知识和行为记录搜索 | [`dingtalk-aisearch`](../../dingtalk-aisearch/SKILL.md) |
 | 完整手机号精确反查，或已有 userId 后查人员详情、部门和角色 | [`dingtalk-contact`](../../dingtalk-contact/SKILL.md) |
 | Markdown / `.md` 内容读取、创建、覆盖、局部修改或版本差异比较 | [`dingtalk-markdown`](../../dingtalk-markdown/SKILL.md) |
-| 审批、考勤、会议、电子表格、日志、DING、直播、开放平台等长尾产品 | [`dingtalk-misc`](../../dingtalk-misc/SKILL.md) |
+| 审批、考勤、会议、电子表格、日志、DING、直播、开放平台应用、技能市场安装等长尾产品 | [`dingtalk-misc`](../../dingtalk-misc/SKILL.md) |
 | 宜搭 / AI 应用创建脚本 / 财务辅助脚本（无稳定产品面） | [`dingtalk-misc`](../../dingtalk-misc/SKILL.md) → [`unsupported-scripts.md`](../../dingtalk-misc/references/unsupported-scripts.md)；默认说明未产品化，勿当正式 CLI |
 
 选择 `dingtalk-misc` 后，先读取其 `SKILL.md` 产品索引，再只读取命中产品的单个

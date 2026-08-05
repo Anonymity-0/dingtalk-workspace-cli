@@ -34,7 +34,7 @@ SERVICE_TO_SKILL = {
     "calendar": ROOT / "skills" / "multi" / "dingtalk-calendar" / "SKILL.md",
     "chat": ROOT / "skills" / "multi" / "dingtalk-chat" / "SKILL.md",
     "contact": ROOT / "skills" / "multi" / "dingtalk-contact" / "SKILL.md",
-    "devapp": ROOT / "skills" / "multi" / "dingtalk-dev" / "SKILL.md",
+    "devapp": ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "devapp.md",
     "ding": ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "ding.md",
     "doc": ROOT / "skills" / "multi" / "dingtalk-doc" / "SKILL.md",
     "drive": ROOT / "skills" / "multi" / "dingtalk-drive" / "SKILL.md",

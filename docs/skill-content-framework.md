@@ -92,11 +92,11 @@ skills/mono/
 | 维度 | DWS `skills/multi` | 悟空 `dingtalk-skills/`（develop） |
 |---|---|---|
 | 布局 | flat `dingtalk-*` + `dws-shared` | 同构 flat |
-| 集合 | 19 产品 + shared（含 event/dev/profile/…） | 更小产品集（如 attendance/report 独立目录） |
+| 集合 | 产品 skill + shared（含 event/profile/…；dev/skill 等长尾落在 misc） | 更小产品集（如 attendance/report 独立目录） |
 | 质检权威 | **mono 单 skill 树** | 不作为 DWS 覆盖基准 |
 | 不移植 | `_install.sh` / bundle / dual / Qwen overlay | — |
 
-悟空独有命名（如 `dingtalk-attendance`）在 DWS 中由 `dingtalk-misc` 承接对应 mono `attendance*` / `report` / `oa` / `sheet` 等面——见覆盖表。
+悟空独有命名（如 `dingtalk-attendance`）在 DWS 中由 `dingtalk-misc` 承接对应 mono `attendance*` / `report` / `oa` / `sheet` / `dev` 等面——见覆盖表。
 
 ## 7. 变更流程
 

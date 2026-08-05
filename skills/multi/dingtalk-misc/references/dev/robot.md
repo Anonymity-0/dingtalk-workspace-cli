@@ -32,7 +32,7 @@
 - `connect_local` 的命令只用 `<clientSecret-from-result>` 占位，不能把真实 `clientSecret` 写进回答或脚本；它是 `optional=true` / `scope=local_debug_only`，不能抵消版本发布审核。
 - `lifecycle.overallComplete=false` 或版本未进入 `RELEASE` / `AUDIT` / `UNDER_REVIEW` 时，不要总结“全部完成”“机器人已创建并成功连接”“可以在钉钉中 @机器人使用”。只能说“本地建联成功，线上发布/审批未完成”或继续执行阻塞步骤。
 
-完成态门禁规则的完整说明见 [SKILL.md](../SKILL.md)「核心规则」。
+完成态门禁规则的完整说明见 [devapp.md](../devapp.md)「核心规则」。
 
 ## 二、现有应用的机器人配置
 

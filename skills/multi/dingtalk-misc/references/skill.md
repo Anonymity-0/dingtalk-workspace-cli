@@ -1,6 +1,36 @@
-# 技能管理命令参考
+# skill — DWS 技能管理
 
-## 搜索技能
+> 🧪 **EXPERIMENTAL** — 接口、命名或跨 skill 引用可能调整；以当前 `dws` 二进制与 leaf Schema 为准。问题请提 issue。
+>
+> 这是元能力：只管理 dws 平台上的技能资源。Distinct from `dws-shared`（钉钉产品路由入口）、其他 `dingtalk-*` 产品 skill（执行具体业务能力）、本地 Codex skill 开发。命令前缀：`dws skill`。
+
+## 意图表
+
+| 用户说 | 命令 |
+|---|---|
+| "搜索技能 / 找技能" | `dws skill search --query "<关键词>" [--source DingtalkMarket\|OrgInternal]` |
+| "下载技能包" | `dws skill get --skill-id <skillId>` |
+| "安装市场技能" | `dws skill install <skillId> <target>` |
+| "安装 DWS mono/multi skills" | `dws skill setup --mode <mono\|multi> --target <target> --yes` |
+
+## 约束
+
+- `skillId` 必须来自 `skill search` 返回，不能用名称代替。
+- `skill install` 的 `skillId` 与 `target` 是位置参数，不是 `--skill-id` flag。
+- `skill setup --mode multi` 可用 `--skill/-s` 只装指定产品，或用 `--exclude/-x` 排除产品，两者不能同时使用。
+- 搜索结果中的 `securityStatus` 需要如实展示；状态异常时不要把安装描述为已通过安全检测。
+- 开源 CLI 不提供技能发布/上传命令；发布需求应转到对应的技能市场发布流程。
+
+## 兼容提示
+
+- `dws skill find` → `dws skill search --query <关键词>`
+- `dws skill add` → `dws skill install <skillId> <target>`
+
+---
+
+## 命令参考
+
+### 搜索技能
 
 ```
 Usage:
@@ -15,7 +45,7 @@ Flags:
 
 从返回中提取真实 `skillId`、名称、版本、来源与 `securityStatus`。兼容入口 `skill find` 只会提示改用 `search`。
 
-## 下载技能包
+### 下载技能包
 
 ```
 Usage:
@@ -26,7 +56,7 @@ Flags:
 
 成功后返回本地临时目录路径，供检查或后续安装使用。
 
-## 安装市场技能
+### 安装市场技能
 
 ```
 Usage:
@@ -39,7 +69,7 @@ Example:
 
 `skillId` 来自搜索结果；`target` 使用 `skill install --help` 列出的 Agent 名称，或用 `.` 安装到当前目录。两个值均为位置参数。
 
-## 部署 DWS 内置技能
+### 部署 DWS 内置技能
 
 ```
 Usage:

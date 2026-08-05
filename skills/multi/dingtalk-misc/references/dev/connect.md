@@ -17,7 +17,7 @@ dws dev connect --robot-client-id <clientId> --robot-client-secret <clientSecret
 
 正式 connect 是前台长驻进程：在对话里跑必须后台运行并告诉用户如何停止，或引导用户自己开终端跑。
 
-`dev connect` 只做本地 Stream 调试/值守，不会创建版本、提交审批或发布应用。dry-run JSON 的 `invocation` 会声明 `scope=local_debug_only`、`doesNotPublish=true`、`completionState=LOCAL_DEBUG_ONLY`，真实前台/daemon 启动也会打印“本地调试，不代表线上发布完成”。完成态判定（建联成功不等于线上可用）以 [SKILL.md](../SKILL.md)「核心规则」为准。
+`dev connect` 只做本地 Stream 调试/值守，不会创建版本、提交审批或发布应用。dry-run JSON 的 `invocation` 会声明 `scope=local_debug_only`、`doesNotPublish=true`、`completionState=LOCAL_DEBUG_ONLY`，真实前台/daemon 启动也会打印“本地调试，不代表线上发布完成”。完成态判定（建联成功不等于线上可用）以 [devapp.md](../devapp.md)「核心规则」为准。
 
 | flag | 说明 |
 |------|------|
@@ -50,7 +50,7 @@ dws dev connect --channel <ch> --robot-client-id x --robot-client-secret y --dry
 | `installed: false, autoInstall: true` | 告知用户缺哪个 CLI，说明启动建联时会自动 `npm` 安装（或先手动执行 installHint 里的命令再连）；`DWS_CONNECT_NO_INSTALL=1` 可禁自动安装 |
 | `installed: false, autoInstall: false` | **不要直接起连接**——桌面 App 渠道（qoder/qoderwork/workbuddy）需要用户先安装对应 App（installHint 是下载地址），装好后 CLI 随 App 自带；openclaw/hermes 引导用户走官方 onboarding |
 
-dry-run 出参的完整建联预检结构（channel/detectedBy/credentialSource/agent/cli/connect）见 SKILL.md「通用出参约定」。
+dry-run 出参的完整建联预检结构（channel/detectedBy/credentialSource/agent/cli/connect）见 [devapp.md](../devapp.md)「通用出参约定」。
 
 必须检查 dry-run 顶层：
 
@@ -65,7 +65,7 @@ dry-run 出参的完整建联预检结构（channel/detectedBy/credentialSource/
 }
 ```
 
-这几个字段表示：连接器可以起本地调试，但版本发布闭环仍由 `robot result` 的 blocking `nextSteps` 或后续 `version status` 决定（完整门禁规则见 [SKILL.md](../SKILL.md)「核心规则」）。
+这几个字段表示：连接器可以起本地调试，但版本发布闭环仍由 `robot result` 的 blocking `nextSteps` 或后续 `version status` 决定（完整门禁规则见 [devapp.md](../devapp.md)「核心规则」）。
 
 ## Codex 渠道注意
 

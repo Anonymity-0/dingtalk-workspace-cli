@@ -1,6 +1,6 @@
 # 网页应用配置
 
-> 网页应用=应用的能力扩展之一，钉钉内打开的 H5；见 SKILL.md 概念地图。
+> 网页应用=应用的能力扩展之一，钉钉内打开的 H5；见 [devapp.md](../devapp.md) 概念地图。
 
 `dws dev app webapp get` 查配置，`webapp config` 配移动端/PC 首页和管理后台地址。参数用 `dws dev app webapp get --help` 和 `dws dev app webapp config --help` 查询；config 至少给一个配置字段。
 
