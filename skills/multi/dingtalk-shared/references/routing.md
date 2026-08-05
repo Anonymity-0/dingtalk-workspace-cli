@@ -38,7 +38,7 @@ reference，不要加载全部长尾产品文档。
 - `.md` 内容读写走 `markdown`（`dingtalk-misc`）；复制、移动、删除等实体操作走 `drive`。
 - `aitable`：字段/记录式数据表；`sheet`：单元格、公式、多工作表。`sheet` 位于
   [`dingtalk-misc`](../../dingtalk-misc/references/sheet.md)。
-- `calendar`：日历事件、参会人和会议室；`conference`：预约/发起视频会议及会控；
+- `calendar`：日历事件、参会人和会议室；视频会议（conference）当前 CLI 不支持，请在钉钉客户端操作；
   `minutes`：会后听记内容。
 - `report`：钉钉日志系统中的日报/周报；`doc`：普通文档创作；`todo`：个人任务。
 - `chat`：普通会话和消息；`event`：个人 IM 事件长连接监听；`ding`：强提醒。
