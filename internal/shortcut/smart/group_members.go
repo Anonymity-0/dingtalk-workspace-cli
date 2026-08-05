@@ -17,6 +17,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
@@ -43,6 +46,31 @@ var GroupMembers = shortcut.Shortcut{
 		"内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。" +
 		"群名匹配到多个群时会列出候选让你区分、绝不自行假定。只读，不改动任何数据。",
 	Risk: shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "chat",
+			Name:           "shortcut_group_members",
+			CanonicalPath:  "chat.shortcut_group_members",
+			CLIPath:        "chat +group-members",
+			PrimaryCLIPath: "chat +group-members",
+		},
+		Description: "按群名列出群成员（自动搜群解析 openConversationId）",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "按群名列出群成员（自动搜群解析 openConversationId）",
+			UseWhen:      []string{"当你只知道群的名字、想看看这个群里有哪些成员，而不想先手动查群 ID 时使用；内部先按群名搜索群聊解析出唯一 openConversationId，再拉取该群的成员列表。群名匹配到多个群时会列出候选让你区分、绝不自行假定。只读，不改动任何数据。"},
+			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:     []string{"dws chat +group-members --group 项目冲刺"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群名称（搜群关键词，用群名里连续的核心词）", Required: true},
 	},

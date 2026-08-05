@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/spf13/cobra"
 )
 
@@ -22,14 +25,8 @@ func boundTestCommandRegistry(root *cobra.Command) (BoundCommandRegistry, error)
 		}
 		path := normalizeSchemaCLIPath(strings.Join(commandPathParts(leaf), " "))
 		productID, toolName, source := runtimeSchemaAnnotations(leaf)
-		reason := ""
 		if productID == "" || toolName == "" {
-			var ok bool
-			productID, toolName, reason, ok = runtimeManualSchemaIdentity(leaf)
-			if !ok {
-				return
-			}
-			source = "reviewed_manual_hint"
+			return
 		}
 		canonical := productID + "." + toolName
 		grouped[canonical] = append(grouped[canonical], CommandSpec{
@@ -37,7 +34,7 @@ func boundTestCommandRegistry(root *cobra.Command) (BoundCommandRegistry, error)
 			SourceProductID: productID,
 			PrimaryCLIPath:  path,
 			Source:          defaultString(strings.TrimSpace(source), "test_registry"),
-			ReviewReason:    reason,
+			ReviewReason:    "test fixture native identity",
 		})
 	})
 
@@ -73,12 +70,78 @@ func schemaRegistryForTest(root *cobra.Command) (SchemaRegistry, error) {
 	return AssembleSchemaRegistryFromBound(bound)
 }
 
-func schemaRegistryForTestWithMetadata(root *cobra.Command, agent embeddedAgentMetadata, mcp embeddedMCPMetadata) (SchemaRegistry, error) {
+func schemaRegistryForTestWithMetadata(root *cobra.Command, agent agentMetadata, mcp embeddedMCPMetadata) (SchemaRegistry, error) {
 	bound, err := boundTestCommandRegistry(root)
 	if err != nil {
 		return SchemaRegistry{}, err
 	}
+	// Production-shaped assembly: leaves must carry ContractFinal and products
+	// a ProductDecl (see declareRuntimeSchemaTestRootDoc). Injected MCP/agent
+	// fixtures participate only through the gated fixture lookup in
+	// runtimeToolSpecFromContractFinal; production passes an empty pin.
 	return assembleSchemaRegistryFromBound(bound, runtimeSchemaMetadataSources{Agent: agent, MCP: mcp})
+}
+
+// declareRuntimeSchemaTestRootDoc registers the ContractFinal / ProductDecl
+// declarations for the synthetic doc.create_document tree built by
+// buildRuntimeSchemaTestRoot, so production-shaped assembly can resolve it.
+// Declarations are removed again through t.Cleanup.
+func declareRuntimeSchemaTestRootDoc(t *testing.T, root *cobra.Command, mutate func(*contract.ContractFinalPayload)) {
+	t.Helper()
+	create, _, err := root.Find([]string{"doc", "create"})
+	if err != nil {
+		t.Fatalf("locate doc create leaf: %v", err)
+	}
+	payload := contract.ContractFinalPayload{
+		Identity: &contract.ToolIdentitySpec{
+			ProductID: "doc", Name: "create_document", CanonicalPath: "doc.create_document",
+			CLIPath: "doc create", PrimaryCLIPath: "doc create",
+		},
+		Title:       "Create document",
+		Description: "Create a DingTalk document",
+		Safety: &contract.SafetySpec{
+			Effect: "write", EffectSource: "command-verb", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Interface: &contract.InterfaceSpec{
+			Mode: "local", Availability: "available", Reason: "test local implementation",
+		},
+		Selection: &contract.SelectionSpec{
+			AgentSummary: "新建钉钉文档",
+			UseWhen:      []string{"新建文档"},
+			AvoidWhen:    []string{"只需读取文档时"},
+			Examples:     []string{"dws doc create --title test"},
+		},
+	}
+	if mutate != nil {
+		mutate(&payload)
+	}
+	contractfinal.RegisterRuntimeContractFinal(create, payload)
+	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(create) })
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "doc",
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "创建、读取和维护钉钉文档",
+			UseWhen:      []string{"需要创建或读取文档"},
+			AvoidWhen:    []string{"管理表格"},
+		},
+	})
+	t.Cleanup(func() { contract.ClearProductDeclForTest("doc") })
+}
+
+// loadedSchemaCatalogForTestRegistry wraps an assembled test registry in the
+// production loadedSchemaCatalog shape so payload helpers exercise the same
+// query path as delivery (schemaPayloadFromLoadedCatalog).
+func loadedSchemaCatalogForTestRegistry(registry SchemaRegistry) (loadedSchemaCatalog, error) {
+	index, err := registry.Index()
+	if err != nil {
+		return loadedSchemaCatalog{}, err
+	}
+	return loadedSchemaCatalog{
+		Snapshot: SchemaCatalogSnapshot{Version: SchemaCatalogSnapshotVersion},
+		Registry: registry,
+		Index:    index,
+	}, nil
 }
 
 func runtimeSchemaPayloadForTest(root *cobra.Command, args []string) (map[string]any, error) {
@@ -86,15 +149,23 @@ func runtimeSchemaPayloadForTest(root *cobra.Command, args []string) (map[string
 	if err != nil {
 		return nil, err
 	}
-	return runtimeSchemaPayloadFromRegistry(registry, args)
+	loaded, err := loadedSchemaCatalogForTestRegistry(registry)
+	if err != nil {
+		return nil, err
+	}
+	return schemaPayloadFromLoadedCatalog(loaded, args)
 }
 
-func runtimeSchemaPayloadForTestWithMetadata(root *cobra.Command, args []string, agent embeddedAgentMetadata, mcp embeddedMCPMetadata) (map[string]any, error) {
+func runtimeSchemaPayloadForTestWithMetadata(root *cobra.Command, args []string, agent agentMetadata, mcp embeddedMCPMetadata) (map[string]any, error) {
 	registry, err := schemaRegistryForTestWithMetadata(root, agent, mcp)
 	if err != nil {
 		return nil, err
 	}
-	return runtimeSchemaPayloadFromRegistry(registry, args)
+	loaded, err := loadedSchemaCatalogForTestRegistry(registry)
+	if err != nil {
+		return nil, err
+	}
+	return schemaPayloadFromLoadedCatalog(loaded, args)
 }
 
 func runtimeSchemaAllPayloadForTest(root *cobra.Command) (map[string]any, error) {
@@ -102,7 +173,7 @@ func runtimeSchemaAllPayloadForTest(root *cobra.Command) (map[string]any, error)
 	if err != nil {
 		return nil, err
 	}
-	return runtimeSchemaAllPayloadFromRegistry(registry)
+	return registry.ToPayload()
 }
 
 func runtimeSchemaCompletenessForTest(root *cobra.Command, exclusions []RuntimeSchemaExclusion) RuntimeSchemaCompletenessReport {

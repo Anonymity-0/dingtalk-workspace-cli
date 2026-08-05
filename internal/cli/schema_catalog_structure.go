@@ -18,14 +18,16 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // schema_catalog.json is generated, but every command entry it delivers to
 // Agents must follow one unified closed structure: a fixed required core plus
 // a whitelisted optional set. Any new field must be registered here first,
 // which keeps the delivered command data structure uniform across products.
-// Command identity (names/paths) is owned by schema_command_registry.json and
-// is deliberately out of scope for this validator.
+// Command identity (names/paths) is collected from ContractFinal.Identity on
+// the live Cobra leaves and is deliberately out of scope for this validator.
 
 const schemaCatalogStructureMaxViolations = 25
 
@@ -83,8 +85,8 @@ var schemaCatalogToolEnums = map[string][]string{
 	"effect":         {"read", "write", "destructive"},
 	"risk":           {"low", "medium", "high"},
 	"confirmation":   {"not_required", "user_required"},
-	"interface_mode": {InterfaceModeMCP, InterfaceModeComposite, InterfaceModeLocal},
-	"availability":   {InterfaceAvailable, InterfaceUnavailable},
+	"interface_mode": {contract.InterfaceModeMCP, contract.InterfaceModeComposite, contract.InterfaceModeLocal},
+	"availability":   {contract.InterfaceAvailable, contract.InterfaceUnavailable},
 }
 
 // schemaCatalogParamRequiredKeys is the required core of every parameter.
@@ -256,7 +258,7 @@ func validateCatalogInterface(toolID string, entry map[string]any, violations *[
 	ref, hasRef := entry["interface_ref"]
 	reason, _ := entry["interface_reason"].(string)
 	switch mode {
-	case InterfaceModeMCP:
+	case contract.InterfaceModeMCP:
 		if !hasRef {
 			report("interface_mode=mcp requires interface_ref")
 			return
@@ -274,7 +276,7 @@ func validateCatalogInterface(toolID string, entry map[string]any, violations *[
 		if strings.TrimSpace(reason) != "" {
 			report("interface_mode=mcp must not set interface_reason")
 		}
-	case InterfaceModeComposite, InterfaceModeLocal:
+	case contract.InterfaceModeComposite, contract.InterfaceModeLocal:
 		if hasRef {
 			report("interface_mode=%s must not set interface_ref", mode)
 		}

@@ -481,7 +481,6 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 		{name: "interface_mode", old: oldTool.InterfaceMode, new: newTool.InterfaceMode},
 		{name: "interface_ref", old: oldTool.InterfaceRef, new: newTool.InterfaceRef},
 		{name: "availability", old: oldTool.Availability, new: newTool.Availability},
-		{name: "constraints", old: oldTool.Constraints, new: newTool.Constraints},
 		{name: "effect", old: oldTool.Effect, new: newTool.Effect},
 		{name: "risk", old: oldTool.Risk, new: newTool.Risk},
 		{name: "confirmation", old: oldTool.Confirmation, new: newTool.Confirmation},
@@ -490,6 +489,11 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 		if field.old != field.new {
 			failures = append(failures, fmt.Sprintf("schema tool %q changed %s", toolPath, field.name))
 		}
+	}
+	if oldTool.Constraints != newTool.Constraints &&
+		!compatibleHiddenSiblingConstraintExpansion(oldTool, newTool) &&
+		!compatibleConstraintMemberExpansion(oldTool.Constraints, newTool.Constraints) {
+		failures = append(failures, fmt.Sprintf("schema tool %q changed constraints", toolPath))
 	}
 	if !compatiblePositionals(oldTool.Positionals, newTool.Positionals) {
 		failures = append(failures, fmt.Sprintf("schema tool %q changed positionals", toolPath))
@@ -508,6 +512,142 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 	}
 	sort.Strings(failures)
 	return failures
+}
+
+// compatibleHiddenSiblingConstraintExpansion allows declare≡execute repairs:
+// Schema may start projecting full constraint groups that include unpublished
+// (hidden) execute-side siblings when the previous contract collapsed the sole
+// published member to required and omitted constraints.
+func compatibleHiddenSiblingConstraintExpansion(oldTool, newTool toolSchema) bool {
+	if strings.TrimSpace(oldTool.Constraints) != "" {
+		return false
+	}
+	var projected struct {
+		MutuallyExclusive [][]string `json:"mutually_exclusive"`
+		RequireOneOf      [][]string `json:"require_one_of"`
+		RequireTogether   [][]string `json:"require_together"`
+	}
+	if err := json.Unmarshal([]byte(newTool.Constraints), &projected); err != nil {
+		return false
+	}
+	if len(projected.RequireTogether) > 0 || len(projected.RequireOneOf) == 0 {
+		return false
+	}
+	groups := append([][]string(nil), projected.RequireOneOf...)
+	groups = append(groups, projected.MutuallyExclusive...)
+	for _, group := range groups {
+		if len(group) < 2 {
+			return false
+		}
+		published := 0
+		hidden := 0
+		for _, name := range group {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				return false
+			}
+			if _, ok := newTool.Parameters[name]; ok {
+				published++
+			} else {
+				hidden++
+			}
+		}
+		if published == 0 || hidden == 0 {
+			return false
+		}
+		// Former collapse artifact: exactly one published member was required.
+		if published == 1 {
+			var sole string
+			for _, name := range group {
+				if _, ok := newTool.Parameters[name]; ok {
+					sole = name
+					break
+				}
+			}
+			oldParam, ok := oldTool.Parameters[sole]
+			newParam, okNew := newTool.Parameters[sole]
+			if !ok || !okNew || !oldParam.Required || newParam.Required {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// compatibleConstraintMemberExpansion allows declare≡execute / alias-surface
+// repairs that only add members to existing constraint groups. Removing a
+// member, dropping a group, or adding a new group remains incompatible.
+func compatibleConstraintMemberExpansion(oldConstraints, newConstraints string) bool {
+	oldGroups, okOld := parseConstraintGroups(oldConstraints)
+	newGroups, okNew := parseConstraintGroups(newConstraints)
+	if !okOld || !okNew {
+		return false
+	}
+	for _, key := range []string{"mutually_exclusive", "require_one_of", "require_together"} {
+		if !constraintGroupsAreMemberExpansions(oldGroups[key], newGroups[key]) {
+			return false
+		}
+	}
+	return true
+}
+
+func parseConstraintGroups(raw string) (map[string][][]string, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return map[string][][]string{}, true
+	}
+	var projected struct {
+		MutuallyExclusive [][]string `json:"mutually_exclusive"`
+		RequireOneOf      [][]string `json:"require_one_of"`
+		RequireTogether   [][]string `json:"require_together"`
+	}
+	if err := json.Unmarshal([]byte(raw), &projected); err != nil {
+		return nil, false
+	}
+	return map[string][][]string{
+		"mutually_exclusive": projected.MutuallyExclusive,
+		"require_one_of":     projected.RequireOneOf,
+		"require_together":   projected.RequireTogether,
+	}, true
+}
+
+func constraintGroupsAreMemberExpansions(oldGroups, newGroups [][]string) bool {
+	if len(oldGroups) != len(newGroups) {
+		return false
+	}
+	used := make([]bool, len(newGroups))
+	for _, oldGroup := range oldGroups {
+		oldSet := stringSet(oldGroup)
+		if len(oldSet) == 0 {
+			return false
+		}
+		matched := false
+		for index, newGroup := range newGroups {
+			if used[index] {
+				continue
+			}
+			newSet := stringSet(newGroup)
+			if !stringSetContainsAll(newSet, oldSet) {
+				continue
+			}
+			used[index] = true
+			matched = true
+			break
+		}
+		if !matched {
+			return false
+		}
+	}
+	return true
+}
+
+func stringSetContainsAll(superset, subset map[string]bool) bool {
+	for value := range subset {
+		if !superset[value] {
+			return false
+		}
+	}
+	return true
 }
 
 func compatiblePositionals(oldPositionals, newPositionals []positionalSchema) bool {
@@ -558,7 +698,6 @@ func checkParameterCompatibility(toolPath, name string, oldParameter, newParamet
 	}{
 		{name: "type", old: oldParameter.Type, new: newParameter.Type},
 		{name: "property", old: oldParameter.Property, new: newParameter.Property},
-		{name: "interface_type", old: oldParameter.InterfaceType, new: newParameter.InterfaceType},
 		{name: "default", old: oldParameter.Default, new: newParameter.Default},
 		{name: "interface_default", old: oldParameter.InterfaceDefault, new: newParameter.InterfaceDefault},
 		{name: "format", old: oldParameter.Format, new: newParameter.Format},
@@ -566,6 +705,18 @@ func checkParameterCompatibility(toolPath, name string, oldParameter, newParamet
 		if field.old != field.new {
 			failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed %s", toolPath, name, field.name))
 		}
+	}
+	// Clearing interface_type is accepted as compatible: a deliberate,
+	// wire-visible policy decision taken with the pinned MCP metadata
+	// retirement. Production no longer projects MCP-sourced types unless
+	// ParamDecl declares them, so unverifiable pinned values are dropped
+	// rather than kept. Consumers that used interface_type for coercion must
+	// treat a missing value as "unknown" — re-populating a value requires an
+	// explicit ParamDecl declaration, not a new pin. Changing to a different
+	// non-empty value remains a contract break.
+	if oldParameter.InterfaceType != newParameter.InterfaceType &&
+		!(oldParameter.InterfaceType != "" && newParameter.InterfaceType == "") {
+		failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed interface_type", toolPath, name))
 	}
 	if !oldParameter.Required && newParameter.Required {
 		failures = append(failures, fmt.Sprintf("schema tool %q made parameter %q newly required", toolPath, name))

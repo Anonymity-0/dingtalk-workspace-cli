@@ -122,6 +122,7 @@ func executeWikiEdge(t *testing.T, args ...string) error {
 	root.SilenceUsage = true
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)
+	root.SetIn(os.Stdin)
 	root.SetArgs(args)
 	os.Args = append([]string{"dws", "wiki"}, args...)
 	return root.Execute()
@@ -167,8 +168,10 @@ func TestCrossPlatformCoverageWikiDeleteCancellationEdges(t *testing.T) {
 		_, _ = stdin.WriteString("no\n")
 		_, _ = stdin.Seek(0, 0)
 		os.Stdin = stdin
-		if err := executeWikiEdge(t, args...); err != nil {
-			t.Fatalf("cancel %v: %v", args, err)
+		err = executeWikiEdge(t, args...)
+		// Contract ConfirmSafety returns a typed cancel error (not silent nil).
+		if err == nil || !strings.Contains(err.Error(), "用户取消了操作") {
+			t.Fatalf("cancel %v: error = %v, want 用户取消了操作", args, err)
 		}
 		_ = stdin.Close()
 	}

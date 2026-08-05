@@ -63,18 +63,18 @@
 |---|:---:|---|
 | covered-1to1 | 144 | lark 组合在钉钉塌缩成 1:1，封装层已覆盖 |
 | no-dingtalk-tool | 127 | 钉钉无对应工具，客观不可对齐 |
-| **gap-buildable** | **42** | 钉钉有工具、值得补成智能 shortcut（**建设目标**）；已建 minutes `+detail`/`+replace-batch`、base `+record-share-links`/`+resolve-base`、im `+thread-replies`/`+chat-messages`、task `+related-tasks` |
-| covered-smart | 48 | 已建智能 shortcut / 部分覆盖 |
+| **gap-buildable** | **41** | 钉钉有工具、值得补成智能 shortcut（**建设目标**）；已建 minutes `+detail`/`+replace-batch`、base `+record-share-links`/`+resolve-base`、im `+thread-replies`/`+chat-messages`/`+chat-list`、task `+related-tasks` |
+| covered-smart | 49 | 已建智能 shortcut / 部分覆盖 |
 
-## 🎯 gap-buildable 目标清单（原 49 条，已建 7 → 剩 42，按服务）
+## 🎯 gap-buildable 目标清单（原 49 条，已建 8 → 剩 41，按服务）
 
-> 已落地：minutes `+detail`（✅ smart `+detail`）、minutes `+word-replace`（✅ smart `+replace-batch`，批量+去重）、base `+record-share-link-create`（✅ smart `+record-share-links`，>20 去重+分片+合并）、im `+threads-messages-list`（✅ smart `chat +thread-replies`，list_topic_replies + 投影）、task `+get-related-tasks`（✅ smart `todo +related-tasks`，三角色并集+去重+投影）。
+> 已落地：minutes `+detail`（✅ smart `+detail`）、minutes `+word-replace`（✅ smart `+replace-batch`，批量+去重）、base `+record-share-link-create`（✅ smart `+record-share-links`，>20 去重+分片+合并）、im `+threads-messages-list`（✅ smart `chat +thread-replies`，list_topic_replies + 投影）、im `+chat-list`（✅ smart `chat +chat-list`）、task `+get-related-tasks`（✅ smart `todo +related-tasks`，三角色并集+去重+投影）。
 
-### im → chat（6）
+### im → chat（5）
 
 | lark 命令 | risk | 保真度差距（钉钉有 tool，缺什么智能） |
 |---|---|---|
-| `+chat-list` | read | dws 有 list-my-groups/list-all-conversations 原子 tool，但无 types 枚举+bot剥p2p降级、无 exclude-muted 客户端过滤、无字段投影 |
+| `+chat-list` ✅ | read | **已建 smart `chat +chat-list`**：`list_all_conversations` + 默认仅群聊 + `--types group/p2p` 当前页过滤 + `--exclude-muted` + page-size/page-token 别名 + openConversationId/name/conversationType 投影。剩余未做：sort/sort-type、bot 身份 p2p 剥离（DWS 无对应身份模型） |
 | `+chat-messages-list` ✅ | read | **已建 smart `chat +chat-messages`**：群/单聊 list_conversation_message_v2 / list_individual_chat_message 互斥 + sender/text/time 投影。剩余未做：reactions 富化、资源下载 |
 | `+chat-search` | read | dws 无群名模糊搜索v2对应 tool(search_common_groups/find 语义不同)，缺 query规范化、mode映射、mute过滤、meta投影 |
 | `+messages-resources-download` | write | dws download-media 走 get_resource_download_url 拿URL，缺分片Range下载/重试/扩展名推断/安全落盘路径校验 |
@@ -176,7 +176,7 @@
 
 ## 已建智能 shortcut（covered-smart，48）— 可继续升级保真度
 
-- **im**: +chat-members-list +messages-send +threads-messages-list
+- **im**: +chat-members-list +chat-list +messages-send +threads-messages-list
 - **task**: +complete +assign +get-my-tasks +get-related-tasks
 - **contact**: +search-user
 - **calendar**: +agenda +create +update +freebusy +suggestion

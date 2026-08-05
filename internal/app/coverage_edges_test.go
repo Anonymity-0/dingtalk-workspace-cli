@@ -21,7 +21,6 @@ import (
 	"time"
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	dwsevent "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event"
 	eventbus "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
@@ -288,20 +287,18 @@ func TestCrossPlatformCoverageRecoveryPureCoverage(t *testing.T) {
 	if _, err := (*recoveryRuntime)(nil).CallToolDirect(context.Background(), "x", "y", nil); err == nil {
 		t.Fatal("nil recovery runtime call succeeded")
 	}
-	if _, err := (&recoveryRuntime{}).resolveEndpoint(context.Background(), "missing", "tool"); err == nil {
-		t.Fatal("missing recovery endpoint succeeded")
+	if _, err := (&recoveryRuntime{}).resolveEndpoint(context.Background(), "missing", "tool"); err == nil || !strings.Contains(err.Error(), `endpoint not resolved for product "missing" (tool "tool")`) {
+		t.Fatalf("missing recovery endpoint error = %v", err)
+	} else {
+		var apiErr *apperrors.Error
+		if !errors.As(err, &apiErr) || apiErr.Category != apperrors.CategoryAPI || apiErr.Operation != "discovery.resolve" || apiErr.Reason != "endpoint_not_resolved" {
+			t.Fatalf("missing recovery endpoint classification = %#v", err)
+		}
 	}
-	loaderErr := errors.New("catalog")
-	runtime := &recoveryRuntime{loader: cli.CatalogLoaderFrom(cli.Catalog{}, loaderErr)}
-	if _, err := runtime.resolveEndpoint(context.Background(), "missing", "tool"); !errors.Is(err, loaderErr) {
-		t.Fatalf("catalog recovery error = %v", err)
-	}
-	runtime.loader = cli.StaticLoader{Catalog: cli.Catalog{Products: []cli.CanonicalProduct{{ID: "empty"}, {ID: "ok", Endpoint: " https://catalog.test "}}}}
-	if _, err := runtime.resolveEndpoint(context.Background(), "empty", "tool"); err == nil {
-		t.Fatal("empty catalog endpoint succeeded")
-	}
+	t.Setenv("DINGTALK_OK_MCP_URL", " https://catalog.test ")
+	runtime := &recoveryRuntime{}
 	if got, err := runtime.resolveEndpoint(context.Background(), "ok", "tool"); err != nil || got != "https://catalog.test" {
-		t.Fatalf("catalog endpoint = %q %v", got, err)
+		t.Fatalf("recovery endpoint override = %q %v", got, err)
 	}
 	if recoveryRuntimeToken(nil) != "" || recoveryRuntimeToken(&GlobalFlags{Token: " token "}) != "token" {
 		t.Fatal("recovery token mismatch")
@@ -451,11 +448,14 @@ func TestCrossPlatformCoverageDirectRuntimeCoverage(t *testing.T) {
 		},
 	}
 	SetDynamicServers([]mcptypes.ServerDescriptor{{CLI: mcptypes.CLIOverlay{Skip: true}}, server, {CLI: mcptypes.CLIOverlay{ID: "empty"}}})
-	if got, ok := directRuntimeToolEndpoint("tool"); !ok || got != "https://one.test" {
+	if got, ok := directRuntimeEndpoint("unknown", "tool"); !ok || got != "https://one.test" {
 		t.Fatalf("tool endpoint = %q %v", got, ok)
 	}
-	if _, ok := directRuntimeToolEndpoint(" "); ok {
-		t.Fatal("blank tool endpoint resolved")
+	if got, ok := directRuntimeEndpoint("unknown", "override"); !ok || got != "https://one.test" {
+		t.Fatalf("tool override endpoint = %q %v", got, ok)
+	}
+	if _, ok := directRuntimeEndpoint("unknown", "skip"); ok {
+		t.Fatal("server-override tool endpoint resolved")
 	}
 	for _, id := range []string{"one", "cmd", "alias"} {
 		if got, ok := directRuntimeEndpoint(id, ""); !ok || got != "https://one.test" {
@@ -469,11 +469,6 @@ func TestCrossPlatformCoverageDirectRuntimeCoverage(t *testing.T) {
 		t.Fatalf("direct runtime IDs = %#v", ids)
 	}
 
-	t.Setenv(cli.CatalogFixtureEnv, "fixture")
-	if shouldUseDirectRuntime(executor.Invocation{Kind: "helper_invocation"}) {
-		t.Fatal("fixture should disable direct runtime")
-	}
-	t.Setenv(cli.CatalogFixtureEnv, "")
 	if !shouldUseDirectRuntime(executor.Invocation{Kind: "helper_invocation"}) || !shouldUseDirectRuntime(executor.Invocation{Kind: "compat_invocation"}) || shouldUseDirectRuntime(executor.Invocation{}) {
 		t.Fatal("direct runtime kind mismatch")
 	}
@@ -798,7 +793,6 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 	}
 
 	r.transport = transport.NewClient(nil)
-	r.loader = cli.StaticLoader{}
 	r.globalFlags = &GlobalFlags{Mock: true}
 	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["content"] == nil {
 		t.Fatalf("mock route = %#v %v", got, err)
@@ -809,18 +803,16 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 	}
 	t.Setenv("DINGTALK_PRODUCT_MCP_URL", "")
 
+	// Dry-run is an execution barrier enforced by Run before endpoint
+	// resolution, so a dry-run invocation returns a local preview and never
+	// reaches handleCatalogMiss or the fallback runner.
 	r.globalFlags = &GlobalFlags{DryRun: true}
-	r.loader = cli.CatalogLoaderFrom(cli.Catalog{}, errors.New("load failure"))
-	if _, err := r.runSingle(context.Background(), inv, false); err == nil || !strings.Contains(err.Error(), "load failure") {
-		t.Fatalf("catalog failure = %v", err)
-	}
-	r.loader = cli.StaticLoader{}
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["fallback"] != true || !fallback.last.DryRun {
-		t.Fatalf("dry catalog miss = %#v %v (invocation %#v)", got, err, fallback.last)
+	if got, err := r.Run(context.Background(), inv); err != nil || got.Response["dry_run"] != true || got.Response["fallback"] != nil {
+		t.Fatalf("dry endpoint miss = %#v %v", got, err)
 	}
 	r.globalFlags = &GlobalFlags{}
-	if _, err := r.runSingle(context.Background(), inv, false); err == nil {
-		t.Fatal("catalog miss succeeded")
+	if _, err := r.runSingle(context.Background(), inv, false); err == nil || !strings.Contains(err.Error(), "no dynamic endpoint registered for product or tool") {
+		t.Fatalf("endpoint miss = %v", err)
 	}
 	devInv := inv
 	devInv.CanonicalProduct = devappProductID
@@ -828,29 +820,20 @@ func TestCrossPlatformCoverageRuntimeRunnerRoutingCoverage(t *testing.T) {
 		t.Fatal("devapp catalog miss succeeded")
 	}
 
-	product := cli.CanonicalProduct{ID: "product", Endpoint: "https://catalog.test", Tools: []cli.ToolDescriptor{{RPCName: "tool"}}}
-	r.loader = cli.StaticLoader{Catalog: cli.Catalog{Products: []cli.CanonicalProduct{product}}}
-	r.globalFlags = &GlobalFlags{DryRun: true}
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["endpoint"] != "https://catalog.test" {
-		t.Fatalf("catalog dry route = %#v %v", got, err)
-	}
-	product.Tools = nil
-	r.loader = cli.StaticLoader{Catalog: cli.Catalog{Products: []cli.CanonicalProduct{product}}}
 	SetDynamicServers([]mcptypes.ServerDescriptor{{Endpoint: "https://direct.test", CLI: mcptypes.CLIOverlay{ID: "product", Tools: []mcptypes.CLITool{{Name: "tool"}}}}})
 	t.Cleanup(func() { SetDynamicServers(nil) })
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["endpoint"] != "https://direct.test" {
-		t.Fatalf("undeclared tool direct route = %#v %v", got, err)
+	directInv := inv
+	directInv.Kind = "helper_invocation"
+	directInv.DryRun = true
+	if got, err := r.runSingle(context.Background(), directInv, false); err != nil || got.Response["dry_run"] != true || got.Response["endpoint"] != "https://direct.test" {
+		t.Fatalf("direct runtime route = %#v %v", got, err)
 	}
 	SetDynamicServers(nil)
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["fallback"] != true || !fallback.last.DryRun {
-		t.Fatalf("undeclared tool dry miss = %#v %v (invocation %#v)", got, err, fallback.last)
-	}
-
-	SetDynamicServers([]mcptypes.ServerDescriptor{{Endpoint: "https://owner.test", CLI: mcptypes.CLIOverlay{ID: "owner", Tools: []mcptypes.CLITool{{Name: "tool"}}}}})
-	product.Tools = []cli.ToolDescriptor{{RPCName: "tool"}}
-	r.loader = cli.StaticLoader{Catalog: cli.Catalog{Products: []cli.CanonicalProduct{product}}}
-	if got, err := r.runSingle(context.Background(), inv, false); err != nil || got.Response["endpoint"] != "https://owner.test" {
-		t.Fatalf("tool owner correction = %#v %v", got, err)
+	// With no dynamic endpoint registered, a dry-run helper invocation is still
+	// stopped by the Run barrier before endpoint resolution.
+	r.globalFlags = &GlobalFlags{DryRun: true}
+	if got, err := r.Run(context.Background(), directInv); err != nil || got.Response["dry_run"] != true || got.Response["fallback"] != nil {
+		t.Fatalf("direct runtime dry miss = %#v %v", got, err)
 	}
 
 	for _, result := range []executor.Result{{}, {Response: map[string]any{"content": "value"}}, {Response: map[string]any{"value": 1}}} {
@@ -961,7 +944,7 @@ func TestCrossPlatformCoverageExecuteInvocationCoverage(t *testing.T) {
 		t.Fatalf("stdio dry-run = %#v %v", got, err)
 	}
 	stdioInv.DryRun = false
-	if _, err := r.executeStdioInvocation(context.Background(), stdioInv); err == nil {
+	if _, err := r.executeStdioInvocationAtEndpoint(context.Background(), "", stdioInv); err == nil {
 		t.Fatal("missing stdio client succeeded")
 	}
 }

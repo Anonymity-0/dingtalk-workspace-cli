@@ -48,12 +48,20 @@ func TestGoGenerateDirectivesStayInUnifiedEntryPoint(t *testing.T) {
 		t.Fatalf("read gen.go: %v", err)
 	}
 	for _, generator := range []string{
-		"cmd_schema_agent_metadata",
 		"cmd_schema_catalog",
 		"cmd_param_aliases",
 	} {
 		if !bytes.Contains(content, []byte("//go:generate go run")) || !bytes.Contains(content, []byte(generator)) {
 			t.Errorf("gen.go does not register %s", generator)
+		}
+	}
+	if bytes.Contains(content, []byte("cmd_schema_agent_metadata")) {
+		t.Error("gen.go must not regenerate retired schema_agent_metadata/")
+	}
+	for _, line := range bytes.Split(content, []byte("\n")) {
+		trimmed := strings.TrimSpace(string(line))
+		if strings.HasPrefix(trimmed, "//go:generate") && strings.Contains(trimmed, "schema_agent_metadata") {
+			t.Errorf("go:generate must not target schema_agent_metadata: %s", trimmed)
 		}
 	}
 }
