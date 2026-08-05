@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -60,8 +61,7 @@ func (*chatBotRichMediaCaller) Fields() string { return "" }
 func (*chatBotRichMediaCaller) JQ() string     { return "" }
 
 func TestChatMessageSendByBotMapsMessageTypeByTarget(t *testing.T) {
-	previousDeps := deps
-	t.Cleanup(func() { deps = previousDeps })
+	testseam.Protect(t, &deps)
 
 	tests := []struct {
 		name          string
@@ -130,8 +130,7 @@ func TestChatMessageSendByBotMapsMessageTypeByTarget(t *testing.T) {
 }
 
 func TestChatMessageSendByBotRequiresMsgTypeForRichMedia(t *testing.T) {
-	previousDeps := deps
-	t.Cleanup(func() { deps = previousDeps })
+	testseam.Protect(t, &deps)
 
 	tests := []struct {
 		name      string
@@ -228,17 +227,13 @@ func TestParseConversationFileDownloadURL(t *testing.T) {
 }
 
 func TestChatMessageSendByBotUploadsLocalFile(t *testing.T) {
-	previousDeps, previousPut := deps, httpPutFile
-	t.Cleanup(func() {
-		deps = previousDeps
-		httpPutFile = previousPut
-	})
-	httpPutFile = func(_ context.Context, resourceURL string, _ map[string]string, _ string, _ int64) error {
+	testseam.Protect(t, &deps)
+	testseam.Swap(t, &httpPutFile, func(_ context.Context, resourceURL string, _ map[string]string, _ string, _ int64) error {
 		if resourceURL != "https://upload.example/file" {
 			t.Fatalf("resourceURL = %q", resourceURL)
 		}
 		return nil
-	}
+	})
 
 	filePath := filepath.Join(t.TempDir(), "report.pdf")
 	if err := os.WriteFile(filePath, []byte("report"), 0o600); err != nil {
@@ -312,8 +307,7 @@ func TestChatMessageSendByBotUploadsLocalFile(t *testing.T) {
 }
 
 func TestChatMessageSendByBotLocalFileRejectsMultipleDirectRecipients(t *testing.T) {
-	previousDeps := deps
-	t.Cleanup(func() { deps = previousDeps })
+	testseam.Protect(t, &deps)
 
 	caller := &chatBotRichMediaCaller{}
 	err := runChatCoverageCommand(t, caller,
@@ -332,11 +326,7 @@ func TestChatMessageSendByBotLocalFileRejectsMultipleDirectRecipients(t *testing
 }
 
 func TestChatMessageSendByBotLocalFileErrorsAndDryRun(t *testing.T) {
-	previousDeps, previousPut := deps, httpPutFile
-	t.Cleanup(func() {
-		deps = previousDeps
-		httpPutFile = previousPut
-	})
+	testseam.Protect(t, &deps)
 
 	t.Run("missing local file", func(t *testing.T) {
 		caller := &chatBotRichMediaCaller{}
@@ -377,9 +367,9 @@ func TestChatMessageSendByBotLocalFileErrorsAndDryRun(t *testing.T) {
 	})
 
 	t.Run("upload failure", func(t *testing.T) {
-		httpPutFile = func(context.Context, string, map[string]string, string, int64) error {
+		testseam.Swap(t, &httpPutFile, func(context.Context, string, map[string]string, string, int64) error {
 			return fmt.Errorf("put failed")
-		}
+		})
 		caller := &chatBotRichMediaCaller{}
 		err := runChatCoverageCommand(t, caller,
 			"message", "send-by-bot",
