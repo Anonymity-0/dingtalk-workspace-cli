@@ -1,6 +1,6 @@
 ---
 name: dingtalk-misc
-description: 长尾产品集合技能，覆盖低频钉钉产品：OA审批/考勤/直播/DING紧急消息/开放平台应用管理/Agoal目标管理/日志日报周报/电子表格/开放平台文档搜索/文档内嵌白板/DWS技能市场安装。Use when 用户提到上述任一产品，或审批/打卡/排班/OKR/日报周报/单元格读写/白板节点读写/搜索安装技能/开发者后台应用等相关操作。命中后由本 skill 的「产品索引表」定位具体子产品和命令前缀，再按对应子产品说明执行。
+description: 长尾产品集合技能，覆盖低频钉钉产品：OA审批/考勤/直播/DING紧急消息/开放平台应用管理/Agoal目标管理/日志日报周报/电子表格/开放平台文档搜索/文档内嵌白板/DWS技能市场安装/个人IM事件。Use when 用户提到上述任一产品，或审批/打卡/排班/OKR/日报周报/单元格读写/白板节点读写/搜索安装技能/开发者后台应用/实时监听消息/被@消息/监听某人或某群/监听已读撤回表情回应/个人 IM 事件/群成员加入/群成员退出/群状态变化/事件驱动 Agent 等相关操作。命中后由本 skill 的「产品索引表」定位具体子产品和命令前缀，再按对应子产品说明执行。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -32,6 +32,7 @@ metadata:
 | 开放平台文档 / API文档 / 接口文档 / 接口报错 | 开放平台开发文档搜索 | `dws devdoc` | [devdoc.md](references/devdoc.md) |
 | 白板 / 画布 / OpenNodes / 白板节点 | 读取和更新钉钉文档中的内嵌白板 | `dws whiteboard` | [whiteboard.md](references/whiteboard.md) |
 | 搜索技能 / 找技能 / 安装技能 / 技能市场 / 安装 DWS mono 或 multi skill | DWS 技能市场搜索、下载、安装与内置技能部署 | `dws skill` | [skill.md](references/skill.md) |
+| 个人 IM 事件 / 实时监听 / 被@消息 / 监听某人某群 / 已读撤回表情回应 / 群成员加入退出 / 事件驱动 Agent | 个人 IM 事件长连接监听、订阅与消费 | `dws event` | [event.md](references/event.md) |
 | 宜搭 / AI应用脚本 / 财务辅助脚本（未产品化） | **无**稳定命令面；仅仓库内辅助脚本 | （非默认路由） | [unsupported-scripts.md](references/unsupported-scripts.md) |
 
 ## 说明
@@ -41,3 +42,4 @@ metadata:
 - 各产品之间跨产品协作若指向本包内的其它产品，已在对应 `references/<product>.md` 里写成"见本包 references/X.md"，无需切换 skill；若指向 top10 独立产品（如 `chat`/`aisearch`/`doc`），仍按 `dingtalk-<product>` 切换 skill。
 - `scripts/` 下 yida / finance / `aiapp_create_and_poll.py` 等见 [unsupported-scripts.md](references/unsupported-scripts.md)；默认不要当正式能力调用。
 - 开放平台应用的命令组细文档在 [references/dev/](references/dev/)；命中后先读 [devapp.md](references/devapp.md)，再按需加载对应子文件。
+- 个人 IM 事件命中后先读 [event.md](references/event.md)，再按需加载 `event-im*.md`；不要与开放平台应用事件 [dev/event.md](references/dev/event.md) 混淆。
