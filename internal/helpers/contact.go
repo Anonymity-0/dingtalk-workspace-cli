@@ -332,9 +332,6 @@ func newContactUserUpdateOwnnessCommand() *cobra.Command {
 			if ownnessText == "" {
 				return fmt.Errorf("--ownness-text 不能为空")
 			}
-			if !confirmDangerousAction(cmd, "update user ownness", userID) {
-				return nil
-			}
 			return callMCPTool("user_ownness_update", map[string]any{
 				"userId":      userID,
 				"ownnessText": ownnessText,
