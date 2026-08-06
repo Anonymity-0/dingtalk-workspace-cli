@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/paging"
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -123,113 +126,191 @@ func resolveWorkflowDSL(cmd *cobra.Command) (map[string]any, error) {
 }
 
 // recordQueryFetchAll implements --all auto-pagination for record query.
-//   - pageLimit controls max pages (default 50, 0 = unlimited)
-//   - Mid-loop errors break gracefully, outputting already-fetched data
-//   - Merged result preserves last page's cursor so caller can resume
+// It prints only a complete result. A page limit, empty/invalid response,
+// transport failure, or cursor cycle returns a non-zero structured error whose
+// details retain the incomplete records and retry cursor.
 func recordQueryFetchAll(toolArgs map[string]any, pageLimit int) error {
-	const pageDelayMs = 200
 	const serverID = "aitable"
 
 	ctx := context.Background()
-	var allRecords []any
-	page := 0
-	lastCursor := ""
+	requestArgs := make(map[string]any, len(toolArgs))
+	for key, value := range toolArgs {
+		requestArgs[key] = value
+	}
+	initialCursor, _ := requestArgs["cursor"].(string)
 
-	for {
-		page++
-
-		if page > 1 {
-			helperSleep(time.Duration(pageDelayMs) * time.Millisecond)
-		}
-
-		fmt.Fprintf(os.Stderr, "[page %d] fetching...\n", page)
-
-		result, err := deps.Caller.CallTool(ctx, serverID, "query_records", toolArgs)
-		if err != nil {
-			if page == 1 {
-				return WrapError(err)
-			}
-			fmt.Fprintf(os.Stderr, "[page %d] error, stopping pagination: %v\n", page, err)
-			break
-		}
-
-		// Extract text content from tool result
-		var text string
-		for _, c := range result.Content {
-			if c.Type == "text" && c.Text != "" {
-				text = c.Text
-				break
-			}
-		}
-		if text == "" {
-			break
-		}
-
-		var resp map[string]any
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			if page == 1 {
-				deps.Out.PrintRaw(text)
-				return nil
-			}
-			break
-		}
-
-		// Extract records from response
-		var pageRecords []any
-		if data, ok := resp["data"].(map[string]any); ok {
-			if recs, ok := data["records"].([]any); ok {
-				pageRecords = recs
-			}
-		} else if recs, ok := resp["records"].([]any); ok {
-			pageRecords = recs
-		}
-		allRecords = append(allRecords, pageRecords...)
-
-		// Extract cursor for next page (MCP returns "nextCursor" or "cursor")
-		cursor := ""
-		if data, ok := resp["data"].(map[string]any); ok {
-			if c, ok := data["nextCursor"].(string); ok && c != "" {
-				cursor = c
-			} else if c, ok := data["cursor"].(string); ok && c != "" {
-				cursor = c
-			}
-		} else if c, ok := resp["nextCursor"].(string); ok && c != "" {
-			cursor = c
-		} else if c, ok := resp["cursor"].(string); ok && c != "" {
-			cursor = c
-		}
-
+	result := paging.FetchAll(ctx, func(ctx context.Context, cursor string) (paging.Page, error) {
 		if cursor == "" {
-			lastCursor = ""
-			break
+			delete(requestArgs, "cursor")
+		} else {
+			requestArgs["cursor"] = cursor
 		}
-
-		// Check page limit (0 = unlimited)
-		if pageLimit > 0 && page >= pageLimit {
-			lastCursor = cursor
-			fmt.Fprintf(os.Stderr, "[pagination] reached page limit (%d), stopping. Use --page-limit 0 to fetch all.\n", pageLimit)
-			break
+		toolResult, err := deps.Caller.CallTool(ctx, serverID, "query_records", requestArgs)
+		if err != nil {
+			return paging.Page{}, err
 		}
+		if toolResult == nil {
+			return paging.Page{}, fmt.Errorf("query_records returned a nil result")
+		}
+		for _, content := range toolResult.Content {
+			if content.Type == "text" && strings.TrimSpace(content.Text) != "" {
+				return parseRecordQueryPage(content.Text)
+			}
+		}
+		return paging.Page{}, fmt.Errorf("query_records returned no non-empty text content")
+	}, paging.Options{
+		PageLimit:      pageLimit,
+		InterPageDelay: paging.DefaultInterPageDelay,
+		InitialCursor:  initialCursor,
+	})
 
-		lastCursor = ""
-		toolArgs["cursor"] = cursor
+	if !result.Complete {
+		return recordQueryIncompleteError(result, pageLimit)
 	}
 
-	fmt.Fprintf(os.Stderr, "[pagination] done: %d pages, %d total records\n", page, len(allRecords))
-
-	// Build merged output — preserve cursor & has_more for resume capability
+	fmt.Fprintf(os.Stderr, "[pagination] complete: %d pages, %d fetched records\n", result.Pages, len(result.Records))
 	mergedData := map[string]any{
-		"records":    allRecords,
-		"totalCount": len(allRecords),
+		"records":      result.Records,
+		"fetchedCount": len(result.Records),
+		"hasMore":      false,
+		"complete":     true,
+		"pages":        result.Pages,
 	}
-	if lastCursor != "" {
-		mergedData["cursor"] = lastCursor
-		mergedData["hasMore"] = true
-	} else {
-		mergedData["hasMore"] = false
+	if result.TotalCount != nil {
+		mergedData["totalCount"] = *result.TotalCount
+	}
+	return deps.Out.PrintJSON(map[string]any{"data": mergedData})
+}
+
+func parseRecordQueryPage(text string) (paging.Page, error) {
+	decoder := json.NewDecoder(strings.NewReader(text))
+	decoder.UseNumber()
+	var response map[string]any
+	if err := decoder.Decode(&response); err != nil {
+		return paging.Page{}, fmt.Errorf("query_records returned invalid JSON: %w", err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return paging.Page{}, fmt.Errorf("query_records returned more than one JSON value")
+		}
+		return paging.Page{}, fmt.Errorf("query_records returned trailing invalid JSON: %w", err)
+	}
+	if response == nil {
+		return paging.Page{}, fmt.Errorf("query_records returned null instead of an object")
 	}
 
-	return deps.Out.PrintJSON(map[string]any{"data": mergedData})
+	payload := response
+	if rawData, exists := response["data"]; exists {
+		data, ok := rawData.(map[string]any)
+		if !ok {
+			return paging.Page{}, fmt.Errorf("query_records data must be an object, got %T", rawData)
+		}
+		payload = data
+	}
+
+	rawRecords, exists := payload["records"]
+	if !exists {
+		return paging.Page{}, fmt.Errorf("query_records response is missing records")
+	}
+	records, ok := rawRecords.([]any)
+	if !ok {
+		return paging.Page{}, fmt.Errorf("query_records records must be an array, got %T", rawRecords)
+	}
+	for index, record := range records {
+		if _, ok := record.(map[string]any); !ok {
+			return paging.Page{}, fmt.Errorf("query_records records[%d] must be an object, got %T", index, record)
+		}
+	}
+
+	nextCursor := firstNonEmptyString(payload, "nextCursor", "cursor")
+	if hasMore, ok := payload["hasMore"].(bool); ok && hasMore && nextCursor == "" {
+		return paging.Page{}, fmt.Errorf("query_records reported hasMore=true without a next cursor")
+	}
+	totalCount, err := parseOptionalNonNegativeInt(payload["totalCount"])
+	if err != nil {
+		return paging.Page{}, fmt.Errorf("query_records totalCount: %w", err)
+	}
+	return paging.Page{Records: records, NextCursor: nextCursor, TotalCount: totalCount}, nil
+}
+
+func firstNonEmptyString(values map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value, ok := values[key].(string); ok && strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func parseOptionalNonNegativeInt(value any) (*int, error) {
+	if value == nil {
+		return nil, nil
+	}
+	var parsed int64
+	switch typed := value.(type) {
+	case json.Number:
+		integer, err := typed.Int64()
+		if err != nil {
+			return nil, fmt.Errorf("must be an integer, got %q", typed)
+		}
+		parsed = integer
+	case float64:
+		if math.Trunc(typed) != typed {
+			return nil, fmt.Errorf("must be an integer, got %v", typed)
+		}
+		parsed = int64(typed)
+	case int:
+		parsed = int64(typed)
+	case int64:
+		parsed = typed
+	default:
+		return nil, fmt.Errorf("must be a non-negative integer, got %T", value)
+	}
+	if parsed < 0 || int64(int(parsed)) != parsed {
+		return nil, fmt.Errorf("must fit a non-negative int, got %d", parsed)
+	}
+	result := int(parsed)
+	return &result, nil
+}
+
+func recordQueryIncompleteError(result paging.Result, pageLimit int) error {
+	incomplete := map[string]any{
+		"records":      result.Records,
+		"fetchedCount": len(result.Records),
+		"pages":        result.Pages,
+		"attempts":     result.Attempts,
+		"complete":     false,
+		"hasMore":      result.HasMore,
+		"stopReason":   result.StopReason,
+	}
+	if result.LastCursor != "" {
+		incomplete["cursor"] = result.LastCursor
+	}
+	if result.TotalCount != nil {
+		incomplete["totalCount"] = *result.TotalCount
+	}
+
+	hint := "retry the command; the structured error details preserve fetched records and the retry cursor"
+	if result.StopReason == paging.StopPageLimit {
+		hint = "rerun with --page-limit 0 to require a complete result, or resume from details.cursor"
+	}
+	message := fmt.Sprintf("record pagination incomplete after %d successful page(s) and %d fetched record(s)", result.Pages, len(result.Records))
+	return apperrors.NewAPI(message,
+		apperrors.WithOperation("aitable.query_records.all"),
+		apperrors.WithServerKey("aitable"),
+		apperrors.WithOrigin("mcp"),
+		apperrors.WithFailureStage("pagination"),
+		apperrors.WithExecutionStarted(true),
+		apperrors.WithRetryable(true),
+		apperrors.WithReason("pagination_"+string(result.StopReason)),
+		apperrors.WithHint(hint),
+		apperrors.WithDetails(map[string]any{
+			"page_limit":        pageLimit,
+			"incomplete_result": incomplete,
+		}),
+		apperrors.WithCause(result.Err),
+	)
 }
 
 // ─── filters 格式校验 ──────────────────────────────────────────────────────

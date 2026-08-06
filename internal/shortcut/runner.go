@@ -160,7 +160,7 @@ func (rt *RuntimeContext) CallMCPWriteData(product, tool string, params map[stri
 	if rt.DryRun() {
 		return nil, dryRunWriteError(product, tool)
 	}
-	return rt.callMCPData(product, tool, params)
+	return rt.callMCPWriteData(product, tool, params)
 }
 
 func dryRunWriteError(product, tool string) error {
@@ -201,6 +201,30 @@ func (rt *RuntimeContext) callMCPReadData(product, tool string, params map[strin
 	}
 	if strings.TrimSpace(text) == "" {
 		return map[string]any{}, nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal([]byte(text), &out); err != nil {
+		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", tool, err))
+	}
+	return out, nil
+}
+
+func (rt *RuntimeContext) callMCPWriteData(product, tool string, params map[string]any) (map[string]any, error) {
+	if params == nil {
+		params = map[string]any{}
+	}
+	text, err := helpers.CallMCPToolTextOnServer(product, tool, params)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(text) == "" {
+		return nil, apperrors.NewAPI("MCP write tool returned no business result; the remote effect is unknown",
+			apperrors.WithOperation(product+"/"+tool),
+			apperrors.WithOrigin("mcp"),
+			apperrors.WithFailureStage("response_validation"),
+			apperrors.WithRetryable(false),
+			apperrors.WithReason("empty_tool_response"),
+		)
 	}
 	var out map[string]any
 	if err := json.Unmarshal([]byte(text), &out); err != nil {

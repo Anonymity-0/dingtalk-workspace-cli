@@ -39,7 +39,7 @@ func TestFetchAll_SinglePage(t *testing.T) {
 		},
 	}
 	got := FetchAll(context.Background(), s.Fetch, Options{InterPageDelay: 1 * time.Millisecond})
-	if got.HasMore || got.Pages != 1 || len(got.Records) != 3 {
+	if got.HasMore || !got.Complete || got.StopReason != StopComplete || got.Pages != 1 || got.Attempts != 1 || len(got.Records) != 3 {
 		t.Fatalf("single page: got=%+v", got)
 	}
 }
@@ -53,7 +53,7 @@ func TestFetchAll_MultiPage(t *testing.T) {
 		},
 	}
 	got := FetchAll(context.Background(), s.Fetch, Options{InterPageDelay: 1 * time.Millisecond})
-	if got.HasMore || got.Pages != 3 || len(got.Records) != 5 {
+	if got.HasMore || !got.Complete || got.Pages != 3 || got.Attempts != 3 || len(got.Records) != 5 {
 		t.Fatalf("multi page: got=%+v", got)
 	}
 }
@@ -80,6 +80,9 @@ func TestFetchAll_PageLimit(t *testing.T) {
 	if len(got.Records) != 2 {
 		t.Fatalf("page limit records: got=%v", got.Records)
 	}
+	if got.Complete || got.Partial || got.StopReason != StopPageLimit {
+		t.Fatalf("page limit completeness: got=%+v", got)
+	}
 }
 
 func TestFetchAll_MidErrorPartial(t *testing.T) {
@@ -99,6 +102,9 @@ func TestFetchAll_MidErrorPartial(t *testing.T) {
 	}
 	if !got.HasMore {
 		t.Fatalf("partial should signal HasMore=true so caller can retry")
+	}
+	if got.Pages != 1 || got.Attempts != 2 || got.StopReason != StopFetchError {
+		t.Fatalf("partial counters: got=%+v", got)
 	}
 }
 
@@ -131,10 +137,9 @@ func TestFetchAll_ContextCancel(t *testing.T) {
 }
 
 func TestFetchAll_UnlimitedPageLimit(t *testing.T) {
-	// PageLimit 显式置 -1 时（约定为"不限"），翻完为止
-	// （当前实现 PageLimit==0 用默认值 50；要真正无限制需另设特殊值，
-	// 这里测试默认 50 上限内能完成全量）
-	pages := make([]Page, 10)
+	// PageLimit=0 是公开契约中的“无限制”。用超过默认安全阀的页数防止
+	// 实现再次偷偷把 0 改写成 DefaultPageLimit。
+	pages := make([]Page, DefaultPageLimit+1)
 	for i := range pages {
 		next := ""
 		if i < len(pages)-1 {
@@ -144,10 +149,33 @@ func TestFetchAll_UnlimitedPageLimit(t *testing.T) {
 	}
 	s := &stubFetcher{pages: pages}
 	got := FetchAll(context.Background(), s.Fetch, Options{
-		PageLimit:      100, // 高于实际页数
+		PageLimit:      0,
 		InterPageDelay: 1 * time.Millisecond,
 	})
-	if got.HasMore || got.Pages != 10 || len(got.Records) != 10 {
+	if got.HasMore || !got.Complete || got.Pages != len(pages) || len(got.Records) != len(pages) {
 		t.Fatalf("unlimited: got=%+v", got)
+	}
+}
+
+func TestFetchAll_PreservesServerTotalCount(t *testing.T) {
+	total := 123
+	s := &stubFetcher{pages: []Page{{Records: []any{1, 2}, TotalCount: &total}}}
+	got := FetchAll(context.Background(), s.Fetch, Options{InterPageDelay: time.Millisecond})
+	if got.TotalCount == nil || *got.TotalCount != total {
+		t.Fatalf("server total count lost: got=%+v", got)
+	}
+}
+
+func TestFetchAll_StopsOnCursorCycle(t *testing.T) {
+	s := &stubFetcher{pages: []Page{
+		{Records: []any{1}, NextCursor: "c1"},
+		{Records: []any{2}, NextCursor: "c1"},
+	}}
+	got := FetchAll(context.Background(), s.Fetch, Options{InterPageDelay: time.Millisecond})
+	if !got.Partial || got.Complete || got.StopReason != StopCursorCycle || !errors.Is(got.Err, ErrCursorCycle) {
+		t.Fatalf("cursor cycle: got=%+v", got)
+	}
+	if got.Pages != 2 || got.Attempts != 2 || got.LastCursor != "c1" || len(got.Records) != 2 {
+		t.Fatalf("cursor cycle progress: got=%+v", got)
 	}
 }
