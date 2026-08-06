@@ -2391,10 +2391,10 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"个人身份发送或自定义 Webhook 告警不要使用"},
 				Examples:     []string{"dws chat message send-by-bot --robot-code <robotCode> --group <openConversationId> --title \"日报\" --text \"今日进展\""},
 			},
+			// Keep title/text required_when out of Schema: the runtime switch above
+			// enforces Markdown inputs, while adding it breaks merge-base compatibility.
 			Parameters: []contract.ParamDecl{
 				{Name: "msg-type", RequiredWhen: "image-url or file-path is provided", Enum: []string{"markdown", "image", "file"}},
-				{Name: "title", RequiredWhen: "msg-type is markdown or omitted"},
-				{Name: "text", RequiredWhen: "msg-type is markdown or omitted"},
 				{Name: "image-url", RequiredWhen: "msg-type is image"},
 				{Name: "file-path", RequiredWhen: "msg-type is file"},
 			},
