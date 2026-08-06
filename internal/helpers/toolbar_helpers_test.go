@@ -26,14 +26,22 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
+type toolbarCall struct {
+	product string
+	tool    string
+	args    map[string]any
+}
+
 type toolbarTestCaller struct {
 	product string
 	tool    string
 	args    map[string]any
 	err     error
+	calls   []toolbarCall
 }
 
 func (c *toolbarTestCaller) CallTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	c.calls = append(c.calls, toolbarCall{product: productID, tool: toolName, args: args})
 	c.product = productID
 	c.tool = toolName
 	c.args = args
@@ -304,4 +312,40 @@ func TestToolbarSortValidatesOptionalUnsortedIDs(t *testing.T) {
 		"sortedShortcutIds":   []int64{1, 2},
 		"unsortedShortcutIds": []int64{3, 4},
 	})
+}
+
+func TestCrossPlatformCoverageToolbarRemoveCustomRejectsWithoutYes(t *testing.T) {
+	caller := &toolbarTestCaller{}
+	err := executeToolbarCommand(t, newToolbarRemoveCustomCommand(), caller,
+		"--conversation-id", "cidX", "--shortcut-id", "42")
+	requireTypedConfirmationError(t, err)
+	if len(caller.calls) != 0 {
+		t.Fatalf("expected 0 MCP calls before --yes, got %d: %+v", len(caller.calls), caller.calls)
+	}
+	if caller.product != "" || caller.tool != "" || caller.args != nil {
+		t.Fatalf("expected no MCP call recorded, got product=%q tool=%q args=%#v", caller.product, caller.tool, caller.args)
+	}
+}
+
+func TestCrossPlatformCoverageToolbarRemoveCustomCallsMCPWithExactArgsWhenYes(t *testing.T) {
+	caller := &toolbarTestCaller{}
+	err := executeToolbarCommand(t, newToolbarRemoveCustomCommand(), caller,
+		"--conversation-id", "cidX", "--shortcut-id", "42", "--yes")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(caller.calls) != 1 {
+		t.Fatalf("expected exactly 1 MCP call, got %d: %+v", len(caller.calls), caller.calls)
+	}
+	call := caller.calls[0]
+	if call.product != "im" {
+		t.Fatalf("product = %q, want im", call.product)
+	}
+	if call.tool != "remove_chat_toolbar_custom_shortcut" {
+		t.Fatalf("tool = %q, want remove_chat_toolbar_custom_shortcut", call.tool)
+	}
+	wantArgs := map[string]any{"openCid": "cidX", "shortcutId": int64(42)}
+	if !reflect.DeepEqual(call.args, wantArgs) {
+		t.Fatalf("tool args = %#v, want %#v", call.args, wantArgs)
+	}
 }

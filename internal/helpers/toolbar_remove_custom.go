@@ -22,12 +22,10 @@ import (
 
 func newToolbarRemoveCustomCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "remove-custom",
-		Short: "删除自定义快捷栏入口",
-		Long:  "删除一个自定义快捷栏入口。该操作不可逆；必须先获得用户确认，再追加 --yes 执行。",
-		Example: `  dws chat toolbar remove-custom --conversation-id <cid> --shortcut-id 123
-  # 确认删除: dws chat toolbar remove-custom --conversation-id <cid> --shortcut-id 123 --yes
-  # 查询入口 ID: dws chat toolbar list --conversation-id <cid>`,
+		Use:     "remove-custom",
+		Short:   "删除自定义快捷栏入口",
+		Long:    "删除一个自定义快捷栏入口。该操作不可逆；必须先获得用户确认，再追加 --yes 执行。",
+		Example: `  dws chat toolbar remove-custom --conversation-id <cid> --shortcut-id 123`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cid, err := toolbarConversationID(cmd)
 			if err != nil {

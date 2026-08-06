@@ -1949,8 +1949,6 @@ Usage:
   dws chat toolbar remove-custom [flags]
 Example:
   dws chat toolbar remove-custom --conversation-id <cid> --shortcut-id 123
-  # 确认删除:
-  dws chat toolbar remove-custom --conversation-id <cid> --shortcut-id 123 --yes
 Flags:
       --conversation-id string  会话 openConversationId (必填)
       --shortcut-id int         自定义入口 ID (必填)
