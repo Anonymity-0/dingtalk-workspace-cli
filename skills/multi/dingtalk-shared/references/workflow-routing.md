@@ -27,9 +27,9 @@ skill 完成。
 ## Lite 与 Full
 
 - 单一目标、短链路、无多源汇总：在
-  [lite-recipes.md](best_practices/_common/lite-recipes.md) 中只读取对应 recipe。
+  [lite-catalog.md](recipes/lite-catalog.md) 中只读取对应 recipe。
 - 涉及多源采集、批量处理、交叉分析、汇总/归纳或三个以上产品：使用上表的完整
-  行动指南，并按 [conventions.md](best_practices/_common/conventions.md) 执行批量和
+  行动指南，并按 [conventions.md](recipes/shared/conventions.md) 执行批量和
   ID 传递规则。
 - 产品 skill 已内联完整步骤时，直接执行其步骤，不再重复读取通用 recipe。
 

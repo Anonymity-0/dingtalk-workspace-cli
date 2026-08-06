@@ -45,8 +45,8 @@ metadata:
 | `confirmation_required` / 写操作确认 | [confirmation.md](references/confirmation.md) |
 | 命令发现、Schema / `--compact` / `--all` | [schema-usage.md](references/schema-usage.md) |
 | 怀疑能力不支持 | [capability-limits.md](references/capability-limits.md) |
-| 批量/多源采集 | [conventions.md](references/best_practices/_common/conventions.md) |
-| 固定短流程 | [lite-recipes.md](references/best_practices/_common/lite-recipes.md) 对应章节 |
+| 批量/多源采集 | [conventions.md](references/recipes/shared/conventions.md) |
+| 固定短流程 | [lite-catalog.md](references/recipes/lite-catalog.md) 对应章节 |
 
 产品命令、脚本和字段细节位于对应产品 skill，不在 `dingtalk-shared` 重复维护。
 
