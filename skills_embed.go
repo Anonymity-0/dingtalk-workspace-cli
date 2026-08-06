@@ -23,7 +23,7 @@ import "embed"
 // into the binary. Retired build-only inputs (for example the former
 // internal/cli/schema_hints tree) must stay absent from this embed. The `all:`
 // prefix is required so dot/underscore entries — e.g.
-// dingtalk-shared/references/recipes/shared — are included rather than skipped.
+// mono/references/best_practices/_common — are included rather than skipped.
 //
 //go:embed all:skills/mono all:skills/multi
 var EmbeddedSkills embed.FS

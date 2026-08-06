@@ -71,7 +71,7 @@ skills/mono/
 | 跨产品路由 / 工作流 | `references/routing.md`、`workflow-routing.md`、`intent-guide.md` |
 | 运行时最小契约长文 | `references/runtime-contract.md`（受 context-budget 约束） |
 | 全局协议（确认门禁 / Schema 教学等） | `references/`；见质检基线 |
-| 与 mono 全局文同名迁移 | `error-codes`、`url-patterns`、`capability-limits`、`channel-login`、`global-reference`、`recipes/`（shared 层：`recipes/shared/`、`recipes/lite-catalog.md`） |
+| 与 mono 全局文同名迁移 | `error-codes`、`url-patterns`、`capability-limits`、`channel-login`、`global-reference`、`recipes/`（`conventions.md`、`meta.md`、`lite-catalog.md`） |
 
 产品专属规则（如 AI 表格 `field-rules`）允许下沉到对应 `dingtalk-*`，须在覆盖表注明。
 
