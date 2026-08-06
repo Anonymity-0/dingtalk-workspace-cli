@@ -14,6 +14,19 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   Transport errors keep generic retry/auth guidance without pointing callers
   at recovery.
 
+## [1.0.57-beta.3] - 2026-08-06
+
+### Added
+
+- **Reviewed document shortcuts** (#880) — adds public document shortcuts for
+  safe local downloads, content and history, review, media and style, and
+  document access/sharing workflows, while retaining reviewed compatibility
+  identities and confirmation safeguards for writes.
+- **Mentions in chat replies** (#881) — `chat message reply` now supports
+  `--at-open-dingtalk-ids` and `--at-all`, forwarding reply mention fields and
+  adding any required mention placeholders without changing existing send
+  behavior.
+
 ## [1.0.57-beta.2] - 2026-08-05
 
 ### Fixed
