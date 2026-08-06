@@ -419,10 +419,14 @@ func TestRootKeepsSVIPChatCompatibilityFlags(t *testing.T) {
 	}
 }
 
-func TestCacheCommandRemoved(t *testing.T) {
+func TestCacheCommandDeprecatedCompatStub(t *testing.T) {
 	root := NewRootCommand()
-	if cmd, _, err := root.Find([]string{"cache"}); err == nil && cmd != nil && cmd != root {
-		t.Fatalf("dws cache compatibility stub must be removed, found %q", cmd.CommandPath())
+	cmd, _, err := root.Find([]string{"cache", "refresh"})
+	if err != nil || cmd == nil || cmd == root {
+		t.Fatalf("dws cache refresh compatibility stub missing: %v", err)
+	}
+	if cmd.Hidden || cmd.Deprecated == "" {
+		t.Fatalf("cache refresh must be visible Deprecated: hidden=%v deprecated=%q", cmd.Hidden, cmd.Deprecated)
 	}
 }
 

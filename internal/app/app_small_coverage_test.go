@@ -352,11 +352,16 @@ func TestCrossPlatformCoverageOverlayRecoveryHostAndHelperRemainingCoverage(t *t
 	}
 }
 
-func TestCrossPlatformCoverageConfigCommandRemainingCoverage(t *testing.T) {
-	command := newConfigCommand()
-	command.SetOut(io.Discard)
-	if err := command.RunE(command, nil); err != nil {
-		t.Fatal(err)
+func TestCrossPlatformCoverageConfigAndCacheCommandRemainingCoverage(t *testing.T) {
+	for _, command := range []*cobra.Command{newConfigCommand(), newCacheCommand()} {
+		command.SetOut(io.Discard)
+		rootWrap := &cobra.Command{Use: "dws"}
+		rootWrap.PersistentFlags().String("format", "json", "")
+		rootWrap.AddCommand(command)
+		command.SetOut(io.Discard)
+		if err := command.RunE(command, nil); err != nil {
+			t.Fatal(err)
+		}
 	}
 	t.Setenv("DWS_CONFIG_DIR", "configured")
 	configCmd := &cobra.Command{Use: "config"}
@@ -373,5 +378,27 @@ func TestCrossPlatformCoverageConfigCommandRemainingCoverage(t *testing.T) {
 	_ = list.Flags().Set("json", "true")
 	if err := runConfigList(list, nil); err != nil {
 		t.Fatal(err)
+	}
+
+	cacheRoot := &cobra.Command{Use: "root"}
+	cacheRoot.PersistentFlags().String("format", "", "")
+	cacheCmd := &cobra.Command{Use: "cache"}
+	cacheRoot.AddCommand(cacheCmd)
+	for _, format := range []string{"json", "pretty", "table"} {
+		_ = cacheRoot.PersistentFlags().Set("format", format)
+		cacheCmd.SetOut(io.Discard)
+		if err := printCacheCompatNotice(cacheCmd, "dws cache status"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fail := errors.New("write")
+	cacheCmd.SetOut(appFailWriter{err: fail})
+	_ = cacheRoot.PersistentFlags().Set("format", "pretty")
+	if err := printCacheCompatNotice(cacheCmd, "dws cache status"); !errors.Is(err, fail) {
+		t.Fatalf("pretty write error = %v", err)
+	}
+	_ = cacheRoot.PersistentFlags().Set("format", "table")
+	if err := printCacheCompatNotice(cacheCmd, "dws cache status"); !errors.Is(err, fail) {
+		t.Fatalf("table write error = %v", err)
 	}
 }
