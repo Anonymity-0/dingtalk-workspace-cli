@@ -149,9 +149,9 @@ func TestCrossPlatformCoverageDownloadAtomicNoClobberAndOverwrite(t *testing.T) 
 		}
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(payload)), Header: make(http.Header)}, nil
 	})}
-	result, err := Download(context.Background(), "https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/file.md", DownloadOptions{
-		BaseDir: base, Output: "nested/result.md", Client: client,
-	})
+	result, err := downloadWithClient(context.Background(), "https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/file.md", DownloadOptions{
+		BaseDir: base, Output: "nested/result.md",
+	}, client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,16 +162,16 @@ func TestCrossPlatformCoverageDownloadAtomicNoClobberAndOverwrite(t *testing.T) 
 	if err != nil || string(got) != payload {
 		t.Fatalf("published content = %q, err=%v", got, err)
 	}
-	if _, err := Download(context.Background(), "https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/file.md", DownloadOptions{
-		BaseDir: base, Output: "nested/result.md", Client: client,
-	}); err == nil || !strings.Contains(err.Error(), "LOCAL_FILE_EXISTS") {
+	if _, err := downloadWithClient(context.Background(), "https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/file.md", DownloadOptions{
+		BaseDir: base, Output: "nested/result.md",
+	}, client); err == nil || !strings.Contains(err.Error(), "LOCAL_FILE_EXISTS") {
 		t.Fatalf("second download error = %v", err)
 	}
 
 	payload = "replacement"
-	replaced, err := Download(context.Background(), "https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/file.md", DownloadOptions{
-		BaseDir: base, Output: "nested/result.md", Overwrite: true, Client: client,
-	})
+	replaced, err := downloadWithClient(context.Background(), "https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/file.md", DownloadOptions{
+		BaseDir: base, Output: "nested/result.md", Overwrite: true,
+	}, client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,22 +192,22 @@ func TestCrossPlatformCoverageDownloadFailureBoundaries(t *testing.T) {
 	}
 
 	clientError := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("transport") })}
-	if _, err := Download(context.Background(), validURL, DownloadOptions{BaseDir: base, Output: "transport.bin", Client: clientError}); err == nil {
-		t.Fatal("transport error was ignored")
-	}
 	statusClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		if req.Header.Get("x-test") != "ok" || req.Header.Get("") != "" {
 			t.Errorf("headers = %#v", req.Header)
 		}
 		return &http.Response{StatusCode: http.StatusBadGateway, Body: io.NopCloser(strings.NewReader("backend")), Header: make(http.Header)}, nil
 	})}
-	if _, err := Download(context.Background(), validURL, DownloadOptions{BaseDir: base, Output: "status.bin", Client: statusClient, Headers: map[string]string{"x-test": "ok", " ": "ignored"}}); err == nil {
-		t.Fatal("HTTP status error was ignored")
-	}
 	bodyErrorClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: http.StatusOK, Body: failingBody{}, Header: make(http.Header)}, nil
 	})}
-	if _, err := Download(context.Background(), validURL, DownloadOptions{BaseDir: base, Output: "copy.bin", Client: bodyErrorClient}); err == nil {
+	if _, err := downloadWithClient(context.Background(), validURL, DownloadOptions{BaseDir: base, Output: "transport.bin"}, clientError); err == nil {
+		t.Fatal("transport error was ignored")
+	}
+	if _, err := downloadWithClient(context.Background(), validURL, DownloadOptions{BaseDir: base, Output: "status.bin", Headers: map[string]string{"x-test": "ok", " ": "ignored"}}, statusClient); err == nil {
+		t.Fatal("HTTP status error was ignored")
+	}
+	if _, err := downloadWithClient(context.Background(), validURL, DownloadOptions{BaseDir: base, Output: "copy.bin"}, bodyErrorClient); err == nil {
 		t.Fatal("body read error was ignored")
 	}
 
@@ -234,7 +234,7 @@ func TestCrossPlatformCoverageDownloadFailureBoundaries(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			testseam.Swap(t, &createDownloadTemp, tc.makeTemp)
-			if _, err := Download(context.Background(), validURL, DownloadOptions{BaseDir: base, Output: tc.name + ".bin", Client: okClient}); err == nil {
+			if _, err := downloadWithClient(context.Background(), validURL, DownloadOptions{BaseDir: base, Output: tc.name + ".bin"}, okClient); err == nil {
 				t.Fatalf("%s failure was ignored", tc.name)
 			}
 		})

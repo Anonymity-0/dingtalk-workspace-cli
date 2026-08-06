@@ -50,7 +50,6 @@ type DownloadOptions struct {
 	PreferredName string
 	Overwrite     bool
 	Headers       map[string]string
-	Client        *http.Client
 }
 
 // DownloadResult describes the published local artifact.
@@ -64,6 +63,10 @@ type DownloadResult struct {
 // output path without following symlink escapes, streams into a sibling temp
 // file, fsyncs it, and atomically publishes the completed file.
 func Download(ctx context.Context, rawURL string, opts DownloadOptions) (DownloadResult, error) {
+	return downloadWithClient(ctx, rawURL, opts, secureHTTPClient())
+}
+
+func downloadWithClient(ctx context.Context, rawURL string, opts DownloadOptions, client *http.Client) (DownloadResult, error) {
 	parsed, err := ValidateDownloadURL(rawURL)
 	if err != nil {
 		return DownloadResult{}, err
@@ -71,10 +74,6 @@ func Download(ctx context.Context, rawURL string, opts DownloadOptions) (Downloa
 	abs, rel, err := ResolveOutputPath(opts.BaseDir, opts.Output, parsed.String(), opts.PreferredName, opts.Overwrite)
 	if err != nil {
 		return DownloadResult{}, err
-	}
-	client := opts.Client
-	if client == nil {
-		client = secureHTTPClient()
 	}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil) // URL was fully validated above
 	for key, value := range opts.Headers {
