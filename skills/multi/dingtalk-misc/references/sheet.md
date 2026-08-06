@@ -13,7 +13,7 @@
 | 本地 xlsx/xls 导入为在线表格 | `dws sheet import --file <路径>`（单命令一站式：创建会话→上传→确认→轮询，产出在线电子表格） |
 | 在线表格导出为 xlsx | `dws sheet export`（axls → xlsx 格式转换） |
 
-用户贴原始 `alidocs` URL 时必须先 probe：`dws drive info --node <URL> --format json`，按 [链接规范](../../dws-shared/references/url-patterns.md#alidocs-url-类型探测流程) 校验：
+用户贴原始 `alidocs` URL 时必须先 probe：`dws drive info --node <URL> --format json`，按 [链接规范](../../dingtalk-shared/references/url-patterns.md#alidocs-url-类型探测流程) 校验：
 - `extension=axls` → 继续走 `sheet`
 - `extension=xlsx` / `xls` / `xlsm` / `csv` → 转 `dws drive download`，告知用户"这是本地表格文件，已为你下载到本地处理"
 
@@ -210,7 +210,7 @@ Flags:
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。命令已选中时直接执行；只在参数或安全语义不确定时读取 leaf Schema（例如 `dws schema --cli-path "sheet +<shortcut>" --format json`），在当前 Cobra flags 不确定时读取 `dws sheet <shortcut> --help`。仅当现有路由和 reference 都无法定位低频能力时，才用 `dws shortcut list --service sheet --format json` 批量发现。
+以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。命令已选中时直接执行；只在参数或安全语义不确定时读取 Agent leaf Schema（例如 `dws schema --cli-path "sheet +<shortcut>" --compact --format json`），在当前 Cobra flags 不确定时读取 `dws sheet <shortcut> --help`。只有参数映射、接口绑定或 provenance 审计才省略 `--compact`。仅当现有路由和 reference 都无法定位低频能力时，才用 `dws shortcut list --service sheet --format json` 批量发现。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|

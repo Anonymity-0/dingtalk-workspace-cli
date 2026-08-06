@@ -12,7 +12,6 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/plugin"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/recovery"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/mcptypes"
@@ -24,8 +23,6 @@ func TestCrossPlatformCoverageRootExecuteAllBranchesCoverage(t *testing.T) {
 	oldExecute := rootExecuteCommand
 	oldNewRoot := rootNewRootCommandWithEngine
 	oldPreParse := rootRunPreParse
-	oldLatest := rootLatestRecoveryCapture
-	oldReset := rootResetRecoveryState
 	oldStop := rootStopAllStdioClients
 	oldArgs := os.Args
 	t.Cleanup(func() {
@@ -33,20 +30,16 @@ func TestCrossPlatformCoverageRootExecuteAllBranchesCoverage(t *testing.T) {
 		rootExecuteCommand = oldExecute
 		rootNewRootCommandWithEngine = oldNewRoot
 		rootRunPreParse = oldPreParse
-		rootLatestRecoveryCapture = oldLatest
-		rootResetRecoveryState = oldReset
 		rootStopAllStdioClients = oldStop
 		os.Args = oldArgs
 	})
 	os.Args = []string{"dws"}
 	rootNormalizeProcessProfileArgs = func() func() { return func() {} }
 	rootRunPreParse = func(*cobra.Command, *pipeline.Engine) error { return nil }
-	rootResetRecoveryState = func() {}
 	rootStopAllStdioClients = func() {}
 	rootNewRootCommandWithEngine = func(context.Context, *pipeline.Engine) *cobra.Command {
 		return &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
 	}
-	rootLatestRecoveryCapture = func() *recovery.LastError { return nil }
 	rootExecuteCommand = func(cmd *cobra.Command) (*cobra.Command, error) { return cmd, nil }
 	if code := Execute(); code != 0 {
 		t.Fatalf("successful Execute code = %d", code)
@@ -59,7 +52,6 @@ func TestCrossPlatformCoverageRootExecuteAllBranchesCoverage(t *testing.T) {
 	rootRunPreParse = func(*cobra.Command, *pipeline.Engine) error { return nil }
 
 	wantErr := errors.New("unknown command missing")
-	rootLatestRecoveryCapture = func() *recovery.LastError { return &recovery.LastError{EventID: "evt-test"} }
 	rootExecuteCommand = func(*cobra.Command) (*cobra.Command, error) { return nil, wantErr }
 	if code := Execute(); code == 0 {
 		t.Fatal("failed Execute returned zero")
