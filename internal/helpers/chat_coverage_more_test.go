@@ -391,6 +391,8 @@ func TestCrossPlatformCoverageChatBotRichMediaCoverage(t *testing.T) {
 		name string
 		args []string
 	}{
+		{name: "markdown requires title", args: []string{"--text", "message"}},
+		{name: "markdown requires text", args: []string{"--title", "title"}},
 		{name: "image requires URL", args: []string{"--msg-type", "image"}},
 		{name: "file requires path", args: []string{"--msg-type", "file"}},
 	} {
@@ -405,7 +407,7 @@ func TestCrossPlatformCoverageChatBotRichMediaCoverage(t *testing.T) {
 	t.Run("group and direct targets are mutually exclusive", func(t *testing.T) {
 		err := runChatCoverageCommand(t, &scriptedToolCaller{},
 			"message", "send-by-bot", "--robot-code", "robot",
-			"--group", "group", "--users", "user", "--text", "message",
+			"--group", "group", "--users", "user", "--title", "title", "--text", "message",
 		)
 		if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
 			t.Fatalf("mutually exclusive target error = %v", err)

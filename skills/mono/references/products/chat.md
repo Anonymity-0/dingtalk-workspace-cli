@@ -717,7 +717,7 @@ Flags:
 
 **重要：该接口会真实发送消息到目标会话，不可用于测试或试探性调用。调用前必须确认消息内容和接收对象无误。**
 
-群聊传 --group；单聊可传 --users、--open-dingtalk-ids 或两者组合。--group 不能与单聊目标同时指定。默认发送 Markdown，使用 --text，--title 可选；公网图片 URL 使用 --msg-type image --image-url <图片 URL>；本地图片和其他本地文件一样使用 --msg-type file --file-path <本地路径>，CLI 会完成上传并按文件附件发送。群聊时可选 --at-user-ids 或 --at-open-dingtalk-ids @指定成员。
+群聊传 --group；单聊可传 --users、--open-dingtalk-ids 或两者组合。--group 不能与单聊目标同时指定。默认发送 Markdown，必须同时使用 --title 和 --text；公网图片 URL 使用 --msg-type image --image-url <图片 URL>；本地图片和其他本地文件一样使用 --msg-type file --file-path <本地路径>，CLI 会完成上传并按文件附件发送。群聊时可选 --at-user-ids 或 --at-open-dingtalk-ids @指定成员。
 如果用户明确要求"用机器人/机器人身份/robot"发送，必须使用本命令，严禁改用 `chat message send` 以当前用户身份发送。
 
 **重要**：机器人发群消息前，必须确认该机器人已在目标群中。若机器人不在群内会报错"机器人不存在"，需先执行 `dws chat group members add-bot --id <openConversationId> --robot-code <robot-code>` 将机器人加入群聊后再发送。
@@ -737,7 +737,7 @@ Flags:
       --group string                 群聊 openConversationId（群聊时必填）
       --robot-code string            机器人 Code (必填)
       --msg-type string              消息类型：markdown、image 或 file；省略时为 markdown；公网图片使用 image --image-url；本地图片和文件使用 file --file-path
-      --title string                 Markdown 消息标题（可选）
+      --title string                 Markdown 消息标题（Markdown 时必填）
       --text string                  Markdown 消息内容（Markdown 时必填）
       --image-url string             公网图片 URL（msgType=image 时必填）
       --file-path string             本地图片或文件路径（msgType=file 时上传并按文件附件发送）
@@ -750,7 +750,7 @@ Flags:
 注意:
   - 用户明确要求机器人发送时，必须使用 `chat message send-by-bot`；严禁使用 `chat message send` 以用户身份代发
   - --group 与任一单聊目标互斥；单聊可同时提供 --users 和 --open-dingtalk-ids，但发送文件时只能指定一个收件人
-  - --msg-type 决定发送类型：Markdown 必须指定 --text，--title 可选；公网图片传 --image-url，本地图片和文件传 --file-path
+  - --msg-type 决定发送类型：Markdown 必须同时指定 --title 和 --text；公网图片传 --image-url，本地图片和文件传 --file-path
   - --group 的别名: --id, --chat, --conversation-id (均可替代 --group)
   - --at-user-ids 仅在 --group 群聊时生效，单聊时无效；设置时 --text 中需包含 @userId 对应文本
   - --at-open-dingtalk-ids 仅在 --group 群聊时生效，单聊时无效；设置时 --text 中需包含 @openDingtalkId 对应文本

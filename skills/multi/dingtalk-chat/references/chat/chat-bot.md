@@ -19,13 +19,13 @@
 - 公网图片 URL 使用 `--msg-type image --image-url`，按图片消息发送。
 - 本地图片和其他本地文件一样使用 `--msg-type file --file-path`，由 CLI 上传并按文件附件发送。
 - 群聊传 `--group`；单聊可传 `--users`、`--open-dingtalk-ids` 或两者组合。
-- Markdown 必须传 `--text`，`--title` 可选；需要稳定换行时用空行分隔段落。若以转义形式组织文本，写 `\n\n`，不要只写 `\n`。
+- Markdown 必须同时传 `--title` 和 `--text`；需要稳定换行时用空行分隔段落。若以转义形式组织文本，写 `\n\n`，不要只写 `\n`。
 - `recall-by-bot` 使用 `processQueryKey`，不是 `openMessageId`。
 - Bot 多群文本/Markdown 直接使用 `+messages-send --groups <cid...>` 或
   `--groups-file <工作目录内相对文件>`；最多 100 个稳定 ID，Runtime 去重并返回
   `im.batch-write.v1` 逐目标 ledger。
-- Bot/Webhook 没有与 current-user 等价的文件、图片、音视频发送接口；不得把富媒体转成文本
-  或换身份静默发送。
+- `+messages-send` 的 Bot 路由和 Webhook 没有与 current-user 等价的文件、图片、音视频发送接口；
+  机器人富媒体必须使用原子 `chat message send-by-bot`，不得转成文本或换身份静默发送。
 
 ## 命令明细
 
@@ -89,7 +89,7 @@ dws chat message send-by-bot --robot-code <robot-code> --group <openConversation
 | `--open-dingtalk-ids` | 单聊 openDingTalkId 列表 |
 | `--msg-type` | `markdown`、`image` 或 `file`；省略时为 Markdown；公网图片使用 `image --image-url`，本地图片和文件使用 `file --file-path` |
 | `--text` | Markdown 消息内容，Markdown 模式必填；换行用空行，转义表示为 `\n\n` |
-| `--title` | Markdown 消息标题，可选 |
+| `--title` | Markdown 消息标题，Markdown 模式必填 |
 | `--image-url` | 公网图片 URL，`--msg-type image` 时必填 |
 | `--file-path` | 本地图片或文件路径，`--msg-type file` 时由 CLI 上传并按文件附件发送 |
 | `--at-user-ids` / `--at-open-dingtalk-ids` | 群聊 @ 指定成员，正文需含对应 `@id` 文本 |

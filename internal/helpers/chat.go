@@ -2201,7 +2201,7 @@ func newChatCommand() *cobra.Command {
 	})
 
 	// send-by-bot: 群聊传 --group，单聊传 --users/--open-dingtalk-ids。
-	// Markdown 使用 --text（--title 可选），图片使用 --msg-type image/--image-url，
+	// Markdown 使用 --title/--text，图片使用 --msg-type image/--image-url，
 	// 文件使用 --msg-type file/--file-path，CLI 上传后发送。
 	chatMessageSendByBotCmd := &cobra.Command{
 		Use:   "send-by-bot",
@@ -2241,7 +2241,7 @@ func newChatCommand() *cobra.Command {
 			}
 			switch msgType {
 			case "markdown":
-				if err := validateRequiredFlags(cmd, "text"); err != nil {
+				if err := validateRequiredFlags(cmd, "title", "text"); err != nil {
 					return err
 				}
 			case "image":
@@ -2393,6 +2393,8 @@ func newChatCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "msg-type", RequiredWhen: "image-url or file-path is provided", Enum: []string{"markdown", "image", "file"}},
+				{Name: "title", RequiredWhen: "msg-type is markdown or omitted"},
+				{Name: "text", RequiredWhen: "msg-type is markdown or omitted"},
 				{Name: "image-url", RequiredWhen: "msg-type is image"},
 				{Name: "file-path", RequiredWhen: "msg-type is file"},
 			},
@@ -3701,7 +3703,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageSendByBotCmd.Flags().String("group", "", "群聊 openConversationId（群聊时必填）")
 	chatMessageSendByBotCmd.Flags().String("users", "", "用户 userId 列表，逗号分隔，最多20个（单聊时必填）")
 	chatMessageSendByBotCmd.Flags().String("msg-type", "", "消息类型: markdown/image/file（省略时为 markdown；图片使用 image --image-url；本地文件使用 file --file-path）")
-	chatMessageSendByBotCmd.Flags().String("title", "", "Markdown 消息标题（可选）")
+	chatMessageSendByBotCmd.Flags().String("title", "", "Markdown 消息标题（发送 Markdown 时必填）")
 	chatMessageSendByBotCmd.Flags().String("text", "", "Markdown 消息内容（发送 Markdown 时必填；稳定换行用空行，转义形式写 \\n\\n，不要只写 \\n）")
 	chatMessageSendByBotCmd.Flags().String("image-url", "", "公网图片 URL（msgType=image 时必填）")
 	chatMessageSendByBotCmd.Flags().String("file-path", "", "本地文件路径（msgType=file 时直接上传并按 file 消息发送）")
