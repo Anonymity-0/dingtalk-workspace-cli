@@ -284,7 +284,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		Short: "将 CSV 数据写入表格指定位置（支持公式，自动扩容）",
 		Long: `将 RFC 4180 格式的 CSV 文本写入指定工作表的指定单元格位置。
 写入值和公式，不支持样式/批注。字段值以 = 开头时默认按公式解析；
-如需写入以 = 开头的文本，在字段值前加单引号（例如 "'=1+1"）。自动扩容行列。
+如需写入以 = 开头的字面文本，在字段值前加单引号（例如 "'=1+1"）。自动扩容行列。
 目标区域如含合并单元格，csv-put 会打散合并并覆盖所有单元格；这不同于
 range update 与合并区域冲突时返回 MERGED_CELLS_CONFLICT 的行为。
 
@@ -357,7 +357,7 @@ range update 与合并区域冲突时返回 MERGED_CELLS_CONFLICT 的行为。
 			Selection: contract.SelectionSpec{
 				AgentSummary: "将 CSV 值或公式写入起始单元格（= 开头按公式；可自动扩容）。",
 				UseWhen:      []string{"需要从 CSV/表格文本批量写入值或以 = 开头的公式时优先使用"},
-				AvoidWhen:    []string{"需要超链接/富文本/样式/数据验证用 range update；在末尾追加数据行用 append；覆盖已有数据需 --allow-overwrite；要把 = 开头内容写成文本需前加单引号"},
+				AvoidWhen:    []string{"需要超链接/富文本/样式/数据验证用 range update；在末尾追加数据行用 append；覆盖已有数据需 --allow-overwrite；要把 = 开头内容写成字面文本需前加单引号"},
 				Examples: []string{
 					"dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell A1 --csv @data.csv --allow-overwrite",
 					"dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell A1 --csv \"=1+1,'=1+1\"",

@@ -11,7 +11,7 @@
 ## 当前能力边界
 
 - 写少量或需要单元格对象的公式：使用 `dws sheet range update`。
-- 从 CSV/表格文本批量写公式：使用 `dws sheet csv-put`，字段值以 `=` 开头时默认按公式解析；如需写入公式文本，在字段值前加单引号。
+- 从 CSV/表格文本批量写公式：使用 `dws sheet csv-put`，字段值以 `=` 开头时默认按公式解析；如需写入以 `=` 开头的字面文本，在字段值前加单引号。
 - 公式载体：公式写在 cell object 的 `text` 字段中，例如 `{"type":"text","text":"=SUM(B2:B10)"}`。
 - 读取公式文本：使用 `dws sheet range read --value-render-option formula`。
 - 读取计算结果：使用 `dws sheet range read --value-render-option raw_value` 或默认 `formatted_value`。
@@ -24,7 +24,7 @@
 | 目的 | 命令 | 说明 |
 |------|------|------|
 | 写入少量或中等范围公式 | `range update` | `--values` 必须是二维 cell object，维度与 `--range` 完全一致 |
-| 从 CSV/表格文本批量写公式 | `csv-put` | `=` 开头按公式；前导单引号写公式文本；不支持富格式对象 |
+| 从 CSV/表格文本批量写公式 | `csv-put` | `=` 开头按公式；前导单引号写入以 `=` 开头的字面文本；不支持富格式对象 |
 | 查看已写入的公式文本 | `range read --value-render-option formula` | 确认公式本身是否落表、范围和引用是否正确 |
 | 查看公式计算结果 | `range read --value-render-option raw_value` | 用于数值对账、错误值检查 |
 | 查看格式化展示结果 | `range read` 或 `csv-get` 默认模式 | 用于用户肉眼看到的展示值检查 |

@@ -32,7 +32,7 @@
 2. **先读结构再动结构**：合并、冻结、行列分组、行高列宽、隐藏行列、最后非空边界都属于工作表结构信息，先读 `dws sheet info --node <ID> --sheet-id <SHEET_ID> --format json`。
 3. **按目的选择读取方式**：快速看值和大表分批用 `csv-get`；需要 `columns` / `data` / `dtypes` / `formats` 用 `table-get`；需要公式、样式、数据验证、超链接、富文本等 per-cell 元数据用 `range read`。
 4. **写返回不等于完成**：任何写操作完成后都要用独立读命令回读确认。值写入用 `csv-get` / `range read` / `table-get`，结构变更用 `sheet info`，对象类操作用对应 `list` / `get`。
-5. **大批量 CSV 值/公式不要拼大 JSON**：超过 5 行或 20 个单元格、且不需要富格式对象时优先 `csv-put`；字段值以 `=` 开头按公式解析，前加单引号写公式文本；需要 table/dataframe 语义时用 `table-put`。
+5. **大批量 CSV 值/公式不要拼大 JSON**：超过 5 行或 20 个单元格、且不需要富格式对象时优先 `csv-put`；字段值以 `=` 开头按公式解析，前加单引号写入以 `=` 开头的字面文本；需要 table/dataframe 语义时用 `table-put`。
 6. **公式写入后分层校验**：写公式前读 [sheet-formula](./sheet/sheet-formula.md)。写后先用 `range read --value-render-option formula` 确认公式文本，再用 `formula-verify` 聚合扫描计算错误；需要确认业务数值时再用 `raw_value` 抽样对账。
 7. **专用操作用专用命令**：搜索用 `find`、替换用 `replace`、清空用 `range clear`、排序用 `range sort`、复制/移动区域用 `range copy-to` / `range move-to`，不要用 `range read` + `range update` 客户端模拟。
 8. **大整数按文本写**：超过 `9007199254740991` 的整数、长数字 ID、订单号、手机号等需要逐位精确的值，不要按 JSON number 或 `int64` / `uint64` 写入；用字符串值 + `object` dtype + 文本格式 `@`。

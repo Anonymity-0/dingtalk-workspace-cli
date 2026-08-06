@@ -34,13 +34,16 @@ func TestCSVPutFormulaContractAndPassThrough(t *testing.T) {
 	root := &cobra.Command{Use: "sheet"}
 	root.AddCommand(newDataCmds()...)
 	csvPut := findCoverageSubcommand(t, root, "csv-put")
-	for _, want := range []string{"支持公式", "以 = 开头时默认按公式解析", "'=1+1"} {
+	for _, want := range []string{"支持公式", "以 = 开头时默认按公式解析", "以 = 开头的字面文本", "'=1+1"} {
 		if !strings.Contains(csvPut.Short+"\n"+csvPut.Long+"\n"+csvPut.Example, want) {
 			t.Fatalf("csv-put help does not contain %q", want)
 		}
 	}
 	if strings.Contains(csvPut.Long, "不支持公式") || strings.Contains(csvPut.Long, "=开头当文本") {
 		t.Fatalf("csv-put help still advertises the old formula contract: %s", csvPut.Long)
+	}
+	if strings.Contains(csvPut.Long, "写入公式文本") {
+		t.Fatalf("csv-put help incorrectly describes apostrophe escaping as formula text: %s", csvPut.Long)
 	}
 
 	caller := &csvPutRecordingCaller{}
@@ -86,9 +89,12 @@ func TestCSVPutFormulaContractAndPassThrough(t *testing.T) {
 	}
 
 	batchHelp := newBatchUpdateCmd().Long
-	for _, want := range []string{"csv-put", "以 = 开头时按公式解析", "'=1+1"} {
+	for _, want := range []string{"csv-put", "以 = 开头时按公式解析", "以 = 开头的字面文本", "'=1+1"} {
 		if !strings.Contains(batchHelp, want) {
 			t.Fatalf("batch-update help does not contain %q", want)
 		}
+	}
+	if strings.Contains(batchHelp, "写入公式文本") {
+		t.Fatalf("batch-update help incorrectly describes apostrophe escaping as formula text: %s", batchHelp)
 	}
 }
