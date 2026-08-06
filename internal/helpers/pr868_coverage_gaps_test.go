@@ -442,21 +442,20 @@ func TestCrossPlatformCoverageMailExportShareAndAtomicWrite(t *testing.T) {
 			t.Fatal("expected parse error")
 		}
 
-		// Stdin "yes" satisfies deferred ConfirmSafety without leaf --yes,
-		// so skipConfirm=false and the server-sign reconfirm branch runs.
+		// Piped stdin "yes" must not bypass the explicit --yes gate.
 		installScriptedCaller(t, &scriptedToolCaller{steps: []scriptedToolStep{
 			{text: `{"result":{"sign":"sig","riskMessage":"careful"}}`},
 		}})
 		if err := executeMailShare(t, strings.NewReader("yes\n"),
-			"message", "share-to-chat", "--email", "u@c.com", "--id", "m1", "--users", "u1"); err == nil || !strings.Contains(err.Error(), "--yes") {
-			t.Fatalf("expected server reconfirm, got %v", err)
+			"message", "share-to-chat", "--email", "u@c.com", "--id", "m1", "--users", "u1"); err == nil {
+			t.Fatal("expected confirmation_required without --yes")
 		}
 		installScriptedCaller(t, &scriptedToolCaller{steps: []scriptedToolStep{
 			{text: `{"sign":"sig"}`},
 		}})
 		if err := executeMailShare(t, strings.NewReader("yes\n"),
-			"message", "share-to-chat", "--email", "u@c.com", "--id", "m1", "--users", "u1"); err == nil || !strings.Contains(err.Error(), "--yes") {
-			t.Fatalf("expected reconfirm without riskMessage, got %v", err)
+			"message", "share-to-chat", "--email", "u@c.com", "--id", "m1", "--users", "u1"); err == nil {
+			t.Fatal("expected confirmation_required without --yes")
 		}
 
 		caller := &scriptedToolCaller{steps: []scriptedToolStep{

@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -2351,7 +2352,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 			if users := flagOrFallback(cmd, "users", "uids"); users != "" {
 				mcpArgs["uids"] = parseRecipients(users)
 			}
-			skipConfirm, _ := cmd.Flags().GetBool("yes")
+			yes, _ := cmd.Flags().GetBool("yes")
 			if deps.Caller.DryRun() {
 				// Human plan summary (no "[DRY-RUN]" tag): Schema dry-run
 				// evidence classifies "操作:" + audited DryRun() as plan.
@@ -2361,9 +2362,17 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				if users := flagOrFallback(cmd, "users", "uids"); users != "" {
 					deps.Out.PrintKeyValue("users", users)
 				}
-				deps.Out.PrintKeyValue("yes", fmt.Sprintf("%v", skipConfirm))
+				deps.Out.PrintKeyValue("yes", fmt.Sprintf("%v", yes))
 				deps.Out.PrintKeyValue("说明", "仅预览分享计划，不发起真实分享请求")
 				return nil
+			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"分享邮件至 IM 为高风险操作；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认目标用户与邮件内容；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认目标用户与邮件", "获得用户确认后使用 --yes 执行"),
+				)
 			}
 			ctx := cmd.Context()
 			firstText, err := callMCPToolReturnText(ctx, "share_message_to_chat", mcpArgs)
@@ -2378,12 +2387,8 @@ internetMessageId 来源：message send / draft send / message reply / message r
 				firstResult = result
 			}
 			if sign, ok := firstResult["sign"].(string); ok && sign != "" {
-				riskMsg, _ := firstResult["riskMessage"].(string)
-				if !skipConfirm {
-					if riskMsg != "" {
-						deps.Out.PrintInfo(fmt.Sprintf("[风险提示] %s", riskMsg))
-					}
-					return fmt.Errorf("服务端要求二次确认，请添加 --yes 参数确认后重新执行")
+				if riskMsg, _ := firstResult["riskMessage"].(string); riskMsg != "" {
+					deps.Out.PrintInfo(fmt.Sprintf("[风险提示] %s", riskMsg))
 				}
 				mcpArgs["sign"] = sign
 				return callMCPTool("share_message_to_chat", mcpArgs)
