@@ -1892,7 +1892,7 @@ var generatedParamAliases = []ParamAliasEntry{
 			"text":        "content",
 			"url":         "node",
 		},
-		Blocked: []string{"block-id", "chat-id", "chat-ids", "comment-id", "comment-key", "conversation-id", "conversation-ids", "folder", "folder-id", "group-id", "group-ids", "id", "job-id", "mentioned-open-conversation-id", "mentioned-open-conversation-ids", "name", "open-conversation-id", "open-conversation-ids", "parent-id", "revision", "task-id", "template-id", "title", "version", "workspace", "workspace-id"},
+		Blocked: []string{"chat-id", "chat-ids", "comment-id", "comment-key", "conversation-id", "conversation-ids", "folder", "folder-id", "group-id", "group-ids", "id", "job-id", "mentioned-open-conversation-id", "mentioned-open-conversation-ids", "name", "open-conversation-id", "open-conversation-ids", "parent-id", "revision", "task-id", "template-id", "title", "version", "workspace", "workspace-id"},
 	},
 	{
 		CLIPath: "doc +comment-list",
