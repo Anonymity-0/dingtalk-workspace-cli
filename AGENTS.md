@@ -302,7 +302,6 @@ on the leaf:
 
 ```bash
 dws auth status                 # token_valid should be true
-dws cache refresh               # deprecated no-op: prints a retirement notice (discovery cache is gone; refreshes nothing)
 dws schema <mcp-canonical> --jq '{canonical_path,interface_ref,parameters}' -f json
 # or CLI path: dws schema --cli-path "drive copy" --jq '{canonical_path,interface_ref,parameters}' -f json
 ```

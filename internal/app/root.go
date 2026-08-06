@@ -473,7 +473,6 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 		newProfileCommand(),
 		newAPICommand(flags),
 		newSkillCommand(),
-		newCacheCommand(),
 		newCatalogCommand(),
 		newConfigCommand(),
 		newDoctorCommand(),
@@ -722,7 +721,7 @@ func hideNonDirectRuntimeCommands(root *cobra.Command) {
 // hideNonDirectRuntimeCommands) and reservedCommands (the plugin-override
 // blocklist) derive from this single set so they cannot drift apart.
 var builtinCommandNames = map[string]bool{
-	"auth": true, "api": true, "audit": true, "cache": true, "config": true,
+	"auth": true, "api": true, "audit": true, "config": true,
 	"doctor": true, "event": true, "completion": true, "skill": true,
 	"plugin": true, "profile": true, "version": true, "help": true,
 	"recovery": true, "schema": true, "mcp": true, "upgrade": true,

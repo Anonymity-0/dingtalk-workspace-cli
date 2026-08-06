@@ -9,7 +9,7 @@ cli_version: ">=1.0.15"
 通过 `dws` 命令管理钉钉产品能力。
 
 
-> ⚠️ **命令可用性以当前 dws 二进制为准**。服务发现已下线，本文档随内置 skill 发布；如果 `dws <cmd> --help` 不存在，说明当前版本未暴露该命令。`--help` 决定 Cobra 实际接受的 flags；公开基础命令和内建 `+` shortcut 的 leaf Schema 决定 Agent 选择、参数映射/约束和安全确认语义。若命令存在但调用失败，请按错误中的 endpoint 或 tool 提示确认静态端点目录和后端工具注册。实际调用前可用 `dws <cmd> --help` 或 `--dry-run` 验证。
+> **命令可用性以当前 dws 二进制为准**。本文档随内置 skill 发布，可能滞后于二进制；如果 `dws <cmd> --help` 不存在，说明当前版本未暴露该命令。`--help` 决定 Cobra 实际接受的 flags；公开基础命令和内建 `+` shortcut 的 leaf Schema（常规用 `--compact`）决定 Agent 选择、参数/约束和安全确认语义。实际调用前可用 `dws <cmd> --help` 或 `--dry-run` 验证。
 
 ## 严格禁止 (NEVER DO)
 - 不要使用 dws 命令以外的方式操作（禁止 curl、HTTP API、浏览器）
@@ -207,7 +207,7 @@ Step 3 → 加 --yes 执行命令
 
 **已知命令路径例外**：当本 Skill、产品意图表或任务 reference 已经给出精确 CLI path 时，不要再查询产品级/分组级 Schema，也不要调用完整 Shortcut Catalog；可直接执行。只有参数、约束或安全语义不确定时才读取该命令的 leaf Schema，只有当前 Cobra flags 不确定时才补读 leaf Help。
 
-稳定 command identity、主 CLI path 和 alias 已在构建时由 reviewed registry 与真实 Cobra tree 精确绑定。Agent 不应读取 Catalog 文件、native annotation 或其他生成 JSON 来重新推断命令；所有运行时查询都以当前二进制交付的 Schema 投影为准。
+稳定 command identity、主 CLI path 和 alias 由 leaf `ContractFinal.Identity` 与真实 Cobra tree 精确绑定。Agent 不应读取 Catalog 文件、native annotation 或其他生成 JSON 来重新推断命令；所有运行时查询都以当前二进制交付的 Schema 投影为准。
 
 ```bash
 # 第 1 层：产品概览（~4.5KB，列出全部产品 + 工具数 + 用途摘要）
@@ -285,7 +285,7 @@ Schema 与 Help 冲突是**契约漂移**，不得静默猜测或把两边字段
 
 ### Helper-only 与本地 Cobra 命令
 
-`dev.*` 包含 helper-only 执行面，其中远端 helper 未进入 pinned metadata 时标记为 `composite`，不能伪装成 `local`。`event list` / `event schema` 读取内置目录和 payload 定义，属于 `local`；`event consume` / `event status` / `event stop` 同时编排远端个人订阅控制面与本地 bus/consume，属于 `composite`。实现来源不同，不改变统一查询边界：进入全局 `dws schema` 的命令必须先进入 reviewed CommandRegistry，并由同一 `ToolSpec` 投影到 leaf、产品/分组、`--all` 与 Catalog。不得在查询时重新调用 MCP `tools/list`，也不得把 Cobra 临时合成结果作为第二条 Schema 数据路径。
+`dev.*` 包含 helper-only 执行面，其中远端 helper 未进入 pinned metadata 时标记为 `composite`，不能伪装成 `local`。`event list` / `event schema` 读取内置目录和 payload 定义，属于 `local`；`event consume` / `event status` / `event stop` 同时编排远端个人订阅控制面与本地 bus/consume，属于 `composite`。实现来源不同，不改变统一查询边界：进入全局 `dws schema` 的命令须由 leaf `ContractFinal.Identity` 声明收集，并由同一 `ToolSpec` 投影到 leaf、产品/分组、`--all` 与 Catalog。不得把 Cobra 临时合成结果作为第二条 Schema 数据路径。
 
 事件需要区分两种 Schema：`dws event schema <event_key> --flatten` 查询 Agent 要消费的顶层业务字段；`dws schema "event consume" --compact` 查询 CLI 命令参数。前者是真实业务命令，后者只读取最终内嵌 SchemaRegistry；不能相互替代。
 
