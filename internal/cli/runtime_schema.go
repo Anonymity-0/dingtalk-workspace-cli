@@ -89,9 +89,9 @@ func RegisterRuntimeSchemaConstraints(canonicalPath string, constraints RuntimeS
 }
 
 // emptyPinnedMCPMetadata returns the retired pin shape with no tools.
-// schema_mcp_metadata.json is deleted; production assembly does not embed or
-// load a pinned MCP snapshot. Test fixtures may still inject non-empty maps
-// through schemaRegistryForTestWithMetadata.
+// schema_mcp_metadata.json is deleted; Schema parameter assembly never loads
+// or ranks MCP pin candidates. Optional Interface-registry validators may
+// still pass this empty shape when they only need ContractFinal self-checks.
 func emptyPinnedMCPMetadata() embeddedMCPMetadata {
 	return embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}
 }
@@ -217,62 +217,6 @@ func collectRuntimeSchemaEntriesFromBound(bound BoundCommandRegistry) ([]runtime
 	return entries, nil
 }
 
-func pinnedMCPMetadataForEntryFrom(entry runtimeSchemaEntry, agentMetadata agentMetadata, mcpMetadata embeddedMCPMetadata) (embeddedMCPToolMetadata, bool) {
-	// Optional test/diagnostic lookup only. Production mcpMetadata is empty;
-	// Contract/ParamDecl own interface facts. When a non-empty fixture is
-	// injected, ContractFinal Interface.Ref remaps CLI canonical names onto
-	// fixture keys (e.g. reply_personal_message → chat.send_personal_message).
-	if len(mcpMetadata.Tools) == 0 {
-		return embeddedMCPToolMetadata{}, false
-	}
-	if entry.Command != nil {
-		if final, ok := RuntimeContractFinal(entry.Command); ok && final.Interface != nil && final.Interface.Ref != nil {
-			if metadata, found := mcpMetadataForInterfaceRef(mcpMetadata, final.Interface.Ref.ProductID, final.Interface.Ref.RPCName); found {
-				return metadata, true
-			}
-		}
-	}
-	paths := []string{
-		entry.PrimaryCLIPath,
-		entry.CLIPath,
-		entry.ProductID + "." + entry.ToolName,
-	}
-	paths = append(paths, entry.Aliases...)
-	if toolMetadata, ok := lookupAgentToolMetadataFrom(agentMetadata, paths...); ok && toolMetadata.InterfaceRef != nil {
-		if metadata, found := mcpMetadataForInterfaceRef(mcpMetadata, toolMetadata.InterfaceRef.ProductID, toolMetadata.InterfaceRef.RPCName); found {
-			return metadata, true
-		}
-	}
-	for _, key := range []string{
-		entry.SourceProductID + "." + entry.ToolName,
-		entry.ProductID + "." + entry.ToolName,
-	} {
-		key = strings.Trim(key, ".")
-		if key == "" {
-			continue
-		}
-		if meta, ok := mcpMetadata.Tools[key]; ok {
-			return meta, true
-		}
-	}
-	return embeddedMCPToolMetadata{}, false
-}
-
-func mcpMetadataForInterfaceRef(mcpMetadata embeddedMCPMetadata, productID, rpcName string) (embeddedMCPToolMetadata, bool) {
-	productID = strings.TrimSpace(productID)
-	rpcName = strings.TrimSpace(rpcName)
-	key := strings.Trim(productID+"."+rpcName, ".")
-	if key == "" {
-		return embeddedMCPToolMetadata{}, false
-	}
-	metadata, exists := mcpMetadata.Tools[key]
-	if !exists {
-		return embeddedMCPToolMetadata{}, false
-	}
-	metadata.InterfaceRef = &embeddedMCPInterfaceRef{ProductID: productID, RPCName: rpcName}
-	return metadata, true
-}
-
 func runtimeSchemaAnnotations(cmd *cobra.Command) (productID, toolName, source string) {
 	if cmd == nil || cmd.Annotations == nil {
 		return "", "", ""
@@ -322,7 +266,6 @@ const (
 	runtimeSchemaRankDefault          = 0
 	runtimeSchemaRankDerived          = 50
 	runtimeSchemaRankInference        = 100
-	runtimeSchemaRankMCP              = 400
 	runtimeSchemaRankCobraHelp        = 450
 	runtimeSchemaRankCobraDefault     = 600
 	runtimeSchemaRankCobraContract    = 610
@@ -332,7 +275,7 @@ const (
 	runtimeSchemaRankVersionedBinding = 650
 	// ParamDecl.Property (dws.schema.property) outranks residual versioned
 	// binding candidates (active bindings JSON is empty after Phase 2).
-	// Mapping exclusions stay highest so an explicit "no MCP property" review
+	// Mapping exclusions stay highest so an explicit "no RPC property" review
 	// cannot be overridden by a leaf ParamDecl that still carries a Property.
 	runtimeSchemaRankParamDeclProperty = 655
 	runtimeSchemaRankMappingExclusion  = 660
@@ -340,7 +283,6 @@ const (
 	runtimeSchemaPrecedenceDefault          = "default"
 	runtimeSchemaPrecedenceDerived          = "derived_resolution"
 	runtimeSchemaPrecedenceInference        = "inference"
-	runtimeSchemaPrecedenceMCP              = "mcp_metadata"
 	runtimeSchemaPrecedenceCobraHelp        = "cobra_help"
 	runtimeSchemaPrecedenceCobra            = "cobra_contract"
 	runtimeSchemaPrecedenceNativeAnnotation = "native_annotation"
@@ -533,8 +475,6 @@ func runtimeSchemaSourcePriority(source string) (int, string) {
 			return runtimeSchemaRankCobraDefault, runtimeSchemaPrecedenceCobra
 		}
 		return runtimeSchemaRankCobraContract, runtimeSchemaPrecedenceCobra
-	case "mcp_metadata", "pinned_mcp_metadata":
-		return runtimeSchemaRankMCP, runtimeSchemaPrecedenceMCP
 	case "cobra_help":
 		return runtimeSchemaRankCobraHelp, runtimeSchemaPrecedenceCobraHelp
 	case "flag_name_inference", "usage_required_inference", "usage_format_inference":
@@ -575,9 +515,9 @@ func runtimeSchemaParameterMappingKey(canonicalPath, flagName string) string {
 
 // runtimeSchemaParameterMappingCandidates resolves the two reviewed,
 // versioned property-mapping inputs. An exclusion is an explicit statement
-// that the CLI parameter is not a direct MCP property: it therefore supplies
-// a present empty candidate (rather than allowing name inference to survive)
-// and keeps the review reason in provenance.
+// that the CLI parameter is not a direct RPC/interface property: it therefore
+// supplies a present empty candidate (rather than allowing name inference to
+// survive) and keeps the review reason in provenance.
 func runtimeSchemaParameterMappingCandidates(snapshot schemaParameterBindingSnapshot, canonicalPath, flagName string) (runtimeSchemaFieldCandidate, runtimeSchemaFieldCandidate, error) {
 	binding := strings.TrimSpace(snapshot.Bindings[strings.TrimSpace(canonicalPath)][strings.TrimSpace(flagName)])
 	bindingCandidate := runtimeSchemaStringCandidate(binding, "versioned_parameter_binding")
@@ -605,34 +545,24 @@ func runtimeSchemaParameterMappingCandidates(snapshot schemaParameterBindingSnap
 type runtimeParameterFieldContext struct {
 	flag        *pflag.Flag
 	metadata    RuntimeSchemaParameterMetadata
-	pinnedParam embeddedMCPParamMeta
-	hasPinned   bool
 	paramType   string
 	constraints RuntimeSchemaConstraints
 	property    string
 }
 
 func (c runtimeParameterFieldContext) interfaceTypeCandidates() []runtimeSchemaFieldCandidate {
-	candidates := []runtimeSchemaFieldCandidate{
+	return []runtimeSchemaFieldCandidate{
 		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagTypeAnnotation), "native_annotation"),
-	}
-	if c.hasPinned {
-		candidates = append(candidates, runtimeSchemaStringCandidate(c.pinnedParam.Type, "mcp_metadata"))
-	}
-	return append(candidates,
 		runtimeSchemaStringCandidateAtRank(c.paramType, "cobra_flag_type", runtimeSchemaRankInference, "fallback"),
-	)
+	}
 }
 
 func (c runtimeParameterFieldContext) descriptionCandidates() []runtimeSchemaFieldCandidate {
-	candidates := []runtimeSchemaFieldCandidate{
+	return []runtimeSchemaFieldCandidate{
 		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagDescriptionAnnotation), "native_annotation"),
 		runtimeSchemaStringCandidate(c.flag.Usage, "cobra_usage"),
+		runtimeSchemaCandidate("", true, "default"),
 	}
-	if c.hasPinned {
-		candidates = append(candidates, runtimeSchemaStringCandidate(c.pinnedParam.Description, "mcp_metadata"))
-	}
-	return append(candidates, runtimeSchemaCandidate("", true, "default"))
 }
 
 func (c runtimeParameterFieldContext) requiredCandidates() []runtimeSchemaFieldCandidate {
@@ -649,7 +579,7 @@ func (c runtimeParameterFieldContext) requiredCandidates() []runtimeSchemaFieldC
 			break
 		}
 	}
-	candidates := []runtimeSchemaFieldCandidate{
+	return []runtimeSchemaFieldCandidate{
 		constraintRequired,
 		runtimeSchemaCandidate(true, typedRequired, "typed_parameter_metadata"),
 		runtimeSchemaAnnotatedBoolCandidate(c.flag, runtimeSchemaFlagMetadataRequiredAnnotation, "typed_parameter_metadata"),
@@ -657,50 +587,36 @@ func (c runtimeParameterFieldContext) requiredCandidates() []runtimeSchemaFieldC
 		runtimeSchemaCandidate(true, runtimeFlagCobraHardRequired(c.flag), "cobra_hard_required"),
 		runtimeSchemaCandidate(false, cobraDefaultOptional, "cobra_nonzero_default"),
 		runtimeSchemaCandidate(usageRequired, usageRequired, "usage_required_inference"),
+		runtimeSchemaCandidate(false, true, "default"),
 	}
-	if c.hasPinned && c.pinnedParam.Required != nil {
-		candidates = append(candidates, runtimeSchemaCandidate(*c.pinnedParam.Required, true, "mcp_metadata"))
-	}
-	return append(candidates, runtimeSchemaCandidate(false, true, "default"))
 }
 
 func (c runtimeParameterFieldContext) requiredWhenCandidates() []runtimeSchemaFieldCandidate {
-	candidates := []runtimeSchemaFieldCandidate{
+	return []runtimeSchemaFieldCandidate{
 		runtimeSchemaStringCandidate(c.metadata.RequiredWhen[c.flag.Name], "typed_parameter_metadata"),
 		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagMetadataRequiredWhenAnnotation), "typed_parameter_metadata"),
 		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagRequiredWhenAnnotation), "native_annotation"),
+		runtimeSchemaCandidate("", true, "default"),
 	}
-	if c.hasPinned {
-		candidates = append(candidates, runtimeSchemaStringCandidate(c.pinnedParam.RequiredWhen, "mcp_metadata"))
-	}
-	return append(candidates, runtimeSchemaCandidate("", true, "default"))
 }
 
 func (c runtimeParameterFieldContext) formatCandidates() []runtimeSchemaFieldCandidate {
-	candidates := []runtimeSchemaFieldCandidate{
+	return []runtimeSchemaFieldCandidate{
 		runtimeSchemaStringCandidate(c.metadata.Formats[c.flag.Name], "typed_parameter_metadata"),
 		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, runtimeSchemaFlagMetadataFormatAnnotation), "typed_parameter_metadata"),
 		runtimeSchemaStringCandidate(firstFlagAnnotation(c.flag, "x-cli-format"), "native_annotation"),
-	}
-	if c.hasPinned {
-		candidates = append(candidates, runtimeSchemaStringCandidate(c.pinnedParam.Format, "mcp_metadata"))
-	}
-	return append(candidates,
 		runtimeSchemaStringCandidate(inferredRuntimeFlagFormat(c.flag), "usage_format_inference"),
 		runtimeSchemaCandidate("", true, "default"),
-	)
+	}
 }
 
 func (c runtimeParameterFieldContext) enumCandidates() []runtimeSchemaFieldCandidate {
-	candidates := []runtimeSchemaFieldCandidate{
+	return []runtimeSchemaFieldCandidate{
 		runtimeSchemaEnumCandidate(c.metadata.Enums[c.flag.Name], "typed_parameter_metadata"),
 		runtimeSchemaEnumCandidate(runtimeFlagEnumAnnotation(c.flag, runtimeSchemaFlagMetadataEnumAnnotation), "typed_parameter_metadata"),
 		runtimeSchemaEnumCandidate(runtimeFlagEnum(c.flag), "native_annotation"),
+		runtimeSchemaCandidate([]string{}, true, "default"),
 	}
-	if c.hasPinned {
-		candidates = append(candidates, runtimeSchemaEnumCandidate(c.pinnedParam.Enum, "mcp_metadata"))
-	}
-	return append(candidates, runtimeSchemaCandidate([]string{}, true, "default"))
 }
 
 func (c runtimeParameterFieldContext) exampleCandidates() []runtimeSchemaFieldCandidate {
@@ -717,7 +633,8 @@ func (c runtimeParameterFieldContext) exampleCandidates() []runtimeSchemaFieldCa
 // source may intentionally raise or lower type/mapping/description semantics.
 // required is different: Cobra MarkFlagRequired is a hard floor that no
 // lower-priority source may demote (see resolveRequiredProjection).
-func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinnedParams map[string]embeddedMCPParamMeta, constraints RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+// MCP pin / mcp_metadata is not a candidate source.
+func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, constraints RuntimeSchemaConstraints) ([]ParameterSpec, error) {
 	if cmd == nil {
 		return nil, nil
 	}
@@ -758,18 +675,10 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinn
 			return
 		}
 		property, _ := propertyWinner.Value.(string)
-		// pinnedParams remains for test fixtures that inject MCP-shaped maps;
-		// production assembly always passes an empty map (pin retired).
-		pinnedParam, hasPinnedParam := embeddedMCPParamMeta{}, false
-		if len(pinnedParams) > 0 && strings.TrimSpace(property) != "" {
-			pinnedParam, hasPinnedParam = lookupPinnedMCPParam(pinnedParams, property, flag.Name)
-		}
 		paramType := runtimeFlagCLIType(flag)
 		fieldCtx := runtimeParameterFieldContext{
 			flag:        flag,
 			metadata:    metadata,
-			pinnedParam: pinnedParam,
-			hasPinned:   hasPinnedParam,
 			paramType:   paramType,
 			constraints: constraints,
 			property:    property,
@@ -794,10 +703,6 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinn
 			return
 		}
 		description, _ := descriptionWinner.Value.(string)
-		interfaceDescription := ""
-		if hasPinnedParam {
-			interfaceDescription = strings.TrimSpace(pinnedParam.Description)
-		}
 
 		// Required uses field-level safe merge: higher sources may raise required, but
 		// Cobra MarkFlagRequired cannot be projected away as optional.
@@ -838,9 +743,6 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinn
 				runtimeSchemaCandidate(true, true, "cobra_hard_required"),
 			)
 		}
-		if interfaceDescription != "" && interfaceDescription != description {
-			parameter.InterfaceDescription = interfaceDescription
-		}
 		if interfaceType != "" && interfaceType != paramType {
 			parameter.InterfaceType = interfaceType
 			fieldProvenance["interface_type"] = runtimeSchemaFieldProvenance(interfaceTypeWinner)
@@ -854,12 +756,6 @@ func runtimeCommandParameterSpecs(cmd *cobra.Command, canonicalPath string, pinn
 		fieldProvenance["required_when"] = runtimeSchemaFieldProvenance(requiredWhenWinner)
 		if def := runtimeFlagDefault(flag); def != "" {
 			parameter.Default = runtimeSchemaJSONString(def)
-		}
-		if hasPinnedParam {
-			interfaceDefault := strings.TrimSpace(pinnedParam.Default)
-			if interfaceDefault != "" && interfaceDefault != runtimeFlagDefault(flag) {
-				parameter.InterfaceDefault = runtimeSchemaJSONString(interfaceDefault)
-			}
 		}
 		formatWinner, ok := resolveField("format", fieldCtx.formatCandidates())
 		if !ok {
@@ -989,19 +885,6 @@ func normalizeRuntimeSchemaConstraints(constraints RuntimeSchemaConstraints) Run
 
 func runtimeSchemaConstraintsEmpty(constraints RuntimeSchemaConstraints) bool {
 	return runtimeannotate.ConstraintsEmpty(constraints)
-}
-
-func lookupPinnedMCPParam(params map[string]embeddedMCPParamMeta, property, flagName string) (embeddedMCPParamMeta, bool) {
-	if len(params) == 0 {
-		return embeddedMCPParamMeta{}, false
-	}
-	if meta, ok := params[property]; ok {
-		return meta, true
-	}
-	if meta, ok := params[flagName]; ok {
-		return meta, true
-	}
-	return embeddedMCPParamMeta{}, false
 }
 
 func isGenericPayloadFlag(flag *pflag.Flag) bool {

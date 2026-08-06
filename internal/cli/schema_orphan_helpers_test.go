@@ -137,8 +137,8 @@ func schemaToolSpecFromPayload(payload map[string]any) (ToolSpec, error) {
 
 // runtimeCommandParameters is the compatibility wire adapter used only by
 // tests; resolution happens in runtimeCommandParameterSpecs.
-func runtimeCommandParameters(cmd *cobra.Command, canonicalPath string, pinnedParams map[string]embeddedMCPParamMeta, constraints RuntimeSchemaConstraints) (map[string]any, error) {
-	specs, err := runtimeCommandParameterSpecsForPayload(cmd, canonicalPath, pinnedParams, constraints)
+func runtimeCommandParameters(cmd *cobra.Command, canonicalPath string, constraints RuntimeSchemaConstraints) (map[string]any, error) {
+	specs, err := runtimeCommandParameterSpecsForPayload(cmd, canonicalPath, constraints)
 	if err != nil {
 		return nil, err
 	}
