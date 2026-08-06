@@ -412,6 +412,33 @@ func TestInterfaceIntegrityWorkflowContract(t *testing.T) {
 	}
 }
 
+func TestInterfaceSensitiveClassificationCoversCoreCommandFramework(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("Abs(repo root) error = %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile(ci.yml) error = %v", err)
+	}
+	workflow := string(data)
+	start := strings.Index(workflow, "            const isInterfaceSensitive =")
+	end := strings.Index(workflow, "            const isMCPSensitive =")
+	if start < 0 || end <= start {
+		t.Fatal("Code Admission workflow missing interface-sensitive classifier boundaries")
+	}
+	classifier := strings.TrimSpace(workflow[start:end])
+	probe := classifier + `
+if (!isInterfaceSensitive("internal/corecmd/corecmd.go")) {
+  throw new Error("existing corecmd files must trigger Interface Integrity");
+}
+`
+	cmd := exec.Command("node", "-e", probe)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("interface-sensitive classifier rejected corecmd change: %v\n%s", err, output)
+	}
+}
+
 func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

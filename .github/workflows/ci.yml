@@ -111,6 +111,7 @@ jobs:
                 filename.startsWith('internal/app/') ||
                 filename.startsWith('internal/cli/') ||
                 filename.startsWith('internal/cobracmd/') ||
+                filename.startsWith('internal/corecmd/') ||
                 filename.startsWith('internal/helpers/') ||
                 filename.startsWith('internal/i18n/') ||
                 filename.startsWith('internal/interfacesnapshot/') ||
