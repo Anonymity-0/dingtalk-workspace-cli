@@ -2645,7 +2645,7 @@ var generatedParamAliases = []ParamAliasEntry{
 		Aliases: map[string]string{
 			"export-job-id": "job-id",
 		},
-		Blocked: []string{"doc-id", "document-id", "file-id", "node", "node-id", "task-id", "url"},
+		Blocked: []string{"doc-id", "document-id", "file-id", "node", "node-id", "url"},
 	},
 	{
 		CLIPath: "doc file create",
