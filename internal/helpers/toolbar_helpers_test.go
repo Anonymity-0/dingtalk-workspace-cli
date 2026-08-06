@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -347,5 +348,65 @@ func TestCrossPlatformCoverageToolbarRemoveCustomCallsMCPWithExactArgsWhenYes(t 
 	wantArgs := map[string]any{"openCid": "cidX", "shortcutId": int64(42)}
 	if !reflect.DeepEqual(call.args, wantArgs) {
 		t.Fatalf("tool args = %#v, want %#v", call.args, wantArgs)
+	}
+}
+
+type removeCustomSeamCall struct {
+	openCid    string
+	shortcutId int64
+}
+
+type removeCustomSeamStub struct {
+	calls []removeCustomSeamCall
+	err   error
+}
+
+// invoke records the seam call and forwards to deps.Caller.CallTool so the
+// user_required contract gate (leaf.go) is satisfied. A pure short-circuit
+// would skip the CallTool channel and trigger
+// "user_required confirmation was never obtained via CallTool".
+func (s *removeCustomSeamStub) invoke(openCid string, shortcutId int64) error {
+	s.calls = append(s.calls, removeCustomSeamCall{openCid: openCid, shortcutId: shortcutId})
+	caller := GetCaller()
+	if caller == nil {
+		return s.err
+	}
+	_, err := caller.CallTool(context.Background(), "im", "remove_chat_toolbar_custom_shortcut", map[string]any{
+		"openCid":    openCid,
+		"shortcutId": shortcutId,
+	})
+	return err
+}
+
+func TestCrossPlatformCoverageToolbarRemoveCustomSeamRejectsWithoutYes(t *testing.T) {
+	stub := &removeCustomSeamStub{}
+	testseam.Swap(t, &removeChatToolbarCustomShortcutFn, stub.invoke)
+
+	err := executeToolbarCommand(t, newToolbarRemoveCustomCommand(), &toolbarTestCaller{},
+		"--conversation-id", "cidX", "--shortcut-id", "42")
+	requireTypedConfirmationError(t, err)
+	if len(stub.calls) != 0 {
+		t.Fatalf("expected 0 seam calls before --yes, got %d: %+v", len(stub.calls), stub.calls)
+	}
+}
+
+func TestCrossPlatformCoverageToolbarRemoveCustomSeamCallsWithExactArgsWhenYes(t *testing.T) {
+	stub := &removeCustomSeamStub{}
+	testseam.Swap(t, &removeChatToolbarCustomShortcutFn, stub.invoke)
+
+	err := executeToolbarCommand(t, newToolbarRemoveCustomCommand(), &toolbarTestCaller{},
+		"--conversation-id", "cidX", "--shortcut-id", "42", "--yes")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(stub.calls) != 1 {
+		t.Fatalf("expected exactly 1 seam call, got %d: %+v", len(stub.calls), stub.calls)
+	}
+	call := stub.calls[0]
+	if call.openCid != "cidX" {
+		t.Fatalf("seam openCid = %q, want cidX", call.openCid)
+	}
+	if call.shortcutId != int64(42) {
+		t.Fatalf("seam shortcutId = %d, want 42", call.shortcutId)
 	}
 }

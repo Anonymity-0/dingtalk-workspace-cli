@@ -20,6 +20,19 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 )
 
+// removeChatToolbarCustomShortcutFn is the package-level injection seam for
+// the remove-custom command's remote call. The default implementation routes
+// through callMCPToolOnServer against the im server, so production behavior is
+// unchanged. Tests swap it with testseam.Swap(t, &removeChatToolbarCustomShortcutFn, stub)
+// to capture the call without hitting a real remote. Like every package-var
+// seam in this repo it is not safe for t.Parallel tests.
+var removeChatToolbarCustomShortcutFn = func(openCid string, shortcutId int64) error {
+	return callMCPToolOnServer("im", "remove_chat_toolbar_custom_shortcut", map[string]any{
+		"openCid":    openCid,
+		"shortcutId": shortcutId,
+	})
+}
+
 func newToolbarRemoveCustomCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove-custom",
@@ -40,10 +53,7 @@ func newToolbarRemoveCustomCommand() *cobra.Command {
 					apperrors.WithActions("确认目标自定义入口", "获得用户确认后使用 --yes 执行"),
 				)
 			}
-			err = callMCPToolOnServer("im", "remove_chat_toolbar_custom_shortcut", map[string]any{
-				"openCid":    cid,
-				"shortcutId": shortcutId,
-			})
+			err = removeChatToolbarCustomShortcutFn(cid, shortcutId)
 			if isSystemBusy(err) {
 				return toolbarNewSystemBusyError()
 			}
