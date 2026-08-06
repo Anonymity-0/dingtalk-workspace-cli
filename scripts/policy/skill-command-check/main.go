@@ -137,7 +137,9 @@ func schemaProjectionIssue(raw string) string {
 			if i+1 < len(tokens) {
 				i++
 			}
-		case strings.HasPrefix(token, "--jq=") || strings.HasPrefix(token, "--fields="):
+		case strings.HasPrefix(token, "--jq="):
+			selected = true
+		case strings.HasPrefix(token, "--fields="):
 			selected = true
 		case token == "--format" || token == "-f":
 			if i+1 < len(tokens) {
