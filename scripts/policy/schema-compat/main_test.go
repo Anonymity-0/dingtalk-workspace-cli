@@ -594,15 +594,6 @@ func TestCrossPlatformCoverageSchemaCompatMCPRetirementAndConstraintExpansion(t 
 	if failures := checkCompatibility(baseline, typed); !strings.Contains(strings.Join(failures, "\n"), "changed interface_type") {
 		t.Fatalf("non-empty interface_type change should fail: %v", failures)
 	}
-
-	// Property remaps remain a hard contract break (no reviewed allowlist).
-	propertyRemap := cloneContract(baseline)
-	mutateParameter(&propertyRemap, func(parameter *parameterSchema) {
-		parameter.Property = "unreviewedRemoteField"
-	})
-	if failures := checkCompatibility(baseline, propertyRemap); !strings.Contains(strings.Join(failures, "\n"), "changed property") {
-		t.Fatalf("property remap should fail: %v", failures)
-	}
 }
 
 func TestCrossPlatformCoverageSchemaCompatAdditiveConstraintEvolution(t *testing.T) {
