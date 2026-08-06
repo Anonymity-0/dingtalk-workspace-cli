@@ -8,10 +8,11 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Deprecated
 
-- **`dws recovery` CLI** — hides the recovery plan/execute/finalize surface and
-  returns an explicit “不再支持” compatibility notice. The `internal/recovery`
-  package is removed; a later release can delete the Hidden shim. Transport
-  errors keep generic retry/auth guidance without pointing callers at recovery.
+- **`dws recovery` CLI** — keeps a visible Deprecated compatibility stub for
+  plan/execute/finalize that returns an explicit “不再支持” notice. The
+  `internal/recovery` package is removed; Skills must not teach this path.
+  Transport errors keep generic retry/auth guidance without pointing callers
+  at recovery.
 
 ## [1.0.57-beta.2] - 2026-08-05
 

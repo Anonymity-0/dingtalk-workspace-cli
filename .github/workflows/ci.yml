@@ -1375,6 +1375,16 @@ jobs:
           echo "COMPATIBILITY_BASE_REF=$base_ref" >> "$GITHUB_ENV"
           echo "COMPATIBILITY_STABLE_REF=$stable_ref" >> "$GITHUB_ENV"
 
+      - name: Check historical commands and help compatibility
+        if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.interface_sensitive == 'true') }}
+        run: |
+          make authoritative-interface-integrity \
+            BASE_REF="$COMPATIBILITY_BASE_REF"
+          if [ "$(git rev-parse "${COMPATIBILITY_BASE_REF}^{commit}")" != "$(git rev-parse "${COMPATIBILITY_STABLE_REF}^{commit}")" ]; then
+            make authoritative-interface-integrity \
+              BASE_REF="$COMPATIBILITY_STABLE_REF"
+          fi
+
       - name: Check complete Schema compatibility
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.interface_sensitive == 'true') }}
         run: make schema-compatibility BASE_REF="$COMPATIBILITY_BASE_REF"

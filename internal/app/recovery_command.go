@@ -30,14 +30,14 @@ type recoveryCompatNotice struct {
 	Message string `json:"message"`
 }
 
-// newRecoveryCommand keeps a Hidden compatibility surface for historical argv.
-// A later release can delete this shim once callers have moved off.
+// newRecoveryCommand keeps a visible Deprecated compatibility surface for
+// historical argv and Interface Integrity. Behavior is unchanged: every leaf
+// returns an explicit unsupported notice. Skills must not teach this path.
 func newRecoveryCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "recovery",
 		Short:             "不再支持：错误恢复辅助命令（兼容入口）",
-		Long:              "此命令组已 Hidden，仅为历史 argv 兼容保留；不再读取失败快照或生成恢复计划。",
-		Hidden:            true,
+		Long:              "此命令组仅为历史 argv 兼容保留，不再读取失败快照或生成恢复计划。Skill / Agent 请勿引导此路径。",
 		Deprecated:        "不再支持；" + recoveryUnsupportedMessage,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
@@ -49,7 +49,6 @@ func newRecoveryCommand() *cobra.Command {
 	planCmd := &cobra.Command{
 		Use:               "plan",
 		Short:             "不再支持：基于失败快照生成恢复计划",
-		Hidden:            true,
 		Deprecated:        "不再支持；" + recoveryUnsupportedMessage,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
@@ -63,7 +62,6 @@ func newRecoveryCommand() *cobra.Command {
 	executeCmd := &cobra.Command{
 		Use:               "execute",
 		Short:             "不再支持：生成面向 Agent 的恢复分析包",
-		Hidden:            true,
 		Deprecated:        "不再支持；" + recoveryUnsupportedMessage,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
@@ -77,7 +75,6 @@ func newRecoveryCommand() *cobra.Command {
 	finalizeCmd := &cobra.Command{
 		Use:               "finalize",
 		Short:             "不再支持：回写恢复闭环结果",
-		Hidden:            true,
 		Deprecated:        "不再支持；" + recoveryUnsupportedMessage,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,

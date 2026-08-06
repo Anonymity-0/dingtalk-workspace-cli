@@ -23,16 +23,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestCrossPlatformCoverageRecoveryHiddenUnsupportedShim(t *testing.T) {
+func TestCrossPlatformCoverageRecoveryDeprecatedUnsupportedShim(t *testing.T) {
 	root := NewRootCommand()
 	group := mustFindCommand(t, root, "recovery")
-	if !group.Hidden || group.Deprecated == "" || !group.Runnable() {
+	if group.Hidden || group.Deprecated == "" || !group.Runnable() {
 		t.Fatalf("recovery group contract: hidden=%v deprecated=%q runnable=%v", group.Hidden, group.Deprecated, group.Runnable())
 	}
 
 	for _, leaf := range []string{"plan", "execute", "finalize"} {
 		cmd := mustFindCommand(t, root, "recovery", leaf)
-		if !cmd.Hidden || cmd.Deprecated == "" || !cmd.Runnable() {
+		if cmd.Hidden || cmd.Deprecated == "" || !cmd.Runnable() {
 			t.Fatalf("recovery %s contract: hidden=%v deprecated=%q runnable=%v", leaf, cmd.Hidden, cmd.Deprecated, cmd.Runnable())
 		}
 		wantFlags := []string{"event-id"}

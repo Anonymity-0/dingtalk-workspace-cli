@@ -714,7 +714,7 @@ func hideNonDirectRuntimeCommands(root *cobra.Command) {
 var builtinCommandNames = map[string]bool{
 	"auth": true, "api": true, "audit": true, "config": true,
 	"doctor": true, "event": true, "completion": true, "skill": true,
-	"plugin": true, "profile": true, "version": true, "help": true,
+	"plugin": true, "profile": true, "recovery": true, "version": true, "help": true,
 	"schema": true, "mcp": true, "upgrade": true,
 }
 
