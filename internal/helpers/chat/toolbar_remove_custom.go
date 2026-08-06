@@ -27,7 +27,7 @@ import (
 // to capture the call without hitting a real remote. Like every package-var
 // seam in this repo it is not safe for t.Parallel tests.
 var removeChatToolbarCustomShortcutFn = func(openConversationId string, shortcutId int64) error {
-	return callMCPToolOnServer("im", "remove_chat_toolbar_custom_shortcut", map[string]any{
+	return callMCPToolOnServer("im", "remove_custom_shortcut", map[string]any{
 		"openConversationId": openConversationId,
 		"shortcutId":         shortcutId,
 	})
@@ -75,8 +75,8 @@ func newToolbarRemoveCustomCommand() *cobra.Command {
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
 				ProductID:      "chat",
-				Name:           "remove_chat_toolbar_custom_shortcut",
-				CanonicalPath:  "chat.remove_chat_toolbar_custom_shortcut",
+				Name:           "remove_custom_shortcut",
+				CanonicalPath:  "chat.remove_custom_shortcut",
 				CLIPath:        "chat toolbar remove-custom",
 				PrimaryCLIPath: "chat toolbar remove-custom",
 			},
@@ -84,7 +84,7 @@ func newToolbarRemoveCustomCommand() *cobra.Command {
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
-				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "remove_chat_toolbar_custom_shortcut"},
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "remove_custom_shortcut"},
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "删除自定义快捷栏入口",

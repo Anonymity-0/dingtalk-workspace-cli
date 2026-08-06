@@ -1933,16 +1933,15 @@ Flags:
 Usage:
   dws chat toolbar create-custom [flags]
 Example:
-  dws chat toolbar create-custom --conversation-id <cid> --title "周报" --url "https://example.com" --icon-url "https://example.com/icon.png" --pc-url "https://example.com" --org-id-list 123,456
+  dws chat toolbar create-custom --conversation-id <cid> --title "周报" --url "https://example.com" --icon-url "https://example.com/icon.png" --pc-url "https://example.com"
 Flags:
       --conversation-id string  会话 openConversationId (必填)
       --title string            入口标题 (必填)
       --url string              入口跳转链接 (必填)
       --icon-url string         入口图标 URL (必填)
       --pc-url string           PC 端跳转链接 (必填)
-      --org-id-list string      可见组织 ID 列表，逗号分隔 (必填)
       --extension stringArray   扩展信息，格式 key=value，可重复使用
-      --desc string             入口描述
+      --desc string             入口描述（为空时使用 --title）
       --tag string              入口标签
       --sort-index int          排序权重
 ```
@@ -1965,7 +1964,7 @@ Flags:
 Usage:
   dws chat toolbar update-custom [flags]
 Example:
-  dws chat toolbar update-custom --conversation-id <cid> --shortcut-id 123 --title "周报" --url "https://example.com" --icon-url "https://example.com/icon.png" --pc-url "https://example.com" --org-id-list 123
+  dws chat toolbar update-custom --conversation-id <cid> --shortcut-id 123 --title "周报" --url "https://example.com" --icon-url "https://example.com/icon.png" --pc-url "https://example.com"
 Flags:
       --conversation-id string  会话 openConversationId (必填)
       --shortcut-id int         自定义入口 ID (必填)
@@ -1973,7 +1972,6 @@ Flags:
       --url string              入口跳转链接 (必填)
       --icon-url string         入口图标 URL (必填)
       --pc-url string           PC 端跳转链接 (必填)
-      --org-id-list string      可见组织 ID 列表，逗号分隔 (必填)
       --extension stringArray   扩展信息，格式 key=value，可重复使用
       --desc string             入口描述
       --tag string              入口标签

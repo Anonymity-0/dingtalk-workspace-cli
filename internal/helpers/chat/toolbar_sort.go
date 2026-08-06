@@ -64,7 +64,7 @@ func newToolbarSortCommand() *cobra.Command {
 				toolArgs["unsortedShortcutIds"] = unsortedIds
 			}
 
-			err = callMCPToolOnServer("im", "sort_chat_toolbar_shortcuts", toolArgs)
+			err = callMCPToolOnServer("im", "sort_shortcut_bar", toolArgs)
 			if isSystemBusy(err) {
 				return toolbarNewSystemBusyError()
 			}
@@ -86,8 +86,8 @@ func newToolbarSortCommand() *cobra.Command {
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
 				ProductID:      "chat",
-				Name:           "sort_chat_toolbar_shortcuts",
-				CanonicalPath:  "chat.sort_chat_toolbar_shortcuts",
+				Name:           "sort_shortcut_bar",
+				CanonicalPath:  "chat.sort_shortcut_bar",
 				CLIPath:        "chat toolbar sort",
 				PrimaryCLIPath: "chat toolbar sort",
 			},
@@ -95,7 +95,7 @@ func newToolbarSortCommand() *cobra.Command {
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
-				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "sort_chat_toolbar_shortcuts"},
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "sort_shortcut_bar"},
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "对会话快捷栏入口进行排序",

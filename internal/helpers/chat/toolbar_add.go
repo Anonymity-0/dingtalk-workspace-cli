@@ -40,7 +40,7 @@ func newToolbarAddCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("--shortcut-ids: %w", err)
 			}
-			err = callMCPToolOnServer("im", "add_chat_toolbar_shortcuts", map[string]any{
+			err = callMCPToolOnServer("im", "add_shortcut_to_bar", map[string]any{
 				"openConversationId": cid,
 				"shortcutIds":        ids,
 			})
@@ -64,8 +64,8 @@ func newToolbarAddCommand() *cobra.Command {
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
 				ProductID:      "chat",
-				Name:           "add_chat_toolbar_shortcuts",
-				CanonicalPath:  "chat.add_chat_toolbar_shortcuts",
+				Name:           "add_shortcut_to_bar",
+				CanonicalPath:  "chat.add_shortcut_to_bar",
 				CLIPath:        "chat toolbar add",
 				PrimaryCLIPath: "chat toolbar add",
 			},
@@ -73,7 +73,7 @@ func newToolbarAddCommand() *cobra.Command {
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
-				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "add_chat_toolbar_shortcuts"},
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "add_shortcut_to_bar"},
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "将快捷入口添加到会话快捷栏可见区",

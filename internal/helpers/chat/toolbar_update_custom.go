@@ -14,8 +14,6 @@
 package chat
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -34,14 +32,13 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
   --url              入口跳转链接
   --icon-url         入口图标 URL
   --pc-url           PC 端跳转链接
-  --org-id-list      可见组织 ID 列表（逗号分隔）
 
 可选参数：
   --extension        扩展信息，格式 key=value，可重复使用
   --desc             入口描述
   --tag              入口标签
   --sort-index       排序权重`,
-		Example: `  dws chat toolbar update-custom --conversation-id <cid> --shortcut-id 123 --title "周报" --url "https://example.com" --icon-url "https://example.com/icon.png" --pc-url "https://example.com" --org-id-list 123,456
+		Example: `  dws chat toolbar update-custom --conversation-id <cid> --shortcut-id 123 --title "周报" --url "https://example.com" --icon-url "https://example.com/icon.png" --pc-url "https://example.com"
   # 查询入口 ID: dws chat toolbar list --conversation-id <cid>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cid, err := toolbarConversationID(cmd)
@@ -49,28 +46,24 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 				return err
 			}
 			shortcutId, _ := cmd.Flags().GetInt64("shortcut-id")
-			if err := validateRequiredFlags(cmd, "title", "url", "icon-url", "pc-url", "org-id-list"); err != nil {
+			if err := validateRequiredFlags(cmd, "title", "url", "icon-url", "pc-url"); err != nil {
 				return err
-			}
-
-			orgIds, err := parseCSVInt64(mustGetFlag(cmd, "org-id-list"))
-			if err != nil {
-				return fmt.Errorf("--org-id-list: %w", err)
 			}
 
 			toolArgs := map[string]any{
 				"openConversationId": cid,
 				"shortcutId":         shortcutId,
-				"title":              mustGetFlag(cmd, "title"),
+				"name":               toolbarI18nJSONString(mustGetFlag(cmd, "title")),
 				"url":                mustGetFlag(cmd, "url"),
-				"iconUrl":            mustGetFlag(cmd, "icon-url"),
+				"icons":              toolbarIconsJSONString(mustGetFlag(cmd, "icon-url")),
 				"pcUrl":              mustGetFlag(cmd, "pc-url"),
-				"orgIdList":          orgIds,
 			}
 
-			if desc, _ := cmd.Flags().GetString("desc"); desc != "" {
-				toolArgs["desc"] = desc
+			descValue := mustGetFlag(cmd, "desc")
+			if descValue == "" {
+				descValue = mustGetFlag(cmd, "title")
 			}
+			toolArgs["desc"] = toolbarI18nJSONString(descValue)
 			if tag, _ := cmd.Flags().GetString("tag"); tag != "" {
 				toolArgs["tag"] = tag
 			}
@@ -87,7 +80,7 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 				toolArgs["extension"] = ext
 			}
 
-			err = callMCPToolOnServer("im", "update_chat_toolbar_custom_shortcut", toolArgs)
+			err = callMCPToolOnServer("im", "update_custom_shortcut", toolArgs)
 			if isSystemBusy(err) {
 				return toolbarNewSystemBusyError()
 			}
@@ -100,7 +93,6 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 	cmd.Flags().String("url", "", "入口跳转链接")
 	cmd.Flags().String("icon-url", "", "入口图标 URL")
 	cmd.Flags().String("pc-url", "", "PC 端跳转链接")
-	cmd.Flags().String("org-id-list", "", "可见组织 ID 列表（逗号分隔）")
 	cmd.Flags().StringArray("extension", nil, "扩展信息，格式 key=value，可重复使用")
 	cmd.Flags().String("desc", "", "入口描述")
 	cmd.Flags().String("tag", "", "入口标签")
@@ -111,7 +103,6 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 	_ = cmd.MarkFlagRequired("url")
 	_ = cmd.MarkFlagRequired("icon-url")
 	_ = cmd.MarkFlagRequired("pc-url")
-	_ = cmd.MarkFlagRequired("org-id-list")
 	cmd.DisableAutoGenTag = true
 
 	DeclareLeafMetadata(cmd, LeafSpec{
@@ -122,8 +113,8 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
 				ProductID:      "chat",
-				Name:           "update_chat_toolbar_custom_shortcut",
-				CanonicalPath:  "chat.update_chat_toolbar_custom_shortcut",
+				Name:           "update_custom_shortcut",
+				CanonicalPath:  "chat.update_custom_shortcut",
 				CLIPath:        "chat toolbar update-custom",
 				PrimaryCLIPath: "chat toolbar update-custom",
 			},
@@ -131,22 +122,21 @@ func newToolbarUpdateCustomCommand() *cobra.Command {
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
-				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_chat_toolbar_custom_shortcut"},
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_custom_shortcut"},
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "更新自定义快捷栏入口",
 				UseWhen:      []string{"需要修改已有自定义快捷栏入口的标题、链接、图标等属性"},
 				AvoidWhen:    []string{"创建新入口使用 chat toolbar create-custom；删除入口使用 chat toolbar remove-custom"},
-				Examples:     []string{"dws chat toolbar update-custom --conversation-id <cid> --shortcut-id 123 --title \"周报\" --url \"https://example.com\" --icon-url \"https://example.com/icon.png\" --pc-url \"https://example.com\" --org-id-list 123"},
+				Examples:     []string{"dws chat toolbar update-custom --conversation-id <cid> --shortcut-id 123 --title \"周报\" --url \"https://example.com\" --icon-url \"https://example.com/icon.png\" --pc-url \"https://example.com\""},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "shortcut-id", Property: "shortcutId", Required: boolPtr(true)},
-				{Name: "title", Property: "title", Required: boolPtr(true)},
+				{Name: "title", Property: "name", Required: boolPtr(true)},
 				{Name: "url", Property: "url", Required: boolPtr(true)},
-				{Name: "icon-url", Property: "iconUrl", Required: boolPtr(true)},
+				{Name: "icon-url", Property: "icons", Required: boolPtr(true)},
 				{Name: "pc-url", Property: "pcUrl", Required: boolPtr(true)},
-				{Name: "org-id-list", Property: "orgIdList", Required: boolPtr(true)},
 				{Name: "extension", Property: "extension", Required: boolPtr(false)},
 				{Name: "desc", Property: "desc", Required: boolPtr(false)},
 				{Name: "tag", Property: "tag", Required: boolPtr(false)},
