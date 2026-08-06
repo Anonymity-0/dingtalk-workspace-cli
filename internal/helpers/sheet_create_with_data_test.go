@@ -3,6 +3,7 @@ package helpers
 import (
 	"context"
 	"errors"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -167,6 +168,29 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 			"row-sizes-pixel-without-size",
 			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","row_sizes":[{"range":"1:2","type":"pixel"}]}]}`},
 			"type=pixel 时必须提供正整数 size",
+		},
+		{
+			// JSON 数字都是 float64，直接 int(n) 会把 12.9 悄悄写成 12。
+			// --styles 不可原子回滚，静默取整会留下与配置不符的表格。
+			"cell-styles-fractional-font-size",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_styles":[{"range":"A1","font_size":12.9}]}]}`},
+			"font_size=12.9 必须是整数",
+		},
+		{
+			"row-sizes-fractional-size",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","row_sizes":[{"range":"1:1","type":"pixel","size":28.5}]}]}`},
+			"size=28.5 必须是整数",
+		},
+		{
+			// 1e20 以前被 int() 截成 math.MaxInt64 后照样下发
+			"row-sizes-overflow-size",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","row_sizes":[{"range":"1:1","type":"pixel","size":1e20}]}]}`},
+			"超出取值范围",
+		},
+		{
+			"col-sizes-fractional-size",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","col_sizes":[{"range":"A:A","type":"pixel","size":120.5}]}]}`},
+			"size=120.5 必须是整数",
 		},
 		{
 			"row-sizes-standard-with-size",
@@ -565,18 +589,28 @@ func TestPickStrAndPickNum(t *testing.T) {
 		t.Fatalf("pickStr = %q, want empty", got)
 	}
 	for _, tc := range []struct {
-		keys []string
-		want int
-		ok   bool
+		keys    []string
+		want    int
+		ok      bool
+		wantErr string
 	}{
-		{[]string{"n"}, 3, true},
-		{[]string{"i"}, 4, true},
-		{[]string{"missing"}, 0, false},
-		{[]string{"nil", "bad"}, 0, false},
+		{keys: []string{"n"}, want: 3, ok: true},
+		{keys: []string{"i"}, want: 4, ok: true},
+		{keys: []string{"missing"}},
+		// nil 视为未提供，继续找下一个候选键；bool 命中后按类型错误报出，
+		// 而不是当成"没给"静默放过。
+		{keys: []string{"nil", "bad"}, ok: true, wantErr: "必须是数字"},
 	} {
-		got, ok := pickNum(m, tc.keys...)
+		got, ok, err := pickNum(m, tc.keys...)
 		if got != tc.want || ok != tc.ok {
 			t.Fatalf("pickNum(%v) = (%d,%v), want (%d,%v)", tc.keys, got, ok, tc.want, tc.ok)
+		}
+		if tc.wantErr == "" {
+			if err != nil {
+				t.Fatalf("pickNum(%v) err = %v, want nil", tc.keys, err)
+			}
+		} else if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+			t.Fatalf("pickNum(%v) err = %v, want contains %q", tc.keys, err, tc.wantErr)
 		}
 	}
 }
@@ -963,5 +997,66 @@ func TestValuesHaveContent(t *testing.T) {
 		if !valuesHaveContent(v) {
 			t.Errorf("%v 应判为有内容", v)
 		}
+	}
+}
+
+func TestPickNumRejectsNonIntegralAndOutOfRange(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		val  any
+		want string
+	}{
+		{"fractional", 12.9, "必须是整数"},
+		{"negative-fractional", -3.5, "必须是整数"},
+		{"overflow", 1e20, "超出取值范围"},
+		{"underflow", -1e20, "超出取值范围"},
+		{"nan", math.NaN(), "不是有限数值"},
+		{"inf", math.Inf(1), "不是有限数值"},
+		{"string", "12", "必须是数字"},
+		{"bool", true, "必须是数字"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok, err := pickNum(map[string]any{"size": tc.val}, "size")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want contains %q", err, tc.want)
+			}
+			// 键存在过就要报 ok=true，调用方才知道"给了但非法"而非"没给"
+			if !ok {
+				t.Error("ok = false, want true（键存在）")
+			}
+			if got != 0 {
+				t.Errorf("值 = %d, want 0", got)
+			}
+		})
+	}
+
+	// 合法输入照常返回
+	for _, tc := range []struct {
+		val  any
+		want int
+	}{
+		{float64(12), 12},
+		{float64(0), 0},
+		{float64(-5), -5},
+		{int(28), 28},
+		{float64(math.MaxInt32), math.MaxInt32},
+	} {
+		got, ok, err := pickNum(map[string]any{"size": tc.val}, "size")
+		if err != nil || !ok || got != tc.want {
+			t.Errorf("pickNum(%v) = (%d,%v,%v), want (%d,true,nil)", tc.val, got, ok, err, tc.want)
+		}
+	}
+
+	// 键缺失：ok=false 且无错误
+	if got, ok, err := pickNum(map[string]any{}, "size"); got != 0 || ok || err != nil {
+		t.Errorf("缺键 = (%d,%v,%v), want (0,false,nil)", got, ok, err)
+	}
+	// 显式 null 视为未提供
+	if _, ok, err := pickNum(map[string]any{"size": nil}, "size"); ok || err != nil {
+		t.Errorf("null = (ok=%v,err=%v), want (false,nil)", ok, err)
+	}
+	// 多候选键：取第一个命中的
+	if got, _, _ := pickNum(map[string]any{"fontSize": float64(9)}, "font_size", "fontSize"); got != 9 {
+		t.Errorf("别名键取值 = %d, want 9", got)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -233,19 +234,37 @@ func pickStr(m map[string]any, keys ...string) string {
 	return ""
 }
 
-// pickNum 按多个候选键取数值（JSON 数字为 float64）。
-func pickNum(m map[string]any, keys ...string) (int, bool) {
+// pickNum 按多个候选键取整数值（JSON 数字为 float64）。
+//
+// JSON 解码后所有数字都是 float64，直接 int(n) 会把 12.9 悄悄变成 12、把 1e20
+// 截成 math.MaxInt64。文档和错误信息都写明这些字段必须是正整数，而 --styles
+// 是不可原子回滚的复合流程，静默取整会留下与配置不符的表格。因此非整数、
+// 非有限值、超出 int 范围一律报错，交由调用方在建文档之前拒绝。
+func pickNum(m map[string]any, keys ...string) (int, bool, error) {
 	for _, k := range keys {
-		if v, ok := m[k]; ok && v != nil {
-			switch n := v.(type) {
-			case float64:
-				return int(n), true
-			case int:
-				return n, true
+		v, ok := m[k]
+		if !ok || v == nil {
+			continue
+		}
+		switch n := v.(type) {
+		case float64:
+			if math.IsNaN(n) || math.IsInf(n, 0) {
+				return 0, true, fmt.Errorf("%s=%v 不是有限数值", k, n)
 			}
+			if n != math.Trunc(n) {
+				return 0, true, fmt.Errorf("%s=%v 必须是整数，不接受小数（静默取整会得到与配置不符的结果）", k, n)
+			}
+			if n > math.MaxInt32 || n < math.MinInt32 {
+				return 0, true, fmt.Errorf("%s=%v 超出取值范围", k, n)
+			}
+			return int(n), true, nil
+		case int:
+			return n, true, nil
+		default:
+			return 0, true, fmt.Errorf("%s 必须是数字，实际是 %T", k, v)
 		}
 	}
-	return 0, false
+	return 0, false, nil
 }
 
 // feishuWordWrap 把飞书 word_wrap 枚举映射为引擎枚举（同时接受引擎原生值）。
@@ -304,7 +323,9 @@ func cellStyleItemToSpec(item map[string]any) (*styleSpec, string, error) {
 		WordWrap:     feishuWordWrap(pickStr(item, "word_wrap", "wordWrap")),
 		NumberFormat: pickStr(item, "number_format", "numberFormat"),
 	}
-	if n, ok := pickNum(item, "font_size", "fontSize"); ok {
+	if n, ok, err := pickNum(item, "font_size", "fontSize"); err != nil {
+		return nil, "", fmt.Errorf("cell_styles.%w", err)
+	} else if ok {
 		spec.FontSize = n
 	}
 	// border_styles 是对象，转回 JSON 字符串交给已有的 parseBorderStyles 校验。
@@ -467,7 +488,10 @@ func planStyleOps(nodeID, sheetID string, ops sheetStyleOps) ([]styleCall, error
 			}
 			switch {
 			case typ == "pixel":
-				size, ok := pickNum(item, "size")
+				size, ok, err := pickNum(item, "size")
+				if err != nil {
+					return fmt.Errorf("%s[%d].%w", label, i, err)
+				}
 				if !ok || size <= 0 {
 					return fmt.Errorf("%s[%d] type=pixel 时必须提供正整数 size", label, i)
 				}
@@ -475,12 +499,20 @@ func planStyleOps(nodeID, sheetID string, ops sheetStyleOps) ([]styleCall, error
 			case typ == "standard":
 				// 尺寸由服务端读取默认行高/列宽决定，无需 size。
 				// 给了 size 说明调用方预期不符，静默忽略会让人以为生效了。
-				if _, ok := pickNum(item, "size"); ok {
+				_, ok, err := pickNum(item, "size")
+				if err != nil {
+					return fmt.Errorf("%s[%d].%w", label, i, err)
+				}
+				if ok {
 					return fmt.Errorf("%s[%d] type=standard 表示恢复默认尺寸，不能同时给 size；要指定固定像素请用 type=pixel", label, i)
 				}
 			case typ == "auto" && isRow:
 				// 行高按内容自适应，无需 size
-				if _, ok := pickNum(item, "size"); ok {
+				_, ok, err := pickNum(item, "size")
+				if err != nil {
+					return fmt.Errorf("%s[%d].%w", label, i, err)
+				}
+				if ok {
 					return fmt.Errorf("%s[%d] type=auto 表示按内容自适应，不能同时给 size；要指定固定像素请用 type=pixel", label, i)
 				}
 			default:
