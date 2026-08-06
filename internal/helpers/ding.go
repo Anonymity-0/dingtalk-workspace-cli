@@ -115,8 +115,8 @@ func newDingCommand() *cobra.Command {
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "content", Required: boolPtr(true)},
-				{Name: "robot-code", Required: boolPtr(true)},
+				{Name: "content", Property: "content", Required: boolPtr(true)},
+				{Name: "robot-code", Property: "robotCode", Required: boolPtr(true)},
 				{Name: "type", Property: "remindType"},
 				{Name: "users", Property: "receiverUserIdList", Required: boolPtr(true), InterfaceType: "array"},
 			},
@@ -170,7 +170,10 @@ func newDingCommand() *cobra.Command {
 				Examples:     []string{"dws ding message recall --robot-code <ROBOT_CODE> --id <OPEN_DING_ID> --format json"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "id", Property: "openDingId"},
+				// id is validateRequiredFlags-hard; robot-code is required unless
+				// DINGTALK_DING_ROBOT_CODE is set (same Agent-facing contract as send).
+				{Name: "id", Property: "openDingId", Required: boolPtr(true)},
+				{Name: "robot-code", Property: "robotCode", Required: boolPtr(true)},
 			},
 		},
 	})

@@ -365,7 +365,7 @@ dws contact user get-self --jq '.result[0].orgEmployeeModel | {name: .orgUserNam
 命令帮助和 Schema 分别负责命令契约的不同部分：
 
 - `dws <path> --help` 是命令是否存在、当前二进制接受哪些 flags 的事实源。
-- `dws schema "<path>"` 是 Agent 选命令、参数映射与约束、风险和确认语义的契约。
+- `dws schema "<path>" --compact` 是 Agent 选命令、CLI 参数与约束、风险和确认语义的规范视图；映射或 provenance 审计使用 full leaf 配合 `--jq` 精确投影。
 - Help 与 Schema 冲突时视为契约漂移：执行只传 Cobra 接受的参数，安全语义取更保守值。
 - Schema 只描述命令，不读取或搜索钉钉业务数据；发现命令后仍需执行真实产品命令。
 
@@ -374,14 +374,14 @@ dws contact user get-self --jq '.result[0].orgEmployeeModel | {name: .orgUserNam
 dws aitable record query --help
 
 # 先在产品内发现命令，再查看选中 leaf 的契约
-dws schema aitable
-dws schema "aitable record query"
+dws schema aitable --compact
+dws schema "aitable record query" --compact
 
 # 执行真实业务查询
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 ```
 
-`dws schema --all` 会完整导出命令契约，供工具、CI、审计和兼容性基线使用。Agent 应优先按产品/分组发现后查询 leaf，避免把整个 Catalog 加载进上下文。
+`dws schema --all` 会完整导出命令契约，供工具、CI、审计和兼容性基线使用。Agent 应使用 `--compact` 渐进查询；该视图采用正向字段白名单，full 新增的审计字段不会自动进入 Agent 上下文。
 
 ### Agent Skills
 
@@ -617,7 +617,7 @@ dws aitable record query --base-id BASE_ID --tabel-id TABLE_ID       # --tabel-i
 ```bash
 # 内置 jq 表达式
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --jq '.invocation.params'
-dws schema "dev app create" --jq '.tool.required'
+dws schema "dev app create" --jq '.parameters'
 
 # 只返回指定字段
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocation,response
@@ -629,9 +629,9 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocati
 <summary><strong>Schema 自省</strong> — Agent 命令发现与执行契约</summary>
 
 ```bash
-dws schema aitable                                      # 发现产品命令
-dws schema "aitable record query"                       # 查看选中 leaf 契约
-dws schema "aitable record query" --jq '.tool.required' # 查看必填字段
+dws schema aitable --compact                            # 发现产品命令
+dws schema "aitable record query" --compact             # 查看 Agent leaf 契约
+dws schema "aitable record query" --jq '[.parameters | to_entries[] | select(.value.required)]' # 定向查看必填字段
 dws schema --all                                        # CI/审计/基线的全量导出
 ```
 

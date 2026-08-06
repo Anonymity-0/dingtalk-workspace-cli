@@ -300,7 +300,6 @@ func TestCrossPlatformCoverageRootUtilityAndTimingCoverage(t *testing.T) {
 	_ = newCompletionCommand(dedupRoot)
 	_ = newCatalogCommand()
 	_ = newConfigCommand()
-	_ = newCacheCommand()
 	_ = newVersionCommand()
 	_ = newAPICommand(&GlobalFlags{})
 	_ = NewRootCommand(context.Background())

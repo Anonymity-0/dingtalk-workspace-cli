@@ -78,6 +78,7 @@ and compatibility and CI reliability fixes.
 
 ### Changed
 
+- **Chat reply mentions** — `dws chat message reply` can @ specified group members with `--at-open-dingtalk-ids` or @ everyone with `--at-all`, forwarding the existing `send_personal_message` mention fields and automatically adding missing current-user `<@id>` / `<@all>` placeholders.
 - **Pinned MCP metadata retired** — deletes `internal/cli/schema_mcp_metadata.json` and removes its embed/loader/fallback role from Schema assembly. Catalog now assembles from Contract/ParamDecl/Interface + Cobra only; `make fetch-mcp-metadata` remains an optional diagnostic dump under `artifacts/` and refuses the retired pin path. Policy bans the pin from reappearing.
 - **MCP service review retired** — deletes `schema_mcp_service_review.json` and removes its policy jq / outputguard / test disposition gate (`notify` → `out_of_surface`, snapshot hash pin). No replacement ledger.
 - **Hints retired; ContractDecl is the leaf Schema source** (#830) — `schema_hints/`, Manual/Schema hint overlays, and `schema_agent_metadata/` delivery are removed. Selection, safety, parameters, and interface facts declare on ProductDecl / leaf `Contract` (`corecmd.ContractDecl` + `contract.ParamDecl` / `Safety`). Authoring renamed `SchemaDecl` → `ContractDecl`; nested fields reuse `contract.*` directly.

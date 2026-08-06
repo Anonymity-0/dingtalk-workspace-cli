@@ -569,7 +569,7 @@ func TestCrossPlatformCoverageEventCommandValidationCoverage(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageVersionCacheCompletionCoverage(t *testing.T) {
+func TestCrossPlatformCoverageVersionCompletionCoverage(t *testing.T) {
 	oldVersion, oldBuild, oldCommit := version, buildTime, gitCommit
 	t.Cleanup(func() { version, buildTime, gitCommit = oldVersion, oldBuild, oldCommit })
 	version, buildTime, gitCommit = "1.0", "unknown", "unknown"
@@ -587,25 +587,6 @@ func TestCrossPlatformCoverageVersionCacheCompletionCoverage(t *testing.T) {
 	cmd := newVersionCommand()
 	cmd.SetOut(io.Discard)
 	if err := cmd.Execute(); err != nil {
-		t.Fatal(err)
-	}
-
-	root := &cobra.Command{Use: "dws"}
-	root.PersistentFlags().String("format", "json", "")
-	for _, format := range []string{"json", "pretty", "table"} {
-		_ = root.PersistentFlags().Set("format", format)
-		child := &cobra.Command{Use: "child"}
-		root.AddCommand(child)
-		child.SetOut(io.Discard)
-		if err := printCacheCompatNotice(child, "status"); err != nil {
-			t.Fatalf("cache %s: %v", format, err)
-		}
-		root.RemoveCommand(child)
-	}
-	cache := newCacheCommand()
-	cache.SetOut(io.Discard)
-	cache.SetArgs([]string{"status"})
-	if err := cache.Execute(); err != nil {
 		t.Fatal(err)
 	}
 

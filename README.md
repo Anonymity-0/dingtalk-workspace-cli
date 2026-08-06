@@ -371,7 +371,7 @@ dws contact user get-self --jq '.result[0].orgEmployeeModel | {name: .orgUserNam
 Use Cobra help and Schema for different parts of the command contract:
 
 - `dws <path> --help` is the source of truth for whether a command exists and which flags the binary accepts.
-- `dws schema "<path>"` is the Agent contract for command selection, parameter mappings and constraints, risk, and confirmation semantics.
+- `dws schema "<path>" --compact` is the normative Agent view for command selection, CLI parameters and constraints, risk, and confirmation; use a full leaf with a narrow `--jq` projection for mapping or provenance audits.
 - If Help and Schema disagree, treat it as contract drift: pass only flags accepted by Cobra and use the more conservative safety semantics.
 - Schema describes commands; it does not read or search DingTalk business data. Execute the real product command after discovery.
 
@@ -380,14 +380,14 @@ Use Cobra help and Schema for different parts of the command contract:
 dws aitable record query --help
 
 # Discover within a product, then inspect the selected leaf contract
-dws schema aitable
-dws schema "aitable record query"
+dws schema aitable --compact
+dws schema "aitable record query" --compact
 
 # Execute the real business query
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 ```
 
-`dws schema --all` exports the complete contract for tooling, CI, audits, and compatibility baselines. Agents should prefer product/group discovery followed by a leaf query to avoid loading the full Catalog into context.
+`dws schema --all` exports the complete contract for tooling, CI, audits, and compatibility baselines. Agents should query progressively with `--compact`; its positive field allowlist prevents new full/audit fields from silently expanding Agent context.
 
 ### Agent Skills
 
@@ -623,7 +623,7 @@ dws aitable record query --base-id BASE_ID --tabel-id TABLE_ID       # --tabel-i
 ```bash
 # Built-in jq expressions
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --jq '.invocation.params'
-dws schema "dev app create" --jq '.tool.required'
+dws schema "dev app create" --jq '.parameters'
 
 # Return only specific fields
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocation,response
@@ -635,9 +635,9 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocati
 <summary><strong>Schema Introspection</strong> — Agent command discovery and execution contracts</summary>
 
 ```bash
-dws schema aitable                                      # discover product commands
-dws schema "aitable record query"                       # view the selected leaf contract
-dws schema "aitable record query" --jq '.tool.required' # view required fields
+dws schema aitable --compact                            # discover product commands
+dws schema "aitable record query" --compact             # view the selected Agent leaf contract
+dws schema "aitable record query" --jq '[.parameters | to_entries[] | select(.value.required)]' # view required fields
 dws schema --all                                        # full export for CI/audit/baselines
 ```
 
