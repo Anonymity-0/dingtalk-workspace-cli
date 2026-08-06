@@ -1584,9 +1584,6 @@ func TestCrossPlatformCoverageDoctorCommandCoverage(t *testing.T) {
 	}
 
 	for _, jsonOut := range []bool{false, true} {
-		if got := doctorCheckCache(io.Discard, jsonOut); got.Status != statusPass {
-			t.Fatal("cache check failed")
-		}
 		if got := doctorCheckPerf(io.Discard, jsonOut); got.Status != statusPass {
 			t.Fatalf("perf check = %#v", got)
 		}

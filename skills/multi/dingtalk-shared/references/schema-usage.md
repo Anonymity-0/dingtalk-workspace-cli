@@ -21,15 +21,12 @@
 dws schema
 
 # 第 2 层：产品级（该产品工具的 cli_path + description + effect/risk）
-dws schema calendar
+dws schema calendar --compact
 
 # 第 3 层：分组级
-dws schema "calendar event"
+dws schema "calendar event" --compact
 
-# 第 4 层：完整 leaf（参数契约）
-dws schema "calendar event create"
-
-# --compact：去掉 provenance/debug，保留 Agent 选参字段
+# 第 4 层：Agent leaf（参数契约）
 dws schema "calendar event create" --compact
 
 # --all：全量 leaf，仅 CI / 审计 / 参数 baseline
@@ -42,13 +39,11 @@ dws schema --all --format json
 
 完整兼容性 baseline 必须使用未裁剪的 `schema --all`；`schema --all --compact` 会移除 provenance 和接口映射字段，不得作为完整 baseline。
 
-同一工具的 leaf 查询与 `--all` 条目是同一份 `ToolSpec` 投影。Alias 查询只改变路径视图，不得据此重写参数。若观察到内容差异，按契约漂移报告，不要选一份继续猜。
+同一工具省略 `--compact` 的 full leaf 与 `--all` 条目是同一份 `ToolSpec` 契约；compact leaf 只做展示投影，不重新解析语义。Alias 查询只改变路径视图，不得据此重写参数。若同一视图观察到内容差异，按契约漂移报告，不要选一份继续猜。
 
 ### `--compact`
 
-去掉的字段示例：`agent_metadata_source`、`agent_source_refs`、`effect_source`、`interface_ref`、`property`、`primary_cli_path`、`parameter_count` 等 provenance/debug。
-
-保留：`cli_path`、`canonical_path`、`description`、`effect`、`risk`、`confirmation`、`interface_mode`、`availability`、`interface_reason`、`parameters`、`constraints`、`examples`、`use_when`、`avoid_when`。
+正向字段白名单：保留 `cli_path`、`canonical_path`、`description`、`effect`、`risk`、`confirmation`、`interface_mode`、`availability`、`interface_reason`、`parameters`、`constraints`、`examples`、`use_when`、`avoid_when`；新增 full/audit 字段不会自动泄漏进 Agent 上下文。它有意不返回 `interface_ref`、参数 `property/interface_type` 和 provenance（如 `agent_metadata_source`、`effect_source`、`primary_cli_path` 等）；检查这些映射事实时，用 full leaf 配合 `--jq` 精确投影。
 
 若旧二进制报 `unknown_flag: --compact`，去掉 `--compact` 重跑同一查询；不要因此判定 leaf 不存在，也不要用 Schema 查业务数据。
 
@@ -76,7 +71,8 @@ dws schema --all --format json
 | 信息 | 事实源 |
 |---|---|
 | 命令是否存在、Cobra 接受哪些 flags | `dws <cli_path> --help` |
-| Agent 选择、参数映射/约束、risk/confirmation | `dws schema "<cli_path>"`（按需 `--compact`） |
+| Agent 选择、CLI 参数/required/组合约束、risk/confirmation | `dws schema "<cli_path>" --compact` |
+| CLI↔RPC 参数映射、接口绑定或 provenance 审计 | full leaf 配合 `--jq` / `--fields` 精确投影；不要把整个 full leaf 注入 Agent 上下文 |
 | shortcut 同上 | 已知路径：`dws schema --cli-path "<service> +<shortcut>" --compact --format json` |
 | 钉钉业务数据 | 真实 `read` / `search` / `list` 等命令 |
 
@@ -87,6 +83,6 @@ Schema 与 Help 冲突是**契约漂移**：执行参数只用 Cobra 接受的 f
 ### 两类易混 Schema
 
 - `dws event schema <event_key> --flatten`：事件业务字段
-- `dws schema "event consume"`：CLI 命令参数
+- `dws schema "event consume" --compact`：CLI 命令参数
 
 二者不可互相替代。

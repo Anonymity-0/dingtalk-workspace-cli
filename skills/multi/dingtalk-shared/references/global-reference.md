@@ -112,7 +112,7 @@ JSON 模式下，失败写到 stderr，稳定外层结构为：
 
 ```bash
 # 决定 Agent 选路、参数映射与确认语义
-dws schema --cli-path "chat +messages-send" --format json
+dws schema --cli-path "chat +messages-send" --compact --format json
 
 # 核对当前二进制真实接受的 flag
 dws chat +messages-send --help
