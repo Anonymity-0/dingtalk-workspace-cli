@@ -717,16 +717,13 @@ func TestCrossPlatformCoverageToolbarRemoveCustomSeamCallsWithExactArgsWhenYes(t
 }
 
 func TestToolbarRemoveCustomDeclaresDestructiveHighRiskConfirmation(t *testing.T) {
-	previous := deps
-	t.Cleanup(func() { deps = previous })
-
 	var got LeafSpec
-	SetDeps(Deps{
-		DeclareLeafMetadata: func(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
-			got = spec
-			return cmd
-		},
-	})
+	next := deps
+	next.DeclareLeafMetadata = func(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
+		got = spec
+		return cmd
+	}
+	testseam.Swap(t, &deps, next)
 
 	_ = newToolbarRemoveCustomCommand()
 	if got.Safety.Effect != "destructive" || got.Safety.Risk != "high" ||
