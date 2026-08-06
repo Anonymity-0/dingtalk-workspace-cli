@@ -132,7 +132,10 @@ func run(
 				fmt.Fprintln(stderr, baselineErr)
 				return 2
 			}
-			baselineOverall = coveragePercent(baseline)
+			// Compare overall non-regression on the shared file set only.
+			// Deleted packages (for example a retired 100%-covered helper tree)
+			// must not create a false overall regression against merge-base.
+			baselineOverall = coveragePercent(filterBlocksByFiles(baseline, profileFiles(overall)))
 		}
 	}
 	diff, err := readProfiles(diffPaths, modulePath)
@@ -481,6 +484,29 @@ func coveragePercent(blocks []coverageBlock) float64 {
 		return 0
 	}
 	return float64(covered) * 100 / float64(total)
+}
+
+func profileFiles(blocks []coverageBlock) map[string]bool {
+	files := map[string]bool{}
+	for _, block := range blocks {
+		if block.File != "" {
+			files[block.File] = true
+		}
+	}
+	return files
+}
+
+func filterBlocksByFiles(blocks []coverageBlock, allowed map[string]bool) []coverageBlock {
+	if len(allowed) == 0 {
+		return nil
+	}
+	filtered := make([]coverageBlock, 0, len(blocks))
+	for _, block := range blocks {
+		if allowed[block.File] {
+			filtered = append(filtered, block)
+		}
+	}
+	return filtered
 }
 
 // mergeCoverageBlocks unions duplicate blocks emitted by cross-package

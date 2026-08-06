@@ -363,7 +363,7 @@ Flags:
 > - "把**某篇文档**授权给某人" → `drive permission add`（节点级，包括「我的文档」下的文档都支持）
 > - "把**某个知识库**整体授权给某人" → `wiki member add`（容器级，但**「我的文档」个人空间不支持**）
 
-> 补充：如果用户直接粘贴的是原始 `alidocs` URL，先按 [链接规范](../../dws-shared/references/url-patterns.md#alidocs-url-类型探测流程) 用 `dws drive info` probe；只有 probe 确认 `extension=adoc` 后，才继续按下列意图执行。其他类型（txt/pdf/docx/md/xlsx/file/folder 等）走 [`drive.md`](../../dingtalk-drive/references/drive.md) 或对应产品。
+> 补充：如果用户直接粘贴的是原始 `alidocs` URL，先按 [链接规范](../../dingtalk-shared/references/url-patterns.md#alidocs-url-类型探测流程) 用 `dws drive info` probe；只有 probe 确认 `extension=adoc` 后，才继续按下列意图执行。其他类型（txt/pdf/docx/md/xlsx/file/folder 等）走 [`drive.md`](../../dingtalk-drive/references/drive.md) 或对应产品。
 
 **用户直接粘贴文档 URL（无其他指令）**:
 

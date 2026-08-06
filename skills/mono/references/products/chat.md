@@ -4,7 +4,7 @@
 
 ## Shortcut 优先路由
 
-常见 Agent 意图优先使用公开 `+` Shortcut；下面的原子命令章节保留给需要特定原始返回结构、兼容参数或 Shortcut 未覆盖字段的场景。执行前用 `dws schema --cli-path "chat +<shortcut>" --format json` 读取最终参数、约束和确认语义。
+常见 Agent 意图优先使用公开 `+` Shortcut；下面的原子命令章节保留给需要特定原始返回结构、兼容参数或 Shortcut 未覆盖字段的场景。执行前用 `dws schema --cli-path "chat +<shortcut>" --compact --format json` 读取最终参数、约束和确认语义。
 
 | 意图 | 首选 |
 |---|---|
