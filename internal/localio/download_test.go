@@ -391,6 +391,50 @@ func TestCrossPlatformCoverageSecureHTTPClientDisablesEnvironmentProxy(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageSecureHTTPClientStripsCrossOriginHeaders(t *testing.T) {
+	client := secureHTTPClient()
+	original := &http.Request{
+		URL: mustURL(t, "https://download.dingtalk.com/source"),
+		Header: http.Header{
+			"X-Oss-Security-Token": []string{"credential-a"},
+			"X-Download-Auth":      []string{"credential-b"},
+		},
+	}
+
+	sameOrigin := &http.Request{
+		URL:    mustURL(t, "https://DOWNLOAD.dingtalk.com.:443/next"),
+		Header: original.Header.Clone(),
+	}
+	if err := client.CheckRedirect(sameOrigin, []*http.Request{original}); err != nil {
+		t.Fatal(err)
+	}
+	if sameOrigin.Header.Get("X-Oss-Security-Token") == "" {
+		t.Fatal("same-origin redirect unexpectedly stripped request headers")
+	}
+
+	crossOrigin := &http.Request{
+		URL:    mustURL(t, "https://attacker-bucket.oss-cn-hangzhou.aliyuncs.com/next"),
+		Header: original.Header.Clone(),
+	}
+	if err := client.CheckRedirect(crossOrigin, []*http.Request{original}); err != nil {
+		t.Fatal(err)
+	}
+	if len(crossOrigin.Header) != 0 {
+		t.Fatalf("cross-origin redirect retained %d request headers", len(crossOrigin.Header))
+	}
+
+	multiHop := &http.Request{
+		URL:    mustURL(t, "https://attacker-bucket.oss-cn-hangzhou.aliyuncs.com/final"),
+		Header: original.Header.Clone(),
+	}
+	if err := client.CheckRedirect(multiHop, []*http.Request{original, crossOrigin}); err != nil {
+		t.Fatal(err)
+	}
+	if len(multiHop.Header) != 0 {
+		t.Fatalf("later cross-origin redirect restored %d initial request headers", len(multiHop.Header))
+	}
+}
+
 func TestCrossPlatformCoverageFilesystemInjectedFailures(t *testing.T) {
 	base := t.TempDir()
 	validURL := "https://download.dingtalk.com/x"

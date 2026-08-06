@@ -269,10 +269,31 @@ func secureHTTPClient() *http.Client {
 		if len(via) >= 5 {
 			return fmt.Errorf("下载重定向次数超过上限")
 		}
-		_, err := ValidateDownloadURL(req.URL.String())
-		return err
+		if _, err := ValidateDownloadURL(req.URL.String()); err != nil {
+			return err
+		}
+		// net/http copies arbitrary request headers from the initial request to
+		// every redirect. Never forward service-provided download credentials to
+		// a different origin, even when both hosts are on the download allowlist.
+		if len(via) > 0 && !sameDownloadOrigin(via[0].URL, req.URL) {
+			req.Header = make(http.Header)
+		}
+		return nil
 	}
 	return client
+}
+
+func sameDownloadOrigin(left, right *url.URL) bool {
+	return downloadOrigin(left) == downloadOrigin(right)
+}
+
+func downloadOrigin(parsed *url.URL) string {
+	port := parsed.Port()
+	if port == "" {
+		port = "443"
+	}
+	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
+	return strings.ToLower(parsed.Scheme) + "://" + net.JoinHostPort(host, port)
 }
 
 func allowedDownloadHost(host string) bool {
