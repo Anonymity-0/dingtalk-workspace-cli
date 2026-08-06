@@ -24,7 +24,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 )
 
-func TestLeadingPersistentFlagVariantsReachTheRealCommand(t *testing.T) {
+func TestCrossPlatformCoverageLeadingPersistentFlagVariantsReachTheRealCommand(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -55,7 +55,7 @@ func TestLeadingPersistentFlagVariantsReachTheRealCommand(t *testing.T) {
 	}
 }
 
-func TestPreParseConflictHonorsErrorPresentationFlags(t *testing.T) {
+func TestCrossPlatformCoveragePreParseConflictHonorsErrorPresentationFlags(t *testing.T) {
 	root := NewSchemaSourceRootCommand()
 	args := []string{
 		"chat", "message", "send",
@@ -99,7 +99,7 @@ func TestPreParseConflictHonorsErrorPresentationFlags(t *testing.T) {
 	}
 }
 
-func TestCommandResolutionPrecedesFlagErrorsOnProductionTree(t *testing.T) {
+func TestCrossPlatformCoverageCommandResolutionPrecedesFlagErrorsOnProductionTree(t *testing.T) {
 	tests := []struct {
 		name        string
 		args        []string
@@ -142,7 +142,7 @@ func TestCommandResolutionPrecedesFlagErrorsOnProductionTree(t *testing.T) {
 	}
 }
 
-func TestResolvedShortcutStillUsesExactLeafFlagError(t *testing.T) {
+func TestCrossPlatformCoverageResolvedShortcutStillUsesExactLeafFlagError(t *testing.T) {
 	root := NewSchemaSourceRootCommand()
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)

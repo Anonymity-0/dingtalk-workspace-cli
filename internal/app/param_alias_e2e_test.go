@@ -199,7 +199,7 @@ func executeParamAliasE2E(t *testing.T, caller *paramAliasCaptureCaller, args ..
 	return ctx, root.Execute()
 }
 
-func TestBooleanStickyCannotBypassDestructiveConfirmation(t *testing.T) {
+func TestCrossPlatformCoverageBooleanStickyCannotBypassDestructiveConfirmation(t *testing.T) {
 	tests := []struct {
 		name           string
 		confirmation   []string
@@ -252,7 +252,7 @@ func TestBooleanStickyCannotBypassDestructiveConfirmation(t *testing.T) {
 	}
 }
 
-func TestParamAliasReadCommandFinalPayload(t *testing.T) {
+func TestCrossPlatformCoverageParamAliasReadCommandFinalPayload(t *testing.T) {
 	caller := &paramAliasCaptureCaller{}
 	start := "2026-03-10T14:00:00+08:00"
 	end := "2026-03-10T18:00:00+08:00"
@@ -287,7 +287,7 @@ func TestParamAliasReadCommandFinalPayload(t *testing.T) {
 	}
 }
 
-func TestParamAliasWriteCommandFinalPayload(t *testing.T) {
+func TestCrossPlatformCoverageParamAliasWriteCommandFinalPayload(t *testing.T) {
 	caller := &paramAliasCaptureCaller{}
 	ctx, err := executeParamAliasE2E(t, caller,
 		"chat", "message", "send",
@@ -319,7 +319,7 @@ func TestParamAliasWriteCommandFinalPayload(t *testing.T) {
 	}
 }
 
-func TestChatReactionConversationAliasesReachCanonicalPayload(t *testing.T) {
+func TestCrossPlatformCoverageChatReactionConversationAliasesReachCanonicalPayload(t *testing.T) {
 	tests := []struct {
 		name     string
 		command  []string
@@ -398,7 +398,7 @@ func TestChatReactionConversationAliasesReachCanonicalPayload(t *testing.T) {
 	}
 }
 
-func TestAllGeneratedChatParamAliasesReachRuntimeCobraContract(t *testing.T) {
+func TestCrossPlatformCoverageAllGeneratedChatParamAliasesReachRuntimeCobraContract(t *testing.T) {
 	root := NewRootCommand()
 	engine := newPipelineEngine()
 	entries, err := cli.ReduceParamAliases(root)
@@ -486,7 +486,7 @@ func TestAllGeneratedChatParamAliasesReachRuntimeCobraContract(t *testing.T) {
 	t.Logf("verified generated chat parameter routes: entries=%d aliases=%d blocked=%d ambiguous=%d", chatEntries, aliasCases, guardCases[pipeline.FlagProtectionBlocked], guardCases[pipeline.FlagProtectionAmbiguous])
 }
 
-func TestIMUserIDHallucinationRoutes(t *testing.T) {
+func TestCrossPlatformCoverageIMUserIDHallucinationRoutes(t *testing.T) {
 	tests := []struct {
 		command string
 		want    string
@@ -539,7 +539,7 @@ func TestIMUserIDHallucinationRoutes(t *testing.T) {
 	}
 }
 
-func TestHiddenIMListDirectRemainsOutsideCentralAliasTable(t *testing.T) {
+func TestCrossPlatformCoverageHiddenIMListDirectRemainsOutsideCentralAliasTable(t *testing.T) {
 	const command = "chat message list-direct"
 	if _, ok := cli.LookupParamAlias(command); ok {
 		t.Fatalf("hidden command %q unexpectedly entered the public generated alias table", command)
@@ -564,7 +564,7 @@ func TestHiddenIMListDirectRemainsOutsideCentralAliasTable(t *testing.T) {
 	}
 }
 
-func TestSelectedParamAliasesProduceCanonicalEquivalentDryRunPreviews(t *testing.T) {
+func TestCrossPlatformCoverageSelectedParamAliasesProduceCanonicalEquivalentDryRunPreviews(t *testing.T) {
 	tests := []struct {
 		name            string
 		tool            string
@@ -661,7 +661,7 @@ func TestSelectedParamAliasesProduceCanonicalEquivalentDryRunPreviews(t *testing
 	}
 }
 
-func TestParamAliasCanonicalConflictFailsBeforeRunE(t *testing.T) {
+func TestCrossPlatformCoverageParamAliasCanonicalConflictFailsBeforeRunE(t *testing.T) {
 	caller := &paramAliasCaptureCaller{}
 	for _, args := range [][]string{
 		{"calendar", "event", "list", "--date", "2026-03-10", "--start", "2026-03-11"},
@@ -686,7 +686,7 @@ func TestParamAliasCanonicalConflictFailsBeforeRunE(t *testing.T) {
 	}
 }
 
-func TestAllReviewedParamAliasGuardsReachRuntimeContract(t *testing.T) {
+func TestCrossPlatformCoverageAllReviewedParamAliasGuardsReachRuntimeContract(t *testing.T) {
 	concepts, err := cli.LoadParamConcepts()
 	if err != nil {
 		t.Fatalf("LoadParamConcepts() error = %v", err)
@@ -778,7 +778,7 @@ func TestAllReviewedParamAliasGuardsReachRuntimeContract(t *testing.T) {
 	}
 }
 
-func TestRepresentativeParamAliasGuardsReachFinalErrorsWithoutDispatch(t *testing.T) {
+func TestCrossPlatformCoverageRepresentativeParamAliasGuardsReachFinalErrorsWithoutDispatch(t *testing.T) {
 	for _, test := range []struct {
 		path       string
 		emitted    string
@@ -825,7 +825,7 @@ func TestRepresentativeParamAliasGuardsReachFinalErrorsWithoutDispatch(t *testin
 	}
 }
 
-func TestFlagConflictErrorFormattingIsDeterministic(t *testing.T) {
+func TestCrossPlatformCoverageFlagConflictErrorFormattingIsDeterministic(t *testing.T) {
 	err := (&pipeline.FlagConflictError{Command: "dws demo", Canonical: "start", Spellings: []string{"start", "date"}}).Error()
 	want := `conflicting parameter spellings for --start on "dws demo": --date, --start; pass exactly one spelling`
 	if err != want {

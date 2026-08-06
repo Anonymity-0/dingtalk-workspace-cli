@@ -22,7 +22,7 @@ func validCommandFallbackEntry(from, to string) string {
 	return `{"from":"` + from + `","mode":"rewrite","to":"` + to + `","reviewed":true,"review_reason":"reviewed fixture"}`
 }
 
-func TestDecodeCommandPathFallbacksStrictContract(t *testing.T) {
+func TestCrossPlatformCoverageDecodeCommandPathFallbacksStrictContract(t *testing.T) {
 	valid := commandFallbackJSON(`[` + validCommandFallbackEntry(`chat +bad`, `chat +good`) + `]`)
 	entries, err := decodeCommandPathFallbacks(valid)
 	if err != nil || len(entries) != 1 || entries[0].From != "chat +bad" || entries[0].To != "chat +good" {
@@ -110,7 +110,7 @@ func TestDecodeCommandPathFallbacksStrictContract(t *testing.T) {
 	}
 }
 
-func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
+func TestCrossPlatformCoverageCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 	var schema map[string]any
 	if err := json.Unmarshal(embeddedCommandPathFallbacksSchemaJSON, &schema); err != nil {
 		t.Fatalf("decode embedded schema: %v", err)
@@ -130,7 +130,7 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 	}
 }
 
-func TestCommandPathFallbackAuditCoverage(t *testing.T) {
+func TestCrossPlatformCoverageCommandPathFallbackAuditCoverage(t *testing.T) {
 	rewrites := map[string]string{
 		"chat +bot-list":            "chat +chat-bots",
 		"chat +conversation-detail": "chat +conversation-info",
@@ -188,7 +188,7 @@ func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 	}
 }
 
-func TestReduceCommandPathFallbacksValidatesLiveTree(t *testing.T) {
+func TestCrossPlatformCoverageReduceCommandPathFallbacksValidatesLiveTree(t *testing.T) {
 	root := commandFallbackTestRoot()
 	entries := []CommandPathFallback{
 		{From: "chat +bad", Mode: CommandPathFallbackRewrite, To: "chat +good", Reviewed: true, ReviewReason: "fixture"},
@@ -208,7 +208,7 @@ func TestReduceCommandPathFallbacksValidatesLiveTree(t *testing.T) {
 	}
 }
 
-func TestReduceCommandPathFallbacksRejectsUnsafeMappings(t *testing.T) {
+func TestCrossPlatformCoverageReduceCommandPathFallbacksRejectsUnsafeMappings(t *testing.T) {
 	baseRoot := commandFallbackTestRoot
 	tests := map[string]struct {
 		entries []CommandPathFallback
@@ -354,7 +354,7 @@ func withCommandFallbackLoadError(t *testing.T, want error) {
 	t.Cleanup(func() { loadReviewedCommandPathFallbacks = old })
 }
 
-func TestCommandPathFallbackGeneratedTableWellFormed(t *testing.T) {
+func TestCrossPlatformCoverageCommandPathFallbackGeneratedTableWellFormed(t *testing.T) {
 	entries := loadGeneratedCommandPathFallbacks()
 	if len(entries) == 0 {
 		t.Fatal("generated command path fallback table is empty")

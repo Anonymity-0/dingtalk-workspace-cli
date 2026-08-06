@@ -28,7 +28,7 @@ const (
 	runtimeShortcutFallbackConfigEnv = "DWS_RUNTIME_SHORTCUT_FALLBACK_CONFIG_DIR"
 )
 
-func TestRuntimeUserShortcutTakesPrecedenceOverReviewedFallback(t *testing.T) {
+func TestCrossPlatformCoverageRuntimeUserShortcutTakesPrecedenceOverReviewedFallback(t *testing.T) {
 	if os.Getenv(runtimeShortcutFallbackChildEnv) == "1" {
 		t.Setenv("DWS_CONFIG_DIR", os.Getenv(runtimeShortcutFallbackConfigEnv))
 		engine := newPipelineEngine()
@@ -84,7 +84,7 @@ flags:
 	if err := os.WriteFile(filepath.Join(shortcutDir, "chat.members.yaml"), []byte(definition), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command(os.Args[0], "-test.run=^TestRuntimeUserShortcutTakesPrecedenceOverReviewedFallback$", "-test.count=1")
+	command := exec.Command(os.Args[0], "-test.run=^TestCrossPlatformCoverageRuntimeUserShortcutTakesPrecedenceOverReviewedFallback$", "-test.count=1")
 	command.Env = append(os.Environ(), runtimeShortcutFallbackConfigEnv+"="+configDir, runtimeShortcutFallbackChildEnv+"=1")
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -95,7 +95,7 @@ flags:
 	}
 }
 
-func TestReviewedCommandFallbacksReachCanonicalDryRunPayload(t *testing.T) {
+func TestCrossPlatformCoverageReviewedCommandFallbacksReachCanonicalDryRunPayload(t *testing.T) {
 	_, canonicalQuery, canonicalQueryAttempts, err := executeParamAliasDryRunE2E(t,
 		"chat", "+chat-search", "--query", "project", "--dry-run",
 	)
@@ -138,7 +138,7 @@ func TestReviewedCommandFallbacksReachCanonicalDryRunPayload(t *testing.T) {
 	}
 }
 
-func TestOfficialCommandAliasesBypassFallbackAndReachEquivalentPayload(t *testing.T) {
+func TestCrossPlatformCoverageOfficialCommandAliasesBypassFallbackAndReachEquivalentPayload(t *testing.T) {
 	_, canonicalQuery, canonicalQueryAttempts, err := executeParamAliasDryRunE2E(t,
 		"chat", "+chat-search", "--query", "project", "--dry-run",
 	)
@@ -203,7 +203,7 @@ func TestOfficialCommandAliasesBypassFallbackAndReachEquivalentPayload(t *testin
 	}
 }
 
-func TestReviewedReadFallbacksResolveCanonicalLeafBeforeParameterValidation(t *testing.T) {
+func TestCrossPlatformCoverageReviewedReadFallbacksResolveCanonicalLeafBeforeParameterValidation(t *testing.T) {
 	tests := []struct {
 		name   string
 		args   []string
@@ -266,7 +266,7 @@ func TestReviewedReadFallbacksResolveCanonicalLeafBeforeParameterValidation(t *t
 	}
 }
 
-func TestOfficialGroupMembersAliasBypassesCommandFallback(t *testing.T) {
+func TestCrossPlatformCoverageOfficialGroupMembersAliasBypassesCommandFallback(t *testing.T) {
 	args := []string{"chat", "+chat-group-members", "--conversation-id", "cid-fixture", "--member-types", "user"}
 	root := NewSchemaSourceRootCommand()
 	root.SetOut(io.Discard)
@@ -282,7 +282,7 @@ func TestOfficialGroupMembersAliasBypassesCommandFallback(t *testing.T) {
 	assertNoCommandPathFallbackCorrection(t, ctx)
 }
 
-func TestReviewedRenameFallbackResolvesCanonicalLeafBeforeParameterValidation(t *testing.T) {
+func TestCrossPlatformCoverageReviewedRenameFallbackResolvesCanonicalLeafBeforeParameterValidation(t *testing.T) {
 	args := []string{"chat", "+rename-group", "--id", "cid-fixture", "--name", "Fixture Group"}
 	root := NewSchemaSourceRootCommand()
 	root.SetOut(io.Discard)
@@ -301,7 +301,7 @@ func TestReviewedRenameFallbackResolvesCanonicalLeafBeforeParameterValidation(t 
 	}
 }
 
-func TestReviewedDocHistorySaveFallbacksPreserveArguments(t *testing.T) {
+func TestCrossPlatformCoverageReviewedDocHistorySaveFallbacksPreserveArguments(t *testing.T) {
 	sources := []string{"+create-version", "+save-version", "+snapshot", "+version-create"}
 	for _, source := range sources {
 		t.Run(source, func(t *testing.T) {
@@ -329,7 +329,7 @@ func TestReviewedDocHistorySaveFallbacksPreserveArguments(t *testing.T) {
 	}
 }
 
-func TestDocExportPDFRemainsUnknownShortcut(t *testing.T) {
+func TestCrossPlatformCoverageDocExportPDFRemainsUnknownShortcut(t *testing.T) {
 	if entry, ok := cli.LookupCommandPathFallback("doc +export-pdf"); ok {
 		t.Fatalf("+export-pdf must not receive a path-only fallback: %#v", entry)
 	}
@@ -351,7 +351,7 @@ func TestDocExportPDFRemainsUnknownShortcut(t *testing.T) {
 	}
 }
 
-func TestReviewedAmbiguousCommandFallbackNeverDispatches(t *testing.T) {
+func TestCrossPlatformCoverageReviewedAmbiguousCommandFallbackNeverDispatches(t *testing.T) {
 	tests := []struct {
 		path       string
 		candidates []string
@@ -398,7 +398,7 @@ func TestReviewedAmbiguousCommandFallbackNeverDispatches(t *testing.T) {
 	}
 }
 
-func TestCanonicalShortcutBadFlagDoesNotEnterCommandFallback(t *testing.T) {
+func TestCrossPlatformCoverageCanonicalShortcutBadFlagDoesNotEnterCommandFallback(t *testing.T) {
 	root := NewSchemaSourceRootCommand()
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)
@@ -421,7 +421,7 @@ func TestCanonicalShortcutBadFlagDoesNotEnterCommandFallback(t *testing.T) {
 	}
 }
 
-func TestRewrittenShortcutStillUsesCanonicalParameterErrors(t *testing.T) {
+func TestCrossPlatformCoverageRewrittenShortcutStillUsesCanonicalParameterErrors(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -459,7 +459,7 @@ func TestRewrittenShortcutStillUsesCanonicalParameterErrors(t *testing.T) {
 	}
 }
 
-func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T) {
+func TestCrossPlatformCoverageCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T) {
 	invalidShortcuts := map[string]bool{
 		"+bot-list":                   true,
 		"+conversation-detail":        true,
@@ -536,7 +536,7 @@ func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T)
 	}
 }
 
-func TestDocCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T) {
+func TestCrossPlatformCoverageDocCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T) {
 	invalidShortcuts := map[string]bool{
 		"+create-version": true,
 		"+save-version":   true,

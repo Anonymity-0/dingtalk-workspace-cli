@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestHintSubCmdCarriesHintOnlyIdentity(t *testing.T) {
+func TestCrossPlatformCoverageHintSubCmdCarriesHintOnlyIdentity(t *testing.T) {
 	parent := &cobra.Command{Use: "parent"}
 	hint := HintSubCmd("search", "use parent find")
 	parent.AddCommand(hint)

@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestCommandFallbackGeneratorUsesDistributionOwnedCommandTree(t *testing.T) {
+func TestCrossPlatformCoverageCommandFallbackGeneratorUsesDistributionOwnedCommandTree(t *testing.T) {
 	got := reflect.ValueOf(newCommandFallbackRoot).Pointer()
 	want := reflect.ValueOf(app.NewSchemaSourceRootCommand).Pointer()
 	if got != want {
@@ -54,7 +54,7 @@ func commandFallbackRepositoryRoot(t *testing.T) string {
 	return root
 }
 
-func TestCommandFallbackMainWritesGeneratedFile(t *testing.T) {
+func TestCrossPlatformCoverageCommandFallbackMainWritesGeneratedFile(t *testing.T) {
 	preserveCommandFallbackGeneratorGlobals(t)
 	output := filepath.Join(t.TempDir(), "command_path_fallbacks_generated.go")
 	flag.CommandLine = flag.NewFlagSet("command-fallback-success", flag.ContinueOnError)
@@ -87,7 +87,7 @@ func TestCommandFallbackMainWritesGeneratedFile(t *testing.T) {
 	}
 }
 
-func TestGenerateCommandPathFallbackFailurePaths(t *testing.T) {
+func TestCrossPlatformCoverageGenerateCommandPathFallbackFailurePaths(t *testing.T) {
 	preserveCommandFallbackGeneratorGlobals(t)
 	root := commandFallbackRepositoryRoot(t)
 	output := filepath.Join(t.TempDir(), "command_path_fallbacks_generated.go")
@@ -114,7 +114,7 @@ func TestGenerateCommandPathFallbackFailurePaths(t *testing.T) {
 	}
 }
 
-func TestValidateCommandFallbackOutputIsolation(t *testing.T) {
+func TestCrossPlatformCoverageValidateCommandFallbackOutputIsolation(t *testing.T) {
 	root := commandFallbackRepositoryRoot(t)
 	if err := validateOutputIsolation(root, filepath.Join(t.TempDir(), "fallbacks.go")); err != nil {
 		t.Fatalf("temporary output rejected: %v", err)
@@ -125,7 +125,7 @@ func TestValidateCommandFallbackOutputIsolation(t *testing.T) {
 	}
 }
 
-func TestRenderCommandPathFallbacksShape(t *testing.T) {
+func TestCrossPlatformCoverageRenderCommandPathFallbacksShape(t *testing.T) {
 	preserveCommandFallbackGeneratorGlobals(t)
 	entries := []cli.CommandPathFallback{
 		{
@@ -166,7 +166,7 @@ func TestRenderCommandPathFallbacksShape(t *testing.T) {
 	}
 }
 
-func TestCommandFallbackMainReportsFailure(t *testing.T) {
+func TestCrossPlatformCoverageCommandFallbackMainReportsFailure(t *testing.T) {
 	preserveCommandFallbackGeneratorGlobals(t)
 	flag.CommandLine = flag.NewFlagSet("command-fallback-failure", flag.ContinueOnError)
 	os.Args = []string{

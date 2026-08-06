@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestRunPreParseArgsRewritesReviewedCommandBeforeFlags(t *testing.T) {
+func TestCrossPlatformCoverageRunPreParseArgsRewritesReviewedCommandBeforeFlags(t *testing.T) {
 	root, executed := commandFallbackPipelineRoot()
 	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
 		"chat +bad": {From: "chat +bad", Mode: "rewrite", To: "chat +good"},
@@ -40,7 +40,7 @@ func TestRunPreParseArgsRewritesReviewedCommandBeforeFlags(t *testing.T) {
 	}
 }
 
-func TestRunPreParseArgsRewritesMultiTokenPathAroundPersistentFlags(t *testing.T) {
+func TestCrossPlatformCoverageRunPreParseArgsRewritesMultiTokenPathAroundPersistentFlags(t *testing.T) {
 	root, executed := commandFallbackPipelineRoot()
 	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
 		"chat group search": {From: "chat group search", Mode: "rewrite", To: "chat search"},
@@ -62,7 +62,15 @@ func TestRunPreParseArgsRewritesMultiTokenPathAroundPersistentFlags(t *testing.T
 	}
 }
 
-func TestCommandPathFallbackDefersToExactRunnableCommandAndAlias(t *testing.T) {
+func TestCrossPlatformCoverageCommandPathFallbackDefersToExactRunnableCommandAndAlias(t *testing.T) {
+	if exactRunnableCommandPath(nil, []string{"dws"}) {
+		t.Fatal("nil root unexpectedly resolved an executable path")
+	}
+	emptyRoot := &cobra.Command{Use: "dws"}
+	if exactRunnableCommandPath(emptyRoot, []string{"dws"}) {
+		t.Fatal("root-only path unexpectedly resolved as an executable leaf")
+	}
+
 	for _, test := range []struct {
 		name string
 		path string
@@ -108,7 +116,7 @@ func TestCommandPathFallbackDefersToExactRunnableCommandAndAlias(t *testing.T) {
 	}
 }
 
-func TestCommandPathFallbackMaySupersedeHintOnlyCommand(t *testing.T) {
+func TestCrossPlatformCoverageCommandPathFallbackMaySupersedeHintOnlyCommand(t *testing.T) {
 	root, executed := commandFallbackPipelineRoot()
 	chat, _, err := root.Find([]string{"chat"})
 	if err != nil {
@@ -135,7 +143,7 @@ func TestCommandPathFallbackMaySupersedeHintOnlyCommand(t *testing.T) {
 	}
 }
 
-func TestRunPreParseArgsRejectsAmbiguousCommandFallbackWithoutDispatch(t *testing.T) {
+func TestCrossPlatformCoverageRunPreParseArgsRejectsAmbiguousCommandFallbackWithoutDispatch(t *testing.T) {
 	root, executed := commandFallbackPipelineRoot()
 	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
 		"chat +choose": {
@@ -160,7 +168,7 @@ func TestRunPreParseArgsRejectsAmbiguousCommandFallbackWithoutDispatch(t *testin
 	}
 }
 
-func TestCommandPathFallbackLeavesUnknownAndCanonicalFlagErrorsDistinct(t *testing.T) {
+func TestCrossPlatformCoverageCommandPathFallbackLeavesUnknownAndCanonicalFlagErrorsDistinct(t *testing.T) {
 	root, _ := commandFallbackPipelineRoot()
 	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
 		"chat +bad": {From: "chat +bad", Mode: "rewrite", To: "chat +good"},
@@ -180,7 +188,7 @@ func TestCommandPathFallbackLeavesUnknownAndCanonicalFlagErrorsDistinct(t *testi
 	}
 }
 
-func TestCommandPathFallbackCannotBypassCanonicalConfirmation(t *testing.T) {
+func TestCrossPlatformCoverageCommandPathFallbackCannotBypassCanonicalConfirmation(t *testing.T) {
 	for _, test := range []struct {
 		name         string
 		args         []string
@@ -222,7 +230,7 @@ func TestCommandPathFallbackCannotBypassCanonicalConfirmation(t *testing.T) {
 	}
 }
 
-func TestCommandPathFallbackRejectsInvalidGeneratedMode(t *testing.T) {
+func TestCrossPlatformCoverageCommandPathFallbackRejectsInvalidGeneratedMode(t *testing.T) {
 	root, _ := commandFallbackPipelineRoot()
 	for _, entry := range []CommandPathFallback{
 		{From: "chat +bad", Mode: "rewrite"},
@@ -237,7 +245,7 @@ func TestCommandPathFallbackRejectsInvalidGeneratedMode(t *testing.T) {
 	}
 }
 
-func TestRunPreParseArgsKeepsCommandErrorWhenPresentationPrimingFails(t *testing.T) {
+func TestCrossPlatformCoverageRunPreParseArgsKeepsCommandErrorWhenPresentationPrimingFails(t *testing.T) {
 	fallbackRoot, _ := commandFallbackPipelineRoot()
 	fallbackEngine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
 		"chat +choose": {
@@ -252,9 +260,34 @@ func TestRunPreParseArgsKeepsCommandErrorWhenPresentationPrimingFails(t *testing
 	resolutionRoot, _ := commandFallbackPipelineRoot()
 	_, err = RunPreParseArgs(resolutionRoot, nil, []string{"chat", "+missing", "--format"})
 	requireCommandResolutionError(t, err, "unknown_shortcut")
+
+	handlerRoot, _ := commandFallbackPipelineRoot()
+	handlerEngine := NewEngine()
+	handlerEngine.Register(newStub("fail-before-presentation", PreParse, func(*Context) error {
+		return errors.New("handler failure")
+	}))
+	ctx, err := RunPreParseArgs(handlerRoot, handlerEngine, []string{"chat", "+good", "--query", "project", "--format"})
+	if ctx == nil || err == nil || !strings.Contains(err.Error(), "handler failure") {
+		t.Fatalf("handler error after presentation failure = context %#v, error %v", ctx, err)
+	}
 }
 
-func TestRewriteCommandPathTokensLeavesArgsWhenRewriteIsEmpty(t *testing.T) {
+func TestCrossPlatformCoverageCommandFallbackTraversalRemainingBranches(t *testing.T) {
+	args, positions := argsForCommandTraversalWithPositions(nil, []string{"chat", "+good"})
+	if !reflect.DeepEqual(args, []string{"chat", "+good"}) || !reflect.DeepEqual(positions, []int{0, 1}) {
+		t.Fatalf("nil-root traversal = args %v, positions %v", args, positions)
+	}
+
+	root := &cobra.Command{Use: "dws"}
+	root.PersistentFlags().String("format", "table", "")
+	raw := []string{"chat", "+good", "--", "--format", "json"}
+	args, positions = argsForCommandTraversalWithPositions(root, raw)
+	if !reflect.DeepEqual(args, raw) || !reflect.DeepEqual(positions, []int{0, 1, 2, 3, 4}) {
+		t.Fatalf("terminator traversal = args %v, positions %v", args, positions)
+	}
+}
+
+func TestCrossPlatformCoverageRewriteCommandPathTokensLeavesArgsWhenRewriteIsEmpty(t *testing.T) {
 	raw := []string{"chat", "+bad", "--query", "project"}
 	for name, test := range map[string]struct {
 		positions []int

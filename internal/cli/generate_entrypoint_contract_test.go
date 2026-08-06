@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func TestGoGenerateDirectivesStayInUnifiedEntryPoint(t *testing.T) {
+func TestCrossPlatformCoverageGoGenerateDirectivesStayInUnifiedEntryPoint(t *testing.T) {
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatalf("read internal/cli: %v", err)

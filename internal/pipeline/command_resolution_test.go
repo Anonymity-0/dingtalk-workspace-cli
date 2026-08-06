@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestValidateUnresolvedCommandClassifiesShortcutBeforeFlags(t *testing.T) {
+func TestCrossPlatformCoverageValidateUnresolvedCommandClassifiesShortcutBeforeFlags(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	chat := &cobra.Command{Use: "chat"}
 	chat.AddCommand(
@@ -39,7 +39,7 @@ func TestValidateUnresolvedCommandClassifiesShortcutBeforeFlags(t *testing.T) {
 	}
 }
 
-func TestValidateUnresolvedCommandClassifiesOnlyExplicitContainers(t *testing.T) {
+func TestCrossPlatformCoverageValidateUnresolvedCommandClassifiesOnlyExplicitContainers(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	dev := &cobra.Command{Use: "dev"}
 	app := &cobra.Command{Use: "app"}
@@ -77,7 +77,7 @@ func TestValidateUnresolvedCommandClassifiesOnlyExplicitContainers(t *testing.T)
 	}
 }
 
-func TestRunPreParseArgsValidatesCommandsWithoutHandlersAndPrimesPresentation(t *testing.T) {
+func TestCrossPlatformCoverageRunPreParseArgsValidatesCommandsWithoutHandlersAndPrimesPresentation(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	root.PersistentFlags().String("format", "table", "")
 	chat := &cobra.Command{Use: "chat"}
@@ -104,7 +104,7 @@ func TestRunPreParseArgsValidatesCommandsWithoutHandlersAndPrimesPresentation(t 
 	}
 }
 
-func TestCommandSuggestionHintIsBoundedAndFallsBack(t *testing.T) {
+func TestCrossPlatformCoverageCommandSuggestionHintIsBoundedAndFallsBack(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	group := &cobra.Command{Use: "demo", SuggestionsMinimumDistance: 100}
 	root.AddCommand(group)
@@ -123,7 +123,7 @@ func TestCommandSuggestionHintIsBoundedAndFallsBack(t *testing.T) {
 	}
 }
 
-func TestCommandResolutionDefensiveAndExplicitSuggestionPaths(t *testing.T) {
+func TestCrossPlatformCoverageCommandResolutionDefensiveAndExplicitSuggestionPaths(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	service := &cobra.Command{Use: "demo"}
 	group := &cobra.Command{Use: "nested"}

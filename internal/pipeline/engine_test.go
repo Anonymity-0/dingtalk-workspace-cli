@@ -63,7 +63,7 @@ func TestNewEngine(t *testing.T) {
 	}
 }
 
-func TestCommandPathFallbackLookupHandlesNilEngine(t *testing.T) {
+func TestCrossPlatformCoverageCommandPathFallbackLookupHandlesNilEngine(t *testing.T) {
 	var engine *Engine
 	engine.SetCommandPathFallbackLookup(func(string) (CommandPathFallback, bool) {
 		t.Fatal("nil engine installed or called fallback lookup")

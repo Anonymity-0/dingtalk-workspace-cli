@@ -44,7 +44,7 @@ import (
 //   - expect=<realFlag>            : emitted must reduce to that canonical flag.
 //   - expect=did-you-mean:blocked  : block guard hit; never auto-rewritten.
 //   - expect=did-you-mean:ambiguous: co-occurrence guard hit; never rewritten.
-func TestParamAliasFixtureThroughEmbeddedDeliveryPath(t *testing.T) {
+func TestCrossPlatformCoverageParamAliasFixtureThroughEmbeddedDeliveryPath(t *testing.T) {
 	concepts, err := cli.LoadParamConcepts()
 	if err != nil {
 		t.Fatalf("LoadParamConcepts() error = %v", err)

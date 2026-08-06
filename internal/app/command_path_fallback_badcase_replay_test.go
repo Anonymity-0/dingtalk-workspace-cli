@@ -43,7 +43,7 @@ type shortcutHallucinationReplayBadcase struct {
 	IsHelp           bool   `json:"is_help"`
 }
 
-func TestShortcutHallucinationBadcases20260728Replay(t *testing.T) {
+func TestCrossPlatformCoverageShortcutHallucinationBadcases20260728Replay(t *testing.T) {
 	var corpus shortcutHallucinationReplayCorpus
 	if err := json.Unmarshal(shortcutHallucinationBadcases20260728JSON, &corpus); err != nil {
 		t.Fatalf("decode historical shortcut badcase corpus: %v", err)
@@ -141,7 +141,7 @@ func TestShortcutHallucinationBadcases20260728Replay(t *testing.T) {
 	}
 }
 
-func TestShortcutHallucinationMerged20260720Replay(t *testing.T) {
+func TestCrossPlatformCoverageShortcutHallucinationMerged20260720Replay(t *testing.T) {
 	tests := []struct {
 		id          string
 		raw         string
