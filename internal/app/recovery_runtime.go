@@ -5,6 +5,6 @@ import (
 )
 
 // captureRuntimeFailure previously persisted a recovery snapshot for
-// `dws recovery`. The recovery CLI is removed; keep a no-op seam so the
-// runner failure paths stay stable without reintroducing that package.
+// `dws recovery`. The recovery package is gone; keep a no-op seam so runner
+// failure paths stay stable while the Hidden compatibility shim remains.
 func captureRuntimeFailure(_ executor.Invocation, _, _ error) {}

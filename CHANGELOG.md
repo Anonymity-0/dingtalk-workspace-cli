@@ -6,11 +6,12 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
-### Removed
+### Deprecated
 
-- **`dws recovery` CLI** — removes the unused recovery plan/execute/finalize
-  command surface and `internal/recovery` package. Transport errors keep
-  generic retry/auth guidance without pointing at the removed commands.
+- **`dws recovery` CLI** — hides the recovery plan/execute/finalize surface and
+  returns an explicit “不再支持” compatibility notice. The `internal/recovery`
+  package is removed; a later release can delete the Hidden shim. Transport
+  errors keep generic retry/auth guidance without pointing callers at recovery.
 
 ## [1.0.57-beta.2] - 2026-08-05
 
