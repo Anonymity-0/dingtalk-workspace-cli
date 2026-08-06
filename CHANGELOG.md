@@ -6,6 +6,16 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.57] - 2026-08-06
+
+This stable release promotes the fully delivered `v1.0.57-beta.3` baseline.
+It includes reviewed document shortcuts and chat reply mentions, together with
+the v1.0.57 beta-line command-contract, document, chat, OA, Wiki, compatibility,
+and CI reliability improvements validated through the prerelease channel.
+
+- **Promote v1.0.57-beta.3** — publishes the validated prerelease baseline as
+  the stable `v1.0.57` release without adding post-beta product changes.
+
 ## [1.0.57-beta.3] - 2026-08-06
 
 ### Added
