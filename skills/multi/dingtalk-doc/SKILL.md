@@ -13,7 +13,7 @@ metadata:
 
 ## 前置条件 — 执行操作前必读
 
-> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dws-shared`](../dws-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
+> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dingtalk-shared`](../dingtalk-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
 
 > 命令参考：[doc.md](references/doc.md)；剧本：[04-document.md](references/04-document.md)。
 
@@ -30,7 +30,7 @@ metadata:
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。命令已选中时直接执行；只在参数或安全语义不确定时读取 leaf Schema（例如 `dws schema --cli-path "doc +<shortcut>" --format json`），在当前 Cobra flags 不确定时读取 `dws doc <shortcut> --help`。仅当现有路由和 reference 都无法定位低频能力时，才用 `dws shortcut list --service doc --format json` 批量发现。
+以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。命令已选中时直接执行；只在参数或安全语义不确定时读取 Agent leaf Schema（例如 `dws schema --cli-path "doc +<shortcut>" --compact --format json`），在当前 Cobra flags 不确定时读取 `dws doc <shortcut> --help`。只有参数映射、接口绑定或 provenance 审计才省略 `--compact`。仅当现有路由和 reference 都无法定位低频能力时，才用 `dws shortcut list --service doc --format json` 批量发现。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -106,7 +106,7 @@ metadata:
 2. **探测（必须）**：对选中的候选执行 `dws drive info --node <nodeId> --format json`，从真实返回读取 `extension`；不得因为搜索结果标题像“文档”就跳过探测。
 3. **按类型读取（必须）**：
    - `extension=adoc`：`dws doc read --node <nodeId> --format json`；大文档只抽取用户需要的章节。
-   - `extension=md`：切到 `dingtalk-markdown` 用 `dws markdown fetch --node <nodeId> --format json` 读取原文；仅需文件实体下载时切 `dingtalk-drive` 用 `drive download`。
+   - `extension=md`：切到 `dingtalk-misc` 的 `references/markdown.md`，用 `dws markdown fetch --node <nodeId> --format json` 读取原文；仅需文件实体下载时切 `dingtalk-drive` 用 `drive download`。
    - `extension=axls`：切到 `dingtalk-misc`，读取 `references/sheet.md` 后按电子表格意图执行。
    - `extension=able`：切到 `dingtalk-aitable`。
    - `extension=xlsx` / `xls` / `xlsm` / `csv` 或其他普通文件：切到 `dingtalk-drive`；不得执行 `dws doc read`。
@@ -182,7 +182,7 @@ metadata:
 - 文件存储 / 上传下载 → 切到 `dingtalk-drive`
 - 知识库空间管理 → 切到 `dingtalk-wiki`
 - 数据表 → 切到 `dingtalk-aitable`
-- 原生 `.md` 文件读取、创建、全量覆盖或局部替换 → 切到 `dingtalk-markdown`
+- 原生 `.md` 文件读取、创建、全量覆盖或局部替换 → 切到 `dingtalk-misc` 的 `references/markdown.md`
 - 长篇报告生成（多源采集 + 写文档）→ 此 skill 提供 `doc_create_and_write.py` 脚本
 ## 局部意图与短流程
 

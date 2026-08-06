@@ -302,9 +302,8 @@ on the leaf:
 
 ```bash
 dws auth status                 # token_valid should be true
-dws cache refresh               # deprecated no-op: prints a retirement notice (discovery cache is gone; refreshes nothing)
-dws schema <mcp-canonical> -f json
-# or CLI path: dws schema --cli-path "drive copy" -f json
+dws schema <mcp-canonical> --jq '{canonical_path,interface_ref,parameters}' -f json
+# or CLI path: dws schema --cli-path "drive copy" --jq '{canonical_path,interface_ref,parameters}' -f json
 ```
 
 Resolve MCP identity via declared `interface_ref` when CLI canonical ≠ MCP path
@@ -321,8 +320,10 @@ Skill (evidence only)**.
 
 Split work by product groups. Each agent must:
 
-- Read Skill, Cobra/`--help`, Runtime confirmation sites, and live `dws schema`
-  for its tools.
+- Read Skill, Cobra/`--help`, Runtime confirmation sites, and live
+  `dws schema <leaf> --compact` for its tools. Mapping/interface/provenance
+  audits may query the full leaf only through a narrow `--jq` / `--fields`
+  projection; do not load an entire full leaf into Agent context.
 - Hand-write selection prose and leaf Contract / ProductDecl declarations;
   forbid wholesale JSON merges from review dumps.
 - Edit only its product’s leaf declarations (and `ProductDecl` when needed).
@@ -471,13 +472,15 @@ path; a generator unit test or JSON count alone is insufficient.
   `parameters` object for commands without flags. Keep it suitable for the #602
   compatibility baseline and fail rather than silently emitting a partial
   export.
-- `schema --all` is not normal command discovery. Use overview -> product/group
-  -> leaf for routine Agent work. `--compact` is supported for context-saving
-  projections, but a compact full export is not a complete compatibility
-  baseline.
+- `schema --all` is not normal command discovery. Use overview -> compact
+  product/group -> compact leaf for routine Agent work. `--compact` is the
+  reviewed positive-field allowlist for Agent context: new full/audit fields
+  must not appear there until explicitly reviewed. A compact full export is not
+  a complete compatibility baseline.
 - `dws <path> --help` defines whether Cobra exposes a path and which flags the
-  executable accepts. A leaf Schema defines Agent selection, parameter mapping
-  and constraints, and safety/confirmation semantics. A conflict is contract
-  drift, not permission to guess.
+  executable accepts. A compact leaf defines Agent selection, CLI parameters,
+  constraints, and safety/confirmation semantics. Full leaf fields such as
+  `property`, `interface_ref`, and provenance are audit facts. A conflict is
+  contract drift, not permission to guess.
 - Schema and Help describe commands; neither returns DingTalk business data.
   After discovery, execute the real read/search/list command to obtain data.

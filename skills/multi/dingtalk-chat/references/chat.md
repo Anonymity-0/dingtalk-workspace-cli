@@ -131,5 +131,5 @@ Favorite、消息 Pin、消息 Top 与会话 Top 是四种对象，不能互换�
 - `unknown command` / `unknown flag`：读取精确 leaf Help，最多修正一次；
 - confirmation 或参数约束不清：读取精确 leaf Schema，以最终 Runtime gate 为准；
 - 自然目标零命中/多候选：停止并展示候选，不选择第一项；
-- 权限、认证或 profile：按 `dws-shared` 对应 reference 分流；
+- 权限、认证或 profile：按 `dingtalk-shared` 对应 reference 分流；
 - partial result：保留已完成项、失败 ledger、continuation 和真实错误，不换同义原子命令重试。
