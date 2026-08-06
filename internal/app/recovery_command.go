@@ -104,10 +104,7 @@ func printRecoveryUnsupported(cmd *cobra.Command, command string) error {
 		}
 		return apperrors.NewValidation(recoveryUnsupportedMessage)
 	case "pretty":
-		data, err := json.MarshalIndent(notice, "", "  ")
-		if err != nil {
-			return err
-		}
+		data, _ := json.MarshalIndent(notice, "", "  ")
 		if _, err := fmt.Fprintln(cmd.OutOrStdout(), string(data)); err != nil {
 			return err
 		}

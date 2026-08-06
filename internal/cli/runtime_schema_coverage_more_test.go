@@ -274,4 +274,51 @@ func TestCrossPlatformCoverageSchemaCompactProjectionEdges(t *testing.T) {
 	if _, exists := value["property"]; exists {
 		t.Fatalf("compact parameter value = %#v", value)
 	}
+
+	payload := map[string]any{
+		"description": "calendar",
+		"provenance":  map[string]any{"source": "drop"},
+		"parameters":  parameters,
+		"product":     map[string]any{"description": "calendar", "provenance": "drop"},
+		"products": []map[string]any{
+			{"description": "calendar", "provenance": "drop"},
+		},
+		"tools": []any{
+			map[string]any{"description": "leaf", "provenance": "drop"},
+			"skip-me",
+		},
+		"constraints": map[string]any{"require_one_of": []any{}},
+	}
+	stripped := stripSchemaPayloadCompact(payload)
+	if stripped["description"] != "calendar" {
+		t.Fatalf("compact description = %#v", stripped["description"])
+	}
+	if _, exists := stripped["provenance"]; exists {
+		t.Fatalf("compact should drop provenance: %#v", stripped)
+	}
+	if product, ok := stripped["product"].(map[string]any); !ok || product["description"] != "calendar" {
+		t.Fatalf("compact product = %#v", stripped["product"])
+	}
+	if _, exists := stripped["product"].(map[string]any)["provenance"]; exists {
+		t.Fatalf("nested product provenance should drop: %#v", stripped["product"])
+	}
+	if products, ok := stripped["products"].([]map[string]any); !ok || len(products) != 1 || products[0]["description"] != "calendar" {
+		t.Fatalf("compact products = %#v", stripped["products"])
+	}
+	if tools, ok := stripped["tools"].([]any); !ok || len(tools) != 2 {
+		t.Fatalf("compact tools = %#v", stripped["tools"])
+	}
+	if tool, ok := stripped["tools"].([]any)[0].(map[string]any); !ok || tool["description"] != "leaf" {
+		t.Fatalf("compact tools[0] = %#v", stripped["tools"].([]any)[0])
+	}
+	if stripped["tools"].([]any)[1] != "skip-me" {
+		t.Fatalf("compact tools[1] = %#v", stripped["tools"].([]any)[1])
+	}
+	// Non-map product values are retained verbatim.
+	if got := stripSchemaPayloadCompact(map[string]any{"product": "raw"}); got["product"] != "raw" {
+		t.Fatalf("non-map product = %#v", got["product"])
+	}
+	if got := stripSchemaPayloadCollectionCompact("raw"); got != "raw" {
+		t.Fatalf("non-collection compact = %#v", got)
+	}
 }

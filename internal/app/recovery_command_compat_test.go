@@ -15,6 +15,7 @@ package app
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
@@ -83,8 +84,27 @@ func TestCrossPlatformCoverageRecoveryDeprecatedUnsupportedShim(t *testing.T) {
 		}
 	}
 
+	for _, format := range []string{"json", "pretty", "table"} {
+		cmd := &cobra.Command{Use: "dws"}
+		cmd.PersistentFlags().String("format", format, "")
+		cmd.SetOut(failWriter{})
+		sub := &cobra.Command{Use: "recovery"}
+		cmd.AddCommand(sub)
+		if err := printRecoveryUnsupported(sub, "dws recovery plan"); err == nil || !strings.Contains(err.Error(), "write failed") {
+			t.Fatalf("format=%q write failure = %v, want write failed", format, err)
+		}
+	}
+
 	if err := newRecoveryCommand().RunE(newRecoveryCommand(), nil); err == nil || !strings.Contains(err.Error(), "不再支持") {
 		t.Fatalf("recovery parent RunE = %v, want 不再支持", err)
 	}
 	captureRuntimeFailure(executor.Invocation{}, nil, nil)
 }
+
+type failWriter struct{}
+
+func (failWriter) Write([]byte) (int, error) {
+	return 0, errWriteFailed
+}
+
+var errWriteFailed = errors.New("write failed")

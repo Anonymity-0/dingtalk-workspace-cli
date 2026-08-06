@@ -594,9 +594,48 @@ func TestCrossPlatformCoverageSchemaCompatMCPRetirementAndConstraintExpansion(t 
 	if failures := checkCompatibility(baseline, typed); !strings.Contains(strings.Join(failures, "\n"), "changed interface_type") {
 		t.Fatalf("non-empty interface_type change should fail: %v", failures)
 	}
+
+	// Reviewed ding property remaps must pass; arbitrary remaps must fail.
+	if !compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_send_personal", "users", "users", "receiverOpenDingTalkIds",
+	) {
+		t.Fatal("reviewed ding +send-personal --users correction must be accepted")
+	}
+	if !compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_send_personal", "type", "type", "remindType",
+	) {
+		t.Fatal("reviewed ding +send-personal --type correction must be accepted")
+	}
+	if !compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_receiver_status", "ding-id", "dingId", "openDingId",
+	) {
+		t.Fatal("reviewed ding +receiver-status --ding-id correction must be accepted")
+	}
+	if !compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_recall_personal", "id", "id", "openDingId",
+	) {
+		t.Fatal("reviewed ding +recall-personal --id correction must be accepted")
+	}
+	if compatibleReviewedPropertyCorrection(
+		"ding/ding.shortcut_send_personal", "users", "users", "userIds",
+	) {
+		t.Fatal("non-reviewed new property must remain incompatible")
+	}
+	if compatibleReviewedPropertyCorrection(
+		"ding/ding.send_ding_message", "users", "users", "receiverUserIdList",
+	) {
+		t.Fatal("unlisted tool/param remap must remain incompatible")
+	}
+	propertyRemap := cloneContract(baseline)
+	mutateParameter(&propertyRemap, func(parameter *parameterSchema) {
+		parameter.Property = "unreviewedRemoteField"
+	})
+	if failures := checkCompatibility(baseline, propertyRemap); !strings.Contains(strings.Join(failures, "\n"), "changed property") {
+		t.Fatalf("unreviewed property remap should fail: %v", failures)
+	}
 }
 
-func TestReviewedDingPropertyCorrections(t *testing.T) {
+func TestCrossPlatformCoverageReviewedDingPropertyCorrections(t *testing.T) {
 	if !compatibleReviewedPropertyCorrection(
 		"ding/ding.shortcut_send_personal", "users", "users", "receiverOpenDingTalkIds",
 	) {
