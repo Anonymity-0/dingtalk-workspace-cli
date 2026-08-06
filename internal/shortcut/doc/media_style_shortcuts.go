@@ -70,7 +70,6 @@ var MediaDownload = shortcut.Shortcut{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true},
 		{Name: "resource-id", Type: shortcut.FlagString, Desc: "附件 resourceId", Required: true},
 		{Name: "output", Type: shortcut.FlagString, Default: ".", Desc: "工作目录内相对路径（文件或目录）"},
-		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖已有文件"},
 	},
 	Validate:    func(rt *shortcut.RuntimeContext) error { return localio.ValidateOutput(rt.Str("output")) },
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"output"}, Description: "--output 必须是工作目录内相对路径；默认 no-clobber"}},
@@ -104,7 +103,7 @@ var MediaPreview = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		result, err := downloadResolvedResource(rt, data, dir, ".", false)
+		result, err := downloadResolvedResource(rt, data, dir, ".")
 		if err != nil {
 			_ = docRemoveAll(dir)
 			return err
@@ -144,7 +143,6 @@ var ResourceDownload = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true},
 		{Name: "output", Type: shortcut.FlagString, Default: ".", Desc: "工作目录内相对路径（文件或目录）"},
-		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖已有文件"},
 	},
 	Validate:    func(rt *shortcut.RuntimeContext) error { return localio.ValidateOutput(rt.Str("output")) },
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"output"}, Description: "--output 必须是工作目录内相对路径；默认 no-clobber"}},
@@ -233,7 +231,7 @@ func executeMediaDownload(rt *shortcut.RuntimeContext) error {
 	if err != nil {
 		return err
 	}
-	result, err := downloadResolvedResource(rt, data, cwd, rt.Str("output"), rt.Bool("overwrite"))
+	result, err := downloadResolvedResource(rt, data, cwd, rt.Str("output"))
 	if err != nil {
 		return err
 	}
@@ -266,14 +264,14 @@ func executeResourceDownload(rt *shortcut.RuntimeContext) error {
 	if err != nil {
 		return err
 	}
-	result, err := downloadResolvedResource(rt, data, cwd, rt.Str("output"), rt.Bool("overwrite"))
+	result, err := downloadResolvedResource(rt, data, cwd, rt.Str("output"))
 	if err != nil {
 		return err
 	}
 	return rt.Output(docEnvelope("doc.resource_download", map[string]any{"localPath": result.RelativePath, "sizeBytes": result.SizeBytes}))
 }
 
-func downloadResolvedResource(rt *shortcut.RuntimeContext, data map[string]any, baseDir, output string, overwrite bool) (localio.DownloadResult, error) {
+func downloadResolvedResource(rt *shortcut.RuntimeContext, data map[string]any, baseDir, output string) (localio.DownloadResult, error) {
 	resourceURL := nestedStringDeep(data, "downloadUrl", "resourceUrl", "imageUrl", "url")
 	if resourceURL == "" {
 		return localio.DownloadResult{}, apperrors.NewAPI("附件下载响应缺少 downloadUrl/resourceUrl")
@@ -288,7 +286,7 @@ func downloadResolvedResource(rt *shortcut.RuntimeContext, data map[string]any, 
 			}
 		}
 	}
-	return docDownload(rt.Command().Context(), resourceURL, localio.DownloadOptions{BaseDir: baseDir, Output: output, PreferredName: nestedStringDeep(data, "fileName", "name"), Overwrite: overwrite, Headers: headers})
+	return docDownload(rt.Command().Context(), resourceURL, localio.DownloadOptions{BaseDir: baseDir, Output: output, PreferredName: nestedStringDeep(data, "fileName", "name"), Headers: headers})
 }
 
 func collectMediaItems(value any) []map[string]any {

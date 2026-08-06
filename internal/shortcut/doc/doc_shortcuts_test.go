@@ -682,7 +682,7 @@ func TestCrossPlatformCoverageDocHistoryTemplateReviewAndMedia(t *testing.T) {
 	emptyStyle := &docCoverageCaller{responses: map[string][]map[string]any{"get_document_style": {{"ok": true}}}}
 	_ = runDocCoverage(t, ResourceDownload, emptyStyle, "--node", "n", "--output", "cover.png")
 	_ = runDocCoverage(t, ResourceDownload, &docCoverageCaller{failAt: 2, responses: map[string][]map[string]any{"get_document_style": {{"resourceId": "r"}}}}, "--node", "n", "--output", "cover.png")
-	_, _ = downloadResolvedResource(nil, map[string]any{}, ".", "x", false)
+	_, _ = downloadResolvedResource(nil, map[string]any{}, ".", "x")
 	_ = runDocCoverage(t, MediaPreview, &docCoverageCaller{failAt: 1, responses: map[string][]map[string]any{}}, "--node", "n", "--resource-id", "r")
 	_ = runDocCoverage(t, BackgroundUpdate, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--node", "n", "--color", "bad")
 	_ = runDocCoverage(t, BackgroundUpdate, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--node", "n", "--color", "#ABCDEG")
@@ -732,5 +732,32 @@ func TestCrossPlatformCoverageDocDownloadAndWorkingDirectoryErrors(t *testing.T)
 		{ResourceDownload, []string{"--node", "n", "--output", "out.png"}},
 	} {
 		_ = runDocCoverage(t, item.decl, &docCoverageCaller{responses: map[string][]map[string]any{}}, item.args...)
+	}
+}
+
+func TestCrossPlatformCoverageDocDownloadsHaveNoOverwriteEscape(t *testing.T) {
+	for _, item := range []struct {
+		decl shortcut.Shortcut
+		args []string
+	}{
+		{Export, []string{"--node", "n", "--output", "out.docx"}},
+		{MediaDownload, []string{"--node", "n", "--resource-id", "r", "--output", "out.bin"}},
+		{ResourceDownload, []string{"--node", "n", "--output", "out.png"}},
+	} {
+		t.Run(item.decl.Command, func(t *testing.T) {
+			for _, flag := range item.decl.Flags {
+				if flag.Name == "overwrite" {
+					t.Fatal("download shortcut still declares --overwrite")
+				}
+			}
+			caller := &docCoverageCaller{responses: map[string][]map[string]any{}}
+			err := runDocCoverage(t, item.decl, caller, append(item.args, "--overwrite")...)
+			if err == nil {
+				t.Fatal("--overwrite unexpectedly accepted")
+			}
+			if caller.calls != 0 {
+				t.Fatalf("rejected --overwrite performed %d MCP calls", caller.calls)
+			}
+		})
 	}
 }

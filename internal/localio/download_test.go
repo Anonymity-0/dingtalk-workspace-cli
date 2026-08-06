@@ -104,7 +104,7 @@ func TestCrossPlatformCoverageOutputPathPolicy(t *testing.T) {
 	}
 
 	base := t.TempDir()
-	destination, rel, err := ResolveOutputPath(base, "nested/file.md", "https://alidocs.dingtalk.com/file.md", "", false)
+	destination, rel, err := ResolveOutputPath(base, "nested/file.md", "https://alidocs.dingtalk.com/file.md", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,14 +118,14 @@ func TestCrossPlatformCoverageOutputPathPolicy(t *testing.T) {
 	if err := os.WriteFile(destination, []byte("existing"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := ResolveOutputPath(base, "nested/file.md", "https://alidocs.dingtalk.com/file.md", "", false); err == nil || !strings.Contains(err.Error(), "LOCAL_FILE_EXISTS") {
+	if _, _, err := ResolveOutputPath(base, "nested/file.md", "https://alidocs.dingtalk.com/file.md", ""); err == nil || !strings.Contains(err.Error(), "LOCAL_FILE_EXISTS") {
 		t.Fatalf("no-clobber error = %v", err)
 	}
 
 	outside := t.TempDir()
 	link := filepath.Join(base, "outside-link")
 	if err := os.Symlink(outside, link); err == nil {
-		if _, _, err := ResolveOutputPath(base, "outside-link/file", "https://alidocs.dingtalk.com/file", "", false); err == nil || !strings.Contains(err.Error(), "LOCAL_PATH_UNSAFE") {
+		if _, _, err := ResolveOutputPath(base, "outside-link/file", "https://alidocs.dingtalk.com/file", ""); err == nil || !strings.Contains(err.Error(), "LOCAL_PATH_UNSAFE") {
 			t.Fatalf("symlink escape error = %v", err)
 		}
 	}
@@ -140,10 +140,12 @@ func TestCrossPlatformCoverageOutputPathPolicy(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageDownloadAtomicNoClobberAndOverwrite(t *testing.T) {
+func TestCrossPlatformCoverageDownloadAtomicNoClobber(t *testing.T) {
 	base := t.TempDir()
 	payload := "first payload"
+	requests := 0
 	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		requests++
 		if req.URL.Host != "alidocs.oss-cn-zhangjiakou.aliyuncs.com" {
 			return nil, errors.New("unexpected host")
 		}
@@ -167,17 +169,117 @@ func TestCrossPlatformCoverageDownloadAtomicNoClobberAndOverwrite(t *testing.T) 
 	}, client); err == nil || !strings.Contains(err.Error(), "LOCAL_FILE_EXISTS") {
 		t.Fatalf("second download error = %v", err)
 	}
+	if requests != 1 {
+		t.Fatalf("existing destination performed %d network requests, want 1 total", requests)
+	}
 
-	payload = "replacement"
-	replaced, err := downloadWithClient(context.Background(), "https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/file.md", DownloadOptions{
-		BaseDir: base, Output: "nested/result.md", Overwrite: true,
-	}, client)
-	if err != nil {
+	got, err = os.ReadFile(result.AbsolutePath)
+	if err != nil || string(got) != payload {
+		t.Fatalf("no-clobber content = %q, err=%v", got, err)
+	}
+}
+
+func TestCrossPlatformCoverageDownloadSizeLimitCleansPartialFiles(t *testing.T) {
+	base := t.TempDir()
+	for _, tc := range []struct {
+		name          string
+		contentLength int64
+	}{
+		{name: "declared", contentLength: 6},
+		{name: "streamed", contentLength: -1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode:    http.StatusOK,
+					Body:          io.NopCloser(strings.NewReader("123456")),
+					Header:        make(http.Header),
+					ContentLength: tc.contentLength,
+				}, nil
+			})}
+			output := tc.name + ".bin"
+			if _, err := downloadWithClientLimit(context.Background(), "https://download.dingtalk.com/file.bin", DownloadOptions{
+				BaseDir: base, Output: output,
+			}, client, 5); err == nil || !strings.Contains(err.Error(), "LOCAL_DOWNLOAD_TOO_LARGE") {
+				t.Fatalf("oversized download error = %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(base, output)); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("oversized destination exists: %v", err)
+			}
+			entries, err := os.ReadDir(base)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, entry := range entries {
+				if strings.HasPrefix(entry.Name(), ".dws-download-") {
+					t.Fatalf("oversized download left temp file %q", entry.Name())
+				}
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageDownloadRejectsParentReplacementDuringNetwork(t *testing.T) {
+	base := t.TempDir()
+	parent := filepath.Join(base, "nested")
+	if err := os.Mkdir(parent, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	got, err = os.ReadFile(replaced.AbsolutePath)
-	if err != nil || string(got) != payload {
-		t.Fatalf("replacement content = %q, err=%v", got, err)
+	original := filepath.Join(base, "original-parent")
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		if err := os.Rename(parent, original); err != nil {
+			t.Skipf("platform cannot replace an open directory: %v", err)
+		}
+		if err := os.Mkdir(parent, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("payload")), Header: make(http.Header)}, nil
+	})}
+	if _, err := downloadWithClient(context.Background(), "https://download.dingtalk.com/file.bin", DownloadOptions{
+		BaseDir: base, Output: "nested/result.bin",
+	}, client); err == nil || !strings.Contains(err.Error(), "LOCAL_PATH_CHANGED") {
+		t.Fatalf("parent replacement error = %v", err)
+	}
+	for _, candidate := range []string{filepath.Join(parent, "result.bin"), filepath.Join(original, "result.bin")} {
+		if _, err := os.Stat(candidate); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("parent replacement wrote %q: %v", candidate, err)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageDownloadRejectsParentReplacementBeforePublish(t *testing.T) {
+	base := t.TempDir()
+	parent := filepath.Join(base, "nested")
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	original := filepath.Join(base, "original-parent")
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("payload")), Header: make(http.Header)}, nil
+	})}
+	testseam.Swap(t, &createDownloadTemp, func(root *os.Root) (downloadTempFile, string, error) {
+		created, name, err := createDownloadTempInRoot(root)
+		if err != nil {
+			return nil, "", err
+		}
+		return &coverageTempFile{file: created.(*os.File), onClose: func() {
+			if renameErr := os.Rename(parent, original); renameErr != nil {
+				t.Skipf("platform cannot replace an open directory: %v", renameErr)
+			}
+			if mkdirErr := os.Mkdir(parent, 0o700); mkdirErr != nil {
+				t.Fatal(mkdirErr)
+			}
+		}}, name, nil
+	})
+	if _, err := downloadWithClient(context.Background(), "https://download.dingtalk.com/file.bin", DownloadOptions{
+		BaseDir: base, Output: "nested/result.bin",
+	}, client); err == nil || !strings.Contains(err.Error(), "LOCAL_PATH_CHANGED") {
+		t.Fatalf("parent replacement error = %v", err)
+	}
+	for _, candidate := range []string{filepath.Join(parent, "result.bin"), filepath.Join(original, "result.bin")} {
+		if _, err := os.Stat(candidate); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("parent replacement wrote %q: %v", candidate, err)
+		}
 	}
 }
 
@@ -216,20 +318,34 @@ func TestCrossPlatformCoverageDownloadFailureBoundaries(t *testing.T) {
 	})}
 	for _, tc := range []struct {
 		name     string
-		makeTemp func(string, string) (downloadTempFile, error)
+		makeTemp func(*os.Root) (downloadTempFile, string, error)
 	}{
-		{"create", func(string, string) (downloadTempFile, error) { return nil, errors.New("create") }},
-		{"sync", func(dir, pattern string) (downloadTempFile, error) {
-			file, err := os.CreateTemp(dir, pattern)
-			return &coverageTempFile{file: file, syncErr: errors.New("sync")}, err
+		{"create", func(*os.Root) (downloadTempFile, string, error) { return nil, "", errors.New("create") }},
+		{"sync", func(root *os.Root) (downloadTempFile, string, error) {
+			created, name, err := createDownloadTempInRoot(root)
+			if err != nil {
+				return nil, "", err
+			}
+			return &coverageTempFile{file: created.(*os.File), syncErr: errors.New("sync")}, name, nil
 		}},
-		{"close", func(dir, pattern string) (downloadTempFile, error) {
-			file, err := os.CreateTemp(dir, pattern)
-			return &coverageTempFile{file: file, closeErr: errors.New("close")}, err
+		{"close", func(root *os.Root) (downloadTempFile, string, error) {
+			created, name, err := createDownloadTempInRoot(root)
+			if err != nil {
+				return nil, "", err
+			}
+			return &coverageTempFile{file: created.(*os.File), closeErr: errors.New("close")}, name, nil
 		}},
-		{"publish-race", func(dir, pattern string) (downloadTempFile, error) {
-			file, err := os.CreateTemp(dir, pattern)
-			return &coverageTempFile{file: file, onClose: func() { _ = os.WriteFile(filepath.Join(base, "publish-race.bin"), []byte("race"), 0o600) }}, err
+		{"publish-race", func(root *os.Root) (downloadTempFile, string, error) {
+			created, name, err := createDownloadTempInRoot(root)
+			if err != nil {
+				return nil, "", err
+			}
+			return &coverageTempFile{file: created.(*os.File), onClose: func() {
+				file, createErr := root.OpenFile("publish-race.bin", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+				if createErr == nil {
+					_ = file.Close()
+				}
+			}}, name, nil
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -302,12 +418,10 @@ func TestCrossPlatformCoverageSecureHTTPClientAndFilesystemEdges(t *testing.T) {
 	})
 
 	base := t.TempDir()
-	if _, _, err := ResolveOutputPath("", "default-base.tmp", "https://download.dingtalk.com/x", "", false); err != nil {
+	if _, _, err := ResolveOutputPath("", "default-base.tmp", "https://download.dingtalk.com/x", ""); err != nil {
 		t.Fatal(err)
-	} else {
-		_ = os.Remove("default-base.tmp")
 	}
-	if _, _, err := ResolveOutputPath(filepath.Join(base, "missing"), "x", "https://download.dingtalk.com/x", "", false); err == nil {
+	if _, _, err := ResolveOutputPath(filepath.Join(base, "missing"), "x", "https://download.dingtalk.com/x", ""); err == nil {
 		t.Fatal("missing base succeeded")
 	}
 	dir := filepath.Join(base, "directory")
@@ -315,42 +429,47 @@ func TestCrossPlatformCoverageSecureHTTPClientAndFilesystemEdges(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, output := range []string{".", "directory/", "directory"} {
-		if _, _, err := ResolveOutputPath(base, output, "https://download.dingtalk.com/path/name.txt", "preferred.txt", false); err != nil {
+		if _, _, err := ResolveOutputPath(base, output, "https://download.dingtalk.com/path/name.txt", "preferred.txt"); err != nil {
 			t.Errorf("directory output %q: %v", output, err)
 		}
 	}
-	if _, _, err := ResolveOutputPath(base, "directory", "https://download.dingtalk.com/x", "", false); err != nil {
+	if _, _, err := ResolveOutputPath(base, "directory", "https://download.dingtalk.com/x", ""); err != nil {
 		t.Fatal(err)
 	}
 	targetDir := filepath.Join(base, "target-dir")
 	_ = os.Mkdir(targetDir, 0o700)
-	if _, _, err := ResolveOutputPath(base, "target-dir", "https://download.dingtalk.com/x", "x", true); err != nil {
+	if _, _, err := ResolveOutputPath(base, "target-dir", "https://download.dingtalk.com/x", "x"); err != nil {
 		t.Fatal(err)
 	}
-	targetFile := filepath.Join(base, "overwrite.txt")
+	targetFile := filepath.Join(base, "existing.txt")
 	_ = os.WriteFile(targetFile, []byte("x"), 0o600)
-	if _, _, err := ResolveOutputPath(base, "overwrite.txt", "https://download.dingtalk.com/x", "", true); err != nil {
-		t.Fatal(err)
+	if _, _, err := ResolveOutputPath(base, "existing.txt", "https://download.dingtalk.com/x", ""); err == nil || !strings.Contains(err.Error(), "LOCAL_FILE_EXISTS") {
+		t.Fatalf("existing destination error = %v", err)
 	}
 	link := filepath.Join(base, "target-link")
 	if err := os.Symlink(targetFile, link); err == nil {
-		if _, _, err := ResolveOutputPath(base, "target-link", "https://download.dingtalk.com/x", "", true); err == nil {
+		if _, _, err := ResolveOutputPath(base, "target-link", "https://download.dingtalk.com/x", ""); err == nil {
 			t.Fatal("symlink destination accepted")
 		}
 	}
 	fileParent := filepath.Join(base, "file-parent")
 	_ = os.WriteFile(fileParent, []byte("x"), 0o600)
-	if _, _, err := ResolveOutputPath(base, "file-parent/child", "https://download.dingtalk.com/x", "", false); err == nil {
+	if _, _, err := ResolveOutputPath(base, "file-parent/child", "https://download.dingtalk.com/x", ""); err == nil {
 		t.Fatal("file parent accepted")
 	}
-	if err := ensureSafeParent(base, filepath.Dir(base)); err == nil {
+	root, err := os.OpenRoot(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = root.Close() })
+	if err := ensureSafeParent(root, "../escape"); err == nil {
 		t.Fatal("escaping parent accepted")
 	}
-	if err := ensureSafeParent(base, base); err != nil {
+	if err := ensureSafeParent(root, "."); err != nil {
 		t.Fatal(err)
 	}
 
-	source, err := os.CreateTemp(base, "source-*")
+	source, err := root.OpenFile("source.tmp", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,20 +477,25 @@ func TestCrossPlatformCoverageSecureHTTPClientAndFilesystemEdges(t *testing.T) {
 	_ = source.Close()
 	destination := filepath.Join(base, "publish.txt")
 	_ = os.WriteFile(destination, []byte("old"), 0o600)
-	if err := publishTempFile(source.Name(), destination, false); err == nil {
+	if err := publishTempFile(root, "source.tmp", "publish.txt"); err == nil {
 		t.Fatal("publish existing destination succeeded")
 	}
-	if err := publishTempFile(filepath.Join(base, "missing-source"), filepath.Join(base, "new.txt"), false); err == nil {
+	if err := publishTempFile(root, "missing-source", "new.txt"); err == nil {
 		t.Fatal("publish missing source succeeded")
 	}
 	symlinkDestination := filepath.Join(base, "publish-link")
 	if err := os.Symlink(destination, symlinkDestination); err == nil {
-		if err := publishTempFile(filepath.Join(base, "missing-source"), symlinkDestination, true); err == nil {
-			t.Fatal("overwrite symlink succeeded")
+		if err := publishTempFile(root, "source.tmp", "publish-link"); err == nil {
+			t.Fatal("publish to symlink succeeded")
 		}
 	}
-	if err := publishTempFile(filepath.Join(base, "missing-source"), filepath.Join(base, "replace.txt"), true); err == nil {
-		t.Fatal("replace missing source succeeded")
+	closedRoot, err := os.OpenRoot(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = closedRoot.Close()
+	if _, _, err := createDownloadTempInRoot(closedRoot); err == nil {
+		t.Fatal("temp creation in closed root succeeded")
 	}
 
 	for _, name := range []string{"", ".", "..", "name.", "name ", "bad\x00", "AUX", "COM1", "LPT9"} {
@@ -446,77 +570,149 @@ func TestCrossPlatformCoverageFilesystemInjectedFailures(t *testing.T) {
 
 	t.Run("getwd", func(t *testing.T) {
 		testseam.Swap(t, &localGetwd, func() (string, error) { return "", errors.New("getwd") })
-		_, _, _ = ResolveOutputPath("", "x", validURL, "", false)
+		_, _, _ = ResolveOutputPath("", "x", validURL, "")
 	})
 	t.Run("abs", func(t *testing.T) {
 		testseam.Swap(t, &localAbs, func(string) (string, error) { return "", errors.New("abs") })
-		_, _, _ = ResolveOutputPath(base, "x", validURL, "", false)
+		_, _, _ = ResolveOutputPath(base, "x", validURL, "")
 	})
 	t.Run("eval base", func(t *testing.T) {
 		testseam.Swap(t, &localEvalSymlinks, func(string) (string, error) { return "", errors.New("eval") })
-		_, _, _ = ResolveOutputPath(base, "x", validURL, "", false)
+		_, _, _ = ResolveOutputPath(base, "x", validURL, "")
 	})
-	t.Run("eval parent", func(t *testing.T) {
-		calls := 0
-		testseam.Swap(t, &localEvalSymlinks, func(value string) (string, error) {
-			calls++
-			if calls == 2 {
-				return "", errors.New("eval parent")
-			}
-			return value, nil
-		})
-		_, _, _ = ResolveOutputPath(base, "x", validURL, "", false)
+	t.Run("open base", func(t *testing.T) {
+		testseam.Swap(t, &openDownloadRoot, func(string) (*os.Root, error) { return nil, errors.New("open root") })
+		_, _, _ = ResolveOutputPath(base, "x", validURL, "")
 	})
-	t.Run("parent rel", func(t *testing.T) {
+	t.Run("mkdir", func(t *testing.T) {
+		testseam.Swap(t, &downloadRootMkdir, func(*os.Root, string, os.FileMode) error { return errors.New("mkdir") })
+		_, _, _ = ResolveOutputPath(base, "new/target", validURL, "")
+	})
+	t.Run("lstat after mkdir", func(t *testing.T) {
 		calls := 0
-		testseam.Swap(t, &localRel, func(base, target string) (string, error) {
-			calls++
-			if calls == 2 {
-				return "", errors.New("parent rel")
+		testseam.Swap(t, &downloadRootLstat, func(root *os.Root, name string) (os.FileInfo, error) {
+			if name == "new-after" {
+				calls++
+				if calls > 1 {
+					return nil, errors.New("after mkdir")
+				}
 			}
-			return filepath.Rel(base, target)
+			return root.Lstat(name)
 		})
-		_, _, _ = ResolveOutputPath(base, "x", validURL, "", false)
+		_, _, _ = ResolveOutputPath(base, "new-after/target", validURL, "")
+	})
+	t.Run("open parent", func(t *testing.T) {
+		if err := os.Mkdir(filepath.Join(base, "open-parent"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &openDownloadParent, func(*os.Root, string) (*os.Root, error) { return nil, errors.New("open parent") })
+		_, _, _ = ResolveOutputPath(base, "open-parent/target", validURL, "")
+	})
+	t.Run("parent stat", func(t *testing.T) {
+		if err := os.Mkdir(filepath.Join(base, "parent-stat"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &downloadRootStat, func(root *os.Root, name string) (os.FileInfo, error) {
+			if name == "." {
+				return nil, errors.New("parent stat")
+			}
+			return root.Stat(name)
+		})
+		_, _, _ = ResolveOutputPath(base, "parent-stat/target", validURL, "")
+	})
+	t.Run("parent identity", func(t *testing.T) {
+		if err := os.Mkdir(filepath.Join(base, "parent-identity"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		otherInfo, err := os.Stat(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &downloadRootStat, func(root *os.Root, name string) (os.FileInfo, error) {
+			if name == "parent-identity" {
+				return otherInfo, nil
+			}
+			return root.Stat(name)
+		})
+		_, _, _ = ResolveOutputPath(base, "parent-identity/target", validURL, "")
 	})
 	t.Run("destination directory", func(t *testing.T) {
+		if err := os.Mkdir(filepath.Join(base, "destination-directory"), 0o700); err != nil {
+			t.Fatal(err)
+		}
 		dirInfo, err := os.Stat(base)
 		if err != nil {
 			t.Fatal(err)
 		}
-		testseam.Swap(t, &localLstat, func(string) (os.FileInfo, error) { return dirInfo, nil })
-		_, _, _ = ResolveOutputPath(base, "x", validURL, "", false)
+		testseam.Swap(t, &downloadRootLstat, func(root *os.Root, name string) (os.FileInfo, error) {
+			if name == "target" {
+				return dirInfo, nil
+			}
+			return root.Lstat(name)
+		})
+		_, _, _ = ResolveOutputPath(base, "destination-directory/target", validURL, "")
+	})
+	t.Run("destination symlink", func(t *testing.T) {
+		if err := os.Mkdir(filepath.Join(base, "destination-symlink"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		link := filepath.Join(base, "coverage-link")
+		if err := os.Symlink(filepath.Join(base, "destination-symlink"), link); err != nil {
+			t.Skipf("symlink unavailable: %v", err)
+		}
+		linkInfo, err := os.Lstat(link)
+		if err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &downloadRootLstat, func(root *os.Root, name string) (os.FileInfo, error) {
+			if name == "target" {
+				return linkInfo, nil
+			}
+			return root.Lstat(name)
+		})
+		_, _, _ = ResolveOutputPath(base, "destination-symlink/target", validURL, "")
 	})
 	t.Run("destination lstat", func(t *testing.T) {
-		testseam.Swap(t, &localLstat, func(string) (os.FileInfo, error) { return nil, errors.New("lstat") })
-		_, _, _ = ResolveOutputPath(base, "x", validURL, "", false)
-	})
-	t.Run("final rel", func(t *testing.T) {
-		calls := 0
-		testseam.Swap(t, &localRel, func(base, target string) (string, error) {
-			calls++
-			if calls == 3 {
-				return "", errors.New("final rel")
+		if err := os.Mkdir(filepath.Join(base, "destination-lstat"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &downloadRootLstat, func(root *os.Root, name string) (os.FileInfo, error) {
+			if name == "target" {
+				return nil, errors.New("destination lstat")
 			}
-			return filepath.Rel(base, target)
+			return root.Lstat(name)
 		})
-		_, _, _ = ResolveOutputPath(base, "x", validURL, "", false)
+		_, _, _ = ResolveOutputPath(base, "destination-lstat/target", validURL, "")
 	})
-	t.Run("mkdir", func(t *testing.T) {
-		testseam.Swap(t, &localLstat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
-		testseam.Swap(t, &localMkdir, func(string, os.FileMode) error { return errors.New("mkdir") })
-		_ = ensureSafeParent(base, filepath.Join(base, "new"))
+	t.Run("unsafe parent type", func(t *testing.T) {
+		filePath := filepath.Join(base, "unsafe-parent")
+		if err := os.WriteFile(filePath, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		root, err := os.OpenRoot(base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer root.Close()
+		if err := ensureSafeParent(root, "unsafe-parent"); err == nil {
+			t.Fatal("regular file accepted as output parent")
+		}
 	})
-	t.Run("lstat after mkdir", func(t *testing.T) {
-		calls := 0
-		testseam.Swap(t, &localLstat, func(string) (os.FileInfo, error) {
-			calls++
-			if calls == 1 {
-				return nil, os.ErrNotExist
-			}
-			return nil, errors.New("after mkdir")
-		})
-		testseam.Swap(t, &localMkdir, func(string, os.FileMode) error { return nil })
-		_ = ensureSafeParent(base, filepath.Join(base, "new"))
+	t.Run("publish remove", func(t *testing.T) {
+		root, err := os.OpenRoot(base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer root.Close()
+		file, err := root.OpenFile("remove-source", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = file.Close()
+		testseam.Swap(t, &downloadRootRemove, func(*os.Root, string) error { return errors.New("remove") })
+		if err := publishTempFile(root, "remove-source", "remove-destination"); err == nil {
+			t.Fatal("publish remove error ignored")
+		}
 	})
 }
 

@@ -348,7 +348,6 @@ var Export = shortcut.Shortcut{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true},
 		{Name: "export-format", Type: shortcut.FlagString, Default: "docx", Desc: "导出格式", Enum: []string{"docx", "markdown", "pdf"}},
 		{Name: "output", Type: shortcut.FlagString, Default: ".", Desc: "工作目录内相对路径（文件或目录）"},
-		{Name: "overwrite", Type: shortcut.FlagBool, Desc: "允许覆盖已有目标文件"},
 		{Name: "max-polls", Type: shortcut.FlagInt, Default: "30", Desc: "最大轮询次数"},
 	},
 	Tips:        []string{`dws doc +export --node <DOC_ID> --export-format docx --output ./exports/`, `dws doc +export --node <DOC_ID> --export-format markdown --output ./document.md`},
@@ -550,7 +549,7 @@ func executeBlockCopy(rt *shortcut.RuntimeContext, nodeID string) error {
 }
 
 func executeExport(rt *shortcut.RuntimeContext) error {
-	plan := map[string]any{"nodeId": rt.Str("node"), "exportFormat": rt.Str("export-format"), "output": rt.Str("output"), "overwrite": rt.Bool("overwrite")}
+	plan := map[string]any{"nodeId": rt.Str("node"), "exportFormat": rt.Str("export-format"), "output": rt.Str("output")}
 	if rt.DryRun() {
 		plan["executed"] = false
 		plan["steps"] = []string{"submit_export_job", "query_export_job", "safe_atomic_download"}
@@ -602,7 +601,7 @@ func executeExport(rt *shortcut.RuntimeContext) error {
 	}
 	ext := map[string]string{"docx": ".docx", "markdown": ".md", "pdf": ".pdf"}[rt.Str("export-format")]
 	preferred := "document" + ext
-	result, err := docDownload(rt.Command().Context(), downloadURL, localio.DownloadOptions{BaseDir: cwd, Output: rt.Str("output"), PreferredName: preferred, Overwrite: rt.Bool("overwrite")})
+	result, err := docDownload(rt.Command().Context(), downloadURL, localio.DownloadOptions{BaseDir: cwd, Output: rt.Str("output"), PreferredName: preferred})
 	if err != nil {
 		return err
 	}

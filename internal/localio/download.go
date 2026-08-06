@@ -18,37 +18,44 @@ import (
 	pathpkg "path"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
-const downloadTimeout = 10 * time.Minute
+const (
+	downloadTimeout  = 10 * time.Minute
+	maxDownloadBytes = int64(512 << 20)
+)
 
 type downloadTempFile interface {
 	io.Writer
-	Name() string
 	Sync() error
 	Close() error
 }
 
 var (
-	createDownloadTemp = func(dir, pattern string) (downloadTempFile, error) { return os.CreateTemp(dir, pattern) }
+	createDownloadTemp = createDownloadTempInRoot
 	lookupDownloadIPs  = net.DefaultResolver.LookupIPAddr
 	dialDownloadIP     = (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext
 	localGetwd         = os.Getwd
 	localAbs           = filepath.Abs
 	localEvalSymlinks  = filepath.EvalSymlinks
-	localRel           = filepath.Rel
-	localStat          = os.Stat
-	localLstat         = os.Lstat
-	localMkdir         = os.Mkdir
+	openDownloadRoot   = os.OpenRoot
+	openDownloadParent = func(root *os.Root, name string) (*os.Root, error) { return root.OpenRoot(name) }
+	downloadRootStat   = func(root *os.Root, name string) (os.FileInfo, error) { return root.Stat(name) }
+	downloadRootLstat  = func(root *os.Root, name string) (os.FileInfo, error) { return root.Lstat(name) }
+	downloadRootMkdir  = func(root *os.Root, name string, mode os.FileMode) error { return root.Mkdir(name, mode) }
+	downloadRootLink   = func(root *os.Root, oldName, newName string) error { return root.Link(oldName, newName) }
+	downloadRootRemove = func(root *os.Root, name string) error { return root.Remove(name) }
 )
+
+var downloadTempCounter atomic.Uint64
 
 // DownloadOptions controls safe, atomic publication beneath BaseDir.
 type DownloadOptions struct {
 	BaseDir       string
 	Output        string
 	PreferredName string
-	Overwrite     bool
 	Headers       map[string]string
 }
 
@@ -67,14 +74,19 @@ func Download(ctx context.Context, rawURL string, opts DownloadOptions) (Downloa
 }
 
 func downloadWithClient(ctx context.Context, rawURL string, opts DownloadOptions, client *http.Client) (DownloadResult, error) {
+	return downloadWithClientLimit(ctx, rawURL, opts, client, maxDownloadBytes)
+}
+
+func downloadWithClientLimit(ctx context.Context, rawURL string, opts DownloadOptions, client *http.Client, maxBytes int64) (DownloadResult, error) {
 	parsed, err := ValidateDownloadURL(rawURL)
 	if err != nil {
 		return DownloadResult{}, err
 	}
-	abs, rel, err := ResolveOutputPath(opts.BaseDir, opts.Output, parsed.String(), opts.PreferredName, opts.Overwrite)
+	target, err := openDownloadTarget(opts.BaseDir, opts.Output, parsed.String(), opts.PreferredName)
 	if err != nil {
 		return DownloadResult{}, err
 	}
+	defer target.close()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil) // URL was fully validated above
 	for key, value := range opts.Headers {
 		if strings.TrimSpace(key) != "" {
@@ -90,17 +102,25 @@ func downloadWithClient(ctx context.Context, rawURL string, opts DownloadOptions
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return DownloadResult{}, fmt.Errorf("下载资源失败: HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
+	if resp.ContentLength > maxBytes {
+		return DownloadResult{}, fmt.Errorf("LOCAL_DOWNLOAD_TOO_LARGE: 响应大小 %d 超过上限 %d 字节", resp.ContentLength, maxBytes)
+	}
+	if err := target.verifyParent(); err != nil {
+		return DownloadResult{}, err
+	}
 
-	tmp, err := createDownloadTemp(filepath.Dir(abs), ".dws-download-*")
+	tmp, tmpName, err := createDownloadTemp(target.parentRoot)
 	if err != nil {
 		return DownloadResult{}, fmt.Errorf("创建下载临时文件失败: %w", err)
 	}
-	tmpName := tmp.Name()
 	cleanup := func() {
 		_ = tmp.Close()
-		_ = os.Remove(tmpName)
+		_ = target.parentRoot.Remove(tmpName)
 	}
-	size, copyErr := io.Copy(tmp, resp.Body)
+	size, copyErr := io.Copy(tmp, io.LimitReader(resp.Body, maxBytes+1))
+	if copyErr == nil && size > maxBytes {
+		copyErr = fmt.Errorf("LOCAL_DOWNLOAD_TOO_LARGE: 下载内容超过上限 %d 字节", maxBytes)
+	}
 	if copyErr == nil {
 		copyErr = tmp.Sync()
 	}
@@ -111,11 +131,15 @@ func downloadWithClient(ctx context.Context, rawURL string, opts DownloadOptions
 		cleanup()
 		return DownloadResult{}, fmt.Errorf("写入下载临时文件失败: %w", copyErr)
 	}
-	if err := publishTempFile(tmpName, abs, opts.Overwrite); err != nil {
+	if err := target.verifyParent(); err != nil {
 		cleanup()
 		return DownloadResult{}, err
 	}
-	return DownloadResult{AbsolutePath: abs, RelativePath: filepath.ToSlash(rel), SizeBytes: size}, nil
+	if err := publishTempFile(target.parentRoot, tmpName, target.destinationName); err != nil {
+		cleanup()
+		return DownloadResult{}, err
+	}
+	return DownloadResult{AbsolutePath: target.absolutePath, RelativePath: filepath.ToSlash(target.relativePath), SizeBytes: size}, nil
 }
 
 // ValidateOutput rejects absolute paths and portable `..` escapes.
@@ -137,66 +161,120 @@ func ValidateOutput(output string) error {
 }
 
 // ResolveOutputPath returns a symlink-safe destination below baseDir.
-func ResolveOutputPath(baseDir, output, rawURL, preferredName string, overwrite bool) (string, string, error) {
-	if err := ValidateOutput(output); err != nil {
+type downloadTarget struct {
+	baseRoot        *os.Root
+	parentRoot      *os.Root
+	parentInfo      os.FileInfo
+	parentRelative  string
+	destinationName string
+	absolutePath    string
+	relativePath    string
+}
+
+func (target *downloadTarget) close() {
+	_ = target.parentRoot.Close()
+	_ = target.baseRoot.Close()
+}
+
+func (target *downloadTarget) verifyParent() error {
+	current, err := downloadRootStat(target.baseRoot, target.parentRelative)
+	if err != nil || !os.SameFile(target.parentInfo, current) {
+		return fmt.Errorf("LOCAL_PATH_CHANGED: 下载期间输出目录被替换")
+	}
+	return nil
+}
+
+func ResolveOutputPath(baseDir, output, rawURL, preferredName string) (string, string, error) {
+	target, err := openDownloadTarget(baseDir, output, rawURL, preferredName)
+	if err != nil {
 		return "", "", err
+	}
+	defer target.close()
+	return target.absolutePath, target.relativePath, nil
+}
+
+func openDownloadTarget(baseDir, output, rawURL, preferredName string) (*downloadTarget, error) {
+	if err := ValidateOutput(output); err != nil {
+		return nil, err
 	}
 	if strings.TrimSpace(baseDir) == "" {
 		var err error
 		baseDir, err = localGetwd()
 		if err != nil {
-			return "", "", fmt.Errorf("读取工作目录失败: %w", err)
+			return nil, fmt.Errorf("读取工作目录失败: %w", err)
 		}
 	}
 	absBase, err := localAbs(baseDir)
 	if err != nil {
-		return "", "", fmt.Errorf("解析工作目录失败: %w", err)
+		return nil, fmt.Errorf("解析工作目录失败: %w", err)
 	}
 	realBase, err := localEvalSymlinks(absBase)
 	if err != nil {
-		return "", "", fmt.Errorf("解析工作目录失败: %w", err)
+		return nil, fmt.Errorf("解析工作目录失败: %w", err)
+	}
+	baseRoot, err := openDownloadRoot(realBase)
+	if err != nil {
+		return nil, fmt.Errorf("打开工作目录失败: %w", err)
+	}
+	fail := func(err error) (*downloadTarget, error) {
+		_ = baseRoot.Close()
+		return nil, err
 	}
 
 	rawOutput := strings.TrimSpace(output)
 	directoryIntent := rawOutput == "." || strings.HasSuffix(rawOutput, "/") || strings.HasSuffix(rawOutput, string(os.PathSeparator))
-	candidate := filepath.Join(realBase, filepath.Clean(rawOutput))
-	if info, statErr := localStat(candidate); statErr == nil && info.IsDir() {
+	candidate := filepath.Clean(rawOutput)
+	if info, statErr := downloadRootStat(baseRoot, candidate); statErr == nil && info.IsDir() {
 		directoryIntent = true
+	} else if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
+		return fail(fmt.Errorf("LOCAL_PATH_UNSAFE: 检查输出路径失败: %w", statErr))
 	}
 	if directoryIntent {
 		candidate = filepath.Join(candidate, SafeFilename(preferredName, rawURL))
 	}
 	parent := filepath.Dir(candidate)
-	if err := ensureSafeParent(realBase, parent); err != nil {
-		return "", "", err
+	if err := ensureSafeParent(baseRoot, parent); err != nil {
+		return fail(err)
 	}
-	realParent, err := localEvalSymlinks(parent)
+	parentRoot, err := openDownloadParent(baseRoot, parent)
 	if err != nil {
-		return "", "", fmt.Errorf("解析输出目录失败: %w", err)
+		return fail(fmt.Errorf("固定输出目录失败: %w", err))
 	}
-	parentRel, err := localRel(realBase, realParent)
-	if err != nil || escapes(parentRel) {
-		return "", "", fmt.Errorf("LOCAL_PATH_UNSAFE: --output 解析后逃逸工作目录")
+	parentInfo, err := downloadRootStat(parentRoot, ".")
+	if err != nil {
+		_ = parentRoot.Close()
+		return fail(fmt.Errorf("读取输出目录身份失败: %w", err))
 	}
-	destination := filepath.Join(realParent, filepath.Base(candidate))
-	if info, statErr := localLstat(destination); statErr == nil {
+	currentParent, err := downloadRootStat(baseRoot, parent)
+	if err != nil || !os.SameFile(parentInfo, currentParent) {
+		_ = parentRoot.Close()
+		return fail(fmt.Errorf("LOCAL_PATH_CHANGED: 输出目录在解析期间被替换"))
+	}
+	destinationName := filepath.Base(candidate)
+	if info, statErr := downloadRootLstat(parentRoot, destinationName); statErr == nil {
 		if info.Mode()&os.ModeSymlink != 0 {
-			return "", "", fmt.Errorf("LOCAL_PATH_UNSAFE: --output 目标不能是符号链接")
+			_ = parentRoot.Close()
+			return fail(fmt.Errorf("LOCAL_PATH_UNSAFE: --output 目标不能是符号链接"))
 		}
 		if info.IsDir() {
-			return "", "", fmt.Errorf("LOCAL_PATH_UNSAFE: --output 目标是目录")
+			_ = parentRoot.Close()
+			return fail(fmt.Errorf("LOCAL_PATH_UNSAFE: --output 目标是目录"))
 		}
-		if !overwrite {
-			return "", "", fmt.Errorf("LOCAL_FILE_EXISTS: 目标文件已存在；如确认覆盖请显式传 --overwrite")
-		}
+		_ = parentRoot.Close()
+		return fail(fmt.Errorf("LOCAL_FILE_EXISTS: 目标文件已存在；请选择新的输出路径"))
 	} else if !errors.Is(statErr, os.ErrNotExist) {
-		return "", "", fmt.Errorf("检查输出文件失败: %w", statErr)
+		_ = parentRoot.Close()
+		return fail(fmt.Errorf("检查输出文件失败: %w", statErr))
 	}
-	rel, err := localRel(realBase, destination)
-	if err != nil || escapes(rel) {
-		return "", "", fmt.Errorf("LOCAL_PATH_UNSAFE: 无法解析安全输出路径")
-	}
-	return destination, rel, nil
+	return &downloadTarget{
+		baseRoot:        baseRoot,
+		parentRoot:      parentRoot,
+		parentInfo:      parentInfo,
+		parentRelative:  parent,
+		destinationName: destinationName,
+		absolutePath:    filepath.Join(realBase, candidate),
+		relativePath:    candidate,
+	}, nil
 }
 
 // SafeFilename selects a portable basename from a preferred server name or URL.
@@ -328,23 +406,19 @@ var nonPublicPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("2001:db8::/32"),   // IPv6 documentation
 }
 
-func ensureSafeParent(base, parent string) error {
-	rel, err := localRel(base, parent)
-	if err != nil || escapes(rel) {
-		return fmt.Errorf("LOCAL_PATH_UNSAFE: --output 解析后逃逸工作目录")
-	}
-	current := base
-	if rel == "." {
+func ensureSafeParent(root *os.Root, parent string) error {
+	if parent == "." {
 		return nil
 	}
-	for _, part := range strings.Split(rel, string(os.PathSeparator)) {
+	current := "."
+	for _, part := range strings.Split(parent, string(os.PathSeparator)) {
 		current = filepath.Join(current, part)
-		info, statErr := localLstat(current)
+		info, statErr := downloadRootLstat(root, current)
 		if errors.Is(statErr, os.ErrNotExist) {
-			if err := localMkdir(current, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
+			if err := downloadRootMkdir(root, current, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
 				return fmt.Errorf("创建输出目录失败: %w", err)
 			}
-			info, statErr = localLstat(current)
+			info, statErr = downloadRootLstat(root, current)
 		}
 		if statErr != nil {
 			return fmt.Errorf("检查输出目录失败: %w", statErr)
@@ -356,21 +430,24 @@ func ensureSafeParent(base, parent string) error {
 	return nil
 }
 
-func publishTempFile(tempPath, destination string, overwrite bool) error {
-	if !overwrite {
-		if err := os.Link(tempPath, destination); err != nil {
-			if errors.Is(err, os.ErrExist) {
-				return fmt.Errorf("LOCAL_FILE_EXISTS: 目标文件已存在")
-			}
-			return fmt.Errorf("发布下载文件失败: %w", err)
+func createDownloadTempInRoot(root *os.Root) (downloadTempFile, string, error) {
+	name := fmt.Sprintf(".dws-download-%d-%d", os.Getpid(), downloadTempCounter.Add(1))
+	file, err := root.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return nil, "", err
+	}
+	return file, name, nil
+}
+
+func publishTempFile(root *os.Root, tempName, destinationName string) error {
+	if err := downloadRootLink(root, tempName, destinationName); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("LOCAL_FILE_EXISTS: 目标文件已存在")
 		}
-		return os.Remove(tempPath)
+		return fmt.Errorf("发布下载文件失败: %w", err)
 	}
-	if info, err := os.Lstat(destination); err == nil && info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("LOCAL_PATH_UNSAFE: --output 目标不能是符号链接")
-	}
-	if err := replaceFileAtomically(tempPath, destination); err != nil {
-		return fmt.Errorf("原子发布下载文件失败: %w", err)
+	if err := downloadRootRemove(root, tempName); err != nil {
+		return fmt.Errorf("清理下载临时文件失败: %w", err)
 	}
 	return nil
 }
@@ -395,9 +472,4 @@ func sanitizeFilename(raw string) string {
 		return ""
 	}
 	return name
-}
-
-func escapes(rel string) bool {
-	portable := pathpkg.Clean(strings.ReplaceAll(rel, "\\", "/"))
-	return portable == ".." || strings.HasPrefix(portable, "../")
 }
