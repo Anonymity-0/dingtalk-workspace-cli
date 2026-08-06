@@ -32,7 +32,7 @@ func newToolbarListCommand() *cobra.Command {
 				return err
 			}
 			return callMCPToolOnServer("im", "list_chat_toolbar_shortcuts", map[string]any{
-				"openCid": cid,
+				"openConversationId": cid,
 			})
 		},
 	}
@@ -66,7 +66,7 @@ func newToolbarListCommand() *cobra.Command {
 				Examples:     []string{"dws chat toolbar list --conversation-id <cid>"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "conversation-id", Property: "openCid", Required: boolPtr(true)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 			},
 		},
 	})

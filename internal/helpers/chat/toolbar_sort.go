@@ -44,8 +44,8 @@ func newToolbarSortCommand() *cobra.Command {
 			}
 
 			toolArgs := map[string]any{
-				"openCid":           cid,
-				"sortedShortcutIds": sortedIds,
+				"openConversationId": cid,
+				"sortedShortcutIds":  sortedIds,
 			}
 
 			if unsortedRaw, _ := cmd.Flags().GetString("unsorted-ids"); unsortedRaw != "" {
@@ -104,7 +104,7 @@ func newToolbarSortCommand() *cobra.Command {
 				Examples:     []string{"dws chat toolbar sort --conversation-id <cid> --sorted-ids 101,102,103"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "conversation-id", Property: "openCid", Required: boolPtr(true)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "sorted-ids", Property: "sortedShortcutIds", Required: boolPtr(true)},
 				{Name: "unsorted-ids", Property: "unsortedShortcutIds", Required: boolPtr(false)},
 			},

@@ -219,6 +219,198 @@ func TestToolbarConversationID(t *testing.T) {
 	}
 }
 
+func TestToolbarDepsDefaultWrappersAndValidationEdges(t *testing.T) {
+	cmd := &cobra.Command{Use: "toolbar"}
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	if err := groupRunE(cmd, nil); err != nil {
+		t.Fatalf("default groupRunE returned error: %v", err)
+	}
+	if err := callMCPToolOnServer("im", "tool", nil); err == nil ||
+		!strings.Contains(err.Error(), "CallMCPToolOnServer is not initialized") {
+		t.Fatalf("default callMCPToolOnServer error = %v", err)
+	}
+	if got := DeclareLeafMetadata(cmd, LeafSpec{}); got != cmd {
+		t.Fatal("default DeclareLeafMetadata should return the original command")
+	}
+
+	toolbar := NewChatToolbarCommand()
+	if toolbar.Name() != "toolbar" || len(toolbar.Commands()) != 7 {
+		t.Fatalf("toolbar command = %q with %d children, want toolbar with 7 children", toolbar.Name(), len(toolbar.Commands()))
+	}
+
+	parent := &cobra.Command{Use: "parent"}
+	parent.PersistentFlags().String("conversation-id", "", "")
+	child := &cobra.Command{Use: "child"}
+	parent.AddCommand(child)
+	_ = parent.PersistentFlags().Set("conversation-id", " inherited ")
+	if got := mustGetFlag(child, "conversation-id"); got != "inherited" {
+		t.Fatalf("mustGetFlag inherited value = %q, want inherited", got)
+	}
+
+	if _, err := parseCSVInt64(" , "); err == nil || !strings.Contains(err.Error(), "at least one ID") {
+		t.Fatalf("empty csv error = %v", err)
+	}
+	if _, err := parseCSVInt64("1,bad"); err == nil || !strings.Contains(err.Error(), `invalid integer "bad"`) {
+		t.Fatalf("invalid csv error = %v", err)
+	}
+	required := &cobra.Command{Use: "required"}
+	required.Flags().String("title", "", "")
+	if err := validateRequiredFlagsLocal(required, "title"); err == nil ||
+		!strings.Contains(err.Error(), "flag --title is required") {
+		t.Fatalf("validateRequiredFlagsLocal error = %v", err)
+	}
+	if commandBoolFlag(nil, "yes") {
+		t.Fatal("commandBoolFlag(nil) should be false")
+	}
+	boolParent := &cobra.Command{Use: "parent"}
+	boolParent.PersistentFlags().Bool("yes", false, "")
+	boolChild := &cobra.Command{Use: "child"}
+	boolParent.AddCommand(boolChild)
+	_ = boolParent.PersistentFlags().Set("yes", "true")
+	if !commandBoolFlag(boolChild, "yes") {
+		t.Fatal("commandBoolFlag should read inherited true value")
+	}
+}
+
+func TestToolbarCommandsValidationEdges(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmd       func() *cobra.Command
+		args      []string
+		wantError string
+	}{
+		{
+			name:      "add blank conversation id",
+			cmd:       newToolbarAddCommand,
+			args:      []string{"--conversation-id", " ", "--shortcut-ids", "1"},
+			wantError: "flag --conversation-id is required",
+		},
+		{
+			name:      "add blank shortcut ids",
+			cmd:       newToolbarAddCommand,
+			args:      []string{"--conversation-id", "cid", "--shortcut-ids", " "},
+			wantError: "flag --shortcut-ids is required",
+		},
+		{
+			name:      "add invalid shortcut ids",
+			cmd:       newToolbarAddCommand,
+			args:      []string{"--conversation-id", "cid", "--shortcut-ids", "1,bad"},
+			wantError: "--shortcut-ids",
+		},
+		{
+			name:      "hide blank conversation id",
+			cmd:       newToolbarHideCommand,
+			args:      []string{"--conversation-id", " ", "--shortcut-ids", "1"},
+			wantError: "flag --conversation-id is required",
+		},
+		{
+			name:      "hide blank shortcut ids",
+			cmd:       newToolbarHideCommand,
+			args:      []string{"--conversation-id", "cid", "--shortcut-ids", " "},
+			wantError: "flag --shortcut-ids is required",
+		},
+		{
+			name:      "hide invalid shortcut ids",
+			cmd:       newToolbarHideCommand,
+			args:      []string{"--conversation-id", "cid", "--shortcut-ids", "1,bad"},
+			wantError: "--shortcut-ids",
+		},
+		{
+			name:      "list blank conversation id",
+			cmd:       newToolbarListCommand,
+			args:      []string{"--conversation-id", " "},
+			wantError: "flag --conversation-id is required",
+		},
+		{
+			name:      "sort blank conversation id",
+			cmd:       newToolbarSortCommand,
+			args:      []string{"--conversation-id", " ", "--sorted-ids", "1"},
+			wantError: "flag --conversation-id is required",
+		},
+		{
+			name:      "sort blank sorted ids",
+			cmd:       newToolbarSortCommand,
+			args:      []string{"--conversation-id", "cid", "--sorted-ids", " "},
+			wantError: "flag --sorted-ids is required",
+		},
+		{
+			name:      "sort invalid sorted ids",
+			cmd:       newToolbarSortCommand,
+			args:      []string{"--conversation-id", "cid", "--sorted-ids", "1,bad"},
+			wantError: "--sorted-ids",
+		},
+		{
+			name:      "sort invalid unsorted ids",
+			cmd:       newToolbarSortCommand,
+			args:      []string{"--conversation-id", "cid", "--sorted-ids", "1", "--unsorted-ids", "bad"},
+			wantError: "--unsorted-ids",
+		},
+		{
+			name:      "create blank conversation id",
+			cmd:       newToolbarCreateCustomCommand,
+			args:      toolbarCustomArgs("--conversation-id", " "),
+			wantError: "flag --conversation-id is required",
+		},
+		{
+			name:      "create blank title",
+			cmd:       newToolbarCreateCustomCommand,
+			args:      toolbarCustomArgs("--title", " "),
+			wantError: "flag --title is required",
+		},
+		{
+			name:      "create invalid org ids",
+			cmd:       newToolbarCreateCustomCommand,
+			args:      toolbarCustomArgs("--org-id-list", "bad"),
+			wantError: "--org-id-list",
+		},
+		{
+			name:      "create invalid extension",
+			cmd:       newToolbarCreateCustomCommand,
+			args:      toolbarCustomArgs("--extension", "bad"),
+			wantError: "--extension",
+		},
+		{
+			name:      "remove blank conversation id",
+			cmd:       newToolbarRemoveCustomCommand,
+			args:      []string{"--conversation-id", " ", "--shortcut-id", "42", "--yes"},
+			wantError: "flag --conversation-id is required",
+		},
+		{
+			name:      "update blank conversation id",
+			cmd:       newToolbarUpdateCustomCommand,
+			args:      toolbarCustomArgs("--shortcut-id", "42", "--conversation-id", " "),
+			wantError: "flag --conversation-id is required",
+		},
+		{
+			name:      "update blank title",
+			cmd:       newToolbarUpdateCustomCommand,
+			args:      toolbarCustomArgs("--shortcut-id", "42", "--title", " "),
+			wantError: "flag --title is required",
+		},
+		{
+			name:      "update invalid org ids",
+			cmd:       newToolbarUpdateCustomCommand,
+			args:      toolbarCustomArgs("--shortcut-id", "42", "--org-id-list", "bad"),
+			wantError: "--org-id-list",
+		},
+		{
+			name:      "update invalid extension",
+			cmd:       newToolbarUpdateCustomCommand,
+			args:      toolbarCustomArgs("--shortcut-id", "42", "--extension", "bad"),
+			wantError: "--extension",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := executeToolbarCommand(t, tt.cmd(), &toolbarTestCaller{}, tt.args...)
+			if err == nil || !strings.Contains(err.Error(), tt.wantError) {
+				t.Fatalf("error = %v, want containing %q", err, tt.wantError)
+			}
+		})
+	}
+}
+
 func TestToolbarCommandsConvertSystemBusy(t *testing.T) {
 	tests := []struct {
 		name string
@@ -281,16 +473,16 @@ func TestToolbarCreateAndUpdateCustomIncludeOptionalFields(t *testing.T) {
 		t.Fatalf("create-custom returned error: %v", err)
 	}
 	requireToolbarCall(t, createCaller, "im", "create_chat_toolbar_custom_shortcut", map[string]any{
-		"openCid":   "cid",
-		"title":     "Title",
-		"url":       "https://example.com/mobile",
-		"iconUrl":   "https://example.com/icon.png",
-		"pcUrl":     "https://example.com/pc",
-		"orgIdList": []int64{10, 20},
-		"desc":      "Description",
-		"tag":       "Tag",
-		"sortIndex": 7,
-		"extension": map[string]string{"color": "blue"},
+		"openConversationId": "cid",
+		"title":              "Title",
+		"url":                "https://example.com/mobile",
+		"iconUrl":            "https://example.com/icon.png",
+		"pcUrl":              "https://example.com/pc",
+		"orgIdList":          []int64{10, 20},
+		"desc":               "Description",
+		"tag":                "Tag",
+		"sortIndex":          7,
+		"extension":          map[string]string{"color": "blue"},
 	})
 
 	updateCaller := &toolbarTestCaller{}
@@ -306,17 +498,17 @@ func TestToolbarCreateAndUpdateCustomIncludeOptionalFields(t *testing.T) {
 		t.Fatalf("update-custom returned error: %v", err)
 	}
 	requireToolbarCall(t, updateCaller, "im", "update_chat_toolbar_custom_shortcut", map[string]any{
-		"openCid":    "cid",
-		"shortcutId": int64(99),
-		"title":      "Title",
-		"url":        "https://example.com/mobile",
-		"iconUrl":    "https://example.com/icon.png",
-		"pcUrl":      "https://example.com/pc",
-		"orgIdList":  []int64{10, 20},
-		"desc":       "Description",
-		"tag":        "Tag",
-		"sortIndex":  7,
-		"extension":  map[string]string{"color": "blue"},
+		"openConversationId": "cid",
+		"shortcutId":         int64(99),
+		"title":              "Title",
+		"url":                "https://example.com/mobile",
+		"iconUrl":            "https://example.com/icon.png",
+		"pcUrl":              "https://example.com/pc",
+		"orgIdList":          []int64{10, 20},
+		"desc":               "Description",
+		"tag":                "Tag",
+		"sortIndex":          7,
+		"extension":          map[string]string{"color": "blue"},
 	})
 }
 
@@ -340,10 +532,59 @@ func TestToolbarSortValidatesOptionalUnsortedIDs(t *testing.T) {
 		t.Fatalf("sort returned error: %v", err)
 	}
 	requireToolbarCall(t, caller, "im", "sort_chat_toolbar_shortcuts", map[string]any{
-		"openCid":             "cid",
+		"openConversationId":  "cid",
 		"sortedShortcutIds":   []int64{1, 2},
 		"unsortedShortcutIds": []int64{3, 4},
 	})
+}
+
+func TestCrossPlatformCoverageToolbarAddHideAndListCallMCPWithExactArgs(t *testing.T) {
+	tests := []struct {
+		name     string
+		cmd      func() *cobra.Command
+		args     []string
+		wantTool string
+		wantArgs map[string]any
+	}{
+		{
+			name:     "add",
+			cmd:      newToolbarAddCommand,
+			args:     []string{"--conversation-id", "cidX", "--shortcut-ids", "101,102"},
+			wantTool: "add_chat_toolbar_shortcuts",
+			wantArgs: map[string]any{
+				"openConversationId": "cidX",
+				"shortcutIds":        []int64{101, 102},
+			},
+		},
+		{
+			name:     "hide",
+			cmd:      newToolbarHideCommand,
+			args:     []string{"--conversation-id", "cidX", "--shortcut-ids", "201,202"},
+			wantTool: "hide_chat_toolbar_shortcuts",
+			wantArgs: map[string]any{
+				"openConversationId": "cidX",
+				"shortcutIds":        []int64{201, 202},
+			},
+		},
+		{
+			name:     "list",
+			cmd:      newToolbarListCommand,
+			args:     []string{"--conversation-id", "cidX"},
+			wantTool: "list_chat_toolbar_shortcuts",
+			wantArgs: map[string]any{
+				"openConversationId": "cidX",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &toolbarTestCaller{}
+			if err := executeToolbarCommand(t, tt.cmd(), caller, tt.args...); err != nil {
+				t.Fatalf("%s returned error: %v", tt.name, err)
+			}
+			requireToolbarCall(t, caller, "im", tt.wantTool, tt.wantArgs)
+		})
+	}
 }
 
 func TestCrossPlatformCoverageToolbarRemoveCustomRejectsWithoutYes(t *testing.T) {
@@ -376,15 +617,15 @@ func TestCrossPlatformCoverageToolbarRemoveCustomCallsMCPWithExactArgsWhenYes(t 
 	if call.tool != "remove_chat_toolbar_custom_shortcut" {
 		t.Fatalf("tool = %q, want remove_chat_toolbar_custom_shortcut", call.tool)
 	}
-	wantArgs := map[string]any{"openCid": "cidX", "shortcutId": int64(42)}
+	wantArgs := map[string]any{"openConversationId": "cidX", "shortcutId": int64(42)}
 	if !reflect.DeepEqual(call.args, wantArgs) {
 		t.Fatalf("tool args = %#v, want %#v", call.args, wantArgs)
 	}
 }
 
 type removeCustomSeamCall struct {
-	openCid    string
-	shortcutId int64
+	openConversationId string
+	shortcutId         int64
 }
 
 type removeCustomSeamStub struct {
@@ -394,11 +635,11 @@ type removeCustomSeamStub struct {
 
 // invoke records the seam call and forwards to deps.Caller.CallTool so the
 // command path still records the same remote invocation shape as production.
-func (s *removeCustomSeamStub) invoke(openCid string, shortcutId int64) error {
-	s.calls = append(s.calls, removeCustomSeamCall{openCid: openCid, shortcutId: shortcutId})
+func (s *removeCustomSeamStub) invoke(openConversationId string, shortcutId int64) error {
+	s.calls = append(s.calls, removeCustomSeamCall{openConversationId: openConversationId, shortcutId: shortcutId})
 	if err := callMCPToolOnServer("im", "remove_chat_toolbar_custom_shortcut", map[string]any{
-		"openCid":    openCid,
-		"shortcutId": shortcutId,
+		"openConversationId": openConversationId,
+		"shortcutId":         shortcutId,
 	}); err != nil {
 		return err
 	}
@@ -430,8 +671,8 @@ func TestCrossPlatformCoverageToolbarRemoveCustomSeamCallsWithExactArgsWhenYes(t
 		t.Fatalf("expected exactly 1 seam call, got %d: %+v", len(stub.calls), stub.calls)
 	}
 	call := stub.calls[0]
-	if call.openCid != "cidX" {
-		t.Fatalf("seam openCid = %q, want cidX", call.openCid)
+	if call.openConversationId != "cidX" {
+		t.Fatalf("seam openConversationId = %q, want cidX", call.openConversationId)
 	}
 	if call.shortcutId != int64(42) {
 		t.Fatalf("seam shortcutId = %d, want 42", call.shortcutId)

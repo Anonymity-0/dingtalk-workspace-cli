@@ -26,10 +26,10 @@ import (
 // unchanged. Tests swap it with testseam.Swap(t, &removeChatToolbarCustomShortcutFn, stub)
 // to capture the call without hitting a real remote. Like every package-var
 // seam in this repo it is not safe for t.Parallel tests.
-var removeChatToolbarCustomShortcutFn = func(openCid string, shortcutId int64) error {
+var removeChatToolbarCustomShortcutFn = func(openConversationId string, shortcutId int64) error {
 	return callMCPToolOnServer("im", "remove_chat_toolbar_custom_shortcut", map[string]any{
-		"openCid":    openCid,
-		"shortcutId": shortcutId,
+		"openConversationId": openConversationId,
+		"shortcutId":         shortcutId,
 	})
 }
 
@@ -93,7 +93,7 @@ func newToolbarRemoveCustomCommand() *cobra.Command {
 				Examples:     []string{"dws chat toolbar remove-custom --conversation-id <cid> --shortcut-id 123"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "conversation-id", Property: "openCid", Required: boolPtr(true)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "shortcut-id", Property: "shortcutId", Required: boolPtr(true)},
 			},
 		},

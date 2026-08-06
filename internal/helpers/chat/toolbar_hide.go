@@ -41,8 +41,8 @@ func newToolbarHideCommand() *cobra.Command {
 				return fmt.Errorf("--shortcut-ids: %w", err)
 			}
 			err = callMCPToolOnServer("im", "hide_chat_toolbar_shortcuts", map[string]any{
-				"openCid":     cid,
-				"shortcutIds": ids,
+				"openConversationId": cid,
+				"shortcutIds":        ids,
 			})
 			if isSystemBusy(err) {
 				return toolbarNewSystemBusyError()
@@ -82,7 +82,7 @@ func newToolbarHideCommand() *cobra.Command {
 				Examples:     []string{"dws chat toolbar hide --conversation-id <cid> --shortcut-ids 101,102"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "conversation-id", Property: "openCid", Required: boolPtr(true)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "shortcut-ids", Property: "shortcutIds", Required: boolPtr(true)},
 			},
 		},

@@ -57,12 +57,12 @@ func newToolbarCreateCustomCommand() *cobra.Command {
 			}
 
 			toolArgs := map[string]any{
-				"openCid":   cid,
-				"title":     mustGetFlag(cmd, "title"),
-				"url":       mustGetFlag(cmd, "url"),
-				"iconUrl":   mustGetFlag(cmd, "icon-url"),
-				"pcUrl":     mustGetFlag(cmd, "pc-url"),
-				"orgIdList": orgIds,
+				"openConversationId": cid,
+				"title":              mustGetFlag(cmd, "title"),
+				"url":                mustGetFlag(cmd, "url"),
+				"iconUrl":            mustGetFlag(cmd, "icon-url"),
+				"pcUrl":              mustGetFlag(cmd, "pc-url"),
+				"orgIdList":          orgIds,
 			}
 
 			if desc, _ := cmd.Flags().GetString("desc"); desc != "" {
@@ -135,7 +135,7 @@ func newToolbarCreateCustomCommand() *cobra.Command {
 				Examples:     []string{"dws chat toolbar create-custom --conversation-id <cid> --title \"周报\" --url \"https://example.com\" --icon-url \"https://example.com/icon.png\" --pc-url \"https://example.com\" --org-id-list 123,456"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "conversation-id", Property: "openCid", Required: boolPtr(true)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "title", Property: "title", Required: boolPtr(true)},
 				{Name: "url", Property: "url", Required: boolPtr(true)},
 				{Name: "icon-url", Property: "iconUrl", Required: boolPtr(true)},
