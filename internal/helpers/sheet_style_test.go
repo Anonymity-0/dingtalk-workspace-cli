@@ -62,16 +62,22 @@ func TestCrossPlatformCoverageRangeBatchSetStyleDryRunNeverCallsRemote(t *testin
 				if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
 					t.Fatalf("JSON dry-run stdout must be one document: %v\n%s", err, preview)
 				}
-				results, _ := payload["results"].([]any)
-				if len(results) != 1 {
-					t.Fatalf("JSON dry-run results = %#v", payload["results"])
+				// batch-set-style 现在组装为一次 batch_update 原子提交，
+				// dry-run 因此是单条标准记录，而不是本地循环产生的 results 数组。
+				if payload["tool"] != "batch_update" {
+					t.Fatalf("JSON dry-run tool = %#v, want batch_update", payload["tool"])
 				}
-				entry, _ := results[0].(map[string]any)
-				if entry["dryRun"] != true || entry["tool"] != "update_range" {
-					t.Fatalf("JSON dry-run result = %#v", entry)
+				args, _ := payload["arguments"].(map[string]any)
+				ops, _ := args["operations"].([]any)
+				if len(ops) != 1 {
+					t.Fatalf("JSON dry-run operations = %#v, want 1 item", args["operations"])
+				}
+				op, _ := ops[0].(map[string]any)
+				if op["toolName"] != "set_cell_range" {
+					t.Fatalf("JSON dry-run operation toolName = %#v", op["toolName"])
 				}
 			} else {
-				for _, want := range []string{"Tool:", "update_range", "Arguments:"} {
+				for _, want := range []string{"Tool:", "batch_update", "set_cell_range", "Arguments:"} {
 					if !strings.Contains(preview, want) {
 						t.Fatalf("dry-run preview missing %q:\n%s", want, preview)
 					}

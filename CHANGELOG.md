@@ -6,6 +6,21 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Added
+
+- **`sheet create` 支持建表即写入数据与样式** — 新增 `--values`（二维数组写默认表）/ `--sheets`（typed table 多工作表）/ `--styles`（`cell_styles` / `row_sizes` / `col_sizes` / `cell_merges`），字段名对齐飞书 snake_case。所有结构与枚举在创建文档之前校验，非法配置不会留下白建的空文档。
+- **`sheet export --export-format csv`** — 同步导出单个工作表为 RFC4180 CSV，支持 `--sheet-id` 选表、`--range` 限定范围、`--value-render-option` 选取值模式；`--output` 落盘（为目录时按 `sheet-export.csv` 命名），不传则打印到 stdout。数据超出单次读取上限时截断并告警。
+- **`sheet update-dimension --size-type`** — `pixel` / `standard`（恢复默认行高列宽）/ `auto`（按内容自适应行高，仅 ROWS）。
+- **`sheet replace --match-formula`** — 在公式文本中查找替换。
+- **`sheet range set-style` 扩展样式维度** — 新增 `--font-style`（斜体）/ `--font-line`（下划线、删除线）/ `--font-family` / `--border-styles-json`（四边边框）。
+- **`sheet range batch-set-style --ranges`** — 一组样式刷多个带工作表前缀的区域，组装为一次原子 `batch_update`。
+
+### Changed
+
+- **`sheet range set-style` 后端切换为 `set_cell_range`（破坏性 Schema 变更）** — 样式统一走 cellStyles 路径（仅设样式、保留原值），这是斜体/下划线删除线/字体族/边框唯一可用的通道。`interface_ref` 由 `update_range` 变为 `set_cell_range`，12 个样式 flag 改为 reviewed mapping exclusion。CLI 用法向后兼容，无 flag 删除。
+- **`sheet range batch-set-style` 改为单次原子提交** — 由本地循环多次 `update_range` 改为一次 `batch_update`，任一项失败默认整批回滚；`--continue-on-error` 由本地控制改为透传服务端。新增批量上限：最多 100 个区域且累计不超过 200000 个单元格。
+- **`sheet export` / `sheet create` 声明为 composite（破坏性 Schema 变更）** — 两者都会按参数路由到多个工具（`--export-format csv` 走 `get_range_as_csv`；建表带数据串起建表→探活→写入→回读→样式），`mcp` 单一 ref 不准确。
+
 ### Changed
 
 - **Doc import upload fallback** — `dws doc import` no longer fails on file

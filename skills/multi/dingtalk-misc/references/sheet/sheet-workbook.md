@@ -49,6 +49,53 @@ Flags:
       --name string        表格名称 (必填)
       --folder string      目标文件夹 ID (dentryUuid 格式) 或 URL；禁止传入纯数字 dentryId
       --workspace string   目标知识库 ID
+      --values string      初始数据，二维 JSON 数组，写入默认工作表 (与 --sheets 二选一)
+      --sheets string      多工作表 typed table JSON (与 --values 二选一)
+      --styles string      建表时一并应用的视觉处理 JSON（需与 --values 或 --sheets 搭配）
+```
+
+**创建时写入初始数据**（`--values` 与 `--sheets` 二选一，都不传则创建空表）：
+
+- `--values`：二维 JSON 数组，裸值写入默认工作表 A1 起。适合单表快速建表，无表头/类型语义，内部复用 csv-put 通道，自动识别数字/布尔。
+- `--sheets`：typed table 数组，一次创建多个带数据的工作表，内部复用 table-put 通道。每项形如
+  `{"name":"表名","columns":["列1","列2"],"data":[[...]],"dtypes":{...},"formats":{...},"cellStyles":[...]}`；
+  `name` **必填**。第一个条目写入默认工作表（自动重命名为其 `name`，避免残留空表），其余按 `name` 自动新建。
+
+**建表时一并应用样式**（`--styles`，字段名对齐飞书 snake_case，同时兼容 camelCase）：
+
+```json
+{"styles":[{"name":"表名",
+  "cell_styles":[{"range":"A1:D1","font_weight":"bold","background_color":"#FFF2CC","number_format":"@"}],
+  "row_sizes":[{"range":"1:1","type":"pixel","size":28}],
+  "col_sizes":[{"range":"A:D","type":"pixel","size":120}],
+  "cell_merges":[{"range":"A1:B1","merge_type":"all"}]}]}
+```
+
+- 每项至少给 `cell_styles` / `row_sizes` / `col_sizes` / `cell_merges` 之一
+- 配 `--sheets` 时 styles 的**项数/顺序/name 必须与子表一一对应**；配 `--values` 时只给 1 项（`name` 被忽略）
+- 数据写入后按 `cell_styles` → `row_sizes` → `col_sizes` → `cell_merges` 顺序执行（**非原子**）
+- `row_sizes.type`：`pixel`（需 `size`）/ `standard`（恢复默认行高）/ `auto`（按内容自适应）
+- `col_sizes.type`：`pixel`（需 `size`）/ `standard`（恢复默认列宽）——与飞书一致，**列宽不提供 `auto`**
+- `merge_type` 取 `all` / `rows` / `columns`
+
+**行为要点**：
+- 所有 JSON 结构与枚举都在**创建文档之前**校验，非法配置直接失败，不会留下白建的空文档
+- 创建后 CLI 会先探活（新建文档服务端仍在初始化，此时写入可能返回成功但不落盘），再写数据
+- `--values` 写完会回读 A1 校验确实落盘；若未落盘会报错并提示用 `csv-put` / `range update` 补写
+- 报错信息里始终带上已创建的 `nodeId`，便于在部分成功时继续操作同一份文档
+
+示例：
+
+```bash
+# 创建并写入初始数据（默认工作表，裸二维值）
+dws sheet create --name "名单" --values '[["姓名","分数"],["张三","90"]]'
+
+# 创建多个带数据的工作表
+dws sheet create --name "报表" --sheets '[{"name":"一月","columns":["项目","金额"],"data":[["房租",5000]]},{"name":"二月","columns":["项目","金额"],"data":[["房租",5000]]}]'
+
+# 创建 + 写数据 + 一并应用样式（表头加粗黄底、行高、列宽）
+dws sheet create --name "带样式" --values '[["姓名","分数"],["张三","90"]]' \
+  --styles '{"styles":[{"name":"Sheet1","cell_styles":[{"range":"A1:B1","font_weight":"bold","background_color":"#FFF2CC"}],"row_sizes":[{"range":"1:1","type":"pixel","size":28}],"col_sizes":[{"range":"A:B","type":"pixel","size":120}]}]}'
 ```
 
 > **ID 格式约束**：`--folder` 只接受 UUID 格式的 `fileId`（如 `ZgpG2NdyVXYOR2D5UGDok65MJMwvDqPk`）或 alidocs 文件夹 URL。`drive list` 返回中有 `dentryId`（纯数字，如 `218595998810`）和 `fileId`（UUID 格式）两个字段，**必须使用 `fileId`，禁止使用 `dentryId`**，传入纯数字会导致命令失败。
