@@ -444,6 +444,9 @@ func TestEvaluateAllowsMeasurementTolerance(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageFilterBlocksByFilesDropsDeletedPackages(t *testing.T) {
+	if filtered := filterBlocksByFiles([]coverageBlock{{File: "internal/keep.go", Statements: 1, Count: 1}}, nil); filtered != nil {
+		t.Fatalf("empty allowlist = %#v, want nil", filtered)
+	}
 	baseline := []coverageBlock{
 		{File: "internal/keep.go", StartLine: 1, EndLine: 10, Statements: 50, Count: 1},
 		{File: "internal/keep.go", StartLine: 11, EndLine: 20, Statements: 50, Count: 0},
