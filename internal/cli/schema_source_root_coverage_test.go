@@ -278,23 +278,10 @@ func TestCrossPlatformCoverageRenderSafetyAnnotationSuccess(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageMCPMetadataInterfaceRefEdges(t *testing.T) {
-	if _, ok := mcpMetadataForInterfaceRef(embeddedMCPMetadata{}, " ", " "); ok {
-		t.Fatal("blank interface ref must miss")
-	}
-	if _, ok := mcpMetadataForInterfaceRef(embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}, "chat", "missing"); ok {
-		t.Fatal("missing MCP tool must miss")
-	}
-	agent := agentMetadata{Tools: map[string]agentToolMetadata{
-		"chat reply": {InterfaceRef: &embeddedMCPInterfaceRef{ProductID: "chat", RPCName: "send_personal_message"}},
-	}}
-	mcp := embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{
-		"chat.send_personal_message": {Parameters: map[string]embeddedMCPParamMeta{"clawType": {Type: "string"}}},
-	}}
-	got, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{
-		PrimaryCLIPath: "chat reply", ProductID: "chat", ToolName: "reply_personal_message",
-	}, agent, mcp)
-	if !ok || got.Parameters["clawType"].Type != "string" {
-		t.Fatalf("agent InterfaceRef remap = %#v ok=%v", got, ok)
+	// MCP pin lookup helpers are retired; keep this named coverage slot as a
+	// no-op marker so CrossPlatformCoverage* selection stays stable.
+	if got := emptyPinnedMCPMetadata(); got.Tools == nil || len(got.Tools) != 0 {
+		t.Fatalf("empty pinned metadata = %#v", got)
 	}
 }
 

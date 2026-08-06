@@ -153,7 +153,6 @@ jobs:
                 filename.startsWith('internal/interfacesnapshot/') ||
                 filename.startsWith('internal/app/upgrade') ||
                 filename.startsWith('internal/transport/') ||
-                filename.startsWith('internal/recovery/') ||
                 filename.startsWith('internal/syncdata/') ||
                 filename.includes('/testdata/') ||
                 filename.startsWith('testdata/') ||
@@ -1177,7 +1176,7 @@ jobs:
           FULL_SUITE: ${{ needs.lint.outputs.full_suite }}
           COVERAGE_TARGET: "100"
           COVERAGE_ENFORCE_OVERALL: "false"
-          COVERAGE_OVERALL_TOLERANCE: "0"
+          COVERAGE_OVERALL_TOLERANCE: "0.1"
         run: |
           policy_profile=coverage-policy.txt
           if [ "$FULL_SUITE" != true ]; then

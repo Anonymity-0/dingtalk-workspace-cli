@@ -71,9 +71,7 @@ The installer ships skills in one of two layouts. CLI commands (`dws aitable ...
 | Mode | What gets installed | Best for |
 |------|----------------------|----------|
 | **mono** (stable, default) | One `dws` skill covering all products | Cross-product workflows; single entry point |
-| **multi** 🧪 **EXPERIMENTAL** | Per-product skills (`dingtalk-aitable`, `dingtalk-calendar`, `dingtalk-chat`, ...) | Single-product tasks; smaller context per call |
-
-> 🧪 **`multi` is currently EXPERIMENTAL / preview.** All product-scoped skills pass the dispatch verifier, but interface, naming and cross-skill references may change in future releases. For production / shared environments, prefer `mono`. File issues if you hit problems.
+| **multi** | Per-product skills (`dingtalk-aitable`, `dingtalk-calendar`, `dingtalk-chat`, ...) | Single-product tasks; smaller context per call |
 
 How to pick:
 
@@ -371,7 +369,7 @@ dws contact user get-self --jq '.result[0].orgEmployeeModel | {name: .orgUserNam
 Use Cobra help and Schema for different parts of the command contract:
 
 - `dws <path> --help` is the source of truth for whether a command exists and which flags the binary accepts.
-- `dws schema "<path>"` is the Agent contract for command selection, parameter mappings and constraints, risk, and confirmation semantics.
+- `dws schema "<path>" --compact` is the normative Agent view for command selection, CLI parameters and constraints, risk, and confirmation; use a full leaf with a narrow `--jq` projection for mapping or provenance audits.
 - If Help and Schema disagree, treat it as contract drift: pass only flags accepted by Cobra and use the more conservative safety semantics.
 - Schema describes commands; it does not read or search DingTalk business data. Execute the real product command after discovery.
 
@@ -380,21 +378,21 @@ Use Cobra help and Schema for different parts of the command contract:
 dws aitable record query --help
 
 # Discover within a product, then inspect the selected leaf contract
-dws schema aitable
-dws schema "aitable record query"
+dws schema aitable --compact
+dws schema "aitable record query" --compact
 
 # Execute the real business query
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 ```
 
-`dws schema --all` exports the complete contract for tooling, CI, audits, and compatibility baselines. Agents should prefer product/group discovery followed by a leaf query to avoid loading the full Catalog into context.
+`dws schema --all` exports the complete contract for tooling, CI, audits, and compatibility baselines. Agents should query progressively with `--compact`; its positive field allowlist prevents new full/audit fields from silently expanding Agent context.
 
 ### Agent Skills
 
 The repo ships a complete Agent Skill system under `skills/`, organized into two layouts:
 
 - `skills/mono/` — single-skill layout (one `SKILL.md` + `references/products/`), recommended default.
-- `skills/multi/` — per-product skills (`dingtalk-aitable/`, `dingtalk-calendar/`, `dingtalk-chat/`, ...), each with its own `SKILL.md`. 🧪 **EXPERIMENTAL / preview — see banner in each multi `SKILL.md` for caveats.**
+- `skills/multi/` — per-product skills (`dingtalk-aitable/`, `dingtalk-calendar/`, `dingtalk-chat/`, ...), each with its own `SKILL.md`.
 
 Leaf safety/parameters/selection prose for Schema generation come from ProductDecl / ContractFinal declarations in Go. The former `internal/cli/schema_hints/` HintFile tree is fully retired and must not reappear.
 
@@ -443,7 +441,6 @@ Env vars: `DWS_SKILL_MODE=mono|multi` (also honored by `install.sh` / `install.p
 | Intent guide | `skills/mono/references/intent-guide.md` | Disambiguation for confusing scenarios (e.g. report vs todo) |
 | Global reference | `skills/mono/references/global-reference.md` | Auth, output formats, global flags |
 | Error codes | `skills/mono/references/error-codes.md` | Error codes + debugging workflows |
-| Recovery guide | `skills/mono/references/recovery-guide.md` | `RECOVERY_EVENT_ID` handling |
 | Ready-made scripts | `skills/mono/scripts/*.py` | 13 batch operation scripts (see below) |
 
 <details>
@@ -539,7 +536,7 @@ For one-to-one and specified-sender events, use exactly one target identity: `--
 | Observability | `status` shows remote subscriptions, the personal bus, and local consumers |
 | Cross-platform | Unix Socket on macOS/Linux, Windows Named Pipe on Windows |
 
-See `skills/multi/dingtalk-event/SKILL.md` for the Agent workflow and supported event parameters.
+See `skills/multi/dingtalk-misc/references/event.md` for the Agent workflow and supported event parameters.
 
 </details>
 
@@ -624,7 +621,7 @@ dws aitable record query --base-id BASE_ID --tabel-id TABLE_ID       # --tabel-i
 ```bash
 # Built-in jq expressions
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --jq '.invocation.params'
-dws schema "dev app create" --jq '.tool.required'
+dws schema "dev app create" --jq '.parameters'
 
 # Return only specific fields
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocation,response
@@ -636,9 +633,9 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocati
 <summary><strong>Schema Introspection</strong> — Agent command discovery and execution contracts</summary>
 
 ```bash
-dws schema aitable                                      # discover product commands
-dws schema "aitable record query"                       # view the selected leaf contract
-dws schema "aitable record query" --jq '.tool.required' # view required fields
+dws schema aitable --compact                            # discover product commands
+dws schema "aitable record query" --compact             # view the selected Agent leaf contract
+dws schema "aitable record query" --jq '[.parameters | to_entries[] | select(.value.required)]' # view required fields
 dws schema --all                                        # full export for CI/audit/baselines
 ```
 

@@ -15,13 +15,17 @@
   `dws chat +messages-send --as bot --robot-code <robotCode>`；不得改成当前用户身份。
 - `chat bot search` 只返回我创建的机器人，没有 `openDingTalkId`；给机器人发单聊必须用 `chat bot find`。
 - 机器人发群消息前需确认机器人已在群中；报“机器人不存在”时先 `group members add-bot`。
-- `send-by-bot --text` 支持 Markdown；需要稳定换行时用空行分隔段落。若以转义形式组织文本，写 `\n\n`，不要只写 `\n`。
+- `send-by-bot` 支持 Markdown、图片 URL 和文件，具体参数见下方消息类型路由。
+- 公网图片 URL 使用 `--msg-type image --image-url`，按图片消息发送。
+- 本地图片和其他本地文件一样使用 `--msg-type file --file-path`，由 CLI 上传并按文件附件发送。
+- 群聊传 `--group`；单聊可传 `--users`、`--open-dingtalk-ids` 或两者组合。
+- Markdown 必须同时传 `--title` 和 `--text`；需要稳定换行时用空行分隔段落。若以转义形式组织文本，写 `\n\n`，不要只写 `\n`。
 - `recall-by-bot` 使用 `processQueryKey`，不是 `openMessageId`。
 - Bot 多群文本/Markdown 直接使用 `+messages-send --groups <cid...>` 或
   `--groups-file <工作目录内相对文件>`；最多 100 个稳定 ID，Runtime 去重并返回
   `im.batch-write.v1` 逐目标 ledger。
-- Bot/Webhook 没有与 current-user 等价的文件、图片、音视频发送接口；不得把富媒体转成文本
-  或换身份静默发送。
+- `+messages-send` 的 Bot 路由和 Webhook 没有与 current-user 等价的文件、图片、音视频发送接口；
+  机器人富媒体必须使用原子 `chat message send-by-bot`，不得转成文本或换身份静默发送。
 
 ## 命令明细
 
@@ -60,6 +64,8 @@ dws chat +messages-send --as bot --robot-code <robot-code> \
 ```bash
 # 群聊
 dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --title "日报" --text "## 今日完成\n\n- 事项 A\n\n- 事项 B"
+dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --msg-type image --image-url "https://example.com/image.png"
+dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --msg-type file --file-path ./report.pdf
 
 # 单聊 userId
 dws chat message send-by-bot --robot-code <robot-code> --users userId1,userId2 --title "提醒" --text "请提交周报"
@@ -81,7 +87,11 @@ dws chat message send-by-bot --robot-code <robot-code> --group <openConversation
 | `--group` | 群聊 openConversationId |
 | `--users` | 单聊 userId 列表，逗号分隔，最多 20 个 |
 | `--open-dingtalk-ids` | 单聊 openDingTalkId 列表 |
-| `--title` / `--text` | 消息标题与 Markdown 内容，必填；Markdown 换行用空行，转义表示为 `\n\n` |
+| `--msg-type` | `markdown`、`image` 或 `file`；省略时为 Markdown；公网图片使用 `image --image-url`，本地图片和文件使用 `file --file-path` |
+| `--text` | Markdown 消息内容，Markdown 模式必填；换行用空行，转义表示为 `\n\n` |
+| `--title` | Markdown 消息标题，Markdown 模式必填 |
+| `--image-url` | 公网图片 URL，`--msg-type image` 时必填 |
+| `--file-path` | 本地图片或文件路径，`--msg-type file` 时由 CLI 上传并按文件附件发送 |
 | `--at-user-ids` / `--at-open-dingtalk-ids` | 群聊 @ 指定成员，正文需含对应 `@id` 文本 |
 | `--at-all` | 群聊 @所有人 |
 

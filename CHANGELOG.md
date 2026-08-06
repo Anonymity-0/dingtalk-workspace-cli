@@ -6,6 +6,73 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Changed
+
+- **Sheet CSV formula writes** — `dws sheet csv-put` and batch `csv-put` now expose the service contract that CSV fields beginning with `=` are written as formulas. Prefix the field with an apostrophe to write literal text beginning with `=`; CSV content continues to pass through unchanged.
+
+### Fixed
+
+- **Sheet formula verification** (#873) — `dws sheet formula-verify` now calls
+  the registered remote tool name `verify_formula`; the previous
+  `formula_verify` name failed at gateway dispatch.
+
+## [1.0.57-beta.4] - 2026-08-06
+
+### Added
+
+- **Expanded open CLI workflows** (#887) — adds calendar event-instance
+  queries, Drive latest-file selection, Markdown diff, Mail calendar/export/
+  share-to-chat workflows, and Minutes hot-word, permission, and audio-memo
+  operations, with matching Schema and cross-platform coverage.
+
+### Changed
+
+- **Multi-skill framework alignment** (#887) — folds long-tail skills into
+  `dingtalk-misc`, renames the shared package to `dingtalk-shared`, removes
+  stale Preview guidance, and reorganizes shared recipes and routing for more
+  predictable Agent selection.
+- **Bounded Agent Schema delivery** (#887) — keeps compact and wire projections
+  focused on executable contract facts, retires stale MCP metadata candidates,
+  and teaches Agents to prefer `dws schema --compact` for bounded context.
+
+### Deprecated
+
+- **Recovery and discovery-cache compatibility surfaces** (#887) — keeps
+  visible Deprecated `dws recovery` and `dws cache` compatibility stubs while
+  retiring their former recovery engine and dynamic discovery-cache behavior.
+  Recovery plan/execute/finalize now return an explicit “不再支持” notice, and
+  Skills no longer teach either retired workflow.
+
+### Fixed
+
+- **Mail share-to-chat confirmation** (#887) — requires explicit confirmation
+  before the first remote write, while preserving the confirmed sign-retry
+  flow and covering both direct-success and retry responses.
+
+## [1.0.57] - 2026-08-06
+
+This stable release promotes the fully delivered `v1.0.57-beta.4` baseline.
+It includes the v1.0.57 beta-line command-contract, document, chat, OA, Wiki,
+and compatibility improvements, plus the multi-skill framework alignment and
+expanded calendar, Drive, Markdown, Mail, and Minutes workflows validated in
+the final prerelease.
+
+- **Promote v1.0.57-beta.4** — publishes the final validated prerelease
+  baseline as stable `v1.0.57` without adding post-beta product changes.
+
+## [1.0.57-beta.3] - 2026-08-06
+
+### Added
+
+- **Reviewed document shortcuts** (#880) — adds public document shortcuts for
+  safe local downloads, content and history, review, media and style, and
+  document access/sharing workflows, while retaining reviewed compatibility
+  identities and confirmation safeguards for writes.
+- **Mentions in chat replies** (#881) — `chat message reply` now supports
+  `--at-open-dingtalk-ids` and `--at-all`, forwarding reply mention fields and
+  adding any required mention placeholders without changing existing send
+  behavior.
+
 ## [1.0.57-beta.2] - 2026-08-05
 
 ### Fixed
@@ -69,6 +136,7 @@ and compatibility and CI reliability fixes.
 ### Added
 
 - **Document-embedded whiteboard workflows** — adds `doc whiteboard insert` for confirmed creation and part-ID verification, `whiteboard query/update` for structured OpenNodes reads and confirmed writes, and `doc media upload` for preparing node-bound Vector/SVG resources. The public adapter uses an explicit helper-only whiteboard endpoint, validates update envelopes locally, decodes `resultJson`, and publishes the full command, Schema, Skill, and safety contract migrated from `dws-wukong@e2da8ab947c6`.
+- **Robot image and file messages** — extends `chat message send-by-bot` with public image URL delivery through `--msg-type image --image-url` and local-file upload/send through `--msg-type file --file-path`, while preserving Markdown as the default message type.
 
 ### Changed
 

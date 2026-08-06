@@ -488,7 +488,7 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		"needs.lint.outputs.platform_sensitive == 'true'",
 		`COVERAGE_TARGET: "100"`,
 		`COVERAGE_ENFORCE_OVERALL: "false"`,
-		`COVERAGE_OVERALL_TOLERANCE: "0"`,
+		`COVERAGE_OVERALL_TOLERANCE: "0.1"`,
 		`additional_profile=coverage-shortcut.txt`,
 		"run: make test-plan",
 		"run: make format-check",

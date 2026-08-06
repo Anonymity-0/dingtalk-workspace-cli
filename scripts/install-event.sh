@@ -4,7 +4,7 @@
 #
 # One-command installer for dws personal events.
 # Downloads the official dws binary and installs:
-#   - multi skill: dingtalk-event
+#   - multi skill: dingtalk-misc (hosts personal IM event docs)
 #   - mono skill:  dws
 #
 # Usage:
@@ -25,7 +25,7 @@ INSTALL_DIR="${DWS_INSTALL_DIR:-$HOME/.local/bin}"
 NO_SKILLS="${DWS_NO_SKILLS:-0}"
 SKILLS_ONLY="${DWS_SKILLS_ONLY:-0}"
 BIN_NAME="dws"
-EVENT_SKILL_NAME="dingtalk-event"
+EVENT_SKILL_NAME="dingtalk-misc"
 MONO_SKILL_NAME="dws"
 
 if [ "$EVENT_VERSION" = "latest" ]; then

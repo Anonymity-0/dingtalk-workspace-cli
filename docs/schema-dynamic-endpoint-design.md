@@ -231,7 +231,8 @@ Cobra hard-required 是独立的 executable fact，并通过 `cli_required`/prov
 | 问题 | 事实源 |
 |---|---|
 | 当前二进制是否暴露命令、Cobra 接受哪些 flags | `dws <path> --help` |
-| Agent 选哪个命令、参数映射/required/约束、risk/confirmation | 对应 leaf `dws schema "<path>"` |
+| Agent 选哪个命令、CLI 参数/required/约束、risk/confirmation | Agent leaf `dws schema "<path>" --compact` |
+| CLI↔RPC 参数映射、接口绑定、provenance | full leaf 配合 `--jq` / `--fields` 精确投影 |
 | 钉钉中的文档、文件、日程、消息等实际数据 | 真正执行 `dws doc read`、`dws drive search` 等 read/search/list 命令 |
 
 Schema 和 Help 冲突是契约漂移，不能静默猜测：
@@ -246,10 +247,10 @@ Schema 和 Help 冲突是契约漂移，不能静默猜测：
 
 ```bash
 dws schema                                      # 产品紧凑概览
-dws schema calendar                             # 产品摘要
-dws schema "calendar event"                    # 分组摘要
-dws schema "calendar event create"             # 完整 leaf
-dws schema "calendar event create" --compact   # 支持：裁掉 provenance/debug 字段
+dws schema calendar --compact                   # Agent 产品摘要
+dws schema "calendar event" --compact          # Agent 分组摘要
+dws schema "calendar event create" --compact   # Agent leaf
+dws schema "calendar event create"             # full leaf，仅用于映射/provenance 审计
 dws schema --all                               # 所有工具的完整 leaf 导出
 ```
 
@@ -257,7 +258,7 @@ dws schema --all                               # 所有工具的完整 leaf 导�
 
 `schema --all` 必须包含最终 `SchemaIndex` 中每个 tool 的完整 leaf 参数、约束和安全语义；无业务参数的命令也要包含空 `parameters` 对象。它用于审计、CI 和参数防丢 baseline，但输出很大，普通 Agent 命令发现不得使用，应按 overview -> product/group -> leaf 渐进查询。
 
-`--compact` 当前受支持，适合减少常规 leaf 查询上下文。`schema --all --compact` 也可执行，但会移除 provenance/debug 和接口映射字段，不能作为完整兼容性 baseline。
+`--compact` 是普通 Agent 查询的规范视图：通过正向字段白名单保留选参、约束与安全语义，full 新增字段不会自动进入 Agent 上下文。省略它的 leaf 包含参数 property、接口绑定和 provenance，只用于定向审计；`schema --all --compact` 也可执行，但不能作为完整兼容性 baseline。
 
 兼容旧二进制时，如果 Schema 查询返回 `unknown_flag: --compact`，只去掉 `--compact` 重试同一个查询。这是展示能力降级，不代表 leaf 缺失，也不能改用 Schema 查询业务数据。
 
