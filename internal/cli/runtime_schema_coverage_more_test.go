@@ -274,6 +274,30 @@ func TestCrossPlatformCoverageSchemaCompactProjectionEdges(t *testing.T) {
 	if _, exists := value["property"]; exists {
 		t.Fatalf("compact parameter value = %#v", value)
 	}
+	// Non-parameter nested maps fall through to payload compacting.
+	nested := stripSchemaValueCompact(map[string]any{"description": "keep", "provenance": "drop"}).(map[string]any)
+	if nested["description"] != "keep" {
+		t.Fatalf("nested non-param map = %#v", nested)
+	}
+	if _, exists := nested["provenance"]; exists {
+		t.Fatalf("nested non-param provenance should drop: %#v", nested)
+	}
+	// Type-only maps still count as parameter objects.
+	typedOnly := stripSchemaValueCompact(map[string]any{"type": "string", "property": "remote"}).(map[string]any)
+	if _, exists := typedOnly["property"]; exists {
+		t.Fatalf("type-only param value = %#v", typedOnly)
+	}
+	mapSlice := stripSchemaValueCompact([]map[string]any{{"description": "leaf", "provenance": "drop"}}).([]map[string]any)
+	if len(mapSlice) != 1 || mapSlice[0]["description"] != "leaf" {
+		t.Fatalf("value compact []map = %#v", mapSlice)
+	}
+	if _, exists := mapSlice[0]["provenance"]; exists {
+		t.Fatalf("value compact []map provenance should drop: %#v", mapSlice)
+	}
+	anySlice := stripSchemaValueCompact([]any{map[string]any{"description": "leaf", "provenance": "drop"}, "raw"}).([]any)
+	if len(anySlice) != 2 || anySlice[1] != "raw" {
+		t.Fatalf("value compact []any = %#v", anySlice)
+	}
 
 	payload := map[string]any{
 		"description": "calendar",

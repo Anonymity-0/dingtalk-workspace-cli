@@ -92,7 +92,7 @@ func TestRunDefaultsToFullChangedCodeCoverage(t *testing.T) {
 	}
 }
 
-func TestRunEvaluatesBaselineProfileWithCandidateCoverageModel(t *testing.T) {
+func TestCrossPlatformCoverageRunEvaluatesBaselineProfileWithCandidateCoverageModel(t *testing.T) {
 	profile := filepath.Join(t.TempDir(), "coverage.out")
 	body := "mode: atomic\n" +
 		"example.com/project/internal/a.go:10.1,12.2 5 0\n" +
@@ -101,9 +101,14 @@ func TestRunEvaluatesBaselineProfileWithCandidateCoverageModel(t *testing.T) {
 	if err := os.WriteFile(profile, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	baseline := filepath.Join(t.TempDir(), "baseline.out")
+	baselineBody := body + "example.com/project/internal/deleted.go:1.1,2.2 100 1\n"
+	if err := os.WriteFile(baseline, []byte(baselineBody), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	args := []string{
 		"--overall-profile", profile,
-		"--baseline-profile", profile,
+		"--baseline-profile", baseline,
 		"--diff-profile", profile,
 		"--base-ref", "base",
 		"--module", "example.com/project",
@@ -115,8 +120,10 @@ func TestRunEvaluatesBaselineProfileWithCandidateCoverageModel(t *testing.T) {
 	if code := run(args, &stdout, &stderr, loader, nil); code != 0 {
 		t.Fatalf("run code=%d stderr=%s", code, stderr.String())
 	}
+	// Candidate overall stays 50%; merge-base ignores the deleted 100%-covered
+	// package so non-regression compares the shared file set only.
 	if !strings.Contains(stdout.String(), "overall coverage: 50.0000% (merge-base 50.0000%") {
-		t.Fatalf("baseline and candidate did not share one coverage model: %q", stdout.String())
+		t.Fatalf("shared-file baseline comparison failed: %q", stdout.String())
 	}
 }
 
@@ -433,6 +440,25 @@ func TestEvaluateAllowsMeasurementTolerance(t *testing.T) {
 	})
 	if len(result.Failures) != 0 {
 		t.Fatalf("measurement tolerance should allow 40.3%% vs 40.4%%: %v", result.Failures)
+	}
+}
+
+func TestCrossPlatformCoverageFilterBlocksByFilesDropsDeletedPackages(t *testing.T) {
+	baseline := []coverageBlock{
+		{File: "internal/keep.go", StartLine: 1, EndLine: 10, Statements: 50, Count: 1},
+		{File: "internal/keep.go", StartLine: 11, EndLine: 20, Statements: 50, Count: 0},
+		{File: "internal/deleted.go", StartLine: 1, EndLine: 40, Statements: 100, Count: 1},
+	}
+	currentFiles := profileFiles([]coverageBlock{
+		{File: "internal/keep.go", StartLine: 1, EndLine: 8, Statements: 40, Count: 1},
+	})
+	filtered := filterBlocksByFiles(baseline, currentFiles)
+	got := coveragePercent(filtered)
+	if got != 50 {
+		t.Fatalf("shared-file baseline = %.4f%%, want 50%% (deleted 100%%-covered package excluded)", got)
+	}
+	if len(profileFiles(filtered)) != 1 || !profileFiles(filtered)["internal/keep.go"] {
+		t.Fatalf("filtered files = %#v, want only keep.go", profileFiles(filtered))
 	}
 }
 
