@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -195,7 +196,72 @@ func newMailCommand() *cobra.Command {
 
 	mailboxProfileCmd.Flags().String("email", "", "用户的邮箱地址 (必填)")
 
-	mailboxCmd.AddCommand(mailboxListCmd, mailboxProfileCmd)
+	mailboxSharedWithMeCmd := &cobra.Command{
+		Use:   "shared-with-me",
+		Short: "查询共享给我的邮箱",
+		Long: `查询他人共享给当前用户的邮箱账号列表，包含共享关系类型。
+
+共享关系（relationships）取值：
+  LOGIN           登录（可登录该共享邮箱）
+  SEND_AS         代发（以该邮箱身份发送邮件）
+  SEND_ON_BEHALF  代表发送（代表该邮箱发送邮件）
+
+返回字段：
+  total    可访问的共享账号总数
+  targets  可访问的共享账号列表`,
+		Example: `  dws mail mailbox shared-with-me
+  dws mail mailbox shared-with-me --limit 20 --offset 0`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			toolArgs := map[string]any{}
+			if cmd.Flags().Changed("limit") {
+				limit, _ := cmd.Flags().GetInt("limit")
+				toolArgs["limit"] = limit
+			}
+			if cmd.Flags().Changed("offset") {
+				offset, _ := cmd.Flags().GetInt("offset")
+				toolArgs["offset"] = offset
+			}
+			if len(toolArgs) == 0 {
+				return callMCPTool("list_shared_with_me", nil)
+			}
+			return callMCPTool("list_shared_with_me", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(mailboxSharedWithMeCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_shared_with_me",
+				CanonicalPath:  "mail.list_shared_with_me",
+				CLIPath:        "mail mailbox shared-with-me",
+				PrimaryCLIPath: "mail mailbox shared-with-me",
+			},
+			Description: "查询共享给我的邮箱",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "list_shared_with_me"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询他人共享给当前用户的邮箱",
+				UseWhen:      []string{"需要列出登录/代发/代表发送权限的共享邮箱时"},
+				AvoidWhen:    []string{"列出自己邮箱用 mail mailbox list"},
+				Examples:     []string{"dws mail mailbox shared-with-me"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "limit", Property: "limit", InterfaceType: "integer"},
+				{Name: "offset", Property: "offset", InterfaceType: "integer"},
+			},
+		},
+	})
+	mailboxSharedWithMeCmd.Flags().Int("limit", 0, "返回数量上限 (可选)")
+	mailboxSharedWithMeCmd.Flags().Int("offset", 0, "偏移量 (可选)")
+
+	mailboxCmd.AddCommand(mailboxListCmd, mailboxProfileCmd, mailboxSharedWithMeCmd)
 
 	messageCmd := &cobra.Command{Use: "message", Short: "邮件管理", RunE: groupRunE}
 
@@ -2126,9 +2192,256 @@ internetMessageId 来源：message send / draft send / message reply / message r
 	messageVerifyCmd.Flags().String("email", "", "邮件所属邮箱地址 (必填)")
 	messageVerifyCmd.Flags().String("internet-message-id", "", "邮件的 internetMessageId (必填)，取自发送类命令返回值")
 
+	messageExportCmd := &cobra.Command{
+		Use:   "export",
+		Short: "导出/备份邮件（EML格式）",
+		Long: `导出指定邮件为 EML 格式文件并保存到本地。
+
+不指定 --filename 时，默认以邮件主题作为文件名。
+文件保存在当前工作目录下，扩展名为 .eml。
+默认不覆盖同名文件，使用 --overwrite 强制覆盖。
+
+注意：目前仅支持 100KB 以内的邮件导出。
+
+编排流程：
+  1. 调用 get_email_by_message_id 获取邮件主题（用作默认文件名）
+  2. 调用 export_message_mime 获取 EML 内容
+  3. 将 EML 内容原子写入本地文件`,
+		Example: `  dws mail message export --email user@company.com --id <messageId>
+  dws mail message export --email user@company.com --id <messageId> --filename my-mail`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "email", "id"); err != nil {
+				return err
+			}
+			email := mustGetFlag(cmd, "email")
+			messageID := mustGetFlag(cmd, "id")
+			filename := mustGetFlag(cmd, "filename")
+			overwrite, _ := cmd.Flags().GetBool("overwrite")
+
+			if deps.Caller.DryRun() {
+				// Human plan summary (no "[DRY-RUN]" tag): Schema dry-run
+				// evidence classifies "操作:" + audited DryRun() as plan.
+				deps.Out.PrintKeyValue("操作", "导出邮件为 EML 文件")
+				deps.Out.PrintKeyValue("email", email)
+				deps.Out.PrintKeyValue("messageId", messageID)
+				if filename != "" {
+					deps.Out.PrintKeyValue("filename", filename)
+				}
+				deps.Out.PrintKeyValue("overwrite", fmt.Sprintf("%v", overwrite))
+				deps.Out.PrintKeyValue("编排", "get_email_by_message_id → export_message_mime → 写入本地 .eml 文件")
+				return nil
+			}
+
+			ctx := cmd.Context()
+			if filename == "" {
+				msgText, err := callMCPToolReturnText(ctx, "get_email_by_message_id", map[string]any{
+					"email":     email,
+					"messageId": messageID,
+				})
+				if err != nil {
+					return fmt.Errorf("获取邮件信息失败: %w", err)
+				}
+				var msgData map[string]any
+				if err := json.Unmarshal([]byte(msgText), &msgData); err == nil {
+					data := msgData
+					if result, ok := data["result"].(map[string]any); ok {
+						data = result
+					}
+					if msg, ok := data["message"].(map[string]any); ok {
+						data = msg
+					}
+					if subj, ok := data["subject"].(string); ok && subj != "" {
+						filename = subj
+					}
+				}
+				if filename == "" {
+					filename = messageID
+				}
+			}
+			filename = sanitizeMailFilename(filename)
+
+			exportText, err := callMCPToolReturnText(ctx, "export_message_mime", map[string]any{
+				"email": email,
+				"id":    messageID,
+			})
+			if err != nil {
+				return fmt.Errorf("导出邮件失败: %w", err)
+			}
+			var exportData map[string]any
+			if err := json.Unmarshal([]byte(exportText), &exportData); err != nil {
+				return fmt.Errorf("解析导出结果失败: %w", err)
+			}
+			if result, ok := exportData["result"].(map[string]any); ok {
+				exportData = result
+			}
+			emlContent, _ := exportData["emlContent"].(string)
+			if emlContent == "" {
+				return fmt.Errorf("导出结果为空: %s", exportText)
+			}
+			destPath := filename + ".eml"
+			if err := atomicWriteFile(destPath, []byte(emlContent), 0600, overwrite); err != nil {
+				if os.IsExist(err) {
+					return fmt.Errorf("文件 %s 已存在，使用 --overwrite 覆盖", destPath)
+				}
+				return fmt.Errorf("保存文件失败: %w", err)
+			}
+			deps.Out.PrintInfo(fmt.Sprintf("邮件已导出到: %s", destPath))
+			return nil
+		},
+	}
+	DeclareLeafMetadata(messageExportCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "export_message_mime",
+				CanonicalPath:  "mail.export_message_mime",
+				CLIPath:        "mail message export",
+				PrimaryCLIPath: "mail message export",
+			},
+			Description: "导出/备份邮件为本地 EML 文件",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Orchestrates get_email_by_message_id + export_message_mime + local file write.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "导出邮件为本地 EML 备份",
+				UseWhen:      []string{"需要把单封邮件备份为本地 .eml 文件时"},
+				AvoidWhen:    []string{"仅查看正文用 mail message get；分享到 IM 用 mail message share-to-chat"},
+				Examples:     []string{"dws mail message export --email user@company.com --id <messageId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "email", Property: "email", Required: boolPtr(true)},
+				{Name: "id", Property: "id", Required: boolPtr(true)},
+				{Name: "filename", Property: "filename"},
+				{Name: "overwrite", Property: "overwrite", InterfaceType: "boolean"},
+			},
+		},
+	})
+	messageExportCmd.Flags().String("email", "", "用户的邮箱地址 (必填)")
+	messageExportCmd.Flags().String("id", "", "邮件ID (必填)")
+	messageExportCmd.Flags().String("filename", "", "导出文件名（不含扩展名），默认使用邮件主题")
+	messageExportCmd.Flags().Bool("overwrite", false, "是否覆盖同名文件，默认 false")
+
+	messageShareToChatCmd := &cobra.Command{
+		Use:   "share-to-chat",
+		Short: "[危险] 分享邮件至IM聊天",
+		Long: `将指定邮件分享到钉钉单聊。
+
+参数说明：
+  --users 目标用户UID列表，逗号分隔（规范名），兼容 --uids
+  --yes   确认执行此危险操作 (必填)
+
+默认需要 --yes 确认才能执行；--dry-run 仅预览分享计划，不发起真实请求。
+服务端可能返回风险提示（riskMessage）和 sign；在 --yes 已通过的前提下，
+将展示风险提示并自动携带 sign 重新请求。`,
+		Example: `  dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1,uid2 --yes
+  dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1 --yes`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "email", "id"); err != nil {
+				return err
+			}
+			mcpArgs := map[string]any{
+				"email": mustGetFlag(cmd, "email"),
+				"id":    mustGetFlag(cmd, "id"),
+			}
+			if users := flagOrFallback(cmd, "users", "uids"); users != "" {
+				mcpArgs["uids"] = parseRecipients(users)
+			}
+			yes, _ := cmd.Flags().GetBool("yes")
+			if deps.Caller.DryRun() {
+				// Human plan summary (no "[DRY-RUN]" tag): Schema dry-run
+				// evidence classifies "操作:" + audited DryRun() as plan.
+				deps.Out.PrintKeyValue("操作", "分享邮件至 IM 聊天")
+				deps.Out.PrintKeyValue("email", mustGetFlag(cmd, "email"))
+				deps.Out.PrintKeyValue("messageId", mustGetFlag(cmd, "id"))
+				if users := flagOrFallback(cmd, "users", "uids"); users != "" {
+					deps.Out.PrintKeyValue("users", users)
+				}
+				deps.Out.PrintKeyValue("yes", fmt.Sprintf("%v", yes))
+				deps.Out.PrintKeyValue("说明", "仅预览分享计划，不发起真实分享请求")
+				return nil
+			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"分享邮件至 IM 为高风险操作；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认目标用户与邮件内容；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认目标用户与邮件", "获得用户确认后使用 --yes 执行"),
+				)
+			}
+			ctx := cmd.Context()
+			firstText, err := callMCPToolReturnText(ctx, "share_message_to_chat", mcpArgs)
+			if err != nil {
+				return fmt.Errorf("分享邮件失败: %w", err)
+			}
+			var firstResult map[string]any
+			if err := json.Unmarshal([]byte(firstText), &firstResult); err != nil {
+				return fmt.Errorf("解析分享结果失败: %w", err)
+			}
+			if result, ok := firstResult["result"].(map[string]any); ok {
+				firstResult = result
+			}
+			if sign, ok := firstResult["sign"].(string); ok && sign != "" {
+				if riskMsg, _ := firstResult["riskMessage"].(string); riskMsg != "" {
+					deps.Out.PrintInfo(fmt.Sprintf("[风险提示] %s", riskMsg))
+				}
+				mcpArgs["sign"] = sign
+				return callMCPTool("share_message_to_chat", mcpArgs)
+			}
+			// firstResult is already a parsed object (possibly unwrapped from result).
+			return deps.Out.PrintJSON(firstResult)
+		},
+	}
+	DeclareLeafMetadata(messageShareToChatCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "high",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "share_message_to_chat",
+				CanonicalPath:  "mail.share_message_to_chat",
+				CLIPath:        "mail message share-to-chat",
+				PrimaryCLIPath: "mail message share-to-chat",
+			},
+			Description: "分享邮件至 IM 单聊",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "share_message_to_chat"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "把邮件分享到钉钉单聊",
+				UseWhen:      []string{"需要将指定邮件分享给钉钉用户（单聊）时"},
+				AvoidWhen:    []string{"仅导出本地备份用 mail message export；群聊发消息用 chat message send"},
+				Examples:     []string{"dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "email", Property: "email", Required: boolPtr(true)},
+				{Name: "id", Property: "id", Required: boolPtr(true)},
+				{Name: "users", Property: "uids"},
+				{Name: "yes", Property: "yes", InterfaceType: "boolean"},
+			},
+		},
+	})
+	messageShareToChatCmd.Flags().String("email", "", "用户的邮箱地址 (必填)")
+	messageShareToChatCmd.Flags().String("id", "", "邮件ID (必填)")
+	messageShareToChatCmd.Flags().String("users", "", "目标用户UID列表，逗号分隔")
+	messageShareToChatCmd.Flags().String("uids", "", "--users 的别名")
+	_ = messageShareToChatCmd.Flags().MarkHidden("uids")
+	messageShareToChatCmd.Flags().Bool("yes", false, "确认执行此危险操作 (必填)")
+
 	messageCmd.AddCommand(messageListCmd, messageSearchCmd, messageGetCmd, messageSendCmd,
 		messageReplyCmd, messageReplyAllCmd, messageForwardCmd,
-		messageBatchMoveCmd, messageBatchDeleteCmd, messageBatchModifyCmd, messageBatchGetCmd, messageVerifyCmd)
+		messageBatchMoveCmd, messageBatchDeleteCmd, messageBatchModifyCmd, messageBatchGetCmd, messageVerifyCmd, messageExportCmd, messageShareToChatCmd)
 
 	sentMessageCmd := &cobra.Command{Use: "sent-message", Short: "已发送邮件管理", RunE: groupRunE}
 
@@ -3400,7 +3713,129 @@ object 与 operation 合法组合：
 	blockListRemoveCmd.Flags().String("entries", "", "逗号分隔的地址列表，支持邮件地址(如123@domain.com)或域名(如@domain.com)")
 	blockListCmd.AddCommand(blockListListCmd, blockListAddCmd, blockListRemoveCmd)
 
-	root.AddCommand(mailboxCmd, messageCmd, sentMessageCmd, draftCmd, threadCmd, folderCmd, tagCmd, userCmd, attachmentCmd, templateCmd, contactCmd, autoReplyCmd, ruleCmd, allowListCmd, blockListCmd)
+	calendarCmd := &cobra.Command{Use: "calendar", Short: "邮箱日历管理", RunE: groupRunE}
+	calendarListCmd := &cobra.Command{
+		Use:   "list",
+		Short: "列出用户可访问的日历列表",
+		Long: `列出用户可访问的日历列表，包括用户自己创建以及接受共享后生成的日历。
+返回的 id 可作为 calendar-event list 的 --id / --folder-id 使用。`,
+		Example: `  dws mail calendar list --email user@company.com`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "email"); err != nil {
+				return err
+			}
+			return callMCPTool("list_mailbox_calendars", map[string]any{
+				"email": mustGetFlag(cmd, "email"),
+			})
+		},
+	}
+	DeclareLeafMetadata(calendarListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_mailbox_calendars",
+				CanonicalPath:  "mail.list_mailbox_calendars",
+				CLIPath:        "mail calendar list",
+				PrimaryCLIPath: "mail calendar list",
+			},
+			Description: "列出邮箱日历文件夹",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "list_mailbox_calendars"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "列出邮箱可访问的日历文件夹",
+				UseWhen:      []string{"查询邮箱日历文件夹 id，以便继续查日程时"},
+				AvoidWhen:    []string{"钉钉主日历日程请用 dws calendar event list"},
+				Examples:     []string{"dws mail calendar list --email user@company.com"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "email", Property: "email", Required: boolPtr(true)},
+			},
+		},
+	})
+	calendarListCmd.Flags().String("email", "", "用户的邮箱地址 (必填)")
+	calendarCmd.AddCommand(calendarListCmd)
+
+	calendarEventCmd := &cobra.Command{Use: "calendar-event", Short: "邮箱日历日程管理", RunE: groupRunE}
+	calendarEventListCmd := &cobra.Command{
+		Use:   "list",
+		Short: "查询指定日历时间范围内的日程",
+		Long:  `查询指定邮箱日历文件夹在 UTC 时间区间 [startTime, endTime) 内出现的日程，支持 cursor 分页。循环日程会展开为该时间范围内的单次日程。`,
+		Example: `  dws mail calendar-event list --email user@company.com --id <calendarFolderId> --start "2026-07-01T00:00:00Z" --end "2026-07-31T23:59:59Z"
+  dws mail calendar-event list --email user@company.com --id <calendarFolderId> --start "2026-07-01T00:00:00Z" --end "2026-07-31T23:59:59Z" --cursor <cursor>`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "email", "start", "end"); err != nil {
+				return err
+			}
+			if err := validateRequiredFlagWithAliases(cmd, "id", "folder-id"); err != nil {
+				return err
+			}
+			toolArgs := map[string]any{
+				"email":     mustGetFlag(cmd, "email"),
+				"id":        flagOrFallback(cmd, "id", "folder-id"),
+				"startTime": flagOrFallback(cmd, "start", "start-time"),
+				"endTime":   flagOrFallback(cmd, "end", "end-time"),
+			}
+			if cursor := mustGetFlag(cmd, "cursor"); cursor != "" {
+				toolArgs["cursor"] = cursor
+			}
+			return callMCPTool("list_mailbox_calendar_events", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(calendarEventListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "mail",
+				Name:           "list_mailbox_calendar_events",
+				CanonicalPath:  "mail.list_mailbox_calendar_events",
+				CLIPath:        "mail calendar-event list",
+				PrimaryCLIPath: "mail calendar-event list",
+			},
+			Description: "查询邮箱日历文件夹时间范围内的日程",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "mail", RPCName: "list_mailbox_calendar_events"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询邮箱日历日程列表",
+				UseWhen:      []string{"已知邮箱日历文件夹 id，需要按 UTC 时间窗列出日程时"},
+				AvoidWhen:    []string{"钉钉主日历请用 dws calendar event list；未知文件夹 id 时先 mail calendar list"},
+				Examples:     []string{"dws mail calendar-event list --email user@company.com --id <calendarFolderId> --start \"2026-07-01T00:00:00Z\" --end \"2026-07-31T23:59:59Z\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "email", Property: "email", Required: boolPtr(true)},
+				{Name: "id", Property: "id", Required: boolPtr(true)},
+				{Name: "start", Property: "startTime", Required: boolPtr(true)},
+				{Name: "end", Property: "endTime", Required: boolPtr(true)},
+				{Name: "cursor", Property: "cursor"},
+			},
+		},
+	})
+	calendarEventListCmd.Flags().String("email", "", "用户的邮箱地址 (必填)")
+	calendarEventListCmd.Flags().String("id", "", "日历文件夹ID (必填)")
+	calendarEventListCmd.Flags().String("folder-id", "", "--id 的别名")
+	_ = calendarEventListCmd.Flags().MarkHidden("folder-id")
+	calendarEventListCmd.Flags().String("start", "", "视图开始UTC时间 (必填)")
+	calendarEventListCmd.Flags().String("start-time", "", "--start 的别名")
+	_ = calendarEventListCmd.Flags().MarkHidden("start-time")
+	calendarEventListCmd.Flags().String("end", "", "视图结束UTC时间 (必填)")
+	calendarEventListCmd.Flags().String("end-time", "", "--end 的别名")
+	_ = calendarEventListCmd.Flags().MarkHidden("end-time")
+	calendarEventListCmd.Flags().String("cursor", "", "分页光标 (可选)")
+	calendarEventCmd.AddCommand(calendarEventListCmd)
+
+	root.AddCommand(mailboxCmd, messageCmd, sentMessageCmd, draftCmd, threadCmd, folderCmd, tagCmd, userCmd, attachmentCmd, templateCmd, contactCmd, autoReplyCmd, ruleCmd, allowListCmd, blockListCmd, calendarCmd, calendarEventCmd)
 
 	return root
 }
@@ -3933,5 +4368,62 @@ func runMailAttachmentDownload(cmd *cobra.Command) error {
 	}
 
 	deps.Out.PrintInfo(fmt.Sprintf("附件已保存到: %s", destPath))
+	return nil
+}
+
+func sanitizeMailFilename(name string) string {
+	name = strings.TrimSpace(name)
+	name = strings.ReplaceAll(name, "/", "_")
+	name = strings.ReplaceAll(name, "\\", "_")
+	name = strings.ReplaceAll(name, "\x00", "")
+	if name == "" {
+		return "mail"
+	}
+	return name
+}
+
+// mailAtomicLink is the no-clobber commit for atomicWriteFile (test-injectable).
+var mailAtomicLink = os.Link
+
+// atomicWriteFile 原子写入文件：先写同目录临时文件，成功后提交到目标路径。
+// overwrite=false 使用 link(2) 实现存在即失败；overwrite=true 使用 rename 覆盖。
+func atomicWriteFile(path string, data []byte, perm os.FileMode, overwrite bool) error {
+	dir := filepath.Dir(path)
+	tmp, err := atomicCreateTemp(dir, "."+filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return fmt.Errorf("创建临时文件失败: %w", err)
+	}
+	tmpName := tmp.Name()
+	success := false
+	defer func() {
+		if !success {
+			_ = tmp.Close()
+			_ = atomicRemove(tmpName)
+		}
+	}()
+	if err := tmp.Chmod(perm); err != nil {
+		return fmt.Errorf("设置文件权限失败: %w", err)
+	}
+	if _, err := tmp.Write(data); err != nil {
+		return fmt.Errorf("写入数据失败: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		return fmt.Errorf("同步磁盘失败: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("关闭临时文件失败: %w", err)
+	}
+	if overwrite {
+		if err := atomicRename(tmpName, path); err != nil {
+			return fmt.Errorf("重命名文件失败: %w", err)
+		}
+		success = true
+		return nil
+	}
+	if err := mailAtomicLink(tmpName, path); err != nil {
+		return err
+	}
+	_ = atomicRemove(tmpName)
+	success = true
 	return nil
 }

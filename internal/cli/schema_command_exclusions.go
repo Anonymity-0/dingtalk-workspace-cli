@@ -20,7 +20,7 @@ package cli
 var reviewedRuntimeSchemaExclusionGroups = []runtimeSchemaExclusionGroup{
 	{
 		ID:       "cli-management",
-		Reason:   "Local CLI lifecycle, authentication, configuration, recovery, and plugin-management commands are user-operated controls rather than stable Agent tools.",
+		Reason:   "Local CLI lifecycle, authentication, configuration, and plugin-management commands are user-operated controls rather than stable Agent tools.",
 		Reviewed: true,
 		Commands: []string{
 			"api",
@@ -53,9 +53,6 @@ var reviewedRuntimeSchemaExclusionGroups = []runtimeSchemaExclusionGroup{
 			"profile list",
 			"profile switch",
 			"profile use",
-			"recovery execute",
-			"recovery finalize",
-			"recovery plan",
 			"schema",
 			"skill get",
 			"skill install",

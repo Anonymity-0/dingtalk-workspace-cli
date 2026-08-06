@@ -40,7 +40,6 @@
 - `internal/output`: response formatting (json, table, raw, pretty)
 - `internal/logging`: structured logging and argument sanitization
 - `internal/tui`: terminal UI helpers
-- `internal/recovery`: panic recovery and graceful degradation
 - `pkg/configmeta`: environment variable registry and documentation
 - `pkg/config`: configuration constants and paths
 - `pkg/edition`: edition detection (oss vs enterprise)

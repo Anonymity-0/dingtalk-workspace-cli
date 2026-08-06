@@ -45,7 +45,7 @@ Agent 安装 dws skill 后，仅依据 skill 提供的参考文档，将自然�
 | `chat` | `references/products/chat.md` | 13 | 31 |
 | `contact` | `references/products/contact.md` | 7 | 14 |
 | `devdoc` | `references/products/simple.md` | 2 | 7 |
-| `dev` | `skills/multi/dingtalk-dev/SKILL.md` | 19 | 25 |
+| `dev` | `skills/multi/dingtalk-misc/references/devapp.md` | 19 | 25 |
 | `ding` | `references/products/ding.md` | 2 | 5 |
 | `event` | `references/products/event.md` | 8 | 11 |
 | `report` | `references/products/report.md` | 6 | 26 |

@@ -83,8 +83,8 @@ func TestEventSkillUsesFlatOutputContract(t *testing.T) {
 	}
 	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
 	paths := []string{
-		filepath.Join(root, "skills", "multi", "dingtalk-event", "SKILL.md"),
-		filepath.Join(root, "skills", "multi", "dingtalk-event", "references", "event-im.md"),
+		filepath.Join(root, "skills", "multi", "dingtalk-misc", "references", "event.md"),
+		filepath.Join(root, "skills", "multi", "dingtalk-misc", "references", "event-im.md"),
 		filepath.Join(root, "skills", "mono", "references", "products", "event.md"),
 	}
 	for _, path := range paths {
@@ -137,8 +137,8 @@ func TestCrossPlatformCoverageEventSkillPinsSubscriptionRetryOrchestrationContra
 	}
 	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
 	paths := []string{
-		filepath.Join(root, "skills", "multi", "dingtalk-event", "SKILL.md"),
-		filepath.Join(root, "skills", "multi", "dingtalk-event", "references", "event-im.md"),
+		filepath.Join(root, "skills", "multi", "dingtalk-misc", "references", "event.md"),
+		filepath.Join(root, "skills", "multi", "dingtalk-misc", "references", "event-im.md"),
 		filepath.Join(root, "skills", "mono", "references", "products", "event.md"),
 		filepath.Join(root, "docs", "event-subprocess-contract.md"),
 	}
@@ -203,8 +203,8 @@ func TestCrossPlatformCoverageEventSkillDocumentsSubscriptionGuardOperations(t *
 	}
 	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
 	paths := []string{
-		filepath.Join(root, "skills", "multi", "dingtalk-event", "SKILL.md"),
-		filepath.Join(root, "skills", "multi", "dingtalk-event", "references", "event-im.md"),
+		filepath.Join(root, "skills", "multi", "dingtalk-misc", "references", "event.md"),
+		filepath.Join(root, "skills", "multi", "dingtalk-misc", "references", "event-im.md"),
 		filepath.Join(root, "skills", "mono", "references", "products", "event.md"),
 		filepath.Join(root, "docs", "event-subprocess-contract.md"),
 	}
@@ -263,7 +263,7 @@ func TestEventSkillFrontmatterAdvertisesGroupMemberLifecycle(t *testing.T) {
 	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
 	paths := []string{
 		filepath.Join(root, "skills", "mono", "SKILL.md"),
-		filepath.Join(root, "skills", "multi", "dingtalk-event", "SKILL.md"),
+		filepath.Join(root, "skills", "multi", "dingtalk-misc", "SKILL.md"),
 	}
 	for _, path := range paths {
 		content, err := os.ReadFile(path)

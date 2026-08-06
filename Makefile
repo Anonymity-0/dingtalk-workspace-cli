@@ -131,6 +131,9 @@ skill-context-budget:
 multi-im-skill-chain-integrity:
 	@./scripts/policy/check-multi-im-skill-chain.sh
 
+skill-mono-multi-content:
+	@./scripts/policy/check-mono-multi-skill-content.sh
+
 cli-smoke:
 	@./scripts/policy/check-cli-smoke.sh
 

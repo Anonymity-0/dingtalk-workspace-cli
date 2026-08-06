@@ -508,6 +508,10 @@ func TestStripSchemaPayloadCompactLeaf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	leaf["future_audit_field"] = "must not leak into Agent view"
+	for _, raw := range schemaMap(leaf["parameters"]) {
+		raw["future_mapping_field"] = "must not leak into Agent view"
+	}
 	stripped := stripSchemaPayloadCompact(leaf)
 
 	// Must keep agent-essential fields.
@@ -518,7 +522,7 @@ func TestStripSchemaPayloadCompactLeaf(t *testing.T) {
 	}
 
 	// Must strip provenance / redundant fields.
-	for _, key := range []string{"agent_metadata_source", "agent_source_refs", "agent_summary_source", "effect_source", "metadata_source", "primary_cli_path", "parameter_count", "has_parameters", "interface_ref", "source", "title", "display"} {
+	for _, key := range []string{"agent_metadata_source", "agent_source_refs", "agent_summary_source", "effect_source", "metadata_source", "primary_cli_path", "parameter_count", "has_parameters", "interface_ref", "source", "title", "display", "future_audit_field"} {
 		if _, ok := stripped[key]; ok {
 			t.Fatalf("compact leaf still contains stripped key %q", key)
 		}
@@ -528,7 +532,7 @@ func TestStripSchemaPayloadCompactLeaf(t *testing.T) {
 	if params, ok := stripped["parameters"].(map[string]any); ok {
 		for name, p := range params {
 			if pm, ok := p.(map[string]any); ok {
-				for _, stripped := range []string{"interface_description", "interface_type", "property"} {
+				for _, stripped := range []string{"interface_description", "interface_type", "property", "future_mapping_field"} {
 					if _, present := pm[stripped]; present {
 						t.Fatalf("compact param %q still contains %q", name, stripped)
 					}
@@ -1304,7 +1308,7 @@ func TestDeliveryCatalogContactParamDeclsMatchMergeBaseContract(t *testing.T) {
 			}
 			if want.interfaceType != "" {
 				prov := schemaMap(param["field_provenance"])["interface_type"]
-				if src, _ := prov["source"].(string); src != "native_annotation" && src != "mcp_metadata" {
+				if src, _ := prov["source"].(string); src != "native_annotation" {
 					t.Fatalf("%s --%s interface_type source = %#v", tc.path, flagName, prov)
 				}
 			}
