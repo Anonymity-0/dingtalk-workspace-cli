@@ -2335,12 +2335,13 @@ internetMessageId 来源：message send / draft send / message reply / message r
 
 参数说明：
   --users 目标用户UID列表，逗号分隔（规范名），兼容 --uids
-  --yes   跳过二次确认，直接执行分享
+  --yes   确认执行此危险操作 (必填)
 
-服务端可能返回风险提示（riskMessage）和 sign，此时需要用户确认后
-携带 sign 重新请求。默认会展示风险提示并中止，传入 --yes 可跳过确认。`,
-		Example: `  dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1,uid2
-  dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1`,
+默认需要 --yes 确认才能执行；--dry-run 仅预览分享计划，不发起真实请求。
+服务端可能返回风险提示（riskMessage）和 sign；在 --yes 已通过的前提下，
+将展示风险提示并自动携带 sign 重新请求。`,
+		Example: `  dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1,uid2 --yes
+  dws mail message share-to-chat --email user@company.com --id <messageId> --users uid1 --yes`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "email", "id"); err != nil {
 				return err
@@ -2436,7 +2437,7 @@ internetMessageId 来源：message send / draft send / message reply / message r
 	messageShareToChatCmd.Flags().String("users", "", "目标用户UID列表，逗号分隔")
 	messageShareToChatCmd.Flags().String("uids", "", "--users 的别名")
 	_ = messageShareToChatCmd.Flags().MarkHidden("uids")
-	messageShareToChatCmd.Flags().Bool("yes", false, "跳过二次确认，直接执行分享")
+	messageShareToChatCmd.Flags().Bool("yes", false, "确认执行此危险操作 (必填)")
 
 	messageCmd.AddCommand(messageListCmd, messageSearchCmd, messageGetCmd, messageSendCmd,
 		messageReplyCmd, messageReplyAllCmd, messageForwardCmd,
