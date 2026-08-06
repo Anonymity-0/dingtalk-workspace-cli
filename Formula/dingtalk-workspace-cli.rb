@@ -1,3 +1,4 @@
+# Recovery marker: Release run 31089100536 will restore the verified generated Formula.
 class DingtalkWorkspaceCli < Formula
   desc "Automate DingTalk workspace tasks from the terminal"
   homepage "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli"
