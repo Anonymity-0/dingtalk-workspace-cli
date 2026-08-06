@@ -136,6 +136,7 @@ and compatibility and CI reliability fixes.
 ### Added
 
 - **Document-embedded whiteboard workflows** — adds `doc whiteboard insert` for confirmed creation and part-ID verification, `whiteboard query/update` for structured OpenNodes reads and confirmed writes, and `doc media upload` for preparing node-bound Vector/SVG resources. The public adapter uses an explicit helper-only whiteboard endpoint, validates update envelopes locally, decodes `resultJson`, and publishes the full command, Schema, Skill, and safety contract migrated from `dws-wukong@e2da8ab947c6`.
+- **Robot image and file messages** — extends `chat message send-by-bot` with public image URL delivery through `--msg-type image --image-url` and local-file upload/send through `--msg-type file --file-path`, while preserving Markdown as the default message type.
 
 ### Changed
 
