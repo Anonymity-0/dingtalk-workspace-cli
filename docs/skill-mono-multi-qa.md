@@ -55,7 +55,7 @@ orphan_scripts_allowlist:
 | X2 | chat 死链 `extract_media_id.py` | n/a | 现仅为反模式提及 |
 | X3 | routing → markdown 错路径 | **done** | 已指 `dingtalk-misc/references/markdown.md`；drive 尾链已修 |
 | X4 | event 缺 metadata | **done** | |
-| X5 | EXPERIMENTAL「优先 mono」文案 | **done** | 五 skill 已去「优先 mono」 |
+| X5 | multi skill 横幅 /「优先 mono」文案 | **done** | 横幅已全部移除 |
 | X6 | SAFETY_PREAMBLE_INJECT 无注入器 | **done** | 标记已移除 |
 
 产品面覆盖：见 YAML `coverage`——mono products 均有 multi 承接（misc 聚合 attendance/oa/sheet/…）。

@@ -71,9 +71,7 @@ The installer ships skills in one of two layouts. CLI commands (`dws aitable ...
 | Mode | What gets installed | Best for |
 |------|----------------------|----------|
 | **mono** (stable, default) | One `dws` skill covering all products | Cross-product workflows; single entry point |
-| **multi** 🧪 **EXPERIMENTAL** | Per-product skills (`dingtalk-aitable`, `dingtalk-calendar`, `dingtalk-chat`, ...) | Single-product tasks; smaller context per call |
-
-> 🧪 **`multi` is currently EXPERIMENTAL / preview.** All product-scoped skills pass the dispatch verifier, but interface, naming and cross-skill references may change in future releases. For production / shared environments, prefer `mono`. File issues if you hit problems.
+| **multi** | Per-product skills (`dingtalk-aitable`, `dingtalk-calendar`, `dingtalk-chat`, ...) | Single-product tasks; smaller context per call |
 
 How to pick:
 
@@ -394,7 +392,7 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 The repo ships a complete Agent Skill system under `skills/`, organized into two layouts:
 
 - `skills/mono/` — single-skill layout (one `SKILL.md` + `references/products/`), recommended default.
-- `skills/multi/` — per-product skills (`dingtalk-aitable/`, `dingtalk-calendar/`, `dingtalk-chat/`, ...), each with its own `SKILL.md`. 🧪 **EXPERIMENTAL / preview — see banner in each multi `SKILL.md` for caveats.**
+- `skills/multi/` — per-product skills (`dingtalk-aitable/`, `dingtalk-calendar/`, `dingtalk-chat/`, ...), each with its own `SKILL.md`.
 
 Leaf safety/parameters/selection prose for Schema generation come from ProductDecl / ContractFinal declarations in Go. The former `internal/cli/schema_hints/` HintFile tree is fully retired and must not reappear.
 

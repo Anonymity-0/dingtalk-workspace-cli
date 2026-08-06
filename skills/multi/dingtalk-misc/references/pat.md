@@ -1,7 +1,5 @@
 # PAT 行为授权 (pat) 命令参考
 
-> 🧪 **EXPERIMENTAL** — 接口、命名或跨 skill 引用可能调整；以当前 `dws` 二进制与 leaf Schema 为准。问题请提 issue。
->
 > 本文件为 `dingtalk-misc` 内 PAT 行为授权产品入口。命令前缀：`dws pat`。Distinct from 开放平台应用权限（本包 [devapp.md](./devapp.md)）。
 
 `dws pat` 管理 Agent 的行为授权。它不管理开放平台应用权限；应用权限使用 `dws dev app permission`（见 [devapp.md](./devapp.md)）。

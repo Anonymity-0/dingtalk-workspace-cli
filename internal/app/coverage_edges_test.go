@@ -2008,8 +2008,8 @@ func TestCrossPlatformCoverageSkillSetupRuntimeCoverage(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dws", "SKILL.md")); err != nil {
 		t.Fatal(err)
 	}
-	if output, warnings, err := run("--mode", "multi", "--source", multi, "--target", "agents", "--yes", "--skill", "a"); err != nil || !strings.Contains(output, "installed=2") || warnings == "" {
-		t.Fatalf("multi setup = %q / %q, %v", output, warnings, err)
+	if output, _, err := run("--mode", "multi", "--source", multi, "--target", "agents", "--yes", "--skill", "a"); err != nil || !strings.Contains(output, "installed=2") {
+		t.Fatalf("multi setup = %q, %v", output, err)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dingtalk-shared", "SKILL.md")); err != nil {
 		t.Fatal(err)

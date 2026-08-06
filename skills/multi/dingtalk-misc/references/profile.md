@@ -1,7 +1,5 @@
 # 多组织 / profile
 
-> 🧪 **EXPERIMENTAL** — 接口、命名或跨 skill 引用可能调整；以当前 `dws` 二进制与 leaf Schema 为准。问题请提 issue。
->
 > 本文件为 `dingtalk-misc` 内多组织 / profile 产品入口。命令前缀：`dws profile` / `dws auth` / 全局 `--profile`。
 
 dws 可同时登录多个钉钉账号，同一组织也可保留多个账号。一个 profile = 一个 `corpId + userId` 身份；当前 profile 决定本次命令注入哪个身份。

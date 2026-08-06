@@ -1,7 +1,5 @@
 # Hrbrain（组织大脑）
 
-> 🧪 **EXPERIMENTAL** — 接口、命名或跨 skill 引用可能调整；以当前 `dws` 二进制与 leaf Schema 为准。问题请提 issue。
->
 > 本文件为 `dingtalk-misc` 内组织大脑产品入口。命令前缀：`dws hrbrain`。Distinct from `dingtalk-contact`（通讯录/组织架构）、考勤（本包 `attendance.md`）。
 
 ## 产品说明
