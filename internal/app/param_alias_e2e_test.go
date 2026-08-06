@@ -58,6 +58,14 @@ func paramAliasResponseForTool(tool string) string {
 		return `{"deptList":[{"deptId":1,"name":"Fixture Dept"}]}`
 	case "search_groups":
 		return `{"result":{"items":[{"openConversationId":"fixture-conversation","title":"Fixture Group"}]}}`
+	case "search_contact_by_key_word":
+		return `{"result":[{"name":"Fixture User","userId":"fixture-user","openDingTalkId":"D-fixture-user"}]}`
+	case "list_doc_versions":
+		return `{"result":{"items":[{"version":3}]}}`
+	case "search_doc_templates":
+		return `{"result":[{"templateId":"fixture-template-id"}]}`
+	case "get_document_content":
+		return `{"revision":1}`
 	default:
 		return `{}`
 	}

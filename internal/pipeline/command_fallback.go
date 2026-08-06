@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +27,14 @@ func normalizeCommandPathFallback(root *cobra.Command, engine *Engine, rawArgs [
 	traversalArgs, positions := argsForCommandTraversalWithPositions(root, rawArgs)
 	entry, tokenCount, ok := longestCommandPathFallback(engine, traversalArgs)
 	if !ok {
+		return rawArgs, nil, nil
+	}
+	// Runtime extensions are mounted on the root before PreParse runs. An exact
+	// executable command (or exact Cobra alias) is user/runtime authority and
+	// must win over the reviewed recovery dictionary. Hint-only compatibility
+	// nodes are not executable business commands, so fallback may supersede
+	// them as it does for the distribution-owned declaration tree.
+	if exactRunnableCommandPath(root, traversalArgs[:tokenCount]) {
 		return rawArgs, nil, nil
 	}
 
@@ -49,6 +58,42 @@ func normalizeCommandPathFallback(root *cobra.Command, engine *Engine, rawArgs [
 	default:
 		return rawArgs, nil, apperrors.NewInternal(fmt.Sprintf("reviewed command path fallback %q has invalid mode %q", entry.From, entry.Mode))
 	}
+}
+
+func exactRunnableCommandPath(root *cobra.Command, path []string) bool {
+	if root == nil || len(path) == 0 {
+		return false
+	}
+	current := root
+	if path[0] == root.Name() {
+		path = path[1:]
+	}
+	if len(path) == 0 {
+		return false
+	}
+	for _, token := range path {
+		var next *cobra.Command
+		for _, child := range current.Commands() {
+			if child.Name() == token || containsExactCommandAlias(child.Aliases, token) {
+				next = child
+				break
+			}
+		}
+		if next == nil {
+			return false
+		}
+		current = next
+	}
+	return current.Runnable() && !cmdutil.IsHintOnlyCommand(current)
+}
+
+func containsExactCommandAlias(aliases []string, token string) bool {
+	for _, alias := range aliases {
+		if alias == token {
+			return true
+		}
+	}
+	return false
 }
 
 func longestCommandPathFallback(engine *Engine, traversalArgs []string) (CommandPathFallback, int, bool) {

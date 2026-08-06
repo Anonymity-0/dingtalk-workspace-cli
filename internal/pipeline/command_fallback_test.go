@@ -62,6 +62,79 @@ func TestRunPreParseArgsRewritesMultiTokenPathAroundPersistentFlags(t *testing.T
 	}
 }
 
+func TestCommandPathFallbackDefersToExactRunnableCommandAndAlias(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		path string
+	}{
+		{name: "primary", path: "+members"},
+		{name: "alias", path: "+runtime-members"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			executed := ""
+			root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
+			chat := &cobra.Command{Use: "chat"}
+			members := &cobra.Command{
+				Use:     "+members",
+				Aliases: []string{"+runtime-members"},
+				RunE: func(cmd *cobra.Command, _ []string) error {
+					sentinel, _ := cmd.Flags().GetString("sentinel")
+					executed = cmd.CommandPath() + ":" + sentinel
+					return nil
+				},
+			}
+			members.Flags().String("sentinel", "", "")
+			chat.AddCommand(members)
+			root.AddCommand(chat)
+			engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
+				"chat " + test.path: {From: "chat " + test.path, Mode: "rewrite", To: "chat +good"},
+			})
+			args := []string{"chat", test.path, "--sentinel", "fixture"}
+			root.SetArgs(args)
+			ctx, err := RunPreParseArgs(root, engine, args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ctx != nil {
+				t.Fatalf("runtime command unexpectedly entered correction pipeline: %#v", ctx)
+			}
+			if _, err := root.ExecuteC(); err != nil {
+				t.Fatal(err)
+			}
+			if executed != "dws chat +members:fixture" {
+				t.Fatalf("runtime command execution = %q", executed)
+			}
+		})
+	}
+}
+
+func TestCommandPathFallbackMaySupersedeHintOnlyCommand(t *testing.T) {
+	root, executed := commandFallbackPipelineRoot()
+	chat, _, err := root.Find([]string{"chat"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chat.AddCommand(cmdutil.HintSubCmd("+bad", "use the reviewed recovery"))
+	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
+		"chat +bad": {From: "chat +bad", Mode: "rewrite", To: "chat +good"},
+	})
+	args := []string{"chat", "+bad", "--query", "project"}
+	root.SetArgs(args)
+	ctx, err := RunPreParseArgs(root, engine, args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ctx == nil || ctx.Command != "dws chat +good" || len(ctx.Corrections) != 1 {
+		t.Fatalf("hint-only fallback context = %#v", ctx)
+	}
+	if _, err := root.ExecuteC(); err != nil {
+		t.Fatal(err)
+	}
+	if *executed != "dws chat +good:project" {
+		t.Fatalf("hint-only fallback execution = %q", *executed)
+	}
+}
+
 func TestRunPreParseArgsRejectsAmbiguousCommandFallbackWithoutDispatch(t *testing.T) {
 	root, executed := commandFallbackPipelineRoot()
 	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{

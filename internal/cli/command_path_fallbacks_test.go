@@ -119,7 +119,7 @@ func TestCommandPathFallbackSchemaAndEmbeddedSource(t *testing.T) {
 		t.Fatalf("schema header = %#v", schema)
 	}
 	entries, err := LoadCommandPathFallbacks()
-	if err != nil || len(entries) != 26 {
+	if err != nil || len(entries) != 34 {
 		t.Fatalf("LoadCommandPathFallbacks() = %#v, %v", entries, err)
 	}
 	if got, ok := LookupCommandPathFallback("dws chat +group-search"); !ok || got.To != "chat +chat-search" {
@@ -141,6 +141,12 @@ func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 		"chat +list-robot":          "chat +chat-bots",
 		"chat +list-robots":         "chat +chat-bots",
 		"chat +rename-group":        "chat +chat-update",
+		"doc +create-version":       "doc +history-save",
+		"doc +list-templates":       "doc +template-list",
+		"doc +save-version":         "doc +history-save",
+		"doc +search-template":      "doc +template-search",
+		"doc +snapshot":             "doc +history-save",
+		"doc +version-create":       "doc +history-save",
 	}
 	for from, to := range rewrites {
 		entry, ok := LookupCommandPathFallback(from)
@@ -167,6 +173,8 @@ func TestCommandPathFallbackAuditCoverage(t *testing.T) {
 		"chat +send-image":                 {"chat +messages-send", "chat message send"},
 		"chat +send-media":                 {"chat +messages-send", "chat message send"},
 		"oa +list-processes":               {"oa +list-forms", "oa +my-initiated", "oa approval list-initiated"},
+		"doc +template":                    {"doc +template-list", "doc +template-search", "doc +create-from-template"},
+		"doc +version":                     {"doc +history-list", "doc +history-save", "doc +history-revert"},
 	}
 	for from, candidates := range ambiguous {
 		entry, ok := LookupCommandPathFallback(from)

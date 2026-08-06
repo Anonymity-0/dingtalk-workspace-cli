@@ -5,8 +5,12 @@ package app
 
 import (
 	"bytes"
+	"context"
 	stderrors "errors"
 	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -18,6 +22,78 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
+
+const (
+	runtimeShortcutFallbackChildEnv  = "DWS_RUNTIME_SHORTCUT_FALLBACK_CHILD"
+	runtimeShortcutFallbackConfigEnv = "DWS_RUNTIME_SHORTCUT_FALLBACK_CONFIG_DIR"
+)
+
+func TestRuntimeUserShortcutTakesPrecedenceOverReviewedFallback(t *testing.T) {
+	if os.Getenv(runtimeShortcutFallbackChildEnv) == "1" {
+		t.Setenv("DWS_CONFIG_DIR", os.Getenv(runtimeShortcutFallbackConfigEnv))
+		engine := newPipelineEngine()
+		root := NewRootCommandWithEngine(context.Background(), engine)
+		runtimeCommand := exactAppCommand(root, "chat +members")
+		if runtimeCommand == nil || !runtimeCommand.Runnable() || cmdutil.IsHintOnlyCommand(runtimeCommand) {
+			var userDefined []string
+			for _, candidate := range shortcut.All() {
+				if candidate.UserDefined {
+					userDefined = append(userDefined, candidate.Service+" "+candidate.Command)
+				}
+			}
+			t.Fatalf("runtime shortcut was not mounted as an executable command: command=%#v user_defined=%v config=%q", runtimeCommand, userDefined, os.Getenv("DWS_CONFIG_DIR"))
+		}
+		root.SetOut(io.Discard)
+		root.SetErr(io.Discard)
+		args := []string{"chat", "+members", "--sentinel", "fixture", "--mock", "--format", "json"}
+		root.SetArgs(args)
+		ctx, err := pipeline.RunPreParseArgs(root, engine, args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ctx == nil || ctx.Command != "dws chat +members" {
+			t.Fatalf("runtime shortcut context = %#v", ctx)
+		}
+		assertNoCommandPathFallbackCorrection(t, ctx)
+		if err := root.Execute(); err != nil {
+			t.Fatalf("runtime shortcut execute: %v", err)
+		}
+		return
+	}
+
+	configDir := t.TempDir()
+	shortcutDir := filepath.Join(configDir, "shortcuts")
+	if err := os.MkdirAll(shortcutDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	definition := `version: 1
+service: chat
+command: "+members"
+product: chat
+description: runtime members fixture
+execute:
+  tool: fixture_user_members
+  bind:
+    sentinel: "${sentinel}"
+flags:
+  - name: sentinel
+    type: string
+    required: true
+    desc: fixture sentinel
+`
+	if err := os.WriteFile(filepath.Join(shortcutDir, "chat.members.yaml"), []byte(definition), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(os.Args[0], "-test.run=^TestRuntimeUserShortcutTakesPrecedenceOverReviewedFallback$", "-test.count=1")
+	command.Env = append(os.Environ(), runtimeShortcutFallbackConfigEnv+"="+configDir, runtimeShortcutFallbackChildEnv+"=1")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("runtime shortcut child failed: %v\n%s", err, strings.TrimSpace(string(output)))
+	}
+	if !strings.Contains(string(output), `"_tool": "fixture_user_members"`) {
+		t.Fatalf("runtime shortcut child used the wrong command:\n%s", strings.TrimSpace(string(output)))
+	}
+}
 
 func TestReviewedCommandFallbacksReachCanonicalDryRunPayload(t *testing.T) {
 	_, canonicalQuery, canonicalQueryAttempts, err := executeParamAliasDryRunE2E(t,
@@ -225,6 +301,56 @@ func TestReviewedRenameFallbackResolvesCanonicalLeafBeforeParameterValidation(t 
 	}
 }
 
+func TestReviewedDocHistorySaveFallbacksPreserveArguments(t *testing.T) {
+	sources := []string{"+create-version", "+save-version", "+snapshot", "+version-create"}
+	for _, source := range sources {
+		t.Run(source, func(t *testing.T) {
+			args := []string{"doc", source, "--node", "node-fixture", "--mock", "--format", "json"}
+			root := NewSchemaSourceRootCommand()
+			root.SetOut(io.Discard)
+			root.SetErr(io.Discard)
+			root.SetArgs(args)
+			ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ctx == nil || ctx.Command != "dws doc +history-save" || len(ctx.Corrections) == 0 {
+				t.Fatalf("history-save fallback context = %#v", ctx)
+			}
+			wantArgs := []string{"doc", "+history-save", "--node", "node-fixture", "--mock", "--format", "json"}
+			if !reflect.DeepEqual(ctx.Args, wantArgs) {
+				t.Fatalf("history-save fallback args = %v, want %v", ctx.Args, wantArgs)
+			}
+			correction := ctx.Corrections[0]
+			if correction.Handler != "command-path-fallback" || correction.Kind != "reviewed-fallback" {
+				t.Fatalf("history-save correction = %#v", correction)
+			}
+		})
+	}
+}
+
+func TestDocExportPDFRemainsUnknownShortcut(t *testing.T) {
+	if entry, ok := cli.LookupCommandPathFallback("doc +export-pdf"); ok {
+		t.Fatalf("+export-pdf must not receive a path-only fallback: %#v", entry)
+	}
+	root := NewSchemaSourceRootCommand()
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	args := []string{"doc", "+export-pdf", "--node", "node-fixture", "--mock", "--format", "json"}
+	root.SetArgs(args)
+	ctx, err := pipeline.RunPreParseArgs(root, newPipelineEngine(), args)
+	if ctx == nil {
+		t.Fatal("+export-pdf returned nil context")
+	}
+	var structured *apperrors.Error
+	if !stderrors.As(err, &structured) || structured.Reason != "unknown_shortcut" {
+		t.Fatalf("+export-pdf preparse error = %T %#v", err, err)
+	}
+	if len(ctx.Corrections) != 0 {
+		t.Fatalf("+export-pdf unexpectedly received corrections: %#v", ctx.Corrections)
+	}
+}
+
 func TestReviewedAmbiguousCommandFallbackNeverDispatches(t *testing.T) {
 	tests := []struct {
 		path       string
@@ -407,6 +533,41 @@ func TestCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T)
 	}
 	if strings.Contains(help.String(), "\n  search ") {
 		t.Fatalf("hidden fallback source leaked into group help:\n%s", help.String())
+	}
+}
+
+func TestDocCommandFallbackNamesStayOutOfHelpSchemaAndShortcutCatalog(t *testing.T) {
+	invalidShortcuts := map[string]bool{
+		"+create-version": true,
+		"+save-version":   true,
+		"+snapshot":       true,
+		"+version-create": true,
+		"+export-pdf":     true,
+	}
+	root := NewSchemaSourceRootCommand()
+	doc := exactAppCommand(root, "doc")
+	if doc == nil {
+		t.Fatal("doc command missing")
+	}
+	for _, child := range doc.Commands() {
+		if invalidShortcuts[child.Name()] {
+			t.Fatalf("invalid shortcut %q became a real command", child.Name())
+		}
+		for _, alias := range child.Aliases {
+			if invalidShortcuts[alias] {
+				t.Fatalf("invalid shortcut %q became a Cobra alias", alias)
+			}
+		}
+	}
+	for path := range invalidShortcuts {
+		if _, ok := cli.ResolveMeta("doc " + path); ok {
+			t.Fatalf("invalid path %q leaked into embedded Schema", path)
+		}
+	}
+	for _, declared := range shortcut.All() {
+		if declared.Service == "doc" && invalidShortcuts[declared.Command] {
+			t.Fatalf("invalid shortcut %q leaked into shortcut catalog", declared.Command)
+		}
 	}
 }
 
