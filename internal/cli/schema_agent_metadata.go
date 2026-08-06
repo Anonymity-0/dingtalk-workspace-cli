@@ -189,25 +189,6 @@ func cloneFieldCandidates(source []contract.FieldCandidateProvenance) []contract
 	return out
 }
 
-func lookupAgentToolMetadataFrom(source agentMetadata, paths ...string) (agentToolMetadata, bool) {
-	seen := map[string]bool{}
-	for _, path := range paths {
-		for _, candidate := range []string{
-			strings.TrimSpace(path),
-			strings.Join(splitSchemaPathTokens(path), " "),
-		} {
-			if candidate == "" || seen[candidate] {
-				continue
-			}
-			seen[candidate] = true
-			if metadata, ok := source.Tools[candidate]; ok {
-				return metadata, true
-			}
-		}
-	}
-	return agentToolMetadata{}, false
-}
-
 // agentMetadataSummaryFromProducts publishes Catalog-level Agent coverage from
 // the assembled Schema surface (ContractFinal / ProductDecl). This keeps
 // runtime delivery and CI dumps hash-aligned without requiring build-time

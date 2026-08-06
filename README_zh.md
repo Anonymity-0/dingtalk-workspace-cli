@@ -71,9 +71,7 @@ irm https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/ma
 | 模式 | 安装内容 | 适合场景 |
 |------|----------|----------|
 | **mono**（稳定，默认） | 一个 `dws` skill，覆盖全部产品 | 跨产品组合操作；单一入口召唤 |
-| **multi** 🧪 **试验版 / Preview** | 按产品拆分的独立 skill（`dingtalk-aitable` / `dingtalk-calendar` / `dingtalk-chat` ...） | 单产品任务；每次召唤上下文更小 |
-
-> 🧪 **multi 模式当前为 EXPERIMENTAL（试验版 / Preview）**。全部独立 skill 均通过 dispatch verifier，但接口、命名、跨 skill 引用后续可能调整。生产 / 共享环境建议优先用 `mono`。问题请提 issue 反馈。
+| **multi** | 按产品拆分的独立 skill（`dingtalk-aitable` / `dingtalk-calendar` / `dingtalk-chat` ...） | 单产品任务；每次召唤上下文更小 |
 
 怎么选：
 
@@ -365,7 +363,7 @@ dws contact user get-self --jq '.result[0].orgEmployeeModel | {name: .orgUserNam
 命令帮助和 Schema 分别负责命令契约的不同部分：
 
 - `dws <path> --help` 是命令是否存在、当前二进制接受哪些 flags 的事实源。
-- `dws schema "<path>"` 是 Agent 选命令、参数映射与约束、风险和确认语义的契约。
+- `dws schema "<path>" --compact` 是 Agent 选命令、CLI 参数与约束、风险和确认语义的规范视图；映射或 provenance 审计使用 full leaf 配合 `--jq` 精确投影。
 - Help 与 Schema 冲突时视为契约漂移：执行只传 Cobra 接受的参数，安全语义取更保守值。
 - Schema 只描述命令，不读取或搜索钉钉业务数据；发现命令后仍需执行真实产品命令。
 
@@ -374,21 +372,21 @@ dws contact user get-self --jq '.result[0].orgEmployeeModel | {name: .orgUserNam
 dws aitable record query --help
 
 # 先在产品内发现命令，再查看选中 leaf 的契约
-dws schema aitable
-dws schema "aitable record query"
+dws schema aitable --compact
+dws schema "aitable record query" --compact
 
 # 执行真实业务查询
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --limit 10
 ```
 
-`dws schema --all` 会完整导出命令契约，供工具、CI、审计和兼容性基线使用。Agent 应优先按产品/分组发现后查询 leaf，避免把整个 Catalog 加载进上下文。
+`dws schema --all` 会完整导出命令契约，供工具、CI、审计和兼容性基线使用。Agent 应使用 `--compact` 渐进查询；该视图采用正向字段白名单，full 新增的审计字段不会自动进入 Agent 上下文。
 
 ### Agent Skills
 
 仓库内置完整的 Agent Skill 体系（`skills/` 目录），分为两套布局：
 
 - `skills/mono/` — 单 skill 布局（一个 `SKILL.md` + `references/products/`），默认推荐。
-- `skills/multi/` — 每个产品一个独立 skill（`dingtalk-aitable/` / `dingtalk-calendar/` / `dingtalk-chat/` ...），每个 skill 自带 `SKILL.md`。🧪 **试验版 / Preview — 各 multi `SKILL.md` 头部有详细注意事项。**
+- `skills/multi/` — 每个产品一个独立 skill（`dingtalk-aitable/` / `dingtalk-calendar/` / `dingtalk-chat/` ...），每个 skill 自带 `SKILL.md`。
 
 Schema 生成的叶子 safety/参数/选型文案由 Go 中的 ProductDecl / ContractFinal 声明驱动。原 `internal/cli/schema_hints/` HintFile 目录已完全退役，不得重新引入。
 
@@ -437,7 +435,6 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 | 意图指南 | `skills/mono/references/intent-guide.md` | 易混淆场景消歧（如 report vs todo） |
 | 全局参考 | `skills/mono/references/global-reference.md` | 认证、输出格式、全局 flag |
 | 错误码 | `skills/mono/references/error-codes.md` | 错误码 + 调试流程 |
-| Recovery 指南 | `skills/mono/references/recovery-guide.md` | `RECOVERY_EVENT_ID` 处理 |
 | 现成脚本 | `skills/mono/scripts/*.py` | 13 个批量操作脚本（见下方） |
 
 <details>
@@ -533,7 +530,7 @@ dws event stop <subscribe_id>
 | 状态可观测 | `status` 同时显示服务端订阅、personal bus 和本地 consumers |
 | 跨平台 | macOS/Linux 使用 Unix Socket，Windows 使用 Named Pipe |
 
-Agent 工作流和事件参数详见 `skills/multi/dingtalk-event/SKILL.md`。
+Agent 工作流和事件参数详见 `skills/multi/dingtalk-misc/references/event.md`。
 
 </details>
 
@@ -618,7 +615,7 @@ dws aitable record query --base-id BASE_ID --tabel-id TABLE_ID       # --tabel-i
 ```bash
 # 内置 jq 表达式
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --jq '.invocation.params'
-dws schema "dev app create" --jq '.tool.required'
+dws schema "dev app create" --jq '.parameters'
 
 # 只返回指定字段
 dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocation,response
@@ -630,9 +627,9 @@ dws aitable record query --base-id BASE_ID --table-id TABLE_ID --fields invocati
 <summary><strong>Schema 自省</strong> — Agent 命令发现与执行契约</summary>
 
 ```bash
-dws schema aitable                                      # 发现产品命令
-dws schema "aitable record query"                       # 查看选中 leaf 契约
-dws schema "aitable record query" --jq '.tool.required' # 查看必填字段
+dws schema aitable --compact                            # 发现产品命令
+dws schema "aitable record query" --compact             # 查看 Agent leaf 契约
+dws schema "aitable record query" --jq '[.parameters | to_entries[] | select(.value.required)]' # 定向查看必填字段
 dws schema --all                                        # CI/审计/基线的全量导出
 ```
 
