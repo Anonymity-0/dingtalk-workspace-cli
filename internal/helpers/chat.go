@@ -1326,7 +1326,7 @@ func newChatCommand() *cobra.Command {
 	chatChmodCmd.Flags().String("open-dingtalk-id", "", "单聊目标 openDingTalkId")
 	chatChmodCmd.Flags().String("user", "", "单聊目标 userId（与 --open-dingtalk-id 二选一）")
 	chatChmodCmd.Flags().String("session-id", "", "session 授权的会话标识")
-	chatChmodCmd.Flags().Bool("yes", false, "确认执行 chat 高风险授权操作")
+	chatChmodCmd.Flags().BoolP("yes", "y", false, "确认执行 chat 高风险授权操作")
 	DeclareLeafMetadata(chatChmodCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
