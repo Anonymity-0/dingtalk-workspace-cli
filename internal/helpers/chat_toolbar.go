@@ -13,26 +13,22 @@
 
 package helpers
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+
+	chathelpers "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers/chat"
+)
 
 func newChatToolbarCommand() *cobra.Command {
-	toolbarCmd := &cobra.Command{
-		Use:   "toolbar",
-		Short: "快捷栏管理",
-		Long:  "管理会话快捷栏入口：查询、添加、隐藏、排序及自定义入口 CRUD。",
-		RunE:  groupRunE,
-	}
-	toolbarCmd.DisableAutoGenTag = true
-
-	toolbarCmd.AddCommand(
-		newToolbarListCommand(),
-		newToolbarAddCommand(),
-		newToolbarHideCommand(),
-		newToolbarSortCommand(),
-		newToolbarCreateCustomCommand(),
-		newToolbarRemoveCustomCommand(),
-		newToolbarUpdateCustomCommand(),
-	)
-
-	return toolbarCmd
+	chathelpers.SetDeps(chathelpers.Deps{
+		GroupRunE:           GroupRunE,
+		CallMCPToolOnServer: CallMCPToolOnServer,
+		DeclareLeafMetadata: func(cmd *cobra.Command, spec chathelpers.LeafSpec) *cobra.Command {
+			return DeclareLeafMetadata(cmd, LeafSpec{
+				Safety:   spec.Safety,
+				Contract: spec.Contract,
+			})
+		},
+	})
+	return chathelpers.NewChatToolbarCommand()
 }

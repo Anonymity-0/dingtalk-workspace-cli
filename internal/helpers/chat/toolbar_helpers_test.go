@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package helpers
+package chat
 
 import (
 	"context"
@@ -59,11 +59,42 @@ func (c *toolbarTestCaller) JQ() string     { return "" }
 
 func executeToolbarCommand(t *testing.T, cmd *cobra.Command, caller *toolbarTestCaller, args ...string) error {
 	t.Helper()
-	InitDepsForTest(t, caller)
+	initToolbarDepsForTest(t, caller)
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs(args)
 	return cmd.Execute()
+}
+
+func initToolbarDepsForTest(t *testing.T, caller *toolbarTestCaller) {
+	t.Helper()
+	previous := deps
+	SetDeps(Deps{
+		GroupRunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
+		CallMCPToolOnServer: func(productID, toolName string, args map[string]any) error {
+			_, err := caller.CallTool(context.Background(), productID, toolName, args)
+			return err
+		},
+		DeclareLeafMetadata: func(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
+			return cmd
+		},
+		ValidateRequiredFlag: validateRequiredFlagsLocal,
+	})
+	t.Cleanup(func() {
+		deps = previous
+	})
+}
+
+func requireTypedConfirmationError(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected confirmation error, got nil")
+	}
+	if !strings.Contains(err.Error(), "获得用户确认后加 --yes 执行") {
+		t.Fatalf("expected confirmation error, got %v", err)
+	}
 }
 
 func requireToolbarCall(
@@ -362,20 +393,16 @@ type removeCustomSeamStub struct {
 }
 
 // invoke records the seam call and forwards to deps.Caller.CallTool so the
-// user_required contract gate (leaf.go) is satisfied. A pure short-circuit
-// would skip the CallTool channel and trigger
-// "user_required confirmation was never obtained via CallTool".
+// command path still records the same remote invocation shape as production.
 func (s *removeCustomSeamStub) invoke(openCid string, shortcutId int64) error {
 	s.calls = append(s.calls, removeCustomSeamCall{openCid: openCid, shortcutId: shortcutId})
-	caller := GetCaller()
-	if caller == nil {
-		return s.err
-	}
-	_, err := caller.CallTool(context.Background(), "im", "remove_chat_toolbar_custom_shortcut", map[string]any{
+	if err := callMCPToolOnServer("im", "remove_chat_toolbar_custom_shortcut", map[string]any{
 		"openCid":    openCid,
 		"shortcutId": shortcutId,
-	})
-	return err
+	}); err != nil {
+		return err
+	}
+	return s.err
 }
 
 func TestCrossPlatformCoverageToolbarRemoveCustomSeamRejectsWithoutYes(t *testing.T) {
