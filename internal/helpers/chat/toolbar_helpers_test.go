@@ -715,3 +715,22 @@ func TestCrossPlatformCoverageToolbarRemoveCustomSeamCallsWithExactArgsWhenYes(t
 		t.Fatalf("seam shortcutId = %d, want 42", call.shortcutId)
 	}
 }
+
+func TestToolbarRemoveCustomDeclaresDestructiveHighRiskConfirmation(t *testing.T) {
+	previous := deps
+	t.Cleanup(func() { deps = previous })
+
+	var got LeafSpec
+	SetDeps(Deps{
+		DeclareLeafMetadata: func(cmd *cobra.Command, spec LeafSpec) *cobra.Command {
+			got = spec
+			return cmd
+		},
+	})
+
+	_ = newToolbarRemoveCustomCommand()
+	if got.Safety.Effect != "destructive" || got.Safety.Risk != "high" ||
+		got.Safety.Confirmation != "user_required" {
+		t.Fatalf("remove-custom safety = %#v, want destructive/high/user_required", got.Safety)
+	}
+}

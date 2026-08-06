@@ -1307,6 +1307,14 @@ func newChatCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"授予 chat 高风险操作权限需要用户确认；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认授权 scope、目标会话/用户和有效期；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认授权 scope 和影响范围", "获得用户确认后使用 --yes 执行"),
+				)
+			}
 			return callMCPToolOnServer("im", "chat_permission_grant", toolArgs)
 		},
 	}
@@ -1318,6 +1326,7 @@ func newChatCommand() *cobra.Command {
 	chatChmodCmd.Flags().String("open-dingtalk-id", "", "单聊目标 openDingTalkId")
 	chatChmodCmd.Flags().String("user", "", "单聊目标 userId（与 --open-dingtalk-id 二选一）")
 	chatChmodCmd.Flags().String("session-id", "", "session 授权的会话标识")
+	chatChmodCmd.Flags().Bool("yes", false, "确认执行 chat 高风险授权操作")
 	DeclareLeafMetadata(chatChmodCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",

@@ -69,7 +69,7 @@ func newToolbarRemoveCustomCommand() *cobra.Command {
 
 	DeclareLeafMetadata(cmd, LeafSpec{
 		Safety: contract.SafetySpec{
-			Effect: "write", Risk: "medium",
+			Effect: "destructive", Risk: "high",
 			Confirmation: "user_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
