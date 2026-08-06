@@ -384,6 +384,34 @@ func TestReleaseChangelogExtractionAllowsLowercaseTodoProductName(t *testing.T) 
 	}
 }
 
+func TestInterfaceIntegrityWorkflowContract(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("Abs(repo root) error = %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile(ci.yml) error = %v", err)
+	}
+	workflow := string(data)
+	interfaceStart := strings.Index(workflow, "\n  interface-integrity:\n")
+	interfaceEnd := strings.Index(workflow, "\n  cli-smoke:\n")
+	if interfaceStart < 0 || interfaceEnd <= interfaceStart {
+		t.Fatal("Code Admission workflow missing Interface Integrity job boundaries")
+	}
+	interfaceJob := workflow[interfaceStart:interfaceEnd]
+	for _, want := range []string{
+		"name: Check complete CLI command compatibility",
+		"./scripts/policy/check-command-compatibility.sh",
+		`--base-ref "$COMPATIBILITY_BASE_REF"`,
+		`--stable-ref "$COMPATIBILITY_STABLE_REF"`,
+	} {
+		if !strings.Contains(interfaceJob, want) {
+			t.Errorf("Interface Integrity job missing release-equivalent compatibility contract %q", want)
+		}
+	}
+}
+
 func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
