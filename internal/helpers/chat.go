@@ -18,6 +18,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 
@@ -53,6 +54,43 @@ func resolveMessageForward(cmd *cobra.Command, defaultForward bool) (bool, error
 	}
 }
 
+func chatCompatibilityHintSubCmd(use, hint string) *cobra.Command {
+	command := hintSubCmd(use, hint)
+	// Legacy callers may still pass the old command's flags. Let the migration
+	// command consume them so Cobra reaches RunE and returns the replacement path.
+	command.DisableFlagParsing = true
+	return command
+}
+
+type nativeChatTargetReader struct{}
+
+func (nativeChatTargetReader) CallMCPData(product, tool string, params map[string]any) (map[string]any, error) {
+	text, err := CallMCPReadToolTextOnServer(product, tool, params)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(text) == "" {
+		return map[string]any{}, nil
+	}
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text), &data); err != nil {
+		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", tool, err))
+	}
+	return data, nil
+}
+
+func resolveNativeChatTarget(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if targetresolver.LooksLikeOpenConversationID(raw) {
+		return raw, nil
+	}
+	resolved, err := targetresolver.ResolveChat(nativeChatTargetReader{}, raw)
+	if err != nil {
+		return "", err
+	}
+	return resolved.Selected.OpenConversationID, nil
+}
+
 const maxConversationCategoryTitleRunes = 15
 
 func validatedConversationCategoryTitle(raw string) (string, error) {
@@ -76,6 +114,61 @@ func chatIntFlagOrFallback(cmd *cobra.Command, primary string, aliases ...string
 	}
 	v, _ := cmd.Flags().GetInt(primary)
 	return v
+}
+
+func runChatGroupSearch(cmd *cobra.Command, args []string) error {
+	keyword := flagOrFallback(cmd, "query", "keyword", "name", "group")
+	if len(args) == 1 {
+		if keyword != "" {
+			return apperrors.NewValidation("群搜索位置参数与 --query/--keyword 不能同时指定")
+		}
+		keyword = strings.TrimSpace(args[0])
+	}
+	if keyword == "" {
+		return apperrors.NewValidation("flag --query is required\n  hint: dws chat search --query \"test\"")
+	}
+	limit := chatIntFlagOrFallback(cmd, "limit", "size")
+	cursor, _ := cmd.Flags().GetString("cursor")
+	toolArgs := map[string]any{
+		"keyword": keyword,
+		"limit":   limit,
+		"cursor":  cursor,
+	}
+	if v, _ := cmd.Flags().GetBool("exclude-muted"); v {
+		toolArgs["excludeMuted"] = true
+	}
+	return callMCPToolOnServer("im", "search_groups", toolArgs)
+}
+
+func newChatGroupSearchCommand(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "search [query]",
+		Short:  "根据关键词搜索群聊",
+		Hidden: hidden,
+		Long: `根据关键词搜索群聊列表。分页参数 --limit（默认 20）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
+
+注意：
+1. query 不要拆分得太细，应使用群名称中连续的核心词作为关键词（如群名"项目冲刺群"应搜"项目冲刺"而非拆成"项目"+"冲刺"分别搜索）。
+2. 当搜索结果返回多个群聊时，应列出候选群让用户确认目标群聊，不要自行假定并直接进行后续操作。`,
+		Example: `  dws chat search --query "项目冲刺"
+  dws chat search "项目冲刺"
+  dws chat search --query "项目冲刺" --limit 20 --cursor 0`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: runChatGroupSearch,
+	}
+	cmd.Flags().String("query", "", "搜索关键词 (必填)")
+	cmd.Flags().String("keyword", "", "--query 的别名")
+	_ = cmd.Flags().MarkHidden("keyword")
+	cmd.Flags().String("name", "", "--query 的兼容别名")
+	_ = cmd.Flags().MarkHidden("name")
+	cmd.Flags().String("group", "", "--query 的兼容别名")
+	_ = cmd.Flags().MarkHidden("group")
+	cmd.Flags().Int("limit", 20, "每页返回数量（默认 20）")
+	cmd.Flags().Int("size", 0, "--limit 的旧版别名")
+	_ = cmd.Flags().MarkHidden("size")
+	cmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"，翻页传 nextCursor）")
+	cmd.Flags().Bool("exclude-muted", false, "是否排除已设置免打扰的群聊（默认 false）")
+	return cmd
 }
 
 func runChatSearchCommon(cmd *cobra.Command, _ []string) error {
@@ -309,6 +402,50 @@ func NormalizeMessageMentions(text string, ids []string, atAll, wrapAngle bool) 
 		text = allPlaceholder + " " + text
 	}
 	return text
+}
+
+// applyCurrentUserGroupMentions keeps the body placeholders and
+// send_personal_message mention arguments aligned for send and reply.
+func applyCurrentUserGroupMentions(params map[string]any, text, rawOpenIDs string, atAll bool) string {
+	var atOpenIDs []string
+	if rawOpenIDs != "" {
+		atOpenIDs = strings.Split(rawOpenIDs, ",")
+	}
+	if atAll && !strings.Contains(text, "<@all>") {
+		text = "<@all> " + text
+	}
+	text = normalizeAtPlaceholders(text, atOpenIDs, true)
+	if atAll {
+		params["atAll"] = true
+	}
+	if len(atOpenIDs) > 0 {
+		params["atOpenDingTalkIds"] = atOpenIDs
+	}
+	return text
+}
+
+func addMissingCurrentUserMentionPlaceholders(text, rawOpenIDs string) string {
+	if rawOpenIDs == "" {
+		return text
+	}
+	missing := make([]string, 0)
+	probeText := text
+	for _, id := range parseCSVValues(rawOpenIDs) {
+		placeholder := "<@" + id + ">"
+		if strings.Contains(probeText, placeholder) {
+			continue
+		}
+		missing = append(missing, placeholder)
+		probeText += placeholder
+	}
+	if len(missing) == 0 {
+		return text
+	}
+	prefix := strings.Join(missing, " ")
+	if strings.HasPrefix(text, "<@all> ") {
+		return "<@all> " + prefix + " " + strings.TrimPrefix(text, "<@all> ")
+	}
+	return prefix + " " + text
 }
 
 func containsMessageMention(text, placeholder string) bool {
@@ -1277,34 +1414,23 @@ func newChatCommand() *cobra.Command {
 		},
 	})
 
-	chatSearchCmd := &cobra.Command{
-		Use:   "search",
-		Short: "根据关键词搜索群聊",
-		Long: `根据关键词搜索群聊列表。分页参数 --limit（默认 20）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
-
-注意：
-1. query 不要拆分得太细，应使用群名称中连续的核心词作为关键词（如群名"项目冲刺群"应搜"项目冲刺"而非拆成"项目"+"冲刺"分别搜索）。
-2. 当搜索结果返回多个群聊时，应列出候选群让用户确认目标群聊，不要自行假定并直接进行后续操作。`,
-		Example: `  dws chat search --query "项目冲刺"
-  dws chat search --query "项目冲刺" --limit 20 --cursor 0`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			keyword := flagOrFallback(cmd, "query", "keyword")
-			if keyword == "" {
-				return fmt.Errorf("flag --query is required\n  hint: dws chat search --query \"test\"")
-			}
-			limit := chatIntFlagOrFallback(cmd, "limit", "size")
-			cursor, _ := cmd.Flags().GetString("cursor")
-			toolArgs := map[string]any{
-				"keyword": keyword,
-				"limit":   limit,
-				"cursor":  cursor,
-			}
-			if v, _ := cmd.Flags().GetBool("exclude-muted"); v {
-				toolArgs["excludeMuted"] = true
-			}
-			return callMCPToolOnServer("im", "search_groups", toolArgs)
+	chatSearchCmd := newChatGroupSearchCommand(false)
+	chatGroupSearchCompatibilityCmd := newChatGroupSearchCommand(true)
+	cli.AttachRuntimeSchema(
+		chatGroupSearchCompatibilityCmd,
+		"chat",
+		"search_groups",
+		"reviewed-compatibility:chat-group-search",
+	)
+	cli.AnnotateRuntimeCompatibilityEquivalence(
+		chatSearchCmd,
+		chatGroupSearchCompatibilityCmd,
+		cli.RuntimeCompatibilityEquivalence{
+			ID:       "chat-group-search-compatibility-v1",
+			Reason:   "Both leaves share the same constructor, flags, positional normalization, read-only search_groups transport, and result contract.",
+			Reviewed: true,
 		},
-	}
+	)
 	DeclareLeafMetadata(chatSearchCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
@@ -1955,29 +2081,15 @@ func newChatCommand() *cobra.Command {
 			if groupID != "" {
 				atAll, _ := cmd.Flags().GetBool("at-all")
 				atOpenIdsStr, _ := cmd.Flags().GetString("at-open-dingtalk-ids")
-				var atOpenIds []string
-				if atOpenIdsStr != "" {
-					atOpenIds = strings.Split(atOpenIdsStr, ",")
-				}
-				if atAll && !strings.Contains(text, "<@all>") {
-					text = "<@all> " + text
-				}
-				// 用户身份发消息要求 @ 占位符为 <@openDingTalkId>；模型若写成裸 @id 自动补全，已有 <@id> 不变
-				text = normalizeAtPlaceholders(text, atOpenIds, true)
 				// 群聊统一走 openDingTalkId @ 人接口。
-				contentJSON, _ := marshalJSONRaw(map[string]string{"title": title, "text": text})
 				newParams := map[string]any{
 					"openConversationId": groupID,
 					"msgType":            "markdown",
-					"content":            string(contentJSON),
 					"clawType":           clawType,
 				}
-				if atAll {
-					newParams["atAll"] = true
-				}
-				if len(atOpenIds) > 0 {
-					newParams["atOpenDingTalkIds"] = atOpenIds
-				}
+				text = applyCurrentUserGroupMentions(newParams, text, atOpenIdsStr, atAll)
+				contentJSON, _ := marshalJSONRaw(map[string]string{"title": title, "text": text})
+				newParams["content"] = string(contentJSON)
 				if msgUuid != "" {
 					newParams["uuid"] = msgUuid
 				}
@@ -3353,15 +3465,6 @@ func newChatCommand() *cobra.Command {
 	chatGroupCreateCmd.Flags().String("type", "INTERNAL", "群类型: INTERNAL(内部群,默认)/EXTERNAL(外部群)/NORMAL(普通群)")
 	chatGroupCreateCmd.Flags().Bool("thread", false, "开启话题模式，将创建话题圈")
 
-	chatSearchCmd.Flags().String("query", "", "搜索关键词 (必填)")
-	chatSearchCmd.Flags().String("keyword", "", "--query 的别名")
-	_ = chatSearchCmd.Flags().MarkHidden("keyword")
-	chatSearchCmd.Flags().Int("limit", 20, "每页返回数量（默认 20）")
-	chatSearchCmd.Flags().Int("size", 0, "--limit 的旧版别名")
-	_ = chatSearchCmd.Flags().MarkHidden("size")
-	chatSearchCmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"，翻页传 nextCursor）")
-	chatSearchCmd.Flags().Bool("exclude-muted", false, "是否排除已设置免打扰的群聊（默认 false）")
-
 	chatGroupMembersCmd.Flags().String("id", "", "群 ID / openconversation_id (必填)")
 	_ = chatGroupMembersCmd.MarkFlagRequired("id")
 	chatGroupMembersCmd.Flags().String("cursor", "", "分页游标，首次从 0 开始")
@@ -3387,7 +3490,7 @@ func newChatCommand() *cobra.Command {
 	_ = chatGroupMemberRemoveCmd.MarkFlagRequired("users")
 
 	chatGroupCmd.AddCommand(chatGroupCreateCmd, chatGroupMembersCmd, chatGroupRenameCmd)
-	chatGroupCmd.AddCommand(hintSubCmd("search", "use: dws chat search --query <关键词>"))
+	chatGroupCmd.AddCommand(chatGroupSearchCompatibilityCmd)
 	chatGroupMembersCmd.AddCommand(chatGroupMemberAddCmd, chatGroupMemberRemoveCmd, chatGroupMembersAddBotCmd)
 
 	// message 子命令 flags
@@ -3940,12 +4043,21 @@ func newChatCommand() *cobra.Command {
 	chatCategoryDeleteCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "删除用户自定义会话分组",
+		Long:  "删除用户自定义会话分组。该操作不可逆；必须先获得用户确认，再追加 --yes 执行。",
 		Example: `  dws chat category delete --category-id <分组ID>
   # 分组ID 可通过 dws chat category list 获取`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			categoryId, _ := cmd.Flags().GetInt64("category-id")
 			if categoryId == 0 {
 				return fmt.Errorf("flag --category-id is required")
+			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"删除会话分组不可逆；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认目标分组及影响范围；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认目标会话分组", "获得用户确认后使用 --yes 执行"),
+				)
 			}
 			return callMCPToolOnServer("im", "delete_conv_category", map[string]any{
 				"categoryId": categoryId,
@@ -5294,13 +5406,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatMessageReplyCmd := &cobra.Command{
 		Use:   "reply",
 		Short: "引用回复消息（支持单聊/群聊）",
-		Long: `以当前用户身份引用某条消息并回复。需要指定会话 ID、被引用消息 ID、原消息发送者 openDingTalkId，以及回复内容。
+		Long: `以当前用户身份引用某条消息并回复。需要指定会话 ID、被引用消息 ID、原消息发送者 openDingTalkId，以及回复内容。群聊回复可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人；正文中的裸 @openDingTalkId 会自动规范化为 <@openDingTalkId>，缺少对应成员或 <@all> 占位符时会自动补齐。
 
 如何获取 openConversationId（如果上层已有则直接使用，不必再查）：
   - 群聊：dws chat search --query "群名"
   - 单聊：dws chat conversation-info --open-dingtalk-id <openDingTalkId>
           （人员信息可通过 dws contact user search --keyword "姓名" --format json 获取）`,
-		Example: `  dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text "收到，马上处理"`,
+		Example: `  dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text "收到，马上处理"
+  dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text "请看一下" --at-open-dingtalk-ids <mentionedOpenDingTalkId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "conversation-id", "ref-msg-id", "ref-sender", "text"); err != nil {
 				return err
@@ -5313,13 +5426,6 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				}
 				refSender = resolved
 			}
-			replyContent := map[string]string{
-				"referenceOpenMessageId":   mustGetFlag(cmd, "ref-msg-id"),
-				"srcMsgSendOpenDingTalkId": refSender,
-				"replyMsgType":             "text",
-				"content":                  mustGetFlag(cmd, "text"),
-			}
-			contentJSON, _ := marshalJSONRaw(replyContent)
 			clawType := ""
 			aiTag, _ := cmd.Flags().GetBool("ai-tag")
 			if aiTag {
@@ -5328,9 +5434,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			toolArgs := map[string]any{
 				"openConversationId": mustGetFlag(cmd, "conversation-id"),
 				"msgType":            "reply",
-				"content":            string(contentJSON),
 				"clawType":           clawType,
 			}
+			atAll, _ := cmd.Flags().GetBool("at-all")
+			atOpenIDs := mustGetFlag(cmd, "at-open-dingtalk-ids")
+			replyText := applyCurrentUserGroupMentions(
+				toolArgs,
+				mustGetFlag(cmd, "text"),
+				atOpenIDs,
+				atAll,
+			)
+			replyText = addMissingCurrentUserMentionPlaceholders(replyText, atOpenIDs)
+			replyContent := map[string]string{
+				"referenceOpenMessageId":   mustGetFlag(cmd, "ref-msg-id"),
+				"srcMsgSendOpenDingTalkId": refSender,
+				"replyMsgType":             "text",
+				"content":                  replyText,
+			}
+			contentJSON, _ := marshalJSONRaw(replyContent)
+			toolArgs["content"] = string(contentJSON)
 			if v, _ := cmd.Flags().GetString("uuid"); v != "" {
 				toolArgs["uuid"] = v
 			}
@@ -5364,6 +5486,8 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "ai-tag", Property: "clawType", InterfaceType: "string"},
+				{Name: "at-all", Property: "atAll", Required: boolPtr(false), InterfaceType: "boolean"},
+				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array"},
 				{Name: "conversation-id", Property: "openConversationId"},
 			},
 		},
@@ -5378,6 +5502,8 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	_ = chatMessageReplyCmd.MarkFlagRequired("text")
 	chatMessageReplyCmd.Flags().String("uuid", "", "幂等键（可选）")
 	chatMessageReplyCmd.Flags().Bool("ai-tag", true, "消息是否带 AI 发送角标（默认 true）")
+	chatMessageReplyCmd.Flags().Bool("at-all", false, "@所有人（仅群聊时生效；正文缺少 <@all> 时自动补齐）")
+	chatMessageReplyCmd.Flags().String("at-open-dingtalk-ids", "", "@指定成员的 openDingTalkId 列表，逗号分隔（仅群聊时生效；正文缺少对应 <@id> 时自动补齐，裸 @id 自动规范化）")
 	cli.AttachRuntimeSchema(chatMessageReplyCmd, "chat", "reply_personal_message", "hardcoded:chat")
 
 	// ── message forward: 转发单条消息 ────────────────────────
@@ -6261,8 +6387,12 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
 				return err
 			}
+			groupID, err := resolveNativeChatTarget(mustGetFlag(cmd, "group"))
+			if err != nil {
+				return err
+			}
 			return callMCPToolOnServer("bot", "list_group_bots", map[string]any{
-				"openConversationId": mustGetFlag(cmd, "group"),
+				"openConversationId": groupID,
 			})
 		},
 	}
@@ -6296,7 +6426,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			},
 		},
 	})
-	chatGroupBotsCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
+	chatGroupBotsCmd.Flags().String("group", "", "群聊 openConversationId 或需唯一解析的群名 (必填)")
 	_ = chatGroupBotsCmd.MarkFlagRequired("group")
 
 	chatGroupMembersRemoveBotCmd := &cobra.Command{
@@ -6432,7 +6562,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		Use:   "dismiss",
 		Short: "解散群聊",
 		Long:  `解散指定群聊。该操作不可逆，需要群主权限；必须先获得用户确认，再追加 --yes 执行。`,
-		Example: `  dws chat group dismiss --group <openConversationId> --yes
+		Example: `  dws chat group dismiss --group <openConversationId>
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
@@ -7276,7 +7406,7 @@ status 可选值:
 	chatClearMessagesCmd := &cobra.Command{
 		Use:   "clear-messages",
 		Short: "清空当前用户指定会话的聊天记录",
-		Long: `清空当前用户在指定会话中的聊天记录。仅清空当前用户视角的消息，不影响其他成员。
+		Long: `清空当前用户在指定会话中的聊天记录。仅清空当前用户视角的消息，不影响其他成员。该操作不可逆；必须先获得用户确认，再追加 --yes 执行。
 
 如何获取 openConversationId（如果上层已有则直接使用，不必再查）：
   - 群聊：dws chat search --query "群名"
@@ -7287,6 +7417,14 @@ status 可选值:
 			convID := flagOrFallback(cmd, "conversation-id", "id", "chat")
 			if convID == "" {
 				return fmt.Errorf("flag --conversation-id is required\n  hint: dws chat clear-messages --conversation-id <openConversationId>")
+			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"清空会话聊天记录不可逆；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认目标会话及影响范围；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认目标会话", "获得用户确认后使用 --yes 执行"),
+				)
 			}
 			return callMCPToolOnServer("im", "clear_conversation_messages", map[string]any{
 				"openConversationId": convID,
@@ -7763,8 +7901,8 @@ status 可选值:
 本命令升级已有普通群；新建外部群请使用 chat group create --type EXTERNAL。
 
 该操作不可逆，仅群主可执行。正式执行必须通过 --yes 显式确认，可先使用 --dry-run 预览。`,
-		Example: `  dws chat group upgrade-to-external --group <openConversationId> --yes
-  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --yes
+		Example: `  dws chat group upgrade-to-external --group <openConversationId> --dry-run
+  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --dry-run
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
@@ -8080,10 +8218,11 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 
 	root.AddCommand(chatChmodCmd, chatDataAuthCmd, chatGroupCmd, chatSearchCmd, chatSearchCommonCmd, chatMessageCmd, chatFileCmd, newChatMediaGroup(), chatBotCmd, chatMessageListTopConversationsCmd, chatConversationInfoCmd, chatCategoryCmd, chatGroupRoleCmd, chatMuteCmd, chatSetTopCmd, chatGroupMuteCmd, chatGroupMuteMemberCmd, chatHideCmd, chatMuteAtAllCmd, chatMuteRedEnvelopeCmd, chatMarkUnreadCmd, chatClearRedPointCmd, chatClearAllRedPointCmd, chatListAllConversationsCmd, chatClearMessagesCmd, chatMarkReadCmd, chatTextCmd)
 
-	// hint: dws chat send → dws chat message send
-	root.AddCommand(hintSubCmd("send", "use: dws chat message send"))
-	// hint: dws chat history → dws chat message list
-	root.AddCommand(hintSubCmd("history", "use: dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"))
+	// Keep the v1.0.56 command surface recognizable while directing callers to
+	// the supported nested commands. The chat root's "im" alias makes these
+	// compatibility hints available through both chat and im.
+	root.AddCommand(chatCompatibilityHintSubCmd("send", "use: dws chat message send"))
+	root.AddCommand(chatCompatibilityHintSubCmd("history", "use: dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"))
 
 	return root
 }

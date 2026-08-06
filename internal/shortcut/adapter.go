@@ -36,6 +36,16 @@ func FromShortcut(s Shortcut) corecmd.Spec {
 	if !safetySpecDeclared(safety) {
 		safety = shortcutSafetySpec(s.risk())
 	}
+	declaredContract := s.Contract
+	if !declaredContract.Empty() && len(s.Aliases) > 0 && len(declaredContract.Identity.Aliases) == 0 {
+		declaredContract.Identity.Aliases = make([]string, 0, len(s.Aliases))
+		for _, alias := range s.Aliases {
+			declaredContract.Identity.Aliases = append(
+				declaredContract.Identity.Aliases,
+				s.Service+" "+strings.TrimSpace(alias),
+			)
+		}
+	}
 	return corecmd.Spec{
 		Use:     s.Command,
 		Short:   s.Description,
@@ -47,11 +57,12 @@ func FromShortcut(s Shortcut) corecmd.Spec {
 		Flags:       fromShortcutFlags(s.Flags),
 		Constraints: fromShortcutConstraints(s.Constraints),
 		Safety:      safety,
-		Contract:    s.Contract,
+		Contract:    declaredContract,
 		// Preserve the shipped Shortcut Catalog provenance: Cobra remains the
 		// source for type/default/usage, while command adds Required/Enum/rules.
 		ParameterProjection: corecmd.ProjectCobraParameters,
 		Validate:            fromShortcutValidate(s),
+		PostMount:           fromShortcutPostMount(s),
 		// Multi-step body: command stays backend-agnostic, so the shortcut's own
 		// RuntimeContext — which owns CallMCPData/CallMCPWriteData/Output — is
 		// built here from the Ctx's command.
@@ -62,6 +73,40 @@ func FromShortcut(s Shortcut) corecmd.Spec {
 			}
 			return s.Execute(&RuntimeContext{cmd: c.Command(), shortcut: s})
 		},
+	}
+}
+
+func fromShortcutPostMount(s Shortcut) func(*cobra.Command) {
+	if len(s.Aliases) == 0 && strings.TrimSpace(s.SinglePositionalAliasFor) == "" {
+		return nil
+	}
+	return func(cmd *cobra.Command) {
+		cmd.Aliases = append([]string(nil), s.Aliases...)
+		name := strings.TrimSpace(s.SinglePositionalAliasFor)
+		if name == "" {
+			return
+		}
+		cmd.Args = func(cmd *cobra.Command, args []string) error {
+			if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {
+				return err
+			}
+			if len(args) == 0 {
+				return nil
+			}
+			flag := cmd.Flags().Lookup(name)
+			if flag == nil {
+				return apperrors.NewInternal(fmt.Sprintf(
+					"shortcut %s %s positional alias flag --%s is not registered",
+					s.Service, s.Command, name))
+			}
+			if flag.Changed {
+				return apperrors.NewValidation(fmt.Sprintf("位置参数与 --%s 不能同时提供", name))
+			}
+			if err := cmd.Flags().Set(name, args[0]); err != nil {
+				return apperrors.NewValidation(fmt.Sprintf("位置参数无法写入 --%s: %v", name, err))
+			}
+			return nil
+		}
 	}
 }
 
@@ -133,6 +178,7 @@ func fromShortcutFlags(flags []Flag) []corecmd.FlagSpec {
 	for _, f := range flags {
 		out = append(out, corecmd.FlagSpec{
 			Name:           f.Name,
+			Shorthand:      f.Shorthand,
 			Usage:          flagHelp(f),
 			Kind:           fromShortcutFlagKind(f.Type),
 			Default:        f.Default,

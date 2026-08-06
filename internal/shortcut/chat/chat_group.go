@@ -23,16 +23,19 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 )
 
 // ChatSearch searches groups by keyword (search_groups on the im server).
 var ChatSearch = shortcut.Shortcut{
-	Service:     "chat",
-	Command:     "+chat-search",
-	Product:     "im",
-	Description: "按关键词搜索群聊",
-	Intent:      "当你只记得群名称关键词、需要拿到群 openConversationId 以便发消息或管理该群时使用；按群名模糊搜索，只读分页返回匹配的群列表。",
-	Risk:        shortcut.RiskRead,
+	Service:                  "chat",
+	Command:                  "+chat-search",
+	Aliases:                  []string{"+chat-group-search", "+search-group"},
+	SinglePositionalAliasFor: "query",
+	Product:                  "im",
+	Description:              "按关键词搜索群聊",
+	Intent:                   "当你只记得群名称关键词、需要拿到群 openConversationId 以便发消息或管理该群时使用；按群名模糊搜索，只读分页返回匹配的群列表。",
+	Risk:                     shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
@@ -147,7 +150,7 @@ var ChatInviteURL = shortcut.Shortcut{
 	Command:     "+chat-invite-url",
 	Product:     "im",
 	Description: "获取群邀请链接",
-	Intent:      "当你想拿到一条群邀请链接分享给别人加群时使用；只读生成链接，需传群 openConversationId，可用 --expires-seconds 设置有效期（0 表示永久）。",
+	Intent:      "当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
@@ -169,20 +172,32 @@ var ChatInviteURL = shortcut.Shortcut{
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "获取群邀请链接",
-			UseWhen:      []string{"当你想拿到一条群邀请链接分享给别人加群时使用；只读生成链接，需传群 openConversationId，可用 --expires-seconds 设置有效期（0 表示永久）。"},
+			UseWhen:      []string{"当你想拿到一条群邀请链接分享给别人加群时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。可用 --expires-seconds 设置有效期（0 表示永久）。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws chat +chat-invite-url --group <openConversationId>"},
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
+		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId；兼容直接传群名并唯一解析"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "--group 的旧版自然名称入口", Hidden: true},
+		{Name: "group-query", Type: shortcut.FlagString, Desc: "--chat-query 的兼容别名", Hidden: true},
 		{Name: "expires-seconds", Type: shortcut.FlagInt, Desc: "链接有效期（秒），0 表示永久"},
 	},
-	Tips: []string{`dws chat +chat-invite-url --group <openConversationId>`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-query", "group-query"}},
+	},
+	Tips: []string{
+		`dws chat +chat-invite-url --group <openConversationId>`,
+		`dws chat +chat-invite-url --group "项目群"`,
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		groupID, err := resolveStableOrNamedChat(rt)
+		if err != nil {
+			return err
+		}
 		params := map[string]any{
-			"openConversationId": rt.Str("group"),
-			"cid":                rt.Str("group"),
+			"openConversationId": groupID,
+			"cid":                groupID,
 		}
 		if rt.Changed("expires-seconds") {
 			params["expiresSeconds"] = rt.Int("expires-seconds")
@@ -777,7 +792,7 @@ var ChatBots = shortcut.Shortcut{
 	Command:     "+chat-bots",
 	Product:     "bot",
 	Description: "查看群内所有机器人",
-	Intent:      "当你想查看某个群里已添加了哪些机器人时使用；需传群 openConversationId，只读返回群内机器人列表（含 openBotId，供后续移除）。",
+	Intent:      "当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
@@ -799,23 +814,50 @@ var ChatBots = shortcut.Shortcut{
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "查看群内所有机器人",
-			UseWhen:      []string{"当你想查看某个群里已添加了哪些机器人时使用；需传群 openConversationId，只读返回群内机器人列表（含 openBotId，供后续移除）。"},
+			UseWhen:      []string{"当你想查看某个群里已添加了哪些机器人时使用；--group 可传群 openConversationId 或群名，多命中会安全停止。只读返回机器人列表（含 openBotId，供后续移除）。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws chat +chat-bots --group <openConversationId>"},
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
+		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId；兼容直接传群名并唯一解析"},
+		{Name: "chat-query", Type: shortcut.FlagString, Desc: "--group 的旧版自然名称入口", Hidden: true},
+		{Name: "group-query", Type: shortcut.FlagString, Desc: "--chat-query 的兼容别名", Hidden: true},
 	},
-	Tips: []string{`dws chat +chat-bots --group <openConversationId>`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"group", "chat-query", "group-query"}},
+	},
+	Tips: []string{
+		`dws chat +chat-bots --group <openConversationId>`,
+		`dws chat +chat-bots --group "项目群"`,
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		data, err := rt.CallMCPData("bot", "list_group_bots", map[string]any{"openConversationId": rt.Str("group")})
+		groupID, err := resolveStableOrNamedChat(rt)
+		if err != nil {
+			return err
+		}
+		data, err := rt.CallMCPData("bot", "list_group_bots", map[string]any{"openConversationId": groupID})
 		if err != nil {
 			return err
 		}
 		bots := chatBotsProject(data)
 		return rt.Output(map[string]any{"count": len(bots), "bots": bots})
 	},
+}
+
+// resolveStableOrNamedChat gives read-only group shortcuts one safe target
+// contract. Stable cid values bypass search; natural names always go through
+// the shared exact-match, full-pagination and ambiguity rules.
+func resolveStableOrNamedChat(rt *shortcut.RuntimeContext) (string, error) {
+	resolved, err := targetresolver.ResolveChatTarget(
+		rt,
+		strings.TrimSpace(rt.Str("group")),
+		strings.TrimSpace(rt.StrFirst("chat-query", "group-query")),
+	)
+	if err != nil {
+		return "", err
+	}
+	return resolved.Selected.OpenConversationID, nil
 }
 
 // chatBotsProject reshapes list_group_bots into a clean bot list
@@ -1461,7 +1503,7 @@ var ChatRoleQueryUser = shortcut.Shortcut{
 }
 
 func init() {
-	shortcut.Register(
+	shortcut.Register(withReviewedChatShortcutContracts(
 		ChatSearch,
 		ChatMembersGet,
 		ChatTransferOwner,
@@ -1491,5 +1533,5 @@ func init() {
 		ChatRoleSetUser,
 		ChatRoleRemoveUser,
 		ChatRoleQueryUser,
-	)
+	)...)
 }
