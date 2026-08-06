@@ -233,7 +233,10 @@ func ValidateDownloadURL(rawURL string) (*url.URL, error) {
 
 func secureHTTPClient() *http.Client {
 	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		// Do not use environment proxies here. DialContext must resolve and dial
+		// the validated download host itself; with a proxy it would receive the
+		// proxy address and could not enforce the target host's public-IP policy.
+		Proxy: nil,
 		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 			host, port, err := net.SplitHostPort(address)
 			if err != nil {

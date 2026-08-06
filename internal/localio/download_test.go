@@ -243,6 +243,7 @@ func TestCrossPlatformCoverageDownloadFailureBoundaries(t *testing.T) {
 
 func TestCrossPlatformCoverageSecureHTTPClientAndFilesystemEdges(t *testing.T) {
 	client := secureHTTPClient()
+	transport := client.Transport.(*http.Transport)
 	if err := client.CheckRedirect(&http.Request{URL: mustURL(t, "https://download.dingtalk.com/x")}, make([]*http.Request, 5)); err == nil {
 		t.Fatal("redirect limit accepted")
 	}
@@ -252,7 +253,6 @@ func TestCrossPlatformCoverageSecureHTTPClientAndFilesystemEdges(t *testing.T) {
 	if err := client.CheckRedirect(&http.Request{URL: mustURL(t, "https://download.dingtalk.com/x")}, nil); err != nil {
 		t.Fatal(err)
 	}
-	transport := client.Transport.(*http.Transport)
 	if _, err := transport.DialContext(context.Background(), "tcp", "bad-address"); err == nil {
 		t.Fatal("bad address dial succeeded")
 	}
@@ -381,6 +381,14 @@ func TestCrossPlatformCoverageSecureHTTPClientAndFilesystemEdges(t *testing.T) {
 	_ = SafeFilename("", "https://download.dingtalk.com/%zz")
 	_ = SafeFilename("", "://bad")
 	_ = publicIP(net.IP{1, 2, 3})
+}
+
+func TestCrossPlatformCoverageSecureHTTPClientDisablesEnvironmentProxy(t *testing.T) {
+	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:3128")
+	transport := secureHTTPClient().Transport.(*http.Transport)
+	if transport.Proxy != nil {
+		t.Fatal("secure download client accepted an environment proxy")
+	}
 }
 
 func TestCrossPlatformCoverageFilesystemInjectedFailures(t *testing.T) {
