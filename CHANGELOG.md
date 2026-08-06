@@ -6,6 +6,16 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Changed
+
+- **Sheet CSV formula writes** — `dws sheet csv-put` and batch `csv-put` now expose the service contract that CSV fields beginning with `=` are written as formulas. Prefix the field with an apostrophe to write literal text beginning with `=`; CSV content continues to pass through unchanged.
+
+### Fixed
+
+- **Sheet formula verification** (#873) — `dws sheet formula-verify` now calls
+  the registered remote tool name `verify_formula`; the previous
+  `formula_verify` name failed at gateway dispatch.
+
 ## [1.0.57-beta.4] - 2026-08-06
 
 ### Added
