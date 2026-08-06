@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const sheetFormulaVerifyRemoteTool = "verify_formula"
+
 func newSheetFormulaVerifyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "formula-verify",
@@ -95,9 +97,9 @@ func newSheetFormulaVerifyCmd() *cobra.Command {
 // 返回 payload 判定是否存在公式错误，故走 ReturnText 再自行 PrintJSON。
 func callMCPToolFormulaVerify(toolArgs map[string]any, exitOnError bool) error {
 	if deps.Caller.DryRun() {
-		return callMCPToolOnServer("sheet", "formula_verify", toolArgs)
+		return callMCPToolOnServer("sheet", sheetFormulaVerifyRemoteTool, toolArgs)
 	}
-	text, err := callMCPToolReturnTextOnServer(context.Background(), "sheet", "formula_verify", toolArgs)
+	text, err := callMCPToolReturnTextOnServer(context.Background(), "sheet", sheetFormulaVerifyRemoteTool, toolArgs)
 	if err != nil {
 		return err
 	}
@@ -110,7 +112,7 @@ func callMCPToolFormulaVerify(toolArgs map[string]any, exitOnError bool) error {
 		return nil
 	}
 	if parsed == nil {
-		return fmt.Errorf("formula_verify returned empty result")
+		return fmt.Errorf("%s returned empty result", sheetFormulaVerifyRemoteTool)
 	}
 	if err := deps.Out.PrintJSON(parsed); err != nil {
 		return err
