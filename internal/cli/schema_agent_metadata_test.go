@@ -20,7 +20,6 @@ import (
 	"testing/fstest"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/spf13/cobra"
 )
 
@@ -94,9 +93,8 @@ func TestRuntimeSchemaIncludesAgentMetadata(t *testing.T) {
 	// longer participates in assembly.
 	root := buildRuntimeSchemaTestRoot()
 	declareRuntimeSchemaTestRootDoc(t, root, nil)
-	mcpFixture := embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{}}
 
-	leaf, err := runtimeSchemaPayloadForTestWithMetadata(root, []string{"doc.create_document"}, emptyAgentMetadata(), mcpFixture)
+	leaf, err := runtimeSchemaPayloadForTest(root, []string{"doc.create_document"})
 	if err != nil {
 		t.Fatalf("runtimeSchemaPayloadForTest(leaf): %v", err)
 	}
@@ -110,7 +108,7 @@ func TestRuntimeSchemaIncludesAgentMetadata(t *testing.T) {
 		t.Fatalf("leaf examples = %#v", leaf["examples"])
 	}
 
-	catalog, err := runtimeSchemaPayloadForTestWithMetadata(root, nil, emptyAgentMetadata(), mcpFixture)
+	catalog, err := runtimeSchemaPayloadForTest(root, nil)
 	if err != nil {
 		t.Fatalf("runtimeSchemaPayloadForTest(catalog): %v", err)
 	}
@@ -136,7 +134,7 @@ func TestRuntimeSchemaIncludesAgentMetadata(t *testing.T) {
 		t.Fatalf("product summary must not include examples: %#v", tools[0])
 	}
 
-	registry, err := schemaRegistryForTestWithMetadata(root, emptyAgentMetadata(), mcpFixture)
+	registry, err := schemaRegistryForTest(root)
 	if err != nil {
 		t.Fatalf("schemaRegistryForTest(): %v", err)
 	}
@@ -162,7 +160,7 @@ func TestRuntimeSchemaAllPayloadContainsFullLeafParameters(t *testing.T) {
 	// exercises the production assembly path.
 	root := buildRuntimeSchemaTestRoot()
 	declareRuntimeSchemaTestRootDoc(t, root, nil)
-	registry, err := schemaRegistryForTestWithMetadata(root, emptyAgentMetadata(), embeddedMCPMetadata{})
+	registry, err := schemaRegistryForTest(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,9 +201,8 @@ func schemaTestInt(value any) int {
 }
 
 func TestRuntimeSchemaUsesVersionedInterfaceRef(t *testing.T) {
-	// interface_ref declares on the leaf ContractFinal; the injected MCP
-	// fixture participates through the gated fixture lookup (remapped via the
-	// declared Interface.Ref).
+	// interface_ref declares on the leaf ContractFinal; MCP pin is not a
+	// parameter candidate source.
 	root := buildRuntimeSchemaTestRoot()
 	declareRuntimeSchemaTestRootDoc(t, root, func(payload *contract.ContractFinalPayload) {
 		payload.Interface = &contract.InterfaceSpec{
@@ -215,17 +212,8 @@ func TestRuntimeSchemaUsesVersionedInterfaceRef(t *testing.T) {
 			Ref:          &contract.InterfaceRefSpec{ProductID: "documents", RPCName: "create_doc_v2"},
 		}
 	})
-	mcpFixture := embeddedMCPMetadata{
-		Tools: map[string]embeddedMCPToolMetadata{
-			"documents.create_doc_v2": {
-				Parameters: map[string]embeddedMCPParamMeta{
-					"title": {Description: "MCP document title"},
-				},
-			},
-		},
-	}
 
-	payload, err := runtimeSchemaPayloadForTestWithMetadata(root, []string{"doc.create_document"}, emptyAgentMetadata(), mcpFixture)
+	payload, err := runtimeSchemaPayloadForTest(root, []string{"doc.create_document"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,110 +221,9 @@ func TestRuntimeSchemaUsesVersionedInterfaceRef(t *testing.T) {
 	if ref["product_id"] != "documents" || ref["rpc_name"] != "create_doc_v2" {
 		t.Fatalf("interface_ref = %#v", payload["interface_ref"])
 	}
-	parameters, _ := payload["parameters"].(map[string]any)
-	title, _ := parameters["title"].(map[string]any)
-	if title["interface_description"] != "MCP document title" {
-		t.Fatalf("title metadata = %#v", title)
+	if payload["interface_mode"] != contract.InterfaceModeMCP {
+		t.Fatalf("interface_mode = %#v", payload["interface_mode"])
 	}
-}
-
-func TestMCPRequiredParticipatesInSourcePrecedence(t *testing.T) {
-	required := true
-	mcpFixture := embeddedMCPMetadata{
-		Tools: map[string]embeddedMCPToolMetadata{
-			"sample.list_items": {
-				Parameters: map[string]embeddedMCPParamMeta{
-					"limit": {Required: &required},
-				},
-			},
-		},
-	}
-
-	root := &cobra.Command{Use: "dws"}
-	list := &cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}}
-	list.Flags().Int("limit", 0, "optional page size")
-	AttachRuntimeSchema(list, "sample", "list_items", "test")
-	sample := &cobra.Command{Use: "sample"}
-	sample.AddCommand(list)
-	root.AddCommand(sample)
-	declareSampleListItemsLeaf(t, list)
-
-	payload, err := runtimeSchemaPayloadForTestWithMetadata(root, []string{"sample.list_items"}, emptyAgentMetadata(), mcpFixture)
-	if err != nil {
-		t.Fatal(err)
-	}
-	parameters, _ := payload["parameters"].(map[string]any)
-	limit, _ := parameters["limit"].(map[string]any)
-	if limit["required"] != true {
-		t.Fatalf("MCP required candidate did not win over the default: %#v", limit)
-	}
-}
-
-func TestMCPDefaultDoesNotOverrideCLIDefault(t *testing.T) {
-	mcpFixture := embeddedMCPMetadata{
-		Tools: map[string]embeddedMCPToolMetadata{
-			"sample.list_items": {
-				Parameters: map[string]embeddedMCPParamMeta{
-					"limit": {Default: "50"},
-				},
-			},
-		},
-	}
-
-	root := &cobra.Command{Use: "dws"}
-	list := &cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}}
-	list.Flags().Int("limit", 10, "optional page size")
-	AttachRuntimeSchema(list, "sample", "list_items", "test")
-	sample := &cobra.Command{Use: "sample"}
-	sample.AddCommand(list)
-	root.AddCommand(sample)
-	declareSampleListItemsLeaf(t, list)
-
-	payload, err := runtimeSchemaPayloadForTestWithMetadata(root, []string{"sample.list_items"}, emptyAgentMetadata(), mcpFixture)
-	if err != nil {
-		t.Fatal(err)
-	}
-	parameters, _ := payload["parameters"].(map[string]any)
-	limit, _ := parameters["limit"].(map[string]any)
-	if limit["default"] != "10" || limit["interface_default"] != "50" {
-		t.Fatalf("CLI and interface defaults were not separated: %#v", limit)
-	}
-}
-
-// declareSampleListItemsLeaf registers the ContractFinal / ProductDecl
-// declarations for the synthetic sample.list_items leaf so MCP fixture tests
-// assemble through the production path.
-func declareSampleListItemsLeaf(t *testing.T, list *cobra.Command) {
-	t.Helper()
-	contractfinal.RegisterRuntimeContractFinal(list, contract.ContractFinalPayload{
-		Identity: &contract.ToolIdentitySpec{
-			ProductID: "sample", Name: "list_items", CanonicalPath: "sample.list_items",
-			CLIPath: "sample list", PrimaryCLIPath: "sample list",
-		},
-		Title:       "List items",
-		Description: "List sample items",
-		Safety: &contract.SafetySpec{
-			Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent",
-		},
-		Interface: &contract.InterfaceSpec{
-			Mode: "local", Availability: "available", Reason: "test local leaf",
-		},
-		Selection: &contract.SelectionSpec{
-			AgentSummary: "List sample items",
-			UseWhen:      []string{"list sample items"},
-			AvoidWhen:    []string{"not listing"},
-		},
-	})
-	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(list) })
-	contract.RegisterProductDecl(contract.ProductDecl{
-		ID: "sample",
-		Selection: contract.ProductSelectionDecl{
-			AgentSummary: "Sample product",
-			UseWhen:      []string{"sample routing"},
-			AvoidWhen:    []string{"not sample"},
-		},
-	})
-	t.Cleanup(func() { contract.ClearProductDeclForTest("sample") })
 }
 
 func findSchemaProduct(products []map[string]any, id string) map[string]any {

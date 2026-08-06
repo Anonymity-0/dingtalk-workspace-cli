@@ -230,7 +230,7 @@ func newCalendarCommand() *cobra.Command {
 		Long: `管理钉钉日历：日程、参会人、会议室、闲忙、附件、日历本、访问权限。调用前必须先使用 --help 查看参数结构。
 
 命令结构:
-  dws calendar event       [list|get|create|update|delete|suggest|respond]  日程管理
+  dws calendar event       [list|get|create|update|delete|suggest|respond|instances]  日程管理
   dws calendar attendee    [list|add|delete]                 参会人管理
   dws calendar room        [search|add|delete|list-groups]   会议室管理
   dws calendar busy        search                           闲忙查询 (可查人、查会议室)
@@ -2082,7 +2082,184 @@ func newCalendarCommand() *cobra.Command {
 	eventSuggestCmd.Flags().String("members", "", "")
 	_ = eventSuggestCmd.Flags().MarkHidden("members")
 	eventSuggestCmd.Flags().String("duration", "", "日程持续时间 (分钟，默认30)")
-	eventCmd.AddCommand(eventListCmd, eventGetCmd, eventCreateCmd, eventUpdateCmd, eventDeleteCmd, eventSuggestCmd, eventRespondCmd)
+
+	eventInstancesCmd := &cobra.Command{
+		Use:   "instances",
+		Short: "查询循环日程的实例列表",
+		Long: `查询指定重复性日程（SeriesMaster）在指定时间范围内的所有实例。
+**注意**：此接口只能查询重复性日程的实例；若传入的是普通非循环日程，将查不到任何实例信息。
+必须传入 --id 指定重复性日程的 eventId（即 SeriesMaster 的 eventId，可通过 event list 获取）。
+不传 --start/--end 时，默认查询今天（00:00:00 ~ 23:59:59）的实例。`,
+		Example: `  dws calendar event instances --id EVENT_ID
+  dws calendar event instances --id EVENT_ID --start "2026-03-10T00:00:00+08:00" --end "2026-03-31T23:59:59+08:00"
+  dws calendar event instances --id EVENT_ID --limit 50
+  dws calendar event instances --id EVENT_ID --cursor "<nextCursor>"`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			eventID, err := mustFlagOrFallback(cmd, "id", "event", "event-id", "eventId")
+			if err != nil {
+				return err
+			}
+			toolArgs := map[string]any{"eventId": eventID}
+			var startTime, endTime int64
+			var now time.Time
+			if v := flagOrFallback(cmd, "start", "time-min", "min-time", "start-time", "startTime", "start_time", "start-date", "startDate"); v != "" {
+				startTime, err = parseISOTimeToMillis("start", v)
+				if err != nil {
+					return err
+				}
+				toolArgs["startTime"] = startTime
+			} else {
+				now = time.Now()
+				startTime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).UnixMilli()
+				toolArgs["startTime"] = startTime
+			}
+			if v := flagOrFallback(cmd, "end", "time-max", "max-time", "end-time", "endTime", "end_time", "end-date", "endDate"); v != "" {
+				endTime, err = parseISOTimeToMillis("end", v)
+				if err != nil {
+					return err
+				}
+				toolArgs["endTime"] = endTime
+			} else {
+				if now.IsZero() {
+					now = time.Now()
+				}
+				endTime = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location()).UnixMilli()
+				toolArgs["endTime"] = endTime
+			}
+			if err := validateTimeRange(startTime, endTime); err != nil {
+				return err
+			}
+			if v := flagOrFallback(cmd, "calendar-id", "calendarId", "calendar"); v != "" {
+				toolArgs["calendarId"] = v
+			}
+			if v := flagOrFallback(cmd, "cursor", "next-cursor", "nextCursor", "page-token", "pageToken", "next-token"); v != "" {
+				toolArgs["cursor"] = v
+			}
+			if lim, _ := cmd.Flags().GetInt("limit"); lim > 0 {
+				toolArgs["limit"] = lim
+			} else if lim, _ := cmd.Flags().GetInt("max-results"); lim > 0 {
+				toolArgs["limit"] = lim
+			} else if lim, _ := cmd.Flags().GetInt("maxResults"); lim > 0 {
+				toolArgs["limit"] = lim
+			} else if lim, _ := cmd.Flags().GetInt("page-size"); lim > 0 {
+				toolArgs["limit"] = lim
+			} else if lim, _ := cmd.Flags().GetInt("size"); lim > 0 {
+				toolArgs["limit"] = lim
+			} else if lim, _ := cmd.Flags().GetInt("count"); lim > 0 {
+				toolArgs["limit"] = lim
+			}
+			return callSortedCalendarEvents(cmd, "list_event_instances", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(eventInstancesCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "calendar",
+				Name:           "list_event_instances",
+				CanonicalPath:  "calendar.list_event_instances",
+				CLIPath:        "calendar event instances",
+				PrimaryCLIPath: "calendar event instances",
+			},
+			Description: "查询循环日程的实例列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "calendar", RPCName: "list_event_instances"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查询循环日程在时间范围内展开的实例",
+				UseWhen:      []string{"已知循环日程 eventId（SeriesMaster），需要列出某时间窗内的实例时"},
+				AvoidWhen: []string{
+					"普通非循环日程请用 dws calendar event get / list",
+					"未知 eventId 时先 dws calendar event list",
+				},
+				Examples: []string{
+					"dws calendar event instances --id <EVENT_ID>",
+					"dws calendar event instances --id <EVENT_ID> --start \"2026-03-10T00:00:00+08:00\" --end \"2026-03-31T23:59:59+08:00\"",
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "eventId", Required: boolPtr(true)},
+				{Name: "start", Property: "startTime"},
+				{Name: "end", Property: "endTime"},
+				{Name: "calendar-id", Property: "calendarId"},
+				{Name: "cursor", Property: "cursor"},
+				{Name: "limit", Property: "limit", InterfaceType: "integer"},
+			},
+		},
+	})
+
+	// InstancesEvent flags (aligned with event list aliases)
+	eventInstancesCmd.Flags().String("id", "", "日程 ID (必填)")
+	eventInstancesCmd.Flags().String("event", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("event")
+	eventInstancesCmd.Flags().String("event-id", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("event-id")
+	eventInstancesCmd.Flags().String("eventId", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("eventId")
+	eventInstancesCmd.Flags().String("start", "", "开始时间 ISO-8601 (例如 2026-03-10T00:00:00+08:00)")
+	eventInstancesCmd.Flags().String("time-min", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("time-min")
+	eventInstancesCmd.Flags().String("min-time", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("min-time")
+	eventInstancesCmd.Flags().String("start-time", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("start-time")
+	eventInstancesCmd.Flags().String("startTime", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("startTime")
+	eventInstancesCmd.Flags().String("start_time", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("start_time")
+	eventInstancesCmd.Flags().String("start-date", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("start-date")
+	eventInstancesCmd.Flags().String("startDate", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("startDate")
+	eventInstancesCmd.Flags().String("end", "", "结束时间 ISO-8601 (例如 2026-03-31T23:59:59+08:00)")
+	eventInstancesCmd.Flags().String("time-max", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("time-max")
+	eventInstancesCmd.Flags().String("max-time", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("max-time")
+	eventInstancesCmd.Flags().String("end-time", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("end-time")
+	eventInstancesCmd.Flags().String("endTime", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("endTime")
+	eventInstancesCmd.Flags().String("end_time", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("end_time")
+	eventInstancesCmd.Flags().String("end-date", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("end-date")
+	eventInstancesCmd.Flags().String("endDate", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("endDate")
+	eventInstancesCmd.Flags().String("calendar-id", "", "日历 ID (可选，默认 primary 主日历；指定其他日历本时填写，可通过 book list 获取)")
+	eventInstancesCmd.Flags().String("calendarId", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("calendarId")
+	eventInstancesCmd.Flags().String("calendar", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("calendar")
+	eventInstancesCmd.Flags().String("cursor", "", "分页游标 (首次查询无需传入，仅翻页时传入上一次返回的 nextCursor)")
+	eventInstancesCmd.Flags().String("next-cursor", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("next-cursor")
+	eventInstancesCmd.Flags().String("nextCursor", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("nextCursor")
+	eventInstancesCmd.Flags().String("page-token", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("page-token")
+	eventInstancesCmd.Flags().String("pageToken", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("pageToken")
+	eventInstancesCmd.Flags().String("next-token", "", "")
+	_ = eventInstancesCmd.Flags().MarkHidden("next-token")
+	eventInstancesCmd.Flags().Int("limit", 0, "每页返回条数 (默认 100，最大 100)")
+	eventInstancesCmd.Flags().Int("max-results", 0, "")
+	_ = eventInstancesCmd.Flags().MarkHidden("max-results")
+	eventInstancesCmd.Flags().Int("maxResults", 0, "")
+	_ = eventInstancesCmd.Flags().MarkHidden("maxResults")
+	eventInstancesCmd.Flags().Int("page-size", 0, "")
+	_ = eventInstancesCmd.Flags().MarkHidden("page-size")
+	eventInstancesCmd.Flags().Int("size", 0, "")
+	_ = eventInstancesCmd.Flags().MarkHidden("size")
+	eventInstancesCmd.Flags().Int("count", 0, "")
+	_ = eventInstancesCmd.Flags().MarkHidden("count")
+
+	eventCmd.AddCommand(eventListCmd, eventGetCmd, eventCreateCmd, eventUpdateCmd, eventDeleteCmd, eventSuggestCmd, eventRespondCmd, eventInstancesCmd)
 
 	// participant
 	participantCmd.PersistentFlags().String("event", "", "日程 ID (必填)")

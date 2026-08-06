@@ -141,18 +141,23 @@ func TestCrossPlatformCoverageProductCommandExamplesAreExecutableContracts(t *te
 	previousStdin := os.Stdin
 	previousPut := httpPutFile
 	previousGet := httpGetFile
+	previousWhiteboardSleep := whiteboardSleep
 	t.Cleanup(func() {
 		deps = previousDeps
 		os.Args = previousArgs
 		os.Stdin = previousStdin
 		httpPutFile = previousPut
 		httpGetFile = previousGet
+		whiteboardSleep = previousWhiteboardSleep
 	})
 
 	caller := &productExampleCaller{}
 	InitDeps(caller)
 	deps.Out.w = io.Discard
 	deps.Out.errW = io.Discard
+	// Product examples execute real RunE paths; whiteboard insert retries must
+	// not burn the suite timeout on real sleep (race CI uses a 12m package cap).
+	whiteboardSleep = func(time.Duration) {}
 	httpPutFile = func(context.Context, string, map[string]string, string, int64) error { return nil }
 	httpGetFile = func(_ context.Context, _ string, _ map[string]string, destPath string) error {
 		if destPath == "" {
