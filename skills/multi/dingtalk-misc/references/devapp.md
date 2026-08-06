@@ -1,6 +1,6 @@
 # 开放平台应用管理（dev / devapp）
 
-> **渐进式文档**：本文件为路由层（MUST DO / 概念地图 / 产品索引）；各命令组的详细参数与流程在 [dev/](./dev/) 目录下按需加载。命令前缀：`dws dev`（原子）与 `dws devapp +`（shortcut）。
+> **渐进式文档**：本文件为路由层（MUST DO / 概念地图 / 产品索引）；各命令组的详细参数与流程在 [dev/](./dev/) 目录下按需加载。命令前缀：`dws dev`（原子）与 `dws devapp +create` 等 `+` shortcut。
 
 ## MUST DO
 

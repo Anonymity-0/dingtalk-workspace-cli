@@ -46,4 +46,4 @@
 | `finance_daily_cashflow.py` | 日现金流辅助 |
 | `finance_expense_flow.py` | 费用流辅助 |
 
-无独立 `dws finance` 产品面时，不要把这些脚本宣传为正式 CLI 能力。
+无独立 finance CLI 产品面时，不要把这些脚本宣传为正式 CLI 能力。
