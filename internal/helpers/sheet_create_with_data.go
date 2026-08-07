@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"math"
 	"regexp"
 	"sort"
@@ -40,6 +42,9 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 		dec.UseNumber()
 		if err := dec.Decode(&values); err != nil {
 			return fmt.Errorf("--values JSON 解析失败: %w", err)
+		}
+		if err := requireJSONEOF(dec, "--values"); err != nil {
+			return err
 		}
 		// null / [] 都写不出任何数据，必须在建文档之前拒掉，
 		// 否则会白建一个空文档再由回读校验报成"写入未生效"。
@@ -207,6 +212,9 @@ func parseCreateSheetSpecs(sheetsStr string) ([]map[string]any, error) {
 	if err := dec.Decode(&payload); err != nil {
 		return nil, fmt.Errorf("--sheets JSON 解析失败: %w", err)
 	}
+	if err := requireJSONEOF(dec, "--sheets"); err != nil {
+		return nil, err
+	}
 	var arr []any
 	switch v := payload.(type) {
 	case []any:
@@ -279,6 +287,20 @@ func parseCreateSheetSpecs(sheetsStr string) ([]map[string]any, error) {
 //     整条命令报成功。
 //
 // 因此把契约里的每个已提供字段都在发第一个请求之前验完。
+
+// requireJSONEOF 确认解码器在读出第一个 JSON 值之后就到了输入末尾。
+//
+// json.Decoder.Decode 只读一个值就返回，`[[1]] trailing` 会被当成合法矩阵：
+// 粘贴多了一段、shell 拼接残留、把两个 JSON 首尾相连，都会静默丢掉后半截并照常
+// 建文档。创建不可原子回滚，所以这类输入必须在发第一个请求之前拒掉，而不是建完
+// 文档只写进去半份数据。（--styles 走 json.Unmarshal，它本身就拒绝多余内容。）
+func requireJSONEOF(dec *json.Decoder, flag string) error {
+	if err := dec.Decode(new(any)); !errors.Is(err, io.EOF) {
+		return fmt.Errorf("%s 只接受单个 JSON 值，末尾有多余内容", flag)
+	}
+	return nil
+}
+
 const maxTableWriteCells = 30000
 
 // tablePutSpecFields 是 table_put 单个 sheet spec 的合法字段（契约字段名为 camelCase）。

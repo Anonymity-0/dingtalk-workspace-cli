@@ -116,6 +116,10 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 		want  string
 	}{
 		{"values-bad-json", map[string]string{"name": "X", "values": `[[`}, "--values JSON 解析失败"},
+		// Decode 只读一个值就返回：粘贴多了一段/shell 拼接残留会静默丢掉后半截，
+		// 却照常建出文档。必须要求读到 EOF。
+		{"values-trailing-data", map[string]string{"name": "X", "values": `[[1]] trailing-data`}, "--values 只接受单个 JSON 值，末尾有多余内容"},
+		{"values-two-json-values", map[string]string{"name": "X", "values": `[["a"]][["b"]]`}, "--values 只接受单个 JSON 值，末尾有多余内容"},
 		// `null` 是合法 JSON 但解析出 nil slice：判据若用 values != nil 会误入
 		// --sheets 分支并对空 sheetSpecs 取 [0] panic。
 		{"values-null", map[string]string{"name": "X", "values": `null`}, "--values 不能为空"},
@@ -124,6 +128,8 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 		// 全空矩阵写不出任何数据，同样必须在建文档之前拒掉
 		{"values-all-cells-empty", map[string]string{"name": "X", "values": `[["",""],["",""]]`}, "--values 全部单元格为空"},
 		{"sheets-bad-json", map[string]string{"name": "X", "sheets": `{`}, "--sheets JSON 解析失败"},
+		{"sheets-trailing-data", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"]}] trailing-data`}, "--sheets 只接受单个 JSON 值，末尾有多余内容"},
+		{"sheets-two-json-values", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"]}][{"name":"二月","columns":["a"]}]`}, "--sheets 只接受单个 JSON 值，末尾有多余内容"},
 		{"sheets-wrong-type", map[string]string{"name": "X", "sheets": `"str"`}, "必须是 JSON 数组"},
 		{"sheets-empty", map[string]string{"name": "X", "sheets": `[]`}, "不能为空数组"},
 		{"sheets-item-not-object", map[string]string{"name": "X", "sheets": `[1]`}, "不是对象"},
