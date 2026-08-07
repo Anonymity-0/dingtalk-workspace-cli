@@ -575,6 +575,21 @@ func TestCrossPlatformCoverageProjectOutputOAEvents(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageProjectOutputRejectsUnsupportedOAType(t *testing.T) {
+	ev := transport.Event{EventID: "outer-event", EventType: "user_oa_approval_unknown"}
+	projected, err := projectOAApprovalEvent(
+		ev,
+		baseEventOutput{Type: ev.EventType, EventID: ev.EventID},
+		json.RawMessage(`{"body":{"processInstanceId":"process-instance-1"},"event_time":1}`),
+	)
+	if err == nil || !strings.Contains(err.Error(), `unsupported personal OA event type "user_oa_approval_unknown"`) {
+		t.Fatalf("projectOAApprovalEvent() error = %v", err)
+	}
+	if got, ok := projected.(transport.Event); !ok || !reflect.DeepEqual(got, ev) {
+		t.Fatalf("projectOAApprovalEvent() fallback = %#v, want %#v", projected, ev)
+	}
+}
+
 func TestCrossPlatformCoverageProjectOutputOADecodesDoublyWrappedJSONString(t *testing.T) {
 	once, err := json.Marshal(personalOAData(EventOAApprovalTaskCreated))
 	if err != nil {

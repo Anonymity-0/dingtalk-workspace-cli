@@ -290,6 +290,43 @@ func TestPersonalOAEventConsumeDryRunAndValidation(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoveragePersonalOAValidationBranches(t *testing.T) {
+	invalid := personalConsumeOptions{
+		EventKey: personal.EventOAApprovalTaskCreated,
+		UserID:   "user-1",
+	}
+	if err := validatePersonalSubscriptionOptions(invalid); err == nil ||
+		!strings.Contains(err.Error(), "--user not supported for OA event") {
+		t.Fatalf("validatePersonalSubscriptionOptions() error = %v", err)
+	}
+	if _, err := preparePersonalSubscription(personal.Identity{}, invalid); err == nil ||
+		!strings.Contains(err.Error(), "--user not supported for OA event") {
+		t.Fatalf("preparePersonalSubscription() error = %v", err)
+	}
+
+	oldGet := personalGetSubscription
+	t.Cleanup(func() { personalGetSubscription = oldGet })
+	personalGetSubscription = func(*personal.Client, context.Context, string) (*personal.Subscription, error) {
+		return &personal.Subscription{
+			SubscribeID: "oa-sub-without-event-key",
+			RuleType:    "all",
+		}, nil
+	}
+	_, _, _, err := ensurePersonalSubscription(
+		context.Background(),
+		nil,
+		personal.Identity{},
+		personalConsumeOptions{
+			SubscribeID: "oa-sub-without-event-key",
+			EventKey:    personal.EventOAApprovalTaskCreated,
+			UserID:      "user-1",
+		},
+	)
+	if err == nil || !strings.Contains(err.Error(), "--user not supported for OA event") {
+		t.Fatalf("ensurePersonalSubscription() error = %v", err)
+	}
+}
+
 func TestPersonalOAMultiConsumeCreatesIndependentAllSubscriptionsOnSharedBus(t *testing.T) {
 	restoreMany := installPersonalManySeams(t)
 	defer restoreMany()
