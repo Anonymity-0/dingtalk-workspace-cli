@@ -17,12 +17,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+)
+
+var (
+	errUploadInfo = errors.New("upload info failed")
+	errUploadPut  = errors.New("put failed")
 )
 
 func htmlFallbackCommand(t *testing.T, filePath string) *cobra.Command {
@@ -250,6 +256,74 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 		err := runImportCommand(cmd, nil, docImportFlowConfig())
 		if err == nil || !strings.Contains(err.Error(), "--file is required") {
 			t.Fatalf("runImportCommand() error = %v, want --file required", err)
+		}
+	})
+
+	t.Run("text dry run prints the fallback plan as key values", func(t *testing.T) {
+		caller := &scriptedToolCaller{dry: true}
+		installScriptedCaller(t, caller)
+		var stdout bytes.Buffer
+		deps.Out.w = &stdout
+
+		cmd := htmlFallbackCommand(t, writeImportFixture(t, "html"))
+		if err := runImportCommand(cmd, nil, docImportFlowConfig()); err != nil {
+			t.Fatalf("runImportCommand() error = %v", err)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("dry run must not call MCP, calls = %d", caller.calls)
+		}
+		if !strings.Contains(stdout.String(), "doc import 回退") || !strings.Contains(stdout.String(), "sales.html") {
+			t.Fatalf("text dry-run must print the fallback plan, got %q", stdout.String())
+		}
+	})
+
+	t.Run("upload chain errors propagate", func(t *testing.T) {
+		cases := []struct {
+			name    string
+			steps   []scriptedToolStep
+			putErr  error
+			wantErr string
+		}{
+			{name: "upload info request fails", steps: []scriptedToolStep{{err: errUploadInfo}}, wantErr: "upload info failed"},
+			{name: "upload credentials incomplete", steps: []scriptedToolStep{{text: `{"resourceUrl":""}`}}, wantErr: "incomplete upload credentials"},
+			{name: "http put fails", steps: []scriptedToolStep{{text: `{"resourceUrl":"https://upload.example.test/object","uploadKey":"key-1"}`}}, putErr: errUploadPut, wantErr: "put failed"},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				installScriptedCaller(t, &scriptedToolCaller{steps: tc.steps})
+				SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return tc.putErr })
+				t.Cleanup(func() { SetHTTPPutFile(nil) })
+
+				cmd := htmlFallbackCommand(t, writeImportFixture(t, "html"))
+				err := runImportCommand(cmd, nil, docImportFlowConfig())
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("runImportCommand() error = %v, want %q", err, tc.wantErr)
+				}
+			})
+		}
+	})
+
+	t.Run("non-json commit response is kept as raw text", func(t *testing.T) {
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+			{text: `{"resourceUrl":"https://upload.example.test/object","uploadKey":"key-1"}`},
+			{text: "commit-ok-plain-text"},
+		}}
+		installScriptedCaller(t, caller)
+		var stdout bytes.Buffer
+		deps.Out.w = &stdout
+		SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
+		t.Cleanup(func() { SetHTTPPutFile(nil) })
+
+		cmd := htmlFallbackCommand(t, writeImportFixture(t, "html"))
+		if err := runImportCommand(cmd, nil, docImportFlowConfig()); err != nil {
+			t.Fatalf("runImportCommand() error = %v", err)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+			t.Fatalf("fallback result must stay JSON: %v\n%s", err, stdout.String())
+		}
+		if payload["result"] != "commit-ok-plain-text" {
+			t.Fatalf("raw commit text must be preserved, got %#v", payload["result"])
 		}
 	})
 
