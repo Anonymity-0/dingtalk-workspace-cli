@@ -121,7 +121,7 @@ func executeAttachmentPut(rt *shortcut.RuntimeContext) error {
 		result.Executed = false
 		return rt.Output(result)
 	}
-	prepareData, err := rt.CallMCPWriteData(serverMain, "prepare_attachment_upload", map[string]any{"baseId": baseID, "fileName": info.Name(), "size": info.Size(), "mimeType": mimeType})
+	prepareData, err := rt.CallMCPWriteDataStrict(serverMain, "prepare_attachment_upload", map[string]any{"baseId": baseID, "fileName": info.Name(), "size": info.Size(), "mimeType": mimeType})
 	if err != nil {
 		result.Status = "unknown"
 		return compositeError(result, err, false)
@@ -156,7 +156,7 @@ func executeAttachmentPut(rt *shortcut.RuntimeContext) error {
 	}
 	desired = append(desired, map[string]any{"fileToken": fileToken})
 	result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": "HTTP PUT", "fileToken": fileToken, "fileName": info.Name(), "size": info.Size()})
-	_, writeErr := rt.CallMCPWriteData(serverMain, "update_records", map[string]any{
+	_, writeErr := rt.CallMCPWriteDataStrict(serverMain, "update_records", map[string]any{
 		"baseId": baseID, "tableId": tableID,
 		"records": []any{map[string]any{"recordId": recordIDValue, "cells": map[string]any{fieldID: desired}}},
 	})
@@ -226,7 +226,7 @@ func executeAttachmentRemove(rt *shortcut.RuntimeContext) error {
 		result.Executed = false
 		return rt.Output(result)
 	}
-	_, writeErr := rt.CallMCPWriteData(serverMain, "update_records", map[string]any{
+	_, writeErr := rt.CallMCPWriteDataStrict(serverMain, "update_records", map[string]any{
 		"baseId": baseID, "tableId": tableID,
 		"records": []any{map[string]any{"recordId": recordIDValue, "cells": map[string]any{fieldID: desired}}},
 	})

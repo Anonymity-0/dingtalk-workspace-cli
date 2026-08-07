@@ -113,7 +113,7 @@ func executeTableCopy(rt *shortcut.RuntimeContext) error {
 	}
 
 	initialEnd := minInt(15, len(createFields))
-	createData, err := rt.CallMCPWriteData(serverMain, "create_table", map[string]any{
+	createData, err := rt.CallMCPWriteDataStrict(serverMain, "create_table", map[string]any{
 		"baseId": targetBase, "tableName": rt.Str("new-name"), "fields": createFields[:initialEnd],
 	})
 	targetTable := findStringByKeys(createData, "tableId", "sheetId")
@@ -129,7 +129,7 @@ func executeTableCopy(rt *shortcut.RuntimeContext) error {
 	result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": "create_table", "baseId": targetBase, "tableId": targetTable})
 	for offset := initialEnd; offset < len(createFields); offset += 15 {
 		end := minInt(offset+15, len(createFields))
-		_, fieldErr := rt.CallMCPWriteData(serverMain, "create_fields", map[string]any{"baseId": targetBase, "tableId": targetTable, "fields": createFields[offset:end]})
+		_, fieldErr := rt.CallMCPWriteDataStrict(serverMain, "create_fields", map[string]any{"baseId": targetBase, "tableId": targetTable, "fields": createFields[offset:end]})
 		if fieldErr != nil {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("create_fields offset %d returned an error; final schema verification decides success: %v", offset, fieldErr))
 		}
@@ -172,7 +172,7 @@ func executeTableCopy(rt *shortcut.RuntimeContext) error {
 			batch = append(batch, record)
 			wire = append(wire, record)
 		}
-		writeData, writeErr := rt.CallMCPWriteData(serverMain, "create_records", map[string]any{"baseId": targetBase, "tableId": targetTable, "records": wire})
+		writeData, writeErr := rt.CallMCPWriteDataStrict(serverMain, "create_records", map[string]any{"baseId": targetBase, "tableId": targetTable, "records": wire})
 		createdIDs := createdRecordIDs(writeData)
 		if len(createdIDs) == 0 {
 			if returned, found := findRecords(writeData); found {

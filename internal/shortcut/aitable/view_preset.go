@@ -96,7 +96,7 @@ func executeViewPresetApply(rt *shortcut.RuntimeContext) error {
 		result.Executed = false
 		return rt.Output(result)
 	}
-	writeData, writeErr := rt.CallMCPWriteData(serverMain, tool, params)
+	writeData, writeErr := rt.CallMCPWriteDataStrict(serverMain, tool, params)
 	if action == "create" {
 		viewID = findStringByKeys(writeData, "viewId")
 	}

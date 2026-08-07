@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -169,5 +170,23 @@ func TestCrossPlatformCoverageRecordQueryCLIInitialCursorE2E(t *testing.T) {
 	want := map[string]any{"baseId": "base-e2e", "tableId": "table-e2e", "cursor": "resume-from-here"}
 	if !reflect.DeepEqual(caller.calls[0].args, want) {
 		t.Fatalf("resume args = %#v, want %#v", caller.calls[0].args, want)
+	}
+}
+
+func TestCrossPlatformCoverageRecordQueryCLIPageLimitHelpE2E(t *testing.T) {
+	command := newAitableCommand()
+	command.SilenceErrors = true
+	command.SilenceUsage = true
+	out := &bytes.Buffer{}
+	command.SetOut(out)
+	command.SetErr(out)
+	command.SetArgs([]string{"record", "query", "--help"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("record query help failed: %v", err)
+	}
+	for _, want := range []string{"返回非零结构化错误", "不完整结果", "错误详情保留已取记录和续传 cursor"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("record query help missing %q:\n%s", want, out.String())
+		}
 	}
 }

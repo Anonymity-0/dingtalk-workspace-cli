@@ -155,8 +155,19 @@ func (rt *RuntimeContext) CallMCPData(product, tool string, params map[string]an
 
 // CallMCPWriteData dispatches a write tool call and returns its parsed response.
 // Unlike CallMCPData, it refuses to run under --dry-run so smart shortcuts cannot
-// accidentally perform writes while rendering a preview.
+// accidentally perform writes while rendering a preview. For compatibility with
+// existing write shortcuts, an empty text acknowledgement remains an empty map.
 func (rt *RuntimeContext) CallMCPWriteData(product, tool string, params map[string]any) (map[string]any, error) {
+	if rt.DryRun() {
+		return nil, dryRunWriteError(product, tool)
+	}
+	return rt.callMCPData(product, tool, params)
+}
+
+// CallMCPWriteDataStrict dispatches a write tool call whose contract requires a
+// non-empty JSON business result. An empty acknowledgement is reported as an
+// unknown remote effect so callers can verify it independently before success.
+func (rt *RuntimeContext) CallMCPWriteDataStrict(product, tool string, params map[string]any) (map[string]any, error) {
 	if rt.DryRun() {
 		return nil, dryRunWriteError(product, tool)
 	}

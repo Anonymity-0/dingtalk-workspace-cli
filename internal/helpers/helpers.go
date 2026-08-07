@@ -255,8 +255,8 @@ func parseMCPToolTextResult(serverID, toolName string, result *edition.ToolResul
 	// acknowledgement. This low-level parser cannot know the business contract,
 	// so preserve that representation. Data-returning callers must validate the
 	// operation-specific shape (for example records/tables/valid) before they
-	// report success; write orchestrators use CallMCPWriteData, which treats an
-	// empty response as unknown unless an independent read-back proves the state.
+	// report success. Orchestrators whose contract requires a business result use
+	// CallMCPWriteDataStrict and may prove an unknown effect by independent read-back.
 	return "", nil
 }
 

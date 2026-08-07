@@ -87,7 +87,7 @@ func executeRecordDeleteBatches(rt *shortcut.RuntimeContext) error {
 	for offset := 0; offset < len(ids); offset += recordBatchSize {
 		end := minInt(offset+recordBatchSize, len(ids))
 		batch := ids[offset:end]
-		writeData, writeErr := rt.CallMCPWriteData(serverMain, "delete_records", map[string]any{
+		writeData, writeErr := rt.CallMCPWriteDataStrict(serverMain, "delete_records", map[string]any{
 			"baseId": baseID, "tableId": tableID, "recordIds": batch,
 		})
 		step := compositeStep{
@@ -192,7 +192,7 @@ func executeRecordBatches(
 			wireRecords = append(wireRecords, record)
 		}
 		params := map[string]any{"baseId": baseID, "tableId": tableID, "records": wireRecords}
-		writeData, writeErr := rt.CallMCPWriteData(product, tool, params)
+		writeData, writeErr := rt.CallMCPWriteDataStrict(product, tool, params)
 		step := compositeStep{
 			Index: len(result.CompletedSteps) + 1, Name: "write record batch", Tool: tool,
 			Status: "completed", Offset: offset, Count: len(batch), Result: writeData,

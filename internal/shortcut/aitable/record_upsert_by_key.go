@@ -129,7 +129,7 @@ func executeRecordUpsertByKey(rt *shortcut.RuntimeContext) error {
 		return rt.Output(result)
 	}
 
-	writeData, writeErr := rt.CallMCPWriteData(serverMain, tool, params)
+	writeData, writeErr := rt.CallMCPWriteDataStrict(serverMain, tool, params)
 	writeStep := compositeStep{Index: 1, Name: action + " record", Tool: tool, Status: "completed", Count: 1, Result: writeData}
 	if writeErr != nil {
 		writeStep.Status = "unknown"

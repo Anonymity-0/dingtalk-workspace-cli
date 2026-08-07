@@ -191,7 +191,7 @@ func executeBaseBootstrap(rt *shortcut.RuntimeContext) error {
 	if rt.Changed("template-id") {
 		baseArgs["templateId"] = rt.Str("template-id")
 	}
-	baseData, err := rt.CallMCPWriteData(serverMain, "create_base", baseArgs)
+	baseData, err := rt.CallMCPWriteDataStrict(serverMain, "create_base", baseArgs)
 	if err != nil {
 		result.Status = "unknown"
 		result.FailedCount = len(tables)
@@ -222,7 +222,7 @@ func executeBaseBootstrap(rt *shortcut.RuntimeContext) error {
 	for index, spec := range tables {
 		initialEnd := minInt(15, len(spec.Fields))
 		initialFields := spec.Fields[:initialEnd]
-		createData, createErr := rt.CallMCPWriteData(serverMain, "create_table", map[string]any{
+		createData, createErr := rt.CallMCPWriteDataStrict(serverMain, "create_table", map[string]any{
 			"baseId": baseID, "tableName": spec.Name, "fields": initialFields,
 		})
 		tableID := findStringByKeys(createData, "tableId", "sheetId")
@@ -239,7 +239,7 @@ func executeBaseBootstrap(rt *shortcut.RuntimeContext) error {
 		result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": "create_table", "baseId": baseID, "tableId": tableID, "name": spec.Name})
 		for offset := initialEnd; offset < len(spec.Fields); offset += 15 {
 			end := minInt(offset+15, len(spec.Fields))
-			_, fieldErr := rt.CallMCPWriteData(serverMain, "create_fields", map[string]any{
+			_, fieldErr := rt.CallMCPWriteDataStrict(serverMain, "create_fields", map[string]any{
 				"baseId": baseID, "tableId": tableID, "fields": spec.Fields[offset:end],
 			})
 			if fieldErr != nil {

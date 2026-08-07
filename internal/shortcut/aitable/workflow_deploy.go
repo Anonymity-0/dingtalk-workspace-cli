@@ -75,7 +75,7 @@ func executeWorkflowDeploy(rt *shortcut.RuntimeContext) error {
 		result.Executed = false
 		return rt.Output(result)
 	}
-	writeData, writeErr := rt.CallMCPWriteData(serverMain, tool, params)
+	writeData, writeErr := rt.CallMCPWriteDataStrict(serverMain, tool, params)
 	if writeErr != nil {
 		result.Status = "unknown"
 		result.Checkpoint = map[string]any{"nextStep": "resolve workflow existence and definition before retrying", "workflowId": workflowID}
@@ -105,7 +105,7 @@ func executeWorkflowDeploy(rt *shortcut.RuntimeContext) error {
 		return compositeError(result, verifyErr, action == "update")
 	}
 	if rt.Bool("enable") {
-		enableData, enableErr := rt.CallMCPWriteData(serverHelper, "enable_workflow", map[string]any{"baseId": baseID, "workflowId": workflowID})
+		enableData, enableErr := rt.CallMCPWriteDataStrict(serverHelper, "enable_workflow", map[string]any{"baseId": baseID, "workflowId": workflowID})
 		if enableErr != nil {
 			result.Warnings = append(result.Warnings, "enable response error: "+enableErr.Error())
 		}
