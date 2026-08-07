@@ -143,10 +143,15 @@ func newSheetCommand() *cobra.Command {
 			},
 			Description: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载），或用 --export-format csv 同步导出单个工作表。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			// interface_ref 声明主工具 submit_export_job，与 main 一致。xlsx 走
+			// 提交+轮询（submit_export_job / query_export_job）、--export-format csv
+			// 走 get_range_as_csv，这些编排/分支是实现细节：轮询本就未在声明中体现
+			// （main 亦如此），csv 分支同理。沿用既有的「声明主工具」惯例（参见
+			// doc.create_document 同样多工具却声明 mcp），不因新增 csv 分支改判 composite。
 			Interface: &contract.InterfaceSpec{
-				Mode:         "composite",
+				Mode:         "mcp",
 				Availability: "available",
-				Reason:       "The CLI routes by --export-format: xlsx submits sheet/submit_export_job and polls sheet/query_export_job, while csv reads sheet/get_range_as_csv synchronously. No single direct MCP interface covers both branches.",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "submit_export_job"},
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载），或用 --export-format csv 同步导出单个工作表。",

@@ -91,10 +91,16 @@ func newWorkbookCmds() []*cobra.Command {
 				PrimaryCLIPath: "sheet create",
 			},
 			Description: "创建钉钉在线电子表格文档（axls），返回 nodeId。",
+			// interface_ref 声明主工具 create_workspace_sheet，与 main 一致。带
+			// --values / --sheets / --styles 时 CLI 会在建文档后编排 get_all_sheets /
+			// update_sheet / table_put / set_range_from_csv / get_range_as_csv /
+			// set_cell_range / update_dimension / merge_cells，但这些是建文档之后的
+			// 实现细节。沿用既有的「声明主工具」惯例（参见 doc.create_document 同样在
+			// create 后追加 update_document 却声明 mcp），不将 create 改判为 composite。
 			Interface: &contract.InterfaceSpec{
-				Mode:         "composite",
+				Mode:         "mcp",
 				Availability: "available",
-				Reason:       "With --values / --sheets / --styles the CLI chains sheet/create_workspace_sheet, get_all_sheets, update_sheet, set_range_from_csv or table_put, a get_range_as_csv read-back, and set_cell_range / update_dimension / merge_cells; no single direct MCP interface represents the orchestration.",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "create_workspace_sheet"},
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "创建钉钉在线电子表格文档（axls），返回 nodeId。",

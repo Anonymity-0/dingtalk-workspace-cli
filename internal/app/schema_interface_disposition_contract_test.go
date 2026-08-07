@@ -37,16 +37,6 @@ func TestReviewedRoutedInterfacesReachFinalSchema(t *testing.T) {
 			reason:    "The CLI assembles style cell matrices locally from --ranges or a local batch file and submits them as one sheet/batch_update operations array; no single direct MCP interface represents the wrapper input shape.",
 		},
 		{
-			canonical: "sheet.create_workspace_sheet",
-			mode:      "composite",
-			reason:    "With --values / --sheets / --styles the CLI chains sheet/create_workspace_sheet, get_all_sheets, update_sheet, set_range_from_csv or table_put, a get_range_as_csv read-back, and set_cell_range / update_dimension / merge_cells; no single direct MCP interface represents the orchestration.",
-		},
-		{
-			canonical: "sheet.submit_export_job",
-			mode:      "composite",
-			reason:    "The CLI routes by --export-format: xlsx submits sheet/submit_export_job and polls sheet/query_export_job, while csv reads sheet/get_range_as_csv synchronously. No single direct MCP interface covers both branches.",
-		},
-		{
 			canonical: "sheet.range_read",
 			mode:      "composite",
 			reason:    "Reviewed unpinned remote adapter: the CLI calls sheet/get_cell_infos, which is absent from the pinned MCP metadata snapshot; the incompatible sheet/get_range contract must not be advertised.",
