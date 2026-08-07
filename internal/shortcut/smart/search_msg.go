@@ -36,16 +36,18 @@ import (
 // search hits through list_messages_by_ids in chunks of 50. A later-page or
 // enrichment failure never turns a partial result into a false success: the
 // output carries an explicit failure ledger and complete=false.
+const searchMsgIntent = "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。" +
+	"显式指定会话时会先验证 CID，再执行有界全局扫描并在本地精确过滤，避免下层忽略非法 CID 或群聊 CID。" +
+	"--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。" +
+	"--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"
+
 var SearchMsg = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+search-msg",
 	Product:     "im",
 	Description: "按稳定 ID 和内容等条件跨会话搜索消息，可校验会话范围、全量翻页并批量富化",
-	Intent: "当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；会话与发送者过滤使用稳定 ID。默认查询近 7 天，也可指定精确起止时间。" +
-		"显式指定会话时会先验证 CID，再执行有界全局扫描并在本地精确过滤，避免下层忽略非法 CID 或群聊 CID。" +
-		"--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。" +
-		"--download-resources 使用安全本地路径、默认不覆盖和原子落盘。",
-	Risk: shortcut.RiskRead,
+	Intent:      searchMsgIntent,
+	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
@@ -66,7 +68,7 @@ var SearchMsg = shortcut.Shortcut{
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "按稳定 ID 和内容等条件跨会话搜索消息，可校验会话范围、全量翻页并批量富化",
-			UseWhen:      []string{"当你要按关键词、发送者、@对象、会话、消息类型或机器人来源组合搜索 IM 消息时使用；显式会话范围会先验证 CID，再有界扫描并在本地精确过滤。默认查询近 7 天，也可指定精确起止时间。--page-all 会连续拉取游标页，默认再按消息 ID 分批富化详情；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger，绝不把截断结果标成完整。--download-resources 使用安全本地路径、默认不覆盖和原子落盘。"},
+			UseWhen:      []string{searchMsgIntent},
 			AvoidWhen:    []string{"只想读取一个已知会话的连续历史时使用 +chat-messages；已有精确消息 ID 时使用 +messages-mget"},
 			Examples: []string{
 				"dws chat +search-msg --query \"周报\" --senders <openDingTalkId> --days 3 --page-all",

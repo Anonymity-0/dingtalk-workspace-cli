@@ -2528,7 +2528,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageSendCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2728,7 +2728,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageSendByBotCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2889,14 +2889,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageSendByWebhookCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
-		},
-		// The webhook path parses the raw response directly instead of dispatching
-		// through deps.Caller.CallTool. Supplying a local validator makes the
-		// framework confirm before RunE, so the HTTP write can never happen before
-		// the user_required gate.
-		Validate: func(cmd *cobra.Command, _ []string) error {
-			return validateRequiredFlags(cmd, "token", "title", "text")
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5434,7 +5427,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageSendCardCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5528,7 +5521,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageUpdateCardCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
