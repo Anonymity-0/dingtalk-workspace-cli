@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"io"
 	"math"
@@ -394,6 +395,7 @@ func TestFirstNonEmptySheetSpecCell(t *testing.T) {
 		{`{"name":"S","columns":["项目"],"data":[["房租"]]}`, "A1", true},
 		{`{"name":"S","columns":["",""],"data":[["","x"]]}`, "B2", true},             // 首列表头空
 		{`{"name":"S","data":[[1]]}`, "A1", true},                                    // 无表头，纯 data
+		{`{"name":"S","data":[5]}`, "A1", true},                                      // data 行是单值而非数组
 		{`{"name":"S","columns":["id"],"data":[[1]],"start_cell":"C3"}`, "C3", true}, // start_cell 偏移
 		{`{"name":"S"}`, "", false},                                                  // 只有 name
 		{`{"name":"S","columns":[],"data":[]}`, "", false},                           // 空
@@ -402,6 +404,42 @@ func TestFirstNonEmptySheetSpecCell(t *testing.T) {
 		if gotCell != tc.wantCell || gotContent != tc.wantContent {
 			t.Errorf("firstNonEmptySheetSpecCell(%s) = (%q,%v), want (%q,%v)", tc.spec, gotCell, gotContent, tc.wantCell, tc.wantContent)
 		}
+	}
+}
+
+// resolveSheetIDsByName 的失败路径：RPC 出错、以及响应无法解析为对象。
+func TestResolveSheetIDsByNameFailures(t *testing.T) {
+	installSheetProductArgs(t)
+	rpcErr := &scriptedToolCaller{steps: []scriptedToolStep{{err: fmt.Errorf("boom")}}}
+	installScriptedCaller(t, rpcErr)
+	if _, err := resolveSheetIDsByName(context.Background(), "N"); err == nil {
+		t.Fatal("RPC 出错时应返回 error")
+	}
+
+	bad := &scriptedToolCaller{steps: []scriptedToolStep{{text: `not-json`}}}
+	installScriptedCaller(t, bad)
+	if _, err := resolveSheetIDsByName(context.Background(), "N"); err == nil ||
+		!strings.Contains(err.Error(), "解析工作表列表失败") {
+		t.Fatalf("响应不可解析时应报解析失败: %v", err)
+	}
+}
+
+// create --sheets 时 table_put 后取工作表列表失败，须带 nodeId 报错而非静默成功。
+func TestSheetCreateWithSheetsReadbackListFailureSurfacesNodeID(t *testing.T) {
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"nodeId":"NODE_1"}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+		{text: `{"success":true}`},
+		{text: `{"success":true}`},
+		{err: fmt.Errorf("list boom")}, // resolveSheetIDsByName 失败
+	}}
+	err := runCreate(t, caller, map[string]string{
+		"name":   "报表",
+		"sheets": `[{"name":"一月","columns":["项目"],"data":[["房租"]]}]`,
+	})
+	if err == nil || !strings.Contains(err.Error(), "NODE_1") || !strings.Contains(err.Error(), "无法回读校验") {
+		t.Fatalf("取列表失败应带 nodeId 报错: %v", err)
 	}
 }
 
