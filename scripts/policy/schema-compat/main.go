@@ -546,8 +546,10 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 // old→new pair appear here. Any other ref change is still reported.
 //
 // Keyed by tool path ("<product>/<tool id>"), then by the previous
-// interface_ref, with the value being the single accepted new ref. Adding an
-// entry is a contract decision and belongs in review, not in a feature change.
+// interface_ref, with the value being the single accepted new ref. Both refs are
+// the canonicalized interface_ref JSON exactly as parseTool produces it (see
+// canonicalRawJSON) — not a bare RPC name. Adding an entry is a contract
+// decision and belongs in review, not in a feature change.
 var reviewedInterfaceRefRedirect = map[string]map[string]string{
 	// The style surface moved from update_range (which writes values) to
 	// set_cell_range's cellStyles payload (style-only, preserving values). This
@@ -555,7 +557,9 @@ var reviewedInterfaceRefRedirect = map[string]map[string]string{
 	// font family / borders. Same product, same target range semantics, same
 	// permission scope; the flat style properties it loses are accepted
 	// separately as reviewed mapping exclusions.
-	"sheet/sheet.range_set_style": {"update_range": "set_cell_range"},
+	"sheet/sheet.range_set_style": {
+		`{"product_id":"sheet","rpc_name":"update_range"}`: `{"product_id":"sheet","rpc_name":"set_cell_range"}`,
+	},
 }
 
 // compatibleInterfaceRefRedirect accepts repointing a tool at a different

@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -763,6 +764,40 @@ func TestCrossPlatformCoverageSchemaCompatPropertyClearingExclusion(t *testing.T
 // nothing reads it at runtime, so a stale value misinforms a reader rather than
 // misrouting a call. The gate is that no other compatibility check for the tool
 // failed — that is the operative meaning of "the contract is unchanged".
+// reviewedInterfaceRefRedirect 的键值必须是 parseTool 经 canonicalRawJSON 实际产出
+// 的紧凑 JSON。这条守卫是必要的：该表先前误登记为裸 RPC 名（"update_range"），后又
+// 误登记为带空格的美化 JSON，两次都让豁免完全失效——而上面的用例是用测试自己注册
+// 的值断言的，所以两次都通过了，只有真实门禁才报错。这里用 canonicalRawJSON 复算
+// 期望值，把格式锚定到生产代码而不是作者的书写习惯。
+func TestCrossPlatformCoverageReviewedRedirectKeysAreCanonicalJSON(t *testing.T) {
+	canon := func(raw string) string {
+		got, err := canonicalRawJSON(json.RawMessage(raw))
+		if err != nil {
+			t.Fatalf("canonicalRawJSON(%s): %v", raw, err)
+		}
+		return got
+	}
+	if len(reviewedInterfaceRefRedirect) == 0 {
+		t.Fatal("redirect allowlist 为空：若确已清空，请同时删除这条守卫")
+	}
+	for toolPath, pairs := range reviewedInterfaceRefRedirect {
+		if len(pairs) == 0 {
+			t.Errorf("%s: 空的 redirect 表项没有意义", toolPath)
+		}
+		for oldRef, newRef := range pairs {
+			if got := canon(oldRef); got != oldRef {
+				t.Errorf("%s: old ref 不是规范形态\n  登记: %s\n  规范: %s", toolPath, oldRef, got)
+			}
+			if got := canon(newRef); got != newRef {
+				t.Errorf("%s: new ref 不是规范形态\n  登记: %s\n  规范: %s", toolPath, newRef, got)
+			}
+			if oldRef == newRef {
+				t.Errorf("%s: old 与 new 相同，不构成 redirect", toolPath)
+			}
+		}
+	}
+}
+
 func TestCrossPlatformCoverageSchemaCompatInterfaceRefRedirect(t *testing.T) {
 	// The redirect carve-out only accepts an explicitly reviewed tool + old→new
 	// ref pair. Register the fixture's path for the duration of this test so the
