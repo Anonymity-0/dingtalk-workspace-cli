@@ -20,6 +20,7 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 )
 
 type chatOutputErrorWriter struct {
@@ -121,6 +122,63 @@ func TestCrossPlatformCoverageIMWorkflowContractsPublishRealPositiveAndNegativeB
 		if !byName[supported] {
 			t.Errorf("supported boundary %s was hidden", supported)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendStatusAliasPublishesWorkflowReceipt(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"im/query_message_send_status": `{"result":{"status":"SUCCESS","openTaskId":"task-1","openMessageId":"msg-1","openConversationId":"cid-1"}}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{"chat", "+messages-send-status", "--open-task-id", "task-1"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "query_message_send_status" || fake.calls[0].args["openTaskId"] != "task-1" {
+		t.Fatalf("calls = %#v", fake.calls)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["contractVersion"] != chatmsg.MessageSendStatusContractVersion || payload["readyForMessageActions"] != true {
+		t.Fatalf("payload = %#v", payload)
+	}
+	ref, _ := payload["messageRef"].(map[string]any)
+	if ref["openMessageId"] != "msg-1" || ref["openConversationId"] != "cid-1" {
+		t.Fatalf("messageRef = %#v", ref)
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendPublishesStatusQueryReceipt(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"chat/send_personal_message": `{"result":{"openTaskId":"task-send-1"}}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+messages-send", "--as", "user", "--chat-id", "cid-1",
+		"--text", "hello", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	receipt, _ := payload["sendReceipt"].(map[string]any)
+	if receipt["contractVersion"] != chatmsg.MessageSendReceiptContractVersion || receipt["openTaskId"] != "task-send-1" {
+		t.Fatalf("sendReceipt = %#v", receipt)
+	}
+	actions, _ := receipt["nextActions"].([]any)
+	if len(actions) != 1 {
+		t.Fatalf("nextActions = %#v", actions)
 	}
 }
 

@@ -29,6 +29,9 @@ func runNativeCardUpdate(t *testing.T, caller *scriptedToolCaller, args ...strin
 	if root.PersistentFlags().Lookup("dry-run") == nil {
 		root.PersistentFlags().Bool("dry-run", false, "preview without executing")
 	}
+	if root.PersistentFlags().Lookup("yes") == nil {
+		root.PersistentFlags().Bool("yes", false, "skip confirmation")
+	}
 	root.SetArgs(args)
 	return root.Execute()
 }
@@ -41,6 +44,7 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardVerifiesWrite(t *testing.T)
 			"--biz-id", "biz-1",
 			"--content", "完成",
 			"--flow-status", "3",
+			"--yes",
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -60,6 +64,7 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardVerifiesWrite(t *testing.T)
 			"--biz-id", "not-a-real-card",
 			"--content", "完成",
 			"--flow-status", "3",
+			"--yes",
 		)
 		var typed *apperrors.Error
 		if !errors.As(err, &typed) || typed.Reason != "streaming_card_update_unverified" {

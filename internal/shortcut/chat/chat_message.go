@@ -1003,9 +1003,10 @@ func uniqueShortcutStrings(values []string) []string {
 var MessagesQuerySendStatus = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+messages-query-send-status",
+	Aliases:     []string{"+messages-send-status"},
 	Product:     "im",
-	Description: "查询消息发送状态",
-	Intent:      "当你发消息后拿到 openTaskId、想确认这条消息是否发送成功时使用；只读返回发送状态，需传 --open-task-id。",
+	Description: "查询消息投递状态并衔接后续消息操作",
+	Intent:      "当你发消息后拿到 openTaskId、想确认投递结果，或后续 edit/recall/read-status 需要取得 openMessageId 和 openConversationId 时使用；openTaskId 不是消息 ID。结果会保留下层响应，并追加版本化 messageRef 与结构化 nextActions。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
@@ -1018,17 +1019,18 @@ var MessagesQuerySendStatus = shortcut.Shortcut{
 			CanonicalPath:  "chat.shortcut_messages_query_send_status",
 			CLIPath:        "chat +messages-query-send-status",
 			PrimaryCLIPath: "chat +messages-query-send-status",
+			Aliases:        []string{"chat +messages-send-status"},
 		},
-		Description: "查询消息发送状态",
+		Description: "查询消息投递状态并衔接后续消息操作",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
 			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
 		Selection: contract.SelectionSpec{
-			AgentSummary: "查询消息发送状态",
-			UseWhen:      []string{"当你发消息后拿到 openTaskId、想确认这条消息是否发送成功时使用；只读返回发送状态，需传 --open-task-id。"},
-			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			AgentSummary: "查询消息投递状态并衔接后续消息操作",
+			UseWhen:      []string{"当你发消息后拿到 openTaskId、想确认投递结果，或后续 edit/recall/read-status 需要取得 openMessageId 和 openConversationId 时使用；openTaskId 不是消息 ID。结果会保留下层响应，并追加版本化 messageRef 与结构化 nextActions。"},
+			AvoidWhen:    []string{"没有 openTaskId、已经有消息 ID，或只需查历史消息内容时不要使用"},
 			Examples:     []string{"dws chat +messages-query-send-status --open-task-id <openTaskId>"},
 		},
 	},
@@ -1037,7 +1039,12 @@ var MessagesQuerySendStatus = shortcut.Shortcut{
 	},
 	Tips: []string{`dws chat +messages-query-send-status --open-task-id <openTaskId>`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return rt.CallMCP("query_message_send_status", map[string]any{"openTaskId": rt.Str("open-task-id")})
+		taskID := rt.Str("open-task-id")
+		data, err := rt.CallMCPData("im", "query_message_send_status", map[string]any{"openTaskId": taskID})
+		if err != nil {
+			return err
+		}
+		return rt.Output(chatmsg.ProjectMessageSendStatus(data, taskID))
 	},
 }
 
@@ -1320,7 +1327,28 @@ var MessagesSendCard = shortcut.Shortcut{
 		}
 		content := rt.Str("content")
 		if content == "" {
-			return rt.CallMCP("create_and_send_card", params)
+			if rt.DryRun() {
+				return rt.Output(map[string]any{
+					"contractVersion": chatmsg.StreamingCardContractVersion,
+					"dry_run":         true,
+					"executed":        false,
+					"preview_kind":    "plan",
+					"actionCount":     1,
+					"actions": []map[string]any{{
+						"tool":      "create_and_send_card",
+						"arguments": params,
+					}},
+				})
+			}
+			created, err := rt.CallMCPWriteData("im", "create_and_send_card", params)
+			if err != nil {
+				return err
+			}
+			bizID := findCardBizID(created)
+			if bizID == "" {
+				return cardCreateMissingBizIDError(created)
+			}
+			return rt.Output(chatmsg.ProjectStreamingCardReceipt(created, bizID))
 		}
 		status := rt.Int("flow-status")
 		if rt.DryRun() {
@@ -1366,14 +1394,11 @@ var MessagesSendCard = shortcut.Shortcut{
 		if _, err := chatmsg.VerifyStreamingCardUpdate(bizID, updated); err != nil {
 			return fmt.Errorf("卡片已创建（bizId=%s），但自动更新结果不可信: %w", bizID, cardUpdateVerificationError(bizID, err))
 		}
-		return rt.Output(map[string]any{
-			"contractVersion": currentCardWorkflowContract.Version,
-			"ok":              true,
-			"bizId":           bizID,
-			"flowStatus":      status,
-			"created":         created,
-			"updated":         updated,
-		})
+		payload := chatmsg.ProjectStreamingCardReceipt(created, bizID)
+		payload["bizId"] = bizID
+		payload["flowStatus"] = status
+		payload["updated"] = updated
+		return rt.Output(payload)
 	},
 }
 
@@ -1510,11 +1535,27 @@ var MessagesUpdateCard = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		if _, err := chatmsg.VerifyStreamingCardUpdate(bizID, updated); err != nil {
+		proof, err := chatmsg.VerifyStreamingCardUpdate(bizID, updated)
+		if err != nil {
 			return cardUpdateVerificationError(bizID, err)
 		}
-		return rt.Output(updated)
+		return rt.Output(chatmsg.ProjectStreamingCardUpdate(updated, bizID, proof))
 	},
+}
+
+func cardCreateMissingBizIDError(created map[string]any) error {
+	return apperrors.NewAPI(
+		"卡片可能已经创建，但服务端未返回后续更新所需的 bizId；CLI 无法确认卡片工作流可继续",
+		apperrors.WithOperation("create_and_send_card"),
+		apperrors.WithServerKey("im"),
+		apperrors.WithOrigin("client_postcondition"),
+		apperrors.WithFailureStage("verify_card_reference"),
+		apperrors.WithExecutionStarted(true),
+		apperrors.WithRetryable(false),
+		apperrors.WithReason("streaming_card_reference_missing"),
+		apperrors.WithHint("不要盲目重试创建；请保留 trace_id 并推动服务端返回 bizId、openMessageId 和 openConversationId"),
+		apperrors.WithDetails(map[string]any{"created": created}),
+	)
 }
 
 func cardUpdateVerificationError(bizID string, verifyErr error) error {

@@ -2528,7 +2528,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageSendCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2546,7 +2546,7 @@ func newChatCommand() *cobra.Command {
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "以当前用户身份发送群聊或单聊消息",
-				UseWhen:      []string{"用户明确要以个人身份发送文本或媒体消息时"},
+				UseWhen:      []string{"用户明确要以个人身份发送文本或媒体消息时；响应返回 openTaskId 后用 chat message query-send-status 确认投递并取得后续操作所需的消息 ID"},
 				AvoidWhen:    []string{"机器人身份或 Webhook 发送应使用对应命令"},
 				Examples:     []string{"dws chat message send --group <openConversationId> \"项目已更新\""},
 			},
@@ -2728,7 +2728,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageSendByBotCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2889,7 +2889,14 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageSendByWebhookCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		// The webhook path parses the raw response directly instead of dispatching
+		// through deps.Caller.CallTool. Supplying a local validator makes the
+		// framework confirm before RunE, so the HTTP write can never happen before
+		// the user_required gate.
+		Validate: func(cmd *cobra.Command, _ []string) error {
+			return validateRequiredFlags(cmd, "token", "title", "text")
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -3587,11 +3594,13 @@ func newChatCommand() *cobra.Command {
 	// ── query-send-status：查询消息发送状态（走 IM MCP）──────
 
 	chatMessageQuerySendStatusCmd := &cobra.Command{
-		Use:   "query-send-status",
-		Short: "查询消息发送状态",
-		Long:  `查询以当前用户身份发送的消息的发送状态。需要传入发送消息时返回的 openTaskId。`,
+		Use:     "query-send-status",
+		Aliases: []string{"send-status"},
+		Short:   "查询消息发送状态",
+		Long: `查询以当前用户身份发送的消息的发送状态。需要传入发送消息时返回的 openTaskId。
+投递成功后，响应中的 openMessageId 和 openConversationId 可继续用于 edit、recall、read-status 等消息操作；openTaskId 本身不是消息 ID。`,
 		Example: `  dws chat message query-send-status --open-task-id <openTaskId>
-  # openTaskId 由 dws chat message send 返回`,
+	  dws chat message recall --conversation-id <openConversationId> --msg-id <openMessageId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "open-task-id"); err != nil {
 				return err
@@ -3613,6 +3622,7 @@ func newChatCommand() *cobra.Command {
 				CanonicalPath:  "chat.query_message_send_status",
 				CLIPath:        "chat message query-send-status",
 				PrimaryCLIPath: "chat message query-send-status",
+				Aliases:        []string{"chat message send-status"},
 			},
 			Description: "查询异步消息发送任务的状态",
 			Interface: &contract.InterfaceSpec{
@@ -3622,8 +3632,8 @@ func newChatCommand() *cobra.Command {
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "查询异步消息发送任务的状态",
-				UseWhen:      []string{"发送命令返回 openTaskId 后需要确认投递结果时"},
-				AvoidWhen:    []string{"没有 openTaskId 或只需查消息内容时不要使用"},
+				UseWhen:      []string{"发送命令返回 openTaskId 后需要确认投递结果，或后续 edit/recall/read-status 需要先取得 openMessageId 和 openConversationId 时"},
+				AvoidWhen:    []string{"没有 openTaskId、已经有消息 ID，或只需查历史消息内容时不要使用"},
 				Examples:     []string{"dws chat message query-send-status --open-task-id <openTaskId>"},
 			},
 		},
@@ -5424,7 +5434,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageSendCardCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5518,7 +5528,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageUpdateCardCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
