@@ -6,6 +6,7 @@ package aitable
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"reflect"
 	"sort"
 	"strings"
@@ -190,6 +191,10 @@ func recordKeyValue(rt *shortcut.RuntimeContext) (any, error) {
 	var value any
 	if err := decoder.Decode(&value); err != nil {
 		return nil, apperrors.NewValidation("--key-value-json 不是合法 JSON: " + err.Error())
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return nil, apperrors.NewValidation("--key-value-json 必须只包含一个 JSON 标量")
 	}
 	if value == nil || reflect.ValueOf(value).Kind() == reflect.Map || reflect.ValueOf(value).Kind() == reflect.Slice {
 		return nil, apperrors.NewValidation("--key-value-json 只接受 string/number/bool 标量")

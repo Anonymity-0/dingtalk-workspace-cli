@@ -54,7 +54,7 @@ func responseCursor(data map[string]any) string {
 	if data == nil {
 		return ""
 	}
-	for _, key := range []string{"nextCursor", "next_cursor"} {
+	for _, key := range []string{"nextCursor", "next_cursor", "cursor"} {
 		if value, ok := data[key].(string); ok && strings.TrimSpace(value) != "" {
 			return strings.TrimSpace(value)
 		}

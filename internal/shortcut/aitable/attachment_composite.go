@@ -21,7 +21,14 @@ import (
 
 const maxAttachmentFileSize = int64(100 * 1024 * 1024)
 
-var attachmentHTTPDo = http.DefaultClient.Do
+func rejectAttachmentUploadRedirect(*http.Request, []*http.Request) error {
+	// Upload credentials are issued for one exact endpoint. Do not let a 3xx
+	// response redirect local file bytes or the credential to another host or
+	// to a URL outside validateAttachmentUploadURL's transport policy.
+	return http.ErrUseLastResponse
+}
+
+var attachmentHTTPDo = (&http.Client{CheckRedirect: rejectAttachmentUploadRedirect}).Do
 
 var AttachmentPut = shortcut.Shortcut{
 	Service:     "aitable",

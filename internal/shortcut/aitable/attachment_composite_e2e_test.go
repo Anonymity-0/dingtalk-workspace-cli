@@ -112,6 +112,35 @@ func TestCrossPlatformCoverageAttachmentPutFailuresDoNotBecomeSuccessE2E(t *test
 	})
 }
 
+func TestCrossPlatformCoverageAttachmentPutRejectsHTTPSRedirectToPlaintextNonLoopbackE2E(t *testing.T) {
+	filePath := writeAttachmentFixture(t, "redirect-sensitive bytes")
+	sourceHits := 0
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		sourceHits++
+		w.Header().Set("Location", "http://example.com/upload")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer server.Close()
+	client := server.Client()
+	client.CheckRedirect = rejectAttachmentUploadRedirect
+	testseam.Swap(t, &attachmentHTTPDo, client.Do)
+
+	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+		{text: attachmentRecordJSON(t, "field", []any{})},
+		{text: mustJSONText(t, map[string]any{"uploadUrl": server.URL + "/put", "fileToken": "ft-redirect"})},
+	}}
+	out, err := runAITableCompositeCLI(t, caller, "+attachment-put",
+		"--base-id", "base", "--table-id", "table", "--record-id", "record", "--field-id", "field", "--file", filePath, "--mode", "replace", "--yes")
+	var typed *apperrors.Error
+	if err == nil || out != "" || !errors.As(err, &typed) || typed.Reason != "aitable_composite_partial_success" ||
+		typed.Cause == nil || !strings.Contains(typed.Cause.Error(), "status 302") {
+		t.Fatalf("redirect upload = output:%q err:%v", out, err)
+	}
+	if sourceHits != 1 || len(caller.calls) != 2 {
+		t.Fatalf("redirect upload reached an unexpected target: sourceHits=%d calls=%#v", sourceHits, caller.calls)
+	}
+}
+
 func TestCrossPlatformCoverageAttachmentRemoveClearAndSelectiveE2E(t *testing.T) {
 	t.Run("clear empty write response recovered by empty read-back", func(t *testing.T) {
 		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{

@@ -41,6 +41,25 @@ func TestCrossPlatformCoverageRecordBulkPatchPaginatesChunksAndVerifiesE2E(t *te
 	}
 }
 
+func TestCrossPlatformCoverageRecordBulkPatchPaginatesNestedCursorShapeE2E(t *testing.T) {
+	records := updateFixtureRecords(0, 2, "旧")
+	patched := updateFixtureRecords(0, 2, "新")
+	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+		{text: mustJSONText(t, map[string]any{"data": map[string]any{"records": records[:1], "hasMore": true, "cursor": "legacy-next"}})},
+		{text: mustJSONText(t, map[string]any{"data": map[string]any{"records": records[1:], "hasMore": false}})},
+		{text: `{"updatedCount":2}`},
+		{text: recordListJSON(t, patched)},
+	}}
+	out, err := runAITableCompositeCLI(t, caller, "+record-bulk-patch",
+		"--base-id", "base", "--table-id", "table", "--all", "--patch", `{"fldStatus":"新"}`, "--yes")
+	if err != nil || !strings.Contains(out, `"verifiedCount": 2`) {
+		t.Fatalf("nested cursor bulk patch = output:%q err:%v", out, err)
+	}
+	if len(caller.calls) != 4 || caller.calls[1].args["cursor"] != "legacy-next" || caller.calls[2].tool != "update_records" {
+		t.Fatalf("nested cursor calls = %#v", caller.calls)
+	}
+}
+
 func TestCrossPlatformCoverageRecordBulkPatchSelectionBoundsAndEmptyE2E(t *testing.T) {
 	t.Run("explicit no matches is success", func(t *testing.T) {
 		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{{text: `{"records":[]}`}}}

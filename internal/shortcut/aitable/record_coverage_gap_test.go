@@ -324,6 +324,24 @@ func TestCrossPlatformCoverageRecordUpsertJSONScalarSuccessE2E(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageRecordUpsertRejectsTrailingJSONBeforeMCPE2E(t *testing.T) {
+	for name, value := range map[string]string{
+		"trailing garbage":    `1 garbage`,
+		"second JSON value":   `1 2`,
+		"second string value": `true "extra"`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			caller := &upsertByKeyCaller{}
+			out, err := runAITableCompositeCLI(t, caller, "+record-upsert-by-key",
+				"--base-id", "base", "--table-id", "table", "--key-field-id", "key", "--key-value-json", value,
+				"--cells", `{"value":1}`, "--yes")
+			if err == nil || out != "" || len(caller.calls) != 0 {
+				t.Fatalf("trailing JSON = output:%q err:%v calls:%#v", out, err, caller.calls)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageRecordShapeHelpers(t *testing.T) {
 	if records, ok := findRecords(nil); ok || records != nil {
 		t.Fatalf("nil records = %#v, %v", records, ok)
@@ -343,7 +361,8 @@ func TestCrossPlatformCoverageRecordShapeHelpers(t *testing.T) {
 	if err := verifyRecordCells(map[string]any{"recordId": "r"}, map[string]any{"f": 1}); err == nil {
 		t.Fatal("missing cells must fail")
 	}
-	if responseCursor(nil) != "" || responseCursor(map[string]any{"data": map[string]any{"next_cursor": " next "}}) != "next" {
+	if responseCursor(nil) != "" || responseCursor(map[string]any{"data": map[string]any{"next_cursor": " next "}}) != "next" ||
+		responseCursor(map[string]any{"result": map[string]any{"cursor": " legacy "}}) != "legacy" {
 		t.Fatal("responseCursor shape mismatch")
 	}
 }
