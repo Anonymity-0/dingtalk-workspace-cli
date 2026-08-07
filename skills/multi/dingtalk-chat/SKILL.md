@@ -22,13 +22,13 @@ metadata:
 - 写操作必须符合用户明确意图。是否需要确认以最终 Runtime gate 和 Schema 为准；需要确认时先说明对象、动作与影响，再追加 `--yes`。
 - 写后按任务结果契约验证；不能仅凭退出码宣称成功。部分结果、未知投递状态和失败项必须如实保留。
 - 时间戳面向用户展示时转换为带时区的可读时间；默认使用当前会话时区，必要时同时保留原值。
-- 遇到认证、权限、profile、confirmation 或未知错误时，只加载 `dws-shared` 中对应 reference；不要连续猜测替代命令。
+- 遇到认证、权限、profile、confirmation 或未知错误时，只加载 `dingtalk-shared` 中对应 reference；不要连续猜测替代命令。
 <!-- DWS_RUNTIME_CONTRACT_END -->
 
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcut 发现（按需）
 
-`chat` 当前有 97 条公开 shortcut，完整清单保留在 Runtime Catalog 与 Schema，不在高频产品根 Skill 中重复展开。已知意图直接使用下方的优先路由、意图表或任务 reference；命令已选中时直接执行，只在参数/安全语义不确定时读取 leaf Schema，在当前 Cobra flags 不确定时读取 leaf Help。
+`chat` 当前有 98 条公开 shortcut，完整清单保留在 Runtime Catalog 与 Schema，不在高频产品根 Skill 中重复展开。已知意图直接使用下方的优先路由、意图表或任务 reference；命令已选中时直接执行，只在参数/安全语义不确定时读取 leaf Schema，在当前 Cobra flags 不确定时读取 leaf Help。
 
 仅当现有路由和 reference 都无法定位低频能力时，才执行 `dws shortcut list --service chat --format json` 做最后回退；不要为已知高频意图加载完整 Shortcut Catalog 或产品级 Schema。
 <!-- VISIBLE_SHORTCUTS_END -->
@@ -52,7 +52,7 @@ metadata:
 | 查看全部会话 | `dws chat +conversation-list --page-all` | 检查 `complete` / `failures` |
 | 读取并下载消息资源 | 查询命令加 `--download-resources` | 不另起手工下载循环；下载失败项保留在结果中 |
 | <!-- dws-intent: chat.conversation.list-top -->查看置顶会话 | `dws chat +conversation-list-top` | 会话 Top 与消息 Pin、消息 Top、Favorite 不同 |
-| 监听 IM 事件 | 切换 `dingtalk-event` | 由事件 Skill 选择确定的 EventKey 和生命周期 |
+| 监听 IM 事件 | 切换 `dingtalk-misc` → [event.md](../dingtalk-misc/references/event.md) | 由事件参考选择确定的 EventKey 和生命周期 |
 
 以下次级入口在意图明确时直接使用，不需要先加载完整 Catalog：
 
@@ -111,6 +111,6 @@ metadata:
 1. resolution 返回零命中或多候选：停止写操作，展示候选并让用户消歧；禁止默认第一项。
 2. `unknown command` / `unknown flag`：读取精确 leaf Help，修正后最多重试一次。
 3. 参数约束或 confirmation 不清楚：读取精确 leaf Schema，以 Runtime gate 为准。
-4. 认证、权限、profile 或 confirmation 错误：读取 `dws-shared` 的对应 reference；正常 IM 不读取完整 shared Skill。
+4. 认证、权限、profile 或 confirmation 错误：读取 `dingtalk-shared` 的对应 reference；正常 IM 不读取完整 shared Skill。
 5. `backend_dependency_unavailable`：保持原参数，对只读命令最多重试一次；不要改 flag、猜认证命令或切换同义原子命令，持续失败时保留 Trace ID。
 6. 其他错误：保留真实错误和已完成/失败项；不要连续尝试同义原子命令。
