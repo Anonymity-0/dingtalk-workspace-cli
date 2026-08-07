@@ -6,6 +6,22 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.58-beta.1] - 2026-08-07
+
+### Added
+
+- **Robot image and file messages** (#867) — `dws chat message send-by-bot`
+  now supports image URLs and local-file uploads through explicit message
+  types, while retaining Markdown as the default and preserving its existing
+  title and text requirements.
+- **Conversation shortcut-bar management** (#877) — adds `dws chat toolbar`
+  commands to list, add, hide, sort, and manage custom conversation shortcuts,
+  with validation and confirmation for destructive removal.
+- **Complete AI Table Shortcut surface** (#901) — makes all 92 supported
+  AI Table Shortcuts discoverable through Runtime Schema and adds reliable
+  Base, table, record, attachment, view, dashboard, and workflow operations
+  with explicit confirmation and result-verification semantics for writes.
+
 ### Changed
 
 - **Doc import upload fallback** — `dws doc import` no longer fails on file
@@ -25,6 +41,12 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   `dws sheet import` validation are unchanged.
 - **IM natural-target and history alignment** — Chat shortcuts can resolve natural user/group targets before execution, and message-history workflows expose bounded time ranges, ordering, explicit all-page controls, continuation ledgers, safe local export, and thread-reply pagination without treating empty or incomplete reads as successful results. Bundled mono/multi Skills and intent routing now describe the same executable surface.
 - **Sheet CSV formula writes** — `dws sheet csv-put` and batch `csv-put` now expose the service contract that CSV fields beginning with `=` are written as formulas. Prefix the field with an apostrophe to write literal text beginning with `=`; CSV content continues to pass through unchanged.
+- **Release-equivalent PR compatibility gate** (#889) — pull-request
+  admission now runs command-surface compatibility checks against the current
+  release baseline before code reaches `main`.
+- **Reviewer routing governance** (#903) — updates the Reviewer Router pool
+  used for new ready PRs while retaining the existing current-head review and
+  required-check gates.
 
 ### Fixed
 
@@ -32,6 +54,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 - **Sheet formula verification** (#873) — `dws sheet formula-verify` now calls
   the registered remote tool name `verify_formula`; the previous
   `formula_verify` name failed at gateway dispatch.
+- **CLI and parameter recovery boundaries** (#864) — command and parameter
+  recovery now fail closed when an Agent-provided path or flag cannot be
+  reconciled with the executable CLI surface, reducing unsafe hallucinated
+  retries.
 
 ## [1.0.57-beta.4] - 2026-08-06
 
