@@ -81,6 +81,7 @@ Flags:
 - 数据写入后按 `cell_styles` → `row_sizes` → `col_sizes` → `cell_merges` 顺序执行（**非原子**）
 - `row_sizes.type`：`pixel`（需 `size`）/ `standard`（恢复默认行高）/ `auto`（按内容自适应）
 - `col_sizes.type`：`pixel`（需 `size`）/ `standard`（恢复默认列宽）——与飞书一致，**列宽不提供 `auto`**
+- `size` 必须是正整数（小数会被拒绝而不是静默取整，避免得到与配置不符的行高列宽）；`row_sizes.range` 形如 `"1:3"`、`col_sizes.range` 形如 `"A:C"`，带多余字符一律拒绝
 - `merge_type` 取 `all` / `rows` / `columns`
 
 **行为要点**：
