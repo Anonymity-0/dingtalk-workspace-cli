@@ -5,6 +5,7 @@ package helpers
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -64,5 +65,29 @@ func TestCrossPlatformCoverageAITableIncompleteResultMetadata(t *testing.T) {
 	}, 1)
 	if err == nil || !strings.Contains(err.Error(), "pagination incomplete") {
 		t.Fatalf("incomplete result error = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageAITableExplicitUnlimitedPaginationE2E(t *testing.T) {
+	responses := make([]string, paging.DefaultPageLimit+1)
+	for index := range responses {
+		next := ""
+		if index < len(responses)-1 {
+			next = fmt.Sprintf(`,"nextCursor":"cursor-%d"`, index+1)
+		}
+		responses[index] = fmt.Sprintf(`{"records":[{"recordId":"record-%d"}]%s}`, index, next)
+	}
+	caller := &aitableTestCaller{responses: responses}
+	out := installAitableDeps(t, caller)
+	if err := recordQueryFetchAll(map[string]any{}, 0); err != nil {
+		t.Fatalf("explicit unlimited pagination failed: %v", err)
+	}
+	if len(caller.calls) != len(responses) {
+		t.Fatalf("explicit unlimited pagination calls = %d, want %d", len(caller.calls), len(responses))
+	}
+	for _, want := range []string{`"pages": 51`, `"fetchedCount": 51`, `"complete": true`} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("explicit unlimited output missing %s: %s", want, out.String())
+		}
 	}
 }

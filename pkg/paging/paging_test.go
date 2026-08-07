@@ -6,6 +6,7 @@ package paging
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -137,8 +138,7 @@ func TestCrossPlatformCoverageFetchAllContextCancel(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageFetchAllUnlimitedPageLimit(t *testing.T) {
-	// PageLimit=0 是公开契约中的“无限制”。用超过默认安全阀的页数防止
-	// 实现再次偷偷把 0 改写成 DefaultPageLimit。
+	// 无限分页必须由哨兵值显式选择；用超过默认安全阀的页数证明它生效。
 	pages := make([]Page, DefaultPageLimit+1)
 	for i := range pages {
 		next := ""
@@ -149,11 +149,40 @@ func TestCrossPlatformCoverageFetchAllUnlimitedPageLimit(t *testing.T) {
 	}
 	s := &stubFetcher{pages: pages}
 	got := FetchAll(context.Background(), s.Fetch, Options{
-		PageLimit:      0,
+		PageLimit:      UnlimitedPageLimit,
 		InterPageDelay: 1 * time.Millisecond,
 	})
 	if got.HasMore || !got.Complete || got.Pages != len(pages) || len(got.Records) != len(pages) {
 		t.Fatalf("unlimited: got=%+v", got)
+	}
+}
+
+func TestCrossPlatformCoverageFetchAllZeroValueUsesDefaultPageLimit(t *testing.T) {
+	pages := make([]Page, DefaultPageLimit+1)
+	for i := range pages {
+		pages[i] = Page{Records: []any{i}, NextCursor: fmt.Sprintf("cursor-%d", i+1)}
+	}
+	s := &stubFetcher{pages: pages}
+	got := FetchAll(context.Background(), s.Fetch, Options{InterPageDelay: time.Nanosecond})
+	if got.Pages != DefaultPageLimit || got.Attempts != DefaultPageLimit || len(got.Records) != DefaultPageLimit {
+		t.Fatalf("zero-value page limit = %+v", got)
+	}
+	if !got.HasMore || got.Complete || got.Partial || got.StopReason != StopPageLimit || !errors.Is(got.Err, ErrPageLimitReached) {
+		t.Fatalf("zero-value safety result = %+v", got)
+	}
+	if s.calls != DefaultPageLimit {
+		t.Fatalf("zero-value fetch calls = %d, want %d", s.calls, DefaultPageLimit)
+	}
+}
+
+func TestCrossPlatformCoverageFetchAllUnsupportedNegativeUsesDefaultPageLimit(t *testing.T) {
+	calls := 0
+	got := FetchAll(context.Background(), func(context.Context, string) (Page, error) {
+		calls++
+		return Page{NextCursor: fmt.Sprintf("cursor-%d", calls)}, nil
+	}, Options{PageLimit: -2, InterPageDelay: time.Nanosecond})
+	if calls != DefaultPageLimit || got.StopReason != StopPageLimit {
+		t.Fatalf("unsupported negative page limit = %+v calls:%d", got, calls)
 	}
 }
 

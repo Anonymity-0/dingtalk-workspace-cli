@@ -15,7 +15,7 @@
 // 继续取"循环。设计目标：
 //
 //  1. 调用方只需提供 fetcher（拿单页）和 cursor 提取函数，循环逻辑由本包处理
-//  2. 支持 --page-limit 安全阀（调用方可用 DefaultPageLimit；0 = 无限制）
+//  2. 支持分页安全阀（零值默认 50 页；显式 UnlimitedPageLimit 才不限页数）
 //  3. 支持页间退避，避免触发上游限流（默认 200ms）
 //  4. 任何一页失败时保留已取数据和可重试 cursor，并显式标记结果不完整
 //
@@ -50,12 +50,12 @@ type Page struct {
 // 返回给调用方，不直接中断流程。
 type Fetcher func(ctx context.Context, cursor string) (Page, error)
 
-// Options 控制 FetchAll 的行为。零值表示不限页数并使用默认页间退避。
+// Options 控制 FetchAll 的行为。零值使用默认页数上限和默认页间退避。
 type Options struct {
 	// PageLimit 最大翻页次数。
-	//   - 0  表示无限制（取到 NextCursor 为空为止）
+	//   - 0  使用 DefaultPageLimit，保持 Options{} 的安全默认语义
+	//   - UnlimitedPageLimit 显式表示不限页数（取到 NextCursor 为空为止）
 	//   - >0 达到该次数后立即停止，返回 LastCursor 让调用方手动续拉
-	// 面向终端用户的调用方可显式传 DefaultPageLimit 作为安全默认值。
 	PageLimit int
 
 	// InterPageDelay 是页间退避时长。默认 200ms。
@@ -68,6 +68,10 @@ type Options struct {
 }
 
 const (
+	// UnlimitedPageLimit 是调用方明确选择无限分页时使用的哨兵值。
+	// 零值保留 DefaultPageLimit 的兼容和资源安全语义。
+	UnlimitedPageLimit = -1
+
 	// DefaultPageLimit 是 PageLimit 字段的默认值。
 	DefaultPageLimit = 50
 
@@ -123,6 +127,11 @@ type Result struct {
 // 不会主动抛 error；上游可基于 Result.Err / Result.Partial 决定如何向用户报告。
 func FetchAll(ctx context.Context, fetcher Fetcher, opts Options) Result {
 	pageLimit := opts.PageLimit
+	if pageLimit == UnlimitedPageLimit {
+		pageLimit = 0
+	} else if pageLimit <= 0 {
+		pageLimit = DefaultPageLimit
+	}
 	delay := opts.InterPageDelay
 	if delay == 0 {
 		delay = DefaultInterPageDelay

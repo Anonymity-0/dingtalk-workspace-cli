@@ -139,6 +139,10 @@ func recordQueryFetchAll(toolArgs map[string]any, pageLimit int) error {
 	}
 	initialCursor, _ := requestArgs["cursor"].(string)
 
+	effectivePageLimit := pageLimit
+	if pageLimit == 0 {
+		effectivePageLimit = paging.UnlimitedPageLimit
+	}
 	result := paging.FetchAll(ctx, func(ctx context.Context, cursor string) (paging.Page, error) {
 		if cursor == "" {
 			delete(requestArgs, "cursor")
@@ -159,7 +163,7 @@ func recordQueryFetchAll(toolArgs map[string]any, pageLimit int) error {
 		}
 		return paging.Page{}, fmt.Errorf("query_records returned no non-empty text content")
 	}, paging.Options{
-		PageLimit:      pageLimit,
+		PageLimit:      effectivePageLimit,
 		InterPageDelay: paging.DefaultInterPageDelay,
 		InitialCursor:  initialCursor,
 	})
