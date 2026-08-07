@@ -14,8 +14,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   numeric-parameter convention. `--help` reports `int` instead of `string`;
   accepted values (2/3/4) and gateway behavior are unchanged.
 - **Minutes skill references** — document `hot-word delete` and
-  `permission apply`, list both in the command trees, add their intent
-  routing, and use a neutral hot-word example in the delete samples.
+  `permission apply`, list both in the command trees, add intent routing for
+  `permission apply`, and use a neutral hot-word example in the delete samples.
+  `hot-word delete` intentionally gets no intent routing while its leaf still
+  declares `confirmation: not_required`.
 
 ### Fixed
 
