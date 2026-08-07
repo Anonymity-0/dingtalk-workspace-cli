@@ -380,6 +380,21 @@ func cellStyleItemToSpec(item map[string]any) (*styleSpec, string, error) {
 	return spec, rangeAddr, nil
 }
 
+// isAllLetters 判断字符串是否非空且只含英文字母（大小写皆可），用于列范围
+// 预检：拒绝 "A5" / "Ax" 这类带数字或尾随字符、会被 parseA1Cell 误判的列名。
+func isAllLetters(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') {
+			return false
+		}
+	}
+	return true
+}
+
 // parseRowColRange 解析行/列范围："1:3"→(start "1", len 3)；"A:C"→(start "A", len 3)；"1"/"A"→len 1。
 func parseRowColRange(addr string, isRow bool) (start string, length int, err error) {
 	addr = strings.TrimSpace(addr)
@@ -396,11 +411,13 @@ func parseRowColRange(addr string, isRow bool) (start string, length int, err er
 		b = strings.TrimSpace(parts[1])
 	}
 	if isRow {
-		var r1, r2 int
-		if _, e := fmt.Sscanf(a, "%d", &r1); e != nil || r1 < 1 {
-			return "", 0, fmt.Errorf("行范围非法: %s（应形如 \"1:3\"）", addr)
-		}
-		if _, e := fmt.Sscanf(b, "%d", &r2); e != nil || r2 < 1 {
+		// strconv.Atoi 要求整个字符串都是合法整数，拒绝 "1x" / "2foo" 这类带尾随
+		// 字符的输入。fmt.Sscanf("%d") 只消费前缀数字，会把 "1x" 静默当成第 1 行 ——
+		// 这是建文档前的校验关口，放过后 update_dimension 会改到错误的行，且此时
+		// 文档与数据已创建、无法原子回滚。
+		r1, e1 := strconv.Atoi(a)
+		r2, e2 := strconv.Atoi(b)
+		if e1 != nil || e2 != nil || r1 < 1 || r2 < 1 {
 			return "", 0, fmt.Errorf("行范围非法: %s（应形如 \"1:3\"）", addr)
 		}
 		if r2 < r1 {
@@ -408,11 +425,15 @@ func parseRowColRange(addr string, isRow bool) (start string, length int, err er
 		}
 		return fmt.Sprintf("%d", r1), r2 - r1 + 1, nil
 	}
-	c1, _, e1 := parseA1Cell(strings.ToUpper(a) + "1")
-	c2, _, e2 := parseA1Cell(strings.ToUpper(b) + "1")
-	if e1 != nil || e2 != nil {
+	// 列同理必须是纯字母：parseA1Cell 会给列名补 "1" 再解析，"A5" 会变成 "A51"
+	// 被当成 A 列静默放过。先要求 a/b 只含字母，杜绝带数字/尾随字符的输入通过预检；
+	// 纯多字母列名（如 "AX"）是合法的，正常通过。
+	if !isAllLetters(a) || !isAllLetters(b) {
 		return "", 0, fmt.Errorf("列范围非法: %s（应形如 \"A:C\"）", addr)
 	}
+	// isAllLetters 已保证 a/b 为非空纯字母，补 "1" 后 parseA1Cell 必然成功，无需再判错。
+	c1, _, _ := parseA1Cell(strings.ToUpper(a) + "1")
+	c2, _, _ := parseA1Cell(strings.ToUpper(b) + "1")
 	// 反序范围（如 "C:A"）必须同时交换起始列，否则会静默改错目标：
 	// 只交换用于算长度的索引会得到 startIndex="C"/length=3，改到 C/D/E 而非 A/B/C。
 	// 行分支同样在交换后返回较小的 r1。

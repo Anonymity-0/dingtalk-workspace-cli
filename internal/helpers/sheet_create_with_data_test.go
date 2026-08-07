@@ -812,6 +812,17 @@ func TestParseRowColRange(t *testing.T) {
 		{"0:2", true, "", 0, true}, // 行号必须 >= 1
 		{"1:0", true, "", 0, true},
 		{"1:2", false, "", 0, true}, // 列范围收到数字
+		// 带尾随字符的行范围必须整体拒绝：Sscanf("%d") 只消费前缀数字，会把
+		// "1x"/"2foo" 静默当成第 1/2 行，放过后 update_dimension 改到错误行。
+		{"1x:3", true, "", 0, true},
+		{"2foo", true, "", 0, true},
+		{"1 2:3", true, "", 0, true}, // 内部空格也非法
+		// 列范围拒绝带数字/尾随字符：否则 "A5" 会被 parseA1Cell（补 "1" 后）
+		// 当成 A 列静默放过。纯多字母列名（如 "AX"）是合法的，不在此列。
+		{"A5:C", false, "", 0, true},
+		{"A1", false, "", 0, true},
+		{":C", false, "", 0, true},      // 空列 token 也要拒绝
+		{"AX:C", false, "C", 48, false}, // 多字母列合法：C..AX 共 48 列
 	}
 	for _, tc := range cases {
 		start, length, err := parseRowColRange(tc.addr, tc.isRow)
