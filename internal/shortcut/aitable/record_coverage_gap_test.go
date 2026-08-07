@@ -189,6 +189,18 @@ func TestCrossPlatformCoverageRecordBulkPatchValidationAndSelectorsE2E(t *testin
 		{name: "false all", args: []string{"--all=false", "--patch", `{"f":1}`}},
 		{name: "invalid max", args: []string{"--all", "--patch", `{"f":1}`, "--max-matches", "0"}},
 		{name: "invalid filters", args: []string{"--filters", `{`, "--patch", `{"f":1}`}},
+		{name: "null filters", args: []string{"--filters", `null`, "--patch", `{"f":1}`}},
+		{name: "empty filters object", args: []string{"--filters", `{}`, "--patch", `{"f":1}`}},
+		{name: "empty filters operands", args: []string{"--filters", `{"operator":"and","operands":[]}`, "--patch", `{"f":1}`}},
+		{name: "missing filters operator", args: []string{"--filters", `{"operands":[{"operator":"eq","operands":["fld","x"]}]}`, "--patch", `{"f":1}`}},
+		{name: "blank child operator", args: []string{"--filters", `{"operator":"and","operands":[{"operator":" ","operands":["fld","x"]}]}`, "--patch", `{"f":1}`}},
+		{name: "null filters operands", args: []string{"--filters", `{"operator":"and","operands":null}`, "--patch", `{"f":1}`}},
+		{name: "non condition operand", args: []string{"--filters", `{"operator":"and","operands":[null]}`, "--patch", `{"f":1}`}},
+		{name: "root comparison", args: []string{"--filters", `{"operator":"eq","operands":["fld","x"]}`, "--patch", `{"f":1}`}},
+		{name: "blank filter field", args: []string{"--filters", `{"operator":"and","operands":[{"operator":"eq","operands":[" ","x"]}]}`, "--patch", `{"f":1}`}},
+		{name: "unknown filter operator", args: []string{"--filters", `{"operator":"and","operands":[{"operator":"unknown","operands":["fld","x"]}]}`, "--patch", `{"f":1}`}},
+		{name: "missing comparison value", args: []string{"--filters", `{"operator":"and","operands":[{"operator":"eq","operands":["fld"]}]}`, "--patch", `{"f":1}`}},
+		{name: "blank query", args: []string{"--query", ` `, "--patch", `{"f":1}`}},
 		{name: "empty record IDs", args: []string{"--record-ids", ` `, "--patch", `{"f":1}`}},
 	}
 	for _, tc := range cases {
@@ -196,16 +208,17 @@ func TestCrossPlatformCoverageRecordBulkPatchValidationAndSelectorsE2E(t *testin
 			args := []string{"--base-id", "base", "--table-id", "table"}
 			args = append(args, tc.args...)
 			args = append(args, "--yes")
-			out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{}, "+record-bulk-patch", args...)
-			if err == nil || out != "" {
-				t.Fatalf("validation = output:%q err:%v", out, err)
+			caller := &upsertByKeyCaller{}
+			out, err := runAITableCompositeCLI(t, caller, "+record-bulk-patch", args...)
+			if err == nil || out != "" || len(caller.calls) != 0 {
+				t.Fatalf("validation = output:%q err:%v calls:%#v", out, err, caller.calls)
 			}
 		})
 	}
 
 	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{{text: `{"records":[]}`}}}
 	out, err := runAITableCompositeCLI(t, caller, "+record-bulk-patch",
-		"--base-id", "base", "--table-id", "table", "--filters", `{"operator":"and"}`, "--query", "text",
+		"--base-id", "base", "--table-id", "table", "--filters", `{"operator":"and","operands":[{"operator":"or","operands":[{"operator":"eq","operands":["fld","x"]}]}]}`, "--query", "text",
 		"--record-ids", "r2,r1", "--view-id", "view", "--patch", `{"f":1}`, "--yes")
 	if err != nil || !strings.Contains(out, `"matchedCount": 0`) {
 		t.Fatalf("selectors = output:%q err:%v", out, err)

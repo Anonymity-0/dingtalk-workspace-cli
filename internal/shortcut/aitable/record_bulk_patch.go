@@ -5,6 +5,7 @@ package aitable
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -53,32 +54,23 @@ func executeRecordBulkPatch(rt *shortcut.RuntimeContext) error {
 	if len(patch) == 0 {
 		return apperrors.NewValidation("--patch 必须是非空 JSON 对象")
 	}
-	selectorCount := 0
-	for _, name := range []string{"filters", "query", "record-ids", "all"} {
-		if rt.Changed(name) {
-			selectorCount++
-		}
-	}
-	if selectorCount == 0 {
-		return apperrors.NewValidation("必须显式提供 --filters、--query、--record-ids 或 --all")
-	}
-	if rt.Changed("all") && !rt.Bool("all") {
-		return apperrors.NewValidation("--all=false 不构成全表授权")
-	}
-	maxMatches := rt.Int("max-matches")
-	if maxMatches < 1 || maxMatches > maxCompositeRecordRun {
-		return apperrors.NewValidation(fmt.Sprintf("--max-matches 必须在 1..%d", maxCompositeRecordRun))
-	}
 	params := map[string]any{"baseId": rt.Str("base-id"), "tableId": rt.Str("table-id")}
+	selectorCount := 0
 	if rt.Changed("filters") {
-		filters, err := parseJSONAny("filters", rt.Str("filters"))
+		filters, err := parseBulkPatchFilters(rt.Str("filters"))
 		if err != nil {
 			return err
 		}
 		params["filters"] = filters
+		selectorCount++
 	}
 	if rt.Changed("query") {
-		params["keyword"] = rt.Str("query")
+		query := strings.TrimSpace(rt.Str("query"))
+		if query == "" {
+			return apperrors.NewValidation("--query 必须包含非空白关键词")
+		}
+		params["keyword"] = query
+		selectorCount++
 	}
 	if rt.Changed("record-ids") {
 		ids, err := parseRecordIDs(rt.StrSlice("record-ids"))
@@ -86,6 +78,20 @@ func executeRecordBulkPatch(rt *shortcut.RuntimeContext) error {
 			return err
 		}
 		params["recordIds"] = ids
+		selectorCount++
+	}
+	if rt.Changed("all") {
+		if !rt.Bool("all") {
+			return apperrors.NewValidation("--all=false 不构成全表授权")
+		}
+		selectorCount++
+	}
+	if selectorCount == 0 {
+		return apperrors.NewValidation("必须显式提供 --filters、--query、--record-ids 或 --all")
+	}
+	maxMatches := rt.Int("max-matches")
+	if maxMatches < 1 || maxMatches > maxCompositeRecordRun {
+		return apperrors.NewValidation(fmt.Sprintf("--max-matches 必须在 1..%d", maxCompositeRecordRun))
 	}
 	if rt.Changed("view-id") {
 		params["viewId"] = rt.Str("view-id")
@@ -114,4 +120,57 @@ func executeRecordBulkPatch(rt *shortcut.RuntimeContext) error {
 		return rt.Output(result)
 	}
 	return executeRecordBatches(rt, "record_bulk_patch", "update_records", serverMain, updates, verifyUpdateBatch)
+}
+
+func parseBulkPatchFilters(raw string) (map[string]any, error) {
+	filters, err := parseJSONObject("filters", raw)
+	if err != nil {
+		return nil, err
+	}
+	if !bulkPatchFilterConstrictsScope(filters, true) {
+		return nil, apperrors.NewValidation("--filters 必须是包含非空筛选条件的 JSON 对象，根 operator 必须为 and/or")
+	}
+	return filters, nil
+}
+
+func bulkPatchFilterConstrictsScope(value any, root bool) bool {
+	filter, ok := value.(map[string]any)
+	if !ok {
+		return false
+	}
+	operator, ok := filter["operator"].(string)
+	if !ok {
+		return false
+	}
+	operator = strings.ToLower(strings.TrimSpace(operator))
+	if operator == "" {
+		return false
+	}
+	operands, ok := filter["operands"].([]any)
+	if !ok || len(operands) == 0 {
+		return false
+	}
+	if root && operator != "and" && operator != "or" {
+		return false
+	}
+	if operator == "and" || operator == "or" {
+		for _, operand := range operands {
+			if !bulkPatchFilterConstrictsScope(operand, false) {
+				return false
+			}
+		}
+		return true
+	}
+	switch operator {
+	case "eq", "ne", "gt", "lt", "gte", "lte", "contain", "exclusive",
+		"exist", "un_exist", "any_of", "all_of", "none_of", "date_eq",
+		"before", "after", "not_before", "not_after":
+	default:
+		return false
+	}
+	fieldID, ok := operands[0].(string)
+	if !ok || strings.TrimSpace(fieldID) == "" {
+		return false
+	}
+	return (operator == "exist" || operator == "un_exist") || len(operands) >= 2
 }
