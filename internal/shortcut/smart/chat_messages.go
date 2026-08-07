@@ -39,7 +39,11 @@ const (
 )
 
 func formatDingTalkMessageBoundary(now time.Time) string {
-	return now.In(dingTalkMessageLocation).Format("2006-01-02 15:04:05")
+	localized := now.In(dingTalkMessageLocation)
+	if localized.Nanosecond() != 0 {
+		return localized.Format(time.RFC3339Nano)
+	}
+	return localized.Format("2006-01-02 15:04:05")
 }
 
 // ChatMessages resolves one conversation, projects messages into the shared

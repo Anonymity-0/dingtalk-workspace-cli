@@ -66,6 +66,9 @@ func resolveChatMessageTimeRange(rt *shortcut.RuntimeContext, now time.Time) (ch
 }
 
 func (r chatMessageTimeRange) initialBoundary(now time.Time) string {
+	if !r.configured {
+		return formatDingTalkMessageBoundary(now.Truncate(time.Second))
+	}
 	if r.order == "asc" && r.start != nil {
 		return formatDingTalkMessageBoundary(*r.start)
 	}
@@ -98,10 +101,10 @@ func (r chatMessageTimeRange) metadata() map[string]any {
 		"semantics": messageTimeRangeSemantics,
 	}
 	if r.start != nil {
-		result["startTime"] = r.start.Format(time.RFC3339)
+		result["startTime"] = r.start.Format(time.RFC3339Nano)
 	}
 	if r.end != nil {
-		result["endTime"] = r.end.Format(time.RFC3339)
+		result["endTime"] = r.end.Format(time.RFC3339Nano)
 	}
 	return result
 }

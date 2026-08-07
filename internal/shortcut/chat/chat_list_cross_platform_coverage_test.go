@@ -215,6 +215,19 @@ func TestCrossPlatformCoverageChatListProjectionHelpers(t *testing.T) {
 	if _, err := normalizeChatListTypes([]string{"bad"}); err == nil {
 		t.Fatal("invalid type accepted")
 	}
+	var tuple map[string]any
+	if err := json.Unmarshal([]byte(`{"result":[[{"openConversationId":"tuple"}],2,true]}`), &tuple); err != nil {
+		t.Fatal(err)
+	}
+	page, err := chatListPagination(tuple)
+	if err != nil || page["nextCursor"] != float64(2) || page["hasMore"] != true || len(chatListProject(tuple)) != 1 {
+		t.Fatalf("tuple normalization rows=%#v page=%#v err=%v", chatListProject(tuple), page, err)
+	}
+	ordinary := map[string]any{"result": []any{map[string]any{"openConversationId": "ordinary"}}}
+	page, err = chatListPagination(ordinary)
+	if err != nil || page != nil || len(chatListProject(ordinary)) != 1 {
+		t.Fatalf("ordinary list rows=%#v page=%#v err=%v", chatListProject(ordinary), page, err)
+	}
 }
 
 func TestCrossPlatformCoverageChatListExecuteAndHelperEdges(t *testing.T) {
@@ -485,6 +498,40 @@ func TestCrossPlatformCoverageChatListAdditionalPaginationEdges(t *testing.T) {
 			t.Fatalf("payload=%#v err=%v", payload, err)
 		}
 	})
+
+	t.Run("gateway tuple preserves continuation metadata", func(t *testing.T) {
+		fake := &larkAlignmentCaller{sequenceResponses: map[string][]string{
+			"im/list_all_conversations": {
+				`{"result":[[{"openConversationId":"g1","singleChat":false}],2,true]}`,
+				`{"result":[[{"openConversationId":"g2","singleChat":false}],0,false]}`,
+			},
+		}}
+		payload, err := run(t, fake, "--page-size", "1", "--page-all")
+		if err != nil {
+			t.Fatalf("tuple pagination payload=%#v calls=%#v err=%v", payload, fake.calls, err)
+		}
+		if len(fake.calls) != 2 || fake.calls[1].args["cursor"] != 2 {
+			t.Fatalf("tuple pagination calls = %#v", fake.calls)
+		}
+		if payload["count"] != float64(2) || payload["pagesFetched"] != float64(2) ||
+			payload["complete"] != true || payload["hasMore"] != false || payload["stopReason"] != "source_complete" {
+			t.Fatalf("tuple pagination payload = %#v", payload)
+		}
+	})
+
+	for name, response := range map[string]string{
+		"missing metadata": `{"result":[[{"openConversationId":"g1"}]]}`,
+		"invalid hasMore":  `{"result":[[{"openConversationId":"g1"}],2,"true"]}`,
+	} {
+		t.Run("malformed gateway tuple "+name, func(t *testing.T) {
+			payload, err := run(t, &larkAlignmentCaller{responses: map[string]string{
+				"im/list_all_conversations": response,
+			}}, "--page-all")
+			if err == nil || payload["failedCount"] != float64(1) || payload["stopReason"] != "pagination_error" {
+				t.Fatalf("malformed tuple payload=%#v err=%v", payload, err)
+			}
+		})
+	}
 
 	t.Run("full legacy page without pagination fails closed", func(t *testing.T) {
 		payload, err := run(t, &larkAlignmentCaller{responses: map[string]string{

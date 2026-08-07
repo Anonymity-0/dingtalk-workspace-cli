@@ -37,6 +37,13 @@ func TestCrossPlatformCoverageResolveMessageTimeRange(t *testing.T) {
 	if plain.metadata() != nil || plain.initialBoundary(now) != formatDingTalkMessageBoundary(now) {
 		t.Fatalf("plain metadata/boundary = %#v, %q", plain.metadata(), plain.initialBoundary(now))
 	}
+	orderOnly, err := resolveChatMessageTimeRange(messageTimeRangeRuntime(t, map[string]string{
+		"order": "desc",
+	}), now)
+	if err != nil || !orderOnly.configured || orderOnly.start != nil || orderOnly.end != nil ||
+		orderOnly.initialBoundary(now) != formatDingTalkMessageBoundary(now) {
+		t.Fatalf("order-only range = %#v, %v", orderOnly, err)
+	}
 
 	ascending, err := resolveChatMessageTimeRange(messageTimeRangeRuntime(t, map[string]string{
 		"start-time": "2026-08-01",
@@ -68,6 +75,22 @@ func TestCrossPlatformCoverageResolveMessageTimeRange(t *testing.T) {
 	}
 	if startOnly.initialBoundary(now) != formatDingTalkMessageBoundary(now) {
 		t.Fatalf("start-only boundary = %q", startOnly.initialBoundary(now))
+	}
+
+	fractional, err := resolveChatMessageTimeRange(messageTimeRangeRuntime(t, map[string]string{
+		"start": "2026-08-02T00:00:00.125+08:00",
+		"end":   "2026-08-03T00:00:00.500+08:00",
+	}), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fractional.initialBoundary(now); got != "2026-08-03T00:00:00.5+08:00" {
+		t.Fatalf("fractional boundary = %q", got)
+	}
+	fractionalMetadata := fractional.metadata()
+	if fractionalMetadata["startTime"] != "2026-08-02T00:00:00.125+08:00" ||
+		fractionalMetadata["endTime"] != "2026-08-03T00:00:00.5+08:00" {
+		t.Fatalf("fractional metadata = %#v", fractionalMetadata)
 	}
 
 	for name, values := range map[string]map[string]string{
@@ -176,6 +199,18 @@ func TestCrossPlatformCoverageMessageTimeRangeFiltering(t *testing.T) {
 	filtered, terminal, failures = desc.filter(items[1:2])
 	if len(filtered) != 1 || terminal || failures != nil {
 		t.Fatalf("clean filter = %#v, %v, %#v", filtered, terminal, failures)
+	}
+
+	fractionalStart, _ := parseDingTalkMessageTime("2026-08-03T00:00:00+08:00")
+	fractionalEnd, _ := parseDingTalkMessageTime("2026-08-03T00:00:00.500+08:00")
+	fractionalRange := chatMessageTimeRange{start: &fractionalStart, end: &fractionalEnd, order: "desc"}
+	fractionalItems := []map[string]any{
+		{"openMessageId": "inside-fraction", "createTime": "2026-08-03T00:00:00.250+08:00"},
+		{"openMessageId": "end-fraction", "createTime": "2026-08-03T00:00:00.500+08:00"},
+	}
+	filtered, terminal, failures = fractionalRange.filter(fractionalItems)
+	if len(filtered) != 1 || filtered[0]["openMessageId"] != "inside-fraction" || terminal || failures != nil {
+		t.Fatalf("fractional filter = %#v, %v, %#v", filtered, terminal, failures)
 	}
 }
 

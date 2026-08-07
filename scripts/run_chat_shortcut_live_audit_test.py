@@ -54,7 +54,12 @@ def test_thread_reply_pages_are_deduplicated() -> None:
                 "result": {
                     "hasMore": True,
                     "messages": [
-                        {"openMessageId": "m1", "createTime": "2026-08-05 16:48:20"}
+                        {
+                            "openMessageId": "m1",
+                            "openConvThreadId": "thread-1",
+                            "emotionReplyList": [{"type": "LIKE"}],
+                            "createTime": "2026-08-05 16:48:20",
+                        }
                     ],
                 }
             },
@@ -66,7 +71,12 @@ def test_thread_reply_pages_are_deduplicated() -> None:
                 "result": {
                     "hasMore": False,
                     "messages": [
-                        {"openMessageId": "m1", "createTime": "2026-08-05 16:48:20"},
+                        {
+                            "openMessageId": "m1",
+                            "openConvThreadId": "thread-1",
+                            "emotionReplyList": [{"type": "LIKE"}],
+                            "createTime": "2026-08-05 16:48:20",
+                        },
                         {"openMessageId": "m0", "createTime": "2026-08-05 16:47:20"},
                     ],
                 }
@@ -83,7 +93,8 @@ def test_thread_reply_pages_are_deduplicated() -> None:
         argv=[],
         exit_code=0,
         stdout=(
-            '{"replies":[{"messageId":"m1"},{"messageId":"m0"}],'
+            '{"replies":[{"messageId":"m1","threadId":"thread-1",'
+            '"reactions":[{"type":"LIKE"}]},{"messageId":"m0"}],'
             '"count":2,"complete":true,"hasMore":false,"pagesFetched":2}'
         ),
         stderr="",
@@ -94,6 +105,8 @@ def test_thread_reply_pages_are_deduplicated() -> None:
     check("multi-page projection passes", summary["status"] == "pass")
     check("all lower calls reported", summary["lower"]["call_count"] == 2)
     check("unique lower count reported", summary["lower"]["count"] == 2)
+    check("boundary reaction counted once", summary["lower"]["reaction_message_count"] == 1)
+    check("boundary thread counted once", summary["lower"]["thread_message_count"] == 1)
 
 
 def test_group_pages_are_counted_across_all_lower_calls() -> None:
@@ -189,6 +202,32 @@ def test_empty_projection_is_not_promoted_to_non_empty_pass() -> None:
     )
     summary = summarize_capture(capture)
     check("empty projected collection is explicit", summary["status"] == "pass_empty")
+
+    dropped_projection = Capture(
+        command="+bot-search",
+        argv=[],
+        exit_code=0,
+        stdout='{"bots":[],"count":0}',
+        stderr="",
+        raw_calls=[
+            ("bot", "search_my_robots", {"result": {"robots": [{"robotId": "r1"}]}})
+        ],
+        duration_ms=1,
+    )
+    summary = summarize_capture(dropped_projection)
+    check("non-empty lower projection cannot pass empty", summary["status"] == "projection_mismatch")
+
+    unknown_lower_shape = Capture(
+        command="+bot-search",
+        argv=[],
+        exit_code=0,
+        stdout='{"bots":[],"count":0}',
+        stderr="",
+        raw_calls=[("bot", "search_my_robots", {"result": {"unexpected": []}})],
+        duration_ms=1,
+    )
+    summary = summarize_capture(unknown_lower_shape)
+    check("unknown lower collection is not a success", summary["status"] == "projection_unverified")
 
     no_upper_count = Capture(
         command="+unread-chats",

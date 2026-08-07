@@ -243,11 +243,50 @@ def distinct_lower_message_count(
     page. Summing page lengths would therefore report a false projection
     mismatch for an otherwise correct de-duplicating Shortcut.
     """
-    return distinct_lower_collection_count(
-        raw_calls,
-        tool,
-        ("openMessageId", "openMsgId", "messageId", "msgId", "id"),
-    )
+    metrics = distinct_lower_message_metrics(raw_calls, tool)
+    return metrics[0] if metrics is not None else None
+
+
+def distinct_lower_message_metrics(
+    raw_calls: list[tuple[str, str, Any]], tool: str
+) -> tuple[int, int, int] | None:
+    """Aggregate count/reaction/thread facts over one stable message-ID set."""
+    seen: set[str] = set()
+    reaction_messages: set[str] = set()
+    thread_messages: set[str] = set()
+    anonymous = 0
+    found_collection = False
+    identity_keys = ("openMessageId", "openMsgId", "messageId", "msgId", "id")
+    for _, call_tool, raw in raw_calls:
+        if call_tool != tool:
+            continue
+        rows: list[Any] | None = None
+        for path in LIST_PATHS_BY_TOOL.get(tool, ()):
+            rows = at_path(raw, path)
+            if rows is not None:
+                break
+        if rows is None:
+            continue
+        found_collection = True
+        for row in rows:
+            identity = ""
+            if isinstance(row, dict):
+                for key in identity_keys:
+                    value = row.get(key)
+                    if value not in (None, ""):
+                        identity = f"id:{value}"
+                        break
+            if not identity:
+                identity = f"anonymous:{anonymous}"
+                anonymous += 1
+            seen.add(identity)
+            if reaction_message_count(row, upper=False) > 0:
+                reaction_messages.add(identity)
+            if thread_message_count(row, upper=False) > 0:
+                thread_messages.add(identity)
+    if not found_collection:
+        return None
+    return len(seen), len(reaction_messages), len(thread_messages)
 
 
 def distinct_lower_collection_count(
@@ -440,36 +479,25 @@ def summarize_capture(capture: Capture) -> dict[str, Any]:
     expected_lower_count = lower_count(tool, raw) if tool else None
     pagination_raw = raw
     lower_message_projection = raw
+    lower_message_metrics: tuple[int, int, int] | None = None
     if capture.command == "+thread-replies" and tool == "list_topic_replies":
-        expected_lower_count = distinct_lower_message_count(
+        lower_message_metrics = distinct_lower_message_metrics(
             capture.raw_calls, "list_topic_replies"
         )
-        lower_message_projection = [
-            call_raw
-            for _, call_tool, call_raw in capture.raw_calls
-            if call_tool == "list_topic_replies"
-        ]
+        expected_lower_count = lower_message_metrics[0] if lower_message_metrics else None
     elif capture.command == "+at-me" and tool == "search_at_me_message":
-        expected_lower_count = distinct_lower_message_count(
+        lower_message_metrics = distinct_lower_message_metrics(
             capture.raw_calls, "search_at_me_message"
         )
-        lower_message_projection = [
-            call_raw
-            for _, call_tool, call_raw in capture.raw_calls
-            if call_tool == "search_at_me_message"
-        ]
+        expected_lower_count = lower_message_metrics[0] if lower_message_metrics else None
     elif (
         capture.command == "+messages-list-direct"
         and tool == "list_individual_chat_message"
     ):
-        expected_lower_count = distinct_lower_message_count(
+        lower_message_metrics = distinct_lower_message_metrics(
             capture.raw_calls, "list_individual_chat_message"
         )
-        lower_message_projection = [
-            call_raw
-            for _, call_tool, call_raw in capture.raw_calls
-            if call_tool == "list_individual_chat_message"
-        ]
+        expected_lower_count = lower_message_metrics[0] if lower_message_metrics else None
     elif capture.command in {"+chat-list-all", "+my-groups"} and tool == (
         "list_my_groups_pagination"
     ):
@@ -513,9 +541,12 @@ def summarize_capture(capture: Capture) -> dict[str, Any]:
     exact_passthrough = bool(capture.raw_calls and upper == raw)
     upper_message_projection = primary_projection_for_message_metrics(upper)
     upper_reactions = reaction_message_count(upper_message_projection, upper=True)
-    lower_reactions = reaction_message_count(lower_message_projection, upper=False)
     upper_threads = thread_message_count(upper_message_projection, upper=True)
-    lower_threads = thread_message_count(lower_message_projection, upper=False)
+    if lower_message_metrics is not None:
+        _, lower_reactions, lower_threads = lower_message_metrics
+    else:
+        lower_reactions = reaction_message_count(lower_message_projection, upper=False)
+        lower_threads = thread_message_count(lower_message_projection, upper=False)
     upper_pagination = pagination_meta(upper)
     lower_pagination = pagination_meta(pagination_raw)
 
@@ -540,18 +571,20 @@ def summarize_capture(capture: Capture) -> dict[str, Any]:
         status = "no_lower_capture"
     elif upper_explicitly_incomplete:
         status = "incomplete"
-    elif upper_count == 0 or (
-        expected_lower_count == 0 and upper_count is None
-    ):
+    elif expected_lower_count == 0 and upper_count in (None, 0):
         # An empty collection is useful evidence, but it is not a successful
         # non-empty business-data E2E. This must precede exact-passthrough so a
         # raw empty list cannot be promoted to pass merely because projection
         # preserved it byte-for-byte.
         status = "pass_empty"
-    elif exact_passthrough:
-        status = "pass"
     elif expected_lower_count is not None and upper_count != expected_lower_count:
         status = "projection_mismatch"
+    elif upper_count == 0:
+        # The upper projection is empty but the lower response shape does not
+        # expose a countable collection, so correctness cannot be proven.
+        status = "projection_unverified"
+    elif exact_passthrough:
+        status = "pass"
     elif lower_reactions > 0 and upper_reactions != lower_reactions:
         status = "projection_mismatch"
     elif lower_threads > 0 and upper_threads != lower_threads:
@@ -1311,6 +1344,7 @@ def main() -> int:
 
     failures = {
         "projection_mismatch",
+        "projection_unverified",
         "pagination_mismatch",
         "backend_error",
         "cli_error",

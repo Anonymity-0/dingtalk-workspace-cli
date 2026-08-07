@@ -1020,7 +1020,14 @@ func executeChatList(rt *shortcut.RuntimeContext) error {
 			allChats = append(allChats, chat)
 		}
 
-		page := chatmsg.Pagination(data)
+		page, paginationErr := chatListPagination(data)
+		if paginationErr != nil {
+			failures = append(failures, map[string]any{
+				"page": pagesFetched, "stage": "pagination", "error": paginationErr.Error(),
+			})
+			stopReason = "pagination_error"
+			break
+		}
 		pageHasMore, hasMoreKnown := page["hasMore"].(bool)
 		nextCursor, err = chatListNextCursor(page["nextCursor"])
 		if !hasMoreKnown {
@@ -1152,6 +1159,37 @@ func executeChatList(rt *shortcut.RuntimeContext) error {
 		)
 	}
 	return nil
+}
+
+// chatListPagination preserves the shared map/envelope pagination formats and
+// supplements them with the list_all_conversations gateway tuple:
+// result:[conversationList,nextCursor,hasMore]. Tuple positions are specific to
+// this RPC, so they are normalized here instead of broadening chatmsg.Pagination
+// for unrelated Chat shortcuts.
+func chatListPagination(data map[string]any) (map[string]any, error) {
+	page := chatmsg.Pagination(data)
+	for _, key := range []string{"result", "data"} {
+		values, ok := data[key].([]any)
+		if !ok || len(values) == 0 {
+			continue
+		}
+		if _, tuple := values[0].([]any); !tuple {
+			continue
+		}
+		if len(values) < 3 {
+			return nil, fmt.Errorf("会话列表 tuple 分页元数据不完整：期望 [conversationList,nextCursor,hasMore]")
+		}
+		hasMore, ok := values[2].(bool)
+		if !ok {
+			return nil, fmt.Errorf("会话列表 tuple 的 hasMore 必须是布尔值")
+		}
+		return map[string]any{
+			"nextCursor": values[1],
+			"hasMore":    hasMore,
+			"complete":   !hasMore,
+		}, nil
+	}
+	return page, nil
 }
 
 func chatListNextCursor(value any) (int, error) {
