@@ -512,7 +512,7 @@ var FlagList = shortcut.Shortcut{
 	Risk:        shortcut.RiskRead,
 	Flags: []shortcut.Flag{
 		{Name: "page-size", Type: shortcut.FlagInt, Default: "20", Desc: "每页数量；下游真实上限为 30，显式页大小必须在 1-30 之间"},
-		{Name: "size", Type: shortcut.FlagInt, Desc: "--page-size 的兼容别名；下游真实上限为 30，显式页大小必须在 1-30 之间"},
+		{Name: "size", Type: shortcut.FlagInt, Default: "20", Desc: "--page-size 的兼容别名；下游真实上限为 30，显式页大小必须在 1-30 之间"},
 		{Name: "page-token", Type: shortcut.FlagString, Desc: "Lark 对齐的起始分页参数；起始 cursor 必须是非负整数"},
 		{Name: "cursor", Type: shortcut.FlagInt, Default: "0", Desc: "钉钉数字分页游标；起始 cursor 必须是非负整数"},
 		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动读取全部收藏分页；--page-limit 仅与 --page-all 一起使用且范围 1-500"},
