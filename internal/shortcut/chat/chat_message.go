@@ -881,6 +881,10 @@ func DownloadMessageResources(
 			continue
 		}
 		preferredName := resourceDownloadPreferredName(data)
+		if preferredName == "" {
+			preferredName, _ = resource["name"].(string)
+			preferredName = strings.TrimSpace(preferredName)
+		}
 		filename := resourceDownloadFilename(resourceURL, preferredName)
 		filename = disambiguateResourceDownloadFilename(filename, downloadedNames)
 		output := filepath.Join(outputDir, filename)

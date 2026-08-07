@@ -279,9 +279,10 @@ func SenderType(m map[string]any) any {
 // legacy aliases such as time or msgType, but the underlying identity,
 // context, reaction, quote, forward, and resource semantics come from here.
 func ProjectMessageV1(m map[string]any, includeReactions bool) map[string]any {
+	ownedResources := Resources(m)
 	row := map[string]any{
 		"sender":     Sender(m),
-		"text":       Text(m),
+		"text":       projectedResourceText(m, ownedResources),
 		"createTime": CreateTime(m),
 	}
 	if value := MessageID(m); value != nil {
@@ -353,7 +354,8 @@ func QuotedMessage(m map[string]any) map[string]any {
 	if value := Sender(quoted); value != nil {
 		out["sender"] = value
 	}
-	if value := Text(quoted); value != nil {
+	resources := Resources(quoted)
+	if value := projectedResourceText(quoted, resources); value != nil {
 		out["text"] = value
 	}
 	if value := CreateTime(quoted); value != nil {
@@ -362,7 +364,7 @@ func QuotedMessage(m map[string]any) map[string]any {
 	if value := MessageType(quoted); value != nil {
 		out["messageType"] = value
 	}
-	if resources := Resources(quoted); len(resources) > 0 {
+	if len(resources) > 0 {
 		out["resourceRefs"] = resources
 	}
 	return out
@@ -512,6 +514,22 @@ func resourcesDeep(m map[string]any, inheritedConversationID string, depth int) 
 var mediaIDTextRE = regexp.MustCompile(`(?i)\bmedia[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
 var fileIDTextRE = regexp.MustCompile(`(?i)\bfile[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
 var fileNameAndIDTextRE = regexp.MustCompile(`(?i)\[文件\]\s*([^\r\n]*?)\s+file[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
+var legacyResourceDownloadHintRE = regexp.MustCompile(`\s*注意：如需下载使用dws\s+(?:chat message download-media|drive download)命令下载\s*`)
+
+// projectedResourceText removes only the exact, machine-generated download
+// hint emitted by older IM APIs. The readable resource marker and ID remain in
+// text, while resourceRefs publishes the current executable download command.
+// Text without an owned mediaId/fileId is left byte-for-byte unchanged so an
+// ordinary user sentence mentioning a command can never be rewritten.
+func projectedResourceText(m map[string]any, resources []map[string]any) any {
+	value := Text(m)
+	text, ok := value.(string)
+	if !ok || len(resources) == 0 ||
+		(!mediaIDTextRE.MatchString(text) && !fileIDTextRE.MatchString(text)) {
+		return value
+	}
+	return strings.TrimSpace(legacyResourceDownloadHintRE.ReplaceAllString(text, ""))
+}
 
 type resourceNameCandidate struct {
 	name     string

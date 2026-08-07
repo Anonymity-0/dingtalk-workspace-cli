@@ -1125,6 +1125,9 @@ func TestCrossPlatformCoverageMessageFileResourceDownloadUsesDriveAndPreservesNa
 		fake.calls[0].args["fileId"] != "drive-file" {
 		t.Fatalf("drive call = %#v", fake.calls)
 	}
+	helpers.InitDeps(&larkAlignmentCaller{responses: map[string]string{
+		"drive/download_file": `{"result":{"downloadUrl":"https://download.dingtalk.com/opaque"}}`,
+	}})
 
 	var ledger map[string]any
 	shortcut.Register(shortcut.Shortcut{

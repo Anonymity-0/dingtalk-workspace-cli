@@ -78,6 +78,33 @@ func TestCrossPlatformCoverageResourcesExtractsLegacyFileNameWithoutGuessing(t *
 	}
 }
 
+func TestCrossPlatformCoverageProjectionRemovesOnlyLegacyResourceDownloadHint(t *testing.T) {
+	legacy := `[文件] 项目最终报告 2026.pdf fileId: drive-file 注意：如需下载使用dws drive download命令下载`
+	row := ProjectMessageV1(map[string]any{"content": legacy}, false)
+	if row["text"] != `[文件] 项目最终报告 2026.pdf fileId: drive-file` {
+		t.Fatalf("projected text = %#v", row["text"])
+	}
+	resources := row["resourceRefs"].([]map[string]any)
+	if len(resources) != 1 ||
+		resources[0]["name"] != "项目最终报告 2026.pdf" ||
+		resources[0]["download"].(map[string]any)["shortcut"] != "+messages-resource-download" {
+		t.Fatalf("projected resources = %#v", resources)
+	}
+	mediaRow := ProjectMessageV1(map[string]any{
+		"openMessageId":      "msg-media",
+		"openConversationId": "cid-media",
+		"content":            `[图片消息](mediaId=@media) 注意：如需下载使用dws chat message download-media命令下载`,
+	}, false)
+	if mediaRow["text"] != `[图片消息](mediaId=@media)` {
+		t.Fatalf("projected media text = %#v", mediaRow["text"])
+	}
+
+	ordinary := `团队规范：注意：如需下载使用dws drive download命令下载`
+	if got := ProjectMessageV1(map[string]any{"content": ordinary}, false)["text"]; got != ordinary {
+		t.Fatalf("ordinary text was rewritten: got %#v, want %q", got, ordinary)
+	}
+}
+
 func TestCrossPlatformCoverageReactionShapeVariants(t *testing.T) {
 	got := Reactions(map[string]any{
 		"reactions": []map[string]any{
