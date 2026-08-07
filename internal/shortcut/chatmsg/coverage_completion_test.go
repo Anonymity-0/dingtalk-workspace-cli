@@ -28,16 +28,18 @@ func TestCrossPlatformCoverageQuotedResourcesAndScalarVariants(t *testing.T) {
 	}
 	resources := Resources(map[string]any{
 		"attachments": []map[string]any{
-			{"resourceType": "mediaId", "resourceId": "@file-a"},
-			{"resourceType": "fileId", "resourceId": "drive-file"},
+			{"resourceType": "mediaId", "resourceId": "@file-a", "name": "photo.png"},
+			{"resourceType": "fileId", "resourceId": "drive-file", "fileName": "canonical-report.txt"},
 			{"mediaId": 42, "fileId": 42},
 		},
 		"content": `[文件] report.txt fileId: drive-file`,
 	})
 	if len(resources) != 2 ||
 		resources[0]["resourceId"] != "@file-a" ||
+		resources[0]["name"] != "photo.png" ||
 		resources[1]["resourceId"] != "drive-file" ||
-		resources[1]["type"] != "fileId" {
+		resources[1]["type"] != "fileId" ||
+		resources[1]["name"] != "canonical-report.txt" {
 		t.Fatalf("resources = %#v", resources)
 	}
 	fileDownload := resources[1]["download"].(map[string]any)
@@ -50,6 +52,29 @@ func TestCrossPlatformCoverageQuotedResourcesAndScalarVariants(t *testing.T) {
 	}
 	if got := resourceIDScalar(42); got != "" {
 		t.Fatalf("non-string resource ID = %q", got)
+	}
+}
+
+func TestCrossPlatformCoverageResourcesExtractsLegacyFileNameWithoutGuessing(t *testing.T) {
+	resources := Resources(map[string]any{
+		"name":                "sender-name-must-not-leak",
+		"openMessageId":       "msg-1",
+		"openConversationId":  "cid-1",
+		"content":             `[文件] 项目最终报告 2026.pdf fileId: drive-file 注意：如需下载使用旧命令`,
+		"unrelatedAttachment": map[string]any{"mediaId": "@image-without-name"},
+	})
+	if len(resources) != 2 {
+		t.Fatalf("resources = %#v", resources)
+	}
+	if resources[0]["resourceId"] != "@image-without-name" {
+		t.Fatalf("first resource = %#v", resources[0])
+	}
+	if _, leaked := resources[0]["name"]; leaked {
+		t.Fatalf("message sender name leaked into media resource: %#v", resources[0])
+	}
+	if resources[1]["resourceId"] != "drive-file" ||
+		resources[1]["name"] != "项目最终报告 2026.pdf" {
+		t.Fatalf("file resource = %#v", resources[1])
 	}
 }
 
