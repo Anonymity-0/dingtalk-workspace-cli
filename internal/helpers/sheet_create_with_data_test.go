@@ -250,6 +250,13 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_merges":[{"range":"A1:B1","merge_type":"invalid"}]}]}`},
 			`cell_merges[0]: merge_type 非法: "invalid"`,
 		},
+		{
+			// 非法合并区域地址同样只在最后 merge_cells 才被拒，会留下部分完成文档。
+			// 必须在建文档之前严格解析拦下（与 cell_styles 的 range 校验一致）。
+			"cell-merges-invalid-range",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_merges":[{"range":"not-a-range"}]}]}`},
+			"cell_merges[0].range",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -396,7 +403,8 @@ func TestFirstNonEmptySheetSpecCell(t *testing.T) {
 		{`{"name":"S","columns":["",""],"data":[["","x"]]}`, "B2", true},             // 首列表头空
 		{`{"name":"S","data":[[1]]}`, "A1", true},                                    // 无表头，纯 data
 		{`{"name":"S","data":[5]}`, "A1", true},                                      // data 行是单值而非数组
-		{`{"name":"S","columns":["id"],"data":[[1]],"start_cell":"C3"}`, "C3", true}, // start_cell 偏移
+		{`{"name":"S","columns":["id"],"data":[[1]],"startCell":"C3"}`, "C3", true},  // startCell（table_put 线上 camelCase）
+		{`{"name":"S","columns":["id"],"data":[[1]],"start_cell":"C3"}`, "C3", true}, // start_cell（snake_case 兼容）
 		{`{"name":"S"}`, "", false},                                                  // 只有 name
 		{`{"name":"S","columns":[],"data":[]}`, "", false},                           // 空
 	} {

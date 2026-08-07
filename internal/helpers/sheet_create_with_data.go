@@ -580,6 +580,14 @@ func planStyleOps(nodeID, sheetID string, ops sheetStyleOps) ([]styleCall, error
 		if rangeAddr == "" {
 			return nil, fmt.Errorf("cell_merges[%d] 缺少必填的 range", i)
 		}
+		// 严格解析合并区域地址，与 cell_styles 分支一致：planStyleOps 会在创建文档
+		// **之前**被干跑一次做前置校验，非法 range（如 "not-a-range"）必须在此拦下，
+		// 否则会走到建文档→写数据→应用前序样式，直到最后 merge_cells 才被服务端
+		// 拒绝，留下无法回滚的部分完成文档。merge_cells 的 range 契约是 A1:B3 形态，
+		// parseA1Range 正好覆盖（并自动剥离 Sheet1! 前缀）。
+		if _, _, err := parseA1Range(rangeAddr); err != nil {
+			return nil, fmt.Errorf("cell_merges[%d].range: %w", i, err)
+		}
 		mergeType, err := feishuMergeType(pickStr(item, "merge_type", "mergeType"))
 		if err != nil {
 			return nil, fmt.Errorf("cell_merges[%d]: %w", i, err)
@@ -814,13 +822,17 @@ func sheetSpecGrid(spec map[string]any) [][]any {
 }
 
 // firstNonEmptySheetSpecCell 返回该 sheet spec 首个预期非空单元格的 A1 地址。
-// 尊重 start_cell 偏移（默认 A1）。第二返回值为 false 表示该 spec 没有任何要写入
+// 尊重起始格偏移（默认 A1）。第二返回值为 false 表示该 spec 没有任何要写入
 // 的内容（例如只给了 name），这类工作表本就应为空，调用方跳过回读，避免把合法的
 // 空表误判为数据丢失。逻辑与 --values 分支的 firstNonEmptyValuesCell 一致：不能死盯
 // A1，首行/首列为空的合法数据不应被误报。
+//
+// 起始格键名以 table_put 线上契约的 camelCase startCell 为准（与本仓库
+// startCell / "startCell": "A1" 一致）；同时兼容 snake_case start_cell，避免探针
+// 与实际写入位置错位导致「写成功却回读为空」的假阳性。
 func firstNonEmptySheetSpecCell(spec map[string]any) (string, bool) {
 	col0, row0 := 1, 1
-	if sc, ok := spec["start_cell"].(string); ok && sc != "" {
+	if sc := pickStr(spec, "startCell", "start_cell"); sc != "" {
 		if c, r, err := parseA1Cell(strings.ToUpper(sc)); err == nil {
 			col0, row0 = c, r
 		}

@@ -17,12 +17,8 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Changed
 
-- **`sheet range set-style` 后端切换为 `set_cell_range`（破坏性 Schema 变更）** — 样式统一走 cellStyles 路径（仅设样式、保留原值），这是斜体/下划线删除线/字体族/边框唯一可用的通道。`interface_ref` 由 `update_range` 变为 `set_cell_range`，12 个样式 flag 改为 reviewed mapping exclusion。CLI 用法向后兼容，无 flag 删除。
+- **`sheet range set-style` 后端切换为 `set_cell_range`** — 样式统一走 cellStyles 路径（仅设样式、保留原值），这是斜体/下划线删除线/字体族/边框唯一可用的通道。`interface_ref` 由 `update_range` 变为 `set_cell_range`，12 个样式 flag 改为 reviewed mapping exclusion。CLI 用法向后兼容、无 flag 删除；schema-compatibility 经 reviewed 豁免判定为兼容（0 changed fields）。
 - **`sheet range batch-set-style` 改为单次原子提交** — 由本地循环多次 `update_range` 改为一次 `batch_update`，任一项失败默认整批回滚；`--continue-on-error` 由本地控制改为透传服务端。新增批量上限：最多 100 个区域且累计不超过 200000 个单元格。
-- **`sheet export` / `sheet create` 声明为 composite（破坏性 Schema 变更）** — 两者都会按参数路由到多个工具（`--export-format csv` 走 `get_range_as_csv`；建表带数据串起建表→探活→写入→回读→样式），`mcp` 单一 ref 不准确。
-
-### Changed
-
 - **Doc import upload fallback** — `dws doc import` no longer fails on file
   formats outside the conversion whitelist (html, pdf, zip, extensionless,
   and any future format): it now hands the file to the document-space upload
