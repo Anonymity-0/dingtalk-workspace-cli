@@ -124,6 +124,9 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 		{"sheets-empty", map[string]string{"name": "X", "sheets": `[]`}, "不能为空数组"},
 		{"sheets-item-not-object", map[string]string{"name": "X", "sheets": `[1]`}, "不是对象"},
 		{"sheets-missing-name", map[string]string{"name": "X", "sheets": `[{"columns":["a"]}]`}, "缺少必填的 name"},
+		// 重名工作表：table_put 会建出两张同名表，之后 --styles 按名称定位会落到
+		// 不确定的那一张。--styles 是建文档后的非原子步骤，必须前置拒绝。
+		{"sheets-duplicate-name", map[string]string{"name": "X", "sheets": `[{"name":"一月"},{"name":"一月"}]`}, `--sheets[1].name="一月" 与 --sheets[0] 重复`},
 		{"styles-bad-json", map[string]string{"name": "X", "values": `[[1]]`, "styles": `{`}, "--styles JSON 解析失败"},
 		{"styles-object-without-styles-key", map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"a":1}`}, "必须含 styles 数组"},
 		{"styles-wrong-type", map[string]string{"name": "X", "values": `[[1]]`, "styles": `"s"`}, `必须是 {"styles":[...]}`},
@@ -196,6 +199,19 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 			"row-sizes-standard-with-size",
 			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","row_sizes":[{"range":"1:2","type":"standard","size":28}]}]}`},
 			"type=standard 表示恢复默认尺寸，不能同时给 size",
+		},
+		{
+			// standard / auto 分支也要先报出数值本身的问题，而不是笼统的
+			// "不能同时给 size"：小数是配置写错，提示必须指向 size 才能让调用方
+			// 知道该改哪里。
+			"row-sizes-standard-with-fractional-size",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","row_sizes":[{"range":"1:2","type":"standard","size":28.5}]}]}`},
+			"size=28.5 必须是整数",
+		},
+		{
+			"row-sizes-auto-with-fractional-size",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","row_sizes":[{"range":"1:2","type":"auto","size":28.5}]}]}`},
+			"size=28.5 必须是整数",
 		},
 		{
 			"row-sizes-auto-with-size",
@@ -1058,5 +1074,50 @@ func TestPickNumRejectsNonIntegralAndOutOfRange(t *testing.T) {
 	// 多候选键：取第一个命中的
 	if got, _, _ := pickNum(map[string]any{"fontSize": float64(9)}, "font_size", "fontSize"); got != 9 {
 		t.Errorf("别名键取值 = %d, want 9", got)
+	}
+}
+
+// 工作表名唯一性由 parseCreateSheetSpecs 保证；--styles 又强制逐项 name 等于
+// --sheets 对应项，所以 --styles 内部不可能出现重名，无需重复校验。
+func TestParseCreateSheetSpecsRejectsDuplicateNames(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		sheets  string
+		wantErr string
+	}{
+		{
+			"two-identical",
+			`[{"name":"一月"},{"name":"一月"}]`,
+			`--sheets[1].name="一月" 与 --sheets[0] 重复`,
+		},
+		{
+			// 非相邻重复也要报出首次出现的下标
+			"duplicate-not-adjacent",
+			`[{"name":"a"},{"name":"b"},{"name":"a"}]`,
+			`--sheets[2].name="a" 与 --sheets[0] 重复`,
+		},
+		{
+			"wrapped-form-also-checked",
+			`{"sheets":[{"name":"x"},{"name":"x"}]}`,
+			`--sheets[1].name="x" 与 --sheets[0] 重复`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := parseCreateSheetSpecs(tc.sheets); err == nil ||
+				!strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want contains %q", err, tc.wantErr)
+			}
+		})
+	}
+
+	// 名称不同照常放行。仅大小写不同不算重复：服务端区分大小写，CLI 不该收紧。
+	for _, sheets := range []string{
+		`[{"name":"一月"},{"name":"二月"}]`,
+		`[{"name":"Sheet"},{"name":"sheet"}]`,
+		`[{"name":"only"}]`,
+	} {
+		if _, err := parseCreateSheetSpecs(sheets); err != nil {
+			t.Errorf("parseCreateSheetSpecs(%s) 误拒: %v", sheets, err)
+		}
 	}
 }

@@ -185,14 +185,23 @@ func parseCreateSheetSpecs(sheetsStr string) ([]map[string]any, error) {
 		return nil, fmt.Errorf("--sheets 不能为空数组")
 	}
 	specs := make([]map[string]any, 0, len(arr))
+	seen := make(map[string]int, len(arr))
 	for i, item := range arr {
 		m, ok := item.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("--sheets[%d] 不是对象", i)
 		}
-		if name, _ := m["name"].(string); name == "" {
+		name, _ := m["name"].(string)
+		if name == "" {
 			return nil, fmt.Errorf("--sheets[%d] 缺少必填的 name 字段（创建带数据时每个工作表必须命名）", i)
 		}
+		// 工作表名不能重复：样式接口按「ID 或名称」定位工作表，重名时命中哪一张
+		// 由服务端决定，--styles 会作用到不确定的工作表上。而 --styles 又是建
+		// 文档之后的非原子步骤，所以必须在建文档之前拒掉。
+		if prev, dup := seen[name]; dup {
+			return nil, fmt.Errorf("--sheets[%d].name=%q 与 --sheets[%d] 重复；工作表名必须唯一，否则 --styles 按名称定位时会落到不确定的工作表上", i, name, prev)
+		}
+		seen[name] = i
 		specs = append(specs, m)
 	}
 	return specs, nil
