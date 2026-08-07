@@ -340,6 +340,18 @@ func TestSchemaCompatibilityRejectsContractDrift(t *testing.T) {
 		{name: "changed property", want: "changed property", mutate: func(contract *schemaContract) {
 			mutateParameter(contract, func(parameter *parameterSchema) { parameter.Property = "subject" })
 		}},
+		{name: "cleared property without a reviewed exclusion", want: "changed property", mutate: func(contract *schemaContract) {
+			mutateParameter(contract, func(parameter *parameterSchema) {
+				parameter.Property = ""
+				parameter.PropertySource = "flag_name_inference"
+			})
+		}},
+		{name: "redirected property despite a reviewed exclusion", want: "changed property", mutate: func(contract *schemaContract) {
+			mutateParameter(contract, func(parameter *parameterSchema) {
+				parameter.Property = "subject"
+				parameter.PropertySource = propertySourceReviewedMappingExclusion
+			})
+		}},
 		{name: "changed interface type", want: "changed interface_type", mutate: func(contract *schemaContract) {
 			mutateParameter(contract, func(parameter *parameterSchema) { parameter.InterfaceType = "integer" })
 		}},
@@ -677,5 +689,169 @@ func TestCrossPlatformCoverageSchemaCompatAdditiveConstraintEvolution(t *testing
 	multipleExpandedGroups.Constraints = `{"require_one_of":[["target","limit"],["limit","new-limit"]]}`
 	if !compatibleAdditiveConstraintEvolution(multipleHistoricalGroups, multipleExpandedGroups) {
 		t.Fatal("each historical group must match a distinct expanded group")
+	}
+}
+
+// Clearing a property through the reviewed mapping exclusion table is the one
+// accepted shape, mirroring the interface_type retirement allowance. A leaf
+// whose backing RPC moved to a nested payload has no honest flat property to
+// publish; the alternatives are naming a field the request no longer contains,
+// or letting flag_name_inference publish a name that appears in no request.
+func TestCrossPlatformCoverageSchemaCompatPropertyClearingExclusion(t *testing.T) {
+	baseline := baselineContract()
+
+	// Accepted: non-empty -> empty, resolved through a reviewed exclusion.
+	current := cloneContract(baseline)
+	mutateParameter(&current, func(parameter *parameterSchema) {
+		parameter.Property = ""
+		parameter.PropertySource = propertySourceReviewedMappingExclusion
+	})
+	if failures := checkCompatibility(baseline, current); len(failures) != 0 {
+		t.Fatalf("clearing property through a reviewed exclusion should pass: %v", failures)
+	}
+
+	// Every neighbouring shape must stay incompatible, so the carve-out cannot
+	// be widened by accident.
+	for _, tc := range []struct {
+		name     string
+		property string
+		source   string
+	}{
+		{"cleared by inference", "", "flag_name_inference"},
+		{"cleared by a native annotation", "", "native_annotation"},
+		{"cleared with no recorded source", "", ""},
+		{"redirected to another non-empty value", "cellStyles", propertySourceReviewedMappingExclusion},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			drifted := cloneContract(baseline)
+			mutateParameter(&drifted, func(parameter *parameterSchema) {
+				parameter.Property = tc.property
+				parameter.PropertySource = tc.source
+			})
+			failures := checkCompatibility(baseline, drifted)
+			if len(failures) == 0 {
+				t.Fatal("must remain incompatible")
+			}
+			var sawProperty bool
+			for _, failure := range failures {
+				if strings.Contains(failure, "changed property") {
+					sawProperty = true
+				}
+			}
+			if !sawProperty {
+				t.Fatalf("expected a changed property failure, got %v", failures)
+			}
+		})
+	}
+
+	// A parameter that never published a property must not gain one silently
+	// just because it carries an exclusion source.
+	populated := cloneContract(baseline)
+	mutateParameter(&populated, func(parameter *parameterSchema) { parameter.Property = "" })
+	gained := cloneContract(populated)
+	mutateParameter(&gained, func(parameter *parameterSchema) {
+		parameter.Property = "backgroundColors"
+		parameter.PropertySource = propertySourceReviewedMappingExclusion
+	})
+	if failures := checkCompatibility(populated, gained); len(failures) == 0 {
+		t.Fatal("populating a previously empty property must stay incompatible")
+	}
+}
+
+// Repointing a leaf at a different backing RPC is accepted only when the
+// CLI-facing contract is provably unchanged. interface_ref is audit metadata;
+// nothing reads it at runtime, so a stale value misinforms a reader rather than
+// misrouting a call. The gate is that no other compatibility check for the tool
+// failed — that is the operative meaning of "the contract is unchanged".
+func TestCrossPlatformCoverageSchemaCompatInterfaceRefRedirect(t *testing.T) {
+	// The baseline fixture is interface_mode=local; the carve-out only applies to
+	// mcp-backed leaves, so establish an mcp baseline first.
+	baseline := cloneContract(baselineContract())
+	mutateTool(&baseline, func(tool *toolSchema) {
+		tool.InterfaceMode = interfaceModeMCP
+		tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"update_range"}`
+	})
+
+	// Accepted: mcp -> mcp, both refs non-empty, nothing else changed.
+	redirected := cloneContract(baseline)
+	mutateTool(&redirected, func(tool *toolSchema) { tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"set_cell_range"}` })
+	if failures := checkCompatibility(baseline, redirected); len(failures) != 0 {
+		t.Fatalf("a pure interface_ref redirect should pass: %v", failures)
+	}
+
+	// Paired with a reviewed property clearing, which is the realistic shape:
+	// a leaf moving to a nested payload loses its flat property names.
+	withCleared := cloneContract(redirected)
+	mutateParameter(&withCleared, func(parameter *parameterSchema) {
+		parameter.Property = ""
+		parameter.PropertySource = propertySourceReviewedMappingExclusion
+	})
+	if failures := checkCompatibility(baseline, withCleared); len(failures) != 0 {
+		t.Fatalf("redirect plus reviewed property clearing should pass: %v", failures)
+	}
+
+	// Rejected shapes. Each must still report the redirect, so a surface change
+	// cannot ride along behind a backend move.
+	for _, tc := range []struct {
+		name   string
+		mutate func(*schemaContract)
+	}{
+		{"ref removed rather than redirected", func(contract *schemaContract) {
+			mutateTool(contract, func(tool *toolSchema) { tool.InterfaceRef = "" })
+		}},
+		{"mode moved to composite", func(contract *schemaContract) {
+			mutateTool(contract, func(tool *toolSchema) {
+				tool.InterfaceMode = "composite"
+				tool.InterfaceRef = ""
+			})
+		}},
+		{"mode moved away from mcp while the ref is redirected", func(contract *schemaContract) {
+			mutateTool(contract, func(tool *toolSchema) {
+				tool.InterfaceMode = "local"
+				tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"set_cell_range"}`
+			})
+		}},
+		{"a parameter became required", func(contract *schemaContract) {
+			mutateTool(contract, func(tool *toolSchema) { tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"set_cell_range"}` })
+			mutateParameter(contract, func(parameter *parameterSchema) { parameter.Required = true })
+		}},
+		{"a parameter type moved", func(contract *schemaContract) {
+			mutateTool(contract, func(tool *toolSchema) { tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"set_cell_range"}` })
+			mutateParameter(contract, func(parameter *parameterSchema) { parameter.Type = "integer" })
+		}},
+		{"a property was cleared without a reviewed exclusion", func(contract *schemaContract) {
+			mutateTool(contract, func(tool *toolSchema) { tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"set_cell_range"}` })
+			mutateParameter(contract, func(parameter *parameterSchema) {
+				parameter.Property = ""
+				parameter.PropertySource = "flag_name_inference"
+			})
+		}},
+		{"a confirmation gate moved", func(contract *schemaContract) {
+			mutateTool(contract, func(tool *toolSchema) {
+				tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"set_cell_range"}`
+				tool.Confirmation = "user_required"
+			})
+		}},
+		{"a parameter was dropped", func(contract *schemaContract) {
+			mutateTool(contract, func(tool *toolSchema) {
+				tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"set_cell_range"}`
+				delete(tool.Parameters, "title")
+			})
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			drifted := cloneContract(baseline)
+			tc.mutate(&drifted)
+			failures := checkCompatibility(baseline, drifted)
+			var sawRef bool
+			for _, failure := range failures {
+				if strings.Contains(failure, "changed interface_ref") {
+					sawRef = true
+				}
+			}
+			if !sawRef {
+				t.Fatalf("expected the redirect to stay reported, got %v", failures)
+			}
+		})
 	}
 }
