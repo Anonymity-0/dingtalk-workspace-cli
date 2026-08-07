@@ -3764,6 +3764,9 @@ CLI 内部自动完成全部流程：
   xlsx, xls   → 电子表格
   md, txt     → 文字文档
   xmind, mark → 脑图
+  其他格式（html/pdf/zip 等）→ 不做在线文档转换，自动改走文件上传链路，
+  以原文件形式存入 --folder/--workspace 指定位置；如需在线文档请先转换
+  为 md；上传到钉盘请用 dws drive upload
 
 文件大小限制: 20MB
 

@@ -58,6 +58,10 @@ type importFlowConfig struct {
 	timeoutAsResult      bool
 	nextCommand          string
 	poll                 importPollPolicy
+	// uploadRedirect 非空时，所有不在 supportedFormats 白名单内的文件
+	// （html/pdf/zip/无扩展名等）不再报错断链，统一移交文件上传链路原样入库；
+	// 白名单即后端转换能力的封闭集合，无需维护第二份格式枚举。
+	uploadRedirect func(cmd *cobra.Command, args []string) error
 }
 
 type preparedImportFile struct {
@@ -98,6 +102,10 @@ func docImportFlowConfig() importFlowConfig {
 		workspaceFlags:       []string{"workspace", "workspace-id"},
 		nextCommand:          "dws doc import get --task-id %s",
 		poll:                 defaultImportPollPolicy(),
+		// 白名单外的格式改走文档空间的文件上传链路
+		// （与 drive upload --workspace 同一条 doc-space 上传原语），
+		// 目标 flags（--folder/--workspace）与 import 同构，链路不中断。
+		uploadRedirect: runDocUpload,
 	}
 }
 
@@ -197,7 +205,51 @@ func (cfg importFlowConfig) callTool(ctx context.Context, toolName string, args 
 	return callMCPToolReturnText(ctx, toolName, args)
 }
 
+// importUploadRedirect 返回接管本次执行的上传链路（未命中时返回 nil）。
+// 判定反转自 supportedFormats 白名单：白名单即后端转换能力的封闭集合，
+// 名单外的文件（html/pdf/zip/无扩展名等）无法转换为在线文档，与其在这里
+// 报错断链，不如直接移交给同构目标参数的文件上传链路原样入库完成用户诉求；
+// 移交事实通过 stderr 显式告知，不静默。
+func importUploadRedirect(cmd *cobra.Command, args []string, cfg importFlowConfig) func(*cobra.Command, []string) error {
+	if cfg.uploadRedirect == nil {
+		return nil
+	}
+	filePath := mustGetFlag(cmd, "file")
+	if filePath == "" && len(args) > 0 {
+		filePath = args[0]
+	}
+	if filePath == "" {
+		// 缺 --file 交回主流程，报 import 自己的必填错误（含位置参数提示）
+		return nil
+	}
+	extension := strings.TrimPrefix(strings.ToLower(filepath.Ext(filePath)), ".")
+	if cfg.supportedFormats[extension] {
+		return nil
+	}
+	// 上传链路只读 --file，位置参数传入时回填 flag 保证移交后可见
+	if v, _ := cmd.Flags().GetString("file"); v == "" {
+		_ = cmd.Flags().Set("file", filePath)
+	}
+	// 上传链路的目标读取不含 import 的隐藏别名 --folder-id，移交前归一化
+	if v, _ := cmd.Flags().GetString("folder"); v == "" {
+		if alias, _ := cmd.Flags().GetString("folder-id"); alias != "" {
+			_ = cmd.Flags().Set("folder", alias)
+		}
+	}
+	label := extension
+	if label == "" {
+		label = "无扩展名"
+	}
+	deps.Out.PrintWarning(fmt.Sprintf(
+		"%s 文件不支持转换为在线文档（支持: %s），已自动改走文件上传链路，以原文件形式存入 --folder/--workspace 指定的目标位置；如需在线文档，请先将内容转换为 md 后重新执行 doc import；上传到钉盘请用 dws drive upload",
+		label, cfg.supportedFormatsText))
+	return cfg.uploadRedirect
+}
+
 func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) error {
+	if redirect := importUploadRedirect(cmd, args, cfg); redirect != nil {
+		return redirect(cmd, args)
+	}
 	file, err := prepareImportFile(cmd, args, cfg)
 	if err != nil {
 		return err

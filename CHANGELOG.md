@@ -8,6 +8,14 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Changed
 
+- **Doc import upload fallback** — `dws doc import` no longer fails on file
+  formats outside the conversion whitelist (html, pdf, zip, extensionless,
+  and any future format): it now hands the file to the document-space upload
+  chain (the same primitive as `dws drive upload --workspace`), stores the
+  original file at the requested `--folder`/`--workspace` target, and prints
+  an explicit stderr notice with the supported-format list and the
+  convert-to-md alternative. Importable formats and `dws sheet import`
+  validation are unchanged.
 - **Sheet CSV formula writes** — `dws sheet csv-put` and batch `csv-put` now expose the service contract that CSV fields beginning with `=` are written as formulas. Prefix the field with an apostrophe to write literal text beginning with `=`; CSV content continues to pass through unchanged.
 
 ### Fixed
