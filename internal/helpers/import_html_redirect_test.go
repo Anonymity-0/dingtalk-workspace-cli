@@ -90,6 +90,9 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 		if payload["success"] != true || payload["fallback"] != "upload" || payload["converted"] != false {
 			t.Fatalf("fallback markers missing: %#v", payload)
 		}
+		if payload["dentry_id"] != "node-1" {
+			t.Fatalf("dentry_id = %v, want node-1", payload["dentry_id"])
+		}
 		if payload["requested_operation"] != "导入本地文件为在线文档" {
 			t.Fatalf("requested_operation = %v", payload["requested_operation"])
 		}
@@ -303,10 +306,38 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 		}
 	})
 
-	t.Run("non-json commit response is kept as raw text", func(t *testing.T) {
+	t.Run("commit responses that cannot prove success are rejected", func(t *testing.T) {
+		cases := []struct {
+			name    string
+			commit  string
+			wantErr string
+		}{
+			{name: "empty legacy ack", commit: "  ", wantErr: "响应为空"},
+			{name: "non-json text", commit: "commit-ok-plain-text", wantErr: "无法解析为 JSON"},
+			{name: "missing file identity", commit: `{"ok":true}`, wantErr: "缺少文件标识"},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				installScriptedCaller(t, &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+					{text: `{"resourceUrl":"https://upload.example.test/object","uploadKey":"key-1"}`},
+					{text: tc.commit},
+				}})
+				SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
+				t.Cleanup(func() { SetHTTPPutFile(nil) })
+
+				cmd := htmlFallbackCommand(t, writeImportFixture(t, "html"))
+				err := runImportCommand(cmd, nil, docImportFlowConfig())
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("runImportCommand() error = %v, want %q", err, tc.wantErr)
+				}
+			})
+		}
+	})
+
+	t.Run("nested result envelope yields the dentry id", func(t *testing.T) {
 		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
 			{text: `{"resourceUrl":"https://upload.example.test/object","uploadKey":"key-1"}`},
-			{text: "commit-ok-plain-text"},
+			{text: `{"result":{"dentryUuid":"nested-node-9"}}`},
 		}}
 		installScriptedCaller(t, caller)
 		var stdout bytes.Buffer
@@ -322,20 +353,27 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 		if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
 			t.Fatalf("fallback result must stay JSON: %v\n%s", err, stdout.String())
 		}
-		if payload["result"] != "commit-ok-plain-text" {
-			t.Fatalf("raw commit text must be preserved, got %#v", payload["result"])
+		if payload["dentry_id"] != "nested-node-9" {
+			t.Fatalf("dentry_id = %v, want nested-node-9", payload["dentry_id"])
 		}
 	})
 
 	t.Run("sheet import keeps rejecting html without fallback", func(t *testing.T) {
 		installScriptedCaller(t, &scriptedToolCaller{})
+		// 无导入目标时也必须先报 unsupported（基线校验顺序：扩展名先于目标）
 		cmd := htmlFallbackCommand(t, writeImportFixture(t, "html"))
+		err := runImportCommand(cmd, nil, sheetImportFlowConfig())
+		if err == nil || !strings.Contains(err.Error(), "unsupported file format") {
+			t.Fatalf("sheet import (no target) error = %v, want unsupported file format", err)
+		}
+
+		cmd = htmlFallbackCommand(t, writeImportFixture(t, "html"))
 		if err := cmd.Flags().Set("workspace", "ws-1"); err != nil {
 			t.Fatal(err)
 		}
-		err := runImportCommand(cmd, nil, sheetImportFlowConfig())
+		err = runImportCommand(cmd, nil, sheetImportFlowConfig())
 		if err == nil || !strings.Contains(err.Error(), "unsupported file format") {
-			t.Fatalf("sheet import error = %v, want unsupported file format", err)
+			t.Fatalf("sheet import (with target) error = %v, want unsupported file format", err)
 		}
 	})
 }

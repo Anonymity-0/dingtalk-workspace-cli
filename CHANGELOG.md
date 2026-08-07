@@ -18,7 +18,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   (20MB cap, empty-file guard), keeps `--format json` / `--dry-run` output as
   a single JSON document, and marks the machine-readable result with
   `fallback: "upload"` and `converted: false` so agents never mistake the
-  stored file for a converted online document. Importable formats and
+  stored file for a converted online document. The fallback fails closed
+  unless the commit response parses as JSON and carries a file identity
+  (exposed as `dentry_id`); empty or unverifiable responses surface as
+  errors instead of fabricated success. Importable formats and
   `dws sheet import` validation are unchanged.
 - **Sheet CSV formula writes** — `dws sheet csv-put` and batch `csv-put` now expose the service contract that CSV fields beginning with `=` are written as formulas. Prefix the field with an apostrophe to write literal text beginning with `=`; CSV content continues to pass through unchanged.
 

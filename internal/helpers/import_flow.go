@@ -173,9 +173,14 @@ func prepareImportFile(cmd *cobra.Command, args []string, cfg importFlowConfig) 
 		return preparedImportFile{}, fmt.Errorf("file is empty: %s", filePath)
 	}
 
-	// 扩展名门禁在 runImportCommand 中执行（uploadFallback 需要先通过
-	// 这里的存在性 / 20MB / 空文件共享校验，再决定转换或回退上传）
 	extension := strings.TrimPrefix(strings.ToLower(filepath.Ext(filePath)), ".")
+	// 非回退配置保持基线校验顺序：扩展名门禁先于导入目标校验
+	// （sheet import 对无目标的非 Excel 文件必须先报 unsupported）。
+	// uploadFallback 配置的白名单外文件继续走完共享校验，由
+	// runImportCommand 分派到上传回退。
+	if !cfg.supportedFormats[extension] && !cfg.uploadFallback {
+		return preparedImportFile{}, fmt.Errorf("unsupported file format %q, supported: %s", extension, cfg.supportedFormatsText)
+	}
 
 	name, _ := cmd.Flags().GetString("name")
 	if name == "" {
@@ -265,10 +270,11 @@ func runImportUploadFallback(cmd *cobra.Command, cfg importFlowConfig, file prep
 	if err != nil {
 		return err
 	}
-	var commit any = text
-	var parsed map[string]any
-	if jsonErr := json.Unmarshal([]byte(text), &parsed); jsonErr == nil {
-		commit = parsed
+	// fail-closed：commit 响应必须可解析且带文件标识才算成功；
+	// 空响应（legacy ack）、非 JSON 或缺少标识都不得包装为 success
+	commit, dentryID, err := parseUploadCommitResult(text)
+	if err != nil {
+		return err
 	}
 	return deps.Out.PrintJSON(map[string]any{
 		"success":             true,
@@ -278,8 +284,37 @@ func runImportUploadFallback(cmd *cobra.Command, cfg importFlowConfig, file prep
 		"converted":           false,
 		"name":                uploadName,
 		"format":              file.extension,
+		"dentry_id":           dentryID,
 		"result":              commit,
 	})
+}
+
+// uploadCommitIDKeys 是 commit_uploaded_file 响应中可作为文件标识的字段，
+// 按优先级排列；服务端可能返回平铺对象或包一层 result envelope。
+var uploadCommitIDKeys = []string{"dentryUuid", "dentryId", "nodeId", "fileId", "id"}
+
+// parseUploadCommitResult 校验入库响应：拒绝空响应，要求 JSON 对象且
+// 含文件标识，返回解析后的对象与标识值。任何不满足都返回错误，
+// 由调用方向用户提示核对入库结果，而不是伪装成功。
+func parseUploadCommitResult(text string) (map[string]any, string, error) {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return nil, "", fmt.Errorf("上传入库未返回结果（commit_uploaded_file 响应为空），无法确认文件已入库；请用 dws doc list 核对目标位置")
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+		return nil, "", fmt.Errorf("上传入库响应无法解析为 JSON，无法确认文件已入库；原始响应: %s", trimmed)
+	}
+	payload := parsed
+	if inner, ok := parsed["result"].(map[string]any); ok {
+		payload = inner
+	}
+	for _, key := range uploadCommitIDKeys {
+		if v, ok := payload[key].(string); ok && strings.TrimSpace(v) != "" {
+			return parsed, v, nil
+		}
+	}
+	return nil, "", fmt.Errorf("上传入库响应缺少文件标识（%s 均为空），无法确认文件已入库；原始响应: %s", strings.Join(uploadCommitIDKeys, "/"), trimmed)
 }
 
 func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) error {
@@ -287,11 +322,9 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 	if err != nil {
 		return err
 	}
-	if !cfg.supportedFormats[file.extension] {
-		if cfg.uploadFallback {
-			return runImportUploadFallback(cmd, cfg, file)
-		}
-		return fmt.Errorf("unsupported file format %q, supported: %s", file.extension, cfg.supportedFormatsText)
+	// 非回退配置的白名单外文件已在 prepareImportFile 中按基线顺序拒绝
+	if cfg.uploadFallback && !cfg.supportedFormats[file.extension] {
+		return runImportUploadFallback(cmd, cfg, file)
 	}
 	jsonMode := deps.Caller.Format() == "json"
 
