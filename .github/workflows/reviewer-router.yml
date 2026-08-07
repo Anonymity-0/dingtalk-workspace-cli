@@ -30,10 +30,9 @@ jobs:
             const pullNumber = context.payload.pull_request.number;
             const eventHeadSha = context.payload.pull_request.head.sha;
             const reviewerPool = [
-              'sczheng189',
-              'shangguanxuan633-lab',
-              'audanye-sudo',
               'wxianfeng',
+              'typefield',
+              'haofeng0705',
             ];
 
             async function getReadyEventPull(phase) {
