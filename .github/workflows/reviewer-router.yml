@@ -22,9 +22,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Check out trusted routing policy
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
       - name: Route review and enable auto-merge
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
@@ -33,7 +34,12 @@ jobs:
             const repo = context.repo.repo;
             const pullNumber = context.payload.pull_request.number;
             const eventHeadSha = context.payload.pull_request.head.sha;
-            const {REVIEWER_POOL, resolveReviewRouting} = require('./.github/reviewer-routing.js');
+            const {
+              REVIEWER_POOL,
+              requestReviewersWithFallback,
+              resolveReviewRouting,
+              reviewerCandidates,
+            } = require('./.github/reviewer-routing.js');
             const reviewerPool = REVIEWER_POOL;
 
             async function getReadyEventPull(phase) {
@@ -191,21 +197,12 @@ jobs:
                 latestPusher,
                 fallbackReviewers: ranked,
               });
-              const desiredReviewers = [];
-              for (const reviewer of [...routing.reviewers, ...ranked]) {
-                if (
-                  desiredReviewers.length < routing.requiredReviewers &&
-                  eligible.some((candidate) => candidate.toLowerCase() === reviewer.toLowerCase()) &&
-                  !desiredReviewers.some((candidate) => candidate.toLowerCase() === reviewer.toLowerCase())
-                ) {
-                  desiredReviewers.push(reviewer);
-                }
-              }
-              const reviewersToRequest = desiredReviewers.filter(
-                reviewer =>
-                  !currentHeadReviewers.has(reviewer.toLowerCase()) &&
-                  !existingRequestedReviewers.has(reviewer.toLowerCase()),
-              );
+              const candidates = reviewerCandidates({
+                preferredReviewers: routing.reviewers,
+                fallbackReviewers: ranked,
+                eligibleReviewers: eligible,
+              });
+              const desiredReviewers = candidates.slice(0, routing.requiredReviewers);
               if (routing.reason === 'unknown_paths' && currentHeadReviewers.size > 0) {
                 core.info(
                   `PR #${pullNumber} has a current-head review for unknown paths; leaving manual ownership unchanged.`,
@@ -216,12 +213,20 @@ jobs:
                 `PR #${pullNumber} routing: ${routing.reason}; modules=${routing.modules.map(module => module.id).join(',') || 'unknown'}; reviewers=${desiredReviewers.join(',') || 'load-balanced fallback'}.`,
               );
 
-              const requestedByRouter = new Set();
-              for (const reviewer of reviewersToRequest) {
-                try {
+              const satisfiedReviewers = new Set([
+                ...currentHeadReviewers,
+                ...[...existingRequestedReviewers].filter((reviewer) =>
+                  candidates.some((candidate) => candidate.toLowerCase() === reviewer),
+                ),
+              ]);
+              const requestResult = await requestReviewersWithFallback({
+                candidates,
+                requiredReviewers: routing.requiredReviewers,
+                satisfiedReviewers: [...satisfiedReviewers],
+                requestReviewer: async (reviewer) => {
                   const currentPull = await getReadyEventPull('review request');
                   if (!currentPull) {
-                    return;
+                    return false;
                   }
                   await github.rest.pulls.requestReviewers({
                     owner,
@@ -229,19 +234,25 @@ jobs:
                     pull_number: pullNumber,
                     reviewers: [reviewer],
                   });
-                  requestedByRouter.add(reviewer.toLowerCase());
                   core.info(
                     `Requested @${reviewer} for PR #${pullNumber} (open request load: ${loads.get(reviewer)}).`,
                   );
-                } catch (error) {
+                  return true;
+                },
+                onFailure: (reviewer, error) => {
                   core.warning(
                     `Could not request @${reviewer} for PR #${pullNumber}; trying the next candidate (${error.status || 'unknown status'}).`,
                   );
-                }
+                },
+              });
+              if (requestResult.aborted) {
+                return;
               }
 
-              if (requestedByRouter.size === 0) {
-                core.warning(`No reviewer request could be created for PR #${pullNumber}.`);
+              if (requestResult.satisfiedReviewers.length < routing.requiredReviewers) {
+                core.warning(
+                  `Only ${requestResult.satisfiedReviewers.length} of ${routing.requiredReviewers} required reviewers could be satisfied for PR #${pullNumber}.`,
+                );
               }
             }
 

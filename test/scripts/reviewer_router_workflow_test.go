@@ -101,8 +101,9 @@ func TestReviewerRouterWorkflowContract(t *testing.T) {
 	if job.If != "github.event.pull_request.draft == false" {
 		t.Fatalf("route.if = %q, want non-draft guard", job.If)
 	}
+	const checkoutSHA = "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
 	const githubScriptSHA = "actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b"
-	if len(job.Steps) != 2 || job.Steps[0].Uses != "actions/checkout@v4" || job.Steps[0].With["ref"] != "${{ github.event.pull_request.base.sha }}" || job.Steps[1].Uses != githubScriptSHA {
+	if len(job.Steps) != 2 || job.Steps[0].Uses != checkoutSHA || job.Steps[0].With["ref"] != "${{ github.event.pull_request.base.sha }}" || job.Steps[0].With["persist-credentials"] != "false" || job.Steps[1].Uses != githubScriptSHA {
 		t.Fatalf("route steps = %#v, want trusted base checkout followed by pinned github-script", job.Steps)
 	}
 
@@ -135,9 +136,9 @@ func TestReviewerRouterWorkflowContract(t *testing.T) {
 		"loads.set(candidate, loads.get(candidate) + 1)",
 		"loads.get(left) - loads.get(right)",
 		"routing.requiredReviewers",
-		"reviewersToRequest",
-		"for (const reviewer of reviewersToRequest)",
-		"requestedByRouter",
+		"reviewerCandidates",
+		"requestReviewersWithFallback",
+		"satisfiedReviewers",
 		"github.rest.pulls.requestReviewers",
 		"trying the next candidate",
 		"Reviewer routing hit an unexpected error",

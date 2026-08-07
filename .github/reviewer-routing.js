@@ -185,6 +185,58 @@ function addReviewer(reviewers, reviewer) {
   }
 }
 
+function reviewerCandidates({preferredReviewers, fallbackReviewers, eligibleReviewers}) {
+  const eligible = new Set(eligibleReviewers.map((reviewer) => reviewer.toLowerCase()));
+  const candidates = [];
+  for (const reviewer of [...preferredReviewers, ...fallbackReviewers]) {
+    if (
+      eligible.has(reviewer.toLowerCase()) &&
+      !candidates.some((candidate) => candidate.toLowerCase() === reviewer.toLowerCase())
+    ) {
+      candidates.push(reviewer);
+    }
+  }
+  return candidates;
+}
+
+async function requestReviewersWithFallback({
+  candidates,
+  requiredReviewers,
+  satisfiedReviewers = [],
+  requestReviewer,
+  onFailure = () => {},
+}) {
+  const alreadySatisfied = new Set(
+    satisfiedReviewers.map((reviewer) => reviewer.toLowerCase()),
+  );
+  const satisfied = new Set();
+  const requested = [];
+
+  for (const reviewer of candidates) {
+    if (satisfied.size >= requiredReviewers) {
+      break;
+    }
+    const normalizedReviewer = reviewer.toLowerCase();
+    if (alreadySatisfied.has(normalizedReviewer)) {
+      satisfied.add(normalizedReviewer);
+      continue;
+    }
+
+    try {
+      const shouldContinue = await requestReviewer(reviewer);
+      if (shouldContinue === false) {
+        return {requested, satisfiedReviewers: [...satisfied], aborted: true};
+      }
+      requested.push(reviewer);
+      satisfied.add(normalizedReviewer);
+    } catch (error) {
+      onFailure(reviewer, error);
+    }
+  }
+
+  return {requested, satisfiedReviewers: [...satisfied], aborted: false};
+}
+
 function resolveReviewRouting({files, author, latestPusher, fallbackReviewers = REVIEWER_POOL}) {
   const modules = classifyFiles(files);
   const unavailable = new Set([author, latestPusher].filter(Boolean).map((login) => login.toLowerCase()));
@@ -224,4 +276,10 @@ function resolveReviewRouting({files, author, latestPusher, fallbackReviewers = 
   };
 }
 
-module.exports = {REVIEWER_POOL, classifyFiles, resolveReviewRouting};
+module.exports = {
+  REVIEWER_POOL,
+  classifyFiles,
+  requestReviewersWithFallback,
+  resolveReviewRouting,
+  reviewerCandidates,
+};

@@ -1,7 +1,11 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const {resolveReviewRouting} = require('./reviewer-routing');
+const {
+  requestReviewersWithFallback,
+  resolveReviewRouting,
+  reviewerCandidates,
+} = require('./reviewer-routing');
 
 function route(files, author = 'author', latestPusher = author) {
   return resolveReviewRouting({files: files.map((filename) => ({filename})), author, latestPusher});
@@ -70,4 +74,75 @@ function route(files, author = 'author', latestPusher = author) {
   assert.equal(result.reason, 'unknown_paths');
 }
 
-console.log('reviewer routing policy tests passed');
+async function testSingleReviewerFallback() {
+  const candidates = reviewerCandidates({
+    preferredReviewers: ['wxianfeng'],
+    fallbackReviewers: ['wxianfeng', 'typefield', 'haofeng0705'],
+    eligibleReviewers: ['wxianfeng', 'typefield', 'haofeng0705'],
+  });
+  const attempts = [];
+  const result = await requestReviewersWithFallback({
+    candidates,
+    requiredReviewers: 1,
+    requestReviewer: async (reviewer) => {
+      attempts.push(reviewer);
+      if (reviewer === 'wxianfeng') {
+        throw Object.assign(new Error('cannot request primary'), {status: 422});
+      }
+      return true;
+    },
+  });
+  assert.deepEqual(attempts, ['wxianfeng', 'typefield']);
+  assert.deepEqual(result.requested, ['typefield']);
+  assert.equal(result.satisfiedReviewers.length, 1);
+}
+
+async function testTwoReviewerFallback() {
+  const candidates = reviewerCandidates({
+    preferredReviewers: ['haofeng0705', 'wxianfeng'],
+    fallbackReviewers: ['haofeng0705', 'wxianfeng', 'typefield', 'hlzjsong'],
+    eligibleReviewers: ['haofeng0705', 'wxianfeng', 'typefield', 'hlzjsong'],
+  });
+  const attempts = [];
+  const result = await requestReviewersWithFallback({
+    candidates,
+    requiredReviewers: 2,
+    requestReviewer: async (reviewer) => {
+      attempts.push(reviewer);
+      if (reviewer === 'wxianfeng') {
+        throw Object.assign(new Error('temporary failure'), {status: 503});
+      }
+      return true;
+    },
+  });
+  assert.deepEqual(attempts, ['haofeng0705', 'wxianfeng', 'typefield']);
+  assert.deepEqual(result.requested, ['haofeng0705', 'typefield']);
+  assert.equal(result.satisfiedReviewers.length, 2);
+}
+
+async function testLowerPriorityExistingRequestDoesNotReplaceOwner() {
+  const attempts = [];
+  const result = await requestReviewersWithFallback({
+    candidates: ['wxianfeng', 'typefield'],
+    requiredReviewers: 1,
+    satisfiedReviewers: ['typefield'],
+    requestReviewer: async (reviewer) => {
+      attempts.push(reviewer);
+      return true;
+    },
+  });
+  assert.deepEqual(attempts, ['wxianfeng']);
+  assert.deepEqual(result.requested, ['wxianfeng']);
+  assert.deepEqual(result.satisfiedReviewers, ['wxianfeng']);
+}
+
+Promise.all([
+  testSingleReviewerFallback(),
+  testTwoReviewerFallback(),
+  testLowerPriorityExistingRequestDoesNotReplaceOwner(),
+])
+  .then(() => console.log('reviewer routing policy tests passed'))
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
