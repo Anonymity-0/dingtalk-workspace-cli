@@ -123,7 +123,11 @@ func TestPersonalOAEventListAndSchemaCommands(t *testing.T) {
 
 func TestPersonalOAEventConsumeDryRunAndValidation(t *testing.T) {
 	oldIdentity := personalResolveEventIdentity
-	t.Cleanup(func() { personalResolveEventIdentity = oldIdentity })
+	oldGet := personalGetSubscription
+	t.Cleanup(func() {
+		personalResolveEventIdentity = oldIdentity
+		personalGetSubscription = oldGet
+	})
 	personalResolveEventIdentity = func(context.Context, string, string) (personal.Identity, error) {
 		return personal.Identity{
 			AccessToken:  "token",
@@ -131,6 +135,25 @@ func TestPersonalOAEventConsumeDryRunAndValidation(t *testing.T) {
 			ClientID:     "client",
 			SourceID:     "open",
 		}, nil
+	}
+	personalGetSubscription = func(_ *personal.Client, _ context.Context, subscribeID string) (*personal.Subscription, error) {
+		switch subscribeID {
+		case "oa-sub-task":
+			return &personal.Subscription{
+				SubscribeID: subscribeID,
+				EventKey:    personal.EventOAApprovalTaskCreated,
+				RuleType:    "all",
+			}, nil
+		case "im-sub-at":
+			return &personal.Subscription{
+				SubscribeID: subscribeID,
+				EventKey:    personal.EventMention,
+				RuleType:    "at",
+			}, nil
+		default:
+			t.Fatalf("unexpected subscription lookup %q", subscribeID)
+			return nil, nil
+		}
 	}
 
 	oaEvents := []string{
@@ -207,6 +230,21 @@ func TestPersonalOAEventConsumeDryRunAndValidation(t *testing.T) {
 		{"--query", "urgent"},
 		{"--filter-json", `{"field":"content","op":"eq","value":"urgent"}`},
 	}
+	t.Run("reuse-dry-run/implicit-event-key/resolves-oa-event", func(t *testing.T) {
+		cmd := newEventConsumeCommand()
+		cmd.SilenceUsage = true
+		cmd.SilenceErrors = true
+		var stderr bytes.Buffer
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(&stderr)
+		cmd.SetArgs([]string{"--subscribe-id", "oa-sub-task", "--dry-run"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("implicit reused OA dry-run error = %v", err)
+		}
+		if !strings.Contains(stderr.String(), "event_types      : "+personal.EventOAApprovalTaskCreated) {
+			t.Fatalf("implicit reused OA dry-run did not resolve event key:\n%s", stderr.String())
+		}
+	})
 	for _, explicitEventKey := range []bool{true, false} {
 		mode := "implicit-event-key"
 		if explicitEventKey {
@@ -227,18 +265,24 @@ func TestPersonalOAEventConsumeDryRunAndValidation(t *testing.T) {
 				cmd.SetErr(io.Discard)
 				cmd.SetArgs(args)
 				err := cmd.Execute()
-				if explicitEventKey {
-					if err == nil || !strings.Contains(err.Error(), flag+" not supported for OA event") {
-						t.Fatalf("explicit reused OA dry-run %s error = %v", flag, err)
-					}
-					return
-				}
-				if err != nil {
-					t.Fatalf("implicit reused IM-compatible subscription dry-run %s error = %v", flag, err)
+				if err == nil || !strings.Contains(err.Error(), flag+" not supported for OA event") {
+					t.Fatalf("%s reused OA dry-run %s error = %v", mode, flag, err)
 				}
 			})
 		}
 	}
+
+	t.Run("reuse-dry-run/implicit-im-remains-supported", func(t *testing.T) {
+		cmd := newEventConsumeCommand()
+		cmd.SilenceUsage = true
+		cmd.SilenceErrors = true
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+		cmd.SetArgs([]string{"--subscribe-id", "im-sub-at", "--query", "urgent", "--dry-run"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("implicit reused IM dry-run error = %v", err)
+		}
+	})
 
 	for _, override := range reuseOverrides {
 		flag, value := override[0], override[1]

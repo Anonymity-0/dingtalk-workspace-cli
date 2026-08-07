@@ -293,11 +293,18 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 	if err != nil {
 		return fmt.Errorf("event consume --as user: %w", personalSubscriptionValidationError(err))
 	}
+	client := newPersonalEventControlClient(configDir, personalEventControlBaseURL(opts.ControlBaseURL, configDir), identity)
 	if opts.Common.DryRun {
 		if strings.TrimSpace(opts.SubscribeID) == "" {
 			if err := validatePersonalSubscriptionOptions(opts); err != nil {
 				return fmt.Errorf("event consume --as user: %w", personalSubscriptionValidationError(err))
 			}
+		} else {
+			_, eventKey, _, err := personalEnsureSubscription(ctx, client, identity, opts)
+			if err != nil {
+				return fmt.Errorf("event consume --as user: %w", err)
+			}
+			opts.EventKey = eventKey
 		}
 		cfg := consume.Config{
 			WorkDir:        workDir,
@@ -372,7 +379,6 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 		}
 	}
 
-	client := newPersonalEventControlClient(configDir, personalEventControlBaseURL(opts.ControlBaseURL, configDir), identity)
 	var attempt *personalSubscriptionAttemptReservation
 	if strings.TrimSpace(opts.SubscribeID) == "" {
 		attempt, err = reservePersonalSubscriptionAttempts(
