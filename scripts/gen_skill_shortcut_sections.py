@@ -24,9 +24,9 @@ import gen_shortcut_comparison as shortcut_source  # noqa: E402
 
 CATALOG_PATH = ROOT / "docs" / "shortcut-public-catalog.json"
 MONO_SKILL = ROOT / "skills" / "mono" / "SKILL.md"
-SHARED_SKILL = ROOT / "skills" / "multi" / "dws-shared" / "SKILL.md"
+SHARED_SKILL = ROOT / "skills" / "multi" / "dingtalk-shared" / "SKILL.md"
 RUNTIME_CONTRACT_SOURCE = (
-    ROOT / "skills" / "multi" / "dws-shared" / "references" / "runtime-contract.md"
+    ROOT / "skills" / "multi" / "dingtalk-shared" / "references" / "runtime-contract.md"
 )
 SERVICE_TO_SKILL = {
     "aitable": ROOT / "skills" / "multi" / "dingtalk-aitable" / "SKILL.md",
@@ -34,7 +34,7 @@ SERVICE_TO_SKILL = {
     "calendar": ROOT / "skills" / "multi" / "dingtalk-calendar" / "SKILL.md",
     "chat": ROOT / "skills" / "multi" / "dingtalk-chat" / "SKILL.md",
     "contact": ROOT / "skills" / "multi" / "dingtalk-contact" / "SKILL.md",
-    "devapp": ROOT / "skills" / "multi" / "dingtalk-dev" / "SKILL.md",
+    "devapp": ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "devapp.md",
     "ding": ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "ding.md",
     "doc": ROOT / "skills" / "multi" / "dingtalk-doc" / "SKILL.md",
     "drive": ROOT / "skills" / "multi" / "dingtalk-drive" / "SKILL.md",
@@ -154,7 +154,7 @@ def product_section(service: str, rows: list[dict[str, Any]]) -> str:
     return f"""{PRODUCT_START}
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。命令已选中时直接执行；只在参数或安全语义不确定时读取 leaf Schema（例如 `dws schema --cli-path "{service} +<shortcut>" --format json`），在当前 Cobra flags 不确定时读取 `dws {service} <shortcut> --help`。仅当现有路由和 reference 都无法定位低频能力时，才用 `dws shortcut list --service {service} --format json` 批量发现。
+以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。命令已选中时直接执行；只在参数或安全语义不确定时读取 Agent leaf Schema（例如 `dws schema --cli-path "{service} +<shortcut>" --compact --format json`），在当前 Cobra flags 不确定时读取 `dws {service} <shortcut> --help`。只有参数映射、接口绑定或 provenance 审计才省略 `--compact`。仅当现有路由和 reference 都无法定位低频能力时，才用 `dws shortcut list --service {service} --format json` 批量发现。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|

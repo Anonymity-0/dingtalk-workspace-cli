@@ -24,39 +24,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalMCPMetadataLookup(t *testing.T) {
-	cmd := &cobra.Command{Use: "reply"}
-	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(cmd) })
-	cmd.Flags().String("text", "", "text")
-	runtimeannotate.AnnotateRuntimeFlag(cmd, "text", "text", "string", false)
-	contractfinal.RegisterRuntimeContractFinal(cmd, contract.ContractFinalPayload{
-		Identity: &contract.ToolIdentitySpec{
-			ProductID: "chat", Name: "reply_personal_message", CanonicalPath: "chat.reply_personal_message",
-			CLIPath: "chat reply", PrimaryCLIPath: "chat reply",
-		},
-		Interface: &contract.InterfaceSpec{
-			Mode:         contract.InterfaceModeMCP,
-			Availability: contract.InterfaceAvailable,
-			Ref:          &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "send_personal_message"},
-		},
-	})
-
-	entry := runtimeSchemaEntry{
-		ProductID: "chat", ToolName: "reply_personal_message", Command: cmd,
-		CLIPath: "chat reply", PrimaryCLIPath: "chat reply",
-	}
-	metadata := runtimeSchemaMetadataSources{
-		MCP: embeddedMCPMetadata{Tools: map[string]embeddedMCPToolMetadata{
-			"chat.send_personal_message": {Parameters: map[string]embeddedMCPParamMeta{
-				"text": {Type: "string"},
-			}},
-		}},
-	}
-	if _, err := runtimeToolSpecFromContractFinal(entry, mustFinal(t, cmd), metadata); err != nil {
-		t.Fatalf("runtimeToolSpecFromContractFinal with MCP metadata = %v", err)
-	}
-}
-
 func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalPassThrough(t *testing.T) {
 	cmd := &cobra.Command{Use: "create", Short: "s", Long: "l"}
 	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(cmd) })
@@ -318,7 +285,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalSafetyAnnotationFa
 func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalParameterResolutionError(t *testing.T) {
 	oldParameters := resolveRuntimeParameters
 	t.Cleanup(func() { resolveRuntimeParameters = oldParameters })
-	resolveRuntimeParameters = func(*cobra.Command, string, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+	resolveRuntimeParameters = func(*cobra.Command, string, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
 		return nil, errors.New("parameters failed")
 	}
 	entry := runtimeSchemaEntry{

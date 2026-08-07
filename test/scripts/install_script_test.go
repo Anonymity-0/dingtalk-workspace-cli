@@ -219,7 +219,7 @@ func TestInstallEventScriptStaticExpectations(t *testing.T) {
 		"releases/latest",
 		"EVENT_VERSION",
 		"DWS_SKILLS_ONLY",
-		"dingtalk-event",
+		"dingtalk-misc",
 		"user_im_message_receive_o2o",
 		".config/opencode/skills",
 		"$HOME/.dws/skills/multi/$EVENT_SKILL_NAME",
@@ -232,6 +232,7 @@ func TestInstallEventScriptStaticExpectations(t *testing.T) {
 	for _, avoid := range []string{
 		"releases?per_page=30",
 		"select(.tag_name",
+		"dingtalk-event",
 		"dingtalk-dev",
 		"client-secret",
 		"--as app",
@@ -269,9 +270,9 @@ func TestInstallEventScriptInstallsBinaryAndEventSkills(t *testing.T) {
 		"dws": "fake-event-binary\n",
 	})
 	writeZip(t, filepath.Join(releaseDir, "dws-skills.zip"), map[string]string{
-		"multi/dingtalk-event/SKILL.md": "event skill user_im_message_receive_o2o\n",
-		"mono/SKILL.md":                 "mono skill user_im_message_receive_o2o\n",
-		"SKILL.md":                      "legacy mono root\n",
+		"multi/dingtalk-misc/SKILL.md": "event skill user_im_message_receive_o2o\n",
+		"mono/SKILL.md":                "mono skill user_im_message_receive_o2o\n",
+		"SKILL.md":                     "legacy mono root\n",
 	})
 	writeFakeCurl(t, filepath.Join(stubRoot, "curl"))
 
@@ -304,7 +305,7 @@ func TestInstallEventScriptInstallsBinaryAndEventSkills(t *testing.T) {
 	got := string(output)
 	for _, want := range []string{
 		"Version: v1.0.51",
-		"Skill dingtalk-event",
+		"Skill dingtalk-misc",
 		"Skill dws",
 		"dws event consume user_im_message_receive_o2o",
 	} {
@@ -322,12 +323,12 @@ func TestInstallEventScriptInstallsBinaryAndEventSkills(t *testing.T) {
 	}
 
 	for _, rel := range []string{
-		".agents/skills/dingtalk-event/SKILL.md",
-		".codex/skills/dingtalk-event/SKILL.md",
-		".config/opencode/skills/dingtalk-event/SKILL.md",
+		".agents/skills/dingtalk-misc/SKILL.md",
+		".codex/skills/dingtalk-misc/SKILL.md",
+		".config/opencode/skills/dingtalk-misc/SKILL.md",
 		".agents/skills/dws/SKILL.md",
 		".codex/skills/dws/SKILL.md",
-		".dws/skills/multi/dingtalk-event/SKILL.md",
+		".dws/skills/multi/dingtalk-misc/SKILL.md",
 		".dws/skills/mono/SKILL.md",
 	} {
 		p := filepath.Join(fakeHome, filepath.FromSlash(rel))
@@ -338,6 +339,9 @@ func TestInstallEventScriptInstallsBinaryAndEventSkills(t *testing.T) {
 		if !strings.Contains(string(data), "user_im_message_receive_o2o") {
 			t.Fatalf("%s does not contain event skill marker: %q", p, string(data))
 		}
+	}
+	if _, err := os.Stat(filepath.Join(fakeHome, ".agents", "skills", "dingtalk-event")); !os.IsNotExist(err) {
+		t.Fatalf("dingtalk-event should not be installed by install-event.sh, stat err=%v", err)
 	}
 	if _, err := os.Stat(filepath.Join(fakeHome, ".agents", "skills", "dingtalk-dev")); !os.IsNotExist(err) {
 		t.Fatalf("dingtalk-dev should not be installed by install-event.sh, stat err=%v", err)
@@ -357,8 +361,8 @@ func TestInstallEventScriptSkillsOnlySkipsBinary(t *testing.T) {
 		t.Fatalf("MkdirAll(%s) error = %v", releaseDir, err)
 	}
 	writeZip(t, filepath.Join(releaseDir, "dws-skills.zip"), map[string]string{
-		"multi/dingtalk-event/SKILL.md": "event skill user_im_message_receive_o2o\n",
-		"mono/SKILL.md":                 "mono skill user_im_message_receive_o2o\n",
+		"multi/dingtalk-misc/SKILL.md": "event skill user_im_message_receive_o2o\n",
+		"mono/SKILL.md":                "mono skill user_im_message_receive_o2o\n",
 	})
 	writeFakeCurl(t, filepath.Join(stubRoot, "curl"))
 
@@ -383,8 +387,8 @@ func TestInstallEventScriptSkillsOnlySkipsBinary(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(installDir, "dws")); !os.IsNotExist(err) {
 		t.Fatalf("DWS_SKILLS_ONLY=1 should not install binary, stat err=%v\noutput:\n%s", err, string(output))
 	}
-	if _, err := os.Stat(filepath.Join(fakeHome, ".agents", "skills", "dingtalk-event", "SKILL.md")); err != nil {
-		t.Fatalf("skills-only should install event skill: %v\noutput:\n%s", err, string(output))
+	if _, err := os.Stat(filepath.Join(fakeHome, ".agents", "skills", "dingtalk-misc", "SKILL.md")); err != nil {
+		t.Fatalf("skills-only should install misc skill (hosts event): %v\noutput:\n%s", err, string(output))
 	}
 }
 
@@ -433,8 +437,11 @@ func TestInstallEventScriptNoSkillsOnlyInstallsBinary(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(installDir, "dws")); err != nil {
 		t.Fatalf("DWS_NO_SKILLS=1 should install binary: %v\noutput:\n%s", err, string(output))
 	}
+	if _, err := os.Stat(filepath.Join(fakeHome, ".agents", "skills", "dingtalk-misc")); !os.IsNotExist(err) {
+		t.Fatalf("DWS_NO_SKILLS=1 should not install misc skill, stat err=%v\noutput:\n%s", err, string(output))
+	}
 	if _, err := os.Stat(filepath.Join(fakeHome, ".agents", "skills", "dingtalk-event")); !os.IsNotExist(err) {
-		t.Fatalf("DWS_NO_SKILLS=1 should not install event skill, stat err=%v\noutput:\n%s", err, string(output))
+		t.Fatalf("DWS_NO_SKILLS=1 should not install retired event skill, stat err=%v\noutput:\n%s", err, string(output))
 	}
 }
 
