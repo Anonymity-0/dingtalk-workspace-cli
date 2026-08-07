@@ -1,0 +1,117 @@
+name: PR Eval Dispatch
+
+# `/eval <products> [cases=<ref>]` PR 评论 → 触发内网评测流水线，报告由内网 bot 回贴。
+# 本 workflow 只在默认分支上下文运行，不 checkout、不执行 PR 代码；
+# maintainer 打出 /eval 即代表已审阅 PR 代码（内网 CI 将构建并执行该 head）。
+# 触发通道与凭证全部经 secrets 注入，文件内不出现任何内网信息。
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions: {}
+
+concurrency:
+  group: eval-dispatch-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Dispatch internal evaluation
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/eval') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Check out default branch tooling
+        uses: actions/checkout@v4
+
+      - name: Parse /eval command
+        id: parse
+        continue-on-error: true
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: python3 scripts/ci/eval_comment_parse.py
+
+      - name: Reply usage on parse failure
+        if: steps.parse.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          PARSE_ERROR: ${{ steps.parse.outputs.error }}
+        run: |
+          body="❌ /eval 命令解析失败：${PARSE_ERROR}"
+          jq -n --arg body "$body" '{body: $body}' | curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            --data @- \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" > /dev/null
+          exit 1
+
+      - name: Resolve PR head SHA
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          head_sha="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" | jq -r '.head.sha')"
+          if [ -z "$head_sha" ] || [ "$head_sha" = "null" ]; then
+            echo "Failed to resolve PR head SHA." >&2
+            exit 1
+          fi
+          echo "head_sha=${head_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger internal evaluation pipeline
+        env:
+          EVAL_TRIGGER_TOKEN: ${{ secrets.EVAL_TRIGGER_TOKEN }}
+          EVAL_TRIGGER_URL: ${{ secrets.EVAL_TRIGGER_URL }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          PR_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          PRODUCTS: ${{ steps.parse.outputs.products }}
+          CASES_REF: ${{ steps.parse.outputs.cases_ref }}
+        run: |
+          if [ -z "$EVAL_TRIGGER_TOKEN" ] || [ -z "$EVAL_TRIGGER_URL" ]; then
+            echo "EVAL_TRIGGER_URL / EVAL_TRIGGER_TOKEN not configured; cannot dispatch." >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error \
+            -X POST \
+            -F "token=${EVAL_TRIGGER_TOKEN}" \
+            -F "ref=main" \
+            -F "variables[PR_NUMBER]=${PR_NUMBER}" \
+            -F "variables[PR_HEAD_SHA]=${PR_HEAD_SHA}" \
+            -F "variables[PRODUCTS]=${PRODUCTS}" \
+            -F "variables[CASES_REF]=${CASES_REF}" \
+            "$EVAL_TRIGGER_URL"
+          echo "Internal evaluation dispatched."
+
+      - name: Acknowledge on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          PR_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          PRODUCTS: ${{ steps.parse.outputs.products }}
+          CASES_REF: ${{ steps.parse.outputs.cases_ref }}
+        run: |
+          cases_note=""
+          if [ -n "$CASES_REF" ]; then
+            cases_note="，用例版本 \`${CASES_REF}\`"
+          fi
+          body="🛰️ /eval 已受理：产品集 \`${PRODUCTS}\`${cases_note}，评测对象 \`${PR_HEAD_SHA}\`。内网评测流水线运行结束后将由 bot 回贴报告（首行为基线对比头条）。"
+          jq -n --arg body "$body" '{body: $body}' | curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            --data @- \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" > /dev/null
