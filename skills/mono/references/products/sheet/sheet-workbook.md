@@ -54,12 +54,17 @@ Flags:
 
 **创建时写入初始数据**（`--values` 与 `--sheets` 二选一，都不传则创建空表）：
 
-- `--values`：二维 JSON 数组，裸值写入默认工作表 A1 起。适合单表快速建表，无表头/类型语义，内部复用 csv-put 通道，自动识别数字/布尔。
+- `--values`：二维 JSON 数组，裸值写入默认工作表 A1 起。适合单表快速建表，无表头/类型语义，内部复用 csv-put 通道，自动识别数字/布尔。单元格只能是字符串/数字/布尔/null；上限 30000 单元格、编码为 CSV 后 2000000 字符。
 - `--sheets`：typed table 数组，一次创建多个带数据的工作表，内部复用 table-put 通道。每项形如
   `{"name":"表名","columns":["列1","列2"],"data":[[...]],"dtypes":{...},"formats":{...},"cellStyles":[...]}`；
-  `name` **必填**。第一个条目写入默认工作表（自动重命名为其 `name`，避免残留空表），其余按 `name` 自动新建。
+  `name`、`columns` **必填**。第一个条目写入默认工作表（自动重命名为其 `name`，避免残留空表），其余按 `name` 自动新建。
+  - 字段名为 camelCase，只接受 `name` / `columns` / `data` / `dtypes` / `formats` / `cellStyles` / `startCell` / `mode`(`overwrite`|`append`) / `header` / `allowOverwrite`；**未知键与 snake_case 变体一律拒绝**（服务端会静默丢弃写错的键，`{"datas":[...]}` 会写出一张只有表头的表却报成功）
+  - **不接受 `sheetId`**：文档此刻还不存在，工作表只能用 `name` 指定
+  - `columns` 为非空字符串数组、列名不可为空/重复（按 trim 后比较）；`data` 每行长度须等于 `columns`，单元格只能是字符串/数字/布尔/null
+  - `dtypes` / `formats` 的键须是 `columns` 里的列名（服务端按列名查表，写错既不报错也不生效）
+  - 单表写入上限 30000 单元格（写表头时含表头行）
 
-**建表时一并应用样式**（`--styles`，字段名对齐飞书 snake_case，同时兼容 camelCase）：
+**建表时一并应用样式**（`--styles`，顶层键对齐飞书 snake_case，列表项内字段兼容 camelCase；两级都拒绝未知键）：
 
 ```json
 {"styles":[{"name":"表名",
@@ -77,9 +82,9 @@ Flags:
 - `merge_type` 取 `all` / `rows` / `columns`
 
 **行为要点**：
-- 所有 JSON 结构与枚举都在**创建文档之前**校验，非法配置直接失败，不会留下白建的空文档
+- 所有 JSON 结构、字段类型与枚举都在**创建文档之前**校验（`--sheets` 按 table-put 的输入契约逐字段校验），非法配置直接失败，不会留下白建的空文档
 - 创建后 CLI 会先探活（新建文档服务端仍在初始化，此时写入可能返回成功但不落盘），再写数据
-- `--values` 写完会回读 A1 校验确实落盘；若未落盘会报错并提示用 `csv-put` / `range update` 补写
+- 写完会回读**首个预期非空单元格**校验确实落盘（不是死盯 A1：`--sheets` 会按 `startCell` / `header` / `mode` 推算实际写入位置）；若未落盘会报错并提示用 `csv-put` / `range update` / `table-put` 补写
 - 报错信息里始终带上已创建的 `nodeId`，便于在部分成功时继续操作同一份文档
 
 示例：

@@ -17,13 +17,19 @@ func newWorkbookCmds() []*cobra.Command {
 
 初始数据（--values 与 --sheets 二选一，均为可选）：
   --values   二维 JSON 数组，裸值写入默认工作表 A1 起（单表快速建表，无表头/类型语义，
-             复用 csv-put 通道，自动识别数字/布尔）
+             复用 csv-put 通道，自动识别数字/布尔）。单元格只能是字符串/数字/布尔/null；
+             上限 30000 单元格、编码为 CSV 后 2000000 字符
   --sheets   typed table 数组，多工作表一次写入（复用 table-put 通道）。每个条目形如
              {"name":"表名","columns":["列1","列2"],"data":[[...]],"dtypes":{...},"formats":{...},"cellStyles":[...]}
-             name 必填；第一个条目写入默认工作表（自动重命名为其 name），其余按 name 自动新建。
-             支持列类型(dtypes)、数字格式(formats)、单元格样式(cellStyles)。
+             name、columns 必填；第一个条目写入默认工作表（自动重命名为其 name），其余按 name 自动新建。
+             字段名为 camelCase，只接受 name / columns / data / dtypes / formats / cellStyles /
+             startCell / mode / header / allowOverwrite（写错的键会被服务端静默丢弃，故一律拒绝；
+             不接受 sheetId：文档尚未创建）。data 每行长度须等于 columns，单元格只能是
+             字符串/数字/布尔/null；dtypes、formats 的键须是 columns 里的列名（按 trim 后比较）。
+             单表写入上限 30000 单元格（含表头行）。
 
-样式配置（--styles，可选，需与 --values 或 --sheets 搭配；字段名对齐飞书 snake_case）：
+样式配置（--styles，可选，需与 --values 或 --sheets 搭配；顶层键对齐飞书 snake_case，
+列表项内字段兼容 camelCase；两级都拒绝未知键，避免写错的键被静默丢弃导致样式只应用一半）：
   {"styles":[{"name":"表名",
     "cell_styles":[{"range":"A1:D1","font_weight":"bold","background_color":"#FFF2CC",
                     "font_family":"微软雅黑","number_format":"@",

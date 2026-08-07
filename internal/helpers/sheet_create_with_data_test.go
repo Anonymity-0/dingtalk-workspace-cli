@@ -130,7 +130,49 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 		{"sheets-missing-name", map[string]string{"name": "X", "sheets": `[{"columns":["a"]}]`}, "缺少必填的 name"},
 		// 重名工作表：table_put 会建出两张同名表，之后 --styles 按名称定位会落到
 		// 不确定的那一张。--styles 是建文档后的非原子步骤，必须前置拒绝。
-		{"sheets-duplicate-name", map[string]string{"name": "X", "sheets": `[{"name":"一月"},{"name":"一月"}]`}, `--sheets[1].name="一月" 与 --sheets[0] 重复`},
+		{"sheets-duplicate-name", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"]},{"name":"一月","columns":["a"]}]`}, `--sheets[1].name="一月" 与 --sheets[0] 重复`},
+		{"sheets-name-wrong-type", map[string]string{"name": "X", "sheets": `[{"name":1,"columns":["a"]}]`}, "--sheets[0].name 必须是字符串"},
+		{"sheets-name-blank", map[string]string{"name": "X", "sheets": `[{"name":"  ","columns":["a"]}]`}, "--sheets[0] 缺少必填的 name"},
+		// 畸形包装：出现 sheets 键就必须按包装对象处理，不能退化成"整个对象是单个 spec"，
+		// 否则 {"sheets":"bad","name":"一月"} 会白建一份只有名字的文档。
+		{"sheets-wrapper-not-array", map[string]string{"name": "X", "sheets": `{"sheets":"bad","name":"一月"}`}, "--sheets.sheets 必须是数组，实际是 string"},
+		// 以下都是 table_put 的输入契约校验：类型/枚举错误若放过去，会先建文档、
+		// 重命名，再在 table_put 阶段失败，留下用户并未请求到的半成品文档。
+		{"spec-data-not-array", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"data":{"bad":1}}]`}, "--sheets[0]: data 必须是二维数组，实际是 map[string]interface {}"},
+		{"spec-data-row-not-array", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"data":[5]}]`}, "--sheets[0]: data[0] 必须是数组，实际是 json.Number"},
+		{"spec-data-row-width-mismatch", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a","b"],"data":[["x"]]}]`}, "--sheets[0]: data[0] 有 1 列，与 columns 的 2 列不一致"},
+		{"spec-data-cell-not-scalar", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"data":[[{"x":1}]]}]`}, "--sheets[0]: data[0][0] 必须是字符串/数字/布尔/null"},
+		{"spec-missing-columns", map[string]string{"name": "X", "sheets": `[{"name":"一月","data":[["x"]]}]`}, "--sheets[0]: 缺少必填的 columns"},
+		{"spec-columns-wrong-type", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":"a"}]`}, "--sheets[0]: columns 必须是字符串数组，实际是 string"},
+		{"spec-columns-empty", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":[]}]`}, "--sheets[0]: columns 不能为空数组"},
+		{"spec-columns-item-not-string", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":[1]}]`}, "--sheets[0]: columns[0] 必须是字符串，实际是 json.Number"},
+		{"spec-columns-item-blank", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"," "]}]`}, "--sheets[0]: columns[1] 不能为空字符串"},
+		// 服务端按 trim 后的列名判重，本地必须用同一套归一化，否则 ["量","量 "] 只会
+		// 在 table_put 阶段被拒。
+		{"spec-columns-duplicate", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["量","量 "]}]`}, `--sheets[0]: columns[1]="量" 与 columns[0] 重复`},
+		{"spec-dtypes-not-object", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"dtypes":["int64"]}]`}, "--sheets[0]: dtypes 必须是对象"},
+		{"spec-dtypes-value-not-string", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"dtypes":{"a":1}}]`}, `--sheets[0]: dtypes["a"] 必须是字符串`},
+		// dtypes/formats 的键按列名查表，写错既不报错也不生效——静默失效比报错更难发现。
+		{"spec-dtypes-unknown-column", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"dtypes":{"b":"int64"}}]`}, `--sheets[0]: dtypes 的键 "b" 不是 columns 中的列名`},
+		{"spec-formats-not-object", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"formats":"0.00"}]`}, "--sheets[0]: formats 必须是对象"},
+		{"spec-cell-styles-wrong-type", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"cellStyles":"bold"}]`}, "--sheets[0]: cellStyles 必须是对象或二维数组"},
+		{"spec-mode-invalid", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"mode":"upsert"}]`}, `--sheets[0]: mode="upsert" 非法（合法值: overwrite / append）`},
+		{"spec-mode-wrong-type", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"mode":true}]`}, "--sheets[0]: mode 必须是字符串，实际是 bool"},
+		{"spec-header-wrong-type", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"header":"yes"}]`}, "--sheets[0]: header 必须是布尔值，实际是 string"},
+		{"spec-allow-overwrite-wrong-type", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"allowOverwrite":"yes"}]`}, "--sheets[0]: allowOverwrite 必须是布尔值"},
+		{"spec-start-cell-wrong-type", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"startCell":3}]`}, "--sheets[0]: startCell 必须是字符串，实际是 json.Number"},
+		// 非法 startCell 以前被静默忽略：写入按 A1 落盘，回读探针却按错位地址找，
+		// 成功的写入会被报成"数据未落盘"。
+		{"spec-start-cell-invalid", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"startCell":"A1:B2"}]`}, `--sheets[0]: startCell="A1:B2" 不是合法的单元格地址`},
+		// 小写与 $ 绝对引用是服务端接受的写法，不能误拒（见 normalizeSpecStartCell）
+		{"spec-start-cell-absolute-accepted", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"startCell":"$b$2","data":{"bad":1}}]`}, "data 必须是二维数组"},
+		// 拼错的字段会被服务端 DTO 静默丢弃：datas 会写出"只有表头"的表，而探针刚好
+		// 落在表头上，整条命令报成功——静默丢数据必须前置拒绝。
+		{"spec-unknown-field", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"datas":[["x"]]}]`}, `--sheets[0]: 未知字段 "datas"`},
+		{"spec-snake-case-field", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"start_cell":"B2"}]`}, `--sheets[0]: 字段 "start_cell" 拼写不符合契约，应为 "startCell"`},
+		// 文档此刻还不存在，任何 sheetId 都不可能属于它；而重命名默认表和回读校验
+		// 都按 name 定位，服务端却优先用 sheetId。
+		{"spec-sheet-id-rejected", map[string]string{"name": "X", "sheets": `[{"name":"一月","columns":["a"],"sheetId":"S1"}]`}, "--sheets[0]: 不支持 sheetId"},
 		{"styles-bad-json", map[string]string{"name": "X", "values": `[[1]]`, "styles": `{`}, "--styles JSON 解析失败"},
 		{"styles-object-without-styles-key", map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"a":1}`}, "必须含 styles 数组"},
 		{"styles-wrong-type", map[string]string{"name": "X", "values": `[[1]]`, "styles": `"s"`}, `必须是 {"styles":[...]}`},
@@ -138,12 +180,12 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 		{"styles-item-empty", map[string]string{"name": "X", "values": `[[1]]`, "styles": `[{"name":"S"}]`}, "至少需要 cell_styles"},
 		{
 			"styles-count-mismatch-with-sheets",
-			map[string]string{"name": "X", "sheets": `[{"name":"A"},{"name":"B"}]`, "styles": `[{"name":"A","cell_merges":[{"range":"A1:B1"}]}]`},
+			map[string]string{"name": "X", "sheets": `[{"name":"A","columns":["a"]},{"name":"B","columns":["b"]}]`, "styles": `[{"name":"A","cell_merges":[{"range":"A1:B1"}]}]`},
 			"必须与 --sheets 子表数",
 		},
 		{
 			"styles-name-mismatch-with-sheets",
-			map[string]string{"name": "X", "sheets": `[{"name":"A"}]`, "styles": `[{"name":"Z","cell_merges":[{"range":"A1:B1"}]}]`},
+			map[string]string{"name": "X", "sheets": `[{"name":"A","columns":["a"]}]`, "styles": `[{"name":"Z","cell_merges":[{"range":"A1:B1"}]}]`},
 			"不一致（需顺序对应）",
 		},
 		{
@@ -257,6 +299,59 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_merges":[{"range":"not-a-range"}]}]}`},
 			"cell_merges[0].range",
 		},
+		{
+			// json.Unmarshal 只认 sheetStyleOps 的 tag：cellStyles 那份样式会被静默
+			// 丢弃、同项的 row_sizes 却照常生效，留下一份"命令成功但样式不全"的表格。
+			"styles-top-level-camel-case-key",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `[{"name":"S","cellStyles":[{"range":"A1","font_weight":"bold"}],"row_sizes":[{"range":"1:1","type":"pixel","size":28}]}]`},
+			`--styles[0]: 字段 "cellStyles" 拼写不符合契约，应为 "cell_styles"`,
+		},
+		{
+			// 键名对但值类型不对：结构化解码必须报错而不是被前一步的 map 解码放过
+			"styles-list-value-wrong-type",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `[{"name":"S","cell_styles":"A1"}]`},
+			"--styles 解析失败",
+		},
+		{
+			"styles-top-level-unknown-key",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `[{"name":"S","cell_merges":[{"range":"A1:B1"}],"borders":[]}]`},
+			`--styles[0]: 未知字段 "borders"（--styles 单项只接受 name / cell_styles / row_sizes / col_sizes / cell_merges）`,
+		},
+		{
+			// 内层键同理：pickStr 认不出的拼写会被丢掉，加粗生效而背景色悄悄丢失。
+			// background_color / backgroundColor / bgColor 三种拼写才是被接受的。
+			"cell-styles-near-miss-key",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_styles":[{"range":"A1","font_weight":"bold","backgroundcolor":"#FFF"}]}]}`},
+			`cell_styles[0]: 字段 "backgroundcolor" 拼写不符合契约，应为 "background_color"`,
+		},
+		{
+			"cell-styles-unknown-key",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_styles":[{"range":"A1","font_weight":"bold","italic":true}]}]}`},
+			`cell_styles[0]: 未知字段 "italic"（cell_styles 项只接受 range / background_color /`,
+		},
+		{
+			// camelCase 别名必须照常放行（不能把兼容写法当成拼错）
+			"cell-styles-camel-case-alias-accepted",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_styles":[{"range":"A1","backgroundColor":"#FFF","hAlign":"center","borderStyles":{"bottom":{"style":"medium"}},"fontSize":"x"}]}]}`},
+			"cell_styles.fontSize 必须是数字", // 只有 fontSize 的类型错误应被报出，其余别名均已接受
+		},
+		{
+			"row-sizes-unknown-key",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","row_sizes":[{"range":"1:1","type":"pixel","size":28,"height":9}]}]}`},
+			`row_sizes[0]: 未知字段 "height"（row_sizes 项只接受 range / type / size）`,
+		},
+		{
+			"cell-merges-unknown-key",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_merges":[{"range":"A1:B1","merge_style":"all"}]}]}`},
+			`cell_merges[0]: 未知字段 "merge_style"`,
+		},
+		{
+			// 嵌套对象/数组会被 cellToString 写成 "map[a:1]" 这类无意义文本，
+			// 而回读只校验非空，于是垃圾数据被报成写入成功。
+			"values-cell-not-scalar",
+			map[string]string{"name": "X", "values": `[[1,{"a":1}]]`},
+			"--values[0][1] 必须是字符串/数字/布尔/null",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -269,6 +364,65 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 				t.Fatalf("calls = %d, want 0 (校验必须早于建文档，否则会留下白建的空表)", caller.calls)
 			}
 		})
+	}
+}
+
+// 写入规模上限是服务端硬限（table_put 30000 单元格；set_range_from_csv 30000
+// 单元格 / 2M 字符）。超限若不前置拦下，同样是先建好文档再在写入阶段失败。
+func TestSheetCreateRejectsOversizedWriteBeforeCreatingDocument(t *testing.T) {
+	repeatRow := func(row string, n int) string {
+		rows := make([]string, n)
+		for i := range rows {
+			rows[i] = row
+		}
+		return "[" + strings.Join(rows, ",") + "]"
+	}
+	cases := []struct {
+		name  string
+		flags map[string]string
+		want  string
+	}{
+		{
+			// 30000 数据行 + 1 表头行 = 30001 > 30000
+			"sheets-cells-over-cap",
+			map[string]string{"name": "X", "sheets": `[{"name":"S","columns":["a"],"data":` + repeatRow(`[1]`, 30000) + `}]`},
+			"单个工作表写入单元格总数上限为 30000（当前 30001 行 × 1 列 = 30001）",
+		},
+		{
+			// header=false 少写一行，刚好 30000 应放行 —— 见下方 accepted 断言
+			"sheets-cells-over-cap-multi-column",
+			map[string]string{"name": "X", "sheets": `[{"name":"S","columns":["a","b"],"data":` + repeatRow(`[1,2]`, 15000) + `}]`},
+			"当前 15001 行 × 2 列 = 30002",
+		},
+		{
+			"values-cells-over-cap",
+			map[string]string{"name": "X", "values": repeatRow(`[1]`, 30001)},
+			"--values 单元格总数上限为 30000（当前 30001 行 × 1 列 = 30001）",
+		},
+		{
+			// 字符上限按 rune 计：中文按字符数而不是字节数，避免误拒 2/3 长度的中文表
+			"values-chars-over-cap",
+			map[string]string{"name": "X", "values": `[["` + strings.Repeat("中", maxCSVWriteChars) + `"]]`},
+			"编码为 CSV 后长度为 2000001 字符，超过上限 2000000",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			err := runCreate(t, caller, tc.flags)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want contains %q", err, tc.want)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("calls = %d, want 0（超限必须早于建文档）", caller.calls)
+			}
+		})
+	}
+
+	// 恰好等于上限不该被拒（header=false 时不占行）
+	atCap := `[{"name":"S","columns":["a"],"header":false,"data":` + repeatRow(`[1]`, maxTableWriteCells) + `}]`
+	if _, err := parseCreateSheetSpecs(atCap); err != nil {
+		t.Fatalf("恰好 %d 个单元格被误拒: %v", maxTableWriteCells, err)
 	}
 }
 
@@ -365,7 +519,7 @@ func TestSheetCreateWithSheetsVerifiesEachSheetLanded(t *testing.T) {
 		t.Fatalf("缺失工作表应带 nodeId 报错: %v", err)
 	}
 
-	// 只有 name、无数据的工作表本就应为空，不回读、不报错
+	// header=false 且没给 data 的工作表本就应为空，不回读、不报错
 	empty := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1"}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
@@ -377,7 +531,7 @@ func TestSheetCreateWithSheetsVerifiesEachSheetLanded(t *testing.T) {
 	}}
 	if err := runCreate(t, empty, map[string]string{
 		"name":   "报表",
-		"sheets": `[{"name":"有数据","columns":["a"],"data":[["v"]]},{"name":"空表"}]`,
+		"sheets": `[{"name":"有数据","columns":["a"],"data":[["v"]]},{"name":"空表","columns":["a"],"header":false}]`,
 	}); err != nil {
 		t.Fatalf("无数据工作表不应触发回读失败: %v", err)
 	}
@@ -400,13 +554,20 @@ func TestFirstNonEmptySheetSpecCell(t *testing.T) {
 		wantContent bool
 	}{
 		{`{"name":"S","columns":["项目"],"data":[["房租"]]}`, "A1", true},
-		{`{"name":"S","columns":["",""],"data":[["","x"]]}`, "B2", true},             // 首列表头空
-		{`{"name":"S","data":[[1]]}`, "A1", true},                                    // 无表头，纯 data
-		{`{"name":"S","data":[5]}`, "A1", true},                                      // data 行是单值而非数组
-		{`{"name":"S","columns":["id"],"data":[[1]],"startCell":"C3"}`, "C3", true},  // startCell（table_put 线上 camelCase）
-		{`{"name":"S","columns":["id"],"data":[[1]],"start_cell":"C3"}`, "C3", true}, // start_cell（snake_case 兼容）
-		{`{"name":"S"}`, "", false},                                                  // 只有 name
-		{`{"name":"S","columns":[],"data":[]}`, "", false},                           // 空
+		{`{"name":"S","columns":["",""],"data":[["","x"]]}`, "B2", true},            // 首列表头空
+		{`{"name":"S","columns":["id"],"data":[[1]],"startCell":"C3"}`, "C3", true}, // startCell（table_put 线上 camelCase）
+		// 服务端解析前会 toUpperCase 并允许 $ 绝对引用，探针须同样解释
+		{`{"name":"S","columns":["id"],"data":[[1]],"startCell":"$c$3"}`, "C3", true},
+		// header=false 时服务端不写表头行，探针必须从 data 首行算起，
+		// 否则会盯着一个永远不会被写入的表头位置报"数据未落盘"。
+		{`{"name":"S","columns":["id"],"data":[[1]]}`, "A1", true},
+		{`{"name":"S","columns":["id"],"data":[[1]],"header":false}`, "A1", true},
+		{`{"name":"S","columns":["id"],"data":[["",""],["x"]],"header":false}`, "A2", true},
+		{`{"name":"S","columns":["id"],"header":false}`, "", false}, // 不写表头又没有 data
+		// mode=append 落在新建的空表上，服务端从第 1 行开始写：startCell 的行号被忽略，
+		// 列号仍生效。探针若照搬 startCell 会指到空白处。
+		{`{"name":"S","columns":["id"],"data":[[1]],"mode":"append","startCell":"C7"}`, "C1", true},
+		{`{"name":"S","columns":[],"data":[]}`, "", false}, // 空
 	} {
 		gotCell, gotContent := firstNonEmptySheetSpecCell(mustDecode(tc.spec))
 		if gotCell != tc.wantCell || gotContent != tc.wantContent {
@@ -994,9 +1155,14 @@ func TestCallMCPToolSilentSuppressesOutput(t *testing.T) {
 
 func TestParseCreateSheetSpecsAcceptedShapes(t *testing.T) {
 	for _, raw := range []string{
-		`[{"name":"A"},{"name":"B"}]`,
-		`{"sheets":[{"name":"A"}]}`,
-		`{"name":"A"}`, // 单个 spec 对象
+		`[{"name":"A","columns":["a"]},{"name":"B","columns":["b"]}]`,
+		`{"sheets":[{"name":"A","columns":["a"]}]}`,
+		`{"name":"A","columns":["a"]}`, // 单个 spec 对象
+		// 契约里的每个可选字段都必须被接受（别把校验写成误拒）
+		// dtypes/formats 的键按 trim 后的列名查表，因此 " b " 列写 "b" 是对的
+		`{"name":"A","columns":["a"," b "],"data":[["x",1],[true,null]],"dtypes":{"a":"object"},` +
+			`"formats":{"b":"0.00"},"cellStyles":{"a":{"bold":true}},"mode":"append",` +
+			`"header":false,"allowOverwrite":true,"startCell":"b2"}`,
 	} {
 		specs, err := parseCreateSheetSpecs(raw)
 		if err != nil || len(specs) == 0 {
@@ -1243,18 +1409,18 @@ func TestParseCreateSheetSpecsRejectsDuplicateNames(t *testing.T) {
 	}{
 		{
 			"two-identical",
-			`[{"name":"一月"},{"name":"一月"}]`,
+			`[{"name":"一月","columns":["a"]},{"name":"一月","columns":["a"]}]`,
 			`--sheets[1].name="一月" 与 --sheets[0] 重复`,
 		},
 		{
 			// 非相邻重复也要报出首次出现的下标
 			"duplicate-not-adjacent",
-			`[{"name":"a"},{"name":"b"},{"name":"a"}]`,
+			`[{"name":"a","columns":["c"]},{"name":"b","columns":["c"]},{"name":"a","columns":["c"]}]`,
 			`--sheets[2].name="a" 与 --sheets[0] 重复`,
 		},
 		{
 			"wrapped-form-also-checked",
-			`{"sheets":[{"name":"x"},{"name":"x"}]}`,
+			`{"sheets":[{"name":"x","columns":["a"]},{"name":"x","columns":["a"]}]}`,
 			`--sheets[1].name="x" 与 --sheets[0] 重复`,
 		},
 	} {
@@ -1268,9 +1434,9 @@ func TestParseCreateSheetSpecsRejectsDuplicateNames(t *testing.T) {
 
 	// 名称不同照常放行。仅大小写不同不算重复：服务端区分大小写，CLI 不该收紧。
 	for _, sheets := range []string{
-		`[{"name":"一月"},{"name":"二月"}]`,
-		`[{"name":"Sheet"},{"name":"sheet"}]`,
-		`[{"name":"only"}]`,
+		`[{"name":"一月","columns":["a"]},{"name":"二月","columns":["a"]}]`,
+		`[{"name":"Sheet","columns":["a"]},{"name":"sheet","columns":["a"]}]`,
+		`[{"name":"only","columns":["a"]}]`,
 	} {
 		if _, err := parseCreateSheetSpecs(sheets); err != nil {
 			t.Errorf("parseCreateSheetSpecs(%s) 误拒: %v", sheets, err)

@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 )
@@ -44,8 +46,14 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 		if len(values) == 0 {
 			return fmt.Errorf("--values 不能为空（需要形如 '[[\"姓名\",\"分数\"],[\"张三\",90]]' 的二维数组）")
 		}
+		if err := validateValuesCells(values); err != nil {
+			return err
+		}
 		if !valuesHaveContent(values) {
 			return fmt.Errorf("--values 全部单元格为空，写不出任何数据（需要至少一个非空单元格）")
+		}
+		if err := validateValuesBudget(values); err != nil {
+			return err
 		}
 	} else {
 		specs, err := parseCreateSheetSpecs(sheetsStr)
@@ -204,7 +212,14 @@ func parseCreateSheetSpecs(sheetsStr string) ([]map[string]any, error) {
 	case []any:
 		arr = v
 	case map[string]any:
-		if s, ok := v["sheets"].([]any); ok {
+		// 只要出现 sheets 键就按包装对象处理：畸形包装（{"sheets":"bad","name":"一月"}）
+		// 必须报错，不能退化成「把整个对象当单个 spec」—— 那样 sheets 字段会被当成
+		// 未知字段，用户以为在传一组子表，实际只建了一张。
+		if inner, wrapped := v["sheets"]; wrapped {
+			s, ok := inner.([]any)
+			if !ok {
+				return nil, fmt.Errorf("--sheets.sheets 必须是数组，实际是 %T", inner)
+			}
 			arr = s
 		} else {
 			arr = []any{v} // 单个 spec 对象
@@ -222,8 +237,13 @@ func parseCreateSheetSpecs(sheetsStr string) ([]map[string]any, error) {
 		if !ok {
 			return nil, fmt.Errorf("--sheets[%d] 不是对象", i)
 		}
+		if v, present := m["name"]; present && v != nil {
+			if _, isStr := v.(string); !isStr {
+				return nil, fmt.Errorf("--sheets[%d].name 必须是字符串，实际是 %T", i, v)
+			}
+		}
 		name, _ := m["name"].(string)
-		if name == "" {
+		if strings.TrimSpace(name) == "" {
 			return nil, fmt.Errorf("--sheets[%d] 缺少必填的 name 字段（创建带数据时每个工作表必须命名）", i)
 		}
 		// 工作表名不能重复：样式接口按「ID 或名称」定位工作表，重名时命中哪一张
@@ -233,21 +253,358 @@ func parseCreateSheetSpecs(sheetsStr string) ([]map[string]any, error) {
 			return nil, fmt.Errorf("--sheets[%d].name=%q 与 --sheets[%d] 重复；工作表名必须唯一，否则 --styles 按名称定位时会落到不确定的工作表上", i, name, prev)
 		}
 		seen[name] = i
+		// name 之外的字段同样要在建文档之前按 table_put 的输入契约验一遍
+		if err := validateCreateSheetSpec(m); err != nil {
+			return nil, fmt.Errorf("--sheets[%d]: %w", i, err)
+		}
 		specs = append(specs, m)
 	}
 	return specs, nil
 }
 
+// ── --sheets：table_put 输入契约的前置校验 ────────────────────────────────────
+//
+// sheet spec 原样转发给 table_put，字段契约见 MCP 的 SheetTableSpec 与引擎侧
+// TablePutOptions：
+//
+//	name / startCell / mode / header / allowOverwrite /
+//	columns（必填、非空、列名非空且不重复）/ data / dtypes / formats / cellStyles
+//
+// 只校验「对象类型 + name」是不够的：
+//   - 类型不对的字段（data 传成对象、columns 传成字符串）要等到 table_put 才被
+//     服务端拒绝，此时 create_workspace_sheet 与 update_sheet 已经执行，留下一份
+//     用户并没有请求到的空/半成品文档，且无法回滚。
+//   - 拼错的字段更糟：MCP 侧反序列化到 SheetTableSpec 会静默丢掉不认识的键，
+//     `datas` 会变成「只写了表头、数据全丢」，而回读探针刚好落在表头上，
+//     整条命令报成功。
+//
+// 因此把契约里的每个已提供字段都在发第一个请求之前验完。
+const maxTableWriteCells = 30000
+
+// tablePutSpecFields 是 table_put 单个 sheet spec 的合法字段（契约字段名为 camelCase）。
+// sheetId 虽在契约内但不在此列：见 validateCreateSheetSpec。
+var tablePutSpecFields = []string{
+	"name", "startCell", "mode", "header", "allowOverwrite",
+	"columns", "data", "dtypes", "formats", "cellStyles",
+}
+
+// looseFieldKey 归一化字段名：去掉下划线/连字符并转小写。
+func looseFieldKey(s string) string {
+	return strings.ToLower(strings.NewReplacer("_", "", "-", "").Replace(s))
+}
+
+// rejectUnknownFields 校验对象只含契约里的字段名。allowed 列出所有被接受的拼写
+// （同一字段的多种别名都要列出，首个视为规范拼写）；归一化后能对上的键判为拼写
+// 偏差并直接指向规范拼写，其余判为未知字段。
+//
+// 之所以要拒而不是忽略：这些 JSON 最终交给「按固定字段名取值」的下游（服务端
+// DTO 或 pickStr），不认识的键会被静默丢掉——写错一个键的后果是数据/样式部分丢失
+// 而命令报成功，比直接报错难发现得多。
+func rejectUnknownFields(item map[string]any, what string, allowed []string) error {
+	exact := make(map[string]bool, len(allowed))
+	canonicalByLoose := make(map[string]string, len(allowed))
+	for _, f := range allowed {
+		exact[f] = true
+		if _, dup := canonicalByLoose[looseFieldKey(f)]; !dup {
+			canonicalByLoose[looseFieldKey(f)] = f
+		}
+	}
+	canonical := make([]string, 0, len(canonicalByLoose))
+	for _, f := range allowed {
+		if canonicalByLoose[looseFieldKey(f)] == f {
+			canonical = append(canonical, f)
+		}
+	}
+	for _, key := range sortedMapKeys(item) {
+		if exact[key] {
+			continue
+		}
+		if want, ok := canonicalByLoose[looseFieldKey(key)]; ok {
+			return fmt.Errorf("字段 %q 拼写不符合契约，应为 %q", key, want)
+		}
+		return fmt.Errorf("未知字段 %q（%s只接受 %s）", key, what, strings.Join(canonical, " / "))
+	}
+	return nil
+}
+
+// normalizeSpecStartCell 把 startCell 归一化成 parseA1Cell 认的形态：服务端解析
+// 前会 toUpperCase，且允许 $ 绝对引用（$C$3 等价于 C3）。本地校验与回读探针必须与
+// 服务端同一套解释——否则要么误拒服务端接受的写法，要么探到错位的单元格。
+func normalizeSpecStartCell(s string) string {
+	return strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(s), "$", ""))
+}
+
+// sortedMapKeys 返回排序后的键，保证校验顺序与错误信息稳定（map 遍历是随机的）。
+func sortedMapKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// validateCreateSheetSpec 按 table_put 的输入契约校验单个 sheet spec 的每个已提供
+// 字段。纯函数、不发请求：调用方在创建文档之前调用，非法输入不会产生任何 MCP 调用。
+func validateCreateSheetSpec(spec map[string]any) error {
+	// sheetId 在 table_put 契约里合法（且优先级高于 name），但对 sheet create
+	// 没有意义：文档此刻还不存在，任何 sheetId 都不可能是它的工作表。传了只会
+	// 让写入落到别处或直接失败，而重命名默认表、回读校验都是按 name 定位的。
+	for _, key := range sortedMapKeys(spec) {
+		if looseFieldKey(key) == "sheetid" {
+			return fmt.Errorf("不支持 sheetId：文档尚未创建，工作表 ID 无从得知；请只用 name 指定工作表")
+		}
+	}
+	if err := rejectUnknownFields(spec, "sheet spec ", tablePutSpecFields); err != nil {
+		return err
+	}
+
+	columns, err := validateSpecColumns(spec)
+	if err != nil {
+		return err
+	}
+	dataRows, err := validateSpecData(spec, columns)
+	if err != nil {
+		return err
+	}
+	for _, field := range []string{"dtypes", "formats"} {
+		if err := validateSpecColumnMap(spec, field, columns); err != nil {
+			return err
+		}
+	}
+	if v, ok := spec["cellStyles"]; ok && v != nil {
+		switch v.(type) {
+		case map[string]any, []any:
+		default:
+			return fmt.Errorf("cellStyles 必须是对象或二维数组，实际是 %T", v)
+		}
+	}
+	// mode / startCell 留空等价于不传（服务端按 blank 处理），非空才校验取值。
+	if v, ok := spec["mode"]; ok && v != nil {
+		s, isStr := v.(string)
+		if !isStr {
+			return fmt.Errorf("mode 必须是字符串，实际是 %T", v)
+		}
+		if strings.TrimSpace(s) != "" && s != "overwrite" && s != "append" {
+			return fmt.Errorf("mode=%q 非法（合法值: overwrite / append）", s)
+		}
+	}
+	for _, field := range []string{"header", "allowOverwrite"} {
+		if v, ok := spec[field]; ok && v != nil {
+			if _, isBool := v.(bool); !isBool {
+				return fmt.Errorf("%s 必须是布尔值，实际是 %T", field, v)
+			}
+		}
+	}
+	if v, ok := spec["startCell"]; ok && v != nil {
+		s, isStr := v.(string)
+		if !isStr {
+			return fmt.Errorf("startCell 必须是字符串，实际是 %T", v)
+		}
+		if normalized := normalizeSpecStartCell(s); normalized != "" {
+			if _, _, err := parseA1Cell(normalized); err != nil {
+				return fmt.Errorf("startCell=%q 不是合法的单元格地址（应形如 A1，单个单元格）", s)
+			}
+		}
+	}
+	// 写入规模上限是服务端硬限，超限同样只会在 table_put 阶段报错。
+	rows := dataRows
+	if specWritesHeader(spec) {
+		rows++
+	}
+	if total := rows * len(columns); total > maxTableWriteCells {
+		return fmt.Errorf("单个工作表写入单元格总数上限为 %d（当前 %d 行 × %d 列 = %d）",
+			maxTableWriteCells, rows, len(columns), total)
+	}
+	return nil
+}
+
+// validateSpecColumns 校验必填的 columns 并返回服务端实际使用的列名（已 trim）。
+func validateSpecColumns(spec map[string]any) ([]string, error) {
+	raw, ok := spec["columns"]
+	if !ok || raw == nil {
+		return nil, fmt.Errorf("缺少必填的 columns（table_put 要求每个工作表给出非空的列名数组）")
+	}
+	list, ok := raw.([]any)
+	if !ok {
+		return nil, fmt.Errorf("columns 必须是字符串数组，实际是 %T", raw)
+	}
+	if len(list) == 0 {
+		return nil, fmt.Errorf("columns 不能为空数组")
+	}
+	columns := make([]string, 0, len(list))
+	seen := make(map[string]int, len(list))
+	for i, item := range list {
+		s, isStr := item.(string)
+		if !isStr {
+			return nil, fmt.Errorf("columns[%d] 必须是字符串，实际是 %T", i, item)
+		}
+		// 服务端按 trim 后的列名判重、写表头、并以其作为 dtypes/formats 的查表键，
+		// 本地校验必须用同一套归一化，否则 ["量","量 "] 会通过本地检查再被服务端拒绝。
+		name := strings.TrimSpace(s)
+		if name == "" {
+			return nil, fmt.Errorf("columns[%d] 不能为空字符串（列名不可为空）", i)
+		}
+		if prev, dup := seen[name]; dup {
+			return nil, fmt.Errorf("columns[%d]=%q 与 columns[%d] 重复（列名不可重复）", i, name, prev)
+		}
+		seen[name] = i
+		columns = append(columns, name)
+	}
+	return columns, nil
+}
+
+// validateSpecData 校验可选的 data 形状（二维、行宽等于 columns、单元格为标量），
+// 返回数据行数供写入规模校验使用。data 缺省或为 null 等价于空数据。
+func validateSpecData(spec map[string]any, columns []string) (int, error) {
+	raw, ok := spec["data"]
+	if !ok || raw == nil {
+		return 0, nil
+	}
+	rows, ok := raw.([]any)
+	if !ok {
+		return 0, fmt.Errorf("data 必须是二维数组，实际是 %T", raw)
+	}
+	for i, r := range rows {
+		row, isRow := r.([]any)
+		if !isRow {
+			return 0, fmt.Errorf("data[%d] 必须是数组，实际是 %T", i, r)
+		}
+		if len(row) != len(columns) {
+			return 0, fmt.Errorf("data[%d] 有 %d 列，与 columns 的 %d 列不一致（每行长度必须与 columns 一致）",
+				i, len(row), len(columns))
+		}
+		for j, cell := range row {
+			if !isTableScalar(cell) {
+				return 0, fmt.Errorf("data[%d][%d] 必须是字符串/数字/布尔/null，实际是 %T（不支持嵌套数组或对象）", i, j, cell)
+			}
+		}
+	}
+	return len(rows), nil
+}
+
+// validateSpecColumnMap 校验 dtypes / formats：必须是「列名 → 字符串」的对象，且键
+// 必须是 columns 里的列名 —— 服务端按列名查表，键写错既不报错也不生效，静默失效
+// 比报错更难发现。
+func validateSpecColumnMap(spec map[string]any, field string, columns []string) error {
+	raw, ok := spec[field]
+	if !ok || raw == nil {
+		return nil
+	}
+	m, ok := raw.(map[string]any)
+	if !ok {
+		return fmt.Errorf("%s 必须是对象（列名 → 字符串），实际是 %T", field, raw)
+	}
+	known := make(map[string]bool, len(columns))
+	for _, c := range columns {
+		known[c] = true
+	}
+	for _, key := range sortedMapKeys(m) {
+		if _, isStr := m[key].(string); !isStr {
+			return fmt.Errorf("%s[%q] 必须是字符串，实际是 %T", field, key, m[key])
+		}
+		if !known[key] {
+			return fmt.Errorf("%s 的键 %q 不是 columns 中的列名（服务端按列名查表，会静默忽略）", field, key)
+		}
+	}
+	return nil
+}
+
+// isTableScalar 判断单元格取值是否落在契约允许的标量范围（string / number /
+// boolean / null）。嵌套数组或对象会被服务端拒绝，或（--values 通道）被 fmt 写成
+// "map[a:1]" 这类无意义文本。UseNumber 解码出的数字是 json.Number。
+func isTableScalar(v any) bool {
+	switch v.(type) {
+	case nil, string, bool, json.Number, float64, int:
+		return true
+	}
+	return false
+}
+
+// specWritesHeader 判断该 spec 是否会写入表头行：显式 header 优先；缺省时写表头
+// （overwrite 默认写；append 落在空表上也写，而 sheet create 的工作表都是新建空表）。
+func specWritesHeader(spec map[string]any) bool {
+	if v, ok := spec["header"].(bool); ok {
+		return v
+	}
+	return true
+}
+
+// validateValuesCells 校验 --values 的单元格取值同样是标量。嵌套对象/数组会被
+// cellToString 写成 "map[a:1]"，回读校验只看非空，于是垃圾数据被报成写入成功。
+func validateValuesCells(values [][]any) error {
+	for i, row := range values {
+		for j, cell := range row {
+			if !isTableScalar(cell) {
+				return fmt.Errorf("--values[%d][%d] 必须是字符串/数字/布尔/null，实际是 %T"+
+					"（不支持嵌套数组或对象；富格式单元格请用 sheet range update）", i, j, cell)
+			}
+		}
+	}
+	return nil
+}
+
+// validateValuesBudget 校验 --values 不超过 set_range_from_csv 的服务端硬限
+// （行 × 列 ≤ 30000，CSV ≤ 2M 字符）。超限只会在写入阶段失败，而那时文档已经建好。
+func validateValuesBudget(values [][]any) error {
+	cols := 0
+	for _, row := range values {
+		if len(row) > cols {
+			cols = len(row)
+		}
+	}
+	if total := len(values) * cols; total > maxCSVWriteCells {
+		return fmt.Errorf("--values 单元格总数上限为 %d（当前 %d 行 × %d 列 = %d）",
+			maxCSVWriteCells, len(values), cols, total)
+	}
+	if n := utf8.RuneCountInString(valuesToCSV(values)); n > maxCSVWriteChars {
+		return fmt.Errorf("--values 编码为 CSV 后长度为 %d 字符，超过上限 %d", n, maxCSVWriteChars)
+	}
+	return nil
+}
+
+// set_range_from_csv 的服务端硬限：解析后行 × 列 ≤ 30000，csv 文本 ≤ 2M 字符。
+const (
+	maxCSVWriteCells = 30000
+	maxCSVWriteChars = 2 * 1000 * 1000
+)
+
 // ── create --styles：对齐飞书 +workbook-create --styles 协议 ──────────────────
 //
 // {"styles":[{"name":"子表名",
-//   "cell_styles":[{"range":"A1:D1","font_weight":"bold","background_color":"#FFF2CC",
-//                   "border_styles":{"bottom":{"style":"medium"}}}],
-//   "row_sizes":[{"range":"1:1","type":"pixel","size":28}],
-//   "col_sizes":[{"range":"A:D","type":"pixel","size":120}],
-//   "cell_merges":[{"range":"A1:B1","merge_type":"all"}]}]}
 //
-// 字段名与飞书一致（snake_case），同时兼容 DWS 的 camelCase 写法。
+//	"cell_styles":[{"range":"A1:D1","font_weight":"bold","background_color":"#FFF2CC",
+//	                "border_styles":{"bottom":{"style":"medium"}}}],
+//	"row_sizes":[{"range":"1:1","type":"pixel","size":28}],
+//	"col_sizes":[{"range":"A:D","type":"pixel","size":120}],
+//	"cell_merges":[{"range":"A1:B1","merge_type":"all"}]}]}
+//
+// 顶层四个列表键与飞书一致（snake_case）；列表项内部的字段名同时兼容 DWS 的
+// camelCase 写法。两处都拒绝未知键：这些 JSON 落到固定字段名的结构体/pickStr 上，
+// 写错的键会被静默丢弃，导致样式只应用了一部分而命令报成功。
+//
+// styleItemFields / cellStyleItemFields / sizeItemFields / mergeItemFields 必须与
+// sheetStyleOps 的 json tag、cellStyleItemToSpec 与 planStyleOps 里的取值键保持一致。
+var (
+	styleItemFields     = []string{"name", "cell_styles", "row_sizes", "col_sizes", "cell_merges"}
+	cellStyleItemFields = []string{
+		"range",
+		"background_color", "backgroundColor", "bgColor",
+		"font_color", "fontColor",
+		"font_family", "fontFamily",
+		"font_style", "fontStyle",
+		"font_weight", "fontWeight",
+		"font_line", "fontLine",
+		"font_size", "fontSize",
+		"horizontal_alignment", "horizontalAlignment", "hAlign",
+		"vertical_alignment", "verticalAlignment", "vAlign",
+		"word_wrap", "wordWrap",
+		"number_format", "numberFormat",
+		"border_styles", "borderStyles",
+	}
+	sizeItemFields  = []string{"range", "type", "size"}
+	mergeItemFields = []string{"range", "merge_type", "mergeType"}
+)
 
 // sheetStyleOps 是 --styles 数组的单项：对应一张子表的视觉处理操作。
 type sheetStyleOps struct {
@@ -347,6 +704,9 @@ func feishuMergeType(v string) (string, error) {
 
 // cellStyleItemToSpec 把飞书 cell_styles 单项转为 styleSpec + range，复用 buildStyleCells 的校验。
 func cellStyleItemToSpec(item map[string]any) (*styleSpec, string, error) {
+	if err := rejectUnknownFields(item, "cell_styles 项", cellStyleItemFields); err != nil {
+		return nil, "", err
+	}
 	rangeAddr := pickStr(item, "range")
 	if rangeAddr == "" {
 		return nil, "", fmt.Errorf("cell_styles 项缺少必填的 range")
@@ -465,6 +825,18 @@ func parseCreateStyles(stylesStr string, expectedNames []string) ([]sheetStyleOp
 	default:
 		return nil, fmt.Errorf("--styles 必须是 {\"styles\":[...]} 或 JSON 数组")
 	}
+	// 顶层键先按原始 map 查一遍：json.Unmarshal 只认 sheetStyleOps 的 tag，写成
+	// cellStyles 的那份样式会被静默丢掉，同一项里的 row_sizes 却照常生效 —— 用户拿到
+	// 的是一份「命令成功但样式不全」的表格，而 --styles 是建文档之后的非原子步骤。
+	var rawItems []map[string]any
+	if err := json.Unmarshal(arrRaw, &rawItems); err != nil {
+		return nil, fmt.Errorf("--styles 解析失败: %w", err)
+	}
+	for i, raw := range rawItems {
+		if err := rejectUnknownFields(raw, "--styles 单项", styleItemFields); err != nil {
+			return nil, fmt.Errorf("--styles[%d]: %w", i, err)
+		}
+	}
 	var items []sheetStyleOps
 	if err := json.Unmarshal(arrRaw, &items); err != nil {
 		return nil, fmt.Errorf("--styles 解析失败: %w", err)
@@ -526,6 +898,9 @@ func planStyleOps(nodeID, sheetID string, ops sheetStyleOps) ([]styleCall, error
 
 	planSizes := func(list []map[string]any, isRow bool, label string) error {
 		for i, item := range list {
+			if err := rejectUnknownFields(item, label+" 项", sizeItemFields); err != nil {
+				return fmt.Errorf("%s[%d]: %w", label, i, err)
+			}
 			rangeAddr := pickStr(item, "range")
 			if rangeAddr == "" {
 				return fmt.Errorf("%s[%d] 缺少必填的 range", label, i)
@@ -597,6 +972,9 @@ func planStyleOps(nodeID, sheetID string, ops sheetStyleOps) ([]styleCall, error
 	}
 
 	for i, item := range ops.CellMerges {
+		if err := rejectUnknownFields(item, "cell_merges 项", mergeItemFields); err != nil {
+			return nil, fmt.Errorf("cell_merges[%d]: %w", i, err)
+		}
 		rangeAddr := pickStr(item, "range")
 		if rangeAddr == "" {
 			return nil, fmt.Errorf("cell_merges[%d] 缺少必填的 range", i)
@@ -824,18 +1202,17 @@ func resolveSheetIDsByName(ctx context.Context, nodeID string) (map[string]strin
 }
 
 // sheetSpecGrid 把 table_put 的一个 sheet spec 还原成写入的二维逻辑网格：
-// columns（若非空）作为表头行，其后接 data 行。用于定位首个预期非空单元格。
+// 表头行（写表头时）在前，其后接 data 行。用于定位首个预期非空单元格。
+// spec 已由 validateCreateSheetSpec 校验，columns 必为字符串数组、data 行必为数组。
 func sheetSpecGrid(spec map[string]any) [][]any {
 	var grid [][]any
-	if cols, ok := spec["columns"].([]any); ok && len(cols) > 0 {
+	if cols, ok := spec["columns"].([]any); ok && len(cols) > 0 && specWritesHeader(spec) {
 		grid = append(grid, cols)
 	}
 	if data, ok := spec["data"].([]any); ok {
 		for _, r := range data {
 			if row, ok := r.([]any); ok {
 				grid = append(grid, row)
-			} else {
-				grid = append(grid, []any{r})
 			}
 		}
 	}
@@ -844,19 +1221,24 @@ func sheetSpecGrid(spec map[string]any) [][]any {
 
 // firstNonEmptySheetSpecCell 返回该 sheet spec 首个预期非空单元格的 A1 地址。
 // 尊重起始格偏移（默认 A1）。第二返回值为 false 表示该 spec 没有任何要写入
-// 的内容（例如只给了 name），这类工作表本就应为空，调用方跳过回读，避免把合法的
-// 空表误判为数据丢失。逻辑与 --values 分支的 firstNonEmptyValuesCell 一致：不能死盯
-// A1，首行/首列为空的合法数据不应被误报。
+// 的内容（例如 header=false 且没给 data），这类工作表本就应为空，调用方跳过回读，
+// 避免把合法的空表误判为数据丢失。逻辑与 --values 分支的 firstNonEmptyValuesCell
+// 一致：不能死盯 A1，首行/首列为空的合法数据不应被误报。
 //
-// 起始格键名以 table_put 线上契约的 camelCase startCell 为准（与本仓库
-// startCell / "startCell": "A1" 一致）；同时兼容 snake_case start_cell，避免探针
-// 与实际写入位置错位导致「写成功却回读为空」的假阳性。
+// 起始格键名只认 table_put 线上契约的 camelCase startCell —— snake_case 的
+// start_cell 会被服务端 DTO 静默丢弃（写入实际落在 A1），探针若认它就会指到空白
+// 处、把成功的写入报成「数据未落盘」；validateCreateSheetSpec 已在前置校验里拒掉。
 func firstNonEmptySheetSpecCell(spec map[string]any) (string, bool) {
 	col0, row0 := 1, 1
-	if sc := pickStr(spec, "startCell", "start_cell"); sc != "" {
-		if c, r, err := parseA1Cell(strings.ToUpper(sc)); err == nil {
+	if sc := normalizeSpecStartCell(pickStr(spec, "startCell")); sc != "" {
+		if c, r, err := parseA1Cell(sc); err == nil {
 			col0, row0 = c, r
 		}
+	}
+	// mode=append 时服务端按「已有数据的下一行」定位：sheet create 新建的工作表
+	// 都是空表，追加就从第 1 行开始，startCell 的行号被忽略（列号仍生效）。
+	if mode, _ := spec["mode"].(string); mode == "append" {
+		row0 = 1
 	}
 	for i, row := range sheetSpecGrid(spec) {
 		for j, cell := range row {
