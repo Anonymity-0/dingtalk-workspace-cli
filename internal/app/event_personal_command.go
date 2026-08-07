@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"text/tabwriter"
 	"time"
 
@@ -420,9 +421,17 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 		)
 		return fmt.Errorf("event consume --as user: %w", err)
 	}
-	cleanup := func(cleanupCtx context.Context) {
-		_ = personalDeleteSubscription(client, cleanupCtx, sub.SubscribeID)
-		_ = personalRemoveRunStates(workDir, []string{sub.SubscribeID})
+	selfCreated := strings.TrimSpace(opts.SubscribeID) == ""
+	ownsSubscription := selfCreated || opts.Ephemeral
+	var cleanupOnce sync.Once
+	cleanupOwnedSubscription := func(cleanupCtx context.Context) {
+		if !ownsSubscription {
+			return
+		}
+		cleanupOnce.Do(func() {
+			_ = personalDeleteSubscription(client, cleanupCtx, sub.SubscribeID)
+			_ = personalRemoveRunStates(workDir, []string{sub.SubscribeID})
+		})
 	}
 	if err := personalUpsertRunState(workDir, personal.RunState{
 		SubscribeID:  sub.SubscribeID,
@@ -433,19 +442,19 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 		IdentityHash: identityHash,
 	}); err != nil {
 		wrapped := fmt.Errorf("save run state: %w", err)
+		cleanupCtx := context.Background()
+		if personalSubscriptionCanceled(ctx, wrapped) {
+			cleanupCtx = ctx
+		}
 		if attempt != nil {
-			cleanupCtx := context.Background()
-			if personalSubscriptionCanceled(ctx, wrapped) {
-				cleanupCtx = ctx
-			}
 			classification := personalSubscriptionLocalFailure()
 			wrapped = attempt.completeFailure(ctx, 0, 0, wrapped, &classification)
-			cleanup(cleanupCtx)
 		}
+		cleanupOwnedSubscription(cleanupCtx)
 		return fmt.Errorf("event consume --as user: %w", wrapped)
 	}
 	if err := attempt.completeSuccess(); err != nil {
-		cleanup(context.Background())
+		cleanupOwnedSubscription(context.Background())
 		return fmt.Errorf("event consume --as user: %w", err)
 	}
 	// Ownership-based cleanup: a subscription this run CREATED is
@@ -454,9 +463,8 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 	// leaks server-side. A subscription REUSED via --subscribe-id is left
 	// intact — the caller owns its lifecycle. --ephemeral forces cleanup
 	// either way.
-	selfCreated := strings.TrimSpace(opts.SubscribeID) == ""
-	if opts.Ephemeral || selfCreated {
-		defer cleanup(context.Background())
+	if ownsSubscription {
+		defer cleanupOwnedSubscription(context.Background())
 	}
 
 	cfg.EventKey = eventKey
@@ -478,17 +486,9 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 			Source:       foregroundSource,
 		}
 		bus.ApplyEnvTuning(&busCfg)
-		err = personalBusRun(ctx, busCfg)
-		if err != nil && !opts.Ephemeral {
-			cleanup(context.Background())
-		}
-		return err
+		return personalBusRun(ctx, busCfg)
 	}
-	err = personalConsumeRun(ctx, cfg)
-	if err != nil && !opts.Ephemeral {
-		cleanup(context.Background())
-	}
-	return err
+	return personalConsumeRun(ctx, cfg)
 }
 
 type personalMultiSubscription struct {
@@ -937,13 +937,23 @@ func ensurePersonalSubscription(ctx context.Context, client *personal.Client, id
 		if err != nil {
 			return nil, "", "", err
 		}
-		lookupEventKey := strings.TrimSpace(sub.EventKey)
-		if lookupEventKey != "" {
-			if err := validatePersonalOAOptions(lookupEventKey, opts); err != nil {
-				return nil, "", "", err
-			}
+		if sub == nil {
+			return nil, "", "", errors.New("personal event: server returned an empty subscription")
 		}
-		eventKey := firstNonEmptyPersonalString(opts.EventKey, sub.EventKey)
+		requestedEventKey := strings.TrimSpace(opts.EventKey)
+		actualEventKey := strings.TrimSpace(sub.EventKey)
+		if requestedEventKey != "" && actualEventKey != "" && requestedEventKey != actualEventKey {
+			return nil, "", "", fmt.Errorf(
+				"event_key %q does not match reused subscription %q event_key %q",
+				requestedEventKey,
+				strings.TrimSpace(opts.SubscribeID),
+				actualEventKey,
+			)
+		}
+		eventKey := actualEventKey
+		if eventKey == "" {
+			eventKey = requestedEventKey
+		}
 		if eventKey == "" {
 			return nil, "", "", fmt.Errorf("event_key is required when --subscribe-id lookup returns no event_key")
 		}

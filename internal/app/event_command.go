@@ -333,7 +333,7 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 	f.BoolVar(&force, "force", false,
 		"仅 --foreground 模式生效：跳过单实例锁 (慎用：会让云事件被随机切分)")
 	f.BoolVar(&dryRun, "dry-run", false,
-		"仅打印解析后的配置，不连接 bus / 云端")
+		"仅打印解析后的配置；不创建订阅、不连接 bus；复用 --subscribe-id 时会只读查询控制面")
 	f.BoolVar(&foreground, "foreground", false,
 		"当前进程直接跑 bus 服务、不 fork、不打印事件（给 systemd/k8s 托管用）；读事件不要用它")
 	f.StringVar(&personalOpts.SubscribeID, "subscribe-id", "",

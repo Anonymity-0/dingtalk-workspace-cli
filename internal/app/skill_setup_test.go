@@ -2,6 +2,8 @@ package app
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -185,11 +187,19 @@ func writeMultiSkillSource(t *testing.T, names []string) string {
 		if err := os.MkdirAll(filepath.Join(sub, "references"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(sub, "SKILL.md"), []byte("# "+n), 0o644); err != nil {
+		skillBody := "---\nname: " + n + "\ndescription: test skill\n---\n\n# " + n + "\n"
+		if err := os.WriteFile(filepath.Join(sub, "SKILL.md"), []byte(skillBody), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(filepath.Join(sub, "references", n+".md"), []byte("ref "+n), 0o644); err != nil {
 			t.Fatal(err)
+		}
+		if n == multiEventSkill {
+			for _, ref := range eventMigrationRequiredReferences {
+				if err := os.WriteFile(filepath.Join(sub, "references", ref), []byte("ref "+ref+"\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
 		}
 	}
 	return root
@@ -584,6 +594,45 @@ func writeFoldedEventMisc(t *testing.T, agentHome string) {
 	}
 }
 
+func writeOldStandaloneEvent(t *testing.T, agentHome string) {
+	t.Helper()
+	eventRoot := filepath.Join(agentHome, multiEventSkill)
+	if err := os.MkdirAll(eventRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(eventRoot, "SKILL.md"), []byte("old standalone event\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func assertOldEventMiscPair(t *testing.T, agentHome string) {
+	t.Helper()
+	eventBody, err := os.ReadFile(filepath.Join(agentHome, multiEventSkill, "SKILL.md"))
+	if err != nil || string(eventBody) != "old standalone event\n" {
+		t.Fatalf("old standalone event was not restored: body=%q err=%v", eventBody, err)
+	}
+	miscBody, err := os.ReadFile(filepath.Join(agentHome, multiMiscSkill, "SKILL.md"))
+	if err != nil || !strings.Contains(string(miscBody), "dws event") {
+		t.Fatalf("folded misc was not restored: body=%q err=%v", miscBody, err)
+	}
+	if _, err := os.Stat(filepath.Join(agentHome, multiMiscSkill, "references", "event.md")); err != nil {
+		t.Fatalf("folded Event reference was not restored: %v", err)
+	}
+}
+
+func assertNoEventMigrationStages(t *testing.T, agentHome string) {
+	t.Helper()
+	entries, err := os.ReadDir(agentHome)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".dws-event-migration-") {
+			t.Fatalf("unexpected leftover Event migration stage %s", filepath.Join(agentHome, entry.Name()))
+		}
+	}
+}
+
 func TestSkillSetupSelectiveEventMigratesOnlyFoldedTargets(t *testing.T) {
 	src := writeMultiSkillSource(t, []string{
 		multiEventSkill, multiSharedSkill, multiMiscSkill, "dingtalk-doc",
@@ -709,6 +758,94 @@ func TestSkillSetupEventMigrationRequiresCleanMiscInSource(t *testing.T) {
 	}
 }
 
+func TestSkillSetupEventMigrationAcceptsShippedMultiBundle(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := filepath.Clean(filepath.Join(wd, "..", "..", "skills", "multi"))
+	if err := validateEventMiscMigrationSource(src); err != nil {
+		t.Fatalf("shipped multi bundle is not a valid Event migration source: %v", err)
+	}
+}
+
+func TestSkillSetupEventMigrationRejectsInvalidSkillBundlesBeforeWrites(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(t *testing.T, src string)
+	}{
+		{
+			name: "empty event root",
+			mutate: func(t *testing.T, src string) {
+				t.Helper()
+				if err := os.WriteFile(filepath.Join(src, multiEventSkill, "SKILL.md"), nil, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name: "wrong event name",
+			mutate: func(t *testing.T, src string) {
+				t.Helper()
+				body := "---\nname: dingtalk-chat\ndescription: wrong skill\n---\n\n# Wrong\n"
+				if err := os.WriteFile(filepath.Join(src, multiEventSkill, "SKILL.md"), []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name: "missing event reference",
+			mutate: func(t *testing.T, src string) {
+				t.Helper()
+				if err := os.Remove(filepath.Join(src, multiEventSkill, "references", "event-oa.md")); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name: "empty event reference",
+			mutate: func(t *testing.T, src string) {
+				t.Helper()
+				if err := os.WriteFile(filepath.Join(src, multiEventSkill, "references", "event-im.md"), nil, 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name: "wrong misc name",
+			mutate: func(t *testing.T, src string) {
+				t.Helper()
+				body := "---\nname: dingtalk-event\ndescription: wrong skill\n---\n\n# Wrong\n"
+				if err := os.WriteFile(filepath.Join(src, multiMiscSkill, "SKILL.md"), []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+			test.mutate(t, src)
+			home := filepath.Join(t.TempDir(), "skills")
+			writeFoldedEventMisc(t, home)
+			writeOldStandaloneEvent(t, home)
+
+			stdout, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+			if err == nil || !strings.Contains(err.Error(), "迁移源无效") {
+				t.Fatalf("invalid migration source was accepted: %v", err)
+			}
+			if strings.Contains(stdout, "Skill 安装完成") {
+				t.Fatalf("invalid migration source reported success: %s", stdout)
+			}
+			assertOldEventMiscPair(t, home)
+			if _, statErr := os.Stat(filepath.Join(home, multiSharedSkill)); !os.IsNotExist(statErr) {
+				t.Fatalf("invalid source wrote shared skill: %v", statErr)
+			}
+		})
+	}
+}
+
 func TestSkillSetupSelectiveEventPreservesFoldedMiscAfterPrimarySkip(t *testing.T) {
 	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
 	home := filepath.Join(t.TempDir(), "skills")
@@ -726,7 +863,7 @@ func TestSkillSetupSelectiveEventPreservesFoldedMiscAfterPrimarySkip(t *testing.
 	}
 
 	stdout, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
-	if err == nil || !strings.Contains(err.Error(), "已保留旧 dingtalk-misc") {
+	if err == nil || !strings.Contains(err.Error(), "已保留折叠版 Event/misc") {
 		t.Fatalf("expected preserved-fallback error, got %v", err)
 	}
 	if calls != 1 {
@@ -744,30 +881,466 @@ func TestSkillSetupSelectiveEventPreservesFoldedMiscAfterPrimarySkip(t *testing.
 	}
 }
 
-func TestSkillSetupSelectiveEventCompanionSkipFails(t *testing.T) {
+func TestSkillSetupFreshTargetFailureDoesNotTouchFoldedPair(t *testing.T) {
 	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
-	home := filepath.Join(t.TempDir(), "skills")
-	writeFoldedEventMisc(t, home)
+	freshHome := filepath.Join(t.TempDir(), "fresh", "skills")
+	foldedHome := filepath.Join(t.TempDir(), "folded", "skills")
+	writeFoldedEventMisc(t, foldedHome)
+	writeOldStandaloneEvent(t, foldedHome)
 
 	originalInstallMulti := skillSetupInstallMulti
 	t.Cleanup(func() { skillSetupInstallMulti = originalInstallMulti })
 	calls := 0
 	skillSetupInstallMulti = func(string, []string, []string, io.Writer, io.Writer) (int, int, error) {
 		calls++
-		if calls == 1 {
-			return 2, 0, nil
+		if calls > 1 {
+			t.Fatal("folded target prerequisites ran after fresh target failure")
 		}
-		return 0, 1, nil
+		return 1, 1, nil
+	}
+
+	stdout, _, err := executeMultiSkillSetupTest(
+		t,
+		src,
+		[]string{foldedHome, freshHome},
+		"--skill", "event",
+		"--yes",
+	)
+	if err == nil || !strings.Contains(err.Error(), "已保留折叠版 Event/misc") {
+		t.Fatalf("fresh target failure did not block migration: %v", err)
+	}
+	if strings.Contains(stdout, "Skill 安装完成") {
+		t.Fatalf("partial mixed-target install reported success: %s", stdout)
+	}
+	assertOldEventMiscPair(t, foldedHome)
+	assertNoEventMigrationStages(t, foldedHome)
+}
+
+func TestSkillSetupUnrelatedSelectiveInstallLeavesFoldedPairUntouched(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{
+		multiEventSkill, multiSharedSkill, multiMiscSkill, "dingtalk-doc",
+	})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+	writeOldStandaloneEvent(t, home)
+
+	stdout, stderr, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "doc", "--yes")
+	if err != nil {
+		t.Fatalf("unrelated selective install failed: %v\nstdout=%s\nstderr=%s", err, stdout, stderr)
+	}
+	if strings.Contains(stdout, "Event Skill 迁移") || strings.Contains(stdout, "Event 原子迁移") {
+		t.Fatalf("unrelated selective install planned Event migration: %s", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(home, "dingtalk-doc", "SKILL.md")); err != nil {
+		t.Fatalf("selected doc was not installed: %v", err)
+	}
+	assertOldEventMiscPair(t, home)
+	assertNoEventMigrationStages(t, home)
+}
+
+func TestSkillSetupSelectiveEventAtomicStageFailurePreservesFoldedPair(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+
+	originalCopyDir := skillSetupCopyDir
+	t.Cleanup(func() { skillSetupCopyDir = originalCopyDir })
+	skillSetupCopyDir = func(src, dest string) error {
+		if strings.HasSuffix(dest, "new-misc") {
+			return errors.New("injected stage failure")
+		}
+		return originalCopyDir(src, dest)
 	}
 
 	stdout, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
-	if err == nil || !strings.Contains(err.Error(), "dingtalk-misc 迁移不完整") {
-		t.Fatalf("expected companion migration error, got %v", err)
-	}
-	if calls != 2 {
-		t.Fatalf("install calls = %d, want 2", calls)
+	if err == nil || !strings.Contains(err.Error(), "预备 dingtalk-misc 失败") {
+		t.Fatalf("expected atomic staging error, got %v", err)
 	}
 	if strings.Contains(stdout, "Skill 安装完成") {
-		t.Fatalf("partial companion migration reported success: %s", stdout)
+		t.Fatalf("partial atomic migration reported success: %s", stdout)
 	}
+	body, readErr := os.ReadFile(filepath.Join(home, multiMiscSkill, "SKILL.md"))
+	if readErr != nil || !strings.Contains(string(body), "dws event") {
+		t.Fatalf("stage failure changed folded misc: body=%q err=%v", body, readErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(home, multiEventSkill)); !os.IsNotExist(statErr) {
+		t.Fatalf("stage failure installed standalone event, stat err=%v", statErr)
+	}
+}
+
+func TestSkillSetupEventMigrationPreparationFailuresPreserveFoldedPair(t *testing.T) {
+	t.Run("same-filesystem staging creation", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+		home := filepath.Join(t.TempDir(), "skills")
+		writeFoldedEventMisc(t, home)
+		writeOldStandaloneEvent(t, home)
+
+		originalMkdirTemp := skillSetupMkdirTemp
+		t.Cleanup(func() { skillSetupMkdirTemp = originalMkdirTemp })
+		skillSetupMkdirTemp = func(dir, pattern string) (string, error) {
+			if dir != home {
+				t.Fatalf("staging dir = %s, want target filesystem root %s", dir, home)
+			}
+			return "", errors.New("injected mkdir-temp failure")
+		}
+
+		_, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+		if err == nil || !strings.Contains(err.Error(), "injected mkdir-temp failure") {
+			t.Fatalf("staging creation failure was not returned: %v", err)
+		}
+		assertOldEventMiscPair(t, home)
+		assertNoEventMigrationStages(t, home)
+	})
+
+	t.Run("event staging copy", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+		home := filepath.Join(t.TempDir(), "skills")
+		writeFoldedEventMisc(t, home)
+		writeOldStandaloneEvent(t, home)
+
+		originalCopyDir := skillSetupCopyDir
+		t.Cleanup(func() { skillSetupCopyDir = originalCopyDir })
+		skillSetupCopyDir = func(src, dest string) error {
+			if strings.HasSuffix(dest, "new-event") {
+				return errors.New("injected event copy failure")
+			}
+			return originalCopyDir(src, dest)
+		}
+
+		_, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+		if err == nil || !strings.Contains(err.Error(), "injected event copy failure") {
+			t.Fatalf("event staging failure was not returned: %v", err)
+		}
+		assertOldEventMiscPair(t, home)
+		assertNoEventMigrationStages(t, home)
+	})
+}
+
+func TestSkillSetupSelectiveEventRejectsCorruptStagedMisc(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+
+	originalCopyDir := skillSetupCopyDir
+	t.Cleanup(func() { skillSetupCopyDir = originalCopyDir })
+	skillSetupCopyDir = func(src, dest string) error {
+		if err := originalCopyDir(src, dest); err != nil {
+			return err
+		}
+		if strings.HasSuffix(dest, "new-misc") {
+			return os.WriteFile(filepath.Join(dest, "references", "event-partial.md"), []byte("corrupt\n"), 0o644)
+		}
+		return nil
+	}
+
+	_, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+	if err == nil || !strings.Contains(err.Error(), "staging 验证失败") {
+		t.Fatalf("corrupt staged misc was accepted: %v", err)
+	}
+	miscBody, readErr := os.ReadFile(filepath.Join(home, multiMiscSkill, "SKILL.md"))
+	if readErr != nil || !strings.Contains(string(miscBody), "dws event") {
+		t.Fatalf("staging validation failure changed folded misc: body=%q err=%v", miscBody, readErr)
+	}
+	if _, err := os.Stat(filepath.Join(home, multiEventSkill)); !os.IsNotExist(err) {
+		t.Fatalf("staging validation failure installed event: %v", err)
+	}
+	assertNoEventMigrationStages(t, home)
+}
+
+func TestSkillSetupSelectiveEventRejectsIncompleteStagedEvent(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+	writeOldStandaloneEvent(t, home)
+
+	originalCopyDir := skillSetupCopyDir
+	t.Cleanup(func() { skillSetupCopyDir = originalCopyDir })
+	skillSetupCopyDir = func(src, dest string) error {
+		if err := originalCopyDir(src, dest); err != nil {
+			return err
+		}
+		if strings.HasSuffix(dest, "new-event") {
+			return os.Remove(filepath.Join(dest, "references", "event-oa.md"))
+		}
+		return nil
+	}
+
+	_, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+	if err == nil || !strings.Contains(err.Error(), "staging 验证失败") {
+		t.Fatalf("incomplete staged Event was accepted: %v", err)
+	}
+	assertOldEventMiscPair(t, home)
+	assertNoEventMigrationStages(t, home)
+}
+
+func TestSkillSetupFullEventMigrationIsAtomicAndPreservesSiblings(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{
+		multiEventSkill, multiSharedSkill, multiMiscSkill, "dingtalk-doc",
+	})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+	writeOldStandaloneEvent(t, home)
+	sibling := filepath.Join(home, "dingtalk-private-sibling")
+	if err := os.MkdirAll(sibling, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sibling, "SKILL.md"), []byte("keep\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, err := executeMultiSkillSetupTest(t, src, []string{home}, "--yes")
+	if err != nil {
+		t.Fatalf("full setup migration failed: %v\nstdout=%s\nstderr=%s", err, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "Event 原子迁移") || !strings.Contains(stdout, "Skill 安装完成") {
+		t.Fatalf("full setup did not report atomic migration success: %s", stdout)
+	}
+	for _, name := range []string{multiEventSkill, multiMiscSkill, multiSharedSkill, "dingtalk-doc"} {
+		if _, err := os.Stat(filepath.Join(home, name, "SKILL.md")); err != nil {
+			t.Fatalf("full setup missing %s: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(home, multiMiscSkill, "references", "event.md")); !os.IsNotExist(err) {
+		t.Fatalf("full setup retained folded Event reference: %v", err)
+	}
+	body, err := os.ReadFile(filepath.Join(sibling, "SKILL.md"))
+	if err != nil || string(body) != "keep\n" {
+		t.Fatalf("full setup changed unrelated sibling: body=%q err=%v", body, err)
+	}
+	assertNoEventMigrationStages(t, home)
+}
+
+func TestSkillSetupEventMigrationWithoutSharedStillCleansMonoLeftover(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiMiscSkill})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+	monoLeftover := filepath.Join(home, "dws")
+	if err := os.MkdirAll(monoLeftover, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(monoLeftover, "SKILL.md"), []byte("old mono\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+	if err != nil {
+		t.Fatalf("migration without shared failed: %v\nstdout=%s\nstderr=%s", err, stdout, stderr)
+	}
+	if _, err := os.Stat(monoLeftover); !os.IsNotExist(err) {
+		t.Fatalf("migration without prerequisites retained mono leftover: %v", err)
+	}
+	for _, name := range []string{multiEventSkill, multiMiscSkill} {
+		if _, err := os.Stat(filepath.Join(home, name, "SKILL.md")); err != nil {
+			t.Fatalf("migration without shared missing %s: %v", name, err)
+		}
+	}
+	assertNoEventMigrationStages(t, home)
+}
+
+func TestSkillSetupFoldedEventMigrationSelectionPreflight(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{
+		multiEventSkill, multiSharedSkill, multiMiscSkill, "dingtalk-doc",
+	})
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "misc only", args: []string{"--skill", "misc", "--yes"}, want: "不能只覆盖 dingtalk-misc"},
+		{name: "explicitly excludes event", args: []string{"--exclude", "event", "--yes"}, want: "不能显式 --exclude event"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			home := filepath.Join(t.TempDir(), "skills")
+			writeFoldedEventMisc(t, home)
+			_, _, err := executeMultiSkillSetupTest(t, src, []string{home}, tt.args...)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("preflight error = %v, want %q", err, tt.want)
+			}
+			if _, err := os.Stat(filepath.Join(home, multiSharedSkill)); !os.IsNotExist(err) {
+				t.Fatalf("preflight failure wrote shared skill: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(home, multiEventSkill)); !os.IsNotExist(err) {
+				t.Fatalf("preflight failure wrote event skill: %v", err)
+			}
+			miscBody, readErr := os.ReadFile(filepath.Join(home, multiMiscSkill, "SKILL.md"))
+			if readErr != nil || !strings.Contains(string(miscBody), "dws event") {
+				t.Fatalf("preflight failure changed folded misc: body=%q err=%v", miscBody, readErr)
+			}
+		})
+	}
+}
+
+func TestSkillSetupEventMigrationRejectsEveryFoldedReferenceVariant(t *testing.T) {
+	for _, filename := range []string{"event.md", "event-im.md", "event-oa.md", "EVENT-legacy.MD"} {
+		t.Run(filename, func(t *testing.T) {
+			src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+			if err := os.WriteFile(filepath.Join(src, multiMiscSkill, "references", filename), []byte("stale\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			home := filepath.Join(t.TempDir(), "skills")
+			writeFoldedEventMisc(t, home)
+
+			_, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+			if err == nil || !strings.Contains(err.Error(), "仍存在折叠 Event 参考页") {
+				t.Fatalf("source with %s was accepted: %v", filename, err)
+			}
+			if _, err := os.Stat(filepath.Join(home, multiSharedSkill)); !os.IsNotExist(err) {
+				t.Fatalf("invalid source wrote shared skill: %v", err)
+			}
+		})
+	}
+}
+
+func TestSkillSetupEventMigrationRenameFailuresRollbackPair(t *testing.T) {
+	for failAt := 1; failAt <= 4; failAt++ {
+		t.Run(fmt.Sprintf("rename_%d", failAt), func(t *testing.T) {
+			src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+			home := filepath.Join(t.TempDir(), "skills")
+			writeFoldedEventMisc(t, home)
+			writeOldStandaloneEvent(t, home)
+
+			originalRename := skillSetupRename
+			t.Cleanup(func() { skillSetupRename = originalRename })
+			renameCalls := 0
+			skillSetupRename = func(oldPath, newPath string) error {
+				renameCalls++
+				if renameCalls == failAt {
+					return errors.New("injected rename failure")
+				}
+				return originalRename(oldPath, newPath)
+			}
+
+			stdout, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+			if err == nil || !strings.Contains(err.Error(), "injected rename failure") {
+				t.Fatalf("rename failure %d was not returned: %v", failAt, err)
+			}
+			if strings.Contains(stdout, "Skill 安装完成") {
+				t.Fatalf("rename failure %d reported success: %s", failAt, stdout)
+			}
+			assertOldEventMiscPair(t, home)
+			assertNoEventMigrationStages(t, home)
+		})
+	}
+}
+
+func TestSkillSetupEventMigrationFailureRollsBackEarlierTargets(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+	root := t.TempDir()
+	firstHome := filepath.Join(root, "a", "skills")
+	secondHome := filepath.Join(root, "b", "skills")
+	for _, home := range []string{firstHome, secondHome} {
+		writeFoldedEventMisc(t, home)
+		writeOldStandaloneEvent(t, home)
+	}
+
+	originalRename := skillSetupRename
+	t.Cleanup(func() { skillSetupRename = originalRename })
+	failed := false
+	skillSetupRename = func(oldPath, newPath string) error {
+		if !failed && oldPath == filepath.Join(secondHome, multiMiscSkill) {
+			failed = true
+			return errors.New("second target failure")
+		}
+		return originalRename(oldPath, newPath)
+	}
+
+	_, _, err := executeMultiSkillSetupTest(t, src, []string{secondHome, firstHome}, "--skill", "event", "--yes")
+	if err == nil || !strings.Contains(err.Error(), "second target failure") {
+		t.Fatalf("second target failure was not returned: %v", err)
+	}
+	for _, home := range []string{firstHome, secondHome} {
+		assertOldEventMiscPair(t, home)
+		assertNoEventMigrationStages(t, home)
+	}
+}
+
+func TestSkillSetupEventMigrationRollbackFailurePreservesRecoveryDirectory(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+	writeOldStandaloneEvent(t, home)
+
+	originalRename := skillSetupRename
+	t.Cleanup(func() { skillSetupRename = originalRename })
+	skillSetupRename = func(oldPath, newPath string) error {
+		if strings.HasSuffix(oldPath, filepath.Join("new-misc")) && newPath == filepath.Join(home, multiMiscSkill) {
+			return errors.New("commit failure")
+		}
+		if strings.HasSuffix(oldPath, filepath.Join("old-misc")) && newPath == filepath.Join(home, multiMiscSkill) {
+			return errors.New("rollback restore failure")
+		}
+		return originalRename(oldPath, newPath)
+	}
+
+	_, stderr, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+	if err == nil || !strings.Contains(err.Error(), "回滚不完整") || !strings.Contains(err.Error(), "恢复目录") {
+		t.Fatalf("rollback failure did not expose recovery directory: %v", err)
+	}
+	entries, readErr := os.ReadDir(home)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	var recoveryRoot string
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".dws-event-migration-") {
+			recoveryRoot = filepath.Join(home, entry.Name())
+			break
+		}
+	}
+	if recoveryRoot == "" {
+		t.Fatal("rollback failure deleted the only recovery directory")
+	}
+	if !strings.Contains(err.Error(), recoveryRoot) || !strings.Contains(stderr, recoveryRoot) {
+		t.Fatalf("recovery directory was not reported: err=%v stderr=%s", err, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(recoveryRoot, "old-misc", "SKILL.md")); err != nil {
+		t.Fatalf("old folded misc backup is missing from recovery directory: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(recoveryRoot, "old-event", "SKILL.md")); err != nil {
+		t.Fatalf("old standalone Event backup is missing from recovery directory: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, multiEventSkill, "SKILL.md")); err != nil {
+		t.Fatalf("rollback failure removed the live standalone Event entry: %v", err)
+	}
+}
+
+func TestSkillSetupEventMigrationRollbackFailureKeepsNewEventWithoutOldStandalone(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+
+	originalRename := skillSetupRename
+	t.Cleanup(func() { skillSetupRename = originalRename })
+	skillSetupRename = func(oldPath, newPath string) error {
+		if strings.HasSuffix(oldPath, filepath.Join("new-misc")) && newPath == filepath.Join(home, multiMiscSkill) {
+			return errors.New("commit failure")
+		}
+		if strings.HasSuffix(oldPath, filepath.Join("old-misc")) && newPath == filepath.Join(home, multiMiscSkill) {
+			return errors.New("rollback restore failure")
+		}
+		return originalRename(oldPath, newPath)
+	}
+
+	_, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+	if err == nil || !strings.Contains(err.Error(), "回滚不完整") {
+		t.Fatalf("rollback failure was not returned: %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(home, multiEventSkill, "SKILL.md")); statErr != nil {
+		t.Fatalf("rollback failure removed the only live Event entry: %v", statErr)
+	}
+	entries, readErr := os.ReadDir(home)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	for _, entry := range entries {
+		if !strings.HasPrefix(entry.Name(), ".dws-event-migration-") {
+			continue
+		}
+		if _, statErr := os.Stat(filepath.Join(home, entry.Name(), "old-misc", "SKILL.md")); statErr != nil {
+			t.Fatalf("rollback failure lost the folded misc recovery copy: %v", statErr)
+		}
+		return
+	}
+	t.Fatal("rollback failure did not preserve a recovery directory")
 }
