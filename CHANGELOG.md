@@ -9,7 +9,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 ### Added
 
 - **`sheet create` 支持建表即写入数据与样式** — 新增 `--values`（二维数组写默认表）/ `--sheets`（typed table 多工作表）/ `--styles`（`cell_styles` / `row_sizes` / `col_sizes` / `cell_merges`），字段名对齐飞书 snake_case。所有结构与枚举在创建文档之前校验，非法配置不会留下白建的空文档。
-- **`sheet export --export-format csv`** — 同步导出单个工作表为 RFC4180 CSV，支持 `--sheet-id` 选表、`--range` 限定范围、`--value-render-option` 选取值模式；`--output` 落盘（为目录时按 `sheet-export.csv` 命名），不传则打印到 stdout。数据超出单次读取上限时截断并告警。
+- **`sheet export --export-format csv`** — 同步导出单个工作表为 RFC4180 CSV，支持 `--sheet-id` 选表、`--range` 限定范围、`--value-render-option` 选取值模式；`--output` 落盘（为目录时按 `sheet-export.csv` 命名），不传则打印到 stdout。数据超出单次读取上限时默认报错且不写文件，需 `--allow-truncated` 显式接受不完整结果。已知限制：该分支实际读 `get_range_as_csv`，但 `sheet export` 叶子仍声明 `interface_ref: submit_export_job`，通过 Schema 查询 csv 能力会得到不准确的后端接口（仅影响审计元数据，不影响执行）。
 - **`sheet update-dimension --size-type`** — `pixel` / `standard`（恢复默认行高列宽）/ `auto`（按内容自适应行高，仅 ROWS）。
 - **`sheet replace --match-formula`** — 在公式文本中查找替换。
 - **`sheet range set-style` 扩展样式维度** — 新增 `--font-style`（斜体）/ `--font-line`（下划线、删除线）/ `--font-family` / `--border-styles-json`（四边边框）。
