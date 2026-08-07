@@ -764,19 +764,29 @@ func TestCrossPlatformCoverageSchemaCompatPropertyClearingExclusion(t *testing.T
 // misrouting a call. The gate is that no other compatibility check for the tool
 // failed — that is the operative meaning of "the contract is unchanged".
 func TestCrossPlatformCoverageSchemaCompatInterfaceRefRedirect(t *testing.T) {
+	// The redirect carve-out only accepts an explicitly reviewed tool + old→new
+	// ref pair. Register the fixture's path for the duration of this test so the
+	// accepted shapes below exercise the allowlist rather than a blanket rule.
+	const fixturePath = "doc/doc.create"
+	oldRef := `{"product_id":"sheet","rpc_name":"update_range"}`
+	newRef := `{"product_id":"sheet","rpc_name":"set_cell_range"}`
+	reviewedInterfaceRefRedirect[fixturePath] = map[string]string{oldRef: newRef}
+	t.Cleanup(func() { delete(reviewedInterfaceRefRedirect, fixturePath) })
+
 	// The baseline fixture is interface_mode=local; the carve-out only applies to
 	// mcp-backed leaves, so establish an mcp baseline first.
 	baseline := cloneContract(baselineContract())
 	mutateTool(&baseline, func(tool *toolSchema) {
 		tool.InterfaceMode = interfaceModeMCP
-		tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"update_range"}`
+		tool.InterfaceRef = oldRef
 	})
 
-	// Accepted: mcp -> mcp, both refs non-empty, nothing else changed.
+	// Accepted: mcp -> mcp, both refs non-empty, the pair is reviewed, nothing
+	// else changed.
 	redirected := cloneContract(baseline)
-	mutateTool(&redirected, func(tool *toolSchema) { tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"set_cell_range"}` })
+	mutateTool(&redirected, func(tool *toolSchema) { tool.InterfaceRef = newRef })
 	if failures := checkCompatibility(baseline, redirected); len(failures) != 0 {
-		t.Fatalf("a pure interface_ref redirect should pass: %v", failures)
+		t.Fatalf("a reviewed interface_ref redirect should pass: %v", failures)
 	}
 
 	// Paired with a reviewed property clearing, which is the realistic shape:
@@ -834,8 +844,17 @@ func TestCrossPlatformCoverageSchemaCompatInterfaceRefRedirect(t *testing.T) {
 		}},
 		{"a parameter was dropped", func(contract *schemaContract) {
 			mutateTool(contract, func(tool *toolSchema) {
-				tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"set_cell_range"}`
+				tool.InterfaceRef = newRef
 				delete(tool.Parameters, "title")
+			})
+		}},
+		// The allowlist itself must be load-bearing: a redirect that is not an
+		// exact reviewed tool + old→new pair stays incompatible even when the rest
+		// of the contract is untouched. Schema shape cannot prove two RPCs share
+		// permissions, error taxonomy, or side effects.
+		{"redirect to a ref that is not the reviewed target", func(contract *schemaContract) {
+			mutateTool(contract, func(tool *toolSchema) {
+				tool.InterfaceRef = `{"product_id":"sheet","rpc_name":"some_other_rpc"}`
 			})
 		}},
 	} {
@@ -854,4 +873,26 @@ func TestCrossPlatformCoverageSchemaCompatInterfaceRefRedirect(t *testing.T) {
 			}
 		})
 	}
+
+	// The allowlist must be load-bearing: the exact same old→new pair on a tool
+	// with no reviewed entry stays incompatible. Asserted outside the table
+	// because the registration has to survive until checkCompatibility runs.
+	t.Run("redirect on a tool absent from the reviewed allowlist", func(t *testing.T) {
+		saved := reviewedInterfaceRefRedirect[fixturePath]
+		delete(reviewedInterfaceRefRedirect, fixturePath)
+		defer func() { reviewedInterfaceRefRedirect[fixturePath] = saved }()
+
+		unlisted := cloneContract(baseline)
+		mutateTool(&unlisted, func(tool *toolSchema) { tool.InterfaceRef = newRef })
+		failures := checkCompatibility(baseline, unlisted)
+		var sawRef bool
+		for _, failure := range failures {
+			if strings.Contains(failure, "changed interface_ref") {
+				sawRef = true
+			}
+		}
+		if !sawRef {
+			t.Fatalf("an unlisted tool must not get the redirect carve-out, got %v", failures)
+		}
+	})
 }

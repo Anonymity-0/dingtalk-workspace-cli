@@ -316,6 +316,7 @@ func newExportCmd() *cobra.Command {
 	exportCmd.Flags().String("sheet-id", "", "工作表 ID 或名称（--export-format csv 时指定要导出的工作表，不传则第一个）")
 	exportCmd.Flags().String("range", "", "导出范围，A1 表示法（仅 --export-format csv，不传则整表；大表可用此分块导出）")
 	exportCmd.Flags().String("value-render-option", "", "取值模式（仅 --export-format csv）: formatted_value(默认) / raw_value / formula")
+	exportCmd.Flags().Bool("allow-truncated", false, "允许 CSV 被截断时仍然导出（仅 --export-format csv）。默认截断即报错并不写文件，避免不完整数据被当成完整导出")
 	return exportCmd
 }
 
@@ -338,6 +339,7 @@ func runSheetExportCsv(cmd *cobra.Command) error {
 		return fmt.Errorf("--value-render-option 必须为 formatted_value / raw_value / formula，当前值: %s", valueRenderOption)
 	}
 	outputPath, _ := cmd.Flags().GetString("output")
+	allowTruncated, _ := cmd.Flags().GetBool("allow-truncated")
 
 	if deps.Caller.DryRun() {
 		deps.Out.PrintKeyValue("操作", "导出工作表为 CSV")
@@ -377,8 +379,18 @@ func runSheetExportCsv(cmd *cobra.Command) error {
 		return err
 	}
 
+	// 截断必须 fail-closed：只打 stderr 警告然后照常落盘 + 报"导出完成" + 退出码 0，
+	// 会让自动化调用方（和没留意 stderr 的人）把不完整文件当成完整导出，且若目标
+	// 文件已存在还会被截断数据覆盖。默认在写文件/输出之前就失败，要接受不完整结果
+	// 必须显式加 --allow-truncated。
+	if hasMore && !allowTruncated {
+		return fmt.Errorf("表格数据超出单次读取上限，CSV 会被截断，已中止导出（未写入 %s）；"+
+			"请用 --range 分块导出（如 --range A1:Z1000、A1001:Z2000 ...）、改用 --export-format xlsx 导出完整表格，"+
+			"或确认可接受不完整数据后加 --allow-truncated",
+			firstNonEmpty(outputPath, "stdout"))
+	}
 	if hasMore {
-		deps.Out.PrintWarning("表格数据超出单次读取上限，CSV 已被截断。" +
+		deps.Out.PrintWarning("表格数据超出单次读取上限，CSV 已被截断（--allow-truncated 已显式放行）。" +
 			"请用 --range 分块导出（如 --range A1:Z1000、A1001:Z2000 ...），或改用 --export-format xlsx 导出完整表格。")
 	}
 
@@ -391,6 +403,10 @@ func runSheetExportCsv(cmd *cobra.Command) error {
 	}
 	if err := os.WriteFile(outputPath, []byte(csvContent), 0o644); err != nil {
 		return fmt.Errorf("写入 CSV 文件失败: %w", err)
+	}
+	if hasMore {
+		deps.Out.PrintInfo(fmt.Sprintf("导出完成（数据已截断，不是完整表格）: %s", outputPath))
+		return nil
 	}
 	deps.Out.PrintInfo(fmt.Sprintf("导出完成: %s", outputPath))
 	return nil

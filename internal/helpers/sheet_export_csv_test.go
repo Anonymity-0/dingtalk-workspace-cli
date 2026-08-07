@@ -72,8 +72,10 @@ func TestSheetExportCsvForwardsRangeAndWarnsOnTruncation(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"csv":"a,b\n","hasMore":true}`},
 	}}
+	// 截断默认失败，所以要显式放行才能走到落盘/输出。
 	if err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv", "range", "A1:Z1000"); err != nil {
+		"node", "NODE", "export-format", "csv", "range", "A1:Z1000",
+		"allow-truncated", "true"); err != nil {
 		t.Fatalf("csv export: %v", err)
 	}
 	if got := caller.args["range"]; got != "A1:Z1000" {
@@ -82,6 +84,73 @@ func TestSheetExportCsvForwardsRangeAndWarnsOnTruncation(t *testing.T) {
 	// csv 正文不带行号前缀，annotateRowNumbers 必须显式关掉。
 	if caller.args["annotateRowNumbers"] != false {
 		t.Fatalf("annotateRowNumbers = %#v, want false", caller.args["annotateRowNumbers"])
+	}
+}
+
+// 截断必须 fail-closed：默认报错、不写文件、不报“导出完成”。否则自动化调用方会把
+// 不完整文件当成完整导出，且已存在的目标文件会被截断数据覆盖。
+func TestSheetExportCsvFailsOnTruncationWithoutOptIn(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "out.csv")
+	if err := os.WriteFile(out, []byte("PREEXISTING\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"csv":"a,b\n","hasMore":true}`},
+	}}
+	err := executeSheetExportCoverage(t, caller,
+		"node", "NODE", "export-format", "csv", "output", out)
+	if err == nil {
+		t.Fatal("截断时未放行应报错，而非静默成功")
+	}
+	for _, want := range []string{"截断", "已中止导出", "--allow-truncated"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("错误信息缺少 %q: %v", want, err)
+		}
+	}
+	// 关键：既有文件必须保持原样，不能被截断数据覆盖。
+	body, readErr := os.ReadFile(out)
+	if readErr != nil {
+		t.Fatalf("read output: %v", readErr)
+	}
+	if string(body) != "PREEXISTING\n" {
+		t.Fatalf("目标文件被截断数据覆盖了: %q", string(body))
+	}
+}
+
+// 显式放行后允许落盘，但成功信息必须点明数据不完整。
+func TestSheetExportCsvAllowTruncatedWritesAndFlagsIncompleteness(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "out.csv")
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"csv":"a,b\n","hasMore":true}`},
+	}}
+	if err := executeSheetExportCoverage(t, caller,
+		"node", "NODE", "export-format", "csv", "output", out,
+		"allow-truncated", "true"); err != nil {
+		t.Fatalf("allow-truncated 应允许导出: %v", err)
+	}
+	body, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("read output: %v", err)
+	}
+	if string(body) != "a,b\n" {
+		t.Fatalf("csv 内容 = %q", string(body))
+	}
+}
+
+// 未截断时不受影响：不需要 --allow-truncated，成功信息也不提不完整。
+func TestSheetExportCsvCompleteReadNeedsNoOptIn(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "out.csv")
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"csv":"a,b\n","hasMore":false}`}}}
+	if err := executeSheetExportCoverage(t, caller,
+		"node", "NODE", "export-format", "csv", "output", out); err != nil {
+		t.Fatalf("完整读取不应要求放行: %v", err)
+	}
+	body, err := os.ReadFile(out)
+	if err != nil || string(body) != "a,b\n" {
+		t.Fatalf("csv 内容 = %q, err = %v", string(body), err)
 	}
 }
 
@@ -189,7 +258,8 @@ func TestSheetExportCsvKeepsStdoutPureAndWarnsOnStderr(t *testing.T) {
 	deps.Out.w, deps.Out.errW = &stdout, &stderr
 
 	cmd := newExportCmd()
-	for _, kv := range [][2]string{{"node", "NODE"}, {"export-format", "csv"}} {
+	// 截断默认 fail-closed；本用例验证的是放行后 stdout 仍然纯净、警告只走 stderr。
+	for _, kv := range [][2]string{{"node", "NODE"}, {"export-format", "csv"}, {"allow-truncated", "true"}} {
 		if err := cmd.Flags().Set(kv[0], kv[1]); err != nil {
 			t.Fatalf("set --%s: %v", kv[0], err)
 		}

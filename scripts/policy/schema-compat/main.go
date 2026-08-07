@@ -532,15 +532,36 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 	// interface_ref is evaluated last, because the redirect carve-out below is
 	// conditional on every other check for this tool having passed.
 	if oldTool.InterfaceRef != newTool.InterfaceRef &&
-		!compatibleInterfaceRefRedirect(oldTool, newTool, failures) {
+		!compatibleInterfaceRefRedirect(toolPath, oldTool, newTool, failures) {
 		failures = append(failures, fmt.Sprintf("schema tool %q changed interface_ref", toolPath))
 	}
 	sort.Strings(failures)
 	return failures
 }
 
+// reviewedInterfaceRefRedirect enumerates the exact, individually reviewed
+// backend RPC migrations this gate accepts. Schema shape alone cannot prove two
+// RPCs share business semantics, permissions, error behaviour, or side effects,
+// so a redirect is only accepted when the specific tool and the specific
+// old→new pair appear here. Any other ref change is still reported.
+//
+// Keyed by tool path ("<product>/<tool id>"), then by the previous
+// interface_ref, with the value being the single accepted new ref. Adding an
+// entry is a contract decision and belongs in review, not in a feature change.
+var reviewedInterfaceRefRedirect = map[string]map[string]string{
+	// The style surface moved from update_range (which writes values) to
+	// set_cell_range's cellStyles payload (style-only, preserving values). This
+	// is the only channel that can express italic / underline / strike-through /
+	// font family / borders. Same product, same target range semantics, same
+	// permission scope; the flat style properties it loses are accepted
+	// separately as reviewed mapping exclusions.
+	"sheet/sheet.range_set_style": {"update_range": "set_cell_range"},
+}
+
 // compatibleInterfaceRefRedirect accepts repointing a tool at a different
-// backing RPC when the CLI-facing contract is provably unchanged.
+// backing RPC when the migration is an explicitly reviewed entry in
+// reviewedInterfaceRefRedirect **and** the CLI-facing contract is provably
+// unchanged.
 //
 // interface_ref is audit and traceability metadata: it records which RPC backs a
 // leaf. Nothing reads it at runtime — the tool a leaf invokes is decided in the
@@ -549,7 +570,10 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 // the ref or to keep publishing a name that no longer matches the request being
 // sent.
 //
-// The carve-out is gated on the contract callers actually depend on:
+// Being audit-only is why a reviewed redirect can be accepted at all; it is not
+// a reason to accept redirects in general. Two RPCs with compatible Schema
+// parameters may still differ in permissions, quota, error taxonomy, or side
+// effects, none of which this gate can see. Hence the allowlist below, plus:
 //
 //   - interface_mode is unchanged and stays "mcp". A move to or from
 //     "composite" is a change in kind, not a redirect, and is still reported.
@@ -565,11 +589,14 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 // already accepted by checkParameterCompatibility and so does not block this;
 // that pairing is expected, since a leaf moving to a nested payload loses its
 // flat property names in the same change.
-func compatibleInterfaceRefRedirect(oldTool, newTool toolSchema, otherFailures []string) bool {
+func compatibleInterfaceRefRedirect(toolPath string, oldTool, newTool toolSchema, otherFailures []string) bool {
 	if oldTool.InterfaceMode != newTool.InterfaceMode || newTool.InterfaceMode != interfaceModeMCP {
 		return false
 	}
 	if oldTool.InterfaceRef == "" || newTool.InterfaceRef == "" {
+		return false
+	}
+	if reviewedInterfaceRefRedirect[toolPath][oldTool.InterfaceRef] != newTool.InterfaceRef {
 		return false
 	}
 	return len(otherFailures) == 0

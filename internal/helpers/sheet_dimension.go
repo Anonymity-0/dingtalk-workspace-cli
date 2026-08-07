@@ -3,6 +3,7 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -51,8 +52,11 @@ func newDimensionCmds() []*cobra.Command {
 				return fmt.Errorf("--dimension 必须为 ROWS 或 COLUMNS，当前值: %s", dimension)
 			}
 			lengthStr := mustGetFlag(cmd, "length")
-			var length int
-			if _, err := fmt.Sscanf(lengthStr, "%d", &length); err != nil || length < 1 {
+			// strconv.Atoi 要求整个字符串都是合法整数。fmt.Sscanf("%d") 只消费前缀
+			// 数字，会把 "3x" / "3foo" 静默当成 3，从而对错误的行列数执行插入/删除/
+			// 调整——删除方向不可回滚。
+			length, lengthErr := strconv.Atoi(lengthStr)
+			if lengthErr != nil || length < 1 {
 				return fmt.Errorf("--length 必须为正整数（>= 1），当前值: %s", lengthStr)
 			}
 			if length > 5000 {
@@ -436,8 +440,11 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				return fmt.Errorf("--dimension 必须为 ROWS 或 COLUMNS，当前值: %s", dimension)
 			}
 			lengthStr := mustGetFlag(cmd, "length")
-			var length int
-			if _, err := fmt.Sscanf(lengthStr, "%d", &length); err != nil || length < 1 {
+			// strconv.Atoi 要求整个字符串都是合法整数。fmt.Sscanf("%d") 只消费前缀
+			// 数字，会把 "3x" / "3foo" 静默当成 3，从而对错误的行列数执行插入/删除/
+			// 调整——删除方向不可回滚。
+			length, lengthErr := strconv.Atoi(lengthStr)
+			if lengthErr != nil || length < 1 {
 				return fmt.Errorf("--length 必须为正整数（>= 1），当前值: %s", lengthStr)
 			}
 			if length > 5000 {
@@ -531,8 +538,11 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				return fmt.Errorf("--dimension 必须为 ROWS 或 COLUMNS，当前值: %s", dimension)
 			}
 			lengthStr := mustGetFlag(cmd, "length")
-			var length int
-			if _, err := fmt.Sscanf(lengthStr, "%d", &length); err != nil || length < 1 {
+			// strconv.Atoi 要求整个字符串都是合法整数。fmt.Sscanf("%d") 只消费前缀
+			// 数字，会把 "3x" / "3foo" 静默当成 3，从而对错误的行列数执行插入/删除/
+			// 调整——删除方向不可回滚。
+			length, lengthErr := strconv.Atoi(lengthStr)
+			if lengthErr != nil || length < 1 {
 				return fmt.Errorf("--length 必须为正整数（>= 1），当前值: %s", lengthStr)
 			}
 			if length > 5000 {
