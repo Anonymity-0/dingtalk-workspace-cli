@@ -323,7 +323,7 @@ def get_reference_file(product: str) -> str:
         'calendar': 'calendar.md',
         'chat': 'chat.md',
         'contact': 'contact.md',
-        'dev': 'skills/multi/dingtalk-dev/SKILL.md',
+        'dev': 'skills/multi/dingtalk-misc/references/devapp.md',
         'ding': 'ding.md',
         'doc': 'doc.md',
         'drive': 'drive.md',

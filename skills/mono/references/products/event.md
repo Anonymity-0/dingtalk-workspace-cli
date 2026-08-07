@@ -20,7 +20,7 @@
 | `dws event stop <subscribe_id> --dry-run` / `--yes` | 先预览，再确认取消订阅并停止对应本地消费 |
 | `dws event stop --all --dry-run` / `--yes` | 先预览，再确认清理当前身份下全部个人订阅 |
 
-注意区分两个 schema：`dws event schema <event_key>` 查事件的输出字段；`dws schema "event consume"` 查 consume 命令自身的入参（统一内嵌 ToolSpec，含 parameters + 位置参数）。`source` 是 reviewed command identity 的 provenance；`event list/schema` 是 `interface_mode=local`，`event consume/status/stop` 因同时编排远端订阅控制面与本地 bus 而是 `interface_mode=composite`，不要把 identity 与实现机制混为一谈。
+注意区分两个 schema：`dws event schema <event_key>` 查事件的输出字段；`dws schema "event consume" --compact` 查 consume 命令自身的入参（统一内嵌 ToolSpec，含 parameters + 位置参数）。`source` 是 reviewed command identity 的 provenance；`event list/schema` 是 `interface_mode=local`，`event consume/status/stop` 因同时编排远端订阅控制面与本地 bus 而是 `interface_mode=composite`，不要把 identity 与实现机制混为一谈。
 
 ## Event catalog
 
@@ -225,5 +225,6 @@ dws event stop --all --yes
 
 ## Full reference
 
-- multi skill: `skills/multi/dingtalk-event/SKILL.md`
-- IM reference: `skills/multi/dingtalk-event/references/event-im.md`
+- multi skill: `skills/multi/dingtalk-misc/SKILL.md`（产品索引 → event）
+- IM reference: `skills/multi/dingtalk-misc/references/event.md`
+- IM task index: `skills/multi/dingtalk-misc/references/event-im.md`

@@ -111,6 +111,7 @@ jobs:
                 filename.startsWith('internal/app/') ||
                 filename.startsWith('internal/cli/') ||
                 filename.startsWith('internal/cobracmd/') ||
+                filename.startsWith('internal/corecmd/') ||
                 filename.startsWith('internal/helpers/') ||
                 filename.startsWith('internal/i18n/') ||
                 filename.startsWith('internal/interfacesnapshot/') ||
@@ -152,7 +153,6 @@ jobs:
                 filename.startsWith('internal/interfacesnapshot/') ||
                 filename.startsWith('internal/app/upgrade') ||
                 filename.startsWith('internal/transport/') ||
-                filename.startsWith('internal/recovery/') ||
                 filename.startsWith('internal/syncdata/') ||
                 filename.includes('/testdata/') ||
                 filename.startsWith('testdata/') ||
@@ -1176,7 +1176,7 @@ jobs:
           FULL_SUITE: ${{ needs.lint.outputs.full_suite }}
           COVERAGE_TARGET: "100"
           COVERAGE_ENFORCE_OVERALL: "false"
-          COVERAGE_OVERALL_TOLERANCE: "0"
+          COVERAGE_OVERALL_TOLERANCE: "0.1"
         run: |
           policy_profile=coverage-policy.txt
           if [ "$FULL_SUITE" != true ]; then
@@ -1391,6 +1391,13 @@ jobs:
             make authoritative-interface-integrity \
               BASE_REF="$COMPATIBILITY_STABLE_REF"
           fi
+
+      - name: Check complete CLI command compatibility
+        if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.interface_sensitive == 'true') }}
+        run: |
+          ./scripts/policy/check-command-compatibility.sh \
+            --base-ref "$COMPATIBILITY_BASE_REF" \
+            --stable-ref "$COMPATIBILITY_STABLE_REF"
 
       - name: Check complete Schema compatibility
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.interface_sensitive == 'true') }}

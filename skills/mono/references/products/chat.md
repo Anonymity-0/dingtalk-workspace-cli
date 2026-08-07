@@ -4,7 +4,7 @@
 
 ## Shortcut 优先路由
 
-常见 Agent 意图优先使用公开 `+` Shortcut；下面的原子命令章节保留给需要特定原始返回结构、兼容参数或 Shortcut 未覆盖字段的场景。执行前用 `dws schema --cli-path "chat +<shortcut>" --format json` 读取最终参数、约束和确认语义。
+常见 Agent 意图优先使用公开 `+` Shortcut；下面的原子命令章节保留给需要特定原始返回结构、兼容参数或 Shortcut 未覆盖字段的场景。执行前用 `dws schema --cli-path "chat +<shortcut>" --compact --format json` 读取最终参数、约束和确认语义。
 
 | 意图 | 首选 |
 |---|---|
@@ -16,7 +16,8 @@
 | 读取已知 thread/topic 的全部回复 | `dws chat +thread-replies ...` |
 | 下载单个 mediaId/fileId | `dws chat +messages-resource-download ...` |
 
-- `+messages-send` 只暴露下层真实支持的身份能力：user 支持文本/Markdown、已有 mediaId 图片、本地文件和幂等键；bot 支持群聊、最多 100 个稳定群 ID 的逐项 ledger 或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。Bot/Webhook 不支持富媒体。
+- `+messages-send` 只暴露下层真实支持的身份能力：user 支持文本/Markdown、已有 mediaId 图片、本地文件和幂等键；bot 支持群聊、最多 100 个稳定群 ID 的逐项 ledger 或批量单聊文本/Markdown；webhook 的目标由 token 所在群决定。该 Shortcut 的 Bot/Webhook 路由不支持富媒体。
+- 需要机器人发送公网图片 URL 或本地文件时，直接使用 `chat message send-by-bot`；它分别支持 `--msg-type image --image-url` 和 `--msg-type file --file-path`。
 - `+chat-messages --page-all` 连续读取 typed `nextPage.time`，按消息 ID 去重并受 `--page-limit/--max-results` 约束；`--output` 将同一完整性 ledger 原子写入工作目录内 JSON。
 - `+messages-send` 会自动规范化并补齐 @ 占位符。user 使用 `<@id>` / `<@all>`；bot/webhook 使用 `@id` / `@手机号` / `@all`。声明 `--at-*` / `--at-all` 即可，不要为统一 Shortcut 手工拼 `@10`。
 - `+search-msg --page-all` 连续翻页并默认按消息 ID 批量富化；任何续页或富化失败都会保留已取得结果并返回逐项失败 ledger。
@@ -716,8 +717,7 @@ Flags:
 
 **重要：该接口会真实发送消息到目标会话，不可用于测试或试探性调用。调用前必须确认消息内容和接收对象无误。**
 
-群聊：传 --group 指定群；单聊：传 --users 指定用户列表，二者只能选其一，不能同时指定。--text 支持 Markdown。群聊时可选 --at-user-ids @指定成员。
-
+群聊传 --group；单聊可传 --users、--open-dingtalk-ids 或两者组合。--group 不能与单聊目标同时指定。默认发送 Markdown，必须同时使用 --title 和 --text；公网图片 URL 使用 --msg-type image --image-url <图片 URL>；本地图片和其他本地文件一样使用 --msg-type file --file-path <本地路径>，CLI 会完成上传并按文件附件发送。群聊时可选 --at-user-ids 或 --at-open-dingtalk-ids @指定成员。
 如果用户明确要求"用机器人/机器人身份/robot"发送，必须使用本命令，严禁改用 `chat message send` 以当前用户身份发送。
 
 **重要**：机器人发群消息前，必须确认该机器人已在目标群中。若机器人不在群内会报错"机器人不存在"，需先执行 `dws chat group members add-bot --id <openConversationId> --robot-code <robot-code>` 将机器人加入群聊后再发送。
@@ -726,6 +726,8 @@ Usage:
   dws chat message send-by-bot [flags]
 Example:
   dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --title "日报" --text "## 今日完成..."
+  dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --msg-type image --image-url "https://example.com/image.png"
+  dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --msg-type file --file-path ./report.pdf
   dws chat message send-by-bot --robot-code <robot-code> --users userId1,userId2 --title "提醒" --text "请提交周报"
   dws chat message send-by-bot --robot-code <robot-code> --open-dingtalk-ids openDingtalkId1,openDingtalkId2 --title "提醒" --text "请提交周报"
   dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --at-user-ids userId1,userId2 --title "提醒" --text "@userId1 @userId2 请查收本周报告"
@@ -734,8 +736,11 @@ Example:
 Flags:
       --group string                 群聊 openConversationId（群聊时必填）
       --robot-code string            机器人 Code (必填)
-      --text string                  消息内容 Markdown (必填)
-      --title string                 消息标题 (必填)
+      --msg-type string              消息类型：markdown、image 或 file；省略时为 markdown；公网图片使用 image --image-url；本地图片和文件使用 file --file-path
+      --title string                 Markdown 消息标题（Markdown 时必填）
+      --text string                  Markdown 消息内容（Markdown 时必填）
+      --image-url string             公网图片 URL（msgType=image 时必填）
+      --file-path string             本地图片或文件路径（msgType=file 时上传并按文件附件发送）
       --users string                 用户 userId 列表，逗号分隔，最多20个（单聊时必填）
       --open-dingtalk-ids string     用户 openDingtalkId 列表，逗号分隔（单聊时可替代 --users，可选）
       --at-user-ids string           @指定成员的 userId 列表，逗号分隔（仅群聊时生效，可选）
@@ -744,7 +749,8 @@ Flags:
 
 注意:
   - 用户明确要求机器人发送时，必须使用 `chat message send-by-bot`；严禁使用 `chat message send` 以用户身份代发
-  - --group 与 --users/--open-dingtalk-ids 互斥，必须且只能指定其一
+  - --group 与任一单聊目标互斥；单聊可同时提供 --users 和 --open-dingtalk-ids，但发送文件时只能指定一个收件人
+  - --msg-type 决定发送类型：Markdown 必须同时指定 --title 和 --text；公网图片传 --image-url，本地图片和文件传 --file-path
   - --group 的别名: --id, --chat, --conversation-id (均可替代 --group)
   - --at-user-ids 仅在 --group 群聊时生效，单聊时无效；设置时 --text 中需包含 @userId 对应文本
   - --at-open-dingtalk-ids 仅在 --group 群聊时生效，单聊时无效；设置时 --text 中需包含 @openDingtalkId 对应文本
@@ -1979,6 +1985,8 @@ Flags:
 用户说"置顶消息/把消息置顶" → `chat message set-top-msg`
 用户说"取消置顶消息/撤销消息置顶" → `chat message unset-top-msg`
 用户说"发送/上传本地图片或媒体到聊天" → `chat message send --msg-type file --file-path <本地路径>`
+用户明确要求机器人发送公网图片 URL → `chat message send-by-bot --msg-type image --image-url <图片 URL>`
+用户明确要求机器人发送本地图片或文件 → `chat message send-by-bot --msg-type file --file-path <本地路径>`，按文件附件发送
 用户明确只要 mediaId → DWS CLI 当前不提供本地上传入口；仅在上游已有有效 mediaId 时使用 `chat message send --msg-type image --media-id`
 用户说"群机器人列表/群里有哪些机器人/查看群机器人" → `chat group bots`
 用户说"从群里移除机器人/踢出机器人" → `chat group members remove-bot`
@@ -2008,7 +2016,7 @@ Flags:
 - `chat message send` — 以当前用户身份发消息（群聊或单聊），text 为位置参数；本地图片/文件/音视频统一用 `--msg-type file --file-path`，其中图片显示为可下载附件而非内联图片；`--msg-type image --media-id` 只用于上游已经提供有效 mediaId 的场景，DWS CLI 不能从本地文件生成 mediaId
 - `chat message search` — 按关键词搜索消息内容（跨所有会话，可选指定群）
 - `chat search-common` — 搜索共同群，查询指定人共同所在的群聊（AND=所有人都在，OR=任一人在）
-- `chat message send-by-bot` — 以**机器人**身份发消息（群聊或单聊），text 为 --text flag
+- `chat message send-by-bot` — 以**机器人**身份发消息（群聊或单聊）；Markdown 使用 `--text`，公网图片使用 `--msg-type image --image-url`，本地图片和文件使用 `--msg-type file --file-path`
 - `chat message send-by-webhook` — 通过**自定义机器人 Webhook** 发群消息
 - `chat message recall-by-bot` — 通过**机器人接口**撤回机器人发出的消息，需要 `--robot-code` + `--keys`（发送时返回的 processQueryKey）；传 `--group` 为群聊撤回，不传为单聊撤回
 - `chat message recall` — 通过 **IM 接口**撤回当前用户自己发出的消息，需要 `--conversation-id`（openConversationId）+ `--msg-id`（openMessageId，可通过 `chat message list` 获取）；群聊单聊均通过 `--conversation-id` 区分
@@ -2166,34 +2174,44 @@ dws chat message send-by-bot --robot-code <robot-code> --group <openconversation
 ```
 
 
-### 发送图片/文件 + 文字说明（两条消息）
+### 发送文件 + 文字说明（两条消息）
 
 本地图片和文件先用 `--msg-type file --file-path` 发送，再补一条文本消息说明；这是两条独立消息，不需要媒体上传或钉盘前置步骤。图片会显示为可下载的文件附件，不会内联渲染。
+如果用户明确要求机器人身份，两条消息都必须改用 `chat message send-by-bot`，不得降级为个人身份发送。
 
 ```bash
 dws chat message send --group <openconversation_id> --msg-type file --file-path ./screenshot.png --format json
 dws chat message send --group <openconversation_id> --text "这是本周的数据汇总" --format json
 ```
 
-如果调用方已经从上游取得有效 mediaId，可以先用 `--msg-type image --media-id` 发送内联图片，再补一条文本消息；DWS CLI 本身不能把本地图片转换成 mediaId。
-
-### 发送图片 / 文件（统一一条命令）
-
-**`dws chat message send --msg-type file --file-path <本地路径>`** 适用于所有发图片/文件场景，任意扩展名。CLI 内部完成上传与发送，无需任何前置工具调用。
+机器人身份发送文件及说明：
 
 ```bash
-# 群聊
-dws chat message send --group <openConversationId> --msg-type file --file-path ./screenshot.png --format json
-dws chat message send --group <openConversationId> --msg-type file --file-path ./report.pdf    --format json
+dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --msg-type file --file-path ./report.pdf --format json
+dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --text "这是本周的数据汇总" --format json
+```
 
-# 单聊（推荐 --open-dingtalk-id）
-dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file-path ./screenshot.png --format json
+如果调用方已经从上游取得有效 mediaId，可以先用 `--msg-type image --media-id` 发送内联图片，再补一条文本消息；DWS CLI 本身不能把本地图片转换成 mediaId。
+
+### 发送图片或文件
+
+公网图片 URL 使用 `--msg-type image --image-url`，按图片消息发送。本地图片和其他本地文件一样使用 `--msg-type file --file-path`，由 CLI 上传并按文件附件发送。明确要求机器人身份时使用 `dws chat message send-by-bot`，不得降级为个人身份。
+
+```bash
+# 机器人发送图片
+dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --msg-type image --image-url "https://example.com/image.png" --format json
+
+# 当前用户发送文件
+dws chat message send --group <openConversationId> --msg-type file --file-path ./report.pdf --format json
+
+# 机器人发送文件
+dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --msg-type file --file-path ./report.pdf --format json
 ```
 
 **带文字说明**：在上一步发完文件后，再补一条文本消息即可。不要尝试把文字塞进 `--msg-type file` 命令（该命令不读 `--text`）。
 
 ```bash
-dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file-path ./screenshot.png --format json
+dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file-path ./report.pdf --format json
 dws chat message send --open-dingtalk-id <openDingTalkId> --text "这是本周数据汇总" --format json
 ```
 

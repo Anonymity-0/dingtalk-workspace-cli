@@ -70,18 +70,6 @@ func schemaRegistryForTest(root *cobra.Command) (SchemaRegistry, error) {
 	return AssembleSchemaRegistryFromBound(bound)
 }
 
-func schemaRegistryForTestWithMetadata(root *cobra.Command, agent agentMetadata, mcp embeddedMCPMetadata) (SchemaRegistry, error) {
-	bound, err := boundTestCommandRegistry(root)
-	if err != nil {
-		return SchemaRegistry{}, err
-	}
-	// Production-shaped assembly: leaves must carry ContractFinal and products
-	// a ProductDecl (see declareRuntimeSchemaTestRootDoc). Injected MCP/agent
-	// fixtures participate only through the gated fixture lookup in
-	// runtimeToolSpecFromContractFinal; production passes an empty pin.
-	return assembleSchemaRegistryFromBound(bound, runtimeSchemaMetadataSources{Agent: agent, MCP: mcp})
-}
-
 // declareRuntimeSchemaTestRootDoc registers the ContractFinal / ProductDecl
 // declarations for the synthetic doc.create_document tree built by
 // buildRuntimeSchemaTestRoot, so production-shaped assembly can resolve it.
@@ -146,18 +134,6 @@ func loadedSchemaCatalogForTestRegistry(registry SchemaRegistry) (loadedSchemaCa
 
 func runtimeSchemaPayloadForTest(root *cobra.Command, args []string) (map[string]any, error) {
 	registry, err := schemaRegistryForTest(root)
-	if err != nil {
-		return nil, err
-	}
-	loaded, err := loadedSchemaCatalogForTestRegistry(registry)
-	if err != nil {
-		return nil, err
-	}
-	return schemaPayloadFromLoadedCatalog(loaded, args)
-}
-
-func runtimeSchemaPayloadForTestWithMetadata(root *cobra.Command, args []string, agent agentMetadata, mcp embeddedMCPMetadata) (map[string]any, error) {
-	registry, err := schemaRegistryForTestWithMetadata(root, agent, mcp)
 	if err != nil {
 		return nil, err
 	}

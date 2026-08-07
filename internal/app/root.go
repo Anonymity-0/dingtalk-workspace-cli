@@ -39,7 +39,6 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline/handlers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/plugin"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/recovery"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/usage"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/agentproduct"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
@@ -51,15 +50,11 @@ import (
 
 type outputFileContextKey struct{}
 
-const recoveryEventStderrPrefix = "RECOVERY_EVENT_ID="
-
 var (
 	rootNormalizeProcessProfileArgs = normalizeProcessProfileArgs
 	rootExecuteCommand              = (*cobra.Command).ExecuteC
 	rootNewRootCommandWithEngine    = NewRootCommandWithEngine
 	rootRunPreParse                 = pipeline.RunPreParse
-	rootLatestRecoveryCapture       = recovery.LatestCapture
-	rootResetRecoveryState          = recovery.ResetRuntimeState
 	rootStopAllStdioClients         = StopAllStdioClients
 	rootLoadPlugins                 = loadPlugins
 	rootMkdirAll                    = os.MkdirAll
@@ -107,7 +102,6 @@ func Execute() (exitCode int) {
 	ctx = WithTimingCollector(ctx, timing)
 
 	initStart := time.Now()
-	rootResetRecoveryState()
 	engine := newPipelineEngine()
 	root := rootNewRootCommandWithEngine(ctx, engine)
 	timing.Record("cmd_init", time.Since(initStart))
@@ -133,9 +127,6 @@ func Execute() (exitCode int) {
 			_, _ = fmt.Fprintln(os.Stderr)
 		}
 		_ = printExecutionError(executed, os.Stdout, os.Stderr, err)
-		if last := rootLatestRecoveryCapture(); last != nil && last.EventID != "" {
-			_, _ = fmt.Fprintf(os.Stderr, "%s%s\n", recoveryEventStderrPrefix, last.EventID)
-		}
 		return apperrors.ExitCode(err)
 	}
 	return 0
@@ -144,6 +135,9 @@ func Execute() (exitCode int) {
 // newPreParseValidationError keeps pipeline handler identity in internal logs
 // while exposing only the underlying parameter-domain error to CLI users.
 func newPreParseValidationError(err error) error {
+	if structured, ok := err.(*apperrors.Error); ok {
+		return structured
+	}
 	userErr := err
 	var handlerErr *pipeline.HandlerError
 	if stderrors.As(err, &handlerErr) && handlerErr.Unwrap() != nil {
@@ -477,10 +471,10 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 		newCatalogCommand(),
 		newConfigCommand(),
 		newDoctorCommand(),
+		newRecoveryCommand(),
 		newEventCommand(),
 		newAuditCommand(),
 		newCompletionCommand(root),
-		newRecoveryCommand(flags),
 		newUpgradeCommand(),
 		newVersionCommand(),
 		newPluginCommand(),
@@ -724,8 +718,8 @@ func hideNonDirectRuntimeCommands(root *cobra.Command) {
 var builtinCommandNames = map[string]bool{
 	"auth": true, "api": true, "audit": true, "cache": true, "config": true,
 	"doctor": true, "event": true, "completion": true, "skill": true,
-	"plugin": true, "profile": true, "version": true, "help": true,
-	"recovery": true, "schema": true, "mcp": true, "upgrade": true,
+	"plugin": true, "profile": true, "recovery": true, "version": true, "help": true,
+	"schema": true, "mcp": true, "upgrade": true,
 }
 
 // commandNameSet returns a new set containing every name in base plus extras.
@@ -1333,6 +1327,18 @@ func registerPluginAuthFromHeaders(srv mcptypes.ServerDescriptor) {
 //   - PostResponse: after transport returns, before stdout (canonical RunE)
 func newPipelineEngine() *pipeline.Engine {
 	engine := pipeline.NewEngine()
+	engine.SetCommandPathFallbackLookup(func(path string) (pipeline.CommandPathFallback, bool) {
+		entry, ok := cli.LookupCommandPathFallback(path)
+		if !ok {
+			return pipeline.CommandPathFallback{}, false
+		}
+		return pipeline.CommandPathFallback{
+			From:       entry.From,
+			Mode:       string(entry.Mode),
+			To:         entry.To,
+			Candidates: append([]string(nil), entry.Candidates...),
+		}, true
+	})
 	engine.RegisterAll(
 		// Register handler runs during command tree building.
 		handlers.RegisterHandler{},
