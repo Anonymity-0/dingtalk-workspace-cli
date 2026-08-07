@@ -609,7 +609,7 @@ func TestCrossPlatformCoverageMessagesSendTextModesAndExecuteGuard(t *testing.T)
 
 func TestCrossPlatformCoverageMessagesSendCardOneCallLifecycle(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
-		"im/create_and_send_card":  `{"result":{"card":{"biz_id":"biz-1"}}}`,
+		"im/create_and_send_card":  `{"result":{"card":{"biz_id":"biz-1","atTag":"<a atId=D-one>甲</a> <a atId=D-two>乙</a> "}}}`,
 		"im/update_streaming_card": `{"result":{"updated":true}}`,
 	}}
 	helpers.InitDeps(fake)
@@ -644,7 +644,8 @@ func TestCrossPlatformCoverageMessagesSendCardOneCallLifecycle(t *testing.T) {
 	if _, exists := fake.calls[1].args["atAll"]; exists {
 		t.Fatalf("card update leaked atAll: %#v", fake.calls[1].args)
 	}
-	if fake.calls[1].args["bizId"] != "biz-1" || fake.calls[1].args["msgContent"] != "完成" ||
+	if fake.calls[1].args["bizId"] != "biz-1" ||
+		fake.calls[1].args["msgContent"] != "<a atId=D-one>甲</a> <a atId=D-two>乙</a> 完成" ||
 		fake.calls[1].args["flowStatus"] != 3 {
 		t.Fatalf("card update args = %#v", fake.calls[1].args)
 	}
@@ -654,6 +655,27 @@ func TestCrossPlatformCoverageMessagesSendCardOneCallLifecycle(t *testing.T) {
 	}
 	if payload["bizId"] != "biz-1" || payload["ok"] != true {
 		t.Fatalf("card output = %#v", payload)
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendCardKeepsContentWithoutAtTag(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"im/create_and_send_card":  `{"result":{"bizId":"biz-no-mention"}}`,
+		"im/update_streaming_card": `{"result":{"updated":true}}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+messages-send-card",
+		"--group", "cid",
+		"--content", "正文",
+		"--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 || fake.calls[1].args["msgContent"] != "正文" {
+		t.Fatalf("card calls = %#v", fake.calls)
 	}
 }
 
@@ -801,6 +823,9 @@ func TestCrossPlatformCoverageMessagesSendCardDryRunAndFailureBoundaries(t *test
 		if _, exists := updateArguments["atAll"]; exists {
 			t.Fatalf("card update dry-run leaked atAll: %#v", updateArguments)
 		}
+		if updateArguments["msgContent"] != "<atTag from create_and_send_card>处理中" {
+			t.Fatalf("card update dry-run content = %#v", updateArguments["msgContent"])
+		}
 	})
 
 	t.Run("receiver resolution error", func(t *testing.T) {
@@ -911,6 +936,24 @@ func TestCrossPlatformCoverageFindCardBizIDResponseShapes(t *testing.T) {
 	} {
 		if got := findCardBizID(tc.value); got != tc.want {
 			t.Errorf("findCardBizID(%#v) = %q, want %q", tc.value, got, tc.want)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageFindCardAtTagResponseShapes(t *testing.T) {
+	for _, tc := range []struct {
+		value any
+		want  string
+	}{
+		{map[string]any{"atTag": "<a atId=D-direct>甲</a> "}, "<a atId=D-direct>甲</a> "},
+		{map[string]any{"result": map[string]any{"atTag": "<a atId=D-nested>乙</a> "}}, "<a atId=D-nested>乙</a> "},
+		{`{"result":{"card":{"atTag":"<a atId=D-json>丙</a> "}}}`, "<a atId=D-json>丙</a> "},
+		{map[string]any{"atTag": "  "}, ""},
+		{map[string]any{"atTag": 42}, ""},
+		{map[string]any{"result": map[string]any{"created": true}}, ""},
+	} {
+		if got := findCardAtTag(tc.value); got != tc.want {
+			t.Errorf("findCardAtTag(%#v) = %q, want %q", tc.value, got, tc.want)
 		}
 	}
 }

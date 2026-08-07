@@ -292,7 +292,8 @@ dws chat +messages-update-card --biz-id <bizId> --content "最终内容" --flow-
 ```
 
 `flow-status`：1=处理中，2=输入中，3=完成，4=执行中，5=错误，Runtime 拒绝范围外值。
-群聊还可传 `--at-all`；两种艾特参数只随创建请求发送，更新阶段不再携带。
+群聊还可传 `--at-all`；两种艾特参数只随创建请求发送。send-card 同时带正文时，
+Runtime 会把创建响应的 `atTag` 自动放在正文前；不要自行写 ID 或占位符。
 当前只支持 streaming text；不支持 Card JSON 组件或 action callback。精确边界见
 [card references](../card/schema.md)。
 
