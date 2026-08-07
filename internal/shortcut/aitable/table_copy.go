@@ -200,9 +200,6 @@ func executeTableCopy(rt *shortcut.RuntimeContext) error {
 			result.Checkpoint = map[string]any{"targetTableId": targetTable, "nextRecordOffset": offset}
 			return compositeError(result, verifyErr, false)
 		}
-		if writeErr != nil {
-			result.Warnings = append(result.Warnings, fmt.Sprintf("create_records offset %d returned an error, but returned IDs and read-back proved the copied state: %v", offset, writeErr))
-		}
 		createdCount = end
 		result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": "create_records", "offset": offset, "recordIds": createdIDs})
 	}

@@ -28,6 +28,7 @@ type upsertByKeyCaller struct {
 	steps  []upsertByKeyStep
 	calls  []aitableURLCall
 	dryRun bool
+	callFn func(index int, product, tool string, args map[string]any) (string, error)
 }
 
 func (c *upsertByKeyCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -45,6 +46,13 @@ func (c *upsertByKeyCaller) call(product, tool string, args map[string]any) (*ed
 	}
 	c.calls = append(c.calls, aitableURLCall{product: product, tool: tool, args: cloned})
 	index := len(c.calls) - 1
+	if c.callFn != nil {
+		text, err := c.callFn(index, product, tool, args)
+		if err != nil {
+			return nil, err
+		}
+		return urlResult(text), nil
+	}
 	if index >= len(c.steps) {
 		return nil, errors.New("unexpected upsert-by-key call")
 	}

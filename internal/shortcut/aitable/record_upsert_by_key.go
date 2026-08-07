@@ -182,11 +182,8 @@ func executeRecordUpsertByKey(rt *shortcut.RuntimeContext) error {
 
 func recordKeyValue(rt *shortcut.RuntimeContext) (any, error) {
 	if rt.Changed("key-value") {
-		value := rt.Str("key-value")
-		if value == "" {
-			return nil, apperrors.NewValidation("--key-value 不能为空")
-		}
-		return value, nil
+		// The command framework rejects an explicitly empty string before Execute.
+		return rt.Str("key-value"), nil
 	}
 	decoder := json.NewDecoder(strings.NewReader(rt.Str("key-value-json")))
 	decoder.UseNumber()

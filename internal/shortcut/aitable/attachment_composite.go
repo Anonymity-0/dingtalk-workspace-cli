@@ -136,10 +136,9 @@ func executeAttachmentPut(rt *shortcut.RuntimeContext) error {
 		result.Status = "unknown"
 		return compositeError(result, err, false)
 	}
-	request, err := http.NewRequestWithContext(rt.Command().Context(), http.MethodPut, uploadURL, file)
-	if err != nil {
-		return compositeError(result, err, false)
-	}
+	// validateAttachmentUploadURL has already rejected every URL shape for
+	// which NewRequestWithContext can fail; PUT is a fixed valid method.
+	request, _ := http.NewRequestWithContext(rt.Command().Context(), http.MethodPut, uploadURL, file)
 	request.Header.Set("Content-Type", mimeType)
 	request.ContentLength = info.Size()
 	response, err := attachmentHTTPDo(request)

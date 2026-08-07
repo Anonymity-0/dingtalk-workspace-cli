@@ -353,10 +353,13 @@ func createdRecordIDs(data map[string]any) []string {
 		case []any:
 			for _, child := range typed {
 				if createdContext {
-					if id, ok := child.(string); ok && strings.TrimSpace(id) != "" && !seen[id] {
-						seen[id] = true
-						out = append(out, strings.TrimSpace(id))
-						continue
+					if id, ok := child.(string); ok {
+						id = strings.TrimSpace(id)
+						if id != "" && !seen[id] {
+							seen[id] = true
+							out = append(out, id)
+							continue
+						}
 					}
 				}
 				walk(child, createdContext)

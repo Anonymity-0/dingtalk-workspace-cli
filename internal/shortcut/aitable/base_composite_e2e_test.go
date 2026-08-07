@@ -149,3 +149,135 @@ func TestCrossPlatformCoverageBaseBootstrapUnknownAndDryRunE2E(t *testing.T) {
 		}
 	})
 }
+
+func TestCrossPlatformCoverageBaseBootstrapInputValidation(t *testing.T) {
+	tooMany := make([]any, 101)
+	for index := range tooMany {
+		tooMany[index] = map[string]any{"name": fmt.Sprintf("T%d", index)}
+	}
+	tooManyJSON, err := json.Marshal(tooMany)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]string{
+		"invalid JSON":       `{`,
+		"not an array":       `{}`,
+		"empty array":        `[]`,
+		"too many tables":    string(tooManyJSON),
+		"non-object table":   `[1]`,
+		"empty name":         `[{"name":" "}]`,
+		"duplicate name":     `[{"name":"T"},{"name":"T"}]`,
+		"fields not array":   `[{"name":"T","fields":{}}]`,
+		"field not object":   `[{"name":"T","fields":[1]}]`,
+		"field missing type": `[{"name":"T","fields":[{"fieldName":"F"}]}]`,
+	}
+	for name, raw := range cases {
+		t.Run(name, func(t *testing.T) {
+			if tables, err := parseBootstrapTables(raw); err == nil || tables != nil {
+				t.Fatalf("parseBootstrapTables(%s) = %#v, %v", raw, tables, err)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageBaseSnapshotFailureStagesE2E(t *testing.T) {
+	base := `{"baseId":"base","tables":[{"tableId":"t1","name":"T"}]}`
+	cases := []struct {
+		name  string
+		steps []upsertByKeyStep
+	}{
+		{name: "get base error", steps: []upsertByKeyStep{{err: errors.New("get base failed")}}},
+		{name: "get base wrong id", steps: []upsertByKeyStep{{text: `{"baseId":"other","tables":[]}`}}},
+		{name: "table missing id", steps: []upsertByKeyStep{{text: `{"baseId":"base","tables":[{"name":"T"}]}`}}},
+		{name: "get tables error", steps: []upsertByKeyStep{{text: base}, {err: errors.New("get tables failed")}}},
+		{name: "get tables wrong id", steps: []upsertByKeyStep{{text: base}, {text: `{"tables":[{"tableId":"other"}]}`}}},
+		{name: "get fields error", steps: []upsertByKeyStep{{text: base}, {text: `{"tables":[{"tableId":"t1"}]}`}, {err: errors.New("get fields failed")}}},
+		{name: "get fields missing collection", steps: []upsertByKeyStep{{text: base}, {text: `{"tables":[{"tableId":"t1"}]}`}, {text: `{}`}}},
+		{name: "get views error", steps: []upsertByKeyStep{{text: base}, {text: `{"tables":[{"tableId":"t1"}]}`}, {text: `{"fields":[]}`}, {err: errors.New("get views failed")}}},
+		{name: "get views missing collection", steps: []upsertByKeyStep{{text: base}, {text: `{"tables":[{"tableId":"t1"}]}`}, {text: `{"fields":[]}`}, {text: `{}`}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{steps: tc.steps}, "+base-schema-snapshot", "--base-id", "base")
+			if err == nil || out != "" {
+				t.Fatalf("snapshot failure = output:%q err:%v", out, err)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageBaseBootstrapExecuteRejectsInvalidTablesE2E(t *testing.T) {
+	out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{}, "+base-bootstrap", "--name", "Project", "--tables", `{`)
+	if err == nil || out != "" {
+		t.Fatalf("invalid bootstrap tables = output:%q err:%v", out, err)
+	}
+}
+
+func TestCrossPlatformCoverageBaseBootstrapFailureStagesE2E(t *testing.T) {
+	tables := marshalBootstrapTables(t, nil)
+	cases := []struct {
+		name      string
+		steps     []upsertByKeyStep
+		extra     []string
+		withField bool
+	}{
+		{name: "missing base id", steps: []upsertByKeyStep{{text: `{}`}}},
+		{name: "base verification error", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {err: errors.New("verify base failed")}}},
+		{name: "base verification wrong id", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"other"}`}}},
+		{name: "create table error", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {err: errors.New("create table failed")}}},
+		{name: "create table missing id", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{}`}}},
+		{name: "verify table error", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{"tableId":"t"}`}, {err: errors.New("verify table failed")}}},
+		{name: "verify table wrong id", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{"tableId":"t"}`}, {text: `{"tables":[]}`}}},
+		{name: "verify fields error", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{"tableId":"t"}`}, {text: `{"tables":[{"tableId":"t"}]}`}, {err: errors.New("verify fields failed")}}},
+		{name: "verify fields mismatch", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{"tableId":"t"}`}, {text: `{"tables":[{"tableId":"t"}]}`}, {text: `{"fields":[]}`}}, extra: []string{"--folder-id", "folder", "--template-id", "template"}, withField: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			inputTables := tables
+			if tc.withField {
+				inputTables = marshalBootstrapTables(t, bootstrapFields(1))
+			}
+			args := []string{"--name", "Project", "--tables", inputTables}
+			args = append(args, tc.extra...)
+			out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{steps: tc.steps}, "+base-bootstrap", args...)
+			if err == nil || out != "" {
+				t.Fatalf("bootstrap failure = output:%q err:%v", out, err)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageBaseBootstrapRecoversFieldCallErrorE2E(t *testing.T) {
+	fields := bootstrapFields(16)
+	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+		{text: `{"baseId":"b"}`},
+		{text: `{"baseId":"b"}`},
+		{text: `{"tableId":"t"}`},
+		{err: errors.New("create fields reply failed")},
+		{text: `{"tables":[{"tableId":"t"}]}`},
+		{text: fieldReadBackJSON(t, fields)},
+	}}
+	out, err := runAITableCompositeCLI(t, caller, "+base-bootstrap",
+		"--name", "Project", "--tables", marshalBootstrapTables(t, fields), "--folder-id", "folder", "--template-id", "template")
+	if err != nil || !strings.Contains(out, `"status": "success"`) || !strings.Contains(out, "create_fields offset") {
+		t.Fatalf("field recovery = output:%q err:%v", out, err)
+	}
+	if caller.calls[0].args["folderId"] != "folder" || caller.calls[0].args["templateId"] != "template" {
+		t.Fatalf("create base args = %#v", caller.calls[0].args)
+	}
+}
+
+func TestCrossPlatformCoverageBaseCompositeShapeHelpers(t *testing.T) {
+	if _, ok := findNamedObjectList(map[string]any{"tables": "bad"}, "tables"); ok {
+		t.Fatal("non-array named child must fail")
+	}
+	if _, ok := findNamedObjectList(map[string]any{"tables": []any{"bad"}}, "tables"); ok {
+		t.Fatal("non-object list item must fail")
+	}
+	if containsAllFieldNames([]map[string]any{{"fieldName": "A"}}, []any{map[string]any{"fieldName": "B"}}) {
+		t.Fatal("missing field name must fail")
+	}
+	if got := findStringByKeys(map[string]any{"items": []any{map[string]any{"nested": " value "}}}, "nested"); got != "value" {
+		t.Fatalf("nested array string = %q", got)
+	}
+}

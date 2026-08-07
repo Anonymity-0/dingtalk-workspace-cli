@@ -32,7 +32,7 @@ func (s *stubFetcher) Fetch(ctx context.Context, cursor string) (Page, error) {
 	return s.pages[idx], nil
 }
 
-func TestFetchAll_SinglePage(t *testing.T) {
+func TestCrossPlatformCoverageFetchAllSinglePage(t *testing.T) {
 	s := &stubFetcher{
 		pages: []Page{
 			{Records: []any{"a", "b", "c"}, NextCursor: ""},
@@ -44,7 +44,7 @@ func TestFetchAll_SinglePage(t *testing.T) {
 	}
 }
 
-func TestFetchAll_MultiPage(t *testing.T) {
+func TestCrossPlatformCoverageFetchAllMultiPage(t *testing.T) {
 	s := &stubFetcher{
 		pages: []Page{
 			{Records: []any{1, 2}, NextCursor: "c1"},
@@ -58,7 +58,7 @@ func TestFetchAll_MultiPage(t *testing.T) {
 	}
 }
 
-func TestFetchAll_PageLimit(t *testing.T) {
+func TestCrossPlatformCoverageFetchAllPageLimit(t *testing.T) {
 	s := &stubFetcher{
 		pages: []Page{
 			{Records: []any{1}, NextCursor: "c1"},
@@ -85,7 +85,7 @@ func TestFetchAll_PageLimit(t *testing.T) {
 	}
 }
 
-func TestFetchAll_MidErrorPartial(t *testing.T) {
+func TestCrossPlatformCoverageFetchAllMidErrorPartial(t *testing.T) {
 	upstreamErr := errors.New("502 bad gateway")
 	s := &stubFetcher{
 		pages: []Page{
@@ -108,7 +108,7 @@ func TestFetchAll_MidErrorPartial(t *testing.T) {
 	}
 }
 
-func TestFetchAll_InitialCursorResume(t *testing.T) {
+func TestCrossPlatformCoverageFetchAllInitialCursorResume(t *testing.T) {
 	s := &stubFetcher{
 		pages: []Page{
 			{Records: []any{"resumed"}, NextCursor: ""},
@@ -123,7 +123,7 @@ func TestFetchAll_InitialCursorResume(t *testing.T) {
 	}
 }
 
-func TestFetchAll_ContextCancel(t *testing.T) {
+func TestCrossPlatformCoverageFetchAllContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // 立即取消
 	s := &stubFetcher{pages: []Page{{Records: []any{1}, NextCursor: "c1"}}}
@@ -136,7 +136,7 @@ func TestFetchAll_ContextCancel(t *testing.T) {
 	}
 }
 
-func TestFetchAll_UnlimitedPageLimit(t *testing.T) {
+func TestCrossPlatformCoverageFetchAllUnlimitedPageLimit(t *testing.T) {
 	// PageLimit=0 是公开契约中的“无限制”。用超过默认安全阀的页数防止
 	// 实现再次偷偷把 0 改写成 DefaultPageLimit。
 	pages := make([]Page, DefaultPageLimit+1)
@@ -157,7 +157,7 @@ func TestFetchAll_UnlimitedPageLimit(t *testing.T) {
 	}
 }
 
-func TestFetchAll_PreservesServerTotalCount(t *testing.T) {
+func TestCrossPlatformCoverageFetchAllPreservesServerTotalCount(t *testing.T) {
 	total := 123
 	s := &stubFetcher{pages: []Page{{Records: []any{1, 2}, TotalCount: &total}}}
 	got := FetchAll(context.Background(), s.Fetch, Options{InterPageDelay: time.Millisecond})
@@ -166,7 +166,7 @@ func TestFetchAll_PreservesServerTotalCount(t *testing.T) {
 	}
 }
 
-func TestFetchAll_StopsOnCursorCycle(t *testing.T) {
+func TestCrossPlatformCoverageFetchAllStopsOnCursorCycle(t *testing.T) {
 	s := &stubFetcher{pages: []Page{
 		{Records: []any{1}, NextCursor: "c1"},
 		{Records: []any{2}, NextCursor: "c1"},
@@ -177,5 +177,30 @@ func TestFetchAll_StopsOnCursorCycle(t *testing.T) {
 	}
 	if got.Pages != 2 || got.Attempts != 2 || got.LastCursor != "c1" || len(got.Records) != 2 {
 		t.Fatalf("cursor cycle progress: got=%+v", got)
+	}
+}
+
+func TestCrossPlatformCoverageFetchAllCancellationDuringDelay(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	got := FetchAll(ctx, func(context.Context, string) (Page, error) {
+		calls++
+		time.AfterFunc(10*time.Millisecond, cancel)
+		return Page{Records: []any{"first"}, NextCursor: "next"}, nil
+	}, Options{InterPageDelay: time.Second})
+	if calls != 1 || got.StopReason != StopCanceled || !errors.Is(got.Err, context.Canceled) || got.LastCursor != "next" {
+		t.Fatalf("delay cancellation = %+v calls:%d", got, calls)
+	}
+}
+
+func TestCrossPlatformCoverageFetchAllStopsOnPriorCursorCycle(t *testing.T) {
+	s := &stubFetcher{pages: []Page{
+		{Records: []any{1}, NextCursor: "c1"},
+		{Records: []any{2}, NextCursor: "c2"},
+		{Records: []any{3}, NextCursor: "c1"},
+	}}
+	got := FetchAll(context.Background(), s.Fetch, Options{InterPageDelay: time.Millisecond})
+	if got.StopReason != StopCursorCycle || got.Pages != 3 || got.LastCursor != "c1" || !errors.Is(got.Err, ErrCursorCycle) {
+		t.Fatalf("prior cursor cycle = %+v", got)
 	}
 }
