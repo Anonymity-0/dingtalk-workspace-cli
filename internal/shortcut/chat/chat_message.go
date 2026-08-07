@@ -15,6 +15,7 @@ package chat
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -1362,6 +1363,9 @@ var MessagesSendCard = shortcut.Shortcut{
 		if err != nil {
 			return fmt.Errorf("卡片已创建（bizId=%s），但自动更新失败: %w", bizID, err)
 		}
+		if _, err := chatmsg.VerifyStreamingCardUpdate(bizID, updated); err != nil {
+			return fmt.Errorf("卡片已创建（bizId=%s），但自动更新结果不可信: %w", bizID, cardUpdateVerificationError(bizID, err))
+		}
 		return rt.Output(map[string]any{
 			"contractVersion": currentCardWorkflowContract.Version,
 			"ok":              true,
@@ -1472,18 +1476,74 @@ var MessagesUpdateCard = shortcut.Shortcut{
 	},
 	Tips: []string{`dws chat +messages-update-card --biz-id <bizId> --content "内容" --flow-status 3`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
+		if _, err := chatmsg.NormalizeCardBizID(rt.Str("biz-id")); err != nil {
+			return err
+		}
 		if !validCardFlowStatus(rt.Int("flow-status")) {
 			return fmt.Errorf("--flow-status 必须在 1-5 之间")
 		}
 		return nil
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return rt.CallMCP("update_streaming_card", map[string]any{
-			"bizId":      rt.Str("biz-id"),
+		bizID, err := chatmsg.NormalizeCardBizID(rt.Str("biz-id"))
+		if err != nil {
+			return err
+		}
+		params := map[string]any{
+			"bizId":      bizID,
 			"msgContent": rt.Str("content"),
 			"flowStatus": rt.Int("flow-status"),
-		})
+		}
+		if rt.DryRun() {
+			return rt.Output(map[string]any{
+				"dry_run":  true,
+				"executed": false,
+				"verified": false,
+				"action": map[string]any{
+					"product":   "im",
+					"tool":      "update_streaming_card",
+					"arguments": params,
+				},
+			})
+		}
+		updated, err := rt.CallMCPWriteData("im", "update_streaming_card", params)
+		if err != nil {
+			return err
+		}
+		if _, err := chatmsg.VerifyStreamingCardUpdate(bizID, updated); err != nil {
+			return cardUpdateVerificationError(bizID, err)
+		}
+		return rt.Output(updated)
 	},
+}
+
+func cardUpdateVerificationError(bizID string, verifyErr error) error {
+	reason := "streaming_card_update_unverified"
+	message := "服务端未返回卡片实际更新的证据；为避免假成功，CLI 已将本次操作判为失败"
+	hint := "请检查服务端是否返回 updated=true、affectedCount>0 或等价的明确更新结果"
+	switch {
+	case errors.Is(verifyErr, chatmsg.ErrCardUpdateNotApplied):
+		reason = "streaming_card_update_not_applied"
+		message = "服务端明确表示流式卡片没有被更新"
+		hint = "请确认 bizId 来自 send-card、当前账号有权限且卡片仍允许该状态转换"
+	case errors.Is(verifyErr, chatmsg.ErrCardUpdateBizIDDrift):
+		reason = "streaming_card_update_biz_id_mismatch"
+		message = "服务端返回的 bizId 与本次请求不一致；无法确认目标卡片已更新"
+		hint = "请保留 trace_id 并检查 update_streaming_card 的响应映射"
+	}
+	return apperrors.NewAPI(
+		message,
+		apperrors.WithOperation("update_streaming_card"),
+		apperrors.WithServerKey("im"),
+		apperrors.WithOrigin("client_postcondition"),
+		apperrors.WithFailureStage("verify_update_result"),
+		apperrors.WithExecutionStarted(true),
+		apperrors.WithRetryable(false),
+		apperrors.WithReason(reason),
+		apperrors.WithHint(hint),
+		apperrors.WithDetails(map[string]any{"bizId": bizID}),
+		apperrors.WithCause(verifyErr),
+	)
 }
 
 // MessagesResourceURL gets a message resource download url (get_resource_download_url, im).

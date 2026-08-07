@@ -86,6 +86,7 @@ var messageResultContractV1 = MessageResultContract{
 		"failedCount",
 		"failures",
 		"partial",
+		"scope",
 		"resourceDownloads",
 	},
 }
