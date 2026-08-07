@@ -431,6 +431,15 @@ func TestBuildAuthURLForInternationalRegion(t *testing.T) {
 	}
 }
 
+func TestNotEnabledHTMLUsesRegionAwareAuthorizeURL(t *testing.T) {
+	if !strings.Contains(notEnabledHTML, "status.authorizeUrl") {
+		t.Fatal("not-enabled page must read the authorize URL from the regional login status")
+	}
+	if strings.Contains(notEnabledHTML, `"https://login.dingtalk.com/oauth2/auth?client_id="`) {
+		t.Fatal("not-enabled page must not hard-code the domestic authorize URL")
+	}
+}
+
 func TestLoginRegionEndpointDefaults(t *testing.T) {
 	if got := AuthorizeURLForLoginRegion(LoginRegionDefault); got != AuthorizeURL {
 		t.Fatalf("default authorize URL = %q, want %q", got, AuthorizeURL)

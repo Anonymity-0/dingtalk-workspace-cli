@@ -470,7 +470,13 @@ func (p *OAuthProvider) Login(ctx context.Context, force bool) (*TokenData, erro
 		applySent := callbackApplySent
 		selectedAdminId := callbackSelectedAdminId
 		callbackTokenMu.Unlock()
-		_, _ = fmt.Fprintf(w, `{"clientId":"%s","applySent":%t,"selectedAdminId":"%s"}`, p.clientID, applySent, selectedAdminId)
+		data, _ := json.Marshal(map[string]any{
+			"clientId":        p.clientID,
+			"authorizeUrl":    AuthorizeURLForLoginRegion(p.LoginRegion),
+			"applySent":       applySent,
+			"selectedAdminId": selectedAdminId,
+		})
+		_, _ = w.Write(data)
 	})
 
 	// API endpoint: check CLI auth enabled status

@@ -974,14 +974,15 @@ const notEnabledHTML = `<!doctype html>
           clientId = status.clientId || "";
           applySent = status.applySent || false;
           selectedAdminId = status.selectedAdminId || "";
+          const authorizeUrl = status.authorizeUrl || "";
 
-          if (clientId) {
+          if (clientId && authorizeUrl) {
             const port = location.port;
             const redirectUri = encodeURIComponent(
               "http://127.0.0.1:" + port + "/callback"
             );
             backLink.href =
-              "https://login.dingtalk.com/oauth2/auth?client_id=" +
+              authorizeUrl + "?client_id=" +
               clientId +
               "&prompt=consent&redirect_uri=" +
               redirectUri +
@@ -1444,7 +1445,7 @@ func (p *OAuthProvider) CheckCLIAuthEnabled(ctx context.Context, accessToken str
 			case <-oauthRetryAfter(time.Duration(attempt) * time.Second):
 			}
 		}
-		status, err := p.doCheckCLIAuthEnabled(ctx, accessToken, attempt+1, traceID)
+		status, err := p.doCheckCLIAuthEnabledAttempt(ctx, accessToken, attempt+1, traceID)
 		if err == nil {
 			return status, nil
 		}
@@ -1453,7 +1454,11 @@ func (p *OAuthProvider) CheckCLIAuthEnabled(ctx context.Context, accessToken str
 	return nil, fmt.Errorf("check CLI auth status failed after %d attempts: %w", mcpRequestMaxRetries, lastErr)
 }
 
-func (p *OAuthProvider) doCheckCLIAuthEnabled(ctx context.Context, accessToken string, attempt int, traceID string) (*CLIAuthStatus, error) {
+func (p *OAuthProvider) doCheckCLIAuthEnabled(ctx context.Context, accessToken string) (*CLIAuthStatus, error) {
+	return p.doCheckCLIAuthEnabledAttempt(ctx, accessToken, 1, cliAuthTraceID())
+}
+
+func (p *OAuthProvider) doCheckCLIAuthEnabledAttempt(ctx context.Context, accessToken string, attempt int, traceID string) (*CLIAuthStatus, error) {
 	url := MCPBaseURLForLoginRegion(p.loginRegion()) + CLIAuthEnabledPath
 	req, err := oauthNewRequest(ctx, http.MethodGet, url, nil)
 	if err != nil {

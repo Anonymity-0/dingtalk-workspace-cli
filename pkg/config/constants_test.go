@@ -219,6 +219,34 @@ func TestGetMCPBaseURLUsesConfigFile(t *testing.T) {
 	}
 }
 
+func TestGetDeveloperSettingsURLUsesInternationalMCPRegion(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("DWS_CONFIG_DIR", dir)
+	if err := os.WriteFile(filepath.Join(dir, "mcp_url"), []byte("https://mcp.dingtalk.io\n"), FilePerm); err != nil {
+		t.Fatalf("WriteFile(mcp_url) error = %v", err)
+	}
+
+	want := "https://open-dev.dingtalk.io/fe/old#/developerSettings"
+	if got := GetDeveloperSettingsURL(); got != want {
+		t.Fatalf("GetDeveloperSettingsURL() = %q, want %q", got, want)
+	}
+}
+
+func TestGetTerminalBaseURLPrefersExplicitConfig(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("DWS_CONFIG_DIR", dir)
+	if err := os.WriteFile(filepath.Join(dir, "mcp_url"), []byte("https://mcp.dingtalk.io\n"), FilePerm); err != nil {
+		t.Fatalf("WriteFile(mcp_url) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "terminal_url"), []byte("https://custom-open-dev.example.com\n"), FilePerm); err != nil {
+		t.Fatalf("WriteFile(terminal_url) error = %v", err)
+	}
+
+	if got := GetTerminalBaseURL(); got != "https://custom-open-dev.example.com" {
+		t.Fatalf("GetTerminalBaseURL() = %q, want explicit terminal URL", got)
+	}
+}
+
 func TestMaxUploadFileSize(t *testing.T) {
 	t.Parallel()
 	var want int64 = 100 * 1024 * 1024
