@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -547,5 +548,226 @@ func TestResolveSkillSetupSourceMultiFinds(t *testing.T) {
 	}
 	if got != multiDir {
 		t.Fatalf("expected %s, got %s", multiDir, got)
+	}
+}
+
+func executeMultiSkillSetupTest(t *testing.T, src string, dests []string, args ...string) (string, string, error) {
+	t.Helper()
+	originalTargets := skillSetupResolveTargets
+	skillSetupResolveTargets = func(string, string) ([]string, error) {
+		return append([]string(nil), dests...), nil
+	}
+	t.Cleanup(func() { skillSetupResolveTargets = originalTargets })
+
+	cmd := newSkillSetupCommand()
+	cmd.Flags().Bool("dry-run", false, "")
+	var stdout, stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	baseArgs := []string{"--mode", "multi", "--source", src}
+	cmd.SetArgs(append(baseArgs, args...))
+	err := cmd.Execute()
+	return stdout.String(), stderr.String(), err
+}
+
+func writeFoldedEventMisc(t *testing.T, agentHome string) {
+	t.Helper()
+	miscRoot := filepath.Join(agentHome, multiMiscSkill)
+	if err := os.MkdirAll(filepath.Join(miscRoot, "references"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(miscRoot, "SKILL.md"), []byte("personal IM route: dws event consume\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(miscRoot, "references", "event.md"), []byte("folded event docs\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSkillSetupSelectiveEventMigratesOnlyFoldedTargets(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{
+		multiEventSkill, multiSharedSkill, multiMiscSkill, "dingtalk-doc",
+	})
+	foldedHome := filepath.Join(t.TempDir(), "folded", "skills")
+	freshHome := filepath.Join(t.TempDir(), "fresh", "skills")
+	writeFoldedEventMisc(t, foldedHome)
+	if err := os.MkdirAll(filepath.Join(foldedHome, multiEventSkill), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(foldedHome, multiEventSkill, "SKILL.md"), []byte("old standalone event\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(foldedHome, "dingtalk-chat"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(foldedHome, "dingtalk-chat", "SKILL.md"), []byte("keep sibling\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, err := executeMultiSkillSetupTest(t, src, []string{freshHome, foldedHome}, "--skill", "event")
+	if err != nil {
+		t.Fatalf("selective event setup failed: %v\nstderr=%s\nstdout=%s", err, stderr, stdout)
+	}
+	if !strings.Contains(stdout, "迁移伴侣") || !strings.Contains(stdout, foldedHome) {
+		t.Fatalf("confirmation output should expose folded misc migration: %s", stdout)
+	}
+	if !strings.Contains(stdout, "重新加载 Skills") {
+		t.Fatalf("completion should tell the user to reload skills: %s", stdout)
+	}
+
+	for _, home := range []string{freshHome, foldedHome} {
+		for _, name := range []string{multiSharedSkill, multiEventSkill} {
+			if _, err := os.Stat(filepath.Join(home, name, "SKILL.md")); err != nil {
+				t.Errorf("%s missing from %s: %v", name, home, err)
+			}
+		}
+		if _, err := os.Stat(filepath.Join(home, "dingtalk-doc")); !os.IsNotExist(err) {
+			t.Errorf("unselected doc appeared in %s: %v", home, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(freshHome, multiMiscSkill)); !os.IsNotExist(err) {
+		t.Fatalf("fresh selective target must not receive misc, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(foldedHome, multiMiscSkill, "references", "event.md")); !os.IsNotExist(err) {
+		t.Fatalf("folded event reference survived clean misc replacement, stat err=%v", err)
+	}
+	eventBody, err := os.ReadFile(filepath.Join(foldedHome, multiEventSkill, "SKILL.md"))
+	if err != nil || strings.Contains(string(eventBody), "old standalone") {
+		t.Fatalf("old standalone event was not replaced: body=%q err=%v", eventBody, err)
+	}
+	siblingBody, err := os.ReadFile(filepath.Join(foldedHome, "dingtalk-chat", "SKILL.md"))
+	if err != nil || string(siblingBody) != "keep sibling\n" {
+		t.Fatalf("unrelated sibling changed: body=%q err=%v", siblingBody, err)
+	}
+
+	// A second selective run sees the already-clean misc, does not plan another
+	// migration, and leaves that unselected sibling in place.
+	stdout, stderr, err = executeMultiSkillSetupTest(t, src, []string{freshHome, foldedHome}, "--skill", "event", "--yes")
+	if err != nil {
+		t.Fatalf("idempotent event setup failed: %v\nstderr=%s", err, stderr)
+	}
+	if strings.Contains(stdout, "迁移伴侣") {
+		t.Fatalf("clean second run should not re-detect folded misc: %s", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(foldedHome, multiMiscSkill, "SKILL.md")); err != nil {
+		t.Fatalf("second selective run removed clean misc: %v", err)
+	}
+}
+
+func TestSkillSetupEventMigrationDryRunAndExplicitExclude(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{
+		multiEventSkill, multiSharedSkill, multiMiscSkill, "dingtalk-doc",
+	})
+
+	t.Run("dry run reports companion without writes", func(t *testing.T) {
+		home := filepath.Join(t.TempDir(), "skills")
+		writeFoldedEventMisc(t, home)
+		stdout, stderr, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--dry-run", "--yes")
+		if err != nil {
+			t.Fatalf("dry run failed: %v\nstderr=%s", err, stderr)
+		}
+		if !strings.Contains(stdout, "DRY-RUN") || !strings.Contains(stdout, "迁移伴侣") {
+			t.Fatalf("dry run did not expose migration: %s", stdout)
+		}
+		body, readErr := os.ReadFile(filepath.Join(home, multiMiscSkill, "SKILL.md"))
+		if readErr != nil || !strings.Contains(string(body), "dws event") {
+			t.Fatalf("dry run changed folded misc: body=%q err=%v", body, readErr)
+		}
+		if _, statErr := os.Stat(filepath.Join(home, multiEventSkill)); !os.IsNotExist(statErr) {
+			t.Fatalf("dry run installed event, stat err=%v", statErr)
+		}
+	})
+
+	t.Run("excluding required misc fails before writes", func(t *testing.T) {
+		home := filepath.Join(t.TempDir(), "skills")
+		writeFoldedEventMisc(t, home)
+		_, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--exclude", "misc", "--yes")
+		if err == nil || !strings.Contains(err.Error(), "不能显式 --exclude misc") {
+			t.Fatalf("expected clear migration exclusion error, got %v", err)
+		}
+		if _, statErr := os.Stat(filepath.Join(home, multiEventSkill)); !os.IsNotExist(statErr) {
+			t.Fatalf("failed migration installed event, stat err=%v", statErr)
+		}
+		body, readErr := os.ReadFile(filepath.Join(home, multiMiscSkill, "SKILL.md"))
+		if readErr != nil || !strings.Contains(string(body), "dws event") {
+			t.Fatalf("failed migration changed misc: body=%q err=%v", body, readErr)
+		}
+	})
+}
+
+func TestSkillSetupEventMigrationRequiresCleanMiscInSource(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+
+	_, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+	if err == nil || !strings.Contains(err.Error(), "当前 multi 源缺少") {
+		t.Fatalf("expected missing migration companion error, got %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(home, multiEventSkill)); !os.IsNotExist(statErr) {
+		t.Fatalf("failed preflight installed event, stat err=%v", statErr)
+	}
+}
+
+func TestSkillSetupSelectiveEventPreservesFoldedMiscAfterPrimarySkip(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+
+	originalInstallMulti := skillSetupInstallMulti
+	t.Cleanup(func() { skillSetupInstallMulti = originalInstallMulti })
+	calls := 0
+	skillSetupInstallMulti = func(string, []string, []string, io.Writer, io.Writer) (int, int, error) {
+		calls++
+		if calls > 1 {
+			t.Fatal("misc migration companion ran after a primary install skip")
+		}
+		return 1, 1, nil
+	}
+
+	stdout, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+	if err == nil || !strings.Contains(err.Error(), "已保留旧 dingtalk-misc") {
+		t.Fatalf("expected preserved-fallback error, got %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("install calls = %d, want 1", calls)
+	}
+	if strings.Contains(stdout, "Skill 安装完成") {
+		t.Fatalf("partial migration reported success: %s", stdout)
+	}
+	body, readErr := os.ReadFile(filepath.Join(home, multiMiscSkill, "SKILL.md"))
+	if readErr != nil || !strings.Contains(string(body), "dws event") {
+		t.Fatalf("primary skip changed folded misc: body=%q err=%v", body, readErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(home, multiMiscSkill, "references", "event.md")); statErr != nil {
+		t.Fatalf("primary skip removed folded Event reference: %v", statErr)
+	}
+}
+
+func TestSkillSetupSelectiveEventCompanionSkipFails(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+	home := filepath.Join(t.TempDir(), "skills")
+	writeFoldedEventMisc(t, home)
+
+	originalInstallMulti := skillSetupInstallMulti
+	t.Cleanup(func() { skillSetupInstallMulti = originalInstallMulti })
+	calls := 0
+	skillSetupInstallMulti = func(string, []string, []string, io.Writer, io.Writer) (int, int, error) {
+		calls++
+		if calls == 1 {
+			return 2, 0, nil
+		}
+		return 0, 1, nil
+	}
+
+	stdout, _, err := executeMultiSkillSetupTest(t, src, []string{home}, "--skill", "event", "--yes")
+	if err == nil || !strings.Contains(err.Error(), "dingtalk-misc 迁移不完整") {
+		t.Fatalf("expected companion migration error, got %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("install calls = %d, want 2", calls)
+	}
+	if strings.Contains(stdout, "Skill 安装完成") {
+		t.Fatalf("partial companion migration reported success: %s", stdout)
 	}
 }

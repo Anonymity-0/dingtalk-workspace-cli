@@ -201,12 +201,15 @@ func newEventSchemaCommand() *cobra.Command {
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "查询指定个人事件码的输出字段结构；Agent 应查询 --flatten 模式",
-				UseWhen:      []string{"已知任一公开个人 IM event_key，消费前需要理解输出字段或保守 payload 契约"},
+				UseWhen:      []string{"已知任一公开个人 IM 或 OA event_key，消费前需要理解 --flatten 输出字段或 payload 契约"},
 				AvoidWhen: []string{
 					"查询 CLI 命令参数契约时用顶层 dws schema",
 					"要实际收事件时用 event consume",
 				},
-				Examples: []string{"dws event schema user_im_message_receive_at --flatten --format json"},
+				Examples: []string{
+					"dws event schema user_im_message_receive_at --flatten --format json",
+					"dws event schema user_oa_approval_task_created --flatten --format json",
+				},
 			},
 		},
 	})

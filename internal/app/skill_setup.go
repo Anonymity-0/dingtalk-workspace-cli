@@ -136,6 +136,8 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 
 	// multi 模式枚举 src 下的子 skill 名，供确认信息与安装步骤共用
 	var multiSkillNames []string
+	var foldedEventMiscTargets []string
+	var eventMiscCompanionTargets []string
 	if mode == skillSetupModeMulti {
 		allMultiSkillNames, listErr := skillSetupListMulti(skillSrc)
 		if listErr != nil {
@@ -151,6 +153,24 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		// dingtalk-shared carries the global rules every product skill declares as a
 		// PREREQUISITE; it must ship even when --skill / --exclude narrows the set.
 		multiSkillNames = ensureMandatorySharedSkill(filtered, allMultiSkillNames)
+
+		if containsSkillName(multiSkillNames, multiEventSkill) {
+			foldedEventMiscTargets = findFoldedEventMiscTargets(dests)
+			if len(foldedEventMiscTargets) > 0 {
+				if normalizedSkillListContains(excludeRaw, multiMiscSkill) {
+					return fmt.Errorf("检测到已有 dingtalk-misc 仍承载个人 Event 路由；本次安装 dingtalk-event 必须同时迁移 dingtalk-misc，不能显式 --exclude misc")
+				}
+				if !containsSkillName(allMultiSkillNames, multiMiscSkill) {
+					return fmt.Errorf("检测到已有 dingtalk-misc 仍承载个人 Event 路由，但当前 multi 源缺少迁移所需的 %s", multiMiscSkill)
+				}
+				// A selective `-s event` remains additive for fresh targets. Only
+				// destinations that actually contain the folded misc receive the clean
+				// misc companion; a full setup already installs misc everywhere.
+				if !containsSkillName(multiSkillNames, multiMiscSkill) {
+					eventMiscCompanionTargets = append(eventMiscCompanionTargets, foldedEventMiscTargets...)
+				}
+			}
+		}
 	}
 
 	// --dry-run：仅预览将安装的内容与目标目录，不写入任何文件、不弹确认。
@@ -162,11 +182,15 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		}
 		if mode == skillSetupModeMulti && len(multiSkillNames) > 0 {
 			fmt.Fprintf(out, "子 skill：%s\n", strings.Join(multiSkillNames, ", "))
+			printEventMiscMigrationPreview(out, foldedEventMiscTargets, len(eventMiscCompanionTargets) > 0)
 		}
 		return nil
 	}
 
 	if !autoYes {
+		if mode == skillSetupModeMulti {
+			printEventMiscMigrationPreview(out, foldedEventMiscTargets, len(eventMiscCompanionTargets) > 0)
+		}
 		ok, err := skillSetupConfirm(out, mode, skillSrc, dests, multiSkillNames)
 		if err != nil {
 			return err
@@ -183,6 +207,29 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		installed, skipped, err = skillSetupInstallMono(skillSrc, dests, out, errOut)
 	case skillSetupModeMulti:
 		installed, skipped, err = skillSetupInstallMulti(skillSrc, multiSkillNames, dests, out, errOut)
+		if err == nil && len(eventMiscCompanionTargets) > 0 {
+			// installMultiSkillToHomes intentionally preserves the existing
+			// best-effort contract and reports per-target failures as skipped.
+			// Do not clean the folded misc fallback unless every primary Event
+			// installation succeeded; otherwise a failed upgrade could remove the
+			// only Event entry point that target still has.
+			if skipped > 0 {
+				return fmt.Errorf("dingtalk-event 安装不完整（skipped=%d）；已保留旧 dingtalk-misc，未执行 Event 迁移", skipped)
+			}
+			var migrated, migrationSkipped int
+			migrated, migrationSkipped, err = skillSetupInstallMulti(
+				skillSrc,
+				[]string{multiMiscSkill},
+				eventMiscCompanionTargets,
+				out,
+				errOut,
+			)
+			installed += migrated
+			skipped += migrationSkipped
+			if err == nil && migrationSkipped > 0 {
+				return fmt.Errorf("dingtalk-misc 迁移不完整（skipped=%d）；请修复目标目录后重试", migrationSkipped)
+			}
+		}
 	default:
 		return fmt.Errorf("内部错误：未知 mode %q", mode)
 	}
@@ -191,6 +238,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 	}
 
 	fmt.Fprintf(out, "\n✅ Skill 安装完成（mode=%s, installed=%d, skipped=%d）\n", mode, installed, skipped)
+	fmt.Fprintln(out, "ℹ️  若 Agent 会话已打开，请重启 Agent 或重新加载 Skills 后再验证路由。")
 	return nil
 }
 
@@ -203,6 +251,80 @@ const multiSkillPrefix = "dingtalk-"
 // regardless of --skill / --exclude, otherwise the product skills reference a
 // dingtalk-shared that was never installed.
 const multiSharedSkill = "dingtalk-shared"
+
+const (
+	multiEventSkill = "dingtalk-event"
+	multiMiscSkill  = "dingtalk-misc"
+)
+
+func containsSkillName(names []string, want string) bool {
+	for _, name := range names {
+		if name == want {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizedSkillListContains(raw []string, want string) bool {
+	for _, name := range raw {
+		if normalizeMultiSkillName(name) == want {
+			return true
+		}
+	}
+	return false
+}
+
+// findFoldedEventMiscTargets identifies the short-lived multi-skill layout in
+// which personal Event routing lived inside dingtalk-misc. Both markers are
+// required so an unrelated misc install is never treated as a migration target.
+func findFoldedEventMiscTargets(dests []string) []string {
+	var targets []string
+	for _, dest := range dests {
+		miscRoot := filepath.Join(dest, multiMiscSkill)
+		skillBody, err := os.ReadFile(filepath.Join(miscRoot, "SKILL.md"))
+		if err != nil || !containsPersonalEventRoute(skillBody) {
+			continue
+		}
+		eventRef, err := skillSetupStat(filepath.Join(miscRoot, "references", "event.md"))
+		if err != nil || eventRef.IsDir() {
+			continue
+		}
+		targets = append(targets, dest)
+	}
+	sort.Strings(targets)
+	return targets
+}
+
+func containsPersonalEventRoute(skillBody []byte) bool {
+	body := strings.ToLower(string(skillBody))
+	for _, marker := range []string{
+		"dws event",
+		"个人 event",
+		"个人 im 事件",
+		"个人 im/oa",
+		"personal event",
+	} {
+		if strings.Contains(body, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func printEventMiscMigrationPreview(out io.Writer, targets []string, installsCompanion bool) {
+	if len(targets) == 0 {
+		return
+	}
+	action := "本次已选择的 dingtalk-misc 将覆盖折叠版"
+	if installsCompanion {
+		action = "将额外安装干净的 dingtalk-misc 作为迁移伴侣（仅限以下目标）"
+	}
+	fmt.Fprintf(out, "Event Skill 迁移：%s：\n", action)
+	for _, target := range targets {
+		fmt.Fprintf(out, "  - %s\n", target)
+	}
+}
 
 // ensureMandatorySharedSkill guarantees the shared dependency skill is included
 // whenever it exists in the source, even if --skill / --exclude narrowed it out.
