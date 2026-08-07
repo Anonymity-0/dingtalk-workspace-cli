@@ -31,7 +31,12 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 	// `--values null` 是合法 JSON 且解析出 nil，两者不等价。
 	useValues := valuesStr != ""
 	if useValues {
-		if err := json.Unmarshal([]byte(valuesStr), &values); err != nil {
+		// UseNumber 保留数字字面量，不经过 float64：普通 Unmarshal 会把超过 2^53
+		// 的整数舍入（雪花 ID 1234567890123456789 变成 ...768），而回读只校验
+		// 单元格非空，这种篡改会被当成写入成功。订单号、雪花 ID 都是表格常见数据。
+		dec := json.NewDecoder(strings.NewReader(valuesStr))
+		dec.UseNumber()
+		if err := dec.Decode(&values); err != nil {
 			return fmt.Errorf("--values JSON 解析失败: %w", err)
 		}
 		// null / [] 都写不出任何数据，必须在建文档之前拒掉，
@@ -165,7 +170,12 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 // 接受 JSON 数组、{"sheets":[...]} 或单个 spec 对象。
 func parseCreateSheetSpecs(sheetsStr string) ([]map[string]any, error) {
 	var payload any
-	if err := json.Unmarshal([]byte(sheetsStr), &payload); err != nil {
+	// 同 --values：UseNumber 保留数字字面量。specs 原样转发给 table_put，
+	// 若经过 float64 中转，records/data 里的大整数会在发出前就被改掉
+	// （1234567890123456789 变成 1234567890123456800）。
+	dec := json.NewDecoder(strings.NewReader(sheetsStr))
+	dec.UseNumber()
+	if err := dec.Decode(&payload); err != nil {
 		return nil, fmt.Errorf("--sheets JSON 解析失败: %w", err)
 	}
 	var arr []any
@@ -692,6 +702,9 @@ func cellToString(v any) string {
 		return t
 	case bool:
 		return strconv.FormatBool(t)
+	case json.Number:
+		// 原样输出字面量，避免任何浮点中转造成的精度损失
+		return t.String()
 	case float64:
 		// 整数不带小数点
 		if t == float64(int64(t)) {

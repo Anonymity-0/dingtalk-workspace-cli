@@ -2,7 +2,10 @@ package helpers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
+	"io"
 	"math"
 	"os"
 	"strings"
@@ -1120,4 +1123,146 @@ func TestParseCreateSheetSpecsRejectsDuplicateNames(t *testing.T) {
 			t.Errorf("parseCreateSheetSpecs(%s) 误拒: %v", sheets, err)
 		}
 	}
+}
+
+// 普通 json.Unmarshal 会把 JSON 数字解成 float64，超过 2^53 的整数在写出之前
+// 就被舍入（雪花 ID 1234567890123456789 变成 ...768，20 位订单号更糟），而回读
+// 只校验单元格非空，这种篡改会被报告成写入成功。两条数据通道都必须保留字面量。
+func TestSheetCreatePreservesLargeIntegerLiterals(t *testing.T) {
+	const snowflake = "1234567890123456789"
+	const order = "12345678901234567890"
+	const beyond2p53 = "9007199254740993"
+
+	t.Run("values-to-csv", func(t *testing.T) {
+		rec, err := runCreateRecording(t, &scriptedToolCaller{steps: createOKSteps(snowflake)}, map[string]string{
+			"name": "X", "values": `[["id"],[` + snowflake + `],[` + order + `],[` + beyond2p53 + `]]`,
+		})
+		if err != nil {
+			t.Fatalf("create: %v", err)
+		}
+		// 断言 set_range_from_csv 实际收到的载荷，而不是重算一遍解码
+		args := rec.argsFor("set_range_from_csv")
+		if args == nil {
+			t.Fatal("未调用 set_range_from_csv")
+		}
+		csv, _ := args["csv"].(string)
+		for _, want := range []string{snowflake, order, beyond2p53} {
+			if !strings.Contains(csv, want) {
+				t.Errorf("CSV 未原样保留 %s；实际 = %q", want, csv)
+			}
+		}
+		// 反向守卫：解码若退回 float64，会出现这些被舍入后的值
+		for _, bad := range []string{"1234567890123456768", "12345678901234567000", "9007199254740992"} {
+			if strings.Contains(csv, bad) {
+				t.Errorf("CSV 含被舍入的值 %s，说明解码仍经过 float64；实际 = %q", bad, csv)
+			}
+		}
+	})
+
+	t.Run("sheets-to-table-put", func(t *testing.T) {
+		rec, err := runCreateRecording(t, &scriptedToolCaller{steps: []scriptedToolStep{
+			{text: `{"nodeId":"NODE_1"}`},
+			{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+			{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+			{text: `{"success":true}`},
+			{text: `{"success":true}`},
+		}}, map[string]string{
+			"name":   "X",
+			"sheets": `[{"name":"a","columns":["id"],"data":[[` + snowflake + `],[` + order + `]]}]`,
+		})
+		if err != nil {
+			t.Fatalf("create with sheets: %v", err)
+		}
+		args := rec.argsFor("table_put")
+		if args == nil {
+			t.Fatal("未调用 table_put")
+		}
+		raw, marshalErr := json.Marshal(args)
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		for _, want := range []string{snowflake, order} {
+			if !strings.Contains(string(raw), want) {
+				t.Errorf("table_put 未原样保留 %s；实际 = %s", want, raw)
+			}
+		}
+		for _, bad := range []string{"1234567890123456800", "12345678901234567000"} {
+			if strings.Contains(string(raw), bad) {
+				t.Errorf("table_put 含被舍入的值 %s；实际 = %s", bad, raw)
+			}
+		}
+	})
+}
+
+// json.Number 走 cellToString 时必须原样输出，不能再经浮点中转。
+func TestCellToStringKeepsJSONNumberVerbatim(t *testing.T) {
+	for _, raw := range []string{
+		"1234567890123456789",
+		"12345678901234567890",
+		"9007199254740993",
+		"-9007199254740993",
+		"1.5",
+		"1e3",
+		"0",
+	} {
+		if got := cellToString(json.Number(raw)); got != raw {
+			t.Errorf("cellToString(json.Number(%q)) = %q, want 原样", raw, got)
+		}
+	}
+	// float64 分支保持原行为（其他调用方仍可能传 float64）
+	if got := cellToString(float64(12)); got != "12" {
+		t.Errorf("float64(12) = %q, want 12", got)
+	}
+	if got := cellToString(1.5); got != "1.5" {
+		t.Errorf("float64(1.5) = %q, want 1.5", got)
+	}
+}
+
+// callRecorder 包装 scriptedToolCaller 并记下每一次调用。共享的
+// scriptedToolCaller 只保留最后一次的 tool/args，无法断言多步编排里中间某一步
+// 实际发出的载荷（写入是第 4 次调用、回读是第 5 次）。InitDeps 接受
+// edition.ToolCaller 接口，所以这个包装只存在于本文件，不必改动共享 helper：
+// 嵌入 *scriptedToolCaller 继承其余接口方法，只覆写 CallTool。
+type callRecorder struct {
+	*scriptedToolCaller
+	calls []recordedCall
+}
+
+type recordedCall struct {
+	tool string
+	args map[string]any
+}
+
+func (r *callRecorder) CallTool(ctx context.Context, serverID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	r.calls = append(r.calls, recordedCall{tool: toolName, args: args})
+	return r.scriptedToolCaller.CallTool(ctx, serverID, toolName, args)
+}
+
+// argsFor 返回指定工具第一次被调用时的参数；未调用过则返回 nil。
+func (r *callRecorder) argsFor(tool string) map[string]any {
+	for _, c := range r.calls {
+		if c.tool == tool {
+			return c.args
+		}
+	}
+	return nil
+}
+
+// runCreateRecording 与 runCreate 等价，但额外记录全部调用以便断言中间步骤。
+func runCreateRecording(t *testing.T, inner *scriptedToolCaller, flags map[string]string) (*callRecorder, error) {
+	t.Helper()
+	rec := &callRecorder{scriptedToolCaller: inner}
+	testseam.Protect(t, &deps)
+	InitDeps(rec)
+	deps.Out.w = io.Discard
+	deps.Out.errW = io.Discard
+	installImmediateTiming(t)
+	installSheetProductArgs(t)
+	cmd := newCreateCmdForTest(t)
+	for name, value := range flags {
+		if err := cmd.Flags().Set(name, value); err != nil {
+			t.Fatalf("set --%s: %v", name, err)
+		}
+	}
+	return rec, cmd.RunE(cmd, nil)
 }
