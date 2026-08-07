@@ -295,6 +295,10 @@ func TestSheetCreateWithSheetsRenamesDefaultThenTablePut(t *testing.T) {
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 		{text: `{"success":true}`}, // update_sheet 重命名默认表
 		{text: `{"success":true}`}, // table_put
+		// 回读校验阶段：先取 name→sheetId，再逐表回读
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"一月"},{"sheetId":"SHEET_2","name":"二月"}]}`},
+		{text: `{"csv":"[row=1] 项目\n"}`}, // 一月 回读非空
+		{text: `{"csv":"[row=1] 项目\n"}`}, // 二月 回读非空
 	}}
 	if err := runCreate(t, caller, map[string]string{
 		"name":   "报表",
@@ -302,12 +306,102 @@ func TestSheetCreateWithSheetsRenamesDefaultThenTablePut(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("create with sheets: %v", err)
 	}
-	if caller.tool != "table_put" {
-		t.Fatalf("last tool = %q, want table_put", caller.tool)
+	// create → 探活 → 定位默认表 → 重命名 → table_put → 取 name 映射 → 两表各回读一次
+	if caller.calls != 8 {
+		t.Fatalf("calls = %d, want 8", caller.calls)
 	}
-	// --sheets 路径不做 A1 回读校验，因此比 --values 少一次调用
-	if caller.calls != 5 {
-		t.Fatalf("calls = %d, want 5", caller.calls)
+}
+
+// table_put 返回成功但某工作表回读为空（新建文档初始化竞态），必须报数据未落盘，
+// 而不是静默成功。错误须带 nodeId 与补写指引。
+func TestSheetCreateWithSheetsVerifiesEachSheetLanded(t *testing.T) {
+	// 二月回读为空 → 报错
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"nodeId":"NODE_1"}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+		{text: `{"success":true}`},
+		{text: `{"success":true}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"一月"},{"sheetId":"SHEET_2","name":"二月"}]}`},
+		{text: `{"csv":"[row=1] 项目\n"}`}, // 一月 非空
+		{text: `{"csv":""}`},             // 二月 回读为空
+	}}
+	err := runCreate(t, caller, map[string]string{
+		"name":   "报表",
+		"sheets": `[{"name":"一月","columns":["项目"],"data":[["房租"]]},{"name":"二月","columns":["项目"],"data":[["房租"]]}]`,
+	})
+	if err == nil {
+		t.Fatal("二月回读为空应报错，而非静默成功")
+	}
+	for _, want := range []string{"NODE_1", "二月", "写入未生效", "table-put"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("错误信息缺少 %q: %v", want, err)
+		}
+	}
+
+	// table_put 后工作表列表里找不到某个 spec 名 → 同样报错
+	missing := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"nodeId":"NODE_1"}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+		{text: `{"success":true}`},
+		{text: `{"success":true}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"一月"}]}`}, // 缺二月
+		{text: `{"csv":"[row=1] 项目\n"}`},                         // 一月 回读非空，随后二月查找失败
+	}}
+	err = runCreate(t, missing, map[string]string{
+		"name":   "报表",
+		"sheets": `[{"name":"一月","columns":["项目"],"data":[["房租"]]},{"name":"二月","columns":["项目"],"data":[["房租"]]}]`,
+	})
+	if err == nil || !strings.Contains(err.Error(), "二月") || !strings.Contains(err.Error(), "NODE_1") {
+		t.Fatalf("缺失工作表应带 nodeId 报错: %v", err)
+	}
+
+	// 只有 name、无数据的工作表本就应为空，不回读、不报错
+	empty := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"nodeId":"NODE_1"}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
+		{text: `{"success":true}`},
+		{text: `{"success":true}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"有数据"},{"sheetId":"SHEET_2","name":"空表"}]}`},
+		{text: `{"csv":"[row=1] a\n"}`}, // 有数据 回读非空；空表不回读
+	}}
+	if err := runCreate(t, empty, map[string]string{
+		"name":   "报表",
+		"sheets": `[{"name":"有数据","columns":["a"],"data":[["v"]]},{"name":"空表"}]`,
+	}); err != nil {
+		t.Fatalf("无数据工作表不应触发回读失败: %v", err)
+	}
+	if empty.calls != 7 {
+		t.Fatalf("calls = %d, want 7（空表不回读，只 6 步编排 + 有数据表 1 次回读）", empty.calls)
+	}
+}
+
+func TestFirstNonEmptySheetSpecCell(t *testing.T) {
+	mustDecode := func(s string) map[string]any {
+		var m map[string]any
+		if err := json.Unmarshal([]byte(s), &m); err != nil {
+			t.Fatal(err)
+		}
+		return m
+	}
+	for _, tc := range []struct {
+		spec        string
+		wantCell    string
+		wantContent bool
+	}{
+		{`{"name":"S","columns":["项目"],"data":[["房租"]]}`, "A1", true},
+		{`{"name":"S","columns":["",""],"data":[["","x"]]}`, "B2", true},             // 首列表头空
+		{`{"name":"S","data":[[1]]}`, "A1", true},                                    // 无表头，纯 data
+		{`{"name":"S","columns":["id"],"data":[[1]],"start_cell":"C3"}`, "C3", true}, // start_cell 偏移
+		{`{"name":"S"}`, "", false},                                                  // 只有 name
+		{`{"name":"S","columns":[],"data":[]}`, "", false},                           // 空
+	} {
+		gotCell, gotContent := firstNonEmptySheetSpecCell(mustDecode(tc.spec))
+		if gotCell != tc.wantCell || gotContent != tc.wantContent {
+			t.Errorf("firstNonEmptySheetSpecCell(%s) = (%q,%v), want (%q,%v)", tc.spec, gotCell, gotContent, tc.wantCell, tc.wantContent)
+		}
 	}
 }
 
@@ -921,6 +1015,8 @@ func TestSheetCreateSheetsAppliesStylesBySheetName(t *testing.T) {
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`}, // resolveFirstSheetID
 		{text: `{"success":true}`},                                   // update_sheet 重命名
 		{text: `{"success":true}`},                                   // table_put
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"一月"}]}`},     // resolveSheetIDsByName
+		{text: `{"csv":"[row=1] 项目\n"}`},                             // 一月 回读非空
 		{text: `{"success":true}`},                                   // set_cell_range（样式）
 	}}
 	if err := runCreate(t, caller, map[string]string{
@@ -1166,6 +1262,8 @@ func TestSheetCreatePreservesLargeIntegerLiterals(t *testing.T) {
 			{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 			{text: `{"success":true}`},
 			{text: `{"success":true}`},
+			{text: `{"sheets":[{"sheetId":"SHEET_1","name":"a"}]}`}, // resolveSheetIDsByName
+			{text: `{"csv":"[row=1] id\n"}`},                        // a 回读非空
 		}}, map[string]string{
 			"name":   "X",
 			"sheets": `[{"name":"a","columns":["id"],"data":[[` + snowflake + `],[` + order + `]]}]`,

@@ -142,6 +142,27 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 		}); err != nil {
 			return fmt.Errorf("表格已创建 (nodeId=%s)，但写入初始数据失败: %w", nodeID, err)
 		}
+		// 逐表回读校验：table_put 可能返回成功但在新建文档初始化竞态下数据未落盘，
+		// 与 --values 分支同源的问题。table_put 会按 name 复用/新建工作表，因此
+		// 重取一次 name→sheetId 映射，再按每个 spec 的首个预期非空单元格回读。
+		sheetIDByName, err := resolveSheetIDsByName(ctx, nodeID)
+		if err != nil {
+			return fmt.Errorf("表格已创建 (nodeId=%s)，数据已提交但无法回读校验（获取工作表列表失败）: %w；请自行确认各工作表数据是否落盘，必要时用 sheet table-put 补写", nodeID, err)
+		}
+		for _, spec := range sheetSpecs {
+			name, _ := spec["name"].(string)
+			probeCell, hasContent := firstNonEmptySheetSpecCell(spec)
+			if !hasContent {
+				continue // 只有 name、无 columns/data 的工作表本就应为空，不回读
+			}
+			sid, ok := sheetIDByName[name]
+			if !ok {
+				return fmt.Errorf("表格已创建 (nodeId=%s)，但写入后未找到工作表 %q，其初始数据可能未落盘；请用 sheet table-put 对该文档补写", nodeID, name)
+			}
+			if err := verifyRangeNotEmpty(ctx, nodeID, sid, probeCell); err != nil {
+				return fmt.Errorf("表格已创建 (nodeId=%s)，但工作表 %q 的初始数据写入未生效: %w；请用 sheet table-put 对该文档补写", nodeID, name, err)
+			}
+		}
 	}
 
 	progress("初始数据写入完成。")
@@ -747,6 +768,71 @@ func resolveFirstSheetID(ctx context.Context, nodeID string) (string, error) {
 		return id, nil
 	}
 	return "", fmt.Errorf("工作表列表未返回 sheetId，响应: %s", text)
+}
+
+// resolveSheetIDsByName 返回文档内 name→sheetId 映射，用于 table_put 之后按
+// 工作表名逐一回读校验（table_put 会按 name 复用/新建工作表）。
+func resolveSheetIDsByName(ctx context.Context, nodeID string) (map[string]string, error) {
+	text, err := callMCPToolReturnText(ctx, "get_all_sheets", map[string]any{"nodeId": nodeID})
+	if err != nil {
+		return nil, err
+	}
+	data := unwrapSheetResult(text)
+	if data == nil {
+		return nil, fmt.Errorf("解析工作表列表失败，响应: %s", text)
+	}
+	sheets, _ := data["sheets"].([]any)
+	m := make(map[string]string, len(sheets))
+	for _, s := range sheets {
+		sm, _ := s.(map[string]any)
+		name, _ := sm["name"].(string)
+		id, _ := sm["sheetId"].(string)
+		if name != "" && id != "" {
+			m[name] = id
+		}
+	}
+	return m, nil
+}
+
+// sheetSpecGrid 把 table_put 的一个 sheet spec 还原成写入的二维逻辑网格：
+// columns（若非空）作为表头行，其后接 data 行。用于定位首个预期非空单元格。
+func sheetSpecGrid(spec map[string]any) [][]any {
+	var grid [][]any
+	if cols, ok := spec["columns"].([]any); ok && len(cols) > 0 {
+		grid = append(grid, cols)
+	}
+	if data, ok := spec["data"].([]any); ok {
+		for _, r := range data {
+			if row, ok := r.([]any); ok {
+				grid = append(grid, row)
+			} else {
+				grid = append(grid, []any{r})
+			}
+		}
+	}
+	return grid
+}
+
+// firstNonEmptySheetSpecCell 返回该 sheet spec 首个预期非空单元格的 A1 地址。
+// 尊重 start_cell 偏移（默认 A1）。第二返回值为 false 表示该 spec 没有任何要写入
+// 的内容（例如只给了 name），这类工作表本就应为空，调用方跳过回读，避免把合法的
+// 空表误判为数据丢失。逻辑与 --values 分支的 firstNonEmptyValuesCell 一致：不能死盯
+// A1，首行/首列为空的合法数据不应被误报。
+func firstNonEmptySheetSpecCell(spec map[string]any) (string, bool) {
+	col0, row0 := 1, 1
+	if sc, ok := spec["start_cell"].(string); ok && sc != "" {
+		if c, r, err := parseA1Cell(strings.ToUpper(sc)); err == nil {
+			col0, row0 = c, r
+		}
+	}
+	for i, row := range sheetSpecGrid(spec) {
+		for j, cell := range row {
+			if cellToString(cell) != "" {
+				return fmt.Sprintf("%s%d", sheetColumnLetterFromZeroBased(col0-1+j), row0+i), true
+			}
+		}
+	}
+	return "", false
 }
 
 // unwrapSheetResult 解析 MCP 响应 JSON，自动剥离外层 result 包装。
