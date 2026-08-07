@@ -14,8 +14,12 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   chain (the same primitive as `dws drive upload --workspace`), stores the
   original file at the requested `--folder`/`--workspace` target, and prints
   an explicit stderr notice with the supported-format list and the
-  convert-to-md alternative. Importable formats and `dws sheet import`
-  validation are unchanged.
+  convert-to-md alternative. The fallback shares the import file checks
+  (20MB cap, empty-file guard), keeps `--format json` / `--dry-run` output as
+  a single JSON document, and marks the machine-readable result with
+  `fallback: "upload"` and `converted: false` so agents never mistake the
+  stored file for a converted online document. Importable formats and
+  `dws sheet import` validation are unchanged.
 - **Sheet CSV formula writes** — `dws sheet csv-put` and batch `csv-put` now expose the service contract that CSV fields beginning with `=` are written as formulas. Prefix the field with an apostrophe to write literal text beginning with `=`; CSV content continues to pass through unchanged.
 
 ### Fixed
