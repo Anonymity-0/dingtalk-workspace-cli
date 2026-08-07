@@ -44,7 +44,7 @@ var BaseBootstrap = shortcut.Shortcut{
 	Intent:      "当你已有声明式 tables JSON、想一次搭好一套 AI 表格结构时使用；表内字段自动按 15 个拆批，每次创建都读回验证。",
 	Risk:        shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
-		Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "non_idempotent",
+		Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "non_idempotent",
 	},
 	Contract: aitableCompositeContract(
 		"+base-bootstrap",

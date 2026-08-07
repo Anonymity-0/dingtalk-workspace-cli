@@ -108,7 +108,7 @@ func TestCrossPlatformCoverageBaseBootstrapCreatesChunksAndVerifiesE2E(t *testin
 		{text: `{"tables":[{"tableId":"t-new","name":"任务"}]}`},
 		{text: fieldReadBackJSON(t, fields)},
 	}}
-	out, err := runAITableCompositeCLI(t, caller, "+base-bootstrap", "--name", "项目", "--tables", marshalBootstrapTables(t, fields))
+	out, err := runAITableCompositeCLI(t, caller, "+base-bootstrap", "--name", "项目", "--tables", marshalBootstrapTables(t, fields), "--yes")
 	if err != nil {
 		t.Fatalf("bootstrap error = %v", err)
 	}
@@ -117,8 +117,20 @@ func TestCrossPlatformCoverageBaseBootstrapCreatesChunksAndVerifiesE2E(t *testin
 			t.Fatalf("bootstrap output missing %s: %s", want, out)
 		}
 	}
-	if len(caller.calls) != 6 || caller.calls[2].tool != "create_table" || caller.calls[3].tool != "create_fields" {
+	if len(caller.calls) != 6 || caller.calls[0].tool != "create_base" || caller.calls[2].tool != "create_table" || caller.calls[3].tool != "create_fields" {
 		t.Fatalf("bootstrap calls = %#v", caller.calls)
+	}
+	if caller.calls[0].args["baseName"] != "项目" {
+		t.Fatalf("create_base args = %#v", caller.calls[0].args)
+	}
+	createBaseCalls := 0
+	for _, call := range caller.calls {
+		if call.tool == "create_base" {
+			createBaseCalls++
+		}
+	}
+	if createBaseCalls != 1 {
+		t.Fatalf("create_base calls = %d, want exactly 1; calls = %#v", createBaseCalls, caller.calls)
 	}
 	if got := len(caller.calls[2].args["fields"].([]any)); got != 15 {
 		t.Fatalf("create_table fields = %d, want 15", got)
@@ -128,10 +140,25 @@ func TestCrossPlatformCoverageBaseBootstrapCreatesChunksAndVerifiesE2E(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageBaseBootstrapRequiresConfirmationBeforeMCP(t *testing.T) {
+	caller := &upsertByKeyCaller{}
+	out, err := runAITableCompositeCLI(t, caller, "+base-bootstrap", "--name", "项目", "--tables", marshalBootstrapTables(t, nil))
+	if out != "" {
+		t.Fatalf("unconfirmed bootstrap output = %q, want empty", out)
+	}
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || typed.Reason != "confirmation_required" {
+		t.Fatalf("unconfirmed bootstrap error = %#v, want confirmation_required", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("unconfirmed bootstrap reached MCP: %#v", caller.calls)
+	}
+}
+
 func TestCrossPlatformCoverageBaseBootstrapUnknownAndDryRunE2E(t *testing.T) {
 	t.Run("empty create response is unknown and not retry-safe", func(t *testing.T) {
 		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{{text: ""}}}
-		out, err := runAITableCompositeCLI(t, caller, "+base-bootstrap", "--name", "项目", "--tables", marshalBootstrapTables(t, nil))
+		out, err := runAITableCompositeCLI(t, caller, "+base-bootstrap", "--name", "项目", "--tables", marshalBootstrapTables(t, nil), "--yes")
 		if err == nil || out != "" {
 			t.Fatalf("unknown base create = output:%q err:%v", out, err)
 		}
@@ -207,7 +234,7 @@ func TestCrossPlatformCoverageBaseSnapshotFailureStagesE2E(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageBaseBootstrapExecuteRejectsInvalidTablesE2E(t *testing.T) {
-	out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{}, "+base-bootstrap", "--name", "Project", "--tables", `{`)
+	out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{}, "+base-bootstrap", "--name", "Project", "--tables", `{`, "--yes")
 	if err == nil || out != "" {
 		t.Fatalf("invalid bootstrap tables = output:%q err:%v", out, err)
 	}
@@ -239,6 +266,7 @@ func TestCrossPlatformCoverageBaseBootstrapFailureStagesE2E(t *testing.T) {
 			}
 			args := []string{"--name", "Project", "--tables", inputTables}
 			args = append(args, tc.extra...)
+			args = append(args, "--yes")
 			out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{steps: tc.steps}, "+base-bootstrap", args...)
 			if err == nil || out != "" {
 				t.Fatalf("bootstrap failure = output:%q err:%v", out, err)
@@ -258,7 +286,7 @@ func TestCrossPlatformCoverageBaseBootstrapRecoversFieldCallErrorE2E(t *testing.
 		{text: fieldReadBackJSON(t, fields)},
 	}}
 	out, err := runAITableCompositeCLI(t, caller, "+base-bootstrap",
-		"--name", "Project", "--tables", marshalBootstrapTables(t, fields), "--folder-id", "folder", "--template-id", "template")
+		"--name", "Project", "--tables", marshalBootstrapTables(t, fields), "--folder-id", "folder", "--template-id", "template", "--yes")
 	if err != nil || !strings.Contains(out, `"status": "success"`) || !strings.Contains(out, "create_fields offset") {
 		t.Fatalf("field recovery = output:%q err:%v", out, err)
 	}
