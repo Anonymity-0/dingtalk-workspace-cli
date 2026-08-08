@@ -6,10 +6,13 @@ package helpers
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/pflag"
 )
 
 func TestSheetExportRejectsUnknownExportFormat(t *testing.T) {
@@ -20,6 +23,84 @@ func TestSheetExportRejectsUnknownExportFormat(t *testing.T) {
 	}
 	if caller.calls != 0 {
 		t.Fatalf("calls = %d, want 0", caller.calls)
+	}
+}
+
+// csv 专属选择器落到 xlsx 分支必须报错。静默忽略最危险的场景是自动化漏写
+// --export-format csv：用户要的是 --range 的一小块，实际拿到整篇工作簿，
+// 命令却报成功。
+func TestSheetExportXlsxRejectsCsvOnlyFlags(t *testing.T) {
+	for _, tc := range []struct{ flag, value string }{
+		{"sheet-id", "SHEET_1"},
+		{"range", "A1:Z1000"},
+		{"value-render-option", "raw_value"},
+		{"allow-truncated", "true"},
+	} {
+		// 默认（未传 --export-format）与显式 xlsx 都要拦。
+		for _, format := range []string{"", "xlsx"} {
+			args := []string{"node", "NODE", tc.flag, tc.value}
+			if format != "" {
+				args = append(args, "export-format", format)
+			}
+			caller := &scriptedToolCaller{}
+			err := executeSheetExportCoverage(t, caller, args...)
+			if err == nil {
+				t.Fatalf("--%s + export-format=%q 未报错，csv 专属参数被静默忽略", tc.flag, format)
+			}
+			for _, want := range []string{"--" + tc.flag, "--export-format csv"} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("--%s 的错误信息缺少 %q: %v", tc.flag, want, err)
+				}
+			}
+			if caller.calls != 0 {
+				t.Fatalf("--%s: calls = %d, want 0（必须在提交导出任务之前失败）", tc.flag, caller.calls)
+			}
+		}
+	}
+
+	// 多个一起传时全部列出，避免用户改一个再撞一次。
+	err := executeSheetExportCoverage(t, &scriptedToolCaller{},
+		"node", "NODE", "sheet-id", "SHEET_1", "range", "A1:B2")
+	if err == nil || !strings.Contains(err.Error(), "--sheet-id / --range") {
+		t.Fatalf("err = %v, want 同时列出两个 flag", err)
+	}
+
+	// csv 分支照常接受这些参数。
+	ok := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"csv":"a,b\n"}`}}}
+	if err := executeSheetExportCoverage(t, ok, "node", "NODE", "export-format", "csv",
+		"sheet-id", "SHEET_1", "range", "A1:B2", "value-render-option", "raw_value",
+		"allow-truncated", "true"); err != nil {
+		t.Fatalf("csv 分支应接受这些参数: %v", err)
+	}
+}
+
+// csvOnlyExportFlags 是手工维护的：漏登记会让一个 csv 专属 flag 在 xlsx 分支被
+// 静默忽略；误登记共享 flag 会把合法的 xlsx 调用拒掉。
+func TestCsvOnlyExportFlagsMatchBoundFlags(t *testing.T) {
+	bound := map[string]bool{}
+	newExportCmd().Flags().VisitAll(func(f *pflag.Flag) { bound[f.Name] = true })
+
+	// xlsx 与 csv 两条分支都消费的 flag，不属于 csv 专属。
+	shared := map[string]bool{"node": true, "output": true, "export-format": true}
+
+	listed := map[string]bool{}
+	for _, name := range csvOnlyExportFlags {
+		if listed[name] {
+			t.Fatalf("csvOnlyExportFlags 重复登记 %q", name)
+		}
+		listed[name] = true
+		if !bound[name] {
+			t.Errorf("csvOnlyExportFlags 登记了 %q，但 export 命令没有绑定它", name)
+		}
+		if shared[name] {
+			t.Errorf("csvOnlyExportFlags 登记了共享 flag %q，会拒掉合法的 xlsx 调用", name)
+		}
+	}
+	for name := range bound {
+		if !listed[name] && !shared[name] {
+			t.Errorf("export 命令绑定了 %q，但既未登记为 csv 专属也不在共享集合里"+
+				"（新增 flag 需明确它在哪条分支生效）", name)
+		}
 	}
 }
 
@@ -167,6 +248,49 @@ func TestSheetExportCsvWritesIntoDirectory(t *testing.T) {
 	}
 	if string(body) != "a,b\n" {
 		t.Fatalf("csv 内容 = %q", string(body))
+	}
+}
+
+// 落盘失败必须保住已有文件：os.WriteFile 会先截断目标，写到一半失败（磁盘满、
+// 配额、I/O 错误）用户的原文件就没了。走 AtomicWrite 后失败只丢临时文件。
+func TestSheetExportCsvWriteFailureKeepsExistingFile(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "existing.csv")
+	const original = "原有重要数据\n1,2,3\n"
+	if err := os.WriteFile(out, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 模拟"临时文件写完、替换目标时失败"，这是 os.WriteFile 会毁掉原文件的时刻。
+	previousRename := atomicRename
+	t.Cleanup(func() { atomicRename = previousRename })
+	atomicRename = func(string, string) error { return errors.New("no space left on device") }
+
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"csv":"a,b\n"}`}}}
+	err := executeSheetExportCoverage(t, caller,
+		"node", "NODE", "export-format", "csv", "output", out)
+	if err == nil || !strings.Contains(err.Error(), "写入 CSV 文件失败") {
+		t.Fatalf("err = %v, want write failure", err)
+	}
+
+	body, readErr := os.ReadFile(out)
+	if readErr != nil {
+		t.Fatalf("read output: %v", readErr)
+	}
+	if string(body) != original {
+		t.Fatalf("写入失败后原文件被破坏为 %q，应保持不变", string(body))
+	}
+
+	// 临时文件不能留在目录里冒充导出产物。
+	entries, readDirErr := os.ReadDir(filepath.Dir(out))
+	if readDirErr != nil {
+		t.Fatalf("read dir: %v", readDirErr)
+	}
+	if len(entries) != 1 || entries[0].Name() != filepath.Base(out) {
+		names := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			names = append(names, entry.Name())
+		}
+		t.Fatalf("目录残留临时文件: %v", names)
 	}
 }
 

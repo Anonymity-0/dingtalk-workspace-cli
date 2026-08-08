@@ -52,6 +52,10 @@ Flags:
 
 **`--export-format csv`（同步路径）**：不走异步任务，直接读取单个工作表并输出 RFC4180 CSV。仅 `--sheet-id` / `--range` / `--value-render-option` / `--output` / `--allow-truncated` 生效。不传 `--output` 时 CSV 正文打印到 stdout。
 
+**csv 专属参数漏写 `--export-format csv` 会直接报错**：`--sheet-id` / `--range` / `--value-render-option` / `--allow-truncated` 只在 csv 分支生效，传给 xlsx 分支时命令报错而不是静默忽略——否则本想按 `--range` 导一小块，实际会拿到整篇工作簿且报成功。
+
+**`--output` 落盘是原子替换**：CSV 先写同目录临时文件、成功后再替换目标，写入失败时已有文件保持原样（父目录不存在仍按错误处理，不会自动创建）。
+
 **超大表默认 fail-closed**：数据超出单次读取上限（服务端返回 `hasMore`）时，命令**直接报错并以非 0 退出，既不打印 CSV 也不写文件**（已存在的目标文件不会被截断数据覆盖）。处理方式：
 - 用 `--range` 分块导出（如 `--range A1:Z1000`、`A1001:Z2000` …）
 - 改用默认的 `--export-format xlsx` 导出完整表格

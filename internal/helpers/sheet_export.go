@@ -17,7 +17,13 @@ func runSheetExport(cmd *cobra.Command, _ []string) error {
 	format, _ := cmd.Flags().GetString("export-format")
 	switch format {
 	case "", "xlsx":
-		// 继续走下方 xlsx 异步流程
+		// xlsx 异步流程不消费 csv 专属选择器，静默忽略它们最危险的场景是自动化漏写
+		// --export-format csv：用户要的 --range 被丢掉，导出的却是整篇工作簿，而命令
+		// 仍报成功。显式传了就直接拒。
+		if used := changedCsvOnlyExportFlags(cmd); len(used) > 0 {
+			return fmt.Errorf("%s 仅在 --export-format csv 下生效，xlsx 导出会忽略它们（会导出整篇工作簿）；"+
+				"请补上 --export-format csv，或去掉这些参数", strings.Join(used, " / "))
+		}
 	case "csv":
 		return runSheetExportCsv(cmd)
 	default:
@@ -325,6 +331,21 @@ var valueRenderOptionEnum = map[string]bool{
 	"formatted_value": true, "raw_value": true, "formula": true,
 }
 
+// csvOnlyExportFlags 是只有 --export-format csv 分支会读取的 flag。
+// 新增 csv 专属 flag 必须同步登记（TestCsvOnlyExportFlagsMatchBoundFlags 会盯住漂移）。
+var csvOnlyExportFlags = []string{"sheet-id", "range", "value-render-option", "allow-truncated"}
+
+// changedCsvOnlyExportFlags 返回用户显式设置过的 csv 专属 flag（带 -- 前缀，顺序稳定）。
+func changedCsvOnlyExportFlags(cmd *cobra.Command) []string {
+	var out []string
+	for _, name := range csvOnlyExportFlags {
+		if cmd.Flags().Changed(name) {
+			out = append(out, "--"+name)
+		}
+	}
+	return out
+}
+
 // runSheetExportCsv 导出单个工作表为纯 CSV（同步，复用 get_range_as_csv，annotateRowNumbers=false）。
 func runSheetExportCsv(cmd *cobra.Command) error {
 	nodeID := mustGetFlag(cmd, "node")
@@ -401,7 +422,15 @@ func runSheetExportCsv(cmd *cobra.Command) error {
 	if fi, statErr := os.Stat(outputPath); statErr == nil && fi.IsDir() {
 		outputPath = filepath.Join(outputPath, "sheet-export.csv")
 	}
-	if err := os.WriteFile(outputPath, []byte(csvContent), 0o644); err != nil {
+	// 必须原子替换：os.WriteFile 会先把已存在的 CSV 截断，写入中途失败（磁盘满、
+	// 配额、I/O 错误）就把用户的原文件毁掉了。AtomicWrite 写同目录临时文件再 rename，
+	// 失败时原文件保持不变。
+	// AtomicWrite 会 MkdirAll 父目录，先探一次，保持与 xlsx 分支一致的「父目录不存在
+	// 即报错」语义，避免把拼错的路径悄悄建成目录。
+	if _, statErr := os.Stat(filepath.Dir(outputPath)); statErr != nil {
+		return fmt.Errorf("写入 CSV 文件失败: %w", statErr)
+	}
+	if err := AtomicWrite(outputPath, []byte(csvContent), 0o644); err != nil {
 		return fmt.Errorf("写入 CSV 文件失败: %w", err)
 	}
 	if hasMore {
