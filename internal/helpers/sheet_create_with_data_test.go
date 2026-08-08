@@ -336,6 +336,18 @@ func TestSheetCreateValidatesBeforeCreatingDocument(t *testing.T) {
 			`cell_styles[0]: 未知字段 "italic"（cell_styles 项只接受 range / background_color /`,
 		},
 		{
+			// border_styles 的边对象只认 style / color：写错的键此前被静默忽略，
+			// 会画出一条没有颜色的边框而命令报成功。create 路径同样必须在建文档前拒掉。
+			"cell-styles-border-unknown-edge-field",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_styles":[{"range":"A1","border_styles":{"bottom":{"style":"medium","colour":"#f00"}}}]}]}`},
+			`--border-styles-json.bottom: 未知字段 "colour"`,
+		},
+		{
+			"cell-styles-border-color-not-string",
+			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_styles":[{"range":"A1","borderStyles":{"top":{"style":"solid","color":123}}}]}]}`},
+			"--border-styles-json.top.color 必须是字符串，实际是 float64",
+		},
+		{
 			// camelCase 别名必须照常放行（不能把兼容写法当成拼错）
 			"cell-styles-camel-case-alias-accepted",
 			map[string]string{"name": "X", "values": `[[1]]`, "styles": `{"styles":[{"name":"S","cell_styles":[{"range":"A1","backgroundColor":"#FFF","hAlign":"center","borderStyles":{"bottom":{"style":"medium"}},"fontSize":"x"}]}]}`},

@@ -95,7 +95,7 @@ Flags:
 **特性说明**：
 - 每个可逐格样式维度（bg-color/font-size/h-align/v-align/font-color/font-weight）提供两种写法，二选一：`--xxx`（单值刷整个 range，CLI 本地展开为二维数组）vs `--xxx-json`（逐单元格指定，维度需与 `--range` 完全一致）
 - 整区共用的标量样式（无 `*-json` 形式）：`--word-wrap` / `--number-format` / `--font-style` / `--font-line` / `--font-family` / `--border-styles-json`
-- `--border-styles-json`：四边 `{top/bottom/left/right}`，每边 `{style, color?}`；`style` 取 `solid/medium/thick/dashed/dotted/double/hair/none` 等（**粗细已含在 style 内**：`solid`=细、`medium`=中、`thick`=粗，无独立 weight 字段）；只传的边生效、未传的边保留原状（按边合并）。**逐格应用**：对整个 range 每个单元格都画指定的边 = 网格效果（非仅最外框）
+- `--border-styles-json`：四边 `{top/bottom/left/right}`，每边 `{style, color?}`；`style` 取 `solid/medium/thick/dashed/dotted/double/hair/none` 等（**粗细已含在 style 内**：`solid`=细、`medium`=中、`thick`=粗，无独立 weight 字段）；只传的边生效、未传的边保留原状（按边合并）。每条边**只接受 `style` / `color` 两个键**，写错的键（如 `colour`）或非字符串的 `color` 直接报错而不是静默忽略（否则会画出一条没有颜色的边框却报成功）；**逐格应用**：对整个 range 每个单元格都画指定的边 = 网格效果（非仅最外框）
 - `--font-line` 为单选：`underline` 置下划线、`line-through` 置删除线、`none` 清除两者
 - 至少需传入一个样式参数。单次调用建议：行数 ≤ 1000，单元格总数 ≤ 5000（服务端硬限 30000）
 - 枚举值按驼峰书写：`autoWrap`、`bold`、`normal`、`center`、`italic` 等

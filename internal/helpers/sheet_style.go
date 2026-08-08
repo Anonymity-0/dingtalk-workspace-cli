@@ -143,6 +143,9 @@ var borderStyleEnum = map[string]bool{
 
 var borderEdgeEnum = map[string]bool{"top": true, "bottom": true, "left": true, "right": true}
 
+// borderEdgeFields 是每条边的合法字段：服务端 borderStyles 的边对象只有这两个。
+var borderEdgeFields = []string{"style", "color"}
+
 // parseBorderStyles 解析 --border-styles-json，校验边名与 style 枚举，返回可注入 cells 的 borderStyles 对象。
 func parseBorderStyles(jsonStr string) (map[string]any, error) {
 	if jsonStr == "" {
@@ -160,7 +163,20 @@ func parseBorderStyles(jsonStr string) (map[string]any, error) {
 		if !borderEdgeEnum[edge] {
 			return nil, fmt.Errorf("--border-styles-json 非法边名: %s（合法: top/bottom/left/right）", edge)
 		}
-		style, _ := spec["style"].(string)
+		// 每条边只认 style / color。写错的键（colour）或类型不对的 color（123）
+		// 此前被静默忽略：命令报成功，却画出一条没有颜色的边框。这与 --sheets /
+		// --styles 拒绝未知键是同一条不变量——部分丢样式比直接报错难发现得多。
+		if err := rejectUnknownFields(spec, "边框每条边", borderEdgeFields); err != nil {
+			return nil, fmt.Errorf("--border-styles-json.%s: %w", edge, err)
+		}
+		styleVal, hasStyle := spec["style"]
+		if !hasStyle || styleVal == nil {
+			return nil, fmt.Errorf("--border-styles-json.%s 缺少 style", edge)
+		}
+		style, isStr := styleVal.(string)
+		if !isStr {
+			return nil, fmt.Errorf("--border-styles-json.%s.style 必须是字符串，实际是 %T", edge, styleVal)
+		}
 		if style == "" {
 			return nil, fmt.Errorf("--border-styles-json.%s 缺少 style", edge)
 		}
@@ -168,7 +184,14 @@ func parseBorderStyles(jsonStr string) (map[string]any, error) {
 			return nil, fmt.Errorf("--border-styles-json.%s.style 非法: %s（合法: solid/medium/thick/dashed/dotted/double/hair/none/...）", edge, style)
 		}
 		edgeObj := map[string]any{"style": style}
-		if color, ok := spec["color"].(string); ok && color != "" {
+		if colorVal, ok := spec["color"]; ok && colorVal != nil {
+			color, isStr := colorVal.(string)
+			if !isStr {
+				return nil, fmt.Errorf("--border-styles-json.%s.color 必须是字符串，实际是 %T", edge, colorVal)
+			}
+			if color == "" {
+				return nil, fmt.Errorf("--border-styles-json.%s.color 不能为空字符串（不需要颜色就整个省掉该字段）", edge)
+			}
 			edgeObj["color"] = color
 		}
 		out[edge] = edgeObj
@@ -457,7 +480,7 @@ func bindStyleFlags(cmd *cobra.Command) {
 	cmd.Flags().String("font-style", "", "字体样式（normal/italic），整个目标区域共用")
 	cmd.Flags().String("font-line", "", "字体线条（none/underline/line-through），整个目标区域共用")
 	cmd.Flags().String("font-family", "", "字体族（如 Arial / 微软雅黑），整个目标区域共用")
-	cmd.Flags().String("border-styles-json", "", `四边边框 JSON（整区共用，逐格应用=网格），如 '{"top":{"style":"solid","color":"#000"},"bottom":{"style":"solid"}}'；style 取 solid/medium/thick/dashed/dotted/double/none 等（粗细含在 style 内）`)
+	cmd.Flags().String("border-styles-json", "", `四边边框 JSON（整区共用，逐格应用=网格），如 '{"top":{"style":"solid","color":"#000"},"bottom":{"style":"solid"}}'；style 取 solid/medium/thick/dashed/dotted/double/none 等（粗细含在 style 内）；每条边只接受 style / color 两个键，写错的键或非字符串 color 直接报错`)
 }
 
 // newRangeSetStyleCmd 构造 dws sheet range set-style 命令（走 set_cell_range 的 cellStyles 路径）。
