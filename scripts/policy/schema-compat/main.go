@@ -63,6 +63,23 @@ type parameterSchema struct {
 	Enum             []string `json:"enum,omitempty"`
 }
 
+type reviewedCompatibilityException struct {
+	Field string
+	Old   string
+	New   string
+}
+
+// reviewedCompatibilityExceptions is intentionally exact: safety fixes may
+// need to tighten a historical contract, but that must not turn arbitrary
+// confirmation drift into a compatible change.
+var reviewedCompatibilityExceptions = map[string]reviewedCompatibilityException{
+	"chat/chat.update_streaming_card": {
+		Field: "confirmation",
+		Old:   "not_required",
+		New:   "user_required",
+	},
+}
+
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
@@ -486,7 +503,7 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 		{name: "confirmation", old: oldTool.Confirmation, new: newTool.Confirmation},
 		{name: "idempotency", old: oldTool.Idempotency, new: newTool.Idempotency},
 	} {
-		if field.old != field.new {
+		if field.old != field.new && !isReviewedCompatibilityException(toolPath, field.name, field.old, field.new) {
 			failures = append(failures, fmt.Sprintf("schema tool %q changed %s", toolPath, field.name))
 		}
 	}
@@ -512,6 +529,11 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 	}
 	sort.Strings(failures)
 	return failures
+}
+
+func isReviewedCompatibilityException(toolPath, field, oldValue, newValue string) bool {
+	exception, ok := reviewedCompatibilityExceptions[toolPath]
+	return ok && exception.Field == field && exception.Old == oldValue && exception.New == newValue
 }
 
 // compatibleAdditiveConstraintEvolution accepts constraint evolution that
