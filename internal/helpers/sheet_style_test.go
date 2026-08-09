@@ -113,7 +113,7 @@ func TestRangeBatchSetStylePropagatesJSONWriteFailure(t *testing.T) {
 
 // 边框每条边只认 style / color。写错的键（colour）或类型不对的 color 此前被静默
 // 忽略：命令报成功，却画出一条没有颜色的边框。这与 --sheets / --styles 拒绝未知键
-// 是同一条不变量，三条使用路径（单区域 flag、batch、create --styles）共用
+// 是同一条不变量，三条使用路径（单区域 flag、batch、create-with-data --styles）共用
 // parseBorderStyles，所以核心在这里一次验完，再逐路径确认拒绝发生在发请求之前。
 func TestParseBorderStylesRejectsUnknownAndMistypedEdgeFields(t *testing.T) {
 	for _, tc := range []struct {

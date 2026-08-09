@@ -9,104 +9,56 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/spf13/pflag"
 )
 
-func TestSheetExportRejectsUnknownExportFormat(t *testing.T) {
-	caller := &scriptedToolCaller{}
-	err := executeSheetExportCoverage(t, caller, "node", "NODE", "export-format", "pdf")
-	if err == nil || !strings.Contains(err.Error(), "--export-format 仅支持 xlsx 或 csv") {
-		t.Fatalf("err = %v, want unsupported export format", err)
+func executeSheetExportCsv(t *testing.T, caller *scriptedToolCaller, args ...string) error {
+	t.Helper()
+	installScriptedCaller(t, caller)
+	oldArgs := os.Args
+	os.Args = []string{"dws", "sheet"}
+	t.Cleanup(func() { os.Args = oldArgs })
+	cmd := newSheetExportCsvCmd()
+	for index := 0; index < len(args); index += 2 {
+		if err := cmd.Flags().Set(args[index], args[index+1]); err != nil {
+			t.Fatalf("set %s: %v", args[index], err)
+		}
 	}
-	if caller.calls != 0 {
-		t.Fatalf("calls = %d, want 0", caller.calls)
-	}
+	return runSheetExportCsv(cmd, nil)
 }
 
-// csv 专属选择器落到 xlsx 分支必须报错。静默忽略最危险的场景是自动化漏写
-// --export-format csv：用户要的是 --range 的一小块，实际拿到整篇工作簿，
-// 命令却报成功。
-func TestSheetExportXlsxRejectsCsvOnlyFlags(t *testing.T) {
-	for _, tc := range []struct{ flag, value string }{
-		{"sheet-id", "SHEET_1"},
-		{"range", "A1:Z1000"},
-		{"value-render-option", "raw_value"},
-		{"allow-truncated", "true"},
-	} {
-		// 默认（未传 --export-format）与显式 xlsx 都要拦。
-		for _, format := range []string{"", "xlsx"} {
-			args := []string{"node", "NODE", tc.flag, tc.value}
-			if format != "" {
-				args = append(args, "export-format", format)
-			}
-			caller := &scriptedToolCaller{}
-			err := executeSheetExportCoverage(t, caller, args...)
-			if err == nil {
-				t.Fatalf("--%s + export-format=%q 未报错，csv 专属参数被静默忽略", tc.flag, format)
-			}
-			for _, want := range []string{"--" + tc.flag, "--export-format csv"} {
-				if !strings.Contains(err.Error(), want) {
-					t.Errorf("--%s 的错误信息缺少 %q: %v", tc.flag, want, err)
-				}
-			}
-			if caller.calls != 0 {
-				t.Fatalf("--%s: calls = %d, want 0（必须在提交导出任务之前失败）", tc.flag, caller.calls)
-			}
-		}
+// export-csv 是独立叶子，不能和 xlsx 的 sheet export 共用一套 flag：混在一条命令里
+// 时，自动化漏写 --export-format csv 会让 --range 被静默丢掉、导出整篇工作簿而仍报
+// 成功。这里钉住两条命令的 flag 面互不渗透。
+func TestSheetExportAndExportCsvFlagsDoNotLeak(t *testing.T) {
+	xlsxOnly := []string{}
+	newExportCmd().Flags().VisitAll(func(f *pflag.Flag) { xlsxOnly = append(xlsxOnly, f.Name) })
+	sort.Strings(xlsxOnly)
+	if want := []string{"node", "output"}; !reflect.DeepEqual(xlsxOnly, want) {
+		t.Errorf("sheet export flags = %v, want %v（csv 专属 flag 不能回到 xlsx 命令上）", xlsxOnly, want)
 	}
 
-	// 多个一起传时全部列出，避免用户改一个再撞一次。
-	err := executeSheetExportCoverage(t, &scriptedToolCaller{},
-		"node", "NODE", "sheet-id", "SHEET_1", "range", "A1:B2")
-	if err == nil || !strings.Contains(err.Error(), "--sheet-id / --range") {
-		t.Fatalf("err = %v, want 同时列出两个 flag", err)
-	}
-
-	// csv 分支照常接受这些参数。
-	ok := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"csv":"a,b\n"}`}}}
-	if err := executeSheetExportCoverage(t, ok, "node", "NODE", "export-format", "csv",
-		"sheet-id", "SHEET_1", "range", "A1:B2", "value-render-option", "raw_value",
-		"allow-truncated", "true"); err != nil {
-		t.Fatalf("csv 分支应接受这些参数: %v", err)
-	}
-}
-
-// csvOnlyExportFlags 是手工维护的：漏登记会让一个 csv 专属 flag 在 xlsx 分支被
-// 静默忽略；误登记共享 flag 会把合法的 xlsx 调用拒掉。
-func TestCsvOnlyExportFlagsMatchBoundFlags(t *testing.T) {
-	bound := map[string]bool{}
-	newExportCmd().Flags().VisitAll(func(f *pflag.Flag) { bound[f.Name] = true })
-
-	// xlsx 与 csv 两条分支都消费的 flag，不属于 csv 专属。
-	shared := map[string]bool{"node": true, "output": true, "export-format": true}
-
-	listed := map[string]bool{}
-	for _, name := range csvOnlyExportFlags {
-		if listed[name] {
-			t.Fatalf("csvOnlyExportFlags 重复登记 %q", name)
-		}
-		listed[name] = true
-		if !bound[name] {
-			t.Errorf("csvOnlyExportFlags 登记了 %q，但 export 命令没有绑定它", name)
-		}
-		if shared[name] {
-			t.Errorf("csvOnlyExportFlags 登记了共享 flag %q，会拒掉合法的 xlsx 调用", name)
+	csvFlags := map[string]bool{}
+	newSheetExportCsvCmd().Flags().VisitAll(func(f *pflag.Flag) { csvFlags[f.Name] = true })
+	for _, name := range []string{"node", "output", "sheet-id", "range", "value-render-option", "allow-truncated"} {
+		if !csvFlags[name] {
+			t.Errorf("sheet export-csv 缺少 flag --%s", name)
 		}
 	}
-	for name := range bound {
-		if !listed[name] && !shared[name] {
-			t.Errorf("export 命令绑定了 %q，但既未登记为 csv 专属也不在共享集合里"+
-				"（新增 flag 需明确它在哪条分支生效）", name)
-		}
+	// 不能出现格式路由 flag：格式由命令名决定，避免又回到单命令多分支的老问题。
+	if csvFlags["export-format"] {
+		t.Error("sheet export-csv 不应有 --export-format（格式已由命令名区分）")
 	}
 }
 
 func TestSheetExportCsvRequiresNode(t *testing.T) {
 	caller := &scriptedToolCaller{}
-	err := executeSheetExportCoverage(t, caller, "export-format", "csv")
+	err := executeSheetExportCsv(t, caller)
 	if err == nil || !strings.Contains(err.Error(), "--node is required") {
 		t.Fatalf("err = %v, want required node", err)
 	}
@@ -118,8 +70,7 @@ func TestSheetExportCsvRequiresNode(t *testing.T) {
 // --value-render-option 的枚举必须在发请求之前校验，否则非法取值会被静默透传。
 func TestSheetExportCsvValidatesValueRenderOption(t *testing.T) {
 	caller := &scriptedToolCaller{}
-	err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv", "value-render-option", "pretty")
+	err := executeSheetExportCsv(t, caller, "node", "NODE", "value-render-option", "pretty")
 	if err == nil ||
 		!strings.Contains(err.Error(), "--value-render-option 必须为 formatted_value / raw_value / formula") {
 		t.Fatalf("err = %v, want enum rejection", err)
@@ -130,8 +81,7 @@ func TestSheetExportCsvValidatesValueRenderOption(t *testing.T) {
 
 	for _, option := range []string{"formatted_value", "raw_value", "formula", "FORMULA", " raw_value "} {
 		ok := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"csv":"a,b\n"}`}}}
-		if err := executeSheetExportCoverage(t, ok,
-			"node", "NODE", "export-format", "csv", "value-render-option", option); err != nil {
+		if err := executeSheetExportCsv(t, ok, "node", "NODE", "value-render-option", option); err != nil {
 			t.Fatalf("value-render-option=%q 应被接受: %v", option, err)
 		}
 	}
@@ -139,9 +89,8 @@ func TestSheetExportCsvValidatesValueRenderOption(t *testing.T) {
 
 func TestSheetExportCsvDryRunPreviewsSelectors(t *testing.T) {
 	caller := &scriptedToolCaller{dry: true}
-	if err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv",
-		"sheet-id", "SHEET_1", "output", "out.csv"); err != nil {
+	if err := executeSheetExportCsv(t, caller,
+		"node", "NODE", "sheet-id", "SHEET_1", "output", "out.csv"); err != nil {
 		t.Fatalf("csv dry run: %v", err)
 	}
 	if caller.calls != 0 {
@@ -149,18 +98,24 @@ func TestSheetExportCsvDryRunPreviewsSelectors(t *testing.T) {
 	}
 }
 
-func TestSheetExportCsvForwardsRangeAndWarnsOnTruncation(t *testing.T) {
+func TestSheetExportCsvForwardsSelectorsAndWarnsOnTruncation(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"csv":"a,b\n","hasMore":true}`},
 	}}
 	// 截断默认失败，所以要显式放行才能走到落盘/输出。
-	if err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv", "range", "A1:Z1000",
-		"allow-truncated", "true"); err != nil {
+	if err := executeSheetExportCsv(t, caller,
+		"node", "NODE", "range", "A1:Z1000", "sheet-id", "SHEET_1",
+		"value-render-option", "raw_value", "allow-truncated", "true"); err != nil {
 		t.Fatalf("csv export: %v", err)
 	}
-	if got := caller.args["range"]; got != "A1:Z1000" {
-		t.Fatalf("range 未透传: %#v", caller.args["range"])
+	for _, kv := range [][2]string{
+		{"range", "A1:Z1000"},
+		{"sheetId", "SHEET_1"},
+		{"valueRenderOption", "raw_value"},
+	} {
+		if got := caller.args[kv[0]]; got != kv[1] {
+			t.Errorf("%s 未透传: %#v", kv[0], got)
+		}
 	}
 	// csv 正文不带行号前缀，annotateRowNumbers 必须显式关掉。
 	if caller.args["annotateRowNumbers"] != false {
@@ -179,8 +134,7 @@ func TestSheetExportCsvFailsOnTruncationWithoutOptIn(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"csv":"a,b\n","hasMore":true}`},
 	}}
-	err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv", "output", out)
+	err := executeSheetExportCsv(t, caller, "node", "NODE", "output", out)
 	if err == nil {
 		t.Fatal("截断时未放行应报错，而非静默成功")
 	}
@@ -206,9 +160,8 @@ func TestSheetExportCsvAllowTruncatedWritesAndFlagsIncompleteness(t *testing.T) 
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"csv":"a,b\n","hasMore":true}`},
 	}}
-	if err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv", "output", out,
-		"allow-truncated", "true"); err != nil {
+	if err := executeSheetExportCsv(t, caller,
+		"node", "NODE", "output", out, "allow-truncated", "true"); err != nil {
 		t.Fatalf("allow-truncated 应允许导出: %v", err)
 	}
 	body, err := os.ReadFile(out)
@@ -225,8 +178,7 @@ func TestSheetExportCsvCompleteReadNeedsNoOptIn(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "out.csv")
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"csv":"a,b\n","hasMore":false}`}}}
-	if err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv", "output", out); err != nil {
+	if err := executeSheetExportCsv(t, caller, "node", "NODE", "output", out); err != nil {
 		t.Fatalf("完整读取不应要求放行: %v", err)
 	}
 	body, err := os.ReadFile(out)
@@ -238,8 +190,7 @@ func TestSheetExportCsvCompleteReadNeedsNoOptIn(t *testing.T) {
 func TestSheetExportCsvWritesIntoDirectory(t *testing.T) {
 	dir := t.TempDir()
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"csv":"a,b\n"}`}}}
-	if err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv", "output", dir); err != nil {
+	if err := executeSheetExportCsv(t, caller, "node", "NODE", "output", dir); err != nil {
 		t.Fatalf("csv export: %v", err)
 	}
 	body, err := os.ReadFile(filepath.Join(dir, "sheet-export.csv"))
@@ -266,8 +217,7 @@ func TestSheetExportCsvWriteFailureKeepsExistingFile(t *testing.T) {
 	atomicRename = func(string, string) error { return errors.New("no space left on device") }
 
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"csv":"a,b\n"}`}}}
-	err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv", "output", out)
+	err := executeSheetExportCsv(t, caller, "node", "NODE", "output", out)
 	if err == nil || !strings.Contains(err.Error(), "写入 CSV 文件失败") {
 		t.Fatalf("err = %v, want write failure", err)
 	}
@@ -297,8 +247,7 @@ func TestSheetExportCsvWriteFailureKeepsExistingFile(t *testing.T) {
 func TestSheetExportCsvReportsWriteFailure(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"csv":"a,b\n"}`}}}
 	missing := filepath.Join(t.TempDir(), "no-such-dir", "out.csv")
-	err := executeSheetExportCoverage(t, caller,
-		"node", "NODE", "export-format", "csv", "output", missing)
+	err := executeSheetExportCsv(t, caller, "node", "NODE", "output", missing)
 	if err == nil || !strings.Contains(err.Error(), "写入 CSV 文件失败") {
 		t.Fatalf("err = %v, want write failure", err)
 	}
@@ -306,7 +255,7 @@ func TestSheetExportCsvReportsWriteFailure(t *testing.T) {
 
 func TestSheetExportCsvReportsReadFailure(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"errorCode":"NoPermission"}`}}}
-	err := executeSheetExportCoverage(t, caller, "node", "NODE", "export-format", "csv")
+	err := executeSheetExportCsv(t, caller, "node", "NODE")
 	if err == nil || !strings.Contains(err.Error(), "读取 CSV 失败") {
 		t.Fatalf("err = %v, want read failure", err)
 	}
@@ -356,7 +305,7 @@ func TestSheetExportCsvNeverTruncatesOutputOnBadResponse(t *testing.T) {
 		t.Fatal(err)
 	}
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"message":"something odd"}`}}}
-	err := executeSheetExportCoverage(t, caller, "node", "NODE", "export-format", "csv", "output", out)
+	err := executeSheetExportCsv(t, caller, "node", "NODE", "output", out)
 	if err == nil || !strings.Contains(err.Error(), "缺少 csv 字段") {
 		t.Fatalf("err = %v, want missing csv field", err)
 	}
@@ -381,14 +330,14 @@ func TestSheetExportCsvKeepsStdoutPureAndWarnsOnStderr(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	deps.Out.w, deps.Out.errW = &stdout, &stderr
 
-	cmd := newExportCmd()
+	cmd := newSheetExportCsvCmd()
 	// 截断默认 fail-closed；本用例验证的是放行后 stdout 仍然纯净、警告只走 stderr。
-	for _, kv := range [][2]string{{"node", "NODE"}, {"export-format", "csv"}, {"allow-truncated", "true"}} {
+	for _, kv := range [][2]string{{"node", "NODE"}, {"allow-truncated", "true"}} {
 		if err := cmd.Flags().Set(kv[0], kv[1]); err != nil {
 			t.Fatalf("set --%s: %v", kv[0], err)
 		}
 	}
-	if err := runSheetExport(cmd, nil); err != nil {
+	if err := runSheetExportCsv(cmd, nil); err != nil {
 		t.Fatalf("csv export: %v", err)
 	}
 

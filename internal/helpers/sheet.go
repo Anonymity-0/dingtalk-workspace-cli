@@ -44,6 +44,7 @@ func newSheetCommand() *cobra.Command {
 
 命令结构:
   dws sheet create                              创建钉钉表格文档
+  dws sheet create-with-data                     创建表格文档并写入初始数据（可选样式）
   dws sheet list                                获取全部工作表列表
   dws sheet info                                获取指定工作表详情
   dws sheet new                                 新建工作表
@@ -110,6 +111,7 @@ func newSheetCommand() *cobra.Command {
   dws sheet chart update                         更新浮动图表
   dws sheet chart delete                         删除浮动图表
   dws sheet export                              导出表格为 xlsx（异步任务一站式：提交→轮询→可选下载）
+  dws sheet export-csv                          导出单个工作表为纯 CSV（同步，可落盘）
   dws sheet import                              导入 xlsx/xls 为在线电子表格
   dws sheet template list                       获取表格模板列表
   dws sheet template search                     搜索表格模板
@@ -141,22 +143,16 @@ func newSheetCommand() *cobra.Command {
 				CLIPath:        "sheet export",
 				PrimaryCLIPath: "sheet export",
 			},
-			Description: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载），或用 --export-format csv 同步导出单个工作表。",
+			Description: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载）。",
 			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
-			// interface_ref 声明 xlsx 主路径的 submit_export_job，与 main 一致。
-			// 已知取舍：--export-format csv 是互斥分支，直接读 get_range_as_csv，
-			// 该分支下 submit_export_job 不执行，因此本声明未覆盖 csv 分支的后端接口。
-			// 保持 mcp 是为了不改动 main 已有的声明（interface_ref 为审计元数据、
-			// 运行时不消费，实测改成任意值仍按 CLI 源码正确路由），csv 分支的接口
-			// 归属另行处理，不在本次改动范围内。
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
 				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "submit_export_job"},
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载），或用 --export-format csv 同步导出单个工作表。",
-				UseWhen:      []string{"需要把在线电子表格导出为 Excel 文件、CSV 或拿到 downloadUrl 时"},
+				AgentSummary: "一站式导出 axls 为 xlsx（内部提交+轮询，可选下载）。",
+				UseWhen:      []string{"需要把在线电子表格导出为 Excel 文件或拿到 downloadUrl 时"},
 				AvoidWhen:    []string{"禁止用 range read 拼 xlsx；本地已有 xlsx 节点用 doc download；Agent 不要外层再轮询"},
 				Examples:     []string{"dws sheet export --node <NODE_ID> --output ./report.xlsx"},
 			},
@@ -165,6 +161,10 @@ func newSheetCommand() *cobra.Command {
 			},
 		},
 	})
+	// 建表带初始数据、csv 同步导出都是与既有叶子不同的接口种类（一条 composite
+	// 编排、一条 get_range_as_csv 直连），各自独立成叶子，不挂到 create / export 上。
+	createWithDataCmd := newSheetCreateWithDataCmd()
+	exportCsvCmd := newSheetExportCsvCmd()
 	importCmd := newSheetImportCmd()
 	templateCmd := newSheetTemplateCmd()
 	tableCmds := newTableCmds()
@@ -244,7 +244,7 @@ func newSheetCommand() *cobra.Command {
 	standaloneCmds = append(standaloneCmds, mediaCmds...)
 	standaloneCmds = append(standaloneCmds, floatImageCmds...)
 	standaloneCmds = append(standaloneCmds, tableCmds...)
-	standaloneCmds = append(standaloneCmds, exportCmd, importCmd, batchUpdateCmd)
+	standaloneCmds = append(standaloneCmds, exportCmd, exportCsvCmd, importCmd, batchUpdateCmd, createWithDataCmd)
 
 	// Register cross-product aliases
 	for _, cmd := range standaloneCmds {

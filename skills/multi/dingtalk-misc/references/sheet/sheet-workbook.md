@@ -3,7 +3,8 @@
 ## 使用场景
 
 用户说"创建表格/新建电子表格":
-- 创建表格文档 → `create`
+- 创建空表格文档 → `create`
+- 创建并写入初始数据（可选样式）→ `create-with-data`（`--values` / `--sheets` 必须给一个）
 
 用户说"看工作表/有哪些工作表/表格结构":
 - 列出工作表 → `list`
@@ -49,12 +50,29 @@ Flags:
       --name string        表格名称 (必填)
       --folder string      目标文件夹 ID (dentryUuid 格式) 或 URL；禁止传入纯数字 dentryId
       --workspace string   目标知识库 ID
+```
+
+> **ID 格式约束**：`--folder` 只接受 UUID 格式的 `fileId`（如 `ZgpG2NdyVXYOR2D5UGDok65MJMwvDqPk`）或 alidocs 文件夹 URL。`drive list` 返回中有 `dentryId`（纯数字，如 `218595998810`）和 `fileId`（UUID 格式）两个字段，**必须使用 `fileId`，禁止使用 `dentryId`**，传入纯数字会导致命令失败。
+
+### 创建表格文档并写入初始数据
+```
+Usage:
+  dws sheet create-with-data [flags]
+Example:
+  dws sheet create-with-data --name "名单" --values '[["姓名","分数"],["张三","90"]]'
+  dws sheet create-with-data --name "报表" --sheets '[{"name":"一月","columns":["项目","金额"],"data":[["房租",5000]]}]'
+Flags:
+      --name string        表格名称 (必填)
+      --folder string      目标文件夹 ID (dentryUuid 格式) 或 URL；禁止传入纯数字 dentryId
+      --workspace string   目标知识库 ID
       --values string      初始数据，二维 JSON 数组，写入默认工作表 (与 --sheets 二选一)
       --sheets string      多工作表 typed table JSON (与 --values 二选一)
       --styles string      建表时一并应用的视觉处理 JSON（需与 --values 或 --sheets 搭配）
 ```
 
-**创建时写入初始数据**（`--values` 与 `--sheets` 二选一，都不传则创建空表）：
+建表并写入初始数据的多步编排：建文档 → 探活 → 定位默认工作表 → 写数据 → 回读校验 →（可选）应用样式。**只要一个空表格请用 `dws sheet create`**（单次调用）；本命令必须给数据。
+
+**写入初始数据**（`--values` 与 `--sheets` **二选一，必须给一个**）：
 
 - `--values`：二维 JSON 数组，裸值写入默认工作表 A1 起。适合单表快速建表，无表头/类型语义，内部复用 csv-put 通道，自动识别数字/布尔。单元格只能是字符串/数字/布尔/null；上限 30000 单元格、编码为 CSV 后 2000000 字符。
 - `--sheets`：typed table 数组，一次创建多个带数据的工作表，内部复用 table-put 通道。每项形如
@@ -94,17 +112,17 @@ Flags:
 
 ```bash
 # 创建并写入初始数据（默认工作表，裸二维值）
-dws sheet create --name "名单" --values '[["姓名","分数"],["张三","90"]]'
+dws sheet create-with-data --name "名单" --values '[["姓名","分数"],["张三","90"]]'
 
 # 创建多个带数据的工作表
-dws sheet create --name "报表" --sheets '[{"name":"一月","columns":["项目","金额"],"data":[["房租",5000]]},{"name":"二月","columns":["项目","金额"],"data":[["房租",5000]]}]'
+dws sheet create-with-data --name "报表" --sheets '[{"name":"一月","columns":["项目","金额"],"data":[["房租",5000]]},{"name":"二月","columns":["项目","金额"],"data":[["房租",5000]]}]'
 
 # 创建 + 写数据 + 一并应用样式（表头加粗黄底、行高、列宽）
-dws sheet create --name "带样式" --values '[["姓名","分数"],["张三","90"]]' \
+dws sheet create-with-data --name "带样式" --values '[["姓名","分数"],["张三","90"]]' \
   --styles '{"styles":[{"name":"Sheet1","cell_styles":[{"range":"A1:B1","font_weight":"bold","background_color":"#FFF2CC"}],"row_sizes":[{"range":"1:1","type":"pixel","size":28}],"col_sizes":[{"range":"A:B","type":"pixel","size":120}]}]}'
 ```
 
-> **ID 格式约束**：`--folder` 只接受 UUID 格式的 `fileId`（如 `ZgpG2NdyVXYOR2D5UGDok65MJMwvDqPk`）或 alidocs 文件夹 URL。`drive list` 返回中有 `dentryId`（纯数字，如 `218595998810`）和 `fileId`（UUID 格式）两个字段，**必须使用 `fileId`，禁止使用 `dentryId`**，传入纯数字会导致命令失败。
+> `--folder` / `--workspace` 的 ID 格式约束与 `dws sheet create` 完全一致（只接受 UUID 格式的 `fileId` 或 alidocs URL）。
 
 ### 获取全部工作表列表
 ```

@@ -24,25 +24,13 @@ func installSheetProductArgs(t *testing.T) {
 	testseam.Swap(t, &os.Args, []string{"dws", "sheet"})
 }
 
-// newCreateCmdForTest 取出 sheet create 命令本体，便于直接驱动 RunE。
-func newCreateCmdForTest(t *testing.T) *cobra.Command {
-	t.Helper()
-	for _, cmd := range newWorkbookCmds() {
-		if cmd.Name() == "create" {
-			return cmd
-		}
-	}
-	t.Fatal("create command not found in newWorkbookCmds()")
-	return nil
-}
-
-// runCreate 用脚本化的 MCP 响应驱动一次 sheet create。
+// runCreate 用脚本化的 MCP 响应驱动一次 sheet create-with-data。
 func runCreate(t *testing.T, caller *scriptedToolCaller, flags map[string]string) error {
 	t.Helper()
 	installScriptedCaller(t, caller)
 	installImmediateTiming(t)
 	installSheetProductArgs(t)
-	cmd := newCreateCmdForTest(t)
+	cmd := newSheetCreateWithDataCmd()
 	for name, value := range flags {
 		if err := cmd.Flags().Set(name, value); err != nil {
 			t.Fatalf("set --%s: %v", name, err)
@@ -63,13 +51,36 @@ func createOKSteps(csvReadback string) []scriptedToolStep {
 	}
 }
 
-func TestSheetCreateEmptyKeepsSingleCallBehaviour(t *testing.T) {
+// sheet create 必须保持「一次 create_workspace_sheet」不变（它的叶子契约就是单次
+// RPC）；带初始数据的编排在 sheet create-with-data 上，两条命令的职责不能混。
+func TestSheetCreateStaysSingleCallAndHasNoDataFlags(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"nodeId":"N"}`}}}
-	if err := runCreate(t, caller, map[string]string{"name": "空表"}); err != nil {
-		t.Fatalf("create without data: %v", err)
+	installScriptedCaller(t, caller)
+	installSheetProductArgs(t)
+
+	var createCmd *cobra.Command
+	for _, cmd := range newWorkbookCmds() {
+		if cmd.Name() == "create" {
+			createCmd = cmd
+			break
+		}
+	}
+	if createCmd == nil {
+		t.Fatal("create command not found in newWorkbookCmds()")
+	}
+	for _, name := range []string{"values", "sheets", "styles"} {
+		if createCmd.Flags().Lookup(name) != nil {
+			t.Errorf("sheet create 不应绑定 --%s（编排属于 sheet create-with-data）", name)
+		}
+	}
+	if err := createCmd.Flags().Set("name", "空表"); err != nil {
+		t.Fatalf("set --name: %v", err)
+	}
+	if err := createCmd.RunE(createCmd, nil); err != nil {
+		t.Fatalf("create: %v", err)
 	}
 	if caller.calls != 1 {
-		t.Fatalf("calls = %d, want 1 (不带初始数据时只调 create_workspace_sheet)", caller.calls)
+		t.Fatalf("calls = %d, want 1 (sheet create 只调 create_workspace_sheet)", caller.calls)
 	}
 	if caller.tool != "create_workspace_sheet" {
 		t.Fatalf("tool = %q", caller.tool)
@@ -83,9 +94,14 @@ func TestSheetCreateRejectsConflictingAndOrphanFlags(t *testing.T) {
 		want  string
 	}{
 		{
+			name:  "no-data-at-all",
+			flags: map[string]string{"name": "X"},
+			want:  "--values 与 --sheets 必须给一个",
+		},
+		{
 			name:  "styles-without-data",
 			flags: map[string]string{"name": "X", "styles": `{"styles":[{"name":"S","cell_merges":[{"range":"A1:B1"}]}]}`},
-			want:  "需与 --values 或 --sheets 搭配",
+			want:  "--values 与 --sheets 必须给一个",
 		},
 		{
 			name:  "values-and-sheets",
@@ -611,7 +627,7 @@ func TestResolveSheetIDsByNameFailures(t *testing.T) {
 	}
 }
 
-// create --sheets 时 table_put 后取工作表列表失败，须带 nodeId 报错而非静默成功。
+// create-with-data --sheets 时 table_put 后取工作表列表失败，须带 nodeId 报错而非静默成功。
 func TestSheetCreateWithSheetsReadbackListFailureSurfacesNodeID(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1"}`},
@@ -1597,7 +1613,7 @@ func runCreateRecording(t *testing.T, inner *scriptedToolCaller, flags map[strin
 	deps.Out.errW = io.Discard
 	installImmediateTiming(t)
 	installSheetProductArgs(t)
-	cmd := newCreateCmdForTest(t)
+	cmd := newSheetCreateWithDataCmd()
 	for name, value := range flags {
 		if err := cmd.Flags().Set(name, value); err != nil {
 			t.Fatalf("set --%s: %v", name, err)

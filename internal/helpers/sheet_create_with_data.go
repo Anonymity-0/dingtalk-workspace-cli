@@ -16,16 +16,142 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
 // ============================================================================
-// sheet create --values / --sheets / --styles 编排
+// sheet create-with-data：创建表格并写入初始数据（可选样式）的编排
 //
-// 创建带初始数据（可选样式）的表格是多步流程，没有单一 MCP 工具承载：
+// 这是多步流程，没有单一 MCP 工具承载：
 //   create_workspace_sheet → 探活 → 定位默认工作表 → 写数据 → 回读校验 → 应用样式
 // 所有结构/枚举校验都在发第一个请求之前完成，避免留下白建的空文档。
+//
+// 之所以独立成一条命令而不是给 sheet create 加 flag：sheet create 的叶子契约是
+// interface_mode=mcp + interface_ref=create_workspace_sheet，即"一次直接 RPC"。
+// 把编排挂到那条叶子上会让 Schema 消费者以为 --values / --sheets / --styles 都是
+// create_workspace_sheet 的入参，接口审计、参数映射、后端能力判断全都拿到错误信息。
+// 本叶子如实声明 interface_mode=composite（composite 不得带 interface_ref，必须给
+// Reason），sheet create 则保持原样只做一次 RPC。
 // ============================================================================
+
+func newSheetCreateWithDataCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create-with-data",
+		Short: "创建钉钉表格文档并写入初始数据（可选样式）",
+		Long: `创建一篇新的钉钉在线电子表格，并在创建后写入初始数据、可选地应用样式。
+
+创建空表格请用 dws sheet create（单次调用）；本命令是多步编排：
+  create_workspace_sheet → 等待文档就绪 → 定位默认工作表 → 写入数据 → 回读校验 → 应用样式
+中途失败会带上已创建的 nodeId 报错，便于续做或删除。
+
+创建位置优先级: --folder > --workspace > 默认 (我的文档根目录)
+
+初始数据（--values 与 --sheets 二选一，必须给一个）：
+  --values   二维 JSON 数组，裸值写入默认工作表 A1 起（单表快速建表，无表头/类型语义，
+             复用 csv-put 通道，自动识别数字/布尔）。单元格只能是字符串/数字/布尔/null；
+             上限 30000 单元格、编码为 CSV 后 2000000 字符
+  --sheets   typed table 数组，多工作表一次写入（复用 table-put 通道）。每个条目形如
+             {"name":"表名","columns":["列1","列2"],"data":[[...]],"dtypes":{...},"formats":{...},"cellStyles":[...]}
+             name、columns 必填；第一个条目写入默认工作表（自动重命名为其 name），其余按 name 自动新建。
+             字段名为 camelCase，只接受 name / columns / data / dtypes / formats / cellStyles /
+             startCell / mode / header / allowOverwrite（写错的键会被服务端静默丢弃，故一律拒绝；
+             不接受 sheetId：文档尚未创建）。data 每行长度须等于 columns，单元格只能是
+             字符串/数字/布尔/null；dtypes、formats 的键须是 columns 里的列名（按 trim 后比较）。
+             单表写入上限 30000 单元格（含表头行）。
+
+样式配置（--styles，可选；顶层键对齐飞书 snake_case，列表项内字段兼容 camelCase；
+两级都拒绝未知键，避免写错的键被静默丢弃导致样式只应用一半）：
+  {"styles":[{"name":"表名",
+    "cell_styles":[{"range":"A1:D1","font_weight":"bold","background_color":"#FFF2CC",
+                    "font_family":"微软雅黑","number_format":"@",
+                    "border_styles":{"bottom":{"style":"medium"}}}],
+    "row_sizes":[{"range":"1:1","type":"pixel","size":28}],
+    "col_sizes":[{"range":"A:D","type":"pixel","size":120}],
+    "cell_merges":[{"range":"A1:B1","merge_type":"all"}]}]}
+  - 每项至少给 cell_styles / row_sizes / col_sizes / cell_merges 之一
+  - 配 --sheets 时 styles 的项数/顺序/name 必须与 --sheets 子表一一对应；配 --values 时只给 1 项（name 忽略）
+  - 数据写入后按 cell_styles → row_sizes → col_sizes → cell_merges 顺序执行（非原子）
+  - row_sizes 的 type：pixel（需 size）/ standard（恢复默认行高）/ auto（按内容自适应）
+  - col_sizes 的 type：pixel（需 size）/ standard（恢复默认列宽）——与飞书一致，列宽不提供 auto
+  - merge_type 取 all/rows/columns`,
+		Example: `  # 创建并写入初始数据（默认工作表，裸二维值）
+  dws sheet create-with-data --name "名单" --values '[["姓名","分数"],["张三","90"]]'
+
+  # 创建多个带数据的工作表（typed table）
+  dws sheet create-with-data --name "报表" --sheets '[{"name":"一月","columns":["项目","金额"],"data":[["房租",5000]]},{"name":"二月","columns":["项目","金额"],"data":[["房租",5000]]}]'
+
+  # 创建 + 写数据 + 一并应用样式（表头加粗黄底、行高、列宽、合并）
+  dws sheet create-with-data --name "带样式" --values '[["姓名","分数"],["张三","90"]]' \
+    --styles '{"styles":[{"name":"Sheet1","cell_styles":[{"range":"A1:B1","font_weight":"bold","background_color":"#FFF2CC"}],"row_sizes":[{"range":"1:1","type":"pixel","size":28}],"col_sizes":[{"range":"A:B","type":"pixel","size":120}]}]}'
+
+  # 指定创建位置
+  dws sheet create-with-data --name "Q1 数据" --folder FOLDER_ID --values '[["月份","金额"],["1月",100]]'`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			valuesStr, _ := cmd.Flags().GetString("values")
+			sheetsStr, _ := cmd.Flags().GetString("sheets")
+			stylesStr, _ := cmd.Flags().GetString("styles")
+			if valuesStr == "" && sheetsStr == "" {
+				return fmt.Errorf("--values 与 --sheets 必须给一个（只建空表格请用 dws sheet create）")
+			}
+			if valuesStr != "" && sheetsStr != "" {
+				return fmt.Errorf("--values 与 --sheets 二选一，不能同时指定")
+			}
+			createArgs := map[string]any{
+				"name": mustGetFlag(cmd, "name"),
+			}
+			if v, _ := cmd.Flags().GetString("folder"); v != "" {
+				createArgs["folderId"] = v
+			}
+			if v := flagOrFallback(cmd, "workspace", "workspace-id"); v != "" {
+				createArgs["workspaceId"] = v
+			}
+			return runCreateSheetWithData(cmd, createArgs, valuesStr, sheetsStr, stylesStr)
+		},
+	}
+	DeclareLeafMetadata(cmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "sheet",
+				Name:           "create_with_data",
+				CanonicalPath:  "sheet.create_with_data",
+				CLIPath:        "sheet create-with-data",
+				PrimaryCLIPath: "sheet create-with-data",
+			},
+			Description: "创建钉钉在线电子表格文档（axls）并写入初始数据，可选一并应用样式。",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "Reviewed composite workflow: the command calls sheet/create_workspace_sheet, waits for the new document to become writable, resolves the default worksheet, writes the initial data through sheet/set_range_from_csv or sheet/table_put, reads it back with sheet/get_range_as_csv, and optionally applies sheet/set_cell_range, sheet/update_dimension and sheet/merge_cells; no single pinned RPC represents the workflow.",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "创建钉钉在线电子表格文档（axls）并写入初始数据，可选一并应用样式。",
+				UseWhen:      []string{"需要新建一份钉钉在线电子表格并在建表时就带上初始数据（可含表头样式、行高列宽、合并）时"},
+				AvoidWhen:    []string{"只要空表格用 sheet create；往已有表格写数据用 sheet csv-put / table-put；只改样式用 sheet range set-style"},
+				Examples: []string{
+					"dws sheet create-with-data --name \"名单\" --values '[[\"姓名\",\"分数\"],[\"张三\",90]]'",
+					"dws sheet create-with-data --name \"报表\" --sheets '[{\"name\":\"一月\",\"columns\":[\"项目\",\"金额\"],\"data\":[[\"房租\",5000]]}]'",
+				},
+			},
+			// name 由 mustGetFlag 校验；这里发布 required 供 Schema 消费者识别
+			Parameters: []contract.ParamDecl{
+				{Name: "name", Required: boolPtr(true)},
+			},
+		},
+	})
+	cmd.Flags().String("name", "", "表格名称 (必填)")
+	cmd.Flags().String("folder", "", "目标文件夹 ID 或 URL")
+	cmd.Flags().String("workspace", "", "目标知识库 ID")
+	cmd.Flags().String("values", "", "初始数据，二维 JSON 数组，写入默认工作表 (与 --sheets 二选一)")
+	cmd.Flags().String("sheets", "", `多工作表 typed table JSON，如 '[{"name":"表名","columns":[...],"data":[[...]]}]' (与 --values 二选一)`)
+	cmd.Flags().String("styles", "", `写入数据后一并应用的视觉处理 JSON（对齐飞书）：{"styles":[{"name":"表名","cell_styles":[{"range":"A1:D1","font_weight":"bold"}],"row_sizes":[{"range":"1:1","type":"pixel","size":28}],"col_sizes":[{"range":"A:D","type":"pixel","size":120}],"cell_merges":[{"range":"A1:B1","merge_type":"all"}]}]}`)
+	return cmd
+}
 
 func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, valuesStr, sheetsStr, stylesStr string) error {
 	// 先解析初始数据，避免创建了空文档后才发现 JSON 非法
@@ -369,7 +495,7 @@ func sortedMapKeys(m map[string]any) []string {
 // validateCreateSheetSpec 按 table_put 的输入契约校验单个 sheet spec 的每个已提供
 // 字段。纯函数、不发请求：调用方在创建文档之前调用，非法输入不会产生任何 MCP 调用。
 func validateCreateSheetSpec(spec map[string]any) error {
-	// sheetId 在 table_put 契约里合法（且优先级高于 name），但对 sheet create
+	// sheetId 在 table_put 契约里合法（且优先级高于 name），但对 create-with-data
 	// 没有意义：文档此刻还不存在，任何 sheetId 都不可能是它的工作表。传了只会
 	// 让写入落到别处或直接失败，而重命名默认表、回读校验都是按 name 定位的。
 	for _, key := range sortedMapKeys(spec) {
@@ -544,7 +670,7 @@ func isTableScalar(v any) bool {
 }
 
 // specWritesHeader 判断该 spec 是否会写入表头行：显式 header 优先；缺省时写表头
-// （overwrite 默认写；append 落在空表上也写，而 sheet create 的工作表都是新建空表）。
+// （overwrite 默认写；append 落在空表上也写，而本命令的工作表都是新建空表）。
 func specWritesHeader(spec map[string]any) bool {
 	if v, ok := spec["header"].(bool); ok {
 		return v
@@ -591,7 +717,7 @@ const (
 	maxCSVWriteChars = 2 * 1000 * 1000
 )
 
-// ── create --styles：对齐飞书 +workbook-create --styles 协议 ──────────────────
+// ── create-with-data --styles：对齐飞书 +workbook-create --styles 协议 ────────
 //
 // {"styles":[{"name":"子表名",
 //
@@ -1257,7 +1383,7 @@ func firstNonEmptySheetSpecCell(spec map[string]any) (string, bool) {
 			col0, row0 = c, r
 		}
 	}
-	// mode=append 时服务端按「已有数据的下一行」定位：sheet create 新建的工作表
+	// mode=append 时服务端按「已有数据的下一行」定位：本命令新建的工作表
 	// 都是空表，追加就从第 1 行开始，startCell 的行号被忽略（列号仍生效）。
 	if mode, _ := spec["mode"].(string); mode == "append" {
 		row0 = 1

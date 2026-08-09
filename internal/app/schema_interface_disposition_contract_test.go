@@ -37,6 +37,11 @@ func TestReviewedRoutedInterfacesReachFinalSchema(t *testing.T) {
 			reason:    "The CLI assembles style cell matrices locally from --ranges or a local batch file and submits them as one sheet/batch_update operations array; no single direct MCP interface represents the wrapper input shape.",
 		},
 		{
+			canonical: "sheet.create_with_data",
+			mode:      "composite",
+			reason:    "Reviewed composite workflow: the command calls sheet/create_workspace_sheet, waits for the new document to become writable, resolves the default worksheet, writes the initial data through sheet/set_range_from_csv or sheet/table_put, reads it back with sheet/get_range_as_csv, and optionally applies sheet/set_cell_range, sheet/update_dimension and sheet/merge_cells; no single pinned RPC represents the workflow.",
+		},
+		{
 			canonical: "sheet.range_read",
 			mode:      "composite",
 			reason:    "Reviewed unpinned remote adapter: the CLI calls sheet/get_cell_infos, which is absent from the pinned MCP metadata snapshot; the incompatible sheet/get_range contract must not be advertised.",
