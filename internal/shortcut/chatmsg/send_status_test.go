@@ -80,3 +80,15 @@ func TestCrossPlatformCoverageProjectMessageSendStatusPendingDoesNotInventMessag
 		t.Fatalf("nextActions = %#v", actions)
 	}
 }
+
+func TestCrossPlatformCoverageFirstSendStatusStringTraversesArrays(t *testing.T) {
+	value := []any{
+		nil,
+		map[string]any{"result": []any{
+			map[string]any{"openTaskId": "  task-from-array  "},
+		}},
+	}
+	if got := firstSendStatusString(value, "openTaskId"); got != "task-from-array" {
+		t.Fatalf("firstSendStatusString() = %q", got)
+	}
+}

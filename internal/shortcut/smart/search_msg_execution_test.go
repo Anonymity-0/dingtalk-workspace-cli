@@ -11,6 +11,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
@@ -28,6 +29,8 @@ type searchMsgExecutionCaller struct {
 	searchResponse string
 	wrongMgetScope bool
 	missingMgetCID bool
+	firstResponse  string
+	mgetResponse   string
 }
 
 func (f *searchMsgExecutionCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -58,6 +61,9 @@ func (f *searchMsgExecutionCaller) CallTool(_ context.Context, product, tool str
 			}
 			return searchMsgToolResult(`{"result":{"messages":[{"openMessageId":"m2","openConversationId":"cid-2","content":"sparse-2"}],"hasMore":false}}`), nil
 		}
+		if f.firstResponse != "" {
+			return searchMsgToolResult(f.firstResponse), nil
+		}
 		return searchMsgToolResult(`{"result":{"messages":[{"openMessageId":"m1","openConversationId":"cid-1","content":"sparse-1"}],"hasMore":true,"nextCursor":"c2"}}`), nil
 	case "list_messages_by_ids":
 		if f.failEnrichment {
@@ -71,6 +77,9 @@ func (f *searchMsgExecutionCaller) CallTool(_ context.Context, product, tool str
 		}
 		if f.omitMgetItem {
 			return searchMsgToolResult(`{"result":[{"openMessageId":"m1","content":"detail-1"}]}`), nil
+		}
+		if f.mgetResponse != "" {
+			return searchMsgToolResult(f.mgetResponse), nil
 		}
 		return searchMsgToolResult(`{"result":[{"openMessageId":"m1","content":"detail-1"},{"openMessageId":"m2","content":"detail-2"}]}`), nil
 	default:
@@ -116,7 +125,7 @@ func executeSearchMsgResult(caller *searchMsgExecutionCaller, args ...string) (m
 	return payload, nil
 }
 
-func TestSearchMsgPagesAndEnrichesWithAdvancedFilters(t *testing.T) {
+func TestCrossPlatformCoverageSearchMsgPagesAndEnrichesWithAdvancedFilters(t *testing.T) {
 	caller := &searchMsgExecutionCaller{}
 	payload := executeSearchMsg(t, caller,
 		"--query", "周报",
@@ -184,7 +193,7 @@ func TestSearchMsgPagesAndEnrichesWithAdvancedFilters(t *testing.T) {
 	}
 }
 
-func TestSearchMsgLaterPageFailurePublishesPartialLedger(t *testing.T) {
+func TestCrossPlatformCoverageSearchMsgLaterPageFailurePublishesPartialLedger(t *testing.T) {
 	caller := &searchMsgExecutionCaller{failSecondPage: true}
 	payload := executeSearchMsg(t, caller,
 		"--query", "周报",
@@ -202,7 +211,7 @@ func TestSearchMsgLaterPageFailurePublishesPartialLedger(t *testing.T) {
 	}
 }
 
-func TestSearchMsgEnrichmentFailureKeepsSearchHits(t *testing.T) {
+func TestCrossPlatformCoverageSearchMsgEnrichmentFailureKeepsSearchHits(t *testing.T) {
 	caller := &searchMsgExecutionCaller{failEnrichment: true}
 	payload := executeSearchMsg(t, caller, "--query", "周报")
 	if payload["complete"] != false || payload["count"] != float64(1) ||
@@ -211,7 +220,7 @@ func TestSearchMsgEnrichmentFailureKeepsSearchHits(t *testing.T) {
 	}
 }
 
-func TestSearchMsgMissingPaginationCannotClaimComplete(t *testing.T) {
+func TestCrossPlatformCoverageSearchMsgMissingPaginationCannotClaimComplete(t *testing.T) {
 	caller := &searchMsgExecutionCaller{omitPagination: true}
 	payload := executeSearchMsg(t, caller, "--query", "周报", "--no-enrich")
 	if payload["complete"] != false || payload["count"] != float64(1) ||
@@ -225,7 +234,7 @@ func TestSearchMsgMissingPaginationCannotClaimComplete(t *testing.T) {
 	}
 }
 
-func TestSearchMsgMissingMgetItemPublishesFailureLedger(t *testing.T) {
+func TestCrossPlatformCoverageSearchMsgMissingMgetItemPublishesFailureLedger(t *testing.T) {
 	caller := &searchMsgExecutionCaller{omitMgetItem: true}
 	payload := executeSearchMsg(t, caller, "--query", "周报", "--page-all")
 	if payload["complete"] != false || payload["count"] != float64(2) ||
@@ -374,5 +383,36 @@ func TestSearchMsgEnrichmentCannotMoveMessageOutsideScope(t *testing.T) {
 	var typed *apperrors.Error
 	if !errors.As(err, &typed) || typed.Reason != "search_conversation_scope_violation" {
 		t.Fatalf("error = %#v", err)
+	}
+}
+
+func TestCrossPlatformCoverageSearchMsgLarkTimeAliasesAndAscendingOrder(t *testing.T) {
+	caller := &searchMsgExecutionCaller{
+		firstResponse: `{"result":{"messages":[{"openMessageId":"m2","createTime":1782892800000,"content":"later"},{"openMessageId":"m1","createTime":1782806400000,"content":"earlier"}],"hasMore":false}}`,
+	}
+	payload := executeSearchMsg(t, caller,
+		"--query", "周报",
+		"--start-time", "2026-07-01T00:00:00+08:00",
+		"--end-time", "2026-07-03T00:00:00+08:00",
+		"--sort", "asc",
+		"--no-enrich",
+	)
+	if len(caller.calls) != 1 {
+		t.Fatalf("calls = %#v", caller.calls)
+	}
+	wantStart, _ := time.Parse(time.RFC3339, "2026-07-01T00:00:00+08:00")
+	wantEnd, _ := time.Parse(time.RFC3339, "2026-07-03T00:00:00+08:00")
+	if caller.calls[0].args["startTime"] != wantStart.UnixMilli() ||
+		caller.calls[0].args["endTime"] != wantEnd.UnixMilli() {
+		t.Fatalf("time params = %#v", caller.calls[0].args)
+	}
+	messages := payload["messages"].([]any)
+	if messages[0].(map[string]any)["messageId"] != "m1" ||
+		messages[1].(map[string]any)["messageId"] != "m2" {
+		t.Fatalf("ascending messages = %#v", messages)
+	}
+	rangeMeta := payload["queryRange"].(map[string]any)
+	if rangeMeta["order"] != "asc" || rangeMeta["semantics"] != "[start,end)" {
+		t.Fatalf("queryRange = %#v", rangeMeta)
 	}
 }
