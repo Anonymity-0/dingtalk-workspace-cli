@@ -6,6 +6,14 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Added
+
+- **Typed IM message pagination** — `dws chat message list-all`,
+  `list-by-sender`, `list-mentions`, `list-focused`, `list-favorites`,
+  `search`, and `search-advanced` now support explicit `--page-all`
+  traversal with `--page-limit`, `--max-items`, and `--page-delay` controls.
+  Default single-page behavior is unchanged when `--page-all` is omitted.
+
 ## [1.0.58-beta.1] - 2026-08-07
 
 ### Added

@@ -119,6 +119,259 @@ func chatIntFlagOrFallback(cmd *cobra.Command, primary string, aliases ...string
 	return v
 }
 
+func chatMessageListAllArgs(cmd *cobra.Command) (map[string]any, error) {
+	if err := validateRequiredFlags(cmd, "start", "end"); err != nil {
+		return nil, err
+	}
+	cursor, _ := cmd.Flags().GetString("cursor")
+	return map[string]any{
+		"startTime": mustGetFlag(cmd, "start"),
+		"endTime":   mustGetFlag(cmd, "end"),
+		"limit":     chatIntFlagOrFallback(cmd, "limit", "size"),
+		"cursor":    cursor,
+	}, nil
+}
+
+func chatMessageListBySenderArgs(cmd *cobra.Command) (map[string]any, error) {
+	if err := validateRequiredFlags(cmd, "start"); err != nil {
+		return nil, err
+	}
+	senderUserID := flagOrFallback(cmd, "sender-user-id", "sender")
+	senderOpenDingTalkID, _ := cmd.Flags().GetString("sender-open-dingtalk-id")
+	if senderUserID != "" && senderOpenDingTalkID != "" {
+		return nil, fmt.Errorf("--sender-user-id and --sender-open-dingtalk-id are mutually exclusive, specify exactly one")
+	}
+	if senderUserID == "" && senderOpenDingTalkID == "" {
+		return nil, fmt.Errorf("--sender-user-id or --sender-open-dingtalk-id is required")
+	}
+	startMs, err := parseISOTimeToMillis("start", mustGetFlag(cmd, "start"))
+	if err != nil {
+		return nil, err
+	}
+	endRaw, _ := cmd.Flags().GetString("end")
+	if strings.TrimSpace(endRaw) == "" {
+		endRaw = time.Now().Format(time.RFC3339)
+	}
+	endMs, err := parseISOTimeToMillis("end", endRaw)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateTimeRange(startMs, endMs); err != nil {
+		return nil, err
+	}
+	cursor, _ := cmd.Flags().GetString("cursor")
+	toolArgs := map[string]any{
+		"startTime": startMs,
+		"endTime":   endMs,
+		"limit":     chatIntFlagOrFallback(cmd, "limit", "size"),
+		"cursor":    cursor,
+	}
+	if senderUserID != "" {
+		toolArgs["senderUserId"] = senderUserID
+	} else {
+		toolArgs["senderOpenDingTalkId"] = senderOpenDingTalkID
+	}
+	return toolArgs, nil
+}
+
+func chatMessageListMentionsArgs(cmd *cobra.Command) (map[string]any, error) {
+	if err := validateRequiredFlags(cmd, "start", "end"); err != nil {
+		return nil, err
+	}
+	startMs, err := parseISOTimeToMillis("start", mustGetFlag(cmd, "start"))
+	if err != nil {
+		return nil, err
+	}
+	endMs, err := parseISOTimeToMillis("end", mustGetFlag(cmd, "end"))
+	if err != nil {
+		return nil, err
+	}
+	if err := validateTimeRange(startMs, endMs); err != nil {
+		return nil, err
+	}
+	cursor, _ := cmd.Flags().GetString("cursor")
+	toolArgs := map[string]any{
+		"startTime": startMs,
+		"endTime":   endMs,
+		"limit":     chatIntFlagOrFallback(cmd, "limit", "size"),
+		"cursor":    cursor,
+	}
+	if groupID := flagOrFallback(cmd, "group", "conversation-id", "id", "chat"); groupID != "" {
+		toolArgs["openConversationId"] = groupID
+	}
+	return toolArgs, nil
+}
+
+func chatMessageListFocusedArgs(cmd *cobra.Command) (map[string]any, error) {
+	toolArgs := map[string]any{}
+	if v, err := cmd.Flags().GetInt("limit"); err == nil && v > 0 {
+		toolArgs["limit"] = v
+	}
+	if v, _ := cmd.Flags().GetInt64("cursor"); v > 0 {
+		toolArgs["cursor"] = v
+	}
+	return toolArgs, nil
+}
+
+func chatMessageSearchArgs(cmd *cobra.Command) (map[string]any, error) {
+	if err := validateRequiredFlagWithAliases(cmd, "query", "keyword"); err != nil {
+		return nil, err
+	}
+	if err := validateRequiredFlags(cmd, "start", "end"); err != nil {
+		return nil, err
+	}
+	startMs, err := parseISOTimeToMillis("start", mustGetFlag(cmd, "start"))
+	if err != nil {
+		return nil, err
+	}
+	endMs, err := parseISOTimeToMillis("end", mustGetFlag(cmd, "end"))
+	if err != nil {
+		return nil, err
+	}
+	if err := validateTimeRange(startMs, endMs); err != nil {
+		return nil, err
+	}
+	cursor, _ := cmd.Flags().GetString("cursor")
+	toolArgs := map[string]any{
+		"keyword":   flagOrFallback(cmd, "query", "keyword"),
+		"startTime": startMs,
+		"endTime":   endMs,
+		"limit":     chatIntFlagOrFallback(cmd, "limit", "size"),
+		"cursor":    cursor,
+	}
+	if groupID := flagOrFallback(cmd, "group", "conversation-id", "id", "chat"); groupID != "" {
+		toolArgs["openConversationId"] = groupID
+	}
+	return toolArgs, nil
+}
+
+func chatMessageSearchAdvancedArgs(cmd *cobra.Command) (map[string]any, error) {
+	toolArgs := map[string]any{}
+	if v := flagOrFallback(cmd, "query", "keyword"); v != "" {
+		toolArgs["keyword"] = v
+	}
+	if v := flagOrFallback(cmd, "users", "user", "userId"); v != "" {
+		appendChatIDArgs(toolArgs, parseCSVValues(v), "senderUserIds", "senderOpenDingTakIds")
+	}
+	if v := flagOrFallback(cmd, "sender-ids", "senders", "sender"); v != "" {
+		appendChatIDArgs(toolArgs, parseCSVValues(v), "senderUserIds", "senderOpenDingTakIds")
+	}
+	if v, _ := cmd.Flags().GetBool("at-me"); v {
+		toolArgs["atMe"] = true
+	}
+	if v, _ := cmd.Flags().GetString("at-ids"); v != "" {
+		appendChatIDArgs(toolArgs, parseCSVValues(v), "atUserIds", "atOpenDingTakIds")
+	}
+	appendChatConversationIDs(cmd, toolArgs)
+	if err := appendChatAdvancedFilters(cmd, toolArgs); err != nil {
+		return nil, err
+	}
+	return toolArgs, nil
+}
+
+func appendChatConversationIDs(cmd *cobra.Command, toolArgs map[string]any) {
+	convIds := flagOrFallback(cmd, "conversation-ids", "groups", "group")
+	if convIds == "" {
+		return
+	}
+	var ids []string
+	for _, s := range strings.Split(convIds, ",") {
+		if t := strings.TrimSpace(s); t != "" {
+			ids = append(ids, t)
+		}
+	}
+	if len(ids) > 0 {
+		toolArgs["openConversationIds"] = ids
+	}
+}
+
+func appendChatAdvancedFilters(cmd *cobra.Command, toolArgs map[string]any) error {
+	if v, _ := cmd.Flags().GetString("message-type"); v != "" {
+		toolArgs["messageType"] = v
+	}
+	if cmd.Flags().Changed("only-robot") {
+		toolArgs["onlyRobotMessages"], _ = cmd.Flags().GetBool("only-robot")
+	} else if cmd.Flags().Changed("only-robot-messages") {
+		toolArgs["onlyRobotMessages"], _ = cmd.Flags().GetBool("only-robot-messages")
+	}
+	if v := flagOrFallback(cmd, "conversation-type", "search-conv-type"); v != "" {
+		toolArgs["searchConvType"] = v
+	}
+	if v, _ := cmd.Flags().GetString("start"); v != "" {
+		ms, err := parseISOTimeToMillis("start", v)
+		if err != nil {
+			return err
+		}
+		toolArgs["startTime"] = ms
+	}
+	if v, _ := cmd.Flags().GetString("end"); v != "" {
+		ms, err := parseISOTimeToMillis("end", v)
+		if err != nil {
+			return err
+		}
+		toolArgs["endTime"] = ms
+	}
+	if v, _ := cmd.Flags().GetString("cursor"); v != "" {
+		toolArgs["cursor"] = v
+	}
+	if v := chatIntFlagOrFallback(cmd, "limit", "size"); v > 0 {
+		toolArgs["limit"] = v
+	}
+	return nil
+}
+
+func chatMessageListFavoritesArgs(cmd *cobra.Command) (map[string]any, error) {
+	cursor, _ := cmd.Flags().GetInt64("cursor")
+	if cursor < 0 {
+		return nil, apperrors.NewValidation("--cursor must be greater than or equal to 0")
+	}
+	size, _ := cmd.Flags().GetInt("size")
+	if size < 1 || size > chatFavoritesMaxPageSize {
+		return nil, apperrors.NewValidation("--size must be between 1 and 30")
+	}
+	return map[string]any{"cursor": cursor, "size": strconv.Itoa(size)}, nil
+}
+
+func pagedChatMessagesConfig(toolName string, build func(*cobra.Command) (map[string]any, error)) PagedMCPCommandConfig {
+	return PagedMCPCommandConfig{
+		ServerID:    "chat",
+		ToolName:    toolName,
+		ItemPath:    "result.messages",
+		CursorPath:  "result.nextCursor",
+		HasMorePath: "result.hasMore",
+		CursorArg:   "cursor",
+		CursorKind:  PagedCursorString,
+		BuildArgs:   build,
+		Fallback: func(args map[string]any) error {
+			return callMCPTool(toolName, args)
+		},
+	}
+}
+
+func pagedChatMessagesOnServerConfig(serverID, toolName string, build func(*cobra.Command) (map[string]any, error)) PagedMCPCommandConfig {
+	cfg := pagedChatMessagesConfig(toolName, build)
+	cfg.ServerID = serverID
+	cfg.Fallback = func(args map[string]any) error {
+		return callMCPToolOnServer(serverID, toolName, args)
+	}
+	return cfg
+}
+
+func pagedChatMessagesInt64Config(toolName string, build func(*cobra.Command) (map[string]any, error)) PagedMCPCommandConfig {
+	cfg := pagedChatMessagesConfig(toolName, build)
+	cfg.CursorKind = PagedCursorInt64
+	return cfg
+}
+
+func pagedMCPParamDecls() []contract.ParamDecl {
+	return []contract.ParamDecl{
+		{Name: "page-all", InterfaceType: "boolean"},
+		{Name: "page-limit", InterfaceType: "integer"},
+		{Name: "max-items", InterfaceType: "integer"},
+		{Name: "page-delay", InterfaceType: "integer"},
+	}
+}
+
 func runChatGroupSearch(cmd *cobra.Command, args []string) error {
 	keyword := flagOrFallback(cmd, "query", "keyword", "name", "group")
 	if len(args) == 1 {
@@ -2724,18 +2977,8 @@ func newChatCommand() *cobra.Command {
 		Example: `  dws chat message list-all --start "2025-03-01 00:00:00" --end "2025-03-31 23:59:59" --limit 50
   dws chat message list-all --start "2025-03-01 00:00:00" --end "2025-03-31 23:59:59" --limit 50 --cursor "abc123token"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "start", "end"); err != nil {
-				return err
-			}
-			limit := chatIntFlagOrFallback(cmd, "limit", "size")
-			cursor, _ := cmd.Flags().GetString("cursor")
-			toolArgs := map[string]any{
-				"startTime": mustGetFlag(cmd, "start"),
-				"endTime":   mustGetFlag(cmd, "end"),
-				"limit":     limit,
-				"cursor":    cursor,
-			}
-			return callMCPTool("search_messages_by_time_range", toolArgs)
+			return RunPagedMCPCommand(cmd, pagedChatMessagesConfig(
+				"search_messages_by_time_range", chatMessageListAllArgs))
 		},
 	}
 	DeclareLeafMetadata(chatMessageListAllCmd, LeafSpec{
@@ -2763,10 +3006,10 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"已指定单个会话时优先使用 chat message list"},
 				Examples:     []string{"dws chat message list-all --start \"2026-07-01 00:00:00\" --end \"2026-07-02 00:00:00\" --limit 50"},
 			},
-			Parameters: []contract.ParamDecl{
+			Parameters: append([]contract.ParamDecl{
 				{Name: "end", Property: "endTime"},
 				{Name: "start", Property: "startTime"},
-			},
+			}, pagedMCPParamDecls()...),
 		},
 	})
 
@@ -2781,46 +3024,8 @@ func newChatCommand() *cobra.Command {
   # 查询 userId: dws contact user search --query "姓名"
   # 查询 openDingTalkId: dws contact user search --query "姓名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "start"); err != nil {
-				return err
-			}
-			senderUserID := flagOrFallback(cmd, "sender-user-id", "sender")
-			senderOpenDingTalkID, _ := cmd.Flags().GetString("sender-open-dingtalk-id")
-			if senderUserID != "" && senderOpenDingTalkID != "" {
-				return fmt.Errorf("--sender-user-id and --sender-open-dingtalk-id are mutually exclusive, specify exactly one")
-			}
-			if senderUserID == "" && senderOpenDingTalkID == "" {
-				return fmt.Errorf("--sender-user-id or --sender-open-dingtalk-id is required")
-			}
-			startMs, err := parseISOTimeToMillis("start", mustGetFlag(cmd, "start"))
-			if err != nil {
-				return err
-			}
-			endRaw, _ := cmd.Flags().GetString("end")
-			if strings.TrimSpace(endRaw) == "" {
-				endRaw = time.Now().Format(time.RFC3339)
-			}
-			endMs, err := parseISOTimeToMillis("end", endRaw)
-			if err != nil {
-				return err
-			}
-			if err := validateTimeRange(startMs, endMs); err != nil {
-				return err
-			}
-			limit := chatIntFlagOrFallback(cmd, "limit", "size")
-			cursor, _ := cmd.Flags().GetString("cursor")
-			toolArgs := map[string]any{
-				"startTime": startMs,
-				"endTime":   endMs,
-				"limit":     limit,
-				"cursor":    cursor,
-			}
-			if senderUserID != "" {
-				toolArgs["senderUserId"] = senderUserID
-			} else {
-				toolArgs["senderOpenDingTalkId"] = senderOpenDingTalkID
-			}
-			return callMCPTool("search_messages_by_sender", toolArgs)
+			return RunPagedMCPCommand(cmd, pagedChatMessagesConfig(
+				"search_messages_by_sender", chatMessageListBySenderArgs))
 		},
 	}
 	DeclareLeafMetadata(chatMessageListBySenderCmd, LeafSpec{
@@ -2848,11 +3053,11 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"明确查询与某人的单聊记录时使用 chat message list-direct"},
 				Examples:     []string{"dws chat message list-by-sender --sender-user-id <userId> --start \"2026-07-01T00:00:00+08:00\" --end \"2026-07-02T00:00:00+08:00\" --limit 50"},
 			},
-			Parameters: []contract.ParamDecl{
+			Parameters: append([]contract.ParamDecl{
 				{Name: "end", Property: "endTime"},
 				{Name: "sender-open-dingtalk-id", Property: "senderOpenDingTalkId"},
 				{Name: "start", Property: "startTime"},
-			},
+			}, pagedMCPParamDecls()...),
 		},
 	})
 
@@ -2866,33 +3071,8 @@ func newChatCommand() *cobra.Command {
   dws chat message list-mentions --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --cursor <nextCursor>
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "start", "end"); err != nil {
-				return err
-			}
-			startMs, err := parseISOTimeToMillis("start", mustGetFlag(cmd, "start"))
-			if err != nil {
-				return err
-			}
-			endMs, err := parseISOTimeToMillis("end", mustGetFlag(cmd, "end"))
-			if err != nil {
-				return err
-			}
-			if err := validateTimeRange(startMs, endMs); err != nil {
-				return err
-			}
-			limit := chatIntFlagOrFallback(cmd, "limit", "size")
-			cursor, _ := cmd.Flags().GetString("cursor")
-			toolArgs := map[string]any{
-				"startTime": startMs,
-				"endTime":   endMs,
-				"limit":     limit,
-				"cursor":    cursor,
-			}
-			groupID := flagOrFallback(cmd, "group", "conversation-id", "id", "chat")
-			if groupID != "" {
-				toolArgs["openConversationId"] = groupID
-			}
-			return callMCPTool("search_at_me_message", toolArgs)
+			return RunPagedMCPCommand(cmd, pagedChatMessagesConfig(
+				"search_at_me_message", chatMessageListMentionsArgs))
 		},
 	}
 	DeclareLeafMetadata(chatMessageListMentionsCmd, LeafSpec{
@@ -2920,11 +3100,11 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"查询全部消息时使用 chat message list-all"},
 				Examples:     []string{"dws chat message list-mentions --start \"2026-07-01T00:00:00+08:00\" --end \"2026-07-02T00:00:00+08:00\" --limit 50"},
 			},
-			Parameters: []contract.ParamDecl{
+			Parameters: append([]contract.ParamDecl{
 				{Name: "end", Property: "endTime"},
 				{Name: "group", Property: "openConversationId"},
 				{Name: "start", Property: "startTime"},
-			},
+			}, pagedMCPParamDecls()...),
 		},
 	})
 
@@ -2935,14 +3115,8 @@ func newChatCommand() *cobra.Command {
 		Example: `  dws chat message list-focused --limit 50
   dws chat message list-focused --limit 20 --cursor <nextCursor>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			toolArgs := map[string]any{}
-			if v, err := cmd.Flags().GetInt("limit"); err == nil && v > 0 {
-				toolArgs["limit"] = v
-			}
-			if v, _ := cmd.Flags().GetInt64("cursor"); v > 0 {
-				toolArgs["cursor"] = v
-			}
-			return callMCPTool("list_special_focus_messages", toolArgs)
+			return RunPagedMCPCommand(cmd, pagedChatMessagesInt64Config(
+				"list_special_focus_messages", chatMessageListFocusedArgs))
 		},
 	}
 	DeclareLeafMetadata(chatMessageListFocusedCmd, LeafSpec{
@@ -2970,6 +3144,7 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"普通未读消息或提及消息使用对应专用命令"},
 				Examples:     []string{"dws chat message list-focused --limit 50"},
 			},
+			Parameters: pagedMCPParamDecls(),
 		},
 	})
 
@@ -3075,37 +3250,8 @@ func newChatCommand() *cobra.Command {
   dws chat message search --query "链接" --start "2026-04-15T00:00:00+08:00" --end "2026-04-16T00:00:00+08:00" --limit 100 --cursor <nextCursor>
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlagWithAliases(cmd, "query", "keyword"); err != nil {
-				return err
-			}
-			if err := validateRequiredFlags(cmd, "start", "end"); err != nil {
-				return err
-			}
-			startMs, err := parseISOTimeToMillis("start", mustGetFlag(cmd, "start"))
-			if err != nil {
-				return err
-			}
-			endMs, err := parseISOTimeToMillis("end", mustGetFlag(cmd, "end"))
-			if err != nil {
-				return err
-			}
-			if err := validateTimeRange(startMs, endMs); err != nil {
-				return err
-			}
-			limit := chatIntFlagOrFallback(cmd, "limit", "size")
-			cursor, _ := cmd.Flags().GetString("cursor")
-			toolArgs := map[string]any{
-				"keyword":   flagOrFallback(cmd, "query", "keyword"),
-				"startTime": startMs,
-				"endTime":   endMs,
-				"limit":     limit,
-				"cursor":    cursor,
-			}
-			groupID := flagOrFallback(cmd, "group", "conversation-id", "id", "chat")
-			if groupID != "" {
-				toolArgs["openConversationId"] = groupID
-			}
-			return callMCPTool("search_messages_by_keyword", toolArgs)
+			return RunPagedMCPCommand(cmd, pagedChatMessagesConfig(
+				"search_messages_by_keyword", chatMessageSearchArgs))
 		},
 	}
 	DeclareLeafMetadata(chatMessageSearchCmd, LeafSpec{
@@ -3133,12 +3279,12 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"需要多会话、发送者或 @维度组合时使用 search-advanced"},
 				Examples:     []string{"dws chat message search --query \"发布计划\" --start \"2026-07-01T00:00:00+08:00\" --end \"2026-07-10T00:00:00+08:00\""},
 			},
-			Parameters: []contract.ParamDecl{
+			Parameters: append([]contract.ParamDecl{
 				{Name: "end", Property: "endTime"},
 				{Name: "group", Property: "openConversationId"},
 				{Name: "query", Property: "keyword"},
 				{Name: "start", Property: "startTime"},
-			},
+			}, pagedMCPParamDecls()...),
 		},
 	})
 
@@ -3159,101 +3305,8 @@ func newChatCommand() *cobra.Command {
   # 查询单聊会话 ID: dws chat conversation-info --user <userId>
   # 查询人员: dws contact user search --keyword "姓名" --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			toolArgs := map[string]any{}
-
-			// The CLI primary is --query; the IM MCP field is still named "keyword".
-			if v := flagOrFallback(cmd, "query", "keyword"); v != "" {
-				toolArgs["keyword"] = v
-			}
-
-			// --user/--userId are the preferred userId inputs for sender filtering.
-			if v := flagOrFallback(cmd, "users", "user", "userId"); v != "" {
-				appendChatIDArgs(toolArgs, parseCSVValues(v), "senderUserIds", "senderOpenDingTakIds")
-			}
-
-			// sender-ids -> senderOpenDingTakIds / senderUserIds（注意：MCP 入参字段名缺少字母 l）
-			if v := flagOrFallback(cmd, "sender-ids", "senders", "sender"); v != "" {
-				ids := parseCSVValues(v)
-				if len(ids) > 0 {
-					appendChatIDArgs(toolArgs, ids, "senderUserIds", "senderOpenDingTakIds")
-				}
-			}
-
-			// at-me
-			if v, _ := cmd.Flags().GetBool("at-me"); v {
-				toolArgs["atMe"] = true
-			}
-
-			// at-ids -> atOpenDingTakIds / atUserIds（注意：MCP 入参字段名缺少字母 l）
-			if v, _ := cmd.Flags().GetString("at-ids"); v != "" {
-				ids := parseCSVValues(v)
-				if len(ids) > 0 {
-					appendChatIDArgs(toolArgs, ids, "atUserIds", "atOpenDingTakIds")
-				}
-			}
-
-			// conversation-ids / groups / group -> openConversationIds
-			convIds := ""
-			if v, _ := cmd.Flags().GetString("conversation-ids"); v != "" {
-				convIds = v
-			} else if v, _ := cmd.Flags().GetString("groups"); v != "" {
-				convIds = v
-			} else if v, _ := cmd.Flags().GetString("group"); v != "" {
-				convIds = v
-			}
-			if convIds != "" {
-				var ids []string
-				for _, s := range strings.Split(convIds, ",") {
-					if t := strings.TrimSpace(s); t != "" {
-						ids = append(ids, t)
-					}
-				}
-				if len(ids) > 0 {
-					toolArgs["openConversationIds"] = ids
-				}
-			}
-
-			if v, _ := cmd.Flags().GetString("message-type"); v != "" {
-				toolArgs["messageType"] = v
-			}
-			if cmd.Flags().Changed("only-robot") {
-				toolArgs["onlyRobotMessages"], _ = cmd.Flags().GetBool("only-robot")
-			} else if cmd.Flags().Changed("only-robot-messages") {
-				toolArgs["onlyRobotMessages"], _ = cmd.Flags().GetBool("only-robot-messages")
-			}
-			if v := flagOrFallback(cmd, "conversation-type", "search-conv-type"); v != "" {
-				toolArgs["searchConvType"] = v
-			}
-
-			// start -> startTime (ISO-8601 to milliseconds)
-			if v, _ := cmd.Flags().GetString("start"); v != "" {
-				ms, err := parseISOTimeToMillis("start", v)
-				if err != nil {
-					return err
-				}
-				toolArgs["startTime"] = ms
-			}
-
-			// end -> endTime (ISO-8601 to milliseconds)
-			if v, _ := cmd.Flags().GetString("end"); v != "" {
-				ms, err := parseISOTimeToMillis("end", v)
-				if err != nil {
-					return err
-				}
-				toolArgs["endTime"] = ms
-			}
-
-			// cursor
-			if v, _ := cmd.Flags().GetString("cursor"); v != "" {
-				toolArgs["cursor"] = v
-			}
-
-			// limit
-			if v := chatIntFlagOrFallback(cmd, "limit", "size"); v > 0 {
-				toolArgs["limit"] = v
-			}
-
-			return callMCPToolOnServer("im", "search_messages", toolArgs)
+			return RunPagedMCPCommand(cmd, pagedChatMessagesOnServerConfig(
+				"im", "search_messages", chatMessageSearchAdvancedArgs))
 		},
 	}
 	DeclareLeafMetadata(chatMessageSearchAdvancedCmd, LeafSpec{
@@ -3285,7 +3338,7 @@ func newChatCommand() *cobra.Command {
 				},
 				Examples: []string{"dws chat message search-advanced --query \"周报\" --start \"2026-04-01T00:00:00+08:00\" --end \"2026-04-15T00:00:00+08:00\""},
 			},
-			Parameters: []contract.ParamDecl{
+			Parameters: append([]contract.ParamDecl{
 				{Name: "at-ids", Property: "atOpenDingTakIds"},
 				{Name: "conversation-ids", Property: "openConversationIds"},
 				{Name: "conversation-type", Property: "searchConvType"},
@@ -3295,7 +3348,7 @@ func newChatCommand() *cobra.Command {
 				{Name: "query", Property: "keyword"},
 				{Name: "sender-ids", Property: "senderOpenDingTakIds"},
 				{Name: "start", Property: "startTime"},
-			},
+			}, pagedMCPParamDecls()...),
 		},
 	})
 
@@ -3841,6 +3894,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageListAllCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageListAllCmd.Flags().MarkHidden("size")
 	chatMessageListAllCmd.Flags().String("cursor", "0", "分页游标（首页传 \"0\"，后续从响应中获取）")
+	AddPagedMCPFlags(chatMessageListAllCmd)
 
 	// list-by-sender flags
 	chatMessageListBySenderCmd.Flags().String("sender-user-id", "", "发送者 userId（与 --sender-open-dingtalk-id 二选一）")
@@ -3856,6 +3910,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageListBySenderCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageListBySenderCmd.Flags().MarkHidden("size")
 	chatMessageListBySenderCmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"，翻页传 nextCursor）")
+	AddPagedMCPFlags(chatMessageListBySenderCmd)
 
 	// list-mentions flags
 	chatMessageListMentionsCmd.Flags().String("group", "", "群聊 openconversation_id（可选，不传则查全部）")
@@ -3867,10 +3922,12 @@ func newChatCommand() *cobra.Command {
 	chatMessageListMentionsCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageListMentionsCmd.Flags().MarkHidden("size")
 	chatMessageListMentionsCmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"，翻页传 nextCursor）")
+	AddPagedMCPFlags(chatMessageListMentionsCmd)
 
 	// list-focused flags
 	chatMessageListFocusedCmd.Flags().Int("limit", 50, "每页返回数量（默认 50）")
 	chatMessageListFocusedCmd.Flags().Int64("cursor", 0, "分页游标（首次不传或传 0，翻页传 nextCursor）")
+	AddPagedMCPFlags(chatMessageListFocusedCmd)
 
 	// list-top-conversations flags
 	chatMessageListTopConversationsCmd.Flags().Int("limit", 1000, "每页返回数量（默认 1000）")
@@ -3893,6 +3950,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageSearchCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageSearchCmd.Flags().MarkHidden("size")
 	chatMessageSearchCmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"，翻页传 nextCursor）")
+	AddPagedMCPFlags(chatMessageSearchCmd)
 
 	// read-status flags (主 flag 为 --conversation-id，因为支持群聊和单聊)
 	chatMessageReadStatusCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，群聊或单聊均可)")
@@ -3964,6 +4022,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageSearchAdvancedCmd.Flags().Int("limit", 100, "每页返回数量（默认 100）")
 	chatMessageSearchAdvancedCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageSearchAdvancedCmd.Flags().MarkHidden("size")
+	AddPagedMCPFlags(chatMessageSearchAdvancedCmd)
 
 	// query-send-status flags
 	chatMessageQuerySendStatusCmd.Flags().String("open-task-id", "", "消息发送任务 ID (必填)")
@@ -7473,18 +7532,10 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	  dws chat message list-favorites --size 30
 	  dws chat message list-favorites --cursor 20 --size 20`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cursor, _ := cmd.Flags().GetInt64("cursor")
-			if cursor < 0 {
-				return apperrors.NewValidation("--cursor must be greater than or equal to 0")
-			}
-			size, _ := cmd.Flags().GetInt("size")
-			if size < 1 || size > chatFavoritesMaxPageSize {
-				return apperrors.NewValidation("--size must be between 1 and 30")
-			}
-			return callMCPToolOnServer("im", "list_message_favorites", map[string]any{
-				"cursor": cursor,
-				"size":   strconv.Itoa(size),
-			})
+			cfg := pagedChatMessagesOnServerConfig("im", "list_message_favorites", chatMessageListFavoritesArgs)
+			cfg.ItemPath = "result.items"
+			cfg.CursorKind = PagedCursorInt64
+			return RunPagedMCPCommand(cmd, cfg)
 		},
 	}
 	DeclareLeafMetadata(chatMessageListFavoritesCmd, LeafSpec{
@@ -7512,13 +7563,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"需要搜索普通聊天记录、置顶消息或修改收藏状态时不要使用。"},
 				Examples:     []string{"dws chat message list-favorites --cursor 0 --size 20"},
 			},
-			Parameters: []contract.ParamDecl{
+			Parameters: append([]contract.ParamDecl{
 				{Name: "size", InterfaceType: "string"},
-			},
+			}, pagedMCPParamDecls()...),
 		},
 	})
 	chatMessageListFavoritesCmd.Flags().Int64("cursor", 0, "数字分页游标（默认 0；翻页时传上次返回的 nextCursor）")
 	chatMessageListFavoritesCmd.Flags().Int("size", 20, "一次拉取的收藏数量（默认 20，范围 1-30）")
+	AddPagedMCPFlags(chatMessageListFavoritesCmd)
 
 	// ── group list-my-groups: 拉取我创建/管理的群 ──────────────
 
