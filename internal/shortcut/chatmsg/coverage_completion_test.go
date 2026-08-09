@@ -78,6 +78,15 @@ func TestCrossPlatformCoverageResourcesExtractsLegacyFileNameWithoutGuessing(t *
 	}
 }
 
+func TestCrossPlatformCoverageResourceNameRejectsIncompletePairs(t *testing.T) {
+	names := map[string]resourceNameCandidate{}
+	recordResourceName(names, "", "report.pdf", resourceNamePriorityStructured)
+	recordResourceName(names, "file-1", "", resourceNamePriorityStructured)
+	if len(names) != 0 {
+		t.Fatalf("incomplete resource-name pairs were retained: %#v", names)
+	}
+}
+
 func TestCrossPlatformCoverageProjectionRemovesOnlyLegacyResourceDownloadHint(t *testing.T) {
 	legacy := `[文件] 项目最终报告 2026.pdf fileId: drive-file 注意：如需下载使用dws drive download命令下载`
 	row := ProjectMessageV1(map[string]any{"content": legacy}, false)

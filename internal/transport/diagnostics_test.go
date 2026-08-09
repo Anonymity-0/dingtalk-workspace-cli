@@ -128,6 +128,26 @@ func TestExtractServerDiagnosticsFromMapNestedDiagnosticEnvelope(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageBoolDiagnosticsRecursiveEdges(t *testing.T) {
+	t.Parallel()
+	if value, ok := boolFromMapRecursive(nil, 0, "retryable"); ok || value {
+		t.Fatalf("nil recursive bool = (%v, %v)", value, ok)
+	}
+	if value, ok := boolFromMapRecursive(map[string]any{"retryable": true}, 9, "retryable"); ok || value {
+		t.Fatalf("over-depth recursive bool = (%v, %v)", value, ok)
+	}
+	content := map[string]any{
+		"result": []any{
+			"ignore",
+			map[string]any{"data": map[string]any{"serverRetryable": true}},
+		},
+	}
+	value, ok := boolFromMapRecursive(content, 0, "serverRetryable")
+	if !ok || !value {
+		t.Fatalf("nested array recursive bool = (%v, %v)", value, ok)
+	}
+}
+
 func TestExtractServerDiagnosticsFromMap_Empty(t *testing.T) {
 	t.Parallel()
 	diag := ExtractServerDiagnosticsFromMap(nil)

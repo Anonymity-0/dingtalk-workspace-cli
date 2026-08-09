@@ -24,13 +24,18 @@ type searchMsgExecutionCaller struct {
 	omitPagination bool
 	omitMgetItem   bool
 	failPreflight  bool
+	preflightError error
 	searchResponse string
 	wrongMgetScope bool
+	missingMgetCID bool
 }
 
 func (f *searchMsgExecutionCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
 	f.calls = append(f.calls, platformCoverageCall{product: product, tool: tool, args: args})
 	if product == "chat" && tool == "get_conversation_info" {
+		if f.preflightError != nil {
+			return nil, f.preflightError
+		}
 		if f.failPreflight {
 			return nil, errors.New("conversation not found")
 		}
@@ -60,6 +65,9 @@ func (f *searchMsgExecutionCaller) CallTool(_ context.Context, product, tool str
 		}
 		if f.wrongMgetScope {
 			return searchMsgToolResult(`{"result":[{"openMessageId":"m1","openConversationId":"cid-other","content":"detail-1"}]}`), nil
+		}
+		if f.missingMgetCID {
+			return searchMsgToolResult(`{"result":[{"openMessageId":"m1","openConversationId":null,"content":"detail-1"}]}`), nil
 		}
 		if f.omitMgetItem {
 			return searchMsgToolResult(`{"result":[{"openMessageId":"m1","content":"detail-1"}]}`), nil
@@ -323,6 +331,34 @@ func TestSearchMsgMissingConversationIdentityFailsClosed(t *testing.T) {
 	var typed *apperrors.Error
 	if !errors.As(err, &typed) || typed.Reason != "search_conversation_scope_unverified" {
 		t.Fatalf("error = %#v", err)
+	}
+}
+
+func TestCrossPlatformCoverageSearchMsgScopeFailureBranches(t *testing.T) {
+	want := errors.New("preflight unavailable")
+	caller := &searchMsgExecutionCaller{preflightError: want}
+	_, err := executeSearchMsgResult(caller, "--group", "cid-target", "--query", "周报", "--no-enrich")
+	if !errors.Is(err, want) {
+		t.Fatalf("preflight error = %v, want %v", err, want)
+	}
+
+	caller = &searchMsgExecutionCaller{
+		searchResponse: `{"result":{"messages":[{"openMessageId":"m1","openConversationId":"cid-target","content":"sparse"}],"hasMore":false}}`,
+		missingMgetCID: true,
+	}
+	_, err = executeSearchMsgResult(caller, "--group", "cid-target", "--query", "周报")
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || typed.Reason != "search_conversation_scope_unverified" {
+		t.Fatalf("enrichment scope error = %#v", err)
+	}
+
+	err = searchScopeViolationError(
+		[]string{"cid-target"},
+		[]map[string]any{{"openMessageId": "m-empty"}, {"openMessageId": "m-other", "openConversationId": "cid-other"}},
+	)
+	typed = nil
+	if !errors.As(err, &typed) || typed.Reason != "search_conversation_scope_violation" {
+		t.Fatalf("scope violation error = %#v", err)
 	}
 }
 

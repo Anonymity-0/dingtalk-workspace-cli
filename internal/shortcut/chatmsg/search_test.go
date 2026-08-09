@@ -73,3 +73,32 @@ func TestGroupSearchMessagesPreservesFirstSeenOrder(t *testing.T) {
 		t.Fatalf("group messages = %#v", groupMessages)
 	}
 }
+
+func TestCrossPlatformCoverageSearchProjectionEdgeBranches(t *testing.T) {
+	if SearchItems(nil) != nil {
+		t.Fatal("nil search response returned messages")
+	}
+
+	matched, missing := FilterConversationScope(
+		[]map[string]any{{}},
+		[]string{"", "cid-target"},
+	)
+	if len(matched) != 0 || !reflect.DeepEqual(missing, []string{"<unknown>"}) {
+		t.Fatalf("scope result = matched:%#v missing:%#v", matched, missing)
+	}
+
+	groups := GroupSearchMessages([]map[string]any{
+		{"openMessageId": "missing-scope"},
+		{"openMessageId": "m1", "openConversationId": "cid-1", "singleChat": true},
+	})
+	if len(groups) != 1 || groups[0]["singleChat"] != true {
+		t.Fatalf("groups = %#v", groups)
+	}
+
+	if cleanSearchScalar(nil) != "" || cleanSearchScalar(" null ") != "" || cleanSearchScalar(" value ") != "value" {
+		t.Fatal("cleanSearchScalar did not normalize sentinel values")
+	}
+	if got := uniqueStrings([]string{"m1", "m1", "m2"}); !reflect.DeepEqual(got, []string{"m1", "m2"}) {
+		t.Fatalf("uniqueStrings = %#v", got)
+	}
+}

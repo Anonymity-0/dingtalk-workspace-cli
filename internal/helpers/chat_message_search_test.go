@@ -41,6 +41,7 @@ type chatMessageSearchCaller struct {
 	searchResponse  string
 	searchResponses []string
 	searchCalls     int
+	searchError     error
 	failPreflight   bool
 	preflightError  error
 }
@@ -58,6 +59,10 @@ func (c *chatMessageSearchCaller) CallTool(_ context.Context, productID, toolNam
 		text = `{"result":{"openConversationId":"` + args["openConversationId"].(string) + `"}}`
 	}
 	if toolName == "search_messages_by_keyword" || toolName == "search_messages" {
+		if c.searchError != nil {
+			c.searchCalls++
+			return nil, c.searchError
+		}
 		text = `{"result":{"messages":[],"hasMore":false}}`
 		if c.searchCalls < len(c.searchResponses) {
 			text = c.searchResponses[c.searchCalls]
@@ -337,6 +342,90 @@ func TestNativeScopedSearchValidEmptyResultIsComplete(t *testing.T) {
 	scope, _ := payload["scope"].(map[string]any)
 	if scope["targetsValidated"] != true || scope["sourceComplete"] != true {
 		t.Fatalf("scope = %#v", scope)
+	}
+}
+
+func TestCrossPlatformCoverageNativeScopedSearchFailureAndPaginationBranches(t *testing.T) {
+	t.Run("lower search error", func(t *testing.T) {
+		caller := &chatMessageSearchCaller{searchError: errors.New("search unavailable")}
+		_, err := executeNativeScopedSearch(t, caller,
+			"message", "search-advanced", "--query", "周报", "--conversation-ids", "cid-target")
+		if err == nil {
+			t.Fatal("lower search error was ignored")
+		}
+	})
+
+	t.Run("stalled cursor fails closed", func(t *testing.T) {
+		caller := &chatMessageSearchCaller{searchResponse: `{
+			"result": {
+				"messages": [{"openMessageId":"m1","openConversationId":"cid-target"}],
+				"hasMore": true
+			}
+		}`}
+		_, err := executeNativeScopedSearch(t, caller,
+			"message", "search-advanced", "--query", "周报", "--conversation-ids", "cid-target")
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || typed.Reason != "search_conversation_scope_cursor_stalled" {
+			t.Fatalf("error = %#v", err)
+		}
+	})
+
+	t.Run("result limit preserves continuation", func(t *testing.T) {
+		caller := &chatMessageSearchCaller{searchResponse: `{
+			"result": {
+				"messages": [{"openMessageId":"m1","openConversationId":"cid-target"}],
+				"hasMore": true,
+				"nextCursor": "c2"
+			}
+		}`}
+		payload, err := executeNativeScopedSearch(t, caller,
+			"message", "search-advanced", "--query", "周报", "--conversation-ids", "cid-target", "--limit", "1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, _ := payload["result"].(map[string]any)
+		if result["complete"] != false || result["hasMore"] != true || result["nextCursor"] != "c2" {
+			t.Fatalf("result = %#v", result)
+		}
+	})
+
+	t.Run("duplicate message ids are removed across pages", func(t *testing.T) {
+		caller := &chatMessageSearchCaller{searchResponses: []string{
+			`{"result":{"messages":[{"openMessageId":"m1","openConversationId":"cid-target"}],"hasMore":true,"nextCursor":"c2"}}`,
+			`{"result":{"messages":[{"openMessageId":"m1","openConversationId":"cid-target"},{"openMessageId":"m2","openConversationId":"cid-target"}],"hasMore":false}}`,
+		}}
+		payload, err := executeNativeScopedSearch(t, caller,
+			"message", "search-advanced", "--query", "周报", "--conversation-ids", "cid-target")
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, _ := payload["result"].(map[string]any)
+		groups, _ := result["conversationMessagesList"].([]any)
+		group, _ := groups[0].(map[string]any)
+		messages, _ := group["messages"].([]any)
+		if len(messages) != 2 {
+			t.Fatalf("deduplicated messages = %#v", messages)
+		}
+	})
+
+	if got := uniqueNonEmptyStrings([]string{" cid ", "", "cid"}); !reflect.DeepEqual(got, []string{"cid"}) {
+		t.Fatalf("uniqueNonEmptyStrings = %#v", got)
+	}
+	for _, test := range []struct {
+		value any
+		want  int
+	}{
+		{value: int64(7), want: 7},
+		{value: json.Number("8"), want: 8},
+		{value: float64(9), want: 9},
+		{value: int64(0), want: 11},
+	} {
+		if got := positiveSearchLimit(test.value, 11); got != test.want {
+			t.Errorf("positiveSearchLimit(%#v) = %d, want %d", test.value, got, test.want)
+		}
+	}
+	if cleanSearchCursor(nil) != "" || cleanSearchCursor(" null ") != "" || cleanSearchCursor(" c2 ") != "c2" {
+		t.Fatal("cleanSearchCursor did not normalize sentinel values")
 	}
 }
 

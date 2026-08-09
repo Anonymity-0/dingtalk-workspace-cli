@@ -14,6 +14,7 @@
 package chatmsg
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 )
@@ -57,7 +58,10 @@ func TestCrossPlatformCoverageVerifyStreamingCardUpdate(t *testing.T) {
 		{name: "updated", response: map[string]any{"result": map[string]any{"updated": true}}, wantProof: "updated=true"},
 		{name: "affected", response: map[string]any{"data": map[string]any{"affectedCount": float64(1)}}, wantProof: "affectedCount=1"},
 		{name: "boolean result", response: map[string]any{"result": true}, wantProof: "result=true"},
+		{name: "boolean false result", response: map[string]any{"result": false}, wantErrIs: ErrCardUpdateNotApplied},
 		{name: "matching id", response: map[string]any{"result": map[string]any{"bizId": "biz-1", "applied": true}}, wantProof: "applied=true"},
+		{name: "conflicting evidence", response: map[string]any{"updated": true, "applied": false}, wantErrIs: ErrCardUpdateUnverified},
+		{name: "zero affected", response: map[string]any{"affectedCount": 0}, wantErrIs: ErrCardUpdateNotApplied},
 		{name: "false success has no write proof", response: map[string]any{"success": true, "errorCode": nil}, wantErrIs: ErrCardUpdateUnverified},
 		{name: "explicitly not updated", response: map[string]any{"result": map[string]any{"updated": false}}, wantErrIs: ErrCardUpdateNotApplied},
 		{name: "mismatched id", response: map[string]any{"result": map[string]any{"bizId": "biz-2", "updated": true}}, wantErrIs: ErrCardUpdateBizIDDrift},
@@ -75,5 +79,29 @@ func TestCrossPlatformCoverageVerifyStreamingCardUpdate(t *testing.T) {
 				t.Fatalf("VerifyStreamingCardUpdate = %q, %v; want %q", proof, err, test.wantProof)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageCardUpdateCountScalarVariants(t *testing.T) {
+	for _, test := range []struct {
+		value any
+		want  int64
+		ok    bool
+	}{
+		{value: int(1), want: 1, ok: true},
+		{value: int32(2), want: 2, ok: true},
+		{value: int64(3), want: 3, ok: true},
+		{value: float32(4), want: 4, ok: true},
+		{value: float32(4.5), want: 4, ok: false},
+		{value: float64(5), want: 5, ok: true},
+		{value: float64(5.5), want: 5, ok: false},
+		{value: json.Number("6"), want: 6, ok: true},
+		{value: json.Number("6.5"), ok: false},
+		{value: "7", ok: false},
+	} {
+		got, ok := cardUpdateCount(test.value)
+		if got != test.want || ok != test.ok {
+			t.Errorf("cardUpdateCount(%#v) = (%d, %v), want (%d, %v)", test.value, got, ok, test.want, test.ok)
+		}
 	}
 }

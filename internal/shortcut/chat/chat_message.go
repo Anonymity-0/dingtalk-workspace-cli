@@ -1514,10 +1514,9 @@ var MessagesUpdateCard = shortcut.Shortcut{
 		return nil
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		bizID, err := chatmsg.NormalizeCardBizID(rt.Str("biz-id"))
-		if err != nil {
-			return err
-		}
+		// Validate has already normalized and rejected empty, placeholder, and
+		// whitespace-containing values before Execute is entered.
+		bizID, _ := chatmsg.NormalizeCardBizID(rt.Str("biz-id"))
 		params := map[string]any{
 			"bizId":      bizID,
 			"msgContent": rt.Str("content"),

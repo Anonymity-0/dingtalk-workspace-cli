@@ -19,6 +19,25 @@ func TestCrossPlatformCoverageProjectMessageSendReceiptLinksStatusQuery(t *testi
 	}
 }
 
+func TestCrossPlatformCoverageProjectMessageSendReceiptReadyWorkflow(t *testing.T) {
+	receipt := ProjectMessageSendReceipt(map[string]any{
+		"openTaskId":         "task-ready",
+		"openMessageId":      "msg-ready",
+		"openConversationId": "cid-ready",
+	})
+	if receipt["readyForMessageActions"] != true {
+		t.Fatalf("receipt = %#v", receipt)
+	}
+	ref, _ := receipt["messageRef"].(map[string]any)
+	if ref["openMessageId"] != "msg-ready" || ref["openConversationId"] != "cid-ready" {
+		t.Fatalf("messageRef = %#v", ref)
+	}
+	actions, _ := receipt["nextActions"].([]map[string]any)
+	if len(actions) != 3 || actions[0]["ready"] != true {
+		t.Fatalf("nextActions = %#v", actions)
+	}
+}
+
 func TestCrossPlatformCoverageProjectMessageSendStatusReadyWorkflow(t *testing.T) {
 	raw := map[string]any{
 		"result": map[string]any{

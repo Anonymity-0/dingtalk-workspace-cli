@@ -72,6 +72,46 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardVerifiesWrite(t *testing.T)
 		}
 	})
 
+	t.Run("lower write error is preserved", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{{err: errors.New("write unavailable")}}}
+		err := runNativeCardUpdate(t, caller,
+			"message", "update-card",
+			"--biz-id", "biz-1",
+			"--content", "完成",
+			"--flow-status", "3",
+			"--yes",
+		)
+		if err == nil {
+			t.Fatal("lower write error was ignored")
+		}
+	})
+
+	for _, test := range []struct {
+		name       string
+		response   string
+		wantReason string
+	}{
+		{name: "empty response", response: "", wantReason: "streaming_card_update_unverified"},
+		{name: "invalid response", response: "{", wantReason: "streaming_card_update_response_invalid"},
+		{name: "not applied", response: `{"result":{"updated":false}}`, wantReason: "streaming_card_update_not_applied"},
+		{name: "biz id drift", response: `{"result":{"bizId":"biz-other","updated":true}}`, wantReason: "streaming_card_update_biz_id_mismatch"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: test.response}}}
+			err := runNativeCardUpdate(t, caller,
+				"message", "update-card",
+				"--biz-id", "biz-1",
+				"--content", "完成",
+				"--flow-status", "3",
+				"--yes",
+			)
+			var typed *apperrors.Error
+			if !errors.As(err, &typed) || typed.Reason != test.wantReason {
+				t.Fatalf("error = %#v, want reason %q", err, test.wantReason)
+			}
+		})
+	}
+
 	t.Run("invalid arguments make no call", func(t *testing.T) {
 		for _, args := range [][]string{
 			{"message", "update-card", "--biz-id", "<bizId>", "--content", "完成", "--flow-status", "3"},

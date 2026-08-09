@@ -577,9 +577,6 @@ func collectResourceNames(value any, targetKey string, out map[string]resourceNa
 	case string:
 		if targetKey == "fileid" {
 			for _, match := range fileNameAndIDTextRE.FindAllStringSubmatch(typed, -1) {
-				if len(match) < 3 {
-					continue
-				}
 				name := strings.TrimSpace(match[1])
 				id := resourceIDScalar(match[2])
 				if name != "" && id != "" {
