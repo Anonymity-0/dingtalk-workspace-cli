@@ -75,6 +75,33 @@ func TestCrossPlatformCoverageDimensionValidationRemainingCoverage(t *testing.T)
 	}
 }
 
+// --length 必须整个值都是合法正整数。改用 strconv.Atoi 之前走的是
+// fmt.Sscanf("%d")，只消费前缀数字，"2x" 被静默当成 2 并对错误的行列数执行操作
+// ——delete 方向不可回滚。这是对既有命令的用户可见行为变更（已记入 CHANGELOG），
+// 用测试钉住，避免哪天改回宽松解析没人发现。
+func TestDimensionLengthRejectsTrailingCharacters(t *testing.T) {
+	installScriptedCaller(t, &scriptedToolCaller{dry: true})
+	common := []string{"--node", "node", "--sheet-id", "sheet", "--dimension", "ROWS"}
+
+	for _, cmdName := range []string{"insert-dimension", "delete-dimension", "update-dimension"} {
+		locator := []string{"--position", "1"}
+		if cmdName == "update-dimension" {
+			locator = []string{"--start-index", "1", "--hidden"}
+		}
+		for _, bad := range []string{"2x", "3foo", "1 2", "0x10", "abc", ""} {
+			args := append(append(append([]string{}, common...), locator...), "--length", bad)
+			err := executeDimensionCoverage(t, cmdName, args...)
+			if err == nil {
+				t.Errorf("%s --length %q 未报错，畸形长度被静默接受", cmdName, bad)
+				continue
+			}
+			if !strings.Contains(err.Error(), "--length") {
+				t.Errorf("%s --length %q: err = %v, want 指明 --length", cmdName, bad, err)
+			}
+		}
+	}
+}
+
 // --size-type 的枚举按维度区分：行高有 auto，列宽只有 pixel / standard（对齐飞书）。
 func TestUpdateDimensionSizeTypeEnumIsDimensionScoped(t *testing.T) {
 	installScriptedCaller(t, &scriptedToolCaller{dry: true})
