@@ -15,6 +15,7 @@ package helpers
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -37,6 +38,42 @@ func runNativeCardUpdate(t *testing.T, caller *scriptedToolCaller, args ...strin
 }
 
 func TestCrossPlatformCoverageNativeMessageUpdateCardVerifiesWrite(t *testing.T) {
+	t.Run("confirmation gates the native write", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":{"bizId":"biz-confirm","updated":true}}`}}}
+		err := runNativeCardUpdate(t, caller,
+			"message", "update-card",
+			"--biz-id", "biz-confirm",
+			"--content", "确认后更新",
+			"--flow-status", "3",
+		)
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || typed.Reason != "confirmation_required" {
+			t.Fatalf("unconfirmed error = %#v, want confirmation_required", err)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("unconfirmed update made %d remote call(s)", caller.calls)
+		}
+
+		caller = &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":{"bizId":"biz-confirm","updated":true}}`}}}
+		if err := runNativeCardUpdate(t, caller,
+			"message", "update-card",
+			"--biz-id", "biz-confirm",
+			"--content", "确认后更新",
+			"--flow-status", "3",
+			"--yes",
+		); err != nil {
+			t.Fatal(err)
+		}
+		wantArgs := map[string]any{
+			"bizId":      "biz-confirm",
+			"msgContent": "确认后更新",
+			"flowStatus": 3,
+		}
+		if caller.calls != 1 || caller.server != "im" || caller.tool != "update_streaming_card" || !reflect.DeepEqual(caller.args, wantArgs) {
+			t.Fatalf("confirmed call = count:%d server:%q tool:%q args:%#v", caller.calls, caller.server, caller.tool, caller.args)
+		}
+	})
+
 	t.Run("explicit evidence succeeds", func(t *testing.T) {
 		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":{"bizId":"biz-1","updated":true}}`}}}
 		err := runNativeCardUpdate(t, caller,
