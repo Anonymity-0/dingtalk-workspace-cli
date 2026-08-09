@@ -51,7 +51,6 @@ dws minutes
 │   └── status --id <uuid>           # 查询脑图生成状态
 ├── hot-word <subcommand>            # 个人热词管理
 │   ├── add --words "..."            # 添加热词（提升语音识别准确率）
-│   ├── delete --words "..."         # 批量删除个人热词
 │   └── list                         # 查询我的热词列表
 ├── replace-text --id <uuid> --search "..." --replace "..."   # 替换转写文本中的错误文字
 ├── upload <subcommand>              # 音频上传（上传本地音频文件生成听记）
@@ -302,7 +301,6 @@ dws minutes
 │   └── status --id <uuid>
 ├── hot-word <subcommand>
 │   ├── add --words "..."
-│   ├── delete --words "..."
 │   └── list
 ├── replace-text --id <uuid> --search "..." --replace "..."
 ├── upload <subcommand>
@@ -1050,19 +1048,6 @@ Flags:
 ```
 
 添加听记个人热词，用于优化语音识别中专有名词、人名等的识别准确率。支持一次添加多个热词（逗号分隔），每个热词长度不超过 10 个汉字或 5 个英文单词。
-
-### 批量删除个人热词
-```
-Usage:
-  dws minutes hot-word delete [flags]
-Example:
-  dws minutes hot-word delete --words "天气"
-  dws minutes hot-word delete --words "OKR,钉钉,Copilot"
-Flags:
-      --words string   要删除的热词，多个用逗号分隔 (必填)
-```
-
-批量删除听记个人热词。支持一次删除多个热词（逗号分隔）。删除后对应热词不再参与后续语音识别优化，适用于清理误加、过时或不再需要的热词。
 
 ### 查询我的热词列表
 ```

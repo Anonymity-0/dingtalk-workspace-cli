@@ -13,11 +13,9 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   an `int` flag and its required check uses `Flags().Changed`, matching the
   numeric-parameter convention. `--help` reports `int` instead of `string`;
   accepted values (2/3/4) and gateway behavior are unchanged.
-- **Minutes skill references** — document `hot-word delete` and
-  `permission apply`, list both in the command trees, add intent routing for
-  `permission apply`, and use a neutral hot-word example in the delete samples.
-  `hot-word delete` intentionally gets no intent routing while its leaf still
-  declares `confirmation: not_required`.
+- **Minutes skill references** — document `permission apply` in both Minutes
+  skill references: list it in the command trees, describe its policy values and
+  how it differs from `permission add`, and add its intent routing.
 
 ### Fixed
 
