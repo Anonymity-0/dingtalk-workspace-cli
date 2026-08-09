@@ -177,8 +177,12 @@ func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts page
 			err := fmt.Errorf("pagination cursor did not advance: %s", nextKey)
 			return handlePagedCommandError(cmd, envelope, cfg, allItems, page+1, nextKey, err)
 		}
+		normalizedCursor, err := normalizeCursorArg(nextCursor, cfg.CursorKind)
+		if err != nil {
+			return handlePagedCommandError(cmd, envelope, cfg, allItems, page+1, nextKey, err)
+		}
 		currentCursor = nextKey
-		args[cfg.CursorArg] = normalizeCursorArg(nextCursor, cfg.CursorKind)
+		args[cfg.CursorArg] = normalizedCursor
 		if opts.delayMS > 0 {
 			helperSleep(time.Duration(opts.delayMS) * time.Millisecond)
 		}
@@ -338,25 +342,30 @@ func cursorValueKey(value any, kind PagedCursorKind) string {
 	}
 }
 
-func normalizeCursorArg(value any, kind PagedCursorKind) any {
+func normalizeCursorArg(value any, kind PagedCursorKind) (any, error) {
 	if kind != PagedCursorInt64 {
 		if value == nil {
-			return ""
+			return "", nil
 		}
-		return fmt.Sprint(value)
+		return fmt.Sprint(value), nil
 	}
 	switch v := value.(type) {
 	case int64:
-		return v
+		return v, nil
 	case int:
-		return int64(v)
+		return int64(v), nil
 	case float64:
-		return int64(v)
+		converted := int64(v)
+		if float64(converted) != v {
+			return nil, fmt.Errorf("paged response cursor must be an integer, got %v", v)
+		}
+		return converted, nil
 	case string:
 		parsed, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
 		if err == nil {
-			return parsed
+			return parsed, nil
 		}
+		return nil, fmt.Errorf("paged response cursor must be a base-10 int64 string, got %q", v)
 	}
-	return int64(0)
+	return nil, fmt.Errorf("paged response cursor must be int64-compatible, got %T", value)
 }

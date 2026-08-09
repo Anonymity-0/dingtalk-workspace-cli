@@ -185,6 +185,39 @@ func TestPagedMCPCommandInt64CursorAndItemsPath(t *testing.T) {
 	}
 }
 
+func TestPagedMCPCommandInt64CursorRejectsNonNumericNextCursor(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"items":[{"id":"f1"}],"hasMore":true,"nextCursor":"not-a-number"}}`},
+	}}
+	cfg := PagedMCPCommandConfig{
+		ServerID:    "im",
+		ToolName:    "list_message_favorites",
+		ItemPath:    "result.items",
+		CursorPath:  "result.nextCursor",
+		HasMorePath: "result.hasMore",
+		CursorArg:   "cursor",
+		CursorKind:  PagedCursorInt64,
+		BuildArgs: func(cmd *cobra.Command) (map[string]any, error) {
+			return map[string]any{"cursor": int64(0), "size": "20"}, nil
+		},
+		Fallback: func(map[string]any) error { return nil },
+	}
+	got, stderr, err := runPagedCommandTest(t, caller, cfg, "--page-all", "--page-delay", "0")
+	if err == nil || !strings.Contains(err.Error(), "base-10 int64 string") {
+		t.Fatalf("err=%v, want invalid int64 cursor error", err)
+	}
+	if !strings.Contains(stderr, "pagination stopped at page 2") {
+		t.Fatalf("stderr=%q", stderr)
+	}
+	paging := got["paging"].(map[string]any)
+	if paging["partial"] != true || paging["failedCursor"] != "not-a-number" || paging["pagesFetched"].(float64) != 1 {
+		t.Fatalf("paging = %#v", paging)
+	}
+	if len(caller.calls) != 1 {
+		t.Fatalf("calls=%#v, want no second call with cursor 0", caller.calls)
+	}
+}
+
 func TestPagedMCPCommandFirstPageFailureReturnsNoPartial(t *testing.T) {
 	caller := &pagedCommandCaller{steps: []scriptedToolStep{{err: errors.New("boom")}}}
 	got, _, err := runPagedCommandTest(t, caller, pagedCommandMessagesConfig(nil), "--page-all")
