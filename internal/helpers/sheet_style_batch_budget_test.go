@@ -230,6 +230,18 @@ func TestBatchStyleRangesRejectsInvalidInput(t *testing.T) {
 			want:   "必须包含工作表前缀",
 		},
 		{
+			name:   "blank-sheet-prefix",
+			ranges: `[" !A1:B2"]`,
+			style:  true,
+			want:   "必须包含工作表前缀",
+		},
+		{
+			name:   "blank-range-after-prefix",
+			ranges: `["Sheet1! "]`,
+			style:  true,
+			want:   "必须包含工作表前缀",
+		},
+		{
 			name:   "bad-range-address",
 			ranges: `["Sheet1!zz"]`,
 			style:  true,
@@ -254,5 +266,111 @@ func TestBatchStyleRangesRejectsInvalidInput(t *testing.T) {
 				t.Fatalf("err = %v, want contains %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// 空白工作表标识必须在下发之前被拒绝 —— 三条入口共用同一条不变量。
+//
+// 只按原始串里 ! 的位置判断，" !A1:B2" 会拆出空工作表名，操作却照样带着
+// sheetId:"" 提交：服务端要么让整批 batch_update 失败，要么落到默认工作表而不是
+// 用户指定的那张表（后者更糟，因为命令报成功）。--batch 的纯空白 sheetId 同理，
+// 它此前只挡 == ""。三条路径都必须在发请求之前失败。
+func TestBlankSheetIdentifierIsRejectedBeforeAnyRemoteCall(t *testing.T) {
+	previousDeps := deps
+	t.Cleanup(func() { deps = previousDeps })
+
+	batchDir := t.TempDir()
+	writeBatch := func(t *testing.T, name, body string) string {
+		t.Helper()
+		p := filepath.Join(batchDir, name)
+		if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+			t.Fatalf("write batch fixture: %v", err)
+		}
+		return p
+	}
+
+	for _, tc := range []struct {
+		name string
+		cmd  func() *cobra.Command
+		args func(t *testing.T) []string
+		want string
+	}{
+		{
+			name: "set-style-ranges-blank-sheet",
+			cmd:  newRangeBatchSetStyleCmd,
+			args: func(*testing.T) []string {
+				return []string{"--node", "NODE_ID", "--ranges", `[" !A1:B2"]`, "--bg-color", "#FFF2CC"}
+			},
+			want: "必须包含工作表前缀",
+		},
+		{
+			name: "set-style-batch-blank-sheet-id",
+			cmd:  newRangeBatchSetStyleCmd,
+			args: func(t *testing.T) []string {
+				p := writeBatch(t, "blank-sheet.json", `[{"sheetId":"   ","range":"A1:B2","fontWeight":"bold"}]`)
+				return []string{"--node", "NODE_ID", "--batch", p}
+			},
+			want: "缺少 sheetId 或 range",
+		},
+		{
+			name: "set-style-batch-blank-range",
+			cmd:  newRangeBatchSetStyleCmd,
+			args: func(t *testing.T) []string {
+				p := writeBatch(t, "blank-range.json", `[{"sheetId":"Sheet1","range":"  ","fontWeight":"bold"}]`)
+				return []string{"--node", "NODE_ID", "--batch", p}
+			},
+			want: "缺少 sheetId 或 range",
+		},
+		{
+			name: "batch-clear-ranges-blank-sheet",
+			cmd:  rangeBatchClearCoverageCommand,
+			args: func(*testing.T) []string {
+				return []string{"--node", "NODE_ID", "--ranges", `[" !A1:B2"]`}
+			},
+			want: "必须包含工作表前缀",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &sheetStyleDryRunCaller{format: "json"}
+			InitDeps(caller)
+			deps.Out.w = io.Discard
+			deps.Out.errW = io.Discard
+
+			cmd := tc.cmd()
+			cmd.SetArgs(tc.args(t))
+			cmd.SilenceUsage, cmd.SilenceErrors = true, true
+			err := cmd.Execute()
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want contains %q", err, tc.want)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("remote CallTool count = %d, want 0", caller.calls)
+			}
+		})
+	}
+}
+
+// 判空看修剪后的值，但下发仍用原值：sheetId 可以是工作表**名**，名字允许带首尾
+// 空格，替用户修剪会指向另一张表。--batch 是需要精确名字时的入口，必须原样透传。
+func TestBatchStyleSheetIDIsSentVerbatimNotTrimmed(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "padded.json")
+	if err := os.WriteFile(p, []byte(`[{"sheetId":" Sheet1 ","range":" A1:B2 ","fontWeight":"bold"}]`), 0o600); err != nil {
+		t.Fatalf("write batch fixture: %v", err)
+	}
+
+	ops, err := buildBatchStyleOpsFromFile(p)
+	if err != nil {
+		t.Fatalf("buildBatchStyleOpsFromFile = %v, want accepted", err)
+	}
+	if len(ops) != 1 {
+		t.Fatalf("operations = %d, want 1", len(ops))
+	}
+	op, _ := ops[0].(map[string]any)
+	input, _ := op["input"].(map[string]any)
+	if input["sheetId"] != " Sheet1 " {
+		t.Fatalf("sheetId = %#v, want %q (verbatim)", input["sheetId"], " Sheet1 ")
+	}
+	if input["rangeAddress"] != " A1:B2 " {
+		t.Fatalf("rangeAddress = %#v, want %q (verbatim)", input["rangeAddress"], " A1:B2 ")
 	}
 }

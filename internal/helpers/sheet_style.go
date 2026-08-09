@@ -736,12 +736,20 @@ func addBatchStyleCells(total *int64, rows, cols int) error {
 }
 
 // splitSheetPrefixedRange 拆分 "SheetName!A1:B3" → (sheetName, rangeAddr)。
+// 两侧都必须在**修剪之后**仍非空：只按原始串里 ! 的位置判断会放过 " !A1:B2"，
+// 修剪后工作表名成了空串，操作却照样带着 sheetId:"" 提交 —— 服务端要么让整批
+// batch_update 失败，要么更危险地落到默认工作表而不是用户指定的那张表。
 func splitSheetPrefixedRange(rng string, idx int) (string, string, error) {
 	i := strings.Index(rng, "!")
-	if i <= 0 || i == len(rng)-1 {
+	if i < 0 {
 		return "", "", fmt.Errorf("--ranges[%d] (%q) 必须包含工作表前缀，格式为 \"SheetName!A1:B3\"", idx, rng)
 	}
-	return strings.TrimSpace(rng[:i]), strings.TrimSpace(rng[i+1:]), nil
+	sheetName := strings.TrimSpace(rng[:i])
+	rangeAddr := strings.TrimSpace(rng[i+1:])
+	if sheetName == "" || rangeAddr == "" {
+		return "", "", fmt.Errorf("--ranges[%d] (%q) 必须包含工作表前缀，格式为 \"SheetName!A1:B3\"", idx, rng)
+	}
+	return sheetName, rangeAddr, nil
 }
 
 // buildBatchStyleOpsFromRanges 把「一组样式 + 多个带前缀 range」翻成 batch_update 的 operations。
@@ -807,7 +815,11 @@ func buildBatchStyleOpsFromFile(batchPath string) ([]any, error) {
 	operations := make([]any, 0, total)
 	var totalCells int64
 	for i, item := range items {
-		if item.SheetID == "" || item.Range == "" {
+		// 判空看修剪后的值："   " 这类纯空白与漏填等价，放过去就是一次 sheetId 为
+		// 空白的 set_cell_range。但下发仍用原值：sheetId 可以是工作表**名**，名字
+		// 允许带首尾空格，这里替用户修剪就会指向另一张表（或找不到表）。--ranges
+		// 那条路径受 "Name!A1" 的书写形式所限只能修剪，需要精确名字时请走 --batch。
+		if strings.TrimSpace(item.SheetID) == "" || strings.TrimSpace(item.Range) == "" {
 			return nil, fmt.Errorf("--batch 第 %d/%d 条缺少 sheetId 或 range", i+1, total)
 		}
 		rows, cols, err := parseA1Range(item.Range)
