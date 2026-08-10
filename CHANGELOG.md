@@ -83,6 +83,14 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 - **Personal OA approval events** — personal event consumers now support task
   creation, completion, redirection, instance start, termination, and
   completion events, with typed output and matching usage documentation.
+- **Drive list type/time filtering** — `dws drive list` gains `--type
+  file|folder`, `--start`, and `--end` for client-side filtering by node type
+  and modification time on both the pan and workspace routes. Filtering runs
+  a bounded full scan of the target directory (2000-entry cap, reported via
+  `truncated=true`), composes with `--latest`/`--pattern`/`--depth`, and is
+  mutually exclusive with `--versions`/`--cursor`/`--order-by`/`--order`/
+  `--limit`. Time values accept relative forms (`24h`/`7d`/`2w`), RFC 3339,
+  zone-less ISO 8601 (Asia/Shanghai), or a plain date.
 
 ### Fixed
 
@@ -103,6 +111,9 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   stale OAuth profile. Detached buses negotiate an owner-only, memory-only IPC
   credential channel; tokens are never placed in child argv, environment,
   profiles, logs, or run-state files.
+- **Drive list pattern filtering** — `dws drive list --pattern` on the
+  single-layer pan route now filters the returned page by name pattern; the
+  flag was previously accepted but silently ignored.
 
 ### Changed
 
