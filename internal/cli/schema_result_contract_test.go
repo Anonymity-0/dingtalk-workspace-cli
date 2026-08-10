@@ -6,6 +6,7 @@ package cli
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -116,5 +117,36 @@ func TestToolSpecRejectsInvalidResultInsteadOfDroppingIt(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("invalid result schema was silently dropped")
+	}
+}
+
+func TestToolSpecRejectsInvalidOrUndeclaredPaginationCursor(t *testing.T) {
+	identity := contract.ToolIdentitySpec{ProductID: "dev", Name: "list", CLIName: "list", CLIPath: "dev list"}
+	for _, tc := range []struct {
+		name       string
+		parameters []ParameterSpec
+		pagination *contract.PaginationSpec
+		want       string
+	}{
+		{
+			name:       "invalid pagination declaration",
+			parameters: []ParameterSpec{{Name: "cursor", Type: "string"}},
+			pagination: &contract.PaginationSpec{Kind: "offset", CursorParameter: "cursor"},
+			want:       "unsupported kind",
+		},
+		{
+			name:       "cursor is not a parameter",
+			pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "cursor"},
+			want:       "is not a declared parameter",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ToolSpecFromRuntime(RuntimeToolSpecInput{
+				Identity: identity, Parameters: tc.parameters, Pagination: tc.pagination,
+			})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("ToolSpecFromRuntime() error = %v, want %q", err, tc.want)
+			}
+		})
 	}
 }

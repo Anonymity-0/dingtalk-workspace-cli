@@ -145,6 +145,9 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 }
 
 func TestFrameworkDevAppMapperBoundaryMatrix(t *testing.T) {
+	if got := devAppDataWithoutPagination("scalar"); got != "scalar" {
+		t.Fatalf("non-object data = %#v, want scalar preserved", got)
+	}
 	for name, payload := range map[string]any{
 		"scalar":       "value",
 		"bad cursor":   map[string]any{"nextCursor": 1},

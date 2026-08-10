@@ -145,6 +145,47 @@ func TestValidateCatalogStructureAcceptsStandalonePagination(t *testing.T) {
 	}
 }
 
+func TestValidateCatalogStructureRejectsMalformedStandalonePagination(t *testing.T) {
+	validPaginationEntry := func() map[string]any {
+		entry := validCatalogToolEntry()
+		parameters := entry["parameters"].(map[string]any)
+		parameters["cursor"] = map[string]any{
+			"description":      "续页游标",
+			"field_provenance": map[string]any{},
+			"required":         false,
+			"type":             "string",
+		}
+		entry["parameter_count"] = float64(len(parameters))
+		entry["pagination"] = map[string]any{
+			"kind":                    contract.PaginationKindCursor,
+			"cursor_parameter":        "cursor",
+			"meta_path":               contract.PaginationMetaPath,
+			"endpoint_exhausted_path": contract.PaginationExhaustedPath,
+			"next_token_path":         contract.PaginationNextTokenPath,
+		}
+		return entry
+	}
+
+	for _, tc := range []struct {
+		name   string
+		mutate func(map[string]any)
+		want   string
+	}{
+		{"not an object", func(entry map[string]any) { entry["pagination"] = "cursor" }, `field "pagination" must be an object`},
+		{"empty cursor", func(entry map[string]any) { entry["pagination"].(map[string]any)["cursor_parameter"] = " " }, "cursor_parameter must be a non-empty string"},
+		{"unknown cursor", func(entry map[string]any) { entry["pagination"].(map[string]any)["cursor_parameter"] = "page-token" }, "references missing parameter"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			entry := validPaginationEntry()
+			tc.mutate(entry)
+			err := ValidateCatalogStructure(catalogPayload(t, entry))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("ValidateCatalogStructure() error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageValidateCatalogStructureRejectsViolations(t *testing.T) {
 	cases := []struct {
 		name   string
