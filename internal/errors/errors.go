@@ -34,11 +34,6 @@ var marshalErrorJSON = jsonutil.MarshalIndent
 // 不跨包引用是因为 output 已导入 errors，反向引用会形成导入环。
 const outcomeFailure = "failure"
 
-// subtypeConfirmationRequired 是门禁拦截的 failure 子类标记（契约规范 §2.4，
-// B170）。字面量与 internal/output subtypeConfirmationRequired 及 runtime
-// WithReason("confirmation_required") 形态三方同源。
-const subtypeConfirmationRequired = "confirmation_required"
-
 // Category represents a stable error class with a documented exit code.
 type Category string
 
