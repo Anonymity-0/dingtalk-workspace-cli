@@ -1769,8 +1769,9 @@ tagId 可通过 `dws minutes tag list` 获取。
 - 用户提到"加/添加/共享/分享/让...看/让...访问"等增加权限语义 → `permission add`
 - 用户提到"添加参会者/加参会者/批量添加参会者/添加成员/加成员/批量添加成员/加参会人/添加参会人"等成员语义 → `permission add`（听记没有独立的"添加成员"接口，**统一走权限接口**）
 - 用户提到"移除/取消/删除/不让...看"等移除权限语义 → `permission remove`
-- 如果用户未指定权限类型，默认使用 `--policy 4`（可查看/下载/编辑）
-- 如果用户未提供 member-uids，需要先引导用户提供目标成员的钉钉 UID（可通过 `dws aisearch person --keyword "姓名" --dimension name` 查询）
+- 用户提到"我没权限/打不开/帮我申请/申请查看权限/申请编辑权限"等**为自己申请**语义 → `permission apply`（只需 `--id` + `--policy`；**不需要也不接受 `--member-uids`**，当前用户身份由系统自动识别；未说明权限等级时先与用户确认要 2（可编辑）/ 3（可查看下载）/ 4（仅查看））
+- 如果用户未指定权限类型，`permission add` 默认使用 `--policy 4`（可查看/下载/编辑）
+- `permission add` / `permission remove` 需要目标成员的钉钉 UID：如果用户未提供 member-uids，需要先引导用户提供（可通过 `dws aisearch person --keyword "姓名" --dimension name` 查询）；`permission apply` 不适用这一条
 
 **典型执行链路：**
 1. 用户说"把张三加到这个听记中" → AI 需获取张三的 UID
