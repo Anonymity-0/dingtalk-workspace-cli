@@ -230,12 +230,46 @@ function Copy-DirRecursive {
     return $count
 }
 
+# Backup-SkillDir moves $Dir into $HOME\.dws\skill-backups\<stamp>\<name>
+# instead of destroying it (non-interactive installs cannot confirm, so
+# removals must stay reversible). Missing paths are a no-op success. On any
+# backup failure the directory is left in place and $false is returned so
+# callers skip that target rather than silently deleting data.
+function Backup-SkillDir {
+    param([string]$Dir)
+    if (!(Test-Path $Dir -PathType Container)) { return $true }
+    $backupRoot = Join-Path $HOME ".dws\skill-backups"
+    $stamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss")
+    $name = Split-Path $Dir -Leaf
+    $target = Join-Path (Join-Path $backupRoot $stamp) $name
+    $i = 1
+    while (Test-Path $target) {
+        $target = Join-Path (Join-Path $backupRoot "$stamp-$i") $name
+        $i++
+        if ($i -gt 1000) {
+            Write-Say "⚠️  备份目录冲突，保留原目录 $Dir"
+            return $false
+        }
+    }
+    try {
+        New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force -ErrorAction Stop | Out-Null
+        Move-Item -Path $Dir -Destination $target -ErrorAction Stop
+    } catch {
+        Write-Say "⚠️  备份失败，保留原目录 $Dir"
+        return $false
+    }
+    Write-Say "  × 已备份并移除 $Dir → $target"
+    return $true
+}
+
 function Copy-SkillToDir {
     param([string]$SkillSrc, [string]$Dest, [string]$Label)
 
-    # Remove existing installation
-    if (Test-Path $Dest) {
-        Remove-Item -Path $Dest -Recurse -Force
+    # Refreshing an existing skill: back it up first; on backup failure keep
+    # the user's copy and skip this target.
+    if (!(Backup-SkillDir -Dir $Dest)) {
+        Write-Say "⚠️  跳过 $Dest（保留原目录）"
+        return
     }
 
     $fileCount = Copy-DirRecursive -Source $SkillSrc -Destination $Dest
@@ -255,8 +289,9 @@ function Copy-SkillToDir {
 function Copy-SkillToDirSummary {
     param([string]$SkillSrc, [string]$Dest, [string]$Label)
 
-    if (Test-Path $Dest) {
-        Remove-Item -Path $Dest -Recurse -Force
+    if (!(Backup-SkillDir -Dir $Dest)) {
+        Write-Say "⚠️  跳过 $Dest（保留原目录）"
+        return
     }
 
     $fileCount = Copy-DirRecursive -Source $SkillSrc -Destination $Dest
@@ -487,13 +522,13 @@ function Install-SkillsToHomes {
         if ($i -gt 0 -and !(Test-Path $parentGate)) {
             continue
         }
-        # Mutual exclusion: remove multi leftovers before laying down mono.
-        $sharedLeftover = Join-Path $baseDir "dws-shared"
-        if (Test-Path $sharedLeftover) {
-            Remove-Item -Path $sharedLeftover -Recurse -Force
-        }
+        # Mutual exclusion: back up + remove multi leftovers before laying
+        # down mono. Non-interactive installs cannot confirm, so removals
+        # stay reversible via ~\.dws\skill-backups\ (backup failure keeps
+        # the dir).
+        Backup-SkillDir -Dir (Join-Path $baseDir "dws-shared") | Out-Null
         Get-ChildItem -Path $baseDir -Directory -Filter "dingtalk-*" -ErrorAction SilentlyContinue |
-            ForEach-Object { Remove-Item -Path $_.FullName -Recurse -Force }
+            ForEach-Object { Backup-SkillDir -Dir $_.FullName | Out-Null }
         $dest = Join-Path $baseDir $SkillName
         if ($Root -eq $HOME) {
             $label = "~\$agentDir\$SkillName"
@@ -569,19 +604,16 @@ function Install-MultiToBase {
         New-Item -ItemType Directory -Path $BaseDir -Force | Out-Null
     }
 
-    # Mutual exclusion: remove the mono leftover.
-    $monoLeftover = Join-Path $BaseDir $SkillName
-    if (Test-Path $monoLeftover) {
-        Remove-Item -Path $monoLeftover -Recurse -Force
-    }
+    # Mutual exclusion: back up + remove the mono leftover.
+    Backup-SkillDir -Dir (Join-Path $BaseDir $SkillName) | Out-Null
 
-    # Remove stale multi skills (dingtalk-* or dws-shared) not in the new bundle.
+    # Back up + remove stale multi skills (dingtalk-* or dws-shared) not in
+    # the new bundle.
     Get-ChildItem -Path $BaseDir -Directory -Filter "dingtalk-*" -ErrorAction SilentlyContinue |
         Where-Object { !(Test-Path (Join-Path (Join-Path $MultiSrc $_.Name) "SKILL.md")) } |
-        ForEach-Object { Remove-Item -Path $_.FullName -Recurse -Force }
-    $staleShared = Join-Path $BaseDir "dws-shared"
-    if ((Test-Path $staleShared) -and !(Test-Path (Join-Path (Join-Path $MultiSrc "dws-shared") "SKILL.md"))) {
-        Remove-Item -Path $staleShared -Recurse -Force
+        ForEach-Object { Backup-SkillDir -Dir $_.FullName | Out-Null }
+    if (!(Test-Path (Join-Path (Join-Path $MultiSrc "dws-shared") "SKILL.md"))) {
+        Backup-SkillDir -Dir (Join-Path $BaseDir "dws-shared") | Out-Null
     }
 
     $count = 0
@@ -589,8 +621,11 @@ function Install-MultiToBase {
         $name = $_.Name
         if (!(Test-Path (Join-Path $_.FullName "SKILL.md"))) { return }
         $dest = Join-Path $BaseDir $name
-        if (Test-Path $dest) {
-            Remove-Item -Path $dest -Recurse -Force
+        if (!(Backup-SkillDir -Dir $dest)) {
+            # Refreshing an existing skill: on backup failure keep the
+            # user's copy and skip this skill.
+            Write-Say "⚠️  跳过 $dest（保留原目录）"
+            return
         }
         New-Item -ItemType Directory -Path $dest -Force | Out-Null
         Copy-DirRecursive -Source $_.FullName -Destination $dest | Out-Null

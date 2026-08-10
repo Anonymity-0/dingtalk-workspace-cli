@@ -17,7 +17,7 @@
 | 2 | ~~阶段 2 四件套（备份 / state.json / `dws skill mode` / 请求头）~~ | — | **❌ CANCELLED（2026-08-05）**：无运行时模式切换；upgrade 有 multi 时刷 multi（不做粘性） |
 | 3 | beta 轨观察：issue 流入 + 主动回访（**无**请求头占比） | 人工 | 步 1 |
 | 4 | stable：默认 multi 已在阶段 1 落地；L2 `rollout.json` 已砍 | — | — |
-| 5 | kill switch：beta 撤回（已有）/ 公告重装 `dws skill setup --mode mono --yes` | — | 无备份回滚产品 |
+| 5 | kill switch：beta 撤回（已有）/ 公告重装 `dws skill setup --mode mono` | — | 无备份回滚产品 |
 
 ---
 
@@ -88,7 +88,7 @@ force-multi 正交——安装 opt-in mono 的用户一旦升级含 multi 的包
 | 风险 | 说明 | 回退 |
 |---|---|---|
 | 门控不可见 | 默认值随版本号变化，review/测试容易漏 | 每面补契约测试（beta→multi / stable→mono），`test/scripts` 已有同构先例（`test/scripts/install_script_test.go:529-576`） |
-| 升级迁走 mono | **接受为产品语义**：有 multi 包时 upgrade 一次性刷 multi；需 mono 则 `dws skill setup --mode mono --yes` 重装（装完后再 upgrade 仍可能被迁回） | S1 撤回含 multi 的坏包；S3 公告重装 |
+| 升级迁走 mono | **接受为产品语义**：有 multi 包时 upgrade 一次性刷 multi；需 mono 则 `dws skill setup --mode mono` 重装（装完后再 upgrade 仍可能被迁回） | S1 撤回含 multi 的坏包；S3 公告重装 |
 | beta 轨整体有毒 | 二进制或 skill 包级事故 | 现有撤回链：`scripts/release/withdraw-release.sh`（GitHub release 撤回 + npm deprecate + dist-tag 回滚，`withdraw-release.sh:652-665`）；stable 轨不受影响 |
 | 版本字符串被仿造 | 本地 `go build` 无版本注入时 `version=""`，门控落 stable 分支（保守方向，正确） | — |
 
@@ -213,7 +213,7 @@ bucket = int(sha256(machineId + "|" + salt)[:8], 16) % 100
 |---|---|---|---|
 | S1 beta 轨整体撤回 | `scripts/release/withdraw-release.sh`：GitHub release 撤回 + npm deprecate + `beta` dist-tag 回拨（`:652-665`） | 分钟级 | **今天可用** |
 | S2 rollout.json `pct=0` | 发补丁版把 pct 打 0（immutable release 不允许原地改资产，§2.2） | 一次发版（小时级） | 依赖 L2 落地 |
-| S3 公告命令 | 公告用户重装 `dws skill setup --mode mono --yes`（安装入口，非 switch 产品） | 用户触达时延 | **可用**（无 `dws skill mode`；阶段 2 切换命令已 CANCELLED） |
+| S3 公告命令 | 公告用户重装 `dws skill setup --mode mono`（安装入口，非 switch 产品） | 用户触达时延 | **可用**（无 `dws skill mode`；阶段 2 切换命令已 CANCELLED） |
 | S4 备份回滚 | ~~`dws skill mode rollback` + 备份式安装~~ | — | **❌ CANCELLED（2026-08-05）** 与运行时切换一并取消 |
 
 二进制侧另有既有的 `dws upgrade --rollback`（`internal/upgrade/rollback.go`，

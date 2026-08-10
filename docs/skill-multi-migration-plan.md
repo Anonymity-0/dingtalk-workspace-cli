@@ -84,7 +84,7 @@ previous / backup）。**已取消**：owner 决策不做运行时模式切换�
 
 原计划 `dws skill mode status|set|rollback|--dry-run`。**已取消**。
 
-用户若需改布局：重新走安装入口（`dws skill setup --mode <mono|multi> --yes`
+用户若需改布局：重新走安装入口（`dws skill setup --mode <mono|multi>`
 或安装脚本 `DWS_SKILL_MODE=`），不是 lifecycle 切换命令。
 
 ### 3.6 默认切换（P2）
@@ -112,7 +112,7 @@ install.sh 内 multi 警告文案、AGENTS.md"生产优先 mono"表述。
   并粘入 `state.rollout`。规则：本地显式 env/flag 永远优先；拉取失败 fail-safe
   mono（并行期）/ 保持现状（切默认后）；存量机器不被 rollout 改模式。
 - **Kill switch**：`rollout.json` pct=0（若上 L2，已砍）+ beta 撤回 +
-  公告引导重装 `dws skill setup --mode mono --yes`（**无** `skill mode`
+  公告引导重装 `dws skill setup --mode mono`（**无** `skill mode`
   命令；备份回滚产品已随 D5 取消）。
 - **可观测**：原 `x-dws-skill-mode` 请求头方案 **CANCELLED**（2026-08-05
   owner）；灰度与下线判断改 issue 反馈 + 主动回访。

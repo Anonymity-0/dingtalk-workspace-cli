@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 )
 
 // Permission constants following Unix best practices.
@@ -58,7 +59,70 @@ var (
 	upgradeCopyDir      = copyDir
 	upgradeEnsureDir    = ensureDir
 	upgradeRemoveAll    = os.RemoveAll
+	upgradeMkdirAll     = os.MkdirAll
+	upgradeReadDir      = os.ReadDir
+	upgradeBackupStamp  = func() string { return time.Now().UTC().Format("20060102-150405") }
 )
+
+// skillBackupSubdir is the user-level directory where skill directories are
+// preserved before a layout-changing install/upgrade removes them. Non-
+// interactive flows (install scripts, npm postinstall, `dws upgrade`) cannot
+// ask for confirmation, so deletions must stay reversible instead.
+const skillBackupSubdir = ".dws/skill-backups"
+
+// backupAndRemoveSkillDir moves dir into <homeDir>/.dws/skill-backups/
+// <stamp>/<rel> instead of destroying it, and returns the backup path. It is
+// fail-safe: a directory that cannot be backed up is NOT removed and the
+// error is returned so the caller can surface it (and never install the
+// opposite layout next to it silently). Missing paths and regular files are
+// no-ops ("", nil).
+func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
+	info, err := os.Stat(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("检查技能目录失败 %s: %w", dir, err)
+	}
+	if !info.IsDir() {
+		return "", nil
+	}
+	rel, relErr := filepath.Rel(homeDir, dir)
+	if relErr != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		rel = filepath.Base(dir)
+	}
+	name := strings.NewReplacer(string(filepath.Separator), "-", "/", "-").Replace(rel)
+	stamp := upgradeBackupStamp()
+	backupRoot := filepath.Join(homeDir, skillBackupSubdir, stamp)
+	target := filepath.Join(backupRoot, name)
+	for i := 1; ; i++ {
+		if _, err := os.Stat(target); os.IsNotExist(err) {
+			break
+		}
+		backupRoot = filepath.Join(homeDir, skillBackupSubdir, fmt.Sprintf("%s-%d", stamp, i))
+		target = filepath.Join(backupRoot, name)
+		if i > 1000 {
+			return "", fmt.Errorf("备份目录冲突无法解决: %s", target)
+		}
+	}
+	if err := upgradeMkdirAll(backupRoot, dirPermShared); err != nil {
+		return "", fmt.Errorf("创建备份目录失败 %s: %w", backupRoot, err)
+	}
+	if err := upgradeRename(dir, target); err != nil {
+		return "", fmt.Errorf("备份技能目录失败 %s: %w", dir, err)
+	}
+	// Keep the backup directory bounded; a prune failure must not fail the
+	// install (the backup itself succeeded).
+	_ = pruneSkillBackups(homeDir)
+	return target, nil
+}
+
+// BackupAndRemoveSkillDir is the exported wrapper over
+// backupAndRemoveSkillDir for callers outside the upgrade package (the
+// skill-setup channel in internal/app).
+func BackupAndRemoveSkillDir(homeDir, dir string) (string, error) {
+	return backupAndRemoveSkillDir(homeDir, dir)
+}
 
 // skillDirBlacklist contains parent directories whose skills are managed by
 // external mechanisms (e.g. IDE extensions) and must NOT be touched by upgrade.
@@ -133,9 +197,11 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 //   - ~/.real/ and other blacklisted paths are NEVER touched
 //   - If no location was updated at all, fall back to ~/.agents/skills/
 //
-// Opposite-mode leftovers are removed so mono and multi never co-exist after
-// an upgrade. Caches under ~/.dws/skills/{multi,mono} are refreshed
-// best-effort.
+// Opposite-mode leftovers are backed up to ~/.dws/skill-backups/ and then
+// removed so mono and multi never co-exist after an upgrade; a leftover that
+// cannot be backed up is never removed and fails that home. Same-name bundle
+// skills are refreshed in place (verified DWS-managed overwrite). Caches
+// under ~/.dws/skills/{multi,mono} are refreshed best-effort.
 func UpgradeSkillLocations(extractedDir string) (*SkillUpgradeResult, error) {
 	homeDir, err := upgradeUserHomeDir()
 	if err != nil {
@@ -151,6 +217,40 @@ func UpgradeSkillLocations(extractedDir string) (*SkillUpgradeResult, error) {
 		return upgradeMonoSkillLocations(homeDir, monoSrc)
 	}
 	return nil, fmt.Errorf("升级包中找不到可安装的 skill 源")
+}
+
+// skillBackupKeep limits ~/.dws/skill-backups/ growth: only the newest
+// backups are kept.
+const skillBackupKeep = 5
+
+// pruneSkillBackups removes the oldest backup directories when more than
+// skillBackupKeep remain. Best-effort: a removal failure never aborts, but
+// pruning failures are reported so callers can warn the user.
+func pruneSkillBackups(homeDir string) error {
+	root := filepath.Join(homeDir, skillBackupSubdir)
+	entries, err := upgradeReadDir(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	var firstErr error
+	for len(names) > skillBackupKeep {
+		old := filepath.Join(root, names[0])
+		names = names[1:]
+		if err := upgradeRemoveAll(old); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 // resolveMultiBundle returns the multi skill root and its skill names when
@@ -210,15 +310,20 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 			}
 		}
 
-		// Mutual exclusion: installing mono removes multi leftovers. A base
-		// directory that exists but cannot be read fails the home instead of
-		// silently installing mono alongside multi.
-		if err := cleanupMultiLeftovers(filepath.Join(homeDir, agentDir)); err != nil {
+		// Mutual exclusion: installing mono backs up + removes multi leftovers.
+		// A base directory that exists but cannot be read fails the home
+		// instead of silently installing mono alongside multi.
+		if err := cleanupMultiLeftovers(homeDir, filepath.Join(homeDir, agentDir)); err != nil {
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
 			continue
 		}
 
-		os.RemoveAll(destDir)
+		// Refresh the existing mono directory reversibly: back it up instead of
+		// hard-deleting, since it may carry user modifications.
+		if _, err := backupAndRemoveSkillDir(homeDir, destDir); err != nil {
+			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
+			continue
+		}
 		if err := upgradeCopyDir(skillSrc, destDir); err != nil {
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
 			continue
@@ -233,11 +338,13 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 	if len(result.Succeeded()) == 0 {
 		destBase := filepath.Join(homeDir, ".agents", "skills")
 		os.MkdirAll(destBase, dirPermShared)
-		if err := cleanupMultiLeftovers(destBase); err != nil {
+		if err := cleanupMultiLeftovers(homeDir, destBase); err != nil {
 			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录清理残留也失败: %w", err)
 		}
 		dest := filepath.Join(destBase, "dws")
-		os.RemoveAll(dest)
+		if _, err := backupAndRemoveSkillDir(homeDir, dest); err != nil {
+			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录备份残留失败: %w", err)
+		}
 		if err := upgradeCopyDir(skillSrc, dest); err != nil {
 			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
 		}
@@ -264,9 +371,10 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 }
 
 // upgradeMultiSkillLocations installs every skill of the multi bundle into
-// each agent home as sibling directories and removes the opposite-mode
-// leftovers. A home is marked failed (and multi is NOT installed into it)
-// when leftover removal fails, so mono and multi never co-exist.
+// each agent home as sibling directories and backs up + removes the
+// opposite-mode leftovers. A home is marked failed (and multi is NOT
+// installed into it) when leftover backup/removal fails, so mono and multi
+// never co-exist.
 func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*SkillUpgradeResult, error) {
 	skillSet := make(map[string]bool, len(skills))
 	for _, s := range skills {
@@ -291,7 +399,7 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 			}
 		}
 
-		if err := cleanupOppositeModeLeftovers(destBase, skillSet); err != nil {
+		if err := cleanupOppositeModeLeftovers(homeDir, destBase, skillSet); err != nil {
 			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
 			continue
 		}
@@ -299,7 +407,11 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 		failed := false
 		for _, name := range skills {
 			subDest := filepath.Join(destBase, name)
-			os.RemoveAll(subDest)
+			if _, err := backupAndRemoveSkillDir(homeDir, subDest); err != nil {
+				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
+				failed = true
+				break
+			}
 			if err := upgradeCopyDir(filepath.Join(multiRoot, name), subDest); err != nil {
 				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
 				failed = true
@@ -316,12 +428,14 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 	if len(result.Succeeded()) == 0 {
 		destBase := filepath.Join(homeDir, ".agents", "skills")
 		os.MkdirAll(destBase, dirPermShared)
-		if err := cleanupOppositeModeLeftovers(destBase, skillSet); err != nil {
+		if err := cleanupOppositeModeLeftovers(homeDir, destBase, skillSet); err != nil {
 			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录清理残留也失败: %w", err)
 		}
 		for _, name := range skills {
 			subDest := filepath.Join(destBase, name)
-			os.RemoveAll(subDest)
+			if _, err := backupAndRemoveSkillDir(homeDir, subDest); err != nil {
+				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录备份残留也失败: %w", err)
+			}
 			if err := upgradeCopyDir(filepath.Join(multiRoot, name), subDest); err != nil {
 				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
 			}
@@ -369,12 +483,14 @@ func skillTreeHasRoot(dir string) bool {
 	return err == nil && !info.IsDir()
 }
 
-// cleanupMultiLeftovers removes every multi-mode skill directory (dingtalk-*
-// or dws-shared) inside one agent home before mono is installed. A missing
-// base directory simply means no leftovers; any other read failure is
-// reported so mono never silently co-exists with multi.
-func cleanupMultiLeftovers(baseDir string) error {
-	entries, err := os.ReadDir(baseDir)
+// cleanupMultiLeftovers backs up + removes every multi-mode skill directory
+// (dingtalk-* or dws-shared) inside one agent home before mono is installed.
+// A missing base directory simply means no leftovers; any other read failure
+// is reported so mono never silently co-exists with multi. Removal is
+// reversible: each leftover is preserved under ~/.dws/skill-backups/ and a
+// backup failure aborts the removal for that home.
+func cleanupMultiLeftovers(homeDir, baseDir string) error {
+	entries, err := upgradeReadDir(baseDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -386,23 +502,25 @@ func cleanupMultiLeftovers(baseDir string) error {
 			continue
 		}
 		stale := filepath.Join(baseDir, e.Name())
-		if err := upgradeRemoveAll(stale); err != nil {
-			return fmt.Errorf("清理 multi 残留失败 %s: %w", stale, err)
+		if _, err := backupAndRemoveSkillDir(homeDir, stale); err != nil {
+			return fmt.Errorf("备份并清理 multi 残留失败 %s: %w", stale, err)
 		}
 	}
 	return nil
 }
 
-// cleanupOppositeModeLeftovers removes, inside one agent home, the legacy
-// mono directory (dws/) and every multi skill directory (dingtalk-* or
+// cleanupOppositeModeLeftovers backs up + removes, inside one agent home, the
+// legacy mono directory (dws/) and every multi skill directory (dingtalk-* or
 // dws-shared) that is not part of the new bundle. The dingtalk- prefix and
 // the dws-shared name are reserved for DWS product skills; market-installed
-// skills do not use them (see skill_command.go).
-func cleanupOppositeModeLeftovers(destBase string, skillSet map[string]bool) error {
-	if err := upgradeRemoveAll(filepath.Join(destBase, "dws")); err != nil {
-		return fmt.Errorf("清理 mono 残留失败 %s: %w", filepath.Join(destBase, "dws"), err)
+// skills do not use them (see skill_command.go). Removal is reversible: each
+// directory is preserved under ~/.dws/skill-backups/ and a backup failure
+// aborts the removal for that home.
+func cleanupOppositeModeLeftovers(homeDir, destBase string, skillSet map[string]bool) error {
+	if _, err := backupAndRemoveSkillDir(homeDir, filepath.Join(destBase, "dws")); err != nil {
+		return fmt.Errorf("备份并清理 mono 残留失败 %s: %w", filepath.Join(destBase, "dws"), err)
 	}
-	entries, err := os.ReadDir(destBase)
+	entries, err := upgradeReadDir(destBase)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -414,8 +532,8 @@ func cleanupOppositeModeLeftovers(destBase string, skillSet map[string]bool) err
 			continue
 		}
 		stale := filepath.Join(destBase, e.Name())
-		if err := upgradeRemoveAll(stale); err != nil {
-			return fmt.Errorf("清理过期技能失败 %s: %w", stale, err)
+		if _, err := backupAndRemoveSkillDir(homeDir, stale); err != nil {
+			return fmt.Errorf("备份并清理过期技能失败 %s: %w", stale, err)
 		}
 	}
 	return nil

@@ -24,6 +24,99 @@ func TestSkillSetupCommandRegistered(t *testing.T) {
 	}
 }
 
+// TestCrossPlatformCoverageSkillSetupExampleCarriesNoYesBypass guards the P1
+// review finding: every copyable example of `dws skill setup` must stay free
+// of --yes. The command removes the opposite-mode layout and stale skills;
+// a copy-pasted --yes silently skips the confirmation that previews those
+// removals, so the example text itself is part of the safety contract.
+func TestCrossPlatformCoverageSkillSetupExampleCarriesNoYesBypass(t *testing.T) {
+	cmd := newSkillSetupCommand()
+	if strings.Contains(cmd.Example, "--yes") {
+		t.Fatalf("skill setup examples must not advertise --yes, got %q", cmd.Example)
+	}
+}
+
+// TestCrossPlatformCoverageSkillSetupDeclinedConfirmationNeverRemoves verifies
+// the destructive half of the setup contract: when the user declines the
+// confirmation prompt, nothing is installed and nothing is removed (neither
+// the opposite-mode leftovers nor stale skills). Confirming must then run the
+// exact cleanup previewed earlier: leftovers are backed up to
+// ~/.dws/skill-backups/ before they disappear.
+func TestCrossPlatformCoverageSkillSetupDeclinedConfirmationNeverRemoves(t *testing.T) {
+	home := t.TempDir()
+	setTestHome(t, home)
+
+	multiSrc := writeMultiSkillSource(t, []string{"dingtalk-aitable", "dingtalk-calendar"})
+	agentHome := filepath.Join(home, ".claude", "skills")
+
+	// Opposite-mode leftover (mono dws/) plus a stale multi skill the full
+	// install would clean; both must survive a declined confirmation.
+	for _, leftover := range []string{filepath.Join(agentHome, "dws"), filepath.Join(agentHome, "dingtalk-stale")} {
+		if err := os.MkdirAll(leftover, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(leftover, "SKILL.md"), []byte("keep-me"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	oldConfirm := skillSetupConfirm
+	t.Cleanup(func() { skillSetupConfirm = oldConfirm })
+
+	// Declined confirmation: nothing may change on disk.
+	skillSetupConfirm = func(io.Writer, string, string, []string, []string, bool) (bool, error) { return false, nil }
+	cmd := newSkillSetupCommand()
+	var out, errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	cmd.SetArgs([]string{"--mode", "multi", "--target", "claude", "--source", multiSrc})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("declined setup should succeed as a no-op: %v (%s)", err, errOut.String())
+	}
+	if !strings.Contains(out.String(), "已取消") {
+		t.Fatalf("expected cancellation notice, got %q", out.String())
+	}
+	for _, survivor := range []string{filepath.Join(agentHome, "dws"), filepath.Join(agentHome, "dingtalk-stale")} {
+		if _, err := os.Stat(filepath.Join(survivor, "SKILL.md")); err != nil {
+			t.Fatalf("declined confirmation removed %s: %v", survivor, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(agentHome, "dingtalk-aitable")); !os.IsNotExist(err) {
+		t.Fatalf("declined confirmation must not install either: %v", err)
+	}
+
+	// Confirmed: the previewed victims are backed up + removed, bundle skills land.
+	skillSetupConfirm = func(io.Writer, string, string, []string, []string, bool) (bool, error) { return true, nil }
+	out.Reset()
+	errOut.Reset()
+	cmd = newSkillSetupCommand()
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	cmd.SetArgs([]string{"--mode", "multi", "--target", "claude", "--source", multiSrc})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("confirmed setup failed: %v (%s)", err, errOut.String())
+	}
+	for _, gone := range []string{filepath.Join(agentHome, "dws"), filepath.Join(agentHome, "dingtalk-stale")} {
+		if _, err := os.Stat(gone); !os.IsNotExist(err) {
+			t.Fatalf("confirmed setup should remove %s (stat err=%v)", gone, err)
+		}
+	}
+	for _, n := range []string{"dingtalk-aitable", "dingtalk-calendar"} {
+		if _, err := os.Stat(filepath.Join(agentHome, n, "SKILL.md")); err != nil {
+			t.Fatalf("confirmed setup missing %s: %v", n, err)
+		}
+	}
+	// Every removal went through the reversible backup path, not a hard delete.
+	backupRoot := filepath.Join(home, ".dws", "skill-backups")
+	entries, err := os.ReadDir(backupRoot)
+	if err != nil || len(entries) == 0 {
+		t.Fatalf("confirmed setup must preserve victims under %s (entries=%v, err=%v)", backupRoot, entries, err)
+	}
+	if !strings.Contains(out.String(), "已备份并清理对面模式残留") || !strings.Contains(out.String(), "已备份并清理过期 skill") {
+		t.Fatalf("expected backup-and-remove log lines, got %q", out.String())
+	}
+}
+
 func TestResolveSkillSetupModeFlagDirect(t *testing.T) {
 	got, err := resolveSkillSetupMode("mono", true, &bytes.Buffer{})
 	if err != nil || got != skillSetupModeMono {
@@ -142,7 +235,7 @@ func TestResolveSkillSetupTargetsMultiOmitsDwsTail(t *testing.T) {
 	}
 }
 
-func TestInstallSkillToHomesEndToEnd(t *testing.T) {
+func TestCrossPlatformCoverageInstallSkillToHomesEndToEnd(t *testing.T) {
 	src := t.TempDir()
 	if err := os.WriteFile(filepath.Join(src, "SKILL.md"), []byte("# test"), 0o644); err != nil {
 		t.Fatal(err)
@@ -196,7 +289,7 @@ func writeMultiSkillSource(t *testing.T, names []string) string {
 	return root
 }
 
-func TestInstallMultiSkillToHomes(t *testing.T) {
+func TestCrossPlatformCoverageInstallMultiSkillToHomes(t *testing.T) {
 	names := []string{"dingtalk-aitable", "dingtalk-calendar", "dingtalk-doc"}
 	src := writeMultiSkillSource(t, names)
 
@@ -236,12 +329,14 @@ func TestInstallMultiSkillToHomes(t *testing.T) {
 	}
 }
 
-func TestSkillSetupMutualExclusion(t *testing.T) {
+func TestCrossPlatformCoverageSkillSetupMutualExclusion(t *testing.T) {
 	names := []string{"dingtalk-aitable", "dingtalk-calendar"}
 	src := writeMultiSkillSource(t, names)
 
 	// Simulate a pre-existing mono install under <agent-home>/dws/
-	agentHome := filepath.Join(t.TempDir(), ".claude", "skills")
+	homeRoot := t.TempDir()
+	setTestHome(t, homeRoot)
+	agentHome := filepath.Join(homeRoot, ".claude", "skills")
 	monoLeftover := filepath.Join(agentHome, "dws")
 	if err := os.MkdirAll(filepath.Join(monoLeftover, "references"), 0o755); err != nil {
 		t.Fatal(err)
@@ -284,7 +379,7 @@ func TestSkillSetupMutualExclusion(t *testing.T) {
 		}
 	}
 	// the cleanup line should appear in stdout (best-effort observability)
-	if !strings.Contains(stdout.String(), "已清理对面模式残留") {
+	if !strings.Contains(stdout.String(), "已备份并清理对面模式残留") {
 		t.Fatalf("expected cleanup log line, got stdout=%q", stdout.String())
 	}
 
@@ -312,7 +407,7 @@ func TestSkillSetupMutualExclusion(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(monoDest, "SKILL.md")); err != nil {
 		t.Fatalf("mono SKILL.md missing: %v", err)
 	}
-	if !strings.Contains(stdout.String(), "已清理对面模式残留") {
+	if !strings.Contains(stdout.String(), "已备份并清理对面模式残留") {
 		t.Fatalf("expected cleanup log line on mono install, got stdout=%q", stdout.String())
 	}
 }
@@ -458,10 +553,11 @@ func TestFilterMultiSkillNames(t *testing.T) {
 // TestSkillSetupMultiAdditivePreservesSiblings verifies the key UX promise of
 // `dws skill setup --mode multi -s aitable`: installing a subset must NOT
 // touch already-installed dingtalk-* siblings (additive semantics).
-func TestSkillSetupMultiAdditivePreservesSiblings(t *testing.T) {
+func TestCrossPlatformCoverageSkillSetupMultiAdditivePreservesSiblings(t *testing.T) {
 	src := writeMultiSkillSource(t, []string{
 		"dingtalk-aitable", "dingtalk-calendar", "dingtalk-doc",
 	})
+	setTestHome(t, t.TempDir())
 	agentHome := filepath.Join(t.TempDir(), ".claude", "skills")
 
 	// Pretend the user already installed two dingtalk-* skills earlier.
@@ -555,16 +651,18 @@ func TestResolveSkillSetupSourceMultiFinds(t *testing.T) {
 	}
 }
 
-// TestSkillSetupMultiFullInstallCleansStale verifies that a full (unfiltered)
+// TestCrossPlatformCoverageSkillSetupMultiFullInstallCleansStale verifies that a full (unfiltered)
 // multi install removes stale dingtalk-* / dws-shared directories that are no
 // longer part of the bundle, matching install.sh / install.js / upgrade paths.
 // The additive counterpart (filtered install) is covered by
-// TestSkillSetupMultiAdditivePreservesSiblings.
-func TestSkillSetupMultiFullInstallCleansStale(t *testing.T) {
+// TestCrossPlatformCoverageSkillSetupMultiAdditivePreservesSiblings.
+func TestCrossPlatformCoverageSkillSetupMultiFullInstallCleansStale(t *testing.T) {
 	names := []string{"dingtalk-aitable"}
 	src := writeMultiSkillSource(t, names)
 
-	agentHome := filepath.Join(t.TempDir(), ".claude", "skills")
+	homeRoot := t.TempDir()
+	setTestHome(t, homeRoot)
+	agentHome := filepath.Join(homeRoot, ".claude", "skills")
 	// Stale multi skills absent from the bundle, plus a non-DWS dir that must survive.
 	for _, n := range []string{"dingtalk-stale", "dws-shared", "other-skill"} {
 		dir := filepath.Join(agentHome, n)
@@ -597,14 +695,14 @@ func TestSkillSetupMultiFullInstallCleansStale(t *testing.T) {
 	if err != nil || !strings.HasPrefix(string(body), "OLD ") {
 		t.Errorf("non-DWS dir must be preserved (body=%q, err=%v)", string(body), err)
 	}
-	if !strings.Contains(stdout.String(), "已清理过期 skill") {
+	if !strings.Contains(stdout.String(), "已备份并清理过期 skill") {
 		t.Errorf("expected stale cleanup log line, got stdout=%q", stdout.String())
 	}
 }
 
 // TestSkillSetupMutualExclusionScanWarning verifies that a victim-scan failure
 // surfaces as an errOut warning instead of silently skipping cleanup.
-func TestSkillSetupMutualExclusionScanWarning(t *testing.T) {
+func TestCrossPlatformCoverageSkillSetupMutualExclusionScanWarning(t *testing.T) {
 	oldReadDir := skillSetupReadDir
 	t.Cleanup(func() { skillSetupReadDir = oldReadDir })
 	scanFail := errors.New("scan boom")

@@ -819,6 +819,14 @@ func TestInstallScriptSourceModeDefaultMultiInstall(t *testing.T) {
 			t.Errorf("%q should be removed by the multi install, stat err=%v\noutput:\n%s", gone, err, output)
 		}
 	}
+	// Removals must be reversible: the displaced dirs land under
+	// ~/.dws/skill-backups/ instead of being destroyed.
+	if findSkillBackup(fixture.fakeHome, "dws", "old mono\n") == "" {
+		t.Errorf("old mono dws/ should be backed up under .dws/skill-backups, output:\n%s", output)
+	}
+	if findSkillBackup(fixture.fakeHome, "dingtalk-stale", "stale\n") == "" {
+		t.Errorf("stale dingtalk-* should be backed up under .dws/skill-backups, output:\n%s", output)
+	}
 	if _, err := os.Stat(filepath.Join(base, "other-skill", "SKILL.md")); err != nil {
 		t.Errorf("non-DWS skill must be preserved: %v", err)
 	}
@@ -922,6 +930,79 @@ func TestInstallScriptSourceModeMonoMultiMonoExclusion(t *testing.T) {
 	assertPresent("dws")
 	assertAbsent("dingtalk-test")
 	assertAbsent("dws-shared")
+
+	// Every mutual-exclusion removal along the mono→multi→mono chain must
+	// surface as a backup under ~/.dws/skill-backups/ with the old content
+	// intact, never as a silent hard delete.
+	if got := findSkillBackup(fixture.fakeHome, "dws", "# Test skill\n"); got == "" {
+		t.Errorf("mono dws/ replaced by the multi run should be backed up")
+	}
+	if got := findSkillBackup(fixture.fakeHome, "dingtalk-test", "# Test split skill\n"); got == "" {
+		t.Errorf("dingtalk-test replaced by the final mono run should be backed up")
+	}
+	if got := findSkillBackup(fixture.fakeHome, "dws-shared", "# Test shared skill\n"); got == "" {
+		t.Errorf("dws-shared replaced by the final mono run should be backed up")
+	}
+}
+
+// findSkillBackup searches fakeHome/.dws/skill-backups recursively for a
+// directory named name whose SKILL.md equals content, returning its path
+// ("" when absent). The layout is <skill-backups>/<stamp>/<name> with
+// optional -N collision suffixes on the stamp.
+func findSkillBackup(fakeHome, name, content string) string {
+	root := filepath.Join(fakeHome, ".dws", "skill-backups")
+	var found string
+	_ = filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
+		if err != nil || found != "" || !info.IsDir() || info.Name() != name {
+			return nil
+		}
+		if data, err := os.ReadFile(filepath.Join(p, "SKILL.md")); err == nil && string(data) == content {
+			found = p
+		}
+		return nil
+	})
+	return found
+}
+
+// TestInstallScriptBackupFailureKeepsOriginalDir pins the fail-safe contract:
+// when the backup destination cannot be created (skill-backups pre-created as
+// a regular file), the installer must keep every pre-existing skill directory
+// untouched and still complete the install overall — a backup failure must
+// never degrade into a hard delete or abort the run.
+func TestInstallScriptBackupFailureKeepsOriginalDir(t *testing.T) {
+	t.Parallel()
+
+	fixture := newInstallSourceFixture(t)
+	installDir := filepath.Join(fixture.root, "bin")
+	base := filepath.Join(fixture.fakeHome, ".agents", "skills")
+
+	// Poison the backup root: mkdir -p <file>/<stamp> cannot succeed.
+	mustWriteFile(t, filepath.Join(fixture.fakeHome, ".dws", "skill-backups"), []byte("not a directory\n"), 0o644)
+	seedAgentHome(t, fixture.fakeHome, "dws", "old mono\n")
+
+	out := runInstallScript(t, fixture.scriptPath, fixture.envWithSkillMode("mono",
+		"DWS_INSTALL_DIR="+installDir,
+		"DWS_NO_SKILLS=0",
+	))
+	if !strings.Contains(out, "保留原目录") {
+		t.Fatalf("expected backup-failure warning in mono output:\n%s", out)
+	}
+	data, err := os.ReadFile(filepath.Join(base, "dws", "SKILL.md"))
+	if err != nil || string(data) != "old mono\n" {
+		t.Fatalf("mono run must keep the original dws/ untouched on backup failure (data=%q, err=%v)\noutput:\n%s", string(data), err, out)
+	}
+
+	out = runInstallScript(t, fixture.scriptPath, fixture.envWithSkillMode("multi",
+		"DWS_INSTALL_DIR="+installDir,
+		"DWS_NO_SKILLS=0",
+	))
+	if !strings.Contains(out, "保留原目录") {
+		t.Fatalf("expected backup-failure warning in multi output:\n%s", out)
+	}
+	data, err = os.ReadFile(filepath.Join(base, "dws", "SKILL.md"))
+	if err != nil || string(data) != "old mono\n" {
+		t.Fatalf("multi run must keep the mono leftover dws/ untouched on backup failure (data=%q, err=%v)\noutput:\n%s", string(data), err, out)
+	}
 }
 
 func writeTarGz(t *testing.T, path string, files map[string]string) {

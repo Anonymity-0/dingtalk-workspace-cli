@@ -410,10 +410,10 @@ curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace
 dws skill setup
 
 # 把 mono skill 铺到所有检测到的 Agent home（claude / cursor / codex / opencode / qoder）
-dws skill setup --mode mono --target all --yes
+dws skill setup --mode mono --target all
 
 # 只装到某一个 Agent home
-dws skill setup --mode multi --target cursor --yes
+dws skill setup --mode multi --target cursor
 
 # 指定本地源目录（比如 fork 或正在改的版本）
 DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
@@ -424,7 +424,9 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 | `--mode` | `mono` \| `multi` | skill 布局，不指定则交互式询问 |
 | `--target` | `all` \| `claude` \| `cursor` \| `codex` \| `opencode` \| `qoder` | 安装目标，`all` 表示铺到所有检测到的 Agent home |
 | `--source` | 路径 | 本地源目录（覆盖内置 skills） |
-| `--yes` | — | 跳过确认提示 |
+| `--yes` | — | 仅供脚本使用：跳过确认提示。删除操作仍会先备份到 `~/.dws/skill-backups/` |
+
+> setup 命令可能移除对面模式残留（装 multi 删 `dws/`，装 mono 删 `dingtalk-*`）以及不在 bundle 内的过期 skill。所有删除都会先列入确认预览，并备份到 `~/.dws/skill-backups/<时间戳>/`；备份失败的目录会保留原样、绝不删除。
 
 环境变量：`DWS_SKILL_MODE=mono|multi`（`install.sh` / `install.ps1` 也认）、`DWS_SKILL_SOURCE=<路径>`。
 

@@ -45,6 +45,55 @@ function ensureCleanDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+// backupStamp returns the UTC timestamp used for backup directory names,
+// matching the shell installers' `date -u +%Y%m%d-%H%M%S` layout.
+function backupStamp() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
+    `-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`
+  );
+}
+
+// backupAndRemoveSkillDir moves dir into <homeDir>/.dws/skill-backups/
+// <stamp>/<rel-or-basename> instead of destroying it (non-interactive
+// installs cannot confirm, so removals must stay reversible). Missing paths
+// are a no-op success. On any backup failure the directory is left in place
+// and false is returned so callers skip that target rather than silently
+// deleting data.
+function backupAndRemoveSkillDir(homeDir, dir) {
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+    return true;
+  }
+  const rel = path.relative(homeDir, dir);
+  const name =
+    rel && rel !== "." && !rel.startsWith("..") && !path.isAbsolute(rel)
+      ? rel.split(path.sep).join("-")
+      : path.basename(dir);
+  const stamp = backupStamp();
+  const backupRoot = path.join(homeDir, ".dws", "skill-backups");
+  let targetRoot = path.join(backupRoot, stamp);
+  let target = path.join(targetRoot, name);
+  for (let i = 1; fs.existsSync(target); i++) {
+    if (i > 1000) {
+      console.warn(`⚠️  备份目录冲突，保留原目录 ${dir}`);
+      return false;
+    }
+    targetRoot = path.join(backupRoot, `${stamp}-${i}`);
+    target = path.join(targetRoot, name);
+  }
+  try {
+    fs.mkdirSync(targetRoot, { recursive: true });
+    fs.renameSync(dir, target);
+  } catch (err) {
+    console.warn(`⚠️  备份失败，保留原目录 ${dir}: ${err.message}`);
+    return false;
+  }
+  console.log(`  × 已备份并移除 ${dir} → ${target}`);
+  return true;
+}
+
 function findBinary(root) {
   const entries = fs.readdirSync(root, { withFileTypes: true });
   for (const entry of entries) {
@@ -127,17 +176,25 @@ function installSkillsToHomes(skillRoot) {
     if (index > 0 && !fs.existsSync(parentGate)) {
       return;
     }
-    // Mutual exclusion: remove multi leftovers before laying down mono.
-    // Directories only — a stray file named dingtalk-x.md must survive.
+    // Mutual exclusion: back up + remove multi leftovers before laying down
+    // mono. Directories only — a stray file named dingtalk-x.md must survive.
+    // Non-interactive installs cannot confirm, so removals stay reversible via
+    // ~/.dws/skill-backups/ (backup failure keeps the dir).
     if (fs.existsSync(baseDir)) {
       for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
         if (entry.isDirectory() && (entry.name.startsWith("dingtalk-") || entry.name === "dws-shared")) {
-          fs.rmSync(path.join(baseDir, entry.name), { recursive: true, force: true });
+          backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name));
         }
       }
     }
     const destDir = path.join(baseDir, "dws");
-    fs.rmSync(destDir, { recursive: true, force: true });
+    if (!backupAndRemoveSkillDir(homeDir, destDir)) {
+      // Refreshing an existing skill: on backup failure keep the user's
+      // copy and skip this target.
+      console.warn(`⚠️  跳过 ${destDir}（保留原目录）`);
+      installed += 1;
+      return;
+    }
     copyChildren(skillRoot, destDir);
     installed += 1;
   });
@@ -180,19 +237,26 @@ function installMultiSkillsToHomes(multiRoot) {
 
   const installToBase = (baseDir) => {
     fs.mkdirSync(baseDir, { recursive: true });
-    fs.rmSync(path.join(baseDir, "dws"), { recursive: true, force: true });
+    // Mutual exclusion: back up + remove the mono leftover, then stale multi
+    // skills (dingtalk-* or dws-shared) not in the new bundle.
+    backupAndRemoveSkillDir(homeDir, path.join(baseDir, "dws"));
     for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
       if (
         entry.isDirectory() &&
         (entry.name.startsWith("dingtalk-") || entry.name === "dws-shared") &&
         !skillSet.has(entry.name)
       ) {
-        fs.rmSync(path.join(baseDir, entry.name), { recursive: true, force: true });
+        backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name));
       }
     }
     for (const name of skills) {
       const destDir = path.join(baseDir, name);
-      fs.rmSync(destDir, { recursive: true, force: true });
+      if (!backupAndRemoveSkillDir(homeDir, destDir)) {
+        // Refreshing an existing skill: on backup failure keep the user's
+        // copy and skip this skill.
+        console.warn(`⚠️  跳过 ${destDir}（保留原目录）`);
+        continue;
+      }
       copyChildren(path.join(multiRoot, name), destDir);
     }
   };

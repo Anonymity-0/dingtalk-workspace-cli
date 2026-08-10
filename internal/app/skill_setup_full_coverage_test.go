@@ -125,6 +125,7 @@ func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) 
 	oldReadDir, oldStat := skillSetupReadDir, skillSetupStat
 	oldExecutable, oldGetwd, oldHome := skillSetupExecutable, skillSetupGetwd, skillSetupUserHomeDir
 	oldRemove, oldMkdir := skillSetupRemoveAll, skillSetupMkdirAll
+	oldBackup := skillSetupBackupAndRemove
 	oldCopyDir, oldWalk, oldRel := skillSetupCopyDir, skillSetupWalk, skillSetupRel
 	oldReadlink, oldOpen, oldOpenFile, oldCopy := skillSetupReadlink, skillSetupOpen, skillSetupOpenFile, skillSetupCopy
 	t.Cleanup(func() {
@@ -132,6 +133,7 @@ func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) 
 		skillSetupReadDir, skillSetupStat = oldReadDir, oldStat
 		skillSetupExecutable, skillSetupGetwd, skillSetupUserHomeDir = oldExecutable, oldGetwd, oldHome
 		skillSetupRemoveAll, skillSetupMkdirAll = oldRemove, oldMkdir
+		skillSetupBackupAndRemove = oldBackup
 		skillSetupCopyDir, skillSetupWalk, skillSetupRel = oldCopyDir, oldWalk, oldRel
 		skillSetupReadlink, skillSetupOpen, skillSetupOpenFile, skillSetupCopy = oldReadlink, oldOpen, oldOpenFile, oldCopy
 	})
@@ -209,16 +211,17 @@ func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) 
 	if ok, err := confirmSkillSetup(&out, skillSetupModeMono, "src", []string{monoDest}, nil, false); err != nil || ok {
 		t.Fatalf("EOF confirmation = %v, %v", ok, err)
 	}
-	skillSetupRemoveAll = func(string) error { return fail }
+	skillSetupUserHomeDir = func() (string, error) { return t.TempDir(), nil }
+	skillSetupBackupAndRemove = func(string, string) (string, error) { return "", fail }
 	cleanupMutualExclusion(monoDest, skillSetupModeMono, &out, &errOut)
 
 	skillSetupCopyDir = func(string, string) error { return fail }
-	skillSetupRemoveAll = func(string) error { return fail }
+	skillSetupBackupAndRemove = func(string, string) (string, error) { return "", fail }
 	_, skipped, _ := installSkillToHomes("src", []string{"a"}, &out, &errOut)
 	if skipped != 1 {
-		t.Fatal("mono remove failure not skipped")
+		t.Fatal("mono backup failure not skipped")
 	}
-	skillSetupRemoveAll = func(string) error { return nil }
+	skillSetupBackupAndRemove = func(string, string) (string, error) { return "", nil }
 	skillSetupMkdirAll = func(string, os.FileMode) error { return fail }
 	_, skipped, _ = installSkillToHomes("src", []string{"b"}, &out, &errOut)
 	if skipped != 1 {
@@ -236,12 +239,12 @@ func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) 
 		t.Fatal("multi mkdir failure count mismatch")
 	}
 	skillSetupMkdirAll = func(string, os.FileMode) error { return nil }
-	skillSetupRemoveAll = func(string) error { return fail }
+	skillSetupBackupAndRemove = func(string, string) (string, error) { return "", fail }
 	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut, true)
 	if skipped != 1 {
-		t.Fatal("multi remove failure count mismatch")
+		t.Fatal("multi backup failure count mismatch")
 	}
-	skillSetupRemoveAll = func(string) error { return nil }
+	skillSetupBackupAndRemove = func(string, string) (string, error) { return "", nil }
 	_, skipped, _ = installMultiSkillToHomes("src", []string{"one"}, []string{filepath.Join(t.TempDir(), "dest")}, &out, &errOut, true)
 	if skipped != 1 {
 		t.Fatal("multi copy failure count mismatch")

@@ -41,6 +41,40 @@ need_cmd() {
   fi
 }
 
+# backup_and_remove_skill_dir <dir>
+# Moves <dir> into $HOME/.dws/skill-backups/<stamp>/<name> instead of
+# destroying it (non-interactive installs cannot confirm, so removals must
+# stay reversible). Missing paths are a no-op success. On any backup failure
+# the directory is left in place and a non-zero status is returned so callers
+# skip that target rather than silently deleting data.
+backup_and_remove_skill_dir() {
+  _bed_dir="$1"
+  [ -d "$_bed_dir" ] || return 0
+  _bed_root="${HOME}/.dws/skill-backups"
+  _bed_stamp="$(date -u +%Y%m%d-%H%M%S)"
+  _bed_name="$(basename "$_bed_dir")"
+  _bed_target="$_bed_root/$_bed_stamp/$_bed_name"
+  _bed_i=1
+  while [ -e "$_bed_target" ]; do
+    _bed_target="$_bed_root/$_bed_stamp-$_bed_i/$_bed_name"
+    _bed_i=$((_bed_i + 1))
+    if [ "$_bed_i" -gt 1000 ]; then
+      printf '  ⚠️  备份目录冲突，保留原目录 %s\n' "$_bed_dir"
+      return 1
+    fi
+  done
+  mkdir -p "$(dirname "$_bed_target")" 2>/dev/null || {
+    printf '  ⚠️  无法创建备份目录，保留原目录 %s\n' "$_bed_dir"
+    return 1
+  }
+  if mv "$_bed_dir" "$_bed_target" 2>/dev/null; then
+    printf '  × 已备份并移除 %s → %s\n' "$_bed_dir" "$_bed_target"
+    return 0
+  fi
+  printf '  ⚠️  备份失败，保留原目录 %s\n' "$_bed_dir"
+  return 1
+}
+
 # Fetch a Gitee API endpoint, retrying transient 502/503 from Gitee's gateway.
 gitee_api() {
   _url="$1"
@@ -120,7 +154,10 @@ _copy_skill_summary() {
   _label="$3"
 
   if [ -d "$_dest" ]; then
-    rm -rf "$_dest"
+    backup_and_remove_skill_dir "$_dest" || {
+      printf '  ⚠️  跳过 %s（保留原目录）\n' "$_dest"
+      return 0
+    }
   fi
 
   mkdir -p "$_dest"
@@ -137,7 +174,10 @@ _copy_skill() {
   _label="$3"
 
   if [ -d "$_dest" ]; then
-    rm -rf "$_dest"
+    backup_and_remove_skill_dir "$_dest" || {
+      printf '  ⚠️  跳过 %s（保留原目录）\n' "$_dest"
+      return 0
+    }
   fi
 
   mkdir -p "$_dest"
@@ -220,19 +260,20 @@ _install_multi_to_base() {
 
   mkdir -p "$_base"
 
-  # Mutual exclusion: remove the mono leftover.
-  rm -rf "$_base/$SKILL_NAME"
+  # Mutual exclusion: back up + remove the mono leftover.
+  backup_and_remove_skill_dir "$_base/$SKILL_NAME" || true
 
-  # Remove stale multi skills (dingtalk-* or dws-shared) not in the new bundle.
+  # Back up + remove stale multi skills (dingtalk-* or dws-shared) not in the
+  # new bundle.
   for existing in "$_base"/dingtalk-*/; do
     [ -d "$existing" ] || continue
     _name="$(basename "$existing")"
     if [ ! -f "$_msrc/$_name/SKILL.md" ]; then
-      rm -rf "$existing"
+      backup_and_remove_skill_dir "$existing" || true
     fi
   done
   if [ -d "$_base/dws-shared" ] && [ ! -f "$_msrc/dws-shared/SKILL.md" ]; then
-    rm -rf "$_base/dws-shared"
+    backup_and_remove_skill_dir "$_base/dws-shared" || true
   fi
 
   _count=0
@@ -240,7 +281,11 @@ _install_multi_to_base() {
     [ -f "${skill_dir}SKILL.md" ] || continue
     _name="$(basename "$skill_dir")"
     _dest="$_base/$_name"
-    rm -rf "$_dest"
+    if [ -d "$_dest" ]; then
+      # Refreshing an existing skill: back it up first; on backup failure
+      # keep the user's copy and skip this skill.
+      backup_and_remove_skill_dir "$_dest" || continue
+    fi
     mkdir -p "$_dest"
     cp -R "${skill_dir}." "$_dest/" 2>/dev/null || cp -r "${skill_dir}." "$_dest/"
     _count=$((_count + 1))
@@ -284,11 +329,13 @@ install_skills_to_root() {
       idx=$((idx + 1))
       continue
     fi
-    # Mutual exclusion: remove multi leftovers before laying down mono.
-    rm -rf "$base_dir/dws-shared"
+    # Mutual exclusion: back up + remove multi leftovers before laying down
+    # mono. Non-interactive installs cannot confirm, so removals stay
+    # reversible via ~/.dws/skill-backups/ (backup failure keeps the dir).
+    backup_and_remove_skill_dir "$base_dir/dws-shared" || true
     for existing in "$base_dir"/dingtalk-*/; do
       [ -d "$existing" ] || continue
-      rm -rf "$existing"
+      backup_and_remove_skill_dir "$existing" || true
     done
     dest="$base_dir/$SKILL_NAME"
     if [ "$root" = "$HOME" ]; then

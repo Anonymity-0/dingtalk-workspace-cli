@@ -2120,7 +2120,7 @@ func TestCrossPlatformCoverageSkillSetupPureCoverage(t *testing.T) {
 	for _, tc := range []struct{ path, mode string }{{"", skillSetupModeMono}, {mono, skillSetupModeMono}, {filepath.Dir(multi), skillSetupModeMulti}, {root, "bad"}} {
 		_ = isSkillSourceRoot(tc.path, tc.mode)
 	}
-	t.Setenv("HOME", t.TempDir())
+	setTestHome(t, t.TempDir())
 	for _, tc := range []struct{ target, mode string }{{"agents", skillSetupModeMono}, {"agents", skillSetupModeMulti}, {"all", skillSetupModeMono}, {"missing", skillSetupModeMono}} {
 		_, _ = resolveSkillSetupTargets(tc.target, tc.mode)
 	}

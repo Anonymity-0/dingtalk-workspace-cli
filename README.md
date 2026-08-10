@@ -416,10 +416,10 @@ curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace
 dws skill setup
 
 # Install mono skill to every detected agent home (claude / cursor / codex / opencode / qoder)
-dws skill setup --mode mono --target all --yes
+dws skill setup --mode mono --target all
 
 # Install multi skills to a single agent home
-dws skill setup --mode multi --target cursor --yes
+dws skill setup --mode multi --target cursor
 
 # Point at a local source tree (e.g. a fork or work-in-progress)
 DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
@@ -430,7 +430,9 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 | `--mode` | `mono` \| `multi` | Skill layout; defaults to interactive prompt |
 | `--target` | `all` \| `claude` \| `cursor` \| `codex` \| `opencode` \| `qoder` | Where to install; `all` covers every detected agent home |
 | `--source` | path | Local source directory (overrides bundled skills) |
-| `--yes` | — | Skip confirmation prompts |
+| `--yes` | — | Scripting-only: skip the confirmation prompt. Removals are still backed up to `~/.dws/skill-backups/` first |
+
+> The setup command can remove the opposite-mode layout (`dws/` for multi, `dingtalk-*` for mono) and stale skills not in the bundle. Every removal is previewed before confirmation and preserved under `~/.dws/skill-backups/<timestamp>/`; a directory that cannot be backed up is never removed.
 
 Env vars: `DWS_SKILL_MODE=mono|multi` (also honored by `install.sh` / `install.ps1`), `DWS_SKILL_SOURCE=<path>`.
 

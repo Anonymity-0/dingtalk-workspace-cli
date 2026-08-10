@@ -37,12 +37,13 @@
 
 - `LocateSkillsRoot` 优先返回 zip 内 `multi/`（`internal/upgrade/paths.go`）。
 - `UpgradeSkillLocations`：包内有 multi 技能树 → **始终** `upgradeMultiSkillLocations`
-  （平铺 `dingtalk-*` + `dws-shared`，删 mono 残留 `dws/`，清过期 multi skill，
-  刷 `~/.dws/skills/multi`）；无 multi 树的 legacy 包才走 mono 刷新。
+  （平铺 `dingtalk-*` + `dingtalk-shared`，删 mono 残留 `dws/`，清过期 multi skill，
+  刷 `~/.dws/skills/multi`）；无 multi 树的 legacy 包才走 mono 刷新。删除前先把目录
+  移入 `~/.dws/skill-backups/`，备份失败则保留原目录并上报。
 - 这是 upgrade 上的一次性迁移，不是 `dws skill mode` 产品。
 
 测试：`internal/upgrade/paths_multi_test.go`（含
-`TestUpgradeSkillLocationsMonoDiskMigratesToMulti`）+
+`TestCrossPlatformCoverageUpgradeSkillLocationsMonoDiskMigratesToMulti`）+
 `internal/app/upgrade_skill_multi_e2e_test.go`。
 
 ## 2. 安装默认 multi（四个脚本面）
@@ -55,7 +56,7 @@
 
 - 非交互未指定 `--mode` 时默认 multi。
 - 交互选项 multi 在前（默认）、mono 标 legacy。
-- 仍可用 `dws skill setup --mode mono --yes` **重装**到 mono（这是安装入口，
+- 仍可用 `dws skill setup --mode mono` **重装**到 mono（这是安装入口，
   不是 lifecycle 切换产品；无备份/state/rollback 命令）。
 
 ## 4. 文案翻转
@@ -149,5 +150,5 @@ multi**（含存量 mono）；仅需保持 mono 的用户用安装入口 opt-in 
 |---|---|---|
 | 半装无备份 | 安装/清理仍 `RemoveAll` | 接受为非切换产品下的已知限制；重装可收敛 |
 | mono/multi 漂移 | 无 state；upgrade 有 multi 即刷 multi | 升级后收敛为 multi；安装互斥清理 |
-| 用户想换模式 | 无 switch 命令 | 文档引导：`dws skill setup --mode <mono\|multi> --yes` 重装 |
+| 用户想换模式 | 无 switch 命令 | 文档引导：`dws skill setup --mode <mono\|multi>` 重装 |
 | 8/30 滑期 | 切换产品线已砍，关键路径缩短 | 聚焦 force-multi upgrade + 默认 multi 稳定 |
