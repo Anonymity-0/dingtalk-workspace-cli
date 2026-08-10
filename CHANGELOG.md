@@ -6,6 +6,15 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Fixed
+
+- **Machine-readable export and download receipts** — `dws doc export`,
+  `dws drive download`, and `dws drive download --version` now keep progress
+  logs on stderr under `--format json` and emit one JSON result on stdout after
+  a successful local write. The result includes the saved path and byte size;
+  document exports additionally report the node, requested format, job/task
+  ID, and final status.
+
 ## [1.0.58-beta.2] - 2026-08-10
 
 ### Added
