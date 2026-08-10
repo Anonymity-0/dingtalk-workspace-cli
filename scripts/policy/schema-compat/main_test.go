@@ -449,6 +449,239 @@ func TestMergeContracts(t *testing.T) {
 	}
 }
 
+// registerReviewedParameterTypeFixture puts a fixture entry in the reviewed
+// table for the duration of one test, so the behaviour tests exercise the real
+// lookup instead of depending on whichever production entries happen to exist.
+func registerReviewedParameterTypeFixture(t *testing.T, change parameterTypeChange) {
+	t.Helper()
+	if _, exists := reviewedParameterTypeChanges[change]; exists {
+		t.Fatalf("fixture %+v collides with a production entry", change)
+	}
+	reviewedParameterTypeChanges[change] = struct{}{}
+	t.Cleanup(func() { delete(reviewedParameterTypeChanges, change) })
+}
+
+func reviewedFormatTypeFixture() parameterTypeChange {
+	return parameterTypeChange{
+		ToolPath:  "doc/doc.create",
+		Parameter: "format",
+		From:      `"string"`,
+		To:        `"integer"`,
+	}
+}
+
+const docCreateFormatTypeFailure = `schema tool "doc/doc.create" parameter "format" changed type`
+
+func assertSchemaFailureContains(t *testing.T, failures []string, want string) {
+	t.Helper()
+	for _, failure := range failures {
+		if strings.Contains(failure, want) {
+			return
+		}
+	}
+	t.Fatalf("failures %v do not contain %q", failures, want)
+}
+
+func TestCrossPlatformCoverageSchemaCompatReviewedParameterTypeChange(t *testing.T) {
+	baseline := cloneContract(baselineContract())
+	current := cloneContract(baseline)
+	mutateParameter(&current, func(parameter *parameterSchema) { parameter.Type = `"integer"` })
+
+	// Without an entry the migration is still a blocking change.
+	assertSchemaFailureContains(t, checkCompatibility(baseline, current), docCreateFormatTypeFailure)
+
+	registerReviewedParameterTypeFixture(t, reviewedFormatTypeFixture())
+	if failures := checkCompatibility(baseline, current); len(failures) != 0 {
+		t.Fatalf("a reviewed parameter type migration should pass: %v", failures)
+	}
+}
+
+func TestCrossPlatformCoverageSchemaCompatReviewedParameterTypeChangeIsDirectionSensitive(t *testing.T) {
+	registerReviewedParameterTypeFixture(t, reviewedFormatTypeFixture())
+
+	// The reverse migration shares tool and parameter but not direction, so the
+	// string->integer entry must not admit it.
+	baseline := cloneContract(baselineContract())
+	mutateParameter(&baseline, func(parameter *parameterSchema) { parameter.Type = `"integer"` })
+	current := cloneContract(baselineContract())
+	assertSchemaFailureContains(t, checkCompatibility(baseline, current), docCreateFormatTypeFailure)
+}
+
+func TestCrossPlatformCoverageSchemaCompatReviewedParameterTypeChangeRejectsOtherToolsAndParameters(t *testing.T) {
+	baseline := cloneContract(baselineContract())
+	current := cloneContract(baseline)
+	mutateParameter(&current, func(parameter *parameterSchema) { parameter.Type = `"integer"` })
+
+	// Same parameter and direction, different tool.
+	other := reviewedFormatTypeFixture()
+	other.ToolPath = "doc/doc.elsewhere"
+	registerReviewedParameterTypeFixture(t, other)
+	assertSchemaFailureContains(t, checkCompatibility(baseline, current), docCreateFormatTypeFailure)
+
+	// Same tool and direction, different parameter.
+	elsewhere := reviewedFormatTypeFixture()
+	elsewhere.Parameter = "title"
+	registerReviewedParameterTypeFixture(t, elsewhere)
+	assertSchemaFailureContains(t, checkCompatibility(baseline, current), docCreateFormatTypeFailure)
+}
+
+// A reviewed migration is only accepted when the rest of the parameter's
+// contract held still. Each case bundles one unrelated regression with the
+// reviewed type change and requires the type failure to reappear, so the
+// exemption cannot carry a second change in behind it.
+func TestCrossPlatformCoverageSchemaCompatReviewedParameterTypeChangeRejectsBundledRegression(t *testing.T) {
+	registerReviewedParameterTypeFixture(t, reviewedFormatTypeFixture())
+
+	tests := []struct {
+		name   string
+		mutate func(*parameterSchema)
+	}{
+		{name: "changed default", mutate: func(p *parameterSchema) { p.Default = `"text"` }},
+		{name: "changed interface_default", mutate: func(p *parameterSchema) { p.InterfaceDefault = `"text"` }},
+		{name: "changed format", mutate: func(p *parameterSchema) { p.Format = "uri" }},
+		{name: "redirected property", mutate: func(p *parameterSchema) { p.Property = "renamed" }},
+		{name: "redirected interface_type", mutate: func(p *parameterSchema) { p.InterfaceType = "integer" }},
+		{name: "newly required", mutate: func(p *parameterSchema) { p.Required = true }},
+		{name: "newly cli_required", mutate: func(p *parameterSchema) { p.CLIRequired = true }},
+		{name: "changed required_when", mutate: func(p *parameterSchema) { p.RequiredWhen = "always" }},
+		{name: "narrowed enum", mutate: func(p *parameterSchema) { p.Enum = []string{"markdown"} }},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			baseline := cloneContract(baselineContract())
+			current := cloneContract(baseline)
+			mutateParameter(&current, func(parameter *parameterSchema) {
+				parameter.Type = `"integer"`
+				test.mutate(parameter)
+			})
+			assertSchemaFailureContains(t, checkCompatibility(baseline, current), docCreateFormatTypeFailure)
+		})
+	}
+}
+
+// Every drift below is individually *compatible* — on its own it produces no
+// failure at all — which is precisely why the carve-out cannot be keyed on "the
+// gate recorded no other failure for this parameter". Bundled with a reviewed
+// type migration they must still be rejected: none of them were reviewed under
+// that entry, and admitting them would make the exemption wider than what the
+// table documents.
+//
+// Each case first asserts that the drift alone really is compatible, so a future
+// rule change that starts reporting it turns into an explicit failure here
+// rather than quietly turning this test into a duplicate of the bundled-
+// regression cases above.
+func TestCrossPlatformCoverageSchemaCompatReviewedParameterTypeChangeRejectsIndividuallyCompatibleDrift(t *testing.T) {
+	registerReviewedParameterTypeFixture(t, reviewedFormatTypeFixture())
+
+	tests := []struct {
+		name     string
+		baseline func(*parameterSchema)
+		current  func(*parameterSchema)
+	}{
+		{
+			name:     "relaxed required",
+			baseline: func(p *parameterSchema) { p.Required = true },
+			current:  func(p *parameterSchema) { p.Required = false },
+		},
+		{
+			name:     "relaxed cli_required",
+			baseline: func(p *parameterSchema) { p.CLIRequired = true },
+			current:  func(p *parameterSchema) { p.CLIRequired = false },
+		},
+		{
+			name:     "cleared required_when",
+			baseline: func(p *parameterSchema) { p.RequiredWhen = "always" },
+			current:  func(p *parameterSchema) { p.RequiredWhen = "" },
+		},
+		{
+			name:    "widened enum",
+			current: func(p *parameterSchema) { p.Enum = []string{"html", "markdown", "text"} },
+		},
+		{
+			name:     "cleared interface_type",
+			baseline: func(p *parameterSchema) { p.InterfaceType = "string" },
+			current:  func(p *parameterSchema) { p.InterfaceType = "" },
+		},
+		{
+			name: "cleared property through reviewed mapping exclusion",
+			current: func(p *parameterSchema) {
+				p.Property = ""
+				p.PropertySource = propertySourceReviewedMappingExclusion
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			baseline := cloneContract(baselineContract())
+			if test.baseline != nil {
+				mutateParameter(&baseline, test.baseline)
+			}
+
+			driftOnly := cloneContract(baseline)
+			mutateParameter(&driftOnly, test.current)
+			if failures := checkCompatibility(baseline, driftOnly); len(failures) != 0 {
+				t.Fatalf("前提不成立：该变化本身已不兼容，用例测不到相等性守卫: %v", failures)
+			}
+
+			bundled := cloneContract(baseline)
+			mutateParameter(&bundled, func(parameter *parameterSchema) {
+				parameter.Type = `"integer"`
+				test.current(parameter)
+			})
+			assertSchemaFailureContains(t, checkCompatibility(baseline, bundled), docCreateFormatTypeFailure)
+		})
+	}
+}
+
+// The behaviour tests above register their own fixtures, so they cannot catch a
+// production entry whose type values are spelled in the wrong form. That mistake
+// disables the exemption silently and only a real gate run reports it — exactly
+// how reviewedInterfaceRefRedirect was broken twice. Recompute both values
+// through schemaType instead of trusting the spelling in the table.
+func TestCrossPlatformCoverageReviewedParameterTypeChangeKeysAreCanonical(t *testing.T) {
+	if len(reviewedParameterTypeChanges) == 0 {
+		t.Fatal("豁免表为空：若确已清空，请连这条守卫一起删除")
+	}
+	for change := range reviewedParameterTypeChanges {
+		if strings.Count(change.ToolPath, "/") != 1 ||
+			strings.HasPrefix(change.ToolPath, "/") || strings.HasSuffix(change.ToolPath, "/") {
+			t.Errorf("tool path %q 不是 \"<product id>/<tool id>\" 形态", change.ToolPath)
+		}
+		if strings.TrimSpace(change.Parameter) != change.Parameter || change.Parameter == "" ||
+			strings.HasPrefix(change.Parameter, "-") {
+			t.Errorf("%s: 参数名应是 Schema 里的裸名，登记为 %q", change.ToolPath, change.Parameter)
+		}
+		if change.From == change.To {
+			t.Errorf("%s %s: From 与 To 相同，不构成迁移", change.ToolPath, change.Parameter)
+		}
+		for _, side := range []struct {
+			label string
+			value string
+		}{{"From", change.From}, {"To", change.To}} {
+			var name string
+			if err := json.Unmarshal([]byte(side.value), &name); err != nil {
+				t.Errorf("%s %s 的 %s=%q 不是合法的 JSON type 值（schemaType 产出带引号的形态，如 `\"string\"`）: %v",
+					change.ToolPath, change.Parameter, side.label, side.value, err)
+				continue
+			}
+			if got := schemaType(map[string]any{"type": name}); got != side.value {
+				t.Errorf("%s %s 的 %s 不是规范形态\n  登记: %s\n  规范: %s",
+					change.ToolPath, change.Parameter, side.label, side.value, got)
+			}
+			// 复算只能证明引号形态对，证明不了类型名本身没拼错——"integar" 同样
+			// 能通过复算。JSON Schema 的 type 取值是封闭集合，直接校验。
+			switch name {
+			case "string", "integer", "number", "boolean", "array", "object", "null":
+			default:
+				t.Errorf("%s %s 的 %s=%q 不是 JSON Schema 的合法 type 名",
+					change.ToolPath, change.Parameter, side.label, name)
+			}
+		}
+	}
+}
+
 func baselineContract() schemaContract {
 	return schemaContract{Version: schemaContractVersion, Products: map[string]productSchema{
 		"doc": {Tools: map[string]toolSchema{
