@@ -258,6 +258,7 @@ Flags:
 
 - 多维表 / 字段类型 → 切到 `dingtalk-aitable`
 - 把表数据写进文档 → 切到 `dingtalk-doc`
+
 ## 局部意图与 Recipe
 
 - [局部意图消歧](sheet-intent-guide.md)。
