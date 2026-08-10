@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -410,12 +409,10 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMonoFallbackAfterCopyFailure(
 // directory that exists but cannot be read must mark the home failed instead
 // of silently installing mono alongside the multi leftovers.
 func TestCrossPlatformCoverageUpgradeSkillLocationsMonoReadDirErrorFailsHome(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod-based permission injection is unix-only")
-	}
 	home := withFakeHome(t)
 
-	// .agents/skills is unreadable; .claude installs fine so the primary
+	// Inject a read failure for .agents/skills on every platform. .claude
+	// installs fine so the primary
 	// fallback never runs and the per-home failure is observable as-is.
 	agentsBase := filepath.Join(home, ".agents", "skills")
 	if err := os.MkdirAll(agentsBase, 0o755); err != nil {
@@ -424,10 +421,13 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMonoReadDirErrorFailsHome(t *
 	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(agentsBase, 0o000); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.Chmod(agentsBase, 0o755) })
+	origReadDir := upgradeReadDir
+	testseam.Swap(t, &upgradeReadDir, func(path string) ([]os.DirEntry, error) {
+		if path == agentsBase {
+			return nil, errors.New("injected read failure")
+		}
+		return origReadDir(path)
+	})
 
 	mono := t.TempDir()
 	if err := os.WriteFile(filepath.Join(mono, "SKILL.md"), []byte("# mono"), 0o644); err != nil {
@@ -453,11 +453,6 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMonoReadDirErrorFailsHome(t *
 		t.Fatalf("Succeeded() len = %d, want 1 (.claude)", got)
 	}
 	// Mono must NOT have been laid down next to the unreadable multi state.
-	// Restore permissions first: stat-ing inside a 000 dir fails with EACCES
-	// regardless of whether the child exists.
-	if err := os.Chmod(agentsBase, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := os.Stat(filepath.Join(agentsBase, "dws")); !os.IsNotExist(err) {
 		t.Errorf("mono must not be installed into the unreadable home, stat err=%v", err)
 	}
@@ -514,6 +509,21 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiFallbackCleanupFailure(t
 // collision) leaves the original directory untouched with an error.
 func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
 	home := t.TempDir()
+
+	// Stat failure other than not-exist must surface without attempting a
+	// backup. Inject it through the path seam so this branch is portable to
+	// Windows, where chmod-based permission failures are not reliable.
+	statFailurePath := filepath.Join(home, "stat-failure")
+	origStat := upgradeStat
+	testseam.Swap(t, &upgradeStat, func(path string) (os.FileInfo, error) {
+		if path == statFailurePath {
+			return nil, errors.New("injected stat failure")
+		}
+		return origStat(path)
+	})
+	if got, err := backupAndRemoveSkillDir(home, statFailurePath); got != "" || err == nil || !strings.Contains(err.Error(), "检查技能目录失败") {
+		t.Fatalf("stat failure = (%q, %v), want wrapped error", got, err)
+	}
 
 	// Regular file: no-op, no backup.
 	filePath := filepath.Join(home, "not-a-dir")

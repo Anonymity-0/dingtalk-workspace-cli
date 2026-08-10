@@ -569,6 +569,21 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		t.Error("Code Admission must not suppress required contexts with paths-ignore")
 	}
 
+	// Every checkout must resolve an immutable event SHA. Pull-request jobs
+	// that exercise the synthetic merge use the event's merge_commit_sha;
+	// source/baseline jobs intentionally use the event's head SHA. Leaving a
+	// checkout unpinned lets refs/pull/*/merge move after the event payload was
+	// created and makes the parent verification race with updates to main.
+	checkoutUses := strings.Count(admission, "uses: actions/checkout@v4")
+	pinnedCheckouts := strings.Count(admission, "github.event.pull_request.merge_commit_sha || github.sha") +
+		strings.Count(admission, "github.event.pull_request.head.sha || github.sha")
+	if checkoutUses == 0 || pinnedCheckouts != checkoutUses {
+		t.Errorf("Code Admission immutable checkout pins = %d, want one for each of %d checkouts", pinnedCheckouts, checkoutUses)
+	}
+	if !strings.Contains(admission, "github.event.pull_request.merge_commit_sha || github.sha") {
+		t.Error("Code Admission synthetic-merge jobs must pin the event merge_commit_sha")
+	}
+
 	focusedStart := strings.Index(admission, "\n  test-focused:\n")
 	focusedEnd := strings.Index(admission, "\n  test-race:\n")
 	if focusedStart < 0 || focusedEnd <= focusedStart {

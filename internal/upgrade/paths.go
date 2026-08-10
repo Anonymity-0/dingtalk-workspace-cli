@@ -61,6 +61,7 @@ var (
 	upgradeRemoveAll    = os.RemoveAll
 	upgradeMkdirAll     = os.MkdirAll
 	upgradeReadDir      = os.ReadDir
+	upgradeStat         = os.Stat
 	upgradeBackupStamp  = func() string { return time.Now().UTC().Format("20060102-150405") }
 )
 
@@ -77,7 +78,7 @@ const skillBackupSubdir = ".dws/skill-backups"
 // opposite layout next to it silently). Missing paths and regular files are
 // no-ops ("", nil).
 func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
-	info, err := os.Stat(dir)
+	info, err := upgradeStat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", nil
