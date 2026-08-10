@@ -31,6 +31,17 @@ func executePR868Command(t *testing.T, root *cobra.Command, args ...string) erro
 }
 
 func TestCrossPlatformCoverageMinutesNewSurfaces(t *testing.T) {
+	t.Run("permission add requires explicit policy", func(t *testing.T) {
+		caller := &scriptedToolCaller{}
+		installScriptedCaller(t, caller)
+		err := executePR868Command(t, newMinutesCommand(), "permission", "add", "--ids", "task-1", "--member-uids", "user-1")
+		if err == nil || !strings.Contains(err.Error(), "--policy") {
+			t.Fatalf("permission add without --policy error = %v", err)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("permission add called MCP %d times before required policy validation", caller.calls)
+		}
+	})
 	t.Run("hot-word delete dry-run", func(t *testing.T) {
 		installScriptedCaller(t, &scriptedToolCaller{dry: true, format: "json"})
 		if err := executePR868Command(t, newMinutesCommand(), "hot-word", "delete", "--words", "钉钉,OKR"); err != nil {
