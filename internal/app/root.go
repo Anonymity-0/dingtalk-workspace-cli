@@ -1084,6 +1084,7 @@ func deduplicateCommands(root *cobra.Command) {
 type outputSinkState struct {
 	mu       sync.Mutex
 	file     *os.File
+	original io.Writer
 	tempPath string
 	target   string
 	finished bool
@@ -1124,9 +1125,11 @@ func configureOutputSink(cmd *cobra.Command) error {
 	if err != nil {
 		return apperrors.NewInternal(fmt.Sprintf("failed to create temporary output file: %v", err))
 	}
+	originalOut := cmd.OutOrStdout()
 	cmd.SetOut(file)
 	cmd.SetContext(context.WithValue(cmd.Context(), outputFileContextKey{}, &outputSinkState{
 		file:     file,
+		original: originalOut,
 		tempPath: file.Name(),
 		target:   outputPath,
 	}))
@@ -1244,6 +1247,13 @@ func abortOutputSink(cmd *cobra.Command) error {
 		return nil
 	}
 	state.finished = true
+	// A business error still needs the root execution boundary to publish one
+	// typed failure envelope. Restore the pre-transaction writer before closing
+	// and unlinking the temporary file so that failure emission cannot target a
+	// closed descriptor. The final --output target remains untouched.
+	if state.original != nil {
+		cmd.SetOut(state.original)
+	}
 	closeErr := rootCloseFile(state.file)
 	removeErr := rootRemoveFile(state.tempPath)
 	if closeErr != nil {

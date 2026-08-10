@@ -1,6 +1,9 @@
 package app
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +12,7 @@ import (
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
@@ -58,6 +62,53 @@ func TestOutputSinkHandlerFailurePreservesTarget(t *testing.T) {
 		t.Fatal("ExecuteC succeeded")
 	}
 
+	assertOutputFile(t, target, "original", 0o640)
+	assertNoOutputTemps(t, target)
+}
+
+func TestExecuteUnifiedRunEFailureWithOutputRestoresStdoutAndPreservesTarget(t *testing.T) {
+	testseam.Protect(t, &os.Args)
+	os.Args = []string{"dws", "atomic-output-unified-failure", "--output", filepath.Join(t.TempDir(), "result.json"), "--format", "json"}
+	target := os.Args[3]
+	if err := os.WriteFile(target, []byte("original"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &rootNormalizeProcessProfileArgs, func() func() { return func() {} })
+	testseam.Swap(t, &rootRunPreParse, func(*cobra.Command, *pipeline.Engine) error { return nil })
+	testseam.Swap(t, &rootStopAllStdioClients, func() {})
+	var stdout, stderr bytes.Buffer
+	testseam.Swap(t, &rootNewRootCommandWithEngine, func(ctx context.Context, engine *pipeline.Engine) *cobra.Command {
+		root := NewRootCommandWithEngine(ctx, engine)
+		root.SetOut(&stdout)
+		root.SetErr(&stderr)
+		leaf := &cobra.Command{
+			Use: "atomic-output-unified-failure",
+			RunE: func(*cobra.Command, []string) error {
+				return apperrors.NewValidation("business validation failed")
+			},
+		}
+		output.SetCommandRollout(leaf, output.RolloutUnifiedActive)
+		root.AddCommand(leaf)
+		return root
+	})
+
+	if code := Execute(); code != 3 {
+		t.Fatalf("Execute exit code=%d, want validation code 3; stderr=%q", code, stderr.String())
+	}
+	var envelope struct {
+		OK      bool   `json:"ok"`
+		Outcome string `json:"outcome"`
+		Error   struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+		t.Fatalf("failure stdout=%q: %v; stderr=%q", stdout.String(), err, stderr.String())
+	}
+	if envelope.OK || envelope.Outcome != "failure" || envelope.Error.Type != "validation" || envelope.Error.Message != "business validation failed" {
+		t.Fatalf("failure envelope=%+v", envelope)
+	}
 	assertOutputFile(t, target, "original", 0o640)
 	assertNoOutputTemps(t, target)
 }
