@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"strings"
 	"testing"
-	"time"
 )
 
 // ---------- formatFeedTime unit tests ----------
@@ -104,16 +102,10 @@ func TestCrossPlatformCoverageFormatFeedTimeTimeMissingOrInvalid(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageFormatFeedTimeNormalPath(t *testing.T) {
-	// 正常路径：毫秒时间戳被格式化，原始值保留到 timeMs
-	// 2025-06-15 10:30:00 UTC = 2025-06-15 18:30:00 CST (UTC+8)
+	// 正常路径：time 保留原始毫秒时间戳，timeFormatted 被格式化为北京时间
+	// 1750067400000 ms = 2025-06-16 17:50 Beijing time (UTC+8)
 	tsMs := float64(1750067400000)
-	raw := `{"feeds":[{"time":` + json.Number(strings.TrimRight(strings.TrimRight(
-		strings.Replace(
-			string(mustMarshal(t, map[string]any{"v": tsMs})),
-			`{"v":`, "", 1),
-		"}"), "")).String() + `,"type":1,"id":"f1"}]}`
-	// Build a cleaner JSON payload
-	raw = buildFeedJSON(t, []map[string]any{
+	raw := buildFeedJSON(t, []map[string]any{
 		{"time": tsMs, "type": float64(1), "id": "f1"},
 	})
 
@@ -128,19 +120,18 @@ func TestCrossPlatformCoverageFormatFeedTimeNormalPath(t *testing.T) {
 	}
 	item := feeds[0].(map[string]any)
 
-	// timeMs 保留原始毫秒值
-	if ms, ok := item["timeMs"].(float64); !ok || ms != tsMs {
-		t.Fatalf("timeMs = %v, want %v", item["timeMs"], tsMs)
+	// time 保留原始毫秒时间戳不变
+	if ms, ok := item["time"].(float64); !ok || ms != tsMs {
+		t.Fatalf("time = %v (%T), want original ms %v", item["time"], item["time"], tsMs)
 	}
 
-	// time 被格式化为北京时间字符串
-	timeStr, ok := item["time"].(string)
+	// timeFormatted 被格式化为北京时间字符串（硬编码期望值）
+	timeStr, ok := item["timeFormatted"].(string)
 	if !ok {
-		t.Fatalf("time = %T, want string", item["time"])
+		t.Fatalf("timeFormatted = %T, want string", item["timeFormatted"])
 	}
-	expected := time.UnixMilli(int64(tsMs)).In(beijingLoc).Format("2006-01-02 15:04")
-	if timeStr != expected {
-		t.Fatalf("time = %q, want %q", timeStr, expected)
+	if timeStr != "2025-06-16 17:50" {
+		t.Fatalf("timeFormatted = %q, want %q", timeStr, "2025-06-16 17:50")
 	}
 
 	// typeLabel 被填充
@@ -166,124 +157,108 @@ func TestCrossPlatformCoverageFormatFeedTimeMultipleFeeds(t *testing.T) {
 	// 前两个有时间戳
 	for i := 0; i < 2; i++ {
 		item := feeds[i].(map[string]any)
-		if _, ok := item["timeMs"].(float64); !ok {
-			t.Fatalf("feed[%d] missing timeMs", i)
+		if _, ok := item["time"].(float64); !ok {
+			t.Fatalf("feed[%d] time should remain float64, got %T", i, item["time"])
 		}
-		if _, ok := item["time"].(string); !ok {
-			t.Fatalf("feed[%d] time not string", i)
+		if _, ok := item["timeFormatted"].(string); !ok {
+			t.Fatalf("feed[%d] timeFormatted not string", i)
 		}
 	}
 
 	// 第三个没有时间戳
 	item3 := feeds[2].(map[string]any)
-	if _, hasTimeMs := item3["timeMs"]; hasTimeMs {
-		t.Fatalf("feed[2] should not have timeMs")
+	if _, hasTimeFormatted := item3["timeFormatted"]; hasTimeFormatted {
+		t.Fatalf("feed[2] should not have timeFormatted")
 	}
 }
 
-// ---------- trimFeedFields unit tests ----------
+// ---------- enrichFeedFields unit tests ----------
 
-func TestCrossPlatformCoverageTrimFeedFieldsRemovesParentDocAndUserInfo(t *testing.T) {
+func TestCrossPlatformCoverageEnrichFeedFieldsPreservesAllFields(t *testing.T) {
+	// enrichFeedFields 不删除任何字段，仅新增 typeLabel
 	item := map[string]any{
 		"parentDoc": map[string]any{"name": "parent"},
 		"userInfo":  map[string]any{"nick": "user1"},
 		"id":        "f1",
+		"type":      float64(1),
 	}
-	trimFeedFields(item)
-	if _, ok := item["parentDoc"]; ok {
-		t.Fatal("parentDoc should be removed")
+	enrichFeedFields(item)
+	if _, ok := item["parentDoc"]; !ok {
+		t.Fatal("parentDoc should be preserved")
 	}
-	if _, ok := item["userInfo"]; ok {
-		t.Fatal("userInfo should be removed")
+	if _, ok := item["userInfo"]; !ok {
+		t.Fatal("userInfo should be preserved")
 	}
 	if item["id"] != "f1" {
 		t.Fatal("id should be preserved")
 	}
+	if item["typeLabel"] != "更新文档" {
+		t.Fatalf("typeLabel = %v, want 更新文档", item["typeLabel"])
+	}
 }
 
-func TestCrossPlatformCoverageTrimFeedFieldsTypeLabelKnown(t *testing.T) {
+func TestCrossPlatformCoverageEnrichFeedFieldsTypeLabelKnown(t *testing.T) {
 	// 已知 type → 添加 typeLabel
 	for typeNum, expectedLabel := range feedTypeLabels {
 		item := map[string]any{"type": float64(typeNum)}
-		trimFeedFields(item)
+		enrichFeedFields(item)
 		if item["typeLabel"] != expectedLabel {
 			t.Fatalf("type %d: typeLabel = %v, want %q", typeNum, item["typeLabel"], expectedLabel)
 		}
 	}
 }
 
-func TestCrossPlatformCoverageTrimFeedFieldsTypeLabelUnknown(t *testing.T) {
+func TestCrossPlatformCoverageEnrichFeedFieldsTypeLabelUnknown(t *testing.T) {
 	// 未知 type → 不添加 typeLabel
 	item := map[string]any{"type": float64(999)}
-	trimFeedFields(item)
+	enrichFeedFields(item)
 	if _, ok := item["typeLabel"]; ok {
 		t.Fatal("typeLabel should not be set for unknown type 999")
 	}
 }
 
-func TestCrossPlatformCoverageTrimFeedFieldsTypeNotFloat(t *testing.T) {
+func TestCrossPlatformCoverageEnrichFeedFieldsTypeNotFloat(t *testing.T) {
 	// type 不是 float64 → 不添加 typeLabel
 	item := map[string]any{"type": "string-type"}
-	trimFeedFields(item)
+	enrichFeedFields(item)
 	if _, ok := item["typeLabel"]; ok {
 		t.Fatal("typeLabel should not be set for non-float type")
 	}
 }
 
-func TestCrossPlatformCoverageTrimFeedFieldsUsersTrim(t *testing.T) {
-	// users 数组中的 user 对象只保留 nick
+func TestCrossPlatformCoverageEnrichFeedFieldsUsersPreserved(t *testing.T) {
+	// users 数组中的 user 对象所有字段保留不变
 	item := map[string]any{
 		"users": []any{
 			map[string]any{"nick": "Alice", "avatarUrl": "http://img", "userId": "u1"},
 			map[string]any{"nick": "Bob", "email": "bob@test"},
 		},
 	}
-	trimFeedFields(item)
+	enrichFeedFields(item)
 	users := item["users"].([]any)
-	for i, u := range users {
-		user := u.(map[string]any)
-		if _, ok := user["nick"]; !ok {
-			t.Fatalf("users[%d] should have nick", i)
-		}
-		for k := range user {
-			if k != "nick" {
-				t.Fatalf("users[%d] unexpected field %q", i, k)
-			}
-		}
+	u0 := users[0].(map[string]any)
+	if u0["avatarUrl"] != "http://img" {
+		t.Fatalf("users[0].avatarUrl should be preserved, got %v", u0["avatarUrl"])
 	}
-	if users[0].(map[string]any)["nick"] != "Alice" {
-		t.Fatalf("users[0].nick = %v, want Alice", users[0].(map[string]any)["nick"])
+	if u0["userId"] != "u1" {
+		t.Fatalf("users[0].userId should be preserved, got %v", u0["userId"])
 	}
 }
 
-func TestCrossPlatformCoverageTrimFeedFieldsUsersNilNick(t *testing.T) {
-	// users 中 nick 为 nil → 删除后不回填
-	item := map[string]any{
-		"users": []any{
-			map[string]any{"userId": "u1"},
-		},
-	}
-	trimFeedFields(item)
-	user := item["users"].([]any)[0].(map[string]any)
-	if len(user) != 0 {
-		t.Fatalf("user should be empty after trimming nil nick, got %v", user)
-	}
-}
-
-func TestCrossPlatformCoverageTrimFeedFieldsUsersNonMapItem(t *testing.T) {
+func TestCrossPlatformCoverageEnrichFeedFieldsUsersNonMapItem(t *testing.T) {
 	// users 数组中有非 map 元素 → 不 panic
 	item := map[string]any{
 		"users": []any{"not-a-map", 42, nil},
 	}
-	trimFeedFields(item) // 不应 panic
+	enrichFeedFields(item) // 不应 panic
 	users := item["users"].([]any)
 	if len(users) != 3 {
 		t.Fatalf("users length changed: %d", len(users))
 	}
 }
 
-func TestCrossPlatformCoverageTrimFeedFieldsContentDocTrim(t *testing.T) {
-	// content.doc 只保留 name 和 extension
+func TestCrossPlatformCoverageEnrichFeedFieldsContentPreserved(t *testing.T) {
+	// content 和 content.doc 所有字段保留不变
 	item := map[string]any{
 		"content": map[string]any{
 			"doc": map[string]any{
@@ -296,78 +271,42 @@ func TestCrossPlatformCoverageTrimFeedFieldsContentDocTrim(t *testing.T) {
 			"workspaceKey": "ws1",
 		},
 	}
-	trimFeedFields(item)
+	enrichFeedFields(item)
 	content := item["content"].(map[string]any)
-	// content 中只保留 doc
-	for k := range content {
-		if k != "doc" {
-			t.Fatalf("content should only have doc, found %q", k)
-		}
+	if content["dentryKey"] != "entry1" {
+		t.Fatalf("content.dentryKey = %v, want entry1", content["dentryKey"])
+	}
+	if content["workspaceKey"] != "ws1" {
+		t.Fatalf("content.workspaceKey = %v, want ws1", content["workspaceKey"])
 	}
 	doc := content["doc"].(map[string]any)
 	if doc["name"] != "测试文档" {
 		t.Fatalf("doc.name = %v, want 测试文档", doc["name"])
 	}
-	if doc["extension"] != "adoc" {
-		t.Fatalf("doc.extension = %v, want adoc", doc["extension"])
-	}
-	for k := range doc {
-		if k != "name" && k != "extension" {
-			t.Fatalf("doc unexpected field %q", k)
-		}
+	if doc["docKey"] != "dk123" {
+		t.Fatalf("doc.docKey = %v, want dk123", doc["docKey"])
 	}
 }
 
-func TestCrossPlatformCoverageTrimFeedFieldsContentDocNilFields(t *testing.T) {
-	// content.doc 中 name 和 extension 缺失 → 不回填
-	item := map[string]any{
-		"content": map[string]any{
-			"doc": map[string]any{
-				"docKey": "dk123",
-			},
-		},
-	}
-	trimFeedFields(item)
-	doc := item["content"].(map[string]any)["doc"].(map[string]any)
-	if len(doc) != 0 {
-		t.Fatalf("doc should be empty, got %v", doc)
-	}
-}
-
-func TestCrossPlatformCoverageTrimFeedFieldsContentNoDoc(t *testing.T) {
-	// content 存在但没有 doc 子字段 → 移除其他字段
-	item := map[string]any{
-		"content": map[string]any{
-			"dentryKey":    "entry1",
-			"workspaceKey": "ws1",
-		},
-	}
-	trimFeedFields(item)
-	content := item["content"].(map[string]any)
-	if len(content) != 0 {
-		t.Fatalf("content should be empty, got %v", content)
-	}
-}
-
-func TestCrossPlatformCoverageTrimFeedFieldsNoContentNoUsers(t *testing.T) {
-	// 没有 content / users / type → 仅删除 parentDoc / userInfo
+func TestCrossPlatformCoverageEnrichFeedFieldsNoContentNoUsers(t *testing.T) {
+	// 没有 content / users / type → 所有字段保留
 	item := map[string]any{
 		"id":        "f1",
 		"parentDoc": map[string]any{"x": 1},
 	}
-	trimFeedFields(item)
-	if _, ok := item["parentDoc"]; ok {
-		t.Fatal("parentDoc should be removed")
+	enrichFeedFields(item)
+	if _, ok := item["parentDoc"]; !ok {
+		t.Fatal("parentDoc should be preserved")
 	}
 	if item["id"] != "f1" {
 		t.Fatal("id should be preserved")
 	}
 }
 
-func TestCrossPlatformCoverageTrimFeedFieldsEmptyItem(t *testing.T) {
+func TestCrossPlatformCoverageEnrichFeedFieldsEmptyItem(t *testing.T) {
 	// 空 map → 不 panic
 	item := map[string]any{}
-	trimFeedFields(item)
+	enrichFeedFields(item)
 	if len(item) != 0 {
 		t.Fatalf("empty item changed: %v", item)
 	}
@@ -453,38 +392,49 @@ func TestCrossPlatformCoverageWikiFeedListFormatIntegration(t *testing.T) {
 		t.Fatalf("feeds length unexpected: %v", parsed["feeds"])
 	}
 
-	// 第一个 feed 验证 timeMs 保留、time 格式化、字段裁剪
+	// 第一个 feed 验证 time 保留、timeFormatted 格式化、所有原始字段保留
 	f0 := feeds[0].(map[string]any)
-	if f0["timeMs"] != ts {
-		t.Fatalf("timeMs = %v, want %v", f0["timeMs"], ts)
+	// time 保留原始毫秒时间戳
+	if f0["time"] != ts {
+		t.Fatalf("time = %v, want %v", f0["time"], ts)
 	}
-	if _, ok := f0["time"].(string); !ok {
-		t.Fatalf("time should be string, got %T", f0["time"])
+	// timeFormatted 被填充
+	if _, ok := f0["timeFormatted"].(string); !ok {
+		t.Fatalf("timeFormatted should be string, got %T", f0["timeFormatted"])
 	}
-	if _, ok := f0["parentDoc"]; ok {
-		t.Fatal("parentDoc should be trimmed")
+	// 所有原始字段保留（不删除任何字段）
+	if _, ok := f0["parentDoc"]; !ok {
+		t.Fatal("parentDoc should be preserved")
 	}
-	if _, ok := f0["userInfo"]; ok {
-		t.Fatal("userInfo should be trimmed")
+	if _, ok := f0["userInfo"]; !ok {
+		t.Fatal("userInfo should be preserved")
 	}
 	if f0["typeLabel"] != "创建文档" {
 		t.Fatalf("typeLabel = %v, want 创建文档", f0["typeLabel"])
 	}
 
-	// users 裁剪验证
+	// users 保留验证：avatarUrl / userId 均保留
 	if users, ok := f0["users"].([]any); ok {
-		for _, u := range users {
-			um := u.(map[string]any)
-			if _, ok := um["avatarUrl"]; ok {
-				t.Fatal("user avatarUrl should be trimmed")
-			}
+		u0 := users[0].(map[string]any)
+		if u0["avatarUrl"] != "http://avatar" {
+			t.Fatalf("users[0].avatarUrl should be preserved, got %v", u0["avatarUrl"])
+		}
+		if u0["userId"] != "u1" {
+			t.Fatalf("users[0].userId should be preserved, got %v", u0["userId"])
 		}
 	}
 
-	// content 裁剪验证
+	// content 结构保留验证
 	if content, ok := f0["content"].(map[string]any); ok {
-		if _, ok := content["dentryKey"]; ok {
-			t.Fatal("content.dentryKey should be trimmed")
+		if content["dentryKey"] != "entry1" {
+			t.Fatalf("content.dentryKey should be preserved, got %v", content["dentryKey"])
+		}
+		if content["workspaceKey"] != "ws1" {
+			t.Fatalf("content.workspaceKey should be preserved, got %v", content["workspaceKey"])
+		}
+		doc := content["doc"].(map[string]any)
+		if doc["docKey"] != "dk123" {
+			t.Fatalf("content.doc.docKey should be preserved, got %v", doc["docKey"])
 		}
 	}
 }
