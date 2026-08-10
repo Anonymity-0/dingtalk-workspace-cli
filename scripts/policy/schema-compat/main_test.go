@@ -712,6 +712,37 @@ func TestCrossPlatformCoverageSchemaCompatAdditiveConstraintEvolution(t *testing
 	}
 }
 
+func TestCrossPlatformCoverageSchemaCompatReviewedConstraintTransition(t *testing.T) {
+	const toolPath = "doc/doc.shortcut_import"
+	oldTool := toolSchema{Constraints: `{"require_one_of":[["folder","workspace"]]}`}
+	newTool := oldTool
+	newTool.Constraints = ""
+
+	if !compatibleReviewedConstraintTransition(toolPath, oldTool, newTool) {
+		t.Fatal("reviewed doc import target removal must be accepted")
+	}
+	if failures := checkToolCompatibility(toolPath, oldTool, newTool); len(failures) != 0 {
+		t.Fatalf("reviewed doc import constraint transition failed: %v", failures)
+	}
+
+	for _, test := range []struct {
+		name string
+		path string
+		old  string
+		new  string
+	}{
+		{name: "unlisted tool", path: "doc/doc.other", old: oldTool.Constraints, new: ""},
+		{name: "unlisted source", path: toolPath, old: `{"require_one_of":[["folder","workspace","name"]]}`, new: ""},
+		{name: "unlisted target", path: toolPath, old: oldTool.Constraints, new: `{}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if compatibleReviewedConstraintTransition(test.path, toolSchema{Constraints: test.old}, toolSchema{Constraints: test.new}) {
+				t.Fatal("unreviewed constraint transition unexpectedly passed")
+			}
+		})
+	}
+}
+
 // Clearing a property through the reviewed mapping exclusion table is the one
 // accepted shape, mirroring the interface_type retirement allowance. A leaf
 // whose backing RPC moved to a nested payload has no honest flat property to
