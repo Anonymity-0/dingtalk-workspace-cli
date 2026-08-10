@@ -70,6 +70,23 @@ func TestCrossPlatformCoverageChatMessageReadsPreserveToolOperationOnCallerError
 	if !errors.As(err, &cliErr) || cliErr.Operation != "chat/list_conversation_message_v2" {
 		t.Fatalf("chat message list error = %#v", err)
 	}
+
+	existing := &CLIError{
+		Code:      CodeNetworkTimeout,
+		Message:   "request already classified",
+		Operation: "chat/existing-operation",
+	}
+	caller = &imReadResultCaller{errors: map[string]error{
+		"list_conversation_message_v2": existing,
+	}}
+	got, err = executeIMReadCommand(t, caller, []string{"dws", "chat"}, newChatCommand,
+		"message", "list", "--group", "cid-1", "--time", "2026-07-14 00:00:00")
+	if err != existing {
+		t.Fatalf("chat message list error = %#v, want original %#v", err, existing)
+	}
+	if got != "" {
+		t.Fatalf("chat message list output = %q, want no success payload", got)
+	}
 }
 
 func (*imReadResultCaller) Format() string { return "json" }
