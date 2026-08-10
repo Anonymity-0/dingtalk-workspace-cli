@@ -312,6 +312,21 @@ type frameworkPanicWriter struct{}
 func (frameworkPanicWriter) Write([]byte) (int, error) { panic("writer panic") }
 
 func TestCrossPlatformCoverageFrameworkRootHookErrors(t *testing.T) {
+	t.Run("flag group validation", func(t *testing.T) {
+		root := NewRootCommand(context.Background())
+		leaf := &cobra.Command{Use: "exclusive", RunE: func(*cobra.Command, []string) error { return nil }}
+		leaf.Flags().Bool("left", false, "")
+		leaf.Flags().Bool("right", false, "")
+		leaf.MarkFlagsMutuallyExclusive("left", "right")
+		root.AddCommand(leaf)
+		root.SetOut(io.Discard)
+		root.SetErr(io.Discard)
+		root.SetArgs([]string{"exclusive", "--left", "--right"})
+		if err := root.Execute(); err == nil {
+			t.Fatal("expected mutually-exclusive flag error")
+		}
+	})
+
 	t.Run("edition pre-run error", func(t *testing.T) {
 		old := edition.Get()
 		t.Cleanup(func() { edition.Override(old) })
