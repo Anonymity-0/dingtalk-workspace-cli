@@ -60,7 +60,13 @@ func callProjectedChatMessages(cmd *cobra.Command, toolName string, args map[str
 			projected[key] = value
 		}
 		for key, value := range chatmsg.ProjectMessageV1(item, true) {
-			projected[key] = value
+			if key == "messageId" || key == "text" {
+				projected[key] = value
+				continue
+			}
+			if _, exists := projected[key]; !exists {
+				projected[key] = value
+			}
 		}
 		if value, exists := item["openMessageId"]; exists {
 			projected["openMessageId"] = value

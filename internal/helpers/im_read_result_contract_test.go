@@ -133,20 +133,25 @@ func TestCrossPlatformCoverageChatMessageListProjectsStableFieldsAndPreservesLeg
 		t.Fatalf("legacy content not preserved: %#v", first)
 	}
 	quoted, ok := first["quotedMessage"].(map[string]any)
-	if !ok || quoted["messageType"] != "merged_forward" {
+	if !ok || quoted["msgType"] != "merged_forward" {
 		t.Fatalf("merged-forward quote = %#v", first["quotedMessage"])
+	}
+	quotedContent, ok := quoted["content"].(map[string]any)
+	items, itemsOK := quotedContent["items"].([]any)
+	if !ok || !itemsOK || len(items) != 1 {
+		t.Fatalf("merged-forward quote content = %#v", quoted["content"])
 	}
 	second, ok := messages[1].(map[string]any)
 	if !ok {
 		t.Fatalf("second projected message = %#v", messages[1])
 	}
 	quoted, ok = second["quotedMessage"].(map[string]any)
-	if !ok || quoted["messageType"] != "image" {
+	if !ok || quoted["msgType"] != "image" {
 		t.Fatalf("image quote = %#v", second["quotedMessage"])
 	}
-	resources, ok := quoted["resourceRefs"].([]any)
-	if !ok || len(resources) != 1 {
-		t.Fatalf("image quote resources = %#v", quoted["resourceRefs"])
+	quotedContent, ok = quoted["content"].(map[string]any)
+	if !ok || quotedContent["mediaId"] != "media-1" {
+		t.Fatalf("image quote content = %#v", quoted["content"])
 	}
 	legacy, ok := result["result"].(map[string]any)
 	if !ok {
@@ -276,7 +281,23 @@ func TestCrossPlatformCoverageChatMessageListPreservesTopLevelMessageFields(t *t
 			"openMessageId": "msg-top-1",
 			"content": {"text": "顶层正文"},
 			"msgType": "text",
+			"sender": {"name": "张三", "department": "研发"},
 			"senderName": "张三",
+			"quotedMessage": {
+				"msgType": "image",
+				"content": {"mediaId": "media-1", "caption": "原图说明"},
+				"extension": {"source": "legacy-quote"}
+			},
+			"forwarded": [{
+				"openMessageId": "forward-1",
+				"content": {"text": "转发正文"},
+				"extension": {"source": "legacy-forward"}
+			}],
+			"reactions": [{
+				"emoji": "like",
+				"count": 2,
+				"extension": {"source": "legacy-reaction"}
+			}],
 			"extensionField": {"source": "legacy"}
 		}, {
 			"messageId": "msg-top-2",
@@ -312,6 +333,33 @@ func TestCrossPlatformCoverageChatMessageListPreservesTopLevelMessageFields(t *t
 	}
 	if message["msgType"] != "text" || message["senderName"] != "张三" {
 		t.Fatalf("legacy message fields = %#v", message)
+	}
+	if !reflect.DeepEqual(message["sender"], map[string]any{"name": "张三", "department": "研发"}) {
+		t.Fatalf("legacy sender = %#v", message["sender"])
+	}
+	wantQuoted := map[string]any{
+		"msgType":   "image",
+		"content":   map[string]any{"mediaId": "media-1", "caption": "原图说明"},
+		"extension": map[string]any{"source": "legacy-quote"},
+	}
+	if !reflect.DeepEqual(message["quotedMessage"], wantQuoted) {
+		t.Fatalf("legacy quotedMessage = %#v", message["quotedMessage"])
+	}
+	wantForwarded := []any{map[string]any{
+		"openMessageId": "forward-1",
+		"content":       map[string]any{"text": "转发正文"},
+		"extension":     map[string]any{"source": "legacy-forward"},
+	}}
+	if !reflect.DeepEqual(message["forwarded"], wantForwarded) {
+		t.Fatalf("legacy forwarded = %#v", message["forwarded"])
+	}
+	wantReactions := []any{map[string]any{
+		"emoji":     "like",
+		"count":     float64(2),
+		"extension": map[string]any{"source": "legacy-reaction"},
+	}}
+	if !reflect.DeepEqual(message["reactions"], wantReactions) {
+		t.Fatalf("legacy reactions = %#v", message["reactions"])
 	}
 	if extension, ok := message["extensionField"].(map[string]any); !ok || extension["source"] != "legacy" {
 		t.Fatalf("extensionField = %#v", message["extensionField"])
