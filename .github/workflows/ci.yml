@@ -411,7 +411,7 @@ jobs:
         if: steps.classify.outputs.changelog_only != 'true' && steps.classify.outputs.docs_only != 'true'
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         if: steps.classify.outputs.changelog_only != 'true' && steps.classify.outputs.docs_only != 'true'
@@ -450,7 +450,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Verify authoritative synthetic merge
         env:
@@ -513,7 +513,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -553,7 +553,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -585,7 +585,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -710,7 +710,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -733,7 +733,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -1240,7 +1240,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.interface_sensitive == 'true') }}
@@ -1433,7 +1433,7 @@ jobs:
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.interface_sensitive == 'true') }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.interface_sensitive == 'true') }}
@@ -1463,7 +1463,7 @@ jobs:
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.mcp_sensitive == 'true') }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.mcp_sensitive == 'true') }}
@@ -1489,7 +1489,7 @@ jobs:
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.edition_sensitive == 'true') }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Go
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.edition_sensitive == 'true') }}
