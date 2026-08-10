@@ -710,10 +710,6 @@ func newDevAppRobotConnectStatusCommand() *cobra.Command {
 	cmd.Flags().String("unified-app-id", "", "统一应用 ID（当未用 clientId 起守护进程时定位）")
 	cmd.Flags().Bool("json", false, "以 JSON 输出健康报告（供 launchd/systemd/pm2/cron 判断是否重启）")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		// status 已发布给 launchd/systemd/pm2/cron：--json 的 state/pid/
-		// supervised 必须继续位于顶层，默认调用也必须保留人读面板。该叶子在
-		// 单独设计兼容迁移方案前不进入统一信封 rollout。
-		OutputRollout: output.RolloutLegacyOnly,
 		Safety: contract.SafetySpec{
 			// Preserve the published Schema safety tuple during the unified-result
 			// pilot. Correcting this historical classification is a separate,
