@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"syscall"
 	"testing"
 
@@ -36,13 +37,6 @@ func installSignalExecuteSeams(t *testing.T, unified bool, stdout, stderr io.Wri
 		cmd.SetErr(stderr)
 		return cmd
 	})
-}
-
-func signalSelf(t *testing.T, sig syscall.Signal) {
-	t.Helper()
-	if err := syscall.Kill(os.Getpid(), sig); err != nil {
-		t.Fatalf("signal process: %v", err)
-	}
 }
 
 func TestExecuteSignalEmitsOneTypedUnifiedFailure(t *testing.T) {
@@ -162,6 +156,9 @@ func TestSignalAfterCompletedPrimaryPreservesEstablishedOutcome(t *testing.T) {
 }
 
 func TestExecuteSignalSubprocessExitStatus(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not expose Unix signal delivery to subprocesses")
+	}
 	if os.Getenv("DWS_SIGNAL_HELPER") == "1" {
 		installSignalExecuteSeams(t, true, os.Stdout, os.Stderr)
 		testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
