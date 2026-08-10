@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -32,6 +33,12 @@ func callProjectedChatMessages(cmd *cobra.Command, toolName string, args map[str
 	}
 	text, err := callMCPToolReturnTextOnServer(cmd.Context(), "chat", toolName, args)
 	if err != nil {
+		var cliErr *CLIError
+		if errors.As(err, &cliErr) && cliErr.Operation == "" {
+			withOperation := *cliErr
+			withOperation.Operation = "chat/" + toolName
+			return &withOperation
+		}
 		return err
 	}
 	if strings.TrimSpace(text) == "" {

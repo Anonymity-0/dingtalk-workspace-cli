@@ -37,16 +37,39 @@ type imReadResultCall struct {
 type imReadResultCaller struct {
 	responses map[string]string
 	results   map[string]*edition.ToolResult
+	errors    map[string]error
 	calls     []imReadResultCall
 	dryRun    bool
 }
 
 func (c *imReadResultCaller) CallTool(_ context.Context, productID, toolName string, _ map[string]any) (*edition.ToolResult, error) {
 	c.calls = append(c.calls, imReadResultCall{productID: productID, toolName: toolName})
+	if err := c.errors[toolName]; err != nil {
+		return nil, err
+	}
 	if result, ok := c.results[toolName]; ok {
 		return result, nil
 	}
 	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: c.responses[toolName]}}}, nil
+}
+
+func TestCrossPlatformCoverageChatMessageReadsPreserveToolOperationOnCallerError(t *testing.T) {
+	caller := &imReadResultCaller{errors: map[string]error{
+		"list_conversation_message_v2": errors.New("dial tcp: connection refused"),
+	}}
+
+	got, err := executeIMReadCommand(t, caller, []string{"dws", "chat"}, newChatCommand,
+		"message", "list", "--group", "cid-1", "--time", "2026-07-14 00:00:00")
+	if err == nil {
+		t.Fatalf("chat message list unexpectedly succeeded with output %q", got)
+	}
+	if got != "" {
+		t.Fatalf("chat message list output = %q, want no success payload", got)
+	}
+	var cliErr *CLIError
+	if !errors.As(err, &cliErr) || cliErr.Operation != "chat/list_conversation_message_v2" {
+		t.Fatalf("chat message list error = %#v", err)
+	}
 }
 
 func (*imReadResultCaller) Format() string { return "json" }
