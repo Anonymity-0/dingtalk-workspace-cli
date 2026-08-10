@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 )
 
 // Permission constants following Unix best practices.
@@ -53,16 +55,19 @@ var knownSkillDirs = []string{
 }
 
 var (
-	upgradeUserHomeDir  = os.UserHomeDir
-	upgradeExecutable   = os.Executable
-	upgradeEvalSymlinks = filepath.EvalSymlinks
-	upgradeCopyDir      = copyDir
-	upgradeEnsureDir    = ensureDir
-	upgradeRemoveAll    = os.RemoveAll
-	upgradeMkdirAll     = os.MkdirAll
-	upgradeReadDir      = os.ReadDir
-	upgradeStat         = os.Stat
-	upgradeBackupStamp  = func() string { return time.Now().UTC().Format("20060102-150405") }
+	upgradeUserHomeDir     = os.UserHomeDir
+	upgradeExecutable      = os.Executable
+	upgradeEvalSymlinks    = filepath.EvalSymlinks
+	upgradeCopyDir         = copyDir
+	upgradeEnsureDir       = ensureDir
+	upgradeRemoveAll       = os.RemoveAll
+	upgradeMkdirAll        = os.MkdirAll
+	upgradeReadDir         = os.ReadDir
+	upgradeStat            = os.Stat
+	upgradeBackupStamp     = func() string { return time.Now().UTC().Format("20060102-150405") }
+	upgradeReadSkillState  = skillstate.Read
+	upgradeWriteSkillState = skillstate.Write
+	upgradeNow             = time.Now
 )
 
 // skillBackupSubdir is the user-level directory where skill directories are
@@ -181,15 +186,16 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 // resolve a release zip usually pass LocateSkillsRoot's result (multi/
 // preferred when present).
 //
-// Package-driven layout (owner decision 2026-08-05 — no disk sticky):
-//   - release zip has multi/ → ALWAYS refresh multi (flat product skills +
-//     dws-shared), removing mono leftover dws/ and stale dingtalk-*/dws-shared.
-//     Existing mono installs are one-shot migrated to multi on upgrade.
+// Package-driven layout:
+//   - release zip has multi/ → reconcile the local official skill set with
+//     the previous official snapshot. Installed official skills are refreshed,
+//     newly introduced official skills are added, and locally deleted older
+//     skills remain absent. --force restores the full official set.
+//   - dingtalk-shared is mandatory whenever it exists in the bundle.
 //   - legacy zip with no multi tree → mono refresh path (unchanged fallback)
 //
-// This is not a runtime mode-switch product. Fresh install still defaults to
-// multi with opt-in mono via `dws skill setup --mode mono`; subsequent
-// upgrades force multi when the package ships it.
+// Fresh install defaults to multi with opt-in mono via
+// `dws skill setup --mode mono --yes`.
 //
 // Strategy (matches npm install.js installSkillsToHomes):
 //   - ~/.agents/skills/ is ALWAYS updated (primary install location)
@@ -204,6 +210,15 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 // skills are refreshed in place (verified DWS-managed overwrite). Caches
 // under ~/.dws/skills/{multi,mono} are refreshed best-effort.
 func UpgradeSkillLocations(extractedDir string) (*SkillUpgradeResult, error) {
+	return UpgradeSkillLocationsWithOptions(extractedDir, SkillUpgradeOptions{})
+}
+
+type SkillUpgradeOptions struct {
+	Force   bool
+	Version string
+}
+
+func UpgradeSkillLocationsWithOptions(extractedDir string, opts SkillUpgradeOptions) (*SkillUpgradeResult, error) {
 	homeDir, err := upgradeUserHomeDir()
 	if err != nil {
 		return nil, err
@@ -211,13 +226,118 @@ func UpgradeSkillLocations(extractedDir string) (*SkillUpgradeResult, error) {
 
 	multiRoot, skills := resolveMultiBundle(extractedDir)
 	if len(skills) > 0 {
-		return upgradeMultiSkillLocations(homeDir, multiRoot, skills)
+		official := append([]string(nil), skills...)
+		previous, readable, stateErr := upgradeReadSkillState(homeDir)
+		if stateErr != nil {
+			previous, readable = nil, false
+		}
+		local, localErr := listInstalledOfficialSkills(homeDir, official)
+		plan := skillstate.Plan(skillstate.SyncInput{
+			OfficialSkills: official,
+			LocalSkills:    local,
+			PreviousState:  previous,
+			StateReadable:  readable,
+			Force:          opts.Force,
+		})
+		if localErr != nil || len(local) == 0 || len(plan.ToUpdate) == 0 {
+			plan.ToUpdate = official
+			plan.Added = official
+			plan.SkippedDeleted = nil
+		}
+		plan.ToUpdate = ensureMandatoryUpgradeShared(plan.ToUpdate, official)
+		plan.SkippedDeleted = skippedOfficialSkills(official, plan.ToUpdate)
+		result, installErr := upgradeMultiSkillLocations(homeDir, multiRoot, plan.ToUpdate)
+		if installErr != nil {
+			return result, installErr
+		}
+		if len(result.Failed()) == 0 && len(result.Succeeded()) > 0 {
+			state := skillstate.State{
+				Version:              opts.Version,
+				OfficialSkills:       official,
+				UpdatedSkills:        plan.ToUpdate,
+				AddedOfficialSkills:  plan.Added,
+				SkippedDeletedSkills: plan.SkippedDeleted,
+				UpdatedAt:            upgradeNow().UTC().Format(time.RFC3339),
+			}
+			if writeErr := upgradeWriteSkillState(homeDir, state); writeErr != nil {
+				return result, fmt.Errorf("Skill 已同步但状态未写入: %w", writeErr)
+			}
+		}
+		return result, nil
 	}
 	monoSrc := resolveMonoSkillSrc(extractedDir)
 	if monoSrc != "" {
 		return upgradeMonoSkillLocations(homeDir, monoSrc)
 	}
 	return nil, fmt.Errorf("升级包中找不到可安装的 skill 源")
+}
+
+func listInstalledOfficialSkills(homeDir string, official []string) ([]string, error) {
+	officialSet := make(map[string]bool, len(official))
+	for _, name := range official {
+		officialSet[name] = true
+	}
+	installed := map[string]bool{}
+	for _, agentDir := range knownSkillDirs {
+		base := filepath.Join(homeDir, agentDir)
+		entries, err := upgradeReadDir(base)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, err
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() || !officialSet[entry.Name()] {
+				continue
+			}
+			if info, statErr := upgradeStat(filepath.Join(base, entry.Name(), "SKILL.md")); statErr == nil && !info.IsDir() {
+				installed[entry.Name()] = true
+			}
+		}
+	}
+	names := make([]string, 0, len(installed))
+	for name := range installed {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+func ensureMandatoryUpgradeShared(selected, official []string) []string {
+	hasShared, selectedShared := false, false
+	for _, name := range official {
+		if name == "dingtalk-shared" {
+			hasShared = true
+			break
+		}
+	}
+	for _, name := range selected {
+		if name == "dingtalk-shared" {
+			selectedShared = true
+			break
+		}
+	}
+	if hasShared && !selectedShared {
+		selected = append(selected, "dingtalk-shared")
+		sort.Strings(selected)
+	}
+	return selected
+}
+
+func skippedOfficialSkills(official, selected []string) []string {
+	selectedSet := make(map[string]bool, len(selected))
+	for _, name := range selected {
+		selectedSet[name] = true
+	}
+	var skipped []string
+	for _, name := range official {
+		if !selectedSet[name] {
+			skipped = append(skipped, name)
+		}
+	}
+	sort.Strings(skipped)
+	return skipped
 }
 
 // skillBackupKeep limits ~/.dws/skill-backups/ growth: only the newest

@@ -45,18 +45,16 @@ func TestCrossPlatformCoverageSkillSetupHighLevelRemainingCoverage(t *testing.T)
 	oldTargets := skillSetupResolveTargets
 	oldList := skillSetupListMulti
 	oldFilter := skillSetupFilterMulti
-	oldConfirm := skillSetupConfirm
-	oldMono := skillSetupInstallMono
-	oldMulti := skillSetupInstallMulti
+	oldConfirm := skillSetupConfirmPlan
+	oldExecute := skillSetupExecutePlan
 	t.Cleanup(func() {
 		skillSetupResolveMode = oldMode
 		skillSetupResolveSource = oldSource
 		skillSetupResolveTargets = oldTargets
 		skillSetupListMulti = oldList
 		skillSetupFilterMulti = oldFilter
-		skillSetupConfirm = oldConfirm
-		skillSetupInstallMono = oldMono
-		skillSetupInstallMulti = oldMulti
+		skillSetupConfirmPlan = oldConfirm
+		skillSetupExecutePlan = oldExecute
 	})
 	fail := errors.New("failure")
 	skillSetupResolveMode = func(mode string, _ bool, _ io.Writer) (string, error) { return mode, nil }
@@ -86,12 +84,12 @@ func TestCrossPlatformCoverageSkillSetupHighLevelRemainingCoverage(t *testing.T)
 		t.Fatal(err)
 	}
 
-	skillSetupConfirm = func(io.Writer, string, string, []string, []string, bool) (bool, error) { return false, fail }
+	skillSetupConfirmPlan = func(io.Writer, *skillSetupPlan) (bool, error) { return false, fail }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMono, false)
 	if err := cmd.RunE(cmd, nil); err == nil {
 		t.Fatal("confirmation failure should propagate")
 	}
-	skillSetupConfirm = func(io.Writer, string, string, []string, []string, bool) (bool, error) { return false, nil }
+	skillSetupConfirmPlan = func(io.Writer, *skillSetupPlan) (bool, error) { return false, nil }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMono, false)
 	if err := cmd.RunE(cmd, nil); err != nil {
 		t.Fatal(err)
@@ -103,17 +101,17 @@ func TestCrossPlatformCoverageSkillSetupHighLevelRemainingCoverage(t *testing.T)
 		t.Fatal("unknown resolved mode should fail")
 	}
 	skillSetupResolveMode = func(mode string, _ bool, _ io.Writer) (string, error) { return mode, nil }
-	skillSetupInstallMono = func(string, []string, io.Writer, io.Writer) (int, int, error) { return 0, 0, fail }
+	skillSetupExecutePlan = func(*skillSetupPlan, io.Writer, io.Writer) (int, int, error) { return 0, 0, fail }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMono, true)
 	if err := cmd.RunE(cmd, nil); err == nil {
 		t.Fatal("mono install failure should propagate")
 	}
-	skillSetupInstallMono = func(string, []string, io.Writer, io.Writer) (int, int, error) { return 1, 0, nil }
+	skillSetupExecutePlan = func(*skillSetupPlan, io.Writer, io.Writer) (int, int, error) { return 1, 0, nil }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMono, true)
 	if err := cmd.RunE(cmd, nil); err != nil {
 		t.Fatal(err)
 	}
-	skillSetupInstallMulti = func(string, []string, []string, io.Writer, io.Writer, bool) (int, int, error) { return 0, 0, fail }
+	skillSetupExecutePlan = func(*skillSetupPlan, io.Writer, io.Writer) (int, int, error) { return 0, 0, fail }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMulti, true)
 	if err := cmd.RunE(cmd, nil); err == nil {
 		t.Fatal("multi install failure should propagate")

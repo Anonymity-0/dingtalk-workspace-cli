@@ -59,7 +59,7 @@ var (
 	findExtractedBinary     = upgrade.FindBinaryInDir
 	locateUpgradeSkill      = upgrade.LocateSkillsRoot
 	replaceUpgradeSelf      = upgrade.ReplaceSelf
-	installUpgradeSkills    = upgrade.UpgradeSkillLocations
+	installUpgradeSkills    = upgrade.UpgradeSkillLocationsWithOptions
 	upgradeMkdirTemp        = os.MkdirTemp
 	upgradeRemoveAll        = os.RemoveAll
 	upgradeReadFile         = os.ReadFile
@@ -107,6 +107,7 @@ func newUpgradeCommand() *cobra.Command {
   dws upgrade --beta             # 升级到最新 beta 预发布版本
   dws upgrade --version v1.0.7   # 升级到指定正式版本
   dws upgrade --version v1.0.8-beta.1  # 升级到指定 beta 版本
+  dws upgrade --force           # 重装当前版本并恢复全部官方 Skill
   dws upgrade --rollback         # 回滚到上一版本
   dws upgrade --dry-run          # 仅预览升级步骤，不实际执行
   dws upgrade -y                 # 跳过确认直接升级`,
@@ -158,7 +159,7 @@ func newUpgradeCommand() *cobra.Command {
 	cmd.Flags().StringVar(&flagVersion, "version", "", "升级到指定版本")
 	cmd.Flags().BoolVar(&flagBeta, "beta", false, "使用最新 beta 预发布版本（默认使用正式 release）")
 	cmd.Flags().BoolVar(&flagRollback, "rollback", false, "回滚到上一版本")
-	cmd.Flags().BoolVar(&flagForce, "force", false, "强制重新安装当前版本")
+	cmd.Flags().BoolVar(&flagForce, "force", false, "强制重新安装当前版本并恢复全部官方 Skill")
 	cmd.Flags().BoolVar(&flagSkipSkills, "skip-skills", false, "跳过技能包更新")
 
 	return cmd
@@ -596,7 +597,10 @@ func runUpgrade(ctx context.Context, opts upgradeOptions) error {
 	}
 
 	if hasSkills {
-		result, installErr := installUpgradeSkills(skillSrc)
+		result, installErr := installUpgradeSkills(skillSrc, upgrade.SkillUpgradeOptions{
+			Force:   opts.force,
+			Version: release.Version,
+		})
 		if installErr != nil {
 			fmt.Printf(" %s\n", ugRed("✗"))
 			return fmt.Errorf("技能包安装失败: %w", installErr)

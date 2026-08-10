@@ -24,15 +24,15 @@ func TestSkillSetupCommandRegistered(t *testing.T) {
 	}
 }
 
-// TestCrossPlatformCoverageSkillSetupExampleCarriesNoYesBypass guards the P1
-// review finding: every copyable example of `dws skill setup` must stay free
-// of --yes. The command removes the opposite-mode layout and stale skills;
-// a copy-pasted --yes silently skips the confirmation that previews those
-// removals, so the example text itself is part of the safety contract.
-func TestCrossPlatformCoverageSkillSetupExampleCarriesNoYesBypass(t *testing.T) {
+// TestCrossPlatformCoverageSkillSetupExamplesRequireExplicitYes guards the P1
+// review finding: copyable non-interactive examples must explicitly opt in to
+// the backed-up migration instead of relying on a no-TTY confirmation bypass.
+func TestCrossPlatformCoverageSkillSetupExamplesRequireExplicitYes(t *testing.T) {
 	cmd := newSkillSetupCommand()
-	if strings.Contains(cmd.Example, "--yes") {
-		t.Fatalf("skill setup examples must not advertise --yes, got %q", cmd.Example)
+	for _, line := range strings.Split(cmd.Example, "\n") {
+		if strings.Contains(line, "--mode") && !strings.Contains(line, "--yes") {
+			t.Fatalf("non-interactive skill setup example must require --yes, got %q", line)
+		}
 	}
 }
 
@@ -60,11 +60,11 @@ func TestCrossPlatformCoverageSkillSetupDeclinedConfirmationNeverRemoves(t *test
 		}
 	}
 
-	oldConfirm := skillSetupConfirm
-	t.Cleanup(func() { skillSetupConfirm = oldConfirm })
+	oldConfirm := skillSetupConfirmPlan
+	t.Cleanup(func() { skillSetupConfirmPlan = oldConfirm })
 
 	// Declined confirmation: nothing may change on disk.
-	skillSetupConfirm = func(io.Writer, string, string, []string, []string, bool) (bool, error) { return false, nil }
+	skillSetupConfirmPlan = func(io.Writer, *skillSetupPlan) (bool, error) { return false, nil }
 	cmd := newSkillSetupCommand()
 	var out, errOut bytes.Buffer
 	cmd.SetOut(&out)
@@ -86,7 +86,7 @@ func TestCrossPlatformCoverageSkillSetupDeclinedConfirmationNeverRemoves(t *test
 	}
 
 	// Confirmed: the previewed victims are backed up + removed, bundle skills land.
-	skillSetupConfirm = func(io.Writer, string, string, []string, []string, bool) (bool, error) { return true, nil }
+	skillSetupConfirmPlan = func(io.Writer, *skillSetupPlan) (bool, error) { return true, nil }
 	out.Reset()
 	errOut.Reset()
 	cmd = newSkillSetupCommand()
@@ -791,10 +791,10 @@ func TestCrossPlatformCoverageSkillSetupMutualExclusionScanWarning(t *testing.T)
 // full install cleans stale siblings while a filtered install stays additive.
 func TestRunSkillSetupThreadsFilteredFlag(t *testing.T) {
 	oldMode, oldSource, oldTargets := skillSetupResolveMode, skillSetupResolveSource, skillSetupResolveTargets
-	oldList, oldFilter, oldMulti := skillSetupListMulti, skillSetupFilterMulti, skillSetupInstallMulti
+	oldList, oldFilter, oldExecute := skillSetupListMulti, skillSetupFilterMulti, skillSetupExecutePlan
 	t.Cleanup(func() {
 		skillSetupResolveMode, skillSetupResolveSource, skillSetupResolveTargets = oldMode, oldSource, oldTargets
-		skillSetupListMulti, skillSetupFilterMulti, skillSetupInstallMulti = oldList, oldFilter, oldMulti
+		skillSetupListMulti, skillSetupFilterMulti, skillSetupExecutePlan = oldList, oldFilter, oldExecute
 	})
 
 	skillSetupResolveMode = func(mode string, _ bool, _ io.Writer) (string, error) { return mode, nil }
@@ -805,8 +805,8 @@ func TestRunSkillSetupThreadsFilteredFlag(t *testing.T) {
 	skillSetupListMulti = func(string) ([]string, error) { return []string{"dingtalk-aitable", "dws-shared"}, nil }
 	skillSetupFilterMulti = filterMultiSkillNames
 	var gotFiltered []bool
-	skillSetupInstallMulti = func(_ string, _ []string, _ []string, _, _ io.Writer, filtered bool) (int, int, error) {
-		gotFiltered = append(gotFiltered, filtered)
+	skillSetupExecutePlan = func(plan *skillSetupPlan, _, _ io.Writer) (int, int, error) {
+		gotFiltered = append(gotFiltered, plan.Filtered)
 		return 1, 0, nil
 	}
 

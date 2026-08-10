@@ -33,6 +33,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pat"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/plugin"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/safety"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
 	upgradepkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/upgrade"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -2032,6 +2033,10 @@ func TestCrossPlatformCoverageSkillSetupRuntimeCoverage(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dingtalk-shared", "SKILL.md")); err != nil {
 		t.Fatal(err)
+	}
+	state, readable, err := skillstate.Read(home)
+	if err != nil || !readable || len(state.OfficialSkills) != 3 || len(state.UpdatedSkills) != 2 {
+		t.Fatalf("setup state = %#v, readable=%v, err=%v", state, readable, err)
 	}
 	if output, _, err := run("--mode", "multi", "--source", multi, "--target", "agents", "--yes", "--dry-run", "--exclude", "b"); err != nil || !strings.Contains(output, "DRY-RUN") {
 		t.Fatalf("multi dry run = %q, %v", output, err)
