@@ -746,8 +746,11 @@ func newDevAppRobotConnectStatusCommand() *cobra.Command {
 	DeclareLeafMetadata(cmd, LeafSpec{
 		OutputRollout: output.RolloutUnifiedActive,
 		Safety: contract.SafetySpec{
-			Effect: "read", Risk: "low",
-			Confirmation: "not_required", Idempotency: "idempotent",
+			// Preserve the published Schema safety tuple during the unified-result
+			// pilot. Correcting this historical classification is a separate,
+			// explicitly reviewed interface change.
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -815,8 +818,11 @@ func newDevAppRobotConnectStopCommand() *cobra.Command {
 	DeclareLeafMetadata(cmd, LeafSpec{
 		OutputRollout: output.RolloutUnifiedActive,
 		Safety: contract.SafetySpec{
-			Effect: "destructive", Risk: "high",
-			Confirmation: "not_required", Idempotency: "idempotent",
+			// Preserve the published Schema safety tuple during the unified-result
+			// pilot. The stricter classification belongs in a separate interface
+			// migration rather than this framework-only compatibility rollout.
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Validate: func(c *cobra.Command, _ []string) error {
 			_, err := connectDaemonDirKeyFromFlags(c)
