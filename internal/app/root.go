@@ -174,12 +174,17 @@ func Execute() (exitCode int) {
 	executed, err = rootExecuteCommand(root)
 	interrupted, primaryCompletedBeforeSignal := signalState.outcome()
 	if interrupted != nil && !primaryCompletedBeforeSignal {
-		if _, attempted, _, _ := output.StoredEmissionState(resultStore); attempted {
+		if code, attempted, _, _ := output.StoredEmissionState(resultStore); attempted {
 			if executed == nil {
 				executed = root
 			}
 			fmt.Fprintf(executed.ErrOrStderr(), "Warning: process interrupted after result emission attempt: %v\n", interrupted)
-			return interrupted.ExitCode()
+			// Once publication starts, its stored exit code is authoritative. A
+			// signal recorded just before or during publication must not turn a
+			// successfully emitted result into a contradictory 130/143 process
+			// status; likewise, a failed publication must retain its internal
+			// error code instead of being relabelled as cancellation.
+			return code
 		}
 		err = interrupted
 	}

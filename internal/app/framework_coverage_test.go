@@ -315,7 +315,7 @@ func TestCrossPlatformCoverageFrameworkExecuteRareOutcomeBranches(t *testing.T) 
 			<-cmd.Context().Done()
 			return nil, cmd.Context().Err()
 		})
-		if code := Execute(); code != 130 {
+		if code := Execute(); code != 5 {
 			t.Fatalf("Execute code=%d", code)
 		}
 	})

@@ -176,7 +176,7 @@ func TestExecuteDeadlineIsNotSignalCancellation(t *testing.T) {
 	}
 }
 
-func TestSignalAfterEmissionAttemptDoesNotEmitAgain(t *testing.T) {
+func TestSignalAfterFailedEmissionAttemptPreservesPublicationExitCode(t *testing.T) {
 	var stdout bytes.Buffer
 	installSignalExecuteSeams(t, true, &stdout, io.Discard)
 	testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
@@ -189,11 +189,43 @@ func TestSignalAfterEmissionAttemptDoesNotEmitAgain(t *testing.T) {
 		<-cmd.Context().Done()
 		return cmd, cmd.Context().Err()
 	})
-	if code := Execute(); code != 130 {
-		t.Fatalf("Execute code=%d, want 130", code)
+	if code := Execute(); code != 5 {
+		t.Fatalf("Execute code=%d, want publication failure code 5", code)
 	}
 	if stdout.Len() != 0 {
 		t.Fatalf("second envelope emitted: %q", stdout.String())
+	}
+}
+
+func TestSignalBeforeEmissionAttemptPreservesPublishedOutcome(t *testing.T) {
+	var stdout bytes.Buffer
+	installSignalExecuteSeams(t, true, &stdout, io.Discard)
+	testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
+		// Record cancellation before publication begins, then simulate a command
+		// hook that has already committed its result and completes publication.
+		// The wire result must remain authoritative over the earlier signal.
+		signalSelf(t, syscall.SIGINT)
+		<-cmd.Context().Done()
+		if err := output.StoreResult(cmd.Context(), output.Success(map[string]any{"ok": true})); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := output.EmitStoredResult(cmd); err != nil {
+			t.Fatal(err)
+		}
+		return cmd, cmd.Context().Err()
+	})
+	if code := Execute(); code != 0 {
+		t.Fatalf("Execute code=%d, want published success code 0", code)
+	}
+	var env output.Envelope
+	if err := json.Unmarshal(stdout.Bytes(), &env); err != nil {
+		t.Fatalf("decode envelope: %v; output=%q", err, stdout.String())
+	}
+	if !env.OK || env.Outcome != output.OutcomeSuccess {
+		t.Fatalf("published envelope=%+v, want successful outcome", env)
+	}
+	if got := bytes.Count(stdout.Bytes(), []byte(`"outcome": "success"`)); got != 1 {
+		t.Fatalf("stdout contains %d success envelopes, want one: %s", got, stdout.String())
 	}
 }
 
