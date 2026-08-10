@@ -439,6 +439,48 @@ func TestCrossPlatformCoverageWikiFeedListFormatIntegration(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageWikiFeedListRawFormat(t *testing.T) {
+	// --format raw: 输出原始 MCP 文本，不经过 formatFeedTime 后处理
+	rawPayload := `{"feeds":[{"time":1750067400000,"type":1}]}`
+	caller := &scriptedToolCaller{
+		format: "raw",
+		steps:  []scriptedToolStep{{text: rawPayload}},
+	}
+
+	var out bytes.Buffer
+	oldDeps := deps
+	oldArgs := os.Args
+	InitDeps(caller)
+	deps.Out.w = &out
+	deps.Out.errW = io.Discard
+	t.Cleanup(func() {
+		deps = oldDeps
+		os.Args = oldArgs
+	})
+
+	root := newWikiCommand()
+	installExampleGlobalFlags(root)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetIn(os.Stdin)
+
+	args := []string{"feed", "list", "--workspace", "ws1", "--format", "raw"}
+	root.SetArgs(args)
+	os.Args = append([]string{"dws", "wiki"}, args...)
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	// raw 输出应包含原始文本，不经过 formatFeedTime 格式化
+	got := out.String()
+	if !bytes.Contains([]byte(got), []byte(`"feeds"`)) {
+		t.Fatalf("raw output should contain original payload, got: %s", got)
+	}
+}
+
 func TestCrossPlatformCoverageWikiFeedListEmptyResponse(t *testing.T) {
 	// MCP 返回空结果 → formatFeedTime 处理空字符串 → 不报错
 	caller := &scriptedToolCaller{} // 无 steps → 空结果
