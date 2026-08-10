@@ -265,21 +265,13 @@ func TestDaemonStatusJSON(t *testing.T) {
 	if err := daemonStatus(&buf, "j", true); err != nil {
 		t.Fatalf("daemonStatus json: %v", err)
 	}
-	var env struct {
-		OK      bool            `json:"ok"`
-		Outcome string          `json:"outcome"`
-		Data    json.RawMessage `json:"data"`
-	}
-	if err := json.Unmarshal(buf.Bytes(), &env); err != nil {
+	var report connectHealthReport
+	if err := json.Unmarshal(buf.Bytes(), &report); err != nil {
 		t.Fatalf("output is not valid JSON: %v\n%s", err, buf.String())
 	}
-	// 统一输出试点（B111）：--json 输出完整信封，健康报告进 data。
-	if !env.OK || env.Outcome != "success" {
-		t.Fatalf("envelope ok/outcome = %v/%q, want true/success: %s", env.OK, env.Outcome, buf.String())
-	}
-	var report connectHealthReport
-	if err := json.Unmarshal(env.Data, &report); err != nil {
-		t.Fatalf("data is not a health report: %v\n%s", err, buf.String())
+	// --json is a published supervisor API: health fields remain at top level.
+	if strings.Contains(buf.String(), `"outcome"`) || strings.Contains(buf.String(), `"data"`) {
+		t.Fatalf("status compatibility JSON was enveloped: %s", buf.String())
 	}
 	if report.State != healthHealthy {
 		t.Errorf("state = %q, want %q", report.State, healthHealthy)

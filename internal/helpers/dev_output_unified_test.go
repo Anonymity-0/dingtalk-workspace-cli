@@ -3,6 +3,7 @@ package helpers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
@@ -95,7 +96,7 @@ func TestDevDocSearchUnifiedUsesInjectedRunnerOnce(t *testing.T) {
 	}
 }
 
-func TestAllTerminalDevBusinessSurfacesDeclareUnifiedActive(t *testing.T) {
+func TestDevTerminalRolloutKeepsPublishedConnectStatusLegacy(t *testing.T) {
 	root := newDevUnifiedRoot(&countingDevUnifiedRunner{})
 	dev, _, err := root.Find([]string{"dev"})
 	if err != nil {
@@ -105,8 +106,12 @@ func TestAllTerminalDevBusinessSurfacesDeclareUnifiedActive(t *testing.T) {
 	walk = func(cmd *cobra.Command) {
 		children := cmd.Commands()
 		if cmd.Runnable() && len(children) == 0 {
-			if got := output.CommandRollout(cmd); got != output.RolloutUnifiedActive {
-				t.Errorf("%s rollout=%s, want %s", cmd.CommandPath(), got, output.RolloutUnifiedActive)
+			want := output.RolloutUnifiedActive
+			if cmd.CommandPath() == "dws dev connect status" {
+				want = output.RolloutLegacyOnly
+			}
+			if got := output.CommandRollout(cmd); got != want {
+				t.Errorf("%s rollout=%s, want %s", cmd.CommandPath(), got, want)
 			}
 		}
 		if cmd.CommandPath() == "dws dev connect" && output.CommandRollout(cmd) != output.RolloutLegacyOnly {
@@ -117,4 +122,40 @@ func TestAllTerminalDevBusinessSurfacesDeclareUnifiedActive(t *testing.T) {
 		}
 	}
 	walk(dev)
+}
+
+func TestDevConnectStatusPreservesPublishedHumanAndJSONShapes(t *testing.T) {
+	connectDaemonDirOverride = t.TempDir()
+	t.Cleanup(func() { connectDaemonDirOverride = "" })
+
+	humanRoot := newDevUnifiedRoot(&countingDevUnifiedRunner{})
+	var humanOut bytes.Buffer
+	humanRoot.SetOut(&humanOut)
+	humanRoot.SetArgs([]string{"dev", "connect", "status", "--robot-client-id", "missing"})
+	if err := humanRoot.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(humanOut.Bytes(), []byte("not_running")) || bytes.Contains(humanOut.Bytes(), []byte(`"outcome"`)) {
+		t.Fatalf("default status output no longer uses the legacy human view: %s", humanOut.String())
+	}
+
+	jsonRoot := newDevUnifiedRoot(&countingDevUnifiedRunner{})
+	var jsonOut bytes.Buffer
+	jsonRoot.SetOut(&jsonOut)
+	jsonRoot.SetArgs([]string{"dev", "connect", "status", "--robot-client-id", "missing", "--json"})
+	if err := jsonRoot.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(jsonOut.Bytes(), &payload); err != nil {
+		t.Fatalf("legacy --json output is invalid: %v\n%s", err, jsonOut.String())
+	}
+	if payload["state"] != "not_running" || payload["supervised"] != false {
+		t.Fatalf("legacy health fields moved or changed: %#v", payload)
+	}
+	for _, forbidden := range []string{"ok", "outcome", "data"} {
+		if _, exists := payload[forbidden]; exists {
+			t.Fatalf("legacy --json unexpectedly gained unified key %q: %#v", forbidden, payload)
+		}
+	}
 }

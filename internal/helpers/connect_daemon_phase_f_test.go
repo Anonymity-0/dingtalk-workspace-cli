@@ -15,6 +15,7 @@ package helpers
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -39,14 +40,14 @@ func TestConnectStopAndRestartDoNotRequireConfirmation(t *testing.T) {
 
 // TestConnectDaemonFamilyMissingDaemonErrorPaths 是队列 B116 的「daemon 不存在
 // 错误路径」分支：对不存在的守护进程，status/stop 不得把它当成失败（空态是合法
-// 载荷，AC-06——返回 ok:true 信封如实标注 not_running），restart 因无法安全
+// 载荷，AC-06——status 保持已发布的顶层 JSON 并如实标注 not_running），restart 因无法安全
 // 重建而报 validation 错误，缺定位标识则统一报 validation（错误路径继续走
 // apperrors 通道，不进信封）。命令级端到端，stdout/stderr 分流断言。
 func TestConnectDaemonFamilyMissingDaemonErrorPaths(t *testing.T) {
 	connectDaemonDirOverride = t.TempDir()
 	t.Cleanup(func() { connectDaemonDirOverride = "" })
 
-	// status：daemon 不存在 → ok:true 信封，data.state=not_running（非错误）。
+	// status：daemon 不存在 → 兼容顶层 JSON，state=not_running（非错误）。
 	status := prepareUnifiedTestCommand(newDevAppRobotConnectStatusCommand())
 	var statusOut, statusErr bytes.Buffer
 	status.SetOut(&statusOut)
@@ -55,13 +56,15 @@ func TestConnectDaemonFamilyMissingDaemonErrorPaths(t *testing.T) {
 	if err := status.Execute(); err != nil {
 		t.Fatalf("status on missing daemon must not error, got %v\nstderr:\n%s", err, statusErr.String())
 	}
-	statusEnv := decodePhaseFEnvelope(t, statusOut.Bytes())
-	if !statusEnv.OK || statusEnv.Outcome != "success" {
-		t.Fatalf("status envelope ok/outcome = %v/%q, want true/success: %s",
-			statusEnv.OK, statusEnv.Outcome, statusOut.String())
+	var statusReport connectHealthReport
+	if err := json.Unmarshal(statusOut.Bytes(), &statusReport); err != nil {
+		t.Fatalf("status output is not the published top-level JSON: %v\n%s", err, statusOut.String())
 	}
-	if state, _ := statusEnv.Data["state"].(string); state != healthNotRunning {
-		t.Fatalf("status data.state = %q, want %q: %s", state, healthNotRunning, statusOut.String())
+	if statusReport.State != healthNotRunning {
+		t.Fatalf("status state = %q, want %q: %s", statusReport.State, healthNotRunning, statusOut.String())
+	}
+	if strings.Contains(statusOut.String(), `"outcome"`) || strings.Contains(statusOut.String(), `"data"`) {
+		t.Fatalf("status compatibility JSON was enveloped: %s", statusOut.String())
 	}
 
 	// stop：daemon 不存在 → ok:true 信封，data.status=not_running；人读行走 stderr。

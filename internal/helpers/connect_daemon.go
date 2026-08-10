@@ -537,47 +537,27 @@ func superviseWait(ctx context.Context, worker *exec.Cmd) error {
 // connector heartbeat (is the connection live and receiving — see
 // connect_health.go). jsonOut emits the machine-readable health report an
 // external supervisor (launchd/systemd/pm2/cron) consumes to decide restarts.
-type daemonStatusSnapshot struct {
-	Report     connectHealthReport
-	Heartbeat  *connectHeartbeat
-	Supervised bool
-	Dir        string
-}
-
-func readDaemonStatus(dirKey string) (*daemonStatusSnapshot, error) {
+func daemonStatus(w io.Writer, dirKey string, jsonOut bool) error {
 	dir, err := connectDaemonDir(dirKey)
 	if err != nil {
-		return nil, apperrors.NewInternal("resolve daemon dir: " + err.Error())
+		return apperrors.NewInternal("resolve daemon dir: " + err.Error())
 	}
 	st, err := readDaemonState(dir)
 	if err != nil {
-		return nil, apperrors.NewInternal(err.Error())
+		return apperrors.NewInternal(err.Error())
 	}
 	supervised := st != nil && st.Pid > 0 && daemonProcessAlive(st.Pid)
 
 	hb, err := readConnectHeartbeat(dir)
 	if err != nil {
-		return nil, apperrors.NewInternal("read connector heartbeat: " + err.Error())
+		return apperrors.NewInternal("read connector heartbeat: " + err.Error())
 	}
 	report := deriveConnectHealth(hb, supervised, daemonNow())
-	return &daemonStatusSnapshot{Report: report, Heartbeat: hb, Supervised: supervised, Dir: dir}, nil
-}
-
-func daemonStatus(w io.Writer, dirKey string, jsonOut bool) error {
-	snapshot, err := readDaemonStatus(dirKey)
-	if err != nil {
-		return err
-	}
-	report := snapshot.Report
-	hb := snapshot.Heartbeat
-	supervised := snapshot.Supervised
-	dir := snapshot.Dir
 
 	if jsonOut {
-		// 统一输出 dev 域试点（队列 B111）：--json 输出完整信封，
-		// 健康报告进 data（契约规范 §2.1）。
-		env := &output.Envelope{OK: true, Outcome: output.OutcomeSuccess, Data: report}
-		return output.WriteEnvelopeTo(w, env, output.FormatJSON, "", "")
+		data, _ := json.MarshalIndent(report, "", "  ")
+		fmt.Fprintln(w, string(data))
+		return nil
 	}
 
 	var lines []string
@@ -721,13 +701,6 @@ func newDevAppRobotConnectStatusCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if output.UsesUnifiedResult(cmd) {
-				snapshot, err := readDaemonStatus(dirKey)
-				if err != nil {
-					return err
-				}
-				return output.StoreResult(cmd.Context(), output.Success(snapshot.Report))
-			}
 			jsonOut, _ := cmd.Flags().GetBool("json")
 			return daemonStatus(cmd.OutOrStdout(), dirKey, jsonOut)
 		},
@@ -737,7 +710,10 @@ func newDevAppRobotConnectStatusCommand() *cobra.Command {
 	cmd.Flags().String("unified-app-id", "", "统一应用 ID（当未用 clientId 起守护进程时定位）")
 	cmd.Flags().Bool("json", false, "以 JSON 输出健康报告（供 launchd/systemd/pm2/cron 判断是否重启）")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		OutputRollout: output.RolloutUnifiedActive,
+		// status 已发布给 launchd/systemd/pm2/cron：--json 的 state/pid/
+		// supervised 必须继续位于顶层，默认调用也必须保留人读面板。该叶子在
+		// 单独设计兼容迁移方案前不进入统一信封 rollout。
+		OutputRollout: output.RolloutLegacyOnly,
 		Safety: contract.SafetySpec{
 			// Preserve the published Schema safety tuple during the unified-result
 			// pilot. Correcting this historical classification is a separate,
@@ -767,7 +743,7 @@ func newDevAppRobotConnectStatusCommand() *cobra.Command {
 				AgentSummary: "查看后台连接器守护进程状态",
 				UseWhen:      []string{"需要确认本地 connect 守护进程是否在跑、pid/日志路径"},
 				AvoidWhen:    []string{"要停止守护进程时用 dev connect stop"},
-				Examples:     []string{"dws dev connect status --unified-app-id <unifiedAppId> --format json"},
+				Examples:     []string{"dws dev connect status --unified-app-id <unifiedAppId> --json"},
 			},
 		},
 	})
