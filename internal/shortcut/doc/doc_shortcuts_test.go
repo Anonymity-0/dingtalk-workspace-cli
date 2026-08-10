@@ -572,25 +572,13 @@ func TestCrossPlatformCoverageDocVersionRevertPaginationAndVerification(t *testi
 		}
 	})
 
-	t.Run("write result lacks proof but current state proves source", func(t *testing.T) {
+	t.Run("empty write response and ordinary document info", func(t *testing.T) {
 		caller := &docCoverageCaller{responses: map[string][]map[string]any{
-			"revert_doc_version": {{"ok": true}},
-			"get_document_info":  {{"restoredFromVersion": 3.0}},
+			"revert_doc_version": {{}},
+			"get_document_info":  {{"nodeId": "n", "revision": 99.0}},
 		}}
 		if err := runDocCoverage(t, VersionRevert, caller, "--node", "n", "--version", "3", "--yes"); err != nil {
 			t.Fatal(err)
-		}
-	})
-
-	t.Run("readback lacks proof", func(t *testing.T) {
-		caller := &docCoverageCaller{responses: map[string][]map[string]any{
-			"revert_doc_version": {{"ok": true}},
-			"get_document_info":  {{"revision": 99.0}},
-		}}
-		err := runDocCoverage(t, VersionRevert, caller, "--node", "n", "--version", "3", "--yes")
-		var typed *apperrors.Error
-		if !errors.As(err, &typed) || typed.Reason != "doc_history_revert_verification_failed" || typed.Retryable {
-			t.Fatalf("unproven revert error = %#v", err)
 		}
 	})
 
@@ -962,20 +950,17 @@ func TestCrossPlatformCoverageUpdateContractAndPreflight(t *testing.T) {
 	for _, flag := range Update.Flags {
 		flags[flag.Name] = flag
 	}
-	if !flags["node"].Required || !flags["command"].Required {
+	if !flags["node"].Required || flags["command"].Required {
 		t.Fatalf("unconditional required flags: node=%v command=%v", flags["node"].Required, flags["command"].Required)
 	}
-	wantRequiredWhen := map[string]string{
-		"content":        "--command=append|overwrite|block_insert_after|block_replace",
-		"block-id":       "--command=block_replace|block_delete|block_copy_insert_after",
-		"after-block-id": "--command=block_insert_after|block_copy_insert_after",
-		"old":            "--command=str_replace",
-		"new":            "--command=str_replace",
-	}
-	for name, want := range wantRequiredWhen {
-		if got := flags[name].RequiredWhen; got != want {
-			t.Errorf("--%s RequiredWhen = %q, want %q", name, got, want)
+	for _, name := range []string{"content", "block-id", "after-block-id", "old", "new"} {
+		if got := flags[name].RequiredWhen; got != "" {
+			t.Errorf("--%s RequiredWhen = %q, want compatibility-safe custom constraint", name, got)
 		}
+	}
+	if len(Update.Constraints) != 1 || Update.Constraints[0].Kind != shortcut.ConstraintCustom ||
+		!strings.Contains(Update.Constraints[0].Description, "依 command 校验") {
+		t.Fatalf("update custom constraint = %#v", Update.Constraints)
 	}
 	cmd := corecmd.New(shortcut.FromShortcut(Update))
 	for _, alias := range []string{"doc", "text"} {
@@ -1275,11 +1260,11 @@ func TestCrossPlatformCoverageDocHistoryTemplateReviewAndMedia(t *testing.T) {
 	_ = runDocCoverage(t, MediaInsert, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--node", "n", "--file", "media.bin", "--dry-run", "--yes")
 	_ = runDocCoverage(t, ResourceUpdate, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--node", "n", "--image", "https://example.com/cover.png", "--dry-run", "--yes")
 	_ = runDocCoverage(t, Import, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--file", "media.bin", "--folder", "f", "--dry-run")
-	if err := runDocCoverage(t, Import, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--file", "media.bin", "--dry-run"); err != nil && strings.Contains(err.Error(), "folder") && strings.Contains(err.Error(), "workspace") {
-		t.Fatalf("root import still requires folder/workspace: %v", err)
+	if err := runDocCoverage(t, Import, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--file", "media.bin", "--dry-run"); err == nil {
+		t.Fatal("import without folder/workspace succeeded")
 	}
-	if err := runDocCoverage(t, Export, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--node", "n", "--output", "out.docx"); err == nil {
-		t.Fatal("export without --export-format succeeded")
+	if err := runDocCoverage(t, Export, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--node", "n", "--output", "out.docx", "--dry-run"); err != nil {
+		t.Fatalf("export default format failed: %v", err)
 	}
 	if selected, ok := sliceUTF16Range("A😀B", 1, 3); !ok || selected != "😀" {
 		t.Fatalf("UTF-16 selection = %q/%v", selected, ok)
@@ -1360,8 +1345,11 @@ func TestCrossPlatformCoverageVersionRoutesAreCanonicalAndHistoryRoutesAreCompat
 		}
 	}
 
-	if VersionSave.Command != "+version-save" || VersionSave.Safety.Confirmation != "not_required" {
+	if VersionSave.Command != "+version-save" || VersionSave.Safety.Confirmation != "user_required" {
 		t.Errorf("version-save command/confirmation = %s/%s", VersionSave.Command, VersionSave.Safety.Confirmation)
+	}
+	if compatHistorySave.Safety.Confirmation != "not_required" {
+		t.Errorf("history-save compatibility confirmation = %s", compatHistorySave.Safety.Confirmation)
 	}
 	if VersionRevert.Command != "+version-revert" || VersionRevert.Execute == nil {
 		t.Errorf("version-revert canonical smart route is incomplete")

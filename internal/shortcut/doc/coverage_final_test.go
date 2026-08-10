@@ -320,7 +320,7 @@ func TestCrossPlatformCoverageDocFinalExecutionFailureBranches(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = runDocCoverage(t, ResourceUpdate, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--node", "n", "--file", "media.bin", "--dry-run", "--yes")
-	if err := runDocCoverage(t, Import, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--file", "media.bin", "--dry-run"); err != nil {
+	if err := runDocCoverage(t, Import, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--file", "media.bin", "--folder", "f", "--dry-run"); err != nil {
 		t.Fatal(err)
 	}
 

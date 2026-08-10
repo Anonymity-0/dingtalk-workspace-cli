@@ -145,6 +145,8 @@ var Create = shortcut.Shortcut{
 	},
 }
 
+const fetchTargetConstraint = "--node 与 --query 必须且只能提供一个"
+
 var Fetch = shortcut.Shortcut{
 	Service:     "doc",
 	Command:     "+fetch",
@@ -161,8 +163,8 @@ var Fetch = shortcut.Shortcut{
 		contract.ParamDecl{Name: "query", Property: "keyword"},
 	),
 	Flags: []shortcut.Flag{
-		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL；与 --query 二选一"},
-		{Name: "query", Type: shortcut.FlagString, Desc: "文档标题或关键词；跨页唯一解析后读取，与 --node 二选一"},
+		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL；" + fetchTargetConstraint},
+		{Name: "query", Type: shortcut.FlagString, Desc: "文档标题或关键词；跨页唯一解析后读取；" + fetchTargetConstraint},
 		{Name: "detail", Type: shortcut.FlagString, Default: "simple", Desc: "输出细节", Enum: []string{"simple", "with-ids", "full"}},
 		{Name: "scope", Type: shortcut.FlagString, Default: "full", Desc: "读取范围；keyword 时 --keyword 不能为空", Enum: []string{"full", "outline", "range", "section", "keyword", "tags"}},
 		{Name: "start-block-id", Type: shortcut.FlagString, Desc: "range/section 起始块 ID"},
@@ -185,7 +187,7 @@ var Fetch = shortcut.Shortcut{
 		return nil
 	},
 	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"node", "query"}, Description: "--node 与 --query 必须且只能提供一个"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"node", "query"}, Description: fetchTargetConstraint},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"scope", "keyword"}, Description: "--scope keyword 时 --keyword 不能为空"},
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
@@ -318,26 +320,26 @@ var Update = shortcut.Shortcut{
 	Contract: docContract("+update", "追加、覆盖或按 block 精确更新文档内容",
 		"当用户要修改已有在线文字文档时使用；支持整篇 append/overwrite、block 插入/替换/删除，以及受限的唯一纯文本 str_replace，所有模式统一经过静态确认门禁。",
 		[]string{`dws doc +update --node <DOC_ID> --command append --content "补充说明"`, `dws doc +update --node <DOC_ID> --command block_replace --block-id <BLOCK_ID> --content "新内容"`},
-		contract.ParamDecl{Name: "node", Property: "nodeId"},
+		contract.ParamDecl{Name: "node", Property: "node"},
 		contract.ParamDecl{Name: "command", Property: "command"},
 		contract.ParamDecl{Name: "content", Property: "content"},
-		contract.ParamDecl{Name: "doc-format", Property: "format"},
+		contract.ParamDecl{Name: "doc-format", Property: "docFormat"},
 		contract.ParamDecl{Name: "block-id", Property: "blockId"},
-		contract.ParamDecl{Name: "after-block-id", Property: "referenceBlockId"},
+		contract.ParamDecl{Name: "after-block-id", Property: "afterBlockId"},
 		contract.ParamDecl{Name: "old", Property: "old"},
 		contract.ParamDecl{Name: "new", Property: "new"},
-		contract.ParamDecl{Name: "expected-revision", Property: "revision"},
-		contract.ParamDecl{Name: "doc", Property: "nodeId"},
+		contract.ParamDecl{Name: "expected-revision", Property: "expectedRevision"},
+		contract.ParamDecl{Name: "doc", Property: "node"},
 		contract.ParamDecl{Name: "text", Property: "content"}),
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true, Aliases: []string{"doc"}, AliasesVisible: true},
-		{Name: "command", Type: shortcut.FlagString, Desc: "更新动作；不能为空", Required: true, Enum: []string{"append", "overwrite", "block_insert_after", "block_replace", "block_delete", "str_replace", "block_copy_insert_after"}},
-		{Name: "content", Type: shortcut.FlagString, Desc: docRequiredContentInputDescription, RequiredWhen: "--command=append|overwrite|block_insert_after|block_replace", Aliases: []string{"text"}, AliasesVisible: true},
+		{Name: "command", Type: shortcut.FlagString, Desc: "更新动作；不能为空", Enum: []string{"append", "overwrite", "block_insert_after", "block_replace", "block_delete", "str_replace", "block_copy_insert_after"}},
+		{Name: "content", Type: shortcut.FlagString, Desc: docRequiredContentInputDescription, Aliases: []string{"text"}, AliasesVisible: true},
 		{Name: "doc-format", Type: shortcut.FlagString, Default: "markdown", Desc: "内容格式", Enum: []string{"markdown", "jsonml"}},
-		{Name: "block-id", Type: shortcut.FlagString, Desc: "目标或源 block ID；相关动作要求时不能为空", RequiredWhen: "--command=block_replace|block_delete|block_copy_insert_after"},
-		{Name: "after-block-id", Type: shortcut.FlagString, Desc: "插入位置参考 block ID；相关动作要求时不能为空", RequiredWhen: "--command=block_insert_after|block_copy_insert_after"},
-		{Name: "old", Type: shortcut.FlagString, Desc: "str_replace 原文字，不能为空", RequiredWhen: "--command=str_replace"},
-		{Name: "new", Type: shortcut.FlagString, Desc: "str_replace 新文字；--old 不能为空，新值可为空但参数必须显式提供", RequiredWhen: "--command=str_replace"},
+		{Name: "block-id", Type: shortcut.FlagString, Desc: "目标或源 block ID；相关动作要求时不能为空"},
+		{Name: "after-block-id", Type: shortcut.FlagString, Desc: "插入位置参考 block ID；相关动作要求时不能为空"},
+		{Name: "old", Type: shortcut.FlagString, Desc: "str_replace 原文字，不能为空"},
+		{Name: "new", Type: shortcut.FlagString, Desc: "str_replace 新文字；--old 不能为空，新值可为空但参数必须显式提供"},
 		{Name: "expected-revision", Type: shortcut.FlagInt, Desc: "仅 overwrite+jsonml：传给服务端执行原子 revision 条件写"},
 	},
 	Tips: []string{`dws doc +update --node <DOC_ID> --command append --content "补充说明"`, `dws doc +update --node <DOC_ID> --command block_replace --block-id <BLOCK_ID> --content "新内容"`},
@@ -345,6 +347,9 @@ var Update = shortcut.Shortcut{
 		command := rt.Str("command")
 		if rt.StrFirst("node", "doc") == "" {
 			return apperrors.NewValidation("缺少 --node")
+		}
+		if command == "" {
+			return apperrors.NewValidation("缺少 --command")
 		}
 		switch command {
 		case "append", "overwrite", "block_insert_after", "block_replace":
@@ -444,7 +449,7 @@ var Export = shortcut.Shortcut{
 		[]string{`dws doc +export --node <DOC_ID> --export-format docx --output ./exports/`, `dws doc +export --node <DOC_ID> --export-format markdown --output ./document.md`}),
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true},
-		{Name: "export-format", Type: shortcut.FlagString, Desc: "导出格式；必须显式指定，不能用全局 --format 代替", Required: true, Enum: []string{"docx", "markdown", "pdf"}},
+		{Name: "export-format", Type: shortcut.FlagString, Default: "docx", Desc: "导出格式；省略时默认为 docx，不能用全局 --format 代替", Enum: []string{"docx", "markdown", "pdf"}},
 		{Name: "output", Type: shortcut.FlagString, Default: ".", Desc: "工作目录内相对路径（文件或目录）"},
 		{Name: "max-polls", Type: shortcut.FlagInt, Default: "30", Desc: "最大轮询次数"},
 	},
@@ -472,9 +477,10 @@ var Import = shortcut.Shortcut{
 		{Name: "name", Type: shortcut.FlagString, Desc: "导入后名称"},
 	},
 	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"folder", "workspace"}, Description: "--folder 与 --workspace 至少提供一个导入目标"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"file"}, Description: "--file 必须是工作目录内已存在且不通过符号链接逃逸的相对路径"},
 	},
-	Tips:     []string{`dws doc +import --file ./report.docx`, `dws doc +import --file ./notes.md --workspace <WORKSPACE_ID> --name "会议纪要"`},
+	Tips:     []string{`dws doc +import --file ./report.docx --folder <FOLDER_ID>`, `dws doc +import --file ./notes.md --workspace <WORKSPACE_ID> --name "会议纪要"`},
 	Validate: func(rt *shortcut.RuntimeContext) error { return validateWorkspaceInputPath("file", rt.Str("file")) },
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		if err := helpers.RunDocImportShortcut(rt.Command()); err != nil {

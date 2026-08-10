@@ -138,35 +138,29 @@ func TestDeliveryDocUpdateShortcutPublishesCompleteConditionalContract(t *testin
 	if got, want := len(parameters), 11; got != want {
 		t.Fatalf("parameter count = %d, want %d: %#v", got, want, parameters)
 	}
-	for _, name := range []string{"node", "command"} {
-		if required, _ := parameters[name]["required"].(bool); !required {
-			t.Errorf("--%s required = %#v, want true", name, parameters[name]["required"])
-		}
+	if required, _ := parameters["node"]["required"].(bool); !required {
+		t.Errorf("--node required = %#v, want true", parameters["node"]["required"])
+	}
+	if required, _ := parameters["command"]["required"].(bool); required {
+		t.Errorf("--command required = true, want runtime custom validation")
 	}
 	wantProperties := map[string]string{
-		"node": "nodeId", "doc": "nodeId", "command": "command", "content": "content", "text": "content", "doc-format": "format",
-		"block-id": "blockId", "after-block-id": "referenceBlockId", "old": "old", "new": "new",
-		"expected-revision": "revision",
+		"node": "node", "doc": "node", "command": "command", "content": "content", "text": "content", "doc-format": "docFormat",
+		"block-id": "blockId", "after-block-id": "afterBlockId", "old": "old", "new": "new",
+		"expected-revision": "expectedRevision",
 	}
 	for name, want := range wantProperties {
 		if got := schemaContractString(parameters[name]["property"]); got != want {
 			t.Errorf("--%s property = %q, want %q", name, got, want)
 		}
 	}
-	wantRequiredWhen := map[string]string{
-		"content":        "--command=append|overwrite|block_insert_after|block_replace",
-		"block-id":       "--command=block_replace|block_delete|block_copy_insert_after",
-		"after-block-id": "--command=block_insert_after|block_copy_insert_after",
-		"old":            "--command=str_replace",
-		"new":            "--command=str_replace",
-	}
-	for name, want := range wantRequiredWhen {
+	for _, name := range []string{"content", "block-id", "after-block-id", "old", "new"} {
 		parameter := parameters[name]
 		if required, _ := parameter["required"].(bool); required {
-			t.Errorf("--%s required = true, want conditional requirement", name)
+			t.Errorf("--%s required = true, want runtime custom validation", name)
 		}
-		if got := schemaContractString(parameter["required_when"]); got != want {
-			t.Errorf("--%s required_when = %q, want %q", name, got, want)
+		if got := schemaContractString(parameter["required_when"]); got != "" {
+			t.Errorf("--%s required_when = %q, want compatibility-safe custom validation", name, got)
 		}
 	}
 	if constraints, exists := leaf["constraints"]; exists && constraints != nil {
@@ -182,19 +176,25 @@ func TestDeliveryDocCommentExportImportContractsAreCanonical(t *testing.T) {
 			t.Errorf("comment-create missing --%s: %#v", name, commentParameters)
 		}
 	}
+	for name, want := range map[string]string{"node": "node", "mention": "mention"} {
+		if got := schemaContractString(commentParameters[name]["property"]); got != want {
+			t.Errorf("comment-create --%s property = %q, want %q", name, got, want)
+		}
+	}
 
 	export := executeShortcutSchemaQuery(t, "--cli-path", "doc +export")
 	exportFormat := schemaContractMap(export["parameters"])["export-format"]
-	if required, _ := exportFormat["required"].(bool); !required {
-		t.Fatalf("export --export-format required = %#v, want true", exportFormat["required"])
+	if required, _ := exportFormat["required"].(bool); required {
+		t.Fatalf("export --export-format required = true, want compatibility default")
 	}
-	if defaultValue := schemaContractString(exportFormat["default"]); defaultValue != "" {
-		t.Fatalf("export --export-format default = %q, want empty", defaultValue)
+	if defaultValue := schemaContractString(exportFormat["default"]); defaultValue != "docx" {
+		t.Fatalf("export --export-format default = %q, want docx", defaultValue)
 	}
 
 	importLeaf := executeShortcutSchemaQuery(t, "--cli-path", "doc +import")
-	if constraints := schemaContractMap(importLeaf["constraints"]); len(constraints) != 0 {
-		t.Fatalf("root import must not require folder/workspace: %#v", constraints)
+	constraints, _ := importLeaf["constraints"].(map[string]any)
+	if !schemaContractJSONEqual(constraints["require_one_of"], [][]string{{"folder", "workspace"}}) {
+		t.Fatalf("import target constraint = %#v", constraints)
 	}
 }
 

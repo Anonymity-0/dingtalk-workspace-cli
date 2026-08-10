@@ -493,14 +493,14 @@ var CommentCreate = shortcut.Shortcut{
 	Contract: docContract("+comment-create", "创建全文评论，或按 selection 创建划词评论",
 		"当用户要对整篇文档留言，或针对文档中唯一匹配的一段文字创建精确划词评论时使用；已知 block/start/end 时也可直接走高级通道。",
 		[]string{`dws doc +comment-create --node <DOC_ID> --content "请补充数据来源"`, `dws doc +comment-create --node <DOC_ID> --selection "计划下周发布" --content "请确认日期"`},
-		contract.ParamDecl{Name: "node", Property: "nodeId"},
+		contract.ParamDecl{Name: "node", Property: "node"},
 		contract.ParamDecl{Name: "content", Property: "content"},
 		contract.ParamDecl{Name: "selection", Property: "selection"},
 		contract.ParamDecl{Name: "block-id", Property: "blockId"},
 		contract.ParamDecl{Name: "start", Property: "start"},
 		contract.ParamDecl{Name: "end", Property: "end"},
 		contract.ParamDecl{Name: "selected-text", Property: "selectedText"},
-		contract.ParamDecl{Name: "mention", Property: "mentionedUserIds"}),
+		contract.ParamDecl{Name: "mention", Property: "mention"}),
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true},
 		{Name: "content", Type: shortcut.FlagString, Desc: "评论文字内容", Required: true},
@@ -638,7 +638,7 @@ var ExportSubmit = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "要导出的文档 ID 或 URL", Required: true},
-		{Name: "export-format", Type: shortcut.FlagString, Desc: "导出格式；必须显式指定", Required: true, Enum: []string{"docx", "markdown", "pdf"}},
+		{Name: "export-format", Type: shortcut.FlagString, Default: "docx", Desc: "导出格式；省略时默认为 docx", Enum: []string{"docx", "markdown", "pdf"}},
 	},
 	Tips: []string{`dws doc +export-submit --node DOC_ID --export-format markdown`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
