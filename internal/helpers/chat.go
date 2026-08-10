@@ -348,6 +348,22 @@ func pagedChatMessagesConfig(toolName string, build func(*cobra.Command) (map[st
 	}
 }
 
+func pagedChatConversationMessagesConfig(toolName string, build func(*cobra.Command) (map[string]any, error)) PagedMCPCommandConfig {
+	cfg := pagedChatMessagesConfig(toolName, build)
+	cfg.ItemPath = "result.conversationMessagesList"
+	cfg.AggregationMode = PagedAggregationConversationMessages
+	return cfg
+}
+
+func pagedChatConversationMessagesOnServerConfig(serverID, toolName string, build func(*cobra.Command) (map[string]any, error)) PagedMCPCommandConfig {
+	cfg := pagedChatConversationMessagesConfig(toolName, build)
+	cfg.ServerID = serverID
+	cfg.Fallback = func(args map[string]any) error {
+		return callMCPToolOnServer(serverID, toolName, args)
+	}
+	return cfg
+}
+
 func pagedChatMessagesOnServerConfig(serverID, toolName string, build func(*cobra.Command) (map[string]any, error)) PagedMCPCommandConfig {
 	cfg := pagedChatMessagesConfig(toolName, build)
 	cfg.ServerID = serverID
@@ -2978,12 +2994,12 @@ func newChatCommand() *cobra.Command {
 	chatMessageListAllCmd := &cobra.Command{
 		Use:   "list-all",
 		Short: "拉取指定时间范围内当前用户的所有会话消息",
-		Long:  `分页拉取当前登录用户在指定时间范围内的所有会话消息。--start 和 --end 限定时间范围，--limit 指定每页数量，--cursor 传分页游标（首页传 0）。服务端按 cursor 分页返回，hasMore=true 时用返回的 nextCursor 值继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并聚合 result.messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 精确截断返回条数，--page-delay 控制页间等待毫秒数。如果当前账号没有消息搜索权益，CLI 会保留服务端返回的友好提示与开通入口；不要把权限错误解释为时间范围内没有消息。`,
+		Long:  `分页拉取当前登录用户在指定时间范围内的所有会话消息。--start 和 --end 限定时间范围，--limit 指定每页数量，--cursor 传分页游标（首页传 0）。服务端按 cursor 分页返回，hasMore=true 时用返回的 nextCursor 值继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。如果当前账号没有消息搜索权益，CLI 会保留服务端返回的友好提示与开通入口；不要把权限错误解释为时间范围内没有消息。`,
 		Example: `  dws chat message list-all --start "2025-03-01 00:00:00" --end "2025-03-31 23:59:59" --limit 50
   dws chat message list-all --start "2025-03-01 00:00:00" --end "2025-03-31 23:59:59" --limit 50 --cursor "abc123token"
   dws chat message list-all --start "2025-03-01 00:00:00" --end "2025-03-31 23:59:59" --limit 100 --page-all --page-limit 20 --max-items 500 --page-delay 0`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunPagedMCPCommand(cmd, pagedChatMessagesConfig(
+			return RunPagedMCPCommand(cmd, pagedChatConversationMessagesConfig(
 				"search_messages_by_time_range", chatMessageListAllArgs))
 		},
 	}
@@ -3025,7 +3041,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageListBySenderCmd := &cobra.Command{
 		Use:   "list-by-sender",
 		Short: "拉取指定发送者的消息（包含单聊和群聊）",
-		Long:  `搜索特定人发送给我的消息，返回结果包含单聊和群聊标识。--sender-user-id 指定发送者 userId，--sender-open-dingtalk-id 指定发送者 openDingTalkId，二者互斥。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并聚合 result.messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 精确截断返回条数，--page-delay 控制页间等待毫秒数。`,
+		Long:  `搜索特定人发送给我的消息，返回结果包含单聊和群聊标识。--sender-user-id 指定发送者 userId，--sender-open-dingtalk-id 指定发送者 openDingTalkId，二者互斥。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
 		Example: `  dws chat message list-by-sender --sender-user-id <userId> --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --cursor 0
   dws chat message list-by-sender --sender-open-dingtalk-id <openDingTalkId> --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --cursor 0
   dws chat message list-by-sender --sender-user-id <userId> --start "2026-03-10T00:00:00+08:00" --end "2026-03-10T23:59:59+08:00" --limit 20 --cursor 0
@@ -3034,7 +3050,7 @@ func newChatCommand() *cobra.Command {
   # 查询 userId: dws contact user search --query "姓名"
   # 查询 openDingTalkId: dws contact user search --query "姓名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunPagedMCPCommand(cmd, pagedChatMessagesConfig(
+			return RunPagedMCPCommand(cmd, pagedChatConversationMessagesConfig(
 				"search_messages_by_sender", chatMessageListBySenderArgs))
 		},
 	}
@@ -3077,7 +3093,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageListMentionsCmd := &cobra.Command{
 		Use:   "list-mentions",
 		Short: "拉取 @我 的消息",
-		Long:  `搜索时间范围内 @我 的消息，可选指定群聊。返回结果包含单聊和群聊标识。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并聚合 result.messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 精确截断返回条数，--page-delay 控制页间等待毫秒数。`,
+		Long:  `搜索时间范围内 @我 的消息，可选指定群聊。返回结果包含单聊和群聊标识。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
 		Example: `  dws chat message list-mentions --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --cursor 0
   dws chat message list-mentions --start "2026-04-01T00:00:00+08:00" --end "2026-04-14T00:00:00+08:00" --limit 20 --cursor 0
   dws chat message list-mentions --group <openconversation_id> --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --cursor 0
@@ -3085,7 +3101,7 @@ func newChatCommand() *cobra.Command {
   dws chat message list-mentions --group <openconversation_id> --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --page-all --max-items 200 --page-delay 0
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunPagedMCPCommand(cmd, pagedChatMessagesConfig(
+			return RunPagedMCPCommand(cmd, pagedChatConversationMessagesConfig(
 				"search_at_me_message", chatMessageListMentionsArgs))
 		},
 	}
@@ -3265,14 +3281,14 @@ func newChatCommand() *cobra.Command {
 	chatMessageSearchCmd := &cobra.Command{
 		Use:   "search",
 		Short: "按关键词搜索消息",
-		Long:  `在当前用户的会话中按关键词搜索消息。--query 指定搜索关键词（必填）。可选 --group 限定搜索某个会话，不传则搜索所有会话。时间参数 --start/--end（ISO-8601）限定搜索时间范围。分页参数 --limit（默认 100）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并聚合 result.messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 精确截断返回条数，--page-delay 控制页间等待毫秒数。`,
+		Long:  `在当前用户的会话中按关键词搜索消息。--query 指定搜索关键词（必填）。可选 --group 限定搜索某个会话，不传则搜索所有会话。时间参数 --start/--end（ISO-8601）限定搜索时间范围。分页参数 --limit（默认 100）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
 		Example: `  dws chat message search --query "changefree" --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00" --limit 50 --cursor 0
   dws chat message search --query "codereview" --group <openconversation_id> --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00" --limit 100 --cursor 0
   dws chat message search --query "链接" --start "2026-04-15T00:00:00+08:00" --end "2026-04-16T00:00:00+08:00" --limit 100 --cursor <nextCursor>
   dws chat message search --query "发布计划" --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00" --limit 100 --page-all --max-items 300 --page-delay 0
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunPagedMCPCommand(cmd, pagedChatMessagesConfig(
+			return RunPagedMCPCommand(cmd, pagedChatConversationMessagesConfig(
 				"search_messages_by_keyword", chatMessageSearchArgs))
 		},
 	}
@@ -3318,7 +3334,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageSearchAdvancedCmd := &cobra.Command{
 		Use:   "search-advanced",
 		Short: "多维度搜索消息",
-		Long:  `支持按关键词、发送者、@我、@指定人、指定会话、时间范围等多维度搜索消息。发送者 userId 使用 --user/--users；发送者或 @ 人的 openDingTalkId 使用 --sender-ids/--at-ids。所有参数均为可选，至少指定一个搜索条件。默认只读取单页；只有显式传 --page-all 才会自动翻页并聚合 result.messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 精确截断返回条数，--page-delay 控制页间等待毫秒数。`,
+		Long:  `支持按关键词、发送者、@我、@指定人、指定会话、时间范围等多维度搜索消息。发送者 userId 使用 --user/--users；发送者或 @ 人的 openDingTalkId 使用 --sender-ids/--at-ids。所有参数均为可选，至少指定一个搜索条件。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
 		Example: `  dws chat message search-advanced --query "周报" --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00"
   dws chat message search-advanced --user <userId> --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00"
   dws chat message search-advanced --users <userId1>,<userId2> --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00"
@@ -3331,7 +3347,7 @@ func newChatCommand() *cobra.Command {
   # 查询单聊会话 ID: dws chat conversation-info --user <userId>
   # 查询人员: dws contact user search --keyword "姓名" --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunPagedMCPCommand(cmd, pagedChatMessagesOnServerConfig(
+			return RunPagedMCPCommand(cmd, pagedChatConversationMessagesOnServerConfig(
 				"im", "search_messages", chatMessageSearchAdvancedArgs))
 		},
 	}

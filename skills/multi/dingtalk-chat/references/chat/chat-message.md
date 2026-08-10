@@ -148,15 +148,15 @@ dws chat +chat-messages --group "项目群" --page-all --format json \
 | 命令 | 用途 | 示例与要点 |
 |------|------|------------|
 | `message list` | 拉取指定群聊或单聊消息 | `dws chat message list --group <cid> --time "2025-03-01 00:00:00" --direction older`；目标三选一，`--direction newer/older` 优先于旧 `--forward` |
-| `message list-all` | 时间范围内全部会话消息 | `dws chat message list-all --start <ISO> --end <ISO> --limit 100 --cursor 0`；默认一页，完整遍历加 `--page-all`，聚合 `result.messages` |
-| `message list-by-sender` | 查指定发送者消息 | `--sender-user-id` 与 `--sender-open-dingtalk-id` 二选一，跨单聊+群聊；完整遍历加 `--page-all` |
-| `message list-mentions` | 查 @ 我的消息 | 可传 `--group` 限定群，不传查全部；完整遍历加 `--page-all` |
+| `message list-all` | 时间范围内全部会话消息 | `dws chat message list-all --start <ISO> --end <ISO> --limit 100 --cursor 0`；默认一页，完整遍历加 `--page-all`，保留并合并 `result.conversationMessagesList` |
+| `message list-by-sender` | 查指定发送者消息 | `--sender-user-id` 与 `--sender-open-dingtalk-id` 二选一，跨单聊+群聊；完整遍历加 `--page-all`，同一会话跨页合并 messages |
+| `message list-mentions` | 查 @ 我的消息 | 可传 `--group` 限定群，不传查全部；完整遍历加 `--page-all`，同一会话跨页合并 messages |
 | `message list-focused` | 查特别关注人消息 | 零参数可用，可加 `--limit` / `--cursor`；完整遍历加 `--page-all`，cursor 为 int64 |
 | `message list-unread-conversations` | 未读会话列表 | 可选 `--count` |
 | `message list-topic-replies` | 拉取话题回复 | `--group <openConversationId> --topic-id <openConvThreadId>` |
 | `message list-by-ids` | 按消息 ID 批量查询 | `--msg-ids msgId1,msgId2`，最多 50 条 |
 
-Typed `chat message` 自动翻页只由 `--page-all` 触发；只传 `--page-limit`、`--max-items` 或 `--page-delay` 仍保持默认单页 fallback。分页元数据输出到顶层 `paging`，包含 `truncated`、`hasMore`、`lastCursor`、`pages`、`total`；非第一页失败时会输出 partial 结果和 `failedPage` / `failedCursor` / `pagesFetched` / `itemsFetched`。
+Typed `chat message` 自动翻页只由 `--page-all` 触发；只传 `--page-limit`、`--max-items` 或 `--page-delay` 仍保持默认单页 fallback。`conversationMessagesList` 结构会保留并按 `openConversationId` 合并 messages。分页元数据输出到顶层 `paging`，包含 `truncated`、`hasMore`、`lastCursor`、`pages`、`total`；非第一页失败时会输出 partial 结果和 `failedPage` / `failedCursor` / `pagesFetched` / `itemsFetched`。
 
 `message list` 注意事项：
 

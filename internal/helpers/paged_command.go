@@ -24,16 +24,24 @@ const (
 	PagedCursorInt64
 )
 
+type PagedAggregationMode int
+
+const (
+	PagedAggregationArray PagedAggregationMode = iota
+	PagedAggregationConversationMessages
+)
+
 type PagedMCPCommandConfig struct {
-	ServerID    string
-	ToolName    string
-	ItemPath    string
-	CursorPath  string
-	HasMorePath string
-	CursorArg   string
-	CursorKind  PagedCursorKind
-	BuildArgs   func(*cobra.Command) (map[string]any, error)
-	Fallback    func(map[string]any) error
+	ServerID        string
+	ToolName        string
+	ItemPath        string
+	CursorPath      string
+	HasMorePath     string
+	CursorArg       string
+	CursorKind      PagedCursorKind
+	AggregationMode PagedAggregationMode
+	BuildArgs       func(*cobra.Command) (map[string]any, error)
+	Fallback        func(map[string]any) error
 }
 
 type pagedCommandOptions struct {
@@ -128,7 +136,7 @@ func validatePagedConfig(cfg PagedMCPCommandConfig) error {
 
 func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts pagedCommandOptions, args map[string]any) error {
 	var envelope map[string]any
-	var allItems []any
+	items := newPagedCollection(cfg)
 	seenCursors := map[string]bool{}
 	currentCursor := cursorValueKey(args[cfg.CursorArg], cfg.CursorKind)
 	lastCursor := args[cfg.CursorArg]
@@ -138,48 +146,50 @@ func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts page
 		seenCursors[currentCursor] = true
 		text, err := callMCPToolReturnTextOnServer(context.Background(), cfg.ServerID, cfg.ToolName, args)
 		if err != nil {
-			return handlePagedCommandError(cmd, envelope, cfg, allItems, page, currentCursor, err)
+			return handlePagedCommandError(cmd, envelope, cfg, items, page, currentCursor, err)
 		}
-		parsed, items, nextCursor, more, err := parsePagedCommandPage(text, cfg)
+		parsed, pageItems, nextCursor, more, err := parsePagedCommandPage(text, cfg)
 		if err != nil {
-			return handlePagedCommandError(cmd, envelope, cfg, allItems, page, currentCursor, err)
+			return handlePagedCommandError(cmd, envelope, cfg, items, page, currentCursor, err)
 		}
 		if envelope == nil {
 			envelope = parsed
 		}
-		allItems = append(allItems, items...)
+		if err := items.Add(pageItems); err != nil {
+			return handlePagedCommandError(cmd, envelope, cfg, items, page, currentCursor, err)
+		}
 		lastCursor = nextCursor
 		hasMore = more
 
-		truncatedByItems := truncatePagedItems(&allItems, opts.maxItems)
+		truncatedByItems := items.Truncate(opts.maxItems)
 		if truncatedByItems {
-			writePagedCommandResult(envelope, cfg, allItems, pagingMetadata{
+			writePagedCommandResult(envelope, cfg, items, pagingMetadata{
 				Truncated:  true,
 				HasMore:    true,
 				LastCursor: lastCursor,
 				Pages:      page,
-				Total:      len(allItems),
+				Total:      items.Total(),
 			})
 			return nil
 		}
 		if !hasMore {
-			writePagedCommandResult(envelope, cfg, allItems, pagingMetadata{
+			writePagedCommandResult(envelope, cfg, items, pagingMetadata{
 				Truncated:  false,
 				HasMore:    false,
 				LastCursor: lastCursor,
 				Pages:      page,
-				Total:      len(allItems),
+				Total:      items.Total(),
 			})
 			return nil
 		}
 		nextKey := cursorValueKey(nextCursor, cfg.CursorKind)
 		if nextKey == "" || nextKey == currentCursor || seenCursors[nextKey] {
 			err := fmt.Errorf("pagination cursor did not advance: %s", nextKey)
-			return handlePagedCommandError(cmd, envelope, cfg, allItems, page+1, nextKey, err)
+			return handlePagedCommandError(cmd, envelope, cfg, items, page+1, nextKey, err)
 		}
 		normalizedCursor, err := normalizeCursorArg(nextCursor, cfg.CursorKind)
 		if err != nil {
-			return handlePagedCommandError(cmd, envelope, cfg, allItems, page+1, nextKey, err)
+			return handlePagedCommandError(cmd, envelope, cfg, items, page+1, nextKey, err)
 		}
 		currentCursor = nextKey
 		args[cfg.CursorArg] = normalizedCursor
@@ -188,12 +198,12 @@ func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts page
 		}
 	}
 
-	writePagedCommandResult(envelope, cfg, allItems, pagingMetadata{
+	writePagedCommandResult(envelope, cfg, items, pagingMetadata{
 		Truncated:  hasMore,
 		HasMore:    hasMore,
 		LastCursor: lastCursor,
 		Pages:      opts.pageLimit,
-		Total:      len(allItems),
+		Total:      items.Total(),
 	})
 	return nil
 }
@@ -203,14 +213,6 @@ func parsePagedCommandPage(text string, cfg PagedMCPCommandConfig) (map[string]a
 	if err := json.Unmarshal([]byte(text), &parsed); err != nil {
 		return nil, nil, nil, false, fmt.Errorf("parse paged response JSON: %w", err)
 	}
-	rawItems, ok := getJSONPath(parsed, cfg.ItemPath)
-	if !ok {
-		return nil, nil, nil, false, fmt.Errorf("paged response missing %s", cfg.ItemPath)
-	}
-	items, ok := rawItems.([]any)
-	if !ok {
-		return nil, nil, nil, false, fmt.Errorf("paged response %s must be array", cfg.ItemPath)
-	}
 	rawHasMore, ok := getJSONPath(parsed, cfg.HasMorePath)
 	if !ok {
 		return nil, nil, nil, false, fmt.Errorf("paged response missing %s", cfg.HasMorePath)
@@ -218,6 +220,18 @@ func parsePagedCommandPage(text string, cfg PagedMCPCommandConfig) (map[string]a
 	hasMore, ok := rawHasMore.(bool)
 	if !ok {
 		return nil, nil, nil, false, fmt.Errorf("paged response %s must be boolean", cfg.HasMorePath)
+	}
+	rawItems, ok := getJSONPath(parsed, cfg.ItemPath)
+	if !ok && cfg.AggregationMode == PagedAggregationConversationMessages && !hasMore {
+		rawItems = []any{}
+		ok = true
+	}
+	if !ok {
+		return nil, nil, nil, false, fmt.Errorf("paged response missing %s", cfg.ItemPath)
+	}
+	items, ok := rawItems.([]any)
+	if !ok {
+		return nil, nil, nil, false, fmt.Errorf("paged response %s must be array", cfg.ItemPath)
 	}
 	nextCursor, ok := getJSONPath(parsed, cfg.CursorPath)
 	if hasMore && !ok {
@@ -240,7 +254,7 @@ type pagingMetadata struct {
 	Error        string
 }
 
-func handlePagedCommandError(cmd *cobra.Command, envelope map[string]any, cfg PagedMCPCommandConfig, items []any, failedPage int, failedCursor string, err error) error {
+func handlePagedCommandError(cmd *cobra.Command, envelope map[string]any, cfg PagedMCPCommandConfig, items *pagedCollection, failedPage int, failedCursor string, err error) error {
 	if envelope == nil {
 		return err
 	}
@@ -250,19 +264,19 @@ func handlePagedCommandError(cmd *cobra.Command, envelope map[string]any, cfg Pa
 		HasMore:      true,
 		LastCursor:   failedCursor,
 		Pages:        failedPage - 1,
-		Total:        len(items),
+		Total:        items.Total(),
 		Partial:      true,
 		FailedPage:   failedPage,
 		FailedCursor: failedCursor,
 		PagesFetched: failedPage - 1,
-		ItemsFetched: len(items),
+		ItemsFetched: items.Total(),
 		Error:        err.Error(),
 	})
 	return err
 }
 
-func writePagedCommandResult(envelope map[string]any, cfg PagedMCPCommandConfig, items []any, meta pagingMetadata) {
-	_ = setJSONPath(envelope, cfg.ItemPath, items)
+func writePagedCommandResult(envelope map[string]any, cfg PagedMCPCommandConfig, items *pagedCollection, meta pagingMetadata) {
+	_ = setJSONPath(envelope, cfg.ItemPath, items.Values())
 	paging := map[string]any{
 		"truncated":  meta.Truncated,
 		"hasMore":    meta.HasMore,
@@ -282,12 +296,118 @@ func writePagedCommandResult(envelope map[string]any, cfg PagedMCPCommandConfig,
 	_ = deps.Out.PrintJSON(envelope)
 }
 
-func truncatePagedItems(items *[]any, maxItems int) bool {
-	if maxItems <= 0 || len(*items) <= maxItems {
+type pagedCollection struct {
+	mode              PagedAggregationMode
+	items             []any
+	conversationIndex map[string]int
+	total             int
+}
+
+func newPagedCollection(cfg PagedMCPCommandConfig) *pagedCollection {
+	return &pagedCollection{
+		mode:              cfg.AggregationMode,
+		conversationIndex: map[string]int{},
+	}
+}
+
+func (c *pagedCollection) Add(items []any) error {
+	if c.mode != PagedAggregationConversationMessages {
+		c.items = append(c.items, items...)
+		c.total = len(c.items)
+		return nil
+	}
+	for _, item := range items {
+		if err := c.addConversation(item); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *pagedCollection) Values() []any {
+	if c.items == nil {
+		return []any{}
+	}
+	return c.items
+}
+
+func (c *pagedCollection) Total() int {
+	return c.total
+}
+
+func (c *pagedCollection) Truncate(maxItems int) bool {
+	if maxItems <= 0 || c.total <= maxItems {
 		return false
 	}
-	*items = (*items)[:maxItems]
+	if c.mode != PagedAggregationConversationMessages {
+		c.items = c.items[:maxItems]
+		c.total = len(c.items)
+		return true
+	}
+	c.truncateConversationMessages(maxItems)
 	return true
+}
+
+func (c *pagedCollection) addConversation(item any) error {
+	conversation, ok := item.(map[string]any)
+	if !ok {
+		return fmt.Errorf("paged response conversation item must be object")
+	}
+	key, _ := conversation["openConversationId"].(string)
+	if strings.TrimSpace(key) == "" {
+		return fmt.Errorf("paged response conversation item missing openConversationId")
+	}
+	messages, err := conversationMessages(conversation)
+	if err != nil {
+		return err
+	}
+	if idx, ok := c.conversationIndex[key]; ok {
+		existing := c.items[idx].(map[string]any)
+		existingMessages, err := conversationMessages(existing)
+		if err != nil {
+			return err
+		}
+		existing["messages"] = append(existingMessages, messages...)
+		c.total += len(messages)
+		return nil
+	}
+	c.conversationIndex[key] = len(c.items)
+	c.items = append(c.items, conversation)
+	c.total += len(messages)
+	return nil
+}
+
+func (c *pagedCollection) truncateConversationMessages(maxItems int) {
+	remaining := maxItems
+	for i, item := range c.items {
+		conversation := item.(map[string]any)
+		messages, _ := conversationMessages(conversation)
+		if remaining >= len(messages) {
+			remaining -= len(messages)
+			continue
+		}
+		if remaining == 0 {
+			c.items = c.items[:i]
+			c.total = maxItems
+			return
+		}
+		conversation["messages"] = messages[:remaining]
+		c.items = c.items[:i+1]
+		c.total = maxItems
+		return
+	}
+}
+
+func conversationMessages(conversation map[string]any) ([]any, error) {
+	raw, ok := conversation["messages"]
+	if !ok {
+		return []any{}, nil
+	}
+	messages, ok := raw.([]any)
+	if !ok {
+		return nil, fmt.Errorf("paged response conversation messages must be array")
+	}
+	return messages, nil
 }
 
 func getJSONPath(root map[string]any, path string) (any, bool) {

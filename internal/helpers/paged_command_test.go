@@ -109,6 +109,13 @@ func pagedCommandMessagesConfig(fallback func(map[string]any) error) PagedMCPCom
 	}
 }
 
+func pagedCommandConversationMessagesConfig(fallback func(map[string]any) error) PagedMCPCommandConfig {
+	cfg := pagedCommandMessagesConfig(fallback)
+	cfg.ItemPath = "result.conversationMessagesList"
+	cfg.AggregationMode = PagedAggregationConversationMessages
+	return cfg
+}
+
 func TestPagedMCPCommandDefaultUsesFallbackOnly(t *testing.T) {
 	caller := &pagedCommandCaller{}
 	fallbackCalls := 0
@@ -264,6 +271,99 @@ func TestPagedMCPCommandStringCursorAggregatesAndPageLimit(t *testing.T) {
 	}
 	if caller.calls[0].args["cursor"] != "0" || caller.calls[1].args["cursor"] != "c2" {
 		t.Fatalf("call args = %#v", caller.calls)
+	}
+}
+
+func TestPagedMCPCommandConversationMessagesMergeSameConversation(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m1"}]}],"hasMore":true,"nextCursor":"c2"}}`},
+		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"ignored","messages":[{"id":"m2"}]}],"hasMore":false,"nextCursor":""}}`},
+	}}
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandConversationMessagesConfig(nil), "--page-all", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	conversations := got["result"].(map[string]any)["conversationMessagesList"].([]any)
+	if len(conversations) != 1 {
+		t.Fatalf("conversations=%#v, want one merged conversation", conversations)
+	}
+	conversation := conversations[0].(map[string]any)
+	messages := conversation["messages"].([]any)
+	if conversation["title"] != "群1" || len(messages) != 2 {
+		t.Fatalf("conversation=%#v, want preserved title and two messages", conversation)
+	}
+	paging := got["paging"].(map[string]any)
+	if paging["total"].(float64) != 2 {
+		t.Fatalf("paging=%#v, want total message count 2", paging)
+	}
+}
+
+func TestPagedMCPCommandConversationMessagesPreserveFirstConversationOrder(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid2","messages":[{"id":"m2"}]},{"openConversationId":"cid1","messages":[{"id":"m1"}]}],"hasMore":true,"nextCursor":"c2"}}`},
+		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid3","messages":[{"id":"m3"}]}],"hasMore":false,"nextCursor":""}}`},
+	}}
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandConversationMessagesConfig(nil), "--page-all", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	conversations := got["result"].(map[string]any)["conversationMessagesList"].([]any)
+	gotIDs := []string{
+		conversations[0].(map[string]any)["openConversationId"].(string),
+		conversations[1].(map[string]any)["openConversationId"].(string),
+		conversations[2].(map[string]any)["openConversationId"].(string),
+	}
+	if strings.Join(gotIDs, ",") != "cid2,cid1,cid3" {
+		t.Fatalf("conversation order=%v", gotIDs)
+	}
+}
+
+func TestPagedMCPCommandConversationMessagesMaxItemsTruncatesMessages(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","messages":[{"id":"m1"},{"id":"m2"}]},{"openConversationId":"cid2","messages":[{"id":"m3"},{"id":"m4"}]}],"hasMore":true,"nextCursor":"c2"}}`},
+	}}
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandConversationMessagesConfig(nil), "--page-all", "--max-items", "3", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	conversations := got["result"].(map[string]any)["conversationMessagesList"].([]any)
+	if len(conversations) != 2 {
+		t.Fatalf("conversations=%#v, want two conversations", conversations)
+	}
+	secondMessages := conversations[1].(map[string]any)["messages"].([]any)
+	paging := got["paging"].(map[string]any)
+	if len(secondMessages) != 1 || paging["total"].(float64) != 3 || paging["truncated"] != true {
+		t.Fatalf("result=%#v", got)
+	}
+}
+
+func TestPagedMCPCommandConversationMessagesMissingListOnFinalPageIsEmpty(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"hasMore":false,"nextCursor":""}}`},
+	}}
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandConversationMessagesConfig(nil), "--page-all", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	conversations := got["result"].(map[string]any)["conversationMessagesList"].([]any)
+	if len(conversations) != 0 {
+		t.Fatalf("conversations=%#v, want empty", conversations)
+	}
+}
+
+func TestPagedMCPCommandConversationMessagesLaterFailureOutputsPartial(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","messages":[{"id":"m1"}]}],"hasMore":true,"nextCursor":"c2"}}`},
+		{err: errors.New("page failed")},
+	}}
+	got, stderr, err := runPagedCommandTest(t, caller, pagedCommandConversationMessagesConfig(nil), "--page-all", "--page-delay", "0")
+	if err == nil || !strings.Contains(stderr, "pagination stopped") {
+		t.Fatalf("err=%v stderr=%q", err, stderr)
+	}
+	conversations := got["result"].(map[string]any)["conversationMessagesList"].([]any)
+	paging := got["paging"].(map[string]any)
+	if len(conversations) != 1 || paging["partial"] != true || paging["itemsFetched"].(float64) != 1 {
+		t.Fatalf("result=%#v", got)
 	}
 }
 

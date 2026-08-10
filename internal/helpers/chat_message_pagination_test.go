@@ -162,21 +162,21 @@ func TestChatMessagePaginationPageAllAggregatesSevenCommands(t *testing.T) {
 	}{
 		{
 			name: "list-all", args: []string{"message", "list-all", "--start", "2026-08-01 00:00:00", "--end", "2026-08-02 00:00:00"},
-			server: "chat", tool: "search_messages_by_time_range", itemPath: "messages", cursorOne: "0", cursorTwo: "c2",
-			pageOne: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`,
-			pageTwo: `{"result":{"messages":[{"id":"m2"}],"hasMore":false,"nextCursor":""}}`,
+			server: "chat", tool: "search_messages_by_time_range", itemPath: "conversationMessagesList", cursorOne: "0", cursorTwo: "c2",
+			pageOne: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m1"}]}],"hasMore":true,"nextCursor":"c2"}}`,
+			pageTwo: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m2"}]}],"hasMore":false,"nextCursor":""}}`,
 		},
 		{
 			name: "list-by-sender", args: []string{"message", "list-by-sender", "--sender-user-id", "u1", "--start", "2026-08-01T00:00:00+08:00", "--end", "2026-08-02T00:00:00+08:00"},
-			server: "chat", tool: "search_messages_by_sender", itemPath: "messages", cursorOne: "0", cursorTwo: "c2",
-			pageOne: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`,
-			pageTwo: `{"result":{"messages":[{"id":"m2"}],"hasMore":false,"nextCursor":""}}`,
+			server: "chat", tool: "search_messages_by_sender", itemPath: "conversationMessagesList", cursorOne: "0", cursorTwo: "c2",
+			pageOne: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"洄川","messages":[{"id":"m1"}]}],"hasMore":true,"nextCursor":"c2"}}`,
+			pageTwo: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"洄川","messages":[{"id":"m2"}]}],"hasMore":false,"nextCursor":""}}`,
 		},
 		{
 			name: "list-mentions", args: []string{"message", "list-mentions", "--start", "2026-08-01T00:00:00+08:00", "--end", "2026-08-02T00:00:00+08:00"},
-			server: "chat", tool: "search_at_me_message", itemPath: "messages", cursorOne: "0", cursorTwo: "c2",
-			pageOne: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`,
-			pageTwo: `{"result":{"messages":[{"id":"m2"}],"hasMore":false,"nextCursor":""}}`,
+			server: "chat", tool: "search_at_me_message", itemPath: "conversationMessagesList", cursorOne: "0", cursorTwo: "c2",
+			pageOne: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m1"}]}],"hasMore":true,"nextCursor":"c2"}}`,
+			pageTwo: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m2"}]}],"hasMore":false,"nextCursor":""}}`,
 		},
 		{
 			name: "list-focused", args: []string{"message", "list-focused"},
@@ -186,15 +186,15 @@ func TestChatMessagePaginationPageAllAggregatesSevenCommands(t *testing.T) {
 		},
 		{
 			name: "search", args: []string{"message", "search", "--query", "发布", "--start", "2026-08-01T00:00:00+08:00", "--end", "2026-08-02T00:00:00+08:00"},
-			server: "chat", tool: "search_messages_by_keyword", itemPath: "messages", cursorOne: "0", cursorTwo: "c2",
-			pageOne: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`,
-			pageTwo: `{"result":{"messages":[{"id":"m2"}],"hasMore":false,"nextCursor":""}}`,
+			server: "chat", tool: "search_messages_by_keyword", itemPath: "conversationMessagesList", cursorOne: "0", cursorTwo: "c2",
+			pageOne: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m1"}]}],"hasMore":true,"nextCursor":"c2"}}`,
+			pageTwo: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m2"}]}],"hasMore":false,"nextCursor":""}}`,
 		},
 		{
 			name: "search-advanced", args: []string{"message", "search-advanced", "--query", "周报"},
-			server: "im", tool: "search_messages", itemPath: "messages", cursorOne: "0", cursorTwo: "c2",
-			pageOne: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`,
-			pageTwo: `{"result":{"messages":[{"id":"m2"}],"hasMore":false,"nextCursor":""}}`,
+			server: "im", tool: "search_messages", itemPath: "conversationMessagesList", cursorOne: "0", cursorTwo: "c2",
+			pageOne: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m1"}]}],"hasMore":true,"nextCursor":"c2"}}`,
+			pageTwo: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","title":"群1","messages":[{"id":"m2"}]}],"hasMore":false,"nextCursor":""}}`,
 		},
 		{
 			name: "list-favorites", args: []string{"message", "list-favorites"},
@@ -214,7 +214,12 @@ func TestChatMessagePaginationPageAllAggregatesSevenCommands(t *testing.T) {
 				t.Fatal(err)
 			}
 			items := got["result"].(map[string]any)[tt.itemPath].([]any)
-			if len(items) != 2 {
+			if tt.itemPath == "conversationMessagesList" {
+				messages := items[0].(map[string]any)["messages"].([]any)
+				if len(items) != 1 || len(messages) != 2 {
+					t.Fatalf("conversation items = %#v", items)
+				}
+			} else if len(items) != 2 {
 				t.Fatalf("items = %#v", items)
 			}
 			if len(caller.calls) != 2 {

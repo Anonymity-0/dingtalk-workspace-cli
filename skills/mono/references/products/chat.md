@@ -858,7 +858,7 @@ Flags:
   - 四个参数每次请求都会传递给服务端，cursor 首页传 "0"
   - 与 chat message list 的区别：list 拉取指定单个会话（群聊或单聊）的消息，list-all 拉取当前用户所有会话的消息
   - 翻页：hasMore=true 时，用响应中的 nextCursor 值作为下次 --cursor 参数继续翻页
-  - 自动翻页：`--page-all` 会聚合 `result.messages`，并在顶层输出 `paging` 元数据；shortcut 命令不属于本 typed fallback 小节
+  - 自动翻页：`--page-all` 会保留并合并 `result.conversationMessagesList`，同一会话跨页合并 messages，并在顶层输出 `paging` 元数据；shortcut 命令不属于本 typed fallback 小节
   - 时间格式统一为 yyyy-MM-dd HH:mm:ss
   - 权限/权益错误不是空结果；应把返回的 friendly_hint 与 action_url 展示给用户，不要继续盲目翻页
 ```
@@ -869,7 +869,7 @@ Flags:
 
 搜索特定人发送给我的消息，返回结果包含单聊和群聊标识。--sender-user-id 指定发送者 userId，--sender-open-dingtalk-id 指定发送者 openDingTalkId，二者互斥。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
 
-自动翻页同样使用 `--page-all` 触发，复用发送者、时间范围和 limit 条件，只替换每页 `cursor`；控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
+自动翻页同样使用 `--page-all` 触发，复用发送者、时间范围和 limit 条件，只替换每页 `cursor`；输出保留并合并 `result.conversationMessagesList`，控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
 ```
 Usage:
   dws chat message list-by-sender [flags]
@@ -906,7 +906,7 @@ Flags:
 
 搜索时间范围内 @我 的消息，可选指定群聊。返回结果包含单聊和群聊标识。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
 
-自动翻页同样使用 `--page-all` 触发，复用时间范围和 group 过滤条件，只替换每页 `cursor`；控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
+自动翻页同样使用 `--page-all` 触发，复用时间范围和 group 过滤条件，只替换每页 `cursor`；输出保留并合并 `result.conversationMessagesList`，控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
 ```
 Usage:
   dws chat message list-mentions [flags]
@@ -1003,7 +1003,7 @@ Flags:
 
 按关键词搜索消息内容。--query 指定搜索关键词（必填）。可选 --group 限定搜索某个会话，不传则搜索所有会话。时间参数 --start/--end（ISO-8601）限定搜索时间范围。分页参数 --limit（默认 100）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
 
-自动翻页同样使用 `--page-all` 触发，复用 query、时间范围和 group 条件，只替换每页 `cursor`；控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
+自动翻页同样使用 `--page-all` 触发，复用 query、时间范围和 group 条件，只替换每页 `cursor`；输出保留并合并 `result.conversationMessagesList`，控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
 ```
 Usage:
   dws chat message search [flags]
@@ -1036,7 +1036,7 @@ Flags:
 
 支持按关键词、发送者、@我、@指定人、指定会话、时间范围等多维度搜索消息。发送者 userId 使用 --user/--users；发送者或 @ 人的 openDingTalkId 使用 --sender-ids/--at-ids。所有参数均为可选，至少指定一个搜索条件。
 
-自动翻页使用 `--page-all` 触发，复用所有高级过滤参数，只替换每页 `cursor`，聚合 `result.messages`；控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
+自动翻页使用 `--page-all` 触发，复用所有高级过滤参数，只替换每页 `cursor`，保留并合并 `result.conversationMessagesList`；控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
 ```
 Usage:
   dws chat message search-advanced [flags]
