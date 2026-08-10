@@ -42,13 +42,13 @@ metadata:
 | <!-- dws-intent: chat.send.dm -->按姓名发简单文本或 Markdown | `dws chat +dm --to <姓名> --text <内容>` | CLI 解析唯一用户；多候选时停止，不先手工查 ID |
 | <!-- dws-intent: chat.send.group -->按群名或 ID 发简单文本或 Markdown | `dws chat +send-to-group --group <群名或ID> --text <内容>` | 稳定 ID 直接使用；群名多候选时停止 |
 | <!-- dws-intent: chat.send.advanced -->文件、Bot、Webhook、复杂 @ 或高级发送 | `dws chat +messages-send` | Bot 多群用 `--groups/--groups-file` 并检查逐项 ledger |
-| <!-- dws-intent: chat.read.conversation -->读取指定群聊或单聊 | `dws chat +chat-messages` | 全量加 `--page-all`，检查完整性 ledger |
-| <!-- dws-intent: chat.search.cross-conversation -->跨会话多维搜索 | `dws chat +search-msg` | 内容用 `--query`；检查 `complete` |
+| <!-- dws-intent: chat.read.conversation -->读取指定会话、返回较多消息 | `dws chat +chat-messages` | 粗粒度读取；目标条件明确时优先 `+search-msg` |
+| <!-- dws-intent: chat.search.filtered -->多维度条件搜索（发送者/关键词/@/类型，单/跨会话） | `dws chat +search-msg` | 目标条件明确时使用 |
 | 查看指定群成员（用户/机器人） | `dws chat +chat-members-list --group <群名或ID>` | 唯一解析并全量读取 |
 | 获取群邀请链接 | `dws chat +chat-invite-url --group <群名或ID>` | 多候选时停止 |
 | 查看群机器人 | `dws chat +chat-bots --group <群名或ID>` | 返回稳定 `bots[]` |
 | 修改群名称 | `dws chat group rename --id <openConversationId> --name <新名称>` | 只知群名时先用 `+chat-search --query <群名>` 唯一解析 ID；不猜 `+chat-rename` |
-| 查看指定群内 @我的消息 | `dws chat +at-me --group <群名>` | 空结果仍返回数组 |
+| 查看指定群内 @我的消息 | `dws chat +at-me --group <群名> --page-all` | 检查 `complete`；空结果仍返回数组 |
 | 查看全部会话 | `dws chat +conversation-list --page-all` | 检查 `complete` / `failures` |
 | 读取并下载消息资源 | 查询命令加 `--download-resources` | 不另起手工下载循环；下载失败项保留在结果中 |
 | <!-- dws-intent: chat.conversation.list-top -->查看置顶会话 | `dws chat +conversation-list-top` | 会话 Top 与消息 Pin、消息 Top、Favorite 不同 |
@@ -60,11 +60,13 @@ metadata:
 |---|---|
 | 已知消息 ID 批量读取详情 | `dws chat +messages-mget` |
 | 已知资源引用单独下载 | `dws chat +messages-resource-download` |
+| 按关键词搜索群 | `dws chat +chat-search` |
+| 查看消息收藏 | `dws chat +flag-list` |
 | <!-- dws-intent: chat.reply.quote -->引用回复 | `dws chat +messages-reply`；成功结果保留新消息/会话/投递与原消息来源上下文 |
 | 撤回当前用户消息 | `dws chat +messages-recall --msg-id <openMessageId>`；可省略会话 ID，由 CLI 只读补齐；兼容单值 `--message-ids` |
-| 已知 thread/topic ID 读取回复 | `dws chat +thread-replies` |
+| 已知话题主消息 ID 或 thread/topic ID 读取回复 | `dws chat +thread-replies` |
 | <!-- dws-intent: chat.create.group -->按成员 ID 或姓名创建群聊 | `dws chat +chat-create`；成员/群主均可自然解析，任一歧义都会在创建前整体停止 |
-| 跨全部会话查看 @我的消息 | `dws chat +at-me` |
+| 跨全部会话查看 @我的消息 | `dws chat +at-me --page-all` |
 
 ### 发送入口边界
 
@@ -73,7 +75,7 @@ metadata:
 - `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。user 已知 ID 可直接传，也可用 `--user-query` / `--chat-query` 运行同一只读解析链；Bot 多群使用 `--groups/--groups-file`，返回 `im.batch-write.v1`；bot/webhook 只使用下层真实支持的文本/Markdown 能力。
 - 文件直接传 `+messages-send --file <相对路径>`；不要先独立上传并提取 mediaId。
 - Webhook 使用 `+messages-send --as webhook --webhook-token <token>`；不要退回原子 Webhook 命令。
-- 流式卡片不是普通消息内容，使用 `+messages-send-card`；当前只支持 streaming text create/update，不支持 Card JSON 或 callback。
+- 流式卡片用 `+messages-send-card`；群聊@传 ID/`--at-all`，Runtime 把 create 返回前缀加到 `--content`；禁写占位符；仅 text。
 
 ## 关键结果语义
 
@@ -91,7 +93,7 @@ metadata:
 | 场景 | Reference |
 |---|---|
 | 复杂发送、跨会话转发、共同群或组合流程 | [01-messaging.md](references/01-messaging.md) |
-| 引用、转发、卡片、reaction、Pin/Top/Favorite | [chat-message.md](references/chat/chat-message.md) |
+| 编辑/撤回/引用/转发/卡片/reaction/Pin/Top/Favorite | [chat-message.md](references/chat/chat-message.md) |
 | 建群、成员、管理员、群公告、群设置 | [chat-group.md](references/chat/chat-group.md) |
 | Bot 搜索、入群、群发和撤回 | [chat-bot.md](references/chat/chat-bot.md) |
 | 会话置顶、分类、红点、免打扰和隐藏 | [chat-conversation.md](references/chat/chat-conversation.md) |
