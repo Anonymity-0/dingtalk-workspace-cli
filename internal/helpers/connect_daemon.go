@@ -638,9 +638,10 @@ func supervisedLabel(supervised bool) string {
 // connectStopResult 是 `dev connect stop` 的结果 DTO（统一输出 dev 域试点，
 // 队列 B112）：进成功信封的 data 层。status 是机器可分支的终态枚举。
 type connectStopResult struct {
-	Status string `json:"status"`
-	Pid    int    `json:"pid,omitempty"`
-	Detail string `json:"detail,omitempty"`
+	Status      string `json:"status"`
+	PreviewKind string `json:"preview_kind,omitempty"`
+	Pid         int    `json:"pid,omitempty"`
+	Detail      string `json:"detail,omitempty"`
 }
 
 // daemonStop gracefully stops the connector daemon: SIGTERM the supervisor (it
@@ -805,8 +806,9 @@ func newDevAppRobotConnectStopCommand() *cobra.Command {
 			}
 			if commandDryRun(cmd) {
 				preview := &connectStopResult{
-					Status: "preview",
-					Detail: "would send SIGTERM to the selected daemon and escalate to SIGKILL only after the graceful timeout",
+					Status:      "preview",
+					PreviewKind: contract.DryRunPreviewPlan,
+					Detail:      "would send SIGTERM to the selected daemon and escalate to SIGKILL only after the graceful timeout",
 				}
 				env := &output.Envelope{OK: true, Outcome: output.OutcomeSuccess, DryRun: true, Data: preview}
 				return writeDevRolloutResult(cmd, output.Success(preview, output.WithDryRun()), env, output.FormatJSON)
@@ -867,6 +869,7 @@ func newDevAppRobotConnectStopCommand() *cobra.Command {
 // daemon-state.json 回读；子进程自身的结果信封由本命令信封取代，不转发）。
 type connectRestartResult struct {
 	Status       string `json:"status"`
+	PreviewKind  string `json:"preview_kind,omitempty"`
 	Pid          int    `json:"pid,omitempty"`
 	DirKey       string `json:"dirKey,omitempty"`
 	UnifiedAppID string `json:"unifiedAppId,omitempty"`
@@ -878,6 +881,11 @@ func validateConnectRestart(cmd *cobra.Command) error {
 	dirKey, err := connectDaemonDirKeyFromFlags(cmd)
 	if err != nil {
 		return err
+	}
+	// An explicit unified app ID is sufficient to produce a side-effect-free
+	// restart plan. Runtime execution still requires persisted daemon state.
+	if commandDryRun(cmd) && devAppStringFlag(cmd, "unified-app-id") != "" {
+		return nil
 	}
 	dir, err := connectDaemonDir(dirKey)
 	if err != nil {
@@ -896,6 +904,19 @@ func validateConnectRestart(cmd *cobra.Command) error {
 	return nil
 }
 
+func writeConnectRestartPreview(cmd *cobra.Command, dirKey, unifiedAppID, channel string) error {
+	preview := &connectRestartResult{
+		Status:       "preview",
+		PreviewKind:  contract.DryRunPreviewPlan,
+		DirKey:       dirKey,
+		UnifiedAppID: unifiedAppID,
+		Channel:      channel,
+		Command:      fmt.Sprintf("dws dev connect --daemon --unified-app-id %s", unifiedAppID),
+	}
+	env := &output.Envelope{OK: true, Outcome: output.OutcomeSuccess, DryRun: true, Data: preview}
+	return writeDevRolloutResult(cmd, output.Success(preview, output.WithDryRun()), env, output.FormatJSON)
+}
+
 // newDevAppRobotConnectRestartCommand implements `dws devapp robot connect
 // restart`: stop the running daemon (if any) then re-launch it using the
 // persisted unifiedAppId so credentials are freshly fetched from the dev
@@ -911,6 +932,7 @@ func newDevAppRobotConnectRestartCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			explicitUnifiedAppID := devAppStringFlag(cmd, "unified-app-id")
 			dir, err := connectDaemonDir(dirKey)
 			if err != nil {
 				return apperrors.NewInternal("resolve daemon dir: " + err.Error())
@@ -918,6 +940,9 @@ func newDevAppRobotConnectRestartCommand() *cobra.Command {
 			st, err := readDaemonState(dir)
 			if err != nil {
 				return apperrors.NewInternal(err.Error())
+			}
+			if st == nil && commandDryRun(cmd) && explicitUnifiedAppID != "" {
+				return writeConnectRestartPreview(cmd, dirKey, explicitUnifiedAppID, "")
 			}
 			if st == nil {
 				return apperrors.NewValidation("未找到连接器记录（没有 daemon.pid）；请用 `dws dev connect --daemon` 首次启动")
@@ -927,15 +952,7 @@ func newDevAppRobotConnectRestartCommand() *cobra.Command {
 				return apperrors.NewValidation("该连接器未持久化 unifiedAppId（可能是用 --robot-client-id/--robot-client-secret 直接启动的，无法安全重启：clientSecret 不落盘）；请停掉后用 `dws dev connect --daemon --unified-app-id <uappid>` 重新启动，之后 restart 就能自动从 credentials get 拉密钥、命令行不出现 secret")
 			}
 			if commandDryRun(cmd) {
-				preview := &connectRestartResult{
-					Status:       "preview",
-					DirKey:       dirKey,
-					UnifiedAppID: unifiedAppID,
-					Channel:      st.Channel,
-					Command:      fmt.Sprintf("dws dev connect --daemon --unified-app-id %s", unifiedAppID),
-				}
-				env := &output.Envelope{OK: true, Outcome: output.OutcomeSuccess, DryRun: true, Data: preview}
-				return writeDevRolloutResult(cmd, output.Success(preview, output.WithDryRun()), env, output.FormatJSON)
+				return writeConnectRestartPreview(cmd, dirKey, unifiedAppID, st.Channel)
 			}
 			// Stop the running daemon first (ignore "not running" — that's fine).
 			// 统一输出 dev 域试点（队列 B113）：stopping/restarting 进度行改走
