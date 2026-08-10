@@ -363,7 +363,7 @@ Flags:
 > - "把**某篇文档**授权给某人" → `drive permission add`（节点级，包括「我的文档」下的文档都支持）
 > - "把**某个知识库**整体授权给某人" → `wiki member add`（容器级，但**「我的文档」个人空间不支持**）
 
-> 补充：如果用户直接粘贴的是原始 `alidocs` URL，先按 [链接规范](../../dws-shared/references/url-patterns.md#alidocs-url-类型探测流程) 用 `dws drive info` probe；只有 probe 确认 `extension=adoc` 后，才继续按下列意图执行。其他类型（txt/pdf/docx/md/xlsx/file/folder 等）走 [`drive.md`](../../dingtalk-drive/references/drive.md) 或对应产品。
+> 补充：如果用户直接粘贴的是原始 `alidocs` URL，先按 [链接规范](../../dingtalk-shared/references/url-patterns.md#alidocs-url-类型探测流程) 用 `dws drive info` probe；只有 probe 确认 `extension=adoc` 后，才继续按下列意图执行。其他类型（txt/pdf/docx/md/xlsx/file/folder 等）走 [`drive.md`](../../dingtalk-drive/references/drive.md) 或对应产品。
 
 **用户直接粘贴文档 URL（无其他指令）**:
 
@@ -481,6 +481,26 @@ dws doc version revert --node <DOC_ID> --version <N> --yes --format json  # 3. �
 | `version save` | 版本信息 | 确认保存成功 |
 | `import` | `documentUrl` / `documentName` / `documentType` | 导入完成后的在线文档地址和名称 |
 | `import`（中断后） | `taskId` | `import get` 的 `--task-id`（查询后取结果获取文档地址） |
+
+## 白板卡片与白板媒体资源
+
+创建文档内空白板前先确认目标文档，获得用户确认后执行：
+
+```bash
+dws doc whiteboard insert --node <DOC_ID> --yes --format json
+```
+
+返回的 `blockId` 用于 `doc block delete`，`whiteboardId` 是白板 partId，用于
+`dws whiteboard query/update`。两者不可混用。为白板 Vector/SVG 准备资源时：
+
+```bash
+dws doc media upload --node <DOC_ID> --file ./icon.svg \
+  --mime-type image/svg+xml --yes --format json
+```
+
+上传与后续白板更新必须使用同一 nodeId；仅使用稳定返回的 `resourceId` 和
+`resourceUrl`，禁止使用临时 uploadUrl 或跨文档复用资源。白板内容协议与更新
+流程见 `dingtalk-misc` 的 `references/whiteboard.md`。
 
 ## 相关产品
 

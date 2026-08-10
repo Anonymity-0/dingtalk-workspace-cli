@@ -969,16 +969,16 @@ func TestOverallCoverageGapDeliveryCompletenessAndDryRun(t *testing.T) {
 func TestOverallCoverageGapRuntimeParamsAndAgentMetadata(t *testing.T) {
 	prevSpecs := runtimeCommandParameterSpecsForPayload
 	t.Cleanup(func() { runtimeCommandParameterSpecsForPayload = prevSpecs })
-	runtimeCommandParameterSpecsForPayload = func(*cobra.Command, string, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+	runtimeCommandParameterSpecsForPayload = func(*cobra.Command, string, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
 		return nil, fmt.Errorf("specs boom")
 	}
-	if _, err := runtimeCommandParameters(&cobra.Command{Use: "run"}, "sample.run", nil, RuntimeSchemaConstraints{}); err == nil {
+	if _, err := runtimeCommandParameters(&cobra.Command{Use: "run"}, "sample.run", RuntimeSchemaConstraints{}); err == nil {
 		t.Fatal("parameter specs error must surface")
 	}
-	runtimeCommandParameterSpecsForPayload = func(*cobra.Command, string, map[string]embeddedMCPParamMeta, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
+	runtimeCommandParameterSpecsForPayload = func(*cobra.Command, string, RuntimeSchemaConstraints) ([]ParameterSpec, error) {
 		return []ParameterSpec{{Name: "ok", Type: "string"}}, nil
 	}
-	payload, err := runtimeCommandParameters(&cobra.Command{Use: "run"}, "sample.run", nil, RuntimeSchemaConstraints{})
+	payload, err := runtimeCommandParameters(&cobra.Command{Use: "run"}, "sample.run", RuntimeSchemaConstraints{})
 	if err != nil || payload["ok"] == nil {
 		t.Fatalf("parameter payload = %#v err=%v", payload, err)
 	}
@@ -1070,24 +1070,6 @@ func TestOverallCoverageGapRuntimeParamsAndAgentMetadata(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageOverallRegressionRecovery(t *testing.T) {
-	if _, ok := lookupPinnedMCPParam(nil, "property", "flag"); ok {
-		t.Fatal("nil pinned params must miss")
-	}
-	if _, ok := lookupPinnedMCPParam(map[string]embeddedMCPParamMeta{}, "property", "flag"); ok {
-		t.Fatal("empty pinned params must miss")
-	}
-	if _, ok := lookupPinnedMCPParam(map[string]embeddedMCPParamMeta{"other": {Type: "string"}}, "property", "flag"); ok {
-		t.Fatal("unmatched pinned params must miss")
-	}
-	if _, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{}, agentMetadata{}, embeddedMCPMetadata{}); ok {
-		t.Fatal("empty MCP metadata must not match")
-	}
-	if _, ok := pinnedMCPMetadataForEntryFrom(runtimeSchemaEntry{}, agentMetadata{}, embeddedMCPMetadata{
-		Tools: map[string]embeddedMCPToolMetadata{"other.key": {}},
-	}); ok {
-		t.Fatal("missing MCP metadata keys must not match")
-	}
-
 	left := runtimeSchemaStringCandidateAtPriority("same", true, "z-source", 5, "p")
 	right := runtimeSchemaStringCandidateAtPriority("same", true, "a-source", 5, "p")
 	winner, err := resolveRuntimeSchemaCandidate("source-order", left, right)

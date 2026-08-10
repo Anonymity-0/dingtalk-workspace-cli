@@ -24,10 +24,16 @@ type scriptedToolCaller struct {
 	format string
 	dry    bool
 	calls  int
+	server string
+	tool   string
+	args   map[string]any
 }
 
-func (c *scriptedToolCaller) CallTool(context.Context, string, string, map[string]any) (*edition.ToolResult, error) {
+func (c *scriptedToolCaller) CallTool(_ context.Context, serverID, toolName string, args map[string]any) (*edition.ToolResult, error) {
 	c.calls++
+	c.server = serverID
+	c.tool = toolName
+	c.args = args
 	if len(c.steps) == 0 {
 		return &edition.ToolResult{}, nil
 	}

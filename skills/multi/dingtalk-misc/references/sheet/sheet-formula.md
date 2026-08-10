@@ -10,19 +10,21 @@
 
 ## 当前能力边界
 
-- 写公式：使用 `dws sheet range update`。
+- 写少量或需要单元格对象的公式：使用 `dws sheet range update`。
+- 从 CSV/表格文本批量写公式：使用 `dws sheet csv-put`，字段值以 `=` 开头时默认按公式解析；如需写入以 `=` 开头的字面文本，在字段值前加单引号。
 - 公式载体：公式写在 cell object 的 `text` 字段中，例如 `{"type":"text","text":"=SUM(B2:B10)"}`。
 - 读取公式文本：使用 `dws sheet range read --value-render-option formula`。
 - 读取计算结果：使用 `dws sheet range read --value-render-option raw_value` 或默认 `formatted_value`。
 - 聚合错误校验：使用 `dws sheet formula-verify`，支持整本表格、单个目标和多个目标。
 - `formula-verify` 扫描已经落表的公式计算结果，按 `#ERROR!` / `#NAME?` / `#DIV/0!` 等错误类型汇总；它不判断一个正常数值是否符合业务预期。
-- `csv-put` / `append` / `table-put` 不作为公式写入协议；`=` 开头内容可能按普通值或 table 数据处理。需要公式时用 `range update`。
+- `append` / `table-put` 不作为公式写入协议；需要公式时用 `range update` 或 `csv-put`。
 
 ## 命令选择
 
 | 目的 | 命令 | 说明 |
 |------|------|------|
 | 写入少量或中等范围公式 | `range update` | `--values` 必须是二维 cell object，维度与 `--range` 完全一致 |
+| 从 CSV/表格文本批量写公式 | `csv-put` | `=` 开头按公式；前导单引号写入以 `=` 开头的字面文本；不支持富格式对象 |
 | 查看已写入的公式文本 | `range read --value-render-option formula` | 确认公式本身是否落表、范围和引用是否正确 |
 | 查看公式计算结果 | `range read --value-render-option raw_value` | 用于数值对账、错误值检查 |
 | 查看格式化展示结果 | `range read` 或 `csv-get` 默认模式 | 用于用户肉眼看到的展示值检查 |
@@ -35,7 +37,7 @@
 1. 用 `dws sheet list --node <NODE_ID> --format json` 获取真实 `sheetId`。
 2. 用 `range read` 或 `csv-get` 读取表头和样本数据，确认目标列与行号。
 3. 明确相对引用和绝对引用：向下填充时检查固定汇率、税率、查找表、标题行是否需要 `$` 锁定。
-4. 用 `range update` 写入公式矩阵；矩阵行列数必须与 `--range` 完全一致。
+4. 按数据形态写入公式：精确 cell object 用 `range update`，CSV/表格文本用 `csv-put`。`range update` 的矩阵行列数必须与 `--range` 完全一致。
 5. 用 `range read --value-render-option formula` 回读公式文本，确认实际公式、范围和引用。
 6. 对本次写入目标运行 `formula-verify`；若返回 `partial` / `hasMore=true`，缩小目标或提高 `--max-cells` 后继续扫描，直到结果完整。
 7. 用 `range read --value-render-option raw_value` 抽样对账业务数值；正常数值不会被 `formula-verify` 判定为业务计算错误。
@@ -172,7 +174,7 @@ dws sheet range read --node <NODE_ID> --sheet-id <SHEET_ID> --range "D2:D5" \
 
 ## 常见错误
 
-- 用 `csv-put` 写 `=SUM(...)`，导致公式没有按公式协议落表。
+- 想用 `csv-put` 写入 `=SUM(...)` 文本却忘记加前导单引号，导致内容被解析为公式。
 - 用原始二维数组 `--values '[["=B2*C2"]]'`，而不是 cell object。
 - 写整列公式时只写第一行，忘记把 `--range` 和 `--values` 扩成同样行数。
 - 复制公式时没有锁定固定引用，例如税率、汇率、查找表范围。

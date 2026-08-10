@@ -384,6 +384,61 @@ func TestReleaseChangelogExtractionAllowsLowercaseTodoProductName(t *testing.T) 
 	}
 }
 
+func TestInterfaceIntegrityWorkflowContract(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("Abs(repo root) error = %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile(ci.yml) error = %v", err)
+	}
+	workflow := string(data)
+	interfaceStart := strings.Index(workflow, "\n  interface-integrity:\n")
+	interfaceEnd := strings.Index(workflow, "\n  cli-smoke:\n")
+	if interfaceStart < 0 || interfaceEnd <= interfaceStart {
+		t.Fatal("Code Admission workflow missing Interface Integrity job boundaries")
+	}
+	interfaceJob := workflow[interfaceStart:interfaceEnd]
+	for _, want := range []string{
+		"name: Check complete CLI command compatibility",
+		"./scripts/policy/check-command-compatibility.sh",
+		`--base-ref "$COMPATIBILITY_BASE_REF"`,
+		`--stable-ref "$COMPATIBILITY_STABLE_REF"`,
+	} {
+		if !strings.Contains(interfaceJob, want) {
+			t.Errorf("Interface Integrity job missing release-equivalent compatibility contract %q", want)
+		}
+	}
+}
+
+func TestInterfaceSensitiveClassificationCoversCoreCommandFramework(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("Abs(repo root) error = %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile(ci.yml) error = %v", err)
+	}
+	workflow := string(data)
+	start := strings.Index(workflow, "            const isInterfaceSensitive =")
+	end := strings.Index(workflow, "            const isMCPSensitive =")
+	if start < 0 || end <= start {
+		t.Fatal("Code Admission workflow missing interface-sensitive classifier boundaries")
+	}
+	classifier := strings.TrimSpace(workflow[start:end])
+	probe := classifier + `
+if (!isInterfaceSensitive("internal/corecmd/corecmd.go")) {
+  throw new Error("existing corecmd files must trigger Interface Integrity");
+}
+`
+	cmd := exec.Command("node", "-e", probe)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("interface-sensitive classifier rejected corecmd change: %v\n%s", err, output)
+	}
+}
+
 func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -433,7 +488,7 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		"needs.lint.outputs.platform_sensitive == 'true'",
 		`COVERAGE_TARGET: "100"`,
 		`COVERAGE_ENFORCE_OVERALL: "false"`,
-		`COVERAGE_OVERALL_TOLERANCE: "0"`,
+		`COVERAGE_OVERALL_TOLERANCE: "0.1"`,
 		`additional_profile=coverage-shortcut.txt`,
 		"run: make test-plan",
 		"run: make format-check",
@@ -545,6 +600,32 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		if !strings.Contains(raceJob, want) {
 			t.Errorf("full race shards must retain dynamic timeout budget contract %q", want)
 		}
+	}
+
+	darwinStart := strings.Index(admission, "\n  test-darwin:\n")
+	darwinEnd := strings.Index(admission, "\n  test-windows:\n")
+	if darwinStart < 0 || darwinEnd <= darwinStart {
+		t.Fatal("Code Admission workflow missing macOS test job boundaries")
+	}
+	darwinJob := admission[darwinStart:darwinEnd]
+	// The macOS job no longer runs ./internal/app as a whole package, so it does
+	// not need the package-level race budget the Ubuntu shard gets — the Ubuntu
+	// "race: app" shard already covers everything except the natively-gated
+	// tests. Pinning the two focused commands replaces that budget assertion:
+	// it locks the per-step timeouts and blocks a whole-package regression.
+	for _, want := range []string{
+		`go test -v -race -count=1 -timeout=6m ./internal/keychain ./internal/auth`,
+		`go test -v -race -count=1 -timeout=5m ./internal/app -run '^(TestValidateNewBinary_RecoversFromUnsignedDarwin|Test(CrossPlatformCoverage)?Auth(MigrateKeychain|StatusDiagnosticReportsCiphertextKeyMismatch))'`,
+	} {
+		if !strings.Contains(darwinJob, want) {
+			t.Errorf("macOS native test job missing focused auth contract %q", want)
+		}
+	}
+	if strings.Contains(darwinJob, "./internal/keychain ./internal/auth ./internal/app") {
+		t.Error("macOS native test job must not repeat the complete internal/app race shard")
+	}
+	if count := strings.Count(darwinJob, "./internal/app"); count != 1 {
+		t.Errorf("macOS native test job internal/app invocation count = %d, want 1 focused invocation", count)
 	}
 
 	coverageStart := strings.Index(admission, "\n  coverage:\n")

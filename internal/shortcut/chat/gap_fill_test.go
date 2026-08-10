@@ -17,13 +17,22 @@ import (
 	"strings"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
-func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
+type chatOutputErrorWriter struct {
+	err error
+}
+
+func (w chatOutputErrorWriter) Write([]byte) (int, error) {
+	return 0, w.err
+}
+
+func TestCrossPlatformCoverageMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 	want := []string{
-		"identity", "as", "group", "chat-id", "user", "open-dingtalk-id",
+		"identity", "as", "group", "chat-id", "groups", "groups-file", "chat-query", "user", "user-query", "open-dingtalk-id",
 		"users", "open-dingtalk-ids", "robot-code", "webhook-token",
 		"uuid", "idempotency-key",
 	}
@@ -51,6 +60,251 @@ func TestMessagesSendPublishesCompleteIdentityConstraintInputs(t *testing.T) {
 		if flag.Name == "user" && !strings.Contains(flag.Desc, "--dry-run") {
 			t.Errorf("--user does not publish dry-run contact resolution: %q", flag.Desc)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendIdentityDescriptorMatchesRuntimeSurface(t *testing.T) {
+	capabilities := MessageIdentityCapabilities()
+	if len(capabilities) != 3 {
+		t.Fatalf("identity capabilities = %#v", capabilities)
+	}
+	byIdentity := make(map[string]MessageIdentityCapability, len(capabilities))
+	for _, capability := range capabilities {
+		byIdentity[capability.Identity] = capability
+	}
+	if !byIdentity["user"].IdempotencyKeys || byIdentity["user"].BatchLedger {
+		t.Fatalf("user capability = %#v", byIdentity["user"])
+	}
+	if !byIdentity["bot"].BatchLedger || byIdentity["bot"].IdempotencyKeys ||
+		!reflect.DeepEqual(byIdentity["bot"].ContentTypes, []string{"text", "markdown"}) {
+		t.Fatalf("bot capability = %#v", byIdentity["bot"])
+	}
+	if byIdentity["webhook"].BatchLedger || byIdentity["webhook"].IdempotencyKeys {
+		t.Fatalf("webhook capability = %#v", byIdentity["webhook"])
+	}
+	capabilities[0].ContentTypes[0] = "mutated"
+	if MessageIdentityCapabilities()[0].ContentTypes[0] == "mutated" {
+		t.Fatal("identity capability descriptor leaked mutable storage")
+	}
+	if !messageIdentitySupportsContent("user", "audio") ||
+		!messageIdentitySupportsContent("user", "video") ||
+		messageIdentitySupportsContent("missing", "text") {
+		t.Fatal("identity content normalization or unknown-identity guard drifted")
+	}
+}
+
+func TestCrossPlatformCoverageIMWorkflowContractsPublishRealPositiveAndNegativeBoundaries(t *testing.T) {
+	card := CurrentCardWorkflowContract()
+	if card.Version != "im.streaming-card.v1" || card.CallbackSupported ||
+		!reflect.DeepEqual(card.ContentTypes, []string{"streaming-text"}) || len(card.FlowStatuses) != 5 {
+		t.Fatalf("card contract = %#v", card)
+	}
+	card.Targets[0] = "mutated"
+	if CurrentCardWorkflowContract().Targets[0] == "mutated" {
+		t.Fatal("card contract leaked mutable storage")
+	}
+
+	boundaries := CurrentIMCapabilityBoundaries()
+	byName := make(map[string]bool, len(boundaries))
+	for _, boundary := range boundaries {
+		byName[boundary.Capability] = boundary.Supported
+		if boundary.Alternative == "" {
+			t.Errorf("boundary %s lacks alternative", boundary.Capability)
+		}
+	}
+	for _, unsupported := range []string{"thread-write", "bot-rich-media", "card-action-callback", "resource-resume"} {
+		if byName[unsupported] {
+			t.Errorf("unsupported boundary %s was advertised", unsupported)
+		}
+	}
+	for _, supported := range []string{"group-member-full-pagination", "group-owner-selection"} {
+		if !byName[supported] {
+			t.Errorf("supported boundary %s was hidden", supported)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendBotMultiGroupPublishesPerTargetLedger(t *testing.T) {
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{
+		"chat", "+messages-send", "--as", "bot", "--robot-code", "robot",
+		"--groups", "cid-a,cid-b,cid-a", "--markdown", "通知", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("multi-group calls = %#v", fake.calls)
+	}
+	for index, target := range []string{"cid-a", "cid-b"} {
+		if fake.calls[index].tool != "send_robot_group_message" ||
+			fake.calls[index].args["openConversationId"] != target {
+			t.Fatalf("multi-group call[%d] = %#v", index, fake.calls[index])
+		}
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["contractVersion"] != "im.batch-write.v1" || payload["ok"] != true ||
+		payload["requestedCount"] != float64(2) || payload["succeededCount"] != float64(2) ||
+		payload["failedCount"] != float64(0) {
+		t.Fatalf("multi-group ledger = %#v", payload)
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendBotMultiGroupFailuresReturnNonzero(t *testing.T) {
+	tests := []struct {
+		name          string
+		fake          *larkAlignmentCaller
+		wantSucceeded float64
+		wantFailed    float64
+		wantPartial   bool
+	}{
+		{
+			name: "partial failure",
+			fake: &larkAlignmentCaller{failProductToolAt: map[string]int{
+				"bot/send_robot_group_message": 2,
+			}},
+			wantSucceeded: 1,
+			wantFailed:    1,
+			wantPartial:   true,
+		},
+		{
+			name:          "all failed",
+			fake:          &larkAlignmentCaller{failProductTool: "bot/send_robot_group_message"},
+			wantSucceeded: 0,
+			wantFailed:    2,
+			wantPartial:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			helpers.InitDeps(tt.fake)
+			root := newPlatformCoverageRoot()
+			var output bytes.Buffer
+			root.SetOut(&output)
+			root.SetArgs([]string{
+				"chat", "+messages-send", "--as", "bot", "--robot-code", "robot",
+				"--groups", "cid-a,cid-b", "--markdown", "通知", "--yes",
+			})
+
+			err := root.Execute()
+			if err == nil {
+				t.Fatal("failed multi-group delivery returned success")
+			}
+			var typed *apperrors.Error
+			if !errors.As(err, &typed) || typed.Category != apperrors.CategoryAPI ||
+				typed.Reason != "batch_write_failed" || typed.ExitCode() == 0 {
+				t.Fatalf("batch error = %#v (%v)", typed, err)
+			}
+
+			var payload map[string]any
+			if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload["ok"] != false || payload["partial"] != tt.wantPartial ||
+				payload["succeededCount"] != tt.wantSucceeded ||
+				payload["failedCount"] != tt.wantFailed {
+				t.Fatalf("failure ledger = %#v", payload)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendBotMultiGroupPropagatesOutputFailure(t *testing.T) {
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	wantErr := errors.New("fixture output failed")
+	root := newPlatformCoverageRoot()
+	root.SetOut(chatOutputErrorWriter{err: wantErr})
+	root.SetArgs([]string{
+		"chat", "+messages-send", "--as", "bot", "--robot-code", "robot",
+		"--groups", "cid-a,cid-b", "--markdown", "通知", "--yes",
+	})
+
+	if err := root.Execute(); !errors.Is(err, wantErr) {
+		t.Fatalf("output error = %v, want %v", err, wantErr)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("multi-group calls = %#v", fake.calls)
+	}
+}
+
+func TestCrossPlatformCoverageMessagesSendBotGroupsFileUsesSafeDeduplicatedTargets(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.WriteFile("groups.txt", []byte("# comment\ncid-a,cid-b\ncid-a\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetOut(&bytes.Buffer{})
+	root.SetArgs([]string{
+		"chat", "+messages-send", "--as", "bot", "--robot-code", "robot",
+		"--groups-file", "groups.txt", "--text", "通知", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("groups-file calls = %#v", fake.calls)
+	}
+}
+
+func TestCrossPlatformCoverageChatCreateExplicitOwnerSkipsCurrentProfileAndDeduplicatesMember(t *testing.T) {
+	fake := &larkAlignmentCaller{}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetOut(&bytes.Buffer{})
+	root.SetArgs([]string{
+		"chat", "+chat-create", "--name", "测试群", "--users", "D-owner,user-1",
+		"--owner-open-dingtalk-id", "D-owner", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "create_group_conversation" {
+		t.Fatalf("explicit owner calls = %#v", fake.calls)
+	}
+	create := fake.calls[0].args
+	if create["ownerOpenDingTalkId"] != "D-owner" {
+		t.Fatalf("ownerOpenDingTalkId = %#v", create["ownerOpenDingTalkId"])
+	}
+	if got, want := create["groupMembers"], []string{"D-owner", "user-1"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("groupMembers = %#v, want %#v", got, want)
+	}
+}
+
+func TestCrossPlatformCoverageChatCreateOwnerQueryResolvesBeforeSingleCreate(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"contact/search_contact_by_key_word": `{"result":[{"name":"张三","userId":"owner-user","openDingTalkId":"D-owner"}]}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetOut(&bytes.Buffer{})
+	root.SetArgs([]string{
+		"chat", "+chat-create", "--name", "测试群", "--users", "user-1",
+		"--owner-query", "张三", "--yes",
+	})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.calls) != 2 || fake.calls[0].tool != "search_contact_by_key_word" ||
+		fake.calls[1].tool != "create_group_conversation" {
+		t.Fatalf("owner query calls = %#v", fake.calls)
+	}
+	create := fake.calls[1].args
+	if create["ownerOpenDingTalkId"] != "D-owner" {
+		t.Fatalf("ownerOpenDingTalkId = %#v", create["ownerOpenDingTalkId"])
+	}
+	if got, want := create["groupMembers"], []string{"D-owner", "user-1"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("groupMembers = %#v, want %#v", got, want)
 	}
 }
 

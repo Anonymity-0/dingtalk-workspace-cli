@@ -229,6 +229,15 @@ func TestLeafArgs(t *testing.T) {
 
 func TestLeafArgsOmitsEmptyAndNonPositive(t *testing.T) {
 	cmd := NewLeafCommand(leafTestSpec())
+	// Satisfy Required flags first: BuildArgs now rejects Required transforms that
+	// collapse to empty (unset CSV), matching runtime behavior after ValidateRequired.
+	t.Setenv("DWS_LEAF_TEST_TOKEN", "tok")
+	if err := cmd.Flags().Set("users", "u1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Flags().Set("content", "hello"); err != nil {
+		t.Fatal(err)
+	}
 	args, err := corecmd.BuildArgs(cmd, leafTestSpec().Flags)
 	if err != nil {
 		t.Fatalf("leafArgs() error = %v", err)
@@ -239,10 +248,8 @@ func TestLeafArgsOmitsEmptyAndNonPositive(t *testing.T) {
 	if _, present := args["cursor"]; present {
 		t.Fatalf("cursor present = %v, want omitted when zero", args["cursor"])
 	}
-	// 未配置 OmitEmpty 的 flag 即使为空也入参（复现手写语义；Required 校验在
-	// leafArgs 之前执行，保证真实路径不会发出空值）。
-	if v, present := args["accessToken"]; !present || v != "" {
-		t.Fatalf("accessToken = %v/%v, want present-but-empty without OmitEmpty", v, present)
+	if v, present := args["accessToken"]; !present || v != "tok" {
+		t.Fatalf("accessToken = %v/%v, want env tok", v, present)
 	}
 	// 未设置 OmitEmpty 的字符串即使为空也入参（复现手写 remindType 恒入参语义）。
 	if v, present := args["remindType"]; !present || v != "app" {

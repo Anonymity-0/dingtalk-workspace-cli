@@ -3,6 +3,7 @@ package helpers
 import (
 	"strings"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -78,6 +79,8 @@ func addAisearchPersonFlags(cmd *cobra.Command) {
 		cmd.Flags().String(alias, "", "")
 		_ = cmd.Flags().MarkHidden(alias)
 	}
+	cmd.Flags().String("type", "", "兼容选择器；person/search 路径仅接受 person/user/people")
+	_ = cmd.Flags().MarkHidden("type")
 }
 
 func addAisearchKeywordCompatibilityFlag(cmd *cobra.Command) {
@@ -90,6 +93,9 @@ func addAisearchKeywordCompatibilityFlag(cmd *cobra.Command) {
 // runAisearchPerson 是 aisearch person 的实际执行体，被 personCmd 和 root
 // 的智能 RunE（裸调兜底）共享调用。
 func runAisearchPerson(cmd *cobra.Command, _ []string) error {
+	if selector := strings.ToLower(strings.TrimSpace(flagValue(cmd, "type"))); selector != "" && selector != "person" && selector != "user" && selector != "people" {
+		return apperrors.NewValidation("aisearch person/search 的 --type 仅接受 person、user 或 people")
+	}
 	keyword := resolveAisearchKeyword(cmd)
 	if keyword == "" {
 		// 复用原有报错文案（"keyword is required"）

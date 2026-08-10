@@ -142,7 +142,7 @@ Flags:
 
 ### 导入本地文件为在线文档
 
-详见 [doc/doc-import.md](./doc/doc-import.md)。
+详见 [doc/doc-import.md](./doc/doc-import.md)。白名单外格式（html/pdf/zip/无扩展名等）不报错，自动改走文件上传原样入库，JSON 结果带 `fallback=upload`、`converted=false` 标记。
 
 ```
 Usage:
@@ -671,6 +671,7 @@ Flags:
 用户说"导入文件/导入为在线文档/导入 Word/导入 Excel/导入 xmind/导入 Markdown/把本地文件转在线文档":
 - 导入并转换为在线文档 → `doc import --file <本地路径>`
 - 支持 docx/doc/xlsx/xls/md/txt/xmind/mark，文件大小不超过 20MB
+- 白名单外格式（html/pdf/zip/无扩展名等）不报错：自动改走文件上传链路原样入库（stderr 有改道提示），JSON 结果带 `fallback=upload`、`converted=false` 标记，产出的是文件对象而非在线文档，不得报告为"已转换"；要"可编辑在线文档"时先把内容转为 md 再导入
 - 如果用户指定知识库或文件夹，补充 `--workspace` 或 `--folder`
 - 不要把本地文件内容先读出来再 `doc create/update`；应直接使用 `doc import`
 
@@ -1070,6 +1071,19 @@ EOF
 - `copy` / `move` 不传 `--folder` 时，`--workspace` 表示放到知识库根目录；两者都不传则回落到"我的文档"
 - `comment create` 是全文评论；`comment create-inline` 是划词评论，必须先 `block list` 拿到 `blockId` 并确定 `--start` / `--end` 偏移（按块内纯文本字符算，从 0 开始）
 - 全文评论 `create` / `reply` / `update` 支持通过 `--mentioned-open-conversation-id` @群；划词评论 `create-inline` 不支持 @群
+
+## 白板卡片与白板媒体资源
+
+```bash
+dws doc whiteboard insert --node <DOC_ID> --yes --format json
+dws doc media upload --node <DOC_ID> --file ./icon.svg \
+  --mime-type image/svg+xml --yes --format json
+```
+
+两个命令都是远端写入，必须先获得用户确认。insert 返回的 `whiteboardId` 是
+`dws whiteboard query/update` 使用的 partId；`blockId` 只用于文档块定位/删除。
+media upload 返回的 `resourceId` / `resourceUrl` 只能用于同一 nodeId 下的白板
+Vector/SVG。完整协议见 [whiteboard.md](./whiteboard.md)。
 
 ## 自动化脚本
 

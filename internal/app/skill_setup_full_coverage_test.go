@@ -73,7 +73,7 @@ func TestCrossPlatformCoverageSkillSetupHighLevelRemainingCoverage(t *testing.T)
 	if err := cmd.RunE(cmd, nil); err == nil {
 		t.Fatal("empty multi source should fail")
 	}
-	skillSetupListMulti = func(string) ([]string, error) { return []string{"dws-shared", "dingtalk-doc"}, nil }
+	skillSetupListMulti = func(string) ([]string, error) { return []string{"dingtalk-shared", "dingtalk-doc"}, nil }
 	skillSetupFilterMulti = func([]string, []string, []string) ([]string, error) { return nil, fail }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMulti, true)
 	if err := cmd.RunE(cmd, nil); err == nil {

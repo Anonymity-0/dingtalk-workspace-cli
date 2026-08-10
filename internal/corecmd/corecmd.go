@@ -103,11 +103,12 @@ const ValidationShortcut FlagValidationMode = "shortcut"
 // fields intentionally mirror the former helpers.LeafFlag one-for-one so that
 // helpers can alias to it without touching any call site.
 type FlagSpec struct {
-	Name    string   // flag name (kebab-case)
-	Usage   string   // registration usage text
-	Kind    FlagKind // value type, defaults to KindString
-	Default string   // registration default for every Kind; also the fallback-chain tail when aliases/env are empty
-	Hidden  bool     // hide the real flag from help/Schema while keeping it invocable
+	Name      string   // flag name (kebab-case)
+	Shorthand string   // optional one-character Cobra shorthand
+	Usage     string   // registration usage text
+	Kind      FlagKind // value type, defaults to KindString
+	Default   string   // registration default for every Kind; also the fallback-chain tail when aliases/env are empty
+	Hidden    bool     // hide the real flag from help/Schema while keeping it invocable
 
 	// Required, when true, validates a non-empty effective value in RunE. Plain
 	// Required flags aggregate into a cmdutil.ValidateRequiredFlags-compatible
@@ -551,7 +552,7 @@ func RegisterFlags(cmd *cobra.Command, flags []FlagSpec) {
 				"flag %q: MarkRequired cannot be combined with Aliases: cobra MarkFlagRequired only recognizes the main name, so a value passed via an alias would be rejected",
 				flag.Name))
 		}
-		RegisterFlag(cmd, flag.Kind, flag.Name, flag.Default, flag.Usage)
+		registerFlagP(cmd, flag.Kind, flag.Name, flag.Shorthand, flag.Default, flag.Usage)
 		// Aliases are registered with the main flag's Kind, otherwise an integer
 		// alias's value would never be readable (silently dropped).
 		for _, alias := range flag.Aliases {
@@ -572,6 +573,10 @@ func RegisterFlags(cmd *cobra.Command, flags []FlagSpec) {
 // Malformed KindInt / KindBool Default values panic at registration (fail-closed)
 // instead of silently degrading to 0 / false.
 func RegisterFlag(cmd *cobra.Command, kind FlagKind, name, def, usage string) {
+	registerFlagP(cmd, kind, name, "", def, usage)
+}
+
+func registerFlagP(cmd *cobra.Command, kind FlagKind, name, shorthand, def, usage string) {
 	switch kind {
 	case KindInt:
 		defInt := 0
@@ -582,7 +587,7 @@ func RegisterFlag(cmd *cobra.Command, kind FlagKind, name, def, usage string) {
 			}
 			defInt = v
 		}
-		cmd.Flags().Int(name, defInt, usage)
+		cmd.Flags().IntP(name, shorthand, defInt, usage)
 	case KindBool:
 		defBool := false
 		if def != "" {
@@ -595,15 +600,15 @@ func RegisterFlag(cmd *cobra.Command, kind FlagKind, name, def, usage string) {
 				panic(fmt.Sprintf("flag %q: invalid KindBool Default %q (want \"true\" or \"false\")", name, def))
 			}
 		}
-		cmd.Flags().Bool(name, defBool, usage)
+		cmd.Flags().BoolP(name, shorthand, defBool, usage)
 	case KindStringSlice:
 		var defaults []string
 		if value := strings.TrimSpace(def); value != "" {
 			defaults = strings.Split(value, ",")
 		}
-		cmd.Flags().StringSlice(name, defaults, usage)
+		cmd.Flags().StringSliceP(name, shorthand, defaults, usage)
 	default:
-		cmd.Flags().String(name, def, usage)
+		cmd.Flags().StringP(name, shorthand, def, usage)
 	}
 }
 
@@ -885,7 +890,21 @@ func BuildArgs(cmd *cobra.Command, flags []FlagSpec) (map[string]any, error) {
 			if err != nil {
 				return nil, err
 			}
-			if value == nil {
+			// Required is checked on the pre-transform string. A transform that
+			// collapses separator-only input ("," / ";") to nil/empty must still
+			// fail required flags locally — otherwise BuildArgs would omit the
+			// key and ConfirmFirst write paths could reach the backend.
+			if value == nil || emptyTransformResult(value) {
+				if flag.Required {
+					message := strings.TrimSpace(flag.RequiredHint)
+					if message == "" {
+						message = strings.TrimSpace(flag.RequiredError)
+					}
+					if message == "" {
+						message = fmt.Sprintf("必填参数 --%s 不能为空", flag.Name)
+					}
+					return nil, apperrors.NewValidation(message)
+				}
 				continue
 			}
 			toolArgs[bind] = value
@@ -894,6 +913,21 @@ func BuildArgs(cmd *cobra.Command, flags []FlagSpec) (map[string]any, error) {
 		toolArgs[bind] = effective
 	}
 	return toolArgs, nil
+}
+
+// emptyTransformResult reports whether a Transform produced an empty payload
+// that must not satisfy a Required flag (nil is handled by the caller).
+func emptyTransformResult(value any) bool {
+	switch v := value.(type) {
+	case string:
+		return strings.TrimSpace(v) == ""
+	case []string:
+		return len(v) == 0
+	case []any:
+		return len(v) == 0
+	default:
+		return false
+	}
 }
 
 // EffectiveValue reads the value by "explicit main flag → alias → env →

@@ -81,6 +81,8 @@ const (
 type Flag struct {
 	// Name is the long flag name (kebab-case), e.g. "user-ids".
 	Name string `json:"name"`
+	// Shorthand is the optional one-character CLI spelling, e.g. "o" for --output.
+	Shorthand string `json:"shorthand,omitempty"`
 	// Type is the value type; defaults to FlagString when empty.
 	Type FlagType `json:"type"`
 	// Default is the default value rendered as a string.
@@ -98,6 +100,12 @@ type Flag struct {
 	Enum []string `json:"enum"`
 	// Hidden hides the flag from --help while keeping it usable.
 	Hidden bool `json:"-"`
+	// Aliases are hidden executable flag spellings for compatibility. They do
+	// not create additional Schema parameters; validation and value fallback
+	// remain attached to the canonical Name. AliasesVisible is a narrow
+	// compatibility escape hatch for aliases that were historically public.
+	Aliases        []string `json:"-"`
+	AliasesVisible bool     `json:"-"`
 }
 
 // ConstraintKind is a machine-readable cross-parameter or custom validation
@@ -135,6 +143,16 @@ type Shortcut struct {
 	Service string
 	// Command is the leaf name including its "+" prefix, e.g. "+search-user".
 	Command string
+	// Aliases are hidden, compatibility-only Cobra spellings for the same
+	// command identity. Agent-facing Skill and Schema examples must continue to
+	// use Command; reviewed Schema aliases are declared separately in the
+	// CommandRegistry.
+	Aliases []string
+	// SinglePositionalAliasFor optionally treats one positional argument as the
+	// value of the named string flag. It is intended only for unambiguous search
+	// compatibility such as `+chat-search "群名"`; it never changes the
+	// canonical flag-based contract published to Agents.
+	SinglePositionalAliasFor string
 	// Product is the canonical MCP product id used to build the invocation.
 	// Defaults to Service when empty.
 	Product string

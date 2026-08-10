@@ -67,16 +67,21 @@ func testDestructiveSafety() contract.SafetySpec {
 func TestCrossPlatformCoverageRegisterFlagsAllKinds(t *testing.T) {
 	cmd := newTestCommand()
 	RegisterFlags(cmd, []FlagSpec{
-		{Name: "s", Usage: "S", Default: "d"},
-		{Name: "i", Usage: "I", Kind: KindInt, Aliases: []string{"i-alias"}},
-		{Name: "b", Usage: "B", Kind: KindBool},
-		{Name: "sl", Usage: "SL", Kind: KindStringSlice, Default: "a,b", Aliases: []string{"sl-alias"}},
+		{Name: "s", Shorthand: "s", Usage: "S", Default: "d"},
+		{Name: "i", Shorthand: "i", Usage: "I", Kind: KindInt, Aliases: []string{"i-alias"}},
+		{Name: "b", Shorthand: "b", Usage: "B", Kind: KindBool},
+		{Name: "sl", Shorthand: "l", Usage: "SL", Kind: KindStringSlice, Default: "a,b", Aliases: []string{"sl-alias"}},
 		{Name: "req", Usage: "R", MarkRequired: true},
 		{Name: "hidden", Usage: "H", Hidden: true},
 	})
 
 	if f := cmd.Flags().Lookup("s"); f == nil || f.DefValue != "d" || f.Usage != "S" {
 		t.Fatalf("string flag = %#v", f)
+	}
+	for shorthand, name := range map[string]string{"s": "s", "i": "i", "b": "b", "l": "sl"} {
+		if flag := cmd.Flags().ShorthandLookup(shorthand); flag == nil || flag.Name != name {
+			t.Fatalf("shorthand -%s = %#v, want --%s", shorthand, flag, name)
+		}
 	}
 	for name, wantType := range map[string]string{"i": "int", "b": "bool", "sl": "stringSlice"} {
 		f := cmd.Flags().Lookup(name)
@@ -456,6 +461,70 @@ func TestCrossPlatformCoverageBuildArgsTransformAndErrors(t *testing.T) {
 	}
 	if _, present := args["x"]; present {
 		t.Fatalf("nil transform should skip key: %#v", args)
+	}
+
+	// Required + transform-to-empty must fail (separator-only lists)
+	requiredEmpty := []FlagSpec{{
+		Name: "codes", Usage: "C", Required: true, RequiredHint: "--codes 为必填",
+		Transform: func(string) (any, error) { return nil, nil },
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, requiredEmpty)
+	_ = cmd.Flags().Set("codes", ",")
+	if _, err := BuildArgs(cmd, requiredEmpty); err == nil || !strings.Contains(err.Error(), "--codes 为必填") {
+		t.Fatalf("required empty transform err = %v", err)
+	}
+	requiredEmptySlice := []FlagSpec{{
+		Name: "codes", Usage: "C", Required: true,
+		Transform: func(string) (any, error) { return []string{}, nil },
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, requiredEmptySlice)
+	_ = cmd.Flags().Set("codes", ";")
+	if _, err := BuildArgs(cmd, requiredEmptySlice); err == nil || !strings.Contains(err.Error(), "必填参数 --codes 不能为空") {
+		t.Fatalf("required empty-slice transform err = %v", err)
+	}
+	requiredEmptyString := []FlagSpec{{
+		Name: "codes", Usage: "C", Required: true,
+		Transform: func(string) (any, error) { return "  ", nil },
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, requiredEmptyString)
+	_ = cmd.Flags().Set("codes", ",")
+	if _, err := BuildArgs(cmd, requiredEmptyString); err == nil || !strings.Contains(err.Error(), "必填参数 --codes 不能为空") {
+		t.Fatalf("required empty-string transform err = %v", err)
+	}
+	requiredEmptyAnySlice := []FlagSpec{{
+		Name: "codes", Usage: "C", Required: true,
+		Transform: func(string) (any, error) { return []any{}, nil },
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, requiredEmptyAnySlice)
+	_ = cmd.Flags().Set("codes", ",")
+	if _, err := BuildArgs(cmd, requiredEmptyAnySlice); err == nil || !strings.Contains(err.Error(), "必填参数 --codes 不能为空") {
+		t.Fatalf("required empty []any transform err = %v", err)
+	}
+	requiredErrorHint := []FlagSpec{{
+		Name: "codes", Usage: "C", Required: true, RequiredError: "codes missing after transform",
+		Transform: func(string) (any, error) { return nil, nil },
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, requiredErrorHint)
+	_ = cmd.Flags().Set("codes", ",")
+	if _, err := BuildArgs(cmd, requiredErrorHint); err == nil || !strings.Contains(err.Error(), "codes missing after transform") {
+		t.Fatalf("required RequiredError transform err = %v", err)
+	}
+	// Non-empty non-list transform result is kept (covers emptyTransformResult default).
+	keepScalar := []FlagSpec{{
+		Name: "n", Usage: "N", Required: true, Bind: "count",
+		Transform: func(string) (any, error) { return 3, nil },
+	}}
+	cmd = newTestCommand()
+	RegisterFlags(cmd, keepScalar)
+	_ = cmd.Flags().Set("n", "x")
+	args, err = BuildArgs(cmd, keepScalar)
+	if err != nil || args["count"] != 3 {
+		t.Fatalf("scalar transform args = %#v err = %v", args, err)
 	}
 
 	// Transform error propagates

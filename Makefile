@@ -10,7 +10,7 @@ SCHEMA_META_INDEX_OUTPUT ?= artifacts/schema_meta_index.gob
 POLICY_ENV = DWS_POLICY_TMPDIR="$(DWS_POLICY_TMPDIR)" GOTMPDIR="$(POLICY_GOTMPDIR)"
 GO_SOURCE_LIST = git ls-files -z --cached --others --exclude-standard -- '*.go'
 
-.PHONY: all help build rebuild test test-plan test-auth-legacy-compat lint format-check fmt policy edition-test interface-integrity authoritative-interface-integrity coverage-gate coverage-gate-platform update-interface-baseline reset-interface-baseline schema-compatibility skill-command-integrity skill-context-budget cli-smoke mock-mcp-smoke test-schema-agent-examples generate-schema fetch-mcp-metadata generate-schema-catalog package release release-pre release-stable changelog-pre changelog-stable publish-homebrew-formula setup-hooks
+.PHONY: all help build rebuild test test-plan test-auth-legacy-compat lint format-check fmt policy edition-test interface-integrity authoritative-interface-integrity coverage-gate coverage-gate-platform update-interface-baseline reset-interface-baseline schema-compatibility skill-command-integrity skill-context-budget multi-im-skill-chain-integrity cli-smoke mock-mcp-smoke test-schema-agent-examples generate-schema fetch-mcp-metadata generate-schema-catalog package release release-pre release-stable changelog-pre changelog-stable publish-homebrew-formula setup-hooks
 
 all: setup-hooks fmt lint build test rebuild
 
@@ -33,6 +33,7 @@ help:
 	@printf "  make schema-compatibility BASE_REF=<ref> - Check the complete Schema contract against the PR merge-base\n"
 	@printf "  make skill-command-integrity - Check dws commands referenced by skills exist\n"
 	@printf "  make skill-context-budget - Check generated Skill drift and common-path context budgets\n"
+	@printf "  make multi-im-skill-chain-integrity - Check reviewed IM intents keep one default Skill route\n"
 	@printf "  make cli-smoke     - Verify help for every public top-level command\n"
 	@printf "  make mock-mcp-smoke - Verify HTTP and stdio MCP request/response transport\n"
 	@printf "  make test-schema-agent-examples - Contract-check all Agent examples and dry-run the eligible subset\n"
@@ -87,6 +88,8 @@ policy: test-auth-legacy-compat
 	@mkdir -p "$(POLICY_GOTMPDIR)"
 	@$(POLICY_ENV) ./scripts/policy/check-open-source-assets.sh
 	@$(POLICY_ENV) ./scripts/policy/check-skill-context-budget.sh
+	@$(POLICY_ENV) ./scripts/policy/check-multi-im-skill-chain.sh
+	@python3 scripts/run_chat_shortcut_live_audit_test.py
 	@$(POLICY_ENV) ./scripts/policy/check-command-surface.sh --strict
 	@$(POLICY_ENV) ./scripts/policy/check-generated-drift.sh
 	@$(POLICY_ENV) ./scripts/policy/check-param-concepts.sh
@@ -126,6 +129,12 @@ skill-command-integrity:
 skill-context-budget:
 	@./scripts/policy/check-skill-context-budget.sh
 
+multi-im-skill-chain-integrity:
+	@./scripts/policy/check-multi-im-skill-chain.sh
+
+skill-mono-multi-content:
+	@./scripts/policy/check-mono-multi-skill-content.sh
+
 cli-smoke:
 	@./scripts/policy/check-cli-smoke.sh
 
@@ -143,9 +152,13 @@ generate-schema:
 	@set -e; \
 	concepts_guard=$$(mktemp); \
 	concepts_schema_guard=$$(mktemp); \
-	trap 'rm -rf "$$concepts_guard" "$$concepts_schema_guard"' EXIT HUP INT TERM; \
+	command_fallbacks_guard=$$(mktemp); \
+	command_fallbacks_schema_guard=$$(mktemp); \
+	trap 'rm -f "$$concepts_guard" "$$concepts_schema_guard" "$$command_fallbacks_guard" "$$command_fallbacks_schema_guard"' EXIT HUP INT TERM; \
 	cp internal/cli/param_concepts.json "$$concepts_guard"; \
 	cp internal/cli/param_concepts.schema.json "$$concepts_schema_guard"; \
+	cp internal/cli/command_path_fallbacks.json "$$command_fallbacks_guard"; \
+	cp internal/cli/command_path_fallbacks.schema.json "$$command_fallbacks_schema_guard"; \
 	$(GO) generate ./internal/cli; \
 	rm -rf internal/cli/schema_agent_metadata internal/cli/schema_agent_metadata_audit.json; \
 	rm -f internal/cli/schema_meta_index.json; \
@@ -159,6 +172,14 @@ generate-schema:
 	}; \
 	cmp -s internal/cli/param_concepts.schema.json "$$concepts_schema_guard" || { \
 		printf '%s\n' 'generation modified reviewed input internal/cli/param_concepts.schema.json' >&2; \
+		exit 1; \
+	}; \
+	cmp -s internal/cli/command_path_fallbacks.json "$$command_fallbacks_guard" || { \
+		printf '%s\n' 'generation modified reviewed input internal/cli/command_path_fallbacks.json' >&2; \
+		exit 1; \
+	}; \
+	cmp -s internal/cli/command_path_fallbacks.schema.json "$$command_fallbacks_schema_guard" || { \
+		printf '%s\n' 'generation modified reviewed input internal/cli/command_path_fallbacks.schema.json' >&2; \
 		exit 1; \
 	}; \
 	if [ -e internal/cli/schema_hints ]; then \

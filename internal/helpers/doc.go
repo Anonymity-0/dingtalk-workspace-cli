@@ -221,6 +221,43 @@ func runDocUpload(cmd *cobra.Command, _ []string) error {
 	return callMCPTool("commit_uploaded_file", commitArgs)
 }
 
+// docSpaceUploadCommitText 执行文档空间三步上传（凭证 → PUT → 入库）并
+// 返回 commit 响应原文，供 doc import 的白名单外回退链路组装结构化结果。
+// 与 runDocUpload 的区别：不打印输出、不携带 doc upload 的 --workspace
+// 兼容告警，调用方负责结果投影。
+func docSpaceUploadCommitText(ctx context.Context, filePath, fileName string, fileSize int64, folder, workspace string) (string, error) {
+	step1Args := map[string]any{}
+	if folder != "" {
+		step1Args["folderId"] = folder
+	}
+	if workspace != "" {
+		step1Args["workspaceId"] = workspace
+	}
+	text, err := callMCPToolReturnText(ctx, "get_file_upload_info", step1Args)
+	if err != nil {
+		return "", err
+	}
+	resourceURL, uploadKey, ossHeaders, err := parseUploadInfo(text)
+	if err != nil {
+		return "", err
+	}
+	if err := httpPutFile(ctx, resourceURL, ossHeaders, filePath, fileSize); err != nil {
+		return "", err
+	}
+	commitArgs := map[string]any{
+		"uploadKey": uploadKey,
+		"name":      fileName,
+		"fileSize":  float64(fileSize),
+	}
+	if folder != "" {
+		commitArgs["folderId"] = folder
+	}
+	if workspace != "" {
+		commitArgs["workspaceId"] = workspace
+	}
+	return callMCPToolReturnText(ctx, "commit_uploaded_file", commitArgs)
+}
+
 // parseUploadInfo extracts resourceUrl, uploadKey and headers from the MCP tool response.
 func parseUploadInfo(text string) (resourceURL, uploadKey string, headers map[string]string, err error) {
 	var data map[string]any
@@ -816,6 +853,8 @@ func newDocCommand() *cobra.Command {
   dws doc create                        创建文档
   dws doc update                        更新文档内容
   dws doc block [list|insert|update|delete]  块级编辑
+  dws doc whiteboard insert             插入空白板卡片 (返回 blockId 与白板 partId)
+  dws doc media [upload|download]       文档媒体资源 (上传可复用资源 / 下载附件)
   dws doc comment [list|create|reply|update|delete|create-inline]  文档评论管理
   dws doc export                        导出在线文档 (支持 docx / markdown / pdf，自动完成提交→轮询→下载)
   dws doc export get                    查询导出任务结果 (手动兜底)
@@ -2525,6 +2564,54 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 	mediaDownloadCmd.Flags().String("node", "", "目标文档的标识，支持传入 URL 或 ID (必填)")
 	mediaDownloadCmd.Flags().String("resource-id", "", "附件资源 ID，可通过 dws doc block list 获取 (必填)")
 
+	mediaUploadCmd := &cobra.Command{
+		Use:   "upload",
+		Short: "上传可复用的文档媒体资源",
+		Long: `将本地文件上传为绑定到目标 nodeId 的文档媒体资源，但不插入文档正文。
+
+成功输出稳定的 resourceId 和 resourceUrl，可供同一 nodeId 下的白板 Vector/SVG
+等后续写入使用；临时 uploadUrl 不会输出。`,
+		Example: `  dws doc media upload --node DOC_ID --file ./icon.svg --mime-type image/svg+xml --format json`,
+		RunE:    runDocMediaUpload,
+	}
+	DeclareLeafMetadata(mediaUploadCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "doc",
+				Name:           "media_upload",
+				CanonicalPath:  "doc.media_upload",
+				CLIPath:        "doc media upload",
+				PrimaryCLIPath: "doc media upload",
+			},
+			Description: "上传可复用的文档媒体资源",
+			DryRun:      &contract.DryRunSpec{PreviewKind: "request", RemoteReads: false},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "composite",
+				Availability: "available",
+				Reason:       "命令先获取临时文档上传凭证，再在本地执行 OSS PUT，并仅暴露稳定的 node 绑定资源契约，不能绑定为单一 interface_ref",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "经用户确认后上传绑定到文档 nodeId 的可复用媒体资源而不插入正文",
+				UseWhen:      []string{"为同一文档内白板的 Vector/SVG 写入准备 resourceId 和 resourceUrl 时"},
+				AvoidWhen:    []string{"需要把附件直接插入文档正文时用 doc media insert；不要跨 nodeId 复用资源"},
+				Examples:     []string{"dws doc media upload --node <DOC_ID> --file ./icon.svg --mime-type image/svg+xml --format json"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "node", Property: "nodeId", Required: boolPtr(true)},
+				{Name: "file", Required: boolPtr(true)},
+			},
+		},
+	})
+	mediaUploadCmd.Flags().String("node", "", "绑定媒体资源的文档标识，支持传入 URL 或 ID (必填)")
+	mediaUploadCmd.Flags().String("file", "", "本地文件路径 (必填)")
+	mediaUploadCmd.Flags().String("name", "", "资源文件名 (默认使用本地文件名)")
+	mediaUploadCmd.Flags().String("mime-type", "", "文件 MIME 类型 (默认根据扩展名推断)")
+	mediaUploadCmd.Flags().Bool("yes", false, "确认上传可复用文档媒体资源")
+
 	mediaInsertCmd := &cobra.Command{
 		Use:   "insert",
 		Short: "上传附件并插入文档",
@@ -2587,7 +2674,7 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 	mediaInsertCmd.Flags().String("ref-block", "", "参考块 ID (配合 --where)")
 
 	// media 子命令的 --node 隐藏别名
-	mediaNodeAliasCmds := []*cobra.Command{mediaDownloadCmd, mediaInsertCmd}
+	mediaNodeAliasCmds := []*cobra.Command{mediaDownloadCmd, mediaUploadCmd, mediaInsertCmd}
 	for _, c := range mediaNodeAliasCmds {
 		c.Flags().String("url", "", "--node 的别名")
 		c.Flags().String("id", "", "--node 的别名")
@@ -2601,7 +2688,7 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 		_ = c.Flags().MarkHidden("file-id")
 	}
 
-	mediaCmd.AddCommand(mediaDownloadCmd, mediaInsertCmd)
+	mediaCmd.AddCommand(mediaDownloadCmd, mediaUploadCmd, mediaInsertCmd)
 
 	// ── comment (文档评论) ──────────────────────────────────
 	commentCmd := &cobra.Command{
@@ -3607,11 +3694,13 @@ CLI 内部自动完成全部流程：
   PROCESSING  处理中
   SUCCESS     导出成功，返回 downloadUrl
   FAILED      导出失败`,
-		Example: `  dws doc export get --job-id <JOB_ID>`,
+		Example: `  dws doc export get --job-id <JOB_ID>
+  dws doc export get --task-id <TASK_ID>`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			jobID := mustGetFlag(cmd, "job-id")
-			if jobID == "" {
-				return fmt.Errorf("flag --job-id is required")
+			// Keep --job-id as the visible primary; --task-id is an add-only synonym.
+			jobID, err := mustFlagOrFallback(cmd, "job-id", "task-id")
+			if err != nil {
+				return err
 			}
 
 			if deps.Caller.DryRun() {
@@ -3678,9 +3767,14 @@ CLI 内部自动完成全部流程：
 				AvoidWhen:    []string{"常规导出请直接 dws doc export（一体化提交+轮询+下载），不要先查 job"},
 				Examples:     []string{"dws doc export get --job-id <JOB_ID> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "job-id", Property: "jobId"},
+			},
 		},
 	})
 	exportGetCmd.Flags().String("job-id", "", "导出任务 ID (必填)")
+	exportGetCmd.Flags().String("task-id", "", "--job-id 的别名")
+	_ = exportGetCmd.Flags().MarkHidden("task-id")
 
 	// --node 的隐藏别名（与 doc 下其他命令保持一致）
 	exportCmd.Flags().String("url", "", "--node 的别名")
@@ -3707,6 +3801,9 @@ CLI 内部自动完成全部流程：
   xlsx, xls   → 电子表格
   md, txt     → 文字文档
   xmind, mark → 脑图
+  其他格式（html/pdf/zip 等）→ 不做在线文档转换，自动改走文件上传链路，
+  以原文件形式存入 --folder/--workspace 指定位置；如需在线文档请先转换
+  为 md；上传到钉盘请用 dws drive upload
 
 文件大小限制: 20MB
 
@@ -3911,20 +4008,22 @@ CLI 内部自动完成全部流程:
 				return fmt.Errorf("flag --version is required")
 			}
 			version, _ := cmd.Flags().GetInt("version")
-			exists, err := docVersionExists(cmd.Context(), nodeID, version)
-			if err != nil {
-				return err
-			}
-			if !exists {
-				return apperrors.NewValidation(
-					fmt.Sprintf("文档版本 %d 不存在，已停止回滚", version),
-					apperrors.WithReason("version_not_found"),
-					apperrors.WithHint(fmt.Sprintf(
-						"请先执行 dws doc version list --node %s --format json 获取可回滚版本",
-						nodeID,
-					)),
-					apperrors.WithActions("查询可用文档版本", "选择存在的版本号后重新预览"),
-				)
+			if !commandDryRun(cmd) {
+				exists, err := docVersionExists(cmd.Context(), nodeID, version)
+				if err != nil {
+					return err
+				}
+				if !exists {
+					return apperrors.NewValidation(
+						fmt.Sprintf("文档版本 %d 不存在，已停止回滚", version),
+						apperrors.WithReason("version_not_found"),
+						apperrors.WithHint(fmt.Sprintf(
+							"请先执行 dws doc version list --node %s --format json 获取可回滚版本",
+							nodeID,
+						)),
+						apperrors.WithActions("查询可用文档版本", "选择存在的版本号后重新预览"),
+					)
+				}
 			}
 			return callMCPToolOnServer("doc", "revert_doc_version", map[string]any{
 				"nodeId":  nodeID,
@@ -4225,9 +4324,19 @@ CLI 内部自动完成全部流程:
 	folderCmd.Hidden = true
 	permissionCmd.Hidden = true
 
-	root.AddCommand(searchCmd, listCmd, infoCmd, readCmd, createCmd, updateCmd, uploadCmd, downloadCmd, copyCmd, moveCmd, renameCmd, deleteCmd, fileCmd, folderCmd, blockCmd, commentCmd, mediaCmd, permissionCmd, exportCmd, importCmd, versionCmd, templateCmd, newDocStyleCommand())
+	root.AddCommand(searchCmd, listCmd, infoCmd, readCmd, createCmd, updateCmd, uploadCmd, downloadCmd, copyCmd, moveCmd, renameCmd, deleteCmd, fileCmd, folderCmd, blockCmd, commentCmd, mediaCmd, permissionCmd, exportCmd, importCmd, versionCmd, templateCmd, newDocStyleCommand(), newDocWhiteboardCommand())
 
 	return root
+}
+
+// printDocDeprecationWarning emits a deprecation warning when shared deps are
+// initialized. Schema declaration-only roots skip InitDeps; homology and other
+// Execute probes must remain nil-safe on that path.
+func printDocDeprecationWarning(msg string) {
+	if deps == nil || deps.Out == nil {
+		return
+	}
+	deps.Out.PrintWarning(msg)
 }
 
 // wrapDocDeprecated wraps a doc command's RunE to print a deprecation warning
@@ -4237,7 +4346,7 @@ func wrapDocDeprecated(cmd *cobra.Command, driveSubCmd string) {
 	originalRunE := cmd.RunE
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		if strings.HasPrefix(c.CommandPath(), "dws doc ") {
-			deps.Out.PrintWarning(fmt.Sprintf(
+			printDocDeprecationWarning(fmt.Sprintf(
 				"⚠️  'dws doc %s' is deprecated, use 'dws drive %s' instead.",
 				c.CommandPath()[8:], // strip "dws doc " prefix
 				driveSubCmd,
@@ -4253,7 +4362,7 @@ func wrapDocDeprecatedToWiki(cmd *cobra.Command, wikiSubCmd string) {
 	originalRunE := cmd.RunE
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		if strings.HasPrefix(c.CommandPath(), "dws doc ") {
-			deps.Out.PrintWarning(fmt.Sprintf(
+			printDocDeprecationWarning(fmt.Sprintf(
 				"⚠️  'dws doc %s' is deprecated, use 'dws %s' instead.",
 				c.CommandPath()[8:],
 				wikiSubCmd,
@@ -4269,7 +4378,7 @@ func wrapDocDeprecatedToTarget(cmd *cobra.Command, targetCmd string) {
 	originalRunE := cmd.RunE
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		if strings.HasPrefix(c.CommandPath(), "dws doc ") {
-			deps.Out.PrintWarning(fmt.Sprintf(
+			printDocDeprecationWarning(fmt.Sprintf(
 				"⚠️  'dws doc %s' is deprecated, use 'dws %s' instead.",
 				c.CommandPath()[8:],
 				targetCmd,

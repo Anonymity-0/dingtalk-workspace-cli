@@ -24,14 +24,17 @@ import gen_shortcut_comparison as shortcut_source  # noqa: E402
 
 CATALOG_PATH = ROOT / "docs" / "shortcut-public-catalog.json"
 MONO_SKILL = ROOT / "skills" / "mono" / "SKILL.md"
-
+SHARED_SKILL = ROOT / "skills" / "multi" / "dingtalk-shared" / "SKILL.md"
+RUNTIME_CONTRACT_SOURCE = (
+    ROOT / "skills" / "multi" / "dingtalk-shared" / "references" / "runtime-contract.md"
+)
 SERVICE_TO_SKILL = {
     "aitable": ROOT / "skills" / "multi" / "dingtalk-aitable" / "SKILL.md",
     "attendance": ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "attendance.md",
     "calendar": ROOT / "skills" / "multi" / "dingtalk-calendar" / "SKILL.md",
     "chat": ROOT / "skills" / "multi" / "dingtalk-chat" / "SKILL.md",
     "contact": ROOT / "skills" / "multi" / "dingtalk-contact" / "SKILL.md",
-    "devapp": ROOT / "skills" / "multi" / "dingtalk-dev" / "SKILL.md",
+    "devapp": ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "devapp.md",
     "ding": ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "ding.md",
     "doc": ROOT / "skills" / "multi" / "dingtalk-doc" / "SKILL.md",
     "drive": ROOT / "skills" / "multi" / "dingtalk-drive" / "SKILL.md",
@@ -48,6 +51,8 @@ MONO_START = "<!-- VISIBLE_SHORTCUTS_OVERVIEW_START -->"
 MONO_END = "<!-- VISIBLE_SHORTCUTS_OVERVIEW_END -->"
 PRODUCT_START = "<!-- VISIBLE_SHORTCUTS_START -->"
 PRODUCT_END = "<!-- VISIBLE_SHORTCUTS_END -->"
+RUNTIME_CONTRACT_START = "<!-- DWS_RUNTIME_CONTRACT_START -->"
+RUNTIME_CONTRACT_END = "<!-- DWS_RUNTIME_CONTRACT_END -->"
 
 # Large, high-frequency product skills should route known intents directly and
 # keep their full shortcut inventory in Runtime Catalog/Schema. Add services
@@ -92,6 +97,29 @@ def replace_block(text: str, start: str, end: str, block: str, fallback_anchor: 
     return text.replace(fallback_anchor, block + "\n\n" + fallback_anchor, 1)
 
 
+def replace_required_block(text: str, start: str, end: str, block: str) -> str:
+    if text.count(start) != 1 or text.count(end) != 1:
+        raise RuntimeError(
+            f"expected exactly one generated block {start!r} ... {end!r}"
+        )
+    before = text.split(start, 1)[0]
+    after = text.split(end, 1)[1]
+    return before + block + after
+
+
+def runtime_contract_block() -> str:
+    contract = RUNTIME_CONTRACT_SOURCE.read_text(encoding="utf-8").strip()
+    if not contract.startswith("## 最小 DWS 执行契约"):
+        raise RuntimeError(
+            f"runtime contract must start with its canonical heading: {RUNTIME_CONTRACT_SOURCE}"
+        )
+    return (
+        f"{RUNTIME_CONTRACT_START}\n"
+        f"{contract}\n"
+        f"{RUNTIME_CONTRACT_END}"
+    )
+
+
 def mono_overview(items: list[dict[str, Any]]) -> str:
     counts = Counter(item["service"] for item in items)
     rows = []
@@ -126,7 +154,7 @@ def product_section(service: str, rows: list[dict[str, Any]]) -> str:
     return f"""{PRODUCT_START}
 ## Shortcuts（无专用脚本/recipe 时优先）
 
-以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。命令已选中时直接执行；只在参数或安全语义不确定时读取 leaf Schema（例如 `dws schema --cli-path "{service} +<shortcut>" --format json`），在当前 Cobra flags 不确定时读取 `dws {service} <shortcut> --help`。仅当现有路由和 reference 都无法定位低频能力时，才用 `dws shortcut list --service {service} --format json` 批量发现。
+以下 shortcut 同时进入公开 catalog 与 Runtime Schema。先按本 skill 的意图表、脚本和 recipe 路由：存在精确覆盖该场景的专用脚本/recipe 时按其执行；否则用户意图命中时，shortcut 优先于手写原子命令。命令已选中时直接执行；只在参数或安全语义不确定时读取 Agent leaf Schema（例如 `dws schema --cli-path "{service} +<shortcut>" --compact --format json`），在当前 Cobra flags 不确定时读取 `dws {service} <shortcut> --help`。只有参数映射、接口绑定或 provenance 审计才省略 `--compact`。仅当现有路由和 reference 都无法定位低频能力时，才用 `dws shortcut list --service {service} --format json` 批量发现。
 
 | Shortcut | 风险 | 适用场景 |
 |---|---|---|
@@ -161,6 +189,26 @@ def update_mono(items: list[dict[str, Any]], check: bool) -> list[Path]:
     return [MONO_SKILL] if apply_update(MONO_SKILL, text, updated, check) else []
 
 
+def update_runtime_contract(check: bool) -> list[Path]:
+    block = runtime_contract_block()
+    changed = []
+    targets = [
+        ROOT / "skills" / "multi" / "dingtalk-chat" / "SKILL.md",
+        SHARED_SKILL,
+    ]
+    for path in targets:
+        text = path.read_text(encoding="utf-8")
+        updated = replace_required_block(
+            text,
+            RUNTIME_CONTRACT_START,
+            RUNTIME_CONTRACT_END,
+            block,
+        )
+        if apply_update(path, text, updated, check):
+            changed.append(path)
+    return changed
+
+
 def update_product_skills(items: list[dict[str, Any]], check: bool) -> list[Path]:
     by_service: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for item in items:
@@ -190,7 +238,8 @@ def main() -> int:
     args = parser.parse_args()
 
     items = collect_visible()
-    changed = update_mono(items, args.check)
+    changed = update_runtime_contract(args.check)
+    changed.extend(update_mono(items, args.check))
     changed.extend(update_product_skills(items, args.check))
     if args.check and changed:
         print("run: python3 scripts/gen_skill_shortcut_sections.py", file=sys.stderr)

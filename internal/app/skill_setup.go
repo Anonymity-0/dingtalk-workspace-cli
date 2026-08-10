@@ -149,7 +149,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		if filterErr != nil {
 			return filterErr
 		}
-		// dws-shared carries the global rules every product skill declares as a
+		// dingtalk-shared carries the global rules every product skill declares as a
 		// PREREQUISITE; it must ship even when --skill / --exclude narrows the set.
 		multiSkillNames = ensureMandatorySharedSkill(filtered, allMultiSkillNames)
 	}
@@ -207,8 +207,24 @@ const multiSkillPrefix = "dingtalk-"
 // multiSharedSkill is the shared, non-product skill that every per-product
 // skill declares as a PREREQUISITE. It must always be installed in multi mode
 // regardless of --skill / --exclude, otherwise the product skills reference a
-// dws-shared that was never installed.
-const multiSharedSkill = "dws-shared"
+// dingtalk-shared that was never installed.
+const multiSharedSkill = "dingtalk-shared"
+
+// legacySharedSkill is the pre-rename directory name of the shared skill.
+// Installations created before the dws-shared -> dingtalk-shared rename keep a
+// dws-shared directory on disk; cleanup paths must still recognize it so a
+// full install / mode switch removes it instead of leaving an orphaned,
+// unreferenced skill next to the new dingtalk-shared.
+const legacySharedSkill = "dws-shared"
+
+// isDWSMultiSkillName reports whether name belongs to a DWS multi-mode skill
+// directory: product skills use the dingtalk- prefix and the shared bundle is
+// dingtalk-shared (or its legacy pre-rename name dws-shared).
+func isDWSMultiSkillName(name string) bool {
+	return strings.HasPrefix(name, multiSkillPrefix) ||
+		name == multiSharedSkill ||
+		name == legacySharedSkill
+}
 
 // ensureMandatorySharedSkill guarantees the shared dependency skill is included
 // whenever it exists in the source, even if --skill / --exclude narrowed it out.
@@ -603,7 +619,7 @@ func mutualExclusionVictims(dest, mode string) ([]string, error) {
 		}
 		var victims []string
 		for _, e := range entries {
-			if e.IsDir() && (strings.HasPrefix(e.Name(), multiSkillPrefix) || e.Name() == multiSharedSkill) {
+			if e.IsDir() && isDWSMultiSkillName(e.Name()) {
 				victims = append(victims, filepath.Join(agentHome, e.Name()))
 			}
 		}
@@ -728,7 +744,7 @@ func staleMultiSkillVictims(dest string, keep []string) []string {
 		if !e.IsDir() || keepSet[e.Name()] {
 			continue
 		}
-		if !strings.HasPrefix(e.Name(), multiSkillPrefix) && e.Name() != multiSharedSkill {
+		if !isDWSMultiSkillName(e.Name()) {
 			continue
 		}
 		victims = append(victims, filepath.Join(dest, e.Name()))
@@ -756,7 +772,7 @@ func removeStaleMultiSkills(dest string, keep []string, out, errOut io.Writer) {
 		if !e.IsDir() || keepSet[e.Name()] {
 			continue
 		}
-		if !strings.HasPrefix(e.Name(), multiSkillPrefix) && e.Name() != multiSharedSkill {
+		if !isDWSMultiSkillName(e.Name()) {
 			continue
 		}
 		stale := filepath.Join(dest, e.Name())

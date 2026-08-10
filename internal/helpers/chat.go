@@ -18,6 +18,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 
@@ -53,7 +54,47 @@ func resolveMessageForward(cmd *cobra.Command, defaultForward bool) (bool, error
 	}
 }
 
-const maxConversationCategoryTitleRunes = 15
+func chatCompatibilityHintSubCmd(use, hint string) *cobra.Command {
+	command := hintSubCmd(use, hint)
+	// Legacy callers may still pass the old command's flags. Let the migration
+	// command consume them so Cobra reaches RunE and returns the replacement path.
+	command.DisableFlagParsing = true
+	return command
+}
+
+type nativeChatTargetReader struct{}
+
+func (nativeChatTargetReader) CallMCPData(product, tool string, params map[string]any) (map[string]any, error) {
+	text, err := CallMCPReadToolTextOnServer(product, tool, params)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(text) == "" {
+		return map[string]any{}, nil
+	}
+	var data map[string]any
+	if err := json.Unmarshal([]byte(text), &data); err != nil {
+		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", tool, err))
+	}
+	return data, nil
+}
+
+func resolveNativeChatTarget(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if targetresolver.LooksLikeOpenConversationID(raw) {
+		return raw, nil
+	}
+	resolved, err := targetresolver.ResolveChat(nativeChatTargetReader{}, raw)
+	if err != nil {
+		return "", err
+	}
+	return resolved.Selected.OpenConversationID, nil
+}
+
+const (
+	maxConversationCategoryTitleRunes = 15
+	chatFavoritesMaxPageSize          = 30
+)
 
 func validatedConversationCategoryTitle(raw string) (string, error) {
 	title := strings.TrimSpace(raw)
@@ -76,6 +117,61 @@ func chatIntFlagOrFallback(cmd *cobra.Command, primary string, aliases ...string
 	}
 	v, _ := cmd.Flags().GetInt(primary)
 	return v
+}
+
+func runChatGroupSearch(cmd *cobra.Command, args []string) error {
+	keyword := flagOrFallback(cmd, "query", "keyword", "name", "group")
+	if len(args) == 1 {
+		if keyword != "" {
+			return apperrors.NewValidation("群搜索位置参数与 --query/--keyword 不能同时指定")
+		}
+		keyword = strings.TrimSpace(args[0])
+	}
+	if keyword == "" {
+		return apperrors.NewValidation("flag --query is required\n  hint: dws chat search --query \"test\"")
+	}
+	limit := chatIntFlagOrFallback(cmd, "limit", "size")
+	cursor, _ := cmd.Flags().GetString("cursor")
+	toolArgs := map[string]any{
+		"keyword": keyword,
+		"limit":   limit,
+		"cursor":  cursor,
+	}
+	if v, _ := cmd.Flags().GetBool("exclude-muted"); v {
+		toolArgs["excludeMuted"] = true
+	}
+	return callMCPToolOnServer("im", "search_groups", toolArgs)
+}
+
+func newChatGroupSearchCommand(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "search [query]",
+		Short:  "根据关键词搜索群聊",
+		Hidden: hidden,
+		Long: `根据关键词搜索群聊列表。分页参数 --limit（默认 20）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
+
+注意：
+1. query 不要拆分得太细，应使用群名称中连续的核心词作为关键词（如群名"项目冲刺群"应搜"项目冲刺"而非拆成"项目"+"冲刺"分别搜索）。
+2. 当搜索结果返回多个群聊时，应列出候选群让用户确认目标群聊，不要自行假定并直接进行后续操作。`,
+		Example: `  dws chat search --query "项目冲刺"
+  dws chat search "项目冲刺"
+  dws chat search --query "项目冲刺" --limit 20 --cursor 0`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: runChatGroupSearch,
+	}
+	cmd.Flags().String("query", "", "搜索关键词 (必填)")
+	cmd.Flags().String("keyword", "", "--query 的别名")
+	_ = cmd.Flags().MarkHidden("keyword")
+	cmd.Flags().String("name", "", "--query 的兼容别名")
+	_ = cmd.Flags().MarkHidden("name")
+	cmd.Flags().String("group", "", "--query 的兼容别名")
+	_ = cmd.Flags().MarkHidden("group")
+	cmd.Flags().Int("limit", 20, "每页返回数量（默认 20）")
+	cmd.Flags().Int("size", 0, "--limit 的旧版别名")
+	_ = cmd.Flags().MarkHidden("size")
+	cmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"，翻页传 nextCursor）")
+	cmd.Flags().Bool("exclude-muted", false, "是否排除已设置免打扰的群聊（默认 false）")
+	return cmd
 }
 
 func runChatSearchCommon(cmd *cobra.Command, _ []string) error {
@@ -309,6 +405,50 @@ func NormalizeMessageMentions(text string, ids []string, atAll, wrapAngle bool) 
 		text = allPlaceholder + " " + text
 	}
 	return text
+}
+
+// applyCurrentUserGroupMentions keeps the body placeholders and
+// send_personal_message mention arguments aligned for send and reply.
+func applyCurrentUserGroupMentions(params map[string]any, text, rawOpenIDs string, atAll bool) string {
+	var atOpenIDs []string
+	if rawOpenIDs != "" {
+		atOpenIDs = strings.Split(rawOpenIDs, ",")
+	}
+	if atAll && !strings.Contains(text, "<@all>") {
+		text = "<@all> " + text
+	}
+	text = normalizeAtPlaceholders(text, atOpenIDs, true)
+	if atAll {
+		params["atAll"] = true
+	}
+	if len(atOpenIDs) > 0 {
+		params["atOpenDingTalkIds"] = atOpenIDs
+	}
+	return text
+}
+
+func addMissingCurrentUserMentionPlaceholders(text, rawOpenIDs string) string {
+	if rawOpenIDs == "" {
+		return text
+	}
+	missing := make([]string, 0)
+	probeText := text
+	for _, id := range parseCSVValues(rawOpenIDs) {
+		placeholder := "<@" + id + ">"
+		if strings.Contains(probeText, placeholder) {
+			continue
+		}
+		missing = append(missing, placeholder)
+		probeText += placeholder
+	}
+	if len(missing) == 0 {
+		return text
+	}
+	prefix := strings.Join(missing, " ")
+	if strings.HasPrefix(text, "<@all> ") {
+		return "<@all> " + prefix + " " + strings.TrimPrefix(text, "<@all> ")
+	}
+	return prefix + " " + text
 }
 
 func containsMessageMention(text, placeholder string) bool {
@@ -949,6 +1089,63 @@ func uploadConversationLocalFile(ctx context.Context, targetArgs map[string]any,
 	return callMCPToolReturnTextOnServer(ctx, "im", "commit_conversation_file_upload", commitArgs)
 }
 
+func parseConversationFileDownloadURL(text string) (string, error) {
+	var data map[string]any
+	if err := unmarshalJSONUseNumber(text, &data); err != nil {
+		return "", fmt.Errorf("failed to parse uploaded file response JSON: %w", err)
+	}
+	if result, ok := data["result"].(map[string]any); ok {
+		data = result
+	}
+	downloadURL := firstStringField(data, "downloadUrl")
+	if downloadURL == "" {
+		return "", fmt.Errorf("uploaded file response missing downloadUrl")
+	}
+	return downloadURL, nil
+}
+
+func uploadRobotMessageLocalFile(
+	cmd *cobra.Command,
+	filePath string,
+	groupID string,
+	userIDs []string,
+	openDingTalkIDs []string,
+) (string, error) {
+	uploadTarget := map[string]any{}
+	if groupID != "" {
+		uploadTarget["openConversationId"] = groupID
+	} else {
+		if len(userIDs)+len(openDingTalkIDs) != 1 {
+			return "", fmt.Errorf("--file-path requires exactly one --users or --open-dingtalk-ids recipient")
+		}
+		if len(userIDs) == 1 {
+			uploadTarget["userId"] = userIDs[0]
+		} else {
+			uploadTarget["openDingTalkId"] = openDingTalkIDs[0]
+		}
+	}
+
+	meta, err := buildConversationLocalFileMeta(filePath, "", "")
+	if err != nil {
+		return "", err
+	}
+	if deps.Caller.DryRun() {
+		deps.Out.PrintKeyValue("操作", "上传本地文件并由机器人发送")
+		deps.Out.PrintKeyValue("文件", meta.LocalPath)
+		deps.Out.PrintKeyValue("名称", meta.FileName)
+		deps.Out.PrintKeyValue("大小", fmt.Sprintf("%d bytes", meta.FileSize))
+		return "", nil
+	}
+
+	ctx, cancel := context.WithTimeout(cmd.Context(), 10*time.Minute)
+	defer cancel()
+	commitText, err := uploadConversationLocalFile(ctx, uploadTarget, meta, "")
+	if err != nil {
+		return "", err
+	}
+	return parseConversationFileDownloadURL(commitText)
+}
+
 func buildConversationFileContent(dentryID, spaceID int64, meta conversationLocalFileMeta) (string, error) {
 	content := struct {
 		DentryID int64  `json:"dentryId"`
@@ -1113,6 +1310,14 @@ func newChatCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"授予 chat 高风险操作权限需要用户确认；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认授权 scope、目标会话/用户和有效期；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认授权 scope 和影响范围", "获得用户确认后使用 --yes 执行"),
+				)
+			}
 			return callMCPToolOnServer("im", "chat_permission_grant", toolArgs)
 		},
 	}
@@ -1124,6 +1329,47 @@ func newChatCommand() *cobra.Command {
 	chatChmodCmd.Flags().String("open-dingtalk-id", "", "单聊目标 openDingTalkId")
 	chatChmodCmd.Flags().String("user", "", "单聊目标 userId（与 --open-dingtalk-id 二选一）")
 	chatChmodCmd.Flags().String("session-id", "", "session 授权的会话标识")
+	chatChmodCmd.Flags().BoolP("yes", "y", false, "确认执行 chat 高风险授权操作")
+	DeclareLeafMetadata(chatChmodCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "chat_permission_grant",
+				CanonicalPath:  "chat.chat_permission_grant",
+				CLIPath:        "chat chmod",
+				PrimaryCLIPath: "chat chmod",
+			},
+			Description: "授予指定 chat scope 的高风险操作权限",
+			Positionals: []contract.RuntimeSchemaPositional{
+				{Index: 0, Name: "scope", Type: "string", Required: true, Description: "chat 授权 scope，如 chat.message:send"},
+			},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "chat_permission_grant"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "授予指定 chat scope 的高风险操作权限",
+				UseWhen:      []string{"需要在执行发送、撤回、群管理等 chat 高风险操作前申请授权时"},
+				AvoidWhen:    []string{"只授予跨组织消息读取数据权限时使用 chat data-auth cross-org"},
+				Examples:     []string{"dws chat chmod chat.message:send --agentCode wukong --grant-type timed --ttl 24h --conversation-id <openConversationId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "agentCode", Property: "agentCode", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "grantParams.openCid", Required: boolPtr(false)},
+				{Name: "grant-type", Property: "grantType", Required: boolPtr(false)},
+				{Name: "open-dingtalk-id", Property: "grantParams.openDingTalkId", Required: boolPtr(false)},
+				{Name: "permParam", Property: "grantParams", Required: boolPtr(false)},
+				{Name: "session-id", Property: "sessionId", Required: boolPtr(false)},
+				{Name: "ttl", Property: "ttl", Required: boolPtr(false)},
+				{Name: "user", Property: "grantParams.userId", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	chatDataAuthCmd := &cobra.Command{
 		Use:   "data-auth",
@@ -1158,6 +1404,41 @@ func newChatCommand() *cobra.Command {
 	chatDataAuthCrossOrgCmd.Flags().String("grant-type", "timed", "授权策略: once|session|timed|permanent")
 	chatDataAuthCrossOrgCmd.Flags().String("ttl", "24h", "timed 授权有效期，如 1h/4h/24h/7d")
 	chatDataAuthCrossOrgCmd.Flags().String("session-id", "", "session 授权的会话标识")
+	DeclareLeafMetadata(chatDataAuthCrossOrgCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "chat_permission_grant_cross_org_data",
+				CanonicalPath:  "chat." + "chat_permission_grant_cross_org_data",
+				CLIPath:        "chat data-auth cross-org",
+				PrimaryCLIPath: "chat data-auth cross-org",
+			},
+			Description: "授予跨组织 chat 数据访问权限",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "chat_permission_grant"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "授予跨组织 chat 数据访问权限",
+				UseWhen:      []string{"需要为跨组织消息读取授予 chat.data:cross-org 数据权限时"},
+				AvoidWhen:    []string{"发送、撤回或群管理授权应使用 chat chmod 指定操作 scope"},
+				Examples:     []string{"dws chat data-auth cross-org --target-org-id 439446171"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "agentCode", Property: "agentCode", Required: boolPtr(false)},
+				{Name: "all", Property: "grantParams.targetOrgId", Required: boolPtr(false)},
+				{Name: "grant-type", Property: "grantType", Required: boolPtr(false)},
+				{Name: "session-id", Property: "sessionId", Required: boolPtr(false)},
+				{Name: "target-org-id", Property: "grantParams.targetOrgId", Required: boolPtr(false)},
+				{Name: "ttl", Property: "ttl", Required: boolPtr(false)},
+			},
+		},
+	})
 	chatDataAuthCmd.AddCommand(chatDataAuthCrossOrgCmd)
 
 	// ── group 子命令 ──────────────────────────────────────────
@@ -1277,34 +1558,23 @@ func newChatCommand() *cobra.Command {
 		},
 	})
 
-	chatSearchCmd := &cobra.Command{
-		Use:   "search",
-		Short: "根据关键词搜索群聊",
-		Long: `根据关键词搜索群聊列表。分页参数 --limit（默认 20）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
-
-注意：
-1. query 不要拆分得太细，应使用群名称中连续的核心词作为关键词（如群名"项目冲刺群"应搜"项目冲刺"而非拆成"项目"+"冲刺"分别搜索）。
-2. 当搜索结果返回多个群聊时，应列出候选群让用户确认目标群聊，不要自行假定并直接进行后续操作。`,
-		Example: `  dws chat search --query "项目冲刺"
-  dws chat search --query "项目冲刺" --limit 20 --cursor 0`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			keyword := flagOrFallback(cmd, "query", "keyword")
-			if keyword == "" {
-				return fmt.Errorf("flag --query is required\n  hint: dws chat search --query \"test\"")
-			}
-			limit := chatIntFlagOrFallback(cmd, "limit", "size")
-			cursor, _ := cmd.Flags().GetString("cursor")
-			toolArgs := map[string]any{
-				"keyword": keyword,
-				"limit":   limit,
-				"cursor":  cursor,
-			}
-			if v, _ := cmd.Flags().GetBool("exclude-muted"); v {
-				toolArgs["excludeMuted"] = true
-			}
-			return callMCPToolOnServer("im", "search_groups", toolArgs)
+	chatSearchCmd := newChatGroupSearchCommand(false)
+	chatGroupSearchCompatibilityCmd := newChatGroupSearchCommand(true)
+	cli.AttachRuntimeSchema(
+		chatGroupSearchCompatibilityCmd,
+		"chat",
+		"search_groups",
+		"reviewed-compatibility:chat-group-search",
+	)
+	cli.AnnotateRuntimeCompatibilityEquivalence(
+		chatSearchCmd,
+		chatGroupSearchCompatibilityCmd,
+		cli.RuntimeCompatibilityEquivalence{
+			ID:       "chat-group-search-compatibility-v1",
+			Reason:   "Both leaves share the same constructor, flags, positional normalization, read-only search_groups transport, and result contract.",
+			Reviewed: true,
 		},
-	}
+	)
 	DeclareLeafMetadata(chatSearchCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
@@ -1317,6 +1587,7 @@ func newChatCommand() *cobra.Command {
 				CanonicalPath:  "chat.search_groups",
 				CLIPath:        "chat search",
 				PrimaryCLIPath: "chat search",
+				Aliases:        []string{"chat group search"},
 			},
 			Description: "按关键词搜索群聊并拿到 openConversationId",
 			Interface: &contract.InterfaceSpec{
@@ -1955,29 +2226,15 @@ func newChatCommand() *cobra.Command {
 			if groupID != "" {
 				atAll, _ := cmd.Flags().GetBool("at-all")
 				atOpenIdsStr, _ := cmd.Flags().GetString("at-open-dingtalk-ids")
-				var atOpenIds []string
-				if atOpenIdsStr != "" {
-					atOpenIds = strings.Split(atOpenIdsStr, ",")
-				}
-				if atAll && !strings.Contains(text, "<@all>") {
-					text = "<@all> " + text
-				}
-				// 用户身份发消息要求 @ 占位符为 <@openDingTalkId>；模型若写成裸 @id 自动补全，已有 <@id> 不变
-				text = normalizeAtPlaceholders(text, atOpenIds, true)
 				// 群聊统一走 openDingTalkId @ 人接口。
-				contentJSON, _ := marshalJSONRaw(map[string]string{"title": title, "text": text})
 				newParams := map[string]any{
 					"openConversationId": groupID,
 					"msgType":            "markdown",
-					"content":            string(contentJSON),
 					"clawType":           clawType,
 				}
-				if atAll {
-					newParams["atAll"] = true
-				}
-				if len(atOpenIds) > 0 {
-					newParams["atOpenDingTalkIds"] = atOpenIds
-				}
+				text = applyCurrentUserGroupMentions(newParams, text, atOpenIdsStr, atAll)
+				contentJSON, _ := marshalJSONRaw(map[string]string{"title": title, "text": text})
+				newParams["content"] = string(contentJSON)
 				if msgUuid != "" {
 					newParams["uuid"] = msgUuid
 				}
@@ -2031,14 +2288,18 @@ func newChatCommand() *cobra.Command {
 		},
 	})
 
-	// send-by-bot: 群聊传 --group，单聊传 --users/--open-dingtalk-ids；--text 支持 Markdown
+	// send-by-bot: 群聊传 --group，单聊传 --users/--open-dingtalk-ids。
+	// Markdown 使用 --title/--text，图片使用 --msg-type image/--image-url，
+	// 文件使用 --msg-type file/--file-path，CLI 上传后发送。
 	chatMessageSendByBotCmd := &cobra.Command{
 		Use:   "send-by-bot",
 		Short: "机器人发送消息（--group 群聊 / --users 单聊）",
-		Long: `群聊：传 --group 指定群；单聊：传 --users 或 --open-dingtalk-ids 指定用户列表，与 --group 只能选其一，不能同时指定。--text 支持 Markdown。
+		Long: `群聊：传 --group 指定群；单聊：传 --users 或 --open-dingtalk-ids 指定用户列表，与 --group 只能选其一，不能同时指定。省略 --msg-type 时发送 Markdown；图片使用 --msg-type image --image-url；本地文件使用 --msg-type file --file-path，CLI 完成上传后发送。
 
 ⚠️ 重要：该接口会真实发送消息到目标会话，不可用于测试或试探性调用。调用前必须确认消息内容和接收对象无误。`,
 		Example: `  dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --title "日报" --text "## 今日完成..."
+  dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --msg-type image --image-url "https://example.com/image.png"
+  dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --msg-type file --file-path ./report.pdf
   dws chat message send-by-bot --robot-code <robot-code> --users userId1,userId2 --title "提醒" --text "请提交周报"
   dws chat message send-by-bot --robot-code <robot-code> --open-dingtalk-ids openDingtalkId1,openDingtalkId2 --title "提醒" --text "请提交周报"
   dws chat message send-by-bot --robot-code <robot-code> --group <openconversation_id> --at-user-ids userId1,userId2 --title "提醒" --text "@userId1 @userId2 请查收本周报告"
@@ -2048,9 +2309,42 @@ func newChatCommand() *cobra.Command {
   # 查询 userId: dws contact user search --query "姓名"
   # robot-code: $DINGTALK_CHAT_ROBOT_CODE`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "robot-code", "title", "text"); err != nil {
+			msgType := strings.TrimSpace(mustGetFlag(cmd, "msg-type"))
+			title := mustGetFlag(cmd, "title")
+			text := mustGetFlag(cmd, "text")
+			imageURL := strings.TrimSpace(mustGetFlag(cmd, "image-url"))
+			filePath := mustGetFlag(cmd, "file-path")
+
+			if err := validateRequiredFlags(cmd, "robot-code"); err != nil {
 				return err
 			}
+			if msgType == "" {
+				if imageURL != "" {
+					return fmt.Errorf("--msg-type image is required when using --image-url")
+				}
+				if filePath != "" {
+					return fmt.Errorf("--msg-type file is required when using --file-path")
+				}
+				msgType = "markdown"
+			}
+			switch msgType {
+			case "markdown":
+				if err := validateRequiredFlags(cmd, "title", "text"); err != nil {
+					return err
+				}
+			case "image":
+				if imageURL == "" {
+					return fmt.Errorf("--image-url is required for --msg-type image")
+				}
+			case "file":
+				if filePath == "" {
+					return fmt.Errorf("--file-path is required for --msg-type file")
+				}
+			default:
+				return fmt.Errorf("unsupported --msg-type %q, must be one of: markdown, image, file", msgType)
+			}
+			isMarkdownMessage := msgType == "markdown"
+
 			chatID := flagOrFallback(cmd, "group", "conversation-id", "id", "chat")
 			usersStr, _ := cmd.Flags().GetString("users")
 			openDingtalkIdsStr, _ := cmd.Flags().GetString("open-dingtalk-ids")
@@ -2061,6 +2355,38 @@ func newChatCommand() *cobra.Command {
 			if chatID == "" && !hasDirectTarget {
 				return fmt.Errorf("--group or --users/--open-dingtalk-ids is required")
 			}
+
+			userIDs := splitCommaList(usersStr)
+			openDingTalkIDs := splitCommaList(openDingtalkIdsStr)
+			fileURL := ""
+			if msgType == "file" {
+				var err error
+				fileURL, err = uploadRobotMessageLocalFile(
+					cmd, filePath, chatID, userIDs, openDingTalkIDs)
+				if err != nil {
+					return err
+				}
+				if deps.Caller.DryRun() {
+					return nil
+				}
+			}
+
+			buildRobotMessageArgs := func(markdown string) map[string]any {
+				toolArgs := map[string]any{
+					"robotCode": mustGetFlag(cmd, "robot-code"),
+				}
+				switch msgType {
+				case "image":
+					toolArgs["photoURL"] = imageURL
+				case "file":
+					toolArgs["fileUrl"] = fileURL
+				default:
+					toolArgs["title"] = title
+					toolArgs["markdown"] = markdown
+				}
+				return toolArgs
+			}
+
 			if chatID != "" {
 				var atUserIds []string
 				if atUserIdsStr, _ := cmd.Flags().GetString("at-user-ids"); atUserIdsStr != "" {
@@ -2078,17 +2404,23 @@ func newChatCommand() *cobra.Command {
 						}
 					}
 				}
-				// 机器人发消息要求 @ 占位符为裸 @id；模型若写成 <@id> 会导致 @ 不生效，主动剥离尖括号
-				markdown := mustGetFlag(cmd, "text")
-				markdown = normalizeAtPlaceholders(markdown, atUserIds, false)
-				markdown = normalizeAtPlaceholders(markdown, atOpenDingtalkIds, false)
-				markdown = strings.ReplaceAll(markdown, "<@all>", "@all")
-				toolArgs := map[string]any{
-					"robotCode":          mustGetFlag(cmd, "robot-code"),
-					"openConversationId": chatID,
-					"title":              mustGetFlag(cmd, "title"),
-					"markdown":           markdown,
+				markdown := text
+				if isMarkdownMessage {
+					// 机器人发消息要求 @ 占位符为裸 @id；模型若写成 <@id> 会导致 @ 不生效，主动剥离尖括号
+					markdown = normalizeAtPlaceholders(markdown, atUserIds, false)
+					markdown = normalizeAtPlaceholders(markdown, atOpenDingtalkIds, false)
+					markdown = strings.ReplaceAll(markdown, "<@all>", "@all")
 				}
+				toolArgs := buildRobotMessageArgs(markdown)
+				switch msgType {
+				case "image":
+					toolArgs["msgKey"] = "sampleImageMsg"
+				case "file":
+					toolArgs["msgKey"] = "sampleDingtalkDriveFile"
+				default:
+					toolArgs["msgKey"] = "sampleMarkdownDX"
+				}
+				toolArgs["openConversationId"] = chatID
 				if len(atUserIds) > 0 {
 					toolArgs["atUserIds"] = atUserIds
 				}
@@ -2100,28 +2432,21 @@ func newChatCommand() *cobra.Command {
 				}
 				return callMCPToolOnServer("bot", "send_robot_group_message", toolArgs)
 			}
-			toolArgs := map[string]any{
-				"robotCode": mustGetFlag(cmd, "robot-code"),
-				"title":     mustGetFlag(cmd, "title"),
-				"markdown":  mustGetFlag(cmd, "text"),
+
+			toolArgs := buildRobotMessageArgs(text)
+			switch msgType {
+			case "image":
+				toolArgs["msgType"] = "sampleImageMsg"
+			case "file":
+				toolArgs["msgType"] = "sampleDingtalkDriveFile"
+			default:
+				toolArgs["msgType"] = "sampleMarkdownDX"
 			}
-			if usersStr != "" {
-				var userIds []string
-				for _, u := range strings.Split(usersStr, ",") {
-					if s := strings.TrimSpace(u); s != "" {
-						userIds = append(userIds, s)
-					}
-				}
-				toolArgs["userIds"] = userIds
+			if len(userIDs) > 0 {
+				toolArgs["userIds"] = userIDs
 			}
-			if openDingtalkIdsStr != "" {
-				var openDingtalkIds []string
-				for _, id := range strings.Split(openDingtalkIdsStr, ",") {
-					if s := strings.TrimSpace(id); s != "" {
-						openDingtalkIds = append(openDingtalkIds, s)
-					}
-				}
-				toolArgs["openDingtalkIds"] = openDingtalkIds
+			if len(openDingTalkIDs) > 0 {
+				toolArgs["openDingtalkIds"] = openDingTalkIDs
 			}
 			if isAtAll, _ := cmd.Flags().GetBool("at-all"); isAtAll {
 				toolArgs["isAtAll"] = "true"
@@ -2142,17 +2467,24 @@ func newChatCommand() *cobra.Command {
 				CLIPath:        "chat message send-by-bot",
 				PrimaryCLIPath: "chat message send-by-bot",
 			},
-			Description: "以应用机器人身份发送群消息或批量单聊",
+			Description: "以应用机器人身份发送 Markdown、图片或文件群消息或批量单聊",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
 				Reason:       "命令包含多个 RPC、条件分派或本地 HTTP/文件步骤，不能绑定为单一 interface_ref",
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "以应用机器人身份发送群消息或批量单聊",
-				UseWhen:      []string{"已有 robotCode 且需要机器人身份投递消息时"},
+				AgentSummary: "以应用机器人身份发送 Markdown、图片或文件群消息或批量单聊",
+				UseWhen:      []string{"已有 robotCode 且需要机器人身份投递 Markdown、图片或文件时"},
 				AvoidWhen:    []string{"个人身份发送或自定义 Webhook 告警不要使用"},
 				Examples:     []string{"dws chat message send-by-bot --robot-code <robotCode> --group <openConversationId> --title \"日报\" --text \"今日进展\""},
+			},
+			// Keep title/text required_when out of Schema: the runtime switch above
+			// enforces Markdown inputs, while adding it breaks merge-base compatibility.
+			Parameters: []contract.ParamDecl{
+				{Name: "msg-type", RequiredWhen: "image-url or file-path is provided", Enum: []string{"markdown", "image", "file"}},
+				{Name: "image-url", RequiredWhen: "msg-type is image"},
+				{Name: "file-path", RequiredWhen: "msg-type is file"},
 			},
 		},
 	})
@@ -3353,15 +3685,6 @@ func newChatCommand() *cobra.Command {
 	chatGroupCreateCmd.Flags().String("type", "INTERNAL", "群类型: INTERNAL(内部群,默认)/EXTERNAL(外部群)/NORMAL(普通群)")
 	chatGroupCreateCmd.Flags().Bool("thread", false, "开启话题模式，将创建话题圈")
 
-	chatSearchCmd.Flags().String("query", "", "搜索关键词 (必填)")
-	chatSearchCmd.Flags().String("keyword", "", "--query 的别名")
-	_ = chatSearchCmd.Flags().MarkHidden("keyword")
-	chatSearchCmd.Flags().Int("limit", 20, "每页返回数量（默认 20）")
-	chatSearchCmd.Flags().Int("size", 0, "--limit 的旧版别名")
-	_ = chatSearchCmd.Flags().MarkHidden("size")
-	chatSearchCmd.Flags().String("cursor", "0", "分页游标（默认 \"0\"，翻页传 nextCursor）")
-	chatSearchCmd.Flags().Bool("exclude-muted", false, "是否排除已设置免打扰的群聊（默认 false）")
-
 	chatGroupMembersCmd.Flags().String("id", "", "群 ID / openconversation_id (必填)")
 	_ = chatGroupMembersCmd.MarkFlagRequired("id")
 	chatGroupMembersCmd.Flags().String("cursor", "", "分页游标，首次从 0 开始")
@@ -3387,7 +3710,7 @@ func newChatCommand() *cobra.Command {
 	_ = chatGroupMemberRemoveCmd.MarkFlagRequired("users")
 
 	chatGroupCmd.AddCommand(chatGroupCreateCmd, chatGroupMembersCmd, chatGroupRenameCmd)
-	chatGroupCmd.AddCommand(hintSubCmd("search", "use: dws chat search --query <关键词>"))
+	chatGroupCmd.AddCommand(chatGroupSearchCompatibilityCmd)
 	chatGroupMembersCmd.AddCommand(chatGroupMemberAddCmd, chatGroupMemberRemoveCmd, chatGroupMembersAddBotCmd)
 
 	// message 子命令 flags
@@ -3467,14 +3790,16 @@ func newChatCommand() *cobra.Command {
 	_ = chatMessageSendByBotCmd.MarkFlagRequired("robot-code")
 	chatMessageSendByBotCmd.Flags().String("group", "", "群聊 openConversationId（群聊时必填）")
 	chatMessageSendByBotCmd.Flags().String("users", "", "用户 userId 列表，逗号分隔，最多20个（单聊时必填）")
-	chatMessageSendByBotCmd.Flags().String("title", "", "消息标题 (必填)")
-	_ = chatMessageSendByBotCmd.MarkFlagRequired("title")
-	chatMessageSendByBotCmd.Flags().String("text", "", "消息内容 Markdown (必填)")
-	_ = chatMessageSendByBotCmd.MarkFlagRequired("text")
+	chatMessageSendByBotCmd.Flags().String("msg-type", "", "消息类型: markdown/image/file（省略时为 markdown；图片使用 image --image-url；本地文件使用 file --file-path）")
+	chatMessageSendByBotCmd.Flags().String("title", "", "Markdown 消息标题（发送 Markdown 时必填）")
+	chatMessageSendByBotCmd.Flags().String("text", "", "Markdown 消息内容（发送 Markdown 时必填；稳定换行用空行，转义形式写 \\n\\n，不要只写 \\n）")
+	chatMessageSendByBotCmd.Flags().String("image-url", "", "公网图片 URL（msgType=image 时必填）")
+	chatMessageSendByBotCmd.Flags().String("file-path", "", "本地文件路径（msgType=file 时直接上传并按 file 消息发送）")
 	chatMessageSendByBotCmd.Flags().String("at-user-ids", "", "@指定成员的 userId 列表，逗号分隔（仅群聊时生效，可选），--text 中需包含 @userId 对应文本")
 	chatMessageSendByBotCmd.Flags().String("open-dingtalk-ids", "", "用户 openDingtalkId 列表，逗号分隔（单聊时可替代 --users，可选）")
 	chatMessageSendByBotCmd.Flags().String("at-open-dingtalk-ids", "", "@指定成员的 openDingtalkId 列表，逗号分隔（仅群聊时生效，可选）")
 	chatMessageSendByBotCmd.Flags().Bool("at-all", false, "@所有人（可选），服务端接收字符串 true/false")
+	cli.AnnotateRuntimeFlagFormat(chatMessageSendByBotCmd, "file-path", "file-path")
 
 	chatMessageRecallByBotCmd.Flags().String("robot-code", "", "机器人 Code (必填)")
 	_ = chatMessageRecallByBotCmd.MarkFlagRequired("robot-code")
@@ -3936,10 +4261,41 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatCategoryCreateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "create_conv_category",
+				CanonicalPath:  "chat." + "create_conv_category",
+				CLIPath:        "chat category create",
+				PrimaryCLIPath: "chat category create",
+			},
+			Description: "创建用户自定义会话分组",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "create_conv_category"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "创建用户自定义会话分组",
+				UseWhen:      []string{"需要新建一个手工维护的会话分组时"},
+				AvoidWhen:    []string{"需要按规则自动归集会话时使用 chat category create-smart"},
+				Examples:     []string{"dws chat category create --title \"工作群\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "title", Property: "title", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	chatCategoryDeleteCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "删除用户自定义会话分组",
+		Long:  "删除用户自定义会话分组。该操作不可逆；必须先获得用户确认，再追加 --yes 执行。",
 		Example: `  dws chat category delete --category-id <分组ID>
   # 分组ID 可通过 dws chat category list 获取`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -3947,11 +4303,50 @@ func newChatCommand() *cobra.Command {
 			if categoryId == 0 {
 				return fmt.Errorf("flag --category-id is required")
 			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"删除会话分组不可逆；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认目标分组及影响范围；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认目标会话分组", "获得用户确认后使用 --yes 执行"),
+				)
+			}
 			return callMCPToolOnServer("im", "delete_conv_category", map[string]any{
 				"categoryId": categoryId,
 			})
 		},
 	}
+	DeclareLeafMetadata(chatCategoryDeleteCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "delete_conv_category",
+				CanonicalPath:  "chat." + "delete_conv_category",
+				CLIPath:        "chat category delete",
+				PrimaryCLIPath: "chat category delete",
+			},
+			Description: "删除用户自定义会话分组",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "delete_conv_category"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "删除用户自定义会话分组",
+				UseWhen:      []string{"用户明确要删除某个自定义会话分组，且已确认不影响会话本身"},
+				AvoidWhen:    []string{"只是从分组移出某个会话时使用 chat category remove-conv"},
+				Examples:     []string{"dws chat category delete --category-id 123"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "category-id", Property: "categoryId", Required: boolPtr(true)},
+				{Name: "yes", Property: "", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	chatCategoryRenameCmd := &cobra.Command{
 		Use:   "rename",
@@ -3976,6 +4371,37 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatCategoryRenameCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "rename_conv_category",
+				CanonicalPath:  "chat." + "rename_conv_category",
+				CLIPath:        "chat category rename",
+				PrimaryCLIPath: "chat category rename",
+			},
+			Description: "更新用户自定义会话分组的名称",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "rename_conv_category"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "更新用户自定义会话分组的名称",
+				UseWhen:      []string{"需要给已有自定义会话分组改名时"},
+				AvoidWhen:    []string{"需要新建分组时使用 chat category create"},
+				Examples:     []string{"dws chat category rename --category-id 123 --title \"新名称\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "category-id", Property: "categoryId", Required: boolPtr(true)},
+				{Name: "title", Property: "title", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	chatCategoryAddConvCmd := &cobra.Command{
 		Use:   "add-conv",
@@ -4002,6 +4428,39 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatCategoryAddConvCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "add_conv_to_categories",
+				CanonicalPath:  "chat." + "add_conv_to_categories",
+				CLIPath:        "chat category add-conv",
+				PrimaryCLIPath: "chat category add-conv",
+			},
+			Description: "将会话加入一个或多个自定义会话分组",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "add_conv_to_categories"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将会话加入一个或多个自定义会话分组",
+				UseWhen:      []string{"已有会话 openConversationId 和目标 categoryId，需要把会话归入分组时"},
+				AvoidWhen:    []string{"从分组移除会话时使用 chat category remove-conv"},
+				Examples:     []string{"dws chat category add-conv --group <openConversationId> --category-ids 123,456"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "category-ids", Property: "categoryIds", Required: boolPtr(true), InterfaceType: "array"},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	chatCategoryRemoveConvCmd := &cobra.Command{
 		Use:   "remove-conv",
@@ -4028,6 +4487,39 @@ func newChatCommand() *cobra.Command {
 			})
 		},
 	}
+	DeclareLeafMetadata(chatCategoryRemoveConvCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "remove_conv_from_categories",
+				CanonicalPath:  "chat." + "remove_conv_from_categories",
+				CLIPath:        "chat category remove-conv",
+				PrimaryCLIPath: "chat category remove-conv",
+			},
+			Description: "将会话从一个或多个自定义会话分组移出",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "remove_conv_from_categories"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将会话从一个或多个自定义会话分组移出",
+				UseWhen:      []string{"已有会话 openConversationId 和 categoryId，需要取消会话分组归属时"},
+				AvoidWhen:    []string{"向分组加入会话时使用 chat category add-conv"},
+				Examples:     []string{"dws chat category remove-conv --group <openConversationId> --category-ids 123,456"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "category-ids", Property: "categoryIds", Required: boolPtr(true), InterfaceType: "array"},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	chatCategoryListByConvCmd := &cobra.Command{
 		Use:   "list-by-conv",
@@ -5294,13 +5786,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatMessageReplyCmd := &cobra.Command{
 		Use:   "reply",
 		Short: "引用回复消息（支持单聊/群聊）",
-		Long: `以当前用户身份引用某条消息并回复。需要指定会话 ID、被引用消息 ID、原消息发送者 openDingTalkId，以及回复内容。
+		Long: `以当前用户身份引用某条消息并回复。需要指定会话 ID、被引用消息 ID、原消息发送者 openDingTalkId，以及回复内容。群聊回复可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人；正文中的裸 @openDingTalkId 会自动规范化为 <@openDingTalkId>，缺少对应成员或 <@all> 占位符时会自动补齐。
 
 如何获取 openConversationId（如果上层已有则直接使用，不必再查）：
   - 群聊：dws chat search --query "群名"
   - 单聊：dws chat conversation-info --open-dingtalk-id <openDingTalkId>
           （人员信息可通过 dws contact user search --keyword "姓名" --format json 获取）`,
-		Example: `  dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text "收到，马上处理"`,
+		Example: `  dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text "收到，马上处理"
+  dws chat message reply --conversation-id <openConversationId> --ref-msg-id <openMessageId> --ref-sender <openDingTalkId> --text "请看一下" --at-open-dingtalk-ids <mentionedOpenDingTalkId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "conversation-id", "ref-msg-id", "ref-sender", "text"); err != nil {
 				return err
@@ -5313,13 +5806,6 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				}
 				refSender = resolved
 			}
-			replyContent := map[string]string{
-				"referenceOpenMessageId":   mustGetFlag(cmd, "ref-msg-id"),
-				"srcMsgSendOpenDingTalkId": refSender,
-				"replyMsgType":             "text",
-				"content":                  mustGetFlag(cmd, "text"),
-			}
-			contentJSON, _ := marshalJSONRaw(replyContent)
 			clawType := ""
 			aiTag, _ := cmd.Flags().GetBool("ai-tag")
 			if aiTag {
@@ -5328,9 +5814,25 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			toolArgs := map[string]any{
 				"openConversationId": mustGetFlag(cmd, "conversation-id"),
 				"msgType":            "reply",
-				"content":            string(contentJSON),
 				"clawType":           clawType,
 			}
+			atAll, _ := cmd.Flags().GetBool("at-all")
+			atOpenIDs := mustGetFlag(cmd, "at-open-dingtalk-ids")
+			replyText := applyCurrentUserGroupMentions(
+				toolArgs,
+				mustGetFlag(cmd, "text"),
+				atOpenIDs,
+				atAll,
+			)
+			replyText = addMissingCurrentUserMentionPlaceholders(replyText, atOpenIDs)
+			replyContent := map[string]string{
+				"referenceOpenMessageId":   mustGetFlag(cmd, "ref-msg-id"),
+				"srcMsgSendOpenDingTalkId": refSender,
+				"replyMsgType":             "text",
+				"content":                  replyText,
+			}
+			contentJSON, _ := marshalJSONRaw(replyContent)
+			toolArgs["content"] = string(contentJSON)
 			if v, _ := cmd.Flags().GetString("uuid"); v != "" {
 				toolArgs["uuid"] = v
 			}
@@ -5364,6 +5866,8 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "ai-tag", Property: "clawType", InterfaceType: "string"},
+				{Name: "at-all", Property: "atAll", Required: boolPtr(false), InterfaceType: "boolean"},
+				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array"},
 				{Name: "conversation-id", Property: "openConversationId"},
 			},
 		},
@@ -5378,6 +5882,8 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	_ = chatMessageReplyCmd.MarkFlagRequired("text")
 	chatMessageReplyCmd.Flags().String("uuid", "", "幂等键（可选）")
 	chatMessageReplyCmd.Flags().Bool("ai-tag", true, "消息是否带 AI 发送角标（默认 true）")
+	chatMessageReplyCmd.Flags().Bool("at-all", false, "@所有人（仅群聊时生效；正文缺少 <@all> 时自动补齐）")
+	chatMessageReplyCmd.Flags().String("at-open-dingtalk-ids", "", "@指定成员的 openDingTalkId 列表，逗号分隔（仅群聊时生效；正文缺少对应 <@id> 时自动补齐，裸 @id 自动规范化）")
 	cli.AttachRuntimeSchema(chatMessageReplyCmd, "chat", "reply_personal_message", "hardcoded:chat")
 
 	// ── message forward: 转发单条消息 ────────────────────────
@@ -6261,8 +6767,12 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
 				return err
 			}
+			groupID, err := resolveNativeChatTarget(mustGetFlag(cmd, "group"))
+			if err != nil {
+				return err
+			}
 			return callMCPToolOnServer("bot", "list_group_bots", map[string]any{
-				"openConversationId": mustGetFlag(cmd, "group"),
+				"openConversationId": groupID,
 			})
 		},
 	}
@@ -6296,7 +6806,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			},
 		},
 	})
-	chatGroupBotsCmd.Flags().String("group", "", "群聊 openConversationId (必填)")
+	chatGroupBotsCmd.Flags().String("group", "", "群聊 openConversationId 或需唯一解析的群名 (必填)")
 	_ = chatGroupBotsCmd.MarkFlagRequired("group")
 
 	chatGroupMembersRemoveBotCmd := &cobra.Command{
@@ -6432,7 +6942,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		Use:   "dismiss",
 		Short: "解散群聊",
 		Long:  `解散指定群聊。该操作不可逆，需要群主权限；必须先获得用户确认，再追加 --yes 执行。`,
-		Example: `  dws chat group dismiss --group <openConversationId> --yes
+		Example: `  dws chat group dismiss --group <openConversationId>
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
@@ -6960,16 +7470,16 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 首次请求可省略分页参数，CLI 会按 Open 服务契约传 cursor=0、size="20"。
 返回 hasMore=true 时，将 nextCursor 作为下一次的 --cursor。`,
 		Example: `  dws chat message list-favorites
-  dws chat message list-favorites --size 50
-  dws chat message list-favorites --cursor 20 --size 20`,
+	  dws chat message list-favorites --size 30
+	  dws chat message list-favorites --cursor 20 --size 20`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cursor, _ := cmd.Flags().GetInt64("cursor")
 			if cursor < 0 {
 				return apperrors.NewValidation("--cursor must be greater than or equal to 0")
 			}
 			size, _ := cmd.Flags().GetInt("size")
-			if size < 1 || size > 100 {
-				return apperrors.NewValidation("--size must be between 1 and 100")
+			if size < 1 || size > chatFavoritesMaxPageSize {
+				return apperrors.NewValidation("--size must be between 1 and 30")
 			}
 			return callMCPToolOnServer("im", "list_message_favorites", map[string]any{
 				"cursor": cursor,
@@ -7008,7 +7518,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		},
 	})
 	chatMessageListFavoritesCmd.Flags().Int64("cursor", 0, "数字分页游标（默认 0；翻页时传上次返回的 nextCursor）")
-	chatMessageListFavoritesCmd.Flags().Int("size", 20, "一次拉取的收藏数量（默认 20，范围 1-100）")
+	chatMessageListFavoritesCmd.Flags().Int("size", 20, "一次拉取的收藏数量（默认 20，范围 1-30）")
 
 	// ── group list-my-groups: 拉取我创建/管理的群 ──────────────
 
@@ -7096,6 +7606,37 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	}
 	chatGroupListAllCmd.Flags().Int("limit", 100, "每页返回数量（默认 100，最大 200）")
 	chatGroupListAllCmd.Flags().String("cursor", "", "分页游标（首次不传，翻页传返回的 nextCursor）")
+	DeclareLeafMetadata(chatGroupListAllCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_my_groups_pagination",
+				CanonicalPath:  "chat.list_my_groups_pagination",
+				CLIPath:        "chat group list-all",
+				PrimaryCLIPath: "chat group list-all",
+			},
+			Description: "分页获取当前用户加入的所有群聊列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_my_groups_pagination"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "分页获取当前用户加入的所有群聊列表",
+				UseWhen:      []string{"需要完整翻页盘点当前用户加入的所有群聊时"},
+				AvoidWhen:    []string{"只按群主/管理员角色列群时使用 chat group list-my-groups"},
+				Examples:     []string{"dws chat group list-all --limit 100"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "cursor", Required: boolPtr(false)},
+				{Name: "limit", Property: "limit", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	// ── group list-join-validations: 分页拉取入群验证记录 ─────────
 
@@ -7120,6 +7661,37 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	}
 	chatGroupListJoinValidationsCmd.Flags().Int("limit", 20, "单页数量（默认 20，最大 50）")
 	chatGroupListJoinValidationsCmd.Flags().String("cursor", "", "分页游标（首次不传，翻页传返回的 nextCursor）")
+	DeclareLeafMetadata(chatGroupListJoinValidationsCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_apply_join_group_records",
+				CanonicalPath:  "chat.list_apply_join_group_records",
+				CLIPath:        "chat group list-join-validations",
+				PrimaryCLIPath: "chat group list-join-validations",
+			},
+			Description: "分页拉取当前用户相关的入群验证记录",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_apply_join_group_records"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "分页拉取当前用户相关的入群验证记录",
+				UseWhen:      []string{"需要查看待处理、被拒绝或已处理的入群申请记录时"},
+				AvoidWhen:    []string{"需要审批某条记录时使用 chat group audit-join-validation"},
+				Examples:     []string{"dws chat group list-join-validations --limit 20"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "cursor", Required: boolPtr(false)},
+				{Name: "limit", Property: "limit", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	// ── group audit-join-validation: 审批入群验证 ─────────────────────────
 
@@ -7169,6 +7741,41 @@ status 可选值:
 	chatGroupAuditJoinValidationCmd.Flags().String("inviter", "", "邀请人 userId (必填)")
 	_ = chatGroupAuditJoinValidationCmd.MarkFlagRequired("inviter")
 	chatGroupAuditJoinValidationCmd.Flags().String("description", "", "审批说明（可选）")
+	DeclareLeafMetadata(chatGroupAuditJoinValidationCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "audit_join_group",
+				CanonicalPath:  "chat.audit_join_group",
+				CLIPath:        "chat group audit-join-validation",
+				PrimaryCLIPath: "chat group audit-join-validation",
+			},
+			Description: "审批入群验证记录",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "audit_join_group"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "审批入群验证记录",
+				UseWhen:      []string{"需要对已知入群申请记录执行通过或删除审批动作时"},
+				AvoidWhen:    []string{"还没有 record-id 时先用 chat group list-join-validations 查询"},
+				Examples:     []string{"dws chat group audit-join-validation --group <openConversationId> --record-id 123456 --applicant <userId> --inviter <userId> --status AuditApprove"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "applicant", Property: "applicantUid", Required: boolPtr(true)},
+				{Name: "description", Property: "auditDescription", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "inviter", Property: "inviterUid", Required: boolPtr(true)},
+				{Name: "record-id", Property: "applyRecordId", Required: boolPtr(true), InterfaceType: "integer"},
+				{Name: "status", Property: "status", Required: boolPtr(true), Enum: []string{"AuditApprove", "AuditDelete", "AuditIgnore", "AuditRefuse", "AuditBlock"}},
+			},
+		},
+	})
 
 	// ── mark-unread: 标记会话为未读 ───────────────────────────
 
@@ -7197,6 +7804,38 @@ status 可选值:
 	_ = chatMarkUnreadCmd.Flags().MarkHidden("id")
 	chatMarkUnreadCmd.Flags().String("chat", "", "--conversation-id 的别名")
 	_ = chatMarkUnreadCmd.Flags().MarkHidden("chat")
+	DeclareLeafMetadata(chatMarkUnreadCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "mark_conversation_unread",
+				CanonicalPath:  "chat." + "mark_conversation_unread",
+				CLIPath:        "chat mark-unread",
+				PrimaryCLIPath: "chat mark-unread",
+			},
+			Description: "将指定会话标记为未读",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "mark_conversation_unread"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将指定会话标记为未读",
+				UseWhen:      []string{"用户明确要把某个群聊或单聊标记为未读时"},
+				AvoidWhen:    []string{"需要标记某条消息及之前消息已读时使用 chat mark-read"},
+				Examples:     []string{"dws chat mark-unread --conversation-id <openConversationId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	// ── clear-red-point: 清除会话红点 ──────────────────────────
 
@@ -7225,6 +7864,38 @@ status 可选值:
 	_ = chatClearRedPointCmd.Flags().MarkHidden("id")
 	chatClearRedPointCmd.Flags().String("chat", "", "--conversation-id 的别名")
 	_ = chatClearRedPointCmd.Flags().MarkHidden("chat")
+	DeclareLeafMetadata(chatClearRedPointCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "clear_conversation_red_point",
+				CanonicalPath:  "chat." + "clear_conversation_red_point",
+				CLIPath:        "chat clear-red-point",
+				PrimaryCLIPath: "chat clear-red-point",
+			},
+			Description: "清除指定会话未读红点",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "clear_conversation_red_point"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "清除指定会话未读红点",
+				UseWhen:      []string{"用户只想清掉某个会话的未读红点时"},
+				AvoidWhen:    []string{"需要清除所有会话红点时使用 chat clear-all-red-point"},
+				Examples:     []string{"dws chat clear-red-point --conversation-id <openConversationId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	// ── clear-all-red-point: 红点清零（全部已读） ─────────────────
 
@@ -7237,6 +7908,33 @@ status 可选值:
 			return callMCPToolOnServer("im", "clear_all_red_point", map[string]any{})
 		},
 	}
+	DeclareLeafMetadata(chatClearAllRedPointCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "clear_all_red_point",
+				CanonicalPath:  "chat." + "clear_all_red_point",
+				CLIPath:        "chat clear-all-red-point",
+				PrimaryCLIPath: "chat clear-all-red-point",
+			},
+			Description: "清除当前用户所有会话未读红点",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "clear_all_red_point"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "清除当前用户所有会话未读红点",
+				UseWhen:      []string{"用户明确要求一键清除所有会话未读红点或全部已读时"},
+				AvoidWhen:    []string{"只处理单个会话红点时使用 chat clear-red-point"},
+				Examples:     []string{"dws chat clear-all-red-point"},
+			},
+		},
+	})
 
 	// ── list-all-conversations: 分页获取全部会话 ────────────────────
 
@@ -7270,13 +7968,45 @@ status 可选值:
 	chatListAllConversationsCmd.Flags().Int("limit", 100, "每页数量（1-100，默认 100）")
 	chatListAllConversationsCmd.Flags().Int64("cursor", 0, "分页游标（首次不传或传 0，翻页传 nextCursor）")
 	chatListAllConversationsCmd.Flags().Bool("exclude-muted", false, "是否排除已免打扰会话（默认 false）")
+	DeclareLeafMetadata(chatListAllConversationsCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_all_conversations",
+				CanonicalPath:  "chat.list_all_conversations",
+				CLIPath:        "chat list-all-conversations",
+				PrimaryCLIPath: "chat list-all-conversations",
+			},
+			Description: "分页获取当前用户的全部会话列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_all_conversations"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "分页获取当前用户的全部会话列表",
+				UseWhen:      []string{"需要枚举当前用户全部单聊和群聊会话并按 cursor 翻页时"},
+				AvoidWhen:    []string{"只搜索群聊时使用 chat search；只查某个会话详情时使用 chat conversation-info"},
+				Examples:     []string{"dws chat list-all-conversations --limit 100"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "cursor", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "exclude-muted", Property: "excludeMuted", Required: boolPtr(false), InterfaceType: "boolean"},
+				{Name: "limit", Property: "limit", Required: boolPtr(false), InterfaceType: "integer"},
+			},
+		},
+	})
 
 	// ── clear-messages: 清空会话聊天记录 ────────────────────────────
 
 	chatClearMessagesCmd := &cobra.Command{
 		Use:   "clear-messages",
 		Short: "清空当前用户指定会话的聊天记录",
-		Long: `清空当前用户在指定会话中的聊天记录。仅清空当前用户视角的消息，不影响其他成员。
+		Long: `清空当前用户在指定会话中的聊天记录。仅清空当前用户视角的消息，不影响其他成员。该操作不可逆；必须先获得用户确认，再追加 --yes 执行。
 
 如何获取 openConversationId（如果上层已有则直接使用，不必再查）：
   - 群聊：dws chat search --query "群名"
@@ -7288,6 +8018,14 @@ status 可选值:
 			if convID == "" {
 				return fmt.Errorf("flag --conversation-id is required\n  hint: dws chat clear-messages --conversation-id <openConversationId>")
 			}
+			if !commandBoolFlag(cmd, "yes") {
+				return apperrors.NewValidation(
+					"清空会话聊天记录不可逆；获得用户确认后加 --yes 执行",
+					apperrors.WithReason("confirmation_required"),
+					apperrors.WithHint("先确认目标会话及影响范围；用户明确同意后以相同参数追加 --yes"),
+					apperrors.WithActions("确认目标会话", "获得用户确认后使用 --yes 执行"),
+				)
+			}
 			return callMCPToolOnServer("im", "clear_conversation_messages", map[string]any{
 				"openConversationId": convID,
 			})
@@ -7298,6 +8036,38 @@ status 可选值:
 	_ = chatClearMessagesCmd.Flags().MarkHidden("id")
 	chatClearMessagesCmd.Flags().String("chat", "", "--conversation-id 的别名")
 	_ = chatClearMessagesCmd.Flags().MarkHidden("chat")
+	DeclareLeafMetadata(chatClearMessagesCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "destructive", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "clear_conversation_messages",
+				CanonicalPath:  "chat.clear_conversation_messages",
+				CLIPath:        "chat clear-messages",
+				PrimaryCLIPath: "chat clear-messages",
+			},
+			Description: "清空当前用户指定会话中的聊天记录",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "clear_conversation_messages"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "清空当前用户指定会话中的聊天记录",
+				UseWhen:      []string{"用户明确要求清空某个会话在当前用户视角的聊天记录，并已确认不可逆影响时"},
+				AvoidWhen:    []string{"只清除未读红点时使用 chat clear-red-point 或 chat clear-all-red-point"},
+				Examples:     []string{"dws chat clear-messages --conversation-id <openConversationId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	// ── mark-read: 标记消息已读 ────────────────────────────────────
 
@@ -7334,6 +8104,39 @@ status 可选值:
 	_ = chatMarkReadCmd.Flags().MarkHidden("chat")
 	chatMarkReadCmd.Flags().String("message-id", "", "消息 openMessageId (必填)")
 	_ = chatMarkReadCmd.MarkFlagRequired("message-id")
+	DeclareLeafMetadata(chatMarkReadCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "mark_message_read",
+				CanonicalPath:  "chat." + "mark_message_read",
+				CLIPath:        "chat mark-read",
+				PrimaryCLIPath: "chat mark-read",
+			},
+			Description: "将指定消息及之前消息标记为已读",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "mark_message_read"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将指定消息及之前消息标记为已读",
+				UseWhen:      []string{"已有会话和消息 ID，需要把该消息及之前消息标记已读时"},
+				AvoidWhen:    []string{"只标记会话为未读时使用 chat mark-unread"},
+				Examples:     []string{"dws chat mark-read --conversation-id <openConversationId> --message-id <openMessageId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "message-id", Property: "openMessageId", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	// ── set-top-msg: 置顶某条消息 ────────────────────────────────
 
@@ -7360,6 +8163,37 @@ status 可选值:
 	_ = chatMessageSetTopMsgCmd.MarkFlagRequired("open-conversation-id")
 	chatMessageSetTopMsgCmd.Flags().String("msg-id", "", "消息 openMessageId (必填)")
 	_ = chatMessageSetTopMsgCmd.MarkFlagRequired("msg-id")
+	DeclareLeafMetadata(chatMessageSetTopMsgCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "set_top_message",
+				CanonicalPath:  "chat." + "set_top_message",
+				CLIPath:        "chat message set-top-msg",
+				PrimaryCLIPath: "chat message set-top-msg",
+			},
+			Description: "将指定会话消息设置为置顶",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "set_top_message"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将指定会话消息设置为置顶",
+				UseWhen:      []string{"需要把群聊或单聊中的某条消息置顶展示时"},
+				AvoidWhen:    []string{"取消消息置顶时使用 chat message unset-top-msg"},
+				Examples:     []string{"dws chat message set-top-msg --open-conversation-id <openConversationId> --msg-id <openMessageId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "msg-id", Property: "openMessageId", Required: boolPtr(true)},
+				{Name: "open-conversation-id", Property: "openConversationId", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	// ── unset-top-msg: 取消置顶某条消息 ─────────────────────────
 
@@ -7386,6 +8220,37 @@ status 可选值:
 	_ = chatMessageUnsetTopMsgCmd.MarkFlagRequired("open-conversation-id")
 	chatMessageUnsetTopMsgCmd.Flags().String("msg-id", "", "消息 openMessageId (必填)")
 	_ = chatMessageUnsetTopMsgCmd.MarkFlagRequired("msg-id")
+	DeclareLeafMetadata(chatMessageUnsetTopMsgCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "unset_top_message",
+				CanonicalPath:  "chat." + "unset_top_message",
+				CLIPath:        "chat message unset-top-msg",
+				PrimaryCLIPath: "chat message unset-top-msg",
+			},
+			Description: "取消指定会话消息的置顶",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "unset_top_message"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "取消指定会话消息的置顶",
+				UseWhen:      []string{"需要取消某条消息的置顶状态时"},
+				AvoidWhen:    []string{"设置消息置顶时使用 chat message set-top-msg"},
+				Examples:     []string{"dws chat message unset-top-msg --open-conversation-id <openConversationId> --msg-id <openMessageId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "msg-id", Property: "openMessageId", Required: boolPtr(true)},
+				{Name: "open-conversation-id", Property: "openConversationId", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	// group 与 members 的子命令在下方（chatGroupCmd.AddCommand / chatGroupMembersCmd.AddCommand
 	// 的完整列表处）统一注册；此处不再重复 AddCommand，否则 --help 会重复列出。
@@ -7470,6 +8335,37 @@ status 可选值:
 	_ = chatGroupUpdateAliasCmd.MarkFlagRequired("group")
 	chatGroupUpdateAliasCmd.Flags().String("alias-title", "", "群备注标题 (必填)")
 	_ = chatGroupUpdateAliasCmd.MarkFlagRequired("alias-title")
+	DeclareLeafMetadata(chatGroupUpdateAliasCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_user_group_alias",
+				CanonicalPath:  "chat.update_user_group_alias",
+				CLIPath:        "chat group update-alias",
+				PrimaryCLIPath: "chat group update-alias",
+			},
+			Description: "设置当前用户可见的群备注名称",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_user_group_alias"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "设置当前用户可见的群备注名称",
+				UseWhen:      []string{"用户要求给指定群设置仅自己可见的备注名时"},
+				AvoidWhen:    []string{"修改群公开名称应使用 chat group rename"},
+				Examples:     []string{"dws chat group update-alias --group <openConversationId> --alias-title \"项目A群\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "alias-title", Property: "aliasTitle", Required: boolPtr(true)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	// ── hide: 会话列表中隐藏会话 ────────────────────────────────
 
@@ -7496,6 +8392,38 @@ status 可选值:
 	_ = chatHideCmd.Flags().MarkHidden("id")
 	chatHideCmd.Flags().String("chat", "", "--conversation-id 的别名")
 	_ = chatHideCmd.Flags().MarkHidden("chat")
+	DeclareLeafMetadata(chatHideCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "hide_conversation",
+				CanonicalPath:  "chat.hide_conversation",
+				CLIPath:        "chat hide",
+				PrimaryCLIPath: "chat hide",
+			},
+			Description: "在会话列表中隐藏指定会话",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "hide_conversation"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "在会话列表中隐藏指定会话",
+				UseWhen:      []string{"用户要求从当前会话列表隐藏某个单聊或群聊时"},
+				AvoidWhen:    []string{"只想关闭通知提醒时使用 chat mute 或 chat mute-at-all"},
+				Examples:     []string{"dws chat hide --conversation-id <openConversationId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	// ── mute-at-all: 关闭/开启 @所有人通知 ─────────────────────
 
@@ -7524,6 +8452,39 @@ status 可选值:
 	chatMuteAtAllCmd.Flags().String("chat", "", "--conversation-id 的别名")
 	_ = chatMuteAtAllCmd.Flags().MarkHidden("chat")
 	chatMuteAtAllCmd.Flags().Bool("off", false, "恢复接收 @所有人通知（不传则关闭通知）")
+	DeclareLeafMetadata(chatMuteAtAllCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_at_all_notification_off",
+				CanonicalPath:  "chat.update_at_all_notification_off",
+				CLIPath:        "chat mute-at-all",
+				PrimaryCLIPath: "chat mute-at-all",
+			},
+			Description: "关闭或恢复会话中的 @所有人消息提醒",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_at_all_notification_off"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "关闭或恢复会话中的 @所有人消息提醒",
+				UseWhen:      []string{"用户要求关闭或恢复指定会话的 @所有人提醒时"},
+				AvoidWhen:    []string{"关闭普通消息免打扰使用 chat mute；关闭红包提醒使用 chat mute-red-envelope"},
+				Examples:     []string{"dws chat mute-at-all --conversation-id <openConversationId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "off", Property: "mute", Required: boolPtr(false), InterfaceType: "boolean"},
+			},
+		},
+	})
 
 	// ── mute-red-envelope: 关闭/开启红包通知 ────────────────────
 
@@ -7552,6 +8513,39 @@ status 可选值:
 	chatMuteRedEnvelopeCmd.Flags().String("chat", "", "--conversation-id 的别名")
 	_ = chatMuteRedEnvelopeCmd.Flags().MarkHidden("chat")
 	chatMuteRedEnvelopeCmd.Flags().Bool("off", false, "恢复接收红包通知（不传则关闭通知）")
+	DeclareLeafMetadata(chatMuteRedEnvelopeCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "update_red_env_notification_off",
+				CanonicalPath:  "chat.update_red_env_notification_off",
+				CLIPath:        "chat mute-red-envelope",
+				PrimaryCLIPath: "chat mute-red-envelope",
+			},
+			Description: "关闭或恢复会话中的红包消息提醒",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_red_env_notification_off"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "关闭或恢复会话中的红包消息提醒",
+				UseWhen:      []string{"用户要求关闭或恢复指定会话的红包提醒时"},
+				AvoidWhen:    []string{"关闭 @所有人提醒使用 chat mute-at-all；关闭普通消息免打扰使用 chat mute"},
+				Examples:     []string{"dws chat mute-red-envelope --conversation-id <openConversationId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "off", Property: "mute", Required: boolPtr(false), InterfaceType: "boolean"},
+			},
+		},
+	})
 
 	// ── group members list-by-ids: 批量查看群成员详情 ───────────
 
@@ -7577,6 +8571,37 @@ status 可选值:
 	_ = chatGroupMembersListByIdsCmd.MarkFlagRequired("id")
 	chatGroupMembersListByIdsCmd.Flags().String("users", "", "成员 openDingTalkId 列表，逗号分隔 (必填)")
 	_ = chatGroupMembersListByIdsCmd.MarkFlagRequired("users")
+	DeclareLeafMetadata(chatGroupMembersListByIdsCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_group_member_by_ids",
+				CanonicalPath:  "chat.list_group_member_by_ids",
+				CLIPath:        "chat group members list-by-ids",
+				PrimaryCLIPath: "chat group members list-by-ids",
+			},
+			Description: "按成员 openDingTalkId 批量查询群成员详情",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_group_member_by_ids"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "按成员 openDingTalkId 批量查询群成员详情",
+				UseWhen:      []string{"已知群 ID 和一组成员 openDingTalkId，需要批量查看这些成员资料时"},
+				AvoidWhen:    []string{"需要列出群内全部成员时使用 chat group members list"},
+				Examples:     []string{"dws chat group members list-by-ids --id <openConversationId> --users openDingTalkId1,openDingTalkId2"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "id", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "users", Property: "memberOpenDingTalkIds", Required: boolPtr(true), InterfaceType: "array"},
+			},
+		},
+	})
 
 	// ── group notice: 群公告管理 ────────────────────────────────
 	chatGroupNoticeCmd := &cobra.Command{Use: "notice", Short: "群公告管理", RunE: groupRunE}
@@ -7619,6 +8644,40 @@ status 可选值:
 	chatGroupNoticeCreateCmd.Flags().Bool("sticky", false, "是否吊顶置顶（默认 false）")
 	chatGroupNoticeCreateCmd.Flags().Bool("send-ding", false, "是否发 DING 提醒（默认 false）")
 	chatGroupNoticeCreateCmd.Flags().String("run-at", "", "定时发布时间 ISO-8601（如 2026-07-03T09:00:00+08:00，传入则定时发布）")
+	DeclareLeafMetadata(chatGroupNoticeCreateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "create_group_notice",
+				CanonicalPath:  "chat." + "create_group_notice",
+				CLIPath:        "chat group notice create",
+				PrimaryCLIPath: "chat group notice create",
+			},
+			Description: "在指定群聊中发布群公告",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "create_group_notice"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "在指定群聊中发布群公告",
+				UseWhen:      []string{"需要在群聊里发布 Markdown 群公告，可选吊顶、DING 或定时发布时"},
+				AvoidWhen:    []string{"修改已有群公告时使用 chat group notice edit"},
+				Examples:     []string{"dws chat group notice create --group <openConversationId> --content \"今晚维护\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content", Property: "content", Required: boolPtr(true)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "run-at", Property: "runAtText", Required: boolPtr(false)},
+				{Name: "send-ding", Property: "sendDing", Required: boolPtr(false)},
+				{Name: "sticky", Property: "sticky", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	chatGroupNoticeEditCmd := &cobra.Command{
 		Use:   "edit",
@@ -7653,6 +8712,40 @@ status 可选值:
 	_ = chatGroupNoticeEditCmd.MarkFlagRequired("content")
 	chatGroupNoticeEditCmd.Flags().Bool("sticky", false, "是否吊顶置顶（不传按 false 处理）")
 	chatGroupNoticeEditCmd.Flags().Bool("send-ding", false, "是否发 DING 提醒（默认 false）")
+	DeclareLeafMetadata(chatGroupNoticeEditCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "edit_group_notice",
+				CanonicalPath:  "chat." + "edit_group_notice",
+				CLIPath:        "chat group notice edit",
+				PrimaryCLIPath: "chat group notice edit",
+			},
+			Description: "修改指定群聊中的群公告",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "edit_group_notice"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "修改指定群聊中的群公告",
+				UseWhen:      []string{"已有公告 dataId，需要替换群公告正文或调整吊顶/DING 状态时"},
+				AvoidWhen:    []string{"发布新公告时使用 chat group notice create"},
+				Examples:     []string{"dws chat group notice edit --group <openConversationId> --notice-id <dataId> --content \"更新后的公告\""},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "content", Property: "content", Required: boolPtr(true)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "notice-id", Property: "dataId", Required: boolPtr(true)},
+				{Name: "send-ding", Property: "sendDing", Required: boolPtr(false)},
+				{Name: "sticky", Property: "sticky", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	chatGroupNoticeGetCmd := &cobra.Command{
 		Use:   "get",
@@ -7674,6 +8767,37 @@ status 可选值:
 	_ = chatGroupNoticeGetCmd.MarkFlagRequired("group")
 	chatGroupNoticeGetCmd.Flags().String("notice-id", "", "群公告 dataId (必填)")
 	_ = chatGroupNoticeGetCmd.MarkFlagRequired("notice-id")
+	DeclareLeafMetadata(chatGroupNoticeGetCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "get_group_notice",
+				CanonicalPath:  "chat." + "get_group_notice",
+				CLIPath:        "chat group notice get",
+				PrimaryCLIPath: "chat group notice get",
+			},
+			Description: "查看指定群公告详情",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "get_group_notice"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "查看指定群公告详情",
+				UseWhen:      []string{"已有群公告 dataId，需要查看公告详情、状态或互动统计时"},
+				AvoidWhen:    []string{"不知道公告 ID 时先使用 chat group notice list"},
+				Examples:     []string{"dws chat group notice get --group <openConversationId> --notice-id <dataId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "notice-id", Property: "dataId", Required: boolPtr(true)},
+			},
+		},
+	})
 
 	chatGroupNoticeListCmd := &cobra.Command{
 		Use:   "list",
@@ -7708,6 +8832,39 @@ status 可选值:
 	chatGroupNoticeListCmd.Flags().Int("limit", 10, "每页返回数量（默认 10，最大 100）")
 	chatGroupNoticeListCmd.Flags().String("cursor", "", "分页游标（首次不传，翻页传返回的 nextPageCursor）")
 	chatGroupNoticeListCmd.Flags().Bool("scheduled", false, "是否查询定时公告列表（默认 false，查询已发布公告）")
+	DeclareLeafMetadata(chatGroupNoticeListCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_group_notices",
+				CanonicalPath:  "chat." + "list_group_notices",
+				CLIPath:        "chat group notice list",
+				PrimaryCLIPath: "chat group notice list",
+			},
+			Description: "分页查看指定群聊的群公告列表",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_group_notices"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "分页查看指定群聊的群公告列表",
+				UseWhen:      []string{"需要列出群公告、查找公告 dataId 或翻页查看定时公告时"},
+				AvoidWhen:    []string{"已知 dataId 并只看详情时使用 chat group notice get"},
+				Examples:     []string{"dws chat group notice list --group <openConversationId> --limit 20"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "cursor", Property: "cursor", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "limit", Property: "limit", Required: boolPtr(false)},
+				{Name: "scheduled", Property: "scheduled", Required: boolPtr(false)},
+			},
+		},
+	})
 	chatGroupNoticeCmd.AddCommand(chatGroupNoticeCreateCmd, chatGroupNoticeEditCmd, chatGroupNoticeGetCmd, chatGroupNoticeListCmd)
 
 	chatGroupShareInviteCmd := &cobra.Command{
@@ -7754,6 +8911,40 @@ status 可选值:
 	chatGroupShareInviteCmd.Flags().String("receiver", "", "接收分享消息的单聊用户 openDingTalkId（与 --target 二选一）")
 	chatGroupShareInviteCmd.Flags().Int64("expires-seconds", 0, "链接有效期（秒），0 表示永久有效，不传使用服务端默认值")
 	chatGroupShareInviteCmd.Flags().String("uuid", "", "消息幂等键（可选）")
+	DeclareLeafMetadata(chatGroupShareInviteCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "share_group_invite_url",
+				CanonicalPath:  "chat.share_group_invite_url",
+				CLIPath:        "chat group share-invite",
+				PrimaryCLIPath: "chat group share-invite",
+			},
+			Description: "将指定群聊的邀请链接分享到会话或单聊用户",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "share_group_invite_url"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将指定群聊的邀请链接分享到会话或单聊用户",
+				UseWhen:      []string{"用户要求把某个群的邀请链接发送给另一个会话或指定单聊用户时"},
+				AvoidWhen:    []string{"只是获取群邀请链接时使用 chat group invite-url"},
+				Examples:     []string{"dws chat group share-invite --source <openConversationId> --target <targetOpenConversationId>"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "expires-seconds", Property: "expiresSeconds", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "receiver", Property: "receiverOpenDingTalkId", Required: boolPtr(false)},
+				{Name: "source", Property: "sourceOpenConversationId", Required: boolPtr(true)},
+				{Name: "target", Property: "targetOpenConversationId", Required: boolPtr(false)},
+				{Name: "uuid", Property: "uuid", Required: boolPtr(false)},
+			},
+		},
+	})
 
 	chatGroupUpgradeToExternalCmd := &cobra.Command{
 		Use:   "upgrade-to-external",
@@ -7763,8 +8954,8 @@ status 可选值:
 本命令升级已有普通群；新建外部群请使用 chat group create --type EXTERNAL。
 
 该操作不可逆，仅群主可执行。正式执行必须通过 --yes 显式确认，可先使用 --dry-run 预览。`,
-		Example: `  dws chat group upgrade-to-external --group <openConversationId> --yes
-  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --yes
+		Example: `  dws chat group upgrade-to-external --group <openConversationId> --dry-run
+  dws chat group upgrade-to-external --group <openConversationId> --extension '{"source":"dws"}' --dry-run
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "group"); err != nil {
@@ -7915,6 +9106,36 @@ status 可选值:
 	}
 	chatMessageListEmotionRepliesCmd.Flags().String("msg-ids", "", "消息 ID 列表，逗号分隔 (必填)")
 	_ = chatMessageListEmotionRepliesCmd.MarkFlagRequired("msg-ids")
+	DeclareLeafMetadata(chatMessageListEmotionRepliesCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "list_message_emotion_replies",
+				CanonicalPath:  "chat." + "list_message_emotion_replies",
+				CLIPath:        "chat message list-emotion-replies",
+				PrimaryCLIPath: "chat message list-emotion-replies",
+			},
+			Description: "批量拉取消息的表情回复和文字回复",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "list_message_emotion_replies"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "批量拉取消息的表情回复和文字回复",
+				UseWhen:      []string{"已有一批消息 ID，需要查看对应 emoji reaction 或文字表情回复时"},
+				AvoidWhen:    []string{"需要读取消息正文时使用 chat message list-by-ids 或 message list"},
+				Examples:     []string{"dws chat message list-emotion-replies --msg-ids msgId1,msgId2"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "msg-ids", Property: "openMessageIds", Required: boolPtr(true), InterfaceType: "array"},
+			},
+		},
+	})
 
 	supportedTranslateLanguages := map[string]bool{
 		"en_US": true, "zh_CN": true, "zh_TW": true, "zh_HK": true,
@@ -7954,6 +9175,37 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 	_ = chatTextTranslateCmd.MarkFlagRequired("query")
 	chatTextTranslateCmd.Flags().String("to", "en_US", "目标语言代码 (必填，默认 en_US)")
 	_ = chatTextTranslateCmd.MarkFlagRequired("to")
+	DeclareLeafMetadata(chatTextTranslateCmd, LeafSpec{
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "chat",
+				Name:           "translate",
+				CanonicalPath:  "chat." + "translate",
+				CLIPath:        "chat text translate",
+				PrimaryCLIPath: "chat text translate",
+			},
+			Description: "将指定文本翻译成目标语言",
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "translate"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "将指定文本翻译成目标语言",
+				UseWhen:      []string{"需要把一段文本翻译为指定目标语言代码时"},
+				AvoidWhen:    []string{"需要发送翻译结果到聊天时先翻译再使用消息发送命令"},
+				Examples:     []string{"dws chat text translate --query \"你好世界\" --to en_US"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "query", Property: "query", Required: boolPtr(true)},
+				{Name: "to", Property: "to", Required: boolPtr(true)},
+			},
+		},
+	})
 	chatTextCmd.AddCommand(chatTextTranslateCmd)
 
 	chatGroupCmd.AddCommand(chatGroupBotsCmd, chatGroupDismissCmd, chatGroupSetHistoryCmd, chatGroupListMyGroupsCmd, chatGroupUpdateNickCmd, chatGroupUpdateAliasCmd, chatGroupListAllCmd, chatGroupListJoinValidationsCmd, chatGroupAuditJoinValidationCmd, chatGroupNoticeCmd, chatGroupShareInviteCmd, chatGroupUpgradeToExternalCmd)
@@ -8078,12 +9330,13 @@ pl_PL, sv_SE, fi_FI, cs_CZ, ar_SA, tl_PH, he_IL, nl_NL, lo_LA, it_IT`,
 	chatCategoryCmd.AddCommand(chatCategoryCreateSmartCmd)
 	chatMessageCmd.AddCommand(chatMessageListDirectCmd, chatMessageSearchCommonCmd, chatMessageCombineForwardCmd, chatMessageForwardTopicCmd, chatMessageSetPinCmd, chatMessageUnsetPinCmd, chatMessageListPinCmd, chatMessageAddFavoriteCmd, chatMessageRemoveFavoriteCmd, chatMessageListFavoritesCmd, chatMessageSetTopMsgCmd, chatMessageUnsetTopMsgCmd, chatMessageListEmotionRepliesCmd)
 
-	root.AddCommand(chatChmodCmd, chatDataAuthCmd, chatGroupCmd, chatSearchCmd, chatSearchCommonCmd, chatMessageCmd, chatFileCmd, newChatMediaGroup(), chatBotCmd, chatMessageListTopConversationsCmd, chatConversationInfoCmd, chatCategoryCmd, chatGroupRoleCmd, chatMuteCmd, chatSetTopCmd, chatGroupMuteCmd, chatGroupMuteMemberCmd, chatHideCmd, chatMuteAtAllCmd, chatMuteRedEnvelopeCmd, chatMarkUnreadCmd, chatClearRedPointCmd, chatClearAllRedPointCmd, chatListAllConversationsCmd, chatClearMessagesCmd, chatMarkReadCmd, chatTextCmd)
+	root.AddCommand(chatChmodCmd, chatDataAuthCmd, chatGroupCmd, chatSearchCmd, chatSearchCommonCmd, chatMessageCmd, chatFileCmd, newChatMediaGroup(), chatBotCmd, chatMessageListTopConversationsCmd, chatConversationInfoCmd, chatCategoryCmd, chatGroupRoleCmd, chatMuteCmd, chatSetTopCmd, chatGroupMuteCmd, chatGroupMuteMemberCmd, chatHideCmd, chatMuteAtAllCmd, chatMuteRedEnvelopeCmd, chatMarkUnreadCmd, chatClearRedPointCmd, chatClearAllRedPointCmd, chatListAllConversationsCmd, chatClearMessagesCmd, chatMarkReadCmd, chatTextCmd, newChatToolbarCommand())
 
-	// hint: dws chat send → dws chat message send
-	root.AddCommand(hintSubCmd("send", "use: dws chat message send"))
-	// hint: dws chat history → dws chat message list
-	root.AddCommand(hintSubCmd("history", "use: dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"))
+	// Keep the v1.0.56 command surface recognizable while directing callers to
+	// the supported nested commands. The chat root's "im" alias makes these
+	// compatibility hints available through both chat and im.
+	root.AddCommand(chatCompatibilityHintSubCmd("send", "use: dws chat message send"))
+	root.AddCommand(chatCompatibilityHintSubCmd("history", "use: dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"))
 
 	return root
 }

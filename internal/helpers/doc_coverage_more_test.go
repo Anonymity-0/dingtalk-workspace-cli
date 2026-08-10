@@ -173,6 +173,24 @@ func TestCrossPlatformCoverageDocDeprecationWrappersCoverage(t *testing.T) {
 			_ = cmd.RunE(cmd, nil)
 		}
 	}
+
+	// Declaration-only Schema roots leave deps nil; wrappers must not panic.
+	deps = nil
+	for _, wrap := range []func(*cobra.Command){
+		func(cmd *cobra.Command) { wrapDocDeprecated(cmd, "drive target") },
+		func(cmd *cobra.Command) { wrapDocDeprecatedToWiki(cmd, "wiki target") },
+		func(cmd *cobra.Command) { wrapDocDeprecatedToTarget(cmd, "target") },
+	} {
+		cmd := &cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }}
+		wrap(cmd)
+		root := &cobra.Command{Use: "dws"}
+		doc := &cobra.Command{Use: "doc"}
+		root.AddCommand(doc)
+		doc.AddCommand(cmd)
+		if err := cmd.RunE(cmd, nil); err != nil {
+			t.Fatalf("nil-deps deprecation wrapper: %v", err)
+		}
+	}
 }
 
 func TestCrossPlatformCoverageRunDocUploadDownloadAndMediaCoverage(t *testing.T) {

@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // TestCrossPlatformCoverageFromShortcutMapsSharedBase verifies FromShortcut
@@ -33,7 +34,7 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 		Hidden:      true,
 		Tips:        []string{"dws chat +demo --name a"},
 		Flags: []Flag{
-			{Name: "name", Type: FlagString, Desc: "名称", Required: true, Default: "d", Enum: []string{"a", "b"}, Hidden: true},
+			{Name: "name", Shorthand: "n", Type: FlagString, Desc: "名称", Required: true, Default: "d", Enum: []string{"a", "b"}, Hidden: true},
 			{Name: "count", Type: FlagInt, Desc: "数量"},
 			{Name: "flag", Type: FlagBool, Desc: "开关"},
 			{Name: "ids", Type: FlagStringSlice, Desc: "列表"},
@@ -65,6 +66,13 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 		cs.Safety.Confirmation != "user_required" || cs.Safety.Idempotency != "unknown" {
 		t.Fatalf("adapter safety = %#v, want destructive/high/user_required/unknown", cs.Safety)
 	}
+	if got := EffectiveSafety(Shortcut{Risk: RiskWrite}); got.Effect != "write" || got.Confirmation != "user_required" {
+		t.Fatalf("legacy effective safety = %#v", got)
+	}
+	explicit := contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}
+	if got := EffectiveSafety(Shortcut{Risk: RiskHighWrite, Safety: explicit}); got != explicit {
+		t.Fatalf("explicit effective safety = %#v, want %#v", got, explicit)
+	}
 	if cs.Orchestrate == nil {
 		t.Fatal("multi-step Execute must project into Orchestrate")
 	}
@@ -85,7 +93,7 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 		}
 	}
 	name := cs.Flags[0]
-	if name.Name != "name" || !name.Required || name.Default != "d" ||
+	if name.Name != "name" || name.Shorthand != "n" || !name.Required || name.Default != "d" ||
 		!name.Hidden || name.ValidationMode != corecmd.ValidationShortcut ||
 		name.RequiredError != "缺少必填参数 --name：名称" ||
 		strings.Join(name.Enum, ",") != "a,b" {
@@ -117,6 +125,75 @@ func TestCrossPlatformCoverageFromShortcutMapsSharedBase(t *testing.T) {
 	cs.Constraints[0].Flags[0] = "mutated"
 	if s.Constraints[0].Flags[0] != "name" {
 		t.Fatal("constraint Flags slice is aliased, not copied")
+	}
+}
+
+func TestCrossPlatformCoverageFromShortcutAliasesAndPositionalAlias(t *testing.T) {
+	executed := ""
+	s := Shortcut{
+		Service:                  "chat",
+		Command:                  "+search",
+		Aliases:                  []string{"+search-group"},
+		SinglePositionalAliasFor: "query",
+		Description:              "搜索群",
+		Intent:                   "按名称搜索群",
+		Contract: corecmd.ContractDecl{
+			Description: "按名称搜索群",
+			Interface: &contract.InterfaceSpec{
+				Mode: contract.InterfaceModeComposite, Availability: contract.InterfaceAvailable, Reason: "test composite",
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "搜索群", UseWhen: []string{"按名称搜索群"}, AvoidWhen: []string{"不要用于成员搜索"}, Examples: []string{"dws chat +search --query demo"},
+			},
+			Identity: contract.ToolIdentitySpec{
+				ProductID: "chat", Name: "shortcut_search", CanonicalPath: "chat.shortcut_search", CLIPath: "chat +search", PrimaryCLIPath: "chat +search",
+			},
+		},
+		Flags:   []Flag{{Name: "query", Desc: "关键词", Required: true, Aliases: []string{"keyword"}, AliasesVisible: true}},
+		Execute: func(rt *RuntimeContext) error { executed = rt.Str("query"); return nil },
+	}
+	spec := FromShortcut(s)
+	if got := spec.Contract.Identity.Aliases; len(got) != 1 || got[0] != "chat +search-group" {
+		t.Fatalf("contract aliases = %#v", got)
+	}
+	cmd := mount(s)
+	if !cmd.HasAlias("+search-group") {
+		t.Fatalf("cobra aliases = %#v", cmd.Aliases)
+	}
+	if alias := cmd.Flags().Lookup("keyword"); alias == nil || alias.Hidden {
+		t.Fatalf("historically public flag alias = %#v, want visible", alias)
+	}
+	cmd.SetArgs([]string{"项目群"})
+	if err := cmd.Execute(); err != nil || executed != "项目群" {
+		t.Fatalf("positional execute err=%v value=%q", err, executed)
+	}
+
+	conflict := mount(s)
+	conflict.SetArgs([]string{"项目群", "--query", "另一个群"})
+	if err := conflict.Execute(); err == nil || !strings.Contains(err.Error(), "不能同时提供") {
+		t.Fatalf("positional/flag conflict err = %v", err)
+	}
+	tooMany := mount(s)
+	tooMany.SetArgs([]string{"one", "two"})
+	if err := tooMany.Execute(); err == nil {
+		t.Fatal("multiple positional aliases unexpectedly accepted")
+	}
+
+	missing := mount(Shortcut{
+		Service: "chat", Command: "+missing", Description: "missing",
+		SinglePositionalAliasFor: "query", Execute: func(*RuntimeContext) error { return nil },
+	})
+	missing.SetArgs([]string{"value"})
+	if err := missing.Execute(); err == nil || !strings.Contains(err.Error(), "is not registered") {
+		t.Fatalf("missing positional flag err = %v", err)
+	}
+	invalid := mount(Shortcut{
+		Service: "chat", Command: "+invalid", Description: "invalid",
+		SinglePositionalAliasFor: "query", Flags: []Flag{{Name: "query", Type: FlagInt}}, Execute: func(*RuntimeContext) error { return nil },
+	})
+	invalid.SetArgs([]string{"not-an-int"})
+	if err := invalid.Execute(); err == nil || !strings.Contains(err.Error(), "无法写入") {
+		t.Fatalf("invalid positional value err = %v", err)
 	}
 }
 

@@ -15,8 +15,10 @@ import (
 )
 
 type runtimeSchemaMetadataSources struct {
+	// Agent remains only for historical test seams that still construct this
+	// struct; production assembly does not overlay Agent or MCP pin onto
+	// parameters or tool text.
 	Agent agentMetadata
-	MCP   embeddedMCPMetadata
 }
 
 var (
@@ -62,10 +64,9 @@ func (resolved ResolvedSchemaBuild) CommandCount() int {
 }
 
 func pinnedRuntimeSchemaMetadataSources() runtimeSchemaMetadataSources {
-	return runtimeSchemaMetadataSources{
-		Agent: runtimeAgentMetadata(),
-		MCP:   emptyPinnedMCPMetadata(),
-	}
+	// Production pin and Agent inject are both retired; assembly is Contract /
+	// ParamDecl / Cobra only.
+	return runtimeSchemaMetadataSources{}
 }
 
 // ResolveSchemaBuild is the only assembly path from executable Cobra commands
@@ -123,7 +124,7 @@ func AssembleSchemaRegistryFromBound(bound BoundCommandRegistry) (SchemaRegistry
 
 // assembleSchemaRegistryFromBound resolves every entry through the
 // ContractFinal / ProductDecl production path. Missing declarations fail
-// closed; retired skill/MCP/agent-inject overlays are never reopened.
+// closed; retired skill/MCP-pin/agent-inject overlays are never reopened.
 func assembleSchemaRegistryFromBound(bound BoundCommandRegistry, metadata runtimeSchemaMetadataSources) (SchemaRegistry, error) {
 	entries, err := assembleCollectEntries(bound)
 	if err != nil {
@@ -197,18 +198,12 @@ func assembleProductSelection(entry runtimeSchemaEntry) (contract.SelectionSpec,
 
 // runtimeToolSpecFromContractFinal pass-throughs Contract-authored Schema fields.
 // Declared values are the final data source; hints/registry text does not merge.
-// Production MCP pin is empty, so assembly skips MCP-metadata lookups entirely;
-// interface_type / interface_* facts come from ParamDecl / native annotations.
-// Tests may still inject a non-empty MCP fixture map, which participates through
-// pinnedMCPMetadataForEntryFrom.
+// MCP pin is retired: interface_type / interface_* facts come from ParamDecl /
+// native annotations only.
 func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.ContractFinalPayload, metadata runtimeSchemaMetadataSources) (ToolSpec, error) {
+	_ = metadata // reserved for historical assemble seams; no overlay sources remain
 	canonicalPath := entry.ProductID + "." + entry.ToolName
 	constraints := runtimeCommandConstraints(entry.Command)
-	var pinnedParams map[string]embeddedMCPParamMeta
-	if len(metadata.MCP.Tools) > 0 {
-		pinnedMeta, _ := pinnedMCPMetadataForEntryFrom(entry, metadata.Agent, metadata.MCP)
-		pinnedParams = pinnedMeta.Parameters
-	}
 	// Apply parameter declarations from the contract.ContractFinalPayload before the
 	// resolver reads them. The decls were put there by AttachContract at
 	// DeclareLeafMetadata time; now that all flags exist on the fully-built
@@ -216,7 +211,7 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 	if err := ApplyParamDecls(entry.Command, final.Parameters); err != nil {
 		return ToolSpec{}, fmt.Errorf("apply Contract Schema ParamDecls for %s: %w", canonicalPath, err)
 	}
-	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, pinnedParams, constraints)
+	parameters, err := resolveRuntimeParameters(entry.Command, canonicalPath, constraints)
 	if err != nil {
 		return ToolSpec{}, fmt.Errorf("resolve Contract Schema parameters for %s: %w", canonicalPath, err)
 	}
@@ -332,6 +327,10 @@ func runtimeToolSpecFromContractFinal(entry runtimeSchemaEntry, final contract.C
 		reviewed := true
 		selection.Reviewed = &reviewed
 	}
+	// Example dispositions control only the policy gate's execution eligibility.
+	// They remain on ContractFinal for BuildAgentExampleExecutionPlan and are not
+	// part of the public ToolSpec / Schema wire contract.
+	selection.ExampleDispositions = nil
 
 	provenance := contractFinalProvenance(identity, title, description, titleProv, descriptionProv, safety, interfaceSpec, selection, final.DryRun)
 

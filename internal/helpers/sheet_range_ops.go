@@ -168,7 +168,7 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
   - 写图片到单元格建议直接用 dws sheet write-image（更简洁）
   - 只设样式或批量刷整片区域样式请用 dws sheet range set-style；写值同时设置少量 cell 样式可用 cellStyles
   - 目标范围与已有合并区域冲突时，range update 会返回 MERGED_CELLS_CONFLICT；先用 sheet info 查看 mergedRanges，取消合并后写入，必要时再重新合并
-  - csv-put 的合并处理不同：目标区域含合并单元格时会打散合并并写入纯值
+  - csv-put 的合并处理不同：目标区域含合并单元格时会打散合并并写入 CSV 值或公式
   - 清空整片区域请用 dws sheet range clear`,
 		Example: `  # 写入文本
   dws sheet range update --node NODE_ID --sheet-id SHEET_ID --range "A1:B2" \
@@ -252,16 +252,16 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
 				CLIPath:        "sheet range update",
 				PrimaryCLIPath: "sheet range update",
 			},
-			Description: "更新指定区域单元格（值/公式/超链接等 object 协议）；少量或含公式时使用。",
+			Description: "更新指定区域单元格（值/公式/超链接等 object 协议）；少量或需富格式时使用。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
 				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "update_range"},
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "更新指定区域单元格（值/公式/超链接等 object 协议）；少量或含公式时使用。",
-				UseWhen:      []string{"需要写入少量单元格、公式或超链接，且能提供 sheetId 与精确 range 时"},
-				AvoidWhen:    []string{"大批量纯值写入优先 sheet csv-put；末尾追加行用 append；全局替换文本用 replace；只改样式用 range set-style；清整片区域用 range clear"},
+				AgentSummary: "更新指定区域单元格（值/公式/超链接等 object 协议）；少量或需富格式时使用。",
+				UseWhen:      []string{"需要写入少量单元格、公式对象、超链接或富格式，且能提供 sheetId 与精确 range 时"},
+				AvoidWhen:    []string{"CSV 形式的大批量值或公式写入优先 sheet csv-put；末尾追加行用 append；全局替换文本用 replace；只改样式用 range set-style；清整片区域用 range clear"},
 				Examples:     []string{"dws sheet range update --node <NODE_ID> --sheet-id <SHEET_ID> --range \"A1\" --values '[[{\"type\":\"text\",\"text\":\"张三\"}]]'"},
 			},
 			Parameters: []contract.ParamDecl{

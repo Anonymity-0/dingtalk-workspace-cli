@@ -58,7 +58,7 @@ func TestMaterializeEmbeddedSkillSourceMono(t *testing.T) {
 }
 
 // TestMaterializeEmbeddedSkillSourceMulti verifies that the peer multi bundle
-// contains both the shared routing skill and the PAT product skill. Structured
+// contains both the shared routing skill and misc (including folded PAT docs). Structured
 // Schema hints are build inputs and must not become a third installable mode.
 func TestMaterializeEmbeddedSkillSourceMulti(t *testing.T) {
 	dir, cleanup, err := materializeEmbeddedSkillSource(skillSetupModeMulti)
@@ -71,9 +71,9 @@ func TestMaterializeEmbeddedSkillSourceMulti(t *testing.T) {
 		t.Fatalf("extracted dir %s is not a valid multi skill source root", dir)
 	}
 	for _, rel := range []string{
-		filepath.Join("dws-shared", "SKILL.md"),
-		filepath.Join("dingtalk-pat", "SKILL.md"),
-		filepath.Join("dingtalk-pat", "references", "pat.md"),
+		filepath.Join("dingtalk-shared", "SKILL.md"),
+		filepath.Join("dingtalk-misc", "SKILL.md"),
+		filepath.Join("dingtalk-misc", "references", "pat.md"),
 	} {
 		if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
 			t.Errorf("expected embedded multi skill to contain %s: %v", rel, err)

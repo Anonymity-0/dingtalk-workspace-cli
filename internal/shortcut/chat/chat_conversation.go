@@ -15,6 +15,7 @@ package chat
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -88,8 +89,8 @@ var ConversationSetTop = shortcut.Shortcut{
 	Intent:      "当你想把一个或多个单聊/群聊置顶到会话列表顶部、或取消置顶时使用；支持 1-10 个 openConversationId，逐项执行并返回成功/失败 ledger，某一项失败不阻断其余项。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
-		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "单个会话 openConversationId"},
-		{Name: "conversation-ids", Type: shortcut.FlagStringSlice, Desc: "多个会话 openConversationId（最多 10 个）"},
+		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "单个会话 openConversationId；会话 ID 去重后必须为 1-10 个"},
+		{Name: "conversation-ids", Type: shortcut.FlagStringSlice, Desc: "多个会话 openConversationId；会话 ID 去重后必须为 1-10 个"},
 		{Name: "off", Type: shortcut.FlagBool, Desc: "取消置顶（不传则设置置顶）"},
 	},
 	Constraints: []shortcut.Constraint{
@@ -164,7 +165,7 @@ var ConversationMuteAtAll = shortcut.Shortcut{
 	Command:     "+conversation-mute-at-all",
 	Product:     "im",
 	Description: "关闭/开启 @所有人消息提醒",
-	Intent:      "当你在某个群里不想再被'@所有人'打扰、或想恢复该提醒时使用；会实际修改该会话的@所有人提醒开关，需传 openConversationId。",
+	Intent:      "当你已对某个会话开启消息免打扰，并希望额外关闭或恢复'@所有人'提醒时使用；这是免打扰的子开关，若尚未开启总免打扰，先执行 +conversation-mute，否则平台会返回 NotificationOffNotEnabled。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId", Required: true},
@@ -185,7 +186,7 @@ var ConversationMuteRedEnvelope = shortcut.Shortcut{
 	Command:     "+conversation-mute-red-envelope",
 	Product:     "im",
 	Description: "关闭/开启红包消息提醒",
-	Intent:      "当你想在某个会话里关闭或恢复红包消息提醒时使用；会实际修改该会话的红包提醒开关，需传 openConversationId。",
+	Intent:      "当你已对某个会话开启消息免打扰，并希望额外关闭或恢复红包提醒时使用；这是免打扰的子开关，若尚未开启总免打扰，或刚恢复过@所有人提醒，先执行 +conversation-mute，否则平台会返回 NotificationOffNotEnabled。",
 	Risk:        shortcut.RiskWrite,
 	Flags: []shortcut.Flag{
 		{Name: "conversation-id", Type: shortcut.FlagString, Desc: "会话 openConversationId", Required: true},
@@ -284,8 +285,8 @@ var ConversationList = shortcut.Shortcut{
 	Service:     "chat",
 	Command:     "+conversation-list",
 	Product:     "im",
-	Description: "分页获取当前用户的全部会话列表（单聊+群聊）",
-	Intent:      "当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；只读分页返回，可用 --exclude-muted 排除已免打扰会话。",
+	Description: "分页或一键全量获取当前用户的会话列表（单聊+群聊）",
+	Intent:      "当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；默认读取一页，明确要求全部时使用 --page-all，CLI 会按服务端每页上限自动翻页并公开完整性 ledger；可用 --exclude-muted 排除已免打扰会话。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
@@ -299,45 +300,141 @@ var ConversationList = shortcut.Shortcut{
 			CLIPath:        "chat +conversation-list",
 			PrimaryCLIPath: "chat +conversation-list",
 		},
-		Description: "分页获取当前用户的全部会话列表（单聊+群聊）",
+		Description: "分页或一键全量获取当前用户的会话列表（单聊+群聊）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
 			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
 		Selection: contract.SelectionSpec{
-			AgentSummary: "分页获取当前用户的全部会话列表（单聊+群聊）",
-			UseWhen:      []string{"当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；只读分页返回，可用 --exclude-muted 排除已免打扰会话。"},
+			AgentSummary: "分页或一键全量获取当前用户的会话列表（单聊+群聊）",
+			UseWhen:      []string{"当你想遍历当前用户的所有会话（单聊+群聊）做统计、清理或批量处理时使用；默认读取一页，明确要求全部时使用 --page-all，CLI 会按服务端每页上限自动翻页并公开完整性 ledger；可用 --exclude-muted 排除已免打扰会话。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws chat +conversation-list --limit 50"},
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "limit", Type: shortcut.FlagInt, Default: "100", Desc: "每页数量（1-100）"},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "100", Desc: "每页数量；--limit 必须在 1-100"},
 		{Name: "cursor", Type: shortcut.FlagInt, Desc: "分页游标（首次不传或 0）"},
 		{Name: "exclude-muted", Type: shortcut.FlagBool, Desc: "排除已免打扰会话"},
+		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动读取全部分页；--page-limit 仅与 --page-all 一起使用且范围 1-500"},
+		{Name: "page-limit", Type: shortcut.FlagInt, Default: "50", Desc: "--page-limit 仅与 --page-all 一起使用且范围 1-500"},
 	},
-	Tips: []string{`dws chat +conversation-list --limit 50`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须在 1-100"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-all", "page-limit"}, Description: "--page-limit 仅与 --page-all 一起使用且范围 1-500"},
+	},
+	Tips: []string{
+		`dws chat +conversation-list --limit 50`,
+		`dws chat +conversation-list --page-all --limit 100`,
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if limit := rt.Int("limit"); limit < 1 || limit > 100 {
+			return apperrors.NewValidation("--limit 必须在 1-100 之间；读取全部会话请使用 --page-all")
+		}
+		if !rt.Bool("page-all") && rt.Changed("page-limit") {
+			return apperrors.NewValidation("--page-limit 仅与 --page-all 一起使用")
+		}
+		if pageLimit := rt.Int("page-limit"); pageLimit < 1 || pageLimit > 500 {
+			return apperrors.NewValidation("--page-limit 必须在 1-500 之间")
+		}
+		return nil
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		params := map[string]any{}
-		if rt.Int("limit") > 0 {
-			params["limit"] = rt.Int("limit")
+		cursor := int64(rt.Int("cursor"))
+		pageLimit := 1
+		if rt.Bool("page-all") {
+			pageLimit = rt.Int("page-limit")
 		}
-		if rt.Int("cursor") > 0 {
-			params["cursor"] = rt.Int("cursor")
+		convs := make([]map[string]any, 0)
+		seenConversations := map[string]bool{}
+		seenCursors := map[int64]bool{cursor: true}
+		pagesFetched := 0
+		complete := false
+		hasMore := false
+		nextCursor := int64(0)
+		failures := make([]map[string]any, 0)
+		for pagesFetched < pageLimit {
+			params := map[string]any{"limit": rt.Int("limit")}
+			if cursor > 0 {
+				params["cursor"] = cursor
+			}
+			if rt.Bool("exclude-muted") {
+				params["excludeMuted"] = true
+			}
+			data, err := rt.CallMCPData("im", "list_all_conversations", params)
+			if err != nil {
+				if pagesFetched == 0 {
+					return err
+				}
+				failures = append(failures, map[string]any{"stage": "conversation-page", "cursor": cursor, "error": err.Error()})
+				break
+			}
+			pagesFetched++
+			for _, conversation := range conversationListProject(data) {
+				id := strings.TrimSpace(fmt.Sprint(conversation["openConversationId"]))
+				if id != "" && id != "<nil>" {
+					if seenConversations[id] {
+						continue
+					}
+					seenConversations[id] = true
+				}
+				convs = append(convs, conversation)
+			}
+			page := chatmsg.Pagination(data)
+			hasMoreValue, known := page["hasMore"].(bool)
+			hasMore = hasMoreValue
+			if !known {
+				failures = append(failures, map[string]any{"stage": "conversation-pagination", "error": "下层未返回 hasMore，无法证明结果完整"})
+				break
+			}
+			if !hasMore {
+				complete = true
+				break
+			}
+			nextCursor, err = conversationPaginationCursor(page["nextCursor"])
+			if err != nil || nextCursor == 0 || seenCursors[nextCursor] {
+				failures = append(failures, map[string]any{"stage": "conversation-pagination", "error": "hasMore=true 但 nextCursor 缺失、无效或未前进"})
+				break
+			}
+			if !rt.Bool("page-all") {
+				break
+			}
+			seenCursors[nextCursor] = true
+			cursor = nextCursor
 		}
-		if rt.Bool("exclude-muted") {
-			params["excludeMuted"] = true
+		if rt.Bool("page-all") && hasMore && pagesFetched == pageLimit {
+			failures = append(failures, map[string]any{"stage": "conversation-page-limit", "error": fmt.Sprintf("达到 --page-limit=%d，仍有更多会话", pageLimit)})
 		}
-		data, err := rt.CallMCPData("im", "list_all_conversations", params)
-		if err != nil {
-			return err
+		payload := map[string]any{
+			"count":           len(convs),
+			"conversations":   convs,
+			"pagesFetched":    pagesFetched,
+			"complete":        complete,
+			"hasMore":         hasMore,
+			"nextCursor":      nextCursor,
+			"paginationKnown": len(failures) == 0 || hasMore,
+			"failedCount":     len(failures),
+			"failures":        failures,
+			"partial":         len(failures) > 0,
 		}
-		convs := conversationListProject(data)
-		payload := map[string]any{"count": len(convs), "conversations": convs}
-		chatmsg.ApplyPagination(payload, data)
 		return rt.Output(payload)
 	},
+}
+
+func conversationPaginationCursor(value any) (int64, error) {
+	switch typed := value.(type) {
+	case int:
+		return int64(typed), nil
+	case int64:
+		return typed, nil
+	case float64:
+		return int64(typed), nil
+	case string:
+		return strconv.ParseInt(strings.TrimSpace(typed), 10, 64)
+	default:
+		return 0, fmt.Errorf("unsupported cursor type %T", value)
+	}
 }
 
 // conversationListProject reshapes the raw list_all_conversations response into a
@@ -379,17 +476,30 @@ func conversationListResolveList(data map[string]any) []any {
 			continue
 		}
 		if arr, ok := v.([]any); ok {
-			return arr
+			return unwrapConversationTuple(arr)
 		}
 		if inner, ok := v.(map[string]any); ok {
 			for _, ik := range []string{"conversationList", "conversations", "list", "items", "result", "data"} {
 				if arr, ok := inner[ik].([]any); ok {
-					return arr
+					return unwrapConversationTuple(arr)
 				}
 			}
 		}
 	}
 	return []any{}
+}
+
+// unwrapConversationTuple handles gateway responses shaped as
+// result:[conversationList,nextCursor,hasMore] while leaving ordinary arrays
+// untouched. This prevents the first list from being mistaken for one row.
+func unwrapConversationTuple(values []any) []any {
+	if len(values) == 0 {
+		return values
+	}
+	if nested, ok := values[0].([]any); ok {
+		return nested
+	}
+	return values
 }
 
 // conversationListFirst returns the first present candidate key's value.
@@ -576,12 +686,12 @@ func conversationListTopResolveList(data map[string]any) []any {
 			continue
 		}
 		if arr, ok := v.([]any); ok {
-			return arr
+			return unwrapConversationTuple(arr)
 		}
 		if inner, ok := v.(map[string]any); ok {
 			for _, ik := range []string{"conversationList", "conversations", "topConversations", "list", "items", "result", "data"} {
 				if arr, ok := inner[ik].([]any); ok {
-					return arr
+					return unwrapConversationTuple(arr)
 				}
 			}
 		}
@@ -1070,7 +1180,7 @@ var CategoryRemoveConversation = shortcut.Shortcut{
 }
 
 func init() {
-	shortcut.Register(
+	shortcut.Register(withReviewedChatShortcutContracts(
 		ConversationInfo,
 		ConversationSetTop,
 		ConversationMute,
@@ -1091,5 +1201,5 @@ func init() {
 		CategoryRename,
 		CategoryAddConversation,
 		CategoryRemoveConversation,
-	)
+	)...)
 }
