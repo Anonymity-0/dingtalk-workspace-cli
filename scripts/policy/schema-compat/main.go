@@ -814,6 +814,93 @@ func compatiblePositionals(oldPositionals, newPositionals []positionalSchema) bo
 	return true
 }
 
+// parameterTypeChange identifies one published parameter type migration
+// exactly: which tool, which parameter, and in which direction. Nothing is
+// matched by wildcard — an entry differing in any of the four fields does not
+// apply.
+//
+// ToolPath is "<product id>/<tool id>" exactly as the comparison builds it (see
+// where toolPath is assembled), e.g.
+// "minutes/minutes.apply_minutes_permission". From and To are the canonical
+// type values schemaType produces — the JSON encoding of the "type" keyword,
+// so `"string"` **with** its quotes, not a bare string. Spelling either one any
+// other way silently disables the exemption instead of failing loudly (exactly
+// how reviewedInterfaceRefRedirect was broken twice), so
+// TestCrossPlatformCoverageReviewedParameterTypeChangeKeysAreCanonical
+// recomputes both through schemaType rather than trusting the table.
+type parameterTypeChange struct {
+	ToolPath  string
+	Parameter string
+	From      string
+	To        string
+}
+
+// reviewedParameterTypeChanges enumerates the individually reviewed parameter
+// type migrations this gate accepts. A published type is part of the Schema
+// contract and a swap cannot be proven safe from the type names alone, so a
+// migration is accepted only when this exact tool, parameter and old→new pair
+// appear here. Adding an entry is a contract decision and belongs in review,
+// not in a feature change.
+//
+// Entries are direction-sensitive by construction: "string" → "integer" is a
+// separate key from "integer" → "string", and only the reviewed direction is
+// accepted.
+//
+// The table alone does not admit a change: the migration is rejected unless
+// everything else this gate checks about the parameter is unchanged. See
+// compatibleReviewedParameterTypeChange.
+var reviewedParameterTypeChanges = map[parameterTypeChange]struct{}{
+	// "dws minutes permission apply --policy" moved from a String flag to a
+	// native Int flag, so the published type follows it from "string" to
+	// "integer". A parameter's type is projected from the Cobra flag type
+	// (provenance source cobra_flag_type), so it describes how the CLI accepts
+	// the value, not how the backing RPC receives it.
+	//
+	// Accepted because no historical caller is invalidated:
+	//
+	//   - Consumers read this Schema to construct CLI invocations, and a command
+	//     line is text either way: "--policy 4" is the same argv under both
+	//     declarations, and a quoted "--policy \"4\"" still reaches pflag as 4.
+	//   - The flag keeps enforcing the same [2,4] domain in RunE, and pflag's
+	//     base-0 parse accepts every base-10 spelling the previous
+	//     strconv.ParseInt(v, 10, 64) accepted, so the set of successful
+	//     invocations only widens.
+	//   - "integer" also matches what actually goes on the wire: this parameter
+	//     maps to property "policyId", which the command has always sent as a
+	//     number, so the new declaration is closer to the request than the old.
+	//
+	// The parameter's default stays absent on both sides here (a zero default is
+	// not published), which is why the "nothing else changed" guard does not veto
+	// this entry. A migration that did move the default would be reported, and
+	// that is the intended behaviour.
+	{
+		ToolPath:  "minutes/minutes.apply_minutes_permission",
+		Parameter: "policy",
+		From:      `"string"`,
+		To:        `"integer"`,
+	}: {},
+}
+
+// compatibleReviewedParameterTypeChange accepts a published parameter type
+// migration when it is an explicitly reviewed entry **and** nothing else this
+// gate checks about the parameter moved.
+//
+// otherFailures is every other finding already recorded for this parameter. The
+// scope is deliberately the parameter rather than the whole tool: an unrelated
+// break elsewhere in the tool is reported on its own and does not need to
+// suppress this decision, whereas a change to this parameter's property,
+// interface_type, default, format, required, required_when or enum means the
+// contract being migrated is not the contract that was reviewed.
+func compatibleReviewedParameterTypeChange(toolPath, name string, oldParameter, newParameter parameterSchema, otherFailures []string) bool {
+	_, reviewed := reviewedParameterTypeChanges[parameterTypeChange{
+		ToolPath:  toolPath,
+		Parameter: name,
+		From:      oldParameter.Type,
+		To:        newParameter.Type,
+	}]
+	return reviewed && len(otherFailures) == 0
+}
+
 func checkParameterCompatibility(toolPath, name string, oldParameter, newParameter parameterSchema) []string {
 	var failures []string
 	for _, field := range []struct {
@@ -821,7 +908,6 @@ func checkParameterCompatibility(toolPath, name string, oldParameter, newParamet
 		old  string
 		new  string
 	}{
-		{name: "type", old: oldParameter.Type, new: newParameter.Type},
 		{name: "default", old: oldParameter.Default, new: newParameter.Default},
 		{name: "interface_default", old: oldParameter.InterfaceDefault, new: newParameter.InterfaceDefault},
 		{name: "format", old: oldParameter.Format, new: newParameter.Format},
@@ -883,6 +969,14 @@ func checkParameterCompatibility(toolPath, name string, oldParameter, newParamet
 	}
 	if enumNarrowed(oldParameter.Enum, newParameter.Enum) {
 		failures = append(failures, fmt.Sprintf("schema tool %q parameter %q narrowed enum", toolPath, name))
+	}
+	// The published type is checked last so the reviewed carve-out can see every
+	// other finding for this parameter: a reviewed migration is only accepted
+	// when the rest of the parameter's contract held still. Ordering is not
+	// observable because the result is sorted below.
+	if oldParameter.Type != newParameter.Type &&
+		!compatibleReviewedParameterTypeChange(toolPath, name, oldParameter, newParameter, failures) {
+		failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed type", toolPath, name))
 	}
 	sort.Strings(failures)
 	return failures
