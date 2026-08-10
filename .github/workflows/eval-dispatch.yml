@@ -85,14 +85,17 @@ jobs:
             echo "EVAL_TRIGGER_URL / EVAL_TRIGGER_TOKEN not configured; cannot dispatch." >&2
             exit 1
           fi
-          curl --fail --silent --show-error \
+          jq -n \
+            --arg pr "$PR_NUMBER" \
+            --arg sha "$PR_HEAD_SHA" \
+            --arg products "$PRODUCTS" \
+            --arg cases "$CASES_REF" \
+            '{branch: "main", params: {pr_number: $pr, pr_head_sha: $sha, products: $products, cases_ref: $cases}}' \
+          | curl --fail --silent --show-error \
             -X POST \
-            -F "token=${EVAL_TRIGGER_TOKEN}" \
-            -F "ref=main" \
-            -F "variables[PR_NUMBER]=${PR_NUMBER}" \
-            -F "variables[PR_HEAD_SHA]=${PR_HEAD_SHA}" \
-            -F "variables[PRODUCTS]=${PRODUCTS}" \
-            -F "variables[CASES_REF]=${CASES_REF}" \
+            -H "private-token: ${EVAL_TRIGGER_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data @- \
             "$EVAL_TRIGGER_URL"
           echo "Internal evaluation dispatched."
 
