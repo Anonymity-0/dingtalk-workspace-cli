@@ -412,15 +412,18 @@ func TestInterfaceIntegrityWorkflowContract(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		`candidate_ref="$(git rev-parse HEAD^{commit})"`,
+		`candidate_ref="$(git rev-parse 'HEAD^{commit}')"`,
 		`[ "$candidate_ref" != "$PR_HEAD_SHA" ]`,
-		`echo "COMPATIBILITY_BASE_REF=$base_ref" >> "$GITHUB_ENV"`,
-		`echo "COMPATIBILITY_STABLE_REF=$stable_ref" >> "$GITHUB_ENV"`,
-		`echo "COMPATIBILITY_CANDIDATE_REF=$candidate_ref" >> "$GITHUB_ENV"`,
+		`"COMPATIBILITY_BASE_REF=$base_ref"`,
+		`"COMPATIBILITY_STABLE_REF=$stable_ref"`,
+		`"COMPATIBILITY_CANDIDATE_REF=$candidate_ref" >> "$GITHUB_ENV"`,
 	} {
 		if got := strings.Count(interfaceJob, want); got != 1 {
 			t.Errorf("Interface Integrity job contract %q count = %d, want exactly one definition", want, got)
 		}
+	}
+	if got := strings.Count(interfaceJob, `>> "$GITHUB_ENV"`); got != 1 {
+		t.Errorf("Interface Integrity job must append its compatibility refs to GITHUB_ENV once, got %d writes", got)
 	}
 	if strings.Count(interfaceJob, "make authoritative-interface-integrity") != 1 {
 		t.Errorf("Interface Integrity job must have exactly one compatibility decision seam")

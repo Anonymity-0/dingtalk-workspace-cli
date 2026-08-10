@@ -1370,7 +1370,7 @@ jobs:
           if [ -z "$base_ref" ] || [ "$base_ref" = "0000000000000000000000000000000000000000" ]; then
             base_ref="$(git rev-parse HEAD^)"
           fi
-          candidate_ref="$(git rev-parse HEAD^{commit})"
+          candidate_ref="$(git rev-parse 'HEAD^{commit}')"
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ] && [ "$candidate_ref" != "$PR_HEAD_SHA" ]; then
             echo "Compatibility checkout $candidate_ref does not match PR head $PR_HEAD_SHA" >&2
             exit 1
@@ -1391,9 +1391,10 @@ jobs:
             exit 1
           fi
           git rev-parse --verify "${stable_ref}^{commit}" >/dev/null
-          echo "COMPATIBILITY_BASE_REF=$base_ref" >> "$GITHUB_ENV"
-          echo "COMPATIBILITY_STABLE_REF=$stable_ref" >> "$GITHUB_ENV"
-          echo "COMPATIBILITY_CANDIDATE_REF=$candidate_ref" >> "$GITHUB_ENV"
+          printf '%s\n' \
+            "COMPATIBILITY_BASE_REF=$base_ref" \
+            "COMPATIBILITY_STABLE_REF=$stable_ref" \
+            "COMPATIBILITY_CANDIDATE_REF=$candidate_ref" >> "$GITHUB_ENV"
 
       - name: Check historical commands, help, and complete CLI compatibility
         if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && (needs.lint.outputs.full_suite == 'true' || needs.lint.outputs.interface_sensitive == 'true') }}
