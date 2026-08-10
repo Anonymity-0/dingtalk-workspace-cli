@@ -26,6 +26,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 - **`sheet range batch-clear` / `batch-set-style` 的 `--ranges` 拒绝空白工作表前缀**（用户可见行为变更）— 此前只按原始串里 `!` 的位置判断，`" !A1:B2"` 修剪后工作表名成了空串，操作却照样带着 `sheetId: ""` 提交：服务端要么让整批 `batch_update` 失败，要么更糟——落到默认工作表而不是用户指定的那张表，且命令报成功。现在工作表名与范围都必须在修剪之后仍非空，否则在发起任何请求之前报错。`batch-set-style --batch` 的纯空白 `sheetId` / `range` 同样拒绝（此前只挡空字符串）；`--batch` 下发仍用原值不替用户修剪，因为 `sheetId` 可以是允许带首尾空格的工作表**名**。两条 `--ranges` 路径现在共用同一个拆分器。
 - **`sheet insert-dimension` / `delete-dimension` / `update-dimension` 的 `--length` 严格校验**（用户可见行为变更）— 解析由 `fmt.Sscanf("%d")` 改为 `strconv.Atoi`。此前只消费前缀数字，`--length 2x` / `3foo` 会被静默当成 `2` / `3` 并对错误的行列数执行操作（删除方向不可回滚）；现在整个值必须是合法正整数，否则报错「`--length` 必须为正整数（>= 1）」且不发起任何请求。**升级影响**：原先依赖这种宽松解析、在传畸形 `--length` 的脚本会开始报错，请把参数修正为纯数字。合法数字值行为不变，上限仍为 5000。`add-dimension` 的 `--length` 是 `Int` 类型 flag，一直由 cobra 严格校验，不受影响。
 
+### Fixed
+
+- **Event runtime-token handoff** — personal `event consume`, `status`, `stop`, and `+listen-im` now honor the existing root `--token` instead of falling back to a stale local OAuth profile. Detached personal-event buses negotiate the credential only after an additive capability handshake, receive and rotate it through owner-only local IPC, and keep it in memory; the token is never forwarded through child argv, environment variables, profiles, logs, or run-state files. Existing OAuth and multi-profile behavior is unchanged when `--token` is absent. A new client refuses to send a runtime token to an older bus and leaves its existing consumers and subscriptions untouched; the recovery message asks users to inspect `event status --as user`, preview `event stop --as user --all --dry-run`, and explicitly confirm `event stop --as user --all --yes` before retrying.
+
 ## [1.0.58-beta.1] - 2026-08-07
 
 ### Added
