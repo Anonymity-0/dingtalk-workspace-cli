@@ -2,6 +2,10 @@
 
 本文定义一种受控迁移：保留旧 flag 的可执行兼容性，但把它从 Help 与 Agent Schema 中隐藏，并将新的规范 flag 提升为必填。它只解决这一种精确变更，不是通用 breaking-change 豁免。
 
+同名 flag 的精确类型迁移属于另一类评审机制，只能进入
+`internal/interfacesnapshot/reviewed.go` 与 legacy smoke helper 的镜像表；flag rename
+只能进入本文的 JSON lifecycle ledger。一项迁移不得跨两种机制组合授权。
+
 ## 唯一比较入口与信任边界
 
 PR 与本地兼容性审批的唯一权威比较入口是 modern Interface Snapshot：

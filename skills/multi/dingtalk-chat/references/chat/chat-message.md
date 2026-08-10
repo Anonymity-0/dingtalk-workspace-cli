@@ -227,6 +227,22 @@ dws chat message search --query "codereview" --group <openConversationId> --star
 | `message edit` | 编辑已发送消息内容 | `--conversation-id` `--msg-id`，并在 `--text` / `--content` 中二选一；可选 `--title` `--at-all` `--at-open-dingtalk-ids` |
 | `message read-status` | 查消息已读/未读状态 | `--group` `--message-id`；可选目标用户 |
 
+刚由 `message send` 发出的消息会返回 `openTaskId`。先用 `message query-send-status` 查询，成功结果中的 `openMessageId` 和 `openConversationId` 可直接传给 `message edit` 或 `message recall`，无需再按消息内容从列表反查 ID。
+
+```bash
+# 1. 发送后保留 openTaskId
+dws chat message send --group <openConversationId> --text "原始内容"
+# 2. 查询得到 openMessageId 和 openConversationId
+dws chat message query-send-status --open-task-id <openTaskId>
+# 3. 编辑消息
+dws chat message edit --conversation-id <openConversationId> --msg-id <openMessageId> --text "更新后的内容"
+
+# 发送后撤回使用同一 ID 链
+dws chat message send --group <openConversationId> --text "待撤回的内容"
+dws chat message query-send-status --open-task-id <openTaskId>
+dws chat message recall --conversation-id <openConversationId> --msg-id <openMessageId>
+```
+
 `+messages-recall` 与 `recall-by-bot` 不同：前者使用 `openMessageId`，缺少会话 ID 时先只读查询消息详情；后者撤回机器人消息，需要 `robot-code + processQueryKey`。不要把 `processQueryKey` 当 `openMessageId`。
 
 编辑消息使用 `message edit`。推荐传 `--text`，CLI 会生成 markdown content JSON：`{"title":"标题","text":"正文"}`；可选 `--title`，不传时会从正文自动生成标题。高级场景可直接传 `--content`，此时必须是完整 markdown content JSON，且不能同时传 `--text`。
@@ -270,12 +286,14 @@ dws chat message reply --conversation-id <openConversationId> --ref-msg-id <open
 流式卡片优先使用公开 Shortcut；创建可选在同一次调用中写入内容：
 
 ```bash
-dws chat +messages-send-card --group <openConversationId> --content "开始处理" --flow-status 1
+dws chat +messages-send-card --group <openConversationId> --at-open-dingtalk-ids <mentionedOpenDingTalkId> --content "开始处理" --flow-status 1
 dws chat +messages-update-card --biz-id <bizId> --content "更新的卡片内容" --flow-status 2
 dws chat +messages-update-card --biz-id <bizId> --content "最终内容" --flow-status 3
 ```
 
 `flow-status`：1=处理中，2=输入中，3=完成，4=执行中，5=错误，Runtime 拒绝范围外值。
+群聊还可传 `--at-all`；两种艾特参数只随创建请求发送。send-card 同时带正文时，
+Runtime 会把创建响应的 `atTag` 自动放在正文前；不要自行写 ID 或占位符。
 当前只支持 streaming text；不支持 Card JSON 组件或 action callback。精确边界见
 [card references](../card/schema.md)。
 
