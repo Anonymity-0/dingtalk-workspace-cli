@@ -240,12 +240,14 @@ func TestCrossPlatformCoverageRunGenerateRejectsUnsafeOutputPath(t *testing.T) {
 
 func TestCrossPlatformCoverageRunGenerateReportsTemporaryDirectoryFailure(t *testing.T) {
 	missingTempRoot := filepath.Join(t.TempDir(), "missing")
-	t.Setenv("TMPDIR", missingTempRoot)
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, missingTempRoot)
+	}
 
 	var stdout, stderr bytes.Buffer
 	exitCode := run([]string{"generate"}, &stdout, &stderr)
 	if exitCode != 2 || !strings.Contains(stderr.String(), "create isolated home") {
-		t.Fatalf("invalid TMPDIR exit=%d stdout=%s stderr=%s", exitCode, stdout.String(), stderr.String())
+		t.Fatalf("invalid temporary root exit=%d stdout=%s stderr=%s", exitCode, stdout.String(), stderr.String())
 	}
 }
 
