@@ -7,9 +7,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
@@ -311,4 +313,237 @@ func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) 
 		t.Fatal("closed file is not a character device")
 	}
 	_ = fs.ValidPath("path")
+}
+
+func TestCrossPlatformCoverageSkillSetupEventMigrationFailureBranches(t *testing.T) {
+	fail := errors.New("injected failure")
+	validSkill := func(name string) []byte {
+		return []byte("---\nname: " + name + "\ndescription: valid migration skill\n---\n\n# Skill\n")
+	}
+
+	t.Run("folded discovery rejects directory reference", func(t *testing.T) {
+		dest := t.TempDir()
+		miscRoot := filepath.Join(dest, multiMiscSkill)
+		if err := os.MkdirAll(miscRoot, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(miscRoot, "SKILL.md"), []byte("dws event\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillSetupStat, func(path string) (os.FileInfo, error) {
+			if strings.HasSuffix(path, filepath.Join("references", "event.md")) {
+				return skillSetupFileInfo{name: "event.md", mode: os.ModeDir}, nil
+			}
+			return os.Stat(path)
+		})
+		if got := findFoldedEventMiscTargets([]string{dest}); len(got) != 0 {
+			t.Fatalf("directory event reference accepted: %#v", got)
+		}
+	})
+
+	t.Run("migration root validation failures", func(t *testing.T) {
+		if err := validateMigrationSkillRoot(filepath.Join(t.TempDir(), "missing"), multiEventSkill, nil); err == nil {
+			t.Fatal("missing SKILL.md succeeded")
+		}
+
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "SKILL.md"), validSkill(multiEventSkill), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(root, "references", "directory.md"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := validateMigrationSkillRoot(root, multiEventSkill, []string{filepath.Join("references", "directory.md")}); err == nil || !strings.Contains(err.Error(), "is a directory") {
+			t.Fatalf("directory required file = %v", err)
+		}
+
+		missing := filepath.Join("references", "missing.md")
+		testseam.Swap(t, &skillSetupStat, func(path string) (os.FileInfo, error) {
+			if path == filepath.Join(root, missing) {
+				return skillSetupFileInfo{name: "missing.md"}, nil
+			}
+			return os.Stat(path)
+		})
+		if err := validateMigrationSkillRoot(root, multiEventSkill, []string{missing}); err == nil || !strings.Contains(err.Error(), "无法读取") {
+			t.Fatalf("unreadable required file = %v", err)
+		}
+	})
+
+	t.Run("frontmatter validation branches", func(t *testing.T) {
+		validWithIgnoredLine := []byte("---\nignored line\nname: dingtalk-event\ndescription: valid\n---\n\nbody\n")
+		if name, err := parseMigrationSkillFrontmatter(validWithIgnoredLine); err != nil || name != multiEventSkill {
+			t.Fatalf("ignored frontmatter line = %q, %v", name, err)
+		}
+		for name, body := range map[string][]byte{
+			"duplicate name": []byte("---\nname: one\nname: two\ndescription: valid\n---\nbody\n"),
+			"unclosed":       []byte("---\nname: one\ndescription: valid\nbody\n"),
+			"missing name":   []byte("---\ndescription: valid\n---\nbody\n"),
+			"missing desc":   []byte("---\nname: one\n---\nbody\n"),
+			"empty body":     []byte("---\nname: one\ndescription: valid\n---\n  \n"),
+		} {
+			t.Run(name, func(t *testing.T) {
+				if _, err := parseMigrationSkillFrontmatter(body); err == nil {
+					t.Fatal("invalid frontmatter succeeded")
+				}
+			})
+		}
+	})
+
+	t.Run("clean misc validation branches", func(t *testing.T) {
+		if err := validateCleanEventMiscRoot(filepath.Join(t.TempDir(), "missing")); err == nil {
+			t.Fatal("missing misc root succeeded")
+		}
+
+		routed := t.TempDir()
+		if err := os.WriteFile(filepath.Join(routed, "SKILL.md"), append(validSkill(multiMiscSkill), []byte("dws event\n")...), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := validateCleanEventMiscRoot(routed); err == nil || !strings.Contains(err.Error(), "仍包含个人 Event 路由") {
+			t.Fatalf("routed misc = %v", err)
+		}
+
+		clean := t.TempDir()
+		if err := os.WriteFile(filepath.Join(clean, "SKILL.md"), validSkill(multiMiscSkill), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := validateCleanEventMiscRoot(clean); err != nil {
+			t.Fatalf("missing references should be clean: %v", err)
+		}
+
+		testseam.Swap(t, &skillSetupReadDir, func(string) ([]os.DirEntry, error) { return nil, fail })
+		if err := validateCleanEventMiscRoot(clean); !errors.Is(err, fail) {
+			t.Fatalf("read-dir failure = %v", err)
+		}
+	})
+
+	t.Run("ordinary and prerequisite install errors", func(t *testing.T) {
+		testseam.Swap(t, &skillSetupInstallMulti, func(string, []string, []string, io.Writer, io.Writer) (int, int, error) {
+			return 0, 0, fail
+		})
+		migration := filepath.Join(t.TempDir(), "migration")
+		ordinary := filepath.Join(t.TempDir(), "ordinary")
+		if _, _, err := installMultiSkillsWithEventMigration("src", []string{multiEventSkill}, []string{migration, ordinary}, []string{migration}, io.Discard, io.Discard); !errors.Is(err, fail) {
+			t.Fatalf("ordinary install failure = %v", err)
+		}
+		if _, _, err := installMultiSkillsWithEventMigration("src", []string{multiEventSkill, multiMiscSkill, multiSharedSkill}, []string{migration}, []string{migration}, io.Discard, io.Discard); !errors.Is(err, fail) {
+			t.Fatalf("prerequisite install failure = %v", err)
+		}
+	})
+
+	t.Run("preparation cleanup and staged misc validation", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{multiEventSkill, multiMiscSkill})
+		dest := t.TempDir()
+		testseam.Swap(t, &skillSetupCopyDir, func(string, string) error { return fail })
+		cleanupFail := errors.New("cleanup failure")
+		testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return cleanupFail })
+		if _, err := prepareEventMiscMigration(src, dest); err == nil || !errors.Is(err, fail) || !errors.Is(err, cleanupFail) {
+			t.Fatalf("joined preparation cleanup error = %v", err)
+		}
+	})
+
+	t.Run("invalid staged misc root", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{multiEventSkill, multiMiscSkill})
+		if err := os.WriteFile(filepath.Join(src, multiMiscSkill, "SKILL.md"), validSkill(multiEventSkill), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := prepareEventMiscMigration(src, t.TempDir()); err == nil || !strings.Contains(err.Error(), "staging 验证失败") {
+			t.Fatalf("invalid staged misc = %v", err)
+		}
+	})
+
+	t.Run("later staging failure joins cleanup error", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{multiEventSkill, multiMiscSkill})
+		first := filepath.Join(t.TempDir(), "a")
+		second := filepath.Join(t.TempDir(), "b")
+		if err := os.MkdirAll(first, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(second, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		originalMkdirTemp := skillSetupMkdirTemp
+		calls := 0
+		testseam.Swap(t, &skillSetupMkdirTemp, func(dir, pattern string) (string, error) {
+			calls++
+			if calls == 2 {
+				return "", fail
+			}
+			return originalMkdirTemp(dir, pattern)
+		})
+		cleanupFail := errors.New("stage cleanup failure")
+		testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return cleanupFail })
+		if _, err := migrateEventMiscAtomically(src, []string{second, first}, io.Discard, io.Discard); err == nil || !errors.Is(err, fail) || !errors.Is(err, cleanupFail) {
+			t.Fatalf("later preparation failure = %v", err)
+		}
+	})
+
+	t.Run("successful migration reports cleanup warning", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{multiEventSkill, multiMiscSkill})
+		home := filepath.Join(t.TempDir(), "skills")
+		writeFoldedEventMisc(t, home)
+		cleanupFail := errors.New("final cleanup failure")
+		testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return cleanupFail })
+		var stderr bytes.Buffer
+		installed, err := migrateEventMiscAtomically(src, []string{home}, io.Discard, &stderr)
+		if err != nil || installed != 2 || !strings.Contains(stderr.String(), cleanupFail.Error()) {
+			t.Fatalf("successful migration cleanup warning: installed=%d err=%v stderr=%s", installed, err, stderr.String())
+		}
+	})
+
+	t.Run("commit rollback and cleanup failures are joined", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{multiEventSkill, multiMiscSkill})
+		root := t.TempDir()
+		first := filepath.Join(root, "a", "skills")
+		second := filepath.Join(root, "b", "skills")
+		for _, home := range []string{first, second} {
+			writeFoldedEventMisc(t, home)
+			writeOldStandaloneEvent(t, home)
+		}
+		commitFail := errors.New("second commit failure")
+		rollbackFail := errors.New("first rollback failure")
+		originalRename := skillSetupRename
+		testseam.Swap(t, &skillSetupRename, func(oldPath, newPath string) error {
+			if filepath.Base(oldPath) == "new-misc" && newPath == filepath.Join(second, multiMiscSkill) {
+				return commitFail
+			}
+			if filepath.Base(oldPath) == "old-misc" && newPath == filepath.Join(first, multiMiscSkill) {
+				return rollbackFail
+			}
+			return originalRename(oldPath, newPath)
+		})
+		cleanupFail := errors.New("post-rollback cleanup failure")
+		testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return cleanupFail })
+		if _, err := migrateEventMiscAtomically(src, []string{second, first}, io.Discard, io.Discard); err == nil || !errors.Is(err, commitFail) || !errors.Is(err, rollbackFail) || !errors.Is(err, cleanupFail) {
+			t.Fatalf("joined commit/rollback/cleanup error = %v", err)
+		}
+	})
+
+	t.Run("commit preflight and rollback aggregation", func(t *testing.T) {
+		migration := &eventMiscMigration{dest: "dest", eventPath: "event", miscPath: "misc"}
+		testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, fail })
+		if err := commitEventMiscMigration(migration); !errors.Is(err, fail) {
+			t.Fatalf("event stat failure = %v", err)
+		}
+
+		testseam.Swap(t, &skillSetupStat, func(path string) (os.FileInfo, error) {
+			if path == migration.eventPath {
+				return skillSetupFileInfo{name: "event", mode: os.ModeDir}, nil
+			}
+			return nil, fail
+		})
+		if err := commitEventMiscMigration(migration); !errors.Is(err, fail) {
+			t.Fatalf("misc stat failure = %v", err)
+		}
+
+		testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+		if err := commitEventMiscMigration(migration); err == nil || !strings.Contains(err.Error(), "已不存在") {
+			t.Fatalf("missing misc = %v", err)
+		}
+
+		migration.newMiscEnabled = true
+		testseam.Swap(t, &skillSetupRename, func(string, string) error { return fail })
+		if err := rollbackEventMiscMigrations([]*eventMiscMigration{migration}); !errors.Is(err, fail) {
+			t.Fatalf("rollback aggregation = %v", err)
+		}
+	})
 }
