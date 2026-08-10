@@ -249,6 +249,8 @@ func TestCrossPlatformCoverageAitableWorkflowRunRejectsUnsafeOrInvalidInput(t *t
 		want string
 	}{
 		{name: "confirmation", args: []string{"run", "--base-id", "base", "--workflow-id", "workflow"}, want: "用户确认"},
+		{name: "blank table", args: []string{"run", "--base-id", "base", "--workflow-id", "workflow", "--table-id", "   ", "--yes"}, want: "--table-id 不能为空"},
+		{name: "blank records", args: []string{"run", "--base-id", "base", "--workflow-id", "workflow", "--record-ids", " , ", "--yes"}, want: "--record-ids 必须包含"},
 		{name: "table without records", args: []string{"run", "--base-id", "base", "--workflow-id", "workflow", "--table-id", "table", "--yes"}, want: "必须同时提供"},
 		{name: "records without table", args: []string{"run", "--base-id", "base", "--workflow-id", "workflow", "--record-ids", "record", "--yes"}, want: "必须同时提供"},
 		{name: "duplicate records", args: []string{"run", "--base-id", "base", "--workflow-id", "workflow", "--table-id", "table", "--record-ids", "record,record", "--yes"}, want: "不能包含重复值"},
@@ -299,6 +301,27 @@ func TestCrossPlatformCoverageAitableWorkflowHistoryMapsFilters(t *testing.T) {
 	}
 	if !reflect.DeepEqual(call.args, wantArgs) {
 		t.Fatalf("tool args = %#v, want %#v", call.args, wantArgs)
+	}
+}
+
+func TestCrossPlatformCoverageAitableWorkflowHistoryMapsSingleTimeFilter(t *testing.T) {
+	caller, err := runAitableWorkflowCommand(t, nil,
+		"history",
+		"--base-id", "base-history",
+		"--workflow-id", "workflow-history",
+		"--after-time", "1786000000000",
+	)
+	if err != nil {
+		t.Fatalf("workflow history returned error: %v", err)
+	}
+	wantArgs := map[string]any{
+		"baseId":    "base-history",
+		"flowId":    "workflow-history",
+		"afterTime": 1786000000000,
+		"size":      20,
+	}
+	if len(caller.calls) != 1 || !reflect.DeepEqual(caller.calls[0].args, wantArgs) {
+		t.Fatalf("calls = %#v, want one history invocation %#v", caller.calls, wantArgs)
 	}
 }
 
