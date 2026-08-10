@@ -80,6 +80,36 @@ const (
 	devAppVersionStatusTool  = "get_dev_app_version_status"
 )
 
+func devAppPaginatedItemsResult(description, itemDescription string) *contract.ResultSpec {
+	schema, _ := json.Marshal(map[string]any{
+		"type":                 "object",
+		"description":          description,
+		"additionalProperties": true,
+		"properties": map[string]any{
+			"items": map[string]any{
+				"type":        "array",
+				"description": itemDescription + "；分页控制信息只读取 meta.pagination",
+				"items": map[string]any{
+					"type":                 "object",
+					"additionalProperties": true,
+				},
+			},
+		},
+		"required": []string{"items"},
+	})
+	return &contract.ResultSpec{
+		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		DataSchema: schema,
+	}
+}
+
+func devAppCursorPagination() *contract.PaginationSpec {
+	return &contract.PaginationSpec{
+		Kind:            contract.PaginationKindCursor,
+		CursorParameter: "cursor",
+	}
+}
+
 // newDevAppCommand builds the `app` subtree of `dws dev`. The cobra path is
 // `dws dev app ...` while the MCP product id stays "devapp" — the id is a
 // backend contract (SupplementServers/StaticServers injection key and the
@@ -290,6 +320,8 @@ func newDevAppEventListCommand(runner executor.Runner) *cobra.Command {
 			},
 			Description: "查询应用已订阅的事件列表",
 			DryRun:      devAppDryRun,
+			Result:      devAppPaginatedItemsResult("当前页应用订阅事件查询结果", "当前页事件记录"),
+			Pagination:  devAppCursorPagination(),
 			Interface:   devAppCompositeInterface(),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "列出或搜索应用可订阅的事件",
@@ -405,14 +437,10 @@ func newDevAppListCommand(runner executor.Runner) *cobra.Command {
 			DryRun:      devAppDryRun,
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeFailure, contract.ResultOutcomeSuccess},
-				DataSchema: json.RawMessage(`{"type":"object","properties":{"items":{"type":"array","items":{"type":"object","properties":{"unifiedAppId":{"type":"string"},"name":{"type":"string"},"appKey":{"type":"string"}},"additionalProperties":true}},"hasMore":{"type":"boolean"},"nextCursor":{"type":"string"}},"required":["items"],"additionalProperties":true}`),
-				NDJSON: &contract.ResultNDJSONSpec{
-					RecordPath:   "items",
-					RecordSchema: json.RawMessage(`{"type":"object","properties":{"unifiedAppId":{"type":"string"},"name":{"type":"string"},"appKey":{"type":"string"}},"additionalProperties":true}`),
-				},
-				Pagination: &contract.ResultPaginationSpec{CursorPath: "nextCursor", ExhaustionPath: "hasMore", ExhaustedWhen: false},
+				DataSchema: json.RawMessage(`{"type":"object","description":"当前页应用查询结果","properties":{"items":{"type":"array","description":"当前页应用记录","items":{"type":"object","properties":{"unifiedAppId":{"type":"string","description":"开放平台统一应用 ID"},"name":{"type":"string","description":"应用名称"},"appKey":{"type":"string","description":"应用 AppKey"}},"additionalProperties":true}}},"required":["items"],"additionalProperties":true}`),
 			},
-			Interface: devAppCompositeInterface(),
+			Pagination: devAppCursorPagination(),
+			Interface:  devAppCompositeInterface(),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "按条件分页查询开放平台应用",
 				UseWhen:      []string{"需要按名称、创建人或应用键筛选应用时"},
@@ -457,7 +485,7 @@ func newDevAppGetCommand(runner executor.Runner) *cobra.Command {
 			DryRun:      devAppDryRun,
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-				DataSchema: json.RawMessage(`{"type":"object","properties":{"unifiedAppId":{"type":"string"},"name":{"type":"string"},"appKey":{"type":"string"},"agentId":{},"status":{}},"required":["unifiedAppId"],"additionalProperties":true}`),
+				DataSchema: json.RawMessage(`{"type":"object","description":"开放平台企业内部应用详情","properties":{"unifiedAppId":{"type":"string","description":"开放平台统一应用 ID"},"name":{"type":"string","description":"应用名称"},"appKey":{"type":"string","description":"应用 AppKey"},"agentId":{"description":"应用 Agent ID；具体类型由服务端返回"},"status":{"description":"应用当前状态；具体类型由服务端返回"}},"required":["unifiedAppId"],"additionalProperties":true}`),
 			},
 			Interface: devAppCompositeInterface(),
 			Selection: contract.SelectionSpec{
@@ -581,7 +609,7 @@ func newDevAppCredentialsGetCommand(runner executor.Runner) *cobra.Command {
 			DryRun:      devAppDryRun,
 			Result: &contract.ResultSpec{
 				Outcomes:       []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-				DataSchema:     json.RawMessage(`{"type":"object","properties":{"clientId":{"type":"string"},"clientSecret":{"type":"string"},"appKey":{"type":"string"},"appSecret":{"type":"string"}},"additionalProperties":true}`),
+				DataSchema:     json.RawMessage(`{"type":"object","description":"开放平台应用凭证；敏感字段必须经过统一脱敏策略","properties":{"clientId":{"type":"string","description":"OAuth 客户端 ID"},"clientSecret":{"type":"string","description":"OAuth 客户端密钥"},"appKey":{"type":"string","description":"应用 AppKey"},"appSecret":{"type":"string","description":"应用 AppSecret"}},"additionalProperties":true}`),
 				SensitivePaths: []string{"appSecret", "clientSecret"},
 			},
 			Interface: devAppCompositeInterface(),
@@ -886,6 +914,8 @@ func newDevAppPermissionListCommand(runner executor.Runner) *cobra.Command {
 			},
 			Description: "查询开放平台应用权限列表",
 			DryRun:      devAppDryRun,
+			Result:      devAppPaginatedItemsResult("当前页开放平台应用权限查询结果", "当前页权限记录"),
+			Pagination:  devAppCursorPagination(),
 			Interface:   devAppCompositeInterface(),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "查询应用权限及其授权状态",
@@ -1557,6 +1587,8 @@ func newDevAppVersionListCommand(runner executor.Runner) *cobra.Command {
 			},
 			Description: "分页查询应用版本列表",
 			DryRun:      devAppDryRun,
+			Result:      devAppPaginatedItemsResult("当前页开放平台应用版本查询结果", "当前页版本记录"),
+			Pagination:  devAppCursorPagination(),
 			Interface:   devAppCompositeInterface(),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "分页列出应用的历史和待发布版本",
@@ -1698,7 +1730,7 @@ func newDevAppVersionStatusCommand(runner executor.Runner) *cobra.Command {
 			DryRun:      devAppDryRun,
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomePending, contract.ResultOutcomeFailure, contract.ResultOutcomeSuccess},
-				DataSchema: json.RawMessage(`{"type":"object","properties":{"unifiedAppId":{"type":"string"},"versionId":{"type":"string"},"status":{"type":"string"},"versionStatus":{"type":"string"},"approvalStatus":{"type":"string"},"nextCommand":{"type":"string"}},"required":["versionId"],"additionalProperties":true}`),
+				DataSchema: json.RawMessage(`{"type":"object","description":"应用版本发布或审批状态","properties":{"unifiedAppId":{"type":"string","description":"开放平台统一应用 ID"},"versionId":{"type":"string","description":"应用版本 ID"},"status":{"type":"string","description":"归一化版本状态"},"versionStatus":{"type":"string","description":"服务端版本状态"},"approvalStatus":{"type":"string","description":"版本审批状态"},"nextCommand":{"type":"string","description":"状态未终结时可执行的下一条命令"}},"required":["versionId"],"additionalProperties":true}`),
 			},
 			Interface: devAppCompositeInterface(),
 			Selection: contract.SelectionSpec{
@@ -1855,7 +1887,7 @@ func devAppCommandResult(result executor.Result) output.CommandResult {
 			Hint: "保留原始响应并停止翻页；不要把当前页当作完整结果。",
 		})
 	} else if meta != nil {
-		return output.Success(data, output.WithMeta(meta))
+		return output.Success(devAppDataWithoutPagination(data), output.WithMeta(meta))
 	}
 	return output.Success(data)
 }
@@ -1940,12 +1972,12 @@ func devAppEnvelopeData(result executor.Result) any {
 }
 
 // devAppPaginationMeta 把列表载荷里的 cursor 分页字段投影到 meta.pagination
-// （契约规范 §3：分页元数据挂 meta 层）。透传语义不变：CLI 只观察服务端
+// （契约规范 §3：分页元数据挂 meta 层）。CLI 只观察服务端
 // 返回的 hasMore/nextCursor，不做合成。hasMore=true 且带 nextCursor →
 // endpoint_exhausted:false + next_token（可续跑）；hasMore=false →
 // endpoint_exhausted:true。hasMore=true 却无 cursor 时不产出分页元数据，
-// 避免违反「endpoint_exhausted:false 必须携带 next_token」。本批只投影、
-// 不从 data 剥离原字段（剥离属三期强类型 handler 的职责，记入 findings）。
+// 避免违反「endpoint_exhausted:false 必须携带 next_token」。统一结果通过
+// devAppDataWithoutPagination 从 data 剥离源控制字段；legacy renderer 不变。
 func devAppPaginationMeta(payload any) (*output.Meta, error) {
 	m, ok := payload.(map[string]any)
 	if !ok {
@@ -1986,6 +2018,23 @@ func devAppPaginationMeta(payload any) (*output.Meta, error) {
 		return nil, fmt.Errorf("pagination nextCursor is empty without an exhaustion signal")
 	}
 	return &output.Meta{Pagination: pg}, nil
+}
+
+func devAppDataWithoutPagination(payload any) any {
+	object, ok := payload.(map[string]any)
+	if !ok {
+		return payload
+	}
+	data := make(map[string]any, len(object))
+	for key, value := range object {
+		switch key {
+		case "hasMore", "nextCursor":
+			continue
+		default:
+			data[key] = value
+		}
+	}
+	return data
 }
 
 func devAppMultiProfileResult(content map[string]any) output.CommandResult {

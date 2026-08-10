@@ -203,10 +203,9 @@ func TestFrameworkContractFinalDeepCopyAndSafetyConflicts(t *testing.T) {
 		Result: &contract.ResultSpec{
 			Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess},
 			DataSchema: []byte(`{"type":"object"}`), SensitivePaths: []string{"token"},
-			NDJSON:     &contract.ResultNDJSONSpec{RecordPath: "items", RecordSchema: []byte(`{"type":"object"}`)},
-			Pagination: &contract.ResultPaginationSpec{CursorPath: "next", ExhaustionPath: "done"},
 		},
-		Interface: &contract.InterfaceSpec{Ref: &contract.InterfaceRefSpec{}},
+		Pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "cursor"},
+		Interface:  &contract.InterfaceSpec{Ref: &contract.InterfaceRefSpec{}},
 		Selection: &contract.SelectionSpec{
 			UseWhen: []string{"use"}, AvoidWhen: []string{"avoid"}, Prerequisites: []string{"pre"}, Tips: []string{"tip"},
 			WorkflowRefs: []string{"flow"}, Examples: []string{"example"}, SourceRefs: []string{"source"},
@@ -216,7 +215,7 @@ func TestFrameworkContractFinalDeepCopyAndSafetyConflicts(t *testing.T) {
 	}
 	RegisterRuntimeContractFinal(cmd, payload)
 	got, ok := RuntimeContractFinal(cmd)
-	if !ok || got.Result == payload.Result || got.Result.NDJSON == payload.Result.NDJSON || got.Result.Pagination == payload.Result.Pagination || got.Interface == payload.Interface || got.Selection == payload.Selection || got.Identity == payload.Identity {
+	if !ok || got.Result == payload.Result || got.Pagination == payload.Pagination || got.Interface == payload.Interface || got.Selection == payload.Selection || got.Identity == payload.Identity {
 		t.Fatalf("payload not deeply cloned: %#v", got)
 	}
 	payload.Parameters[0].Enum[0] = "changed"

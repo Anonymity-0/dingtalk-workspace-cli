@@ -620,15 +620,15 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 			cmd.SetContext(executionCtx)
 			// WithResultStore above guarantees the reset precondition.
 			_ = output.ResetResultStore(executionCtx)
-			// Cobra performs these checks after persistent pre-run hooks. Run
-			// them before opening the transactional sink so validation errors
-			// cannot strand a temporary file during direct ExecuteC calls.
-			if err := cmd.ValidateRequiredFlags(); err != nil {
-				return err
-			}
-			if err := cmd.ValidateFlagGroups(); err != nil {
-				return err
-			}
+			// Do not run Cobra's ValidateRequiredFlags/ValidateFlagGroups here:
+			// Cobra executes them between the leaf's PreRunE and RunE, and leaves
+			// rely on that order to normalize alias flags into required canonical
+			// flags (for example chat message download-media copies --msg-id into
+			// the required --message-id in PreRunE). Running them early fails the
+			// alias path before the leaf can normalize it. The transactional
+			// --output sink instead opens at Run entry (after Cobra's own
+			// validation), so validation failures still cannot strand a
+			// temporary file.
 			// Validate caller-provided identity labels before any edition hook
 			// or command network activity can run. Header-only library callers
 			// use the best-effort path in resolveIdentityHeaders instead.
@@ -651,12 +651,9 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 			// Configure global slog level based on --debug / --verbose flags.
 			configureLogLevel(flags)
 
-			if err := configureOutputSink(cmd); err != nil {
-				return err
-			}
-			installOutputSinkErrorCleanup(cmd)
+			installOutputSinkRunBoundary(cmd)
 			if fn := edition.Get().AfterPersistentPreRun; fn != nil {
-				if err := runWithOutputSinkErrorCleanup(cmd, func() error { return fn(cmd, args) }); err != nil {
+				if err := fn(cmd, args); err != nil {
 					return err
 				}
 			}
@@ -1117,6 +1114,17 @@ func configureOutputSink(cmd *cobra.Command) error {
 	if outputPath == "" {
 		return nil
 	}
+	// A public root may be reused across ExecuteC calls, accumulating one Run
+	// wrapper per execution. When the sink for this invocation is already open,
+	// an inner wrapper must not replace it with a second temporary file.
+	if state := outputSinkForCommand(cmd); state != nil {
+		state.mu.Lock()
+		finished := state.finished
+		state.mu.Unlock()
+		if !finished {
+			return nil
+		}
+	}
 	if err := validateOptionalPath("--output", outputPath); err != nil {
 		return err
 	}
@@ -1139,42 +1147,37 @@ func configureOutputSink(cmd *cobra.Command) error {
 	return nil
 }
 
-func installOutputSinkErrorCleanup(cmd *cobra.Command) {
+// installOutputSinkRunBoundary defers opening the transactional --output sink
+// to the executed command's Run entry. Cobra runs ValidateRequiredFlags and
+// ValidateFlagGroups after the leaf's PreRunE and immediately before RunE, so
+// opening the sink there keeps two invariants at once: leaf PreRunE hooks can
+// still normalize alias flags into required canonical flags, and a validation
+// failure can never strand a temporary output file. Run-only leaves are
+// converted to RunE so a sink setup failure remains a returned error. Post-run
+// hooks keep the error cleanup wrapping so a post-run failure still aborts the
+// transaction; pre-run hooks need no wrapping because the sink cannot exist
+// before Run entry.
+func installOutputSinkRunBoundary(cmd *cobra.Command) {
 	if cmd == nil {
 		return
 	}
-	if _, ok := cmd.Context().Value(outputFileContextKey{}).(*outputSinkState); !ok {
-		return
-	}
-	if cmd.PreRunE != nil {
-		original := cmd.PreRunE
-		cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-			return runWithOutputSinkErrorCleanup(cmd, func() error { return original(cmd, args) })
-		}
-	}
-	if cmd.PreRun != nil {
-		original := cmd.PreRun
-		cmd.PreRun = func(cmd *cobra.Command, args []string) {
-			_ = runWithOutputSinkErrorCleanup(cmd, func() error {
-				original(cmd, args)
-				return nil
-			})
+	openSinkAndRun := func(run func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
+		return func(cmd *cobra.Command, args []string) error {
+			if err := configureOutputSink(cmd); err != nil {
+				return err
+			}
+			return runWithOutputSinkErrorCleanup(cmd, func() error { return run(cmd, args) })
 		}
 	}
 	if cmd.RunE != nil {
-		original := cmd.RunE
-		cmd.RunE = func(cmd *cobra.Command, args []string) error {
-			return runWithOutputSinkErrorCleanup(cmd, func() error { return original(cmd, args) })
-		}
-	}
-	if cmd.Run != nil {
+		cmd.RunE = openSinkAndRun(cmd.RunE)
+	} else if cmd.Run != nil {
 		original := cmd.Run
-		cmd.Run = func(cmd *cobra.Command, args []string) {
-			_ = runWithOutputSinkErrorCleanup(cmd, func() error {
-				original(cmd, args)
-				return nil
-			})
-		}
+		cmd.Run = nil
+		cmd.RunE = openSinkAndRun(func(cmd *cobra.Command, args []string) error {
+			original(cmd, args)
+			return nil
+		})
 	}
 	if cmd.PostRunE != nil {
 		original := cmd.PostRunE
@@ -1219,6 +1222,12 @@ func closeOutputSink(cmd *cobra.Command) error {
 	}
 	state.mu.Lock()
 	defer state.mu.Unlock()
+	// A reusable Cobra tree must never retain the transactional file as its
+	// stdout after this execution. Restore the caller's writer on every terminal
+	// path, including sync/close/rename failures and repeated cleanup calls.
+	if state.original != nil {
+		cmd.SetOut(state.original)
+	}
 	if state.finished {
 		return nil
 	}

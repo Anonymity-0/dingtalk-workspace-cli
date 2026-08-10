@@ -477,7 +477,7 @@ func PrintJSON(w io.Writer, err error) error {
 		// Keep the hard-coded fallback inside the same stable machine contract.
 		// This path must not depend on JSON encoding because it exists precisely
 		// for values (for example Details) that the encoder cannot represent.
-		_, writeErr := fmt.Fprintln(w, `{"outcome":"failure","error":{"type":"internal","subtype":"error_encoding_failed","message":"failed to encode error output","exit_code":5}}`)
+		_, writeErr := fmt.Fprintln(w, `{"outcome":"failure","error":{"code":5,"category":"internal","type":"internal","subtype":"error_encoding_failed","message":"failed to encode error output","exit_code":5}}`)
 		return writeErr
 	}
 

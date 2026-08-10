@@ -78,6 +78,7 @@ var schemaCatalogToolOptionalKeys = []string{
 	"interface_reason",
 	"interface_ref",
 	"metadata_source",
+	"pagination",
 	"positionals",
 	"result",
 }
@@ -241,6 +242,32 @@ func validateCatalogToolEntry(toolID string, entry map[string]any, violations *[
 	if result, exists := entry["result"]; exists {
 		if _, ok := result.(map[string]any); !ok {
 			report("field %q must be an object", "result")
+		}
+	}
+	if rawPagination, exists := entry["pagination"]; exists {
+		pagination, ok := rawPagination.(map[string]any)
+		if !ok {
+			report("field %q must be an object", "pagination")
+		} else {
+			want := map[string]string{
+				"kind":                    contract.PaginationKindCursor,
+				"meta_path":               contract.PaginationMetaPath,
+				"endpoint_exhausted_path": contract.PaginationExhaustedPath,
+				"next_token_path":         contract.PaginationNextTokenPath,
+			}
+			for field, expected := range want {
+				if value, _ := pagination[field].(string); value != expected {
+					report("field %q.%s = %q, want %q", "pagination", field, value, expected)
+				}
+			}
+			cursor, _ := pagination["cursor_parameter"].(string)
+			if strings.TrimSpace(cursor) == "" {
+				report("field %q.cursor_parameter must be a non-empty string", "pagination")
+			} else if paramsOK {
+				if _, exists := parameters[cursor]; !exists {
+					report("field %q.cursor_parameter references missing parameter %q", "pagination", cursor)
+				}
+			}
 		}
 	}
 	for paramName, raw := range parameters {

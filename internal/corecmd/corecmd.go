@@ -1375,6 +1375,13 @@ func AttachContract(cmd *cobra.Command, safety contract.SafetySpec, decl Contrac
 		}
 		payload.Result = result
 	}
+	if decl.Pagination != nil {
+		pagination, err := contract.NormalizePaginationSpec(decl.Pagination, decl.Identity.CanonicalPath)
+		if err != nil {
+			panic(fmt.Sprintf("command %q has invalid Contract.Pagination: %v", cmd.Name(), err))
+		}
+		payload.Pagination = pagination
+	}
 	if decl.Interface != nil {
 		iface := &contract.InterfaceSpec{
 			Mode:         strings.TrimSpace(decl.Interface.Mode),

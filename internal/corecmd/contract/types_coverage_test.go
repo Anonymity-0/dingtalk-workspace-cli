@@ -23,16 +23,6 @@ func TestFrameworkResultSpecValidationEdges(t *testing.T) {
 		name string
 		edit func(*ResultSpec)
 	}{
-		{"ndjson invalid path", func(s *ResultSpec) {
-			s.NDJSON = &ResultNDJSONSpec{RecordPath: ".items", RecordSchema: json.RawMessage(`{"type":"object"}`)}
-		}},
-		{"ndjson invalid schema", func(s *ResultSpec) {
-			s.NDJSON = &ResultNDJSONSpec{RecordPath: "items", RecordSchema: json.RawMessage(`[]`)}
-		}},
-		{"pagination invalid cursor", func(s *ResultSpec) { s.Pagination = &ResultPaginationSpec{CursorPath: ".next", ExhaustionPath: "done"} }},
-		{"pagination invalid exhausted", func(s *ResultSpec) {
-			s.Pagination = &ResultPaginationSpec{CursorPath: "next", ExhaustionPath: "done..bad"}
-		}},
 		{"sensitive invalid", func(s *ResultSpec) { s.SensitivePaths = []string{"bad..path"} }},
 		{"empty schema", func(s *ResultSpec) { s.DataSchema = nil }},
 		{"multiple schema", func(s *ResultSpec) { s.DataSchema = json.RawMessage(`{} {}`) }},

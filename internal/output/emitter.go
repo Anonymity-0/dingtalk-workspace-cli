@@ -211,9 +211,13 @@ func renderEnvelopeInto(buf *bytes.Buffer, errW io.Writer, env *Envelope, format
 
 	switch format {
 	case FormatJSON, "":
-		// json（默认）= 完整信封（唯一 JSON 契约）；fields 投影经
-		// WriteFiltered 作用于信封顶层键（既有语义，成功通道不变）。
-		return WriteFiltered(buf, FormatJSON, env, fields, "")
+		// json（默认）= 完整信封（唯一 JSON 契约）；--fields 为兼容语义——
+		// 投影业务载荷（与 table/csv/ndjson 分支及迁移前 WriteFiltered 直出
+		// 业务数据的行为一致），不筛选信封顶层键。
+		if trimmed := strings.TrimSpace(fields); trimmed != "" {
+			return WriteFiltered(buf, FormatJSON, env.Data, trimmed, "")
+		}
+		return WriteFiltered(buf, FormatJSON, env, "", "")
 	default:
 	}
 
@@ -245,8 +249,11 @@ func renderEnvelopeInto(buf *bytes.Buffer, errW io.Writer, env *Envelope, format
 		return Write(buf, FormatRaw, payload)
 	default:
 		// 未知 Format 常量（归一化/ParseFormat 后理论不可达）：按 json
-		// 数据通道语义兜底，绝不静默丢弃载荷。
-		return WriteFiltered(buf, FormatJSON, env, fields, "")
+		// 数据通道语义兜底，绝不静默丢弃载荷。--fields 同样投影业务载荷。
+		if trimmed := strings.TrimSpace(fields); trimmed != "" {
+			return WriteFiltered(buf, FormatJSON, env.Data, trimmed, "")
+		}
+		return WriteFiltered(buf, FormatJSON, env, "", "")
 	}
 }
 

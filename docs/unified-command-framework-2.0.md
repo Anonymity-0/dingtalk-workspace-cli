@@ -61,7 +61,12 @@ one invocation emits exactly one primary result
 
 ## 4. 输出与错误纪律
 
-- 统一 JSON/NDJSON 的 primary result 写 stdout；stderr 只写诊断。
+- 统一 JSON primary result 写 stdout；stderr 只写诊断。普通命令不把
+  NDJSON 作为通用结果契约；持续事件流若需要逐事件输出，由 event 命令
+  自己声明专用流协议。
+- 分页统一输出到信封 `meta.pagination`，并在命令 Schema 中作为与 `result`
+  同级的 `pagination` 能力声明；`result.data_schema` 只描述业务 data，不再
+  混入分页控制字段。
 - 日志不得污染 stdout。
 - `ok`、`retryable`、`dry_run` 等必须是 JSON boolean。
 - 失败由框架根据 typed error 映射退出码；产品代码不能自报任意 rc。

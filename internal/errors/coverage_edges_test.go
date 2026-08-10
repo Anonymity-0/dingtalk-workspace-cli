@@ -55,6 +55,8 @@ func TestCrossPlatformCoverageDiagnosticsAndErrorRenderingEdges(t *testing.T) {
 	marshalErrorJSON = func(any, string, string) ([]byte, error) { return nil, stderrors.New("encode") }
 	out.Reset()
 	if err := PrintJSON(&out, err); err != nil || !strings.Contains(out.String(), `"outcome":"failure"`) ||
+		!strings.Contains(out.String(), `"code":5`) ||
+		!strings.Contains(out.String(), `"category":"internal"`) ||
 		!strings.Contains(out.String(), `"type":"internal"`) ||
 		!strings.Contains(out.String(), `"subtype":"error_encoding_failed"`) ||
 		!strings.Contains(out.String(), `"exit_code":5`) {

@@ -73,6 +73,19 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 		if env.Meta == nil || env.Meta.Pagination == nil || env.Meta.Pagination.EndpointExhausted || env.Meta.Pagination.NextToken != "next" {
 			t.Fatalf("pagination envelope=%+v", env)
 		}
+		data, ok := env.Data.(map[string]any)
+		if !ok {
+			t.Fatalf("pagination data type=%T, want map[string]any", env.Data)
+		}
+		if _, exists := data["hasMore"]; exists {
+			t.Fatalf("business data must not retain hasMore: %#v", data)
+		}
+		if _, exists := data["nextCursor"]; exists {
+			t.Fatalf("business data must not retain nextCursor: %#v", data)
+		}
+		if _, exists := data["items"]; !exists {
+			t.Fatalf("business data lost items while extracting pagination: %#v", data)
+		}
 	})
 
 	for name, payload := range map[string]map[string]any{

@@ -43,6 +43,7 @@ type ContractDecl struct {
 	Parameters  []contract.ParamDecl
 	DryRun      *contract.DryRunSpec
 	Result      *contract.ResultSpec
+	Pagination  *contract.PaginationSpec
 	Interface   *contract.InterfaceSpec
 	Selection   contract.SelectionSpec
 	Identity    contract.ToolIdentitySpec
@@ -146,6 +147,9 @@ func (s ContractDecl) empty() bool {
 		return false
 	}
 	if s.Result != nil {
+		return false
+	}
+	if s.Pagination != nil {
 		return false
 	}
 	if s.Interface != nil {

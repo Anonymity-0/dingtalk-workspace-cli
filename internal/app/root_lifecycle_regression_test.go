@@ -69,6 +69,45 @@ func TestPublicRootDirectExecuteResetsUnifiedResultLifecycle(t *testing.T) {
 	}
 }
 
+func TestPublicRootRestoresStdoutAfterSuccessfulOutputPublication(t *testing.T) {
+	root := NewRootCommand(context.Background())
+	var stdout bytes.Buffer
+	root.SetOut(&stdout)
+	root.SetErr(&bytes.Buffer{})
+	run := 0
+	leaf := &cobra.Command{
+		Use: "lifecycle-output-repeat",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			run++
+			return output.StoreResult(cmd.Context(), output.Success(map[string]any{"run": run}))
+		},
+	}
+	output.SetCommandRollout(leaf, output.RolloutUnifiedActive)
+	root.AddCommand(leaf)
+
+	target := filepath.Join(t.TempDir(), "result.json")
+	root.SetArgs([]string{"lifecycle-output-repeat", "--output", target, "--format", "json"})
+	if _, err := root.ExecuteC(); err != nil {
+		t.Fatalf("first ExecuteC: %v", err)
+	}
+	first, err := os.ReadFile(target)
+	if err != nil || !bytes.Contains(first, []byte(`"run": 1`)) {
+		t.Fatalf("published output=%q err=%v", first, err)
+	}
+
+	if err := root.PersistentFlags().Set("output", ""); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	root.SetArgs([]string{"lifecycle-output-repeat", "--format", "json"})
+	if _, err := root.ExecuteC(); err != nil {
+		t.Fatalf("second ExecuteC: %v", err)
+	}
+	if !strings.Contains(stdout.String(), `"run": 2`) {
+		t.Fatalf("second stdout=%q", stdout.String())
+	}
+}
+
 func TestPublicRootDirectExecuteFailsWhenUnifiedSinkCannotPublish(t *testing.T) {
 	oldClose := rootCloseFile
 	t.Cleanup(func() { rootCloseFile = oldClose })

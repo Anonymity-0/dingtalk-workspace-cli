@@ -53,14 +53,48 @@ func applyCursor(rt *shortcut.RuntimeContext, params map[string]any) {
 }
 
 var cursorFlags = []shortcut.Flag{
-	{Name: "cursor", Type: shortcut.FlagString, Desc: "游标令牌：首次查询留空，续翻传上次出参的 nextCursor"},
+	{Name: "cursor", Type: shortcut.FlagString, Desc: "游标令牌：首次查询留空，续翻传上次 meta.pagination.next_token"},
 	{Name: "page-size", Type: shortcut.FlagInt, Default: "20", Desc: "单页条数，默认 20"},
 }
 
 func devAppObjectResult(outcomes ...contract.ResultOutcome) *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes:   append([]contract.ResultOutcome(nil), outcomes...),
-		DataSchema: json.RawMessage(`{"type":"object","additionalProperties":true}`),
+		DataSchema: json.RawMessage(`{"type":"object","description":"开放平台命令返回的业务对象；具体字段由对应操作定义","additionalProperties":true}`),
+	}
+}
+
+func devAppPaginatedProjectionResult(collection, description string) *contract.ResultSpec {
+	schema, _ := json.Marshal(map[string]any{
+		"type":                 "object",
+		"description":          description,
+		"additionalProperties": false,
+		"properties": map[string]any{
+			"count": map[string]any{
+				"type":        "integer",
+				"description": "当前页业务记录数量",
+			},
+			collection: map[string]any{
+				"type":        "array",
+				"description": "当前页业务记录；分页控制信息只读取 meta.pagination",
+				"items": map[string]any{
+					"type":                 "object",
+					"additionalProperties": true,
+				},
+			},
+		},
+		"required": []string{"count", collection},
+	})
+	return &contract.ResultSpec{
+		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		DataSchema: schema,
+	}
+}
+
+func devAppCursorPagination() *contract.PaginationSpec {
+	return &contract.PaginationSpec{
+		Kind:            contract.PaginationKindCursor,
+		CursorParameter: "cursor",
 	}
 }
 
@@ -100,6 +134,8 @@ var ListApp = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws devapp +list"},
 		},
+		Result:     devAppPaginatedProjectionResult("apps", "当前页开放平台应用查询结果"),
+		Pagination: devAppCursorPagination(),
 	},
 	Flags: append([]shortcut.Flag{
 		{Name: "name", Type: shortcut.FlagString, Desc: "应用名称关键词"},
@@ -656,6 +692,8 @@ var PermissionList = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws devapp +permission-list --unified-app-id <UNIFIED_APP_ID>"},
 		},
+		Result:     devAppPaginatedProjectionResult("permissions", "当前页开放平台应用权限查询结果"),
+		Pagination: devAppCursorPagination(),
 	},
 	Flags: append([]shortcut.Flag{
 		{Name: "unified-app-id", Type: shortcut.FlagString, Desc: "开放平台统一应用 ID", Required: true},
@@ -1154,6 +1192,8 @@ var EventList = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws devapp +event-list --unified-app-id <UNIFIED_APP_ID>"},
 		},
+		Result:     devAppPaginatedProjectionResult("events", "当前页应用订阅事件查询结果"),
+		Pagination: devAppCursorPagination(),
 	},
 	Flags: append([]shortcut.Flag{
 		{Name: "unified-app-id", Type: shortcut.FlagString, Desc: "开放平台统一应用 ID", Required: true},
@@ -1345,6 +1385,8 @@ var VersionList = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws devapp +version-list --unified-app-id <UNIFIED_APP_ID>"},
 		},
+		Result:     devAppPaginatedProjectionResult("versions", "当前页开放平台应用版本查询结果"),
+		Pagination: devAppCursorPagination(),
 	},
 	Flags: append([]shortcut.Flag{
 		{Name: "unified-app-id", Type: shortcut.FlagString, Desc: "开放平台统一应用 ID", Required: true},
@@ -1656,7 +1698,7 @@ var VersionStatus = shortcut.Shortcut{
 
 func init() {
 	shortcut.Register(
-		frameworkDualValidate(ListApp),
+		frameworkUnified(ListApp),
 		frameworkUnified(GetApp),
 		frameworkDualValidate(CreateApp),
 		frameworkDualValidate(UpdateApp),
@@ -1669,7 +1711,7 @@ func init() {
 		frameworkDualValidate(GetCredentials),
 		frameworkUnified(WebappGet),
 		frameworkDualValidate(WebappConfig),
-		frameworkDualValidate(PermissionList),
+		frameworkUnified(PermissionList),
 		frameworkDualValidate(PermissionAdd),
 		frameworkDualValidate(PermissionRemove),
 		frameworkDualValidate(MemberList),
@@ -1680,11 +1722,11 @@ func init() {
 		frameworkDualValidate(RobotConfig),
 		frameworkDualValidate(RobotEnable),
 		frameworkDualValidate(RobotDisable),
-		frameworkDualValidate(EventList),
+		frameworkUnified(EventList),
 		frameworkDualValidate(EventSubscribe),
 		frameworkDualValidate(EventUnsubscribe),
 		frameworkDualValidate(VersionCreate),
-		frameworkDualValidate(VersionList),
+		frameworkUnified(VersionList),
 		frameworkUnified(VersionGet),
 		frameworkUnified(VersionCheckApproval),
 		frameworkDualValidate(VersionPublish),

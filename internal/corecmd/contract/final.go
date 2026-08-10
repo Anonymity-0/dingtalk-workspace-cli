@@ -31,6 +31,7 @@ type ContractFinalPayload struct {
 	Safety      *SafetySpec
 	DryRun      *DryRunSpec
 	Result      *ResultSpec
+	Pagination  *PaginationSpec
 	Interface   *InterfaceSpec
 	Selection   *SelectionSpec
 	Identity    *ToolIdentitySpec

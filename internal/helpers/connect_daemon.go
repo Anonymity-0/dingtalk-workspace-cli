@@ -756,7 +756,7 @@ func newDevAppRobotConnectStatusCommand() *cobra.Command {
 			Description: "查看后台连接器守护进程状态",
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-				DataSchema: json.RawMessage(`{"type":"object","properties":{"state":{"type":"string","enum":["healthy","degraded","down","not_running"]},"pid":{"type":"integer"},"channel":{"type":"string"},"clientId":{"type":"string"},"unifiedAppId":{"type":"string"},"supervised":{"type":"boolean"},"lastError":{"type":"string"}},"required":["state","supervised"],"additionalProperties":true}`),
+				DataSchema: json.RawMessage(`{"type":"object","description":"本地连接器守护进程状态","properties":{"state":{"type":"string","description":"归一化健康状态","enum":["healthy","degraded","down","not_running"]},"pid":{"type":"integer","description":"守护进程 PID；未运行时可能缺省"},"channel":{"type":"string","description":"连接器使用的通道"},"clientId":{"type":"string","description":"连接器客户端 ID"},"unifiedAppId":{"type":"string","description":"关联的统一应用 ID"},"supervised":{"type":"boolean","description":"是否由本地 supervisor 管理"},"lastError":{"type":"string","description":"最近一次连接错误；健康时可能缺省"}},"required":["state","supervised"],"additionalProperties":true}`),
 			},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "local",
@@ -1072,7 +1072,7 @@ func newDevAppRobotConnectListCommand(runner executor.Runner) *cobra.Command {
 			Description: "列出本机连接器及其健康状态",
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-				DataSchema: json.RawMessage(`{"type":"array","items":{"type":"object","properties":{"state":{"type":"string","enum":["healthy","degraded","down","not_running"]},"pid":{"type":"integer"},"channel":{"type":"string"},"clientId":{"type":"string"},"unifiedAppId":{"type":"string"},"supervised":{"type":"boolean"}},"required":["state","supervised"],"additionalProperties":true}}`),
+				DataSchema: json.RawMessage(`{"type":"array","description":"本机连接器及其健康状态列表","items":{"type":"object","properties":{"state":{"type":"string","description":"归一化健康状态","enum":["healthy","degraded","down","not_running"]},"pid":{"type":"integer","description":"守护进程 PID；未运行时可能缺省"},"channel":{"type":"string","description":"连接器使用的通道"},"clientId":{"type":"string","description":"连接器客户端 ID"},"unifiedAppId":{"type":"string","description":"关联的统一应用 ID"},"supervised":{"type":"boolean","description":"是否由本地 supervisor 管理"}},"required":["state","supervised"],"additionalProperties":true}}`),
 			},
 			Interface: &contract.InterfaceSpec{Mode: "composite", Availability: "available", Reason: "命令组合本地连接器状态与可选远端应用名称解析，不对应单一 MCP 接口"},
 			Selection: contract.SelectionSpec{AgentSummary: "列出本机全部连接器及健康状态", UseWhen: []string{"需要查看本机连接器清单"}, AvoidWhen: []string{"只检查一个连接器时使用 dev connect status"}, Examples: []string{"dws dev connect list --format json"}},

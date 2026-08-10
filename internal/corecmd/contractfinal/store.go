@@ -79,16 +79,11 @@ func cloneContractFinalPayload(in contract.ContractFinalPayload) contract.Contra
 		value.Outcomes = cloneSlice(in.Result.Outcomes)
 		value.DataSchema = cloneSlice(in.Result.DataSchema)
 		value.SensitivePaths = cloneSlice(in.Result.SensitivePaths)
-		if in.Result.NDJSON != nil {
-			ndjson := *in.Result.NDJSON
-			ndjson.RecordSchema = cloneSlice(in.Result.NDJSON.RecordSchema)
-			value.NDJSON = &ndjson
-		}
-		if in.Result.Pagination != nil {
-			pagination := *in.Result.Pagination
-			value.Pagination = &pagination
-		}
 		out.Result = &value
+	}
+	if in.Pagination != nil {
+		value := *in.Pagination
+		out.Pagination = &value
 	}
 	if in.Interface != nil {
 		value := *in.Interface

@@ -237,6 +237,9 @@ func TestFrameworkResultStoreLifecycleEdges(t *testing.T) {
 	if _, ok := resultStoreFromContext(nil); ok {
 		t.Fatal("nil context had a store")
 	}
+	if err := ResetResultStore(context.Background()); err == nil {
+		t.Fatal("ResetResultStore without root store succeeded")
+	}
 	ctx, store := WithResultStore(nil)
 	ctx2, same := WithResultStore(ctx)
 	if ctx2 != ctx || same != store {
@@ -281,6 +284,18 @@ func TestFrameworkResultStoreLifecycleEdges(t *testing.T) {
 	}
 	if code, ok := StoredExitCode(store); code != 0 || !ok {
 		t.Fatalf("StoredExitCode=(%d,%v)", code, ok)
+	}
+	if err := ResetResultStore(ctx); err != nil {
+		t.Fatalf("ResetResultStore: %v", err)
+	}
+	if code, attempted, emitted, risk := StoredEmissionState(store); code != 0 || attempted || emitted || risk {
+		t.Fatalf("reset state=(%d,%v,%v,%v)", code, attempted, emitted, risk)
+	}
+	if _, ok := StoredExitCode(store); ok {
+		t.Fatal("reset store retained an emitted exit code")
+	}
+	if err := StoreResult(ctx, Success(map[string]any{"id": "after-reset"})); err != nil {
+		t.Fatalf("StoreResult after reset: %v", err)
 	}
 }
 

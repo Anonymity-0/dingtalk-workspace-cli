@@ -50,26 +50,32 @@ func TestDevRepresentativeResultContractsReachContractFinal(t *testing.T) {
 		}
 	}
 
+	paginationCheck := func(t *testing.T, final contract.ContractFinalPayload) {
+		t.Helper()
+		if final.Pagination == nil || final.Pagination.Kind != contract.PaginationKindCursor ||
+			final.Pagination.CursorParameter != "cursor" || final.Pagination.MetaPath != contract.PaginationMetaPath {
+			t.Fatalf("paginated list contract = %#v", final)
+		}
+	}
 	tests := []struct {
 		canonical string
 		outcomes  []contract.ResultOutcome
-		check     func(*testing.T, *contract.ResultSpec)
+		check     func(*testing.T, contract.ContractFinalPayload)
 	}{
 		{
 			canonical: "dev.list_dev_app",
 			outcomes:  []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-			check: func(t *testing.T, result *contract.ResultSpec) {
-				if result.NDJSON == nil || result.NDJSON.RecordPath != "items" || result.Pagination == nil ||
-					result.Pagination.CursorPath != "nextCursor" || result.Pagination.ExhaustionPath != "hasMore" || result.Pagination.ExhaustedWhen {
-					t.Fatalf("paginated list result = %#v", result)
-				}
-			},
+			check:     paginationCheck,
 		},
+		{canonical: "dev.list_dev_app_permissions", outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure}, check: paginationCheck},
+		{canonical: "dev.list_dev_app_events", outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure}, check: paginationCheck},
+		{canonical: "dev.list_dev_app_versions", outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure}, check: paginationCheck},
 		{canonical: "dev.get_dev_app", outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure}},
 		{
 			canonical: "dev.get_dev_app_credentials",
 			outcomes:  []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-			check: func(t *testing.T, result *contract.ResultSpec) {
+			check: func(t *testing.T, final contract.ContractFinalPayload) {
+				result := final.Result
 				if want := []string{"appSecret", "clientSecret"}; !reflect.DeepEqual(result.SensitivePaths, want) {
 					t.Fatalf("sensitive paths = %#v, want %#v", result.SensitivePaths, want)
 				}
@@ -92,7 +98,7 @@ func TestDevRepresentativeResultContractsReachContractFinal(t *testing.T) {
 				t.Fatal("data_schema is empty")
 			}
 			if test.check != nil {
-				test.check(t, final.Result)
+				test.check(t, final)
 			}
 		})
 	}

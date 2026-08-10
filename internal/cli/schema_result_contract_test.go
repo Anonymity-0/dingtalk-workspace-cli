@@ -13,18 +13,15 @@ import (
 
 func TestResultContractModelWireRoundTripAndCompactPolicy(t *testing.T) {
 	result := &contract.ResultSpec{
-		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeFailure, contract.ResultOutcomeSuccess},
-		DataSchema: json.RawMessage(`{ "type":"object", "properties":{"items":{"type":"array"},"nextCursor":{"type":"string"},"hasMore":{"type":"boolean"}} }`),
-		NDJSON: &contract.ResultNDJSONSpec{
-			RecordPath:   "items",
-			RecordSchema: json.RawMessage(`{"type":"object"}`),
-		},
-		Pagination:     &contract.ResultPaginationSpec{CursorPath: "nextCursor", ExhaustionPath: "hasMore", ExhaustedWhen: false},
+		Outcomes:       []contract.ResultOutcome{contract.ResultOutcomeFailure, contract.ResultOutcomeSuccess},
+		DataSchema:     json.RawMessage(`{ "type":"object", "properties":{"items":{"type":"array","description":"Business result records","items":{"type":"object"}}} }`),
 		SensitivePaths: []string{"items.secret", "credential"},
 	}
 	spec, err := ToolSpecFromRuntime(RuntimeToolSpecInput{
-		Identity: contract.ToolIdentitySpec{ProductID: "dev", Name: "list", CLIName: "list", CLIPath: "dev list"},
-		Result:   result,
+		Identity:   contract.ToolIdentitySpec{ProductID: "dev", Name: "list", CLIName: "list", CLIPath: "dev list"},
+		Parameters: []ParameterSpec{{Name: "cursor", Type: "string"}},
+		Result:     result,
+		Pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "cursor"},
 	})
 	if err != nil {
 		t.Fatalf("ToolSpecFromRuntime() error = %v", err)
@@ -49,8 +46,22 @@ func TestResultContractModelWireRoundTripAndCompactPolicy(t *testing.T) {
 	if _, exists := specResultSummary(t, spec)["result"]; exists {
 		t.Fatal("result must remain full-leaf-only")
 	}
-	if _, exists := stripSchemaPayloadCompact(payload)["result"]; exists {
-		t.Fatal("compact projection must not include unreviewed result contract")
+	compactResult, exists := stripSchemaPayloadCompact(payload)["result"].(map[string]any)
+	if !exists {
+		t.Fatal("compact leaf must include the reviewed result contract")
+	}
+	if outcomes, ok := compactResult["outcomes"].([]any); !ok || len(outcomes) != 2 {
+		t.Fatalf("compact result outcomes = %#v", compactResult["outcomes"])
+	}
+	if dataSchema, ok := compactResult["data_schema"].(map[string]any); !ok || schemaString(dataSchema["type"]) != "object" {
+		t.Fatalf("compact result data_schema = %#v", compactResult["data_schema"])
+	}
+	if !reflect.DeepEqual(compactResult, resultPayload) {
+		t.Fatalf("compact result must equal full-leaf result\ncompact: %#v\nfull: %#v", compactResult, resultPayload)
+	}
+	compactPagination, exists := stripSchemaPayloadCompact(payload)["pagination"].(map[string]any)
+	if !exists || schemaString(compactPagination["meta_path"]) != contract.PaginationMetaPath || schemaString(compactPagination["cursor_parameter"]) != "cursor" {
+		t.Fatalf("compact pagination = %#v", compactPagination)
 	}
 
 	wire, err := schemaToolWireFromPayload(payload)

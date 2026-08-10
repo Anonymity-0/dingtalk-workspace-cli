@@ -12,7 +12,8 @@ import (
 
 func TestDevAppShortcutsRollOutPerTerminalCommand(t *testing.T) {
 	active := map[string]bool{
-		"+get": true, "+webapp-get": true,
+		"+list": true, "+get": true, "+webapp-get": true,
+		"+permission-list": true, "+event-list": true, "+version-list": true,
 		"+robot-get": true, "+version-get": true,
 		"+version-check-approval": true, "+version-status": true,
 	}
@@ -44,6 +45,11 @@ func TestDevAppShortcutsRollOutPerTerminalCommand(t *testing.T) {
 	for _, paginated := range []string{"+list", "+permission-list", "+event-list", "+version-list"} {
 		if !seen[paginated] {
 			t.Errorf("paginated shortcut %s is not registered", paginated)
+		}
+		for _, item := range shortcut.All() {
+			if item.Service == productDevApp && item.Command == paginated && item.Contract.Pagination == nil {
+				t.Errorf("paginated shortcut %s has no standalone pagination contract", paginated)
+			}
 		}
 	}
 }

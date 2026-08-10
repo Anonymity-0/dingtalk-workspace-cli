@@ -122,41 +122,100 @@ func TestFrameworkAbortOutputSinkRemoveFailure(t *testing.T) {
 }
 
 func TestFrameworkOutputSinkHookWrappingAndCleanupEdges(t *testing.T) {
-	installOutputSinkErrorCleanup(nil)
+	installOutputSinkRunBoundary(nil)
 	plain := &cobra.Command{Use: "plain"}
 	plain.SetContext(context.Background())
-	installOutputSinkErrorCleanup(plain)
+	installOutputSinkRunBoundary(plain)
 
-	file, err := os.CreateTemp(t.TempDir(), "sink-*")
-	if err != nil {
-		t.Fatal(err)
+	// newBoundaryChild builds a leaf whose --output lives on the root's
+	// persistent flag set, matching production wiring (a local --output flag
+	// belongs to the leaf's own business contract and skips the sink).
+	newBoundaryChild := func(outputPath string) *cobra.Command {
+		root := &cobra.Command{Use: "root"}
+		root.PersistentFlags().String("output", outputPath, "")
+		cmd := &cobra.Command{Use: "leaf"}
+		root.AddCommand(cmd)
+		cmd.SetContext(context.Background())
+		return cmd
 	}
-	state := &outputSinkState{file: file, tempPath: file.Name(), target: filepath.Join(t.TempDir(), "out")}
-	cmd := &cobra.Command{Use: "all"}
-	cmd.SetContext(context.WithValue(context.Background(), outputFileContextKey{}, state))
+
 	var calls int
-	cmd.PreRunE = func(*cobra.Command, []string) error { calls++; return nil }
-	cmd.PreRun = func(*cobra.Command, []string) { calls++ }
+	cmd := newBoundaryChild("")
 	cmd.RunE = func(*cobra.Command, []string) error { calls++; return nil }
-	cmd.Run = func(*cobra.Command, []string) { calls++ }
 	cmd.PostRunE = func(*cobra.Command, []string) error { calls++; return nil }
-	cmd.PostRun = func(*cobra.Command, []string) { calls++ }
-	installOutputSinkErrorCleanup(cmd)
-	if err := cmd.PreRunE(cmd, nil); err != nil {
-		t.Fatal(err)
-	}
-	cmd.PreRun(cmd, nil)
+	installOutputSinkRunBoundary(cmd)
 	if err := cmd.RunE(cmd, nil); err != nil {
 		t.Fatal(err)
 	}
-	cmd.Run(cmd, nil)
 	if err := cmd.PostRunE(cmd, nil); err != nil {
 		t.Fatal(err)
 	}
-	cmd.PostRun(cmd, nil)
-	if calls != 6 {
+
+	runOnly := newBoundaryChild("")
+	runOnly.Run = func(*cobra.Command, []string) { calls++ }
+	runOnly.PostRun = func(*cobra.Command, []string) { calls++ }
+	installOutputSinkRunBoundary(runOnly)
+	if runOnly.Run != nil || runOnly.RunE == nil {
+		t.Fatal("Run-only leaf must be converted to RunE so sink setup errors surface")
+	}
+	if err := runOnly.RunE(runOnly, nil); err != nil {
+		t.Fatal(err)
+	}
+	runOnly.PostRun(runOnly, nil)
+	if calls != 4 {
 		t.Fatalf("hook calls=%d", calls)
 	}
+
+	// A sink setup failure at Run entry returns before the business hook runs.
+	testseam.Swap(t, &rootCreateTemp, func(string, string) (*os.File, error) { return nil, errors.New("create failed") })
+	failCmd := newBoundaryChild(filepath.Join(t.TempDir(), "out.txt"))
+	businessRan := false
+	failCmd.RunE = func(*cobra.Command, []string) error { businessRan = true; return nil }
+	installOutputSinkRunBoundary(failCmd)
+	if err := failCmd.RunE(failCmd, nil); err == nil || !strings.Contains(err.Error(), "create failed") {
+		t.Fatalf("Run entry sink setup error=%v", err)
+	}
+	if businessRan {
+		t.Fatal("business hook ran after sink setup failure")
+	}
+	testseam.Swap(t, &rootCreateTemp, os.CreateTemp)
+
+	// A Run entry business error aborts the open sink: the temporary file is
+	// removed and the final target is never created.
+	abortTarget := filepath.Join(t.TempDir(), "result.txt")
+	abortCmd := newBoundaryChild(abortTarget)
+	abortCmd.RunE = func(*cobra.Command, []string) error { return errors.New("boom") }
+	installOutputSinkRunBoundary(abortCmd)
+	if err := abortCmd.RunE(abortCmd, nil); err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("Run entry business error=%v", err)
+	}
+	if _, err := os.Stat(abortTarget); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("target exists after aborted run: %v", err)
+	}
+	assertNoOutputTemps(t, abortTarget)
+
+	// A second configureOutputSink call on an already-open sink (a reused
+	// command tree stacks one Run wrapper per ExecuteC) must not replace the
+	// live sink with a second temporary file.
+	repeatTarget := filepath.Join(t.TempDir(), "result.txt")
+	repeatCmd := newBoundaryChild(repeatTarget)
+	if err := configureOutputSink(repeatCmd); err != nil {
+		t.Fatal(err)
+	}
+	first := outputSinkForCommand(repeatCmd)
+	if first == nil {
+		t.Fatal("first configureOutputSink did not open a sink")
+	}
+	if err := configureOutputSink(repeatCmd); err != nil {
+		t.Fatal(err)
+	}
+	if second := outputSinkForCommand(repeatCmd); second != first {
+		t.Fatal("configureOutputSink replaced an open sink")
+	}
+	if err := abortOutputSink(repeatCmd); err != nil {
+		t.Fatal(err)
+	}
+	assertNoOutputTemps(t, repeatTarget)
 
 	file2, err := os.CreateTemp(t.TempDir(), "sink-error-*")
 	if err != nil {
@@ -186,7 +245,7 @@ func TestFrameworkOutputSinkHookWrappingAndCleanupEdges(t *testing.T) {
 	if closeOutputSink(nil) != nil || abortOutputSink(nil) != nil || outputSinkForCommand(nil) != nil {
 		t.Fatal("nil sink guards failed")
 	}
-	finished := &outputSinkState{finished: true, file: file}
+	finished := &outputSinkState{finished: true, file: file3}
 	finishedCmd := &cobra.Command{Use: "finished"}
 	finishedCmd.SetContext(context.WithValue(context.Background(), outputFileContextKey{}, finished))
 	if closeOutputSink(finishedCmd) != nil || abortOutputSink(finishedCmd) != nil {

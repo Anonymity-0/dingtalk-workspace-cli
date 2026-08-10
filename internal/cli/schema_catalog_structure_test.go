@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
 // TestDeliverySchemaCatalogStructure gates the delivered catalog: every tool
@@ -112,6 +114,34 @@ func TestValidateCatalogStructureAcceptsOptionalResultObject(t *testing.T) {
 	entry["result"] = "invalid"
 	if err := ValidateCatalogStructure(catalogPayload(t, entry)); err == nil || !strings.Contains(err.Error(), `field "result" must be an object`) {
 		t.Fatalf("invalid result error = %v", err)
+	}
+}
+
+func TestValidateCatalogStructureAcceptsStandalonePagination(t *testing.T) {
+	entry := validCatalogToolEntry()
+	parameters := entry["parameters"].(map[string]any)
+	parameters["cursor"] = map[string]any{
+		"description":      "续页游标",
+		"field_provenance": map[string]any{},
+		"required":         false,
+		"type":             "string",
+	}
+	entry["parameter_count"] = float64(len(parameters))
+	entry["has_parameters"] = true
+	entry["pagination"] = map[string]any{
+		"kind":                    contract.PaginationKindCursor,
+		"cursor_parameter":        "cursor",
+		"meta_path":               contract.PaginationMetaPath,
+		"endpoint_exhausted_path": contract.PaginationExhaustedPath,
+		"next_token_path":         contract.PaginationNextTokenPath,
+	}
+	if err := ValidateCatalogStructure(catalogPayload(t, entry)); err != nil {
+		t.Fatalf("ValidateCatalogStructure() error = %v", err)
+	}
+
+	entry["pagination"].(map[string]any)["next_token_path"] = "data.nextCursor"
+	if err := ValidateCatalogStructure(catalogPayload(t, entry)); err == nil || !strings.Contains(err.Error(), "next_token_path") {
+		t.Fatalf("invalid pagination error = %v", err)
 	}
 }
 

@@ -294,25 +294,32 @@ func TestWriteEnvelopeJSONIsTheOnlyJSONContract(t *testing.T) {
 	}
 }
 
-func TestWriteEnvelopeJSONFieldsProjectionOnEnvelope(t *testing.T) {
-	// --fields 与 json 联动（成功通道）：投影作用于信封顶层键。
+func TestWriteEnvelopeJSONFieldsProjectionFiltersBusinessData(t *testing.T) {
+	// --fields 与 json 联动（成功通道）的兼容语义：投影业务载荷（与
+	// table/csv/ndjson 分支及迁移前 WriteFiltered 直出业务数据的行为一致，
+	// 全局 --fields 帮助描述的也是业务字段），不筛选信封顶层键。
 	var buf bytes.Buffer
-	env := NewSuccessEnvelope(map[string]any{"name": "DemoApp"})
-	if err := WriteEnvelopeTo(&buf, env, FormatJSON, "ok,outcome", ""); err != nil {
+	env := NewSuccessEnvelope(map[string]any{"name": "DemoApp", "id": "1"})
+	if err := WriteEnvelopeTo(&buf, env, FormatJSON, "name", ""); err != nil {
 		t.Fatalf("WriteEnvelopeTo: %v", err)
 	}
-	var decoded map[string]any
-	if err := json.Unmarshal(buf.Bytes(), &decoded); err != nil {
-		t.Fatalf("output is not valid JSON: %v\n%s", err, buf.String())
+	if want := "{\n  \"name\": \"DemoApp\"\n}\n"; buf.String() != want {
+		t.Fatalf("fields=name output = %q, want %q", buf.String(), want)
 	}
-	if _, has := decoded["ok"]; !has {
-		t.Fatalf("fields=ok,outcome must keep ok: %s", buf.String())
+	// 投影不得改写原信封的 data。
+	data, ok := env.Data.(map[string]any)
+	if !ok || data["id"] != "1" || data["name"] != "DemoApp" {
+		t.Fatalf("source envelope data mutated: %#v", env.Data)
 	}
-	if _, has := decoded["outcome"]; !has {
-		t.Fatalf("fields=ok,outcome must keep outcome: %s", buf.String())
+
+	// 未知 Format 常量的 json 兜底分支（归一化后理论不可达）遵循同一
+	// --fields 兼容语义：投影业务载荷而不是信封顶层键。
+	buf.Reset()
+	if err := WriteEnvelopeTo(&buf, NewSuccessEnvelope(map[string]any{"name": "DemoApp", "id": "1"}), Format("bogus"), "name", ""); err != nil {
+		t.Fatalf("WriteEnvelopeTo(bogus format): %v", err)
 	}
-	if _, has := decoded["data"]; has {
-		t.Fatalf("fields=ok,outcome must drop data: %s", buf.String())
+	if want := "{\n  \"name\": \"DemoApp\"\n}\n"; buf.String() != want {
+		t.Fatalf("bogus format fields=name output = %q, want %q", buf.String(), want)
 	}
 }
 

@@ -79,30 +79,33 @@ var canonicalResultOutcomes = [...]ResultOutcome{
 	ResultOutcomeFailure,
 }
 
-// ResultNDJSONSpec identifies the records emitted by NDJSON projections.
-// RecordPath is relative to the envelope data value.
-type ResultNDJSONSpec struct {
-	RecordPath   string          `json:"record_path"`
-	RecordSchema json.RawMessage `json:"record_schema"`
+const (
+	PaginationKindCursor    = "cursor"
+	PaginationMetaPath      = "meta.pagination"
+	PaginationExhaustedPath = "meta.pagination.endpoint_exhausted"
+	PaginationNextTokenPath = "meta.pagination.next_token"
+)
+
+// PaginationSpec is a command-level declaration for framework pagination
+// metadata. It is deliberately separate from ResultSpec because pagination is
+// emitted under envelope meta, not inside the business response data.
+type PaginationSpec struct {
+	Kind                  string `json:"kind"`
+	CursorParameter       string `json:"cursor_parameter"`
+	MetaPath              string `json:"meta_path"`
+	EndpointExhaustedPath string `json:"endpoint_exhausted_path"`
+	NextTokenPath         string `json:"next_token_path"`
 }
 
-// ResultPaginationSpec identifies cursor pagination facts in envelope data.
-// Both paths are relative to data and must be declared together.
-type ResultPaginationSpec struct {
-	CursorPath     string `json:"cursor_path"`
-	ExhaustionPath string `json:"exhaustion_path"`
-	ExhaustedWhen  bool   `json:"exhausted_when"`
-}
-
-// ResultSpec is the reviewed return-value contract for one command. DataSchema
-// and RecordSchema are canonical JSON Schema objects; all paths are relative to
-// the unified-output envelope data value.
+// ResultSpec is the reviewed return-value contract for one command and is
+// projected unchanged into both full-leaf and compact-leaf Schema. Outcomes
+// and DataSchema are required; Pagination and SensitivePaths are omitted when
+// absent. DataSchema is a canonical recursive JSON Schema object; every path
+// is relative to the unified-output envelope data value.
 type ResultSpec struct {
-	Outcomes       []ResultOutcome       `json:"outcomes"`
-	DataSchema     json.RawMessage       `json:"data_schema"`
-	NDJSON         *ResultNDJSONSpec     `json:"ndjson,omitempty"`
-	Pagination     *ResultPaginationSpec `json:"pagination,omitempty"`
-	SensitivePaths []string              `json:"sensitive_paths,omitempty"`
+	Outcomes       []ResultOutcome `json:"outcomes"`
+	DataSchema     json.RawMessage `json:"data_schema"`
+	SensitivePaths []string        `json:"sensitive_paths,omitempty"`
 }
 
 // NormalizeResultSpec returns a validated, canonical, defensively copied
@@ -144,35 +147,8 @@ func NormalizeResultSpec(in *ResultSpec, canonical string) (*ResultSpec, error) 
 	if err != nil {
 		return nil, fmt.Errorf("schema tool %s result data_schema: %w", canonical, err)
 	}
-	if in.NDJSON != nil {
-		path := strings.TrimSpace(in.NDJSON.RecordPath)
-		if path == "" || len(in.NDJSON.RecordSchema) == 0 {
-			return nil, fmt.Errorf("schema tool %s result ndjson must declare record_path and record_schema together", canonical)
-		}
-		if err := validateResultPath(path); err != nil {
-			return nil, fmt.Errorf("schema tool %s result ndjson record_path: %w", canonical, err)
-		}
-		recordSchema, err := canonicalJSONObject(in.NDJSON.RecordSchema)
-		if err != nil {
-			return nil, fmt.Errorf("schema tool %s result ndjson record_schema: %w", canonical, err)
-		}
-		out.NDJSON = &ResultNDJSONSpec{RecordPath: path, RecordSchema: recordSchema}
-	}
-	if in.Pagination != nil {
-		cursor := strings.TrimSpace(in.Pagination.CursorPath)
-		exhausted := strings.TrimSpace(in.Pagination.ExhaustionPath)
-		if cursor == "" || exhausted == "" {
-			return nil, fmt.Errorf("schema tool %s result pagination must declare cursor_path and exhaustion_path together", canonical)
-		}
-		if cursor == exhausted {
-			return nil, fmt.Errorf("schema tool %s result pagination paths must differ", canonical)
-		}
-		for _, item := range []struct{ name, path string }{{"cursor_path", cursor}, {"exhaustion_path", exhausted}} {
-			if err := validateResultPath(item.path); err != nil {
-				return nil, fmt.Errorf("schema tool %s result pagination %s: %w", canonical, item.name, err)
-			}
-		}
-		out.Pagination = &ResultPaginationSpec{CursorPath: cursor, ExhaustionPath: exhausted, ExhaustedWhen: in.Pagination.ExhaustedWhen}
+	if err := validateResultSchemaDescriptions(out.DataSchema, "data_schema"); err != nil {
+		return nil, fmt.Errorf("schema tool %s result %w", canonical, err)
 	}
 	seenPaths := make(map[string]bool, len(in.SensitivePaths))
 	for _, path := range in.SensitivePaths {
@@ -193,6 +169,40 @@ func NormalizeResultSpec(in *ResultSpec, canonical string) (*ResultSpec, error) 
 	return out, nil
 }
 
+// NormalizePaginationSpec validates the command-specific input parameter and
+// fills the framework-owned public meta paths.
+func NormalizePaginationSpec(in *PaginationSpec, canonical string) (*PaginationSpec, error) {
+	if in == nil {
+		return nil, nil
+	}
+	canonical = defaultString(strings.TrimSpace(canonical), "<unknown>")
+	kind := strings.TrimSpace(in.Kind)
+	if kind != PaginationKindCursor {
+		return nil, fmt.Errorf("schema tool %s pagination has unsupported kind %q", canonical, kind)
+	}
+	cursorParameter := strings.TrimSpace(strings.TrimPrefix(in.CursorParameter, "--"))
+	if cursorParameter == "" || strings.Contains(cursorParameter, ".") {
+		return nil, fmt.Errorf("schema tool %s pagination cursor_parameter must name one CLI flag", canonical)
+	}
+	provided := []struct{ name, got, want string }{
+		{"meta_path", strings.TrimSpace(in.MetaPath), PaginationMetaPath},
+		{"endpoint_exhausted_path", strings.TrimSpace(in.EndpointExhaustedPath), PaginationExhaustedPath},
+		{"next_token_path", strings.TrimSpace(in.NextTokenPath), PaginationNextTokenPath},
+	}
+	for _, field := range provided {
+		if field.got != "" && field.got != field.want {
+			return nil, fmt.Errorf("schema tool %s pagination %s is framework-owned and must be %q", canonical, field.name, field.want)
+		}
+	}
+	return &PaginationSpec{
+		Kind:                  kind,
+		CursorParameter:       cursorParameter,
+		MetaPath:              PaginationMetaPath,
+		EndpointExhaustedPath: PaginationExhaustedPath,
+		NextTokenPath:         PaginationNextTokenPath,
+	}, nil
+}
+
 func canonicalJSONObject(raw json.RawMessage) (json.RawMessage, error) {
 	if len(raw) == 0 {
 		return nil, fmt.Errorf("must be one JSON object")
@@ -208,6 +218,70 @@ func canonicalJSONObject(raw json.RawMessage) (json.RawMessage, error) {
 	}
 	canonical, _ := json.Marshal(object) // decoded RawMessages are always marshalable
 	return json.RawMessage(canonical), nil
+}
+
+// validateResultSchemaDescriptions keeps the Agent-facing return contract
+// self-explanatory. Every named property needs a description; nested object
+// properties and array items are checked recursively. The root schema and
+// anonymous composition branches do not need descriptions because they are
+// not field names an Agent must interpret.
+func validateResultSchemaDescriptions(raw json.RawMessage, location string) error {
+	var schema map[string]any
+	if err := json.Unmarshal(raw, &schema); err != nil {
+		return fmt.Errorf("%s must be one JSON Schema object", location)
+	}
+	return validateResultSchemaNode(schema, location)
+}
+
+func validateResultSchemaNode(schema map[string]any, location string) error {
+	if rawProperties, exists := schema["properties"]; exists {
+		properties, ok := rawProperties.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s.properties must be an object", location)
+		}
+		for name, rawProperty := range properties {
+			property, ok := rawProperty.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s.properties.%s must be a JSON Schema object", location, name)
+			}
+			description, _ := property["description"].(string)
+			if strings.TrimSpace(description) == "" {
+				return fmt.Errorf("%s.properties.%s requires description", location, name)
+			}
+			if err := validateResultSchemaNode(property, location+".properties."+name); err != nil {
+				return err
+			}
+		}
+	}
+	if rawItems, exists := schema["items"]; exists {
+		items, ok := rawItems.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s.items must be a JSON Schema object", location)
+		}
+		if err := validateResultSchemaNode(items, location+".items"); err != nil {
+			return err
+		}
+	}
+	for _, keyword := range []string{"allOf", "anyOf", "oneOf"} {
+		rawBranches, exists := schema[keyword]
+		if !exists {
+			continue
+		}
+		branches, ok := rawBranches.([]any)
+		if !ok {
+			return fmt.Errorf("%s.%s must be an array", location, keyword)
+		}
+		for index, rawBranch := range branches {
+			branch, ok := rawBranch.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s.%s[%d] must be a JSON Schema object", location, keyword, index)
+			}
+			if err := validateResultSchemaNode(branch, fmt.Sprintf("%s.%s[%d]", location, keyword, index)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func validateResultPath(path string) error {

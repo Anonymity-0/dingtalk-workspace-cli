@@ -58,53 +58,38 @@ func TestDevAppAllLeavesStdoutZeroLogBytes(t *testing.T) {
 }
 
 // TestDevAppFieldsProjectionCombinesWithEnvelope 是队列 B120 的 --fields 过滤
-// 与信封组合断言。实测收敛现状（W3 接线后固化）：json 模式下 --fields 作用于
-// **信封顶层键**（renderEnvelopeInto 的 json 分支：WriteFiltered(json, env,
-// fields)），即选 `data`/`ok`/`outcome` 等信封键而非 data 内字段；
-// `--fields data` 保留完整 data 载荷、剔除 ok/outcome 外壳。此行为与队列
-// 描述（data 内字段过滤）不同，按纪律固化真实行为 + findings 上报。
+// 与信封组合断言（兼容语义）：json 模式下 --fields 投影 **data 内业务字段**
+// ——与 table/csv/ndjson 分支及迁移前 WriteFiltered 直出业务数据的行为一致，
+// 全局 flag 帮助描述的也是业务字段（name,id,status）。输出为投影后的业务
+// 载荷本身，不筛选信封顶层键（ok/outcome 等外壳键不经 --fields 增删）。
 func TestDevAppFieldsProjectionCombinesWithEnvelope(t *testing.T) {
 	content := map[string]any{
 		"unifiedAppId": "u-1",
 		"name":         "DemoApp",
 		"appStatus":    "ENABLED",
 	}
-	// --fields data：只保留信封顶层 data 键（完整载荷），外壳键被剔除。
+	// --fields name：只保留业务载荷的 name 字段，其余业务字段被剔除。
 	out, errBuf, err := runDevAppFamilyProdAligned(t, devAppFamilyContentRunner(content),
-		"dev", "app", "get", "--unified-app-id", "u-1", "--fields", "data")
+		"dev", "app", "get", "--unified-app-id", "u-1", "--fields", "name")
 	if err != nil {
 		t.Fatalf("Execute() error = %v\nstdout:\n%s\nstderr:\n%s", err, out.String(), errBuf.String())
 	}
-	var env map[string]any
-	if err := json.Unmarshal(out.Bytes(), &env); err != nil {
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
 		t.Fatalf("--fields stdout is not JSON: %v\n%s", err, out.String())
 	}
-	if _, hasOK := env["ok"]; hasOK {
-		t.Fatalf("--fields data must drop envelope shell ok (json top-level key filtering): %#v", env)
+	if payload["name"] != "DemoApp" {
+		t.Fatalf("--fields name = %#v, want the projected business payload", payload)
 	}
-	data, ok := env["data"].(map[string]any)
-	if !ok {
-		t.Fatalf("--fields data data not an object: %#v", env["data"])
+	for _, dropped := range []string{"unifiedAppId", "appStatus"} {
+		if _, has := payload[dropped]; has {
+			t.Fatalf("--fields name must drop business field %q: %#v", dropped, payload)
+		}
 	}
-	if data["name"] != "DemoApp" || data["appStatus"] != "ENABLED" {
-		t.Fatalf("--fields data preserved payload = %#v", data)
-	}
-
-	// --fields ok：只保留信封顶层 ok 键（布尔值）。
-	outOK, _, err := runDevAppFamilyProdAligned(t, devAppFamilyContentRunner(content),
-		"dev", "app", "get", "--unified-app-id", "u-1", "--fields", "ok")
-	if err != nil {
-		t.Fatalf("Execute(--fields ok) error = %v", err)
-	}
-	var envOK map[string]any
-	if err := json.Unmarshal(outOK.Bytes(), &envOK); err != nil {
-		t.Fatalf("--fields ok stdout not JSON: %v\n%s", err, outOK.String())
-	}
-	if envOK["ok"] != true {
-		t.Fatalf("--fields ok = %#v, want ok:true", envOK)
-	}
-	if _, hasData := envOK["data"]; hasData {
-		t.Fatalf("--fields ok must drop data key: %#v", envOK)
+	for _, shell := range []string{"ok", "outcome", "data"} {
+		if _, has := payload[shell]; has {
+			t.Fatalf("--fields name must not emit envelope shell key %q: %#v", shell, payload)
+		}
 	}
 }
 

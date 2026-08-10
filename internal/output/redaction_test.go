@@ -139,6 +139,105 @@ func TestEmitResultRedactsEveryErrorInfoCanary(t *testing.T) {
 	}
 }
 
+// TestEmitResultRedactsLoggingAlignedSensitiveKeys locks the aligned
+// sensitive-key boundary (logging.IsSensitiveKey semantics) for the error
+// channel: snake_case (api_key), kebab-case (client-secret), camelCase
+// (clientSecret), and any key containing secret/token/credential must be
+// redacted in Details and RPCData, while ordinary identifiers survive.
+func TestEmitResultRedactsLoggingAlignedSensitiveKeys(t *testing.T) {
+	info := &ErrorInfo{
+		Type:    "api",
+		Message: "request failed",
+		Details: map[string]any{
+			"api_key":       "details-api-key-canary",
+			"client-secret": "details-client-secret-canary",
+			"credential_id": "details-credential-id-canary",
+			"clientSecret":  "details-camel-secret-canary",
+			"resource_id":   "details-resource-id-canary",
+		},
+		RPCData: map[string]any{
+			"api_key":       "rpc-api-key-canary",
+			"credential_id": "rpc-credential-id-canary",
+			"task_id":       "rpc-task-id-canary",
+		},
+	}
+	cmd := &cobra.Command{Use: "test"}
+	var stdout, stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	if _, err := EmitResult(cmd, Failure(info)); err != nil {
+		t.Fatalf("EmitResult: %v", err)
+	}
+	output := stdout.String()
+	for _, secret := range []string{
+		"details-api-key-canary", "details-client-secret-canary",
+		"details-credential-id-canary", "details-camel-secret-canary",
+		"rpc-api-key-canary", "rpc-credential-id-canary",
+	} {
+		if strings.Contains(output, secret) {
+			t.Errorf("output leaked %q: %s", secret, output)
+		}
+	}
+	for _, retained := range []string{"details-resource-id-canary", "rpc-task-id-canary"} {
+		if !strings.Contains(output, retained) {
+			t.Errorf("output over-redacted %q: %s", retained, output)
+		}
+	}
+}
+
+// TestWriteEnvelopeRedactsNoticeSensitiveKeys applies the same aligned
+// boundary to the _notice channel, and locks the pagination exemption:
+// meta.pagination.next_token is the resumable cursor an Agent must read and
+// stays visible.
+func TestWriteEnvelopeRedactsNoticeSensitiveKeys(t *testing.T) {
+	env := NewSuccessEnvelope(map[string]any{"id": "1"})
+	env.Meta = &Meta{Pagination: &Pagination{EndpointExhausted: false, NextToken: "pagination-cursor-canary"}}
+	env.Notice = map[string]any{
+		"api_key":       "notice-api-key-canary",
+		"client-secret": "notice-client-secret-canary",
+		"credential_id": "notice-credential-id-canary",
+		"message":       "notice-message-canary",
+	}
+	var buf bytes.Buffer
+	if err := WriteEnvelopeTo(&buf, env, FormatJSON, "", ""); err != nil {
+		t.Fatalf("WriteEnvelopeTo: %v", err)
+	}
+	output := buf.String()
+	for _, secret := range []string{
+		"notice-api-key-canary", "notice-client-secret-canary", "notice-credential-id-canary",
+	} {
+		if strings.Contains(output, secret) {
+			t.Errorf("output leaked %q: %s", secret, output)
+		}
+	}
+	for _, retained := range []string{"notice-message-canary", "pagination-cursor-canary"} {
+		if !strings.Contains(output, retained) {
+			t.Errorf("output over-redacted %q: %s", retained, output)
+		}
+	}
+}
+
+// TestIsSensitiveOutputKeyBoundary locks the aligned key classification:
+// logging.IsSensitiveKey variants (snake/kebab/camel and secret/token/
+// credential/password substrings) are sensitive, the header-only set-cookie
+// stays covered, and the pagination cursor next_token stays visible.
+func TestIsSensitiveOutputKeyBoundary(t *testing.T) {
+	for _, key := range []string{
+		"api_key", "api-key", "client-secret", "clientSecret", "credential_id",
+		"set-cookie", "Authorization", "password", "x-user-access-token",
+	} {
+		if !isSensitiveOutputKey(key) {
+			t.Errorf("isSensitiveOutputKey(%q) = false, want true", key)
+		}
+	}
+	for _, key := range []string{"next_token", "resource_id", "task_id", "name", ""} {
+		if isSensitiveOutputKey(key) {
+			t.Errorf("isSensitiveOutputKey(%q) = true, want false", key)
+		}
+	}
+}
+
 func TestEmitResultHumanFailureRedactsBeforeShortcutRendering(t *testing.T) {
 	cmd := &cobra.Command{Use: "test"}
 	cmd.Flags().String("format", "table", "")

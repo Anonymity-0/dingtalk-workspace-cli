@@ -6,10 +6,12 @@ package devapp
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -56,7 +58,7 @@ func TestDevAppListProjectionPreservesPaginationEvidence(t *testing.T) {
 	}
 }
 
-func TestFrameworkPaginatedShortcutExecutionKeepsCursorEvidence(t *testing.T) {
+func TestFrameworkPaginatedShortcutExecutionMovesCursorToMeta(t *testing.T) {
 	caller := &paginationCaller{text: `{"content":{"result":{"hasMore":true,"nextCursor":"next","list":[]}}}`}
 	helpers.InitDepsForTest(t, caller)
 	helpers.GetFormatter().SetWriters(&bytes.Buffer{}, &bytes.Buffer{})
@@ -64,15 +66,45 @@ func TestFrameworkPaginatedShortcutExecutionKeepsCursorEvidence(t *testing.T) {
 		declaration shortcut.Shortcut
 		args        []string
 	}{
-		{ListApp, nil},
-		{PermissionList, []string{"--unified-app-id", "app"}},
-		{EventList, []string{"--unified-app-id", "app"}},
-		{VersionList, []string{"--unified-app-id", "app"}},
+		{frameworkUnified(ListApp), nil},
+		{frameworkUnified(PermissionList), []string{"--unified-app-id", "app"}},
+		{frameworkUnified(EventList), []string{"--unified-app-id", "app"}},
+		{frameworkUnified(VersionList), []string{"--unified-app-id", "app"}},
 	} {
 		cmd := corecmd.New(shortcut.FromShortcut(tc.declaration))
+		ctx, _ := output.WithResultStore(context.Background())
+		cmd.SetContext(ctx)
+		var stdout, stderr bytes.Buffer
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stderr)
 		cmd.SetArgs(tc.args)
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("%s: %v", tc.declaration.Command, err)
+		}
+		code, emitted, err := output.EmitStoredResult(cmd)
+		if err != nil || !emitted || code != 0 {
+			t.Fatalf("%s emit: code=%d emitted=%v err=%v stderr=%s", tc.declaration.Command, code, emitted, err, stderr.String())
+		}
+		var envelope struct {
+			Data map[string]any `json:"data"`
+			Meta struct {
+				Pagination *struct {
+					EndpointExhausted bool   `json:"endpoint_exhausted"`
+					NextToken         string `json:"next_token"`
+				} `json:"pagination"`
+			} `json:"meta"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+			t.Fatalf("%s output is not JSON: %v\n%s", tc.declaration.Command, err, stdout.String())
+		}
+		if envelope.Meta.Pagination == nil || envelope.Meta.Pagination.EndpointExhausted || envelope.Meta.Pagination.NextToken != "next" {
+			t.Fatalf("%s pagination=%+v output=%s", tc.declaration.Command, envelope.Meta.Pagination, stdout.String())
+		}
+		if _, exists := envelope.Data["hasMore"]; exists {
+			t.Fatalf("%s data leaked hasMore: %s", tc.declaration.Command, stdout.String())
+		}
+		if _, exists := envelope.Data["nextCursor"]; exists {
+			t.Fatalf("%s data leaked nextCursor: %s", tc.declaration.Command, stdout.String())
 		}
 	}
 }

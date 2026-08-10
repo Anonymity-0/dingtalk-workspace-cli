@@ -38,7 +38,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalPassThrough(t *tes
 		DryRun: &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewInvocation},
 		Result: &contract.ResultSpec{
 			Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-			DataSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string"}}}`),
+			DataSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","description":"Created object ID"}}}`),
 		},
 		Selection: &contract.SelectionSpec{
 			AgentSummary: "from contract",
@@ -73,7 +73,7 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalPassThrough(t *tes
 	if spec.DryRun == nil || spec.DryRun.PreviewKind != contract.DryRunPreviewInvocation {
 		t.Fatalf("dry_run = %#v", spec.DryRun)
 	}
-	if spec.Result == nil || string(spec.Result.DataSchema) != `{"properties":{"id":{"type":"string"}},"type":"object"}` {
+	if spec.Result == nil || string(spec.Result.DataSchema) != `{"properties":{"id":{"type":"string","description":"Created object ID"}},"type":"object"}` {
 		t.Fatalf("result = %#v", spec.Result)
 	}
 	if spec.Selection.AgentSummary != "from contract" {

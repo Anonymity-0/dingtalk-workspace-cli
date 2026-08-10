@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/logging"
 )
 
 const redactedValue = "[REDACTED]"
@@ -150,13 +152,26 @@ func setRedactedValue(value reflect.Value) bool {
 	return false
 }
 
+// isSensitiveOutputKey reports whether a diagnostics-channel key holds a
+// credential. It reuses logging.IsSensitiveKey semantics (case-insensitive;
+// exact snake/kebab names such as api_key / client-secret, plus any key
+// containing secret/token/credential/password, which also covers camelCase
+// variants like clientSecret) so error details, RPC data, and notices follow
+// the same sensitive-key boundary as the logging pipeline. The header-only
+// "set-cookie" variant is not in the logging list and stays covered here.
 func isSensitiveOutputKey(key string) bool {
-	switch strings.ToLower(strings.TrimSpace(key)) {
-	case "authorization", "token", "access_token", "refresh_token", "client_secret", "cookie", "set-cookie", "password":
+	normalized := strings.ToLower(strings.TrimSpace(key))
+	switch normalized {
+	case "set-cookie":
+		// Header-only variant the logging list does not cover.
 		return true
-	default:
+	case "next_token":
+		// meta.pagination.next_token is the resumable-pagination handle an
+		// Agent must read (§3 two-state semantics): it is an opaque cursor,
+		// not a credential, and stays visible across every channel.
 		return false
 	}
+	return logging.IsSensitiveKey(normalized)
 }
 
 func redactRecognizableSecrets(text string) string {
