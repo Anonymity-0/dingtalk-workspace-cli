@@ -34,12 +34,19 @@ func callProjectedChatMessages(cmd *cobra.Command, toolName string, args map[str
 	if err != nil {
 		return err
 	}
+	if strings.TrimSpace(text) == "" {
+		return apperrors.NewAPI("MCP read tool returned no non-empty text content",
+			apperrors.WithOperation("chat/"+toolName),
+			apperrors.WithOrigin("mcp"),
+			apperrors.WithFailureStage("response_validation"),
+			apperrors.WithRetryable(true),
+			apperrors.WithReason("empty_tool_response"),
+		)
+	}
 	data := map[string]any{}
-	if strings.TrimSpace(text) != "" {
-		if err := unmarshalJSONUseNumber(text, &data); err != nil {
-			deps.Out.PrintRaw(text)
-			return nil
-		}
+	if err := unmarshalJSONUseNumber(text, &data); err != nil {
+		deps.Out.PrintRaw(text)
+		return nil
 	}
 
 	items := chatmsg.ListMessageItems(data)

@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"reflect"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -34,12 +36,16 @@ type imReadResultCall struct {
 
 type imReadResultCaller struct {
 	responses map[string]string
+	results   map[string]*edition.ToolResult
 	calls     []imReadResultCall
 	dryRun    bool
 }
 
 func (c *imReadResultCaller) CallTool(_ context.Context, productID, toolName string, _ map[string]any) (*edition.ToolResult, error) {
 	c.calls = append(c.calls, imReadResultCall{productID: productID, toolName: toolName})
+	if result, ok := c.results[toolName]; ok {
+		return result, nil
+	}
 	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: c.responses[toolName]}}}, nil
 }
 
@@ -217,6 +223,50 @@ func TestCrossPlatformCoverageChatMessageListPreservesNonJSONResponse(t *testing
 	}
 	if got != payload+"\n" {
 		t.Fatalf("command output = %q, want raw payload", got)
+	}
+}
+
+func TestCrossPlatformCoverageChatMessageReadsRejectEmptyToolResults(t *testing.T) {
+	tests := []struct {
+		name     string
+		toolName string
+		caller   *imReadResultCaller
+		args     []string
+	}{
+		{
+			name:     "list empty text",
+			toolName: "list_conversation_message_v2",
+			caller: &imReadResultCaller{responses: map[string]string{
+				"list_conversation_message_v2": "  \n ",
+			}},
+			args: []string{"message", "list", "--group", "cid-1", "--time", "2026-07-14 00:00:00"},
+		},
+		{
+			name:     "search without text content",
+			toolName: "search_messages_by_keyword",
+			caller: &imReadResultCaller{results: map[string]*edition.ToolResult{
+				"search_messages_by_keyword": {Content: []edition.ContentBlock{{Type: "image"}}},
+			}},
+			args: []string{"message", "search", "--query", "发布计划",
+				"--start", "2026-07-01T00:00:00+08:00", "--end", "2026-07-10T00:00:00+08:00"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := executeIMReadCommand(t, tc.caller, []string{"dws", "chat"}, newChatCommand, tc.args...)
+			if err == nil {
+				t.Fatalf("%s unexpectedly succeeded with output %q", tc.toolName, got)
+			}
+			if got != "" {
+				t.Fatalf("%s output = %q, want no success payload", tc.toolName, got)
+			}
+			var apiErr *apperrors.Error
+			if !errors.As(err, &apiErr) || apiErr.Reason != "empty_tool_response" ||
+				apiErr.Operation != "chat/"+tc.toolName || !apiErr.RetryableSet || !apiErr.Retryable {
+				t.Fatalf("%s error = %#v", tc.toolName, err)
+			}
+		})
 	}
 }
 
