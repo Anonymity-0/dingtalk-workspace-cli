@@ -174,6 +174,9 @@ func runCompare(args []string, stdout, stderr io.Writer) (bool, error) {
 			"--approved-flag-migrations and --candidate-flag-migrations must be provided together",
 		)
 	}
+	if *approvedMigrationsPath != "" && (*basePath == "" || *stablePath == "") {
+		return false, fmt.Errorf("flag migration compare requires both --base and --stable")
+	}
 
 	current, err := readSnapshot(*currentPath)
 	if err != nil {

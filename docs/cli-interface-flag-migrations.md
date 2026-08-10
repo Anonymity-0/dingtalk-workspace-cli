@@ -26,6 +26,10 @@ checker。candidate 不能为 CLI 与 Schema 分别提供两套例外。
 `make update-interface-baseline` / `make reset-interface-baseline` 维护非权威 CLI
 Smoke fixture，不参与迁移审批。
 
+直接调用 `interface-snapshot compare` 时，只要提供 migration manifest 参数，就必须
+同时提供 `--base` 与 `--stable`；核心 lifecycle 也拒绝缺失 stable 的非空清单，避免
+调用方因漏传历史参考而提前清理 consumed receipt。
+
 PR merge-base 同时拥有快照生成器、比较器和已审批清单。门禁用这套 base-owned helper 检查同一个已提交 candidate revision、merge-base 与 stable，candidate 不能通过修改自己的 Go 比较 helper 来放宽规则。candidate 中的清单只参与迁移状态流转，不能批准同一个 PR 引入的接口变化。首次引入本机制时，merge-base 尚无迁移解析器；bootstrap 会用 merge-base 已有的 modern Interface Snapshot 做不带豁免的普通比较，并只接受 candidate 中逐字匹配的空清单，不会让 candidate 新增的 comparator 决定本 PR 是否兼容。bootstrap 无法让旧 helper 证明新治理实现本身正确，因此本治理 PR 的新 parser、lifecycle、launcher 与 hostile tests 仍是必须由真人评审的受保护策略变更；它们合入后才成为后续 PR 的 base-owned authority。
 
 这条边界保护比较规则和审批数据，不是任意代码沙箱。GitHub workflow / launcher 的变更仍由仓库保护规则和真人评审负责；candidate Cobra 构建也会执行 candidate 代码，因此对同一 runner 上的主动恶意代码，需要独立进程或文件系统隔离，不能把本门禁描述成已经解决。

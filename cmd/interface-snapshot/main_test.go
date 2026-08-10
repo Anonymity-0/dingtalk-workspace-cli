@@ -166,6 +166,44 @@ func TestCrossPlatformCoverageRunCompareRequiresBothFlagMigrationInputs(t *testi
 	}
 }
 
+func TestCrossPlatformCoverageRunCompareRequiresBothReferencesForFlagMigrations(t *testing.T) {
+	dir := t.TempDir()
+	currentPath := writeSnapshot(t, dir, "current.json", commandSnapshot("dws"))
+	basePath := writeSnapshot(t, dir, "base.json", commandSnapshot("dws"))
+	stablePath := writeSnapshot(t, dir, "stable.json", commandSnapshot("dws"))
+	approvedPath := writeManifest(t, dir, "approved.json", `{"version":1,"migrations":[]}`)
+	candidatePath := writeManifest(t, dir, "candidate.json", `{"version":1,"migrations":[]}`)
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "missing stable",
+			args: []string{"--base", basePath},
+		},
+		{
+			name: "missing base",
+			args: []string{"--stable", stablePath},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := []string{"compare", "--current", currentPath}
+			args = append(args, test.args...)
+			args = append(args,
+				"--approved-flag-migrations", approvedPath,
+				"--candidate-flag-migrations", candidatePath,
+			)
+			var stdout, stderr bytes.Buffer
+			exitCode := run(args, &stdout, &stderr)
+			if exitCode != 2 || !strings.Contains(stderr.String(), "requires both --base and --stable") {
+				t.Fatalf("one-reference migration compare exit=%d stdout=%s stderr=%s", exitCode, stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageRunPrintsUsageForMissingAndUnknownCommands(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -322,6 +360,7 @@ func TestCrossPlatformCoverageRunCompareReportsEachManifestReadFailure(t *testin
 				"compare",
 				"--current", snapshotPath,
 				"--base", snapshotPath,
+				"--stable", snapshotPath,
 				"--approved-flag-migrations", test.approved,
 				"--candidate-flag-migrations", test.candidate,
 			}, &stdout, &stderr)

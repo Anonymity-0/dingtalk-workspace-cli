@@ -447,8 +447,9 @@ func CompareAllWithFlagMigrations(
 
 // AuthorizeFlagMigrations validates both snapshots and manifests, enforces the
 // base-owned migration lifecycle, and returns only approvals that may authorize
-// the current exact interface transition. Candidate-added records never appear
-// in the returned authorization set.
+// the current exact interface transition. A non-empty lifecycle requires both a
+// main/merge-base authority reference and a stable reference. Candidate-added
+// records never appear in the returned authorization set.
 func AuthorizeFlagMigrations(
 	current Snapshot,
 	references map[string]Snapshot,
@@ -488,6 +489,9 @@ func evaluateFlagMigrationLifecycle(
 ) ([]FlagMigration, error) {
 	if len(authority.Migrations) == 0 && len(candidate.Migrations) == 0 {
 		return nil, nil
+	}
+	if _, ok := references["stable"]; !ok {
+		return nil, fmt.Errorf("flag migration lifecycle requires a stable reference")
 	}
 	mergeBase, label, ok := flagMigrationAuthoritySnapshot(references)
 	if !ok {

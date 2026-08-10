@@ -486,7 +486,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "pending authority requires before base",
 			current:    after,
-			references: map[string]Snapshot{"merge-base": after},
+			references: map[string]Snapshot{"merge-base": after, "stable": after},
 			authority:  pending,
 			candidate:  pending,
 			wantErr:    "want exact before state for pending",
@@ -494,7 +494,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "consumed authority requires after base",
 			current:    before,
-			references: map[string]Snapshot{"merge-base": before},
+			references: map[string]Snapshot{"merge-base": before, "stable": before},
 			authority:  consumed,
 			candidate:  consumed,
 			wantErr:    "want exact after state for consumed",
@@ -502,7 +502,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "missing base command is partial",
 			current:    before,
-			references: map[string]Snapshot{"merge-base": coverageRootOnlySnapshot()},
+			references: map[string]Snapshot{"merge-base": coverageRootOnlySnapshot(), "stable": before},
 			authority:  pending,
 			candidate:  pending,
 			wantErr:    "is partial in merge-base",
@@ -510,7 +510,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "candidate cannot modify base receipt",
 			current:    before,
-			references: map[string]Snapshot{"merge-base": before},
+			references: map[string]Snapshot{"merge-base": before, "stable": before},
 			authority:  pending,
 			candidate:  modified,
 			wantErr:    "candidate modified base-owned flag migration",
@@ -518,7 +518,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "candidate cannot remove pending receipt",
 			current:    before,
-			references: map[string]Snapshot{"merge-base": before},
+			references: map[string]Snapshot{"merge-base": before, "stable": before},
 			authority:  pending,
 			candidate:  empty,
 			wantErr:    "candidate removed pending flag migration",
@@ -526,7 +526,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "candidate cannot falsely consume pending receipt",
 			current:    before,
-			references: map[string]Snapshot{"merge-base": before},
+			references: map[string]Snapshot{"merge-base": before, "stable": before},
 			authority:  pending,
 			candidate:  consumed,
 			wantErr:    "candidate falsely consumed unchanged flag migration",
@@ -534,7 +534,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "candidate must consume completed receipt",
 			current:    after,
-			references: map[string]Snapshot{"merge-base": before},
+			references: map[string]Snapshot{"merge-base": before, "stable": before},
 			authority:  pending,
 			candidate:  pending,
 			wantErr:    "without marking it consumed",
@@ -542,7 +542,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "candidate rejects partial application",
 			current:    partial,
-			references: map[string]Snapshot{"merge-base": before},
+			references: map[string]Snapshot{"merge-base": before, "stable": before},
 			authority:  pending,
 			candidate:  consumed,
 			wantErr:    "candidate partially applied flag migration",
@@ -582,7 +582,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "candidate-added receipt starts pending",
 			current:    before,
-			references: map[string]Snapshot{"merge-base": before},
+			references: map[string]Snapshot{"merge-base": before, "stable": before},
 			authority:  empty,
 			candidate:  consumed,
 			wantErr:    "must start pending",
@@ -590,7 +590,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "candidate-added receipt matches base before",
 			current:    before,
-			references: map[string]Snapshot{"merge-base": after},
+			references: map[string]Snapshot{"merge-base": after, "stable": after},
 			authority:  empty,
 			candidate:  pending,
 			wantErr:    "does not match the merge-base before state",
@@ -598,7 +598,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "candidate-added receipt cannot self-authorize",
 			current:    after,
-			references: map[string]Snapshot{"merge-base": before},
+			references: map[string]Snapshot{"merge-base": before, "stable": before},
 			authority:  empty,
 			candidate:  pending,
 			wantErr:    "cannot authorize its own interface change",
@@ -606,7 +606,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsLifecycleErrors(t *tes
 		{
 			name:       "missing current command is partial",
 			current:    coverageRootOnlySnapshot(),
-			references: map[string]Snapshot{"merge-base": before},
+			references: map[string]Snapshot{"merge-base": before, "stable": before},
 			authority:  pending,
 			candidate:  pending,
 			wantErr:    "candidate partially applied flag migration",
@@ -633,7 +633,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsMainAuthorityAndCleanu
 
 	report, err := CompareAllWithFlagMigrations(
 		after,
-		map[string]Snapshot{"main": before},
+		map[string]Snapshot{"main": before, "stable": before},
 		pending,
 		consumed,
 	)
@@ -643,7 +643,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsMainAuthorityAndCleanu
 
 	report, err = CompareAllWithFlagMigrations(
 		after,
-		map[string]Snapshot{"merge-base": before, "main": after},
+		map[string]Snapshot{"merge-base": before, "main": after, "stable": before},
 		pending,
 		consumed,
 	)
@@ -663,12 +663,28 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsMainAuthorityAndCleanu
 
 	report, err = CompareAllWithFlagMigrations(
 		before,
-		map[string]Snapshot{"merge-base": before},
+		map[string]Snapshot{"merge-base": before, "stable": before},
 		empty,
 		pending,
 	)
 	if err != nil || !report.Compatible {
 		t.Fatalf("pending receipt creation = (%#v, %v), want compatible", report, err)
+	}
+}
+
+func TestCrossPlatformCoverageCompareAllWithFlagMigrationsRequiresStableForReceiptCleanup(t *testing.T) {
+	consumed := coverageManifest(FlagMigrationConsumed)
+	empty := coverageEmptyManifest()
+	after := coverageMigrationSnapshot(consumed.Migrations[0], true, false)
+
+	report, err := CompareAllWithFlagMigrations(
+		after,
+		map[string]Snapshot{"merge-base": after},
+		consumed,
+		empty,
+	)
+	if err == nil || !strings.Contains(err.Error(), "requires a stable reference") {
+		t.Fatalf("receipt cleanup without stable = (%#v, %v), want stable-reference error", report, err)
 	}
 }
 
@@ -714,7 +730,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsInheritedAndOptionalCa
 		}
 		report, err := CompareAllWithFlagMigrations(
 			after,
-			map[string]Snapshot{"merge-base": before},
+			map[string]Snapshot{"merge-base": before, "stable": before},
 			pending,
 			consumed,
 		)
@@ -737,7 +753,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsNormalizesAliasesAndKe
 	}
 	report, err := CompareAllWithFlagMigrations(
 		after,
-		map[string]Snapshot{"merge-base": before},
+		map[string]Snapshot{"merge-base": before, "stable": before},
 		pending,
 		consumed,
 	)
@@ -751,7 +767,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsNormalizesAliasesAndKe
 	afterWithOther.Commands = append(afterWithOther.Commands, coverageCommand("dws files", nil, nil, nil))
 	report, err = CompareAllWithFlagMigrations(
 		afterWithOther,
-		map[string]Snapshot{"merge-base": beforeWithOther},
+		map[string]Snapshot{"merge-base": beforeWithOther, "stable": beforeWithOther},
 		pending,
 		consumed,
 	)
@@ -792,7 +808,7 @@ func TestCrossPlatformCoverageCompareAllWithFlagMigrationsDoesNotAuthorizePartia
 	afterWithoutRoot.Rules.ExcludedFlags = []string{"help", "version"}
 	report, err = CompareAllWithFlagMigrations(
 		afterWithoutRoot,
-		map[string]Snapshot{"merge-base": beforeWithoutRoot},
+		map[string]Snapshot{"merge-base": beforeWithoutRoot, "stable": beforeWithoutRoot},
 		pending,
 		consumed,
 	)
