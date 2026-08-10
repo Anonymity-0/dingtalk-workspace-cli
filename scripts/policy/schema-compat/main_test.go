@@ -541,6 +541,81 @@ func TestCrossPlatformCoverageSchemaCompatReviewedParameterTypeChangeRejectsBund
 	}
 }
 
+// Every drift below is individually *compatible* — on its own it produces no
+// failure at all — which is precisely why the carve-out cannot be keyed on "the
+// gate recorded no other failure for this parameter". Bundled with a reviewed
+// type migration they must still be rejected: none of them were reviewed under
+// that entry, and admitting them would make the exemption wider than what the
+// table documents.
+//
+// Each case first asserts that the drift alone really is compatible, so a future
+// rule change that starts reporting it turns into an explicit failure here
+// rather than quietly turning this test into a duplicate of the bundled-
+// regression cases above.
+func TestCrossPlatformCoverageSchemaCompatReviewedParameterTypeChangeRejectsIndividuallyCompatibleDrift(t *testing.T) {
+	registerReviewedParameterTypeFixture(t, reviewedFormatTypeFixture())
+
+	tests := []struct {
+		name     string
+		baseline func(*parameterSchema)
+		current  func(*parameterSchema)
+	}{
+		{
+			name:     "relaxed required",
+			baseline: func(p *parameterSchema) { p.Required = true },
+			current:  func(p *parameterSchema) { p.Required = false },
+		},
+		{
+			name:     "relaxed cli_required",
+			baseline: func(p *parameterSchema) { p.CLIRequired = true },
+			current:  func(p *parameterSchema) { p.CLIRequired = false },
+		},
+		{
+			name:     "cleared required_when",
+			baseline: func(p *parameterSchema) { p.RequiredWhen = "always" },
+			current:  func(p *parameterSchema) { p.RequiredWhen = "" },
+		},
+		{
+			name:    "widened enum",
+			current: func(p *parameterSchema) { p.Enum = []string{"html", "markdown", "text"} },
+		},
+		{
+			name:     "cleared interface_type",
+			baseline: func(p *parameterSchema) { p.InterfaceType = "string" },
+			current:  func(p *parameterSchema) { p.InterfaceType = "" },
+		},
+		{
+			name: "cleared property through reviewed mapping exclusion",
+			current: func(p *parameterSchema) {
+				p.Property = ""
+				p.PropertySource = propertySourceReviewedMappingExclusion
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			baseline := cloneContract(baselineContract())
+			if test.baseline != nil {
+				mutateParameter(&baseline, test.baseline)
+			}
+
+			driftOnly := cloneContract(baseline)
+			mutateParameter(&driftOnly, test.current)
+			if failures := checkCompatibility(baseline, driftOnly); len(failures) != 0 {
+				t.Fatalf("前提不成立：该变化本身已不兼容，用例测不到相等性守卫: %v", failures)
+			}
+
+			bundled := cloneContract(baseline)
+			mutateParameter(&bundled, func(parameter *parameterSchema) {
+				parameter.Type = `"integer"`
+				test.current(parameter)
+			})
+			assertSchemaFailureContains(t, checkCompatibility(baseline, bundled), docCreateFormatTypeFailure)
+		})
+	}
+}
+
 // The behaviour tests above register their own fixtures, so they cannot catch a
 // production entry whose type values are spelled in the wrong form. That mistake
 // disables the exemption silently and only a real gate run reports it — exactly

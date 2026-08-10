@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -847,8 +848,8 @@ type parameterTypeChange struct {
 // accepted.
 //
 // The table alone does not admit a change: the migration is rejected unless
-// everything else this gate checks about the parameter is unchanged. See
-// compatibleReviewedParameterTypeChange.
+// every other published field of the parameter is identical — not merely free
+// of compatibility failures. See compatibleReviewedParameterTypeChange.
 var reviewedParameterTypeChanges = map[parameterTypeChange]struct{}{
 	// "dws minutes permission apply --policy" moved from a String flag to a
 	// native Int flag, so the published type follows it from "string" to
@@ -870,9 +871,12 @@ var reviewedParameterTypeChanges = map[parameterTypeChange]struct{}{
 	//     number, so the new declaration is closer to the request than the old.
 	//
 	// The parameter's default stays absent on both sides here (a zero default is
-	// not published), which is why the "nothing else changed" guard does not veto
-	// this entry. A migration that did move the default would be reported, and
-	// that is the intended behaviour.
+	// not published) and every other published field is identical, which is why
+	// the equality guard admits this entry. A migration that also moved the
+	// default — or relaxed required, cleared required_when, widened enum, cleared
+	// interface_type — would be rejected even though several of those are
+	// individually compatible, because none of them were reviewed under this
+	// entry.
 	{
 		ToolPath:  "minutes/minutes.apply_minutes_permission",
 		Parameter: "policy",
@@ -881,28 +885,45 @@ var reviewedParameterTypeChanges = map[parameterTypeChange]struct{}{
 	}: {},
 }
 
-// compatibleReviewedParameterTypeChange accepts a published parameter type
-// migration when it is an explicitly reviewed entry **and** nothing else this
-// gate checks about the parameter moved.
+// parameterContractUnchangedExceptType reports whether every published field of
+// the parameter other than its type is identical.
 //
-// otherFailures is every other finding already recorded for this parameter. The
-// scope is deliberately the parameter rather than the whole tool: an unrelated
-// break elsewhere in the tool is reported on its own and does not need to
-// suppress this decision, whereas a change to this parameter's property,
-// interface_type, default, format, required, required_when or enum means the
-// contract being migrated is not the contract that was reviewed.
-func compatibleReviewedParameterTypeChange(toolPath, name string, oldParameter, newParameter parameterSchema, otherFailures []string) bool {
+// This is a full equality check rather than "the gate recorded no other
+// failure", because several field changes are individually *compatible* and so
+// produce no failure at all: relaxing required or cli_required, clearing
+// required_when, widening enum, clearing interface_type, and clearing property
+// through a reviewed mapping exclusion. Keying the carve-out on the failure list
+// would let any of those ride along with a reviewed type migration without ever
+// having been reviewed under that entry — the exemption would be wider than what
+// it documents.
+//
+// Comparing the struct also means a field added to parameterSchema later is
+// covered here automatically, instead of silently widening every existing entry.
+func parameterContractUnchangedExceptType(oldParameter, newParameter parameterSchema) bool {
+	oldParameter.Type = ""
+	newParameter.Type = ""
+	return reflect.DeepEqual(oldParameter, newParameter)
+}
+
+// compatibleReviewedParameterTypeChange accepts a published parameter type
+// migration when it is an explicitly reviewed entry **and** the rest of the
+// parameter's published contract is unchanged.
+func compatibleReviewedParameterTypeChange(toolPath, name string, oldParameter, newParameter parameterSchema) bool {
 	_, reviewed := reviewedParameterTypeChanges[parameterTypeChange{
 		ToolPath:  toolPath,
 		Parameter: name,
 		From:      oldParameter.Type,
 		To:        newParameter.Type,
 	}]
-	return reviewed && len(otherFailures) == 0
+	return reviewed && parameterContractUnchangedExceptType(oldParameter, newParameter)
 }
 
 func checkParameterCompatibility(toolPath, name string, oldParameter, newParameter parameterSchema) []string {
 	var failures []string
+	if oldParameter.Type != newParameter.Type &&
+		!compatibleReviewedParameterTypeChange(toolPath, name, oldParameter, newParameter) {
+		failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed type", toolPath, name))
+	}
 	for _, field := range []struct {
 		name string
 		old  string
@@ -969,14 +990,6 @@ func checkParameterCompatibility(toolPath, name string, oldParameter, newParamet
 	}
 	if enumNarrowed(oldParameter.Enum, newParameter.Enum) {
 		failures = append(failures, fmt.Sprintf("schema tool %q parameter %q narrowed enum", toolPath, name))
-	}
-	// The published type is checked last so the reviewed carve-out can see every
-	// other finding for this parameter: a reviewed migration is only accepted
-	// when the rest of the parameter's contract held still. Ordering is not
-	// observable because the result is sorted below.
-	if oldParameter.Type != newParameter.Type &&
-		!compatibleReviewedParameterTypeChange(toolPath, name, oldParameter, newParameter, failures) {
-		failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed type", toolPath, name))
 	}
 	sort.Strings(failures)
 	return failures
