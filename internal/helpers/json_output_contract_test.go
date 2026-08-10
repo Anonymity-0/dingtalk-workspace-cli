@@ -57,7 +57,7 @@ func assertJSONOutputPayload(t *testing.T, stdout string) map[string]any {
 	return payload
 }
 
-func TestJSONOutputContractForCompletedFileTransfers(t *testing.T) {
+func TestCrossPlatformCoverageJSONOutputContractForCompletedFileTransfers(t *testing.T) {
 	testseam.Swap(t, &httpGetFile, func(_ context.Context, _ string, _ map[string]string, destination string) error {
 		return os.WriteFile(destination, []byte("payload"), 0o600)
 	})
@@ -122,7 +122,7 @@ func TestJSONOutputContractForCompletedFileTransfers(t *testing.T) {
 	})
 }
 
-func TestJSONOutputContractDryRunIsMachineReadable(t *testing.T) {
+func TestCrossPlatformCoverageJSONOutputContractDryRunIsMachineReadable(t *testing.T) {
 	stdout, _, err := executeJSONOutputContractCommand(t,
 		&scriptedToolCaller{format: "json", dry: true},
 		newDriveCommand,
@@ -133,5 +133,66 @@ func TestJSONOutputContractDryRunIsMachineReadable(t *testing.T) {
 	payload := assertJSONOutputPayload(t, stdout)
 	if payload["dry_run"] != true || payload["executed"] != false || payload["nodeId"] != "node-dry-run" {
 		t.Fatalf("payload = %#v", payload)
+	}
+
+	stdout, _, err = executeJSONOutputContractCommand(t,
+		&scriptedToolCaller{format: "json", dry: true},
+		newDocCommand,
+		"export", "--node", "doc-dry-run", "--export-format", "markdown", "--output", filepath.Join(t.TempDir(), "export.md"), "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload = assertJSONOutputPayload(t, stdout)
+	if payload["dry_run"] != true || payload["executed"] != false || payload["nodeId"] != "doc-dry-run" || payload["operation"] != "doc_export" {
+		t.Fatalf("payload = %#v", payload)
+	}
+}
+
+func TestCrossPlatformCoverageJSONOutputContractReportsMissingLocalArtifact(t *testing.T) {
+	testseam.Swap(t, &httpGetFile, func(context.Context, string, map[string]string, string) error {
+		return nil
+	})
+	testseam.Swap(t, &helperAfter, func(time.Duration) <-chan time.Time {
+		ch := make(chan time.Time, 1)
+		ch <- time.Now()
+		return ch
+	})
+
+	tests := []struct {
+		name  string
+		build func() *cobra.Command
+		args  []string
+		steps []scriptedToolStep
+	}{
+		{
+			name:  "latest drive download",
+			build: newDriveCommand,
+			args:  []string{"download", "--node", "node-latest", "--output", filepath.Join(t.TempDir(), "latest.txt")},
+			steps: []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/latest.txt","fileSize":7,"version":9}`}},
+		},
+		{
+			name:  "versioned drive download",
+			build: newDriveCommand,
+			args:  []string{"download", "--node", "node-versioned", "--version", "4", "--output", filepath.Join(t.TempDir(), "versioned.txt")},
+			steps: []scriptedToolStep{{text: `{"downloadUrl":"https://example.test/versioned.txt","fileSize":7}`}},
+		},
+		{
+			name:  "doc export",
+			build: newDocCommand,
+			args:  []string{"export", "--node", "doc-node", "--export-format", "markdown", "--output", filepath.Join(t.TempDir(), "export.md")},
+			steps: []scriptedToolStep{
+				{text: `{"jobId":"export-job-1"}`},
+				{text: `{"status":"SUCCESS","downloadUrl":"https://example.test/export.md"}`},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := executeJSONOutputContractCommand(t, &scriptedToolCaller{format: "json", steps: tt.steps}, tt.build, tt.args...)
+			if err == nil || !strings.Contains(err.Error(), "读取") {
+				t.Fatalf("expected missing local artifact error, got %v", err)
+			}
+		})
 	}
 }
