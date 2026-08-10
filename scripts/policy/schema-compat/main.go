@@ -511,7 +511,8 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 	}
 	if oldTool.Constraints != newTool.Constraints &&
 		!compatibleHiddenSiblingConstraintExpansion(oldTool, newTool) &&
-		!compatibleAdditiveConstraintEvolution(oldTool, newTool) {
+		!compatibleAdditiveConstraintEvolution(oldTool, newTool) &&
+		!compatibleReviewedConstraintTransition(toolPath, oldTool, newTool) {
 		failures = append(failures, fmt.Sprintf("schema tool %q changed constraints", toolPath))
 	}
 	if !compatiblePositionals(oldTool.Positionals, newTool.Positionals) {
@@ -561,6 +562,31 @@ var reviewedInterfaceRefRedirect = map[string]map[string]string{
 	"sheet/sheet.range_set_style": {
 		`{"product_id":"sheet","rpc_name":"update_range"}`: `{"product_id":"sheet","rpc_name":"set_cell_range"}`,
 	},
+}
+
+// reviewedConstraintTransition enumerates exact constraint changes that were
+// explicitly reviewed even though the compatibility gate cannot infer their
+// business semantics. Keep this narrow: removing a constraint can expose a new
+// runtime route, so arbitrary removals must not pass as harmless drift.
+var reviewedConstraintTransition = map[string]map[string]string{
+	// PR #933 aligned the Shortcut and Schema with the existing doc import
+	// runtime: omitting both targets imports into the default root. Keeping the
+	// historical require_one_of made the documented Golden Route unreachable.
+	"doc/doc.shortcut_import": {
+		`{"require_one_of":[["folder","workspace"]]}`: "",
+	},
+}
+
+func compatibleReviewedConstraintTransition(toolPath string, oldTool, newTool toolSchema) bool {
+	transitions, ok := reviewedConstraintTransition[toolPath]
+	if !ok {
+		return false
+	}
+	want, ok := transitions[oldTool.Constraints]
+	if !ok {
+		return false
+	}
+	return want == newTool.Constraints
 }
 
 // compatibleInterfaceRefRedirect accepts repointing a tool at a different
