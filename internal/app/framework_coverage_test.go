@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
 
@@ -225,4 +228,120 @@ func TestFrameworkExecutePanicBeforeEmissionUsesUnifiedFailure(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCrossPlatformCoverageFrameworkExecuteRareOutcomeBranches(t *testing.T) {
+	t.Run("preparse interrupted", func(t *testing.T) {
+		var stdout bytes.Buffer
+		installSignalExecuteSeams(t, true, &stdout, io.Discard)
+		testseam.Swap(t, &rootRunPreParse, func(cmd *cobra.Command, _ *pipeline.Engine) error {
+			signalSelf(t, syscall.SIGINT)
+			<-cmd.Context().Done()
+			return errors.New("preparse failed")
+		})
+		if code := Execute(); code != 130 {
+			t.Fatalf("Execute code=%d", code)
+		}
+	})
+
+	t.Run("nil executed after emission attempt", func(t *testing.T) {
+		installSignalExecuteSeams(t, true, io.Discard, io.Discard)
+		testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
+			cmd.SetOut(frameworkFailWriter{})
+			if err := output.StoreResult(cmd.Context(), output.Success(map[string]any{"ok": true})); err != nil {
+				t.Fatal(err)
+			}
+			_, _, _ = output.EmitStoredResult(cmd)
+			signalSelf(t, syscall.SIGINT)
+			<-cmd.Context().Done()
+			return nil, cmd.Context().Err()
+		})
+		if code := Execute(); code != 130 {
+			t.Fatalf("Execute code=%d", code)
+		}
+	})
+
+	t.Run("publication failure after emission", func(t *testing.T) {
+		var stdout bytes.Buffer
+		installSignalExecuteSeams(t, true, &stdout, io.Discard)
+		testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
+			if err := output.StoreResult(cmd.Context(), output.Success(map[string]any{"ok": true})); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := output.EmitStoredResult(cmd); err != nil {
+				t.Fatal(err)
+			}
+			return cmd, newOutputPublicationError("publish", errors.New("rename failed"))
+		})
+		if code := Execute(); code != 5 {
+			t.Fatalf("Execute code=%d", code)
+		}
+	})
+
+	t.Run("failure envelope cannot be written", func(t *testing.T) {
+		installSignalExecuteSeams(t, true, io.Discard, io.Discard)
+		testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
+			cmd.SetOut(frameworkFailWriter{})
+			return cmd, errors.New("business failed")
+		})
+		if code := Execute(); code != 5 {
+			t.Fatalf("Execute code=%d", code)
+		}
+	})
+
+	t.Run("late output publication warning", func(t *testing.T) {
+		installSignalExecuteSeams(t, false, io.Discard, io.Discard)
+		testseam.Swap(t, &rootRenameFile, func(string, string) error { return errors.New("rename failed") })
+		testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
+			file, err := os.CreateTemp(t.TempDir(), "late-output-*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			state := &outputSinkState{file: file, tempPath: file.Name(), target: filepath.Join(t.TempDir(), "result.json")}
+			cmd.SetContext(context.WithValue(cmd.Context(), outputFileContextKey{}, state))
+			return cmd, nil
+		})
+		if code := Execute(); code != 0 {
+			t.Fatalf("Execute code=%d", code)
+		}
+	})
+}
+
+type frameworkPanicWriter struct{}
+
+func (frameworkPanicWriter) Write([]byte) (int, error) { panic("writer panic") }
+
+func TestCrossPlatformCoverageFrameworkRootHookErrors(t *testing.T) {
+	t.Run("edition pre-run error", func(t *testing.T) {
+		old := edition.Get()
+		t.Cleanup(func() { edition.Override(old) })
+		edition.Override(&edition.Hooks{AfterPersistentPreRun: func(*cobra.Command, []string) error {
+			return errors.New("edition hook failed")
+		}})
+		root := NewRootCommand(context.Background())
+		root.SetOut(io.Discard)
+		root.SetErr(io.Discard)
+		root.SetArgs([]string{"version"})
+		if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "edition hook failed") {
+			t.Fatalf("Execute error=%v", err)
+		}
+	})
+
+	t.Run("post-run emission panic", func(t *testing.T) {
+		root := NewRootCommand(context.Background())
+		cmd := &cobra.Command{Use: "panic-output"}
+		output.SetCommandRollout(cmd, output.RolloutUnifiedActive)
+		ctx, _ := output.WithResultStore(context.Background())
+		cmd.SetContext(ctx)
+		cmd.SetOut(frameworkPanicWriter{})
+		if err := output.StoreResult(ctx, output.Success(map[string]any{"ok": true})); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if recover() == nil {
+				t.Fatal("expected post-run panic")
+			}
+		}()
+		_ = root.PersistentPostRunE(cmd, nil)
+	})
 }

@@ -613,10 +613,13 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 			// A public root may be reused by embedding callers through multiple
 			// ExecuteC invocations. Begin each invocation with an empty result
 			// lifecycle while retaining the store pointer observed by Execute's
-			// signal and exit-code handling.
-			if err := output.ResetResultStore(cmd.Context()); err != nil {
-				return apperrors.NewInternal("prepare command result lifecycle: "+err.Error(), apperrors.WithCause(err))
-			}
+			// signal and exit-code handling. Declaration-only command trees do not
+			// install a store at construction time, so add one lazily when those
+			// trees are executed for compatibility and policy tests.
+			executionCtx, _ := output.WithResultStore(cmd.Context())
+			cmd.SetContext(executionCtx)
+			// WithResultStore above guarantees the reset precondition.
+			_ = output.ResetResultStore(executionCtx)
 			// Cobra performs these checks after persistent pre-run hooks. Run
 			// them before opening the transactional sink so validation errors
 			// cannot strand a temporary file during direct ExecuteC calls.
