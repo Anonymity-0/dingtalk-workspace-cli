@@ -367,6 +367,83 @@ func TestPagedMCPCommandConversationMessagesLaterFailureOutputsPartial(t *testin
 	}
 }
 
+func TestPagedMCPCommandConversationMessagesAddErrorsOutputPartial(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		want     string
+	}{
+		{
+			name:     "conversation item not object",
+			response: `{"result":{"conversationMessagesList":["bad"],"hasMore":false,"nextCursor":""}}`,
+			want:     "conversation item must be object",
+		},
+		{
+			name:     "conversation missing openConversationId",
+			response: `{"result":{"conversationMessagesList":[{"messages":[]}],"hasMore":false,"nextCursor":""}}`,
+			want:     "missing openConversationId",
+		},
+		{
+			name:     "conversation messages not array",
+			response: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","messages":"bad"}],"hasMore":false,"nextCursor":""}}`,
+			want:     "conversation messages must be array",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &pagedCommandCaller{steps: []scriptedToolStep{{text: tt.response}}}
+			got, stderr, err := runPagedCommandTest(t, caller, pagedCommandConversationMessagesConfig(nil), "--page-all", "--page-delay", "0")
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("result=%#v err=%v, want %q", got, err, tt.want)
+			}
+			if !strings.Contains(stderr, "pagination stopped at page 1") {
+				t.Fatalf("stderr=%q", stderr)
+			}
+			paging := got["paging"].(map[string]any)
+			if paging["partial"] != true || paging["itemsFetched"].(float64) != 0 {
+				t.Fatalf("paging=%#v", paging)
+			}
+		})
+	}
+}
+
+func TestPagedMCPCommandConversationMessagesMaxItemsTruncatesAtConversationBoundary(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","messages":[{"id":"m1"},{"id":"m2"}]},{"openConversationId":"cid2","messages":[{"id":"m3"},{"id":"m4"}]}],"hasMore":true,"nextCursor":"c2"}}`},
+	}}
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandConversationMessagesConfig(nil), "--page-all", "--max-items", "2", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	conversations := got["result"].(map[string]any)["conversationMessagesList"].([]any)
+	paging := got["paging"].(map[string]any)
+	if len(conversations) != 1 || paging["total"].(float64) != 2 || paging["truncated"] != true {
+		t.Fatalf("result=%#v", got)
+	}
+}
+
+func TestPagedMCPCommandConversationMessagesAcceptsMissingMessages(t *testing.T) {
+	messages, err := conversationMessages(map[string]any{"openConversationId": "cid1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(messages) != 0 {
+		t.Fatalf("messages=%#v, want empty", messages)
+	}
+}
+
+func TestPagedMCPCommandConversationMessagesRejectsCorruptExistingMessages(t *testing.T) {
+	collection := newPagedCollection(PagedMCPCommandConfig{AggregationMode: PagedAggregationConversationMessages})
+	collection.items = []any{map[string]any{"openConversationId": "cid1", "messages": "bad"}}
+	collection.conversationIndex["cid1"] = 0
+
+	err := collection.Add([]any{map[string]any{"openConversationId": "cid1", "messages": []any{map[string]any{"id": "m2"}}}})
+	if err == nil || !strings.Contains(err.Error(), "conversation messages must be array") {
+		t.Fatalf("err=%v, want corrupt existing messages error", err)
+	}
+}
+
 func TestPagedMCPCommandResponseShapeErrors(t *testing.T) {
 	tests := []struct {
 		name     string
