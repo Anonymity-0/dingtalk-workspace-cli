@@ -193,8 +193,8 @@ func TestDeliveryDocCommentExportImportContractsAreCanonical(t *testing.T) {
 
 	importLeaf := executeShortcutSchemaQuery(t, "--cli-path", "doc +import")
 	constraints, _ := importLeaf["constraints"].(map[string]any)
-	if !schemaContractJSONEqual(constraints["require_one_of"], [][]string{{"folder", "workspace"}}) {
-		t.Fatalf("import target constraint = %#v", constraints)
+	if requireOneOf, ok := constraints["require_one_of"]; ok && !schemaContractJSONEqual(requireOneOf, [][]string{}) {
+		t.Fatalf("import unexpectedly requires a target: %#v", constraints)
 	}
 }
 

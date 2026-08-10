@@ -630,6 +630,9 @@ func TestCrossPlatformCoverageDocVersionRevertPaginationAndVerification(t *testi
 	if !versionEvidenceMatches([]any{map[string]any{"target-version": "3"}}, 3, map[string]bool{"targetversion": true}) {
 		t.Fatal("nested version evidence did not match")
 	}
+	if versionEvidenceMatches(map[string]any{"version": 4}, 3, map[string]bool{"version": true}) {
+		t.Fatal("mismatched version evidence unexpectedly matched")
+	}
 }
 
 func TestCrossPlatformCoverageDocWriteErrorStateMachine(t *testing.T) {
@@ -1260,8 +1263,8 @@ func TestCrossPlatformCoverageDocHistoryTemplateReviewAndMedia(t *testing.T) {
 	_ = runDocCoverage(t, MediaInsert, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--node", "n", "--file", "media.bin", "--dry-run", "--yes")
 	_ = runDocCoverage(t, ResourceUpdate, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--node", "n", "--image", "https://example.com/cover.png", "--dry-run", "--yes")
 	_ = runDocCoverage(t, Import, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--file", "media.bin", "--folder", "f", "--dry-run")
-	if err := runDocCoverage(t, Import, &docCoverageCaller{responses: map[string][]map[string]any{}}, "--file", "media.bin", "--dry-run"); err == nil {
-		t.Fatal("import without folder/workspace succeeded")
+	if err := runDocCoverage(t, Import, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--file", "media.bin", "--dry-run"); err != nil {
+		t.Fatalf("import to default root failed: %v", err)
 	}
 	if err := runDocCoverage(t, Export, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--node", "n", "--output", "out.docx", "--dry-run"); err != nil {
 		t.Fatalf("export default format failed: %v", err)

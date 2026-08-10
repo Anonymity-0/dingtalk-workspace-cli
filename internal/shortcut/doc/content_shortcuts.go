@@ -469,19 +469,16 @@ var Import = shortcut.Shortcut{
 	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown"},
 	Contract: docContract("+import", "上传本地文件并等待转换成在线文档对象；白名单外格式自动改走文件上传原样入库",
 		"当用户要把工作目录内的 doc/docx/xls/xlsx/md/txt/xmind/mark 相对路径文件导入为钉钉在线对象，并可指定目标文件夹或知识库时使用；白名单外格式（html/pdf 等）自动按原文件上传入库，结果带 fallback=upload、converted=false 标记。",
-		[]string{`dws doc +import --file ./report.docx --folder <FOLDER_ID>`, `dws doc +import --file ./notes.md --workspace <WORKSPACE_ID> --name "会议纪要"`}),
+		[]string{`dws doc +import --file ./report.docx`, `dws doc +import --file ./notes.md --workspace <WORKSPACE_ID> --name "会议纪要"`}),
 	Flags: []shortcut.Flag{
 		{Name: "file", Type: shortcut.FlagString, Desc: "工作目录内已存在文件的相对路径", Required: true},
-		{Name: "folder", Type: shortcut.FlagString, Desc: "目标文件夹 ID"},
-		{Name: "workspace", Type: shortcut.FlagString, Desc: "目标知识库 ID"},
+		{Name: "folder", Type: shortcut.FlagString, Desc: "可选目标文件夹 ID；folder/workspace 都省略时导入默认根目录"},
+		{Name: "workspace", Type: shortcut.FlagString, Desc: "可选目标知识库 ID；folder/workspace 都省略时导入默认根目录"},
 		{Name: "name", Type: shortcut.FlagString, Desc: "导入后名称"},
 	},
-	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"folder", "workspace"}, Description: "--folder 与 --workspace 至少提供一个导入目标"},
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"file"}, Description: "--file 必须是工作目录内已存在且不通过符号链接逃逸的相对路径"},
-	},
-	Tips:     []string{`dws doc +import --file ./report.docx --folder <FOLDER_ID>`, `dws doc +import --file ./notes.md --workspace <WORKSPACE_ID> --name "会议纪要"`},
-	Validate: func(rt *shortcut.RuntimeContext) error { return validateWorkspaceInputPath("file", rt.Str("file")) },
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"file"}, Description: "--file 必须是工作目录内已存在且不通过符号链接逃逸的相对路径"}},
+	Tips:        []string{`dws doc +import --file ./report.docx`, `dws doc +import --file ./notes.md --workspace <WORKSPACE_ID> --name "会议纪要"`},
+	Validate:    func(rt *shortcut.RuntimeContext) error { return validateWorkspaceInputPath("file", rt.Str("file")) },
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		if err := helpers.RunDocImportShortcut(rt.Command()); err != nil {
 			return docUnknownWriteError("doc.import", "import", "", err)
