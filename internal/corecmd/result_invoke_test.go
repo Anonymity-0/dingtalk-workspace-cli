@@ -3,6 +3,7 @@ package corecmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -47,5 +48,29 @@ func TestResultInvokeCarriesOneFrameworkResult(t *testing.T) {
 	}
 	if output.CommandRollout(cmd) != output.RolloutUnifiedActive {
 		t.Fatalf("rollout=%s", output.CommandRollout(cmd))
+	}
+}
+
+func TestFrameworkResultInvokeErrorLegacyAndStoreEdges(t *testing.T) {
+	wantErr := errors.New("invoke failed")
+	cases := []struct {
+		name    string
+		rollout output.RolloutState
+		invoke  func(*Ctx, map[string]any) (output.CommandResult, error)
+		want    string
+	}{
+		{"invoke error", output.RolloutUnifiedActive, func(*Ctx, map[string]any) (output.CommandResult, error) { return nil, wantErr }, "invoke failed"},
+		{"legacy guard", output.RolloutLegacyOnly, func(*Ctx, map[string]any) (output.CommandResult, error) { return output.Success(nil), nil }, "without an active unified-result rollout"},
+		{"missing store", output.RolloutUnifiedActive, func(*Ctx, map[string]any) (output.CommandResult, error) { return output.Success(nil), nil }, "no result store"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := New(Spec{Use: "result", OutputRollout: tc.rollout, Safety: contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}, ResultInvoke: tc.invoke})
+			cmd.SetArgs(nil)
+			err := cmd.Execute()
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Execute error=%v, want %q", err, tc.want)
+			}
+		})
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -27,6 +28,59 @@ func signalSelf(t *testing.T, sig syscall.Signal) {
 	}
 	if err := process.Signal(sig); err != nil {
 		t.Skipf("current platform does not support process signal delivery: %v", err)
+	}
+}
+
+func TestFrameworkSignalRedeliveryFallbackAndInterruptionMethods(t *testing.T) {
+	originalFind, originalExit := rootFindProcess, rootExitProcess
+	t.Cleanup(func() { rootFindProcess, rootExitProcess = originalFind, originalExit })
+	rootFindProcess = func(int) (*os.Process, error) { return nil, errors.New("find failed") }
+	exitCode := 0
+	rootExitProcess = func(code int) { exitCode = code }
+	rootEscalateSignal(syscall.SIGTERM)
+	if exitCode != 143 {
+		t.Fatalf("escalation exit=%d", exitCode)
+	}
+	exitCode = 0
+	redeliverProcessSignal(syscall.SIGTERM)
+	if exitCode != 143 {
+		t.Fatalf("fallback exit=%d", exitCode)
+	}
+	rootFindProcess = func(int) (*os.Process, error) { return os.FindProcess(99999999) }
+	exitCode = 0
+	redeliverProcessSignal(syscall.SIGINT)
+	if exitCode != 130 {
+		t.Fatalf("signal fallback exit=%d", exitCode)
+	}
+	interrupted := &processInterruption{signal: syscall.SIGINT}
+	if !errors.Is(interrupted, context.Canceled) || interrupted.ExitCode() != 130 || interrupted.Subtype() != "cancelled_by_user" || !strings.Contains(interrupted.Error(), "interrupt") {
+		t.Fatalf("interruption=%v", interrupted)
+	}
+	terminated := &processInterruption{signal: syscall.SIGTERM}
+	if terminated.ExitCode() != 143 || terminated.Subtype() != "terminated" {
+		t.Fatalf("termination=%v", terminated)
+	}
+	state := &processSignalState{}
+	if !state.record(syscall.SIGINT, nil) || state.record(syscall.SIGTERM, nil) {
+		t.Fatal("signal state did not reject a second interruption")
+	}
+}
+
+func TestFrameworkManageProcessSignalsNilAndEscalation(t *testing.T) {
+	signals := make(chan os.Signal, 3)
+	stopped, escalated := false, make(chan os.Signal, 1)
+	ctx, _, stop := manageProcessSignals(context.Background(), nil, signals, func() { stopped = true }, func(sig os.Signal) { escalated <- sig })
+	signals <- nil
+	signals <- syscall.SIGINT
+	<-ctx.Done()
+	signals <- syscall.SIGTERM
+	if got := <-escalated; got != syscall.SIGTERM {
+		t.Fatalf("escalated=%v", got)
+	}
+	stop()
+	stop()
+	if !stopped {
+		t.Fatal("signal notification was not stopped")
 	}
 }
 

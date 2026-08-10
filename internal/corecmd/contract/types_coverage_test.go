@@ -4,9 +4,52 @@
 package contract
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
+
+func TestFrameworkResultSpecValidationEdges(t *testing.T) {
+	if got, err := NormalizeResultSpec(nil, ""); err != nil || got != nil {
+		t.Fatalf("NormalizeResultSpec(nil)=(%v,%v)", got, err)
+	}
+	base := func() *ResultSpec {
+		return &ResultSpec{Outcomes: []ResultOutcome{ResultOutcomeSuccess}, DataSchema: json.RawMessage(`{"type":"object"}`)}
+	}
+	if got, err := NormalizeResultSpec(base(), ""); err != nil || got == nil || got.SensitivePaths != nil {
+		t.Fatalf("valid default spec=(%#v,%v)", got, err)
+	}
+	cases := []struct {
+		name string
+		edit func(*ResultSpec)
+	}{
+		{"ndjson invalid path", func(s *ResultSpec) {
+			s.NDJSON = &ResultNDJSONSpec{RecordPath: ".items", RecordSchema: json.RawMessage(`{"type":"object"}`)}
+		}},
+		{"ndjson invalid schema", func(s *ResultSpec) {
+			s.NDJSON = &ResultNDJSONSpec{RecordPath: "items", RecordSchema: json.RawMessage(`[]`)}
+		}},
+		{"pagination invalid cursor", func(s *ResultSpec) { s.Pagination = &ResultPaginationSpec{CursorPath: ".next", ExhaustionPath: "done"} }},
+		{"pagination invalid exhausted", func(s *ResultSpec) {
+			s.Pagination = &ResultPaginationSpec{CursorPath: "next", ExhaustionPath: "done..bad"}
+		}},
+		{"sensitive invalid", func(s *ResultSpec) { s.SensitivePaths = []string{"bad..path"} }},
+		{"empty schema", func(s *ResultSpec) { s.DataSchema = nil }},
+		{"multiple schema", func(s *ResultSpec) { s.DataSchema = json.RawMessage(`{} {}`) }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := base()
+			tc.edit(spec)
+			if _, err := NormalizeResultSpec(spec, "sample"); err == nil {
+				t.Fatalf("invalid spec accepted: %#v", spec)
+			}
+		})
+	}
+	if err := validateResultPath("a.$"); err == nil {
+		t.Fatal("unsafe segment accepted")
+	}
+}
 
 func TestCrossPlatformCoverageDryRunSpecValidate(t *testing.T) {
 	for _, kind := range []string{DryRunPreviewInvocation, DryRunPreviewRequest, DryRunPreviewPlan, DryRunPreviewDiff} {

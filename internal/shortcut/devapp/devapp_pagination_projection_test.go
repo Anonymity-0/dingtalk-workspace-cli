@@ -3,7 +3,26 @@
 
 package devapp
 
-import "testing"
+import (
+	"bytes"
+	"context"
+	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
+)
+
+type paginationCaller struct{ text string }
+
+func (c *paginationCaller) CallTool(context.Context, string, string, map[string]any) (*edition.ToolResult, error) {
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: c.text}}}, nil
+}
+func (*paginationCaller) Format() string { return "json" }
+func (*paginationCaller) DryRun() bool   { return false }
+func (*paginationCaller) Fields() string { return "" }
+func (*paginationCaller) JQ() string     { return "" }
 
 func TestDevAppListProjectionPreservesPaginationEvidence(t *testing.T) {
 	items := []map[string]any{{"id": "one"}}
@@ -27,5 +46,33 @@ func TestDevAppListProjectionPreservesPaginationEvidence(t *testing.T) {
 				t.Fatalf("projection count=%#v", got["count"])
 			}
 		})
+	}
+	if got := devAppPaginationCandidates(nil); got != nil {
+		t.Fatalf("nil candidates=%#v", got)
+	}
+	deep := map[string]any{"content": map[string]any{"result": map[string]any{"hasMore": true, "nextCursor": "deep"}}}
+	if got := devAppListProjection(deep, "items", nil); got["nextCursor"] != "deep" {
+		t.Fatalf("deep projection=%#v", got)
+	}
+}
+
+func TestFrameworkPaginatedShortcutExecutionKeepsCursorEvidence(t *testing.T) {
+	caller := &paginationCaller{text: `{"content":{"result":{"hasMore":true,"nextCursor":"next","list":[]}}}`}
+	helpers.InitDepsForTest(t, caller)
+	helpers.GetFormatter().SetWriters(&bytes.Buffer{}, &bytes.Buffer{})
+	for _, tc := range []struct {
+		declaration shortcut.Shortcut
+		args        []string
+	}{
+		{ListApp, nil},
+		{PermissionList, []string{"--unified-app-id", "app"}},
+		{EventList, []string{"--unified-app-id", "app"}},
+		{VersionList, []string{"--unified-app-id", "app"}},
+	} {
+		cmd := corecmd.New(shortcut.FromShortcut(tc.declaration))
+		cmd.SetArgs(tc.args)
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("%s: %v", tc.declaration.Command, err)
+		}
 	}
 }

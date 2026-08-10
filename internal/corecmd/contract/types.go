@@ -206,10 +206,7 @@ func canonicalJSONObject(raw json.RawMessage) (json.RawMessage, error) {
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
 		return nil, fmt.Errorf("must be one JSON object")
 	}
-	canonical, err := json.Marshal(object)
-	if err != nil {
-		return nil, fmt.Errorf("cannot canonicalize JSON object: %w", err)
-	}
+	canonical, _ := json.Marshal(object) // decoded RawMessages are always marshalable
 	return json.RawMessage(canonical), nil
 }
 

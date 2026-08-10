@@ -4,9 +4,13 @@
 package helpers
 
 import (
+	"bytes"
+	"context"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
+	"github.com/spf13/cobra"
 )
 
 func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
@@ -125,4 +129,118 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 			t.Fatalf("dry-run envelope=%+v", env)
 		}
 	})
+}
+
+func TestFrameworkDevAppMapperBoundaryMatrix(t *testing.T) {
+	for name, payload := range map[string]any{
+		"scalar":       "value",
+		"bad cursor":   map[string]any{"nextCursor": 1},
+		"cursor only":  map[string]any{"nextCursor": "next"},
+		"empty cursor": map[string]any{"nextCursor": ""},
+		"exhausted":    map[string]any{"hasMore": false},
+	} {
+		t.Run(name, func(t *testing.T) { _, _ = devAppPaginationMeta(payload) })
+	}
+
+	if devAppMultiProfileResult(map[string]any{}) != nil || devAppMultiProfileResult(map[string]any{"multiProfile": true}) != nil {
+		t.Fatal("non-profile payload classified")
+	}
+	allSuccess := devAppMultiProfileResult(map[string]any{"multiProfile": true, "profiles": []any{map[string]any{"ok": true}}})
+	if allSuccess != nil {
+		t.Fatalf("all-success multi profile=%v", allSuccess)
+	}
+	allFailed := devAppMultiProfileResult(map[string]any{"multiProfile": true, "profiles": []any{
+		map[string]any{"ok": false, "error": map[string]any{
+			"type": "authorization", "message": "denied", "retryable": true, "execution_started": false,
+			"actions": []any{"retry", 1}, "details": map[string]any{"scope": "x"}, "requestId": "req", "traceId": "trace",
+		}},
+		"malformed",
+	}})
+	allFailedEnv, err := output.EnvelopeFromResult(allFailed)
+	if err != nil || allFailedEnv.Outcome != output.OutcomeFailure || allFailedEnv.Error == nil || allFailedEnv.Error.Details == nil {
+		t.Fatalf("all-failed=%+v err=%v", allFailedEnv, err)
+	}
+	mixed := devAppMultiProfileResult(map[string]any{"multiProfile": true, "profiles": []any{
+		map[string]any{"selector": "ok", "ok": true},
+		map[string]any{"selector": "bad", "ok": false, "error": map[string]any{"category": "forbidden", "actions": []string{"fix"}, "code": "E"}},
+		123,
+	}})
+	if env, err := output.EnvelopeFromResult(mixed); err != nil || env.Outcome != output.OutcomePartialFailure {
+		t.Fatalf("mixed=%+v err=%v", env, err)
+	}
+	duplicate := devAppMultiProfileResult(map[string]any{"multiProfile": true, "profiles": []any{
+		map[string]any{"selector": "same", "ok": true},
+		map[string]any{"selector": "same", "ok": false},
+	}})
+	if env, err := output.EnvelopeFromResult(duplicate); err != nil || env.Outcome != output.OutcomeFailure || env.Error.Type != "internal" {
+		t.Fatalf("duplicate=%+v err=%v", env, err)
+	}
+
+	for _, payload := range []map[string]any{
+		{"success": false, "message": "no", "errorCode": "E"},
+		{"status": "FAILED", "code": 1},
+		{"status": "OK"},
+	} {
+		_ = devAppFailureResult(payload)
+	}
+	for _, raw := range []string{"validation", "forbidden", "timeout"} {
+		_ = devAppWireErrorType(raw)
+	}
+
+	for _, content := range []map[string]any{
+		{},
+		{"mustAskUser": true},
+		{"status": "WAITING", "taskId": "task"},
+		{"status": "WAITING", "requestId": "req"},
+		{"status": "WAITING", "taskId": "task", "nextSteps": []map[string]any{{"command": "dws next"}}},
+		{"status": "WAITING", "requestId": "req", "nextSteps": []any{map[string]any{"dryRunCommand": "dws preview"}, "bad"}},
+		{"approvalSubmitted": true, "unifiedAppId": "app", "versionId": "v"},
+	} {
+		result := devAppPendingResult(content)
+		if result != nil {
+			_, _ = output.EnvelopeFromResult(result)
+		}
+	}
+	if got := devAppRecoveryCommand(map[string]any{"taskId": "t"}); !bytes.Contains([]byte(got), []byte("robot result")) {
+		t.Fatalf("task recovery=%q", got)
+	}
+	if got := devAppRecoveryCommand(map[string]any{}); got != "" {
+		t.Fatalf("empty recovery=%q", got)
+	}
+
+	if got := devAppEnvelopeData(executor.Result{}); got == nil {
+		t.Fatal("unimplemented result should be preserved")
+	}
+	for _, result := range []executor.Result{
+		{Invocation: executor.Invocation{Implemented: true, Kind: "helper_invocation", DryRun: true}, Response: map[string]any{"content": map[string]any{"preview": true}}},
+		{Invocation: executor.Invocation{Implemented: true, Kind: "helper_invocation"}, Response: map[string]any{"content": map[string]any{"items": []any{}, "hasMore": false}}},
+	} {
+		cmd := &cobra.Command{Use: "legacy-envelope"}
+		cmd.SetContext(context.Background())
+		cmd.SetOut(&bytes.Buffer{})
+		if err := writeDevAppEnvelope(cmd, result); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	legacy := &cobra.Command{Use: "legacy"}
+	legacy.SetContext(context.Background())
+	legacy.SetOut(&bytes.Buffer{})
+	if err := writeDevRolloutResult(legacy, output.Success(nil), output.NewSuccessEnvelope(nil), output.FormatJSON); err != nil {
+		t.Fatal(err)
+	}
+	dual := &cobra.Command{Use: "dual"}
+	dual.SetContext(context.Background())
+	dual.SetOut(&bytes.Buffer{})
+	output.SetCommandRollout(dual, output.RolloutDualValidate)
+	if err := writeDevRolloutResult(dual, output.Pending(nil, nil), output.NewSuccessEnvelope(nil), output.FormatJSON); err == nil {
+		t.Fatal("dual validate accepted malformed shadow result")
+	}
+	ctx, _ := output.WithResultStore(context.Background())
+	active := &cobra.Command{Use: "active"}
+	active.SetContext(ctx)
+	output.SetCommandRollout(active, output.RolloutUnifiedActive)
+	if err := writeDevRolloutResult(active, output.Success(nil), nil, output.FormatJSON); err != nil {
+		t.Fatal(err)
+	}
 }

@@ -160,9 +160,6 @@ func jsonShorthandActive(cmd *cobra.Command) bool {
 		return false
 	}
 	for _, flags := range []*pflag.FlagSet{cmd.Flags(), cmd.InheritedFlags(), cmd.PersistentFlags()} {
-		if flags == nil {
-			continue
-		}
 		flag := flags.Lookup("json")
 		if flag == nil || !flag.Changed {
 			continue

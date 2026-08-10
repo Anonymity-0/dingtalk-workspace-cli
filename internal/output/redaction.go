@@ -163,9 +163,6 @@ func redactRecognizableSecrets(text string) string {
 	text = urlCredentialsPattern.ReplaceAllString(text, `${1}`+redactedValue+`@`)
 	text = urlQueryValuePattern.ReplaceAllStringFunc(text, func(parameter string) string {
 		equals := strings.IndexByte(parameter, '=')
-		if equals < 2 {
-			return parameter
-		}
 		key, err := url.QueryUnescape(parameter[1:equals])
 		if err != nil || !isSensitiveQueryKey(key) {
 			return parameter

@@ -335,26 +335,10 @@ func startDaemon(cmd *cobra.Command, dirKey, clientID, unifiedAppID, channel, no
 	// Release the child so the parent can exit without leaving a zombie.
 	pid := child.Process.Pid
 	_ = child.Process.Release()
-	if !output.UsesUnifiedResult(cmd) {
-		writeConnectDaemonStarted(cmd.OutOrStdout(), pid, logPath, clientID, dirKey)
-		return nil
-	}
-
-	// 统一输出 dev 域试点（队列 B110）：人读提示行走 stderr，stdout 由
-	// 结果信封承载（pid/日志路径等机器事实进 data，ok:true + outcome:success）。
-	writeConnectDaemonStarted(cmd.ErrOrStderr(), pid, logPath, clientID, dirKey)
-	env := &output.Envelope{
-		OK:      true,
-		Outcome: output.OutcomeSuccess,
-		Data: &connectDaemonStartedResult{
-			Status:   "started",
-			Pid:      pid,
-			LogPath:  logPath,
-			DirKey:   dirKey,
-			ClientID: clientID,
-		},
-	}
-	return writeDevRolloutResult(cmd, output.Success(env.Data), env, output.FormatJSON)
+	// The foreground/daemon root remains one streaming legacy command in this
+	// release. It cannot adopt a terminal result until the modes are split.
+	writeConnectDaemonStarted(cmd.OutOrStdout(), pid, logPath, clientID, dirKey)
+	return nil
 }
 
 // connectDaemonStartedResult 是 `dev connect --daemon` 父进程的结果 DTO

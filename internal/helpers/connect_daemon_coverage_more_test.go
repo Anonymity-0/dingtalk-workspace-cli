@@ -960,3 +960,50 @@ func TestCrossPlatformCoverageDaemonControlCommandEdges(t *testing.T) {
 		t.Fatal("failing restart subprocess succeeded")
 	}
 }
+
+func TestFrameworkConnectControlDryRunPlansAndLegacyListRollback(t *testing.T) {
+	preserveDaemonHooks(t)
+	connectDaemonDirOverride = t.TempDir()
+
+	stop := prepareUnifiedTestCommand(newDevAppRobotConnectStopCommand())
+	stop.SetArgs([]string{"--unified-app-id", "app", "--dry-run"})
+	var stopOut bytes.Buffer
+	stop.SetOut(&stopOut)
+	if err := stop.Execute(); err != nil || !strings.Contains(stopOut.String(), `"preview_kind": "plan"`) {
+		t.Fatalf("stop preview=%q err=%v", stopOut.String(), err)
+	}
+
+	restart := prepareUnifiedTestCommand(newDevAppRobotConnectRestartCommand())
+	restart.SetArgs([]string{"--unified-app-id", "app", "--dry-run"})
+	var restartOut bytes.Buffer
+	restart.SetOut(&restartOut)
+	if err := restart.Execute(); err != nil || !strings.Contains(restartOut.String(), `"preview_kind": "plan"`) {
+		t.Fatalf("restart preview=%q err=%v", restartOut.String(), err)
+	}
+
+	dir, err := connectDaemonDir("saved")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeDaemonState(dir, daemonState{DirKey: "saved", UnifiedAppID: "saved-app", Channel: "custom"}); err != nil {
+		t.Fatal(err)
+	}
+	restart = prepareUnifiedTestCommand(newDevAppRobotConnectRestartCommand())
+	restart.SetArgs([]string{"--robot-client-id", "saved", "--dry-run"})
+	restartOut.Reset()
+	restart.SetOut(&restartOut)
+	if err := restart.Execute(); err != nil || !strings.Contains(restartOut.String(), "saved-app") {
+		t.Fatalf("saved restart preview=%q err=%v", restartOut.String(), err)
+	}
+
+	list := prepareUnifiedTestCommand(newDevAppRobotConnectListCommand(connectResponseRunner{response: map[string]any{"items": []any{}, "hasMore": false}}))
+	output.SetCommandRollout(list, output.RolloutLegacyOnly)
+	for _, format := range []string{"json", "table", "pretty"} {
+		var out bytes.Buffer
+		list.SetOut(&out)
+		list.SetArgs([]string{"--format", format})
+		if err := list.Execute(); err != nil {
+			t.Fatalf("legacy list %s: %v", format, err)
+		}
+	}
+}

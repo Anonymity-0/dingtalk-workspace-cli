@@ -27,6 +27,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
+var validateShadowResult = output.ValidateResult
+
 // RuntimeContext is handed to a Shortcut's Validate and Execute hooks. It wraps
 // the cobra command and exposes typed flag accessors plus a single CallMCP entry
 // point so shortcut authors never touch cobra/executor plumbing directly.
@@ -152,7 +154,7 @@ func (rt *RuntimeContext) CallMCP(tool string, params map[string]any) error {
 			"arguments": params,
 		})
 		if rt.DryRun() {
-			if err := output.ValidateResult(rt.resultForPayload(tool, preview)); err != nil {
+			if err := validateShadowResult(rt.resultForPayload(tool, preview)); err != nil {
 				return err
 			}
 			// The legacy caller owns dry-run presentation (including its human
@@ -165,7 +167,7 @@ func (rt *RuntimeContext) CallMCP(tool string, params map[string]any) error {
 			return err
 		}
 		data := legacyMCPPayload(text)
-		if err := output.ValidateResult(rt.resultForPayload(tool, data)); err != nil {
+		if err := validateShadowResult(rt.resultForPayload(tool, data)); err != nil {
 			return err
 		}
 		// dual_validate changes no external bytes: it renders the once-fetched
@@ -305,7 +307,7 @@ func (rt *RuntimeContext) Output(payload any) error {
 		return output.StoreResult(rt.cmd.Context(), rt.resultForPayload("", payload))
 	}
 	if output.CommandRollout(rt.cmd) == output.RolloutDualValidate {
-		if err := output.ValidateResult(rt.resultForPayload("", payload)); err != nil {
+		if err := validateShadowResult(rt.resultForPayload("", payload)); err != nil {
 			return err
 		}
 	}

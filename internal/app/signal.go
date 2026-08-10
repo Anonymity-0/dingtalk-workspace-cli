@@ -16,17 +16,22 @@ var rootEscalateSignal = func(sig os.Signal) {
 	redeliverProcessSignal(sig)
 }
 
+var (
+	rootFindProcess = os.FindProcess
+	rootExitProcess = os.Exit
+)
+
 // redeliverProcessSignal asks the current process to handle the second signal
 // with the platform's default semantics. Platforms that cannot deliver the
 // requested signal through os.Process.Signal fall back to the conventional
 // CLI exit status instead of leaving the process running after escalation.
 func redeliverProcessSignal(sig os.Signal) {
-	process, err := os.FindProcess(os.Getpid())
+	process, err := rootFindProcess(os.Getpid())
 	if err == nil {
 		err = process.Signal(sig)
 	}
 	if err != nil {
-		os.Exit(interruptionExitCode(sig))
+		rootExitProcess(interruptionExitCode(sig))
 	}
 }
 

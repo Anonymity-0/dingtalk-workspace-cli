@@ -610,9 +610,6 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 			return cmd.Help()
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := output.ValidateUnifiedFormat(cmd); err != nil {
-				return apperrors.NewValidation(err.Error(), apperrors.WithReason("unsupported_format"))
-			}
 			// Cobra performs these checks after persistent pre-run hooks. Run
 			// them before opening the transactional sink so validation errors
 			// cannot strand a temporary file during direct ExecuteC calls.

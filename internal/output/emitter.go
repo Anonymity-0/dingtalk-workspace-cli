@@ -106,9 +106,7 @@ func emitResult(cmd *cobra.Command, result CommandResult) (int, bool, error) {
 			message = env.Error.Message
 		}
 		var buf bytes.Buffer
-		if _, err := fmt.Fprintln(&buf, "Error: "+message); err != nil {
-			return exitCodeInternal, false, err
-		}
+		_, _ = fmt.Fprintln(&buf, "Error: "+message)
 		n, err := writeAllCount(stderr, buf.Bytes())
 		if err != nil {
 			return exitCodeInternal, n > 0, err
@@ -230,9 +228,7 @@ func renderEnvelopeInto(buf *bytes.Buffer, errW io.Writer, env *Envelope, format
 			return err
 		}
 		if summary := renderMetaSummary(env.Meta); summary != "" {
-			if _, err := fmt.Fprintf(buf, "\n%s\n", summary); err != nil {
-				return err
-			}
+			_, _ = fmt.Fprintf(buf, "\n%s\n", summary)
 		}
 		return nil
 	case FormatCSV, FormatNDJSON:
