@@ -128,6 +128,126 @@ func TestPagedMCPCommandDefaultUsesFallbackOnly(t *testing.T) {
 	}
 }
 
+func TestPagedMCPCommandRejectsInvalidConfigWhenPageAll(t *testing.T) {
+	caller := &pagedCommandCaller{}
+	cfg := pagedCommandMessagesConfig(nil)
+	cfg.ServerID = " "
+
+	got, _, err := runPagedCommandTest(t, caller, cfg, "--page-all")
+	if err == nil || !strings.Contains(err.Error(), "server is required") {
+		t.Fatalf("result=%#v err=%v, want config error", got, err)
+	}
+	if got != nil {
+		t.Fatalf("result=%#v, want no stdout", got)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("calls=%#v, want no remote call", caller.calls)
+	}
+}
+
+func TestPagedMCPCommandDryRunPrintsRequestAndSkipsRemote(t *testing.T) {
+	caller := &pagedCommandCaller{dry: true}
+
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandMessagesConfig(nil), "--page-all", "--page-limit", "3", "--max-items", "7", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("calls=%#v, want no remote call", caller.calls)
+	}
+	if got["dry_run"] != true {
+		t.Fatalf("dry_run=%#v, want true", got["dry_run"])
+	}
+	request := got["request"].(map[string]any)
+	if request["server"] != "chat" || request["name"] != "search_messages_by_time_range" {
+		t.Fatalf("request=%#v", request)
+	}
+	args := request["args"].(map[string]any)
+	if args["cursor"] != "0" || args["limit"].(float64) != 2 {
+		t.Fatalf("args=%#v", args)
+	}
+	paging := got["paging"].(map[string]any)
+	if paging["pageAll"] != true || paging["pageLimit"].(float64) != 3 || paging["maxItems"].(float64) != 7 || paging["pageDelay"].(float64) != 0 {
+		t.Fatalf("paging=%#v", paging)
+	}
+}
+
+func TestPagedMCPCommandValidateConfigRejectsMissingRequiredFields(t *testing.T) {
+	tests := []struct {
+		name string
+		edit func(*PagedMCPCommandConfig)
+		want string
+	}{
+		{
+			name: "server",
+			edit: func(cfg *PagedMCPCommandConfig) {
+				cfg.ServerID = ""
+			},
+			want: "server is required",
+		},
+		{
+			name: "tool",
+			edit: func(cfg *PagedMCPCommandConfig) {
+				cfg.ToolName = ""
+			},
+			want: "tool is required",
+		},
+		{
+			name: "item path",
+			edit: func(cfg *PagedMCPCommandConfig) {
+				cfg.ItemPath = ""
+			},
+			want: "item path is required",
+		},
+		{
+			name: "cursor path",
+			edit: func(cfg *PagedMCPCommandConfig) {
+				cfg.CursorPath = ""
+			},
+			want: "cursor path is required",
+		},
+		{
+			name: "hasMore path",
+			edit: func(cfg *PagedMCPCommandConfig) {
+				cfg.HasMorePath = ""
+			},
+			want: "hasMore path is required",
+		},
+		{
+			name: "cursor arg",
+			edit: func(cfg *PagedMCPCommandConfig) {
+				cfg.CursorArg = ""
+			},
+			want: "cursor arg is required",
+		},
+		{
+			name: "build args callback",
+			edit: func(cfg *PagedMCPCommandConfig) {
+				cfg.BuildArgs = nil
+			},
+			want: "callbacks are required",
+		},
+		{
+			name: "fallback callback",
+			edit: func(cfg *PagedMCPCommandConfig) {
+				cfg.Fallback = nil
+			},
+			want: "callbacks are required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := pagedCommandMessagesConfig(nil)
+			tt.edit(&cfg)
+			err := validatePagedConfig(cfg)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("err=%v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestPagedMCPCommandStringCursorAggregatesAndPageLimit(t *testing.T) {
 	caller := &pagedCommandCaller{steps: []scriptedToolStep{
 		{text: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`},
@@ -144,6 +264,48 @@ func TestPagedMCPCommandStringCursorAggregatesAndPageLimit(t *testing.T) {
 	}
 	if caller.calls[0].args["cursor"] != "0" || caller.calls[1].args["cursor"] != "c2" {
 		t.Fatalf("call args = %#v", caller.calls)
+	}
+}
+
+func TestPagedMCPCommandResponseShapeErrors(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		want     string
+	}{
+		{
+			name:     "items not array",
+			response: `{"result":{"messages":"bad","hasMore":false}}`,
+			want:     "result.messages must be array",
+		},
+		{
+			name:     "missing hasMore",
+			response: `{"result":{"messages":[]}}`,
+			want:     "missing result.hasMore",
+		},
+		{
+			name:     "hasMore not bool",
+			response: `{"result":{"messages":[],"hasMore":"yes"}}`,
+			want:     "result.hasMore must be boolean",
+		},
+		{
+			name:     "missing next cursor",
+			response: `{"result":{"messages":[{"id":"m1"}],"hasMore":true}}`,
+			want:     "missing result.nextCursor",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &pagedCommandCaller{steps: []scriptedToolStep{{text: tt.response}}}
+			got, _, err := runPagedCommandTest(t, caller, pagedCommandMessagesConfig(nil), "--page-all", "--page-delay", "0")
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("result=%#v err=%v, want %q", got, err, tt.want)
+			}
+			if got != nil {
+				t.Fatalf("result=%#v, want no partial stdout", got)
+			}
+		})
 	}
 }
 
@@ -304,5 +466,90 @@ func TestPagedMCPCommandCursorCycleOutputsPartial(t *testing.T) {
 	paging := got["paging"].(map[string]any)
 	if paging["partial"] != true || paging["pagesFetched"].(float64) != 1 {
 		t.Fatalf("paging = %#v", paging)
+	}
+}
+
+func TestPagedMCPCommandSetJSONPathRejectsNonObjectIntermediate(t *testing.T) {
+	root := map[string]any{"result": "not-object"}
+
+	if setJSONPath(root, "result.messages", []any{}) {
+		t.Fatal("setJSONPath should reject a non-object intermediate")
+	}
+	if root["result"] != "not-object" {
+		t.Fatalf("root=%#v, want original intermediate preserved", root)
+	}
+}
+
+func TestPagedMCPCommandCursorValueKeyCoversBoundaryKinds(t *testing.T) {
+	if got := cursorValueKey(7, PagedCursorInt64); got != "7" {
+		t.Fatalf("int cursor key=%q, want 7", got)
+	}
+	if got := cursorValueKey(nil, PagedCursorString); got != "" {
+		t.Fatalf("nil string cursor key=%q, want empty", got)
+	}
+}
+
+func TestPagedMCPCommandNormalizeCursorArgCoversBoundaryKinds(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   any
+		kind    PagedCursorKind
+		want    any
+		wantErr string
+	}{
+		{
+			name:  "nil string cursor",
+			value: nil,
+			kind:  PagedCursorString,
+			want:  "",
+		},
+		{
+			name:  "int64 cursor",
+			value: int64(9),
+			kind:  PagedCursorInt64,
+			want:  int64(9),
+		},
+		{
+			name:  "int cursor",
+			value: 10,
+			kind:  PagedCursorInt64,
+			want:  int64(10),
+		},
+		{
+			name:  "numeric string cursor",
+			value: " 11 ",
+			kind:  PagedCursorInt64,
+			want:  int64(11),
+		},
+		{
+			name:    "fractional float cursor",
+			value:   1.5,
+			kind:    PagedCursorInt64,
+			wantErr: "must be an integer",
+		},
+		{
+			name:    "unsupported cursor type",
+			value:   []string{"bad"},
+			kind:    PagedCursorInt64,
+			wantErr: "int64-compatible",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeCursorArg(tt.value, tt.kind)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("value=%#v err=%v, want %q", tt.value, err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want {
+				t.Fatalf("value=%#v got=%#v, want %#v", tt.value, got, tt.want)
+			}
+		})
 	}
 }
