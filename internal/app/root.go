@@ -610,6 +610,13 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 			return cmd.Help()
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// A public root may be reused by embedding callers through multiple
+			// ExecuteC invocations. Begin each invocation with an empty result
+			// lifecycle while retaining the store pointer observed by Execute's
+			// signal and exit-code handling.
+			if err := output.ResetResultStore(cmd.Context()); err != nil {
+				return apperrors.NewInternal("prepare command result lifecycle: "+err.Error(), apperrors.WithCause(err))
+			}
 			// Cobra performs these checks after persistent pre-run hooks. Run
 			// them before opening the transactional sink so validation errors
 			// cannot strand a temporary file during direct ExecuteC calls.

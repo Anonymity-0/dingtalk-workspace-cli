@@ -352,6 +352,29 @@ func resultStoreFromContext(ctx context.Context) (*ResultStore, bool) {
 	return store, ok && store != nil
 }
 
+// ResetResultStore starts a new command execution on a reusable Cobra tree.
+//
+// NewRootCommand installs one store in the root context so process-level
+// signal and exit-code tracking can retain a stable pointer. Library callers,
+// however, may call ExecuteC more than once on that same root. Resetting the
+// execution fields before PersistentPreRunE prevents a previous result or
+// emission attempt from leaking into the next invocation while preserving the
+// store identity used by the process boundary.
+func ResetResultStore(ctx context.Context) error {
+	store, ok := resultStoreFromContext(ctx)
+	if !ok {
+		return fmt.Errorf("output: command context has no result store; install output.WithResultStore at the root execution boundary before resetting it")
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	store.result = nil
+	store.emitAttempted = false
+	store.bytesRisk = false
+	store.emitted = false
+	store.exitCode = 0
+	return nil
+}
+
 // StoreResult records exactly one terminal framework result for this command.
 func StoreResult(ctx context.Context, result CommandResult) error {
 	if err := ValidateResult(result); err != nil {

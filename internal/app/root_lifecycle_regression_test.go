@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -14,6 +15,59 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/spf13/cobra"
 )
+
+func TestPublicRootDirectExecuteResetsUnifiedResultLifecycle(t *testing.T) {
+	root := NewRootCommand(context.Background())
+	var stdout bytes.Buffer
+	root.SetOut(&stdout)
+	root.SetErr(&bytes.Buffer{})
+	run := 0
+	leaf := &cobra.Command{
+		Use: "lifecycle-repeat",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			run++
+			return output.StoreResult(cmd.Context(), output.Success(map[string]any{"run": run}))
+		},
+	}
+	output.SetCommandRollout(leaf, output.RolloutUnifiedActive)
+	root.AddCommand(leaf)
+
+	for want := 1; want <= 2; want++ {
+		stdout.Reset()
+		root.SetArgs([]string{"lifecycle-repeat", "--format", "json"})
+		executed, err := root.ExecuteC()
+		if err != nil {
+			t.Fatalf("ExecuteC run %d: %v", want, err)
+		}
+		if executed != leaf {
+			t.Fatalf("ExecuteC run %d executed %v, want lifecycle leaf", want, executed)
+		}
+		var envelope struct {
+			OK   bool `json:"ok"`
+			Data struct {
+				Run int `json:"run"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+			t.Fatalf("ExecuteC run %d output %q: %v", want, stdout.String(), err)
+		}
+		if !envelope.OK || envelope.Data.Run != want {
+			t.Fatalf("ExecuteC run %d envelope=%+v", want, envelope)
+		}
+	}
+
+	missing := &cobra.Command{Use: "lifecycle-missing", RunE: func(*cobra.Command, []string) error { return nil }}
+	output.SetCommandRollout(missing, output.RolloutUnifiedActive)
+	root.AddCommand(missing)
+	stdout.Reset()
+	root.SetArgs([]string{"lifecycle-missing", "--format", "json"})
+	if _, err := root.ExecuteC(); err == nil || !strings.Contains(err.Error(), "without a CommandResult") {
+		t.Fatalf("missing-result ExecuteC error=%v, want fresh lifecycle failure", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("missing-result ExecuteC replayed stale output %q", stdout.String())
+	}
+}
 
 func TestPublicRootDirectExecuteFailsWhenUnifiedSinkCannotPublish(t *testing.T) {
 	oldClose := rootCloseFile
