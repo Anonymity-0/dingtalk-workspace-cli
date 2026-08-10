@@ -3,6 +3,7 @@ package helpers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -163,24 +164,22 @@ func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts page
 
 		truncatedByItems := items.Truncate(opts.maxItems)
 		if truncatedByItems {
-			writePagedCommandResult(envelope, cfg, items, pagingMetadata{
+			return writePagedCommandResult(envelope, cfg, items, pagingMetadata{
 				Truncated:  true,
 				HasMore:    true,
 				LastCursor: lastCursor,
 				Pages:      page,
 				Total:      items.Total(),
 			})
-			return nil
 		}
 		if !hasMore {
-			writePagedCommandResult(envelope, cfg, items, pagingMetadata{
+			return writePagedCommandResult(envelope, cfg, items, pagingMetadata{
 				Truncated:  false,
 				HasMore:    false,
 				LastCursor: lastCursor,
 				Pages:      page,
 				Total:      items.Total(),
 			})
-			return nil
 		}
 		nextKey := cursorValueKey(nextCursor, cfg.CursorKind)
 		if nextKey == "" || nextKey == currentCursor || seenCursors[nextKey] {
@@ -198,14 +197,13 @@ func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts page
 		}
 	}
 
-	writePagedCommandResult(envelope, cfg, items, pagingMetadata{
+	return writePagedCommandResult(envelope, cfg, items, pagingMetadata{
 		Truncated:  hasMore,
 		HasMore:    hasMore,
 		LastCursor: lastCursor,
 		Pages:      opts.pageLimit,
 		Total:      items.Total(),
 	})
-	return nil
 }
 
 func parsePagedCommandPage(text string, cfg PagedMCPCommandConfig) (map[string]any, []any, any, bool, error) {
@@ -259,7 +257,7 @@ func handlePagedCommandError(cmd *cobra.Command, envelope map[string]any, cfg Pa
 		return err
 	}
 	fmt.Fprintf(cmd.ErrOrStderr(), "pagination stopped at page %d: %v\n", failedPage, err)
-	writePagedCommandResult(envelope, cfg, items, pagingMetadata{
+	if outputErr := writePagedCommandResult(envelope, cfg, items, pagingMetadata{
 		Truncated:    true,
 		HasMore:      true,
 		LastCursor:   failedCursor,
@@ -271,11 +269,13 @@ func handlePagedCommandError(cmd *cobra.Command, envelope map[string]any, cfg Pa
 		PagesFetched: failedPage - 1,
 		ItemsFetched: items.Total(),
 		Error:        err.Error(),
-	})
+	}); outputErr != nil {
+		return errors.Join(err, outputErr)
+	}
 	return err
 }
 
-func writePagedCommandResult(envelope map[string]any, cfg PagedMCPCommandConfig, items *pagedCollection, meta pagingMetadata) {
+func writePagedCommandResult(envelope map[string]any, cfg PagedMCPCommandConfig, items *pagedCollection, meta pagingMetadata) error {
 	_ = setJSONPath(envelope, cfg.ItemPath, items.Values())
 	paging := map[string]any{
 		"truncated":  meta.Truncated,
@@ -293,7 +293,7 @@ func writePagedCommandResult(envelope map[string]any, cfg PagedMCPCommandConfig,
 		paging["error"] = meta.Error
 	}
 	envelope["paging"] = paging
-	_ = deps.Out.PrintJSON(envelope)
+	return deps.Out.PrintJSON(envelope)
 }
 
 type pagedCollection struct {

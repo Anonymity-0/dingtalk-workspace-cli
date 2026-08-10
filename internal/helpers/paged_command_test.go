@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -54,6 +55,19 @@ func runPagedCommandTest(t *testing.T, caller *pagedCommandCaller, cfg PagedMCPC
 
 func runPagedCommandTestWithSleep(t *testing.T, caller *pagedCommandCaller, cfg PagedMCPCommandConfig, sleep func(time.Duration), args ...string) (map[string]any, string, error) {
 	t.Helper()
+	out, stderr, err := executePagedCommandTest(t, caller, cfg, sleep, &bytes.Buffer{}, args...)
+	if strings.TrimSpace(out) == "" {
+		return nil, stderr, err
+	}
+	var parsed map[string]any
+	if unmarshalErr := json.Unmarshal([]byte(out), &parsed); unmarshalErr != nil {
+		t.Fatalf("stdout JSON = %q, err = %v", out, unmarshalErr)
+	}
+	return parsed, stderr, err
+}
+
+func executePagedCommandTest(t *testing.T, caller *pagedCommandCaller, cfg PagedMCPCommandConfig, sleep func(time.Duration), stdout io.Writer, args ...string) (string, string, error) {
+	t.Helper()
 	oldDeps := deps
 	oldSleep := helperSleep
 	t.Cleanup(func() {
@@ -61,7 +75,7 @@ func runPagedCommandTestWithSleep(t *testing.T, caller *pagedCommandCaller, cfg 
 		helperSleep = oldSleep
 	})
 	InitDeps(caller)
-	out := &bytes.Buffer{}
+	out := stdout
 	errOut := &bytes.Buffer{}
 	deps.Out.w = out
 	deps.Out.errW = errOut
@@ -79,14 +93,10 @@ func runPagedCommandTestWithSleep(t *testing.T, caller *pagedCommandCaller, cfg 
 	cmd.SetErr(errOut)
 	cmd.SetArgs(args)
 	err := cmd.Execute()
-	if strings.TrimSpace(out.String()) == "" {
-		return nil, errOut.String(), err
+	if buf, ok := out.(*bytes.Buffer); ok {
+		return buf.String(), errOut.String(), err
 	}
-	var parsed map[string]any
-	if unmarshalErr := json.Unmarshal(out.Bytes(), &parsed); unmarshalErr != nil {
-		t.Fatalf("stdout JSON = %q, err = %v", out.String(), unmarshalErr)
-	}
-	return parsed, errOut.String(), err
+	return "", errOut.String(), err
 }
 
 func pagedCommandMessagesConfig(fallback func(map[string]any) error) PagedMCPCommandConfig {
@@ -545,6 +555,60 @@ func TestPagedMCPCommandMaxItemsTruncatesPrecisely(t *testing.T) {
 	paging := got["paging"].(map[string]any)
 	if len(items) != 1 || paging["total"].(float64) != 1 || paging["truncated"] != true {
 		t.Fatalf("result = %#v", got)
+	}
+}
+
+func TestPagedMCPCommandPropagatesAggregatedOutputErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		steps      []scriptedToolStep
+		args       []string
+		wantStderr string
+	}{
+		{
+			name: "normal end",
+			steps: []scriptedToolStep{
+				{text: `{"result":{"messages":[{"id":"m1"}],"hasMore":false,"nextCursor":""}}`},
+			},
+			args: []string{"--page-all", "--page-delay", "0"},
+		},
+		{
+			name: "max items truncation",
+			steps: []scriptedToolStep{
+				{text: `{"result":{"messages":[{"id":"m1"},{"id":"m2"}],"hasMore":true,"nextCursor":"c2"}}`},
+			},
+			args: []string{"--page-all", "--max-items", "1", "--page-delay", "0"},
+		},
+		{
+			name: "page limit truncation",
+			steps: []scriptedToolStep{
+				{text: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`},
+			},
+			args: []string{"--page-all", "--page-limit", "1", "--page-delay", "0"},
+		},
+		{
+			name: "partial result after later failure",
+			steps: []scriptedToolStep{
+				{text: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`},
+				{err: errors.New("page failed")},
+			},
+			args:       []string{"--page-all", "--page-delay", "0"},
+			wantStderr: "pagination stopped at page 2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// TC-output-error: aggregate stdout write failures must fail the command.
+			caller := &pagedCommandCaller{steps: tt.steps}
+			_, stderr, err := executePagedCommandTest(t, caller, pagedCommandMessagesConfig(nil), func(time.Duration) {}, failingWriter{}, tt.args...)
+			if err == nil || !strings.Contains(err.Error(), "write failed") {
+				t.Fatalf("err=%v, want propagated write failure", err)
+			}
+			if tt.wantStderr != "" && !strings.Contains(stderr, tt.wantStderr) {
+				t.Fatalf("stderr=%q, want %q", stderr, tt.wantStderr)
+			}
+		})
 	}
 }
 
