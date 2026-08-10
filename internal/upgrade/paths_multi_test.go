@@ -64,6 +64,19 @@ func TestCrossPlatformCoverageLocateSkillsRootFallsBackToMono(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageSwapUserHomeDirForTest(t *testing.T) {
+	want := t.TempDir()
+	SwapUserHomeDirForTest(t, func() (string, error) { return want, nil })
+
+	got, err := upgradeUserHomeDir()
+	if err != nil {
+		t.Fatalf("upgradeUserHomeDir() error = %v", err)
+	}
+	if got != want {
+		t.Fatalf("upgradeUserHomeDir() = %q, want %q", got, want)
+	}
+}
+
 func TestCrossPlatformCoverageBundleSkillNamesLayouts(t *testing.T) {
 	// Mono layout (top-level SKILL.md) is not a bundle.
 	mono := t.TempDir()
@@ -537,6 +550,22 @@ func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
 		t.Fatalf("regular file must survive: %v", err)
 	}
 
+	// A skill directory outside home falls back to its basename instead of
+	// allowing a ../ segment into the backup target. Exercise the exported
+	// wrapper used by internal/app at the same time.
+	outsideVictim := t.TempDir()
+	outsideName := filepath.Base(outsideVictim)
+	got, err := BackupAndRemoveSkillDir(home, outsideVictim)
+	if err != nil {
+		t.Fatalf("outside-home backup error = %v", err)
+	}
+	if filepath.Base(got) != outsideName {
+		t.Fatalf("outside-home backup path = %q, want basename %q", got, outsideName)
+	}
+	if _, err := os.Stat(outsideVictim); !os.IsNotExist(err) {
+		t.Fatalf("outside-home victim must be gone after backup, stat err=%v", err)
+	}
+
 	testseam.Swap(t, &upgradeBackupStamp, func() string { return "20260810-000000" })
 
 	// Collision: stamp already taken → numbered stamp wins.
@@ -551,7 +580,7 @@ func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
 	if err := os.MkdirAll(taken, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	got, err := backupAndRemoveSkillDir(home, victim)
+	got, err = backupAndRemoveSkillDir(home, victim)
 	if err != nil {
 		t.Fatalf("backup with collision error = %v", err)
 	}
