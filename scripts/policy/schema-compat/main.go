@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -939,14 +940,120 @@ func compatiblePositionals(oldPositionals, newPositionals []positionalSchema) bo
 	return true
 }
 
+// parameterTypeChange identifies one published parameter type migration
+// exactly: which tool, which parameter, and in which direction. Nothing is
+// matched by wildcard — an entry differing in any of the four fields does not
+// apply.
+//
+// ToolPath is "<product id>/<tool id>" exactly as the comparison builds it (see
+// where toolPath is assembled), e.g.
+// "minutes/minutes.apply_minutes_permission". From and To are the canonical
+// type values schemaType produces — the JSON encoding of the "type" keyword,
+// so `"string"` **with** its quotes, not a bare string. Spelling either one any
+// other way silently disables the exemption instead of failing loudly (exactly
+// how reviewedInterfaceRefRedirect was broken twice), so
+// TestCrossPlatformCoverageReviewedParameterTypeChangeKeysAreCanonical
+// recomputes both through schemaType rather than trusting the table.
+type parameterTypeChange struct {
+	ToolPath  string
+	Parameter string
+	From      string
+	To        string
+}
+
+// reviewedParameterTypeChanges enumerates the individually reviewed parameter
+// type migrations this gate accepts. A published type is part of the Schema
+// contract and a swap cannot be proven safe from the type names alone, so a
+// migration is accepted only when this exact tool, parameter and old→new pair
+// appear here. Adding an entry is a contract decision and belongs in review,
+// not in a feature change.
+//
+// Entries are direction-sensitive by construction: "string" → "integer" is a
+// separate key from "integer" → "string", and only the reviewed direction is
+// accepted.
+//
+// The table alone does not admit a change: the migration is rejected unless
+// every other published field of the parameter is identical — not merely free
+// of compatibility failures. See compatibleReviewedParameterTypeChange.
+var reviewedParameterTypeChanges = map[parameterTypeChange]struct{}{
+	// "dws minutes permission apply --policy" moved from a String flag to a
+	// native Int flag, so the published type follows it from "string" to
+	// "integer". A parameter's type is projected from the Cobra flag type
+	// (provenance source cobra_flag_type), so it describes how the CLI accepts
+	// the value, not how the backing RPC receives it.
+	//
+	// Accepted because no historical caller is invalidated:
+	//
+	//   - Consumers read this Schema to construct CLI invocations, and a command
+	//     line is text either way: "--policy 4" is the same argv under both
+	//     declarations, and a quoted "--policy \"4\"" still reaches pflag as 4.
+	//   - The flag keeps enforcing the same [2,4] domain in RunE, and pflag's
+	//     base-0 parse accepts every base-10 spelling the previous
+	//     strconv.ParseInt(v, 10, 64) accepted, so the set of successful
+	//     invocations only widens.
+	//   - "integer" also matches what actually goes on the wire: this parameter
+	//     maps to property "policyId", which the command has always sent as a
+	//     number, so the new declaration is closer to the request than the old.
+	//
+	// The parameter's default stays absent on both sides here (a zero default is
+	// not published) and every other published field is identical, which is why
+	// the equality guard admits this entry. A migration that also moved the
+	// default — or relaxed required, cleared required_when, widened enum, cleared
+	// interface_type — would be rejected even though several of those are
+	// individually compatible, because none of them were reviewed under this
+	// entry.
+	{
+		ToolPath:  "minutes/minutes.apply_minutes_permission",
+		Parameter: "policy",
+		From:      `"string"`,
+		To:        `"integer"`,
+	}: {},
+}
+
+// parameterContractUnchangedExceptType reports whether every published field of
+// the parameter other than its type is identical.
+//
+// This is a full equality check rather than "the gate recorded no other
+// failure", because several field changes are individually *compatible* and so
+// produce no failure at all: relaxing required or cli_required, clearing
+// required_when, widening enum, clearing interface_type, and clearing property
+// through a reviewed mapping exclusion. Keying the carve-out on the failure list
+// would let any of those ride along with a reviewed type migration without ever
+// having been reviewed under that entry — the exemption would be wider than what
+// it documents.
+//
+// Comparing the struct also means a field added to parameterSchema later is
+// covered here automatically, instead of silently widening every existing entry.
+func parameterContractUnchangedExceptType(oldParameter, newParameter parameterSchema) bool {
+	oldParameter.Type = ""
+	newParameter.Type = ""
+	return reflect.DeepEqual(oldParameter, newParameter)
+}
+
+// compatibleReviewedParameterTypeChange accepts a published parameter type
+// migration when it is an explicitly reviewed entry **and** the rest of the
+// parameter's published contract is unchanged.
+func compatibleReviewedParameterTypeChange(toolPath, name string, oldParameter, newParameter parameterSchema) bool {
+	_, reviewed := reviewedParameterTypeChanges[parameterTypeChange{
+		ToolPath:  toolPath,
+		Parameter: name,
+		From:      oldParameter.Type,
+		To:        newParameter.Type,
+	}]
+	return reviewed && parameterContractUnchangedExceptType(oldParameter, newParameter)
+}
+
 func checkParameterCompatibility(toolPath, name string, oldParameter, newParameter parameterSchema) []string {
 	var failures []string
+	if oldParameter.Type != newParameter.Type &&
+		!compatibleReviewedParameterTypeChange(toolPath, name, oldParameter, newParameter) {
+		failures = append(failures, fmt.Sprintf("schema tool %q parameter %q changed type", toolPath, name))
+	}
 	for _, field := range []struct {
 		name string
 		old  string
 		new  string
 	}{
-		{name: "type", old: oldParameter.Type, new: newParameter.Type},
 		{name: "default", old: oldParameter.Default, new: newParameter.Default},
 		{name: "interface_default", old: oldParameter.InterfaceDefault, new: newParameter.InterfaceDefault},
 		{name: "format", old: oldParameter.Format, new: newParameter.Format},
