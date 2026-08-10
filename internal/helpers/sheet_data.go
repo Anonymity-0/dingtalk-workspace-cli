@@ -129,6 +129,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
   --match-case           区分大小写（默认 false）
   --match-entire-cell    完整单元格匹配（默认 false）
   --use-regexp           使用正则表达式匹配（默认 false）
+  --match-formula        在公式文本中查找替换（默认 false，替换公式源码而非显示值）
   --include-hidden       包含隐藏行/列（默认 false）
   --range                限定替换范围，A1 表示法（不传时在整个工作表中替换）
 
@@ -166,6 +167,8 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			toolArgs["matchEntireCell"] = matchEntireCell
 			useRegExp, _ := cmd.Flags().GetBool("use-regexp")
 			toolArgs["useRegExp"] = useRegExp
+			matchFormula, _ := cmd.Flags().GetBool("match-formula")
+			toolArgs["matchFormulaText"] = matchFormula
 			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
 			toolArgs["includeHidden"] = includeHidden
 			return callMCPTool("replace_all", toolArgs)
@@ -198,6 +201,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "find", Property: "text"},
+				{Name: "match-formula", Property: "matchFormulaText"},
 				{Name: "node", Property: "nodeId"},
 				{Name: "replacement", Property: "replaceText"},
 				{Name: "use-regexp", Property: "useRegExp"},
@@ -212,6 +216,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 	replaceCmd.Flags().Bool("match-case", false, "区分大小写 (默认 false)")
 	replaceCmd.Flags().Bool("match-entire-cell", false, "完整单元格匹配")
 	replaceCmd.Flags().Bool("use-regexp", false, "启用正则表达式匹配")
+	replaceCmd.Flags().Bool("match-formula", false, "在公式文本中查找替换（默认 false）")
 	replaceCmd.Flags().Bool("include-hidden", false, "包含隐藏行/列")
 
 	appendCmd := &cobra.Command{
@@ -281,16 +286,17 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 
 	csvPutCmd := &cobra.Command{
 		Use:   "csv-put",
-		Short: "将 CSV 数据写入表格指定位置（纯值，自动扩容）",
+		Short: "将 CSV 数据写入表格指定位置（支持公式，自动扩容）",
 		Long: `将 RFC 4180 格式的 CSV 文本写入指定工作表的指定单元格位置。
-只写纯值，不支持公式/样式/批注。=开头当文本处理。自动扩容行列。
+写入值和公式，不支持样式/批注。字段值以 = 开头时默认按公式解析；
+如需写入以 = 开头的字面文本，在字段值前加单引号（例如 "'=1+1"）。自动扩容行列。
 目标区域如含合并单元格，csv-put 会打散合并并覆盖所有单元格；这不同于
 range update 与合并区域冲突时返回 MERGED_CELLS_CONFLICT 的行为。
 
 --csv 支持三种输入：直接传文本、@filepath 从文件读取、- 从 stdin 读取。
 --allow-overwrite 默认 false，目标区域有数据时需显式传 --allow-overwrite 才能覆盖。`,
 		Example: `  dws sheet csv-put --node NODE_ID --sheet-id SHEET_ID --start-cell A1 \
-    --csv 'name,score\nalice,95\nbob,87'
+    --csv "=1+1,'=1+1"
 
   dws sheet csv-put --node NODE_ID --sheet-id SHEET_ID --start-cell B2 \
     --csv @data.csv --allow-overwrite
@@ -347,17 +353,20 @@ range update 与合并区域冲突时返回 MERGED_CELLS_CONFLICT 的行为。
 				CLIPath:        "sheet csv-put",
 				PrimaryCLIPath: "sheet csv-put",
 			},
-			Description: "将 CSV 纯值写入起始单元格（可自动扩容；大批量纯值首选）。",
+			Description: "将 CSV 值或公式写入起始单元格（= 开头按公式；可自动扩容）。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
 				Ref:          &contract.InterfaceRefSpec{ProductID: "sheet", RPCName: "set_range_from_csv"},
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "将 CSV 纯值写入起始单元格（可自动扩容；大批量纯值首选）。",
-				UseWhen:      []string{"写入纯值且超过约 5 行/20 格，或数据来自 CSV/表格文本时优先使用"},
-				AvoidWhen:    []string{"需要公式/超链接/富文本用 range update；在末尾追加数据行用 append；覆盖已有数据需 --allow-overwrite"},
-				Examples:     []string{"dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell A1 --csv @data.csv --allow-overwrite"},
+				AgentSummary: "将 CSV 值或公式写入起始单元格（= 开头按公式；可自动扩容）。",
+				UseWhen:      []string{"需要从 CSV/表格文本批量写入值或以 = 开头的公式时优先使用"},
+				AvoidWhen:    []string{"需要超链接/富文本/样式/数据验证用 range update；在末尾追加数据行用 append；覆盖已有数据需 --allow-overwrite；要把 = 开头内容写成字面文本需前加单引号"},
+				Examples: []string{
+					"dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell A1 --csv @data.csv --allow-overwrite",
+					"dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell A1 --csv \"=1+1,'=1+1\"",
+				},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "node", Property: "nodeId"},
