@@ -269,7 +269,7 @@ function Copy-SkillToDir {
     # the user's copy and skip this target.
     if (!(Backup-SkillDir -Dir $Dest)) {
         Write-Say "⚠️  跳过 $Dest（保留原目录）"
-        return
+        return $false
     }
 
     $fileCount = Copy-DirRecursive -Source $SkillSrc -Destination $Dest
@@ -284,6 +284,7 @@ function Copy-SkillToDir {
             Write-Say "   📄 $($_.Name)"
         }
     }
+    return $true
 }
 
 function Copy-SkillToDirSummary {
@@ -291,11 +292,12 @@ function Copy-SkillToDirSummary {
 
     if (!(Backup-SkillDir -Dir $Dest)) {
         Write-Say "⚠️  跳过 $Dest（保留原目录）"
-        return
+        return $false
     }
 
     $fileCount = Copy-DirRecursive -Source $SkillSrc -Destination $Dest
     Write-Say "✅ Skills → $Label ($fileCount files)"
+    return $true
 }
 
 function Resolve-SourceRoot {
@@ -515,6 +517,7 @@ function Install-SkillsToHomes {
     )
 
     $installed = 0
+    $attempted = 0
     for ($i = 0; $i -lt $AgentDirs.Count; $i++) {
         $agentDir = $AgentDirs[$i]
         $baseDir = Join-Path $Root $agentDir
@@ -522,13 +525,24 @@ function Install-SkillsToHomes {
         if ($i -gt 0 -and !(Test-Path $parentGate)) {
             continue
         }
+        $attempted++
         # Mutual exclusion: back up + remove multi leftovers before laying
         # down mono. Non-interactive installs cannot confirm, so removals
         # stay reversible via ~\.dws\skill-backups\ (backup failure keeps
         # the dir).
-        Backup-SkillDir -Dir (Join-Path $baseDir "dws-shared") | Out-Null
-        Get-ChildItem -Path $baseDir -Directory -Filter "dingtalk-*" -ErrorAction SilentlyContinue |
-            ForEach-Object { Backup-SkillDir -Dir $_.FullName | Out-Null }
+        $cleanupOK = Backup-SkillDir -Dir (Join-Path $baseDir "dws-shared")
+        if ($cleanupOK) {
+            foreach ($existing in Get-ChildItem -Path $baseDir -Directory -Filter "dingtalk-*" -ErrorAction SilentlyContinue) {
+                if (!(Backup-SkillDir -Dir $existing.FullName)) {
+                    $cleanupOK = $false
+                    break
+                }
+            }
+        }
+        if (!$cleanupOK) {
+            Write-Say "⚠️  跳过 $baseDir（multi 残留备份失败，未安装 mono）"
+            continue
+        }
         $dest = Join-Path $baseDir $SkillName
         if ($Root -eq $HOME) {
             $label = "~\$agentDir\$SkillName"
@@ -536,20 +550,27 @@ function Install-SkillsToHomes {
             $label = Join-Path $Root (Join-Path $agentDir $SkillName)
         }
         if ($installed -eq 0) {
-            Copy-SkillToDir -SkillSrc $SkillSrc -Dest $dest -Label $label
+            $copied = Copy-SkillToDir -SkillSrc $SkillSrc -Dest $dest -Label $label
         } else {
-            Copy-SkillToDirSummary -SkillSrc $SkillSrc -Dest $dest -Label $label
+            $copied = Copy-SkillToDirSummary -SkillSrc $SkillSrc -Dest $dest -Label $label
         }
-        $installed++
+        if ($copied) {
+            $installed++
+        }
     }
-    if ($installed -eq 0) {
+    if ($attempted -eq 0) {
         $fallback = Join-Path (Join-Path $Root ".agents\skills") $SkillName
         if ($Root -eq $HOME) {
             $flabel = "~\.agents\skills\$SkillName"
         } else {
             $flabel = Join-Path $Root (Join-Path ".agents\skills" $SkillName)
         }
-        Copy-SkillToDir -SkillSrc $SkillSrc -Dest $fallback -Label $flabel
+        if (Copy-SkillToDir -SkillSrc $SkillSrc -Dest $fallback -Label $flabel) {
+            $installed++
+        }
+    }
+    if ($installed -eq 0) {
+        Write-Say "⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败"
     }
 }
 
@@ -577,6 +598,7 @@ function Install-MultiSkillsToHomes {
     )
 
     $installed = 0
+    $attempted = 0
     for ($i = 0; $i -lt $AgentDirs.Count; $i++) {
         $agentDir = $AgentDirs[$i]
         $baseDir = Join-Path $Root $agentDir
@@ -584,11 +606,18 @@ function Install-MultiSkillsToHomes {
         if ($i -gt 0 -and !(Test-Path $parentGate)) {
             continue
         }
-        Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $baseDir -Root $Root -AgentDir $agentDir
+        $attempted++
+        if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $baseDir -Root $Root -AgentDir $agentDir) {
+            $installed++
+        } else {
+            Write-Say "⚠️  跳过 $baseDir（备份失败，未安装 multi）"
+        }
+    }
+    if ($attempted -eq 0 -and (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir (Join-Path $Root ".agents\skills") -Root $Root -AgentDir ".agents\skills")) {
         $installed++
     }
     if ($installed -eq 0) {
-        Install-MultiToBase -MultiSrc $MultiSrc -BaseDir (Join-Path $Root ".agents\skills") -Root $Root -AgentDir ".agents\skills"
+        Write-Say "⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败"
     }
 }
 
@@ -605,30 +634,41 @@ function Install-MultiToBase {
     }
 
     # Mutual exclusion: back up + remove the mono leftover.
-    Backup-SkillDir -Dir (Join-Path $BaseDir $SkillName) | Out-Null
+    if (!(Backup-SkillDir -Dir (Join-Path $BaseDir $SkillName))) {
+        return $false
+    }
 
     # Back up + remove stale multi skills (dingtalk-* or dws-shared) not in
     # the new bundle.
-    Get-ChildItem -Path $BaseDir -Directory -Filter "dingtalk-*" -ErrorAction SilentlyContinue |
-        Where-Object { !(Test-Path (Join-Path (Join-Path $MultiSrc $_.Name) "SKILL.md")) } |
-        ForEach-Object { Backup-SkillDir -Dir $_.FullName | Out-Null }
+    foreach ($existing in Get-ChildItem -Path $BaseDir -Directory -Filter "dingtalk-*" -ErrorAction SilentlyContinue) {
+        if (!(Test-Path (Join-Path (Join-Path $MultiSrc $existing.Name) "SKILL.md")) -and
+            !(Backup-SkillDir -Dir $existing.FullName)) {
+            return $false
+        }
+    }
     if (!(Test-Path (Join-Path (Join-Path $MultiSrc "dws-shared") "SKILL.md"))) {
-        Backup-SkillDir -Dir (Join-Path $BaseDir "dws-shared") | Out-Null
+        if (!(Backup-SkillDir -Dir (Join-Path $BaseDir "dws-shared"))) {
+            return $false
+        }
+    }
+
+    $skillDirs = @(Get-ChildItem -Path $MultiSrc -Directory | Where-Object {
+        Test-Path (Join-Path $_.FullName "SKILL.md")
+    })
+    # Complete all backups before copying the first new skill, preventing a
+    # later failure from leaving a partial multi bundle in this Agent target.
+    foreach ($skillDir in $skillDirs) {
+        if (!(Backup-SkillDir -Dir (Join-Path $BaseDir $skillDir.Name))) {
+            return $false
+        }
     }
 
     $count = 0
-    Get-ChildItem -Path $MultiSrc -Directory | ForEach-Object {
-        $name = $_.Name
-        if (!(Test-Path (Join-Path $_.FullName "SKILL.md"))) { return }
+    foreach ($skillDir in $skillDirs) {
+        $name = $skillDir.Name
         $dest = Join-Path $BaseDir $name
-        if (!(Backup-SkillDir -Dir $dest)) {
-            # Refreshing an existing skill: on backup failure keep the
-            # user's copy and skip this skill.
-            Write-Say "⚠️  跳过 $dest（保留原目录）"
-            return
-        }
         New-Item -ItemType Directory -Path $dest -Force | Out-Null
-        Copy-DirRecursive -Source $_.FullName -Destination $dest | Out-Null
+        Copy-DirRecursive -Source $skillDir.FullName -Destination $dest | Out-Null
         $count++
     }
 
@@ -638,6 +678,7 @@ function Install-MultiToBase {
         $label = Join-Path $Root $AgentDir
     }
     Write-Say "✅ Skills → $label ($count product skills)"
+    return $true
 }
 
 # ── Install Binary from Source ───────────────────────────────────────────────

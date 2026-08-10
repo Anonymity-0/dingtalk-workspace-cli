@@ -401,6 +401,7 @@ install_skills_to_homes() {
   skill_src="$1"
   root="${HOME}"
   installed=0
+  attempted=0
   idx=0
   for agent_dir in \
     ".agents/skills" \
@@ -426,14 +427,29 @@ install_skills_to_homes() {
       idx=$((idx + 1))
       continue
     fi
+    attempted=$((attempted + 1))
     # Mutual exclusion: back up + remove multi leftovers before laying down
     # mono. Non-interactive installs cannot confirm, so removals stay
     # reversible via ~/.dws/skill-backups/ (backup failure keeps the dir).
-    backup_and_remove_skill_dir "$base_dir/dws-shared" || true
+    cleanup_ok=1
+    backup_and_remove_skill_dir "$base_dir/dws-shared" || cleanup_ok=0
+    if [ "$cleanup_ok" -ne 1 ]; then
+      say "  ⚠️  跳过 ${base_dir}（multi 残留备份失败，未安装 mono）"
+      idx=$((idx + 1))
+      continue
+    fi
     for existing in "$base_dir"/dingtalk-*/; do
       [ -d "$existing" ] || continue
-      backup_and_remove_skill_dir "$existing" || true
+      backup_and_remove_skill_dir "$existing" || {
+        cleanup_ok=0
+        break
+      }
     done
+    if [ "$cleanup_ok" -ne 1 ]; then
+      say "  ⚠️  跳过 ${base_dir}（multi 残留备份失败，未安装 mono）"
+      idx=$((idx + 1))
+      continue
+    fi
     dest="$base_dir/$SKILL_NAME"
     case "$root" in
       "$HOME")
@@ -444,14 +460,15 @@ install_skills_to_homes() {
         ;;
     esac
     if [ "$installed" -eq 0 ]; then
-      _copy_skill "$skill_src" "$dest" "$label"
-    else
-      _copy_skill_summary "$skill_src" "$dest" "$label"
+      if _copy_skill "$skill_src" "$dest" "$label"; then
+        installed=$((installed + 1))
+      fi
+    elif _copy_skill_summary "$skill_src" "$dest" "$label"; then
+      installed=$((installed + 1))
     fi
-    installed=$((installed + 1))
     idx=$((idx + 1))
   done
-  if [ "$installed" -eq 0 ]; then
+  if [ "$attempted" -eq 0 ]; then
     case "$root" in
       "$HOME")
         flabel="~/.agents/skills/$SKILL_NAME"
@@ -460,7 +477,12 @@ install_skills_to_homes() {
         flabel="$root/.agents/skills/$SKILL_NAME"
         ;;
     esac
-    _copy_skill "$skill_src" "$root/.agents/skills/$SKILL_NAME" "$flabel"
+    if _copy_skill "$skill_src" "$root/.agents/skills/$SKILL_NAME" "$flabel"; then
+      installed=$((installed + 1))
+    fi
+  fi
+  if [ "$installed" -eq 0 ]; then
+    say "  ⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败"
   fi
 }
 
@@ -488,6 +510,7 @@ install_multi_skills_to_homes() {
   multi_src="$1"
   root="${HOME}"
   installed=0
+  attempted=0
   idx=0
   for agent_dir in \
     ".agents/skills" \
@@ -513,12 +536,19 @@ install_multi_skills_to_homes() {
       idx=$((idx + 1))
       continue
     fi
-    _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"
-    installed=$((installed + 1))
+    attempted=$((attempted + 1))
+    if _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"; then
+      installed=$((installed + 1))
+    else
+      say "  ⚠️  跳过 ${base_dir}（备份失败，未安装 multi）"
+    fi
     idx=$((idx + 1))
   done
+  if [ "$attempted" -eq 0 ] && _install_multi_to_base "$multi_src" "$root/.agents/skills" "$root" ".agents/skills"; then
+    installed=$((installed + 1))
+  fi
   if [ "$installed" -eq 0 ]; then
-    _install_multi_to_base "$multi_src" "$root/.agents/skills" "$root" ".agents/skills"
+    say "  ⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败"
   fi
 }
 
@@ -528,10 +558,10 @@ _install_multi_to_base() {
   _root="$3"
   _agent_dir="$4"
 
-  mkdir -p "$_base"
+  mkdir -p "$_base" || return 1
 
   # Mutual exclusion: back up + remove the mono leftover.
-  backup_and_remove_skill_dir "$_base/$SKILL_NAME" || true
+  backup_and_remove_skill_dir "$_base/$SKILL_NAME" || return 1
 
   # Back up + remove stale multi skills (dingtalk-* or dws-shared) not in the
   # new bundle.
@@ -539,24 +569,28 @@ _install_multi_to_base() {
     [ -d "$existing" ] || continue
     _name="$(basename "$existing")"
     if [ ! -f "$_msrc/$_name/SKILL.md" ]; then
-      backup_and_remove_skill_dir "$existing" || true
+      backup_and_remove_skill_dir "$existing" || return 1
     fi
   done
   if [ -d "$_base/dws-shared" ] && [ ! -f "$_msrc/dws-shared/SKILL.md" ]; then
-    backup_and_remove_skill_dir "$_base/dws-shared" || true
+    backup_and_remove_skill_dir "$_base/dws-shared" || return 1
   fi
+
+  # Complete all backups before copying the first new skill so a later
+  # failure cannot leave a partial multi bundle in this Agent target.
+  for skill_dir in "$_msrc"/*/; do
+    [ -f "${skill_dir}SKILL.md" ] || continue
+    _name="$(basename "$skill_dir")"
+    _dest="$_base/$_name"
+    backup_and_remove_skill_dir "$_dest" || return 1
+  done
 
   _count=0
   for skill_dir in "$_msrc"/*/; do
     [ -f "${skill_dir}SKILL.md" ] || continue
     _name="$(basename "$skill_dir")"
     _dest="$_base/$_name"
-    if [ -d "$_dest" ]; then
-      # Refreshing an existing skill: back it up first; on backup failure
-      # keep the user's copy and skip this skill.
-      backup_and_remove_skill_dir "$_dest" || continue
-    fi
-    mkdir -p "$_dest"
+    mkdir -p "$_dest" || return 1
     cp -R "${skill_dir}." "$_dest/" 2>/dev/null || cp -r "${skill_dir}." "$_dest/"
     _count=$((_count + 1))
   done
@@ -577,7 +611,7 @@ _copy_skill_summary() {
   if [ -d "$_dest" ]; then
     backup_and_remove_skill_dir "$_dest" || {
       say "  ⚠️  跳过 ${_dest}（保留原目录）"
-      return 0
+      return 1
     }
   fi
 
@@ -597,7 +631,7 @@ _copy_skill() {
   if [ -d "$_dest" ]; then
     backup_and_remove_skill_dir "$_dest" || {
       say "  ⚠️  跳过 ${_dest}（保留原目录）"
-      return 0
+      return 1
     }
   fi
 

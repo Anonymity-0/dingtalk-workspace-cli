@@ -967,8 +967,8 @@ func findSkillBackup(fakeHome, name, content string) string {
 // TestInstallScriptBackupFailureKeepsOriginalDir pins the fail-safe contract:
 // when the backup destination cannot be created (skill-backups pre-created as
 // a regular file), the installer must keep every pre-existing skill directory
-// untouched and still complete the install overall — a backup failure must
-// never degrade into a hard delete or abort the run.
+// untouched and skip the affected Agent target — a backup failure must never
+// degrade into a hard delete or leave a mixed mono + multi layout.
 func TestInstallScriptBackupFailureKeepsOriginalDir(t *testing.T) {
 	t.Parallel()
 
@@ -1002,6 +1002,111 @@ func TestInstallScriptBackupFailureKeepsOriginalDir(t *testing.T) {
 	data, err = os.ReadFile(filepath.Join(base, "dws", "SKILL.md"))
 	if err != nil || string(data) != "old mono\n" {
 		t.Fatalf("multi run must keep the mono leftover dws/ untouched on backup failure (data=%q, err=%v)\noutput:\n%s", string(data), err, out)
+	}
+	for _, name := range []string{"dingtalk-test", "dws-shared"} {
+		if _, err := os.Stat(filepath.Join(base, name)); !os.IsNotExist(err) {
+			t.Fatalf("multi run must not install %s after cleanup backup failure, stat err=%v\noutput:\n%s", name, err, out)
+		}
+	}
+}
+
+func TestInstallSkillsShellBackupFailureWritesNoMultiSkills(t *testing.T) {
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-skills.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "\nmain\n")
+	if cut < 0 {
+		t.Fatal("install-skills.sh final main invocation not found")
+	}
+	library := filepath.Join(t.TempDir(), "install-skills-lib.sh")
+	mustWriteFile(t, library, data[:cut], 0o755)
+
+	home := t.TempDir()
+	root := filepath.Join(t.TempDir(), "project")
+	base := filepath.Join(root, ".agents", "skills")
+	multi := filepath.Join(t.TempDir(), "multi")
+	mustWriteFile(t, filepath.Join(base, "dws", "SKILL.md"), []byte("old mono\n"), 0o644)
+	mustWriteFile(t, filepath.Join(multi, "dingtalk-test", "SKILL.md"), []byte("new multi\n"), 0o644)
+	mustWriteFile(t, filepath.Join(home, ".dws", "skill-backups"), []byte("not a directory\n"), 0o644)
+
+	harness := `. "$DWS_TEST_LIBRARY"
+install_multi_skills_to_root "$DWS_TEST_MULTI" "$DWS_TEST_ROOT"
+`
+	cmd := exec.Command("sh", "-c", harness)
+	cmd.Env = append(os.Environ(),
+		"HOME="+home,
+		"DWS_TEST_LIBRARY="+library,
+		"DWS_TEST_MULTI="+multi,
+		"DWS_TEST_ROOT="+root,
+	)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("install-skills harness failed: %v\n%s", err, output)
+	}
+	if data, err := os.ReadFile(filepath.Join(base, "dws", "SKILL.md")); err != nil || string(data) != "old mono\n" {
+		t.Fatalf("mono changed after backup failure (data=%q, err=%v)", string(data), err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "dingtalk-test")); !os.IsNotExist(err) {
+		t.Fatalf("multi installed after backup failure, stat err=%v", err)
+	}
+}
+
+func TestInstallPowerShellBackupFailureWritesNoMultiSkills(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			pwsh, err = exec.LookPath("powershell")
+		}
+		if err != nil {
+			t.Skip("PowerShell is not available")
+		}
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.ps1 main section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	prefix += `
+$ok = Install-MultiToBase -MultiSrc $env:DWS_TEST_MULTI -BaseDir $env:DWS_TEST_BASE -Root $env:DWS_TEST_HOME -AgentDir ".agents\skills"
+if ($ok) { exit 2 }
+exit 0
+`
+	harnessPath := filepath.Join(t.TempDir(), "install-harness.ps1")
+	mustWriteFile(t, harnessPath, []byte(prefix), 0o644)
+
+	home := t.TempDir()
+	base := filepath.Join(home, ".agents", "skills")
+	multi := filepath.Join(t.TempDir(), "multi")
+	mustWriteFile(t, filepath.Join(base, "dws", "SKILL.md"), []byte("old mono\n"), 0o644)
+	mustWriteFile(t, filepath.Join(multi, "dingtalk-test", "SKILL.md"), []byte("new multi\n"), 0o644)
+	mustWriteFile(t, filepath.Join(home, ".dws", "skill-backups"), []byte("not a directory\n"), 0o644)
+
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(),
+		"DWS_TEST_HOME="+home,
+		"DWS_TEST_MULTI="+multi,
+		"DWS_TEST_BASE="+base,
+	)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("PowerShell harness failed: %v\n%s", err, output)
+	}
+	if data, err := os.ReadFile(filepath.Join(base, "dws", "SKILL.md")); err != nil || string(data) != "old mono\n" {
+		t.Fatalf("mono changed after PowerShell backup failure (data=%q, err=%v)", string(data), err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "dingtalk-test")); !os.IsNotExist(err) {
+		t.Fatalf("PowerShell installed multi after backup failure, stat err=%v", err)
 	}
 }
 

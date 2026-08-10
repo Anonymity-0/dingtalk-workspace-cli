@@ -169,6 +169,7 @@ function copyChildren(srcDir, destDir) {
 function installSkillsToHomes(skillRoot) {
   const homeDir = os.homedir();
   let installed = 0;
+  let attempted = 0;
 
   AGENT_DIRS.forEach((agentDir, index) => {
     const baseDir = path.join(homeDir, agentDir);
@@ -176,6 +177,7 @@ function installSkillsToHomes(skillRoot) {
     if (index > 0 && !fs.existsSync(parentGate)) {
       return;
     }
+    attempted += 1;
     // Mutual exclusion: back up + remove multi leftovers before laying down
     // mono. Directories only — a stray file named dingtalk-x.md must survive.
     // Non-interactive installs cannot confirm, so removals stay reversible via
@@ -183,7 +185,10 @@ function installSkillsToHomes(skillRoot) {
     if (fs.existsSync(baseDir)) {
       for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
         if (entry.isDirectory() && (entry.name.startsWith("dingtalk-") || entry.name === "dws-shared")) {
-          backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name));
+          if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name))) {
+            console.warn(`⚠️  跳过 ${baseDir}（multi 残留备份失败，未安装 mono）`);
+            return;
+          }
         }
       }
     }
@@ -192,15 +197,18 @@ function installSkillsToHomes(skillRoot) {
       // Refreshing an existing skill: on backup failure keep the user's
       // copy and skip this target.
       console.warn(`⚠️  跳过 ${destDir}（保留原目录）`);
-      installed += 1;
       return;
     }
     copyChildren(skillRoot, destDir);
     installed += 1;
   });
 
-  if (installed === 0) {
+  if (attempted === 0) {
     copyChildren(skillRoot, path.join(homeDir, ".agents", "skills", "dws"));
+    installed += 1;
+  }
+  if (installed === 0) {
+    console.warn("⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败");
   }
 }
 
@@ -234,31 +242,43 @@ function installMultiSkillsToHomes(multiRoot) {
   }
   const skillSet = new Set(skills);
   let installed = 0;
+  let attempted = 0;
 
   const installToBase = (baseDir) => {
     fs.mkdirSync(baseDir, { recursive: true });
     // Mutual exclusion: back up + remove the mono leftover, then stale multi
     // skills (dingtalk-* or dws-shared) not in the new bundle.
-    backupAndRemoveSkillDir(homeDir, path.join(baseDir, "dws"));
+    if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, "dws"))) {
+      console.warn(`⚠️  跳过 ${baseDir}（mono 残留备份失败，未安装 multi）`);
+      return false;
+    }
     for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
       if (
         entry.isDirectory() &&
         (entry.name.startsWith("dingtalk-") || entry.name === "dws-shared") &&
         !skillSet.has(entry.name)
       ) {
-        backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name));
+        if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name))) {
+          console.warn(`⚠️  跳过 ${baseDir}（过期 Skill 备份失败，未安装 multi）`);
+          return false;
+        }
+      }
+    }
+    // Finish every potentially failing backup before copying the first new
+    // skill. This prevents a later backup failure from leaving a partial
+    // bundle in this Agent target.
+    for (const name of skills) {
+      const destDir = path.join(baseDir, name);
+      if (!backupAndRemoveSkillDir(homeDir, destDir)) {
+        console.warn(`⚠️  跳过 ${baseDir}（${name} 备份失败，未安装 multi）`);
+        return false;
       }
     }
     for (const name of skills) {
       const destDir = path.join(baseDir, name);
-      if (!backupAndRemoveSkillDir(homeDir, destDir)) {
-        // Refreshing an existing skill: on backup failure keep the user's
-        // copy and skip this skill.
-        console.warn(`⚠️  跳过 ${destDir}（保留原目录）`);
-        continue;
-      }
       copyChildren(path.join(multiRoot, name), destDir);
     }
+    return true;
   };
 
   AGENT_DIRS.forEach((agentDir, index) => {
@@ -267,12 +287,17 @@ function installMultiSkillsToHomes(multiRoot) {
     if (index > 0 && !fs.existsSync(parentGate)) {
       return;
     }
-    installToBase(baseDir);
-    installed += 1;
+    attempted += 1;
+    if (installToBase(baseDir)) {
+      installed += 1;
+    }
   });
 
+  if (attempted === 0 && installToBase(path.join(homeDir, ".agents", "skills"))) {
+    installed += 1;
+  }
   if (installed === 0) {
-    installToBase(path.join(homeDir, ".agents", "skills"));
+    console.warn("⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败");
   }
 }
 

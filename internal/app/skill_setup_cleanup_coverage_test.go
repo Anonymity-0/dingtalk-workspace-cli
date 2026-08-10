@@ -32,8 +32,8 @@ func TestCrossPlatformCoverageSkillSetupConfirmPreviewsStaleSkills(t *testing.T)
 
 	var out bytes.Buffer
 	ok, err := confirmSkillSetup(&out, skillSetupModeMulti, "src", []string{dest}, []string{"dingtalk-chat"}, false)
-	if err != nil || !ok {
-		t.Fatalf("confirmSkillSetup = (%v, %v), want (true, nil)", ok, err)
+	if err == nil || ok || !strings.Contains(err.Error(), "--yes") {
+		t.Fatalf("confirmSkillSetup = (%v, %v), want non-interactive confirmation error", ok, err)
 	}
 	if !strings.Contains(out.String(), "将备份并移除过期 skill") {
 		t.Fatalf("full install preview must list stale skills, got %q", out.String())
@@ -44,8 +44,8 @@ func TestCrossPlatformCoverageSkillSetupConfirmPreviewsStaleSkills(t *testing.T)
 
 	out.Reset()
 	ok, err = confirmSkillSetup(&out, skillSetupModeMulti, "src", []string{dest}, []string{"dingtalk-chat"}, true)
-	if err != nil || !ok {
-		t.Fatalf("filtered confirmSkillSetup = (%v, %v), want (true, nil)", ok, err)
+	if err == nil || ok {
+		t.Fatalf("filtered confirmSkillSetup = (%v, %v), want non-interactive confirmation error", ok, err)
 	}
 	if strings.Contains(out.String(), "将备份并移除过期 skill") {
 		t.Fatalf("filtered install must stay additive in the preview, got %q", out.String())
@@ -74,6 +74,75 @@ func TestCrossPlatformCoverageSkillSetupCleanupHomeFailure(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(victim, "SKILL.md")); err != nil {
 		t.Fatalf("victim must survive the HOME failure: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageSkillSetupBackupFailureSkipsWholeTarget(t *testing.T) {
+	home := t.TempDir()
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	copyCalls := 0
+	testseam.Swap(t, &skillSetupCopyDir, func(string, string) error {
+		copyCalls++
+		return nil
+	})
+	failure := errors.New("backup boom")
+	testseam.Swap(t, &skillSetupBackupAndRemove, func(_ string, dir string) (string, error) {
+		if filepath.Base(dir) == "dws" {
+			return "", failure
+		}
+		return "", nil
+	})
+
+	dest := filepath.Join(home, ".agents", "skills")
+	if err := os.MkdirAll(filepath.Join(dest, "dws"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := writeMultiSkillSource(t, []string{"dingtalk-a", "dingtalk-shared"})
+	var out, errOut bytes.Buffer
+	installed, skipped, err := installMultiSkillToHomes(src, []string{"dingtalk-a", "dingtalk-shared"}, []string{dest}, &out, &errOut, false)
+	if err != nil || installed != 0 || skipped != 2 {
+		t.Fatalf("install = (%d, %d, %v), want (0, 2, nil)", installed, skipped, err)
+	}
+	if copyCalls != 0 {
+		t.Fatalf("backup failure copied %d new Skills", copyCalls)
+	}
+	if !strings.Contains(errOut.String(), "跳过整个 Agent 目标") {
+		t.Fatalf("missing whole-target warning: %q", errOut.String())
+	}
+}
+
+func TestCrossPlatformCoverageSkillSetupStaleBackupFailureSkipsWholeTarget(t *testing.T) {
+	home := t.TempDir()
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	copyCalls := 0
+	testseam.Swap(t, &skillSetupCopyDir, func(string, string) error {
+		copyCalls++
+		return nil
+	})
+	failure := errors.New("stale backup boom")
+	testseam.Swap(t, &skillSetupBackupAndRemove, func(_ string, dir string) (string, error) {
+		if filepath.Base(dir) == "dingtalk-stale" {
+			return "", failure
+		}
+		return "", nil
+	})
+
+	dest := filepath.Join(home, ".agents", "skills")
+	stale := filepath.Join(dest, "dingtalk-stale")
+	if err := os.MkdirAll(stale, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := writeMultiSkillSource(t, []string{"dingtalk-a", "dingtalk-shared"})
+	var out, errOut bytes.Buffer
+	installed, skipped, err := installMultiSkillToHomes(src, []string{"dingtalk-a", "dingtalk-shared"}, []string{dest}, &out, &errOut, false)
+	if err != nil || installed != 0 || skipped != 2 {
+		t.Fatalf("install = (%d, %d, %v), want (0, 2, nil)", installed, skipped, err)
+	}
+	if copyCalls != 0 {
+		t.Fatalf("stale backup failure copied %d new Skills", copyCalls)
+	}
+	if !strings.Contains(errOut.String(), "过期 Skill 备份失败，跳过整个 Agent 目标") {
+		t.Fatalf("missing stale whole-target warning: %q", errOut.String())
 	}
 }
 
@@ -117,7 +186,7 @@ func TestCrossPlatformCoverageSkillSetupInstallHomeFailureSkips(t *testing.T) {
 	if err != nil || installed != 0 || skipped != 1 {
 		t.Fatalf("multi install = (%d, %d, %v), want (0, 1, nil)", installed, skipped, err)
 	}
-	if !strings.Contains(errOut.String(), "无法解析 HOME，跳过刷新") {
+	if !strings.Contains(errOut.String(), "无法解析 HOME，跳过整个 Agent 目标") {
 		t.Fatalf("expected multi HOME skip warning, got %q", errOut.String())
 	}
 	if _, err := os.Stat(filepath.Join(multiDest, "dingtalk-a")); err != nil {

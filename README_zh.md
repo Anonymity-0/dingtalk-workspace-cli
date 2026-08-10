@@ -426,7 +426,7 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 | `--source` | 路径 | 本地源目录（覆盖内置 skills） |
 | `--yes` | — | 仅供脚本使用：跳过确认提示。删除操作仍会先备份到 `~/.dws/skill-backups/` |
 
-> setup 命令可能移除对面模式残留（装 multi 删 `dws/`，装 mono 删 `dingtalk-*`）以及不在 bundle 内的过期 skill。所有删除都会先列入确认预览，并备份到 `~/.dws/skill-backups/<时间戳>/`；备份失败的目录会保留原样、绝不删除。
+> setup 命令可能移除对面模式残留（装 multi 删 `dws/`，装 mono 删 `dingtalk-*`）以及不在 bundle 内的过期 skill。所有删除都会先列入确认预览，并备份到 `~/.dws/skill-backups/<时间戳>/`；备份失败的目录会保留原样、绝不删除。非交互环境默认拒绝迁移目录；请先用 `--dry-run` 核对，再显式传入 `--yes`。
 
 环境变量：`DWS_SKILL_MODE=mono|multi`（`install.sh` / `install.ps1` 也认）、`DWS_SKILL_SOURCE=<路径>`。
 

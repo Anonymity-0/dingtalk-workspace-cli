@@ -458,15 +458,16 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -eu
-          test "$(git rev-parse HEAD^1)" = "$PR_BASE_SHA" || {
-            echo "focused test merge first parent does not match event base" >&2
-            exit 1
-          }
           test "$(git rev-parse HEAD^2)" = "$PR_HEAD_SHA" || {
             echo "focused test merge second parent does not match event head" >&2
             exit 1
           }
-          echo "TEST_BASE_REF=$PR_BASE_SHA" >> "$GITHUB_ENV"
+          merge_base_sha="$(git rev-parse HEAD^1)"
+          git merge-base --is-ancestor "$PR_BASE_SHA" "$merge_base_sha" || {
+            echo "focused test merge base is not a fast-forward of event base" >&2
+            exit 1
+          }
+          echo "TEST_BASE_REF=$merge_base_sha" >> "$GITHUB_ENV"
           echo "TEST_HEAD_REF=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Set up Go
@@ -1255,26 +1256,27 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -eu
-          test "$(git rev-parse HEAD^1)" = "$PR_BASE_SHA" || {
-            echo "checked-out merge first parent does not match event base" >&2
-            exit 1
-          }
           test "$(git rev-parse HEAD^2)" = "$PR_HEAD_SHA" || {
             echo "checked-out merge second parent does not match event head" >&2
             exit 1
           }
+          merge_base_sha="$(git rev-parse HEAD^1)"
+          git merge-base --is-ancestor "$PR_BASE_SHA" "$merge_base_sha" || {
+            echo "checked-out merge base is not a fast-forward of event base" >&2
+            exit 1
+          }
+          echo "POLICY_BASE_SHA=$merge_base_sha" >> "$GITHUB_ENV"
 
       - name: Validate changed CHANGELOG content
         if: github.event_name == 'pull_request'
         env:
           CLASSIFIED_CHANGELOG_CHANGED: ${{ needs.lint.outputs.changelog_changed }}
           CHANGELOG_ONLY: ${{ needs.lint.outputs.changelog_only }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -eu
           merge_changelog_changed=false
           if git diff --no-ext-diff --find-renames --name-status \
-            "$PR_BASE_SHA" HEAD |
+            "$POLICY_BASE_SHA" HEAD |
             awk -F '\t' '
               {
                 for (field = 2; field <= NF; field++) {
@@ -1299,7 +1301,7 @@ jobs:
             mode=--fast-path
           fi
           ./scripts/policy/check-changelog-pr.sh \
-            "$mode" "$PR_BASE_SHA" HEAD
+            "$mode" "$POLICY_BASE_SHA" HEAD
 
       - name: Validate trusted main CHANGELOG-only push
         if: github.event_name == 'push' && needs.lint.outputs.changelog_only == 'true'
@@ -1324,13 +1326,12 @@ jobs:
       - name: Validate scoped policy
         if: ${{ needs.lint.outputs.changelog_only != 'true' && (needs.lint.outputs.docs_only == 'true' || (needs.lint.outputs.full_suite != 'true' && needs.lint.outputs.interface_sensitive != 'true')) }}
         env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -eu
           base_ref="$PUSH_BEFORE_SHA"
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            base_ref="$PR_BASE_SHA"
+            base_ref="$POLICY_BASE_SHA"
           fi
           git rev-parse --verify "${base_ref}^{commit}" >/dev/null
           git diff --check "$base_ref" HEAD

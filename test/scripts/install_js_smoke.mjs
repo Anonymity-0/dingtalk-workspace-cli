@@ -23,6 +23,8 @@
  *                             "invalid DWS_SKILL_MODE" error.
  *   4. multi-only zip, mono — mono install is skipped with a warning; the
  *                             staging root is NOT copied into a dws/ dir.
+ *   5. backup failure       — preserves mono and writes no multi skill into
+ *                             the failed Agent target.
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
  * install.js itself shells out to). Skips cleanly on win32.
@@ -208,6 +210,29 @@ scenario("multi-only zip in mono mode skips skill install instead of copying sta
     const base = path.join(home, ".agents", "skills");
     assert.ok(!fs.existsSync(path.join(base, "dws")), "staging root must not be copied into dws/");
     assert.ok(!fs.existsSync(path.join(home, ".dws", "skills", "mono")), "mono cache not refreshed without a mono tree");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("backup failure preserves mono and writes no multi skills", () => {
+  const { tmp, pkg, home } = stagePkg({
+    "mono/SKILL.md": "# mono fixture\n",
+    "multi/dingtalk-test/SKILL.md": "# dingtalk-test\n",
+    "multi/dws-shared/SKILL.md": "# dws-shared\n",
+  });
+  try {
+    const base = path.join(home, ".agents", "skills");
+    writeFile(path.join(base, "dws", "SKILL.md"), "old mono\n");
+    // Poison the backup root: mkdirSync(<file>/<stamp>) must fail.
+    writeFile(path.join(home, ".dws", "skill-backups"), "not a directory\n");
+
+    const res = runInstall(pkg, home, "multi");
+    assert.equal(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
+    assert.match(res.stderr, /未安装 multi/);
+    assert.equal(fs.readFileSync(path.join(base, "dws", "SKILL.md"), "utf8"), "old mono\n");
+    assert.ok(!fs.existsSync(path.join(base, "dingtalk-test")), "product skill not installed after cleanup failure");
+    assert.ok(!fs.existsSync(path.join(base, "dws-shared")), "shared skill not installed after cleanup failure");
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

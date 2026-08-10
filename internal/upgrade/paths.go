@@ -413,6 +413,12 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 				failed = true
 				break
 			}
+		}
+		if failed {
+			continue
+		}
+		for _, name := range skills {
+			subDest := filepath.Join(destBase, name)
 			if err := upgradeCopyDir(filepath.Join(multiRoot, name), subDest); err != nil {
 				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
 				failed = true
@@ -437,6 +443,9 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 			if _, err := backupAndRemoveSkillDir(homeDir, subDest); err != nil {
 				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录备份残留也失败: %w", err)
 			}
+		}
+		for _, name := range skills {
+			subDest := filepath.Join(destBase, name)
 			if err := upgradeCopyDir(filepath.Join(multiRoot, name), subDest); err != nil {
 				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
 			}

@@ -587,7 +587,7 @@ func confirmSkillSetup(out io.Writer, mode, src string, dests []string, multiSki
 	}
 
 	if !skillSetupInteractive() {
-		return true, nil
+		return false, fmt.Errorf("非交互环境无法确认目录迁移；请先用 --dry-run 预览，确认后显式传入 --yes")
 	}
 
 	var confirm bool
@@ -646,35 +646,37 @@ func mutualExclusionVictims(dest, mode string) ([]string, error) {
 	return nil, nil
 }
 
-// cleanupMutualExclusion best-effort backs up + removes the opposite-mode
+// cleanupMutualExclusion backs up + removes the opposite-mode
 // leftovers. Removals are reversible: each victim is moved to
 // ~/.dws/skill-backups/<stamp>/ first (skillSetupBackupAndRemove), and a
 // victim whose backup fails is left in place with a warning instead of being
-// destroyed. Failures — including a failed victim scan — emit a warning to
-// errOut but never abort the install.
-func cleanupMutualExclusion(dest, mode string, out, errOut io.Writer) {
+// destroyed. A failure is returned so the caller skips the complete Agent
+// target and never installs both layouts together.
+func cleanupMutualExclusion(dest, mode string, out, errOut io.Writer) error {
 	victims, scanErr := mutualExclusionVictims(dest, mode)
 	if scanErr != nil {
-		fmt.Fprintf(errOut, "  ⚠️  互斥清理扫描失败（继续安装） %s: %v\n", dest, scanErr)
+		fmt.Fprintf(errOut, "  ⚠️  互斥清理扫描失败（跳过整个 Agent 目标） %s: %v\n", dest, scanErr)
+		return scanErr
 	}
 	if len(victims) == 0 {
-		return
+		return nil
 	}
 	home, homeErr := skillSetupUserHomeDir()
 	if homeErr != nil {
 		for _, victim := range victims {
 			fmt.Fprintf(errOut, "  ⚠️  无法解析 HOME，跳过删除（保留） %s: %v\n", victim, homeErr)
 		}
-		return
+		return homeErr
 	}
 	for _, victim := range victims {
 		backup, err := skillSetupBackupAndRemove(home, victim)
 		if err != nil {
-			fmt.Fprintf(errOut, "  ⚠️  互斥清理失败（保留原目录，继续安装） %s: %v\n", victim, err)
-			continue
+			fmt.Fprintf(errOut, "  ⚠️  互斥清理失败（保留原目录，跳过整个 Agent 目标） %s: %v\n", victim, err)
+			return err
 		}
 		fmt.Fprintf(out, "  × 已备份并清理对面模式残留 %s → %s\n", victim, backup)
 	}
+	return nil
 }
 
 func installSkillToHomes(src string, dests []string, out, errOut io.Writer) (installed, skipped int, err error) {
@@ -682,7 +684,11 @@ func installSkillToHomes(src string, dests []string, out, errOut io.Writer) (ins
 	sort.Strings(dests)
 	for _, dest := range dests {
 		// 先做互斥清理：装 mono 前先把同级 dingtalk-* 子目录全部备份移除
-		cleanupMutualExclusion(dest, skillSetupModeMono, out, errOut)
+		if cleanupErr := cleanupMutualExclusion(dest, skillSetupModeMono, out, errOut); cleanupErr != nil {
+			fmt.Fprintf(errOut, "  ✗ 互斥清理失败，跳过整个 Agent 目标 %s: %v\n", dest, cleanupErr)
+			skipped++
+			continue
+		}
 
 		// 刷新同名 dest 前先备份：已存在的 dws/ 可能带有用户修改，
 		// 直接 RemoveAll 会不可恢复。备份失败（含 HOME 解析失败）则保留
@@ -727,7 +733,11 @@ func installMultiSkillToHomes(src string, skillNames []string, dests []string, o
 	sort.Strings(dests)
 	for _, dest := range dests {
 		// 互斥清理：装 multi 前先把 dest/dws/ 整个备份移除（mono 残留）
-		cleanupMutualExclusion(dest, skillSetupModeMulti, out, errOut)
+		if cleanupErr := cleanupMutualExclusion(dest, skillSetupModeMulti, out, errOut); cleanupErr != nil {
+			fmt.Fprintf(errOut, "  ✗ 互斥清理失败，跳过整个 Agent 目标 %s: %v\n", dest, cleanupErr)
+			skipped += len(skillNames)
+			continue
+		}
 
 		if err := skillSetupMkdirAll(dest, 0o755); err != nil {
 			fmt.Fprintf(errOut, "  ✗ Agent 目录创建失败 %s: %v\n", dest, err)
@@ -736,24 +746,37 @@ func installMultiSkillToHomes(src string, skillNames []string, dests []string, o
 		}
 
 		if !filtered {
-			removeStaleMultiSkills(dest, skillNames, out, errOut)
+			if cleanupErr := removeStaleMultiSkills(dest, skillNames, out, errOut); cleanupErr != nil {
+				fmt.Fprintf(errOut, "  ✗ 过期 Skill 备份失败，跳过整个 Agent 目标 %s: %v\n", dest, cleanupErr)
+				skipped += len(skillNames)
+				continue
+			}
+		}
+
+		// Finish every destination backup before copying the first new Skill.
+		// Otherwise a later backup failure could leave a partial bundle.
+		backupFailed := false
+		for _, name := range skillNames {
+			subDest := filepath.Join(dest, name)
+			if homeErr != nil {
+				fmt.Fprintf(errOut, "  ✗ 无法解析 HOME，跳过整个 Agent 目标 %s: %v\n", dest, homeErr)
+				backupFailed = true
+				break
+			}
+			if _, backupErr := skillSetupBackupAndRemove(home, subDest); backupErr != nil {
+				fmt.Fprintf(errOut, "  ✗ 备份旧 Skill 失败，跳过整个 Agent 目标 %s: %v\n", dest, backupErr)
+				backupFailed = true
+				break
+			}
+		}
+		if backupFailed {
+			skipped += len(skillNames)
+			continue
 		}
 
 		for _, name := range skillNames {
 			subSrc := filepath.Join(src, name)
 			subDest := filepath.Join(dest, name)
-			// 刷新同名子 skill 前先备份（与 mono 路径一致），备份失败保留
-			// 原目录并跳过。
-			if homeErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 无法解析 HOME，跳过刷新（保留原目录） %s: %v\n", subDest, homeErr)
-				skipped++
-				continue
-			}
-			if _, backupErr := skillSetupBackupAndRemove(home, subDest); backupErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 备份旧 skill 失败（保留原目录） %s: %v\n", subDest, backupErr)
-				skipped++
-				continue
-			}
 			if err := skillSetupCopyDir(subSrc, subDest); err != nil {
 				fmt.Fprintf(errOut, "  ✗ 拷贝失败 %s: %v\n", subDest, err)
 				skipped++
@@ -798,15 +821,16 @@ func staleMultiSkillVictims(dest string, keep []string) []string {
 // directories under dest that are not part of the current bundle. Removal is
 // reversible: each stale directory is moved to ~/.dws/skill-backups/<stamp>/
 // first, and a backup failure keeps the directory in place with a warning.
-// Best-effort: scan/removal failures warn on errOut and never abort the
-// install.
-func removeStaleMultiSkills(dest string, keep []string, out, errOut io.Writer) {
+// A scan or backup failure is returned so callers do not write a new bundle
+// into a partially reconciled Agent target.
+func removeStaleMultiSkills(dest string, keep []string, out, errOut io.Writer) error {
 	entries, err := skillSetupReadDir(dest)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintf(errOut, "  ⚠️  过期 skill 扫描失败（继续安装） %s: %v\n", dest, err)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
 		}
-		return
+		fmt.Fprintf(errOut, "  ⚠️  过期 skill 扫描失败（跳过整个 Agent 目标） %s: %v\n", dest, err)
+		return err
 	}
 	keepSet := make(map[string]bool, len(keep))
 	for _, n := range keep {
@@ -823,23 +847,24 @@ func removeStaleMultiSkills(dest string, keep []string, out, errOut io.Writer) {
 		stales = append(stales, filepath.Join(dest, e.Name()))
 	}
 	if len(stales) == 0 {
-		return
+		return nil
 	}
 	home, homeErr := skillSetupUserHomeDir()
 	if homeErr != nil {
 		for _, stale := range stales {
 			fmt.Fprintf(errOut, "  ⚠️  无法解析 HOME，跳过删除（保留） %s: %v\n", stale, homeErr)
 		}
-		return
+		return homeErr
 	}
 	for _, stale := range stales {
 		backup, err := skillSetupBackupAndRemove(home, stale)
 		if err != nil {
-			fmt.Fprintf(errOut, "  ⚠️  过期 skill 清理失败（保留原目录，继续安装） %s: %v\n", stale, err)
-			continue
+			fmt.Fprintf(errOut, "  ⚠️  过期 skill 清理失败（保留原目录，跳过整个 Agent 目标） %s: %v\n", stale, err)
+			return err
 		}
 		fmt.Fprintf(out, "  × 已备份并清理过期 skill %s → %s\n", stale, backup)
 	}
+	return nil
 }
 
 func copyDir(src, dst string) error {

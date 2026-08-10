@@ -117,6 +117,72 @@ func TestCrossPlatformCoverageSkillSetupDeclinedConfirmationNeverRemoves(t *test
 	}
 }
 
+// TestCrossPlatformCoverageSkillSetupNonInteractiveRequiresYes pins the real
+// non-TTY safety boundary: an explicit mode alone is not consent to move
+// directories. The same command with --yes performs the previewed backup and
+// installation.
+func TestCrossPlatformCoverageSkillSetupNonInteractiveRequiresYes(t *testing.T) {
+	home := t.TempDir()
+	setTestHome(t, home)
+	oldInteractive := skillSetupInteractive
+	skillSetupInteractive = func() bool { return false }
+	t.Cleanup(func() { skillSetupInteractive = oldInteractive })
+
+	multiSrc := writeMultiSkillSource(t, []string{"dingtalk-aitable"})
+	agentHome := filepath.Join(home, ".claude", "skills")
+	mono := filepath.Join(agentHome, "dws")
+	if err := os.MkdirAll(mono, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mono, "SKILL.md"), []byte("keep-me"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	run := func(extra ...string) error {
+		cmd := newSkillSetupCommand()
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+		args := []string{"--mode", "multi", "--target", "claude", "--source", multiSrc}
+		cmd.SetArgs(append(args, extra...))
+		return cmd.Execute()
+	}
+
+	if err := run(); err == nil || !strings.Contains(err.Error(), "--yes") {
+		t.Fatalf("non-interactive setup error = %v, want explicit --yes requirement", err)
+	}
+	if data, err := os.ReadFile(filepath.Join(mono, "SKILL.md")); err != nil || string(data) != "keep-me" {
+		t.Fatalf("unconfirmed setup changed mono (data=%q, err=%v)", string(data), err)
+	}
+	if _, err := os.Stat(filepath.Join(agentHome, "dingtalk-aitable")); !os.IsNotExist(err) {
+		t.Fatalf("unconfirmed setup installed multi, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".dws", "skill-backups")); !os.IsNotExist(err) {
+		t.Fatalf("unconfirmed setup created backup state, stat err=%v", err)
+	}
+
+	if err := run("--yes"); err != nil {
+		t.Fatalf("explicitly confirmed setup failed: %v", err)
+	}
+	if _, err := os.Stat(mono); !os.IsNotExist(err) {
+		t.Fatalf("confirmed setup kept mono, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(agentHome, "dingtalk-aitable", "SKILL.md")); err != nil {
+		t.Fatalf("confirmed setup did not install multi: %v", err)
+	}
+	backupFound := false
+	_ = filepath.Walk(filepath.Join(home, ".dws", "skill-backups"), func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr == nil && info != nil && !info.IsDir() && info.Name() == "SKILL.md" {
+			if data, readErr := os.ReadFile(path); readErr == nil && string(data) == "keep-me" {
+				backupFound = true
+			}
+		}
+		return nil
+	})
+	if !backupFound {
+		t.Fatal("confirmed setup did not back up mono")
+	}
+}
+
 func TestResolveSkillSetupModeFlagDirect(t *testing.T) {
 	got, err := resolveSkillSetupMode("mono", true, &bytes.Buffer{})
 	if err != nil || got != skillSetupModeMono {
