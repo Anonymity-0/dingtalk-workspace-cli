@@ -6,6 +6,8 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.58-beta.2] - 2026-08-10
+
 ### Added
 
 - **`dws sheet create-with-data`（新命令）** — 建表并写入初始数据与样式：`--values`（二维数组写默认表）/ `--sheets`（typed table 多工作表，二者必须给一个）/ `--styles`（`cell_styles` / `row_sizes` / `col_sizes` / `cell_merges`，顶层键对齐飞书 snake_case、列表项内字段兼容 camelCase）。所有结构、字段类型与枚举在创建文档之前校验，非法配置不会留下白建的空文档：`--sheets` 按 `table_put` 的输入契约逐字段校验（`columns` 必填且列名非空不重复、`data` 为二维且行宽与 `columns` 一致、单元格仅限字符串/数字/布尔/null、`dtypes`/`formats` 的键须是列名、`mode`/`header`/`allowOverwrite`/`startCell` 类型与取值、单表 30000 单元格上限），并拒绝未知键、snake_case 变体、`{"sheets":"bad"}` 这类畸形包装与 `sheetId`（服务端会静默丢弃写错的键，导致"只写了表头却报成功"的静默丢数据）；`--values` 校验单元格为标量并受 30000 单元格 / 2000000 字符上限约束；`--styles` 的顶层键与列表项内字段同样拒绝未知键，避免样式只应用一半。写入后回读校验按 `startCell` / `header` / `mode` 推算的首个预期非空单元格，而非固定 A1。该命令是多步编排（建文档 → 探活 → 定位默认工作表 → 写数据 → 回读 → 可选样式），因此如实声明为独立叶子 `sheet.create_with_data` + `interface_mode: composite`（附评审 reason，按契约不带 `interface_ref`）；**`dws sheet create` 保持原样不变**——仍是一次 `create_workspace_sheet` 直连（`interface_mode: mcp`），不新增 flag，避免让 Schema 消费者把编排步骤的参数误当成该 RPC 的入参。
@@ -17,6 +19,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Changed
 
+- **Chat message post-send ID handoff** (#897) — CLI Help and bundled Skills
+  now document the `send` → `query-send-status` → `edit`/`recall` workflow,
+  so callers can reuse returned task, message, and conversation IDs instead
+  of searching message history by content.
 - **Sheet mono/multi Skill alignment** — replaces the oversized mono Sheet
   reference with the progressive routing layout, aligns all 20 Sheet topic
   references across the mono and multi bundles, and adds a content-policy guard
