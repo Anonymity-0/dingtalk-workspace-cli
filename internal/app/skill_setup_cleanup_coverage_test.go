@@ -111,6 +111,47 @@ func TestCrossPlatformCoverageSkillSetupBackupFailureSkipsWholeTarget(t *testing
 	}
 }
 
+func TestCrossPlatformCoverageSkillSetupMonoCleanupFailureSkipsWholeTarget(t *testing.T) {
+	home := t.TempDir()
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	copyCalls := 0
+	testseam.Swap(t, &skillSetupCopyDir, func(string, string) error {
+		copyCalls++
+		return nil
+	})
+	failure := errors.New("multi backup boom")
+	testseam.Swap(t, &skillSetupBackupAndRemove, func(_ string, dir string) (string, error) {
+		if filepath.Base(dir) == "dingtalk-a" {
+			return "", failure
+		}
+		return "", nil
+	})
+
+	base := filepath.Join(home, ".agents", "skills")
+	multi := filepath.Join(base, "dingtalk-a")
+	if err := os.MkdirAll(multi, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	monoSrc := t.TempDir()
+	if err := os.WriteFile(filepath.Join(monoSrc, "SKILL.md"), []byte("mono"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	installed, skipped, err := installSkillToHomes(monoSrc, []string{filepath.Join(base, "dws")}, &out, &errOut)
+	if err != nil || installed != 0 || skipped != 1 {
+		t.Fatalf("install = (%d, %d, %v), want (0, 1, nil)", installed, skipped, err)
+	}
+	if copyCalls != 0 {
+		t.Fatalf("multi cleanup failure copied mono %d times", copyCalls)
+	}
+	if _, err := os.Stat(multi); err != nil {
+		t.Fatalf("multi leftover must survive backup failure: %v", err)
+	}
+	if !strings.Contains(errOut.String(), "互斥清理失败，跳过整个 Agent 目标") {
+		t.Fatalf("missing mono whole-target warning: %q", errOut.String())
+	}
+}
+
 func TestCrossPlatformCoverageSkillSetupStaleBackupFailureSkipsWholeTarget(t *testing.T) {
 	home := t.TempDir()
 	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
