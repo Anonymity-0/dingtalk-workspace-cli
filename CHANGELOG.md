@@ -6,6 +6,13 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Added
+
+- **Streaming-card mentions** — `chat +messages-send-card` now accepts
+  `--at-open-dingtalk-ids` and `--at-all` for group cards, passing mention
+  targets to the initial card-creation request and prepending its returned
+  `atTag` to the automatic streaming update.
+
 ### Fixed
 
 - **Machine-readable export and download receipts** — `dws doc export`,
