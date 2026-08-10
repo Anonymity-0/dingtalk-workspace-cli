@@ -1,4 +1,4 @@
-# DWS Unified Command Framework 2.0 设计概要
+# DWS 统一命令框架（二期）设计概要
 
 > 状态：Framework core 提案。本文只定义框架能力与集成边界；产品命令迁移、Skill 更新和真实服务复验由后续 PR 独立完成。
 
@@ -29,7 +29,7 @@ legacy_only -> dual_validate -> unified_active -> unified_stable -> unified_only
 
 ## 3. 统一结果
 
-Framework 2.0 统一表达四类结果：
+统一命令框架表达四类结果：
 
 ```text
 success          请求完成且命令认为操作已完成

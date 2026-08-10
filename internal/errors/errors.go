@@ -622,7 +622,7 @@ func serverGuidance(diag ServerDiagnostics) (string, string) {
 }
 
 // ServerGuidance exposes the same recovery projection to repository-local
-// adapters so legacy JSON and Framework 2.0 errors stay semantically aligned.
+// adapters so legacy JSON and unified-result errors stay semantically aligned.
 func ServerGuidance(diag ServerDiagnostics) (string, string) {
 	return serverGuidance(diag)
 }

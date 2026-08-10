@@ -99,7 +99,7 @@ func SetCommandRollout(cmd *cobra.Command, state RolloutState) {
 	cmd.Annotations[rolloutAnnotation] = string(state)
 }
 
-// CommandRollout fails closed. Merely linking Framework 2.0 into the binary
+// CommandRollout fails closed. Merely linking the unified result framework
 // cannot change an undeclared command's wire contract.
 func CommandRollout(cmd *cobra.Command) RolloutState {
 	if cmd != nil && cmd.Annotations != nil {

@@ -443,7 +443,7 @@ func New(spec Spec) *cobra.Command {
 				return err
 			}
 			if !output.UsesUnifiedResult(cmd) {
-				return fmt.Errorf("command %q uses ResultInvoke without an active Framework 2.0 rollout", cmd.CommandPath())
+				return fmt.Errorf("command %q uses ResultInvoke without an active unified-result rollout", cmd.CommandPath())
 			}
 			return output.StoreResult(cmd.Context(), result)
 		}
