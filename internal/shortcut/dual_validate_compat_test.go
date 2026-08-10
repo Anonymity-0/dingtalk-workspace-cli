@@ -106,7 +106,7 @@ func TestDualValidateDoesNotJSONQuoteLegacyPlainText(t *testing.T) {
 func TestDualValidatePreservesLegacyDryRunWithoutBusinessCall(t *testing.T) {
 	caller := &dualValidateCaller{format: "table", dryRun: true}
 	stdout, stderr := runDualValidateShortcut(t, caller, "--format", "table", "--dry-run")
-	if stdout != "" || !strings.Contains(stderr, "Tool") || !strings.Contains(stderr, "get_sample") || !strings.Contains(stderr, "Arguments") {
+	if !strings.Contains(stdout, "Tool") || !strings.Contains(stdout, "get_sample") || !strings.Contains(stdout, "Arguments") || stderr != "" {
 		t.Fatalf("dry-run output lost legacy presentation: stdout=%q stderr=%q", stdout, stderr)
 	}
 	if caller.calls != 0 {

@@ -134,11 +134,9 @@ func padRight(s string, width int) string {
 	return s + strings.Repeat(" ", width-rw)
 }
 
-// PrintTable renders the table body (header + separator + data rows) to the
-// data stream f.w, and the trailing "共 N 条" summary line to the diagnostic
-// stream f.errW (B52, 契约规范 §5.1): the summary is a human-readable count,
-// not part of the machine-consumable table payload, so it must not pollute
-// stdout when the table output is piped.
+// PrintTable preserves the legacy formatter contract. Unified-result commands
+// bypass this formatter and use internal/output, so rollout does not silently
+// move bytes for commands that have not migrated yet.
 func (f *Formatter) PrintTable(headers []string, rows [][]string) {
 	if len(rows) == 0 {
 		return
@@ -171,24 +169,16 @@ func (f *Formatter) PrintTable(headers []string, rows [][]string) {
 		}
 		fmt.Fprintln(f.w)
 	}
-	fmt.Fprintf(f.errW, "共 %d 条\n", len(rows))
+	fmt.Fprintf(f.w, "共 %d 条\n", len(rows))
 }
 
-// PrintSuccess/PrintError/PrintInfo/PrintDim write to the stderr stream: they
-// are human-readable progress/status lines, not the command payload. Keeping
-// stdout reserved for machine-consumable output (JSON/table/csv/...) lets
-// agents pipe `-f json` results without parsing [OK]/[INFO] noise out of it.
-func (f *Formatter) PrintSuccess(msg string)  { fmt.Fprintf(f.errW, "[OK] %s\n", msg) }
-func (f *Formatter) PrintError(msg string)    { fmt.Fprintf(f.errW, "[ERROR] %s\n", msg) }
+func (f *Formatter) PrintSuccess(msg string)  { fmt.Fprintf(f.w, "[OK] %s\n", msg) }
+func (f *Formatter) PrintError(msg string)    { fmt.Fprintf(f.w, "[ERROR] %s\n", msg) }
 func (f *Formatter) PrintWarning(msg string)  { fmt.Fprintf(f.errW, "[WARN] %s\n", msg) }
-func (f *Formatter) PrintInfo(msg string)     { fmt.Fprintf(f.errW, "[INFO] %s\n", msg) }
+func (f *Formatter) PrintInfo(msg string)     { fmt.Fprintf(f.w, "[INFO] %s\n", msg) }
 func (f *Formatter) PrintProgress(msg string) { fmt.Fprintf(f.errW, "%s\n", msg) }
-func (f *Formatter) PrintDim(msg string)      { fmt.Fprintf(f.errW, "  %s\n", msg) }
+func (f *Formatter) PrintDim(msg string)      { fmt.Fprintf(f.w, "  %s\n", msg) }
 
-// PrintKeyValue writes key/value preview & progress lines to the diagnostic
-// stream (B51): like PrintInfo/PrintSuccess these are human-readable status,
-// not the command payload — stdout stays reserved for machine-consumable
-// output so `-f json` results pipe without parsing noise out of them.
 func (f *Formatter) PrintKeyValue(key, value string) {
-	fmt.Fprintf(f.errW, "%-16s%s\n", key+":", value)
+	fmt.Fprintf(f.w, "%-16s%s\n", key+":", value)
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/pflag"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -442,12 +441,6 @@ func renderLegacyMCPText(toolName, text string, unescapeHTML bool) error {
 	if toolName == "search_open_platform_docs" && flagFormat == "table" {
 		if formatted := formatDevdocSearchTable(text); formatted {
 			return nil
-		}
-	}
-	if format := output.ParseFormat(flagFormat, output.FormatJSON); format != output.FormatJSON && format != output.FormatRaw {
-		var parsed any
-		if err := json.Unmarshal([]byte(text), &parsed); err == nil {
-			return output.WriteFiltered(deps.Out.w, format, parsed, deps.Caller.Fields(), deps.Caller.JQ())
 		}
 	}
 	if unescapeHTML {
