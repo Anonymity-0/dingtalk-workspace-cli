@@ -13,9 +13,7 @@ import (
 
 var rootEscalateSignal = func(sig os.Signal) {
 	signal.Reset(sig)
-	if syscallSig, ok := sig.(syscall.Signal); ok {
-		_ = syscall.Kill(os.Getpid(), syscallSig)
-	}
+	redeliverProcessSignal(sig)
 }
 
 type processInterruption struct {
