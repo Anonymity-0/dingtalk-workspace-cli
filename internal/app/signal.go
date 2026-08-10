@@ -16,6 +16,27 @@ var rootEscalateSignal = func(sig os.Signal) {
 	redeliverProcessSignal(sig)
 }
 
+// redeliverProcessSignal asks the current process to handle the second signal
+// with the platform's default semantics. Platforms that cannot deliver the
+// requested signal through os.Process.Signal fall back to the conventional
+// CLI exit status instead of leaving the process running after escalation.
+func redeliverProcessSignal(sig os.Signal) {
+	process, err := os.FindProcess(os.Getpid())
+	if err == nil {
+		err = process.Signal(sig)
+	}
+	if err != nil {
+		os.Exit(interruptionExitCode(sig))
+	}
+}
+
+func interruptionExitCode(sig os.Signal) int {
+	if sig == syscall.SIGTERM {
+		return 143
+	}
+	return 130
+}
+
 type processInterruption struct {
 	signal os.Signal
 }
@@ -27,10 +48,7 @@ func (e *processInterruption) Error() string {
 func (e *processInterruption) Unwrap() error { return context.Canceled }
 
 func (e *processInterruption) ExitCode() int {
-	if e.signal == syscall.SIGTERM {
-		return 143
-	}
-	return 130
+	return interruptionExitCode(e.signal)
 }
 
 func (e *processInterruption) Subtype() string {

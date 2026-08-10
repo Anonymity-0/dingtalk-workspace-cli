@@ -570,7 +570,7 @@ func TestCrossPlatformCoverageDaemonStatusAndStopEdges(t *testing.T) {
 			t.Fatal(err)
 		}
 		connectDaemonDirOverride = blocked
-		if _, err := daemonStop(&bytes.Buffer{}, "key"); err == nil {
+		if _, err := daemonStopResult(&bytes.Buffer{}, "key"); err == nil {
 			t.Fatal("stop with blocked directory succeeded")
 		}
 		connectDaemonDirOverride = t.TempDir()
@@ -578,7 +578,7 @@ func TestCrossPlatformCoverageDaemonStatusAndStopEdges(t *testing.T) {
 		if err := os.WriteFile(daemonStatePath(dir), []byte("{"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := daemonStop(&bytes.Buffer{}, "corrupt"); err == nil {
+		if _, err := daemonStopResult(&bytes.Buffer{}, "corrupt"); err == nil {
 			t.Fatal("stop with corrupt state succeeded")
 		}
 	})
@@ -592,7 +592,7 @@ func TestCrossPlatformCoverageDaemonStatusAndStopEdges(t *testing.T) {
 		}
 		daemonProcessAlive = func(int) bool { return true }
 		daemonFindProcess = func(int) (*os.Process, error) { return nil, errors.New("find") }
-		if _, err := daemonStop(&bytes.Buffer{}, "find-error"); err == nil {
+		if _, err := daemonStopResult(&bytes.Buffer{}, "find-error"); err == nil {
 			t.Fatal("find process error was ignored")
 		}
 	})
@@ -640,7 +640,7 @@ func TestCrossPlatformCoverageDaemonStopHookedLifecycleEdges(t *testing.T) {
 		}
 		sleeps := 0
 		helperSleep = func(time.Duration) { sleeps++ }
-		if _, err := daemonStop(&bytes.Buffer{}, "orphan-graceful"); err != nil {
+		if _, err := daemonStopResult(&bytes.Buffer{}, "orphan-graceful"); err != nil {
 			t.Fatal(err)
 		}
 		if len(signals) != 1 || signals[0] != syscall.SIGTERM || sleeps != 1 {
@@ -666,7 +666,7 @@ func TestCrossPlatformCoverageDaemonStopHookedLifecycleEdges(t *testing.T) {
 			return nil
 		}
 		helperSleep = func(time.Duration) {}
-		if _, err := daemonStop(&bytes.Buffer{}, "orphan-force-hooked"); err != nil {
+		if _, err := daemonStopResult(&bytes.Buffer{}, "orphan-force-hooked"); err != nil {
 			t.Fatal(err)
 		}
 		if len(signals) != 2 || signals[0] != syscall.SIGTERM || signals[1] != syscall.SIGKILL {
@@ -684,7 +684,7 @@ func TestCrossPlatformCoverageDaemonStopHookedLifecycleEdges(t *testing.T) {
 		base := time.Now()
 		daemonNow = func() time.Time { return base }
 		daemonSignalProcess = func(*os.Process, os.Signal) error { return nil }
-		if _, err := daemonStop(&bytes.Buffer{}, "live-graceful-hooked"); err != nil {
+		if _, err := daemonStopResult(&bytes.Buffer{}, "live-graceful-hooked"); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -693,7 +693,7 @@ func TestCrossPlatformCoverageDaemonStopHookedLifecycleEdges(t *testing.T) {
 		prepare(t, "live-signal-error-hooked", false)
 		daemonProcessAlive = func(int) bool { return true }
 		daemonSignalProcess = func(*os.Process, os.Signal) error { return errors.New("signal") }
-		if _, err := daemonStop(&bytes.Buffer{}, "live-signal-error-hooked"); err == nil {
+		if _, err := daemonStopResult(&bytes.Buffer{}, "live-signal-error-hooked"); err == nil {
 			t.Fatal("signal error was ignored")
 		}
 	})
@@ -716,7 +716,7 @@ func TestCrossPlatformCoverageDaemonStopHookedLifecycleEdges(t *testing.T) {
 			return nil
 		}
 		helperSleep = func(time.Duration) {}
-		if _, err := daemonStop(&bytes.Buffer{}, "live-force-hooked"); err != nil {
+		if _, err := daemonStopResult(&bytes.Buffer{}, "live-force-hooked"); err != nil {
 			t.Fatal(err)
 		}
 		if len(signals) != 2 || signals[0] != syscall.SIGTERM || signals[1] != syscall.SIGKILL {

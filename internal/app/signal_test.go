@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"syscall"
 	"testing"
 
@@ -19,6 +18,17 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
+
+func signalSelf(t *testing.T, sig syscall.Signal) {
+	t.Helper()
+	process, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		t.Fatalf("find current process: %v", err)
+	}
+	if err := process.Signal(sig); err != nil {
+		t.Skipf("current platform does not support process signal delivery: %v", err)
+	}
+}
 
 func installSignalExecuteSeams(t *testing.T, unified bool, stdout, stderr io.Writer) {
 	t.Helper()
@@ -156,9 +166,6 @@ func TestSignalAfterCompletedPrimaryPreservesEstablishedOutcome(t *testing.T) {
 }
 
 func TestExecuteSignalSubprocessExitStatus(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows does not expose Unix signal delivery to subprocesses")
-	}
 	if os.Getenv("DWS_SIGNAL_HELPER") == "1" {
 		installSignalExecuteSeams(t, true, os.Stdout, os.Stderr)
 		testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
@@ -196,7 +203,9 @@ func TestExecuteSignalSubprocessExitStatus(t *testing.T) {
 				t.Fatalf("helper readiness failed: %q, err=%v", scanner.Text(), scanner.Err())
 			}
 			if err := cmd.Process.Signal(tc.signal); err != nil {
-				t.Fatal(err)
+				_ = cmd.Process.Kill()
+				_ = cmd.Wait()
+				t.Skipf("current platform does not support subprocess signal delivery: %v", err)
 			}
 			payload, readErr := io.ReadAll(stdout)
 			if readErr != nil {

@@ -648,7 +648,7 @@ type connectStopResult struct {
 // until it exits, escalate to SIGKILL on timeout, and clean up the pid file.
 // 人读进度行写 w（调用方传 stderr）；机器可消费的结果作为返回值由 RunE 层
 // 包进统一信封写 stdout（契约规范 §5.1：stdout 只承载数据）。
-func daemonStop(w io.Writer, dirKey string) (*connectStopResult, error) {
+func daemonStopResult(w io.Writer, dirKey string) (*connectStopResult, error) {
 	dir, err := connectDaemonDir(dirKey)
 	if err != nil {
 		return nil, apperrors.NewInternal("resolve daemon dir: " + err.Error())
@@ -712,6 +712,14 @@ func daemonStop(w io.Writer, dirKey string) (*connectStopResult, error) {
 	_ = os.Remove(daemonPidPath(dir))
 	fmt.Fprintf(w, "connect daemon did not stop in %s; sent SIGKILL (pid %d)\n", daemonStopTimeout, st.Pid)
 	return &connectStopResult{Status: "force_killed", Pid: st.Pid, Detail: "graceful stop timed out; SIGKILL sent"}, nil
+}
+
+// daemonStop keeps the established helper contract for legacy callers and
+// platform coverage. Unified-result commands use daemonStopResult when they
+// need the typed terminal payload.
+func daemonStop(w io.Writer, dirKey string) error {
+	_, err := daemonStopResult(w, dirKey)
+	return err
 }
 
 // newDevAppRobotConnectStatusCommand implements `dws devapp robot connect
@@ -803,7 +811,7 @@ func newDevAppRobotConnectStopCommand() *cobra.Command {
 				env := &output.Envelope{OK: true, Outcome: output.OutcomeSuccess, DryRun: true, Data: preview}
 				return writeDevRolloutResult(cmd, output.Success(preview, output.WithDryRun()), env, output.FormatJSON)
 			}
-			result, err := daemonStop(cmd.ErrOrStderr(), dirKey)
+			result, err := daemonStopResult(cmd.ErrOrStderr(), dirKey)
 			if err != nil {
 				return err
 			}
@@ -933,7 +941,7 @@ func newDevAppRobotConnectRestartCommand() *cobra.Command {
 			// 统一输出 dev 域试点（队列 B113）：stopping/restarting 进度行改走
 			// stderr，stdout 只承载最终结果信封（契约规范 §5.1）。
 			fmt.Fprintln(cmd.ErrOrStderr(), "stopping existing daemon...")
-			if _, err := daemonStop(cmd.ErrOrStderr(), dirKey); err != nil {
+			if err := daemonStop(cmd.ErrOrStderr(), dirKey); err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "warning: stop returned %v (continuing with restart)\n", err)
 			}
 			// Re-exec dws dev connect --daemon with the stored flags. An explicit
