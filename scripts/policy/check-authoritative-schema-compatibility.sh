@@ -1,10 +1,11 @@
 #!/bin/sh
 set -eu
 
-# Compare the committed candidate's complete Schema contract with the Git-owned
-# PR merge-base (or previous main SHA on push). The merge-base owns the Schema
-# checker and, after bootstrap, the approved flag-migration ledger. Candidate
-# code is lifecycle input only and cannot replace either authority.
+# Compare the committed candidate's complete Schema contract independently with
+# the Git-owned PR merge-base (or previous main SHA on push) and the latest
+# reachable stable GA. The merge-base owns the Schema checker and, after
+# bootstrap, the approved flag-migration ledger. Candidate code is lifecycle
+# input only and cannot replace either authority.
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 BASE_REF=""
@@ -252,10 +253,13 @@ else
 fi
 
 BASE_BIN="$TMP_ROOT/base-dws"
+STABLE_BIN="$TMP_ROOT/stable-dws"
 CANDIDATE_BIN="$TMP_ROOT/candidate-dws"
 CHECKER="$TMP_ROOT/schema-compat"
 BASE_RAW="$TMP_ROOT/base-schema.json"
 BASELINE="$TMP_ROOT/base-contract.json"
+STABLE_RAW="$TMP_ROOT/stable-schema.json"
+STABLE_BASELINE="$TMP_ROOT/stable-contract.json"
 CANDIDATE_RAW="$TMP_ROOT/candidate-schema.json"
 
 (
@@ -264,23 +268,39 @@ CANDIDATE_RAW="$TMP_ROOT/candidate-schema.json"
 	go build -o "$CHECKER" ./scripts/policy/schema-compat
 )
 (
+	cd "$STABLE_WORKTREE"
+	go build -o "$STABLE_BIN" ./cmd
+)
+(
 	cd "$CANDIDATE_WORKTREE"
 	go build -o "$CANDIDATE_BIN" ./cmd
 )
 
-mkdir -p "$TMP_ROOT/base-home" "$TMP_ROOT/candidate-home"
+mkdir -p "$TMP_ROOT/base-home" "$TMP_ROOT/stable-home" "$TMP_ROOT/candidate-home"
 HOME="$TMP_ROOT/base-home" DWS_LANG=zh \
 	"$BASE_BIN" schema --all --format json >"$BASE_RAW"
+HOME="$TMP_ROOT/stable-home" DWS_LANG=zh \
+	"$STABLE_BIN" schema --all --format json >"$STABLE_RAW"
 HOME="$TMP_ROOT/candidate-home" DWS_LANG=zh \
 	"$CANDIDATE_BIN" schema --all --format json >"$CANDIDATE_RAW"
 
 "$CHECKER" --normalize "$BASE_RAW" >"$BASELINE"
-printf 'checking complete Schema contract against PR merge-base %s and stable %s\n' \
-	"$BASE_REF" "$STABLE_REF"
+"$CHECKER" --normalize "$STABLE_RAW" >"$STABLE_BASELINE"
+
+check_schema_contract() {
+	historical_kind="$1"
+	historical_ref="$2"
+	historical_baseline="$3"
+	shift 3
+	printf 'checking complete Schema contract against %s %s\n' \
+		"$historical_kind" "$historical_ref"
+	"$CHECKER" --check "$historical_baseline" --current "$CANDIDATE_RAW" "$@"
+}
 
 if [ "$USE_MIGRATION_GOVERNANCE" = false ]; then
-	"$CHECKER" --check "$BASELINE" --current "$CANDIDATE_RAW"
-	exit $?
+	check_schema_contract "PR merge-base" "$BASE_REF" "$BASELINE"
+	check_schema_contract "stable" "$STABLE_REF" "$STABLE_BASELINE"
+	exit 0
 fi
 
 install_authority_interface_helper() {
@@ -317,9 +337,14 @@ generate_interface_snapshot "$CANDIDATE_WORKTREE" "$CURRENT_INTERFACE_SNAPSHOT"
 generate_interface_snapshot "$BASE_WORKTREE" "$BASE_INTERFACE_SNAPSHOT"
 generate_interface_snapshot "$STABLE_WORKTREE" "$STABLE_INTERFACE_SNAPSHOT"
 
-"$CHECKER" \
-	--check "$BASELINE" \
-	--current "$CANDIDATE_RAW" \
+check_schema_contract "PR merge-base" "$BASE_REF" "$BASELINE" \
+	--approved-flag-migrations "$APPROVED_MANIFEST" \
+	--candidate-flag-migrations "$CANDIDATE_MANIFEST" \
+	--migration-current-snapshot "$CURRENT_INTERFACE_SNAPSHOT" \
+	--migration-base-snapshot "$BASE_INTERFACE_SNAPSHOT" \
+	--migration-stable-snapshot "$STABLE_INTERFACE_SNAPSHOT"
+
+check_schema_contract "stable" "$STABLE_REF" "$STABLE_BASELINE" \
 	--approved-flag-migrations "$APPROVED_MANIFEST" \
 	--candidate-flag-migrations "$CANDIDATE_MANIFEST" \
 	--migration-current-snapshot "$CURRENT_INTERFACE_SNAPSHOT" \

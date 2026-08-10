@@ -17,8 +17,9 @@ PR 与本地兼容性审批的唯一权威比较入口是 modern Interface Snaps
 
 紧随其后的 Schema compatibility 不是第二份审批清单。它从同一 merge-base-owned
 ledger 和同一组三方 Interface Snapshot 取得已经完成 lifecycle 校验的
-authorization，只把授权的 flag rename 精确投影到历史 Schema 后，再运行原有 Schema
-checker。candidate 不能为 CLI 与 Schema 分别提供两套例外。
+authorization。merge-base-owned checker 会分别规范化 merge-base 与 stable 的完整
+Schema，并让 candidate 对两份历史 contract 独立执行检查；授权的 flag rename 只会
+精确投影到当前被检查的历史副本。candidate 不能为 CLI 与 Schema 分别提供两套例外。
 
 `make interface-integrity` 也调用上述 authoritative wrapper；默认 base 为
 `origin/main`，stable 可由包装脚本自动解析，candidate 默认为已提交的 `HEAD`。旧

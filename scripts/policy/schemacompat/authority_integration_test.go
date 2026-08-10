@@ -135,8 +135,105 @@ func main() {
 		fmt.Fprintf(os.Stderr, "candidate schema did not come from detached commit: %s\n", data)
 		os.Exit(2)
 	}
-	fmt.Fprintln(os.Stderr, "OLD_BASE_SCHEMA_CHECKER_ENFORCED")
-	os.Exit(23)
+	baselineData, err := os.ReadFile(*check)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	switch {
+	case strings.Contains(string(baselineData), "BASE_AUTHORITY"):
+		fmt.Fprintln(os.Stdout, "OLD_BASE_SCHEMA_CONTRACT_CHECKED")
+	case strings.Contains(string(baselineData), "STABLE_RELEASE"):
+		fmt.Fprintln(os.Stderr, "OLD_BASE_STABLE_SCHEMA_CHECKER_ENFORCED")
+		os.Exit(23)
+	default:
+		fmt.Fprintf(os.Stderr, "unexpected historical Schema contract: %s\n", baselineData)
+		os.Exit(2)
+	}
+}
+`
+
+const stableSchemaGuardCheckerSource = `package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+	"strings"
+)
+
+func main() {
+	normalize := flag.String("normalize", "", "raw schema")
+	check := flag.String("check", "", "historical schema")
+	current := flag.String("current", "", "candidate schema")
+	approved := flag.String("approved-flag-migrations", "", "base ledger")
+	candidate := flag.String("candidate-flag-migrations", "", "candidate ledger")
+	currentSnapshot := flag.String("migration-current-snapshot", "", "candidate interface snapshot")
+	baseSnapshot := flag.String("migration-base-snapshot", "", "base interface snapshot")
+	stableSnapshot := flag.String("migration-stable-snapshot", "", "stable interface snapshot")
+	flag.Parse()
+
+	if *normalize != "" {
+		data, err := os.ReadFile(*normalize)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		fmt.Print(string(data))
+		return
+	}
+	if *check == "" || *current == "" {
+		fmt.Fprintln(os.Stderr, "missing check inputs")
+		os.Exit(2)
+	}
+	for _, fixture := range []struct {
+		path string
+		want string
+	}{
+		{*approved, "\"authority\":\"BASE\""},
+		{*candidate, "\"candidate\":\"COMMITTED\""},
+		{*currentSnapshot, "COMMITTED_CANDIDATE"},
+		{*baseSnapshot, "BASE_AUTHORITY"},
+		{*stableSnapshot, "STABLE_RELEASE"},
+	} {
+		if fixture.path == "" {
+			fmt.Fprintln(os.Stderr, "stable Schema guard did not receive all migration inputs")
+			os.Exit(2)
+		}
+		data, err := os.ReadFile(fixture.path)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if !strings.Contains(string(data), fixture.want) {
+			fmt.Fprintf(os.Stderr, "stable Schema guard input %s does not contain %q: %s\n", fixture.path, fixture.want, data)
+			os.Exit(2)
+		}
+	}
+	currentData, err := os.ReadFile(*current)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	if !strings.Contains(string(currentData), "COMMITTED_CANDIDATE") {
+		fmt.Fprintf(os.Stderr, "candidate schema did not come from detached commit: %s\n", currentData)
+		os.Exit(2)
+	}
+	baselineData, err := os.ReadFile(*check)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	switch {
+	case strings.Contains(string(baselineData), "BASE_AUTHORITY"):
+		fmt.Fprintln(os.Stdout, "BASE_SCHEMA_CONTRACT_CHECKED")
+	case strings.Contains(string(baselineData), "STABLE_RELEASE"):
+		fmt.Fprintln(os.Stderr, "STABLE_SCHEMA_CONTRACT_ENFORCED")
+		os.Exit(23)
+	default:
+		fmt.Fprintf(os.Stderr, "unexpected historical Schema contract: %s\n", baselineData)
+		os.Exit(2)
+	}
 }
 `
 
@@ -233,6 +330,7 @@ type authorityScenario struct {
 	name              string
 	baseGovernance    string
 	candidateMutation string
+	checkerMode       string
 	want              string
 	authorityMarker   string
 }
@@ -245,9 +343,15 @@ func TestCrossPlatformCoverageSchemaCompatibilityUsesBaseOwnedAuthority(t *testi
 			authorityMarker: "BASE_SCHEMA_CHECKER_ENFORCED",
 		},
 		{
+			name:            "governed checker protects stable Schema contract",
+			baseGovernance:  "complete",
+			checkerMode:     "stable-schema-guard",
+			authorityMarker: "STABLE_SCHEMA_CONTRACT_ENFORCED",
+		},
+		{
 			name:            "bootstrap uses old base checker and committed canonical empty ledger",
 			baseGovernance:  "none",
-			authorityMarker: "OLD_BASE_SCHEMA_CHECKER_ENFORCED",
+			authorityMarker: "OLD_BASE_STABLE_SCHEMA_CHECKER_ENFORCED",
 		},
 		{
 			name:           "partial base fails closed",
@@ -352,7 +456,11 @@ func runSchemaAuthorityCase(t *testing.T, test authorityScenario) {
 	schemaWriteFile(t, filepath.Join(fixtureRoot, "internal", "interfacesnapshot", "snapshot.go"), schemaBaseSnapshotSource, 0o644)
 	switch test.baseGovernance {
 	case "complete":
-		schemaWriteFile(t, filepath.Join(fixtureRoot, "scripts", "policy", "schema-compat", "main.go"), governedSchemaCheckerSource, 0o644)
+		checkerSource := governedSchemaCheckerSource
+		if test.checkerMode == "stable-schema-guard" {
+			checkerSource = stableSchemaGuardCheckerSource
+		}
+		schemaWriteFile(t, filepath.Join(fixtureRoot, "scripts", "policy", "schema-compat", "main.go"), checkerSource, 0o644)
 		schemaWriteFile(t, filepath.Join(fixtureRoot, "internal", "interfacesnapshot", "snapshot.go"), schemaGovernedSnapshotSource, 0o644)
 		schemaWriteFile(t, filepath.Join(fixtureRoot, "internal", "interfacesnapshot", "migrations.go"), "package interfacesnapshot\n", 0o644)
 		schemaWriteFile(t, filepath.Join(fixtureRoot, "internal", "corecmd", "runtimeannotate", "interface_alias.go"), schemaAliasContractSource, 0o644)

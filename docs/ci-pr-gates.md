@@ -179,8 +179,10 @@ candidate SHA。
 flag 迁移。
 
 Schema compatibility 使用同一组 base、stable、candidate refs 和同一份 base-owned flag
-migration ledger。它只把已通过 Interface lifecycle 的 exact rename 规范化到历史 Schema
-副本后再运行原 checker；不会维护第二份 allowlist，也不会放宽其他 Schema 历史字段。
+migration ledger。merge-base-owned checker 分别规范化 merge-base 与 stable 的完整
+Schema，并让 candidate 对两份历史 contract 独立执行检查；它只把已通过 Interface
+lifecycle 的 exact rename 规范化到当前历史副本，不会维护第二份 allowlist，也不会
+放宽其他 Schema 历史字段。
 
 For an exact CHANGELOG-only branch:
 
