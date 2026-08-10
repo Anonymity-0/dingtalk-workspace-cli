@@ -122,6 +122,105 @@ func TestCrossPlatformCoverageSkillSetupHighLevelRemainingCoverage(t *testing.T)
 	}
 }
 
+func TestCrossPlatformCoverageSkillSetupMigratesLegacySharedAfterReplacement(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{multiSharedSkill, "dingtalk-chat"})
+	home := filepath.Join(t.TempDir(), "skills")
+	legacyPath := filepath.Join(home, legacyMultiSharedSkill)
+	customPath := filepath.Join(home, "custom-skill")
+	for _, path := range []string{legacyPath, customPath} {
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(path, "SKILL.md"), []byte("legacy or custom\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var out, errOut bytes.Buffer
+	installed, skipped, err := installMultiSkillToHomes(
+		src,
+		[]string{multiSharedSkill, "dingtalk-chat"},
+		[]string{home},
+		&out,
+		&errOut,
+	)
+	if err != nil || installed != 2 || skipped != 0 {
+		t.Fatalf("install = %d/%d, err=%v, stderr=%s", installed, skipped, err, errOut.String())
+	}
+	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+		t.Fatalf("legacy shared skill still exists: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, multiSharedSkill, "SKILL.md")); err != nil {
+		t.Fatalf("replacement shared skill missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(customPath, "SKILL.md")); err != nil {
+		t.Fatalf("unrelated custom skill changed: %v", err)
+	}
+	if !strings.Contains(out.String(), "已清理已退役 Skill 残留") {
+		t.Fatalf("legacy cleanup was not reported: %s", out.String())
+	}
+
+	t.Run("failed replacement preserves legacy", func(t *testing.T) {
+		missingSource := t.TempDir()
+		failureHome := filepath.Join(t.TempDir(), "skills")
+		failureLegacy := filepath.Join(failureHome, legacyMultiSharedSkill)
+		if err := os.MkdirAll(failureLegacy, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(failureLegacy, "SKILL.md"), []byte("legacy\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		var failureOut, failureErr bytes.Buffer
+		installed, skipped, err := installMultiSkillToHomes(
+			missingSource,
+			[]string{multiSharedSkill},
+			[]string{failureHome},
+			&failureOut,
+			&failureErr,
+		)
+		if err != nil || installed != 0 || skipped != 1 {
+			t.Fatalf("failed replacement = %d/%d, err=%v", installed, skipped, err)
+		}
+		if _, err := os.Stat(filepath.Join(failureLegacy, "SKILL.md")); err != nil {
+			t.Fatalf("failed replacement removed legacy shared skill: %v", err)
+		}
+	})
+}
+
+func TestCrossPlatformCoverageSkillSetupLegacySharedCleanupFailures(t *testing.T) {
+	fail := errors.New("legacy cleanup failure")
+
+	t.Run("missing legacy is a no-op", func(t *testing.T) {
+		var out, errOut bytes.Buffer
+		cleanupLegacyMultiSharedSkill(t.TempDir(), &out, &errOut)
+		if out.Len() != 0 || errOut.Len() != 0 {
+			t.Fatalf("missing legacy emitted output: stdout=%q stderr=%q", out.String(), errOut.String())
+		}
+	})
+
+	t.Run("stat failure is reported", func(t *testing.T) {
+		testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, fail })
+		var out, errOut bytes.Buffer
+		cleanupLegacyMultiSharedSkill("dest", &out, &errOut)
+		if out.Len() != 0 || !strings.Contains(errOut.String(), "无法检查已退役 Skill 残留") {
+			t.Fatalf("stat failure output: stdout=%q stderr=%q", out.String(), errOut.String())
+		}
+	})
+
+	t.Run("remove failure is reported", func(t *testing.T) {
+		testseam.Swap(t, &skillSetupStat, func(path string) (os.FileInfo, error) {
+			return skillSetupFileInfo{name: filepath.Base(path), mode: os.ModeDir}, nil
+		})
+		testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return fail })
+		var out, errOut bytes.Buffer
+		cleanupLegacyMultiSharedSkill("dest", &out, &errOut)
+		if out.Len() != 0 || !strings.Contains(errOut.String(), "已退役 Skill 清理失败") {
+			t.Fatalf("remove failure output: stdout=%q stderr=%q", out.String(), errOut.String())
+		}
+	})
+}
+
 func TestCrossPlatformCoverageSkillSetupLowLevelRemainingCoverage(t *testing.T) {
 	oldRunForm, oldInteractive := skillSetupRunForm, skillSetupInteractive
 	oldReadDir, oldStat := skillSetupReadDir, skillSetupStat

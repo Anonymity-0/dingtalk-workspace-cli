@@ -245,6 +245,11 @@ const multiSkillPrefix = "dingtalk-"
 // dingtalk-shared that was never installed.
 const multiSharedSkill = "dingtalk-shared"
 
+// legacyMultiSharedSkill is the retired name shipped by older multi-skill
+// bundles. Once the replacement has been installed successfully, remove this
+// exact directory so Agent discovery cannot load both routing contracts.
+const legacyMultiSharedSkill = "dws-shared"
+
 const (
 	multiEventSkill = "dingtalk-event"
 	multiMiscSkill  = "dingtalk-misc"
@@ -863,6 +868,21 @@ func cleanupMutualExclusion(dest, mode string, out, errOut io.Writer) {
 	}
 }
 
+func cleanupLegacyMultiSharedSkill(dest string, out, errOut io.Writer) {
+	legacyPath := filepath.Join(dest, legacyMultiSharedSkill)
+	if _, err := skillSetupStat(legacyPath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(errOut, "  ⚠️  无法检查已退役 Skill 残留 %s: %v\n", legacyPath, err)
+		}
+		return
+	}
+	if err := skillSetupRemoveAll(legacyPath); err != nil {
+		fmt.Fprintf(errOut, "  ⚠️  已退役 Skill 清理失败（已安装 %s） %s: %v\n", multiSharedSkill, legacyPath, err)
+		return
+	}
+	fmt.Fprintf(out, "  × 已清理已退役 Skill 残留 %s\n", legacyPath)
+}
+
 func installSkillToHomes(src string, dests []string, out, errOut io.Writer) (installed, skipped int, err error) {
 	sort.Strings(dests)
 	for _, dest := range dests {
@@ -1198,6 +1218,7 @@ func installMultiSkillToHomes(src string, skillNames []string, dests []string, o
 			continue
 		}
 
+		sharedInstalled := false
 		for _, name := range skillNames {
 			subSrc := filepath.Join(src, name)
 			subDest := filepath.Join(dest, name)
@@ -1213,6 +1234,12 @@ func installMultiSkillToHomes(src string, skillNames []string, dests []string, o
 			}
 			fmt.Fprintf(out, "  ✓ %s\n", subDest)
 			installed++
+			if name == multiSharedSkill {
+				sharedInstalled = true
+			}
+		}
+		if sharedInstalled {
+			cleanupLegacyMultiSharedSkill(dest, out, errOut)
 		}
 	}
 	return installed, skipped, nil
