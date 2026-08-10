@@ -401,6 +401,66 @@ func TestMergeAcceptsReviewedFlagTypeChangeAndKeepsHistoricalType(t *testing.T) 
 	}
 }
 
+// mergeContracts applies the same "nothing else moved" condition as
+// checkCompatibility, but against two recorded contracts rather than a live
+// pflag definition. Each case bundles one unrelated regression with the reviewed
+// type change and requires the type failure to reappear, anchoring
+// mergedFlagContractOtherwiseChanged against the checks it mirrors.
+func TestMergeRejectsReviewedFlagTypeChangeWithBundledRegression(t *testing.T) {
+	registerReviewedFixture(t, flagTypeChange{CommandPath: "dws old", Flag: "policy", From: "string", To: "int"})
+
+	tests := []struct {
+		name       string
+		historical func(*cobra.Command)
+		current    func(*cobra.Command)
+	}{
+		{
+			name:       "lost shorthand",
+			historical: func(command *cobra.Command) { command.Flags().StringP("policy", "p", "", "policy") },
+			current:    func(command *cobra.Command) { command.Flags().Int("policy", 0, "policy") },
+		},
+		{
+			name:       "became required",
+			historical: func(command *cobra.Command) { command.Flags().String("policy", "", "policy") },
+			current: func(command *cobra.Command) {
+				command.Flags().Int("policy", 0, "policy")
+				_ = command.MarkFlagRequired("policy")
+			},
+		},
+		{
+			name:       "became hidden",
+			historical: func(command *cobra.Command) { command.Flags().String("policy", "", "policy") },
+			current: func(command *cobra.Command) {
+				command.Flags().Int("policy", 0, "policy")
+				_ = command.Flags().MarkHidden("policy")
+			},
+		},
+		{
+			name:       "changed no-opt value",
+			historical: func(command *cobra.Command) { command.Flags().String("policy", "", "policy") },
+			current: func(command *cobra.Command) {
+				command.Flags().Int("policy", 0, "policy")
+				command.Flags().Lookup("policy").NoOptDefVal = "4"
+			},
+		},
+		{
+			name:       "narrowed persistent scope",
+			historical: func(command *cobra.Command) { command.PersistentFlags().String("policy", "", "policy") },
+			current:    func(command *cobra.Command) { command.Flags().Int("policy", 0, "policy") },
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, failures := mergeContracts(
+				snapshot(policyRoot(test.historical)),
+				snapshot(policyRoot(test.current)),
+			)
+			assertFailureContains(t, failures, typeChangedFailure)
+		})
+	}
+}
+
 // The behaviour tests above register their own fixtures, so they cannot catch a
 // production entry whose key is spelled in the wrong form — that mistake
 // disables the exemption silently and only a real gate run reports it. Recompute
