@@ -75,7 +75,7 @@ metadata:
 - `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。user 已知 ID 可直接传，也可用 `--user-query` / `--chat-query` 运行同一只读解析链；Bot 多群使用 `--groups/--groups-file`，返回 `im.batch-write.v1`；bot/webhook 只使用下层真实支持的文本/Markdown 能力。
 - 文件直接传 `+messages-send --file <相对路径>`；不要先独立上传并提取 mediaId。
 - Webhook 使用 `+messages-send --as webhook --webhook-token <token>`；不要退回原子 Webhook 命令。
-- 流式卡片不是普通消息内容，使用 `+messages-send-card`；当前只支持 streaming text create/update，不支持 Card JSON 或 callback。
+- 流式卡片用 `+messages-send-card`；群聊@传 ID/`--at-all`，Runtime 把 create 返回前缀加到 `--content`；禁写占位符；仅 text。
 
 ## 关键结果语义
 
@@ -93,7 +93,7 @@ metadata:
 | 场景 | Reference |
 |---|---|
 | 复杂发送、跨会话转发、共同群或组合流程 | [01-messaging.md](references/01-messaging.md) |
-| 引用、转发、卡片、reaction、Pin/Top/Favorite | [chat-message.md](references/chat/chat-message.md) |
+| 编辑/撤回/引用/转发/卡片/reaction/Pin/Top/Favorite | [chat-message.md](references/chat/chat-message.md) |
 | 建群、成员、管理员、群公告、群设置 | [chat-group.md](references/chat/chat-group.md) |
 | Bot 搜索、入群、群发和撤回 | [chat-bot.md](references/chat/chat-bot.md) |
 | 会话置顶、分类、红点、免打扰和隐藏 | [chat-conversation.md](references/chat/chat-conversation.md) |
