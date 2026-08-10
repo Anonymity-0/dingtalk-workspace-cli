@@ -49,6 +49,11 @@ func (*pagedCommandCaller) JQ() string       { return "" }
 
 func runPagedCommandTest(t *testing.T, caller *pagedCommandCaller, cfg PagedMCPCommandConfig, args ...string) (map[string]any, string, error) {
 	t.Helper()
+	return runPagedCommandTestWithSleep(t, caller, cfg, func(time.Duration) {}, args...)
+}
+
+func runPagedCommandTestWithSleep(t *testing.T, caller *pagedCommandCaller, cfg PagedMCPCommandConfig, sleep func(time.Duration), args ...string) (map[string]any, string, error) {
+	t.Helper()
 	oldDeps := deps
 	oldSleep := helperSleep
 	t.Cleanup(func() {
@@ -60,7 +65,7 @@ func runPagedCommandTest(t *testing.T, caller *pagedCommandCaller, cfg PagedMCPC
 	errOut := &bytes.Buffer{}
 	deps.Out.w = out
 	deps.Out.errW = errOut
-	helperSleep = func(d time.Duration) {}
+	helperSleep = sleep
 
 	cmd := &cobra.Command{
 		Use:          "paged",
@@ -139,6 +144,53 @@ func TestPagedMCPCommandStringCursorAggregatesAndPageLimit(t *testing.T) {
 	}
 	if caller.calls[0].args["cursor"] != "0" || caller.calls[1].args["cursor"] != "c2" {
 		t.Fatalf("call args = %#v", caller.calls)
+	}
+}
+
+func TestPagedMCPCommandPageDelayControlsSleep(t *testing.T) {
+	tests := []struct {
+		name       string
+		delay      string
+		wantSleeps []time.Duration
+	}{
+		{
+			name:       "non zero delay sleeps between pages",
+			delay:      "200",
+			wantSleeps: []time.Duration{200 * time.Millisecond},
+		},
+		{
+			name:       "zero delay skips sleep",
+			delay:      "0",
+			wantSleeps: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &pagedCommandCaller{steps: []scriptedToolStep{
+				{text: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`},
+				{text: `{"result":{"messages":[{"id":"m2"}],"hasMore":false,"nextCursor":""}}`},
+			}}
+			var sleeps []time.Duration
+			got, _, err := runPagedCommandTestWithSleep(t, caller, pagedCommandMessagesConfig(nil), func(d time.Duration) {
+				sleeps = append(sleeps, d)
+			}, "--page-all", "--page-delay", tt.delay)
+			if err != nil {
+				t.Fatal(err)
+			}
+			items := got["result"].(map[string]any)["messages"].([]any)
+			if len(items) != 2 || len(caller.calls) != 2 {
+				t.Fatalf("items=%#v calls=%#v", items, caller.calls)
+			}
+			if len(sleeps) != len(tt.wantSleeps) {
+				t.Fatalf("sleeps=%v, want %v", sleeps, tt.wantSleeps)
+			}
+			for i := range tt.wantSleeps {
+				if sleeps[i] != tt.wantSleeps[i] {
+					t.Fatalf("sleeps=%v, want %v", sleeps, tt.wantSleeps)
+				}
+			}
+		})
 	}
 }
 
