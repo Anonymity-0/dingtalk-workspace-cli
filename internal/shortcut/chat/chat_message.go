@@ -1581,6 +1581,9 @@ var MessagesSendCard = shortcut.Shortcut{
 			return fmt.Errorf("卡片已创建但下层未返回 bizId，无法自动更新；请检查 create_and_send_card 响应")
 		}
 		atTag := findCardAtTag(created)
+		if mentionsRequested && atTag == "" {
+			return fmt.Errorf("卡片已创建（bizId=%s），但下层未返回 atTag，无法保证请求的 @ 生效；未执行自动更新", bizID)
+		}
 		updated, err := rt.CallMCPWriteData("im", "update_streaming_card", map[string]any{
 			"bizId":      bizID,
 			"msgContent": atTag + content,

@@ -679,6 +679,28 @@ func TestCrossPlatformCoverageMessagesSendCardKeepsContentWithoutAtTag(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageMessagesSendCardRejectsMissingRequestedAtTag(t *testing.T) {
+	fake := &larkAlignmentCaller{responses: map[string]string{
+		"im/create_and_send_card": `{"result":{"bizId":"biz-missing-at-tag"}}`,
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	root.SetArgs([]string{
+		"chat", "+messages-send-card",
+		"--group", "cid",
+		"--at-open-dingtalk-ids", "D-mentioned",
+		"--content", "正文",
+		"--yes",
+	})
+	err := root.Execute()
+	if err == nil || !strings.Contains(err.Error(), "biz-missing-at-tag") || !strings.Contains(err.Error(), "atTag") {
+		t.Fatalf("error = %v, want recoverable missing-atTag error containing bizId", err)
+	}
+	if len(fake.calls) != 1 || fake.calls[0].tool != "create_and_send_card" {
+		t.Fatalf("card calls = %#v, want create only", fake.calls)
+	}
+}
+
 func TestCrossPlatformCoverageMessagesSendCardResolvesReceiverForLowerTool(t *testing.T) {
 	fake := &larkAlignmentCaller{}
 	helpers.InitDeps(fake)
