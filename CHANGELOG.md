@@ -6,6 +6,8 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.58-beta.3] - 2026-08-11
+
 ### Added
 
 - **Aitable workflow execution and history** — adds `dws aitable workflow run` for confirmed asynchronous execution of scheduled or record-triggered workflows, plus `dws aitable workflow history` for status-, time-, and page-filtered execution records. The commands map directly to `aitable/run_workflow` and `aitable/get_flow_record_list`, validate trigger-specific arguments locally, and document the `executionId` / `instanceId` correlation.
@@ -13,6 +15,9 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   `--at-open-dingtalk-ids` and `--at-all` for group cards, passing mention
   targets to the initial card-creation request and prepending its returned
   `atTag` to the automatic streaming update.
+- **Personal OA approval events** — personal event consumers now support task
+  creation, completion, redirection, instance start, termination, and
+  completion events, with typed output and matching usage documentation.
 
 ### Fixed
 
@@ -22,6 +27,18 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   a successful local write. The result includes the saved path and byte size;
   document exports additionally report the node, requested format, job/task
   ID, and final status.
+- **IM search and card-write safety** — conversation-scoped search now fails
+  closed when the target cannot be verified, and streaming-card updates require
+  business evidence rather than a transport-only success response.
+- **Document shortcut reliability** — document write, readback verification,
+  pagination, template/version discovery, export, media, and local-file
+  workflows now preserve compatibility while rejecting ambiguous write results.
+- **Event runtime-token handoff** — personal `event consume`, `status`,
+  `stop`, and `+listen-im` honor the root `--token` without falling back to a
+  stale OAuth profile. Detached buses negotiate an owner-only, memory-only IPC
+  credential channel; tokens are never placed in child argv, environment,
+  profiles, logs, or run-state files.
+
 ### Changed
 
 - **Minutes `permission apply --policy` type** — `--policy` is now declared as
@@ -31,6 +48,15 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 - **Minutes skill references** — document `permission apply` in both Minutes
   skill references: list it in the command trees, describe its policy values and
   how it differs from `permission add`, and add its intent routing.
+- **Chat paging guidance** — typed chat message commands now document
+  `--page-all`, aggregate result shapes, and cursor behavior in CLI Help and
+  Agent selection examples.
+- **Calendar skill parity** — mono and multi Calendar references are aligned to
+  prevent documentation drift without changing CLI behavior.
+- **Release engineering** — CI now shards helper-package changes through the
+  full race suite, widens a flaky stdio idempotency test budget, governs exact
+  reviewed CLI/Schema type migrations, and lets authorized maintainers trigger
+  internal MCP evaluation with a reviewed `/eval` PR comment.
 
 ## [1.0.58-beta.2] - 2026-08-10
 
