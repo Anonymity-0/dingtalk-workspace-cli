@@ -24,15 +24,24 @@ func TestSkillSetupCommandRegistered(t *testing.T) {
 	}
 }
 
-// TestCrossPlatformCoverageSkillSetupExamplesRequireExplicitYes guards the P1
-// review finding: copyable non-interactive examples must explicitly opt in to
-// the backed-up migration instead of relying on a no-TTY confirmation bypass.
-func TestCrossPlatformCoverageSkillSetupExamplesRequireExplicitYes(t *testing.T) {
+// TestCrossPlatformCoverageSkillSetupExamplesDoNotBypassConfirmation guards
+// the P1 review finding: copyable examples must preview or enter the normal
+// confirmation path, never carry the scripting-only confirmation bypass.
+func TestCrossPlatformCoverageSkillSetupExamplesDoNotBypassConfirmation(t *testing.T) {
 	cmd := newSkillSetupCommand()
+	var examples []string
 	for _, line := range strings.Split(cmd.Example, "\n") {
-		if strings.Contains(line, "--mode") && !strings.Contains(line, "--yes") {
-			t.Fatalf("non-interactive skill setup example must require --yes, got %q", line)
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
 		}
+		examples = append(examples, line)
+		if strings.Contains(line, "--yes") {
+			t.Fatalf("skill setup example bypasses confirmation: %q", line)
+		}
+	}
+	if len(examples) != 2 || !strings.Contains(examples[0], "--dry-run") || strings.Contains(examples[1], "--dry-run") {
+		t.Fatalf("examples must show preview then interactive confirmation: %v", examples)
 	}
 }
 

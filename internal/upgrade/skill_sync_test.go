@@ -90,12 +90,13 @@ func TestCrossPlatformCoverageIncrementalSkillUpgradeFallbacksAndHelpers(t *test
 	if got, err := listInstalledOfficialSkills(home3, []string{"dingtalk-a", "dingtalk-b"}); err != nil || len(got) != 0 {
 		t.Fatalf("filtered local = %v, %v", got, err)
 	}
-	if err := os.RemoveAll(base); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(base, []byte("blocked"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	originalReadDir := upgradeReadDir
+	testseam.Swap(t, &upgradeReadDir, func(path string) ([]os.DirEntry, error) {
+		if path == base {
+			return nil, errors.New("read denied")
+		}
+		return originalReadDir(path)
+	})
 	if _, err := listInstalledOfficialSkills(home3, []string{"dingtalk-a"}); err == nil {
 		t.Fatal("blocked local discovery succeeded")
 	}

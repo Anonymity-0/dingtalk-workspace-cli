@@ -1,11 +1,14 @@
 package skillstate
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestCrossPlatformCoverageSkillStatePlanMatchesLarkIncrementalModel(t *testing.T) {
@@ -69,10 +72,13 @@ func TestCrossPlatformCoverageSkillStateReadWriteRemoveAndErrors(t *testing.T) {
 	if err := Write(blocked, State{}); err == nil {
 		t.Fatal("blocked write succeeded")
 	}
-	if _, _, err := Read(blocked); err == nil {
+	failure := errors.New("denied")
+	testseam.Swap(t, &skillStateReadFile, func(string) ([]byte, error) { return nil, failure })
+	if _, _, err := Read(blocked); !errors.Is(err, failure) {
 		t.Fatal("blocked read succeeded")
 	}
-	if err := Remove(blocked); err == nil {
+	testseam.Swap(t, &skillStateRemove, func(string) error { return failure })
+	if err := Remove(blocked); !errors.Is(err, failure) {
 		t.Fatal("blocked remove succeeded")
 	}
 	configured := t.TempDir()

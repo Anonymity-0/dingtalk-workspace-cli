@@ -19,6 +19,11 @@ import (
 
 const stateFile = "skills-state.json"
 
+var (
+	skillStateReadFile = os.ReadFile
+	skillStateRemove   = os.Remove
+)
+
 type State struct {
 	Version              string   `json:"version"`
 	OfficialSkills       []string `json:"official_skills"`
@@ -51,7 +56,7 @@ func Path(home string) string {
 }
 
 func Read(home string) (*State, bool, error) {
-	data, err := os.ReadFile(Path(home))
+	data, err := skillStateReadFile(Path(home))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, false, nil
@@ -78,7 +83,7 @@ func Write(home string, state State) error {
 }
 
 func Remove(home string) error {
-	if err := os.Remove(Path(home)); err != nil && !os.IsNotExist(err) {
+	if err := skillStateRemove(Path(home)); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("清理 Skill 状态失败: %w", err)
 	}
 	return nil

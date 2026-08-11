@@ -73,14 +73,14 @@ irm https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/ma
 | **multi**（默认） | 按产品拆分的独立 skill（`dingtalk-aitable` / `dingtalk-calendar` / `dingtalk-chat` ...） | 单产品任务；每次召唤上下文更小 |
 | **mono**（legacy） | 一个 `dws` skill，覆盖全部产品 | 跨产品组合操作；单一入口召唤 |
 
-> 安装与升级默认均为 multi。mono 仍可通过 `DWS_SKILL_MODE=mono` 或 `dws skill setup --mode mono --yes` 使用。问题请提 issue 反馈。
+> 安装与升级默认均为 multi。mono 仍可通过 `DWS_SKILL_MODE=mono` 或 `dws skill setup --mode mono` 使用。问题请提 issue 反馈。
 
 怎么选：
 
 - **快速安装**（上方一行 curl）：非交互，默认装 `multi`。
 - **TTY 安装**（先下载再执行）：`curl -O .../install.sh && bash install.sh`，会弹出 `1) multi  2) mono` 选项（默认 1）。
 - **环境变量覆盖**：`DWS_SKILL_MODE=mono curl -fsSL ... | sh`。
-- **装完之后再切换**：`dws skill setup --mode mono --yes`（或 `--mode multi --yes`），随时重跑都行。
+- **装完之后再切换**：`dws skill setup --mode mono`（或 `--mode multi`），核对列出的路径后交互确认。
 
 </details>
 
@@ -409,14 +409,19 @@ curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace
 # 交互式：提示选模式 + 目标 Agent
 dws skill setup
 
-# 把 mono skill 铺到所有检测到的 Agent home（claude / cursor / codex / opencode / qoder）
-dws skill setup --mode mono --target all --yes
+# 先预览 mono setup 将备份和替换的精确目录
+dws skill setup --mode mono --target all --dry-run
 
-# 只装到某一个 Agent home
-dws skill setup --mode multi --target cursor --yes
+# 交互执行并确认列出的目录
+dws skill setup --mode mono --target all
 
-# 指定本地源目录（比如 fork 或正在改的版本）
-DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi --yes
+# 先预览，再交互确认装到某一个 Agent home
+dws skill setup --mode multi --target cursor --dry-run
+dws skill setup --mode multi --target cursor
+
+# 指定本地源目录（比如 fork 或正在改的版本），先预览
+DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi --dry-run
+DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 ```
 
 | 参数 | 取值 | 说明 |
@@ -426,7 +431,7 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi --yes
 | `--source` | 路径 | 本地源目录（覆盖内置 skills） |
 | `--yes` | — | 仅供脚本使用：跳过确认提示。删除操作仍会先备份到 `~/.dws/skill-backups/` |
 
-> setup 命令可能移除对面模式残留（装 multi 删 `dws/`，装 mono 删 `dingtalk-*`）以及不在 bundle 内的过期 skill。所有删除都会先列入确认预览，并备份到 `~/.dws/skill-backups/<时间戳>/`；备份失败的目录会保留原样、绝不删除。非交互环境默认拒绝迁移目录；请先用 `--dry-run` 核对，再显式传入 `--yes`。
+> setup 命令可能移除对面模式残留（装 multi 删 `dws/`，装 mono 删 `dingtalk-*`）以及不在 bundle 内的过期 skill。所有删除都会先列入确认预览，并备份到 `~/.dws/skill-backups/<时间戳>/`；备份失败的目录会保留原样、绝不删除。非交互环境应先用 `--dry-run` 核对输出，再由调用方显式决定是否使用仅供脚本的确认跳过参数。
 
 multi setup 成功后，DWS 会把官方 bundle 快照写入 `~/.dws/skills-state.json`（或 `$DWS_CONFIG_DIR/skills-state.json`）。普通 `dws upgrade` 只刷新仍在本地的官方 Skill，自动加入新版新增 Skill，但不会装回用户已删除的旧官方 Skill。`dws upgrade --force` 恢复官方全量集合。状态文件缺失/不可读或本地集合为空时，按首次更新处理，回退为全量安装。
 
@@ -711,7 +716,7 @@ dws dev connect --channel auto --robot-client-id <id> --robot-client-secret <sec
 <summary>即将推出</summary>
 
 - `conference`（视频会议）
-- 多 skill 模式（默认）— 每产品一个独立 skill，位于 `skills/multi/`，安装与升级默认启用；`dws skill setup --mode mono --yes` 可切回单 skill
+- 多 skill 模式（默认）— 每产品一个独立 skill，位于 `skills/multi/`，安装与升级默认启用；`dws skill setup --mode mono` 交互确认后可切回单 skill
 
 </details>
 

@@ -126,12 +126,8 @@ multi 模式支持按产品挑选：
 
 不带 --mode 时进入交互式询问；不带 --target 时铺到所有检测到的 Agent 目录。
 skill 源默认取二进制内嵌的版本（升级二进制即升级 skill）；--source / DWS_SKILL_SOURCE 可显式覆盖。`,
-		Example: `  dws skill setup                                             # 交互式
-  dws skill setup --mode mono --yes                         # 非交互装 mono
-  dws skill setup --mode multi --target claude --yes        # multi 全装到 ~/.claude/skills/
-  dws skill setup --mode multi -s aitable -s calendar --yes # 只装 aitable + calendar
-  dws skill setup --mode multi -x live -x devdoc --yes      # 安装除 live、devdoc 外的其余 skill
-  dws skill setup --source /path/to/repo                # 显式指定 skill 源`,
+		Example: `  dws skill setup --mode multi --target claude --dry-run
+  dws skill setup --mode multi --target claude`,
 		DisableAutoGenTag: true,
 		RunE:              runSkillSetup,
 	}

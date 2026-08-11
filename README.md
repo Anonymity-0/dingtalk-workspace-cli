@@ -73,14 +73,14 @@ The installer ships skills in one of two layouts. CLI commands (`dws aitable ...
 | **multi** (default) | Per-product skills (`dingtalk-aitable`, `dingtalk-calendar`, `dingtalk-chat`, ...) | Single-product tasks; smaller context per call |
 | **mono** (legacy) | One `dws` skill covering all products | Cross-product workflows; single entry point |
 
-> Installs and upgrades default to `multi`. `mono` remains available via `DWS_SKILL_MODE=mono` or `dws skill setup --mode mono --yes`. File issues if you hit problems.
+> Installs and upgrades default to `multi`. `mono` remains available via `DWS_SKILL_MODE=mono` or `dws skill setup --mode mono`. File issues if you hit problems.
 
 How to pick:
 
 - **Quick install** (one-liner above): non-interactive, installs `multi`.
 - **TTY install** (download then run): `curl -O .../install.sh && bash install.sh` — prompts `1) multi  2) mono` (default 1).
 - **Override via env**: `DWS_SKILL_MODE=mono curl -fsSL ... | sh`.
-- **Switch later**: `dws skill setup --mode mono --yes` (or `--mode multi --yes`) — re-run any time.
+- **Switch later**: `dws skill setup --mode mono` (or `--mode multi`) — review the listed paths and confirm interactively.
 
 </details>
 
@@ -415,14 +415,19 @@ curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace
 # Interactive: prompts for mode + target agents
 dws skill setup
 
-# Install mono skill to every detected agent home (claude / cursor / codex / opencode / qoder)
-dws skill setup --mode mono --target all --yes
+# Preview the exact directories that mono setup would back up and replace
+dws skill setup --mode mono --target all --dry-run
 
-# Install multi skills to a single agent home
-dws skill setup --mode multi --target cursor --yes
+# Run interactively and confirm the listed directories
+dws skill setup --mode mono --target all
 
-# Point at a local source tree (e.g. a fork or work-in-progress)
-DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi --yes
+# Preview, then install multi skills to a single agent home with interactive confirmation
+dws skill setup --mode multi --target cursor --dry-run
+dws skill setup --mode multi --target cursor
+
+# Point at a local source tree (e.g. a fork or work-in-progress), preview first
+DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi --dry-run
+DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 ```
 
 | Flag | Values | Description |
@@ -432,7 +437,7 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi --yes
 | `--source` | path | Local source directory (overrides bundled skills) |
 | `--yes` | — | Scripting-only: skip the confirmation prompt. Removals are still backed up to `~/.dws/skill-backups/` first |
 
-> The setup command can remove the opposite-mode layout (`dws/` for multi, `dingtalk-*` for mono) and stale skills not in the bundle. Every removal is previewed before confirmation and preserved under `~/.dws/skill-backups/<timestamp>/`; a directory that cannot be backed up is never removed. In a non-interactive shell, setup refuses to migrate directories unless `--yes` is explicitly supplied after reviewing `--dry-run` output.
+> The setup command can remove the opposite-mode layout (`dws/` for multi, `dingtalk-*` for mono) and stale skills not in the bundle. Every removal is previewed before confirmation and preserved under `~/.dws/skill-backups/<timestamp>/`; a directory that cannot be backed up is never removed. In a non-interactive shell, first run `--dry-run` and inspect its output; only then may the caller explicitly choose the scripting-only confirmation bypass.
 
 After a successful multi setup, DWS stores the official bundle snapshot in `~/.dws/skills-state.json` (or `$DWS_CONFIG_DIR/skills-state.json`). A normal `dws upgrade` refreshes official skills that are still installed, automatically adds skills introduced by the new release, and leaves older official skills that you deleted locally absent. `dws upgrade --force` restores the complete official set. A missing/unreadable state file or an empty local set falls back to a full install, matching a first-time update.
 
@@ -722,7 +727,7 @@ See [`docs/robot-quickstart.md`](./docs/robot-quickstart.md) for the full 4-step
 <summary>Coming soon</summary>
 
 - `conference` (video meetings)
-- Multi-skill mode (default) — per-product skills under `skills/multi/`; installs and upgrades default to it, `dws skill setup --mode mono --yes` switches back
+- Multi-skill mode (default) — per-product skills under `skills/multi/`; installs and upgrades default to it, `dws skill setup --mode mono` switches back after interactive confirmation
 
 </details>
 
