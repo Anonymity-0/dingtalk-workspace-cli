@@ -269,7 +269,10 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if installed > 0 {
+	if installed > 0 && skipped > 0 {
+		fmt.Fprintln(errOut, "⚠️  本次 Skill 安装不完整，保留原更新状态；修复失败原因后请重试 setup 或使用 upgrade --force")
+	}
+	if installed > 0 && skipped == 0 {
 		home, homeErr := skillSetupUserHomeDir()
 		if homeErr != nil {
 			return fmt.Errorf("Skill 已安装，但无法解析 HOME 以保存更新状态: %w", homeErr)

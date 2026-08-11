@@ -70,3 +70,32 @@ func TestCrossPlatformCoverageSkillSetupPersistsLarkStyleBaseline(t *testing.T) 
 		t.Fatalf("home error = %v", err)
 	}
 }
+
+func TestCrossPlatformCoverageSkillSetupPartialInstallDoesNotWriteState(t *testing.T) {
+	home := t.TempDir()
+	testseam.Swap(t, &skillSetupResolveMode, func(mode string, _ bool, _ io.Writer) (string, error) { return mode, nil })
+	testseam.Swap(t, &skillSetupResolveSource, func(string, string) (string, func(), error) { return "source", func() {}, nil })
+	testseam.Swap(t, &skillSetupResolveTargets, func(string, string) ([]string, error) {
+		return []string{filepath.Join(home, "skills")}, nil
+	})
+	testseam.Swap(t, &skillSetupListMulti, func(string) ([]string, error) {
+		return []string{"dingtalk-a", "dingtalk-b", "dingtalk-shared"}, nil
+	})
+	testseam.Swap(t, &skillSetupFilterMulti, filterMultiSkillNames)
+	testseam.Swap(t, &skillSetupExecutePlan, func(*skillSetupPlan, io.Writer, io.Writer) (int, int, error) {
+		return 2, 1, nil
+	})
+
+	writes := 0
+	testseam.Swap(t, &skillSetupWriteState, func(string, skillstate.State) error {
+		writes++
+		return nil
+	})
+	cmd := skillSetupCoverageCommand(t, skillSetupModeMulti, true)
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatal(err)
+	}
+	if writes != 0 {
+		t.Fatalf("partial setup wrote %d complete state snapshot(s)", writes)
+	}
+}
