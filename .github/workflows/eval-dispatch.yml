@@ -100,22 +100,28 @@ jobs:
           PR_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
           PRODUCTS: ${{ steps.parse.outputs.products }}
           CASES_REF: ${{ steps.parse.outputs.cases_ref }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           cases_note=""
           if [ -n "$CASES_REF" ]; then
             cases_note="，用例版本 \`${CASES_REF}\`"
           fi
-          # 结构化标记供内网轮询服务提取并触发 Aone CI；HTML 注释对用户不可见
+          # 安全模型：结构化标记供内网轮询服务提取并触发 Aone CI。
+          # 防伪造保证由消费端三重校验（见 scripts/ci/eval_poll_validate.py）：
+          #   1. comment.user.login == 'github-actions[bot]'（平台级身份，不可冒充）
+          #   2. comment.performed_via_github_app.slug == 'github-actions'（App 签名）
+          #   3. payload.run_id 对应真实成功的 workflow run（GET /actions/runs/{id}）
+          # 任意一层不通过即丢弃，普通用户手写评论无法通过上述校验。
           dispatch_payload=$(jq -nc \
             --arg pr "$PR_NUMBER" \
             --arg sha "$PR_HEAD_SHA" \
             --arg products "$PRODUCTS" \
             --arg cases "$CASES_REF" \
-            '{pr_number: $pr, pr_head_sha: $sha, products: $products, cases_ref: $cases}')
+            --arg run_id "$RUN_ID" \
+            '{pr_number: $pr, pr_head_sha: $sha, products: $products, cases_ref: $cases, run_id: $run_id}')
           body="<!-- eval-dispatch: ${dispatch_payload} -->
           🛰️ /eval 已受理：产品集 \`${PRODUCTS}\`${cases_note}，评测对象 \`${PR_HEAD_SHA}\`。
           内网评测流水线将在数分钟内由轮询服务触发，运行结束后由 bot 回贴报告（首行为基线对比头条）。"
-          # 去除 heredoc 缩进
           body=$(echo "$body" | sed 's/^          //')
           jq -n --arg body "$body" '{body: $body}' | curl --fail --silent --show-error \
             -X POST \

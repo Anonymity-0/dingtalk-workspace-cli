@@ -31,6 +31,8 @@ func TestEvalDispatchWorkflowUsesRepositoryPermissionAndReviewedSHA(t *testing.T
 		"EVAL_ALLOWLIST_PATH: .github/eval-allowlist.txt",
 		"REVIEWED_SHA: ${{ steps.parse.outputs.reviewed_sha }}",
 		"eval_dispatch_guard.py head",
+		"RUN_ID: ${{ github.run_id }}",
+		"eval_poll_validate.py",
 	} {
 		if !strings.Contains(workflow, want) {
 			t.Errorf("eval-dispatch workflow missing security contract %q", want)
