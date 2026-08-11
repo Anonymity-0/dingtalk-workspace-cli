@@ -31,9 +31,9 @@ def test_missing_products_rejected():
         parse("/eval")
 
 
-def test_missing_reviewed_sha_rejected():
-    with pytest.raises(ValueError, match="审核 SHA 显式必填"):
-        parse("/eval drive")
+def test_omitted_reviewed_sha_defers_to_guard():
+    # 是否允许省略由 guard 按“评论者是否 PR 作者”裁决，解析层放行并输出空 reviewed_sha
+    assert parse("/eval drive") == ("drive", "", "")
 
 
 def test_similar_command_prefix_rejected():
@@ -54,6 +54,32 @@ def test_unknown_extra_token_rejected():
 def test_illegal_cases_ref_rejected():
     with pytest.raises(ValueError, match="cases 引用非法"):
         parse(f"/eval drive sha={SHA} cases=$(whoami)")
+
+
+def test_structurally_invalid_cases_refs_rejected():
+    # git check-ref-format 结构规则：字符合法但结构非法的引用必须拒绝
+    invalid_refs = [
+        "..",            # 以点开头且含连续点号
+        "/main",         # 首部斜杠
+        "feature//x",    # 连续斜杠
+        "feature/",      # 尾部斜杠
+        "release.",      # 尾部点号
+        "a..b",          # 任意位置连续点号
+        ".hidden",       # 分量以点开头
+        "a/.hidden",     # 非首分量以点开头
+        "a.lock",        # 分量以 .lock 结尾
+        "a/b.lock",      # 非首分量以 .lock 结尾
+        "-flag",         # 以 - 开头，防 git fetch 选项注入
+    ]
+    for ref in invalid_refs:
+        with pytest.raises(ValueError, match="cases 引用非法"):
+            parse(f"/eval drive sha={SHA} cases={ref}")
+
+
+def test_structurally_valid_cases_refs_accepted():
+    valid_refs = ["main", "feat/drive-latest", "release/v1.0", "a.b/c-d_e", SHA]
+    for ref in valid_refs:
+        assert parse(f"/eval drive sha={SHA} cases={ref}") == ("drive", ref, SHA)
 
 
 def test_short_reviewed_sha_rejected():
