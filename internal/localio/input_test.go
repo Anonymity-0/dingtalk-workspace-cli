@@ -106,6 +106,9 @@ func TestCrossPlatformCoverageReadTextInputFailureBranchesE2E(t *testing.T) {
 		"relative": func(t *testing.T) {
 			testseam.Swap(t, &readTextInputRel, func(string, string) (string, error) { return "", errors.New("rel") })
 		},
+		"path stat": func(t *testing.T) {
+			testseam.Swap(t, &statTextInputPath, func(string) (os.FileInfo, error) { return nil, errors.New("stat") })
+		},
 		"open": func(t *testing.T) {
 			testseam.Swap(t, &openTextInputFile, func(string) (*os.File, error) { return nil, errors.New("open") })
 		},
