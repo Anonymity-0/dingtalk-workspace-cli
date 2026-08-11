@@ -6,6 +6,7 @@ package app
 import (
 	"bytes"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -185,8 +186,8 @@ func TestCrossPlatformCoverageSkillSetupBackupFailureSkipsWholeTarget(t *testing
 	if err != nil || installed != 0 || skipped != 2 {
 		t.Fatalf("install = (%d, %d, %v), want (0, 2, nil)", installed, skipped, err)
 	}
-	if copyCalls != 0 {
-		t.Fatalf("backup failure copied %d new Skills", copyCalls)
+	if copyCalls != 2 {
+		t.Fatalf("backup failure staged %d new Skills, want 2", copyCalls)
 	}
 	if !strings.Contains(errOut.String(), "跳过整个 Agent 目标") {
 		t.Fatalf("missing whole-target warning: %q", errOut.String())
@@ -250,13 +251,13 @@ func TestCrossPlatformCoverageSkillSetupMonoCleanupFailureSkipsWholeTarget(t *te
 	if err != nil || installed != 0 || skipped != 1 {
 		t.Fatalf("install = (%d, %d, %v), want (0, 1, nil)", installed, skipped, err)
 	}
-	if copyCalls != 0 {
-		t.Fatalf("multi cleanup failure copied mono %d times", copyCalls)
+	if copyCalls != 1 {
+		t.Fatalf("multi cleanup failure staged mono %d times, want 1", copyCalls)
 	}
 	if _, err := os.Stat(multi); err != nil {
 		t.Fatalf("multi leftover must survive backup failure: %v", err)
 	}
-	if !strings.Contains(errOut.String(), "互斥清理失败，跳过整个 Agent 目标") {
+	if !strings.Contains(errOut.String(), "Skill 备份失败，已执行回滚，跳过整个 Agent 目标") {
 		t.Fatalf("missing mono whole-target warning: %q", errOut.String())
 	}
 }
@@ -289,12 +290,285 @@ func TestCrossPlatformCoverageSkillSetupStaleBackupFailureSkipsWholeTarget(t *te
 	if err != nil || installed != 0 || skipped != 2 {
 		t.Fatalf("install = (%d, %d, %v), want (0, 2, nil)", installed, skipped, err)
 	}
-	if copyCalls != 0 {
-		t.Fatalf("stale backup failure copied %d new Skills", copyCalls)
+	if copyCalls != 2 {
+		t.Fatalf("stale backup failure staged %d new Skills, want 2", copyCalls)
 	}
-	if !strings.Contains(errOut.String(), "过期 Skill 备份失败，跳过整个 Agent 目标") {
+	if !strings.Contains(errOut.String(), "Skill 备份失败，已执行回滚，跳过整个 Agent 目标") {
 		t.Fatalf("missing stale whole-target warning: %q", errOut.String())
 	}
+}
+
+func TestCrossPlatformCoverageSkillSetupTransactionFailuresRestoreOldSet(t *testing.T) {
+	for _, failureKind := range []string{"later_backup", "later_publish"} {
+		failureKind := failureKind
+		t.Run(failureKind, func(t *testing.T) {
+			home := t.TempDir()
+			dest := filepath.Join(home, ".agents", "skills")
+			first := filepath.Join(dest, "dingtalk-first")
+			second := filepath.Join(dest, "dingtalk-second")
+			for path, body := range map[string]string{
+				filepath.Join(first, "SKILL.md"):  "old first\n",
+				filepath.Join(second, "SKILL.md"): "old second\n",
+			} {
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			src := writeMultiSkillSource(t, []string{"dingtalk-first", "dingtalk-second"})
+			if err := os.WriteFile(filepath.Join(src, "dingtalk-first", "SKILL.md"), []byte("new first\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(src, "dingtalk-second", "SKILL.md"), []byte("new second\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+			failure := errors.New("injected " + failureKind + " failure")
+			if failureKind == "later_backup" {
+				originalBackup := skillSetupBackupAndRemove
+				testseam.Swap(t, &skillSetupBackupAndRemove, func(homeDir, dir string) (string, error) {
+					if dir == second {
+						return "", failure
+					}
+					return originalBackup(homeDir, dir)
+				})
+			} else {
+				originalRename := skillSetupPublishRename
+				testseam.Swap(t, &skillSetupPublishRename, func(oldPath, newPath string) error {
+					if newPath == second && strings.HasPrefix(filepath.Base(filepath.Dir(oldPath)), ".dws-setup-set-") {
+						return failure
+					}
+					return originalRename(oldPath, newPath)
+				})
+			}
+
+			var out, errOut bytes.Buffer
+			installed, skipped, err := installMultiSkillToHomes(
+				src,
+				[]string{"dingtalk-first", "dingtalk-second"},
+				[]string{dest},
+				&out,
+				&errOut,
+				true,
+			)
+			if err != nil || installed != 0 || skipped != 2 {
+				t.Fatalf("transaction failure = (%d, %d, %v), stderr=%s", installed, skipped, err, errOut.String())
+			}
+			for path, want := range map[string]string{
+				filepath.Join(first, "SKILL.md"):  "old first\n",
+				filepath.Join(second, "SKILL.md"): "old second\n",
+			} {
+				got, readErr := os.ReadFile(path)
+				if readErr != nil || string(got) != want {
+					t.Fatalf("restored %s = %q, err=%v, want %q", path, got, readErr, want)
+				}
+			}
+			entries, readErr := os.ReadDir(dest)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			for _, entry := range entries {
+				if strings.HasPrefix(entry.Name(), ".dws-setup-set-") {
+					t.Fatalf("transaction left staging directory %s", entry.Name())
+				}
+			}
+			if !strings.Contains(errOut.String(), "已执行回滚") || !strings.Contains(errOut.String(), failure.Error()) {
+				t.Fatalf("transaction failure output = %q", errOut.String())
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageSkillSetupTransactionFailureEdges(t *testing.T) {
+	failure := errors.New("injected transaction failure")
+
+	t.Run("managed publish success", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{"dingtalk-a"})
+		dest := filepath.Join(t.TempDir(), "dingtalk-a")
+		if err := publishDWSManagedSkillDir(filepath.Join(src, "dingtalk-a"), dest); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(dest, "SKILL.md")); err != nil {
+			t.Fatalf("published Skill missing: %v", err)
+		}
+	})
+
+	t.Run("staging cleanup failure", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{"dingtalk-a"})
+		dest := t.TempDir()
+		testseam.Swap(t, &skillSetupCopyDir, func(string, string) error { return failure })
+		cleanupErr := errors.New("staging cleanup failure")
+		testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return cleanupErr })
+		_, _, err := stageSkillSetupTarget(
+			&skillSetupPlan{Mode: skillSetupModeMulti, Source: src, MultiSkillNames: []string{"dingtalk-a"}},
+			skillSetupTargetPlan{Destination: dest},
+		)
+		if !errors.Is(err, failure) || !errors.Is(err, cleanupErr) {
+			t.Fatalf("staging cleanup error = %v", err)
+		}
+	})
+
+	t.Run("staging directory failure", func(t *testing.T) {
+		src := writeMultiSkillSource(t, []string{"dingtalk-a"})
+		dest := t.TempDir()
+		originalMkdirAll := skillSetupMkdirAll
+		testseam.Swap(t, &skillSetupMkdirAll, func(path string, mode os.FileMode) error {
+			if filepath.Base(path) == "dingtalk-a" && strings.HasPrefix(filepath.Base(filepath.Dir(path)), ".dws-setup-set-") {
+				return failure
+			}
+			return originalMkdirAll(path, mode)
+		})
+		_, _, err := stageSkillSetupTarget(
+			&skillSetupPlan{Mode: skillSetupModeMulti, Source: src, MultiSkillNames: []string{"dingtalk-a"}},
+			skillSetupTargetPlan{Destination: dest},
+		)
+		if !errors.Is(err, failure) || !strings.Contains(err.Error(), "创建 Skill staging 目录失败") {
+			t.Fatalf("staging directory error = %v", err)
+		}
+	})
+
+	t.Run("restore failure aggregation", func(t *testing.T) {
+		t.Run("remove published", func(t *testing.T) {
+			testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return failure })
+			if err := restoreSkillSetupTarget([]string{"published"}, nil); !errors.Is(err, failure) {
+				t.Fatalf("remove published error = %v", err)
+			}
+		})
+		t.Run("original still exists", func(t *testing.T) {
+			original := t.TempDir()
+			err := restoreSkillSetupTarget(nil, []skillSetupBackedUpDir{{original: original, backup: "backup"}})
+			if err == nil || !strings.Contains(err.Error(), "恢复目标仍存在") {
+				t.Fatalf("existing restore target error = %v", err)
+			}
+		})
+		t.Run("stat", func(t *testing.T) {
+			testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, failure })
+			err := restoreSkillSetupTarget(nil, []skillSetupBackedUpDir{{original: "original", backup: "backup"}})
+			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "检查 Skill 恢复目标失败") {
+				t.Fatalf("restore stat error = %v", err)
+			}
+		})
+		t.Run("mkdir", func(t *testing.T) {
+			testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+			testseam.Swap(t, &skillSetupMkdirAll, func(string, os.FileMode) error { return failure })
+			err := restoreSkillSetupTarget(nil, []skillSetupBackedUpDir{{original: "original", backup: "backup"}})
+			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "创建 Skill 恢复目录失败") {
+				t.Fatalf("restore mkdir error = %v", err)
+			}
+		})
+		t.Run("rename", func(t *testing.T) {
+			testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+			testseam.Swap(t, &skillSetupMkdirAll, func(string, os.FileMode) error { return nil })
+			testseam.Swap(t, &skillSetupPublishRename, func(string, string) error { return failure })
+			err := restoreSkillSetupTarget(nil, []skillSetupBackedUpDir{{original: "original", backup: "backup"}})
+			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "恢复原 Skill 失败") {
+				t.Fatalf("restore rename error = %v", err)
+			}
+		})
+	})
+
+	t.Run("backup rollback failure", func(t *testing.T) {
+		calls := 0
+		testseam.Swap(t, &skillSetupBackupAndRemove, func(string, string) (string, error) {
+			calls++
+			if calls == 1 {
+				return "backup", nil
+			}
+			return "", failure
+		})
+		testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+		testseam.Swap(t, &skillSetupMkdirAll, func(string, os.FileMode) error { return nil })
+		restoreErr := errors.New("restore failure")
+		testseam.Swap(t, &skillSetupPublishRename, func(string, string) error { return restoreErr })
+		_, err := backupSkillSetupTarget("home", []skillSetupBackup{{Path: "first"}, {Path: "second"}}, io.Discard)
+		if !errors.Is(err, failure) || !errors.Is(err, restoreErr) {
+			t.Fatalf("backup rollback error = %v", err)
+		}
+	})
+
+	t.Run("publish rollback failure", func(t *testing.T) {
+		testseam.Swap(t, &skillSetupPublishRename, func(string, string) error { return failure })
+		testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+		testseam.Swap(t, &skillSetupMkdirAll, func(string, os.FileMode) error { return nil })
+		err := publishSkillSetupTarget(
+			[]skillSetupStagedDir{{staged: "staged", dest: "dest"}},
+			[]skillSetupBackedUpDir{{original: "dest", backup: "backup"}},
+		)
+		if !errors.Is(err, failure) || !strings.Contains(err.Error(), "回滚不完整") {
+			t.Fatalf("publish rollback error = %v", err)
+		}
+	})
+
+	t.Run("execute cleanup errors", func(t *testing.T) {
+		newPlan := func(t *testing.T) *skillSetupPlan {
+			t.Helper()
+			src := writeMultiSkillSource(t, []string{"dingtalk-a"})
+			return &skillSetupPlan{
+				Mode:            skillSetupModeMulti,
+				Source:          src,
+				MultiSkillNames: []string{"dingtalk-a"},
+				Targets:         []skillSetupTargetPlan{{Destination: t.TempDir()}},
+			}
+		}
+
+		t.Run("after backup failure", func(t *testing.T) {
+			plan := newPlan(t)
+			plan.Targets[0].Backups = []skillSetupBackup{{Path: filepath.Join(plan.Targets[0].Destination, "old")}}
+			testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return t.TempDir(), nil })
+			testseam.Swap(t, &skillSetupBackupAndRemove, func(string, string) (string, error) { return "", failure })
+			cleanupErr := errors.New("cleanup after backup failure")
+			testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return cleanupErr })
+			var stderr bytes.Buffer
+			_, skipped, err := executeSkillSetupPlan(plan, io.Discard, &stderr)
+			if err != nil || skipped != 1 || !strings.Contains(stderr.String(), cleanupErr.Error()) {
+				t.Fatalf("backup cleanup = skipped %d, err %v, stderr %q", skipped, err, stderr.String())
+			}
+		})
+
+		t.Run("after publish failure", func(t *testing.T) {
+			plan := newPlan(t)
+			originalRename := skillSetupPublishRename
+			testseam.Swap(t, &skillSetupPublishRename, func(oldPath, newPath string) error {
+				if strings.HasPrefix(filepath.Base(filepath.Dir(oldPath)), ".dws-setup-set-") {
+					return failure
+				}
+				return originalRename(oldPath, newPath)
+			})
+			originalRemoveAll := skillSetupRemoveAll
+			cleanupErr := errors.New("cleanup after publish failure")
+			testseam.Swap(t, &skillSetupRemoveAll, func(path string) error {
+				if strings.HasPrefix(filepath.Base(path), ".dws-setup-set-") {
+					return cleanupErr
+				}
+				return originalRemoveAll(path)
+			})
+			var stderr bytes.Buffer
+			_, skipped, err := executeSkillSetupPlan(plan, io.Discard, &stderr)
+			if err != nil || skipped != 1 || !strings.Contains(stderr.String(), cleanupErr.Error()) {
+				t.Fatalf("publish cleanup = skipped %d, err %v, stderr %q", skipped, err, stderr.String())
+			}
+		})
+
+		t.Run("after success", func(t *testing.T) {
+			plan := newPlan(t)
+			originalRemoveAll := skillSetupRemoveAll
+			cleanupErr := errors.New("cleanup after success")
+			testseam.Swap(t, &skillSetupRemoveAll, func(path string) error {
+				if strings.HasPrefix(filepath.Base(path), ".dws-setup-set-") {
+					return cleanupErr
+				}
+				return originalRemoveAll(path)
+			})
+			var stderr bytes.Buffer
+			installed, skipped, err := executeSkillSetupPlan(plan, io.Discard, &stderr)
+			if err != nil || installed != 1 || skipped != 0 || !strings.Contains(stderr.String(), cleanupErr.Error()) {
+				t.Fatalf("success cleanup = installed %d, skipped %d, err %v, stderr %q", installed, skipped, err, stderr.String())
+			}
+		})
+	})
 }
 
 // TestCrossPlatformCoverageSkillSetupInstallHomeFailureSkips verifies both

@@ -336,10 +336,10 @@ func TestCrossPlatformCoverageSkillSetupSameNameBackupFailureSkipsTarget(t *test
 	testseam.Swap(t, &skillSetupCopyDir, func(string, string) error { copyCalls++; return nil })
 	var out, errOut bytes.Buffer
 	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
-	if err != nil || installed != 0 || skipped != 1 || copyCalls != 0 {
+	if err != nil || installed != 0 || skipped != 1 || copyCalls != 1 {
 		t.Fatalf("same-name failure = (%d, %d, %v), copy=%d", installed, skipped, err, copyCalls)
 	}
-	if !strings.Contains(errOut.String(), "备份失败，跳过整个 Agent 目标") {
+	if !strings.Contains(errOut.String(), "Skill 备份失败，已执行回滚，跳过整个 Agent 目标") {
 		t.Fatalf("same-name warning = %q", errOut.String())
 	}
 }

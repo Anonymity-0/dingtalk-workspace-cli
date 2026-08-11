@@ -104,6 +104,16 @@ type skillSetupPlan struct {
 	InstallsEventMiscCompanion bool
 }
 
+type skillSetupStagedDir struct {
+	staged string
+	dest   string
+}
+
+type skillSetupBackedUpDir struct {
+	original string
+	backup   string
+}
+
 const (
 	skillSetupBackupMutual  = "opposite layout"
 	skillSetupBackupStale   = "stale official Skill"
@@ -1539,6 +1549,126 @@ func installMultiSkillToHomes(src string, skillNames []string, dests []string, o
 	return executeSkillSetupPlan(plan, out, errOut)
 }
 
+// stageSkillSetupTarget builds the complete replacement set next to its final
+// destination before any Agent-visible directory is moved.
+func stageSkillSetupTarget(plan *skillSetupPlan, target skillSetupTargetPlan) (stageRoot string, staged []skillSetupStagedDir, err error) {
+	stageParent := target.Destination
+	if plan.Mode == skillSetupModeMono {
+		stageParent = filepath.Dir(target.Destination)
+	}
+	if err := skillSetupMkdirAll(stageParent, 0o755); err != nil {
+		return "", nil, fmt.Errorf("创建 Skill 目标父目录失败 %s: %w", stageParent, err)
+	}
+	stageRoot, err = skillSetupPublishTemp(stageParent, ".dws-setup-set-")
+	if err != nil {
+		return "", nil, fmt.Errorf("创建 Skill staging 失败 %s: %w", stageParent, err)
+	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		if cleanupErr := skillSetupRemoveAll(stageRoot); cleanupErr != nil {
+			err = errors.Join(err, fmt.Errorf("清理 Skill staging 失败 %s: %w", stageRoot, cleanupErr))
+		}
+	}()
+
+	stageOne := func(src, dest string) error {
+		stagedDir := filepath.Join(stageRoot, filepath.Base(dest))
+		if err := skillSetupMkdirAll(stagedDir, 0o755); err != nil {
+			return fmt.Errorf("创建 Skill staging 目录失败 %s: %w", stagedDir, err)
+		}
+		if err := skillSetupCopyDir(src, stagedDir); err != nil {
+			return fmt.Errorf("拷贝 Skill staging 失败 %s: %w", stagedDir, err)
+		}
+		staged = append(staged, skillSetupStagedDir{staged: stagedDir, dest: dest})
+		return nil
+	}
+
+	if plan.Mode == skillSetupModeMono {
+		if err := stageOne(plan.Source, target.Destination); err != nil {
+			return stageRoot, nil, err
+		}
+		return stageRoot, staged, nil
+	}
+	for _, name := range plan.MultiSkillNames {
+		if err := stageOne(filepath.Join(plan.Source, name), filepath.Join(target.Destination, name)); err != nil {
+			return stageRoot, nil, err
+		}
+	}
+	return stageRoot, staged, nil
+}
+
+// restoreSkillSetupTarget removes a partially published replacement and
+// restores every original directory from its exact backup path.
+func restoreSkillSetupTarget(published []string, backups []skillSetupBackedUpDir) error {
+	var restoreErr error
+	for i := len(published) - 1; i >= 0; i-- {
+		if err := skillSetupRemoveAll(published[i]); err != nil {
+			restoreErr = errors.Join(restoreErr, fmt.Errorf("移除失败发布目录 %s: %w", published[i], err))
+		}
+	}
+	for i := len(backups) - 1; i >= 0; i-- {
+		item := backups[i]
+		if _, err := skillSetupStat(item.original); err == nil {
+			restoreErr = errors.Join(restoreErr, fmt.Errorf("恢复目标仍存在 %s；备份保留于 %s", item.original, item.backup))
+			continue
+		} else if !errors.Is(err, os.ErrNotExist) {
+			restoreErr = errors.Join(restoreErr, fmt.Errorf("检查 Skill 恢复目标失败 %s: %w；备份保留于 %s", item.original, err, item.backup))
+			continue
+		}
+		if err := skillSetupMkdirAll(filepath.Dir(item.original), 0o755); err != nil {
+			restoreErr = errors.Join(restoreErr, fmt.Errorf("创建 Skill 恢复目录失败 %s: %w；备份保留于 %s", filepath.Dir(item.original), err, item.backup))
+			continue
+		}
+		if err := skillSetupPublishRename(item.backup, item.original); err != nil {
+			restoreErr = errors.Join(restoreErr, fmt.Errorf("恢复原 Skill 失败 %s: %w；备份保留于 %s", item.original, err, item.backup))
+		}
+	}
+	return restoreErr
+}
+
+func backupSkillSetupTarget(home string, planned []skillSetupBackup, out io.Writer) ([]skillSetupBackedUpDir, error) {
+	backups := make([]skillSetupBackedUpDir, 0, len(planned))
+	for _, item := range planned {
+		backup, err := skillSetupBackupAndRemove(home, item.Path)
+		if err != nil {
+			if restoreErr := restoreSkillSetupTarget(nil, backups); restoreErr != nil {
+				return nil, errors.Join(err, fmt.Errorf("恢复已备份 Skill 失败: %w", restoreErr))
+			}
+			return nil, err
+		}
+		if backup != "" {
+			backups = append(backups, skillSetupBackedUpDir{original: item.Path, backup: backup})
+		}
+		switch item.Reason {
+		case skillSetupBackupMutual:
+			fmt.Fprintf(out, "  × 已备份并清理对面模式残留 %s → %s\n", item.Path, backup)
+		case skillSetupBackupStale:
+			fmt.Fprintf(out, "  × 已备份并清理过期 skill %s → %s\n", item.Path, backup)
+		default:
+			fmt.Fprintf(out, "  × 已备份并移除同名 Skill %s → %s\n", item.Path, backup)
+		}
+	}
+	return backups, nil
+}
+
+func publishSkillSetupTarget(staged []skillSetupStagedDir, backups []skillSetupBackedUpDir) error {
+	published := make([]string, 0, len(staged))
+	for _, item := range staged {
+		// Record before rename so rollback also removes a destination created by
+		// a platform-specific partial failure.
+		published = append(published, item.dest)
+		if err := skillSetupPublishRename(item.staged, item.dest); err != nil {
+			publishErr := fmt.Errorf("发布 Skill 失败 %s: %w", item.dest, err)
+			if restoreErr := restoreSkillSetupTarget(published, backups); restoreErr != nil {
+				return errors.Join(publishErr, fmt.Errorf("Skill setup 回滚不完整: %w", restoreErr))
+			}
+			return publishErr
+		}
+	}
+	return nil
+}
+
 func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (installed, skipped int, err error) {
 	home, homeErr := skillSetupUserHomeDir()
 	perTarget := 1
@@ -1546,73 +1676,48 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 		perTarget = len(plan.MultiSkillNames)
 	}
 	for _, target := range plan.Targets {
-		backupFailed := false
-		for _, planned := range target.Backups {
-			if homeErr != nil {
-				if plan.Mode == skillSetupModeMono {
-					fmt.Fprintf(errOut, "  ✗ 无法解析 HOME，跳过刷新（保留原目录） %s: %v\n", target.Destination, homeErr)
-				} else {
-					fmt.Fprintf(errOut, "  ✗ 无法解析 HOME，跳过整个 Agent 目标 %s: %v\n", target.Destination, homeErr)
-				}
-				backupFailed = true
-				break
+		if len(target.Backups) > 0 && homeErr != nil {
+			if plan.Mode == skillSetupModeMono {
+				fmt.Fprintf(errOut, "  ✗ 无法解析 HOME，跳过刷新（保留原目录） %s: %v\n", target.Destination, homeErr)
+			} else {
+				fmt.Fprintf(errOut, "  ✗ 无法解析 HOME，跳过整个 Agent 目标 %s: %v\n", target.Destination, homeErr)
 			}
-			backup, backupErr := skillSetupBackupAndRemove(home, planned.Path)
-			if backupErr != nil {
-				switch planned.Reason {
-				case skillSetupBackupMutual:
-					fmt.Fprintf(errOut, "  ✗ 互斥清理失败，跳过整个 Agent 目标 %s: %v\n", target.Destination, backupErr)
-				case skillSetupBackupStale:
-					fmt.Fprintf(errOut, "  ✗ 过期 Skill 备份失败，跳过整个 Agent 目标 %s: %v\n", target.Destination, backupErr)
-				default:
-					fmt.Fprintf(errOut, "  ✗ 备份失败，跳过整个 Agent 目标 %s: %v\n", target.Destination, backupErr)
-				}
-				backupFailed = true
-				break
-			}
-			switch planned.Reason {
-			case skillSetupBackupMutual:
-				fmt.Fprintf(out, "  × 已备份并清理对面模式残留 %s → %s\n", planned.Path, backup)
-			case skillSetupBackupStale:
-				fmt.Fprintf(out, "  × 已备份并清理过期 skill %s → %s\n", planned.Path, backup)
-			default:
-				fmt.Fprintf(out, "  × 已备份并移除同名 Skill %s → %s\n", planned.Path, backup)
-			}
-		}
-		if backupFailed {
 			skipped += perTarget
 			continue
 		}
-		if plan.Mode == skillSetupModeMono {
-			if mkdirErr := skillSetupMkdirAll(filepath.Dir(target.Destination), 0o755); mkdirErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 父目录创建失败 %s: %v\n", target.Destination, mkdirErr)
-				skipped++
-				continue
-			}
-			if copyErr := skillSetupCopyDir(plan.Source, target.Destination); copyErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 拷贝失败 %s: %v\n", target.Destination, copyErr)
-				skipped++
-				continue
-			}
-			fmt.Fprintf(out, "  ✓ %s\n", target.Destination)
-			installed++
-			continue
-		}
-		if mkdirErr := skillSetupMkdirAll(target.Destination, 0o755); mkdirErr != nil {
-			fmt.Fprintf(errOut, "  ✗ Agent 目录创建失败 %s: %v\n", target.Destination, mkdirErr)
+
+		stageRoot, staged, stageErr := stageSkillSetupTarget(plan, target)
+		if stageErr != nil {
+			fmt.Fprintf(errOut, "  ✗ Skill staging 失败，保留原集合 %s: %v\n", target.Destination, stageErr)
 			skipped += perTarget
 			continue
 		}
-		for _, name := range plan.MultiSkillNames {
-			subDest := filepath.Join(target.Destination, name)
-			if publishErr := publishDWSManagedSkillDir(filepath.Join(plan.Source, name), subDest); publishErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 安装失败 %s: %v\n", subDest, publishErr)
-				skipped++
-				continue
+		backups, backupErr := backupSkillSetupTarget(home, target.Backups, out)
+		if backupErr != nil {
+			if cleanupErr := skillSetupRemoveAll(stageRoot); cleanupErr != nil {
+				backupErr = errors.Join(backupErr, fmt.Errorf("清理 Skill staging 失败 %s: %w", stageRoot, cleanupErr))
 			}
-			fmt.Fprintf(out, "  ✓ %s\n", subDest)
-			installed++
+			fmt.Fprintf(errOut, "  ✗ Skill 备份失败，已执行回滚，跳过整个 Agent 目标 %s: %v\n", target.Destination, backupErr)
+			skipped += perTarget
+			continue
 		}
+		publishErr := publishSkillSetupTarget(staged, backups)
+		cleanupErr := skillSetupRemoveAll(stageRoot)
+		if publishErr != nil {
+			if cleanupErr != nil {
+				publishErr = errors.Join(publishErr, fmt.Errorf("清理 Skill staging 失败 %s: %w", stageRoot, cleanupErr))
+			}
+			fmt.Fprintf(errOut, "  ✗ Skill 发布失败，已执行回滚，跳过整个 Agent 目标 %s: %v\n", target.Destination, publishErr)
+			skipped += perTarget
+			continue
+		}
+		if cleanupErr != nil {
+			fmt.Fprintf(errOut, "  ⚠️  Skill staging 清理失败 %s: %v\n", stageRoot, cleanupErr)
+		}
+		for _, item := range staged {
+			fmt.Fprintf(out, "  ✓ %s\n", item.dest)
+		}
+		installed += perTarget
 	}
 	return installed, skipped, nil
 }

@@ -183,11 +183,12 @@ func TestCrossPlatformCoverageSkillSetupMigratesLegacySharedAfterReplacement(t *
 		if err != nil || installed != 0 || skipped != 1 {
 			t.Fatalf("failed replacement = %d/%d, err=%v", installed, skipped, err)
 		}
-		if _, err := os.Stat(failureLegacy); !os.IsNotExist(err) {
-			t.Fatalf("failed replacement should leave the recoverable legacy copy in the backup area: %v", err)
+		got, readErr := os.ReadFile(filepath.Join(failureLegacy, "SKILL.md"))
+		if readErr != nil || string(got) != "legacy\n" {
+			t.Fatalf("failed replacement changed the live legacy copy: %q, err=%v", got, readErr)
 		}
-		if !strings.Contains(failureOut.String(), "已备份并清理过期 skill") {
-			t.Fatalf("failed replacement did not report the recoverable legacy backup: %s", failureOut.String())
+		if !strings.Contains(failureErr.String(), "Skill staging 失败，保留原集合") {
+			t.Fatalf("failed replacement did not report preserved live set: %s", failureErr.String())
 		}
 	})
 }
