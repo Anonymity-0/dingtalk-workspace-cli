@@ -1893,7 +1893,9 @@ func devAppCommandResult(result executor.Result) output.CommandResult {
 	} else if meta != nil {
 		successOptions = append(successOptions, output.WithMeta(meta))
 		return output.Success(devAppDataWithoutPagination(data), successOptions...)
-	} else if devAppToolRequiresPagination(result.Invocation.Tool) {
+	} else if devAppToolRequiresPagination(result.Invocation.Tool) && !result.Invocation.DryRun {
+		// A dry-run payload is a completed local invocation preview, not a
+		// server list response. Only real responses must prove pagination.
 		return output.Failure(&output.ErrorInfo{
 			Type:    "api",
 			Subtype: "pagination_inconsistent",

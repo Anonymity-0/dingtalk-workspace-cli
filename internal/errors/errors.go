@@ -19,6 +19,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 	"time"
 
@@ -514,7 +515,7 @@ func PrintHumanAt(w io.Writer, err error, v Verbosity) error {
 			lines = append(lines, tui.Cyan("Hint: "+friendlyHint))
 		}
 		if actionURL != "" {
-			lines = append(lines, tui.White("Action: 开启地址: "+actionURL))
+			lines = append(lines, tui.White("Action: 处理入口: "+actionURL))
 		}
 	}
 
@@ -594,7 +595,7 @@ func PrintHumanAt(w io.Writer, err error, v Verbosity) error {
 
 func serverGuidance(diag ServerDiagnostics) (string, string) {
 	friendlyHint := strings.TrimSpace(diag.FriendlyHint)
-	actionURL := strings.TrimSpace(diag.ActionURL)
+	actionURL := safeServerActionURL(diag.ActionURL)
 	if friendlyHint == "" || actionURL == "" {
 		switch diag.ServerErrorCode {
 		case "TOKEN_VERIFIED_FAILED", "CLI_ORG_NOT_AUTHORIZED":
@@ -613,6 +614,19 @@ func serverGuidance(diag ServerDiagnostics) (string, string) {
 // adapters so legacy JSON and unified-result errors stay semantically aligned.
 func ServerGuidance(diag ServerDiagnostics) (string, string) {
 	return serverGuidance(diag)
+}
+
+func safeServerActionURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || !strings.EqualFold(parsed.Scheme, "https") ||
+		parsed.Hostname() == "" || parsed.User != nil {
+		return ""
+	}
+	return parsed.String()
 }
 
 func category(err error) string {

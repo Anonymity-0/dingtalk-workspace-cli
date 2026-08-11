@@ -148,6 +148,19 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 				t.Fatalf("missing pagination envelope=%+v", env)
 			}
 		})
+
+		t.Run("dry run preview needs no server pagination "+tool, func(t *testing.T) {
+			result := DevAppCommandResultFromPayload(tool, map[string]any{
+				"invocation": map[string]any{"tool": tool},
+			}, true)
+			env, err := output.EnvelopeFromResult(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if env.Outcome != output.OutcomeSuccess || !env.DryRun || env.Meta != nil {
+				t.Fatalf("dry-run preview envelope=%+v", env)
+			}
+		})
 	}
 
 	t.Run("partial", func(t *testing.T) {
