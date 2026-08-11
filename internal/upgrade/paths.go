@@ -195,8 +195,8 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 //   - dingtalk-shared is mandatory whenever it exists in the bundle.
 //   - legacy zip with no multi tree → mono refresh path (unchanged fallback)
 //
-// Fresh install defaults to multi with opt-in mono via
-// `dws skill setup --mode mono --yes`.
+// Fresh install defaults to multi with opt-in mono via the interactive
+// `dws skill setup --mode mono` flow.
 //
 // Strategy (matches npm install.js installSkillsToHomes):
 //   - ~/.agents/skills/ is ALWAYS updated (primary install location)

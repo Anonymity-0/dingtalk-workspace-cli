@@ -117,7 +117,7 @@ JavaScript 四种语言：
 │ L3 分发面（7 个，全部退化为 bootstrap）                            │
 │   install.sh / install.ps1 / npm install.js / install-skills.sh /│
 │   install-event.sh / install-devapp.sh / Homebrew caveats        │
-│   职责：装二进制 → exec `dws skill setup --mode X --yes`           │
+│   职责：装二进制 → 调用 setup(mode=X, non_interactive=true)        │
 │         └─ 失败 → 冻结的内嵌 fallback 拷贝（一档，不再演进）        │
 ├──────────────────────────────────────────────────────────────────┤
 │ L2 单一安装引擎（Go，唯二入口）                                    │
@@ -160,8 +160,8 @@ setup / upgrade / 测试共用（对应《迁移计划》P0c-1）：
 
 ### 2.3 安装逻辑单引擎化：脚本退化为 bootstrap
 
-**终态形态**：每个安装脚本只做两件事——装二进制、执行
-`dws skill setup --mode <resolved> --yes`（mode 解析仍允许脚本做，因为它
+**终态形态**：每个安装脚本只做两件事——装二进制、以已解析 mode 非交互调用
+setup 引擎（记作 `setup(mode=<resolved>, non_interactive=true)`；mode 解析仍允许脚本做，因为它
 要处理自己的 env/flag；也可以更进一步把 `DWS_SKILL_MODE` 透传给 setup）。
 执行失败（二进制跑不起来、setup 非 0 退出）时，降级到**冻结的内嵌
 fallback 拷贝逻辑一档**——即今天的拷贝实现原样保留但标记"不再演进"，
@@ -171,9 +171,9 @@ fallback 拷贝逻辑一档**——即今天的拷贝实现原样保留但标记
 
 | 面 | 二进制可得性 | 可行性 | 风险与对策 |
 |---|---|---|---|
-| install.sh | `main` 先 `install_binary` 后 `install_skills`（`install.sh:830-831`），二进制就在 `$INSTALL_DIR` | ✅ 直接调 `"$INSTALL_DIR/dws" skill setup --mode "$SKILL_MODE" --yes` | `DWS_SKILLS_ONLY=1` 时不装二进制 → 先 `command -v dws`，无则走 fallback。curl 下载不带 quarantine 属性，macOS 可直接执行。风险低 |
+| install.sh | `main` 先 `install_binary` 后 `install_skills`（`install.sh:830-831`），二进制就在 `$INSTALL_DIR` | ✅ 安装器以已解析 mode 非交互调用 setup 引擎 | `DWS_SKILLS_ONLY=1` 时不装二进制 → 先 `command -v dws`，无则走 fallback。curl 下载不带 quarantine 属性，macOS 可直接执行。风险低 |
 | install.ps1 | 同序（`Install-Binary`:337 → `Install-Skills`:622，main 入口 `:700`） | ✅ 调 `& $installDir\dws.exe skill setup ...` | ExecutionPolicy 约束的是 .ps1 脚本本身，**子进程 dws.exe 不受其限制**；AppLocker/WDAC 环境可能拦未签名二进制——但那种环境 dws 本身也跑不了，fallback 拷贝仍必要。风险低-中 |
-| npm install.js | postinstall 已把平台二进制解到 `vendor/`（`install.js:260`）再装 skill（`:271-280`） | ✅ `execFileSync(path.join(vendorDir,'dws'), ['skill','setup','--mode',m,'--yes'])` | `npm i --ignore-scripts` 时 postinstall 整体不跑（现状如此，非新增风险）；部分 CI 以 root 跑生命周期脚本权限怪异；Windows 用 `dws.exe`。风险中，fallback 必须保留 |
+| npm install.js | postinstall 已把平台二进制解到 `vendor/`（`install.js:260`）再装 skill（`:271-280`） | ✅ 通过 `execFileSync` 以已解析 mode 非交互调用 setup 引擎 | `npm i --ignore-scripts` 时 postinstall 整体不跑（现状如此，非新增风险）；部分 CI 以 root 跑生命周期脚本权限怪异；Windows 用 `dws.exe`。风险中，fallback 必须保留 |
 | install-skills.sh | skills-only 面，不装二进制 | ✅ `command -v dws` 有则调引擎，无则 fallback | 本质是"刷新 skill"路径，有 dws 才谈得上刷新。风险低 |
 | install-event.sh | 装二进制 + 单 skill（dingtalk-event + mono dws） | ⚠️ 有条件 | `EVENT_VERSION` 可与已装二进制版本不同（尤其 `DWS_SKILLS_ONLY=1`），embed 与目标 zip 可能错配；且当前同时装 mono+multi 的语义（`:171-172`）需先按 1.2-4 收敛。**最后迁移**，迁移前先把 dingtalk-event 纳入 embed 并改成 `-s event` 调引擎 |
 | install-devapp.sh(+ps1) | 同上（dingtalk-dev） | ⚠️ 有条件 | 同 install-event。风险中-高，最后迁移 |
