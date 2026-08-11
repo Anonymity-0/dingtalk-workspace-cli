@@ -176,7 +176,11 @@ func assertChatCatalogCompleteLeafContracts(t testing.TB) {
 		"chat mute-red-envelope",
 	} {
 		leaf := executeShortcutSchemaQuery(t, "--cli-path", cliPath)
-		assertSchemaLeafParameterRequired(t, leaf, cliPath, "conversation-id", true)
+		assertSchemaLeafParameterRequired(t, leaf, cliPath, "conversation-id", false)
+		assertSchemaLeafConstraints(t, leaf, cliPath, map[string]any{
+			"require_one_of":     [][]string{{"conversation-id", "id", "chat"}},
+			"mutually_exclusive": [][]string{{"conversation-id", "id", "chat"}},
+		})
 	}
 
 	markRead := executeShortcutSchemaQuery(t, "--cli-path", "chat mark-read")
