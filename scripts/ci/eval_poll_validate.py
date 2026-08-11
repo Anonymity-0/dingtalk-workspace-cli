@@ -33,9 +33,9 @@ def validate_comment_author(comment: dict) -> bool:
     return True
 
 
-def validate_run_id(run_id: str, repo: str = REPO) -> bool:
+def validate_run_id(run_id, repo: str = REPO) -> bool:
     """校验 run_id 对应真实存在且成功完成的 workflow run。"""
-    if not run_id or not run_id.isdigit():
+    if not isinstance(run_id, str) or not run_id.isdigit():
         return False
     result = subprocess.run(
         ["gh", "api", f"repos/{repo}/actions/runs/{run_id}",
@@ -75,15 +75,37 @@ def validate_pr_head(pr_number: str, expected_sha: str, repo: str = REPO) -> boo
     return True
 
 
+_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+_PRODUCTS_RE = re.compile(r"^[a-zA-Z0-9_,.-]+$")
+
+
 def extract_payload(body: str) -> Optional[dict]:
-    """从评论 body 提取 eval-dispatch JSON payload。"""
+    """从评论 body 提取 eval-dispatch JSON payload，严格要求为合法 dict 且字段类型正确。"""
     match = re.search(r"<!-- eval-dispatch: ({.*?}) -->", body)
     if not match:
         return None
     try:
-        return json.loads(match.group(1))
-    except json.JSONDecodeError:
+        data = json.loads(match.group(1))
+    except (json.JSONDecodeError, ValueError):
         return None
+    if not isinstance(data, dict):
+        return None
+    pr_number = data.get("pr_number")
+    if not isinstance(pr_number, str) or not pr_number.isdigit():
+        return None
+    pr_head_sha = data.get("pr_head_sha")
+    if not isinstance(pr_head_sha, str) or not _SHA_RE.match(pr_head_sha):
+        return None
+    products = data.get("products")
+    if not isinstance(products, str) or not _PRODUCTS_RE.match(products):
+        return None
+    run_id = data.get("run_id")
+    if not isinstance(run_id, str) or not run_id.isdigit():
+        return None
+    cases_ref = data.get("cases_ref")
+    if not isinstance(cases_ref, str):
+        return None
+    return data
 
 
 def validate_comment(comment: dict, verify_run: bool = True, verify_pr: bool = True) -> Optional[dict]:
