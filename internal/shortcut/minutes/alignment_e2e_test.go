@@ -10,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -106,6 +107,30 @@ func TestCrossPlatformCoverageMinutesSearchPaginatesFiltersAndRejectsUnknownE2E(
 	}
 	if calls := caller.arguments["minutes/list_by_keyword_and_time_range"]; len(calls) != 2 || calls[1]["nextToken"] != "n2" {
 		t.Fatalf("search calls=%#v", calls)
+	}
+
+	for _, test := range []struct {
+		scope     string
+		belonging string
+	}{
+		{scope: "mine", belonging: "createdByMe"},
+		{scope: "shared", belonging: "sharedToMe"},
+		{scope: "all", belonging: "noLimit"},
+	} {
+		t.Run("scope "+test.scope, func(t *testing.T) {
+			scoped := &minutesE2ECaller{responses: map[string][]string{
+				"minutes/list_by_keyword_and_time_range": {`{"success":true,"result":{"itemList":[],"hasNext":false}}`},
+			}}
+			payload, _, err := runMinutesAlignmentCLI(t, scoped, "minutes", "+search", "--query", "needle", "--scope", test.scope, "--limit", "1")
+			if err != nil || payload["count"] != float64(0) || payload["complete"] != true {
+				t.Fatalf("scope %s payload=%#v err=%v", test.scope, payload, err)
+			}
+			calls := scoped.arguments["minutes/list_by_keyword_and_time_range"]
+			want := map[string]any{"belongingConditionId": test.belonging, "keyword": "needle", "maxResults": 1}
+			if len(calls) != 1 || !reflect.DeepEqual(calls[0], want) {
+				t.Fatalf("scope %s calls=%#v, want exactly %#v", test.scope, calls, want)
+			}
+		})
 	}
 
 	unknown := &minutesE2ECaller{responses: map[string][]string{"minutes/list_by_keyword_and_time_range": {`{"success":true,"result":{}}`}}}

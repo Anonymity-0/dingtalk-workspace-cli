@@ -224,7 +224,7 @@ func executeMinutesSearch(rt *shortcut.RuntimeContext) error {
 	if err != nil {
 		return err
 	}
-	belonging := map[string]string{"mine": "created", "shared": "shared", "all": "noLimit"}[rt.Str("scope")]
+	belonging := map[string]string{"mine": "createdByMe", "shared": "sharedToMe", "all": "noLimit"}[rt.Str("scope")]
 	token := rt.Str("cursor")
 	seenTokens := map[string]bool{}
 	seenIDs := map[string]bool{}
