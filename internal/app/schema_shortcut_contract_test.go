@@ -205,6 +205,9 @@ func assertChatCatalogCompleteLeafContracts(t testing.TB) {
 		"require_one_of":     [][]string{{"target", "receiver"}},
 		"mutually_exclusive": [][]string{{"target", "receiver"}},
 	})
+
+	auditJoin := executeShortcutSchemaQuery(t, "--cli-path", "chat group audit-join-validation")
+	assertSchemaLeafParameterEnum(t, auditJoin, "chat group audit-join-validation", "status", []string{"AuditApprove", "AuditDelete"})
 }
 
 func assertSchemaLeafParameterRequired(t testing.TB, leaf map[string]any, cliPath, name string, want bool) {
@@ -216,6 +219,18 @@ func assertSchemaLeafParameterRequired(t testing.TB, leaf map[string]any, cliPat
 	}
 	if got, _ := parameter["required"].(bool); got != want {
 		t.Fatalf("%s --%s required = %#v, want %v", cliPath, name, parameter["required"], want)
+	}
+}
+
+func assertSchemaLeafParameterEnum(t testing.TB, leaf map[string]any, cliPath, name string, want []string) {
+	t.Helper()
+	parameters := schemaContractMap(leaf["parameters"])
+	parameter := parameters[name]
+	if parameter == nil {
+		t.Fatalf("%s missing --%s parameter: %#v", cliPath, name, parameters)
+	}
+	if got := schemaContractStringSlice(parameter["enum"]); !schemaContractJSONEqual(got, want) {
+		t.Fatalf("%s --%s enum = %#v, want %#v", cliPath, name, got, want)
 	}
 }
 

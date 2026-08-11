@@ -8262,12 +8262,16 @@ status 可选值:
 			if err != nil {
 				return fmt.Errorf("--record-id must be a valid integer: %w", err)
 			}
+			status := mustGetFlag(cmd, "status")
+			if status != "AuditApprove" && status != "AuditDelete" {
+				return fmt.Errorf("unsupported audit status %q, must be one of: AuditApprove, AuditDelete", status)
+			}
 			toolArgs := map[string]any{
 				"openConversationId": mustGetFlag(cmd, "group"),
 				"applyRecordId":      recordID,
 				"applicantUid":       mustGetFlag(cmd, "applicant"),
 				"inviterUid":         mustGetFlag(cmd, "inviter"),
-				"status":             mustGetFlag(cmd, "status"),
+				"status":             status,
 			}
 			if v, _ := cmd.Flags().GetString("description"); v != "" {
 				toolArgs["auditDescription"] = v
@@ -8317,7 +8321,7 @@ status 可选值:
 				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "inviter", Property: "inviterUid", Required: boolPtr(true)},
 				{Name: "record-id", Property: "applyRecordId", Required: boolPtr(true), InterfaceType: "integer"},
-				{Name: "status", Property: "status", Required: boolPtr(true), Enum: []string{"AuditApprove", "AuditDelete", "AuditIgnore", "AuditRefuse", "AuditBlock"}},
+				{Name: "status", Property: "status", Required: boolPtr(true), Enum: []string{"AuditApprove", "AuditDelete"}},
 			},
 		},
 	})
