@@ -5575,27 +5575,41 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 		Use:   "send-card",
 		Short: "创建并推送流式卡片",
 		Long: `向群聊或单聊创建并推送流式卡片。群聊传 --group，单聊传 --receiver，二者互斥。
+群聊创建卡片时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人。
 创建时无需传入卡片内容，后续通过 update-card 更新内容。
 
 注意：send-card 必须和 update-card 搭配使用。发送卡片后，使用返回的 bizId 调用 update-card 更新内容，
 最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。
 flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)。`,
 		Example: `  dws chat message send-card --group <openConversationId>
+  dws chat message send-card --group <openConversationId> --at-open-dingtalk-ids <openDingTalkId>
+  dws chat message send-card --group <openConversationId> --at-all
   dws chat message send-card --receiver <openDingTalkId>
   # 查询群 ID: dws chat search --query "群名"
   # 查询人员: dws contact user search --keyword "姓名" --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			groupID := flagOrFallback(cmd, "group", "conversation-id", "id", "chat")
 			receiver, _ := cmd.Flags().GetString("receiver")
+			atOpenDingTalkIDs := uniqueNonEmptyStrings(parseCSVValues(mustGetFlag(cmd, "at-open-dingtalk-ids")))
+			atAll, _ := cmd.Flags().GetBool("at-all")
 			if groupID == "" && receiver == "" {
 				return fmt.Errorf("--group or --receiver is required")
 			}
 			if groupID != "" && receiver != "" {
 				return fmt.Errorf("--group and --receiver are mutually exclusive")
 			}
+			if groupID == "" && (len(atOpenDingTalkIDs) > 0 || atAll) {
+				return fmt.Errorf("--at-open-dingtalk-ids and --at-all are only supported with --group")
+			}
 			toolArgs := map[string]any{}
 			if groupID != "" {
 				toolArgs["openConversationId"] = groupID
+				if len(atOpenDingTalkIDs) > 0 {
+					toolArgs["atOpenDingTalkIds"] = atOpenDingTalkIDs
+				}
+				if atAll {
+					toolArgs["atAll"] = true
+				}
 			}
 			if receiver != "" {
 				resolved, err := resolveOpenDingTalkID(cmd.Context(), receiver)
@@ -5620,19 +5634,21 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				CLIPath:        "chat message send-card",
 				PrimaryCLIPath: "chat message send-card",
 			},
-			Description: "创建并向群聊或单聊发送互动卡片",
+			Description: "创建并向群聊或单聊发送互动卡片；群聊创建时可 @成员或 @所有人",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
 				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "create_and_send_card"},
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "创建并向群聊或单聊发送互动卡片",
-				UseWhen:      []string{"需要卡片式交互且已准备接收会话或用户时"},
+				AgentSummary: "创建并向群聊或单聊发送互动卡片；群聊创建时可 @成员或 @所有人",
+				UseWhen:      []string{"需要创建卡片且已准备接收会话或用户时；群聊创建可同时指定 @成员或 @所有人"},
 				AvoidWhen:    []string{"只发送普通文本时使用 send 或 send-by-bot"},
 				Examples:     []string{"dws chat message send-card --group <openConversationId>"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "at-all", Property: "atAll", Required: boolPtr(false), InterfaceType: "boolean"},
+				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array"},
 				{Name: "group", Property: "openConversationId"},
 				{Name: "receiver", Property: "receiverOpenDingTalkId"},
 			},
@@ -5640,6 +5656,8 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	})
 	chatMessageSendCardCmd.Flags().String("group", "", "群聊 openConversationId（群聊时必填，与 --receiver 互斥）")
 	chatMessageSendCardCmd.Flags().String("receiver", "", "单聊接收者 openDingTalkId（单聊时必填，与 --group 互斥）")
+	chatMessageSendCardCmd.Flags().String("at-open-dingtalk-ids", "", "群聊创建卡片时 @ 的 openDingTalkId 列表，逗号分隔（仅与 --group 一起使用）")
+	chatMessageSendCardCmd.Flags().Bool("at-all", false, "群聊创建卡片时 @ 所有人（仅与 --group 一起使用）")
 
 	chatMessageUpdateCardCmd := &cobra.Command{
 		Use:   "update-card",
