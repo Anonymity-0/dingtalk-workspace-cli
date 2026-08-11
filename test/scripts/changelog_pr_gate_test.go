@@ -318,6 +318,100 @@ func TestReleaseFragmentPolicyRejectsInvalidActiveFragmentAndWrongArchiveVersion
 	})
 }
 
+const changelogGateValidFragment = "---\ncategory: Added\n---\n\n- Chat reply mentions.\n"
+
+// A top-level `.changes/` entry that violates the naming rule or is not a
+// regular 100644 blob must fail the gate. Selecting the trigger by the legal
+// name pattern used to let these entries through untouched, which both bypassed
+// validation here and broke the next PR that added a legal fragment.
+func TestReleaseFragmentPolicyRejectsIllegalFragmentNamesAndModes(t *testing.T) {
+	tests := []struct {
+		name     string
+		seed     func(t *testing.T, root string)
+		wantPath string
+	}{
+		{
+			name: "uppercase fragment name",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/Chat.md", changelogGateValidFragment, 0o644)
+			},
+			wantPath: ".changes/Chat.md",
+		},
+		{
+			name: "fragment name with a space",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/chat reply.md", changelogGateValidFragment, 0o644)
+			},
+			wantPath: ".changes/chat reply.md",
+		},
+		{
+			name: "fragment name starting with a dash",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/-chat.md", changelogGateValidFragment, 0o644)
+			},
+			wantPath: ".changes/-chat.md",
+		},
+		{
+			name: "non-markdown entry",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/notes.txt", changelogGateValidFragment, 0o644)
+			},
+			wantPath: ".changes/notes.txt",
+		},
+		{
+			name: "symlinked fragment",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/1234-chat.md", changelogGateValidFragment, 0o644)
+				if err := os.Symlink("1234-chat.md", filepath.Join(root, ".changes", "5678-alias.md")); err != nil {
+					t.Fatalf("Symlink release fragment: %v", err)
+				}
+			},
+			wantPath: ".changes/5678-alias.md",
+		},
+		{
+			name: "executable fragment",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/1234-chat.md", changelogGateValidFragment, 0o755)
+			},
+			wantPath: ".changes/1234-chat.md",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repo := newChangelogGateRepo(t)
+			test.seed(t, repo.root)
+			repo.commit(t, test.name)
+
+			output, err := repo.runFragmentPolicy(t, repo.base, "HEAD")
+			if err == nil {
+				t.Fatalf("illegal release fragment entry passed:\n%s", output)
+			}
+			if !strings.Contains(output, ".changes/ accepts only") {
+				t.Fatalf("gate output missing the entry contract:\n%s", output)
+			}
+			if !strings.Contains(output, test.wantPath) {
+				t.Fatalf("gate output missing offending entry %q:\n%s", test.wantPath, output)
+			}
+		})
+	}
+}
+
+func TestReleaseFragmentPolicyAcceptsLegalFragmentAlongsideReadmeAndArchive(t *testing.T) {
+	repo := newChangelogGateRepo(t)
+	changelogGateWrite(t, repo.root, ".changes/README.md", "# Release fragments\n", 0o644)
+	changelogGateWrite(t, repo.root, ".changes/released/1.0.0/0001-seed.md", changelogGateValidFragment, 0o644)
+	repo.commit(t, "seed fragment directory")
+	base := strings.TrimSpace(changelogGateGit(t, repo.root, "rev-parse", "HEAD"))
+
+	changelogGateWrite(t, repo.root, ".changes/1234-chat.md", changelogGateValidFragment, 0o644)
+	repo.commit(t, "add release fragment")
+
+	if output, err := repo.runFragmentPolicy(t, base, "HEAD"); err != nil {
+		t.Fatalf("legal release fragment rejected: %v\noutput:\n%s", err, output)
+	}
+}
+
 func TestChangelogPRContentOnlyStillValidatesReleaseNotes(t *testing.T) {
 	tests := []struct {
 		name       string

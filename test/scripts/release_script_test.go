@@ -1715,6 +1715,73 @@ func TestReleasePrepareChangelogRejectsInvalidReleaseFragment(t *testing.T) {
 	}
 }
 
+const releaseValidFragment = "---\ncategory: Added\n---\n\n- **Chat reply mentions** (#1234) — supports selected member mentions.\n"
+
+// The renderer used to skip anything `find -type f -name '*.md'` did not match,
+// so a symlinked or illegally named fragment was dropped from the notes without
+// a word. Every unexpected top-level entry must fail the release instead.
+func TestReleasePrepareChangelogRejectsUnsafeReleaseFragmentEntries(t *testing.T) {
+	tests := []struct {
+		name    string
+		seed    func(t *testing.T, changesDir string)
+		wantMsg string
+	}{
+		{
+			name: "symlinked fragment",
+			seed: func(t *testing.T, changesDir string) {
+				mustWriteFile(t, filepath.Join(changesDir, "1234-chat.md"), []byte(releaseValidFragment), 0o644)
+				if err := os.Symlink("1234-chat.md", filepath.Join(changesDir, "5678-alias.md")); err != nil {
+					t.Fatalf("Symlink release fragment: %v", err)
+				}
+			},
+			wantMsg: "not a symbolic link",
+		},
+		{
+			name: "fragment name with a space",
+			seed: func(t *testing.T, changesDir string) {
+				mustWriteFile(t, filepath.Join(changesDir, "chat reply.md"), []byte(releaseValidFragment), 0o644)
+			},
+			wantMsg: "invalid release fragment filename",
+		},
+		{
+			name: "uppercase fragment name",
+			seed: func(t *testing.T, changesDir string) {
+				mustWriteFile(t, filepath.Join(changesDir, "Chat.md"), []byte(releaseValidFragment), 0o644)
+			},
+			wantMsg: "invalid release fragment filename",
+		},
+		{
+			name: "non-markdown entry",
+			seed: func(t *testing.T, changesDir string) {
+				mustWriteFile(t, filepath.Join(changesDir, "notes.txt"), []byte(releaseValidFragment), 0o644)
+			},
+			wantMsg: "invalid release fragment filename",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := newReleaseTestRepo(t)
+			releaseCopyFile(t, r.lib, filepath.Join(r.root, "scripts", "release", "release-lib.sh"), 0o644)
+			releaseCopyFile(t, r.prepare, filepath.Join(r.root, "scripts", "release", "prepare-changelog.sh"), 0o755)
+			releaseCopyFile(t, r.render, filepath.Join(r.root, "scripts", "release", "render-release-fragments.sh"), 0o755)
+			test.seed(t, filepath.Join(r.root, ".changes"))
+			r.commitAndPush(t, "add unsafe release fragment entry")
+
+			cmd := exec.Command("sh", filepath.Join(r.root, "scripts", "release", "prepare-changelog.sh"), "prerelease", "v1.0.1-beta.1")
+			cmd.Dir = r.root
+			cmd.Env = append(os.Environ(), "DWS_RELEASE_DATE=2026-07-11")
+			output, err := cmd.CombinedOutput()
+			if err == nil {
+				t.Fatalf("unsafe release fragment entry was accepted:\n%s", output)
+			}
+			if !strings.Contains(string(output), test.wantMsg) {
+				t.Fatalf("renderer output missing %q:\n%s", test.wantMsg, output)
+			}
+		})
+	}
+}
+
 func TestReleaseMirrorUsesChannelSpecificPointer(t *testing.T) {
 	sourceRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

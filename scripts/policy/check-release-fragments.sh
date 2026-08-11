@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+# Fragment names are matched with ASCII ranges, so keep collation deterministic.
+LC_ALL=C
+export LC_ALL
+
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 
 usage() { printf '%s\n' 'usage: check-release-fragments.sh BASE HEAD' >&2; }
@@ -90,6 +94,59 @@ else
 	fi
 fi
 
-if git -C "$ROOT" diff --no-ext-diff --name-only "$merge_base" "$head" -- .changes | grep -Eq '^\.changes/[a-z0-9][a-z0-9._-]*\.md$'; then
-  "$ROOT/scripts/release/render-release-fragments.sh" "$ROOT/.changes" >/dev/null
+# Any change to a top-level `.changes/` entry other than README.md must be
+# validated. Filtering this trigger by the legal fragment name pattern would let
+# an illegally named or non-regular entry skip validation entirely, and it would
+# then break the next unrelated PR that adds a legal fragment.
+if git -C "$ROOT" diff --no-ext-diff --name-only "$merge_base" "$head" -- .changes |
+  awk '
+    $0 !~ /^\.changes\/[^\/]+$/ { next }
+    $0 == ".changes/README.md" { next }
+    { found = 1 }
+    END { exit !found }
+  '; then
+  git -C "$ROOT" ls-tree "$head" -- .changes/ >"$tmp_root/head-entries"
+  awk '
+    {
+      mode = $1
+      type = $2
+      path = $0
+      sub(/^[^\t]*\t/, "", path)
+      name = path
+      sub(/^.*\//, "", name)
+      if (path == ".changes/README.md") {
+        if (mode == "100644" && type == "blob") next
+        print path
+        next
+      }
+      if (path == ".changes/released") {
+        if (type == "tree") next
+        print path
+        next
+      }
+      if (mode != "100644" || type != "blob") { print path; next }
+      if (name !~ /^[a-z0-9][a-z0-9._-]*\.md$/) { print path; next }
+    }
+  ' "$tmp_root/head-entries" >"$tmp_root/invalid-entries"
+  if [ -s "$tmp_root/invalid-entries" ]; then
+    printf '%s\n' 'error: .changes/ accepts only README.md, released/, and release fragments named <name>.md matching ^[a-z0-9][a-z0-9._-]*\.md$ stored as regular 100644 files' >&2
+    sed 's/^/  /' "$tmp_root/invalid-entries" >&2
+    exit 1
+  fi
+
+  # A release-seal branch is already held to the stricter rendered-notes
+  # comparison above, and its fragments have moved into the archive, so only an
+  # ordinary fragment change is re-rendered here.
+  if [ "$archive_changed" = false ]; then
+    head_changes="$tmp_root/head-changes"
+    mkdir -p "$head_changes"
+    awk '{ path = $0; sub(/^[^\t]*\t/, "", path); print path }' "$tmp_root/head-entries" |
+      while IFS= read -r path; do
+        case "$path" in
+          .changes/released) continue ;;
+        esac
+        git -C "$ROOT" show "$head:$path" >"$head_changes/${path#.changes/}"
+      done
+    "$ROOT/scripts/release/render-release-fragments.sh" "$head_changes" >/dev/null
+  fi
 fi

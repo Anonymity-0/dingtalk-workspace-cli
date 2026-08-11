@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+# Fragment names are matched with ASCII ranges, so keep collation deterministic.
+LC_ALL=C
+export LC_ALL
+
 CHANGES_DIR="${1:-.changes}"
 
 usage() {
@@ -14,8 +18,51 @@ tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/dws-release-fragments.XXXXXX")"
 cleanup() { rm -rf "$tmp_root"; }
 trap cleanup EXIT HUP INT TERM
 
-find "$CHANGES_DIR" -mindepth 1 -maxdepth 1 -type f -name '*.md' ! -name 'README.md' -print |
-  LC_ALL=C sort >"$tmp_root/files"
+# A fragment must be a regular file named ^[a-z0-9][a-z0-9._-]*\.md$. Anything
+# else is rejected rather than skipped, so a symlink or an illegally named
+# fragment can never be silently dropped from the rendered notes.
+validate_fragment_name() {
+  name="$1"
+  path="$2"
+  case "$name" in
+    *.md) ;;
+    *) printf 'invalid release fragment filename: %s\n' "$path" >&2; return 1 ;;
+  esac
+  case "$name" in
+    [a-z0-9]*) ;;
+    *) printf 'invalid release fragment filename: %s\n' "$path" >&2; return 1 ;;
+  esac
+  case "$name" in
+    *[!a-z0-9._-]*) printf 'invalid release fragment filename: %s\n' "$path" >&2; return 1 ;;
+  esac
+}
+
+find "$CHANGES_DIR" -mindepth 1 -maxdepth 1 -print | sort >"$tmp_root/entries"
+
+: >"$tmp_root/files"
+while IFS= read -r entry; do
+  base="${entry##*/}"
+  if [ "$base" = 'README.md' ]; then
+    continue
+  fi
+  if [ -L "$entry" ]; then
+    printf 'release fragment must be a regular file, not a symbolic link: %s\n' "$entry" >&2
+    exit 1
+  fi
+  if [ -d "$entry" ]; then
+    if [ "$base" = 'released' ]; then
+      continue
+    fi
+    printf 'unexpected directory in release fragments directory: %s\n' "$entry" >&2
+    exit 1
+  fi
+  if [ ! -f "$entry" ]; then
+    printf 'release fragment must be a regular file: %s\n' "$entry" >&2
+    exit 1
+  fi
+  validate_fragment_name "$base" "$entry"
+  printf '%s\n' "$entry" >>"$tmp_root/files"
+done <"$tmp_root/entries"
 
 [ -s "$tmp_root/files" ] || {
   printf '%s\n' 'no release fragments found; add .changes/<unique-name>.md before preparing a prerelease changelog' >&2
@@ -24,11 +71,7 @@ find "$CHANGES_DIR" -mindepth 1 -maxdepth 1 -type f -name '*.md' ! -name 'README
 
 validate_fragment() {
   fragment="$1"
-  base="$(basename "$fragment")"
-  case "$base" in
-    [a-z0-9]*.md) ;;
-    *) printf 'invalid release fragment filename: %s\n' "$fragment" >&2; return 1 ;;
-  esac
+  validate_fragment_name "${fragment##*/}" "$fragment"
 
   [ "$(sed -n '1p' "$fragment")" = '---' ] &&
     [ "$(sed -n '3p' "$fragment")" = '---' ] || {
