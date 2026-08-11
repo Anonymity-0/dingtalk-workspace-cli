@@ -1598,6 +1598,36 @@ func buildChatCrossOrgDataAuthArgs(cmd *cobra.Command) (map[string]any, error) {
 	return toolArgs, nil
 }
 
+func buildChatGroupShareInviteArgs(cmd *cobra.Command) (map[string]any, error) {
+	if err := validateRequiredFlags(cmd, "source"); err != nil {
+		return nil, err
+	}
+	target, _ := cmd.Flags().GetString("target")
+	receiver, _ := cmd.Flags().GetString("receiver")
+	if target == "" && receiver == "" {
+		return nil, fmt.Errorf("--target or --receiver is required")
+	}
+	if target != "" && receiver != "" {
+		return nil, fmt.Errorf("--target and --receiver are mutually exclusive")
+	}
+	toolArgs := map[string]any{
+		"sourceOpenConversationId": mustGetFlag(cmd, "source"),
+	}
+	if target != "" {
+		toolArgs["targetOpenConversationId"] = target
+	}
+	if receiver != "" {
+		toolArgs["receiverOpenDingTalkId"] = receiver
+	}
+	if v, _ := cmd.Flags().GetInt64("expires-seconds"); v > 0 || cmd.Flags().Changed("expires-seconds") {
+		toolArgs["expiresSeconds"] = v
+	}
+	if v, _ := cmd.Flags().GetString("uuid"); v != "" {
+		toolArgs["uuid"] = v
+	}
+	return toolArgs, nil
+}
+
 func appendChatChmodParams(cmd *cobra.Command, toolArgs map[string]any) error {
 	conversationID, _ := cmd.Flags().GetString("conversation-id")
 	openDingTalkID, _ := cmd.Flags().GetString("open-dingtalk-id")
@@ -2080,11 +2110,11 @@ func newChatCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "agentCode", Property: "agentCode", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "grantParams.openCid", Required: boolPtr(false)},
-				{Name: "grant-type", Property: "grantType", Required: boolPtr(false)},
+				{Name: "grant-type", Property: "grantType", Required: boolPtr(false), Enum: []string{"once", "session", "timed", "permanent"}},
 				{Name: "open-dingtalk-id", Property: "grantParams.openDingTalkId", Required: boolPtr(false)},
 				{Name: "permParam", Property: "grantParams", Required: boolPtr(false)},
-				{Name: "session-id", Property: "sessionId", Required: boolPtr(false)},
-				{Name: "ttl", Property: "ttl", Required: boolPtr(false)},
+				{Name: "session-id", Property: "sessionId", Required: boolPtr(false), RequiredWhen: "grant-type is session"},
+				{Name: "ttl", Property: "ttl", Required: boolPtr(false), RequiredWhen: "grant-type is timed"},
 				{Name: "user", Property: "grantParams.userId", Required: boolPtr(false)},
 			},
 		},
@@ -2123,10 +2153,15 @@ func newChatCommand() *cobra.Command {
 	chatDataAuthCrossOrgCmd.Flags().String("grant-type", "timed", "授权策略: once|session|timed|permanent")
 	chatDataAuthCrossOrgCmd.Flags().String("ttl", "24h", "timed 授权有效期，如 1h/4h/24h/7d")
 	chatDataAuthCrossOrgCmd.Flags().String("session-id", "", "session 授权的会话标识")
+	chatDataAuthCrossOrgCmd.Flags().BoolP("yes", "y", false, "确认执行跨组织 chat 数据授权")
 	DeclareLeafMetadata(chatDataAuthCrossOrgCmd, LeafSpec{
 		Safety: contract.SafetySpec{
-			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Effect: "write", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
+		},
+		Validate: func(cmd *cobra.Command, args []string) error {
+			_, err := buildChatCrossOrgDataAuthArgs(cmd)
+			return err
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2151,10 +2186,10 @@ func newChatCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "agentCode", Property: "agentCode", Required: boolPtr(false)},
 				{Name: "all", Property: "grantParams.targetOrgId", Required: boolPtr(false)},
-				{Name: "grant-type", Property: "grantType", Required: boolPtr(false)},
-				{Name: "session-id", Property: "sessionId", Required: boolPtr(false)},
+				{Name: "grant-type", Property: "grantType", Required: boolPtr(false), Enum: []string{"once", "session", "timed", "permanent"}},
+				{Name: "session-id", Property: "sessionId", Required: boolPtr(false), RequiredWhen: "grant-type is session"},
 				{Name: "target-org-id", Property: "grantParams.targetOrgId", Required: boolPtr(false)},
-				{Name: "ttl", Property: "ttl", Required: boolPtr(false)},
+				{Name: "ttl", Property: "ttl", Required: boolPtr(false), RequiredWhen: "grant-type is timed"},
 			},
 		},
 	})
@@ -8338,12 +8373,16 @@ status 可选值:
 			if err != nil {
 				return fmt.Errorf("--record-id must be a valid integer: %w", err)
 			}
+			status := mustGetFlag(cmd, "status")
+			if status != "AuditApprove" && status != "AuditDelete" {
+				return fmt.Errorf("unsupported audit status %q, must be one of: AuditApprove, AuditDelete", status)
+			}
 			toolArgs := map[string]any{
 				"openConversationId": mustGetFlag(cmd, "group"),
 				"applyRecordId":      recordID,
 				"applicantUid":       mustGetFlag(cmd, "applicant"),
 				"inviterUid":         mustGetFlag(cmd, "inviter"),
-				"status":             mustGetFlag(cmd, "status"),
+				"status":             status,
 			}
 			if v, _ := cmd.Flags().GetString("description"); v != "" {
 				toolArgs["auditDescription"] = v
@@ -8393,7 +8432,7 @@ status 可选值:
 				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "inviter", Property: "inviterUid", Required: boolPtr(true)},
 				{Name: "record-id", Property: "applyRecordId", Required: boolPtr(true), InterfaceType: "integer"},
-				{Name: "status", Property: "status", Required: boolPtr(true), Enum: []string{"AuditApprove", "AuditDelete", "AuditIgnore", "AuditRefuse", "AuditBlock"}},
+				{Name: "status", Property: "status", Required: boolPtr(true), Enum: []string{"AuditApprove", "AuditDelete"}},
 			},
 		},
 	})
@@ -9497,31 +9536,9 @@ status 可选值:
   dws chat group share-invite --source <openConversationId> --target <openConversationId> --expires-seconds 86400
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "source"); err != nil {
+			toolArgs, err := buildChatGroupShareInviteArgs(cmd)
+			if err != nil {
 				return err
-			}
-			target, _ := cmd.Flags().GetString("target")
-			receiver, _ := cmd.Flags().GetString("receiver")
-			if target == "" && receiver == "" {
-				return fmt.Errorf("--target or --receiver is required")
-			}
-			if target != "" && receiver != "" {
-				return fmt.Errorf("--target and --receiver are mutually exclusive")
-			}
-			toolArgs := map[string]any{
-				"sourceOpenConversationId": mustGetFlag(cmd, "source"),
-			}
-			if target != "" {
-				toolArgs["targetOpenConversationId"] = target
-			}
-			if receiver != "" {
-				toolArgs["receiverOpenDingTalkId"] = receiver
-			}
-			if v, _ := cmd.Flags().GetInt64("expires-seconds"); v > 0 || cmd.Flags().Changed("expires-seconds") {
-				toolArgs["expiresSeconds"] = v
-			}
-			if v, _ := cmd.Flags().GetString("uuid"); v != "" {
-				toolArgs["uuid"] = v
 			}
 			return callMCPToolOnServer("im", "share_group_invite_url", toolArgs)
 		},
@@ -9532,10 +9549,11 @@ status 可选值:
 	chatGroupShareInviteCmd.Flags().String("receiver", "", "接收分享消息的单聊用户 openDingTalkId（与 --target 二选一）")
 	chatGroupShareInviteCmd.Flags().Int64("expires-seconds", 0, "链接有效期（秒），0 表示永久有效，不传使用服务端默认值")
 	chatGroupShareInviteCmd.Flags().String("uuid", "", "消息幂等键（可选）")
+	chatGroupShareInviteCmd.Flags().BoolP("yes", "y", false, "确认分享群邀请链接")
 	DeclareLeafMetadata(chatGroupShareInviteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
