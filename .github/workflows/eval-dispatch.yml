@@ -1,9 +1,13 @@
 name: PR Eval Dispatch
 
-# `/eval <products> sha=<full-head-sha> [cases=<ref>]` PR 评论 → 触发内网评测流水线，报告由内网 bot 回贴。
-# 本 workflow 只在默认分支上下文运行，不 checkout、不执行 PR 代码；
-# maintainer 必须在 /eval 中显式记录已审阅的 PR head；权限与当前 head 校验
-# 通过后，内网 CI 只构建并执行该已审核 SHA。
+# `/eval <products> [sha=<full-head-sha>] [cases=<ref>]` PR 评论 → 触发内网评测流水线，报告由内网 bot 回贴。
+# 本 workflow 只在默认分支上下文运行，不 checkout、不执行 PR 代码。
+# 审核 SHA 规则：评测他人 PR 必须显式携带 sha=（审阅背书凭据，验证
+# 其恰为当前 open head）；评测自己创建的 PR 可省略，自动钉住派发时刻
+# 的当前 head（作者自背书，无第三方偷换窗口）；内网 CI 另以
+# FETCH_HEAD 校验兜底派发后的变更。
+# 授权两级：仓库 write/maintain/admin 可派发任意 PR；默认分支
+# .github/eval-allowlist.txt 名单内的用户仅可派发自己创建的 PR。
 # 触发通道与凭证全部经 secrets 注入，文件内不出现任何内网信息。
 
 on:
@@ -33,15 +37,18 @@ jobs:
       - name: Check out default branch tooling
         uses: actions/checkout@v4
 
-      - name: Verify commenter repository permission
+      - name: Verify commenter dispatch authorization
         env:
           GH_TOKEN: ${{ github.token }}
           COMMENTER: ${{ github.event.comment.user.login }}
+          PR_AUTHOR: ${{ github.event.issue.user.login }}
+          EVAL_ALLOWLIST_PATH: .github/eval-allowlist.txt
         run: |
-          permission_json="$(curl --fail --silent --show-error \
+          # 不用 --fail：非协作者查权限返回 404 错误体，交由 guard 走名单分支；硬网络错误降级为空对象同样 fail-closed
+          permission_json="$(curl --silent --show-error \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/collaborators/${COMMENTER}/permission")"
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/collaborators/${COMMENTER}/permission")" || permission_json='{}'
           printf '%s' "$permission_json" | python3 scripts/ci/eval_dispatch_guard.py permission
 
       - name: Parse /eval command
@@ -74,6 +81,7 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
           EXPECTED_PR_NUMBER: ${{ github.event.issue.number }}
           REVIEWED_SHA: ${{ steps.parse.outputs.reviewed_sha }}
+          COMMENTER: ${{ github.event.comment.user.login }}
         run: |
           pr_json="$(curl --fail --silent --show-error \
             -H "Authorization: Bearer ${GH_TOKEN}" \
