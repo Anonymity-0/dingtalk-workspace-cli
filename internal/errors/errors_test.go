@@ -341,6 +341,18 @@ func TestCrossPlatformCoveragePrintHumanIncludesServerGuidance(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageServerGuidanceAdapter(t *testing.T) {
+	t.Parallel()
+
+	hint, action := ServerGuidance(ServerDiagnostics{
+		FriendlyHint: "follow the recovery action",
+		ActionURL:    "https://example.test/recover",
+	})
+	if hint != "follow the recovery action" || action != "https://example.test/recover" {
+		t.Fatalf("ServerGuidance() = (%q, %q)", hint, action)
+	}
+}
+
 func TestCrossPlatformCoverageServerGuidanceSuppressesUnsafeActionURL(t *testing.T) {
 	t.Parallel()
 	for _, actionURL := range []string{
