@@ -746,6 +746,22 @@ func TestCrossPlatformCoverageChatAuditUsesUserIDs(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageChatAuditRejectsUnsupportedStatus(t *testing.T) {
+	caller := &chatChangedContractCaller{}
+	err := executeChatChangedContract(t, caller,
+		"group", "audit-join-validation",
+		"--group", "cid-1", "--record-id", "123", "--applicant", "user-a", "--inviter", "user-b", "--status", "AuditRefuse")
+	if err == nil {
+		t.Fatal("expected unsupported audit status error")
+	}
+	if !strings.Contains(err.Error(), `unsupported audit status "AuditRefuse"`) {
+		t.Fatalf("error = %v, want unsupported status", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("unsupported status must not call MCP: %#v", caller.calls)
+	}
+}
+
 func TestCrossPlatformCoverageChatSendResolvesUserBeforeDispatch(t *testing.T) {
 	caller := &chatChangedContractCaller{resolveUsers: true}
 	err := executeChatChangedContract(t, caller, "message", "send", "--user", "123", "--text", "hello")
