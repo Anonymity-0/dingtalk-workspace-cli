@@ -98,6 +98,20 @@ func TestCrossPlatformCoverageNormalizeSearchConversationScopeError(t *testing.T
 				Message: `{"success":false,"errorCode":"PARAM_ERROR","errorMsg":"未找到指定工具"}`,
 			},
 		},
+		{
+			name: "structured error without recognized facts",
+			err: &CLIError{
+				Code:    CodeMCPToolError,
+				Message: `{"success":false,"retryable":true}`,
+			},
+		},
+		{
+			name: "parameter error mentions CID without invalid evidence",
+			err: &CLIError{
+				Code:    CodeMCPToolError,
+				Message: `{"success":false,"errorCode":"PARAM_ERROR","errorMsg":"openConversationId could not be processed"}`,
+			},
+		},
 	}
 	for _, test := range preservedCases {
 		t.Run(test.name, func(t *testing.T) {
