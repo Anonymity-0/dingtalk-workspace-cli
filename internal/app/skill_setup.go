@@ -54,6 +54,9 @@ var (
 	skillSetupConfirmPlan     = confirmSkillSetupPlan
 	skillSetupExecutePlan     = executeSkillSetupPlan
 	skillSetupCopyDir         = copyDir
+	skillSetupInstallMulti    = installMultiSkillToHomes
+	skillSetupMkdirTemp       = os.MkdirTemp
+	skillSetupRename          = os.Rename
 	skillSetupRunForm         = (*huh.Form).Run
 	skillSetupInteractive     = isInteractiveTerminal
 	skillSetupReadDir         = os.ReadDir
@@ -86,11 +89,13 @@ type skillSetupTargetPlan struct {
 }
 
 type skillSetupPlan struct {
-	Mode            string
-	Source          string
-	MultiSkillNames []string
-	Filtered        bool
-	Targets         []skillSetupTargetPlan
+	Mode                       string
+	Source                     string
+	MultiSkillNames            []string
+	Filtered                   bool
+	Targets                    []skillSetupTargetPlan
+	EventMiscMigrationTargets  []string
+	InstallsEventMiscCompanion bool
 }
 
 const (
@@ -173,6 +178,9 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 
 	// multi 模式枚举 src 下的子 skill 名，供确认信息与安装步骤共用
 	var multiSkillNames, allMultiSkillNames []string
+	var foldedEventMiscTargets []string
+	var migrateEventMiscTargets []string
+	var installsEventMiscCompanion bool
 	if mode == skillSetupModeMulti {
 		var listErr error
 		allMultiSkillNames, listErr = skillSetupListMulti(skillSrc)
@@ -189,6 +197,30 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		// dingtalk-shared carries the global rules every product skill declares as a
 		// PREREQUISITE; it must ship even when --skill / --exclude narrows the set.
 		multiSkillNames = ensureMandatorySharedSkill(filtered, allMultiSkillNames)
+
+		foldedEventMiscTargets = findFoldedEventMiscTargets(dests)
+		if len(foldedEventMiscTargets) > 0 {
+			hasEvent := containsSkillName(multiSkillNames, multiEventSkill)
+			hasMisc := containsSkillName(multiSkillNames, multiMiscSkill)
+			switch {
+			case normalizedSkillListContains(excludeRaw, multiEventSkill):
+				return fmt.Errorf("检测到已有 dingtalk-misc 仍承载个人 Event 路由；不能显式 --exclude event，请先完成 dingtalk-event 迁移")
+			case hasMisc && !hasEvent:
+				return fmt.Errorf("检测到已有 dingtalk-misc 仍承载个人 Event 路由；不能只覆盖 dingtalk-misc，必须同时迁移 dingtalk-event")
+			case hasEvent:
+				if normalizedSkillListContains(excludeRaw, multiMiscSkill) {
+					return fmt.Errorf("检测到已有 dingtalk-misc 仍承载个人 Event 路由；本次安装 dingtalk-event 必须同时迁移 dingtalk-misc，不能显式 --exclude misc")
+				}
+				if !containsSkillName(allMultiSkillNames, multiMiscSkill) {
+					return fmt.Errorf("检测到已有 dingtalk-misc 仍承载个人 Event 路由，但当前 multi 源缺少迁移所需的 %s", multiMiscSkill)
+				}
+				if err := validateEventMiscMigrationSource(skillSrc); err != nil {
+					return err
+				}
+				migrateEventMiscTargets = append(migrateEventMiscTargets, foldedEventMiscTargets...)
+				installsEventMiscCompanion = !hasMisc
+			}
+		}
 	}
 
 	// filtered 决定 multi 安装的清理语义：带 -s/--skill 或 -x/--exclude
@@ -199,6 +231,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("无法完整计算 Skill 安装计划: %w", err)
 	}
+	configureEventMiscMigrationPlan(plan, migrateEventMiscTargets, installsEventMiscCompanion)
 
 	// --dry-run 与交互确认消费同一份计划，所以展示的备份路径
 	// 与执行阶段传给 BackupAndRemove 的路径完全一致。
@@ -219,7 +252,20 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	installed, skipped, err := skillSetupExecutePlan(plan, out, errOut)
+	var installed, skipped int
+	if mode == skillSetupModeMulti && len(migrateEventMiscTargets) > 0 {
+		installed, skipped, err = installMultiSkillsWithEventMigration(
+			skillSrc,
+			multiSkillNames,
+			dests,
+			migrateEventMiscTargets,
+			filtered,
+			out,
+			errOut,
+		)
+	} else {
+		installed, skipped, err = skillSetupExecutePlan(plan, out, errOut)
+	}
 	if err != nil {
 		return err
 	}
@@ -229,8 +275,13 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("Skill 已安装，但无法解析 HOME 以保存更新状态: %w", homeErr)
 		}
 		if mode == skillSetupModeMulti {
-			selected := make(map[string]bool, len(multiSkillNames))
-			for _, name := range multiSkillNames {
+			updatedSkillNames := append([]string(nil), multiSkillNames...)
+			if installsEventMiscCompanion && !containsSkillName(updatedSkillNames, multiMiscSkill) {
+				updatedSkillNames = append(updatedSkillNames, multiMiscSkill)
+				sort.Strings(updatedSkillNames)
+			}
+			selected := make(map[string]bool, len(updatedSkillNames))
+			for _, name := range updatedSkillNames {
 				selected[name] = true
 			}
 			var stateSkipped []string
@@ -242,7 +293,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 			state := skillstate.State{
 				Version:              RawVersion(),
 				OfficialSkills:       allMultiSkillNames,
-				UpdatedSkills:        multiSkillNames,
+				UpdatedSkills:        updatedSkillNames,
 				SkippedDeletedSkills: stateSkipped,
 				UpdatedAt:            skillSetupNow().UTC().Format(time.RFC3339),
 			}
@@ -254,6 +305,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		}
 	}
 	fmt.Fprintf(out, "\n✅ Skill 安装完成（mode=%s, installed=%d, skipped=%d）\n", mode, installed, skipped)
+	fmt.Fprintln(out, "ℹ️  若 Agent 会话已打开，请重启 Agent 或重新加载 Skills 后再验证路由。")
 	return nil
 }
 
@@ -281,6 +333,227 @@ func isDWSMultiSkillName(name string) bool {
 	return strings.HasPrefix(name, multiSkillPrefix) ||
 		name == multiSharedSkill ||
 		name == legacySharedSkill
+}
+
+// legacyMultiSharedSkill is the retired name shipped by older multi-skill
+// bundles. Once the replacement has been installed successfully, remove this
+// exact directory so Agent discovery cannot load both routing contracts.
+const legacyMultiSharedSkill = legacySharedSkill
+
+const (
+	multiEventSkill = "dingtalk-event"
+	multiMiscSkill  = "dingtalk-misc"
+)
+
+var eventMigrationRequiredReferences = []string{
+	"event-im.md",
+	"event-im-keys.md",
+	"event-im-lifecycle.md",
+	"event-im-operations.md",
+	"event-im-output.md",
+	"event-oa.md",
+}
+
+func containsSkillName(names []string, want string) bool {
+	for _, name := range names {
+		if name == want {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizedSkillListContains(raw []string, want string) bool {
+	for _, name := range raw {
+		if normalizeMultiSkillName(name) == want {
+			return true
+		}
+	}
+	return false
+}
+
+// findFoldedEventMiscTargets identifies the short-lived multi-skill layout in
+// which personal Event routing lived inside dingtalk-misc. Both markers are
+// required so an unrelated misc install is never treated as a migration target.
+func findFoldedEventMiscTargets(dests []string) []string {
+	var targets []string
+	for _, dest := range dests {
+		miscRoot := filepath.Join(dest, multiMiscSkill)
+		skillBody, err := os.ReadFile(filepath.Join(miscRoot, "SKILL.md"))
+		if err != nil || !containsPersonalEventRoute(skillBody) {
+			continue
+		}
+		eventRef, err := skillSetupStat(filepath.Join(miscRoot, "references", "event.md"))
+		if err != nil || eventRef.IsDir() {
+			continue
+		}
+		targets = append(targets, dest)
+	}
+	sort.Strings(targets)
+	return targets
+}
+
+func containsPersonalEventRoute(skillBody []byte) bool {
+	body := strings.ToLower(string(skillBody))
+	for _, marker := range []string{
+		"dws event",
+		"个人 event",
+		"个人 im 事件",
+		"个人 im/oa",
+		"personal event",
+	} {
+		if strings.Contains(body, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func printEventMiscMigrationPreview(out io.Writer, targets []string, installsCompanion bool) {
+	if len(targets) == 0 {
+		return
+	}
+	action := "将原子切换 dingtalk-event 与本次已选择的干净 dingtalk-misc"
+	if installsCompanion {
+		action = "将原子切换 dingtalk-event，并额外安装干净的 dingtalk-misc 作为迁移伴侣（仅限以下目标）"
+	}
+	fmt.Fprintf(out, "Event Skill 迁移：%s：\n", action)
+	for _, target := range targets {
+		fmt.Fprintf(out, "  × %s\n", filepath.Join(target, multiEventSkill))
+		fmt.Fprintf(out, "  × %s\n", filepath.Join(target, multiMiscSkill))
+	}
+}
+
+func validateEventMiscMigrationSource(src string) error {
+	if err := validateEventMigrationSkillRoot(filepath.Join(src, multiEventSkill)); err != nil {
+		return fmt.Errorf("event Skill 迁移源无效: %w", err)
+	}
+	if err := validateMigrationSkillRoot(filepath.Join(src, multiMiscSkill), multiMiscSkill, nil); err != nil {
+		return fmt.Errorf("event Skill 迁移源无效: %w", err)
+	}
+
+	if err := validateCleanEventMiscRoot(filepath.Join(src, multiMiscSkill)); err != nil {
+		return fmt.Errorf("event Skill 迁移源无效: %w", err)
+	}
+	return nil
+}
+
+func validateEventMigrationSkillRoot(root string) error {
+	required := make([]string, 0, len(eventMigrationRequiredReferences))
+	for _, name := range eventMigrationRequiredReferences {
+		required = append(required, filepath.Join("references", name))
+	}
+	return validateMigrationSkillRoot(root, multiEventSkill, required)
+}
+
+func validateMigrationSkillRoot(root, expectedName string, requiredFiles []string) error {
+	skillPath := filepath.Join(root, "SKILL.md")
+	skillBody, err := os.ReadFile(skillPath)
+	if err != nil {
+		return fmt.Errorf("无法读取 %s: %w", skillPath, err)
+	}
+	name, err := parseMigrationSkillFrontmatter(skillBody)
+	if err != nil {
+		return fmt.Errorf("%s 无效: %w", skillPath, err)
+	}
+	if name != expectedName {
+		return fmt.Errorf("%s 的 name=%q，期望 %q", skillPath, name, expectedName)
+	}
+	for _, rel := range requiredFiles {
+		path := filepath.Join(root, rel)
+		info, statErr := skillSetupStat(path)
+		if statErr != nil || info.IsDir() {
+			if statErr == nil {
+				statErr = errors.New("is a directory")
+			}
+			return fmt.Errorf("缺少有效文件 %s: %w", path, statErr)
+		}
+		body, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return fmt.Errorf("无法读取 %s: %w", path, readErr)
+		}
+		if strings.TrimSpace(string(body)) == "" {
+			return fmt.Errorf("文件为空 %s", path)
+		}
+	}
+	return nil
+}
+
+func parseMigrationSkillFrontmatter(body []byte) (string, error) {
+	normalized := strings.ReplaceAll(string(body), "\r\n", "\n")
+	lines := strings.Split(normalized, "\n")
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
+		return "", errors.New("缺少 YAML frontmatter")
+	}
+	name := ""
+	description := ""
+	closingLine := -1
+	for i := 1; i < len(lines); i++ {
+		rawLine := lines[i]
+		line := strings.TrimSpace(rawLine)
+		if line == "---" {
+			closingLine = i
+			break
+		}
+		// Only inspect top-level frontmatter keys. Nested metadata may legally
+		// contain its own `name` without changing the Skill identity.
+		if strings.TrimLeft(rawLine, " \t") != rawLine {
+			continue
+		}
+		key, value, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		value = strings.Trim(strings.TrimSpace(value), "\"'")
+		switch strings.TrimSpace(key) {
+		case "name":
+			if name != "" {
+				return "", errors.New("frontmatter 含重复 name")
+			}
+			name = value
+		case "description":
+			description = value
+		}
+	}
+	if closingLine < 0 {
+		return "", errors.New("YAML frontmatter 未闭合")
+	}
+	if name == "" {
+		return "", errors.New("frontmatter 缺少 name")
+	}
+	if description == "" {
+		return "", errors.New("frontmatter 缺少 description")
+	}
+	if strings.TrimSpace(strings.Join(lines[closingLine+1:], "\n")) == "" {
+		return "", errors.New("SKILL.md 正文为空")
+	}
+	return name, nil
+}
+
+func validateCleanEventMiscRoot(miscRoot string) error {
+	miscSkillPath := filepath.Join(miscRoot, "SKILL.md")
+	miscBody, err := os.ReadFile(miscSkillPath)
+	if err != nil {
+		return fmt.Errorf("无法读取 %s: %w", miscSkillPath, err)
+	}
+	if containsPersonalEventRoute(miscBody) {
+		return fmt.Errorf("%s 仍包含个人 Event 路由", miscSkillPath)
+	}
+	refsRoot := filepath.Join(miscRoot, "references")
+	entries, err := skillSetupReadDir(refsRoot)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("无法检查 %s: %w", refsRoot, err)
+	}
+	for _, entry := range entries {
+		name := strings.ToLower(entry.Name())
+		if !entry.IsDir() && strings.HasPrefix(name, "event") && strings.HasSuffix(name, ".md") {
+			return fmt.Errorf("%s 仍存在折叠 Event 参考页", filepath.Join(refsRoot, entry.Name()))
+		}
+	}
+	return nil
 }
 
 // ensureMandatorySharedSkill guarantees the shared dependency skill is included
@@ -641,6 +914,16 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 				add(path, skillSetupBackupStale)
 			}
 		}
+		if mode == skillSetupModeMulti && filtered && containsSkillName(plan.MultiSkillNames, multiSharedSkill) {
+			legacyPath := filepath.Join(dest, legacySharedSkill)
+			info, statErr := skillSetupStat(legacyPath)
+			if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
+				return nil, fmt.Errorf("检查已退役 Skill 失败 %s: %w", legacyPath, statErr)
+			}
+			if statErr == nil && info.IsDir() {
+				add(legacyPath, skillSetupBackupStale)
+			}
+		}
 		var replacements []string
 		if mode == skillSetupModeMono {
 			replacements = []string{dest}
@@ -665,6 +948,33 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 		plan.Targets = append(plan.Targets, target)
 	}
 	return plan, nil
+}
+
+func configureEventMiscMigrationPlan(plan *skillSetupPlan, targets []string, installsCompanion bool) {
+	plan.EventMiscMigrationTargets = append([]string(nil), targets...)
+	sort.Strings(plan.EventMiscMigrationTargets)
+	plan.InstallsEventMiscCompanion = installsCompanion
+	if len(targets) == 0 {
+		return
+	}
+	targetSet := make(map[string]bool, len(targets))
+	for _, target := range targets {
+		targetSet[target] = true
+	}
+	for i := range plan.Targets {
+		if !targetSet[plan.Targets[i].Destination] {
+			continue
+		}
+		filtered := plan.Targets[i].Backups[:0]
+		for _, backup := range plan.Targets[i].Backups {
+			base := filepath.Base(backup.Path)
+			if base == multiEventSkill || base == multiMiscSkill {
+				continue
+			}
+			filtered = append(filtered, backup)
+		}
+		plan.Targets[i].Backups = filtered
+	}
 }
 
 func renderSkillSetupPlan(out io.Writer, plan *skillSetupPlan) {
@@ -696,6 +1006,10 @@ func renderSkillSetupPlan(out io.Writer, plan *skillSetupPlan) {
 	}
 	if count == 0 {
 		fmt.Fprintln(out, "    (无)")
+	}
+	if len(plan.EventMiscMigrationTargets) > 0 {
+		fmt.Fprint(out, "  ")
+		printEventMiscMigrationPreview(out, plan.EventMiscMigrationTargets, plan.InstallsEventMiscCompanion)
 	}
 }
 
@@ -806,12 +1120,323 @@ func cleanupMutualExclusion(dest, mode string, out, errOut io.Writer) error {
 	return nil
 }
 
+func cleanupLegacyMultiSharedSkill(dest string, out, errOut io.Writer) {
+	legacyPath := filepath.Join(dest, legacyMultiSharedSkill)
+	if _, err := skillSetupStat(legacyPath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(errOut, "  ⚠️  无法检查已退役 Skill 残留 %s: %v\n", legacyPath, err)
+		}
+		return
+	}
+	if err := skillSetupRemoveAll(legacyPath); err != nil {
+		fmt.Fprintf(errOut, "  ⚠️  已退役 Skill 清理失败（已安装 %s） %s: %v\n", multiSharedSkill, legacyPath, err)
+		return
+	}
+	fmt.Fprintf(out, "  × 已清理已退役 Skill 残留 %s\n", legacyPath)
+}
+
 func installSkillToHomes(src string, dests []string, out, errOut io.Writer) (installed, skipped int, err error) {
 	plan, planErr := buildSkillSetupPlan(skillSetupModeMono, src, dests, nil, false)
 	if planErr != nil {
 		return 0, len(dests), planErr
 	}
 	return executeSkillSetupPlan(plan, out, errOut)
+}
+
+func installMultiSkillsWithEventMigration(
+	src string,
+	skillNames []string,
+	dests []string,
+	migrationTargets []string,
+	filtered bool,
+	out, errOut io.Writer,
+) (installed, skipped int, err error) {
+	if len(migrationTargets) == 0 {
+		return skillSetupInstallMulti(src, skillNames, dests, out, errOut, filtered)
+	}
+
+	migrationSet := make(map[string]struct{}, len(migrationTargets))
+	for _, dest := range migrationTargets {
+		migrationSet[dest] = struct{}{}
+	}
+	var ordinaryTargets []string
+	for _, dest := range dests {
+		if _, migrates := migrationSet[dest]; !migrates {
+			ordinaryTargets = append(ordinaryTargets, dest)
+		}
+	}
+
+	if len(ordinaryTargets) > 0 {
+		var n, nSkipped int
+		n, nSkipped, err = skillSetupInstallMulti(src, skillNames, ordinaryTargets, out, errOut, filtered)
+		installed += n
+		skipped += nSkipped
+		if err != nil {
+			return installed, skipped, err
+		}
+		if nSkipped > 0 {
+			return installed, skipped, fmt.Errorf("multi Skill 安装不完整（skipped=%d）；已保留折叠版 Event/misc，未执行迁移", nSkipped)
+		}
+	}
+
+	// The folded pair is excluded from the ordinary best-effort installer. All
+	// other selected skills (especially dingtalk-shared) must succeed before the
+	// old Event route is touched.
+	for _, dest := range migrationTargets {
+		if cleanupErr := cleanupMutualExclusion(dest, skillSetupModeMulti, out, errOut); cleanupErr != nil {
+			return installed, skipped + len(skillNames), cleanupErr
+		}
+	}
+	var prerequisiteNames []string
+	for _, name := range skillNames {
+		if name != multiEventSkill && name != multiMiscSkill {
+			prerequisiteNames = append(prerequisiteNames, name)
+		}
+	}
+	if len(prerequisiteNames) > 0 {
+		var n, nSkipped int
+		n, nSkipped, err = skillSetupInstallMulti(src, prerequisiteNames, migrationTargets, out, errOut, true)
+		installed += n
+		skipped += nSkipped
+		if err != nil {
+			return installed, skipped, err
+		}
+		if nSkipped > 0 {
+			return installed, skipped, fmt.Errorf("event Skill 迁移前置安装不完整（skipped=%d）；已保留折叠版 Event/misc", nSkipped)
+		}
+	}
+
+	migrated, migrationErr := migrateEventMiscAtomically(src, migrationTargets, out, errOut)
+	installed += migrated
+	if migrationErr != nil {
+		return installed, skipped, migrationErr
+	}
+	return installed, skipped, nil
+}
+
+type eventMiscMigration struct {
+	dest string
+
+	stageRoot   string
+	stagedEvent string
+	stagedMisc  string
+	backupEvent string
+	backupMisc  string
+
+	eventPath string
+	miscPath  string
+
+	eventBackedUp   bool
+	miscBackedUp    bool
+	newEventEnabled bool
+	newMiscEnabled  bool
+}
+
+func prepareEventMiscMigration(src, dest string) (*eventMiscMigration, error) {
+	stageRoot, err := skillSetupMkdirTemp(dest, ".dws-event-migration-")
+	if err != nil {
+		return nil, fmt.Errorf("无法在目标文件系统创建 Event Skill 迁移 staging %s: %w", dest, err)
+	}
+	migration := &eventMiscMigration{
+		dest:        dest,
+		stageRoot:   stageRoot,
+		stagedEvent: filepath.Join(stageRoot, "new-event"),
+		stagedMisc:  filepath.Join(stageRoot, "new-misc"),
+		backupEvent: filepath.Join(stageRoot, "old-event"),
+		backupMisc:  filepath.Join(stageRoot, "old-misc"),
+		eventPath:   filepath.Join(dest, multiEventSkill),
+		miscPath:    filepath.Join(dest, multiMiscSkill),
+	}
+	cleanupOnError := func(cause error) (*eventMiscMigration, error) {
+		if cleanupErr := skillSetupRemoveAll(stageRoot); cleanupErr != nil {
+			cause = errors.Join(cause, fmt.Errorf("清理 staging %s 失败: %w", stageRoot, cleanupErr))
+		}
+		return nil, cause
+	}
+
+	if err := skillSetupCopyDir(filepath.Join(src, multiEventSkill), migration.stagedEvent); err != nil {
+		return cleanupOnError(fmt.Errorf("预备 dingtalk-event 失败 %s: %w", dest, err))
+	}
+	if err := skillSetupCopyDir(filepath.Join(src, multiMiscSkill), migration.stagedMisc); err != nil {
+		return cleanupOnError(fmt.Errorf("预备 dingtalk-misc 失败 %s: %w", dest, err))
+	}
+	if err := validateEventMigrationSkillRoot(migration.stagedEvent); err != nil {
+		return cleanupOnError(fmt.Errorf("迁移 staging 验证失败 %s: %w", migration.stagedEvent, err))
+	}
+	if err := validateMigrationSkillRoot(migration.stagedMisc, multiMiscSkill, nil); err != nil {
+		return cleanupOnError(fmt.Errorf("迁移 staging 验证失败 %s: %w", migration.stagedMisc, err))
+	}
+	if err := validateCleanEventMiscRoot(migration.stagedMisc); err != nil {
+		return cleanupOnError(fmt.Errorf("迁移 staging 验证失败 %s: %w", migration.stagedMisc, err))
+	}
+	return migration, nil
+}
+
+func migrateEventMiscAtomically(src string, dests []string, out, errOut io.Writer) (int, error) {
+	sortedDests := append([]string(nil), dests...)
+	sort.Strings(sortedDests)
+	migrations := make([]*eventMiscMigration, 0, len(sortedDests))
+
+	// Stage every target before switching any target. This prevents a source or
+	// copy failure on a later Agent home from leaving earlier homes upgraded.
+	for _, dest := range sortedDests {
+		migration, err := prepareEventMiscMigration(src, dest)
+		if err != nil {
+			if cleanupErr := cleanupEventMiscStages(migrations, false, errOut); cleanupErr != nil {
+				err = errors.Join(err, cleanupErr)
+			}
+			return 0, err
+		}
+		migrations = append(migrations, migration)
+	}
+
+	committed := make([]*eventMiscMigration, 0, len(migrations))
+	for _, migration := range migrations {
+		if err := commitEventMiscMigration(migration); err != nil {
+			rollbackErr := rollbackEventMiscMigrations(committed)
+			if rollbackErr != nil {
+				err = errors.Join(err, fmt.Errorf("已切换目标回滚失败: %w", rollbackErr))
+			}
+			var recoveryRoots []string
+			for _, candidate := range migrations {
+				if eventMiscMigrationNeedsRecovery(candidate) {
+					recoveryRoots = append(recoveryRoots, candidate.stageRoot)
+				}
+			}
+			if len(recoveryRoots) > 0 {
+				err = errors.Join(err, fmt.Errorf("回滚不完整，已保留恢复目录（请勿删除）: %s", strings.Join(recoveryRoots, ", ")))
+			}
+			if cleanupErr := cleanupEventMiscStages(migrations, true, errOut); cleanupErr != nil {
+				err = errors.Join(err, cleanupErr)
+			}
+			return 0, err
+		}
+		committed = append(committed, migration)
+	}
+
+	for _, migration := range migrations {
+		fmt.Fprintf(out, "  ✓ %s\n", migration.eventPath)
+		fmt.Fprintf(out, "  ✓ %s（Event 原子迁移）\n", migration.miscPath)
+	}
+	if cleanupErr := cleanupEventMiscStages(migrations, false, errOut); cleanupErr != nil {
+		fmt.Fprintf(errOut, "  ⚠️  Event Skill 迁移已完成，但 staging 清理不完整: %v\n", cleanupErr)
+	}
+	return len(migrations) * 2, nil
+}
+
+func cleanupEventMiscStages(migrations []*eventMiscMigration, preserveRecovery bool, errOut io.Writer) error {
+	var cleanupErr error
+	for _, migration := range migrations {
+		if preserveRecovery && eventMiscMigrationNeedsRecovery(migration) {
+			fmt.Fprintf(errOut, "  ⚠️  已保留 Event Skill 恢复目录 %s\n", migration.stageRoot)
+			continue
+		}
+		if err := skillSetupRemoveAll(migration.stageRoot); err != nil {
+			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("清理 Event Skill staging %s 失败: %w", migration.stageRoot, err))
+		}
+	}
+	return cleanupErr
+}
+
+func eventMiscMigrationNeedsRecovery(migration *eventMiscMigration) bool {
+	return migration.eventBackedUp || migration.miscBackedUp || migration.newEventEnabled || migration.newMiscEnabled
+}
+
+func commitEventMiscMigration(migration *eventMiscMigration) error {
+	eventExists, err := skillSetupPathExists(migration.eventPath)
+	if err != nil {
+		return fmt.Errorf("无法检查旧 dingtalk-event %s: %w", migration.dest, err)
+	}
+	miscExists, err := skillSetupPathExists(migration.miscPath)
+	if err != nil {
+		return fmt.Errorf("无法检查旧 dingtalk-misc %s: %w", migration.dest, err)
+	}
+	if !miscExists {
+		return fmt.Errorf("event Skill 迁移中止：折叠版 dingtalk-misc 已不存在 %s", migration.dest)
+	}
+
+	rollbackFailure := func(cause error) error {
+		if rollbackErr := rollbackEventMiscMigration(migration); rollbackErr != nil {
+			return errors.Join(cause, fmt.Errorf("回滚 Event/misc 失败 %s: %w", migration.dest, rollbackErr))
+		}
+		return cause
+	}
+	if eventExists {
+		if err := skillSetupRename(migration.eventPath, migration.backupEvent); err != nil {
+			return fmt.Errorf("备份旧 dingtalk-event 失败 %s: %w", migration.dest, err)
+		}
+		migration.eventBackedUp = true
+	}
+	if err := skillSetupRename(migration.stagedEvent, migration.eventPath); err != nil {
+		return rollbackFailure(fmt.Errorf("切换 dingtalk-event 失败 %s: %w", migration.dest, err))
+	}
+	migration.newEventEnabled = true
+	if err := skillSetupRename(migration.miscPath, migration.backupMisc); err != nil {
+		return rollbackFailure(fmt.Errorf("备份旧 dingtalk-misc 失败 %s: %w", migration.dest, err))
+	}
+	migration.miscBackedUp = true
+	if err := skillSetupRename(migration.stagedMisc, migration.miscPath); err != nil {
+		return rollbackFailure(fmt.Errorf("切换 dingtalk-misc 失败 %s: %w", migration.dest, err))
+	}
+	migration.newMiscEnabled = true
+	return nil
+}
+
+func rollbackEventMiscMigrations(migrations []*eventMiscMigration) error {
+	var rollbackErr error
+	for i := len(migrations) - 1; i >= 0; i-- {
+		if err := rollbackEventMiscMigration(migrations[i]); err != nil {
+			rollbackErr = errors.Join(rollbackErr, err)
+		}
+	}
+	return rollbackErr
+}
+
+func rollbackEventMiscMigration(migration *eventMiscMigration) error {
+	move := func(enabled *bool, from, to, label string) error {
+		if !*enabled {
+			return nil
+		}
+		if err := skillSetupRename(from, to); err != nil {
+			return fmt.Errorf("%s: %w", label, err)
+		}
+		*enabled = false
+		return nil
+	}
+
+	// Stop at the first rollback failure. In particular, do not remove the
+	// already-working standalone Event while the folded misc route has not been
+	// restored: even an incomplete rollback must leave at least one Event entry
+	// point live and preserve the remaining assets in staging for recovery.
+	steps := []struct {
+		enabled *bool
+		from    string
+		to      string
+		label   string
+	}{
+		{&migration.newMiscEnabled, migration.miscPath, migration.stagedMisc, "移出新 dingtalk-misc"},
+		{&migration.miscBackedUp, migration.backupMisc, migration.miscPath, "恢复旧 dingtalk-misc"},
+		{&migration.newEventEnabled, migration.eventPath, migration.stagedEvent, "移出新 dingtalk-event"},
+		{&migration.eventBackedUp, migration.backupEvent, migration.eventPath, "恢复旧 dingtalk-event"},
+	}
+	for _, step := range steps {
+		if err := move(step.enabled, step.from, step.to, step.label); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func skillSetupPathExists(path string) (bool, error) {
+	_, err := skillSetupStat(path)
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, os.ErrNotExist):
+		return false, nil
+	default:
+		return false, err
+	}
 }
 
 // installMultiSkillToHomes installs each subdir of src (dingtalk-*) into

@@ -578,6 +578,36 @@ if (!isInterfaceSensitive("internal/corecmd/corecmd.go")) {
 	}
 }
 
+func TestHighRiskClassificationShardsHelperChanges(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("Abs(repo root) error = %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile(ci.yml) error = %v", err)
+	}
+	workflow := string(data)
+	start := strings.Index(workflow, "            const isDocsOnly =")
+	end := strings.Index(workflow, "            const classifyFiles =")
+	if start < 0 || end <= start {
+		t.Fatal("Code Admission workflow missing high-risk classifier boundaries")
+	}
+	classifier := strings.TrimSpace(workflow[start:end])
+	probe := classifier + `
+if (!isHighRisk("internal/helpers/minutes.go")) {
+  throw new Error("helper changes must use the sharded full suite");
+}
+if (isHighRisk("internal/helpersx/minutes.go")) {
+  throw new Error("helper high-risk classification must respect the path boundary");
+}
+`
+	cmd := exec.Command("node", "-e", probe)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("high-risk classifier rejected helper sharding contract: %v\n%s", err, output)
+	}
+}
+
 func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

@@ -148,6 +148,7 @@ jobs:
                 filename === '.github/actionlint.yaml' ||
                 filename.startsWith('scripts/') ||
                 filename.startsWith('verify/') ||
+                filename.startsWith('internal/helpers/') ||
                 filename.startsWith('internal/generator/') ||
                 filename.startsWith('internal/cli/schema') ||
                 filename.startsWith('internal/interfacesnapshot/') ||

@@ -170,6 +170,127 @@ func TestCrossPlatformCoverageSkillSetupPlanDeduplicatesAndFailsClosed(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageSkillSetupInstallWrappersFailOnPlanErrors(t *testing.T) {
+	t.Run("multi mono-leftover stat failure", func(t *testing.T) {
+		failure := errors.New("stat denied")
+		testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) {
+			return nil, failure
+		})
+
+		installed, skipped, err := installMultiSkillToHomes(
+			"source",
+			[]string{"dingtalk-a"},
+			[]string{filepath.Join(t.TempDir(), "skills")},
+			io.Discard,
+			io.Discard,
+			true,
+		)
+		if installed != 0 || skipped != 1 || !errors.Is(err, failure) {
+			t.Fatalf("installMultiSkillToHomes = (%d, %d, %v), want (0, 1, %v)", installed, skipped, err, failure)
+		}
+	})
+
+	t.Run("mono multi-leftover scan failure", func(t *testing.T) {
+		failure := errors.New("scan denied")
+		testseam.Swap(t, &skillSetupReadDir, func(string) ([]os.DirEntry, error) {
+			return nil, failure
+		})
+
+		installed, skipped, err := installSkillToHomes(
+			"source",
+			[]string{filepath.Join(t.TempDir(), "skills", "dws")},
+			io.Discard,
+			io.Discard,
+		)
+		if installed != 0 || skipped != 1 || !errors.Is(err, failure) {
+			t.Fatalf("installSkillToHomes = (%d, %d, %v), want (0, 1, %v)", installed, skipped, err, failure)
+		}
+	})
+}
+
+func TestCrossPlatformCoverageSkillSetupMergedEventPlanEdges(t *testing.T) {
+	t.Run("legacy shared stat failure", func(t *testing.T) {
+		dest := filepath.Join(t.TempDir(), "skills")
+		failure := errors.New("legacy stat denied")
+		testseam.Swap(t, &skillSetupStat, func(path string) (os.FileInfo, error) {
+			if path == filepath.Join(dest, legacySharedSkill) {
+				return nil, failure
+			}
+			return nil, os.ErrNotExist
+		})
+
+		_, err := buildSkillSetupPlan(
+			skillSetupModeMulti,
+			"source",
+			[]string{dest},
+			[]string{multiSharedSkill},
+			true,
+		)
+		if !errors.Is(err, failure) {
+			t.Fatalf("legacy shared stat error = %v, want %v", err, failure)
+		}
+	})
+
+	t.Run("migration plan retains unrelated backups", func(t *testing.T) {
+		dest := filepath.Join(t.TempDir(), "skills")
+		unrelated := filepath.Join(dest, "dws")
+		plan := &skillSetupPlan{Targets: []skillSetupTargetPlan{
+			{
+				Destination: dest,
+				Backups: []skillSetupBackup{
+					{Path: filepath.Join(dest, multiEventSkill)},
+					{Path: filepath.Join(dest, multiMiscSkill)},
+					{Path: unrelated},
+				},
+			},
+		}}
+
+		configureEventMiscMigrationPlan(plan, []string{dest}, true)
+		if len(plan.Targets[0].Backups) != 1 || plan.Targets[0].Backups[0].Path != unrelated {
+			t.Fatalf("migration backups = %#v, want only %s", plan.Targets[0].Backups, unrelated)
+		}
+	})
+
+	t.Run("no migration targets delegates filtered install", func(t *testing.T) {
+		called := false
+		testseam.Swap(t, &skillSetupInstallMulti, func(_ string, _ []string, _ []string, _ io.Writer, _ io.Writer, filtered bool) (int, int, error) {
+			called = true
+			if !filtered {
+				t.Fatal("filtered flag was not forwarded")
+			}
+			return 1, 2, nil
+		})
+
+		installed, skipped, err := installMultiSkillsWithEventMigration(
+			"source", []string{"dingtalk-a"}, []string{"dest"}, nil, true, io.Discard, io.Discard,
+		)
+		if err != nil || installed != 1 || skipped != 2 || !called {
+			t.Fatalf("delegated install = (%d, %d, %v), called=%v", installed, skipped, err, called)
+		}
+	})
+
+	t.Run("migration cleanup scan failure", func(t *testing.T) {
+		failure := errors.New("cleanup stat denied")
+		testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) {
+			return nil, failure
+		})
+		dest := filepath.Join(t.TempDir(), "skills")
+
+		installed, skipped, err := installMultiSkillsWithEventMigration(
+			"source",
+			[]string{multiEventSkill, multiSharedSkill},
+			[]string{dest},
+			[]string{dest},
+			true,
+			io.Discard,
+			io.Discard,
+		)
+		if installed != 0 || skipped != 2 || !errors.Is(err, failure) {
+			t.Fatalf("cleanup scan failure = (%d, %d, %v), want (0, 2, %v)", installed, skipped, err, failure)
+		}
+	})
+}
+
 func TestCrossPlatformCoverageSkillSetupEmptyCleanupPlansAreNoOps(t *testing.T) {
 	dest := t.TempDir()
 	var out, errOut bytes.Buffer
