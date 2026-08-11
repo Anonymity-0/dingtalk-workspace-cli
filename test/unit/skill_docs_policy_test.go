@@ -540,6 +540,36 @@ func TestCrossPlatformCoverageDocSkillReferenceLoadingBudget(t *testing.T) {
 	}
 }
 
+func TestMinutesPermissionAddRequiresExplicitPolicy(t *testing.T) {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller(0) failed")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
+	paths := []string{
+		filepath.Join(root, "skills", "mono", "references", "products", "minutes.md"),
+		filepath.Join(root, "skills", "multi", "dingtalk-minutes", "references", "minutes.md"),
+	}
+	for _, path := range paths {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		text := string(content)
+		for _, required := range []string{
+			"`permission add` 的 `--policy` 是必填参数，没有默认值",
+			"命令中仍必须显式传入 `--policy 4`",
+		} {
+			if !strings.Contains(text, required) {
+				t.Errorf("%s missing permission add policy contract %q", path, required)
+			}
+		}
+		if strings.Contains(text, "`permission add` 默认使用 `--policy 4`") {
+			t.Errorf("%s still documents a nonexistent permission add policy default", path)
+		}
+	}
+}
+
 func hasAny(s string, needles []string) bool {
 	for _, needle := range needles {
 		if strings.Contains(s, needle) {
