@@ -1406,8 +1406,8 @@ func newChatCommand() *cobra.Command {
 	chatDataAuthCrossOrgCmd.Flags().String("session-id", "", "session 授权的会话标识")
 	DeclareLeafMetadata(chatDataAuthCrossOrgCmd, LeafSpec{
 		Safety: contract.SafetySpec{
-			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Effect: "write", Risk: "high",
+			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -8929,7 +8929,7 @@ status 可选值:
 	DeclareLeafMetadata(chatGroupShareInviteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{

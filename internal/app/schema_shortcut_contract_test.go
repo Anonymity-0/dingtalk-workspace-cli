@@ -114,18 +114,52 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 
 	product := executeShortcutSchemaQuery(t, "chat")
 	productPayload, _ := product["product"].(map[string]any)
-	if got, want := int(product["count"].(float64)), 187; got != want {
+	if got, want := int(product["count"].(float64)), 217; got != want {
 		t.Fatalf("schema chat count = %d, want %d", got, want)
 	}
 	summaries := schemaContractObjectSlice(productPayload["tools"])
 	shortcutCount := 0
+	summaryByCLIPath := make(map[string]map[string]any, len(summaries))
 	for _, summary := range summaries {
+		summaryByCLIPath[schemaContractString(summary["cli_path"])] = summary
 		if strings.HasPrefix(schemaContractString(summary["canonical_path"]), "chat.shortcut_") {
 			shortcutCount++
 		}
 	}
 	if shortcutCount != 98 {
 		t.Fatalf("schema chat shortcut summaries = %d, want 98", shortcutCount)
+	}
+	for _, cliPath := range missingChatCatalogCoveragePaths() {
+		if summaryByCLIPath[cliPath] == nil {
+			t.Fatalf("schema chat missing expected catalog tool %q", cliPath)
+		}
+	}
+	assertSchemaSummarySafety(t, summaryByCLIPath, "chat clear-messages", "destructive", "high", "user_required")
+	assertSchemaSummarySafety(t, summaryByCLIPath, "chat data-auth cross-org", "write", "high", "user_required")
+	assertSchemaSummarySafety(t, summaryByCLIPath, "chat group share-invite", "write", "medium", "user_required")
+}
+
+func assertSchemaSummarySafety(
+	t testing.TB,
+	summaries map[string]map[string]any,
+	cliPath string,
+	effect string,
+	risk string,
+	confirmation string,
+) {
+	t.Helper()
+	summary := summaries[cliPath]
+	if summary == nil {
+		t.Fatalf("schema chat missing expected catalog tool %q", cliPath)
+	}
+	if got := schemaContractString(summary["effect"]); got != effect {
+		t.Fatalf("%s effect = %q, want %q", cliPath, got, effect)
+	}
+	if got := schemaContractString(summary["risk"]); got != risk {
+		t.Fatalf("%s risk = %q, want %q", cliPath, got, risk)
+	}
+	if got := schemaContractString(summary["confirmation"]); got != confirmation {
+		t.Fatalf("%s confirmation = %q, want %q", cliPath, got, confirmation)
 	}
 }
 
