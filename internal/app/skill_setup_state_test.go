@@ -91,8 +91,9 @@ func TestCrossPlatformCoverageSkillSetupPartialInstallDoesNotWriteState(t *testi
 		return nil
 	})
 	cmd := skillSetupCoverageCommand(t, skillSetupModeMulti, true)
-	if err := cmd.RunE(cmd, nil); err != nil {
-		t.Fatal(err)
+	err := cmd.RunE(cmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "Skill 安装不完整") || !strings.Contains(err.Error(), "skipped=1") {
+		t.Fatalf("partial setup error = %v", err)
 	}
 	if writes != 0 {
 		t.Fatalf("partial setup wrote %d complete state snapshot(s)", writes)

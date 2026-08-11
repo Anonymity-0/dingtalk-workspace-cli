@@ -81,7 +81,7 @@ func TestCrossPlatformCoverageSkillSetupHighLevelRemainingCoverage(t *testing.T)
 	}
 	skillSetupFilterMulti = func(all, _, _ []string) ([]string, error) { return all, nil }
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMulti, true)
-	_ = cmd.Root().PersistentFlags().Set("dry-run", "true")
+	cmd.Flags().Bool("dry-run", true, "")
 	if err := cmd.RunE(cmd, nil); err != nil {
 		t.Fatal(err)
 	}
