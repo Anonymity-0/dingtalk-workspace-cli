@@ -701,9 +701,7 @@ func executeChatChangedContract(t *testing.T, caller *chatChangedContractCaller,
 	InitDeps(caller)
 	deps.Out.w = io.Discard
 	cmd := newChatCommand()
-	if cmd.PersistentFlags().Lookup("yes") == nil {
-		cmd.PersistentFlags().Bool("yes", false, "skip confirmation")
-	}
+	installExampleGlobalFlags(cmd)
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
 	cmd.SetArgs(append(append([]string(nil), args...), "--yes"))
