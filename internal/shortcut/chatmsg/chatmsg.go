@@ -91,6 +91,7 @@ var messageResultContractV1 = MessageResultContract{
 		"failedCount",
 		"failures",
 		"partial",
+		"scope",
 		"resourceDownloads",
 	},
 }
@@ -150,73 +151,7 @@ func ListMessageItems(data map[string]any) []map[string]any {
 
 // SearchMessageItems flattens grouped search results into stable message rows.
 func SearchMessageItems(data map[string]any) []map[string]any {
-	if data == nil {
-		return nil
-	}
-	for _, root := range []map[string]any{data, childMap(data, "result")} {
-		if root == nil {
-			continue
-		}
-		if groups, ok := root["conversationMessagesList"].([]any); ok {
-			return flattenSearchMessageGroups(groups)
-		}
-	}
-	for _, key := range []string{"list", "messages", "messageList", "items", "data", "records", "result"} {
-		if rows, ok := data[key].([]any); ok {
-			return messageMaps(rows)
-		}
-		if inner, ok := data[key].(map[string]any); ok {
-			for _, nestedKey := range []string{"list", "messages", "messageList", "items", "data", "records"} {
-				if rows, ok := inner[nestedKey].([]any); ok {
-					return messageMaps(rows)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func childMap(data map[string]any, key string) map[string]any {
-	value, _ := data[key].(map[string]any)
-	return value
-}
-
-func flattenSearchMessageGroups(groups []any) []map[string]any {
-	items := make([]map[string]any, 0)
-	for _, rawGroup := range groups {
-		group, ok := rawGroup.(map[string]any)
-		if !ok {
-			continue
-		}
-		messages, ok := group["messages"].([]any)
-		if !ok {
-			continue
-		}
-		conversationID := strings.TrimSpace(fmt.Sprint(group["openConversationId"]))
-		conversationTitle := strings.TrimSpace(fmt.Sprint(group["title"]))
-		singleChat, hasSingleChat := group["singleChat"]
-		for _, rawMessage := range messages {
-			message, ok := rawMessage.(map[string]any)
-			if !ok {
-				continue
-			}
-			item := make(map[string]any, len(message)+3)
-			for key, value := range message {
-				item[key] = value
-			}
-			if _, exists := item["openConversationId"]; !exists && conversationID != "" && conversationID != "<nil>" {
-				item["openConversationId"] = conversationID
-			}
-			if _, exists := item["conversationTitle"]; !exists && conversationTitle != "" && conversationTitle != "<nil>" {
-				item["conversationTitle"] = conversationTitle
-			}
-			if _, exists := item["singleChat"]; !exists && hasSingleChat {
-				item["singleChat"] = singleChat
-			}
-			items = append(items, item)
-		}
-	}
-	return items
+	return SearchItems(data)
 }
 
 func messageMaps(rows []any) []map[string]any {
@@ -388,9 +323,10 @@ func SenderType(m map[string]any) any {
 // legacy aliases such as time or msgType, but the underlying identity,
 // context, reaction, quote, forward, and resource semantics come from here.
 func ProjectMessageV1(m map[string]any, includeReactions bool) map[string]any {
+	ownedResources := Resources(m)
 	row := map[string]any{
 		"sender":     Sender(m),
-		"text":       Text(m),
+		"text":       projectedResourceText(m, ownedResources),
 		"createTime": CreateTime(m),
 	}
 	if value := MessageID(m); value != nil {
@@ -462,7 +398,8 @@ func QuotedMessage(m map[string]any) map[string]any {
 	if value := Sender(quoted); value != nil {
 		out["sender"] = value
 	}
-	if value := Text(quoted); value != nil {
+	resources := Resources(quoted)
+	if value := projectedResourceText(quoted, resources); value != nil {
 		out["text"] = value
 	}
 	if value := CreateTime(quoted); value != nil {
@@ -471,7 +408,7 @@ func QuotedMessage(m map[string]any) map[string]any {
 	if value := MessageType(quoted); value != nil {
 		out["messageType"] = value
 	}
-	if resources := Resources(quoted); len(resources) > 0 {
+	if len(resources) > 0 {
 		out["resourceRefs"] = resources
 	}
 	return out
@@ -505,10 +442,14 @@ func Resources(m map[string]any) []map[string]any {
 	collectResourceIDs(m, "mediaid", mediaIDTextRE, &mediaIDs)
 	mediaIDs = uniqueResourceIDs(mediaIDs)
 	sort.Strings(mediaIDs)
+	mediaNames := make(map[string]resourceNameCandidate)
+	collectResourceNames(m, "mediaid", mediaNames)
 	fileIDs := make([]string, 0)
 	collectResourceIDs(m, "fileid", fileIDTextRE, &fileIDs)
 	fileIDs = uniqueResourceIDs(fileIDs)
 	sort.Strings(fileIDs)
+	fileNames := make(map[string]resourceNameCandidate)
+	collectResourceNames(m, "fileid", fileNames)
 	if len(mediaIDs) == 0 && len(fileIDs) == 0 {
 		return nil
 	}
@@ -539,7 +480,7 @@ func Resources(m map[string]any) []map[string]any {
 		} else {
 			missing = append(missing, "open-conversation-id")
 		}
-		out = append(out, map[string]any{
+		resource := map[string]any{
 			"type":       "mediaId",
 			"resourceId": id,
 			"download": map[string]any{
@@ -548,10 +489,14 @@ func Resources(m map[string]any) []map[string]any {
 				"ready":     len(missing) == 0,
 				"missing":   missing,
 			},
-		})
+		}
+		if candidate, ok := mediaNames[id]; ok {
+			resource["name"] = candidate.name
+		}
+		out = append(out, resource)
 	}
 	for _, id := range fileIDs {
-		out = append(out, map[string]any{
+		resource := map[string]any{
 			"type":       "fileId",
 			"resourceId": id,
 			"download": map[string]any{
@@ -563,7 +508,11 @@ func Resources(m map[string]any) []map[string]any {
 				"ready":   true,
 				"missing": []string{},
 			},
-		})
+		}
+		if candidate, ok := fileNames[id]; ok {
+			resource["name"] = candidate.name
+		}
+		out = append(out, resource)
 	}
 	return out
 }
@@ -608,6 +557,158 @@ func resourcesDeep(m map[string]any, inheritedConversationID string, depth int) 
 
 var mediaIDTextRE = regexp.MustCompile(`(?i)\bmedia[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
 var fileIDTextRE = regexp.MustCompile(`(?i)\bfile[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
+var fileNameAndIDTextRE = regexp.MustCompile(`(?i)\[文件\]\s*([^\r\n]*?)\s+file[_-]?id\s*[:=]\s*["']?([^"'\s)\]}>,]+)`)
+var legacyResourceDownloadHintRE = regexp.MustCompile(`\s*注意：如需下载使用dws\s+(?:chat message download-media|drive download)命令下载\s*`)
+
+// projectedResourceText removes only the exact, machine-generated download
+// hint emitted by older IM APIs. The readable resource marker and ID remain in
+// text, while resourceRefs publishes the current executable download command.
+// Text without an owned mediaId/fileId is left byte-for-byte unchanged so an
+// ordinary user sentence mentioning a command can never be rewritten.
+func projectedResourceText(m map[string]any, resources []map[string]any) any {
+	value := Text(m)
+	text, ok := value.(string)
+	if !ok || len(resources) == 0 ||
+		(!mediaIDTextRE.MatchString(text) && !fileIDTextRE.MatchString(text)) {
+		return value
+	}
+	return strings.TrimSpace(legacyResourceDownloadHintRE.ReplaceAllString(text, ""))
+}
+
+type resourceNameCandidate struct {
+	name     string
+	priority int
+}
+
+const (
+	resourceNamePriorityText       = 1
+	resourceNamePriorityStructured = 2
+)
+
+// collectResourceNames keeps a resource ID paired with a name only when both
+// are present in the same structured object or in the legacy, machine-shaped
+// "[文件] name fileId: id" text. This deliberately does not borrow a generic
+// message title or sender name: an unknown resource name is safer than a
+// plausible but incorrect one.
+func collectResourceNames(value any, targetKey string, out map[string]resourceNameCandidate) {
+	switch typed := value.(type) {
+	case map[string]any:
+		directIDs := directResourceIDs(typed, targetKey)
+		if len(directIDs) == 1 {
+			if name := directResourceName(typed, targetKey); name != "" {
+				recordResourceName(out, directIDs[0], name, resourceNamePriorityStructured)
+			}
+		}
+		keys := make([]string, 0, len(typed))
+		for key := range typed {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			if isNestedMessageBoundaryKey(normalizeMessageKey(key)) {
+				continue
+			}
+			collectResourceNames(typed[key], targetKey, out)
+		}
+	case []any:
+		for _, child := range typed {
+			collectResourceNames(child, targetKey, out)
+		}
+	case []map[string]any:
+		for _, child := range typed {
+			collectResourceNames(child, targetKey, out)
+		}
+	case string:
+		if targetKey == "fileid" {
+			for _, match := range fileNameAndIDTextRE.FindAllStringSubmatch(typed, -1) {
+				name := strings.TrimSpace(match[1])
+				id := resourceIDScalar(match[2])
+				if name != "" && id != "" {
+					recordResourceName(out, id, name, resourceNamePriorityText)
+				}
+			}
+		}
+		trimmed := strings.TrimSpace(typed)
+		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+			var decoded any
+			if json.Unmarshal([]byte(trimmed), &decoded) == nil {
+				collectResourceNames(decoded, targetKey, out)
+			}
+		}
+	}
+}
+
+func directResourceIDs(value map[string]any, targetKey string) []string {
+	resourceType := normalizeMessageKey(strings.TrimSpace(fmt.Sprint(
+		firstMessageValue(value, "resourceType", "resource_type"))))
+	keys := make([]string, 0, len(value))
+	for key := range value {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	ids := make([]string, 0, 1)
+	for _, key := range keys {
+		normalizedKey := normalizeMessageKey(key)
+		if normalizedKey != targetKey &&
+			!(normalizedKey == "resourceid" && resourceType == targetKey) {
+			continue
+		}
+		if id := resourceIDScalar(value[key]); id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return uniqueResourceIDs(ids)
+}
+
+func directResourceName(value map[string]any, targetKey string) string {
+	for _, wanted := range []string{"filename", "resourcename", "originalfilename"} {
+		if name := directResourceString(value, wanted); name != "" {
+			return name
+		}
+	}
+	// A bare "name" is accepted only inside an explicit resource envelope.
+	// Message rows also commonly contain a sender/group name, which must never
+	// become the attachment filename merely because the row has a resource ID.
+	resourceType := normalizeMessageKey(strings.TrimSpace(fmt.Sprint(
+		firstMessageValue(value, "resourceType", "resource_type"))))
+	if resourceType == targetKey && directResourceString(value, "resourceid") != "" {
+		return directResourceString(value, "name")
+	}
+	return ""
+}
+
+func directResourceString(value map[string]any, wanted string) string {
+	keys := make([]string, 0, len(value))
+	for key := range value {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if normalizeMessageKey(key) != wanted {
+			continue
+		}
+		if text, ok := value[key].(string); ok {
+			return strings.TrimSpace(text)
+		}
+	}
+	return ""
+}
+
+func recordResourceName(
+	out map[string]resourceNameCandidate,
+	id, name string,
+	priority int,
+) {
+	id = resourceIDScalar(id)
+	name = strings.TrimSpace(name)
+	if id == "" || name == "" {
+		return
+	}
+	if current, ok := out[id]; ok && current.priority >= priority {
+		return
+	}
+	out[id] = resourceNameCandidate{name: name, priority: priority}
+}
 
 func collectResourceIDs(value any, targetKey string, textPattern *regexp.Regexp, out *[]string) {
 	switch typed := value.(type) {

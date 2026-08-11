@@ -257,6 +257,58 @@ func TestCrossPlatformCoverageChatMessageSearchProjectsStableFieldsAndPreservesL
 	}
 }
 
+func TestCrossPlatformCoverageChatMessageScopedSearchProjectsStableFields(t *testing.T) {
+	payload := `{
+		"result": {
+			"conversationMessagesList": [{
+				"openConversationId": "cid-1",
+				"messages": [{"openMessageId":"msg-scoped-1","content":{"text":"范围内消息"}}]
+			}],
+			"hasMore": false
+		}
+	}`
+	caller := &imReadResultCaller{responses: map[string]string{
+		"get_conversation_info":      `{}`,
+		"search_messages_by_keyword": payload,
+	}}
+
+	got, err := executeIMReadCommand(t, caller, []string{"dws", "chat"}, newChatCommand,
+		"message", "search", "--query", "范围内消息", "--group", "cid-1",
+		"--start", "2026-07-01T00:00:00+08:00", "--end", "2026-07-10T00:00:00+08:00")
+	if err != nil {
+		t.Fatalf("scoped chat message search returned error: %v", err)
+	}
+	wantCalls := []imReadResultCall{
+		{productID: "chat", toolName: "get_conversation_info"},
+		{productID: "chat", toolName: "search_messages_by_keyword"},
+	}
+	if !reflect.DeepEqual(caller.calls, wantCalls) {
+		t.Fatalf("calls = %#v, want %#v", caller.calls, wantCalls)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal([]byte(got), &result); err != nil {
+		t.Fatalf("decode command output: %v\noutput: %s", err, got)
+	}
+	messages, ok := result["messages"].([]any)
+	if !ok || len(messages) != 1 {
+		t.Fatalf("messages = %#v", result["messages"])
+	}
+	message, _ := messages[0].(map[string]any)
+	if message["messageId"] != "msg-scoped-1" || message["openMessageId"] != "msg-scoped-1" ||
+		message["conversationId"] != "cid-1" || message["text"] != "范围内消息" {
+		t.Fatalf("projected scoped message = %#v", message)
+	}
+	scope, _ := result["scope"].(map[string]any)
+	if scope["targetsValidated"] != true || scope["resultsWithinScope"] != true || scope["sourceComplete"] != true {
+		t.Fatalf("scope = %#v", scope)
+	}
+	legacy, _ := result["result"].(map[string]any)
+	if _, ok := legacy["conversationMessagesList"].([]any); !ok {
+		t.Fatalf("legacy result envelope missing: %#v", legacy)
+	}
+}
+
 func TestCrossPlatformCoverageChatMessageListPreservesNonJSONResponse(t *testing.T) {
 	const payload = "upstream temporarily returned plain text"
 	caller := &imReadResultCaller{responses: map[string]string{"list_conversation_message_v2": payload}}

@@ -62,7 +62,7 @@ func callProjectedChatMessages(cmd *cobra.Command, toolName string, args map[str
 func projectChatMessagesPayload(data map[string]any, search bool) map[string]any {
 	items := chatmsg.ListMessageItems(data)
 	if search {
-		items = chatmsg.SearchMessageItems(data)
+		items = chatmsg.SearchItems(data)
 	}
 	messages := make([]map[string]any, 0, len(items))
 	for _, item := range items {
@@ -192,6 +192,278 @@ func chatIntFlagOrFallback(cmd *cobra.Command, primary string, aliases ...string
 	}
 	v, _ := cmd.Flags().GetInt(primary)
 	return v
+}
+
+const maxConversationScopedSearchPages = 40
+
+func runConversationScopedPagedMessageSearch(
+	cmd *cobra.Command,
+	cfg PagedMCPCommandConfig,
+	scopeParam string,
+	conversationIDs []string,
+) error {
+	conversationIDs = uniqueNonEmptyStrings(conversationIDs)
+	if len(conversationIDs) == 0 {
+		return RunPagedMCPCommand(cmd, cfg)
+	}
+	toolArgs, err := cfg.BuildArgs(cmd)
+	if err != nil {
+		return err
+	}
+	return runConversationScopedMessageSearchWithProjector(
+		cmd,
+		cfg.ServerID,
+		cfg.ToolName,
+		scopeParam,
+		toolArgs,
+		conversationIDs,
+		cfg.ProjectResult,
+	)
+}
+
+func runConversationScopedMessageSearch(
+	cmd *cobra.Command,
+	serverID, toolName, scopeParam string,
+	toolArgs map[string]any,
+	conversationIDs []string,
+) error {
+	return runConversationScopedMessageSearchWithProjector(
+		cmd,
+		serverID,
+		toolName,
+		scopeParam,
+		toolArgs,
+		conversationIDs,
+		nil,
+	)
+}
+
+func runConversationScopedMessageSearchWithProjector(
+	cmd *cobra.Command,
+	serverID, toolName, scopeParam string,
+	toolArgs map[string]any,
+	conversationIDs []string,
+	projectResult func(map[string]any) map[string]any,
+) error {
+	conversationIDs = uniqueNonEmptyStrings(conversationIDs)
+	if len(conversationIDs) == 0 {
+		return callMCPToolOnServer(serverID, toolName, toolArgs)
+	}
+	opts, err := readPagedCommandOptions(cmd)
+	if err != nil {
+		return err
+	}
+	if commandDryRun(cmd) {
+		return writeConversationScopedSearchPreview(cmd, serverID, toolName, scopeParam, toolArgs, conversationIDs, opts)
+	}
+	if err := validateNativeSearchConversationScope(conversationIDs); err != nil {
+		return err
+	}
+
+	// The downstream search currently treats invalid CID filters as absent and
+	// does not reliably return group-scoped hits. Keep every other filter, scan
+	// the global result stream with a hard page bound, and apply the validated
+	// conversation set locally.
+	scanArgs := cloneStringAnyMap(toolArgs)
+	delete(scanArgs, scopeParam)
+	pageSize := positiveSearchLimit(scanArgs["limit"], 100)
+	resultLimit := pageSize
+	pageLimit := maxConversationScopedSearchPages
+	if opts.pageAll {
+		resultLimit = opts.maxItems
+		pageLimit = opts.pageLimit
+	}
+	cursor := cleanSearchCursor(scanArgs["cursor"])
+	capacity := resultLimit
+	if capacity <= 0 {
+		capacity = pageSize
+	}
+	messages := make([]map[string]any, 0, capacity)
+	seenMessageIDs := map[string]struct{}{}
+	pagesFetched := 0
+	hasMore := false
+	truncatedWithinPage := false
+	var nextCursor any
+
+	for pagesFetched < pageLimit && (resultLimit == 0 || len(messages) < resultLimit) {
+		requestLimit := pageSize
+		if !opts.pageAll {
+			requestLimit = resultLimit - len(messages)
+		}
+		scanArgs["limit"] = requestLimit
+		scanArgs["cursor"] = cursor
+		text, err := CallMCPToolTextOnServer(serverID, toolName, scanArgs)
+		if err != nil {
+			return err
+		}
+		var data map[string]any
+		if err := unmarshalJSONUseNumber(text, &data); err != nil {
+			return apperrors.NewInternal(
+				fmt.Sprintf("解析 %s 返回失败: %v", toolName, err),
+				apperrors.WithReason("search_response_invalid"),
+			)
+		}
+		pagesFetched++
+
+		pageMessages := chatmsg.SearchItems(data)
+		pageMessages, unverifiableMessageIDs := chatmsg.FilterConversationScope(pageMessages, conversationIDs)
+		if len(unverifiableMessageIDs) > 0 {
+			return nativeSearchScopeUnverifiedError(conversationIDs, unverifiableMessageIDs)
+		}
+		for index, message := range pageMessages {
+			messageID := strings.TrimSpace(fmt.Sprint(chatmsg.MessageID(message)))
+			if messageID != "" && messageID != "<nil>" {
+				if _, exists := seenMessageIDs[messageID]; exists {
+					continue
+				}
+				seenMessageIDs[messageID] = struct{}{}
+			}
+			messages = append(messages, message)
+			if resultLimit > 0 && len(messages) == resultLimit {
+				truncatedWithinPage = index < len(pageMessages)-1
+				break
+			}
+		}
+
+		page := chatmsg.Pagination(data)
+		hasMoreValue, paginationKnown := page["hasMore"].(bool)
+		if !paginationKnown {
+			return apperrors.NewAPI(
+				"搜索服务未返回可靠的 hasMore，无法安全完成会话范围过滤",
+				apperrors.WithReason("search_conversation_scope_pagination_unknown"),
+				apperrors.WithRetryable(false),
+			)
+		}
+		hasMore = hasMoreValue || truncatedWithinPage
+		nextCursor = page["nextCursor"]
+		if !hasMore {
+			break
+		}
+		if truncatedWithinPage {
+			break
+		}
+		next := cleanSearchCursor(nextCursor)
+		if next == "" || next == cursor {
+			return apperrors.NewAPI(
+				"搜索服务声称仍有更多结果，但 nextCursor 缺失或未前进",
+				apperrors.WithReason("search_conversation_scope_cursor_stalled"),
+				apperrors.WithRetryable(false),
+			)
+		}
+		if resultLimit > 0 && len(messages) >= resultLimit {
+			break
+		}
+		cursor = next
+		if opts.pageAll && opts.delayMS > 0 {
+			if err := sleepPagedCommandDelay(cmd.Context(), time.Duration(opts.delayMS)*time.Millisecond); err != nil {
+				return err
+			}
+		}
+	}
+
+	result := map[string]any{
+		"conversationMessagesList": chatmsg.GroupSearchMessages(messages),
+		"hasMore":                  hasMore,
+		"complete":                 !hasMore,
+		"pagesFetched":             pagesFetched,
+	}
+	if hasMore && nextCursor != nil && cleanSearchCursor(nextCursor) != "" {
+		result["nextCursor"] = nextCursor
+	}
+	payload := map[string]any{
+		"result": result,
+		"scope": map[string]any{
+			"requestedConversationIds": append([]string(nil), conversationIDs...),
+			"targetsValidated":         true,
+			"filterApplied":            true,
+			"filterMode":               "client",
+			"resultsWithinScope":       true,
+			"sourceComplete":           !hasMore,
+		},
+	}
+	if opts.pageAll {
+		paging := map[string]any{
+			"truncated":  hasMore,
+			"hasMore":    hasMore,
+			"lastCursor": nextCursor,
+			"pages":      pagesFetched,
+			"total":      len(messages),
+		}
+		if truncatedWithinPage {
+			paging["truncatedWithinPage"] = true
+			paging["resumeCursorReliable"] = false
+		}
+		payload["paging"] = paging
+	}
+	if projectResult != nil {
+		payload = projectResult(payload)
+	}
+	return writeCommandPayload(cmd, payload)
+}
+
+func writeConversationScopedSearchPreview(
+	cmd *cobra.Command,
+	serverID, toolName, scopeParam string,
+	toolArgs map[string]any,
+	conversationIDs []string,
+	opts pagedCommandOptions,
+) error {
+	plan := make([]map[string]any, 0, len(conversationIDs)+2)
+	for _, conversationID := range conversationIDs {
+		plan = append(plan, map[string]any{
+			"stage":   "validate-conversation",
+			"product": "chat",
+			"tool":    "get_conversation_info",
+			"arguments": map[string]any{
+				"openConversationId": conversationID,
+			},
+		})
+	}
+	scanArgs := cloneStringAnyMap(toolArgs)
+	delete(scanArgs, scopeParam)
+	pageLimit := maxConversationScopedSearchPages
+	maxItems := positiveSearchLimit(scanArgs["limit"], 100)
+	pageDelay := 0
+	if opts.pageAll {
+		pageLimit = opts.pageLimit
+		maxItems = opts.maxItems
+		pageDelay = opts.delayMS
+	}
+	plan = append(plan,
+		map[string]any{
+			"stage":     "search-global",
+			"product":   serverID,
+			"tool":      toolName,
+			"arguments": scanArgs,
+			"pageAll":   opts.pageAll,
+			"pageLimit": pageLimit,
+			"maxItems":  maxItems,
+			"pageDelay": pageDelay,
+		},
+		map[string]any{
+			"stage":                    "filter-conversation-scope",
+			"requestedConversationIds": append([]string(nil), conversationIDs...),
+			"failClosed":               true,
+		},
+	)
+	return writeCommandPayload(cmd, map[string]any{
+		"dry_run":  true,
+		"executed": false,
+		"plan":     plan,
+	})
+}
+
+func validateNativeSearchConversationScope(conversationIDs []string) error {
+	for _, conversationID := range conversationIDs {
+		_, err := CallMCPToolTextOnServer("chat", "get_conversation_info", map[string]any{
+			"openConversationId": conversationID,
+		})
+		if err == nil {
+			continue
+		}
+		return NormalizeSearchConversationScopeError(conversationID, err)
+	}
+	return nil
 }
 
 func chatMessageListAllArgs(cmd *cobra.Command) (map[string]any, error) {
@@ -393,6 +665,69 @@ func appendChatAdvancedFilters(cmd *cobra.Command, toolArgs map[string]any) erro
 		toolArgs["limit"] = v
 	}
 	return nil
+}
+
+func nativeSearchScopeUnverifiedError(conversationIDs, messageIDs []string) error {
+	return apperrors.NewAPI(
+		"搜索结果缺少 conversationId，无法证明会话过滤范围；已停止输出",
+		apperrors.WithReason("search_conversation_scope_unverified"),
+		apperrors.WithDetails(map[string]any{
+			"requestedConversationIds": conversationIDs,
+			"unverifiableMessageIds":   messageIDs,
+		}),
+		apperrors.WithRetryable(false),
+		apperrors.WithHint("请保留 trace_id 并检查 IM 搜索服务是否返回 openConversationId"),
+	)
+}
+
+func uniqueNonEmptyStrings(values []string) []string {
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func positiveSearchLimit(value any, fallback int) int {
+	switch typed := value.(type) {
+	case int:
+		if typed > 0 {
+			return typed
+		}
+	case int64:
+		if typed > 0 {
+			return int(typed)
+		}
+	case json.Number:
+		if parsed, err := strconv.Atoi(typed.String()); err == nil && parsed > 0 {
+			return parsed
+		}
+	case float64:
+		if typed > 0 {
+			return int(typed)
+		}
+	}
+	return fallback
+}
+
+func cleanSearchCursor(value any) string {
+	if value == nil {
+		return ""
+	}
+	text := strings.TrimSpace(fmt.Sprint(value))
+	if text == "<nil>" || strings.EqualFold(text, "null") {
+		return ""
+	}
+	return text
 }
 
 func chatMessageListFavoritesArgs(cmd *cobra.Command) (map[string]any, error) {
@@ -1600,6 +1935,35 @@ func unmarshalJSONUseNumber(text string, v any) error {
 	return dec.Decode(v)
 }
 
+func nativeCardUpdateVerificationError(bizID string, verifyErr error) error {
+	reason := "streaming_card_update_unverified"
+	message := "服务端未返回卡片实际更新的证据；为避免假成功，CLI 已将本次操作判为失败"
+	hint := "请检查服务端是否返回 updated=true、affectedCount>0 或等价的明确更新结果"
+	switch {
+	case errors.Is(verifyErr, chatmsg.ErrCardUpdateNotApplied):
+		reason = "streaming_card_update_not_applied"
+		message = "服务端明确表示流式卡片没有被更新"
+		hint = "请确认 bizId 来自 send-card、当前账号有权限且卡片仍允许该状态转换"
+	case errors.Is(verifyErr, chatmsg.ErrCardUpdateBizIDDrift):
+		reason = "streaming_card_update_biz_id_mismatch"
+		message = "服务端返回的 bizId 与本次请求不一致；无法确认目标卡片已更新"
+		hint = "请保留 trace_id 并检查 update_streaming_card 的响应映射"
+	}
+	return apperrors.NewAPI(
+		message,
+		apperrors.WithOperation("update_streaming_card"),
+		apperrors.WithServerKey("im"),
+		apperrors.WithOrigin("client_postcondition"),
+		apperrors.WithFailureStage("verify_update_result"),
+		apperrors.WithExecutionStarted(true),
+		apperrors.WithRetryable(false),
+		apperrors.WithReason(reason),
+		apperrors.WithHint(hint),
+		apperrors.WithDetails(map[string]any{"bizId": bizID}),
+		apperrors.WithCause(verifyErr),
+	)
+}
+
 func firstStringField(data map[string]any, keys ...string) string {
 	for _, key := range keys {
 		if value, ok := data[key]; ok {
@@ -2639,7 +3003,7 @@ func newChatCommand() *cobra.Command {
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "以当前用户身份发送群聊或单聊消息",
-				UseWhen:      []string{"用户明确要以个人身份发送文本或媒体消息时"},
+				UseWhen:      []string{"用户明确要以个人身份发送文本或媒体消息时；响应返回 openTaskId 后用 chat message query-send-status 确认投递并取得后续操作所需的消息 ID"},
 				AvoidWhen:    []string{"机器人身份或 Webhook 发送应使用对应命令"},
 				Examples:     []string{"dws chat message send --group <openConversationId> \"项目已更新\""},
 			},
@@ -3371,7 +3735,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageSearchCmd := &cobra.Command{
 		Use:   "search",
 		Short: "按关键词搜索消息",
-		Long:  `在当前用户的会话中按关键词搜索消息。输出顶层 messages，稳定字段为 messageId 和 text；兼容保留 openMessageId、content 和原始 result。--query 指定搜索关键词（必填）。可选 --group 限定搜索某个会话，不传则搜索所有会话。时间参数 --start/--end（ISO-8601）限定搜索时间范围。分页参数 --limit（默认 100）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
+		Long:  `在当前用户的会话中按关键词搜索消息。输出顶层 messages，稳定字段为 messageId 和 text；兼容保留 openMessageId、content 和原始 result。--query 指定搜索关键词（必填）。可选 --group 限定搜索某个会话，不传则搜索所有会话。显式指定会话时，CLI 会先验证 CID，再扫描全局搜索流并在本地精确过滤，避免下层忽略非法 CID 或群聊 CID；默认最多扫描 40 页并返回至 --limit 条范围内消息。时间参数 --start/--end（ISO-8601）限定搜索时间范围。分页参数 --limit（默认 100）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。未指定会话时默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持默认行为。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
 		Example: `  dws chat message search --query "changefree" --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00" --limit 50 --cursor 0
   dws chat message search --query "codereview" --group <openconversation_id> --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00" --limit 100 --cursor 0
   dws chat message search --query "链接" --start "2026-04-15T00:00:00+08:00" --end "2026-04-16T00:00:00+08:00" --limit 100 --cursor <nextCursor>
@@ -3379,8 +3743,13 @@ func newChatCommand() *cobra.Command {
   dws chat message search --query "发布计划" --start "2026-07-01T00:00:00+08:00" --end "2026-07-10T00:00:00+08:00" --jq '.messages[] | {messageId, text}'
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunPagedMCPCommand(cmd, pagedProjectedChatSearchConfig(cmd,
-				"search_messages_by_keyword", chatMessageSearchArgs))
+			groupID := flagOrFallback(cmd, "group", "conversation-id", "id", "chat")
+			return runConversationScopedPagedMessageSearch(
+				cmd,
+				pagedProjectedChatSearchConfig(cmd, "search_messages_by_keyword", chatMessageSearchArgs),
+				"openConversationId",
+				[]string{groupID},
+			)
 		},
 	}
 	DeclareLeafMetadata(chatMessageSearchCmd, LeafSpec{
@@ -3425,7 +3794,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageSearchAdvancedCmd := &cobra.Command{
 		Use:   "search-advanced",
 		Short: "多维度搜索消息",
-		Long:  `支持按关键词、发送者、@我、@指定人、指定会话、时间范围等多维度搜索消息。发送者 userId 使用 --user/--users；发送者或 @ 人的 openDingTalkId 使用 --sender-ids/--at-ids。所有参数均为可选，至少指定一个搜索条件。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
+		Long:  `支持按关键词、发送者、@我、@指定人、指定会话、时间范围等多维度搜索消息。发送者 userId 使用 --user/--users；发送者或 @ 人的 openDingTalkId 使用 --sender-ids/--at-ids。显式指定会话时，CLI 会先验证 CID，再扫描全局搜索流并在本地精确过滤，避免下层忽略非法 CID 或群聊 CID；默认最多扫描 40 页并返回至 --limit 条范围内消息。所有参数均为可选，至少指定一个搜索条件。未指定会话时默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持默认行为。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
 		Example: `  dws chat message search-advanced --query "周报" --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00"
   dws chat message search-advanced --user <userId> --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00"
   dws chat message search-advanced --users <userId1>,<userId2> --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00"
@@ -3436,10 +3805,15 @@ func newChatCommand() *cobra.Command {
   dws chat message search-advanced --query "周报" --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00" --limit 100 --page-all --page-limit 20 --max-items 500
   # 查询群 ID: dws chat search --query "群名"
   # 查询单聊会话 ID: dws chat conversation-info --user <userId>
-  # 查询人员: dws contact user search --keyword "姓名" --format json`,
+	  # 查询人员: dws contact user search --keyword "姓名" --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunPagedMCPCommand(cmd, pagedChatConversationMessagesOnServerConfig(
-				"im", "search_messages", chatMessageSearchAdvancedArgs))
+			conversationIDs := parseCSVValues(flagOrFallback(cmd, "conversation-ids", "groups", "group"))
+			return runConversationScopedPagedMessageSearch(
+				cmd,
+				pagedChatConversationMessagesOnServerConfig("im", "search_messages", chatMessageSearchAdvancedArgs),
+				"openConversationIds",
+				conversationIDs,
+			)
 		},
 	}
 	DeclareLeafMetadata(chatMessageSearchAdvancedCmd, LeafSpec{
@@ -3491,14 +3865,16 @@ func newChatCommand() *cobra.Command {
 	// ── query-send-status：查询消息发送状态（走 IM MCP）──────
 
 	chatMessageQuerySendStatusCmd := &cobra.Command{
-		Use:   "query-send-status",
-		Short: "查询消息发送状态",
+		Use:     "query-send-status",
+		Aliases: []string{"send-status"},
+		Short:   "查询消息发送状态",
 		Long: `查询以当前用户身份发送的消息的发送状态。需要传入 chat message send 返回的 openTaskId。
 
 发送成功后，查询结果会返回 openMessageId 和 openConversationId，可直接作为
-chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。`,
+chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
+同一组 ID 也可继续用于 chat message read-status（消息参数为 --message-id）；openTaskId 本身不是消息 ID。`,
 		Example: `  dws chat message query-send-status --open-task-id <openTaskId>
-  # openTaskId 由 dws chat message send 返回`,
+	  dws chat message recall --conversation-id <openConversationId> --msg-id <openMessageId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "open-task-id"); err != nil {
 				return err
@@ -3520,6 +3896,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。`
 				CanonicalPath:  "chat.query_message_send_status",
 				CLIPath:        "chat message query-send-status",
 				PrimaryCLIPath: "chat message query-send-status",
+				Aliases:        []string{"chat message send-status"},
 			},
 			Description: "查询异步消息发送任务的状态",
 			Interface: &contract.InterfaceSpec{
@@ -3529,8 +3906,8 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。`
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "查询异步消息发送任务的状态",
-				UseWhen:      []string{"发送命令返回 openTaskId 后需要确认投递结果时"},
-				AvoidWhen:    []string{"没有 openTaskId 或只需查消息内容时不要使用"},
+				UseWhen:      []string{"发送命令返回 openTaskId 后需要确认投递结果，或后续 edit/recall/read-status 需要先取得 openMessageId 和 openConversationId 时"},
+				AvoidWhen:    []string{"没有 openTaskId、已经有消息 ID，或只需查历史消息内容时不要使用"},
 				Examples:     []string{"dws chat message query-send-status --open-task-id <openTaskId>"},
 			},
 		},
@@ -5391,17 +5768,57 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			if !cmd.Flags().Changed("flow-status") {
 				return fmt.Errorf("flag --flow-status is required")
 			}
+			bizID, err := chatmsg.NormalizeCardBizID(mustGetFlag(cmd, "biz-id"))
+			if err != nil {
+				return err
+			}
 			flowStatus, _ := cmd.Flags().GetInt("flow-status")
-			return callMCPToolOnServer("im", "update_streaming_card", map[string]any{
-				"bizId":      mustGetFlag(cmd, "biz-id"),
+			if flowStatus < 1 || flowStatus > 5 {
+				return fmt.Errorf("--flow-status 必须在 1-5 之间")
+			}
+			params := map[string]any{
+				"bizId":      bizID,
 				"msgContent": mustGetFlag(cmd, "content"),
 				"flowStatus": flowStatus,
-			})
+			}
+			if commandDryRun(cmd) {
+				return writeCommandPayload(cmd, map[string]any{
+					"dry_run":  true,
+					"executed": false,
+					"verified": false,
+					"action": map[string]any{
+						"product":   "im",
+						"tool":      "update_streaming_card",
+						"arguments": params,
+					},
+				})
+			}
+			text, err := CallMCPToolTextOnServer("im", "update_streaming_card", params)
+			if err != nil {
+				return err
+			}
+			var response map[string]any
+			if strings.TrimSpace(text) == "" {
+				response = map[string]any{}
+			} else if err := unmarshalJSONUseNumber(text, &response); err != nil {
+				return apperrors.NewInternal(
+					fmt.Sprintf("解析 update_streaming_card 返回失败: %v", err),
+					apperrors.WithReason("streaming_card_update_response_invalid"),
+				)
+			}
+			if _, err := chatmsg.VerifyStreamingCardUpdate(bizID, response); err != nil {
+				return nativeCardUpdateVerificationError(bizID, err)
+			}
+			return writeCommandPayload(cmd, response)
 		},
 	}
 	DeclareLeafMetadata(chatMessageUpdateCardCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
+			// The typed command is the atomic MCP surface and intentionally
+			// preserves its original no-extra-confirmation contract. The
+			// Agent-facing +messages-update-card shortcut owns the higher-level
+			// confirmation boundary.
 			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
@@ -5420,12 +5837,14 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "更新已发送流式卡片的内容和状态",
-				UseWhen:      []string{"已有 bizId 并需要追加内容或结束流式输出时"},
-				AvoidWhen:    []string{"创建新卡片时使用 chat message send-card"},
+				UseWhen:      []string{"需要直接调用底层原子更新，并由调用方自行管理确认与更新节奏时"},
+				AvoidWhen:    []string{"面向 Agent 的默认快速通道使用 chat +messages-update-card；创建新卡片时使用 chat message send-card"},
 				Examples:     []string{"dws chat message update-card --biz-id <bizId> --content \"处理完成\" --flow-status 2"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "biz-id", Property: "bizId"},
 				{Name: "content", Property: "msgContent"},
+				{Name: "flow-status", Property: "flowStatus"},
 			},
 		},
 	})
