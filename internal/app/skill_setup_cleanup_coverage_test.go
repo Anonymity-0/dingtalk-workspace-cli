@@ -107,6 +107,28 @@ func TestCrossPlatformCoverageSkillSetupEventMigrationMarkerFailures(t *testing.
 	}
 }
 
+func TestCrossPlatformCoverageSkillSetupExecuteMarkerFailure(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{"dingtalk-a"})
+	dest := filepath.Join(t.TempDir(), "skills")
+	markerErr := errors.New("marker denied")
+	testseam.Swap(t, &skillSetupWriteFile, func(string, []byte, os.FileMode) error { return markerErr })
+	plan := &skillSetupPlan{
+		Mode:            skillSetupModeMulti,
+		Source:          src,
+		MultiSkillNames: []string{"dingtalk-a"},
+		Targets:         []skillSetupTargetPlan{{Destination: dest}},
+	}
+
+	var out, errOut bytes.Buffer
+	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
+	if err != nil || installed != 0 || skipped != 1 {
+		t.Fatalf("execute marker failure = (%d, %d, %v), want (0, 1, nil)", installed, skipped, err)
+	}
+	if out.Len() != 0 || !strings.Contains(errOut.String(), "受管标记写入失败") {
+		t.Fatalf("execute marker output = %q / %q", out.String(), errOut.String())
+	}
+}
+
 // TestCrossPlatformCoverageSkillSetupCleanupHomeFailure verifies that
 // cleanupMutualExclusion keeps every victim in place with a warning when
 // $HOME cannot be resolved, instead of destroying anything.
