@@ -138,7 +138,7 @@ DWS 当前隐藏 7 个：
 |---|---|---|---|
 | `+search` | 3 个 list shortcut；隐藏 `+minutes-search` 只搜 mine、固定 20 条且解析有 bug | 新建主命令 `+search`：`--scope mine/shared/all`、query、起止时间、cursor/limit、`--page-all/--page-limit`、跨域去重和完整性 ledger；`+minutes-search` 变成隐藏 alias，保留 3 个 list 命令兼容 | **部分**：DWS API 没有 owner/participant 过滤；不在本地假装服务端可精确筛选 |
 | `+download` | 只有单条 OSS URL 查询 | 新建安全本地下载：单条或最多 50 个 taskUuid、`--url-only`、output/output-dir、no-clobber、原子发布、大小限制、SSRF/重定向/DNS 防护、签名 URL 脱敏、逐条失败 ledger | **超越**：复用 `internal/localio` 的安全落盘能力；媒体类型仅按真实响应识别 |
-| `+upload` | 有 create/complete/cancel 原子命令，无 shortcut | 新建本地文件直传：stat/大小/MIME 校验 → create → HTTPS PUT → complete；失败自动 cancel；有界重试、dry-run、签名 URL 脱敏；输出 session/taskUuid | **超越**：lark 先上传 Drive 再用 file_token，DWS 可从本地媒体直接完成闭环 |
+| `+upload` | 有 create/complete/cancel 原子命令，无 shortcut | 新建本地文件直传：stat/大小/MIME 校验 → create → HTTPS PUT → complete；PUT 明确失败时 cancel，complete 请求后结果未知则保留 sessionId 并要求先核验；有界重试、dry-run、签名 URL 脱敏；输出 session/taskUuid | **超越**：lark 先上传 Drive 再用 file_token，DWS 可从本地媒体直接完成闭环 |
 | `+update` | 有 `update title` 原子命令 | 新建安全标题更新：支持 taskUuid/听记 URL、读前校验、dry-run diff、确认和确定性结果 | **等价并增强安全** |
 | `+apply-permission` | 最新 main 已有 `permission apply --policy` | 新建语义化权限申请：`--permission view/download/edit` 映射 policy 4/3/2，支持 URL/ID，展示申请对象和策略 | **等价**；映射必须用契约测试固定，不能让用户记数字 |
 | `+summary` | 有完整覆盖式 `update summary` 原子命令，当前原子 Contract 无确认 | 新建安全摘要更新：先读现状、支持 content/file/stdin、Markdown 与图片引用校验、diff/preview、确认后整段覆盖 | **超越**：把全量覆盖风险变成显式 read-modify-validate-write 流程 |
@@ -171,7 +171,7 @@ DWS 当前隐藏 7 个：
 
 ### 5.2 `+upload-and-analyze`
 
-`本地上传 → complete → 有界等待 → detail`，可选 `--mindmap`、`--speaker-insights`。这是相对 lark 最明确的超越：无需先把本地媒体变成 Drive file_token，且上传失败会 cancel，分析失败会保留已创建的 taskUuid 供恢复。
+`本地上传 → complete → 有界等待 → detail`，可选 `--mindmap`、`--speaker-insights`。这是相对 lark 最明确的超越：无需先把本地媒体变成 Drive file_token；PUT 明确失败会 cancel，而 complete 请求后的未知结果会保留 sessionId、禁止盲目取消，分析失败则保留已创建的 taskUuid 供恢复。
 
 ### 5.3 `+mindmap`
 

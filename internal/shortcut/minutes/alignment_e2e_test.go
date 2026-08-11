@@ -12,17 +12,21 @@ import (
 	"path/filepath"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/localio"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
 
 type minutesE2ECaller struct {
-	responses map[string][]string
-	failAt    map[string]int
-	counts    map[string]int
-	arguments map[string][]map[string]any
+	responses  map[string][]string
+	failAt     map[string]int
+	counts     map[string]int
+	arguments  map[string][]map[string]any
+	beforeFail map[string]func()
 }
 
 func (c *minutesE2ECaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -36,6 +40,9 @@ func (c *minutesE2ECaller) CallTool(_ context.Context, product, tool string, arg
 	c.counts[key]++
 	c.arguments[key] = append(c.arguments[key], args)
 	if c.failAt[key] == c.counts[key] {
+		if hook := c.beforeFail[key]; hook != nil {
+			hook()
+		}
 		return nil, errors.New("fixture failure")
 	}
 	responses := c.responses[key]
@@ -179,6 +186,42 @@ func TestCrossPlatformCoverageMinutesUploadAndPermissionDryRunDoNotWriteE2E(t *t
 	permission, _, err := runMinutesAlignmentCLI(t, caller, "minutes", "+apply-permission", "--id", "u1", "--permission", "edit", "--dry-run")
 	if err != nil || permission["policyId"] != float64(2) || permission["executed"] != false || len(caller.counts) != 0 {
 		t.Fatalf("permission dry-run=%#v err=%v calls=%#v", permission, err, caller.counts)
+	}
+}
+
+func TestCrossPlatformCoverageMinutesUploadUnknownCompletionPreservesSessionE2E(t *testing.T) {
+	work := t.TempDir()
+	file := filepath.Join(work, "response-loss.wav")
+	if err := os.WriteFile(file, []byte("non-empty-audio-fixture"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &minutesPutFile, func(context.Context, string, string, int64) (localio.UploadResult, error) {
+		return localio.UploadResult{SizeBytes: 23, Attempts: 1}, nil
+	})
+
+	serverCompleted := false
+	caller := &minutesE2ECaller{
+		responses: map[string][]string{
+			"minutes/create_upload_session": {`{"success":true,"result":{"sessionId":"session-redacted","presignedUrl":"https://upload.example.invalid/object"}}`},
+		},
+		failAt: map[string]int{"minutes/complete_upload_session": 1},
+		beforeFail: map[string]func(){
+			"minutes/complete_upload_session": func() { serverCompleted = true },
+		},
+	}
+	payload, output, err := runMinutesAlignmentCLI(t, caller, "minutes", "+upload", "--file", file, "--yes")
+	if err == nil || payload != nil || output != "" || !serverCompleted {
+		t.Fatalf("response-loss outcome = payload:%#v output:%q err:%v completed:%v", payload, output, err, serverCompleted)
+	}
+	if caller.counts["minutes/cancel_upload_session"] != 0 {
+		t.Fatalf("unknown remote completion was cancelled: calls=%#v", caller.counts)
+	}
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || typed.Reason != "minutes_upload_completion_unknown" || typed.Retryable || typed.FailureStage != "complete" {
+		t.Fatalf("unknown completion error = %#v", err)
+	}
+	if typed.Details["sessionId"] != "session-redacted" || typed.Details["cancelled"] != false || typed.Details["remoteEffect"] != "unknown" {
+		t.Fatalf("unknown completion recovery details = %#v", typed.Details)
 	}
 }
 

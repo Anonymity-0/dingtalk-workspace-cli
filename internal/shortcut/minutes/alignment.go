@@ -20,8 +20,10 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/minutesdata"
 )
 
+var minutesPutFile = localio.PutFile
+
 var Search = shortcut.Shortcut{
-	Service: "minutes", Command: "+search", Aliases: []string{"+minutes-search"}, Product: "minutes",
+	Service: "minutes", Command: "+search", Product: "minutes",
 	Description: "按范围、标题关键词和时间搜索听记，支持安全全量翻页",
 	Intent:      "需要按标题关键词或时间范围搜索自己创建、他人共享或全部可访问听记时使用；对后端返回再做确定性标题匹配，返回稳定 taskUuid 投影与完整性信息。",
 	Risk:        shortcut.RiskRead,
@@ -385,15 +387,14 @@ func performMinutesUpload(rt *shortcut.RuntimeContext) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	transfer, err := localio.PutFile(rt.Command().Context(), presignedURL, rt.Str("file"), 0)
+	transfer, err := minutesPutFile(rt.Command().Context(), presignedURL, rt.Str("file"), 0)
 	if err != nil {
 		cancelled, cancelErr := cancelMinutesUpload(rt, sessionID)
 		return nil, minutesUploadFailure("put", sessionID, cancelled, cancelErr, err)
 	}
 	completed, completeAttempts, err := completeMinutesUpload(rt, sessionID, time.Duration(rt.Int("complete-timeout"))*time.Second, time.Duration(rt.Int("poll-interval"))*time.Second)
 	if err != nil {
-		cancelled, cancelErr := cancelMinutesUpload(rt, sessionID)
-		return nil, minutesUploadFailure("complete", sessionID, cancelled, cancelErr, err)
+		return nil, minutesUploadCompletionUnknown(sessionID, completeAttempts, err)
 	}
 	taskUUID, err := minutesdata.CompletedTaskUUID(completed)
 	if err != nil {
@@ -643,6 +644,35 @@ func minutesUploadFailure(stage, sessionID string, cancelled bool, cancelErr, ca
 		apperrors.WithReason("minutes_upload_failed"),
 		apperrors.WithExecutionStarted(true),
 		apperrors.WithRetryable(false),
+		apperrors.WithDetails(details),
+	)
+}
+
+func minutesUploadCompletionUnknown(sessionID string, attempts int, cause error) error {
+	details := map[string]any{
+		"stage":            "complete",
+		"sessionId":        sessionID,
+		"completeAttempts": attempts,
+		"cancelled":        false,
+		"remoteEffect":     "unknown",
+		"recovery": map[string]any{
+			"action":     "verify_before_cancel",
+			"nextAction": "保留 sessionId；先重试 complete_upload_session 或查询最近听记确认服务端状态，只有明确证明未完成时才取消会话",
+		},
+	}
+	if cause != nil {
+		details["cause"] = cause.Error()
+	}
+	return apperrors.NewAPI(
+		"听记上传 complete 请求的远端结果未知；为避免破坏可能已完成的上传，已保留会话且未自动取消",
+		apperrors.WithOperation("minutes/+upload"),
+		apperrors.WithOrigin("shortcut"),
+		apperrors.WithFailureStage("complete"),
+		apperrors.WithReason("minutes_upload_completion_unknown"),
+		apperrors.WithExecutionStarted(true),
+		apperrors.WithRetryable(false),
+		apperrors.WithHint("不要重新上传或直接取消；先使用错误详情中的 sessionId 核验服务端状态"),
+		apperrors.WithActions("retry complete_upload_session with the preserved sessionId", "query recent Minutes before cancelling the upload session"),
 		apperrors.WithDetails(details),
 	)
 }

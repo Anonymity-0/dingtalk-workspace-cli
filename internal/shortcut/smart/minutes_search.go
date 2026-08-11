@@ -103,7 +103,8 @@ var MinutesSearch = shortcut.Shortcut{
 }
 
 func init() {
-	// +minutes-search is mounted as a compatibility alias of minutes +search.
-	// Keeping a second registered execution body would create two contracts and
-	// preserve the historical Schema visibility leak.
+	// Keep the historical Schema identity as a hidden compatibility
+	// leaf. +search is the only public discovery route, but removing this
+	// independently shipped ToolSpec would break existing Schema consumers.
+	shortcut.Register(finalizeMinutesSmartShortcut(MinutesSearch))
 }

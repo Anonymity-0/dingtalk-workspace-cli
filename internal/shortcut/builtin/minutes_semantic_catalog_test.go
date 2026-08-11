@@ -41,7 +41,7 @@ func TestCrossPlatformCoverageMinutesSemanticCatalogMatchesRegistryE2E(t *testin
 			t.Errorf("catalog command %s is not registered", command)
 			continue
 		}
-		if !record.Public || !record.Reviewed || record.Delta == "" || item.Hidden || !item.SemanticReviewed || item.Contract.Empty() {
+		if !record.Reviewed || record.Delta == "" || item.Hidden == record.Public || !item.SemanticReviewed || item.Contract.Empty() {
 			t.Errorf("minutes %s review/public/contract mismatch: record=%#v item=%#v", command, record, item)
 		}
 	}

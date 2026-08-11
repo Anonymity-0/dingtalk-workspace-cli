@@ -3,9 +3,10 @@
   "service": "minutes",
   "default_availability": "available",
   "shortcuts": {
-    "+search": {"disposition":"primary_smart","semantic_delta":"Validated itemList parsing, deterministic title filtering, bounded cursor pagination, de-duplication and completeness ledger; +minutes-search is a compatibility alias.","risk":"read","public":true,"reviewed":true},
+    "+search": {"disposition":"primary_smart","semantic_delta":"Validated itemList parsing, deterministic title filtering, bounded cursor pagination, de-duplication and completeness ledger; replaces the deprecated +minutes-search discovery route.","risk":"read","public":true,"reviewed":true},
+    "+minutes-search": {"disposition":"alias_internal","semantic_delta":"Hidden compatibility leaf preserving the historical Schema identity and argv while routing new discovery to +search.","risk":"read","primary":"+search","public":false,"reviewed":true},
     "+download": {"disposition":"primary_smart","semantic_delta":"Resolves real audio/video URLs, validates response shape and performs batch safe atomic local downloads with an explicit failure ledger.","risk":"read","public":true,"reviewed":true},
-    "+upload": {"disposition":"primary_smart","semantic_delta":"Owns local file validation, create-PUT-complete polling, cancellation compensation and final task read-back verification.","risk":"write","public":true,"reviewed":true},
+    "+upload": {"disposition":"primary_smart","semantic_delta":"Owns local file validation, create-PUT-complete polling, pre-complete transfer cancellation compensation, unknown-completion recovery and final task read-back verification.","risk":"write","public":true,"reviewed":true},
     "+update": {"disposition":"semantic_adapter","semantic_delta":"Reads the current title, previews the diff, avoids no-op writes and verifies the final title by read-back.","risk":"write","public":true,"reviewed":true},
     "+apply-permission": {"disposition":"semantic_adapter","semantic_delta":"Maps view/download/edit intent to policy 4/3/2 and validates the permission-request response.","risk":"write","public":true,"reviewed":true},
     "+summary": {"disposition":"primary_smart","semantic_delta":"Reads current summary, supports literal/file/stdin, preserves Markdown images, previews the change and verifies full read-back.","risk":"write","public":true,"reviewed":true},

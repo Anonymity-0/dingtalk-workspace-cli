@@ -94,8 +94,7 @@ var MinutesDetail = shortcut.Shortcut{
 		{Name: "output-dir", Type: shortcut.FlagString, Default: "minutes-transcripts", Desc: "file/both 模式下的安全相对输出目录"},
 	},
 	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"id", "ids"}},
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"id", "ids"}, Description: "去重后 taskUuid 必须为 1..50 个"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"id", "ids"}, Description: "--id 与 --ids 只能选择一种，去重后 taskUuid 必须为 1..50 个"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-limit"}, Description: "--page-limit 必须大于 0"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"transcript-output", "output-dir"}, Description: "file/both 输出目录必须是安全相对路径"},
 	},
@@ -107,6 +106,9 @@ var MinutesDetail = shortcut.Shortcut{
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		if rt.Int("page-limit") <= 0 {
 			return apperrors.NewValidation("--page-limit 必须大于 0")
+		}
+		if strings.TrimSpace(rt.Str("id")) != "" && len(rt.StrSlice("ids")) > 0 {
+			return apperrors.NewValidation("--id 与 --ids 只能选择一种")
 		}
 		ids := minutesDetailIDs(rt)
 		if len(ids) == 0 || len(ids) > 50 {

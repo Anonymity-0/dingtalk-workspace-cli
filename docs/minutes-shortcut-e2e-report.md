@@ -50,6 +50,13 @@
 - 真实热词集合先增加唯一测试词并读回，再通过 `--sync` 恢复原有 5 项；最终计数一致且测试词不存在。
 - 为防止业务数据遗留，额外扫描 195 个可访问候选的摘要，没有发现测试 marker；报告与提交仍不记录任何 taskUuid、成员 UID、组织信息、签名 URL、凭证或业务正文。
 
+## PR 反馈修复后复验（2026-08-11）
+
+- 从真实最新听记内部取得标题但不输出标题或标识，分别执行公开 `+search` 与隐藏兼容 `+minutes-search`；两条路径都真实命中 1 条且 taskUuid 非空，证明历史 Schema/argv 兼容入口不是空壳。
+- 重新生成 1 秒隔离 WAV，真实执行 create → HTTPS PUT → complete → basic read-back；32,078 字节一致，`complete=true`、`verified=true`，sessionId/taskUuid 均非空但未记录具体值。
+- 首次读取遇到网关响应头超时并明确非零；提高单次超时后才取得上述非空业务结果，未把网络错误或空输出记成通过。
+- “服务端已 complete、客户端丢失响应”无法在生产服务上安全且确定地制造，因此增加确定性端到端 fixture：complete 调用在服务端状态标记成功后向客户端返回错误，断言命令返回 `minutes_upload_completion_unknown`、保留 sessionId、`remoteEffect=unknown`，并且 `cancel_upload_session` 调用次数严格为 0。
+
 ## E2E 过程中实际发现并修复的问题
 
 1. Minutes 列表真实结构是 `result.itemList`；旧 smart 链路会错误返回“暂无妙记”。现统一由 `minutesdata` 严格解析。

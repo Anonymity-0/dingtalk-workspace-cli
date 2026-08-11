@@ -95,11 +95,10 @@ var ReplaceBatch = shortcut.Shortcut{
 		{Name: "page-limit", Type: shortcut.FlagInt, Default: "100", Desc: "逐字稿写前/写后验证的翻页上限"},
 	},
 	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"pair", "json"}},
 		{
 			Kind:        shortcut.ConstraintCustom,
 			Flags:       []string{"pair", "json"},
-			Description: `规则必须使用 "原文=>替换" 或 JSON 数组；原文不能为空且不能重复`,
+			Description: `--pair 与 --json 至少提供一种；规则必须使用 "原文=>替换" 或 JSON 数组；原文不能为空且不能重复`,
 		},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"page-limit"}, Description: "--page-limit 必须大于 0"},
 	},
