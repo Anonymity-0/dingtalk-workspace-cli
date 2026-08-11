@@ -12,17 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
-
-type framework2ErrorRunner struct{ err error }
-
-func (r framework2ErrorRunner) Run(context.Context, executor.Invocation) (executor.Result, error) {
-	return executor.Result{}, r.err
-}
 
 func TestCrossPlatformCoverageFramework2HelperOutputEdges(t *testing.T) {
 	if err := writeCommandPayload(nil, map[string]any{"ok": true}); err != nil {
@@ -126,23 +119,10 @@ func TestCrossPlatformCoverageFramework2LeafResultEdges(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageFramework2DevDocRunnerEdges(t *testing.T) {
-	for _, tc := range []struct {
-		name   string
-		runner []executor.Runner
-	}{
-		{name: "missing"},
-		{name: "failure", runner: []executor.Runner{framework2ErrorRunner{err: errors.New("runner failed")}}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			cmd := newDevDocSearchCommand(tc.runner...)
-			if err := cmd.Flags().Set("query", "MCP"); err != nil {
-				t.Fatal(err)
-			}
-			if err := cmd.RunE(cmd, nil); err == nil {
-				t.Fatal("expected runner error")
-			}
-		})
+func TestCrossPlatformCoverageFramework2DevDocRemainsLegacy(t *testing.T) {
+	cmd := newDevDocSearchCommand()
+	if got := output.CommandRollout(cmd); got != output.RolloutLegacyOnly {
+		t.Fatalf("dev doc rollout=%s, want legacy_only", got)
 	}
 }
 

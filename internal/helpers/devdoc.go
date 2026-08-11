@@ -4,11 +4,8 @@ import (
 	"strconv"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cobracmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
-	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -132,11 +129,7 @@ func newDevdocArticleSearchCommand() *cobra.Command {
 // newDevDocSearchCommand is the `dws dev doc search` surface — same execution
 // body as devdoc article search, but ContractFinal examples must use the
 // reviewed primary path for canonical dev.search_open_platform_docs_rag.
-func newDevDocSearchCommand(runners ...executor.Runner) *cobra.Command {
-	var runner executor.Runner
-	if len(runners) > 0 {
-		runner = runners[0]
-	}
+func newDevDocSearchCommand(_ ...executor.Runner) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "search [keyword]",
 		Short: "搜索开放平台文档",
@@ -159,23 +152,11 @@ func newDevDocSearchCommand(runners ...executor.Runner) *cobra.Command {
 			if size < 1 {
 				size = 10
 			}
-			params := map[string]any{
+			return callMCPTool("search_open_platform_docs", map[string]any{
 				"keyword": flagOrFallback(cmd, "query", "keyword"),
 				"page":    page,
 				"size":    size,
-			}
-			if runner == nil {
-				return apperrors.NewInternal("dev doc search requires an executor runner")
-			}
-			invocation := executor.NewHelperInvocation(
-				cobracmd.LegacyCommandPath(cmd), "devdoc", "search_open_platform_docs", params,
-			)
-			result, err := runner.Run(cmd.Context(), invocation)
-			if err != nil {
-				return err
-			}
-			result = normalizeDevAppServiceResult(result)
-			return output.StoreResult(cmd.Context(), devAppCommandResult(result))
+			})
 		},
 	}
 	cmd.Flags().String("query", "", "搜索关键词 (必填)")
@@ -191,7 +172,6 @@ func newDevDocSearchCommand(runners ...executor.Runner) *cobra.Command {
 		Index:       0,
 	})
 	DeclareLeafMetadata(cmd, LeafSpec{
-		OutputRollout: output.RolloutUnifiedActive,
 		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low",
 			Confirmation: "not_required", Idempotency: "idempotent",

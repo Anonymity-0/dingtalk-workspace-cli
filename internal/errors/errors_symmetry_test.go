@@ -14,17 +14,14 @@
 package errors
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 )
 
-// TestErrorsPrintJSONFieldInventory 是 B168 的 PrintJSON 字段清单核对测试：
-// 与 internal/output Envelope.Error / ErrorInfo 的字段逐项对齐（契约规范
-// §2.4）。wire-stable 组（type/subtype/code/retryable/retry_after_seconds）
-// 与 informational 组（message/hint/request_id）均由单一 PrintJSON 路径产出，
-// 字段名与 output 侧 ErrorInfo json tag 一致。
+// TestErrorsPrintJSONFieldInventory protects the published legacy error wire.
+// Unified type/subtype/outcome fields belong to internal/output and must not
+// leak into commands that have not migrated.
 func TestErrorsPrintJSONFieldInventory(t *testing.T) {
 	t.Parallel()
 
@@ -40,10 +37,9 @@ func TestErrorsPrintJSONFieldInventory(t *testing.T) {
 	}
 	got := b.String()
 
-	// wire-stable 组（B173 category→type：type 键存在且值 = category）
 	for _, want := range []string{
-		`"type": "api"`,
-		`"subtype": "rate_limit"`,
+		`"category": "api"`,
+		`"reason": "rate_limit"`,
 		`"code": 1`,
 		`"retryable": true`,
 		`"retry_after_seconds": 30`,
@@ -61,35 +57,27 @@ func TestErrorsPrintJSONFieldInventory(t *testing.T) {
 			t.Errorf("missing informational field %s in %s", want, got)
 		}
 	}
+	for _, forbidden := range []string{`"outcome"`, `"type"`, `"subtype"`} {
+		if strings.Contains(got, forbidden) {
+			t.Errorf("unified field %s leaked into legacy wire: %s", forbidden, got)
+		}
+	}
 }
 
-// TestErrorsPrintJSONOutcomeFailure 是 B169 的 outcome 字段断言：错误信封
-// 顶层恒携带 outcome=failure（契约 §1/§2.5），与 internal/output 侧
-// OutcomeFailure 同值。非错误信封触发路径（未走 PrintJSON 的错误）不要求。
-func TestErrorsPrintJSONOutcomeFailure(t *testing.T) {
+func TestErrorsPrintJSONLegacyWireGolden(t *testing.T) {
 	t.Parallel()
 
 	var b strings.Builder
-	if err := PrintJSON(&b, NewAuth("token expired")); err != nil {
+	if err := PrintJSON(&b, NewValidation("missing", WithReason("missing_required_flags"))); err != nil {
 		t.Fatalf("PrintJSON() error = %v", err)
 	}
-	var payload map[string]any
-	if err := json.Unmarshal([]byte(b.String()), &payload); err != nil {
-		t.Fatal(err)
-	}
-	if payload["outcome"] != "failure" {
-		t.Fatalf("top-level outcome=%v, want failure", payload["outcome"])
-	}
-	errorPayload := payload["error"].(map[string]any)
-	if _, nested := errorPayload["outcome"]; nested {
-		t.Fatalf("outcome must be a sibling of error: %s", b.String())
+	want := "{\n  \"error\": {\n    \"category\": \"validation\",\n    \"code\": 3,\n    \"message\": \"missing\",\n    \"reason\": \"missing_required_flags\"\n  }\n}\n"
+	if got := b.String(); got != want {
+		t.Fatalf("legacy error wire changed\n got: %q\nwant: %q", got, want)
 	}
 }
 
-// TestErrorsPrintJSONSubtypeProjection 是 B170 的 subtype 投影断言：Reason
-// 非空时投影为 error.subtype（confirmation_required/rate_limit 等），与
-// output 侧 ErrorInfo.Subtype 对称；Reason 为空时 subtype 缺席（omitempty）。
-func TestErrorsPrintJSONSubtypeProjection(t *testing.T) {
+func TestErrorsPrintJSONReasonProjectionStaysLegacy(t *testing.T) {
 	t.Parallel()
 
 	t.Run("confirmation_required", func(t *testing.T) {
@@ -101,21 +89,21 @@ func TestErrorsPrintJSONSubtypeProjection(t *testing.T) {
 			t.Fatalf("PrintJSON() error = %v", err)
 		}
 		got := b.String()
-		if !strings.Contains(got, `"subtype": "confirmation_required"`) {
-			t.Fatalf("expected confirmation_required subtype, got %q", got)
+		if !strings.Contains(got, `"reason": "confirmation_required"`) {
+			t.Fatalf("expected confirmation_required reason, got %q", got)
 		}
-		if !strings.Contains(got, `"type": "validation"`) {
-			t.Fatalf("expected validation type, got %q", got)
+		if strings.Contains(got, `"subtype"`) || strings.Contains(got, `"type"`) {
+			t.Fatalf("unified fields leaked into legacy wire: %q", got)
 		}
 	})
 
-	t.Run("no reason omits subtype", func(t *testing.T) {
+	t.Run("no reason omits reason", func(t *testing.T) {
 		var b strings.Builder
 		if err := PrintJSON(&b, NewAPI("plain")); err != nil {
 			t.Fatalf("PrintJSON() error = %v", err)
 		}
-		if strings.Contains(b.String(), `"subtype"`) {
-			t.Fatalf("subtype must be omitted when Reason is empty, got %q", b.String())
+		if strings.Contains(b.String(), `"reason"`) {
+			t.Fatalf("reason must be omitted when Reason is empty, got %q", b.String())
 		}
 	})
 }
@@ -135,13 +123,13 @@ func TestErrorsConfirmationSharesValidationExitCode(t *testing.T) {
 	if got := ExitCode(validation); got != 3 {
 		t.Fatalf("validation ExitCode = %d, want 3", got)
 	}
-	// subtype 区分二者（B170 wire 投影）
+	// Legacy reason distinguishes the confirmation subtype.
 	var b strings.Builder
 	if err := PrintJSON(&b, confirmation); err != nil {
 		t.Fatalf("PrintJSON() error = %v", err)
 	}
-	if !strings.Contains(b.String(), `"subtype": "confirmation_required"`) {
-		t.Fatalf("confirmation must carry subtype, got %q", b.String())
+	if !strings.Contains(b.String(), `"reason": "confirmation_required"`) {
+		t.Fatalf("confirmation must carry reason, got %q", b.String())
 	}
 }
 
@@ -159,15 +147,12 @@ func TestErrorsPartialCategoryFailsClosedAsInternal(t *testing.T) {
 	if err := PrintJSON(&b, err); err != nil {
 		t.Fatalf("PrintJSON() error = %v", err)
 	}
-	if !strings.Contains(b.String(), `"code": 5`) || !strings.Contains(b.String(), `"type": "internal"`) {
+	if !strings.Contains(b.String(), `"code": 5`) || !strings.Contains(b.String(), `"category": "internal"`) {
 		t.Fatalf("partial error must not masquerade as a partial result: %q", b.String())
 	}
 }
 
-// TestErrorsCategoryMapsToType 是 B173 的 category→error.type 映射断言：
-// 每个 Category 在 PrintJSON 的 wire 上同时产出 category（legacy）与 type
-// （规范）两键，且两者值恒等（与 output 侧 ErrorInfo.Type 对齐）。
-func TestErrorsCategoryMapsToType(t *testing.T) {
+func TestErrorsPrintJSONKeepsLegacyCategories(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -190,22 +175,18 @@ func TestErrorsCategoryMapsToType(t *testing.T) {
 				t.Fatalf("PrintJSON() error = %v", err)
 			}
 			got := b.String()
-			if !strings.Contains(got, `"type": "`+tc.want+`"`) {
-				t.Fatalf("expected type %q in %s", tc.want, got)
-			}
 			if !strings.Contains(got, `"category": "`+tc.want+`"`) {
 				t.Fatalf("expected legacy category %q in %s", tc.want, got)
+			}
+			if strings.Contains(got, `"type"`) {
+				t.Fatalf("unified type leaked into legacy JSON: %s", got)
 			}
 		})
 	}
 }
 
-// TestErrorsWireStableFieldsSubset 是 B174 的断言：PrintJSON 产出的可编程
-// 字段键全部落在 wire.go WireStableErrorBodyFields 声明的 wire-stable 集合内
-// （除 legacy 兼容键 category/reason/operation 等 informational 附属键）。
-// 本测试核对 wire-stable 组字段（type/subtype/code/retryable/
-// retry_after_seconds/message/hint/actions/trace_id/rpc_code/rpc_data）均被
-// PrintJSON 产出（在对应 Option 提供时）。
+// TestErrorsWireStableFieldsSubset protects the legacy recovery fields that
+// remain useful without changing the top-level envelope.
 func TestErrorsWireStableFieldsSubset(t *testing.T) {
 	t.Parallel()
 
@@ -225,7 +206,7 @@ func TestErrorsWireStableFieldsSubset(t *testing.T) {
 	}
 	got := b.String()
 	for _, want := range []string{
-		`"type"`, `"subtype"`, `"code"`, `"retryable"`, `"retry_after_seconds"`,
+		`"category"`, `"reason"`, `"code"`, `"retryable"`, `"retry_after_seconds"`,
 		`"message"`, `"hint"`, `"actions"`, `"trace_id"`, `"rpc_code"`, `"rpc_data"`,
 	} {
 		if !strings.Contains(got, want) {
@@ -267,10 +248,10 @@ func TestErrorsCategorySnapshots(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name string
-		err  error
-		typ  string
-		code string
+		name     string
+		err      error
+		category string
+		code     string
 	}{
 		{"api", NewAPI("x"), "api", `"code": 1`},
 		{"auth", NewAuth("x"), "auth", `"code": 2`},
@@ -287,7 +268,7 @@ func TestErrorsCategorySnapshots(t *testing.T) {
 				t.Fatalf("PrintJSON() error = %v", err)
 			}
 			got := b.String()
-			if !strings.Contains(got, `"type": "`+tc.typ+`"`) || !strings.Contains(got, tc.code) {
+			if !strings.Contains(got, `"category": "`+tc.category+`"`) || !strings.Contains(got, tc.code) {
 				t.Fatalf("snapshot mismatch for %s: %s", tc.name, got)
 			}
 		})
@@ -351,20 +332,15 @@ func TestErrorsTraceRPCAndServerDiagPassthrough(t *testing.T) {
 	}
 }
 
-// TestErrorsOutcomeOmitEmptyNonEnvelope 是 B180 的 outcome 语义断言：错误信封
-// 路径恒携带 outcome=failure；非信封触发路径（纯 error 值，未走 PrintJSON）
-// 不产生 outcome 字段——PrintJSON 只在错误信封场景补 outcome，不影响普通
-// 错误文本通道。
-func TestErrorsOutcomeOmitEmptyNonEnvelope(t *testing.T) {
+func TestErrorsLegacyPrintJSONOmitsUnifiedOutcome(t *testing.T) {
 	t.Parallel()
 
-	// PrintJSON 恒为失败信封：outcome 恒在（B169）。
 	var b strings.Builder
 	if err := PrintJSON(&b, NewInternal("x")); err != nil {
 		t.Fatalf("PrintJSON() error = %v", err)
 	}
-	if !strings.Contains(b.String(), `"outcome": "failure"`) {
-		t.Fatalf("failure envelope must carry outcome=failure, got %q", b.String())
+	if strings.Contains(b.String(), `"outcome"`) {
+		t.Fatalf("legacy error JSON must not carry unified outcome, got %q", b.String())
 	}
 }
 

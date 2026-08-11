@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
@@ -79,20 +80,17 @@ func TestMigratedDevAppDefaultsToUnifiedFramework(t *testing.T) {
 	}
 }
 
-func TestDevDocSearchUnifiedUsesInjectedRunnerOnce(t *testing.T) {
-	runner := &countingDevUnifiedRunner{}
-	root := newDevUnifiedRoot(runner)
-	var stdout bytes.Buffer
-	root.SetOut(&stdout)
-	root.SetArgs([]string{"dev", "doc", "search", "MCP"})
-	if err := root.Execute(); err != nil {
-		t.Fatal(err)
+func TestDevDocSearchStaysLegacyUntilPagePaginationContractExists(t *testing.T) {
+	cmd := newDevDocSearchCommand(&countingDevUnifiedRunner{})
+	if got := output.CommandRollout(cmd); got != output.RolloutLegacyOnly {
+		t.Fatalf("dev doc search rollout=%s, want legacy_only until page pagination is modeled", got)
 	}
-	if runner.calls != 1 {
-		t.Fatalf("runner calls=%d, want 1", runner.calls)
+	final, ok := contractfinal.RuntimeContractFinal(cmd)
+	if !ok {
+		t.Fatal("dev doc search is missing ContractFinal")
 	}
-	if !bytes.Contains(stdout.Bytes(), []byte(`"outcome": "success"`)) || bytes.Contains(stdout.Bytes(), []byte(`"contract_version"`)) {
-		t.Fatalf("stdout=%s", stdout.String())
+	if final.Result != nil || final.Pagination != nil {
+		t.Fatalf("legacy dev doc search must not publish unified result/pagination schema: %#v", final)
 	}
 }
 
@@ -107,7 +105,8 @@ func TestDevTerminalRolloutKeepsPublishedConnectStatusLegacy(t *testing.T) {
 		children := cmd.Commands()
 		if cmd.Runnable() && len(children) == 0 {
 			want := output.RolloutUnifiedActive
-			if cmd.CommandPath() == "dws dev connect status" || cmd.CommandPath() == "dws dev connect list" {
+			switch cmd.CommandPath() {
+			case "dws dev connect status", "dws dev connect list", "dws dev doc search":
 				want = output.RolloutLegacyOnly
 			}
 			if got := output.CommandRollout(cmd); got != want {

@@ -29,11 +29,6 @@ import (
 
 var marshalErrorJSON = jsonutil.MarshalIndent
 
-// outcomeFailure 是错误通道的结果标记（契约规范 §2.5 outcome 四值枚举的
-// failure 值，B169）。字面量与 internal/output OutcomeFailure 同源同值；
-// 不跨包引用是因为 output 已导入 errors，反向引用会形成导入环。
-const outcomeFailure = "failure"
-
 // Category represents a stable error class with a documented exit code.
 type Category string
 
@@ -377,28 +372,21 @@ func ExitCode(err error) int {
 	return 5
 }
 
-// PrintJSON writes a machine-readable JSON error object.
-// wire 键与 internal/output Envelope.Error（契约规范 §2.4）对称：
-// `category` 为 legacy 兼容键（auth_refresh_retry_runner_test 等既有消费方
-// 依赖，B173 保留），`type` 为与 output 侧 ErrorInfo.Type 对齐的规范键
-// （B173，category→type 映射：值同源 = category(err)）；两者值恒等。
-// `outcome` 恒为 "failure"（错误信封恒是失败结果，B169）；`subtype` 在
-// Reason 已知时投影（B170，confirmation_required/rate_limit 等）。
+// PrintJSON writes the legacy machine-readable JSON error object.
+//
+// This wire predates the unified result framework and is intentionally kept
+// byte-compatible for commands whose rollout is legacy_only or dual_validate.
+// Unified commands publish outcome/type/subtype through internal/output only.
 func PrintJSON(w io.Writer, err error) error {
 	errorPayload := map[string]any{
 		"code":     ExitCode(err),
 		"category": category(err),
-		"type":     category(err),
 		"message":  err.Error(),
 	}
 	var typed *Error
 	if stderrors.As(err, &typed) {
 		if typed.Reason != "" {
 			errorPayload["reason"] = typed.Reason
-			// Reason→subtype 投影（B170，契约 §2.4）：reason 值即 subtype
-			// 规范值（confirmation_required/rate_limit 等），与 output 侧
-			// ErrorInfo.Subtype 对称。仅当 Reason 非空时投影（omitempty）。
-			errorPayload["subtype"] = typed.Reason
 		}
 		if typed.Operation != "" {
 			errorPayload["operation"] = typed.Operation
@@ -470,14 +458,11 @@ func PrintJSON(w io.Writer, err error) error {
 			errorPayload["cause"] = typed.Cause.Error()
 		}
 	}
-	payload := map[string]any{"outcome": outcomeFailure, "error": errorPayload}
+	payload := map[string]any{"error": errorPayload}
 
 	data, marshalErr := marshalErrorJSON(payload, "", "  ")
 	if marshalErr != nil {
-		// Keep the hard-coded fallback inside the same stable machine contract.
-		// This path must not depend on JSON encoding because it exists precisely
-		// for values (for example Details) that the encoder cannot represent.
-		_, writeErr := fmt.Fprintln(w, `{"outcome":"failure","error":{"code":5,"category":"internal","type":"internal","subtype":"error_encoding_failed","message":"failed to encode error output","exit_code":5}}`)
+		_, writeErr := fmt.Fprintln(w, `{"error":{"code":5,"category":"internal","message":"failed to encode error output"}}`)
 		return writeErr
 	}
 

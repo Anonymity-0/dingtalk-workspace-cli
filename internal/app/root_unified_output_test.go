@@ -96,8 +96,9 @@ func TestRootExecutionErrorToStderrOnly(t *testing.T) {
 	if stdout.Len() != 0 {
 		t.Fatalf("failure must keep stdout empty, got %q", stdout.String())
 	}
-	if !strings.Contains(stderr.String(), `"error"`) {
-		t.Fatalf("expected JSON error envelope on stderr, got %q", stderr.String())
+	want := "{\n  \"error\": {\n    \"category\": \"auth\",\n    \"code\": 2,\n    \"message\": \"token expired\"\n  }\n}\n"
+	if got := stderr.String(); got != want {
+		t.Fatalf("legacy root error wire changed\n got: %q\nwant: %q", got, want)
 	}
 }
 
