@@ -270,7 +270,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	if installed > 0 && skipped > 0 {
-		fmt.Fprintln(errOut, "⚠️  本次 Skill 安装不完整，保留原更新状态；修复失败原因后请重试 setup 或使用 upgrade --force")
+		fmt.Fprintln(errOut, "⚠️  本次 Skill 安装不完整；修复失败原因后请重试 setup，或运行普通 upgrade 全量刷新预制 Skill")
 	}
 	if installed > 0 && skipped == 0 {
 		home, homeErr := skillSetupUserHomeDir()
@@ -283,25 +283,14 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 				updatedSkillNames = append(updatedSkillNames, multiMiscSkill)
 				sort.Strings(updatedSkillNames)
 			}
-			selected := make(map[string]bool, len(updatedSkillNames))
-			for _, name := range updatedSkillNames {
-				selected[name] = true
-			}
-			var stateSkipped []string
-			for _, name := range allMultiSkillNames {
-				if !selected[name] {
-					stateSkipped = append(stateSkipped, name)
-				}
-			}
 			state := skillstate.State{
-				Version:              RawVersion(),
-				OfficialSkills:       allMultiSkillNames,
-				UpdatedSkills:        updatedSkillNames,
-				SkippedDeletedSkills: stateSkipped,
-				UpdatedAt:            skillSetupNow().UTC().Format(time.RFC3339),
+				Version:        RawVersion(),
+				OfficialSkills: allMultiSkillNames,
+				UpdatedSkills:  updatedSkillNames,
+				UpdatedAt:      skillSetupNow().UTC().Format(time.RFC3339),
 			}
 			if stateErr := skillSetupWriteState(home, state); stateErr != nil {
-				return fmt.Errorf("Skill 已安装，但保存后续增量更新状态失败: %w", stateErr)
+				return fmt.Errorf("Skill 已安装，但保存官方 Skill 信息快照失败: %w", stateErr)
 			}
 		} else if stateErr := skillSetupRemoveState(home); stateErr != nil {
 			return fmt.Errorf("mono Skill 已安装，但清理 multi 更新状态失败: %w", stateErr)

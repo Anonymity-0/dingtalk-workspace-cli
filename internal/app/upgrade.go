@@ -598,7 +598,6 @@ func runUpgrade(ctx context.Context, opts upgradeOptions) error {
 
 	if hasSkills {
 		result, installErr := installUpgradeSkills(skillSrc, upgrade.SkillUpgradeOptions{
-			Force:   opts.force,
 			Version: release.Version,
 		})
 		if installErr != nil {

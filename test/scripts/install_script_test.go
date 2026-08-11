@@ -1073,10 +1073,16 @@ func TestInstallScriptBackupFailureKeepsOriginalDir(t *testing.T) {
 		t.Fatalf("mono run must keep the original dws/ untouched on backup failure (data=%q, err=%v)\noutput:\n%s", string(data), err, out)
 	}
 
-	out = runInstallScript(t, fixture.scriptPath, fixture.envWithSkillMode("multi",
+	cmd := exec.Command("sh", fixture.scriptPath)
+	cmd.Env = fixture.envWithSkillMode("multi",
 		"DWS_INSTALL_DIR="+installDir,
 		"DWS_NO_SKILLS=0",
-	))
+	)
+	output, runErr := cmd.CombinedOutput()
+	if runErr == nil {
+		t.Fatalf("multi install unexpectedly succeeded after backup failure:\n%s", output)
+	}
+	out = string(output)
 	if !strings.Contains(out, "保留原目录") {
 		t.Fatalf("expected backup-failure warning in multi output:\n%s", out)
 	}
@@ -1125,8 +1131,12 @@ install_multi_skills_to_root "$DWS_TEST_MULTI" "$DWS_TEST_ROOT"
 		"DWS_TEST_MULTI="+multi,
 		"DWS_TEST_ROOT="+root,
 	)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("install-skills harness failed: %v\n%s", err, output)
+	output, runErr := cmd.CombinedOutput()
+	if runErr == nil {
+		t.Fatalf("install-skills harness unexpectedly succeeded after backup failure:\n%s", output)
+	}
+	if !strings.Contains(string(output), "所有检测到的 Agent 目标均失败") {
+		t.Fatalf("install-skills aggregate failure missing:\n%s", output)
 	}
 	if data, err := os.ReadFile(filepath.Join(base, "dws", "SKILL.md")); err != nil || string(data) != "old mono\n" {
 		t.Fatalf("mono changed after backup failure (data=%q, err=%v)", string(data), err)
@@ -1241,6 +1251,64 @@ fi
 			}
 			if matches, err := filepath.Glob(filepath.Join(filepath.Dir(cache), ".multi.tmp.*")); err != nil || len(matches) != 0 {
 				t.Fatalf("%s staging leftovers = %v, err = %v", scriptName, matches, err)
+			}
+		})
+	}
+}
+
+func TestInstallerShellMultiCopyFailureReturnsFailure(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			source := filepath.Join(t.TempDir(), "multi")
+			base := filepath.Join(home, ".agents", "skills")
+			mustWriteFile(t, filepath.Join(source, "dingtalk-test", "SKILL.md"), []byte("new skill\n"), 0o644)
+
+			installCall := `install_multi_skills_to_homes "$DWS_TEST_SOURCE"`
+			if scriptName == "install-skills.sh" {
+				installCall = `install_multi_skills_to_root "$DWS_TEST_SOURCE" "$HOME"`
+			}
+			harness := `. "$DWS_TEST_LIBRARY"
+cp() { return 1; }
+if ` + installCall + `; then
+  exit 2
+fi
+`
+			cmd := exec.Command("sh", "-c", harness)
+			cmd.Env = append(os.Environ(),
+				"HOME="+home,
+				"DWS_TEST_LIBRARY="+library,
+				"DWS_TEST_SOURCE="+source,
+			)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s copy-failure harness failed: %v\n%s", scriptName, err, output)
+			}
+			if strings.Contains(string(output), "✅ Skills") {
+				t.Fatalf("%s reported success after copy failure:\n%s", scriptName, output)
+			}
+			if !strings.Contains(string(output), "所有检测到的 Agent 目标均失败") {
+				t.Fatalf("%s did not report aggregate install failure:\n%s", scriptName, output)
+			}
+			if _, err := os.Stat(filepath.Join(base, "dingtalk-test", "SKILL.md")); !os.IsNotExist(err) {
+				t.Fatalf("%s left a completed Skill after copy failure: %v", scriptName, err)
 			}
 		})
 	}

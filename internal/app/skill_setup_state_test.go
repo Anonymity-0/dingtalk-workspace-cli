@@ -13,7 +13,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
-func TestCrossPlatformCoverageSkillSetupPersistsLarkStyleBaseline(t *testing.T) {
+func TestCrossPlatformCoverageSkillSetupPersistsOfficialSnapshot(t *testing.T) {
 	home := t.TempDir()
 	testseam.Swap(t, &skillSetupResolveMode, func(mode string, _ bool, _ io.Writer) (string, error) { return mode, nil })
 	testseam.Swap(t, &skillSetupResolveSource, func(string, string) (string, func(), error) { return "source", func() {}, nil })
@@ -46,14 +46,13 @@ func TestCrossPlatformCoverageSkillSetupPersistsLarkStyleBaseline(t *testing.T) 
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(saved.OfficialSkills, []string{"dingtalk-a", "dingtalk-b", "dingtalk-shared"}) ||
-		!reflect.DeepEqual(saved.UpdatedSkills, []string{"dingtalk-shared", "dingtalk-a"}) ||
-		!reflect.DeepEqual(saved.SkippedDeletedSkills, []string{"dingtalk-b"}) {
+		!reflect.DeepEqual(saved.UpdatedSkills, []string{"dingtalk-shared", "dingtalk-a"}) {
 		t.Fatalf("saved = %#v", saved)
 	}
 
 	testseam.Swap(t, &skillSetupWriteState, func(string, skillstate.State) error { return errors.New("denied") })
 	cmd = skillSetupCoverageCommand(t, skillSetupModeMulti, true)
-	if err := cmd.RunE(cmd, nil); err == nil || !strings.Contains(err.Error(), "状态失败") {
+	if err := cmd.RunE(cmd, nil); err == nil || !strings.Contains(err.Error(), "信息快照失败") {
 		t.Fatalf("write-state error = %v", err)
 	}
 

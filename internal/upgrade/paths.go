@@ -66,7 +66,6 @@ var (
 	upgradeReadDir         = os.ReadDir
 	upgradeStat            = os.Stat
 	upgradeBackupStamp     = func() string { return time.Now().UTC().Format("20060102-150405") }
-	upgradeReadSkillState  = skillstate.Read
 	upgradeWriteSkillState = skillstate.Write
 	upgradeNow             = time.Now
 )
@@ -188,10 +187,9 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 // preferred when present).
 //
 // Package-driven layout:
-//   - release zip has multi/ → reconcile the local official skill set with
-//     the previous official snapshot. Installed official skills are refreshed,
-//     newly introduced official skills are added, and locally deleted older
-//     skills remain absent. --force restores the full official set.
+//   - release zip has multi/ → install and overwrite the complete official
+//     bundle. Locally deleted bundled skills are restored on the next upgrade;
+//     local absence is never treated as a persistent exclusion.
 //   - dingtalk-shared is mandatory whenever it exists in the bundle.
 //   - legacy zip with no multi tree → mono refresh path (unchanged fallback)
 //
@@ -215,7 +213,6 @@ func UpgradeSkillLocations(extractedDir string) (*SkillUpgradeResult, error) {
 }
 
 type SkillUpgradeOptions struct {
-	Force   bool
 	Version string
 }
 
@@ -228,37 +225,16 @@ func UpgradeSkillLocationsWithOptions(extractedDir string, opts SkillUpgradeOpti
 	multiRoot, skills := resolveMultiBundle(extractedDir)
 	if len(skills) > 0 {
 		official := append([]string(nil), skills...)
-		previous, readable, stateErr := upgradeReadSkillState(homeDir)
-		if stateErr != nil {
-			previous, readable = nil, false
-		}
-		local, localErr := listInstalledOfficialSkills(homeDir, official)
-		plan := skillstate.Plan(skillstate.SyncInput{
-			OfficialSkills: official,
-			LocalSkills:    local,
-			PreviousState:  previous,
-			StateReadable:  readable,
-			Force:          opts.Force,
-		})
-		if localErr != nil || len(local) == 0 || len(plan.ToUpdate) == 0 {
-			plan.ToUpdate = official
-			plan.Added = official
-			plan.SkippedDeleted = nil
-		}
-		plan.ToUpdate = ensureMandatoryUpgradeShared(plan.ToUpdate, official)
-		plan.SkippedDeleted = skippedOfficialSkills(official, plan.ToUpdate)
-		result, installErr := upgradeMultiSkillLocations(homeDir, multiRoot, plan.ToUpdate)
+		result, installErr := upgradeMultiSkillLocations(homeDir, multiRoot, official)
 		if installErr != nil {
 			return result, installErr
 		}
 		if len(result.Failed()) == 0 && len(result.Succeeded()) > 0 {
 			state := skillstate.State{
-				Version:              opts.Version,
-				OfficialSkills:       official,
-				UpdatedSkills:        plan.ToUpdate,
-				AddedOfficialSkills:  plan.Added,
-				SkippedDeletedSkills: plan.SkippedDeleted,
-				UpdatedAt:            upgradeNow().UTC().Format(time.RFC3339),
+				Version:        opts.Version,
+				OfficialSkills: official,
+				UpdatedSkills:  official,
+				UpdatedAt:      upgradeNow().UTC().Format(time.RFC3339),
 			}
 			if writeErr := upgradeWriteSkillState(homeDir, state); writeErr != nil {
 				return result, fmt.Errorf("Skill 已同步但状态未写入: %w", writeErr)
@@ -271,74 +247,6 @@ func UpgradeSkillLocationsWithOptions(extractedDir string, opts SkillUpgradeOpti
 		return upgradeMonoSkillLocations(homeDir, monoSrc)
 	}
 	return nil, fmt.Errorf("升级包中找不到可安装的 skill 源")
-}
-
-func listInstalledOfficialSkills(homeDir string, official []string) ([]string, error) {
-	officialSet := make(map[string]bool, len(official))
-	for _, name := range official {
-		officialSet[name] = true
-	}
-	installed := map[string]bool{}
-	for _, agentDir := range knownSkillDirs {
-		base := filepath.Join(homeDir, agentDir)
-		entries, err := upgradeReadDir(base)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return nil, err
-		}
-		for _, entry := range entries {
-			if !entry.IsDir() || !officialSet[entry.Name()] {
-				continue
-			}
-			if info, statErr := upgradeStat(filepath.Join(base, entry.Name(), "SKILL.md")); statErr == nil && !info.IsDir() {
-				installed[entry.Name()] = true
-			}
-		}
-	}
-	names := make([]string, 0, len(installed))
-	for name := range installed {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names, nil
-}
-
-func ensureMandatoryUpgradeShared(selected, official []string) []string {
-	hasShared, selectedShared := false, false
-	for _, name := range official {
-		if name == "dingtalk-shared" {
-			hasShared = true
-			break
-		}
-	}
-	for _, name := range selected {
-		if name == "dingtalk-shared" {
-			selectedShared = true
-			break
-		}
-	}
-	if hasShared && !selectedShared {
-		selected = append(selected, "dingtalk-shared")
-		sort.Strings(selected)
-	}
-	return selected
-}
-
-func skippedOfficialSkills(official, selected []string) []string {
-	selectedSet := make(map[string]bool, len(selected))
-	for _, name := range selected {
-		selectedSet[name] = true
-	}
-	var skipped []string
-	for _, name := range official {
-		if !selectedSet[name] {
-			skipped = append(skipped, name)
-		}
-	}
-	sort.Strings(skipped)
-	return skipped
 }
 
 // skillBackupKeep limits ~/.dws/skill-backups/ growth: only the newest

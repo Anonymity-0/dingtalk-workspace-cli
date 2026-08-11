@@ -433,7 +433,7 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 
 > setup 命令可能移除对面模式残留（装 multi 删 `dws/`，装 mono 删 `dingtalk-*`）以及不在 bundle 内的过期 skill。所有删除都会先列入确认预览，并备份到 `~/.dws/skill-backups/<时间戳>/`；备份失败的目录会保留原样、绝不删除。非交互环境应先用 `--dry-run` 核对输出，再由调用方显式决定是否使用仅供脚本的确认跳过参数。
 
-multi setup 成功后，DWS 会把官方 bundle 快照写入 `~/.dws/skills-state.json`（或 `$DWS_CONFIG_DIR/skills-state.json`）。普通 `dws upgrade` 只刷新仍在本地的官方 Skill，自动加入新版新增 Skill，但不会装回用户已删除的旧官方 Skill。`dws upgrade --force` 恢复官方全量集合。状态文件缺失/不可读或本地集合为空时，按首次更新处理，回退为全量安装。
+multi setup 或 upgrade 后，DWS 会把官方 bundle 快照作为信息记录写入 `~/.dws/skills-state.json`（或 `$DWS_CONFIG_DIR/skills-state.json`）。每次 upgrade 都会安装并覆盖该版本的全部预制 Skill；手工删除或通过 setup 排除预制 Skill 不会永久保留，下次 upgrade 会恢复。`dws upgrade --force` 还允许在没有新版本时重装当前 CLI 版本。
 
 环境变量：`DWS_SKILL_MODE=mono|multi`（`install.sh` / `install.ps1` 也认）、`DWS_SKILL_SOURCE=<路径>`。
 

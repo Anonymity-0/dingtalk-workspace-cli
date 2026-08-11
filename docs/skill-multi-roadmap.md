@@ -10,11 +10,11 @@
 
 | 项 | 内容 |
 |---|---|
-| 当前阶段 | 默认 multi、安全迁移、官方 Skill 增量升级已落地；独立 `dws skill mode` lifecycle 命令不建设 |
+| 当前阶段 | 默认 multi、安全迁移、官方 Skill 全量覆盖升级已落地；独立 `dws skill mode` lifecycle 命令不建设 |
 | 硬 deadline | 2026-08-30：安装/升级默认 multi；mono 仅 opt-in；物理下线在独立 retirement 版本推进 |
-| 已完成 | 五面默认 multi、互斥清理、删除前备份、setup 确认/`--dry-run`、官方清单快照与增量升级 |
+| 已完成 | 五面默认 multi、互斥清理、删除前备份、setup 确认/`--dry-run`、官方清单全量覆盖升级 |
 | 下一步 | beta/L1 观察、可选 agent-home 清单门禁、mono retirement |
-| 终态 | multi 为唯一默认布局；保留明确的用户删除选择，新版官方 Skill 可自动加入 |
+| 终态 | multi 为唯一默认布局；每次升级全量覆盖预制 Skill，不持久化本地删除选择 |
 
 ## 1. 最终语义
 
@@ -34,25 +34,18 @@
 
 - `LocateSkillsRoot` 优先返回 release zip 内的 `multi/`。包中存在 multi 树时，
   存量 mono 布局会迁移为 multi；仅 legacy mono-only 包走 mono 回退路径。
-- 布局由包内容驱动，不写 mode sticky 状态；Skill 集合则按本地存在性和官方
-  快照增量求解：
-
-  ```text
-  (本地仍安装 ∩ 本版官方清单) ∪ (本版官方清单 - 上版官方清单)
-  ```
-
-- 因此，本地删除的旧官方 Skill 不会在普通升级中被装回，新版新增官方 Skill
-  会自动加入；`dws upgrade --force` 恢复本版官方全量集合。
-- `dingtalk-shared` 是强制依赖，只要 bundle 提供就始终包含。
-- 状态文件缺失/不可读、本地官方集合为空，或本地扫描失败时按首次升级处理，
-  回退为全量安装。
+- 布局和 Skill 集合都由当前升级包驱动，不写 mode sticky 状态，也不根据本地
+  目录缺失推断排除意图。每次 upgrade 都安装并覆盖本版官方全量集合。
+- 因此，本地删除或通过 setup 临时排除的预制 Skill 会在下一次 upgrade 恢复，
+  新版新增官方 Skill 也会自动加入；`--force` 主要用于重装当前 CLI 版本。
+- `dingtalk-shared` 随官方全量集合始终安装。
 
 ### 1.3 状态与缓存
 
-- multi setup/upgrade 成功后写入 `~/.dws/skills-state.json`；设置
+- multi setup/upgrade 成功后写入信息快照 `~/.dws/skills-state.json`；设置
   `DWS_CONFIG_DIR` 时写到该目录下的 `skills-state.json`。
-- 状态记录当前版本官方清单、本次更新集合、新增官方 Skill、跳过的本地删除
-  Skill 和更新时间。它只用于增量求集合，不决定 mono/multi 布局。
+- 状态记录当前版本官方清单、本次更新集合和更新时间，不参与安装集合求解，
+  也不决定 mono/multi 布局。
 - `~/.dws/skills/{mono,multi}` 是 setup 的本地回退源。所有渠道先在缓存同级
   staging 目录完成复制，再通过 rename 发布；复制或发布失败时保留/恢复旧缓存。
 
@@ -98,7 +91,7 @@ Homebrew 不直接铺 Agent home，安装后由 `dws skill setup` 完成布局�
 - 默认 multi 和五面安装入口对齐。
 - mono/multi 互斥、过期目录与同名目录删除前备份。
 - setup 精确计划、`--dry-run`、非交互确认门禁。
-- 官方清单状态文件与普通/`--force` 增量升级语义。
+- 官方清单信息快照与普通/`--force` 全量覆盖升级语义。
 - 缓存 staged publish 与旧缓存恢复。
 
 ### 后续可选
@@ -121,7 +114,7 @@ Homebrew 不直接铺 Agent home，安装后由 `dws skill setup` 完成布局�
 |---|---|
 | 多目标复制中断 | 旧目录保存在 `skill-backups`，目标报告失败；后续可补自动 rollback UX |
 | mono/multi 漂移 | 安装互斥清理；备份失败时不铺相反布局；upgrade 有 multi 包时迁移布局 |
-| 用户删除的 Skill 被装回 | 官方快照增量公式；仅 `--force` 恢复全量 |
+| 预制 Skill 被用户删除或修改 | 下一次 upgrade 从官方 bundle 全量恢复并覆盖 |
 | 状态文件损坏 | 明确回退全量并重写有效状态，不从目录猜测 CLI 参数意图 |
 | 缓存复制失败 | 同级 staging 完整复制后发布；失败保留或恢复旧缓存 |
 | 无服务端灰度 | beta 轨先行、issue/回访观察、必要时撤回 release 并引导重装 mono |

@@ -11,30 +11,6 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
-func TestCrossPlatformCoverageSkillStatePlanMatchesLarkIncrementalModel(t *testing.T) {
-	previous := &State{OfficialSkills: []string{"dingtalk-a", "dingtalk-b"}}
-	plan := Plan(SyncInput{
-		OfficialSkills: []string{"dingtalk-a", "dingtalk-b", "dingtalk-c", "dingtalk-c", ""},
-		LocalSkills:    []string{"dingtalk-a", "custom", "dingtalk-a"},
-		PreviousState:  previous,
-		StateReadable:  true,
-	})
-	if want := []string{"dingtalk-a", "dingtalk-c"}; !reflect.DeepEqual(plan.ToUpdate, want) {
-		t.Fatalf("ToUpdate = %v, want %v", plan.ToUpdate, want)
-	}
-	if !reflect.DeepEqual(plan.Added, []string{"dingtalk-c"}) || !reflect.DeepEqual(plan.SkippedDeleted, []string{"dingtalk-b"}) {
-		t.Fatalf("plan = %#v", plan)
-	}
-	force := Plan(SyncInput{OfficialSkills: []string{"dingtalk-b", "dingtalk-a"}, Force: true})
-	if !reflect.DeepEqual(force.ToUpdate, []string{"dingtalk-a", "dingtalk-b"}) {
-		t.Fatalf("force = %#v", force)
-	}
-	cold := Plan(SyncInput{OfficialSkills: []string{"dingtalk-a", "dingtalk-b"}})
-	if !reflect.DeepEqual(cold.ToUpdate, cold.OfficialSkills) {
-		t.Fatalf("cold = %#v", cold)
-	}
-}
-
 func TestCrossPlatformCoverageSkillStateReadWriteRemoveAndErrors(t *testing.T) {
 	t.Setenv("DWS_CONFIG_DIR", "")
 	home := t.TempDir()

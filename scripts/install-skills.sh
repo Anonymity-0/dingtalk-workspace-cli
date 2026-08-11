@@ -268,6 +268,7 @@ install_multi_skills_to_root() {
   root="$2"
   installed=0
   attempted=0
+  failed=0
   idx=0
   for agent_dir in \
     ".agents/skills" \
@@ -297,7 +298,8 @@ install_multi_skills_to_root() {
     if _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"; then
       installed=$((installed + 1))
     else
-      printf '  ⚠️  跳过 %s（备份失败，未安装 multi）\n' "$base_dir"
+      failed=$((failed + 1))
+      printf '  ⚠️  跳过 %s（备份或复制失败，未完成 multi 安装）\n' "$base_dir"
     fi
     idx=$((idx + 1))
   done
@@ -306,6 +308,11 @@ install_multi_skills_to_root() {
   fi
   if [ "$installed" -eq 0 ]; then
     printf '  ⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败\n'
+    return 1
+  fi
+  if [ "$failed" -gt 0 ]; then
+    printf '  ⚠️  有 %s 个 Agent 目标安装失败\n' "$failed"
+    return 1
   fi
 }
 
@@ -348,7 +355,10 @@ _install_multi_to_base() {
     _name="$(basename "$skill_dir")"
     _dest="$_base/$_name"
     mkdir -p "$_dest" || return 1
-    cp -R "${skill_dir}." "$_dest/" 2>/dev/null || cp -r "${skill_dir}." "$_dest/"
+    if ! cp -R "${skill_dir}." "$_dest/" 2>/dev/null && ! cp -r "${skill_dir}." "$_dest/"; then
+      printf '  ⚠️  Skill 复制失败，目标未计为安装成功: %s\n' "$_dest"
+      return 1
+    fi
     _count=$((_count + 1))
   done
 

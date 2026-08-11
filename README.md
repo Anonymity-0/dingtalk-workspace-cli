@@ -439,7 +439,7 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 
 > The setup command can remove the opposite-mode layout (`dws/` for multi, `dingtalk-*` for mono) and stale skills not in the bundle. Every removal is previewed before confirmation and preserved under `~/.dws/skill-backups/<timestamp>/`; a directory that cannot be backed up is never removed. In a non-interactive shell, first run `--dry-run` and inspect its output; only then may the caller explicitly choose the scripting-only confirmation bypass.
 
-After a successful multi setup, DWS stores the official bundle snapshot in `~/.dws/skills-state.json` (or `$DWS_CONFIG_DIR/skills-state.json`). A normal `dws upgrade` refreshes official skills that are still installed, automatically adds skills introduced by the new release, and leaves older official skills that you deleted locally absent. `dws upgrade --force` restores the complete official set. A missing/unreadable state file or an empty local set falls back to a full install, matching a first-time update.
+After a multi setup or upgrade, DWS stores an informational official bundle snapshot in `~/.dws/skills-state.json` (or `$DWS_CONFIG_DIR/skills-state.json`). Every upgrade installs and overwrites the complete bundled Skill set from that release. Deleting or excluding a bundled Skill is not sticky: the next upgrade restores it. `dws upgrade --force` additionally allows reinstalling the current CLI version when no newer version is available.
 
 Env vars: `DWS_SKILL_MODE=mono|multi` (also honored by `install.sh` / `install.ps1`), `DWS_SKILL_SOURCE=<path>`.
 
