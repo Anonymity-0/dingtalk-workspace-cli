@@ -1418,4 +1418,44 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 			t.Fatalf("chat category list-by-conv unexpectedly publishes hidden alias --%s", hidden)
 		}
 	}
+
+	for _, path := range []string{
+		"chat message add-emoji",
+		"chat message remove-emoji",
+		"chat message add-text-emotion",
+		"chat message remove-text-emotion",
+	} {
+		leaf, err := queryDeliverySchemaPayload([]string{path})
+		if err != nil {
+			t.Fatal(err)
+		}
+		params := schemaMap(leaf["parameters"])
+		if _, ok := params["conversation-id"]; !ok {
+			t.Fatalf("%s missing public canonical --conversation-id", path)
+		}
+		for _, hidden := range []string{"group", "id", "chat"} {
+			if _, ok := params[hidden]; ok {
+				t.Fatalf("%s unexpectedly publishes hidden alias --%s", path, hidden)
+			}
+		}
+	}
+
+	groupBots, err := queryDeliverySchemaPayload([]string{"chat group bots"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	groupBotsParams := schemaMap(groupBots["parameters"])
+	if _, ok := groupBotsParams["conversation-id"]; !ok {
+		t.Fatal("chat group bots missing public canonical --conversation-id")
+	}
+	groupName := groupBotsParams["group-name"]
+	if groupName == nil {
+		t.Fatal("chat group bots missing public canonical --group-name")
+	}
+	if groupName["property"] != "groupName" {
+		t.Fatalf("chat group bots --group-name property = %#v, want groupName", groupName["property"])
+	}
+	if _, ok := groupBotsParams["group"]; ok {
+		t.Fatal("chat group bots unexpectedly publishes hidden --group alias")
+	}
 }

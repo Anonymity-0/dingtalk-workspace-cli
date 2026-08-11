@@ -90,3 +90,49 @@ func TestCrossPlatformCoverageChatMessageHelpDocumentsPostSendIDChain(t *testing
 		})
 	}
 }
+
+func TestCrossPlatformCoverageChatReactionHelpHidesConversationAliases(t *testing.T) {
+	for _, command := range []string{"add-emoji", "remove-emoji", "add-text-emotion", "remove-text-emotion"} {
+		t.Run(command, func(t *testing.T) {
+			cmd := newChatCommand()
+			var output bytes.Buffer
+			cmd.SetOut(&output)
+			cmd.SetErr(&output)
+			cmd.SetArgs([]string{"message", command, "--help"})
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("chat message %s --help: %v\n%s", command, err, output.String())
+			}
+
+			help := output.String()
+			if !strings.Contains(help, "--conversation-id") {
+				t.Fatalf("chat message %s help missing --conversation-id:\n%s", command, help)
+			}
+			for _, hidden := range []string{"--group", "--id", "--chat"} {
+				if strings.Contains(help, hidden+" string") {
+					t.Fatalf("chat message %s help exposes hidden alias %s:\n%s", command, hidden, help)
+				}
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageChatGroupBotsHelpSplitsGroupName(t *testing.T) {
+	cmd := newChatCommand()
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	cmd.SetArgs([]string{"group", "bots", "--help"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("chat group bots --help: %v\n%s", err, output.String())
+	}
+
+	help := output.String()
+	for _, visible := range []string{"--conversation-id", "--group-name"} {
+		if !strings.Contains(help, visible) {
+			t.Fatalf("chat group bots help missing %s:\n%s", visible, help)
+		}
+	}
+	if strings.Contains(help, "--group string") {
+		t.Fatalf("chat group bots help exposes hidden --group alias:\n%s", help)
+	}
+}

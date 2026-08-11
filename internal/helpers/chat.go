@@ -264,11 +264,17 @@ func installChatFlagAliases(cmd *cobra.Command, primary string, aliases []string
 	if flag == nil {
 		return
 	}
+	effectiveAliases := make([]string, 0, len(aliases))
 	for _, alias := range aliases {
+		if primary == "conversation-id" && alias == "group" && flags.Lookup("group-name") != nil {
+			continue
+		}
+		effectiveAliases = append(effectiveAliases, alias)
 		if flags.Lookup(alias) != nil {
 			if aliasFlag := flags.Lookup(alias); aliasFlag != nil && aliasFlag.Annotations != nil {
 				delete(aliasFlag.Annotations, cobra.BashCompOneRequiredFlag)
 			}
+			_ = flags.MarkHidden(alias)
 			continue
 		}
 		flags.String(alias, "", "--"+primary+" 的兼容别名")
@@ -281,7 +287,7 @@ func installChatFlagAliases(cmd *cobra.Command, primary string, aliases []string
 	}
 	previous := cmd.PreRunE
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		value, err := chatFlagOrAlias(cmd, primary, aliases...)
+		value, err := chatFlagOrAlias(cmd, primary, effectiveAliases...)
 		if err != nil {
 			return err
 		}
@@ -5478,9 +5484,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				Examples:     []string{"dws chat message add-emoji --conversation-id <openConversationId> --message-id <openMessageId> --emoji \"赞\""},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "emoji", Property: "emojiName"},
 				{Name: "message-id", Property: "openMsgId"},
 			},
@@ -5541,9 +5545,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				Examples:     []string{"dws chat message remove-emoji --conversation-id <openConversationId> --message-id <openMessageId> --emoji \"赞\""},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "emoji", Property: "emojiName"},
 				{Name: "message-id", Property: "openMsgId"},
 			},
@@ -5606,9 +5608,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				Examples:     []string{"dws chat message add-text-emotion --conversation-id <openConversationId> --message-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "message-id", Property: "openMsgId"},
 			},
 		},
@@ -5673,9 +5673,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				Examples:     []string{"dws chat message remove-text-emotion --conversation-id <openConversationId> --message-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "message-id", Property: "openMsgId"},
 			},
 		},
@@ -7506,14 +7504,29 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		Short: "查看群内所有机器人",
 		Long:  `获取指定群聊中的所有机器人列表。`,
 		Example: `  dws chat group bots --conversation-id <openConversationId>
+  dws chat group bots --group-name "项目群"
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "conversation-id"); err != nil {
-				return err
-			}
-			groupID, err := resolveNativeChatTarget(flagOrFallback(cmd, "conversation-id", "group", "id", "chat"))
+			conversationID, err := chatFlagOrAlias(cmd, "conversation-id", "id", "chat", "open-conversation-id")
 			if err != nil {
 				return err
+			}
+			groupName, err := chatFlagOrAlias(cmd, "group-name", "group")
+			if err != nil {
+				return err
+			}
+			if conversationID == "" && groupName == "" {
+				return validateRequiredFlagWithAliases(cmd, "conversation-id", "group-name", "group", "id", "chat", "open-conversation-id")
+			}
+			if conversationID != "" && groupName != "" {
+				return fmt.Errorf("--conversation-id and --group-name are mutually exclusive")
+			}
+			groupID := conversationID
+			if groupName != "" {
+				groupID, err = resolveNativeChatTarget(groupName)
+				if err != nil {
+					return err
+				}
 			}
 			return callMCPToolOnServer("bot", "list_group_bots", map[string]any{
 				"openConversationId": groupID,
@@ -7543,13 +7556,22 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AgentSummary: "列出群内机器人",
 				UseWhen:      []string{"需要查看某群已安装哪些机器人或提取 openBotId"},
 				AvoidWhen:    []string{"搜索企业内机器人目录时使用 chat bot find"},
-				Examples:     []string{"dws chat group bots --conversation-id <openConversationId>"},
+				Examples:     []string{"dws chat group bots --conversation-id <openConversationId>", "dws chat group bots --group-name \"项目群\""},
 			},
-			Parameters: []contract.ParamDecl{},
+			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false), Description: "群聊 openConversationId"},
+				{Name: "group-name", Property: "groupName", Required: boolPtr(false), Description: "需唯一解析的群名称"},
+			},
 		},
 	})
-	chatGroupBotsCmd.Flags().String("conversation-id", "", "群聊 openConversationId 或需唯一解析的群名 (必填)")
-	_ = chatGroupBotsCmd.MarkFlagRequired("conversation-id")
+	chatGroupBotsCmd.Flags().String("conversation-id", "", "群聊 openConversationId")
+	chatGroupBotsCmd.Flags().String("group-name", "", "需唯一解析的群名称")
+	chatGroupBotsCmd.Flags().String("group", "", "--group-name 的兼容别名")
+	_ = chatGroupBotsCmd.Flags().MarkHidden("group")
+	cli.AnnotateRuntimeConstraints(chatGroupBotsCmd, cli.RuntimeSchemaConstraints{
+		MutuallyExclusive: [][]string{{"conversation-id", "group-name"}},
+		RequireOneOf:      [][]string{{"conversation-id", "group-name"}},
+	})
 
 	chatGroupMembersRemoveBotCmd := &cobra.Command{
 		Use:   "remove-bot",
