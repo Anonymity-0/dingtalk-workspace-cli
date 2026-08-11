@@ -105,7 +105,15 @@ is_managed_multi_skill_dir() {
   _managed_name="$(basename "$_managed_dir")"
   is_legacy_official_multi_skill_name "$_managed_name" && return 0
   [ -f "$SKILL_STATE_ROOT/skills-state.json" ] || return 1
-  grep -Eq '"name"[[:space:]]*:[[:space:]]*"'"$_managed_name"'"' "$SKILL_STATE_ROOT/skills-state.json"
+  _managed_json_name="$(json_escape "$_managed_name")"
+  _managed_compact='"name":"'"$_managed_json_name"'"'
+  _managed_spaced='"name": "'"$_managed_json_name"'"'
+  DWS_MANAGED_COMPACT="$_managed_compact" DWS_MANAGED_SPACED="$_managed_spaced" awk '
+    /^[[:space:]]*"managed_skills"[[:space:]]*:[[:space:]]*\[[[:space:]]*$/ { inside = 1; next }
+    inside && /^[[:space:]]*\][[:space:]]*,?[[:space:]]*$/ { closed = 1; exit }
+    inside && (index($0, ENVIRON["DWS_MANAGED_COMPACT"]) || index($0, ENVIRON["DWS_MANAGED_SPACED"])) { found = 1 }
+    END { exit !(closed && found) }
+  ' "$SKILL_STATE_ROOT/skills-state.json"
 }
 
 # Frozen exact names shipped before centralized ownership metadata. Never replace this

@@ -1430,6 +1430,72 @@ fi
 	}
 }
 
+func TestInstallerShellManagedSkillNamesAreLiteral(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			statePath := filepath.Join(home, ".dws", "skills-state.json")
+			mustWriteFile(t, statePath, []byte(`{
+  "managed_skills": [
+    {"name":"dingtalk-user[1]"},
+    {"name": "dingtalk-user+2"}
+  ]
+}
+`), 0o600)
+			base := filepath.Join(home, ".agents", "skills")
+			unregistered := filepath.Join(base, "dingtalk-.*")
+			compact := filepath.Join(base, "dingtalk-user[1]")
+			spaced := filepath.Join(base, "dingtalk-user+2")
+			for _, dir := range []string{unregistered, compact, spaced} {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			harness := `. "$DWS_TEST_LIBRARY"
+if is_managed_multi_skill_dir "$DWS_TEST_UNREGISTERED"; then
+  exit 2
+fi
+is_managed_multi_skill_dir "$DWS_TEST_COMPACT" || exit 3
+is_managed_multi_skill_dir "$DWS_TEST_SPACED" || exit 4
+printf '{"other":[{"name":"dingtalk-user[1]"}]}\n' > "$DWS_TEST_STATE"
+if is_managed_multi_skill_dir "$DWS_TEST_COMPACT"; then
+  exit 5
+fi
+`
+			cmd := exec.Command("sh", "-c", harness)
+			cmd.Env = append(os.Environ(),
+				"HOME="+home,
+				"DWS_TEST_LIBRARY="+library,
+				"DWS_TEST_STATE="+statePath,
+				"DWS_TEST_UNREGISTERED="+unregistered,
+				"DWS_TEST_COMPACT="+compact,
+				"DWS_TEST_SPACED="+spaced,
+			)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("%s literal ownership harness failed: %v\n%s", scriptName, err, output)
+			}
+		})
+	}
+}
+
 func TestInstallerShellMultiCopyFailureReturnsFailure(t *testing.T) {
 	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
 		scriptName := scriptName
