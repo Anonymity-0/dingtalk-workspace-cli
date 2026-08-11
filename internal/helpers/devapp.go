@@ -1865,9 +1865,6 @@ func runDevAppTool(runner executor.Runner, cmd *cobra.Command, tool string, para
 
 func devAppCommandResult(result executor.Result) output.CommandResult {
 	data := devAppEnvelopeData(result)
-	if result.Invocation.DryRun {
-		return output.Success(data, output.WithDryRun())
-	}
 	if content, ok := data.(map[string]any); ok {
 		if partial := devAppMultiProfileResult(content); partial != nil {
 			return partial
@@ -1884,13 +1881,18 @@ func devAppCommandResult(result executor.Result) output.CommandResult {
 			}
 		}
 	}
+	successOptions := make([]output.ResultOption, 0, 2)
+	if result.Invocation.DryRun {
+		successOptions = append(successOptions, output.WithDryRun())
+	}
 	if meta, err := devAppPaginationMeta(data); err != nil {
 		return output.Failure(&output.ErrorInfo{
 			Type: "api", Subtype: "pagination_inconsistent", Message: err.Error(),
 			Hint: "保留原始响应并停止翻页；不要把当前页当作完整结果。",
 		})
 	} else if meta != nil {
-		return output.Success(devAppDataWithoutPagination(data), output.WithMeta(meta))
+		successOptions = append(successOptions, output.WithMeta(meta))
+		return output.Success(devAppDataWithoutPagination(data), successOptions...)
 	} else if devAppToolRequiresPagination(result.Invocation.Tool) {
 		return output.Failure(&output.ErrorInfo{
 			Type:    "api",
@@ -1899,7 +1901,7 @@ func devAppCommandResult(result executor.Result) output.CommandResult {
 			Hint:    "保留原始响应并停止翻页；不要把当前页当作完整结果。",
 		})
 	}
-	return output.Success(data)
+	return output.Success(data, successOptions...)
 }
 
 func devAppToolRequiresPagination(tool string) bool {
@@ -2027,9 +2029,10 @@ func devAppPaginationMeta(payload any) (*output.Meta, error) {
 		pg.NextToken = cursor
 	case hasFlag && hasMore:
 		return nil, fmt.Errorf("pagination hasMore=true is missing nextCursor")
-	case hasFlag && !hasMore && cursor != "":
-		return nil, fmt.Errorf("pagination hasMore=false conflicts with nextCursor")
 	case hasFlag && !hasMore:
+		// DingTalk may echo a terminal cursor even when hasMore=false. The
+		// boolean is the authoritative exhaustion signal; never expose that
+		// non-resumable cursor as meta.pagination.next_token.
 		pg.EndpointExhausted = true
 	case !hasFlag && hasCursor && cursor != "":
 		pg.EndpointExhausted = false

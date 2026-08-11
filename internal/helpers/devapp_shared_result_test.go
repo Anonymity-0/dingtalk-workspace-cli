@@ -104,7 +104,6 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 
 	for name, payload := range map[string]map[string]any{
 		"missing cursor":  {"items": []any{}, "hasMore": true},
-		"stale cursor":    {"items": []any{}, "hasMore": false, "nextCursor": "stale"},
 		"wrong flag type": {"items": []any{}, "hasMore": "false"},
 	} {
 		t.Run("pagination inconsistent "+name, func(t *testing.T) {
@@ -118,6 +117,24 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("terminal cursor is not resumable", func(t *testing.T) {
+		result := DevAppCommandResultFromPayload("", map[string]any{
+			"items": []any{}, "hasMore": false, "nextCursor": "terminal-cursor",
+		}, false)
+		env, err := output.EnvelopeFromResult(result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if env.Outcome != output.OutcomeSuccess || env.Meta == nil || env.Meta.Pagination == nil ||
+			!env.Meta.Pagination.EndpointExhausted || env.Meta.Pagination.NextToken != "" {
+			t.Fatalf("terminal pagination envelope=%+v", env)
+		}
+		data, _ := env.Data.(map[string]any)
+		if _, exists := data["nextCursor"]; exists {
+			t.Fatalf("terminal data leaked cursor: %#v", data)
+		}
+	})
 
 	for _, tool := range []string{devAppListTool, devAppPermissionListTool, devAppEventListTool, devAppVersionListTool} {
 		t.Run("declared pagination missing "+tool, func(t *testing.T) {
@@ -168,6 +185,41 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 		}
 		if env.Outcome != output.OutcomeSuccess || !env.DryRun {
 			t.Fatalf("dry-run envelope=%+v", env)
+		}
+	})
+
+	t.Run("dry run still enforces pagination contract", func(t *testing.T) {
+		result := DevAppCommandResultFromPayload(devAppListTool, map[string]any{
+			"items": []any{}, "hasMore": false,
+		}, true)
+		env, err := output.EnvelopeFromResult(result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if env.Outcome != output.OutcomeSuccess || !env.DryRun || env.Meta == nil ||
+			env.Meta.Pagination == nil || !env.Meta.Pagination.EndpointExhausted {
+			t.Fatalf("dry-run pagination envelope=%+v", env)
+		}
+		data, ok := env.Data.(map[string]any)
+		if !ok {
+			t.Fatalf("dry-run pagination data type=%T", env.Data)
+		}
+		if _, exists := data["hasMore"]; exists {
+			t.Fatalf("dry-run data leaked hasMore: %#v", data)
+		}
+		if _, exists := data["nextCursor"]; exists {
+			t.Fatalf("dry-run data leaked nextCursor: %#v", data)
+		}
+	})
+
+	t.Run("dry run still fails closed on invalid success type", func(t *testing.T) {
+		result := DevAppCommandResultFromPayload("", map[string]any{"success": "false"}, true)
+		env, err := output.EnvelopeFromResult(result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if env.Outcome != output.OutcomeFailure || env.Error == nil || env.Error.Subtype != "invalid_success_type" {
+			t.Fatalf("dry-run invalid success envelope=%+v", env)
 		}
 	})
 }
