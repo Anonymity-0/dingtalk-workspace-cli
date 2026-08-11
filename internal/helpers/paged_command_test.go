@@ -18,6 +18,7 @@ type pagedCommandCall struct {
 	server string
 	tool   string
 	args   map[string]any
+	ctx    context.Context
 }
 
 type pagedCommandCaller struct {
@@ -27,12 +28,12 @@ type pagedCommandCaller struct {
 	dry    bool
 }
 
-func (c *pagedCommandCaller) CallTool(_ context.Context, serverID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+func (c *pagedCommandCaller) CallTool(ctx context.Context, serverID, toolName string, args map[string]any) (*edition.ToolResult, error) {
 	copied := map[string]any{}
 	for k, v := range args {
 		copied[k] = v
 	}
-	c.calls = append(c.calls, pagedCommandCall{server: serverID, tool: toolName, args: copied})
+	c.calls = append(c.calls, pagedCommandCall{server: serverID, tool: toolName, args: copied, ctx: ctx})
 	if len(c.steps) == 0 {
 		return textToolResult(`{"result":{"messages":[],"hasMore":false}}`), nil
 	}
@@ -68,18 +69,33 @@ func runPagedCommandTestWithSleep(t *testing.T, caller *pagedCommandCaller, cfg 
 
 func executePagedCommandTest(t *testing.T, caller *pagedCommandCaller, cfg PagedMCPCommandConfig, sleep func(time.Duration), stdout io.Writer, args ...string) (string, string, error) {
 	t.Helper()
+	return executePagedCommandTestWithContext(t, context.Background(), caller, cfg, sleep, stdout, args...)
+}
+
+func executePagedCommandTestWithContext(t *testing.T, ctx context.Context, caller *pagedCommandCaller, cfg PagedMCPCommandConfig, sleep func(time.Duration), stdout io.Writer, args ...string) (string, string, error) {
+	t.Helper()
 	oldDeps := deps
 	oldSleep := helperSleep
+	oldAfter := helperAfter
 	t.Cleanup(func() {
 		deps = oldDeps
 		helperSleep = oldSleep
+		helperAfter = oldAfter
 	})
 	InitDeps(caller)
 	out := stdout
 	errOut := &bytes.Buffer{}
 	deps.Out.w = out
 	deps.Out.errW = errOut
-	helperSleep = sleep
+	if sleep != nil {
+		helperSleep = sleep
+		helperAfter = func(d time.Duration) <-chan time.Time {
+			sleep(d)
+			ch := make(chan time.Time, 1)
+			ch <- time.Now()
+			return ch
+		}
+	}
 
 	cmd := &cobra.Command{
 		Use:          "paged",
@@ -88,6 +104,7 @@ func executePagedCommandTest(t *testing.T, caller *pagedCommandCaller, cfg Paged
 			return RunPagedMCPCommand(cmd, cfg)
 		},
 	}
+	cmd.SetContext(ctx)
 	cmd.Flags().String("cursor", "0", "")
 	AddPagedMCPFlags(cmd)
 	cmd.SetErr(errOut)
@@ -555,6 +572,116 @@ func TestPagedMCPCommandMaxItemsTruncatesPrecisely(t *testing.T) {
 	paging := got["paging"].(map[string]any)
 	if len(items) != 1 || paging["total"].(float64) != 1 || paging["truncated"] != true {
 		t.Fatalf("result = %#v", got)
+	}
+}
+
+func TestPagedMCPCommandMaxItemsStopsWhenPageExactlyReachesLimit(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"messages":[{"id":"m1"},{"id":"m2"}],"hasMore":true,"nextCursor":"c2"}}`},
+		{err: errors.New("second page should not run")},
+	}}
+
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandMessagesConfig(nil), "--page-all", "--max-items", "2", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := got["result"].(map[string]any)["messages"].([]any)
+	paging := got["paging"].(map[string]any)
+	if len(caller.calls) != 1 || len(items) != 2 {
+		t.Fatalf("calls=%#v items=%#v, want one full page", caller.calls, items)
+	}
+	if paging["truncated"] != true || paging["hasMore"] != true || paging["lastCursor"] != "c2" {
+		t.Fatalf("paging=%#v, want safe page-boundary cursor", paging)
+	}
+	if _, ok := paging["truncatedWithinPage"]; ok {
+		t.Fatalf("paging=%#v, want no within-page truncation marker", paging)
+	}
+}
+
+func TestPagedMCPCommandMaxItemsWithinPageKeepsCurrentCursor(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"messages":[{"id":"m1"},{"id":"m2"}],"hasMore":true,"nextCursor":"c2"}}`},
+	}}
+
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandMessagesConfig(nil), "--page-all", "--max-items", "1", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := got["result"].(map[string]any)["messages"].([]any)
+	paging := got["paging"].(map[string]any)
+	if len(items) != 1 || paging["lastCursor"] != "0" {
+		t.Fatalf("result=%#v, want current-page cursor after within-page truncation", got)
+	}
+	if paging["truncatedWithinPage"] != true || paging["resumeCursorReliable"] != false {
+		t.Fatalf("paging=%#v, want unreliable resume marker", paging)
+	}
+}
+
+func TestPagedMCPCommandConversationMessagesMaxItemsWithinPageKeepsCurrentCursor(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"conversationMessagesList":[{"openConversationId":"cid1","messages":[{"id":"m1"},{"id":"m2"}]}],"hasMore":true,"nextCursor":"c2"}}`},
+	}}
+
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandConversationMessagesConfig(nil), "--page-all", "--max-items", "1", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	conversations := got["result"].(map[string]any)["conversationMessagesList"].([]any)
+	messages := conversations[0].(map[string]any)["messages"].([]any)
+	paging := got["paging"].(map[string]any)
+	if len(messages) != 1 || paging["lastCursor"] != "0" {
+		t.Fatalf("result=%#v, want truncated conversation with current-page cursor", got)
+	}
+	if paging["truncatedWithinPage"] != true || paging["resumeCursorReliable"] != false {
+		t.Fatalf("paging=%#v, want unreliable resume marker", paging)
+	}
+}
+
+func TestPagedMCPCommandPassesCommandContextToCaller(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"messages":[{"id":"m1"}],"hasMore":false,"nextCursor":""}}`},
+	}}
+
+	out, _, err := executePagedCommandTestWithContext(t, ctx, caller, pagedCommandMessagesConfig(nil), func(time.Duration) {}, &bytes.Buffer{}, "--page-all", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(out) == "" || len(caller.calls) != 1 {
+		t.Fatalf("stdout=%q calls=%#v, want one successful call", out, caller.calls)
+	}
+	if caller.calls[0].ctx != ctx || caller.calls[0].ctx.Err() != context.Canceled {
+		t.Fatalf("call ctx=%#v err=%v, want canceled command context", caller.calls[0].ctx, caller.calls[0].ctx.Err())
+	}
+}
+
+func TestPagedMCPCommandPageDelayStopsWhenContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`},
+		{text: `{"result":{"messages":[{"id":"m2"}],"hasMore":false,"nextCursor":""}}`},
+	}}
+	var out bytes.Buffer
+
+	stdout, stderr, err := executePagedCommandTestWithContext(t, ctx, caller, pagedCommandMessagesConfig(nil), nil, &out, "--page-all", "--page-delay", "10")
+	if strings.TrimSpace(stdout) == "" {
+		t.Fatal("stdout is empty, want partial pagination JSON")
+	}
+	if err == nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("err=%v, want context canceled", err)
+	}
+	if !strings.Contains(stderr, "pagination stopped at page 2") || len(caller.calls) != 1 {
+		t.Fatalf("stderr=%q calls=%#v, want cancellation before second call", stderr, caller.calls)
+	}
+	var got map[string]any
+	if unmarshalErr := json.Unmarshal([]byte(stdout), &got); unmarshalErr != nil {
+		t.Fatalf("stdout JSON = %q, err = %v", stdout, unmarshalErr)
+	}
+	paging := got["paging"].(map[string]any)
+	if paging["partial"] != true || paging["failedPage"].(float64) != 2 || paging["itemsFetched"].(float64) != 1 {
+		t.Fatalf("paging=%#v, want partial cancellation metadata", paging)
 	}
 }
 

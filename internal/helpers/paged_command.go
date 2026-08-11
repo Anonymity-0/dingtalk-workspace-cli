@@ -137,6 +137,7 @@ func validatePagedConfig(cfg PagedMCPCommandConfig) error {
 
 func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts pagedCommandOptions, args map[string]any) error {
 	var envelope map[string]any
+	ctx := cmd.Context()
 	items := newPagedCollection(cfg)
 	seenCursors := map[string]bool{}
 	currentCursor := cursorValueKey(args[cfg.CursorArg], cfg.CursorKind)
@@ -144,8 +145,9 @@ func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts page
 	hasMore := true
 
 	for page := 1; page <= opts.pageLimit && hasMore; page++ {
+		pageCursor := args[cfg.CursorArg]
 		seenCursors[currentCursor] = true
-		text, err := callMCPToolReturnTextOnServer(context.Background(), cfg.ServerID, cfg.ToolName, args)
+		text, err := callMCPToolReturnTextOnServer(ctx, cfg.ServerID, cfg.ToolName, args)
 		if err != nil {
 			return handlePagedCommandError(cmd, envelope, cfg, items, page, currentCursor, err)
 		}
@@ -159,11 +161,21 @@ func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts page
 		if err := items.Add(pageItems); err != nil {
 			return handlePagedCommandError(cmd, envelope, cfg, items, page, currentCursor, err)
 		}
-		lastCursor = nextCursor
 		hasMore = more
 
-		truncatedByItems := items.Truncate(opts.maxItems)
-		if truncatedByItems {
+		if opts.maxItems > 0 && items.Total() > opts.maxItems {
+			items.Truncate(opts.maxItems)
+			return writePagedCommandResult(envelope, cfg, items, pagingMetadata{
+				Truncated:           true,
+				HasMore:             true,
+				LastCursor:          pageCursor,
+				Pages:               page,
+				Total:               items.Total(),
+				TruncatedWithinPage: true,
+			})
+		}
+		lastCursor = nextCursor
+		if opts.maxItems > 0 && items.Total() == opts.maxItems && hasMore {
 			return writePagedCommandResult(envelope, cfg, items, pagingMetadata{
 				Truncated:  true,
 				HasMore:    true,
@@ -193,7 +205,9 @@ func runPagedMCPCommand(cmd *cobra.Command, cfg PagedMCPCommandConfig, opts page
 		currentCursor = nextKey
 		args[cfg.CursorArg] = normalizedCursor
 		if opts.delayMS > 0 {
-			helperSleep(time.Duration(opts.delayMS) * time.Millisecond)
+			if err := sleepPagedCommandDelay(ctx, time.Duration(opts.delayMS)*time.Millisecond); err != nil {
+				return handlePagedCommandError(cmd, envelope, cfg, items, page+1, currentCursor, err)
+			}
 		}
 	}
 
@@ -239,17 +253,18 @@ func parsePagedCommandPage(text string, cfg PagedMCPCommandConfig) (map[string]a
 }
 
 type pagingMetadata struct {
-	Truncated    bool
-	HasMore      bool
-	LastCursor   any
-	Pages        int
-	Total        int
-	Partial      bool
-	FailedPage   int
-	FailedCursor string
-	PagesFetched int
-	ItemsFetched int
-	Error        string
+	Truncated           bool
+	HasMore             bool
+	LastCursor          any
+	Pages               int
+	Total               int
+	TruncatedWithinPage bool
+	Partial             bool
+	FailedPage          int
+	FailedCursor        string
+	PagesFetched        int
+	ItemsFetched        int
+	Error               string
 }
 
 func handlePagedCommandError(cmd *cobra.Command, envelope map[string]any, cfg PagedMCPCommandConfig, items *pagedCollection, failedPage int, failedCursor string, err error) error {
@@ -292,8 +307,21 @@ func writePagedCommandResult(envelope map[string]any, cfg PagedMCPCommandConfig,
 		paging["itemsFetched"] = meta.ItemsFetched
 		paging["error"] = meta.Error
 	}
+	if meta.TruncatedWithinPage {
+		paging["truncatedWithinPage"] = true
+		paging["resumeCursorReliable"] = false
+	}
 	envelope["paging"] = paging
 	return deps.Out.PrintJSON(envelope)
+}
+
+func sleepPagedCommandDelay(ctx context.Context, delay time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-helperAfter(delay):
+		return nil
+	}
 }
 
 type pagedCollection struct {
