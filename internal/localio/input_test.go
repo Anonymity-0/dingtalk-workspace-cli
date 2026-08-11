@@ -44,6 +44,9 @@ func TestCrossPlatformCoverageReadTextInputRejectsEscapeAndOversizeE2E(t *testin
 			t.Fatalf("unsafe input accepted: %q", spec)
 		}
 	}
+	if _, err := ReadTextInput("too-large", nil, 2); err == nil {
+		t.Fatal("oversize literal accepted")
+	}
 	if _, err := ReadTextInput("-", strings.NewReader("too-large"), 2); err == nil {
 		t.Fatal("oversize stdin accepted")
 	}
@@ -103,11 +106,23 @@ func TestCrossPlatformCoverageReadTextInputFailureBranchesE2E(t *testing.T) {
 		"relative": func(t *testing.T) {
 			testseam.Swap(t, &readTextInputRel, func(string, string) (string, error) { return "", errors.New("rel") })
 		},
-		"stat": func(t *testing.T) {
-			testseam.Swap(t, &readTextInputStat, func(string) (os.FileInfo, error) { return nil, errors.New("stat") })
+		"path stat": func(t *testing.T) {
+			testseam.Swap(t, &statTextInputPath, func(string) (os.FileInfo, error) { return nil, errors.New("stat") })
+		},
+		"open": func(t *testing.T) {
+			testseam.Swap(t, &openTextInputFile, func(string) (*os.File, error) { return nil, errors.New("open") })
+		},
+		"opened file stat": func(t *testing.T) {
+			testseam.Swap(t, &openTextInputFile, func(candidate string) (*os.File, error) {
+				file, openErr := os.Open(candidate)
+				if openErr == nil {
+					_ = file.Close()
+				}
+				return file, openErr
+			})
 		},
 		"read file": func(t *testing.T) {
-			testseam.Swap(t, &readTextInputFile, func(string) ([]byte, error) { return nil, errors.New("read file") })
+			testseam.Swap(t, &readTextInputAll, func(io.Reader) ([]byte, error) { return nil, errors.New("read file") })
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

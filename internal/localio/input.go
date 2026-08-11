@@ -15,8 +15,8 @@ const defaultTextInputLimit = int64(8 << 20)
 
 var (
 	readTextInputAll  = io.ReadAll
-	readTextInputStat = os.Stat
-	readTextInputFile = os.ReadFile
+	statTextInputPath = os.Stat
+	openTextInputFile = os.Open
 	readTextInputRel  = filepath.Rel
 )
 
@@ -41,6 +41,9 @@ func ReadTextInput(spec string, stdin io.Reader, maxBytes int64) (string, error)
 		return string(data), nil
 	}
 	if !strings.HasPrefix(spec, "@") {
+		if int64(len(spec)) > maxBytes {
+			return "", fmt.Errorf("LOCAL_INPUT_TOO_LARGE: 文本输入超过 %d 字节", maxBytes)
+		}
 		return spec, nil
 	}
 	path := strings.TrimSpace(strings.TrimPrefix(spec, "@"))
@@ -70,7 +73,22 @@ func ReadTextInput(spec string, stdin io.Reader, maxBytes int64) (string, error)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
 		return "", fmt.Errorf("LOCAL_INPUT_UNSAFE: @file 解析后逃逸工作目录")
 	}
-	info, err := readTextInputStat(realPath)
+	pathInfo, err := statTextInputPath(realPath)
+	if err != nil {
+		return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
+	}
+	if !pathInfo.Mode().IsRegular() {
+		return "", fmt.Errorf("LOCAL_INPUT_INVALID: @file 必须是普通文件")
+	}
+	if pathInfo.Size() > maxBytes {
+		return "", fmt.Errorf("LOCAL_INPUT_TOO_LARGE: 文件大小 %d 超过 %d 字节", pathInfo.Size(), maxBytes)
+	}
+	file, err := openTextInputFile(realPath)
+	if err != nil {
+		return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
+	}
+	defer file.Close()
+	info, err := file.Stat()
 	if err != nil {
 		return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
 	}
@@ -80,9 +98,12 @@ func ReadTextInput(spec string, stdin io.Reader, maxBytes int64) (string, error)
 	if info.Size() > maxBytes {
 		return "", fmt.Errorf("LOCAL_INPUT_TOO_LARGE: 文件大小 %d 超过 %d 字节", info.Size(), maxBytes)
 	}
-	data, err := readTextInputFile(realPath)
+	data, err := readTextInputAll(io.LimitReader(file, maxBytes+1))
 	if err != nil {
 		return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
+	}
+	if int64(len(data)) > maxBytes {
+		return "", fmt.Errorf("LOCAL_INPUT_TOO_LARGE: 文件超过 %d 字节", maxBytes)
 	}
 	return string(data), nil
 }
