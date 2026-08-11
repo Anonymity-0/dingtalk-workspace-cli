@@ -331,6 +331,40 @@ func TestSearchMsgInvalidCIDStopsBeforeGlobalSearch(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageSearchMsgPreservesAmbiguousPreflightMCPToolErrors(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		want *helpers.CLIError
+	}{
+		{
+			name: "rate limited",
+			want: &helpers.CLIError{
+				Code:    helpers.CodeMCPToolError,
+				Message: `{"success":false,"errorCode":"invalidRequest.rateLimited","errorMsg":"slow down"}`,
+			},
+		},
+		{
+			name: "permission denied",
+			want: &helpers.CLIError{
+				Code:    helpers.CodeMCPToolError,
+				Message: `{"success":false,"errorCode":"forbidden.noPermission","errorMsg":"permission denied"}`,
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &searchMsgExecutionCaller{preflightError: test.want}
+			_, err := executeSearchMsgResult(caller,
+				"--group", "cid-target", "--query", "周报", "--no-enrich")
+			if err != test.want {
+				t.Fatalf("error = %#v, want original %#v", err, test.want)
+			}
+			if len(caller.calls) != 1 || caller.calls[0].tool != "get_conversation_info" {
+				t.Fatalf("calls = %#v", caller.calls)
+			}
+		})
+	}
+}
+
 func TestSearchMsgMissingConversationIdentityFailsClosed(t *testing.T) {
 	caller := &searchMsgExecutionCaller{searchResponse: `{"result":{"messages":[{"openMessageId":"m1","content":"unknown"}],"hasMore":false}}`}
 	_, err := executeSearchMsgResult(caller, "--group", "cid-target", "--query", "周报", "--no-enrich")

@@ -286,6 +286,40 @@ func TestNativeScopedSearchPreservesPreflightAuthError(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageNativeScopedSearchPreservesAmbiguousMCPToolErrors(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		want *CLIError
+	}{
+		{
+			name: "rate limited",
+			want: &CLIError{
+				Code:    CodeMCPToolError,
+				Message: `{"success":false,"errorCode":"invalidRequest.rateLimited","errorMsg":"slow down"}`,
+			},
+		},
+		{
+			name: "permission denied",
+			want: &CLIError{
+				Code:    CodeMCPToolError,
+				Message: `{"success":false,"errorCode":"forbidden.noPermission","errorMsg":"permission denied"}`,
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &chatMessageSearchCaller{preflightError: test.want}
+			_, err := executeNativeScopedSearch(t, caller,
+				"message", "search-advanced", "--query", "周报", "--conversation-ids", "cid-target")
+			if err != test.want {
+				t.Fatalf("error = %#v, want original %#v", err, test.want)
+			}
+			if len(caller.calls) != 1 || caller.calls[0].toolName != "get_conversation_info" {
+				t.Fatalf("calls = %#v", caller.calls)
+			}
+		})
+	}
+}
+
 func TestNativeScopedSearchScansUntilTargetConversationAppears(t *testing.T) {
 	caller := &chatMessageSearchCaller{searchResponses: []string{
 		`{"result":{"conversationMessagesList":[{"openConversationId":"cid-other","messages":[{"openMessageId":"m-other"}]}],"hasMore":true,"nextCursor":"c2"}}`,

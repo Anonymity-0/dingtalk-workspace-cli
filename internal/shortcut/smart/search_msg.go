@@ -14,7 +14,6 @@
 package smart
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -478,19 +477,7 @@ func validateSearchConversationScope(rt *shortcut.RuntimeContext, conversationID
 		if err == nil {
 			continue
 		}
-		var cliErr *helpers.CLIError
-		if !errors.As(err, &cliErr) || (cliErr.Code != helpers.CodeMCPToolError && cliErr.Code != helpers.CodeResourceNotFound) {
-			return err
-		}
-		return apperrors.NewValidation(
-			fmt.Sprintf("无法验证会话 CID %q；已停止搜索，避免过滤失效后返回其他会话消息", conversationID),
-			apperrors.WithReason("search_conversation_scope_invalid"),
-			apperrors.WithDetails(map[string]any{
-				"conversationId": conversationID,
-			}),
-			apperrors.WithHint("确认 openConversationId 存在且当前账号可访问后重试"),
-			apperrors.WithCause(err),
-		)
+		return helpers.NormalizeSearchConversationScopeError(conversationID, err)
 	}
 	return nil
 }
