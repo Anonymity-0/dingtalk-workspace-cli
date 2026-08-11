@@ -1,8 +1,9 @@
 name: PR Eval Dispatch
 
-# `/eval <products> [cases=<ref>]` PR 评论 → 触发内网评测流水线，报告由内网 bot 回贴。
+# `/eval <products> sha=<full-head-sha> [cases=<ref>]` PR 评论 → 触发内网评测流水线，报告由内网 bot 回贴。
 # 本 workflow 只在默认分支上下文运行，不 checkout、不执行 PR 代码；
-# maintainer 打出 /eval 即代表已审阅 PR 代码（内网 CI 将构建并执行该 head）。
+# maintainer 必须在 /eval 中显式记录已审阅的 PR head；权限与当前 head 校验
+# 通过后，内网 CI 只构建并执行该已审核 SHA。
 # 触发通道与凭证全部经 secrets 注入，文件内不出现任何内网信息。
 
 on:
@@ -21,8 +22,7 @@ jobs:
     name: Dispatch internal evaluation
     if: >-
       github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/eval') &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      startsWith(github.event.comment.body, '/eval')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -32,6 +32,17 @@ jobs:
     steps:
       - name: Check out default branch tooling
         uses: actions/checkout@v4
+
+      - name: Verify commenter repository permission
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENTER: ${{ github.event.comment.user.login }}
+        run: |
+          permission_json="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/collaborators/${COMMENTER}/permission")"
+          printf '%s' "$permission_json" | python3 scripts/ci/eval_dispatch_guard.py permission
 
       - name: Parse /eval command
         id: parse
@@ -56,21 +67,21 @@ jobs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" > /dev/null
           exit 1
 
-      - name: Resolve PR head SHA
+      - name: Verify reviewed PR head
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.issue.number }}
+          EXPECTED_PR_NUMBER: ${{ github.event.issue.number }}
+          REVIEWED_SHA: ${{ steps.parse.outputs.reviewed_sha }}
         run: |
-          head_sha="$(curl --fail --silent --show-error \
+          pr_json="$(curl --fail --silent --show-error \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" | jq -r '.head.sha')"
-          if [ -z "$head_sha" ] || [ "$head_sha" = "null" ]; then
-            echo "Failed to resolve PR head SHA." >&2
-            exit 1
-          fi
-          echo "head_sha=${head_sha}" >> "$GITHUB_OUTPUT"
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}")"
+          printf '%s' "$pr_json" \
+            | python3 scripts/ci/eval_dispatch_guard.py head \
+            >> "$GITHUB_OUTPUT"
 
       - name: Trigger internal evaluation pipeline
         env:
