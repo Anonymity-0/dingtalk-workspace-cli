@@ -292,6 +292,8 @@ func handlePagedCommandError(cmd *cobra.Command, envelope map[string]any, cfg Pa
 
 func writePagedCommandResult(envelope map[string]any, cfg PagedMCPCommandConfig, items *pagedCollection, meta pagingMetadata) error {
 	_ = setJSONPath(envelope, cfg.ItemPath, items.Values())
+	_ = setJSONPath(envelope, cfg.HasMorePath, meta.HasMore)
+	_ = setJSONPath(envelope, cfg.CursorPath, meta.LastCursor)
 	paging := map[string]any{
 		"truncated":  meta.Truncated,
 		"hasMore":    meta.HasMore,

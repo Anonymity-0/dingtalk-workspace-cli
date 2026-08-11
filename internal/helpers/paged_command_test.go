@@ -292,12 +292,37 @@ func TestPagedMCPCommandStringCursorAggregatesAndPageLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	items := got["result"].(map[string]any)["messages"].([]any)
+	result := got["result"].(map[string]any)
 	paging := got["paging"].(map[string]any)
 	if len(items) != 2 || paging["truncated"] != true || paging["pages"].(float64) != 2 {
 		t.Fatalf("result = %#v", got)
 	}
+	if result["hasMore"] != true || result["nextCursor"] != "c3" {
+		t.Fatalf("result=%#v, want final page-limit cursor state", result)
+	}
 	if caller.calls[0].args["cursor"] != "0" || caller.calls[1].args["cursor"] != "c2" {
 		t.Fatalf("call args = %#v", caller.calls)
+	}
+}
+
+func TestPagedMCPCommandStringCursorAggregatesAndSyncsCompletionFields(t *testing.T) {
+	caller := &pagedCommandCaller{steps: []scriptedToolStep{
+		{text: `{"result":{"messages":[{"id":"m1"}],"hasMore":true,"nextCursor":"c2"}}`},
+		{text: `{"result":{"messages":[{"id":"m2"}],"hasMore":false,"nextCursor":""}}`},
+	}}
+
+	got, _, err := runPagedCommandTest(t, caller, pagedCommandMessagesConfig(nil), "--page-all", "--page-delay", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := got["result"].(map[string]any)
+	items := result["messages"].([]any)
+	if len(items) != 2 || result["hasMore"] != false || result["nextCursor"] != "" {
+		t.Fatalf("result=%#v, want complete aggregate with final cursor state", result)
+	}
+	paging := got["paging"].(map[string]any)
+	if paging["truncated"] != false || paging["hasMore"] != false || paging["lastCursor"] != "" {
+		t.Fatalf("paging=%#v, want complete pagination metadata", paging)
 	}
 }
 
@@ -586,12 +611,16 @@ func TestPagedMCPCommandMaxItemsStopsWhenPageExactlyReachesLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	items := got["result"].(map[string]any)["messages"].([]any)
+	result := got["result"].(map[string]any)
 	paging := got["paging"].(map[string]any)
 	if len(caller.calls) != 1 || len(items) != 2 {
 		t.Fatalf("calls=%#v items=%#v, want one full page", caller.calls, items)
 	}
 	if paging["truncated"] != true || paging["hasMore"] != true || paging["lastCursor"] != "c2" {
 		t.Fatalf("paging=%#v, want safe page-boundary cursor", paging)
+	}
+	if result["hasMore"] != true || result["nextCursor"] != "c2" {
+		t.Fatalf("result=%#v, want safe page-boundary cursor fields", result)
 	}
 	if _, ok := paging["truncatedWithinPage"]; ok {
 		t.Fatalf("paging=%#v, want no within-page truncation marker", paging)
@@ -608,12 +637,33 @@ func TestPagedMCPCommandMaxItemsWithinPageKeepsCurrentCursor(t *testing.T) {
 		t.Fatal(err)
 	}
 	items := got["result"].(map[string]any)["messages"].([]any)
+	result := got["result"].(map[string]any)
 	paging := got["paging"].(map[string]any)
 	if len(items) != 1 || paging["lastCursor"] != "0" {
 		t.Fatalf("result=%#v, want current-page cursor after within-page truncation", got)
 	}
+	if result["hasMore"] != true || result["nextCursor"] != "0" {
+		t.Fatalf("result=%#v, want unreliable current-page cursor fields", result)
+	}
 	if paging["truncatedWithinPage"] != true || paging["resumeCursorReliable"] != false {
 		t.Fatalf("paging=%#v, want unreliable resume marker", paging)
+	}
+}
+
+func TestPagedCollectionTruncateReturnsFalseWhenLimitDoesNotTrim(t *testing.T) {
+	collection := newPagedCollection(PagedMCPCommandConfig{})
+	if err := collection.Add([]any{map[string]any{"id": "m1"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if collection.Truncate(0) {
+		t.Fatal("Truncate(0) should not trim")
+	}
+	if collection.Truncate(1) {
+		t.Fatal("Truncate(total) should not trim")
+	}
+	if collection.Total() != 1 || len(collection.Values()) != 1 {
+		t.Fatalf("collection=%#v, want unchanged single item", collection.Values())
 	}
 }
 
