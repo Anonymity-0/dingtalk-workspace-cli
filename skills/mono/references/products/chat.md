@@ -2386,7 +2386,7 @@ dws chat message send --group <openConversationId> --msg-type image --media-id "
 
 #### 创建并推送流式卡片 — 向群聊或单聊发送流式卡片消息
 
-群聊传 --group，单聊传 --receiver，二者互斥。群聊创建时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人。用户明确“只创建/不更新/不填正文”时必须使用本原生命令，只调用创建；用户同时提供正文或要求创建后写入/完成时才使用 `chat +messages-send-card` 组合入口。
+群聊传 --group，单聊传 --receiver，二者互斥。群聊创建时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人。
 
 **注意：send-card 必须和 update-card 搭配使用。** 创建卡片时无需传入内容，后续通过 update-card 更新内容，最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。
 flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)。
