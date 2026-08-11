@@ -653,6 +653,8 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file
 #### 查询消息发送状态 — 查询以当前用户身份发送的消息的发送状态
 
 查询以当前用户身份发送的消息的发送状态。需要传入发送消息时返回的 openTaskId。
+
+发送成功时返回 openMessageId 和 openConversationId，可直接用于后续编辑或撤回。
 ```
 Usage:
   dws chat message query-send-status [flags]
@@ -666,6 +668,23 @@ Flags:
   - openTaskId 由 `dws chat message send` 发送消息成功后返回
   - 用于确认消息是否已成功发送或获取发送失败的原因
   - 返回结果中含发送成功消息的 openMessageId，可用于后续 recall（撤回）、read-status（查已读）等命令
+  - 返回结果同时含 openConversationId；与 openMessageId 组合后可直接用于 edit（编辑）或 recall（撤回）
+```
+
+发送后编辑/撤回时，优先使用下列 ID 链，无需按消息内容反查：
+
+```bash
+# 1. 发送后保留 openTaskId
+dws chat message send --group <openConversationId> --text "原始内容"
+# 2. 查询得到 openMessageId 和 openConversationId
+dws chat message query-send-status --open-task-id <openTaskId>
+# 3. 编辑消息
+dws chat message edit --conversation-id <openConversationId> --msg-id <openMessageId> --text "更新后的内容"
+
+# 发送后撤回使用同一 ID 链
+dws chat message send --group <openConversationId> --text "待撤回的内容"
+dws chat message query-send-status --open-task-id <openTaskId>
+dws chat message recall --conversation-id <openConversationId> --msg-id <openMessageId>
 ```
 
 #### 撤回消息 — 撤回当前用户自己发出的消息
@@ -676,15 +695,13 @@ Usage:
   dws chat message recall [flags]
 Example:
   dws chat message recall --conversation-id <openConversationId> --msg-id <openMessageId>
-  # 查询会话 ID: dws chat search --query "群名"
-  # 消息 ID 可通过 dws chat message list 获取
 Flags:
       --conversation-id string   会话 openConversationId (必填，支持单聊/群聊，别名: --group / --id / --chat)
       --msg-id string            消息 openMessageId (必填)
 
 注意:
   - --conversation-id 的别名: --group, --id, --chat (均可替代 --conversation-id)
-  - 消息 ID 可通过 `dws chat message list` 命令获取
+  - 刚由 `chat message send` 发出的消息，使用 `query-send-status` 返回的 openConversationId 和 openMessageId；只有历史消息或已丢失 openTaskId 时才通过消息拉取/搜索获取 ID
   - 仅支持撤回当前用户以个人身份发出的消息，不能撤回他人发送的消息，也不能撤回机器人发出的消息
   - 与 `recall-by-bot` 的区别：本命令通过 IM 接口撤回用户自己发出的消息（需要 openConversationId + openMessageId），`recall-by-bot` 通过机器人接口撤回机器人发出的消息（需要 robot-code + processQueryKey）
 ```
@@ -819,6 +836,8 @@ Flags:
 #### 拉取指定时间范围内当前用户的所有会话消息 — 分页拉取当前登录用户在指定时间范围内的所有会话消息
 
 --start 和 --end 限定时间范围，--limit 指定每页数量，--cursor 传分页游标（首页传 "0"，后续从响应中的 nextCursor 获取）。服务端按 cursor 分页返回，hasMore=true 时用返回的 nextCursor 值作为下次 --cursor 继续翻页。若当前账号没有消息搜索权益，CLI 会透传服务端的友好提示与开通入口。
+
+需要自动遍历全部分页时显式加 `--page-all`。`--page-limit` 控制最多请求页数（默认 50，范围 1-500），`--max-items` 控制最多输出条数（默认 0 不限制，精确截断并输出 `paging.truncated=true`），`--page-delay` 控制页间等待毫秒数（默认 200，0 表示不等待）。只传这些分页控制参数但不传 `--page-all` 时仍保持原单页调用。
 ```
 Usage:
   dws chat message list-all [flags]
@@ -830,11 +849,16 @@ Flags:
       --end string           结束时间，格式: yyyy-MM-dd HH:mm:ss (必填)
       --limit int            每页返回数量（默认 50）
       --cursor string       分页游标（首页传 "0"，后续从响应中的 nextCursor 获取）
+      --page-all             自动按 nextCursor 拉取所有分页
+      --page-limit int       自动翻页最多请求页数（默认 50，范围 1-500）
+      --max-items int        自动翻页最多返回条数（默认 0 表示不限制）
+      --page-delay int       自动翻页每页之间等待毫秒数（默认 200；0 表示不等待）
 
 注意:
   - 四个参数每次请求都会传递给服务端，cursor 首页传 "0"
   - 与 chat message list 的区别：list 拉取指定单个会话（群聊或单聊）的消息，list-all 拉取当前用户所有会话的消息
   - 翻页：hasMore=true 时，用响应中的 nextCursor 值作为下次 --cursor 参数继续翻页
+  - 自动翻页：`--page-all` 会保留并合并 `result.conversationMessagesList`，同一会话跨页合并 messages，并在顶层输出 `paging` 元数据；shortcut 命令不属于本 typed fallback 小节
   - 时间格式统一为 yyyy-MM-dd HH:mm:ss
   - 权限/权益错误不是空结果；应把返回的 friendly_hint 与 action_url 展示给用户，不要继续盲目翻页
 ```
@@ -844,6 +868,8 @@ Flags:
 > 推荐优先使用 `chat message search-advanced --user/--users`（userId）或 `--sender-ids`（openDingTalkId），它还能叠加关键词/群/at 等过滤条件。本命令保留给需要旧 list-by-sender 返回结构的场景。
 
 搜索特定人发送给我的消息，返回结果包含单聊和群聊标识。--sender-user-id 指定发送者 userId，--sender-open-dingtalk-id 指定发送者 openDingTalkId，二者互斥。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
+
+自动翻页同样使用 `--page-all` 触发，复用发送者、时间范围和 limit 条件，只替换每页 `cursor`；输出保留并合并 `result.conversationMessagesList`，控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
 ```
 Usage:
   dws chat message list-by-sender [flags]
@@ -859,6 +885,10 @@ Flags:
       --end string                            结束时间，ISO-8601 格式 (必填)
       --limit int                             每页返回数量（默认 50）
       --cursor string                         分页游标（默认 "0"，翻页传 nextCursor）
+      --page-all                              自动按 nextCursor 拉取所有分页
+      --page-limit int                        自动翻页最多请求页数（默认 50，范围 1-500）
+      --max-items int                         自动翻页最多返回条数（默认 0 表示不限制）
+      --page-delay int                        自动翻页每页之间等待毫秒数（默认 200；0 表示不等待）
 
 注意:
   - --sender-user-id 和 --sender-open-dingtalk-id 二者互斥，必须且只能指定其一：
@@ -875,6 +905,8 @@ Flags:
 > 推荐使用 `chat message search-advanced --at-me`，它还能叠加关键词/群/发送者等过滤条件。本命令适用于仅需拉取 @我 消息的简单场景。
 
 搜索时间范围内 @我 的消息，可选指定群聊。返回结果包含单聊和群聊标识。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
+
+自动翻页同样使用 `--page-all` 触发，复用时间范围和 group 过滤条件，只替换每页 `cursor`；输出保留并合并 `result.conversationMessagesList`，控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
 ```
 Usage:
   dws chat message list-mentions [flags]
@@ -889,6 +921,10 @@ Flags:
       --end string      结束时间，ISO-8601 格式 (必填)
       --limit int       每页返回数量（默认 50）
       --cursor string   分页游标（默认 "0"，翻页传 nextCursor）
+      --page-all        自动按 nextCursor 拉取所有分页
+      --page-limit int  自动翻页最多请求页数（默认 50，范围 1-500）
+      --max-items int   自动翻页最多返回条数（默认 0 表示不限制）
+      --page-delay int  自动翻页每页之间等待毫秒数（默认 200；0 表示不等待）
 
 注意:
   - --group 可选，不传则查询所有会话中 @我 的消息；传入则只查指定群聊
@@ -900,6 +936,8 @@ Flags:
 #### 拉取特别关注人的消息
 
 拉取当前用户特别关注人的消息。分页参数 --limit 指定每页数量，--cursor 传分页游标（首次不传或传 0）。返回结果中 hasMore=true 时用 nextCursor 作为下次 --cursor 继续翻页。
+
+自动翻页使用 `--page-all` 触发，按 int64 cursor 注入下一页游标并聚合 `result.messages`；控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
 ```
 Usage:
   dws chat message list-focused [flags]
@@ -909,6 +947,10 @@ Example:
 Flags:
       --limit int       每页返回数量（默认 50）
       --cursor int64    分页游标（首次不传或传 0，翻页传 nextCursor）
+      --page-all        自动按 nextCursor 拉取所有分页
+      --page-limit int  自动翻页最多请求页数（默认 50，范围 1-500）
+      --max-items int   自动翻页最多返回条数（默认 0 表示不限制）
+      --page-delay int  自动翻页每页之间等待毫秒数（默认 200；0 表示不等待）
 
 注意:
   - 首次调用不传 --cursor 或传 0，后续翻页传 nextCursor
@@ -960,6 +1002,8 @@ Flags:
 > 推荐优先使用 `chat message search-advanced`，它是本命令的严格超集：query 可选（非必填）、支持多个会话（非单个）、还能叠加发送者/at 等维度过滤。
 
 按关键词搜索消息内容。--query 指定搜索关键词（必填）。可选 --group 限定搜索某个会话，不传则搜索所有会话。时间参数 --start/--end（ISO-8601）限定搜索时间范围。分页参数 --limit（默认 100）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。
+
+自动翻页同样使用 `--page-all` 触发，复用 query、时间范围和 group 条件，只替换每页 `cursor`；输出保留并合并 `result.conversationMessagesList`，控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
 ```
 Usage:
   dws chat message search [flags]
@@ -974,6 +1018,10 @@ Flags:
       --end string       结束时间，ISO-8601 格式 (必填)
       --limit int        每页返回数量（默认 100）
       --cursor string    分页游标（默认 "0"，翻页传 nextCursor）
+      --page-all         自动按 nextCursor 拉取所有分页
+      --page-limit int   自动翻页最多请求页数（默认 50，范围 1-500）
+      --max-items int    自动翻页最多返回条数（默认 0 表示不限制）
+      --page-delay int   自动翻页每页之间等待毫秒数（默认 200；0 表示不等待）
 
 注意:
   - --group 可选，不传则搜索所有会话中的消息；传入则只搜索指定会话
@@ -987,6 +1035,8 @@ Flags:
 > 推荐：这是消息搜索的首选接口。它可以完全替代 `chat message search`（query 可选 vs 必填，支持多个会话 vs 单个），大部分替代 `chat message list-by-sender`（通过 --user/--users 按 userId 搜索发送者，或通过 --sender-ids 按 openDingTalkId 搜索）和 `chat message list-mentions`（通过 --at-me 搜索@我的消息）。仅在拉取「特别关注人」消息时需要退回 `list-focused`。
 
 支持按关键词、发送者、@我、@指定人、指定会话、时间范围等多维度搜索消息。发送者 userId 使用 --user/--users；发送者或 @ 人的 openDingTalkId 使用 --sender-ids/--at-ids。所有参数均为可选，至少指定一个搜索条件。
+
+自动翻页使用 `--page-all` 触发，复用所有高级过滤参数，只替换每页 `cursor`，保留并合并 `result.conversationMessagesList`；控制参数为 `--page-limit`、`--max-items`、`--page-delay`。
 ```
 Usage:
   dws chat message search-advanced [flags]
@@ -1013,6 +1063,10 @@ Flags:
       --end string                  结束时间，ISO-8601 格式（可选）
       --cursor string               分页游标（默认 "0"）
       --limit int                   每页返回数量（默认 100）
+      --page-all                    自动按 nextCursor 拉取所有分页
+      --page-limit int              自动翻页最多请求页数（默认 50，范围 1-500）
+      --max-items int               自动翻页最多返回条数（默认 0 表示不限制）
+      --page-delay int              自动翻页每页之间等待毫秒数（默认 200；0 表示不等待）
       --conversation-ids 的别名: --groups
 
 注意:
@@ -1406,6 +1460,8 @@ Flags:
 ```
 
 #### 查询收藏消息 — 分页查询当前用户收藏的消息
+
+自动翻页使用 `--page-all` 触发，按 int64 cursor 注入下一页游标并聚合 `result.items`（不是 `result.messages`）。`--size` 仍保持 1-30 的 Open 服务范围；`--page-limit` 只控制最多请求页数。
 ```
 Usage:
   dws chat message list-favorites [flags]
@@ -1416,10 +1472,15 @@ Example:
 Flags:
       --cursor int   数字分页游标，默认 0；翻页时传上次返回的 nextCursor
       --size int     一次拉取的收藏数量，默认 20，范围 1-30
+      --page-all     自动按 nextCursor 拉取所有分页
+      --page-limit int  自动翻页最多请求页数（默认 50，范围 1-500）
+      --max-items int   自动翻页最多返回条数（默认 0 表示不限制）
+      --page-delay int  自动翻页每页之间等待毫秒数（默认 200；0 表示不等待）
 
 注意:
   - 首次请求可省略分页参数，CLI 会自动向 Open 服务传入 cursor=0、size="20"
   - hasMore=true 时，将 nextCursor 作为下一次的 --cursor
+  - 自动翻页输出顶层 `paging` 元数据，达到 `--page-limit` 或 `--max-items` 时 `truncated=true`
 ```
 
 ### bot (机器人管理)
@@ -2373,7 +2434,8 @@ Flags:
 | `chat bot find` | `botOpenDingTalkId` | 给机器人发单聊消息（send --open-dingtalk-id；字段名是 botOpenDingTalkId，非 openDingTalkId） |
 | `chat message send-by-bot` | `processQueryKey` | recall-by-bot 的 --keys |
 | `chat message send` | `openTaskId` | query-send-status 的 --open-task-id |
-| `chat message list` | `openMessageId` | recall 的 --msg-id |
+| `chat message query-send-status` | `openMessageId` + `openConversationId` | 刚发送消息的 edit / recall |
+| `chat message list` | `openMessageId` | 历史消息或已丢失 openTaskId 时的 recall |
 | `chat message search` | `nextCursor` | 下次 message search 的 --cursor |
 | `chat message search-advanced` | `nextCursor` | 下次 message search-advanced 的 --cursor |
 | `chat search-common` | `openConversationId` | message send/list 等的 --group |

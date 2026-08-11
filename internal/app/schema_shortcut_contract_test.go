@@ -130,6 +130,75 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 	}
 }
 
+func TestDeliveryDocUpdateShortcutPublishesCompleteConditionalContract(t *testing.T) {
+	leaf := executeShortcutSchemaQuery(t, "--cli-path", "doc +update")
+	if got, want := schemaContractString(leaf["confirmation"]), "user_required"; got != want {
+		t.Fatalf("confirmation = %q, want %q", got, want)
+	}
+	parameters := schemaContractMap(leaf["parameters"])
+	if got, want := len(parameters), 11; got != want {
+		t.Fatalf("parameter count = %d, want %d: %#v", got, want, parameters)
+	}
+	if required, _ := parameters["node"]["required"].(bool); !required {
+		t.Errorf("--node required = %#v, want true", parameters["node"]["required"])
+	}
+	if required, _ := parameters["command"]["required"].(bool); required {
+		t.Errorf("--command required = true, want runtime custom validation")
+	}
+	wantProperties := map[string]string{
+		"node": "node", "doc": "node", "command": "command", "content": "content", "text": "content", "doc-format": "docFormat",
+		"block-id": "blockId", "after-block-id": "afterBlockId", "old": "old", "new": "new",
+		"expected-revision": "expectedRevision",
+	}
+	for name, want := range wantProperties {
+		if got := schemaContractString(parameters[name]["property"]); got != want {
+			t.Errorf("--%s property = %q, want %q", name, got, want)
+		}
+	}
+	for _, name := range []string{"content", "block-id", "after-block-id", "old", "new"} {
+		parameter := parameters[name]
+		if required, _ := parameter["required"].(bool); required {
+			t.Errorf("--%s required = true, want runtime custom validation", name)
+		}
+		if got := schemaContractString(parameter["required_when"]); got != "" {
+			t.Errorf("--%s required_when = %q, want compatibility-safe custom validation", name, got)
+		}
+	}
+	if constraints, exists := leaf["constraints"]; exists && constraints != nil {
+		t.Fatalf("enum-discriminated requirements must not be mispublished as relationship constraints: %#v", constraints)
+	}
+}
+
+func TestDeliveryDocCommentExportImportContractsAreCanonical(t *testing.T) {
+	comment := executeShortcutSchemaQuery(t, "--cli-path", "doc +comment-create")
+	commentParameters := schemaContractMap(comment["parameters"])
+	for _, name := range []string{"node", "content", "selection", "block-id", "start", "end", "selected-text", "mention"} {
+		if _, ok := commentParameters[name]; !ok {
+			t.Errorf("comment-create missing --%s: %#v", name, commentParameters)
+		}
+	}
+	for name, want := range map[string]string{"node": "node", "mention": "mention"} {
+		if got := schemaContractString(commentParameters[name]["property"]); got != want {
+			t.Errorf("comment-create --%s property = %q, want %q", name, got, want)
+		}
+	}
+
+	export := executeShortcutSchemaQuery(t, "--cli-path", "doc +export")
+	exportFormat := schemaContractMap(export["parameters"])["export-format"]
+	if required, _ := exportFormat["required"].(bool); required {
+		t.Fatalf("export --export-format required = true, want compatibility default")
+	}
+	if defaultValue := schemaContractString(exportFormat["default"]); defaultValue != "docx" {
+		t.Fatalf("export --export-format default = %q, want docx", defaultValue)
+	}
+
+	importLeaf := executeShortcutSchemaQuery(t, "--cli-path", "doc +import")
+	constraints, _ := importLeaf["constraints"].(map[string]any)
+	if requireOneOf, ok := constraints["require_one_of"]; ok && !schemaContractJSONEqual(requireOneOf, [][]string{}) {
+		t.Fatalf("import unexpectedly requires a target: %#v", constraints)
+	}
+}
+
 func executeShortcutSchemaQuery(t testing.TB, args ...string) map[string]any {
 	t.Helper()
 	root := NewRootCommand()
