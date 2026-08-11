@@ -1,6 +1,6 @@
-# DWS 统一命令框架（二期）设计概要
+# DWS 统一命令框架设计概要
 
-> 状态：Framework core 提案。本文只定义框架能力与集成边界；产品命令迁移、Skill 更新和真实服务复验由后续 PR 独立完成。
+> 状态：Framework core 已实现，dingtalk-dev/devapp 首批命令渐进接入中。本文定义框架能力、集成边界和首批 pilot 的发布纪律；其余产品命令迁移、Skill 更新和真实服务复验继续由后续 PR 独立完成。
 
 ## 1. 产品裁决
 
@@ -9,7 +9,7 @@
 3. 每条 terminal command 在一个 release 中只有一个 active wire contract：已迁移命令直接使用统一结果，未迁移命令保持 legacy。
 4. contract 不由用户参数、环境变量、会话能力协商或 Agent 选择。
 5. 回滚是命令声明与发布行为，不改变消费者 argv。
-6. 本 PR 不迁移任何产品命令；已有命令路径、参数和输出保持不变。
+6. 本 PR 只迁移完成命令级兼容审计的 dingtalk-dev/devapp pilot；其他命令路径、参数和输出保持不变。
 
 ## 2. 渐进迁移
 
@@ -81,10 +81,10 @@ one invocation emits exactly one primary result
 - 写调用的模糊失败、HTTP timeout 和异步等待预算属于 transport/产品集成范围，不在本 PR 改动。
 - 产品迁移必须证明其重试声明与幂等性、安全等级一致。
 
-## 6. 后续集成范围
+## 6. 集成范围
 
 - 产品命令通过 `corecmd.ResultInvoke` 构造 `CommandResult`，由 root 单一出口渲染。
-- shortcut、长连接、批量写和异步任务各自需要独立集成 PR；框架 core 不替产品推断 success、pending、partial 或分页事实。
+- 首批 dingtalk-dev/devapp 命令用于验证原子命令与 shortcut 的接入缝；未进入 pilot 的 shortcut、长连接、批量写和异步任务各自需要独立集成 PR。框架 core 不替产品推断 success、pending、partial 或分页事实。
 - 每条 terminal command 独立 rollout；不能整域一次切换，也不能通过 Agent 参数选择协议。
 - 已有命令在进入 `unified_active` 前必须保留 legacy byte golden，并完成真实 Agent 语义扫描。
 
