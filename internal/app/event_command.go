@@ -38,6 +38,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/busctl"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/consume"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/personal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/registry"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/source"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/transport"
@@ -74,7 +75,7 @@ var (
 
 // newEventCommand returns the `event` parent command and all its subcommands.
 // Wired into root.go's utilityCommands list.
-func newEventCommand() *cobra.Command {
+func newEventCommand(globalFlags ...*GlobalFlags) *cobra.Command {
 	// Product-level Agent routing Decl (migrated from selection/event.json
 	// products.event). Catalog assembly stamps provenance contract_final.
 	contract.RegisterProductDecl(contract.ProductDecl{
@@ -99,12 +100,12 @@ func newEventCommand() *cobra.Command {
 		RunE:              func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
 	cmd.AddCommand(
-		newEventListenIMCommand(),
-		newEventConsumeCommand(),
+		newEventListenIMCommand(globalFlags...),
+		newEventConsumeCommand(globalFlags...),
 		newEventListCommand(),
 		newEventSchemaCommand(),
-		newEventStatusCommand(),
-		newEventStopCommand(),
+		newEventStatusCommandWithFlags(globalFlags...),
+		newEventStopCommandWithFlags(globalFlags...),
 		newEventBusCommand(),
 	)
 	return cmd
@@ -114,7 +115,7 @@ func newEventCommand() *cobra.Command {
 //  event consume
 // ─────────────────────────────────────────────────────────────────────
 
-func newEventConsumeCommand() *cobra.Command {
+func newEventConsumeCommand(globalFlags ...*GlobalFlags) *cobra.Command {
 	var (
 		eventTypes   []string
 		filter       string
@@ -170,6 +171,8 @@ SIGTERM、关 stdin，或先用 dws event stop <subscribe_id> --dry-run 预览�
 				return err
 			}
 			if as == "user" {
+				personalOpts.ExplicitToken = eventExplicitToken(globalFlags)
+				personalOpts.ClientIDOverride = eventExplicitClientID(globalFlags)
 				personalOpts.EventKeys = dedupePersonalEventKeys(args)
 				personalOpts.EventKey = firstArg(personalOpts.EventKeys)
 				personalOpts.Flatten = flatten
@@ -563,6 +566,8 @@ func newEventBusCommand() *cobra.Command {
 		clientIDOverride string
 		idleTimeout      time.Duration
 		sourceKindRaw    string
+		runtimeTokenMode bool
+		identityHashFlag string
 		streamOpts       eventStreamTicketOptions
 	)
 	cmd := &cobra.Command{
@@ -599,23 +604,45 @@ func newEventBusCommand() *cobra.Command {
 				sourceKind = dwsevent.SourceKindAppStream
 			}
 			if sourceKind == dwsevent.SourceKindPersonalStream {
-				identity, err := eventResolvePersonal(ctx, configDir, streamOpts.SourceID)
-				if err != nil {
-					return failEarly(fmt.Errorf("event _bus: %w", err))
+				var (
+					identity     personal.Identity
+					identityHash string
+				)
+				if runtimeTokenMode {
+					identityHash = strings.TrimSpace(identityHashFlag)
+					if !validPersonalIdentityHash(identityHash) {
+						return failEarly(errors.New("event _bus: --identity-hash must be a 16-character hexadecimal identity hash in runtime token mode"))
+					}
+					if strings.TrimSpace(clientIDOverride) == "" {
+						return failEarly(errors.New("event _bus: --client-id is required in runtime token mode"))
+					}
+					identity = personal.Identity{
+						ClientID: strings.TrimSpace(clientIDOverride),
+						SourceID: personalEventStreamSourceID(streamOpts.SourceID),
+					}
+				} else {
+					var err error
+					identity, err = eventResolvePersonal(ctx, configDir, streamOpts.SourceID)
+					if err != nil {
+						return failEarly(fmt.Errorf("event _bus: %w", err))
+					}
+					if clientIDOverride != "" {
+						identity.ClientID = clientIDOverride
+					}
+					identityHash = dwsevent.IdentityHash(identity.Key())
 				}
-				if clientIDOverride != "" {
-					identity.ClientID = clientIDOverride
-				}
-				identityHash := dwsevent.IdentityHash(identity.Key())
 				editionName := editionNameOrDefault()
 				workDir := eventWorkDir(configDir, editionName, dwsevent.SourceKindPersonalStream, identityHash)
 				endpoint := defaultIPCEndpoint(workDir, editionName, dwsevent.SourceKindPersonalStream, identityHash)
+				credentialBroker := newPersonalCredentialBroker(configDir, runtimeTokenMode, runtimeTokenMode)
 				src, err := eventNewPersonalSource(ctx, personalStreamSourceOptions{
 					ConfigDir:        configDir,
 					Identity:         identity,
 					TicketMode:       streamOpts.Mode,
 					TicketURL:        streamOpts.TicketURL,
 					ClientIDOverride: clientIDOverride,
+					CredentialBroker: credentialBroker,
+					RuntimeTokenMode: runtimeTokenMode,
 				})
 				if err != nil {
 					return failEarly(err)
@@ -628,17 +655,18 @@ func newEventBusCommand() *cobra.Command {
 					}
 				}
 				busCfg := bus.Config{
-					WorkDir:      workDir,
-					IPCEndpoint:  endpoint,
-					ClientID:     identity.ClientID,
-					Edition:      editionName,
-					SourceKind:   dwsevent.SourceKindPersonalStream,
-					IdentityHash: identityHash,
-					SourceID:     identity.SourceID,
-					Source:       src,
-					IdleTimeout:  idleTimeout,
-					ReadyPipe:    readyPipe,
-					Logger:       slog.Default(),
+					WorkDir:          workDir,
+					IPCEndpoint:      endpoint,
+					ClientID:         identity.ClientID,
+					Edition:          editionName,
+					SourceKind:       dwsevent.SourceKindPersonalStream,
+					IdentityHash:     identityHash,
+					SourceID:         identity.SourceID,
+					Source:           src,
+					IdleTimeout:      idleTimeout,
+					ReadyPipe:        readyPipe,
+					Logger:           slog.Default(),
+					CredentialBroker: credentialBroker,
 				}
 				bus.ApplyEnvTuning(&busCfg)
 				return eventBusRun(ctx, busCfg)
@@ -698,12 +726,18 @@ func newEventBusCommand() *cobra.Command {
 		"exit after this long with zero consumers (0 = disabled)")
 	cmd.Flags().StringVar(&sourceKindRaw, "source-kind", string(dwsevent.SourceKindAppStream),
 		"event source kind: app_stream|personal_stream")
+	cmd.Flags().BoolVar(&runtimeTokenMode, "runtime-token-mode", false,
+		"use an owner-injected in-memory runtime credential")
+	cmd.Flags().StringVar(&identityHashFlag, "identity-hash", "",
+		"pre-resolved non-sensitive personal identity hash")
 	cmd.Flags().StringVar(&streamOpts.Mode, "stream-ticket-mode", strings.TrimSpace(os.Getenv("DWS_STREAM_TICKET_MODE")),
 		"用户 Stream 建联模式：空=SDK app credential；normal/custom=portal 取票")
 	cmd.Flags().StringVar(&streamOpts.SourceID, "stream-source-id", strings.TrimSpace(os.Getenv("DWS_STREAM_SOURCE_ID")),
 		"用户 Stream sourceId；personal_stream 开源版默认 open")
 	cmd.Flags().StringVar(&streamOpts.TicketURL, "stream-ticket-url", strings.TrimSpace(os.Getenv("DWS_STREAM_TICKET_URL")),
 		"用户 Stream 取票 URL；personal_stream 默认由 MCP base URL 派生")
+	_ = cmd.Flags().MarkHidden("runtime-token-mode")
+	_ = cmd.Flags().MarkHidden("identity-hash")
 	return cmd
 }
 
@@ -822,6 +856,10 @@ func newEventListCommand() *cobra.Command {
 // ─────────────────────────────────────────────────────────────────────
 
 func newEventStatusCommand() *cobra.Command {
+	return newEventStatusCommandWithFlags()
+}
+
+func newEventStatusCommandWithFlags(globalFlags ...*GlobalFlags) *cobra.Command {
 	var (
 		all          bool
 		allEditions  bool
@@ -847,6 +885,8 @@ func newEventStatusCommand() *cobra.Command {
 					return fmt.Errorf("event status: %w", err)
 				}
 				personalOpts.Format = formatRaw
+				personalOpts.ExplicitToken = eventExplicitToken(globalFlags)
+				personalOpts.ClientIDOverride = eventExplicitClientID(globalFlags)
 				return eventRunPersonalStatus(c, personalOpts)
 			}
 			if err := rejectChangedFlags(c, "user", "event", "status", "subscribe-id", "personal-event-base-url", "stream-source-id"); err != nil {
@@ -1138,6 +1178,10 @@ func renderStatusBlock(w io.Writer, qs busctl.EntryStatus) {
 }
 
 func newEventStopCommand() *cobra.Command {
+	return newEventStopCommandWithFlags()
+}
+
+func newEventStopCommandWithFlags(globalFlags ...*GlobalFlags) *cobra.Command {
 	var asIdentity string
 	var opts personalStopOptions
 	cmd := &cobra.Command{
@@ -1158,6 +1202,8 @@ func newEventStopCommand() *cobra.Command {
 			}
 			if as == "user" {
 				opts.SubscribeID = firstArg(args)
+				opts.ExplicitToken = eventExplicitToken(globalFlags)
+				opts.ClientIDOverride = eventExplicitClientID(globalFlags)
 				if eventStopDryRun(c) {
 					return writeEventStopDryRun(c, as, opts)
 				}
@@ -1259,6 +1305,20 @@ func newEventStopCommand() *cobra.Command {
 func eventStopDryRun(cmd *cobra.Command) bool {
 	value, _ := cmd.Flags().GetBool("dry-run")
 	return value
+}
+
+func eventExplicitToken(globalFlags []*GlobalFlags) string {
+	if len(globalFlags) == 0 || globalFlags[0] == nil {
+		return ""
+	}
+	return strings.TrimSpace(globalFlags[0].Token)
+}
+
+func eventExplicitClientID(globalFlags []*GlobalFlags) string {
+	if len(globalFlags) == 0 || globalFlags[0] == nil {
+		return ""
+	}
+	return strings.TrimSpace(globalFlags[0].ClientID)
 }
 
 func writeEventStopDryRun(cmd *cobra.Command, identity string, opts personalStopOptions) error {
