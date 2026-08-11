@@ -1357,8 +1357,9 @@ ORG 类型授权不会出现在查询结果中。`,
 			if err != nil {
 				return err
 			}
-			// --format raw: 输出原始 MCP 文本，不做后处理
-			if deps.Caller.Format() == "raw" {
+			// 保持与共享 dispatcher (callMCPToolInternalOpts) 一致的输出契约：
+			// 仅 --format json 做时间/标签增强，raw、table 及其他格式输出原始 MCP 文本
+			if deps.Caller.Format() != "json" {
 				deps.Out.PrintRaw(text)
 				return nil
 			}

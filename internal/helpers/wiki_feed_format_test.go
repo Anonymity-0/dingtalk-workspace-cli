@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -316,7 +317,8 @@ func TestCrossPlatformCoverageEnrichFeedFieldsEmptyItem(t *testing.T) {
 
 func TestCrossPlatformCoverageWikiFeedListFormatIntegration(t *testing.T) {
 	// 通过 scriptedToolCaller 返回真实结构的 feed JSON，验证 RunE 中
-	// callMCPToolReturnText → formatFeedTime → PrintJSON 完整路径
+	// callMCPToolReturnText → formatFeedTime → PrintJSON 完整路径（仅 --format json）
+	caller := &scriptedToolCaller{format: "json"}
 	ts := float64(1750067400000)
 	feedPayload := map[string]any{
 		"feeds": []any{
@@ -350,10 +352,7 @@ func TestCrossPlatformCoverageWikiFeedListFormatIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	caller := &scriptedToolCaller{
-		steps: []scriptedToolStep{{text: string(payloadBytes)}},
-	}
+	caller.steps = []scriptedToolStep{{text: string(payloadBytes)}}
 
 	var out bytes.Buffer
 	oldDeps := deps
@@ -374,7 +373,7 @@ func TestCrossPlatformCoverageWikiFeedListFormatIntegration(t *testing.T) {
 	root.SetErr(io.Discard)
 	root.SetIn(os.Stdin)
 
-	args := []string{"feed", "list", "--workspace", "ws1", "--exclude-file"}
+	args := []string{"feed", "list", "--workspace", "ws1", "--exclude-file", "--format", "json"}
 	root.SetArgs(args)
 	os.Args = append([]string{"dws", "wiki"}, args...)
 
@@ -478,6 +477,54 @@ func TestCrossPlatformCoverageWikiFeedListRawFormat(t *testing.T) {
 	got := out.String()
 	if !bytes.Contains([]byte(got), []byte(`"feeds"`)) {
 		t.Fatalf("raw output should contain original payload, got: %s", got)
+	}
+}
+
+func TestCrossPlatformCoverageWikiFeedListTableFormatMatchesDispatcher(t *testing.T) {
+	// --format table 回归：与共享 dispatcher (callMCPToolInternalOpts) 契约一致，
+	// 输出原始紧凑 MCP 文本，不做 pretty 化，也不注入 timeFormatted / typeLabel
+	rawPayload := `{"feeds":[{"time":1750067400000,"type":1,"id":"f1"}]}`
+	caller := &scriptedToolCaller{
+		format: "table",
+		steps:  []scriptedToolStep{{text: rawPayload}},
+	}
+
+	var out bytes.Buffer
+	oldDeps := deps
+	oldArgs := os.Args
+	InitDeps(caller)
+	deps.Out.w = &out
+	deps.Out.errW = io.Discard
+	t.Cleanup(func() {
+		deps = oldDeps
+		os.Args = oldArgs
+	})
+
+	root := newWikiCommand()
+	installExampleGlobalFlags(root)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetIn(os.Stdin)
+
+	args := []string{"feed", "list", "--workspace", "ws1", "--format", "table"}
+	root.SetArgs(args)
+	os.Args = append([]string{"dws", "wiki"}, args...)
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	// 与共享 dispatcher 一致：输出 = 原始 MCP 文本原文
+	if got := strings.TrimSpace(out.String()); got != rawPayload {
+		t.Fatalf("table output should equal raw MCP payload,\ngot:  %s\nwant: %s", got, rawPayload)
+	}
+	// 不注入任何增强字段
+	for _, injected := range []string{"timeFormatted", "typeLabel"} {
+		if strings.Contains(out.String(), injected) {
+			t.Fatalf("table output should not inject %s, got: %s", injected, out.String())
+		}
 	}
 }
 
