@@ -52,7 +52,7 @@ metadata:
 | 查看全部会话 | `dws chat +conversation-list --page-all` | 检查 `complete` / `failures` |
 | 读取并下载消息资源 | 查询命令加 `--download-resources` | 不另起手工下载循环；下载失败项保留在结果中 |
 | <!-- dws-intent: chat.conversation.list-top -->查看置顶会话 | `dws chat +conversation-list-top` | 会话 Top 与消息 Pin、消息 Top、Favorite 不同 |
-| 监听 IM 事件 | 切换 `dingtalk-misc` → [event.md](../dingtalk-misc/references/event.md) | 由事件参考选择确定的 EventKey 和生命周期 |
+| 监听未来 IM 事件 | [`dingtalk-event`](../dingtalk-event/SKILL.md) | 常规监听走 `+listen-im`；生命周期/高级控制走 `consume` |
 
 以下次级入口在意图明确时直接使用，不需要先加载完整 Catalog：
 
@@ -75,7 +75,7 @@ metadata:
 - `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。user 已知 ID 可直接传，也可用 `--user-query` / `--chat-query` 运行同一只读解析链；Bot 多群使用 `--groups/--groups-file`，返回 `im.batch-write.v1`；bot/webhook 只使用下层真实支持的文本/Markdown 能力。
 - 文件直接传 `+messages-send --file <相对路径>`；不要先独立上传并提取 mediaId。
 - Webhook 使用 `+messages-send --as webhook --webhook-token <token>`；不要退回原子 Webhook 命令。
-- 流式卡片不是普通消息内容，使用 `+messages-send-card`；当前只支持 streaming text create/update，不支持 Card JSON 或 callback。
+- 流式卡片用 `+messages-send-card`；群聊@传 ID/`--at-all`，Runtime 把 create 返回前缀加到 `--content`；禁写占位符；仅 text。
 
 ## 关键结果语义
 
