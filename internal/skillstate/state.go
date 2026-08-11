@@ -1,9 +1,10 @@
 // Copyright 2026 Alibaba Group
 // Licensed under the Apache License, Version 2.0
 
-// Package skillstate persists the official Skill snapshot written after setup
-// and upgrade. The snapshot is informational; bundled skills are always fully
-// refreshed from the current release and local absence is not an exclusion.
+// Package skillstate persists the official Skill snapshot and centralized
+// ownership metadata written after setup and upgrade. Bundled skills are
+// always fully refreshed from the current release and local absence is not an
+// exclusion.
 package skillstate
 
 import (
@@ -15,13 +16,14 @@ import (
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillprovenance"
 )
 
 const stateFile = "skills-state.json"
 
 // legacyOfficialSkillNames is the frozen set of official multi-skill names
-// shipped before .dws-managed was introduced. Exact names are safe ownership
-// evidence for the marker migration; a dingtalk-* prefix is not.
+// shipped before centralized ownership metadata. Exact names are safe
+// migration evidence; a dingtalk-* prefix is not.
 //
 // Keep retired names here permanently so an old installation can still be
 // migrated after that Skill has been folded into another bundle.
@@ -65,14 +67,15 @@ var (
 )
 
 type State struct {
-	Version        string   `json:"version"`
-	OfficialSkills []string `json:"official_skills"`
-	UpdatedSkills  []string `json:"updated_skills"`
-	UpdatedAt      string   `json:"updated_at"`
+	Version        string                   `json:"version"`
+	OfficialSkills []string                 `json:"official_skills"`
+	UpdatedSkills  []string                 `json:"updated_skills"`
+	ManagedSkills  []skillprovenance.Record `json:"managed_skills"`
+	UpdatedAt      string                   `json:"updated_at"`
 }
 
 // IsLegacyOfficialSkillName reports whether name was an exact official
-// multi-skill directory name before managed markers were shipped.
+// multi-skill directory name before centralized ownership metadata shipped.
 func IsLegacyOfficialSkillName(name string) bool {
 	_, ok := legacyOfficialSkillNames[name]
 	return ok
@@ -103,11 +106,19 @@ func Read(home string) (*State, bool, error) {
 func Write(home string, state State) error {
 	state.OfficialSkills = uniqueSorted(state.OfficialSkills)
 	state.UpdatedSkills = uniqueSorted(state.UpdatedSkills)
+	state.ManagedSkills = skillprovenance.Merge(nil, state.ManagedSkills)
 	data, _ := json.MarshalIndent(state, "", "  ")
 	if err := helpers.AtomicWriteJSON(Path(home), append(data, '\n')); err != nil {
 		return fmt.Errorf("保存 skill 状态失败: %w", err)
 	}
 	return nil
+}
+
+func ManagedSkillNames(state *State) map[string]bool {
+	if state == nil {
+		return map[string]bool{}
+	}
+	return skillprovenance.Names(state.ManagedSkills)
 }
 
 func Remove(home string) error {

@@ -41,7 +41,7 @@ DWS 同时通过 CLI、升级器、npm、Shell 和 PowerShell 分发预制 Skill
 | 多个产品能力通常以同级 Skill 目录安装，由 Agent 按目录发现 | multi 使用平铺的产品 Skill，并保留一个共享 Skill 承载公共协议 |
 | CLI 本体安装和 Agent Skill 安装是两个生命周期 | DWS 可以在 CLI 安装、setup 和 upgrade 中触发 Skill 同步，但二者的失败与状态必须分别报告 |
 | 生态安装器通常天然采用 multi，不提供 mono/multi 状态机 | DWS 的模式切换保持为重新执行 setup，不新增长期驻留的 mode lifecycle |
-| 市场 Skill 与 CLI 预制 Skill 可能落在同一 Agent 根目录 | 必须使用所有权标记或 manifest 识别受管目录，名称前缀不能作为删除依据 |
+| 市场 Skill 与 CLI 预制 Skill 可能落在同一 Agent 根目录 | 必须使用统一所有权元数据识别受管目录，名称前缀不能作为删除依据 |
 | 多 Skill 更新常以新清单刷新官方集合 | DWS 使用当前 bundle 官方清单全量覆盖，新增 Skill 自动加入，本地删除不视为持久化排除 |
 | 制品可能需要同时服务无运行时依赖、离线和多镜像环境 | DWS 保留 embed、zip 和平台安装脚本，不把单一生态包管理器设为唯一入口 |
 | 中断的复制和原地覆盖容易破坏最后一个可用版本 | 缓存与 Go upgrade 的 Agent 目标采用 staging publish；发布失败自动恢复该目标的完整旧集合 |
@@ -72,22 +72,43 @@ mono 前只备份并移除能够证明由 DWS 管理的 multi 目录。两个方
 - 用户对预制 Skill 的本地修改会被官方版本覆盖；
 - `dingtalk-shared` 始终随官方集合安装。
 
-`~/.dws/skills-state.json` 是结果快照，不参与安装集合求解，也不保存排除策略。
-它记录版本、官方清单、本次成功更新集合和更新时间，供诊断与后续迁移使用。
+`~/.dws/skills-state.json`（设置 `DWS_CONFIG_DIR` 时位于该目录）不参与安装集合
+求解，也不保存排除策略。它既记录结果快照，也集中记录 multi Skill 的所有权和
+provenance，供安全清理、诊断与后续迁移使用。
 
 ## 6. 目录所有权
 
-每个成功安装的官方 multi Skill 都写入：
+每次 multi setup 或 upgrade 全部成功后，DWS 在统一的
+`~/.dws/skills-state.json` 中写入：
 
-```text
-<skill-dir>/.dws-managed
-managed-by=dingtalk-workspace-cli
+```json
+{
+  "version": "v0.2.14",
+  "official_skills": ["dingtalk-aitable"],
+  "updated_skills": ["dingtalk-aitable"],
+  "managed_skills": [
+    {
+      "name": "dingtalk-aitable",
+      "version": "v0.2.14",
+      "source": "dws-upgrade",
+      "digest": "sha256:<64 个十六进制字符>",
+      "digest_scope": "skill-directory-v1"
+    }
+  ],
+  "updated_at": "2026-08-11T12:34:56Z"
+}
 ```
+
+每条 `managed_skills` 记录代表一个由 DWS 管理的官方 Skill。`version` 记录安装该
+副本的 DWS/发布包版本，`source` 记录安装入口，`digest` 是对 bundle 中 Skill 目录
+全部普通文件按相对路径排序后计算的内容摘要。摘要用于诊断和来源追踪，不作为后续
+升级的完整性门禁；用户修改 Skill 内容后，DWS 仍保有明确管理权并能在下一次升级时
+覆盖恢复。
 
 清理 stale Skill 或切换到 mono 时，只接受以下所有权证据：
 
-1. `.dws-managed` 内容与当前 v1 标记完全一致；
-2. marker 上线前曾发布过的官方 Skill 精确名称集合。
+1. Skill 名称存在于统一状态的 `managed_skills` 中；
+2. 统一状态上线前曾发布过的官方 Skill 精确名称集合。
 
 历史集合是冻结的迁移清单，包含 `dws-shared` 以及已退役、折叠或仍在发布的旧官方
 目录名。仅有 `dingtalk-*` 前缀不构成所有权证据。因此，市场或用户创建的
@@ -95,12 +116,9 @@ managed-by=dingtalk-workspace-cli
 
 ### 6.1 对 Agent 的影响
 
-`.dws-managed` 是隐藏的安装元数据，不是 Skill 入口，也不被 `SKILL.md` 引用。
-支持的 Agent 仍以 `SKILL.md` 发现和加载 Skill。即使某个工具递归读取到该文件，
-其唯一一行声明也不包含可执行指令或路由语义，因此不改变 Agent 行为。
-
-当前不为此增加非通用的 frontmatter 字段，也不放宽为仅检查文件存在或前缀匹配。
-未来若升级 marker 格式，必须显式兼容已发布版本，不能让任意同名文件获得清理权限。
+Skill 目录内不再放置 DWS 所有权文件，也不增加非通用 frontmatter 字段。支持的
+Agent 仍只需以 `SKILL.md` 发现和加载 Skill；统一元数据位于 Agent Skill 目录之外，
+不会成为提示词上下文或影响 Agent 行为。
 
 ## 7. Setup：Plan → Confirm → Execute
 
@@ -116,7 +134,7 @@ managed-by=dingtalk-workspace-cli
 - 用户拒绝确认时必须零文件写入；
 - 备份失败时跳过整个 Agent 目标，不开始铺设相反布局；
 - 同一目标先完成所有必要备份，再复制新集合；
-- multi Skill 必须在同级 staging 中完成复制和受管标记，再原子发布到正式目录；
+- multi Skill 必须在同级 staging 中完成复制，再原子发布到正式目录；
 - 任意 `skipped > 0` 都返回非零退出码，并且不写入完整成功快照；
 - 一个 Agent 目标失败不阻止其他目标尝试，但最终结果仍为失败。
 
@@ -125,12 +143,12 @@ managed-by=dingtalk-workspace-cli
 升级器对每个 Agent 目标执行：
 
 1. 只读计算对面布局、过期受管 Skill 和同名官方 Skill；
-2. 在目标文件系统的 staging 中复制完整新集合，multi 同时写入受管标记；
+2. 在目标文件系统的 staging 中复制完整新集合；
 3. staging 全部成功后，才将旧集合移入备份目录；
 4. 逐项发布 staging；任一发布失败时删除已发布的新目录，并逆序恢复该目标的全部旧目录；
 5. 仅在没有目标失败且至少一个目标成功时更新状态快照。
 
-Go upgrade 当前提供 **单 Agent 目标级事务恢复**：复制或 marker 失败发生在旧目录移动前；
+Go upgrade 当前提供 **单 Agent 目标级事务恢复**：复制失败发生在旧目录移动前；
 备份中途失败会恢复此前已移动的目录；发布中途失败会恢复该目标的完整旧集合。不同
 Agent 目标仍彼此独立，一个目标失败不会回滚此前已经成功升级的其他目标，这与
 “不提供跨所有 Agent 目标的事务式回滚”非目标保持一致。
@@ -179,13 +197,13 @@ Homebrew 不直接向 Agent home 铺设 Skill；安装 CLI 后由 setup 执行�
 合入和后续修改至少覆盖：
 
 - mono → multi、multi → mono 互斥切换；
-- marker 上线前的官方 multi 目录切换 mono 时能够被精确迁移；
-- 未标记的同前缀市场/用户 Skill 在刷新和切换后仍存在；
-- 已标记的过期官方 Skill 被备份并移除；
-- 备份、复制、marker、缓存 publish 故障注入；
+- 状态上线前的官方 multi 目录切换 mono 时能够被精确迁移；
+- 未登记的同前缀市场/用户 Skill 在刷新和切换后仍存在；
+- 统一状态中登记的过期官方 Skill 被备份并移除；
+- 备份、复制、统一状态写入、缓存 publish 故障注入；
 - 非交互确认拒绝与显式 `--yes`；
 - 部分失败返回非零且不写错误状态快照；
-- 复制或 marker 失败不留下 Agent 可见的未受管官方目录；
+- 复制失败不留下 Agent 可见的残缺官方目录；
 - 普通 upgrade 恢复被删除的预制 Skill，并安装新增官方 Skill；
 - Windows、macOS、Linux 的路径和覆盖率门禁；
 - npm、Shell、PowerShell 与包管理器安装冒烟。
@@ -195,4 +213,4 @@ Homebrew 不直接向 Agent home 铺设 Skill；安装 CLI 后由 setup 执行�
 - 收敛各安装入口中的 Agent home 清单，减少跨语言复制；
 - 如确有运维需求，可单独设计备份查看和显式恢复命令；
 - mono 的物理删除必须作为独立变更，在 multi 内容、安装入口和迁移回归稳定后推进；
-- marker 协议升级必须版本化并兼容已有 v1 标记。
+- `managed_skills` 字段若演进，必须同步更新所有安装入口和跨平台回归。

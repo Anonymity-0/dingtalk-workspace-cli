@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillprovenance"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
@@ -21,6 +23,17 @@ func withFakeHome(t *testing.T) string {
 	home := t.TempDir()
 	testseam.Swap(t, &upgradeUserHomeDir, func() (string, error) { return home, nil })
 	return home
+}
+
+func useUpgradeManagedNames(t *testing.T, names ...string) {
+	t.Helper()
+	records := make([]skillprovenance.Record, 0, len(names))
+	for _, name := range names {
+		records = append(records, skillprovenance.Record{Name: name})
+	}
+	testseam.Swap(t, &upgradeReadSkillState, func(string) (*skillstate.State, bool, error) {
+		return &skillstate.State{ManagedSkills: records}, true, nil
+	})
 }
 
 // writeMultiBundle creates a multi-skill bundle root with the given skills.
@@ -127,12 +140,10 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMulti(t *testing.T) {
 		os.WriteFile(filepath.Join(base, "dws", "SKILL.md"), []byte("old mono"), 0o644)
 		os.MkdirAll(filepath.Join(base, "dingtalk-old"), 0o755)
 		os.WriteFile(filepath.Join(base, "dingtalk-old", "SKILL.md"), []byte("stale"), 0o644)
-		if err := markManagedSkillDir(filepath.Join(base, "dingtalk-old")); err != nil {
-			t.Fatal(err)
-		}
 		os.MkdirAll(filepath.Join(base, "other-skill"), 0o755)
 		os.WriteFile(filepath.Join(base, "other-skill", "SKILL.md"), []byte("not dws"), 0o644)
 	}
+	useUpgradeManagedNames(t, "dingtalk-old")
 
 	extract := t.TempDir()
 	multiRoot := writeMultiBundle(t, extract, "dingtalk-chat", "dws-shared")
@@ -339,9 +350,7 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiDiskRefreshes(t *testing
 	os.WriteFile(filepath.Join(agentsBase, "dingtalk-chat", "SKILL.md"), []byte("OLD chat"), 0o644)
 	os.MkdirAll(filepath.Join(agentsBase, "dingtalk-stale"), 0o755)
 	os.WriteFile(filepath.Join(agentsBase, "dingtalk-stale", "SKILL.md"), []byte("stale"), 0o644)
-	if err := markManagedSkillDir(filepath.Join(agentsBase, "dingtalk-stale")); err != nil {
-		t.Fatal(err)
-	}
+	useUpgradeManagedNames(t, "dingtalk-stale")
 	os.MkdirAll(filepath.Join(agentsBase, "dingtalk-custom"), 0o755)
 	os.WriteFile(filepath.Join(agentsBase, "dingtalk-custom", "SKILL.md"), []byte("market skill"), 0o644)
 	os.MkdirAll(filepath.Join(agentsBase, "other-skill"), 0o755)
@@ -377,14 +386,11 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiDiskRefreshes(t *testing
 		t.Errorf("non-DWS dir should be preserved: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(agentsBase, "dingtalk-custom", "SKILL.md")); err != nil {
-		t.Errorf("market/user dingtalk-* dir without marker must be preserved: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(agentsBase, "dingtalk-chat", managedSkillMarkerName)); err != nil {
-		t.Errorf("refreshed bundled skill must carry ownership marker: %v", err)
+		t.Errorf("unregistered market/user dingtalk-* dir must be preserved: %v", err)
 	}
 }
 
-func TestUpgradeMonoCleansPreMarkerOfficialAndPreservesCustom(t *testing.T) {
+func TestUpgradeMonoCleansPreStateOfficialAndPreservesCustom(t *testing.T) {
 	home := withFakeHome(t)
 	base := filepath.Join(home, ".agents", "skills")
 	legacyOfficial := filepath.Join(base, "dingtalk-aitable")
@@ -407,7 +413,7 @@ func TestUpgradeMonoCleansPreMarkerOfficialAndPreservesCustom(t *testing.T) {
 		t.Fatalf("mono upgrade = %#v, %v", result, err)
 	}
 	if _, err := os.Stat(legacyOfficial); !os.IsNotExist(err) {
-		t.Fatalf("pre-marker official Skill survived mono switch: %v", err)
+		t.Fatalf("pre-state official Skill survived mono switch: %v", err)
 	}
 	if got, err := os.ReadFile(filepath.Join(custom, "SKILL.md")); err != nil || string(got) != "dingtalk-custom" {
 		t.Fatalf("custom same-prefix Skill changed: data=%q err=%v", got, err)
@@ -532,9 +538,7 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiFallbackCleanupFailure(t
 	if err := os.WriteFile(filepath.Join(staleDir, "SKILL.md"), []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := markManagedSkillDir(staleDir); err != nil {
-		t.Fatal(err)
-	}
+	useUpgradeManagedNames(t, filepath.Base(staleDir))
 
 	origRename := upgradeRename
 	testseam.Swap(t, &upgradeRename, func(src, dst string) error {
@@ -853,9 +857,7 @@ func TestCrossPlatformCoverageMonoUpgradeBackupAndFallbackEdges(t *testing.T) {
 	knownSkillDirs = []string{".real/skills"}
 	stale := filepath.Join(home2, ".agents", "skills", "dingtalk-stale")
 	os.MkdirAll(stale, 0o755)
-	if err := markManagedSkillDir(stale); err != nil {
-		t.Fatal(err)
-	}
+	useUpgradeManagedNames(t, filepath.Base(stale))
 	testseam.Swap(t, &upgradeRename, func(string, string) error { return errors.New("backup denied") })
 	if _, err := UpgradeSkillLocations(mono); err == nil || !strings.Contains(err.Error(), "回退到主目录也失败") {
 		t.Fatalf("fallback cleanup error = %v", err)
@@ -1061,9 +1063,7 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 
 	// Backup failure of a multi leftover aborts cleanupMultiLeftovers.
 	os.MkdirAll(filepath.Join(base, "dingtalk-stale"), 0o755)
-	if err := markManagedSkillDir(filepath.Join(base, "dingtalk-stale")); err != nil {
-		t.Fatal(err)
-	}
+	useUpgradeManagedNames(t, "dingtalk-stale")
 	testseam.Swap(t, &upgradeRename, func(string, string) error { return errors.New("backup denied") })
 	if err := cleanupMultiLeftovers(home, base); err == nil || !strings.Contains(err.Error(), "备份并清理 multi 残留失败") {
 		t.Fatalf("cleanupMultiLeftovers backup error = %v", err)
@@ -1119,46 +1119,41 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageManagedSkillMarkerValidationAndInstallFailure(t *testing.T) {
+func TestCrossPlatformCoverageUnifiedSkillOwnershipAndProvenanceFailure(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "dingtalk-custom")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if isManagedMultiSkillDir(dir) {
-		t.Fatal("an unmarked dingtalk-* directory must not be treated as DWS-owned")
+		t.Fatal("an unregistered dingtalk-* directory must not be treated as DWS-owned")
 	}
-	if err := os.WriteFile(filepath.Join(dir, managedSkillMarkerName), []byte("someone-else\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if isManagedMultiSkillDir(dir) {
-		t.Fatal("a foreign marker value must not be treated as DWS-owned")
+	if !isManagedMultiSkillDir(dir, map[string]bool{"dingtalk-custom": true}) {
+		t.Fatal("unified metadata must prove ownership")
 	}
 	if !isManagedMultiSkillDir(filepath.Join(t.TempDir(), "dws-shared")) {
 		t.Fatal("the exact legacy dws-shared name must remain managed")
 	}
 	if !isManagedMultiSkillDir(filepath.Join(t.TempDir(), "dingtalk-aitable")) {
-		t.Fatal("an exact pre-marker official name must remain managed")
-	}
-
-	testseam.Swap(t, &upgradeWriteFile, func(string, []byte, os.FileMode) error { return errors.New("marker denied") })
-	if err := markManagedSkillDir(dir); err == nil || !strings.Contains(err.Error(), "受管标记") {
-		t.Fatalf("markManagedSkillDir error = %v", err)
+		t.Fatal("an exact pre-state official name must remain managed")
 	}
 
 	home := withFakeHome(t)
 	extract := t.TempDir()
 	multiRoot := writeMultiBundle(t, extract, "dingtalk-chat")
+	testseam.Swap(t, &upgradeBuildProvenance, func(string, string, string, string) (skillprovenance.Record, error) {
+		return skillprovenance.Record{}, errors.New("digest denied")
+	})
 	result, err := UpgradeSkillLocations(multiRoot)
-	if err == nil || !strings.Contains(err.Error(), "受管标记") {
-		t.Fatalf("marker write failure must fail the upgrade, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "provenance") {
+		t.Fatalf("provenance failure must fail the upgrade, got %v", err)
 	}
-	if result == nil || len(result.Failed()) == 0 {
-		t.Fatalf("marker write failure must be reported in results: %#v", result)
+	if result != nil {
+		t.Fatalf("provenance failure must happen before install: %#v", result)
 	}
 	if _, statErr := os.Stat(filepath.Join(home, ".dws", "skills-state.json")); !os.IsNotExist(statErr) {
 		t.Fatalf("failed managed install must not publish state, stat err=%v", statErr)
 	}
 	if _, statErr := os.Stat(filepath.Join(home, ".agents", "skills", "dingtalk-chat")); !os.IsNotExist(statErr) {
-		t.Fatalf("marker failure published an unmarked Skill, stat err=%v", statErr)
+		t.Fatalf("provenance failure published a Skill, stat err=%v", statErr)
 	}
 }

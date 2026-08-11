@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillprovenance"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
@@ -17,13 +18,31 @@ func TestCrossPlatformCoverageSkillStateReadWriteRemoveAndErrors(t *testing.T) {
 	if state, readable, err := Read(home); err != nil || readable || state != nil {
 		t.Fatalf("missing = %#v, %v, %v", state, readable, err)
 	}
-	want := State{Version: "1.2.3", OfficialSkills: []string{"dingtalk-b", "dingtalk-a", "dingtalk-a"}, UpdatedSkills: []string{"dingtalk-a"}}
+	want := State{
+		Version:        "1.2.3",
+		OfficialSkills: []string{"dingtalk-b", "dingtalk-a", "dingtalk-a"},
+		UpdatedSkills:  []string{"dingtalk-a"},
+		ManagedSkills: []skillprovenance.Record{
+			{Name: "dingtalk-b", Version: "old"},
+			{Name: "dingtalk-a", Version: "1"},
+			{Name: "dingtalk-b", Version: "2"},
+		},
+	}
 	if err := Write(home, want); err != nil {
 		t.Fatal(err)
 	}
 	got, readable, err := Read(home)
 	if err != nil || !readable || !reflect.DeepEqual(got.OfficialSkills, []string{"dingtalk-a", "dingtalk-b"}) {
 		t.Fatalf("round trip = %#v, %v, %v", got, readable, err)
+	}
+	if !reflect.DeepEqual(got.ManagedSkills, []skillprovenance.Record{{Name: "dingtalk-a", Version: "1"}, {Name: "dingtalk-b", Version: "2"}}) {
+		t.Fatalf("managed skills = %#v", got.ManagedSkills)
+	}
+	if names := ManagedSkillNames(got); !reflect.DeepEqual(names, map[string]bool{"dingtalk-a": true, "dingtalk-b": true}) {
+		t.Fatalf("managed names = %#v", names)
+	}
+	if names := ManagedSkillNames(nil); len(names) != 0 {
+		t.Fatalf("nil managed names = %#v", names)
 	}
 	if err := Remove(home); err != nil {
 		t.Fatal(err)
@@ -64,7 +83,7 @@ func TestCrossPlatformCoverageSkillStateReadWriteRemoveAndErrors(t *testing.T) {
 	}
 }
 
-func TestIsLegacyOfficialSkillName(t *testing.T) {
+func TestCrossPlatformCoverageIsLegacyOfficialSkillName(t *testing.T) {
 	for _, name := range []string{"dingtalk-aitable", "dingtalk-devdoc", "dws-shared"} {
 		if !IsLegacyOfficialSkillName(name) {
 			t.Fatalf("historical official Skill %q not recognized", name)

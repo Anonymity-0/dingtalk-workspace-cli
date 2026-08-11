@@ -38,10 +38,10 @@ INSTALL_NAME="${DWS_INSTALL_NAME:-$BIN_NAME}"
 VERSION="${DWS_VERSION:-latest}"
 NO_SKILLS="${DWS_NO_SKILLS:-0}"
 SKILLS_ONLY="${DWS_SKILLS_ONLY:-0}"
+SKILL_STATE_ROOT="${DWS_CONFIG_DIR:-$HOME/.dws}"
 SKILL_NAME="dws"
 SKILL_MODE=""
-MANAGED_SKILL_MARKER=".dws-managed"
-MANAGED_SKILL_MARKER_CONTENT="managed-by=dingtalk-workspace-cli"
+MANAGED_SKILL_DIGEST_SCOPE="skill-directory-v1"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,16 +96,16 @@ backup_and_remove_skill_dir() {
 }
 
 # A dingtalk-* prefix alone is not ownership evidence: market/user skills may
-# use it too. New bundled installs carry this marker; dws-shared is the one
-# exact legacy name that predates markers.
+# use it too. Ownership comes from the centralized skills-state.json.
 is_managed_multi_skill_dir() {
   _managed_dir="$1"
-  is_legacy_official_multi_skill_name "$(basename "$_managed_dir")" && return 0
-  [ -f "$_managed_dir/$MANAGED_SKILL_MARKER" ] || return 1
-  [ "$(cat "$_managed_dir/$MANAGED_SKILL_MARKER" 2>/dev/null)" = "$MANAGED_SKILL_MARKER_CONTENT" ]
+  _managed_name="$(basename "$_managed_dir")"
+  is_legacy_official_multi_skill_name "$_managed_name" && return 0
+  [ -f "$SKILL_STATE_ROOT/skills-state.json" ] || return 1
+  grep -Eq '"name"[[:space:]]*:[[:space:]]*"'"$_managed_name"'"' "$SKILL_STATE_ROOT/skills-state.json"
 }
 
-# Frozen exact names shipped before .dws-managed existed. Never replace this
+# Frozen exact names shipped before centralized ownership metadata. Never replace this
 # with a dingtalk-* prefix check: user/market Skills may use that prefix.
 is_legacy_official_multi_skill_name() {
   case "$1" in
@@ -114,9 +114,78 @@ is_legacy_official_multi_skill_name() {
   return 1
 }
 
-mark_managed_multi_skill_dir() {
-  _managed_dir="$1"
-  printf '%s\n' "$MANAGED_SKILL_MARKER_CONTENT" > "$_managed_dir/$MANAGED_SKILL_MARKER"
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+sha256_stdin() {
+  if need_cmd sha256sum; then
+    sha256sum | awk '{print $1}'
+  elif need_cmd shasum; then
+    shasum -a 256 | awk '{print $1}'
+  elif need_cmd openssl; then
+    openssl dgst -sha256 | awk '{print $NF}'
+  else
+    return 1
+  fi
+}
+
+digest_skill_dir() {
+  _digest_dir="$1"
+  _digest="$({
+    find "$_digest_dir" -type f -print | LC_ALL=C sort | while IFS= read -r _digest_file; do
+      _digest_rel="${_digest_file#"$_digest_dir"/}"
+      printf '%s\0' "$_digest_rel"
+      cat "$_digest_file"
+      printf '\0'
+    done
+  } | sha256_stdin)" || return 1
+  printf 'sha256:%s' "$_digest"
+}
+
+write_skills_state() {
+  _state_multi="$1"
+  _state_source="$2"
+  _state_root="$SKILL_STATE_ROOT"
+  mkdir -p "$_state_root" || return 1
+  _state_tmp="$(mktemp "$_state_root/.skills-state.XXXXXX")" || return 1
+  _state_version="$(json_escape "$VERSION")"
+  _state_names=""
+  for _state_dir in "$_state_multi"/*/; do
+    [ -f "${_state_dir}SKILL.md" ] || continue
+    _state_name="$(basename "$_state_dir")"
+    _state_names="${_state_names}${_state_name}\n"
+  done
+  {
+    printf '{\n  "version": "%s",\n' "$_state_version"
+    printf '  "official_skills": ['
+    _state_first=1
+    printf '%b' "$_state_names" | LC_ALL=C sort | while IFS= read -r _state_name; do
+      [ -n "$_state_name" ] || continue
+      [ "$_state_first" -eq 1 ] || printf ', '
+      printf '"%s"' "$(json_escape "$_state_name")"
+      _state_first=0
+    done
+    printf '],\n  "updated_skills": ['
+    _state_first=1
+    printf '%b' "$_state_names" | LC_ALL=C sort | while IFS= read -r _state_name; do
+      [ -n "$_state_name" ] || continue
+      [ "$_state_first" -eq 1 ] || printf ', '
+      printf '"%s"' "$(json_escape "$_state_name")"
+      _state_first=0
+    done
+    printf '],\n  "managed_skills": [\n'
+    _state_first=1
+    printf '%b' "$_state_names" | LC_ALL=C sort | while IFS= read -r _state_name; do
+      [ -n "$_state_name" ] || continue
+      _state_digest="$(digest_skill_dir "$_state_multi/$_state_name")" || exit 1
+      [ "$_state_first" -eq 1 ] || printf ',\n'
+      printf '    {"name":"%s","version":"%s","source":"%s","digest":"%s","digest_scope":"%s"}' "$(json_escape "$_state_name")" "$_state_version" "$_state_source" "$_state_digest" "$MANAGED_SKILL_DIGEST_SCOPE"
+      _state_first=0
+    done
+    printf '\n  ],\n  "updated_at": "%s"\n}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  } > "$_state_tmp" || { rm -f "$_state_tmp"; return 1; }
+  mv "$_state_tmp" "$_state_root/skills-state.json"
 }
 
 publish_managed_multi_skill() {
@@ -126,10 +195,6 @@ publish_managed_multi_skill() {
   _pms_name="$(basename "$_pms_dest")"
   _pms_stage="$(mktemp -d "$_pms_parent/.${_pms_name}.tmp.XXXXXX")" || return 1
   if ! cp -R "$_pms_src/." "$_pms_stage/" 2>/dev/null && ! cp -r "$_pms_src/." "$_pms_stage/"; then
-    rm -rf "$_pms_stage"
-    return 1
-  fi
-  if ! mark_managed_multi_skill_dir "$_pms_stage"; then
     rm -rf "$_pms_stage"
     return 1
   fi
@@ -595,6 +660,7 @@ install_skills_to_homes() {
     say "  ⚠️  有 ${failed} 个 Agent 目标安装 mono Skill 失败"
     return 1
   fi
+  rm -f "$SKILL_STATE_ROOT/skills-state.json"
 }
 
 # multi_tree_has_skills returns 0 only when the given multi bundle directory
@@ -668,6 +734,7 @@ install_multi_skills_to_homes() {
     say "  ⚠️  有 ${failed} 个 Agent 目标安装失败"
     return 1
   fi
+  write_skills_state "$multi_src" "install.sh" || return 1
 }
 
 _install_multi_to_base() {
@@ -709,7 +776,7 @@ _install_multi_to_base() {
     _name="$(basename "$skill_dir")"
     _dest="$_base/$_name"
     if ! publish_managed_multi_skill "$skill_dir" "$_dest"; then
-      say "  ⚠️  Skill 复制、标记或发布失败，目标未计为安装成功: $_dest"
+      say "  ⚠️  Skill 复制或发布失败，目标未计为安装成功: $_dest"
       return 1
     fi
     _count=$((_count + 1))

@@ -24,9 +24,7 @@ func TestCrossPlatformCoverageSkillSetupPlanPreviewDeclineAndExecutionMatch(t *t
 			t.Fatal(err)
 		}
 	}
-	if err := markDWSManagedSkillDir(filepath.Join(dest, "dingtalk-stale")); err != nil {
-		t.Fatal(err)
-	}
+	useManagedSkillNames(t, "dingtalk-stale")
 
 	testseam.Swap(t, &skillSetupResolveMode, func(mode string, _ bool, _ io.Writer) (string, error) { return mode, nil })
 	testseam.Swap(t, &skillSetupResolveSource, func(string, string) (string, func(), error) { return source, func() {}, nil })

@@ -81,6 +81,23 @@ function writeFile(filePath, content, mode = 0o644) {
   fs.writeFileSync(filePath, content, { mode });
 }
 
+function writeManagedState(home, names) {
+  const state = {
+    version: "old",
+    official_skills: names,
+    updated_skills: names,
+    managed_skills: names.map((name) => ({
+      name,
+      version: "old",
+      source: "test",
+      digest: `sha256:${"0".repeat(64)}`,
+      digest_scope: "skill-directory-v1",
+    })),
+    updated_at: "2026-01-01T00:00:00Z",
+  };
+  writeFile(path.join(home, ".dws", "skills-state.json"), `${JSON.stringify(state, null, 2)}\n`);
+}
+
 // stagePkg builds a fake npm package whose assets/dws-skills.zip contains
 // exactly the given zip entries ({ "relative/path": "content" }) plus any
 // listed empty directories. Returns { tmp, pkg, home }.
@@ -137,7 +154,7 @@ scenario("multi install lays out sibling skills and caches", () => {
     // Pre-existing state the multi install must reconcile.
     writeFile(path.join(home, ".agents", "skills", "dws", "SKILL.md"), "old mono\n");
     writeFile(path.join(home, ".agents", "skills", "dingtalk-stale", "SKILL.md"), "stale\n");
-    writeFile(path.join(home, ".agents", "skills", "dingtalk-stale", ".dws-managed"), "managed-by=dingtalk-workspace-cli\n");
+    writeManagedState(home, ["dingtalk-stale"]);
     writeFile(path.join(home, ".agents", "skills", "dingtalk-custom", "SKILL.md"), "market skill\n");
     writeFile(path.join(home, ".agents", "skills", "other-skill", "SKILL.md"), "not dws\n");
 
@@ -151,8 +168,12 @@ scenario("multi install lays out sibling skills and caches", () => {
     assert.ok(fs.existsSync(path.join(base, "dws-shared", "SKILL.md")), "dws-shared installed");
     assert.ok(!fs.existsSync(path.join(base, "dws")), "mono leftover removed");
     assert.ok(!fs.existsSync(path.join(base, "dingtalk-stale")), "stale skill removed");
-    assert.equal(fs.readFileSync(path.join(base, "dingtalk-custom", "SKILL.md"), "utf8"), "market skill\n", "unmarked dingtalk-* skill preserved");
-    assert.equal(fs.readFileSync(path.join(base, "dingtalk-test", ".dws-managed"), "utf8"), "managed-by=dingtalk-workspace-cli\n", "bundled skill marked as managed");
+    assert.equal(fs.readFileSync(path.join(base, "dingtalk-custom", "SKILL.md"), "utf8"), "market skill\n", "unregistered dingtalk-* skill preserved");
+    const state = JSON.parse(fs.readFileSync(path.join(home, ".dws", "skills-state.json"), "utf8"));
+    const provenance = state.managed_skills.find((record) => record.name === "dingtalk-test");
+    assert.equal(provenance.source, "npm-postinstall");
+    assert.match(provenance.digest, /^sha256:[0-9a-f]{64}$/);
+    assert.equal(provenance.digest_scope, "skill-directory-v1");
     assert.ok(fs.existsSync(path.join(base, "other-skill", "SKILL.md")), "non-DWS skill preserved");
 
     assert.ok(fs.existsSync(path.join(home, ".dws", "skills", "multi", "dingtalk-test", "SKILL.md")), "multi cache filled");
@@ -256,7 +277,7 @@ scenario("mono backup failure preserves multi and reports failure", () => {
   try {
     const base = path.join(home, ".agents", "skills");
     writeFile(path.join(base, "dingtalk-test", "SKILL.md"), "old multi\n");
-    writeFile(path.join(base, "dingtalk-test", ".dws-managed"), "managed-by=dingtalk-workspace-cli\n");
+    writeManagedState(home, ["dingtalk-test"]);
     writeFile(path.join(home, ".dws", "skill-backups"), "not a directory\n");
 
     const res = runInstall(pkg, home, "mono");
@@ -269,7 +290,7 @@ scenario("mono backup failure preserves multi and reports failure", () => {
   }
 });
 
-scenario("mono switch migrates exact pre-marker official skills", () => {
+scenario("mono switch migrates exact pre-state official skills", () => {
   const { tmp, pkg, home } = stagePkg({
     "mono/SKILL.md": "# mono fixture\n",
     "multi/dingtalk-test/SKILL.md": "# dingtalk-test\n",
@@ -278,33 +299,14 @@ scenario("mono switch migrates exact pre-marker official skills", () => {
     const base = path.join(home, ".agents", "skills");
     writeFile(path.join(base, "dingtalk-aitable", "SKILL.md"), "legacy official\n");
     writeFile(path.join(base, "dingtalk-custom", "SKILL.md"), "market skill\n");
+    writeManagedState(home, ["dingtalk-aitable"]);
 
     const res = runInstall(pkg, home, "mono");
     assert.equal(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
-    assert.ok(!fs.existsSync(path.join(base, "dingtalk-aitable")), "pre-marker official skill removed");
+    assert.ok(!fs.existsSync(path.join(base, "dingtalk-aitable")), "pre-state official skill removed");
     assert.equal(fs.readFileSync(path.join(base, "dingtalk-custom", "SKILL.md"), "utf8"), "market skill\n");
     assert.ok(fs.existsSync(path.join(base, "dws", "SKILL.md")), "mono installed");
-  } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
-  }
-});
-
-scenario("managed marker failure publishes no unmarked skill", () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-marker-"));
-  const source = path.join(tmp, "source");
-  const dest = path.join(tmp, "skills", "dingtalk-test");
-  try {
-    writeFile(path.join(source, "SKILL.md"), "new skill\n");
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    assert.throws(
-      () => publishManagedMultiSkillAtomically(source, dest, () => { throw new Error("marker denied"); }),
-      /marker denied/,
-    );
-    assert.ok(!fs.existsSync(dest), "failed marker must not publish final directory");
-    assert.ok(
-      !fs.readdirSync(path.dirname(dest)).some((name) => name.startsWith(".dingtalk-test.tmp-")),
-      "failed marker must clean staging",
-    );
+    assert.ok(!fs.existsSync(path.join(home, ".dws", "skills-state.json")), "mono clears centralized multi state");
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

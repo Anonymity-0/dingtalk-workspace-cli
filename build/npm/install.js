@@ -3,6 +3,7 @@
 "use strict";
 
 const fs = require("fs");
+const crypto = require("crypto");
 const os = require("os");
 const path = require("path");
 const childProcess = require("child_process");
@@ -224,6 +225,7 @@ function publishCacheAtomically(sourceDir, cacheDir, copyFn = copyChildren) {
 
 function installSkillsToHomes(skillRoot) {
   const homeDir = os.homedir();
+  const managedNames = readManagedSkillNames(homeDir);
   let installed = 0;
   let attempted = 0;
   let failed = 0;
@@ -241,7 +243,7 @@ function installSkillsToHomes(skillRoot) {
     // ~/.dws/skill-backups/ (backup failure keeps the dir).
     if (fs.existsSync(baseDir)) {
       for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
-        if (entry.isDirectory() && isManagedMultiSkillDir(path.join(baseDir, entry.name))) {
+        if (entry.isDirectory() && isManagedMultiSkillDir(path.join(baseDir, entry.name), managedNames)) {
           if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name))) {
             console.warn(`⚠️  跳过 ${baseDir}（multi 残留备份失败，未安装 mono）`);
             failed += 1;
@@ -272,6 +274,7 @@ function installSkillsToHomes(skillRoot) {
   if (failed > 0) {
     throw new Error(`有 ${failed} 个 Agent 目标安装 mono Skill 失败`);
   }
+  fs.rmSync(path.join(skillStateDir(homeDir), "skills-state.json"), { force: true });
 }
 
 // multiTreeHasSkills mirrors multi_tree_has_skills in scripts/install.sh and
@@ -289,10 +292,9 @@ function multiTreeHasSkills(dir) {
     .some((e) => e.isDirectory() && fs.existsSync(path.join(dir, e.name, "SKILL.md")));
 }
 
-const MANAGED_SKILL_MARKER = ".dws-managed";
-const MANAGED_SKILL_MARKER_CONTENT = "managed-by=dingtalk-workspace-cli\n";
-// Frozen exact names shipped before managed markers existed. Retired names
-// stay here so old installs can be migrated without treating every
+const MANAGED_SKILL_DIGEST_SCOPE = "skill-directory-v1";
+// Frozen exact names shipped before centralized ownership metadata. Retired
+// names stay here so old installs can be migrated without treating every
 // dingtalk-* directory as DWS-owned.
 const LEGACY_OFFICIAL_MULTI_SKILLS = new Set([
   "dingtalk-agoal", "dingtalk-aiapp", "dingtalk-aisearch", "dingtalk-aitable",
@@ -305,35 +307,113 @@ const LEGACY_OFFICIAL_MULTI_SKILLS = new Set([
   "dingtalk-todo", "dingtalk-wiki", "dws-shared",
 ]);
 
-function isManagedMultiSkillDir(dir) {
-  if (LEGACY_OFFICIAL_MULTI_SKILLS.has(path.basename(dir))) {
-    return true;
-  }
+function skillStateDir(homeDir) {
+  return (process.env.DWS_CONFIG_DIR || "").trim() || path.join(homeDir, ".dws");
+}
+
+function readManagedSkillNames(homeDir) {
   try {
-    return fs.readFileSync(path.join(dir, MANAGED_SKILL_MARKER), "utf8") === MANAGED_SKILL_MARKER_CONTENT;
+    const state = JSON.parse(fs.readFileSync(path.join(skillStateDir(homeDir), "skills-state.json"), "utf8"));
+    return new Set((state.managed_skills || []).map((record) => record.name).filter(Boolean));
   } catch (_) {
-    return false;
+    return new Set();
   }
 }
 
-function markManagedMultiSkillDir(dir) {
-  fs.writeFileSync(path.join(dir, MANAGED_SKILL_MARKER), MANAGED_SKILL_MARKER_CONTENT, "utf8");
+function isManagedMultiSkillDir(dir, managedNames) {
+  const name = path.basename(dir);
+  return LEGACY_OFFICIAL_MULTI_SKILLS.has(name) || managedNames.has(name);
 }
 
-// Prepare content and ownership metadata in a sibling staging directory, then
-// publish with rename. A copy or marker failure never exposes an unmarked
-// official Skill at destDir.
-function publishManagedMultiSkillAtomically(sourceDir, destDir, markFn = markManagedMultiSkillDir) {
+function skillDirectoryDigest(dir) {
+  const files = [];
+  const visit = (current, prefix) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        visit(full, rel);
+      } else {
+        files.push({ rel, full });
+      }
+    }
+  };
+  visit(dir, "");
+  files.sort((a, b) => Buffer.from(a.rel).compare(Buffer.from(b.rel)));
+  const hash = crypto.createHash("sha256");
+  for (const file of files) {
+    hash.update(file.rel, "utf8");
+    hash.update(Buffer.from([0]));
+    hash.update(fs.readFileSync(file.full));
+    hash.update(Buffer.from([0]));
+  }
+  return `sha256:${hash.digest("hex")}`;
+}
+
+// Prepare content in a sibling staging directory, then publish with rename.
+function publishManagedMultiSkillAtomically(sourceDir, destDir) {
   const parent = path.dirname(destDir);
   const stage = fs.mkdtempSync(path.join(parent, `.${path.basename(destDir)}.tmp-`));
   let published = false;
   try {
     copyChildren(sourceDir, stage);
-    markFn(stage);
     fs.renameSync(stage, destDir);
     published = true;
   } finally {
     if (!published) {
+      fs.rmSync(stage, { recursive: true, force: true });
+    }
+  }
+}
+
+function writeSkillsState(homeDir, multiRoot, skills) {
+  const version = process.env.npm_package_version || process.env.DWS_PACKAGE_VERSION || "unknown";
+  const managedSkills = [...skills].sort().map((name) => ({
+    name,
+    version,
+    source: "npm-postinstall",
+    digest: skillDirectoryDigest(path.join(multiRoot, name)),
+    digest_scope: MANAGED_SKILL_DIGEST_SCOPE,
+  }));
+  const state = {
+    version,
+    official_skills: [...skills].sort(),
+    updated_skills: [...skills].sort(),
+    managed_skills: managedSkills,
+    updated_at: new Date().toISOString(),
+  };
+  const stateDir = skillStateDir(homeDir);
+  fs.mkdirSync(stateDir, { recursive: true });
+  const stage = fs.mkdtempSync(path.join(stateDir, ".skills-state.tmp-"));
+  const stagedFile = path.join(stage, "skills-state.json");
+  const statePath = path.join(stateDir, "skills-state.json");
+  const rollbackPath = path.join(stage, "skills-state.previous.json");
+  let movedPrevious = false;
+  let preserveRecovery = false;
+  try {
+    fs.writeFileSync(stagedFile, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    if (fs.existsSync(statePath)) {
+      fs.renameSync(statePath, rollbackPath);
+      movedPrevious = true;
+    }
+    try {
+      fs.renameSync(stagedFile, statePath);
+    } catch (err) {
+      if (movedPrevious && !fs.existsSync(statePath)) {
+        try {
+          fs.renameSync(rollbackPath, statePath);
+          movedPrevious = false;
+        } catch (restoreErr) {
+          preserveRecovery = true;
+          throw new Error(
+            `publish skills state failed: ${err.message}; restore also failed: ${restoreErr.message}; previous state retained at ${rollbackPath}`,
+          );
+        }
+      }
+      throw err;
+    }
+  } finally {
+    if (!preserveRecovery) {
       fs.rmSync(stage, { recursive: true, force: true });
     }
   }
@@ -353,6 +433,7 @@ function installMultiSkillsToHomes(multiRoot) {
     throw new Error(`no product skills found under ${multiRoot}`);
   }
   const skillSet = new Set(skills);
+  const managedNames = readManagedSkillNames(homeDir);
   let installed = 0;
   let attempted = 0;
   let failed = 0;
@@ -368,7 +449,7 @@ function installMultiSkillsToHomes(multiRoot) {
     for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
       if (
         entry.isDirectory() &&
-        isManagedMultiSkillDir(path.join(baseDir, entry.name)) &&
+        (LEGACY_OFFICIAL_MULTI_SKILLS.has(entry.name) || managedNames.has(entry.name)) &&
         !skillSet.has(entry.name)
       ) {
         if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name))) {
@@ -421,6 +502,7 @@ function installMultiSkillsToHomes(multiRoot) {
   if (failed > 0) {
     throw new Error(`有 ${failed} 个 Agent 目标安装 multi Skill 失败`);
   }
+  writeSkillsState(homeDir, multiRoot, skills);
 }
 
 // resolveSkillMode mirrors scripts/install.sh: DWS_SKILL_MODE (mono|multi)

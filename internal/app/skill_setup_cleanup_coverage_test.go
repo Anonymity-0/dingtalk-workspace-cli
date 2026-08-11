@@ -6,14 +6,26 @@ package app
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillprovenance"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
+
+func useManagedSkillNames(t *testing.T, names ...string) {
+	t.Helper()
+	records := make([]skillprovenance.Record, 0, len(names))
+	for _, name := range names {
+		records = append(records, skillprovenance.Record{Name: name})
+	}
+	testseam.Swap(t, &skillSetupReadState, func(string) (*skillstate.State, bool, error) {
+		return &skillstate.State{ManagedSkills: records}, true, nil
+	})
+}
 
 // TestCrossPlatformCoverageSkillSetupConfirmPreviewsStaleSkills verifies the
 // confirmation prompt lists stale dingtalk-* / dws-shared directories that a
@@ -30,9 +42,7 @@ func TestCrossPlatformCoverageSkillSetupConfirmPreviewsStaleSkills(t *testing.T)
 	if err := os.WriteFile(filepath.Join(stale, "SKILL.md"), []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := markDWSManagedSkillDir(stale); err != nil {
-		t.Fatal(err)
-	}
+	useManagedSkillNames(t, "dingtalk-old")
 
 	var out bytes.Buffer
 	ok, err := confirmSkillSetup(&out, skillSetupModeMulti, "src", []string{dest}, []string{"dingtalk-chat"}, false)
@@ -56,89 +66,23 @@ func TestCrossPlatformCoverageSkillSetupConfirmPreviewsStaleSkills(t *testing.T)
 	}
 }
 
-func TestCrossPlatformCoverageSkillSetupManagedMarkerValidationAndWriteFailure(t *testing.T) {
+func TestCrossPlatformCoverageSkillSetupUnifiedOwnership(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "dingtalk-custom")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if isManagedDWSMultiSkillDir(dir) {
-		t.Fatal("an unmarked dingtalk-* directory must not be treated as DWS-owned")
+		t.Fatal("an unregistered dingtalk-* directory must not be treated as DWS-owned")
 	}
-	if err := os.WriteFile(filepath.Join(dir, managedSkillMarkerName), []byte("someone-else\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if isManagedDWSMultiSkillDir(dir) {
-		t.Fatal("a foreign marker value must not be treated as DWS-owned")
-	}
-	if err := markDWSManagedSkillDir(dir); err != nil {
-		t.Fatal(err)
-	}
-	if !isManagedDWSMultiSkillDir(dir) {
-		t.Fatal("the exact DWS marker must prove ownership")
+	managed := map[string]bool{"dingtalk-custom": true}
+	if !isManagedDWSMultiSkillDir(dir, managed) {
+		t.Fatal("unified metadata must prove ownership")
 	}
 	legacy := filepath.Join(t.TempDir(), legacySharedSkill)
 	if !isManagedDWSMultiSkillDir(legacy) {
 		t.Fatal("the exact legacy dws-shared name must remain managed")
 	}
 
-	testseam.Swap(t, &skillSetupWriteFile, func(string, []byte, os.FileMode) error { return errors.New("marker denied") })
-	if err := markDWSManagedSkillDir(dir); err == nil || !strings.Contains(err.Error(), "受管标记") {
-		t.Fatalf("markDWSManagedSkillDir error = %v", err)
-	}
-}
-
-func TestCrossPlatformCoverageSkillSetupEventMigrationMarkerFailures(t *testing.T) {
-	for _, failAt := range []int{1, 2} {
-		failAt := failAt
-		t.Run(fmt.Sprintf("marker-%d", failAt), func(t *testing.T) {
-			src := writeMultiSkillSource(t, []string{multiEventSkill, multiMiscSkill})
-			calls := 0
-			testseam.Swap(t, &skillSetupWriteFile, func(path string, data []byte, mode os.FileMode) error {
-				calls++
-				if calls == failAt {
-					return errors.New("marker denied")
-				}
-				return os.WriteFile(path, data, mode)
-			})
-			if _, err := prepareEventMiscMigration(src, t.TempDir()); err == nil || !strings.Contains(err.Error(), "受管标记") {
-				t.Fatalf("prepareEventMiscMigration marker failure = %v", err)
-			}
-		})
-	}
-}
-
-func TestCrossPlatformCoverageSkillSetupExecuteMarkerFailure(t *testing.T) {
-	src := writeMultiSkillSource(t, []string{"dingtalk-a"})
-	dest := filepath.Join(t.TempDir(), "skills")
-	markerErr := errors.New("marker denied")
-	testseam.Swap(t, &skillSetupWriteFile, func(string, []byte, os.FileMode) error { return markerErr })
-	plan := &skillSetupPlan{
-		Mode:            skillSetupModeMulti,
-		Source:          src,
-		MultiSkillNames: []string{"dingtalk-a"},
-		Targets:         []skillSetupTargetPlan{{Destination: dest}},
-	}
-
-	var out, errOut bytes.Buffer
-	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
-	if err != nil || installed != 0 || skipped != 1 {
-		t.Fatalf("execute marker failure = (%d, %d, %v), want (0, 1, nil)", installed, skipped, err)
-	}
-	if out.Len() != 0 || !strings.Contains(errOut.String(), "受管标记") {
-		t.Fatalf("execute marker output = %q / %q", out.String(), errOut.String())
-	}
-	if _, statErr := os.Stat(filepath.Join(dest, "dingtalk-a")); !os.IsNotExist(statErr) {
-		t.Fatalf("marker failure published an unmarked Skill, stat err=%v", statErr)
-	}
-	entries, readErr := os.ReadDir(dest)
-	if readErr != nil {
-		t.Fatal(readErr)
-	}
-	for _, entry := range entries {
-		if strings.HasPrefix(entry.Name(), ".dingtalk-a.tmp-") {
-			t.Fatalf("marker failure retained staging directory %s", entry.Name())
-		}
-	}
 }
 
 func TestCrossPlatformCoveragePublishManagedSkillFailurePaths(t *testing.T) {
@@ -179,12 +123,12 @@ func TestCrossPlatformCoveragePublishManagedSkillFailurePaths(t *testing.T) {
 	})
 
 	t.Run("cleanup", func(t *testing.T) {
-		markerErr := errors.New("marker denied")
+		renameErr := errors.New("rename denied")
 		cleanupErr := errors.New("cleanup denied")
-		testseam.Swap(t, &skillSetupWriteFile, func(string, []byte, os.FileMode) error { return markerErr })
+		testseam.Swap(t, &skillSetupPublishRename, func(string, string) error { return renameErr })
 		testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return cleanupErr })
 		err := publishDWSManagedSkillDir(skillSrc, filepath.Join(t.TempDir(), "dingtalk-a"))
-		if !errors.Is(err, markerErr) || !errors.Is(err, cleanupErr) {
+		if !errors.Is(err, renameErr) || !errors.Is(err, cleanupErr) {
 			t.Fatalf("cleanup error = %v", err)
 		}
 	})
@@ -296,9 +240,7 @@ func TestCrossPlatformCoverageSkillSetupMonoCleanupFailureSkipsWholeTarget(t *te
 	if err := os.MkdirAll(multi, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := markDWSManagedSkillDir(multi); err != nil {
-		t.Fatal(err)
-	}
+	useManagedSkillNames(t, filepath.Base(multi))
 	monoSrc := t.TempDir()
 	if err := os.WriteFile(filepath.Join(monoSrc, "SKILL.md"), []byte("mono"), 0o644); err != nil {
 		t.Fatal(err)
@@ -340,9 +282,7 @@ func TestCrossPlatformCoverageSkillSetupStaleBackupFailureSkipsWholeTarget(t *te
 	if err := os.MkdirAll(stale, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := markDWSManagedSkillDir(stale); err != nil {
-		t.Fatal(err)
-	}
+	useManagedSkillNames(t, filepath.Base(stale))
 	src := writeMultiSkillSource(t, []string{"dingtalk-a", "dingtalk-shared"})
 	var out, errOut bytes.Buffer
 	installed, skipped, err := installMultiSkillToHomes(src, []string{"dingtalk-a", "dingtalk-shared"}, []string{dest}, &out, &errOut, false)
@@ -422,9 +362,7 @@ func TestCrossPlatformCoverageSkillSetupRemoveStaleMultiSkillsEdges(t *testing.T
 			t.Fatal(err)
 		}
 	}
-	if err := markDWSManagedSkillDir(filepath.Join(dest, "dingtalk-stale")); err != nil {
-		t.Fatal(err)
-	}
+	useManagedSkillNames(t, "dingtalk-stale")
 	if err := os.WriteFile(filepath.Join(dest, "README"), []byte("file"), 0o600); err != nil {
 		t.Fatal(err)
 	}

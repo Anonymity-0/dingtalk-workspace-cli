@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillprovenance"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/upgrade"
 	"github.com/charmbracelet/huh"
@@ -75,7 +76,9 @@ var (
 	skillSetupOpen            = os.Open
 	skillSetupOpenFile        = os.OpenFile
 	skillSetupWriteFile       = os.WriteFile
+	skillSetupBuildProvenance = skillprovenance.Build
 	skillSetupCopy            = io.Copy
+	skillSetupReadState       = skillstate.Read
 	skillSetupWriteState      = skillstate.Write
 	skillSetupRemoveState     = skillstate.Remove
 	skillSetupNow             = time.Now
@@ -121,13 +124,13 @@ multi 模式支持按产品挑选：
   -s/--skill   只装指定子 skill（可重复，短名 aitable 或全名 dingtalk-aitable 均可）
   -x/--exclude 从全装里剔除指定子 skill（可重复，与 --skill 互斥）
   用 -s/-x 挑选时未列出的已有 dingtalk-* skill 会保留（additive 叠加语义）；
-  不带过滤条件的全量安装只清理带 DWS 受管标记，或属于 marker 上线前精确官方
+  不带过滤条件的全量安装只清理统一状态中登记，或属于状态上线前精确官方
   名称集合且不在 bundle 内的过期 Skill。
   setup 成功后记录本次官方清单；后续每次 dws upgrade 都按新版本官方清单
   全量覆盖预制 skill，因此本地删除或 setup 时排除的预制 skill 会在升级时恢复。
 清理与备份（本命令可能移除的目录）：
-  · 安装任一模式前会清理对面模式残留：装 mono 移除带 DWS 受管标记，或属于
-    marker 上线前精确官方名称集合的 multi Skill，
+  · 安装任一模式前会清理对面模式残留：装 mono 移除统一状态中登记，或属于
+    状态上线前精确官方名称集合的 multi Skill，
     装 multi 移除 <agent-home>/dws/；全量 multi 安装还会移除不在 bundle 内的
     过期受管 Skill。仅有 dingtalk-* 前缀的市场/用户 Skill 不会被清理。
   · 被移除的目录与同名旧 skill 会先备份到 ~/.dws/skill-backups/<时间戳>/；
@@ -230,7 +233,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 
 	// filtered 决定 multi 安装的清理语义：带 -s/--skill 或 -x/--exclude
 	// 时保持 additive（不动未列出的 sibling）；全量安装与 install.sh /
-	// install.js 对齐，清掉不在 bundle 内且有明确 DWS 所有权标记的过期 Skill。
+	// install.js 对齐，清掉不在 bundle 内且有明确 DWS 所有权记录的过期 Skill。
 	filtered := len(includeRaw) > 0 || len(excludeRaw) > 0
 	plan, err := skillSetupBuildPlan(mode, skillSrc, dests, multiSkillNames, filtered)
 	if err != nil {
@@ -254,6 +257,32 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 		if !ok {
 			fmt.Fprintln(out, "已取消。")
 			return nil
+		}
+	}
+
+	var managedSkills []skillprovenance.Record
+	if mode == skillSetupModeMulti {
+		updatedSkillNames := append([]string(nil), multiSkillNames...)
+		if installsEventMiscCompanion && !containsSkillName(updatedSkillNames, multiMiscSkill) {
+			updatedSkillNames = append(updatedSkillNames, multiMiscSkill)
+			sort.Strings(updatedSkillNames)
+		}
+		managedSkills, err = buildSkillProvenanceRecords(plan.Source, updatedSkillNames, RawVersion(), skillprovenance.SourceSkillSetup)
+		if err != nil {
+			return fmt.Errorf("生成统一 Skill provenance 失败: %w", err)
+		}
+		if filtered {
+			home, homeErr := skillSetupUserHomeDir()
+			if homeErr != nil {
+				return fmt.Errorf("无法解析 HOME 以读取 Skill 统一状态: %w", homeErr)
+			}
+			previous, readable, readErr := skillSetupReadState(home)
+			if readErr != nil {
+				return fmt.Errorf("读取 Skill 统一状态失败: %w", readErr)
+			}
+			if readable {
+				managedSkills = skillprovenance.Merge(previous.ManagedSkills, managedSkills)
+			}
 		}
 	}
 
@@ -297,6 +326,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 				Version:        RawVersion(),
 				OfficialSkills: allMultiSkillNames,
 				UpdatedSkills:  updatedSkillNames,
+				ManagedSkills:  managedSkills,
 				UpdatedAt:      skillSetupNow().UTC().Format(time.RFC3339),
 			}
 			if stateErr := skillSetupWriteState(home, state); stateErr != nil {
@@ -328,34 +358,28 @@ const multiSharedSkill = "dingtalk-shared"
 // unreferenced skill next to the new dingtalk-shared.
 const legacySharedSkill = "dws-shared"
 
-const (
-	managedSkillMarkerName    = ".dws-managed"
-	managedSkillMarkerContent = "managed-by=dingtalk-workspace-cli\n"
-)
-
-// isManagedDWSMultiSkillDir reports whether dir is proven to be owned by the
-// bundled DWS installer. A dingtalk-* prefix alone is not ownership evidence:
-// only the exact pre-marker official names or the managed marker qualify.
-func isManagedDWSMultiSkillDir(dir string) bool {
+// isManagedDWSMultiSkillDir reports whether dir is named by unified metadata
+// or by the frozen pre-state official migration list.
+func isManagedDWSMultiSkillDir(dir string, managed ...map[string]bool) bool {
 	if skillstate.IsLegacyOfficialSkillName(filepath.Base(dir)) {
 		return true
 	}
-	data, err := os.ReadFile(filepath.Join(dir, managedSkillMarkerName))
-	return err == nil && string(data) == managedSkillMarkerContent
+	return len(managed) > 0 && managed[0][filepath.Base(dir)]
 }
 
-func markDWSManagedSkillDir(dir string) error {
-	marker := filepath.Join(dir, managedSkillMarkerName)
-	if err := skillSetupWriteFile(marker, []byte(managedSkillMarkerContent), 0o644); err != nil {
-		return fmt.Errorf("写入 Skill 受管标记失败 %s: %w", marker, err)
+func buildSkillProvenanceRecords(root string, names []string, version, source string) ([]skillprovenance.Record, error) {
+	records := make([]skillprovenance.Record, 0, len(names))
+	for _, name := range names {
+		record, err := skillSetupBuildProvenance(name, filepath.Join(root, name), version, source)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", name, err)
+		}
+		records = append(records, record)
 	}
-	return nil
+	return records, nil
 }
 
-// publishDWSManagedSkillDir stages a complete Skill and its ownership marker
-// before exposing the final directory. Copy or marker failures therefore
-// cannot leave an unmarked official directory that later mode cleanup would
-// mistake for user-owned content.
+// publishDWSManagedSkillDir stages a complete Skill before exposing it.
 func publishDWSManagedSkillDir(src, dest string) (err error) {
 	parent := filepath.Dir(dest)
 	stage, err := skillSetupPublishTemp(parent, "."+filepath.Base(dest)+".tmp-")
@@ -373,9 +397,6 @@ func publishDWSManagedSkillDir(src, dest string) (err error) {
 	}()
 	if err := skillSetupCopyDir(src, stage); err != nil {
 		return fmt.Errorf("拷贝 Skill staging 失败 %s: %w", stage, err)
-	}
-	if err := markDWSManagedSkillDir(stage); err != nil {
-		return err
 	}
 	if err := skillSetupPublishRename(stage, dest); err != nil {
 		return fmt.Errorf("发布 Skill 失败 %s: %w", dest, err)
@@ -936,6 +957,7 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 	sort.Strings(plan.MultiSkillNames)
 	sortedDests := append([]string(nil), dests...)
 	sort.Strings(sortedDests)
+	managedNames := currentManagedSkillNames()
 	for _, dest := range sortedDests {
 		target := skillSetupTargetPlan{Destination: dest}
 		seen := map[string]bool{}
@@ -946,7 +968,7 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 			seen[path] = true
 			target.Backups = append(target.Backups, skillSetupBackup{Path: path, Reason: reason})
 		}
-		mutual, err := mutualExclusionVictims(dest, mode)
+		mutual, err := mutualExclusionVictims(dest, mode, managedNames)
 		if err != nil {
 			return nil, err
 		}
@@ -954,7 +976,7 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 			add(path, skillSetupBackupMutual)
 		}
 		if mode == skillSetupModeMulti && !filtered {
-			stale, staleErr := staleMultiSkillVictimsWithError(dest, multiSkillNames)
+			stale, staleErr := staleMultiSkillVictimsWithError(dest, multiSkillNames, managedNames)
 			if staleErr != nil {
 				return nil, staleErr
 			}
@@ -996,6 +1018,18 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 		plan.Targets = append(plan.Targets, target)
 	}
 	return plan, nil
+}
+
+func currentManagedSkillNames() map[string]bool {
+	home, err := skillSetupUserHomeDir()
+	if err != nil {
+		return map[string]bool{}
+	}
+	state, readable, err := skillSetupReadState(home)
+	if err != nil || !readable {
+		return map[string]bool{}
+	}
+	return skillstate.ManagedSkillNames(state)
 }
 
 func configureEventMiscMigrationPlan(plan *skillSetupPlan, targets []string, installsCompanion bool) {
@@ -1097,12 +1131,12 @@ func confirmSkillSetupPlan(out io.Writer, plan *skillSetupPlan) (bool, error) {
 // installing into dest under the given mode, to prevent leftover files from
 // the opposite mode from co-existing.
 //
-//   - mono dest is <agent-home>/dws  → multi 残留是带 DWS 受管标记的兄弟目录
+//   - mono dest is <agent-home>/dws  → multi 残留是统一状态中登记的兄弟目录
 //   - multi dest is <agent-home>     → mono 残留是 <agent-home>/dws
 //
 // A scan failure (e.g. unreadable agent home) is returned as a non-nil error
 // so callers can surface a warning instead of silently skipping cleanup.
-func mutualExclusionVictims(dest, mode string) ([]string, error) {
+func mutualExclusionVictims(dest, mode string, managed ...map[string]bool) ([]string, error) {
 	switch mode {
 	case skillSetupModeMono:
 		// dest = <agent-home>/dws → agent-home = parent
@@ -1117,7 +1151,7 @@ func mutualExclusionVictims(dest, mode string) ([]string, error) {
 		var victims []string
 		for _, e := range entries {
 			path := filepath.Join(agentHome, e.Name())
-			if e.IsDir() && isManagedDWSMultiSkillDir(path) {
+			if e.IsDir() && isManagedDWSMultiSkillDir(path, managed...) {
 				victims = append(victims, path)
 			}
 		}
@@ -1143,7 +1177,7 @@ func mutualExclusionVictims(dest, mode string) ([]string, error) {
 // destroyed. A failure is returned so the caller skips the complete Agent
 // target and never installs both layouts together.
 func cleanupMutualExclusion(dest, mode string, out, errOut io.Writer) error {
-	victims, scanErr := mutualExclusionVictims(dest, mode)
+	victims, scanErr := mutualExclusionVictims(dest, mode, currentManagedSkillNames())
 	if scanErr != nil {
 		fmt.Fprintf(errOut, "  ⚠️  互斥清理扫描失败（跳过整个 Agent 目标） %s: %v\n", dest, scanErr)
 		return scanErr
@@ -1306,14 +1340,8 @@ func prepareEventMiscMigration(src, dest string) (*eventMiscMigration, error) {
 	if err := skillSetupCopyDir(filepath.Join(src, multiEventSkill), migration.stagedEvent); err != nil {
 		return cleanupOnError(fmt.Errorf("预备 dingtalk-event 失败 %s: %w", dest, err))
 	}
-	if err := markDWSManagedSkillDir(migration.stagedEvent); err != nil {
-		return cleanupOnError(err)
-	}
 	if err := skillSetupCopyDir(filepath.Join(src, multiMiscSkill), migration.stagedMisc); err != nil {
 		return cleanupOnError(fmt.Errorf("预备 dingtalk-misc 失败 %s: %w", dest, err))
-	}
-	if err := markDWSManagedSkillDir(migration.stagedMisc); err != nil {
-		return cleanupOnError(err)
 	}
 	if err := validateEventMigrationSkillRoot(migration.stagedEvent); err != nil {
 		return cleanupOnError(fmt.Errorf("迁移 staging 验证失败 %s: %w", migration.stagedEvent, err))
@@ -1591,12 +1619,15 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 
 // staleMultiSkillVictims lists proven DWS-managed directories under dest that
 // a full install would delete because they are not part of the bundle.
-func staleMultiSkillVictims(dest string, keep []string) []string {
-	victims, _ := staleMultiSkillVictimsWithError(dest, keep)
+func staleMultiSkillVictims(dest string, keep []string, managed ...map[string]bool) []string {
+	if len(managed) == 0 {
+		managed = []map[string]bool{currentManagedSkillNames()}
+	}
+	victims, _ := staleMultiSkillVictimsWithError(dest, keep, managed...)
 	return victims
 }
 
-func staleMultiSkillVictimsWithError(dest string, keep []string) ([]string, error) {
+func staleMultiSkillVictimsWithError(dest string, keep []string, managed ...map[string]bool) ([]string, error) {
 	entries, err := skillSetupReadDir(dest)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -1613,7 +1644,7 @@ func staleMultiSkillVictimsWithError(dest string, keep []string) ([]string, erro
 		if !e.IsDir() || keepSet[e.Name()] {
 			continue
 		}
-		if !isManagedDWSMultiSkillDir(filepath.Join(dest, e.Name())) {
+		if !isManagedDWSMultiSkillDir(filepath.Join(dest, e.Name()), managed...) {
 			continue
 		}
 		victims = append(victims, filepath.Join(dest, e.Name()))
@@ -1629,6 +1660,7 @@ func staleMultiSkillVictimsWithError(dest string, keep []string) ([]string, erro
 // A scan or backup failure is returned so callers do not write a new bundle
 // into a partially reconciled Agent target.
 func removeStaleMultiSkills(dest string, keep []string, out, errOut io.Writer) error {
+	managedNames := currentManagedSkillNames()
 	entries, err := skillSetupReadDir(dest)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -1646,7 +1678,7 @@ func removeStaleMultiSkills(dest string, keep []string, out, errOut io.Writer) e
 		if !e.IsDir() || keepSet[e.Name()] {
 			continue
 		}
-		if !isManagedDWSMultiSkillDir(filepath.Join(dest, e.Name())) {
+		if !isManagedDWSMultiSkillDir(filepath.Join(dest, e.Name()), managedNames) {
 			continue
 		}
 		stales = append(stales, filepath.Join(dest, e.Name()))

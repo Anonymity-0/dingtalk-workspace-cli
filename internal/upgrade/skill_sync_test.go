@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillprovenance"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
@@ -44,6 +45,14 @@ func TestCrossPlatformCoverageSkillUpgradeAlwaysRestoresOfficialBundle(t *testin
 	wantOfficial := []string{"dingtalk-a", "dingtalk-b", "dingtalk-c", "dingtalk-shared"}
 	if err != nil || !readable || !reflect.DeepEqual(state.OfficialSkills, wantOfficial) || !reflect.DeepEqual(state.UpdatedSkills, wantOfficial) {
 		t.Fatalf("state = %#v, %v, %v", state, readable, err)
+	}
+	if len(state.ManagedSkills) != len(wantOfficial) {
+		t.Fatalf("managed provenance = %#v", state.ManagedSkills)
+	}
+	for _, provenance := range state.ManagedSkills {
+		if provenance.Version != "1.1.0" || provenance.Source != skillprovenance.SourceUpgrade || !strings.HasPrefix(provenance.Digest, "sha256:") {
+			t.Fatalf("provenance = %#v", provenance)
+		}
 	}
 }
 

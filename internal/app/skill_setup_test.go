@@ -9,6 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillprovenance"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestSkillSetupCommandRegistered(t *testing.T) {
@@ -83,9 +87,7 @@ func TestCrossPlatformCoverageSkillSetupDeclinedConfirmationNeverRemoves(t *test
 			t.Fatal(err)
 		}
 	}
-	if err := markDWSManagedSkillDir(filepath.Join(agentHome, "dingtalk-stale")); err != nil {
-		t.Fatal(err)
-	}
+	useManagedSkillNames(t, "dingtalk-stale")
 
 	oldConfirm := skillSetupConfirmPlan
 	t.Cleanup(func() { skillSetupConfirmPlan = oldConfirm })
@@ -513,7 +515,7 @@ func TestCrossPlatformCoverageSkillSetupMutualExclusion(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageSkillSetupMonoPreservesUnmarkedDingtalkSkill(t *testing.T) {
+func TestCrossPlatformCoverageSkillSetupMonoPreservesUnregisteredDingtalkSkill(t *testing.T) {
 	home := t.TempDir()
 	setTestHome(t, home)
 	base := filepath.Join(home, ".agents", "skills")
@@ -528,9 +530,7 @@ func TestCrossPlatformCoverageSkillSetupMonoPreservesUnmarkedDingtalkSkill(t *te
 			t.Fatal(err)
 		}
 	}
-	if err := markDWSManagedSkillDir(managed); err != nil {
-		t.Fatal(err)
-	}
+	useManagedSkillNames(t, filepath.Base(managed))
 
 	monoSrc := t.TempDir()
 	if err := os.WriteFile(filepath.Join(monoSrc, "SKILL.md"), []byte("mono"), 0o644); err != nil {
@@ -542,13 +542,13 @@ func TestCrossPlatformCoverageSkillSetupMonoPreservesUnmarkedDingtalkSkill(t *te
 		t.Fatalf("mono install = (%d, %d, %v), stderr=%s", installed, skipped, err, errOut.String())
 	}
 	if _, err := os.Stat(managed); !os.IsNotExist(err) {
-		t.Fatalf("marked DWS multi Skill must be removed during mono switch: %v", err)
+		t.Fatalf("centrally managed DWS multi Skill must be removed during mono switch: %v", err)
 	}
 	if _, err := os.Stat(legacyOfficial); !os.IsNotExist(err) {
-		t.Fatalf("pre-marker official multi Skill must be removed during mono switch: %v", err)
+		t.Fatalf("pre-state official multi Skill must be removed during mono switch: %v", err)
 	}
 	if got, err := os.ReadFile(filepath.Join(custom, "SKILL.md")); err != nil || string(got) != "dingtalk-custom" {
-		t.Fatalf("unmarked market/user dingtalk-* Skill changed: data=%q err=%v", got, err)
+		t.Fatalf("unregistered market/user dingtalk-* Skill changed: data=%q err=%v", got, err)
 	}
 }
 
@@ -813,9 +813,7 @@ func TestCrossPlatformCoverageSkillSetupMultiFullInstallCleansStale(t *testing.T
 			t.Fatal(err)
 		}
 	}
-	if err := markDWSManagedSkillDir(filepath.Join(agentHome, "dingtalk-stale")); err != nil {
-		t.Fatal(err)
-	}
+	useManagedSkillNames(t, "dingtalk-stale")
 	custom := filepath.Join(agentHome, "dingtalk-custom")
 	if err := os.MkdirAll(custom, 0o755); err != nil {
 		t.Fatal(err)
@@ -846,10 +844,7 @@ func TestCrossPlatformCoverageSkillSetupMultiFullInstallCleansStale(t *testing.T
 		t.Errorf("non-DWS dir must be preserved (body=%q, err=%v)", string(body), err)
 	}
 	if body, err := os.ReadFile(filepath.Join(custom, "SKILL.md")); err != nil || string(body) != "market skill" {
-		t.Errorf("unmarked market/user dingtalk-* dir must survive (body=%q, err=%v)", string(body), err)
-	}
-	if _, err := os.Stat(filepath.Join(agentHome, "dingtalk-aitable", managedSkillMarkerName)); err != nil {
-		t.Errorf("installed bundled skill must carry ownership marker: %v", err)
+		t.Errorf("unregistered market/user dingtalk-* dir must survive (body=%q, err=%v)", string(body), err)
 	}
 	if !strings.Contains(stdout.String(), "已备份并清理过期 skill") {
 		t.Errorf("expected stale cleanup log line, got stdout=%q", stdout.String())
@@ -894,6 +889,12 @@ func TestRunSkillSetupThreadsFilteredFlag(t *testing.T) {
 	}
 	skillSetupListMulti = func(string) ([]string, error) { return []string{"dingtalk-aitable", "dws-shared"}, nil }
 	skillSetupFilterMulti = filterMultiSkillNames
+	home := t.TempDir()
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	testseam.Swap(t, &skillSetupBuildProvenance, func(name, _ string, version, source string) (skillprovenance.Record, error) {
+		return skillprovenance.Record{Name: name, Version: version, Source: source, Digest: "sha256:test", DigestScope: skillprovenance.DigestScope}, nil
+	})
+	testseam.Swap(t, &skillSetupWriteState, func(string, skillstate.State) error { return nil })
 	var gotFiltered []bool
 	skillSetupExecutePlan = func(plan *skillSetupPlan, _, _ io.Writer) (int, int, error) {
 		gotFiltered = append(gotFiltered, plan.Filtered)

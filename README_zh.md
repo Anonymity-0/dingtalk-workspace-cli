@@ -431,9 +431,9 @@ DWS_SKILL_SOURCE=/path/to/skills dws skill setup --mode multi
 | `--source` | 路径 | 本地源目录（覆盖内置 skills） |
 | `--yes` | — | 仅供脚本使用：跳过确认提示。删除操作仍会先备份到 `~/.dws/skill-backups/` |
 
-> setup 命令可能移除对面模式残留（装 multi 删 `dws/`，装 mono 清理带 DWS 受管标记或属于 marker 上线前精确官方名称集合的 multi Skill）以及不在 bundle 内的过期受管 Skill。预制 multi Skill 会写入 `.dws-managed` 所有权标记；仅有 `dingtalk-*` 前缀不能触发清理，因此其他同前缀市场/用户 Skill 会保留。所有删除都会先列入确认预览，并备份到 `~/.dws/skill-backups/<时间戳>/`；备份失败的目录会保留原样、绝不删除。非交互环境应先用 `--dry-run` 核对输出，再由调用方显式决定是否使用仅供脚本的确认跳过参数。
+> setup 命令可能移除对面模式残留（装 multi 删 `dws/`，装 mono 清理统一状态中登记或属于状态上线前精确官方名称集合的 multi Skill）以及不在 bundle 内的过期受管 Skill。DWS 在 `~/.dws/skills-state.json`（或 `$DWS_CONFIG_DIR/skills-state.json`）集中记录所有权、安装版本、来源和内容摘要。仅有 `dingtalk-*` 前缀不能触发清理，因此其他同前缀市场/用户 Skill 会保留。所有删除都会先列入确认预览，并备份到 `~/.dws/skill-backups/<时间戳>/`；备份失败的目录会保留原样、绝不删除。非交互环境应先用 `--dry-run` 核对输出，再由调用方显式决定是否使用仅供脚本的确认跳过参数。
 
-multi setup 或 upgrade 后，DWS 会把官方 bundle 快照作为信息记录写入 `~/.dws/skills-state.json`（或 `$DWS_CONFIG_DIR/skills-state.json`）。每次 upgrade 都会安装并覆盖该版本的全部预制 Skill；手工删除或通过 setup 排除预制 Skill 不会永久保留，下次 upgrade 会恢复。`dws upgrade --force` 还允许在没有新版本时重装当前 CLI 版本。
+multi setup 或 upgrade 后，DWS 会把官方 bundle 快照和统一所有权元数据写入 `~/.dws/skills-state.json`（或 `$DWS_CONFIG_DIR/skills-state.json`）。每次 upgrade 都会安装并覆盖该版本的全部预制 Skill；手工删除或通过 setup 排除预制 Skill 不会永久保留，下次 upgrade 会恢复。`dws upgrade --force` 还允许在没有新版本时重装当前 CLI 版本。
 
 环境变量：`DWS_SKILL_MODE=mono|multi`（`install.sh` / `install.ps1` 也认）、`DWS_SKILL_SOURCE=<路径>`。
 

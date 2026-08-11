@@ -39,8 +39,8 @@ $NoSkills = $env:DWS_NO_SKILLS -eq "1"
 $SkillsOnly = $env:DWS_SKILLS_ONLY -eq "1"
 $SkillName = "dws"
 $SkillMode = ""
-$ManagedSkillMarker = ".dws-managed"
-$ManagedSkillMarkerContent = "managed-by=dingtalk-workspace-cli"
+$SkillStateRoot = if ($env:DWS_CONFIG_DIR) { $env:DWS_CONFIG_DIR } else { Join-Path $HOME ".dws" }
+$ManagedSkillDigestScope = "skill-directory-v1"
 $LegacyOfficialMultiSkills = @(
     "dingtalk-agoal", "dingtalk-aiapp", "dingtalk-aisearch", "dingtalk-aitable",
     "dingtalk-attendance", "dingtalk-calendar", "dingtalk-chat", "dingtalk-contact",
@@ -86,24 +86,92 @@ function Write-Err {
 }
 
 # A dingtalk-* prefix alone is not ownership evidence: market/user skills may
-# use it too. New bundled installs carry this marker; dws-shared is the one
-# exact legacy name that predates markers.
+# use it too. Ownership comes from the centralized skills-state.json.
 function Test-ManagedMultiSkillDir {
     param([string]$Dir)
-    if ($LegacyOfficialMultiSkills -contains (Split-Path $Dir -Leaf)) { return $true }
-    $marker = Join-Path $Dir $ManagedSkillMarker
-    if (!(Test-Path $marker -PathType Leaf)) { return $false }
+    $name = Split-Path $Dir -Leaf
+    if ($LegacyOfficialMultiSkills -contains $name) { return $true }
+    $statePath = Join-Path $SkillStateRoot "skills-state.json"
+    if (!(Test-Path $statePath -PathType Leaf)) { return $false }
     try {
-        return (Get-Content -Path $marker -Raw).Trim() -eq $ManagedSkillMarkerContent
+        $state = Get-Content -Path $statePath -Raw | ConvertFrom-Json -ErrorAction Stop
+        return @($state.managed_skills | Where-Object { $_.name -eq $name }).Count -gt 0
     } catch {
         return $false
     }
 }
 
-function Set-ManagedMultiSkillMarker {
+function Get-SkillDirectoryDigest {
     param([string]$Dir)
-    $marker = Join-Path $Dir $ManagedSkillMarker
-    [System.IO.File]::WriteAllText($marker, "$ManagedSkillMarkerContent`n", [System.Text.UTF8Encoding]::new($false))
+    $root = [System.IO.Path]::GetFullPath($Dir).TrimEnd([char[]]@('\', '/'))
+    $files = @(
+        Get-ChildItem -Path $root -Recurse -File -Force |
+            ForEach-Object {
+                [pscustomobject]@{
+                    Relative = $_.FullName.Substring($root.Length).TrimStart([char[]]@('\', '/')).Replace('\', '/')
+                    FullName = $_.FullName
+                }
+            } |
+            Sort-Object -Property Relative
+    )
+    $stream = [System.IO.MemoryStream]::new()
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        foreach ($file in $files) {
+            $pathBytes = [System.Text.Encoding]::UTF8.GetBytes($file.Relative)
+            $stream.Write($pathBytes, 0, $pathBytes.Length)
+            $stream.WriteByte(0)
+            $content = [System.IO.File]::ReadAllBytes($file.FullName)
+            $stream.Write($content, 0, $content.Length)
+            $stream.WriteByte(0)
+        }
+        $hash = $sha.ComputeHash($stream.ToArray())
+        return "sha256:" + ([System.BitConverter]::ToString($hash).Replace("-", "").ToLowerInvariant())
+    } finally {
+        $sha.Dispose()
+        $stream.Dispose()
+    }
+}
+
+function Write-SkillsState {
+    param([string]$MultiSrc)
+    $stateDir = $SkillStateRoot
+    New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
+    $versionValue = if ([string]::IsNullOrWhiteSpace($Version)) { "unknown" } else { $Version }
+    $skills = @(Get-ChildItem -Path $MultiSrc -Directory | Where-Object {
+        Test-Path (Join-Path $_.FullName "SKILL.md")
+    } | Sort-Object -Property Name)
+    $names = @($skills | ForEach-Object { $_.Name })
+    $managed = @($skills | ForEach-Object {
+        [ordered]@{
+            name = $_.Name
+            version = $versionValue
+            source = "install.ps1"
+            digest = Get-SkillDirectoryDigest -Dir $_.FullName
+            digest_scope = $ManagedSkillDigestScope
+        }
+    })
+    $state = [ordered]@{
+        version = $versionValue
+        official_skills = $names
+        updated_skills = $names
+        managed_skills = $managed
+        updated_at = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+    }
+    $statePath = Join-Path $stateDir "skills-state.json"
+    $tempPath = Join-Path $stateDir (".skills-state-" + [guid]::NewGuid().ToString("N") + ".tmp")
+    $backupPath = Join-Path $stateDir (".skills-state-" + [guid]::NewGuid().ToString("N") + ".previous")
+    try {
+        [System.IO.File]::WriteAllText($tempPath, (($state | ConvertTo-Json -Depth 5) + "`n"), [System.Text.UTF8Encoding]::new($false))
+        if (Test-Path $statePath -PathType Leaf) {
+            [System.IO.File]::Replace($tempPath, $statePath, $backupPath, $true)
+            Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+        } else {
+            Move-Item -LiteralPath $tempPath -Destination $statePath
+        }
+    } finally {
+        if (Test-Path $tempPath) { Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue }
+    }
 }
 
 function Publish-ManagedMultiSkill {
@@ -119,11 +187,10 @@ function Publish-ManagedMultiSkill {
         $ErrorActionPreference = "Stop"
         New-Item -ItemType Directory -Path $stage -Force -ErrorAction Stop | Out-Null
         Copy-DirRecursive -Source $Source -Destination $stage | Out-Null
-        Set-ManagedMultiSkillMarker -Dir $stage
         Move-Item -LiteralPath $stage -Destination $Destination -ErrorAction Stop
         return $true
     } catch {
-        Write-Say "⚠️  Skill 复制、标记或发布失败，目标未计为安装成功: $Destination ($_)"
+        Write-Say "⚠️  Skill 复制或发布失败，目标未计为安装成功: $Destination ($_)"
         return $false
     } finally {
         $ErrorActionPreference = $previousErrorActionPreference
@@ -695,6 +762,7 @@ function Install-SkillsToHomes {
         Write-Say "⚠️  有 $failed 个 Agent 目标安装 mono Skill 失败"
         return $false
     }
+    Remove-Item -LiteralPath (Join-Path $SkillStateRoot "skills-state.json") -Force -ErrorAction SilentlyContinue
     return $true
 }
 
@@ -754,6 +822,7 @@ function Install-MultiSkillsToHomes {
         Write-Say "⚠️  有 $failed 个 Agent 目标安装 multi Skill 失败"
         return $false
     }
+    Write-SkillsState -MultiSrc $MultiSrc
     return $true
 }
 

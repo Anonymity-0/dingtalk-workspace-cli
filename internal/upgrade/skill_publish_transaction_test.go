@@ -21,11 +21,7 @@ func seedUpgradeSkill(t *testing.T, dir, content string, managed bool) {
 	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if managed {
-		if err := markManagedSkillDir(dir); err != nil {
-			t.Fatal(err)
-		}
-	}
+	_ = managed
 }
 
 func assertUpgradeSkillContent(t *testing.T, dir, want string) {
@@ -63,6 +59,7 @@ func seedMultiUpgradeTarget(t *testing.T) (home, base, multiRoot string, skills 
 	multiRoot = writeMultiBundle(t, t.TempDir(), "dingtalk-a", "dingtalk-b")
 	skills = []string{"dingtalk-a", "dingtalk-b"}
 	skillSet = map[string]bool{"dingtalk-a": true, "dingtalk-b": true}
+	useUpgradeManagedNames(t, "dingtalk-a", "dingtalk-b", "dingtalk-stale")
 	return home, base, multiRoot, skills, skillSet
 }
 
@@ -89,21 +86,6 @@ func TestCrossPlatformCoverageMultiUpgradeTransactionPreservesOldSet(t *testing.
 		})
 		if err := publishMultiUpgradeTarget(home, base, multiRoot, skills, skillSet); !errors.Is(err, failure) {
 			t.Fatalf("copy failure = %v, want injected failure", err)
-		}
-		assertOriginalMultiUpgradeTarget(t, base)
-	})
-
-	t.Run("marker failure before backup", func(t *testing.T) {
-		home, base, multiRoot, skills, skillSet := seedMultiUpgradeTarget(t)
-		originalWrite := upgradeWriteFile
-		testseam.Swap(t, &upgradeWriteFile, func(path string, data []byte, mode os.FileMode) error {
-			if strings.Contains(path, ".dws-upgrade-multi-") && filepath.Base(filepath.Dir(path)) == "dingtalk-b" {
-				return failure
-			}
-			return originalWrite(path, data, mode)
-		})
-		if err := publishMultiUpgradeTarget(home, base, multiRoot, skills, skillSet); !errors.Is(err, failure) {
-			t.Fatalf("marker failure = %v, want injected failure", err)
 		}
 		assertOriginalMultiUpgradeTarget(t, base)
 	})
@@ -149,6 +131,7 @@ func TestCrossPlatformCoverageMonoUpgradeTransactionPreservesOldSet(t *testing.T
 		base = filepath.Join(home, ".agents", "skills")
 		seedUpgradeSkill(t, filepath.Join(base, "dws"), "old mono", false)
 		seedUpgradeSkill(t, filepath.Join(base, "dingtalk-a"), "old multi", true)
+		useUpgradeManagedNames(t, "dingtalk-a")
 		monoRoot = t.TempDir()
 		if err := os.WriteFile(filepath.Join(monoRoot, "SKILL.md"), []byte("new mono"), 0o644); err != nil {
 			t.Fatal(err)
