@@ -131,9 +131,19 @@ func observeCardUpdateMap(value map[string]any, observation *cardUpdateObservati
 			}
 		}
 	}
+	errorCode, hasErrorCode := value["errorCode"]
+	errorCodeEmpty := hasErrorCode && cardUpdateErrorCodeEmpty(errorCode)
+	if hasErrorCode && !errorCodeEmpty {
+		setNegativeCardUpdateEvidence(observation, "errorCode=non-empty")
+	}
 	if success, ok := value["success"].(bool); ok {
 		if success {
-			setPositiveCardUpdateEvidence(observation, "success=true")
+			// Record success=true only when the same response envelope explicitly
+			// includes its business-error field. A non-empty code is already
+			// negative evidence above, so the two signals reject the conflict.
+			if hasErrorCode {
+				setPositiveCardUpdateEvidence(observation, "success=true")
+			}
 		} else {
 			setNegativeCardUpdateEvidence(observation, "success=false")
 		}
@@ -147,6 +157,14 @@ func observeCardUpdateMap(value map[string]any, observation *cardUpdateObservati
 			observeCardUpdate(child, observation)
 		}
 	}
+}
+
+func cardUpdateErrorCodeEmpty(value any) bool {
+	if value == nil {
+		return true
+	}
+	code, ok := value.(string)
+	return ok && strings.TrimSpace(code) == ""
 }
 
 func setPositiveCardUpdateEvidence(observation *cardUpdateObservation, evidence string) {
