@@ -8,7 +8,9 @@ name: PR Eval Dispatch
 # FETCH_HEAD 校验兜底派发后的变更。
 # 授权两级：仓库 write/maintain/admin 可派发任意 PR；默认分支
 # .github/eval-allowlist.txt 名单内的用户仅可派发自己创建的 PR。
-# 触发通道与凭证全部经 secrets 注入，文件内不出现任何内网信息。
+# 触发通道：workflow 校验通过后发结构化评论（HTML 注释内嵌 JSON），
+# 内网 Devix 轮询服务每 3 分钟扫描 → 触发 Aone CI 流水线。
+# 不再直接 curl 内网（公网 runner 结构性不可达）。
 
 on:
   issue_comment:
@@ -91,34 +93,7 @@ jobs:
             | python3 scripts/ci/eval_dispatch_guard.py head \
             >> "$GITHUB_OUTPUT"
 
-      - name: Trigger internal evaluation pipeline
-        env:
-          EVAL_TRIGGER_TOKEN: ${{ secrets.EVAL_TRIGGER_TOKEN }}
-          EVAL_TRIGGER_URL: ${{ secrets.EVAL_TRIGGER_URL }}
-          PR_NUMBER: ${{ github.event.issue.number }}
-          PR_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
-          PRODUCTS: ${{ steps.parse.outputs.products }}
-          CASES_REF: ${{ steps.parse.outputs.cases_ref }}
-        run: |
-          if [ -z "$EVAL_TRIGGER_TOKEN" ] || [ -z "$EVAL_TRIGGER_URL" ]; then
-            echo "EVAL_TRIGGER_URL / EVAL_TRIGGER_TOKEN not configured; cannot dispatch." >&2
-            exit 1
-          fi
-          jq -n \
-            --arg pr "$PR_NUMBER" \
-            --arg sha "$PR_HEAD_SHA" \
-            --arg products "$PRODUCTS" \
-            --arg cases "$CASES_REF" \
-            '{branch: "main", params: {pr_number: $pr, pr_head_sha: $sha, products: $products, cases_ref: $cases}}' \
-          | curl --fail --silent --show-error \
-            -X POST \
-            -H "private-token: ${EVAL_TRIGGER_TOKEN}" \
-            -H "Content-Type: application/json" \
-            --data @- \
-            "$EVAL_TRIGGER_URL"
-          echo "Internal evaluation dispatched."
-
-      - name: Acknowledge on PR
+      - name: Post dispatch marker and acknowledge
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.issue.number }}
@@ -130,7 +105,18 @@ jobs:
           if [ -n "$CASES_REF" ]; then
             cases_note="，用例版本 \`${CASES_REF}\`"
           fi
-          body="🛰️ /eval 已受理：产品集 \`${PRODUCTS}\`${cases_note}，评测对象 \`${PR_HEAD_SHA}\`。内网评测流水线运行结束后将由 bot 回贴报告（首行为基线对比头条）。"
+          # 结构化标记供内网轮询服务提取并触发 Aone CI；HTML 注释对用户不可见
+          dispatch_payload=$(jq -nc \
+            --arg pr "$PR_NUMBER" \
+            --arg sha "$PR_HEAD_SHA" \
+            --arg products "$PRODUCTS" \
+            --arg cases "$CASES_REF" \
+            '{pr_number: $pr, pr_head_sha: $sha, products: $products, cases_ref: $cases}')
+          body="<!-- eval-dispatch: ${dispatch_payload} -->
+          🛰️ /eval 已受理：产品集 \`${PRODUCTS}\`${cases_note}，评测对象 \`${PR_HEAD_SHA}\`。
+          内网评测流水线将在数分钟内由轮询服务触发，运行结束后由 bot 回贴报告（首行为基线对比头条）。"
+          # 去除 heredoc 缩进
+          body=$(echo "$body" | sed 's/^          //')
           jq -n --arg body "$body" '{body: $body}' | curl --fail --silent --show-error \
             -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
