@@ -119,10 +119,7 @@ jobs:
             --arg cases "$CASES_REF" \
             --arg run_id "$RUN_ID" \
             '{pr_number: $pr, pr_head_sha: $sha, products: $products, cases_ref: $cases, run_id: $run_id}')
-          body="<!-- eval-dispatch: ${dispatch_payload} -->
-          🛰️ /eval 已受理：产品集 \`${PRODUCTS}\`${cases_note}，评测对象 \`${PR_HEAD_SHA}\`。
-          内网评测流水线将在数分钟内由轮询服务触发，运行结束后由 bot 回贴报告（首行为基线对比头条）。"
-          body=$(echo "$body" | sed 's/^          //')
+          body="<!-- eval-dispatch: ${dispatch_payload} -->"$'\n'"🛰️ /eval 已受理：产品集 \`${PRODUCTS}\`${cases_note}，评测对象 \`${PR_HEAD_SHA}\`。"$'\n'"内网评测流水线将在数分钟内由轮询服务触发，运行结束后由 bot 回贴报告（首行为基线对比头条）。"
           jq -n --arg body "$body" '{body: $body}' | curl --fail --silent --show-error \
             -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
