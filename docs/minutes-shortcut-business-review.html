@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DWS Minutes 27 个公开 Shortcut 与 lark-cli 的业务能力、真实 E2E 证据和平台边界。">
+  <title>Minutes Shortcut 能力全景｜业务评审版</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #10243a;
+      --muted: #607084;
+      --paper: #f3f6f9;
+      --panel: #fff;
+      --line: #dbe3eb;
+      --navy: #0d2946;
+      --navy-2: #123f62;
+      --cyan: #0b8da8;
+      --cyan-soft: #e1f5f8;
+      --blue: #2d69db;
+      --blue-soft: #e9f0ff;
+      --green: #11785c;
+      --green-soft: #e3f6ef;
+      --amber: #925600;
+      --amber-soft: #fff1d5;
+      --red: #b4232d;
+      --red-soft: #fde9eb;
+      --violet: #6650b5;
+      --violet-soft: #eeeafd;
+      --shadow: 0 18px 48px rgba(16, 36, 58, .08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 94% 0, rgba(11,141,168,.12), transparent 24rem),
+        linear-gradient(180deg, #edf3f7 0, var(--paper) 32rem);
+      font: 15px/1.58 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button, input { font: inherit; }
+    a { color: inherit; }
+    code, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { color: #086a7f; font-size: .92em; font-weight: 750; }
+    .wrap { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 58px;
+      padding: 10px max(24px, calc((100vw - 1180px) / 2));
+      color: #e8f5fb;
+      background: rgba(13,41,70,.95);
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(14px);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 780; letter-spacing: -.02em; }
+    .brand-mark { width: 13px; height: 13px; border-radius: 50% 50% 8px 50%; transform: rotate(45deg); background: #3ac6dd; box-shadow: 0 0 0 5px rgba(58,198,221,.13); }
+    .topnav { display: flex; gap: 4px; }
+    .topnav a { padding: 7px 9px; border-radius: 8px; color: #c7dce8; text-decoration: none; font-size: 12px; }
+    .topnav a:hover, .topnav a:focus-visible { color: #fff; background: rgba(255,255,255,.1); outline: none; }
+    .hero { padding: 76px 0 46px; }
+    .eyebrow { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; color: #08768d; font-size: 12px; font-weight: 850; letter-spacing: .15em; text-transform: uppercase; }
+    .eyebrow::before { content: ""; width: 34px; height: 2px; background: var(--cyan); }
+    h1 { max-width: 900px; margin: 0; font-size: clamp(42px, 7vw, 75px); line-height: .98; letter-spacing: -.055em; }
+    .hero-lead { max-width: 850px; margin: 24px 0 0; color: #526579; font-size: clamp(17px, 2vw, 21px); }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 26px; }
+    .meta-pill { padding: 8px 12px; border: 1px solid #cad7e1; border-radius: 999px; color: #39566a; background: rgba(255,255,255,.7); font-size: 12px; font-weight: 690; }
+    .meta-pill.good { color: #0d684f; border-color: #9ed7c6; background: var(--green-soft); }
+    .stats { display: grid; grid-template-columns: 1.25fr repeat(4, 1fr); gap: 13px; margin-top: 42px; }
+    .stat { min-height: 138px; padding: 21px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255,255,255,.88); box-shadow: var(--shadow); }
+    .stat.primary { color: #fff; border-color: transparent; background: linear-gradient(145deg, var(--navy), #165c75); }
+    .stat-value { display: block; font-size: 42px; font-weight: 850; line-height: 1; letter-spacing: -.05em; }
+    .stat-label { display: block; margin-top: 11px; font-size: 13px; font-weight: 780; }
+    .stat-note { display: block; margin-top: 4px; color: #748596; font-size: 11px; }
+    .stat.primary .stat-note { color: #bbd7e5; }
+    section { padding: 52px 0; scroll-margin-top: 58px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .section-kicker { margin: 0 0 8px; color: #08768d; font-size: 12px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+    h2 { margin: 0; font-size: clamp(28px, 4vw, 42px); line-height: 1.06; letter-spacing: -.04em; }
+    .section-desc { max-width: 610px; margin: 0; color: var(--muted); font-size: 14px; }
+    .callout { padding: 18px 20px; border: 1px solid #b9dbe4; border-left: 4px solid var(--cyan); border-radius: 13px; color: #31546a; background: #eef9fb; }
+    .callout strong { color: #075f73; }
+    .domain-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 13px; }
+    .domain-card { min-height: 184px; padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow); }
+    .domain-card.featured { color: #fff; border-color: transparent; background: linear-gradient(138deg, var(--navy), #15586a); }
+    .domain-count { display: block; font-size: 37px; font-weight: 850; line-height: 1; letter-spacing: -.05em; }
+    .domain-card h3 { margin: 12px 0 7px; font-size: 16px; }
+    .domain-card p { margin: 0; color: var(--muted); font-size: 12px; }
+    .domain-card.featured p { color: #c0dce6; }
+    .domain-examples { display: block; margin-top: 13px; color: #08768d; font: 700 10px/1.5 "SFMono-Regular", Consolas, monospace; }
+    .domain-card.featured .domain-examples { color: #7ee0ed; }
+    .compare-board { overflow: hidden; border: 1px solid #c9d8e2; border-radius: 24px; background: #fff; box-shadow: var(--shadow); }
+    .compare-top { padding: 29px; color: #fff; background: linear-gradient(128deg, var(--navy), #174f69 70%, #0d7b8c); }
+    .compare-top .section-kicker { color: #79dce8; }
+    .compare-top .section-desc { color: #c8dde7; }
+    .compare-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-top: 25px; overflow: hidden; border: 1px solid rgba(255,255,255,.17); border-radius: 15px; background: rgba(255,255,255,.16); }
+    .compare-stat { padding: 18px; background: rgba(8,35,57,.69); }
+    .compare-stat strong { display: block; font-size: 31px; line-height: 1; letter-spacing: -.04em; }
+    .compare-stat span { display: block; margin-top: 7px; color: #bfd5e1; font-size: 12px; }
+    .compare-body { padding: 26px; }
+    .compare-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .compare-column { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #f8fafc; }
+    .compare-column.aligned { border-top: 4px solid var(--blue); }
+    .compare-column.ahead { border-top: 4px solid var(--green); }
+    .compare-column.boundary { border-top: 4px solid #d18b21; }
+    .compare-column h3 { margin: 0; font-size: 16px; }
+    .compare-column ul { margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+    .compare-column li + li { margin-top: 8px; }
+    .table-wrap { margin-top: 18px; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+    table { width: 100%; min-width: 820px; border-collapse: collapse; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid #e3e9ee; text-align: left; vertical-align: top; font-size: 12px; }
+    th { color: #617484; background: #f4f7f9; font-size: 11px; letter-spacing: .04em; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #f8fbfd; }
+    .verdict, .badge { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 7px; font-size: 10px; font-weight: 830; white-space: nowrap; }
+    .verdict.aligned, .badge.read { color: #1e5cc5; background: var(--blue-soft); }
+    .verdict.ahead, .badge.smart { color: #0f6b52; background: var(--green-soft); }
+    .verdict.partial, .badge.write { color: #805000; background: var(--amber-soft); }
+    .verdict.gap { color: var(--red); background: var(--red-soft); }
+    .badge.adapter { color: var(--violet); background: var(--violet-soft); }
+    .badge.leaf { color: #526676; background: #edf1f4; }
+    .badge.dry { color: #08667a; background: var(--cyan-soft); }
+    .spotlight { padding: 30px; color: #fff; border-radius: 24px; background: linear-gradient(135deg, #0d2946, #125469); box-shadow: var(--shadow); }
+    .spotlight .section-kicker { color: #75dce9; }
+    .spotlight .section-desc { color: #bed7e2; }
+    .spot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; margin-top: 25px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: rgba(255,255,255,.14); }
+    .spot-item { padding: 17px 19px; background: rgba(8,37,60,.88); }
+    .spot-item code { color: #75dce9; font-size: 13px; }
+    .spot-item p { margin: 6px 0 0; color: #c6dce5; font-size: 12px; }
+    .truth-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 18px; }
+    .truth-card { padding: 25px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .truth-card h3 { margin: 0 0 17px; font-size: 18px; }
+    .truth-flow { display: grid; gap: 10px; }
+    .truth-step { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 13px; border-radius: 12px; background: #f4f7f9; }
+    .truth-step b { display: grid; place-items: center; width: 28px; height: 28px; color: #fff; border-radius: 9px; background: var(--navy); font-size: 12px; }
+    .truth-step strong { display: block; font-size: 13px; }
+    .truth-step span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .rule-quote { margin-top: 15px; padding: 15px 17px; border-left: 4px solid var(--cyan); border-radius: 0 12px 12px 0; color: #075e70; background: var(--cyan-soft); font-weight: 730; }
+    .gap-list { display: grid; gap: 9px; }
+    .gap { padding: 13px 14px; border: 1px solid #ecd8a9; border-radius: 11px; background: #fffaf0; }
+    .gap strong { display: block; color: #724708; font-size: 13px; }
+    .gap p { margin: 4px 0 0; color: #7a694d; font-size: 11px; }
+    .catalog-shell { padding: 22px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.92); box-shadow: var(--shadow); }
+    .toolbar { display: grid; grid-template-columns: minmax(240px, 1fr) auto; gap: 14px; align-items: start; padding-bottom: 17px; border-bottom: 1px solid var(--line); }
+    .search-wrap { position: relative; }
+    .search-wrap::before { content: "⌕"; position: absolute; left: 15px; top: 8px; color: #708292; font-size: 22px; }
+    .search { width: 100%; min-height: 46px; padding: 0 16px 0 44px; color: var(--ink); border: 1px solid #c8d5df; border-radius: 12px; background: #f9fbfc; outline: none; }
+    .search:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(11,141,168,.12); }
+    .action-btn { min-height: 44px; padding: 0 14px; border: 1px solid #cbd7df; border-radius: 11px; color: #395467; background: #fff; cursor: pointer; font-weight: 720; font-size: 12px; }
+    .filter-block { display: grid; grid-template-columns: 76px 1fr; gap: 10px; padding-top: 13px; }
+    .filter-label { padding-top: 7px; color: #6a7c89; font-size: 11px; font-weight: 820; letter-spacing: .05em; }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chip { padding: 7px 10px; border: 1px solid #d2dce3; border-radius: 999px; color: #566b7a; background: #fff; cursor: pointer; font-size: 11px; font-weight: 720; }
+    .chip[aria-pressed="true"] { color: #fff; border-color: var(--navy); background: var(--navy); }
+    .catalog-meta { display: flex; justify-content: space-between; gap: 16px; margin: 21px 2px 12px; color: var(--muted); font-size: 12px; }
+    .catalog-meta strong { color: var(--ink); }
+    .catalog { display: grid; gap: 9px; }
+    .shortcut-row { display: grid; grid-template-columns: minmax(220px,.8fr) minmax(280px,1.5fr) auto; gap: 18px; align-items: center; padding: 15px 16px; border: 1px solid #e0e7ec; border-radius: 13px; background: #fff; transition: .15s ease; }
+    .shortcut-row:hover { transform: translateY(-1px); border-color: #b9cad4; box-shadow: 0 8px 20px rgba(16,36,58,.06); }
+    .command { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .command-copy { width: 29px; height: 29px; flex: 0 0 auto; border: 0; border-radius: 8px; color: #476173; background: #edf3f6; cursor: pointer; }
+    .command-copy:hover { color: #fff; background: var(--cyan); }
+    .command code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-main p { margin: 0; color: #536878; font-size: 12px; }
+    .row-category { display: inline-block; margin-top: 5px; color: #83929d; font-size: 10px; font-weight: 720; }
+    .badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+    .empty { display: none; padding: 42px 18px; text-align: center; color: var(--muted); }
+    .evidence-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .evidence { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: #fff; }
+    .evidence strong { display: block; color: #0b5367; font-size: 26px; line-height: 1; }
+    .evidence b { display: block; margin-top: 9px; font-size: 13px; }
+    .evidence p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+    .review-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+    .review-card { min-height: 174px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .review-num { color: var(--cyan); font: 800 11px/1 "SFMono-Regular", Consolas, monospace; }
+    .review-card h3 { margin: 13px 0 7px; font-size: 16px; }
+    .review-card p { margin: 0; color: var(--muted); font-size: 12px; }
+    footer { margin-top: 34px; padding: 28px 0 42px; border-top: 1px solid var(--line); color: #6d7f8c; font-size: 11px; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 16px; }
+    .toast { position: fixed; right: 20px; bottom: 20px; z-index: 40; padding: 11px 14px; color: #fff; border-radius: 10px; background: var(--navy); box-shadow: var(--shadow); opacity: 0; transform: translateY(10px); pointer-events: none; transition: .2s ease; font-size: 12px; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 940px) {
+      .topnav { display: none; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .stat.primary { grid-column: span 2; }
+      .domain-grid { grid-template-columns: repeat(2, 1fr); }
+      .compare-columns, .review-grid { grid-template-columns: 1fr; }
+      .truth-grid { grid-template-columns: 1fr; }
+      .evidence-grid { grid-template-columns: repeat(2, 1fr); }
+      .shortcut-row { grid-template-columns: 1fr; gap: 9px; }
+      .badges { justify-content: flex-start; }
+    }
+    @media (max-width: 620px) {
+      .wrap { width: min(100% - 24px, 1180px); }
+      .hero { padding-top: 52px; }
+      .stats, .domain-grid, .spot-grid, .evidence-grid { grid-template-columns: 1fr; }
+      .stat.primary { grid-column: auto; }
+      .compare-stats { grid-template-columns: repeat(2, 1fr); }
+      .section-head, .footer-inner { align-items: start; flex-direction: column; }
+      .toolbar { grid-template-columns: 1fr; }
+      .filter-block { grid-template-columns: 1fr; }
+      .filter-label { padding-top: 0; }
+    }
+    @media print {
+      body { background: #fff; font-size: 10pt; }
+      .topbar, .toolbar { display: none; }
+      .hero { padding: 28px 0; }
+      .wrap { width: 100%; }
+      .stat, .domain-card, .compare-board, .spotlight, .truth-card, .catalog-shell, .evidence, .review-card { box-shadow: none; break-inside: avoid; }
+      section { padding: 26px 0; }
+      .shortcut-row { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Minutes Shortcut Review</div>
+    <nav class="topnav" aria-label="报告导航">
+      <a href="#overview">全景</a><a href="#compare">对齐</a><a href="#ahead">超越项</a><a href="#truth">真实语义</a><a href="#catalog">目录</a><a href="#e2e">E2E</a><a href="#review">评审</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero wrap">
+      <p class="eyebrow">Business Review · 业务评审版</p>
+      <h1>Minutes Shortcut<br>能力全景</h1>
+      <p class="hero-lead">从 lark-cli 的 10 个 Minutes shortcut 出发，完成可诚实对齐的体验，修复隐藏与空结果误判，并把 DWS 现有录音、上传、AI 产物、ASR、导出和权限能力组织成更完整的业务闭环。</p>
+      <div class="hero-meta">
+        <span class="meta-pill good">真实账号 E2E 已执行</span>
+        <span class="meta-pill">DWS 基线 main@2bc4ded9 + 本分支</span>
+        <span class="meta-pill">lark-cli main@d289566a</span>
+        <span class="meta-pill">2026-08-11</span>
+        <span class="meta-pill">报告已移除 PII / 凭证 / 业务正文</span>
+      </div>
+      <div class="stats" aria-label="关键统计">
+        <div class="stat primary"><span class="stat-value">27</span><span class="stat-label">公开 Shortcut</span><span class="stat-note">公开目录与最终 Schema 一致</span></div>
+        <div class="stat"><span class="stat-value">10</span><span class="stat-label">读取入口</span><span class="stat-note">无需确认，严格解析完整性</span></div>
+        <div class="stat"><span class="stat-value">17</span><span class="stat-label">写入入口</span><span class="stat-note">全部 user_required</span></div>
+        <div class="stat"><span class="stat-value">13</span><span class="stat-label">契约化 Dry-run</span><span class="stat-note">预览路径零远端调用</span></div>
+        <div class="stat"><span class="stat-value">2</span><span class="stat-label">隐藏兼容别名</span><span class="stat-note">不复制 Schema identity</span></div>
+      </div>
+    </div>
+
+    <section id="overview">
+      <div class="wrap">
+        <div class="section-head">
+          <div><p class="section-kicker">Capability map</p><h2>五个业务域，覆盖完整会前—会中—会后链路</h2></div>
+          <p class="section-desc">命令数量不是目标。每个域都要求输入可验证、执行有真实 acknowledgement、输出有完整性或失败 ledger，写操作还必须与最终 Schema 的确认语义一致。</p>
+        </div>
+        <div class="domain-grid">
+          <article class="domain-card featured"><span class="domain-count">8</span><h3>发现与读取</h3><p>从范围检索、最新选择，到逐字稿、详情和行动项读取；默认追完分页，不把缺字段当空集合。</p><span class="domain-examples">+search · +latest · +detail · +transcript</span></article>
+          <article class="domain-card"><span class="domain-count">4</span><h3>传输与归档</h3><p>媒体下载、本地直传、分析编排和多产物安全导出。</p><span class="domain-examples">+download · +upload · +export-pack</span></article>
+          <article class="domain-card"><span class="domain-count">6</span><h3>内容与 AI</h3><p>标题、摘要、发言人和文字修订，以及思维导图、发言人洞察。</p><span class="domain-examples">+summary · +replace-batch · +mindmap</span></article>
+          <article class="domain-card"><span class="domain-count">5</span><h3>录音生命周期</h3><p>开始、暂停、恢复、停止，并可一次性收口等待产物。</p><span class="domain-examples">+record-start · +record-wrap-up</span></article>
+          <article class="domain-card"><span class="domain-count">4</span><h3>ASR 与权限</h3><p>会前热词准备、权限申请、批量分享和取消分享。</p><span class="domain-examples">+prepare-asr · +share · +unshare</span></article>
+        </div>
+        <div class="callout" style="margin-top:18px"><strong>本轮关键修复：</strong>旧链路未解析真实 <code>result.itemList</code>，会把内部结构错误误报成“没有听记”；旧详情和逐字稿只读第一页；旧批量替换的部分写入会以普通成功返回。这三类问题都已通过域内统一解析、完整分页和非零 partial failure 修复。</div>
+      </div>
+    </section>
+
+    <section id="compare">
+      <div class="wrap">
+        <div class="compare-board">
+          <div class="compare-top">
+            <p class="section-kicker">DWS × lark-cli</p>
+            <div class="section-head" style="margin-bottom:0"><h2>对齐的是业务语义，不是命令名</h2><p class="section-desc">lark-cli 的 10 个入口逐项审查输入、校验、编排、完整性和输出。底层对象模型不同的能力明确标为部分或缺口。</p></div>
+            <div class="compare-stats">
+              <div class="compare-stat"><strong>10</strong><span>lark Minutes 参照入口</span></div>
+              <div class="compare-stat"><strong>5</strong><span>对齐或在等价基础上增强</span></div>
+              <div class="compare-stat"><strong>4</strong><span>平台语义不同，部分对齐</span></div>
+              <div class="compare-stat"><strong>1</strong><span>无底层写 API，不造空壳</span></div>
+            </div>
+          </div>
+          <div class="compare-body">
+            <div class="compare-columns">
+              <article class="compare-column aligned"><h3>已对齐 / 增强</h3><ul><li>下载、上传、标题更新、权限申请、摘要覆盖均有完整 DWS 实现。</li><li>本地直传、覆盖保护、写前 diff 和写后读回让失败语义更可审计。</li></ul></article>
+              <article class="compare-column ahead"><h3>DWS 视角更完整</h3><ul><li>贯通实时录音、媒体上传、AI 派生产物、热词准备、导出和分享。</li><li>异步任务超时保留恢复句柄；上传失败有取消补偿。</li></ul></article>
+              <article class="compare-column boundary"><h3>公开说明边界</h3><ul><li>不伪造 Todo 写入、Chapter、speaker 身份重绑和 transcript-only 替换。</li><li>搜索不宣称服务端不存在的 owner / participant 精确过滤。</li></ul></article>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>lark-cli</th><th>DWS 主入口</th><th>结论</th><th>关键差异与交付决定</th></tr></thead>
+                <tbody>
+                  <tr><td><code>+search</code></td><td><code>+search</code></td><td><span class="verdict partial">部分</span></td><td>范围、关键词、时间、游标和全量分页已覆盖；DWS 服务端无 owner / participant 精确过滤。</td></tr>
+                  <tr><td><code>+download</code></td><td><code>+download</code></td><td><span class="verdict ahead">超越</span></td><td>最多 50 条、安全原子落盘、URL-only、SSRF/重定向防护、no-clobber 与逐项失败 ledger。</td></tr>
+                  <tr><td><code>+upload</code></td><td><code>+upload</code></td><td><span class="verdict ahead">超越</span></td><td>DWS 可从本地媒体直接 create → PUT → complete → read-back；失败自动 cancel，不依赖 Drive file token。</td></tr>
+                  <tr><td><code>+update</code></td><td><code>+update</code></td><td><span class="verdict aligned">对齐+</span></td><td>增加现状读取、no-op 检测、dry-run diff、确认与最终标题读回。</td></tr>
+                  <tr><td><code>+apply-permission</code></td><td><code>+apply-permission</code></td><td><span class="verdict aligned">对齐</span></td><td>view / download / edit 映射为后端策略 4 / 3 / 2，并以契约测试固定。</td></tr>
+                  <tr><td><code>+summary</code></td><td><code>+summary</code></td><td><span class="verdict ahead">超越</span></td><td>支持 literal / file / stdin、Markdown 图片校验、写前预览与全文读回，明确是整体覆盖。</td></tr>
+                  <tr><td><code>+todo</code></td><td><code>+action-items</code>（只读）</td><td><span class="verdict gap">不对齐</span></td><td>DWS 没有听记 Todo add / update / delete 与稳定 todo ID；不借普通 Todo 产品伪装听记内待办。</td></tr>
+                  <tr><td><code>+speaker-replace</code></td><td><code>+speaker-replace</code></td><td><span class="verdict partial">部分</span></td><td>DWS 是昵称/可选 UID 替换，不是 speaker_id → open_id 身份重绑；已增加完整逐字稿预检和读回。</td></tr>
+                  <tr><td><code>+word-replace</code></td><td><code>+replace-batch</code></td><td><span class="verdict partial">部分</span></td><td>批量 JSON/file/stdin、预检和 partial ledger 已覆盖；DWS 原子能力同时影响逐字稿和摘要，故保留准确命名。</td></tr>
+                  <tr><td><code>+detail</code></td><td><code>+detail</code></td><td><span class="verdict partial">部分+</span></td><td>DWS 增加最多 50 条、keywords/media、逐字稿全量分页与安全落盘；平台没有 Chapter。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="ahead">
+      <div class="wrap spotlight">
+        <div class="section-head"><div><p class="section-kicker">Beyond parity</p><h2>八个差异化业务闭环</h2></div><p class="section-desc">它们不是“多注册几个名字”，而是将原子调用组织为有状态、有补偿、有界等待和可恢复失败的业务过程。</p></div>
+        <div class="spot-grid">
+          <article class="spot-item"><code>+record-wrap-up</code><p>stop 一次后有界等待所选产物；产物未就绪时保留 taskUuid，绝不把空值当完成。</p></article>
+          <article class="spot-item"><code>+upload-and-analyze</code><p>本地直传、complete、等待逐字稿/摘要，并可接脑图和发言人洞察；支持 resume 不重复上传。</p></article>
+          <article class="spot-item"><code>+mindmap</code><p>创建异步任务并按明确的 0/1/2 状态轮询；超时不重复创建。</p></article>
+          <article class="spot-item"><code>+speaker-insights</code><p>创建发言人总结并轮询；未就绪以非零返回真实 taskId 恢复句柄。</p></article>
+          <article class="spot-item"><code>+prepare-asr</code><p>会前读取个人热词、计算 add/delete 差异；默认只增，显式 sync 才删除并读回。</p></article>
+          <article class="spot-item"><code>+export-pack</code><p>将多个产物写入受控目录并生成 manifest；不记录签名 URL、令牌或凭证。</p></article>
+          <article class="spot-item"><code>+share</code><p>面向多听记、多成员的语义化权限授予，逐项 acknowledgement 与部分写 ledger。</p></article>
+          <article class="spot-item"><code>+unshare</code><p>权限移除同样默认首错停止；显式 continue 后任一失败仍非零。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="truth">
+      <div class="wrap">
+        <div class="section-head"><div><p class="section-kicker">Truthful execution</p><h2>把“空数组成功”从正确性标准中彻底移除</h2></div><p class="section-desc">合法业务空集合当然可以成功，但必须先证明响应结构与分页语义正确；内部报错、缺字段和产物未就绪不能被空值吞掉。</p></div>
+        <div class="truth-grid">
+          <article class="truth-card">
+            <h3>读取链路的四层证据</h3>
+            <div class="truth-flow">
+              <div class="truth-step"><b>1</b><div><strong>响应形状</strong><span>只接受已声明的对象/数组字段；结构漂移直接失败，不降级为空。</span></div></div>
+              <div class="truth-step"><b>2</b><div><strong>分页完整性</strong><span>消费 nextToken，检测停滞、成环和“有下一页但无 token”。</span></div></div>
+              <div class="truth-step"><b>3</b><div><strong>产物合同</strong><span>summary / transcript 等待必须满足非空与可用条件，不能仅凭 HTTP 成功。</span></div></div>
+              <div class="truth-step"><b>4</b><div><strong>稳定投影</strong><span>输出 count、complete、ledger 和恢复信息，避免把原始响应噪声交给 Agent 猜。</span></div></div>
+            </div>
+            <div class="rule-quote">成功 = 业务结果有效且完整；“没有报错”或“返回了 []”都不是充分条件。</div>
+          </article>
+          <article class="truth-card">
+            <h3>明确保留的服务端 / 平台边界</h3>
+            <div class="gap-list">
+              <div class="gap"><strong>Minutes Todo 写入与 Chapter</strong><p>当前无对应原子 API，不发布同名不可执行空壳。</p></div>
+              <div class="gap"><strong>speaker 身份重绑</strong><p>当前是昵称/可选 UID 替换，不宣传为用户身份绑定。</p></div>
+              <div class="gap"><strong>仅逐字稿文字替换</strong><p>当前后端同时影响摘要，因此保留更准确的命令名和副作用描述。</p></div>
+              <div class="gap"><strong>owner / participant 精确检索</strong><p>服务端未提供过滤，客户端不假装拥有全集上的精确语义。</p></div>
+              <div class="gap"><strong>Meeting Bot / 生命周期事件 / 产物索引</strong><p>缺稳定 meetingId ↔ taskUuid 与会议事件原子能力，等待平台解锁。</p></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="catalog">
+      <div class="wrap">
+        <div class="section-head"><div><p class="section-kicker">Full catalog</p><h2>27 个公开 Shortcut 完整目录</h2></div><p class="section-desc">可按命令、能力描述、业务域和风险筛选。所有 17 个写命令的最终 Contract 均为 <code>confirmation=user_required</code>。</p></div>
+        <div class="catalog-shell">
+          <div class="toolbar">
+            <div class="search-wrap"><input id="search" class="search" type="search" placeholder="搜索命令、能力或业务域…" aria-label="搜索 Shortcut"></div>
+            <button id="reset" class="action-btn" type="button">重置筛选</button>
+          </div>
+          <div class="filter-block"><span class="filter-label">业务域</span><div id="domainFilters" class="chips">
+            <button class="chip" data-filter="domain" data-value="all" aria-pressed="true">全部</button>
+            <button class="chip" data-filter="domain" data-value="discover" aria-pressed="false">发现与读取</button>
+            <button class="chip" data-filter="domain" data-value="transfer" aria-pressed="false">传输与归档</button>
+            <button class="chip" data-filter="domain" data-value="content" aria-pressed="false">内容与 AI</button>
+            <button class="chip" data-filter="domain" data-value="record" aria-pressed="false">录音生命周期</button>
+            <button class="chip" data-filter="domain" data-value="access" aria-pressed="false">ASR 与权限</button>
+          </div></div>
+          <div class="filter-block"><span class="filter-label">风险</span><div id="riskFilters" class="chips">
+            <button class="chip" data-filter="risk" data-value="all" aria-pressed="true">全部</button>
+            <button class="chip" data-filter="risk" data-value="read" aria-pressed="false">读取 10</button>
+            <button class="chip" data-filter="risk" data-value="write" aria-pressed="false">写入 17</button>
+            <button class="chip" data-filter="risk" data-value="dry" aria-pressed="false">Dry-run 13</button>
+          </div></div>
+          <div class="catalog-meta"><span>显示 <strong id="visibleCount">27</strong> / 27</span><span>点击复制按钮可复制完整命令</span></div>
+          <div id="catalogRows" class="catalog">
+            <article class="shortcut-row" data-domain="discover" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +search" aria-label="复制 +search">⧉</button><code>dws minutes +search</code></div><div class="row-main"><p>按范围、标题关键词和时间检索，支持安全全量翻页、跨页去重和完整性 ledger。</p><span class="row-category">发现与读取</span></div><div class="badges"><span class="badge read">READ</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="discover" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +list-mine" aria-label="复制 +list-mine">⧉</button><code>dws minutes +list-mine</code></div><div class="row-main"><p>严格投影当前用户创建的听记列表，不把缺少 itemList 的错误响应当空列表。</p><span class="row-category">发现与读取</span></div><div class="badges"><span class="badge read">READ</span><span class="badge leaf">SCHEMA LEAF</span></div></article>
+            <article class="shortcut-row" data-domain="discover" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +list-shared" aria-label="复制 +list-shared">⧉</button><code>dws minutes +list-shared</code></div><div class="row-main"><p>读取他人共享的听记列表并执行严格响应验证。</p><span class="row-category">发现与读取</span></div><div class="badges"><span class="badge read">READ</span><span class="badge leaf">SCHEMA LEAF</span></div></article>
+            <article class="shortcut-row" data-domain="discover" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +list-all" aria-label="复制 +list-all">⧉</button><code>dws minutes +list-all</code></div><div class="row-main"><p>读取全部可访问听记并保持稳定列表投影。</p><span class="row-category">发现与读取</span></div><div class="badges"><span class="badge read">READ</span><span class="badge leaf">SCHEMA LEAF</span></div></article>
+            <article class="shortcut-row" data-domain="discover" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +latest" aria-label="复制 +latest">⧉</button><code>dws minutes +latest</code></div><div class="row-main"><p>只从有可比较时间的候选中选择最新项，再读取非空基本信息。</p><span class="row-category">发现与读取</span></div><div class="badges"><span class="badge read">READ</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="discover" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +detail" aria-label="复制 +detail">⧉</button><code>dws minutes +detail</code></div><div class="row-main"><p>批量读取 basic/summary/keywords/transcript/todos/media；逐字稿默认全量分页并安全落盘。</p><span class="row-category">发现与读取</span></div><div class="badges"><span class="badge read">READ</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="discover" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +transcript" aria-label="复制 +transcript">⧉</button><code>dws minutes +transcript</code></div><div class="row-main"><p>解析显式或最新听记，追完每个 cursor、去重段落并发布 completeness。</p><span class="row-category">发现与读取</span></div><div class="badges"><span class="badge read">READ</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="discover" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +action-items" aria-label="复制 +action-items">⧉</button><code>dws minutes +action-items</code></div><div class="row-main"><p>读取听记提取的行动项；明确是只读，不冒充 Minutes Todo 写入。</p><span class="row-category">发现与读取</span></div><div class="badges"><span class="badge read">READ</span><span class="badge smart">PRIMARY SMART</span></div></article>
+
+            <article class="shortcut-row" data-domain="transfer" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +download" aria-label="复制 +download">⧉</button><code>dws minutes +download</code></div><div class="row-main"><p>解析真实媒体 URL，批量安全原子下载，输出明确失败 ledger，不泄露签名 URL。</p><span class="row-category">传输与归档</span></div><div class="badges"><span class="badge read">READ</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="transfer" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +upload" aria-label="复制 +upload">⧉</button><code>dws minutes +upload</code></div><div class="row-main"><p>本地文件校验 → create → HTTPS PUT → complete → basic read-back；失败自动 cancel。</p><span class="row-category">传输与归档</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="transfer" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +upload-and-analyze" aria-label="复制 +upload-and-analyze">⧉</button><code>dws minutes +upload-and-analyze</code></div><div class="row-main"><p>本地直传后等待有效产物，可选脑图与发言人洞察，支持 resume-id 恢复。</p><span class="row-category">传输与归档</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="transfer" data-risk="read" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +export-pack" aria-label="复制 +export-pack">⧉</button><code>dws minutes +export-pack</code></div><div class="row-main"><p>校验所选产物并发布 no-clobber 本地目录，生成不含凭证和签名 URL 的 manifest。</p><span class="row-category">传输与归档</span></div><div class="badges"><span class="badge read">READ</span><span class="badge smart">PRIMARY SMART</span></div></article>
+
+            <article class="shortcut-row" data-domain="content" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +update" aria-label="复制 +update">⧉</button><code>dws minutes +update</code></div><div class="row-main"><p>读取当前标题、预览差异、避免 no-op 写入，并读回验证最终标题。</p><span class="row-category">内容与 AI</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge adapter">ADAPTER</span></div></article>
+            <article class="shortcut-row" data-domain="content" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +summary" aria-label="复制 +summary">⧉</button><code>dws minutes +summary</code></div><div class="row-main"><p>读取当前纪要，支持 literal/file/stdin，校验 Markdown 图片，整段覆盖后全文读回。</p><span class="row-category">内容与 AI</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="content" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +speaker-replace" aria-label="复制 +speaker-replace">⧉</button><code>dws minutes +speaker-replace</code></div><div class="row-main"><p>完整分页预检源发言人，执行昵称/可选 UID 替换并重新读回验证。</p><span class="row-category">内容与 AI</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="content" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +replace-batch" aria-label="复制 +replace-batch">⧉</button><code>dws minutes +replace-batch</code></div><div class="row-main"><p>多规则 JSON/file/stdin 输入，完整预检，默认首错停止；任一失败均非零并返回 ledger。</p><span class="row-category">内容与 AI</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="content" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +mindmap" aria-label="复制 +mindmap">⧉</button><code>dws minutes +mindmap</code></div><div class="row-main"><p>异步脑图 create 一次后按明确 taskStatus 有界轮询到成功、失败或超时。</p><span class="row-category">内容与 AI</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="content" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +speaker-insights" aria-label="复制 +speaker-insights">⧉</button><code>dws minutes +speaker-insights</code></div><div class="row-main"><p>创建发言人总结并有界轮询；未就绪返回非零和异步任务恢复句柄。</p><span class="row-category">内容与 AI</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+
+            <article class="shortcut-row" data-domain="record" data-risk="write" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +record-start" aria-label="复制 +record-start">⧉</button><code>dws minutes +record-start</code></div><div class="row-main"><p>友好的录音创建入口，校验稳定 session 参数并要求显式确认。</p><span class="row-category">录音生命周期</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge adapter">ADAPTER</span></div></article>
+            <article class="shortcut-row" data-domain="record" data-risk="write" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +record-pause" aria-label="复制 +record-pause">⧉</button><code>dws minutes +record-pause</code></div><div class="row-main"><p>暂停指定录音，严格校验 task UUID 并要求确认。</p><span class="row-category">录音生命周期</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge adapter">ADAPTER</span></div></article>
+            <article class="shortcut-row" data-domain="record" data-risk="write" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +record-resume" aria-label="复制 +record-resume">⧉</button><code>dws minutes +record-resume</code></div><div class="row-main"><p>恢复指定录音；后端失败不会投影为成功。</p><span class="row-category">录音生命周期</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge adapter">ADAPTER</span></div></article>
+            <article class="shortcut-row" data-domain="record" data-risk="write" data-dry="false"><div class="command"><button class="command-copy" data-command="dws minutes +record-stop" aria-label="复制 +record-stop">⧉</button><code>dws minutes +record-stop</code></div><div class="row-main"><p>停止指定录音，以真实 acknowledgement 证明写入完成。</p><span class="row-category">录音生命周期</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge adapter">ADAPTER</span></div></article>
+            <article class="shortcut-row" data-domain="record" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +record-wrap-up" aria-label="复制 +record-wrap-up">⧉</button><code>dws minutes +record-wrap-up</code></div><div class="row-main"><p>停止一次并有界等待选定产物；部分完成保留恢复 ID 且非零退出。</p><span class="row-category">录音生命周期</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+
+            <article class="shortcut-row" data-domain="access" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +prepare-asr" aria-label="复制 +prepare-asr">⧉</button><code>dws minutes +prepare-asr</code></div><div class="row-main"><p>读取热词、计算确定性 add/delete 差异；默认只增，sync 后读回验证。</p><span class="row-category">ASR 与权限</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="access" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +apply-permission" aria-label="复制 +apply-permission">⧉</button><code>dws minutes +apply-permission</code></div><div class="row-main"><p>将 view/download/edit 映射到真实后端策略并验证权限申请响应。</p><span class="row-category">ASR 与权限</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge adapter">ADAPTER</span></div></article>
+            <article class="shortcut-row" data-domain="access" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +share" aria-label="复制 +share">⧉</button><code>dws minutes +share</code></div><div class="row-main"><p>按稳定成员 UID 授予 view/download/edit，支持多目标与显式 partial-write ledger。</p><span class="row-category">ASR 与权限</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+            <article class="shortcut-row" data-domain="access" data-risk="write" data-dry="true"><div class="command"><button class="command-copy" data-command="dws minutes +unshare" aria-label="复制 +unshare">⧉</button><code>dws minutes +unshare</code></div><div class="row-main"><p>逐成员移除权限；首错停止或显式继续，但任一失败仍非零。</p><span class="row-category">ASR 与权限</span></div><div class="badges"><span class="badge write">WRITE · CONFIRM</span><span class="badge dry">DRY-RUN</span><span class="badge smart">PRIMARY SMART</span></div></article>
+          </div>
+          <p id="empty" class="empty">没有匹配的 Shortcut，请调整筛选条件。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="e2e">
+      <div class="wrap">
+        <div class="section-head"><div><p class="section-kicker">Real-data E2E</p><h2>真实数据验证，不用空数组证明成功</h2></div><p class="section-desc">业务对象标识、成员标识、签名 URL、上传凭证和原文均未进入报告；这里只保留可复核的匿名计数、状态和恢复结论。</p></div>
+        <div class="evidence-grid">
+          <article class="evidence"><strong>8 页</strong><b>搜索与逐字稿完整分页</b><p>搜索扫描 148 条并精确命中 1 条；成熟听记逐字稿共 389 段。</p></article>
+          <article class="evidence"><strong>36.2 MB</strong><b>真实媒体下载</b><p>落盘字节数与传输结果一致，输出中无签名 URL。</p></article>
+          <article class="evidence"><strong>294 KB</strong><b>本地直传闭环</b><p>create → HTTPS PUT → complete → basic read-back 全链路完成。</p></article>
+          <article class="evidence"><strong>19 次</strong><b>未就绪不伪成功</b><p>上传后逐字稿仍为空时正确 partial/non-zero；resume 后不重复上传并最终完成。</p></article>
+          <article class="evidence"><strong>6 文件</strong><b>导出包真实落盘</b><p>manifest 加 5 类非空产物；未记录凭证和临时 URL。</p></article>
+          <article class="evidence"><strong>写后读回</strong><b>标题 / 摘要 / 发言人 / 替换</b><p>写入后独立读回证明生效；测试数据均恢复或使用隔离对象。</p></article>
+          <article class="evidence"><strong>非零</strong><b>权限申请的真实拒绝</b><p>创建者无需申请权限是服务端业务前提；命令没有合成成功。</p></article>
+          <article class="evidence"><strong>可恢复</strong><b>发言人洞察未就绪</b><p>任务创建成功但轮询期内无产物时，返回非零并保留异步任务恢复句柄。</p></article>
+        </div>
+        <div class="callout" style="margin-top:18px"><strong>自动化门禁：</strong><code>make build</code>、全仓 <code>go test ./...</code>、Schema assembly / drift / policy、runtime confirmation truth、Agent examples dry-run 全部纳入提交前复验。真实数据 smoke 依赖登录态且会产生业务副作用，因此保留为脱敏报告，不进入普通 CI。</div>
+      </div>
+    </section>
+
+    <section id="review">
+      <div class="wrap">
+        <div class="section-head"><div><p class="section-kicker">Review prompts</p><h2>建议业务评审重点确认</h2></div><p class="section-desc">若以下边界成立，本方案可以作为一次性完整交付；未来新增后端原子能力时，再按真实模型补齐，而不是在 CLI 先造概念。</p></div>
+        <div class="review-grid">
+          <article class="review-card"><span class="review-num">01</span><h3>是否接受 5 / 4 / 1 对齐结论？</h3><p>5 项对齐/增强、4 项部分、1 项不可对齐；不以同名率替代平台语义。</p></article>
+          <article class="review-card"><span class="review-num">02</span><h3>只读 action-items 是否足够明确？</h3><p>命令不会写 Minutes Todo，也不会借普通 Todo 对象模拟。</p></article>
+          <article class="review-card"><span class="review-num">03</span><h3>写操作确认范围是否合适？</h3><p>17 个写入口全部 user_required；13 个复杂写入口额外提供契约化 dry-run。</p></article>
+          <article class="review-card"><span class="review-num">04</span><h3>是否认可非零 partial failure？</h3><p>多步流程部分完成时保留 ledger 和恢复句柄，不用零退出掩盖未完成阶段。</p></article>
+          <article class="review-card"><span class="review-num">05</span><h3>DWS 差异化闭环是否可作为主路径？</h3><p>建议优先推广 upload-and-analyze、record-wrap-up、export-pack 与 share/unshare。</p></article>
+          <article class="review-card"><span class="review-num">06</span><h3>平台缺口的解锁顺序？</h3><p>建议优先 Minutes Todo 写 API、Chapter、speaker identity 模型与会议关联索引。</p></article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner"><span>依据：DWS 最终 Shortcut catalog / Schema、真实数据 E2E 报告、lark-cli Minutes registrations 与实现。</span><span>范围：Minutes Shortcut；不含原子命令清单。所有业务标识与凭证均已脱敏。</span></div>
+  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite">已复制</div>
+
+  <script>
+    (() => {
+      const rows = [...document.querySelectorAll('.shortcut-row')];
+      const search = document.getElementById('search');
+      const visibleCount = document.getElementById('visibleCount');
+      const empty = document.getElementById('empty');
+      const toast = document.getElementById('toast');
+      const state = { domain: 'all', risk: 'all' };
+
+      function apply() {
+        const query = search.value.trim().toLowerCase();
+        let count = 0;
+        rows.forEach((row) => {
+          const domainMatch = state.domain === 'all' || row.dataset.domain === state.domain;
+          const riskMatch = state.risk === 'all' || row.dataset.risk === state.risk || (state.risk === 'dry' && row.dataset.dry === 'true');
+          const textMatch = !query || row.textContent.toLowerCase().includes(query);
+          const show = domainMatch && riskMatch && textMatch;
+          row.hidden = !show;
+          if (show) count += 1;
+        });
+        visibleCount.textContent = String(count);
+        empty.style.display = count ? 'none' : 'block';
+      }
+
+      document.querySelectorAll('.chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const group = chip.dataset.filter;
+          state[group] = chip.dataset.value;
+          document.querySelectorAll(`[data-filter="${group}"]`).forEach((peer) => peer.setAttribute('aria-pressed', String(peer === chip)));
+          apply();
+        });
+      });
+      search.addEventListener('input', apply);
+      document.getElementById('reset').addEventListener('click', () => {
+        search.value = '';
+        state.domain = 'all';
+        state.risk = 'all';
+        document.querySelectorAll('.chip').forEach((chip) => chip.setAttribute('aria-pressed', String(chip.dataset.value === 'all')));
+        apply();
+      });
+      document.querySelectorAll('.command-copy').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const command = button.dataset.command;
+          try {
+            await navigator.clipboard.writeText(command);
+          } catch (_) {
+            const area = document.createElement('textarea');
+            area.value = command;
+            document.body.appendChild(area);
+            area.select();
+            document.execCommand('copy');
+            area.remove();
+          }
+          toast.textContent = `已复制：${command}`;
+          toast.classList.add('show');
+          window.setTimeout(() => toast.classList.remove('show'), 1500);
+        });
+      });
+      apply();
+    })();
+  </script>
+</body>
+</html>

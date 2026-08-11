@@ -2,6 +2,14 @@
 
 > 12 个 agent 逐条深读 lark 每个 shortcut 的智能实现（Validate/DryRun/ID解析/投影/多步/分页），映射钉钉、标注保真度差距。
 
+## 2026-08-10 Minutes 落地补充
+
+Minutes 已从本文后续历史快照中的 13 个命令扩展为 27 个公开 shortcut。`+search/+download/+upload/+update/+apply-permission/+summary/+speaker-replace/+detail/+replace-batch` 已按真实 DWS API 语义落地，原隐藏的录音控制、`+latest/+transcript/+action-items` 已修正后公开；并新增 `+record-wrap-up/+upload-and-analyze/+mindmap/+speaker-insights/+prepare-asr/+export-pack/+share/+unshare`。完整状态与真实数据证据见 [Minutes Shortcut E2E 报告](./minutes-shortcut-e2e-report.md)。
+
+对齐结论不是“十个同名命令”：Todo 写入、Chapter、speaker identity rebinding、transcript-only replacement、owner/participant 精确搜索及 Meeting Bot/事件仍缺平台原子能力，因此没有注册同名空壳。DWS 的本地直传、录音收口、AI 派生产物、ASR 热词和导出/分享闭环则超过 lark-cli 的 Minutes 单命令视角。
+
+下文是 2026-07-13 的全产品历史快照，Minutes 行及 gap 数量不再代表当前实现。
+
 ## 2026-07-13 最新源码复核
 
 对比基线：
@@ -124,14 +132,14 @@
 |---|---|---|
 | `+node-get` | read | dws 无 get_node 对应 tool(proxy wiki doc read 读的是文档正文而非节点元数据/space解析)；缺 token/obj_token/URL→node 解析、obj_type推断、space交叉校验——是值得补的智能 shortcut 缺口 |
 
-### minutes → minutes（4）
+### minutes → minutes（历史 4 项；2026-08-10 已完成或明确边界）
 
 | lark 命令 | risk | 保真度差距（钉钉有 tool，缺什么智能） |
 |---|---|---|
-| `+search` | read | dws list_by_keyword_and_time_range 只按 keyword+时间+归属(created/shared)过滤，缺 owner/participant 的 me 解析与筛选、缺 query 长度与跨字段互斥校验、缺输出投影与去头像 |
-| `+download` | read | dws 只有 query_minutes_audio_url 返回 OSS 地址(相当于 --url-only 单条)，缺真正落盘下载、批量 fanout+限速+去重、文件名推断、SSRF 防护与覆盖保护 |
-| `+word-replace` ✅ | write | **已建 smart `+replace-batch`**：多组 `原文=>替换` 批量替换 + 去重校验 + 逐组结果聚合（补齐 1:1 `+word-replace` 的单组限制）。剩余未做：@file/stdin 输入 |
-| `+detail` ✅ | read | **已建 smart `+detail`**：单命令按 `--artifacts` fanout basic/summary/keywords/transcript/todos + partial-failure 容错 + rt.Output 投影。剩余未做：wait-ready 轮询、transcript 落盘 |
+| `+search` ✅ | read | **已建 `minutes +search`**：mine/shared/all、关键词/时间、全量分页、跨页去重和 completeness ledger；服务端仍无 owner/participant 精确过滤，未伪造 |
+| `+download` ✅ | read | **已建 `minutes +download`**：最多 50 条、url-only/安全落盘、no-clobber、重试、去重和逐项失败 ledger；媒体类型只按真实响应识别 |
+| `+word-replace` ✅ | write | **已升级 `+replace-batch`**：pair 或 JSON/file/stdin、完整预检、默认首错停止、显式 continue、非零 partial failure、写后逐字稿验证；DWS 同时影响摘要，未假装 transcript-only |
+| `+detail` ✅ | read | **已升级 `+detail`**：最多 50 条、制品 fanout、逐字稿完整分页、安全文件输出和 partial ledger；DWS 无 Chapter API |
 
 ### base → aitable（10）
 
