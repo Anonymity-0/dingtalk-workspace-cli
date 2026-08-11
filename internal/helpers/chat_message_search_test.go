@@ -349,6 +349,64 @@ func TestNativeScopedSearchScansUntilTargetConversationAppears(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageNativeScopedSearchPageAllOptions(t *testing.T) {
+	t.Run("page limit preserves continuation", func(t *testing.T) {
+		caller := &chatMessageSearchCaller{searchResponse: `{
+			"result": {
+				"conversationMessagesList": [
+					{"openConversationId":"cid-target","messages":[{"openMessageId":"m1"}]}
+				],
+				"hasMore": true,
+				"nextCursor": "c2"
+			}
+		}`}
+		payload, err := executeNativeScopedSearch(t, caller,
+			"message", "search-advanced", "--query", "周报", "--conversation-ids", "cid-target",
+			"--page-all", "--page-limit", "1", "--page-delay", "0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		paging, _ := payload["paging"].(map[string]any)
+		if paging["pages"] != float64(1) || paging["total"] != float64(1) || paging["truncated"] != true {
+			t.Fatalf("paging = %#v", paging)
+		}
+		if caller.searchCalls != 1 {
+			t.Fatalf("search calls = %d, want 1", caller.searchCalls)
+		}
+	})
+
+	t.Run("max items truncates within filtered page", func(t *testing.T) {
+		caller := &chatMessageSearchCaller{searchResponse: `{
+			"result": {
+				"conversationMessagesList": [
+					{"openConversationId":"cid-target","messages":[
+						{"openMessageId":"m1"},
+						{"openMessageId":"m2"}
+					]}
+				],
+				"hasMore": false
+			}
+		}`}
+		payload, err := executeNativeScopedSearch(t, caller,
+			"message", "search-advanced", "--query", "周报", "--conversation-ids", "cid-target",
+			"--page-all", "--max-items", "1", "--page-delay", "0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, _ := payload["result"].(map[string]any)
+		groups, _ := result["conversationMessagesList"].([]any)
+		group, _ := groups[0].(map[string]any)
+		messages, _ := group["messages"].([]any)
+		if len(messages) != 1 {
+			t.Fatalf("messages = %#v", messages)
+		}
+		paging, _ := payload["paging"].(map[string]any)
+		if paging["total"] != float64(1) || paging["truncatedWithinPage"] != true || paging["resumeCursorReliable"] != false {
+			t.Fatalf("paging = %#v", paging)
+		}
+	})
+}
+
 func TestNativeScopedSearchMissingConversationIdentityFailsClosed(t *testing.T) {
 	caller := &chatMessageSearchCaller{searchResponse: `{"result":{"messages":[{"openMessageId":"m1"}],"hasMore":false}}`}
 	_, err := executeNativeScopedSearch(t, caller,
