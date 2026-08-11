@@ -291,11 +291,16 @@ dws chat +messages-send --as user --open-dingtalk-id <openDingTalkId> --msg-type
 
 `+messages-send` 的 @ 占位符按身份自动规范化并补齐：user 使用 `<@id>` / `<@all>`；bot/webhook 使用 `@id` / `@手机号` / `@all`。声明 `--at-*` / `--at-all` 即可，不要再手工拼 `@10`。
 
+**用 `chat message send-card` 的场景**：
+- 用户明确只创建卡片、不填正文或不更新卡片；不要自行补正文，也不要改走组合 Shortcut。
+- 群聊创建时可传 `--at-open-dingtalk-ids` 或 `--at-all`；只调用一次 `create_and_send_card`，返回 `bizId` 供以后按需更新。
+
 **用 `chat +messages-send-card` 的场景**：
+- 用户同时提供正文，或明确要求创建后立即写入、完成卡片；这时才允许组合 create → update。
 - 群聊流式卡片使用 `--group <openConversationId>`。
 - 单聊已有 userId 时使用 `--receiver <userId>`，CLI 始终通过通讯录关键词搜索并按 userId 精确匹配 openDingTalkId；即使 userId 以 D/d 开头也不会猜测类型，`--dry-run` 也会执行该解析。
 - 单聊已有 openDingTalkId 时必须显式使用 `--receiver-open-dingtalk-id <openDingTalkId>`，避免与 userId 混淆。
-- `--group`、`--receiver`、`--receiver-open-dingtalk-id` 严格三选一；传 `--content` 可在同一次调用中创建并结束卡片。
+- `--group`、`--receiver`、`--receiver-open-dingtalk-id` 严格三选一；必须由用户提供正文或明确要求写入时才传 `--content`，不得为完成测试自行编造内容。
 
 **用 `chat +messages-send --as bot` 的场景**：
 - "让机器人在群里发一条通知" — **机器人身份**发消息

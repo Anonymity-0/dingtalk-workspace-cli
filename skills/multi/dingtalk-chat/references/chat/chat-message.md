@@ -288,7 +288,13 @@ dws chat message reply --conversation-id <openConversationId> --ref-msg-id <open
 1. `dws chat message list --group <openConversationId> --time ...` 获取话题主消息。
 2. 如果返回 `openConvThreadId`，执行 `dws chat message list-topic-replies --group <openConversationId> --topic-id <openConvThreadId>`。
 
-流式卡片优先使用公开 Shortcut；创建可选在同一次调用中写入内容：
+用户明确只创建、不更新或不填正文时使用原生 `message send-card`，只执行一次创建；群聊创建可同时指定 @成员或 @所有人：
+
+```bash
+dws chat message send-card --group <openConversationId> --at-open-dingtalk-ids <mentionedOpenDingTalkId>
+```
+
+用户同时提供正文或明确要求创建后写入/完成时，才使用公开 Shortcut 组合 create → update：
 
 ```bash
 dws chat +messages-send-card --group <openConversationId> --at-open-dingtalk-ids <mentionedOpenDingTalkId> --content "开始处理" --flow-status 1
@@ -299,6 +305,7 @@ dws chat +messages-update-card --biz-id <bizId> --content "最终内容" --flow-
 `flow-status`：1=处理中，2=输入中，3=完成，4=执行中，5=错误，Runtime 拒绝范围外值。
 群聊还可传 `--at-all`；两种艾特参数只随创建请求发送。send-card 同时带正文时，
 Runtime 会把创建响应的 `atTag` 自动放在正文前；不要自行写 ID 或占位符。
+用户没有提供正文时不得自行编造 `--content`，也不得为了“完成卡片”擅自增加 update。
 当前只支持 streaming text；不支持 Card JSON 组件或 action callback。精确边界见
 [card references](../card/schema.md)。
 

@@ -75,7 +75,7 @@ metadata:
 - `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。user 已知 ID 可直接传，也可用 `--user-query` / `--chat-query` 运行同一只读解析链；Bot 多群使用 `--groups/--groups-file`，返回 `im.batch-write.v1`；bot/webhook 只使用下层真实支持的文本/Markdown 能力。
 - 文件直接传 `+messages-send --file <相对路径>`；不要先独立上传并提取 mediaId。
 - Webhook 使用 `+messages-send --as webhook --webhook-token <token>`；不要退回原子 Webhook 命令。
-- 流式卡片用 `+messages-send-card`；群聊@传 ID/`--at-all`，Runtime 把 create 返回前缀加到 `--content`；禁写占位符；仅 text。
+- 流式卡片明确“只创建/不更新/不填正文”时用原生 `message send-card`，群聊创建可传 ID/`--at-all`，只调用 create；同时提供正文或要求创建后写入/完成时才用 `+messages-send-card`，Runtime 把 create 返回前缀加到 `--content`。不得自行补正文；禁写占位符；仅 text。
 
 ## 关键结果语义
 
