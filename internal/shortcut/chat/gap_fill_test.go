@@ -1092,6 +1092,29 @@ func TestCrossPlatformCoverageMessagesSendCardDryRunAndFailureBoundaries(t *test
 }
 
 func TestCrossPlatformCoverageMessagesUpdateCardRejectsFalseSuccess(t *testing.T) {
+	t.Run("agent shortcut owns confirmation boundary", func(t *testing.T) {
+		fake := &larkAlignmentCaller{responses: map[string]string{
+			"im/update_streaming_card": `{"result":{"bizId":"biz-confirm","updated":true}}`,
+		}}
+		helpers.InitDeps(fake)
+		root := newPlatformCoverageRoot()
+		root.SetIn(strings.NewReader(""))
+		root.SetArgs([]string{
+			"chat", "+messages-update-card",
+			"--biz-id", "biz-confirm",
+			"--content", "高层更新",
+			"--flow-status", "3",
+		})
+		err := root.Execute()
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || typed.Reason != "confirmation_required" {
+			t.Fatalf("error = %#v, want confirmation_required", err)
+		}
+		if len(fake.calls) != 0 {
+			t.Fatalf("unconfirmed shortcut reached MCP: %#v", fake.calls)
+		}
+	})
+
 	t.Run("generic success is unverified", func(t *testing.T) {
 		fake := &larkAlignmentCaller{responses: map[string]string{
 			"im/update_streaming_card": `{"success":true,"errorCode":null}`,

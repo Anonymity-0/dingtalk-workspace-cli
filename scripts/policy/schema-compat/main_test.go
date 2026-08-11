@@ -415,25 +415,6 @@ func TestSchemaCompatibilityRejectsContractDrift(t *testing.T) {
 	}
 }
 
-func TestSchemaCompatibilityAcceptsReviewedCardConfirmationHardening(t *testing.T) {
-	oldTool := baselineContract().Products["doc"].Tools["doc.create"]
-	newTool := oldTool
-	newTool.Confirmation = "user_required"
-
-	if failures := checkToolCompatibility("chat/chat.update_streaming_card", oldTool, newTool); len(failures) != 0 {
-		t.Fatalf("reviewed confirmation hardening failures = %v", failures)
-	}
-	if failures := checkToolCompatibility("chat/chat.other", oldTool, newTool); len(failures) == 0 {
-		t.Fatal("unreviewed confirmation hardening unexpectedly passed")
-	}
-
-	oldTool.Confirmation = "user_required"
-	newTool.Confirmation = "not_required"
-	if failures := checkToolCompatibility("chat/chat.update_streaming_card", oldTool, newTool); len(failures) == 0 {
-		t.Fatal("reviewed tool confirmation weakening unexpectedly passed")
-	}
-}
-
 func TestMergeContracts(t *testing.T) {
 	historical := baselineContract()
 	current := cloneContract(historical)

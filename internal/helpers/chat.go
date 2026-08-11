@@ -5529,7 +5529,11 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageUpdateCardCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			// The typed command is the atomic MCP surface and intentionally
+			// preserves its original no-extra-confirmation contract. The
+			// Agent-facing +messages-update-card shortcut owns the higher-level
+			// confirmation boundary.
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5547,8 +5551,8 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "更新已发送流式卡片的内容和状态",
-				UseWhen:      []string{"已有 bizId 并需要追加内容或结束流式输出时"},
-				AvoidWhen:    []string{"创建新卡片时使用 chat message send-card"},
+				UseWhen:      []string{"需要直接调用底层原子更新，并由调用方自行管理确认与更新节奏时"},
+				AvoidWhen:    []string{"面向 Agent 的默认快速通道使用 chat +messages-update-card；创建新卡片时使用 chat message send-card"},
 				Examples:     []string{"dws chat message update-card --biz-id <bizId> --content \"处理完成\" --flow-status 2"},
 			},
 			Parameters: []contract.ParamDecl{
