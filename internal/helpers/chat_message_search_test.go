@@ -438,6 +438,100 @@ func TestNativeScopedSearchValidEmptyResultIsComplete(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageNativeScopedSearchFailureAndPaginationBranches(t *testing.T) {
+	t.Run("empty scope uses the native search call", func(t *testing.T) {
+		caller := &chatMessageSearchCaller{}
+		previousDeps := deps
+		t.Cleanup(func() { deps = previousDeps })
+		InitDeps(caller)
+		deps.Out.w = io.Discard
+
+		cmd := &cobra.Command{Use: "search"}
+		err := runConversationScopedMessageSearch(
+			cmd,
+			"im",
+			"search_messages",
+			"openConversationIds",
+			map[string]any{"keyword": "周报"},
+			[]string{"", " "},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(caller.calls) != 1 || caller.calls[0].toolName != "search_messages" {
+			t.Fatalf("calls = %#v", caller.calls)
+		}
+	})
+
+	t.Run("invalid page options fail before preflight", func(t *testing.T) {
+		caller := &chatMessageSearchCaller{}
+		previousDeps := deps
+		t.Cleanup(func() { deps = previousDeps })
+		InitDeps(caller)
+
+		cmd := &cobra.Command{Use: "search"}
+		AddPagedMCPFlags(cmd)
+		if err := cmd.Flags().Set("page-all", "true"); err != nil {
+			t.Fatal(err)
+		}
+		if err := cmd.Flags().Set("page-limit", "0"); err != nil {
+			t.Fatal(err)
+		}
+		err := runConversationScopedMessageSearch(
+			cmd,
+			"im",
+			"search_messages",
+			"openConversationIds",
+			map[string]any{"keyword": "周报"},
+			[]string{"cid-target"},
+		)
+		if err == nil || !strings.Contains(err.Error(), "--page-limit must be between 1 and 500") {
+			t.Fatalf("error = %v", err)
+		}
+		if len(caller.calls) != 0 {
+			t.Fatalf("invalid paging made calls: %#v", caller.calls)
+		}
+	})
+
+	t.Run("cancelled context interrupts page delay", func(t *testing.T) {
+		caller := &chatMessageSearchCaller{searchResponse: `{
+			"result": {
+				"messages": [{"openMessageId":"m1","openConversationId":"cid-target"}],
+				"hasMore": true,
+				"nextCursor": "c2"
+			}
+		}`}
+		previousDeps := deps
+		t.Cleanup(func() { deps = previousDeps })
+		InitDeps(caller)
+		deps.Out.w = io.Discard
+
+		cmd := &cobra.Command{Use: "search"}
+		AddPagedMCPFlags(cmd)
+		if err := cmd.Flags().Set("page-all", "true"); err != nil {
+			t.Fatal(err)
+		}
+		if err := cmd.Flags().Set("page-delay", "60000"); err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		cmd.SetContext(ctx)
+		err := runConversationScopedMessageSearch(
+			cmd,
+			"im",
+			"search_messages",
+			"openConversationIds",
+			map[string]any{"keyword": "周报", "limit": 100, "cursor": "0"},
+			[]string{"cid-target"},
+		)
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("error = %v, want context canceled", err)
+		}
+		if caller.searchCalls != 1 {
+			t.Fatalf("search calls = %d, want 1", caller.searchCalls)
+		}
+	})
+
 	t.Run("lower search error", func(t *testing.T) {
 		caller := &chatMessageSearchCaller{searchError: errors.New("search unavailable")}
 		_, err := executeNativeScopedSearch(t, caller,
@@ -521,13 +615,24 @@ func TestCrossPlatformCoverageNativeScopedSearchFailureAndPaginationBranches(t *
 	}
 }
 
-func TestNativeScopedSearchDryRunShowsCompositePlanWithoutCallingTools(t *testing.T) {
+func TestCrossPlatformCoverageNativeScopedSearchDryRunShowsCompositePlanWithoutCallingTools(t *testing.T) {
 	caller := &chatMessageSearchCaller{}
 	previousDeps := deps
 	t.Cleanup(func() { deps = previousDeps })
 	InitDeps(caller)
 	cmd := &cobra.Command{Use: "search"}
 	cmd.Flags().Bool("dry-run", true, "")
+	AddPagedMCPFlags(cmd)
+	for name, value := range map[string]string{
+		"page-all":   "true",
+		"page-limit": "7",
+		"max-items":  "9",
+		"page-delay": "11",
+	} {
+		if err := cmd.Flags().Set(name, value); err != nil {
+			t.Fatalf("set --%s: %v", name, err)
+		}
+	}
 	var output strings.Builder
 	cmd.SetOut(&output)
 	err := runConversationScopedMessageSearch(
@@ -561,6 +666,12 @@ func TestNativeScopedSearchDryRunShowsCompositePlanWithoutCallingTools(t *testin
 	arguments, _ := searchStage["arguments"].(map[string]any)
 	if _, exists := arguments["openConversationIds"]; exists {
 		t.Fatalf("dry-run global search still carries scope: %#v", searchStage)
+	}
+	if searchStage["pageAll"] != true ||
+		searchStage["pageLimit"] != float64(7) ||
+		searchStage["maxItems"] != float64(9) ||
+		searchStage["pageDelay"] != float64(11) {
+		t.Fatalf("dry-run paging = %#v", searchStage)
 	}
 }
 
