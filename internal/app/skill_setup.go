@@ -119,8 +119,8 @@ multi 模式支持按产品挑选：
   -x/--exclude 从全装里剔除指定子 skill（可重复，与 --skill 互斥）
   用 -s/-x 挑选时未列出的已有 dingtalk-* skill 会保留（additive 叠加语义）；
   不带过滤条件的全量安装会清理不在 bundle 内的过期 dingtalk-* / dws-shared。
-  setup 成功后记录本次官方清单；后续 dws upgrade 会刷新仍在本地的官方 skill，
-  自动加入新版新增 skill，并跳过本地已删除的旧 skill。dws upgrade --force 恢复全量。
+  setup 成功后记录本次官方清单；后续每次 dws upgrade 都按新版本官方清单
+  全量覆盖预制 skill，因此本地删除或 setup 时排除的预制 skill 会在升级时恢复。
 清理与备份（本命令可能移除的目录）：
   · 安装任一模式前会清理对面模式残留：装 mono 移除 <agent-home>/dingtalk-*，
     装 multi 移除 <agent-home>/dws/；全量 multi 安装还会移除不在 bundle 内的
@@ -275,7 +275,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 	if installed > 0 && skipped == 0 {
 		home, homeErr := skillSetupUserHomeDir()
 		if homeErr != nil {
-			return fmt.Errorf("Skill 已安装，但无法解析 HOME 以保存更新状态: %w", homeErr)
+			return fmt.Errorf("skill 已安装，但无法解析 HOME 以保存更新状态: %w", homeErr)
 		}
 		if mode == skillSetupModeMulti {
 			updatedSkillNames := append([]string(nil), multiSkillNames...)
@@ -290,7 +290,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 				UpdatedAt:      skillSetupNow().UTC().Format(time.RFC3339),
 			}
 			if stateErr := skillSetupWriteState(home, state); stateErr != nil {
-				return fmt.Errorf("Skill 已安装，但保存官方 Skill 信息快照失败: %w", stateErr)
+				return fmt.Errorf("skill 已安装，但保存官方 Skill 信息快照失败: %w", stateErr)
 			}
 		} else if stateErr := skillSetupRemoveState(home); stateErr != nil {
 			return fmt.Errorf("mono Skill 已安装，但清理 multi 更新状态失败: %w", stateErr)

@@ -209,8 +209,11 @@ _copy_skill_summary() {
     }
   fi
 
-  mkdir -p "$_dest"
-  cp -R "$_src/"* "$_dest/" 2>/dev/null || cp -r "$_src/"* "$_dest/"
+  mkdir -p "$_dest" || return 1
+  if ! cp -R "$_src/"* "$_dest/" 2>/dev/null && ! cp -r "$_src/"* "$_dest/"; then
+    printf '  ⚠️  Skill 复制失败，目标未计为安装成功: %s\n' "$_dest"
+    return 1
+  fi
   file_count="$(find "$_dest" -type f | wc -l | tr -d ' ')"
 
   printf '  ✅ Skills → %s (%s files)\n' "$_label" "$file_count"
@@ -229,8 +232,11 @@ _copy_skill() {
     }
   fi
 
-  mkdir -p "$_dest"
-  cp -R "$_src/"* "$_dest/" 2>/dev/null || cp -r "$_src/"* "$_dest/"
+  mkdir -p "$_dest" || return 1
+  if ! cp -R "$_src/"* "$_dest/" 2>/dev/null && ! cp -r "$_src/"* "$_dest/"; then
+    printf '  ⚠️  Skill 复制失败，目标未计为安装成功: %s\n' "$_dest"
+    return 1
+  fi
   file_count="$(find "$_dest" -type f | wc -l | tr -d ' ')"
 
   printf '  ✅ Skills → %s (%s files)\n' "$_label" "$file_count"
@@ -376,6 +382,7 @@ install_skills_to_root() {
   root="$2"
   installed=0
   attempted=0
+  failed=0
   idx=0
   for agent_dir in \
     ".agents/skills" \
@@ -409,6 +416,7 @@ install_skills_to_root() {
     backup_and_remove_skill_dir "$base_dir/dws-shared" || cleanup_ok=0
     if [ "$cleanup_ok" -ne 1 ]; then
       printf '  ⚠️  跳过 %s（multi 残留备份失败，未安装 mono）\n' "$base_dir"
+      failed=$((failed + 1))
       idx=$((idx + 1))
       continue
     fi
@@ -421,6 +429,7 @@ install_skills_to_root() {
     done
     if [ "$cleanup_ok" -ne 1 ]; then
       printf '  ⚠️  跳过 %s（multi 残留备份失败，未安装 mono）\n' "$base_dir"
+      failed=$((failed + 1))
       idx=$((idx + 1))
       continue
     fi
@@ -433,9 +442,13 @@ install_skills_to_root() {
     if [ "$installed" -eq 0 ]; then
       if _copy_skill "$skill_src" "$dest" "$label"; then
         installed=$((installed + 1))
+      else
+        failed=$((failed + 1))
       fi
     elif _copy_skill_summary "$skill_src" "$dest" "$label"; then
       installed=$((installed + 1))
+    else
+      failed=$((failed + 1))
     fi
     idx=$((idx + 1))
   done
@@ -447,10 +460,17 @@ install_skills_to_root() {
     fi
     if _copy_skill "$skill_src" "$root/.agents/skills/$SKILL_NAME" "$flabel"; then
       installed=$((installed + 1))
+    else
+      failed=$((failed + 1))
     fi
   fi
   if [ "$installed" -eq 0 ]; then
     printf '  ⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败\n'
+    return 1
+  fi
+  if [ "$failed" -gt 0 ]; then
+    printf '  ⚠️  有 %s 个 Agent 目标安装 mono Skill 失败\n' "$failed"
+    return 1
   fi
 }
 

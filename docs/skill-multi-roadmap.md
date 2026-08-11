@@ -71,6 +71,8 @@ Homebrew 不直接铺 Agent home，安装后由 `dws skill setup` 完成布局�
 - Go、npm、Shell、PowerShell 的缓存复制失败均保留旧缓存。
 - 多 Agent 目标彼此独立；一个目标失败不阻止其他目标尝试。upgrade 仅在无失败
   且至少一个目标成功时更新状态；setup 在至少一个目标安装成功后记录本次快照。
+  npm、Shell 和 PowerShell 安装器完成其余目标尝试后，只要有目标失败就以非零
+  状态结束，不再输出整体安装成功。
 
 ## 4. 决策记录
 

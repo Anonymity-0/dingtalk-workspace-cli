@@ -23,8 +23,11 @@
  *                             "invalid DWS_SKILL_MODE" error.
  *   4. multi-only zip, mono — mono install is skipped with a warning; the
  *                             staging root is NOT copied into a dws/ dir.
- *   5. backup failure       — preserves mono and writes no multi skill into
- *                             the failed Agent target.
+ *   5. multi backup failure — preserves mono, writes no multi skill, and
+ *                             reports postinstall failure.
+ *   6. mono backup failure  — preserves multi, writes no mono skill, and
+ *                             reports postinstall failure.
+ *   7. cache copy failure   — preserves the previous complete cache.
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
  * install.js itself shells out to). Skips cleanly on win32.
@@ -218,7 +221,7 @@ scenario("multi-only zip in mono mode skips skill install instead of copying sta
   }
 });
 
-scenario("backup failure preserves mono and writes no multi skills", () => {
+scenario("multi backup failure preserves mono and reports failure", () => {
   const { tmp, pkg, home } = stagePkg({
     "mono/SKILL.md": "# mono fixture\n",
     "multi/dingtalk-test/SKILL.md": "# dingtalk-test\n",
@@ -231,11 +234,31 @@ scenario("backup failure preserves mono and writes no multi skills", () => {
     writeFile(path.join(home, ".dws", "skill-backups"), "not a directory\n");
 
     const res = runInstall(pkg, home, "multi");
-    assert.equal(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
-    assert.match(res.stderr, /未安装 multi/);
+    assert.notEqual(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
+    assert.match(res.stderr, /未安装任何 multi Skill/);
     assert.equal(fs.readFileSync(path.join(base, "dws", "SKILL.md"), "utf8"), "old mono\n");
     assert.ok(!fs.existsSync(path.join(base, "dingtalk-test")), "product skill not installed after cleanup failure");
     assert.ok(!fs.existsSync(path.join(base, "dws-shared")), "shared skill not installed after cleanup failure");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("mono backup failure preserves multi and reports failure", () => {
+  const { tmp, pkg, home } = stagePkg({
+    "mono/SKILL.md": "# mono fixture\n",
+    "multi/dingtalk-test/SKILL.md": "# dingtalk-test\n",
+  });
+  try {
+    const base = path.join(home, ".agents", "skills");
+    writeFile(path.join(base, "dingtalk-test", "SKILL.md"), "old multi\n");
+    writeFile(path.join(home, ".dws", "skill-backups"), "not a directory\n");
+
+    const res = runInstall(pkg, home, "mono");
+    assert.notEqual(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
+    assert.match(res.stderr, /未安装任何 mono Skill/);
+    assert.equal(fs.readFileSync(path.join(base, "dingtalk-test", "SKILL.md"), "utf8"), "old multi\n");
+    assert.ok(!fs.existsSync(path.join(base, "dws")), "mono not installed after cleanup failure");
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

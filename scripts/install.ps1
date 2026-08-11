@@ -501,7 +501,9 @@ function Install-SkillsLocal {
     if ($SkillMode -eq "multi" -and (Test-MultiTreeHasSkills $multiSrc)) {
         Write-Say ""
         Write-Say "📦 Installing agent skills (multi) from local source: $multiSrc"
-        Install-MultiSkillsToHomes -MultiSrc $multiSrc -Root $HOME
+        if (!(Install-MultiSkillsToHomes -MultiSrc $multiSrc -Root $HOME)) {
+            throw "multi Skill installation failed"
+        }
     } else {
         if ($SkillMode -eq "multi") {
             Write-Say "⚠️  multi skill tree not found or empty at $multiSrc; falling back to mono."
@@ -515,7 +517,9 @@ function Install-SkillsLocal {
         Write-Say ""
         Write-Say "📦 Installing agent skills from local source: $skillSrc"
 
-        Install-SkillsToHomes -SkillSrc $skillSrc -Root $HOME
+        if (!(Install-SkillsToHomes -SkillSrc $skillSrc -Root $HOME)) {
+            throw "mono Skill installation failed"
+        }
     }
 
     if (Test-Path $multiSrc) {
@@ -565,6 +569,7 @@ function Install-SkillsToHomes {
 
     $installed = 0
     $attempted = 0
+    $failed = 0
     for ($i = 0; $i -lt $AgentDirs.Count; $i++) {
         $agentDir = $AgentDirs[$i]
         $baseDir = Join-Path $Root $agentDir
@@ -588,6 +593,7 @@ function Install-SkillsToHomes {
         }
         if (!$cleanupOK) {
             Write-Say "⚠️  跳过 $baseDir（multi 残留备份失败，未安装 mono）"
+            $failed++
             continue
         }
         $dest = Join-Path $baseDir $SkillName
@@ -603,6 +609,8 @@ function Install-SkillsToHomes {
         }
         if ($copied) {
             $installed++
+        } else {
+            $failed++
         }
     }
     if ($attempted -eq 0) {
@@ -614,11 +622,19 @@ function Install-SkillsToHomes {
         }
         if (Copy-SkillToDir -SkillSrc $SkillSrc -Dest $fallback -Label $flabel) {
             $installed++
+        } else {
+            $failed++
         }
     }
     if ($installed -eq 0) {
         Write-Say "⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败"
+        return $false
     }
+    if ($failed -gt 0) {
+        Write-Say "⚠️  有 $failed 个 Agent 目标安装 mono Skill 失败"
+        return $false
+    }
+    return $true
 }
 
 # Test-MultiTreeHasSkills returns $true only when the multi bundle directory
@@ -646,6 +662,7 @@ function Install-MultiSkillsToHomes {
 
     $installed = 0
     $attempted = 0
+    $failed = 0
     for ($i = 0; $i -lt $AgentDirs.Count; $i++) {
         $agentDir = $AgentDirs[$i]
         $baseDir = Join-Path $Root $agentDir
@@ -658,14 +675,25 @@ function Install-MultiSkillsToHomes {
             $installed++
         } else {
             Write-Say "⚠️  跳过 $baseDir（备份失败，未安装 multi）"
+            $failed++
         }
     }
-    if ($attempted -eq 0 -and (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir (Join-Path $Root ".agents\skills") -Root $Root -AgentDir ".agents\skills")) {
-        $installed++
+    if ($attempted -eq 0) {
+        if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir (Join-Path $Root ".agents\skills") -Root $Root -AgentDir ".agents\skills") {
+            $installed++
+        } else {
+            $failed++
+        }
     }
     if ($installed -eq 0) {
         Write-Say "⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败"
+        return $false
     }
+    if ($failed -gt 0) {
+        Write-Say "⚠️  有 $failed 个 Agent 目标安装 multi Skill 失败"
+        return $false
+    }
+    return $true
 }
 
 function Install-MultiToBase {
@@ -803,7 +831,9 @@ function Install-Skills {
         # lay down nothing.
         $multiRoot = Join-Path $extractRoot "multi"
         if ($SkillMode -eq "multi" -and (Test-MultiTreeHasSkills $multiRoot)) {
-            Install-MultiSkillsToHomes -MultiSrc $multiRoot -Root $HOME
+            if (!(Install-MultiSkillsToHomes -MultiSrc $multiRoot -Root $HOME)) {
+                throw "multi Skill installation failed"
+            }
         } else {
             if ($SkillMode -eq "multi") {
                 Write-Say "⚠️  multi skill tree not found or empty in release asset; falling back to mono."
@@ -818,7 +848,9 @@ function Install-Skills {
                 Write-Say "⚠️  No local source found either. Skipping skills installation."
                 return
             }
-            Install-SkillsToHomes -SkillSrc $skillSrc -Root $HOME
+            if (!(Install-SkillsToHomes -SkillSrc $skillSrc -Root $HOME)) {
+                throw "mono Skill installation failed"
+            }
         }
 
         # Cache the multi/ tree (and a mono copy) under ~/.dws/skills so that

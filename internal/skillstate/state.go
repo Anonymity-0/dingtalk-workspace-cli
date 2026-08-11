@@ -48,7 +48,7 @@ func Read(home string) (*State, bool, error) {
 	}
 	var state State
 	if err := json.Unmarshal(data, &state); err != nil {
-		return nil, false, fmt.Errorf("Skill 状态不可读: %w", err)
+		return nil, false, fmt.Errorf("skill 状态不可读: %w", err)
 	}
 	return &state, true, nil
 }
@@ -58,14 +58,14 @@ func Write(home string, state State) error {
 	state.UpdatedSkills = uniqueSorted(state.UpdatedSkills)
 	data, _ := json.MarshalIndent(state, "", "  ")
 	if err := helpers.AtomicWriteJSON(Path(home), append(data, '\n')); err != nil {
-		return fmt.Errorf("保存 Skill 状态失败: %w", err)
+		return fmt.Errorf("保存 skill 状态失败: %w", err)
 	}
 	return nil
 }
 
 func Remove(home string) error {
 	if err := skillStateRemove(Path(home)); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("清理 Skill 状态失败: %w", err)
+		return fmt.Errorf("清理 skill 状态失败: %w", err)
 	}
 	return nil
 }

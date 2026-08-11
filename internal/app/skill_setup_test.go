@@ -46,6 +46,20 @@ func TestCrossPlatformCoverageSkillSetupExamplesDoNotBypassConfirmation(t *testi
 	}
 }
 
+func TestCrossPlatformCoverageSkillSetupHelpDescribesFullUpgradeRefresh(t *testing.T) {
+	help := newSkillSetupCommand().Long
+	for _, want := range []string{"每次 dws upgrade", "全量覆盖预制 skill", "本地删除", "会在升级时恢复"} {
+		if !strings.Contains(help, want) {
+			t.Fatalf("skill setup help missing full-refresh contract %q:\n%s", want, help)
+		}
+	}
+	for _, stale := range []string{"跳过本地已删除", "--force 恢复全量"} {
+		if strings.Contains(help, stale) {
+			t.Fatalf("skill setup help still advertises retired incremental behavior %q:\n%s", stale, help)
+		}
+	}
+}
+
 // TestCrossPlatformCoverageSkillSetupDeclinedConfirmationNeverRemoves verifies
 // the destructive half of the setup contract: when the user declines the
 // confirmation prompt, nothing is installed and nothing is removed (neither

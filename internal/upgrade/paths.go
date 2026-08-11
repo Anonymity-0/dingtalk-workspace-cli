@@ -237,7 +237,7 @@ func UpgradeSkillLocationsWithOptions(extractedDir string, opts SkillUpgradeOpti
 				UpdatedAt:      upgradeNow().UTC().Format(time.RFC3339),
 			}
 			if writeErr := upgradeWriteSkillState(homeDir, state); writeErr != nil {
-				return result, fmt.Errorf("Skill 已同步但状态未写入: %w", writeErr)
+				return result, fmt.Errorf("skill 已同步但状态未写入: %w", writeErr)
 			}
 		}
 		return result, nil

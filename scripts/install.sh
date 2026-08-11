@@ -452,6 +452,7 @@ install_skills_to_homes() {
   root="${HOME}"
   installed=0
   attempted=0
+  failed=0
   idx=0
   for agent_dir in \
     ".agents/skills" \
@@ -485,6 +486,7 @@ install_skills_to_homes() {
     backup_and_remove_skill_dir "$base_dir/dws-shared" || cleanup_ok=0
     if [ "$cleanup_ok" -ne 1 ]; then
       say "  ⚠️  跳过 ${base_dir}（multi 残留备份失败，未安装 mono）"
+      failed=$((failed + 1))
       idx=$((idx + 1))
       continue
     fi
@@ -497,6 +499,7 @@ install_skills_to_homes() {
     done
     if [ "$cleanup_ok" -ne 1 ]; then
       say "  ⚠️  跳过 ${base_dir}（multi 残留备份失败，未安装 mono）"
+      failed=$((failed + 1))
       idx=$((idx + 1))
       continue
     fi
@@ -512,9 +515,13 @@ install_skills_to_homes() {
     if [ "$installed" -eq 0 ]; then
       if _copy_skill "$skill_src" "$dest" "$label"; then
         installed=$((installed + 1))
+      else
+        failed=$((failed + 1))
       fi
     elif _copy_skill_summary "$skill_src" "$dest" "$label"; then
       installed=$((installed + 1))
+    else
+      failed=$((failed + 1))
     fi
     idx=$((idx + 1))
   done
@@ -529,10 +536,17 @@ install_skills_to_homes() {
     esac
     if _copy_skill "$skill_src" "$root/.agents/skills/$SKILL_NAME" "$flabel"; then
       installed=$((installed + 1))
+    else
+      failed=$((failed + 1))
     fi
   fi
   if [ "$installed" -eq 0 ]; then
     say "  ⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败"
+    return 1
+  fi
+  if [ "$failed" -gt 0 ]; then
+    say "  ⚠️  有 ${failed} 个 Agent 目标安装 mono Skill 失败"
+    return 1
   fi
 }
 
@@ -675,8 +689,11 @@ _copy_skill_summary() {
     }
   fi
 
-  mkdir -p "$_dest"
-  cp -R "$_src/"* "$_dest/" 2>/dev/null || cp -r "$_src/"* "$_dest/"
+  mkdir -p "$_dest" || return 1
+  if ! cp -R "$_src/"* "$_dest/" 2>/dev/null && ! cp -r "$_src/"* "$_dest/"; then
+    say "  ⚠️  Skill 复制失败，目标未计为安装成功: $_dest"
+    return 1
+  fi
   file_count="$(find "$_dest" -type f | wc -l | tr -d ' ')"
 
   say "✅ Skills → ${_label} (${file_count} files)"
@@ -695,8 +712,11 @@ _copy_skill() {
     }
   fi
 
-  mkdir -p "$_dest"
-  cp -R "$_src/"* "$_dest/" 2>/dev/null || cp -r "$_src/"* "$_dest/"
+  mkdir -p "$_dest" || return 1
+  if ! cp -R "$_src/"* "$_dest/" 2>/dev/null && ! cp -r "$_src/"* "$_dest/"; then
+    say "  ⚠️  Skill 复制失败，目标未计为安装成功: $_dest"
+    return 1
+  fi
   file_count="$(find "$_dest" -type f | wc -l | tr -d ' ')"
 
   say "✅ Skills → ${_label} (${file_count} files)"

@@ -4,6 +4,11 @@
 > multi（按产品拆分），两套并行期后下掉 mono。
 > 本文基于对分发/消费链路的代码级梳理（2026-08-04），所有锚点均可跳转验证。
 > 机制调研与 lark-cli 对标细节：[skill-distribution-mechanism.md](skill-distribution-mechanism.md)
+>
+> **历史文档说明：**本文保留 2026-08-04/05 的方案演进与当时盘点，不再作为
+> 当前实现事实源。备份、状态快照和升级集合等最终语义以
+> [skill-multi-roadmap.md](skill-multi-roadmap.md) 为准：当前每次 upgrade 都按
+> 新版本官方清单全量覆盖预制 Skill，不持久化本地删除/排除选择。
 
 ## 1. 目标与约束
 
@@ -281,10 +286,10 @@ P0b state.json ─┼─► P0a upgrade mode-aware ─► P1 skill mode ─► P
 
 ### 8.3 风险最高的两处（先动）
 
-1. **P0a upgrade multi 刷新语义**：additive 安装 vs upgrade 全量刷新之间存在
-   一个真实设计题 —— 用户手动 `-x` 排除过的 skill，upgrade 要不要装回来？
-   答案：以 state.json 的 `installed` 为准做增量刷新，未装的不得补装
-   （否则违背 additive 语义）。这条必须在 P0a 开工前定死。
+1. **P0a upgrade multi 刷新语义**：additive setup 与 upgrade 全量刷新之间的
+   选择已经由后续 owner 决策收敛：`-s`/`-x` 只影响本次 setup；每次 upgrade
+   都按新版本官方清单全量覆盖，用户手工删除或 setup 排除的预制 Skill 会恢复。
+   状态文件只保留信息快照，不参与安装集合选择。
 2. **P0-3 备份回滚改语义**：现有测试断言"清理失败继续装"，改语义会动
    `skill_setup_full_coverage_test.go` 多处；回滚恢复顺序（先恢复再报错）
    要用故障注入测试覆盖。

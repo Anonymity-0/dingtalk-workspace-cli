@@ -1061,10 +1061,16 @@ func TestInstallScriptBackupFailureKeepsOriginalDir(t *testing.T) {
 	mustWriteFile(t, filepath.Join(fixture.fakeHome, ".dws", "skill-backups"), []byte("not a directory\n"), 0o644)
 	seedAgentHome(t, fixture.fakeHome, "dws", "old mono\n")
 
-	out := runInstallScript(t, fixture.scriptPath, fixture.envWithSkillMode("mono",
+	monoCmd := exec.Command("sh", fixture.scriptPath)
+	monoCmd.Env = fixture.envWithSkillMode("mono",
 		"DWS_INSTALL_DIR="+installDir,
 		"DWS_NO_SKILLS=0",
-	))
+	)
+	monoOutput, monoErr := monoCmd.CombinedOutput()
+	if monoErr == nil {
+		t.Fatalf("mono install unexpectedly succeeded after backup failure:\n%s", monoOutput)
+	}
+	out := string(monoOutput)
 	if !strings.Contains(out, "保留原目录") {
 		t.Fatalf("expected backup-failure warning in mono output:\n%s", out)
 	}
@@ -1170,7 +1176,7 @@ func TestInstallPowerShellBackupFailureWritesNoMultiSkills(t *testing.T) {
 	}
 	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
 	prefix += `
-$ok = Install-MultiToBase -MultiSrc $env:DWS_TEST_MULTI -BaseDir $env:DWS_TEST_BASE -Root $env:DWS_TEST_HOME -AgentDir ".agents\skills"
+$ok = Install-MultiSkillsToHomes -MultiSrc $env:DWS_TEST_MULTI -Root $env:DWS_TEST_HOME
 if ($ok) { exit 2 }
 exit 0
 `
@@ -1188,7 +1194,6 @@ exit 0
 	cmd.Env = append(os.Environ(),
 		"DWS_TEST_HOME="+home,
 		"DWS_TEST_MULTI="+multi,
-		"DWS_TEST_BASE="+base,
 	)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("PowerShell harness failed: %v\n%s", err, output)
@@ -1198,6 +1203,73 @@ exit 0
 	}
 	if _, err := os.Stat(filepath.Join(base, "dingtalk-test")); !os.IsNotExist(err) {
 		t.Fatalf("PowerShell installed multi after backup failure, stat err=%v", err)
+	}
+}
+
+func TestInstallPowerShellMultiMonoSwitchEndToEnd(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			pwsh, err = exec.LookPath("powershell")
+		}
+		if err != nil {
+			t.Skip("PowerShell is not available")
+		}
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.ps1 main section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	prefix += `
+if (!(Install-MultiSkillsToHomes -MultiSrc $env:DWS_TEST_MULTI -Root $env:DWS_TEST_HOME)) { exit 2 }
+if (!(Install-SkillsToHomes -SkillSrc $env:DWS_TEST_MONO -Root $env:DWS_TEST_HOME)) { exit 3 }
+if (!(Install-MultiSkillsToHomes -MultiSrc $env:DWS_TEST_MULTI -Root $env:DWS_TEST_HOME)) { exit 4 }
+exit 0
+`
+	harnessPath := filepath.Join(t.TempDir(), "install-switch-harness.ps1")
+	mustWriteFile(t, harnessPath, []byte(prefix), 0o644)
+
+	home := t.TempDir()
+	base := filepath.Join(home, ".agents", "skills")
+	multi := filepath.Join(t.TempDir(), "multi")
+	mono := filepath.Join(t.TempDir(), "mono")
+	mustWriteFile(t, filepath.Join(multi, "dingtalk-test", "SKILL.md"), []byte("new multi\n"), 0o644)
+	mustWriteFile(t, filepath.Join(multi, "dingtalk-shared", "SKILL.md"), []byte("shared\n"), 0o644)
+	mustWriteFile(t, filepath.Join(mono, "SKILL.md"), []byte("new mono\n"), 0o644)
+	mustWriteFile(t, filepath.Join(base, "user-owned", "SKILL.md"), []byte("keep\n"), 0o644)
+
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(),
+		"DWS_TEST_HOME="+home,
+		"DWS_TEST_MULTI="+multi,
+		"DWS_TEST_MONO="+mono,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("PowerShell multi -> mono -> multi harness failed: %v\n%s", err, output)
+	}
+	for _, name := range []string{"dingtalk-test", "dingtalk-shared"} {
+		if _, err := os.Stat(filepath.Join(base, name, "SKILL.md")); err != nil {
+			t.Fatalf("PowerShell final multi layout missing %s: %v\n%s", name, err, output)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(base, "dws")); !os.IsNotExist(err) {
+		t.Fatalf("PowerShell final multi layout retained mono dws/: %v\n%s", err, output)
+	}
+	if got, err := os.ReadFile(filepath.Join(base, "user-owned", "SKILL.md")); err != nil || string(got) != "keep\n" {
+		t.Fatalf("PowerShell switch changed non-DWS Skill: data=%q err=%v", got, err)
+	}
+	if matches, err := filepath.Glob(filepath.Join(home, ".dws", "skill-backups", "*", "*")); err != nil || len(matches) == 0 {
+		t.Fatalf("PowerShell switch created no recoverable backups: matches=%v err=%v\n%s", matches, err, output)
 	}
 }
 
@@ -1309,6 +1381,64 @@ fi
 			}
 			if _, err := os.Stat(filepath.Join(base, "dingtalk-test", "SKILL.md")); !os.IsNotExist(err) {
 				t.Fatalf("%s left a completed Skill after copy failure: %v", scriptName, err)
+			}
+		})
+	}
+}
+
+func TestInstallerShellMonoCopyFailureReturnsFailure(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			source := filepath.Join(t.TempDir(), "mono")
+			base := filepath.Join(home, ".agents", "skills")
+			mustWriteFile(t, filepath.Join(source, "SKILL.md"), []byte("new mono\n"), 0o644)
+
+			installCall := `install_skills_to_homes "$DWS_TEST_SOURCE"`
+			if scriptName == "install-skills.sh" {
+				installCall = `install_skills_to_root "$DWS_TEST_SOURCE" "$HOME"`
+			}
+			harness := `. "$DWS_TEST_LIBRARY"
+cp() { return 1; }
+if ` + installCall + `; then
+  exit 2
+fi
+`
+			cmd := exec.Command("sh", "-c", harness)
+			cmd.Env = append(os.Environ(),
+				"HOME="+home,
+				"DWS_TEST_LIBRARY="+library,
+				"DWS_TEST_SOURCE="+source,
+			)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s mono copy-failure harness failed: %v\n%s", scriptName, err, output)
+			}
+			if strings.Contains(string(output), "✅ Skills") {
+				t.Fatalf("%s reported mono success after copy failure:\n%s", scriptName, output)
+			}
+			if !strings.Contains(string(output), "未安装任何 mono Skill") {
+				t.Fatalf("%s did not report aggregate mono install failure:\n%s", scriptName, output)
+			}
+			if _, err := os.Stat(filepath.Join(base, "dws", "SKILL.md")); !os.IsNotExist(err) {
+				t.Fatalf("%s left a completed mono Skill after copy failure: %v", scriptName, err)
 			}
 		})
 	}

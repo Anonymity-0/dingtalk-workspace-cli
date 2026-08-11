@@ -226,6 +226,7 @@ function installSkillsToHomes(skillRoot) {
   const homeDir = os.homedir();
   let installed = 0;
   let attempted = 0;
+  let failed = 0;
 
   AGENT_DIRS.forEach((agentDir, index) => {
     const baseDir = path.join(homeDir, agentDir);
@@ -243,6 +244,7 @@ function installSkillsToHomes(skillRoot) {
         if (entry.isDirectory() && (entry.name.startsWith("dingtalk-") || entry.name === "dws-shared")) {
           if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name))) {
             console.warn(`⚠️  跳过 ${baseDir}（multi 残留备份失败，未安装 mono）`);
+            failed += 1;
             return;
           }
         }
@@ -253,6 +255,7 @@ function installSkillsToHomes(skillRoot) {
       // Refreshing an existing skill: on backup failure keep the user's
       // copy and skip this target.
       console.warn(`⚠️  跳过 ${destDir}（保留原目录）`);
+      failed += 1;
       return;
     }
     copyChildren(skillRoot, destDir);
@@ -264,7 +267,10 @@ function installSkillsToHomes(skillRoot) {
     installed += 1;
   }
   if (installed === 0) {
-    console.warn("⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败");
+    throw new Error("未安装任何 mono Skill：所有检测到的 Agent 目标均失败");
+  }
+  if (failed > 0) {
+    throw new Error(`有 ${failed} 个 Agent 目标安装 mono Skill 失败`);
   }
 }
 
@@ -299,6 +305,7 @@ function installMultiSkillsToHomes(multiRoot) {
   const skillSet = new Set(skills);
   let installed = 0;
   let attempted = 0;
+  let failed = 0;
 
   const installToBase = (baseDir) => {
     fs.mkdirSync(baseDir, { recursive: true });
@@ -346,14 +353,23 @@ function installMultiSkillsToHomes(multiRoot) {
     attempted += 1;
     if (installToBase(baseDir)) {
       installed += 1;
+    } else {
+      failed += 1;
     }
   });
 
-  if (attempted === 0 && installToBase(path.join(homeDir, ".agents", "skills"))) {
-    installed += 1;
+  if (attempted === 0) {
+    if (installToBase(path.join(homeDir, ".agents", "skills"))) {
+      installed += 1;
+    } else {
+      failed += 1;
+    }
   }
   if (installed === 0) {
-    console.warn("⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败");
+    throw new Error("未安装任何 multi Skill：所有检测到的 Agent 目标均失败");
+  }
+  if (failed > 0) {
+    throw new Error(`有 ${failed} 个 Agent 目标安装 multi Skill 失败`);
   }
 }
 

@@ -7,13 +7,18 @@
 > 任务 ID 复用 [skill-multi-migration-plan.md](skill-multi-migration-plan.md) §8.2
 > （P0a/P0b/P0c/P0-3/P0-4/P1-1/P1-2/P2-x/W4）；新增项以 `P1-3`、`C1–C7` 编号。
 > 机制背景见 [skill-distribution-mechanism.md](skill-distribution-mechanism.md)。
+>
+> **历史盘点说明：**本文记录 2026-08-05 的缺口快照，不再作为当前实现事实源。
+> 后续已经落地状态信息快照、删除前可恢复备份、失败跳过目标以及官方 Skill
+> 全量覆盖升级；当前语义与完成状态以
+> [skill-multi-roadmap.md](skill-multi-roadmap.md) 为准。特别是本文关于
+> “按 `state.installed` 增量刷新、未装不补装”的建议已经被 owner 决策取代。
 
 ## 0. 结论速览
 
-- **管理面**：默认翻转已落地（setup/四个安装脚本/upgrade 识 multi），但生命周期
-  能力仍缺 6/8 项：无状态（state.json）、无备份回滚、无卸载、无故障恢复、
-  upgrade 不按已装清单做增量、市场/内置边界靠前缀约定。当前形态 = "能装上
-  multi，但装成什么样、出了事怎么退，全靠运气"。
+- **管理面（当时结论，已被后续实现部分补齐）**：默认翻转已落地，但当时仍缺
+  状态、备份与故障恢复等能力。当前已采用信息快照、删除前备份、失败跳过目标和
+  官方 Skill 全量覆盖升级；未完成项请以 current roadmap 为准。
 - **内容面**：multi 对产品参考的覆盖**总体是 mono 超集**（chat/event/dev/sheet
   均更详细），但 mono 有 **4 块全局能力在 multi 完全缺失**（recovery 闭环、
   确认门禁协议、Schema 渐进查询教学、LICENSE/NOTICE），另有 1 个脚本
@@ -83,7 +88,7 @@
 | 3 | **回滚** | **无备份**。setup/upgrade/安装脚本全部 `RemoveAll`/`rm -rf` 直删（`skill_setup.go:616,655`、`paths.go:181,249,307`、`install.js` `fs.rmSync`）；`upgrade --rollback` 只回二进制 | 🔴 | **P0-3** 备份式安装：`RemoveAll` → `mv` 到 `~/.dws/skills/backup/<ts>-<mode>/`，保留最近 2 份，任一 home 失败自动恢复并非 0 退出；**P1-1** `mode rollback` 一条命令回到 `state.previous` |
 | 4 | **版本对齐** | embed 天然同版（setup 默认源，`skill_setup_embed.go:50-58`）✓；但 `~/.dws/skills` 缓存**只写不读**（仅 legacy 回退候选，`skill_setup.go:445-447`），upgrade 只刷 multi 缓存不刷 mono（`paths.go:290-296`），漂移不可见 | 🟡 | **P0b-1** state.json 记 `cli_version` 使漂移可见；**P0a-1** upgrade 按 mode 同步刷新对应缓存（或评估废弃缓存，plan §6 风险表末行） |
 | 5 | **卸载** | **无 remove**。skill 子命令仅 get/install/search/setup（`skill_command.go:202-209`）；用户只能手动删目录，且不知道该删哪些（16 个 home × N 个 skill） | 🟡 | **新增 P1-3** `dws skill remove`：按 state.json 的 `agent_homes`×`installed` 精确删除内置 skill（`dingtalk-*`+`dws-shared`+`dws/`），不动市场 skill；`--dry-run` 预览（依赖 P0b） |
-| 6 | **局部更新** | setup 侧 additive 语义完整（`-s/-x`，未点名保留）；但 **upgrade 增量语义未按 `state.installed`**：`UpgradeSkillLocations` 用 zip 内 bundle 全集刷新（`paths.go:135-137`、`339-358`），用户 `-x` 排除过的 skill 会被升级装回来 | 🔴 | plan §8.3-1 已定死语义（以 `state.installed` 为准增量刷新、未装不补装）；**P0b-1** 先落 `installed` 列表，**P0a-1** `UpgradeSkillLocations(dir, mode)` 按其过滤 |
+| 6 | **局部更新** | setup 的 `-s`/`-x` 只决定本次安装；upgrade 按新版本官方清单全量覆盖，因此会恢复本地删除或 setup 排除的预制 Skill | 已决策 | 后续 owner 决策明确不持久化本地删除选择；状态文件只作信息快照，不参与安装集合选择 |
 | 7 | **故障恢复** | **无**。setup 清理/拷贝失败仅 warning 或按 home 跳过，留半装态；upgrade 的 skill 失败发生在二进制替换之后（`upgrade.go:593-611`），半升级态无自动恢复、无修复命令 | 🔴 | **P0-3** 备份式安装 + 失败整体回滚（改变「warning 继续装」语义，需同步改 `skill_setup_full_coverage_test.go` 多处断言，plan §8.3-2）；**P0b-2** drift 检测给显式收敛指令；**P1-1** `mode rollback` |
 | 8 | **市场 vs 内置边界** | **隐性前缀约定**：互斥清理按 `dingtalk-`/`dws-shared` 名称扫描（`paths.go:332-334`、`skill_setup.go:581`），无 SKILL.md frontmatter 校验 —— 市场 skill 若同名前缀会被误删；反向地，市场 `install` 解压无保护，可覆盖内置 `dingtalk-*`（`skill_command.go:653-672`） | 🟡 | plan §6 风险行：清理前校验目录内 SKILL.md frontmatter 属 DWS 产品集并写成测试（落入 **P0-3** 的清理改造）；长期由 state.json 的 `installed` 清单取代前缀扫描（P0b 后续） |
 
