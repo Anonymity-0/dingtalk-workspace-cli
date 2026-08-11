@@ -675,6 +675,7 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		"filename === '.github/actionlint.yaml'",
 		"filename.startsWith('scripts/')",
 		"filename.startsWith('verify/')",
+		"filename.startsWith('internal/helpers/')",
 		"filename === 'test/fixtures/cli-interface-baseline.txt'",
 		"filename.startsWith('internal/interfacesnapshot/')",
 		"filename.startsWith('internal/cobracmd/')",
