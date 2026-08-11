@@ -6,6 +6,7 @@ package helpers
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
@@ -73,6 +74,9 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 		}
 		if env.Meta.Operation.State != "waiting_for_approver_selection" || env.Meta.Operation.NextCommand == "" {
 			t.Fatalf("approval operation=%+v", env.Meta.Operation)
+		}
+		if strings.Contains(env.Meta.Operation.NextCommand, "--yes") {
+			t.Fatalf("approval next_command bypasses confirmation: %q", env.Meta.Operation.NextCommand)
 		}
 	})
 
@@ -235,6 +239,30 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 			t.Fatalf("dry-run invalid success envelope=%+v", env)
 		}
 	})
+}
+
+func TestDevAppRecoveryCommandsDoNotBypassConfirmation(t *testing.T) {
+	steps := append(devAppRobotPublishSteps("u1"), devAppRobotRetryStep("task1", true))
+	approval := map[string]any{
+		"approvalMode": "SELECT_APPROVER",
+		"unifiedAppId": "u1",
+		"versionId":    "v1",
+		"approvalCandidates": []any{
+			map[string]any{"userId": "user-1", "name": "Alice"},
+		},
+	}
+	normalizeDevAppVersionApproval(approval)
+	steps = append(steps, approval["nextSteps"].([]map[string]any)...)
+	for _, step := range steps {
+		for _, key := range []string{"command", "dryRunCommand"} {
+			command, _ := step[key].(string)
+			for _, field := range strings.Fields(command) {
+				if field == "--yes" || strings.HasPrefix(field, "--yes=") {
+					t.Fatalf("step %v publishes confirmation bypass in %s: %q", step["id"], key, command)
+				}
+			}
+		}
+	}
 }
 
 func TestFrameworkDevAppMapperBoundaryMatrix(t *testing.T) {

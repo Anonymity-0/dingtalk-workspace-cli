@@ -2388,7 +2388,7 @@ func normalizeDevAppVersionApproval(content map[string]any) {
 		},
 		devAppNextStep(devAppStep{
 			ID:            "publish_version",
-			Command:       fmt.Sprintf("dws dev app version publish --unified-app-id %s --version-id %s --approver-user-id <selectedUserId> --yes --format json", unifiedAppID, versionID),
+			Command:       fmt.Sprintf("dws dev app version publish --unified-app-id %s --version-id %s --approver-user-id <selectedUserId> --format json", unifiedAppID, versionID),
 			DryRunCommand: fmt.Sprintf("dws dev app version publish --unified-app-id %s --version-id %s --approver-user-id <selectedUserId> --dry-run --format json", unifiedAppID, versionID),
 			DoneWhen:      "approvalSubmitted=true、versionStatus=AUDIT 或 processStatus=UNDER_REVIEW 表示已提交审批；published=true 表示已发布",
 			Blocking:      true,
@@ -2510,7 +2510,7 @@ func devAppRobotPublishSteps(appID string) []map[string]any {
 	steps := []map[string]any{
 		devAppNextStep(devAppStep{
 			ID:            "create_version",
-			Command:       fmt.Sprintf("dws dev app version create --unified-app-id %s --desc \"发布机器人能力\" --yes --format json", appID),
+			Command:       fmt.Sprintf("dws dev app version create --unified-app-id %s --desc \"发布机器人能力\" --format json", appID),
 			DryRunCommand: fmt.Sprintf("dws dev app version create --unified-app-id %s --desc \"发布机器人能力\" --dry-run --format json", appID),
 			DoneWhen:      "返回 versionId",
 			Blocking:      true,
@@ -2523,7 +2523,7 @@ func devAppRobotPublishSteps(appID string) []map[string]any {
 		}),
 		devAppNextStep(devAppStep{
 			ID:                "publish_version",
-			Command:           fmt.Sprintf("dws dev app version publish --unified-app-id %s --version-id <versionId> --yes --format json", appID),
+			Command:           fmt.Sprintf("dws dev app version publish --unified-app-id %s --version-id <versionId> --format json", appID),
 			DryRunCommand:     fmt.Sprintf("dws dev app version publish --unified-app-id %s --version-id <versionId> --dry-run --format json", appID),
 			DoneWhen:          "published=true 表示已发布；approvalSubmitted=true、versionStatus=AUDIT 或 processStatus=UNDER_REVIEW 表示已提交审批；SELECT_APPROVER 时必须先让用户从 approvalCandidates 选择审批人后追加 --approver-user-id",
 			RequiresUserInput: true,
@@ -2574,7 +2574,7 @@ func devAppRobotRetryStep(taskID string, reuseTaskID bool) map[string]any {
 	}
 	return devAppNextStep(devAppStep{
 		ID:            "retry_robot_submit",
-		Command:       fmt.Sprintf("dws dev app robot submit --name <name> --robot-name <robotName> --desc <desc>%s --yes --format json", taskIDFlag),
+		Command:       fmt.Sprintf("dws dev app robot submit --name <name> --robot-name <robotName> --desc <desc>%s --format json", taskIDFlag),
 		DryRunCommand: fmt.Sprintf("dws dev app robot submit --name <name> --robot-name <robotName> --desc <desc>%s --dry-run --format json", taskIDFlag),
 		DoneWhen:      "返回新的 WAITING taskId；FAIL 场景优先复用原 taskId，EXPIRED 场景重新提交",
 		Blocking:      true,
