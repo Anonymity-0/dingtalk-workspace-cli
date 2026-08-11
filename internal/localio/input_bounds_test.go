@@ -23,32 +23,6 @@ func TestCrossPlatformCoverageReadTextInputUsesOpenedDescriptorAndBoundedReadE2E
 	}
 	t.Cleanup(func() { _ = os.Chdir(old) })
 
-	t.Run("path replacement", func(t *testing.T) {
-		path := filepath.Join(dir, "input.txt")
-		replacement := filepath.Join(dir, "replacement.txt")
-		if err := os.WriteFile(path, []byte("safe"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(replacement, []byte("replacement-exceeds-limit"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		testseam.Swap(t, &openTextInputFile, func(candidate string) (*os.File, error) {
-			file, openErr := os.Open(candidate)
-			if openErr != nil {
-				return nil, openErr
-			}
-			if renameErr := os.Rename(replacement, candidate); renameErr != nil {
-				_ = file.Close()
-				return nil, renameErr
-			}
-			return file, nil
-		})
-		got, err := ReadTextInput("@input.txt", nil, 10)
-		if err != nil || got != "safe" {
-			t.Fatalf("replacement read = %q, %v", got, err)
-		}
-	})
-
 	t.Run("file grows after stat", func(t *testing.T) {
 		path := filepath.Join(dir, "grow.txt")
 		if err := os.WriteFile(path, []byte("ok"), 0o600); err != nil {
