@@ -38,6 +38,7 @@
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import url from "node:url";
@@ -51,6 +52,8 @@ const PLATFORM_MAP = {
 
 const repoRoot = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), "..", "..");
 const installJsSource = path.join(repoRoot, "build", "npm", "install.js");
+const require = createRequire(import.meta.url);
+const { publishCacheAtomically } = require(installJsSource);
 const assetName = PLATFORM_MAP[`${process.platform}-${process.arch}`];
 
 if (process.platform === "win32" || !assetName) {
@@ -233,6 +236,33 @@ scenario("backup failure preserves mono and writes no multi skills", () => {
     assert.equal(fs.readFileSync(path.join(base, "dws", "SKILL.md"), "utf8"), "old mono\n");
     assert.ok(!fs.existsSync(path.join(base, "dingtalk-test")), "product skill not installed after cleanup failure");
     assert.ok(!fs.existsSync(path.join(base, "dws-shared")), "shared skill not installed after cleanup failure");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("cache copy failure preserves the previous complete cache", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-cache-"));
+  const source = path.join(tmp, "source");
+  const cache = path.join(tmp, "skills", "multi");
+  try {
+    writeFile(path.join(source, "dingtalk-new", "SKILL.md"), "new cache\n");
+    writeFile(path.join(cache, "dingtalk-old", "SKILL.md"), "old cache\n");
+
+    assert.throws(
+      () =>
+        publishCacheAtomically(source, cache, (_src, staged) => {
+          writeFile(path.join(staged, "partial", "SKILL.md"), "partial\n");
+          throw new Error("injected cache copy failure");
+        }),
+      /injected cache copy failure/,
+    );
+    assert.equal(fs.readFileSync(path.join(cache, "dingtalk-old", "SKILL.md"), "utf8"), "old cache\n");
+    assert.ok(!fs.existsSync(path.join(cache, "dingtalk-new")), "failed refresh must not publish new cache");
+    assert.ok(
+      !fs.readdirSync(path.dirname(cache)).some((name) => name.startsWith(".multi.tmp-")),
+      "failed refresh must clean its staging directory",
+    );
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

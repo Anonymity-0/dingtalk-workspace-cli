@@ -93,6 +93,55 @@ backup_and_remove_skill_dir() {
   return 1
 }
 
+# publish_skill_cache <source> <cache-dir>
+# Copies a complete cache into a sibling staging directory, then publishes it
+# with rename. Copy/publish failures retain the previous cache; if restoration
+# itself fails, the recovery directory is reported and left untouched.
+publish_skill_cache() {
+  _psc_src="$1"
+  _psc_cache="$2"
+  _psc_parent="$(dirname "$_psc_cache")"
+  _psc_name="$(basename "$_psc_cache")"
+  _psc_stage=""
+  _psc_old=""
+
+  mkdir -p "$_psc_parent" || return 1
+  _psc_stage="$(mktemp -d "$_psc_parent/.${_psc_name}.tmp.XXXXXX")" || return 1
+  if ! cp -R "$_psc_src/." "$_psc_stage/" 2>/dev/null && \
+     ! cp -r "$_psc_src/." "$_psc_stage/" 2>/dev/null; then
+    rm -rf "$_psc_stage"
+    return 1
+  fi
+
+  if [ -e "$_psc_cache" ]; then
+    _psc_old="$(mktemp -d "$_psc_parent/.${_psc_name}.old.XXXXXX")" || {
+      rm -rf "$_psc_stage"
+      return 1
+    }
+    rmdir "$_psc_old" || {
+      rm -rf "$_psc_stage" "$_psc_old"
+      return 1
+    }
+    if ! mv "$_psc_cache" "$_psc_old"; then
+      rm -rf "$_psc_stage"
+      return 1
+    fi
+  fi
+
+  if mv "$_psc_stage" "$_psc_cache"; then
+    if [ -n "$_psc_old" ] && ! rm -rf "$_psc_old"; then
+      say "  ⚠️ 新 Skill 缓存已生效，但旧缓存清理失败: $_psc_old"
+    fi
+    return 0
+  fi
+
+  rm -rf "$_psc_stage"
+  if [ -n "$_psc_old" ] && ! mv "$_psc_old" "$_psc_cache"; then
+    say "  ⚠️ Skill 缓存发布失败，原缓存保留在 $_psc_old"
+  fi
+  return 1
+}
+
 resolve_source_root() {
   script_path="$0"
   if [ ! -f "$script_path" ]; then
@@ -364,9 +413,10 @@ cache_multi_skills() {
   # Never let an empty/corrupt multi/ tree wipe a previously good cache.
   multi_tree_has_skills "$src" || return 0
 
-  rm -rf "$cache_dir"
-  mkdir -p "$cache_dir"
-  cp -R "$src/"* "$cache_dir/" 2>/dev/null || cp -r "$src/"* "$cache_dir/" 2>/dev/null || true
+  if ! publish_skill_cache "$src" "$cache_dir"; then
+    say "⚠️  Multi Skill 缓存刷新失败，未覆盖原缓存: ${cache_dir}"
+    return 0
+  fi
 
   file_count="$(find "$cache_dir" -type f | wc -l | tr -d ' ')"
   case "$cache_dir" in
@@ -389,9 +439,9 @@ cache_mono_skills() {
     return 0
   fi
 
-  rm -rf "$cache_dir"
-  mkdir -p "$cache_dir"
-  cp -R "$src/"* "$cache_dir/" 2>/dev/null || cp -r "$src/"* "$cache_dir/" 2>/dev/null || true
+  if ! publish_skill_cache "$src" "$cache_dir"; then
+    say "⚠️  Mono Skill 缓存刷新失败，未覆盖原缓存: ${cache_dir}"
+  fi
 }
 
 # Install skill tree into all agent homes (same rules as build/npm/install.js installSkillsToHomes).

@@ -1,154 +1,127 @@
 # Skill multi 迁移：技术方案（as-implemented）与 Roadmap
 
-> 本文是 multi 迁移的当前事实源：第一部分记录**已落地实现**（代码级锚点，
-> 均可跳转验证），第二部分是带实时状态的 roadmap。
-> 原始方案 [skill-multi-migration-plan.md](skill-multi-migration-plan.md) 的
-> 若干"待做"描述已被后续决策取代（见决策记录 D1/D5）；分发机制调研结论见
-> [skill-distribution-mechanism.md](skill-distribution-mechanism.md)。
-> 代码快照：`feat/skill-mode-migration` @ `402429ac` + 工作区
-> upgrade-force-multi 调整（2026-08-05）。
+> 本文是 multi 迁移的当前事实源，记录 PR #922 在 2026-08-11 的最终实现。
+> 原始设计过程见 [skill-multi-migration-plan.md](skill-multi-migration-plan.md)，
+> 分发机制调研见
+> [skill-distribution-mechanism.md](skill-distribution-mechanism.md)。两份文档是历史
+> 输入；发生冲突时以本文和代码为准。
 
 ## 状态速览
 
 | 项 | 内容 |
 |---|---|
-| 当前阶段 | **阶段 1 / 1.5 ✅**（安装/升级默认 multi 已落地）；**阶段 2 运行时切换产品线 ❌ CANCELLED**（2026-08-05 owner 决策） |
-| 硬 deadline | **2026-08-30**：安装/升级默认 multi（✅）+ upgrade **有 multi 包时一次性刷成 multi**（不做磁盘粘性）+ mono 仅安装时 opt-in；mono **物理下线**仍可在独立 retirement 版本推进，但**不再**依赖 `dws skill mode` / 备份回滚产品 |
-| 已完成 | 五面默认 multi、`dws skill setup` 默认 multi、互斥清理对称、文案翻转；upgrade 有 `multi/` 时一律刷新 multi（存量 mono 一次性迁移） |
-| 下一步 | beta/L1 版本门控与观察（靠 issue/回访，**无** `x-dws-skill-mode` 埋点）；可选 agent-home 清单门禁；内容 C 线并行 |
-| 终态 | mono 仅安装时 opt-in；日常 upgrade（含 multi 的包）刷 multi；mono 物理删除仍可在 dedicated retirement 版本收尾（非用户切换命令） |
+| 当前阶段 | 默认 multi、安全迁移、官方 Skill 增量升级已落地；独立 `dws skill mode` lifecycle 命令不建设 |
+| 硬 deadline | 2026-08-30：安装/升级默认 multi；mono 仅 opt-in；物理下线在独立 retirement 版本推进 |
+| 已完成 | 五面默认 multi、互斥清理、删除前备份、setup 确认/`--dry-run`、官方清单快照与增量升级 |
+| 下一步 | beta/L1 观察、可选 agent-home 清单门禁、mono retirement |
+| 终态 | multi 为唯一默认布局；保留明确的用户删除选择，新版官方 Skill 可自动加入 |
 
-### 简化设计（2026-08-05 起生效）
+## 1. 最终语义
 
-1. **安装时一次决定**：默认 multi；`DWS_SKILL_MODE=mono` / `--mode mono` / 安装器 TTY 选 mono 为唯一 opt-in。
-2. **装完无运行时切换产品**：不做 `dws skill mode set/rollback`，不做备份式安装 / `state.json` 记账产品面。
-3. **升级不做粘性**：release zip 含 `multi/` 时 **一律** 刷新 multi（清 `dws/`、刷产品 skill + 缓存）；仅 legacy 无 multi 树的包回退 mono 路径。存量 mono 在日常 upgrade 上一次性迁到 multi。
-4. **mono 下线**：安装侧仍可 opt-in；upgrade 已承担「有 multi 包即迁走」；物理删 mono 树可另议 retirement。
-5. **可观测**：`x-dws-skill-mode` 请求头已按 owner 决策移除；灰度靠 issue + 回访。
+### 1.1 安装和模式切换
 
----
+- 新装默认 multi；`DWS_SKILL_MODE=mono`、`--skill-mode mono` 或
+  `dws skill setup --mode mono` 为 legacy opt-in。
+- 不新增 `dws skill mode status|set|rollback` 产品面。需要切换时重新执行
+  `dws skill setup --mode <mono|multi>`。
+- setup 的 `--dry-run` 和交互确认消费同一份精确计划。非交互环境必须显式
+  `--yes`，公开可复制示例不携带确认绕过参数。
+- 对面布局、过期 Skill 和同名目标在替换前都移入
+  `~/.dws/skill-backups/<时间戳>/`；备份失败时保留原目录并跳过整个 Agent
+  目标，避免 mono/multi 混装。
 
-# 第一部分：技术方案（as-implemented）
+### 1.2 升级布局与 Skill 集合
 
-## 1. 升级：包驱动 multi 刷新（`dws upgrade`）
+- `LocateSkillsRoot` 优先返回 release zip 内的 `multi/`。包中存在 multi 树时，
+  存量 mono 布局会迁移为 multi；仅 legacy mono-only 包走 mono 回退路径。
+- 布局由包内容驱动，不写 mode sticky 状态；Skill 集合则按本地存在性和官方
+  快照增量求解：
 
-核心语义：**升级不做磁盘粘性**；产物有 `multi/` 时一次性刷成 multi。
-无需 `state.json`，也无运行时切换命令。
+  ```text
+  (本地仍安装 ∩ 本版官方清单) ∪ (本版官方清单 - 上版官方清单)
+  ```
 
-- `LocateSkillsRoot` 优先返回 zip 内 `multi/`（`internal/upgrade/paths.go`）。
-- `UpgradeSkillLocations`：包内有 multi 技能树 → **始终** `upgradeMultiSkillLocations`
-  （平铺 `dingtalk-*` + `dingtalk-shared`，删 mono 残留 `dws/`，清过期 multi skill，
-  刷 `~/.dws/skills/multi`）；无 multi 树的 legacy 包才走 mono 刷新。删除前先把目录
-  移入 `~/.dws/skill-backups/`，备份失败则保留原目录并上报。
-- 这是 upgrade 上的一次性迁移，不是 `dws skill mode` 产品。
+- 因此，本地删除的旧官方 Skill 不会在普通升级中被装回，新版新增官方 Skill
+  会自动加入；`dws upgrade --force` 恢复本版官方全量集合。
+- `dingtalk-shared` 是强制依赖，只要 bundle 提供就始终包含。
+- 状态文件缺失/不可读、本地官方集合为空，或本地扫描失败时按首次升级处理，
+  回退为全量安装。
 
-测试：`internal/upgrade/paths_multi_test.go`（含
-`TestCrossPlatformCoverageUpgradeSkillLocationsMonoDiskMigratesToMulti`）+
-`internal/app/upgrade_skill_multi_e2e_test.go`。
+### 1.3 状态与缓存
 
-## 2. 安装默认 multi（四个脚本面）
+- multi setup/upgrade 成功后写入 `~/.dws/skills-state.json`；设置
+  `DWS_CONFIG_DIR` 时写到该目录下的 `skills-state.json`。
+- 状态记录当前版本官方清单、本次更新集合、新增官方 Skill、跳过的本地删除
+  Skill 和更新时间。它只用于增量求集合，不决定 mono/multi 布局。
+- `~/.dws/skills/{mono,multi}` 是 setup 的本地回退源。所有渠道先在缓存同级
+  staging 目录完成复制，再通过 rename 发布；复制或发布失败时保留/恢复旧缓存。
 
-四个脚本安装面默认值全部为 multi，`DWS_SKILL_MODE=mono` 为统一 opt-in，
-互斥清理双向对称。详见阶段 1 落地说明（`scripts/install.sh` /
-`install.ps1` / `build/npm/install.js` / `scripts/install-skills.sh`）。
+## 2. 分发入口
 
-## 3. `dws skill setup` 默认 multi
+以下入口默认 multi，并保持相同的布局互斥与失败保护：
 
-- 非交互未指定 `--mode` 时默认 multi。
-- 交互选项 multi 在前（默认）、mono 标 legacy。
-- 仍可用 `dws skill setup --mode mono` **重装**到 mono（这是安装入口，
-  不是 lifecycle 切换产品；无备份/state/rollback 命令）。
-
-## 4. 文案翻转
-
-- `README.md` / `README_zh.md`：multi 默认、mono legacy。
-- `skills/multi/dingtalk-skill/SKILL.md`：去掉 EXPERIMENTAL。
-
-## 5. 已验证
-
-- `go test ./internal/upgrade ./internal/app ./test/scripts`（阶段 1 基线）+
-  upgrade-force-multi 单测 / fake-HOME E2E。
-- 脚本面契约测试暴露 `DWS_SKILL_MODE` 与 mono/multi 选项。
-
-## 6. 决策记录
-
-- **D1 升级不依赖 state.json**（仍成立）。不读状态文件；布局由包内容驱动。
-- **D2 无服务端灰度**。L1 beta 轨 + issue/回访；L2 `rollout.json` 已砍；
-  kill switch = beta 撤回 / 重装 `--mode mono`（无 `skill mode` 命令）。
-- **D3 生态分发通道已否决**（`npx skills add` 等）。见
-  [skill-distribution-mechanism.md](skill-distribution-mechanism.md)。
-- **D4 互斥前缀约定**。`dingtalk-*` / `dws-shared` 属 DWS 产品 skill。
-- **D5 无运行时模式切换（2026-08-05）**。取消阶段 2 的备份式安装、
-  `state.json`、`dws skill mode`（status/set/rollback）、`x-dws-skill-mode`
-  请求头。Mode 只在安装时决定。
-- **D6 升级不做粘性（2026-08-05）**。有 multi 包时 upgrade 一次性刷成 multi
-  （含存量 mono）；legacy 无 multi 树才回退 mono 路径。
-
----
-
-# 第二部分：Roadmap
-
-## ✅ 阶段 1 / 1.5（已完成，2026-08-05）
-
-安装/升级默认 multi、五面互斥清理、文案翻转、1.5 review 修复与实机 9/9。
-HEAD：`402429ac`。
-
-## ❌ 阶段 2（原切换/状态/备份产品线）— CANCELLED（2026-08-05）
-
-| 原任务 | 状态 | 说明 |
+| 入口 | 默认/opt-in | 缓存与备份 |
 |---|---|---|
-| 备份式安装（`~/.dws/skills/backup/...`） | ❌ CANCELLED | 不做运行时切换，无需备份回滚产品 |
-| `~/.dws/skills/state.json` | ❌ CANCELLED | 无切换产品；upgrade 按包刷 multi，不需要状态文件 |
-| `dws skill mode` status/set/rollback/--dry-run | ❌ CANCELLED | 无运行时切换 UX |
-| `x-dws-skill-mode` 请求头 | ❌ CANCELLED | owner 决策移除；观测改 issue/回访 |
-| agent home 清单门禁 | ⬜ 可选 | 与切换产品无关，仍可作工程质量项 |
-| `upgrade --dry-run` multi 文案 | ⬜ 可选 | 可随 force-multi 语义轻量对齐 |
+| `dws skill setup` | 默认 multi；`--mode mono` opt-in | embed 为主源；确认后备份替换 |
+| `scripts/install.sh` | 默认 multi；`DWS_SKILL_MODE=mono` | 双缓存原子刷新；目录替换前备份 |
+| `scripts/install.ps1` | 同上 | 同上 |
+| `scripts/install-skills.sh` | 默认 multi；环境变量 opt-in | `DWS_CACHE_ROOT` 下双缓存原子刷新 |
+| npm `install.js` | 默认 multi；环境变量或 `--skill-mode` opt-in | `~/.dws/skills` 双缓存原子刷新 |
 
-## 重构后的 8/30 目标
+Homebrew 不直接铺 Agent home，安装后由 `dws skill setup` 完成布局安装。
 
-**底线**：新装默认 multi；含 `multi/` 的 release 上 `dws upgrade` **一次性刷成
-multi**（含存量 mono）；仅需保持 mono 的用户用安装入口 opt-in 后勿升级到
-含 multi 的包，或 retirement 前用 setup 重装；mono 物理删除可另议。
+## 3. 已验证的安全边界
 
-### 建议关键路径（简化）
+- 空或损坏的 multi bundle 不进入 multi 安装分支，也不会覆盖有效缓存。
+- 备份失败不复制新布局；扫描或 HOME 解析失败会让相应目标失败。
+- setup 拒绝确认时零文件操作；显式确认只处理预览中列出的路径。
+- Go、npm、Shell、PowerShell 的缓存复制失败均保留旧缓存。
+- 多 Agent 目标彼此独立；一个目标失败不阻止其他目标尝试。upgrade 仅在无失败
+  且至少一个目标成功时更新状态；setup 在至少一个目标安装成功后记录本次快照。
 
-```text
-阶段1默认multi ✅ → upgrade force-multi ✅ → beta/L1（可选）→ 观察(issue/回访)
-→ stable 默认已是 multi → 可选 mono retirement（删 mono 树 / 安装入口报错）
-```
+## 4. 决策记录
 
-### mono retirement（原阶段 4，重框）
+- **D1：布局包驱动，集合状态驱动。** state 不做 mode sticky；它保存官方清单
+  快照以区分“用户删除的旧 Skill”和“新版本新增 Skill”。
+- **D2：无服务端灰度。** 使用 beta 轨、issue 和主动回访观察；不实现
+  `rollout.json` 或 `x-dws-skill-mode`。
+- **D3：不采用 `npx skills add` 作为主分发通道。** DWS 继续维护 zip、embed
+  和平台安装器，确保版本绑定、无 Node 环境和国内下载链路可用。
+- **D4：不新增 mode lifecycle 命令。** setup 保留双向重装能力；删除前备份是
+  安全机制，不等于提供自动 rollback 产品。
+- **D5：mono retirement 独立推进。** 当前版本仍保留 mono 源和 opt-in 入口。
 
-- **不再**提供 `dws skill mode rollback` 作为用户出口。
-- 日常 upgrade 已在有 multi 包时迁走存量 mono；retirement 版本可进一步移除
-  install/setup 的 mono 分支与 zip 内 mono 树。
-- 下线判据改为：issue/回访无系统性 multi P1、mono opt-in 可接受、政策门
-  不再依赖 `skills/mono/SKILL.md`。（原请求头占比判据作废。）
+## 5. Roadmap
 
-## 悟空线下线的影响（2026-08-05）
+### 已完成
 
-悟空 bundled-skill 分发线已下线：mono 下线无仓外节奏闸门；`skills/multi/`
-为唯一 multi 事实源。设计资产留档
-[skill-wukong-comparison.md](skill-wukong-comparison.md)。
+- 默认 multi 和五面安装入口对齐。
+- mono/multi 互斥、过期目录与同名目录删除前备份。
+- setup 精确计划、`--dry-run`、非交互确认门禁。
+- 官方清单状态文件与普通/`--force` 增量升级语义。
+- 缓存 staged publish 与旧缓存恢复。
 
-## 明确不做
+### 后续可选
 
-- ❌ 运行时模式切换（`dws skill mode set/rollback`）。
-- ❌ `state.json` / 备份式安装产品面（随 D5 取消）。
-- ❌ `x-dws-skill-mode` 请求头。
-- ❌ 服务端远程配置 / L2 `rollout.json`。
-- ❌ 运行时「模式切换」产品（含 sticky 伪切换）；upgrade 有 multi 时刷 multi
-  是包驱动的一次性迁移，不是 switch UX。
-- 不动 `dws-skills.zip` 双树布局（仍可含 mono 副本供安装 opt-in）；不动市场
-  skill（`dws skill install`）。
+- 收敛各语言的 Agent home 清单并增加 policy 门禁。
+- 增加显式的备份查看/恢复 UX；当前恢复副本已存在，但没有自动 rollback 命令。
+- 满足观察期、mono opt-in 率和内容策略门禁后，单独删除 mono 产物与入口。
 
----
+## 6. mono 下线判据
 
-## 风险表
+1. 连续两周无 multi 相关 P1；
+2. mono 主动 opt-in 已降到可接受范围；
+3. multi 内容与 mono 能力完全对等；
+4. policy 不再依赖 `skills/mono/SKILL.md`；
+5. 存量 `<agent>/dws` 可通过常规 upgrade 安全迁移，并留有恢复副本。
 
-| 风险 | 现状 | 缓解 |
-|---|---|---|
-| 半装无备份 | 安装/清理仍 `RemoveAll` | 接受为非切换产品下的已知限制；重装可收敛 |
-| mono/multi 漂移 | 无 state；upgrade 有 multi 即刷 multi | 升级后收敛为 multi；安装互斥清理 |
-| 用户想换模式 | 无 switch 命令 | 文档引导：`dws skill setup --mode <mono\|multi>` 重装 |
-| 8/30 滑期 | 切换产品线已砍，关键路径缩短 | 聚焦 force-multi upgrade + 默认 multi 稳定 |
+## 7. 风险与缓解
+
+| 风险 | 缓解 |
+|---|---|
+| 多目标复制中断 | 旧目录保存在 `skill-backups`，目标报告失败；后续可补自动 rollback UX |
+| mono/multi 漂移 | 安装互斥清理；备份失败时不铺相反布局；upgrade 有 multi 包时迁移布局 |
+| 用户删除的 Skill 被装回 | 官方快照增量公式；仅 `--force` 恢复全量 |
+| 状态文件损坏 | 明确回退全量并重写有效状态，不从目录猜测 CLI 参数意图 |
+| 缓存复制失败 | 同级 staging 完整复制后发布；失败保留或恢复旧缓存 |
+| 无服务端灰度 | beta 轨先行、issue/回访观察、必要时撤回 release 并引导重装 mono |

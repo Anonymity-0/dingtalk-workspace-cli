@@ -1191,6 +1191,121 @@ exit 0
 	}
 }
 
+func TestInstallerShellCacheCopyFailurePreservesOldCache(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			source := filepath.Join(t.TempDir(), "multi")
+			cache := filepath.Join(home, ".dws", "skills", "multi")
+			mustWriteFile(t, filepath.Join(source, "dingtalk-new", "SKILL.md"), []byte("new cache\n"), 0o644)
+			mustWriteFile(t, filepath.Join(cache, "dingtalk-old", "SKILL.md"), []byte("old cache\n"), 0o644)
+
+			harness := `. "$DWS_TEST_LIBRARY"
+cp() { return 1; }
+if publish_skill_cache "$DWS_TEST_SOURCE" "$DWS_TEST_CACHE"; then
+  exit 2
+fi
+`
+			cmd := exec.Command("sh", "-c", harness)
+			cmd.Env = append(os.Environ(),
+				"HOME="+home,
+				"DWS_TEST_LIBRARY="+library,
+				"DWS_TEST_SOURCE="+source,
+				"DWS_TEST_CACHE="+cache,
+			)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("%s cache harness failed: %v\n%s", scriptName, err, output)
+			}
+			if got, err := os.ReadFile(filepath.Join(cache, "dingtalk-old", "SKILL.md")); err != nil || string(got) != "old cache\n" {
+				t.Fatalf("%s old cache = %q, err = %v", scriptName, got, err)
+			}
+			if _, err := os.Stat(filepath.Join(cache, "dingtalk-new")); !os.IsNotExist(err) {
+				t.Fatalf("%s published new cache after copy failure: %v", scriptName, err)
+			}
+			if matches, err := filepath.Glob(filepath.Join(filepath.Dir(cache), ".multi.tmp.*")); err != nil || len(matches) != 0 {
+				t.Fatalf("%s staging leftovers = %v, err = %v", scriptName, matches, err)
+			}
+		})
+	}
+}
+
+func TestInstallPowerShellCacheCopyFailurePreservesOldCache(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			pwsh, err = exec.LookPath("powershell")
+		}
+		if err != nil {
+			t.Skip("PowerShell is not available")
+		}
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.ps1 main section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	prefix += `
+function Copy-DirRecursive { throw "injected cache copy failure" }
+Cache-MultiSkills -Source $env:DWS_TEST_SOURCE
+exit 0
+`
+	harnessPath := filepath.Join(t.TempDir(), "install-cache-harness.ps1")
+	mustWriteFile(t, harnessPath, []byte(prefix), 0o644)
+
+	home := t.TempDir()
+	source := filepath.Join(t.TempDir(), "multi")
+	cache := filepath.Join(home, ".dws", "skills", "multi")
+	mustWriteFile(t, filepath.Join(source, "dingtalk-new", "SKILL.md"), []byte("new cache\n"), 0o644)
+	mustWriteFile(t, filepath.Join(cache, "dingtalk-old", "SKILL.md"), []byte("old cache\n"), 0o644)
+
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(),
+		"DWS_TEST_HOME="+home,
+		"DWS_TEST_SOURCE="+source,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("PowerShell cache harness failed: %v\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "未覆盖原缓存") {
+		t.Fatalf("PowerShell cache failure warning missing:\n%s", output)
+	}
+	if got, err := os.ReadFile(filepath.Join(cache, "dingtalk-old", "SKILL.md")); err != nil || string(got) != "old cache\n" {
+		t.Fatalf("PowerShell old cache = %q, err = %v", got, err)
+	}
+	if _, err := os.Stat(filepath.Join(cache, "dingtalk-new")); !os.IsNotExist(err) {
+		t.Fatalf("PowerShell published new cache after copy failure: %v", err)
+	}
+	if matches, err := filepath.Glob(filepath.Join(filepath.Dir(cache), ".multi.tmp-*")); err != nil || len(matches) != 0 {
+		t.Fatalf("PowerShell staging leftovers = %v, err = %v", matches, err)
+	}
+}
+
 func writeTarGz(t *testing.T, path string, files map[string]string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

@@ -75,6 +75,55 @@ backup_and_remove_skill_dir() {
   return 1
 }
 
+# publish_skill_cache <source> <cache-dir>
+# Stages a complete sibling cache before publishing it. Any copy or publish
+# failure leaves the previous cache in place (or in the reported recovery dir
+# when even restoration fails).
+publish_skill_cache() {
+  _psc_src="$1"
+  _psc_cache="$2"
+  _psc_parent="$(dirname "$_psc_cache")"
+  _psc_name="$(basename "$_psc_cache")"
+  _psc_stage=""
+  _psc_old=""
+
+  mkdir -p "$_psc_parent" || return 1
+  _psc_stage="$(mktemp -d "$_psc_parent/.${_psc_name}.tmp.XXXXXX")" || return 1
+  if ! cp -R "$_psc_src/." "$_psc_stage/" 2>/dev/null && \
+     ! cp -r "$_psc_src/." "$_psc_stage/" 2>/dev/null; then
+    rm -rf "$_psc_stage"
+    return 1
+  fi
+
+  if [ -e "$_psc_cache" ]; then
+    _psc_old="$(mktemp -d "$_psc_parent/.${_psc_name}.old.XXXXXX")" || {
+      rm -rf "$_psc_stage"
+      return 1
+    }
+    rmdir "$_psc_old" || {
+      rm -rf "$_psc_stage" "$_psc_old"
+      return 1
+    }
+    if ! mv "$_psc_cache" "$_psc_old"; then
+      rm -rf "$_psc_stage"
+      return 1
+    fi
+  fi
+
+  if mv "$_psc_stage" "$_psc_cache"; then
+    if [ -n "$_psc_old" ] && ! rm -rf "$_psc_old"; then
+      printf '  ⚠️ 新 Skill 缓存已生效，但旧缓存清理失败: %s\n' "$_psc_old"
+    fi
+    return 0
+  fi
+
+  rm -rf "$_psc_stage"
+  if [ -n "$_psc_old" ] && ! mv "$_psc_old" "$_psc_cache"; then
+    printf '  ⚠️ Skill 缓存发布失败，原缓存保留在 %s\n' "$_psc_old"
+  fi
+  return 1
+}
+
 # Fetch a Gitee API endpoint, retrying transient 502/503 from Gitee's gateway.
 gitee_api() {
   _url="$1"
@@ -450,19 +499,18 @@ main() {
   # empty/corrupt tree must never wipe a previously good cache.
   if multi_tree_has_skills "$TMPDIR_WORK/extracted/multi"; then
     cache_dir="${DWS_CACHE_ROOT}/skills/multi"
-    rm -rf "$cache_dir"
-    mkdir -p "$cache_dir"
-    cp -R "$TMPDIR_WORK/extracted/multi/"* "$cache_dir/" 2>/dev/null || \
-      cp -r "$TMPDIR_WORK/extracted/multi/"* "$cache_dir/" 2>/dev/null || true
-    file_count="$(find "$cache_dir" -type f | wc -l | tr -d ' ')"
-    printf '  ✅ Cached multi skills → %s (%s files)\n' "$cache_dir" "$file_count"
+    if publish_skill_cache "$TMPDIR_WORK/extracted/multi" "$cache_dir"; then
+      file_count="$(find "$cache_dir" -type f | wc -l | tr -d ' ')"
+      printf '  ✅ Cached multi skills → %s (%s files)\n' "$cache_dir" "$file_count"
+    else
+      printf '  ⚠️ Multi Skill 缓存刷新失败，未覆盖原缓存: %s\n' "$cache_dir"
+    fi
   fi
   if [ -f "$SKILL_SRC/SKILL.md" ]; then
     mono_cache="${DWS_CACHE_ROOT}/skills/mono"
-    rm -rf "$mono_cache"
-    mkdir -p "$mono_cache"
-    cp -R "$SKILL_SRC/"* "$mono_cache/" 2>/dev/null || \
-      cp -r "$SKILL_SRC/"* "$mono_cache/" 2>/dev/null || true
+    if ! publish_skill_cache "$SKILL_SRC" "$mono_cache"; then
+      printf '  ⚠️ Mono Skill 缓存刷新失败，未覆盖原缓存: %s\n' "$mono_cache"
+    fi
   fi
 
   printf '\n'

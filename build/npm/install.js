@@ -166,6 +166,62 @@ function copyChildren(srcDir, destDir) {
   }
 }
 
+// publishCacheAtomically prepares a complete sibling tree before replacing a
+// cache. If copying or publishing fails, the previous cache stays available.
+// copyFn is injectable so the failure contract can be tested without relying
+// on platform-specific permission behavior.
+function publishCacheAtomically(sourceDir, cacheDir, copyFn = copyChildren) {
+  const cacheParent = path.dirname(cacheDir);
+  const cacheName = path.basename(cacheDir);
+  fs.mkdirSync(cacheParent, { recursive: true });
+
+  const stagedDir = fs.mkdtempSync(path.join(cacheParent, `.${cacheName}.tmp-`));
+  let rollbackDir = "";
+  let published = false;
+  try {
+    copyFn(sourceDir, stagedDir);
+
+    if (fs.existsSync(cacheDir)) {
+      rollbackDir = fs.mkdtempSync(path.join(cacheParent, `.${cacheName}.old-`));
+      fs.rmSync(rollbackDir, { recursive: true, force: true });
+      fs.renameSync(cacheDir, rollbackDir);
+    }
+
+    try {
+      fs.renameSync(stagedDir, cacheDir);
+      published = true;
+    } catch (publishErr) {
+      if (rollbackDir) {
+        try {
+          fs.renameSync(rollbackDir, cacheDir);
+          rollbackDir = "";
+        } catch (restoreErr) {
+          throw new Error(
+            `failed to publish cache ${cacheDir}: ${publishErr.message}; ` +
+              `failed to restore previous cache from ${rollbackDir}: ${restoreErr.message}`,
+          );
+        }
+      }
+      throw publishErr;
+    }
+
+    if (rollbackDir) {
+      try {
+        fs.rmSync(rollbackDir, { recursive: true, force: true });
+      } catch (cleanupErr) {
+        console.warn(
+          `⚠️  New cache is active, but old cache cleanup failed at ${rollbackDir}: ${cleanupErr.message}`,
+        );
+      }
+      rollbackDir = "";
+    }
+  } finally {
+    if (!published) {
+      fs.rmSync(stagedDir, { recursive: true, force: true });
+    }
+  }
+}
+
 function installSkillsToHomes(skillRoot) {
   const homeDir = os.homedir();
   let installed = 0;
@@ -346,15 +402,13 @@ function cacheUserSkills(extractedSkillsRoot) {
     : extractedSkillsRoot;
   if (fs.existsSync(path.join(monoSource, "SKILL.md"))) {
     const monoCache = path.join(cacheBase, "mono");
-    fs.rmSync(monoCache, { recursive: true, force: true });
-    copyChildren(monoSource, monoCache);
+    publishCacheAtomically(monoSource, monoCache);
   }
 
   const multiSource = path.join(extractedSkillsRoot, "multi");
   if (multiTreeHasSkills(multiSource)) {
     const multiCache = path.join(cacheBase, "multi");
-    fs.rmSync(multiCache, { recursive: true, force: true });
-    copyChildren(multiSource, multiCache);
+    publishCacheAtomically(multiSource, multiCache);
   }
 }
 
@@ -410,4 +464,8 @@ function main() {
   cacheUserSkills(skillsStaging);
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { publishCacheAtomically };

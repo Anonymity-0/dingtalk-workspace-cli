@@ -230,6 +230,53 @@ function Copy-DirRecursive {
     return $count
 }
 
+function Publish-SkillCache {
+    param([string]$Source, [string]$CacheDir)
+
+    $cacheParent = Split-Path $CacheDir -Parent
+    $cacheName = Split-Path $CacheDir -Leaf
+    New-Item -ItemType Directory -Path $cacheParent -Force -ErrorAction Stop | Out-Null
+    $stagedDir = Join-Path $cacheParent ".$cacheName.tmp-$([Guid]::NewGuid().ToString('N'))"
+    $rollbackDir = ""
+    $published = $false
+    New-Item -ItemType Directory -Path $stagedDir -Force -ErrorAction Stop | Out-Null
+
+    try {
+        $count = Copy-DirRecursive -Source $Source -Destination $stagedDir
+        if (Test-Path $CacheDir) {
+            $rollbackDir = Join-Path $cacheParent ".$cacheName.old-$([Guid]::NewGuid().ToString('N'))"
+            Move-Item -Path $CacheDir -Destination $rollbackDir -ErrorAction Stop
+        }
+        try {
+            Move-Item -Path $stagedDir -Destination $CacheDir -ErrorAction Stop
+            $published = $true
+        } catch {
+            $publishError = $_
+            if ($rollbackDir) {
+                try {
+                    Move-Item -Path $rollbackDir -Destination $CacheDir -ErrorAction Stop
+                    $rollbackDir = ""
+                } catch {
+                    throw "Skill 缓存发布失败: $publishError；原缓存恢复也失败，恢复目录: $rollbackDir；错误: $_"
+                }
+            }
+            throw $publishError
+        }
+        if ($rollbackDir -and (Test-Path $rollbackDir)) {
+            Remove-Item -Path $rollbackDir -Recurse -Force -ErrorAction SilentlyContinue
+            if (Test-Path $rollbackDir) {
+                Write-Say "⚠️ 新缓存已生效，但旧缓存清理失败: $rollbackDir"
+            }
+            $rollbackDir = ""
+        }
+        return $count
+    } finally {
+        if (!$published -and (Test-Path $stagedDir)) {
+            Remove-Item -Path $stagedDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 # Backup-SkillDir moves $Dir into $HOME\.dws\skill-backups\<stamp>\<name>
 # instead of destroying it (non-interactive installs cannot confirm, so
 # removals must stay reversible). Missing paths are a no-op success. On any
@@ -487,12 +534,12 @@ function Cache-MultiSkills {
     if (!(Test-MultiTreeHasSkills $Source)) { return }
 
     $cacheDir = Join-Path $HOME ".dws\skills\multi"
-    if (Test-Path $cacheDir) {
-        Remove-Item -Path $cacheDir -Recurse -Force
+    try {
+        $count = Publish-SkillCache -Source $Source -CacheDir $cacheDir
+        Write-Say "✅ Cached multi skills → $cacheDir ($count files)"
+    } catch {
+        Write-Say "⚠️ Multi Skill 缓存刷新失败，未覆盖原缓存: $cacheDir ($_)"
     }
-    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
-    $count = Copy-DirRecursive -Source $Source -Destination $cacheDir
-    Write-Say "✅ Cached multi skills → $cacheDir ($count files)"
 }
 
 function Cache-MonoSkills {
@@ -503,11 +550,11 @@ function Cache-MonoSkills {
     if (!(Test-Path (Join-Path $Source "SKILL.md"))) { return }
 
     $cacheDir = Join-Path $HOME ".dws\skills\mono"
-    if (Test-Path $cacheDir) {
-        Remove-Item -Path $cacheDir -Recurse -Force
+    try {
+        Publish-SkillCache -Source $Source -CacheDir $cacheDir | Out-Null
+    } catch {
+        Write-Say "⚠️ Mono Skill 缓存刷新失败，未覆盖原缓存: $cacheDir ($_)"
     }
-    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
-    Copy-DirRecursive -Source $Source -Destination $cacheDir | Out-Null
 }
 
 function Install-SkillsToHomes {
