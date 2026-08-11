@@ -58,10 +58,8 @@ func TestDevAppAllLeavesStdoutZeroLogBytes(t *testing.T) {
 }
 
 // TestDevAppFieldsProjectionCombinesWithEnvelope 是队列 B120 的 --fields 过滤
-// 与信封组合断言（兼容语义）：json 模式下 --fields 投影 **data 内业务字段**
-// ——与 table/csv/ndjson 分支及迁移前 WriteFiltered 直出业务数据的行为一致，
-// 全局 flag 帮助描述的也是业务字段（name,id,status）。输出为投影后的业务
-// 载荷本身，不筛选信封顶层键（ok/outcome 等外壳键不经 --fields 增删）。
+// 与信封组合断言：json 模式下 --fields 只投影 data 内业务字段，稳定的
+// ok/outcome/data 信封仍必须存在，供 Agent 判断结果状态。
 func TestDevAppFieldsProjectionCombinesWithEnvelope(t *testing.T) {
 	content := map[string]any{
 		"unifiedAppId": "u-1",
@@ -74,21 +72,20 @@ func TestDevAppFieldsProjectionCombinesWithEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute() error = %v\nstdout:\n%s\nstderr:\n%s", err, out.String(), errBuf.String())
 	}
-	var payload map[string]any
-	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+	var envelope regressionEnvelope
+	if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
 		t.Fatalf("--fields stdout is not JSON: %v\n%s", err, out.String())
 	}
+	if envelope.OK == nil || !*envelope.OK || envelope.Outcome != "success" {
+		t.Fatalf("--fields must preserve the success envelope: %s", out.String())
+	}
+	payload := envelope.Data
 	if payload["name"] != "DemoApp" {
 		t.Fatalf("--fields name = %#v, want the projected business payload", payload)
 	}
 	for _, dropped := range []string{"unifiedAppId", "appStatus"} {
 		if _, has := payload[dropped]; has {
 			t.Fatalf("--fields name must drop business field %q: %#v", dropped, payload)
-		}
-	}
-	for _, shell := range []string{"ok", "outcome", "data"} {
-		if _, has := payload[shell]; has {
-			t.Fatalf("--fields name must not emit envelope shell key %q: %#v", shell, payload)
 		}
 	}
 }
