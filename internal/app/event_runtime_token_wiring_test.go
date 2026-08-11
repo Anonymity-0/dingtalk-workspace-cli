@@ -815,8 +815,74 @@ func TestCrossPlatformCoverageUnsupportedOldBusDoesNotDeleteReusedSubscription(t
 	if deleteCalls != 0 {
 		t.Fatalf("reused remote subscription was deleted %d time(s)", deleteCalls)
 	}
-	if len(removed) != 1 || removed[0] != "sub-existing" {
-		t.Fatalf("local run-state cleanup = %#v", removed)
+	if len(removed) != 0 {
+		t.Fatalf("reused local run-state was removed: %#v", removed)
+	}
+}
+
+func TestCrossPlatformCoverageRuntimeTokenReusedDryRunUsesExplicitControlCredential(t *testing.T) {
+	const token = "runtime-dry-run-control-canary"
+	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	oldEdition := edition.Get()
+	oldEnsure := personalEnsureSubscription
+	oldUpsert := personalUpsertRunState
+	oldConsume := personalConsumeRun
+	oldBusRun := personalBusRun
+	t.Cleanup(func() {
+		edition.Override(oldEdition)
+		personalEnsureSubscription = oldEnsure
+		personalUpsertRunState = oldUpsert
+		personalConsumeRun = oldConsume
+		personalBusRun = oldBusRun
+	})
+	edition.Override(&edition.Hooks{RuntimeDefaults: func() map[string]edition.RuntimeDefaultFn {
+		return map[string]edition.RuntimeDefaultFn{
+			"$corpId":        func(context.Context) (string, bool) { return "runtime-corp", true },
+			"$currentUserId": func(context.Context) (string, bool) { return "runtime-user", true },
+		}
+	}})
+
+	personalEnsureSubscription = func(ctx context.Context, client *personal.Client, _ personal.Identity, _ personalConsumeOptions) (*personal.Subscription, string, string, error) {
+		if _, ok := client.HTTPClient.Transport.(runtimeTokenControlTransport); !ok {
+			t.Fatalf("control transport = %T, want runtimeTokenControlTransport", client.HTTPClient.Transport)
+		}
+		got, err := client.AccessTokenProvider(ctx)
+		if err != nil || got != token {
+			t.Fatalf("control token = %q, %v", got, err)
+		}
+		return &personal.Subscription{SubscribeID: "sub-existing"}, personal.EventMention, "at", nil
+	}
+	personalUpsertRunState = func(string, personal.RunState) error {
+		t.Fatal("dry-run unexpectedly persisted run state")
+		return nil
+	}
+	consumeCalls := 0
+	personalConsumeRun = func(_ context.Context, cfg consume.Config) error {
+		consumeCalls++
+		if !cfg.DryRun {
+			t.Fatal("consume config is not dry-run")
+		}
+		if strings.Contains(strings.Join(cfg.SpawnExtraArgs, " "), token) {
+			t.Fatal("dry-run spawn args leaked runtime token")
+		}
+		return nil
+	}
+	personalBusRun = func(context.Context, bus.Config) error {
+		t.Fatal("dry-run unexpectedly started a bus")
+		return nil
+	}
+
+	err := runPersonalEventConsumeSingle(newPersonalCoverageCommand(), personalConsumeOptions{
+		SubscribeID:      "sub-existing",
+		ExplicitToken:    token,
+		ClientIDOverride: "runtime-client",
+		Common:           commonConsumeOptions{DryRun: true},
+	})
+	if err != nil {
+		t.Fatalf("dry-run consume error = %v", err)
+	}
+	if consumeCalls != 1 {
+		t.Fatalf("dry-run consume calls = %d, want 1", consumeCalls)
 	}
 }
 
