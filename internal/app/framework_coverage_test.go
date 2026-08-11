@@ -337,6 +337,29 @@ func TestCrossPlatformCoverageFrameworkExecuteRareOutcomeBranches(t *testing.T) 
 		}
 	})
 
+	t.Run("publication failure envelope writer also fails", func(t *testing.T) {
+		installSignalExecuteSeams(t, true, io.Discard, io.Discard)
+		testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
+			if err := output.StoreResult(cmd.Context(), output.Success(map[string]any{"ok": true})); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := output.EmitStoredResult(cmd); err != nil {
+				t.Fatal(err)
+			}
+			file, err := os.CreateTemp(t.TempDir(), "finished-output-*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer file.Close()
+			state := &outputSinkState{file: file, original: frameworkFailWriter{}, finished: true}
+			cmd.SetContext(context.WithValue(cmd.Context(), outputFileContextKey{}, state))
+			return cmd, newOutputPublicationError("publish", errors.New("rename failed"))
+		})
+		if code := Execute(); code != 5 {
+			t.Fatalf("Execute code=%d", code)
+		}
+	})
+
 	t.Run("failure envelope cannot be written", func(t *testing.T) {
 		installSignalExecuteSeams(t, true, io.Discard, io.Discard)
 		testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
@@ -360,8 +383,78 @@ func TestCrossPlatformCoverageFrameworkExecuteRareOutcomeBranches(t *testing.T) 
 			cmd.SetContext(context.WithValue(cmd.Context(), outputFileContextKey{}, state))
 			return cmd, nil
 		})
-		if code := Execute(); code != 0 {
+		if code := Execute(); code != 5 {
 			t.Fatalf("Execute code=%d", code)
+		}
+	})
+
+	for _, tc := range []struct {
+		name       string
+		unified    bool
+		original   io.Writer
+		wantOutput bool
+	}{
+		{name: "unified late publication failure", unified: true, original: &bytes.Buffer{}, wantOutput: true},
+		{name: "legacy late publication failure", original: io.Discard},
+		{name: "late publication failure writer fails", unified: true, original: frameworkFailWriter{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			installSignalExecuteSeams(t, tc.unified, io.Discard, io.Discard)
+			testseam.Swap(t, &rootRenameFile, func(string, string) error { return errors.New("rename failed") })
+			var original io.Writer = tc.original
+			testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
+				file, err := os.CreateTemp(t.TempDir(), "panic-output-*")
+				if err != nil {
+					t.Fatal(err)
+				}
+				cmd.SetOut(file)
+				cmd.SetContext(context.WithValue(cmd.Context(), outputFileContextKey{}, &outputSinkState{
+					file: file, original: original, tempPath: file.Name(), target: filepath.Join(t.TempDir(), "result.json"),
+				}))
+				panic("after sink open")
+			})
+			if code := Execute(); code != 5 {
+				t.Fatalf("Execute code=%d", code)
+			}
+			if tc.wantOutput && !strings.Contains(tc.original.(*bytes.Buffer).String(), `"outcome": "failure"`) {
+				t.Fatalf("stdout=%q", tc.original.(*bytes.Buffer).String())
+			}
+		})
+	}
+
+	t.Run("abort failure is diagnostic", func(t *testing.T) {
+		installSignalExecuteSeams(t, false, io.Discard, io.Discard)
+		testseam.Swap(t, &rootExecuteCommand, func(cmd *cobra.Command) (*cobra.Command, error) {
+			file, err := os.CreateTemp(t.TempDir(), "abort-output-*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := file.Close(); err != nil {
+				t.Fatal(err)
+			}
+			cmd.SetContext(context.WithValue(cmd.Context(), outputFileContextKey{}, &outputSinkState{
+				file: file, original: io.Discard, tempPath: file.Name(), target: filepath.Join(t.TempDir(), "result.json"),
+			}))
+			return cmd, errors.New("business failed")
+		})
+		if code := Execute(); code != 5 {
+			t.Fatalf("Execute code=%d", code)
+		}
+	})
+
+	t.Run("publication helper requires observable finished transaction", func(t *testing.T) {
+		cmd := &cobra.Command{Use: "unified"}
+		output.SetCommandRollout(cmd, output.RolloutUnifiedActive)
+		file, err := os.CreateTemp(t.TempDir(), "unfinished-output-*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer file.Close()
+		cmd.SetContext(context.WithValue(context.Background(), outputFileContextKey{}, &outputSinkState{
+			file: file, finished: true,
+		}))
+		if _, handled, emitErr := emitOutputPublicationFailure(cmd, newOutputPublicationError("publish", errors.New("rename failed"))); handled || emitErr != nil {
+			t.Fatalf("handled=%v err=%v", handled, emitErr)
 		}
 	})
 }

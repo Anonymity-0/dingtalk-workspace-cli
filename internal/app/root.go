@@ -116,12 +116,16 @@ func Execute() (exitCode int) {
 		}
 		CloseFileLogger()
 		if executed != nil {
-			// The result envelope has already established the command outcome.
-			// A late sink-close failure is diagnostic only: emitting a second
-			// envelope or changing the exit code would violate the one-result
-			// contract and make stdout impossible for Agents to branch on.
 			if err := closeOutputSink(executed); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: close output sink: %v\n", err)
+				if code, handled, emitErr := emitOutputPublicationFailure(executed, err); handled && emitErr == nil {
+					exitCode = code
+				} else {
+					exitCode = apperrors.ExitCode(err)
+					fmt.Fprintf(os.Stderr, "Warning: close output sink: %v\n", err)
+					if emitErr != nil {
+						fmt.Fprintf(os.Stderr, "Warning: emit output publication failure: %v\n", emitErr)
+					}
+				}
 			}
 		}
 	}()
@@ -172,32 +176,61 @@ func Execute() (exitCode int) {
 
 	var err error
 	executed, err = rootExecuteCommand(root)
+	// PersistentPostRunE normally commits or aborts the transactional output
+	// sink. Finalize once more at the process boundary so custom execution
+	// seams, embedding callers, or future hook changes cannot leave publication
+	// errors to a defer that runs after the process exit code is fixed.
+	if executed != nil {
+		if err == nil {
+			if closeErr := closeOutputSink(executed); closeErr != nil {
+				err = closeErr
+			}
+		} else if abortErr := abortOutputSink(executed); abortErr != nil {
+			fmt.Fprintf(executed.ErrOrStderr(), "Warning: abort output sink after command failure: %v\n", abortErr)
+		}
+	}
 	interrupted, primaryCompletedBeforeSignal := signalState.outcome()
 	if interrupted != nil && !primaryCompletedBeforeSignal {
 		if code, attempted, _, _ := output.StoredEmissionState(resultStore); attempted {
-			if executed == nil {
-				executed = root
+			var publicationErr *outputPublicationError
+			if err != nil && stderrors.As(err, &publicationErr) {
+				// The successful result was written only to a transaction that did
+				// not publish. Let the error path replace it with one observable
+				// failure envelope on the restored original stream.
+			} else {
+				if executed == nil {
+					executed = root
+				}
+				fmt.Fprintf(executed.ErrOrStderr(), "Warning: process interrupted after result emission attempt: %v\n", interrupted)
+				// Once publication starts, its stored exit code is authoritative. A
+				// signal recorded just before or during publication must not turn a
+				// successfully emitted result into a contradictory 130/143 process
+				// status; likewise, a failed publication must retain its internal
+				// error code instead of being relabelled as cancellation.
+				return code
 			}
-			fmt.Fprintf(executed.ErrOrStderr(), "Warning: process interrupted after result emission attempt: %v\n", interrupted)
-			// Once publication starts, its stored exit code is authoritative. A
-			// signal recorded just before or during publication must not turn a
-			// successfully emitted result into a contradictory 130/143 process
-			// status; likewise, a failed publication must retain its internal
-			// error code instead of being relabelled as cancellation.
-			return code
 		}
-		err = interrupted
+		var publicationErr *outputPublicationError
+		if err == nil || !stderrors.As(err, &publicationErr) {
+			err = interrupted
+		}
 	}
 	if err != nil {
 		if executed == nil {
 			executed = root
 		}
 		if code, attempted, _, _ := output.StoredEmissionState(resultStore); attempted {
-			fmt.Fprintf(executed.ErrOrStderr(), "Warning: command hook failed after result emission: %v\n", err)
 			var publicationErr *outputPublicationError
 			if stderrors.As(err, &publicationErr) {
+				if failureCode, handled, emitErr := emitOutputPublicationFailure(executed, publicationErr); handled {
+					if emitErr == nil {
+						return failureCode
+					}
+					fmt.Fprintf(executed.ErrOrStderr(), "Warning: emit output publication failure: %v\n", emitErr)
+				}
 				return apperrors.ExitCode(publicationErr)
 			}
+			fmt.Fprintf(executed.ErrOrStderr(), "Warning: command hook failed after result emission: %v\n", err)
 			return code
 		}
 		err = rewordRequiredFlagError(err)
@@ -1105,6 +1138,33 @@ func (e *outputPublicationError) ExitCode() int { return 5 }
 
 func newOutputPublicationError(message string, cause error) error {
 	return &outputPublicationError{cause: fmt.Errorf("%s: %w", message, cause)}
+}
+
+// emitOutputPublicationFailure replaces a result that was rendered only into a
+// rolled-back transactional file with one observable failure envelope on the
+// original output stream. This is not a second public result: closeOutputSink
+// has removed the temporary file and restored cmd.OutOrStdout before returning
+// the publication error.
+func emitOutputPublicationFailure(cmd *cobra.Command, err error) (code int, handled bool, emitErr error) {
+	var publicationErr *outputPublicationError
+	if cmd == nil || !stderrors.As(err, &publicationErr) || !output.UsesUnifiedResult(cmd) {
+		return 0, false, nil
+	}
+	state := outputSinkForCommand(cmd)
+	if state == nil {
+		return 0, false, nil
+	}
+	state.mu.Lock()
+	original := state.original
+	finished := state.finished
+	state.mu.Unlock()
+	if original == nil || !finished {
+		return 0, false, nil
+	}
+	cmd.SetOut(original)
+	result := output.FailureWithExitCode(errorInfoFromExecutionError(publicationErr), apperrors.ExitCode(publicationErr))
+	code, emitErr = output.EmitResult(cmd, result)
+	return code, true, emitErr
 }
 
 func configureOutputSink(cmd *cobra.Command) error {

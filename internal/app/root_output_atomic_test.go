@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -226,6 +227,57 @@ func TestOutputSinkUnifiedPublicationFailureFailsAndLeavesNoFinalFile(t *testing
 	if _, err := os.Stat(target); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("final output exists after publication failure: %v", err)
 	}
+	assertNoOutputTemps(t, target)
+}
+
+func TestExecuteUnifiedPublicationFailureEmitsFailureOnOriginalStdout(t *testing.T) {
+	testseam.Protect(t, &os.Args)
+	dir := t.TempDir()
+	target := filepath.Join(dir, "result.json")
+	if err := os.WriteFile(target, []byte("original"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	os.Args = []string{"dws", "atomic-output-unified-publication", "--output", target, "--format", "json"}
+	testseam.Swap(t, &rootRenameFile, func(string, string) error { return errors.New("rename failed") })
+	testseam.Swap(t, &rootNormalizeProcessProfileArgs, func() func() { return func() {} })
+	testseam.Swap(t, &rootRunPreParse, func(*cobra.Command, *pipeline.Engine) error { return nil })
+	testseam.Swap(t, &rootStopAllStdioClients, func() {})
+	var stdout, stderr bytes.Buffer
+	testseam.Swap(t, &rootNewRootCommandWithEngine, func(ctx context.Context, engine *pipeline.Engine) *cobra.Command {
+		root := NewRootCommandWithEngine(ctx, engine)
+		root.SetOut(&stdout)
+		root.SetErr(&stderr)
+		leaf := &cobra.Command{
+			Use: "atomic-output-unified-publication",
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return output.StoreResult(cmd.Context(), output.Success(map[string]any{"id": "ok"}))
+			},
+		}
+		output.SetCommandRollout(leaf, output.RolloutUnifiedActive)
+		root.AddCommand(leaf)
+		return root
+	})
+
+	if code := Execute(); code != 5 {
+		t.Fatalf("Execute exit code=%d, want publication failure code 5; stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	var envelope output.Envelope
+	if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+		t.Fatalf("publication failure stdout=%q: %v; stderr=%q", stdout.String(), err, stderr.String())
+	}
+	if envelope.OK || envelope.Outcome != output.OutcomeFailure || envelope.Error == nil || envelope.Error.Type != "internal" || envelope.Error.ExitCode != 5 {
+		t.Fatalf("publication failure envelope=%+v", envelope)
+	}
+	if !strings.Contains(envelope.Error.Message, "failed to publish output file") {
+		t.Fatalf("publication failure message=%q", envelope.Error.Message)
+	}
+	if got := bytes.Count(stdout.Bytes(), []byte(`"outcome": "failure"`)); got != 1 {
+		t.Fatalf("stdout contains %d failure envelopes, want one: %s", got, stdout.String())
+	}
+	if got := bytes.Count(stdout.Bytes(), []byte(`"outcome": "success"`)); got != 0 {
+		t.Fatalf("rolled-back success leaked to stdout: %s", stdout.String())
+	}
+	assertOutputFile(t, target, "original", 0o640)
 	assertNoOutputTemps(t, target)
 }
 
