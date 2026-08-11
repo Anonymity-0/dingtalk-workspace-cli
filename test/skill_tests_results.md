@@ -927,7 +927,7 @@
 **chat_chat_message_send_by_webhook_001** ✅ PASS
 
 - Prompt: 通过 Webhook token1 发一条告警消息：CPU 超 90%
-- Expected: `dws chat message send-by-webhook --text "CPU 超 90%" --title 告警 --token token1 --format json`
+- Expected: `dws chat message send-by-webhook --content "CPU 超 90%" --title 告警 --token token1 --format json`
 - Skill Reference: references/products/chat.md
 - Command path: PASS (chat message send-by-webhook)
 - Flags: PASS (3 flags validated)
@@ -935,7 +935,7 @@
 **chat_chat_message_send_by_webhook_002** ✅ PASS
 
 - Prompt: 通过webhook发群消息，token是tokenABC，标题告警，内容CPU使用率超过90%，@所有人
-- Expected: `dws chat message send-by-webhook --token tokenABC --title "告警" --text "CPU使用率超过90%" --at-all --format json`
+- Expected: `dws chat message send-by-webhook --token tokenABC --title "告警" --content "CPU使用率超过90%" --at-all --format json`
 - Skill Reference: references/products/chat.md
 - Command path: PASS (chat message send-by-webhook)
 - Flags: PASS (4 flags validated)
@@ -943,7 +943,7 @@
 **chat_chat_message_send_by_webhook_003** ✅ PASS
 
 - Prompt: 用 Webhook tokenXYZ 发消息，标题是「审批提醒」，内容是「请及时审批」，并@用户 user001 和 user002
-- Expected: `dws chat message send-by-webhook --token tokenXYZ --title "审批提醒" --text "@user001 @user002 请及时审批" --at-users user001,user002 --format json`
+- Expected: `dws chat message send-by-webhook --token tokenXYZ --title "审批提醒" --content "@user001 @user002 请及时审批" --at-users user001,user002 --format json`
 - Skill Reference: references/products/chat.md
 - Command path: PASS (chat message send-by-webhook)
 - Flags: PASS (4 flags validated)
@@ -951,7 +951,7 @@
 **chat_chat_message_send_by_webhook_004** ✅ PASS
 
 - Prompt: 用 Webhook tokenDEF 发通知，标题是「会议通知」，内容是「请参加今日下午的会议」，并@手机号 13800138000 和 13900139000
-- Expected: `dws chat message send-by-webhook --token tokenDEF --title "会议通知" --text "@13800138000 @13900139000 请参加今日下午的会议" --at-mobiles 13800138000,13900139000 --format json`
+- Expected: `dws chat message send-by-webhook --token tokenDEF --title "会议通知" --content "@13800138000 @13900139000 请参加今日下午的会议" --at-mobiles 13800138000,13900139000 --format json`
 - Skill Reference: references/products/chat.md
 - Command path: PASS (chat message send-by-webhook)
 - Flags: PASS (4 flags validated)
