@@ -127,7 +127,7 @@ func TestCrossPlatformCoverageChatUpdateTextEmotionRequiredFlags(t *testing.T) {
 		{
 			name:    "missing conversation-id and aliases",
 			args:    dropFlag("--conversation-id"),
-			wantErr: "at least one of the flags in the group [conversation-id group id chat] is required",
+			wantErr: "missing required flag: --conversation-id (or --group / --id / --chat / --open-conversation-id)",
 		},
 		{
 			name:    "missing old-emotion-id",
@@ -135,7 +135,7 @@ func TestCrossPlatformCoverageChatUpdateTextEmotionRequiredFlags(t *testing.T) {
 			wantErr: `required flag(s) "old-emotion-id" not set`,
 		},
 		{
-			name: "missing msg-id and background-id",
+			name: "missing message-id and background-id",
 			args: []string{
 				"message", "update-text-emotion",
 				"--conversation-id", "conv-1",
@@ -144,7 +144,7 @@ func TestCrossPlatformCoverageChatUpdateTextEmotionRequiredFlags(t *testing.T) {
 				"--emotion-name", "like",
 				"--text", "nice",
 			},
-			wantErr: `required flag(s) "background-id", "msg-id" not set`,
+			wantErr: "missing required flag: --message-id (or --msg-id / --open-message-id)",
 		},
 	}
 	for _, test := range tests {
@@ -196,12 +196,12 @@ func TestCrossPlatformCoverageChatGroupGetMuteConfigRecordsRawArgs(t *testing.T)
 	}
 }
 
-func TestCrossPlatformCoverageChatGroupGetMuteConfigRequiresGroup(t *testing.T) {
+func TestCrossPlatformCoverageChatGroupGetMuteConfigRequiresConversationID(t *testing.T) {
 	caller := &guardedMutationCaller{}
 	err := executeGuardedMutationCommand(t, caller, newChatCommand,
 		"group", "get-mute-config")
-	if err == nil || !strings.Contains(err.Error(), "--group") {
-		t.Fatalf("err = %v, want message containing --group", err)
+	if err == nil || !strings.Contains(err.Error(), "--conversation-id") {
+		t.Fatalf("err = %v, want message containing --conversation-id", err)
 	}
 	if len(caller.calls) != 0 {
 		t.Fatalf("tool calls = %#v, want none", caller.calls)
