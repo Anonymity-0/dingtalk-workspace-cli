@@ -44,6 +44,84 @@ func TestEvalDispatchWorkflowUsesRepositoryPermissionAndReviewedSHA(t *testing.T
 	}
 }
 
+func TestEvalDispatchWorkflowCanWritePRConversationComments(t *testing.T) {
+	t.Parallel()
+
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repository root: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "eval-dispatch.yml"))
+	if err != nil {
+		t.Fatalf("read eval-dispatch workflow: %v", err)
+	}
+	workflow := string(data)
+
+	dispatchStart := strings.Index(workflow, "jobs:\n  dispatch:")
+	if dispatchStart < 0 {
+		t.Fatal("eval-dispatch workflow missing dispatch job")
+	}
+	stepsOffset := strings.Index(workflow[dispatchStart:], "\n    steps:")
+	if stepsOffset < 0 {
+		t.Fatal("eval-dispatch workflow missing dispatch steps")
+	}
+	permissions := workflow[dispatchStart : dispatchStart+stepsOffset]
+	if !containsTrimmedLine(permissions, "pull-requests: write") {
+		t.Error("dispatch job must grant write permission for PR conversation comments")
+	}
+	if containsTrimmedLine(permissions, "pull-requests: read") {
+		t.Error("dispatch job still limits pull requests to read-only")
+	}
+	if containsTrimmedLine(permissions, "issues: write") {
+		t.Error("dispatch job must keep a single write domain instead of granting issue-wide writes")
+	}
+
+	commentWrites := []struct {
+		step     string
+		method   string
+		endpoint string
+	}{
+		{
+			step:     "Reply usage on parse failure",
+			method:   "POST",
+			endpoint: "issues/${PR_NUMBER}/comments",
+		},
+		{
+			step:     "Create dispatch placeholder",
+			method:   "POST",
+			endpoint: "issues/${PR_NUMBER}/comments",
+		},
+		{
+			step:     "Finalize dispatch marker",
+			method:   "PATCH",
+			endpoint: "issues/comments/${DISPATCH_COMMENT_ID}",
+		},
+		{
+			step:     "Mark dispatch preparation failure",
+			method:   "PATCH",
+			endpoint: "issues/comments/${DISPATCH_COMMENT_ID}",
+		},
+	}
+	for _, write := range commentWrites {
+		write := write
+		t.Run(write.step, func(t *testing.T) {
+			t.Parallel()
+			step := evalDispatchWorkflowStep(t, workflow, write.step)
+			if !strings.Contains(step, "gh api --method "+write.method) {
+				t.Errorf("step %q must use gh api so GitHub's HTTP error message remains visible", write.step)
+			}
+			if !strings.Contains(step, write.endpoint) {
+				t.Errorf("step %q missing comment endpoint %q", write.step, write.endpoint)
+			}
+			for _, forbidden := range []string{"curl --fail", "Authorization: Bearer", "2>/dev/null"} {
+				if strings.Contains(step, forbidden) {
+					t.Errorf("step %q hides or manually transports API diagnostics via %q", write.step, forbidden)
+				}
+			}
+		})
+	}
+}
+
 func TestEvalDispatchWorkflowPublishesArtifactBoundRequest(t *testing.T) {
 	t.Parallel()
 
@@ -102,7 +180,7 @@ func TestEvalDispatchWorkflowPublishesArtifactBoundRequest(t *testing.T) {
 		"ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}",
 		"ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}",
 		"<!-- eval-dispatch: ${marker_json} -->",
-		"-X PATCH",
+		"gh api --method PATCH",
 		"issues/comments/${DISPATCH_COMMENT_ID}",
 	} {
 		if !strings.Contains(workflow, want) {
@@ -118,6 +196,30 @@ func TestEvalDispatchWorkflowPublishesArtifactBoundRequest(t *testing.T) {
 			t.Errorf("eval-dispatch workflow exposes retired direct-trigger detail %q", forbidden)
 		}
 	}
+}
+
+func evalDispatchWorkflowStep(t *testing.T, workflow, name string) string {
+	t.Helper()
+
+	marker := "      - name: " + name + "\n"
+	start := strings.Index(workflow, marker)
+	if start < 0 {
+		t.Fatalf("eval-dispatch workflow missing step %q", name)
+	}
+	rest := workflow[start+len(marker):]
+	if end := strings.Index(rest, "\n      - name: "); end >= 0 {
+		return rest[:end]
+	}
+	return rest
+}
+
+func containsTrimmedLine(text, want string) bool {
+	for _, line := range strings.Split(text, "\n") {
+		if strings.TrimSpace(line) == want {
+			return true
+		}
+	}
+	return false
 }
 
 func TestEvalPollValidatePython(t *testing.T) {
