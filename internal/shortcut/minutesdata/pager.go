@@ -81,11 +81,6 @@ func CollectTranscript(call TranscriptCaller, initialToken string, singlePage bo
 			result.NextToken = ""
 			return result, nil
 		}
-		if page.NextToken == "" {
-			result.FailurePage = pageIndex
-			result.FailureMessage = "hasNext=true without nextToken"
-			return result, fmt.Errorf("minutes transcript page %d declares another page without nextToken", pageIndex)
-		}
 		token = page.NextToken
 	}
 	result.FailurePage = maxPages + 1

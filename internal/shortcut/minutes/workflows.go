@@ -21,6 +21,20 @@ import (
 
 var minutesWorkflowArtifacts = []string{"basic", "summary", "keywords", "transcript", "todos"}
 
+var (
+	minutesMkdirTemp     = os.MkdirTemp
+	minutesRemoveAll     = os.RemoveAll
+	minutesWriteFile     = os.WriteFile
+	minutesStat          = os.Stat
+	minutesRename        = os.Rename
+	minutesGetwd         = os.Getwd
+	minutesEvalSymlinks  = filepath.EvalSymlinks
+	minutesRel           = filepath.Rel
+	minutesLstat         = os.Lstat
+	minutesMkdir         = os.Mkdir
+	minutesMarshalIndent = json.MarshalIndent
+)
+
 var RecordWrapUp = shortcut.Shortcut{
 	Service: "minutes", Command: "+record-wrap-up", Product: "minutes",
 	Description: "停止实时录音并有界等待听记产物，失败时保留恢复句柄",
@@ -507,14 +521,14 @@ func executeMinutesExportPack(rt *shortcut.RuntimeContext) error {
 	if err != nil {
 		return err
 	}
-	tempDir, err := os.MkdirTemp(parent, ".dws-minutes-export-*")
+	tempDir, err := minutesMkdirTemp(parent, ".dws-minutes-export-*")
 	if err != nil {
 		return err
 	}
 	cleanup := true
 	defer func() {
 		if cleanup {
-			_ = os.RemoveAll(tempDir)
+			_ = minutesRemoveAll(tempDir)
 		}
 	}()
 	files := map[string]map[string]any{}
@@ -523,13 +537,16 @@ func executeMinutesExportPack(rt *shortcut.RuntimeContext) error {
 		value := bundle[name]
 		if name == "summary" {
 			filename = "summary.md"
-			if err := os.WriteFile(filepath.Join(tempDir, filename), []byte(value.(string)), 0o600); err != nil {
+			if err := minutesWriteFile(filepath.Join(tempDir, filename), []byte(value.(string)), 0o600); err != nil {
 				return err
 			}
 		} else if err := writeJSONFile(filepath.Join(tempDir, filename), value); err != nil {
 			return err
 		}
-		info, _ := os.Stat(filepath.Join(tempDir, filename))
+		info, err := minutesStat(filepath.Join(tempDir, filename))
+		if err != nil {
+			return err
+		}
 		files[name] = map[string]any{"file": filename, "sizeBytes": info.Size(), "complete": true}
 	}
 	if rt.Bool("include-media") {
@@ -541,7 +558,7 @@ func executeMinutesExportPack(rt *shortcut.RuntimeContext) error {
 		if parseErr != nil {
 			return parseErr
 		}
-		download, downloadErr := localio.Download(rt.Command().Context(), mediaURL, localio.DownloadOptions{BaseDir: tempDir, Output: "media/", PreferredName: id + mediaExtension(mediaURL)})
+		download, downloadErr := minutesDownload(rt.Command().Context(), mediaURL, localio.DownloadOptions{BaseDir: tempDir, Output: "media/", PreferredName: id + mediaExtension(mediaURL)})
 		if downloadErr != nil {
 			return downloadErr
 		}
@@ -551,7 +568,7 @@ func executeMinutesExportPack(rt *shortcut.RuntimeContext) error {
 	if err := writeJSONFile(filepath.Join(tempDir, "manifest.json"), manifest); err != nil {
 		return err
 	}
-	if err := os.Rename(tempDir, target); err != nil {
+	if err := minutesRename(tempDir, target); err != nil {
 		return fmt.Errorf("发布听记归档目录失败: %w", err)
 	}
 	cleanup = false
@@ -755,25 +772,25 @@ func prepareExportTarget(output string) (target, relative, parent string, err er
 	if err := localio.ValidateOutput(output); err != nil {
 		return "", "", "", err
 	}
-	cwd, err := os.Getwd()
+	cwd, err := minutesGetwd()
 	if err != nil {
 		return "", "", "", err
 	}
-	realBase, err := filepath.EvalSymlinks(cwd)
+	realBase, err := minutesEvalSymlinks(cwd)
 	if err != nil {
 		return "", "", "", err
 	}
 	relative = filepath.Clean(output)
 	target = filepath.Join(realBase, relative)
 	parent = filepath.Dir(target)
-	rel, err := filepath.Rel(realBase, target)
+	rel, err := minutesRel(realBase, target)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", "", "", fmt.Errorf("LOCAL_PATH_UNSAFE: 输出目录逃逸工作目录")
 	}
 	if err := ensureExportParent(realBase, filepath.Dir(rel)); err != nil {
 		return "", "", "", err
 	}
-	if _, err := os.Lstat(target); err == nil {
+	if _, err := minutesLstat(target); err == nil {
 		return "", "", "", fmt.Errorf("LOCAL_FILE_EXISTS: 目标目录已存在；请选择新的输出路径")
 	} else if !os.IsNotExist(err) {
 		return "", "", "", err
@@ -788,9 +805,9 @@ func ensureExportParent(base, relative string) error {
 	}
 	for _, component := range strings.Split(filepath.Clean(relative), string(filepath.Separator)) {
 		current = filepath.Join(current, component)
-		info, err := os.Lstat(current)
+		info, err := minutesLstat(current)
 		if os.IsNotExist(err) {
-			if err := os.Mkdir(current, 0o700); err != nil {
+			if err := minutesMkdir(current, 0o700); err != nil {
 				return err
 			}
 			continue
@@ -806,12 +823,12 @@ func ensureExportParent(base, relative string) error {
 }
 
 func writeJSONFile(path string, value any) error {
-	raw, err := json.MarshalIndent(value, "", "  ")
+	raw, err := minutesMarshalIndent(value, "", "  ")
 	if err != nil {
 		return err
 	}
 	raw = append(raw, '\n')
-	return os.WriteFile(path, raw, 0o600)
+	return minutesWriteFile(path, raw, 0o600)
 }
 
 func init() {

@@ -20,7 +20,10 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/minutesdata"
 )
 
-var minutesPutFile = localio.PutFile
+var (
+	minutesPutFile  = localio.PutFile
+	minutesDownload = localio.Download
+)
 
 var Search = shortcut.Shortcut{
 	Service: "minutes", Command: "+search", Product: "minutes",
@@ -325,7 +328,7 @@ func executeMinutesDownload(rt *shortcut.RuntimeContext) error {
 			output = rt.Str("output")
 		}
 		preferred := id + mediaExtension(mediaURL)
-		download, err := localio.Download(rt.Command().Context(), mediaURL, localio.DownloadOptions{Output: output, PreferredName: preferred})
+		download, err := minutesDownload(rt.Command().Context(), mediaURL, localio.DownloadOptions{Output: output, PreferredName: preferred})
 		if err != nil {
 			failures = append(failures, map[string]any{"taskUuid": id, "error": err.Error()})
 			continue
@@ -598,7 +601,7 @@ func cancelMinutesUpload(rt *shortcut.RuntimeContext, sessionID string) (bool, e
 	if err != nil {
 		return false, err
 	}
-	if err := minutesdata.ValidateEnvelope(data); err != nil {
+	if err := minutesdata.RequireWriteAcknowledgement("cancel upload", data); err != nil {
 		return false, err
 	}
 	return true, nil

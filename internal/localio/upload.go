@@ -14,6 +14,17 @@ import (
 
 const defaultUploadLimit = int64(5 << 30)
 
+var (
+	newUploadHTTPClient = secureHTTPClient
+	validateUploadURL   = func(raw string) error {
+		_, err := ValidateDownloadURL(raw)
+		return err
+	}
+	statUploadFile   = os.Stat
+	openUploadFile   = os.Open
+	newUploadRequest = http.NewRequestWithContext
+)
+
 // UploadResult records only non-sensitive transfer facts. The signed URL is
 // deliberately never returned.
 type UploadResult struct {
@@ -25,12 +36,9 @@ type UploadResult struct {
 // endpoint. Redirects are rejected so file bytes and credentials cannot move to
 // a second origin. Transient failures are retried with the file reopened.
 func PutFile(ctx context.Context, rawURL, path string, maxBytes int64) (UploadResult, error) {
-	client := secureHTTPClient()
+	client := newUploadHTTPClient()
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	return putFileWithClient(ctx, rawURL, path, maxBytes, client, func(raw string) error {
-		_, err := ValidateDownloadURL(raw)
-		return err
-	})
+	return putFileWithClient(ctx, rawURL, path, maxBytes, client, validateUploadURL)
 }
 
 func putFileWithClient(ctx context.Context, rawURL, path string, maxBytes int64, client *http.Client, validate func(string) error) (UploadResult, error) {
@@ -43,7 +51,7 @@ func putFileWithClient(ctx context.Context, rawURL, path string, maxBytes int64,
 	if maxBytes <= 0 {
 		maxBytes = defaultUploadLimit
 	}
-	info, err := os.Stat(path)
+	info, err := statUploadFile(path)
 	if err != nil {
 		return UploadResult{}, fmt.Errorf("读取上传文件失败: %w", err)
 	}
@@ -54,11 +62,11 @@ func putFileWithClient(ctx context.Context, rawURL, path string, maxBytes int64,
 	var lastErr error
 	for attempt := 1; attempt <= 3; attempt++ {
 		result.Attempts = attempt
-		file, err := os.Open(path)
+		file, err := openUploadFile(path)
 		if err != nil {
 			return UploadResult{}, fmt.Errorf("打开上传文件失败: %w", err)
 		}
-		request, requestErr := http.NewRequestWithContext(ctx, http.MethodPut, rawURL, file)
+		request, requestErr := newUploadRequest(ctx, http.MethodPut, rawURL, file)
 		if requestErr != nil {
 			_ = file.Close()
 			return UploadResult{}, fmt.Errorf("创建上传请求失败: %w", requestErr)

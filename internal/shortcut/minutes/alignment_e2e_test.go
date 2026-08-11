@@ -27,6 +27,7 @@ type minutesE2ECaller struct {
 	counts     map[string]int
 	arguments  map[string][]map[string]any
 	beforeFail map[string]func()
+	failErrors map[string]error
 }
 
 func (c *minutesE2ECaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -42,6 +43,9 @@ func (c *minutesE2ECaller) CallTool(_ context.Context, product, tool string, arg
 	if c.failAt[key] == c.counts[key] {
 		if hook := c.beforeFail[key]; hook != nil {
 			hook()
+		}
+		if err := c.failErrors[key]; err != nil {
+			return nil, err
 		}
 		return nil, errors.New("fixture failure")
 	}

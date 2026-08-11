@@ -10,6 +10,8 @@ import (
 
 const defaultPublishBytesLimit = 64 << 20
 
+var verifyPublishTarget = func(target *downloadTarget) error { return target.verifyParent() }
+
 // PublishBytesOptions controls safe no-clobber publication beneath BaseDir.
 type PublishBytesOptions struct {
 	BaseDir       string
@@ -33,7 +35,7 @@ func PublishBytes(payload []byte, opts PublishBytesOptions) (DownloadResult, err
 		return DownloadResult{}, err
 	}
 	defer target.close()
-	if err := target.verifyParent(); err != nil {
+	if err := verifyPublishTarget(target); err != nil {
 		return DownloadResult{}, err
 	}
 	tmp, tmpName, err := createDownloadTemp(target.parentRoot)
@@ -56,7 +58,7 @@ func PublishBytes(payload []byte, opts PublishBytesOptions) (DownloadResult, err
 		cleanup()
 		return DownloadResult{}, fmt.Errorf("关闭输出临时文件失败: %w", err)
 	}
-	if err := target.verifyParent(); err != nil {
+	if err := verifyPublishTarget(target); err != nil {
 		cleanup()
 		return DownloadResult{}, err
 	}

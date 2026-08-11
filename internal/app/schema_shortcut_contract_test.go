@@ -17,10 +17,9 @@ import (
 
 const (
 	publicShortcutCount = 378
-	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool.
-	// Reviewed compatibility spellings are aliases of the primary ToolSpec and
-	// therefore do not add a second canonical tool.
-	schemaPublishedShortcutCount = 378
+	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
+	// including the hidden historical minutes.shortcut_minutes_search contract.
+	schemaPublishedShortcutCount = 379
 	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
 	publiclyDeliveredShortcutCount = 378
 )

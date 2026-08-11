@@ -27,6 +27,11 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/minutesdata"
 )
 
+var (
+	smartMinutesMarshalIndent = json.MarshalIndent
+	smartMinutesPublishBytes  = localio.PublishBytes
+)
+
 // MinutesDetail: fetch several artifacts of ONE minute (听记) in a single command
 // and print them as one projected bundle.
 //
@@ -183,10 +188,10 @@ func readMinutesDetail(rt *shortcut.RuntimeContext, taskUUID string, want []stri
 			result, err := collectMinutesTranscript(rt, taskUUID, direction, rt.Str("cursor"), rt.Bool("single-page"), rt.Int("page-limit"))
 			transcript := minutesdata.TranscriptPayload(taskUUID, direction, result)
 			if err == nil && rt.Str("transcript-output") != "inline" {
-				raw, marshalErr := json.MarshalIndent(transcript, "", "  ")
+				raw, marshalErr := smartMinutesMarshalIndent(transcript, "", "  ")
 				if marshalErr == nil {
 					raw = append(raw, '\n')
-					published, publishErr := localio.PublishBytes(raw, localio.PublishBytesOptions{Output: strings.TrimSuffix(rt.Str("output-dir"), "/") + "/", PreferredName: taskUUID + ".json"})
+					published, publishErr := smartMinutesPublishBytes(raw, localio.PublishBytesOptions{Output: strings.TrimSuffix(rt.Str("output-dir"), "/") + "/", PreferredName: taskUUID + ".json"})
 					if publishErr == nil {
 						transcript["path"] = published.RelativePath
 						transcript["sizeBytes"] = published.SizeBytes

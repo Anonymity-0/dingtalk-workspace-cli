@@ -13,6 +13,13 @@ import (
 
 const defaultTextInputLimit = int64(8 << 20)
 
+var (
+	readTextInputAll  = io.ReadAll
+	readTextInputStat = os.Stat
+	readTextInputFile = os.ReadFile
+	readTextInputRel  = filepath.Rel
+)
+
 // ReadTextInput resolves a literal, "-" stdin, or @workspace-relative file.
 // File symlinks must resolve inside the current working directory and all input
 // forms are bounded to prevent accidental unbounded memory use.
@@ -24,7 +31,7 @@ func ReadTextInput(spec string, stdin io.Reader, maxBytes int64) (string, error)
 		if stdin == nil {
 			return "", fmt.Errorf("LOCAL_INPUT_INVALID: stdin 不可用")
 		}
-		data, err := io.ReadAll(io.LimitReader(stdin, maxBytes+1))
+		data, err := readTextInputAll(io.LimitReader(stdin, maxBytes+1))
 		if err != nil {
 			return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
 		}
@@ -47,23 +54,23 @@ func ReadTextInput(spec string, stdin io.Reader, maxBytes int64) (string, error)
 	if clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("LOCAL_INPUT_UNSAFE: @file 不能逃逸工作目录")
 	}
-	cwd, err := os.Getwd()
+	cwd, err := localGetwd()
 	if err != nil {
 		return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
 	}
-	realBase, err := filepath.EvalSymlinks(cwd)
+	realBase, err := localEvalSymlinks(cwd)
 	if err != nil {
 		return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
 	}
-	realPath, err := filepath.EvalSymlinks(filepath.Join(realBase, clean))
+	realPath, err := localEvalSymlinks(filepath.Join(realBase, clean))
 	if err != nil {
 		return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
 	}
-	rel, err := filepath.Rel(realBase, realPath)
+	rel, err := readTextInputRel(realBase, realPath)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
 		return "", fmt.Errorf("LOCAL_INPUT_UNSAFE: @file 解析后逃逸工作目录")
 	}
-	info, err := os.Stat(realPath)
+	info, err := readTextInputStat(realPath)
 	if err != nil {
 		return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
 	}
@@ -73,7 +80,7 @@ func ReadTextInput(spec string, stdin io.Reader, maxBytes int64) (string, error)
 	if info.Size() > maxBytes {
 		return "", fmt.Errorf("LOCAL_INPUT_TOO_LARGE: 文件大小 %d 超过 %d 字节", info.Size(), maxBytes)
 	}
-	data, err := os.ReadFile(realPath)
+	data, err := readTextInputFile(realPath)
 	if err != nil {
 		return "", fmt.Errorf("LOCAL_INPUT_READ_FAILED: %w", err)
 	}

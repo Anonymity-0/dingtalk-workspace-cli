@@ -5,12 +5,16 @@ package localio
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestCrossPlatformCoveragePutFileRetriesAndUploadsExactBytesE2E(t *testing.T) {
@@ -39,6 +43,106 @@ func TestCrossPlatformCoveragePutFileRetriesAndUploadsExactBytesE2E(t *testing.T
 	result, err := putFileWithClient(context.Background(), server.URL, path, 100, server.Client(), func(string) error { return nil })
 	if err != nil || calls != 2 || result.Attempts != 2 || result.SizeBytes != int64(len(payload)) {
 		t.Fatalf("upload = %#v calls=%d err=%v", result, calls, err)
+	}
+}
+
+type uploadRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f uploadRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
+
+type uploadCloseErrorBody struct{ io.Reader }
+
+func (uploadCloseErrorBody) Close() error { return errors.New("close") }
+
+func TestCrossPlatformCoveragePutFileFailureBranchesE2E(t *testing.T) {
+	base := t.TempDir()
+	path := filepath.Join(base, "audio.wav")
+	if err := os.WriteFile(path, []byte("payload"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	okClient := &http.Client{Transport: uploadRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("ok"))}, nil
+	})}
+	if _, err := PutFile(context.Background(), "not-a-valid-upload-url", path, 10); err == nil {
+		t.Fatal("default upload URL validation accepted invalid URL")
+	}
+	if _, err := putFileWithClient(context.Background(), "http://example.invalid", path, 10, okClient, nil); err == nil {
+		t.Fatal("nil validator accepted")
+	}
+	if _, err := putFileWithClient(context.Background(), "http://example.invalid", path, 10, okClient, func(string) error { return errors.New("invalid") }); err == nil {
+		t.Fatal("validator error ignored")
+	}
+	if _, err := putFileWithClient(context.Background(), "http://example.invalid", filepath.Join(base, "missing"), 10, okClient, func(string) error { return nil }); err == nil {
+		t.Fatal("stat error ignored")
+	}
+	if _, err := putFileWithClient(context.Background(), "http://example.invalid", base, 10, okClient, func(string) error { return nil }); err == nil {
+		t.Fatal("directory accepted")
+	}
+	empty := filepath.Join(base, "empty")
+	if err := os.WriteFile(empty, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := putFileWithClient(context.Background(), "http://example.invalid", empty, 10, okClient, func(string) error { return nil }); err == nil {
+		t.Fatal("empty file accepted")
+	}
+	if _, err := putFileWithClient(context.Background(), "http://example.invalid", path, 1, okClient, func(string) error { return nil }); err == nil {
+		t.Fatal("oversize file accepted")
+	}
+
+	t.Run("wrapper", func(t *testing.T) {
+		redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+			http.Redirect(w, request, "http://example.invalid/redirected", http.StatusFound)
+		}))
+		defer redirect.Close()
+		testseam.Swap(t, &newUploadHTTPClient, redirect.Client)
+		testseam.Swap(t, &validateUploadURL, func(string) error { return nil })
+		if _, err := PutFile(context.Background(), redirect.URL, path, 0); err == nil {
+			t.Fatal("PutFile followed redirect")
+		}
+	})
+	t.Run("open", func(t *testing.T) {
+		testseam.Swap(t, &openUploadFile, func(string) (*os.File, error) { return nil, errors.New("open") })
+		if _, err := putFileWithClient(context.Background(), "http://example.invalid", path, 10, okClient, func(string) error { return nil }); err == nil {
+			t.Fatal("open error ignored")
+		}
+	})
+	t.Run("request", func(t *testing.T) {
+		testseam.Swap(t, &newUploadRequest, func(context.Context, string, string, io.Reader) (*http.Request, error) {
+			return nil, errors.New("request")
+		})
+		if _, err := putFileWithClient(context.Background(), "http://example.invalid", path, 10, okClient, func(string) error { return nil }); err == nil {
+			t.Fatal("request error ignored")
+		}
+	})
+
+	for _, tc := range []struct {
+		name   string
+		client *http.Client
+	}{
+		{name: "client", client: &http.Client{Transport: uploadRoundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("call") })}},
+		{name: "server", client: &http.Client{Transport: uploadRoundTripFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusServiceUnavailable, Body: io.NopCloser(strings.NewReader("retry"))}, nil
+		})}},
+		{name: "close", client: &http.Client{Transport: uploadRoundTripFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusOK, Body: uploadCloseErrorBody{Reader: strings.NewReader("ok")}}, nil
+		})}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := putFileWithClient(context.Background(), "http://example.invalid", path, 10, tc.client, func(string) error { return nil }); err == nil {
+				t.Fatalf("%s retries unexpectedly succeeded", tc.name)
+			}
+		})
+	}
+
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	retryClient := &http.Client{Transport: uploadRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusServiceUnavailable, Body: io.NopCloser(strings.NewReader("retry"))}, nil
+	})}
+	if _, err := putFileWithClient(cancelled, "http://example.invalid", path, 10, retryClient, func(string) error { return nil }); err == nil {
+		t.Fatal("cancelled retry succeeded")
 	}
 }
 
