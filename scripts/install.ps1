@@ -41,6 +41,16 @@ $SkillName = "dws"
 $SkillMode = ""
 $ManagedSkillMarker = ".dws-managed"
 $ManagedSkillMarkerContent = "managed-by=dingtalk-workspace-cli"
+$LegacyOfficialMultiSkills = @(
+    "dingtalk-agoal", "dingtalk-aiapp", "dingtalk-aisearch", "dingtalk-aitable",
+    "dingtalk-attendance", "dingtalk-calendar", "dingtalk-chat", "dingtalk-contact",
+    "dingtalk-dev", "dingtalk-devapp", "dingtalk-devdoc", "dingtalk-ding",
+    "dingtalk-doc", "dingtalk-drive", "dingtalk-event", "dingtalk-hrbrain",
+    "dingtalk-live", "dingtalk-mail", "dingtalk-markdown", "dingtalk-minutes",
+    "dingtalk-misc", "dingtalk-oa", "dingtalk-pat", "dingtalk-profile",
+    "dingtalk-report", "dingtalk-shared", "dingtalk-sheet", "dingtalk-skill",
+    "dingtalk-todo", "dingtalk-wiki", "dws-shared"
+)
 
 # Agent skill base directories (same order as build/npm/install.js AGENT_DIRS).
 $AgentDirs = @(
@@ -80,7 +90,7 @@ function Write-Err {
 # exact legacy name that predates markers.
 function Test-ManagedMultiSkillDir {
     param([string]$Dir)
-    if ((Split-Path $Dir -Leaf) -eq "dws-shared") { return $true }
+    if ($LegacyOfficialMultiSkills -contains (Split-Path $Dir -Leaf)) { return $true }
     $marker = Join-Path $Dir $ManagedSkillMarker
     if (!(Test-Path $marker -PathType Leaf)) { return $false }
     try {
@@ -94,6 +104,33 @@ function Set-ManagedMultiSkillMarker {
     param([string]$Dir)
     $marker = Join-Path $Dir $ManagedSkillMarker
     [System.IO.File]::WriteAllText($marker, "$ManagedSkillMarkerContent`n", [System.Text.UTF8Encoding]::new($false))
+}
+
+function Publish-ManagedMultiSkill {
+    param(
+        [string]$Source,
+        [string]$Destination
+    )
+    $parent = Split-Path $Destination -Parent
+    $name = Split-Path $Destination -Leaf
+    $stage = Join-Path $parent (".$name.tmp-" + [guid]::NewGuid().ToString("N"))
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Stop"
+        New-Item -ItemType Directory -Path $stage -Force -ErrorAction Stop | Out-Null
+        Copy-DirRecursive -Source $Source -Destination $stage | Out-Null
+        Set-ManagedMultiSkillMarker -Dir $stage
+        Move-Item -LiteralPath $stage -Destination $Destination -ErrorAction Stop
+        return $true
+    } catch {
+        Write-Say "⚠️  Skill 复制、标记或发布失败，目标未计为安装成功: $Destination ($_)"
+        return $false
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+        if (Test-Path $stage) {
+            Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 function Get-Arch {
@@ -767,12 +804,7 @@ function Install-MultiToBase {
     foreach ($skillDir in $skillDirs) {
         $name = $skillDir.Name
         $dest = Join-Path $BaseDir $name
-        try {
-            New-Item -ItemType Directory -Path $dest -Force | Out-Null
-            Copy-DirRecursive -Source $skillDir.FullName -Destination $dest | Out-Null
-            Set-ManagedMultiSkillMarker -Dir $dest
-        } catch {
-            Write-Say "⚠️  Skill 复制或受管标记写入失败，目标未计为安装成功: $dest ($_)"
+        if (!(Publish-ManagedMultiSkill -Source $skillDir.FullName -Destination $dest)) {
             return $false
         }
         $count++

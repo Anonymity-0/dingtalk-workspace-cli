@@ -19,6 +19,46 @@ import (
 
 const stateFile = "skills-state.json"
 
+// legacyOfficialSkillNames is the frozen set of official multi-skill names
+// shipped before .dws-managed was introduced. Exact names are safe ownership
+// evidence for the marker migration; a dingtalk-* prefix is not.
+//
+// Keep retired names here permanently so an old installation can still be
+// migrated after that Skill has been folded into another bundle.
+var legacyOfficialSkillNames = map[string]struct{}{
+	"dingtalk-agoal":      {},
+	"dingtalk-aiapp":      {},
+	"dingtalk-aisearch":   {},
+	"dingtalk-aitable":    {},
+	"dingtalk-attendance": {},
+	"dingtalk-calendar":   {},
+	"dingtalk-chat":       {},
+	"dingtalk-contact":    {},
+	"dingtalk-dev":        {},
+	"dingtalk-devapp":     {},
+	"dingtalk-devdoc":     {},
+	"dingtalk-ding":       {},
+	"dingtalk-doc":        {},
+	"dingtalk-drive":      {},
+	"dingtalk-event":      {},
+	"dingtalk-hrbrain":    {},
+	"dingtalk-live":       {},
+	"dingtalk-mail":       {},
+	"dingtalk-markdown":   {},
+	"dingtalk-minutes":    {},
+	"dingtalk-misc":       {},
+	"dingtalk-oa":         {},
+	"dingtalk-pat":        {},
+	"dingtalk-profile":    {},
+	"dingtalk-report":     {},
+	"dingtalk-shared":     {},
+	"dingtalk-sheet":      {},
+	"dingtalk-skill":      {},
+	"dingtalk-todo":       {},
+	"dingtalk-wiki":       {},
+	"dws-shared":          {},
+}
+
 var (
 	skillStateReadFile = os.ReadFile
 	skillStateRemove   = os.Remove
@@ -29,6 +69,13 @@ type State struct {
 	OfficialSkills []string `json:"official_skills"`
 	UpdatedSkills  []string `json:"updated_skills"`
 	UpdatedAt      string   `json:"updated_at"`
+}
+
+// IsLegacyOfficialSkillName reports whether name was an exact official
+// multi-skill directory name before managed markers were shipped.
+func IsLegacyOfficialSkillName(name string) bool {
+	_, ok := legacyOfficialSkillNames[name]
+	return ok
 }
 
 func Path(home string) string {

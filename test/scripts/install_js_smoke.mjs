@@ -56,7 +56,7 @@ const PLATFORM_MAP = {
 const repoRoot = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), "..", "..");
 const installJsSource = path.join(repoRoot, "build", "npm", "install.js");
 const require = createRequire(import.meta.url);
-const { publishCacheAtomically } = require(installJsSource);
+const { publishCacheAtomically, publishManagedMultiSkillAtomically } = require(installJsSource);
 const assetName = PLATFORM_MAP[`${process.platform}-${process.arch}`];
 
 if (process.platform === "win32" || !assetName) {
@@ -264,6 +264,47 @@ scenario("mono backup failure preserves multi and reports failure", () => {
     assert.match(res.stderr, /未安装任何 mono Skill/);
     assert.equal(fs.readFileSync(path.join(base, "dingtalk-test", "SKILL.md"), "utf8"), "old multi\n");
     assert.ok(!fs.existsSync(path.join(base, "dws")), "mono not installed after cleanup failure");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("mono switch migrates exact pre-marker official skills", () => {
+  const { tmp, pkg, home } = stagePkg({
+    "mono/SKILL.md": "# mono fixture\n",
+    "multi/dingtalk-test/SKILL.md": "# dingtalk-test\n",
+  });
+  try {
+    const base = path.join(home, ".agents", "skills");
+    writeFile(path.join(base, "dingtalk-aitable", "SKILL.md"), "legacy official\n");
+    writeFile(path.join(base, "dingtalk-custom", "SKILL.md"), "market skill\n");
+
+    const res = runInstall(pkg, home, "mono");
+    assert.equal(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
+    assert.ok(!fs.existsSync(path.join(base, "dingtalk-aitable")), "pre-marker official skill removed");
+    assert.equal(fs.readFileSync(path.join(base, "dingtalk-custom", "SKILL.md"), "utf8"), "market skill\n");
+    assert.ok(fs.existsSync(path.join(base, "dws", "SKILL.md")), "mono installed");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("managed marker failure publishes no unmarked skill", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-marker-"));
+  const source = path.join(tmp, "source");
+  const dest = path.join(tmp, "skills", "dingtalk-test");
+  try {
+    writeFile(path.join(source, "SKILL.md"), "new skill\n");
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    assert.throws(
+      () => publishManagedMultiSkillAtomically(source, dest, () => { throw new Error("marker denied"); }),
+      /marker denied/,
+    );
+    assert.ok(!fs.existsSync(dest), "failed marker must not publish final directory");
+    assert.ok(
+      !fs.readdirSync(path.dirname(dest)).some((name) => name.startsWith(".dingtalk-test.tmp-")),
+      "failed marker must clean staging",
+    );
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

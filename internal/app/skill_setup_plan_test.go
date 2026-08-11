@@ -54,6 +54,12 @@ func TestCrossPlatformCoverageSkillSetupPlanPreviewDeclineAndExecutionMatch(t *t
 	})
 	testseam.Swap(t, &skillSetupCopyDir, func(string, string) error { copyCalls++; return nil })
 	testseam.Swap(t, &skillSetupWriteFile, func(string, []byte, os.FileMode) error { return nil })
+	testseam.Swap(t, &skillSetupPublishRename, func(src, dest string) error {
+		if err := os.RemoveAll(dest); err != nil {
+			return err
+		}
+		return os.Rename(src, dest)
+	})
 	dryRunCmd := skillSetupCoverageCommand(t, skillSetupModeMulti, false)
 	var dryRunOut bytes.Buffer
 	dryRunCmd.SetOut(&dryRunOut)

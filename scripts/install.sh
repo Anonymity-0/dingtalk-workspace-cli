@@ -100,14 +100,43 @@ backup_and_remove_skill_dir() {
 # exact legacy name that predates markers.
 is_managed_multi_skill_dir() {
   _managed_dir="$1"
-  [ "$(basename "$_managed_dir")" = "dws-shared" ] && return 0
+  is_legacy_official_multi_skill_name "$(basename "$_managed_dir")" && return 0
   [ -f "$_managed_dir/$MANAGED_SKILL_MARKER" ] || return 1
   [ "$(cat "$_managed_dir/$MANAGED_SKILL_MARKER" 2>/dev/null)" = "$MANAGED_SKILL_MARKER_CONTENT" ]
+}
+
+# Frozen exact names shipped before .dws-managed existed. Never replace this
+# with a dingtalk-* prefix check: user/market Skills may use that prefix.
+is_legacy_official_multi_skill_name() {
+  case "$1" in
+    dingtalk-agoal|dingtalk-aiapp|dingtalk-aisearch|dingtalk-aitable|dingtalk-attendance|dingtalk-calendar|dingtalk-chat|dingtalk-contact|dingtalk-dev|dingtalk-devapp|dingtalk-devdoc|dingtalk-ding|dingtalk-doc|dingtalk-drive|dingtalk-event|dingtalk-hrbrain|dingtalk-live|dingtalk-mail|dingtalk-markdown|dingtalk-minutes|dingtalk-misc|dingtalk-oa|dingtalk-pat|dingtalk-profile|dingtalk-report|dingtalk-shared|dingtalk-sheet|dingtalk-skill|dingtalk-todo|dingtalk-wiki|dws-shared) return 0 ;;
+  esac
+  return 1
 }
 
 mark_managed_multi_skill_dir() {
   _managed_dir="$1"
   printf '%s\n' "$MANAGED_SKILL_MARKER_CONTENT" > "$_managed_dir/$MANAGED_SKILL_MARKER"
+}
+
+publish_managed_multi_skill() {
+  _pms_src="$1"
+  _pms_dest="$2"
+  _pms_parent="$(dirname "$_pms_dest")"
+  _pms_name="$(basename "$_pms_dest")"
+  _pms_stage="$(mktemp -d "$_pms_parent/.${_pms_name}.tmp.XXXXXX")" || return 1
+  if ! cp -R "$_pms_src/." "$_pms_stage/" 2>/dev/null && ! cp -r "$_pms_src/." "$_pms_stage/"; then
+    rm -rf "$_pms_stage"
+    return 1
+  fi
+  if ! mark_managed_multi_skill_dir "$_pms_stage"; then
+    rm -rf "$_pms_stage"
+    return 1
+  fi
+  if ! mv "$_pms_stage" "$_pms_dest"; then
+    rm -rf "$_pms_stage"
+    return 1
+  fi
 }
 
 # publish_skill_cache <source> <cache-dir>
@@ -679,12 +708,10 @@ _install_multi_to_base() {
     [ -f "${skill_dir}SKILL.md" ] || continue
     _name="$(basename "$skill_dir")"
     _dest="$_base/$_name"
-    mkdir -p "$_dest" || return 1
-    if ! cp -R "${skill_dir}." "$_dest/" 2>/dev/null && ! cp -r "${skill_dir}." "$_dest/"; then
-      say "  ⚠️  Skill 复制失败，目标未计为安装成功: $_dest"
+    if ! publish_managed_multi_skill "$skill_dir" "$_dest"; then
+      say "  ⚠️  Skill 复制、标记或发布失败，目标未计为安装成功: $_dest"
       return 1
     fi
-    mark_managed_multi_skill_dir "$_dest" || return 1
     _count=$((_count + 1))
   done
 

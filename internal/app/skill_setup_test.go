@@ -518,8 +518,9 @@ func TestCrossPlatformCoverageSkillSetupMonoPreservesUnmarkedDingtalkSkill(t *te
 	setTestHome(t, home)
 	base := filepath.Join(home, ".agents", "skills")
 	managed := filepath.Join(base, "dingtalk-managed-old")
+	legacyOfficial := filepath.Join(base, "dingtalk-aitable")
 	custom := filepath.Join(base, "dingtalk-custom")
-	for _, dir := range []string{managed, custom} {
+	for _, dir := range []string{managed, legacyOfficial, custom} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -542,6 +543,9 @@ func TestCrossPlatformCoverageSkillSetupMonoPreservesUnmarkedDingtalkSkill(t *te
 	}
 	if _, err := os.Stat(managed); !os.IsNotExist(err) {
 		t.Fatalf("marked DWS multi Skill must be removed during mono switch: %v", err)
+	}
+	if _, err := os.Stat(legacyOfficial); !os.IsNotExist(err) {
+		t.Fatalf("pre-marker official multi Skill must be removed during mono switch: %v", err)
 	}
 	if got, err := os.ReadFile(filepath.Join(custom, "SKILL.md")); err != nil || string(got) != "dingtalk-custom" {
 		t.Fatalf("unmarked market/user dingtalk-* Skill changed: data=%q err=%v", got, err)

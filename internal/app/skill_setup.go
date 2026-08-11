@@ -55,6 +55,8 @@ var (
 	skillSetupExecutePlan     = executeSkillSetupPlan
 	skillSetupCopyDir         = copyDir
 	skillSetupInstallMulti    = installMultiSkillToHomes
+	skillSetupPublishTemp     = os.MkdirTemp
+	skillSetupPublishRename   = os.Rename
 	skillSetupMkdirTemp       = os.MkdirTemp
 	skillSetupRename          = os.Rename
 	skillSetupRunForm         = (*huh.Form).Run
@@ -119,11 +121,13 @@ multi 模式支持按产品挑选：
   -s/--skill   只装指定子 skill（可重复，短名 aitable 或全名 dingtalk-aitable 均可）
   -x/--exclude 从全装里剔除指定子 skill（可重复，与 --skill 互斥）
   用 -s/-x 挑选时未列出的已有 dingtalk-* skill 会保留（additive 叠加语义）；
-  不带过滤条件的全量安装只清理带 DWS 受管标记且不在 bundle 内的过期 Skill。
+  不带过滤条件的全量安装只清理带 DWS 受管标记，或属于 marker 上线前精确官方
+  名称集合且不在 bundle 内的过期 Skill。
   setup 成功后记录本次官方清单；后续每次 dws upgrade 都按新版本官方清单
   全量覆盖预制 skill，因此本地删除或 setup 时排除的预制 skill 会在升级时恢复。
 清理与备份（本命令可能移除的目录）：
-  · 安装任一模式前会清理对面模式残留：装 mono 移除带 DWS 受管标记的 multi Skill，
+  · 安装任一模式前会清理对面模式残留：装 mono 移除带 DWS 受管标记，或属于
+    marker 上线前精确官方名称集合的 multi Skill，
     装 multi 移除 <agent-home>/dws/；全量 multi 安装还会移除不在 bundle 内的
     过期受管 Skill。仅有 dingtalk-* 前缀的市场/用户 Skill 不会被清理。
   · 被移除的目录与同名旧 skill 会先备份到 ~/.dws/skill-backups/<时间戳>/；
@@ -331,10 +335,9 @@ const (
 
 // isManagedDWSMultiSkillDir reports whether dir is proven to be owned by the
 // bundled DWS installer. A dingtalk-* prefix alone is not ownership evidence:
-// market/user skills are allowed to use that prefix. The retired dws-shared
-// name is the only exact legacy exception.
+// only the exact pre-marker official names or the managed marker qualify.
 func isManagedDWSMultiSkillDir(dir string) bool {
-	if filepath.Base(dir) == legacySharedSkill {
+	if skillstate.IsLegacyOfficialSkillName(filepath.Base(dir)) {
 		return true
 	}
 	data, err := os.ReadFile(filepath.Join(dir, managedSkillMarkerName))
@@ -346,6 +349,38 @@ func markDWSManagedSkillDir(dir string) error {
 	if err := skillSetupWriteFile(marker, []byte(managedSkillMarkerContent), 0o644); err != nil {
 		return fmt.Errorf("写入 Skill 受管标记失败 %s: %w", marker, err)
 	}
+	return nil
+}
+
+// publishDWSManagedSkillDir stages a complete Skill and its ownership marker
+// before exposing the final directory. Copy or marker failures therefore
+// cannot leave an unmarked official directory that later mode cleanup would
+// mistake for user-owned content.
+func publishDWSManagedSkillDir(src, dest string) (err error) {
+	parent := filepath.Dir(dest)
+	stage, err := skillSetupPublishTemp(parent, "."+filepath.Base(dest)+".tmp-")
+	if err != nil {
+		return fmt.Errorf("创建 Skill staging 失败 %s: %w", parent, err)
+	}
+	published := false
+	defer func() {
+		if published {
+			return
+		}
+		if cleanupErr := skillSetupRemoveAll(stage); cleanupErr != nil {
+			err = errors.Join(err, fmt.Errorf("清理 Skill staging 失败 %s: %w", stage, cleanupErr))
+		}
+	}()
+	if err := skillSetupCopyDir(src, stage); err != nil {
+		return fmt.Errorf("拷贝 Skill staging 失败 %s: %w", stage, err)
+	}
+	if err := markDWSManagedSkillDir(stage); err != nil {
+		return err
+	}
+	if err := skillSetupPublishRename(stage, dest); err != nil {
+		return fmt.Errorf("发布 Skill 失败 %s: %w", dest, err)
+	}
+	published = true
 	return nil
 }
 
@@ -1542,13 +1577,8 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 		}
 		for _, name := range plan.MultiSkillNames {
 			subDest := filepath.Join(target.Destination, name)
-			if copyErr := skillSetupCopyDir(filepath.Join(plan.Source, name), subDest); copyErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 拷贝失败 %s: %v\n", subDest, copyErr)
-				skipped++
-				continue
-			}
-			if markerErr := markDWSManagedSkillDir(subDest); markerErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 受管标记写入失败 %s: %v\n", subDest, markerErr)
+			if publishErr := publishDWSManagedSkillDir(filepath.Join(plan.Source, name), subDest); publishErr != nil {
+				fmt.Fprintf(errOut, "  ✗ 安装失败 %s: %v\n", subDest, publishErr)
 				skipped++
 				continue
 			}

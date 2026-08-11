@@ -63,3 +63,16 @@ func TestCrossPlatformCoverageSkillStateReadWriteRemoveAndErrors(t *testing.T) {
 		t.Fatal("configured path ignored")
 	}
 }
+
+func TestIsLegacyOfficialSkillName(t *testing.T) {
+	for _, name := range []string{"dingtalk-aitable", "dingtalk-devdoc", "dws-shared"} {
+		if !IsLegacyOfficialSkillName(name) {
+			t.Fatalf("historical official Skill %q not recognized", name)
+		}
+	}
+	for _, name := range []string{"dingtalk-custom", "other-skill", ""} {
+		if IsLegacyOfficialSkillName(name) {
+			t.Fatalf("user Skill %q must not be treated as historical official", name)
+		}
+	}
+}

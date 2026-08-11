@@ -124,9 +124,70 @@ func TestCrossPlatformCoverageSkillSetupExecuteMarkerFailure(t *testing.T) {
 	if err != nil || installed != 0 || skipped != 1 {
 		t.Fatalf("execute marker failure = (%d, %d, %v), want (0, 1, nil)", installed, skipped, err)
 	}
-	if out.Len() != 0 || !strings.Contains(errOut.String(), "受管标记写入失败") {
+	if out.Len() != 0 || !strings.Contains(errOut.String(), "受管标记") {
 		t.Fatalf("execute marker output = %q / %q", out.String(), errOut.String())
 	}
+	if _, statErr := os.Stat(filepath.Join(dest, "dingtalk-a")); !os.IsNotExist(statErr) {
+		t.Fatalf("marker failure published an unmarked Skill, stat err=%v", statErr)
+	}
+	entries, readErr := os.ReadDir(dest)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".dingtalk-a.tmp-") {
+			t.Fatalf("marker failure retained staging directory %s", entry.Name())
+		}
+	}
+}
+
+func TestCrossPlatformCoveragePublishManagedSkillFailurePaths(t *testing.T) {
+	src := writeMultiSkillSource(t, []string{"dingtalk-a"})
+	skillSrc := filepath.Join(src, "dingtalk-a")
+	failure := errors.New("publish denied")
+
+	t.Run("mkdir", func(t *testing.T) {
+		testseam.Swap(t, &skillSetupPublishTemp, func(string, string) (string, error) { return "", failure })
+		err := publishDWSManagedSkillDir(skillSrc, filepath.Join(t.TempDir(), "dingtalk-a"))
+		if !errors.Is(err, failure) || !strings.Contains(err.Error(), "staging") {
+			t.Fatalf("mkdir error = %v", err)
+		}
+	})
+
+	t.Run("copy", func(t *testing.T) {
+		parent := t.TempDir()
+		testseam.Swap(t, &skillSetupCopyDir, func(string, string) error { return failure })
+		err := publishDWSManagedSkillDir(skillSrc, filepath.Join(parent, "dingtalk-a"))
+		if !errors.Is(err, failure) {
+			t.Fatalf("copy error = %v", err)
+		}
+		if entries, readErr := os.ReadDir(parent); readErr != nil || len(entries) != 0 {
+			t.Fatalf("copy failure retained staging: %v, err=%v", entries, readErr)
+		}
+	})
+
+	t.Run("rename", func(t *testing.T) {
+		parent := t.TempDir()
+		testseam.Swap(t, &skillSetupPublishRename, func(string, string) error { return failure })
+		err := publishDWSManagedSkillDir(skillSrc, filepath.Join(parent, "dingtalk-a"))
+		if !errors.Is(err, failure) || !strings.Contains(err.Error(), "发布 Skill") {
+			t.Fatalf("rename error = %v", err)
+		}
+		if entries, readErr := os.ReadDir(parent); readErr != nil || len(entries) != 0 {
+			t.Fatalf("rename failure retained staging: %v, err=%v", entries, readErr)
+		}
+	})
+
+	t.Run("cleanup", func(t *testing.T) {
+		markerErr := errors.New("marker denied")
+		cleanupErr := errors.New("cleanup denied")
+		testseam.Swap(t, &skillSetupWriteFile, func(string, []byte, os.FileMode) error { return markerErr })
+		testseam.Swap(t, &skillSetupRemoveAll, func(string) error { return cleanupErr })
+		err := publishDWSManagedSkillDir(skillSrc, filepath.Join(t.TempDir(), "dingtalk-a"))
+		if !errors.Is(err, markerErr) || !errors.Is(err, cleanupErr) {
+			t.Fatalf("cleanup error = %v", err)
+		}
+	})
 }
 
 // TestCrossPlatformCoverageSkillSetupCleanupHomeFailure verifies that

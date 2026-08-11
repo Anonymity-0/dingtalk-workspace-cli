@@ -44,7 +44,7 @@ DWS 同时通过 CLI、升级器、npm、Shell 和 PowerShell 分发预制 Skill
 | 市场 Skill 与 CLI 预制 Skill 可能落在同一 Agent 根目录 | 必须使用所有权标记或 manifest 识别受管目录，名称前缀不能作为删除依据 |
 | 多 Skill 更新常以新清单刷新官方集合 | DWS 使用当前 bundle 官方清单全量覆盖，新增 Skill 自动加入，本地删除不视为持久化排除 |
 | 制品可能需要同时服务无运行时依赖、离线和多镜像环境 | DWS 保留 embed、zip 和平台安装脚本，不把单一生态包管理器设为唯一入口 |
-| 中断的复制和原地覆盖容易破坏最后一个可用版本 | 缓存采用 staging publish；Agent 目录采用 backup-first，并让部分失败返回非零 |
+| 中断的复制和原地覆盖容易破坏最后一个可用版本 | 缓存与 Go upgrade 的 Agent 目标采用 staging publish；发布失败自动恢复该目标的完整旧集合 |
 | Agent 通常以 `SKILL.md` 为入口，其他文件按引用或工具规则按需读取 | 安装元数据使用不被内容引用的隐藏文件，并保证其内容不包含 Agent 指令 |
 
 本节只保留可复用的工程结论，不记录具体产品、仓库、版本或逐项能力对照，也不构成
@@ -87,10 +87,11 @@ managed-by=dingtalk-workspace-cli
 清理 stale Skill 或切换到 mono 时，只接受以下所有权证据：
 
 1. `.dws-managed` 内容与当前 v1 标记完全一致；
-2. 精确的历史目录名 `dws-shared`。
+2. marker 上线前曾发布过的官方 Skill 精确名称集合。
 
-仅有 `dingtalk-*` 前缀不构成所有权证据。因此，市场或用户创建的
-`dingtalk-custom` 等同前缀目录不会被迁走。
+历史集合是冻结的迁移清单，包含 `dws-shared` 以及已退役、折叠或仍在发布的旧官方
+目录名。仅有 `dingtalk-*` 前缀不构成所有权证据。因此，市场或用户创建的
+`dingtalk-custom` 等非官方精确名称目录不会被迁走。
 
 ### 6.1 对 Agent 的影响
 
@@ -115,7 +116,7 @@ managed-by=dingtalk-workspace-cli
 - 用户拒绝确认时必须零文件写入；
 - 备份失败时跳过整个 Agent 目标，不开始铺设相反布局；
 - 同一目标先完成所有必要备份，再复制新集合；
-- 每个成功复制的 multi Skill 必须成功写入受管标记；
+- multi Skill 必须在同级 staging 中完成复制和受管标记，再原子发布到正式目录；
 - 任意 `skipped > 0` 都返回非零退出码，并且不写入完整成功快照；
 - 一个 Agent 目标失败不阻止其他目标尝试，但最终结果仍为失败。
 
@@ -123,15 +124,16 @@ managed-by=dingtalk-workspace-cli
 
 升级器对每个 Agent 目标执行：
 
-1. 清理对面布局和过期的受管 Skill；
-2. 将现有同名官方 Skill 移入备份目录；
-3. 从当前 bundle 复制全部官方 Skill；
-4. 写入受管标记；
+1. 只读计算对面布局、过期受管 Skill 和同名官方 Skill；
+2. 在目标文件系统的 staging 中复制完整新集合，multi 同时写入受管标记；
+3. staging 全部成功后，才将旧集合移入备份目录；
+4. 逐项发布 staging；任一发布失败时删除已发布的新目录，并逆序恢复该目标的全部旧目录；
 5. 仅在没有目标失败且至少一个目标成功时更新状态快照。
 
-当前保证是 **backup-first 可恢复**，不是完整事务：复制中断可能使该目标暂时缺少
-部分 Skill，但旧版本仍位于备份目录；下一次普通 upgrade 会再次全量安装官方集合，
-因此能够自动重试。自动把整批备份回滚到原位不属于本 RFC 的当前实现。
+Go upgrade 当前提供 **单 Agent 目标级事务恢复**：复制或 marker 失败发生在旧目录移动前；
+备份中途失败会恢复此前已移动的目录；发布中途失败会恢复该目标的完整旧集合。不同
+Agent 目标仍彼此独立，一个目标失败不会回滚此前已经成功升级的其他目标，这与
+“不提供跨所有 Agent 目标的事务式回滚”非目标保持一致。
 
 ## 9. 备份合同
 
@@ -177,11 +179,13 @@ Homebrew 不直接向 Agent home 铺设 Skill；安装 CLI 后由 setup 执行�
 合入和后续修改至少覆盖：
 
 - mono → multi、multi → mono 互斥切换；
+- marker 上线前的官方 multi 目录切换 mono 时能够被精确迁移；
 - 未标记的同前缀市场/用户 Skill 在刷新和切换后仍存在；
 - 已标记的过期官方 Skill 被备份并移除；
 - 备份、复制、marker、缓存 publish 故障注入；
 - 非交互确认拒绝与显式 `--yes`；
 - 部分失败返回非零且不写错误状态快照；
+- 复制或 marker 失败不留下 Agent 可见的未受管官方目录；
 - 普通 upgrade 恢复被删除的预制 Skill，并安装新增官方 Skill；
 - Windows、macOS、Linux 的路径和覆盖率门禁；
 - npm、Shell、PowerShell 与包管理器安装冒烟。

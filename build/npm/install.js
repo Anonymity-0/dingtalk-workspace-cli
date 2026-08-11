@@ -291,9 +291,22 @@ function multiTreeHasSkills(dir) {
 
 const MANAGED_SKILL_MARKER = ".dws-managed";
 const MANAGED_SKILL_MARKER_CONTENT = "managed-by=dingtalk-workspace-cli\n";
+// Frozen exact names shipped before managed markers existed. Retired names
+// stay here so old installs can be migrated without treating every
+// dingtalk-* directory as DWS-owned.
+const LEGACY_OFFICIAL_MULTI_SKILLS = new Set([
+  "dingtalk-agoal", "dingtalk-aiapp", "dingtalk-aisearch", "dingtalk-aitable",
+  "dingtalk-attendance", "dingtalk-calendar", "dingtalk-chat", "dingtalk-contact",
+  "dingtalk-dev", "dingtalk-devapp", "dingtalk-devdoc", "dingtalk-ding",
+  "dingtalk-doc", "dingtalk-drive", "dingtalk-event", "dingtalk-hrbrain",
+  "dingtalk-live", "dingtalk-mail", "dingtalk-markdown", "dingtalk-minutes",
+  "dingtalk-misc", "dingtalk-oa", "dingtalk-pat", "dingtalk-profile",
+  "dingtalk-report", "dingtalk-shared", "dingtalk-sheet", "dingtalk-skill",
+  "dingtalk-todo", "dingtalk-wiki", "dws-shared",
+]);
 
 function isManagedMultiSkillDir(dir) {
-  if (path.basename(dir) === "dws-shared") {
+  if (LEGACY_OFFICIAL_MULTI_SKILLS.has(path.basename(dir))) {
     return true;
   }
   try {
@@ -305,6 +318,25 @@ function isManagedMultiSkillDir(dir) {
 
 function markManagedMultiSkillDir(dir) {
   fs.writeFileSync(path.join(dir, MANAGED_SKILL_MARKER), MANAGED_SKILL_MARKER_CONTENT, "utf8");
+}
+
+// Prepare content and ownership metadata in a sibling staging directory, then
+// publish with rename. A copy or marker failure never exposes an unmarked
+// official Skill at destDir.
+function publishManagedMultiSkillAtomically(sourceDir, destDir, markFn = markManagedMultiSkillDir) {
+  const parent = path.dirname(destDir);
+  const stage = fs.mkdtempSync(path.join(parent, `.${path.basename(destDir)}.tmp-`));
+  let published = false;
+  try {
+    copyChildren(sourceDir, stage);
+    markFn(stage);
+    fs.renameSync(stage, destDir);
+    published = true;
+  } finally {
+    if (!published) {
+      fs.rmSync(stage, { recursive: true, force: true });
+    }
+  }
 }
 
 // installMultiSkillsToHomes mirrors installSkillsToHomes for the multi bundle:
@@ -357,8 +389,7 @@ function installMultiSkillsToHomes(multiRoot) {
     }
     for (const name of skills) {
       const destDir = path.join(baseDir, name);
-      copyChildren(path.join(multiRoot, name), destDir);
-      markManagedMultiSkillDir(destDir);
+      publishManagedMultiSkillAtomically(path.join(multiRoot, name), destDir);
     }
     return true;
   };
@@ -503,4 +534,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { publishCacheAtomically };
+module.exports = { publishCacheAtomically, publishManagedMultiSkillAtomically };

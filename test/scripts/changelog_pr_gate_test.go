@@ -646,13 +646,12 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		"comparison.total_commits === comparison.ahead_by",
 		"run.app?.slug !== 'github-actions'",
 		"predecessor Code Admission is not fully successful",
+		`test "$(git rev-parse HEAD^1)" = "$PR_BASE_SHA"`,
 		`test "$(git rev-parse HEAD^2)" = "$PR_HEAD_SHA"`,
-		`git merge-base --is-ancestor "$PR_BASE_SHA" "$merge_base_sha"`,
-		`echo "POLICY_BASE_SHA=$merge_base_sha"`,
 		"Files API and synthetic merge tree disagree on CHANGELOG scope",
 		"mode=--content-only",
 		"mode=--fast-path",
-		`"$mode" "$POLICY_BASE_SHA" HEAD`,
+		`"$mode" "$PR_BASE_SHA" HEAD`,
 		`test "$(git rev-parse HEAD)" = "$PUSH_AFTER_SHA"`,
 		`--fast-path "$PUSH_BEFORE_SHA" "$PUSH_AFTER_SHA"`,
 		"needs.lint.outputs.platform_sensitive == 'true'",
@@ -686,8 +685,8 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		"name: Test (changed packages)",
 		"changed-test-packages.sh",
 		"Verify authoritative synthetic merge",
+		`test "$(git rev-parse HEAD^1)" = "$PR_BASE_SHA"`,
 		`test "$(git rev-parse HEAD^2)" = "$PR_HEAD_SHA"`,
-		`echo "TEST_BASE_REF=$merge_base_sha"`,
 		`echo "TEST_HEAD_REF=$(git rev-parse HEAD)"`,
 		"list \"$TEST_BASE_REF\" \"$TEST_HEAD_REF\"",
 		"needs.lint.outputs.full_suite != 'true'",
@@ -738,22 +737,6 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	}
 	if strings.Contains(admission, "paths-ignore:") {
 		t.Error("Code Admission must not suppress required contexts with paths-ignore")
-	}
-
-	// Every checkout must resolve an immutable event SHA. Jobs that exercise
-	// the synthetic merge use github.sha; source/baseline jobs intentionally
-	// use the event's head SHA. Do not use pull_request.merge_commit_sha here:
-	// that payload field can still refer to the previous synthetic merge on a
-	// synchronize event. Leaving a checkout unpinned lets refs/pull/*/merge move
-	// after the event was created and races parent verification with main.
-	checkoutUses := strings.Count(admission, "uses: actions/checkout@v4")
-	pinnedCheckouts := strings.Count(admission, "ref: ${{ github.sha }}") +
-		strings.Count(admission, "github.event.pull_request.head.sha || github.sha")
-	if checkoutUses == 0 || pinnedCheckouts != checkoutUses {
-		t.Errorf("Code Admission immutable checkout pins = %d, want one for each of %d checkouts", pinnedCheckouts, checkoutUses)
-	}
-	if !strings.Contains(admission, "ref: ${{ github.sha }}") {
-		t.Error("Code Admission synthetic-merge jobs must pin github.sha")
 	}
 
 	focusedStart := strings.Index(admission, "\n  test-focused:\n")

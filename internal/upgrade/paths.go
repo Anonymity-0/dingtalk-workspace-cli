@@ -4,6 +4,7 @@
 package upgrade
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -325,6 +326,187 @@ func resolveMonoSkillSrc(extractedDir string) string {
 	return ""
 }
 
+type skillStageSpec struct {
+	src     string
+	dest    string
+	managed bool
+}
+
+type stagedSkillDir struct {
+	staged string
+	dest   string
+}
+
+type backedUpSkillDir struct {
+	original string
+	backup   string
+}
+
+// stageSkillSet builds a complete replacement next to its final destinations.
+// Nothing Agent-visible is changed until every copy and marker write succeeds.
+func stageSkillSet(destBase, prefix string, specs []skillStageSpec) (stageRoot string, staged []stagedSkillDir, err error) {
+	if err := upgradeMkdirAll(destBase, dirPermShared); err != nil {
+		return "", nil, fmt.Errorf("创建 Skill 目标目录失败 %s: %w", destBase, err)
+	}
+	stageRoot, err = upgradeMkdirTemp(destBase, prefix)
+	if err != nil {
+		return "", nil, fmt.Errorf("创建 Skill staging 失败 %s: %w", destBase, err)
+	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		if cleanupErr := upgradeRemoveAll(stageRoot); cleanupErr != nil {
+			err = errors.Join(err, fmt.Errorf("清理 Skill staging 失败 %s: %w", stageRoot, cleanupErr))
+		}
+	}()
+
+	staged = make([]stagedSkillDir, 0, len(specs))
+	for _, spec := range specs {
+		stageDir := filepath.Join(stageRoot, filepath.Base(spec.dest))
+		if err := upgradeCopyDir(spec.src, stageDir); err != nil {
+			return stageRoot, nil, fmt.Errorf("拷贝 Skill staging 失败 %s: %w", stageDir, err)
+		}
+		if spec.managed {
+			if err := markManagedSkillDir(stageDir); err != nil {
+				return stageRoot, nil, err
+			}
+		}
+		staged = append(staged, stagedSkillDir{staged: stageDir, dest: spec.dest})
+	}
+	return stageRoot, staged, nil
+}
+
+func uniqueSkillDirs(paths []string) []string {
+	seen := make(map[string]bool, len(paths))
+	unique := make([]string, 0, len(paths))
+	for _, path := range paths {
+		path = filepath.Clean(path)
+		if seen[path] {
+			continue
+		}
+		seen[path] = true
+		unique = append(unique, path)
+	}
+	return unique
+}
+
+// restoreSkillSet removes any newly published directories, then restores all
+// original directories in reverse backup order.
+func restoreSkillSet(published []string, backups []backedUpSkillDir) error {
+	var restoreErr error
+	for i := len(published) - 1; i >= 0; i-- {
+		if err := upgradeRemoveAll(published[i]); err != nil {
+			restoreErr = errors.Join(restoreErr, fmt.Errorf("移除失败发布目录 %s: %w", published[i], err))
+		}
+	}
+	for i := len(backups) - 1; i >= 0; i-- {
+		backup := backups[i]
+		if err := upgradeMkdirAll(filepath.Dir(backup.original), dirPermShared); err != nil {
+			restoreErr = errors.Join(restoreErr, fmt.Errorf("创建 Skill 恢复目录 %s: %w", filepath.Dir(backup.original), err))
+			continue
+		}
+		if err := upgradeRename(backup.backup, backup.original); err != nil {
+			restoreErr = errors.Join(restoreErr, fmt.Errorf("恢复原 Skill 失败 %s: %w", backup.original, err))
+		}
+	}
+	return restoreErr
+}
+
+// backupSkillSet moves every victim aside as one logical operation. If a
+// later backup fails, earlier moves are restored before the error is returned.
+func backupSkillSet(homeDir string, victims []string) ([]backedUpSkillDir, error) {
+	backups := make([]backedUpSkillDir, 0, len(victims))
+	for _, victim := range uniqueSkillDirs(victims) {
+		backup, err := backupAndRemoveSkillDir(homeDir, victim)
+		if err != nil {
+			if restoreErr := restoreSkillSet(nil, backups); restoreErr != nil {
+				return nil, errors.Join(err, fmt.Errorf("恢复已备份 Skill 失败: %w", restoreErr))
+			}
+			return nil, err
+		}
+		if backup != "" {
+			backups = append(backups, backedUpSkillDir{original: victim, backup: backup})
+		}
+	}
+	return backups, nil
+}
+
+// publishStagedSkillSet switches a fully staged set into place. Any publish
+// failure removes the partial new set and restores every original directory.
+func publishStagedSkillSet(homeDir string, staged []stagedSkillDir, victims []string) error {
+	backups, err := backupSkillSet(homeDir, victims)
+	if err != nil {
+		return err
+	}
+	published := make([]string, 0, len(staged))
+	for _, skill := range staged {
+		if err := upgradeRename(skill.staged, skill.dest); err != nil {
+			publishErr := fmt.Errorf("发布 Skill 失败 %s: %w", skill.dest, err)
+			if restoreErr := restoreSkillSet(published, backups); restoreErr != nil {
+				return errors.Join(publishErr, fmt.Errorf("恢复原 Skill 集合失败: %w", restoreErr))
+			}
+			return publishErr
+		}
+		published = append(published, skill.dest)
+	}
+	return nil
+}
+
+func monoUpgradeVictims(baseDir, destDir string) ([]string, error) {
+	victims, err := managedMultiSkillVictims(baseDir)
+	if err != nil {
+		return nil, err
+	}
+	return append(victims, destDir), nil
+}
+
+func multiUpgradeVictims(destBase string, skillSet map[string]bool, skills []string) ([]string, error) {
+	victims, err := oppositeModeSkillVictims(destBase, skillSet)
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range skills {
+		victims = append(victims, filepath.Join(destBase, name))
+	}
+	return victims, nil
+}
+
+func publishMonoUpgradeTarget(homeDir, destBase, skillSrc string) error {
+	destDir := filepath.Join(destBase, "dws")
+	victims, err := monoUpgradeVictims(destBase, destDir)
+	if err != nil {
+		return err
+	}
+	stageRoot, staged, err := stageSkillSet(destBase, ".dws-upgrade-mono-", []skillStageSpec{{src: skillSrc, dest: destDir}})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = upgradeRemoveAll(stageRoot) }()
+	return publishStagedSkillSet(homeDir, staged, victims)
+}
+
+func publishMultiUpgradeTarget(homeDir, destBase, multiRoot string, skills []string, skillSet map[string]bool) error {
+	victims, err := multiUpgradeVictims(destBase, skillSet, skills)
+	if err != nil {
+		return err
+	}
+	specs := make([]skillStageSpec, 0, len(skills))
+	for _, name := range skills {
+		specs = append(specs, skillStageSpec{
+			src:     filepath.Join(multiRoot, name),
+			dest:    filepath.Join(destBase, name),
+			managed: true,
+		})
+	}
+	stageRoot, staged, err := stageSkillSet(destBase, ".dws-upgrade-multi-", specs)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = upgradeRemoveAll(stageRoot) }()
+	return publishStagedSkillSet(homeDir, staged, victims)
+}
+
 // upgradeMonoSkillLocations is the legacy mono behavior: one dws/ directory
 // per agent home.
 func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, error) {
@@ -346,21 +528,7 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 			}
 		}
 
-		// Mutual exclusion: installing mono backs up + removes multi leftovers.
-		// A base directory that exists but cannot be read fails the home
-		// instead of silently installing mono alongside multi.
-		if err := cleanupMultiLeftovers(homeDir, filepath.Join(homeDir, agentDir)); err != nil {
-			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
-			continue
-		}
-
-		// Refresh the existing mono directory reversibly: back it up instead of
-		// hard-deleting, since it may carry user modifications.
-		if _, err := backupAndRemoveSkillDir(homeDir, destDir); err != nil {
-			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
-			continue
-		}
-		if err := upgradeCopyDir(skillSrc, destDir); err != nil {
+		if err := publishMonoUpgradeTarget(homeDir, filepath.Join(homeDir, agentDir), skillSrc); err != nil {
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
 			continue
 		}
@@ -373,15 +541,8 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 	// fallback — instead of letting mono and multi co-exist marked OK.
 	if len(result.Succeeded()) == 0 {
 		destBase := filepath.Join(homeDir, ".agents", "skills")
-		os.MkdirAll(destBase, dirPermShared)
-		if err := cleanupMultiLeftovers(homeDir, destBase); err != nil {
-			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录清理残留也失败: %w", err)
-		}
 		dest := filepath.Join(destBase, "dws")
-		if _, err := backupAndRemoveSkillDir(homeDir, dest); err != nil {
-			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录备份残留失败: %w", err)
-		}
-		if err := upgradeCopyDir(skillSrc, dest); err != nil {
+		if err := publishMonoUpgradeTarget(homeDir, destBase, skillSrc); err != nil {
 			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
 		}
 		// Replace the earlier failed entry for this dir (if any) or append a new one
@@ -435,37 +596,8 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 			}
 		}
 
-		if err := cleanupOppositeModeLeftovers(homeDir, destBase, skillSet); err != nil {
+		if err := publishMultiUpgradeTarget(homeDir, destBase, multiRoot, skills, skillSet); err != nil {
 			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
-			continue
-		}
-
-		failed := false
-		for _, name := range skills {
-			subDest := filepath.Join(destBase, name)
-			if _, err := backupAndRemoveSkillDir(homeDir, subDest); err != nil {
-				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
-				failed = true
-				break
-			}
-		}
-		if failed {
-			continue
-		}
-		for _, name := range skills {
-			subDest := filepath.Join(destBase, name)
-			if err := upgradeCopyDir(filepath.Join(multiRoot, name), subDest); err != nil {
-				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
-				failed = true
-				break
-			}
-			if err := markManagedSkillDir(subDest); err != nil {
-				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
-				failed = true
-				break
-			}
-		}
-		if failed {
 			continue
 		}
 		result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirOK})
@@ -474,24 +606,8 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 	// Fallback: if nothing succeeded, force the primary location
 	if len(result.Succeeded()) == 0 {
 		destBase := filepath.Join(homeDir, ".agents", "skills")
-		os.MkdirAll(destBase, dirPermShared)
-		if err := cleanupOppositeModeLeftovers(homeDir, destBase, skillSet); err != nil {
-			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录清理残留也失败: %w", err)
-		}
-		for _, name := range skills {
-			subDest := filepath.Join(destBase, name)
-			if _, err := backupAndRemoveSkillDir(homeDir, subDest); err != nil {
-				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录备份残留也失败: %w", err)
-			}
-		}
-		for _, name := range skills {
-			subDest := filepath.Join(destBase, name)
-			if err := upgradeCopyDir(filepath.Join(multiRoot, name), subDest); err != nil {
-				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
-			}
-			if err := markManagedSkillDir(subDest); err != nil {
-				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录写入受管标记也失败: %w", err)
-			}
+		if err := publishMultiUpgradeTarget(homeDir, destBase, multiRoot, skills, skillSet); err != nil {
+			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
 		}
 		// Replace the earlier failed entry for this dir (if any) or append a new one
 		replaced := false
@@ -587,23 +703,32 @@ func skillTreeHasRoot(dir string) bool {
 // reversible: each leftover is preserved under ~/.dws/skill-backups/ and a
 // backup failure aborts the removal for that home.
 func cleanupMultiLeftovers(homeDir, baseDir string) error {
+	victims, err := managedMultiSkillVictims(baseDir)
+	if err != nil {
+		return err
+	}
+	if _, err := backupSkillSet(homeDir, victims); err != nil {
+		return fmt.Errorf("备份并清理 multi 残留失败: %w", err)
+	}
+	return nil
+}
+
+func managedMultiSkillVictims(baseDir string) ([]string, error) {
 	entries, err := upgradeReadDir(baseDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return nil, nil
 		}
-		return fmt.Errorf("读取技能目录失败 %s: %w", baseDir, err)
+		return nil, fmt.Errorf("读取技能目录失败 %s: %w", baseDir, err)
 	}
+	victims := make([]string, 0)
 	for _, e := range entries {
 		if !e.IsDir() || !isManagedMultiSkillDir(filepath.Join(baseDir, e.Name())) {
 			continue
 		}
-		stale := filepath.Join(baseDir, e.Name())
-		if _, err := backupAndRemoveSkillDir(homeDir, stale); err != nil {
-			return fmt.Errorf("备份并清理 multi 残留失败 %s: %w", stale, err)
-		}
+		victims = append(victims, filepath.Join(baseDir, e.Name()))
 	}
-	return nil
+	return victims, nil
 }
 
 // cleanupOppositeModeLeftovers backs up + removes, inside one agent home, the
@@ -614,33 +739,39 @@ func cleanupMultiLeftovers(homeDir, baseDir string) error {
 // directory is preserved under ~/.dws/skill-backups/ and a backup failure
 // aborts the removal for that home.
 func cleanupOppositeModeLeftovers(homeDir, destBase string, skillSet map[string]bool) error {
-	if _, err := backupAndRemoveSkillDir(homeDir, filepath.Join(destBase, "dws")); err != nil {
-		return fmt.Errorf("备份并清理 mono 残留失败 %s: %w", filepath.Join(destBase, "dws"), err)
+	victims, err := oppositeModeSkillVictims(destBase, skillSet)
+	if err != nil {
+		return err
 	}
+	if _, err := backupSkillSet(homeDir, victims); err != nil {
+		return fmt.Errorf("备份并清理对面模式残留失败: %w", err)
+	}
+	return nil
+}
+
+func oppositeModeSkillVictims(destBase string, skillSet map[string]bool) ([]string, error) {
+	victims := []string{filepath.Join(destBase, "dws")}
 	entries, err := upgradeReadDir(destBase)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return victims, nil
 		}
-		return fmt.Errorf("读取技能目录失败 %s: %w", destBase, err)
+		return nil, fmt.Errorf("读取技能目录失败 %s: %w", destBase, err)
 	}
 	for _, e := range entries {
 		if !e.IsDir() || skillSet[e.Name()] || !isManagedMultiSkillDir(filepath.Join(destBase, e.Name())) {
 			continue
 		}
-		stale := filepath.Join(destBase, e.Name())
-		if _, err := backupAndRemoveSkillDir(homeDir, stale); err != nil {
-			return fmt.Errorf("备份并清理过期技能失败 %s: %w", stale, err)
-		}
+		victims = append(victims, filepath.Join(destBase, e.Name()))
 	}
-	return nil
+	return victims, nil
 }
 
 // isManagedMultiSkillDir reports whether dir is proven to be owned by DWS.
-// The retired dws-shared name is an exact legacy identifier; all other names
-// require the marker written after a successful bundled-skill copy.
+// Exact pre-marker official names remain ownership evidence for migration;
+// arbitrary dingtalk-* names still require the managed marker.
 func isManagedMultiSkillDir(dir string) bool {
-	if filepath.Base(dir) == "dws-shared" {
+	if skillstate.IsLegacyOfficialSkillName(filepath.Base(dir)) {
 		return true
 	}
 	data, err := os.ReadFile(filepath.Join(dir, managedSkillMarkerName))
