@@ -40,6 +40,8 @@ NO_SKILLS="${DWS_NO_SKILLS:-0}"
 SKILLS_ONLY="${DWS_SKILLS_ONLY:-0}"
 SKILL_NAME="dws"
 SKILL_MODE=""
+MANAGED_SKILL_MARKER=".dws-managed"
+MANAGED_SKILL_MARKER_CONTENT="managed-by=dingtalk-workspace-cli"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,6 +93,21 @@ backup_and_remove_skill_dir() {
   fi
   say "  ⚠️  备份失败，保留原目录 $_bed_dir"
   return 1
+}
+
+# A dingtalk-* prefix alone is not ownership evidence: market/user skills may
+# use it too. New bundled installs carry this marker; dws-shared is the one
+# exact legacy name that predates markers.
+is_managed_multi_skill_dir() {
+  _managed_dir="$1"
+  [ "$(basename "$_managed_dir")" = "dws-shared" ] && return 0
+  [ -f "$_managed_dir/$MANAGED_SKILL_MARKER" ] || return 1
+  [ "$(cat "$_managed_dir/$MANAGED_SKILL_MARKER" 2>/dev/null)" = "$MANAGED_SKILL_MARKER_CONTENT" ]
+}
+
+mark_managed_multi_skill_dir() {
+  _managed_dir="$1"
+  printf '%s\n' "$MANAGED_SKILL_MARKER_CONTENT" > "$_managed_dir/$MANAGED_SKILL_MARKER"
 }
 
 # publish_skill_cache <source> <cache-dir>
@@ -445,7 +462,7 @@ cache_mono_skills() {
 }
 
 # Install skill tree into all agent homes (same rules as build/npm/install.js installSkillsToHomes).
-# Installing mono removes multi leftovers (dingtalk-*) for mutual exclusion,
+# Installing mono removes proven DWS-managed multi leftovers for mutual exclusion,
 # mirroring `dws skill setup --mode mono`.
 install_skills_to_homes() {
   skill_src="$1"
@@ -490,8 +507,9 @@ install_skills_to_homes() {
       idx=$((idx + 1))
       continue
     fi
-    for existing in "$base_dir"/dingtalk-*/; do
+    for existing in "$base_dir"/*/; do
       [ -d "$existing" ] || continue
+      is_managed_multi_skill_dir "$existing" || continue
       backup_and_remove_skill_dir "$existing" || {
         cleanup_ok=0
         break
@@ -568,8 +586,8 @@ multi_tree_has_skills() {
 
 # Install the multi skill bundle (one subdirectory per product skill) into all
 # agent homes as sibling directories, mirroring `dws skill setup --mode multi`.
-# Mutual exclusion: the mono leftover (<home>/dws) and any stale dingtalk-*
-# skill not present in the new bundle are removed first.
+# Mutual exclusion: the mono leftover (<home>/dws) and stale DWS-managed Skills
+# not present in the new bundle are removed first.
 install_multi_skills_to_homes() {
   multi_src="$1"
   root="${HOME}"
@@ -634,12 +652,12 @@ _install_multi_to_base() {
   # Mutual exclusion: back up + remove the mono leftover.
   backup_and_remove_skill_dir "$_base/$SKILL_NAME" || return 1
 
-  # Back up + remove stale multi skills (dingtalk-* or dws-shared) not in the
-  # new bundle.
-  for existing in "$_base"/dingtalk-*/; do
+  # Back up + remove stale, proven DWS-managed skills not in the new bundle.
+  # Never infer ownership from the dingtalk-* prefix alone.
+  for existing in "$_base"/*/; do
     [ -d "$existing" ] || continue
     _name="$(basename "$existing")"
-    if [ ! -f "$_msrc/$_name/SKILL.md" ]; then
+    if is_managed_multi_skill_dir "$existing" && [ ! -f "$_msrc/$_name/SKILL.md" ]; then
       backup_and_remove_skill_dir "$existing" || return 1
     fi
   done
@@ -666,6 +684,7 @@ _install_multi_to_base() {
       say "  ⚠️  Skill 复制失败，目标未计为安装成功: $_dest"
       return 1
     fi
+    mark_managed_multi_skill_dir "$_dest" || return 1
     _count=$((_count + 1))
   done
 

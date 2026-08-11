@@ -878,6 +878,8 @@ func TestInstallScriptSourceModeDefaultMultiInstall(t *testing.T) {
 
 	seedAgentHome(t, fixture.fakeHome, "dws", "old mono\n")
 	seedAgentHome(t, fixture.fakeHome, "dingtalk-stale", "stale\n")
+	mustWriteFile(t, filepath.Join(fixture.fakeHome, ".agents", "skills", "dingtalk-stale", ".dws-managed"), []byte("managed-by=dingtalk-workspace-cli\n"), 0o644)
+	seedAgentHome(t, fixture.fakeHome, "dingtalk-custom", "market skill\n")
 	seedAgentHome(t, fixture.fakeHome, "other-skill", "not dws\n")
 
 	output := runInstallScript(t, fixture.scriptPath, fixture.envWithSkillMode("",
@@ -910,6 +912,12 @@ func TestInstallScriptSourceModeDefaultMultiInstall(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(base, "other-skill", "SKILL.md")); err != nil {
 		t.Errorf("non-DWS skill must be preserved: %v", err)
+	}
+	if data, err := os.ReadFile(filepath.Join(base, "dingtalk-custom", "SKILL.md")); err != nil || string(data) != "market skill\n" {
+		t.Errorf("unmarked market/user dingtalk-* skill must be preserved: data=%q err=%v", string(data), err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "dingtalk-test", ".dws-managed")); err != nil {
+		t.Errorf("bundled skill must carry ownership marker: %v", err)
 	}
 }
 
@@ -952,9 +960,9 @@ func TestInstallScriptSourceModeEmptyMultiFallsBackToMono(t *testing.T) {
 	if err != nil || !strings.Contains(string(data), "# Test skill") {
 		t.Fatalf("mono dws/ not (re)installed from skills/mono (data=%q, err=%v) — empty multi must not wipe skills\noutput:\n%s", string(data), err, output)
 	}
-	// Mono mutual exclusion legitimately removes dingtalk-* leftovers.
-	if _, err := os.Stat(filepath.Join(base, "dingtalk-keep")); !os.IsNotExist(err) {
-		t.Errorf("dingtalk-keep should be removed by mono mutual exclusion, stat err=%v", err)
+	// An unmarked dingtalk-* directory has unknown ownership and must survive.
+	if _, err := os.Stat(filepath.Join(base, "dingtalk-keep", "SKILL.md")); err != nil {
+		t.Errorf("unmarked dingtalk-keep should survive mono fallback: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(base, "dingtalk-test")); !os.IsNotExist(err) {
 		t.Errorf("dingtalk-test must not be installed from the empty multi tree, stat err=%v", err)
@@ -1152,6 +1160,55 @@ install_multi_skills_to_root "$DWS_TEST_MULTI" "$DWS_TEST_ROOT"
 	}
 }
 
+func TestInstallSkillsShellPreservesUnmarkedDingtalkSkill(t *testing.T) {
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-skills.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "\nmain\n")
+	if cut < 0 {
+		t.Fatal("install-skills.sh final main invocation not found")
+	}
+	library := filepath.Join(t.TempDir(), "install-skills-lib.sh")
+	mustWriteFile(t, library, data[:cut], 0o755)
+
+	home := t.TempDir()
+	root := filepath.Join(t.TempDir(), "project")
+	base := filepath.Join(root, ".agents", "skills")
+	multi := filepath.Join(t.TempDir(), "multi")
+	mustWriteFile(t, filepath.Join(base, "dingtalk-custom", "SKILL.md"), []byte("market skill\n"), 0o644)
+	mustWriteFile(t, filepath.Join(base, "dingtalk-retired", "SKILL.md"), []byte("retired\n"), 0o644)
+	mustWriteFile(t, filepath.Join(base, "dingtalk-retired", ".dws-managed"), []byte("managed-by=dingtalk-workspace-cli\n"), 0o644)
+	mustWriteFile(t, filepath.Join(multi, "dingtalk-test", "SKILL.md"), []byte("new multi\n"), 0o644)
+
+	harness := `. "$DWS_TEST_LIBRARY"
+install_multi_skills_to_root "$DWS_TEST_MULTI" "$DWS_TEST_ROOT"
+`
+	cmd := exec.Command("sh", "-c", harness)
+	cmd.Env = append(os.Environ(),
+		"HOME="+home,
+		"DWS_TEST_LIBRARY="+library,
+		"DWS_TEST_MULTI="+multi,
+		"DWS_TEST_ROOT="+root,
+	)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("install-skills harness failed: %v\n%s", err, output)
+	}
+	if got, err := os.ReadFile(filepath.Join(base, "dingtalk-custom", "SKILL.md")); err != nil || string(got) != "market skill\n" {
+		t.Fatalf("unmarked market/user dingtalk-* Skill changed: data=%q err=%v", got, err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "dingtalk-retired")); !os.IsNotExist(err) {
+		t.Fatalf("marked retired DWS Skill must be removed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "dingtalk-test", ".dws-managed")); err != nil {
+		t.Fatalf("installed bundled Skill missing ownership marker: %v", err)
+	}
+}
+
 func TestInstallPowerShellBackupFailureWritesNoMultiSkills(t *testing.T) {
 	pwsh, err := exec.LookPath("pwsh")
 	if err != nil {
@@ -1246,6 +1303,7 @@ exit 0
 	mustWriteFile(t, filepath.Join(multi, "dingtalk-shared", "SKILL.md"), []byte("shared\n"), 0o644)
 	mustWriteFile(t, filepath.Join(mono, "SKILL.md"), []byte("new mono\n"), 0o644)
 	mustWriteFile(t, filepath.Join(base, "user-owned", "SKILL.md"), []byte("keep\n"), 0o644)
+	mustWriteFile(t, filepath.Join(base, "dingtalk-custom", "SKILL.md"), []byte("market skill\n"), 0o644)
 
 	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
 	cmd.Env = append(os.Environ(),
@@ -1267,6 +1325,12 @@ exit 0
 	}
 	if got, err := os.ReadFile(filepath.Join(base, "user-owned", "SKILL.md")); err != nil || string(got) != "keep\n" {
 		t.Fatalf("PowerShell switch changed non-DWS Skill: data=%q err=%v", got, err)
+	}
+	if got, err := os.ReadFile(filepath.Join(base, "dingtalk-custom", "SKILL.md")); err != nil || string(got) != "market skill\n" {
+		t.Fatalf("PowerShell switch changed unmarked market/user dingtalk-* Skill: data=%q err=%v", got, err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "dingtalk-test", ".dws-managed")); err != nil {
+		t.Fatalf("PowerShell bundled Skill missing ownership marker: %v", err)
 	}
 	if matches, err := filepath.Glob(filepath.Join(home, ".dws", "skill-backups", "*", "*")); err != nil || len(matches) == 0 {
 		t.Fatalf("PowerShell switch created no recoverable backups: matches=%v err=%v\n%s", matches, err, output)

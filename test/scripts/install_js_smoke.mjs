@@ -137,6 +137,8 @@ scenario("multi install lays out sibling skills and caches", () => {
     // Pre-existing state the multi install must reconcile.
     writeFile(path.join(home, ".agents", "skills", "dws", "SKILL.md"), "old mono\n");
     writeFile(path.join(home, ".agents", "skills", "dingtalk-stale", "SKILL.md"), "stale\n");
+    writeFile(path.join(home, ".agents", "skills", "dingtalk-stale", ".dws-managed"), "managed-by=dingtalk-workspace-cli\n");
+    writeFile(path.join(home, ".agents", "skills", "dingtalk-custom", "SKILL.md"), "market skill\n");
     writeFile(path.join(home, ".agents", "skills", "other-skill", "SKILL.md"), "not dws\n");
 
     const res = runInstall(pkg, home, undefined); // default mode = multi
@@ -149,6 +151,8 @@ scenario("multi install lays out sibling skills and caches", () => {
     assert.ok(fs.existsSync(path.join(base, "dws-shared", "SKILL.md")), "dws-shared installed");
     assert.ok(!fs.existsSync(path.join(base, "dws")), "mono leftover removed");
     assert.ok(!fs.existsSync(path.join(base, "dingtalk-stale")), "stale skill removed");
+    assert.equal(fs.readFileSync(path.join(base, "dingtalk-custom", "SKILL.md"), "utf8"), "market skill\n", "unmarked dingtalk-* skill preserved");
+    assert.equal(fs.readFileSync(path.join(base, "dingtalk-test", ".dws-managed"), "utf8"), "managed-by=dingtalk-workspace-cli\n", "bundled skill marked as managed");
     assert.ok(fs.existsSync(path.join(base, "other-skill", "SKILL.md")), "non-DWS skill preserved");
 
     assert.ok(fs.existsSync(path.join(home, ".dws", "skills", "multi", "dingtalk-test", "SKILL.md")), "multi cache filled");
@@ -252,6 +256,7 @@ scenario("mono backup failure preserves multi and reports failure", () => {
   try {
     const base = path.join(home, ".agents", "skills");
     writeFile(path.join(base, "dingtalk-test", "SKILL.md"), "old multi\n");
+    writeFile(path.join(base, "dingtalk-test", ".dws-managed"), "managed-by=dingtalk-workspace-cli\n");
     writeFile(path.join(home, ".dws", "skill-backups"), "not a directory\n");
 
     const res = runInstall(pkg, home, "mono");

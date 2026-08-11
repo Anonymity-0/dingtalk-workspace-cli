@@ -104,6 +104,16 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsRealBundleMigratesMono(t *tes
 			t.Fatal(err)
 		}
 	}
+	if err := os.WriteFile(filepath.Join(agentsBase, "dingtalk-stale", ".dws-managed"), []byte("managed-by=dingtalk-workspace-cli\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	custom := filepath.Join(agentsBase, "dingtalk-custom")
+	if err := os.MkdirAll(custom, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(custom, "SKILL.md"), []byte("market skill"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	result, err := upgrade.UpgradeSkillLocations(bundle)
 	if err != nil {
@@ -125,6 +135,9 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsRealBundleMigratesMono(t *tes
 	}
 	if _, err := os.Stat(filepath.Join(agentsBase, "other-skill", "SKILL.md")); err != nil {
 		t.Errorf("non-DWS dir should be preserved: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(custom, "SKILL.md")); err != nil {
+		t.Errorf("unmarked market/user dingtalk-* dir should be preserved: %v", err)
 	}
 	// Shared skill must come from the renamed bundle dir, never the legacy name.
 	if _, err := os.Stat(filepath.Join(agentsBase, "dingtalk-shared", "SKILL.md")); err != nil {

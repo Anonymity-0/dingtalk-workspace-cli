@@ -235,13 +235,13 @@ function installSkillsToHomes(skillRoot) {
       return;
     }
     attempted += 1;
-    // Mutual exclusion: back up + remove multi leftovers before laying down
-    // mono. Directories only — a stray file named dingtalk-x.md must survive.
+    // Mutual exclusion: back up + remove proven DWS-managed multi leftovers
+    // before laying down mono. A dingtalk-* prefix alone is not ownership.
     // Non-interactive installs cannot confirm, so removals stay reversible via
     // ~/.dws/skill-backups/ (backup failure keeps the dir).
     if (fs.existsSync(baseDir)) {
       for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
-        if (entry.isDirectory() && (entry.name.startsWith("dingtalk-") || entry.name === "dws-shared")) {
+        if (entry.isDirectory() && isManagedMultiSkillDir(path.join(baseDir, entry.name))) {
           if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name))) {
             console.warn(`⚠️  跳过 ${baseDir}（multi 残留备份失败，未安装 mono）`);
             failed += 1;
@@ -289,10 +289,28 @@ function multiTreeHasSkills(dir) {
     .some((e) => e.isDirectory() && fs.existsSync(path.join(dir, e.name, "SKILL.md")));
 }
 
+const MANAGED_SKILL_MARKER = ".dws-managed";
+const MANAGED_SKILL_MARKER_CONTENT = "managed-by=dingtalk-workspace-cli\n";
+
+function isManagedMultiSkillDir(dir) {
+  if (path.basename(dir) === "dws-shared") {
+    return true;
+  }
+  try {
+    return fs.readFileSync(path.join(dir, MANAGED_SKILL_MARKER), "utf8") === MANAGED_SKILL_MARKER_CONTENT;
+  } catch (_) {
+    return false;
+  }
+}
+
+function markManagedMultiSkillDir(dir) {
+  fs.writeFileSync(path.join(dir, MANAGED_SKILL_MARKER), MANAGED_SKILL_MARKER_CONTENT, "utf8");
+}
+
 // installMultiSkillsToHomes mirrors installSkillsToHomes for the multi bundle:
 // every product skill becomes a sibling directory of the agent home. Mutual
-// exclusion: the mono leftover (dws/) and stale dingtalk-* skills not present
-// in the new bundle are removed first.
+// exclusion: the mono leftover (dws/) and stale, proven DWS-managed skills not
+// present in the new bundle are removed first.
 function installMultiSkillsToHomes(multiRoot) {
   const homeDir = os.homedir();
   const skills = fs
@@ -318,7 +336,7 @@ function installMultiSkillsToHomes(multiRoot) {
     for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
       if (
         entry.isDirectory() &&
-        (entry.name.startsWith("dingtalk-") || entry.name === "dws-shared") &&
+        isManagedMultiSkillDir(path.join(baseDir, entry.name)) &&
         !skillSet.has(entry.name)
       ) {
         if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name))) {
@@ -340,6 +358,7 @@ function installMultiSkillsToHomes(multiRoot) {
     for (const name of skills) {
       const destDir = path.join(baseDir, name);
       copyChildren(path.join(multiRoot, name), destDir);
+      markManagedMultiSkillDir(destDir);
     }
     return true;
   };

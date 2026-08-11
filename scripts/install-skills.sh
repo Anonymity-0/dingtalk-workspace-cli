@@ -26,6 +26,8 @@ VERSION="${DWS_VERSION:-latest}"
 SKILL_NAME="dws"
 ROOT="${DWS_SKILLS_ROOT:-$PWD}"
 DWS_CACHE_ROOT="${DWS_CACHE_ROOT:-$HOME/.dws}"
+MANAGED_SKILL_MARKER=".dws-managed"
+MANAGED_SKILL_MARKER_CONTENT="managed-by=dingtalk-workspace-cli"
 SKILL_MODE="$(printf '%s' "${DWS_SKILL_MODE:-multi}" | tr '[:upper:]' '[:lower:]')"
 case "$SKILL_MODE" in
   mono|multi) ;;
@@ -73,6 +75,21 @@ backup_and_remove_skill_dir() {
   fi
   printf '  ⚠️  备份失败，保留原目录 %s\n' "$_bed_dir"
   return 1
+}
+
+# A dingtalk-* prefix alone is not ownership evidence: market/user skills may
+# use it too. New bundled installs carry this marker; dws-shared is the one
+# exact legacy name that predates markers.
+is_managed_multi_skill_dir() {
+  _managed_dir="$1"
+  [ "$(basename "$_managed_dir")" = "dws-shared" ] && return 0
+  [ -f "$_managed_dir/$MANAGED_SKILL_MARKER" ] || return 1
+  [ "$(cat "$_managed_dir/$MANAGED_SKILL_MARKER" 2>/dev/null)" = "$MANAGED_SKILL_MARKER_CONTENT" ]
+}
+
+mark_managed_multi_skill_dir() {
+  _managed_dir="$1"
+  printf '%s\n' "$MANAGED_SKILL_MARKER_CONTENT" > "$_managed_dir/$MANAGED_SKILL_MARKER"
 }
 
 # publish_skill_cache <source> <cache-dir>
@@ -333,12 +350,12 @@ _install_multi_to_base() {
   # Mutual exclusion: back up + remove the mono leftover.
   backup_and_remove_skill_dir "$_base/$SKILL_NAME" || return 1
 
-  # Back up + remove stale multi skills (dingtalk-* or dws-shared) not in the
-  # new bundle.
-  for existing in "$_base"/dingtalk-*/; do
+  # Back up + remove stale, proven DWS-managed skills not in the new bundle.
+  # Never infer ownership from the dingtalk-* prefix alone.
+  for existing in "$_base"/*/; do
     [ -d "$existing" ] || continue
     _name="$(basename "$existing")"
-    if [ ! -f "$_msrc/$_name/SKILL.md" ]; then
+    if is_managed_multi_skill_dir "$existing" && [ ! -f "$_msrc/$_name/SKILL.md" ]; then
       backup_and_remove_skill_dir "$existing" || return 1
     fi
   done
@@ -365,6 +382,7 @@ _install_multi_to_base() {
       printf '  ⚠️  Skill 复制失败，目标未计为安装成功: %s\n' "$_dest"
       return 1
     fi
+    mark_managed_multi_skill_dir "$_dest" || return 1
     _count=$((_count + 1))
   done
 
@@ -420,8 +438,9 @@ install_skills_to_root() {
       idx=$((idx + 1))
       continue
     fi
-    for existing in "$base_dir"/dingtalk-*/; do
+    for existing in "$base_dir"/*/; do
       [ -d "$existing" ] || continue
+      is_managed_multi_skill_dir "$existing" || continue
       backup_and_remove_skill_dir "$existing" || {
         cleanup_ok=0
         break

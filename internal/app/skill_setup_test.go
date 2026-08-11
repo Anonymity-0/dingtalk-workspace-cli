@@ -83,6 +83,9 @@ func TestCrossPlatformCoverageSkillSetupDeclinedConfirmationNeverRemoves(t *test
 			t.Fatal(err)
 		}
 	}
+	if err := markDWSManagedSkillDir(filepath.Join(agentHome, "dingtalk-stale")); err != nil {
+		t.Fatal(err)
+	}
 
 	oldConfirm := skillSetupConfirmPlan
 	t.Cleanup(func() { skillSetupConfirmPlan = oldConfirm })
@@ -510,6 +513,41 @@ func TestCrossPlatformCoverageSkillSetupMutualExclusion(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageSkillSetupMonoPreservesUnmarkedDingtalkSkill(t *testing.T) {
+	home := t.TempDir()
+	setTestHome(t, home)
+	base := filepath.Join(home, ".agents", "skills")
+	managed := filepath.Join(base, "dingtalk-managed-old")
+	custom := filepath.Join(base, "dingtalk-custom")
+	for _, dir := range []string{managed, custom} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(filepath.Base(dir)), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := markDWSManagedSkillDir(managed); err != nil {
+		t.Fatal(err)
+	}
+
+	monoSrc := t.TempDir()
+	if err := os.WriteFile(filepath.Join(monoSrc, "SKILL.md"), []byte("mono"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	installed, skipped, err := installSkillToHomes(monoSrc, []string{filepath.Join(base, "dws")}, &out, &errOut)
+	if err != nil || installed != 1 || skipped != 0 {
+		t.Fatalf("mono install = (%d, %d, %v), stderr=%s", installed, skipped, err, errOut.String())
+	}
+	if _, err := os.Stat(managed); !os.IsNotExist(err) {
+		t.Fatalf("marked DWS multi Skill must be removed during mono switch: %v", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(custom, "SKILL.md")); err != nil || string(got) != "dingtalk-custom" {
+		t.Fatalf("unmarked market/user dingtalk-* Skill changed: data=%q err=%v", got, err)
+	}
+}
+
 // TestSkillSourceCandidatesIncludesUserCache verifies that the user-level
 // cache populated by install.sh / install.ps1 / npm install.js is part of the
 // fallback candidate list, so `dws skill setup` can find a source on a fresh
@@ -771,6 +809,16 @@ func TestCrossPlatformCoverageSkillSetupMultiFullInstallCleansStale(t *testing.T
 			t.Fatal(err)
 		}
 	}
+	if err := markDWSManagedSkillDir(filepath.Join(agentHome, "dingtalk-stale")); err != nil {
+		t.Fatal(err)
+	}
+	custom := filepath.Join(agentHome, "dingtalk-custom")
+	if err := os.MkdirAll(custom, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(custom, "SKILL.md"), []byte("market skill"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	var stdout, stderr bytes.Buffer
 	installed, skipped, err := installMultiSkillToHomes(src, names, []string{agentHome}, &stdout, &stderr, false)
@@ -792,6 +840,12 @@ func TestCrossPlatformCoverageSkillSetupMultiFullInstallCleansStale(t *testing.T
 	body, err := os.ReadFile(filepath.Join(agentHome, "other-skill", "SKILL.md"))
 	if err != nil || !strings.HasPrefix(string(body), "OLD ") {
 		t.Errorf("non-DWS dir must be preserved (body=%q, err=%v)", string(body), err)
+	}
+	if body, err := os.ReadFile(filepath.Join(custom, "SKILL.md")); err != nil || string(body) != "market skill" {
+		t.Errorf("unmarked market/user dingtalk-* dir must survive (body=%q, err=%v)", string(body), err)
+	}
+	if _, err := os.Stat(filepath.Join(agentHome, "dingtalk-aitable", managedSkillMarkerName)); err != nil {
+		t.Errorf("installed bundled skill must carry ownership marker: %v", err)
 	}
 	if !strings.Contains(stdout.String(), "已备份并清理过期 skill") {
 		t.Errorf("expected stale cleanup log line, got stdout=%q", stdout.String())

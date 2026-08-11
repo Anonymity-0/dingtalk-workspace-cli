@@ -26,9 +26,12 @@
   `dws skill setup --mode <mono|multi>`。
 - setup 的 `--dry-run` 和交互确认消费同一份精确计划。非交互环境必须显式
   `--yes`，公开可复制示例不携带确认绕过参数。
-- 对面布局、过期 Skill 和同名目标在替换前都移入
+- 对面布局、过期受管 Skill 和同名官方目标在替换前都移入
   `~/.dws/skill-backups/<时间戳>/`；备份失败时保留原目录并跳过整个 Agent
   目标，避免 mono/multi 混装。
+- 每个预制 multi Skill 安装成功后写入 `.dws-managed` 所有权标记。互斥与
+  stale 清理只接受该标记（以及精确 legacy 名 `dws-shared`），绝不以
+  `dingtalk-*` 前缀推断所有权；同前缀市场/用户 Skill 保留。
 
 ### 1.2 升级布局与 Skill 集合
 
@@ -76,8 +79,8 @@ Homebrew 不直接铺 Agent home，安装后由 `dws skill setup` 完成布局�
 
 ## 4. 决策记录
 
-- **D1：布局包驱动，集合状态驱动。** state 不做 mode sticky；它保存官方清单
-  快照以区分“用户删除的旧 Skill”和“新版本新增 Skill”。
+- **D1：布局和集合都由包驱动。** state 不做 mode sticky，也不参与升级集合
+  求解；它仅保存官方清单信息快照。
 - **D2：无服务端灰度。** 使用 beta 轨、issue 和主动回访观察；不实现
   `rollout.json` 或 `x-dws-skill-mode`。
 - **D3：不采用 `npx skills add` 作为主分发通道。** DWS 继续维护 zip、embed
@@ -95,6 +98,7 @@ Homebrew 不直接铺 Agent home，安装后由 `dws skill setup` 完成布局�
 - setup 精确计划、`--dry-run`、非交互确认门禁。
 - 官方清单信息快照与普通/`--force` 全量覆盖升级语义。
 - 缓存 staged publish 与旧缓存恢复。
+- `.dws-managed` 所有权标记与同前缀市场/用户 Skill 保留门禁。
 
 ### 后续可选
 

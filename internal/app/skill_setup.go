@@ -72,6 +72,7 @@ var (
 	skillSetupReadlink        = os.Readlink
 	skillSetupOpen            = os.Open
 	skillSetupOpenFile        = os.OpenFile
+	skillSetupWriteFile       = os.WriteFile
 	skillSetupCopy            = io.Copy
 	skillSetupWriteState      = skillstate.Write
 	skillSetupRemoveState     = skillstate.Remove
@@ -118,13 +119,13 @@ multi 模式支持按产品挑选：
   -s/--skill   只装指定子 skill（可重复，短名 aitable 或全名 dingtalk-aitable 均可）
   -x/--exclude 从全装里剔除指定子 skill（可重复，与 --skill 互斥）
   用 -s/-x 挑选时未列出的已有 dingtalk-* skill 会保留（additive 叠加语义）；
-  不带过滤条件的全量安装会清理不在 bundle 内的过期 dingtalk-* / dws-shared。
+  不带过滤条件的全量安装只清理带 DWS 受管标记且不在 bundle 内的过期 Skill。
   setup 成功后记录本次官方清单；后续每次 dws upgrade 都按新版本官方清单
   全量覆盖预制 skill，因此本地删除或 setup 时排除的预制 skill 会在升级时恢复。
 清理与备份（本命令可能移除的目录）：
-  · 安装任一模式前会清理对面模式残留：装 mono 移除 <agent-home>/dingtalk-*，
+  · 安装任一模式前会清理对面模式残留：装 mono 移除带 DWS 受管标记的 multi Skill，
     装 multi 移除 <agent-home>/dws/；全量 multi 安装还会移除不在 bundle 内的
-    过期 dingtalk-* / dws-shared。
+    过期受管 Skill。仅有 dingtalk-* 前缀的市场/用户 Skill 不会被清理。
   · 被移除的目录与同名旧 skill 会先备份到 ~/.dws/skill-backups/<时间戳>/；
     备份失败时保留原目录并跳过该目标，绝不静默删除。
   · 所有将被移除的目录都会在确认前逐条列出。
@@ -225,7 +226,7 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 
 	// filtered 决定 multi 安装的清理语义：带 -s/--skill 或 -x/--exclude
 	// 时保持 additive（不动未列出的 sibling）；全量安装与 install.sh /
-	// install.js 对齐，清掉不在 bundle 内的过期 dingtalk-* / dws-shared。
+	// install.js 对齐，清掉不在 bundle 内且有明确 DWS 所有权标记的过期 Skill。
 	filtered := len(includeRaw) > 0 || len(excludeRaw) > 0
 	plan, err := skillSetupBuildPlan(mode, skillSrc, dests, multiSkillNames, filtered)
 	if err != nil {
@@ -318,13 +319,29 @@ const multiSharedSkill = "dingtalk-shared"
 // unreferenced skill next to the new dingtalk-shared.
 const legacySharedSkill = "dws-shared"
 
-// isDWSMultiSkillName reports whether name belongs to a DWS multi-mode skill
-// directory: product skills use the dingtalk- prefix and the shared bundle is
-// dingtalk-shared (or its legacy pre-rename name dws-shared).
-func isDWSMultiSkillName(name string) bool {
-	return strings.HasPrefix(name, multiSkillPrefix) ||
-		name == multiSharedSkill ||
-		name == legacySharedSkill
+const (
+	managedSkillMarkerName    = ".dws-managed"
+	managedSkillMarkerContent = "managed-by=dingtalk-workspace-cli\n"
+)
+
+// isManagedDWSMultiSkillDir reports whether dir is proven to be owned by the
+// bundled DWS installer. A dingtalk-* prefix alone is not ownership evidence:
+// market/user skills are allowed to use that prefix. The retired dws-shared
+// name is the only exact legacy exception.
+func isManagedDWSMultiSkillDir(dir string) bool {
+	if filepath.Base(dir) == legacySharedSkill {
+		return true
+	}
+	data, err := os.ReadFile(filepath.Join(dir, managedSkillMarkerName))
+	return err == nil && string(data) == managedSkillMarkerContent
+}
+
+func markDWSManagedSkillDir(dir string) error {
+	marker := filepath.Join(dir, managedSkillMarkerName)
+	if err := skillSetupWriteFile(marker, []byte(managedSkillMarkerContent), 0o644); err != nil {
+		return fmt.Errorf("写入 Skill 受管标记失败 %s: %w", marker, err)
+	}
+	return nil
 }
 
 // legacyMultiSharedSkill is the retired name shipped by older multi-skill
@@ -592,9 +609,8 @@ func normalizeMultiSkillName(name string) string {
 //   - exclude that drops every name → error (avoid silent no-op install)
 //
 // The caller threads whether a filter was used into installMultiSkillToHomes:
-// filtered installs stay additive (already-installed dingtalk-* siblings are
-// left untouched); a full unfiltered install also removes stale dingtalk-* /
-// dws-shared directories that are no longer part of the bundle.
+// filtered installs stay additive; a full unfiltered install also removes
+// stale, proven DWS-managed directories that are no longer in the bundle.
 func filterMultiSkillNames(all, include, exclude []string) ([]string, error) {
 	if len(include) > 0 && len(exclude) > 0 {
 		return nil, fmt.Errorf("--skill 与 --exclude 不能同时使用")
@@ -1041,7 +1057,7 @@ func confirmSkillSetupPlan(out io.Writer, plan *skillSetupPlan) (bool, error) {
 // installing into dest under the given mode, to prevent leftover files from
 // the opposite mode from co-existing.
 //
-//   - mono dest is <agent-home>/dws  → multi 残留是 <agent-home>/dingtalk-*
+//   - mono dest is <agent-home>/dws  → multi 残留是带 DWS 受管标记的兄弟目录
 //   - multi dest is <agent-home>     → mono 残留是 <agent-home>/dws
 //
 // A scan failure (e.g. unreadable agent home) is returned as a non-nil error
@@ -1060,8 +1076,9 @@ func mutualExclusionVictims(dest, mode string) ([]string, error) {
 		}
 		var victims []string
 		for _, e := range entries {
-			if e.IsDir() && isDWSMultiSkillName(e.Name()) {
-				victims = append(victims, filepath.Join(agentHome, e.Name()))
+			path := filepath.Join(agentHome, e.Name())
+			if e.IsDir() && isManagedDWSMultiSkillDir(path) {
+				victims = append(victims, path)
 			}
 		}
 		sort.Strings(victims)
@@ -1249,8 +1266,14 @@ func prepareEventMiscMigration(src, dest string) (*eventMiscMigration, error) {
 	if err := skillSetupCopyDir(filepath.Join(src, multiEventSkill), migration.stagedEvent); err != nil {
 		return cleanupOnError(fmt.Errorf("预备 dingtalk-event 失败 %s: %w", dest, err))
 	}
+	if err := markDWSManagedSkillDir(migration.stagedEvent); err != nil {
+		return cleanupOnError(err)
+	}
 	if err := skillSetupCopyDir(filepath.Join(src, multiMiscSkill), migration.stagedMisc); err != nil {
 		return cleanupOnError(fmt.Errorf("预备 dingtalk-misc 失败 %s: %w", dest, err))
+	}
+	if err := markDWSManagedSkillDir(migration.stagedMisc); err != nil {
+		return cleanupOnError(err)
 	}
 	if err := validateEventMigrationSkillRoot(migration.stagedEvent); err != nil {
 		return cleanupOnError(fmt.Errorf("迁移 staging 验证失败 %s: %w", migration.stagedEvent, err))
@@ -1437,8 +1460,8 @@ func skillSetupPathExists(path string) (bool, error) {
 //
 // filtered mirrors whether runSkillSetup saw -s/--skill or -x/--exclude:
 // a filtered install stays additive and never touches siblings outside the
-// requested set; a full (unfiltered) install additionally removes stale
-// dingtalk-* / dws-shared directories that are no longer in the bundle,
+// requested set; a full (unfiltered) install additionally removes stale,
+// proven DWS-managed directories that are no longer in the bundle,
 // matching install.sh / install.ps1 / install.js / upgrade paths.
 func installMultiSkillToHomes(src string, skillNames []string, dests []string, out, errOut io.Writer, filtered bool) (installed, skipped int, err error) {
 	plan, planErr := buildSkillSetupPlan(skillSetupModeMulti, src, dests, skillNames, filtered)
@@ -1519,6 +1542,11 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 				skipped++
 				continue
 			}
+			if markerErr := markDWSManagedSkillDir(subDest); markerErr != nil {
+				fmt.Fprintf(errOut, "  ✗ 受管标记写入失败 %s: %v\n", subDest, markerErr)
+				skipped++
+				continue
+			}
 			fmt.Fprintf(out, "  ✓ %s\n", subDest)
 			installed++
 		}
@@ -1526,9 +1554,8 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 	return installed, skipped, nil
 }
 
-// staleMultiSkillVictims lists the dingtalk-* / dws-shared directories under
-// dest that a full (unfiltered) multi install would delete because they are
-// not part of the bundle.
+// staleMultiSkillVictims lists proven DWS-managed directories under dest that
+// a full install would delete because they are not part of the bundle.
 func staleMultiSkillVictims(dest string, keep []string) []string {
 	victims, _ := staleMultiSkillVictimsWithError(dest, keep)
 	return victims
@@ -1551,7 +1578,7 @@ func staleMultiSkillVictimsWithError(dest string, keep []string) ([]string, erro
 		if !e.IsDir() || keepSet[e.Name()] {
 			continue
 		}
-		if !isDWSMultiSkillName(e.Name()) {
+		if !isManagedDWSMultiSkillDir(filepath.Join(dest, e.Name())) {
 			continue
 		}
 		victims = append(victims, filepath.Join(dest, e.Name()))
@@ -1560,8 +1587,8 @@ func staleMultiSkillVictimsWithError(dest string, keep []string) ([]string, erro
 	return victims, nil
 }
 
-// removeStaleMultiSkills backs up + removes dingtalk-* / dws-shared
-// directories under dest that are not part of the current bundle. Removal is
+// removeStaleMultiSkills backs up + removes proven DWS-managed directories
+// under dest that are not part of the current bundle. Removal is
 // reversible: each stale directory is moved to ~/.dws/skill-backups/<stamp>/
 // first, and a backup failure keeps the directory in place with a warning.
 // A scan or backup failure is returned so callers do not write a new bundle
@@ -1584,7 +1611,7 @@ func removeStaleMultiSkills(dest string, keep []string, out, errOut io.Writer) e
 		if !e.IsDir() || keepSet[e.Name()] {
 			continue
 		}
-		if !isDWSMultiSkillName(e.Name()) {
+		if !isManagedDWSMultiSkillDir(filepath.Join(dest, e.Name())) {
 			continue
 		}
 		stales = append(stales, filepath.Join(dest, e.Name()))

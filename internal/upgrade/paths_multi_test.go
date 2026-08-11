@@ -127,6 +127,9 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMulti(t *testing.T) {
 		os.WriteFile(filepath.Join(base, "dws", "SKILL.md"), []byte("old mono"), 0o644)
 		os.MkdirAll(filepath.Join(base, "dingtalk-old"), 0o755)
 		os.WriteFile(filepath.Join(base, "dingtalk-old", "SKILL.md"), []byte("stale"), 0o644)
+		if err := markManagedSkillDir(filepath.Join(base, "dingtalk-old")); err != nil {
+			t.Fatal(err)
+		}
 		os.MkdirAll(filepath.Join(base, "other-skill"), 0o755)
 		os.WriteFile(filepath.Join(base, "other-skill", "SKILL.md"), []byte("not dws"), 0o644)
 	}
@@ -336,6 +339,11 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiDiskRefreshes(t *testing
 	os.WriteFile(filepath.Join(agentsBase, "dingtalk-chat", "SKILL.md"), []byte("OLD chat"), 0o644)
 	os.MkdirAll(filepath.Join(agentsBase, "dingtalk-stale"), 0o755)
 	os.WriteFile(filepath.Join(agentsBase, "dingtalk-stale", "SKILL.md"), []byte("stale"), 0o644)
+	if err := markManagedSkillDir(filepath.Join(agentsBase, "dingtalk-stale")); err != nil {
+		t.Fatal(err)
+	}
+	os.MkdirAll(filepath.Join(agentsBase, "dingtalk-custom"), 0o755)
+	os.WriteFile(filepath.Join(agentsBase, "dingtalk-custom", "SKILL.md"), []byte("market skill"), 0o644)
 	os.MkdirAll(filepath.Join(agentsBase, "other-skill"), 0o755)
 	os.WriteFile(filepath.Join(agentsBase, "other-skill", "SKILL.md"), []byte("not dws"), 0o644)
 
@@ -367,6 +375,12 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiDiskRefreshes(t *testing
 	}
 	if _, err := os.Stat(filepath.Join(agentsBase, "other-skill", "SKILL.md")); err != nil {
 		t.Errorf("non-DWS dir should be preserved: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(agentsBase, "dingtalk-custom", "SKILL.md")); err != nil {
+		t.Errorf("market/user dingtalk-* dir without marker must be preserved: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(agentsBase, "dingtalk-chat", managedSkillMarkerName)); err != nil {
+		t.Errorf("refreshed bundled skill must carry ownership marker: %v", err)
 	}
 }
 
@@ -483,6 +497,9 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiFallbackCleanupFailure(t
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(staleDir, "SKILL.md"), []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := markManagedSkillDir(staleDir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -803,6 +820,9 @@ func TestCrossPlatformCoverageMonoUpgradeBackupAndFallbackEdges(t *testing.T) {
 	knownSkillDirs = []string{".real/skills"}
 	stale := filepath.Join(home2, ".agents", "skills", "dingtalk-stale")
 	os.MkdirAll(stale, 0o755)
+	if err := markManagedSkillDir(stale); err != nil {
+		t.Fatal(err)
+	}
 	testseam.Swap(t, &upgradeRename, func(string, string) error { return errors.New("backup denied") })
 	if _, err := UpgradeSkillLocations(mono); err == nil || !strings.Contains(err.Error(), "回退到主目录清理残留也失败") {
 		t.Fatalf("fallback cleanup error = %v", err)
@@ -1008,6 +1028,9 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 
 	// Backup failure of a multi leftover aborts cleanupMultiLeftovers.
 	os.MkdirAll(filepath.Join(base, "dingtalk-stale"), 0o755)
+	if err := markManagedSkillDir(filepath.Join(base, "dingtalk-stale")); err != nil {
+		t.Fatal(err)
+	}
 	testseam.Swap(t, &upgradeRename, func(string, string) error { return errors.New("backup denied") })
 	if err := cleanupMultiLeftovers(home, base); err == nil || !strings.Contains(err.Error(), "备份并清理 multi 残留失败") {
 		t.Fatalf("cleanupMultiLeftovers backup error = %v", err)
@@ -1060,5 +1083,43 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 	// cleanupMultiLeftovers on a missing base is a no-op.
 	if err := cleanupMultiLeftovers(home, filepath.Join(home, "missing")); err != nil {
 		t.Fatalf("missing base must be a no-op, got %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageManagedSkillMarkerValidationAndInstallFailure(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "dingtalk-custom")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if isManagedMultiSkillDir(dir) {
+		t.Fatal("an unmarked dingtalk-* directory must not be treated as DWS-owned")
+	}
+	if err := os.WriteFile(filepath.Join(dir, managedSkillMarkerName), []byte("someone-else\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if isManagedMultiSkillDir(dir) {
+		t.Fatal("a foreign marker value must not be treated as DWS-owned")
+	}
+	if !isManagedMultiSkillDir(filepath.Join(t.TempDir(), "dws-shared")) {
+		t.Fatal("the exact legacy dws-shared name must remain managed")
+	}
+
+	testseam.Swap(t, &upgradeWriteFile, func(string, []byte, os.FileMode) error { return errors.New("marker denied") })
+	if err := markManagedSkillDir(dir); err == nil || !strings.Contains(err.Error(), "受管标记") {
+		t.Fatalf("markManagedSkillDir error = %v", err)
+	}
+
+	home := withFakeHome(t)
+	extract := t.TempDir()
+	multiRoot := writeMultiBundle(t, extract, "dingtalk-chat")
+	result, err := UpgradeSkillLocations(multiRoot)
+	if err == nil || !strings.Contains(err.Error(), "受管标记") {
+		t.Fatalf("marker write failure must fail the upgrade, got %v", err)
+	}
+	if result == nil || len(result.Failed()) == 0 {
+		t.Fatalf("marker write failure must be reported in results: %#v", result)
+	}
+	if _, statErr := os.Stat(filepath.Join(home, ".dws", "skills-state.json")); !os.IsNotExist(statErr) {
+		t.Fatalf("failed managed install must not publish state, stat err=%v", statErr)
 	}
 }

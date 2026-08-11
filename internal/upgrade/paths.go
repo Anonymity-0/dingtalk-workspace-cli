@@ -65,6 +65,7 @@ var (
 	upgradeMkdirTemp       = os.MkdirTemp
 	upgradeReadDir         = os.ReadDir
 	upgradeStat            = os.Stat
+	upgradeWriteFile       = os.WriteFile
 	upgradeBackupStamp     = func() string { return time.Now().UTC().Format("20060102-150405") }
 	upgradeWriteSkillState = skillstate.Write
 	upgradeNow             = time.Now
@@ -75,6 +76,11 @@ var (
 // interactive flows (install scripts, npm postinstall, `dws upgrade`) cannot
 // ask for confirmation, so deletions must stay reversible instead.
 const skillBackupSubdir = ".dws/skill-backups"
+
+const (
+	managedSkillMarkerName    = ".dws-managed"
+	managedSkillMarkerContent = "managed-by=dingtalk-workspace-cli\n"
+)
 
 // backupAndRemoveSkillDir moves dir into <homeDir>/.dws/skill-backups/
 // <stamp>/<rel> instead of destroying it, and returns the backup path. It is
@@ -453,6 +459,11 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 				failed = true
 				break
 			}
+			if err := markManagedSkillDir(subDest); err != nil {
+				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
+				failed = true
+				break
+			}
 		}
 		if failed {
 			continue
@@ -477,6 +488,9 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 			subDest := filepath.Join(destBase, name)
 			if err := upgradeCopyDir(filepath.Join(multiRoot, name), subDest); err != nil {
 				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
+			}
+			if err := markManagedSkillDir(subDest); err != nil {
+				return result, fmt.Errorf("所有技能目录安装失败，回退到主目录写入受管标记也失败: %w", err)
 			}
 		}
 		// Replace the earlier failed entry for this dir (if any) or append a new one
@@ -566,8 +580,8 @@ func skillTreeHasRoot(dir string) bool {
 	return err == nil && !info.IsDir()
 }
 
-// cleanupMultiLeftovers backs up + removes every multi-mode skill directory
-// (dingtalk-* or dws-shared) inside one agent home before mono is installed.
+// cleanupMultiLeftovers backs up + removes every proven DWS-managed
+// multi-mode skill directory inside one agent home before mono is installed.
 // A missing base directory simply means no leftovers; any other read failure
 // is reported so mono never silently co-exists with multi. Removal is
 // reversible: each leftover is preserved under ~/.dws/skill-backups/ and a
@@ -581,7 +595,7 @@ func cleanupMultiLeftovers(homeDir, baseDir string) error {
 		return fmt.Errorf("读取技能目录失败 %s: %w", baseDir, err)
 	}
 	for _, e := range entries {
-		if !e.IsDir() || !isMultiSkillDirName(e.Name()) {
+		if !e.IsDir() || !isManagedMultiSkillDir(filepath.Join(baseDir, e.Name())) {
 			continue
 		}
 		stale := filepath.Join(baseDir, e.Name())
@@ -593,10 +607,10 @@ func cleanupMultiLeftovers(homeDir, baseDir string) error {
 }
 
 // cleanupOppositeModeLeftovers backs up + removes, inside one agent home, the
-// legacy mono directory (dws/) and every multi skill directory (dingtalk-* or
-// dws-shared) that is not part of the new bundle. The dingtalk- prefix and
-// the dws-shared name are reserved for DWS product skills; market-installed
-// skills do not use them (see skill_command.go). Removal is reversible: each
+// legacy mono directory (dws/) and every proven DWS-managed multi skill
+// directory that is not part of the new bundle. A dingtalk-* prefix alone is
+// not proof of ownership because market/user skills may use the same prefix.
+// Removal is reversible: each
 // directory is preserved under ~/.dws/skill-backups/ and a backup failure
 // aborts the removal for that home.
 func cleanupOppositeModeLeftovers(homeDir, destBase string, skillSet map[string]bool) error {
@@ -611,7 +625,7 @@ func cleanupOppositeModeLeftovers(homeDir, destBase string, skillSet map[string]
 		return fmt.Errorf("读取技能目录失败 %s: %w", destBase, err)
 	}
 	for _, e := range entries {
-		if !e.IsDir() || !isMultiSkillDirName(e.Name()) || skillSet[e.Name()] {
+		if !e.IsDir() || skillSet[e.Name()] || !isManagedMultiSkillDir(filepath.Join(destBase, e.Name())) {
 			continue
 		}
 		stale := filepath.Join(destBase, e.Name())
@@ -622,11 +636,23 @@ func cleanupOppositeModeLeftovers(homeDir, destBase string, skillSet map[string]
 	return nil
 }
 
-// isMultiSkillDirName reports whether name belongs to a DWS multi-mode skill
-// directory (product skills use the dingtalk- prefix; dws-shared is the
-// mandatory shared bundle).
-func isMultiSkillDirName(name string) bool {
-	return strings.HasPrefix(name, "dingtalk-") || name == "dws-shared"
+// isManagedMultiSkillDir reports whether dir is proven to be owned by DWS.
+// The retired dws-shared name is an exact legacy identifier; all other names
+// require the marker written after a successful bundled-skill copy.
+func isManagedMultiSkillDir(dir string) bool {
+	if filepath.Base(dir) == "dws-shared" {
+		return true
+	}
+	data, err := os.ReadFile(filepath.Join(dir, managedSkillMarkerName))
+	return err == nil && string(data) == managedSkillMarkerContent
+}
+
+func markManagedSkillDir(dir string) error {
+	marker := filepath.Join(dir, managedSkillMarkerName)
+	if err := upgradeWriteFile(marker, []byte(managedSkillMarkerContent), 0o644); err != nil {
+		return fmt.Errorf("写入 Skill 受管标记失败 %s: %w", marker, err)
+	}
+	return nil
 }
 
 // bundleSkillNames returns the sorted names of subdirectories of dir that

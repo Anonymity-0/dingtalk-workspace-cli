@@ -39,6 +39,8 @@ $NoSkills = $env:DWS_NO_SKILLS -eq "1"
 $SkillsOnly = $env:DWS_SKILLS_ONLY -eq "1"
 $SkillName = "dws"
 $SkillMode = ""
+$ManagedSkillMarker = ".dws-managed"
+$ManagedSkillMarkerContent = "managed-by=dingtalk-workspace-cli"
 
 # Agent skill base directories (same order as build/npm/install.js AGENT_DIRS).
 $AgentDirs = @(
@@ -71,6 +73,27 @@ function Write-Err {
     param([string]$Message)
     Write-Host "  ❌ $Message" -ForegroundColor Red
     exit 1
+}
+
+# A dingtalk-* prefix alone is not ownership evidence: market/user skills may
+# use it too. New bundled installs carry this marker; dws-shared is the one
+# exact legacy name that predates markers.
+function Test-ManagedMultiSkillDir {
+    param([string]$Dir)
+    if ((Split-Path $Dir -Leaf) -eq "dws-shared") { return $true }
+    $marker = Join-Path $Dir $ManagedSkillMarker
+    if (!(Test-Path $marker -PathType Leaf)) { return $false }
+    try {
+        return (Get-Content -Path $marker -Raw).Trim() -eq $ManagedSkillMarkerContent
+    } catch {
+        return $false
+    }
+}
+
+function Set-ManagedMultiSkillMarker {
+    param([string]$Dir)
+    $marker = Join-Path $Dir $ManagedSkillMarker
+    [System.IO.File]::WriteAllText($marker, "$ManagedSkillMarkerContent`n", [System.Text.UTF8Encoding]::new($false))
 }
 
 function Get-Arch {
@@ -584,7 +607,8 @@ function Install-SkillsToHomes {
         # the dir).
         $cleanupOK = Backup-SkillDir -Dir (Join-Path $baseDir "dws-shared")
         if ($cleanupOK) {
-            foreach ($existing in Get-ChildItem -Path $baseDir -Directory -Filter "dingtalk-*" -ErrorAction SilentlyContinue) {
+            foreach ($existing in Get-ChildItem -Path $baseDir -Directory -ErrorAction SilentlyContinue) {
+                if (!(Test-ManagedMultiSkillDir -Dir $existing.FullName)) { continue }
                 if (!(Backup-SkillDir -Dir $existing.FullName)) {
                     $cleanupOK = $false
                     break
@@ -652,8 +676,8 @@ function Test-MultiTreeHasSkills {
 
 # Install the multi skill bundle (one subdirectory per product skill) into all
 # agent homes as sibling directories, mirroring `dws skill setup --mode multi`.
-# Mutual exclusion: the mono leftover (<home>\dws) and any stale dingtalk-*
-# skill not present in the new bundle are removed first.
+# Mutual exclusion: the mono leftover (<home>\dws) and stale DWS-managed Skills
+# not present in the new bundle are removed first.
 function Install-MultiSkillsToHomes {
     param(
         [string]$MultiSrc,
@@ -713,10 +737,11 @@ function Install-MultiToBase {
         return $false
     }
 
-    # Back up + remove stale multi skills (dingtalk-* or dws-shared) not in
-    # the new bundle.
-    foreach ($existing in Get-ChildItem -Path $BaseDir -Directory -Filter "dingtalk-*" -ErrorAction SilentlyContinue) {
-        if (!(Test-Path (Join-Path (Join-Path $MultiSrc $existing.Name) "SKILL.md")) -and
+    # Back up + remove stale, proven DWS-managed skills not in the new bundle.
+    # Never infer ownership from the dingtalk-* prefix alone.
+    foreach ($existing in Get-ChildItem -Path $BaseDir -Directory -ErrorAction SilentlyContinue) {
+        if ((Test-ManagedMultiSkillDir -Dir $existing.FullName) -and
+            !(Test-Path (Join-Path (Join-Path $MultiSrc $existing.Name) "SKILL.md")) -and
             !(Backup-SkillDir -Dir $existing.FullName)) {
             return $false
         }
@@ -742,8 +767,14 @@ function Install-MultiToBase {
     foreach ($skillDir in $skillDirs) {
         $name = $skillDir.Name
         $dest = Join-Path $BaseDir $name
-        New-Item -ItemType Directory -Path $dest -Force | Out-Null
-        Copy-DirRecursive -Source $skillDir.FullName -Destination $dest | Out-Null
+        try {
+            New-Item -ItemType Directory -Path $dest -Force | Out-Null
+            Copy-DirRecursive -Source $skillDir.FullName -Destination $dest | Out-Null
+            Set-ManagedMultiSkillMarker -Dir $dest
+        } catch {
+            Write-Say "⚠️  Skill 复制或受管标记写入失败，目标未计为安装成功: $dest ($_)"
+            return $false
+        }
         $count++
     }
 
