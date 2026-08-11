@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestOutputSinkAtomicallyReplacesTargetWithMode0600(t *testing.T) {
+func TestOutputSinkAtomicallyReplacesExistingTargetWithMode0600(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "result.txt")
 	if err := os.WriteFile(target, []byte("original"), 0o644); err != nil {

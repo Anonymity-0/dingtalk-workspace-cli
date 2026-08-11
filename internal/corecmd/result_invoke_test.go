@@ -74,3 +74,26 @@ func TestFrameworkResultInvokeErrorLegacyAndStoreEdges(t *testing.T) {
 		})
 	}
 }
+
+func TestLegacyResultInvokeIsRejectedBeforeBusinessDispatch(t *testing.T) {
+	calls := 0
+	cmd := New(Spec{
+		Use:           "result",
+		OutputRollout: output.RolloutLegacyOnly,
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "high", Confirmation: "not_required", Idempotency: "unknown",
+		},
+		ResultInvoke: func(*Ctx, map[string]any) (output.CommandResult, error) {
+			calls++
+			return output.Success(map[string]any{"changed": true}), nil
+		},
+	})
+	cmd.SetArgs(nil)
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "without an active unified-result rollout") {
+		t.Fatalf("Execute error=%v", err)
+	}
+	if calls != 0 {
+		t.Fatalf("business dispatcher ran %d time(s), want 0", calls)
+	}
+}

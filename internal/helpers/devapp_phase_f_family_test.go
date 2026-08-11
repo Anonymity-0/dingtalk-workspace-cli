@@ -49,6 +49,12 @@ func devAppFamilyContentRunner(content map[string]any) *devAppResponseRunner {
 	}
 }
 
+func devAppFamilyRawContentRunner(content map[string]any) *devAppResponseRunner {
+	runner := devAppFamilyContentRunner(content)
+	runner.preserveMissingPagination = true
+	return runner
+}
+
 // TestDevAppFamilyReadLeavesDualFormat 是队列 B64/B68/B71/B80/B83/B87/B95/B102
 // 的读叶子双格式验证（AC-28/M1.7）：默认 json 出完整信封（ok/outcome/data），
 // -f table 只渲染 data（不含信封包装键）。业务载荷形状不变。
@@ -167,7 +173,8 @@ func TestDevAppFamilyWriteLeavesDryRunEnvelope(t *testing.T) {
 
 // TestDevAppListPaginationProjectsMeta 是队列 B69（契约规范 §3）：列表载荷的
 // cursor 分页字段投影到 meta.pagination。hasMore=true+nextCursor →
-// endpoint_exhausted:false + next_token（可续跑）；hasMore=false → exhausted:true。
+// endpoint_exhausted:false + next_token（可续跑）；hasMore=false → exhausted:true；
+// 已声明分页的工具缺少两类标记时 fail-closed，不得伪装为完整成功。
 func TestDevAppListPaginationProjectsMeta(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -176,6 +183,7 @@ func TestDevAppListPaginationProjectsMeta(t *testing.T) {
 		wantNext  string
 		wantExh   bool
 		wantHasPg bool
+		wantFail  bool
 	}{
 		{
 			name:      "app list has more with cursor",
@@ -193,10 +201,10 @@ func TestDevAppListPaginationProjectsMeta(t *testing.T) {
 			wantHasPg: true,
 		},
 		{
-			name:      "app list no pagination fields",
-			args:      []string{"dev", "app", "list", "--name", "DemoApp"},
-			content:   map[string]any{"items": []any{}},
-			wantHasPg: false,
+			name:     "app list no pagination fields",
+			args:     []string{"dev", "app", "list", "--name", "DemoApp"},
+			content:  map[string]any{"items": []any{}},
+			wantFail: true,
 		},
 		{
 			name:      "version list has more with cursor",
@@ -210,14 +218,21 @@ func TestDevAppListPaginationProjectsMeta(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			out, errBuf, err := runDevAppFamily(t, devAppFamilyContentRunner(tc.content), tc.args...)
+			runner := devAppFamilyContentRunner(tc.content)
+			if tc.wantFail {
+				runner = devAppFamilyRawContentRunner(tc.content)
+			}
+			out, errBuf, err := runDevAppFamily(t, runner, tc.args...)
 			if err != nil {
 				t.Fatalf("Execute() error = %v\nstderr:\n%s", err, errBuf.String())
 			}
 			var env struct {
 				OK      bool   `json:"ok"`
 				Outcome string `json:"outcome"`
-				Meta    struct {
+				Error   *struct {
+					Subtype string `json:"subtype"`
+				} `json:"error"`
+				Meta struct {
 					Pagination *struct {
 						EndpointExhausted bool   `json:"endpoint_exhausted"`
 						NextToken         string `json:"next_token"`
@@ -226,6 +241,12 @@ func TestDevAppListPaginationProjectsMeta(t *testing.T) {
 			}
 			if err := json.Unmarshal(out.Bytes(), &env); err != nil {
 				t.Fatalf("stdout is not a JSON envelope: %v\n%s", err, out.String())
+			}
+			if tc.wantFail {
+				if env.OK || env.Outcome != "failure" || env.Error == nil || env.Error.Subtype != "pagination_inconsistent" {
+					t.Fatalf("missing pagination markers must fail closed: %s", out.String())
+				}
+				return
 			}
 			if !tc.wantHasPg {
 				if env.Meta.Pagination != nil {

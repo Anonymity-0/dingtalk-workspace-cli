@@ -62,6 +62,9 @@ var (
 	rootCreateTemp                  = os.CreateTemp
 	rootSyncFile                    = (*os.File).Sync
 	rootCloseFile                   = (*os.File).Close
+	// os.Rename replaces an existing non-directory target on every supported
+	// Go host; the Windows implementation uses MOVEFILE_REPLACE_EXISTING. Keep
+	// the temporary file beside the target so publication stays on one volume.
 	rootRenameFile                  = os.Rename
 	rootRemoveFile                  = os.Remove
 	rootPluginInjectConfigEnv       = (*plugin.Loader).InjectPluginConfigEnv

@@ -438,12 +438,12 @@ func New(spec Spec) *cobra.Command {
 			}
 		}
 		if spec.ResultInvoke != nil {
+			if !output.UsesUnifiedResult(cmd) {
+				return fmt.Errorf("command %q uses ResultInvoke without an active unified-result rollout", cmd.CommandPath())
+			}
 			result, err := spec.ResultInvoke(ctx, toolArgs)
 			if err != nil {
 				return err
-			}
-			if !output.UsesUnifiedResult(cmd) {
-				return fmt.Errorf("command %q uses ResultInvoke without an active unified-result rollout", cmd.CommandPath())
 			}
 			return output.StoreResult(cmd.Context(), result)
 		}

@@ -22,11 +22,13 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
 func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalPassThrough(t *testing.T) {
 	cmd := &cobra.Command{Use: "create", Short: "s", Long: "l"}
+	output.SetCommandRollout(cmd, output.RolloutUnifiedActive)
 	t.Cleanup(func() { contractfinal.ClearRuntimeContractFinalForTest(cmd) })
 	cmd.Flags().String("mode", "", "usage")
 	runtimeannotate.AnnotateRuntimeFlag(cmd, "mode", "mode", "string", false)
@@ -84,6 +86,39 @@ func TestCrossPlatformCoverageRuntimeToolSpecFromContractFinalPassThrough(t *tes
 	}
 	if len(spec.Parameters) != 1 || spec.Parameters[0].Name != "mode" {
 		t.Fatalf("parameters = %#v", spec.Parameters)
+	}
+}
+
+func TestRuntimeToolSpecHidesUnifiedResultForInactiveRollout(t *testing.T) {
+	for _, state := range []output.RolloutState{output.RolloutLegacyOnly, output.RolloutDualValidate} {
+		t.Run(string(state), func(t *testing.T) {
+			cmd := &cobra.Command{Use: "list"}
+			output.SetCommandRollout(cmd, state)
+			cmd.Flags().String("cursor", "", "cursor")
+			runtimeannotate.AnnotateRuntimeFlag(cmd, "cursor", "cursor", "string", false)
+			final := contract.ContractFinalPayload{
+				Identity: &contract.ToolIdentitySpec{
+					ProductID: "dev", Name: "list_things", CanonicalPath: "dev.list_things",
+					CLIPath: "dev list", PrimaryCLIPath: "dev list",
+				},
+				Result: &contract.ResultSpec{
+					Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess},
+					DataSchema: json.RawMessage(`{"type":"object"}`),
+				},
+				Pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "cursor"},
+			}
+			entry := runtimeSchemaEntry{
+				ProductID: "dev", ToolName: "list_things", CLIName: "list",
+				CLIPath: "dev list", PrimaryCLIPath: "dev list", ProductName: "Dev", Command: cmd,
+			}
+			spec, err := runtimeToolSpecFromContractFinal(entry, final, runtimeSchemaMetadataSources{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if spec.Result != nil || spec.Pagination != nil {
+				t.Fatalf("inactive rollout published result=%#v pagination=%#v", spec.Result, spec.Pagination)
+			}
+		})
 	}
 }
 

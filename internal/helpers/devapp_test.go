@@ -61,14 +61,42 @@ func prepareUnifiedTestCommand(cmd *cobra.Command) *cobra.Command {
 }
 
 type devAppResponseRunner struct {
-	last     executor.Invocation
-	response map[string]any
+	last                      executor.Invocation
+	response                  map[string]any
+	preserveMissingPagination bool
 }
 
 func (r *devAppResponseRunner) Run(_ context.Context, invocation executor.Invocation) (executor.Result, error) {
 	r.last = invocation
 	invocation.Implemented = true
-	return executor.Result{Invocation: invocation, Response: r.response}, nil
+	response := r.response
+	if !r.preserveMissingPagination && devAppToolRequiresPagination(invocation.Tool) {
+		if service, ok := response["content"].(map[string]any); ok {
+			if result, ok := service["result"].(map[string]any); ok {
+				_, hasFlag := result["hasMore"]
+				_, hasCursor := result["nextCursor"]
+				if !hasFlag && !hasCursor {
+					resultCopy := make(map[string]any, len(result)+1)
+					for key, value := range result {
+						resultCopy[key] = value
+					}
+					resultCopy["hasMore"] = false
+					serviceCopy := make(map[string]any, len(service))
+					for key, value := range service {
+						serviceCopy[key] = value
+					}
+					serviceCopy["result"] = resultCopy
+					responseCopy := make(map[string]any, len(response))
+					for key, value := range response {
+						responseCopy[key] = value
+					}
+					responseCopy["content"] = serviceCopy
+					response = responseCopy
+				}
+			}
+		}
+	}
+	return executor.Result{Invocation: invocation, Response: response}, nil
 }
 
 func TestDevAppMemberCommandsBuildToolParams(t *testing.T) {

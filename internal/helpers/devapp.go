@@ -1850,6 +1850,9 @@ func runDevAppTool(runner executor.Runner, cmd *cobra.Command, tool string, para
 	if err != nil {
 		return err
 	}
+	// The requested tool is the local contract authority. Do not let an empty or
+	// stale runner echo disable tool-specific fail-closed projection rules.
+	result.Invocation.Tool = tool
 	// Unwrap the ServiceResult envelope and apply per-tool response fixes before
 	// rendering, so agents read the inner payload directly and pretty-annotation
 	// walks the already-normalized content.
@@ -1888,8 +1891,24 @@ func devAppCommandResult(result executor.Result) output.CommandResult {
 		})
 	} else if meta != nil {
 		return output.Success(devAppDataWithoutPagination(data), output.WithMeta(meta))
+	} else if devAppToolRequiresPagination(result.Invocation.Tool) {
+		return output.Failure(&output.ErrorInfo{
+			Type:    "api",
+			Subtype: "pagination_inconsistent",
+			Message: "declared paginated response is missing hasMore and nextCursor",
+			Hint:    "保留原始响应并停止翻页；不要把当前页当作完整结果。",
+		})
 	}
 	return output.Success(data)
+}
+
+func devAppToolRequiresPagination(tool string) bool {
+	switch strings.TrimSpace(tool) {
+	case devAppListTool, devAppPermissionListTool, devAppEventListTool, devAppVersionListTool:
+		return true
+	default:
+		return false
+	}
 }
 
 // DevAppCommandResultFromPayload is the shared dingtalk-dev outcome mapper for
@@ -1908,6 +1927,7 @@ func DevAppCommandResultFromPayload(tool string, payload any, dryRun bool) outpu
 			Implemented: true,
 			Kind:        "helper_invocation",
 			DryRun:      dryRun,
+			Tool:        tool,
 		},
 		Response: response,
 	}
@@ -2132,8 +2152,20 @@ func devAppMultiProfileResult(content map[string]any) output.CommandResult {
 
 func devAppFailureResult(content map[string]any) output.CommandResult {
 	status := strings.ToUpper(devAppFirstContentString(content, "status", "taskStatus", "versionStatus", "processStatus"))
-	if success, present := content["success"].(bool); present && !success {
-		return output.Failure(devAppErrorInfo(content, "dev operation failed"))
+	if rawSuccess, present := content["success"]; present {
+		success, isBool := rawSuccess.(bool)
+		if !isBool {
+			return output.Failure(&output.ErrorInfo{
+				Type:      "api",
+				Subtype:   "invalid_success_type",
+				Message:   "dev response success field must be a JSON boolean",
+				Hint:      "写操作先核查目标状态；读取操作保留脱敏响应证据后排查上游。",
+				Operation: "devapp.response_projection",
+			})
+		}
+		if !success {
+			return output.Failure(devAppErrorInfo(content, "dev operation failed"))
+		}
 	}
 	if status == "FAIL" || status == "FAILED" || status == "EXPIRED" {
 		return output.Failure(devAppErrorInfo(content, "dev operation "+strings.ToLower(status)))

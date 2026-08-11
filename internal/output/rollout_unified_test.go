@@ -3,6 +3,7 @@ package output
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -202,6 +203,35 @@ func TestEmitStoredResultRecordsAttemptAndByteRiskOnWriteError(t *testing.T) {
 				t.Fatalf("writer called %d times, want one emission attempt", writer.writes)
 			}
 		})
+	}
+}
+
+func TestEmitStoredResultFallsBackToTypedFailureBeforeAnyBytesAreWritten(t *testing.T) {
+	ctx, store := WithResultStore(context.Background())
+	cmd := &cobra.Command{Use: "sample"}
+	SetCommandRollout(cmd, RolloutUnifiedActive)
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SetContext(ctx)
+	if err := StoreResult(ctx, Success(map[string]any{"unsupported": make(chan int)})); err != nil {
+		t.Fatal(err)
+	}
+
+	code, emitted, err := EmitStoredResult(cmd)
+	if err != nil || code != exitCodeInternal || !emitted {
+		t.Fatalf("EmitStoredResult=(%d,%t,%v), want (%d,true,nil)", code, emitted, err, exitCodeInternal)
+	}
+	var env Envelope
+	if err := json.Unmarshal(stdout.Bytes(), &env); err != nil {
+		t.Fatalf("fallback stdout is not one JSON envelope: %v\n%s", err, stdout.String())
+	}
+	if env.Outcome != OutcomeFailure || env.Error == nil || env.Error.Type != "internal" ||
+		env.Error.Subtype != "result_encoding_failed" {
+		t.Fatalf("fallback envelope=%+v", env)
+	}
+	if code, attempted, emitted, bytesRisk := StoredEmissionState(store); code != exitCodeInternal || !attempted || !emitted || !bytesRisk {
+		t.Fatalf("state=(%d,%t,%t,%t)", code, attempted, emitted, bytesRisk)
 	}
 }
 

@@ -3,7 +3,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,17 +20,10 @@ import (
 	"testing"
 )
 
-// TestDevConnectListTableView 是 `dev connect list` 的统一结果 table 断言：
-// 统一 emitter 从业务数据生成通用表格；-f json 走
-// 信封通道（data 数组 + meta.count）。本测试在临时 connect 目录写入两个
-// 心跳（healthy + down），验证列头与行值。--format 是生产根命令的持久 flag，
-// 故经 newDevAppTestRoot（注册 --format/--dry-run/--yes）挂 dev 子树端到端执行。
-func TestDevConnectListTableView(t *testing.T) {
+func TestDevConnectListPreservesPublishedTableAndJSONArray(t *testing.T) {
 	connectDaemonDirOverride = t.TempDir()
 	t.Cleanup(func() { connectDaemonDirOverride = "" })
 
-	// 写入两个连接器心跳：一个 healthy（live pid + connected），一个 down
-	//（dead pid）。
 	healthyDir, err := connectDaemonDir(daemonDirKey("dingAAA", ""))
 	if err != nil {
 		t.Fatalf("connectDaemonDir(healthy): %v", err)
@@ -48,86 +41,58 @@ func TestDevConnectListTableView(t *testing.T) {
 		StartUnix: 1_000_000, ConnectedUnix: 1_000_010, UpdatedUnix: 2_000_000,
 	})
 
-	// -f table：统一通用表视图保留结构化字段。
 	root := newDevAppTestRoot(&captureRunner{})
-	tableOut, tableErr, err := runRootBuffered(t, root, "dev", "connect", "list", "--format", "table")
+	tableOut, tableErr, err := runRootBuffered(t, root, "dev", "connect", "list")
 	if err != nil {
-		t.Fatalf("connect list -f table error = %v\nstderr:\n%s", err, tableErr.String())
+		t.Fatalf("connect list error = %v\nstderr:\n%s", err, tableErr.String())
 	}
 	table := tableOut.String()
-	for _, header := range []string{"state", "clientId", "pid", "channel", "uptimeSec"} {
-		if !strings.Contains(table, header) {
-			t.Fatalf("-f table missing column header %q:\n%s", header, table)
+	for _, value := range []string{"STATE", "CLIENT", "PID", "CHANNEL", "dingAAA", "dingBBB", "codex", "opencode"} {
+		if !strings.Contains(table, value) {
+			t.Fatalf("legacy table missing %q:\n%s", value, table)
 		}
 	}
-	for _, val := range []string{"dingAAA", "dingBBB", "codex", "opencode"} {
-		if !strings.Contains(table, val) {
-			t.Fatalf("-f table missing row value %q:\n%s", val, table)
-		}
-	}
-	// table 只渲染 data，不带信封外壳。
 	if strings.Contains(table, `"outcome"`) || strings.Contains(table, `"ok"`) {
-		t.Fatalf("-f table leaked envelope shell:\n%s", table)
+		t.Fatalf("legacy table was enveloped:\n%s", table)
 	}
 
-	// -f json：信封通道，data 数组 + meta.count。
 	jsonRoot := newDevAppTestRoot(&captureRunner{})
-	jsonOut, jsonErr, err := runRootBuffered(t, jsonRoot, "dev", "connect", "list", "--format", "json")
+	jsonOut, jsonErr, err := runRootBuffered(t, jsonRoot, "dev", "connect", "list", "--json")
 	if err != nil {
-		t.Fatalf("connect list -f json error = %v\nstderr:\n%s", err, jsonErr.String())
+		t.Fatalf("connect list --json error = %v\nstderr:\n%s", err, jsonErr.String())
 	}
-	env := decodePhaseFConnListEnvelope(t, jsonOut.Bytes())
-	if !env.OK || env.Outcome != "success" {
-		t.Fatalf("connect list json envelope ok/outcome = %v/%q, want true/success: %s",
-			env.OK, env.Outcome, jsonOut.String())
+	var reports []connectHealthReport
+	if err := json.Unmarshal(jsonOut.Bytes(), &reports); err != nil {
+		t.Fatalf("legacy --json is not a top-level array: %v\n%s", err, jsonOut.String())
 	}
-	if len(env.Data) != 2 {
-		t.Fatalf("connect list json data len = %d, want 2: %s", len(env.Data), jsonOut.String())
+	if len(reports) != 2 || strings.Contains(jsonOut.String(), `"outcome"`) || strings.Contains(jsonOut.String(), `"data"`) {
+		t.Fatalf("legacy --json changed shape: %s", jsonOut.String())
 	}
 }
 
-// decodePhaseFConnListEnvelope 解析 `dev connect list -f json` 的信封：data 为
-// 连接器数组（非 map），故用独立结构解码并对信封形态做基本校验。
-func decodePhaseFConnListEnvelope(t *testing.T, raw []byte) *struct {
-	OK      bool             `json:"ok"`
-	Outcome string           `json:"outcome"`
-	Data    []map[string]any `json:"data"`
-} {
-	t.Helper()
-	var env struct {
-		OK      bool             `json:"ok"`
-		Outcome string           `json:"outcome"`
-		Data    []map[string]any `json:"data"`
-	}
-	if err := json.Unmarshal(raw, &env); err != nil {
-		t.Fatalf("stdout is not a single valid connect-list JSON envelope: %v\n%s", err, raw)
-	}
-	return &env
-}
-
-// TestDevConnectListTableEmptyState 验证空数组仍由统一 table emitter
-// 渲染，并保留 count:0；JSON 输出 data:[] + count:0 信封（AC-06）。
-func TestDevConnectListTableEmptyState(t *testing.T) {
+func TestDevConnectListPreservesPublishedEmptyState(t *testing.T) {
 	connectDaemonDirOverride = t.TempDir()
 	t.Cleanup(func() { connectDaemonDirOverride = "" })
 
-	// -f table 空态：通用 emitter 不回退到 legacy 专用文案。
-	tableRoot := newDevAppTestRoot(&captureRunner{})
-	tableOut, tableErr, err := runRootBuffered(t, tableRoot, "dev", "connect", "list", "--format", "table")
+	root := newDevAppTestRoot(&captureRunner{})
+	humanOut, humanErr, err := runRootBuffered(t, root, "dev", "connect", "list")
 	if err != nil {
-		t.Fatalf("connect list empty -f table error = %v\nstderr:\n%s", err, tableErr.String())
+		t.Fatalf("connect list empty error = %v\nstderr:\n%s", err, humanErr.String())
 	}
-	if !strings.Contains(tableOut.String(), "value") || !strings.Contains(tableOut.String(), "count: 0") {
-		t.Fatalf("-f table empty state must be a generic empty table with count:0: %q", tableOut.String())
+	if strings.TrimSpace(humanOut.String()) != "no connectors found" {
+		t.Fatalf("legacy empty output=%q", humanOut.String())
 	}
 
-	// -f json 空态：data:[] + count:0 信封。
 	jsonRoot := newDevAppTestRoot(&captureRunner{})
-	jsonOut, jsonErr, err := runRootBuffered(t, jsonRoot, "dev", "connect", "list", "--format", "json")
+	jsonOut, jsonErr, err := runRootBuffered(t, jsonRoot, "dev", "connect", "list", "--json")
 	if err != nil {
-		t.Fatalf("connect list empty -f json error = %v\nstderr:\n%s", err, jsonErr.String())
+		t.Fatalf("connect list empty --json error = %v\nstderr:\n%s", err, jsonErr.String())
 	}
-	if !strings.Contains(jsonOut.String(), `"count": 0`) {
-		t.Fatalf("-f json empty state must carry count:0:\n%s", jsonOut.String())
+	var reports []connectHealthReport
+	if err := json.Unmarshal(jsonOut.Bytes(), &reports); err != nil {
+		t.Fatalf("legacy empty --json is not an array: %v\n%s", err, jsonOut.String())
+	}
+	if reports == nil || len(reports) != 0 {
+		t.Fatalf("legacy empty --json=%s, want []", jsonOut.String())
 	}
 }

@@ -415,10 +415,30 @@ func EmitStoredResult(cmd *cobra.Command) (int, bool, error) {
 	code, bytesRisk, err := emitResult(cmd, store.result)
 	store.bytesRisk = bytesRisk
 	if err != nil {
-		// Never report the original success code after an output failure. Do not
-		// attempt a second envelope: an io.Writer may have consumed bytes even
-		// when it reported n == 0 or returned a rendering-adjacent error.
 		store.exitCode = exitCodeInternal
+		if !bytesRisk {
+			// emitResult renders into memory before touching stdout. A rendering
+			// failure therefore has no externally visible bytes and can safely be
+			// replaced by one minimal typed failure. Write failures keep
+			// bytesRisk=true and must never attempt a second primary result.
+			fallback := Failure(&ErrorInfo{
+				Type:            "internal",
+				Subtype:         "result_encoding_failed",
+				Message:         "failed to encode command result",
+				TechnicalDetail: err.Error(),
+			})
+			fallbackCode, fallbackBytesRisk, fallbackErr := emitResult(cmd, fallback)
+			store.bytesRisk = fallbackBytesRisk
+			if fallbackErr == nil {
+				store.exitCode = fallbackCode
+				store.emitted = true
+				return fallbackCode, true, nil
+			}
+			return store.exitCode, false, fmt.Errorf("output: render command result: %v; emit fallback: %w", err, fallbackErr)
+		}
+		// The writer may have consumed bytes even when it returned an error.
+		// Preserve the single-primary-result invariant and surface the write
+		// failure only as a diagnostic plus the stored internal exit code.
 		return store.exitCode, false, err
 	}
 	store.exitCode = code

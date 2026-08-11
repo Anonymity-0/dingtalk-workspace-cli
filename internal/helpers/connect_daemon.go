@@ -1004,41 +1004,26 @@ func newDevAppRobotConnectListCommand(runner executor.Runner) *cobra.Command {
 				return apperrors.NewInternal(err.Error())
 			}
 			resolveAppNames(cmd, runner, reports)
-			// 统一输出 dev 域试点（队列 B114/B115）：JSON 契约路径输出完整
-			// 信封——数组入 data、条数入 meta.count；空结果 data:[] + count:0
-			// （AC-06：不暗示"无连接器=异常"，禁止输出 null）。
-			if reports == nil {
-				reports = []connectHealthReport{}
-			}
-			env := &output.Envelope{
-				OK:      true,
-				Outcome: output.OutcomeSuccess,
-				Data:    reports,
-				Meta:    &output.Meta{Count: output.NewCount(len(reports))},
-			}
-			jsonOut, _ := cmd.Flags().GetBool("json")
-			format := output.ResolveFormat(cmd, output.FormatJSON)
-			if output.UsesUnifiedResult(cmd) {
-				return output.StoreResult(cmd.Context(), output.Success(reports, output.WithMeta(env.Meta)))
-			}
-			if jsonOut || format == output.FormatJSON {
-				return output.WriteEnvelope(cmd, env, output.FormatJSON)
-			}
-			if format == output.FormatTable {
-				if len(reports) == 0 {
-					fmt.Fprintln(cmd.OutOrStdout(), "no connectors found")
-					return nil
+			w := cmd.OutOrStdout()
+			if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
+				if reports == nil {
+					reports = []connectHealthReport{}
 				}
-				return writeConnectListTable(cmd.OutOrStdout(), reports)
+				data, _ := json.MarshalIndent(reports, "", "  ")
+				fmt.Fprintln(w, string(data))
+				return nil
 			}
-			return output.WriteEnvelope(cmd, env, format)
+			if len(reports) == 0 {
+				fmt.Fprintln(w, "no connectors found")
+				return nil
+			}
+			return writeConnectListTable(w, reports)
 		},
 	}
 	preferLegacyLeaf(cmd)
 	cmd.Flags().Bool("json", false, "以 JSON 数组输出（供脚本消费）")
 	DeclareLeafMetadata(cmd, LeafSpec{
-		OutputRollout: output.RolloutUnifiedActive,
-		Safety:        contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
+		Safety: contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
 		Contract: LeafContract{
 			Identity:    contract.ToolIdentitySpec{ProductID: "dev", Name: "connect_list", CanonicalPath: "dev.connect_list", CLIPath: "dev connect list", PrimaryCLIPath: "dev connect list"},
 			Description: "列出本机连接器及其健康状态",
@@ -1047,7 +1032,7 @@ func newDevAppRobotConnectListCommand(runner executor.Runner) *cobra.Command {
 				DataSchema: json.RawMessage(`{"type":"array","description":"本机连接器及其健康状态列表","items":{"type":"object","properties":{"state":{"type":"string","description":"归一化健康状态","enum":["healthy","degraded","down","not_running"]},"pid":{"type":"integer","description":"守护进程 PID；未运行时可能缺省"},"channel":{"type":"string","description":"连接器使用的通道"},"clientId":{"type":"string","description":"连接器客户端 ID"},"unifiedAppId":{"type":"string","description":"关联的统一应用 ID"},"supervised":{"type":"boolean","description":"是否由本地 supervisor 管理"}},"required":["state","supervised"],"additionalProperties":true}}`),
 			},
 			Interface: &contract.InterfaceSpec{Mode: "composite", Availability: "available", Reason: "命令组合本地连接器状态与可选远端应用名称解析，不对应单一 MCP 接口"},
-			Selection: contract.SelectionSpec{AgentSummary: "列出本机全部连接器及健康状态", UseWhen: []string{"需要查看本机连接器清单"}, AvoidWhen: []string{"只检查一个连接器时使用 dev connect status"}, Examples: []string{"dws dev connect list --format json"}},
+			Selection: contract.SelectionSpec{AgentSummary: "列出本机全部连接器及健康状态", UseWhen: []string{"需要查看本机连接器清单"}, AvoidWhen: []string{"只检查一个连接器时使用 dev connect status"}, Examples: []string{"dws dev connect list --json"}},
 		},
 	})
 	return cmd

@@ -22,7 +22,7 @@ func (r *countingDevUnifiedRunner) Run(_ context.Context, invocation executor.In
 		Invocation: invocation,
 		Response: map[string]any{"content": map[string]any{
 			"success": true,
-			"result":  map[string]any{"id": "dev-1"},
+			"result":  map[string]any{"id": "dev-1", "hasMore": false},
 		}},
 	}, nil
 }
@@ -107,7 +107,7 @@ func TestDevTerminalRolloutKeepsPublishedConnectStatusLegacy(t *testing.T) {
 		children := cmd.Commands()
 		if cmd.Runnable() && len(children) == 0 {
 			want := output.RolloutUnifiedActive
-			if cmd.CommandPath() == "dws dev connect status" {
+			if cmd.CommandPath() == "dws dev connect status" || cmd.CommandPath() == "dws dev connect list" {
 				want = output.RolloutLegacyOnly
 			}
 			if got := output.CommandRollout(cmd); got != want {

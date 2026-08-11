@@ -772,17 +772,15 @@ func TestCrossPlatformCoverageDaemonListAndNamePaginationEdges(t *testing.T) {
 	list := prepareUnifiedTestCommand(newDevAppRobotConnectListCommand(runner))
 	var out bytes.Buffer
 	list.SetOut(&out)
-	// 统一输出试点（B114/B115）：默认 json 出完整信封；空结果必须
-	// data:[] + count:0（AC-06），禁止 null。
-	if err := list.Execute(); err != nil || !strings.Contains(out.String(), `"data": []`) || !strings.Contains(out.String(), `"count": 0`) {
-		t.Fatalf("empty list envelope = %q, %v", out.String(), err)
+	if err := list.Execute(); err != nil || strings.TrimSpace(out.String()) != "no connectors found" {
+		t.Fatalf("empty list output = %q, %v", out.String(), err)
 	}
 	list = prepareUnifiedTestCommand(newDevAppRobotConnectListCommand(runner))
 	out.Reset()
 	list.SetOut(&out)
 	list.SetArgs([]string{"--json"})
-	if err := list.Execute(); err != nil || strings.Contains(out.String(), "null") || !strings.Contains(out.String(), `"data": []`) {
-		t.Fatalf("json list envelope = %q, %v", out.String(), err)
+	if err := list.Execute(); err != nil || strings.TrimSpace(out.String()) != "[]" {
+		t.Fatalf("json list array = %q, %v", out.String(), err)
 	}
 
 	seedHeartbeat(t, "listed", connectHeartbeat{
@@ -790,10 +788,9 @@ func TestCrossPlatformCoverageDaemonListAndNamePaginationEdges(t *testing.T) {
 		StartUnix: time.Now().Add(-time.Minute).Unix(), ConnectedUnix: time.Now().Add(-time.Minute).Unix(),
 	})
 	list = prepareUnifiedTestCommand(newDevAppRobotConnectListCommand(runner))
-	list.SetArgs([]string{"--format", "table"})
 	out.Reset()
 	list.SetOut(&out)
-	if err := list.Execute(); err != nil || !strings.Contains(out.String(), "state") {
+	if err := list.Execute(); err != nil || !strings.Contains(out.String(), "STATE") {
 		t.Fatalf("table list = %q, %v", out.String(), err)
 	}
 

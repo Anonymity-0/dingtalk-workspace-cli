@@ -22,20 +22,23 @@ import (
 
 func TestDevFormerExclusionsHaveFinalContractAndUnifiedRollout(t *testing.T) {
 	root := newDevAppTestRoot(&captureRunner{})
-	for _, path := range [][]string{
-		{"dev", "connect", "list"},
-		{"dev", "connect", "restart"},
-		{"dev", "app", "version", "check-approval"},
+	for _, tc := range []struct {
+		path    []string
+		rollout output.RolloutState
+	}{
+		{[]string{"dev", "connect", "list"}, output.RolloutLegacyOnly},
+		{[]string{"dev", "connect", "restart"}, output.RolloutUnifiedActive},
+		{[]string{"dev", "app", "version", "check-approval"}, output.RolloutUnifiedActive},
 	} {
-		cmd, _, err := root.Find(path)
+		cmd, _, err := root.Find(tc.path)
 		if err != nil || cmd == nil || !cmd.Runnable() {
-			t.Fatalf("%v is not a runnable command: cmd=%v err=%v", path, cmd, err)
+			t.Fatalf("%v is not a runnable command: cmd=%v err=%v", tc.path, cmd, err)
 		}
 		if _, ok := contractfinal.RuntimeContractFinal(cmd); !ok {
 			t.Fatalf("%s has no ContractFinal", cmd.CommandPath())
 		}
-		if got := output.CommandRollout(cmd); got != output.RolloutUnifiedActive {
-			t.Fatalf("%s rollout=%s, want %s", cmd.CommandPath(), got, output.RolloutUnifiedActive)
+		if got := output.CommandRollout(cmd); got != tc.rollout {
+			t.Fatalf("%s rollout=%s, want %s", cmd.CommandPath(), got, tc.rollout)
 		}
 	}
 }

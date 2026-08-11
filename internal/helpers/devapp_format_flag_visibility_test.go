@@ -46,7 +46,7 @@ func TestDevLeafFormatFlagVisibility(t *testing.T) {
 		t.Run(lc.name, func(t *testing.T) {
 			// --format table 必须生效：输出为表（含列头/业务值），且不泄漏信封外壳键。
 			args := append(append([]string{}, lc.args...), "--format", "table")
-			root := newDevAppTestRoot(&captureRunner{})
+			root := newDevAppTestRoot(devAppFamilyContentRunner(map[string]any{"items": []any{map[string]any{"id": "one"}}}))
 			out, errBuf, err := runRootBuffered(t, root, args...)
 			if err != nil {
 				t.Fatalf("Execute() error = %v\nstdout:\n%s\nstderr:\n%s", err, out.String(), errBuf.String())

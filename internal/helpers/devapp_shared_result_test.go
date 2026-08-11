@@ -28,6 +28,20 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 		}
 	})
 
+	t.Run("non boolean success fails closed", func(t *testing.T) {
+		for _, invalid := range []any{"false", 0, map[string]any{"value": false}} {
+			result := DevAppCommandResultFromPayload("", map[string]any{"success": invalid}, false)
+			env, err := output.EnvelopeFromResult(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if env.Outcome != output.OutcomeFailure || env.Error == nil ||
+				env.Error.Subtype != "invalid_success_type" || env.Error.Hint == "" {
+				t.Fatalf("invalid success=%#v envelope=%+v", invalid, env)
+			}
+		}
+	})
+
 	t.Run("pending approval", func(t *testing.T) {
 		result := DevAppCommandResultFromPayload("", map[string]any{
 			"versionStatus": "AUDIT", "versionId": "v1", "unifiedAppId": "u1",
@@ -101,6 +115,20 @@ func TestDevAppSharedResultMapperClassifiesServiceOutcomes(t *testing.T) {
 			}
 			if env.Outcome != output.OutcomeFailure || env.Error == nil || env.Error.Subtype != "pagination_inconsistent" {
 				t.Fatalf("pagination envelope=%+v", env)
+			}
+		})
+	}
+
+	for _, tool := range []string{devAppListTool, devAppPermissionListTool, devAppEventListTool, devAppVersionListTool} {
+		t.Run("declared pagination missing "+tool, func(t *testing.T) {
+			result := DevAppCommandResultFromPayload(tool, map[string]any{"items": []any{}}, false)
+			env, err := output.EnvelopeFromResult(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if env.Outcome != output.OutcomeFailure || env.Error == nil ||
+				env.Error.Subtype != "pagination_inconsistent" {
+				t.Fatalf("missing pagination envelope=%+v", env)
 			}
 		})
 	}
