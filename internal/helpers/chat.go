@@ -2047,7 +2047,7 @@ func newChatCommand() *cobra.Command {
 	chatDataAuthCrossOrgCmd.Flags().String("grant-type", "timed", "授权策略: once|session|timed|permanent")
 	chatDataAuthCrossOrgCmd.Flags().String("ttl", "24h", "timed 授权有效期，如 1h/4h/24h/7d")
 	chatDataAuthCrossOrgCmd.Flags().String("session-id", "", "session 授权的会话标识")
-	chatDataAuthCrossOrgCmd.Flags().Bool("yes", false, "确认执行跨组织 chat 数据授权")
+	chatDataAuthCrossOrgCmd.Flags().BoolP("yes", "y", false, "确认执行跨组织 chat 数据授权")
 	DeclareLeafMetadata(chatDataAuthCrossOrgCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
@@ -9434,7 +9434,7 @@ status 可选值:
 	chatGroupShareInviteCmd.Flags().String("receiver", "", "接收分享消息的单聊用户 openDingTalkId（与 --target 二选一）")
 	chatGroupShareInviteCmd.Flags().Int64("expires-seconds", 0, "链接有效期（秒），0 表示永久有效，不传使用服务端默认值")
 	chatGroupShareInviteCmd.Flags().String("uuid", "", "消息幂等键（可选）")
-	chatGroupShareInviteCmd.Flags().Bool("yes", false, "确认分享群邀请链接")
+	chatGroupShareInviteCmd.Flags().BoolP("yes", "y", false, "确认分享群邀请链接")
 	DeclareLeafMetadata(chatGroupShareInviteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
