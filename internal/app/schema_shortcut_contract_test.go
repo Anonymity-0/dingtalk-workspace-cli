@@ -137,6 +137,7 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 	assertSchemaSummarySafety(t, summaryByCLIPath, "chat clear-messages", "destructive", "high", "user_required")
 	assertSchemaSummarySafety(t, summaryByCLIPath, "chat data-auth cross-org", "write", "high", "user_required")
 	assertSchemaSummarySafety(t, summaryByCLIPath, "chat group share-invite", "write", "medium", "user_required")
+	assertChatCatalogCompleteLeafContracts(t)
 }
 
 func assertSchemaSummarySafety(
@@ -160,6 +161,83 @@ func assertSchemaSummarySafety(
 	}
 	if got := schemaContractString(summary["confirmation"]); got != confirmation {
 		t.Fatalf("%s confirmation = %q, want %q", cliPath, got, confirmation)
+	}
+}
+
+func assertChatCatalogCompleteLeafContracts(t testing.TB) {
+	t.Helper()
+	for _, cliPath := range []string{
+		"chat clear-messages",
+		"chat clear-red-point",
+		"chat hide",
+		"chat mark-read",
+		"chat mark-unread",
+		"chat mute-at-all",
+		"chat mute-red-envelope",
+	} {
+		leaf := executeShortcutSchemaQuery(t, "--cli-path", cliPath)
+		assertSchemaLeafParameterRequired(t, leaf, cliPath, "conversation-id", true)
+	}
+
+	markRead := executeShortcutSchemaQuery(t, "--cli-path", "chat mark-read")
+	assertSchemaLeafParameterRequired(t, markRead, "chat mark-read", "message-id", true)
+
+	chmod := executeShortcutSchemaQuery(t, "--cli-path", "chat chmod")
+	assertSchemaLeafConstraints(t, chmod, "chat chmod", map[string]any{
+		"require_one_of":     [][]string{{"conversation-id", "open-dingtalk-id", "user", "permParam"}},
+		"mutually_exclusive": [][]string{{"conversation-id", "open-dingtalk-id", "user"}},
+	})
+	assertChatGrantParameterFacts(t, chmod, "chat chmod")
+
+	crossOrg := executeShortcutSchemaQuery(t, "--cli-path", "chat data-auth cross-org")
+	assertSchemaLeafConstraints(t, crossOrg, "chat data-auth cross-org", map[string]any{
+		"require_one_of":     [][]string{{"target-org-id", "all"}},
+		"mutually_exclusive": [][]string{{"target-org-id", "all"}},
+	})
+	assertChatGrantParameterFacts(t, crossOrg, "chat data-auth cross-org")
+
+	shareInvite := executeShortcutSchemaQuery(t, "--cli-path", "chat group share-invite")
+	assertSchemaLeafConstraints(t, shareInvite, "chat group share-invite", map[string]any{
+		"require_one_of":     [][]string{{"target", "receiver"}},
+		"mutually_exclusive": [][]string{{"target", "receiver"}},
+	})
+}
+
+func assertSchemaLeafParameterRequired(t testing.TB, leaf map[string]any, cliPath, name string, want bool) {
+	t.Helper()
+	parameters := schemaContractMap(leaf["parameters"])
+	parameter := parameters[name]
+	if parameter == nil {
+		t.Fatalf("%s missing --%s parameter: %#v", cliPath, name, parameters)
+	}
+	if got, _ := parameter["required"].(bool); got != want {
+		t.Fatalf("%s --%s required = %#v, want %v", cliPath, name, parameter["required"], want)
+	}
+}
+
+func assertSchemaLeafConstraints(t testing.TB, leaf map[string]any, cliPath string, want map[string]any) {
+	t.Helper()
+	if got := leaf["constraints"]; !schemaContractJSONEqual(got, want) {
+		t.Fatalf("%s constraints = %#v, want %#v", cliPath, got, want)
+	}
+}
+
+func assertChatGrantParameterFacts(t testing.TB, leaf map[string]any, cliPath string) {
+	t.Helper()
+	parameters := schemaContractMap(leaf["parameters"])
+	grantType := parameters["grant-type"]
+	if grantType == nil {
+		t.Fatalf("%s missing --grant-type parameter: %#v", cliPath, parameters)
+	}
+	wantEnum := []string{"once", "session", "timed", "permanent"}
+	if got := schemaContractStringSlice(grantType["enum"]); !schemaContractJSONEqual(got, wantEnum) {
+		t.Fatalf("%s --grant-type enum = %#v, want %#v", cliPath, got, wantEnum)
+	}
+	if got := schemaContractString(parameters["session-id"]["required_when"]); got != "grant-type is session" {
+		t.Fatalf("%s --session-id required_when = %q, want grant-type is session", cliPath, got)
+	}
+	if got := schemaContractString(parameters["ttl"]["required_when"]); got != "grant-type is timed" {
+		t.Fatalf("%s --ttl required_when = %q, want grant-type is timed", cliPath, got)
 	}
 }
 

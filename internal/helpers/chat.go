@@ -1361,11 +1361,11 @@ func newChatCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "agentCode", Property: "agentCode", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "grantParams.openCid", Required: boolPtr(false)},
-				{Name: "grant-type", Property: "grantType", Required: boolPtr(false)},
+				{Name: "grant-type", Property: "grantType", Required: boolPtr(false), Enum: []string{"once", "session", "timed", "permanent"}},
 				{Name: "open-dingtalk-id", Property: "grantParams.openDingTalkId", Required: boolPtr(false)},
 				{Name: "permParam", Property: "grantParams", Required: boolPtr(false)},
-				{Name: "session-id", Property: "sessionId", Required: boolPtr(false)},
-				{Name: "ttl", Property: "ttl", Required: boolPtr(false)},
+				{Name: "session-id", Property: "sessionId", Required: boolPtr(false), RequiredWhen: "grant-type is session"},
+				{Name: "ttl", Property: "ttl", Required: boolPtr(false), RequiredWhen: "grant-type is timed"},
 				{Name: "user", Property: "grantParams.userId", Required: boolPtr(false)},
 			},
 		},
@@ -1432,10 +1432,10 @@ func newChatCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "agentCode", Property: "agentCode", Required: boolPtr(false)},
 				{Name: "all", Property: "grantParams.targetOrgId", Required: boolPtr(false)},
-				{Name: "grant-type", Property: "grantType", Required: boolPtr(false)},
-				{Name: "session-id", Property: "sessionId", Required: boolPtr(false)},
+				{Name: "grant-type", Property: "grantType", Required: boolPtr(false), Enum: []string{"once", "session", "timed", "permanent"}},
+				{Name: "session-id", Property: "sessionId", Required: boolPtr(false), RequiredWhen: "grant-type is session"},
 				{Name: "target-org-id", Property: "grantParams.targetOrgId", Required: boolPtr(false)},
-				{Name: "ttl", Property: "ttl", Required: boolPtr(false)},
+				{Name: "ttl", Property: "ttl", Required: boolPtr(false), RequiredWhen: "grant-type is timed"},
 			},
 		},
 	})
@@ -7846,7 +7846,7 @@ status 可选值:
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 			},
 		},
@@ -7906,7 +7906,7 @@ status 可选值:
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 			},
 		},
@@ -8078,7 +8078,7 @@ status 可选值:
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 			},
 		},
@@ -8146,7 +8146,7 @@ status 可选值:
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "message-id", Property: "openMessageId", Required: boolPtr(true)},
 			},
@@ -8434,7 +8434,7 @@ status 可选值:
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 			},
 		},
@@ -8494,7 +8494,7 @@ status 可选值:
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "off", Property: "mute", Required: boolPtr(false), InterfaceType: "boolean"},
 			},
@@ -8555,7 +8555,7 @@ status 可选值:
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "off", Property: "mute", Required: boolPtr(false), InterfaceType: "boolean"},
 			},
