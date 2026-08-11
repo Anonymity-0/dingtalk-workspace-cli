@@ -62,6 +62,7 @@ var (
 	upgradeEnsureDir       = ensureDir
 	upgradeRemoveAll       = os.RemoveAll
 	upgradeMkdirAll        = os.MkdirAll
+	upgradeMkdirTemp       = os.MkdirTemp
 	upgradeReadDir         = os.ReadDir
 	upgradeStat            = os.Stat
 	upgradeBackupStamp     = func() string { return time.Now().UTC().Format("20060102-150405") }
@@ -486,7 +487,7 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 	// Best-effort: refresh the user-level mono cache so that
 	// `dws skill setup --mode mono` fallbacks stay on the upgraded version
 	// (symmetric with the multi cache refresh in upgradeMultiSkillLocations).
-	refreshSkillCache(homeDir, "mono", skillSrc)
+	_ = refreshSkillCache(homeDir, "mono", skillSrc)
 
 	return result, nil
 }
@@ -588,23 +589,67 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 	// fallbacks stay on the upgraded version. The release zip ships both
 	// trees, so when the sibling mono/ tree is present the mono cache is
 	// refreshed as well.
-	refreshSkillCache(homeDir, "multi", multiRoot)
+	_ = refreshSkillCache(homeDir, "multi", multiRoot)
 	if monoSrc := filepath.Join(filepath.Dir(multiRoot), "mono"); skillTreeHasRoot(monoSrc) {
-		refreshSkillCache(homeDir, "mono", monoSrc)
+		_ = refreshSkillCache(homeDir, "mono", monoSrc)
 	}
 
 	return result, nil
 }
 
-// refreshSkillCache best-effort mirrors src into ~/.dws/skills/<name>/ so
-// that `dws skill setup --mode <name>` can fall back to the cache and stay on
-// the upgraded version. All errors are swallowed by design.
-func refreshSkillCache(homeDir, name, src string) {
+// refreshSkillCache mirrors src into ~/.dws/skills/<name>/ through a staged
+// sibling directory. The existing cache is moved aside only after the staged
+// copy is complete, and is restored if publishing the new cache fails.
+func refreshSkillCache(homeDir, name, src string) error {
 	cacheDir := filepath.Join(homeDir, ".dws", "skills", name)
-	os.RemoveAll(cacheDir)
-	if err := os.MkdirAll(filepath.Dir(cacheDir), dirPermShared); err == nil {
-		_ = upgradeCopyDir(src, cacheDir)
+	cacheParent := filepath.Dir(cacheDir)
+	if err := upgradeMkdirAll(cacheParent, dirPermShared); err != nil {
+		return fmt.Errorf("创建 Skill 缓存目录失败 %s: %w", cacheParent, err)
 	}
+
+	stagedDir, err := upgradeMkdirTemp(cacheParent, "."+name+".tmp-")
+	if err != nil {
+		return fmt.Errorf("创建 Skill 缓存临时目录失败 %s: %w", cacheParent, err)
+	}
+	stagedPublished := false
+	defer func() {
+		if !stagedPublished {
+			_ = upgradeRemoveAll(stagedDir)
+		}
+	}()
+	if err := upgradeCopyDir(src, stagedDir); err != nil {
+		return fmt.Errorf("暂存 Skill 缓存失败 %s: %w", stagedDir, err)
+	}
+
+	if _, err := upgradeStat(cacheDir); os.IsNotExist(err) {
+		if err := upgradeRename(stagedDir, cacheDir); err != nil {
+			return fmt.Errorf("发布 Skill 缓存失败 %s: %w", cacheDir, err)
+		}
+		stagedPublished = true
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("检查 Skill 缓存失败 %s: %w", cacheDir, err)
+	}
+
+	rollbackDir, err := upgradeMkdirTemp(cacheParent, "."+name+".old-")
+	if err != nil {
+		return fmt.Errorf("创建 Skill 缓存回滚目录失败 %s: %w", cacheParent, err)
+	}
+	if err := upgradeRemoveAll(rollbackDir); err != nil {
+		return fmt.Errorf("准备 Skill 缓存回滚目录失败 %s: %w", rollbackDir, err)
+	}
+	if err := upgradeRename(cacheDir, rollbackDir); err != nil {
+		return fmt.Errorf("暂存原 Skill 缓存失败 %s: %w", cacheDir, err)
+	}
+	if err := upgradeRename(stagedDir, cacheDir); err != nil {
+		if restoreErr := upgradeRename(rollbackDir, cacheDir); restoreErr != nil {
+			return fmt.Errorf("发布 Skill 缓存失败 %s: %w（恢复原缓存也失败: %v）", cacheDir, err, restoreErr)
+		}
+		return fmt.Errorf("发布 Skill 缓存失败 %s: %w", cacheDir, err)
+	}
+	stagedPublished = true
+	_ = upgradeRemoveAll(rollbackDir)
+	return nil
 }
 
 // skillTreeHasRoot reports whether dir carries a top-level SKILL.md.
