@@ -2413,6 +2413,7 @@ Flags:
 flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)。
 
 **最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。**
+更新结果不确定时不要再次执行更新；保留返回结果并告知用户。
 ```
 Usage:
   dws chat message update-card [flags]

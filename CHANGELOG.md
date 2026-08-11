@@ -28,6 +28,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Fixed
 
+- **Streaming-card update acknowledgement** — accepts the pre-production
+  `success: true` response from `update_streaming_card` as affirmative write
+  evidence while preserving explicit negative, conflicting, and bizId-drift
+  failures, so Agents do not repeat an update that the service already applied.
 - **Machine-readable export and download receipts** — `dws doc export`,
   `dws drive download`, and `dws drive download --version` now keep progress
   logs on stderr under `--format json` and emit one JSON result on stdout after

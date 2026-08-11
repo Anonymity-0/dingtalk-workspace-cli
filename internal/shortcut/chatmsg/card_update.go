@@ -59,9 +59,8 @@ func isCardBizIDPlaceholder(value string) bool {
 }
 
 // VerifyStreamingCardUpdate requires affirmative evidence that the requested
-// write took effect. A transport-level {success:true,errorCode:null} only says
-// that the RPC returned normally and is deliberately not accepted as proof of
-// a card update.
+// write took effect. update_streaming_card may acknowledge an applied write
+// with success=true without returning an updated flag or affected count.
 func VerifyStreamingCardUpdate(requestedBizID string, response map[string]any) (string, error) {
 	requestedBizID = strings.TrimSpace(requestedBizID)
 	observation := cardUpdateObservation{bizIDs: map[string]struct{}{}}
@@ -130,6 +129,13 @@ func observeCardUpdateMap(value map[string]any, observation *cardUpdateObservati
 			} else if count == 0 {
 				setNegativeCardUpdateEvidence(observation, fmt.Sprintf("%s=%d", key, count))
 			}
+		}
+	}
+	if success, ok := value["success"].(bool); ok {
+		if success {
+			setPositiveCardUpdateEvidence(observation, "success=true")
+		} else {
+			setNegativeCardUpdateEvidence(observation, "success=false")
 		}
 	}
 
