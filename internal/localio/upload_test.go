@@ -19,10 +19,23 @@ import (
 
 func TestCrossPlatformCoveragePutFileRetriesAndUploadsExactBytesE2E(t *testing.T) {
 	payload := []byte("minutes-e2e")
+	replacement := []byte("replacement-data")
 	path := filepath.Join(t.TempDir(), "audio.wav")
 	if err := os.WriteFile(path, payload, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	replacementPath := filepath.Join(t.TempDir(), "replacement.wav")
+	if err := os.WriteFile(replacementPath, replacement, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	openCalls := 0
+	testseam.Swap(t, &openUploadFile, func(candidate string) (*os.File, error) {
+		openCalls++
+		if openCalls > 1 {
+			return os.Open(replacementPath)
+		}
+		return os.Open(candidate)
+	})
 	calls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -41,8 +54,34 @@ func TestCrossPlatformCoveragePutFileRetriesAndUploadsExactBytesE2E(t *testing.T
 	}))
 	defer server.Close()
 	result, err := putFileWithClient(context.Background(), server.URL, path, 100, server.Client(), func(string) error { return nil })
-	if err != nil || calls != 2 || result.Attempts != 2 || result.SizeBytes != int64(len(payload)) {
-		t.Fatalf("upload = %#v calls=%d err=%v", result, calls, err)
+	if err != nil || calls != 2 || openCalls != 1 || result.Attempts != 2 || result.SizeBytes != int64(len(payload)) {
+		t.Fatalf("upload = %#v calls=%d opens=%d err=%v", result, calls, openCalls, err)
+	}
+}
+
+func TestCrossPlatformCoveragePutFileValidatesOpenedDescriptorE2E(t *testing.T) {
+	base := t.TempDir()
+	requestedPath := filepath.Join(base, "requested.wav")
+	if err := os.WriteFile(requestedPath, []byte("ok"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	replacementPath := filepath.Join(base, "replacement.wav")
+	if err := os.WriteFile(replacementPath, []byte("replacement-exceeds-limit"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &openUploadFile, func(string) (*os.File, error) {
+		return os.Open(replacementPath)
+	})
+	called := false
+	client := &http.Client{Transport: uploadRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		called = true
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("ok"))}, nil
+	})}
+	if _, err := putFileWithClient(context.Background(), "http://example.invalid", requestedPath, 2, client, func(string) error { return nil }); err == nil {
+		t.Fatal("replacement descriptor bypassed size validation")
+	}
+	if called {
+		t.Fatal("upload started before the opened descriptor was validated")
 	}
 }
 
@@ -106,6 +145,18 @@ func TestCrossPlatformCoveragePutFileFailureBranchesE2E(t *testing.T) {
 		testseam.Swap(t, &openUploadFile, func(string) (*os.File, error) { return nil, errors.New("open") })
 		if _, err := putFileWithClient(context.Background(), "http://example.invalid", path, 10, okClient, func(string) error { return nil }); err == nil {
 			t.Fatal("open error ignored")
+		}
+	})
+	t.Run("opened file stat", func(t *testing.T) {
+		testseam.Swap(t, &openUploadFile, func(candidate string) (*os.File, error) {
+			file, err := os.Open(candidate)
+			if err == nil {
+				_ = file.Close()
+			}
+			return file, err
+		})
+		if _, err := putFileWithClient(context.Background(), "http://example.invalid", path, 10, okClient, func(string) error { return nil }); err == nil {
+			t.Fatal("opened file stat error ignored")
 		}
 	})
 	t.Run("request", func(t *testing.T) {

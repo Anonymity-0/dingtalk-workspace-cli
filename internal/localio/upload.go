@@ -20,7 +20,6 @@ var (
 		_, err := ValidateDownloadURL(raw)
 		return err
 	}
-	statUploadFile   = os.Stat
 	openUploadFile   = os.Open
 	newUploadRequest = http.NewRequestWithContext
 )
@@ -34,7 +33,8 @@ type UploadResult struct {
 
 // PutFile uploads a regular local file to an exact trusted pre-signed HTTPS
 // endpoint. Redirects are rejected so file bytes and credentials cannot move to
-// a second origin. Transient failures are retried with the file reopened.
+// a second origin. Transient failures reuse the same verified open file so a
+// path replacement cannot change the bytes sent by a later attempt.
 func PutFile(ctx context.Context, rawURL, path string, maxBytes int64) (UploadResult, error) {
 	client := newUploadHTTPClient()
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
@@ -51,7 +51,12 @@ func putFileWithClient(ctx context.Context, rawURL, path string, maxBytes int64,
 	if maxBytes <= 0 {
 		maxBytes = defaultUploadLimit
 	}
-	info, err := statUploadFile(path)
+	file, err := openUploadFile(path)
+	if err != nil {
+		return UploadResult{}, fmt.Errorf("打开上传文件失败: %w", err)
+	}
+	defer file.Close()
+	info, err := file.Stat()
 	if err != nil {
 		return UploadResult{}, fmt.Errorf("读取上传文件失败: %w", err)
 	}
@@ -62,18 +67,13 @@ func putFileWithClient(ctx context.Context, rawURL, path string, maxBytes int64,
 	var lastErr error
 	for attempt := 1; attempt <= 3; attempt++ {
 		result.Attempts = attempt
-		file, err := openUploadFile(path)
-		if err != nil {
-			return UploadResult{}, fmt.Errorf("打开上传文件失败: %w", err)
-		}
-		request, requestErr := newUploadRequest(ctx, http.MethodPut, rawURL, file)
+		reader := io.NewSectionReader(file, 0, info.Size())
+		request, requestErr := newUploadRequest(ctx, http.MethodPut, rawURL, reader)
 		if requestErr != nil {
-			_ = file.Close()
 			return UploadResult{}, fmt.Errorf("创建上传请求失败: %w", requestErr)
 		}
 		request.ContentLength = info.Size()
 		response, callErr := client.Do(request)
-		_ = file.Close()
 		if callErr == nil {
 			_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 1<<20))
 			bodyCloseErr := response.Body.Close()
