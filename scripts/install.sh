@@ -67,8 +67,10 @@ need_cmd() {
 # stay reversible). Missing paths are a no-op success. On any backup failure
 # the directory is left in place and a non-zero status is returned so callers
 # skip that target rather than silently deleting data.
+DWS_LAST_SKILL_BACKUP=""
 backup_and_remove_skill_dir() {
   _bed_dir="$1"
+  DWS_LAST_SKILL_BACKUP=""
   [ -d "$_bed_dir" ] || return 0
   _bed_root="${HOME}/.dws/skill-backups"
   _bed_stamp="$(date -u +%Y%m%d-%H%M%S)"
@@ -88,6 +90,7 @@ backup_and_remove_skill_dir() {
     return 1
   }
   if mv "$_bed_dir" "$_bed_target" 2>/dev/null; then
+    DWS_LAST_SKILL_BACKUP="$_bed_target"
     say "  × 已备份并移除 $_bed_dir → $_bed_target"
     return 0
   fi
@@ -188,20 +191,45 @@ write_skills_state() {
   mv "$_state_tmp" "$_state_root/skills-state.json"
 }
 
-publish_managed_multi_skill() {
-  _pms_src="$1"
-  _pms_dest="$2"
-  _pms_parent="$(dirname "$_pms_dest")"
-  _pms_name="$(basename "$_pms_dest")"
-  _pms_stage="$(mktemp -d "$_pms_parent/.${_pms_name}.tmp.XXXXXX")" || return 1
-  if ! cp -R "$_pms_src/." "$_pms_stage/" 2>/dev/null && ! cp -r "$_pms_src/." "$_pms_stage/"; then
-    rm -rf "$_pms_stage"
-    return 1
+# backup_and_record_skill_dir <victim> <manifest>
+# Records exact original/backup pairs so a multi-set transaction can restore
+# earlier moves when any later backup or publication fails.
+backup_and_record_skill_dir() {
+  _bars_victim="$1"
+  _bars_manifest="$2"
+  backup_and_remove_skill_dir "$_bars_victim" || return 1
+  if [ -n "$DWS_LAST_SKILL_BACKUP" ]; then
+    if ! printf '%s\n%s\n' "$_bars_victim" "$DWS_LAST_SKILL_BACKUP" >> "$_bars_manifest"; then
+      mv "$DWS_LAST_SKILL_BACKUP" "$_bars_victim" 2>/dev/null || say "  ⚠️  备份记录失败且无法自动恢复: $_bars_victim（备份位于 $DWS_LAST_SKILL_BACKUP）"
+      return 1
+    fi
   fi
-  if ! mv "$_pms_stage" "$_pms_dest"; then
-    rm -rf "$_pms_stage"
-    return 1
+}
+
+# restore_multi_skill_set <published-manifest> <backup-manifest>
+# Removes partial new publications, then restores every old directory from
+# its exact backup path. Paths containing newlines are outside the supported
+# installer path contract; spaces are preserved.
+restore_multi_skill_set() {
+  _rms_published="$1"
+  _rms_backups="$2"
+  _rms_ok=1
+  if [ -f "$_rms_published" ]; then
+    while IFS= read -r _rms_dest; do
+      [ -n "$_rms_dest" ] || continue
+      rm -rf "$_rms_dest" || _rms_ok=0
+    done < "$_rms_published"
   fi
+  if [ -f "$_rms_backups" ]; then
+    while IFS= read -r _rms_original && IFS= read -r _rms_backup; do
+      [ -n "$_rms_backup" ] || continue
+      if [ -e "$_rms_original" ] || ! mkdir -p "$(dirname "$_rms_original")" || ! mv "$_rms_backup" "$_rms_original"; then
+        say "  ⚠️  无法恢复原 Skill: $_rms_original（备份保留于 $_rms_backup）"
+        _rms_ok=0
+      fi
+    done < "$_rms_backups"
+  fi
+  [ "$_rms_ok" -eq 1 ]
 }
 
 # publish_skill_cache <source> <cache-dir>
@@ -745,8 +773,30 @@ _install_multi_to_base() {
 
   mkdir -p "$_base" || return 1
 
+  # Build the complete replacement set before moving any Agent-visible
+  # directory. The manifests remain inside the private staging directory.
+  _ms_stage="$(mktemp -d "$_base/.dws-multi-set.XXXXXX")" || return 1
+  _ms_backups="$_ms_stage/.backups"
+  _ms_published="$_ms_stage/.published"
+  : > "$_ms_backups" || { rm -rf "$_ms_stage"; return 1; }
+  : > "$_ms_published" || { rm -rf "$_ms_stage"; return 1; }
+  for skill_dir in "$_msrc"/*/; do
+    [ -f "${skill_dir}SKILL.md" ] || continue
+    _name="$(basename "$skill_dir")"
+    _ms_staged_skill="$_ms_stage/$_name"
+    mkdir -p "$_ms_staged_skill" || { rm -rf "$_ms_stage"; return 1; }
+    if ! cp -R "$skill_dir/." "$_ms_staged_skill/" 2>/dev/null && ! cp -r "$skill_dir/." "$_ms_staged_skill/"; then
+      rm -rf "$_ms_stage"
+      return 1
+    fi
+  done
+
   # Mutual exclusion: back up + remove the mono leftover.
-  backup_and_remove_skill_dir "$_base/$SKILL_NAME" || return 1
+  if ! backup_and_record_skill_dir "$_base/$SKILL_NAME" "$_ms_backups"; then
+    restore_multi_skill_set "$_ms_published" "$_ms_backups" || true
+    rm -rf "$_ms_stage"
+    return 1
+  fi
 
   # Back up + remove stale, proven DWS-managed skills not in the new bundle.
   # Never infer ownership from the dingtalk-* prefix alone.
@@ -754,20 +804,32 @@ _install_multi_to_base() {
     [ -d "$existing" ] || continue
     _name="$(basename "$existing")"
     if is_managed_multi_skill_dir "$existing" && [ ! -f "$_msrc/$_name/SKILL.md" ]; then
-      backup_and_remove_skill_dir "$existing" || return 1
+      if ! backup_and_record_skill_dir "$existing" "$_ms_backups"; then
+        restore_multi_skill_set "$_ms_published" "$_ms_backups" || true
+        rm -rf "$_ms_stage"
+        return 1
+      fi
     fi
   done
   if [ -d "$_base/dws-shared" ] && [ ! -f "$_msrc/dws-shared/SKILL.md" ]; then
-    backup_and_remove_skill_dir "$_base/dws-shared" || return 1
+    if ! backup_and_record_skill_dir "$_base/dws-shared" "$_ms_backups"; then
+      restore_multi_skill_set "$_ms_published" "$_ms_backups" || true
+      rm -rf "$_ms_stage"
+      return 1
+    fi
   fi
 
-  # Complete all backups before copying the first new skill so a later
-  # failure cannot leave a partial multi bundle in this Agent target.
+  # Back up all replaced skills as one logical operation. Any failure restores
+  # every earlier move before this target reports failure.
   for skill_dir in "$_msrc"/*/; do
     [ -f "${skill_dir}SKILL.md" ] || continue
     _name="$(basename "$skill_dir")"
     _dest="$_base/$_name"
-    backup_and_remove_skill_dir "$_dest" || return 1
+    if ! backup_and_record_skill_dir "$_dest" "$_ms_backups"; then
+      restore_multi_skill_set "$_ms_published" "$_ms_backups" || true
+      rm -rf "$_ms_stage"
+      return 1
+    fi
   done
 
   _count=0
@@ -775,12 +837,20 @@ _install_multi_to_base() {
     [ -f "${skill_dir}SKILL.md" ] || continue
     _name="$(basename "$skill_dir")"
     _dest="$_base/$_name"
-    if ! publish_managed_multi_skill "$skill_dir" "$_dest"; then
-      say "  ⚠️  Skill 复制或发布失败，目标未计为安装成功: $_dest"
+    printf '%s\n' "$_dest" >> "$_ms_published" || {
+      restore_multi_skill_set "$_ms_published" "$_ms_backups" || true
+      rm -rf "$_ms_stage"
+      return 1
+    }
+    if ! mv "$_ms_stage/$_name" "$_dest"; then
+      say "  ⚠️  multi Skill 集合发布失败，正在恢复原集合: $_dest"
+      restore_multi_skill_set "$_ms_published" "$_ms_backups" || say "  ⚠️  原 Skill 集合自动恢复不完整，请检查上方备份路径"
+      rm -rf "$_ms_stage"
       return 1
     fi
     _count=$((_count + 1))
   done
+  rm -rf "$_ms_stage" || return 1
 
   case "$_root" in
     "$HOME") _label="~/$_agent_dir/" ;;

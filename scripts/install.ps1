@@ -174,30 +174,14 @@ function Write-SkillsState {
     }
 }
 
-function Publish-ManagedMultiSkill {
+# Central move seam for transactional Skill publication. Tests replace this
+# function to inject backup/publish failures without relying on ACL behavior.
+function Move-SkillPath {
     param(
         [string]$Source,
         [string]$Destination
     )
-    $parent = Split-Path $Destination -Parent
-    $name = Split-Path $Destination -Leaf
-    $stage = Join-Path $parent (".$name.tmp-" + [guid]::NewGuid().ToString("N"))
-    $previousErrorActionPreference = $ErrorActionPreference
-    try {
-        $ErrorActionPreference = "Stop"
-        New-Item -ItemType Directory -Path $stage -Force -ErrorAction Stop | Out-Null
-        Copy-DirRecursive -Source $Source -Destination $stage | Out-Null
-        Move-Item -LiteralPath $stage -Destination $Destination -ErrorAction Stop
-        return $true
-    } catch {
-        Write-Say "⚠️  Skill 复制或发布失败，目标未计为安装成功: $Destination ($_)"
-        return $false
-    } finally {
-        $ErrorActionPreference = $previousErrorActionPreference
-        if (Test-Path $stage) {
-            Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
+    Move-Item -LiteralPath $Source -Destination $Destination -ErrorAction Stop
 }
 
 function Get-Arch {
@@ -410,7 +394,11 @@ function Publish-SkillCache {
 # backup failure the directory is left in place and $false is returned so
 # callers skip that target rather than silently deleting data.
 function Backup-SkillDir {
-    param([string]$Dir)
+    param(
+        [string]$Dir,
+        [ref]$BackupPath
+    )
+    if ($null -ne $BackupPath) { $BackupPath.Value = "" }
     if (!(Test-Path $Dir -PathType Container)) { return $true }
     $backupRoot = Join-Path $HOME ".dws\skill-backups"
     $stamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss")
@@ -427,13 +415,46 @@ function Backup-SkillDir {
     }
     try {
         New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force -ErrorAction Stop | Out-Null
-        Move-Item -Path $Dir -Destination $target -ErrorAction Stop
+        Move-SkillPath -Source $Dir -Destination $target
     } catch {
         Write-Say "⚠️  备份失败，保留原目录 $Dir"
         return $false
     }
+    if ($null -ne $BackupPath) { $BackupPath.Value = $target }
     Write-Say "  × 已备份并移除 $Dir → $target"
     return $true
+}
+
+function Restore-MultiSkillSet {
+    param(
+        [array]$Published,
+        [array]$Backups
+    )
+    $ok = $true
+    for ($i = $Published.Count - 1; $i -ge 0; $i--) {
+        try {
+            if (Test-Path $Published[$i]) {
+                Remove-Item -LiteralPath $Published[$i] -Recurse -Force -ErrorAction Stop
+            }
+        } catch {
+            Write-Say "⚠️  无法移除失败发布目录 $($Published[$i]): $_"
+            $ok = $false
+        }
+    }
+    for ($i = $Backups.Count - 1; $i -ge 0; $i--) {
+        $item = $Backups[$i]
+        try {
+            if (Test-Path $item.Original) {
+                throw "恢复目标仍存在"
+            }
+            New-Item -ItemType Directory -Path (Split-Path $item.Original -Parent) -Force -ErrorAction Stop | Out-Null
+            Move-SkillPath -Source $item.Backup -Destination $item.Original
+        } catch {
+            Write-Say "⚠️  无法恢复原 Skill $($item.Original)；备份保留于 $($item.Backup): $_"
+            $ok = $false
+        }
+    }
+    return $ok
 }
 
 function Copy-SkillToDir {
@@ -838,46 +859,69 @@ function Install-MultiToBase {
         New-Item -ItemType Directory -Path $BaseDir -Force | Out-Null
     }
 
-    # Mutual exclusion: back up + remove the mono leftover.
-    if (!(Backup-SkillDir -Dir (Join-Path $BaseDir $SkillName))) {
-        return $false
-    }
-
-    # Back up + remove stale, proven DWS-managed skills not in the new bundle.
-    # Never infer ownership from the dingtalk-* prefix alone.
-    foreach ($existing in Get-ChildItem -Path $BaseDir -Directory -ErrorAction SilentlyContinue) {
-        if ((Test-ManagedMultiSkillDir -Dir $existing.FullName) -and
-            !(Test-Path (Join-Path (Join-Path $MultiSrc $existing.Name) "SKILL.md")) -and
-            !(Backup-SkillDir -Dir $existing.FullName)) {
-            return $false
-        }
-    }
-    if (!(Test-Path (Join-Path (Join-Path $MultiSrc "dws-shared") "SKILL.md"))) {
-        if (!(Backup-SkillDir -Dir (Join-Path $BaseDir "dws-shared"))) {
-            return $false
-        }
-    }
-
     $skillDirs = @(Get-ChildItem -Path $MultiSrc -Directory | Where-Object {
         Test-Path (Join-Path $_.FullName "SKILL.md")
     })
-    # Complete all backups before copying the first new skill, preventing a
-    # later failure from leaving a partial multi bundle in this Agent target.
-    foreach ($skillDir in $skillDirs) {
-        if (!(Backup-SkillDir -Dir (Join-Path $BaseDir $skillDir.Name))) {
-            return $false
+    $stageRoot = Join-Path $BaseDir (".dws-multi-set-" + [guid]::NewGuid().ToString("N"))
+    $backups = @()
+    $published = @()
+    try {
+        # Stage the complete replacement before moving any Agent-visible
+        # directory. Copy failures therefore leave the old set untouched.
+        New-Item -ItemType Directory -Path $stageRoot -Force -ErrorAction Stop | Out-Null
+        foreach ($skillDir in $skillDirs) {
+            Copy-DirRecursive -Source $skillDir.FullName -Destination (Join-Path $stageRoot $skillDir.Name) | Out-Null
+        }
+
+        $victims = [System.Collections.Generic.List[string]]::new()
+        $victims.Add((Join-Path $BaseDir $SkillName))
+
+        # Include stale, proven DWS-managed skills in the same transaction.
+        foreach ($existing in Get-ChildItem -Path $BaseDir -Directory -ErrorAction SilentlyContinue) {
+            if ($existing.FullName -eq $stageRoot) { continue }
+            if ((Test-ManagedMultiSkillDir -Dir $existing.FullName) -and
+                !(Test-Path (Join-Path (Join-Path $MultiSrc $existing.Name) "SKILL.md"))) {
+                $victims.Add($existing.FullName)
+            }
+        }
+        if (!(Test-Path (Join-Path (Join-Path $MultiSrc "dws-shared") "SKILL.md"))) {
+            $victims.Add((Join-Path $BaseDir "dws-shared"))
+        }
+        foreach ($skillDir in $skillDirs) {
+            $victims.Add((Join-Path $BaseDir $skillDir.Name))
+        }
+
+        $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($victim in $victims) {
+            if (!$seen.Add($victim)) { continue }
+            $backupPath = ""
+            if (!(Backup-SkillDir -Dir $victim -BackupPath ([ref]$backupPath))) {
+                throw "Skill 备份失败: $victim"
+            }
+            if ($backupPath) {
+                $backups += [pscustomobject]@{ Original = $victim; Backup = $backupPath }
+            }
+        }
+
+        foreach ($skillDir in $skillDirs) {
+            $dest = Join-Path $BaseDir $skillDir.Name
+            $published += $dest
+            Move-SkillPath -Source (Join-Path $stageRoot $skillDir.Name) -Destination $dest
+        }
+    } catch {
+        $transactionError = $_
+        if (!(Restore-MultiSkillSet -Published $published -Backups $backups)) {
+            Write-Say "⚠️  原 Skill 集合自动恢复不完整，请检查上方备份路径"
+        }
+        Write-Say "⚠️  multi Skill 集合发布失败，目标已回滚: $BaseDir ($transactionError)"
+        return $false
+    } finally {
+        if (Test-Path $stageRoot) {
+            Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 
-    $count = 0
-    foreach ($skillDir in $skillDirs) {
-        $name = $skillDir.Name
-        $dest = Join-Path $BaseDir $name
-        if (!(Publish-ManagedMultiSkill -Source $skillDir.FullName -Destination $dest)) {
-            return $false
-        }
-        $count++
-    }
+    $count = $skillDirs.Count
 
     if ($Root -eq $HOME) {
         $label = "~\$AgentDir\"

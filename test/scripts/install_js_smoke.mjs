@@ -27,7 +27,10 @@
  *                             reports postinstall failure.
  *   6. mono backup failure  — preserves multi, writes no mono skill, and
  *                             reports postinstall failure.
- *   7. cache copy failure   — preserves the previous complete cache.
+ *   7. mono switch          — migrates only centrally owned multi Skills.
+ *   8. cache copy failure   — preserves the previous complete cache.
+ *   9. multi publish failure — restores the complete previous Skill set.
+ *  10. multi backup failure  — restores every earlier successful backup.
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
  * install.js itself shells out to). Skips cleanly on win32.
@@ -56,7 +59,10 @@ const PLATFORM_MAP = {
 const repoRoot = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), "..", "..");
 const installJsSource = path.join(repoRoot, "build", "npm", "install.js");
 const require = createRequire(import.meta.url);
-const { publishCacheAtomically, publishManagedMultiSkillAtomically } = require(installJsSource);
+const {
+  publishCacheAtomically,
+  publishManagedMultiSkillSetAtomically,
+} = require(installJsSource);
 const assetName = PLATFORM_MAP[`${process.platform}-${process.arch}`];
 
 if (process.platform === "win32" || !assetName) {
@@ -334,6 +340,91 @@ scenario("cache copy failure preserves the previous complete cache", () => {
       !fs.readdirSync(path.dirname(cache)).some((name) => name.startsWith(".multi.tmp-")),
       "failed refresh must clean its staging directory",
     );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("multi set publish failure restores the complete previous set", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-multi-set-"));
+  const home = path.join(tmp, "home");
+  const source = path.join(tmp, "multi");
+  const base = path.join(home, ".agents", "skills");
+  const first = path.join(base, "dingtalk-first");
+  const second = path.join(base, "dingtalk-second");
+  try {
+    writeFile(path.join(source, "dingtalk-first", "SKILL.md"), "new first\n");
+    writeFile(path.join(source, "dingtalk-second", "SKILL.md"), "new second\n");
+    writeFile(path.join(first, "SKILL.md"), "old first\n");
+    writeFile(path.join(second, "SKILL.md"), "old second\n");
+
+    const originalRename = fs.renameSync;
+    assert.throws(
+      () =>
+        publishManagedMultiSkillSetAtomically(
+          home,
+          source,
+          base,
+          ["dingtalk-first", "dingtalk-second"],
+          [first, second],
+          {
+            renameFn(src, dest) {
+              if (src.includes(".dws-multi-set.tmp-") && path.basename(src) === "dingtalk-second") {
+                throw new Error("injected second publish failure");
+              }
+              originalRename(src, dest);
+            },
+          },
+        ),
+      /injected second publish failure/,
+    );
+    assert.equal(fs.readFileSync(path.join(first, "SKILL.md"), "utf8"), "old first\n");
+    assert.equal(fs.readFileSync(path.join(second, "SKILL.md"), "utf8"), "old second\n");
+    assert.ok(
+      !fs.readdirSync(base).some((name) => name.startsWith(".dws-multi-set.tmp-")),
+      "failed publish must clean the multi-set staging directory",
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("multi set backup failure restores earlier backups", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-multi-backup-"));
+  const home = path.join(tmp, "home");
+  const source = path.join(tmp, "multi");
+  const base = path.join(home, ".agents", "skills");
+  const first = path.join(base, "dingtalk-first");
+  const second = path.join(base, "dingtalk-second");
+  try {
+    writeFile(path.join(source, "dingtalk-first", "SKILL.md"), "new first\n");
+    writeFile(path.join(source, "dingtalk-second", "SKILL.md"), "new second\n");
+    writeFile(path.join(first, "SKILL.md"), "old first\n");
+    writeFile(path.join(second, "SKILL.md"), "old second\n");
+
+    const originalRename = fs.renameSync;
+    assert.throws(
+      () =>
+        publishManagedMultiSkillSetAtomically(
+          home,
+          source,
+          base,
+          ["dingtalk-first", "dingtalk-second"],
+          [first, second],
+          {
+            renameFn(src, dest) {
+              if (src === second) {
+                throw new Error("injected second backup failure");
+              }
+              originalRename(src, dest);
+            },
+          },
+        ),
+      /failed to back up Skill directory/,
+    );
+    assert.equal(fs.readFileSync(path.join(first, "SKILL.md"), "utf8"), "old first\n");
+    assert.equal(fs.readFileSync(path.join(second, "SKILL.md"), "utf8"), "old second\n");
+    assert.ok(!fs.existsSync(path.join(base, "dingtalk-first", "new-only")));
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

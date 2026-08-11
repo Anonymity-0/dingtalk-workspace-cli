@@ -63,7 +63,7 @@ function backupStamp() {
 // are a no-op success. On any backup failure the directory is left in place
 // and false is returned so callers skip that target rather than silently
 // deleting data.
-function backupAndRemoveSkillDir(homeDir, dir) {
+function backupAndRemoveSkillDir(homeDir, dir, backups = null, renameFn = fs.renameSync) {
   if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
     return true;
   }
@@ -86,10 +86,13 @@ function backupAndRemoveSkillDir(homeDir, dir) {
   }
   try {
     fs.mkdirSync(targetRoot, { recursive: true });
-    fs.renameSync(dir, target);
+    renameFn(dir, target);
   } catch (err) {
     console.warn(`⚠️  备份失败，保留原目录 ${dir}: ${err.message}`);
     return false;
+  }
+  if (backups) {
+    backups.push({ original: dir, backup: target });
   }
   console.log(`  × 已备份并移除 ${dir} → ${target}`);
   return true;
@@ -350,19 +353,82 @@ function skillDirectoryDigest(dir) {
   return `sha256:${hash.digest("hex")}`;
 }
 
-// Prepare content in a sibling staging directory, then publish with rename.
-function publishManagedMultiSkillAtomically(sourceDir, destDir) {
-  const parent = path.dirname(destDir);
-  const stage = fs.mkdtempSync(path.join(parent, `.${path.basename(destDir)}.tmp-`));
-  let published = false;
-  try {
-    copyChildren(sourceDir, stage);
-    fs.renameSync(stage, destDir);
-    published = true;
-  } finally {
-    if (!published) {
-      fs.rmSync(stage, { recursive: true, force: true });
+// Publish a complete multi-skill set as one transaction. The entire new set
+// is staged before any Agent-visible directory moves. If a later backup or
+// publish fails, every partial publication is removed and all old directories
+// are restored from their exact backup paths.
+function publishManagedMultiSkillSetAtomically(
+  homeDir,
+  multiRoot,
+  baseDir,
+  skills,
+  victims,
+  options = {},
+) {
+  const copyFn = options.copyFn || copyChildren;
+  const renameFn = options.renameFn || fs.renameSync;
+  const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.mkdirSync(baseDir, { recursive: true });
+  const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-multi-set.tmp-"));
+  const staged = [];
+  const backups = [];
+  const published = [];
+
+  const restore = () => {
+    const restoreErrors = [];
+    for (let i = published.length - 1; i >= 0; i -= 1) {
+      try {
+        removeFn(published[i]);
+      } catch (err) {
+        restoreErrors.push(`remove ${published[i]}: ${err.message}`);
+      }
     }
+    for (let i = backups.length - 1; i >= 0; i -= 1) {
+      const item = backups[i];
+      try {
+        fs.mkdirSync(path.dirname(item.original), { recursive: true });
+        renameFn(item.backup, item.original);
+      } catch (err) {
+        restoreErrors.push(`restore ${item.original} from ${item.backup}: ${err.message}`);
+      }
+    }
+    if (restoreErrors.length > 0) {
+      throw new Error(restoreErrors.join("; "));
+    }
+  };
+
+  try {
+    for (const name of skills) {
+      const stagedDir = path.join(stageRoot, name);
+      copyFn(path.join(multiRoot, name), stagedDir);
+      staged.push({ staged: stagedDir, dest: path.join(baseDir, name) });
+    }
+
+    const seen = new Set();
+    for (const victim of victims) {
+      const normalized = path.resolve(victim);
+      if (seen.has(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      if (!backupAndRemoveSkillDir(homeDir, victim, backups, renameFn)) {
+        throw new Error(`failed to back up Skill directory ${victim}`);
+      }
+    }
+
+    for (const item of staged) {
+      renameFn(item.staged, item.dest);
+      published.push(item.dest);
+    }
+  } catch (err) {
+    try {
+      restore();
+    } catch (restoreErr) {
+      throw new Error(`${err.message}; rollback failed: ${restoreErr.message}`);
+    }
+    throw err;
+  } finally {
+    removeFn(stageRoot);
   }
 }
 
@@ -440,37 +506,26 @@ function installMultiSkillsToHomes(multiRoot) {
 
   const installToBase = (baseDir) => {
     fs.mkdirSync(baseDir, { recursive: true });
-    // Mutual exclusion: back up + remove the mono leftover, then stale multi
-    // skills (dingtalk-* or dws-shared) not in the new bundle.
-    if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, "dws"))) {
-      console.warn(`⚠️  跳过 ${baseDir}（mono 残留备份失败，未安装 multi）`);
-      return false;
-    }
+    const victims = [path.join(baseDir, "dws")];
+    // Mutual exclusion: include the mono leftover and stale managed skills in
+    // the same transaction as every replaced bundled skill.
     for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
       if (
         entry.isDirectory() &&
         (LEGACY_OFFICIAL_MULTI_SKILLS.has(entry.name) || managedNames.has(entry.name)) &&
         !skillSet.has(entry.name)
       ) {
-        if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name))) {
-          console.warn(`⚠️  跳过 ${baseDir}（过期 Skill 备份失败，未安装 multi）`);
-          return false;
-        }
-      }
-    }
-    // Finish every potentially failing backup before copying the first new
-    // skill. This prevents a later backup failure from leaving a partial
-    // bundle in this Agent target.
-    for (const name of skills) {
-      const destDir = path.join(baseDir, name);
-      if (!backupAndRemoveSkillDir(homeDir, destDir)) {
-        console.warn(`⚠️  跳过 ${baseDir}（${name} 备份失败，未安装 multi）`);
-        return false;
+        victims.push(path.join(baseDir, entry.name));
       }
     }
     for (const name of skills) {
-      const destDir = path.join(baseDir, name);
-      publishManagedMultiSkillAtomically(path.join(multiRoot, name), destDir);
+      victims.push(path.join(baseDir, name));
+    }
+    try {
+      publishManagedMultiSkillSetAtomically(homeDir, multiRoot, baseDir, skills, victims);
+    } catch (err) {
+      console.warn(`⚠️  跳过 ${baseDir}（multi 集合发布失败，已回滚）: ${err.message}`);
+      return false;
     }
     return true;
   };
@@ -616,4 +671,7 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { publishCacheAtomically, publishManagedMultiSkillAtomically };
+module.exports = {
+  publishCacheAtomically,
+  publishManagedMultiSkillSetAtomically,
+};
