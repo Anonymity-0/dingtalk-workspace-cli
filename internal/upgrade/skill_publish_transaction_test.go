@@ -241,7 +241,7 @@ func TestCrossPlatformCoverageSkillPublishTransactionFailureEdges(t *testing.T) 
 			switch {
 			case src == second:
 				return failure
-			case strings.Contains(src, skillBackupSubdir):
+			case strings.Contains(filepath.ToSlash(src), skillBackupSubdir):
 				return restoreFailure
 			default:
 				return originalRename(src, dest)
@@ -264,7 +264,7 @@ func TestCrossPlatformCoverageSkillPublishTransactionFailureEdges(t *testing.T) 
 			switch {
 			case src == staged:
 				return failure
-			case strings.Contains(src, skillBackupSubdir):
+			case strings.Contains(filepath.ToSlash(src), skillBackupSubdir):
 				return restoreFailure
 			default:
 				return originalRename(src, dest)
