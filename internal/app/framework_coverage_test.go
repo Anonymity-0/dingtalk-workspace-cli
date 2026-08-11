@@ -42,8 +42,19 @@ func TestFrameworkErrorProjectionPreservesRecoveryMetadata(t *testing.T) {
 	if info.Type != "api" || info.Subtype != "upstream_failed" || info.HTTPStatus != 503 || info.RPCCode != 92 || info.RequestID != "call-trace" || info.TraceID != "typed-trace" {
 		t.Fatalf("projection=%+v", info)
 	}
-	if info.UpstreamCode != "SERVER_CODE" || info.NextRetryAt == "" || info.Cause == "" || info.RPCData == nil || info.ExecutionStarted == nil || !*info.ExecutionStarted {
+	if info.UpstreamCode != "SERVER_CODE" || info.Operation != "publish" || info.NextRetryAt == "" || info.Cause == "" || info.RPCData == nil || info.ExecutionStarted == nil || !*info.ExecutionStarted {
 		t.Fatalf("recovery metadata=%+v", info)
+	}
+
+	innerOperation := &helpers.CLIError{Operation: "create"}
+	outerWithoutOperation := &apperrors.Error{
+		Category: apperrors.CategoryAPI,
+		Message:  "failed",
+		Cause:    innerOperation,
+	}
+	preserved := errorInfoFromExecutionError(outerWithoutOperation)
+	if preserved.Operation != "create" {
+		t.Fatalf("operation=%q, want inner operation preserved", preserved.Operation)
 	}
 
 	requestCall := &transport.CallError{Stage: transport.CallStage("request"), HTTPStatus: 429, RequestID: "request-id"}

@@ -317,7 +317,9 @@ func errorInfoFromExecutionError(err error) *output.ErrorInfo {
 	if typed.ServerDiag.TraceID != "" {
 		info.TraceID = typed.ServerDiag.TraceID
 	}
-	info.Operation = typed.Operation
+	if typed.Operation != "" {
+		info.Operation = typed.Operation
+	}
 	info.ServerKey = typed.ServerKey
 	info.Origin = typed.Origin
 	if typed.FailureStage != "" {
