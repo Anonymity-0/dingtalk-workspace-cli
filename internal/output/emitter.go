@@ -211,11 +211,12 @@ func renderEnvelopeInto(buf *bytes.Buffer, errW io.Writer, env *Envelope, format
 
 	switch format {
 	case FormatJSON, "":
-		// json（默认）= 完整信封（唯一 JSON 契约）；--fields 为兼容语义——
-		// 投影业务载荷（与 table/csv/ndjson 分支及迁移前 WriteFiltered 直出
-		// 业务数据的行为一致），不筛选信封顶层键。
+		// json（默认）始终保留完整信封。--fields 只投影业务载荷，
+		// ok/outcome/meta 等稳定契约字段仍必须可供 Agent 分支和续页。
 		if trimmed := strings.TrimSpace(fields); trimmed != "" {
-			return WriteFiltered(buf, FormatJSON, env.Data, trimmed, "")
+			projected := *env
+			projected.Data = SelectFields(env.Data, strings.Split(trimmed, ","))
+			return WriteFiltered(buf, FormatJSON, &projected, "", "")
 		}
 		return WriteFiltered(buf, FormatJSON, env, "", "")
 	default:

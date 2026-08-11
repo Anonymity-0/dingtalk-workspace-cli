@@ -295,20 +295,35 @@ func TestWriteEnvelopeJSONIsTheOnlyJSONContract(t *testing.T) {
 }
 
 func TestWriteEnvelopeJSONFieldsProjectionFiltersBusinessData(t *testing.T) {
-	// --fields 与 json 联动（成功通道）的兼容语义：投影业务载荷（与
-	// table/csv/ndjson 分支及迁移前 WriteFiltered 直出业务数据的行为一致，
-	// 全局 --fields 帮助描述的也是业务字段），不筛选信封顶层键。
+	// --fields 与 json 联动时只投影业务载荷，统一信封及分页元数据必须保留。
 	var buf bytes.Buffer
-	env := NewSuccessEnvelope(map[string]any{"name": "DemoApp", "id": "1"})
+	env := phaseCListFixture()
 	if err := WriteEnvelopeTo(&buf, env, FormatJSON, "name", ""); err != nil {
 		t.Fatalf("WriteEnvelopeTo: %v", err)
 	}
-	if want := "{\n  \"name\": \"DemoApp\"\n}\n"; buf.String() != want {
-		t.Fatalf("fields=name output = %q, want %q", buf.String(), want)
+	var decoded Envelope
+	if err := json.Unmarshal(buf.Bytes(), &decoded); err != nil {
+		t.Fatalf("fields=name output is not an envelope: %v\n%s", err, buf.String())
+	}
+	if !decoded.OK || decoded.Outcome != OutcomeSuccess || decoded.Meta == nil || decoded.Meta.Pagination == nil || decoded.Meta.Pagination.NextToken != "cursor_xyz" {
+		t.Fatalf("stable envelope metadata was lost: %+v", decoded)
+	}
+	items, ok := decoded.Data.([]any)
+	if !ok {
+		t.Fatalf("projected data type = %T", decoded.Data)
+	}
+	if len(items) != 3 {
+		t.Fatalf("projected items = %#v", items)
+	}
+	for _, item := range items {
+		row, ok := item.(map[string]any)
+		if !ok || len(row) != 1 || row["name"] == nil {
+			t.Fatalf("projected row = %#v", item)
+		}
 	}
 	// 投影不得改写原信封的 data。
-	data, ok := env.Data.(map[string]any)
-	if !ok || data["id"] != "1" || data["name"] != "DemoApp" {
+	data, ok := env.Data.([]any)
+	if !ok || len(data[0].(map[string]any)) <= 1 {
 		t.Fatalf("source envelope data mutated: %#v", env.Data)
 	}
 
