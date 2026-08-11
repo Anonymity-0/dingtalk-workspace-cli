@@ -467,3 +467,98 @@ func TestCrossPlatformCoverageDriveListPatternSingleLayerFixed(t *testing.T) {
 		t.Fatalf("分页字段应保留: %#v", result)
 	}
 }
+
+// 10. 钉盘路由：--type folder 反向筛（FILE 被滤除，仅 FOLDER 保留）。
+func TestCrossPlatformCoverageDriveListFilterPanFolderTypeFolder(t *testing.T) {
+	useDriveListArgs(t)
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"items":[
+			{"fileId":"d1","name":"sub","type":"FOLDER"},
+			{"fileId":"f1","name":"a.txt","type":"FILE"}
+		]}`},
+	}}
+	buf, err := executeDriveListCapture(t, caller, "list", "--folder", "root-1", "--type", "folder")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if caller.calls != 1 {
+		t.Fatalf("calls = %d, want 1（depth=1 退化态不下钻 folder）", caller.calls)
+	}
+	items := decodeDepthResult(t, buf)["items"].([]any)
+	if len(items) != 1 || items[0].(map[string]any)["fileId"] != "d1" {
+		t.Fatalf("folder filter items = %#v", items)
+	}
+}
+
+// 11. 钉盘路由：--start 下无时间信息的条目（sortTime<=0）不可判定，保守滤除。
+func TestCrossPlatformCoverageDriveListFilterPanMissingTimeDropped(t *testing.T) {
+	useDriveListArgs(t)
+	now := time.Now().UnixMilli()
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: fmt.Sprintf(`{"items":[
+			{"fileId":"f1","name":"a.txt","type":"FILE","modifyTime":%d},
+			{"fileId":"f2","name":"no-time.txt","type":"FILE"}
+		]}`, now)},
+	}}
+	buf, err := executeDriveListCapture(t, caller, "list", "--start", "7d")
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := decodeDepthResult(t, buf)["items"].([]any)
+	if len(items) != 1 || items[0].(map[string]any)["fileId"] != "f1" {
+		t.Fatalf("missing-time 条目应被滤除: %#v", items)
+	}
+}
+
+// 12. 单层钉盘 --pattern 页内过滤边界：dry-run 预览 / MCP 错误透传 / 非 JSON 原样输出 /
+// 非 map 条目保留 + name 缺失时 fileName 兜底匹配。
+func TestCrossPlatformCoverageDriveListPatternPassthroughEdges(t *testing.T) {
+	useDriveListArgs(t)
+
+	// dry-run：打印预览，不发起调用。
+	dryCaller := &scriptedToolCaller{dry: true}
+	buf, err := executeDriveListCapture(t, dryCaller, "list", "--pattern", "*.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dryCaller.calls != 0 {
+		t.Fatalf("dry-run calls = %d", dryCaller.calls)
+	}
+	preview := decodeDepthResult(t, buf)
+	if preview["dry_run"] != true || preview["tool"] != "list_files" || preview["pattern"] != "*.txt" {
+		t.Fatalf("dry-run payload = %#v", preview)
+	}
+
+	// MCP 错误：原样返回。
+	errCaller := &scriptedToolCaller{steps: []scriptedToolStep{{err: errors.New("boom")}}}
+	if _, err := executeDriveListCapture(t, errCaller, "list", "--pattern", "*.txt"); err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("err = %v, want boom", err)
+	}
+
+	// 非 JSON 返回：无法筛，原样输出（与透传分支兜底形态一致）。
+	rawCaller := &scriptedToolCaller{steps: []scriptedToolStep{{text: "plain-text-result"}}}
+	rawBuf, err := executeDriveListCapture(t, rawCaller, "list", "--pattern", "*.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rawBuf.String(), "plain-text-result") {
+		t.Fatalf("raw output = %q", rawBuf.String())
+	}
+
+	// 非 map 条目原样保留；name 缺失时 fileName 兜底参与匹配。
+	mixedCaller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"items":[
+			"raw-entry",
+			{"fileId":"f1","fileName":"日报模板.doc"},
+			{"fileId":"f2","name":"其他.txt"}
+		],"nextToken":"nt"}`},
+	}}
+	mixedBuf, err := executeDriveListCapture(t, mixedCaller, "list", "--pattern", "*模板*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mixed := decodeDepthResult(t, mixedBuf)["items"].([]any)
+	if len(mixed) != 2 || mixed[0] != "raw-entry" || mixed[1].(map[string]any)["fileId"] != "f1" {
+		t.Fatalf("items = %#v", mixed)
+	}
+}
