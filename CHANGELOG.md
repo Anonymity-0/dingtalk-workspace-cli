@@ -8,10 +8,29 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Added
 
+- **Aitable workflow execution and history** — adds `dws aitable workflow run` for confirmed asynchronous execution of scheduled or record-triggered workflows, plus `dws aitable workflow history` for status-, time-, and page-filtered execution records. The commands map directly to `aitable/run_workflow` and `aitable/get_flow_record_list`, validate trigger-specific arguments locally, and document the `executionId` / `instanceId` correlation.
 - **Streaming-card mentions** — `chat +messages-send-card` now accepts
   `--at-open-dingtalk-ids` and `--at-all` for group cards, passing mention
   targets to the initial card-creation request and prepending its returned
   `atTag` to the automatic streaming update.
+
+### Fixed
+
+- **Machine-readable export and download receipts** — `dws doc export`,
+  `dws drive download`, and `dws drive download --version` now keep progress
+  logs on stderr under `--format json` and emit one JSON result on stdout after
+  a successful local write. The result includes the saved path and byte size;
+  document exports additionally report the node, requested format, job/task
+  ID, and final status.
+### Changed
+
+- **Minutes `permission apply --policy` type** — `--policy` is now declared as
+  an `int` flag and its required check uses `Flags().Changed`, matching the
+  numeric-parameter convention. `--help` reports `int` instead of `string`;
+  accepted values (2/3/4) and gateway behavior are unchanged.
+- **Minutes skill references** — document `permission apply` in both Minutes
+  skill references: list it in the command trees, describe its policy values and
+  how it differs from `permission add`, and add its intent routing.
 
 ## [1.0.58-beta.2] - 2026-08-10
 
