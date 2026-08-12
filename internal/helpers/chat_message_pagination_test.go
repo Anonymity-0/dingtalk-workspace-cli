@@ -198,8 +198,8 @@ func TestChatMessagePaginationUsesDefaultTimeWindows(t *testing.T) {
 			if got.tool != tt.wantTool {
 				t.Fatalf("tool = %q, want %q", got.tool, tt.wantTool)
 			}
-			startMs := numericArgAsInt64(t, got.args["startTime"])
-			endMs := numericArgAsInt64(t, got.args["endTime"])
+			startMs := chatMessageTimeArgAsMillis(t, got.args["startTime"], tt.wantTool)
+			endMs := chatMessageTimeArgAsMillis(t, got.args["endTime"], tt.wantTool)
 			wantEndMin := before.Truncate(time.Second).UnixMilli()
 			wantEndMax := after.Add(time.Second).UnixMilli()
 			if endMs < wantEndMin || endMs > wantEndMax {
@@ -266,14 +266,18 @@ func TestChatMessagePaginationDefaultsStartFromExplicitEnd(t *testing.T) {
 			if got.tool != tt.wantTool {
 				t.Fatalf("tool = %q, want %q", got.tool, tt.wantTool)
 			}
-			startMs := numericArgAsInt64(t, got.args["startTime"])
-			gotEndMs := numericArgAsInt64(t, got.args["endTime"])
+			startMs := chatMessageTimeArgAsMillis(t, got.args["startTime"], tt.wantTool)
+			gotEndMs := chatMessageTimeArgAsMillis(t, got.args["endTime"], tt.wantTool)
 			if gotEndMs != endMs {
 				t.Fatalf("endTime = %d, want %d", gotEndMs, endMs)
 			}
 			wantStartMs := time.UnixMilli(endMs).Add(-tt.wantLookback).UnixMilli()
 			if startMs != wantStartMs {
 				t.Fatalf("startTime = %d, want %d", startMs, wantStartMs)
+			}
+			if tt.wantTool == "search_messages_by_time_range" {
+				assertStringArg(t, got.args["startTime"], "2025-12-31 00:00:00")
+				assertStringArg(t, got.args["endTime"], "2026-01-01 00:00:00")
 			}
 		})
 	}
@@ -328,15 +332,19 @@ func TestChatMessagePaginationDefaultsEndFromNowWhenOnlyStartProvided(t *testing
 			if got.tool != tt.wantTool {
 				t.Fatalf("tool = %q, want %q", got.tool, tt.wantTool)
 			}
-			gotStartMs := numericArgAsInt64(t, got.args["startTime"])
+			gotStartMs := chatMessageTimeArgAsMillis(t, got.args["startTime"], tt.wantTool)
 			if gotStartMs != startMs {
 				t.Fatalf("startTime = %d, want %d", gotStartMs, startMs)
 			}
-			endMs := numericArgAsInt64(t, got.args["endTime"])
+			endMs := chatMessageTimeArgAsMillis(t, got.args["endTime"], tt.wantTool)
 			wantEndMin := before.Truncate(time.Second).UnixMilli()
 			wantEndMax := after.Add(time.Second).UnixMilli()
 			if endMs < wantEndMin || endMs > wantEndMax {
 				t.Fatalf("endTime = %d, want between %d and %d", endMs, wantEndMin, wantEndMax)
+			}
+			if tt.wantTool == "search_messages_by_time_range" {
+				assertStringArg(t, got.args["startTime"], "2026-01-01 00:00:00")
+				parseChatMessageListAllTimeArg(t, got.args["endTime"])
 			}
 		})
 	}
@@ -395,6 +403,38 @@ func numericArgAsInt64(t *testing.T, value any) int64 {
 	default:
 		t.Fatalf("unsupported numeric arg type %T (%#v)", value, value)
 		return 0
+	}
+}
+
+func chatMessageTimeArgAsMillis(t *testing.T, value any, tool string) int64 {
+	t.Helper()
+	if tool == "search_messages_by_time_range" {
+		return parseChatMessageListAllTimeArg(t, value).UnixMilli()
+	}
+	return numericArgAsInt64(t, value)
+}
+
+func parseChatMessageListAllTimeArg(t *testing.T, value any) time.Time {
+	t.Helper()
+	raw, ok := value.(string)
+	if !ok {
+		t.Fatalf("time arg = %#v, want yyyy-MM-dd HH:mm:ss string", value)
+	}
+	if strings.Contains(raw, "T") {
+		t.Fatalf("time arg = %q, want yyyy-MM-dd HH:mm:ss without RFC3339 separator", raw)
+	}
+	parsed, err := time.ParseInLocation("2006-01-02 15:04:05", raw, shanghaiLocation())
+	if err != nil {
+		t.Fatalf("time arg = %q, parse err = %v", raw, err)
+	}
+	return parsed
+}
+
+func assertStringArg(t *testing.T, value any, want string) {
+	t.Helper()
+	got, ok := value.(string)
+	if !ok || got != want {
+		t.Fatalf("arg = %#v, want %q", value, want)
 	}
 }
 
