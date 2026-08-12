@@ -294,15 +294,9 @@ func isSafeRemoteSegment(name string) bool {
 	if strings.ContainsAny(name, `/\`) {
 		return false
 	}
-	// Windows 卷标（"C:"、"C:foo"）等含盘符的名称一律拒绝。
-	if filepath.VolumeName(name) != "" {
-		return false
-	}
-	// Clean 后若发生变化，说明名称非规范（含隐藏的 . / .. / 分隔符）。
-	if filepath.Clean(name) != name {
-		return false
-	}
-	return true
+	// 余下的卷标/规范化检查只在 Windows 上可达：Unix 的 filepath.VolumeName 恒为空，
+	// 且经上面的分隔符过滤后 filepath.Clean 不会再改写名称。按平台分文件承载。
+	return isSafeRemoteSegmentPlatform(name)
 }
 
 // resolveLocalTarget 把远端 rel_path 拼到本地根目录 absDir 下，并确认结果仍位于
@@ -385,38 +379,44 @@ func md5File(path string) (string, error) {
 func walkLocalTree(root string) (map[string]*localFile, error) {
 	files := make(map[string]*localFile)
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		// 只比对常规文件；符号链接、设备文件等被忽略。
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		relSlash := filepath.ToSlash(rel)
-
-		files[relSlash] = &localFile{
-			RelPath:       relSlash,
-			AbsPath:       path,
-			Size:          info.Size(),
-			ModTimeMillis: info.ModTime().UnixMilli(),
-		}
-		return nil
+		return walkLocalTreeEntry(root, path, d, err, files)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return files, nil
+}
+
+// walkLocalTreeEntry 是 walkLocalTree 的单条目处理逻辑。抽成命名函数只为可测：
+// Info() / filepath.Rel 的失败在真实 WalkDir 下几乎不可复现，单测可直接注入。
+func walkLocalTreeEntry(root, path string, d fs.DirEntry, err error, files map[string]*localFile) error {
+	if err != nil {
+		return err
+	}
+	if d.IsDir() {
+		return nil
+	}
+	info, err := d.Info()
+	if err != nil {
+		return err
+	}
+	// 只比对常规文件；符号链接、设备文件等被忽略。
+	if !info.Mode().IsRegular() {
+		return nil
+	}
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return err
+	}
+	relSlash := filepath.ToSlash(rel)
+
+	files[relSlash] = &localFile{
+		RelPath:       relSlash,
+		AbsPath:       path,
+		Size:          info.Size(),
+		ModTimeMillis: info.ModTime().UnixMilli(),
+	}
+	return nil
 }
 
 // 双端都存在文件的比对结论。

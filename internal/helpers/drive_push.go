@@ -281,36 +281,7 @@ func walkLocalForPush(root string) ([]string, []localPushFile, error) {
 	var dirs []string
 	var files []localPushFile
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, rerr := filepath.Rel(root, path)
-		if rerr != nil {
-			return rerr
-		}
-		if rel == "." {
-			return nil // 根目录本身不处理
-		}
-		relSlash := filepath.ToSlash(rel)
-		if d.IsDir() {
-			dirs = append(dirs, relSlash)
-			return nil
-		}
-		info, ierr := d.Info()
-		if ierr != nil {
-			return ierr
-		}
-		// 只推送常规文件；符号链接、设备文件等忽略。
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-		files = append(files, localPushFile{
-			RelPath:       relSlash,
-			AbsPath:       path,
-			ModTimeMillis: info.ModTime().UnixMilli(),
-			Size:          info.Size(),
-		})
-		return nil
+		return walkLocalForPushEntry(root, path, d, err, &dirs, &files)
 	})
 	if err != nil {
 		return nil, nil, err
@@ -318,6 +289,41 @@ func walkLocalForPush(root string) ([]string, []localPushFile, error) {
 	// 字典序即浅层在前（"a" < "a/b" < "a/b/c"），父目录先于子目录。
 	sort.Strings(dirs)
 	return dirs, files, nil
+}
+
+// walkLocalForPushEntry 是 walkLocalForPush 的单条目处理逻辑。抽成命名函数只为可测：
+// filepath.Rel / Info() 的失败在真实 WalkDir 下几乎不可复现，单测可直接注入。
+func walkLocalForPushEntry(root, path string, d fs.DirEntry, err error, dirs *[]string, files *[]localPushFile) error {
+	if err != nil {
+		return err
+	}
+	rel, rerr := filepath.Rel(root, path)
+	if rerr != nil {
+		return rerr
+	}
+	if rel == "." {
+		return nil // 根目录本身不处理
+	}
+	relSlash := filepath.ToSlash(rel)
+	if d.IsDir() {
+		*dirs = append(*dirs, relSlash)
+		return nil
+	}
+	info, ierr := d.Info()
+	if ierr != nil {
+		return ierr
+	}
+	// 只推送常规文件；符号链接、设备文件等忽略。
+	if !info.Mode().IsRegular() {
+		return nil
+	}
+	*files = append(*files, localPushFile{
+		RelPath:       relSlash,
+		AbsPath:       path,
+		ModTimeMillis: info.ModTime().UnixMilli(),
+		Size:          info.Size(),
+	})
+	return nil
 }
 
 // pushCreateFolder 在 parentID 下创建名为 name 的文件夹，返回新目录的 fileId。

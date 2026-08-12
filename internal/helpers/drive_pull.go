@@ -82,12 +82,21 @@ func pathCollisionKey(target string, caseInsensitive bool) string {
 	return p
 }
 
-// isCaseInsensitiveFS 探测 dir 所在文件系统是否大小写不敏感：在 dir 下创建一个随机
+// isCaseInsensitiveFS 是大小写探测的注入点（与 httpGetFile / httpPutFile 同样的 seam）：
+// 生产路径始终是 detectCaseInsensitiveFS，测试可替换它，以便在大小写敏感的 CI 文件系统上
+// 也能走到「等价路径冲突」分支。
+var isCaseInsensitiveFS = detectCaseInsensitiveFS
+
+// caseProbePattern 是探针文件名模板。抽成变量只为可测：纯数字模板的大写与原名相同，
+// 可覆盖「名称无大小写差异、无法据此判定」的回退分支。
+var caseProbePattern = "dws-caseprobe-*"
+
+// detectCaseInsensitiveFS 探测 dir 所在文件系统是否大小写不敏感：在 dir 下创建一个随机
 // 小写名探针文件，再用其大写名 stat；命中同一文件即为不敏感。dir 必须已存在。
 // 探测失败时回退到平台默认（Windows / macOS 视为不敏感，其它敏感）。
-func isCaseInsensitiveFS(dir string) bool {
+func detectCaseInsensitiveFS(dir string) bool {
 	platformDefault := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
-	f, err := os.CreateTemp(dir, "dws-caseprobe-*")
+	f, err := os.CreateTemp(dir, caseProbePattern)
 	if err != nil {
 		return platformDefault
 	}
