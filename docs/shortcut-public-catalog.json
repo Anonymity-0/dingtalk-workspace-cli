@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-06T21:08:26.697858",
-  "count": 357,
+  "generated_at": "2026-08-10T17:25:46.245552",
+  "count": 378,
   "results": [
     {
       "suite": "semantic",
@@ -2162,7 +2162,7 @@
       "risk": "read",
       "status": "reviewed_available",
       "disposition": "primary_smart",
-      "semantic_delta": "接受消息列表直接返回的 threadId（兼容 topicId），拉取回复并输出稳定身份、引用、reaction、resourceRefs、可读正文和时间边界分页；可选对回复资源去重后安全落盘并返回逐项失败 ledger。",
+      "semantic_delta": "接受话题主消息 ID 并通过只读消息详情自动解析 conversation/thread，也接受显式 group + threadId（兼容 topicId）；拉取回复并输出稳定身份、引用、reaction、resourceRefs、可读正文，使用下层毫秒级 nextCursor 安全分页以避免同秒回复漏读，并支持全量结果 asc/desc；可选对回复资源去重后安全落盘并返回逐项失败 ledger。",
       "availability": "available"
     },
     {
@@ -3004,46 +3004,274 @@
       "status": "real-ok"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+action-items",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Resolves the latest task through strict itemList parsing and retrieves extracted Minutes actions without pretending to write Todo objects.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+apply-permission",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "Maps view/download/edit intent to policy 4/3/2 and validates the permission-request response.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
       "service": "minutes",
       "command": "+detail",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Fans out selected artifacts, fully paginates transcript data, validates artifact-specific shapes and returns non-zero on partial reads.",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+download",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Resolves real audio/video URLs, validates response shape and performs batch safe atomic local downloads with an explicit failure ledger.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+export-pack",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Validates selected artifacts, safely publishes a no-clobber local directory and emits a manifest without signed URLs or credentials.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+latest",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Validates the real itemList response and chooses latest only from an explicit comparable timestamp before reading details; +latest-minutes remains a compatibility alias.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
       "service": "minutes",
       "command": "+list-all",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "Stable projection of all accessible Minutes with strict itemList response validation.",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "minutes",
       "command": "+list-mine",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "Stable projection of current-user Minutes with strict itemList response validation.",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "minutes",
       "command": "+list-shared",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "Stable projection of shared Minutes with strict itemList response validation.",
+      "availability": "available"
     },
     {
-      "suite": "write",
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+mindmap",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Creates the asynchronous mind-graph task exactly once and polls the explicit 0/1/2 taskStatus to success, failure or timeout.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+prepare-asr",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Reads the real personal hot-word set, computes deterministic add/delete differences, defaults to additive changes and verifies final state.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+record-pause",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "Friendly recording-pause facade with explicit task UUID validation and confirmation.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+record-resume",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "Friendly recording-resume facade with explicit task UUID validation and confirmation.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
       "service": "minutes",
       "command": "+record-start",
       "risk": "write",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "Friendly recording-create facade with explicit confirmation and stable session parameter.",
+      "availability": "available"
     },
     {
-      "suite": "write",
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+record-stop",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "Friendly recording-stop facade with explicit task UUID validation and confirmation.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+record-wrap-up",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Stops recording once, then boundedly waits for selected validated artifacts and preserves taskUuid recovery on partial completion.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
       "service": "minutes",
       "command": "+replace-batch",
       "risk": "write",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Validates multi-rule input, supports JSON/file/stdin and reports partial writes with stop/continue policy and non-zero failure.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+search",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Validated itemList parsing, deterministic title filtering, bounded cursor pagination, de-duplication and completeness ledger; +minutes-search is a compatibility alias.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+share",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Grants semantic view/download/edit permissions per stable member UID with stop/continue partial-write ledgers and explicit acknowledgements.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+speaker-insights",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Requires a real async taskId, boundedly polls speaker summaries and returns task recovery handles when content is not ready.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+speaker-replace",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Fully paginates the transcript to preflight source speaker presence and verifies the nickname replacement after writing.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+summary",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Reads current summary, supports literal/file/stdin, preserves Markdown images, previews the change and verifies full read-back.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+transcript",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Resolves an explicit or latest task, follows every transcript cursor, de-duplicates paragraphs and publishes completeness.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+unshare",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Removes permission per stable member UID with stop/continue partial-write ledgers and explicit acknowledgements.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+update",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "Reads the current title, previews the diff, avoids no-op writes and verifies the final title by read-back.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+upload",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Owns local file validation, create-PUT-complete polling, cancellation compensation and final task read-back verification.",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "minutes",
+      "command": "+upload-and-analyze",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "Completes local upload with compensation, waits for validated artifacts, and optionally orchestrates mind map and speaker insights without re-upload recovery hazards.",
+      "availability": "available"
     },
     {
       "suite": "read",
