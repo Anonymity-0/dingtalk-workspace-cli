@@ -130,24 +130,23 @@ func TestCrossPlatformCoverageDriveSync_unknownIsSkipped(t *testing.T) {
 	}
 }
 
-// exact 模式下本地不可读 → judgeFileMatch 的 MD5 失败要中止整个 sync。
+// exact 模式下本地 MD5 计算失败 → 整个 sync 中止。错误通过 seam 确定性注入，
+// 避免依赖 chmod：Windows 不遵循 POSIX 的 000 权限语义。
 func TestCrossPlatformCoverageDriveSync_md5FailureAborts(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("chmod-based unreadable file needs a non-root user")
-	}
+	testseam.Swap(t, &md5File, func(string) (string, error) {
+		return "", errors.New("md5 boom")
+	})
+
 	dir := t.TempDir()
 	p := filepath.Join(dir, "secret.txt")
 	mustWrite(t, p, "data")
-	if err := os.Chmod(p, 0o000); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(p, 0o644) })
 
 	caller := syncCaller(map[string]string{
 		"ROOT": `{"result":{"items":[{"name":"secret.txt","type":"file","fileId":"S","md5":"abc"}],"nextToken":""}}`,
 	})
-	if err := runDriveCmd(t, caller, "sync", "--local-folder", dir, "--remote-folder", "ROOT"); err == nil {
-		t.Fatal("expected MD5 failure to abort sync")
+	err := runDriveCmd(t, caller, "sync", "--local-folder", dir, "--remote-folder", "ROOT")
+	if err == nil || !strings.Contains(err.Error(), "MD5") {
+		t.Fatalf("expected MD5 failure to abort sync, got %v", err)
 	}
 }
 

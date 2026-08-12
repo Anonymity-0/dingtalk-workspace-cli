@@ -356,8 +356,9 @@ func verifyNoSymlinkEscape(absDir, target string) error {
 }
 
 // md5File 计算文件内容的 MD5，并按 base64 编码返回（与钉盘 list_files 返回的
-// md5 字段编码一致，便于直接字符串比较）。
-func md5File(path string) (string, error) {
+// md5 字段编码一致，便于直接字符串比较）。变量形式只用于测试确定性注入读取失败；
+// 测试必须通过 testseam.Swap 替换并自动恢复。
+var md5File = func(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
