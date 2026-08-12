@@ -4,11 +4,13 @@
 package app
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 )
 
@@ -365,6 +367,24 @@ var paramAliasNewDriveCases = []struct {
 	{command: "drive +upload", emitted: "file-id", canonical: "node"},
 }
 
+// paramAliasNewDriveConfirmationCases selects one newly reviewed alias for
+// every Drive command in the expansion whose declared runtime safety requires
+// confirmation. The full matrix below proves all spellings preserve the
+// confirmed payload; this smaller matrix proves aliases cannot cross the
+// confirmation boundary before any transport call is made.
+var paramAliasNewDriveConfirmationCases = []struct {
+	command   string
+	emitted   string
+	canonical string
+}{
+	{command: "drive +delete", emitted: "file-id", canonical: "node"},
+	{command: "drive +publish-unset", emitted: "document-url", canonical: "node"},
+	{command: "drive +recycle-restore", emitted: "recycle-item-id", canonical: "id"},
+	{command: "drive +rename", emitted: "new-name", canonical: "name"},
+	{command: "drive +upload", emitted: "source-file", canonical: "file"},
+	{command: "drive +version-revert", emitted: "version-number", canonical: "version"},
+}
+
 // paramAliasRepresentativePayloadCases keeps final transport coverage across
 // old concept aliases, command overrides, native compatibility flags, read and
 // write commands, and different products. Every reviewed alias is still
@@ -602,6 +622,45 @@ func TestCrossPlatformCoverageNewDriveParamAliasesReachCanonicalEquivalentFinalP
 	}
 }
 
+func TestCrossPlatformCoverageNewDriveParamAliasesCannotBypassConfirmation(t *testing.T) {
+	for _, test := range paramAliasNewDriveConfirmationCases {
+		test := test
+		t.Run(test.command+"/"+test.emitted, func(t *testing.T) {
+			complete, ok := paramAliasCompleteCommand(test.command, test.canonical)
+			if !ok {
+				t.Fatal("reviewed Drive confirmation alias has no complete-command E2E template")
+			}
+			aliasArgs, replacements := replaceLongFlag(complete, test.canonical, test.emitted)
+			if replacements != 1 {
+				t.Fatalf("complete command must contain canonical --%s exactly once; replacements=%d args=%v", test.canonical, replacements, complete)
+			}
+			unconfirmedArgs, removals := removeExactArg(aliasArgs, "--yes")
+			if removals != 1 {
+				t.Fatalf("confirmation template must contain --yes exactly once; removals=%d args=%v", removals, aliasArgs)
+			}
+
+			entry, exists := cli.LookupParamAlias(test.command)
+			target, active := entry.ResolveAlias(test.emitted)
+			if !exists || !active || target != test.canonical {
+				t.Fatalf("reviewed Drive alias --%s resolution = exists:%v active:%v target:%q, want --%s", test.emitted, exists, active, target, test.canonical)
+			}
+
+			caller := &paramAliasCaptureCaller{}
+			ctx, err := executeParamAliasPayloadE2E(t, caller, unconfirmedArgs...)
+			if ctx == nil {
+				t.Fatal("unconfirmed alias command skipped PreParse")
+			}
+			var appErr *apperrors.Error
+			if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+				t.Fatalf("unconfirmed alias command error = %#v, want confirmation_required\nargs=%v", err, unconfirmedArgs)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("unconfirmed alias command crossed the transport boundary: args=%v calls=%#v", unconfirmedArgs, caller.calls)
+			}
+		})
+	}
+}
+
 // Some artifact commands deliberately continue past the final captured
 // transport call into local download/upload handling. Deterministic invalid
 // resource responses form their expected post-transport test boundary;
@@ -673,4 +732,17 @@ func replaceLongFlag(args []string, canonical, emitted string) ([]string, int) {
 		}
 	}
 	return out, replacements
+}
+
+func removeExactArg(args []string, target string) ([]string, int) {
+	out := make([]string, 0, len(args))
+	removals := 0
+	for _, arg := range args {
+		if arg == target {
+			removals++
+			continue
+		}
+		out = append(out, arg)
+	}
+	return out, removals
 }

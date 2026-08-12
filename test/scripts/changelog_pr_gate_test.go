@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 type changelogGateRepo struct {
@@ -71,6 +72,20 @@ func newChangelogGateRepo(t *testing.T) *changelogGateRepo {
 		t.Fatalf("Abs(repo root) error = %v", err)
 	}
 	root := t.TempDir()
+	// Git may briefly continue automatic repository maintenance after a command
+	// exits on hosted runners. Proactively remove the fixture with bounded
+	// retries before testing.TempDir performs its strict final cleanup.
+	t.Cleanup(func() {
+		var cleanupErr error
+		for attempt := 0; attempt < 10; attempt++ {
+			cleanupErr = os.RemoveAll(root)
+			if cleanupErr == nil {
+				return
+			}
+			time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
+		}
+		t.Errorf("RemoveAll changelog gate repository after retries: %v", cleanupErr)
+	})
 
 	for _, path := range []string{
 		"LICENSE",
@@ -108,6 +123,8 @@ func newChangelogGateRepo(t *testing.T) *changelogGateRepo {
 	changelogGateWrite(t, root, "CHANGELOG.md", changelogGateBase, 0o644)
 
 	changelogGateGit(t, root, "init", "-b", "main")
+	changelogGateGit(t, root, "config", "gc.auto", "0")
+	changelogGateGit(t, root, "config", "maintenance.auto", "false")
 	changelogGateGit(t, root, "config", "user.name", "Changelog Gate Test")
 	changelogGateGit(t, root, "config", "user.email", "changelog-gate@example.com")
 	changelogGateGit(t, root, "add", ".")
@@ -1166,10 +1183,13 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	}
 	raceJob := admission[raceStart:raceEnd]
 	// Full race shards use a dynamic package-level timeout: default/floor 12m,
-	// with cli/smoke raised to 15m for NewRootCommand / Schema assembly under -race.
+	// with app/cli/smoke raised to 15m for NewRootCommand / Schema assembly under
+	// -race on slower hosted runners.
 	for _, want := range []string{
 		"timeout_budget=12m",
-		`if [ "$TEST_SHARD" = "cli" ] || [ "$TEST_SHARD" = "smoke" ]; then`,
+		`if [ "$TEST_SHARD" = "app" ] ||`,
+		`[ "$TEST_SHARD" = "cli" ] ||`,
+		`[ "$TEST_SHARD" = "smoke" ]; then`,
 		"timeout_budget=15m",
 		`go test -v -race -count=1 -timeout="$timeout_budget" "${packages[@]}"`,
 		"- smoke",

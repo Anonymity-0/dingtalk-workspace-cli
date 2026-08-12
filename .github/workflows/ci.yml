@@ -537,10 +537,13 @@ jobs:
           test -n "$package_output"
           mapfile -t packages <<< "$package_output"
           test "${#packages[@]}" -gt 0
-          # cli/smoke own heavy NewRootCommand / Schema assembly under -race; give
-          # them a dedicated budget so remaining is not SIGTERM'd by OOM/timeout.
+          # app/cli/smoke own heavy NewRootCommand / Schema assembly under
+          # -race; give them a dedicated budget so slower hosted runners do not
+          # hit the package timeout while the shards remain independently bounded.
           timeout_budget=12m
-          if [ "$TEST_SHARD" = "cli" ] || [ "$TEST_SHARD" = "smoke" ]; then
+          if [ "$TEST_SHARD" = "app" ] ||
+             [ "$TEST_SHARD" = "cli" ] ||
+             [ "$TEST_SHARD" = "smoke" ]; then
             timeout_budget=15m
           fi
           go test -v -race -count=1 -timeout="$timeout_budget" "${packages[@]}"
