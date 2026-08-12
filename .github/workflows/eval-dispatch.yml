@@ -34,8 +34,8 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      issues: write
-      pull-requests: read
+      # 该 job 仅处理 PR；评论写入也限定在 PR Conversation 这一权限域。
+      pull-requests: write
     steps:
       - name: Check out default branch tooling
         uses: actions/checkout@v4
@@ -69,12 +69,10 @@ jobs:
           PARSE_ERROR: ${{ steps.parse.outputs.error }}
         run: |
           body="❌ /eval 命令解析失败：${PARSE_ERROR}"
-          jq -n --arg body "$body" '{body: $body}' | curl --fail --silent --show-error \
-            -X POST \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            --data @- \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" > /dev/null
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --raw-field body="$body" \
+            > /dev/null
           exit 1
 
       - name: Verify reviewed PR head
@@ -103,13 +101,9 @@ jobs:
           set -euo pipefail
           placeholder_body="🛰️ /eval 请求已通过权限与版本校验，正在生成可验证的评测请求。"
           response="$(
-            jq -n --arg body "$placeholder_body" '{body: $body}' \
-              | curl --fail --silent --show-error \
-                -X POST \
-                -H "Authorization: Bearer ${GH_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                --data @- \
-                "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments"
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+              --raw-field body="$placeholder_body"
           )"
           comment_id="$(
             printf '%s' "$response" \
@@ -277,13 +271,9 @@ jobs:
           fi
           body="<!-- eval-dispatch: ${marker_json} -->"$'\n'"🛰️ /eval 已受理：产品集 \`${PRODUCTS}\`${cases_note}，评测对象 \`${PR_HEAD_SHA}\`。"$'\n'"受控评测服务将在数分钟内处理，完成后由 bot 回贴报告。"
           response="$(
-            jq -n --arg body "$body" '{body: $body}' \
-              | curl --fail --silent --show-error \
-                -X PATCH \
-                -H "Authorization: Bearer ${GH_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                --data @- \
-                "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${DISPATCH_COMMENT_ID}"
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/comments/${DISPATCH_COMMENT_ID}" \
+              --raw-field body="$body"
           )"
           printf '%s' "$response" \
             | jq -e \
@@ -299,12 +289,8 @@ jobs:
           DISPATCH_COMMENT_ID: ${{ steps.placeholder.outputs.comment_id }}
         run: |
           failure_body="❌ /eval 请求准备失败，未生成可消费的评测请求。请稍后重试。"
-          jq -n --arg body "$failure_body" '{body: $body}' \
-            | curl --fail --silent --show-error \
-              -X PATCH \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              --data @- \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${DISPATCH_COMMENT_ID}" \
+          gh api --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/issues/comments/${DISPATCH_COMMENT_ID}" \
+            --raw-field body="$failure_body" \
             > /dev/null \
             || true
