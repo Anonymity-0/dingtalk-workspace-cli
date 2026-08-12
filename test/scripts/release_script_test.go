@@ -1757,6 +1757,16 @@ func TestReleasePrepareChangelogRejectsUnsafeReleaseFragmentEntries(t *testing.T
 			},
 			wantMsg: "invalid release fragment filename",
 		},
+		{
+			// The PR gate is what keeps a nested directory out of `.changes/`;
+			// this covers the release-side backstop that reports it instead of
+			// rendering notes from an unexpected tree shape.
+			name: "nested fragment directory",
+			seed: func(t *testing.T, changesDir string) {
+				mustWriteFile(t, filepath.Join(changesDir, "foo", "bar.md"), []byte(releaseValidFragment), 0o644)
+			},
+			wantMsg: "unexpected directory in release fragments directory",
+		},
 	}
 
 	for _, test := range tests {

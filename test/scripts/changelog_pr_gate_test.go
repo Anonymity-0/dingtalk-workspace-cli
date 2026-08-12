@@ -412,6 +412,134 @@ func TestReleaseFragmentPolicyAcceptsLegalFragmentAlongsideReadmeAndArchive(t *t
 	}
 }
 
+// Git records no diff entry for a directory itself, so adding
+// `.changes/foo/bar.md` only ever surfaces the nested path. Triggering the
+// top-level validation on single-level paths let such a directory reach main
+// untouched and then broke every later fragment render with
+// `unexpected directory`.
+func TestReleaseFragmentPolicyRejectsNestedChangesEntries(t *testing.T) {
+	tests := []struct {
+		name     string
+		seed     func(t *testing.T, root string)
+		wantPath string
+	}{
+		{
+			name: "nested directory only",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/foo/bar.md", changelogGateValidFragment, 0o644)
+			},
+			wantPath: ".changes/foo",
+		},
+		{
+			name: "nested directory alongside a legal fragment",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/1234-chat.md", changelogGateValidFragment, 0o644)
+				changelogGateWrite(t, root, ".changes/foo/bar.md", changelogGateValidFragment, 0o644)
+			},
+			wantPath: ".changes/foo",
+		},
+		{
+			name: "nested directory shadowing the archive name",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/released.d/bar.md", changelogGateValidFragment, 0o644)
+			},
+			wantPath: ".changes/released.d",
+		},
+		{
+			name: "deeply nested directory",
+			seed: func(t *testing.T, root string) {
+				changelogGateWrite(t, root, ".changes/a/b/c/note.md", changelogGateValidFragment, 0o644)
+			},
+			wantPath: ".changes/a",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repo := newChangelogGateRepo(t)
+			test.seed(t, repo.root)
+			repo.commit(t, test.name)
+
+			output, err := repo.runFragmentPolicy(t, repo.base, "HEAD")
+			if err == nil {
+				t.Fatalf("nested .changes entry passed:\n%s", output)
+			}
+			if !strings.Contains(output, ".changes/ accepts only") {
+				t.Fatalf("gate output missing the entry contract:\n%s", output)
+			}
+			if !strings.Contains(output, test.wantPath) {
+				t.Fatalf("gate output missing offending entry %q:\n%s", test.wantPath, output)
+			}
+		})
+	}
+}
+
+// Replacing `.changes` itself empties the child listing, so scanning entries
+// alone would report nothing invalid while the whole fragment directory
+// disappears. Seeded without an active fragment so the archival-move guard
+// cannot mask the directory contract being asserted here.
+func TestReleaseFragmentPolicyRejectsReplacedChangesDirectory(t *testing.T) {
+	repo := newChangelogGateRepo(t)
+	changelogGateWrite(t, repo.root, ".changes/README.md", "# Release fragments\n", 0o644)
+	repo.commit(t, "seed fragment directory")
+	base := strings.TrimSpace(changelogGateGit(t, repo.root, "rev-parse", "HEAD"))
+
+	if err := os.RemoveAll(filepath.Join(repo.root, ".changes")); err != nil {
+		t.Fatalf("RemoveAll(.changes) error = %v", err)
+	}
+	if err := os.Symlink("docs", filepath.Join(repo.root, ".changes")); err != nil {
+		t.Fatalf("Symlink(.changes) error = %v", err)
+	}
+	repo.commit(t, "replace .changes with a symlink")
+
+	output, err := repo.runFragmentPolicy(t, base, "HEAD")
+	if err == nil {
+		t.Fatalf("replaced .changes directory passed:\n%s", output)
+	}
+	if !strings.Contains(output, ".changes must remain a directory") {
+		t.Fatalf("gate output missing the directory contract:\n%s", output)
+	}
+}
+
+// `.changes/README.md` is the contributor contract, not release content, so a
+// documentation-only edit must pass even though no fragment is pending — the
+// renderer rejects an empty fragment set.
+func TestReleaseFragmentPolicyAcceptsReadmeOnlyChangeWithoutPendingFragments(t *testing.T) {
+	repo := newChangelogGateRepo(t)
+	changelogGateWrite(t, repo.root, ".changes/README.md", "# Release fragments\n", 0o644)
+	repo.commit(t, "seed fragment directory")
+	base := strings.TrimSpace(changelogGateGit(t, repo.root, "rev-parse", "HEAD"))
+
+	changelogGateWrite(t, repo.root, ".changes/README.md", "# Release fragments\n\nName each fragment `<name>.md`.\n", 0o644)
+	repo.commit(t, "document the fragment naming rule")
+
+	if output, err := repo.runFragmentPolicy(t, base, "HEAD"); err != nil {
+		t.Fatalf("README-only change rejected: %v\noutput:\n%s", err, output)
+	}
+}
+
+// A README-only edit still revalidates the tree, so pollution that somehow
+// reached the branch is reported by the PR that touches `.changes/` rather than
+// deferred to whichever unrelated PR next adds a fragment.
+func TestReleaseFragmentPolicyReadmeOnlyChangeStillValidatesTree(t *testing.T) {
+	repo := newChangelogGateRepo(t)
+	changelogGateWrite(t, repo.root, ".changes/README.md", "# Release fragments\n", 0o644)
+	changelogGateWrite(t, repo.root, ".changes/Foo.md", changelogGateValidFragment, 0o644)
+	repo.commit(t, "seed polluted fragment directory")
+	base := strings.TrimSpace(changelogGateGit(t, repo.root, "rev-parse", "HEAD"))
+
+	changelogGateWrite(t, repo.root, ".changes/README.md", "# Release fragments\n\nUpdated contract.\n", 0o644)
+	repo.commit(t, "edit only the fragment readme")
+
+	output, err := repo.runFragmentPolicy(t, base, "HEAD")
+	if err == nil {
+		t.Fatalf("README-only change skipped tree validation:\n%s", output)
+	}
+	if !strings.Contains(output, ".changes/Foo.md") {
+		t.Fatalf("gate output missing the pre-existing illegal entry:\n%s", output)
+	}
+}
+
 func TestChangelogPRContentOnlyStillValidatesReleaseNotes(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -94,17 +94,48 @@ else
 	fi
 fi
 
-# Any change to a top-level `.changes/` entry other than README.md must be
-# validated. Filtering this trigger by the legal fragment name pattern would let
-# an illegally named or non-regular entry skip validation entirely, and it would
-# then break the next unrelated PR that adds a legal fragment.
+# `.changes/released/**` carries its own immutability and release-seal checks
+# above, so every other `.changes` change must revalidate the top-level tree.
+# This trigger must not be narrowed to single-level paths or to the legal
+# fragment name pattern: git records no diff entry for a directory itself, so
+# adding `.changes/foo/bar.md` only ever shows the nested path, and an illegally
+# named or non-regular entry only ever shows its own path. Either one would skip
+# validation here and then break the next unrelated PR that adds a legal
+# fragment.
+changes_tree_changed=false
 if git -C "$ROOT" diff --no-ext-diff --name-only "$merge_base" "$head" -- .changes |
   awk '
-    $0 !~ /^\.changes\/[^\/]+$/ { next }
+    $0 ~ /^\.changes\/released\// { next }
+    { found = 1 }
+    END { exit !found }
+  '; then
+  changes_tree_changed=true
+fi
+
+# Re-rendering is driven by fragment changes only. `.changes/README.md` is the
+# contributor contract rather than release content, and it may be edited while no
+# fragment is pending, which the renderer would reject as an empty fragment set.
+fragment_changed=false
+if git -C "$ROOT" diff --no-ext-diff --name-only "$merge_base" "$head" -- .changes |
+  awk '
+    $0 ~ /^\.changes\/released\// { next }
     $0 == ".changes/README.md" { next }
     { found = 1 }
     END { exit !found }
   '; then
+  fragment_changed=true
+fi
+
+if [ "$changes_tree_changed" = true ]; then
+  # `.changes` itself must stay a directory: replacing it with a blob or a
+  # symlink leaves the child listing below empty, which would report no invalid
+  # entries while silently discarding every fragment.
+  changes_root_type="$(git -C "$ROOT" ls-tree "$head" -- .changes | awk 'NR == 1 { print $2 }')"
+  if [ "$changes_root_type" != tree ]; then
+    printf '%s\n' 'error: .changes must remain a directory holding README.md, released/, and release fragments' >&2
+    exit 1
+  fi
+
   git -C "$ROOT" ls-tree "$head" -- .changes/ >"$tmp_root/head-entries"
   awk '
     {
@@ -137,7 +168,7 @@ if git -C "$ROOT" diff --no-ext-diff --name-only "$merge_base" "$head" -- .chang
   # A release-seal branch is already held to the stricter rendered-notes
   # comparison above, and its fragments have moved into the archive, so only an
   # ordinary fragment change is re-rendered here.
-  if [ "$archive_changed" = false ]; then
+  if [ "$fragment_changed" = true ] && [ "$archive_changed" = false ]; then
     head_changes="$tmp_root/head-changes"
     mkdir -p "$head_changes"
     awk '{ path = $0; sub(/^[^\t]*\t/, "", path); print path }' "$tmp_root/head-entries" |
