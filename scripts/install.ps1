@@ -709,6 +709,68 @@ function Cache-MonoSkills {
     }
 }
 
+function Install-MonoToBase {
+    param(
+        [string]$SkillSrc,
+        [string]$BaseDir,
+        [string]$Label
+    )
+
+    if (!(Test-Path $BaseDir)) {
+        New-Item -ItemType Directory -Path $BaseDir -Force | Out-Null
+    }
+    $stageRoot = Join-Path $BaseDir (".dws-mono-set-" + [guid]::NewGuid().ToString("N"))
+    $stagedSkill = Join-Path $stageRoot $SkillName
+    $dest = Join-Path $BaseDir $SkillName
+    $backups = @()
+    $published = @()
+    try {
+        # Stage the complete mono tree before moving any Agent-visible
+        # directory, including every mutually-exclusive managed multi Skill.
+        New-Item -ItemType Directory -Path $stageRoot -Force -ErrorAction Stop | Out-Null
+        Copy-DirRecursive -Source $SkillSrc -Destination $stagedSkill | Out-Null
+
+        $victims = [System.Collections.Generic.List[string]]::new()
+        $victims.Add($dest)
+        foreach ($existing in Get-ChildItem -Path $BaseDir -Directory -ErrorAction SilentlyContinue) {
+            if ($existing.FullName -eq $stageRoot) { continue }
+            if (Test-ManagedMultiSkillDir -Dir $existing.FullName) {
+                $victims.Add($existing.FullName)
+            }
+        }
+
+        $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($victim in $victims) {
+            if (!$seen.Add($victim)) { continue }
+            $backupPath = ""
+            if (!(Backup-SkillDir -Dir $victim -BackupPath ([ref]$backupPath))) {
+                throw "Skill 备份失败: $victim"
+            }
+            if ($backupPath) {
+                $backups += [pscustomobject]@{ Original = $victim; Backup = $backupPath }
+            }
+        }
+
+        $published += $dest
+        Move-SkillPath -Source $stagedSkill -Destination $dest
+    } catch {
+        $transactionError = $_
+        if (!(Restore-MultiSkillSet -Published $published -Backups $backups)) {
+            Write-Say "⚠️  原 Skill 集合自动恢复不完整，请检查上方备份路径"
+        }
+        Write-Say "⚠️  mono Skill 集合发布失败，目标已回滚: $BaseDir ($transactionError)"
+        return $false
+    } finally {
+        if (Test-Path $stageRoot) {
+            Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    $fileCount = (Get-ChildItem -Path $dest -Recurse -File).Count
+    Write-Say "✅ Skills → $Label ($fileCount files)"
+    return $true
+}
+
 function Install-SkillsToHomes {
     param(
         [string]$SkillSrc,
@@ -726,36 +788,12 @@ function Install-SkillsToHomes {
             continue
         }
         $attempted++
-        # Mutual exclusion: back up + remove multi leftovers before laying
-        # down mono. Non-interactive installs cannot confirm, so removals
-        # stay reversible via ~\.dws\skill-backups\ (backup failure keeps
-        # the dir).
-        $cleanupOK = Backup-SkillDir -Dir (Join-Path $baseDir "dws-shared")
-        if ($cleanupOK) {
-            foreach ($existing in Get-ChildItem -Path $baseDir -Directory -ErrorAction SilentlyContinue) {
-                if (!(Test-ManagedMultiSkillDir -Dir $existing.FullName)) { continue }
-                if (!(Backup-SkillDir -Dir $existing.FullName)) {
-                    $cleanupOK = $false
-                    break
-                }
-            }
-        }
-        if (!$cleanupOK) {
-            Write-Say "⚠️  跳过 $baseDir（multi 残留备份失败，未安装 mono）"
-            $failed++
-            continue
-        }
-        $dest = Join-Path $baseDir $SkillName
         if ($Root -eq $HOME) {
             $label = "~\$agentDir\$SkillName"
         } else {
             $label = Join-Path $Root (Join-Path $agentDir $SkillName)
         }
-        if ($installed -eq 0) {
-            $copied = Copy-SkillToDir -SkillSrc $SkillSrc -Dest $dest -Label $label
-        } else {
-            $copied = Copy-SkillToDirSummary -SkillSrc $SkillSrc -Dest $dest -Label $label
-        }
+        $copied = Install-MonoToBase -SkillSrc $SkillSrc -BaseDir $baseDir -Label $label
         if ($copied) {
             $installed++
         } else {
@@ -769,7 +807,7 @@ function Install-SkillsToHomes {
         } else {
             $flabel = Join-Path $Root (Join-Path ".agents\skills" $SkillName)
         }
-        if (Copy-SkillToDir -SkillSrc $SkillSrc -Dest $fallback -Label $flabel) {
+        if (Install-MonoToBase -SkillSrc $SkillSrc -BaseDir (Split-Path $fallback -Parent) -Label $flabel) {
             $installed++
         } else {
             $failed++

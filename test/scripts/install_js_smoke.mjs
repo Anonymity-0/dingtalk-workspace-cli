@@ -31,6 +31,8 @@
  *   8. cache copy failure   — preserves the previous complete cache.
  *   9. multi publish failure — restores the complete previous Skill set.
  *  10. multi backup failure  — restores every earlier successful backup.
+ *  11. mono transaction failure — restores every managed multi Skill after
+ *                                 later backup or mono publish failure.
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
  * install.js itself shells out to). Skips cleanly on win32.
@@ -61,6 +63,7 @@ const installJsSource = path.join(repoRoot, "build", "npm", "install.js");
 const require = createRequire(import.meta.url);
 const {
   publishCacheAtomically,
+  publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
 } = require(installJsSource);
 const assetName = PLATFORM_MAP[`${process.platform}-${process.arch}`];
@@ -429,6 +432,53 @@ scenario("multi set backup failure restores earlier backups", () => {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+for (const failureKind of ["backup", "publish"]) {
+  scenario(`mono set ${failureKind} failure restores the complete previous set`, () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-mono-set-"));
+    const home = path.join(tmp, "home");
+    const source = path.join(tmp, "mono");
+    const base = path.join(home, ".agents", "skills");
+    const first = path.join(base, "dingtalk-first");
+    const second = path.join(base, "dingtalk-second");
+    const dest = path.join(base, "dws");
+    try {
+      writeFile(path.join(source, "SKILL.md"), "new mono\n");
+      writeFile(path.join(first, "SKILL.md"), "old first\n");
+      writeFile(path.join(second, "SKILL.md"), "old second\n");
+
+      const originalRename = fs.renameSync;
+      assert.throws(
+        () =>
+          publishManagedMonoSkillSetAtomically(home, source, base, [dest, first, second], {
+            renameFn(src, target) {
+              if (failureKind === "backup" && src === second) {
+                throw new Error("injected second backup failure");
+              }
+              if (
+                failureKind === "publish" &&
+                src.includes(".dws-mono-set.tmp-") &&
+                path.basename(src) === "dws"
+              ) {
+                throw new Error("injected mono publish failure");
+              }
+              originalRename(src, target);
+            },
+          }),
+        /injected|failed to back up/,
+      );
+      assert.equal(fs.readFileSync(path.join(first, "SKILL.md"), "utf8"), "old first\n");
+      assert.equal(fs.readFileSync(path.join(second, "SKILL.md"), "utf8"), "old second\n");
+      assert.ok(!fs.existsSync(dest), "failed mono transaction must not expose dws/");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-mono-set.tmp-")),
+        "failed mono transaction must clean its staging directory",
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+}
 
 for (const [name, fn] of scenarios) {
   process.stdout.write(`• ${name} ... `);

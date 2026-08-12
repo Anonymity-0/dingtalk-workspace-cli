@@ -233,6 +233,24 @@ function installSkillsToHomes(skillRoot) {
   let attempted = 0;
   let failed = 0;
 
+  const installToBase = (baseDir) => {
+    const victims = [path.join(baseDir, "dws")];
+    if (fs.existsSync(baseDir)) {
+      for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
+        if (entry.isDirectory() && isManagedMultiSkillDir(path.join(baseDir, entry.name), managedNames)) {
+          victims.push(path.join(baseDir, entry.name));
+        }
+      }
+    }
+    try {
+      publishManagedMonoSkillSetAtomically(homeDir, skillRoot, baseDir, victims);
+    } catch (err) {
+      console.warn(`⚠️  跳过 ${baseDir}（mono 集合发布失败，已回滚）: ${err.message}`);
+      return false;
+    }
+    return true;
+  };
+
   AGENT_DIRS.forEach((agentDir, index) => {
     const baseDir = path.join(homeDir, agentDir);
     const parentGate = path.dirname(baseDir);
@@ -240,36 +258,19 @@ function installSkillsToHomes(skillRoot) {
       return;
     }
     attempted += 1;
-    // Mutual exclusion: back up + remove proven DWS-managed multi leftovers
-    // before laying down mono. A dingtalk-* prefix alone is not ownership.
-    // Non-interactive installs cannot confirm, so removals stay reversible via
-    // ~/.dws/skill-backups/ (backup failure keeps the dir).
-    if (fs.existsSync(baseDir)) {
-      for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
-        if (entry.isDirectory() && isManagedMultiSkillDir(path.join(baseDir, entry.name), managedNames)) {
-          if (!backupAndRemoveSkillDir(homeDir, path.join(baseDir, entry.name))) {
-            console.warn(`⚠️  跳过 ${baseDir}（multi 残留备份失败，未安装 mono）`);
-            failed += 1;
-            return;
-          }
-        }
-      }
-    }
-    const destDir = path.join(baseDir, "dws");
-    if (!backupAndRemoveSkillDir(homeDir, destDir)) {
-      // Refreshing an existing skill: on backup failure keep the user's
-      // copy and skip this target.
-      console.warn(`⚠️  跳过 ${destDir}（保留原目录）`);
+    if (installToBase(baseDir)) {
+      installed += 1;
+    } else {
       failed += 1;
-      return;
     }
-    copyChildren(skillRoot, destDir);
-    installed += 1;
   });
 
   if (attempted === 0) {
-    copyChildren(skillRoot, path.join(homeDir, ".agents", "skills", "dws"));
-    installed += 1;
+    if (installToBase(path.join(homeDir, ".agents", "skills"))) {
+      installed += 1;
+    } else {
+      failed += 1;
+    }
   }
   if (installed === 0) {
     throw new Error("未安装任何 mono Skill：所有检测到的 Agent 目标均失败");
@@ -420,6 +421,78 @@ function publishManagedMultiSkillSetAtomically(
       renameFn(item.staged, item.dest);
       published.push(item.dest);
     }
+  } catch (err) {
+    try {
+      restore();
+    } catch (restoreErr) {
+      throw new Error(`${err.message}; rollback failed: ${restoreErr.message}`);
+    }
+    throw err;
+  } finally {
+    removeFn(stageRoot);
+  }
+}
+
+// Publish mono plus every mutually-exclusive managed multi victim as one
+// transaction. The complete dws/ tree is staged before any live directory is
+// moved; a later backup or publish failure restores the exact previous set.
+function publishManagedMonoSkillSetAtomically(
+  homeDir,
+  monoRoot,
+  baseDir,
+  victims,
+  options = {},
+) {
+  const copyFn = options.copyFn || copyChildren;
+  const renameFn = options.renameFn || fs.renameSync;
+  const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.mkdirSync(baseDir, { recursive: true });
+  const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-mono-set.tmp-"));
+  const stagedDir = path.join(stageRoot, "dws");
+  const destDir = path.join(baseDir, "dws");
+  const backups = [];
+  const published = [];
+
+  const restore = () => {
+    const restoreErrors = [];
+    for (let i = published.length - 1; i >= 0; i -= 1) {
+      try {
+        removeFn(published[i]);
+      } catch (err) {
+        restoreErrors.push(`remove ${published[i]}: ${err.message}`);
+      }
+    }
+    for (let i = backups.length - 1; i >= 0; i -= 1) {
+      const item = backups[i];
+      try {
+        fs.mkdirSync(path.dirname(item.original), { recursive: true });
+        renameFn(item.backup, item.original);
+      } catch (err) {
+        restoreErrors.push(`restore ${item.original} from ${item.backup}: ${err.message}`);
+      }
+    }
+    if (restoreErrors.length > 0) {
+      throw new Error(restoreErrors.join("; "));
+    }
+  };
+
+  try {
+    copyFn(monoRoot, stagedDir);
+
+    const seen = new Set();
+    for (const victim of victims) {
+      const normalized = path.resolve(victim);
+      if (seen.has(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      if (!backupAndRemoveSkillDir(homeDir, victim, backups, renameFn)) {
+        throw new Error(`failed to back up Skill directory ${victim}`);
+      }
+    }
+
+    published.push(destDir);
+    renameFn(stagedDir, destDir);
   } catch (err) {
     try {
       restore();
@@ -673,5 +746,6 @@ if (require.main === module) {
 
 module.exports = {
   publishCacheAtomically,
+  publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
 };

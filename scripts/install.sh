@@ -591,6 +591,58 @@ cache_mono_skills() {
   fi
 }
 
+# Publish mono and all mutually-exclusive managed multi directories as one
+# transaction. The complete dws/ tree is staged before any visible directory
+# moves; any later backup or publish failure restores the exact old set.
+_install_mono_to_base() {
+  _mono_src="$1"
+  _mono_base="$2"
+  _mono_label="$3"
+
+  mkdir -p "$_mono_base" || return 1
+  _mono_stage="$(mktemp -d "$_mono_base/.dws-mono-set.XXXXXX")" || return 1
+  _mono_backups="$_mono_stage/.backups"
+  _mono_published="$_mono_stage/.published"
+  : > "$_mono_backups" || { rm -rf "$_mono_stage"; return 1; }
+  : > "$_mono_published" || { rm -rf "$_mono_stage"; return 1; }
+  mkdir -p "$_mono_stage/$SKILL_NAME" || { rm -rf "$_mono_stage"; return 1; }
+  if ! cp -R "$_mono_src/." "$_mono_stage/$SKILL_NAME/" 2>/dev/null && ! cp -r "$_mono_src/." "$_mono_stage/$SKILL_NAME/"; then
+    rm -rf "$_mono_stage"
+    return 1
+  fi
+
+  if ! backup_and_record_skill_dir "$_mono_base/$SKILL_NAME" "$_mono_backups"; then
+    restore_multi_skill_set "$_mono_published" "$_mono_backups" || true
+    rm -rf "$_mono_stage"
+    return 1
+  fi
+  for existing in "$_mono_base"/*/; do
+    [ -d "$existing" ] || continue
+    is_managed_multi_skill_dir "$existing" || continue
+    if ! backup_and_record_skill_dir "$existing" "$_mono_backups"; then
+      restore_multi_skill_set "$_mono_published" "$_mono_backups" || true
+      rm -rf "$_mono_stage"
+      return 1
+    fi
+  done
+
+  _mono_dest="$_mono_base/$SKILL_NAME"
+  printf '%s\n' "$_mono_dest" >> "$_mono_published" || {
+    restore_multi_skill_set "$_mono_published" "$_mono_backups" || true
+    rm -rf "$_mono_stage"
+    return 1
+  }
+  if ! mv "$_mono_stage/$SKILL_NAME" "$_mono_dest"; then
+    say "  ⚠️  mono Skill 集合发布失败，正在恢复原集合: $_mono_dest"
+    restore_multi_skill_set "$_mono_published" "$_mono_backups" || say "  ⚠️  原 Skill 集合自动恢复不完整，请检查上方备份路径"
+    rm -rf "$_mono_stage"
+    return 1
+  fi
+  rm -rf "$_mono_stage" || return 1
+  _mono_count="$(find "$_mono_dest" -type f | wc -l | tr -d ' ')"
+  say "✅ Skills → ${_mono_label} (${_mono_count} files)"
+}
+
 # Install skill tree into all agent homes (same rules as build/npm/install.js installSkillsToHomes).
 # Installing mono removes proven DWS-managed multi leftovers for mutual exclusion,
 # mirroring `dws skill setup --mode mono`.
@@ -626,32 +678,6 @@ install_skills_to_homes() {
       continue
     fi
     attempted=$((attempted + 1))
-    # Mutual exclusion: back up + remove multi leftovers before laying down
-    # mono. Non-interactive installs cannot confirm, so removals stay
-    # reversible via ~/.dws/skill-backups/ (backup failure keeps the dir).
-    cleanup_ok=1
-    backup_and_remove_skill_dir "$base_dir/dws-shared" || cleanup_ok=0
-    if [ "$cleanup_ok" -ne 1 ]; then
-      say "  ⚠️  跳过 ${base_dir}（multi 残留备份失败，未安装 mono）"
-      failed=$((failed + 1))
-      idx=$((idx + 1))
-      continue
-    fi
-    for existing in "$base_dir"/*/; do
-      [ -d "$existing" ] || continue
-      is_managed_multi_skill_dir "$existing" || continue
-      backup_and_remove_skill_dir "$existing" || {
-        cleanup_ok=0
-        break
-      }
-    done
-    if [ "$cleanup_ok" -ne 1 ]; then
-      say "  ⚠️  跳过 ${base_dir}（multi 残留备份失败，未安装 mono）"
-      failed=$((failed + 1))
-      idx=$((idx + 1))
-      continue
-    fi
-    dest="$base_dir/$SKILL_NAME"
     case "$root" in
       "$HOME")
         label="~/$agent_dir/$SKILL_NAME"
@@ -660,13 +686,7 @@ install_skills_to_homes() {
         label="$root/$agent_dir/$SKILL_NAME"
         ;;
     esac
-    if [ "$installed" -eq 0 ]; then
-      if _copy_skill "$skill_src" "$dest" "$label"; then
-        installed=$((installed + 1))
-      else
-        failed=$((failed + 1))
-      fi
-    elif _copy_skill_summary "$skill_src" "$dest" "$label"; then
+    if _install_mono_to_base "$skill_src" "$base_dir" "$label"; then
       installed=$((installed + 1))
     else
       failed=$((failed + 1))
@@ -682,7 +702,7 @@ install_skills_to_homes() {
         flabel="$root/.agents/skills/$SKILL_NAME"
         ;;
     esac
-    if _copy_skill "$skill_src" "$root/.agents/skills/$SKILL_NAME" "$flabel"; then
+    if _install_mono_to_base "$skill_src" "$root/.agents/skills" "$flabel"; then
       installed=$((installed + 1))
     else
       failed=$((failed + 1))
