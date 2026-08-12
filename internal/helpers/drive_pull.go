@@ -34,6 +34,10 @@ const (
 	ifExistsSkip      = "skip"      // 默认：本地已存在则保持不动
 )
 
+// pullCreateTemp 仅作为文件系统失败分支的确定性测试 seam；测试必须通过
+// testseam.Swap 替换并自动恢复。
+var pullCreateTemp = os.CreateTemp
+
 // pull 动作分类。
 const (
 	pullActionDownloaded = "downloaded"
@@ -271,7 +275,7 @@ func pullOneFile(ctx context.Context, spaceID string, rf *remoteFile, localPath,
 	// 先下载到同目录下的临时文件，完整落盘后再原子 rename 覆盖目标：任何中途失败
 	// （网络中断、超时、写盘错误）都不会截断或破坏已存在的原文件。同目录保证
 	// rename 在同一文件系统内、可原子替换；rename 会替换目标符号链接本身而非跟随它。
-	tmp, err := os.CreateTemp(dir, ".dws-pull-*")
+	tmp, err := pullCreateTemp(dir, ".dws-pull-*")
 	if err != nil {
 		return pullActionFailed, fmt.Errorf("创建临时文件失败: %w", err)
 	}

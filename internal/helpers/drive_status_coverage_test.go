@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -201,16 +202,12 @@ func TestCrossPlatformCoverageDriveStatus_unparsableListPropagates(t *testing.T)
 
 // exact 模式下本地文件不可读 → MD5 计算失败要作为错误上抛，不能静默当成一致。
 func TestCrossPlatformCoverageDriveStatus_unreadableLocalFileFailsExactCompare(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
-		t.Skip("chmod-based unreadable file needs POSIX perms and a non-root user")
-	}
 	dir := t.TempDir()
 	p := filepath.Join(dir, "secret.txt")
 	mustWrite(t, p, "data")
-	if err := os.Chmod(p, 0o000); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(p, 0o644) })
+	testseam.Swap(t, &md5File, func(string) (string, error) {
+		return "", errors.New("MD5 boom")
+	})
 
 	caller := &driveScriptCaller{reply: func(_ string, _ map[string]any, _ int) (string, error) {
 		return `{"result":{"items":[{"name":"secret.txt","type":"file","fileId":"S","md5":"abc"}],"nextToken":""}}`, nil
@@ -218,6 +215,21 @@ func TestCrossPlatformCoverageDriveStatus_unreadableLocalFileFailsExactCompare(t
 	err := runDriveCmd(t, caller, "status", "--local-folder", dir, "--remote-folder", "ROOT")
 	if err == nil || !strings.Contains(err.Error(), "MD5") {
 		t.Fatalf("expected MD5 failure, got %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveStatus_walkLocalFailurePropagates(t *testing.T) {
+	dir := t.TempDir()
+	testseam.Swap(t, &runDriveStatusWalkLocalTree, func(string) (map[string]*localFile, error) {
+		return nil, errors.New("walk boom")
+	})
+	caller := &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) {
+		t.Error("local scan failure must abort before MCP calls")
+		return "", nil
+	}}
+	err := runDriveCmd(t, caller, "status", "--local-folder", dir, "--remote-folder", "ROOT")
+	if err == nil || !strings.Contains(err.Error(), "扫描本地目录失败") {
+		t.Fatalf("expected local scan failure, got %v", err)
 	}
 }
 

@@ -102,6 +102,15 @@ func TestCrossPlatformCoverageIsSafeRemoteSegmentPlatform_allowsPlainNames(t *te
 	}
 }
 
+func TestCrossPlatformCoverageIsSafeRemoteSegmentPlatform_rejectsNonCanonicalWindowsName(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		return
+	}
+	if isSafeRemoteSegmentPlatform(`dir\..\file.txt`) {
+		t.Error("Windows non-canonical segment must be rejected")
+	}
+}
+
 // ──────────────────────────────────────────────────────────
 // WalkDir 单条目处理：Info() 与 filepath.Rel 的失败分支
 // ──────────────────────────────────────────────────────────

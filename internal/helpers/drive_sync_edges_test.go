@@ -87,14 +87,10 @@ func TestCrossPlatformCoverageDrivePush_emptyIfExistsDefaultsToSkip(t *testing.T
 
 // 目标目录不可写 → 创建临时文件失败。
 func TestCrossPlatformCoveragePullOneFile_tempFileCreationFailure(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
-		t.Skip("read-only dir enforcement needs POSIX perms and a non-root user")
-	}
 	root := t.TempDir()
-	if err := os.Chmod(root, 0o500); err != nil { // r-x：可遍历不可写
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(root, 0o755) })
+	testseam.Swap(t, &pullCreateTemp, func(string, string) (*os.File, error) {
+		return nil, errors.New("create temp boom")
+	})
 
 	prevDeps, prevArgs := deps, os.Args
 	deps = &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: io.Discard}}
@@ -244,14 +240,10 @@ func TestCrossPlatformCoverageReserveSyncKeepBothTarget_escapeFails(t *testing.T
 
 // 候选目标所在目录不可写 → OpenFile 以非 EEXIST 错误失败，直接上报。
 func TestCrossPlatformCoverageReserveSyncKeepBothTarget_unwritableDirFails(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
-		t.Skip("read-only dir enforcement needs POSIX perms and a non-root user")
-	}
 	root := t.TempDir()
-	if err := os.Chmod(root, 0o500); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(root, 0o755) })
+	testseam.Swap(t, &syncOpenFile, func(string, int, os.FileMode) (*os.File, error) {
+		return nil, errors.New("open file boom")
+	})
 
 	if _, _, err := reserveSyncKeepBothTarget(root, "f.txt", "FID12345678", map[string]bool{}); err == nil {
 		t.Fatal("expected unwritable directory to fail")

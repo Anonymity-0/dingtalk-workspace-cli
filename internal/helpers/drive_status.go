@@ -388,6 +388,10 @@ func walkLocalTree(root string) (map[string]*localFile, error) {
 	return files, nil
 }
 
+// runDriveStatusWalkLocalTree 仅作为 runDriveStatus 扫描失败分支的确定性测试 seam；
+// 测试必须通过 testseam.Swap 替换并自动恢复。
+var runDriveStatusWalkLocalTree = walkLocalTree
+
 // walkLocalTreeEntry 是 walkLocalTree 的单条目处理逻辑。抽成命名函数只为可测：
 // Info() / filepath.Rel 的失败在真实 WalkDir 下几乎不可复现，单测可直接注入。
 func walkLocalTreeEntry(root, path string, d fs.DirEntry, err error, files map[string]*localFile) error {
@@ -531,7 +535,7 @@ func runDriveStatus(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	local, err := walkLocalTree(absDir)
+	local, err := runDriveStatusWalkLocalTree(absDir)
 	if err != nil {
 		return fmt.Errorf("扫描本地目录失败: %w", err)
 	}

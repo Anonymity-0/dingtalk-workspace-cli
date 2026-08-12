@@ -14,6 +14,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// syncRename 与 syncOpenFile 仅作为文件系统失败分支的确定性测试 seam；测试必须
+// 通过 testseam.Swap 替换并自动恢复。
+var (
+	syncRename   = os.Rename
+	syncOpenFile = os.OpenFile
+)
+
 // ==========================================================
 // drive sync — 本地与钉盘双向同步（本地 ⇄ Drive）
 // ==========================================================
@@ -415,7 +422,7 @@ func syncKeepBoth(res *driveSyncResult, ctx context.Context, spaceID string, rf 
 	}
 	// newAbs 此刻是我们刚用 O_EXCL 新建的空占位文件，覆盖它不会丢用户数据；且已确保它
 	// 不与任何等价既有文件冲突。
-	if err := os.Rename(oldAbs, newAbs); err != nil {
+	if err := syncRename(oldAbs, newAbs); err != nil {
 		_ = os.Remove(newAbs) // 清理空占位，避免残留
 		res.Summary.Failed++
 		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: fmt.Sprintf("本地改名保留失败: %v", err)})
@@ -434,7 +441,7 @@ func syncKeepBoth(res *driveSyncResult, ctx context.Context, spaceID string, rf 
 		if perr != nil {
 			msg = perr.Error()
 		}
-		if rbErr := os.Rename(newAbs, oldAbs); rbErr != nil {
+		if rbErr := syncRename(newAbs, oldAbs); rbErr != nil {
 			if msg != "" {
 				msg += "; "
 			}
@@ -498,7 +505,7 @@ func reserveSyncKeepBothTarget(absDir, rel, fileID string, occupied map[string]b
 		if err != nil {
 			return "", "", err // 逃逸/符号链接等，直接失败
 		}
-		f, oerr := os.OpenFile(abs, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		f, oerr := syncOpenFile(abs, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 		if oerr == nil {
 			_ = f.Close()
 			return cand, abs, nil

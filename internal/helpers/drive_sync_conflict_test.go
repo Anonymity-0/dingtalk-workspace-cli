@@ -6,9 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 // failFolderCaller 让指定名字的 create_folder 失败，其余一切正常，
@@ -137,15 +138,11 @@ func TestCrossPlatformCoverageSyncKeepBoth_collidedIsFailed(t *testing.T) {
 
 // 占用改名目标失败（目录不可写）→ failed。
 func TestCrossPlatformCoverageSyncKeepBoth_reserveFailureIsFailed(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
-		t.Skip("read-only dir enforcement needs POSIX perms and a non-root user")
-	}
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "f.txt"), "local")
-	if err := os.Chmod(root, 0o500); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(root, 0o755) })
+	testseam.Swap(t, &syncOpenFile, func(string, int, os.FileMode) (*os.File, error) {
+		return nil, errors.New("open file boom")
+	})
 
 	res := &driveSyncResult{}
 	syncKeepBoth(res, context.Background(), "", &remoteFile{RelPath: "f.txt", FileID: "FID12345678"},
@@ -158,10 +155,10 @@ func TestCrossPlatformCoverageSyncKeepBoth_reserveFailureIsFailed(t *testing.T) 
 // 改名本身失败（本地原文件其实是目录）→ failed，并清理刚建的空占位。
 func TestCrossPlatformCoverageSyncKeepBoth_renameFailureCleansPlaceholder(t *testing.T) {
 	root := t.TempDir()
-	// rel 指向一个非空目录：os.Rename(dir, emptyFile) 会失败。
-	if err := os.MkdirAll(filepath.Join(root, "f.txt", "inner"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	mustWrite(t, filepath.Join(root, "f.txt"), "local")
+	testseam.Swap(t, &syncRename, func(string, string) error {
+		return errors.New("rename boom")
+	})
 	res := &driveSyncResult{}
 	occupied := map[string]bool{}
 	syncKeepBoth(res, context.Background(), "", &remoteFile{RelPath: "f.txt", FileID: "FID12345678"},
