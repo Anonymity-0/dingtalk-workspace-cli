@@ -349,7 +349,7 @@ func pullOneFile(ctx context.Context, spaceID string, rf *remoteFile, localPath,
 		t := time.UnixMilli(rf.ModifiedTime)
 		_ = os.Chtimes(tmpPath, t, t)
 	}
-	if err := os.Rename(tmpPath, localPath); err != nil {
+	if err := driveReplaceFile(tmpPath, localPath); err != nil {
 		return pullActionFailed, fmt.Errorf("替换目标文件失败: %w", err)
 	}
 	committed = true

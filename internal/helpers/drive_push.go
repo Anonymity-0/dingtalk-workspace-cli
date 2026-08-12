@@ -274,8 +274,12 @@ func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, f
 				if err := claimRemotePath(occupied, childRel, "目录"); err != nil {
 					return err
 				}
-				folders[childRel] = it.id()
-				if err := walkRemoteForPush(ctx, spaceID, it.id(), childRel, files, folders, occupied, depth+1); err != nil {
+				folderID := it.id()
+				if folderID == "" {
+					return fmt.Errorf("远端目录 %q 缺少目录 ID，已中止递归", childRel)
+				}
+				folders[childRel] = folderID
+				if err := walkRemoteForPush(ctx, spaceID, folderID, childRel, files, folders, occupied, depth+1); err != nil {
 					return err
 				}
 				continue

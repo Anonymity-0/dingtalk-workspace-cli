@@ -153,8 +153,12 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 				if err := claimRemotePath(occupied, childRel, "目录"); err != nil {
 					return err
 				}
+				folderID := it.id()
+				if folderID == "" {
+					return fmt.Errorf("远端目录 %q 缺少目录 ID，已中止递归", childRel)
+				}
 				// 用子文件夹的 dentryUuid 作为下一层 parentId 递归进入。
-				if err := walkRemoteDir(ctx, spaceID, it.id(), childRel, out, occupied, depth+1); err != nil {
+				if err := walkRemoteDir(ctx, spaceID, folderID, childRel, out, occupied, depth+1); err != nil {
 					return err
 				}
 				continue
@@ -220,7 +224,7 @@ func (d driveItem) str(keys ...string) string {
 }
 
 func (d driveItem) name() string { return d.str("name") }
-func (d driveItem) id() string   { return d.str("fileId") }
+func (d driveItem) id() string   { return d.str("fileId", "dentryUuid", "dentryId", "id", "nodeId") }
 func (d driveItem) typ() string  { return d.str("type") }
 func (d driveItem) hash() string { return d.str("md5") }
 func (d driveItem) path() string { return d.str("path") }

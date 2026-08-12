@@ -17,7 +17,7 @@ import (
 // syncRename 与 syncOpenFile 仅作为文件系统失败分支的确定性测试 seam；测试必须
 // 通过 testseam.Swap 替换并自动恢复。
 var (
-	syncRename   = os.Rename
+	syncRename   = driveReplaceFile
 	syncOpenFile = os.OpenFile
 )
 
