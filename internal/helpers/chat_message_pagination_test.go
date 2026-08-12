@@ -148,6 +148,90 @@ func TestChatMessagePaginationDefaultSinglePageUnchanged(t *testing.T) {
 	}
 }
 
+func TestChatMessagePaginationUsesDefaultTimeWindows(t *testing.T) {
+	tests := []struct {
+		name         string
+		args         []string
+		wantTool     string
+		wantLookback time.Duration
+	}{
+		{
+			name:         "list-all defaults to one day",
+			args:         []string{"message", "list-all"},
+			wantTool:     "search_messages_by_time_range",
+			wantLookback: 24 * time.Hour,
+		},
+		{
+			name:         "list-by-sender defaults to seven days",
+			args:         []string{"message", "list-by-sender", "--sender-user-id", "u1"},
+			wantTool:     "search_messages_by_sender",
+			wantLookback: 7 * 24 * time.Hour,
+		},
+		{
+			name:         "list-mentions defaults to seven days",
+			args:         []string{"message", "list-mentions"},
+			wantTool:     "search_at_me_message",
+			wantLookback: 7 * 24 * time.Hour,
+		},
+		{
+			name:         "search defaults to seven days",
+			args:         []string{"message", "search", "--query", "发布"},
+			wantTool:     "search_messages_by_keyword",
+			wantLookback: 7 * 24 * time.Hour,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &chatMessagePaginationCaller{}
+			before := time.Now()
+			_, err := executeChatMessagePaginationCommand(t, caller, tt.args...)
+			after := time.Now()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("calls = %#v, want one call", caller.calls)
+			}
+			got := caller.calls[0]
+			if got.tool != tt.wantTool {
+				t.Fatalf("tool = %q, want %q", got.tool, tt.wantTool)
+			}
+			startMs := numericArgAsInt64(t, got.args["startTime"])
+			endMs := numericArgAsInt64(t, got.args["endTime"])
+			if endMs < before.UnixMilli() || endMs > after.Add(time.Second).UnixMilli() {
+				t.Fatalf("endTime = %d, want between %d and %d", endMs, before.UnixMilli(), after.Add(time.Second).UnixMilli())
+			}
+			wantStartMin := before.Add(-tt.wantLookback).UnixMilli()
+			wantStartMax := after.Add(-tt.wantLookback).Add(time.Second).UnixMilli()
+			if startMs < wantStartMin || startMs > wantStartMax {
+				t.Fatalf("startTime = %d, want between %d and %d", startMs, wantStartMin, wantStartMax)
+			}
+		})
+	}
+}
+
+func numericArgAsInt64(t *testing.T, value any) int64 {
+	t.Helper()
+	switch v := value.(type) {
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	case float64:
+		return int64(v)
+	case string:
+		parsed, err := parseISOTimeToMillis("time", v)
+		if err != nil {
+			t.Fatalf("parse time arg %q: %v", v, err)
+		}
+		return parsed
+	default:
+		t.Fatalf("unsupported numeric arg type %T (%#v)", value, value)
+		return 0
+	}
+}
+
 func TestChatMessagePaginationPageAllAggregatesSevenCommands(t *testing.T) {
 	tests := []struct {
 		name      string
