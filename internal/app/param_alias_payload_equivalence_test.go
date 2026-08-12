@@ -405,6 +405,7 @@ var paramAliasRepresentativePayloadCases = map[string]bool{
 	paramAliasPayloadCaseKey("devdoc article search", "current-page"):                true, // command override
 	paramAliasPayloadCaseKey("doc +comment-create", "body"):                          true, // write shortcut content alias
 	paramAliasPayloadCaseKey("doc +copy", "parent-folder-id"):                        true, // Doc folder role on a write shortcut
+	paramAliasPayloadCaseKey("doc create", "space-id"):                               true, // published Doc workspace compatibility remains payload-equivalent
 	paramAliasPayloadCaseKey("doc +create", "content-format"):                        true, // shortcut format alias preserves markdown/jsonml enum
 	paramAliasPayloadCaseKey("doc +create-from-template", "keyword"):                 true, // template search alias composes with a write workflow
 	paramAliasPayloadCaseKey("doc +create-from-template", "workspace-id"):            true, // template target workspace identifier
@@ -424,6 +425,7 @@ var paramAliasRepresentativePayloadCases = map[string]bool{
 	paramAliasPayloadCaseKey("doc block insert", "parent-block-id"):                  true, // scoped block-role alias
 	paramAliasPayloadCaseKey("doc comment delete", "comment-id"):                     true, // destructive comment-key alias
 	paramAliasPayloadCaseKey("doc comment reply", "mentioned-open-conversation-ids"): true, // list-valued group mention role
+	paramAliasPayloadCaseKey("drive info", "workspace"):                              true, // published numeric storage-space compatibility remains payload-equivalent
 	paramAliasPayloadCaseKey("mail folder update", "folder-id"):                      true, // write-command identifier alias
 	paramAliasPayloadCaseKey("report list", "from-date"):                             true, // date-range concept alias
 }
