@@ -159,3 +159,22 @@ func TestCrossPlatformCoverageChatSendCardHelpUsesCanonicalIDFlags(t *testing.T)
 		}
 	}
 }
+
+func TestCrossPlatformCoverageChatGroupAuditJoinValidationHelpKeepsLegacyGroup(t *testing.T) {
+	cmd := newChatCommand()
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	cmd.SetArgs([]string{"group", "audit-join-validation", "--help"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("chat group audit-join-validation --help: %v\n%s", err, output.String())
+	}
+
+	help := output.String()
+	if !strings.Contains(help, "--group") {
+		t.Fatalf("audit-join-validation help missing --group:\n%s", help)
+	}
+	if strings.Contains(help, "--conversation-id") {
+		t.Fatalf("audit-join-validation help exposes unapproved migration flag --conversation-id:\n%s", help)
+	}
+}

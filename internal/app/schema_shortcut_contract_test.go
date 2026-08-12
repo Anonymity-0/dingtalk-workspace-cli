@@ -207,7 +207,11 @@ func assertChatCatalogCompleteLeafContracts(t testing.TB) {
 	})
 
 	auditJoin := executeShortcutSchemaQuery(t, "--cli-path", "chat group audit-join-validation")
+	assertSchemaLeafParameterRequired(t, auditJoin, "chat group audit-join-validation", "group", true)
 	assertSchemaLeafParameterEnum(t, auditJoin, "chat group audit-join-validation", "status", []string{"AuditApprove", "AuditDelete"})
+	if parameters := schemaContractMap(auditJoin["parameters"]); parameters["conversation-id"] != nil {
+		t.Fatalf("chat group audit-join-validation publishes unapproved --conversation-id migration: %#v", parameters["conversation-id"])
+	}
 }
 
 func assertSchemaLeafParameterRequired(t testing.TB, leaf map[string]any, cliPath, name string, want bool) {

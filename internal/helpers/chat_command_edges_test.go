@@ -319,6 +319,71 @@ func TestCrossPlatformCoverageChatNativeSendCardMentions(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageChatSendCardHiddenAliasesMapToCanonicalPayload(t *testing.T) {
+	previousDeps, previousArgs := deps, os.Args
+	os.Args = []string{"dws", "chat"}
+	t.Cleanup(func() { deps, os.Args = previousDeps, previousArgs })
+
+	for _, tc := range []struct {
+		name string
+		args []string
+		want map[string]any
+	}{
+		{
+			name: "group alias",
+			args: []string{"--group=cid"},
+			want: map[string]any{"openConversationId": "cid"},
+		},
+		{
+			name: "receiver alias",
+			args: []string{"--receiver=D1"},
+			want: map[string]any{"receiverOpenDingTalkId": "D1"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			err := runChatCoverageCommand(t, caller, append([]string{"message", "send-card"}, tc.args...)...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if caller.calls != 1 || caller.server != "im" || caller.tool != "create_and_send_card" || !reflect.DeepEqual(caller.args, tc.want) {
+				t.Fatalf("call = count:%d server:%q tool:%q args:%#v, want %#v", caller.calls, caller.server, caller.tool, caller.args, tc.want)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageChatGroupAuditJoinValidationUsesGroupPayload(t *testing.T) {
+	previousDeps, previousArgs := deps, os.Args
+	os.Args = []string{"dws", "chat"}
+	t.Cleanup(func() { deps, os.Args = previousDeps, previousArgs })
+
+	caller := &scriptedToolCaller{}
+	err := runChatCoverageCommand(t, caller,
+		"group", "audit-join-validation",
+		"--group=cid",
+		"--record-id=123",
+		"--applicant=D-applicant",
+		"--inviter=D-inviter",
+		"--status=AuditDelete",
+		"--description=deny",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]any{
+		"openConversationId": "cid",
+		"applyRecordId":      int64(123),
+		"applicantUid":       "D-applicant",
+		"inviterUid":         "D-inviter",
+		"status":             "AuditDelete",
+		"auditDescription":   "deny",
+	}
+	if caller.calls != 1 || caller.server != "im" || caller.tool != "audit_join_group" || !reflect.DeepEqual(caller.args, want) {
+		t.Fatalf("call = count:%d server:%q tool:%q args:%#v, want %#v", caller.calls, caller.server, caller.tool, caller.args, want)
+	}
+}
+
 func TestCrossPlatformCoverageChatWebhookReplyConversationAndDownloadEdges(t *testing.T) {
 	previousDeps, previousArgs := deps, os.Args
 	os.Args = []string{"dws", "chat"}

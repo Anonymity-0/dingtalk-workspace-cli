@@ -967,11 +967,8 @@ var generatedParamAliases = []ParamAliasEntry{
 		Blocked: []string{"at-user-ids", "conversation-ids", "dest-conversation-id", "group-id", "group-ids", "group-name", "name", "open-conversation-ids", "source", "src-conversation-id", "target", "to-user", "user-ids", "users"},
 	},
 	{
-		CLIPath: "chat group audit-join-validation",
-		Aliases: map[string]string{
-			"chat-id": "conversation-id",
-		},
-		Blocked:   []string{"conversation-ids", "dest-conversation-id", "group-id", "group-ids", "group-name", "name", "open-conversation-ids", "source", "src-conversation-id", "target"},
+		CLIPath:   "chat group audit-join-validation",
+		Blocked:   []string{"chat", "chat-id", "conversation-id", "conversation-ids", "dest-conversation-id", "group-id", "group-ids", "group-name", "id", "name", "open-conversation-id", "open-conversation-ids", "source", "src-conversation-id", "target"},
 		Ambiguous: []string{"staff-id", "uid", "user", "user-id", "userid"},
 	},
 	{
