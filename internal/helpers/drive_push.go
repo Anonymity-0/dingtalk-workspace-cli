@@ -223,13 +223,14 @@ func runDrivePush(cmd *cobra.Command, _ []string) error {
 func fetchRemoteTreeForPush(ctx context.Context, spaceID, rootID string) (map[string]*remoteFile, map[string]string, error) {
 	files := make(map[string]*remoteFile)
 	folders := map[string]string{"": rootID}
-	if err := walkRemoteForPush(ctx, spaceID, rootID, "", files, folders, 0); err != nil {
+	occupied := make(map[string]string)
+	if err := walkRemoteForPush(ctx, spaceID, rootID, "", files, folders, occupied, 0); err != nil {
 		return nil, nil, err
 	}
 	return files, folders, nil
 }
 
-func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, files map[string]*remoteFile, folders map[string]string, depth int) error {
+func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, files map[string]*remoteFile, folders map[string]string, occupied map[string]string, depth int) error {
 	if depth > remoteMaxDepth {
 		return fmt.Errorf("drive 目录层级超过 %d 层，疑似循环引用，已中止", remoteMaxDepth)
 	}
@@ -270,14 +271,20 @@ func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, f
 				childRel = relBase + "/" + name
 			}
 			if it.isFolder() {
+				if err := claimRemotePath(occupied, childRel, "目录"); err != nil {
+					return err
+				}
 				folders[childRel] = it.id()
-				if err := walkRemoteForPush(ctx, spaceID, it.id(), childRel, files, folders, depth+1); err != nil {
+				if err := walkRemoteForPush(ctx, spaceID, it.id(), childRel, files, folders, occupied, depth+1); err != nil {
 					return err
 				}
 				continue
 			}
 			if !it.isFile() {
 				continue
+			}
+			if err := claimRemotePath(occupied, childRel, "文件"); err != nil {
+				return err
 			}
 			modMillis, modValid := it.modifiedMillis()
 			files[childRel] = &remoteFile{

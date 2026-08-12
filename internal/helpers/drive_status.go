@@ -91,17 +91,18 @@ const remoteMaxDepth = 64
 //   - 只纳入明确 type=FILE 的条目，其余类型（在线文档、快捷方式等）一律跳过。
 func fetchRemoteDriveTree(ctx context.Context, spaceID, parentID string, quick bool) (map[string]*remoteFile, error) {
 	out := make(map[string]*remoteFile)
-	if err := walkRemoteDir(ctx, spaceID, parentID, "", out, 0); err != nil {
+	occupied := make(map[string]string)
+	if err := walkRemoteDir(ctx, spaceID, parentID, "", out, occupied, 0); err != nil {
 		return nil, err
 	}
 	_ = quick // hash 与 modified_time 都会被填充，比对模式由 compareTrees 决定
 	return out, nil
 }
 
-// walkRemoteDir 遍历 parentID 指向的文件夹，把其中的二进制文件写入 out（key 为 rel_path，
-// 同名后者覆盖），并递归进入子文件夹。relBase 是当前文件夹相对遍历起点的路径前缀，
-// 用于拼接子项的 rel_path。
-func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out map[string]*remoteFile, depth int) error {
+// walkRemoteDir 遍历 parentID 指向的文件夹，把其中的二进制文件写入 out（key 为 rel_path），
+// 并递归进入子文件夹。occupied 同时记录文件和目录；精确路径被第二个条目占用时立即失败，
+// 防止分页或返回顺序决定最终镜像。relBase 是当前文件夹相对遍历起点的路径前缀。
+func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out map[string]*remoteFile, occupied map[string]string, depth int) error {
 	if depth > remoteMaxDepth {
 		return fmt.Errorf("drive 目录层级超过 %d 层，疑似循环引用，已中止", remoteMaxDepth)
 	}
@@ -149,8 +150,11 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 			}
 
 			if it.isFolder() {
+				if err := claimRemotePath(occupied, childRel, "目录"); err != nil {
+					return err
+				}
 				// 用子文件夹的 dentryUuid 作为下一层 parentId 递归进入。
-				if err := walkRemoteDir(ctx, spaceID, it.id(), childRel, out, depth+1); err != nil {
+				if err := walkRemoteDir(ctx, spaceID, it.id(), childRel, out, occupied, depth+1); err != nil {
 					return err
 				}
 				continue
@@ -158,6 +162,9 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 			// 只纳入明确 type=FILE 的条目；在线文档、快捷方式等其它类型一律跳过。
 			if !it.isFile() {
 				continue
+			}
+			if err := claimRemotePath(occupied, childRel, "文件"); err != nil {
+				return err
 			}
 
 			modMillis, modValid := it.modifiedMillis()
@@ -177,6 +184,16 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 		}
 		nextToken = token
 	}
+	return nil
+}
+
+// claimRemotePath 保证一棵远端树中的每个精确 rel_path 只对应一个文件或目录。
+// 重复条目会让本地镜像不可完整表达，因此必须失败，不能任意选择其中一个 fileId。
+func claimRemotePath(occupied map[string]string, rel, kind string) error {
+	if previous, exists := occupied[rel]; exists {
+		return fmt.Errorf("检测到重复远端路径 %q（已有%s，重复%s），无法构建确定性镜像", rel, previous, kind)
+	}
+	occupied[rel] = kind
 	return nil
 }
 
