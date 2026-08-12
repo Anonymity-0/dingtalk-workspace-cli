@@ -1,0 +1,549 @@
+package helpers
+
+import (
+	"context"
+	"crypto/md5"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/fs"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/spf13/cobra"
+)
+
+// ==========================================================
+// drive status — 比较本地文件夹与钉盘文件夹的差异
+// ==========================================================
+// ──────────────────────────────────────────────────────────
+// dws drive status — 比较本地文件夹与钉盘文件夹的差异
+//
+// 只读命令：本地取 --local-folder（绝对路径），钉盘取 --remote-folder
+// （文件夹 dentryUuid）指向的文件夹，按精确 MD5（默认）或快速 modified_time
+// （--quick）逐文件比对，输出 new_local / new_remote / modified / unchanged /
+// unknown 五类差异（exact 模式远端无可靠 md5 的文件归入 unknown）。两侧各自递归
+// 遍历，rel_path 相对各自根目录。
+//
+// 后端交互（按 parentId 递归拉取 list_files、只保留 type=file 的二进制文件、并为
+// 每个条目填充 hash 或者 modified_time），见 fetchRemoteDriveTree。
+// ──────────────────────────────────────────────────────────
+
+// driveStatusEntry 是输出 schema 中每个差异项的形态：{"rel_path": "..."}。
+type driveStatusEntry struct {
+	RelPath string `json:"rel_path"`
+}
+
+// driveStatusResult 是 status 命令成功时的输出 schema。
+// 五个切片都初始化为非 nil，保证 JSON 序列化为 [] 而不是 null。
+//
+// unknown：exact 模式下双端都存在、但远端未返回可靠 md5 的文件——此时无法核对
+// 内容，既不能判 unchanged（会误报未变更），也不宜硬判 modified（会误报变更），
+// 如实归入 unknown，让降级模式在输出里显式可见。quick 模式不会产生 unknown。
+type driveStatusResult struct {
+	Detection string             `json:"detection"`
+	NewLocal  []driveStatusEntry `json:"new_local"`
+	NewRemote []driveStatusEntry `json:"new_remote"`
+	Modified  []driveStatusEntry `json:"modified"`
+	Unchanged []driveStatusEntry `json:"unchanged"`
+	Unknown   []driveStatusEntry `json:"unknown"`
+}
+
+// localFile 描述一个本地常规文件。
+type localFile struct {
+	RelPath       string
+	AbsPath       string // 绝对路径，用于按需计算 MD5
+	Hash          string // MD5（base64）；仅在双端都存在且非 quick 模式时按需计算
+	Size          int64  // 本地文件字节数
+	ModTimeMillis int64  // 本地 mtime，Unix 毫秒
+}
+
+// remoteFile 描述一个云端 type=file 的二进制文件。
+// 由 fetchRemoteDriveTree 填充。
+type remoteFile struct {
+	RelPath           string
+	FileID            string // dentryUuid；pull 下载时作为 download_file 的 fileId
+	Hash              string // 远端 md5（base64，exact 模式用；为空时该文件归入 unknown）
+	Size              int64  // 远端文件字节数
+	ModifiedTime      int64  // 远端 modified_time，Unix 毫秒（quick / smart 模式比较用）
+	ModifiedTimeValid bool   // 远端时间戳是否可信；不可信时走保守路径
+}
+
+// 每次 list_files 请求的分页大小。后端约束 maxResults 必须在 1..50 之间。
+const driveListPageSize = 50
+
+// remoteMaxDepth 是递归遍历子文件夹的最大层级，防止云端目录出现环形引用时死循环。
+const remoteMaxDepth = 64
+
+// fetchRemoteDriveTree 递归拉取云端文件夹 parentID 下的文件树，返回所有 type=FILE 的
+// 二进制文件索引（key 为 rel_path）。spaceID 为空时省略 spaceId 参数，由 MCP Server
+// 默认到「我的文件」（与其它 drive 命令一致）；parentID 为待比对的云端根文件夹 dentryUuid。
+//
+// 实现要点：
+//   - 通过 drive 的 list_files MCP 工具，按 parentId（文件夹 dentryUuid）逐层遍历；
+//   - 单个目录文件过多时按 nextToken 分批拉取（maxResults ≤ 50）；
+//   - 遇到子文件夹用其 dentryUuid 作为下一层的 parentId 递归进入；
+//   - rel_path 由各层文件夹名逐层拼接得到（相对 parentID 根），与本地相对路径对齐；
+//   - 只纳入明确 type=FILE 的条目，其余类型（在线文档、快捷方式等）一律跳过。
+func fetchRemoteDriveTree(ctx context.Context, spaceID, parentID string, quick bool) (map[string]*remoteFile, error) {
+	out := make(map[string]*remoteFile)
+	if err := walkRemoteDir(ctx, spaceID, parentID, "", out, 0); err != nil {
+		return nil, err
+	}
+	_ = quick // hash 与 modified_time 都会被填充，比对模式由 compareTrees 决定
+	return out, nil
+}
+
+// walkRemoteDir 遍历 parentID 指向的文件夹，把其中的二进制文件写入 out（key 为 rel_path，
+// 同名后者覆盖），并递归进入子文件夹。relBase 是当前文件夹相对遍历起点的路径前缀，
+// 用于拼接子项的 rel_path。
+func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out map[string]*remoteFile, depth int) error {
+	if depth > remoteMaxDepth {
+		return fmt.Errorf("drive 目录层级超过 %d 层，疑似循环引用，已中止", remoteMaxDepth)
+	}
+
+	nextToken := ""
+	for {
+		args := map[string]any{"maxResults": float64(driveListPageSize)}
+		// space-id 为空则省略，交给 MCP Server 默认「我的文件」。
+		if spaceID != "" {
+			args["spaceId"] = spaceID
+		}
+		// 按 parentId（文件夹 dentryUuid）导航；空则由 MCP Server 默认列空间根目录。
+		if parentID != "" {
+			args["parentId"] = parentID
+		}
+		if nextToken != "" {
+			args["nextToken"] = nextToken
+		}
+
+		text, err := callMCPToolReturnText(ctx, "list_files", args)
+		if err != nil {
+			return err
+		}
+
+		items, token, err := parseDriveList(text)
+		if err != nil {
+			return err
+		}
+
+		for _, it := range items {
+			name := it.name()
+			if name == "" {
+				continue
+			}
+			// 远端名称可能含 ..、分隔符或卷标，拼进 rel_path 会逃逸本地根目录：
+			// 非规范名称直接跳过（同名文件夹也不递归），不纳入索引。
+			if !isSafeRemoteSegment(name) {
+				slog.Warn("overlay: 跳过含非法路径成分的远端条目", "name", name, "relBase", relBase)
+				continue
+			}
+			// rel_path 由文件夹名逐层拼接，统一用 / 分隔，与本地相对路径对齐。
+			childRel := name
+			if relBase != "" {
+				childRel = relBase + "/" + name
+			}
+
+			if it.isFolder() {
+				// 用子文件夹的 dentryUuid 作为下一层 parentId 递归进入。
+				if err := walkRemoteDir(ctx, spaceID, it.id(), childRel, out, depth+1); err != nil {
+					return err
+				}
+				continue
+			}
+			// 只纳入明确 type=FILE 的条目；在线文档、快捷方式等其它类型一律跳过。
+			if !it.isFile() {
+				continue
+			}
+
+			modMillis, modValid := it.modifiedMillis()
+			out[childRel] = &remoteFile{
+				RelPath:           childRel,
+				FileID:            it.id(),
+				Hash:              it.hash(),
+				Size:              it.size(),
+				ModifiedTime:      modMillis,
+				ModifiedTimeValid: modValid,
+			}
+		}
+
+		// 无下一页，或 token 未推进（防御性，避免服务端异常导致死循环）→ 结束。
+		if token == "" || token == nextToken {
+			break
+		}
+		nextToken = token
+	}
+	return nil
+}
+
+// driveItem 是 list_files 返回里的一个 dentry 条目。
+// 后端字段命名存在多种历史写法，这里用带 fallback 的访问器做防御式解析。
+type driveItem map[string]any
+
+func (d driveItem) str(keys ...string) string {
+	for _, k := range keys {
+		if s, ok := d[k].(string); ok && s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+func (d driveItem) name() string { return d.str("name") }
+func (d driveItem) id() string   { return d.str("fileId") }
+func (d driveItem) typ() string  { return d.str("type") }
+func (d driveItem) hash() string { return d.str("md5") }
+func (d driveItem) path() string { return d.str("path") }
+
+// size 返回远端文件字节数（fileSize 字段），用于 exact 无 md5 时的降级比对。
+func (d driveItem) size() int64 {
+	switch v := d["fileSize"].(type) {
+	case float64:
+		return int64(v)
+	case json.Number:
+		if n, err := v.Int64(); err == nil {
+			return n
+		}
+	}
+	return 0
+}
+
+func (d driveItem) isFolder() bool {
+	return strings.ToUpper(d.typ()) == "FOLDER"
+}
+
+func (d driveItem) isFile() bool {
+	return strings.ToUpper(d.typ()) == "FILE"
+}
+
+func (d driveItem) modifiedMillis() (int64, bool) {
+	for _, k := range []string{"modifiedTime", "modifyTime", "modified_time", "gmtModified", "lastModifiedTime", "updateTime"} {
+		if v, ok := d[k]; ok {
+			if ms, ok := toMillis(v); ok {
+				return ms, true
+			}
+		}
+	}
+	return 0, false
+}
+
+// parseDriveList 解析 list_files 返回文本，抽出 items 列表与 nextToken。
+// 兼容两种 result 形态：
+//   - {"result":{"items":[...],"nextToken":"..."}}
+//   - {"result":[...]}（result 直接是条目数组，无分页）
+func parseDriveList(text string) ([]driveItem, string, error) {
+	var envelope struct {
+		Result json.RawMessage `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(text), &envelope); err != nil {
+		return nil, "", fmt.Errorf("解析 list_files 返回失败: %w", err)
+	}
+	if len(envelope.Result) == 0 {
+		return nil, "", nil // 无 result → 空列表
+	}
+
+	toItems := func(ms []map[string]any) []driveItem {
+		items := make([]driveItem, 0, len(ms))
+		for _, m := range ms {
+			items = append(items, driveItem(m))
+		}
+		return items
+	}
+
+	// 形态一：result 是对象 {items, nextToken}
+	var obj struct {
+		Items     []map[string]any `json:"items"`
+		NextToken string           `json:"nextToken"`
+	}
+	if err := json.Unmarshal(envelope.Result, &obj); err == nil {
+		return toItems(obj.Items), obj.NextToken, nil
+	}
+
+	// 形态二：result 直接是条目数组
+	var arr []map[string]any
+	if err := json.Unmarshal(envelope.Result, &arr); err == nil {
+		return toItems(arr), "", nil
+	}
+
+	return nil, "", fmt.Errorf("解析 list_files 返回失败: result 既不是 {items:[]} 也不是数组")
+}
+
+// validateLocalDirAbs 校验 --local-folder 必须是绝对路径，返回其清理后的绝对路径。
+func validateLocalDirAbs(localDir string) (string, error) {
+	if localDir == "" {
+		return "", fmt.Errorf("flag --local-folder is required")
+	}
+	if !filepath.IsAbs(localDir) {
+		return "", fmt.Errorf("--local-folder 必须是绝对路径: %s", localDir)
+	}
+	return filepath.Clean(localDir), nil
+}
+
+// isSafeRemoteSegment 校验单个远端条目名称是否可安全用作一层相对路径段。
+// 拒绝空串、"."、".."、含卷标（如 Windows 的 "C:"）以及任意平台的路径分隔符
+// （/ 与 \）——这些成分拼进 rel_path 后可能让下载目标逃逸出本地根目录。
+func isSafeRemoteSegment(name string) bool {
+	if name == "" || name == "." || name == ".." {
+		return false
+	}
+	// 任意平台分隔符都不允许出现在单层名称里。
+	if strings.ContainsAny(name, `/\`) {
+		return false
+	}
+	// Windows 卷标（"C:"、"C:foo"）等含盘符的名称一律拒绝。
+	if filepath.VolumeName(name) != "" {
+		return false
+	}
+	// Clean 后若发生变化，说明名称非规范（含隐藏的 . / .. / 分隔符）。
+	if filepath.Clean(name) != name {
+		return false
+	}
+	return true
+}
+
+// resolveLocalTarget 把远端 rel_path 拼到本地根目录 absDir 下，并确认结果仍位于
+// absDir 内。除词法检查（filepath.Rel）外，还解析已存在路径组件的符号链接，防止
+// root 内的目录软链（如 root/sub -> /outside）把落盘点指到根目录外。逃逸时返回错误。
+func resolveLocalTarget(absDir, rel string) (string, error) {
+	target := filepath.Join(absDir, filepath.FromSlash(rel))
+	back, err := filepath.Rel(absDir, target)
+	if err != nil || back == ".." || strings.HasPrefix(back, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("远端路径 %q 逃逸出本地根目录", rel)
+	}
+	if err := verifyNoSymlinkEscape(absDir, target); err != nil {
+		return "", err
+	}
+	return target, nil
+}
+
+// verifyNoSymlinkEscape 挡住「absDir 之内的目录软链指向外部」的逃逸：从 target 的父
+// 目录向上、在**不越过 absDir 边界**的前提下，找到最深的已存在祖先，解析其真实路径
+// （EvalSymlinks 展开整条软链），确认仍位于 absDir 真实路径之内。
+//
+// absDir 尚不存在时直接放行：其下不可能有已存在的组件可供逃逸，后续 MkdirAll 只会
+// 创建真实目录、绝不新建软链——这也是 pull 自动创建目标根目录的正常路径。target 尚不
+// 存在的末段同理无软链可谈，故只需校验 [absDir, target] 之间的现有组件。
+func verifyNoSymlinkEscape(absDir, target string) error {
+	absDir = filepath.Clean(absDir)
+	realRoot, err := filepath.EvalSymlinks(absDir)
+	if err != nil {
+		// 根目录尚不存在（无软链可解析）→ 放行，交给 MkdirAll 按需创建真实目录。
+		return nil
+	}
+
+	ancestor := filepath.Dir(target)
+	for {
+		// 越过 absDir 边界（祖先跑到根目录之上）就停止：根目录之上不属于逃逸判定范围。
+		rel, relErr := filepath.Rel(absDir, ancestor)
+		if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return nil
+		}
+		if _, statErr := os.Lstat(ancestor); statErr == nil {
+			real, evErr := filepath.EvalSymlinks(ancestor)
+			if evErr != nil {
+				return fmt.Errorf("解析路径 %q 失败: %w", ancestor, evErr)
+			}
+			back, bErr := filepath.Rel(realRoot, real)
+			if bErr != nil || back == ".." || strings.HasPrefix(back, ".."+string(filepath.Separator)) {
+				return fmt.Errorf("路径 %q 经符号链接逃逸出本地根目录", target)
+			}
+			return nil
+		}
+		parent := filepath.Dir(ancestor)
+		if parent == ancestor {
+			return nil
+		}
+		ancestor = parent
+	}
+}
+
+// md5File 计算文件内容的 MD5，并按 base64 编码返回（与钉盘 list_files 返回的
+// md5 字段编码一致，便于直接字符串比较）。
+func md5File(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := md5.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(h.Sum(nil)), nil
+}
+
+// walkLocalTree 递归遍历本地目录，只收集常规文件（跳过符号链接、设备文件等）。
+// rel_path 统一使用 / 作为分隔符，相对于 root。
+//
+// 这里只记录路径与 mtime，不计算 MD5：本地 hash 采用惰性策略，仅在文件双端
+// 都存在且非 quick 模式时，由 compareTrees 按需计算（见 judgeFileMatch）。
+func walkLocalTree(root string) (map[string]*localFile, error) {
+	files := make(map[string]*localFile)
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		// 只比对常规文件；符号链接、设备文件等被忽略。
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		relSlash := filepath.ToSlash(rel)
+
+		files[relSlash] = &localFile{
+			RelPath:       relSlash,
+			AbsPath:       path,
+			Size:          info.Size(),
+			ModTimeMillis: info.ModTime().UnixMilli(),
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+// 双端都存在文件的比对结论。
+const (
+	matchUnchanged = "unchanged"
+	matchModified  = "modified"
+	matchUnknown   = "unknown" // exact 模式且远端无可靠 md5，内容无法核对
+)
+
+// judgeFileMatch 判定双端都存在的文件本次的比对结论：unchanged / modified / unknown。
+//
+// exact 模式下，本地 MD5 在此处按需计算——只有走到这里的文件才是双端都存在的，
+// local-only 文件不会触发 hash 计算。若远端未返回 md5（list_files 目前通常如此），
+// 无法核对内容，则返回 unknown：不判 unchanged（避免把不同内容误报为未变更），
+// 也不硬判 modified（避免把相同内容误报为已变更），让降级如实反映在输出中。
+func judgeFileMatch(lf *localFile, rf *remoteFile, quick bool) (string, error) {
+	if quick {
+		// quick：远端时间戳必须可信且与本地 mtime 相等才算 unchanged；
+		// 远端时间缺失/非法时走保守路径记为 modified。
+		if rf.ModifiedTimeValid && lf.ModTimeMillis == rf.ModifiedTime {
+			return matchUnchanged, nil
+		}
+		return matchModified, nil
+	}
+
+	// exact：远端缺少可靠 md5 时无法核对内容 → unknown（既不判 unchanged 也不判 modified）。
+	if rf.Hash == "" {
+		return matchUnknown, nil
+	}
+
+	// exact：按需计算本地 MD5（base64），再与远端 md5（钉盘也返回 base64）直接比较。
+	if lf.Hash == "" {
+		h, err := md5File(lf.AbsPath)
+		if err != nil {
+			return "", fmt.Errorf("计算 %s 的 MD5 失败: %w", lf.RelPath, err)
+		}
+		lf.Hash = h
+	}
+	if lf.Hash == rf.Hash {
+		return matchUnchanged, nil
+	}
+	return matchModified, nil
+}
+
+// compareTrees 比较本地与云端文件树，产出五类差异。
+func compareTrees(local map[string]*localFile, remote map[string]*remoteFile, detection string, quick bool) (driveStatusResult, error) {
+	res := driveStatusResult{
+		Detection: detection,
+		NewLocal:  []driveStatusEntry{},
+		NewRemote: []driveStatusEntry{},
+		Modified:  []driveStatusEntry{},
+		Unchanged: []driveStatusEntry{},
+		Unknown:   []driveStatusEntry{},
+	}
+
+	for rel, lf := range local {
+		rf, ok := remote[rel]
+		if !ok {
+			res.NewLocal = append(res.NewLocal, driveStatusEntry{RelPath: rel})
+			continue
+		}
+		verdict, err := judgeFileMatch(lf, rf, quick)
+		if err != nil {
+			return res, err
+		}
+		switch verdict {
+		case matchUnchanged:
+			res.Unchanged = append(res.Unchanged, driveStatusEntry{RelPath: rel})
+		case matchUnknown:
+			res.Unknown = append(res.Unknown, driveStatusEntry{RelPath: rel})
+		default:
+			res.Modified = append(res.Modified, driveStatusEntry{RelPath: rel})
+		}
+	}
+	for rel := range remote {
+		if _, ok := local[rel]; !ok {
+			res.NewRemote = append(res.NewRemote, driveStatusEntry{RelPath: rel})
+		}
+	}
+
+	sortEntries(res.NewLocal)
+	sortEntries(res.NewRemote)
+	sortEntries(res.Modified)
+	sortEntries(res.Unchanged)
+	sortEntries(res.Unknown)
+	return res, nil
+}
+
+func sortEntries(entries []driveStatusEntry) {
+	sort.Slice(entries, func(i, j int) bool { return entries[i].RelPath < entries[j].RelPath })
+}
+
+func runDriveStatus(cmd *cobra.Command, _ []string) error {
+	if err := validateRequiredFlags(cmd, "local-folder", "remote-folder"); err != nil {
+		return err
+	}
+	localDir := mustGetFlag(cmd, "local-folder")
+	// remote-folder 必传：待比对的云端根文件夹 dentryUuid。
+	remoteDirID := mustGetFlag(cmd, "remote-folder")
+	// space-id 可选：不传则由 fetchRemoteDriveTree 使用「我的文件」对应的空间。
+	spaceID := mustGetFlag(cmd, "space-id")
+
+	quick, _ := cmd.Flags().GetBool("quick")
+	detection := "exact"
+	if quick {
+		detection = "quick"
+	}
+
+	absDir, err := validateLocalDirAbs(localDir)
+	if err != nil {
+		return err
+	}
+
+	local, err := walkLocalTree(absDir)
+	if err != nil {
+		return fmt.Errorf("扫描本地目录失败: %w", err)
+	}
+
+	ctx := cmd.Context()
+	remoteIndex, err := fetchRemoteDriveTree(ctx, spaceID, remoteDirID, quick)
+	if err != nil {
+		return err
+	}
+
+	result, err := compareTrees(local, remoteIndex, detection, quick)
+	if err != nil {
+		return err
+	}
+	return deps.Out.PrintJSON(result)
+}

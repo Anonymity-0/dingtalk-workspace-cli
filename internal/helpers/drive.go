@@ -3200,6 +3200,108 @@ func newDriveCommand() *cobra.Command {
 		RegisterCrossProductAliases(child)
 	}
 
+	driveStatusCmd := &cobra.Command{
+		Use:   "status",
+		Short: "比较本地文件夹与钉盘文件夹的差异",
+		Long: `比较本地文件夹与钉盘文件夹的差异：本地取 --local-folder（绝对路径），钉盘取
+--remote-folder（文件夹 dentryUuid）指向的文件夹，按精确 MD5（默认）或快速
+modified_time（--quick）逐文件比对。两侧各自递归遍历，rel_path 相对各自根目录。
+
+输出五类差异：
+  new_local   仅本地存在
+  new_remote  仅钉盘存在
+  modified    两侧都存在且本次检测判定为已变更
+  unchanged   两侧都存在且本次检测判定为未变更
+  unknown     两侧都存在，但 exact 模式下远端无可靠 MD5、无法核对内容（不判 unchanged/modified）
+
+只比对钉盘 type=file 的二进制文件（跳过在线文档与快捷方式）；本地只比对常规文件。`,
+		Example: `  dws drive status --local-folder /abs/path/repo --remote-folder <dentryUuid>
+  dws drive status --local-folder /abs/path/repo --remote-folder <dentryUuid> --space-id xxxx
+  dws drive status --local-folder /abs/path/repo --remote-folder <dentryUuid> --quick`,
+		RunE: runDriveStatus,
+	}
+	driveStatusCmd.Flags().String("local-folder", "", "本地文件夹绝对路径 (必填)")
+	driveStatusCmd.Flags().String("remote-folder", "", "钉盘文件夹 ID (dentryUuid) (必填)")
+	driveStatusCmd.Flags().String("space-id", "", "钉盘空间 ID，不传则使用「我的文件」(可选)")
+	driveStatusCmd.Flags().Bool("quick", false, "快速模式：只比较 modified_time，不计算 MD5 (可选)")
+
+	drivePullCmd := &cobra.Command{
+		Use:   "pull",
+		Short: "把钉盘文件夹单向镜像到本地（Drive → 本地）",
+		Long: `递归下载钉盘 --remote-folder 文件夹下所有 type=file 的文件到本地
+--local-folder 对应路径（子目录自动创建），单向、文件级镜像。
+
+已存在的本地文件按 --if-exists 处理：
+  overwrite  默认，总是下载覆盖（Drive 作为权威源）
+  smart      推荐增量同步：本地 modified_time 已 ≥ 远端时则跳过下载
+  skip       本地已存在则保持不动
+
+输出 summary（downloaded/skipped/failed）与逐文件 items。
+若有文件下载失败，命令以非零退出码退出（error.type=partial_failure）。`,
+		Example: `  dws drive pull --local-folder /abs/path/repo --remote-folder <dentryUuid>
+  dws drive pull --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists smart
+  dws drive pull --local-folder /abs/path/repo --remote-folder <dentryUuid> --space-id xxxx`,
+		RunE: runDrivePull,
+	}
+	drivePullCmd.Flags().String("local-folder", "", "本地文件夹绝对路径 (必填)")
+	drivePullCmd.Flags().String("remote-folder", "", "钉盘文件夹 ID (dentryUuid) (必填)")
+	drivePullCmd.Flags().String("space-id", "", "钉盘空间 ID，不传则使用「我的文件」(可选)")
+	drivePullCmd.Flags().String("if-exists", "overwrite", "本地文件已存在时的策略: overwrite|smart|skip (可选)")
+
+	drivePushCmd := &cobra.Command{
+		Use:   "push",
+		Short: "把本地文件夹单向镜像到钉盘（本地 → Drive）",
+		Long: `递归把本地 --local-folder 下的文件与子目录（含空目录）镜像到钉盘
+--remote-folder 文件夹：缺失的目录按需创建（已存在则复用，不重建），文件按
+--if-exists 处理。文件级镜像——只新增/覆盖，不删除远端多余文件。
+
+已存在的远端文件按 --if-exists 处理：
+  skip       默认，安全：已存在则保持不动，只新增
+  smart      增量同步：远端 modified_time 已 ≥ 本地时跳过，否则走覆盖路径
+  overwrite  覆盖远端同名文件
+
+输出 summary（uploaded/skipped/failed，uploaded 含新建与覆盖）与逐条 items
+（含 folder_created）。若有文件失败，命令以非零退出码退出，结构化结果仍在 stdout。`,
+		Example: `  dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid>
+  dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists smart
+  dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists overwrite`,
+		RunE: runDrivePush,
+	}
+	drivePushCmd.Flags().String("local-folder", "", "本地文件夹绝对路径 (必填)")
+	drivePushCmd.Flags().String("remote-folder", "", "钉盘目标文件夹 ID (dentryUuid) (必填)")
+	drivePushCmd.Flags().String("space-id", "", "钉盘空间 ID，不传则使用「我的文件」(可选)")
+	drivePushCmd.Flags().String("if-exists", "skip", "远端文件已存在时的策略: skip|smart|overwrite (可选)")
+
+	driveSyncCmd := &cobra.Command{
+		Use:   "sync",
+		Short: "本地文件夹与钉盘文件夹双向同步（本地 ⇄ Drive）",
+		Long: `把本地 --local-folder 与钉盘 --remote-folder 做文件级双向同步：先按精确 MD5
+（默认）或快速 modified_time（--quick）算出差异，再按方向执行：
+  new_local   仅本地存在  → 上传到钉盘（缺失的远端目录按需创建）
+  new_remote  仅钉盘存在  → 下载到本地
+  modified    两侧都变更  → 按 --on-conflict 解决
+  unchanged   两侧一致    → 不动
+
+两侧都变更时的 --on-conflict 策略：
+  remote-wins  默认，拉取远端覆盖本地
+  local-wins   上传本地覆盖远端
+  keep-both    本地文件改名保留，再拉取远端到原路径
+  ask          交互式逐个询问
+
+exact 模式下远端无可靠 MD5、内容无法核对的文件归入 unknown 并跳过（可改用 --quick）。
+文件级同步——只新增/覆盖，不删除任何一侧的多余文件。输出 summary（pulled/pushed/
+skipped/failed）、diff 与逐条 items；有失败则以非零退出码退出，结构化结果仍在 stdout。`,
+		Example: `  dws drive sync --local-folder /abs/path/repo --remote-folder <dentryUuid>
+  dws drive sync --local-folder /abs/path/repo --remote-folder <dentryUuid> --on-conflict local-wins
+  dws drive sync --local-folder /abs/path/repo --remote-folder <dentryUuid> --quick --on-conflict keep-both`,
+		RunE: runDriveSync,
+	}
+	driveSyncCmd.Flags().String("local-folder", "", "本地文件夹绝对路径 (必填)")
+	driveSyncCmd.Flags().String("remote-folder", "", "钉盘文件夹 ID (dentryUuid) (必填)")
+	driveSyncCmd.Flags().String("space-id", "", "钉盘空间 ID，不传则使用「我的文件」(可选)")
+	driveSyncCmd.Flags().String("on-conflict", "remote-wins", "两侧都变更时的策略: remote-wins|local-wins|keep-both|ask (可选)")
+	driveSyncCmd.Flags().Bool("quick", false, "快速模式：只比较 modified_time，不计算 MD5 (可选)")
+
 	driveCmd.AddCommand(
 		driveListCmd,
 		driveListSpacesCmd,
@@ -3222,6 +3324,11 @@ func newDriveCommand() *cobra.Command {
 		drivePermissionCmd,
 		drivePublishCmd,
 		recycleCmd,
+		// 同步命令：status / pull / push / sync
+		driveStatusCmd,
+		drivePullCmd,
+		drivePushCmd,
+		driveSyncCmd,
 		driveStarCmd,
 		driveCoverCmd,
 		driveRevertCmd,
