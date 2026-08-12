@@ -501,7 +501,8 @@ jobs:
     needs: lint
     if: ${{ needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && needs.lint.outputs.full_suite == 'true' }}
     runs-on: ubuntu-latest
-    # cli/smoke shards need headroom beyond go test -timeout for setup + assembly.
+    # app runs several independently bounded processes; cli/smoke need headroom
+    # beyond go test -timeout for setup + assembly.
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -537,12 +538,18 @@ jobs:
           test -n "$package_output"
           mapfile -t packages <<< "$package_output"
           test "${#packages[@]}" -gt 0
-          # app/cli/smoke own heavy NewRootCommand / Schema assembly under
-          # -race; give them a dedicated budget so slower hosted runners do not
-          # hit the package timeout while the shards remain independently bounded.
+          if [ "$TEST_SHARD" = "app" ]; then
+            # A single long-lived app test process retains every constructed
+            # command tree in framework registries. Isolate Schema assembly and
+            # bounded name ranges so each process releases that state on exit.
+            test "${#packages[@]}" -eq 1
+            ./scripts/ci/run-app-race-tests.sh run "${packages[0]}"
+            exit 0
+          fi
+          # cli/smoke own heavy NewRootCommand / Schema assembly under -race;
+          # give them a dedicated package timeout on slower hosted runners.
           timeout_budget=12m
-          if [ "$TEST_SHARD" = "app" ] ||
-             [ "$TEST_SHARD" = "cli" ] ||
+          if [ "$TEST_SHARD" = "cli" ] ||
              [ "$TEST_SHARD" = "smoke" ]; then
             timeout_budget=15m
           fi

@@ -1182,13 +1182,16 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		t.Fatal("Code Admission workflow missing race test job boundaries")
 	}
 	raceJob := admission[raceStart:raceEnd]
-	// Full race shards use a dynamic package-level timeout: default/floor 12m,
-	// with app/cli/smoke raised to 15m for NewRootCommand / Schema assembly under
-	// -race on slower hosted runners.
+	// The app shard uses independently bounded test processes so process-global
+	// command registries are released before the Schema assembly peak. Other full
+	// race shards retain the dynamic package timeout: default/floor 12m, with
+	// cli/smoke raised to 15m on slower hosted runners.
 	for _, want := range []string{
+		`if [ "$TEST_SHARD" = "app" ]; then`,
+		`test "${#packages[@]}" -eq 1`,
+		`./scripts/ci/run-app-race-tests.sh run "${packages[0]}"`,
 		"timeout_budget=12m",
-		`if [ "$TEST_SHARD" = "app" ] ||`,
-		`[ "$TEST_SHARD" = "cli" ] ||`,
+		`if [ "$TEST_SHARD" = "cli" ] ||`,
 		`[ "$TEST_SHARD" = "smoke" ]; then`,
 		"timeout_budget=15m",
 		`go test -v -race -count=1 -timeout="$timeout_budget" "${packages[@]}"`,
