@@ -1,0 +1,284 @@
+// Copyright 2026 Alibaba Group
+// Licensed under the Apache License, Version 2.0 (the "License");
+
+package helpers
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+)
+
+const (
+	recruitServerID      = "recruit"
+	recruitCreateJobTool = "create_job"
+	recruitGetJobTool    = "get_job_detail"
+	recruitListJobsTool  = "list_jobs"
+)
+
+var recruitDryRun = &contract.DryRunSpec{
+	PreviewKind: contract.DryRunPreviewInvocation,
+	RemoteReads: false,
+}
+
+func newRecruitCommand() *cobra.Command {
+	contract.RegisterProductDecl(contract.ProductDecl{
+		ID: "recruit",
+		Selection: contract.ProductSelectionDecl{
+			AgentSummary: "查询和创建钉钉招聘职位",
+			UseWhen:      []string{"需要查询招聘职位列表、查看职位详情或创建职位时"},
+			AvoidWhen:    []string{"查询企业员工与组织架构使用 contact；查询人才池、职业历程或绩效使用 hrbrain"},
+		},
+	})
+
+	root := &cobra.Command{
+		Use:   "recruit",
+		Short: "钉钉招聘",
+		Long:  "查询和创建钉钉招聘中的职位信息。",
+		RunE:  groupRunE,
+	}
+	job := &cobra.Command{
+		Use:   "job",
+		Short: "招聘职位管理",
+		RunE:  groupRunE,
+	}
+	job.AddCommand(
+		newRecruitJobListCommand(),
+		newRecruitJobGetCommand(),
+		newRecruitJobCreateCommand(),
+	)
+	root.AddCommand(job)
+	return root
+}
+
+func newRecruitJobListCommand() *cobra.Command {
+	return NewLeafCommand(LeafSpec{
+		Use:     "list",
+		Short:   "查询招聘职位列表",
+		Long:    "按职位 ID、关键词、状态、创建人、职位性质等条件分页查询招聘职位。",
+		Example: "  dws recruit job list --keyword Java --status open --size 20 --format json\n  dws recruit job list --job-ids JOB_ID_1,JOB_ID_2 --format json",
+		Server:  recruitServerID,
+		Tool:    recruitListJobsTool,
+		Safety:  recruitSafetyRead(),
+		Flags: []LeafFlag{
+			{Name: "job-ids", Usage: "职位 ID，多个值用逗号分隔", Kind: LeafStringSlice, Bind: "jobIds"},
+			{Name: "required-edu", Usage: "学历要求枚举值", Kind: LeafInt, Bind: "requiredEdu"},
+			{Name: "status", Usage: "职位状态：draft/open/invalid/closed，多个值用逗号分隔", Bind: "statusList", Trim: true, OmitEmpty: true, Transform: transformRecruitStatuses},
+			{Name: "job-nature", Usage: "职位性质", Bind: "jobNature", Trim: true, OmitEmpty: true},
+			{Name: "campus", Usage: "是否为校园招聘", Kind: LeafBool, Bind: "campus"},
+			{Name: "start-modified-time", Usage: "修改时间范围起点", Bind: "startModifiedTime", Trim: true, OmitEmpty: true},
+			{Name: "end-modified-time", Usage: "修改时间范围终点", Bind: "endModifiedTime", Trim: true, OmitEmpty: true},
+			{Name: "creator-user-ids", Usage: "创建人 userId，多个值用逗号分隔", Kind: LeafStringSlice, Bind: "creatorUserIds"},
+			{Name: "keyword", Usage: "职位搜索关键词", Bind: "keyword", Trim: true, OmitEmpty: true},
+			{Name: "category", Usage: "职位分类", Bind: "category", Trim: true, OmitEmpty: true},
+			{Name: "cursor", Usage: "分页游标；首次查询不传，翻页时传返回的 nextCursor", Kind: LeafInt, Bind: "cursor"},
+			{Name: "size", Usage: "分页大小，默认 20", Kind: LeafInt, Bind: "size", ArgDefault: "20"},
+		},
+		Validate: validateRecruitList,
+		Call:     runRecruitJobList,
+		Contract: LeafContract{
+			Identity:    contract.ToolIdentitySpec{ProductID: "recruit", Name: recruitListJobsTool, CanonicalPath: "recruit.list_jobs", CLIPath: "recruit job list", PrimaryCLIPath: "recruit job list"},
+			Description: "按条件分页查询招聘职位",
+			DryRun:      recruitDryRun,
+			Interface:   recruitMCPInterface(recruitListJobsTool),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "按关键词、状态、创建人等条件分页查询招聘职位",
+				UseWhen:      []string{"需要查找职位、筛选在招职位或取得 jobId 时"},
+				AvoidWhen:    []string{"已经持有明确 jobId 且需要完整详情时使用 recruit job get"},
+				Examples:     []string{`dws recruit job list --keyword "Java" --status open --size 20 --format json`},
+			},
+			Parameters: recruitListParamDecls(),
+		},
+	})
+}
+
+func runRecruitJobList(_ *cobra.Command, tool string, args map[string]any) error {
+	params := map[string]any{"param": map[string]any{}, "size": args["size"]}
+	query := params["param"].(map[string]any)
+	for key, value := range args {
+		switch key {
+		case "cursor":
+			params[key] = value
+		case "size":
+		default:
+			query[key] = value
+		}
+	}
+	return callMCPToolOnServer(recruitServerID, tool, params)
+}
+
+func newRecruitJobGetCommand() *cobra.Command {
+	return NewLeafCommand(LeafSpec{
+		Use:     "get",
+		Short:   "查询招聘职位详情",
+		Long:    "根据职位 ID 查询招聘职位详情。",
+		Example: "  dws recruit job get --job-id JOB_ID --format json",
+		Server:  recruitServerID,
+		Tool:    recruitGetJobTool,
+		Safety:  recruitSafetyRead(),
+		Flags: []LeafFlag{{
+			Name: "job-id", Usage: "职位 ID（必填）", Bind: "jobId", Trim: true,
+			Required: true, RequiredHint: "--job-id 为必填",
+		}},
+		Contract: LeafContract{
+			Identity:    contract.ToolIdentitySpec{ProductID: "recruit", Name: recruitGetJobTool, CanonicalPath: "recruit.get_job_detail", CLIPath: "recruit job get", PrimaryCLIPath: "recruit job get"},
+			Description: "根据职位 ID 查询招聘职位详情",
+			DryRun:      recruitDryRun,
+			Interface:   recruitMCPInterface(recruitGetJobTool),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取指定招聘职位的完整信息",
+				UseWhen:      []string{"已经持有明确 jobId，需要查看职位详情时"},
+				AvoidWhen:    []string{"不知道 jobId 时先使用 recruit job list 查询"},
+				Examples:     []string{"dws recruit job get --job-id <JOB_ID> --format json"},
+			},
+			Parameters: []contract.ParamDecl{{Name: "job-id", Property: "jobId", Required: boolPtr(true), InterfaceType: "string"}},
+		},
+	})
+}
+
+func newRecruitJobCreateCommand() *cobra.Command {
+	return NewLeafCommand(LeafSpec{
+		Use:     "create",
+		Short:   "创建招聘职位",
+		Long:    "从 JSON 文件读取职位信息并创建招聘职位。该操作会写入远端招聘系统，执行前必须确认。",
+		Example: "  dws recruit job create --from ./job.json --dry-run --format json\n  dws recruit job create --from ./job.json --format json",
+		Server:  recruitServerID,
+		Tool:    recruitCreateJobTool,
+		Safety:  recruitSafetyCreate(),
+		Flags: []LeafFlag{{
+			Name: "from", Usage: "职位 JSON 文件路径（必填）", Bind: "atsAddJobParam", Trim: true,
+			Required: true, RequiredHint: "--from 为必填", Transform: loadRecruitJobFile,
+		}},
+		Contract: LeafContract{
+			Identity:    contract.ToolIdentitySpec{ProductID: "recruit", Name: recruitCreateJobTool, CanonicalPath: "recruit.create_job", CLIPath: "recruit job create", PrimaryCLIPath: "recruit job create"},
+			Description: "从 JSON 文件创建招聘职位",
+			DryRun:      recruitDryRun,
+			Interface:   recruitMCPInterface(recruitCreateJobTool),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "使用结构化 JSON 创建招聘职位",
+				UseWhen:      []string{"用户明确要求新建职位，并已准备或同意生成职位 JSON 时；文件必须包含 name、description、jobNature、requiredEdu、minSalary、maxSalary"},
+				AvoidWhen:    []string{"仅查询职位时使用 recruit job list 或 recruit job get"},
+				Examples:     []string{"dws recruit job create --from ./job.json --dry-run --format json"},
+			},
+			Parameters: []contract.ParamDecl{{Name: "from", Property: "atsAddJobParam", Required: boolPtr(true), InterfaceType: "object", Description: "职位 JSON 文件；CLI 读取后作为 atsAddJobParam 对象发送"}},
+		},
+	})
+}
+
+func recruitListParamDecls() []contract.ParamDecl {
+	return []contract.ParamDecl{
+		{Name: "job-ids", Property: "param.jobIds", InterfaceType: "array"},
+		{Name: "required-edu", Property: "param.requiredEdu", InterfaceType: "number"},
+		{Name: "status", Property: "param.statusList", InterfaceType: "array", Enum: []string{"draft", "open", "invalid", "closed"}},
+		{Name: "job-nature", Property: "param.jobNature", InterfaceType: "string"},
+		{Name: "campus", Property: "param.campus", InterfaceType: "boolean"},
+		{Name: "start-modified-time", Property: "param.startModifiedTime", InterfaceType: "string"},
+		{Name: "end-modified-time", Property: "param.endModifiedTime", InterfaceType: "string"},
+		{Name: "creator-user-ids", Property: "param.creatorUserIds", InterfaceType: "array"},
+		{Name: "keyword", Property: "param.keyword", InterfaceType: "string"},
+		{Name: "category", Property: "param.category", InterfaceType: "string"},
+		{Name: "cursor", Property: "cursor", InterfaceType: "number"},
+		{Name: "size", Property: "size", Required: boolPtr(true), InterfaceType: "number"},
+	}
+}
+
+func recruitMCPInterface(tool string) *contract.InterfaceSpec {
+	return &contract.InterfaceSpec{
+		Mode:         contract.InterfaceModeMCP,
+		Availability: contract.InterfaceAvailable,
+		Ref:          &contract.InterfaceRefSpec{ProductID: recruitServerID, RPCName: tool},
+	}
+}
+
+func recruitSafetyRead() contract.SafetySpec {
+	return contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}
+}
+
+func recruitSafetyCreate() contract.SafetySpec {
+	return contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "non_idempotent"}
+}
+
+func transformRecruitStatuses(raw string) (any, error) {
+	values := strings.Split(raw, ",")
+	statuses := make([]int, 0, len(values))
+	seen := make(map[int]bool, len(values))
+	lookup := map[string]int{"draft": 0, "open": 1, "invalid": 2, "closed": 3}
+	for _, value := range values {
+		name := strings.ToLower(strings.TrimSpace(value))
+		if name == "" {
+			continue
+		}
+		status, ok := lookup[name]
+		if !ok {
+			return nil, apperrors.NewValidation(fmt.Sprintf("--status 不支持 %q，可选 draft/open/invalid/closed", value))
+		}
+		if !seen[status] {
+			statuses = append(statuses, status)
+			seen[status] = true
+		}
+	}
+	return statuses, nil
+}
+
+func validateRecruitList(cmd *cobra.Command, _ []string) error {
+	if cursor, _ := cmd.Flags().GetInt("cursor"); cursor < 0 {
+		return apperrors.NewValidation("--cursor 必须大于或等于 0")
+	}
+	size, _ := cmd.Flags().GetInt("size")
+	if cmd.Flags().Changed("size") && (size < 1 || size > 100) {
+		return apperrors.NewValidation("--size 必须在 1 到 100 之间")
+	}
+	return nil
+}
+
+func loadRecruitJobFile(path string) (any, error) {
+	data, err := os.ReadFile(strings.TrimSpace(path))
+	if err != nil {
+		return nil, fmt.Errorf("读取职位 JSON 失败: %w", err)
+	}
+	var job map[string]any
+	if err := json.Unmarshal(data, &job); err != nil {
+		return nil, apperrors.NewValidation(fmt.Sprintf("职位文件不是有效的 JSON 对象: %v", err))
+	}
+	if job == nil {
+		return nil, apperrors.NewValidation("职位 JSON 顶层必须是对象")
+	}
+	if err := validateRecruitJob(job); err != nil {
+		return nil, err
+	}
+	return job, nil
+}
+
+func validateRecruitJob(job map[string]any) error {
+	for _, name := range []string{"name", "description", "jobNature", "requiredEdu", "minSalary", "maxSalary"} {
+		value, ok := job[name]
+		if !ok || value == nil || (isString(value) && strings.TrimSpace(value.(string)) == "") {
+			return apperrors.NewValidation(fmt.Sprintf("职位 JSON 缺少必填字段 %s", name))
+		}
+	}
+	for _, name := range []string{"name", "description", "jobNature"} {
+		if !isString(job[name]) {
+			return apperrors.NewValidation(fmt.Sprintf("职位 JSON 字段 %s 必须是字符串", name))
+		}
+	}
+	for _, name := range []string{"requiredEdu", "minSalary", "maxSalary"} {
+		if _, ok := job[name].(float64); !ok {
+			return apperrors.NewValidation(fmt.Sprintf("职位 JSON 字段 %s 必须是数字", name))
+		}
+	}
+	if job["minSalary"].(float64) > job["maxSalary"].(float64) {
+		return apperrors.NewValidation("职位 JSON 中 minSalary 不能大于 maxSalary")
+	}
+	return nil
+}
+
+func isString(value any) bool {
+	_, ok := value.(string)
+	return ok
+}
