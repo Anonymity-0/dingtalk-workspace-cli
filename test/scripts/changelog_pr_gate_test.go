@@ -1154,10 +1154,10 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	}
 	raceJob := admission[raceStart:raceEnd]
 	// Full race shards use a dynamic package-level timeout: default/floor 12m,
-	// with cli/smoke raised to 15m for NewRootCommand / Schema assembly under -race.
+	// with app/cli/smoke raised to 15m for NewRootCommand / Schema assembly under -race.
 	for _, want := range []string{
 		"timeout_budget=12m",
-		`if [ "$TEST_SHARD" = "cli" ] || [ "$TEST_SHARD" = "smoke" ]; then`,
+		`if [ "$TEST_SHARD" = "app" ] || [ "$TEST_SHARD" = "cli" ] || [ "$TEST_SHARD" = "smoke" ]; then`,
 		"timeout_budget=15m",
 		`go test -v -race -count=1 -timeout="$timeout_budget" "${packages[@]}"`,
 		"- smoke",
