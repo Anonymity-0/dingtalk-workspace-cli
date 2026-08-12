@@ -3204,6 +3204,7 @@ func newDriveCommand() *cobra.Command {
 		driveListCmd,
 		driveListSpacesCmd,
 		driveInfoCmd,
+		newDriveFileCommentCmd(),
 		driveDownloadCmd,
 		driveDownloadVersionCmd,
 		driveMkdirCmd,
