@@ -218,6 +218,15 @@ func nestedString(data map[string]any, keys ...string) string {
 	return ""
 }
 
+func driveReadbackNameMatches(data map[string]any, requested string) bool {
+	remoteName := firstString(data, "name", "fileName")
+	if remoteName == requested {
+		return true
+	}
+	extension := strings.TrimLeft(firstString(data, "extension", "fileExtension", "ext"), ".")
+	return extension != "" && remoteName+"."+extension == requested
+}
+
 func firstInt64(data map[string]any, keys ...string) (int64, bool) {
 	for _, key := range keys {
 		value, present := data[key]
@@ -246,7 +255,6 @@ func firstInt64(data map[string]any, keys ...string) (int64, bool) {
 				return parsed, true
 			}
 		}
-		return 0, false
 	}
 	return 0, false
 }

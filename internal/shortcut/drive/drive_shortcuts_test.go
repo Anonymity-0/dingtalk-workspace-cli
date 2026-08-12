@@ -178,16 +178,20 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 		t.Fatal("upload path escape was accepted")
 	}
 	for _, tc := range []struct {
-		name     string
-		readback string
-		want     string
+		name        string
+		committedID string
+		readback    string
+		want        string
 	}{
-		{"missing remote size", `{"success":true,"result":{"fileId":"uploaded-2","name":"input.bin"}}`, "缺少有效文件大小"},
-		{"mismatched remote size", `{"success":true,"result":{"fileId":"uploaded-3","name":"input.bin","fileSize":17}}`, "与本地文件大小 18 不一致"},
+		{"missing remote id", "uploaded-2", `{"success":true,"result":{"name":"input.bin","fileSize":18}}`, "缺少文件 ID"},
+		{"mismatched remote id", "uploaded-3", `{"success":true,"result":{"fileId":"other","name":"input.bin","fileSize":18}}`, "与提交 ID"},
+		{"prefix-only remote name", "uploaded-4", `{"success":true,"result":{"fileId":"uploaded-4","name":"input.bin-old","fileSize":18}}`, "读回名称"},
+		{"missing remote size", "uploaded-5", `{"success":true,"result":{"fileId":"uploaded-5","name":"input.bin"}}`, "缺少有效文件大小"},
+		{"mismatched remote size", "uploaded-6", `{"success":true,"result":{"fileId":"uploaded-6","name":"input.bin","fileSize":17}}`, "与本地文件大小 18 不一致"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			testseam.Swap(t, &uploadDriveFile, func(context.Context, helpers.DriveUploadRequest) (map[string]any, error) {
-				return map[string]any{"success": true, "result": map[string]any{"fileId": strings.TrimSuffix(tc.name, " remote size")}}, nil
+				return map[string]any{"success": true, "result": map[string]any{"fileId": tc.committedID}}, nil
 			})
 			caller := &driveCoverageCaller{responses: map[string][]string{"get_file_info": {tc.readback}}}
 			err := runDriveCoverage(t, Upload, caller, "--file", "input.bin", "--yes")
@@ -196,6 +200,17 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 			}
 		})
 	}
+	t.Run("split remote extension", func(t *testing.T) {
+		testseam.Swap(t, &uploadDriveFile, func(context.Context, helpers.DriveUploadRequest) (map[string]any, error) {
+			return map[string]any{"success": true, "result": map[string]any{"fileId": "uploaded-7"}}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_file_info": {`{"success":true,"result":{"fileId":"uploaded-7","name":"input","extension":"bin","fileSize":18}}`},
+		}}
+		if err := runDriveCoverage(t, Upload, caller, "--file", "input.bin", "--yes"); err != nil {
+			t.Fatal(err)
+		}
+	})
 
 	testseam.Swap(t, &driveDownload, func(_ context.Context, _ string, options localio.DownloadOptions) (localio.DownloadResult, error) {
 		if options.Output != "downloads/file.bin" || options.Headers["x-token"] != "secret" {
@@ -268,6 +283,9 @@ func TestCrossPlatformCoverageDriveFirstInt64(t *testing.T) {
 	}
 	if got, ok := firstInt64(map[string]any{}, "size"); ok || got != 0 {
 		t.Fatalf("missing firstInt64 = (%d, %t), want (0, false)", got, ok)
+	}
+	if got, ok := firstInt64(map[string]any{"fileSize": nil, "size": "7"}, "fileSize", "size"); !ok || got != 7 {
+		t.Fatalf("fallback firstInt64 = (%d, %t), want (7, true)", got, ok)
 	}
 }
 
@@ -512,6 +530,8 @@ func TestCrossPlatformCoverageDriveCreateRestoreCopyMoveRename(t *testing.T) {
 		readback string
 		want     string
 	}{
+		{"missing node id", `{"success":true,"result":{"folderId":"target","workspaceId":"space"}}`, "缺少节点 ID"},
+		{"wrong node id", `{"success":true,"result":{"nodeId":"other","folderId":"target","workspaceId":"space"}}`, "与请求节点 \"n1\" 不一致"},
 		{"missing folder", `{"success":true,"result":{"nodeId":"n1","workspaceId":"space"}}`, "缺少目标文件夹 ID"},
 		{"wrong folder", `{"success":true,"result":{"nodeId":"n1","folderId":"other","workspaceId":"space"}}`, "与请求 \"target\" 不一致"},
 		{"missing workspace", `{"success":true,"result":{"nodeId":"n1","folderId":"target"}}`, "缺少目标知识库 ID"},
