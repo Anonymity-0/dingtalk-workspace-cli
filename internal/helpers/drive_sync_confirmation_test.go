@@ -219,14 +219,14 @@ func TestCrossPlatformCoverageDrivePull_dryRunPlanBranches(t *testing.T) {
 	t.Cleanup(func() { deps = prevDeps })
 
 	if err := printDrivePullDryRun(root, ifExistsSkip, remote,
-		[]string{"A.txt", "a.txt", "../escape", "skip.txt", "new.txt"}); err != nil {
+		[]string{"A.txt", "a.txt", "../escape", "skip.txt", "new.txt"}, true); err != nil {
 		t.Fatalf("skip plan: %v", err)
 	}
 	if text := out.String(); !strings.Contains(text, pullActionFailed) || !strings.Contains(text, pullActionSkipped) || !strings.Contains(text, pullActionDownloaded) {
 		t.Fatalf("skip plan did not cover failed/skipped/downloaded: %s", text)
 	}
 	out.Reset()
-	if err := printDrivePullDryRun(root, ifExistsSmart, remote, []string{"smart.txt"}); err != nil {
+	if err := printDrivePullDryRun(root, ifExistsSmart, remote, []string{"smart.txt"}, false); err != nil {
 		t.Fatalf("smart plan: %v", err)
 	}
 	if !strings.Contains(out.String(), pullActionSkipped) {

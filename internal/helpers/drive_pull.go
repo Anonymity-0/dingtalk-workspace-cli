@@ -184,7 +184,8 @@ func runDrivePull(cmd *cobra.Command, _ []string) error {
 	}
 	sort.Strings(relPaths)
 	if deps.Caller.DryRun() {
-		return printDrivePullDryRun(absDir, ifExists, remote, relPaths)
+		caseInsensitive := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
+		return printDrivePullDryRun(absDir, ifExists, remote, relPaths, caseInsensitive)
 	}
 
 	// 落盘前先按目标文件系统的路径等价规则做一次全局冲突检查：大小写不敏感 FS 上
@@ -246,9 +247,8 @@ func runDrivePull(cmd *cobra.Command, _ []string) error {
 	return deps.Out.PrintJSON(res)
 }
 
-func printDrivePullDryRun(absDir, ifExists string, remote map[string]*remoteFile, relPaths []string) error {
+func printDrivePullDryRun(absDir, ifExists string, remote map[string]*remoteFile, relPaths []string, caseInsensitive bool) error {
 	plan := drivePullResult{Items: make([]drivePullItem, 0, len(relPaths))}
-	caseInsensitive := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
 	collided := detectTargetCollisions(absDir, relPaths, caseInsensitive)
 	for _, rel := range relPaths {
 		if collided[rel] {
