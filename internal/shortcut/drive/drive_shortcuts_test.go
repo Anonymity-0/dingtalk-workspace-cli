@@ -201,6 +201,23 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 	}
 }
 
+func TestCrossPlatformCoverageDriveCopyPreservesSchemaProperties(t *testing.T) {
+	want := map[string]string{
+		"folder":    "folder",
+		"node":      "node",
+		"workspace": "workspace",
+	}
+	got := make(map[string]string, len(Copy.Contract.Parameters))
+	for _, parameter := range Copy.Contract.Parameters {
+		got[parameter.Name] = parameter.Property
+	}
+	for name, property := range want {
+		if got[name] != property {
+			t.Errorf("copy parameter %q property = %q, want %q", name, got[name], property)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageDriveVersionAndPublishContracts(t *testing.T) {
 	versionPayload := `{"success":true,"versions":[{"version":1,"fileSize":3},{"versionNumber":"2","fileSize":4}],"hasMore":false}`
 	caller := &driveCoverageCaller{responses: map[string][]string{"list_file_versions": {versionPayload}}}

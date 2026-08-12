@@ -648,9 +648,11 @@ func init() {
 		[]string{"普通钉盘文件独立复制当前无等价接口：需要快捷入口用 +create-shortcut，需要独立字节副本用 +download 后 +upload；移动原件用 +move"},
 		[]string{`dws drive +copy --node <ONLINE_DOC_ID> --folder <TARGET_FOLDER_ID>`},
 		driveObjectResult("在线文档复制并读回后的新节点"), nil,
-		contract.ParamDecl{Name: "node", Property: "nodeId"},
-		contract.ParamDecl{Name: "folder", Property: "targetFolderId"},
-		contract.ParamDecl{Name: "workspace", Property: "workspaceId"},
+		// Preserve the historical public Schema properties. Execute translates
+		// these CLI concepts to nodeId/targetFolderId/workspaceId for the RPC.
+		contract.ParamDecl{Name: "node", Property: "node"},
+		contract.ParamDecl{Name: "folder", Property: "folder"},
+		contract.ParamDecl{Name: "workspace", Property: "workspace"},
 	)
 	Copy.Tips = []string{`dws drive +copy --node <ONLINE_DOC_ID> --folder <TARGET_FOLDER_ID>`}
 	Info.Contract.Result = driveObjectResult("钉盘节点元数据")
