@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
@@ -40,6 +41,14 @@ type fileCommentPage struct {
 	hasMore    bool
 	nextCursor string
 	comments   []map[string]any
+}
+
+func fileCommentNodeFlag() LeafFlag {
+	return LeafFlag{Name: "node", Usage: "文件 ID (dentryUuid)、数字 dentry ID 或钉盘文件 URL", Required: true, Aliases: []string{"url", "id", "node-id", "file-id"}, Bind: "fileId", Trim: true}
+}
+
+func fileCommentSpaceIDFlag() LeafFlag {
+	return LeafFlag{Name: "space-id", Usage: "钉盘空间 ID；仅数字 dentry ID 必填", Bind: "spaceId", OmitEmpty: true, Trim: true, RequiredWhen: "--node is a numeric dentry ID"}
 }
 
 // newDriveFileCommentCmd follows the existing resource-first comment surface:
@@ -66,8 +75,8 @@ func newDriveFileCommentCmd() *cobra.Command {
   dws drive comment list --node <dentryUuid> --all --format json`,
 		Tool: listFileCommentsTool,
 		Flags: []LeafFlag{
-			{Name: "node", Usage: "文件 ID (dentryUuid)、数字 dentry ID 或钉盘文件 URL", Required: true, Aliases: []string{"url", "id", "node-id", "file-id"}, Bind: "fileId", Trim: true},
-			{Name: "space-id", Usage: "钉盘空间 ID；仅数字 dentry ID 必填", Bind: "spaceId", OmitEmpty: true, Trim: true},
+			fileCommentNodeFlag(),
+			fileCommentSpaceIDFlag(),
 			{Name: "limit", Usage: "每页评论数，范围 1-200", Kind: LeafInt, Default: "200", Aliases: []string{"page-size"}, Bind: "maxResults"},
 			{Name: "cursor", Usage: "分页游标，取自上页 nextCursor", Bind: "nextToken", OmitEmpty: true, Trim: true},
 			{Name: "all", Usage: "自动拉取全部评论，最多 10 页 / 2000 条", Kind: LeafBool, Bind: "all"},
@@ -126,8 +135,8 @@ func newDriveFileCommentCmd() *cobra.Command {
 		Example: `  dws drive comment create --node <dentryUuid> --content "请补充最终结论" --format json`,
 		Tool:    createFileCommentTool,
 		Flags: []LeafFlag{
-			{Name: "node", Usage: "文件 ID (dentryUuid)、数字 dentry ID 或钉盘文件 URL", Required: true, Aliases: []string{"url", "id", "node-id", "file-id"}, Bind: "fileId", Trim: true},
-			{Name: "space-id", Usage: "钉盘空间 ID；仅数字 dentry ID 必填", Bind: "spaceId", OmitEmpty: true, Trim: true},
+			fileCommentNodeFlag(),
+			fileCommentSpaceIDFlag(),
 			{Name: "content", Usage: "全文评论内容，纯文本且 UTF-16 长度不超过 2099", Required: true, Bind: "content"},
 		},
 		Constraints: []LeafConstraint{
@@ -175,6 +184,9 @@ func newDriveFileCommentCmd() *cobra.Command {
 }
 
 func validateFileCommentList(cmd *cobra.Command, _ []string) error {
+	if err := validateFileCommentNodeSpace(cmd); err != nil {
+		return err
+	}
 	limit, _ := cmd.Flags().GetInt("limit")
 	if cmd.Flags().Changed("page-size") {
 		limit, _ = cmd.Flags().GetInt("page-size")
@@ -198,6 +210,9 @@ func validateFileCommentList(cmd *cobra.Command, _ []string) error {
 }
 
 func validateFileCommentCreate(cmd *cobra.Command, _ []string) error {
+	if err := validateFileCommentNodeSpace(cmd); err != nil {
+		return err
+	}
 	content, _ := cmd.Flags().GetString("content")
 	if strings.TrimSpace(content) == "" {
 		return &CLIError{Code: CodeInvalidParam, Message: "--content 去除首尾空白后不能为空"}
@@ -207,6 +222,20 @@ func validateFileCommentCreate(cmd *cobra.Command, _ []string) error {
 		return &CLIError{
 			Code:    CodeInputTooLarge,
 			Message: fmt.Sprintf("--content 最多 %d 个 UTF-16 代码单元，当前为 %d", fileCommentMaxContentLength, length),
+		}
+	}
+	return nil
+}
+
+func validateFileCommentNodeSpace(cmd *cobra.Command) error {
+	node := corecmd.EffectiveValue(cmd, fileCommentNodeFlag())
+	if !allASCIIDigits(node) {
+		return nil
+	}
+	if spaceID := corecmd.EffectiveValue(cmd, fileCommentSpaceIDFlag()); spaceID == "" {
+		return &CLIError{
+			Code:    CodeInvalidParam,
+			Message: "--node 为数字 dentry ID 时必须同时提供 --space-id",
 		}
 	}
 	return nil

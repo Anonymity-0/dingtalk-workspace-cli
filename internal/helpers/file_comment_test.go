@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -306,6 +307,7 @@ func TestDriveFileCommentListValidatesLocalParameters(t *testing.T) {
 		{"zero limit", []string{"--limit", "0"}},
 		{"large limit", []string{"--page-size", "201"}},
 		{"nonnumeric cursor", []string{"--cursor", "next"}},
+		{"overflow cursor", []string{"--cursor", "999999999999999999999999999999"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -319,6 +321,50 @@ func TestDriveFileCommentListValidatesLocalParameters(t *testing.T) {
 				t.Fatalf("invalid arguments reached MCP: %#v", caller.calls)
 			}
 		})
+	}
+}
+
+func TestDriveFileCommentNumericNodeRequiresSpaceIDForListAndCreateAliases(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "list id alias",
+			args: []string{"drive", "comment", "list", "--id", "231773999335"},
+		},
+		{
+			name: "create file-id alias",
+			args: []string{"drive", "comment", "create", "--file-id", "231773999335", "--content", "test", "--yes"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &fileCommentTestCaller{}
+			_, err := executeFileCommentCommand(t, caller, "", tt.args...)
+			var cliErr *CLIError
+			if !errors.As(err, &cliErr) || cliErr.Code != CodeInvalidParam || !strings.Contains(cliErr.Message, "--space-id") {
+				t.Fatalf("error = %#v", err)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("numeric node without space-id reached MCP: %#v", caller.calls)
+			}
+		})
+	}
+
+	caller := &fileCommentTestCaller{responses: []string{`{
+		"fileId":"resolved-file","total":0,"count":0,"hasMore":false,"nextToken":null,"items":[]
+	}`}}
+	if _, err := executeFileCommentCommand(t, caller, "",
+		"drive", "comment", "list", "--url", "231773999335", "--space-id", "2402756201",
+	); err != nil {
+		t.Fatal(err)
+	}
+	if len(caller.calls) != 1 || caller.calls[0].args["fileId"] != "231773999335" || caller.calls[0].args["spaceId"] != "2402756201" {
+		t.Fatalf("numeric node with space-id args = %#v", caller.calls)
+	}
+	if allASCIIDigits("") {
+		t.Fatal("empty string unexpectedly accepted as numeric")
 	}
 }
 
@@ -409,5 +455,193 @@ func TestDriveFileCommentRejectsMalformedResponseInsteadOfReturningEmpty(t *test
 	var cliErr *CLIError
 	if !errors.As(err, &cliErr) || cliErr.Code != CodeMCPToolError || !strings.Contains(cliErr.Message, "缺少 items") {
 		t.Fatalf("error = %#v", err)
+	}
+}
+
+func TestDriveFileCommentDryRunAndCallErrors(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		args []string
+		tool string
+	}{
+		{
+			name: "list dry run",
+			args: []string{"drive", "comment", "list", "--node", "file-1"},
+			tool: listFileCommentsTool,
+		},
+		{
+			name: "create dry run",
+			args: []string{"drive", "comment", "create", "--node", "file-1", "--content", "test", "--yes"},
+			tool: createFileCommentTool,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &fileCommentTestCaller{dryRun: true}
+			out, err := executeFileCommentCommand(t, caller, "", tt.args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(caller.calls) != 0 || !strings.Contains(string(out), `"tool": "`+tt.tool+`"`) {
+				t.Fatalf("calls = %#v, output = %s", caller.calls, out)
+			}
+		})
+	}
+
+	sentinel := errors.New("mcp unavailable")
+	for _, tt := range []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "list call error",
+			args: []string{"drive", "comment", "list", "--node", "file-1", "--all"},
+		},
+		{
+			name: "create call error",
+			args: []string{"drive", "comment", "create", "--node", "file-1", "--content", "test", "--yes"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &fileCommentTestCaller{err: sentinel}
+			_, err := executeFileCommentCommand(t, caller, "", tt.args...)
+			if !errors.Is(err, sentinel) {
+				t.Fatalf("error = %#v", err)
+			}
+		})
+	}
+}
+
+func TestDriveFileCommentListResponseValidationBranches(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		message  string
+	}{
+		{name: "empty", response: "", message: "返回为空"},
+		{name: "invalid json", response: "{", message: "不是有效 JSON"},
+		{name: "missing file id", response: `{}`, message: "缺少 fileId"},
+		{name: "missing total", response: `{"fileId":"file-1","hasMore":false,"items":[]}`, message: "缺少 total"},
+		{name: "missing has more", response: `{"fileId":"file-1","total":0,"items":[]}`, message: "缺少布尔字段 hasMore"},
+		{name: "next token type", response: `{"fileId":"file-1","total":1,"hasMore":true,"nextToken":2,"items":[]}`, message: "nextToken 不是字符串"},
+		{name: "items type", response: `{"fileId":"file-1","total":0,"hasMore":false,"items":{}}`, message: "items 不是数组"},
+		{name: "item type", response: `{"fileId":"file-1","total":1,"hasMore":false,"items":[1]}`, message: "items[0] 不是对象"},
+		{name: "missing comment id", response: `{"fileId":"file-1","total":1,"hasMore":false,"items":[{"anchor":{}}]}`, message: "缺少 commentId"},
+		{name: "missing anchor", response: `{"fileId":"file-1","total":1,"hasMore":false,"items":[{"commentId":"1"}]}`, message: "缺少 anchor 对象"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &fileCommentTestCaller{responses: []string{tt.response}}
+			_, err := executeFileCommentCommand(t, caller, "", "drive", "comment", "list", "--node", "file-1")
+			var cliErr *CLIError
+			if !errors.As(err, &cliErr) || cliErr.Code != CodeMCPToolError || !strings.Contains(cliErr.Message, tt.message) {
+				t.Fatalf("error = %#v", err)
+			}
+		})
+	}
+
+	caller := &fileCommentTestCaller{responses: []string{`{
+		"data":{"fileId":"file-1","total":0,"hasMore":false,"nextToken":null,"items":null}
+	}`}}
+	out, err := executeFileCommentCommand(t, caller, "", "drive", "comment", "list", "--node", "file-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if comments := decodeFileCommentTestOutput(t, out)["comments"].([]any); len(comments) != 0 {
+		t.Fatalf("comments = %#v", comments)
+	}
+}
+
+func TestDriveFileCommentCreateResponseValidationBranches(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		message  string
+	}{
+		{name: "invalid json", response: "{", message: "不是有效 JSON"},
+		{name: "missing file id", response: `{"comment":{"commentId":"1","anchor":{}}}`, message: "缺少 fileId"},
+		{name: "missing comment", response: `{"fileId":"file-1"}`, message: "缺少 comment 对象"},
+		{name: "missing comment id", response: `{"fileId":"file-1","comment":{"anchor":{}}}`, message: "缺少 commentId"},
+		{name: "missing anchor", response: `{"fileId":"file-1","comment":{"commentId":"1"}}`, message: "缺少 anchor 对象"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &fileCommentTestCaller{responses: []string{tt.response}}
+			_, err := executeFileCommentCommand(t, caller, "",
+				"drive", "comment", "create", "--node", "file-1", "--content", "test", "--yes",
+			)
+			var cliErr *CLIError
+			if !errors.As(err, &cliErr) || cliErr.Code != CodeMCPToolError || !strings.Contains(cliErr.Message, tt.message) {
+				t.Fatalf("error = %#v", err)
+			}
+		})
+	}
+}
+
+func TestDriveFileCommentPaginationCycleLimitAndPartialPage(t *testing.T) {
+	cycleCaller := &fileCommentTestCaller{responses: []string{
+		`{"fileId":"file-1","total":0,"hasMore":true,"nextToken":"2","items":[]}`,
+		`{"fileId":"file-1","total":0,"hasMore":true,"nextToken":"3","items":[]}`,
+		`{"fileId":"file-1","total":0,"hasMore":true,"nextToken":"2","items":[]}`,
+	}}
+	_, err := executeFileCommentCommand(t, cycleCaller, "", "drive", "comment", "list", "--node", "file-1", "--all")
+	var cliErr *CLIError
+	if !errors.As(err, &cliErr) || cliErr.Code != CodeContentTruncated || !strings.Contains(cliErr.Message, "发生循环") {
+		t.Fatalf("cycle error = %#v", err)
+	}
+
+	limitResponses := make([]string, 0, fileCommentMaxAutoPages)
+	for index := 0; index < fileCommentMaxAutoPages; index++ {
+		limitResponses = append(limitResponses, fmt.Sprintf(
+			`{"fileId":"file-1","total":0,"hasMore":true,"nextToken":"%d","items":[]}`,
+			index+1,
+		))
+	}
+	limitCaller := &fileCommentTestCaller{responses: limitResponses}
+	_, err = executeFileCommentCommand(t, limitCaller, "", "drive", "comment", "list", "--node", "file-1", "--all")
+	if !errors.As(err, &cliErr) || cliErr.Code != CodeContentTruncated || !strings.Contains(cliErr.Message, "10 页上限") {
+		t.Fatalf("page limit error = %#v", err)
+	}
+
+	partialCaller := &fileCommentTestCaller{responses: []string{`{
+		"fileId":"file-1","total":1,"hasMore":true,"nextToken":"2",
+		"items":[{"commentId":"1","anchor":{"scope":"whole"}}]
+	}`}}
+	out, err := executeFileCommentCommand(t, partialCaller, "", "drive", "comment", "list", "--node", "file-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := decodeFileCommentTestOutput(t, out)
+	if payload["nextCursor"] != "2" || payload["complete"] != false || payload["hasMore"] != true {
+		t.Fatalf("partial page = %#v", payload)
+	}
+
+	overflowCaller := &fileCommentTestCaller{responses: []string{`{
+		"fileId":"file-1","total":0,"hasMore":true,
+		"nextToken":"999999999999999999999999999999","items":[]
+	}`}}
+	_, err = executeFileCommentCommand(t, overflowCaller, "", "drive", "comment", "list", "--node", "file-1")
+	if !errors.As(err, &cliErr) || cliErr.Code != CodeContentTruncated || !strings.Contains(cliErr.Message, "超出 64 位整数范围") {
+		t.Fatalf("overflow cursor error = %#v", err)
+	}
+}
+
+func TestDriveFileCommentInternalDefaults(t *testing.T) {
+	caller := &fileCommentTestCaller{responses: []string{`{
+		"fileId":"file-1","total":0,"hasMore":false,"nextToken":null,"items":[]
+	}`}}
+	testseam.Protect(t, &deps)
+	InitDeps(caller)
+	var stdout bytes.Buffer
+	cmd := &cobra.Command{Use: "list"}
+	cmd.SetOut(&stdout)
+	if err := runFileCommentList(cmd, listFileCommentsTool, map[string]any{"fileId": "file-1", "maxResults": 200}); err != nil {
+		t.Fatal(err)
+	}
+	payload := decodeFileCommentTestOutput(t, stdout.Bytes())
+	if payload["scope"] != "all" {
+		t.Fatalf("scope = %#v", payload["scope"])
+	}
+	if comments := fileCommentListPayload(fileCommentPage{}, "all")["comments"].([]map[string]any); len(comments) != 0 {
+		t.Fatalf("nil comments projection = %#v", comments)
 	}
 }
