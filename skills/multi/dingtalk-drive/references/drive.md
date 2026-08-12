@@ -434,7 +434,7 @@ Usage:
 Example:
   dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid>
   dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists smart
-  dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists overwrite --yes
+  dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists overwrite
 Flags:
       --local-folder string   本地文件夹绝对路径 (必填)
       --remote-folder string    钉盘目标文件夹 ID (dentryUuid) (必填)
