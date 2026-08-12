@@ -329,6 +329,10 @@ func verifyNoSymlinkEscape(absDir, target string) error {
 		return nil
 	}
 
+	// 循环必然终止，无需不动点兜底：每轮 ancestor 严格变短，要么越界后由下面的 ".."
+	// 分支退出，要么下降到 absDir 自身——absDir 必然存在（EvalSymlinks 刚成功），于是
+	// 在 Lstat 成功分支退出。即便 absDir 在此期间被删除，下一轮 ancestor 升到 absDir
+	// 之上，同样由 ".." 分支退出。
 	ancestor := filepath.Dir(target)
 	for {
 		// 越过 absDir 边界（祖先跑到根目录之上）就停止：根目录之上不属于逃逸判定范围。
@@ -347,11 +351,7 @@ func verifyNoSymlinkEscape(absDir, target string) error {
 			}
 			return nil
 		}
-		parent := filepath.Dir(ancestor)
-		if parent == ancestor {
-			return nil
-		}
-		ancestor = parent
+		ancestor = filepath.Dir(ancestor)
 	}
 }
 
