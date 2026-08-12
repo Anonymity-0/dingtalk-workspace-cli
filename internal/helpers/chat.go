@@ -2700,7 +2700,6 @@ func newChatCommand() *cobra.Command {
 				AvoidWhen:    []string{"跨全部会话按时间查询时使用 chat message list-all"},
 				Examples: []string{
 					"dws chat message list --group <openConversationId> --limit 50",
-					"dws chat message list --group <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50",
 					"dws chat message list --group <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50 --jq '.messages[] | {messageId, text}'",
 				},
 			},

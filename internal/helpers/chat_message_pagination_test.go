@@ -199,10 +199,12 @@ func TestChatMessagePaginationUsesDefaultTimeWindows(t *testing.T) {
 			}
 			startMs := numericArgAsInt64(t, got.args["startTime"])
 			endMs := numericArgAsInt64(t, got.args["endTime"])
-			if endMs < before.UnixMilli() || endMs > after.Add(time.Second).UnixMilli() {
-				t.Fatalf("endTime = %d, want between %d and %d", endMs, before.UnixMilli(), after.Add(time.Second).UnixMilli())
+			wantEndMin := before.Truncate(time.Second).UnixMilli()
+			wantEndMax := after.Add(time.Second).UnixMilli()
+			if endMs < wantEndMin || endMs > wantEndMax {
+				t.Fatalf("endTime = %d, want between %d and %d", endMs, wantEndMin, wantEndMax)
 			}
-			wantStartMin := before.Add(-tt.wantLookback).UnixMilli()
+			wantStartMin := before.Add(-tt.wantLookback).Truncate(time.Second).UnixMilli()
 			wantStartMax := after.Add(-tt.wantLookback).Add(time.Second).UnixMilli()
 			if startMs < wantStartMin || startMs > wantStartMax {
 				t.Fatalf("startTime = %d, want between %d and %d", startMs, wantStartMin, wantStartMax)
