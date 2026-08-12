@@ -32,7 +32,7 @@ func pullListingCaller(items string) *driveScriptCaller {
 }
 
 // 端到端 pull：远端两个文件都下载到本地，并自动创建缺失的本地根目录。
-func TestDrivePull_endToEndDownloadsAll(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_endToEndDownloadsAll(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "created-by-pull")
 	caller := pullListingCaller(
 		`{"name":"a.txt","type":"file","fileId":"A","modifyTime":1000},` +
@@ -54,7 +54,7 @@ func TestDrivePull_endToEndDownloadsAll(t *testing.T) {
 }
 
 // --if-exists skip：本地已存在则不下载。
-func TestDrivePull_ifExistsSkipKeepsLocal(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_ifExistsSkipKeepsLocal(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "a.txt"), "local-original")
 	caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":9000}`)
@@ -74,7 +74,7 @@ func TestDrivePull_ifExistsSkipKeepsLocal(t *testing.T) {
 }
 
 // --if-exists smart：本地 mtime 已 ≥ 远端 → 跳过；远端更新 → 下载。
-func TestDrivePull_ifExistsSmart(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_ifExistsSmart(t *testing.T) {
 	t.Run("local newer skips", func(t *testing.T) {
 		root := t.TempDir()
 		p := filepath.Join(root, "a.txt")
@@ -118,7 +118,7 @@ func TestDrivePull_ifExistsSmart(t *testing.T) {
 }
 
 // --if-exists 非法值直接拒绝。
-func TestDrivePull_invalidIfExistsRejected(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_invalidIfExistsRejected(t *testing.T) {
 	caller := pullListingCaller("")
 	err := runDriveCmd(t, caller, "pull", "--local-folder", t.TempDir(), "--remote-folder", "ROOT", "--if-exists", "bogus")
 	if err == nil || !strings.Contains(err.Error(), "--if-exists") {
@@ -127,7 +127,7 @@ func TestDrivePull_invalidIfExistsRejected(t *testing.T) {
 }
 
 // space-id 透传到 download_file。
-func TestDrivePull_passesSpaceIDToDownload(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_passesSpaceIDToDownload(t *testing.T) {
 	root := t.TempDir()
 	caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":1}`)
 	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
@@ -144,7 +144,7 @@ func TestDrivePull_passesSpaceIDToDownload(t *testing.T) {
 }
 
 // 下载失败 → 该项记 failed，命令以 partial_failure 非零退出。
-func TestDrivePull_downloadFailureIsPartialFailure(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_downloadFailureIsPartialFailure(t *testing.T) {
 	root := t.TempDir()
 	caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":1}`)
 	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error { return errTestDownload })
@@ -161,7 +161,7 @@ func TestDrivePull_downloadFailureIsPartialFailure(t *testing.T) {
 }
 
 // download_file 未返回下载链接 → failed（不是 panic，也不落盘）。
-func TestDrivePull_missingDownloadURLFails(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_missingDownloadURLFails(t *testing.T) {
 	root := t.TempDir()
 	caller := &driveScriptCaller{reply: func(tool string, _ map[string]any, nth int) (string, error) {
 		if tool == "list_files" {
@@ -181,7 +181,7 @@ func TestDrivePull_missingDownloadURLFails(t *testing.T) {
 }
 
 // download_file 的 MCP 调用本身失败 → failed。
-func TestDrivePull_downloadToolErrorFails(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_downloadToolErrorFails(t *testing.T) {
 	root := t.TempDir()
 	caller := &driveScriptCaller{reply: func(tool string, _ map[string]any, nth int) (string, error) {
 		if tool == "list_files" {
@@ -198,7 +198,7 @@ func TestDrivePull_downloadToolErrorFails(t *testing.T) {
 }
 
 // 远端名称逃逸出本地根 → 记 failed，不落盘（resolveLocalTarget 二次确认）。
-func TestDrivePull_escapingRelPathIsFailed(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_escapingRelPathIsFailed(t *testing.T) {
 	root := t.TempDir()
 	// 远端目录名合法，但目录内的软链把落盘点指到根目录外。
 	outside := t.TempDir()
@@ -231,7 +231,7 @@ func TestDrivePull_escapingRelPathIsFailed(t *testing.T) {
 }
 
 // 目标父目录不可创建（同名常规文件占位）→ failed，不 panic。
-func TestPullOneFile_mkdirFailureIsFailed(t *testing.T) {
+func TestCrossPlatformCoveragePullOneFile_mkdirFailureIsFailed(t *testing.T) {
 	root := t.TempDir()
 	// "sub" 是普通文件，MkdirAll("sub") 必然失败。
 	mustWrite(t, filepath.Join(root, "sub"), "occupied")
@@ -253,7 +253,7 @@ func TestPullOneFile_mkdirFailureIsFailed(t *testing.T) {
 }
 
 // 探测目录不存在时 isCaseInsensitiveFS 回退平台默认，不 panic。
-func TestIsCaseInsensitiveFS_missingDirFallsBackToPlatformDefault(t *testing.T) {
+func TestCrossPlatformCoverageIsCaseInsensitiveFS_missingDirFallsBackToPlatformDefault(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "absent")
 	// 只断言不 panic 且返回布尔（具体值取决于平台默认）。
 	_ = isCaseInsensitiveFS(missing)

@@ -9,15 +9,15 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 // forceCaseInsensitiveFS 在当前用例内把大小写探测钉成不敏感，使等价路径冲突分支
 // 在大小写敏感的 CI 文件系统（ext4）上同样可达。
 func forceCaseInsensitiveFS(t *testing.T) {
 	t.Helper()
-	prev := isCaseInsensitiveFS
-	isCaseInsensitiveFS = func(string) bool { return true }
-	t.Cleanup(func() { isCaseInsensitiveFS = prev })
+	testseam.Swap(t, &isCaseInsensitiveFS, func(string) bool { return true })
 }
 
 // ──────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ func forceCaseInsensitiveFS(t *testing.T) {
 
 // 远端 A.txt 与 a.txt 在大小写不敏感目标上映射到同一本地文件 → 两项都 failed，
 // 绝不顺序覆盖导致静默丢文件。
-func TestDrivePull_equivalentPathCollisionFailsBoth(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_equivalentPathCollisionFailsBoth(t *testing.T) {
 	forceCaseInsensitiveFS(t)
 	root := t.TempDir()
 
@@ -52,7 +52,7 @@ func TestDrivePull_equivalentPathCollisionFailsBoth(t *testing.T) {
 }
 
 // sync 的 new_remote 阶段同样拒绝等价冲突项。
-func TestDriveSync_equivalentPathCollisionFailsBoth(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_equivalentPathCollisionFailsBoth(t *testing.T) {
 	forceCaseInsensitiveFS(t)
 	root := t.TempDir()
 	withSyncTransport(t, "remote")
@@ -77,10 +77,9 @@ func TestDriveSync_equivalentPathCollisionFailsBoth(t *testing.T) {
 // detectCaseInsensitiveFS：探针名无大小写差异时回退平台默认
 // ──────────────────────────────────────────────────────────
 
-func TestDetectCaseInsensitiveFS_caselessProbeFallsBackToPlatformDefault(t *testing.T) {
-	prev := caseProbePattern
-	caseProbePattern = "1234567890*" // 纯数字：ToUpper 与原名相同，无法据此判定
-	t.Cleanup(func() { caseProbePattern = prev })
+func TestCrossPlatformCoverageDetectCaseInsensitiveFS_caselessProbeFallsBackToPlatformDefault(t *testing.T) {
+	// 纯数字模板：ToUpper 与原名相同，无法据此判定。
+	testseam.Swap(t, &caseProbePattern, "1234567890*")
 
 	dir := t.TempDir()
 	got := detectCaseInsensitiveFS(dir)
@@ -95,7 +94,7 @@ func TestDetectCaseInsensitiveFS_caselessProbeFallsBackToPlatformDefault(t *test
 // isSafeRemoteSegmentPlatform：非 Windows 平台无额外约束
 // ──────────────────────────────────────────────────────────
 
-func TestIsSafeRemoteSegmentPlatform_allowsPlainNames(t *testing.T) {
+func TestCrossPlatformCoverageIsSafeRemoteSegmentPlatform_allowsPlainNames(t *testing.T) {
 	for _, name := range []string{"a.txt", "报告.pdf", "with space.md", "..."} {
 		if !isSafeRemoteSegmentPlatform(name) {
 			t.Errorf("isSafeRemoteSegmentPlatform(%q) = false, want true", name)
@@ -134,7 +133,7 @@ func (irregularFileInfo) ModTime() time.Time { return time.Unix(0, 0) }
 func (irregularFileInfo) IsDir() bool        { return false }
 func (irregularFileInfo) Sys() any           { return nil }
 
-func TestWalkLocalTreeEntry_errorBranches(t *testing.T) {
+func TestCrossPlatformCoverageWalkLocalTreeEntry_errorBranches(t *testing.T) {
 	files := map[string]*localFile{}
 
 	// WalkDir 自身报错原样上抛。
@@ -179,7 +178,7 @@ func (regularFileInfo) ModTime() time.Time { return time.Unix(1, 0) }
 func (regularFileInfo) IsDir() bool        { return false }
 func (regularFileInfo) Sys() any           { return nil }
 
-func TestWalkLocalForPushEntry_errorBranches(t *testing.T) {
+func TestCrossPlatformCoverageWalkLocalForPushEntry_errorBranches(t *testing.T) {
 	var dirs []string
 	var files []localPushFile
 

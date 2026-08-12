@@ -3,11 +3,14 @@ package helpers
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 // syncCaller 组合 push 与 pull 两侧：list_files 按 parentId 返回远端现状，
@@ -50,7 +53,7 @@ func withSyncTransport(t *testing.T, body string) {
 // ──────────────────────────────────────────────────────────
 
 // 显式传空 --on-conflict 时回落默认 remote-wins（而非报非法取值）。
-func TestDriveSync_emptyOnConflictDefaultsToRemoteWins(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_emptyOnConflictDefaultsToRemoteWins(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
 	mustWrite(t, p, "local-old")
@@ -70,7 +73,7 @@ func TestDriveSync_emptyOnConflictDefaultsToRemoteWins(t *testing.T) {
 	}
 }
 
-func TestDriveSync_invalidOnConflictRejected(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_invalidOnConflictRejected(t *testing.T) {
 	err := runDriveCmd(t, syncCaller(nil), "sync", "--local-folder", t.TempDir(),
 		"--remote-folder", "ROOT", "--on-conflict", "bogus")
 	if err == nil || !strings.Contains(err.Error(), "--on-conflict") {
@@ -83,7 +86,7 @@ func TestDriveSync_invalidOnConflictRejected(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // quick 模式下两侧 mtime 相同 → unchanged，不做任何读写。
-func TestDriveSync_unchangedIsUntouched(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_unchangedIsUntouched(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "same.txt")
 	mustWrite(t, p, "identical")
@@ -106,7 +109,7 @@ func TestDriveSync_unchangedIsUntouched(t *testing.T) {
 }
 
 // exact 模式远端无可靠 md5 → unknown，一律计入 skipped 且不动任何一侧。
-func TestDriveSync_unknownIsSkipped(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_unknownIsSkipped(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "u.txt")
 	mustWrite(t, p, "local")
@@ -128,7 +131,7 @@ func TestDriveSync_unknownIsSkipped(t *testing.T) {
 }
 
 // exact 模式下本地不可读 → judgeFileMatch 的 MD5 失败要中止整个 sync。
-func TestDriveSync_md5FailureAborts(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_md5FailureAborts(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("chmod-based unreadable file needs a non-root user")
 	}
@@ -153,7 +156,7 @@ func TestDriveSync_md5FailureAborts(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // 本地子目录在远端缺失 → 建目录（记 folder_created + pushed）再上传其中文件。
-func TestDriveSync_createsRemoteFolderForNewLocal(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_createsRemoteFolderForNewLocal(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
 		t.Fatal(err)
@@ -176,7 +179,7 @@ func TestDriveSync_createsRemoteFolderForNewLocal(t *testing.T) {
 }
 
 // 远端已有同名目录 → 复用，不重建。
-func TestDriveSync_reusesExistingRemoteFolder(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_reusesExistingRemoteFolder(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
 		t.Fatal(err)
@@ -196,7 +199,7 @@ func TestDriveSync_reusesExistingRemoteFolder(t *testing.T) {
 }
 
 // create_folder 失败 → 目录与其中文件都记 failed，命令非零退出。
-func TestDriveSync_folderCreationFailureCascades(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_folderCreationFailureCascades(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
 		t.Fatal(err)
@@ -218,7 +221,7 @@ func TestDriveSync_folderCreationFailureCascades(t *testing.T) {
 }
 
 // new_local 上传失败 → 记 failed 并非零退出。
-func TestDriveSync_pushUploadFailureIsFailed(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_pushUploadFailureIsFailed(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "only-local.txt"), "x")
 	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return errTestUpload })
@@ -236,7 +239,7 @@ func TestDriveSync_pushUploadFailureIsFailed(t *testing.T) {
 // --on-conflict ask 的每个交互答案
 // ──────────────────────────────────────────────────────────
 
-func TestDriveSyncAskConflict_answers(t *testing.T) {
+func TestCrossPlatformCoverageDriveSyncAskConflict_answers(t *testing.T) {
 	cases := []struct {
 		input string
 		want  string
@@ -255,9 +258,7 @@ func TestDriveSyncAskConflict_answers(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(strings.TrimSpace(tc.input), func(t *testing.T) {
-			prev := syncAskStdin
-			syncAskStdin = strings.NewReader(tc.input)
-			t.Cleanup(func() { syncAskStdin = prev })
+			testseam.Swap(t, &syncAskStdin, io.Reader(strings.NewReader(tc.input)))
 
 			got, err := driveSyncAskConflict("f.txt")
 			if tc.isErr {
@@ -277,10 +278,8 @@ func TestDriveSyncAskConflict_answers(t *testing.T) {
 }
 
 // ask 选到无效值时整个 sync 中止（错误上抛，不是静默跳过）。
-func TestDriveSync_askInvalidChoiceAborts(t *testing.T) {
-	prev := syncAskStdin
-	syncAskStdin = strings.NewReader("nonsense\n")
-	t.Cleanup(func() { syncAskStdin = prev })
+func TestCrossPlatformCoverageDriveSync_askInvalidChoiceAborts(t *testing.T) {
+	testseam.Swap(t, &syncAskStdin, io.Reader(strings.NewReader("nonsense\n")))
 
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
@@ -299,10 +298,8 @@ func TestDriveSync_askInvalidChoiceAborts(t *testing.T) {
 }
 
 // ask 选 keep-both：本地改名保留副本，远端拉到原名。
-func TestDriveSync_askKeepBothViaStdin(t *testing.T) {
-	prev := syncAskStdin
-	syncAskStdin = strings.NewReader("k\n")
-	t.Cleanup(func() { syncAskStdin = prev })
+func TestCrossPlatformCoverageDriveSync_askKeepBothViaStdin(t *testing.T) {
+	testseam.Swap(t, &syncAskStdin, io.Reader(strings.NewReader("k\n")))
 
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
@@ -338,7 +335,7 @@ func TestDriveSync_askKeepBothViaStdin(t *testing.T) {
 }
 
 // keep-both 改名失败（目标被目录占位）→ 记 failed，本地原文件保持不动。
-func TestDriveSync_keepBothRenameFailureKeepsLocal(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_keepBothRenameFailureKeepsLocal(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
 	mustWrite(t, p, "local-version")
@@ -367,7 +364,7 @@ func TestDriveSync_keepBothRenameFailureKeepsLocal(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // dry-run 下即使有 new_local / new_remote / modified 也不产生任何写调用。
-func TestDriveSync_dryRunSkipsEveryWrite(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_dryRunSkipsEveryWrite(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "local.txt"), "l")
 	p := filepath.Join(dir, "both.txt")
@@ -396,7 +393,7 @@ func TestDriveSync_dryRunSkipsEveryWrite(t *testing.T) {
 }
 
 // 远端列举失败 → sync 直接报错。
-func TestDriveSync_remoteListFailurePropagates(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_remoteListFailurePropagates(t *testing.T) {
 	caller := &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) { return "", errTestList }}
 	if err := runDriveCmd(t, caller, "sync", "--local-folder", t.TempDir(), "--remote-folder", "ROOT"); err == nil {
 		t.Fatal("expected remote listing failure to propagate")
@@ -404,7 +401,7 @@ func TestDriveSync_remoteListFailurePropagates(t *testing.T) {
 }
 
 // 本地根目录不存在 → 扫描失败上抛。
-func TestDriveSync_missingLocalRootFails(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_missingLocalRootFails(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "absent")
 	if err := runDriveCmd(t, syncCaller(nil), "sync", "--local-folder", missing, "--remote-folder", "ROOT"); err == nil {
 		t.Fatal("expected missing local root to fail")

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +21,7 @@ var errTestDownload = errors.New("simulated download failure")
 // driveSyncFailure — sync 部分失败错误：exit=1
 // ──────────────────────────────────────────────────────────
 
-func TestDriveSyncFailure(t *testing.T) {
+func TestCrossPlatformCoverageDriveSyncFailure(t *testing.T) {
 	e := &driveSyncFailure{failed: 2}
 	if e.ExitCode() != 1 {
 		t.Errorf("ExitCode() = %d, want 1", e.ExitCode())
@@ -37,7 +38,7 @@ func TestDriveSyncFailure(t *testing.T) {
 // driveSyncSuffixedRel — keep-both 本地重命名目标生成
 // ──────────────────────────────────────────────────────────
 
-func TestDriveSyncSuffixedRel(t *testing.T) {
+func TestCrossPlatformCoverageDriveSyncSuffixedRel(t *testing.T) {
 	// 基本：扩展名前插入基于 fileId 末 8 位的后缀。
 	got := driveSyncSuffixedRel("a/b.txt", "0123456789ABCDEF", map[string]bool{})
 	if want := "a/b.conflict-89ABCDEF.txt"; got != want {
@@ -104,7 +105,7 @@ func runDriveSyncTestWithGet(t *testing.T, caller *driveSyncMockCaller, getFn fu
 }
 
 // 双向：本地独有 local.txt 应上传；远端独有 remote.txt 应下载到本地。
-func TestDriveSync_bidirectional(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_bidirectional(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "local.txt"), "local-only")
 
@@ -139,7 +140,7 @@ func TestDriveSync_bidirectional(t *testing.T) {
 }
 
 // modified + remote-wins：quick 模式下两侧 mtime 不同判为 modified，默认拉取远端覆盖本地。
-func TestDriveSync_modifiedRemoteWins(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_modifiedRemoteWins(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
 	mustWrite(t, p, "local-old")
@@ -167,7 +168,7 @@ func TestDriveSync_modifiedRemoteWins(t *testing.T) {
 }
 
 // modified + local-wins：改用 local-wins 时应覆盖上传远端（传 overwriteFileId、不传 parentId）。
-func TestDriveSync_modifiedLocalWins(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_modifiedLocalWins(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
 	mustWrite(t, p, "local-new")
@@ -197,7 +198,7 @@ func TestDriveSync_modifiedLocalWins(t *testing.T) {
 }
 
 // --dry-run：只计算差异，不触发任何 MCP 写操作与本地落盘。
-func TestDriveSync_dryRun(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_dryRun(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "local.txt"), "x")
 
@@ -219,7 +220,7 @@ func TestDriveSync_dryRun(t *testing.T) {
 
 // remote-wins 下载失败：本地原文件必须原样保留（pullOneFile 先写临时文件、成功才原子
 // rename 覆盖），且命令以非零退出码退出。
-func TestDriveSync_pullFailureKeepsLocal(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_pullFailureKeepsLocal(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
 	mustWrite(t, p, "local-original")
@@ -248,7 +249,7 @@ func TestDriveSync_pullFailureKeepsLocal(t *testing.T) {
 // keep-both 成功路径：本地既有文件改名保留（os.Rename 覆盖 O_EXCL 空占位），远端拉取到
 // 原路径。此测试在 Windows 主机上运行即验证 os.Rename 可替换既有目标（MOVEFILE_REPLACE_
 // EXISTING），覆盖 pull 覆盖与 keep-both 两条 rename 路径的平台行为。
-func TestDriveSync_keepBothSuccess(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_keepBothSuccess(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
 	mustWrite(t, p, "local-new")
@@ -282,7 +283,7 @@ func TestDriveSync_keepBothSuccess(t *testing.T) {
 
 // keep-both 下载失败：改名保留后拉取远端失败，应回滚改名——原文件恢复原名原内容，
 // 不留下改名后的残留文件。
-func TestDriveSync_keepBothRollbackOnPullFailure(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_keepBothRollbackOnPullFailure(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
 	mustWrite(t, p, "local-original")
@@ -314,7 +315,7 @@ func TestDriveSync_keepBothRollbackOnPullFailure(t *testing.T) {
 
 // reserveSyncKeepBothTarget 不得占用「精确同名」的既有文件（occupied 未记录时），
 // 应原子占位到下一个后缀，且既有文件内容不被破坏。此断言在任何文件系统上都成立。
-func TestReserveSyncKeepBothTarget_noOverwriteExact(t *testing.T) {
+func TestCrossPlatformCoverageReserveSyncKeepBothTarget_noOverwriteExact(t *testing.T) {
 	dir := t.TempDir()
 	// 预置一个与首选候选精确同名的既有文件（模拟未被 occupied 记录的外部残留）。
 	first := "f.conflict-ABCD1234.txt"
@@ -342,7 +343,7 @@ func TestReserveSyncKeepBothTarget_noOverwriteExact(t *testing.T) {
 
 // reserveSyncKeepBothTarget 在大小写不敏感文件系统上，不得覆盖与候选「大小写等价」的
 // 既有文件——O_EXCL 由 OS 兜底判等价性，occupied 的精确字符串键覆盖不到这种情况。
-func TestReserveSyncKeepBothTarget_noOverwriteCaseEquivalent(t *testing.T) {
+func TestCrossPlatformCoverageReserveSyncKeepBothTarget_noOverwriteCaseEquivalent(t *testing.T) {
 	dir := t.TempDir()
 	if !isCaseInsensitiveFS(dir) {
 		t.Skip("文件系统大小写敏感，跳过大小写等价覆盖测试")
@@ -367,10 +368,8 @@ func TestReserveSyncKeepBothTarget_noOverwriteCaseEquivalent(t *testing.T) {
 
 // 非交互 ask（stdin 立即 EOF）：冲突项应被跳过而非中止整个同步，
 // new_local 仍上传、new_remote 仍下载，且被跳过的 modified 本地文件不被改动。
-func TestDriveSync_askNonInteractiveSkipsConflict(t *testing.T) {
-	prev := syncAskStdin
-	syncAskStdin = strings.NewReader("") // 非交互：立即 EOF
-	t.Cleanup(func() { syncAskStdin = prev })
+func TestCrossPlatformCoverageDriveSync_askNonInteractiveSkipsConflict(t *testing.T) {
+	testseam.Swap(t, &syncAskStdin, io.Reader(strings.NewReader(""))) // 非交互：立即 EOF
 
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "local.txt"), "local-only") // new_local → 应上传

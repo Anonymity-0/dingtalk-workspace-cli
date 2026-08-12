@@ -44,7 +44,7 @@ func mkNested(t *testing.T) string {
 }
 
 // 顶层目录 a 建失败 → 子目录 a/b 因父目录缺失也 failed，其中文件同样 failed。
-func TestDrivePush_nestedDirFailsWhenParentMissing(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_nestedDirFailsWhenParentMissing(t *testing.T) {
 	dir := mkNested(t)
 	withNoopPut(t)
 
@@ -63,7 +63,7 @@ func TestDrivePush_nestedDirFailsWhenParentMissing(t *testing.T) {
 	}
 }
 
-func TestDriveSync_nestedDirFailsWhenParentMissing(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_nestedDirFailsWhenParentMissing(t *testing.T) {
 	dir := mkNested(t)
 	withNoopPut(t)
 
@@ -79,7 +79,7 @@ func TestDriveSync_nestedDirFailsWhenParentMissing(t *testing.T) {
 }
 
 // new_remote 落盘目标经软链逃逸出本地根 → 记 failed，不写到根目录之外。
-func TestDriveSync_newRemoteEscapeIsFailed(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_newRemoteEscapeIsFailed(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()
 	if err := os.Symlink(outside, filepath.Join(root, "sub")); err != nil {
@@ -106,7 +106,7 @@ func TestDriveSync_newRemoteEscapeIsFailed(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // syncKeepBoth 在 rel 逃逸时直接 failed（resolveLocalTarget 报错）。
-func TestSyncKeepBoth_escapingRelIsFailed(t *testing.T) {
+func TestCrossPlatformCoverageSyncKeepBoth_escapingRelIsFailed(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()
 	if err := os.Symlink(outside, filepath.Join(root, "sub")); err != nil {
@@ -121,7 +121,7 @@ func TestSyncKeepBoth_escapingRelIsFailed(t *testing.T) {
 }
 
 // collided 命中时 keep-both 直接 failed，不做任何改名。
-func TestSyncKeepBoth_collidedIsFailed(t *testing.T) {
+func TestCrossPlatformCoverageSyncKeepBoth_collidedIsFailed(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "f.txt"), "local")
 	res := &driveSyncResult{}
@@ -136,7 +136,7 @@ func TestSyncKeepBoth_collidedIsFailed(t *testing.T) {
 }
 
 // 占用改名目标失败（目录不可写）→ failed。
-func TestSyncKeepBoth_reserveFailureIsFailed(t *testing.T) {
+func TestCrossPlatformCoverageSyncKeepBoth_reserveFailureIsFailed(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("read-only dir enforcement needs POSIX perms and a non-root user")
 	}
@@ -156,7 +156,7 @@ func TestSyncKeepBoth_reserveFailureIsFailed(t *testing.T) {
 }
 
 // 改名本身失败（本地原文件其实是目录）→ failed，并清理刚建的空占位。
-func TestSyncKeepBoth_renameFailureCleansPlaceholder(t *testing.T) {
+func TestCrossPlatformCoverageSyncKeepBoth_renameFailureCleansPlaceholder(t *testing.T) {
 	root := t.TempDir()
 	// rel 指向一个非空目录：os.Rename(dir, emptyFile) 会失败。
 	if err := os.MkdirAll(filepath.Join(root, "f.txt", "inner"), 0o755); err != nil {
@@ -177,7 +177,7 @@ func TestSyncKeepBoth_renameFailureCleansPlaceholder(t *testing.T) {
 }
 
 // 拉取失败 → 回滚改名，本地文件恢复原名与原内容。
-func TestSyncKeepBoth_pullFailureRollsBackRename(t *testing.T) {
+func TestCrossPlatformCoverageSyncKeepBoth_pullFailureRollsBackRename(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "f.txt")
 	mustWrite(t, p, "local-version")
@@ -207,7 +207,7 @@ func TestSyncKeepBoth_pullFailureRollsBackRename(t *testing.T) {
 }
 
 // 拉取失败且回滚也失败 → 如实上报“本地版本保留为 <改名>”，不谎称成功。
-func TestSyncKeepBoth_rollbackFailureIsReported(t *testing.T) {
+func TestCrossPlatformCoverageSyncKeepBoth_rollbackFailureIsReported(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "f.txt")
 	mustWrite(t, p, "local-version")

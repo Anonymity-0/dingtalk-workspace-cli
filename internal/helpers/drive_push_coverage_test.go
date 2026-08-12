@@ -44,7 +44,7 @@ func withNoopPut(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // 本地子目录在远端缺失 → 按需 create_folder 并留 folder_created 痕迹，再上传其中文件。
-func TestDrivePush_createsMissingRemoteFolders(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_createsMissingRemoteFolders(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestDrivePush_createsMissingRemoteFolders(t *testing.T) {
 }
 
 // 远端已存在同名目录 → 复用其 fileId，不重建、不出现在 items[]。
-func TestDrivePush_reusesExistingRemoteFolder(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_reusesExistingRemoteFolder(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func TestDrivePush_reusesExistingRemoteFolder(t *testing.T) {
 }
 
 // create_folder 失败 / 未返回 fileId → 该目录记 failed，其中文件因父目录缺失也 failed。
-func TestDrivePush_folderCreationFailureCascades(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_folderCreationFailureCascades(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		reply func(string, map[string]any, int) (string, error)
@@ -138,7 +138,7 @@ func TestDrivePush_folderCreationFailureCascades(t *testing.T) {
 }
 
 // --if-exists skip（默认）：远端已存在 → 跳过，不上传。
-func TestDrivePush_ifExistsSkipIsDefault(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_ifExistsSkipIsDefault(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "local")
 	withNoopPut(t)
@@ -155,7 +155,7 @@ func TestDrivePush_ifExistsSkipIsDefault(t *testing.T) {
 }
 
 // --if-exists smart：远端时间已 ≥ 本地 → 跳过；远端更旧 → 覆盖上传。
-func TestDrivePush_ifExistsSmart(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_ifExistsSmart(t *testing.T) {
 	t.Run("remote newer skips", func(t *testing.T) {
 		dir := t.TempDir()
 		p := filepath.Join(dir, "a.txt")
@@ -217,7 +217,7 @@ func TestDrivePush_ifExistsSmart(t *testing.T) {
 }
 
 // 上传失败 → 记 failed 并以非零退出码退出，结构化结果仍打印。
-func TestDrivePush_uploadFailureExitsNonZero(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_uploadFailureExitsNonZero(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "local")
 	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return errTestUpload })
@@ -232,7 +232,7 @@ func TestDrivePush_uploadFailureExitsNonZero(t *testing.T) {
 }
 
 // --if-exists 非法值直接拒绝。
-func TestDrivePush_invalidIfExistsRejected(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_invalidIfExistsRejected(t *testing.T) {
 	err := runDriveCmd(t, pushOKCaller(nil), "push", "--local-folder", t.TempDir(), "--remote-folder", "ROOT", "--if-exists", "bogus")
 	if err == nil || !strings.Contains(err.Error(), "--if-exists") {
 		t.Fatalf("expected --if-exists rejection, got %v", err)
@@ -240,7 +240,7 @@ func TestDrivePush_invalidIfExistsRejected(t *testing.T) {
 }
 
 // space-id 必须透传到 create_folder / get_upload_info / ln 三处。
-func TestDrivePush_passesSpaceIDEverywhere(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_passesSpaceIDEverywhere(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
 		t.Fatal(err)
@@ -264,7 +264,7 @@ func TestDrivePush_passesSpaceIDEverywhere(t *testing.T) {
 }
 
 // 远端列举失败 → push 直接报错，不做任何上传。
-func TestDrivePush_remoteListFailurePropagates(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_remoteListFailurePropagates(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "x")
 	caller := &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) { return "", errTestList }}
@@ -274,7 +274,7 @@ func TestDrivePush_remoteListFailurePropagates(t *testing.T) {
 }
 
 // 本地根目录不存在 → 扫描失败。
-func TestDrivePush_missingLocalRootFails(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_missingLocalRootFails(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "absent")
 	err := runDriveCmd(t, pushOKCaller(nil), "push", "--local-folder", missing, "--remote-folder", "ROOT")
 	if err == nil || !strings.Contains(err.Error(), "扫描本地目录失败") {
@@ -286,7 +286,7 @@ func TestDrivePush_missingLocalRootFails(t *testing.T) {
 // walkRemoteForPush — 分页、递归、深度上限、非法/空名跳过
 // ──────────────────────────────────────────────────────────
 
-func TestWalkRemoteForPush_paginationRecursionAndSkips(t *testing.T) {
+func TestCrossPlatformCoverageWalkRemoteForPush_paginationRecursionAndSkips(t *testing.T) {
 	// 递归会插在 ROOT 的两页之间，所以按 (parentId, nextToken) 判定而非调用序号。
 	caller := &driveScriptCaller{reply: func(_ string, args map[string]any, _ int) (string, error) {
 		parent, _ := args["parentId"].(string)
@@ -332,7 +332,7 @@ func TestWalkRemoteForPush_paginationRecursionAndSkips(t *testing.T) {
 	}
 }
 
-func TestWalkRemoteForPush_depthLimitAborts(t *testing.T) {
+func TestCrossPlatformCoverageWalkRemoteForPush_depthLimitAborts(t *testing.T) {
 	caller := &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) {
 		return `{"result":{"items":[{"name":"loop","type":"folder","fileId":"LOOP"}],"nextToken":""}}`, nil
 	}}
@@ -351,7 +351,7 @@ func TestWalkRemoteForPush_depthLimitAborts(t *testing.T) {
 // walkLocalForPush — 非常规文件与错误分支
 // ──────────────────────────────────────────────────────────
 
-func TestWalkLocalForPush_skipsIrregularAndMissingRoot(t *testing.T) {
+func TestCrossPlatformCoverageWalkLocalForPush_skipsIrregularAndMissingRoot(t *testing.T) {
 	if _, _, err := walkLocalForPush(filepath.Join(t.TempDir(), "absent")); err == nil {
 		t.Fatal("expected error for missing root")
 	}
@@ -376,7 +376,7 @@ func TestWalkLocalForPush_skipsIrregularAndMissingRoot(t *testing.T) {
 // pushUploadFile — 凭证解析与提交失败分支
 // ──────────────────────────────────────────────────────────
 
-func TestPushUploadFile_failureBranches(t *testing.T) {
+func TestCrossPlatformCoveragePushUploadFile_failureBranches(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "a.txt")
 	mustWrite(t, p, "payload")
@@ -437,7 +437,7 @@ func TestPushUploadFile_failureBranches(t *testing.T) {
 }
 
 // pushCreateFolder：MCP 失败上抛，成功时从返回体提取 fileId。
-func TestPushCreateFolder_errorAndSuccess(t *testing.T) {
+func TestCrossPlatformCoveragePushCreateFolder_errorAndSuccess(t *testing.T) {
 	prevDeps, prevArgs := deps, os.Args
 	os.Args = []string{"dws", "drive"}
 	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })

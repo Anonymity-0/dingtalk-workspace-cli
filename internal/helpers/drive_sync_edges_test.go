@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +47,7 @@ func mustSetFlags(t *testing.T, cmd *cobra.Command, kv map[string]string) {
 // --if-exists 显式空值回落默认
 // ──────────────────────────────────────────────────────────
 
-func TestDrivePull_emptyIfExistsDefaultsToOverwrite(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_emptyIfExistsDefaultsToOverwrite(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "a.txt")
 	mustWrite(t, p, "local-old")
@@ -64,7 +65,7 @@ func TestDrivePull_emptyIfExistsDefaultsToOverwrite(t *testing.T) {
 	}
 }
 
-func TestDrivePush_emptyIfExistsDefaultsToSkip(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_emptyIfExistsDefaultsToSkip(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "local")
 	withNoopPut(t)
@@ -85,7 +86,7 @@ func TestDrivePush_emptyIfExistsDefaultsToSkip(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // 目标目录不可写 → 创建临时文件失败。
-func TestPullOneFile_tempFileCreationFailure(t *testing.T) {
+func TestCrossPlatformCoveragePullOneFile_tempFileCreationFailure(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("read-only dir enforcement needs POSIX perms and a non-root user")
 	}
@@ -108,7 +109,7 @@ func TestPullOneFile_tempFileCreationFailure(t *testing.T) {
 }
 
 // 目标路径是目录 → 最后的原子 rename 失败。
-func TestPullOneFile_renameOntoDirectoryFails(t *testing.T) {
+func TestCrossPlatformCoveragePullOneFile_renameOntoDirectoryFails(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "a.txt")
 	if err := os.MkdirAll(target, 0o755); err != nil { // 目标被目录占位
@@ -137,7 +138,7 @@ func TestPullOneFile_renameOntoDirectoryFails(t *testing.T) {
 // PrintJSON 失败分支
 // ──────────────────────────────────────────────────────────
 
-func TestDrivePush_printFailurePropagates(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_printFailurePropagates(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "x")
 	withNoopPut(t)
@@ -154,7 +155,7 @@ func TestDrivePush_printFailurePropagates(t *testing.T) {
 	}
 }
 
-func TestDriveSync_printFailurePropagates(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_printFailurePropagates(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "x")
 	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
@@ -176,7 +177,7 @@ func TestDriveSync_printFailurePropagates(t *testing.T) {
 // walkLocalForPush / walkLocalTree 的 WalkDir 错误回调
 // ──────────────────────────────────────────────────────────
 
-func TestWalkLocal_unreadableSubdirectoryErrors(t *testing.T) {
+func TestCrossPlatformCoverageWalkLocal_unreadableSubdirectoryErrors(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("unreadable dir needs POSIX perms and a non-root user")
 	}
@@ -204,7 +205,7 @@ func TestWalkLocal_unreadableSubdirectoryErrors(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // 目标位于 absDir 之外 → 走到根目录之上即放行（不是逃逸判定范围）。
-func TestVerifyNoSymlinkEscape_targetOutsideRootIsIgnored(t *testing.T) {
+func TestCrossPlatformCoverageVerifyNoSymlinkEscape_targetOutsideRootIsIgnored(t *testing.T) {
 	root := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "elsewhere", "x.txt")
 	if err := verifyNoSymlinkEscape(root, outside); err != nil {
@@ -213,7 +214,7 @@ func TestVerifyNoSymlinkEscape_targetOutsideRootIsIgnored(t *testing.T) {
 }
 
 // 已存在路径含符号链接环 → EvalSymlinks 失败要如实上报。
-func TestVerifyNoSymlinkEscape_symlinkLoopErrors(t *testing.T) {
+func TestCrossPlatformCoverageVerifyNoSymlinkEscape_symlinkLoopErrors(t *testing.T) {
 	root := t.TempDir()
 	loop := filepath.Join(root, "loop")
 	if err := os.Symlink(loop, loop); err != nil {
@@ -230,7 +231,7 @@ func TestVerifyNoSymlinkEscape_symlinkLoopErrors(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // 候选目标逃逸出本地根（父目录是指向外部的软链）→ 直接失败。
-func TestReserveSyncKeepBothTarget_escapeFails(t *testing.T) {
+func TestCrossPlatformCoverageReserveSyncKeepBothTarget_escapeFails(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()
 	if err := os.Symlink(outside, filepath.Join(root, "sub")); err != nil {
@@ -242,7 +243,7 @@ func TestReserveSyncKeepBothTarget_escapeFails(t *testing.T) {
 }
 
 // 候选目标所在目录不可写 → OpenFile 以非 EEXIST 错误失败，直接上报。
-func TestReserveSyncKeepBothTarget_unwritableDirFails(t *testing.T) {
+func TestCrossPlatformCoverageReserveSyncKeepBothTarget_unwritableDirFails(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("read-only dir enforcement needs POSIX perms and a non-root user")
 	}
@@ -258,7 +259,7 @@ func TestReserveSyncKeepBothTarget_unwritableDirFails(t *testing.T) {
 }
 
 // occupied 中已知占用的首选候选被跳过，改用下一个后缀。
-func TestReserveSyncKeepBothTarget_skipsKnownOccupied(t *testing.T) {
+func TestCrossPlatformCoverageReserveSyncKeepBothTarget_skipsKnownOccupied(t *testing.T) {
 	root := t.TempDir()
 	first := syncKeepBothCandidate("f.txt", "FID12345678", 0)
 	occupied := map[string]bool{first: true}
@@ -276,10 +277,8 @@ func TestReserveSyncKeepBothTarget_skipsKnownOccupied(t *testing.T) {
 // ask 读取失败（非 EOF）
 // ──────────────────────────────────────────────────────────
 
-func TestDriveSyncAskConflict_readErrorPropagates(t *testing.T) {
-	prev := syncAskStdin
-	syncAskStdin = errReader{}
-	t.Cleanup(func() { syncAskStdin = prev })
+func TestCrossPlatformCoverageDriveSyncAskConflict_readErrorPropagates(t *testing.T) {
+	testseam.Swap(t, &syncAskStdin, io.Reader(errReader{}))
 
 	if _, err := driveSyncAskConflict("f.txt"); err == nil {
 		t.Fatal("expected read failure to propagate")
@@ -291,7 +290,7 @@ func TestDriveSyncAskConflict_readErrorPropagates(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // --local-folder 指向一个常规文件 → MkdirAll 失败。
-func TestDriveSync_localRootIsFileFails(t *testing.T) {
+func TestCrossPlatformCoverageDriveSync_localRootIsFileFails(t *testing.T) {
 	dir := t.TempDir()
 	asFile := filepath.Join(dir, "not-a-dir")
 	mustWrite(t, asFile, "x")

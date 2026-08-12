@@ -31,7 +31,7 @@ func (m *drivePullMockCaller) JQ() string     { return "" }
 // isSafeRemoteSegment — 远端名称逐段安全校验（拒绝逃逸成分）
 // ──────────────────────────────────────────────────────────
 
-func TestIsSafeRemoteSegment(t *testing.T) {
+func TestCrossPlatformCoverageIsSafeRemoteSegment(t *testing.T) {
 	cases := []struct {
 		name string
 		ok   bool
@@ -59,7 +59,7 @@ func TestIsSafeRemoteSegment(t *testing.T) {
 // resolveLocalTarget — 拼接后必须仍位于本地根目录内
 // ──────────────────────────────────────────────────────────
 
-func TestResolveLocalTarget_withinRoot(t *testing.T) {
+func TestCrossPlatformCoverageResolveLocalTarget_withinRoot(t *testing.T) {
 	root := filepath.Clean(t.TempDir())
 	got, err := resolveLocalTarget(root, "sub/a.txt")
 	if err != nil {
@@ -72,7 +72,7 @@ func TestResolveLocalTarget_withinRoot(t *testing.T) {
 }
 
 // 即便 isSafeRemoteSegment 被绕过，逐段拼出的逃逸路径也必须被 resolveLocalTarget 兜住。
-func TestResolveLocalTarget_escapeRejected(t *testing.T) {
+func TestCrossPlatformCoverageResolveLocalTarget_escapeRejected(t *testing.T) {
 	root := filepath.Clean(t.TempDir())
 	for _, rel := range []string{"../evil.txt", "../../etc/passwd", "sub/../../out.txt"} {
 		if _, err := resolveLocalTarget(root, rel); err == nil {
@@ -83,7 +83,7 @@ func TestResolveLocalTarget_escapeRejected(t *testing.T) {
 
 // 根目录内的目录符号链接指向外部时，词法检查会放过（root/sub 仍在 root 下），
 // 必须靠符号链接解析挡住：sub -> /outside 时 sub/a.txt 应被拒绝。
-func TestResolveLocalTarget_dirSymlinkEscapeRejected(t *testing.T) {
+func TestCrossPlatformCoverageResolveLocalTarget_dirSymlinkEscapeRejected(t *testing.T) {
 	root := filepath.Clean(t.TempDir())
 	outside := filepath.Clean(t.TempDir())
 
@@ -106,7 +106,7 @@ func TestResolveLocalTarget_dirSymlinkEscapeRejected(t *testing.T) {
 }
 
 // 不存在的本地根目录必须放行（不误判逃逸），由后续 MkdirAll 创建。
-func TestResolveLocalTarget_nonexistentRootAllowed(t *testing.T) {
+func TestCrossPlatformCoverageResolveLocalTarget_nonexistentRootAllowed(t *testing.T) {
 	parent := filepath.Clean(t.TempDir())
 	absDir := filepath.Join(parent, "not", "created", "yet") // 尚不存在
 	got, err := resolveLocalTarget(absDir, "sub/a.txt")
@@ -120,7 +120,7 @@ func TestResolveLocalTarget_nonexistentRootAllowed(t *testing.T) {
 
 // 回归：--local-folder 指向尚不存在的绝对路径时，pull 应自动创建目录并下载，
 // 而不是把每个远端文件都误判为符号链接逃逸而 failed。
-func TestDrivePull_nonexistentLocalRoot(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_nonexistentLocalRoot(t *testing.T) {
 	parent := t.TempDir()
 	absDir := filepath.Join(parent, "new", "repo") // 尚不存在
 
@@ -167,7 +167,7 @@ func TestDrivePull_nonexistentLocalRoot(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // 大小写不敏感 FS：A.txt 与 a.txt 落到同一目标 → 两者都判冲突；无关文件不受影响。
-func TestDetectTargetCollisions_caseInsensitive(t *testing.T) {
+func TestCrossPlatformCoverageDetectTargetCollisions_caseInsensitive(t *testing.T) {
 	root := filepath.Clean(t.TempDir())
 	rels := []string{"A.txt", "a.txt", "b.txt", "sub/C.md", "sub/c.md"}
 	collided := detectTargetCollisions(root, rels, true)
@@ -183,7 +183,7 @@ func TestDetectTargetCollisions_caseInsensitive(t *testing.T) {
 }
 
 // 大小写敏感 FS：A.txt 与 a.txt 是两个合法文件 → 不应误判冲突。
-func TestDetectTargetCollisions_caseSensitive(t *testing.T) {
+func TestCrossPlatformCoverageDetectTargetCollisions_caseSensitive(t *testing.T) {
 	root := filepath.Clean(t.TempDir())
 	rels := []string{"A.txt", "a.txt", "b.txt"}
 	collided := detectTargetCollisions(root, rels, false)
@@ -193,7 +193,7 @@ func TestDetectTargetCollisions_caseSensitive(t *testing.T) {
 }
 
 // 平台名称规范化冲突：同名的 NFC 与 NFD 记法在不敏感 FS 上落到同一目标 → 冲突。
-func TestDetectTargetCollisions_unicodeNormalization(t *testing.T) {
+func TestCrossPlatformCoverageDetectTargetCollisions_unicodeNormalization(t *testing.T) {
 	root := filepath.Clean(t.TempDir())
 	nfc := "café.txt"  // café（预组合 é）
 	nfd := "café.txt" // café（e + 组合尖音符）
@@ -213,7 +213,7 @@ func TestDetectTargetCollisions_unicodeNormalization(t *testing.T) {
 }
 
 // isCaseInsensitiveFS 应能对临时目录给出与实际探针一致的判定（本机自洽）。
-func TestIsCaseInsensitiveFS_selfConsistent(t *testing.T) {
+func TestCrossPlatformCoverageIsCaseInsensitiveFS_selfConsistent(t *testing.T) {
 	dir := t.TempDir()
 	got := isCaseInsensitiveFS(dir)
 	// 实测：写一个小写名，再用大写名 stat。
@@ -233,7 +233,7 @@ func TestIsCaseInsensitiveFS_selfConsistent(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // 下载中途失败时：命令报告 failed，原有本地文件内容必须原封不动，且不留临时残file。
-func TestPullOneFile_downloadFailureKeepsOriginal(t *testing.T) {
+func TestCrossPlatformCoveragePullOneFile_downloadFailureKeepsOriginal(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "a.txt")
 	const original = "ORIGINAL-CONTENT-DO-NOT-LOSE"
@@ -280,7 +280,7 @@ func TestPullOneFile_downloadFailureKeepsOriginal(t *testing.T) {
 }
 
 // 下载成功时：临时文件被原子重命名为目标，内容与远端一致。
-func TestPullOneFile_downloadSuccessReplacesTarget(t *testing.T) {
+func TestCrossPlatformCoveragePullOneFile_downloadSuccessReplacesTarget(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "a.txt")
 	mustWrite(t, target, "OLD")
@@ -318,7 +318,7 @@ func TestPullOneFile_downloadSuccessReplacesTarget(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // drive 的正常返回：result.downloadUrl 是预签名 URL，无需额外 header。
-func TestParseDriveDownloadInfo_downloadUrl(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveDownloadInfo_downloadUrl(t *testing.T) {
 	text := `{"result":{"downloadType":"urlPreSignature","downloadUrl":"https://oss.example.com/f.file?Expires=1&Signature=xyz","fileName":"a.txt"},"success":true}`
 	url, headers, err := parseDriveDownloadInfo(text)
 	if err != nil {
@@ -333,7 +333,7 @@ func TestParseDriveDownloadInfo_downloadUrl(t *testing.T) {
 }
 
 // 兼容 flat resourceUrl 字段。
-func TestParseDriveDownloadInfo_resourceUrlFallback(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveDownloadInfo_resourceUrlFallback(t *testing.T) {
 	text := `{"resourceUrl":"https://flat.example.com/dl"}`
 	url, _, err := parseDriveDownloadInfo(text)
 	if err != nil {
@@ -345,7 +345,7 @@ func TestParseDriveDownloadInfo_resourceUrlFallback(t *testing.T) {
 }
 
 // 兼容 resourceUrls[].url 数组格式（在 result 包裹下）。
-func TestParseDriveDownloadInfo_resourceUrlsArrayFallback(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveDownloadInfo_resourceUrlsArrayFallback(t *testing.T) {
 	text := `{"result":{"resourceUrls":[{"url":"https://arr.example.com/dl","headers":{}}]}}`
 	url, _, err := parseDriveDownloadInfo(text)
 	if err != nil {
@@ -356,14 +356,14 @@ func TestParseDriveDownloadInfo_resourceUrlsArrayFallback(t *testing.T) {
 	}
 }
 
-func TestParseDriveDownloadInfo_missingURL(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveDownloadInfo_missingURL(t *testing.T) {
 	text := `{"result":{"fileName":"a.txt"}}`
 	if _, _, err := parseDriveDownloadInfo(text); err == nil {
 		t.Fatal("expected error when downloadUrl is empty")
 	}
 }
 
-func TestParseDriveDownloadInfo_invalidJSON(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveDownloadInfo_invalidJSON(t *testing.T) {
 	if _, _, err := parseDriveDownloadInfo("not json"); err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
@@ -373,7 +373,7 @@ func TestParseDriveDownloadInfo_invalidJSON(t *testing.T) {
 // drivePartialFailure — pull 部分失败错误：exit=1，JSON 原样透传
 // ──────────────────────────────────────────────────────────
 
-func TestDrivePartialFailure(t *testing.T) {
+func TestCrossPlatformCoverageDrivePartialFailure(t *testing.T) {
 	raw := `{"error":{"type":"partial_failure","detail":{}}}`
 	e := &drivePartialFailure{raw: raw}
 	if e.ExitCode() != 1 {

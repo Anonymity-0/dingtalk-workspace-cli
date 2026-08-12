@@ -17,7 +17,7 @@ import (
 // splitRel — rel_path 拆父路径 / 末段名
 // ──────────────────────────────────────────────────────────
 
-func TestSplitRel(t *testing.T) {
+func TestCrossPlatformCoverageSplitRel(t *testing.T) {
 	cases := []struct {
 		in           string
 		parent, base string
@@ -39,7 +39,7 @@ func TestSplitRel(t *testing.T) {
 // parseNodeID — create_folder / commit 返回里抽 fileId
 // ──────────────────────────────────────────────────────────
 
-func TestParseNodeID(t *testing.T) {
+func TestCrossPlatformCoverageParseNodeID(t *testing.T) {
 	cases := []struct {
 		name string
 		text string
@@ -65,7 +65,7 @@ func TestParseNodeID(t *testing.T) {
 // walkLocalForPush — 本地遍历（含空目录，父目录先于子目录）
 // ──────────────────────────────────────────────────────────
 
-func TestWalkLocalForPush(t *testing.T) {
+func TestCrossPlatformCoverageWalkLocalForPush(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "a.txt"), "hello")        // 5 bytes
 	mustWrite(t, filepath.Join(root, "sub1", "b.txt"), "worl") // 4 bytes, 建出 sub1
@@ -115,7 +115,7 @@ func TestWalkLocalForPush(t *testing.T) {
 // drivePushFailure — push 部分失败错误：exit=1
 // ──────────────────────────────────────────────────────────
 
-func TestDrivePushFailure(t *testing.T) {
+func TestCrossPlatformCoverageDrivePushFailure(t *testing.T) {
 	e := &drivePushFailure{failed: 3}
 	if e.ExitCode() != 1 {
 		t.Errorf("ExitCode() = %d, want 1", e.ExitCode())
@@ -208,7 +208,7 @@ func runDrivePushTest(t *testing.T, caller *driveSyncMockCaller, localDir string
 }
 
 // 覆盖分支：get_upload_info 与 commit_upload 两阶段都必须传 overwriteFileId、都不传 parentId。
-func TestDrivePush_overwriteUsesOverwriteFileId(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_overwriteUsesOverwriteFileId(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "new-content")
 
@@ -244,7 +244,7 @@ func TestDrivePush_overwriteUsesOverwriteFileId(t *testing.T) {
 }
 
 // 新建分支：远端不存在同名文件时走普通上传——两阶段都传 parentId、都不传 overwriteFileId。
-func TestDrivePush_newUploadUsesParentId(t *testing.T) {
+func TestCrossPlatformCoverageDrivePush_newUploadUsesParentId(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "b.txt"), "brand-new")
 

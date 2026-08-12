@@ -86,7 +86,7 @@ func runDriveCmd(t *testing.T, caller edition.ToolCaller, args ...string) error 
 // ──────────────────────────────────────────────────────────
 
 // 端到端 status：递归进入子文件夹、拼接 rel_path、跳过非 file 类型。
-func TestDriveStatus_endToEndNestedTree(t *testing.T) {
+func TestCrossPlatformCoverageDriveStatus_endToEndNestedTree(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "root.txt"), "r")
 	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
@@ -121,7 +121,7 @@ func TestDriveStatus_endToEndNestedTree(t *testing.T) {
 }
 
 // 分页：首页返回 nextToken，第二页取完；token 未推进时必须终止而非死循环。
-func TestDriveStatus_paginationAndStalledToken(t *testing.T) {
+func TestCrossPlatformCoverageDriveStatus_paginationAndStalledToken(t *testing.T) {
 	dir := t.TempDir()
 
 	caller := &driveScriptCaller{reply: func(_ string, args map[string]any, nth int) (string, error) {
@@ -150,7 +150,7 @@ func TestDriveStatus_paginationAndStalledToken(t *testing.T) {
 }
 
 // space-id 显式传入时必须透传到 list_files。
-func TestDriveStatus_passesSpaceID(t *testing.T) {
+func TestCrossPlatformCoverageDriveStatus_passesSpaceID(t *testing.T) {
 	dir := t.TempDir()
 	caller := &driveScriptCaller{reply: func(_ string, _ map[string]any, _ int) (string, error) {
 		return `{"result":{"items":[],"nextToken":""}}`, nil
@@ -164,7 +164,7 @@ func TestDriveStatus_passesSpaceID(t *testing.T) {
 }
 
 // list_files 失败 → status 直接报错。
-func TestDriveStatus_listFailurePropagates(t *testing.T) {
+func TestCrossPlatformCoverageDriveStatus_listFailurePropagates(t *testing.T) {
 	dir := t.TempDir()
 	caller := &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) { return "", errTestList }}
 	if err := runDriveCmd(t, caller, "status", "--local-folder", dir, "--remote-folder", "ROOT"); err == nil {
@@ -173,7 +173,7 @@ func TestDriveStatus_listFailurePropagates(t *testing.T) {
 }
 
 // 返回体无法解析 → status 报解析失败。
-func TestDriveStatus_unparsableListPropagates(t *testing.T) {
+func TestCrossPlatformCoverageDriveStatus_unparsableListPropagates(t *testing.T) {
 	dir := t.TempDir()
 	caller := &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) {
 		return `{"result":"not-a-list"}`, nil
@@ -185,7 +185,7 @@ func TestDriveStatus_unparsableListPropagates(t *testing.T) {
 }
 
 // exact 模式下本地文件不可读 → MD5 计算失败要作为错误上抛，不能静默当成一致。
-func TestDriveStatus_unreadableLocalFileFailsExactCompare(t *testing.T) {
+func TestCrossPlatformCoverageDriveStatus_unreadableLocalFileFailsExactCompare(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("chmod-based unreadable file needs POSIX perms and a non-root user")
 	}
@@ -207,7 +207,7 @@ func TestDriveStatus_unreadableLocalFileFailsExactCompare(t *testing.T) {
 }
 
 // --local-folder 不是绝对路径 → 校验拦下，不发起任何 MCP 调用。
-func TestDriveStatus_relativeLocalFolderRejected(t *testing.T) {
+func TestCrossPlatformCoverageDriveStatus_relativeLocalFolderRejected(t *testing.T) {
 	caller := &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) {
 		t.Error("must not call MCP when --local-folder is rejected")
 		return "", nil
@@ -222,7 +222,7 @@ func TestDriveStatus_relativeLocalFolderRejected(t *testing.T) {
 // ──────────────────────────────────────────────────────────
 
 // 远端目录自引用时深度上限必须中止遍历，避免无限递归。
-func TestWalkRemoteDir_depthLimitAborts(t *testing.T) {
+func TestCrossPlatformCoverageWalkRemoteDir_depthLimitAborts(t *testing.T) {
 	caller := &driveScriptCaller{reply: func(_ string, _ map[string]any, _ int) (string, error) {
 		// 每层都返回一个同名子文件夹 → 无限深。
 		return `{"result":{"items":[{"name":"loop","type":"folder","fileId":"LOOP"}],"nextToken":""}}`, nil
@@ -246,7 +246,7 @@ func TestWalkRemoteDir_depthLimitAborts(t *testing.T) {
 // isSafeRemoteSegment / resolveLocalTarget 的剩余分支
 // ──────────────────────────────────────────────────────────
 
-func TestIsSafeRemoteSegment_volumeAndNonCanonical(t *testing.T) {
+func TestCrossPlatformCoverageIsSafeRemoteSegment_volumeAndNonCanonical(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		if isSafeRemoteSegment(`C:name.txt`) {
 			t.Error("volume-qualified name must be rejected")
@@ -264,27 +264,27 @@ func TestIsSafeRemoteSegment_volumeAndNonCanonical(t *testing.T) {
 // md5File / walkLocalTree 错误分支
 // ──────────────────────────────────────────────────────────
 
-func TestMD5File_missingFile(t *testing.T) {
+func TestCrossPlatformCoverageMD5File_missingFile(t *testing.T) {
 	if _, err := md5File(filepath.Join(t.TempDir(), "nope.bin")); err == nil {
 		t.Fatal("expected error for missing file")
 	}
 }
 
-func TestMD5File_directoryIsNotReadable(t *testing.T) {
+func TestCrossPlatformCoverageMD5File_directoryIsNotReadable(t *testing.T) {
 	// 目录不是常规文件：io.Copy 读取时必然报错。
 	if _, err := md5File(t.TempDir()); err == nil {
 		t.Fatal("expected error when hashing a directory")
 	}
 }
 
-func TestWalkLocalTree_missingRootErrors(t *testing.T) {
+func TestCrossPlatformCoverageWalkLocalTree_missingRootErrors(t *testing.T) {
 	if _, err := walkLocalTree(filepath.Join(t.TempDir(), "absent")); err == nil {
 		t.Fatal("expected error for missing local root")
 	}
 }
 
 // 非常规文件（FIFO/符号链接目标缺失等）不计入本地索引。
-func TestWalkLocalTree_skipsIrregularEntries(t *testing.T) {
+func TestCrossPlatformCoverageWalkLocalTree_skipsIrregularEntries(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "real.txt"), "x")
 	if err := os.Symlink(filepath.Join(dir, "absent"), filepath.Join(dir, "dangling")); err != nil {
@@ -306,7 +306,7 @@ func TestWalkLocalTree_skipsIrregularEntries(t *testing.T) {
 // toMillis 的 json.Number / float64 分支
 // ──────────────────────────────────────────────────────────
 
-func TestDriveItem_modifiedMillisFromNumericForms(t *testing.T) {
+func TestCrossPlatformCoverageDriveItem_modifiedMillisFromNumericForms(t *testing.T) {
 	if got, ok := (driveItem{"modifyTime": float64(1500)}).modifiedMillis(); !ok || got != 1500 {
 		t.Errorf("float64 modifyTime = (%d,%v), want (1500,true)", got, ok)
 	}
@@ -325,7 +325,7 @@ func TestDriveItem_modifiedMillisFromNumericForms(t *testing.T) {
 }
 
 // fileSize 的 float64 / json.Number 两种形态，以及缺失时的兜底。
-func TestDriveItem_sizeForms(t *testing.T) {
+func TestCrossPlatformCoverageDriveItem_sizeForms(t *testing.T) {
 	if got := (driveItem{"fileSize": float64(42)}).size(); got != 42 {
 		t.Errorf("float fileSize = %d, want 42", got)
 	}

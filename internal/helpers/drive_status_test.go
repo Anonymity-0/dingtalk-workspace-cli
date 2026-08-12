@@ -10,19 +10,19 @@ import (
 // validateLocalDirAbs — 本地路径校验（必须为绝对路径）
 // ──────────────────────────────────────────────────────────
 
-func TestValidateLocalDirAbs_empty(t *testing.T) {
+func TestCrossPlatformCoverageValidateLocalDirAbs_empty(t *testing.T) {
 	if _, err := validateLocalDirAbs(""); err == nil {
 		t.Fatal("expected error for empty --local-folder")
 	}
 }
 
-func TestValidateLocalDirAbs_relative(t *testing.T) {
+func TestCrossPlatformCoverageValidateLocalDirAbs_relative(t *testing.T) {
 	if _, err := validateLocalDirAbs(filepath.Join(".", "repo")); err == nil {
 		t.Fatal("expected error for relative path")
 	}
 }
 
-func TestValidateLocalDirAbs_ok(t *testing.T) {
+func TestCrossPlatformCoverageValidateLocalDirAbs_ok(t *testing.T) {
 	abs := filepath.Join(t.TempDir(), "repo")
 	got, err := validateLocalDirAbs(abs)
 	if err != nil {
@@ -37,7 +37,7 @@ func TestValidateLocalDirAbs_ok(t *testing.T) {
 // walkLocalTree — 本地遍历
 // ──────────────────────────────────────────────────────────
 
-func TestWalkLocalTree_collectsRegularFiles(t *testing.T) {
+func TestCrossPlatformCoverageWalkLocalTree_collectsRegularFiles(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "a.txt"), "hello")
 	mustWrite(t, filepath.Join(root, "sub", "b.txt"), "world")
@@ -69,7 +69,7 @@ func TestWalkLocalTree_collectsRegularFiles(t *testing.T) {
 // compareTrees — 四类差异分类
 // ──────────────────────────────────────────────────────────
 
-func TestCompareTrees_exact(t *testing.T) {
+func TestCrossPlatformCoverageCompareTrees_exact(t *testing.T) {
 	local := map[string]*localFile{
 		"same.txt":   {RelPath: "same.txt", Hash: "h1"},
 		"diff.txt":   {RelPath: "diff.txt", Hash: "local"},
@@ -94,7 +94,7 @@ func TestCompareTrees_exact(t *testing.T) {
 	}
 }
 
-func TestCompareTrees_exact_unknownRemoteHashIsUnknown(t *testing.T) {
+func TestCrossPlatformCoverageCompareTrees_exact_unknownRemoteHashIsUnknown(t *testing.T) {
 	local := map[string]*localFile{"a.txt": {RelPath: "a.txt", Hash: "h1"}}
 	remote := map[string]*remoteFile{"a.txt": {RelPath: "a.txt", Hash: ""}}
 	res, err := compareTrees(local, remote, "exact", false)
@@ -113,7 +113,7 @@ func TestCompareTrees_exact_unknownRemoteHashIsUnknown(t *testing.T) {
 
 // TestCompareTrees_exact_hashesOnlyIntersection 验证本地 hash 只在双端都存在时才
 // 计算：local-only 文件即使 AbsPath 指向不存在的文件也不会触发 hash（不报错）。
-func TestCompareTrees_exact_hashesOnlyIntersection(t *testing.T) {
+func TestCrossPlatformCoverageCompareTrees_exact_hashesOnlyIntersection(t *testing.T) {
 	root := t.TempDir()
 	bothPath := filepath.Join(root, "both.txt")
 	mustWrite(t, bothPath, "same-content")
@@ -147,7 +147,7 @@ func TestCompareTrees_exact_hashesOnlyIntersection(t *testing.T) {
 // TestCompareTrees_exact_noRemoteMD5AllUnknown 验证 exact 模式在远端无 md5 时
 // 一律归入 unknown——不再用 fileSize + modified_time 近似判 unchanged（否则大小与
 // mtime 恰好相同但内容不同的文件会被误报为未变更），无论大小/时间是否相同。
-func TestCompareTrees_exact_noRemoteMD5AllUnknown(t *testing.T) {
+func TestCrossPlatformCoverageCompareTrees_exact_noRemoteMD5AllUnknown(t *testing.T) {
 	local := map[string]*localFile{
 		"sameSizeTime.txt": {RelPath: "sameSizeTime.txt", Size: 100, ModTimeMillis: 1000},
 		"diffsize.txt":     {RelPath: "diffsize.txt", Size: 100, ModTimeMillis: 1000},
@@ -174,7 +174,7 @@ func TestCompareTrees_exact_noRemoteMD5AllUnknown(t *testing.T) {
 
 // TestCompareTrees_exact_base64RemoteMD5 验证 exact 用 base64 md5 比对：本地按
 // base64 算 md5，与钉盘返回的 base64 md5 直接相等 → unchanged。
-func TestCompareTrees_exact_base64RemoteMD5(t *testing.T) {
+func TestCrossPlatformCoverageCompareTrees_exact_base64RemoteMD5(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "a.txt")
 	mustWrite(t, p, "hello root\n") // 11 字节，md5 base64 = 6y9K7B0b2K0AInNZZV/70A==
@@ -195,7 +195,7 @@ func TestCompareTrees_exact_base64RemoteMD5(t *testing.T) {
 	}
 }
 
-func TestCompareTrees_quick(t *testing.T) {
+func TestCrossPlatformCoverageCompareTrees_quick(t *testing.T) {
 	local := map[string]*localFile{
 		"eq.txt":  {RelPath: "eq.txt", ModTimeMillis: 1000},
 		"ne.txt":  {RelPath: "ne.txt", ModTimeMillis: 1000},
@@ -216,7 +216,7 @@ func TestCompareTrees_quick(t *testing.T) {
 	assertPaths(t, "modified", res.Modified, "bad.txt", "ne.txt")
 }
 
-func TestCompareTrees_emptyRemote_allNewLocal(t *testing.T) {
+func TestCrossPlatformCoverageCompareTrees_emptyRemote_allNewLocal(t *testing.T) {
 	local := map[string]*localFile{
 		"a.txt": {RelPath: "a.txt", Hash: "h1"},
 		"b.txt": {RelPath: "b.txt", Hash: "h2"},
@@ -277,7 +277,7 @@ func entryPaths(entries []driveStatusEntry) []string {
 // parseDriveList — list_files 返回解析
 // ──────────────────────────────────────────────────────────
 
-func TestParseDriveList_resultItems(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveList_resultItems(t *testing.T) {
 	text := `{"result":{"items":[{"name":"a.txt","type":"file"},{"name":"sub","type":"folder"}],"nextToken":"tok"}}`
 	items, token, err := parseDriveList(text)
 	if err != nil {
@@ -291,7 +291,7 @@ func TestParseDriveList_resultItems(t *testing.T) {
 	}
 }
 
-func TestParseDriveList_topLevelArray(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveList_topLevelArray(t *testing.T) {
 	text := `{"result":[{"name":"a.txt","type":"file"}]}`
 	items, token, err := parseDriveList(text)
 	if err != nil {
@@ -305,7 +305,7 @@ func TestParseDriveList_topLevelArray(t *testing.T) {
 	}
 }
 
-func TestParseDriveList_invalid(t *testing.T) {
+func TestCrossPlatformCoverageParseDriveList_invalid(t *testing.T) {
 	if _, _, err := parseDriveList("not json"); err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
@@ -315,7 +315,7 @@ func TestParseDriveList_invalid(t *testing.T) {
 // driveItem — 字段访问器（带 fallback）
 // ──────────────────────────────────────────────────────────
 
-func TestDriveItem_accessors(t *testing.T) {
+func TestCrossPlatformCoverageDriveItem_accessors(t *testing.T) {
 	it := driveItem{
 		"name":       "报告.pdf",
 		"type":       "file",
@@ -351,7 +351,7 @@ func TestDriveItem_accessors(t *testing.T) {
 	}
 }
 
-func TestDriveItem_folderAndFile(t *testing.T) {
+func TestCrossPlatformCoverageDriveItem_folderAndFile(t *testing.T) {
 	folder := driveItem{"name": "sub", "type": "folder"}
 	if !folder.isFolder() || folder.isFile() {
 		t.Error("type=folder should be folder, not file")
@@ -375,7 +375,7 @@ func TestDriveItem_folderAndFile(t *testing.T) {
 // toMillis — 时间字段归一化
 // ──────────────────────────────────────────────────────────
 
-func TestToMillis(t *testing.T) {
+func TestCrossPlatformCoverageToMillis(t *testing.T) {
 	cases := []struct {
 		name string
 		in   any
