@@ -17,7 +17,42 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
+	"github.com/spf13/cobra"
 )
+
+func TestCrossPlatformCoverageChatGroupAuditJoinValidationAliasContract(t *testing.T) {
+	cmd := newChatCommand()
+	leaf, _, err := cmd.Find([]string{"group", "audit-join-validation"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical := leaf.Flags().Lookup("conversation-id")
+	if canonical == nil || canonical.Hidden {
+		t.Fatalf("conversation-id flag = %#v, want visible canonical", canonical)
+	}
+	legacy := leaf.Flags().Lookup("group")
+	if legacy == nil || !legacy.Hidden {
+		t.Fatalf("group flag = %#v, want hidden compatibility alias", legacy)
+	}
+	if got := legacy.Annotations[runtimeannotate.AnnotationFlagAliasOf]; len(got) != 1 || got[0] != "conversation-id" {
+		t.Fatalf("group alias_of annotation = %#v", got)
+	}
+	if got := legacy.Annotations[runtimeannotate.AnnotationFlagAliasOrigin]; len(got) != 1 || got[0] != runtimeannotate.FlagAliasOriginCorecmdV1 {
+		t.Fatalf("group alias_origin annotation = %#v", got)
+	}
+	if got := legacy.Annotations[cobra.BashCompOneRequiredFlag]; len(got) != 0 {
+		t.Fatalf("hidden group alias kept required annotation: %#v", got)
+	}
+}
+
+func TestCrossPlatformCoverageChatGroupAuditJoinValidationRestoreRequiredNoop(t *testing.T) {
+	restoreChatAuditJoinValidationCanonicalRequired(nil)
+	root := &cobra.Command{Use: "chat"}
+	root.AddCommand(&cobra.Command{Use: "other"})
+	restoreChatAuditJoinValidationCanonicalRequired(root)
+}
 
 func TestCrossPlatformCoverageChatMessageHelpDocumentsPostSendIDChain(t *testing.T) {
 	tests := []struct {
@@ -160,7 +195,7 @@ func TestCrossPlatformCoverageChatSendCardHelpUsesCanonicalIDFlags(t *testing.T)
 	}
 }
 
-func TestCrossPlatformCoverageChatGroupAuditJoinValidationHelpKeepsLegacyGroup(t *testing.T) {
+func TestCrossPlatformCoverageChatGroupAuditJoinValidationHelpUsesCanonicalConversationID(t *testing.T) {
 	cmd := newChatCommand()
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -171,10 +206,10 @@ func TestCrossPlatformCoverageChatGroupAuditJoinValidationHelpKeepsLegacyGroup(t
 	}
 
 	help := output.String()
-	if !strings.Contains(help, "--group") {
-		t.Fatalf("audit-join-validation help missing --group:\n%s", help)
+	if !strings.Contains(help, "--conversation-id") {
+		t.Fatalf("audit-join-validation help missing --conversation-id:\n%s", help)
 	}
-	if strings.Contains(help, "--conversation-id") {
-		t.Fatalf("audit-join-validation help exposes unapproved migration flag --conversation-id:\n%s", help)
+	if strings.Contains(help, "--group string") {
+		t.Fatalf("audit-join-validation help exposes hidden --group alias:\n%s", help)
 	}
 }

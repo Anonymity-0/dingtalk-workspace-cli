@@ -3,6 +3,7 @@ package helpers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -32,14 +33,26 @@ func runChatCoverageCommand(t *testing.T, caller edition.ToolCaller, args ...str
 
 func runChatCoverageDirect(t *testing.T, path []string, flags map[string]string) error {
 	t.Helper()
-	command, _, err := newChatCommand().Find(path)
+	InitDeps(&scriptedToolCaller{})
+	deps.Out.w = io.Discard
+	deps.Out.errW = io.Discard
+	root := newChatCommand()
+	installExampleGlobalFlags(root)
+	root.PersistentFlags().Bool("debug", false, "")
+	root.PersistentFlags().Bool("verbose", false, "")
+	command, _, err := root.Find(path)
 	if err != nil {
 		return err
 	}
 	for name, value := range flags {
-		if err := command.Flags().Set(name, value); err != nil {
+		flag := command.Flag(name)
+		if flag == nil {
+			return fmt.Errorf("no such flag -%s", name)
+		}
+		if err := flag.Value.Set(value); err != nil {
 			return err
 		}
+		flag.Changed = true
 	}
 	return command.RunE(command, nil)
 }
@@ -190,7 +203,7 @@ func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T)
 		{"group", "transfer-owner", "--group=cid", "--new-owner=D-owner"},
 		{"group", "update-icon", "--group=cid", "--icon-media-id=@valid"},
 		{"group", "set-history", "--group=cid", "--option=ALL"},
-		{"group", "audit-join-validation", "--group=cid", "--record-id=1", "--applicant=D1", "--inviter=D2", "--status=AuditApprove", "--description=ok"},
+		{"group", "audit-join-validation", "--conversation-id=cid", "--record-id=1", "--applicant=D1", "--inviter=D2", "--status=AuditApprove", "--description=ok"},
 		{"mark-read", "--conversation-id=cid", "--message-id=mid"},
 		{"text", "translate", "--query=hello", "--to=zh_CN"},
 		{"group-role", "set-user", "--group=cid", "--user=D1", "--role-ids=r1"},
@@ -353,34 +366,111 @@ func TestCrossPlatformCoverageChatSendCardHiddenAliasesMapToCanonicalPayload(t *
 	}
 }
 
-func TestCrossPlatformCoverageChatGroupAuditJoinValidationUsesGroupPayload(t *testing.T) {
+func TestCrossPlatformCoverageChatGroupAuditJoinValidationUsesCanonicalAndAliasPayload(t *testing.T) {
 	previousDeps, previousArgs := deps, os.Args
 	os.Args = []string{"dws", "chat"}
 	t.Cleanup(func() { deps, os.Args = previousDeps, previousArgs })
 
-	caller := &scriptedToolCaller{}
-	err := runChatCoverageCommand(t, caller,
-		"group", "audit-join-validation",
-		"--group=cid",
-		"--record-id=123",
-		"--applicant=D-applicant",
-		"--inviter=D-inviter",
-		"--status=AuditDelete",
-		"--description=deny",
-	)
+	for _, tc := range []struct {
+		name string
+		flag string
+	}{
+		{name: "canonical conversation-id", flag: "--conversation-id=cid"},
+		{name: "hidden group alias", flag: "--group=cid"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			err := runChatCoverageCommand(t, caller,
+				"group", "audit-join-validation",
+				tc.flag,
+				"--record-id=123",
+				"--applicant=D-applicant",
+				"--inviter=D-inviter",
+				"--status=AuditDelete",
+				"--description=deny",
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]any{
+				"openConversationId": "cid",
+				"applyRecordId":      int64(123),
+				"applicantUid":       "D-applicant",
+				"inviterUid":         "D-inviter",
+				"status":             "AuditDelete",
+				"auditDescription":   "deny",
+			}
+			if caller.calls != 1 || caller.server != "im" || caller.tool != "audit_join_group" || !reflect.DeepEqual(caller.args, want) {
+				t.Fatalf("call = count:%d server:%q tool:%q args:%#v, want %#v", caller.calls, caller.server, caller.tool, caller.args, want)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageChatIMIDMigrationRequiredFlagErrors(t *testing.T) {
+	previousDeps, previousArgs := deps, os.Args
+	os.Args = []string{"dws", "chat"}
+	t.Cleanup(func() { deps, os.Args = previousDeps, previousArgs })
+
+	tests := []struct {
+		name string
+		path []string
+		flag map[string]string
+		want string
+	}{
+		{name: "message list mutually exclusive targets", path: []string{"message", "list"}, flag: map[string]string{"conversation-id": "cid", "user": "u1", "time": "2026-01-01"}, want: "mutually exclusive"},
+		{name: "message list missing target", path: []string{"message", "list"}, flag: map[string]string{"time": "2026-01-01"}, want: "--conversation-id, --user or --open-dingtalk-id is required"},
+		{name: "topic replies missing conversation", path: []string{"message", "list-topic-replies"}, flag: map[string]string{"topic-id": "t1"}, want: "conversation-id"},
+		{name: "read status missing conversation", path: []string{"message", "read-status"}, flag: map[string]string{"message-id": "m1"}, want: "conversation-id"},
+		{name: "read status conflicting aliases", path: []string{"message", "read-status"}, flag: map[string]string{"conversation-id": "cid1", "group": "cid2", "message-id": "m1"}, want: "conflicts"},
+		{name: "read status missing message", path: []string{"message", "read-status"}, flag: map[string]string{"conversation-id": "cid"}, want: "message-id"},
+		{name: "update text emotion missing message", path: []string{"message", "update-text-emotion"}, flag: map[string]string{"conversation-id": "cid", "old-emotion-id": "e1", "emotion-id": "e2", "emotion-name": "n", "text": "t", "background-id": "b"}, want: "message-id"},
+		{name: "update text emotion missing detail flag", path: []string{"message", "update-text-emotion"}, flag: map[string]string{"conversation-id": "cid", "message-id": "m1", "old-emotion-id": "e1", "emotion-id": "e2", "emotion-name": "n", "text": "t"}, want: "background-id"},
+		{name: "transfer owner missing conversation", path: []string{"group", "transfer-owner"}, flag: map[string]string{"new-owner": "D1"}, want: "conversation-id"},
+		{name: "invite url missing conversation", path: []string{"group", "invite-url"}, want: "conversation-id"},
+		{name: "quit missing conversation", path: []string{"group", "quit"}, want: "conversation-id"},
+		{name: "update icon missing conversation", path: []string{"group", "update-icon"}, flag: map[string]string{"icon-media-id": "@media"}, want: "conversation-id"},
+		{name: "update settings missing conversation", path: []string{"group", "update-settings"}, flag: map[string]string{"setting-key": "searchable"}, want: "conversation-id"},
+		{name: "set admin missing conversation", path: []string{"group", "set-admin"}, flag: map[string]string{"users": "D1"}, want: "conversation-id"},
+		{name: "role list missing conversation", path: []string{"group-role", "list"}, want: "group"},
+		{name: "role add missing conversation", path: []string{"group-role", "add"}, flag: map[string]string{"name": "role"}, want: "conversation-id"},
+		{name: "role update missing conversation", path: []string{"group-role", "update"}, flag: map[string]string{"role-id": "r1", "name": "role"}, want: "conversation-id"},
+		{name: "role remove missing conversation", path: []string{"group-role", "remove"}, flag: map[string]string{"role-id": "r1"}, want: "conversation-id"},
+		{name: "role set user missing conversation", path: []string{"group-role", "set-user"}, flag: map[string]string{"user": "D1", "role-ids": "r1"}, want: "conversation-id"},
+		{name: "role remove user missing conversation", path: []string{"group-role", "remove-user"}, flag: map[string]string{"user": "D1", "role-ids": "r1"}, want: "conversation-id"},
+		{name: "role query user missing conversation", path: []string{"group-role", "query-user"}, flag: map[string]string{"user": "D1"}, want: "conversation-id"},
+		{name: "bots conflicting conversation aliases", path: []string{"group", "bots"}, flag: map[string]string{"conversation-id": "cid1", "id": "cid2"}, want: "conflicts"},
+		{name: "bots conflicting group aliases", path: []string{"group", "bots"}, flag: map[string]string{"group-name": "项目群", "group": "cid"}, want: "conflicts"},
+		{name: "dismiss missing conversation", path: []string{"group", "dismiss"}, flag: map[string]string{"yes": "true"}, want: "conversation-id"},
+		{name: "set history missing conversation", path: []string{"group", "set-history"}, flag: map[string]string{"option": "ALL"}, want: "conversation-id"},
+		{name: "set pin missing message", path: []string{"message", "set-pin-msg"}, flag: map[string]string{"open-conversation-id": "cid"}, want: "message-id"},
+		{name: "unset pin missing message", path: []string{"message", "unset-pin-msg"}, flag: map[string]string{"open-conversation-id": "cid"}, want: "message-id"},
+		{name: "audit join missing conversation", path: []string{"group", "audit-join-validation"}, flag: map[string]string{"record-id": "1", "applicant": "D1", "inviter": "D2", "status": "AuditApprove"}, want: "conversation-id"},
+		{name: "set top missing message", path: []string{"message", "set-top-msg"}, flag: map[string]string{"open-conversation-id": "cid"}, want: "message-id"},
+		{name: "unset top missing message", path: []string{"message", "unset-top-msg"}, flag: map[string]string{"open-conversation-id": "cid"}, want: "message-id"},
+		{name: "update alias missing conversation", path: []string{"group", "update-alias"}, flag: map[string]string{"alias-title": "alias"}, want: "conversation-id"},
+		{name: "notice create missing conversation", path: []string{"group", "notice", "create"}, flag: map[string]string{"content": "hello"}, want: "conversation-id"},
+		{name: "notice edit missing conversation", path: []string{"group", "notice", "edit"}, flag: map[string]string{"notice-id": "n1", "content": "hello"}, want: "conversation-id"},
+		{name: "notice get missing conversation", path: []string{"group", "notice", "get"}, flag: map[string]string{"notice-id": "n1"}, want: "conversation-id"},
+		{name: "notice list missing conversation", path: []string{"group", "notice", "list"}, want: "conversation-id"},
+	}
+
+	probe := newChatCommand()
+	messageList, _, err := probe.Find([]string{"message", "list"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]any{
-		"openConversationId": "cid",
-		"applyRecordId":      int64(123),
-		"applicantUid":       "D-applicant",
-		"inviterUid":         "D-inviter",
-		"status":             "AuditDelete",
-		"auditDescription":   "deny",
+	if got, err := chatConversationID(messageList); err != nil || got != "" {
+		t.Fatalf("empty chatConversationID = %q, %v", got, err)
 	}
-	if caller.calls != 1 || caller.server != "im" || caller.tool != "audit_join_group" || !reflect.DeepEqual(caller.args, want) {
-		t.Fatalf("call = count:%d server:%q tool:%q args:%#v, want %#v", caller.calls, caller.server, caller.tool, caller.args, want)
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := runChatCoverageDirect(t, tc.path, tc.flag)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want containing %q", err, tc.want)
+			}
+		})
 	}
 }
 

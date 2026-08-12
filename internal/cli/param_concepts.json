@@ -129,7 +129,6 @@
     "chat +chat-set-admin": {"block": ["user-id", "open-dingtalk-id"], "note": "The real --users is a mixed userId/openDingTalkId list."},
     "chat +messages-read-status": {"block": ["user-id", "open-dingtalk-id"], "note": "The real --users is a mixed userId/openDingTalkId list."},
     "chat category create-smart": {"bind": {"members": "open_dingtalk_ids"}, "scoped_aliases": {"title": "name"}, "note": "The real --members is an openDingTalkId list; the reviewed title/name alias is exact to the category display name."},
-    "chat group audit-join-validation": {"block": ["conversation-id", "open-conversation-id", "chat", "chat-id", "id"], "ambiguous": ["user", "user-id", "userid", "uid", "staff-id"], "note": "This command keeps the legacy visible --group surface until a reviewed flag migration exists; role-free user identifiers cannot choose between the required --applicant and --inviter roles."},
     "chat message reply": {"block": ["user", "user-id", "userid", "uid", "staff-id"], "note": "The required --ref-sender is a role-specific openDingTalkId and must not accept generic userId spellings."},
     "chat message send-card": {"block": ["user", "user-id", "userid", "uid", "staff-id"], "note": "The real --receiver is a role-specific openDingTalkId and must not accept generic userId spellings."},
     "chat +category-add-conversation": {"block": ["category-id"], "note": "The real --category-ids is a list; a singular category ID is not promoted automatically."},

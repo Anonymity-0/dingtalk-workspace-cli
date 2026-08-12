@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
@@ -247,6 +248,19 @@ func installChatIMIDFlagAliases(root *cobra.Command) {
 		}
 	}
 	visit(root)
+	restoreChatAuditJoinValidationCanonicalRequired(root)
+}
+
+func restoreChatAuditJoinValidationCanonicalRequired(root *cobra.Command) {
+	if root == nil {
+		return
+	}
+	cmd, _, err := root.Find([]string{"group", "audit-join-validation"})
+	if err != nil || cmd == nil {
+		return
+	}
+	_ = cmd.MarkFlagRequired("conversation-id")
+	clearChatAliasRequiredAnnotations(cmd, "group")
 }
 
 func clearChatAliasRequiredAnnotations(cmd *cobra.Command, aliases ...string) {
@@ -8490,11 +8504,14 @@ status 可选值:
   AuditIgnore  — 忽略（服务端拒绝，不可用）
   AuditRefuse  — 拒绝（服务端拒绝，不可用）
   AuditBlock   — 拒绝且不再接受该用户的申请（服务端拒绝，不可用）`,
-		Example: `  dws chat group audit-join-validation --group <openConversationId> --record-id 123456 --applicant <userId> --inviter <userId> --status AuditApprove
-  dws chat group audit-join-validation --group <openConversationId> --record-id 123456 --applicant <userId> --inviter <userId> --status AuditDelete --description "不符合入群条件"
+		Example: `  dws chat group audit-join-validation --conversation-id <openConversationId> --record-id 123456 --applicant <userId> --inviter <userId> --status AuditApprove
+  dws chat group audit-join-validation --conversation-id <openConversationId> --record-id 123456 --applicant <userId> --inviter <userId> --status AuditDelete --description "不符合入群条件"
   # 查询入群验证记录: dws chat group list-join-validations`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "group", "record-id", "applicant", "inviter", "status"); err != nil {
+			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group"); err != nil {
+				return err
+			}
+			if err := validateRequiredFlags(cmd, "record-id", "applicant", "inviter", "status"); err != nil {
 				return err
 			}
 			recordID, err := strconv.ParseInt(mustGetFlag(cmd, "record-id"), 10, 64)
@@ -8506,7 +8523,7 @@ status 可选值:
 				return fmt.Errorf("unsupported audit status %q, must be one of: AuditApprove, AuditDelete", status)
 			}
 			toolArgs := map[string]any{
-				"openConversationId": mustGetFlag(cmd, "group"),
+				"openConversationId": flagOrFallback(cmd, "conversation-id", "group"),
 				"applyRecordId":      recordID,
 				"applicantUid":       mustGetFlag(cmd, "applicant"),
 				"inviterUid":         mustGetFlag(cmd, "inviter"),
@@ -8518,8 +8535,13 @@ status 可选值:
 			return callMCPToolOnServer("im", "audit_join_group", toolArgs)
 		},
 	}
-	chatGroupAuditJoinValidationCmd.Flags().String("group", "", "群 openConversationId (必填)")
-	_ = chatGroupAuditJoinValidationCmd.MarkFlagRequired("group")
+	corecmd.RegisterFlags(chatGroupAuditJoinValidationCmd, []LeafFlag{{
+		Name:     "conversation-id",
+		Usage:    "群 openConversationId (必填)",
+		Required: true,
+		Aliases:  []string{"group"},
+	}})
+	_ = chatGroupAuditJoinValidationCmd.MarkFlagRequired("conversation-id")
 	chatGroupAuditJoinValidationCmd.Flags().String("record-id", "", "申请记录 ID (必填)")
 	_ = chatGroupAuditJoinValidationCmd.MarkFlagRequired("record-id")
 	chatGroupAuditJoinValidationCmd.Flags().String("status", "", "审批动作，真机仅 AuditApprove/AuditDelete 可用；AuditIgnore/AuditRefuse/AuditBlock 服务端拒绝 (必填)")
@@ -8552,12 +8574,12 @@ status 可选值:
 				AgentSummary: "审批入群验证记录",
 				UseWhen:      []string{"需要对已知入群申请记录执行通过或删除审批动作时"},
 				AvoidWhen:    []string{"还没有 record-id 时先用 chat group list-join-validations 查询"},
-				Examples:     []string{"dws chat group audit-join-validation --group <openConversationId> --record-id 123456 --applicant <userId> --inviter <userId> --status AuditApprove"},
+				Examples:     []string{"dws chat group audit-join-validation --conversation-id <openConversationId> --record-id 123456 --applicant <userId> --inviter <userId> --status AuditApprove"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "applicant", Property: "applicantUid", Required: boolPtr(true)},
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "description", Property: "auditDescription", Required: boolPtr(false)},
-				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "inviter", Property: "inviterUid", Required: boolPtr(true)},
 				{Name: "record-id", Property: "applyRecordId", Required: boolPtr(true), InterfaceType: "integer"},
 				{Name: "status", Property: "status", Required: boolPtr(true), Enum: []string{"AuditApprove", "AuditDelete"}},
