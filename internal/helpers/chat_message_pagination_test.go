@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -336,6 +337,41 @@ func TestChatMessagePaginationDefaultsEndFromNowWhenOnlyStartProvided(t *testing
 			wantEndMax := after.Add(time.Second).UnixMilli()
 			if endMs < wantEndMin || endMs > wantEndMax {
 				t.Fatalf("endTime = %d, want between %d and %d", endMs, wantEndMin, wantEndMax)
+			}
+		})
+	}
+}
+
+func TestChatMessageListAllRejectsInvalidTimeRanges(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{
+			name:    "invalid start",
+			args:    []string{"message", "list-all", "--start", "not-a-time", "--end", "2020-01-01T00:00:00+08:00"},
+			wantErr: "cannot parse time for --start",
+		},
+		{
+			name:    "end before start",
+			args:    []string{"message", "list-all", "--start", "2021-01-01T00:00:00+08:00", "--end", "2020-01-01T00:00:00+08:00"},
+			wantErr: "--end must be after --start",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &chatMessagePaginationCaller{}
+			_, err := executeChatMessagePaginationCommand(t, caller, tt.args...)
+			if err == nil {
+				t.Fatal("command succeeded, want validation error")
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %v, want containing %q", err, tt.wantErr)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("calls = %#v, want no MCP call", caller.calls)
 			}
 		})
 	}
