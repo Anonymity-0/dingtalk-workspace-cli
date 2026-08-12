@@ -15,7 +15,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -49,7 +48,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -83,7 +81,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -117,7 +114,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -151,7 +147,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -185,7 +180,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -219,7 +213,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -253,7 +246,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -287,7 +279,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -321,7 +312,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -355,7 +345,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -389,7 +378,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -423,7 +411,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -457,7 +444,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -491,7 +477,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -525,7 +510,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -559,7 +543,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -593,7 +576,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -627,7 +609,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -661,7 +642,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -695,7 +675,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -729,7 +708,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -763,7 +741,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -797,7 +774,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -831,7 +807,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "message-id"
         }
@@ -865,7 +840,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "message-id"
         }
@@ -899,7 +873,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "conversation-id"
         }
@@ -936,7 +909,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "message-id"
         }
@@ -970,7 +942,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "message-id"
         }
@@ -1004,7 +975,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "message-id"
         }
@@ -1038,7 +1008,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "message-id"
         }
@@ -1072,7 +1041,6 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "message-id"
         }
@@ -1106,13 +1074,45 @@
           "present": true,
           "type": "string",
           "scope": "local",
-          "required": true,
           "hidden": true,
           "alias_of": "message-id"
         }
       },
       "canonical": {
         "name": "message-id",
+        "before": {
+          "present": false
+        },
+        "after": {
+          "present": true,
+          "type": "string",
+          "scope": "local",
+          "required": true
+        }
+      },
+      "state": "pending",
+      "reason": "保留旧 argv 兼容性，并将 IM ID 规范 flag 设为唯一可见入口"
+    },
+    {
+      "command": "dws ding message send-by-message",
+      "legacy": {
+        "name": "group",
+        "before": {
+          "present": true,
+          "type": "string",
+          "scope": "local",
+          "required": true
+        },
+        "after": {
+          "present": true,
+          "type": "string",
+          "scope": "local",
+          "hidden": true,
+          "alias_of": "conversation-id"
+        }
+      },
+      "canonical": {
+        "name": "conversation-id",
         "before": {
           "present": false
         },
