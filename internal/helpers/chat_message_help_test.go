@@ -48,10 +48,55 @@ func TestCrossPlatformCoverageChatGroupAuditJoinValidationAliasContract(t *testi
 }
 
 func TestCrossPlatformCoverageChatGroupAuditJoinValidationRestoreRequiredNoop(t *testing.T) {
-	restoreChatAuditJoinValidationCanonicalRequired(nil)
+	restoreChatGroupBotsLegacyRequired(nil)
+	restoreChatPendingMigrationCanonicalRequired(nil)
 	root := &cobra.Command{Use: "chat"}
 	root.AddCommand(&cobra.Command{Use: "other"})
-	restoreChatAuditJoinValidationCanonicalRequired(root)
+	restoreChatGroupBotsLegacyRequired(root)
+	restoreChatPendingMigrationCanonicalRequired(root)
+}
+
+func TestCrossPlatformCoverageChatGroupBotsKeepsLegacyGroupFlag(t *testing.T) {
+	cmd := newChatCommand()
+	leaf, _, err := cmd.Find([]string{"group", "bots"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	group := leaf.Flags().Lookup("group")
+	if group == nil || group.Hidden {
+		t.Fatalf("group flag = %#v, want visible legacy flag", group)
+	}
+	if got := group.Annotations[cobra.BashCompOneRequiredFlag]; len(got) == 0 || got[0] != "true" {
+		t.Fatalf("group required annotation = %#v, want true", got)
+	}
+	if leaf.Flags().Lookup("conversation-id") != nil {
+		t.Fatalf("chat group bots still exposes migrated --conversation-id")
+	}
+	if leaf.Flags().Lookup("group-name") != nil {
+		t.Fatalf("chat group bots still exposes migrated --group-name")
+	}
+}
+
+func TestCrossPlatformCoverageChatPendingMigrationAliasesMatchManifest(t *testing.T) {
+	cmd := newChatCommand()
+	leaf, _, err := cmd.Find([]string{"group", "dismiss"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical := leaf.Flags().Lookup("conversation-id")
+	if canonical == nil {
+		t.Fatal("missing conversation-id flag")
+	}
+	if got := canonical.Annotations[cobra.BashCompOneRequiredFlag]; len(got) == 0 || got[0] != "true" {
+		t.Fatalf("conversation-id required annotation = %#v, want true", got)
+	}
+	legacy := leaf.Flags().Lookup("group")
+	if legacy == nil || !legacy.Hidden {
+		t.Fatalf("group flag = %#v, want hidden legacy alias", legacy)
+	}
+	if got := legacy.Annotations[runtimeannotate.AnnotationFlagAliasOf]; len(got) != 1 || got[0] != "conversation-id" {
+		t.Fatalf("group alias_of annotation = %#v", got)
+	}
 }
 
 func TestCrossPlatformCoverageChatMessageHelpDocumentsPostSendIDChain(t *testing.T) {

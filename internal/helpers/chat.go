@@ -248,19 +248,79 @@ func installChatIMIDFlagAliases(root *cobra.Command) {
 		}
 	}
 	visit(root)
-	restoreChatAuditJoinValidationCanonicalRequired(root)
+	restoreChatGroupBotsLegacyRequired(root)
+	restoreChatPendingMigrationCanonicalRequired(root)
 }
 
-func restoreChatAuditJoinValidationCanonicalRequired(root *cobra.Command) {
+func restoreChatGroupBotsLegacyRequired(root *cobra.Command) {
 	if root == nil {
 		return
 	}
-	cmd, _, err := root.Find([]string{"group", "audit-join-validation"})
+	cmd, _, err := root.Find([]string{"group", "bots"})
 	if err != nil || cmd == nil {
 		return
 	}
-	_ = cmd.MarkFlagRequired("conversation-id")
-	clearChatAliasRequiredAnnotations(cmd, "group")
+	_ = cmd.MarkFlagRequired("group")
+}
+
+func restoreChatPendingMigrationCanonicalRequired(root *cobra.Command) {
+	if root == nil {
+		return
+	}
+	for _, path := range chatPendingConversationIDMigrationPaths {
+		cmd, _, err := root.Find(path)
+		if err != nil || cmd == nil {
+			continue
+		}
+		_ = cmd.MarkFlagRequired("conversation-id")
+		clearChatAliasRequiredAnnotations(cmd, "group", "id", "chat", "open-conversation-id")
+	}
+	for _, path := range chatPendingMessageIDMigrationPaths {
+		cmd, _, err := root.Find(path)
+		if err != nil || cmd == nil {
+			continue
+		}
+		_ = cmd.MarkFlagRequired("message-id")
+		clearChatAliasRequiredAnnotations(cmd, "msg-id", "open-message-id")
+	}
+}
+
+var chatPendingConversationIDMigrationPaths = [][]string{
+	{"group", "audit-join-validation"},
+	{"group", "dismiss"},
+	{"group", "invite-url"},
+	{"group", "notice", "create"},
+	{"group", "notice", "edit"},
+	{"group", "notice", "get"},
+	{"group", "notice", "list"},
+	{"group", "quit"},
+	{"group", "set-admin"},
+	{"group", "set-history"},
+	{"group", "transfer-owner"},
+	{"group", "update-alias"},
+	{"group", "update-icon"},
+	{"group", "update-nick"},
+	{"group", "update-settings"},
+	{"group", "upgrade-to-external"},
+	{"group-role", "add"},
+	{"group-role", "list"},
+	{"group-role", "query-user"},
+	{"group-role", "remove-user"},
+	{"group-role", "remove"},
+	{"group-role", "set-user"},
+	{"group-role", "update"},
+	{"message", "list-topic-replies"},
+}
+
+var chatPendingMessageIDMigrationPaths = [][]string{
+	{"message", "edit"},
+	{"message", "forward"},
+	{"message", "recall"},
+	{"message", "set-pin-msg"},
+	{"message", "set-top-msg"},
+	{"message", "unset-pin-msg"},
+	{"message", "unset-top-msg"},
+	{"message", "update-text-emotion"},
 }
 
 func clearChatAliasRequiredAnnotations(cmd *cobra.Command, aliases ...string) {
@@ -289,10 +349,12 @@ func installChatFlagAliases(cmd *cobra.Command, primary string, aliases []string
 				delete(aliasFlag.Annotations, cobra.BashCompOneRequiredFlag)
 			}
 			_ = flags.MarkHidden(alias)
+			corecmd.AnnotateFlagAlias(cmd, alias, primary)
 			continue
 		}
 		flags.String(alias, "", "--"+primary+" 的兼容别名")
 		_ = flags.MarkHidden(alias)
+		corecmd.AnnotateFlagAlias(cmd, alias, primary)
 	}
 	required, ok := flag.Annotations[cobra.BashCompOneRequiredFlag]
 	wasRequired := flag.Annotations != nil && ok && len(required) > 0 && required[0] == "true"
@@ -7542,30 +7604,15 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		Use:   "bots",
 		Short: "查看群内所有机器人",
 		Long:  `获取指定群聊中的所有机器人列表。`,
-		Example: `  dws chat group bots --conversation-id <openConversationId>
-  dws chat group bots --group-name "项目群"
+		Example: `  dws chat group bots --group <openConversationId>
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			conversationID, err := chatFlagOrAlias(cmd, "conversation-id", "id", "chat", "open-conversation-id")
-			if err != nil {
+			if err := validateRequiredFlags(cmd, "group"); err != nil {
 				return err
 			}
-			groupName, err := chatFlagOrAlias(cmd, "group-name", "group")
+			groupID, err := resolveNativeChatTarget(mustGetFlag(cmd, "group"))
 			if err != nil {
 				return err
-			}
-			if conversationID == "" && groupName == "" {
-				return validateRequiredFlagWithAliases(cmd, "conversation-id", "group-name", "group", "id", "chat", "open-conversation-id")
-			}
-			if conversationID != "" && groupName != "" {
-				return fmt.Errorf("--conversation-id and --group-name are mutually exclusive")
-			}
-			groupID := conversationID
-			if groupName != "" {
-				groupID, err = resolveNativeChatTarget(groupName)
-				if err != nil {
-					return err
-				}
 			}
 			return callMCPToolOnServer("bot", "list_group_bots", map[string]any{
 				"openConversationId": groupID,
@@ -7595,22 +7642,15 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AgentSummary: "列出群内机器人",
 				UseWhen:      []string{"需要查看某群已安装哪些机器人或提取 openBotId"},
 				AvoidWhen:    []string{"搜索企业内机器人目录时使用 chat bot find"},
-				Examples:     []string{"dws chat group bots --conversation-id <openConversationId>", "dws chat group bots --group-name \"项目群\""},
+				Examples:     []string{"dws chat group bots --group <openConversationId>"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false), Description: "群聊 openConversationId"},
-				{Name: "group-name", Property: "groupName", Required: boolPtr(false), Description: "需唯一解析的群名称"},
+				{Name: "group", Property: "openConversationId"},
 			},
 		},
 	})
-	chatGroupBotsCmd.Flags().String("conversation-id", "", "群聊 openConversationId")
-	chatGroupBotsCmd.Flags().String("group-name", "", "需唯一解析的群名称")
-	chatGroupBotsCmd.Flags().String("group", "", "--group-name 的兼容别名")
-	_ = chatGroupBotsCmd.Flags().MarkHidden("group")
-	cli.AnnotateRuntimeConstraints(chatGroupBotsCmd, cli.RuntimeSchemaConstraints{
-		MutuallyExclusive: [][]string{{"conversation-id", "group-name"}},
-		RequireOneOf:      [][]string{{"conversation-id", "group-name"}},
-	})
+	chatGroupBotsCmd.Flags().String("group", "", "群聊 openConversationId 或需唯一解析的群名 (必填)")
+	_ = chatGroupBotsCmd.MarkFlagRequired("group")
 
 	chatGroupMembersRemoveBotCmd := &cobra.Command{
 		Use:   "remove-bot",
@@ -7618,7 +7658,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		Long:  `将指定机器人从群聊中移除。需要群管理员或群主权限。`,
 		Example: `  dws chat group members remove-bot --id <openConversationId> --bot-id <openBotId>
   # 查询群 ID: dws chat search --query "群名"
-  # 查询群内机器人: dws chat group bots --conversation-id <openConversationId>`,
+  # 查询群内机器人: dws chat group bots --group <openConversationId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "id", "bot-id"); err != nil {
 				return err
