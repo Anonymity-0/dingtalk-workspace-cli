@@ -1245,6 +1245,105 @@ install_multi_skills_to_root "$DWS_TEST_MULTI" "$DWS_TEST_ROOT"
 	assertSkillProvenance(t, home, filepath.Join(base, "dingtalk-test"), "dingtalk-test", "install-skills.sh")
 }
 
+func TestInstallerShellPrefersCodexRootWithoutGenericDuplicate(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		t.Run(scriptName, func(t *testing.T) {
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			source := filepath.Join(t.TempDir(), "multi")
+			mustWriteFile(t, filepath.Join(home, ".codex", "config.toml"), []byte("model=test\n"), 0o644)
+			mustWriteFile(t, filepath.Join(home, ".agents", "skills", "dws", "multi", "dingtalk-chat", "SKILL.md"), []byte("old nested\n"), 0o644)
+			mustWriteFile(t, filepath.Join(source, "dingtalk-chat", "SKILL.md"), []byte("new chat\n"), 0o644)
+
+			installCall := `install_multi_skills_to_homes "$DWS_TEST_SOURCE"`
+			if scriptName == "install-skills.sh" {
+				installCall = `install_multi_skills_to_root "$DWS_TEST_SOURCE" "$HOME"`
+			}
+			cmd := exec.Command("sh", "-c", `. "$DWS_TEST_LIBRARY"
+`+installCall+`
+`)
+			cmd.Env = append(os.Environ(), "HOME="+home, "DWS_TEST_LIBRARY="+library, "DWS_TEST_SOURCE="+source)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("%s Codex-root harness failed: %v\n%s", scriptName, err, output)
+			}
+			if _, err := os.Stat(filepath.Join(home, ".codex", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
+				t.Fatalf("%s canonical Codex Skill missing: %v", scriptName, err)
+			}
+			for _, duplicate := range []string{
+				filepath.Join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md"),
+				filepath.Join(home, ".agents", "skills", "dws", "multi", "dingtalk-chat", "SKILL.md"),
+			} {
+				if _, err := os.Stat(duplicate); !os.IsNotExist(err) {
+					t.Fatalf("%s generic duplicate remains at %s: %v", scriptName, duplicate, err)
+				}
+			}
+		})
+	}
+}
+
+func TestInstallPowerShellPrefersCodexRootWithoutGenericDuplicate(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			pwsh, err = exec.LookPath("powershell")
+		}
+		if err != nil {
+			t.Skip("PowerShell is not available")
+		}
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.ps1 main section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	prefix += `
+if (!(Install-MultiSkillsToHomes -MultiSrc $env:DWS_TEST_MULTI -Root $env:DWS_TEST_HOME)) { exit 2 }
+exit 0
+`
+	harnessPath := filepath.Join(t.TempDir(), "install-codex-root.ps1")
+	mustWriteFile(t, harnessPath, []byte(prefix), 0o644)
+
+	home := t.TempDir()
+	multi := filepath.Join(t.TempDir(), "multi")
+	mustWriteFile(t, filepath.Join(home, ".codex", "config.toml"), []byte("model=test\n"), 0o644)
+	mustWriteFile(t, filepath.Join(home, ".agents", "skills", "dws", "multi", "dingtalk-chat", "SKILL.md"), []byte("old nested\n"), 0o644)
+	mustWriteFile(t, filepath.Join(multi, "dingtalk-chat", "SKILL.md"), []byte("new chat\n"), 0o644)
+
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+home, "DWS_TEST_MULTI="+multi)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("PowerShell Codex-root harness failed: %v\n%s", err, output)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".codex", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
+		t.Fatalf("PowerShell canonical Codex Skill missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dws")); !os.IsNotExist(err) {
+		t.Fatalf("PowerShell generic duplicate remains: %v", err)
+	}
+}
+
 func TestInstallPowerShellBackupFailureWritesNoMultiSkills(t *testing.T) {
 	pwsh, err := exec.LookPath("pwsh")
 	if err != nil {
