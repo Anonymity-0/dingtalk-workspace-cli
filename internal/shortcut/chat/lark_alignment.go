@@ -651,7 +651,7 @@ func executeFlagList(rt *shortcut.RuntimeContext) error {
 			switch {
 			case nextCursor > 0:
 				pageHasMore = true
-			case len(pageItems) < pageSize:
+			case len(pageItems) < requestPageSize:
 				paginationKnown = false
 				complete = true
 				hasMore = false

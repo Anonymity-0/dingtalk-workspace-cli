@@ -104,6 +104,35 @@ func TestCrossPlatformCoverageFlagListMaxItemsPublishesStableTruncation(t *testi
 	}
 }
 
+func TestCrossPlatformCoverageFlagListLegacyFullRemainingPageFailsClosed(t *testing.T) {
+	fake := &larkAlignmentCaller{sequenceResponses: map[string][]string{
+		"im/list_message_favorites": {
+			`{"result":{"items":[{"openMessageId":"m1"},{"openMessageId":"m2"}],"hasMore":true,"nextCursor":7}}`,
+			`{"result":{"items":[{"openMessageId":"m3"}]}}`,
+		},
+	}}
+	helpers.InitDeps(fake)
+	root := newPlatformCoverageRoot()
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{"chat", "+flag-list", "--page-size", "2", "--page-all", "--max-items", "3"})
+	if err := root.Execute(); err == nil {
+		t.Fatal("full remaining-budget legacy page unexpectedly declared a complete result")
+	}
+	if len(fake.calls) != 2 || fake.calls[0].args["size"] != "2" || fake.calls[1].args["size"] != "1" {
+		t.Fatalf("request sizes = %#v", fake.calls)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["count"] != float64(3) || payload["complete"] != false ||
+		payload["paginationKnown"] != false || payload["stopReason"] != "pagination_error" ||
+		payload["failedCount"] != float64(1) || payload["nextCursor"] != float64(0) {
+		t.Fatalf("payload = %#v", payload)
+	}
+}
+
 func TestCrossPlatformCoverageFlagListFailsClosedOnOversizeAndCanceledDelay(t *testing.T) {
 	t.Run("oversized lower page", func(t *testing.T) {
 		fake := &larkAlignmentCaller{responses: map[string]string{
