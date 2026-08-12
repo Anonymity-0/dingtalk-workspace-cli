@@ -3532,6 +3532,7 @@ skipped/failed）、diff 与逐条 items；有失败则以非零退出码退出�
 		driveListCmd,
 		driveListSpacesCmd,
 		driveInfoCmd,
+		newDriveFileCommentCmd(),
 		driveDownloadCmd,
 		driveDownloadVersionCmd,
 		driveMkdirCmd,
