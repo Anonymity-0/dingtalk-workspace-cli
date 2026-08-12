@@ -3319,7 +3319,7 @@ modified_time（--quick）逐文件比对。两侧各自递归遍历，rel_path 
 预览，确认后以相同参数追加 --yes 执行。
 
 输出 summary（downloaded/skipped/failed）与逐文件 items。
-若有文件下载失败，命令以非零退出码退出（error.type=partial_failure）。`,
+若有文件下载失败，命令以非零退出码退出，结构化结果仍在 stdout。`,
 		Example: `  dws drive pull --local-folder /abs/path/repo --remote-folder <dentryUuid>
   dws drive pull --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists smart
   dws drive pull --local-folder /abs/path/repo --remote-folder <dentryUuid> --space-id xxxx`,

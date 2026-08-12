@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,8 +22,8 @@ import (
 //
 // 递归列出 --remote-folder 指向的钉盘文件夹下所有 type=FILE 的文件，逐一下载到
 // --local-folder 对应的相对路径。已存在的本地文件按 --if-exists 决定
-// overwrite / smart / skip。summary.failed > 0 时以非零退出码退出，并在
-// error.type=partial_failure / error.detail 里返回同一份 summary + items。
+// overwrite / smart / skip。结构化 summary + items 始终打印到 stdout；
+// summary.failed > 0 时额外以非零退出码退出。
 // ──────────────────────────────────────────────────────────
 
 // --if-exists 的三种策略。
@@ -74,13 +73,14 @@ type drivePullDryRunResult struct {
 	Plan        drivePullResult `json:"plan"`
 }
 
-// drivePartialFailure 在 summary.failed > 0 时返回：以 exit=1 退出，并把
-// {"error":{"type":"partial_failure","detail":{summary,items}}} 原样透传出去。
-// 结构上满足 core 的 RawStderrError 与 ExitCoder 接口（无需 import internal 包）。
-type drivePartialFailure struct{ raw string }
+// drivePartialFailure 在 summary.failed > 0 时返回：结构化结果已打印到 stdout，
+// 这里只负责以 exit=1 退出并向 stderr 输出一行简短说明（与 push/sync 一致）。
+type drivePartialFailure struct{ failed int }
 
-func (e *drivePartialFailure) Error() string     { return e.raw }
-func (e *drivePartialFailure) RawStderr() string { return e.raw }
+func (e *drivePartialFailure) Error() string {
+	return fmt.Sprintf("drive pull: %d file(s) failed", e.failed)
+}
+func (e *drivePartialFailure) RawStderr() string { return e.Error() }
 func (e *drivePartialFailure) ExitCode() int     { return 1 }
 
 // pathCollisionKey 把本地目标路径归一化成「目标文件系统下的等价键」，用于探测多个
@@ -233,18 +233,14 @@ func runDrivePull(cmd *cobra.Command, _ []string) error {
 		res.Items = append(res.Items, item)
 	}
 
-	if res.Summary.Failed > 0 {
-		// partial_failure：非零退出码，summary+items 一并放进 error.detail。
-		payload := map[string]any{
-			"error": map[string]any{
-				"type":   "partial_failure",
-				"detail": res,
-			},
-		}
-		b, _ := json.Marshal(payload)
-		return &drivePartialFailure{raw: string(b)}
+	// 结构化结果始终打印到 stdout；有失败则额外以非零退出码退出。
+	if perr := deps.Out.PrintJSON(res); perr != nil {
+		return perr
 	}
-	return deps.Out.PrintJSON(res)
+	if res.Summary.Failed > 0 {
+		return &drivePartialFailure{failed: res.Summary.Failed}
+	}
+	return nil
 }
 
 func printDrivePullDryRun(absDir, ifExists string, remote map[string]*remoteFile, relPaths []string, caseInsensitive bool) error {

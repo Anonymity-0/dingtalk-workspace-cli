@@ -150,13 +150,25 @@ func TestCrossPlatformCoverageDrivePull_downloadFailureIsPartialFailure(t *testi
 	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error { return errTestDownload })
 	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
-	err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT")
+	var out strings.Builder
+	prevDeps, prevArgs := deps, os.Args
+	deps = &Deps{Caller: caller, Out: &Formatter{w: &out}}
+	os.Args = []string{"dws", "drive", "pull"}
+	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+
+	cmd := findDriveSubcommand(t, "pull")
+	mustSetFlags(t, cmd, map[string]string{"local-folder": root, "remote-folder": "ROOT"})
+	err := runDrivePull(cmd, nil)
 	var pf *drivePartialFailure
 	if !errors.As(err, &pf) {
 		t.Fatalf("expected drivePartialFailure, got %T %v", err, err)
 	}
-	if !strings.Contains(pf.raw, "partial_failure") {
-		t.Errorf("detail missing partial_failure: %s", pf.raw)
+	if pf.failed != 1 || pf.RawStderr() != "drive pull: 1 file(s) failed" {
+		t.Errorf("partial failure = %#v, stderr = %q", pf, pf.RawStderr())
+	}
+	stdout := out.String()
+	if !strings.Contains(stdout, `"failed": 1`) || !strings.Contains(stdout, `"rel_path": "a.txt"`) {
+		t.Errorf("stdout must retain the structured partial result: %s", stdout)
 	}
 }
 

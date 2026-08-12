@@ -371,16 +371,16 @@ func TestCrossPlatformCoverageParseDriveDownloadInfo_invalidJSON(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────
-// drivePartialFailure — pull 部分失败错误：exit=1，JSON 原样透传
+// drivePartialFailure — pull 部分失败错误：exit=1，stderr 仅保留简短说明
 // ──────────────────────────────────────────────────────────
 
 func TestCrossPlatformCoverageDrivePartialFailure(t *testing.T) {
-	raw := `{"error":{"type":"partial_failure","detail":{}}}`
-	e := &drivePartialFailure{raw: raw}
+	e := &drivePartialFailure{failed: 2}
 	if e.ExitCode() != 1 {
 		t.Errorf("ExitCode() = %d, want 1", e.ExitCode())
 	}
-	if e.Error() != raw || e.RawStderr() != raw {
-		t.Errorf("Error()/RawStderr() should return the raw JSON verbatim")
+	want := "drive pull: 2 file(s) failed"
+	if e.Error() != want || e.RawStderr() != want {
+		t.Errorf("Error()/RawStderr() = %q / %q, want %q", e.Error(), e.RawStderr(), want)
 	}
 }

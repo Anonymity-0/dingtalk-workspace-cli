@@ -134,6 +134,21 @@ func TestCrossPlatformCoveragePullOneFile_renameOntoDirectoryFails(t *testing.T)
 // PrintJSON 失败分支
 // ──────────────────────────────────────────────────────────
 
+func TestCrossPlatformCoverageDrivePull_printFailurePropagates(t *testing.T) {
+	dir := t.TempDir()
+
+	prevDeps, prevArgs := deps, os.Args
+	deps = &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: failingWriter{}}}
+	os.Args = []string{"dws", "drive", "pull"}
+	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+
+	cmd := findDriveSubcommand(t, "pull")
+	mustSetFlags(t, cmd, map[string]string{"local-folder": dir, "remote-folder": "ROOT"})
+	if err := runDrivePull(cmd, nil); err == nil {
+		t.Fatal("expected the PrintJSON writer failure to propagate")
+	}
+}
+
 func TestCrossPlatformCoverageDrivePush_printFailurePropagates(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "x")

@@ -422,7 +422,7 @@ Flags:
 - 只下载钉盘 `type=file` 的二进制文件；在线文档与快捷方式会被跳过。`rel_path` 始终以 `/` 分隔。
 - 下载目标始终被约束在 `--local-folder` 之内：远端名称含 `..`、路径分隔符或盘符等非规范成分的条目会被跳过，拼接后仍逃逸出根目录的路径记为 `failed`、不会落盘。
 - 下载成功后本地文件 mtime 会对齐到远端 `modified_time`，便于后续 `--if-exists smart` 增量同步跳过。
-- `summary.failed > 0` 时命令以**非零退出码**退出（`error.type=partial_failure`），同一份 `summary + items` 在 `error.detail` 里返回；脚本/agent 直接看 exit code 即可判断成败。
+- `summary.failed > 0` 时命令以**非零退出码**退出；结构化 `summary + items` 仍打印在 stdout 上，stderr 只保留简短失败说明。脚本/agent 直接看 exit code 即可判断成败。
 
 ### 把本地文件夹推送（镜像）到钉盘
 
