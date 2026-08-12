@@ -81,6 +81,32 @@ func TestCrossPlatformCoverageChatUpdateTextEmotion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "open-conversation-id alias",
+			args: []string{
+				"message", "update-text-emotion",
+				"--open-conversation-id", "conv-3",
+				"--message-id", "msg-3",
+				"--old-emotion-id", "old-3",
+				"--emotion-id", "new-3",
+				"--emotion-name", "smile",
+				"--text", "done",
+				"--background-id", "im_bg_2",
+			},
+			want: guardedMutationCall{
+				productID: "im",
+				toolName:  "update_text_emotion",
+				args: map[string]any{
+					"openConversationId": "conv-3",
+					"openMsgId":          "msg-3",
+					"oldEmotionId":       "old-3",
+					"emotionId":          "new-3",
+					"emotionName":        "smile",
+					"text":               "done",
+					"backgroundId":       "im_bg_2",
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		test := test
@@ -163,19 +189,41 @@ func TestCrossPlatformCoverageChatUpdateTextEmotionRequiredFlags(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageChatGroupGetMuteConfig(t *testing.T) {
-	caller := &guardedMutationCaller{}
-	err := executeGuardedMutationCommand(t, caller, newChatCommand,
-		"group", "get-mute-config", "--group", "conv-1")
-	if err != nil {
-		t.Fatalf("get-mute-config returned error: %v", err)
-	}
-	want := guardedMutationCall{
-		productID: "im",
-		toolName:  "get_group_mute_config",
-		args:      map[string]any{"openConversationId": "conv-1"},
-	}
-	if len(caller.calls) != 1 || !reflect.DeepEqual(caller.calls[0], want) {
-		t.Fatalf("tool calls = %#v, want %#v", caller.calls, want)
+	for _, test := range []struct {
+		name string
+		args []string
+		want guardedMutationCall
+	}{
+		{
+			name: "legacy group alias",
+			args: []string{"group", "get-mute-config", "--group", "conv-1"},
+			want: guardedMutationCall{
+				productID: "im",
+				toolName:  "get_group_mute_config",
+				args:      map[string]any{"openConversationId": "conv-1"},
+			},
+		},
+		{
+			name: "canonical conversation id",
+			args: []string{"group", "get-mute-config", "--conversation-id", "conv-2"},
+			want: guardedMutationCall{
+				productID: "im",
+				toolName:  "get_group_mute_config",
+				args:      map[string]any{"openConversationId": "conv-2"},
+			},
+		},
+	} {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			caller := &guardedMutationCaller{}
+			err := executeGuardedMutationCommand(t, caller, newChatCommand, test.args...)
+			if err != nil {
+				t.Fatalf("get-mute-config returned error: %v", err)
+			}
+			if len(caller.calls) != 1 || !reflect.DeepEqual(caller.calls[0], test.want) {
+				t.Fatalf("tool calls = %#v, want %#v", caller.calls, test.want)
+			}
+		})
 	}
 }
 

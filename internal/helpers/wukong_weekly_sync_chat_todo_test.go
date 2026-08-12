@@ -117,7 +117,7 @@ func TestCrossPlatformCoverageWukongWeeklyChatCategoryQueries(t *testing.T) {
 	caller := &wukongWeeklySyncCaller{}
 	_, _, err := executeWukongWeeklySyncCommand(t, "chat", caller, newChatCommand, "category", "list-by-conv")
 	if err == nil || !strings.Contains(err.Error(), "missing required flag: --conversation-id") {
-		t.Fatalf("missing group error = %v", err)
+		t.Fatalf("missing conversation ID error = %v", err)
 	}
 	requireWukongWeeklySyncNoCalls(t, caller)
 

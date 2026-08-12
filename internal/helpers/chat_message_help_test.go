@@ -171,7 +171,7 @@ func TestCrossPlatformCoverageChatMessageHelpDocumentsPostSendIDChain(t *testing
 	}
 }
 
-func TestCrossPlatformCoverageChatReactionHelpHidesConversationAliases(t *testing.T) {
+func TestCrossPlatformCoverageChatReactionHelpKeepsManifestExternalAliasesVisible(t *testing.T) {
 	for _, command := range []string{"add-emoji", "remove-emoji", "add-text-emotion", "remove-text-emotion"} {
 		t.Run(command, func(t *testing.T) {
 			cmd := newChatCommand()
@@ -187,16 +187,16 @@ func TestCrossPlatformCoverageChatReactionHelpHidesConversationAliases(t *testin
 			if !strings.Contains(help, "--conversation-id") {
 				t.Fatalf("chat message %s help missing --conversation-id:\n%s", command, help)
 			}
-			for _, hidden := range []string{"--group", "--id", "--chat"} {
-				if strings.Contains(help, hidden+" string") {
-					t.Fatalf("chat message %s help exposes hidden alias %s:\n%s", command, hidden, help)
+			for _, visible := range []string{"--group", "--id", "--chat"} {
+				if !strings.Contains(help, visible+" string") {
+					t.Fatalf("chat message %s help hides manifest-external alias %s:\n%s", command, visible, help)
 				}
 			}
 		})
 	}
 }
 
-func TestCrossPlatformCoverageChatGroupBotsHelpSplitsGroupName(t *testing.T) {
+func TestCrossPlatformCoverageChatGroupBotsHelpKeepsLegacyGroup(t *testing.T) {
 	cmd := newChatCommand()
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -207,13 +207,13 @@ func TestCrossPlatformCoverageChatGroupBotsHelpSplitsGroupName(t *testing.T) {
 	}
 
 	help := output.String()
-	for _, visible := range []string{"--conversation-id", "--group-name"} {
-		if !strings.Contains(help, visible) {
-			t.Fatalf("chat group bots help missing %s:\n%s", visible, help)
-		}
+	if !strings.Contains(help, "--group string") {
+		t.Fatalf("chat group bots help missing visible --group:\n%s", help)
 	}
-	if strings.Contains(help, "--group string") {
-		t.Fatalf("chat group bots help exposes hidden --group alias:\n%s", help)
+	for _, hidden := range []string{"--conversation-id", "--group-name"} {
+		if strings.Contains(help, hidden) {
+			t.Fatalf("chat group bots help exposes migrated flag %s:\n%s", hidden, help)
+		}
 	}
 }
 
@@ -233,9 +233,9 @@ func TestCrossPlatformCoverageChatSendCardHelpUsesCanonicalIDFlags(t *testing.T)
 			t.Fatalf("send-card help missing %s:\n%s", visible, help)
 		}
 	}
-	for _, hidden := range []string{"--group", "--receiver"} {
-		if strings.Contains(help, hidden+" string") {
-			t.Fatalf("send-card help exposes hidden alias %s:\n%s", hidden, help)
+	for _, visible := range []string{"--group", "--receiver"} {
+		if !strings.Contains(help, visible+" string") {
+			t.Fatalf("send-card help hides manifest-external alias %s:\n%s", visible, help)
 		}
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
+	"github.com/spf13/cobra"
 )
 
 func runChatCoverageCommand(t *testing.T, caller edition.ToolCaller, args ...string) error {
@@ -123,6 +124,80 @@ func TestCrossPlatformCoverageChatStableCompatibilityHintsRemainAvailable(t *tes
 		if err == nil || !strings.Contains(err.Error(), "ambiguous command") || !strings.Contains(err.Error(), tc.hint) {
 			t.Fatalf("chat %s with legacy flags error = %v, want migration hint %q", tc.path, err, tc.hint)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageChatAliasInstallerRemainingEdges(t *testing.T) {
+	restoreChatManifestExternalVisibleFlags(nil)
+
+	mismatchedRoot := &cobra.Command{Use: "chat"}
+	mismatchedRoot.AddCommand(&cobra.Command{Use: "other"})
+	restoreChatManifestExternalVisibleFlags(mismatchedRoot)
+
+	missingPrimary := &cobra.Command{Use: "leaf"}
+	installChatFlagAliases(missingPrimary, "conversation-id", []string{"group"}, requireChatConversationID)
+	if flag := missingPrimary.Flags().Lookup("group"); flag != nil {
+		t.Fatalf("alias registered without canonical flag: %#v", flag)
+	}
+
+	skipGroup := &cobra.Command{Use: "leaf", RunE: func(cmd *cobra.Command, args []string) error { return nil }}
+	skipGroup.Flags().String("conversation-id", "", "")
+	skipGroup.Flags().String("group-name", "", "")
+	installChatFlagAliases(skipGroup, "conversation-id", []string{"group", "chat"}, requireChatConversationID)
+	if flag := skipGroup.Flags().Lookup("group"); flag != nil {
+		t.Fatalf("group alias registered beside group-name: %#v", flag)
+	}
+	if flag := skipGroup.Flags().Lookup("chat"); flag == nil {
+		t.Fatal("non-group alias was not registered")
+	}
+
+	preRunCalled := false
+	withPreRun := &cobra.Command{
+		Use: "leaf",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			preRunCalled = true
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error { return nil },
+	}
+	withPreRun.Flags().String("conversation-id", "", "")
+	installChatFlagAliases(withPreRun, "conversation-id", []string{"group"}, requireChatConversationID)
+	withPreRun.SetArgs([]string{"--group", "cid"})
+	if err := withPreRun.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("execute with alias and previous PreRunE: %v", err)
+	}
+	if !preRunCalled {
+		t.Fatal("previous PreRunE was not called")
+	}
+}
+
+func TestCrossPlatformCoverageChatMessageForwardRequiresMessageID(t *testing.T) {
+	caller := &productExampleCaller{}
+	InitDeps(caller)
+	deps.Out.w = io.Discard
+	deps.Out.errW = io.Discard
+	root := newChatCommand()
+	command, _, err := root.Find([]string{"message", "forward"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"message-id", "msg-id"} {
+		if flag := command.Flags().Lookup(name); flag != nil && flag.Annotations != nil {
+			delete(flag.Annotations, cobra.BashCompOneRequiredFlag)
+		}
+	}
+	if err := command.Flags().Set("src-conversation-id", "src"); err != nil {
+		t.Fatal(err)
+	}
+	if err := command.Flags().Set("dest-conversation-id", "dest"); err != nil {
+		t.Fatal(err)
+	}
+	err = command.RunE(command, nil)
+	if err == nil || !strings.Contains(err.Error(), "missing required flag: --message-id") {
+		t.Fatalf("forward missing message id error = %v", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("tool calls = %d, want 0", caller.calls)
 	}
 }
 
@@ -439,8 +514,8 @@ func TestCrossPlatformCoverageChatIMIDMigrationRequiredFlagErrors(t *testing.T) 
 		{name: "role set user missing conversation", path: []string{"group-role", "set-user"}, flag: map[string]string{"user": "D1", "role-ids": "r1"}, want: "conversation-id"},
 		{name: "role remove user missing conversation", path: []string{"group-role", "remove-user"}, flag: map[string]string{"user": "D1", "role-ids": "r1"}, want: "conversation-id"},
 		{name: "role query user missing conversation", path: []string{"group-role", "query-user"}, flag: map[string]string{"user": "D1"}, want: "conversation-id"},
-		{name: "bots conflicting conversation aliases", path: []string{"group", "bots"}, flag: map[string]string{"conversation-id": "cid1", "id": "cid2"}, want: "conflicts"},
-		{name: "bots conflicting group aliases", path: []string{"group", "bots"}, flag: map[string]string{"group-name": "项目群", "group": "cid"}, want: "conflicts"},
+		{name: "bots missing legacy group", path: []string{"group", "bots"}, want: "group"},
+		{name: "bots rejects migrated conversation id", path: []string{"group", "bots"}, flag: map[string]string{"conversation-id": "cid"}, want: "no such flag"},
 		{name: "dismiss missing conversation", path: []string{"group", "dismiss"}, flag: map[string]string{"yes": "true"}, want: "conversation-id"},
 		{name: "set history missing conversation", path: []string{"group", "set-history"}, flag: map[string]string{"option": "ALL"}, want: "conversation-id"},
 		{name: "set pin missing message", path: []string{"message", "set-pin-msg"}, flag: map[string]string{"open-conversation-id": "cid"}, want: "message-id"},

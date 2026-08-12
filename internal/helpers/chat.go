@@ -238,18 +238,101 @@ func chatMessageID(cmd *cobra.Command) (string, error) {
 }
 
 func installChatIMIDFlagAliases(root *cobra.Command) {
-	var visit func(*cobra.Command)
-	visit = func(cmd *cobra.Command) {
-		installChatFlagAliases(cmd, "conversation-id", []string{"group", "id", "chat", "open-conversation-id"}, requireChatConversationID)
-		installChatFlagAliases(cmd, "message-id", []string{"msg-id", "open-message-id"}, chatMessageID)
-		clearChatAliasRequiredAnnotations(cmd, "group", "id", "chat", "open-conversation-id", "msg-id", "open-message-id")
+	conversationMigrationPaths := chatMigrationPathSet(chatPendingConversationIDMigrationPaths)
+	messageMigrationPaths := chatMigrationPathSet(chatPendingMessageIDMigrationPaths)
+	var visit func(*cobra.Command, []string)
+	visit = func(cmd *cobra.Command, path []string) {
+		key := strings.Join(path, " ")
+		if conversationMigrationPaths[key] {
+			installChatFlagAliases(cmd, "conversation-id", []string{"group", "id", "chat", "open-conversation-id"}, requireChatConversationID)
+			clearChatAliasRequiredAnnotations(cmd, "group", "id", "chat", "open-conversation-id")
+		}
+		if messageMigrationPaths[key] {
+			installChatFlagAliases(cmd, "message-id", []string{"msg-id", "open-message-id"}, chatMessageID)
+			clearChatAliasRequiredAnnotations(cmd, "msg-id", "open-message-id")
+		}
 		for _, child := range cmd.Commands() {
-			visit(child)
+			visit(child, append(path, child.Name()))
 		}
 	}
-	visit(root)
+	visit(root, nil)
 	restoreChatGroupBotsLegacyRequired(root)
 	restoreChatPendingMigrationCanonicalRequired(root)
+	restoreChatManifestExternalVisibleFlags(root)
+}
+
+func chatMigrationPathSet(paths [][]string) map[string]bool {
+	set := make(map[string]bool, len(paths))
+	for _, path := range paths {
+		set[strings.Join(path, " ")] = true
+	}
+	return set
+}
+
+func restoreChatManifestExternalVisibleFlags(root *cobra.Command) {
+	if root == nil {
+		return
+	}
+	for _, spec := range chatManifestExternalVisibleFlagSpecs {
+		cmd, _, err := root.Find(spec.path)
+		if err != nil || cmd == nil {
+			continue
+		}
+		for _, flag := range spec.flags {
+			ensureVisibleStringFlag(cmd, flag.name, flag.usage)
+		}
+		for _, flag := range spec.optionalFlags {
+			if f := cmd.Flags().Lookup(flag); f != nil && f.Annotations != nil {
+				delete(f.Annotations, cobra.BashCompOneRequiredFlag)
+			}
+		}
+	}
+}
+
+func ensureVisibleStringFlag(cmd *cobra.Command, name, usage string) {
+	flag := cmd.Flags().Lookup(name)
+	if flag == nil {
+		cmd.Flags().String(name, "", usage)
+		flag = cmd.Flags().Lookup(name)
+	}
+	if flag != nil {
+		flag.Hidden = false
+	}
+}
+
+type chatVisibleFlagSpec struct {
+	name  string
+	usage string
+}
+
+type chatVisibleFlagCommandSpec struct {
+	path          []string
+	flags         []chatVisibleFlagSpec
+	optionalFlags []string
+}
+
+var chatManifestExternalVisibleFlagSpecs = []chatVisibleFlagCommandSpec{
+	{path: []string{"category", "add-conv"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"category", "list-by-conv"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}, optionalFlags: []string{"conversation-id"}},
+	{path: []string{"category", "remove-conv"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"conversation-info"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"file", "upload"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"group", "get-mute-config"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"group-mute"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"group-mute-member"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"message", "add-emoji"}, flags: []chatVisibleFlagSpec{{"msg-id", "--message-id 的别名"}}},
+	{path: []string{"message", "add-text-emotion"}, flags: []chatVisibleFlagSpec{{"msg-id", "--message-id 的别名"}}},
+	{path: []string{"message", "list"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"message", "list-mentions"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"message", "recall-by-bot"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"message", "remove-emoji"}, flags: []chatVisibleFlagSpec{{"msg-id", "--message-id 的别名"}}},
+	{path: []string{"message", "remove-text-emotion"}, flags: []chatVisibleFlagSpec{{"msg-id", "--message-id 的别名"}}},
+	{path: []string{"message", "search"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"message", "send"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"message", "send-by-bot"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}}},
+	{path: []string{"message", "send-card"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}, {"receiver", "--open-dingtalk-id 的兼容别名"}}},
+	{path: []string{"message", "update-text-emotion"}, flags: []chatVisibleFlagSpec{{"group", "--conversation-id 的别名"}, {"id", "--conversation-id 的别名"}, {"chat", "--conversation-id 的别名"}}, optionalFlags: []string{"conversation-id"}},
+	{path: []string{"mute"}, flags: []chatVisibleFlagSpec{{"chat", "--conversation-id 的别名"}, {"id", "--conversation-id 的别名"}}},
 }
 
 func restoreChatGroupBotsLegacyRequired(root *cobra.Command) {
@@ -5330,12 +5413,11 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 		Example: `  dws chat category list-by-conv --conversation-id <openConversationId>
   # 查询群 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID := flagOrFallback(cmd, "conversation-id", "group", "id")
-			if groupID == "" {
-				return fmt.Errorf("flag --group is required")
+			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id"); err != nil {
+				return err
 			}
 			return callMCPToolOnServer("im", "list_conv_categories_by_conv", map[string]any{
-				"openConversationId": groupID,
+				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id"),
 			})
 		},
 	}
@@ -5366,6 +5448,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 			},
 		},
@@ -5522,7 +5605,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 		Example: `  dws chat message add-emoji --conversation-id <openConversationId> --message-id <openMsgId> --emoji "赞"
   # 查询会话 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat"); err != nil {
+			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"); err != nil {
 				return err
 			}
 			if _, err := chatMessageID(cmd); err != nil {
@@ -5532,7 +5615,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				return err
 			}
 			return callMCPToolOnServer("im", "add_emoji_reaction", map[string]any{
-				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat"),
+				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"),
 				"openMsgId":          flagOrFallback(cmd, "message-id", "msg-id"),
 				"emojiName":          mustGetFlag(cmd, "emoji"),
 			})
@@ -5574,6 +5657,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageAddEmojiCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatMessageAddEmojiCmd.Flags().String("id", "", "--conversation-id 的别名")
 	chatMessageAddEmojiCmd.Flags().String("chat", "", "--conversation-id 的别名")
+	chatMessageAddEmojiCmd.Flags().String("open-conversation-id", "", "--conversation-id 的别名")
 	chatMessageAddEmojiCmd.Flags().String("message-id", "", "消息 openMsgId (必填)")
 	chatMessageAddEmojiCmd.Flags().String("emoji", "", "emoji 表情名称 (必填)")
 
@@ -5583,7 +5667,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 		Example: `  dws chat message remove-emoji --conversation-id <openConversationId> --message-id <openMsgId> --emoji "赞"
   # 查询会话 ID: dws chat search --query "群名"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat"); err != nil {
+			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"); err != nil {
 				return err
 			}
 			if _, err := chatMessageID(cmd); err != nil {
@@ -5593,7 +5677,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				return err
 			}
 			return callMCPToolOnServer("im", "remove_emoji_reaction", map[string]any{
-				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat"),
+				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"),
 				"openMsgId":          flagOrFallback(cmd, "message-id", "msg-id"),
 				"emojiName":          mustGetFlag(cmd, "emoji"),
 			})
@@ -5635,6 +5719,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageRemoveEmojiCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatMessageRemoveEmojiCmd.Flags().String("id", "", "--conversation-id 的别名")
 	chatMessageRemoveEmojiCmd.Flags().String("chat", "", "--conversation-id 的别名")
+	chatMessageRemoveEmojiCmd.Flags().String("open-conversation-id", "", "--conversation-id 的别名")
 	chatMessageRemoveEmojiCmd.Flags().String("message-id", "", "消息 openMsgId (必填)")
 	chatMessageRemoveEmojiCmd.Flags().String("emoji", "", "emoji 表情名称 (必填)")
 
@@ -5643,7 +5728,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 		Short:   "对消息添加文字表情回应",
 		Example: `  dws chat message add-text-emotion --conversation-id <openConversationId> --message-id <openMsgId> --emotion-id <emotionId> --emotion-name "赞" --text "nice" --background-id im_bg_5`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat"); err != nil {
+			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"); err != nil {
 				return err
 			}
 			if _, err := chatMessageID(cmd); err != nil {
@@ -5653,7 +5738,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				return err
 			}
 			return callMCPToolOnServer("im", "add_text_emotion", map[string]any{
-				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat"),
+				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"),
 				"openMsgId":          flagOrFallback(cmd, "message-id", "msg-id"),
 				"emotionId":          mustGetFlag(cmd, "emotion-id"),
 				"emotionName":        mustGetFlag(cmd, "emotion-name"),
@@ -5697,6 +5782,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageAddTextEmotionCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatMessageAddTextEmotionCmd.Flags().String("id", "", "--conversation-id 的别名")
 	chatMessageAddTextEmotionCmd.Flags().String("chat", "", "--conversation-id 的别名")
+	chatMessageAddTextEmotionCmd.Flags().String("open-conversation-id", "", "--conversation-id 的别名")
 	chatMessageAddTextEmotionCmd.Flags().String("message-id", "", "消息 openMsgId (必填)")
 	chatMessageAddTextEmotionCmd.Flags().String("emotion-id", "", "表情 ID (必填，通过 create-text-emotion 获取)")
 	chatMessageAddTextEmotionCmd.Flags().String("emotion-name", "", "表情名称 (必填)")
@@ -5708,7 +5794,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 		Short:   "移除消息的文字表情回应",
 		Example: `  dws chat message remove-text-emotion --conversation-id <openConversationId> --message-id <openMsgId> --emotion-id <emotionId> --emotion-name "赞" --text "nice" --background-id <backgroundId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat"); err != nil {
+			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"); err != nil {
 				return err
 			}
 			if _, err := chatMessageID(cmd); err != nil {
@@ -5718,7 +5804,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				return err
 			}
 			return callMCPToolOnServer("im", "remove_text_emotion", map[string]any{
-				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat"),
+				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"),
 				"openMsgId":          flagOrFallback(cmd, "message-id", "msg-id"),
 				"emotionId":          mustGetFlag(cmd, "emotion-id"),
 				"emotionName":        mustGetFlag(cmd, "emotion-name"),
@@ -5762,6 +5848,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageRemoveTextEmotionCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatMessageRemoveTextEmotionCmd.Flags().String("id", "", "--conversation-id 的别名")
 	chatMessageRemoveTextEmotionCmd.Flags().String("chat", "", "--conversation-id 的别名")
+	chatMessageRemoveTextEmotionCmd.Flags().String("open-conversation-id", "", "--conversation-id 的别名")
 	chatMessageRemoveTextEmotionCmd.Flags().String("message-id", "", "消息 openMsgId (必填)")
 	chatMessageRemoveTextEmotionCmd.Flags().String("emotion-id", "", "表情 ID (必填)")
 	chatMessageRemoveTextEmotionCmd.Flags().String("emotion-name", "", "表情名称 (必填)")
@@ -5773,7 +5860,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 		Short:   "更新消息的文字表情回应",
 		Example: `  dws chat message update-text-emotion --conversation-id <openConversationId> --message-id <openMsgId> --old-emotion-id <oldEmotionId> --emotion-id <emotionId> --emotion-name "赞" --text "nice" --background-id im_bg_5`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat"); err != nil {
+			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"); err != nil {
 				return err
 			}
 			if _, err := chatMessageID(cmd); err != nil {
@@ -5783,7 +5870,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				return err
 			}
 			return callMCPToolOnServer("im", "update_text_emotion", map[string]any{
-				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat"),
+				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat", "open-conversation-id"),
 				"openMsgId":          flagOrFallback(cmd, "message-id", "msg-id"),
 				"oldEmotionId":       mustGetFlag(cmd, "old-emotion-id"),
 				"emotionId":          mustGetFlag(cmd, "emotion-id"),
@@ -5823,16 +5910,21 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "background-id", Property: "backgroundId", Required: boolPtr(true), Description: "新文字表情的背景 ID"},
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false), Description: "会话 openConversationId 兼容入口"},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false), Description: "会话 openConversationId"},
 				{Name: "emotion-id", Property: "emotionId", Required: boolPtr(true), Description: "新的文字表情 ID，可通过 create-text-emotion 获取"},
 				{Name: "emotion-name", Property: "emotionName", Required: boolPtr(true), Description: "新的文字表情名称"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false), Description: "会话 openConversationId 兼容入口"},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false), Description: "会话 openConversationId 兼容入口"},
 				{Name: "message-id", Property: "openMsgId", Required: boolPtr(true), Description: "需要原地更新文字表情的消息 openMsgId"},
 				{Name: "old-emotion-id", Property: "oldEmotionId", Required: boolPtr(true), Description: "消息上当前文字表情的 emotionId"},
+				{Name: "open-conversation-id", Property: "openConversationId", Required: boolPtr(false), Description: "会话 openConversationId 兼容入口"},
 				{Name: "text", Property: "text", Required: boolPtr(true), Description: "新的文字表情内容"},
 			},
 		},
 	})
 	chatMessageUpdateTextEmotionCmd.Flags().String("conversation-id", "", "会话 openConversationId (必填，支持单聊/群聊)")
+	chatMessageUpdateTextEmotionCmd.Flags().String("open-conversation-id", "", "--conversation-id 的别名")
 	chatMessageUpdateTextEmotionCmd.Flags().String("message-id", "", "消息 openMsgId (必填)")
 	chatMessageUpdateTextEmotionCmd.Flags().String("old-emotion-id", "", "待更新的原表情 ID (必填)")
 	chatMessageUpdateTextEmotionCmd.Flags().String("emotion-id", "", "新表情 ID (必填)")
@@ -6751,9 +6843,12 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
   - 群聊：dws chat search --query "群名"
   - 单聊：dws chat conversation-info --open-dingtalk-id <openDingTalkId>
           （openDingTalkId 可通过 dws contact user search --query "姓名" 获取）`,
-		Example: `  dws chat message forward --src-conversation-id <srcOpenConversationId> --msg-id <srcOpenMessageId> --dest-conversation-id <destOpenConversationId>`,
+		Example: `  dws chat message forward --src-conversation-id <srcOpenConversationId> --message-id <srcOpenMessageId> --dest-conversation-id <destOpenConversationId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "src-conversation-id", "msg-id", "dest-conversation-id"); err != nil {
+			if err := validateRequiredFlags(cmd, "src-conversation-id", "dest-conversation-id"); err != nil {
+				return err
+			}
+			if err := validateRequiredFlagWithAliases(cmd, "message-id", "msg-id"); err != nil {
 				return err
 			}
 			toolArgs := map[string]any{
@@ -6790,7 +6885,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AgentSummary: "把一条已有消息转发到另一个会话",
 				UseWhen:      []string{"已知源消息与源、目标会话 ID 时"},
 				AvoidWhen:    []string{"合并转发多条消息时使用 chat message combine-forward"},
-				Examples:     []string{"dws chat message forward --src-conversation-id <srcConversationId> --msg-id <openMessageId> --dest-conversation-id <destConversationId>"},
+				Examples:     []string{"dws chat message forward --src-conversation-id <srcConversationId> --message-id <openMessageId> --dest-conversation-id <destConversationId>"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dest-conversation-id", Property: "destOpenCid"},
@@ -6874,11 +6969,11 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 返回的是原始配置记录，不等同于当前被禁言成员列表；全员禁言开关也不在本命令的返回范围内。`,
 		Example: `  dws chat group get-mute-config --conversation-id <openConversationId>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "conversation-id"); err != nil {
+			if err := validateRequiredFlagWithAliases(cmd, "conversation-id", "group"); err != nil {
 				return err
 			}
 			return callMCPToolOnServer("im", "get_group_mute_config", map[string]any{
-				"openConversationId": flagOrFallback(cmd, "conversation-id", "group", "id", "chat"),
+				"openConversationId": flagOrFallback(cmd, "conversation-id", "group"),
 			})
 		},
 	}
@@ -6907,9 +7002,13 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"设置全员禁言用 chat group-mute；禁言个人用 chat group-mute-member"},
 				Examples:     []string{"dws chat group get-mute-config --conversation-id <openConversationId> --format json"},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+			},
 		},
 	})
 	chatGroupGetMuteConfigCmd.Flags().String("conversation-id", "", "群聊 openConversationId (必填)")
+	chatGroupGetMuteConfigCmd.Flags().String("group", "", "--conversation-id 的别名")
 	chatGroupCmd.AddCommand(chatGroupGetMuteConfigCmd)
 
 	// ── group-mute: 全员禁言 ───────────────────────────────

@@ -1396,7 +1396,8 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		}
 	}
 
-	// Hidden conversation aliases must stay unpublished (merge-base parity).
+	// Manifest-covered migrations hide legacy aliases; manifest-external
+	// commands keep their existing visible flags for compatibility.
 	editLeaf, err := queryDeliverySchemaPayload([]string{"chat message edit"})
 	if err != nil {
 		t.Fatal(err)
@@ -1415,10 +1416,11 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 	if _, ok := listParams["conversation-id"]; !ok {
 		t.Fatalf("chat category list-by-conv missing public canonical --conversation-id")
 	}
-	for _, hidden := range []string{"group", "id"} {
-		if _, ok := listParams[hidden]; ok {
-			t.Fatalf("chat category list-by-conv unexpectedly publishes hidden alias --%s", hidden)
-		}
+	if _, ok := listParams["group"]; !ok {
+		t.Fatalf("chat category list-by-conv unexpectedly hides manifest-external --group")
+	}
+	if _, ok := listParams["id"]; ok {
+		t.Fatalf("chat category list-by-conv unexpectedly publishes hidden alias --id")
 	}
 
 	for _, path := range []string{
@@ -1435,9 +1437,9 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		if _, ok := params["conversation-id"]; !ok {
 			t.Fatalf("%s missing public canonical --conversation-id", path)
 		}
-		for _, hidden := range []string{"group", "id", "chat"} {
-			if _, ok := params[hidden]; ok {
-				t.Fatalf("%s unexpectedly publishes hidden alias --%s", path, hidden)
+		for _, visible := range []string{"group", "id", "chat"} {
+			if _, ok := params[visible]; !ok {
+				t.Fatalf("%s unexpectedly hides manifest-external --%s", path, visible)
 			}
 		}
 	}
@@ -1447,17 +1449,16 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		t.Fatal(err)
 	}
 	groupBotsParams := schemaMap(groupBots["parameters"])
-	if _, ok := groupBotsParams["conversation-id"]; !ok {
-		t.Fatal("chat group bots missing public canonical --conversation-id")
+	group := groupBotsParams["group"]
+	if group == nil {
+		t.Fatal("chat group bots missing public legacy --group")
 	}
-	groupName := groupBotsParams["group-name"]
-	if groupName == nil {
-		t.Fatal("chat group bots missing public canonical --group-name")
+	if group["property"] != "openConversationId" {
+		t.Fatalf("chat group bots --group property = %#v, want openConversationId", group["property"])
 	}
-	if groupName["property"] != "groupName" {
-		t.Fatalf("chat group bots --group-name property = %#v, want groupName", groupName["property"])
-	}
-	if _, ok := groupBotsParams["group"]; ok {
-		t.Fatal("chat group bots unexpectedly publishes hidden --group alias")
+	for _, migrated := range []string{"conversation-id", "group-name"} {
+		if _, ok := groupBotsParams[migrated]; ok {
+			t.Fatalf("chat group bots unexpectedly publishes migrated --%s", migrated)
+		}
 	}
 }
