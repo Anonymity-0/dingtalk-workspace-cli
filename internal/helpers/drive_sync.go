@@ -24,7 +24,8 @@ import (
 //   new_local   仅本地存在   → push（缺失的远端目录按需创建，再上传）
 //   new_remote  仅钉盘存在   → pull（下载到本地对应路径）
 //   modified    两侧都变更   → 按 --on-conflict 解决：
-//                 remote-wins 默认：拉取远端覆盖本地
+//                 skip       默认：两侧都不动并保留两边内容
+//                 remote-wins     ：拉取远端覆盖本地
 //                 local-wins       ：上传本地覆盖远端
 //                 keep-both        ：本地改名保留，再拉取远端到原路径
 //                 ask              ：交互式逐个询问
@@ -35,12 +36,13 @@ import (
 // 退出码退出，结构化 summary + diff + items 仍打印在 stdout 上。
 // ──────────────────────────────────────────────────────────
 
-// --on-conflict 的四种冲突解决策略。
+// --on-conflict 的五种冲突解决策略。
 const (
 	syncConflictLocalWins  = "local-wins"  // 上传本地覆盖远端
-	syncConflictRemoteWins = "remote-wins" // 默认：拉取远端覆盖本地
+	syncConflictRemoteWins = "remote-wins" // 拉取远端覆盖本地
 	syncConflictKeepBoth   = "keep-both"   // 本地改名保留，再拉取远端到原路径
 	syncConflictAsk        = "ask"         // 交互式逐个询问
+	syncConflictSkip       = "skip"        // 默认：两侧都变更时什么都不做，两边内容都保留
 )
 
 // sync 动作分类（direction 标注每条记录属于哪个方向）。
@@ -112,12 +114,13 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 
 	onConflict, _ := cmd.Flags().GetString("on-conflict")
 	if onConflict == "" {
-		onConflict = syncConflictRemoteWins
+		// 安全默认：两侧都变更时不擅自覆盖任何一侧。
+		onConflict = syncConflictSkip
 	}
 	switch onConflict {
-	case syncConflictLocalWins, syncConflictRemoteWins, syncConflictKeepBoth, syncConflictAsk:
+	case syncConflictSkip, syncConflictLocalWins, syncConflictRemoteWins, syncConflictKeepBoth, syncConflictAsk:
 	default:
-		return fmt.Errorf("--on-conflict 取值非法: %s（可选 local-wins|remote-wins|keep-both|ask）", onConflict)
+		return fmt.Errorf("--on-conflict 取值非法: %s（可选 skip|local-wins|remote-wins|keep-both|ask）", onConflict)
 	}
 
 	quick, _ := cmd.Flags().GetBool("quick")
@@ -221,11 +224,14 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 	resolutions := make(map[string]string, len(modified))
 	for _, rel := range modified {
 		strategy := onConflict
-		if strategy == syncConflictAsk {
+		switch strategy {
+		case syncConflictAsk:
 			strategy, err = driveSyncAskConflict(rel)
 			if err != nil {
 				return err
 			}
+		case syncConflictSkip:
+			strategy = "" // 与 ask 选择「跳过」同一条落地路径
 		}
 		resolutions[rel] = strategy
 	}

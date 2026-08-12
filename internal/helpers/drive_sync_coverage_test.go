@@ -52,8 +52,8 @@ func withSyncTransport(t *testing.T, body string) {
 // --on-conflict 取值处理
 // ──────────────────────────────────────────────────────────
 
-// 显式传空 --on-conflict 时回落默认 remote-wins（而非报非法取值）。
-func TestCrossPlatformCoverageDriveSync_emptyOnConflictDefaultsToRemoteWins(t *testing.T) {
+// 显式传空 --on-conflict 时回落安全默认 skip：两侧都变更时两边内容都不动。
+func TestCrossPlatformCoverageDriveSync_emptyOnConflictDefaultsToSkip(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
 	mustWrite(t, p, "local-old")
@@ -68,8 +68,8 @@ func TestCrossPlatformCoverageDriveSync_emptyOnConflictDefaultsToRemoteWins(t *t
 		"--quick", "--on-conflict", ""); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if b, _ := os.ReadFile(p); string(b) != "remote-new" {
-		t.Errorf("empty --on-conflict must behave as remote-wins, got %q", string(b))
+	if b, _ := os.ReadFile(p); string(b) != "local-old" {
+		t.Errorf("empty --on-conflict must default to skip and keep the local file, got %q", string(b))
 	}
 }
 

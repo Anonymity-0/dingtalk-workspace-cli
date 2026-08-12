@@ -145,7 +145,8 @@ func TestCrossPlatformCoverageDrivePull_nonexistentLocalRoot(t *testing.T) {
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.AddCommand(newDriveCommand())
 
-	full := []string{"pull", "--local-folder", absDir, "--remote-folder", "ROOT"}
+	// pull/push 是 user_required 叶子，非交互环境需 --yes 才能越过统一确认门。
+	full := []string{"pull", "--local-folder", absDir, "--remote-folder", "ROOT", "--yes"}
 	os.Args = append([]string{"dws", "drive"}, full...)
 	root.SetArgs(append([]string{"drive"}, full...))
 

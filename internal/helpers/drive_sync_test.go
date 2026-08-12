@@ -90,7 +90,8 @@ func runDriveSyncTestWithGet(t *testing.T, caller *driveSyncMockCaller, getFn fu
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.AddCommand(newDriveCommand())
 
-	full := append([]string{"sync", "--local-folder", localDir, "--remote-folder", "ROOT"}, args...)
+	// sync 是 user_required 叶子，非交互环境需 --yes 才能越过统一确认门。
+	full := append([]string{"sync", "--local-folder", localDir, "--remote-folder", "ROOT", "--yes"}, args...)
 	os.Args = append([]string{"dws", "drive"}, full...)
 	root.SetArgs(append([]string{"drive"}, full...))
 
@@ -139,7 +140,7 @@ func TestCrossPlatformCoverageDriveSync_bidirectional(t *testing.T) {
 	}
 }
 
-// modified + remote-wins：quick 模式下两侧 mtime 不同判为 modified，默认拉取远端覆盖本地。
+// modified + remote-wins：quick 模式下两侧 mtime 不同判为 modified，并显式拉取远端覆盖本地。
 func TestCrossPlatformCoverageDriveSync_modifiedRemoteWins(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
@@ -151,7 +152,7 @@ func TestCrossPlatformCoverageDriveSync_modifiedRemoteWins(t *testing.T) {
 		listJSON: `{"result":{"items":[{"name":"f.txt","type":"file","fileId":"F_FID","modifyTime":` +
 			differentMillis(local) + `}],"nextToken":""}}`,
 	}
-	if err := runDriveSyncTest(t, caller, dir, "--quick"); err != nil {
+	if err := runDriveSyncTest(t, caller, dir, "--quick", "--on-conflict", "remote-wins"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -233,7 +234,7 @@ func TestCrossPlatformCoverageDriveSync_pullFailureKeepsLocal(t *testing.T) {
 	failGet := func(context.Context, string, map[string]string, string) error {
 		return errTestDownload
 	}
-	err := runDriveSyncTestWithGet(t, caller, failGet, dir, "--quick") // 默认 remote-wins
+	err := runDriveSyncTestWithGet(t, caller, failGet, dir, "--quick", "--on-conflict", "remote-wins")
 	if err == nil {
 		t.Fatal("下载失败时应以非零退出码退出")
 	}

@@ -58,8 +58,23 @@ func (m *driveScriptCaller) callsFor(tool string) []driveMCPCall {
 
 var errTestList = errors.New("list_files boom")
 
-// runDriveCmd 以给定 caller 执行 `dws drive <args...>`，返回命令错误。
+// runDriveCmd 以给定 caller 执行 `dws drive <args...>`。
+//
+// pull / push / sync 声明了 Safety.Confirmation = user_required，非交互环境下必须带
+// --yes 才能越过统一确认门；这里自动补上，让用例专注被测行为。要断言「未确认即拒绝」
+// 请改用 runDriveCmdWithoutConfirm。
 func runDriveCmd(t *testing.T, caller edition.ToolCaller, args ...string) error {
+	t.Helper()
+	switch {
+	case len(args) == 0:
+	case args[0] == "pull", args[0] == "push", args[0] == "sync":
+		args = append(args, "--yes")
+	}
+	return runDriveCmdWithoutConfirm(t, caller, args...)
+}
+
+// runDriveCmdWithoutConfirm 原样执行，不补 --yes，用于验证确认门本身。
+func runDriveCmdWithoutConfirm(t *testing.T, caller edition.ToolCaller, args ...string) error {
 	t.Helper()
 
 	prevDeps := deps

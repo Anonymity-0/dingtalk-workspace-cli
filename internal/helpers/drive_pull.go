@@ -29,9 +29,9 @@ import (
 
 // --if-exists 的三种策略。
 const (
-	ifExistsOverwrite = "overwrite" // 默认：总是下载覆盖（Drive 为权威源）
+	ifExistsOverwrite = "overwrite" // 总是下载覆盖（Drive 为权威源）
 	ifExistsSmart     = "smart"     // 推荐增量：本地 mtime 已 ≥ 远端 modified_time 则跳过
-	ifExistsSkip      = "skip"      // 本地已存在则保持不动
+	ifExistsSkip      = "skip"      // 默认：本地已存在则保持不动
 )
 
 // pull 动作分类。
@@ -143,7 +143,8 @@ func runDrivePull(cmd *cobra.Command, _ []string) error {
 
 	ifExists, _ := cmd.Flags().GetString("if-exists")
 	if ifExists == "" {
-		ifExists = ifExistsOverwrite
+		// 安全默认：不自动覆盖本地既有文件。
+		ifExists = ifExistsSkip
 	}
 	switch ifExists {
 	case ifExistsOverwrite, ifExistsSmart, ifExistsSkip:
@@ -171,7 +172,7 @@ func runDrivePull(cmd *cobra.Command, _ []string) error {
 	sort.Strings(relPaths)
 
 	// 落盘前先按目标文件系统的路径等价规则做一次全局冲突检查：大小写不敏感 FS 上
-	// A.txt 与 a.txt（或 NFC/NFD 异写）会落到同一本地文件，默认 overwrite 会顺序覆盖、
+	// A.txt 与 a.txt（或 NFC/NFD 异写）会落到同一本地文件；overwrite 会顺序覆盖、
 	// 却把两项都报 downloaded 而静默丢文件。冲突的条目一律标记 failed、都不写入。
 	// 探针需要根目录存在，这里按 pull「自动创建目标根」的语义先建好。
 	if err := os.MkdirAll(absDir, 0o755); err != nil {

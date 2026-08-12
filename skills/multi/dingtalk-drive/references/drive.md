@@ -380,7 +380,7 @@ Flags:
 
 ### 把钉盘文件夹拉取（镜像）到本地
 
-只写本地命令：把 `--remote-folder` 指向的钉盘文件夹**单向、文件级**镜像到本地 `--local-folder`（Drive → 本地）。递归下载所有 `type=file` 的文件，子目录自动创建。
+只写本地命令：把 `--remote-folder` 指向的钉盘文件夹**单向、文件级**镜像到本地 `--local-folder`（Drive → 本地）。递归下载所有 `type=file` 的文件，子目录自动创建。**执行前必须获得用户确认；非交互环境先用 `--dry-run` 预览，确认后再加 `--yes`。**
 
 ```
 Usage:
@@ -393,16 +393,16 @@ Flags:
       --local-folder string   本地文件夹绝对路径 (必填)
       --remote-folder string    钉盘文件夹 ID (dentryUuid) (必填)
       --space-id string         钉盘空间 ID，不传则使用「我的文件」(可选)
-      --if-exists string        本地文件已存在时的策略: overwrite|smart|skip (默认 overwrite)
+      --if-exists string        本地文件已存在时的策略: skip|smart|overwrite (默认 skip；命令写本地，执行需确认)
 ```
 
 `--if-exists` 策略：
 
 | 值 | 行为 |
 |----|------|
-| `overwrite`（默认） | 总是下载覆盖（Drive 作为权威源） |
+| `skip`（默认） | 本地已存在则保持不动，只新增 |
 | `smart`（推荐增量同步） | 本地 `modified_time` 已 ≥ 远端 `modified_time` 则跳过；时间戳缺失/非法时退回安全路径继续下载 |
-| `skip` | 本地已存在则保持不动 |
+| `overwrite` | 总是下载覆盖（Drive 作为权威源） |
 
 输出 schema：
 
@@ -426,7 +426,7 @@ Flags:
 
 ### 把本地文件夹推送（镜像）到钉盘
 
-只写远端命令：把本地 `--local-folder` **单向、文件级**镜像到钉盘 `--remote-folder` 文件夹（本地 → Drive）。递归遍历本地文件与子目录（含空目录），缺失的远端目录按需创建（已存在则复用、不重建），文件按 `--if-exists` 新建/覆盖/跳过。**只新增/覆盖，不删除远端多余文件。**
+只写远端命令：把本地 `--local-folder` **单向、文件级**镜像到钉盘 `--remote-folder` 文件夹（本地 → Drive）。递归遍历本地文件与子目录（含空目录），缺失的远端目录按需创建（已存在则复用、不重建），文件按 `--if-exists` 新建/覆盖/跳过。**执行前必须获得用户确认；非交互环境先用 `--dry-run` 预览，确认后再加 `--yes`。只新增/覆盖，不删除远端多余文件。**
 
 ```
 Usage:
@@ -434,15 +434,15 @@ Usage:
 Example:
   dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid>
   dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists smart
-  dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists overwrite
+  dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists overwrite --yes
 Flags:
       --local-folder string   本地文件夹绝对路径 (必填)
       --remote-folder string    钉盘目标文件夹 ID (dentryUuid) (必填)
       --space-id string         钉盘空间 ID，不传则使用「我的文件」(可选)
-      --if-exists string        远端文件已存在时的策略: skip|smart|overwrite (默认 skip)
+      --if-exists string        远端文件已存在时的策略: skip|smart|overwrite (默认 skip；命令写钉盘，执行需确认)
 ```
 
-`--if-exists` 策略（注意默认与 pull 相反，push 默认 `skip` 更安全）：
+`--if-exists` 策略（与 pull 一样默认 `skip`，避免未显式选择时覆盖既有文件）：
 
 | 值 | 行为 |
 |----|------|
@@ -474,7 +474,7 @@ Flags:
 
 ### 本地文件夹与钉盘文件夹双向同步
 
-读写命令：把本地 `--local-folder` 与钉盘 `--remote-folder` 做**文件级双向同步**。先按 `status` 同源逻辑算出五类差异，再分别处理：`new_remote` 下载到本地、`new_local` 上传到钉盘、两侧都变更的 `modified` 按 `--on-conflict` 策略消解；`unchanged` 与 `unknown` 一律跳过、不动。**只新增/覆盖，两侧都不删除多余文件。**
+读写命令：把本地 `--local-folder` 与钉盘 `--remote-folder` 做**文件级双向同步**。**这是写操作，非交互环境下必须显式加 `--yes`；先用 `--dry-run` 看清将发生什么。**先按 `status` 同源逻辑算出五类差异，再分别处理：`new_remote` 下载到本地、`new_local` 上传到钉盘、两侧都变更的 `modified` 按 `--on-conflict` 策略消解；`unchanged` 与 `unknown` 一律跳过、不动。**只新增/覆盖，两侧都不删除多余文件。**
 
 ```
 Usage:
@@ -488,7 +488,7 @@ Flags:
       --local-folder string    本地文件夹绝对路径 (必填)
       --remote-folder string   钉盘文件夹 ID (dentryUuid) (必填)
       --space-id string        钉盘空间 ID，不传则使用「我的文件」(可选)
-      --on-conflict string     两侧都变更时的策略: remote-wins|local-wins|keep-both|ask (默认 remote-wins)
+      --on-conflict string     两侧都变更时的策略: skip|remote-wins|local-wins|keep-both|ask (默认 skip；命令写双端，执行需确认)
       --quick                  快速模式：只比较 modified_time，不计算 MD5 (可选)
 ```
 
@@ -496,8 +496,9 @@ Flags:
 
 | 值 | 行为 |
 |----|------|
-| `remote-wins`（默认） | 下载远端覆盖本地 |
-| `local-wins` | 覆盖上传本地到远端（原地覆盖、保留 fileId） |
+| `skip`（默认） | 两侧都不动，两边内容都保留，计入 `skipped` |
+| `remote-wins` | 下载远端覆盖本地（需 `--yes`） |
+| `local-wins` | 覆盖上传本地到远端（原地覆盖、保留 fileId；需 `--yes`） |
 | `keep-both` | 本地先改名保留副本（`名.conflict-<fileId 末 8 位>.扩展名`），再把远端拉到原名；拉取失败会回滚改名、恢复原文件 |
 | `ask` | 逐个交互询问；`--dry-run` 或非交互环境下等价于跳过 |
 
@@ -561,7 +562,7 @@ Flags:
 用户说"比较本地和云盘/看哪些文件变了/同步差异/diff" → `status`
 用户说"把钉盘文件夹拉到本地/下载整个文件夹/镜像/同步到本地/pull" → `pull`
 用户说"把本地文件夹传到钉盘/推送整个文件夹/上传目录/同步到云端/push" → `push`
-用户说"双向同步/两边同步/本地和云盘互相同步/让两边一致/sync" → `sync`（两侧都变更时用 `--on-conflict` 决定谁覆盖谁）
+用户说"双向同步/两边同步/本地和云盘互相同步/让两边一致/sync" → `sync`（默认两侧都变更时跳过；要覆盖须显式给 `--on-conflict` 并加 `--yes`）
 用户说"查任务状态/导出好了没/任务进度/导入状态" → 文档导出用 `dws doc export get --job-id <ID>`，导入用 `dws doc import get --task-id <ID>`
 
 关键区分: drive(文件管理) vs doc(文档内容读写) vs wiki(空间管理)
@@ -631,7 +632,7 @@ dws drive pull --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-e
 dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --format json
 dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists smart --format json
 
-# 13. 本地与钉盘双向同步（两侧都变更时用 --on-conflict 消解，默认 remote-wins）
+# 13. 本地与钉盘双向同步（默认 --on-conflict=skip 两侧都不动；要覆盖须显式选策略并加 --yes）
 dws drive sync --local-folder /abs/path/repo --remote-folder <dentryUuid> --format json
 dws drive sync --local-folder /abs/path/repo --remote-folder <dentryUuid> --on-conflict keep-both --format json
 ```

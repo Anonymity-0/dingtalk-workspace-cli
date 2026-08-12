@@ -47,7 +47,7 @@ func mustSetFlags(t *testing.T, cmd *cobra.Command, kv map[string]string) {
 // --if-exists 显式空值回落默认
 // ──────────────────────────────────────────────────────────
 
-func TestCrossPlatformCoverageDrivePull_emptyIfExistsDefaultsToOverwrite(t *testing.T) {
+func TestCrossPlatformCoverageDrivePull_emptyIfExistsDefaultsToSkip(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "a.txt")
 	mustWrite(t, p, "local-old")
@@ -60,8 +60,8 @@ func TestCrossPlatformCoverageDrivePull_emptyIfExistsDefaultsToOverwrite(t *test
 	if err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT", "--if-exists", ""); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if b, _ := os.ReadFile(p); string(b) != "remote-new" {
-		t.Errorf("empty --if-exists must behave as overwrite, got %q", string(b))
+	if b, _ := os.ReadFile(p); string(b) != "local-old" {
+		t.Errorf("empty --if-exists must default to skip and keep the local file, got %q", string(b))
 	}
 }
 

@@ -194,7 +194,8 @@ func runDrivePushTest(t *testing.T, caller *driveSyncMockCaller, localDir string
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.AddCommand(newDriveCommand())
 
-	full := append([]string{"push", "--local-folder", localDir, "--remote-folder", "ROOT"}, args...)
+	// pull/push 是 user_required 叶子，非交互环境需 --yes 才能越过统一确认门。
+	full := append([]string{"push", "--local-folder", localDir, "--remote-folder", "ROOT", "--yes"}, args...)
 	os.Args = append([]string{"dws", "drive"}, full...)
 	root.SetArgs(append([]string{"drive"}, full...))
 
