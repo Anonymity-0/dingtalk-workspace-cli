@@ -2082,7 +2082,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatChmodCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2157,7 +2157,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatDataAuthCrossOrgCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "high",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			_, err := buildChatCrossOrgDataAuthArgs(cmd)
@@ -2275,7 +2275,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatGroupCreateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2408,7 +2408,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatGroupMembersAddBotCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2457,7 +2457,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatGroupRenameCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2509,7 +2509,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatGroupMemberAddCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -2564,7 +2564,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatGroupMemberRemoveCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -3020,7 +3020,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageSendCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -3047,6 +3047,7 @@ func newChatCommand() *cobra.Command {
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds"},
 				{Name: "group", Property: "openConversationId"},
 				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId"},
+				{Name: "uuid", Property: "uuid", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -3220,7 +3221,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageSendByBotCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -3289,7 +3290,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageRecallByBotCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -3381,7 +3382,7 @@ func newChatCommand() *cobra.Command {
 	DeclareLeafMetadata(chatMessageSendByWebhookCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -3976,7 +3977,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	DeclareLeafMetadata(chatMessageRecallCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -4074,7 +4075,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	DeclareLeafMetadata(chatMessageEditCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -4881,7 +4882,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	DeclareLeafMetadata(chatCategoryCreateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -4936,7 +4937,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	DeclareLeafMetadata(chatCategoryDeleteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5354,7 +5355,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	DeclareLeafMetadata(chatMessageAddEmojiCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5415,7 +5416,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	DeclareLeafMetadata(chatMessageRemoveEmojiCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5478,7 +5479,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	DeclareLeafMetadata(chatMessageAddTextEmotionCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5543,7 +5544,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	DeclareLeafMetadata(chatMessageRemoveTextEmotionCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5685,7 +5686,7 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	DeclareLeafMetadata(chatMessageCreateTextEmotionCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5770,7 +5771,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageSendCardCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5872,7 +5873,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			// preserves its original no-extra-confirmation contract. The
 			// Agent-facing +messages-update-card shortcut owns the higher-level
 			// confirmation boundary.
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6123,7 +6124,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupTransferOwnerCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6236,7 +6237,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMuteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6291,7 +6292,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupQuitCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6347,7 +6348,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupUpdateIconCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6423,7 +6424,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupUpdateSettingsCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6519,7 +6520,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageReplyCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6546,6 +6547,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				{Name: "at-all", Property: "atAll", Required: boolPtr(false), InterfaceType: "boolean"},
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array"},
 				{Name: "conversation-id", Property: "openConversationId"},
+				{Name: "uuid", Property: "uuid", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -6593,7 +6595,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageForwardCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6619,6 +6621,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				{Name: "dest-conversation-id", Property: "destOpenCid"},
 				{Name: "msg-id", Property: "srcOpenMessageId"},
 				{Name: "src-conversation-id", Property: "srcOpenCid"},
+				{Name: "uuid", Property: "uuid", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -6657,7 +6660,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatSetTopCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6759,7 +6762,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupMuteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6854,7 +6857,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupMuteMemberCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -6934,7 +6937,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupSetAdminCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7095,7 +7098,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleAddCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7145,7 +7148,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleUpdateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7197,7 +7200,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleRemoveCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7260,7 +7263,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleSetUserCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7325,7 +7328,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupRoleRemoveUserCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7506,7 +7509,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupMembersRemoveBotCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7633,7 +7636,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupDismissCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7699,7 +7702,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatGroupSetHistoryCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7760,7 +7763,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageCombineForwardCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7786,6 +7789,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				{Name: "dest-conversation-id", Property: "destOpenCid"},
 				{Name: "msg-ids", Property: "srcOpenMessageIds"},
 				{Name: "src-conversation-id", Property: "srcOpenCid"},
+				{Name: "uuid", Property: "uuid", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -7828,7 +7832,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageForwardTopicCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7891,7 +7895,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageSetPinCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -7945,7 +7949,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageUnsetPinCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -8061,7 +8065,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageAddFavoriteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -8110,7 +8114,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	DeclareLeafMetadata(chatMessageRemoveFavoriteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -8422,7 +8426,7 @@ status 可选值:
 	DeclareLeafMetadata(chatGroupAuditJoinValidationCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -8717,7 +8721,7 @@ status 可选值:
 	DeclareLeafMetadata(chatClearMessagesCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -9016,7 +9020,7 @@ status 可选值:
 	DeclareLeafMetadata(chatGroupUpdateAliasCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -9073,7 +9077,7 @@ status 可选值:
 	DeclareLeafMetadata(chatHideCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -9133,7 +9137,7 @@ status 可选值:
 	DeclareLeafMetadata(chatMuteAtAllCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -9194,7 +9198,7 @@ status 可选值:
 	DeclareLeafMetadata(chatMuteRedEnvelopeCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "low",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -9325,7 +9329,7 @@ status 可选值:
 	DeclareLeafMetadata(chatGroupNoticeCreateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -9571,7 +9575,7 @@ status 可选值:
 	DeclareLeafMetadata(chatGroupShareInviteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -9645,7 +9649,7 @@ status 可选值:
 	DeclareLeafMetadata(chatGroupUpgradeToExternalCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "destructive", Risk: "high",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -9713,7 +9717,7 @@ status 可选值:
 	DeclareLeafMetadata(chatCategoryCreateSmartCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{

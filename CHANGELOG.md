@@ -6,6 +6,13 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+### Changed
+
+- **Chat retry safety metadata** — formal Chat write commands now publish
+  explicit idempotency: commands with `--uuid` are retryable with the same key,
+  while writes without deduplication support are marked non-idempotent. Chat
+  Shortcuts are unchanged.
+
 ## [1.0.58-beta.4] - 2026-08-12
 
 ### Added
