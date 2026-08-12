@@ -163,6 +163,10 @@ func (m *driveSyncMockCaller) CallTool(_ context.Context, _ string, toolName str
 	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
 }
 
+func (m *driveSyncMockCaller) CallReadTool(ctx context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	return m.CallTool(ctx, productID, toolName, args)
+}
+
 func (m *driveSyncMockCaller) Format() string { return "raw" }
 func (m *driveSyncMockCaller) DryRun() bool   { return m.dryRun }
 func (m *driveSyncMockCaller) Fields() string { return "" }

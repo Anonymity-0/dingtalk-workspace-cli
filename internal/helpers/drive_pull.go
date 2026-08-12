@@ -65,6 +65,15 @@ type drivePullResult struct {
 	Items   []drivePullItem  `json:"items"`
 }
 
+type drivePullDryRunResult struct {
+	DryRun      bool            `json:"dry_run"`
+	Executed    bool            `json:"executed"`
+	PreviewKind string          `json:"preview_kind"`
+	Operation   string          `json:"operation"`
+	IfExists    string          `json:"if_exists"`
+	Plan        drivePullResult `json:"plan"`
+}
+
 // drivePartialFailure 在 summary.failed > 0 时返回：以 exit=1 退出，并把
 // {"error":{"type":"partial_failure","detail":{summary,items}}} 原样透传出去。
 // 结构上满足 core 的 RawStderrError 与 ExitCoder 接口（无需 import internal 包）。
@@ -174,6 +183,9 @@ func runDrivePull(cmd *cobra.Command, _ []string) error {
 		relPaths = append(relPaths, rel)
 	}
 	sort.Strings(relPaths)
+	if deps.Caller.DryRun() {
+		return printDrivePullDryRun(absDir, ifExists, remote, relPaths)
+	}
 
 	// 落盘前先按目标文件系统的路径等价规则做一次全局冲突检查：大小写不敏感 FS 上
 	// A.txt 与 a.txt（或 NFC/NFD 异写）会落到同一本地文件；overwrite 会顺序覆盖、
@@ -232,6 +244,50 @@ func runDrivePull(cmd *cobra.Command, _ []string) error {
 		return &drivePartialFailure{raw: string(b)}
 	}
 	return deps.Out.PrintJSON(res)
+}
+
+func printDrivePullDryRun(absDir, ifExists string, remote map[string]*remoteFile, relPaths []string) error {
+	plan := drivePullResult{Items: make([]drivePullItem, 0, len(relPaths))}
+	caseInsensitive := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
+	collided := detectTargetCollisions(absDir, relPaths, caseInsensitive)
+	for _, rel := range relPaths {
+		if collided[rel] {
+			plan.Summary.Failed++
+			plan.Items = append(plan.Items, drivePullItem{
+				RelPath: rel, Action: pullActionFailed,
+				Error: "多个远端条目在目标平台默认文件系统上映射到同一本地路径，计划已拒绝",
+			})
+			continue
+		}
+		localPath, err := resolveLocalTarget(absDir, rel)
+		if err != nil {
+			plan.Summary.Failed++
+			plan.Items = append(plan.Items, drivePullItem{RelPath: rel, Action: pullActionFailed, Error: err.Error()})
+			continue
+		}
+		action := pullActionDownloaded
+		if fi, statErr := os.Stat(localPath); statErr == nil && fi.Mode().IsRegular() {
+			switch ifExists {
+			case ifExistsSkip:
+				action = pullActionSkipped
+			case ifExistsSmart:
+				rf := remote[rel]
+				if rf.ModifiedTimeValid && fi.ModTime().UnixMilli() >= rf.ModifiedTime {
+					action = pullActionSkipped
+				}
+			}
+		}
+		if action == pullActionSkipped {
+			plan.Summary.Skipped++
+		} else {
+			plan.Summary.Downloaded++
+		}
+		plan.Items = append(plan.Items, drivePullItem{RelPath: rel, Action: action})
+	}
+	return deps.Out.PrintJSON(drivePullDryRunResult{
+		DryRun: true, Executed: false, PreviewKind: "plan", Operation: "drive pull",
+		IfExists: ifExists, Plan: plan,
+	})
 }
 
 // pullOneFile 处理单个远端文件：按 --if-exists 决定是否跳过，否则下载到 localPath。

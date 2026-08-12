@@ -42,6 +42,10 @@ func (m *driveScriptCaller) CallTool(_ context.Context, _ string, toolName strin
 	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
 }
 
+func (m *driveScriptCaller) CallReadTool(ctx context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	return m.CallTool(ctx, productID, toolName, args)
+}
+
 func (m *driveScriptCaller) Format() string { return "raw" }
 func (m *driveScriptCaller) DryRun() bool   { return m.dryRun }
 func (m *driveScriptCaller) Fields() string { return "" }

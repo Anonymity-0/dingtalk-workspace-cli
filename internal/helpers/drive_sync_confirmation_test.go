@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -131,6 +132,149 @@ func TestCrossPlatformCoverageDriveSyncFamily_dryRunNeedsNoConfirmation(t *testi
 	}
 	if _, err := os.Stat(filepath.Join(dir, "remote.txt")); !os.IsNotExist(err) {
 		t.Error("dry-run must not write remote files locally")
+	}
+}
+
+func TestCrossPlatformCoverageDrivePull_dryRunPlansWithoutLocalWrites(t *testing.T) {
+	parent := t.TempDir()
+	target := filepath.Join(parent, "not-created")
+	caller := pullListingCaller(`{"name":"remote.txt","type":"file","fileId":"R","modifyTime":2}`)
+	caller.dryRun = true
+	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error {
+		t.Error("dry-run must not download")
+		return nil
+	})
+	t.Cleanup(func() { SetHTTPGetFile(nil) })
+
+	var out bytes.Buffer
+	prevDeps, prevArgs := deps, os.Args
+	deps = &Deps{Caller: caller, Out: &Formatter{w: &out}}
+	os.Args = []string{"dws", "drive", "pull"}
+	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	cmd := findDriveSubcommand(t, "pull")
+	mustSetFlags(t, cmd, map[string]string{"local-folder": target, "remote-folder": "ROOT"})
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatalf("dry-run pull: %v", err)
+	}
+	if _, err := os.Stat(target); !os.IsNotExist(err) {
+		t.Fatalf("dry-run must not create local root: %v", err)
+	}
+	if got := len(caller.callsFor("download_file")); got != 0 {
+		t.Fatalf("download_file calls = %d, want 0", got)
+	}
+	if text := out.String(); !strings.Contains(text, `"dry_run": true`) || !strings.Contains(text, `"remote.txt"`) {
+		t.Fatalf("missing pull plan: %s", text)
+	}
+}
+
+func TestCrossPlatformCoverageDrivePush_dryRunPlansWithoutRemoteWrites(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(dir, "sub", "local.txt"), "local")
+	caller := syncCaller(nil)
+	caller.dryRun = true
+	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error {
+		t.Error("dry-run must not upload")
+		return nil
+	})
+	t.Cleanup(func() { SetHTTPPutFile(nil) })
+
+	var out bytes.Buffer
+	prevDeps, prevArgs := deps, os.Args
+	deps = &Deps{Caller: caller, Out: &Formatter{w: &out}}
+	os.Args = []string{"dws", "drive", "push"}
+	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	cmd := findDriveSubcommand(t, "push")
+	mustSetFlags(t, cmd, map[string]string{"local-folder": dir, "remote-folder": "ROOT"})
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatalf("dry-run push: %v", err)
+	}
+	for _, tool := range []string{"create_folder", "get_upload_info", "commit_upload"} {
+		if got := len(caller.callsFor(tool)); got != 0 {
+			t.Fatalf("%s calls = %d, want 0", tool, got)
+		}
+	}
+	if text := out.String(); !strings.Contains(text, `"dry_run": true`) || !strings.Contains(text, `"sub/local.txt"`) {
+		t.Fatalf("missing push plan: %s", text)
+	}
+}
+
+func TestCrossPlatformCoverageDrivePull_dryRunPlanBranches(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "skip.txt"), "skip")
+	mustWrite(t, filepath.Join(root, "smart.txt"), "smart")
+	remote := map[string]*remoteFile{
+		"A.txt":     {RelPath: "A.txt"},
+		"a.txt":     {RelPath: "a.txt"},
+		"../escape": {RelPath: "../escape"},
+		"skip.txt":  {RelPath: "skip.txt"},
+		"smart.txt": {RelPath: "smart.txt", ModifiedTime: 1, ModifiedTimeValid: true},
+		"new.txt":   {RelPath: "new.txt"},
+	}
+	var out bytes.Buffer
+	prevDeps := deps
+	deps = &Deps{Out: &Formatter{w: &out}}
+	t.Cleanup(func() { deps = prevDeps })
+
+	if err := printDrivePullDryRun(root, ifExistsSkip, remote,
+		[]string{"A.txt", "a.txt", "../escape", "skip.txt", "new.txt"}); err != nil {
+		t.Fatalf("skip plan: %v", err)
+	}
+	if text := out.String(); !strings.Contains(text, pullActionFailed) || !strings.Contains(text, pullActionSkipped) || !strings.Contains(text, pullActionDownloaded) {
+		t.Fatalf("skip plan did not cover failed/skipped/downloaded: %s", text)
+	}
+	out.Reset()
+	if err := printDrivePullDryRun(root, ifExistsSmart, remote, []string{"smart.txt"}); err != nil {
+		t.Fatalf("smart plan: %v", err)
+	}
+	if !strings.Contains(out.String(), pullActionSkipped) {
+		t.Fatalf("smart plan must skip newer local file: %s", out.String())
+	}
+}
+
+func TestCrossPlatformCoverageDrivePush_dryRunPlanBranches(t *testing.T) {
+	var out bytes.Buffer
+	prevDeps := deps
+	deps = &Deps{Out: &Formatter{w: &out}}
+	t.Cleanup(func() { deps = prevDeps })
+	remoteFolders := map[string]string{"": "ROOT", "existing": "EXISTING"}
+	remoteFiles := map[string]*remoteFile{
+		"skip.txt":            {RelPath: "skip.txt"},
+		"smart-skip.txt":      {RelPath: "smart-skip.txt", ModifiedTime: 20, ModifiedTimeValid: true},
+		"smart-overwrite.txt": {RelPath: "smart-overwrite.txt", ModifiedTime: 1, ModifiedTimeValid: true},
+		"overwrite.txt":       {RelPath: "overwrite.txt"},
+	}
+	files := func(paths ...string) []localPushFile {
+		result := make([]localPushFile, 0, len(paths))
+		for _, path := range paths {
+			result = append(result, localPushFile{RelPath: path, Size: 1, ModTimeMillis: 10})
+		}
+		return result
+	}
+
+	if err := printDrivePushDryRun(ifExistsSkip, remoteFiles, remoteFolders,
+		[]string{"existing", "missing/child"}, files("orphan/a.txt", "skip.txt", "new.txt")); err != nil {
+		t.Fatalf("skip plan: %v", err)
+	}
+	if text := out.String(); !strings.Contains(text, pushActionFailed) || !strings.Contains(text, pushActionSkipped) || !strings.Contains(text, pushActionUploaded) {
+		t.Fatalf("skip plan did not cover failed/skipped/uploaded: %s", text)
+	}
+	out.Reset()
+	if err := printDrivePushDryRun(ifExistsSmart, remoteFiles, remoteFolders, nil,
+		files("smart-skip.txt", "smart-overwrite.txt")); err != nil {
+		t.Fatalf("smart plan: %v", err)
+	}
+	if text := out.String(); !strings.Contains(text, pushActionSkipped) || !strings.Contains(text, pushActionOverwritten) {
+		t.Fatalf("smart plan did not cover skip/overwrite: %s", text)
+	}
+	out.Reset()
+	if err := printDrivePushDryRun(ifExistsOverwrite, remoteFiles, remoteFolders, nil, files("overwrite.txt")); err != nil {
+		t.Fatalf("overwrite plan: %v", err)
+	}
+	if !strings.Contains(out.String(), pushActionOverwritten) {
+		t.Fatalf("overwrite plan must overwrite existing file: %s", out.String())
 	}
 }
 

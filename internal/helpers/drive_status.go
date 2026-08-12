@@ -121,7 +121,7 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 			args["nextToken"] = nextToken
 		}
 
-		text, err := callMCPToolReturnText(ctx, "list_files", args)
+		text, err := callDriveListFiles(ctx, args)
 		if err != nil {
 			return err
 		}
@@ -178,6 +178,15 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 		nextToken = token
 	}
 	return nil
+}
+
+// callDriveListFiles 让文件夹同步族在 --dry-run 下仍可通过受控只读通道获取
+// 远端现状；普通 CallTool 在 dry-run 下只会返回执行计划，不能被当作业务数据解析。
+func callDriveListFiles(ctx context.Context, args map[string]any) (string, error) {
+	if deps.Caller.DryRun() {
+		return callMCPReadToolReturnTextOnServer(ctx, "drive", "list_files", args)
+	}
+	return callMCPToolReturnText(ctx, "list_files", args)
 }
 
 // driveItem 是 list_files 返回里的一个 dentry 条目。

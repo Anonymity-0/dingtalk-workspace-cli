@@ -64,6 +64,15 @@ type drivePushResult struct {
 	Items   []drivePushItem  `json:"items"`
 }
 
+type drivePushDryRunResult struct {
+	DryRun      bool            `json:"dry_run"`
+	Executed    bool            `json:"executed"`
+	PreviewKind string          `json:"preview_kind"`
+	Operation   string          `json:"operation"`
+	IfExists    string          `json:"if_exists"`
+	Plan        drivePushResult `json:"plan"`
+}
+
 // drivePushFailure 在 summary.failed > 0 时返回：结构化结果已打印到 stdout，
 // 这里只负责以 exit=1 退出并向 stderr 输出一行简短说明。
 type drivePushFailure struct{ failed int }
@@ -111,6 +120,9 @@ func runDrivePush(cmd *cobra.Command, _ []string) error {
 	}
 
 	res := drivePushResult{Items: make([]drivePushItem, 0, len(localDirs)+len(localFiles))}
+	if deps.Caller.DryRun() {
+		return printDrivePushDryRun(ifExists, remoteFiles, remoteFolders, localDirs, localFiles)
+	}
 
 	// 第一阶段：按需创建远端目录（浅层在前，保证父目录先于子目录存在）。
 	for _, dir := range localDirs {
@@ -224,7 +236,7 @@ func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, f
 			args["nextToken"] = nextToken
 		}
 
-		text, err := callMCPToolReturnText(ctx, "list_files", args)
+		text, err := callDriveListFiles(ctx, args)
 		if err != nil {
 			return err
 		}
@@ -273,6 +285,61 @@ func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, f
 		nextToken = token
 	}
 	return nil
+}
+
+func printDrivePushDryRun(ifExists string, remoteFiles map[string]*remoteFile, remoteFolders map[string]string, localDirs []string, localFiles []localPushFile) error {
+	plan := drivePushResult{Items: make([]drivePushItem, 0, len(localDirs)+len(localFiles))}
+	plannedFolders := make(map[string]string, len(remoteFolders)+len(localDirs))
+	for rel, fileID := range remoteFolders {
+		plannedFolders[rel] = fileID
+	}
+	for _, dir := range localDirs {
+		if _, ok := plannedFolders[dir]; ok {
+			continue
+		}
+		parentRel, _ := splitRel(dir)
+		if plannedFolders[parentRel] == "" {
+			plan.Summary.Failed++
+			plan.Items = append(plan.Items, drivePushItem{RelPath: dir, Action: pushActionFailed, Error: "父目录未能创建"})
+			continue
+		}
+		plannedFolders[dir] = "dry-run-planned-folder"
+		plan.Items = append(plan.Items, drivePushItem{RelPath: dir, Action: pushActionFolderCreated})
+	}
+	for _, lf := range localFiles {
+		size := lf.Size
+		parentRel, _ := splitRel(lf.RelPath)
+		if plannedFolders[parentRel] == "" {
+			plan.Summary.Failed++
+			plan.Items = append(plan.Items, drivePushItem{RelPath: lf.RelPath, Action: pushActionFailed, SizeBytes: &size, Error: "父目录未能创建"})
+			continue
+		}
+		action := pushActionUploaded
+		if rf, exists := remoteFiles[lf.RelPath]; exists {
+			switch ifExists {
+			case ifExistsSkip:
+				action = pushActionSkipped
+			case ifExistsSmart:
+				if rf.ModifiedTimeValid && rf.ModifiedTime >= lf.ModTimeMillis {
+					action = pushActionSkipped
+				} else {
+					action = pushActionOverwritten
+				}
+			case ifExistsOverwrite:
+				action = pushActionOverwritten
+			}
+		}
+		if action == pushActionSkipped {
+			plan.Summary.Skipped++
+		} else {
+			plan.Summary.Uploaded++
+		}
+		plan.Items = append(plan.Items, drivePushItem{RelPath: lf.RelPath, Action: action, SizeBytes: &size})
+	}
+	return deps.Out.PrintJSON(drivePushDryRunResult{
+		DryRun: true, Executed: false, PreviewKind: "plan", Operation: "drive push",
+		IfExists: ifExists, Plan: plan,
+	})
 }
 
 // walkLocalForPush 遍历本地根目录，返回所有子目录 rel_path（不含根本身，浅层在前）
