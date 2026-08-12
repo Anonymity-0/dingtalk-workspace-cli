@@ -146,6 +146,29 @@ func TestCrossPlatformCoverageSkillSetupMonoPlanIncludesSameNameTarget(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageSkillSetupGenericCleanupDerivesHomeFromConcreteTarget(t *testing.T) {
+	home := t.TempDir()
+	dest := filepath.Join(home, ".codex", "skills")
+	genericMono := filepath.Join(home, ".agents", "skills", "dws")
+	if err := os.MkdirAll(genericMono, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) {
+		return "", errors.New("transient HOME failure")
+	})
+
+	plan, err := buildSkillSetupPlan(skillSetupModeMulti, "source", []string{dest}, []string{"dingtalk-chat"}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Targets) != 2 || !plan.Targets[1].CleanupOnly || plan.Targets[1].Destination != filepath.Dir(genericMono) {
+		t.Fatalf("generic cleanup target = %#v", plan.Targets)
+	}
+	if len(plan.Targets[1].Backups) != 1 || plan.Targets[1].Backups[0].Path != genericMono {
+		t.Fatalf("generic cleanup backups = %#v", plan.Targets[1].Backups)
+	}
+}
+
 func TestCrossPlatformCoverageSkillSetupPlanDeduplicatesAndFailsClosed(t *testing.T) {
 	dest := filepath.Join(t.TempDir(), "skills")
 	if err := os.MkdirAll(filepath.Join(dest, "dws"), 0o755); err != nil {

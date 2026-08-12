@@ -961,25 +961,37 @@ func detectExistingAgentHomes(home, mode string) []string {
 }
 
 func genericSkillCleanupTarget(dests []string, managed map[string]bool) (*skillSetupTargetPlan, error) {
-	home, err := skillSetupUserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("无法解析 HOME 以计算通用 Skill 迁移: %w", err)
-	}
-	genericBase := filepath.Join(home, ".agents", "skills")
-	usesSpecificRoot := false
+	// Derive HOME from a concrete Agent destination instead of resolving it a
+	// second time. The destinations were already resolved from HOME by the
+	// caller, and a later/transient UserHomeDir failure must not turn an
+	// otherwise valid setup plan into an error. Direct/custom destinations that
+	// do not match a known concrete Agent root have no generic-root migration.
+	home := ""
 	for _, dest := range dests {
 		base := dest
 		if filepath.Base(dest) == "dws" {
 			base = filepath.Dir(dest)
 		}
-		if filepath.Clean(base) != filepath.Clean(genericBase) {
-			usesSpecificRoot = true
+		base = filepath.Clean(base)
+		for i, rel := range skillSetupAgentHomes {
+			if i == 0 {
+				continue
+			}
+			suffix := filepath.Clean(filepath.FromSlash(rel))
+			needle := string(filepath.Separator) + suffix
+			if strings.HasSuffix(base, needle) {
+				home = strings.TrimSuffix(base, needle)
+				break
+			}
+		}
+		if home != "" {
 			break
 		}
 	}
-	if !usesSpecificRoot {
+	if home == "" {
 		return nil, nil
 	}
+	genericBase := filepath.Join(home, ".agents", "skills")
 
 	target := &skillSetupTargetPlan{Destination: genericBase, CleanupOnly: true}
 	add := func(path, reason string) {

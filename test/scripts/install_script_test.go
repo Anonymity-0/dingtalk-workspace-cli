@@ -15,11 +15,6 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 )
 
-var expectedHomeSkillTargets = []string{
-	".agents/skills/dws",
-	".cursor/skills/dws",
-}
-
 func assertSkillProvenance(t *testing.T, home, skillDir, name, source string) {
 	t.Helper()
 	state, readable, err := skillstate.Read(home)
@@ -187,11 +182,13 @@ func TestInstallScriptSourceModeInstallsSkillsIntoAgentsDir(t *testing.T) {
 		t.Fatalf("install.sh error = %v\noutput:\n%s", err, string(output))
 	}
 
-	for _, rel := range expectedHomeSkillTargets {
-		skillPath := filepath.Join(fixture.fakeHome, filepath.FromSlash(rel), "SKILL.md")
-		if _, err := os.Stat(skillPath); err != nil {
-			t.Fatalf("Stat(%s) error = %v\noutput:\n%s", skillPath, err, string(output))
-		}
+	skillPath := filepath.Join(fixture.fakeHome, ".cursor", "skills", "dws", "SKILL.md")
+	if _, err := os.Stat(skillPath); err != nil {
+		t.Fatalf("Stat(%s) error = %v\noutput:\n%s", skillPath, err, string(output))
+	}
+	genericPath := filepath.Join(fixture.fakeHome, ".agents", "skills", "dws")
+	if _, err := os.Stat(genericPath); !os.IsNotExist(err) {
+		t.Fatalf("generic Skill root must not duplicate detected Cursor: Stat(%s) = %v\noutput:\n%s", genericPath, err, string(output))
 	}
 }
 
