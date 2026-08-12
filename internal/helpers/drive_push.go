@@ -126,6 +126,11 @@ func runDrivePush(cmd *cobra.Command, _ []string) error {
 
 	// 第一阶段：按需创建远端目录（浅层在前，保证父目录先于子目录存在）。
 	for _, dir := range localDirs {
+		if msg := pushTypeConflictError(dir, true, remoteFiles, remoteFolders); msg != "" {
+			res.Summary.Failed++
+			res.Items = append(res.Items, drivePushItem{RelPath: dir, Action: pushActionFailed, Error: msg})
+			continue
+		}
 		if _, ok := remoteFolders[dir]; ok {
 			continue // 远端已存在，复用 fileId，不留痕
 		}
@@ -154,6 +159,11 @@ func runDrivePush(cmd *cobra.Command, _ []string) error {
 	for i := range localFiles {
 		lf := localFiles[i]
 		size := lf.Size
+		if msg := pushTypeConflictError(lf.RelPath, false, remoteFiles, remoteFolders); msg != "" {
+			res.Summary.Failed++
+			res.Items = append(res.Items, drivePushItem{RelPath: lf.RelPath, Action: pushActionFailed, SizeBytes: &size, Error: msg})
+			continue
+		}
 		parentRel, name := splitRel(lf.RelPath)
 		parentID, ok := remoteFolders[parentRel]
 		if !ok || parentID == "" {
@@ -294,6 +304,11 @@ func printDrivePushDryRun(ifExists string, remoteFiles map[string]*remoteFile, r
 		plannedFolders[rel] = fileID
 	}
 	for _, dir := range localDirs {
+		if msg := pushTypeConflictError(dir, true, remoteFiles, remoteFolders); msg != "" {
+			plan.Summary.Failed++
+			plan.Items = append(plan.Items, drivePushItem{RelPath: dir, Action: pushActionFailed, Error: msg})
+			continue
+		}
 		if _, ok := plannedFolders[dir]; ok {
 			continue
 		}
@@ -308,6 +323,11 @@ func printDrivePushDryRun(ifExists string, remoteFiles map[string]*remoteFile, r
 	}
 	for _, lf := range localFiles {
 		size := lf.Size
+		if msg := pushTypeConflictError(lf.RelPath, false, remoteFiles, remoteFolders); msg != "" {
+			plan.Summary.Failed++
+			plan.Items = append(plan.Items, drivePushItem{RelPath: lf.RelPath, Action: pushActionFailed, SizeBytes: &size, Error: msg})
+			continue
+		}
 		parentRel, _ := splitRel(lf.RelPath)
 		if plannedFolders[parentRel] == "" {
 			plan.Summary.Failed++
@@ -340,6 +360,21 @@ func printDrivePushDryRun(ifExists string, remoteFiles map[string]*remoteFile, r
 		DryRun: true, Executed: false, PreviewKind: "plan", Operation: "drive push",
 		IfExists: ifExists, Plan: plan,
 	})
+}
+
+// pushTypeConflictError 在任何写操作或 dry-run 成功预览之前，拒绝同一路径下
+// “本地目录 ↔ 远端文件”或“本地文件 ↔ 远端目录”的类型冲突。
+func pushTypeConflictError(rel string, localIsFolder bool, remoteFiles map[string]*remoteFile, remoteFolders map[string]string) string {
+	if localIsFolder {
+		if _, exists := remoteFiles[rel]; exists {
+			return "远端同路径已存在文件，无法创建目录"
+		}
+		return ""
+	}
+	if _, exists := remoteFolders[rel]; exists {
+		return "远端同路径已存在目录，无法上传文件"
+	}
+	return ""
 }
 
 // walkLocalForPush 遍历本地根目录，返回所有子目录 rel_path（不含根本身，浅层在前）
