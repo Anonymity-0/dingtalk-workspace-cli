@@ -37,7 +37,7 @@ func init() {
 	registerRequireOneOf("calendar.query_busy_status", "users", "rooms")
 	registerRequireTogether("calendar.update_calendar_event", "recurrence-type", "recurrence-interval", "recurrence-range-type")
 	registerExclusiveOneOf("chat.search_messages_by_sender", "sender-user-id", "sender-open-dingtalk-id")
-	registerExclusiveOneOf("chat.create_and_send_card", "conversation-id", "receiver")
+	registerExclusiveOneOf("chat.create_and_send_card", "conversation-id", "open-dingtalk-id")
 	RegisterRuntimeSchemaConstraints("chat.chat_permission_grant", RuntimeSchemaConstraints{
 		MutuallyExclusive: [][]string{{"conversation-id", "open-dingtalk-id", "user"}},
 		RequireOneOf:      [][]string{{"conversation-id", "open-dingtalk-id", "user", "permParam"}},

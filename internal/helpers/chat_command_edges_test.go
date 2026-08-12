@@ -282,7 +282,7 @@ func TestCrossPlatformCoverageChatNativeSendCardMentions(t *testing.T) {
 		caller := &scriptedToolCaller{}
 		err := runChatCoverageCommand(t, caller,
 			"message", "send-card",
-			"--group=cid",
+			"--conversation-id=cid",
 			"--at-open-dingtalk-ids=D1,D2,D1",
 			"--at-all",
 		)
@@ -303,13 +303,13 @@ func TestCrossPlatformCoverageChatNativeSendCardMentions(t *testing.T) {
 		name string
 		args []string
 	}{
-		{name: "member mention rejects direct message", args: []string{"--receiver=D1", "--at-open-dingtalk-ids=D2"}},
-		{name: "at all rejects direct message", args: []string{"--receiver=D1", "--at-all"}},
+		{name: "member mention rejects direct message", args: []string{"--open-dingtalk-id=D1", "--at-open-dingtalk-ids=D2"}},
+		{name: "at all rejects direct message", args: []string{"--open-dingtalk-id=D1", "--at-all"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			caller := &scriptedToolCaller{}
 			err := runChatCoverageCommand(t, caller, append([]string{"message", "send-card"}, tc.args...)...)
-			if err == nil || !strings.Contains(err.Error(), "only supported with --group") {
+			if err == nil || !strings.Contains(err.Error(), "only supported with --conversation-id") {
 				t.Fatalf("error = %v, want group-only mention validation", err)
 			}
 			if caller.calls != 0 {
@@ -332,6 +332,7 @@ func TestCrossPlatformCoverageChatWebhookReplyConversationAndDownloadEdges(t *te
 	_ = runChatCoverageCommand(t, &scriptedToolCaller{}, "conversation-info", "--open-dingtalk-id=D1")
 	_ = runChatCoverageCommand(t, &scriptedToolCaller{}, "conversation-info", "--user=D1")
 	_ = runChatCoverageCommand(t, &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":[{"userId":"u1","openDingTalkId":"D1"}]}`}, {text: `{}`}}}, "conversation-info", "--user=u1")
+	_ = runChatCoverageCommand(t, &scriptedToolCaller{}, "message", "send-card", "--open-dingtalk-id=D1")
 	_ = runChatCoverageCommand(t, &scriptedToolCaller{}, "message", "send-card", "--receiver=D1")
 
 	oldGet := httpGetFile

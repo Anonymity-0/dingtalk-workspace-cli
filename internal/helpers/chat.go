@@ -5824,7 +5824,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageSendCardCmd := &cobra.Command{
 		Use:   "send-card",
 		Short: "创建并推送流式卡片",
-		Long: `向群聊或单聊创建并推送流式卡片。群聊传 --conversation-id，单聊传 --receiver，二者互斥。
+		Long: `向群聊或单聊创建并推送流式卡片。群聊传 --conversation-id，单聊传 --open-dingtalk-id，二者互斥。
 群聊创建卡片时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人。
 创建时无需传入卡片内容，后续通过 update-card 更新内容。
 
@@ -5832,24 +5832,24 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。
 flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)。`,
 		Example: `  dws chat message send-card --conversation-id <openConversationId>
-  dws chat message send-card --group <openConversationId> --at-open-dingtalk-ids <openDingTalkId>
-  dws chat message send-card --group <openConversationId> --at-all
-  dws chat message send-card --receiver <openDingTalkId>
+  dws chat message send-card --conversation-id <openConversationId> --at-open-dingtalk-ids <openDingTalkId>
+  dws chat message send-card --conversation-id <openConversationId> --at-all
+  dws chat message send-card --open-dingtalk-id <openDingTalkId>
   # 查询群 ID: dws chat search --query "群名"
   # 查询人员: dws contact user search --keyword "姓名" --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			groupID := flagOrFallback(cmd, "conversation-id", "group", "id", "chat")
-			receiver, _ := cmd.Flags().GetString("receiver")
+			receiver := flagOrFallback(cmd, "open-dingtalk-id", "receiver")
 			atOpenDingTalkIDs := uniqueNonEmptyStrings(parseCSVValues(mustGetFlag(cmd, "at-open-dingtalk-ids")))
 			atAll, _ := cmd.Flags().GetBool("at-all")
 			if groupID == "" && receiver == "" {
-				return fmt.Errorf("--conversation-id or --receiver is required")
+				return fmt.Errorf("--conversation-id or --open-dingtalk-id is required")
 			}
 			if groupID != "" && receiver != "" {
-				return fmt.Errorf("--conversation-id and --receiver are mutually exclusive")
+				return fmt.Errorf("--conversation-id and --open-dingtalk-id are mutually exclusive")
 			}
 			if groupID == "" && (len(atOpenDingTalkIDs) > 0 || atAll) {
-				return fmt.Errorf("--at-open-dingtalk-ids and --at-all are only supported with --group")
+				return fmt.Errorf("--at-open-dingtalk-ids and --at-all are only supported with --conversation-id")
 			}
 			toolArgs := map[string]any{}
 			if groupID != "" {
@@ -5899,16 +5899,17 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Parameters: []contract.ParamDecl{
 				{Name: "at-all", Property: "atAll", Required: boolPtr(false), InterfaceType: "boolean"},
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array"},
-				{Name: "group", Property: "openConversationId"},
-				{Name: "receiver", Property: "receiverOpenDingTalkId"},
+				{Name: "conversation-id", Property: "openConversationId"},
+				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId"},
 			},
 		},
 	})
-	chatMessageSendCardCmd.Flags().String("conversation-id", "", "群聊 openConversationId（群聊时必填，与 --receiver 互斥）")
-	chatMessageSendCardCmd.Flags().String("receiver", "", "单聊接收者 openDingTalkId（单聊时必填，与 --conversation-id 互斥）")
-	chatMessageSendCardCmd.Flags().String("receiver", "", "单聊接收者 openDingTalkId（单聊时必填，与 --group 互斥）")
-	chatMessageSendCardCmd.Flags().String("at-open-dingtalk-ids", "", "群聊创建卡片时 @ 的 openDingTalkId 列表，逗号分隔（仅与 --group 一起使用）")
-	chatMessageSendCardCmd.Flags().Bool("at-all", false, "群聊创建卡片时 @ 所有人（仅与 --group 一起使用）")
+	chatMessageSendCardCmd.Flags().String("conversation-id", "", "群聊 openConversationId（群聊时必填，与 --open-dingtalk-id 互斥）")
+	chatMessageSendCardCmd.Flags().String("open-dingtalk-id", "", "单聊接收者 openDingTalkId（单聊时必填，与 --conversation-id 互斥）")
+	chatMessageSendCardCmd.Flags().String("receiver", "", "--open-dingtalk-id 的兼容别名")
+	_ = chatMessageSendCardCmd.Flags().MarkHidden("receiver")
+	chatMessageSendCardCmd.Flags().String("at-open-dingtalk-ids", "", "群聊创建卡片时 @ 的 openDingTalkId 列表，逗号分隔（仅与 --conversation-id 一起使用）")
+	chatMessageSendCardCmd.Flags().Bool("at-all", false, "群聊创建卡片时 @ 所有人（仅与 --conversation-id 一起使用）")
 
 	chatMessageUpdateCardCmd := &cobra.Command{
 		Use:   "update-card",

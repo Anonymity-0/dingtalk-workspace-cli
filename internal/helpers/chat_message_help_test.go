@@ -136,3 +136,26 @@ func TestCrossPlatformCoverageChatGroupBotsHelpSplitsGroupName(t *testing.T) {
 		t.Fatalf("chat group bots help exposes hidden --group alias:\n%s", help)
 	}
 }
+
+func TestCrossPlatformCoverageChatSendCardHelpUsesCanonicalIDFlags(t *testing.T) {
+	cmd := newChatCommand()
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	cmd.SetArgs([]string{"message", "send-card", "--help"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("chat message send-card --help: %v\n%s", err, output.String())
+	}
+
+	help := output.String()
+	for _, visible := range []string{"--conversation-id", "--open-dingtalk-id"} {
+		if !strings.Contains(help, visible) {
+			t.Fatalf("send-card help missing %s:\n%s", visible, help)
+		}
+	}
+	for _, hidden := range []string{"--group", "--receiver"} {
+		if strings.Contains(help, hidden+" string") {
+			t.Fatalf("send-card help exposes hidden alias %s:\n%s", hidden, help)
+		}
+	}
+}
