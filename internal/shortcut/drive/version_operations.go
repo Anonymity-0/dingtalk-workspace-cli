@@ -5,6 +5,8 @@ package drive
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/localio"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -67,17 +69,11 @@ var VersionGet = shortcut.Shortcut{
 	},
 	Tips: []string{`dws drive +version-get --node <dentryUuid> --version 3`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		page, err := versionPage(rt, rt.Str("node"), 50, "")
+		version, err := findVersion(rt, rt.Str("node"), rt.Int("version"))
 		if err != nil {
 			return err
 		}
-		versions := page["versions"].([]map[string]any)
-		for _, version := range versions {
-			if number, ok := versionNumber(version); ok && number == rt.Int("version") {
-				return rt.Output(map[string]any{"nodeId": rt.Str("node"), "version": version})
-			}
-		}
-		return driveResponseError("drive/list_file_versions", "version_not_found", fmt.Sprintf("当前版本页中不存在版本 %d；先用 +version-history 检查分页", rt.Int("version")))
+		return rt.Output(map[string]any{"nodeId": rt.Str("node"), "version": version})
 	},
 }
 
@@ -214,16 +210,46 @@ func versionPage(rt *shortcut.RuntimeContext, nodeID string, limit int, cursor s
 }
 
 func findVersion(rt *shortcut.RuntimeContext, nodeID string, target int) (map[string]any, error) {
-	page, err := versionPage(rt, nodeID, 50, "")
-	if err != nil {
-		return nil, err
-	}
-	for _, version := range page["versions"].([]map[string]any) {
-		if number, ok := versionNumber(version); ok && number == target {
-			return version, nil
+	const maxPages = 20
+	cursor := ""
+	seenCursors := map[string]bool{}
+	for pageNumber := 1; pageNumber <= maxPages; pageNumber++ {
+		page, err := versionPage(rt, nodeID, 50, cursor)
+		if err != nil {
+			return nil, err
 		}
+		for _, version := range page["versions"].([]map[string]any) {
+			if number, ok := versionNumber(version); ok && number == target {
+				return version, nil
+			}
+		}
+
+		nextCursor := strings.TrimSpace(nestedString(page, "nextCursor", "nextToken", "nextPageToken"))
+		hasMore, hasMoreKnown := boolField(page, "hasMore")
+		if hasMoreKnown && !hasMore {
+			return nil, driveResponseError("drive/list_file_versions", "version_not_found", fmt.Sprintf("完整版本历史中不存在版本 %d", target))
+		}
+		if nextCursor == "" {
+			if hasMoreKnown && hasMore {
+				return nil, versionPaginationError("missing_next_cursor", pageNumber, cursor)
+			}
+			return nil, driveResponseError("drive/list_file_versions", "version_not_found", fmt.Sprintf("完整版本历史中不存在版本 %d", target))
+		}
+		if seenCursors[nextCursor] {
+			return nil, versionPaginationError("stalled_cursor", pageNumber, nextCursor)
+		}
+		seenCursors[nextCursor] = true
+		cursor = nextCursor
 	}
-	return nil, driveResponseError("drive/list_file_versions", "version_not_found", fmt.Sprintf("当前版本页中不存在版本 %d", target))
+	return nil, versionPaginationError("max_pages", maxPages, cursor)
+}
+
+func versionPaginationError(reason string, page int, cursor string) error {
+	return driveResponseError(
+		"drive/list_file_versions",
+		"version_pagination_"+reason,
+		fmt.Sprintf("版本预检无法证明分页已经完整，已停止操作（page=%d, cursor=%q）", page, cursor),
+	)
 }
 
 func versionNumber(version map[string]any) (int, bool) {

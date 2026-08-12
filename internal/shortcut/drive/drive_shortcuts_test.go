@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -832,6 +833,99 @@ func TestCrossPlatformCoverageDriveVersionExecutionAndPayloadEdges(t *testing.T)
 	if _, _, _, err := driveDownloadPayload(map[string]any{"resourceUrls": []any{}}, "op"); err == nil {
 		t.Fatal("empty resources accepted")
 	}
+}
+
+func TestCrossPlatformCoverageDriveVersionOperationsFindTargetOnSecondPage(t *testing.T) {
+	firstPage := `{"success":true,"versions":[{"version":7,"fileName":"v7"}],"hasMore":true,"nextCursor":"page-2"}`
+	secondPage := `{"success":true,"versions":[{"version":3,"fileName":"v3"}],"hasMore":false}`
+
+	getCaller := &driveCoverageCaller{responses: map[string][]string{
+		"list_file_versions": {firstPage, secondPage},
+	}}
+	if err := runDriveCoverage(t, VersionGet, getCaller, "--node", "n1", "--version", "3"); err != nil {
+		t.Fatalf("version get second page: %v", err)
+	}
+	if got := strings.Join(getCaller.history, ","); got != "list_file_versions,list_file_versions" {
+		t.Fatalf("version get history = %q", got)
+	}
+
+	t.Run("download", func(t *testing.T) {
+		testseam.Swap(t, &driveDownload, func(context.Context, string, localio.DownloadOptions) (localio.DownloadResult, error) {
+			return localio.DownloadResult{RelativePath: "v3.bin", SizeBytes: 3}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"list_file_versions":    {firstPage, secondPage},
+			"download_file_version": {`{"success":true,"result":{"downloadUrl":"https://download.dingtalk.com/v3.bin"}}`},
+		}}
+		if err := runDriveCoverage(t, VersionDownload, caller, "--node", "n1", "--version", "3", "--output", "v3.bin"); err != nil {
+			t.Fatalf("version download second page: %v", err)
+		}
+		if got := strings.Join(caller.history, ","); got != "list_file_versions,list_file_versions,download_file_version" {
+			t.Fatalf("version download history = %q", got)
+		}
+	})
+
+	revertCaller := &driveCoverageCaller{responses: map[string][]string{
+		"list_file_versions":  {firstPage, secondPage},
+		"revert_file_version": {`{"success":true}`},
+		"get_file_info":       {`{"success":true,"result":{"fileId":"n1"}}`},
+	}}
+	if err := runDriveCoverage(t, VersionRevert, revertCaller, "--node", "n1", "--version", "3", "--yes"); err != nil {
+		t.Fatalf("version revert second page: %v", err)
+	}
+	if got := strings.Join(revertCaller.history, ","); got != "list_file_versions,list_file_versions,revert_file_version,get_file_info" {
+		t.Fatalf("version revert history = %q", got)
+	}
+}
+
+func TestCrossPlatformCoverageDriveVersionLookupFailsClosedOnIncompletePagination(t *testing.T) {
+	t.Run("complete without pagination metadata", func(t *testing.T) {
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"list_file_versions": {`{"success":true,"versions":[]}`},
+		}}
+		err := runDriveCoverage(t, VersionGet, caller, "--node", "n1", "--version", "3")
+		if err == nil || !strings.Contains(err.Error(), "不存在版本 3") || len(caller.history) != 1 {
+			t.Fatalf("complete page error = %v", err)
+		}
+	})
+
+	t.Run("missing cursor", func(t *testing.T) {
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"list_file_versions": {`{"success":true,"versions":[],"hasMore":true}`},
+		}}
+		err := runDriveCoverage(t, VersionGet, caller, "--node", "n1", "--version", "3")
+		if err == nil || !strings.Contains(err.Error(), "无法证明分页已经完整") || len(caller.history) != 1 {
+			t.Fatalf("missing cursor error = %v", err)
+		}
+	})
+
+	t.Run("stalled cursor", func(t *testing.T) {
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"list_file_versions": {
+				`{"success":true,"versions":[],"hasMore":true,"nextCursor":"same"}`,
+				`{"success":true,"versions":[],"hasMore":true,"nextCursor":"same"}`,
+			},
+		}}
+		err := runDriveCoverage(t, VersionGet, caller, "--node", "n1", "--version", "3")
+		if err == nil || !strings.Contains(err.Error(), "无法证明分页已经完整") || len(caller.history) != 2 {
+			t.Fatalf("stalled cursor error = %v", err)
+		}
+	})
+
+	t.Run("page bound", func(t *testing.T) {
+		pages := make([]string, 20)
+		for i := range pages {
+			pages[i] = fmt.Sprintf(`{"success":true,"versions":[],"hasMore":true,"nextCursor":"page-%d"}`, i+1)
+		}
+		caller := &driveCoverageCaller{responses: map[string][]string{"list_file_versions": pages}}
+		err := runDriveCoverage(t, VersionGet, caller, "--node", "n1", "--version", "3")
+		if err == nil || !strings.Contains(err.Error(), "无法证明分页已经完整") {
+			t.Fatalf("page bound error = %v", err)
+		}
+		if len(caller.history) != 20 {
+			t.Fatalf("page calls = %d, want 20", len(caller.history))
+		}
+	})
 }
 
 func TestCrossPlatformCoverageDriveSmallSemanticBranches(t *testing.T) {
