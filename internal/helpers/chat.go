@@ -467,7 +467,10 @@ func validateNativeSearchConversationScope(conversationIDs []string) error {
 }
 
 func chatMessageListAllArgs(cmd *cobra.Command) (map[string]any, error) {
-	startRaw, endRaw := defaultChatMessageTimeRange(cmd, 24*time.Hour)
+	startRaw, endRaw, err := defaultChatMessageTimeRange(cmd, 24*time.Hour)
+	if err != nil {
+		return nil, err
+	}
 	cursor, _ := cmd.Flags().GetString("cursor")
 	return map[string]any{
 		"startTime": startRaw,
@@ -486,7 +489,10 @@ func chatMessageListBySenderArgs(cmd *cobra.Command) (map[string]any, error) {
 	if senderUserID == "" && senderOpenDingTalkID == "" {
 		return nil, fmt.Errorf("--sender-user-id or --sender-open-dingtalk-id is required")
 	}
-	startRaw, endRaw := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
+	startRaw, endRaw, err := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
+	if err != nil {
+		return nil, err
+	}
 	startMs, err := parseISOTimeToMillis("start", startRaw)
 	if err != nil {
 		return nil, err
@@ -514,7 +520,10 @@ func chatMessageListBySenderArgs(cmd *cobra.Command) (map[string]any, error) {
 }
 
 func chatMessageListMentionsArgs(cmd *cobra.Command) (map[string]any, error) {
-	startRaw, endRaw := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
+	startRaw, endRaw, err := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
+	if err != nil {
+		return nil, err
+	}
 	startMs, err := parseISOTimeToMillis("start", startRaw)
 	if err != nil {
 		return nil, err
@@ -554,7 +563,10 @@ func chatMessageSearchArgs(cmd *cobra.Command) (map[string]any, error) {
 	if err := validateRequiredFlagWithAliases(cmd, "query", "keyword"); err != nil {
 		return nil, err
 	}
-	startRaw, endRaw := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
+	startRaw, endRaw, err := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
+	if err != nil {
+		return nil, err
+	}
 	startMs, err := parseISOTimeToMillis("start", startRaw)
 	if err != nil {
 		return nil, err
@@ -580,17 +592,23 @@ func chatMessageSearchArgs(cmd *cobra.Command) (map[string]any, error) {
 	return toolArgs, nil
 }
 
-func defaultChatMessageTimeRange(cmd *cobra.Command, lookback time.Duration) (string, string) {
+func defaultChatMessageTimeRange(cmd *cobra.Command, lookback time.Duration) (string, string, error) {
 	startRaw := mustGetFlag(cmd, "start")
 	endRaw := mustGetFlag(cmd, "end")
-	now := time.Now()
+	anchor := time.Now()
 	if endRaw == "" {
-		endRaw = now.Format(time.RFC3339)
+		endRaw = anchor.Format(time.RFC3339)
+	} else {
+		endMs, err := parseISOTimeToMillis("end", endRaw)
+		if err != nil {
+			return "", "", err
+		}
+		anchor = time.UnixMilli(endMs)
 	}
 	if startRaw == "" {
-		startRaw = now.Add(-lookback).Format(time.RFC3339)
+		startRaw = anchor.Add(-lookback).Format(time.RFC3339)
 	}
-	return startRaw, endRaw
+	return startRaw, endRaw, nil
 }
 
 func chatMessageSearchAdvancedArgs(cmd *cobra.Command) (map[string]any, error) {
