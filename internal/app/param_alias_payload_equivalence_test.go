@@ -196,6 +196,7 @@ var paramAliasCompleteCommandVariants = map[string]map[string][]string{
 	},
 	"doc +search": {
 		"created-from": {"doc", "+search", "--query", "fixture", "--created-from", "1"},
+		"created-to":   {"doc", "+search", "--query", "fixture", "--created-to", "2"},
 		"creator-uids": {"doc", "+search", "--query", "fixture", "--creator-uids", "user-1,user-2"},
 	},
 	"drive list": {
@@ -392,6 +393,8 @@ var paramAliasRepresentativePayloadCases = map[string]bool{
 	paramAliasPayloadCaseKey("doc +fetch", "start-block"):                            true, // section boundary role remains exact
 	paramAliasPayloadCaseKey("doc +history-revert", "version-number"):                true, // destructive history version alias keeps confirmation
 	paramAliasPayloadCaseKey("doc +inspect", "include-versions"):                     true, // boolean section alias preserves value
+	paramAliasPayloadCaseKey("doc +search", "create-time-start"):                     true, // observed lower-bound spelling preserves milliseconds
+	paramAliasPayloadCaseKey("doc +search", "create-time-end"):                       true, // observed upper-bound spelling preserves milliseconds
 	paramAliasPayloadCaseKey("doc +template-list", "next-token"):                     true, // Doc cursor alias on a read shortcut
 	paramAliasPayloadCaseKey("doc +update", "mode"):                                  true, // write operation selector alias
 	paramAliasPayloadCaseKey("doc +update", "revision"):                              true, // optimistic edit revision alias

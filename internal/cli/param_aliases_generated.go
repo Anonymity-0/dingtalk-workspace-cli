@@ -2427,7 +2427,9 @@ var generatedParamAliases = []ParamAliasEntry{
 	{
 		CLIPath: "doc +search",
 		Aliases: map[string]string{
+			"create-time-end":     "created-to",
 			"create-time-from":    "created-from",
+			"create-time-start":   "created-from",
 			"create-time-to":      "created-to",
 			"created-after":       "created-from",
 			"created-before":      "created-to",
@@ -3212,7 +3214,9 @@ var generatedParamAliases = []ParamAliasEntry{
 	{
 		CLIPath: "drive +search",
 		Aliases: map[string]string{
+			"create-time-end":     "created-to",
 			"create-time-from":    "created-from",
+			"create-time-start":   "created-from",
 			"create-time-to":      "created-to",
 			"created-after":       "created-from",
 			"created-before":      "created-to",
@@ -3781,7 +3785,9 @@ var generatedParamAliases = []ParamAliasEntry{
 	{
 		CLIPath: "drive search",
 		Aliases: map[string]string{
+			"create-time-end":     "created-to",
 			"create-time-from":    "created-from",
+			"create-time-start":   "created-from",
 			"create-time-to":      "created-to",
 			"created-after":       "created-from",
 			"created-before":      "created-to",
