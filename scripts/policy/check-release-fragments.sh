@@ -30,10 +30,17 @@ if [ "$archive_changed" = true ]; then
     printf '%s\n' 'error: release-fragment archival requires exactly one newly added versioned CHANGELOG section' >&2
     exit 1
   }
-  if ! awk -F '\t' -v version="$release_version" '
+  # The archive directory is matched as a literal prefix, never as a regex:
+  # interpolating the version into one would make `.` match any character, so
+  # `1.0.1-beta.1` would also admit `.changes/released/1x0x1-betaX1/` and break
+  # the documented audit trail. Only the fragment basename, whose character class
+  # is fixed, stays a pattern.
+  if ! awk -F '\t' -v prefix=".changes/released/$release_version/" '
     $1 == "M" && $2 == "CHANGELOG.md" && NF == 2 { changelog = 1; next }
-    $1 ~ /^R100$/ && $2 ~ /^\.changes\/[a-z0-9][a-z0-9._-]*\.md$/ && $3 ~ ("^\\.changes/released/" version "/[a-z0-9][a-z0-9._-]*\\.md$") && NF == 3 {
-      source = $2; target = $3; sub(/^.*\//, "", source); sub(/^.*\//, "", target)
+    $1 == "R100" && NF == 3 && $2 ~ /^\.changes\/[a-z0-9][a-z0-9._-]*\.md$/ && index($3, prefix) == 1 {
+      target = substr($3, length(prefix) + 1)
+      if (target !~ /^[a-z0-9][a-z0-9._-]*\.md$/) { invalid = 1; next }
+      source = $2; sub(/^.*\//, "", source)
       if (source != target) invalid = 1
       moved++; next
     }

@@ -43,6 +43,26 @@ const changelogGateValidRelease = `# Changelog
 - Initial release.
 `
 
+// A release-seal section whose 1.0.1-beta.1 notes are exactly the rendered form
+// of changelogGateValidFragment. A seal PR built from this therefore satisfies
+// the rendered-notes comparison, which isolates the archive-path assertions.
+const changelogGateSealedRelease = `# Changelog
+
+## [Unreleased]
+
+## [1.0.1-beta.1] - 2026-07-17
+
+### Added
+
+- Chat reply mentions.
+
+## [1.0.0] - 2026-07-01
+
+### Added
+
+- Initial release.
+`
+
 func newChangelogGateRepo(t *testing.T) *changelogGateRepo {
 	t.Helper()
 
@@ -319,6 +339,60 @@ func TestReleaseFragmentPolicyRejectsInvalidActiveFragmentAndWrongArchiveVersion
 }
 
 const changelogGateValidFragment = "---\ncategory: Added\n---\n\n- Chat reply mentions.\n"
+
+// sealFragmentInto stages a release-seal PR that archives the single active
+// fragment into .changes/released/<archiveDir>/, with a CHANGELOG section whose
+// rendered notes already match. Only archiveDir varies, so a rejection can only
+// come from the archive-path contract.
+func (r *changelogGateRepo) sealFragmentInto(t *testing.T, archiveDir string) string {
+	t.Helper()
+	changelogGateWrite(t, r.root, ".changes/1234-chat.md", changelogGateValidFragment, 0o644)
+	r.commit(t, "add release fragment")
+	sealBase := strings.TrimSpace(changelogGateGit(t, r.root, "rev-parse", "HEAD"))
+
+	changelogGateWrite(t, r.root, "CHANGELOG.md", changelogGateSealedRelease, 0o644)
+	target := filepath.Join(r.root, ".changes", "released", archiveDir)
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatalf("MkdirAll(%s) error = %v", target, err)
+	}
+	if err := os.Rename(filepath.Join(r.root, ".changes", "1234-chat.md"), filepath.Join(target, "1234-chat.md")); err != nil {
+		t.Fatalf("Rename release fragment error = %v", err)
+	}
+	r.commit(t, "seal release into "+archiveDir)
+	return sealBase
+}
+
+// The archive directory used to be matched by interpolating the version into an
+// awk regex, where `.` matches any character. Version `1.0.1-beta.1` therefore
+// also admitted `1x0x1-betaX1`, letting the archive drift from the CHANGELOG
+// version while every other seal assertion still passed.
+func TestReleaseFragmentPolicyRejectsArchiveDirectoryMatchedAsRegex(t *testing.T) {
+	for _, archiveDir := range []string{"1x0x1-betaX1", "1.0.1-betaX1", "1x0.1-beta.1"} {
+		t.Run(archiveDir, func(t *testing.T) {
+			repo := newChangelogGateRepo(t)
+			sealBase := repo.sealFragmentInto(t, archiveDir)
+
+			output, err := repo.runFragmentPolicy(t, sealBase, "HEAD")
+			if err == nil {
+				t.Fatalf("archive directory %q passed:\n%s", archiveDir, output)
+			}
+			if !strings.Contains(output, "unchanged R100 moves") {
+				t.Fatalf("gate output missing the archive-move contract:\n%s", output)
+			}
+		})
+	}
+}
+
+// Guards the fix against over-blocking: the archive directory that exactly
+// equals the CHANGELOG version must still seal cleanly.
+func TestReleaseFragmentPolicyAcceptsArchiveDirectoryMatchingChangelogVersion(t *testing.T) {
+	repo := newChangelogGateRepo(t)
+	sealBase := repo.sealFragmentInto(t, "1.0.1-beta.1")
+
+	if output, err := repo.runFragmentPolicy(t, sealBase, "HEAD"); err != nil {
+		t.Fatalf("matching archive directory rejected: %v\noutput:\n%s", err, output)
+	}
+}
 
 // A top-level `.changes/` entry that violates the naming rule or is not a
 // regular 100644 blob must fail the gate. Selecting the trigger by the legal
