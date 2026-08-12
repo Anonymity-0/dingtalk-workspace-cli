@@ -973,7 +973,7 @@ if (!isInterfaceSensitive("internal/corecmd/corecmd.go")) {
 	}
 }
 
-func TestHighRiskClassificationShardsHelperChanges(t *testing.T) {
+func TestHighRiskClassificationShardsFanoutChanges(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatalf("Abs(repo root) error = %v", err)
@@ -995,6 +995,18 @@ if (!isHighRisk("internal/helpers/minutes.go")) {
 }
 if (isHighRisk("internal/helpersx/minutes.go")) {
   throw new Error("helper high-risk classification must respect the path boundary");
+}
+for (const filename of [
+  "internal/cli/param_concepts.json",
+  "internal/cli/param_concepts.schema.json",
+  "internal/cli/param_aliases_generated.go",
+]) {
+  if (!isHighRisk(filename)) {
+    throw new Error(filename + " must use the sharded full suite");
+  }
+}
+if (isHighRisk("internal/cli/param_concepts.json.bak")) {
+  throw new Error("parameter-alias high-risk classification must use exact paths");
 }
 `
 	cmd := exec.Command("node", "-e", probe)

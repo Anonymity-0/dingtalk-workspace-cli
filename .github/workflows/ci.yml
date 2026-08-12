@@ -151,6 +151,12 @@ jobs:
                 filename.startsWith('internal/helpers/') ||
                 filename.startsWith('internal/generator/') ||
                 filename.startsWith('internal/cli/schema') ||
+                // Parameter aliases are reduced against the live command tree.
+                // Their reverse-dependency set is too large for one focused
+                // race job, so use the existing full-suite shards.
+                filename === 'internal/cli/param_concepts.json' ||
+                filename === 'internal/cli/param_concepts.schema.json' ||
+                filename === 'internal/cli/param_aliases_generated.go' ||
                 filename.startsWith('internal/interfacesnapshot/') ||
                 filename.startsWith('internal/app/upgrade') ||
                 filename.startsWith('internal/transport/') ||
