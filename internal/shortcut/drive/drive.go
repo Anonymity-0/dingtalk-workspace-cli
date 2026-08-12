@@ -181,7 +181,7 @@ var Download = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文件 ID (dentryUuid)", Required: true},
 		{Name: "space-id", Type: shortcut.FlagString, Desc: "文件所属空间 ID"},
-		{Name: "output", Type: shortcut.FlagString, Desc: "工作目录内的相对输出路径", Required: true},
+		{Name: "output", Shorthand: "o", Type: shortcut.FlagString, Desc: "工作目录内的相对输出路径", Required: true},
 	},
 	Tips: []string{`dws drive +download --node <dentryUuid> --output downloads/report.pdf`},
 	Execute: func(rt *shortcut.RuntimeContext) error {

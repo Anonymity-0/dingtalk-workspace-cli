@@ -148,6 +148,17 @@ func TestCrossPlatformCoverageDriveCreateAndInspectReadback(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(t *testing.T) {
+	var outputFlag *shortcut.Flag
+	for i := range Download.Flags {
+		if Download.Flags[i].Name == "output" {
+			outputFlag = &Download.Flags[i]
+			break
+		}
+	}
+	if outputFlag == nil || outputFlag.Shorthand != "o" {
+		t.Fatalf("download output shorthand = %#v, want -o compatibility", outputFlag)
+	}
+
 	t.Chdir(t.TempDir())
 	if err := os.WriteFile("input.bin", []byte("actual-drive-bytes"), 0o600); err != nil {
 		t.Fatal(err)
