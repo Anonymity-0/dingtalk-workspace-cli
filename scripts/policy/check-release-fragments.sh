@@ -102,13 +102,14 @@ fi
 # named or non-regular entry only ever shows its own path. Either one would skip
 # validation here and then break the next unrelated PR that adds a legal
 # fragment.
+git -C "$ROOT" diff --no-ext-diff --name-only "$merge_base" "$head" -- .changes >"$tmp_root/changes-paths"
+
 changes_tree_changed=false
-if git -C "$ROOT" diff --no-ext-diff --name-only "$merge_base" "$head" -- .changes |
-  awk '
-    $0 ~ /^\.changes\/released\// { next }
-    { found = 1 }
-    END { exit !found }
-  '; then
+if awk '
+  $0 ~ /^\.changes\/released\// { next }
+  { found = 1 }
+  END { exit !found }
+' "$tmp_root/changes-paths"; then
   changes_tree_changed=true
 fi
 
@@ -116,13 +117,12 @@ fi
 # contributor contract rather than release content, and it may be edited while no
 # fragment is pending, which the renderer would reject as an empty fragment set.
 fragment_changed=false
-if git -C "$ROOT" diff --no-ext-diff --name-only "$merge_base" "$head" -- .changes |
-  awk '
-    $0 ~ /^\.changes\/released\// { next }
-    $0 == ".changes/README.md" { next }
-    { found = 1 }
-    END { exit !found }
-  '; then
+if awk '
+  $0 ~ /^\.changes\/released\// { next }
+  $0 == ".changes/README.md" { next }
+  { found = 1 }
+  END { exit !found }
+' "$tmp_root/changes-paths"; then
   fragment_changed=true
 fi
 
@@ -165,9 +165,10 @@ if [ "$changes_tree_changed" = true ]; then
     exit 1
   fi
 
-  # A release-seal branch is already held to the stricter rendered-notes
-  # comparison above, and its fragments have moved into the archive, so only an
-  # ordinary fragment change is re-rendered here.
+  # Only an ordinary fragment change is re-rendered here: a release-seal branch
+  # is already held to the stricter rendered-notes comparison above and its
+  # fragments have moved into the archive, and a README-only edit carries no
+  # release content to render.
   if [ "$fragment_changed" = true ] && [ "$archive_changed" = false ]; then
     head_changes="$tmp_root/head-changes"
     mkdir -p "$head_changes"
