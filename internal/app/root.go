@@ -681,9 +681,9 @@ func newRootCommandWithEngine(rootCtx context.Context, engine *pipeline.Engine, 
 			if _, err := parseAgentProduct(os.Getenv(agentproduct.EnvName)); err != nil {
 				return err
 			}
-			if shouldRepairNestedSkillLayout(cmd) {
-				if err := repairNestedMultiSkillLayout(); err != nil {
-					fmt.Fprintf(cmd.ErrOrStderr(), "⚠️  检测到旧升级器留下的嵌套 Skill，但自动修复失败: %v；请运行 dws skill setup --mode multi --yes\n", err)
+			if shouldDetectNestedSkillLayout(cmd) {
+				if found, err := detectNestedMultiSkillLayout(); err == nil && found {
+					fmt.Fprintln(cmd.ErrOrStderr(), "⚠️  检测到旧升级器留下的嵌套 Skill；请运行 dws skill setup --mode multi 查看迁移计划并确认")
 				}
 			}
 

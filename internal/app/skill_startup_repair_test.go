@@ -12,19 +12,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
-	upgradepkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/upgrade"
 	"github.com/spf13/cobra"
 )
 
-func TestCrossPlatformCoverageStartupRepairsNestedUpgradeLayout(t *testing.T) {
+func TestCrossPlatformCoverageStartupDetectsNestedUpgradeLayoutWithoutMutation(t *testing.T) {
 	home := t.TempDir()
 	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
-	upgradepkg.SwapUserHomeDirForTest(t, func() (string, error) { return home, nil })
 	testseam.Swap(t, &skillSetupAgentHomes, []string{".agents/skills", ".codex/skills"})
-	if err := os.MkdirAll(filepath.Join(home, ".codex"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	nested := filepath.Join(home, ".agents", "skills", "dws", "multi", "dingtalk-chat")
 	if err := os.MkdirAll(nested, 0o755); err != nil {
 		t.Fatal(err)
@@ -33,18 +29,20 @@ func TestCrossPlatformCoverageStartupRepairsNestedUpgradeLayout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := repairNestedMultiSkillLayout(); err != nil {
-		t.Fatal(err)
+	found, err := detectNestedMultiSkillLayout()
+	if err != nil || !found {
+		t.Fatalf("detect nested layout = (%v, %v), want (true, nil)", found, err)
 	}
-	if _, err := os.Stat(filepath.Join(home, ".codex", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
-		t.Fatalf("canonical Codex Skill missing: %v", err)
+	data, err := os.ReadFile(filepath.Join(nested, "SKILL.md"))
+	if err != nil || string(data) != "old nested" {
+		t.Fatalf("detection changed nested Skill: data=%q err=%v", data, err)
 	}
-	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dws")); !os.IsNotExist(err) {
-		t.Fatalf("nested generic layout remains: %v", err)
+	if _, err := os.Stat(filepath.Join(home, ".codex", "skills", "dingtalk-chat")); !os.IsNotExist(err) {
+		t.Fatalf("detection unexpectedly installed a canonical Skill: %v", err)
 	}
 }
 
-func TestCrossPlatformCoverageStartupRepairIgnoresLegitimateMonoAndReportsFailure(t *testing.T) {
+func TestCrossPlatformCoverageStartupDetectionIgnoresMonoAndReportsReadFailure(t *testing.T) {
 	home := t.TempDir()
 	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
 	testseam.Swap(t, &skillSetupAgentHomes, []string{".agents/skills"})
@@ -55,100 +53,79 @@ func TestCrossPlatformCoverageStartupRepairIgnoresLegitimateMonoAndReportsFailur
 	if err := os.WriteFile(filepath.Join(mono, "SKILL.md"), []byte("valid mono"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	called := false
-	testseam.Swap(t, &repairNestedSkillUpgrade, func(string, upgradepkg.SkillUpgradeOptions) (*upgradepkg.SkillUpgradeResult, error) {
-		called = true
-		return nil, errors.New("unexpected")
-	})
-	if err := repairNestedMultiSkillLayout(); err != nil || called {
-		t.Fatalf("valid mono repair = %v, called=%v", err, called)
+	found, err := detectNestedMultiSkillLayout()
+	if err != nil || found {
+		t.Fatalf("valid mono detection = (%v, %v), want (false, nil)", found, err)
 	}
 
-	nested := filepath.Join(mono, "multi", "dingtalk-chat")
-	if err := os.MkdirAll(nested, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(nested, "SKILL.md"), []byte("nested"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := repairNestedMultiSkillLayout(); err == nil {
-		t.Fatal("repair failure was not surfaced")
+	failure := errors.New("HOME failure")
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return "", failure })
+	found, err = detectNestedMultiSkillLayout()
+	if found || !errors.Is(err, failure) {
+		t.Fatalf("HOME failure detection = (%v, %v)", found, err)
 	}
 }
 
-func TestCrossPlatformCoverageStartupRepairSkipsExplicitSkillManagers(t *testing.T) {
+func TestCrossPlatformCoverageStartupDetectionSkipsExplicitSkillManagers(t *testing.T) {
 	upgradeCmd := &cobra.Command{Use: "upgrade"}
-	if shouldRepairNestedSkillLayout(upgradeCmd) {
+	if shouldDetectNestedSkillLayout(upgradeCmd) {
 		t.Fatal("upgrade must manage its own Skill lifecycle")
 	}
 	skillCmd := &cobra.Command{Use: "skill"}
 	setupCmd := &cobra.Command{Use: "setup"}
 	skillCmd.AddCommand(setupCmd)
-	if shouldRepairNestedSkillLayout(setupCmd) {
+	if shouldDetectNestedSkillLayout(setupCmd) {
 		t.Fatal("skill setup must manage its own Skill lifecycle")
 	}
-	if !shouldRepairNestedSkillLayout(&cobra.Command{Use: "version"}) || !shouldRepairNestedSkillLayout(nil) {
-		t.Fatal("ordinary commands must trigger repair detection")
+	if !shouldDetectNestedSkillLayout(&cobra.Command{Use: "version"}) || !shouldDetectNestedSkillLayout(nil) {
+		t.Fatal("ordinary commands must trigger read-only detection")
 	}
 }
 
-func TestCrossPlatformCoverageStartupRepairErrorBranchesAndRootWarning(t *testing.T) {
-	failure := errors.New("repair failure")
-	t.Run("HOME failure", func(t *testing.T) {
-		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return "", failure })
-		if err := repairNestedMultiSkillLayout(); !errors.Is(err, failure) {
-			t.Fatalf("HOME error = %v", err)
-		}
+func TestCrossPlatformCoverageStartupWarningIsReadOnlyAndDoesNotBypassConfirmation(t *testing.T) {
+	home := t.TempDir()
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	testseam.Swap(t, &skillSetupAgentHomes, []string{".codex/skills"})
+	nested := filepath.Join(home, ".codex", "skills", "dws", "multi", "dingtalk-chat")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nested, "SKILL.md"), []byte("old nested"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Any accidental return to startup mutation must fail this test before it
+	// can touch the fixture.
+	testseam.Swap(t, &skillSetupCopyDir, func(string, string) error {
+		t.Fatal("ordinary command attempted to copy Skills")
+		return nil
+	})
+	testseam.Swap(t, &skillSetupBackupAndRemove, func(string, string) (string, error) {
+		t.Fatal("ordinary command attempted to back up or remove Skills")
+		return "", nil
+	})
+	testseam.Swap(t, &skillSetupWriteState, func(string, skillstate.State) error {
+		t.Fatal("ordinary command attempted to write Skill state")
+		return nil
 	})
 
-	t.Run("embedded extraction failure", func(t *testing.T) {
-		home := t.TempDir()
-		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
-		testseam.Swap(t, &skillSetupAgentHomes, []string{".agents/skills"})
-		nested := filepath.Join(home, ".agents", "skills", "dws", "multi", "dingtalk-chat")
-		if err := os.MkdirAll(nested, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(nested, "SKILL.md"), []byte("nested"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		testseam.Swap(t, &embeddedSkillStat, func(string) (os.FileInfo, error) { return nil, failure })
-		if err := repairNestedMultiSkillLayout(); !errors.Is(err, failure) {
-			t.Fatalf("embedded extraction error = %v", err)
-		}
-	})
-
-	t.Run("failed Agent result", func(t *testing.T) {
-		home := t.TempDir()
-		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
-		testseam.Swap(t, &skillSetupAgentHomes, []string{".agents/skills"})
-		nested := filepath.Join(home, ".agents", "skills", "dws", "multi", "dingtalk-chat")
-		if err := os.MkdirAll(nested, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(nested, "SKILL.md"), []byte("nested"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		testseam.Swap(t, &repairNestedSkillUpgrade, func(string, upgradepkg.SkillUpgradeOptions) (*upgradepkg.SkillUpgradeResult, error) {
-			return &upgradepkg.SkillUpgradeResult{Results: []upgradepkg.SkillDirResult{{Status: upgradepkg.SkillDirFailed, Err: failure}}}, nil
-		})
-		if err := repairNestedMultiSkillLayout(); err == nil {
-			t.Fatal("failed Agent repair succeeded")
-		}
-	})
-
-	t.Run("root warning", func(t *testing.T) {
-		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return "", failure })
-		root := newRootCommandWithEngine(context.Background(), nil, false, true)
-		cmd := &cobra.Command{Use: "version"}
-		cmd.SetContext(context.Background())
-		var stderr bytes.Buffer
-		cmd.SetErr(&stderr)
-		if err := root.PersistentPreRunE(cmd, nil); err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(stderr.String(), "自动修复失败") {
-			t.Fatalf("root repair warning missing: %q", stderr.String())
-		}
-	})
+	root := newRootCommandWithEngine(context.Background(), nil, false, true)
+	cmd := &cobra.Command{Use: "version"}
+	cmd.SetContext(context.Background())
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	if err := root.PersistentPreRunE(cmd, nil); err != nil {
+		t.Fatal(err)
+	}
+	warning := stderr.String()
+	if !strings.Contains(warning, "dws skill setup --mode multi") {
+		t.Fatalf("safe migration hint missing: %q", warning)
+	}
+	if strings.Contains(warning, "--yes") {
+		t.Fatalf("migration hint bypasses confirmation: %q", warning)
+	}
+	data, err := os.ReadFile(filepath.Join(nested, "SKILL.md"))
+	if err != nil || string(data) != "old nested" {
+		t.Fatalf("ordinary command changed nested Skill: data=%q err=%v", data, err)
+	}
 }
