@@ -83,7 +83,12 @@ func TestChatMessagePaginationDefaultSinglePageUnchanged(t *testing.T) {
 			args:   []string{"message", "list-all", "--start", "2026-08-01 00:00:00", "--end", "2026-08-02 00:00:00"},
 			server: "",
 			tool:   "search_messages_by_time_range",
-			want:   map[string]any{"startTime": "2026-08-01 00:00:00", "endTime": "2026-08-02 00:00:00", "limit": 50, "cursor": "0"},
+			want: map[string]any{
+				"startTime": formatChatMessageListAllTime(1785513600000),
+				"endTime":   formatChatMessageListAllTime(1785600000000),
+				"limit":     50,
+				"cursor":    "0",
+			},
 		},
 		{
 			name:   "list-by-sender",
@@ -276,8 +281,8 @@ func TestChatMessagePaginationDefaultsStartFromExplicitEnd(t *testing.T) {
 				t.Fatalf("startTime = %d, want %d", startMs, wantStartMs)
 			}
 			if tt.wantTool == "search_messages_by_time_range" {
-				assertStringArg(t, got.args["startTime"], "2025-12-31 00:00:00")
-				assertStringArg(t, got.args["endTime"], "2026-01-01 00:00:00")
+				assertStringArg(t, got.args["startTime"], formatChatMessageListAllTime(wantStartMs))
+				assertStringArg(t, got.args["endTime"], formatChatMessageListAllTime(endMs))
 			}
 		})
 	}
@@ -343,7 +348,7 @@ func TestChatMessagePaginationDefaultsEndFromNowWhenOnlyStartProvided(t *testing
 				t.Fatalf("endTime = %d, want between %d and %d", endMs, wantEndMin, wantEndMax)
 			}
 			if tt.wantTool == "search_messages_by_time_range" {
-				assertStringArg(t, got.args["startTime"], "2026-01-01 00:00:00")
+				assertStringArg(t, got.args["startTime"], formatChatMessageListAllTime(startMs))
 				parseChatMessageListAllTimeArg(t, got.args["endTime"])
 			}
 		})
@@ -423,7 +428,7 @@ func parseChatMessageListAllTimeArg(t *testing.T, value any) time.Time {
 	if strings.Contains(raw, "T") {
 		t.Fatalf("time arg = %q, want yyyy-MM-dd HH:mm:ss without RFC3339 separator", raw)
 	}
-	parsed, err := time.ParseInLocation("2006-01-02 15:04:05", raw, shanghaiLocation())
+	parsed, err := time.ParseInLocation("2006-01-02 15:04:05", raw, time.Local)
 	if err != nil {
 		t.Fatalf("time arg = %q, parse err = %v", raw, err)
 	}
