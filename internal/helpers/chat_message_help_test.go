@@ -245,7 +245,7 @@ func TestCrossPlatformCoverageChatMessageHelpDocumentsOptionalTimeDefaults(t *te
 			var output bytes.Buffer
 			cmd.SetOut(&output)
 			cmd.SetErr(&output)
-      cmd.SetArgs(test.args)
+			cmd.SetArgs(test.args)
 			if err := cmd.Execute(); err != nil {
 				t.Fatalf("dws chat %s: %v\n%s", strings.Join(test.args, " "), err, output.String())
 			}
@@ -267,6 +267,10 @@ func TestCrossPlatformCoverageChatMessageHelpDocumentsOptionalTimeDefaults(t *te
 func TestCrossPlatformCoverageChatReactionHelpKeepsManifestExternalAliasesVisible(t *testing.T) {
 	for _, command := range []string{"add-emoji", "remove-emoji", "add-text-emotion", "remove-text-emotion"} {
 		t.Run(command, func(t *testing.T) {
+			cmd := newChatCommand()
+			var output bytes.Buffer
+			cmd.SetOut(&output)
+			cmd.SetErr(&output)
 			cmd.SetArgs([]string{"message", command, "--help"})
 			if err := cmd.Execute(); err != nil {
 				t.Fatalf("chat message %s --help: %v\n%s", command, err, output.String())

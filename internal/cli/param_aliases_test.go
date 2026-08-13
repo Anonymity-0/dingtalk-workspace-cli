@@ -242,7 +242,7 @@ func TestCrossPlatformCoverageReduceLeafParamAliasesBindExcludesRealFlags(t *tes
 		"demo cmd",
 		realMap(realFlag{name: "id"}, realFlag{name: "name"}, realFlag{name: "query"}),
 		[]Concept{
-			{ID: "base_id", Members: []string{"base-id", "base-token"}, Excludes: []string{"name", "unsafe"}},
+			{ID: "base_id", Members: []string{"base-id", "base-token"}, Excludes: []string{"keyword", "name", "query", "unsafe"}},
 			{ID: "query", Members: []string{"query", "keyword"}},
 		},
 		CommandOverride{Bind: map[string]string{"id": "base_id"}},
@@ -259,8 +259,14 @@ func TestCrossPlatformCoverageReduceLeafParamAliasesBindExcludesRealFlags(t *tes
 	if entry.Aliases["keyword"] != "query" {
 		t.Fatalf("query alias = %#v, want keyword -> query", entry.Aliases)
 	}
+	if containsParamAlias(entry.Blocked, "keyword") {
+		t.Fatalf("excluded alias entered blocked list: %#v", entry.Blocked)
+	}
 	if containsParamAlias(entry.Blocked, "name") {
 		t.Fatalf("real excluded flag entered blocked list: %#v", entry.Blocked)
+	}
+	if containsParamAlias(entry.Blocked, "query") {
+		t.Fatalf("claimed real excluded flag entered blocked list: %#v", entry.Blocked)
 	}
 	if !containsParamAlias(entry.Blocked, "unsafe") {
 		t.Fatalf("non-real excluded flag was not blocked: %#v", entry.Blocked)
