@@ -341,7 +341,8 @@ jobs:
                     per_page: 100,
                   });
                 files = Array.isArray(comparison.files) ? comparison.files : [];
-                classifyFiles(files.length < 300);
+                const pushFilesComplete = files.length < 300;
+                classifyFiles(pushFilesComplete);
                 const linearFromValidatedTip =
                   comparison.status === 'ahead' &&
                   comparison.merge_base_commit?.sha === expectedBefore &&
@@ -353,7 +354,8 @@ jobs:
                   files[0].filename === 'CHANGELOG.md' &&
                   files[0].status === 'modified' &&
                   !files[0].previous_filename;
-                const exactReleaseSealDiff = isExactReleaseSeal(files);
+                const exactReleaseSealDiff =
+                  pushFilesComplete && isExactReleaseSeal(files);
 
                 if (linearFromValidatedTip && (exactChangelogDiff || exactReleaseSealDiff)) {
                   const requiredContexts = [

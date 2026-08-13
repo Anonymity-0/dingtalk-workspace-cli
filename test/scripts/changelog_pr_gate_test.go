@@ -1039,6 +1039,15 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	}
 	requirePolicyEnv("Validate changed CHANGELOG content", "Validate release fragment lifecycle")
 	requirePolicyEnv("Validate trusted main metadata-only push", "Record CHANGELOG-only fast path")
+	pushStart := strings.Index(admission, "} else if (context.eventName === 'push') {")
+	pushEnd := strings.Index(admission, "\n            core.setOutput('changelog_only'")
+	if pushStart < 0 || pushEnd <= pushStart {
+		t.Fatal("Code Admission workflow missing push classification boundaries")
+	}
+	pushClassification := admission[pushStart:pushEnd]
+	if strings.Contains(pushClassification, "const exactReleaseSealDiff = isExactReleaseSeal(files)") {
+		t.Error("push release-seal fast path must not trust an unguarded compare file list")
+	}
 	for _, want := range []string{
 		"name: CI",
 		"files.length === 1",
@@ -1087,7 +1096,9 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		`package_output="$(./scripts/ci/test-packages.sh list`,
 		"docs_only: ${{ steps.classify.outputs.docs_only }}",
 		"full_suite: ${{ steps.classify.outputs.full_suite }}",
-		"classifyFiles(files.length < 300)",
+		"const pushFilesComplete = files.length < 300",
+		"classifyFiles(pushFilesComplete)",
+		"pushFilesComplete && isExactReleaseSeal(files)",
 		"platformSensitive =",
 		"files.some(isNativeGoChange)",
 		"paths.some(isEditionSensitive)",
