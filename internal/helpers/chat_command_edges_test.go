@@ -549,6 +549,26 @@ func TestCrossPlatformCoverageChatIMIDMigrationRequiredFlagErrors(t *testing.T) 
 	}
 }
 
+func TestCrossPlatformCoverageChatMessageReadStatusConversationAliasesExecute(t *testing.T) {
+	for _, alias := range []string{"group", "id", "chat", "open-conversation-id"} {
+		t.Run(alias, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			if err := runChatCoverageCommand(t, caller, "message", "read-status", "--"+alias, "cid-1", "--message-id", "msg-1"); err != nil {
+				t.Fatal(err)
+			}
+			if caller.server != "im" || caller.tool != "query_msg_read_status" {
+				t.Fatalf("call = %s/%s, want im/query_msg_read_status", caller.server, caller.tool)
+			}
+			if got := caller.args["openConversationId"]; got != "cid-1" {
+				t.Fatalf("openConversationId = %#v, want cid-1", got)
+			}
+			if got := caller.args["openMessageId"]; got != "msg-1" {
+				t.Fatalf("openMessageId = %#v, want msg-1", got)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageChatWebhookReplyConversationAndDownloadEdges(t *testing.T) {
 	previousDeps, previousArgs := deps, os.Args
 	os.Args = []string{"dws", "chat"}

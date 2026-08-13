@@ -393,6 +393,7 @@ var chatPendingConversationIDMigrationPaths = [][]string{
 	{"group-role", "set-user"},
 	{"group-role", "update"},
 	{"message", "list-topic-replies"},
+	{"message", "read-status"},
 }
 
 var chatPendingMessageIDMigrationPaths = [][]string{
