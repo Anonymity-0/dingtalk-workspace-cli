@@ -2966,12 +2966,13 @@ func newChatCommand() *cobra.Command {
 				UseWhen:      []string{"用户明确指定某个会话，并要读取消息或追溯引用回复中的原消息上下文时"},
 				AvoidWhen:    []string{"跨全部会话按时间查询时使用 chat message list-all"},
 				Examples: []string{
-					"dws chat message list --conversation-id <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50",
-					"dws chat message list --conversation-id <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50 --jq '.messages[] | {messageId, text}'",
+					"dws chat message list --group <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50",
+					"dws chat message list --group <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50 --jq '.messages[] | {messageId, text}'",
 				},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "direction", Property: "forward"},
+				{Name: "group", Property: "openconversation_id", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -3314,11 +3315,12 @@ func newChatCommand() *cobra.Command {
 				AgentSummary: "以当前用户身份发送群聊或单聊消息",
 				UseWhen:      []string{"用户明确要以个人身份发送文本或媒体消息时；响应返回 openTaskId 后用 chat message query-send-status 确认投递并取得后续操作所需的消息 ID"},
 				AvoidWhen:    []string{"机器人身份或 Webhook 发送应使用对应命令"},
-				Examples:     []string{"dws chat message send --conversation-id <openConversationId> \"项目已更新\""},
+				Examples:     []string{"dws chat message send --group <openConversationId> \"项目已更新\""},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "ai-tag", Property: "clawType", InterfaceType: "string"},
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId"},
 			},
 		},
@@ -3513,11 +3515,12 @@ func newChatCommand() *cobra.Command {
 				AgentSummary: "以应用机器人身份发送 Markdown、图片或文件群消息或批量单聊",
 				UseWhen:      []string{"已有 robotCode 且需要机器人身份投递 Markdown、图片或文件时"},
 				AvoidWhen:    []string{"个人身份发送或自定义 Webhook 告警不要使用"},
-				Examples:     []string{"dws chat message send-by-bot --robot-code <robotCode> --conversation-id <openConversationId> --title \"日报\" --text \"今日进展\""},
+				Examples:     []string{"dws chat message send-by-bot --robot-code <robotCode> --group <openConversationId> --title \"日报\" --text \"今日进展\""},
 			},
 			// Keep title/text required_when out of Schema: the runtime switch above
 			// enforces Markdown inputs, while adding it breaks merge-base compatibility.
 			Parameters: []contract.ParamDecl{
+				{Name: "group", Property: "group", Required: boolPtr(false)},
 				{Name: "msg-type", RequiredWhen: "image-url or file-path is provided", Enum: []string{"markdown", "image", "file"}},
 				{Name: "image-url", RequiredWhen: "msg-type is image"},
 				{Name: "file-path", RequiredWhen: "msg-type is file"},
@@ -3745,6 +3748,7 @@ func newChatCommand() *cobra.Command {
 				Examples:     []string{"dws chat message list-topic-replies --conversation-id <openConversationId> --topic-id <topicId> --limit 50"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openconversationId"},
 				{Name: "direction", Property: "forward"},
 				{Name: "limit", Property: "pageSize"},
 				{Name: "time", Property: "startTime"},
@@ -3896,6 +3900,7 @@ func newChatCommand() *cobra.Command {
 			},
 			Parameters: append([]contract.ParamDecl{
 				{Name: "end", Property: "endTime"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "start", Property: "startTime"},
 			}, pagedMCPParamDecls()...),
 		},
@@ -4088,6 +4093,7 @@ func newChatCommand() *cobra.Command {
 			},
 			Parameters: append([]contract.ParamDecl{
 				{Name: "end", Property: "endTime"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "query", Property: "keyword"},
 				{Name: "start", Property: "startTime"},
 			}, pagedMCPParamDecls()...),
@@ -4606,6 +4612,10 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageListCmd.Flags().Int("limit", 0, "返回数量，不传则不限制")
 	chatMessageListCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageListCmd.Flags().MarkHidden("size")
+	cli.AnnotateRuntimeConstraints(chatMessageListCmd, cli.RuntimeSchemaConstraints{
+		MutuallyExclusive: [][]string{{"group", "user", "open-dingtalk-id"}},
+		RequireOneOf:      [][]string{{"group", "user", "open-dingtalk-id"}},
+	})
 	chatMessageListDirectCmd.Flags().String("user", "", "对方 userId（同组织内同事，与 --open-dingtalk-id 二选一）")
 	chatMessageListDirectCmd.Flags().String("open-dingtalk-id", "", "对方 openDingTalkId（非同组织普通好友场景，与 --user 二选一）")
 	chatMessageListDirectCmd.Flags().String("time", "", "开始时间，格式 yyyy-MM-dd HH:mm:ss (必填)")
@@ -4655,8 +4665,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageSendCmd.Flags().String("uuid", "", "幂等 UUID，相同 uuid 在 24h 内不会重复发送（可选）")
 	cli.AttachRuntimeSchema(chatMessageSendCmd, "chat", "send_personal_message", "hardcoded:chat")
 	cli.AnnotateRuntimeConstraints(chatMessageSendCmd, cli.RuntimeSchemaConstraints{
-		MutuallyExclusive: [][]string{{"conversation-id", "user", "open-dingtalk-id"}},
-		RequireOneOf:      [][]string{{"conversation-id", "user", "open-dingtalk-id"}},
+		MutuallyExclusive: [][]string{{"group", "user", "open-dingtalk-id"}},
+		RequireOneOf:      [][]string{{"group", "user", "open-dingtalk-id"}},
 	})
 	cli.AnnotateRuntimePositionals(chatMessageSendCmd, contract.RuntimeSchemaPositional{
 		Name:        "content",
@@ -4681,6 +4691,10 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageSendByBotCmd.Flags().String("open-dingtalk-ids", "", "用户 openDingtalkId 列表，逗号分隔（单聊时可替代 --users，可选）")
 	chatMessageSendByBotCmd.Flags().String("at-open-dingtalk-ids", "", "@指定成员的 openDingtalkId 列表，逗号分隔（仅群聊时生效，可选）")
 	chatMessageSendByBotCmd.Flags().Bool("at-all", false, "@所有人（可选），服务端接收字符串 true/false")
+	cli.AnnotateRuntimeConstraints(chatMessageSendByBotCmd, cli.RuntimeSchemaConstraints{
+		MutuallyExclusive: [][]string{{"group", "users"}},
+		RequireOneOf:      [][]string{{"group", "users"}},
+	})
 	cli.AnnotateRuntimeFlagFormat(chatMessageSendByBotCmd, "file-path", "file-path")
 
 	chatMessageRecallByBotCmd.Flags().String("robot-code", "", "机器人 Code (必填)")
@@ -4985,10 +4999,11 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				AgentSummary: "获取群聊或单聊会话的详细信息",
 				UseWhen:      []string{"已知群 ID 或用户标识并需要解析会话详情时"},
 				AvoidWhen:    []string{"按群名查找会话时使用 chat search"},
-				Examples:     []string{"dws chat conversation-info --conversation-id <openConversationId> --format json"},
+				Examples:     []string{"dws chat conversation-info --group <openConversationId> --format json"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "open-dingtalk-id", Property: "openDingTalkId"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "user", Property: "openDingTalkId"},
 			},
 		},
@@ -5004,6 +5019,10 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatConversationInfoCmd.Flags().String("userId", "", "--user 的别名")
 	_ = chatConversationInfoCmd.Flags().MarkHidden("userId")
 	chatConversationInfoCmd.Flags().String("open-dingtalk-id", "", "单聊对方 openDingTalkId（单聊时使用）")
+	cli.AnnotateRuntimeConstraints(chatConversationInfoCmd, cli.RuntimeSchemaConstraints{
+		MutuallyExclusive: [][]string{{"group", "user", "open-dingtalk-id"}},
+		RequireOneOf:      [][]string{{"group", "user", "open-dingtalk-id"}},
+	})
 
 	// ── file 子命令（会话文件上传，不暴露 spaceId）───────────────
 
@@ -5343,6 +5362,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 			Parameters: []contract.ParamDecl{
 				{Name: "category-ids", Property: "categoryIds", Required: boolPtr(true), InterfaceType: "array"},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 			},
 		},
@@ -5401,6 +5421,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 			Parameters: []contract.ParamDecl{
 				{Name: "category-ids", Property: "categoryIds", Required: boolPtr(true), InterfaceType: "array"},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 			},
 		},
@@ -5647,9 +5668,13 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				Examples:     []string{"dws chat message add-emoji --conversation-id <openConversationId> --message-id <openMessageId> --emoji \"赞\""},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "emoji", Property: "emojiName"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "message-id", Property: "openMsgId"},
+				{Name: "msg-id", Property: "openMsgId", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -5660,6 +5685,9 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageAddEmojiCmd.Flags().String("open-conversation-id", "", "--conversation-id 的别名")
 	chatMessageAddEmojiCmd.Flags().String("message-id", "", "消息 openMsgId (必填)")
 	chatMessageAddEmojiCmd.Flags().String("emoji", "", "emoji 表情名称 (必填)")
+	cli.AnnotateRuntimeConstraints(chatMessageAddEmojiCmd, cli.RuntimeSchemaConstraints{
+		RequireOneOf: [][]string{{"conversation-id", "group", "id", "chat"}},
+	})
 
 	chatMessageRemoveEmojiCmd := &cobra.Command{
 		Use:   "remove-emoji",
@@ -5709,9 +5737,13 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				Examples:     []string{"dws chat message remove-emoji --conversation-id <openConversationId> --message-id <openMessageId> --emoji \"赞\""},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "emoji", Property: "emojiName"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "message-id", Property: "openMsgId"},
+				{Name: "msg-id", Property: "openMsgId", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -5722,6 +5754,9 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageRemoveEmojiCmd.Flags().String("open-conversation-id", "", "--conversation-id 的别名")
 	chatMessageRemoveEmojiCmd.Flags().String("message-id", "", "消息 openMsgId (必填)")
 	chatMessageRemoveEmojiCmd.Flags().String("emoji", "", "emoji 表情名称 (必填)")
+	cli.AnnotateRuntimeConstraints(chatMessageRemoveEmojiCmd, cli.RuntimeSchemaConstraints{
+		RequireOneOf: [][]string{{"conversation-id", "group", "id", "chat"}},
+	})
 
 	chatMessageAddTextEmotionCmd := &cobra.Command{
 		Use:     "add-text-emotion",
@@ -5773,8 +5808,12 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				Examples:     []string{"dws chat message add-text-emotion --conversation-id <openConversationId> --message-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "message-id", Property: "openMsgId"},
+				{Name: "msg-id", Property: "openMsgId", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -5788,6 +5827,9 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageAddTextEmotionCmd.Flags().String("emotion-name", "", "表情名称 (必填)")
 	chatMessageAddTextEmotionCmd.Flags().String("text", "", "文字内容 (必填)")
 	chatMessageAddTextEmotionCmd.Flags().String("background-id", "", "背景 ID (必填)")
+	cli.AnnotateRuntimeConstraints(chatMessageAddTextEmotionCmd, cli.RuntimeSchemaConstraints{
+		RequireOneOf: [][]string{{"conversation-id", "group", "id", "chat"}},
+	})
 
 	chatMessageRemoveTextEmotionCmd := &cobra.Command{
 		Use:     "remove-text-emotion",
@@ -5839,8 +5881,12 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				Examples:     []string{"dws chat message remove-text-emotion --conversation-id <openConversationId> --message-id <openMessageId> --emotion-id <emotionId> --emotion-name \"赞\" --text \"nice\" --background-id im_bg_5"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "chat", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "id", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "message-id", Property: "openMsgId"},
+				{Name: "msg-id", Property: "openMsgId", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -5854,6 +5900,9 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageRemoveTextEmotionCmd.Flags().String("emotion-name", "", "表情名称 (必填)")
 	chatMessageRemoveTextEmotionCmd.Flags().String("text", "", "文字内容 (必填)")
 	chatMessageRemoveTextEmotionCmd.Flags().String("background-id", "", "背景 ID (必填)")
+	cli.AnnotateRuntimeConstraints(chatMessageRemoveTextEmotionCmd, cli.RuntimeSchemaConstraints{
+		RequireOneOf: [][]string{{"conversation-id", "group", "id", "chat"}},
+	})
 
 	chatMessageUpdateTextEmotionCmd := &cobra.Command{
 		Use:     "update-text-emotion",
@@ -5935,6 +5984,9 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	for _, name := range []string{"message-id", "old-emotion-id", "emotion-id", "emotion-name", "text", "background-id"} {
 		_ = chatMessageUpdateTextEmotionCmd.MarkFlagRequired(name)
 	}
+	cli.AnnotateRuntimeConstraints(chatMessageUpdateTextEmotionCmd, cli.RuntimeSchemaConstraints{
+		RequireOneOf: [][]string{{"conversation-id", "group", "id", "chat"}},
+	})
 
 	// ── 创建文字表情（获取 emotionId）──────────────────────
 
@@ -6066,13 +6118,15 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AgentSummary: "创建并向群聊或单聊发送互动卡片；群聊创建时可 @成员或 @所有人",
 				UseWhen:      []string{"需要创建卡片且已准备接收会话或用户时；群聊创建可同时指定 @成员或 @所有人"},
 				AvoidWhen:    []string{"只发送普通文本时使用 send 或 send-by-bot"},
-				Examples:     []string{"dws chat message send-card --conversation-id <openConversationId>"},
+				Examples:     []string{"dws chat message send-card --group <openConversationId>"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "at-all", Property: "atAll", Required: boolPtr(false), InterfaceType: "boolean"},
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array"},
 				{Name: "conversation-id", Property: "openConversationId"},
+				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId"},
+				{Name: "receiver", Property: "receiverOpenDingTalkId", Required: boolPtr(false)},
 			},
 		},
 	})
@@ -6082,6 +6136,10 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	_ = chatMessageSendCardCmd.Flags().MarkHidden("receiver")
 	chatMessageSendCardCmd.Flags().String("at-open-dingtalk-ids", "", "群聊创建卡片时 @ 的 openDingTalkId 列表，逗号分隔（仅与 --conversation-id 一起使用）")
 	chatMessageSendCardCmd.Flags().Bool("at-all", false, "群聊创建卡片时 @ 所有人（仅与 --conversation-id 一起使用）")
+	cli.AnnotateRuntimeConstraints(chatMessageSendCardCmd, cli.RuntimeSchemaConstraints{
+		MutuallyExclusive: [][]string{{"group", "receiver"}},
+		RequireOneOf:      [][]string{{"group", "receiver"}},
+	})
 
 	chatMessageUpdateCardCmd := &cobra.Command{
 		Use:   "update-card",
@@ -6424,6 +6482,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group transfer-owner --conversation-id <openConversationId> --new-owner <openDingTalkId>"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
 				{Name: "new-owner", Property: "newOwnerOpenDingTalkId"},
 			},
 		},
@@ -6481,7 +6540,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"需要直接添加已知成员时使用 chat group members add"},
 				Examples:     []string{"dws chat group invite-url --conversation-id <openConversationId> --expires-seconds 86400"},
 			},
-			Parameters: []contract.ParamDecl{},
+			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
+			},
 		},
 	})
 	chatGroupInviteUrlCmd.Flags().String("conversation-id", "", "群聊 openConversationId (必填)")
@@ -6591,7 +6652,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				},
 				Examples: []string{"dws chat group quit --conversation-id <openConversationId>"},
 			},
-			Parameters: []contract.ParamDecl{},
+			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
+			},
 		},
 	})
 	chatGroupQuitCmd.Flags().String("conversation-id", "", "群聊 openConversationId (必填)")
@@ -6642,7 +6705,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"没有真实可用 mediaId 时先完成媒体上传"},
 				Examples:     []string{"dws chat group update-icon --conversation-id <openConversationId> --icon-media-id @mediaId"},
 			},
-			Parameters: []contract.ParamDecl{},
+			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
+			},
 		},
 	})
 	chatGroupUpdateIconCmd.Flags().String("conversation-id", "", "群聊 openConversationId (必填)")
@@ -6716,7 +6781,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"全员禁言和成员禁言使用专门的 mute 命令"},
 				Examples:     []string{"dws chat group update-settings --conversation-id <openConversationId> --setting-key searchable --status 1"},
 			},
-			Parameters: []contract.ParamDecl{},
+			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
+			},
 		},
 	})
 	chatGroupUpdateSettingsCmd.Flags().String("conversation-id", "", "群聊 openConversationId (必填)")
@@ -7003,7 +7070,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group get-mute-config --conversation-id <openConversationId> --format json"},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
+				{Name: "group", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -7058,6 +7125,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group-mute --conversation-id <openConversationId>"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "off", Property: "mute", Required: boolPtr(false)},
 			},
 		},
@@ -7152,6 +7220,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group-mute-member --conversation-id <openConversationId> --users userId1,userId2 --mute-time 3600000"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "group", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "off", Property: "mute", Required: boolPtr(false)},
 				{Name: "users", Property: "openDingTalkIds"},
 			},
@@ -7231,6 +7300,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group set-admin --conversation-id <openConversationId> --users userId1,userId2"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "off", Property: "admin", Required: boolPtr(false)},
 				{Name: "users", Property: "openDingTalkIds"},
 			},
@@ -7344,7 +7414,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"查询某个成员已分配角色时使用 chat group-role query-user"},
 				Examples:     []string{"dws chat group-role list --conversation-id <openConversationId>"},
 			},
-			Parameters: []contract.ParamDecl{},
+			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
+			},
 		},
 	})
 	chatGroupRoleListCmd.Flags().String("conversation-id", "", "群聊 openConversationId (必填)")
@@ -7389,7 +7461,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"设置系统管理员角色时使用 chat group set-admin"},
 				Examples:     []string{"dws chat group-role add --conversation-id <openConversationId> --name \"值班负责人\""},
 			},
-			Parameters: []contract.ParamDecl{},
+			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
+			},
 		},
 	})
 	chatGroupRoleAddCmd.Flags().String("conversation-id", "", "群聊 openConversationId (必填)")
@@ -7438,6 +7512,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group-role update --conversation-id <openConversationId> --role-id <openRoleId> --name \"新名称\""},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
 				{Name: "role-id", Property: "openRoleId"},
 			},
 		},
@@ -7489,6 +7564,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group-role remove --conversation-id <openConversationId> --role-id <openRoleId>"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
 				{Name: "role-id", Property: "openRoleId"},
 			},
 		},
@@ -7551,6 +7627,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group-role set-user --conversation-id <openConversationId> --user <userId> --role-ids roleId1,roleId2"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
 				{Name: "role-ids", Property: "openRoleIds"},
 				{Name: "user", Property: "openDingTalkId"},
 			},
@@ -7615,6 +7692,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group-role remove-user --conversation-id <openConversationId> --user <userId> --role-ids roleId1,roleId2"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
 				{Name: "role-ids", Property: "openRoleIds"},
 				{Name: "user", Property: "openDingTalkId"},
 			},
@@ -7677,6 +7755,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				Examples:     []string{"dws chat group-role query-user --conversation-id <openConversationId> --user <userId>"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
 				{Name: "user", Property: "openDingTalkId"},
 			},
 		},
@@ -7927,7 +8006,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				},
 				Examples: []string{"dws chat group dismiss --conversation-id <openConversationId>"},
 			},
-			Parameters: []contract.ParamDecl{},
+			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
+			},
 		},
 	})
 	chatGroupDismissCmd.Flags().String("conversation-id", "", "群聊 openConversationId (必填)")
@@ -7984,7 +8065,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				AvoidWhen:    []string{"普通消息查询或群设置的其他开关不要使用"},
 				Examples:     []string{"dws chat group set-history --conversation-id <openConversationId> --option RECENT_100"},
 			},
-			Parameters: []contract.ParamDecl{},
+			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId"},
+			},
 		},
 	})
 	chatGroupSetHistoryCmd.Flags().String("conversation-id", "", "群聊 openConversationId (必填)")
@@ -9321,6 +9404,7 @@ status 可选值:
 				Examples:     []string{"dws chat group update-alias --conversation-id <openConversationId> --alias-title \"项目A群\""},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "alias-title", Property: "aliasTitle", Required: boolPtr(true)},
 			},
 		},
@@ -9629,6 +9713,7 @@ status 可选值:
 				Examples:     []string{"dws chat group notice create --conversation-id <openConversationId> --content \"今晚维护\""},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "content", Property: "content", Required: boolPtr(true)},
 				{Name: "run-at", Property: "runAtText", Required: boolPtr(false)},
 				{Name: "send-ding", Property: "sendDing", Required: boolPtr(false)},
@@ -9696,6 +9781,7 @@ status 可选值:
 				Examples:     []string{"dws chat group notice edit --conversation-id <openConversationId> --notice-id <dataId> --content \"更新后的公告\""},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "content", Property: "content", Required: boolPtr(true)},
 				{Name: "notice-id", Property: "dataId", Required: boolPtr(true)},
 				{Name: "send-ding", Property: "sendDing", Required: boolPtr(false)},
@@ -9750,6 +9836,7 @@ status 可选值:
 				Examples:     []string{"dws chat group notice get --conversation-id <openConversationId> --notice-id <dataId>"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "notice-id", Property: "dataId", Required: boolPtr(true)},
 			},
 		},
@@ -9814,6 +9901,7 @@ status 可选值:
 				Examples:     []string{"dws chat group notice list --conversation-id <openConversationId> --limit 20"},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "conversation-id", Property: "openConversationId", Required: boolPtr(true)},
 				{Name: "cursor", Property: "cursor", Required: boolPtr(false)},
 				{Name: "limit", Property: "limit", Required: boolPtr(false)},
 				{Name: "scheduled", Property: "scheduled", Required: boolPtr(false)},
