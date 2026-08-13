@@ -471,6 +471,17 @@ func chatMessageListAllArgs(cmd *cobra.Command) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	startMs, err := parseISOTimeToMillis("start", startRaw)
+	if err != nil {
+		return nil, err
+	}
+	endMs, err := parseISOTimeToMillis("end", endRaw)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateTimeRange(startMs, endMs); err != nil {
+		return nil, err
+	}
 	cursor, _ := cmd.Flags().GetString("cursor")
 	return map[string]any{
 		"startTime": startRaw,
@@ -631,7 +642,7 @@ func defaultChatMessageTimeRange(cmd *cobra.Command, lookback time.Duration) (st
 }
 
 func formatChatMessageListAllTime(ms int64) string {
-	return time.UnixMilli(ms).Format("2006-01-02 15:04:05")
+	return time.UnixMilli(ms).In(shanghaiLocation()).Format("2006-01-02 15:04:05")
 }
 
 func defaultChatMessageListTime() string {

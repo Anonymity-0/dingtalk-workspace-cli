@@ -177,6 +177,7 @@ func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T)
 		{"message", "list-all", "--start=not-a-time", "--end=2026-01-02T00:00:00Z"},
 		{"message", "list-all", "--start=2026-01-01 00:00:00", "--end=bad"},
 		{"message", "list-all", "--start=2026-01-02 00:00:00", "--end=2026-01-01 00:00:00"},
+		{"message", "list-all", "--start=2027-01-01 00:00:00"},
 		{"message", "list-by-sender", "--sender-user-id=u1", "--start=bad"},
 		{"message", "list-by-sender", "--sender-user-id=u1", "--start=2026-01-01T00:00:00Z", "--end=bad"},
 		{"message", "list-by-sender", "--sender-user-id=u1", "--start=2026-01-02T00:00:00Z", "--end=2026-01-01T00:00:00Z"},

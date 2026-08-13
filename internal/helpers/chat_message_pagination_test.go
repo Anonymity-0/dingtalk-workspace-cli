@@ -287,6 +287,40 @@ func TestChatMessagePaginationDefaultsStartFromExplicitEnd(t *testing.T) {
 	}
 }
 
+func TestChatMessageListAllDefaultStartFromTimezoneLessEndUsesShanghai(t *testing.T) {
+	previousLocal := time.Local
+	t.Cleanup(func() { time.Local = previousLocal })
+
+	for _, loc := range []*time.Location{time.UTC, time.FixedZone("EST", -5*3600)} {
+		t.Run(loc.String(), func(t *testing.T) {
+			time.Local = loc
+			caller := &chatMessagePaginationCaller{}
+			_, err := executeChatMessagePaginationCommand(t, caller, "message", "list-all", "--end", "2026-03-01 00:00:00")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("calls = %#v, want one call", caller.calls)
+			}
+			got := caller.calls[0]
+			assertStringArg(t, got.args["endTime"], "2026-03-01 00:00:00")
+			assertStringArg(t, got.args["startTime"], "2026-02-28 00:00:00")
+
+			startMs, err := parseISOTimeToMillis("start", got.args["startTime"].(string))
+			if err != nil {
+				t.Fatal(err)
+			}
+			endMs, err := parseISOTimeToMillis("end", got.args["endTime"].(string))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if gotWindow := time.Duration(endMs-startMs) * time.Millisecond; gotWindow != 24*time.Hour {
+				t.Fatalf("window = %v, want 24h", gotWindow)
+			}
+		})
+	}
+}
+
 func TestChatMessagePaginationDefaultsEndFromNowWhenOnlyStartProvided(t *testing.T) {
 	startRaw := "2026-01-01T00:00:00+08:00"
 	startMs, err := parseISOTimeToMillis("start", startRaw)
@@ -354,24 +388,26 @@ func TestChatMessagePaginationDefaultsEndFromNowWhenOnlyStartProvided(t *testing
 	}
 }
 
-func TestChatMessageListAllPassesExplicitTimeBoundsThrough(t *testing.T) {
+func TestChatMessageListAllRejectsInvalidTimeBounds(t *testing.T) {
 	tests := []struct {
-		name      string
-		args      []string
-		wantStart string
-		wantEnd   string
+		name    string
+		args    []string
+		wantErr string
 	}{
 		{
-			name:      "invalid start",
-			args:      []string{"message", "list-all", "--start", "not-a-time", "--end", "2020-01-01T00:00:00+08:00"},
-			wantStart: "not-a-time",
-			wantEnd:   "2020-01-01T00:00:00+08:00",
+			name:    "invalid start",
+			args:    []string{"message", "list-all", "--start", "not-a-time", "--end", "2020-01-01T00:00:00+08:00"},
+			wantErr: "cannot parse time for --start",
 		},
 		{
-			name:      "end before start",
-			args:      []string{"message", "list-all", "--start", "2021-01-01T00:00:00+08:00", "--end", "2020-01-01T00:00:00+08:00"},
-			wantStart: "2021-01-01T00:00:00+08:00",
-			wantEnd:   "2020-01-01T00:00:00+08:00",
+			name:    "end before start",
+			args:    []string{"message", "list-all", "--start", "2021-01-01T00:00:00+08:00", "--end", "2020-01-01T00:00:00+08:00"},
+			wantErr: "--end must be after --start",
+		},
+		{
+			name:    "default end before future start",
+			args:    []string{"message", "list-all", "--start", "2027-01-01 00:00:00"},
+			wantErr: "--end must be after --start",
 		},
 	}
 
@@ -379,18 +415,15 @@ func TestChatMessageListAllPassesExplicitTimeBoundsThrough(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			caller := &chatMessagePaginationCaller{}
 			_, err := executeChatMessagePaginationCommand(t, caller, tt.args...)
-			if err != nil {
-				t.Fatal(err)
+			if err == nil {
+				t.Fatal("expected validation error, got nil")
 			}
-			if len(caller.calls) != 1 {
-				t.Fatalf("calls = %#v, want one MCP call", caller.calls)
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %q, want contains %q", err.Error(), tt.wantErr)
 			}
-			got := caller.calls[0]
-			if got.tool != "search_messages_by_time_range" {
-				t.Fatalf("tool = %q, want search_messages_by_time_range", got.tool)
+			if len(caller.calls) != 0 {
+				t.Fatalf("calls = %#v, want no MCP call", caller.calls)
 			}
-			assertStringArg(t, got.args["startTime"], tt.wantStart)
-			assertStringArg(t, got.args["endTime"], tt.wantEnd)
 		})
 	}
 }
@@ -437,11 +470,11 @@ func parseChatMessageListAllTimeArg(t *testing.T, value any) time.Time {
 		}
 		return time.UnixMilli(parsedMs)
 	}
-	parsed, err := time.ParseInLocation("2006-01-02 15:04:05", raw, time.Local)
+	parsedMs, err := parseISOTimeToMillis("time", raw)
 	if err != nil {
 		t.Fatalf("time arg = %q, parse err = %v", raw, err)
 	}
-	return parsed
+	return time.UnixMilli(parsedMs)
 }
 
 func assertChatMessageListAllTimeFormat(t *testing.T, value any) {
@@ -453,7 +486,7 @@ func assertChatMessageListAllTimeFormat(t *testing.T, value any) {
 	if strings.Contains(raw, "T") {
 		t.Fatalf("time arg = %q, want yyyy-MM-dd HH:mm:ss without RFC3339 separator", raw)
 	}
-	if _, err := time.ParseInLocation("2006-01-02 15:04:05", raw, time.Local); err != nil {
+	if _, err := parseISOTimeToMillis("time", raw); err != nil {
 		t.Fatalf("time arg = %q, parse err = %v", raw, err)
 	}
 }
