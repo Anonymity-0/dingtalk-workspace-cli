@@ -102,8 +102,8 @@ func TestCrossPlatformCoverageChatMessageHelpDocumentsOptionalTimeDefaults(t *te
 			name: "list",
 			args: []string{"message", "list", "--help"},
 			contains: []string{
-				"--time 可选，不传时默认当前时间并向旧消息拉取",
-				"默认当前时间",
+				"--time 可选，不传时默认上海时间当前时间并向旧消息拉取",
+				"默认上海时间当前时间",
 				"未传 --time 时默认 older",
 			},
 			absent: []string{"开始时间，格式: yyyy-MM-dd HH:mm:ss (必填)"},

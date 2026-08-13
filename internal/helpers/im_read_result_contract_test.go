@@ -213,11 +213,12 @@ func TestCrossPlatformCoverageChatMessageListProjectsStableFieldsAndPreservesLeg
 func TestCrossPlatformCoverageChatMessageListDefaultsTimeAndOlderDirection(t *testing.T) {
 	payload := `{"result":{"messages":[],"hasMore":false}}`
 	caller := &imReadResultCaller{responses: map[string]string{"list_conversation_message_v2": payload}}
+	loc := shanghaiLocation()
 
-	before := time.Now()
+	before := time.Now().In(loc)
 	_, err := executeIMReadCommand(t, caller, []string{"dws", "chat"}, newChatCommand,
 		"message", "list", "--group", "cid-1", "--limit", "50")
-	after := time.Now()
+	after := time.Now().In(loc)
 	if err != nil {
 		t.Fatalf("chat message list returned error: %v", err)
 	}
@@ -231,7 +232,7 @@ func TestCrossPlatformCoverageChatMessageListDefaultsTimeAndOlderDirection(t *te
 	if !ok || strings.TrimSpace(timeRaw) == "" {
 		t.Fatalf("time arg = %#v, want generated current time", caller.args["time"])
 	}
-	gotTime, err := time.ParseInLocation("2006-01-02 15:04:05", timeRaw, time.Local)
+	gotTime, err := time.ParseInLocation("2006-01-02 15:04:05", timeRaw, loc)
 	if err != nil {
 		t.Fatalf("parse generated time %q: %v", timeRaw, err)
 	}
