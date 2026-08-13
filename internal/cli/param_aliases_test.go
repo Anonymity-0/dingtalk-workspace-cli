@@ -457,6 +457,19 @@ func TestReduceLeafParamAliasesExcludesProtectFuzzyButDoNotOverrideAnotherConcep
 	}
 }
 
+func TestReduceLeafParamAliasesExcludesProtectUnclaimedRealFlag(t *testing.T) {
+	concepts := []Concept{
+		{ID: "single_id", Members: []string{"id", "item-id"}, Excludes: []string{"item-ids"}},
+	}
+	entry, problems := reduceLeafParamAliases("demo cmd", realMap(realFlag{name: "id"}, realFlag{name: "item-ids"}), concepts, CommandOverride{})
+	if len(problems) != 0 {
+		t.Fatalf("unexpected problems: %v", problems)
+	}
+	if entry == nil || !containsParamAlias(entry.Blocked, "item-ids") {
+		t.Fatalf("unclaimed real exclude was not blocked: %#v", entry)
+	}
+}
+
 func TestReduceLeafParamAliasesRejectsProtectionOrScopedAliasOnRealFlag(t *testing.T) {
 	real := realMap(realFlag{name: "user-id"}, realFlag{name: "user"})
 	for name, override := range map[string]CommandOverride{
@@ -469,6 +482,46 @@ func TestReduceLeafParamAliasesRejectsProtectionOrScopedAliasOnRealFlag(t *testi
 				t.Fatal("real native flag was allowed to be reclassified")
 			}
 		})
+	}
+}
+
+func TestGeneratedParamAliasesBlockPluralListSpellingsOnSingleIDCommands(t *testing.T) {
+	entries := make(map[string]ParamAliasEntry, len(generatedParamAliases))
+	for _, entry := range generatedParamAliases {
+		entries[entry.CLIPath] = entry
+	}
+	assertBlocked := func(path string, names ...string) {
+		t.Helper()
+		entry, ok := entries[path]
+		if !ok {
+			t.Fatalf("missing generated alias entry for %q", path)
+		}
+		for _, name := range names {
+			if !entry.IsBlocked(cmdutil.Morph(name)) {
+				t.Fatalf("%s: %q not blocked; entry = %#v", path, name, entry)
+			}
+		}
+	}
+
+	for _, path := range []string{
+		"chat message add-emoji",
+		"chat message remove-emoji",
+		"chat message add-text-emotion",
+		"chat message remove-text-emotion",
+	} {
+		assertBlocked(path, "msg-ids", "message-ids")
+	}
+	for _, path := range []string{
+		"chat message send",
+		"chat conversation-info",
+		"chat category add-conv",
+		"chat category remove-conv",
+		"chat message list",
+		"chat message list-mentions",
+		"chat message recall-by-bot",
+		"chat message search",
+	} {
+		assertBlocked(path, "conversation-ids")
 	}
 }
 
