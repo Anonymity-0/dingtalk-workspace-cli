@@ -503,6 +503,9 @@ func TestUpgradeMonoCleansPreStateOfficialAndPreservesCustom(t *testing.T) {
 // mono-only package path).
 func TestCrossPlatformCoverageUpgradeSkillLocationsMonoFallbackAfterCopyFailure(t *testing.T) {
 	home := withFakeHome(t)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	agentsBase := filepath.Join(home, ".agents", "skills")
 	if err := os.MkdirAll(filepath.Join(agentsBase, "dws"), 0o755); err != nil {
 		t.Fatal(err)
@@ -598,6 +601,9 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMonoReadDirErrorFailsHome(t *
 // installing multi next to the stale skills.
 func TestCrossPlatformCoverageUpgradeSkillLocationsMultiFallbackCleanupFailure(t *testing.T) {
 	home := withFakeHome(t)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	agentsBase := filepath.Join(home, ".agents", "skills")
 	staleDir := filepath.Join(agentsBase, "dingtalk-stale")
 	if err := os.MkdirAll(staleDir, 0o755); err != nil {
@@ -639,7 +645,7 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiFallbackCleanupFailure(t
 }
 
 // TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges pins the fail-safe
-// contract of the backup helper: non-dir paths are no-ops, a colliding backup
+// contract of the backup helper: all lexical paths are preserved, a colliding backup
 // target gets a numbered stamp, and any failure (mkdir / rename / unresolvable
 // collision) leaves the original directory untouched with an error.
 func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
@@ -660,16 +666,16 @@ func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
 		t.Fatalf("stat failure = (%q, %v), want wrapped error", got, err)
 	}
 
-	// Regular file: no-op, no backup.
+	// Regular file: preserve it instead of allowing a later rename to overwrite it.
 	filePath := filepath.Join(home, "not-a-dir")
 	if err := os.WriteFile(filePath, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := backupAndRemoveSkillDir(home, filePath); got != "" || err != nil {
-		t.Fatalf("regular file = (%q, %v), want no-op", got, err)
+	if got, err := backupAndRemoveSkillDir(home, filePath); got == "" || err != nil {
+		t.Fatalf("regular file = (%q, %v), want backup", got, err)
 	}
-	if _, err := os.Stat(filePath); err != nil {
-		t.Fatalf("regular file must survive: %v", err)
+	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
+		t.Fatalf("regular file must move into backup: %v", err)
 	}
 
 	// A skill directory outside home falls back to its basename instead of

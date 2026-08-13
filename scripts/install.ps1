@@ -52,26 +52,102 @@ $LegacyOfficialMultiSkills = @(
     "dingtalk-todo", "dingtalk-wiki", "dws-shared"
 )
 
-# Agent skill base directories (same order as build/npm/install.js AGENT_DIRS).
-$AgentDirs = @(
-    ".agents\skills",
-    ".claude\skills",
-    ".cursor\skills",
-    ".qoder\skills",
-    ".qoderwork\skills",
-    ".gemini\skills",
-    ".codex\skills",
-    ".zcode\skills",
-    ".github\skills",
-    ".windsurf\skills",
-    ".augment\skills",
-    ".cline\skills",
-    ".amp\skills",
-    ".kiro\skills",
-    ".trae\skills",
-    ".openclaw\skills",
-    ".hermes\skills"
+# Agent registry synchronized with vercel-labs/skills agents.ts (c6f69c6).
+# Universal agents read the canonical store directly; their separate historical
+# global directories are cleanup-only. Non-universal agents get junctions to
+# canonical (or complete copies when junction creation is unavailable).
+$AgentRegistry = @(
+    [pscustomobject]@{ Id = "aider-desk"; Universal = $false; Dir = ".aider-desk\skills" },
+    [pscustomobject]@{ Id = "amp"; Universal = $true; Dir = ".config\agents\skills" },
+    [pscustomobject]@{ Id = "antigravity"; Universal = $true; Dir = ".gemini\antigravity\skills" },
+    [pscustomobject]@{ Id = "antigravity-cli"; Universal = $true; Dir = ".gemini\antigravity-cli\skills" },
+    [pscustomobject]@{ Id = "astrbot"; Universal = $false; Dir = ".astrbot\data\skills" },
+    [pscustomobject]@{ Id = "autohand-code"; Universal = $false; Dir = ".autohand\skills" },
+    [pscustomobject]@{ Id = "augment"; Universal = $false; Dir = ".augment\skills" },
+    [pscustomobject]@{ Id = "bob"; Universal = $false; Dir = ".bob\skills" },
+    [pscustomobject]@{ Id = "claude-code"; Universal = $false; Dir = ".claude\skills" },
+    [pscustomobject]@{ Id = "openclaw"; Universal = $false; Dir = ".openclaw\skills" },
+    [pscustomobject]@{ Id = "cline"; Universal = $true; Dir = ".agents\skills" },
+    [pscustomobject]@{ Id = "codearts-agent"; Universal = $false; Dir = ".codeartsdoer\skills" },
+    [pscustomobject]@{ Id = "codebuddy"; Universal = $false; Dir = ".codebuddy\skills" },
+    [pscustomobject]@{ Id = "codemaker"; Universal = $false; Dir = ".codemaker\skills" },
+    [pscustomobject]@{ Id = "codestudio"; Universal = $false; Dir = ".codestudio\skills" },
+    [pscustomobject]@{ Id = "codex"; Universal = $true; Dir = ".codex\skills" },
+    [pscustomobject]@{ Id = "command-code"; Universal = $false; Dir = ".commandcode\skills" },
+    [pscustomobject]@{ Id = "continue"; Universal = $false; Dir = ".continue\skills" },
+    [pscustomobject]@{ Id = "cortex"; Universal = $false; Dir = ".snowflake\cortex\skills" },
+    [pscustomobject]@{ Id = "crush"; Universal = $false; Dir = ".config\crush\skills" },
+    [pscustomobject]@{ Id = "cursor"; Universal = $true; Dir = ".cursor\skills" },
+    [pscustomobject]@{ Id = "deepagents"; Universal = $true; Dir = ".deepagents\agent\skills" },
+    [pscustomobject]@{ Id = "devin"; Universal = $false; Dir = ".config\devin\skills" },
+    [pscustomobject]@{ Id = "dexto"; Universal = $true; Dir = ".agents\skills" },
+    [pscustomobject]@{ Id = "droid"; Universal = $false; Dir = ".factory\skills" },
+    [pscustomobject]@{ Id = "eve"; Universal = $false; Dir = $null },
+    [pscustomobject]@{ Id = "firebender"; Universal = $true; Dir = ".firebender\skills" },
+    [pscustomobject]@{ Id = "forgecode"; Universal = $false; Dir = ".forge\skills" },
+    [pscustomobject]@{ Id = "gemini-cli"; Universal = $true; Dir = ".gemini\skills" },
+    [pscustomobject]@{ Id = "github-copilot"; Universal = $true; Dir = ".copilot\skills" },
+    [pscustomobject]@{ Id = "goose"; Universal = $false; Dir = ".config\goose\skills" },
+    [pscustomobject]@{ Id = "grok"; Universal = $false; Dir = ".grok\skills" },
+    [pscustomobject]@{ Id = "hermes-agent"; Universal = $false; Dir = ".hermes\skills" },
+    [pscustomobject]@{ Id = "inference-sh"; Universal = $false; Dir = ".inferencesh\skills" },
+    [pscustomobject]@{ Id = "jazz"; Universal = $false; Dir = ".jazz\skills" },
+    [pscustomobject]@{ Id = "junie"; Universal = $false; Dir = ".junie\skills" },
+    [pscustomobject]@{ Id = "iflow-cli"; Universal = $false; Dir = ".iflow\skills" },
+    [pscustomobject]@{ Id = "kilo"; Universal = $false; Dir = ".kilocode\skills" },
+    [pscustomobject]@{ Id = "kimchi"; Universal = $false; Dir = ".config\kimchi\harness\skills" },
+    [pscustomobject]@{ Id = "kimi-code-cli"; Universal = $true; Dir = ".agents\skills" },
+    [pscustomobject]@{ Id = "kiro-cli"; Universal = $false; Dir = ".kiro\skills" },
+    [pscustomobject]@{ Id = "kode"; Universal = $false; Dir = ".kode\skills" },
+    [pscustomobject]@{ Id = "lingma"; Universal = $false; Dir = ".lingma\skills" },
+    [pscustomobject]@{ Id = "loaf"; Universal = $true; Dir = ".agents\skills" },
+    [pscustomobject]@{ Id = "mcpjam"; Universal = $false; Dir = ".mcpjam\skills" },
+    [pscustomobject]@{ Id = "minimax-code"; Universal = $false; Dir = ".minimax\skills" },
+    [pscustomobject]@{ Id = "mistral-vibe"; Universal = $false; Dir = ".vibe\skills" },
+    [pscustomobject]@{ Id = "moxby"; Universal = $false; Dir = ".moxby\skills" },
+    [pscustomobject]@{ Id = "mux"; Universal = $false; Dir = ".mux\skills" },
+    [pscustomobject]@{ Id = "opencode"; Universal = $true; Dir = ".config\opencode\skills" },
+    [pscustomobject]@{ Id = "openhands"; Universal = $false; Dir = ".openhands\skills" },
+    [pscustomobject]@{ Id = "ona"; Universal = $false; Dir = ".ona\skills" },
+    [pscustomobject]@{ Id = "pi"; Universal = $false; Dir = ".pi\agent\skills" },
+    [pscustomobject]@{ Id = "qoder"; Universal = $false; Dir = ".qoder\skills" },
+    [pscustomobject]@{ Id = "qoder-cn"; Universal = $false; Dir = ".qoder-cn\skills" },
+    [pscustomobject]@{ Id = "qwen-code"; Universal = $false; Dir = ".qwen\skills" },
+    [pscustomobject]@{ Id = "replit"; Universal = $true; Dir = ".config\agents\skills" },
+    [pscustomobject]@{ Id = "reasonix"; Universal = $false; Dir = ".reasonix\skills" },
+    [pscustomobject]@{ Id = "rovodev"; Universal = $false; Dir = ".rovodev\skills" },
+    [pscustomobject]@{ Id = "roo"; Universal = $false; Dir = ".roo\skills" },
+    [pscustomobject]@{ Id = "tabnine-cli"; Universal = $false; Dir = ".tabnine\agent\skills" },
+    [pscustomobject]@{ Id = "terramind"; Universal = $false; Dir = ".terramind\skills" },
+    [pscustomobject]@{ Id = "tinycloud"; Universal = $false; Dir = ".tinycloud\skills" },
+    [pscustomobject]@{ Id = "trae"; Universal = $false; Dir = ".trae\skills" },
+    [pscustomobject]@{ Id = "trae-cn"; Universal = $false; Dir = ".trae-cn\skills" },
+    [pscustomobject]@{ Id = "warp"; Universal = $true; Dir = ".agents\skills" },
+    [pscustomobject]@{ Id = "windsurf"; Universal = $false; Dir = ".codeium\windsurf\skills" },
+    [pscustomobject]@{ Id = "zed"; Universal = $true; Dir = ".agents\skills" },
+    [pscustomobject]@{ Id = "zcode"; Universal = $false; Dir = ".zcode\skills" },
+    [pscustomobject]@{ Id = "zencoder"; Universal = $false; Dir = ".zencoder\skills" },
+    [pscustomobject]@{ Id = "zenflow"; Universal = $false; Dir = ".zencoder\skills" },
+    [pscustomobject]@{ Id = "neovate"; Universal = $false; Dir = ".neovate\skills" },
+    [pscustomobject]@{ Id = "pochi"; Universal = $false; Dir = ".pochi\skills" },
+    [pscustomobject]@{ Id = "promptscript"; Universal = $true; Dir = $null },
+    [pscustomobject]@{ Id = "adal"; Universal = $false; Dir = ".adal\skills" },
+    [pscustomobject]@{ Id = "universal"; Universal = $true; Dir = ".config\agents\skills" }
 )
+
+# DWS compatibility targets that are not part of the upstream registry.
+# Qoderwork remains a non-universal install target; the other entries are
+# migration cleanup targets only and intentionally do not count as agents.
+$LegacyAgentCleanupTargets = @(
+    [pscustomobject]@{ Id = "dws-qoderwork"; Universal = $false; Dir = ".qoderwork\skills" },
+    [pscustomobject]@{ Id = "dws-legacy-github"; Universal = $true; Dir = ".github\skills" },
+    [pscustomobject]@{ Id = "dws-legacy-amp"; Universal = $true; Dir = ".amp\skills" },
+    [pscustomobject]@{ Id = "dws-legacy-cline"; Universal = $true; Dir = ".cline\skills" },
+    [pscustomobject]@{ Id = "dws-legacy-windsurf"; Universal = $true; Dir = ".windsurf\skills" }
+)
+
+# Kept as a compatibility surface for policy tests and downstream packagers.
+$AgentDirs = @($AgentRegistry | Where-Object { $null -ne $_.Dir } | ForEach-Object { $_.Dir })
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -400,7 +476,7 @@ function Backup-SkillDir {
         [ref]$BackupPath
     )
     if ($null -ne $BackupPath) { $BackupPath.Value = "" }
-    if (!(Test-Path $Dir -PathType Container)) { return $true }
+    if (!(Test-SkillPathLexically -Path $Dir)) { return $true }
     $backupRoot = Join-Path $HOME ".dws\skill-backups"
     $stamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss")
     $name = Split-Path $Dir -Leaf
@@ -434,7 +510,7 @@ function Restore-MultiSkillSet {
     $ok = $true
     for ($i = $Published.Count - 1; $i -ge 0; $i--) {
         try {
-            if (Test-Path $Published[$i]) {
+            if (Test-SkillPathLexically -Path $Published[$i]) {
                 Remove-Item -LiteralPath $Published[$i] -Recurse -Force -ErrorAction Stop
             }
         } catch {
@@ -445,7 +521,7 @@ function Restore-MultiSkillSet {
     for ($i = $Backups.Count - 1; $i -ge 0; $i--) {
         $item = $Backups[$i]
         try {
-            if (Test-Path $item.Original) {
+            if (Test-SkillPathLexically -Path $item.Original) {
                 throw "恢复目标仍存在"
             }
             New-Item -ItemType Directory -Path (Split-Path $item.Original -Parent) -Force -ErrorAction Stop | Out-Null
@@ -458,9 +534,52 @@ function Restore-MultiSkillSet {
     return $ok
 }
 
-function Test-UniversalAgentDir {
-    param([string]$AgentDir)
-    return @(".cursor\skills", ".gemini\skills", ".codex\skills", ".github\skills", ".cline\skills", ".amp\skills") -contains $AgentDir
+function Test-SkillPathLexically {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    try {
+        Get-Item -LiteralPath $Path -Force -ErrorAction Stop | Out-Null
+        return $true
+    } catch {
+        $parent = Split-Path $Path -Parent
+        $leaf = Split-Path $Path -Leaf
+        if ([string]::IsNullOrWhiteSpace($parent) -or !(Test-Path $parent -PathType Container)) { return $false }
+        return $null -ne (Get-ChildItem -LiteralPath $parent -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -eq $leaf } | Select-Object -First 1)
+    }
+}
+
+function Resolve-AgentSkillBase {
+    param([string]$Root, $Agent)
+    if ($null -eq $Agent.Dir) { return $null }
+    switch ($Agent.Id) {
+        "autohand-code" { if ($env:AUTOHAND_HOME) { return (Join-Path $env:AUTOHAND_HOME "skills") } }
+        "claude-code" { if ($env:CLAUDE_CONFIG_DIR) { return (Join-Path $env:CLAUDE_CONFIG_DIR "skills") } }
+        "codex" { if ($env:CODEX_HOME) { return (Join-Path $env:CODEX_HOME "skills") } }
+        "grok" { if ($env:GROK_HOME) { return (Join-Path $env:GROK_HOME "skills") } }
+        "hermes-agent" { if ($env:HERMES_HOME) { return (Join-Path $env:HERMES_HOME "skills") } }
+        "mistral-vibe" { if ($env:VIBE_HOME) { return (Join-Path $env:VIBE_HOME "skills") } }
+        "openclaw" {
+            foreach ($name in @(".openclaw", ".clawdbot", ".moltbot")) {
+                $candidate = Join-Path $Root $name
+                if (Test-Path $candidate -PathType Container) { return (Join-Path $candidate "skills") }
+            }
+        }
+        { $_ -in @("amp", "replit", "universal") } {
+            $configHome = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $Root ".config" }
+            return (Join-Path $configHome "agents\skills")
+        }
+        { $_ -in @("crush", "devin", "goose", "opencode") } {
+            $configHome = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $Root ".config" }
+            $child = switch ($Agent.Id) { "crush" { "crush\skills" }; "devin" { "devin\skills" }; "goose" { "goose\skills" }; default { "opencode\skills" } }
+            return (Join-Path $configHome $child)
+        }
+        "kimchi" {
+            $configHome = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $Root ".config" }
+            return (Join-Path $configHome "kimchi\harness\skills")
+        }
+    }
+    return (Join-Path $Root $Agent.Dir)
 }
 
 function Test-SamePhysicalSkillRoot {
@@ -474,7 +593,7 @@ function Move-AgentSkillRootToBackup {
 
     $victims = [System.Collections.Generic.List[string]]::new()
     $victims.Add((Join-Path $baseDir $SkillName))
-    foreach ($existing in Get-ChildItem -Path $baseDir -Directory -ErrorAction SilentlyContinue) {
+    foreach ($existing in Get-ChildItem -Path $baseDir -Force -ErrorAction SilentlyContinue) {
         if (Test-ManagedMultiSkillDir -Dir $existing.FullName) {
             $victims.Add($existing.FullName)
         }
@@ -520,12 +639,13 @@ function Publish-CanonicalSkillLinks {
         $publishNames = @()
         foreach ($name in $names) {
             if (Test-SamePhysicalSkillRoot -Left (Join-Path $BaseDir $name) -Right (Join-Path $canonical $name)) { continue }
-            New-Item -ItemType Junction -Path (Join-Path $stageRoot $name) -Target (Join-Path $canonical $name) -ErrorAction Stop | Out-Null
+            $absoluteTarget = [System.IO.Path]::GetFullPath((Join-Path $canonical $name))
+            New-Item -ItemType Junction -Path (Join-Path $stageRoot $name) -Target $absoluteTarget -ErrorAction Stop | Out-Null
             $publishNames += $name
         }
         $victims = [System.Collections.Generic.List[string]]::new()
         $victims.Add((Join-Path $BaseDir $SkillName))
-        foreach ($existing in Get-ChildItem -Path $BaseDir -Directory -Force -ErrorAction SilentlyContinue) {
+        foreach ($existing in Get-ChildItem -Path $BaseDir -Force -ErrorAction SilentlyContinue) {
             if ($existing.FullName -eq $stageRoot) { continue }
             if (Test-ManagedMultiSkillDir -Dir $existing.FullName) { $victims.Add($existing.FullName) }
         }
@@ -879,22 +999,27 @@ function Install-SkillsToHomes {
     $canonical = Join-Path $Root ".agents\skills"
     if (Install-MonoToBase -SkillSrc $SkillSrc -BaseDir $canonical -Label "~\.agents\skills\$SkillName") { $installed++ } else { $failed++ }
     if ($installed -eq 0) { return $false }
-    for ($i = 1; $i -lt $AgentDirs.Count; $i++) {
-        $agentDir = $AgentDirs[$i]
-        $baseDir = Join-Path $Root $agentDir
+    $seenBases = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($agent in @($AgentRegistry) + @($LegacyAgentCleanupTargets)) {
+        $baseDir = Resolve-AgentSkillBase -Root $Root -Agent $agent
+        if ([string]::IsNullOrWhiteSpace($baseDir)) { continue }
+        $baseKey = [System.IO.Path]::GetFullPath($baseDir).TrimEnd([char[]]@('\', '/'))
+        if (!$seenBases.Add($baseKey)) { continue }
         $parentGate = Split-Path $baseDir -Parent
         if (!(Test-Path $parentGate)) { continue }
         if (Test-SamePhysicalSkillRoot -Left $baseDir -Right $canonical) { continue }
         $attempted++
-        if (Test-UniversalAgentDir -AgentDir $agentDir) {
+        if ($agent.Universal) {
             if (!(Move-AgentSkillRootToBackup -Root $Root -BaseDir $baseDir)) { $failed++ }
             continue
         }
         if (Publish-CanonicalSkillLinks -Root $Root -BaseDir $baseDir -Mode "mono") {
             $installed++
         } else {
-            Write-Say "⚠️  $baseDir 无法创建 Skill 链接，回退为直接复制"
-            if (Install-MonoToBase -SkillSrc $SkillSrc -BaseDir $baseDir -Label (Join-Path $baseDir $SkillName)) { $installed++ } else { $failed++ }
+            if (Install-MonoToBase -SkillSrc $SkillSrc -BaseDir $baseDir -Label (Join-Path $baseDir $SkillName)) {
+                Write-Say "ℹ️  $baseDir 已自动使用兼容方式安装，可正常使用"
+                $installed++
+            } else { $failed++ }
         }
     }
     if ($installed -eq 0) {
@@ -906,6 +1031,10 @@ function Install-SkillsToHomes {
         return $false
     }
     Remove-Item -LiteralPath (Join-Path $SkillStateRoot "skills-state.json") -Force -ErrorAction SilentlyContinue
+    Write-Say "✅ DWS Skills 安装完成"
+    Write-Say "   统一安装位置：$canonical"
+    Write-Say "   已自动适配本机上检测到的 Agent"
+    Write-Say "ℹ️  下一步：请重启已打开的 Agent，使新 Skills 生效"
     return $true
 }
 
@@ -938,22 +1067,27 @@ function Install-MultiSkillsToHomes {
     $canonical = Join-Path $Root ".agents\skills"
     if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $canonical -Root $Root -AgentDir ".agents\skills") { $installed++ } else { $failed++ }
     if ($installed -eq 0) { return $false }
-    for ($i = 1; $i -lt $AgentDirs.Count; $i++) {
-        $agentDir = $AgentDirs[$i]
-        $baseDir = Join-Path $Root $agentDir
+    $seenBases = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($agent in @($AgentRegistry) + @($LegacyAgentCleanupTargets)) {
+        $baseDir = Resolve-AgentSkillBase -Root $Root -Agent $agent
+        if ([string]::IsNullOrWhiteSpace($baseDir)) { continue }
+        $baseKey = [System.IO.Path]::GetFullPath($baseDir).TrimEnd([char[]]@('\', '/'))
+        if (!$seenBases.Add($baseKey)) { continue }
         $parentGate = Split-Path $baseDir -Parent
         if (!(Test-Path $parentGate)) { continue }
         if (Test-SamePhysicalSkillRoot -Left $baseDir -Right $canonical) { continue }
         $attempted++
-        if (Test-UniversalAgentDir -AgentDir $agentDir) {
+        if ($agent.Universal) {
             if (!(Move-AgentSkillRootToBackup -Root $Root -BaseDir $baseDir)) { $failed++ }
             continue
         }
         if (Publish-CanonicalSkillLinks -Root $Root -BaseDir $baseDir -Mode "multi") {
             $installed++
         } else {
-            Write-Say "⚠️  $baseDir 无法创建 Skill 链接，回退为直接复制"
-            if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $baseDir -Root $Root -AgentDir $agentDir) { $installed++ } else { $failed++ }
+            if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $baseDir -Root $Root -AgentDir $agent.Dir) {
+                Write-Say "ℹ️  $baseDir 已自动使用兼容方式安装，可正常使用"
+                $installed++
+            } else { $failed++ }
         }
     }
     if ($installed -eq 0) {
@@ -965,6 +1099,10 @@ function Install-MultiSkillsToHomes {
         return $false
     }
     Write-SkillsState -MultiSrc $MultiSrc
+    Write-Say "✅ DWS Skills 安装完成"
+    Write-Say "   统一安装位置：$canonical"
+    Write-Say "   已自动适配本机上检测到的 Agent"
+    Write-Say "ℹ️  下一步：请重启已打开的 Agent，使新 Skills 生效"
     return $true
 }
 

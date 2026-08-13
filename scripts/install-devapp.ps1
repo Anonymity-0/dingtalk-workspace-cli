@@ -22,8 +22,90 @@ $InstallDir = if ($env:DWS_INSTALL_DIR) { $env:DWS_INSTALL_DIR } else { Join-Pat
 $NoSkills   = $env:DWS_NO_SKILLS -eq "1"
 $SkillName  = "dingtalk-misc"
 
+# vercel-labs/skills agents.ts (c6f69c6). Each row is
+# id|universal|effective global directory; '-' means no global directory.
+$AgentRegistryRows = @(
+    "aider-desk|0|.aider-desk\skills", "amp|1|.config\agents\skills",
+    "antigravity|1|.gemini\antigravity\skills", "antigravity-cli|1|.gemini\antigravity-cli\skills",
+    "astrbot|0|.astrbot\data\skills", "autohand-code|0|.autohand\skills", "augment|0|.augment\skills",
+    "bob|0|.bob\skills", "claude-code|0|.claude\skills", "openclaw|0|.openclaw\skills",
+    "cline|1|.agents\skills", "codearts-agent|0|.codeartsdoer\skills", "codebuddy|0|.codebuddy\skills",
+    "codemaker|0|.codemaker\skills", "codestudio|0|.codestudio\skills", "codex|1|.codex\skills",
+    "command-code|0|.commandcode\skills", "continue|0|.continue\skills", "cortex|0|.snowflake\cortex\skills",
+    "crush|0|.config\crush\skills", "cursor|1|.cursor\skills", "deepagents|1|.deepagents\agent\skills",
+    "devin|0|.config\devin\skills", "dexto|1|.agents\skills", "droid|0|.factory\skills", "eve|0|-",
+    "firebender|1|.firebender\skills", "forgecode|0|.forge\skills", "gemini-cli|1|.gemini\skills",
+    "github-copilot|1|.copilot\skills", "goose|0|.config\goose\skills", "grok|0|.grok\skills",
+    "hermes-agent|0|.hermes\skills", "inference-sh|0|.inferencesh\skills", "jazz|0|.jazz\skills",
+    "junie|0|.junie\skills", "iflow-cli|0|.iflow\skills", "kilo|0|.kilocode\skills",
+    "kimchi|0|.config\kimchi\harness\skills", "kimi-code-cli|1|.agents\skills", "kiro-cli|0|.kiro\skills",
+    "kode|0|.kode\skills", "lingma|0|.lingma\skills", "loaf|1|.agents\skills", "mcpjam|0|.mcpjam\skills",
+    "minimax-code|0|.minimax\skills", "mistral-vibe|0|.vibe\skills", "moxby|0|.moxby\skills",
+    "mux|0|.mux\skills", "opencode|1|.config\opencode\skills", "openhands|0|.openhands\skills",
+    "ona|0|.ona\skills", "pi|0|.pi\agent\skills", "qoder|0|.qoder\skills", "qoder-cn|0|.qoder-cn\skills",
+    "qwen-code|0|.qwen\skills", "replit|1|.config\agents\skills", "reasonix|0|.reasonix\skills",
+    "rovodev|0|.rovodev\skills", "roo|0|.roo\skills", "tabnine-cli|0|.tabnine\agent\skills",
+    "terramind|0|.terramind\skills", "tinycloud|0|.tinycloud\skills", "trae|0|.trae\skills",
+    "trae-cn|0|.trae-cn\skills", "warp|1|.agents\skills", "windsurf|0|.codeium\windsurf\skills",
+    "zed|1|.agents\skills", "zcode|0|.zcode\skills", "zencoder|0|.zencoder\skills",
+    "zenflow|0|.zencoder\skills", "neovate|0|.neovate\skills", "pochi|0|.pochi\skills",
+    "promptscript|1|-", "adal|0|.adal\skills", "universal|1|.config\agents\skills"
+)
+$LegacyAgentCleanupRows = @(
+    "dws-qoderwork|0|.qoderwork\skills", "dws-legacy-github|1|.github\skills",
+    "dws-legacy-amp|1|.amp\skills", "dws-legacy-cline|1|.cline\skills",
+    "dws-legacy-windsurf|1|.windsurf\skills"
+)
+
 function Say($m) { Write-Host "  $m" }
 function Die($m) { Write-Host "  X $m" -ForegroundColor Red; exit 1 }
+
+function Resolve-AgentBase([string]$row) {
+    $parts = $row.Split('|')
+    $id = $parts[0]
+    if ($parts[2] -eq "-") { return $null }
+    switch ($id) {
+        "autohand-code" { if ($env:AUTOHAND_HOME) { return Join-Path $env:AUTOHAND_HOME "skills" } }
+        "claude-code" { if ($env:CLAUDE_CONFIG_DIR) { return Join-Path $env:CLAUDE_CONFIG_DIR "skills" } }
+        "codex" { if ($env:CODEX_HOME) { return Join-Path $env:CODEX_HOME "skills" } }
+        "grok" { if ($env:GROK_HOME) { return Join-Path $env:GROK_HOME "skills" } }
+        "hermes-agent" { if ($env:HERMES_HOME) { return Join-Path $env:HERMES_HOME "skills" } }
+        "mistral-vibe" { if ($env:VIBE_HOME) { return Join-Path $env:VIBE_HOME "skills" } }
+        "openclaw" {
+            foreach ($legacy in @(".openclaw", ".clawdbot", ".moltbot")) {
+                $candidate = Join-Path $HOME $legacy
+                if (Test-Path $candidate -PathType Container) { return Join-Path $candidate "skills" }
+            }
+        }
+        { $_ -in @("amp", "replit", "universal") } {
+            $xdg = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $HOME ".config" }
+            return Join-Path $xdg "agents\skills"
+        }
+        { $_ -in @("crush", "devin", "goose", "kimchi", "opencode") } {
+            $xdg = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $HOME ".config" }
+            $child = switch ($id) { "crush" { "crush\skills" }; "devin" { "devin\skills" }; "goose" { "goose\skills" }; "kimchi" { "kimchi\harness\skills" }; default { "opencode\skills" } }
+            return Join-Path $xdg $child
+        }
+    }
+    return Join-Path $HOME $parts[2]
+}
+
+function Test-PathLexically([string]$path) {
+    try { Get-Item -LiteralPath $path -Force -ErrorAction Stop | Out-Null; return $true } catch {}
+    $parent = Split-Path $path -Parent; $leaf = Split-Path $path -Leaf
+    if (!(Test-Path $parent -PathType Container)) { return $false }
+    return $null -ne (Get-ChildItem -LiteralPath $parent -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -eq $leaf } | Select-Object -First 1)
+}
+
+function Backup-DevSkill([string]$path) {
+    if (!(Test-PathLexically $path)) { return }
+    $backupRoot = Join-Path $HOME ".dws\skill-backups\$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))"
+    New-Item -ItemType Directory -Path $backupRoot -Force -ErrorAction Stop | Out-Null
+    $target = Join-Path $backupRoot (Split-Path $path -Leaf)
+    while (Test-PathLexically $target) { $target += "-$([guid]::NewGuid().ToString('N'))" }
+    Move-Item -LiteralPath $path -Destination $target -ErrorAction Stop
+}
 
 function Get-Arch {
     if ($env:DWS_ARCH -eq "amd64" -or $env:DWS_ARCH -eq "arm64") { return $env:DWS_ARCH }
@@ -99,22 +181,27 @@ if (-not $NoSkills) {
             New-Item -ItemType Directory -Path $cache -Force | Out-Null
             Copy-Item -Path "$src\*" -Destination $cache -Recurse -Force
 
-            $agentDirs = @(
-                ".agents\skills", ".claude\skills", ".cursor\skills", ".qoder\skills", ".qoderwork\skills",
-                ".gemini\skills", ".codex\skills", ".github\skills", ".windsurf\skills", ".augment\skills",
-                ".cline\skills", ".amp\skills", ".kiro\skills", ".trae\skills", ".openclaw\skills",
-                ".hermes\skills", ".config\opencode\skills"
-            )
-            $installed = 0; $idx = 0
-            foreach ($d in $agentDirs) {
-                $base   = Join-Path $HOME $d
-                $parent = Split-Path $base -Parent
-                if ($idx -gt 0 -and -not (Test-Path $parent)) { $idx++; continue }
+            $canonicalBase = Join-Path $HOME ".agents\skills"
+            $canonical = Join-Path $canonicalBase $SkillName
+            Backup-DevSkill $canonical
+            New-Item -ItemType Directory -Path $canonical -Force | Out-Null
+            Copy-Item -Path "$src\*" -Destination $canonical -Recurse -Force
+            $installed = 1
+            $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+            foreach ($row in @($AgentRegistryRows) + @($LegacyAgentCleanupRows)) {
+                $parts = $row.Split('|'); $universal = $parts[1] -eq "1"
+                $base = Resolve-AgentBase $row
+                if ([string]::IsNullOrWhiteSpace($base)) { continue }
+                $baseKey = [System.IO.Path]::GetFullPath($base).TrimEnd([char[]]@('\', '/'))
+                if (!$seen.Add($baseKey) -or $baseKey -eq [System.IO.Path]::GetFullPath($canonicalBase).TrimEnd([char[]]@('\', '/'))) { continue }
+                if (-not (Test-Path (Split-Path $base -Parent))) { continue }
                 $dest = Join-Path $base $SkillName
-                if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
-                New-Item -ItemType Directory -Path $dest -Force | Out-Null
-                Copy-Item -Path "$src\*" -Destination $dest -Recurse -Force
-                $installed++; $idx++
+                if ($universal) { Backup-DevSkill $dest; continue }
+                New-Item -ItemType Directory -Path $base -Force | Out-Null
+                Backup-DevSkill $dest
+                try { New-Item -ItemType Junction -Path $dest -Target ([System.IO.Path]::GetFullPath($canonical)) -ErrorAction Stop | Out-Null }
+                catch { New-Item -ItemType Directory -Path $dest -Force | Out-Null; Copy-Item -Path "$src\*" -Destination $dest -Recurse -Force }
+                $installed++
             }
             Say "Skill dingtalk-misc -> $installed agent dir(s)"
         } else {

@@ -54,8 +54,8 @@ DWS 对任何外部实现的持续兼容义务。后续设计以 DWS 自身约�
 
 | 模式 | Agent 目录布局 | 选择方式 |
 |---|---|---|
-| multi（默认） | `<agent-home>/dingtalk-*/` 与必选 `dingtalk-shared/` | 默认；`dws skill setup --mode multi` |
-| mono（兼容） | `<agent-home>/dws/` | `dws skill setup --mode mono` 或安装器的 mono opt-in |
+| multi（默认） | canonical `~/.agents/skills/dingtalk-*/`；非 universal Agent 使用链接或复制兼容层 | 默认；`dws skill setup --mode multi` |
+| mono（兼容） | canonical `~/.agents/skills/dws/`；非 universal Agent 使用链接或复制兼容层 | `dws skill setup --mode mono` 或安装器的 mono opt-in |
 
 模式切换通过重新执行 setup 完成。安装 multi 前备份并移除 mono 的 `dws/`；安装
 mono 前只备份并移除能够证明由 DWS 管理的 multi 目录。两个方向都不提供隐式、
@@ -140,10 +140,21 @@ Agent 仍只需以 `SKILL.md` 发现和加载 Skill；统一元数据位于 Agen
 
 ## 8. Upgrade 与恢复语义
 
-升级器对每个 Agent 目标执行：
+升级器始终先发布 `~/.agents/skills` canonical 集合。原生读取 universal 目录的
+Agent（如 Codex、Cursor、Gemini、OpenCode）不再保留 Agent 私有副本；检测到的
+非 universal Agent（如 Claude、OpenClaw、Hermes、Windsurf）使用指向 canonical
+的目录链接，Windows 使用 junction。链接不可用时回退为内容完整的直接复制。
+自定义 `CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`HERMES_HOME`、`AUTOHAND_HOME`、
+`GROK_HOME`、`VIBE_HOME`、`XDG_CONFIG_HOME` 与 OpenClaw 历史目录 `.clawdbot`、
+`.moltbot` 必须按 Agent 实际优先级解析。
 
-- 先探测具体 Agent home；只在没有任何具体 Agent 时使用 `~/.agents/skills` 通用 fallback；
-- 具体 Agent 安装成功后，将 `~/.agents/skills` 中旧的 DWS 受管副本可恢复地迁入备份，避免 Codex 等同时扫描两个根目录时重复发现同名 Skill；
+Agent 兼容矩阵以 `vercel-labs/skills` 的 `agents.ts`（基准提交
+`c6f69c6`）为契约：76 个 ID 必须完整登记，其中 19 个 universal、57 个
+non-universal。`eve`、`promptscript` 没有全局目录，因此全局安装时跳过；多个 Agent
+解析到同一个 XDG 目录时按最终绝对路径去重（Windows 大小写不敏感）。DWS 额外支持
+Qoderwork（按 non-universal Agent 建立兼容链接）；旧版使用的 `.github/skills`、
+`.amp/skills`、`.cline/skills` 与
+`.windsurf/skills` 仅作为可恢复迁移清理目标，不计入上游 Agent 枚举。
 
 1. 只读计算对面布局、过期受管 Skill 和同名官方 Skill；
 2. 在目标文件系统的 staging 中复制完整新集合；
@@ -192,6 +203,7 @@ setup 在未显式指定 `--source` 时的本地回退缓存。
 | `scripts/install.ps1` | multi | 任一检测到的目标失败则脚本非零 |
 | `scripts/install-skills.sh` | multi | 任一检测到的目标失败则脚本非零 |
 | npm `install.js` | multi | 任一检测到的目标失败则 postinstall 失败 |
+| `scripts/install-event.sh` / `install-devapp.*` | 产品 multi 子集 | 同样使用 canonical 与 Agent 兼容层 |
 
 Homebrew 不直接向 Agent home 铺设 Skill；安装 CLI 后由 setup 执行相同流程。
 
@@ -209,6 +221,8 @@ Homebrew 不直接向 Agent home 铺设 Skill；安装 CLI 后由 setup 执行�
 - 复制失败不留下 Agent 可见的残缺官方目录；
 - 普通 upgrade 恢复被删除的预制 Skill，并安装新增官方 Skill；
 - Windows、macOS、Linux 的路径和覆盖率门禁；
+- symlinked parent、Windows junction、链接失败复制回退与 broken link 修复；
+- Claude/Codex/Hermes 自定义根目录及 OpenClaw 历史目录优先级；
 - npm、Shell、PowerShell 与包管理器安装冒烟。
 
 ## 13. 后续演进

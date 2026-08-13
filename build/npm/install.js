@@ -8,37 +8,106 @@ const os = require("os");
 const path = require("path");
 const childProcess = require("child_process");
 
-// Canonical list: keep scripts/install.sh, scripts/install.ps1, scripts/install-skills.sh in sync.
-const AGENT_DIRS = [
-  ".agents/skills",
-  ".claude/skills",
-  ".cursor/skills",
-  ".qoder/skills",
-  ".qoderwork/skills",
-  ".gemini/skills",
-  ".codex/skills",
-  ".zcode/skills",
-  ".github/skills",
-  ".windsurf/skills",
-  ".augment/skills",
-  ".cline/skills",
-  ".amp/skills",
-  ".kiro/skills",
-  ".trae/skills",
-  ".openclaw/skills",
-  ".hermes/skills",
+// Exact vercel-labs/skills registry at the reference revision: 76 Agent IDs,
+// including canonical-direct and no-global-directory entries. The resolver
+// below intentionally deduplicates shared effective roots only after this
+// authoritative enumeration has been classified.
+const UPSTREAM_AGENTS = [
+  ["aider-desk", false, ".aider-desk/skills"],
+  ["amp", true, ".config/agents/skills"],
+  ["antigravity", true, ".gemini/antigravity/skills"],
+  ["antigravity-cli", true, ".gemini/antigravity-cli/skills"],
+  ["astrbot", false, ".astrbot/data/skills"],
+  ["autohand-code", false, ".autohand/skills"],
+  ["augment", false, ".augment/skills"], ["bob", false, ".bob/skills"],
+  ["claude-code", false, ".claude/skills"], ["openclaw", false, ".openclaw/skills"],
+  ["cline", true, ".agents/skills"], ["codearts-agent", false, ".codeartsdoer/skills"],
+  ["codebuddy", false, ".codebuddy/skills"], ["codemaker", false, ".codemaker/skills"],
+  ["codestudio", false, ".codestudio/skills"], ["codex", true, ".codex/skills"],
+  ["command-code", false, ".commandcode/skills"], ["continue", false, ".continue/skills"],
+  ["cortex", false, ".snowflake/cortex/skills"], ["crush", false, ".config/crush/skills"],
+  ["cursor", true, ".cursor/skills"], ["deepagents", true, ".deepagents/agent/skills"],
+  ["devin", false, ".config/devin/skills"], ["dexto", true, ".agents/skills"],
+  ["droid", false, ".factory/skills"], ["eve", false, null],
+  ["firebender", true, ".firebender/skills"], ["forgecode", false, ".forge/skills"],
+  ["gemini-cli", true, ".gemini/skills"], ["github-copilot", true, ".copilot/skills"],
+  ["goose", false, ".config/goose/skills"], ["grok", false, ".grok/skills"],
+  ["hermes-agent", false, ".hermes/skills"], ["inference-sh", false, ".inferencesh/skills"],
+  ["jazz", false, ".jazz/skills"], ["junie", false, ".junie/skills"],
+  ["iflow-cli", false, ".iflow/skills"], ["kilo", false, ".kilocode/skills"],
+  ["kimchi", false, ".config/kimchi/harness/skills"], ["kimi-code-cli", true, ".agents/skills"],
+  ["kiro-cli", false, ".kiro/skills"], ["kode", false, ".kode/skills"],
+  ["lingma", false, ".lingma/skills"], ["loaf", true, ".agents/skills"],
+  ["mcpjam", false, ".mcpjam/skills"], ["minimax-code", false, ".minimax/skills"],
+  ["mistral-vibe", false, ".vibe/skills"], ["moxby", false, ".moxby/skills"],
+  ["mux", false, ".mux/skills"], ["opencode", true, ".config/opencode/skills"],
+  ["openhands", false, ".openhands/skills"], ["ona", false, ".ona/skills"],
+  ["pi", false, ".pi/agent/skills"], ["qoder", false, ".qoder/skills"],
+  ["qoder-cn", false, ".qoder-cn/skills"], ["qwen-code", false, ".qwen/skills"],
+  ["replit", true, ".config/agents/skills"], ["reasonix", false, ".reasonix/skills"],
+  ["rovodev", false, ".rovodev/skills"], ["roo", false, ".roo/skills"],
+  ["tabnine-cli", false, ".tabnine/agent/skills"], ["terramind", false, ".terramind/skills"],
+  ["tinycloud", false, ".tinycloud/skills"], ["trae", false, ".trae/skills"],
+  ["trae-cn", false, ".trae-cn/skills"], ["warp", true, ".agents/skills"],
+  ["windsurf", false, ".codeium/windsurf/skills"], ["zed", true, ".agents/skills"],
+  ["zcode", false, ".zcode/skills"], ["zencoder", false, ".zencoder/skills"],
+  ["zenflow", false, ".zencoder/skills"], ["neovate", false, ".neovate/skills"],
+  ["pochi", false, ".pochi/skills"], ["promptscript", true, null],
+  ["adal", false, ".adal/skills"], ["universal", true, ".config/agents/skills"],
+].map(([id, universal, agentDir]) => ({ id, universal, agentDir }));
+
+// Paths emitted by beta.6 or older DWS installers that do not correspond to
+// the upstream registry. They are cleanup-only migration targets.
+const LEGACY_UNIVERSAL_AGENT_DIRS = [
+  ".github/skills", ".windsurf/skills", ".cline/skills", ".amp/skills",
 ];
 
-// Same capability split as the `skills` CLI used by lark-cli. Universal
-// Agents read ~/.agents/skills directly and must not receive a second copy.
-const UNIVERSAL_AGENT_DIRS = new Set([
-  ".cursor/skills",
-  ".gemini/skills",
-  ".codex/skills",
-  ".github/skills",
-  ".cline/skills",
-  ".amp/skills",
-]);
+function openClawSkillsDir(homeDir) {
+  for (const name of [".openclaw", ".clawdbot", ".moltbot"]) {
+    const root = path.join(homeDir, name);
+    if (fs.existsSync(root)) return path.join(root, "skills");
+  }
+  return path.join(homeDir, ".openclaw", "skills");
+}
+
+function resolvedAgentTargets(homeDir) {
+  const xdgConfigHome = (process.env.XDG_CONFIG_HOME || "").trim() || path.join(homeDir, ".config");
+  const targets = [
+    ...UPSTREAM_AGENTS.filter(({ agentDir }) => agentDir && agentDir !== ".agents/skills"),
+    // DWS compatibility target; qoderwork is not in upstream's registry.
+    { id: "dws-qoderwork", agentDir: ".qoderwork/skills", universal: false, extension: true },
+    ...LEGACY_UNIVERSAL_AGENT_DIRS.map((agentDir) => ({ agentDir, universal: true, legacy: true })),
+  ].map((target) => {
+    const { agentDir } = target;
+    let baseDir = path.join(homeDir, agentDir);
+    if (agentDir === ".claude/skills" && (process.env.CLAUDE_CONFIG_DIR || "").trim()) {
+      baseDir = path.join(process.env.CLAUDE_CONFIG_DIR.trim(), "skills");
+    } else if (agentDir === ".codex/skills" && (process.env.CODEX_HOME || "").trim()) {
+      baseDir = path.join(process.env.CODEX_HOME.trim(), "skills");
+    } else if (agentDir === ".hermes/skills" && (process.env.HERMES_HOME || "").trim()) {
+      baseDir = path.join(process.env.HERMES_HOME.trim(), "skills");
+    } else if (agentDir === ".autohand/skills" && (process.env.AUTOHAND_HOME || "").trim()) {
+      baseDir = path.join(process.env.AUTOHAND_HOME.trim(), "skills");
+    } else if (agentDir === ".grok/skills" && (process.env.GROK_HOME || "").trim()) {
+      baseDir = path.join(process.env.GROK_HOME.trim(), "skills");
+    } else if (agentDir === ".vibe/skills" && (process.env.VIBE_HOME || "").trim()) {
+      baseDir = path.join(process.env.VIBE_HOME.trim(), "skills");
+    } else if (agentDir === ".openclaw/skills") {
+      baseDir = openClawSkillsDir(homeDir);
+    } else if (agentDir.startsWith(".config/")) {
+      baseDir = path.join(xdgConfigHome, agentDir.slice(".config/".length));
+    }
+    return { ...target, baseDir };
+  });
+  const seen = new Set();
+  return targets.filter((target) => {
+    let key = path.resolve(target.baseDir);
+    if (process.platform === "win32") key = key.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 const PLATFORM_MAP = {
   "darwin-x64": "dws-darwin-amd64.tar.gz",
@@ -82,9 +151,6 @@ function backupAndRemoveSkillDir(homeDir, dir, backups = null, renameFn = fs.ren
   } catch (err) {
     if (err && err.code === "ENOENT") return true;
     throw err;
-  }
-  if (!info.isDirectory() && !info.isSymbolicLink()) {
-    return true;
   }
   const rel = path.relative(homeDir, dir);
   const name =
@@ -279,11 +345,11 @@ function installSkillsToHomes(skillRoot) {
   }
 
   if (installed > 0) {
-    for (const agentDir of AGENT_DIRS.slice(1)) {
-      const baseDir = path.join(homeDir, agentDir);
+    for (const target of resolvedAgentTargets(homeDir)) {
+      const { agentDir, baseDir, universal } = target;
       if (!fs.existsSync(path.dirname(baseDir)) || samePhysicalDir(baseDir, canonicalBase)) continue;
       attempted += 1;
-      if (UNIVERSAL_AGENT_DIRS.has(agentDir)) {
+      if (universal) {
         try {
           retireManagedSkillRoot(homeDir, baseDir, managedNames);
         } catch (err) {
@@ -304,9 +370,10 @@ function installSkillsToHomes(skillRoot) {
         publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, ["dws"], victims);
         installed += 1;
       } catch (linkErr) {
-        console.warn(`⚠️  ${baseDir} 无法创建 Skill 链接，回退为直接复制: ${linkErr.message}`);
-        if (installToBase(baseDir)) installed += 1;
-        else failed += 1;
+        if (installToBase(baseDir)) {
+          console.log(`ℹ️  ${baseDir} 已自动使用兼容方式安装，可正常使用`);
+          installed += 1;
+        } else failed += 1;
       }
     }
   }
@@ -317,6 +384,10 @@ function installSkillsToHomes(skillRoot) {
     throw new Error(`有 ${failed} 个 Agent 目标安装 mono Skill 失败`);
   }
   fs.rmSync(path.join(skillStateDir(homeDir), "skills-state.json"), { force: true });
+  console.log(`✅ DWS Skills 安装完成`);
+  console.log(`   统一安装位置：${canonicalBase}`);
+  console.log(`   已自动适配本机上检测到的 Agent`);
+  console.log(`ℹ️  下一步：请重启已打开的 Agent，使新 Skills 生效`);
 }
 
 // multiTreeHasSkills mirrors multi_tree_has_skills in scripts/install.sh and
@@ -402,7 +473,9 @@ function retireManagedSkillRoot(homeDir, baseDir, managedNames) {
 
 function samePhysicalDir(left, right) {
   try {
-    return fs.realpathSync(left) === fs.realpathSync(right);
+    const leftReal = fs.realpathSync(left);
+    const rightReal = fs.realpathSync(right);
+    return process.platform === "win32" ? leftReal.toLowerCase() === rightReal.toLowerCase() : leftReal === rightReal;
   } catch (_) {
     return false;
   }
@@ -410,6 +483,7 @@ function samePhysicalDir(left, right) {
 
 function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names, victims) {
   fs.mkdirSync(baseDir, { recursive: true });
+  const realBaseDir = fs.realpathSync(baseDir);
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-link-set.tmp-"));
   const staged = [];
   const backups = [];
@@ -433,7 +507,8 @@ function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names,
         continue;
       }
       const stagedPath = path.join(stageRoot, name);
-      const linkTarget = process.platform === "win32" ? target : path.relative(baseDir, target);
+      const realTarget = fs.realpathSync(target);
+      const linkTarget = process.platform === "win32" ? realTarget : path.relative(realBaseDir, realTarget);
       fs.symlinkSync(linkTarget, stagedPath, process.platform === "win32" ? "junction" : "dir");
       staged.push({ staged: stagedPath, dest: path.join(baseDir, name) });
     }
@@ -742,11 +817,11 @@ function installMultiSkillsToHomes(multiRoot) {
   else failed += 1;
 
   if (installed > 0) {
-    for (const agentDir of AGENT_DIRS.slice(1)) {
-      const baseDir = path.join(homeDir, agentDir);
+    for (const target of resolvedAgentTargets(homeDir)) {
+      const { agentDir, baseDir, universal } = target;
       if (!fs.existsSync(path.dirname(baseDir)) || samePhysicalDir(baseDir, canonicalBase)) continue;
       attempted += 1;
-      if (UNIVERSAL_AGENT_DIRS.has(agentDir)) {
+      if (universal) {
         try {
           retireManagedSkillRoot(homeDir, baseDir, managedNames);
         } catch (err) {
@@ -770,9 +845,10 @@ function installMultiSkillsToHomes(multiRoot) {
         publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, skills, victims);
         installed += 1;
       } catch (linkErr) {
-        console.warn(`⚠️  ${baseDir} 无法创建 Skill 链接，回退为直接复制: ${linkErr.message}`);
-        if (installToBase(baseDir)) installed += 1;
-        else failed += 1;
+        if (installToBase(baseDir)) {
+          console.log(`ℹ️  ${baseDir} 已自动使用兼容方式安装，可正常使用`);
+          installed += 1;
+        } else failed += 1;
       }
     }
   }
@@ -783,6 +859,10 @@ function installMultiSkillsToHomes(multiRoot) {
     throw new Error(`有 ${failed} 个 Agent 目标安装 multi Skill 失败`);
   }
   writeSkillsState(homeDir, multiRoot, skills);
+  console.log(`✅ DWS Skills 安装完成`);
+  console.log(`   统一安装位置：${canonicalBase}`);
+  console.log(`   已自动适配本机上检测到的 Agent`);
+  console.log(`ℹ️  下一步：请重启已打开的 Agent，使新 Skills 生效`);
 }
 
 // resolveSkillMode mirrors scripts/install.sh: DWS_SKILL_MODE (mono|multi)
@@ -897,6 +977,8 @@ if (require.main === module) {
 }
 
 module.exports = {
+  UPSTREAM_AGENTS,
+  resolvedAgentTargets,
   publishCacheAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,

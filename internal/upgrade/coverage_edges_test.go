@@ -579,7 +579,10 @@ func TestCrossPlatformCoverageUpgradePathInjectedFailures(t *testing.T) {
 	})
 	home := t.TempDir()
 	upgradeUserHomeDir = func() (string, error) { return home, nil }
-	knownSkillDirs = []string{".agents/skills"}
+	knownSkillDirs = []string{".agents/skills", ".claude/skills"}
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	calls := 0
 	upgradeCopyDir = func(src, dst string) error {
 		calls++

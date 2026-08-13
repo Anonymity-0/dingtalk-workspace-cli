@@ -1055,12 +1055,11 @@ func TestCrossPlatformCoverageSkillSetupSelectiveEventMigratesOnlyFoldedTargets(
 	if err := os.WriteFile(filepath.Join(foldedHome, "dingtalk-chat", "SKILL.md"), []byte("keep sibling\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-
 	stdout, stderr, err := executeMultiSkillSetupTest(t, src, []string{freshHome, foldedHome}, "--skill", "event", "--yes")
 	if err != nil {
 		t.Fatalf("selective event setup failed: %v\nstderr=%s\nstdout=%s", err, stderr, stdout)
 	}
-	if !strings.Contains(stdout, "重新加载 Skills") {
+	if !strings.Contains(stdout, "请重启已打开的 Agent") {
 		t.Fatalf("completion should tell the user to reload skills: %s", stdout)
 	}
 

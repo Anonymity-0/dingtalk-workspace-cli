@@ -170,7 +170,7 @@ func TestCrossPlatformCoverageSkillSetupGenericCleanupDerivesHomeFromConcreteTar
 	}
 	var preview bytes.Buffer
 	renderSkillSetupPlan(&preview, plan)
-	if !strings.Contains(preview.String(), "universal Agent") {
+	if !strings.Contains(preview.String(), "改用统一安装位置") {
 		t.Fatalf("universal cleanup preview missing: %s", preview.String())
 	}
 
@@ -249,11 +249,13 @@ func TestCrossPlatformCoverageSkillSetupPlanDeduplicatesAndFailsClosed(t *testin
 		t.Fatal(err)
 	}
 	testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, failure })
+	testseam.Swap(t, &skillSetupLstat, func(string) (os.FileInfo, error) { return nil, failure })
 	if _, err := buildSkillSetupPlan(skillSetupModeMono, "source", []string{monoDest}, nil, false); err == nil || !strings.Contains(err.Error(), "\u68c0\u67e5\u5c06\u88ab\u66ff\u6362") {
 		t.Fatalf("replacement stat error = %v", err)
 	}
 
 	testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+	testseam.Swap(t, &skillSetupLstat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
 	testseam.Swap(t, &skillSetupReadDir, func(string) ([]os.DirEntry, error) { return nil, failure })
 	if _, err := buildSkillSetupPlan(skillSetupModeMulti, "source", []string{dest}, []string{"dingtalk-a"}, false); err == nil || !strings.Contains(err.Error(), "\u626b\u63cf\u8fc7\u671f") {
 		t.Fatalf("stale scan error = %v", err)
