@@ -458,10 +458,20 @@ function Restore-MultiSkillSet {
     return $ok
 }
 
-function Move-GenericSkillRootToBackup {
-    param([string]$Root)
+function Test-UniversalAgentDir {
+    param([string]$AgentDir)
+    return @(".cursor\skills", ".gemini\skills", ".codex\skills", ".github\skills", ".cline\skills", ".amp\skills") -contains $AgentDir
+}
 
-    $baseDir = Join-Path $Root ".agents\skills"
+function Test-SamePhysicalSkillRoot {
+    param([string]$Left, [string]$Right)
+    if (!(Test-Path $Left) -or !(Test-Path $Right)) { return $false }
+    try { return (Resolve-Path $Left).Path -eq (Resolve-Path $Right).Path } catch { return $false }
+}
+
+function Move-AgentSkillRootToBackup {
+    param([string]$Root, [string]$BaseDir)
+
     $victims = [System.Collections.Generic.List[string]]::new()
     $victims.Add((Join-Path $baseDir $SkillName))
     foreach ($existing in Get-ChildItem -Path $baseDir -Directory -ErrorAction SilentlyContinue) {
@@ -476,7 +486,7 @@ function Move-GenericSkillRootToBackup {
             if (!$seen.Add($victim)) { continue }
             $backupPath = ""
             if (!(Backup-SkillDir -Dir $victim -BackupPath ([ref]$backupPath))) {
-                throw "通用 Skill 副本备份失败: $victim"
+                throw "Agent Skill 旧副本备份失败: $victim"
             }
             if ($backupPath) {
                 $backups += [pscustomobject]@{ Original = $victim; Backup = $backupPath }
@@ -485,8 +495,61 @@ function Move-GenericSkillRootToBackup {
         return $true
     } catch {
         Restore-MultiSkillSet -Published @() -Backups $backups | Out-Null
-        Write-Say "⚠️  通用 Skill 副本迁移失败，已回滚: $_"
+        Write-Say "⚠️  Agent Skill 旧副本迁移失败，已回滚: $_"
         return $false
+    }
+}
+
+function Publish-CanonicalSkillLinks {
+    param([string]$Root, [string]$BaseDir, [string]$Mode)
+    $canonical = Join-Path $Root ".agents\skills"
+    if (!(Test-Path $BaseDir)) { New-Item -ItemType Directory -Path $BaseDir -Force | Out-Null }
+    if (Test-SamePhysicalSkillRoot -Left $BaseDir -Right $canonical) { return $true }
+    $stageRoot = Join-Path $BaseDir (".dws-link-set-" + [guid]::NewGuid().ToString("N"))
+    $backups = @()
+    $published = @()
+    try {
+        New-Item -ItemType Directory -Path $stageRoot -Force -ErrorAction Stop | Out-Null
+        if ($Mode -eq "mono") {
+            $names = @($SkillName)
+        } else {
+            $names = @(Get-ChildItem -Path $canonical -Directory -ErrorAction Stop | Where-Object {
+                Test-Path (Join-Path $_.FullName "SKILL.md")
+            } | ForEach-Object { $_.Name })
+        }
+        $publishNames = @()
+        foreach ($name in $names) {
+            if (Test-SamePhysicalSkillRoot -Left (Join-Path $BaseDir $name) -Right (Join-Path $canonical $name)) { continue }
+            New-Item -ItemType Junction -Path (Join-Path $stageRoot $name) -Target (Join-Path $canonical $name) -ErrorAction Stop | Out-Null
+            $publishNames += $name
+        }
+        $victims = [System.Collections.Generic.List[string]]::new()
+        $victims.Add((Join-Path $BaseDir $SkillName))
+        foreach ($existing in Get-ChildItem -Path $BaseDir -Directory -Force -ErrorAction SilentlyContinue) {
+            if ($existing.FullName -eq $stageRoot) { continue }
+            if (Test-ManagedMultiSkillDir -Dir $existing.FullName) { $victims.Add($existing.FullName) }
+        }
+        $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($victim in $victims) {
+            if (!$seen.Add($victim)) { continue }
+            if (Test-SamePhysicalSkillRoot -Left $victim -Right (Join-Path $canonical (Split-Path $victim -Leaf))) { continue }
+            $backupPath = ""
+            if (!(Backup-SkillDir -Dir $victim -BackupPath ([ref]$backupPath))) { throw "Skill 备份失败: $victim" }
+            if ($backupPath) { $backups += [pscustomobject]@{ Original = $victim; Backup = $backupPath } }
+        }
+        foreach ($name in $publishNames) {
+            $dest = Join-Path $BaseDir $name
+            $published += $dest
+            Move-SkillPath -Source (Join-Path $stageRoot $name) -Destination $dest
+            Write-Say "↪ Skills → $dest"
+        }
+        return $true
+    } catch {
+        Restore-MultiSkillSet -Published $published -Backups $backups | Out-Null
+        Write-Say "⚠️  Skill 链接发布失败，已回滚: $BaseDir ($_)"
+        return $false
+    } finally {
+        Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -811,46 +874,27 @@ function Install-SkillsToHomes {
     )
 
     $installed = 0
-    $attempted = 0
+    $attempted = 1
     $failed = 0
-	$specificAgents = @($AgentDirs | Select-Object -Skip 1 | Where-Object {
-		Test-Path (Split-Path (Join-Path $Root $_) -Parent)
-	})
-    for ($i = 0; $i -lt $AgentDirs.Count; $i++) {
-		if ($i -eq 0 -and $specificAgents.Count -gt 0) { continue }
+    $canonical = Join-Path $Root ".agents\skills"
+    if (Install-MonoToBase -SkillSrc $SkillSrc -BaseDir $canonical -Label "~\.agents\skills\$SkillName") { $installed++ } else { $failed++ }
+    if ($installed -eq 0) { return $false }
+    for ($i = 1; $i -lt $AgentDirs.Count; $i++) {
         $agentDir = $AgentDirs[$i]
         $baseDir = Join-Path $Root $agentDir
         $parentGate = Split-Path $baseDir -Parent
-        if ($i -gt 0 -and !(Test-Path $parentGate)) {
+        if (!(Test-Path $parentGate)) { continue }
+        if (Test-SamePhysicalSkillRoot -Left $baseDir -Right $canonical) { continue }
+        $attempted++
+        if (Test-UniversalAgentDir -AgentDir $agentDir) {
+            if (!(Move-AgentSkillRootToBackup -Root $Root -BaseDir $baseDir)) { $failed++ }
             continue
         }
-        $attempted++
-        if ($Root -eq $HOME) {
-            $label = "~\$agentDir\$SkillName"
-        } else {
-            $label = Join-Path $Root (Join-Path $agentDir $SkillName)
-        }
-        $copied = Install-MonoToBase -SkillSrc $SkillSrc -BaseDir $baseDir -Label $label
-        if ($copied) {
+        if (Publish-CanonicalSkillLinks -Root $Root -BaseDir $baseDir -Mode "mono") {
             $installed++
         } else {
-            $failed++
-        }
-    }
-	if ($specificAgents.Count -gt 0 -and $installed -gt 0) {
-		if (!(Move-GenericSkillRootToBackup -Root $Root)) { $failed++ }
-	}
-    if ($attempted -eq 0) {
-        $fallback = Join-Path (Join-Path $Root ".agents\skills") $SkillName
-        if ($Root -eq $HOME) {
-            $flabel = "~\.agents\skills\$SkillName"
-        } else {
-            $flabel = Join-Path $Root (Join-Path ".agents\skills" $SkillName)
-        }
-        if (Install-MonoToBase -SkillSrc $SkillSrc -BaseDir (Split-Path $fallback -Parent) -Label $flabel) {
-            $installed++
-        } else {
-            $failed++
+            Write-Say "⚠️  $baseDir 无法创建 Skill 链接，回退为直接复制"
+            if (Install-MonoToBase -SkillSrc $SkillSrc -BaseDir $baseDir -Label (Join-Path $baseDir $SkillName)) { $installed++ } else { $failed++ }
         }
     }
     if ($installed -eq 0) {
@@ -889,35 +933,27 @@ function Install-MultiSkillsToHomes {
     )
 
     $installed = 0
-    $attempted = 0
+    $attempted = 1
     $failed = 0
-	$specificAgents = @($AgentDirs | Select-Object -Skip 1 | Where-Object {
-		Test-Path (Split-Path (Join-Path $Root $_) -Parent)
-	})
-    for ($i = 0; $i -lt $AgentDirs.Count; $i++) {
-		if ($i -eq 0 -and $specificAgents.Count -gt 0) { continue }
+    $canonical = Join-Path $Root ".agents\skills"
+    if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $canonical -Root $Root -AgentDir ".agents\skills") { $installed++ } else { $failed++ }
+    if ($installed -eq 0) { return $false }
+    for ($i = 1; $i -lt $AgentDirs.Count; $i++) {
         $agentDir = $AgentDirs[$i]
         $baseDir = Join-Path $Root $agentDir
         $parentGate = Split-Path $baseDir -Parent
-        if ($i -gt 0 -and !(Test-Path $parentGate)) {
+        if (!(Test-Path $parentGate)) { continue }
+        if (Test-SamePhysicalSkillRoot -Left $baseDir -Right $canonical) { continue }
+        $attempted++
+        if (Test-UniversalAgentDir -AgentDir $agentDir) {
+            if (!(Move-AgentSkillRootToBackup -Root $Root -BaseDir $baseDir)) { $failed++ }
             continue
         }
-        $attempted++
-        if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $baseDir -Root $Root -AgentDir $agentDir) {
+        if (Publish-CanonicalSkillLinks -Root $Root -BaseDir $baseDir -Mode "multi") {
             $installed++
         } else {
-            Write-Say "⚠️  跳过 $baseDir（备份失败，未安装 multi）"
-            $failed++
-        }
-    }
-	if ($specificAgents.Count -gt 0 -and $installed -gt 0) {
-		if (!(Move-GenericSkillRootToBackup -Root $Root)) { $failed++ }
-	}
-    if ($attempted -eq 0) {
-        if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir (Join-Path $Root ".agents\skills") -Root $Root -AgentDir ".agents\skills") {
-            $installed++
-        } else {
-            $failed++
+            Write-Say "⚠️  $baseDir 无法创建 Skill 链接，回退为直接复制"
+            if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $baseDir -Root $Root -AgentDir $agentDir) { $installed++ } else { $failed++ }
         }
     }
     if ($installed -eq 0) {

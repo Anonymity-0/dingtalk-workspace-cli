@@ -182,13 +182,13 @@ func TestInstallScriptSourceModeInstallsSkillsIntoAgentsDir(t *testing.T) {
 		t.Fatalf("install.sh error = %v\noutput:\n%s", err, string(output))
 	}
 
-	skillPath := filepath.Join(fixture.fakeHome, ".cursor", "skills", "dws", "SKILL.md")
+	skillPath := filepath.Join(fixture.fakeHome, ".agents", "skills", "dws", "SKILL.md")
 	if _, err := os.Stat(skillPath); err != nil {
 		t.Fatalf("Stat(%s) error = %v\noutput:\n%s", skillPath, err, string(output))
 	}
-	genericPath := filepath.Join(fixture.fakeHome, ".agents", "skills", "dws")
-	if _, err := os.Stat(genericPath); !os.IsNotExist(err) {
-		t.Fatalf("generic Skill root must not duplicate detected Cursor: Stat(%s) = %v\noutput:\n%s", genericPath, err, string(output))
+	duplicatePath := filepath.Join(fixture.fakeHome, ".cursor", "skills", "dws")
+	if _, err := os.Lstat(duplicatePath); !os.IsNotExist(err) {
+		t.Fatalf("universal Cursor root must not duplicate canonical Skill: Lstat(%s) = %v\noutput:\n%s", duplicatePath, err, string(output))
 	}
 }
 
@@ -1242,7 +1242,7 @@ install_multi_skills_to_root "$DWS_TEST_MULTI" "$DWS_TEST_ROOT"
 	assertSkillProvenance(t, home, filepath.Join(base, "dingtalk-test"), "dingtalk-test", "install-skills.sh")
 }
 
-func TestInstallerShellPrefersCodexRootWithoutGenericDuplicate(t *testing.T) {
+func TestInstallerShellUsesCanonicalRootWithoutCodexDuplicate(t *testing.T) {
 	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
 		t.Run(scriptName, func(t *testing.T) {
 			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
@@ -1277,11 +1277,11 @@ func TestInstallerShellPrefersCodexRootWithoutGenericDuplicate(t *testing.T) {
 			if output, err := cmd.CombinedOutput(); err != nil {
 				t.Fatalf("%s Codex-root harness failed: %v\n%s", scriptName, err, output)
 			}
-			if _, err := os.Stat(filepath.Join(home, ".codex", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
-				t.Fatalf("%s canonical Codex Skill missing: %v", scriptName, err)
+			if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
+				t.Fatalf("%s canonical Skill missing: %v", scriptName, err)
 			}
 			for _, duplicate := range []string{
-				filepath.Join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md"),
+				filepath.Join(home, ".codex", "skills", "dingtalk-chat"),
 				filepath.Join(home, ".agents", "skills", "dws", "multi", "dingtalk-chat", "SKILL.md"),
 			} {
 				if _, err := os.Stat(duplicate); !os.IsNotExist(err) {
@@ -1292,7 +1292,7 @@ func TestInstallerShellPrefersCodexRootWithoutGenericDuplicate(t *testing.T) {
 	}
 }
 
-func TestInstallerShellPrefersZCodeRootWithoutGenericDuplicate(t *testing.T) {
+func TestInstallerShellLinksZCodeRootToCanonical(t *testing.T) {
 	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
 		t.Run(scriptName, func(t *testing.T) {
 			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
@@ -1328,7 +1328,13 @@ func TestInstallerShellPrefersZCodeRootWithoutGenericDuplicate(t *testing.T) {
 				t.Fatalf("%s ZCode-root harness failed: %v\n%s", scriptName, err, output)
 			}
 			if _, err := os.Stat(filepath.Join(home, ".zcode", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
-				t.Fatalf("%s canonical ZCode Skill missing: %v", scriptName, err)
+				t.Fatalf("%s linked ZCode Skill missing: %v", scriptName, err)
+			}
+			if info, err := os.Lstat(filepath.Join(home, ".zcode", "skills", "dingtalk-chat")); err != nil || info.Mode()&os.ModeSymlink == 0 {
+				t.Fatalf("%s ZCode target is not a canonical link: %#v, %v", scriptName, info, err)
+			}
+			if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
+				t.Fatalf("%s canonical Skill missing: %v", scriptName, err)
 			}
 			if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dws")); !os.IsNotExist(err) {
 				t.Fatalf("%s generic duplicate remains: %v", scriptName, err)
@@ -1337,7 +1343,7 @@ func TestInstallerShellPrefersZCodeRootWithoutGenericDuplicate(t *testing.T) {
 	}
 }
 
-func TestInstallPowerShellPrefersCodexRootWithoutGenericDuplicate(t *testing.T) {
+func TestInstallPowerShellUsesCanonicalRootWithoutCodexDuplicate(t *testing.T) {
 	pwsh, err := exec.LookPath("pwsh")
 	if err != nil {
 		if runtime.GOOS == "windows" {
@@ -1378,15 +1384,18 @@ exit 0
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("PowerShell Codex-root harness failed: %v\n%s", err, output)
 	}
-	if _, err := os.Stat(filepath.Join(home, ".codex", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
-		t.Fatalf("PowerShell canonical Codex Skill missing: %v", err)
+	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
+		t.Fatalf("PowerShell canonical Skill missing: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(home, ".codex", "skills", "dingtalk-chat")); !os.IsNotExist(err) {
+		t.Fatalf("PowerShell Codex duplicate remains: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dws")); !os.IsNotExist(err) {
 		t.Fatalf("PowerShell generic duplicate remains: %v", err)
 	}
 }
 
-func TestInstallPowerShellPrefersZCodeRootWithoutGenericDuplicate(t *testing.T) {
+func TestInstallPowerShellLinksZCodeRootToCanonical(t *testing.T) {
 	pwsh, err := exec.LookPath("pwsh")
 	if err != nil {
 		if runtime.GOOS == "windows" {
@@ -1428,7 +1437,10 @@ exit 0
 		t.Fatalf("PowerShell ZCode-root harness failed: %v\n%s", err, output)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".zcode", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
-		t.Fatalf("PowerShell canonical ZCode Skill missing: %v", err)
+		t.Fatalf("PowerShell linked ZCode Skill missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md")); err != nil {
+		t.Fatalf("PowerShell canonical Skill missing: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dws")); !os.IsNotExist(err) {
 		t.Fatalf("PowerShell generic duplicate remains: %v", err)

@@ -29,6 +29,17 @@ const AGENT_DIRS = [
   ".hermes/skills",
 ];
 
+// Same capability split as the `skills` CLI used by lark-cli. Universal
+// Agents read ~/.agents/skills directly and must not receive a second copy.
+const UNIVERSAL_AGENT_DIRS = new Set([
+  ".cursor/skills",
+  ".gemini/skills",
+  ".codex/skills",
+  ".github/skills",
+  ".cline/skills",
+  ".amp/skills",
+]);
+
 const PLATFORM_MAP = {
   "darwin-x64": "dws-darwin-amd64.tar.gz",
   "darwin-arm64": "dws-darwin-arm64.tar.gz",
@@ -65,7 +76,14 @@ function backupStamp() {
 // and false is returned so callers skip that target rather than silently
 // deleting data.
 function backupAndRemoveSkillDir(homeDir, dir, backups = null, renameFn = fs.renameSync) {
-  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+  let info;
+  try {
+    info = fs.lstatSync(dir);
+  } catch (err) {
+    if (err && err.code === "ENOENT") return true;
+    throw err;
+  }
+  if (!info.isDirectory() && !info.isSymbolicLink()) {
     return true;
   }
   const rel = path.relative(homeDir, dir);
@@ -234,15 +252,11 @@ function installSkillsToHomes(skillRoot) {
   let attempted = 0;
   let failed = 0;
 
-  const specificAgentDirs = AGENT_DIRS.slice(1).filter((agentDir) =>
-    fs.existsSync(path.dirname(path.join(homeDir, agentDir))),
-  );
-
   const installToBase = (baseDir) => {
     const victims = [path.join(baseDir, "dws")];
     if (fs.existsSync(baseDir)) {
       for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
-        if (entry.isDirectory() && isManagedMultiSkillDir(path.join(baseDir, entry.name), managedNames)) {
+        if ((entry.isDirectory() || entry.isSymbolicLink()) && isManagedMultiSkillDir(path.join(baseDir, entry.name), managedNames)) {
           victims.push(path.join(baseDir, entry.name));
         }
       }
@@ -256,37 +270,44 @@ function installSkillsToHomes(skillRoot) {
     return true;
   };
 
-  AGENT_DIRS.forEach((agentDir, index) => {
-    if (index === 0 && specificAgentDirs.length > 0) {
-      return;
-    }
-    const baseDir = path.join(homeDir, agentDir);
-    const parentGate = path.dirname(baseDir);
-    if (index > 0 && !fs.existsSync(parentGate)) {
-      return;
-    }
-    attempted += 1;
-    if (installToBase(baseDir)) {
-      installed += 1;
-    } else {
-      failed += 1;
-    }
-  });
-
-  if (specificAgentDirs.length > 0 && installed > 0) {
-    try {
-      retireGenericSkillRoot(homeDir, managedNames);
-    } catch (err) {
-      console.warn(`⚠️  通用 Skill 副本迁移失败: ${err.message}`);
-      failed += 1;
-    }
+  const canonicalBase = path.join(homeDir, ".agents", "skills");
+  attempted += 1;
+  if (installToBase(canonicalBase)) {
+    installed += 1;
+  } else {
+    failed += 1;
   }
 
-  if (attempted === 0) {
-    if (installToBase(path.join(homeDir, ".agents", "skills"))) {
-      installed += 1;
-    } else {
-      failed += 1;
+  if (installed > 0) {
+    for (const agentDir of AGENT_DIRS.slice(1)) {
+      const baseDir = path.join(homeDir, agentDir);
+      if (!fs.existsSync(path.dirname(baseDir)) || samePhysicalDir(baseDir, canonicalBase)) continue;
+      attempted += 1;
+      if (UNIVERSAL_AGENT_DIRS.has(agentDir)) {
+        try {
+          retireManagedSkillRoot(homeDir, baseDir, managedNames);
+        } catch (err) {
+          console.warn(`⚠️  Agent Skill 旧副本迁移失败 ${baseDir}: ${err.message}`);
+          failed += 1;
+        }
+        continue;
+      }
+      const victims = [path.join(baseDir, "dws")];
+      if (fs.existsSync(baseDir)) {
+        for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
+          if ((entry.isDirectory() || entry.isSymbolicLink()) && isManagedMultiSkillDir(path.join(baseDir, entry.name), managedNames)) {
+            victims.push(path.join(baseDir, entry.name));
+          }
+        }
+      }
+      try {
+        publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, ["dws"], victims);
+        installed += 1;
+      } catch (linkErr) {
+        console.warn(`⚠️  ${baseDir} 无法创建 Skill 链接，回退为直接复制: ${linkErr.message}`);
+        if (installToBase(baseDir)) installed += 1;
+        else failed += 1;
+      }
     }
   }
   if (installed === 0) {
@@ -346,12 +367,11 @@ function isManagedMultiSkillDir(dir, managedNames) {
   return LEGACY_OFFICIAL_MULTI_SKILLS.has(name) || managedNames.has(name);
 }
 
-function retireGenericSkillRoot(homeDir, managedNames) {
-  const baseDir = path.join(homeDir, ".agents", "skills");
+function retireManagedSkillRoot(homeDir, baseDir, managedNames) {
   const victims = [path.join(baseDir, "dws")];
   if (fs.existsSync(baseDir)) {
     for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
-      if (entry.isDirectory() && isManagedMultiSkillDir(path.join(baseDir, entry.name), managedNames)) {
+      if ((entry.isDirectory() || entry.isSymbolicLink()) && isManagedMultiSkillDir(path.join(baseDir, entry.name), managedNames)) {
         victims.push(path.join(baseDir, entry.name));
       }
     }
@@ -374,9 +394,71 @@ function retireGenericSkillRoot(homeDir, managedNames) {
       }
     }
     if (restoreErrors.length > 0) {
-      throw new Error(`${err.message}; generic-root rollback failed: ${restoreErrors.join("; ")}`);
+      throw new Error(`${err.message}; Agent-root rollback failed: ${restoreErrors.join("; ")}`);
     }
     throw err;
+  }
+}
+
+function samePhysicalDir(left, right) {
+  try {
+    return fs.realpathSync(left) === fs.realpathSync(right);
+  } catch (_) {
+    return false;
+  }
+}
+
+function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names, victims) {
+  fs.mkdirSync(baseDir, { recursive: true });
+  const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-link-set.tmp-"));
+  const staged = [];
+  const backups = [];
+  const published = [];
+  const correctLinks = new Set();
+  const restore = () => {
+    for (let i = published.length - 1; i >= 0; i -= 1) {
+      fs.rmSync(published[i], { recursive: true, force: true });
+    }
+    for (let i = backups.length - 1; i >= 0; i -= 1) {
+      fs.mkdirSync(path.dirname(backups[i].original), { recursive: true });
+      fs.renameSync(backups[i].backup, backups[i].original);
+    }
+  };
+  try {
+    for (const name of names) {
+      const target = path.join(canonicalBase, name);
+      const dest = path.join(baseDir, name);
+      if (samePhysicalDir(dest, target)) {
+        correctLinks.add(path.resolve(dest));
+        continue;
+      }
+      const stagedPath = path.join(stageRoot, name);
+      const linkTarget = process.platform === "win32" ? target : path.relative(baseDir, target);
+      fs.symlinkSync(linkTarget, stagedPath, process.platform === "win32" ? "junction" : "dir");
+      staged.push({ staged: stagedPath, dest: path.join(baseDir, name) });
+    }
+    const seen = new Set();
+    for (const victim of victims) {
+      const normalized = path.resolve(victim);
+      if (seen.has(normalized) || correctLinks.has(normalized)) continue;
+      seen.add(normalized);
+      if (!backupAndRemoveSkillDir(homeDir, victim, backups)) {
+        throw new Error(`failed to back up Skill directory ${victim}`);
+      }
+    }
+    for (const item of staged) {
+      fs.renameSync(item.staged, item.dest);
+      published.push(item.dest);
+    }
+  } catch (err) {
+    try {
+      restore();
+    } catch (restoreErr) {
+      throw new Error(`${err.message}; rollback failed: ${restoreErr.message}`);
+    }
+    throw err;
+  } finally {
+    fs.rmSync(stageRoot, { recursive: true, force: true });
   }
 }
 
@@ -628,10 +710,6 @@ function installMultiSkillsToHomes(multiRoot) {
   let attempted = 0;
   let failed = 0;
 
-  const specificAgentDirs = AGENT_DIRS.slice(1).filter((agentDir) =>
-    fs.existsSync(path.dirname(path.join(homeDir, agentDir))),
-  );
-
   const installToBase = (baseDir) => {
     fs.mkdirSync(baseDir, { recursive: true });
     const victims = [path.join(baseDir, "dws")];
@@ -639,7 +717,7 @@ function installMultiSkillsToHomes(multiRoot) {
     // the same transaction as every replaced bundled skill.
     for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
       if (
-        entry.isDirectory() &&
+        (entry.isDirectory() || entry.isSymbolicLink()) &&
         (LEGACY_OFFICIAL_MULTI_SKILLS.has(entry.name) || managedNames.has(entry.name)) &&
         !skillSet.has(entry.name)
       ) {
@@ -658,37 +736,44 @@ function installMultiSkillsToHomes(multiRoot) {
     return true;
   };
 
-  AGENT_DIRS.forEach((agentDir, index) => {
-    if (index === 0 && specificAgentDirs.length > 0) {
-      return;
-    }
-    const baseDir = path.join(homeDir, agentDir);
-    const parentGate = path.dirname(baseDir);
-    if (index > 0 && !fs.existsSync(parentGate)) {
-      return;
-    }
-    attempted += 1;
-    if (installToBase(baseDir)) {
-      installed += 1;
-    } else {
-      failed += 1;
-    }
-  });
+  const canonicalBase = path.join(homeDir, ".agents", "skills");
+  attempted += 1;
+  if (installToBase(canonicalBase)) installed += 1;
+  else failed += 1;
 
-  if (specificAgentDirs.length > 0 && installed > 0) {
-    try {
-      retireGenericSkillRoot(homeDir, managedNames);
-    } catch (err) {
-      console.warn(`⚠️  通用 Skill 副本迁移失败: ${err.message}`);
-      failed += 1;
-    }
-  }
-
-  if (attempted === 0) {
-    if (installToBase(path.join(homeDir, ".agents", "skills"))) {
-      installed += 1;
-    } else {
-      failed += 1;
+  if (installed > 0) {
+    for (const agentDir of AGENT_DIRS.slice(1)) {
+      const baseDir = path.join(homeDir, agentDir);
+      if (!fs.existsSync(path.dirname(baseDir)) || samePhysicalDir(baseDir, canonicalBase)) continue;
+      attempted += 1;
+      if (UNIVERSAL_AGENT_DIRS.has(agentDir)) {
+        try {
+          retireManagedSkillRoot(homeDir, baseDir, managedNames);
+        } catch (err) {
+          console.warn(`⚠️  Agent Skill 旧副本迁移失败 ${baseDir}: ${err.message}`);
+          failed += 1;
+        }
+        continue;
+      }
+      const victims = [path.join(baseDir, "dws")];
+      if (fs.existsSync(baseDir)) {
+        for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
+          if (
+            (entry.isDirectory() || entry.isSymbolicLink()) &&
+            (LEGACY_OFFICIAL_MULTI_SKILLS.has(entry.name) || managedNames.has(entry.name)) &&
+            !skillSet.has(entry.name)
+          ) victims.push(path.join(baseDir, entry.name));
+        }
+      }
+      for (const name of skills) victims.push(path.join(baseDir, name));
+      try {
+        publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, skills, victims);
+        installed += 1;
+      } catch (linkErr) {
+        console.warn(`⚠️  ${baseDir} 无法创建 Skill 链接，回退为直接复制: ${linkErr.message}`);
+        if (installToBase(baseDir)) installed += 1;
+        else failed += 1;
+      }
     }
   }
   if (installed === 0) {

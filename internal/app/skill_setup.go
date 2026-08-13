@@ -65,6 +65,7 @@ var (
 	skillSetupInteractive     = isInteractiveTerminal
 	skillSetupReadDir         = os.ReadDir
 	skillSetupStat            = os.Stat
+	skillSetupSymlink         = os.Symlink
 	skillSetupExecutable      = os.Executable
 	skillSetupGetwd           = os.Getwd
 	skillSetupUserHomeDir     = os.UserHomeDir
@@ -74,6 +75,7 @@ var (
 	skillSetupWalk            = filepath.Walk
 	skillSetupRel             = filepath.Rel
 	skillSetupReadlink        = os.Readlink
+	skillSetupEvalSymlinks    = filepath.EvalSymlinks
 	skillSetupOpen            = os.Open
 	skillSetupOpenFile        = os.OpenFile
 	skillSetupWriteFile       = os.WriteFile
@@ -91,9 +93,11 @@ type skillSetupBackup struct {
 }
 
 type skillSetupTargetPlan struct {
-	Destination string
-	Backups     []skillSetupBackup
-	CleanupOnly bool
+	Destination   string
+	CanonicalBase string
+	Backups       []skillSetupBackup
+	CleanupOnly   bool
+	LinkCanonical bool
 }
 
 type skillSetupPlan struct {
@@ -149,8 +153,9 @@ multi 模式支持按产品挑选：
     备份失败时保留原目录并跳过该目标，绝不静默删除。
   · 所有将被移除的目录都会在确认前逐条列出。
 
-不带 --mode 时进入交互式询问；不带 --target 时铺到检测到的具体 Agent 目录；
-未检测到具体 Agent 时才回退到 ~/.agents/skills，避免同一 Agent 扫描两份 Skill。
+不带 --mode 时进入交互式询问；Skill 始终安装到 canonical 目录 ~/.agents/skills。
+原生支持该目录的 Agent 直接读取；其他已检测到的 Agent 目录创建相对链接，
+链接不可用时回退为直接复制，避免同一 Agent 扫描两份 Skill。
 skill 源默认取二进制内嵌的版本（升级二进制即升级 skill）；--source / DWS_SKILL_SOURCE 可显式覆盖。`,
 		Example: `  dws skill setup --mode multi --target claude --dry-run
   dws skill setup --mode multi --target claude`,
@@ -910,8 +915,9 @@ func isSkillSourceRoot(path, mode string) bool {
 }
 
 // resolveSkillSetupTargets returns the list of absolute Agent home destinations.
-// If target == "all", returns every agent home whose parent directory exists.
-// Otherwise returns the single matching home (whether or not it currently exists).
+// The canonical ~/.agents/skills destination is always first. If target ==
+// "all", detected concrete Agent roots follow it. A specific target follows
+// canonical as well so unknown/future Agents retain the universal copy.
 //
 // 末段约定：
 //   - mono  → <agent-home>/dws   （单 skill，整个 src 拷成一个 dws 目录）
@@ -923,6 +929,7 @@ func resolveSkillSetupTargets(target, mode string) ([]string, error) {
 	}
 
 	target = strings.ToLower(strings.TrimSpace(target))
+	canonical := agentHomeForMode(filepath.Join(home, skillSetupAgentHomes[0]), mode)
 	if target == "" || target == "all" {
 		return detectExistingAgentHomes(home, mode), nil
 	}
@@ -931,7 +938,11 @@ func resolveSkillSetupTargets(target, mode string) ([]string, error) {
 	if !ok {
 		return nil, fmt.Errorf("不支持的 --target 值: %s（可选 all, %s）", target, supportedTargets())
 	}
-	return []string{agentHomeForMode(filepath.Join(home, rel), mode)}, nil
+	dest := agentHomeForMode(filepath.Join(home, rel), mode)
+	if filepath.Clean(dest) == filepath.Clean(canonical) {
+		return []string{canonical}, nil
+	}
+	return []string{canonical, dest}, nil
 }
 
 // agentHomeForMode appends the mode-specific tail segment to an agent home base.
@@ -943,7 +954,8 @@ func agentHomeForMode(base, mode string) string {
 }
 
 func detectExistingAgentHomes(home, mode string) []string {
-	var specific []string
+	canonical := agentHomeForMode(filepath.Join(home, skillSetupAgentHomes[0]), mode)
+	dests := []string{canonical}
 	for i, rel := range skillSetupAgentHomes {
 		if i == 0 {
 			continue
@@ -953,12 +965,45 @@ func detectExistingAgentHomes(home, mode string) []string {
 		if info, err := skillSetupStat(parent); err != nil || !info.IsDir() {
 			continue
 		}
-		specific = append(specific, agentHomeForMode(base, mode))
+		dests = append(dests, agentHomeForMode(base, mode))
 	}
-	if len(specific) > 0 {
-		return specific
+	return dests
+}
+
+func skillSetupBaseForMode(dest, mode string) string {
+	if mode == skillSetupModeMono {
+		return filepath.Dir(dest)
 	}
-	return []string{agentHomeForMode(filepath.Join(home, skillSetupAgentHomes[0]), mode)}
+	return dest
+}
+
+func isUniversalSkillSetupBase(base string) bool {
+	base = filepath.ToSlash(filepath.Clean(base))
+	for rel := range map[string]bool{
+		".cursor/skills": true, ".gemini/skills": true, ".codex/skills": true,
+		".github/skills": true, ".cline/skills": true, ".amp/skills": true,
+	} {
+		if strings.HasSuffix(base, "/"+rel) {
+			return true
+		}
+	}
+	return false
+}
+
+func canonicalSkillSetupBase(dests []string, mode string) string {
+	for _, dest := range dests {
+		base := filepath.ToSlash(filepath.Clean(skillSetupBaseForMode(dest, mode)))
+		if strings.HasSuffix(base, "/.agents/skills") {
+			return skillSetupBaseForMode(dest, mode)
+		}
+	}
+	return ""
+}
+
+func samePhysicalSkillSetupPath(left, right string) bool {
+	leftReal, leftErr := skillSetupEvalSymlinks(left)
+	rightReal, rightErr := skillSetupEvalSymlinks(right)
+	return leftErr == nil && rightErr == nil && filepath.Clean(leftReal) == filepath.Clean(rightReal)
 }
 
 func genericSkillCleanupTarget(dests []string, managed map[string]bool) (*skillSetupTargetPlan, error) {
@@ -1032,8 +1077,17 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 	sortedDests := append([]string(nil), dests...)
 	sort.Strings(sortedDests)
 	managedNames := currentManagedSkillNames()
+	canonicalBase := canonicalSkillSetupBase(sortedDests, mode)
 	for _, dest := range sortedDests {
-		target := skillSetupTargetPlan{Destination: dest}
+		base := skillSetupBaseForMode(dest, mode)
+		target := skillSetupTargetPlan{Destination: dest, CanonicalBase: canonicalBase}
+		if canonicalBase != "" && filepath.Clean(base) != filepath.Clean(canonicalBase) {
+			if isUniversalSkillSetupBase(base) {
+				target.CleanupOnly = true
+			} else {
+				target.LinkCanonical = true
+			}
+		}
 		seen := map[string]bool{}
 		add := func(path, reason string) {
 			if seen[path] {
@@ -1077,6 +1131,9 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 			}
 		}
 		for _, path := range replacements {
+			if target.LinkCanonical && samePhysicalSkillSetupPath(path, filepath.Join(target.CanonicalBase, filepath.Base(path))) {
+				continue
+			}
 			info, statErr := skillSetupStat(path)
 			if statErr != nil {
 				if errors.Is(statErr, os.ErrNotExist) {
@@ -1089,14 +1146,9 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 			}
 		}
 		sort.Slice(target.Backups, func(i, j int) bool { return target.Backups[i].Path < target.Backups[j].Path })
-		plan.Targets = append(plan.Targets, target)
-	}
-	cleanupTarget, cleanupErr := genericSkillCleanupTarget(sortedDests, managedNames)
-	if cleanupErr != nil {
-		return nil, cleanupErr
-	}
-	if cleanupTarget != nil {
-		plan.Targets = append(plan.Targets, *cleanupTarget)
+		if !target.CleanupOnly || len(target.Backups) > 0 {
+			plan.Targets = append(plan.Targets, target)
+		}
 	}
 	return plan, nil
 }
@@ -1151,7 +1203,9 @@ func renderSkillSetupPlan(out io.Writer, plan *skillSetupPlan) {
 	fmt.Fprintln(out, "  destinations:")
 	for _, target := range plan.Targets {
 		if target.CleanupOnly {
-			fmt.Fprintf(out, "    - %s (仅迁移旧的通用 DWS 副本)\n", target.Destination)
+			fmt.Fprintf(out, "    - %s (仅迁移 universal Agent 中的旧 DWS 副本)\n", target.Destination)
+		} else if target.LinkCanonical {
+			fmt.Fprintf(out, "    - %s (链接到 %s，失败时回退复制)\n", target.Destination, target.CanonicalBase)
 		} else {
 			fmt.Fprintf(out, "    - %s\n", target.Destination)
 		}
@@ -1649,6 +1703,21 @@ func stageSkillSetupTarget(plan *skillSetupPlan, target skillSetupTargetPlan) (s
 
 	stageOne := func(src, dest string) error {
 		stagedDir := filepath.Join(stageRoot, filepath.Base(dest))
+		if target.LinkCanonical {
+			canonicalTarget := filepath.Join(target.CanonicalBase, filepath.Base(dest))
+			if samePhysicalSkillSetupPath(dest, canonicalTarget) {
+				return nil
+			}
+			relTarget, relErr := filepath.Rel(filepath.Dir(dest), canonicalTarget)
+			if relErr != nil {
+				return fmt.Errorf("计算 Skill 相对链接失败 %s: %w", canonicalTarget, relErr)
+			}
+			if linkErr := skillSetupSymlink(relTarget, stagedDir); linkErr != nil {
+				return fmt.Errorf("创建 Skill 链接失败 %s -> %s: %w", stagedDir, relTarget, linkErr)
+			}
+			staged = append(staged, skillSetupStagedDir{staged: stagedDir, dest: dest})
+			return nil
+		}
 		if err := skillSetupMkdirAll(stagedDir, 0o755); err != nil {
 			return fmt.Errorf("创建 Skill staging 目录失败 %s: %w", stagedDir, err)
 		}
@@ -1752,16 +1821,13 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 	}
 	for _, target := range plan.Targets {
 		if target.CleanupOnly {
-			if skipped > 0 {
-				continue
-			}
 			if homeErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 无法解析 HOME，保留通用 Skill 副本 %s: %v\n", target.Destination, homeErr)
+				fmt.Fprintf(errOut, "  ✗ 无法解析 HOME，保留 universal Agent 旧副本 %s: %v\n", target.Destination, homeErr)
 				skipped++
 				continue
 			}
 			if _, cleanupErr := backupSkillSetupTarget(home, target.Backups, out); cleanupErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 通用 Skill 副本迁移失败，已回滚 %s: %v\n", target.Destination, cleanupErr)
+				fmt.Fprintf(errOut, "  ✗ universal Agent 旧副本迁移失败，已回滚 %s: %v\n", target.Destination, cleanupErr)
 				skipped++
 			}
 			continue
@@ -1777,6 +1843,12 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 		}
 
 		stageRoot, staged, stageErr := stageSkillSetupTarget(plan, target)
+		if stageErr != nil && target.LinkCanonical {
+			fmt.Fprintf(errOut, "  ⚠️  %s 无法创建 Skill 链接，回退为直接复制: %v\n", target.Destination, stageErr)
+			fallback := target
+			fallback.LinkCanonical = false
+			stageRoot, staged, stageErr = stageSkillSetupTarget(plan, fallback)
+		}
 		if stageErr != nil {
 			fmt.Fprintf(errOut, "  ✗ Skill staging 失败，保留原集合 %s: %v\n", target.Destination, stageErr)
 			skipped += perTarget
@@ -1836,7 +1908,7 @@ func staleMultiSkillVictimsWithError(dest string, keep []string, managed ...map[
 	}
 	var victims []string
 	for _, e := range entries {
-		if !e.IsDir() || keepSet[e.Name()] {
+		if (!e.IsDir() && e.Type()&os.ModeSymlink == 0) || keepSet[e.Name()] {
 			continue
 		}
 		if !isManagedDWSMultiSkillDir(filepath.Join(dest, e.Name()), managed...) {
