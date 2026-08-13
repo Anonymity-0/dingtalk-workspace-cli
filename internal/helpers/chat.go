@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
@@ -2835,7 +2836,7 @@ func newChatCommand() *cobra.Command {
 			groupID := flagOrFallback(cmd, "group", "conversation-id", "id", "chat")
 			userID, _ := cmd.Flags().GetString("user")
 			openDingTalkID, _ := cmd.Flags().GetString("open-dingtalk-id")
-			msgUuid, _ := cmd.Flags().GetString("uuid")
+			msgUuid := flagOrFallback(cmd, "idempotency-key", "uuid")
 			specified := 0
 			if groupID != "" {
 				specified++
@@ -3050,6 +3051,7 @@ func newChatCommand() *cobra.Command {
 				{Name: "ai-tag", Property: "clawType", InterfaceType: "string"},
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds"},
 				{Name: "group", Property: "openConversationId"},
+				{Name: "idempotency-key", Property: "uuid"},
 				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId"},
 			},
 		},
@@ -4385,7 +4387,11 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 	_ = chatMessageSendCmd.Flags().MarkHidden("file-type")
 	_ = chatMessageSendCmd.Flags().MarkHidden("file-size")
 	chatMessageSendCmd.Flags().Bool("ai-tag", true, "消息是否带 AI 发送角标（默认 true）")
-	chatMessageSendCmd.Flags().String("uuid", "", "幂等 UUID，相同 uuid 在 24h 内不会重复发送（可选）")
+	corecmd.RegisterFlags(chatMessageSendCmd, []corecmd.FlagSpec{{
+		Name:    "idempotency-key",
+		Usage:   "幂等键，相同 key 在 24h 内不会重复发送（可选）",
+		Aliases: []string{"uuid"},
+	}})
 	cli.AttachRuntimeSchema(chatMessageSendCmd, "chat", "send_personal_message", "hardcoded:chat")
 	cli.AnnotateRuntimeConstraints(chatMessageSendCmd, cli.RuntimeSchemaConstraints{
 		MutuallyExclusive: [][]string{{"group", "user", "open-dingtalk-id"}},
