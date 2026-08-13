@@ -180,6 +180,7 @@ func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T)
 		{"message", "list-by-sender", "--sender-user-id=u1", "--start=bad"},
 		{"message", "list-by-sender", "--sender-user-id=u1", "--start=2026-01-01T00:00:00Z", "--end=bad"},
 		{"message", "list-by-sender", "--sender-user-id=u1", "--start=2026-01-02T00:00:00Z", "--end=2026-01-01T00:00:00Z"},
+		{"message", "list-by-sender", "--sender-user-id=u1", "--end=2026-01-02T00:00:00Z"},
 		{"message", "list-by-sender", "--sender-user-id=u1", "--start=2026-01-01T00:00:00Z", "--end=2026-01-02T00:00:00Z"},
 		{"message", "list-by-sender", "--sender-open-dingtalk-id=D1", "--start=2026-01-01T00:00:00Z"},
 		{"message", "list-mentions", "--start=bad", "--end=2026-01-02T00:00:00Z"},
