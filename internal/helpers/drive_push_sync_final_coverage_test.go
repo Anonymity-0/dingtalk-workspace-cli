@@ -219,6 +219,19 @@ func TestCrossPlatformCoverageDrivePushFinalWalkAndCommandGates(t *testing.T) {
 		}
 	})
 
+	// fs.WalkDir 允许把中途的 lstat 失败通过第三个参数传给回调而不是 DirEntry.Info；
+	// 该短路分支必须直接原样上抛，不能吞掉底层错误。macOS 上并非每次遍历都会经过它，
+	// 因此需要一个显式测试固定这条路径。
+	t.Run("walk callback receives error", func(t *testing.T) {
+		_, root, _ := openDriveFinalCoverageRoot(t)
+		testseam.Swap(t, &walkPinnedLocalFS, func(_ fs.FS, _ string, fn fs.WalkDirFunc) error {
+			return fn("bad", nil, errTestInfo)
+		})
+		if _, _, err := walkLocalForPushPinned(root); !errors.Is(err, errTestInfo) {
+			t.Fatalf("walk callback error = %v", err)
+		}
+	})
+
 	t.Run("walk final root verification", func(t *testing.T) {
 		rootPath, root, _ := openDriveFinalCoverageRoot(t)
 		moved := filepath.Join(filepath.Dir(rootPath), "moved-after-walk")
