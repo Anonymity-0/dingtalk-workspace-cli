@@ -646,7 +646,7 @@ func formatChatMessageListAllTime(ms int64) string {
 }
 
 func defaultChatMessageListTime() string {
-	return time.Now().Format("2006-01-02 15:04:05")
+	return time.Now().In(shanghaiLocation()).Format("2006-01-02 15:04:05")
 }
 
 func chatMessageSearchAdvancedArgs(cmd *cobra.Command) (map[string]any, error) {
