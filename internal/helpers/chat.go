@@ -520,6 +520,11 @@ func chatMessageListBySenderArgs(cmd *cobra.Command) (map[string]any, error) {
 	if senderUserID == "" && senderOpenDingTalkID == "" {
 		return nil, fmt.Errorf("--sender-user-id or --sender-open-dingtalk-id is required")
 	}
+	if senderOpenDingTalkID != "" {
+		if err := targetresolver.ValidateExplicitOpenDingTalkID("--sender-open-dingtalk-id", senderOpenDingTalkID); err != nil {
+			return nil, err
+		}
+	}
 	startRaw, endRaw, err := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
 	if err != nil {
 		return nil, err
@@ -1051,8 +1056,7 @@ func isNumericUserID(value string) bool {
 }
 
 func isOpenDingTalkID(value string) bool {
-	value = strings.TrimSpace(value)
-	return len(value) > 0 && (value[0] == 'D' || value[0] == 'd')
+	return targetresolver.LooksLikeCurrentDOpenDingTalkID(value)
 }
 
 // webhookErrcodeFailure 解析自定义机器人 webhook 的响应，判定是否发送失败。
@@ -2692,6 +2696,11 @@ func newChatCommand() *cobra.Command {
 			if specified == 0 {
 				return fmt.Errorf("--group, --user or --open-dingtalk-id is required")
 			}
+			if openDingTalkID != "" {
+				if err := targetresolver.ValidateExplicitOpenDingTalkID("--open-dingtalk-id", openDingTalkID); err != nil {
+					return err
+				}
+			}
 			if userID != "" && isOpenDingTalkID(userID) {
 				openDingTalkID = userID
 				userID = ""
@@ -2783,6 +2792,11 @@ func newChatCommand() *cobra.Command {
 			}
 			if userID == "" && openDingTalkID == "" {
 				return fmt.Errorf("--user or --open-dingtalk-id is required")
+			}
+			if openDingTalkID != "" {
+				if err := targetresolver.ValidateExplicitOpenDingTalkID("--open-dingtalk-id", openDingTalkID); err != nil {
+					return err
+				}
 			}
 			if userID != "" && isOpenDingTalkID(userID) {
 				openDingTalkID = userID
@@ -2912,6 +2926,11 @@ func newChatCommand() *cobra.Command {
 			}
 			if specified == 0 {
 				return fmt.Errorf("--group, --user or --open-dingtalk-id is required")
+			}
+			if openDingTalkID != "" {
+				if err := targetresolver.ValidateExplicitOpenDingTalkID("--open-dingtalk-id", openDingTalkID); err != nil {
+					return err
+				}
 			}
 			if userID != "" && isOpenDingTalkID(userID) {
 				openDingTalkID = userID
@@ -4726,9 +4745,10 @@ chat message edit 或 chat message recall 的 --msg-id 和 --conversation-id。
 
 			userID := rawUserID
 			openDingTalkID := rawOpenDingTalkID
-			if openDingTalkID != "" && !isOpenDingTalkID(openDingTalkID) {
-				userID = openDingTalkID
-				openDingTalkID = ""
+			if openDingTalkID != "" {
+				if err := targetresolver.ValidateExplicitOpenDingTalkID("--open-dingtalk-id", openDingTalkID); err != nil {
+					return err
+				}
 			}
 			if userID != "" && isOpenDingTalkID(userID) {
 				openDingTalkID = userID
