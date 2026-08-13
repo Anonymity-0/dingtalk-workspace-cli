@@ -22,6 +22,16 @@ func withFakeHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
 	testseam.Swap(t, &upgradeUserHomeDir, func() (string, error) { return home, nil })
+	// Host-installed macOS apps must not make a fake HOME appear to have extra
+	// detected Agents. Tests that exercise application-based detection can
+	// override this seam explicitly.
+	testseam.Swap(t, &upgradeStat, func(path string) (os.FileInfo, error) {
+		applications := filepath.Join(string(filepath.Separator), "Applications")
+		if path == filepath.Join(applications, "ZCode.app") || path == filepath.Join(applications, "MiniMax Code.app") {
+			return nil, os.ErrNotExist
+		}
+		return os.Stat(path)
+	})
 	return home
 }
 

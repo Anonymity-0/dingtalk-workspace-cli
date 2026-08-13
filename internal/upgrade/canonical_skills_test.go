@@ -161,6 +161,48 @@ func TestCrossPlatformCoverageCanonicalSkillLinksFallBackToCopies(t *testing.T) 
 	}
 }
 
+func TestCrossPlatformCoverageConfiguredRootsDetectShallowAndApplicationAgents(t *testing.T) {
+	home := t.TempDir()
+	testseam.Swap(t, &upgradeSystemHomeDir, func() (string, error) { return home, nil })
+	for _, dir := range []string{filepath.Join(home, ".config", "kimchi"), filepath.Join(home, ".tabnine")} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sentinel := filepath.Join(home, "app-sentinel")
+	if err := os.MkdirAll(sentinel, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	appInfo, err := os.Stat(sentinel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalStat := upgradeStat
+	testseam.Swap(t, &upgradeStat, func(path string) (os.FileInfo, error) {
+		if path == "/Applications/ZCode.app" || path == "/Applications/MiniMax Code.app" {
+			return appInfo, nil
+		}
+		return originalStat(path)
+	})
+	want := map[string]bool{
+		".config/kimchi/harness/skills": false,
+		".tabnine/agent/skills":         false,
+		".zcode/skills":                 false,
+		".minimax/skills":               false,
+	}
+	for _, root := range configuredSkillRoots(home) {
+		label := filepath.ToSlash(root.label)
+		if _, ok := want[label]; ok {
+			want[label] = skillRootDetectedBase(home, root)
+		}
+	}
+	for label, detected := range want {
+		if !detected {
+			t.Errorf("root %s was not detected", label)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageConfiguredAgentRootsMatchUpstreamAndCustomHomes(t *testing.T) {
 	home := t.TempDir()
 	custom := map[string]string{

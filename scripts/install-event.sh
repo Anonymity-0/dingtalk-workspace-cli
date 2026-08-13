@@ -155,6 +155,16 @@ resolve_agent_skill_base() {
   printf '%s\n' "$base"
 }
 
+agent_skill_base_detected() {
+  agent_dir="$1"; base="$2"
+  case "$agent_dir" in
+    .config/kimchi/harness/skills|.tabnine/agent/skills) [ -d "$(dirname "$(dirname "$base")")" ] ;;
+    .zcode/skills) [ -d "$(dirname "$base")" ] || [ -d "/Applications/ZCode.app" ] ;;
+    .minimax/skills) [ -d "$(dirname "$base")" ] || [ -d "/Applications/MiniMax Code.app" ] ;;
+    *) [ -d "$(dirname "$base")" ] ;;
+  esac
+}
+
 link_or_copy_skill() {
   canonical="$1"; src="$2"; dest="$3"
   same_physical_skill "$dest" "$canonical" && return 0
@@ -178,7 +188,7 @@ install_skill_to_homes() {
   installed=1
   for agent_dir in $(agent_skill_dirs); do
     base="$(resolve_agent_skill_base "$agent_dir")"
-    [ -e "$(dirname "$base")" ] || continue
+    agent_skill_base_detected "$agent_dir" "$base" || continue
     same_physical_skill "$base" "$HOME/.agents/skills" && continue
     if is_cleanup_only_agent_dir "$agent_dir"; then backup_skill_dir "$base/$skill_name" >/dev/null || return 1; continue; fi
     link_or_copy_skill "$canonical" "$src" "$base/$skill_name" || return 1

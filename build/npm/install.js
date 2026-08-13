@@ -109,6 +109,21 @@ function resolvedAgentTargets(homeDir) {
   });
 }
 
+function agentTargetDetected(target) {
+  const parent = path.dirname(target.baseDir);
+  switch (target.id) {
+    case "kimchi":
+    case "tabnine-cli":
+      return fs.existsSync(path.dirname(parent));
+    case "zcode":
+      return fs.existsSync(parent) || fs.existsSync("/Applications/ZCode.app");
+    case "minimax-code":
+      return fs.existsSync(parent) || fs.existsSync("/Applications/MiniMax Code.app");
+    default:
+      return fs.existsSync(parent);
+  }
+}
+
 const PLATFORM_MAP = {
   "darwin-x64": "dws-darwin-amd64.tar.gz",
   "darwin-arm64": "dws-darwin-arm64.tar.gz",
@@ -347,7 +362,7 @@ function installSkillsToHomes(skillRoot) {
   if (installed > 0) {
     for (const target of resolvedAgentTargets(homeDir)) {
       const { agentDir, baseDir, universal } = target;
-      if (!fs.existsSync(path.dirname(baseDir)) || samePhysicalDir(baseDir, canonicalBase)) continue;
+      if (!agentTargetDetected(target) || samePhysicalDir(baseDir, canonicalBase)) continue;
       attempted += 1;
       if (universal) {
         try {
@@ -819,7 +834,7 @@ function installMultiSkillsToHomes(multiRoot) {
   if (installed > 0) {
     for (const target of resolvedAgentTargets(homeDir)) {
       const { agentDir, baseDir, universal } = target;
-      if (!fs.existsSync(path.dirname(baseDir)) || samePhysicalDir(baseDir, canonicalBase)) continue;
+      if (!agentTargetDetected(target) || samePhysicalDir(baseDir, canonicalBase)) continue;
       attempted += 1;
       if (universal) {
         try {
@@ -979,6 +994,7 @@ if (require.main === module) {
 module.exports = {
   UPSTREAM_AGENTS,
   resolvedAgentTargets,
+  agentTargetDetected,
   publishCacheAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,

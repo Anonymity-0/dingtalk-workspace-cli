@@ -90,6 +90,17 @@ function Resolve-AgentBase([string]$row) {
     return Join-Path $HOME $parts[2]
 }
 
+function Test-AgentBaseDetected([string]$id, [string]$base) {
+    $parent = Split-Path $base -Parent
+    switch ($id) {
+        "kimchi" { return Test-Path (Split-Path $parent -Parent) -PathType Container }
+        "tabnine-cli" { return Test-Path (Split-Path $parent -Parent) -PathType Container }
+        "zcode" { return (Test-Path $parent -PathType Container) -or (Test-Path "/Applications/ZCode.app" -PathType Container) }
+        "minimax-code" { return (Test-Path $parent -PathType Container) -or (Test-Path "/Applications/MiniMax Code.app" -PathType Container) }
+        default { return Test-Path $parent -PathType Container }
+    }
+}
+
 function Test-PathLexically([string]$path) {
     try { Get-Item -LiteralPath $path -Force -ErrorAction Stop | Out-Null; return $true } catch {}
     $parent = Split-Path $path -Parent; $leaf = Split-Path $path -Leaf
@@ -194,7 +205,7 @@ if (-not $NoSkills) {
                 if ([string]::IsNullOrWhiteSpace($base)) { continue }
                 $baseKey = [System.IO.Path]::GetFullPath($base).TrimEnd([char[]]@('\', '/'))
                 if (!$seen.Add($baseKey) -or $baseKey -eq [System.IO.Path]::GetFullPath($canonicalBase).TrimEnd([char[]]@('\', '/'))) { continue }
-                if (-not (Test-Path (Split-Path $base -Parent))) { continue }
+                if (!(Test-AgentBaseDetected $parts[0] $base)) { continue }
                 $dest = Join-Path $base $SkillName
                 if ($universal) { Backup-DevSkill $dest; continue }
                 New-Item -ItemType Directory -Path $base -Force | Out-Null

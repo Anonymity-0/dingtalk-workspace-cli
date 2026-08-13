@@ -408,8 +408,8 @@ multi_tree_has_skills() {
   return 1
 }
 
-# Match the upstream `skills` CLI used by lark-cli: ~/.agents/skills is the
-# canonical store. Universal Agents read it directly; other Agents receive
+# ~/.agents/skills is the canonical store under the universal convention.
+# Universal Agents read it directly; other Agents receive
 # relative links and fall back to copies only when links are unavailable.
 is_universal_agent_dir() {
   case "$1" in
@@ -467,6 +467,16 @@ resolve_agent_skill_base() {
     ".config/kimchi/harness/skills") printf '%s\n' "${XDG_CONFIG_HOME:-$_ras_root/.config}/kimchi/harness/skills"; return ;;
   esac
   printf '%s\n' "$_ras_root/$_ras_agent"
+}
+
+agent_skill_base_detected() {
+  _asbd_agent="$1"; _asbd_base="$2"
+  case "$_asbd_agent" in
+    ".config/kimchi/harness/skills"|".tabnine/agent/skills") [ -d "$(dirname "$(dirname "$_asbd_base")")" ] ;;
+    ".zcode/skills") [ -d "$(dirname "$_asbd_base")" ] || [ -d "/Applications/ZCode.app" ] ;;
+    ".minimax/skills") [ -d "$(dirname "$_asbd_base")" ] || [ -d "/Applications/MiniMax Code.app" ] ;;
+    *) [ -d "$(dirname "$_asbd_base")" ] ;;
+  esac
 }
 
 same_physical_skill_root() {
@@ -557,8 +567,7 @@ install_multi_skills_to_root() {
   for agent_dir in $(agent_skill_dirs)
   do
     base_dir="$(resolve_agent_skill_base "$root" "$agent_dir")"
-    parent_gate="$(dirname "$base_dir")"
-    [ -e "$parent_gate" ] || continue
+    agent_skill_base_detected "$agent_dir" "$base_dir" || continue
     same_physical_skill_root "$base_dir" "$root/.agents/skills" && continue
     attempted=$((attempted + 1))
     if is_universal_agent_dir "$agent_dir"; then
@@ -750,8 +759,7 @@ install_skills_to_root() {
   for agent_dir in $(agent_skill_dirs)
   do
     base_dir="$(resolve_agent_skill_base "$root" "$agent_dir")"
-    parent_gate="$(dirname "$base_dir")"
-    [ -e "$parent_gate" ] || continue
+    agent_skill_base_detected "$agent_dir" "$base_dir" || continue
     same_physical_skill_root "$base_dir" "$root/.agents/skills" && continue
     attempted=$((attempted + 1))
     if is_universal_agent_dir "$agent_dir"; then

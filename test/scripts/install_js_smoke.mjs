@@ -64,6 +64,7 @@ const require = createRequire(import.meta.url);
 const {
   UPSTREAM_AGENTS,
   resolvedAgentTargets,
+  agentTargetDetected,
   publishCacheAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
@@ -76,6 +77,14 @@ assert.equal(UPSTREAM_AGENTS.filter(({ universal }) => !universal).length, 57, "
 assert.equal(UPSTREAM_AGENTS.filter(({ agentDir }) => agentDir === null).length, 2, "no-global Agents are retained in the registry");
 assert.equal(UPSTREAM_AGENTS.filter(({ agentDir }) => agentDir === ".agents/skills").length, 6, "canonical-direct Agents need no target");
 assert.equal(resolvedAgentTargets(path.join(os.tmpdir(), "dws-registry-home")).length, 70, "65 upstream roots, qoderwork, and 4 migration roots are deduplicated");
+const detectionHome = fs.mkdtempSync(path.join(os.tmpdir(), "dws-agent-detect-"));
+fs.mkdirSync(path.join(detectionHome, ".config", "kimchi"), { recursive: true });
+fs.mkdirSync(path.join(detectionHome, ".tabnine"), { recursive: true });
+const detectionTargets = resolvedAgentTargets(detectionHome);
+for (const id of ["kimchi", "tabnine-cli"]) {
+  assert.equal(agentTargetDetected(detectionTargets.find((target) => target.id === id)), true, `${id} shallow install marker is detected`);
+}
+fs.rmSync(detectionHome, { recursive: true, force: true });
 const assetName = PLATFORM_MAP[`${process.platform}-${process.arch}`];
 
 if (process.platform === "win32" || !assetName) {
@@ -203,15 +212,32 @@ scenario("multi install lays out sibling skills and caches", () => {
   }
 });
 
-scenario("Codex reads the universal canonical root and beta.6 copies are migrated", () => {
+scenario("pinned universal global topology installs canonical and retires private copies", () => {
   const { tmp, pkg, home } = stagePkg({
     "mono/SKILL.md": "# mono fixture\n",
     "multi/dingtalk-chat/SKILL.md": "# dingtalk-chat\n",
     "multi/dws-shared/SKILL.md": "# dws-shared\n",
   });
   try {
-    writeFile(path.join(home, ".codex", "config.toml"), "model = \"test\"\n");
-    writeFile(path.join(home, ".codex", "skills", "dingtalk-chat", "SKILL.md"), "beta.6 copy\n");
+    // The pinned upstream installer treats global universal Agents as
+    // canonical-only even when their registry also retains a distinct
+    // globalSkillsDir for legacy discovery/removal. Exercise every unique
+    // non-canonical universal root so this distinction cannot drift again.
+    const retiredUniversalRoots = [
+      ".config/agents/skills",
+      ".gemini/antigravity/skills",
+      ".gemini/antigravity-cli/skills",
+      ".codex/skills",
+      ".cursor/skills",
+      ".deepagents/agent/skills",
+      ".firebender/skills",
+      ".gemini/skills",
+      ".copilot/skills",
+      ".config/opencode/skills",
+    ];
+    for (const root of retiredUniversalRoots) {
+      writeFile(path.join(home, root, "dingtalk-chat", "SKILL.md"), `beta.6 copy in ${root}\n`);
+    }
     writeFile(
       path.join(home, ".agents", "skills", "dws", "multi", "dingtalk-chat", "SKILL.md"),
       "old nested duplicate\n",
@@ -223,10 +249,12 @@ scenario("Codex reads the universal canonical root and beta.6 copies are migrate
       fs.existsSync(path.join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md")),
       "universal canonical Skill installed",
     );
-    assert.ok(
-      !fs.existsSync(path.join(home, ".codex", "skills", "dingtalk-chat")),
-      "beta.6 Codex duplicate migrated",
-    );
+    for (const root of retiredUniversalRoots) {
+      assert.ok(
+        !fs.existsSync(path.join(home, root, "dingtalk-chat")),
+        `beta.6 universal duplicate migrated from ${root}`,
+      );
+    }
     assert.ok(
       !fs.existsSync(path.join(home, ".agents", "skills", "dws")),
       "legacy nested duplicate retired",

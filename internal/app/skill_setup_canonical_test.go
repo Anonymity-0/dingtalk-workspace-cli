@@ -100,6 +100,42 @@ func TestCrossPlatformCoverageSkillSetupCanonicalTargetsAndAgentCapabilities(t *
 	}
 }
 
+func TestCrossPlatformCoverageSkillSetupDetectsShallowAndApplicationAgents(t *testing.T) {
+	home := t.TempDir()
+	testseam.Swap(t, &skillSetupSystemHomeDir, func() (string, error) { return home, nil })
+	for _, dir := range []string{filepath.Join(home, ".config", "kimchi"), filepath.Join(home, ".tabnine")} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sentinel := filepath.Join(home, "app-sentinel")
+	if err := os.MkdirAll(sentinel, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	appInfo, err := os.Stat(sentinel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalStat := skillSetupStat
+	testseam.Swap(t, &skillSetupStat, func(path string) (os.FileInfo, error) {
+		if path == "/Applications/ZCode.app" || path == "/Applications/MiniMax Code.app" {
+			return appInfo, nil
+		}
+		return originalStat(path)
+	})
+	dests := detectExistingAgentHomes(home, skillSetupModeMulti)
+	for _, target := range []string{
+		filepath.Join(home, ".config", "kimchi", "harness", "skills"),
+		filepath.Join(home, ".tabnine", "agent", "skills"),
+		filepath.Join(home, ".zcode", "skills"),
+		filepath.Join(home, ".minimax", "skills"),
+	} {
+		if !containsSkillName(dests, target) {
+			t.Errorf("detected targets %v missing %s", dests, target)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageSkillSetupCustomRootsAliasesAndUniversalTargets(t *testing.T) {
 	home := t.TempDir()
 	customClaude := filepath.Join(t.TempDir(), "claude")
