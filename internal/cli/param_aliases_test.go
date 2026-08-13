@@ -237,6 +237,36 @@ func TestReduceLeafParamAliasesRemainingEdges(t *testing.T) {
 	})
 }
 
+func TestCrossPlatformCoverageReduceLeafParamAliasesBindExcludesRealFlags(t *testing.T) {
+	entry, problems := reduceLeafParamAliases(
+		"demo cmd",
+		realMap(realFlag{name: "id"}, realFlag{name: "name"}, realFlag{name: "query"}),
+		[]Concept{
+			{ID: "base_id", Members: []string{"base-id", "base-token"}, Excludes: []string{"name", "unsafe"}},
+			{ID: "query", Members: []string{"query", "keyword"}},
+		},
+		CommandOverride{Bind: map[string]string{"id": "base_id"}},
+	)
+	if len(problems) != 0 {
+		t.Fatalf("reduceLeafParamAliases() problems = %v", problems)
+	}
+	if entry == nil {
+		t.Fatal("reduceLeafParamAliases() entry = nil")
+	}
+	if entry.Aliases["base-id"] != "id" || entry.Aliases["base-token"] != "id" {
+		t.Fatalf("bound aliases = %#v, want base-id/base-token -> id", entry.Aliases)
+	}
+	if entry.Aliases["keyword"] != "query" {
+		t.Fatalf("query alias = %#v, want keyword -> query", entry.Aliases)
+	}
+	if containsParamAlias(entry.Blocked, "name") {
+		t.Fatalf("real excluded flag entered blocked list: %#v", entry.Blocked)
+	}
+	if !containsParamAlias(entry.Blocked, "unsafe") {
+		t.Fatalf("non-real excluded flag was not blocked: %#v", entry.Blocked)
+	}
+}
+
 func TestParamAliasEntryLookupMethods(t *testing.T) {
 	entry := ParamAliasEntry{
 		Aliases:   map[string]string{"uid": "user"},
@@ -457,7 +487,7 @@ func TestReduceLeafParamAliasesExcludesProtectFuzzyButDoNotOverrideAnotherConcep
 	}
 }
 
-func TestReduceLeafParamAliasesExcludesProtectUnclaimedRealFlag(t *testing.T) {
+func TestReduceLeafParamAliasesExcludesDoNotBlockRealFlag(t *testing.T) {
 	concepts := []Concept{
 		{ID: "single_id", Members: []string{"id", "item-id"}, Excludes: []string{"item-ids"}},
 	}
@@ -465,8 +495,11 @@ func TestReduceLeafParamAliasesExcludesProtectUnclaimedRealFlag(t *testing.T) {
 	if len(problems) != 0 {
 		t.Fatalf("unexpected problems: %v", problems)
 	}
-	if entry == nil || !containsParamAlias(entry.Blocked, "item-ids") {
-		t.Fatalf("unclaimed real exclude was not blocked: %#v", entry)
+	if entry == nil {
+		t.Fatal("expected a reduced entry")
+	}
+	if containsParamAlias(entry.Blocked, "item-ids") {
+		t.Fatalf("real exclude was blocked: %#v", entry)
 	}
 }
 

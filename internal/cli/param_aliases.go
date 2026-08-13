@@ -278,9 +278,16 @@ func reduceLeafParamAliases(path string, realByMorph map[string][]realFlag, conc
 		}
 	}
 	for excluded := range excludedSet {
-		if _, isAlias := aliasMap[excluded]; !isAlias && !claimedRealSet[excluded] {
-			blockedSet[excluded] = true
+		if _, isAlias := aliasMap[excluded]; isAlias {
+			continue
 		}
+		if claimedRealSet[excluded] {
+			continue
+		}
+		if _, isReal := realByMorph[excluded]; isReal {
+			continue
+		}
+		blockedSet[excluded] = true
 	}
 
 	// (b) Command scoped aliases override concept reductions.
