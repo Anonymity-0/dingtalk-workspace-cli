@@ -123,6 +123,27 @@ func TestInstallPowerShellUsesAbsoluteJunctionTargetsAndCopyFallback(t *testing.
 	}
 }
 
+func TestAgentInstallersCarryUpstreamShallowAndApplicationDetection(t *testing.T) {
+	t.Parallel()
+	checks := map[string][]string{
+		"build/npm/install.js":       {"agentTargetDetected", `case "kimchi"`, `case "tabnine-cli"`, "/Applications/ZCode.app", "/Applications/MiniMax Code.app"},
+		"scripts/install.sh":         {"agent_skill_base_detected", ".config/kimchi/harness/skills", ".tabnine/agent/skills", "/Applications/ZCode.app", "/Applications/MiniMax Code.app"},
+		"scripts/install-skills.sh":  {"agent_skill_base_detected", ".config/kimchi/harness/skills", ".tabnine/agent/skills", "/Applications/ZCode.app", "/Applications/MiniMax Code.app"},
+		"scripts/install-event.sh":   {"agent_skill_base_detected", ".config/kimchi/harness/skills", ".tabnine/agent/skills", "/Applications/ZCode.app", "/Applications/MiniMax Code.app"},
+		"scripts/install-devapp.sh":  {"agent_skill_base_detected", ".config/kimchi/harness/skills", ".tabnine/agent/skills", "/Applications/ZCode.app", "/Applications/MiniMax Code.app"},
+		"scripts/install.ps1":        {"Test-AgentSkillBaseDetected", `"kimchi"`, `"tabnine-cli"`, "/Applications/ZCode.app", "/Applications/MiniMax Code.app"},
+		"scripts/install-devapp.ps1": {"Test-AgentBaseDetected", `"kimchi"`, `"tabnine-cli"`, "/Applications/ZCode.app", "/Applications/MiniMax Code.app"},
+	}
+	for rel, wants := range checks {
+		body := readTestFile(t, filepath.Join("..", "..", filepath.FromSlash(rel)))
+		for _, want := range wants {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s missing detection contract %q", rel, want)
+			}
+		}
+	}
+}
+
 func TestInstallPowerShellResolvesCustomAndLegacyAgentHomes(t *testing.T) {
 	pwsh, err := exec.LookPath("pwsh")
 	if err != nil {

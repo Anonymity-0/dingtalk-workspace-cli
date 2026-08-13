@@ -135,10 +135,17 @@ func TestPackageManagerVerifierCoversSpecificAndFallbackSkillRoots(t *testing.T)
 	}
 
 	verifyCmd := exec.Command("sh", verifierPath, "--npm-only")
-	verifyCmd.Env = append(os.Environ(), "DWS_PACKAGE_DIST_DIR="+distDir)
+	hostXDG := filepath.Join(t.TempDir(), "host-xdg")
+	verifyCmd.Env = replaceTestEnv(os.Environ(),
+		"DWS_PACKAGE_DIST_DIR", distDir,
+		"XDG_CONFIG_HOME", hostXDG,
+	)
 	output, err := verifyCmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("verify-package-managers.sh error = %v\noutput:\n%s", err, output)
+	}
+	if _, err := os.Stat(hostXDG); !os.IsNotExist(err) {
+		t.Fatalf("package verifier touched inherited XDG_CONFIG_HOME %s: %v", hostXDG, err)
 	}
 	for _, scenario := range []string{"specific-agent-roots", "generic-fallback"} {
 		if !strings.Contains(string(output), "verifying npm package install ("+scenario+")") {

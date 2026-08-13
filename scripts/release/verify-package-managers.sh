@@ -188,6 +188,26 @@ resolve_agent_base() {
   esac
 }
 
+# Package verification must never inherit the runner's real Agent roots. In
+# particular, hosted Linux runners can define XDG_CONFIG_HOME globally; two
+# parallel verification jobs would then publish links into the same directory
+# and make one another's links appear broken. Keep every supported override
+# inside the scenario-specific temporary HOME instead.
+with_isolated_agent_env() (
+  isolated_home=$1
+  shift
+  HOME="$isolated_home"
+  AUTOHAND_HOME="$isolated_home/.autohand"
+  CLAUDE_CONFIG_DIR="$isolated_home/.claude"
+  CODEX_HOME="$isolated_home/.codex"
+  GROK_HOME="$isolated_home/.grok"
+  HERMES_HOME="$isolated_home/.hermes"
+  VIBE_HOME="$isolated_home/.vibe"
+  XDG_CONFIG_HOME="$isolated_home/.config"
+  export HOME AUTOHAND_HOME CLAUDE_CONFIG_DIR CODEX_HOME GROK_HOME HERMES_HOME VIBE_HOME XDG_CONFIG_HOME
+  "$@"
+)
+
 verify_skill_base() {
   home_root="$1"
   base="$2"
@@ -217,8 +237,8 @@ verify_compatible_skill_base() {
 
 verify_skill_targets() {
   home_root="$1"
-  # lark-cli/skills-compatible canonical store is always present, regardless
-  # of which concrete Agent homes existed at install time.
+  # The universal-convention canonical store is always present, regardless of
+  # which concrete Agent homes existed at install time.
   verify_skill_base "$home_root" ".agents/skills"
   seen=''
   for row in $UPSTREAM_AGENT_REGISTRY $LEGACY_AGENT_CLEANUP_REGISTRY; do
@@ -251,15 +271,15 @@ verify_npm_install() {
   npm_cache="$TMP_ROOT/npm-cache-$scenario"
   mkdir -p "$npm_home" "$npm_prefix" "$npm_cache"
   if [ "$scenario" = "specific-agent-roots" ]; then
-    seed_specific_agent_homes "$npm_home"
+    with_isolated_agent_env "$npm_home" seed_specific_agent_homes "$npm_home"
   fi
 
   say "==> verifying npm package install ($scenario)"
-  HOME="$npm_home" npm_config_cache="$npm_cache" npm_config_prefix="$npm_prefix" \
+  with_isolated_agent_env "$npm_home" env npm_config_cache="$npm_cache" npm_config_prefix="$npm_prefix" \
     npm install -g "$tarball_path" >/dev/null
 
   [ -x "$npm_prefix/bin/dws" ] || err "npm install did not expose dws in $npm_prefix/bin"
-  HOME="$npm_home" "$npm_prefix/bin/dws" --help >/dev/null
+  with_isolated_agent_env "$npm_home" "$npm_prefix/bin/dws" --help >/dev/null
   if [ -n "$EXPECTED_VERSION" ]; then
     vendor_bin="$npm_prefix/lib/node_modules/dingtalk-workspace-cli/vendor/dws"
     need_file "$vendor_bin"
@@ -270,9 +290,9 @@ verify_npm_install() {
       if (pkg.version !== process.env.EXPECTED_VERSION) process.exit(1);
     ' "$NPM_STAGE_DIR/package.json" || err "npm package.json version mismatch"
   fi
-  [ "$VERIFY_SKILL_TARGETS" -eq 0 ] || verify_skill_targets "$npm_home"
+  [ "$VERIFY_SKILL_TARGETS" -eq 0 ] || with_isolated_agent_env "$npm_home" verify_skill_targets "$npm_home"
 
-  HOME="$npm_home" npm_config_cache="$npm_cache" npm_config_prefix="$npm_prefix" \
+  with_isolated_agent_env "$npm_home" env npm_config_cache="$npm_cache" npm_config_prefix="$npm_prefix" \
     npm uninstall -g dingtalk-workspace-cli >/dev/null
 }
 

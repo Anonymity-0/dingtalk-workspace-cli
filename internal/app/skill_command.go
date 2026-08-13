@@ -258,9 +258,26 @@ func formatAgentSkillPathsForHelp() string {
 	sort.Strings(names)
 	var b strings.Builder
 	for _, n := range names {
-		fmt.Fprintf(&b, "  %-*s -> ~/%s/\n", maxWidth, n, agentSkillPaths[n])
+		installPath := agentSkillPaths[n]
+		if isUniversalSkillInstallTarget(n) {
+			installPath = ".agents/skills"
+		}
+		fmt.Fprintf(&b, "  %-*s -> ~/%s/\n", maxWidth, n, installPath)
 	}
 	return b.String()
+}
+
+// Universal Agents discover the shared ~/.agents/skills store directly. A
+// marketplace install addressed to one of those Agent IDs must therefore
+// publish to canonical instead of recreating an Agent-private duplicate.
+func isUniversalSkillInstallTarget(target string) bool {
+	rel, ok := agentSkillPaths[target]
+	if !ok {
+		return false
+	}
+	base := filepath.Join("__home__", rel)
+	canonical := filepath.Join("__home__", ".agents", "skills")
+	return sameSkillSetupPath(base, canonical) || isUniversalSkillSetupBase(base)
 }
 
 func buildSkillCommand() *cobra.Command {
@@ -577,7 +594,11 @@ func resolveSkillTargetPath(target string) (string, error) {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	return resolveSkillSetupBase(homeDir, target), nil
+	destination := resolveSkillSetupBase(homeDir, target)
+	if isUniversalSkillInstallTarget(target) {
+		destination = filepath.Join(homeDir, ".agents", "skills")
+	}
+	return destination, nil
 }
 
 // fetchSkillDownloadInfo calls the download API to get the skill download URL.

@@ -582,6 +582,18 @@ function Resolve-AgentSkillBase {
     return (Join-Path $Root $Agent.Dir)
 }
 
+function Test-AgentSkillBaseDetected {
+    param([string]$BaseDir, $Agent)
+    $parent = Split-Path $BaseDir -Parent
+    switch ($Agent.Id) {
+        "kimchi" { return Test-Path (Split-Path $parent -Parent) -PathType Container }
+        "tabnine-cli" { return Test-Path (Split-Path $parent -Parent) -PathType Container }
+        "zcode" { return (Test-Path $parent -PathType Container) -or (Test-Path "/Applications/ZCode.app" -PathType Container) }
+        "minimax-code" { return (Test-Path $parent -PathType Container) -or (Test-Path "/Applications/MiniMax Code.app" -PathType Container) }
+        default { return Test-Path $parent -PathType Container }
+    }
+}
+
 function Test-SamePhysicalSkillRoot {
     param([string]$Left, [string]$Right)
     if (!(Test-Path $Left) -or !(Test-Path $Right)) { return $false }
@@ -1005,8 +1017,7 @@ function Install-SkillsToHomes {
         if ([string]::IsNullOrWhiteSpace($baseDir)) { continue }
         $baseKey = [System.IO.Path]::GetFullPath($baseDir).TrimEnd([char[]]@('\', '/'))
         if (!$seenBases.Add($baseKey)) { continue }
-        $parentGate = Split-Path $baseDir -Parent
-        if (!(Test-Path $parentGate)) { continue }
+        if (!(Test-AgentSkillBaseDetected -BaseDir $baseDir -Agent $agent)) { continue }
         if (Test-SamePhysicalSkillRoot -Left $baseDir -Right $canonical) { continue }
         $attempted++
         if ($agent.Universal) {
@@ -1073,8 +1084,7 @@ function Install-MultiSkillsToHomes {
         if ([string]::IsNullOrWhiteSpace($baseDir)) { continue }
         $baseKey = [System.IO.Path]::GetFullPath($baseDir).TrimEnd([char[]]@('\', '/'))
         if (!$seenBases.Add($baseKey)) { continue }
-        $parentGate = Split-Path $baseDir -Parent
-        if (!(Test-Path $parentGate)) { continue }
+        if (!(Test-AgentSkillBaseDetected -BaseDir $baseDir -Agent $agent)) { continue }
         if (Test-SamePhysicalSkillRoot -Left $baseDir -Right $canonical) { continue }
         $attempted++
         if ($agent.Universal) {

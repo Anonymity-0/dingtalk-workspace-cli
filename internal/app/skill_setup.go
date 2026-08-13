@@ -127,6 +127,7 @@ var (
 	skillSetupExecutable      = os.Executable
 	skillSetupGetwd           = os.Getwd
 	skillSetupUserHomeDir     = os.UserHomeDir
+	skillSetupSystemHomeDir   = os.UserHomeDir
 	skillSetupRemoveAll       = os.RemoveAll
 	skillSetupBackupAndRemove = upgrade.BackupAndRemoveSkillDir
 	skillSetupMkdirAll        = os.MkdirAll
@@ -378,6 +379,15 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 	}
 	if err != nil {
 		return err
+	}
+	if mode == skillSetupModeMulti && len(migrateEventMiscTargets) > 0 {
+		retiredNames := append([]string(nil), multiSkillNames...)
+		if installsEventMiscCompanion && !containsSkillName(retiredNames, multiMiscSkill) {
+			retiredNames = append(retiredNames, multiMiscSkill)
+		}
+		if retireErr := retireMigratedUniversalSkills(migrateEventMiscTargets, retiredNames, out); retireErr != nil {
+			return retireErr
+		}
 	}
 	if skipped > 0 {
 		return fmt.Errorf(
@@ -1086,9 +1096,32 @@ func detectExistingAgentHomes(home, mode string) []string {
 	dests := []string{canonical}
 	canonicalKey := skillSetupPathKey(canonical)
 	seen := map[string]bool{canonicalKey: true}
-	addDetected := func(base string) {
-		parent := filepath.Dir(base)
-		if info, err := skillSetupStat(parent); err != nil || !info.IsDir() {
+	systemHome, _ := skillSetupSystemHomeDir()
+	allowSystemApps := sameSkillSetupPath(home, systemHome)
+	addDetected := func(rel, base string) {
+		detectedDir := filepath.Dir(base)
+		switch filepath.ToSlash(filepath.Clean(rel)) {
+		case ".config/kimchi/harness/skills", ".tabnine/agent/skills":
+			detectedDir = filepath.Dir(filepath.Dir(base))
+		case ".zcode/skills":
+			if allowSystemApps {
+				if info, err := skillSetupStat(filepath.Join(string(filepath.Separator), "Applications", "ZCode.app")); err == nil && info.IsDir() {
+					detectedDir = ""
+				}
+			}
+		case ".minimax/skills":
+			if allowSystemApps {
+				if info, err := skillSetupStat(filepath.Join(string(filepath.Separator), "Applications", "MiniMax Code.app")); err == nil && info.IsDir() {
+					detectedDir = ""
+				}
+			}
+		}
+		if detectedDir != "" {
+			if info, err := skillSetupStat(detectedDir); err != nil || !info.IsDir() {
+				return
+			}
+		}
+		if base == "" {
 			return
 		}
 		dest := agentHomeForMode(base, mode)
@@ -1131,10 +1164,10 @@ func detectExistingAgentHomes(home, mode string) []string {
 		case ".config/kimchi/harness/skills":
 			base = resolveSkillSetupBase(home, "kimchi")
 		}
-		addDetected(base)
+		addDetected(rel, base)
 	}
 	for _, target := range []string{"github-copilot", "windsurf"} {
-		addDetected(resolveSkillSetupBase(home, target))
+		addDetected(agentSkillPaths[target], resolveSkillSetupBase(home, target))
 	}
 	return dests
 }
@@ -1394,6 +1427,33 @@ func configureEventMiscMigrationPlan(plan *skillSetupPlan, targets []string, ins
 	}
 }
 
+func retireMigratedUniversalSkills(targets, names []string, out io.Writer) error {
+	home, err := skillSetupUserHomeDir()
+	if err != nil {
+		return fmt.Errorf("无法解析 HOME 以退役 universal Agent 旧副本: %w", err)
+	}
+	seen := map[string]bool{}
+	var victims []skillSetupBackup
+	for _, target := range targets {
+		if !isUniversalSkillSetupBase(target) {
+			continue
+		}
+		for _, name := range names {
+			path := filepath.Join(target, name)
+			if seen[path] {
+				continue
+			}
+			seen[path] = true
+			victims = append(victims, skillSetupBackup{Path: path, Reason: skillSetupBackupReplace})
+		}
+	}
+	sort.Slice(victims, func(i, j int) bool { return victims[i].Path < victims[j].Path })
+	if _, err := backupSkillSetupTarget(home, victims, out); err != nil {
+		return fmt.Errorf("退役 universal Agent Event/misc 旧副本失败，已回滚: %w", err)
+	}
+	return nil
+}
+
 func renderSkillSetupPlan(out io.Writer, plan *skillSetupPlan) {
 	fmt.Fprintf(out, "📦 将安装 skill：\n  mode: %s\n  source: %s\n", plan.Mode, plan.Source)
 	if plan.Mode == skillSetupModeMulti {
@@ -1580,8 +1640,12 @@ func installMultiSkillsWithEventMigration(
 	}
 
 	migrationSet := make(map[string]struct{}, len(migrationTargets))
+	physicalMigrationTargets := make([]string, 0, len(migrationTargets))
 	for _, dest := range migrationTargets {
 		migrationSet[dest] = struct{}{}
+		if !isUniversalSkillSetupBase(dest) {
+			physicalMigrationTargets = append(physicalMigrationTargets, dest)
+		}
 	}
 	var ordinaryTargets []string
 	for _, dest := range dests {
@@ -1590,23 +1654,47 @@ func installMultiSkillsWithEventMigration(
 		}
 	}
 
-	if len(ordinaryTargets) > 0 {
+	var canonicalTargets, otherOrdinaryTargets []string
+	for _, dest := range ordinaryTargets {
+		base := filepath.ToSlash(filepath.Clean(skillSetupBaseForMode(dest, skillSetupModeMulti)))
+		if strings.HasSuffix(base, "/.agents/skills") {
+			canonicalTargets = append(canonicalTargets, dest)
+		} else {
+			otherOrdinaryTargets = append(otherOrdinaryTargets, dest)
+		}
+	}
+	installOrdinary := func(names, targets []string) error {
+		if len(targets) == 0 {
+			return nil
+		}
 		var n, nSkipped int
-		n, nSkipped, err = skillSetupInstallMulti(src, skillNames, ordinaryTargets, out, errOut, filtered)
+		n, nSkipped, err = skillSetupInstallMulti(src, names, targets, out, errOut, filtered)
 		installed += n
 		skipped += nSkipped
 		if err != nil {
-			return installed, skipped, err
+			return err
 		}
 		if nSkipped > 0 {
-			return installed, skipped, fmt.Errorf("multi Skill 安装不完整（skipped=%d）；已保留折叠版 Event/misc，未执行迁移", nSkipped)
+			return fmt.Errorf("multi Skill 安装不完整（skipped=%d）；已保留折叠版 Event/misc，未执行迁移", nSkipped)
 		}
+		return nil
+	}
+	canonicalNames := append([]string(nil), skillNames...)
+	if !containsSkillName(canonicalNames, multiMiscSkill) {
+		canonicalNames = append(canonicalNames, multiMiscSkill)
+		sort.Strings(canonicalNames)
+	}
+	if err := installOrdinary(canonicalNames, canonicalTargets); err != nil {
+		return installed, skipped, err
+	}
+	if err := installOrdinary(skillNames, otherOrdinaryTargets); err != nil {
+		return installed, skipped, err
 	}
 
 	// The folded pair is excluded from the ordinary best-effort installer. All
 	// other selected skills (especially dingtalk-shared) must succeed before the
 	// old Event route is touched.
-	for _, dest := range migrationTargets {
+	for _, dest := range physicalMigrationTargets {
 		if cleanupErr := cleanupMutualExclusion(dest, skillSetupModeMulti, out, errOut); cleanupErr != nil {
 			return installed, skipped + len(skillNames), cleanupErr
 		}
@@ -1617,9 +1705,9 @@ func installMultiSkillsWithEventMigration(
 			prerequisiteNames = append(prerequisiteNames, name)
 		}
 	}
-	if len(prerequisiteNames) > 0 {
+	if len(prerequisiteNames) > 0 && len(physicalMigrationTargets) > 0 {
 		var n, nSkipped int
-		n, nSkipped, err = skillSetupInstallMulti(src, prerequisiteNames, migrationTargets, out, errOut, true)
+		n, nSkipped, err = skillSetupInstallMulti(src, prerequisiteNames, physicalMigrationTargets, out, errOut, true)
 		installed += n
 		skipped += nSkipped
 		if err != nil {
@@ -1630,7 +1718,7 @@ func installMultiSkillsWithEventMigration(
 		}
 	}
 
-	migrated, migrationErr := migrateEventMiscAtomically(src, migrationTargets, out, errOut)
+	migrated, migrationErr := migrateEventMiscAtomically(src, physicalMigrationTargets, out, errOut)
 	installed += migrated
 	if migrationErr != nil {
 		return installed, skipped, migrationErr
@@ -2025,10 +2113,6 @@ func publishSkillSetupTarget(staged []skillSetupStagedDir, backups []skillSetupB
 
 func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (installed, skipped int, err error) {
 	home, homeErr := skillSetupUserHomeDir()
-	perTarget := 1
-	if plan.Mode == skillSetupModeMulti {
-		perTarget = len(plan.MultiSkillNames)
-	}
 	hasCanonicalDependents := false
 	for _, candidate := range plan.Targets {
 		if candidate.CanonicalBase != "" && !sameSkillSetupPath(skillSetupBaseForMode(candidate.Destination, plan.Mode), candidate.CanonicalBase) {
@@ -2037,6 +2121,10 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 		}
 	}
 	for _, target := range plan.Targets {
+		perTarget := 1
+		if plan.Mode == skillSetupModeMulti {
+			perTarget = len(plan.MultiSkillNames)
+		}
 		isCanonical := target.CanonicalBase != "" && sameSkillSetupPath(skillSetupBaseForMode(target.Destination, plan.Mode), target.CanonicalBase)
 		if target.CleanupOnly {
 			if homeErr != nil {
