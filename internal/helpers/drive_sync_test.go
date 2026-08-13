@@ -17,6 +17,16 @@ import (
 // errTestDownload 用于模拟 httpGetFile 下载失败。
 var errTestDownload = errors.New("simulated download failure")
 
+// swapPullDownloadPath 为存量测试保留基于路径的传输模拟写法。
+// 生产 pull/sync 始终把已由 os.Root 安全打开的句柄交给 pullDownloadFile；
+// 只有测试适配层才把该句柄的名称传给旧 callback。
+func swapPullDownloadPath(t *testing.T, fn func(context.Context, string, map[string]string, string) error) {
+	t.Helper()
+	testseam.Swap(t, &pullDownloadFile, func(ctx context.Context, url string, headers map[string]string, destination *os.File) error {
+		return fn(ctx, url, headers, destination.Name())
+	})
+}
+
 // ──────────────────────────────────────────────────────────
 // driveSyncFailure — sync 部分失败错误：exit=1
 // ──────────────────────────────────────────────────────────
@@ -65,7 +75,7 @@ func TestCrossPlatformCoverageDriveSyncSuffixedRel(t *testing.T) {
 // sync 双向流程 — new_local 上传 / new_remote 下载
 // ──────────────────────────────────────────────────────────
 
-// runDriveSyncTest 用 mock caller 执行 `drive sync`，注入 httpPutFile / httpGetFile 为
+// runDriveSyncTest 用 mock caller 执行 `drive sync`，注入 opened-file PUT / GET 为
 // 可控 no-op，避免真实 OSS 传输。返回 root.Execute() 的结果。
 func runDriveSyncTest(t *testing.T, caller *driveSyncMockCaller, localDir string, args ...string) error {
 	// 默认下载：把远端内容写到目标路径，模拟成功落盘。
@@ -78,12 +88,9 @@ func runDriveSyncTest(t *testing.T, caller *driveSyncMockCaller, localDir string
 func runDriveSyncTestWithGet(t *testing.T, caller *driveSyncMockCaller, getFn func(context.Context, string, map[string]string, string) error, localDir string, args ...string) error {
 	t.Helper()
 
-	prevDeps := deps
-	prevOSArgs := os.Args
-	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
-	SetHTTPGetFile(getFn)
-
-	deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error { return nil })
+	swapPullDownloadPath(t, getFn)
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
 
 	root := &cobra.Command{Use: "dws"}
 	root.PersistentFlags().BoolP("yes", "y", false, "")
@@ -92,15 +99,8 @@ func runDriveSyncTestWithGet(t *testing.T, caller *driveSyncMockCaller, getFn fu
 
 	// sync 是 user_required 叶子，非交互环境需 --yes 才能越过统一确认门。
 	full := append([]string{"sync", "--local-folder", localDir, "--remote-folder", "ROOT", "--yes"}, args...)
-	os.Args = append([]string{"dws", "drive"}, full...)
+	testseam.Swap(t, &os.Args, append([]string{"dws", "drive"}, full...))
 	root.SetArgs(append([]string{"drive"}, full...))
-
-	t.Cleanup(func() {
-		deps = prevDeps
-		os.Args = prevOSArgs
-		SetHTTPPutFile(nil)
-		SetHTTPGetFile(nil)
-	})
 
 	return root.Execute()
 }
@@ -198,6 +198,36 @@ func TestCrossPlatformCoverageDriveSync_modifiedLocalWins(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageDriveSyncRejectsUnknownCommitEffect(t *testing.T) {
+	for _, response := range []string{"", `{}`} {
+		t.Run(response, func(t *testing.T) {
+			dir := t.TempDir()
+			mustWrite(t, filepath.Join(dir, "local.txt"), "payload")
+			caller := &driveSyncMockCaller{
+				listJSON:   `{"result":{"items":[]}}`,
+				commitJSON: &response,
+			}
+			err, output, putCalls := runDriveMirrorUploadCommandCapture(t, "sync", caller, dir)
+			if err == nil {
+				t.Fatal("empty commit result must make sync exit non-zero")
+			}
+			if failure, ok := err.(*driveSyncFailure); !ok || failure.ExitCode() != 1 {
+				t.Fatalf("error=%T %v", err, err)
+			}
+			assertMirrorUploadFailedJSON(t, output)
+			if putCalls != 1 {
+				t.Fatalf("OSS PUT calls=%d, want exactly 1", putCalls)
+			}
+			if got := len(caller.callsFor("get_upload_info")); got != 1 {
+				t.Fatalf("get_upload_info calls=%d, want 1", got)
+			}
+			if got := len(caller.callsFor("commit_upload")); got != 1 {
+				t.Fatalf("commit_upload calls=%d, want 1", got)
+			}
+		})
+	}
+}
+
 // --dry-run：只计算差异，不触发任何 MCP 写操作与本地落盘。
 func TestCrossPlatformCoverageDriveSync_dryRun(t *testing.T) {
 	dir := t.TempDir()
@@ -247,9 +277,7 @@ func TestCrossPlatformCoverageDriveSync_pullFailureKeepsLocal(t *testing.T) {
 	}
 }
 
-// keep-both 成功路径：本地既有文件改名保留（os.Rename 覆盖 O_EXCL 空占位），远端拉取到
-// 原路径。此测试在 Windows 主机上运行即验证 os.Rename 可替换既有目标（MOVEFILE_REPLACE_
-// EXISTING），覆盖 pull 覆盖与 keep-both 两条 rename 路径的平台行为。
+// keep-both 成功路径：先以 no-clobber 硬链接保留本地版本，再把远端拉取到原路径。
 func TestCrossPlatformCoverageDriveSync_keepBothSuccess(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
@@ -282,9 +310,8 @@ func TestCrossPlatformCoverageDriveSync_keepBothSuccess(t *testing.T) {
 	}
 }
 
-// keep-both 下载失败：改名保留后拉取远端失败，应回滚改名——原文件恢复原名原内容，
-// 不留下改名后的残留文件。
-func TestCrossPlatformCoverageDriveSync_keepBothRollbackOnPullFailure(t *testing.T) {
+// keep-both 下载失败：不做可能误删并发文件的回滚，原名与本地保留候选都应保留。
+func TestCrossPlatformCoverageDriveSync_keepBothPreservesLinkOnPullFailure(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.txt")
 	mustWrite(t, p, "local-original")
@@ -301,16 +328,13 @@ func TestCrossPlatformCoverageDriveSync_keepBothRollbackOnPullFailure(t *testing
 	if err == nil {
 		t.Fatal("下载失败时应以非零退出码退出")
 	}
-	// 原文件恢复原名原内容。
+	// 原名尚未被远端发布，保持原内容。
 	if b, rerr := os.ReadFile(p); rerr != nil || string(b) != "local-original" {
-		t.Errorf("keep-both 拉取失败应回滚改名, 原文件未恢复: got %q err=%v", string(b), rerr)
+		t.Errorf("keep-both 拉取失败后原文件应保留: got %q err=%v", string(b), rerr)
 	}
-	// 目录下不应残留改名后的 *.conflict-* 文件。
-	entries, _ := os.ReadDir(dir)
-	for _, e := range entries {
-		if strings.Contains(e.Name(), "conflict-") {
-			t.Errorf("回滚后不应残留改名文件: %s", e.Name())
-		}
+	aside := filepath.Join(dir, "f.conflict-F_FID.txt")
+	if b, rerr := os.ReadFile(aside); rerr != nil || string(b) != "local-original" {
+		t.Errorf("keep-both 拉取失败后候选应保留: got %q err=%v", string(b), rerr)
 	}
 }
 
@@ -318,6 +342,7 @@ func TestCrossPlatformCoverageDriveSync_keepBothRollbackOnPullFailure(t *testing
 // 应原子占位到下一个后缀，且既有文件内容不被破坏。此断言在任何文件系统上都成立。
 func TestCrossPlatformCoverageReserveSyncKeepBothTarget_noOverwriteExact(t *testing.T) {
 	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "f.txt"), "local-data")
 	// 预置一个与首选候选精确同名的既有文件（模拟未被 occupied 记录的外部残留）。
 	first := "f.conflict-ABCD1234.txt"
 	mustWrite(t, filepath.Join(dir, first), "existing-data")
@@ -336,9 +361,9 @@ func TestCrossPlatformCoverageReserveSyncKeepBothTarget_noOverwriteExact(t *test
 	if b, _ := os.ReadFile(filepath.Join(dir, first)); string(b) != "existing-data" {
 		t.Error("既有文件被覆盖，数据丢失")
 	}
-	// 返回的目标是新建的空占位文件。
-	if fi, e := os.Stat(abs); e != nil || fi.Size() != 0 {
-		t.Errorf("占位文件应存在且为空: err=%v", e)
+	// 返回的目标是原始本地版本的硬链接，不是空占位。
+	if b, e := os.ReadFile(abs); e != nil || string(b) != "local-data" {
+		t.Errorf("候选硬链接内容错误: content=%q err=%v", b, e)
 	}
 }
 
@@ -346,6 +371,7 @@ func TestCrossPlatformCoverageReserveSyncKeepBothTarget_noOverwriteExact(t *test
 // 既有文件——O_EXCL 由 OS 兜底判等价性，occupied 的精确字符串键覆盖不到这种情况。
 func TestCrossPlatformCoverageReserveSyncKeepBothTarget_noOverwriteCaseEquivalent(t *testing.T) {
 	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "f.txt"), "local-data")
 	if !isCaseInsensitiveFS(dir) {
 		t.Skip("文件系统大小写敏感，跳过大小写等价覆盖测试")
 	}

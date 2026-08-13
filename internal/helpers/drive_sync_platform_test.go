@@ -33,11 +33,10 @@ func TestCrossPlatformCoverageDrivePull_equivalentPathCollisionFailsBoth(t *test
 	caller := pullListingCaller(
 		`{"name":"A.txt","type":"file","fileId":"UP","modifyTime":1},` +
 			`{"name":"a.txt","type":"file","fileId":"LOW","modifyTime":2}`)
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error {
+	swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error {
 		t.Error("collided entries must not be downloaded")
 		return nil
 	})
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT")
 	var pf *drivePartialFailure
@@ -95,7 +94,7 @@ func TestCrossPlatformCoverageDetectCaseInsensitiveFS_caselessProbeFallsBackToPl
 // ──────────────────────────────────────────────────────────
 
 func TestCrossPlatformCoverageIsSafeRemoteSegmentPlatform_allowsPlainNames(t *testing.T) {
-	for _, name := range []string{"a.txt", "报告.pdf", "with space.md", "..."} {
+	for _, name := range []string{"a.txt", "报告.pdf", "with space.md"} {
 		if !isSafeRemoteSegmentPlatform(name) {
 			t.Errorf("isSafeRemoteSegmentPlatform(%q) = false, want true", name)
 		}
@@ -106,8 +105,18 @@ func TestCrossPlatformCoverageIsSafeRemoteSegmentPlatform_rejectsNonCanonicalWin
 	if runtime.GOOS != "windows" {
 		return
 	}
-	if isSafeRemoteSegmentPlatform(`dir\..\file.txt`) {
-		t.Error("Windows non-canonical segment must be rejected")
+	for _, name := range []string{
+		`C:relative`, `a?.txt`, `a*.txt`, `a:stream`, `a<.txt`, `a>.txt`, `a|.txt`, `a".txt`,
+		"name.", "name ", "...", "CON", "con.txt", "PRN", "AUX", "NUL", "COM1", "LPT9", "COM¹", "CONIN$",
+	} {
+		if isSafeRemoteSegmentPlatform(name) {
+			t.Errorf("Windows unsafe segment %q must be rejected", name)
+		}
+	}
+	for _, name := range []string{"report.txt", "报告 2026.pdf", "COM10", "LPT0"} {
+		if !isSafeRemoteSegmentPlatform(name) {
+			t.Errorf("Windows ordinary segment %q must be accepted", name)
+		}
 	}
 }
 

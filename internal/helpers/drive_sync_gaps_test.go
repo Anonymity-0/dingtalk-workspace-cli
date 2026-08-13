@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 // 本文件补齐几条在默认策略改为 skip 后失去覆盖的边界分支。
@@ -62,10 +64,8 @@ func TestCrossPlatformCoverageDrivePush_remoteNonFileEntriesAreSkipped(t *testin
 		return `{"result":{"items":[],"nextToken":""}}`, nil
 	}}
 
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 
 	files, _, err := fetchRemoteTreeForPush(context.Background(), "", "ROOT")
 	if err != nil {
@@ -81,14 +81,10 @@ func TestCrossPlatformCoverageDrivePush_remoteNonFileEntriesAreSkipped(t *testin
 	}
 }
 
-// list_files 返回体没有 result 字段 → 视为空列表，而不是解析错误。
-func TestCrossPlatformCoverageParseDriveList_missingResultIsEmpty(t *testing.T) {
-	items, token, err := parseDriveList(`{"success":true}`)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(items) != 0 || token != "" {
-		t.Errorf("parseDriveList = (%v, %q), want empty list", items, token)
+// list_files 是远端权威树的数据来源；缺失 result 不能伪装成空目录。
+func TestCrossPlatformCoverageParseDriveList_missingResultFailsClosed(t *testing.T) {
+	if _, _, err := parseDriveList(`{"success":true}`); err == nil || !strings.Contains(err.Error(), "缺少 result") {
+		t.Fatalf("parseDriveList error = %v, want missing-result failure", err)
 	}
 }
 

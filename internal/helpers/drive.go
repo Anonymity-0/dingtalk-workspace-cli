@@ -3405,6 +3405,7 @@ skipped/failed）、diff 与逐条 items；有失败则以非零退出码退出�
 				PrimaryCLIPath: "drive status",
 			},
 			Description: "比较本地文件夹与钉盘文件夹的差异，只读不落盘。",
+			Result:      driveFolderStatusResultSpec(),
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
@@ -3439,6 +3440,11 @@ skipped/failed）、diff 与逐条 items；有失败则以非零退出码退出�
 				PrimaryCLIPath: "drive pull",
 			},
 			Description: "把钉盘文件夹单向镜像到本地；写操作需确认，默认跳过本地既有文件。",
+			DryRun: &contract.DryRunSpec{
+				PreviewKind: contract.DryRunPreviewPlan,
+				RemoteReads: true,
+			},
+			Result: driveFolderPullResultSpec(),
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
@@ -3452,6 +3458,7 @@ skipped/failed）、diff 与逐条 items；有失败则以非零退出码退出�
 					"dws drive pull --local-folder /abs/path/repo --remote-folder <dentryUuid>",
 					"dws drive pull --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists smart --dry-run",
 				},
+				ExampleDispositions: driveFolderStatefulExampleDispositions(),
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "local-folder", Required: boolPtr(true)},
@@ -3473,6 +3480,11 @@ skipped/failed）、diff 与逐条 items；有失败则以非零退出码退出�
 				PrimaryCLIPath: "drive push",
 			},
 			Description: "把本地文件夹单向镜像到钉盘；写操作需确认，默认跳过远端既有文件。",
+			DryRun: &contract.DryRunSpec{
+				PreviewKind: contract.DryRunPreviewPlan,
+				RemoteReads: true,
+			},
+			Result: driveFolderPushResultSpec(),
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
@@ -3486,6 +3498,7 @@ skipped/failed）、diff 与逐条 items；有失败则以非零退出码退出�
 					"dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid>",
 					"dws drive push --local-folder /abs/path/repo --remote-folder <dentryUuid> --if-exists smart --dry-run",
 				},
+				ExampleDispositions: driveFolderStatefulExampleDispositions(),
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "local-folder", Required: boolPtr(true)},
@@ -3507,6 +3520,11 @@ skipped/failed）、diff 与逐条 items；有失败则以非零退出码退出�
 				PrimaryCLIPath: "drive sync",
 			},
 			Description: "本地与钉盘文件夹双向同步；写操作需确认，默认跳过双端冲突。",
+			DryRun: &contract.DryRunSpec{
+				PreviewKind: contract.DryRunPreviewPlan,
+				RemoteReads: true,
+			},
+			Result: driveFolderSyncResultSpec(),
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
@@ -3520,6 +3538,7 @@ skipped/failed）、diff 与逐条 items；有失败则以非零退出码退出�
 					"dws drive sync --local-folder /abs/path/repo --remote-folder <dentryUuid>",
 					"dws drive sync --local-folder /abs/path/repo --remote-folder <dentryUuid> --on-conflict remote-wins --dry-run",
 				},
+				ExampleDispositions: driveFolderStatefulExampleDispositions(),
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "local-folder", Required: boolPtr(true)},

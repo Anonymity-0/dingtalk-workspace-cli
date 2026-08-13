@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestCrossPlatformCoverageDriveRemoteTree_duplicatePathsFail(t *testing.T) {
@@ -70,10 +72,8 @@ func TestCrossPlatformCoverageDriveRemoteTree_duplicatePathsFail(t *testing.T) {
 			for _, fetcher := range fetchers {
 				t.Run(fetcher.name, func(t *testing.T) {
 					caller := &driveScriptCaller{reply: tt.reply}
-					prevDeps, prevArgs := deps, os.Args
-					deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
-					os.Args = []string{"dws", "drive"}
-					t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+					testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+					testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 
 					err := fetcher.fetch(context.Background())
 					if err == nil || !strings.Contains(err.Error(), "重复远端路径") || !strings.Contains(err.Error(), tt.path) {

@@ -14,11 +14,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// syncRename 与 syncOpenFile 仅作为文件系统失败分支的确定性测试 seam；测试必须
-// 通过 testseam.Swap 替换并自动恢复。
+// keep-both 的本地保留副本通过同一个固定父目录 os.Root 原子建立硬链接；以下 seam
+// 仅用于文件系统失败与并发替换的确定性测试，测试必须通过 testseam.Swap 替换。
 var (
-	syncRename   = driveReplaceFile
-	syncOpenFile = os.OpenFile
+	syncRootLink          = func(root *os.Root, oldName, newName string) error { return root.Link(oldName, newName) }
+	syncPullOneFilePinned = pullOneFilePinned
 )
 
 // ==========================================================
@@ -100,6 +100,14 @@ type driveSyncResult struct {
 	Items     []driveSyncItem  `json:"items"`
 }
 
+type driveSyncDryRunResult struct {
+	DryRun      bool            `json:"dry_run"`
+	Executed    bool            `json:"executed"`
+	PreviewKind string          `json:"preview_kind"`
+	Operation   string          `json:"operation"`
+	Plan        driveSyncResult `json:"plan"`
+}
+
 // driveSyncFailure 在 summary.failed > 0 时返回：结构化结果已打印到 stdout，
 // 这里只负责以 exit=1 退出并向 stderr 输出一行简短说明（与 drivePushFailure 一致）。
 type driveSyncFailure struct{ failed int }
@@ -140,6 +148,16 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	pinnedRoot, err := openExistingPinnedPullRoot(absDir)
+	if err != nil {
+		return fmt.Errorf("扫描本地目录失败: %w", err)
+	}
+	defer pinnedRoot.close()
+	// sync 的本地快照与后续 hash / upload / pull 全部绑定到同一个固定根。
+	localDirs, localFiles, err := runDriveMirrorWalkLocalForPushPinned(pinnedRoot)
+	if err != nil {
+		return fmt.Errorf("扫描本地目录失败: %w", err)
+	}
 
 	ctx := cmd.Context()
 
@@ -148,20 +166,20 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	// 本地现状：子目录（含空目录，父目录先于子目录）与常规文件。
-	localDirs, localFiles, err := walkLocalForPush(absDir)
-	if err != nil {
-		return fmt.Errorf("扫描本地目录失败: %w", err)
-	}
 	localByRel := make(map[string]localPushFile, len(localFiles))
 	for _, f := range localFiles {
 		localByRel[f.RelPath] = f
 	}
+	preflight := buildMirrorPreflight(localDirs, localFiles, remoteFiles, remoteFolders)
+	addPinnedLocalTargetPreflightFailures(pinnedRoot, remoteFiles, preflight)
 
 	// 在计算 diff 前先识别文件/目录同路径冲突。冲突根及其全部后代都不能再进入
 	// new_local / new_remote 或后续执行阶段，否则会在远端制造同名异类对象，或尝试
 	// 把远端目录内容下载到本地文件之下。
 	typeConflicts := make(map[string]string)
+	for rel, msg := range preflight {
+		typeConflicts[rel] = msg
+	}
 	for _, dir := range localDirs {
 		if msg := pushTypeConflictError(dir, true, remoteFiles, remoteFolders); msg != "" {
 			typeConflicts[dir] = msg
@@ -191,8 +209,7 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 			newLocal = append(newLocal, rel)
 			continue
 		}
-		lf := &localFile{RelPath: pf.RelPath, AbsPath: pf.AbsPath, Size: pf.Size, ModTimeMillis: pf.ModTimeMillis}
-		verdict, jerr := judgeFileMatch(lf, rf, quick)
+		verdict, jerr := judgePinnedPushFileMatch(pinnedRoot, pf, rf, quick)
 		if jerr != nil {
 			return jerr
 		}
@@ -244,11 +261,23 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 			Error: typeConflicts[rel],
 		})
 	}
+	if err := pinnedRoot.verify(); err != nil {
+		return err
+	}
 
 	// --dry-run：只算差异、不执行任何同步动作。
 	if deps.Caller.DryRun() {
-		deps.Out.PrintInfo("dry-run: 仅计算差异，未执行任何同步操作")
-		return deps.Out.PrintJSON(res)
+		return deps.Out.PrintJSON(driveSyncDryRunResult{
+			DryRun: true, Executed: false, PreviewKind: "plan", Operation: "drive sync", Plan: res,
+		})
+	}
+	// 镜像前置检查是整批门禁：发现任一本地非法名称或跨端等价路径歧义后，
+	// sync 不得执行 create/download/upload 等任一写动作。
+	if len(preflight) > 0 {
+		if perr := deps.Out.PrintJSON(res); perr != nil {
+			return perr
+		}
+		return &driveSyncFailure{failed: res.Summary.Failed}
 	}
 
 	// unknown：exact 模式下远端无可靠 md5、内容无法核对，不擅自覆盖任何一侧，记 skipped。
@@ -275,20 +304,10 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 		}
 		resolutions[rel] = strategy
 	}
-
-	// 落盘前先确保本地根存在（供大小写探测与 pull 落盘），并探测目标文件系统大小写敏感性。
-	if err := os.MkdirAll(absDir, 0o755); err != nil {
-		return fmt.Errorf("创建本地目录失败: %w", err)
+	// 交互决策期间本地根也可能被替换；首个双端写动作前再次核对固定身份。
+	if err := pinnedRoot.verify(); err != nil {
+		return err
 	}
-	caseInsensitive := isCaseInsensitiveFS(absDir)
-
-	// 远端 → 本地的大小写/规范化冲突：多个远端条目在当前文件系统上映射到同一本地路径时，
-	// 命中的路径一律标记 failed、都不落盘，避免静默覆盖丢文件（与 pull 同策略）。
-	remoteRels := make([]string, 0, len(remoteFiles))
-	for rel := range remoteFiles {
-		remoteRels = append(remoteRels, rel)
-	}
-	collided := detectTargetCollisions(absDir, remoteRels, caseInsensitive)
 
 	// occupied：keep-both 生成不冲突的本地重命名目标时用，覆盖两侧全部已知路径。
 	occupied := make(map[string]bool)
@@ -309,9 +328,6 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 
 	// 阶段 1：镜像本地目录结构到远端（缺失则创建），保证空目录与 push 目标的父目录先存在。
 	for _, dir := range localDirs {
-		if syncPathBlockedByTypeConflict(dir, typeConflicts) {
-			continue
-		}
 		if _, ok := remoteFolders[dir]; ok {
 			continue // 远端已存在，复用 fileId
 		}
@@ -321,6 +337,9 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 			res.Summary.Failed++
 			res.Items = append(res.Items, driveSyncItem{RelPath: dir, Action: syncActionFailed, Direction: syncDirectionPush, Error: "父目录未能创建"})
 			continue
+		}
+		if err := pinnedRoot.verify(); err != nil {
+			return err
 		}
 		fid, cerr := pushCreateFolder(ctx, spaceID, parentID, name)
 		if cerr != nil || fid == "" {
@@ -339,13 +358,13 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 
 	// 阶段 2：new_remote 下载到本地。
 	for _, rel := range newRemote {
-		syncPullFile(&res, ctx, spaceID, remoteFiles[rel], absDir, rel, collided, syncDirectionPull)
+		syncPullFilePinned(&res, ctx, spaceID, remoteFiles[rel], pinnedRoot, rel, syncDirectionPull)
 	}
 
 	// 阶段 3：new_local 上传到远端。
 	for _, rel := range newLocal {
 		pf := localByRel[rel]
-		syncPushFile(&res, ctx, spaceID, remoteFolders, pf, rel, "")
+		syncPushFile(&res, ctx, spaceID, remoteFolders, pinnedRoot, pf, rel, "")
 	}
 
 	// 阶段 4：modified 按 --on-conflict 解决。
@@ -354,11 +373,11 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 		rf := remoteFiles[rel]
 		switch resolutions[rel] {
 		case syncConflictRemoteWins:
-			syncPullFile(&res, ctx, spaceID, rf, absDir, rel, collided, syncDirectionPull)
+			syncPullFilePinned(&res, ctx, spaceID, rf, pinnedRoot, rel, syncDirectionPull)
 		case syncConflictLocalWins:
-			syncPushFile(&res, ctx, spaceID, remoteFolders, pf, rel, rf.FileID)
+			syncPushFile(&res, ctx, spaceID, remoteFolders, pinnedRoot, pf, rel, rf.FileID)
 		case syncConflictKeepBoth:
-			syncKeepBoth(&res, ctx, spaceID, rf, absDir, rel, collided, occupied)
+			syncKeepBothPinned(&res, ctx, spaceID, rf, pinnedRoot, rel, occupied)
 		default: // "" — ask 选择跳过
 			res.Summary.Skipped++
 			res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionSkipped, Direction: syncDirectionConflict})
@@ -387,24 +406,54 @@ func syncPathBlockedByTypeConflict(rel string, conflicts map[string]string) bool
 	return false
 }
 
+// addPinnedLocalTargetPreflightFailures 从 sync 已固定的本地根核对所有远端落盘点。
+// 每一层既有祖先都必须是真实目录，末段若存在则必须是常规文件；软链即使仍指向根内
+// 也不属于可移植镜像树，必须在任何双端写之前整批拒绝。
+func addPinnedLocalTargetPreflightFailures(root *pinnedPullRoot, remote map[string]*remoteFile, failures map[string]string) {
+	for rel := range remote {
+		if mirrorPreflightFailureForRel(rel, failures) != "" {
+			continue
+		}
+		parts := strings.Split(filepath.FromSlash(rel), string(filepath.Separator))
+		for i := range parts {
+			name := filepath.Join(parts[:i+1]...)
+			info, err := pullRootLstat(root.root, name)
+			if err != nil {
+				if os.IsNotExist(err) {
+					break
+				}
+				failures[rel] = fmt.Sprintf("检查本地目标失败: %v", err)
+				break
+			}
+			if i < len(parts)-1 {
+				if !info.IsDir() {
+					failures[rel] = fmt.Sprintf("本地目标 %q 的祖先 %q 已存在且不是目录，已拒绝镜像", rel, filepath.ToSlash(name))
+					break
+				}
+				continue
+			}
+			if !info.Mode().IsRegular() {
+				failures[rel] = fmt.Sprintf("本地目标 %q 已存在且不是常规文件，已拒绝覆盖", rel)
+			}
+		}
+	}
+}
+
 // syncPullFile 下载单个远端文件到本地 rel 对应路径（总是覆盖，Drive 为该项权威源），
 // 并把结果计入 res。命中大小写/规范化冲突或逃逸的路径记 failed、不落盘。
-func syncPullFile(res *driveSyncResult, ctx context.Context, spaceID string, rf *remoteFile, absDir, rel string, collided map[string]bool, direction string) {
-	if collided[rel] {
+func syncPullFile(res *driveSyncResult, ctx context.Context, spaceID string, rf *remoteFile, absDir, rel, direction string) {
+	root, err := openPinnedPullRoot(absDir)
+	if err != nil {
 		res.Summary.Failed++
-		res.Items = append(res.Items, driveSyncItem{
-			RelPath: rel, Action: syncActionFailed, Direction: direction,
-			Error: "多个远端条目在当前文件系统上映射到同一本地路径（大小写/规范化冲突），已跳过以避免覆盖丢失",
-		})
+		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: direction, Error: err.Error()})
 		return
 	}
-	localPath, terr := resolveLocalTarget(absDir, rel)
-	if terr != nil {
-		res.Summary.Failed++
-		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: direction, Error: terr.Error()})
-		return
-	}
-	action, perr := pullOneFile(ctx, spaceID, rf, localPath, ifExistsOverwrite)
+	defer root.close()
+	syncPullFilePinned(res, ctx, spaceID, rf, root, rel, direction)
+}
+
+func syncPullFilePinned(res *driveSyncResult, ctx context.Context, spaceID string, rf *remoteFile, root *pinnedPullRoot, rel string, direction string) {
+	action, perr := pullRemoteFilePinned(ctx, spaceID, rf, root, rel, ifExistsOverwrite)
 	if action == pullActionDownloaded {
 		res.Summary.Pulled++
 		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionDownloaded, Direction: direction})
@@ -419,7 +468,7 @@ func syncPullFile(res *driveSyncResult, ctx context.Context, spaceID string, rf 
 }
 
 // syncPushFile 上传单个本地文件到远端；overwriteID 非空时走覆盖上传（原地覆盖同名远端文件）。
-func syncPushFile(res *driveSyncResult, ctx context.Context, spaceID string, remoteFolders map[string]string, pf localPushFile, rel, overwriteID string) {
+func syncPushFile(res *driveSyncResult, ctx context.Context, spaceID string, remoteFolders map[string]string, root *pinnedPullRoot, pf localPushFile, rel, overwriteID string) {
 	parentRel, name := splitRel(rel)
 	parentID, ok := remoteFolders[parentRel]
 	if !ok || parentID == "" {
@@ -427,7 +476,7 @@ func syncPushFile(res *driveSyncResult, ctx context.Context, spaceID string, rem
 		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionPush, Error: "父目录未能创建"})
 		return
 	}
-	if err := pushUploadFile(ctx, spaceID, parentID, overwriteID, name, pf.AbsPath, pf.Size); err != nil {
+	if err := pushUploadFilePinned(ctx, spaceID, parentID, overwriteID, name, root, pf); err != nil {
 		res.Summary.Failed++
 		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionPush, Error: err.Error()})
 		return
@@ -442,60 +491,72 @@ func syncPushFile(res *driveSyncResult, ctx context.Context, spaceID string, rem
 	res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: action, Direction: direction})
 }
 
-// syncKeepBoth 解决 modified 冲突的 keep-both 策略：先把本地文件改名保留（追加基于
-// 远端 fileId 的不冲突后缀），再把远端文件拉取到原 rel 路径。拉取失败则回滚改名。
-func syncKeepBoth(res *driveSyncResult, ctx context.Context, spaceID string, rf *remoteFile, absDir, rel string, collided, occupied map[string]bool) {
-	if collided[rel] {
+// syncKeepBoth 解决 modified 冲突的 keep-both 策略：先为本地文件原子建立带冲突后缀
+// 的 no-clobber 硬链接，再把远端文件拉取到原 rel 路径。拉取失败时保留两个本地名字，
+// 不执行可能误删或覆盖并发文件的回滚。
+func syncKeepBoth(res *driveSyncResult, ctx context.Context, spaceID string, rf *remoteFile, absDir, rel string, occupied map[string]bool) {
+	root, err := openPinnedPullRoot(absDir)
+	if err != nil {
 		res.Summary.Failed++
-		res.Items = append(res.Items, driveSyncItem{
-			RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict,
-			Error: "多个远端条目在当前文件系统上映射到同一本地路径（大小写/规范化冲突），已跳过以避免覆盖丢失",
-		})
+		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: err.Error()})
 		return
 	}
-	oldAbs, e1 := resolveLocalTarget(absDir, rel)
+	defer root.close()
+	syncKeepBothPinned(res, ctx, spaceID, rf, root, rel, occupied)
+}
+
+func syncKeepBothPinned(res *driveSyncResult, ctx context.Context, spaceID string, rf *remoteFile, root *pinnedPullRoot, rel string, occupied map[string]bool) {
+	pinned, e1 := root.openTarget(rel)
 	if e1 != nil {
 		res.Summary.Failed++
 		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: e1.Error()})
 		return
 	}
-	// 以「不覆盖」语义原子占用一个本地重命名目标。occupied 的精确字符串查重覆盖不到
-	// 大小写/NFC 等价的既有文件；用 O_CREATE|O_EXCL 让 OS 兜底判等价性，命中则换下一个
-	// 后缀，杜绝 os.Rename 静默覆盖等价既有文件导致的数据丢失。
-	suffixedRel, newAbs, e2 := reserveSyncKeepBothTarget(absDir, rel, rf.FileID, occupied)
+	defer pinned.close()
+	localInfo, err := pinned.regularTargetInfo()
+	if err != nil {
+		res.Summary.Failed++
+		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: err.Error()})
+		return
+	}
+	if localInfo == nil {
+		res.Summary.Failed++
+		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: "本地保留版本不存在"})
+		return
+	}
+	// Root.Link(original,candidate) 在同一固定父目录中原子 no-clobber 地保留本地版本。
+	// occupied 的精确字符串查重覆盖不到的文件系统等价名称，由 Link 的 EEXIST 兜底。
+	suffixedRel, newName, e2 := reserveSyncKeepBothTargetPinned(pinned, rel, rf.FileID, occupied)
 	if e2 != nil {
 		res.Summary.Failed++
 		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: e2.Error()})
 		return
 	}
-	// newAbs 此刻是我们刚用 O_EXCL 新建的空占位文件，覆盖它不会丢用户数据；且已确保它
-	// 不与任何等价既有文件冲突。
-	if err := syncRename(oldAbs, newAbs); err != nil {
-		_ = os.Remove(newAbs) // 清理空占位，避免残留
+	savedInfo, err := pullRootLstat(pinned.parentRoot, newName)
+	if err != nil || !sameKeepBothVersion(localInfo, savedInfo) {
 		res.Summary.Failed++
-		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: fmt.Sprintf("本地改名保留失败: %v", err)})
+		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: "本地保留版本身份不一致"})
 		return
 	}
 	occupied[suffixedRel] = true
 
-	action, perr := pullOneFile(ctx, spaceID, rf, oldAbs, ifExistsOverwrite)
+	action, perr := syncPullOneFilePinned(ctx, spaceID, rf, pinned, ifExistsOverwrite)
 	if action != pullActionDownloaded {
-		// 拉取失败：回滚改名，把本地文件恢复回原名。pullOneFile 是原子的（下载写临时文件、
-		// 成功才 rename，失败时绝不触碰 oldAbs），故此处 oldAbs 必不存在，rename 可直接复原、
-		// 无需像参考实现那样先清残留。回滚本身失败时如实上报——本地版本仍以改名后的名字保留、
-		// 未丢数据，但需让用户知道文件名已变。
 		res.Summary.Failed++
 		msg := ""
 		if perr != nil {
 			msg = perr.Error()
 		}
-		if rbErr := syncRename(newAbs, oldAbs); rbErr != nil {
-			if msg != "" {
-				msg += "; "
-			}
-			msg += fmt.Sprintf("回滚改名失败，本地版本保留为 %s: %v", suffixedRel, rbErr)
+		if msg == "" {
+			msg = "远端版本未能拉取，本地保留版本已保留"
 		}
 		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: msg})
+		return
+	}
+	currentSaved, err := pullRootLstat(pinned.parentRoot, newName)
+	if err != nil || !sameKeepBothVersion(savedInfo, currentSaved) {
+		res.Summary.Failed++
+		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict, Error: "本地保留版本在传输期间被删除、替换或修改"})
 		return
 	}
 	res.Summary.Pulled++
@@ -503,6 +564,12 @@ func syncKeepBoth(res *driveSyncResult, ctx context.Context, spaceID string, rf 
 		driveSyncItem{RelPath: suffixedRel, Action: syncActionRenamedLocal, Direction: syncDirectionConflict},
 		driveSyncItem{RelPath: rel, Action: syncActionDownloaded, Direction: syncDirectionPull},
 	)
+}
+
+func sameKeepBothVersion(expected, current os.FileInfo) bool {
+	return expected != nil && current != nil && current.Mode().IsRegular() &&
+		os.SameFile(expected, current) && expected.Size() == current.Size() &&
+		expected.ModTime().Equal(current.ModTime())
 }
 
 // syncKeepBothCandidate 生成 keep-both 的第 n 个候选相对路径（n=0 为首选）：在扩展名前
@@ -539,24 +606,38 @@ func driveSyncSuffixedRel(rel, fileID string, occupied map[string]bool) string {
 	}
 }
 
-// reserveSyncKeepBothTarget 生成并以「不覆盖」语义原子占用一个 keep-both 本地目标。
-// 逐个候选用 O_CREATE|O_EXCL 尝试创建：成功即占住该名，返回其相对路径与绝对路径（调用方
-// 随后可安全 os.Rename 覆盖这个空占位）；EEXIST（含大小写/NFC 等价的既有文件，由 OS 判定）
-// 则记入 occupied 并试下一个后缀，绝不覆盖任何既有文件。
+// reserveSyncKeepBothTarget 生成候选并通过 Root.Link(original,candidate) 原子建立
+// no-clobber 本地保留版本。EEXIST（含文件系统等价名称）时换下一个候选。
 func reserveSyncKeepBothTarget(absDir, rel, fileID string, occupied map[string]bool) (string, string, error) {
+	target, err := openPinnedPullTarget(absDir, rel)
+	if err != nil {
+		return "", "", err
+	}
+	defer target.close()
+	candidate, _, err := reserveSyncKeepBothTargetPinned(target, rel, fileID, occupied)
+	if err != nil {
+		return "", "", err
+	}
+	return candidate, filepath.Join(absDir, filepath.FromSlash(candidate)), nil
+}
+
+func reserveSyncKeepBothTargetPinned(target *pinnedPullTarget, rel, fileID string, occupied map[string]bool) (string, string, error) {
+	parentRel, _ := splitRel(rel)
 	for n := 0; ; n++ {
 		cand := syncKeepBothCandidate(rel, fileID, n)
 		if occupied[cand] {
 			continue // 本次运行内已知占用，快速跳过
 		}
-		abs, err := resolveLocalTarget(absDir, cand)
-		if err != nil {
-			return "", "", err // 逃逸/符号链接等，直接失败
+		candidateParent, candidateName := splitRel(cand)
+		if candidateParent != parentRel || !isSafeRemoteSegment(candidateName) {
+			return "", "", fmt.Errorf("keep-both 候选路径 %q 不在原目标目录内", cand)
 		}
-		f, oerr := syncOpenFile(abs, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err := target.verifyParent(); err != nil {
+			return "", "", err
+		}
+		oerr := syncRootLink(target.parentRoot, target.name, filepath.FromSlash(candidateName))
 		if oerr == nil {
-			_ = f.Close()
-			return cand, abs, nil
+			return cand, filepath.FromSlash(candidateName), nil
 		}
 		if os.IsExist(oerr) {
 			occupied[cand] = true // 等价目标已存在，记下避免重试，换下一个后缀

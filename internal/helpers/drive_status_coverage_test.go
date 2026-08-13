@@ -82,22 +82,15 @@ func runDriveCmd(t *testing.T, caller edition.ToolCaller, args ...string) error 
 func runDriveCmdWithoutConfirm(t *testing.T, caller edition.ToolCaller, args ...string) error {
 	t.Helper()
 
-	prevDeps := deps
-	prevOSArgs := os.Args
-	deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
 
 	root := &cobra.Command{Use: "dws"}
 	root.PersistentFlags().BoolP("yes", "y", false, "")
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.AddCommand(newDriveCommand())
 
-	os.Args = append([]string{"dws", "drive"}, args...)
+	testseam.Swap(t, &os.Args, append([]string{"dws", "drive"}, args...))
 	root.SetArgs(append([]string{"drive"}, args...))
-
-	t.Cleanup(func() {
-		deps = prevDeps
-		os.Args = prevOSArgs
-	})
 	return root.Execute()
 }
 
@@ -138,8 +131,8 @@ func TestCrossPlatformCoverageDriveStatus_endToEndNestedTree(t *testing.T) {
 	}
 }
 
-// 分页：首页返回 nextToken，第二页取完；token 未推进时必须终止而非死循环。
-func TestCrossPlatformCoverageDriveStatus_paginationAndStalledToken(t *testing.T) {
+// 分页 token 未推进意味着远端清单可能被截断，必须失败而不是把当前页当作 EOF。
+func TestCrossPlatformCoverageDriveStatus_stalledPaginationTokenFailsClosed(t *testing.T) {
 	dir := t.TempDir()
 
 	caller := &driveScriptCaller{reply: func(_ string, args map[string]any, nth int) (string, error) {
@@ -153,17 +146,18 @@ func TestCrossPlatformCoverageDriveStatus_paginationAndStalledToken(t *testing.T
 			if args["nextToken"] != "T1" {
 				t.Errorf("second page nextToken = %v, want T1", args["nextToken"])
 			}
-			// 返回同一个 token → 未推进，必须 break。
+			// 返回同一个 token → 未推进，必须 fail closed。
 			return `{"result":{"items":[{"name":"b.txt","type":"file","fileId":"B"}],"nextToken":"T1"}}`, nil
 		}
 		return `{"result":{"items":[],"nextToken":""}}`, nil
 	}}
 
-	if err := runDriveCmd(t, caller, "status", "--local-folder", dir, "--remote-folder", "ROOT", "--quick"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	err := runDriveCmd(t, caller, "status", "--local-folder", dir, "--remote-folder", "ROOT", "--quick")
+	if err == nil || !strings.Contains(err.Error(), "分页 token") {
+		t.Fatalf("error = %v, want stalled pagination failure", err)
 	}
 	if got := len(caller.callsFor("list_files")); got != 2 {
-		t.Fatalf("stalled token must stop paging after 2 calls, got %d", got)
+		t.Fatalf("stalled token must fail after 2 calls, got %d", got)
 	}
 }
 
@@ -256,14 +250,8 @@ func TestCrossPlatformCoverageWalkRemoteDir_depthLimitAborts(t *testing.T) {
 		// 每层都返回一个同名子文件夹 → 无限深。
 		return `{"result":{"items":[{"name":"loop","type":"folder","fileId":"LOOP"}],"nextToken":""}}`, nil
 	}}
-	prevDeps := deps
-	prevOSArgs := os.Args
-	deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"} // 工具路由需要命令上下文
-	t.Cleanup(func() {
-		deps = prevDeps
-		os.Args = prevOSArgs
-	})
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"}) // 工具路由需要命令上下文
 
 	_, err := fetchRemoteDriveTree(context.Background(), "", "ROOT", true)
 	if err == nil || !strings.Contains(err.Error(), "循环引用") {

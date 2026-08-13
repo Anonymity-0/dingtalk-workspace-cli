@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 // ──────────────────────────────────────────────────────────
@@ -38,10 +40,9 @@ func TestCrossPlatformCoverageDrivePull_endToEndDownloadsAll(t *testing.T) {
 		`{"name":"a.txt","type":"file","fileId":"A","modifyTime":1000},` +
 			`{"name":"b.txt","type":"file","fileId":"B","modifyTime":2000}`)
 
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		return os.WriteFile(dest, []byte("remote"), 0o644)
 	})
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	if err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -59,11 +60,10 @@ func TestCrossPlatformCoverageDrivePull_ifExistsSkipKeepsLocal(t *testing.T) {
 	mustWrite(t, filepath.Join(root, "a.txt"), "local-original")
 	caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":9000}`)
 
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error {
+	swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error {
 		t.Error("skip must not download")
 		return nil
 	})
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	if err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT", "--if-exists", "skip"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -82,11 +82,10 @@ func TestCrossPlatformCoverageDrivePull_ifExistsSmart(t *testing.T) {
 		local := readFileMTimeMillis(t, p)
 		caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":` + strconv.FormatInt(local-5000, 10) + `}`)
 
-		SetHTTPGetFile(func(context.Context, string, map[string]string, string) error {
+		swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error {
 			t.Error("smart must not download when local is newer")
 			return nil
 		})
-		t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 		if err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT", "--if-exists", "smart"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -103,10 +102,9 @@ func TestCrossPlatformCoverageDrivePull_ifExistsSmart(t *testing.T) {
 		local := readFileMTimeMillis(t, p)
 		caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":` + strconv.FormatInt(local+60000, 10) + `}`)
 
-		SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+		swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 			return os.WriteFile(dest, []byte("fresh"), 0o644)
 		})
-		t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 		if err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT", "--if-exists", "smart"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -130,10 +128,9 @@ func TestCrossPlatformCoverageDrivePull_invalidIfExistsRejected(t *testing.T) {
 func TestCrossPlatformCoverageDrivePull_passesSpaceIDToDownload(t *testing.T) {
 	root := t.TempDir()
 	caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":1}`)
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		return os.WriteFile(dest, []byte("x"), 0o644)
 	})
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	if err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT", "--space-id", "SP9"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -147,14 +144,11 @@ func TestCrossPlatformCoverageDrivePull_passesSpaceIDToDownload(t *testing.T) {
 func TestCrossPlatformCoverageDrivePull_downloadFailureIsPartialFailure(t *testing.T) {
 	root := t.TempDir()
 	caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":1}`)
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error { return errTestDownload })
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
+	swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error { return errTestDownload })
 
 	var out strings.Builder
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: caller, Out: &Formatter{w: &out}}
-	os.Args = []string{"dws", "drive", "pull"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: &out}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive", "pull"})
 
 	cmd := findDriveSubcommand(t, "pull")
 	mustSetFlags(t, cmd, map[string]string{"local-folder": root, "remote-folder": "ROOT"})
@@ -229,10 +223,9 @@ func TestCrossPlatformCoverageDrivePull_escapingRelPathIsFailed(t *testing.T) {
 		}
 		return `{"result":{"items":[],"nextToken":""}}`, nil
 	}}
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		return os.WriteFile(dest, []byte("leak"), 0o644)
 	})
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	if err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT"); err == nil {
 		t.Fatal("expected symlink escape to be reported as failure")
@@ -248,14 +241,8 @@ func TestCrossPlatformCoveragePullOneFile_mkdirFailureIsFailed(t *testing.T) {
 	// "sub" 是普通文件，MkdirAll("sub") 必然失败。
 	mustWrite(t, filepath.Join(root, "sub"), "occupied")
 
-	prevDeps := deps
-	prevArgs := os.Args
-	deps = &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	t.Cleanup(func() {
-		deps = prevDeps
-		os.Args = prevArgs
-	})
+	testseam.Swap(t, &deps, &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 
 	rf := &remoteFile{RelPath: "sub/x.txt", FileID: "X"}
 	action, err := pullOneFile(context.Background(), "", rf, filepath.Join(root, "sub", "x.txt"), ifExistsOverwrite)

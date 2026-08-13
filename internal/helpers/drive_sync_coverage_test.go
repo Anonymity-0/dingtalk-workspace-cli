@@ -38,13 +38,9 @@ func syncCaller(listing map[string]string) *driveScriptCaller {
 // withSyncTransport 注入成功的上传与下载。
 func withSyncTransport(t *testing.T, body string) {
 	t.Helper()
-	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error { return nil })
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		return os.WriteFile(dest, []byte(body), 0o644)
-	})
-	t.Cleanup(func() {
-		SetHTTPPutFile(nil)
-		SetHTTPGetFile(nil)
 	})
 }
 
@@ -133,7 +129,7 @@ func TestCrossPlatformCoverageDriveSync_unknownIsSkipped(t *testing.T) {
 // exact 模式下本地 MD5 计算失败 → 整个 sync 中止。错误通过 seam 确定性注入，
 // 避免依赖 chmod：Windows 不遵循 POSIX 的 000 权限语义。
 func TestCrossPlatformCoverageDriveSync_md5FailureAborts(t *testing.T) {
-	testseam.Swap(t, &md5File, func(string) (string, error) {
+	testseam.Swap(t, &pushMD5OpenedFile, func(*os.File) (string, error) {
 		return "", errors.New("md5 boom")
 	})
 
@@ -223,8 +219,7 @@ func TestCrossPlatformCoverageDriveSync_folderCreationFailureCascades(t *testing
 func TestCrossPlatformCoverageDriveSync_pushUploadFailureIsFailed(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "only-local.txt"), "x")
-	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return errTestUpload })
-	t.Cleanup(func() { SetHTTPPutFile(nil) })
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error { return errTestUpload })
 
 	caller := syncCaller(nil)
 	err := runDriveCmd(t, caller, "sync", "--local-folder", dir, "--remote-folder", "ROOT", "--quick")

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 var errTestUpload = errors.New("simulated upload failure")
@@ -35,8 +37,7 @@ func pushOKCaller(listing map[string]string) *driveScriptCaller {
 
 func withNoopPut(t *testing.T) {
 	t.Helper()
-	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
-	t.Cleanup(func() { SetHTTPPutFile(nil) })
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error { return nil })
 }
 
 // ──────────────────────────────────────────────────────────
@@ -220,8 +221,7 @@ func TestCrossPlatformCoverageDrivePush_ifExistsSmart(t *testing.T) {
 func TestCrossPlatformCoverageDrivePush_uploadFailureExitsNonZero(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "local")
-	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return errTestUpload })
-	t.Cleanup(func() { SetHTTPPutFile(nil) })
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error { return errTestUpload })
 
 	caller := pushOKCaller(nil)
 	err := runDriveCmd(t, caller, "push", "--local-folder", dir, "--remote-folder", "ROOT")
@@ -306,10 +306,8 @@ func TestCrossPlatformCoverageWalkRemoteForPush_paginationRecursionAndSkips(t *t
 		return `{"result":{"items":[],"nextToken":""}}`, nil
 	}}
 
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 
 	files, folders, err := fetchRemoteTreeForPush(context.Background(), "", "ROOT")
 	if err != nil {
@@ -333,10 +331,8 @@ func TestCrossPlatformCoverageWalkRemoteForPush_depthLimitAborts(t *testing.T) {
 	caller := &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) {
 		return `{"result":{"items":[{"name":"loop","type":"folder","fileId":"LOOP"}],"nextToken":""}}`, nil
 	}}
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 
 	if _, _, err := fetchRemoteTreeForPush(context.Background(), "", "ROOT"); err == nil ||
 		!strings.Contains(err.Error(), "循环引用") {
@@ -413,18 +409,13 @@ func TestCrossPlatformCoveragePushUploadFile_failureBranches(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			prevDeps, prevArgs := deps, os.Args
-			deps = &Deps{Caller: &driveScriptCaller{reply: tc.reply}, Out: &Formatter{w: io.Discard}}
-			os.Args = []string{"dws", "drive"}
+			testseam.Swap(t, &deps, &Deps{Caller: &driveScriptCaller{reply: tc.reply}, Out: &Formatter{w: io.Discard}})
+			testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 			put := tc.put
 			if put == nil {
 				put = func(context.Context, string, map[string]string, string, int64) error { return nil }
 			}
-			SetHTTPPutFile(put)
-			t.Cleanup(func() {
-				deps, os.Args = prevDeps, prevArgs
-				SetHTTPPutFile(nil)
-			})
+			testseam.Swap(t, &httpPutFile, put)
 
 			if err := pushUploadFile(context.Background(), "SP", "PARENT", "", "a.txt", p, 7); err == nil {
 				t.Fatal("expected upload failure")
@@ -435,13 +426,11 @@ func TestCrossPlatformCoveragePushUploadFile_failureBranches(t *testing.T) {
 
 // pushCreateFolder：MCP 失败上抛，成功时从返回体提取 fileId。
 func TestCrossPlatformCoveragePushCreateFolder_errorAndSuccess(t *testing.T) {
-	prevDeps, prevArgs := deps, os.Args
-	os.Args = []string{"dws", "drive"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 
-	deps = &Deps{Caller: &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) {
+	testseam.Swap(t, &deps, &Deps{Caller: &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) {
 		return "", errTestUpload
-	}}, Out: &Formatter{w: io.Discard}}
+	}}, Out: &Formatter{w: io.Discard}})
 	if _, err := pushCreateFolder(context.Background(), "", "P", "n"); err == nil {
 		t.Fatal("expected create_folder error to propagate")
 	}
@@ -449,7 +438,7 @@ func TestCrossPlatformCoveragePushCreateFolder_errorAndSuccess(t *testing.T) {
 	ok := &driveScriptCaller{reply: func(string, map[string]any, int) (string, error) {
 		return `{"result":{"fileId":"FID42"},"success":true}`, nil
 	}}
-	deps = &Deps{Caller: ok, Out: &Formatter{w: io.Discard}}
+	testseam.Swap(t, &deps, &Deps{Caller: ok, Out: &Formatter{w: io.Discard}})
 	got, err := pushCreateFolder(context.Background(), "SP", "P", "n")
 	if err != nil || got != "FID42" {
 		t.Fatalf("pushCreateFolder = (%q, %v), want (FID42, nil)", got, err)

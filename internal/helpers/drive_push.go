@@ -2,14 +2,21 @@ package helpers
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
+	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/text/unicode/norm"
 )
 
 // ==========================================================
@@ -40,7 +47,27 @@ type localPushFile struct {
 	AbsPath       string
 	ModTimeMillis int64
 	Size          int64
+	scanInfo      os.FileInfo
 }
+
+// pushPutOpenedFile 把已由固定 os.Root 打开的本地文件句柄上传到 OSS。生产 push/sync
+// 不再把可被并发换链的绝对路径交给 HTTP 层重新打开；测试必须通过 testseam.Swap 替换。
+var (
+	pushPutOpenedFile  = defaultPushPutOpenedFile
+	pushStatOpenedFile = func(file *os.File) (os.FileInfo, error) {
+		return file.Stat()
+	}
+	pushVerifyPinnedSourceRoot = func(root *pinnedPullRoot) error {
+		return root.verify()
+	}
+	pushMD5OpenedFile = func(file *os.File) (string, error) {
+		hash := md5.New()
+		if _, err := io.Copy(hash, file); err != nil {
+			return "", err
+		}
+		return base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
+	}
+)
 
 // drivePushItem 是输出 items[] 中每个条目的明细。
 type drivePushItem struct {
@@ -105,6 +132,16 @@ func runDrivePush(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	pinnedRoot, err := openExistingPinnedPullRoot(absDir)
+	if err != nil {
+		return fmt.Errorf("扫描本地目录失败: %w", err)
+	}
+	defer pinnedRoot.close()
+
+	localDirs, localFiles, err := runDriveMirrorWalkLocalForPushPinned(pinnedRoot)
+	if err != nil {
+		return fmt.Errorf("扫描本地目录失败: %w", err)
+	}
 
 	ctx := cmd.Context()
 	// 远端现状：已存在的文件（用于 --if-exists 判断）与目录（rel_path → fileId，用于复用/定位父目录）。
@@ -113,23 +150,27 @@ func runDrivePush(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	localDirs, localFiles, err := walkLocalForPush(absDir)
-	if err != nil {
-		return fmt.Errorf("扫描本地目录失败: %w", err)
-	}
+	preflight := buildMirrorPreflight(localDirs, localFiles, remoteFiles, remoteFolders)
 
 	res := drivePushResult{Items: make([]drivePushItem, 0, len(localDirs)+len(localFiles))}
 	if deps.Caller.DryRun() {
-		return printDrivePushDryRun(ifExists, remoteFiles, remoteFolders, localDirs, localFiles)
+		return printDrivePushDryRunWithPreflight(ifExists, remoteFiles, remoteFolders, localDirs, localFiles, preflight)
+	}
+	if len(preflight) > 0 {
+		appendDrivePushPreflightFailures(&res, preflight)
+		if perr := deps.Out.PrintJSON(res); perr != nil {
+			return perr
+		}
+		return &drivePushFailure{failed: res.Summary.Failed}
+	}
+	// 本地扫描与远端读取都可能耗时。首个远端写之前确认命令行路径仍指向最初固定
+	// 的根；若根已被移走或替换，整批中止，不能把替代目录的数据当成扫描快照上传。
+	if err := pinnedRoot.verify(); err != nil {
+		return err
 	}
 
 	// 第一阶段：按需创建远端目录（浅层在前，保证父目录先于子目录存在）。
 	for _, dir := range localDirs {
-		if msg := pushTypeConflictError(dir, true, remoteFiles, remoteFolders); msg != "" {
-			res.Summary.Failed++
-			res.Items = append(res.Items, drivePushItem{RelPath: dir, Action: pushActionFailed, Error: msg})
-			continue
-		}
 		if _, ok := remoteFolders[dir]; ok {
 			continue // 远端已存在，复用 fileId，不留痕
 		}
@@ -139,6 +180,9 @@ func runDrivePush(cmd *cobra.Command, _ []string) error {
 			res.Summary.Failed++
 			res.Items = append(res.Items, drivePushItem{RelPath: dir, Action: pushActionFailed, Error: "父目录未能创建"})
 			continue
+		}
+		if err := pinnedRoot.verify(); err != nil {
+			return err
 		}
 		fid, cerr := pushCreateFolder(ctx, spaceID, parentID, name)
 		if cerr != nil || fid == "" {
@@ -158,11 +202,6 @@ func runDrivePush(cmd *cobra.Command, _ []string) error {
 	for i := range localFiles {
 		lf := localFiles[i]
 		size := lf.Size
-		if msg := pushTypeConflictError(lf.RelPath, false, remoteFiles, remoteFolders); msg != "" {
-			res.Summary.Failed++
-			res.Items = append(res.Items, drivePushItem{RelPath: lf.RelPath, Action: pushActionFailed, SizeBytes: &size, Error: msg})
-			continue
-		}
 		parentRel, name := splitRel(lf.RelPath)
 		parentID, ok := remoteFolders[parentRel]
 		if !ok || parentID == "" {
@@ -198,7 +237,7 @@ func runDrivePush(cmd *cobra.Command, _ []string) error {
 			}
 		}
 
-		if err := pushUploadFile(ctx, spaceID, parentID, overwriteID, name, lf.AbsPath, size); err != nil {
+		if err := pushUploadFilePinned(ctx, spaceID, parentID, overwriteID, name, pinnedRoot, lf); err != nil {
 			res.Summary.Failed++
 			res.Items = append(res.Items, drivePushItem{RelPath: lf.RelPath, Action: pushActionFailed, SizeBytes: &size, Error: err.Error()})
 			continue
@@ -234,6 +273,7 @@ func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, f
 		return fmt.Errorf("drive 目录层级超过 %d 层，疑似循环引用，已中止", remoteMaxDepth)
 	}
 	nextToken := ""
+	seenTokens := make(map[string]struct{})
 	for {
 		args := map[string]any{"maxResults": float64(driveListPageSize)}
 		if spaceID != "" {
@@ -285,36 +325,51 @@ func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, f
 			if err := claimRemotePath(occupied, childRel, "文件"); err != nil {
 				return err
 			}
+			fileID := it.id()
+			if fileID == "" {
+				return fmt.Errorf("远端文件 %q 缺少文件 ID，已中止遍历", childRel)
+			}
 			modMillis, modValid := it.modifiedMillis()
 			files[childRel] = &remoteFile{
 				RelPath:           childRel,
-				FileID:            it.id(),
+				FileID:            fileID,
 				Hash:              it.hash(),
 				ModifiedTime:      modMillis,
 				ModifiedTimeValid: modValid,
 			}
 		}
 
-		if token == "" || token == nextToken {
+		if token == "" {
 			break
 		}
+		if _, exists := seenTokens[token]; exists {
+			return fmt.Errorf("远端目录 %q 的分页 token 重复，疑似分页循环，已中止", relBase)
+		}
+		seenTokens[token] = struct{}{}
 		nextToken = token
 	}
 	return nil
 }
 
 func printDrivePushDryRun(ifExists string, remoteFiles map[string]*remoteFile, remoteFolders map[string]string, localDirs []string, localFiles []localPushFile) error {
+	return printDrivePushDryRunWithPreflight(ifExists, remoteFiles, remoteFolders, localDirs, localFiles,
+		buildMirrorPreflight(localDirs, localFiles, remoteFiles, remoteFolders))
+}
+
+func printDrivePushDryRunWithPreflight(ifExists string, remoteFiles map[string]*remoteFile, remoteFolders map[string]string, localDirs []string, localFiles []localPushFile, preflight map[string]string) error {
 	plan := drivePushResult{Items: make([]drivePushItem, 0, len(localDirs)+len(localFiles))}
+	if len(preflight) > 0 {
+		appendDrivePushPreflightFailures(&plan, preflight)
+		return deps.Out.PrintJSON(drivePushDryRunResult{
+			DryRun: true, Executed: false, PreviewKind: "plan", Operation: "drive push",
+			IfExists: ifExists, Plan: plan,
+		})
+	}
 	plannedFolders := make(map[string]string, len(remoteFolders)+len(localDirs))
 	for rel, fileID := range remoteFolders {
 		plannedFolders[rel] = fileID
 	}
 	for _, dir := range localDirs {
-		if msg := pushTypeConflictError(dir, true, remoteFiles, remoteFolders); msg != "" {
-			plan.Summary.Failed++
-			plan.Items = append(plan.Items, drivePushItem{RelPath: dir, Action: pushActionFailed, Error: msg})
-			continue
-		}
 		if _, ok := plannedFolders[dir]; ok {
 			continue
 		}
@@ -329,11 +384,6 @@ func printDrivePushDryRun(ifExists string, remoteFiles map[string]*remoteFile, r
 	}
 	for _, lf := range localFiles {
 		size := lf.Size
-		if msg := pushTypeConflictError(lf.RelPath, false, remoteFiles, remoteFolders); msg != "" {
-			plan.Summary.Failed++
-			plan.Items = append(plan.Items, drivePushItem{RelPath: lf.RelPath, Action: pushActionFailed, SizeBytes: &size, Error: msg})
-			continue
-		}
 		parentRel, _ := splitRel(lf.RelPath)
 		if plannedFolders[parentRel] == "" {
 			plan.Summary.Failed++
@@ -368,6 +418,14 @@ func printDrivePushDryRun(ifExists string, remoteFiles map[string]*remoteFile, r
 	})
 }
 
+func appendDrivePushPreflightFailures(res *drivePushResult, preflight map[string]string) {
+	res.Summary.Aborted = true
+	for _, rel := range mirrorPreflightFailureRels(preflight) {
+		res.Summary.Failed++
+		res.Items = append(res.Items, drivePushItem{RelPath: rel, Action: pushActionFailed, Error: preflight[rel]})
+	}
+}
+
 // pushTypeConflictError 在任何写操作或 dry-run 成功预览之前，拒绝同一路径下
 // “本地目录 ↔ 远端文件”或“本地文件 ↔ 远端目录”的类型冲突。
 func pushTypeConflictError(rel string, localIsFolder bool, remoteFiles map[string]*remoteFile, remoteFolders map[string]string) string {
@@ -386,17 +444,204 @@ func pushTypeConflictError(rel string, localIsFolder bool, remoteFiles map[strin
 // walkLocalForPush 遍历本地根目录，返回所有子目录 rel_path（不含根本身，浅层在前）
 // 与所有常规文件。dirs 升序排序保证父目录先于子目录被创建。
 func walkLocalForPush(root string) ([]string, []localPushFile, error) {
+	pinned, err := openExistingPinnedPullRoot(root)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer pinned.close()
+	return walkLocalForPushPinned(pinned)
+}
+
+// 文件系统遍历与命令入口通过显式 seam 暴露仅用于确定性覆盖 I/O 失败；测试必须用
+// testseam.Swap 替换，生产仍直接使用 fs.WalkDir / walkLocalForPushPinned。
+var (
+	walkPinnedLocalFS                    = fs.WalkDir
+	runDriveMirrorWalkLocalForPushPinned = walkLocalForPushPinned
+)
+
+// walkLocalForPushPinned 从命令开始时固定的同一个 os.Root/FS 扫描本地树。即使调用方
+// 给出的路径随后被替换成软链或另一目录，遍历也只会读取原目录树。
+func walkLocalForPushPinned(root *pinnedPullRoot) ([]string, []localPushFile, error) {
+	if err := root.verify(); err != nil {
+		return nil, nil, err
+	}
 	var dirs []string
 	var files []localPushFile
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		return walkLocalForPushEntry(root, path, d, err, &dirs, &files)
+	err := walkPinnedLocalFS(root.root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == "." {
+			return nil
+		}
+		relSlash := filepath.ToSlash(path)
+		if d.IsDir() {
+			dirs = append(dirs, relSlash)
+			return nil
+		}
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			return infoErr
+		}
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		files = append(files, localPushFile{
+			RelPath: relSlash, AbsPath: filepath.Join(root.absDir, filepath.FromSlash(relSlash)),
+			ModTimeMillis: info.ModTime().UnixMilli(), Size: info.Size(), scanInfo: info,
+		})
+		return nil
 	})
 	if err != nil {
 		return nil, nil, err
 	}
+	if err := root.verify(); err != nil {
+		return nil, nil, err
+	}
 	// 字典序即浅层在前（"a" < "a/b" < "a/b/c"），父目录先于子目录。
 	sort.Strings(dirs)
+	sort.Slice(files, func(i, j int) bool { return files[i].RelPath < files[j].RelPath })
 	return dirs, files, nil
+}
+
+// judgePinnedPushFileMatch 与 judgeFileMatch 的判定保持一致，但 exact 模式只从固定
+// os.Root 打开的句柄计算 MD5，绝不按可被换链的 AbsPath 重开文件。
+func judgePinnedPushFileMatch(root *pinnedPullRoot, local localPushFile, remote *remoteFile, quick bool) (string, error) {
+	if quick {
+		if remote.ModifiedTimeValid && local.ModTimeMillis == remote.ModifiedTime {
+			return matchUnchanged, nil
+		}
+		return matchModified, nil
+	}
+	if remote.Hash == "" {
+		return matchUnknown, nil
+	}
+	file, err := root.root.Open(filepath.FromSlash(local.RelPath))
+	if err != nil {
+		return "", fmt.Errorf("计算 %s 的 MD5 失败: %w", local.RelPath, err)
+	}
+	defer file.Close()
+	info, err := pushStatOpenedFile(file)
+	if err != nil || !info.Mode().IsRegular() || (local.scanInfo != nil && !os.SameFile(local.scanInfo, info)) {
+		return "", fmt.Errorf("计算 %s 的 MD5 失败: 本地文件在扫描后被替换", local.RelPath)
+	}
+	hash, err := pushMD5OpenedFile(file)
+	if err != nil {
+		return "", fmt.Errorf("计算 %s 的 MD5 失败: %w", local.RelPath, err)
+	}
+	if err := pushVerifyPinnedSourceRoot(root); err != nil {
+		return "", err
+	}
+	if hash == remote.Hash {
+		return matchUnchanged, nil
+	}
+	return matchModified, nil
+}
+
+// mirrorPathKey 表示 Drive 镜像契约中的等价路径：逐段 Unicode NFC + 大小写折叠。
+// 该规则独立于运行命令的本地文件系统，避免 macOS/Windows 与 Drive 间把 a/A 或
+// NFC/NFD 当成“双向新增”，也避免把等价目录前缀错误拼接成另一棵树。
+func mirrorPathKey(rel string) string {
+	parts := strings.Split(rel, "/")
+	for i := range parts {
+		parts[i] = norm.NFC.String(strings.ToLower(parts[i]))
+	}
+	return strings.Join(parts, "/")
+}
+
+func mirrorLocalRelError(rel string) string {
+	for _, segment := range strings.Split(rel, "/") {
+		if !isSafeRemoteSegment(segment) || strings.IndexByte(segment, 0) >= 0 {
+			return fmt.Sprintf("本地路径 %q 含无法安全映射到远端的名称段 %q，已中止镜像", rel, segment)
+		}
+	}
+	return ""
+}
+
+// buildMirrorPreflight 在任何远端写之前统一检查本地名称和双端等价路径/类型。
+// 每个条目同时声明全部祖先目录，因而 local A/x 与 remote a/y 会在祖先键上冲突；
+// 即便本地为空，remote A/a 也会被完整性门禁识别。调用方必须整体拒绝写入，不能只
+// 跳过冲突项。
+func buildMirrorPreflight(localDirs []string, localFiles []localPushFile, remoteFiles map[string]*remoteFile, remoteFolders map[string]string) map[string]string {
+	type mirrorKind string
+	const (
+		mirrorFile mirrorKind = "文件"
+		mirrorDir  mirrorKind = "目录"
+	)
+	type entry struct {
+		rel  string
+		kind mirrorKind
+	}
+	local := make(map[string]map[entry]struct{})
+	remote := make(map[string]map[entry]struct{})
+	failures := make(map[string]string)
+	addClaims := func(index map[string]map[entry]struct{}, rel string, kind mirrorKind) {
+		parts := strings.Split(rel, "/")
+		for i := range parts {
+			claimKind := mirrorDir
+			if i == len(parts)-1 {
+				claimKind = kind
+			}
+			claimRel := strings.Join(parts[:i+1], "/")
+			key := mirrorPathKey(claimRel)
+			if index[key] == nil {
+				index[key] = make(map[entry]struct{})
+			}
+			index[key][entry{rel: claimRel, kind: claimKind}] = struct{}{}
+		}
+	}
+	addLocal := func(rel string, kind mirrorKind) {
+		if msg := mirrorLocalRelError(rel); msg != "" {
+			failures[rel] = msg
+		}
+		addClaims(local, rel, kind)
+	}
+	for _, rel := range localDirs {
+		addLocal(rel, mirrorDir)
+	}
+	for _, f := range localFiles {
+		addLocal(f.RelPath, mirrorFile)
+	}
+	for rel := range remoteFolders {
+		if rel != "" {
+			addClaims(remote, rel, mirrorDir)
+		}
+	}
+	for rel := range remoteFiles {
+		addClaims(remote, rel, mirrorFile)
+	}
+	keys := make(map[string]struct{}, len(local)+len(remote))
+	for key := range local {
+		keys[key] = struct{}{}
+	}
+	for key := range remote {
+		keys[key] = struct{}{}
+	}
+	for key := range keys {
+		claims := make(map[entry]struct{}, len(local[key])+len(remote[key]))
+		for claim := range local[key] {
+			claims[claim] = struct{}{}
+		}
+		for claim := range remote[key] {
+			claims[claim] = struct{}{}
+		}
+		if len(claims) <= 1 {
+			continue
+		}
+		for claim := range claims {
+			failures[claim.rel] = fmt.Sprintf("%s路径 %q 在镜像规则下存在大小写/Unicode NFC 等价路径拼写或类型歧义，已中止镜像", claim.kind, claim.rel)
+		}
+	}
+	return failures
+}
+
+func mirrorPreflightFailureRels(preflight map[string]string) []string {
+	rels := make([]string, 0, len(preflight))
+	for rel := range preflight {
+		rels = append(rels, rel)
+	}
+	sort.Strings(rels)
+	return rels
 }
 
 // walkLocalForPushEntry 是 walkLocalForPush 的单条目处理逻辑。抽成命名函数只为可测：
@@ -430,6 +675,7 @@ func walkLocalForPushEntry(root, path string, d fs.DirEntry, err error, dirs *[]
 		AbsPath:       path,
 		ModTimeMillis: info.ModTime().UnixMilli(),
 		Size:          info.Size(),
+		scanInfo:      info,
 	})
 	return nil
 }
@@ -457,6 +703,51 @@ func pushCreateFolder(ctx context.Context, spaceID, parentID, name string) (stri
 // commit_upload 两个阶段都传 overwriteFileId、都不传 parentId（服务端据此设置
 // conflictStrategy=OVERWRITE，原地覆盖而非在同目录新建重名副本）。
 func pushUploadFile(ctx context.Context, spaceID, parentID, overwriteFileID, fileName, filePath string, fileSize int64) error {
+	return pushUploadWithTransport(ctx, spaceID, parentID, overwriteFileID, fileName, fileSize,
+		func(resourceURL string, ossHeaders map[string]string) error {
+			return httpPutFile(ctx, resourceURL, ossHeaders, filePath, fileSize)
+		})
+}
+
+// pushUploadFilePinned 从固定本地根打开 rel_path，并在发出 get_upload_info 前核对
+// 文件身份与扫描快照。HTTP PUT 只读取这个已打开句柄，绝不按 AbsPath 二次解析。
+func pushUploadFilePinned(ctx context.Context, spaceID, parentID, overwriteFileID, fileName string, root *pinnedPullRoot, local localPushFile) error {
+	if err := root.verify(); err != nil {
+		return err
+	}
+	file, err := root.root.Open(filepath.FromSlash(local.RelPath))
+	if err != nil {
+		return fmt.Errorf("打开本地上传文件失败: %w", err)
+	}
+	defer file.Close()
+	info, err := pushStatOpenedFile(file)
+	if err != nil {
+		return fmt.Errorf("读取本地上传文件身份失败: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("本地上传目标 %q 已不再是常规文件", local.RelPath)
+	}
+	if local.scanInfo != nil && !os.SameFile(local.scanInfo, info) {
+		return fmt.Errorf("本地上传目标 %q 在扫描后被替换，已中止上传", local.RelPath)
+	}
+	if info.Size() != local.Size || info.ModTime().UnixMilli() != local.ModTimeMillis {
+		return fmt.Errorf("本地上传目标 %q 在扫描后发生变化，已中止上传", local.RelPath)
+	}
+	if err := pushVerifyPinnedSourceRoot(root); err != nil {
+		return err
+	}
+	return pushUploadWithTransport(ctx, spaceID, parentID, overwriteFileID, fileName, local.Size,
+		func(resourceURL string, ossHeaders map[string]string) error {
+			if err := pushPutOpenedFile(ctx, resourceURL, ossHeaders, file, local.Size); err != nil {
+				return err
+			}
+			// OSS 传输期间若命令行根已被替换，不提交这个上传会话；已发送的字节仍来自
+			// 固定根内的原文件句柄，不可能读取替代路径或根外内容。
+			return root.verify()
+		})
+}
+
+func pushUploadWithTransport(ctx context.Context, spaceID, parentID, overwriteFileID, fileName string, fileSize int64, put func(string, map[string]string) error) error {
 	step1 := map[string]any{"fileName": fileName, "fileSize": float64(fileSize)}
 	if spaceID != "" {
 		step1["spaceId"] = spaceID
@@ -474,7 +765,7 @@ func pushUploadFile(ctx context.Context, spaceID, parentID, overwriteFileID, fil
 	if err != nil {
 		return err
 	}
-	if err := httpPutFile(ctx, resourceURL, ossHeaders, filePath, fileSize); err != nil {
+	if err := put(resourceURL, ossHeaders); err != nil {
 		return err
 	}
 	commit := map[string]any{"fileName": fileName, "fileSize": float64(fileSize), "uploadId": uploadID}
@@ -486,8 +777,46 @@ func pushUploadFile(ctx context.Context, spaceID, parentID, overwriteFileID, fil
 	} else if parentID != "" {
 		commit["parentId"] = parentID
 	}
-	_, err = callMCPToolReturnText(ctx, "commit_upload", commit)
-	return err
+	commitText, err := callMCPToolReturnText(ctx, "commit_upload", commit)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(commitText) == "" {
+		return fmt.Errorf("commit_upload returned no business result; remote effect is unknown")
+	}
+	var result map[string]any
+	if err := json.Unmarshal([]byte(commitText), &result); err != nil {
+		return fmt.Errorf("parse commit_upload response: %w", err)
+	}
+	if len(result) == 0 {
+		return fmt.Errorf("commit_upload returned an empty JSON object; remote effect is unknown")
+	}
+	return nil
+}
+
+func defaultPushPutOpenedFile(ctx context.Context, url string, headers map[string]string, file *os.File, fileSize int64) error {
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to seek upload file: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, file)
+	if err != nil {
+		return fmt.Errorf("failed to create upload request: %w", err)
+	}
+	req.ContentLength = fileSize
+	req.Header.Del("Content-Type")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	resp, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req)
+	if err != nil {
+		return fmt.Errorf("file upload failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("OSS upload failed: %w", &httpStatusError{StatusCode: resp.StatusCode, Body: string(body)})
+	}
+	return nil
 }
 
 // parseNodeID 从 create_folder / commit 等返回里抽出节点 fileId（带 fallback）。

@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/base64"
@@ -107,6 +108,7 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 	}
 
 	nextToken := ""
+	seenTokens := make(map[string]struct{})
 	for {
 		args := map[string]any{"maxResults": float64(driveListPageSize)}
 		// space-id 为空则省略，交给 MCP Server 默认「我的文件」。
@@ -163,11 +165,15 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 			if err := claimRemotePath(occupied, childRel, "文件"); err != nil {
 				return err
 			}
+			fileID := it.id()
+			if fileID == "" {
+				return fmt.Errorf("远端文件 %q 缺少文件 ID，已中止遍历", childRel)
+			}
 
 			modMillis, modValid := it.modifiedMillis()
 			out[childRel] = &remoteFile{
 				RelPath:           childRel,
-				FileID:            it.id(),
+				FileID:            fileID,
 				Hash:              it.hash(),
 				Size:              it.size(),
 				ModifiedTime:      modMillis,
@@ -175,10 +181,13 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 			}
 		}
 
-		// 无下一页，或 token 未推进（防御性，避免服务端异常导致死循环）→ 结束。
-		if token == "" || token == nextToken {
+		if token == "" {
 			break
 		}
+		if _, exists := seenTokens[token]; exists {
+			return fmt.Errorf("远端目录 %q 的分页 token 重复，疑似分页循环，已中止", relBase)
+		}
+		seenTokens[token] = struct{}{}
 		nextToken = token
 	}
 	return nil
@@ -280,37 +289,72 @@ func (d driveItem) modifiedMillis() (int64, bool) {
 //   - {"result":{"items":[...],"nextToken":"..."}}
 //   - {"result":[...]}（result 直接是条目数组，无分页）
 func parseDriveList(text string) ([]driveItem, string, error) {
-	var envelope struct {
-		Result json.RawMessage `json:"result"`
-	}
+	var envelope map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(text), &envelope); err != nil {
 		return nil, "", fmt.Errorf("解析 list_files 返回失败: %w", err)
 	}
-	if len(envelope.Result) == 0 {
-		return nil, "", nil // 无 result → 空列表
+	result, exists := envelope["result"]
+	if !exists {
+		return nil, "", fmt.Errorf("解析 list_files 返回失败: 缺少 result")
+	}
+	result = json.RawMessage(bytes.TrimSpace(result))
+	if bytes.Equal(result, []byte("null")) {
+		return nil, "", fmt.Errorf("解析 list_files 返回失败: result 为 null")
 	}
 
-	toItems := func(ms []map[string]any) []driveItem {
+	toItems := func(ms []map[string]any) ([]driveItem, error) {
 		items := make([]driveItem, 0, len(ms))
-		for _, m := range ms {
-			items = append(items, driveItem(m))
+		for index, m := range ms {
+			item := driveItem(m)
+			// FILE / FOLDER 之外的显式类型（在线文档、快捷方式等）可以由镜像
+			// walker 跳过；但 null、空对象或缺少有效 type 的条目不是一个可判定的
+			// 业务对象。静默跳过会把不完整清单伪装成权威目录，必须失败关闭。
+			if m == nil || strings.TrimSpace(item.typ()) == "" {
+				return nil, fmt.Errorf("解析 list_files 返回失败: result.items[%d] 缺少有效 type", index)
+			}
+			items = append(items, item)
 		}
-		return items
+		return items, nil
 	}
 
-	// 形态一：result 是对象 {items, nextToken}
-	var obj struct {
-		Items     []map[string]any `json:"items"`
-		NextToken string           `json:"nextToken"`
-	}
-	if err := json.Unmarshal(envelope.Result, &obj); err == nil {
-		return toItems(obj.Items), obj.NextToken, nil
-	}
-
-	// 形态二：result 直接是条目数组
-	var arr []map[string]any
-	if err := json.Unmarshal(envelope.Result, &arr); err == nil {
-		return toItems(arr), "", nil
+	switch {
+	case len(result) > 0 && result[0] == '{':
+		// 形态一：result 是对象 {items, nextToken}。items 必须显式存在，不能把
+		// 缺失/null 的非权威响应误判为空目录。
+		var obj struct {
+			Items     json.RawMessage `json:"items"`
+			NextToken string          `json:"nextToken"`
+			HasMore   *bool           `json:"hasMore"`
+		}
+		if err := json.Unmarshal(result, &obj); err != nil {
+			return nil, "", fmt.Errorf("解析 list_files 返回失败: %w", err)
+		}
+		if len(obj.Items) == 0 {
+			return nil, "", fmt.Errorf("解析 list_files 返回失败: result 缺少 items")
+		}
+		var items []map[string]any
+		if err := json.Unmarshal(obj.Items, &items); err != nil || items == nil {
+			return nil, "", fmt.Errorf("解析 list_files 返回失败: result.items 不是数组")
+		}
+		if obj.HasMore != nil && *obj.HasMore && obj.NextToken == "" {
+			return nil, "", fmt.Errorf("解析 list_files 返回失败: hasMore=true 但 nextToken 为空，远端清单可能被截断")
+		}
+		parsed, err := toItems(items)
+		if err != nil {
+			return nil, "", err
+		}
+		return parsed, obj.NextToken, nil
+	case len(result) > 0 && result[0] == '[':
+		// 形态二：result 直接是条目数组。
+		var arr []map[string]any
+		if err := json.Unmarshal(result, &arr); err != nil {
+			return nil, "", fmt.Errorf("解析 list_files 返回失败: result 数组无效: %w", err)
+		}
+		parsed, err := toItems(arr)
+		if err != nil {
+			return nil, "", err
+		}
+		return parsed, "", nil
 	}
 
 	return nil, "", fmt.Errorf("解析 list_files 返回失败: result 既不是 {items:[]} 也不是数组")
@@ -328,11 +372,17 @@ func validateLocalDirAbs(localDir string) (string, error) {
 }
 
 // isSafeRemoteSegment 校验单个远端条目名称是否可安全用作一层相对路径段。
-// 拒绝空串、"."、".."、含卷标（如 Windows 的 "C:"）以及任意平台的路径分隔符
-// （/ 与 \）——这些成分拼进 rel_path 后可能让下载目标逃逸出本地根目录。
+// 拒绝空串、"."、".."、ASCII 控制字符、含卷标（如 Windows 的 "C:"）以及任意平台
+// 的路径分隔符（/ 与 \）——这些成分无法安全表示为本地文件名，或可能让下载目标逃逸
+// 出本地根目录。
 func isSafeRemoteSegment(name string) bool {
 	if name == "" || name == "." || name == ".." {
 		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if name[i] <= 0x1f || name[i] == 0x7f {
+			return false
+		}
 	}
 	// 任意平台分隔符都不允许出现在单层名称里。
 	if strings.ContainsAny(name, `/\`) {

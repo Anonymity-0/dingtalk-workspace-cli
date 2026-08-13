@@ -2,13 +2,16 @@
 
 package helpers
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // isSafeRemoteSegmentPlatform 承载 Windows 专有的单层名称校验。
 //
-// 拒绝含盘符的名称（"C:"、"C:foo"）——Windows 上 filepath.VolumeName 会识别它们，
-// 拼进 rel_path 后可让落盘目标逃逸出本地根目录；并在 Clean 改写名称时拒绝，兜住
-// 分隔符过滤之外的非规范形式。
+// 除盘符与 Clean 改写外，还拒绝 Win32 非法字符、尾随点/空格以及设备保留名。
+// 这些名称即使不造成词法逃逸，也可能无法落盘、落到 ADS，或与另一个名称映射到
+// 同一 Win32 对象；文件夹镜像必须在构建权威远端树时统一 fail closed。
 func isSafeRemoteSegmentPlatform(name string) bool {
 	if filepath.VolumeName(name) != "" {
 		return false
@@ -16,5 +19,34 @@ func isSafeRemoteSegmentPlatform(name string) bool {
 	if filepath.Clean(name) != name {
 		return false
 	}
+	if strings.TrimRight(name, " .") != name {
+		return false
+	}
+	for _, char := range name {
+		if char < 0x20 || char == 0x7f || strings.ContainsRune(`<>:"|?*`, char) {
+			return false
+		}
+	}
+	if isWindowsReservedMirrorName(name) {
+		return false
+	}
 	return true
+}
+
+func isWindowsReservedMirrorName(name string) bool {
+	base := name
+	if index := strings.IndexAny(base, ".:"); index >= 0 {
+		base = base[:index]
+	}
+	base = strings.ToUpper(strings.TrimRight(base, " ."))
+	switch base {
+	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$":
+		return true
+	}
+	if len(base) == 4 && (strings.HasPrefix(base, "COM") || strings.HasPrefix(base, "LPT")) && base[3] >= '1' && base[3] <= '9' {
+		return true
+	}
+	runes := []rune(base)
+	return len(runes) == 4 && (strings.HasPrefix(base, "COM") || strings.HasPrefix(base, "LPT")) &&
+		strings.ContainsRune("¹²³", runes[3])
 }

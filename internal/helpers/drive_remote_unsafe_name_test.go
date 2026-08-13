@@ -83,11 +83,11 @@ func TestCrossPlatformCoverageDriveRemoteTree_unsafeNamesFailClosed(t *testing.T
 						return tt.listing, nil
 					}}
 					getCalls, putCalls := 0, 0
-					testseam.Swap(t, &httpGetFile, func(context.Context, string, map[string]string, string) error {
+					swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error {
 						getCalls++
 						return nil
 					})
-					testseam.Swap(t, &httpPutFile, func(context.Context, string, map[string]string, string, int64) error {
+					testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error {
 						putCalls++
 						return nil
 					})

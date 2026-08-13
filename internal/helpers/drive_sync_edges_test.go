@@ -52,10 +52,9 @@ func TestCrossPlatformCoverageDrivePull_emptyIfExistsDefaultsToSkip(t *testing.T
 	p := filepath.Join(root, "a.txt")
 	mustWrite(t, p, "local-old")
 	caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":1}`)
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		return os.WriteFile(dest, []byte("remote-new"), 0o644)
 	})
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	if err := runDriveCmd(t, caller, "pull", "--local-folder", root, "--remote-folder", "ROOT", "--if-exists", ""); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -88,14 +87,12 @@ func TestCrossPlatformCoverageDrivePush_emptyIfExistsDefaultsToSkip(t *testing.T
 // 目标目录不可写 → 创建临时文件失败。
 func TestCrossPlatformCoveragePullOneFile_tempFileCreationFailure(t *testing.T) {
 	root := t.TempDir()
-	testseam.Swap(t, &pullCreateTemp, func(string, string) (*os.File, error) {
-		return nil, errors.New("create temp boom")
+	testseam.Swap(t, &pullCreateTemp, func(*os.Root) (*os.File, string, error) {
+		return nil, "", errors.New("create temp boom")
 	})
 
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 
 	action, err := pullOneFile(context.Background(), "", &remoteFile{RelPath: "a.txt", FileID: "A"},
 		filepath.Join(root, "a.txt"), ifExistsOverwrite)
@@ -112,15 +109,10 @@ func TestCrossPlatformCoveragePullOneFile_renameOntoDirectoryFails(t *testing.T)
 		t.Fatal(err)
 	}
 
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	testseam.Swap(t, &deps, &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		return os.WriteFile(dest, []byte("payload"), 0o644)
-	})
-	t.Cleanup(func() {
-		deps, os.Args = prevDeps, prevArgs
-		SetHTTPGetFile(nil)
 	})
 
 	action, err := pullOneFile(context.Background(), "", &remoteFile{RelPath: "a.txt", FileID: "A"},
@@ -137,10 +129,8 @@ func TestCrossPlatformCoveragePullOneFile_renameOntoDirectoryFails(t *testing.T)
 func TestCrossPlatformCoverageDrivePull_printFailurePropagates(t *testing.T) {
 	dir := t.TempDir()
 
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: failingWriter{}}}
-	os.Args = []string{"dws", "drive", "pull"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: pullListingCaller(""), Out: &Formatter{w: failingWriter{}}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive", "pull"})
 
 	cmd := findDriveSubcommand(t, "pull")
 	mustSetFlags(t, cmd, map[string]string{"local-folder": dir, "remote-folder": "ROOT"})
@@ -154,10 +144,8 @@ func TestCrossPlatformCoverageDrivePush_printFailurePropagates(t *testing.T) {
 	mustWrite(t, filepath.Join(dir, "a.txt"), "x")
 	withNoopPut(t)
 
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: pushOKCaller(nil), Out: &Formatter{w: failingWriter{}}}
-	os.Args = []string{"dws", "drive", "push"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: pushOKCaller(nil), Out: &Formatter{w: failingWriter{}}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive", "push"})
 
 	cmd := findDriveSubcommand(t, "push")
 	mustSetFlags(t, cmd, map[string]string{"local-folder": dir, "remote-folder": "ROOT"})
@@ -169,13 +157,10 @@ func TestCrossPlatformCoverageDrivePush_printFailurePropagates(t *testing.T) {
 func TestCrossPlatformCoverageDriveSync_printFailurePropagates(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "a.txt"), "x")
-	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
-	t.Cleanup(func() { SetHTTPPutFile(nil) })
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error { return nil })
 
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: syncCaller(nil), Out: &Formatter{w: failingWriter{}}}
-	os.Args = []string{"dws", "drive", "sync"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: syncCaller(nil), Out: &Formatter{w: failingWriter{}}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive", "sync"})
 
 	cmd := findDriveSubcommand(t, "sync")
 	mustSetFlags(t, cmd, map[string]string{"local-folder": dir, "remote-folder": "ROOT", "quick": "true"})
@@ -253,11 +238,12 @@ func TestCrossPlatformCoverageReserveSyncKeepBothTarget_escapeFails(t *testing.T
 	}
 }
 
-// 候选目标所在目录不可写 → OpenFile 以非 EEXIST 错误失败，直接上报。
+// 候选硬链接创建返回非 EEXIST 错误时直接上报。
 func TestCrossPlatformCoverageReserveSyncKeepBothTarget_unwritableDirFails(t *testing.T) {
 	root := t.TempDir()
-	testseam.Swap(t, &syncOpenFile, func(string, int, os.FileMode) (*os.File, error) {
-		return nil, errors.New("open file boom")
+	mustWrite(t, filepath.Join(root, "f.txt"), "local")
+	testseam.Swap(t, &syncRootLink, func(*os.Root, string, string) error {
+		return errors.New("link boom")
 	})
 
 	if _, _, err := reserveSyncKeepBothTarget(root, "f.txt", "FID12345678", map[string]bool{}); err == nil {
@@ -268,6 +254,7 @@ func TestCrossPlatformCoverageReserveSyncKeepBothTarget_unwritableDirFails(t *te
 // occupied 中已知占用的首选候选被跳过，改用下一个后缀。
 func TestCrossPlatformCoverageReserveSyncKeepBothTarget_skipsKnownOccupied(t *testing.T) {
 	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "f.txt"), "local")
 	first := syncKeepBothCandidate("f.txt", "FID12345678", 0)
 	occupied := map[string]bool{first: true}
 

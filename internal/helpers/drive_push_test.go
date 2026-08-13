@@ -1,7 +1,10 @@
 package helpers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -140,9 +144,10 @@ type driveMCPCall struct {
 
 // driveSyncMockCaller 按工具名分发返回，并记录全部调用，供断言 MCP 参数。
 type driveSyncMockCaller struct {
-	calls    []driveMCPCall
-	listJSON string // list_files 返回体
-	dryRun   bool   // --dry-run：只算差异，不执行任何写操作
+	calls      []driveMCPCall
+	listJSON   string  // list_files 返回体
+	commitJSON *string // 非 nil 时覆盖 commit_upload 返回体（包括空响应）
+	dryRun     bool    // --dry-run：只算差异，不执行任何写操作
 }
 
 func (m *driveSyncMockCaller) CallTool(_ context.Context, _ string, toolName string, args map[string]any) (*edition.ToolResult, error) {
@@ -157,7 +162,13 @@ func (m *driveSyncMockCaller) CallTool(_ context.Context, _ string, toolName str
 	case "download_file":
 		// 返回可被 parseDriveDownloadInfo 解析的预签名下载链接。
 		text = `{"result":{"downloadUrl":"https://oss.example.com/get","headers":{}}}`
-	default: // commit_upload 等
+	case "commit_upload":
+		if m.commitJSON != nil {
+			text = *m.commitJSON
+		} else {
+			text = `{"result":{"fileId":"NEW_FID"},"success":true}`
+		}
+	default:
 		text = `{"result":{"fileId":"NEW_FID"},"success":true}`
 	}
 	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
@@ -183,15 +194,12 @@ func (m *driveSyncMockCaller) callsFor(tool string) []driveMCPCall {
 }
 
 // runDrivePushTest 用 mock caller 执行 `drive push`，返回捕获的调用。
-// 注入 httpPutFile 为 no-op，避免真实 OSS 上传。
+// 注入已打开文件句柄的 PUT seam 为 no-op，避免真实 OSS 上传。
 func runDrivePushTest(t *testing.T, caller *driveSyncMockCaller, localDir string, args ...string) error {
 	t.Helper()
 
-	prevDeps := deps
-	prevOSArgs := os.Args
-	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
-
-	deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error { return nil })
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
 
 	root := &cobra.Command{Use: "dws"}
 	root.PersistentFlags().BoolP("yes", "y", false, "")
@@ -200,16 +208,49 @@ func runDrivePushTest(t *testing.T, caller *driveSyncMockCaller, localDir string
 
 	// pull/push 是 user_required 叶子，非交互环境需 --yes 才能越过统一确认门。
 	full := append([]string{"push", "--local-folder", localDir, "--remote-folder", "ROOT", "--yes"}, args...)
-	os.Args = append([]string{"dws", "drive"}, full...)
+	testseam.Swap(t, &os.Args, append([]string{"dws", "drive"}, full...))
 	root.SetArgs(append([]string{"drive"}, full...))
 
-	t.Cleanup(func() {
-		deps = prevDeps
-		os.Args = prevOSArgs
-		SetHTTPPutFile(nil)
-	})
-
 	return root.Execute()
+}
+
+func runDriveMirrorUploadCommandCapture(t *testing.T, command string, caller *driveSyncMockCaller, localDir string) (error, string, int) {
+	t.Helper()
+	putCalls := 0
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error {
+		putCalls++
+		return nil
+	})
+	var out bytes.Buffer
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: &out}})
+
+	root := &cobra.Command{Use: "dws"}
+	root.PersistentFlags().BoolP("yes", "y", false, "")
+	root.PersistentFlags().Bool("dry-run", false, "")
+	root.AddCommand(newDriveCommand())
+	full := []string{command, "--local-folder", localDir, "--remote-folder", "ROOT", "--yes"}
+	testseam.Swap(t, &os.Args, append([]string{"dws", "drive"}, full...))
+	root.SetArgs(append([]string{"drive"}, full...))
+	return root.Execute(), out.String(), putCalls
+}
+
+func assertMirrorUploadFailedJSON(t *testing.T, output string) {
+	t.Helper()
+	var payload struct {
+		Summary struct {
+			Failed int `json:"failed"`
+		} `json:"summary"`
+		Items []struct {
+			Action string `json:"action"`
+			Error  string `json:"error"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal([]byte(output), &payload); err != nil {
+		t.Fatalf("output is not structured JSON: %q: %v", output, err)
+	}
+	if payload.Summary.Failed != 1 || len(payload.Items) != 1 || payload.Items[0].Action != pushActionFailed || payload.Items[0].Error == "" {
+		t.Fatalf("structured failure=%#v", payload)
+	}
 }
 
 // 覆盖分支：get_upload_info 与 commit_upload 两阶段都必须传 overwriteFileId、都不传 parentId。
@@ -273,6 +314,36 @@ func TestCrossPlatformCoverageDrivePush_newUploadUsesParentId(t *testing.T) {
 	commit := caller.callsFor("commit_upload")
 	if len(commit) != 1 || commit[0].args["parentId"] != "ROOT" {
 		t.Errorf("commit_upload should carry parentId=ROOT, got %v", commit)
+	}
+}
+
+func TestCrossPlatformCoverageDrivePushRejectsUnknownCommitEffect(t *testing.T) {
+	for _, response := range []string{"", `{}`} {
+		t.Run(fmt.Sprintf("response-%q", response), func(t *testing.T) {
+			dir := t.TempDir()
+			mustWrite(t, filepath.Join(dir, "a.txt"), "payload")
+			caller := &driveSyncMockCaller{
+				listJSON:   `{"result":{"items":[]}}`,
+				commitJSON: &response,
+			}
+			err, output, putCalls := runDriveMirrorUploadCommandCapture(t, "push", caller, dir)
+			if err == nil {
+				t.Fatal("empty commit result must make push exit non-zero")
+			}
+			if failure, ok := err.(*drivePushFailure); !ok || failure.ExitCode() != 1 {
+				t.Fatalf("error=%T %v", err, err)
+			}
+			assertMirrorUploadFailedJSON(t, output)
+			if putCalls != 1 {
+				t.Fatalf("OSS PUT calls=%d, want exactly 1", putCalls)
+			}
+			if got := len(caller.callsFor("get_upload_info")); got != 1 {
+				t.Fatalf("get_upload_info calls=%d, want 1", got)
+			}
+			if got := len(caller.callsFor("commit_upload")); got != 1 {
+				t.Fatalf("commit_upload calls=%d, want 1", got)
+			}
+		})
 	}
 }
 

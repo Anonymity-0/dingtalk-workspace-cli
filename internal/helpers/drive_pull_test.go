@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -128,16 +129,9 @@ func TestCrossPlatformCoverageDrivePull_nonexistentLocalRoot(t *testing.T) {
 		listJSON: `{"result":{"items":[{"name":"a.txt","type":"file","fileId":"F1","modifyTime":1000}],"nextToken":""}}`,
 	}
 
-	prevDeps := deps
-	prevArgs := os.Args
-	deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		return os.WriteFile(dest, []byte("REMOTE"), 0o644)
-	})
-	t.Cleanup(func() {
-		deps = prevDeps
-		os.Args = prevArgs
-		SetHTTPGetFile(nil)
 	})
 
 	root := &cobra.Command{Use: "dws"}
@@ -147,7 +141,7 @@ func TestCrossPlatformCoverageDrivePull_nonexistentLocalRoot(t *testing.T) {
 
 	// pull/push 是 user_required 叶子，非交互环境需 --yes 才能越过统一确认门。
 	full := []string{"pull", "--local-folder", absDir, "--remote-folder", "ROOT", "--yes"}
-	os.Args = append([]string{"dws", "drive"}, full...)
+	testseam.Swap(t, &os.Args, append([]string{"dws", "drive"}, full...))
 	root.SetArgs(append([]string{"drive"}, full...))
 
 	// 全部下载成功时 runDrivePull 返回 nil；若误判逃逸则会有 failed 并返回 partial_failure。
@@ -240,20 +234,13 @@ func TestCrossPlatformCoveragePullOneFile_downloadFailureKeepsOriginal(t *testin
 	const original = "ORIGINAL-CONTENT-DO-NOT-LOSE"
 	mustWrite(t, target, original)
 
-	prevDeps := deps
-	prevArgs := os.Args
 	// download_file 的 MCP 调用走 mock；httpGetFile 注入为“写入部分内容后报错”。
-	deps = &Deps{Caller: &drivePullMockCaller{}, Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	testseam.Swap(t, &deps, &Deps{Caller: &drivePullMockCaller{}, Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		// 模拟传输中断：先截断/写半截，再返回错误。
 		_ = os.WriteFile(dest, []byte("HALF"), 0o644)
 		return errors.New("connection reset")
-	})
-	t.Cleanup(func() {
-		deps = prevDeps
-		os.Args = prevArgs
-		SetHTTPGetFile(nil)
 	})
 
 	rf := &remoteFile{RelPath: "a.txt", FileID: "F1"}
@@ -286,17 +273,10 @@ func TestCrossPlatformCoveragePullOneFile_downloadSuccessReplacesTarget(t *testi
 	target := filepath.Join(root, "a.txt")
 	mustWrite(t, target, "OLD")
 
-	prevDeps := deps
-	prevArgs := os.Args
-	deps = &Deps{Caller: &drivePullMockCaller{}, Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	testseam.Swap(t, &deps, &Deps{Caller: &drivePullMockCaller{}, Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		return os.WriteFile(dest, []byte("NEW-CONTENT"), 0o644)
-	})
-	t.Cleanup(func() {
-		deps = prevDeps
-		os.Args = prevArgs
-		SetHTTPGetFile(nil)
 	})
 
 	rf := &remoteFile{RelPath: "a.txt", FileID: "F1"}

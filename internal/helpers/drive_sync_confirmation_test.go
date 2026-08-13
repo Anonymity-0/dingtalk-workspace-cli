@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 // pull / push / sync 声明 Safety.Confirmation = user_required。本文件断言两件事：
@@ -66,17 +68,13 @@ func TestCrossPlatformCoverageDriveSyncFamily_refusesWithoutConfirmation(t *test
 				}
 				return `{"result":{"fileId":"NEW"},"success":true}`, nil
 			}}
-			SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+			swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 				t.Error("no download may happen before confirmation")
 				return os.WriteFile(dest, []byte("leaked"), 0o644)
 			})
-			SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error {
+			testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error {
 				t.Error("no upload may happen before confirmation")
 				return nil
-			})
-			t.Cleanup(func() {
-				SetHTTPGetFile(nil)
-				SetHTTPPutFile(nil)
 			})
 
 			args := append(append([]string{}, tc.args...), "--local-folder", dir, "--remote-folder", "ROOT")
@@ -113,17 +111,13 @@ func TestCrossPlatformCoverageDriveSyncFamily_dryRunNeedsNoConfirmation(t *testi
 		"ROOT": `{"result":{"items":[{"name":"remote.txt","type":"file","fileId":"R","modifyTime":2}],"nextToken":""}}`,
 	})
 	caller.dryRun = true
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error {
+	swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error {
 		t.Error("dry-run must not download")
 		return nil
 	})
-	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error {
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error {
 		t.Error("dry-run must not upload")
 		return nil
-	})
-	t.Cleanup(func() {
-		SetHTTPGetFile(nil)
-		SetHTTPPutFile(nil)
 	})
 
 	if err := runDriveCmdWithoutConfirm(t, caller, "sync",
@@ -140,17 +134,14 @@ func TestCrossPlatformCoverageDrivePull_dryRunPlansWithoutLocalWrites(t *testing
 	target := filepath.Join(parent, "not-created")
 	caller := pullListingCaller(`{"name":"remote.txt","type":"file","fileId":"R","modifyTime":2}`)
 	caller.dryRun = true
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error {
+	swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error {
 		t.Error("dry-run must not download")
 		return nil
 	})
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	var out bytes.Buffer
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: caller, Out: &Formatter{w: &out}}
-	os.Args = []string{"dws", "drive", "pull"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: &out}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive", "pull"})
 	cmd := findDriveSubcommand(t, "pull")
 	mustSetFlags(t, cmd, map[string]string{"local-folder": target, "remote-folder": "ROOT"})
 	if err := cmd.RunE(cmd, nil); err != nil {
@@ -175,17 +166,14 @@ func TestCrossPlatformCoverageDrivePush_dryRunPlansWithoutRemoteWrites(t *testin
 	mustWrite(t, filepath.Join(dir, "sub", "local.txt"), "local")
 	caller := syncCaller(nil)
 	caller.dryRun = true
-	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error {
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error {
 		t.Error("dry-run must not upload")
 		return nil
 	})
-	t.Cleanup(func() { SetHTTPPutFile(nil) })
 
 	var out bytes.Buffer
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: caller, Out: &Formatter{w: &out}}
-	os.Args = []string{"dws", "drive", "push"}
-	t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+	testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: &out}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive", "push"})
 	cmd := findDriveSubcommand(t, "push")
 	mustSetFlags(t, cmd, map[string]string{"local-folder": dir, "remote-folder": "ROOT"})
 	if err := cmd.RunE(cmd, nil); err != nil {
@@ -214,9 +202,7 @@ func TestCrossPlatformCoverageDrivePull_dryRunPlanBranches(t *testing.T) {
 		"new.txt":   {RelPath: "new.txt"},
 	}
 	var out bytes.Buffer
-	prevDeps := deps
-	deps = &Deps{Out: &Formatter{w: &out}}
-	t.Cleanup(func() { deps = prevDeps })
+	testseam.Swap(t, &deps, &Deps{Out: &Formatter{w: &out}})
 
 	if err := printDrivePullDryRun(root, ifExistsSkip, remote,
 		[]string{"A.txt", "a.txt", "../escape", "skip.txt", "new.txt"}, true); err != nil {
@@ -236,9 +222,7 @@ func TestCrossPlatformCoverageDrivePull_dryRunPlanBranches(t *testing.T) {
 
 func TestCrossPlatformCoverageDrivePush_dryRunPlanBranches(t *testing.T) {
 	var out bytes.Buffer
-	prevDeps := deps
-	deps = &Deps{Out: &Formatter{w: &out}}
-	t.Cleanup(func() { deps = prevDeps })
+	testseam.Swap(t, &deps, &Deps{Out: &Formatter{w: &out}})
 	remoteFolders := map[string]string{"": "ROOT", "existing": "EXISTING"}
 	remoteFiles := map[string]*remoteFile{
 		"skip.txt":            {RelPath: "skip.txt"},
@@ -317,10 +301,9 @@ func TestCrossPlatformCoverageDrivePull_confirmedOverwriteIssuesExactCalls(t *te
 	mustWrite(t, p, "local-old")
 
 	caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":9}`)
-	SetHTTPGetFile(func(_ context.Context, _ string, _ map[string]string, dest string) error {
+	swapPullDownloadPath(t, func(_ context.Context, _ string, _ map[string]string, dest string) error {
 		return os.WriteFile(dest, []byte("remote-new"), 0o644)
 	})
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	if err := runDriveCmdWithoutConfirm(t, caller, "pull", "--local-folder", dir,
 		"--remote-folder", "ROOT", "--if-exists", "overwrite", "--yes"); err != nil {
@@ -419,11 +402,10 @@ func TestCrossPlatformCoverageDrivePull_defaultSkipsExistingLocalFiles(t *testin
 	mustWrite(t, p, "local-old")
 
 	caller := pullListingCaller(`{"name":"a.txt","type":"file","fileId":"A","modifyTime":9}`)
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error {
+	swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error {
 		t.Error("default skip must not download over an existing local file")
 		return nil
 	})
-	t.Cleanup(func() { SetHTTPGetFile(nil) })
 
 	if err := runDriveCmd(t, caller, "pull", "--local-folder", dir, "--remote-folder", "ROOT"); err != nil {
 		t.Fatalf("unexpected error: %v", err)

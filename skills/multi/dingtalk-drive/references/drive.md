@@ -374,7 +374,7 @@ Flags:
 - 默认 `detection=exact`（比较 MD5）；传 `--quick` 后 `detection=quick`（只比较 modified_time，best-effort）。
 - exact 模式**只在能拿到远端 MD5 时才判定 unchanged/modified**；远端缺失 MD5 的文件一律进入 `unknown`，绝不会因大小 / mtime 恰好相同而被误报为 unchanged。当前 `list_files` 通常不返回 MD5，因此这类文件多会落在 `unknown`——请据此决定是否用 `pull`/`push` 强制对齐。
 - 本地 hash 仅在文件双端都存在、远端有 MD5、且非 `--quick` 模式时才按需计算。
-- 远端条目名称若含 `..`、路径分隔符或盘符等非规范成分，会被直接跳过、不纳入比对（防止逃逸性路径）。
+- 远端文件或文件夹名称若无法安全、无歧义地映射到本地路径（如 `..`、路径分隔符、盘符或目标平台保留名），命令会中止整棵远端树并返回失败；不会静默跳过后继续报告不完整结果。
 - 只比对钉盘 `type=file` 的二进制文件；在线文档（docx/sheet/bitable/mindnote/slides）与快捷方式（shortcut）会被跳过。本地只比对常规文件（符号链接、设备文件忽略）。
 - `--local-folder` 必须是绝对路径（相对路径会被直接拒绝）；`--remote-folder` 必传，是钉盘侧待比对文件夹的 dentryUuid（可用 `dws drive list` 查到）。
 
@@ -420,7 +420,8 @@ Flags:
 注意事项：
 
 - 只下载钉盘 `type=file` 的二进制文件；在线文档与快捷方式会被跳过。`rel_path` 始终以 `/` 分隔。
-- 下载目标始终被约束在 `--local-folder` 之内：远端名称含 `..`、路径分隔符或盘符等非规范成分的条目会被跳过，拼接后仍逃逸出根目录的路径记为 `failed`、不会落盘。
+- 下载目标始终被约束在 `--local-folder` 之内：远端名称含 `..`、路径分隔符、盘符或目标平台保留名等不可安全映射成分时，命令会在下载前中止整棵远端树；拼接后仍逃逸出根目录的路径记为 `failed`、不会落盘。
+- 镜像采用跨平台一致的路径等价规则：远端树中若出现 `A/a`、Unicode NFC/NFD 异写，或等价目录前缀下的不同子树，会在任何下载前整批失败，避免不同文件系统得到不一致结果。
 - 下载成功后本地文件 mtime 会对齐到远端 `modified_time`，便于后续 `--if-exists smart` 增量同步跳过。
 - `summary.failed > 0` 时命令以**非零退出码**退出；结构化 `summary + items` 仍打印在 stdout 上，stderr 只保留简短失败说明。脚本/agent 直接看 exit code 即可判断成败。
 
@@ -470,6 +471,7 @@ Flags:
 - 只上传/覆盖 `type=file`；`summary.uploaded` 同时统计新建与覆盖，**不含目录**。
 - `overwrite` / `smart` 命中覆盖分支时走**覆盖上传**（`get_upload_info` 与 `commit_upload` 两阶段都携带远端 `overwriteFileId`、不传 `parentId`），在原文件上原地覆盖、保留 fileId，不会在同目录新建重名副本。
 - 本地子目录（含空目录）整体镜像：缺失的按需 `create_folder`（以 `folder_created` 留痕），已存在的远端目录复用其 fileId、不重建、不出现在 `items[]`。
+- 本地名称若含反斜杠、控制字符等无法安全映射到钉盘的成分，或双端存在 `A/a`、Unicode NFC/NFD、等价祖先前缀或文件/目录类型歧义，命令会在任何创建或上传前整批失败；不会只跳过冲突项后继续写入。
 - `summary.failed > 0` 时命令以**非零退出码**退出；结构化 `summary + items` 仍打印在 stdout 上，脚本/agent 直接看 exit code 判断成败。
 
 ### 本地文件夹与钉盘文件夹双向同步
@@ -499,10 +501,10 @@ Flags:
 | `skip`（默认） | 两侧都不动，两边内容都保留，计入 `skipped` |
 | `remote-wins` | 下载远端覆盖本地（需 `--yes`） |
 | `local-wins` | 覆盖上传本地到远端（原地覆盖、保留 fileId；需 `--yes`） |
-| `keep-both` | 本地先改名保留副本（`名.conflict-<fileId 末 8 位>.扩展名`），再把远端拉到原名；拉取失败会回滚改名、恢复原文件 |
+| `keep-both` | 先在同一目录以不覆盖的原子硬链接保留本地副本（`名.conflict-<fileId 末 8 位>.扩展名`），再把远端拉到原名；拉取失败时原文件与候选副本都保留并报告失败，不做可能误伤并发文件的回滚 |
 | `ask` | 逐个交互询问；`--dry-run` 或非交互环境下等价于跳过 |
 
-输出 schema（`action`：`downloaded` / `uploaded` / `overwritten` / `folder_created` / `renamed_local` / `skipped` / `failed`；`direction`：`pull` / `push` / `conflict`）：
+输出 schema（`action`：`downloaded` / `uploaded` / `overwritten` / `folder_created` / `renamed_local` / `skipped` / `failed`；其中 `renamed_local` 是兼容动作名，表示已成功保留本地冲突副本；`direction`：`pull` / `push` / `conflict`）：
 
 ```json
 {
@@ -525,8 +527,9 @@ Flags:
 
 注意事项：
 
-- 复用 `status`/`pull`/`push` 的全部安全约束：只处理 `type=file`（在线文档、快捷方式跳过）；远端名称含 `..`、路径分隔符或盘符等非规范成分会被跳过，拼接后逃逸出 `--local-folder` 的路径记为 `failed` 不落盘；下载走「先写临时文件、成功才原子 rename」，失败绝不破坏本地原文件。
-- `--dry-run` 只算差异并打印 `diff`，不触发任何下载/上传/改名/落盘。
+- 复用 `status`/`pull`/`push` 的全部安全约束：只处理 `type=file`（在线文档、快捷方式跳过）；远端名称含 `..`、路径分隔符、盘符或目标平台保留名等不可安全映射成分时会在任何同步写入前中止整棵远端树，拼接后逃逸出 `--local-folder` 的路径记为 `failed` 不落盘；下载走「先写临时文件、成功才原子 rename」，失败绝不破坏本地原文件。
+- `--dry-run` 只算差异并输出独立 JSON 预览对象，不触发任何下载/上传/改名/落盘；差异位于顶层预览对象的 `plan.diff`（同时包含 `dry_run=true`、`executed=false` 与 `preview_kind=plan`）。
+- 双端存在 `A/a`、Unicode NFC/NFD、等价祖先前缀或文件/目录类型歧义时，`sync` 会在任何一侧写入前整批失败；本地无法安全映射到钉盘的名称同样 fail-closed。
 - `unknown`（exact 模式远端无可靠 MD5）一律计入 `skipped`、不做任何写操作；需要强制对齐时改用单向的 `pull`/`push`。
 - `summary.failed > 0` 时命令以**非零退出码**退出，结构化结果仍打印在 stdout 上。
 

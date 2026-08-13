@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestCrossPlatformCoverageDriveRemoteTree_folderIDFallbacks(t *testing.T) {
@@ -20,10 +22,8 @@ func TestCrossPlatformCoverageDriveRemoteTree_folderIDFallbacks(t *testing.T) {
 				}
 				return `{"result":{"items":[],"nextToken":""}}`, nil
 			}}
-			prevDeps, prevArgs := deps, os.Args
-			deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
-			os.Args = []string{"dws", "drive"}
-			t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+			testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+			testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 
 			if _, err := fetchRemoteDriveTree(context.Background(), "", "ROOT", true); err != nil {
 				t.Fatalf("fetch with %s: %v", key, err)
@@ -62,10 +62,8 @@ func TestCrossPlatformCoverageDriveRemoteTree_missingFolderIDFailsClosed(t *test
 				}
 				return `{"result":{"items":[{"name":"sub","type":"folder"}],"nextToken":""}}`, nil
 			}}
-			prevDeps, prevArgs := deps, os.Args
-			deps = &Deps{Caller: caller, Out: &Formatter{w: io.Discard}}
-			os.Args = []string{"dws", "drive"}
-			t.Cleanup(func() { deps, os.Args = prevDeps, prevArgs })
+			testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+			testseam.Swap(t, &os.Args, []string{"dws", "drive"})
 
 			err := fetcher.fetch(context.Background())
 			if err == nil || !strings.Contains(err.Error(), "目录 ID") || !strings.Contains(err.Error(), "sub") {

@@ -7,13 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestCrossPlatformCoverageDrivePushDryRun_typeConflictsFail(t *testing.T) {
 	var out bytes.Buffer
-	prevDeps := deps
-	deps = &Deps{Out: &Formatter{w: &out}}
-	t.Cleanup(func() { deps = prevDeps })
+	testseam.Swap(t, &deps, &Deps{Out: &Formatter{w: &out}})
 
 	tests := []struct {
 		name          string

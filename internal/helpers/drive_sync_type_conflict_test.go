@@ -107,11 +107,11 @@ type driveSyncTransferCalls struct {
 func captureDriveSyncTransfers(t *testing.T) *driveSyncTransferCalls {
 	t.Helper()
 	calls := &driveSyncTransferCalls{}
-	testseam.Swap(t, &httpGetFile, func(context.Context, string, map[string]string, string) error {
+	swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error {
 		calls.get++
 		return nil
 	})
-	testseam.Swap(t, &httpPutFile, func(context.Context, string, map[string]string, string, int64) error {
+	testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error {
 		calls.put++
 		return nil
 	})

@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
@@ -115,118 +114,95 @@ func TestCrossPlatformCoverageSyncKeepBoth_escapingRelIsFailed(t *testing.T) {
 	}
 	res := &driveSyncResult{}
 	syncKeepBoth(res, context.Background(), "", &remoteFile{RelPath: "sub/f.txt", FileID: "FID12345678"},
-		root, "sub/f.txt", map[string]bool{}, map[string]bool{})
+		root, "sub/f.txt", map[string]bool{})
 	if res.Summary.Failed != 1 {
 		t.Fatalf("failed = %d, want 1", res.Summary.Failed)
 	}
 }
 
-// collided 命中时 keep-both 直接 failed，不做任何改名。
-func TestCrossPlatformCoverageSyncKeepBoth_collidedIsFailed(t *testing.T) {
-	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, "f.txt"), "local")
-	res := &driveSyncResult{}
-	syncKeepBoth(res, context.Background(), "", &remoteFile{RelPath: "f.txt", FileID: "FID12345678"},
-		root, "f.txt", map[string]bool{"f.txt": true}, map[string]bool{})
-	if res.Summary.Failed != 1 {
-		t.Fatalf("failed = %d, want 1", res.Summary.Failed)
-	}
-	if b, _ := os.ReadFile(filepath.Join(root, "f.txt")); string(b) != "local" {
-		t.Errorf("collided keep-both must not touch the local file, got %q", string(b))
-	}
-}
-
-// 占用改名目标失败（目录不可写）→ failed。
+// 原子建立本地保留硬链接失败 → failed。
 func TestCrossPlatformCoverageSyncKeepBoth_reserveFailureIsFailed(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "f.txt"), "local")
-	testseam.Swap(t, &syncOpenFile, func(string, int, os.FileMode) (*os.File, error) {
-		return nil, errors.New("open file boom")
+	testseam.Swap(t, &syncRootLink, func(*os.Root, string, string) error {
+		return errors.New("link boom")
 	})
 
 	res := &driveSyncResult{}
 	syncKeepBoth(res, context.Background(), "", &remoteFile{RelPath: "f.txt", FileID: "FID12345678"},
-		root, "f.txt", map[string]bool{}, map[string]bool{})
+		root, "f.txt", map[string]bool{})
 	if res.Summary.Failed != 1 {
 		t.Fatalf("failed = %d, want 1", res.Summary.Failed)
 	}
 }
 
-// 改名本身失败（本地原文件其实是目录）→ failed，并清理刚建的空占位。
-func TestCrossPlatformCoverageSyncKeepBoth_renameFailureCleansPlaceholder(t *testing.T) {
+// Link 失败不得留下空占位，也不得移动或修改原文件。
+func TestCrossPlatformCoverageSyncKeepBoth_linkFailureLeavesOriginal(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "f.txt"), "local")
-	testseam.Swap(t, &syncRename, func(string, string) error {
-		return errors.New("rename boom")
+	testseam.Swap(t, &syncRootLink, func(*os.Root, string, string) error {
+		return errors.New("link boom")
 	})
 	res := &driveSyncResult{}
 	occupied := map[string]bool{}
 	syncKeepBoth(res, context.Background(), "", &remoteFile{RelPath: "f.txt", FileID: "FID12345678"},
-		root, "f.txt", map[string]bool{}, occupied)
+		root, "f.txt", occupied)
 
 	if res.Summary.Failed != 1 {
 		t.Fatalf("failed = %d, want 1", res.Summary.Failed)
 	}
-	// 空占位必须被清理，不留残留。
 	if _, err := os.Stat(filepath.Join(root, syncKeepBothCandidate("f.txt", "FID12345678", 0))); !os.IsNotExist(err) {
-		t.Error("empty placeholder must be removed after a failed rename")
+		t.Error("failed link must not leave a placeholder")
+	}
+	if content, err := os.ReadFile(filepath.Join(root, "f.txt")); err != nil || string(content) != "local" {
+		t.Fatalf("original changed after failed link: content=%q err=%v", content, err)
 	}
 }
 
-// 拉取失败 → 回滚改名，本地文件恢复原名与原内容。
-func TestCrossPlatformCoverageSyncKeepBoth_pullFailureRollsBackRename(t *testing.T) {
+// 拉取失败时不做回滚：原名尚未发布，候选硬链接也保留，避免误删并发对象。
+func TestCrossPlatformCoverageSyncKeepBoth_pullFailurePreservesCandidate(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "f.txt")
 	mustWrite(t, p, "local-version")
 
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: syncCaller(nil), Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error { return errTestDownload })
-	t.Cleanup(func() {
-		deps, os.Args = prevDeps, prevArgs
-		SetHTTPGetFile(nil)
-	})
+	testseam.Swap(t, &deps, &Deps{Caller: syncCaller(nil), Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
+	swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error { return errTestDownload })
 
 	res := &driveSyncResult{}
 	syncKeepBoth(res, context.Background(), "", &remoteFile{RelPath: "f.txt", FileID: "FID12345678"},
-		root, "f.txt", map[string]bool{}, map[string]bool{})
+		root, "f.txt", map[string]bool{})
 
 	if res.Summary.Failed != 1 {
 		t.Fatalf("failed = %d, want 1", res.Summary.Failed)
 	}
 	if b, err := os.ReadFile(p); err != nil || string(b) != "local-version" {
-		t.Fatalf("rename must be rolled back: %v / %q", err, string(b))
+		t.Fatalf("original must remain before publish: %v / %q", err, string(b))
 	}
-	if _, err := os.Stat(filepath.Join(root, syncKeepBothCandidate("f.txt", "FID12345678", 0))); !os.IsNotExist(err) {
-		t.Error("renamed copy must not survive a successful rollback")
+	suffixed := filepath.Join(root, syncKeepBothCandidate("f.txt", "FID12345678", 0))
+	if b, err := os.ReadFile(suffixed); err != nil || string(b) != "local-version" {
+		t.Fatalf("candidate must remain after pull failure: %v / %q", err, string(b))
+	}
+	originalInfo, _ := os.Lstat(p)
+	candidateInfo, _ := os.Lstat(suffixed)
+	if !os.SameFile(originalInfo, candidateInfo) {
+		t.Fatal("candidate must be a hard link to the original local version")
 	}
 }
 
-// 拉取失败且回滚也失败 → 如实上报“本地版本保留为 <改名>”，不谎称成功。
-func TestCrossPlatformCoverageSyncKeepBoth_rollbackFailureIsReported(t *testing.T) {
+// 拉取失败只能上报 failed，不得产生 renamed_local 成功项。
+func TestCrossPlatformCoverageSyncKeepBoth_pullFailureDoesNotReportRenamed(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "f.txt")
 	mustWrite(t, p, "local-version")
 
-	prevDeps, prevArgs := deps, os.Args
-	deps = &Deps{Caller: syncCaller(nil), Out: &Formatter{w: io.Discard}}
-	os.Args = []string{"dws", "drive"}
-	// 下载失败前先把原名占住一个目录，使回滚 rename 无法复原。
-	SetHTTPGetFile(func(context.Context, string, map[string]string, string) error {
-		if err := os.MkdirAll(filepath.Join(p, "blocker"), 0o755); err != nil {
-			return err
-		}
-		return errTestDownload
-	})
-	t.Cleanup(func() {
-		deps, os.Args = prevDeps, prevArgs
-		SetHTTPGetFile(nil)
-	})
+	testseam.Swap(t, &deps, &Deps{Caller: syncCaller(nil), Out: &Formatter{w: io.Discard}})
+	testseam.Swap(t, &os.Args, []string{"dws", "drive"})
+	swapPullDownloadPath(t, func(context.Context, string, map[string]string, string) error { return errTestDownload })
 
 	res := &driveSyncResult{}
 	syncKeepBoth(res, context.Background(), "", &remoteFile{RelPath: "f.txt", FileID: "FID12345678"},
-		root, "f.txt", map[string]bool{}, map[string]bool{})
+		root, "f.txt", map[string]bool{})
 
 	if res.Summary.Failed != 1 {
 		t.Fatalf("failed = %d, want 1", res.Summary.Failed)
@@ -234,12 +210,11 @@ func TestCrossPlatformCoverageSyncKeepBoth_rollbackFailureIsReported(t *testing.
 	if len(res.Items) != 1 || res.Items[0].Action != syncActionFailed {
 		t.Fatalf("items = %+v", res.Items)
 	}
-	// 数据没丢：本地版本仍以改名后的名字存在，且错误信息点明了这一点。
 	suffixed := syncKeepBothCandidate("f.txt", "FID12345678", 0)
 	if b, err := os.ReadFile(filepath.Join(root, suffixed)); err != nil || string(b) != "local-version" {
 		t.Fatalf("local version must survive as %s: %v / %q", suffixed, err, string(b))
 	}
-	if !strings.Contains(res.Items[0].Error, "回滚改名失败") {
-		t.Errorf("error must disclose the failed rollback, got %q", res.Items[0].Error)
+	if res.Items[0].Action == syncActionRenamedLocal {
+		t.Fatalf("pull failure must not report renamed_local: %#v", res.Items)
 	}
 }
