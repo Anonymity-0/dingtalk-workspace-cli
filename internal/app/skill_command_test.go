@@ -477,8 +477,12 @@ func TestAgentSkillPathsCoversSetupHomes(t *testing.T) {
 	for _, p := range agentSkillPaths {
 		paths[p] = true
 	}
+	legacyCleanupOnly := map[string]bool{
+		".github/skills": true, ".windsurf/skills": true,
+		".cline/skills": true, ".amp/skills": true,
+	}
 	for _, home := range skillSetupAgentHomes {
-		if !paths[home] {
+		if !paths[home] && !legacyCleanupOnly[home] {
 			t.Errorf("skillSetupAgentHomes entry %q has no matching agentSkillPaths value — "+
 				"add it to agentSkillPaths so users can address it via --target <name>", home)
 		}

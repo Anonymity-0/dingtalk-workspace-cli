@@ -42,22 +42,78 @@ const (
 // copy (with a direct-copy fallback when links are unavailable).
 var knownSkillDirs = []string{
 	".agents/skills",
+	".config/agents/skills",
+	".gemini/antigravity/skills",
+	".gemini/antigravity-cli/skills",
+	".deepagents/agent/skills",
+	".firebender/skills",
+	".copilot/skills",
+	".config/opencode/skills",
+	".aider-desk/skills",
+	".astrbot/data/skills",
+	".autohand/skills",
+	".augment/skills",
+	".bob/skills",
 	".claude/skills",
-	".cursor/skills",
+	".openclaw/skills",
+	".codeartsdoer/skills",
+	".codebuddy/skills",
+	".codemaker/skills",
+	".codestudio/skills",
+	".commandcode/skills",
+	".continue/skills",
+	".snowflake/cortex/skills",
+	".config/crush/skills",
+	".config/devin/skills",
+	".factory/skills",
+	".forge/skills",
+	".config/goose/skills",
+	".grok/skills",
+	".hermes/skills",
+	".inferencesh/skills",
+	".jazz/skills",
+	".junie/skills",
+	".iflow/skills",
+	".kilocode/skills",
+	".config/kimchi/harness/skills",
+	".kiro/skills",
+	".kode/skills",
+	".lingma/skills",
+	".mcpjam/skills",
+	".minimax/skills",
+	".vibe/skills",
+	".moxby/skills",
+	".mux/skills",
+	".openhands/skills",
+	".ona/skills",
+	".pi/agent/skills",
 	".qoder/skills",
+	".qoder-cn/skills",
+	".qwen/skills",
+	".reasonix/skills",
+	".rovodev/skills",
+	".roo/skills",
+	".tabnine/agent/skills",
+	".terramind/skills",
+	".tinycloud/skills",
+	".trae/skills",
+	".trae-cn/skills",
+	".codeium/windsurf/skills",
+	".zcode/skills",
+	".zencoder/skills",
+	".neovate/skills",
+	".pochi/skills",
+	".adal/skills",
+	// DWS-only target retained for product compatibility.
 	".qoderwork/skills",
+	// beta.6 compatibility roots: cleanup only, never publish new copies.
+	".cursor/skills",
 	".gemini/skills",
 	".codex/skills",
-	".zcode/skills",
 	".github/skills",
 	".windsurf/skills",
-	".augment/skills",
 	".cline/skills",
 	".amp/skills",
-	".kiro/skills",
-	".trae/skills",
-	".openclaw/skills",
-	".hermes/skills",
 }
 
 // universalSkillDirs are concrete Agent directories whose current clients
@@ -66,12 +122,21 @@ var knownSkillDirs = []string{
 // with vercel-labs/skills' isUniversalAgent rule. Qoderwork is intentionally
 // non-universal because it is a DWS-specific integration absent upstream.
 var universalSkillDirs = map[string]bool{
-	".cursor/skills": true,
-	".gemini/skills": true,
-	".codex/skills":  true,
-	".github/skills": true,
-	".cline/skills":  true,
-	".amp/skills":    true,
+	".config/agents/skills":          true,
+	".gemini/antigravity/skills":     true,
+	".gemini/antigravity-cli/skills": true,
+	".codex/skills":                  true,
+	".cursor/skills":                 true,
+	".deepagents/agent/skills":       true,
+	".firebender/skills":             true,
+	".gemini/skills":                 true,
+	".copilot/skills":                true,
+	".config/opencode/skills":        true,
+	// beta.6 compatibility roots are cleanup-only as well.
+	".github/skills":   true,
+	".windsurf/skills": true,
+	".cline/skills":    true,
+	".amp/skills":      true,
 }
 
 var (
@@ -87,11 +152,14 @@ var (
 	upgradeStat            = os.Stat
 	upgradeLstat           = os.Lstat
 	upgradeSymlink         = os.Symlink
+	upgradeRel             = filepath.Rel
+	upgradeGetenv          = os.Getenv
 	upgradeBuildProvenance = skillprovenance.Build
 	upgradeReadSkillState  = skillstate.Read
 	upgradeBackupStamp     = func() string { return time.Now().UTC().Format("20060102-150405") }
 	upgradeWriteSkillState = skillstate.Write
 	upgradeNow             = time.Now
+	upgradeFoldPathCase    = runtime.GOOS == "windows"
 )
 
 // skillBackupSubdir is the user-level directory where skill directories are
@@ -102,20 +170,18 @@ const skillBackupSubdir = ".dws/skill-backups"
 
 // backupAndRemoveSkillDir moves dir into <homeDir>/.dws/skill-backups/
 // <stamp>/<rel> instead of destroying it, and returns the backup path. It is
-// fail-safe: a directory that cannot be backed up is NOT removed and the
+// fail-safe: a path that cannot be backed up is NOT removed and the
 // error is returned so the caller can surface it (and never install the
-// opposite layout next to it silently). Missing paths and regular files are
-// no-ops ("", nil).
+// opposite layout next to it silently). Missing paths are no-ops. Directories,
+// links (including dangling links), and ordinary files are all preserved:
+// an unexpected file at a managed destination must never be overwritten.
 func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
-	info, err := upgradeLstat(dir)
+	_, err := upgradeLstat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", nil
 		}
 		return "", fmt.Errorf("检查技能目录失败 %s: %w", dir, err)
-	}
-	if !info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
-		return "", nil
 	}
 	rel, relErr := filepath.Rel(homeDir, dir)
 	if relErr != nil || rel == "." || strings.HasPrefix(rel, "..") {
@@ -544,8 +610,87 @@ func isUniversalSkillRoot(agentDir string) bool {
 	return universalSkillDirs[filepath.ToSlash(filepath.Clean(agentDir))]
 }
 
-func skillRootDetected(homeDir, agentDir string) bool {
-	parentGate := filepath.Dir(filepath.Join(homeDir, agentDir))
+type resolvedSkillRoot struct {
+	base      string
+	label     string
+	universal bool
+	canonical bool
+}
+
+func resolveOpenClawSkillBase(homeDir string) string {
+	for _, name := range []string{".openclaw", ".clawdbot", ".moltbot"} {
+		base := filepath.Join(homeDir, name)
+		if info, err := upgradeStat(base); err == nil && info.IsDir() {
+			return filepath.Join(base, "skills")
+		}
+	}
+	return filepath.Join(homeDir, ".openclaw", "skills")
+}
+
+func configuredSkillRoots(homeDir string) []resolvedSkillRoot {
+	var roots []resolvedSkillRoot
+	seen := map[string]bool{}
+	configHome := strings.TrimSpace(upgradeGetenv("XDG_CONFIG_HOME"))
+	if configHome == "" {
+		configHome = filepath.Join(homeDir, ".config")
+	}
+	add := func(base, label string, universal, canonical bool) {
+		key := skillRootPathKey(base)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		roots = append(roots, resolvedSkillRoot{base: base, label: label, universal: universal, canonical: canonical})
+	}
+	for _, agentDir := range knownSkillDirs {
+		base := filepath.Join(homeDir, agentDir)
+		switch filepath.ToSlash(filepath.Clean(agentDir)) {
+		case ".claude/skills":
+			if custom := strings.TrimSpace(upgradeGetenv("CLAUDE_CONFIG_DIR")); custom != "" {
+				base = filepath.Join(custom, "skills")
+			}
+		case ".codex/skills":
+			if custom := strings.TrimSpace(upgradeGetenv("CODEX_HOME")); custom != "" {
+				base = filepath.Join(custom, "skills")
+			}
+		case ".hermes/skills":
+			if custom := strings.TrimSpace(upgradeGetenv("HERMES_HOME")); custom != "" {
+				base = filepath.Join(custom, "skills")
+			}
+		case ".autohand/skills":
+			if custom := strings.TrimSpace(upgradeGetenv("AUTOHAND_HOME")); custom != "" {
+				base = filepath.Join(custom, "skills")
+			}
+		case ".grok/skills":
+			if custom := strings.TrimSpace(upgradeGetenv("GROK_HOME")); custom != "" {
+				base = filepath.Join(custom, "skills")
+			}
+		case ".vibe/skills":
+			if custom := strings.TrimSpace(upgradeGetenv("VIBE_HOME")); custom != "" {
+				base = filepath.Join(custom, "skills")
+			}
+		case ".openclaw/skills":
+			base = resolveOpenClawSkillBase(homeDir)
+		case ".config/agents/skills":
+			base = filepath.Join(configHome, "agents", "skills")
+		case ".config/opencode/skills":
+			base = filepath.Join(configHome, "opencode", "skills")
+		case ".config/crush/skills":
+			base = filepath.Join(configHome, "crush", "skills")
+		case ".config/devin/skills":
+			base = filepath.Join(configHome, "devin", "skills")
+		case ".config/goose/skills":
+			base = filepath.Join(configHome, "goose", "skills")
+		case ".config/kimchi/harness/skills":
+			base = filepath.Join(configHome, "kimchi", "harness", "skills")
+		}
+		add(base, agentDir, isUniversalSkillRoot(agentDir), isGenericSkillRoot(agentDir))
+	}
+	return roots
+}
+
+func skillRootDetectedBase(base string) bool {
+	parentGate := filepath.Dir(base)
 	info, err := upgradeStat(parentGate)
 	return err == nil && info.IsDir()
 }
@@ -553,7 +698,30 @@ func skillRootDetected(homeDir, agentDir string) bool {
 func samePhysicalSkillRoot(left, right string) bool {
 	leftReal, leftErr := upgradeEvalSymlinks(left)
 	rightReal, rightErr := upgradeEvalSymlinks(right)
-	return leftErr == nil && rightErr == nil && filepath.Clean(leftReal) == filepath.Clean(rightReal)
+	if leftErr != nil || rightErr != nil {
+		return false
+	}
+	return skillRootPathKey(leftReal) == skillRootPathKey(rightReal)
+}
+
+func skillRootPathKey(path string) string {
+	clean := filepath.Clean(path)
+	if upgradeFoldPathCase {
+		clean = strings.ToLower(clean)
+	}
+	return clean
+}
+
+func hasDependentSkillRoot(homeDir, canonicalBase string) bool {
+	for _, root := range configuredSkillRoots(homeDir) {
+		if root.canonical || root.universal || isBlacklisted(root.label) || !skillRootDetectedBase(root.base) {
+			continue
+		}
+		if !samePhysicalSkillRoot(root.base, canonicalBase) {
+			return true
+		}
+	}
+	return false
 }
 
 func retireManagedSkillRoot(homeDir, base string, managed map[string]bool) error {
@@ -581,9 +749,17 @@ func stageLinkedSkillSet(destBase, canonicalBase, prefix string, names []string)
 			_ = upgradeRemoveAll(stageRoot)
 		}
 	}()
+	realDestBase, realErr := upgradeEvalSymlinks(destBase)
+	if realErr != nil {
+		return stageRoot, nil, fmt.Errorf("解析 Agent Skill 物理目录失败 %s: %w", destBase, realErr)
+	}
 	for _, name := range names {
 		target := filepath.Join(canonicalBase, name)
-		relTarget, relErr := filepath.Rel(destBase, target)
+		realTarget, targetErr := upgradeEvalSymlinks(target)
+		if targetErr != nil {
+			return stageRoot, nil, fmt.Errorf("解析 canonical Skill 失败 %s: %w", target, targetErr)
+		}
+		relTarget, relErr := upgradeRel(realDestBase, realTarget)
 		if relErr != nil {
 			return stageRoot, nil, fmt.Errorf("计算 Skill 相对链接失败 %s: %w", target, relErr)
 		}
@@ -631,21 +807,24 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 	canonicalDest := filepath.Join(canonicalBase, "dws")
 	if err := publishMonoUpgradeTarget(homeDir, canonicalBase, skillSrc, managedNames); err != nil {
 		result.Results = append(result.Results, SkillDirResult{Dir: canonicalDest, Status: SkillDirFailed, Err: err})
-		return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
+		if hasDependentSkillRoot(homeDir, canonicalBase) {
+			return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
+		}
+		return result, nil
 	}
 	result.Results = append(result.Results, SkillDirResult{Dir: canonicalDest, Status: SkillDirOK})
 
-	for _, agentDir := range knownSkillDirs {
-		if isGenericSkillRoot(agentDir) {
+	for _, root := range configuredSkillRoots(homeDir) {
+		if root.canonical {
 			continue
 		}
-		destBase := filepath.Join(homeDir, agentDir)
+		destBase := root.base
 		destDir := filepath.Join(destBase, "dws")
-		if isBlacklisted(agentDir) {
+		if isBlacklisted(root.label) {
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirBlacklisted})
 			continue
 		}
-		if !skillRootDetected(homeDir, agentDir) {
+		if !skillRootDetectedBase(destBase) {
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirSkipped})
 			continue
 		}
@@ -653,7 +832,7 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirSkipped})
 			continue
 		}
-		if isUniversalSkillRoot(agentDir) {
+		if root.universal {
 			if err := retireManagedSkillRoot(homeDir, destBase, managedNames); err != nil {
 				result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
 			} else {
@@ -701,20 +880,23 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 	canonicalBase := filepath.Join(homeDir, ".agents", "skills")
 	if err := publishMultiUpgradeTarget(homeDir, canonicalBase, multiRoot, skills, skillSet, managedNames); err != nil {
 		result.Results = append(result.Results, SkillDirResult{Dir: canonicalBase, Status: SkillDirFailed, Err: err})
-		return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
+		if hasDependentSkillRoot(homeDir, canonicalBase) {
+			return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
+		}
+		return result, nil
 	}
 	result.Results = append(result.Results, SkillDirResult{Dir: canonicalBase, Status: SkillDirOK})
 
-	for _, agentDir := range knownSkillDirs {
-		if isGenericSkillRoot(agentDir) {
+	for _, root := range configuredSkillRoots(homeDir) {
+		if root.canonical {
 			continue
 		}
-		destBase := filepath.Join(homeDir, agentDir)
-		if isBlacklisted(agentDir) {
+		destBase := root.base
+		if isBlacklisted(root.label) {
 			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirBlacklisted})
 			continue
 		}
-		if !skillRootDetected(homeDir, agentDir) {
+		if !skillRootDetectedBase(destBase) {
 			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirSkipped})
 			continue
 		}
@@ -722,7 +904,7 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirSkipped})
 			continue
 		}
-		if isUniversalSkillRoot(agentDir) {
+		if root.universal {
 			if err := retireManagedSkillRoot(homeDir, destBase, managedNames); err != nil {
 				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
 			} else {

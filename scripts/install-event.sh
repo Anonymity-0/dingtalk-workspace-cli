@@ -92,37 +92,98 @@ resolve_event_version() {
 copy_tree() {
   src="$1"
   dest="$2"
-  rm -rf "$dest"
-  mkdir -p "$dest"
-  cp -R "$src/." "$dest/"
+  parent="$(dirname "$dest")"
+  mkdir -p "$parent" || return 1
+  stage="$(mktemp -d "$parent/.dws-skill.tmp.XXXXXX")" || return 1
+  if ! cp -R "$src/." "$stage/"; then rm -rf "$stage"; return 1; fi
+  backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
+  if mv "$stage" "$dest"; then return 0; fi
+  rm -rf "$stage"
+  [ -z "$backup" ] || mv "$backup" "$dest" 2>/dev/null || true
+  return 1
+}
+
+backup_skill_dir() {
+  victim="$1"
+  [ -e "$victim" ] || [ -L "$victim" ] || { printf '\n'; return 0; }
+  stamp="$(date -u +%Y%m%d-%H%M%S)"
+  name="$(printf '%s' "$victim" | sed 's#[/\\]#-#g; s#^-##')"
+  backup_root="$HOME/.dws/skill-backups/$stamp"
+  backup="$backup_root/$name"
+  i=0
+  while [ -e "$backup" ] || [ -L "$backup" ]; do
+    i=$((i + 1)); backup_root="$HOME/.dws/skill-backups/$stamp-$i"; backup="$backup_root/$name"
+  done
+  mkdir -p "$backup_root" || return 1
+  mv "$victim" "$backup" || return 1
+  printf '%s\n' "$backup"
+}
+
+same_physical_skill() {
+  [ -d "$1" ] && [ -d "$2" ] || return 1
+  left="$(CDPATH= cd -- "$1" 2>/dev/null && pwd -P)" || return 1
+  right="$(CDPATH= cd -- "$2" 2>/dev/null && pwd -P)" || return 1
+  [ "$left" = "$right" ]
+}
+
+is_cleanup_only_agent_dir() {
+  case "$1" in
+    .config/agents/skills|.gemini/antigravity/skills|.gemini/antigravity-cli/skills|.codex/skills|.cursor/skills|.deepagents/agent/skills|.firebender/skills|.gemini/skills|.copilot/skills|.config/opencode/skills|.github/skills|.windsurf/skills|.cline/skills|.amp/skills) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+agent_skill_dirs() {
+  printf '%s\n' \
+    .config/agents/skills .gemini/antigravity/skills .gemini/antigravity-cli/skills .codex/skills .cursor/skills .deepagents/agent/skills .firebender/skills .gemini/skills .copilot/skills .config/opencode/skills \
+    .aider-desk/skills .astrbot/data/skills .autohand/skills .augment/skills .bob/skills .claude/skills .openclaw/skills .codeartsdoer/skills .codebuddy/skills .codemaker/skills .codestudio/skills .commandcode/skills .continue/skills .snowflake/cortex/skills .config/crush/skills .config/devin/skills .factory/skills .forge/skills .config/goose/skills .grok/skills .hermes/skills .inferencesh/skills .jazz/skills .junie/skills .iflow/skills .kilocode/skills .config/kimchi/harness/skills .kiro/skills .kode/skills .lingma/skills .mcpjam/skills .minimax/skills .vibe/skills .moxby/skills .mux/skills .openhands/skills .ona/skills .pi/agent/skills .qoder/skills .qoder-cn/skills .qwen/skills .reasonix/skills .rovodev/skills .roo/skills .tabnine/agent/skills .terramind/skills .tinycloud/skills .trae/skills .trae-cn/skills .codeium/windsurf/skills .zcode/skills .zencoder/skills .neovate/skills .pochi/skills .adal/skills \
+    .qoderwork/skills .github/skills .windsurf/skills .cline/skills .amp/skills
+}
+
+resolve_agent_skill_base() {
+  agent_dir="$1"; base="$HOME/$agent_dir"
+  case "$agent_dir" in
+    .claude/skills) [ -n "${CLAUDE_CONFIG_DIR:-}" ] && base="$CLAUDE_CONFIG_DIR/skills" ;;
+    .codex/skills) [ -n "${CODEX_HOME:-}" ] && base="$CODEX_HOME/skills" ;;
+    .hermes/skills) [ -n "${HERMES_HOME:-}" ] && base="$HERMES_HOME/skills" ;;
+    .autohand/skills) [ -n "${AUTOHAND_HOME:-}" ] && base="$AUTOHAND_HOME/skills" ;;
+    .grok/skills) [ -n "${GROK_HOME:-}" ] && base="$GROK_HOME/skills" ;;
+    .vibe/skills) [ -n "${VIBE_HOME:-}" ] && base="$VIBE_HOME/skills" ;;
+    .openclaw/skills) for legacy in .openclaw .clawdbot .moltbot; do [ -d "$HOME/$legacy" ] && { base="$HOME/$legacy/skills"; break; }; done ;;
+    .config/*) base="${XDG_CONFIG_HOME:-$HOME/.config}/${agent_dir#.config/}" ;;
+  esac
+  printf '%s\n' "$base"
+}
+
+link_or_copy_skill() {
+  canonical="$1"; src="$2"; dest="$3"
+  same_physical_skill "$dest" "$canonical" && return 0
+  parent="$(dirname "$dest")"; mkdir -p "$parent" || return 1
+  parent_real="$(CDPATH= cd -- "$parent" && pwd -P)" || return 1
+  target_real="$(CDPATH= cd -- "$canonical" && pwd -P)" || return 1
+  relative="$(awk -v from="$parent_real" -v to="$target_real" 'BEGIN { nf=split(from,f,"/"); nt=split(to,t,"/"); i=1; while(i<=nf&&i<=nt&&f[i]==t[i])i++; out=""; for(j=i;j<=nf;j++)if(f[j]!="")out=out"../"; for(j=i;j<=nt;j++)if(t[j]!="")out=out t[j](j<nt?"/":""); if(out=="")out="."; print out }')"
+  stage="$(mktemp -d "$parent/.dws-link.tmp.XXXXXX")" || return 1
+  if ! ln -s "$relative" "$stage/skill" 2>/dev/null; then rm -rf "$stage"; copy_tree "$src" "$dest"; return; fi
+  backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
+  if mv "$stage/skill" "$dest"; then rm -rf "$stage"; return 0; fi
+  rm -rf "$stage"; [ -z "$backup" ] || mv "$backup" "$dest" 2>/dev/null || true
+  return 1
 }
 
 install_skill_to_homes() {
   src="$1"
   skill_name="$2"
-
-  installed=0
-  idx=0
-  for agent_dir in \
-    .agents/skills .claude/skills .cursor/skills .qoder/skills .qoderwork/skills \
-    .gemini/skills .codex/skills .github/skills .windsurf/skills .augment/skills \
-    .cline/skills .amp/skills .kiro/skills .trae/skills .openclaw/skills .hermes/skills \
-    .config/opencode/skills
-  do
-    base="$HOME/$agent_dir"
-    if [ "$idx" -gt 0 ] && [ ! -e "$(dirname "$base")" ]; then
-      idx=$((idx + 1))
-      continue
-    fi
-    copy_tree "$src" "$base/$skill_name"
+  canonical="$HOME/.agents/skills/$skill_name"
+  copy_tree "$src" "$canonical" || return 1
+  installed=1
+  for agent_dir in $(agent_skill_dirs); do
+    base="$(resolve_agent_skill_base "$agent_dir")"
+    [ -e "$(dirname "$base")" ] || continue
+    same_physical_skill "$base" "$HOME/.agents/skills" && continue
+    if is_cleanup_only_agent_dir "$agent_dir"; then backup_skill_dir "$base/$skill_name" >/dev/null || return 1; continue; fi
+    link_or_copy_skill "$canonical" "$src" "$base/$skill_name" || return 1
     installed=$((installed + 1))
-    idx=$((idx + 1))
   done
-
-  if [ "$installed" -eq 0 ]; then
-    copy_tree "$src" "$HOME/.agents/skills/$skill_name"
-    installed=1
-  fi
   printf '%s\n' "$installed"
 }
 

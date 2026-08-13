@@ -62,10 +62,20 @@ const repoRoot = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), 
 const installJsSource = path.join(repoRoot, "build", "npm", "install.js");
 const require = createRequire(import.meta.url);
 const {
+  UPSTREAM_AGENTS,
+  resolvedAgentTargets,
   publishCacheAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
 } = require(installJsSource);
+
+assert.equal(UPSTREAM_AGENTS.length, 76, "the complete upstream Agent registry is pinned");
+assert.equal(new Set(UPSTREAM_AGENTS.map(({ id }) => id)).size, 76, "upstream Agent IDs are unique");
+assert.equal(UPSTREAM_AGENTS.filter(({ universal }) => universal).length, 19, "upstream universal classification is pinned");
+assert.equal(UPSTREAM_AGENTS.filter(({ universal }) => !universal).length, 57, "upstream non-universal classification is pinned");
+assert.equal(UPSTREAM_AGENTS.filter(({ agentDir }) => agentDir === null).length, 2, "no-global Agents are retained in the registry");
+assert.equal(UPSTREAM_AGENTS.filter(({ agentDir }) => agentDir === ".agents/skills").length, 6, "canonical-direct Agents need no target");
+assert.equal(resolvedAgentTargets(path.join(os.tmpdir(), "dws-registry-home")).length, 70, "65 upstream roots, qoderwork, and 4 migration roots are deduplicated");
 const assetName = PLATFORM_MAP[`${process.platform}-${process.arch}`];
 
 if (process.platform === "win32" || !assetName) {
@@ -133,8 +143,8 @@ function stagePkg(zipEntries, emptyDirs = []) {
   return { tmp, pkg, home: path.join(tmp, "home") };
 }
 
-function runInstall(pkg, home, skillMode) {
-  const env = { ...process.env, HOME: home };
+function runInstall(pkg, home, skillMode, extraEnv = {}) {
+  const env = { ...process.env, HOME: home, ...extraEnv };
   if (skillMode !== undefined) {
     env.DWS_SKILL_MODE = skillMode;
   } else {
@@ -250,6 +260,52 @@ scenario("ZCode links its Agent root to the canonical store", () => {
       !fs.existsSync(path.join(home, ".agents", "skills", "dws")),
       "legacy generic duplicate retired",
     );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("upstream Agent roots honor XDG and custom homes with relative links", () => {
+  const { tmp, pkg, home } = stagePkg({
+    "mono/SKILL.md": "# mono fixture\n",
+    "multi/dingtalk-chat/SKILL.md": "# dingtalk-chat\n",
+  });
+  const xdg = path.join(tmp, "xdg config");
+  const autohand = path.join(tmp, "autohand home");
+  const codex = path.join(tmp, "codex home");
+  try {
+    writeFile(path.join(xdg, "goose", "config.yaml"), "enabled: true\n");
+    writeFile(path.join(xdg, "agents", "detection.marker"), "amp\n");
+    writeFile(path.join(xdg, "agents", "skills", "dingtalk-chat", "SKILL.md"), "old amp copy\n");
+    writeFile(path.join(autohand, "config.json"), "{}\n");
+    writeFile(path.join(codex, "config.toml"), "model=test\n");
+    writeFile(path.join(codex, "skills", "dingtalk-chat", "SKILL.md"), "old codex copy\n");
+    writeFile(path.join(home, ".qoderwork", "config.json"), "{}\n");
+    writeFile(path.join(home, ".amp", "skills", "dingtalk-chat", "SKILL.md"), "old DWS path\n");
+
+    const res = runInstall(pkg, home, "multi", {
+      XDG_CONFIG_HOME: xdg,
+      AUTOHAND_HOME: autohand,
+      CODEX_HOME: codex,
+    });
+    assert.equal(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
+
+    for (const linked of [
+      path.join(xdg, "goose", "skills", "dingtalk-chat"),
+      path.join(autohand, "skills", "dingtalk-chat"),
+      path.join(home, ".qoderwork", "skills", "dingtalk-chat"),
+    ]) {
+      assert.ok(fs.lstatSync(linked).isSymbolicLink(), `${linked} is linked`);
+      assert.ok(!path.isAbsolute(fs.readlinkSync(linked)), `${linked} uses a relative link`);
+      assert.equal(fs.readFileSync(path.join(linked, "SKILL.md"), "utf8"), "# dingtalk-chat\n");
+    }
+    for (const retired of [
+      path.join(xdg, "agents", "skills", "dingtalk-chat"),
+      path.join(codex, "skills", "dingtalk-chat"),
+      path.join(home, ".amp", "skills", "dingtalk-chat"),
+    ]) {
+      assert.ok(!fs.existsSync(retired), `legacy/universal duplicate retired: ${retired}`);
+    }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

@@ -381,17 +381,23 @@ func TestInstallEventScriptInstallsBinaryAndEventSkills(t *testing.T) {
 	}
 
 	expectedSkills := map[string]string{
-		".agents/skills/dingtalk-event/SKILL.md":          "user_im_message_receive_o2o",
-		".codex/skills/dingtalk-event/SKILL.md":           "user_im_message_receive_o2o",
-		".config/opencode/skills/dingtalk-event/SKILL.md": "user_im_message_receive_o2o",
-		".agents/skills/dingtalk-shared/SKILL.md":         "shared prerequisite",
-		".agents/skills/dingtalk-misc/SKILL.md":           "clean misc oa routing",
-		".agents/skills/dws/SKILL.md":                     "user_im_message_receive_o2o",
-		".codex/skills/dws/SKILL.md":                      "user_im_message_receive_o2o",
-		".dws/skills/multi/dingtalk-event/SKILL.md":       "user_im_message_receive_o2o",
-		".dws/skills/multi/dingtalk-shared/SKILL.md":      "shared prerequisite",
-		".dws/skills/multi/dingtalk-misc/SKILL.md":        "clean misc oa routing",
-		".dws/skills/mono/SKILL.md":                       "user_im_message_receive_o2o",
+		".agents/skills/dingtalk-event/SKILL.md":     "user_im_message_receive_o2o",
+		".agents/skills/dingtalk-shared/SKILL.md":    "shared prerequisite",
+		".agents/skills/dingtalk-misc/SKILL.md":      "clean misc oa routing",
+		".agents/skills/dws/SKILL.md":                "user_im_message_receive_o2o",
+		".dws/skills/multi/dingtalk-event/SKILL.md":  "user_im_message_receive_o2o",
+		".dws/skills/multi/dingtalk-shared/SKILL.md": "shared prerequisite",
+		".dws/skills/multi/dingtalk-misc/SKILL.md":   "clean misc oa routing",
+		".dws/skills/mono/SKILL.md":                  "user_im_message_receive_o2o",
+	}
+	for _, duplicate := range []string{
+		filepath.Join(fakeHome, ".codex", "skills", "dingtalk-event"),
+		filepath.Join(fakeHome, ".config", "opencode", "skills", "dingtalk-event"),
+		filepath.Join(fakeHome, ".codex", "skills", "dws"),
+	} {
+		if _, err := os.Lstat(duplicate); !os.IsNotExist(err) {
+			t.Fatalf("universal Agent duplicate remains at %s: %v", duplicate, err)
+		}
 	}
 	for rel, marker := range expectedSkills {
 		p := filepath.Join(fakeHome, filepath.FromSlash(rel))
@@ -1338,6 +1344,147 @@ func TestInstallerShellLinksZCodeRootToCanonical(t *testing.T) {
 			}
 			if _, err := os.Stat(filepath.Join(home, ".agents", "skills", "dws")); !os.IsNotExist(err) {
 				t.Fatalf("%s generic duplicate remains: %v", scriptName, err)
+			}
+		})
+	}
+}
+
+func TestInstallerShellUsesUpstreamXDGAndCustomAgentRoots(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		t.Run(scriptName, func(t *testing.T) {
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			tmp := t.TempDir()
+			xdg := filepath.Join(tmp, "xdg config")
+			autohand := filepath.Join(tmp, "autohand home")
+			codex := filepath.Join(tmp, "codex home")
+			source := filepath.Join(tmp, "multi")
+			mustWriteFile(t, filepath.Join(source, "dingtalk-chat", "SKILL.md"), []byte("new chat\n"), 0o644)
+			mustWriteFile(t, filepath.Join(xdg, "goose", "config.yaml"), []byte("enabled: true\n"), 0o644)
+			mustWriteFile(t, filepath.Join(xdg, "agents", "skills", "dingtalk-chat", "SKILL.md"), []byte("old amp copy\n"), 0o644)
+			mustWriteFile(t, filepath.Join(autohand, "config.json"), []byte("{}\n"), 0o644)
+			mustWriteFile(t, filepath.Join(codex, "config.toml"), []byte("model=test\n"), 0o644)
+			mustWriteFile(t, filepath.Join(codex, "skills", "dingtalk-chat", "SKILL.md"), []byte("old codex copy\n"), 0o644)
+			mustWriteFile(t, filepath.Join(home, ".qoderwork", "config.json"), []byte("{}\n"), 0o644)
+			mustWriteFile(t, filepath.Join(home, ".amp", "skills", "dingtalk-chat", "SKILL.md"), []byte("old DWS path\n"), 0o644)
+
+			installCall := `install_multi_skills_to_homes "$DWS_TEST_SOURCE"`
+			if scriptName == "install-skills.sh" {
+				installCall = `install_multi_skills_to_root "$DWS_TEST_SOURCE" "$HOME"`
+			}
+			cmd := exec.Command("sh", "-c", `. "$DWS_TEST_LIBRARY"
+`+installCall+`
+`)
+			cmd.Env = append(os.Environ(),
+				"HOME="+home,
+				"DWS_TEST_LIBRARY="+library,
+				"DWS_TEST_SOURCE="+source,
+				"XDG_CONFIG_HOME="+xdg,
+				"AUTOHAND_HOME="+autohand,
+				"CODEX_HOME="+codex,
+			)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("%s upstream-root harness failed: %v\n%s", scriptName, err, output)
+			}
+
+			for _, linked := range []string{
+				filepath.Join(xdg, "goose", "skills", "dingtalk-chat"),
+				filepath.Join(autohand, "skills", "dingtalk-chat"),
+				filepath.Join(home, ".qoderwork", "skills", "dingtalk-chat"),
+			} {
+				info, err := os.Lstat(linked)
+				if err != nil || info.Mode()&os.ModeSymlink == 0 {
+					t.Fatalf("%s is not a canonical symlink: %#v, %v", linked, info, err)
+				}
+				target, err := os.Readlink(linked)
+				if err != nil || filepath.IsAbs(target) {
+					t.Fatalf("%s link must be relative: target=%q err=%v", linked, target, err)
+				}
+			}
+			for _, retired := range []string{
+				filepath.Join(xdg, "agents", "skills", "dingtalk-chat"),
+				filepath.Join(codex, "skills", "dingtalk-chat"),
+				filepath.Join(home, ".amp", "skills", "dingtalk-chat"),
+			} {
+				if _, err := os.Lstat(retired); !os.IsNotExist(err) {
+					t.Fatalf("%s universal/legacy duplicate remains: %v", retired, err)
+				}
+			}
+		})
+	}
+}
+
+func TestInstallerShellPinsCompleteUpstreamAgentRegistry(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		t.Run(scriptName, func(t *testing.T) {
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+			cmd := exec.Command("sh", "-c", `. "$DWS_TEST_LIBRARY"
+upstream_agent_registry
+`)
+			cmd.Env = append(os.Environ(), "DWS_TEST_LIBRARY="+library)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s registry failed: %v\n%s", scriptName, err, output)
+			}
+			lines := strings.Fields(strings.TrimSpace(string(output)))
+			if len(lines) != 76 {
+				t.Fatalf("%s registry has %d Agents, want 76", scriptName, len(lines))
+			}
+			ids := map[string]bool{}
+			roots := map[string]bool{}
+			universal, nonUniversal, noGlobal, canonicalDirect := 0, 0, 0, 0
+			for _, line := range lines {
+				parts := strings.Split(line, "|")
+				if len(parts) != 3 || ids[parts[0]] {
+					t.Fatalf("%s invalid or duplicate registry record %q", scriptName, line)
+				}
+				ids[parts[0]] = true
+				switch parts[1] {
+				case "U":
+					universal++
+				case "N":
+					nonUniversal++
+				default:
+					t.Fatalf("%s invalid classification in %q", scriptName, line)
+				}
+				switch parts[2] {
+				case "-":
+					noGlobal++
+				case ".agents/skills":
+					canonicalDirect++
+				default:
+					roots[parts[2]] = true
+				}
+			}
+			if universal != 19 || nonUniversal != 57 || noGlobal != 2 || canonicalDirect != 6 || len(roots) != 65 {
+				t.Fatalf("%s registry classification U=%d N=%d no-global=%d canonical=%d roots=%d", scriptName, universal, nonUniversal, noGlobal, canonicalDirect, len(roots))
 			}
 		})
 	}

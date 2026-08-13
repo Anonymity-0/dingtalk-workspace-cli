@@ -71,13 +71,13 @@ DWS_LAST_SKILL_BACKUP=""
 backup_and_remove_skill_dir() {
   _bed_dir="$1"
   DWS_LAST_SKILL_BACKUP=""
-  [ -d "$_bed_dir" ] || return 0
+  [ -e "$_bed_dir" ] || [ -L "$_bed_dir" ] || return 0
   _bed_root="${HOME}/.dws/skill-backups"
   _bed_stamp="$(date -u +%Y%m%d-%H%M%S)"
   _bed_name="$(basename "$_bed_dir")"
   _bed_target="$_bed_root/$_bed_stamp/$_bed_name"
   _bed_i=1
-  while [ -e "$_bed_target" ]; do
+  while [ -e "$_bed_target" ] || [ -L "$_bed_target" ]; do
     _bed_target="$_bed_root/$_bed_stamp-$_bed_i/$_bed_name"
     _bed_i=$((_bed_i + 1))
     if [ "$_bed_i" -gt 1000 ]; then
@@ -231,7 +231,7 @@ restore_multi_skill_set() {
   if [ -f "$_rms_backups" ]; then
     while IFS= read -r _rms_original && IFS= read -r _rms_backup; do
       [ -n "$_rms_backup" ] || continue
-      if [ -e "$_rms_original" ] || ! mkdir -p "$(dirname "$_rms_original")" || ! mv "$_rms_backup" "$_rms_original"; then
+      if [ -e "$_rms_original" ] || [ -L "$_rms_original" ] || ! mkdir -p "$(dirname "$_rms_original")" || ! mv "$_rms_backup" "$_rms_original"; then
         say "  ⚠️  无法恢复原 Skill: $_rms_original（备份保留于 $_rms_backup）"
         _rms_ok=0
       fi
@@ -648,9 +648,64 @@ _install_mono_to_base() {
 # relative links and fall back to copies only when links are unavailable.
 is_universal_agent_dir() {
   case "$1" in
-    ".cursor/skills"|".gemini/skills"|".codex/skills"|".github/skills"|".cline/skills"|".amp/skills") return 0 ;;
+    ".config/agents/skills"|".gemini/antigravity/skills"|".gemini/antigravity-cli/skills"|".codex/skills"|".cursor/skills"|".deepagents/agent/skills"|".firebender/skills"|".gemini/skills"|".copilot/skills"|".config/opencode/skills"|".github/skills"|".windsurf/skills"|".cline/skills"|".amp/skills") return 0 ;;
     *) return 1 ;;
   esac
+}
+
+# Exact upstream registry (76 IDs): id|classification|effective-global-root.
+# `-` means no global directory; `.agents/skills` means canonical-direct.
+readonly DWS_UPSTREAM_AGENT_REGISTRY='aider-desk|N|.aider-desk/skills amp|U|.config/agents/skills antigravity|U|.gemini/antigravity/skills antigravity-cli|U|.gemini/antigravity-cli/skills astrbot|N|.astrbot/data/skills autohand-code|N|.autohand/skills augment|N|.augment/skills bob|N|.bob/skills claude-code|N|.claude/skills openclaw|N|.openclaw/skills cline|U|.agents/skills codearts-agent|N|.codeartsdoer/skills codebuddy|N|.codebuddy/skills codemaker|N|.codemaker/skills codestudio|N|.codestudio/skills codex|U|.codex/skills command-code|N|.commandcode/skills continue|N|.continue/skills cortex|N|.snowflake/cortex/skills crush|N|.config/crush/skills cursor|U|.cursor/skills deepagents|U|.deepagents/agent/skills devin|N|.config/devin/skills dexto|U|.agents/skills droid|N|.factory/skills eve|N|- firebender|U|.firebender/skills forgecode|N|.forge/skills gemini-cli|U|.gemini/skills github-copilot|U|.copilot/skills goose|N|.config/goose/skills grok|N|.grok/skills hermes-agent|N|.hermes/skills inference-sh|N|.inferencesh/skills jazz|N|.jazz/skills junie|N|.junie/skills iflow-cli|N|.iflow/skills kilo|N|.kilocode/skills kimchi|N|.config/kimchi/harness/skills kimi-code-cli|U|.agents/skills kiro-cli|N|.kiro/skills kode|N|.kode/skills lingma|N|.lingma/skills loaf|U|.agents/skills mcpjam|N|.mcpjam/skills minimax-code|N|.minimax/skills mistral-vibe|N|.vibe/skills moxby|N|.moxby/skills mux|N|.mux/skills opencode|U|.config/opencode/skills openhands|N|.openhands/skills ona|N|.ona/skills pi|N|.pi/agent/skills qoder|N|.qoder/skills qoder-cn|N|.qoder-cn/skills qwen-code|N|.qwen/skills replit|U|.config/agents/skills reasonix|N|.reasonix/skills rovodev|N|.rovodev/skills roo|N|.roo/skills tabnine-cli|N|.tabnine/agent/skills terramind|N|.terramind/skills tinycloud|N|.tinycloud/skills trae|N|.trae/skills trae-cn|N|.trae-cn/skills warp|U|.agents/skills windsurf|N|.codeium/windsurf/skills zed|U|.agents/skills zcode|N|.zcode/skills zencoder|N|.zencoder/skills zenflow|N|.zencoder/skills neovate|N|.neovate/skills pochi|N|.pochi/skills promptscript|U|- adal|N|.adal/skills universal|U|.config/agents/skills'
+upstream_agent_registry() {
+  for _uar_record in $DWS_UPSTREAM_AGENT_REGISTRY; do printf '%s\n' "$_uar_record"; done
+}
+
+# Effective global roots from vercel-labs/skills. Duplicate upstream roots
+# (amp/replit/universal and zencoder/zenflow) deliberately appear once.
+# Qoderwork is a DWS-only non-universal target. The final four entries are
+# cleanup-only compatibility paths from older DWS installers.
+agent_skill_dirs() {
+  printf '%s\n' \
+    ".config/agents/skills" ".gemini/antigravity/skills" ".gemini/antigravity-cli/skills" \
+    ".codex/skills" ".cursor/skills" ".deepagents/agent/skills" ".firebender/skills" \
+    ".gemini/skills" ".copilot/skills" ".config/opencode/skills" \
+    ".aider-desk/skills" ".astrbot/data/skills" ".autohand/skills" ".augment/skills" \
+    ".bob/skills" ".claude/skills" ".openclaw/skills" ".codeartsdoer/skills" \
+    ".codebuddy/skills" ".codemaker/skills" ".codestudio/skills" ".commandcode/skills" \
+    ".continue/skills" ".snowflake/cortex/skills" ".config/crush/skills" \
+    ".config/devin/skills" ".factory/skills" ".forge/skills" ".config/goose/skills" \
+    ".grok/skills" ".hermes/skills" ".inferencesh/skills" ".jazz/skills" ".junie/skills" \
+    ".iflow/skills" ".kilocode/skills" ".config/kimchi/harness/skills" ".kiro/skills" \
+    ".kode/skills" ".lingma/skills" ".mcpjam/skills" ".minimax/skills" ".vibe/skills" \
+    ".moxby/skills" ".mux/skills" ".openhands/skills" ".ona/skills" ".pi/agent/skills" \
+    ".qoder/skills" ".qoder-cn/skills" ".qwen/skills" ".reasonix/skills" \
+    ".rovodev/skills" ".roo/skills" ".tabnine/agent/skills" ".terramind/skills" \
+    ".tinycloud/skills" ".trae/skills" ".trae-cn/skills" ".codeium/windsurf/skills" \
+    ".zcode/skills" ".zencoder/skills" ".neovate/skills" ".pochi/skills" ".adal/skills" \
+    ".qoderwork/skills" ".github/skills" ".windsurf/skills" ".cline/skills" ".amp/skills"
+}
+
+resolve_agent_skill_base() {
+  _ras_root="$1"; _ras_agent="$2"
+  case "$_ras_agent" in
+    ".claude/skills") [ -n "${CLAUDE_CONFIG_DIR:-}" ] && { printf '%s\n' "$CLAUDE_CONFIG_DIR/skills"; return; } ;;
+    ".codex/skills") [ -n "${CODEX_HOME:-}" ] && { printf '%s\n' "$CODEX_HOME/skills"; return; } ;;
+    ".hermes/skills") [ -n "${HERMES_HOME:-}" ] && { printf '%s\n' "$HERMES_HOME/skills"; return; } ;;
+    ".autohand/skills") [ -n "${AUTOHAND_HOME:-}" ] && { printf '%s\n' "$AUTOHAND_HOME/skills"; return; } ;;
+    ".grok/skills") [ -n "${GROK_HOME:-}" ] && { printf '%s\n' "$GROK_HOME/skills"; return; } ;;
+    ".vibe/skills") [ -n "${VIBE_HOME:-}" ] && { printf '%s\n' "$VIBE_HOME/skills"; return; } ;;
+    ".openclaw/skills")
+      for _ras_name in .openclaw .clawdbot .moltbot; do
+        [ -d "$_ras_root/$_ras_name" ] && { printf '%s\n' "$_ras_root/$_ras_name/skills"; return; }
+      done ;;
+    ".config/opencode/skills") printf '%s\n' "${XDG_CONFIG_HOME:-$_ras_root/.config}/opencode/skills"; return ;;
+    ".config/agents/skills") printf '%s\n' "${XDG_CONFIG_HOME:-$_ras_root/.config}/agents/skills"; return ;;
+    ".config/crush/skills") printf '%s\n' "${XDG_CONFIG_HOME:-$_ras_root/.config}/crush/skills"; return ;;
+    ".config/devin/skills") printf '%s\n' "${XDG_CONFIG_HOME:-$_ras_root/.config}/devin/skills"; return ;;
+    ".config/goose/skills") printf '%s\n' "${XDG_CONFIG_HOME:-$_ras_root/.config}/goose/skills"; return ;;
+    ".config/kimchi/harness/skills") printf '%s\n' "${XDG_CONFIG_HOME:-$_ras_root/.config}/kimchi/harness/skills"; return ;;
+  esac
+  printf '%s\n' "$_ras_root/$_ras_agent"
 }
 
 same_physical_skill_root() {
@@ -667,7 +722,7 @@ retire_agent_skill_root() {
   _rgs_backups="$_rgs_stage/backups"
   : > "$_rgs_backups" || { rm -rf "$_rgs_stage"; return 1; }
   for _rgs_victim in "$_rgs_base/dws" "$_rgs_base"/*; do
-    [ -d "$_rgs_victim" ] || continue
+    [ -e "$_rgs_victim" ] || [ -L "$_rgs_victim" ] || continue
     if [ "$(basename "$_rgs_victim")" != "dws" ] && ! is_managed_multi_skill_dir "$_rgs_victim"; then
       continue
     fi
@@ -687,6 +742,7 @@ link_canonical_skills_to_base() {
   _lcs_canonical="$_lcs_root/.agents/skills"
   mkdir -p "$_lcs_base" || return 1
   same_physical_skill_root "$_lcs_base" "$_lcs_canonical" && return 0
+  _lcs_base_real="$(CDPATH= cd -- "$_lcs_base" && pwd -P)" || return 1
   _lcs_stage="$(mktemp -d "$_lcs_base/.dws-link-set.XXXXXX")" || return 1
   _lcs_backups="$_lcs_stage/.backups"
   _lcs_published="$_lcs_stage/.published"
@@ -706,11 +762,13 @@ link_canonical_skills_to_base() {
     if same_physical_skill_root "$_lcs_base/$_lcs_name" "$_lcs_canonical/$_lcs_name"; then
       continue
     fi
-    ln -s "../../.agents/skills/$_lcs_name" "$_lcs_stage/$_lcs_name" || { rm -rf "$_lcs_stage"; return 1; }
+    _lcs_target_real="$(CDPATH= cd -- "$_lcs_canonical/$_lcs_name" && pwd -P)" || { rm -rf "$_lcs_stage"; return 1; }
+    _lcs_link_target="$(awk -v from="$_lcs_base_real" -v to="$_lcs_target_real" 'BEGIN { nf=split(from,f,"/"); nt=split(to,t,"/"); i=1; while(i<=nf&&i<=nt&&f[i]==t[i])i++; out=""; for(j=i;j<=nf;j++)if(f[j]!="")out=out"../"; for(j=i;j<=nt;j++)if(t[j]!="")out=out t[j](j<nt?"/":""); if(out=="")out="."; print out }')"
+    ln -s "$_lcs_link_target" "$_lcs_stage/$_lcs_name" || { rm -rf "$_lcs_stage"; return 1; }
     _lcs_publish_names="$_lcs_publish_names $_lcs_name"
   done
   for _lcs_victim in "$_lcs_base/dws" "$_lcs_base"/*; do
-    [ -d "$_lcs_victim" ] || continue
+    [ -e "$_lcs_victim" ] || [ -L "$_lcs_victim" ] || continue
     [ "$_lcs_victim" = "$_lcs_stage" ] && continue
     same_physical_skill_root "$_lcs_victim" "$_lcs_canonical/$(basename "$_lcs_victim")" && continue
     if [ "$(basename "$_lcs_victim")" != "dws" ] && ! is_managed_multi_skill_dir "$_lcs_victim"; then
@@ -749,25 +807,9 @@ install_skills_to_homes() {
   failed=0
   if _install_mono_to_base "$skill_src" "$root/.agents/skills" "~/.agents/skills/$SKILL_NAME"; then installed=1; else failed=1; fi
   [ "$installed" -gt 0 ] || { say "  ⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败"; return 1; }
-  for agent_dir in \
-    ".claude/skills" \
-    ".cursor/skills" \
-    ".qoder/skills" \
-    ".qoderwork/skills" \
-    ".gemini/skills" \
-    ".codex/skills" \
-    ".zcode/skills" \
-    ".github/skills" \
-    ".windsurf/skills" \
-    ".augment/skills" \
-    ".cline/skills" \
-    ".amp/skills" \
-    ".kiro/skills" \
-    ".trae/skills" \
-    ".openclaw/skills" \
-    ".hermes/skills"
+  for agent_dir in $(agent_skill_dirs)
   do
-    base_dir="$root/$agent_dir"
+    base_dir="$(resolve_agent_skill_base "$root" "$agent_dir")"
     parent_gate="$(dirname "$base_dir")"
     [ -e "$parent_gate" ] || continue
     same_physical_skill_root "$base_dir" "$root/.agents/skills" && continue
@@ -779,8 +821,12 @@ install_skills_to_homes() {
     if link_canonical_skills_to_base "$root" "$base_dir" mono; then
       installed=$((installed + 1))
     else
-      say "  ⚠️  $base_dir 无法创建 Skill 链接，回退为直接复制"
-      if _install_mono_to_base "$skill_src" "$base_dir" "$base_dir/$SKILL_NAME"; then installed=$((installed + 1)); else failed=$((failed + 1)); fi
+      if _install_mono_to_base "$skill_src" "$base_dir" "$base_dir/$SKILL_NAME"; then
+        say "  ℹ️  $base_dir 已自动使用兼容方式安装，可正常使用"
+        installed=$((installed + 1))
+      else
+        failed=$((failed + 1))
+      fi
     fi
   done
   if [ "$installed" -eq 0 ]; then
@@ -792,6 +838,10 @@ install_skills_to_homes() {
     return 1
   fi
   rm -f "$SKILL_STATE_ROOT/skills-state.json"
+  say "✅ DWS Skills 安装完成"
+  say "   统一安装位置：$root/.agents/skills"
+  say "   已自动适配本机上检测到的 Agent"
+  say "ℹ️  下一步：请重启已打开的 Agent，使新 Skills 生效"
 }
 
 # multi_tree_has_skills returns 0 only when the given multi bundle directory
@@ -822,25 +872,9 @@ install_multi_skills_to_homes() {
   failed=0
   if _install_multi_to_base "$multi_src" "$root/.agents/skills" "$root" ".agents/skills"; then installed=1; else failed=1; fi
   [ "$installed" -gt 0 ] || { say "  ⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败"; return 1; }
-  for agent_dir in \
-    ".claude/skills" \
-    ".cursor/skills" \
-    ".qoder/skills" \
-    ".qoderwork/skills" \
-    ".gemini/skills" \
-    ".codex/skills" \
-    ".zcode/skills" \
-    ".github/skills" \
-    ".windsurf/skills" \
-    ".augment/skills" \
-    ".cline/skills" \
-    ".amp/skills" \
-    ".kiro/skills" \
-    ".trae/skills" \
-    ".openclaw/skills" \
-    ".hermes/skills"
+  for agent_dir in $(agent_skill_dirs)
   do
-    base_dir="$root/$agent_dir"
+    base_dir="$(resolve_agent_skill_base "$root" "$agent_dir")"
     parent_gate="$(dirname "$base_dir")"
     [ -e "$parent_gate" ] || continue
     same_physical_skill_root "$base_dir" "$root/.agents/skills" && continue
@@ -852,8 +886,12 @@ install_multi_skills_to_homes() {
     if link_canonical_skills_to_base "$root" "$base_dir" multi; then
       installed=$((installed + 1))
     else
-      say "  ⚠️  $base_dir 无法创建 Skill 链接，回退为直接复制"
-      if _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"; then installed=$((installed + 1)); else failed=$((failed + 1)); fi
+      if _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"; then
+        say "  ℹ️  $base_dir 已自动使用兼容方式安装，可正常使用"
+        installed=$((installed + 1))
+      else
+        failed=$((failed + 1))
+      fi
     fi
   done
   if [ "$installed" -eq 0 ]; then
@@ -865,6 +903,10 @@ install_multi_skills_to_homes() {
     return 1
   fi
   write_skills_state "$multi_src" "install.sh" || return 1
+  say "✅ DWS Skills 安装完成"
+  say "   统一安装位置：$root/.agents/skills"
+  say "   已自动适配本机上检测到的 Agent"
+  say "ℹ️  下一步：请重启已打开的 Agent，使新 Skills 生效"
 }
 
 _install_multi_to_base() {
