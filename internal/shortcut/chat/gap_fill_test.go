@@ -763,6 +763,7 @@ func TestCrossPlatformCoverageMessagesSendTextModesAndExecuteGuard(t *testing.T)
 
 func TestCrossPlatformCoverageMessagesSendCardOneCallLifecycle(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
+		// Legacy servers may still return atTag. Runtime intentionally ignores it.
 		"im/create_and_send_card":  `{"result":{"card":{"biz_id":"biz-1","atTag":"<a atId=D-one>甲</a> <a atId=D-two>乙</a> "}}}`,
 		"im/update_streaming_card": `{"result":{"updated":true}}`,
 	}}
@@ -799,7 +800,7 @@ func TestCrossPlatformCoverageMessagesSendCardOneCallLifecycle(t *testing.T) {
 		t.Fatalf("card update leaked atAll: %#v", fake.calls[1].args)
 	}
 	if fake.calls[1].args["bizId"] != "biz-1" ||
-		fake.calls[1].args["msgContent"] != "<a atId=D-one>甲</a> <a atId=D-two>乙</a> 完成" ||
+		fake.calls[1].args["msgContent"] != "<a atId=D-one>D-one</a> <a atId=D-two>D-two</a> <a atId=10>所有人</a> 完成" ||
 		fake.calls[1].args["flowStatus"] != 3 {
 		t.Fatalf("card update args = %#v", fake.calls[1].args)
 	}
@@ -833,9 +834,10 @@ func TestCrossPlatformCoverageMessagesSendCardKeepsContentWithoutAtTag(t *testin
 	}
 }
 
-func TestCrossPlatformCoverageMessagesSendCardRejectsMissingRequestedAtTag(t *testing.T) {
+func TestCrossPlatformCoverageMessagesSendCardDoesNotRequireServerAtTag(t *testing.T) {
 	fake := &larkAlignmentCaller{responses: map[string]string{
-		"im/create_and_send_card": `{"result":{"bizId":"biz-missing-at-tag"}}`,
+		"im/create_and_send_card":  `{"result":{"bizId":"biz-without-at-tag"}}`,
+		"im/update_streaming_card": `{"result":{"updated":true}}`,
 	}}
 	helpers.InitDeps(fake)
 	root := newPlatformCoverageRoot()
@@ -846,12 +848,14 @@ func TestCrossPlatformCoverageMessagesSendCardRejectsMissingRequestedAtTag(t *te
 		"--content", "正文",
 		"--yes",
 	})
-	err := root.Execute()
-	if err == nil || !strings.Contains(err.Error(), "biz-missing-at-tag") || !strings.Contains(err.Error(), "atTag") {
-		t.Fatalf("error = %v, want recoverable missing-atTag error containing bizId", err)
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
 	}
-	if len(fake.calls) != 1 || fake.calls[0].tool != "create_and_send_card" {
-		t.Fatalf("card calls = %#v, want create only", fake.calls)
+	if len(fake.calls) != 2 || fake.calls[1].tool != "update_streaming_card" {
+		t.Fatalf("card calls = %#v, want create then update", fake.calls)
+	}
+	if got := fake.calls[1].args["msgContent"]; got != "<a atId=D-mentioned>D-mentioned</a> 正文" {
+		t.Fatalf("card update content = %#v", got)
 	}
 }
 
@@ -999,7 +1003,7 @@ func TestCrossPlatformCoverageMessagesSendCardDryRunAndFailureBoundaries(t *test
 		if _, exists := updateArguments["atAll"]; exists {
 			t.Fatalf("card update dry-run leaked atAll: %#v", updateArguments)
 		}
-		if updateArguments["msgContent"] != "<atTag from create_and_send_card>处理中" {
+		if updateArguments["msgContent"] != "<a atId=D-mentioned>D-mentioned</a> <a atId=10>所有人</a> 处理中" {
 			t.Fatalf("card update dry-run content = %#v", updateArguments["msgContent"])
 		}
 	})
@@ -1249,20 +1253,19 @@ func TestCrossPlatformCoverageFindCardBizIDResponseShapes(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageFindCardAtTagResponseShapes(t *testing.T) {
+func TestCrossPlatformCoverageBuildCardMentionPlaceholderTags(t *testing.T) {
 	for _, tc := range []struct {
-		value any
+		ids   []string
+		atAll bool
 		want  string
 	}{
-		{map[string]any{"atTag": "<a atId=D-direct>甲</a> "}, "<a atId=D-direct>甲</a> "},
-		{map[string]any{"result": map[string]any{"atTag": "<a atId=D-nested>乙</a> "}}, "<a atId=D-nested>乙</a> "},
-		{`{"result":{"card":{"atTag":"<a atId=D-json>丙</a> "}}}`, "<a atId=D-json>丙</a> "},
-		{map[string]any{"atTag": "  "}, ""},
-		{map[string]any{"atTag": 42}, ""},
-		{map[string]any{"result": map[string]any{"created": true}}, ""},
+		{ids: []string{"D-one", "D-two", "D-one"}, atAll: true, want: "<a atId=D-one>D-one</a> <a atId=D-two>D-two</a> <a atId=10>所有人</a> "},
+		{ids: []string{"", " D-one "}, want: "<a atId=D-one>D-one</a> "},
+		{atAll: true, want: "<a atId=10>所有人</a> "},
+		{},
 	} {
-		if got := findCardAtTag(tc.value); got != tc.want {
-			t.Errorf("findCardAtTag(%#v) = %q, want %q", tc.value, got, tc.want)
+		if got := buildCardMentionPlaceholderTags(tc.ids, tc.atAll); got != tc.want {
+			t.Errorf("buildCardMentionPlaceholderTags(%#v, %v) = %q, want %q", tc.ids, tc.atAll, got, tc.want)
 		}
 	}
 }

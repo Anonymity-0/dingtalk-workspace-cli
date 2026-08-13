@@ -1453,7 +1453,7 @@ var MessagesSendCard = shortcut.Shortcut{
 	Command:     "+messages-send-card",
 	Product:     "im",
 	Description: "创建流式卡片，可在同一次调用中写入内容并结束；群聊创建时可 @成员或 @所有人",
-	Intent:      "当你要发送一张流式文本卡片时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。群聊可用 --at-open-dingtalk-ids 或 --at-all 在创建卡片时设置 @对象；同时传 --content 时，Runtime 会把创建响应中的 atTag 自动加在正文前，后续更新不重复传递 @参数。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成。当前只支持 streaming text，不支持 Card JSON 组件或 action callback。",
+	Intent:      "当你要发送一张流式文本卡片时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。群聊可用 --at-open-dingtalk-ids 或 --at-all 在创建卡片时设置 @对象；同时传 --content 时，Runtime 会用 openDingTalkId 作为显示占位自行生成艾特标签并加在正文前，后续更新不重复传递 @参数，也不依赖创建响应返回 atTag。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成。当前只支持 streaming text，不支持 Card JSON 组件或 action callback。",
 	Risk:        shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
@@ -1471,11 +1471,11 @@ var MessagesSendCard = shortcut.Shortcut{
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
-			Reason:       "Reviewed card lifecycle adapter: it can resolve a userId through contact search with exact matching, call create_and_send_card alone, or compose creation with update_streaming_card after extracting the returned bizId and atTag.",
+			Reason:       "Reviewed card lifecycle adapter: it can resolve a userId through contact search with exact matching, call create_and_send_card alone, or compose creation with update_streaming_card after extracting the returned bizId and generating mention tags from the requested openDingTalkIds.",
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "创建流式卡片，可在同一次调用中写入内容并结束；群聊创建时可 @成员或 @所有人",
-			UseWhen:      []string{"当你要发送一张流式文本卡片时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。群聊可用 --at-open-dingtalk-ids 或 --at-all 在创建卡片时设置 @对象；同时传 --content 时，Runtime 会把创建响应中的 atTag 自动加在正文前，后续更新不重复传递 @参数。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成。当前只支持 streaming text，不支持 Card JSON 组件或 action callback。"},
+			UseWhen:      []string{"当你要发送一张流式文本卡片时使用；群 openConversationId、单聊 userId、单聊 openDingTalkId 严格三选一，分别使用 --group、--receiver、--receiver-open-dingtalk-id。群聊可用 --at-open-dingtalk-ids 或 --at-all 在创建卡片时设置 @对象；同时传 --content 时，Runtime 会用 openDingTalkId 作为显示占位自行生成艾特标签并加在正文前，后续更新不重复传递 @参数，也不依赖创建响应返回 atTag。--receiver 始终按 userId 通过通讯录关键词搜索做精确匹配，即使值以 D/d 开头也不会猜成 openDingTalkId；已有 openDingTalkId 时必须用显式参数直传。userId 包括在 --dry-run 时也会先解析。只传目标时创建卡片并返回 bizId，供后续 messages-update-card 流式更新；同时传 --content 时会自动串联创建和更新，默认以 flowStatus=3 完成。当前只支持 streaming text，不支持 Card JSON 组件或 action callback。"},
 			AvoidWhen:    []string{"已有 bizId、只需要追加或更新现有卡片内容时使用 +messages-update-card"},
 			Examples: []string{
 				"dws chat +messages-send-card --group <openConversationId> --at-open-dingtalk-ids <openDingTalkId> --content \"任务已完成\"",
@@ -1494,7 +1494,7 @@ var MessagesSendCard = shortcut.Shortcut{
 		{Name: "receiver-open-dingtalk-id", Type: shortcut.FlagString, Desc: "单聊接收者 openDingTalkId（与 --group/--receiver 互斥）；显式直传且不做通讯录解析"},
 		{Name: "at-open-dingtalk-ids", Type: shortcut.FlagStringSlice, Desc: "群聊创建卡片时 @ 的 openDingTalkId 列表；仅随 create_and_send_card 发送；艾特参数仅支持群聊 --group"},
 		{Name: "at-all", Type: shortcut.FlagBool, Desc: "群聊创建卡片时 @ 所有人；仅随 create_and_send_card 发送；艾特参数仅支持群聊 --group"},
-		{Name: "content", Type: shortcut.FlagString, Desc: "创建后立即写入的卡片正文；群聊 @ 时 Runtime 自动前置 create 返回的 atTag；省略时仅创建并返回 bizId"},
+		{Name: "content", Type: shortcut.FlagString, Desc: "创建后立即写入的卡片正文；群聊 @ 时 Runtime 用 openDingTalkId 显示占位自动生成并前置艾特标签；省略时仅创建并返回 bizId"},
 		{Name: "flow-status", Type: shortcut.FlagInt, Default: "3", Desc: "自动更新状态：1处理中/2输入中/3完成/4执行中/5错误；--flow-status 必须在 1-5 之间，且显式指定时必须同时提供 --content"},
 	},
 	Constraints: []shortcut.Constraint{
@@ -1531,18 +1531,19 @@ var MessagesSendCard = shortcut.Shortcut{
 		receiver := rt.Str("receiver")
 		receiverOpenID := rt.Str("receiver-open-dingtalk-id")
 		params := map[string]any{}
-		mentionsRequested := false
+		mentionTags := ""
 		switch {
 		case group != "":
 			params["openConversationId"] = group
-			if atOpenIDs := uniqueShortcutStrings(rt.StrSlice("at-open-dingtalk-ids")); len(atOpenIDs) > 0 {
+			atOpenIDs := uniqueShortcutStrings(rt.StrSlice("at-open-dingtalk-ids"))
+			if len(atOpenIDs) > 0 {
 				params["atOpenDingTalkIds"] = atOpenIDs
-				mentionsRequested = true
 			}
-			if rt.Bool("at-all") {
+			atAll := rt.Bool("at-all")
+			if atAll {
 				params["atAll"] = true
-				mentionsRequested = true
 			}
+			mentionTags = buildCardMentionPlaceholderTags(atOpenIDs, atAll)
 		case receiver != "":
 			openID, err := resolveUserOpenDingTalkID(rt, receiver)
 			if err != nil {
@@ -1579,10 +1580,6 @@ var MessagesSendCard = shortcut.Shortcut{
 		}
 		status := rt.Int("flow-status")
 		if rt.DryRun() {
-			plannedContent := content
-			if mentionsRequested {
-				plannedContent = "<atTag from create_and_send_card>" + content
-			}
 			return rt.Output(map[string]any{
 				"contractVersion": currentCardWorkflowContract.Version,
 				"dry_run":         true,
@@ -1599,7 +1596,7 @@ var MessagesSendCard = shortcut.Shortcut{
 						"tool": "update_streaming_card",
 						"arguments": map[string]any{
 							"bizId":      "<from create_and_send_card>",
-							"msgContent": plannedContent,
+							"msgContent": mentionTags + content,
 							"flowStatus": status,
 						},
 					},
@@ -1614,13 +1611,9 @@ var MessagesSendCard = shortcut.Shortcut{
 		if bizID == "" {
 			return fmt.Errorf("卡片已创建但下层未返回 bizId，无法自动更新；请检查 create_and_send_card 响应")
 		}
-		atTag := findCardAtTag(created)
-		if mentionsRequested && atTag == "" {
-			return fmt.Errorf("卡片已创建（bizId=%s），但下层未返回 atTag，无法保证请求的 @ 生效；未执行自动更新", bizID)
-		}
 		updated, err := rt.CallMCPWriteData("im", "update_streaming_card", map[string]any{
 			"bizId":      bizID,
-			"msgContent": atTag + content,
+			"msgContent": mentionTags + content,
 			"flowStatus": status,
 		})
 		if err != nil {
@@ -1641,8 +1634,19 @@ func findCardBizID(value any) string {
 	return strings.TrimSpace(findCardResponseString(value, []string{"bizId", "bizID", "biz_id"}))
 }
 
-func findCardAtTag(value any) string {
-	return findCardResponseString(value, []string{"atTag"})
+func buildCardMentionPlaceholderTags(atOpenDingTalkIDs []string, atAll bool) string {
+	var tags strings.Builder
+	for _, openID := range uniqueShortcutStrings(atOpenDingTalkIDs) {
+		tags.WriteString("<a atId=")
+		tags.WriteString(openID)
+		tags.WriteString(">")
+		tags.WriteString(openID)
+		tags.WriteString("</a> ")
+	}
+	if atAll {
+		tags.WriteString("<a atId=10>所有人</a> ")
+	}
+	return tags.String()
 }
 
 func findCardResponseString(value any, directKeys []string) string {
