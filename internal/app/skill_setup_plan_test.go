@@ -149,31 +149,36 @@ func TestCrossPlatformCoverageSkillSetupMonoPlanIncludesSameNameTarget(t *testin
 func TestCrossPlatformCoverageSkillSetupGenericCleanupDerivesHomeFromConcreteTarget(t *testing.T) {
 	home := t.TempDir()
 	dest := filepath.Join(home, ".codex", "skills")
-	genericMono := filepath.Join(home, ".agents", "skills", "dws")
-	if err := os.MkdirAll(genericMono, 0o755); err != nil {
+	canonical := filepath.Join(home, ".agents", "skills")
+	oldCodex := filepath.Join(dest, "dingtalk-chat")
+	if err := os.MkdirAll(oldCodex, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) {
 		return "", errors.New("transient HOME failure")
 	})
 
-	plan, err := buildSkillSetupPlan(skillSetupModeMulti, "source", []string{dest}, []string{"dingtalk-chat"}, true)
+	plan, err := buildSkillSetupPlan(skillSetupModeMulti, "source", []string{canonical, dest}, []string{"dingtalk-chat"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Targets) != 2 || !plan.Targets[1].CleanupOnly || plan.Targets[1].Destination != filepath.Dir(genericMono) {
-		t.Fatalf("generic cleanup target = %#v", plan.Targets)
+	if len(plan.Targets) != 2 || !plan.Targets[1].CleanupOnly || plan.Targets[1].Destination != dest {
+		t.Fatalf("universal cleanup target = %#v", plan.Targets)
 	}
-	if len(plan.Targets[1].Backups) != 1 || plan.Targets[1].Backups[0].Path != genericMono {
-		t.Fatalf("generic cleanup backups = %#v", plan.Targets[1].Backups)
+	if len(plan.Targets[1].Backups) != 1 || plan.Targets[1].Backups[0].Path != oldCodex {
+		t.Fatalf("universal cleanup backups = %#v", plan.Targets[1].Backups)
 	}
 	var preview bytes.Buffer
 	renderSkillSetupPlan(&preview, plan)
-	if !strings.Contains(preview.String(), "仅迁移旧的通用 DWS 副本") {
-		t.Fatalf("generic cleanup preview missing: %s", preview.String())
+	if !strings.Contains(preview.String(), "universal Agent") {
+		t.Fatalf("universal cleanup preview missing: %s", preview.String())
 	}
 
 	t.Run("managed multi and scan failure", func(t *testing.T) {
+		genericMono := filepath.Join(home, ".agents", "skills", "dws")
+		if err := os.MkdirAll(genericMono, 0o755); err != nil {
+			t.Fatal(err)
+		}
 		managedDir := filepath.Join(home, ".agents", "skills", "dingtalk-chat")
 		if err := os.MkdirAll(managedDir, 0o755); err != nil {
 			t.Fatal(err)
@@ -186,9 +191,6 @@ func TestCrossPlatformCoverageSkillSetupGenericCleanupDerivesHomeFromConcreteTar
 		testseam.Swap(t, &skillSetupReadDir, func(string) ([]os.DirEntry, error) { return nil, failure })
 		if _, targetErr := genericSkillCleanupTarget([]string{dest}, nil); !errors.Is(targetErr, failure) {
 			t.Fatalf("generic scan error = %v", targetErr)
-		}
-		if _, planErr := buildSkillSetupPlan(skillSetupModeMulti, "source", []string{dest}, []string{"dingtalk-chat"}, true); !errors.Is(planErr, failure) {
-			t.Fatalf("generic cleanup plan error = %v", planErr)
 		}
 	})
 }
@@ -210,7 +212,7 @@ func TestCrossPlatformCoverageSkillSetupCleanupOnlyExecutionBranches(t *testing.
 		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return "", failure })
 		var stderr bytes.Buffer
 		_, skipped, err := executeSkillSetupPlan(&skillSetupPlan{Mode: skillSetupModeMono, Targets: []skillSetupTargetPlan{cleanup}}, io.Discard, &stderr)
-		if err != nil || skipped != 1 || !strings.Contains(stderr.String(), "保留通用 Skill 副本") {
+		if err != nil || skipped != 1 || !strings.Contains(stderr.String(), "保留 universal Agent 旧副本") {
 			t.Fatalf("cleanup HOME failure = (%d, %v, %q)", skipped, err, stderr.String())
 		}
 	})

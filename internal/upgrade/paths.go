@@ -35,10 +35,11 @@ const (
 //   - test/scripts/package_script_test.go                   expectedPackagedSkillTargets
 //   - scripts/release/verify-package-managers.sh            HOME_AGENT_PARENTS / HOME_SKILL_TARGETS
 //
-// The first entry (.agents/skills) is a generic fallback. It is used only
-// when no concrete Agent home is detected; otherwise publishing there would
-// duplicate every Skill for Agents (including Codex) that scan both roots.
-// Subsequent entries are updated when their parent directory already exists.
+// The first entry (.agents/skills) is the canonical global Skill directory,
+// matching the mechanism used by lark-cli's upstream `skills` installer.
+// Agents that understand the universal .agents convention read it directly;
+// detected non-universal Agents receive relative links to this canonical
+// copy (with a direct-copy fallback when links are unavailable).
 var knownSkillDirs = []string{
 	".agents/skills",
 	".claude/skills",
@@ -59,6 +60,20 @@ var knownSkillDirs = []string{
 	".hermes/skills",
 }
 
+// universalSkillDirs are concrete Agent directories whose current clients
+// natively scan ~/.agents/skills. Publishing another copy or link below these
+// roots makes the same Skill appear twice. Keep this classification aligned
+// with vercel-labs/skills' isUniversalAgent rule. Qoderwork is intentionally
+// non-universal because it is a DWS-specific integration absent upstream.
+var universalSkillDirs = map[string]bool{
+	".cursor/skills": true,
+	".gemini/skills": true,
+	".codex/skills":  true,
+	".github/skills": true,
+	".cline/skills":  true,
+	".amp/skills":    true,
+}
+
 var (
 	upgradeUserHomeDir     = os.UserHomeDir
 	upgradeExecutable      = os.Executable
@@ -70,6 +85,8 @@ var (
 	upgradeMkdirTemp       = os.MkdirTemp
 	upgradeReadDir         = os.ReadDir
 	upgradeStat            = os.Stat
+	upgradeLstat           = os.Lstat
+	upgradeSymlink         = os.Symlink
 	upgradeBuildProvenance = skillprovenance.Build
 	upgradeReadSkillState  = skillstate.Read
 	upgradeBackupStamp     = func() string { return time.Now().UTC().Format("20060102-150405") }
@@ -90,14 +107,14 @@ const skillBackupSubdir = ".dws/skill-backups"
 // opposite layout next to it silently). Missing paths and regular files are
 // no-ops ("", nil).
 func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
-	info, err := upgradeStat(dir)
+	info, err := upgradeLstat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", nil
 		}
 		return "", fmt.Errorf("检查技能目录失败 %s: %w", dir, err)
 	}
-	if !info.IsDir() {
+	if !info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
 		return "", nil
 	}
 	rel, relErr := filepath.Rel(homeDir, dir)
@@ -204,11 +221,13 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 // `dws skill setup --mode mono` flow.
 //
 // Strategy (matches npm install.js installSkillsToHomes):
-//   - Concrete agent dirs (claude, cursor, codex, ...) are updated when their
-//     parent directory exists (e.g. ~/.codex/ exists => user has Codex)
-//   - ~/.agents/skills/ is used only when no concrete Agent is detected
+//   - ~/.agents/skills/ is always the canonical global store
+//   - universal Agents (Codex, Cursor, Gemini, Cline, Amp, Copilot) read the
+//     canonical store directly, so old agent-specific copies are retired
+//   - detected non-universal Agents receive relative links to canonical;
+//     filesystems that reject links receive a direct-copy fallback
 //   - ~/.real/ and other blacklisted paths are NEVER touched
-//   - If no location was updated at all, fall back to ~/.agents/skills/
+//   - canonical publication is mandatory and fails the upgrade loudly
 //
 // Opposite-mode leftovers are backed up to ~/.dws/skill-backups/ and then
 // removed so mono and multi never co-exist after an upgrade; a leftover that
@@ -517,34 +536,90 @@ func publishMultiUpgradeTarget(homeDir, destBase, multiRoot string, skills []str
 	return publishStagedSkillSet(homeDir, staged, victims)
 }
 
-func hasDetectedSpecificSkillRoot(homeDir string) bool {
-	for _, agentDir := range knownSkillDirs {
-		if isGenericSkillRoot(agentDir) || isBlacklisted(agentDir) {
-			continue
-		}
-		parentGate := filepath.Dir(filepath.Join(homeDir, agentDir))
-		if info, err := upgradeStat(parentGate); err == nil && info.IsDir() {
-			return true
-		}
-	}
-	return false
-}
-
 func isGenericSkillRoot(agentDir string) bool {
 	return filepath.Clean(agentDir) == filepath.Clean(".agents/skills")
 }
 
-func retireGenericSkillRoot(homeDir string, managed map[string]bool) error {
-	base := filepath.Join(homeDir, ".agents", "skills")
+func isUniversalSkillRoot(agentDir string) bool {
+	return universalSkillDirs[filepath.ToSlash(filepath.Clean(agentDir))]
+}
+
+func skillRootDetected(homeDir, agentDir string) bool {
+	parentGate := filepath.Dir(filepath.Join(homeDir, agentDir))
+	info, err := upgradeStat(parentGate)
+	return err == nil && info.IsDir()
+}
+
+func samePhysicalSkillRoot(left, right string) bool {
+	leftReal, leftErr := upgradeEvalSymlinks(left)
+	rightReal, rightErr := upgradeEvalSymlinks(right)
+	return leftErr == nil && rightErr == nil && filepath.Clean(leftReal) == filepath.Clean(rightReal)
+}
+
+func retireManagedSkillRoot(homeDir, base string, managed map[string]bool) error {
 	victims, err := managedMultiSkillVictims(base, managed)
 	if err != nil {
 		return err
 	}
 	victims = append(victims, filepath.Join(base, "dws"))
 	if _, err := backupSkillSet(homeDir, victims); err != nil {
-		return fmt.Errorf("迁移通用 Skill 根目录失败: %w", err)
+		return fmt.Errorf("迁移 Agent Skill 旧副本失败: %w", err)
 	}
 	return nil
+}
+
+func stageLinkedSkillSet(destBase, canonicalBase, prefix string, names []string) (stageRoot string, staged []stagedSkillDir, err error) {
+	if err := upgradeMkdirAll(destBase, dirPermShared); err != nil {
+		return "", nil, fmt.Errorf("创建 Agent Skill 目录失败 %s: %w", destBase, err)
+	}
+	stageRoot, err = upgradeMkdirTemp(destBase, prefix)
+	if err != nil {
+		return "", nil, fmt.Errorf("创建 Skill 链接 staging 失败 %s: %w", destBase, err)
+	}
+	defer func() {
+		if err != nil {
+			_ = upgradeRemoveAll(stageRoot)
+		}
+	}()
+	for _, name := range names {
+		target := filepath.Join(canonicalBase, name)
+		relTarget, relErr := filepath.Rel(destBase, target)
+		if relErr != nil {
+			return stageRoot, nil, fmt.Errorf("计算 Skill 相对链接失败 %s: %w", target, relErr)
+		}
+		stagedPath := filepath.Join(stageRoot, name)
+		if linkErr := upgradeSymlink(relTarget, stagedPath); linkErr != nil {
+			return stageRoot, nil, fmt.Errorf("创建 Skill 链接失败 %s -> %s: %w", stagedPath, relTarget, linkErr)
+		}
+		staged = append(staged, stagedSkillDir{staged: stagedPath, dest: filepath.Join(destBase, name)})
+	}
+	return stageRoot, staged, nil
+}
+
+func publishLinkedUpgradeTarget(homeDir, destBase, canonicalBase string, names []string, victims []string) error {
+	needed := make([]string, 0, len(names))
+	correct := make(map[string]bool, len(names))
+	for _, name := range names {
+		dest := filepath.Join(destBase, name)
+		canonical := filepath.Join(canonicalBase, name)
+		if samePhysicalSkillRoot(dest, canonical) {
+			correct[filepath.Clean(dest)] = true
+			continue
+		}
+		needed = append(needed, name)
+	}
+	filteredVictims := victims[:0]
+	for _, victim := range victims {
+		if !correct[filepath.Clean(victim)] {
+			filteredVictims = append(filteredVictims, victim)
+		}
+	}
+	stageRoot, staged, err := stageLinkedSkillSet(destBase, canonicalBase, ".dws-link-set-", needed)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = upgradeRemoveAll(stageRoot) }()
+	return publishStagedSkillSet(homeDir, staged, filteredVictims)
 }
 
 // upgradeMonoSkillLocations is the legacy mono behavior: one dws/ directory
@@ -552,64 +627,54 @@ func retireGenericSkillRoot(homeDir string, managed map[string]bool) error {
 func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, error) {
 	result := &SkillUpgradeResult{}
 	managedNames := readManagedSkillNames(homeDir)
-	hasSpecificRoot := hasDetectedSpecificSkillRoot(homeDir)
+	canonicalBase := filepath.Join(homeDir, ".agents", "skills")
+	canonicalDest := filepath.Join(canonicalBase, "dws")
+	if err := publishMonoUpgradeTarget(homeDir, canonicalBase, skillSrc, managedNames); err != nil {
+		result.Results = append(result.Results, SkillDirResult{Dir: canonicalDest, Status: SkillDirFailed, Err: err})
+		return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
+	}
+	result.Results = append(result.Results, SkillDirResult{Dir: canonicalDest, Status: SkillDirOK})
 
 	for _, agentDir := range knownSkillDirs {
-		destDir := filepath.Join(homeDir, agentDir, "dws")
-
+		if isGenericSkillRoot(agentDir) {
+			continue
+		}
+		destBase := filepath.Join(homeDir, agentDir)
+		destDir := filepath.Join(destBase, "dws")
 		if isBlacklisted(agentDir) {
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirBlacklisted})
 			continue
 		}
-		if isGenericSkillRoot(agentDir) && hasSpecificRoot {
+		if !skillRootDetected(homeDir, agentDir) {
+			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirSkipped})
 			continue
 		}
-
-		if !isGenericSkillRoot(agentDir) {
-			parentGate := filepath.Dir(filepath.Join(homeDir, agentDir))
-			if _, err := upgradeStat(parentGate); os.IsNotExist(err) {
+		if samePhysicalSkillRoot(destBase, canonicalBase) {
+			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirSkipped})
+			continue
+		}
+		if isUniversalSkillRoot(agentDir) {
+			if err := retireManagedSkillRoot(homeDir, destBase, managedNames); err != nil {
+				result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
+			} else {
 				result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirSkipped})
+			}
+			continue
+		}
+		victims, victimErr := monoUpgradeVictims(destBase, destDir, managedNames)
+		if victimErr != nil {
+			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: victimErr})
+			continue
+		}
+		if err := publishLinkedUpgradeTarget(homeDir, destBase, canonicalBase, []string{"dws"}, victims); err != nil {
+			// Match the upstream installer: platforms/filesystems that reject
+			// links receive a direct copy rather than losing Agent support.
+			if copyErr := publishMonoUpgradeTarget(homeDir, destBase, skillSrc, managedNames); copyErr != nil {
+				result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: errors.Join(err, copyErr)})
 				continue
 			}
 		}
-
-		if err := publishMonoUpgradeTarget(homeDir, filepath.Join(homeDir, agentDir), skillSrc, managedNames); err != nil {
-			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
-			continue
-		}
 		result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirOK})
-	}
-	if hasSpecificRoot && len(result.Succeeded()) > 0 {
-		genericBase := filepath.Join(homeDir, ".agents", "skills")
-		if err := retireGenericSkillRoot(homeDir, managedNames); err != nil {
-			result.Results = append(result.Results, SkillDirResult{Dir: genericBase, Status: SkillDirFailed, Err: err})
-		} else {
-			result.Results = append(result.Results, SkillDirResult{Dir: genericBase, Status: SkillDirSkipped})
-		}
-	}
-
-	// Fallback: if nothing succeeded, force the primary location. The multi
-	// leftovers under the primary base are the usual reason the primary
-	// install failed, so clean them first — failing loud like the multi
-	// fallback — instead of letting mono and multi co-exist marked OK.
-	if len(result.Succeeded()) == 0 && !hasSpecificRoot {
-		destBase := filepath.Join(homeDir, ".agents", "skills")
-		dest := filepath.Join(destBase, "dws")
-		if err := publishMonoUpgradeTarget(homeDir, destBase, skillSrc, managedNames); err != nil {
-			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
-		}
-		// Replace the earlier failed entry for this dir (if any) or append a new one
-		replaced := false
-		for idx, r := range result.Results {
-			if r.Dir == dest {
-				result.Results[idx] = SkillDirResult{Dir: dest, Status: SkillDirOK}
-				replaced = true
-				break
-			}
-		}
-		if !replaced {
-			result.Results = append(result.Results, SkillDirResult{Dir: dest, Status: SkillDirOK})
-		}
 	}
 
 	// Best-effort: refresh the user-level mono cache so that
@@ -633,60 +698,50 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 
 	result := &SkillUpgradeResult{}
 	managedNames := readManagedSkillNames(homeDir)
-	hasSpecificRoot := hasDetectedSpecificSkillRoot(homeDir)
+	canonicalBase := filepath.Join(homeDir, ".agents", "skills")
+	if err := publishMultiUpgradeTarget(homeDir, canonicalBase, multiRoot, skills, skillSet, managedNames); err != nil {
+		result.Results = append(result.Results, SkillDirResult{Dir: canonicalBase, Status: SkillDirFailed, Err: err})
+		return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
+	}
+	result.Results = append(result.Results, SkillDirResult{Dir: canonicalBase, Status: SkillDirOK})
 
 	for _, agentDir := range knownSkillDirs {
+		if isGenericSkillRoot(agentDir) {
+			continue
+		}
 		destBase := filepath.Join(homeDir, agentDir)
-
 		if isBlacklisted(agentDir) {
 			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirBlacklisted})
 			continue
 		}
-		if isGenericSkillRoot(agentDir) && hasSpecificRoot {
+		if !skillRootDetected(homeDir, agentDir) {
+			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirSkipped})
 			continue
 		}
-
-		if !isGenericSkillRoot(agentDir) {
-			parentGate := filepath.Dir(destBase)
-			if _, err := upgradeStat(parentGate); os.IsNotExist(err) {
+		if samePhysicalSkillRoot(destBase, canonicalBase) {
+			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirSkipped})
+			continue
+		}
+		if isUniversalSkillRoot(agentDir) {
+			if err := retireManagedSkillRoot(homeDir, destBase, managedNames); err != nil {
+				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
+			} else {
 				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirSkipped})
+			}
+			continue
+		}
+		victims, victimErr := multiUpgradeVictims(destBase, skillSet, skills, managedNames)
+		if victimErr != nil {
+			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: victimErr})
+			continue
+		}
+		if err := publishLinkedUpgradeTarget(homeDir, destBase, canonicalBase, skills, victims); err != nil {
+			if copyErr := publishMultiUpgradeTarget(homeDir, destBase, multiRoot, skills, skillSet, managedNames); copyErr != nil {
+				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: errors.Join(err, copyErr)})
 				continue
 			}
 		}
-
-		if err := publishMultiUpgradeTarget(homeDir, destBase, multiRoot, skills, skillSet, managedNames); err != nil {
-			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
-			continue
-		}
 		result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirOK})
-	}
-	if hasSpecificRoot && len(result.Succeeded()) > 0 {
-		genericBase := filepath.Join(homeDir, ".agents", "skills")
-		if err := retireGenericSkillRoot(homeDir, managedNames); err != nil {
-			result.Results = append(result.Results, SkillDirResult{Dir: genericBase, Status: SkillDirFailed, Err: err})
-		} else {
-			result.Results = append(result.Results, SkillDirResult{Dir: genericBase, Status: SkillDirSkipped})
-		}
-	}
-
-	// Fallback: if nothing succeeded, force the primary location
-	if len(result.Succeeded()) == 0 && !hasSpecificRoot {
-		destBase := filepath.Join(homeDir, ".agents", "skills")
-		if err := publishMultiUpgradeTarget(homeDir, destBase, multiRoot, skills, skillSet, managedNames); err != nil {
-			return result, fmt.Errorf("所有技能目录安装失败，回退到主目录也失败: %w", err)
-		}
-		// Replace the earlier failed entry for this dir (if any) or append a new one
-		replaced := false
-		for idx, r := range result.Results {
-			if r.Dir == destBase {
-				result.Results[idx] = SkillDirResult{Dir: destBase, Status: SkillDirOK}
-				replaced = true
-				break
-			}
-		}
-		if !replaced {
-			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirOK})
-		}
 	}
 
 	// Best-effort: refresh the user-level caches so that `dws skill setup`
@@ -789,7 +844,7 @@ func managedMultiSkillVictims(baseDir string, managed ...map[string]bool) ([]str
 	}
 	victims := make([]string, 0)
 	for _, e := range entries {
-		if !e.IsDir() || !isManagedMultiSkillDir(filepath.Join(baseDir, e.Name()), managed...) {
+		if (!e.IsDir() && e.Type()&os.ModeSymlink == 0) || !isManagedMultiSkillDir(filepath.Join(baseDir, e.Name()), managed...) {
 			continue
 		}
 		victims = append(victims, filepath.Join(baseDir, e.Name()))
@@ -825,7 +880,7 @@ func oppositeModeSkillVictims(destBase string, skillSet map[string]bool, managed
 		return nil, fmt.Errorf("读取技能目录失败 %s: %w", destBase, err)
 	}
 	for _, e := range entries {
-		if !e.IsDir() || skillSet[e.Name()] || !isManagedMultiSkillDir(filepath.Join(destBase, e.Name()), managed...) {
+		if (!e.IsDir() && e.Type()&os.ModeSymlink == 0) || skillSet[e.Name()] || !isManagedMultiSkillDir(filepath.Join(destBase, e.Name()), managed...) {
 			continue
 		}
 		victims = append(victims, filepath.Join(destBase, e.Name()))

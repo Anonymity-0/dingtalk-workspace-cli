@@ -643,13 +643,27 @@ _install_mono_to_base() {
   say "✅ Skills → ${_mono_label} (${_mono_count} files)"
 }
 
-# Move DWS-owned copies out of the generic root once a concrete Agent root is
-# active. This prevents Agents such as Codex from discovering the same Skill
-# through both ~/.agents/skills and ~/.codex/skills.
-retire_generic_skill_root() {
+# Match the upstream `skills` CLI used by lark-cli: ~/.agents/skills is the
+# canonical store. Universal Agents read it directly; other Agents receive
+# relative links and fall back to copies only when links are unavailable.
+is_universal_agent_dir() {
+  case "$1" in
+    ".cursor/skills"|".gemini/skills"|".codex/skills"|".github/skills"|".cline/skills"|".amp/skills") return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+same_physical_skill_root() {
+  [ -d "$1" ] && [ -d "$2" ] || return 1
+  _sps_left="$(cd -P "$1" 2>/dev/null && pwd)" || return 1
+  _sps_right="$(cd -P "$2" 2>/dev/null && pwd)" || return 1
+  [ "$_sps_left" = "$_sps_right" ]
+}
+
+retire_agent_skill_root() {
   _rgs_root="$1"
-  _rgs_base="$_rgs_root/.agents/skills"
-  _rgs_stage="$(mktemp -d "${TMPDIR:-/tmp}/dws-retire-generic.XXXXXX")" || return 1
+  _rgs_base="$2"
+  _rgs_stage="$(mktemp -d "${TMPDIR:-/tmp}/dws-retire-agent.XXXXXX")" || return 1
   _rgs_backups="$_rgs_stage/backups"
   : > "$_rgs_backups" || { rm -rf "$_rgs_stage"; return 1; }
   for _rgs_victim in "$_rgs_base/dws" "$_rgs_base"/*; do
@@ -666,6 +680,64 @@ retire_generic_skill_root() {
   rm -rf "$_rgs_stage"
 }
 
+link_canonical_skills_to_base() {
+  _lcs_root="$1"
+  _lcs_base="$2"
+  _lcs_mode="$3"
+  _lcs_canonical="$_lcs_root/.agents/skills"
+  mkdir -p "$_lcs_base" || return 1
+  same_physical_skill_root "$_lcs_base" "$_lcs_canonical" && return 0
+  _lcs_stage="$(mktemp -d "$_lcs_base/.dws-link-set.XXXXXX")" || return 1
+  _lcs_backups="$_lcs_stage/.backups"
+  _lcs_published="$_lcs_stage/.published"
+  : > "$_lcs_backups" || { rm -rf "$_lcs_stage"; return 1; }
+  : > "$_lcs_published" || { rm -rf "$_lcs_stage"; return 1; }
+  if [ "$_lcs_mode" = "mono" ]; then
+    _lcs_names="dws"
+  else
+    _lcs_names=""
+    for _lcs_skill in "$_lcs_canonical"/*/; do
+      [ -f "${_lcs_skill}SKILL.md" ] || continue
+      _lcs_names="$_lcs_names $(basename "$_lcs_skill")"
+    done
+  fi
+  _lcs_publish_names=""
+  for _lcs_name in $_lcs_names; do
+    if same_physical_skill_root "$_lcs_base/$_lcs_name" "$_lcs_canonical/$_lcs_name"; then
+      continue
+    fi
+    ln -s "../../.agents/skills/$_lcs_name" "$_lcs_stage/$_lcs_name" || { rm -rf "$_lcs_stage"; return 1; }
+    _lcs_publish_names="$_lcs_publish_names $_lcs_name"
+  done
+  for _lcs_victim in "$_lcs_base/dws" "$_lcs_base"/*; do
+    [ -d "$_lcs_victim" ] || continue
+    [ "$_lcs_victim" = "$_lcs_stage" ] && continue
+    same_physical_skill_root "$_lcs_victim" "$_lcs_canonical/$(basename "$_lcs_victim")" && continue
+    if [ "$(basename "$_lcs_victim")" != "dws" ] && ! is_managed_multi_skill_dir "$_lcs_victim"; then
+      continue
+    fi
+    if ! backup_and_record_skill_dir "$_lcs_victim" "$_lcs_backups"; then
+      restore_multi_skill_set /dev/null "$_lcs_backups" || true
+      rm -rf "$_lcs_stage"
+      return 1
+    fi
+  done
+  for _lcs_name in $_lcs_publish_names; do
+    printf '%s\n' "$_lcs_base/$_lcs_name" >> "$_lcs_published" || {
+      restore_multi_skill_set "$_lcs_published" "$_lcs_backups" || true
+      rm -rf "$_lcs_stage"
+      return 1
+    }
+    if ! mv "$_lcs_stage/$_lcs_name" "$_lcs_base/$_lcs_name"; then
+      restore_multi_skill_set "$_lcs_published" "$_lcs_backups" || true
+      rm -rf "$_lcs_stage"
+      return 1
+    fi
+    say "  ↪ Skills → $_lcs_base/$_lcs_name"
+  done
+  rm -rf "$_lcs_stage"
+}
+
 # Install skill tree into all agent homes (same rules as build/npm/install.js installSkillsToHomes).
 # Installing mono removes proven DWS-managed multi leftovers for mutual exclusion,
 # mirroring `dws skill setup --mode mono`.
@@ -673,20 +745,11 @@ install_skills_to_homes() {
   skill_src="$1"
   root="${HOME}"
   installed=0
-  attempted=0
+  attempted=1
   failed=0
-  idx=0
-  specific_agents=0
-  for specific_dir in \
-    ".claude/skills" ".cursor/skills" ".qoder/skills" ".qoderwork/skills" \
-    ".gemini/skills" ".codex/skills" ".zcode/skills" ".github/skills" ".windsurf/skills" \
-    ".augment/skills" ".cline/skills" ".amp/skills" ".kiro/skills" \
-    ".trae/skills" ".openclaw/skills" ".hermes/skills"
-  do
-    [ -e "$root/$(dirname "$specific_dir")" ] && specific_agents=$((specific_agents + 1))
-  done
+  if _install_mono_to_base "$skill_src" "$root/.agents/skills" "~/.agents/skills/$SKILL_NAME"; then installed=1; else failed=1; fi
+  [ "$installed" -gt 0 ] || { say "  ⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败"; return 1; }
   for agent_dir in \
-    ".agents/skills" \
     ".claude/skills" \
     ".cursor/skills" \
     ".qoder/skills" \
@@ -704,50 +767,22 @@ install_skills_to_homes() {
     ".openclaw/skills" \
     ".hermes/skills"
   do
-    if [ "$idx" -eq 0 ] && [ "$specific_agents" -gt 0 ]; then
-      idx=$((idx + 1))
-      continue
-    fi
     base_dir="$root/$agent_dir"
     parent_gate="$(dirname "$base_dir")"
-    if [ "$idx" -gt 0 ] && [ ! -e "$parent_gate" ]; then
-      idx=$((idx + 1))
+    [ -e "$parent_gate" ] || continue
+    same_physical_skill_root "$base_dir" "$root/.agents/skills" && continue
+    attempted=$((attempted + 1))
+    if is_universal_agent_dir "$agent_dir"; then
+      retire_agent_skill_root "$root" "$base_dir" || failed=$((failed + 1))
       continue
     fi
-    attempted=$((attempted + 1))
-    case "$root" in
-      "$HOME")
-        label="~/$agent_dir/$SKILL_NAME"
-        ;;
-      *)
-        label="$root/$agent_dir/$SKILL_NAME"
-        ;;
-    esac
-    if _install_mono_to_base "$skill_src" "$base_dir" "$label"; then
+    if link_canonical_skills_to_base "$root" "$base_dir" mono; then
       installed=$((installed + 1))
     else
-      failed=$((failed + 1))
+      say "  ⚠️  $base_dir 无法创建 Skill 链接，回退为直接复制"
+      if _install_mono_to_base "$skill_src" "$base_dir" "$base_dir/$SKILL_NAME"; then installed=$((installed + 1)); else failed=$((failed + 1)); fi
     fi
-    idx=$((idx + 1))
   done
-  if [ "$specific_agents" -gt 0 ] && [ "$installed" -gt 0 ]; then
-    retire_generic_skill_root "$root" || failed=$((failed + 1))
-  fi
-  if [ "$attempted" -eq 0 ]; then
-    case "$root" in
-      "$HOME")
-        flabel="~/.agents/skills/$SKILL_NAME"
-        ;;
-      *)
-        flabel="$root/.agents/skills/$SKILL_NAME"
-        ;;
-    esac
-    if _install_mono_to_base "$skill_src" "$root/.agents/skills" "$flabel"; then
-      installed=$((installed + 1))
-    else
-      failed=$((failed + 1))
-    fi
-  fi
   if [ "$installed" -eq 0 ]; then
     say "  ⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败"
     return 1
@@ -783,20 +818,11 @@ install_multi_skills_to_homes() {
   multi_src="$1"
   root="${HOME}"
   installed=0
-  attempted=0
+  attempted=1
   failed=0
-  idx=0
-  specific_agents=0
-  for specific_dir in \
-    ".claude/skills" ".cursor/skills" ".qoder/skills" ".qoderwork/skills" \
-    ".gemini/skills" ".codex/skills" ".zcode/skills" ".github/skills" ".windsurf/skills" \
-    ".augment/skills" ".cline/skills" ".amp/skills" ".kiro/skills" \
-    ".trae/skills" ".openclaw/skills" ".hermes/skills"
-  do
-    [ -e "$root/$(dirname "$specific_dir")" ] && specific_agents=$((specific_agents + 1))
-  done
+  if _install_multi_to_base "$multi_src" "$root/.agents/skills" "$root" ".agents/skills"; then installed=1; else failed=1; fi
+  [ "$installed" -gt 0 ] || { say "  ⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败"; return 1; }
   for agent_dir in \
-    ".agents/skills" \
     ".claude/skills" \
     ".cursor/skills" \
     ".qoder/skills" \
@@ -814,31 +840,22 @@ install_multi_skills_to_homes() {
     ".openclaw/skills" \
     ".hermes/skills"
   do
-    if [ "$idx" -eq 0 ] && [ "$specific_agents" -gt 0 ]; then
-      idx=$((idx + 1))
-      continue
-    fi
     base_dir="$root/$agent_dir"
     parent_gate="$(dirname "$base_dir")"
-    if [ "$idx" -gt 0 ] && [ ! -e "$parent_gate" ]; then
-      idx=$((idx + 1))
+    [ -e "$parent_gate" ] || continue
+    same_physical_skill_root "$base_dir" "$root/.agents/skills" && continue
+    attempted=$((attempted + 1))
+    if is_universal_agent_dir "$agent_dir"; then
+      retire_agent_skill_root "$root" "$base_dir" || failed=$((failed + 1))
       continue
     fi
-    attempted=$((attempted + 1))
-    if _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"; then
+    if link_canonical_skills_to_base "$root" "$base_dir" multi; then
       installed=$((installed + 1))
     else
-      failed=$((failed + 1))
-      say "  ⚠️  跳过 ${base_dir}（备份或复制失败，未完成 multi 安装）"
+      say "  ⚠️  $base_dir 无法创建 Skill 链接，回退为直接复制"
+      if _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"; then installed=$((installed + 1)); else failed=$((failed + 1)); fi
     fi
-    idx=$((idx + 1))
   done
-  if [ "$specific_agents" -gt 0 ] && [ "$installed" -gt 0 ]; then
-    retire_generic_skill_root "$root" || failed=$((failed + 1))
-  fi
-  if [ "$attempted" -eq 0 ] && _install_multi_to_base "$multi_src" "$root/.agents/skills" "$root" ".agents/skills"; then
-    installed=$((installed + 1))
-  fi
   if [ "$installed" -eq 0 ]; then
     say "  ⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败"
     return 1

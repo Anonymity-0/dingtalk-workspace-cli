@@ -193,7 +193,7 @@ scenario("multi install lays out sibling skills and caches", () => {
   }
 });
 
-scenario("Codex uses its canonical root without a generic duplicate", () => {
+scenario("Codex reads the universal canonical root and beta.6 copies are migrated", () => {
   const { tmp, pkg, home } = stagePkg({
     "mono/SKILL.md": "# mono fixture\n",
     "multi/dingtalk-chat/SKILL.md": "# dingtalk-chat\n",
@@ -201,6 +201,7 @@ scenario("Codex uses its canonical root without a generic duplicate", () => {
   });
   try {
     writeFile(path.join(home, ".codex", "config.toml"), "model = \"test\"\n");
+    writeFile(path.join(home, ".codex", "skills", "dingtalk-chat", "SKILL.md"), "beta.6 copy\n");
     writeFile(
       path.join(home, ".agents", "skills", "dws", "multi", "dingtalk-chat", "SKILL.md"),
       "old nested duplicate\n",
@@ -209,12 +210,12 @@ scenario("Codex uses its canonical root without a generic duplicate", () => {
     const res = runInstall(pkg, home, "multi");
     assert.equal(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
     assert.ok(
-      fs.existsSync(path.join(home, ".codex", "skills", "dingtalk-chat", "SKILL.md")),
-      "Codex canonical Skill installed",
+      fs.existsSync(path.join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md")),
+      "universal canonical Skill installed",
     );
     assert.ok(
-      !fs.existsSync(path.join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md")),
-      "generic flat duplicate not installed",
+      !fs.existsSync(path.join(home, ".codex", "skills", "dingtalk-chat")),
+      "beta.6 Codex duplicate migrated",
     );
     assert.ok(
       !fs.existsSync(path.join(home, ".agents", "skills", "dws")),
@@ -225,7 +226,7 @@ scenario("Codex uses its canonical root without a generic duplicate", () => {
   }
 });
 
-scenario("ZCode uses its canonical root without a generic duplicate", () => {
+scenario("ZCode links its Agent root to the canonical store", () => {
   const { tmp, pkg, home } = stagePkg({
     "mono/SKILL.md": "# mono fixture\n",
     "multi/dingtalk-chat/SKILL.md": "# dingtalk-chat\n",
@@ -241,8 +242,10 @@ scenario("ZCode uses its canonical root without a generic duplicate", () => {
     assert.equal(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
     assert.ok(
       fs.existsSync(path.join(home, ".zcode", "skills", "dingtalk-chat", "SKILL.md")),
-      "ZCode canonical Skill installed",
+      "ZCode Skill resolves through canonical link",
     );
+    assert.ok(fs.lstatSync(path.join(home, ".zcode", "skills", "dingtalk-chat")).isSymbolicLink());
+    assert.ok(fs.existsSync(path.join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md")));
     assert.ok(
       !fs.existsSync(path.join(home, ".agents", "skills", "dws")),
       "legacy generic duplicate retired",

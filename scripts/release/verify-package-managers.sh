@@ -90,6 +90,14 @@ HOME_SPECIFIC_SKILL_BASES="
 .openclaw/skills
 .hermes/skills
 "
+HOME_UNIVERSAL_SKILL_BASES="
+.cursor/skills
+.gemini/skills
+.codex/skills
+.github/skills
+.cline/skills
+.amp/skills
+"
 cleanup() {
   if [ "$RUN_BREW" -eq 1 ] && command -v brew >/dev/null 2>&1 && [ -n "${BREW_TAP_NAME:-}" ]; then
     HOME="$TMP_ROOT/brew-home" HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 \
@@ -118,23 +126,28 @@ verify_skill_base() {
 
 verify_skill_targets() {
   home_root="$1"
-  found_specific=0
+  # lark-cli/skills-compatible canonical store is always present, regardless
+  # of which concrete Agent homes existed at install time.
+  verify_skill_base "$home_root" ".agents/skills"
   for base in $HOME_SPECIFIC_SKILL_BASES; do
     parent="${base%/skills}"
-    if [ -d "$home_root/$parent" ]; then
-      verify_skill_base "$home_root" "$base"
-      found_specific=1
+    [ -d "$home_root/$parent" ] || continue
+    universal=0
+    for universal_base in $HOME_UNIVERSAL_SKILL_BASES; do
+      [ "$base" = "$universal_base" ] && universal=1
+    done
+    if [ "$universal" -eq 1 ]; then
+      for name in dingtalk-shared dingtalk-misc dws; do
+        [ ! -e "$home_root/$base/$name" ] || \
+          err "unexpected duplicate Skill found in universal Agent root $home_root/$base/$name"
+      done
+      continue
     fi
-  done
-
-  if [ "$found_specific" -eq 0 ]; then
-    verify_skill_base "$home_root" ".agents/skills"
-    return
-  fi
-
-  for name in dingtalk-shared dingtalk-misc dws; do
-    [ ! -e "$home_root/.agents/skills/$name" ] || \
-      err "unexpected generic Skill copy found in $home_root/.agents/skills/$name"
+    verify_skill_base "$home_root" "$base"
+    for name in dingtalk-shared dingtalk-misc; do
+      [ -L "$home_root/$base/$name" ] || \
+        err "expected canonical Skill link not found at $home_root/$base/$name"
+    done
   done
 }
 
