@@ -103,6 +103,7 @@ func TestCrossPlatformCoverageSkillSetupCanonicalTargetsAndAgentCapabilities(t *
 func TestCrossPlatformCoverageSkillSetupDetectsShallowAndApplicationAgents(t *testing.T) {
 	home := t.TempDir()
 	testseam.Swap(t, &skillSetupSystemHomeDir, func() (string, error) { return home, nil })
+	testseam.Swap(t, &skillSetupGetenv, func(string) string { return "" })
 	for _, dir := range []string{filepath.Join(home, ".config", "kimchi"), filepath.Join(home, ".tabnine")} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -116,9 +117,11 @@ func TestCrossPlatformCoverageSkillSetupDetectsShallowAndApplicationAgents(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
+	zcodeApp := filepath.Join(string(filepath.Separator), "Applications", "ZCode.app")
+	minimaxApp := filepath.Join(string(filepath.Separator), "Applications", "MiniMax Code.app")
 	originalStat := skillSetupStat
 	testseam.Swap(t, &skillSetupStat, func(path string) (os.FileInfo, error) {
-		if path == "/Applications/ZCode.app" || path == "/Applications/MiniMax Code.app" {
+		if path == zcodeApp || path == minimaxApp {
 			return appInfo, nil
 		}
 		return originalStat(path)

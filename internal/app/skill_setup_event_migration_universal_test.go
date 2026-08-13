@@ -1,6 +1,8 @@
 package app
 
 import (
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,4 +86,49 @@ func TestCrossPlatformCoverageSkillSetupUnrelatedSelectionPreservesUniversalFold
 	if body, err := os.ReadFile(filepath.Join(chat, "SKILL.md")); err != nil || string(body) != "keep chat\n" {
 		t.Fatalf("unselected chat changed: body=%q err=%v", body, err)
 	}
+}
+
+func TestCrossPlatformCoverageSkillSetupUniversalRetirementFailures(t *testing.T) {
+	failure := errors.New("retirement denied")
+
+	t.Run("home", func(t *testing.T) {
+		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return "", failure })
+		codex := filepath.Join(t.TempDir(), ".codex", "skills")
+		if err := retireMigratedUniversalSkills([]string{codex}, []string{multiEventSkill}, io.Discard); !errors.Is(err, failure) {
+			t.Fatalf("home failure = %v, want %v", err, failure)
+		}
+	})
+
+	t.Run("deduplicate", func(t *testing.T) {
+		home := t.TempDir()
+		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+		codex := filepath.Join(home, ".codex", "skills")
+		if err := retireMigratedUniversalSkills(
+			[]string{codex, codex},
+			[]string{multiEventSkill, multiEventSkill},
+			io.Discard,
+		); err != nil {
+			t.Fatalf("deduplicated retirement failed: %v", err)
+		}
+	})
+
+	t.Run("backup propagates through command", func(t *testing.T) {
+		home := t.TempDir()
+		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+		codex := filepath.Join(home, ".codex", "skills")
+		writeFoldedEventMisc(t, codex)
+		src := writeMultiSkillSource(t, []string{multiEventSkill, multiSharedSkill, multiMiscSkill})
+		testseam.Swap(t, &skillSetupBackupAndRemove, func(string, string) (string, error) {
+			return "", failure
+		})
+		_, _, err := executeMultiSkillSetupTest(
+			t,
+			src,
+			[]string{filepath.Join(home, ".agents", "skills"), codex},
+			"--skill", "event", "--yes",
+		)
+		if !errors.Is(err, failure) || !strings.Contains(err.Error(), "退役 universal Agent") {
+			t.Fatalf("retirement backup failure = %v, want wrapped %v", err, failure)
+		}
+	})
 }

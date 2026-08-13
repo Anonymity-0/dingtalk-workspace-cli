@@ -537,6 +537,26 @@ func TestCrossPlatformCoverageSkillSetupEventMigrationFailureBranches(t *testing
 		}
 	})
 
+	t.Run("canonical ordinary install error", func(t *testing.T) {
+		testseam.Swap(t, &skillSetupInstallMulti, func(string, []string, []string, io.Writer, io.Writer, bool) (int, int, error) {
+			return 0, 0, fail
+		})
+		home := t.TempDir()
+		canonical := filepath.Join(home, ".agents", "skills")
+		universalMigration := filepath.Join(home, ".codex", "skills")
+		if _, _, err := installMultiSkillsWithEventMigration(
+			"src",
+			[]string{multiEventSkill},
+			[]string{canonical, universalMigration},
+			[]string{universalMigration},
+			true,
+			io.Discard,
+			io.Discard,
+		); !errors.Is(err, fail) {
+			t.Fatalf("canonical ordinary install failure = %v, want %v", err, fail)
+		}
+	})
+
 	t.Run("prerequisite install error", func(t *testing.T) {
 		testseam.Swap(t, &skillSetupInstallMulti, func(string, []string, []string, io.Writer, io.Writer, bool) (int, int, error) {
 			return 0, 0, fail
