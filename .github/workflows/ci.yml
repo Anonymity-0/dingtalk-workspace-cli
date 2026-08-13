@@ -1318,6 +1318,7 @@ jobs:
         env:
           CLASSIFIED_CHANGELOG_CHANGED: ${{ needs.lint.outputs.changelog_changed }}
           CHANGELOG_ONLY: ${{ needs.lint.outputs.changelog_only }}
+          RELEASE_SEAL_ONLY: ${{ needs.lint.outputs.release_seal_only }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -eu

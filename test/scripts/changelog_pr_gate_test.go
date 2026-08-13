@@ -1019,6 +1019,15 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 	}
 
 	admission := readWorkflow(".github/workflows/ci.yml")
+	policyStart := strings.Index(admission, "\n  policy:\n")
+	policyEnd := strings.Index(admission, "\n  interface-integrity:\n")
+	if policyStart < 0 || policyEnd <= policyStart {
+		t.Fatal("Code Admission workflow missing Policy job boundaries")
+	}
+	policyJob := admission[policyStart:policyEnd]
+	if strings.Count(policyJob, "RELEASE_SEAL_ONLY: ${{ needs.lint.outputs.release_seal_only }}") != 2 {
+		t.Error("Policy job must pass release-seal classification to both PR and main metadata validators")
+	}
 	for _, want := range []string{
 		"name: CI",
 		"files.length === 1",
