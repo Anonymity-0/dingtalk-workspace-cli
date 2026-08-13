@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -92,18 +91,43 @@ func TestCrossPlatformCoverageSetDropdownModeConstraints(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageSetDropdownSchemaConstraints(t *testing.T) {
-	cmd := dimensionCoverageCommand(t, "set-dropdown")
-	constraints := runtimeannotate.CommandConstraints(cmd)
-	want := runtimeannotate.RuntimeSchemaConstraints{
-		MutuallyExclusive: [][]string{{"options", "source-range"}},
-		RequireOneOf:      [][]string{{"options", "source-range"}},
-		RequireTogether:   [][]string{{"source-sheet-id", "source-range"}},
+func TestCrossPlatformCoverageSetDropdownRunEValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		options string
+		source  string
+		rangeID string
+		want    string
+	}{
+		{name: "neither mode", want: "必须且只能指定一个"},
+		{name: "source range without sheet", rangeID: "A1:A3", want: "必须同时指定 --source-sheet-id"},
+		{name: "source sheet without range", options: `[{"value":"one"}]`, source: "source", want: "必须同时指定 --source-range"},
+		{name: "invalid options JSON", options: "{", want: "JSON 解析失败"},
+		{name: "missing option value", options: `[{}]`, want: "value 为空"},
 	}
-	gotJSON, _ := json.Marshal(constraints)
-	wantJSON, _ := json.Marshal(runtimeannotate.NormalizeConstraints(want))
-	if string(gotJSON) != string(wantJSON) {
-		t.Fatalf("constraints = %s, want %s", gotJSON, wantJSON)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := dimensionCoverageCommand(t, "set-dropdown")
+			for name, value := range map[string]string{
+				"node": "node", "sheet-id": "sheet", "range": "A1",
+				"options": tc.options, "source-sheet-id": tc.source, "source-range": tc.rangeID,
+			} {
+				if err := cmd.Flags().Set(name, value); err != nil {
+					t.Fatalf("set --%s: %v", name, err)
+				}
+			}
+			err := cmd.RunE(cmd, nil)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want contains %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageSetDropdownPreservesSchemaConstraints(t *testing.T) {
+	cmd := dimensionCoverageCommand(t, "set-dropdown")
+	if constraints := runtimeannotate.CommandConstraints(cmd); !runtimeannotate.ConstraintsEmpty(constraints) {
+		t.Fatalf("constraints = %#v, want no new schema-level constraints", constraints)
 	}
 }
 
@@ -135,6 +159,7 @@ func TestCrossPlatformCoverageBatchSetDropdownSourceRange(t *testing.T) {
 		{"options": []any{map[string]any{"value": "one"}}, "source-sheet-id": "source", "source-range": "A1:A3"},
 		{"source-range": "A1:A3"},
 		{"source-sheet-id": "source", "source-range": "A1:A3", "colors": []any{"#fff"}},
+		{"source-sheet-id": "source", "source-range": "A1:A3", "source-colors": []any{"#fff"}},
 		{"source-sheet-id": "source", "source-range": "Sheet2!A1:A3"},
 	}
 	for _, value := range invalid {

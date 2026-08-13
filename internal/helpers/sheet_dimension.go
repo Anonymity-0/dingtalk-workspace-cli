@@ -907,7 +907,6 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 			Parameters: []contract.ParamDecl{
 				{Name: "multi-select", Property: "enableMultiSelect"},
 				{Name: "node", Property: "nodeId"},
-				{Name: "options", Property: "options", Required: boolPtr(false), RequiredWhen: "exactly one of --options or --source-range must be provided"},
 				{Name: "source-sheet-id", Property: "sourceRange.sheetId", Required: boolPtr(false), RequiredWhen: "--source-range is provided"},
 				{Name: "source-range", Property: "sourceRange.a1Notation", Required: boolPtr(false), RequiredWhen: "exactly one of --options or --source-range must be provided"},
 			},
@@ -924,11 +923,6 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 	setDropdownCmd.MarkFlagsOneRequired("options", "source-range")
 	setDropdownCmd.MarkFlagsMutuallyExclusive("options", "source-range")
 	setDropdownCmd.MarkFlagsRequiredTogether("source-sheet-id", "source-range")
-	cli.AnnotateRuntimeConstraints(setDropdownCmd, cli.RuntimeSchemaConstraints{
-		MutuallyExclusive: [][]string{{"options", "source-range"}},
-		RequireOneOf:      [][]string{{"options", "source-range"}},
-		RequireTogether:   [][]string{{"source-sheet-id", "source-range"}},
-	})
 
 	getDropdownCmd := &cobra.Command{
 		Use:   "get-dropdown",
