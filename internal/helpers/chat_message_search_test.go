@@ -724,6 +724,49 @@ func TestCrossPlatformCoverageChatMessageListUsesMCPMetadataGroupKey(t *testing.
 	}
 }
 
+func TestCrossPlatformCoverageChatMessageListDefaultTimeUsesShanghaiLocation(t *testing.T) {
+	previousLocal := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = previousLocal })
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "group", args: []string{"message", "list", "--group", "cid-1", "--limit", "50"}},
+		{name: "direct", args: []string{"message", "list-direct", "--user", "user-1", "--limit", "50"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caller := &chatChangedContractCaller{}
+			before := time.Now()
+			err := executeChatChangedContract(t, caller, tt.args...)
+			after := time.Now()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("calls = %#v, want one MCP call", caller.calls)
+			}
+			raw, ok := caller.calls[0].args["time"].(string)
+			if !ok || raw == "" {
+				t.Fatalf("time arg = %#v, want non-empty string", caller.calls[0].args["time"])
+			}
+			got, err := time.ParseInLocation("2006-01-02 15:04:05", raw, shanghaiLocation())
+			if err != nil {
+				t.Fatalf("time arg = %q, parse err = %v", raw, err)
+			}
+			if got.Before(before.Add(-time.Second)) || got.After(after.Add(time.Second)) {
+				t.Fatalf("time arg = %q (%s), want current time in Shanghai between %s and %s", raw, got, before, after)
+			}
+			if caller.calls[0].args["forward"] != false {
+				t.Fatalf("forward = %#v, want false when --time is omitted", caller.calls[0].args["forward"])
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageChatAuditUsesUserIDs(t *testing.T) {
 	caller := &chatChangedContractCaller{}
 	err := executeChatChangedContract(t, caller,

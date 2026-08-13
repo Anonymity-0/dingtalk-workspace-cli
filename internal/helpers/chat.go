@@ -615,6 +615,10 @@ func formatChatMessageListAllTime(ms int64) string {
 	return time.UnixMilli(ms).Format("2006-01-02 15:04:05")
 }
 
+func defaultChatMessageListTime() string {
+	return time.Now().In(shanghaiLocation()).Format("2006-01-02 15:04:05")
+}
+
 func chatMessageSearchAdvancedArgs(cmd *cobra.Command) (map[string]any, error) {
 	toolArgs := map[string]any{}
 	if v := flagOrFallback(cmd, "query", "keyword"); v != "" {
@@ -2664,7 +2668,7 @@ func newChatCommand() *cobra.Command {
 			timeVal := mustGetFlag(cmd, "time")
 			defaultForward := true
 			if timeVal == "" {
-				timeVal = time.Now().Format("2006-01-02 15:04:05")
+				timeVal = defaultChatMessageListTime()
 				defaultForward = false
 			}
 			forward, err := resolveMessageForward(cmd, defaultForward)
@@ -2756,7 +2760,7 @@ func newChatCommand() *cobra.Command {
 			timeVal, _ := cmd.Flags().GetString("time")
 			defaultForward := true
 			if strings.TrimSpace(timeVal) == "" {
-				timeVal = time.Now().Format("2006-01-02 15:04:05")
+				timeVal = defaultChatMessageListTime()
 				defaultForward = false
 			}
 			forward, err := resolveMessageForward(cmd, defaultForward)
