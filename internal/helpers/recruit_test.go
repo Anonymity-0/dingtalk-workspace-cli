@@ -14,9 +14,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -31,6 +34,9 @@ type recruitCaptureCaller struct {
 	tool      string
 	args      map[string]any
 	calls     []recruitCapturedCall
+	err       error
+	text      string
+	dryRun    bool
 }
 
 func (c *recruitCaptureCaller) CallTool(_ context.Context, productID, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -38,11 +44,24 @@ func (c *recruitCaptureCaller) CallTool(_ context.Context, productID, tool strin
 	c.tool = tool
 	c.args = args
 	c.calls = append(c.calls, recruitCapturedCall{productID: productID, tool: tool, args: args})
-	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: `{}`}}}, nil
+	if c.err != nil {
+		return nil, c.err
+	}
+	text := c.text
+	if text == "" {
+		text = `{}`
+		switch tool {
+		case recruitListJobsTool:
+			text = `{"jobs":[],"hasMore":false}`
+		case recruitCreateJobTool:
+			text = `{"jobId":"created-job"}`
+		}
+	}
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: text}}}, nil
 }
 
 func (c *recruitCaptureCaller) Format() string { return "json" }
-func (c *recruitCaptureCaller) DryRun() bool   { return false }
+func (c *recruitCaptureCaller) DryRun() bool   { return c.dryRun }
 func (c *recruitCaptureCaller) Fields() string { return "" }
 func (c *recruitCaptureCaller) JQ() string     { return "" }
 
@@ -54,9 +73,15 @@ func withRecruitCaller(t *testing.T) *recruitCaptureCaller {
 	return caller
 }
 
+func prepareRecruitTestCommand(cmd *cobra.Command) *cobra.Command {
+	ctx, _ := output.WithResultStore(context.Background())
+	cmd.SetContext(ctx)
+	return cmd
+}
+
 func TestRecruitJobListWrapsQueryParameters(t *testing.T) {
 	caller := withRecruitCaller(t)
-	cmd := newRecruitJobListCommand()
+	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
 	cmd.SetArgs([]string{
 		"--keyword", "Java", "--status", "open,draft", "--creator-user-ids", "u1,u2",
 		"--campus=false", "--cursor", "10", "--size", "30",
@@ -67,7 +92,7 @@ func TestRecruitJobListWrapsQueryParameters(t *testing.T) {
 	if caller.productID != recruitServerID || caller.tool != recruitListJobsTool {
 		t.Fatalf("dispatch = %s/%s, want %s/%s", caller.productID, caller.tool, recruitServerID, recruitListJobsTool)
 	}
-	if caller.args["cursor"] != 10 || caller.args["size"] != 30 {
+	if caller.args["cursor"] != int64(10) || caller.args["size"] != 30 {
 		t.Fatalf("pagination args = %#v", caller.args)
 	}
 	param, ok := caller.args["param"].(map[string]any)
@@ -87,9 +112,29 @@ func TestRecruitJobListWrapsQueryParameters(t *testing.T) {
 	}
 }
 
+func TestRecruitJobListCursorRoundTrip(t *testing.T) {
+	caller := withRecruitCaller(t)
+	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
+	cmd.SetArgs([]string{"--cursor", "9223372036854775807"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := caller.args["cursor"]; got != int64(9223372036854775807) {
+		t.Fatalf("cursor = %#v (%T), want max int64", got, got)
+	}
+
+	for _, cursor := range []string{"not-a-cursor", "9223372036854775808"} {
+		invalid := prepareRecruitTestCommand(newRecruitJobListCommand())
+		invalid.SetArgs([]string{"--cursor", cursor})
+		if err := invalid.Execute(); err == nil || !strings.Contains(err.Error(), "大于或等于 0 的整数") {
+			t.Fatalf("cursor %q error = %v", cursor, err)
+		}
+	}
+}
+
 func TestRecruitJobListDefaultsAndValidation(t *testing.T) {
 	caller := withRecruitCaller(t)
-	cmd := newRecruitJobListCommand()
+	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -100,13 +145,13 @@ func TestRecruitJobListDefaultsAndValidation(t *testing.T) {
 		t.Fatalf("first page unexpectedly sent cursor: %#v", caller.args)
 	}
 
-	badStatus := newRecruitJobListCommand()
+	badStatus := prepareRecruitTestCommand(newRecruitJobListCommand())
 	badStatus.SetArgs([]string{"--status", "unknown"})
 	if err := badStatus.Execute(); err == nil || !strings.Contains(err.Error(), "draft/open/invalid/closed") {
 		t.Fatalf("invalid status error = %v", err)
 	}
 
-	badSize := newRecruitJobListCommand()
+	badSize := prepareRecruitTestCommand(newRecruitJobListCommand())
 	badSize.SetArgs([]string{"--size", "101"})
 	if err := badSize.Execute(); err == nil || !strings.Contains(err.Error(), "1 到 100") {
 		t.Fatalf("invalid size error = %v", err)
@@ -115,7 +160,7 @@ func TestRecruitJobListDefaultsAndValidation(t *testing.T) {
 
 func TestRecruitJobGetDispatchesJobID(t *testing.T) {
 	caller := withRecruitCaller(t)
-	cmd := newRecruitJobGetCommand()
+	cmd := prepareRecruitTestCommand(newRecruitJobGetCommand())
 	cmd.SetArgs([]string{"--job-id", "job-1"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
@@ -145,7 +190,7 @@ func writeRecruitJobFixture(t *testing.T) (string, map[string]any) {
 func TestRecruitJobCreateRequiresConfirmationBeforeRemoteCall(t *testing.T) {
 	caller := withRecruitCaller(t)
 	path, _ := writeRecruitJobFixture(t)
-	cmd := newRecruitJobCreateCommand()
+	cmd := prepareRecruitTestCommand(newRecruitJobCreateCommand())
 	cmd.Flags().Bool("yes", false, "确认创建")
 	cmd.SetIn(strings.NewReader(""))
 	cmd.SetArgs([]string{"--from", path})
@@ -162,7 +207,7 @@ func TestRecruitJobCreateRequiresConfirmationBeforeRemoteCall(t *testing.T) {
 func TestRecruitJobCreateCallsRemoteOnceWhenConfirmed(t *testing.T) {
 	caller := withRecruitCaller(t)
 	path, _ := writeRecruitJobFixture(t)
-	cmd := newRecruitJobCreateCommand()
+	cmd := prepareRecruitTestCommand(newRecruitJobCreateCommand())
 	cmd.Flags().Bool("yes", false, "确认创建")
 	cmd.SetArgs([]string{"--from", path, "--yes"})
 	if err := cmd.Execute(); err != nil {
@@ -190,7 +235,7 @@ func TestRecruitCreateValidatesJobFile(t *testing.T) {
 	if err := os.WriteFile(badPath, []byte(`{"name":"缺字段"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	bad := newRecruitJobCreateCommand()
+	bad := prepareRecruitTestCommand(newRecruitJobCreateCommand())
 	bad.Flags().Bool("yes", false, "确认创建")
 	bad.SetArgs([]string{"--from", badPath, "--yes"})
 	if err := bad.Execute(); err == nil || !strings.Contains(err.Error(), "description") {
@@ -204,7 +249,7 @@ func TestRecruitValidationBranches(t *testing.T) {
 		t.Fatalf("statuses = %#v, err = %v", statuses, err)
 	}
 
-	negativeCursor := newRecruitJobListCommand()
+	negativeCursor := prepareRecruitTestCommand(newRecruitJobListCommand())
 	negativeCursor.SetArgs([]string{"--cursor", "-1"})
 	if err := negativeCursor.Execute(); err == nil || !strings.Contains(err.Error(), "大于或等于 0") {
 		t.Fatalf("negative cursor error = %v", err)
@@ -216,6 +261,16 @@ func TestRecruitValidationBranches(t *testing.T) {
 	}
 	if _, err := loadRecruitJobFile(nullPath); err == nil || !strings.Contains(err.Error(), "顶层必须是对象") {
 		t.Fatalf("null job error = %v", err)
+	}
+	if _, err := loadRecruitJobFile(filepath.Join(t.TempDir(), "missing.json")); err == nil || !strings.Contains(err.Error(), "读取职位 JSON 失败") {
+		t.Fatalf("missing job file error = %v", err)
+	}
+	invalidPath := filepath.Join(t.TempDir(), "invalid.json")
+	if err := os.WriteFile(invalidPath, []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadRecruitJobFile(invalidPath); err == nil || !strings.Contains(err.Error(), "不是有效的 JSON 对象") {
+		t.Fatalf("invalid job JSON error = %v", err)
 	}
 
 	base := map[string]any{
@@ -241,6 +296,80 @@ func TestRecruitValidationBranches(t *testing.T) {
 				t.Fatalf("validation error = %v, want %q", err, test.want)
 			}
 		})
+	}
+}
+
+func TestRecruitListResultData(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		data any
+		want string
+	}{
+		{name: "not object", data: []any{}, want: "必须是 JSON 对象"},
+		{name: "missing hasMore", data: map[string]any{}, want: "缺少布尔字段 hasMore"},
+		{name: "invalid cursor", data: map[string]any{"hasMore": true, "nextCursor": true}, want: "必须是字符串或数字"},
+		{name: "missing cursor", data: map[string]any{"hasMore": true}, want: "缺少 nextCursor"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, _, err := recruitListResultData(test.data); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want %q", err, test.want)
+			}
+		})
+	}
+
+	data, meta, err := recruitListResultData(map[string]any{
+		"jobs": []any{map[string]any{"jobId": "job-1"}}, "hasMore": true, "nextCursor": float64(12),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if meta.Count == nil || *meta.Count != 1 || meta.Pagination.EndpointExhausted ||
+		meta.Pagination.NextToken != "12" || meta.Pagination.Pages != 1 || meta.Pagination.Items != 1 {
+		t.Fatalf("meta = %#v", meta)
+	}
+	clean := data.(map[string]any)
+	if _, exists := clean["hasMore"]; exists || clean["jobs"] == nil {
+		t.Fatalf("clean data = %#v", clean)
+	}
+
+	_, terminal, err := recruitListResultData(map[string]any{"jobs": []any{}, "hasMore": false, "nextCursor": "ignored"})
+	if err != nil || !terminal.Pagination.EndpointExhausted || terminal.Pagination.NextToken != "" {
+		t.Fatalf("terminal meta = %#v, err = %v", terminal, err)
+	}
+}
+
+func TestRecruitResultCallPropagatesMCPError(t *testing.T) {
+	caller := withRecruitCaller(t)
+	caller.err = stderrors.New("transport failed")
+	cmd := prepareRecruitTestCommand(newRecruitJobGetCommand())
+	if _, err := recruitResultCall(cmd, recruitGetJobTool, map[string]any{"jobId": "job-1"}); err == nil {
+		t.Fatal("expected MCP error")
+	}
+}
+
+func TestRecruitResultCallRejectsInconsistentPagination(t *testing.T) {
+	caller := withRecruitCaller(t)
+	caller.text = `{"jobs":[],"hasMore":true}`
+	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
+	result, err := recruitResultCall(cmd, recruitListJobsTool, map[string]any{"size": 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Outcome() != output.OutcomeFailure {
+		t.Fatalf("outcome = %s, want failure", result.Outcome())
+	}
+}
+
+func TestRecruitResultCallDryRun(t *testing.T) {
+	caller := withRecruitCaller(t)
+	caller.dryRun = true
+	cmd := prepareRecruitTestCommand(newRecruitJobGetCommand())
+	result, err := recruitResultCall(cmd, recruitGetJobTool, map[string]any{"jobId": "job-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Outcome() != output.OutcomeSuccess || len(caller.calls) != 0 {
+		t.Fatalf("outcome = %s, calls = %d", result.Outcome(), len(caller.calls))
 	}
 }
 

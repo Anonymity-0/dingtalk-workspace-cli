@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 )
 
 const (
@@ -30,7 +32,7 @@ var recruitDryRun = &contract.DryRunSpec{
 var (
 	recruitListResult = &contract.ResultSpec{
 		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-		DataSchema: json.RawMessage(`{"type":"object","description":"当前页招聘职位查询结果","properties":{"jobs":{"type":"array","description":"当前页职位记录","items":{"type":"object","description":"招聘职位摘要","properties":{"jobId":{"type":"string","description":"职位 ID"},"name":{"type":"string","description":"职位名称"},"status":{"type":"number","description":"职位状态枚举值"}},"additionalProperties":true}},"hasMore":{"type":"boolean","description":"服务端是否还有下一页"},"nextCursor":{"description":"下一页游标；仅在 hasMore 为 true 时用于续查","oneOf":[{"type":"number"},{"type":"string"}]}},"additionalProperties":true}`),
+		DataSchema: json.RawMessage(`{"type":"object","description":"当前页招聘职位查询结果；续页信息位于 meta.pagination","properties":{"jobs":{"type":"array","description":"当前页职位记录","items":{"type":"object","description":"招聘职位摘要","properties":{"jobId":{"type":"string","description":"职位 ID"},"name":{"type":"string","description":"职位名称"},"status":{"type":"number","description":"职位状态枚举值"}},"additionalProperties":true}}},"additionalProperties":true}`),
 	}
 	recruitJobDetailResult = &contract.ResultSpec{
 		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
@@ -78,13 +80,14 @@ func newRecruitCommand() *cobra.Command {
 
 func newRecruitJobListCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
-		Use:     "list",
-		Short:   "查询招聘职位列表",
-		Long:    "按职位 ID、关键词、状态、创建人、职位性质等条件分页查询招聘职位。",
-		Example: "  dws recruit job list --keyword Java --status open --size 20 --format json\n  dws recruit job list --job-ids JOB_ID_1,JOB_ID_2 --format json",
-		Server:  recruitServerID,
-		Tool:    recruitListJobsTool,
-		Safety:  recruitSafetyRead(),
+		Use:           "list",
+		Short:         "查询招聘职位列表",
+		Long:          "按职位 ID、关键词、状态、创建人、职位性质等条件分页查询招聘职位。",
+		Example:       "  dws recruit job list --keyword Java --status open --size 20 --format json\n  dws recruit job list --job-ids JOB_ID_1,JOB_ID_2 --format json",
+		Server:        recruitServerID,
+		Tool:          recruitListJobsTool,
+		Safety:        recruitSafetyRead(),
+		OutputRollout: output.RolloutUnifiedActive,
 		Flags: []LeafFlag{
 			{Name: "job-ids", Usage: "职位 ID，多个值用逗号分隔", Kind: LeafStringSlice, Bind: "jobIds"},
 			{Name: "required-edu", Usage: "学历要求枚举值", Kind: LeafInt, Bind: "requiredEdu"},
@@ -96,11 +99,11 @@ func newRecruitJobListCommand() *cobra.Command {
 			{Name: "creator-user-ids", Usage: "创建人 userId，多个值用逗号分隔", Kind: LeafStringSlice, Bind: "creatorUserIds"},
 			{Name: "keyword", Usage: "职位搜索关键词", Bind: "keyword", Trim: true, OmitEmpty: true},
 			{Name: "category", Usage: "职位分类", Bind: "category", Trim: true, OmitEmpty: true},
-			{Name: "cursor", Usage: "分页游标；首次查询不传，翻页时传返回的 nextCursor", Kind: LeafInt, Bind: "cursor"},
+			{Name: "cursor", Usage: "分页游标；首次查询不传，翻页时原样回填返回的 nextCursor", Bind: "cursor", Trim: true, OmitEmpty: true, Transform: transformRecruitCursor},
 			{Name: "size", Usage: "分页大小，默认 20", Kind: LeafInt, Bind: "size", ArgDefault: "20"},
 		},
-		Validate: validateRecruitList,
-		Call:     runRecruitJobList,
+		Validate:   validateRecruitList,
+		ResultCall: recruitResultCall,
 		Contract: LeafContract{
 			Identity:    contract.ToolIdentitySpec{ProductID: "recruit", Name: recruitListJobsTool, CanonicalPath: "recruit.list_jobs", CLIPath: "recruit job list", PrimaryCLIPath: "recruit job list"},
 			Description: "按条件分页查询招聘职位",
@@ -119,7 +122,7 @@ func newRecruitJobListCommand() *cobra.Command {
 	})
 }
 
-func runRecruitJobList(_ *cobra.Command, tool string, args map[string]any) error {
+func recruitListToolArgs(args map[string]any) map[string]any {
 	params := map[string]any{"param": map[string]any{}, "size": args["size"]}
 	query := params["param"].(map[string]any)
 	for key, value := range args {
@@ -131,18 +134,88 @@ func runRecruitJobList(_ *cobra.Command, tool string, args map[string]any) error
 			query[key] = value
 		}
 	}
-	return callMCPToolOnServer(recruitServerID, tool, params)
+	return params
+}
+
+func recruitResultCall(cmd *cobra.Command, tool string, args map[string]any) (output.CommandResult, error) {
+	toolArgs := args
+	if tool == recruitListJobsTool {
+		toolArgs = recruitListToolArgs(args)
+	}
+	if deps.Caller.DryRun() {
+		return output.Success(map[string]any{
+			"tool": tool, "arguments": toolArgs, "executed": false,
+		}, output.WithDryRun()), nil
+	}
+	data, err := CallMCPToolDataOnServer(cmd.Context(), recruitServerID, tool, toolArgs)
+	if err != nil {
+		return nil, err
+	}
+	if tool != recruitListJobsTool {
+		return output.Success(data), nil
+	}
+	clean, meta, err := recruitListResultData(data)
+	if err != nil {
+		return output.Failure(&output.ErrorInfo{
+			Type: "api", Subtype: "pagination_inconsistent", Message: err.Error(),
+			Hint: "保留原始响应并停止翻页；不要把当前页当作完整结果。",
+		}), nil
+	}
+	return output.Success(clean, output.WithMeta(meta)), nil
+}
+
+func recruitListResultData(data any) (any, *output.Meta, error) {
+	object, ok := data.(map[string]any)
+	if !ok {
+		return nil, nil, fmt.Errorf("list_jobs 返回值必须是 JSON 对象")
+	}
+	hasMore, ok := object["hasMore"].(bool)
+	if !ok {
+		return nil, nil, fmt.Errorf("list_jobs 返回值缺少布尔字段 hasMore")
+	}
+	nextToken := ""
+	if raw, exists := object["nextCursor"]; exists && raw != nil {
+		switch value := raw.(type) {
+		case string:
+			nextToken = strings.TrimSpace(value)
+		case float64:
+			nextToken = strconv.FormatFloat(value, 'f', -1, 64)
+		default:
+			return nil, nil, fmt.Errorf("list_jobs 的 nextCursor 必须是字符串或数字")
+		}
+	}
+	if hasMore && nextToken == "" {
+		return nil, nil, fmt.Errorf("list_jobs 返回 hasMore=true 但缺少 nextCursor")
+	}
+	if !hasMore {
+		nextToken = ""
+	}
+	clean := make(map[string]any, len(object)-2)
+	for key, value := range object {
+		if key != "hasMore" && key != "nextCursor" {
+			clean[key] = value
+		}
+	}
+	pagination := &output.Pagination{EndpointExhausted: !hasMore, NextToken: nextToken, Pages: 1}
+	meta := &output.Meta{Pagination: pagination}
+	if jobs, exists := clean["jobs"].([]any); exists {
+		meta.Count = output.NewCount(len(jobs))
+		pagination.Items = len(jobs)
+	}
+	return clean, meta, nil
 }
 
 func newRecruitJobGetCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
-		Use:     "get",
-		Short:   "查询招聘职位详情",
-		Long:    "根据职位 ID 查询招聘职位详情。",
-		Example: "  dws recruit job get --job-id JOB_ID --format json",
-		Server:  recruitServerID,
-		Tool:    recruitGetJobTool,
-		Safety:  recruitSafetyRead(),
+		Use:           "get",
+		Short:         "查询招聘职位详情",
+		Long:          "根据职位 ID 查询招聘职位详情。",
+		Example:       "  dws recruit job get --job-id JOB_ID --format json",
+		Server:        recruitServerID,
+		Tool:          recruitGetJobTool,
+		Safety:        recruitSafetyRead(),
+		OutputRollout: output.RolloutUnifiedActive,
+		ResultCall:    recruitResultCall,
 		Flags: []LeafFlag{{
 			Name: "job-id", Usage: "职位 ID（必填）", Bind: "jobId", Trim: true,
 			Required: true, RequiredHint: "--job-id 为必填",
@@ -166,13 +239,15 @@ func newRecruitJobGetCommand() *cobra.Command {
 
 func newRecruitJobCreateCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
-		Use:     "create",
-		Short:   "创建招聘职位",
-		Long:    "从 JSON 文件读取职位信息并创建招聘职位。该操作会写入远端招聘系统，执行前必须确认。",
-		Example: "  dws recruit job create --from ./job.json --dry-run --format json\n  dws recruit job create --from ./job.json --format json",
-		Server:  recruitServerID,
-		Tool:    recruitCreateJobTool,
-		Safety:  recruitSafetyCreate(),
+		Use:           "create",
+		Short:         "创建招聘职位",
+		Long:          "从 JSON 文件读取职位信息并创建招聘职位。该操作会写入远端招聘系统，执行前必须确认。",
+		Example:       "  dws recruit job create --from ./job.json --dry-run --format json\n  dws recruit job create --from ./job.json --format json",
+		Server:        recruitServerID,
+		Tool:          recruitCreateJobTool,
+		Safety:        recruitSafetyCreate(),
+		OutputRollout: output.RolloutUnifiedActive,
+		ResultCall:    recruitResultCall,
 		Flags: []LeafFlag{{
 			Name: "from", Usage: "职位 JSON 文件路径（必填）", Bind: "atsAddJobParam", Trim: true,
 			Required: true, RequiredHint: "--from 为必填", Transform: loadRecruitJobFile,
@@ -249,10 +324,16 @@ func transformRecruitStatuses(raw string) (any, error) {
 	return statuses, nil
 }
 
-func validateRecruitList(cmd *cobra.Command, _ []string) error {
-	if cursor, _ := cmd.Flags().GetInt("cursor"); cursor < 0 {
-		return apperrors.NewValidation("--cursor 必须大于或等于 0")
+func transformRecruitCursor(raw string) (any, error) {
+	value := strings.TrimSpace(raw)
+	cursor, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || cursor < 0 {
+		return nil, apperrors.NewValidation("--cursor 必须是大于或等于 0 的整数")
 	}
+	return cursor, nil
+}
+
+func validateRecruitList(cmd *cobra.Command, _ []string) error {
 	size, _ := cmd.Flags().GetInt("size")
 	if cmd.Flags().Changed("size") && (size < 1 || size > 100) {
 		return apperrors.NewValidation("--size 必须在 1 到 100 之间")
