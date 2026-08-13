@@ -90,7 +90,7 @@ func TestRequestDeviceCodeSuccess(t *testing.T) {
 	}
 }
 
-func TestDeviceFlowSetLoginRegionUsesInternationalBaseURL(t *testing.T) {
+func TestCrossPlatformCoverageDeviceFlowSetLoginRegionUsesInternationalBaseURL(t *testing.T) {
 	provider := NewDeviceFlowProvider(t.TempDir(), newDeviceFlowTestLogger())
 	provider.SetLoginRegion(LoginRegionInternational)
 	if provider.baseURL != InternationalDeviceBaseURL {

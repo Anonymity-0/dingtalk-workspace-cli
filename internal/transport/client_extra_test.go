@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -234,7 +235,7 @@ func TestIsEndpointTrusted_DomainMatch(t *testing.T) {
 	}
 }
 
-func TestIsEndpointTrusted_DefaultIncludesDingTalkInternational(t *testing.T) {
+func TestCrossPlatformCoverageIsEndpointTrustedDefaultIncludesDingTalkInternational(t *testing.T) {
 	t.Setenv("DWS_ALLOW_HTTP_ENDPOINTS", "")
 	t.Setenv("DWS_TRUSTED_DOMAINS", "")
 	c := NewClient(nil)
@@ -243,6 +244,11 @@ func TestIsEndpointTrusted_DefaultIncludesDingTalkInternational(t *testing.T) {
 	}
 	if !c.isEndpointTrusted("https://pre-mcp-gw.dingtalk.io/server/contact") {
 		t.Fatal("default trusted domains should trust dingtalk.io")
+	}
+	for _, host := range []string{"mcp-gw.dingtalk.io", "pre-mcp-gw.dingtalk.io"} {
+		if !shouldPreserveEndpointQuery(&url.URL{Scheme: "https", Host: host}) {
+			t.Fatalf("international gateway %q should preserve endpoint query", host)
+		}
 	}
 }
 

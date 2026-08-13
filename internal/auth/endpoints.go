@@ -166,6 +166,9 @@ func MCPBaseURLForLoginRegion(region LoginRegion) string {
 }
 
 func UserAccessTokenURLForLoginRegion(region LoginRegion) string {
+	if override := LoginBaseURLOverride(); override != "" {
+		return override + "/v1.0/oauth2/userAccessToken"
+	}
 	if region.IsInternational() {
 		return InternationalUserAccessTokenURL
 	}

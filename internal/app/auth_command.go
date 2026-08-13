@@ -173,6 +173,9 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 					AccessToken: cfg.Token,
 					ExpiresAt:   time.Now().Add(config.ManualTokenExpiry),
 				}
+				if cfg.International {
+					tokenData.LoginRegion = string(authpkg.LoginRegionInternational)
+				}
 				if err := authSaveTokenData(configDir, tokenData); err != nil {
 					return apperrors.NewInternal(fmt.Sprintf("failed to persist auth token: %v", err))
 				}
@@ -1384,13 +1387,10 @@ func authLoginMCPBaseURLForConfig(cfg authLoginConfig, preOverrides authLoginEnd
 }
 
 func persistAuthLoginMCPBaseURL(configDir, mcpBaseURL string, persist bool) error {
-	if persist {
-		return authpkg.NewManager(configDir, nil).SaveMCPURL(mcpBaseURL)
+	if !persist {
+		return nil
 	}
-	if err := os.Remove(filepath.Join(configDir, "mcp_url")); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	return nil
+	return authpkg.NewManager(configDir, nil).SaveMCPURL(mcpBaseURL)
 }
 
 func normalizeAuthLoginBaseURL(raw, flagName string) (*url.URL, string, error) {
@@ -1411,10 +1411,21 @@ func normalizeAuthLoginBaseURL(raw, flagName string) (*url.URL, string, error) {
 	if parsed.Hostname() == "" {
 		return nil, "", apperrors.NewValidation(flagName + " must include a host")
 	}
+	if parsed.Scheme == "http" && !isAuthLoginLoopbackHost(parsed.Hostname()) {
+		return nil, "", apperrors.NewValidation(flagName + " must use HTTPS, except for a loopback HTTP test endpoint")
+	}
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
 	parsed.Path = strings.TrimRight(parsed.Path, "/")
 	return parsed, strings.TrimRight(parsed.String(), "/"), nil
+}
+
+func isAuthLoginLoopbackHost(host string) bool {
+	if strings.EqualFold(strings.TrimSpace(host), "localhost") {
+		return true
+	}
+	ip := net.ParseIP(strings.TrimSpace(host))
+	return ip != nil && ip.IsLoopback()
 }
 
 func authLoginURLWithHost(parsed *url.URL, host string) string {

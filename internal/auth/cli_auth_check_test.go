@@ -208,8 +208,10 @@ func TestCheckCLIAuthEnabled_Enabled(t *testing.T) {
 	t.Logf("✅ Normal enabled response: success=%v, enabled=%v", status.Success, status.Result.CLIAuthEnabled)
 }
 
-func TestCheckCLIAuthEnabled_TraceHeadersAndDebugLog(t *testing.T) {
+func TestCrossPlatformCoverageCheckCLIAuthEnabledTraceHeadersAndDebugLog(t *testing.T) {
 	t.Setenv("DINGTALK_TRACE_ID", "trace-for-cli-auth-test")
+	applyCLIAuthTraceHeaders(nil, "trace-for-cli-auth-test")
+	applyCLIAuthTraceHeaders(httptest.NewRequest(http.MethodGet, "https://example.com", nil), "")
 
 	var logBuf bytes.Buffer
 	previousLogger := slog.Default()
@@ -258,6 +260,50 @@ func TestCheckCLIAuthEnabled_TraceHeadersAndDebugLog(t *testing.T) {
 	}
 	if strings.Contains(logs, "sensitive-token") {
 		t.Fatalf("debug logs leaked access token: %s", logs)
+	}
+}
+
+func TestCrossPlatformCoverageInternationalLoginRegionRequestWrappers(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case ClientIDPath:
+			_ = json.NewEncoder(w).Encode(ClientIDResponse{Success: true, Result: "international-client"})
+		case SuperAdminPath:
+			_ = json.NewEncoder(w).Encode(SuperAdminResponse{Success: true, Result: []SuperAdmin{{StaffID: "admin"}}})
+		case SendCliAuthApplyPath:
+			_ = json.NewEncoder(w).Encode(SendApplyResponse{Success: true, Result: true})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	oldClient := oauthHTTPClient
+	oauthHTTPClient = server.Client()
+	restoreBaseURL := PushMCPBaseURLOverride(server.URL)
+	t.Cleanup(func() {
+		restoreBaseURL()
+		oauthHTTPClient = oldClient
+	})
+
+	ctx := context.Background()
+	for name, fetch := range map[string]func() (string, error){
+		"device": func() (string, error) { return deviceFetchClientIDForLoginRegion(ctx, LoginRegionInternational) },
+		"oauth":  func() (string, error) { return oauthFetchClientIDForLoginRegion(ctx, LoginRegionInternational) },
+	} {
+		if got, err := fetch(); err != nil || got != "international-client" {
+			t.Fatalf("%s client ID = %q, %v", name, got, err)
+		}
+	}
+	if got, err := deviceGetAdminsForLoginRegion(ctx, "token", LoginRegionInternational); err != nil || !got.Success {
+		t.Fatalf("device admins = %#v, %v", got, err)
+	}
+	if got, err := oauthGetAdminsForLoginRegion(ctx, "token", LoginRegionInternational); err != nil || !got.Success {
+		t.Fatalf("OAuth admins = %#v, %v", got, err)
+	}
+	if got, err := oauthSendApplyForLoginRegion(ctx, "token", "admin", LoginRegionInternational); err != nil || !got.Success {
+		t.Fatalf("OAuth apply = %#v, %v", got, err)
 	}
 }
 

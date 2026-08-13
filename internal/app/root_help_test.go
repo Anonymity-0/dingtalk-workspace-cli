@@ -474,7 +474,7 @@ func TestInjectStaticServersMergesStaticAndSupplementServers(t *testing.T) {
 	}
 }
 
-func TestStaticDingTalkEndpointsFollowConfiguredMCPBaseURL(t *testing.T) {
+func TestCrossPlatformCoverageStaticDingTalkEndpointsFollowConfiguredMCPBaseURL(t *testing.T) {
 	previous := edition.Get()
 	defer edition.Override(previous)
 	defer SetDynamicServers(nil)
@@ -508,7 +508,7 @@ func TestStaticDingTalkEndpointsFollowConfiguredMCPBaseURL(t *testing.T) {
 	}
 }
 
-func TestDingTalkEndpointsFollowSelectedTokenRegion(t *testing.T) {
+func TestCrossPlatformCoverageDingTalkEndpointsFollowSelectedTokenRegion(t *testing.T) {
 	configDir := t.TempDir()
 	t.Setenv("DWS_CONFIG_DIR", configDir)
 	mcpURLPath := filepath.Join(configDir, "mcp_url")
@@ -532,7 +532,7 @@ func TestDingTalkEndpointsFollowSelectedTokenRegion(t *testing.T) {
 	}
 }
 
-func TestDingTalkEndpointUsesLoginScopedMCPOverride(t *testing.T) {
+func TestCrossPlatformCoverageDingTalkEndpointUsesLoginScopedMCPOverride(t *testing.T) {
 	configDir := t.TempDir()
 	t.Setenv("DWS_CONFIG_DIR", configDir)
 	restore := authpkg.PushMCPBaseURLOverride("https://pre-mcp.dingtalk.io")

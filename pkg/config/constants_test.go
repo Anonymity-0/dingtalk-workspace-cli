@@ -219,7 +219,7 @@ func TestGetMCPBaseURLUsesConfigFile(t *testing.T) {
 	}
 }
 
-func TestGetDeveloperSettingsURLUsesInternationalMCPRegion(t *testing.T) {
+func TestCrossPlatformCoverageGetDeveloperSettingsURLUsesInternationalMCPRegion(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("DWS_CONFIG_DIR", dir)
 	if err := os.WriteFile(filepath.Join(dir, "mcp_url"), []byte("https://mcp.dingtalk.io\n"), FilePerm); err != nil {
@@ -232,7 +232,7 @@ func TestGetDeveloperSettingsURLUsesInternationalMCPRegion(t *testing.T) {
 	}
 }
 
-func TestGetTerminalBaseURLPrefersExplicitConfig(t *testing.T) {
+func TestCrossPlatformCoverageGetTerminalBaseURLPrefersExplicitConfig(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("DWS_CONFIG_DIR", dir)
 	if err := os.WriteFile(filepath.Join(dir, "mcp_url"), []byte("https://mcp.dingtalk.io\n"), FilePerm); err != nil {

@@ -1065,7 +1065,7 @@ func TestResolveAuthLoginConfigReadsInheritedYes(t *testing.T) {
 	}
 }
 
-func TestResolveAuthLoginConfigReadsInternationalAliases(t *testing.T) {
+func TestCrossPlatformCoverageResolveAuthLoginConfigReadsInternationalAliases(t *testing.T) {
 	for _, flag := range []string{"intl", "international"} {
 		t.Run(flag, func(t *testing.T) {
 			root := &cobra.Command{Use: "dws"}
@@ -1094,9 +1094,61 @@ func TestResolveAuthLoginConfigReadsInternationalAliases(t *testing.T) {
 			}
 		})
 	}
+
+	for _, tc := range []struct {
+		name  string
+		setup func(*cobra.Command)
+	}{
+		{
+			name: "missing intl",
+			setup: func(cmd *cobra.Command) {
+				cmd.Flags().String("token", "", "")
+				cmd.Flags().Bool("device", false, "")
+			},
+		},
+		{
+			name: "missing international",
+			setup: func(cmd *cobra.Command) {
+				cmd.Flags().String("token", "", "")
+				cmd.Flags().Bool("device", false, "")
+				cmd.Flags().Bool("intl", false, "")
+			},
+		},
+		{
+			name: "missing pre url",
+			setup: func(cmd *cobra.Command) {
+				cmd.Flags().String("token", "", "")
+				cmd.Flags().Bool("device", false, "")
+				cmd.Flags().Bool("intl", false, "")
+				cmd.Flags().Bool("international", false, "")
+				cmd.Flags().Bool("force", false, "")
+				cmd.Flags().Bool("recommend", false, "")
+			},
+		},
+		{
+			name: "missing mcp url",
+			setup: func(cmd *cobra.Command) {
+				cmd.Flags().String("token", "", "")
+				cmd.Flags().Bool("device", false, "")
+				cmd.Flags().Bool("intl", false, "")
+				cmd.Flags().Bool("international", false, "")
+				cmd.Flags().Bool("force", false, "")
+				cmd.Flags().Bool("recommend", false, "")
+				cmd.Flags().String("pre-url", "", "")
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := &cobra.Command{Use: "login"}
+			tc.setup(cmd)
+			if _, err := resolveAuthLoginConfig(cmd); err == nil {
+				t.Fatal("resolveAuthLoginConfig succeeded with an incomplete flag set")
+			}
+		})
+	}
 }
 
-func TestResolveAuthLoginConfigReadsMCPURL(t *testing.T) {
+func TestCrossPlatformCoverageResolveAuthLoginConfigReadsMCPURL(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	root.PersistentFlags().Bool("yes", false, "")
 	login := &cobra.Command{Use: "login"}
@@ -1123,7 +1175,7 @@ func TestResolveAuthLoginConfigReadsMCPURL(t *testing.T) {
 	}
 }
 
-func TestResolveAuthLoginConfigReadsPreURL(t *testing.T) {
+func TestCrossPlatformCoverageResolveAuthLoginConfigReadsPreURL(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	root.PersistentFlags().Bool("yes", false, "")
 	login := &cobra.Command{Use: "login"}
@@ -1150,7 +1202,7 @@ func TestResolveAuthLoginConfigReadsPreURL(t *testing.T) {
 	}
 }
 
-func TestAuthLoginEndpointOverridesForPreURL(t *testing.T) {
+func TestCrossPlatformCoverageAuthLoginEndpointOverridesForPreURL(t *testing.T) {
 	tests := []struct {
 		name      string
 		raw       string
@@ -1169,6 +1221,12 @@ func TestAuthLoginEndpointOverridesForPreURL(t *testing.T) {
 			wantLogin: "https://pre-login.dingtalk.io",
 			wantMCP:   "https://pre-mcp.dingtalk.io",
 		},
+		{
+			name:      "pre login with port",
+			raw:       "https://pre-login.dingtalk.io:8443/path/",
+			wantLogin: "https://pre-login.dingtalk.io:8443/path",
+			wantMCP:   "https://pre-mcp.dingtalk.io:8443/path",
+		},
 	}
 
 	for _, tc := range tests {
@@ -1182,9 +1240,15 @@ func TestAuthLoginEndpointOverridesForPreURL(t *testing.T) {
 			}
 		})
 	}
+
+	for _, raw := range []string{"https://example.com", "http://pre-login.example.com"} {
+		if _, err := authLoginEndpointOverridesForPreURL(raw); err == nil {
+			t.Fatalf("authLoginEndpointOverridesForPreURL(%q) succeeded", raw)
+		}
+	}
 }
 
-func TestAuthLoginMCPBaseURLForConfig(t *testing.T) {
+func TestCrossPlatformCoverageAuthLoginMCPBaseURLForConfig(t *testing.T) {
 	tests := []struct {
 		name        string
 		cfg         authLoginConfig
@@ -1240,9 +1304,18 @@ func TestAuthLoginMCPBaseURLForConfig(t *testing.T) {
 			}
 		})
 	}
+
+	for _, cfg := range []authLoginConfig{
+		{MCPURL: "http://remote.example.com"},
+		{PreURL: "https://example.com"},
+	} {
+		if _, _, err := authLoginMCPBaseURLForConfig(cfg, authLoginEndpointOverrides{}); err == nil {
+			t.Fatalf("authLoginMCPBaseURLForConfig(%#v) succeeded", cfg)
+		}
+	}
 }
 
-func TestPersistAuthLoginMCPBaseURL(t *testing.T) {
+func TestCrossPlatformCoveragePersistAuthLoginMCPBaseURL(t *testing.T) {
 	t.Run("persists selected io mcp url", func(t *testing.T) {
 		configDir := t.TempDir()
 		if err := persistAuthLoginMCPBaseURL(configDir, authpkg.InternationalMCPBaseURL, true); err != nil {
@@ -1257,19 +1330,61 @@ func TestPersistAuthLoginMCPBaseURL(t *testing.T) {
 		}
 	})
 
-	t.Run("center login clears previous persisted override", func(t *testing.T) {
+	t.Run("center login preserves previous persisted override", func(t *testing.T) {
 		configDir := t.TempDir()
 		mcpURLPath := filepath.Join(configDir, "mcp_url")
-		if err := os.WriteFile(mcpURLPath, []byte("https://mcp.dingtalk.io"), 0o600); err != nil {
+		const customURL = "https://custom-mcp.example.com"
+		if err := os.WriteFile(mcpURLPath, []byte(customURL), 0o600); err != nil {
 			t.Fatalf("WriteFile(mcp_url) error = %v", err)
 		}
 		if err := persistAuthLoginMCPBaseURL(configDir, authpkg.DefaultMCPBaseURL, false); err != nil {
 			t.Fatalf("persistAuthLoginMCPBaseURL error = %v", err)
 		}
-		if _, err := os.Stat(mcpURLPath); !os.IsNotExist(err) {
-			t.Fatalf("mcp_url still exists after center login, stat err = %v", err)
+		data, err := os.ReadFile(mcpURLPath)
+		if err != nil {
+			t.Fatalf("ReadFile(mcp_url) error = %v", err)
+		}
+		if string(data) != customURL {
+			t.Fatalf("mcp_url = %q, want preserved override %q", string(data), customURL)
 		}
 	})
+}
+
+func TestCrossPlatformCoverageNormalizeAuthLoginBaseURLTransportSecurity(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		wantURL string
+		wantErr string
+	}{
+		{name: "https remote", raw: "https://pre-mcp.example.com/path/?secret=drop#fragment", wantURL: "https://pre-mcp.example.com/path"},
+		{name: "http localhost", raw: "http://localhost:8080/", wantURL: "http://localhost:8080"},
+		{name: "http IPv4 loopback", raw: "http://127.0.0.1:8080", wantURL: "http://127.0.0.1:8080"},
+		{name: "http IPv6 loopback", raw: "http://[::1]:8080", wantURL: "http://[::1]:8080"},
+		{name: "http remote", raw: "http://pre-mcp.example.com", wantErr: "must use HTTPS"},
+		{name: "empty", raw: " ", wantErr: "cannot be empty"},
+		{name: "invalid URL", raw: "https://%", wantErr: "invalid --mcp-url"},
+		{name: "invalid scheme", raw: "ftp://pre-mcp.example.com", wantErr: "must use http or https"},
+		{name: "missing host", raw: "https:///path", wantErr: "must include a host"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, got, err := normalizeAuthLoginBaseURL(tc.raw, "--mcp-url")
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("normalizeAuthLoginBaseURL error = %v, want containing %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("normalizeAuthLoginBaseURL error = %v", err)
+			}
+			if got != tc.wantURL {
+				t.Fatalf("normalized URL = %q, want %q", got, tc.wantURL)
+			}
+		})
+	}
 }
 
 func TestAuthLoginForcesAuthorizationByDefault(t *testing.T) {
