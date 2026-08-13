@@ -158,6 +158,21 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 		localByRel[f.RelPath] = f
 	}
 
+	// 在计算 diff 前先识别文件/目录同路径冲突。冲突根及其全部后代都不能再进入
+	// new_local / new_remote 或后续执行阶段，否则会在远端制造同名异类对象，或尝试
+	// 把远端目录内容下载到本地文件之下。
+	typeConflicts := make(map[string]string)
+	for _, dir := range localDirs {
+		if msg := pushTypeConflictError(dir, true, remoteFiles, remoteFolders); msg != "" {
+			typeConflicts[dir] = msg
+		}
+	}
+	for rel := range localByRel {
+		if msg := pushTypeConflictError(rel, false, remoteFiles, remoteFolders); msg != "" {
+			typeConflicts[rel] = msg
+		}
+	}
+
 	// 计算 diff：双端都存在的文件复用 judgeFileMatch，保持与 status 完全一致的判定。
 	diff := driveSyncDiff{
 		NewLocal:  []driveStatusEntry{},
@@ -168,6 +183,9 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 	}
 	var newLocal, newRemote, modified, unknown []string
 	for rel, pf := range localByRel {
+		if syncPathBlockedByTypeConflict(rel, typeConflicts) {
+			continue
+		}
 		rf, ok := remoteFiles[rel]
 		if !ok {
 			newLocal = append(newLocal, rel)
@@ -188,6 +206,9 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 		}
 	}
 	for rel := range remoteFiles {
+		if syncPathBlockedByTypeConflict(rel, typeConflicts) {
+			continue
+		}
 		if _, ok := localByRel[rel]; !ok {
 			newRemote = append(newRemote, rel)
 		}
@@ -211,6 +232,18 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 	sortEntries(diff.Unchanged)
 
 	res := driveSyncResult{Detection: detection, Diff: diff, Items: []driveSyncItem{}}
+	conflictRels := make([]string, 0, len(typeConflicts))
+	for rel := range typeConflicts {
+		conflictRels = append(conflictRels, rel)
+	}
+	sort.Strings(conflictRels)
+	for _, rel := range conflictRels {
+		res.Summary.Failed++
+		res.Items = append(res.Items, driveSyncItem{
+			RelPath: rel, Action: syncActionFailed, Direction: syncDirectionConflict,
+			Error: typeConflicts[rel],
+		})
+	}
 
 	// --dry-run：只算差异、不执行任何同步动作。
 	if deps.Caller.DryRun() {
@@ -276,6 +309,9 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 
 	// 阶段 1：镜像本地目录结构到远端（缺失则创建），保证空目录与 push 目标的父目录先存在。
 	for _, dir := range localDirs {
+		if syncPathBlockedByTypeConflict(dir, typeConflicts) {
+			continue
+		}
 		if _, ok := remoteFolders[dir]; ok {
 			continue // 远端已存在，复用 fileId
 		}
@@ -337,6 +373,18 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 		return &driveSyncFailure{failed: res.Summary.Failed}
 	}
 	return nil
+}
+
+// syncPathBlockedByTypeConflict 判断 rel 本身或任一祖先是否是文件/目录类型冲突根。
+// 祖先检查保证冲突目录下的本地、远端后代不会绕过根路径的 fail-closed 结论。
+func syncPathBlockedByTypeConflict(rel string, conflicts map[string]string) bool {
+	for rel != "" {
+		if _, blocked := conflicts[rel]; blocked {
+			return true
+		}
+		rel, _ = splitRel(rel)
+	}
+	return false
 }
 
 // syncPullFile 下载单个远端文件到本地 rel 对应路径（总是覆盖，Drive 为该项权威源），
