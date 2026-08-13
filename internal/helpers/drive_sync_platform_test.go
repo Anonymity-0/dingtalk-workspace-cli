@@ -108,6 +108,9 @@ func TestCrossPlatformCoverageIsSafeRemoteSegmentPlatform_rejectsNonCanonicalWin
 	for _, name := range []string{
 		`C:relative`, `a?.txt`, `a*.txt`, `a:stream`, `a<.txt`, `a>.txt`, `a|.txt`, `a".txt`,
 		"name.", "name ", "...", "CON", "con.txt", "PRN", "AUX", "NUL", "COM1", "LPT9", "COM¹", "CONIN$",
+		// 调用方 isSafeRemoteSegment 已先过滤分隔符，所以只有直接调用才会走到
+		// filepath.Clean 改写这条防御分支；平台函数本身仍必须 fail closed。
+		`a/b`, `.\a`,
 	} {
 		if isSafeRemoteSegmentPlatform(name) {
 			t.Errorf("Windows unsafe segment %q must be rejected", name)
