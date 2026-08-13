@@ -12,8 +12,11 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 var expectedPackagedSkillTargets = []string{
@@ -84,6 +87,103 @@ func TestPackageManagerVersionVerificationReadsRawBinary(t *testing.T) {
 	if strings.Contains(script, "HOME_SKILL_TARGETS=") {
 		t.Fatal("package-manager verifier still declares the legacy mono target contract")
 	}
+}
+
+func TestNPMWrapperForwardsSIGTERMToVendor(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX signal forwarding contract")
+	}
+	nodePath, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is required to exercise the npm wrapper")
+	}
+
+	root := t.TempDir()
+	binDir := filepath.Join(root, "bin")
+	vendorDir := filepath.Join(root, "vendor")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	wrapperSource := filepath.Join("..", "..", "build", "npm", "bin", "dws.js")
+	wrapperData, err := os.ReadFile(wrapperSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrapperPath := filepath.Join(binDir, "dws.js")
+	if err := os.WriteFile(wrapperPath, wrapperData, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	pidPath := filepath.Join(root, "child.pid")
+	signalPath := filepath.Join(root, "child.signal")
+	vendorPath := filepath.Join(vendorDir, "dws")
+	vendorScript := "#!/bin/sh\n" +
+		"printf '%s' \"$$\" > \"$DWS_TEST_CHILD_PID_FILE\"\n" +
+		"trap 'printf TERM > \"$DWS_TEST_SIGNAL_FILE\"; exit 0' TERM\n" +
+		"while :; do sleep 0.1; done\n"
+	if err := os.WriteFile(vendorPath, []byte(vendorScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(nodePath, wrapperPath)
+	cmd.Env = append(os.Environ(),
+		"DWS_TEST_CHILD_PID_FILE="+pidPath,
+		"DWS_TEST_SIGNAL_FILE="+signalPath,
+	)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	childPID := waitForPIDFile(t, pidPath)
+	t.Cleanup(func() {
+		_ = exec.Command("kill", "-TERM", strconv.Itoa(childPID)).Run()
+	})
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatalf("signal npm wrapper: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("signal-terminated npm wrapper returned success")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("npm wrapper did not exit after SIGTERM")
+	}
+
+	signalData, err := os.ReadFile(signalPath)
+	if err != nil {
+		t.Fatalf("vendor did not record SIGTERM: %v", err)
+	}
+	if got := strings.TrimSpace(string(signalData)); got != "TERM" {
+		t.Fatalf("vendor signal = %q, want TERM", got)
+	}
+	if err := exec.Command("kill", "-0", strconv.Itoa(childPID)).Run(); err == nil {
+		t.Fatalf("vendor process %d is still running after npm wrapper exited", childPID)
+	}
+}
+
+func waitForPIDFile(t *testing.T, path string) int {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			pid, parseErr := strconv.Atoi(strings.TrimSpace(string(data)))
+			if parseErr == nil && pid > 0 {
+				return pid
+			}
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for vendor pid file %s", path)
+	return 0
 }
 
 func TestPackageManagerVerifierCoversSpecificAndFallbackSkillRoots(t *testing.T) {

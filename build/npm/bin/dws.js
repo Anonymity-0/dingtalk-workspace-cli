@@ -13,13 +13,42 @@ if (!fs.existsSync(binaryPath)) {
   process.exit(1);
 }
 
-const result = childProcess.spawnSync(binaryPath, process.argv.slice(2), {
+const child = childProcess.spawn(binaryPath, process.argv.slice(2), {
   stdio: "inherit",
 });
 
-if (result.error) {
-  console.error(result.error.message);
-  process.exit(1);
+let spawnFailed = false;
+let forwardedSignal = null;
+const forwardedSignals = ["SIGINT", "SIGTERM"];
+
+function forwardSignal(signal) {
+  forwardedSignal = signal;
+  if (child.exitCode === null && child.signalCode === null) {
+    child.kill(signal);
+  }
 }
 
-process.exit(result.status === null ? 1 : result.status);
+const signalHandlers = new Map(
+  forwardedSignals.map((signal) => [signal, () => forwardSignal(signal)]),
+);
+for (const signal of forwardedSignals) {
+  process.on(signal, signalHandlers.get(signal));
+}
+
+child.on("error", (error) => {
+  spawnFailed = true;
+  console.error(error.message);
+});
+
+child.on("close", (code, signal) => {
+  for (const forwarded of forwardedSignals) {
+    process.removeListener(forwarded, signalHandlers.get(forwarded));
+  }
+
+  const exitSignal = forwardedSignal || signal;
+  if (exitSignal && process.platform !== "win32") {
+    process.kill(process.pid, exitSignal);
+    return;
+  }
+  process.exitCode = spawnFailed || code === null ? 1 : code;
+});
