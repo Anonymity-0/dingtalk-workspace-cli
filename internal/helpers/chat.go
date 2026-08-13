@@ -739,22 +739,50 @@ func validateNativeSearchConversationScope(conversationIDs []string) error {
 }
 
 func chatMessageListAllArgs(cmd *cobra.Command) (map[string]any, error) {
-	if err := validateRequiredFlags(cmd, "start", "end"); err != nil {
+	startRaw, endRaw, err := defaultChatMessageListAllTimeRange(cmd, 24*time.Hour)
+	if err != nil {
+		return nil, err
+	}
+	startMs, err := parseISOTimeToMillis("start", startRaw)
+	if err != nil {
+		return nil, err
+	}
+	endMs, err := parseISOTimeToMillis("end", endRaw)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateTimeRange(startMs, endMs); err != nil {
 		return nil, err
 	}
 	cursor, _ := cmd.Flags().GetString("cursor")
 	return map[string]any{
-		"startTime": mustGetFlag(cmd, "start"),
-		"endTime":   mustGetFlag(cmd, "end"),
+		"startTime": startRaw,
+		"endTime":   endRaw,
 		"limit":     chatIntFlagOrFallback(cmd, "limit", "size"),
 		"cursor":    cursor,
 	}, nil
 }
 
-func chatMessageListBySenderArgs(cmd *cobra.Command) (map[string]any, error) {
-	if err := validateRequiredFlags(cmd, "start"); err != nil {
-		return nil, err
+func defaultChatMessageListAllTimeRange(cmd *cobra.Command, lookback time.Duration) (string, string, error) {
+	startRaw := mustGetFlag(cmd, "start")
+	endRaw := mustGetFlag(cmd, "end")
+	anchor := time.Now()
+	if endRaw == "" {
+		endRaw = formatChatMessageListAllTime(anchor.UnixMilli())
+	} else if startRaw == "" {
+		endMs, err := parseISOTimeToMillis("end", endRaw)
+		if err != nil {
+			return "", "", err
+		}
+		anchor = time.UnixMilli(endMs)
 	}
+	if startRaw == "" {
+		startRaw = formatChatMessageListAllTime(anchor.Add(-lookback).UnixMilli())
+	}
+	return startRaw, endRaw, nil
+}
+
+func chatMessageListBySenderArgs(cmd *cobra.Command) (map[string]any, error) {
 	senderUserID := flagOrFallback(cmd, "sender-user-id", "sender")
 	senderOpenDingTalkID, _ := cmd.Flags().GetString("sender-open-dingtalk-id")
 	if senderUserID != "" && senderOpenDingTalkID != "" {
@@ -763,13 +791,13 @@ func chatMessageListBySenderArgs(cmd *cobra.Command) (map[string]any, error) {
 	if senderUserID == "" && senderOpenDingTalkID == "" {
 		return nil, fmt.Errorf("--sender-user-id or --sender-open-dingtalk-id is required")
 	}
-	startMs, err := parseISOTimeToMillis("start", mustGetFlag(cmd, "start"))
+	startRaw, endRaw, err := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
 	if err != nil {
 		return nil, err
 	}
-	endRaw, _ := cmd.Flags().GetString("end")
-	if strings.TrimSpace(endRaw) == "" {
-		endRaw = time.Now().Format(time.RFC3339)
+	startMs, err := parseISOTimeToMillis("start", startRaw)
+	if err != nil {
+		return nil, err
 	}
 	endMs, err := parseISOTimeToMillis("end", endRaw)
 	if err != nil {
@@ -794,14 +822,15 @@ func chatMessageListBySenderArgs(cmd *cobra.Command) (map[string]any, error) {
 }
 
 func chatMessageListMentionsArgs(cmd *cobra.Command) (map[string]any, error) {
-	if err := validateRequiredFlags(cmd, "start", "end"); err != nil {
-		return nil, err
-	}
-	startMs, err := parseISOTimeToMillis("start", mustGetFlag(cmd, "start"))
+	startRaw, endRaw, err := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
 	if err != nil {
 		return nil, err
 	}
-	endMs, err := parseISOTimeToMillis("end", mustGetFlag(cmd, "end"))
+	startMs, err := parseISOTimeToMillis("start", startRaw)
+	if err != nil {
+		return nil, err
+	}
+	endMs, err := parseISOTimeToMillis("end", endRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -836,14 +865,15 @@ func chatMessageSearchArgs(cmd *cobra.Command) (map[string]any, error) {
 	if err := validateRequiredFlagWithAliases(cmd, "query", "keyword"); err != nil {
 		return nil, err
 	}
-	if err := validateRequiredFlags(cmd, "start", "end"); err != nil {
-		return nil, err
-	}
-	startMs, err := parseISOTimeToMillis("start", mustGetFlag(cmd, "start"))
+	startRaw, endRaw, err := defaultChatMessageTimeRange(cmd, 7*24*time.Hour)
 	if err != nil {
 		return nil, err
 	}
-	endMs, err := parseISOTimeToMillis("end", mustGetFlag(cmd, "end"))
+	startMs, err := parseISOTimeToMillis("start", startRaw)
+	if err != nil {
+		return nil, err
+	}
+	endMs, err := parseISOTimeToMillis("end", endRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -862,6 +892,33 @@ func chatMessageSearchArgs(cmd *cobra.Command) (map[string]any, error) {
 		toolArgs["openConversationId"] = groupID
 	}
 	return toolArgs, nil
+}
+
+func defaultChatMessageTimeRange(cmd *cobra.Command, lookback time.Duration) (string, string, error) {
+	startRaw := mustGetFlag(cmd, "start")
+	endRaw := mustGetFlag(cmd, "end")
+	anchor := time.Now()
+	if endRaw == "" {
+		endRaw = anchor.Format(time.RFC3339)
+	} else if startRaw == "" {
+		endMs, err := parseISOTimeToMillis("end", endRaw)
+		if err != nil {
+			return "", "", err
+		}
+		anchor = time.UnixMilli(endMs)
+	}
+	if startRaw == "" {
+		startRaw = anchor.Add(-lookback).Format(time.RFC3339)
+	}
+	return startRaw, endRaw, nil
+}
+
+func formatChatMessageListAllTime(ms int64) string {
+	return time.UnixMilli(ms).In(shanghaiLocation()).Format("2006-01-02 15:04:05")
+}
+
+func defaultChatMessageListTime() string {
+	return time.Now().In(shanghaiLocation()).Format("2006-01-02 15:04:05")
 }
 
 func chatMessageSearchAdvancedArgs(cmd *cobra.Command) (map[string]any, error) {
@@ -2879,6 +2936,7 @@ func newChatCommand() *cobra.Command {
 		Short: "拉取会话消息内容",
 		Long:  `拉取指定群聊或单聊的会话消息内容。输出顶层 messages，稳定字段为 messageId 和 text；兼容保留 openMessageId 和 content。--conversation-id 指定群聊，--user 指定单聊用户（userId），--open-dingtalk-id 指定单聊用户（openDingTalkId），三者互斥。推荐使用 --direction newer/older 控制时间方向：newer 表示从给定时间往现在拉，older 表示从给定时间往以前拉。hasMore=true 时用结果中的边界 createTime 作为下次 --time 翻页。引用回复消息会返回 quotedMessage 引用上下文；被引用的原消息是合并转发或图片时，对应的类型与内容也会随引用上下文返回。如果返回的会话消息中包含 openConvThreadId 字段，说明是话题消息，可以调用 dws chat message list-topic-replies 拉取话题回复消息列表，openConvThreadId 作为 topic-id 参数。`,
 		Example: `  dws chat message list --conversation-id <openconversation_id> --time "2025-03-01 00:00:00"
+  dws chat message list --conversation-id <openconversation_id>
   dws chat message list --user <userId> --time "2025-03-01 00:00:00" --limit 50
   dws chat message list --open-dingtalk-id <openDingTalkId> --time "2025-03-01 00:00:00" --limit 50
   dws chat message list --conversation-id <openconversation_id> --time "2025-03-01 00:00:00" --direction older
@@ -2912,11 +2970,16 @@ func newChatCommand() *cobra.Command {
 				openDingTalkID = userID
 				userID = ""
 			}
-			forward, err := resolveMessageForward(cmd, true)
+			timeVal := mustGetFlag(cmd, "time")
+			defaultForward := true
+			if timeVal == "" {
+				timeVal = defaultChatMessageListTime()
+				defaultForward = false
+			}
+			forward, err := resolveMessageForward(cmd, defaultForward)
 			if err != nil {
 				return err
 			}
-			timeVal := mustGetFlag(cmd, "time")
 			if groupID != "" {
 				toolArgs := map[string]any{
 					"openconversation_id": groupID,
@@ -2967,7 +3030,7 @@ func newChatCommand() *cobra.Command {
 				UseWhen:      []string{"用户明确指定某个会话，并要读取消息或追溯引用回复中的原消息上下文时"},
 				AvoidWhen:    []string{"跨全部会话按时间查询时使用 chat message list-all"},
 				Examples: []string{
-					"dws chat message list --group <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50",
+					"dws chat message list --group <openConversationId> --limit 50",
 					"dws chat message list --group <openConversationId> --time \"2026-07-01 00:00:00\" --limit 50 --jq '.messages[] | {messageId, text}'",
 				},
 			},
@@ -3002,7 +3065,7 @@ func newChatCommand() *cobra.Command {
 			timeVal, _ := cmd.Flags().GetString("time")
 			defaultForward := true
 			if strings.TrimSpace(timeVal) == "" {
-				timeVal = time.Now().Format("2006-01-02 15:04:05")
+				timeVal = defaultChatMessageListTime()
 				defaultForward = false
 			}
 			forward, err := resolveMessageForward(cmd, defaultForward)
@@ -3761,7 +3824,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageListAllCmd := &cobra.Command{
 		Use:   "list-all",
 		Short: "拉取指定时间范围内当前用户的所有会话消息",
-		Long:  `分页拉取当前登录用户在指定时间范围内的所有会话消息。--start 和 --end 限定时间范围，--limit 指定每页数量，--cursor 传分页游标（首页传 0）。服务端按 cursor 分页返回，hasMore=true 时用返回的 nextCursor 值继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。如果当前账号没有消息搜索权益，CLI 会保留服务端返回的友好提示与开通入口；不要把权限错误解释为时间范围内没有消息。`,
+		Long:  `分页拉取当前登录用户在指定时间范围内的所有会话消息。--start 和 --end 可选，不传时默认最近 1 天到当前时间，避免跨全部会话范围过大；--limit 指定每页数量，--cursor 传分页游标（首页传 0）。服务端按 cursor 分页返回，hasMore=true 时用返回的 nextCursor 值继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。如果当前账号没有消息搜索权益，CLI 会保留服务端返回的友好提示与开通入口；不要把权限错误解释为时间范围内没有消息。`,
 		Example: `  dws chat message list-all --start "2025-03-01 00:00:00" --end "2025-03-31 23:59:59" --limit 50
   dws chat message list-all --start "2025-03-01 00:00:00" --end "2025-03-31 23:59:59" --limit 50 --cursor "abc123token"
   dws chat message list-all --start "2025-03-01 00:00:00" --end "2025-03-31 23:59:59" --limit 100 --page-all --page-limit 20 --max-items 500 --page-delay 0`,
@@ -3808,7 +3871,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageListBySenderCmd := &cobra.Command{
 		Use:   "list-by-sender",
 		Short: "拉取指定发送者的消息（包含单聊和群聊）",
-		Long:  `搜索特定人发送给我的消息，返回结果包含单聊和群聊标识。--sender-user-id 指定发送者 userId，--sender-open-dingtalk-id 指定发送者 openDingTalkId，二者互斥。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
+		Long:  `搜索特定人发送给我的消息，返回结果包含单聊和群聊标识。--sender-user-id 指定发送者 userId，--sender-open-dingtalk-id 指定发送者 openDingTalkId，二者互斥。--start 和 --end 可选，不传时默认最近 7 天到当前时间。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
 		Example: `  dws chat message list-by-sender --sender-user-id <userId> --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --cursor 0
   dws chat message list-by-sender --sender-open-dingtalk-id <openDingTalkId> --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --cursor 0
   dws chat message list-by-sender --sender-user-id <userId> --start "2026-03-10T00:00:00+08:00" --end "2026-03-10T23:59:59+08:00" --limit 20 --cursor 0
@@ -3860,7 +3923,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageListMentionsCmd := &cobra.Command{
 		Use:   "list-mentions",
 		Short: "拉取 @我 的消息",
-		Long:  `搜索时间范围内 @我 的消息，可选指定群聊。返回结果包含单聊和群聊标识。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
+		Long:  `搜索时间范围内 @我 的消息，可选指定群聊。--start 和 --end 可选，不传时默认最近 7 天到当前时间。返回结果包含单聊和群聊标识。分页参数 --limit（默认 50）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持单页调用。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
 		Example: `  dws chat message list-mentions --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --cursor 0
   dws chat message list-mentions --start "2026-04-01T00:00:00+08:00" --end "2026-04-14T00:00:00+08:00" --limit 20 --cursor 0
   dws chat message list-mentions --conversation-id <openconversation_id> --start "2026-03-10T00:00:00+08:00" --end "2026-03-11T00:00:00+08:00" --limit 50 --cursor 0
@@ -4048,7 +4111,7 @@ func newChatCommand() *cobra.Command {
 	chatMessageSearchCmd := &cobra.Command{
 		Use:   "search",
 		Short: "按关键词搜索消息",
-		Long:  `在当前用户的会话中按关键词搜索消息。输出顶层 messages，稳定字段为 messageId 和 text；兼容保留 openMessageId、content 和原始 result。--query 指定搜索关键词（必填）。可选 --conversation-id 限定搜索某个会话，不传则搜索所有会话。显式指定会话时，CLI 会先验证 CID，再扫描全局搜索流并在本地精确过滤，避免下层忽略非法 CID 或群聊 CID；默认最多扫描 40 页并返回至 --limit 条范围内消息。时间参数 --start/--end（ISO-8601）限定搜索时间范围。分页参数 --limit（默认 100）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。未指定会话时默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持默认行为。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
+		Long:  `在当前用户的会话中按关键词搜索消息。输出顶层 messages，稳定字段为 messageId 和 text；兼容保留 openMessageId、content 和原始 result。--query 指定搜索关键词（必填）。可选 --conversation-id 限定搜索某个会话，不传则搜索所有会话。显式指定会话时，CLI 会先验证 CID，再扫描全局搜索流并在本地精确过滤，避免下层忽略非法 CID 或群聊 CID；默认最多扫描 40 页并返回至 --limit 条范围内消息。时间参数 --start/--end（ISO-8601）可选，不传时默认最近 7 天到当前时间。分页参数 --limit（默认 100）和 --cursor（默认 "0"）始终传递；hasMore=true 时用返回的 nextCursor 作为下次 --cursor 继续翻页。未指定会话时默认只读取单页；只有显式传 --page-all 才会自动翻页并保留、合并 result.conversationMessagesList，同一会话跨页合并 messages。只传 --page-limit、--max-items 或 --page-delay 仍保持默认行为。自动翻页时 --page-limit 控制最多请求页数，--max-items 按消息数精确截断，--page-delay 控制页间等待毫秒数。`,
 		Example: `  dws chat message search --query "changefree" --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00" --limit 50 --cursor 0
   dws chat message search --query "codereview" --conversation-id <openconversation_id> --start "2026-04-01T00:00:00+08:00" --end "2026-04-15T00:00:00+08:00" --limit 100 --cursor 0
   dws chat message search --query "链接" --start "2026-04-15T00:00:00+08:00" --end "2026-04-16T00:00:00+08:00" --limit 100 --cursor <nextCursor>
@@ -4607,9 +4670,9 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageListCmd.Flags().String("conversation-id", "", "群聊 openconversation_id（群聊时必填）")
 	chatMessageListCmd.Flags().String("user", "", "单聊用户 userId（单聊时与 --open-dingtalk-id 二选一）")
 	chatMessageListCmd.Flags().String("open-dingtalk-id", "", "单聊用户 openDingTalkId（单聊时与 --user 二选一，适用于无法获取 userId 的场景）")
-	chatMessageListCmd.Flags().String("time", "", "开始时间，格式: yyyy-MM-dd HH:mm:ss (必填)")
-	chatMessageListCmd.Flags().String("direction", "", "时间方向: newer=从给定时间往现在拉，older=从给定时间往以前拉（推荐）")
-	chatMessageListCmd.Flags().String("forward", "true", "true 等价 --direction newer，false 等价 --direction older")
+	chatMessageListCmd.Flags().String("time", "", "开始时间，格式: yyyy-MM-dd HH:mm:ss（可选，默认当前时间）")
+	chatMessageListCmd.Flags().String("direction", "", "时间方向: newer=从给定时间往现在拉，older=从给定时间往以前拉（未传 --time 时默认 older）")
+	chatMessageListCmd.Flags().String("forward", "true", "true 等价 --direction newer，false 等价 --direction older（未传 --time 时默认 false）")
 	_ = chatMessageListCmd.Flags().MarkHidden("forward")
 	chatMessageListCmd.Flags().Int("limit", 0, "返回数量，不传则不限制")
 	chatMessageListCmd.Flags().Int("size", 0, "--limit 的旧版别名")
@@ -4735,10 +4798,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageListTopicRepliesCmd.Flags().String("forward", "false", "true 等价 --direction newer，false 等价 --direction older（默认 false）")
 	_ = chatMessageListTopicRepliesCmd.Flags().MarkHidden("forward")
 
-	chatMessageListAllCmd.Flags().String("start", "", "起始时间，格式: yyyy-MM-dd HH:mm:ss (必填)")
-	_ = chatMessageListAllCmd.MarkFlagRequired("start")
-	chatMessageListAllCmd.Flags().String("end", "", "结束时间，格式: yyyy-MM-dd HH:mm:ss (必填)")
-	_ = chatMessageListAllCmd.MarkFlagRequired("end")
+	chatMessageListAllCmd.Flags().String("start", "", "起始时间，格式: yyyy-MM-dd HH:mm:ss（可选，默认当前时间前 1 天）")
+	chatMessageListAllCmd.Flags().String("end", "", "结束时间，格式: yyyy-MM-dd HH:mm:ss（可选，默认当前时间）")
 	chatMessageListAllCmd.Flags().Int("limit", 50, "每页返回数量（默认 50）")
 	chatMessageListAllCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageListAllCmd.Flags().MarkHidden("size")
@@ -4752,9 +4813,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageListBySenderCmd.Flags().String("sender-open-dingtalk-id", "", "发送者 openDingTalkId（与 --sender-user-id 二选一，适用于无法获取 userId 的场景）")
 	chatMessageListBySenderCmd.Flags().String("user", "", "")
 	_ = chatMessageListBySenderCmd.Flags().MarkHidden("user")
-	chatMessageListBySenderCmd.Flags().String("start", "", "开始时间，ISO-8601 格式 (必填)")
-	_ = chatMessageListBySenderCmd.MarkFlagRequired("start")
-	chatMessageListBySenderCmd.Flags().String("end", "", "结束时间，ISO-8601 格式 (必填)")
+	chatMessageListBySenderCmd.Flags().String("start", "", "开始时间，ISO-8601 格式（可选，默认当前时间前 7 天）")
+	chatMessageListBySenderCmd.Flags().String("end", "", "结束时间，ISO-8601 格式（可选，默认当前时间）")
 	chatMessageListBySenderCmd.Flags().Int("limit", 50, "每页返回数量（默认 50）")
 	chatMessageListBySenderCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageListBySenderCmd.Flags().MarkHidden("size")
@@ -4763,10 +4823,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 
 	// list-mentions flags
 	chatMessageListMentionsCmd.Flags().String("conversation-id", "", "群聊 openconversation_id（可选，不传则查全部）")
-	chatMessageListMentionsCmd.Flags().String("start", "", "开始时间，ISO-8601 格式 (必填)")
-	_ = chatMessageListMentionsCmd.MarkFlagRequired("start")
-	chatMessageListMentionsCmd.Flags().String("end", "", "结束时间，ISO-8601 格式 (必填)")
-	_ = chatMessageListMentionsCmd.MarkFlagRequired("end")
+	chatMessageListMentionsCmd.Flags().String("start", "", "开始时间，ISO-8601 格式（可选，默认当前时间前 7 天）")
+	chatMessageListMentionsCmd.Flags().String("end", "", "结束时间，ISO-8601 格式（可选，默认当前时间）")
 	chatMessageListMentionsCmd.Flags().Int("limit", 50, "每页返回数量（默认 50）")
 	chatMessageListMentionsCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageListMentionsCmd.Flags().MarkHidden("size")
@@ -4791,10 +4849,8 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 	chatMessageSearchCmd.Flags().String("keyword", "", "--query 的别名")
 	_ = chatMessageSearchCmd.Flags().MarkHidden("keyword")
 	chatMessageSearchCmd.Flags().String("conversation-id", "", "群聊 openconversation_id（可选，不传则搜索所有会话）")
-	chatMessageSearchCmd.Flags().String("start", "", "开始时间，ISO-8601 格式 (必填)")
-	_ = chatMessageSearchCmd.MarkFlagRequired("start")
-	chatMessageSearchCmd.Flags().String("end", "", "结束时间，ISO-8601 格式 (必填)")
-	_ = chatMessageSearchCmd.MarkFlagRequired("end")
+	chatMessageSearchCmd.Flags().String("start", "", "开始时间，ISO-8601 格式（可选，默认当前时间前 7 天）")
+	chatMessageSearchCmd.Flags().String("end", "", "结束时间，ISO-8601 格式（可选，默认当前时间）")
 	chatMessageSearchCmd.Flags().Int("limit", 100, "每页返回数量（默认 100）")
 	chatMessageSearchCmd.Flags().Int("size", 0, "--limit 的旧版别名")
 	_ = chatMessageSearchCmd.Flags().MarkHidden("size")
@@ -6255,6 +6311,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		Short: "下载消息中的资源（图片/视频/语音等）到本地",
 		Long: `下载聊天消息中的图片、视频、语音等资源到本地文件。
 
+本命令只支持聊天消息 mediaId 下载，不支持钉盘 fileId。
+如需用 fileId 下载，请使用钉盘/drive 下载命令。
+
 流程:
   1. 根据 resourceType + resource-id + message-id + open-conversation-id 向服务端获取下载 URL
   2. HTTP GET 下载文件到本地
@@ -6265,6 +6324,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
   dws chat message download-media --type mediaId --resource-id <mediaId> --message-id <openMessageId> --open-conversation-id <openConversationId> --output ./downloads/
   dws chat message download-media --type mediaId --resource-id <mediaId> --message-id <openMessageId> --open-conversation-id <openConversationId> --output ./photo.jpg
   # resource-id: 从 dws chat message list 返回的消息内容中获取 mediaId
+  # 不支持钉盘 fileId；fileId 下载请使用钉盘/drive 下载命令
   # message-id: 从 dws chat message list 返回的 openMessageId
   # open-conversation-id: 从 dws chat search 获取 openConversationId`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -6394,16 +6454,16 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Selection: contract.SelectionSpec{
 				AgentSummary: "下载消息中的媒体资源到本地",
 				UseWhen:      []string{"已知消息、会话和资源 ID，需要保存媒体文件时"},
-				AvoidWhen:    []string{"只查看文本消息内容时使用对应消息查询命令"},
+				AvoidWhen:    []string{"只查看文本消息内容时使用对应消息查询命令", "资源是钉盘 fileId 时使用钉盘/drive 下载命令"},
 				Examples:     []string{"dws chat message download-media --type mediaId --resource-id <mediaId> --message-id <openMessageId> --open-conversation-id <openConversationId> --output ."},
 			},
 		},
 	})
 
 	// download-media flags
-	chatMessageDownloadMediaCmd.Flags().String("type", "", "资源类型: mediaId (必填)")
+	chatMessageDownloadMediaCmd.Flags().String("type", "", "资源类型: mediaId（必填；仅支持聊天消息 mediaId，不支持钉盘 fileId）")
 	_ = chatMessageDownloadMediaCmd.MarkFlagRequired("type")
-	chatMessageDownloadMediaCmd.Flags().String("resource-id", "", "资源 ID，mediaId 类型时为消息中的 mediaId 值 (必填)")
+	chatMessageDownloadMediaCmd.Flags().String("resource-id", "", "资源 ID，mediaId 类型时为消息中的 mediaId 值（必填；不是钉盘 fileId）")
 	_ = chatMessageDownloadMediaCmd.MarkFlagRequired("resource-id")
 	chatMessageDownloadMediaCmd.Flags().String("open-conversation-id", "", "会话 openConversationId (必填)")
 	_ = chatMessageDownloadMediaCmd.MarkFlagRequired("open-conversation-id")

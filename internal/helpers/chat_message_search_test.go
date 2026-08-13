@@ -724,6 +724,99 @@ func TestCrossPlatformCoverageChatMessageListUsesMCPMetadataGroupKey(t *testing.
 	}
 }
 
+func TestCrossPlatformCoverageChatMessageListDefaultTimeUsesShanghaiLocation(t *testing.T) {
+	previousLocal := time.Local
+	t.Cleanup(func() { time.Local = previousLocal })
+
+	tests := []struct {
+		name       string
+		args       []string
+		wantTool   string
+		wantTarget map[string]any
+	}{
+		{
+			name:       "group",
+			args:       []string{"message", "list", "--group", "cid-1", "--limit", "50"},
+			wantTool:   "list_conversation_message_v2",
+			wantTarget: map[string]any{"openconversation_id": "cid-1"},
+		},
+		{
+			name:       "user",
+			args:       []string{"message", "list", "--user", "user-1", "--limit", "50"},
+			wantTool:   "list_individual_chat_message",
+			wantTarget: map[string]any{"userId": "user-1"},
+		},
+		{
+			name:       "user open DingTalk ID fallback",
+			args:       []string{"message", "list", "--user", "D-user", "--limit", "50"},
+			wantTool:   "list_individual_chat_message",
+			wantTarget: map[string]any{"openDingTalkId": "D-user"},
+		},
+		{
+			name:       "open DingTalk ID",
+			args:       []string{"message", "list", "--open-dingtalk-id", "D-open", "--limit", "50"},
+			wantTool:   "list_individual_chat_message",
+			wantTarget: map[string]any{"openDingTalkId": "D-open"},
+		},
+		{
+			name:       "direct user",
+			args:       []string{"message", "list-direct", "--user", "user-1", "--limit", "50"},
+			wantTool:   "list_individual_chat_message",
+			wantTarget: map[string]any{"userId": "user-1"},
+		},
+		{
+			name:       "direct open DingTalk ID",
+			args:       []string{"message", "list-direct", "--open-dingtalk-id", "D-direct", "--limit", "50"},
+			wantTool:   "list_individual_chat_message",
+			wantTarget: map[string]any{"openDingTalkId": "D-direct"},
+		},
+	}
+
+	for _, loc := range []*time.Location{time.UTC, time.FixedZone("EST", -5*3600)} {
+		t.Run(loc.String(), func(t *testing.T) {
+			time.Local = loc
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					caller := &chatChangedContractCaller{}
+					before := time.Now()
+					err := executeChatChangedContract(t, caller, tt.args...)
+					after := time.Now()
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(caller.calls) != 1 {
+						t.Fatalf("calls = %#v, want one MCP call", caller.calls)
+					}
+					if caller.calls[0].toolName != tt.wantTool {
+						t.Fatalf("tool = %q, want %q", caller.calls[0].toolName, tt.wantTool)
+					}
+					for key, want := range tt.wantTarget {
+						if got := caller.calls[0].args[key]; got != want {
+							t.Fatalf("arg %s = %#v, want %#v", key, got, want)
+						}
+					}
+					raw, ok := caller.calls[0].args["time"].(string)
+					if !ok || raw == "" {
+						t.Fatalf("time arg = %#v, want non-empty string", caller.calls[0].args["time"])
+					}
+					gotMs, err := parseISOTimeToMillis("time", raw)
+					if err != nil {
+						t.Fatalf("time arg = %q, parse err = %v", raw, err)
+					}
+					wantMin := before.Add(-time.Second).UnixMilli()
+					wantMax := after.Add(time.Second).UnixMilli()
+					if gotMs < wantMin || gotMs > wantMax {
+						t.Fatalf("time arg = %q (%d), want between %d and %d", raw, gotMs, wantMin, wantMax)
+					}
+					if caller.calls[0].args["forward"] != false {
+						t.Fatalf("forward = %#v, want false when --time is omitted", caller.calls[0].args["forward"])
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageChatAuditUsesUserIDs(t *testing.T) {
 	caller := &chatChangedContractCaller{}
 	err := executeChatChangedContract(t, caller,
