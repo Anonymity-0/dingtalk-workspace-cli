@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -376,6 +377,12 @@ func TestChatFileUploadDownlinedButMessageFileSendStays(t *testing.T) {
 	legacyUUID := send.Flags().Lookup("uuid")
 	if legacyUUID == nil || !legacyUUID.Hidden {
 		t.Fatalf("chat message send --uuid hidden = %#v, want hidden compatibility flag", legacyUUID)
+	}
+	if got := legacyUUID.Annotations[runtimeannotate.AnnotationFlagAliasOf]; len(got) != 1 || got[0] != "idempotency-key" {
+		t.Fatalf("chat message send --uuid alias_of = %#v, want idempotency-key", got)
+	}
+	if got := legacyUUID.Annotations[runtimeannotate.AnnotationFlagAliasOrigin]; len(got) != 1 || got[0] != runtimeannotate.FlagAliasOriginCorecmdV1 {
+		t.Fatalf("chat message send --uuid alias_origin = %#v, want %s", got, runtimeannotate.FlagAliasOriginCorecmdV1)
 	}
 
 	got, err := executeRootCaptureStdout(t, []string{
