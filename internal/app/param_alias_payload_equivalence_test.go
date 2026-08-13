@@ -88,7 +88,7 @@ var paramAliasCompleteCommands = map[string][]string{
 	"chat message recall":                      {"chat", "message", "recall", "--conversation-id", "fixture-conversation", "--msg-id", "message-1", "--yes"},
 	"chat message reply":                       {"chat", "message", "reply", "--conversation-id", "fixture-conversation", "--ref-msg-id", "message-1", "--ref-sender", "D-sender", "--text", "hello fixture", "--yes"},
 	"chat message search-advanced":             {"chat", "message", "search-advanced", "--conversation-ids", "fixture-conversation", "--query", "fixture"},
-	"chat message send":                        {"chat", "message", "send", "--user", "D-recipient", "--text", "hello fixture", "--uuid", "param-alias-equivalence", "--yes"},
+	"chat message send":                        {"chat", "message", "send", "--user", "D-recipient", "--text", "hello fixture", "--idempotency-key", "param-alias-equivalence", "--yes"},
 	"chat message send-by-bot":                 {"chat", "message", "send-by-bot", "--robot-code", "robot-1", "--group", "fixture-conversation", "--title", "Fixture Alert", "--text", "@user-1 @user-2 fixture", "--at-user-ids", "user-1,user-2", "--yes"},
 	"chat message send-by-webhook":             {"chat", "message", "send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--text", "fixture", "--at-users", "user-1,user-2", "--yes"},
 	"contact +dept-members":                    {"contact", "+dept-members", "--dept", "Fixture Dept"},
@@ -163,8 +163,8 @@ var paramAliasCompleteCommandVariants = map[string]map[string][]string{
 		"sender-open-dingtalk-id": {"chat", "message", "list-by-sender", "--sender-open-dingtalk-id", "D-sender", "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-11T00:00:00+08:00", "--limit", "7", "--cursor", "0"},
 	},
 	"chat message send": {
-		"group":     {"chat", "message", "send", "--group", "fixture-conversation", "--text", "hello fixture", "--uuid", "param-alias-equivalence-group", "--yes"},
-		"file-path": {"chat", "message", "send", "--group", "fixture-conversation", "--msg-type", "file", "--file-path", "../../go.mod", "--dentry-id", "1", "--space-id", "2", "--uuid", "param-alias-equivalence-file", "--yes"},
+		"group":     {"chat", "message", "send", "--group", "fixture-conversation", "--text", "hello fixture", "--idempotency-key", "param-alias-equivalence-group", "--yes"},
+		"file-path": {"chat", "message", "send", "--group", "fixture-conversation", "--msg-type", "file", "--file-path", "../../go.mod", "--dentry-id", "1", "--space-id", "2", "--idempotency-key", "param-alias-equivalence-file", "--yes"},
 	},
 	"chat +conversation-set-top": {
 		"conversation-ids": {"chat", "+conversation-set-top", "--conversation-ids", "fixture-conversation-1,fixture-conversation-2", "--yes"},

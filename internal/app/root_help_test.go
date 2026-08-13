@@ -369,6 +369,14 @@ func TestChatFileUploadDownlinedButMessageFileSendStays(t *testing.T) {
 			t.Fatalf("chat message send missing --%s", flag)
 		}
 	}
+	idempotencyKey := send.Flags().Lookup("idempotency-key")
+	if idempotencyKey == nil {
+		t.Fatal("chat message send missing --idempotency-key")
+	}
+	legacyUUID := send.Flags().Lookup("uuid")
+	if legacyUUID == nil || !legacyUUID.Hidden {
+		t.Fatalf("chat message send --uuid hidden = %#v, want hidden compatibility flag", legacyUUID)
+	}
 
 	got, err := executeRootCaptureStdout(t, []string{
 		"chat", "file", "upload",
