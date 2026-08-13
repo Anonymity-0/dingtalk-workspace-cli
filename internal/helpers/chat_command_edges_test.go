@@ -160,6 +160,9 @@ func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T)
 	os.Args = []string{"dws", "chat"}
 	t.Cleanup(func() { deps, os.Args = previousDeps, previousArgs })
 	caller := &productExampleCaller{}
+	if got := formatChatMessageListAllTime(0); got == "" {
+		t.Fatal("formatChatMessageListAllTime returned empty string")
+	}
 
 	commands := [][]string{
 		{"chmod", "chat.read", "--ttl="},
@@ -168,6 +171,10 @@ func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T)
 		{"message", "list", "--user=D-user", "--time=2026-01-01", "--limit=1"},
 		{"message", "list", "--open-dingtalk-id=D-user", "--time=2026-01-01", "--direction=sideways"},
 		{"message", "list-direct", "--user=D-user", "--limit=1"},
+		{"message", "list-all"},
+		{"message", "list-all", "--end=2026-01-02T00:00:00Z"},
+		{"message", "list-all", "--end=bad"},
+		{"message", "list-all", "--start=not-a-time", "--end=2026-01-02T00:00:00Z"},
 		{"message", "list-all", "--start=2026-01-01 00:00:00", "--end=bad"},
 		{"message", "list-all", "--start=2026-01-02 00:00:00", "--end=2026-01-01 00:00:00"},
 		{"message", "list-by-sender", "--sender-user-id=u1", "--start=bad"},
