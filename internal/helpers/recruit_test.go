@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -196,6 +198,52 @@ func TestRecruitCreateValidatesJobFile(t *testing.T) {
 	}
 }
 
+func TestRecruitValidationBranches(t *testing.T) {
+	statuses, err := transformRecruitStatuses(" open, ,open,closed ")
+	if err != nil || !reflect.DeepEqual(statuses, []int{1, 3}) {
+		t.Fatalf("statuses = %#v, err = %v", statuses, err)
+	}
+
+	negativeCursor := newRecruitJobListCommand()
+	negativeCursor.SetArgs([]string{"--cursor", "-1"})
+	if err := negativeCursor.Execute(); err == nil || !strings.Contains(err.Error(), "大于或等于 0") {
+		t.Fatalf("negative cursor error = %v", err)
+	}
+
+	nullPath := filepath.Join(t.TempDir(), "null.json")
+	if err := os.WriteFile(nullPath, []byte("null"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadRecruitJobFile(nullPath); err == nil || !strings.Contains(err.Error(), "顶层必须是对象") {
+		t.Fatalf("null job error = %v", err)
+	}
+
+	base := map[string]any{
+		"name": "Java 工程师", "description": "服务端开发", "jobNature": "FULL_TIME",
+		"requiredEdu": float64(1), "minSalary": float64(20000), "maxSalary": float64(35000),
+	}
+	for _, test := range []struct {
+		name   string
+		mutate func(map[string]any)
+		want   string
+	}{
+		{name: "string type", mutate: func(job map[string]any) { job["name"] = 1 }, want: "name 必须是字符串"},
+		{name: "number type", mutate: func(job map[string]any) { job["requiredEdu"] = "本科" }, want: "requiredEdu 必须是数字"},
+		{name: "salary range", mutate: func(job map[string]any) { job["minSalary"] = float64(40000) }, want: "minSalary 不能大于 maxSalary"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			job := make(map[string]any, len(base))
+			for key, value := range base {
+				job[key] = value
+			}
+			test.mutate(job)
+			if err := validateRecruitJob(job); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("validation error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
 func TestRecruitCommandTree(t *testing.T) {
 	root := newRecruitCommand()
 	for _, path := range [][]string{{"job", "list"}, {"job", "get"}, {"job", "create"}} {
@@ -203,5 +251,56 @@ func TestRecruitCommandTree(t *testing.T) {
 		if err != nil || cmd == root || cmd.Name() != path[len(path)-1] {
 			t.Fatalf("Find(%v) = %v, %v", path, cmd, err)
 		}
+	}
+}
+
+func TestRecruitResultAndPaginationContractsReachContractFinal(t *testing.T) {
+	root := newRecruitCommand()
+	tests := []struct {
+		path        []string
+		canonical   string
+		resultField string
+		pagination  bool
+	}{
+		{path: []string{"job", "list"}, canonical: "recruit.list_jobs", resultField: "jobs", pagination: true},
+		{path: []string{"job", "get"}, canonical: "recruit.get_job_detail", resultField: "jobId"},
+		{path: []string{"job", "create"}, canonical: "recruit.create_job", resultField: "jobId"},
+	}
+	for _, test := range tests {
+		t.Run(test.canonical, func(t *testing.T) {
+			leaf, _, err := root.Find(test.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			final, ok := contractfinal.RuntimeContractFinal(leaf)
+			if !ok || final.Identity == nil || final.Identity.CanonicalPath != test.canonical {
+				t.Fatalf("final identity = %#v, found = %v", final.Identity, ok)
+			}
+			if final.Result == nil {
+				t.Fatal("final Result is nil")
+			}
+			wantOutcomes := []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure}
+			if !reflect.DeepEqual(final.Result.Outcomes, wantOutcomes) {
+				t.Fatalf("outcomes = %#v, want %#v", final.Result.Outcomes, wantOutcomes)
+			}
+			var schema struct {
+				Type       string                     `json:"type"`
+				Properties map[string]json.RawMessage `json:"properties"`
+			}
+			if err := json.Unmarshal(final.Result.DataSchema, &schema); err != nil {
+				t.Fatalf("unmarshal result data_schema: %v", err)
+			}
+			if schema.Type != "object" || len(schema.Properties[test.resultField]) == 0 {
+				t.Fatalf("result data_schema = %s, want object property %q", final.Result.DataSchema, test.resultField)
+			}
+			if test.pagination {
+				if final.Pagination == nil || final.Pagination.Kind != contract.PaginationKindCursor ||
+					final.Pagination.CursorParameter != "cursor" || final.Pagination.MetaPath != contract.PaginationMetaPath {
+					t.Fatalf("pagination = %#v, want cursor contract", final.Pagination)
+				}
+			} else if final.Pagination != nil {
+				t.Fatalf("pagination = %#v, want nil", final.Pagination)
+			}
+		})
 	}
 }

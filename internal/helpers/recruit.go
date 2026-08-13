@@ -23,8 +23,27 @@ const (
 )
 
 var recruitDryRun = &contract.DryRunSpec{
-	PreviewKind: contract.DryRunPreviewInvocation,
+	PreviewKind: contract.DryRunPreviewRequest,
 	RemoteReads: false,
+}
+
+var (
+	recruitListResult = &contract.ResultSpec{
+		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		DataSchema: json.RawMessage(`{"type":"object","description":"当前页招聘职位查询结果","properties":{"jobs":{"type":"array","description":"当前页职位记录","items":{"type":"object","description":"招聘职位摘要","properties":{"jobId":{"type":"string","description":"职位 ID"},"name":{"type":"string","description":"职位名称"},"status":{"type":"number","description":"职位状态枚举值"}},"additionalProperties":true}},"hasMore":{"type":"boolean","description":"服务端是否还有下一页"},"nextCursor":{"description":"下一页游标；仅在 hasMore 为 true 时用于续查","oneOf":[{"type":"number"},{"type":"string"}]}},"additionalProperties":true}`),
+	}
+	recruitJobDetailResult = &contract.ResultSpec{
+		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		DataSchema: json.RawMessage(`{"type":"object","description":"招聘职位详情","properties":{"jobId":{"type":"string","description":"职位 ID"},"name":{"type":"string","description":"职位名称"},"description":{"type":"string","description":"职位描述"},"status":{"type":"number","description":"职位状态枚举值"}},"additionalProperties":true}`),
+	}
+	recruitCreateJobResult = &contract.ResultSpec{
+		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		DataSchema: json.RawMessage(`{"type":"object","description":"招聘职位创建结果","properties":{"jobId":{"type":"string","description":"新创建的职位 ID"}},"required":["jobId"],"additionalProperties":true}`),
+	}
+)
+
+func recruitCursorPagination() *contract.PaginationSpec {
+	return &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "cursor"}
 }
 
 func newRecruitCommand() *cobra.Command {
@@ -86,6 +105,8 @@ func newRecruitJobListCommand() *cobra.Command {
 			Identity:    contract.ToolIdentitySpec{ProductID: "recruit", Name: recruitListJobsTool, CanonicalPath: "recruit.list_jobs", CLIPath: "recruit job list", PrimaryCLIPath: "recruit job list"},
 			Description: "按条件分页查询招聘职位",
 			DryRun:      recruitDryRun,
+			Result:      recruitListResult,
+			Pagination:  recruitCursorPagination(),
 			Interface:   recruitMCPInterface(recruitListJobsTool),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "按关键词、状态、创建人等条件分页查询招聘职位",
@@ -130,6 +151,7 @@ func newRecruitJobGetCommand() *cobra.Command {
 			Identity:    contract.ToolIdentitySpec{ProductID: "recruit", Name: recruitGetJobTool, CanonicalPath: "recruit.get_job_detail", CLIPath: "recruit job get", PrimaryCLIPath: "recruit job get"},
 			Description: "根据职位 ID 查询招聘职位详情",
 			DryRun:      recruitDryRun,
+			Result:      recruitJobDetailResult,
 			Interface:   recruitMCPInterface(recruitGetJobTool),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "获取指定招聘职位的完整信息",
@@ -159,6 +181,7 @@ func newRecruitJobCreateCommand() *cobra.Command {
 			Identity:    contract.ToolIdentitySpec{ProductID: "recruit", Name: recruitCreateJobTool, CanonicalPath: "recruit.create_job", CLIPath: "recruit job create", PrimaryCLIPath: "recruit job create"},
 			Description: "从 JSON 文件创建招聘职位",
 			DryRun:      recruitDryRun,
+			Result:      recruitCreateJobResult,
 			Interface:   recruitMCPInterface(recruitCreateJobTool),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "使用结构化 JSON 创建招聘职位",
