@@ -70,6 +70,16 @@ type UserResolution struct {
 	Profile    string `json:"profile,omitempty"`
 }
 
+const matchTypeUnverifiedUserID = "unverified_user_id"
+
+// IsUnverifiedUserIDResolution reports a mixed sender value that could not be
+// classified by the directory and is therefore being tried as an exact userId.
+// Consumers may use positive senderId equality, but must not claim a negative
+// result is complete because the original value may instead have been a name.
+func IsUnverifiedUserIDResolution(resolution UserResolution) bool {
+	return resolution.MatchType == matchTypeUnverifiedUserID
+}
+
 // Chat is the public identity returned by group resolution.
 type Chat struct {
 	OpenConversationID string `json:"openConversationId"`
@@ -148,8 +158,12 @@ func ResolveUserTarget(rt Reader, value string, requirement IdentityRequirement)
 // ResolveSenderTarget resolves the mixed identity accepted specifically by
 // sender convenience flags. Unlike the shared name resolver, it may select a
 // unique candidate whose stable userId/openDingTalkId exactly equals the
-// supplied value. Natural-name candidates retain the shared fail-closed
-// ambiguity behavior.
+// supplied value. Natural-name resolution accepts only exact names and retains
+// fail-closed ambiguity behavior; a lone unrelated directory candidate must
+// never replace the supplied value. If the directory cannot classify a value
+// and userId is accepted downstream, the original value is retained as an
+// unverified userId candidate so a valid stable ID is not blocked by directory
+// availability.
 func ResolveSenderTarget(rt Reader, value string, requirement IdentityRequirement) (UserResolution, error) {
 	value = strings.TrimSpace(value)
 	if value == "" || LooksLikeCurrentDOpenDingTalkID(value) {
@@ -160,7 +174,10 @@ func ResolveSenderTarget(rt Reader, value string, requirement IdentityRequiremen
 		"keyword": value,
 	})
 	if err != nil {
-		return UserResolution{}, err
+		if requirement == IdentityOpenDingTalkID {
+			return UserResolution{}, err
+		}
+		return unverifiedSenderUserID(value), nil
 	}
 	users := filterUsersByIdentity(dedupeUsers(ExtractUsers(data)), requirement)
 	stableMatches := make([]User, 0, 1)
@@ -184,14 +201,51 @@ func ResolveSenderTarget(rt Reader, value string, requirement IdentityRequiremen
 		return UserResolution{}, newResolutionError(StatusAmbiguous, "user", value, stableMatches)
 	}
 	if cause := incompleteUserSearchCause(data, "通讯录搜索"); cause != "" {
-		return UserResolution{}, newIncompleteUserResolutionError(value, users, cause)
+		if requirement == IdentityOpenDingTalkID {
+			return UserResolution{}, newIncompleteUserResolutionError(value, users, cause)
+		}
+		return unverifiedSenderUserID(value), nil
 	}
-	return resolveUserCandidates(users, value, requirement)
+	exactNameMatches := make([]User, 0, 1)
+	for _, user := range users {
+		if strings.EqualFold(strings.TrimSpace(user.Name), value) {
+			exactNameMatches = append(exactNameMatches, user)
+		}
+	}
+	if len(exactNameMatches) == 1 {
+		return UserResolution{
+			Status:     StatusResolved,
+			EntityType: "user",
+			Query:      value,
+			MatchType:  "exact",
+			Selected:   exactNameMatches[0],
+			Profile:    profilectx.Get(),
+		}, nil
+	}
+	if len(exactNameMatches) > 1 {
+		return UserResolution{}, newResolutionError(StatusAmbiguous, "user", value, exactNameMatches)
+	}
+	if requirement == IdentityOpenDingTalkID {
+		return UserResolution{}, newResolutionError(StatusNotFound, "user", value, users)
+	}
+	return unverifiedSenderUserID(value), nil
 }
 
-// ResolveStableUserTarget accepts only an exact userId or current-version
-// openDingTalkId. It is intended for flags whose contract explicitly excludes
-// natural names; no unique-name fallback is allowed.
+func unverifiedSenderUserID(value string) UserResolution {
+	return UserResolution{
+		Status:     StatusResolved,
+		EntityType: "user",
+		Query:      value,
+		MatchType:  matchTypeUnverifiedUserID,
+		Selected:   User{UserID: value},
+		Profile:    profilectx.Get(),
+	}
+}
+
+// ResolveStableUserTarget accepts only a userId or current-version
+// openDingTalkId. Because callers use it only for ID-only flags, a non-D value
+// is already explicitly typed as userId and can be passed through without a
+// directory availability dependency.
 func ResolveStableUserTarget(rt Reader, value string, requirement IdentityRequirement) (UserResolution, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -223,50 +277,24 @@ func ResolveStableUserTarget(rt Reader, value string, requirement IdentityRequir
 			Profile:    profilectx.Get(),
 		}, nil
 	}
-
-	data, err := rt.CallMCPData("contact", "search_contact_by_key_word", map[string]any{
-		"keyword": value,
-	})
-	if err != nil {
-		return UserResolution{}, err
+	if requirement == IdentityOpenDingTalkID {
+		return UserResolution{}, apperrors.NewValidation(
+			fmt.Sprintf("用户目标参数类型不匹配：%q 是 userId，但当前参数只接受 openDingTalkId", value),
+			apperrors.WithReason("target_type_mismatch"),
+			apperrors.WithOrigin("client"),
+			apperrors.WithFailureStage("target_resolution"),
+			apperrors.WithExecutionStarted(false),
+			apperrors.WithRetryable(false),
+		)
 	}
-	users := filterUsersByIdentity(dedupeUsers(ExtractUsers(data)), requirement)
-	stableMatches := make([]User, 0, 1)
-	for _, user := range users {
-		if strings.TrimSpace(user.UserID) == value ||
-			strings.TrimSpace(user.OpenDingTalkID) == value {
-			stableMatches = append(stableMatches, user)
-		}
-	}
-	if len(stableMatches) == 1 {
-		return UserResolution{
-			Status:     StatusResolved,
-			EntityType: "user",
-			Query:      value,
-			MatchType:  "stable_id",
-			Selected:   stableMatches[0],
-			Profile:    profilectx.Get(),
-		}, nil
-	}
-	if len(stableMatches) > 1 {
-		return UserResolution{}, newResolutionError(StatusAmbiguous, "user", value, stableMatches)
-	}
-	if cause := incompleteUserSearchCause(data, "通讯录搜索"); cause != "" {
-		return UserResolution{}, newIncompleteUserResolutionError(value, users, cause)
-	}
-	return UserResolution{}, apperrors.NewValidation(
-		fmt.Sprintf("%q 未精确匹配到 userId 或 openDingTalkId", value),
-		apperrors.WithReason("stable_user_identity_required"),
-		apperrors.WithOrigin("client"),
-		apperrors.WithFailureStage("target_resolution"),
-		apperrors.WithExecutionStarted(false),
-		apperrors.WithRetryable(false),
-		apperrors.WithHint("请先解析目标人员，并传入通讯录结果中原样返回的 userId 或 openDingTalkId"),
-		apperrors.WithDetails(map[string]any{
-			"providedValue": value,
-			"expectedTypes": []string{"userId", "openDingTalkId"},
-		}),
-	)
+	return UserResolution{
+		Status:     StatusResolved,
+		EntityType: "user",
+		Query:      value,
+		MatchType:  "stable_id",
+		Selected:   User{UserID: value},
+		Profile:    profilectx.Get(),
+	}, nil
 }
 
 // LooksLikeCurrentDOpenDingTalkID reports whether value has the canonical

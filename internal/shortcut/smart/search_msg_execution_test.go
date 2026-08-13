@@ -198,15 +198,25 @@ func TestSearchMsgSenderScopeFiltersBackendOverReturn(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageSearchMsgSenderScopeRejectsUnmappedIdentityFamily(t *testing.T) {
+func TestCrossPlatformCoverageSearchMsgSenderScopeIgnoresNonMatchingIdentityFamily(t *testing.T) {
+	caller := &searchMsgExecutionCaller{searchResponse: `{"result":{"messages":[
+		{"openMessageId":"wanted","senderOpenDingTalkId":"DAAAAAAAAAAAiE","content":"keep"},
+		{"openMessageId":"other-family","senderUserId":"other-user","content":"drop"}
+	],"hasMore":false}}`}
+	payload := executeSearchMsg(t, caller, "--sender", testCurrentDOpenID, "--no-enrich")
+	if payload["complete"] != true || payload["count"] != float64(1) || payload["failedCount"] != float64(0) {
+		t.Fatalf("payload=%#v", payload)
+	}
+
 	filtered, unverifiable := filterSearchSenderScope(
-		[]map[string]any{{"openMessageId": "m-user-family", "senderUserId": "user-1"}},
-		[]targetresolver.UserResolution{{
-			Selected: targetresolver.User{OpenDingTalkID: testCurrentDOpenID},
-		}},
+		[]map[string]any{
+			{"openMessageId": "wanted-user", "senderUserId": "wanted-user"},
+			{"openMessageId": "other-open-family", "senderOpenDingTalkId": testCurrentDOpenID},
+		},
+		[]targetresolver.UserResolution{{Selected: targetresolver.User{UserID: "wanted-user"}}},
 	)
-	if len(filtered) != 0 || !reflect.DeepEqual(unverifiable, []string{"m-user-family"}) {
-		t.Fatalf("filtered=%#v unverifiable=%#v", filtered, unverifiable)
+	if len(filtered) != 1 || len(unverifiable) != 0 {
+		t.Fatalf("reverse family filtered=%#v unverifiable=%#v", filtered, unverifiable)
 	}
 }
 
@@ -222,19 +232,9 @@ func TestCrossPlatformCoverageSearchMsgResolutionFailureEdges(t *testing.T) {
 			args:   []string{"--group", "missing-group", "--no-enrich"},
 		},
 		{
-			name:   "sender target",
-			caller: &searchMsgExecutionCaller{failContactKeyword: "missing-sender"},
-			args:   []string{"--sender", "missing-sender", "--no-enrich"},
-		},
-		{
 			name:   "sender query",
 			caller: &searchMsgExecutionCaller{failContactKeyword: "missing-query"},
 			args:   []string{"--sender-query", "missing-query", "--no-enrich"},
-		},
-		{
-			name:   "at stable id",
-			caller: &searchMsgExecutionCaller{failContactKeyword: "missing-at"},
-			args:   []string{"--at-ids", "missing-at", "--no-enrich"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -243,6 +243,89 @@ func TestCrossPlatformCoverageSearchMsgResolutionFailureEdges(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCrossPlatformCoverageSearchMsgStableUserIDContinuesWhenDirectoryIsUnavailable(t *testing.T) {
+	t.Run("unrelated unique directory candidate never replaces the supplied user id", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			contactResponse: `{"result":[{"userId":"other-user","name":"其他用户"}],"hasMore":false}`,
+			searchResponse: `{"result":{"messages":[
+				{"openMessageId":"wanted","senderUserId":"fixture-user-id","content":"keep"},
+				{"openMessageId":"other","senderUserId":"other-user","content":"drop"}
+			],"hasMore":false}}`,
+		}
+		payload := executeSearchMsg(t, caller, "--sender", "fixture-user-id", "--no-enrich")
+		if len(caller.calls) != 2 || caller.calls[0].tool != "search_contact_by_key_word" ||
+			caller.calls[1].tool != "search_messages" {
+			t.Fatalf("calls=%#v", caller.calls)
+		}
+		if got := caller.calls[1].args["senderUserIds"]; !reflect.DeepEqual(got, []string{"fixture-user-id"}) {
+			t.Fatalf("senderUserIds=%#v args=%#v", got, caller.calls[1].args)
+		}
+		if _, exists := caller.calls[1].args["senderOpenDingTakIds"]; exists {
+			t.Fatalf("unrelated candidate leaked into request: %#v", caller.calls[1].args)
+		}
+		if payload["complete"] != true || payload["count"] != float64(1) {
+			t.Fatalf("payload=%#v", payload)
+		}
+	})
+
+	t.Run("mixed sender preserves positive matches and blocks complete negative conclusion", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			failContactKeyword: "stable-user-id",
+			searchResponse: `{"result":{"messages":[
+				{"openMessageId":"wanted","senderUserId":"stable-user-id","content":"keep"},
+				{"openMessageId":"other","senderUserId":"other-user","content":"drop"}
+			],"hasMore":false}}`,
+		}
+		payload := executeSearchMsg(t, caller, "--sender", "stable-user-id", "--no-enrich")
+		if len(caller.calls) != 2 || caller.calls[0].tool != "search_contact_by_key_word" ||
+			caller.calls[1].tool != "search_messages" {
+			t.Fatalf("calls=%#v", caller.calls)
+		}
+		if got := caller.calls[1].args["senderUserIds"]; !reflect.DeepEqual(got, []string{"stable-user-id"}) {
+			t.Fatalf("senderUserIds=%#v", got)
+		}
+		if payload["count"] != float64(1) || payload["complete"] != true || payload["failedCount"] != float64(0) {
+			t.Fatalf("payload=%#v", payload)
+		}
+		scope := payload["senderScope"].(map[string]any)
+		if _, exists := scope["status"]; exists || scope["targetsResolved"] != true {
+			t.Fatalf("senderScope=%#v", scope)
+		}
+	})
+
+	t.Run("mixed sender without a stable id match cannot produce a complete negative conclusion", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			failContactKeyword: "possibly-a-name",
+			searchResponse:     `{"result":{"messages":[],"hasMore":false}}`,
+		}
+		payload := executeSearchMsg(t, caller, "--sender", "possibly-a-name", "--no-enrich")
+		if payload["count"] != float64(0) || payload["complete"] != false || payload["failedCount"] != float64(1) {
+			t.Fatalf("payload=%#v", payload)
+		}
+		scope := payload["senderScope"].(map[string]any)
+		if scope["status"] != "identity_unverified" || scope["targetsResolved"] != false {
+			t.Fatalf("senderScope=%#v", scope)
+		}
+	})
+
+	t.Run("id-only at target bypasses directory", func(t *testing.T) {
+		caller := &searchMsgExecutionCaller{
+			failContactKeyword: "stable-at-user-id",
+			searchResponse:     `{"result":{"messages":[],"hasMore":false}}`,
+		}
+		payload := executeSearchMsg(t, caller, "--at-ids", "stable-at-user-id", "--no-enrich")
+		if len(caller.calls) != 1 || caller.calls[0].tool != "search_messages" {
+			t.Fatalf("calls=%#v", caller.calls)
+		}
+		if got := caller.calls[0].args["atUserIds"]; !reflect.DeepEqual(got, []string{"stable-at-user-id"}) {
+			t.Fatalf("atUserIds=%#v", got)
+		}
+		if payload["complete"] != true {
+			t.Fatalf("payload=%#v", payload)
+		}
+	})
 }
 
 func TestCrossPlatformCoverageSearchMsgSenderScopeFailureEdges(t *testing.T) {
@@ -267,14 +350,8 @@ func TestCrossPlatformCoverageSearchMsgSenderScopeFailureEdges(t *testing.T) {
 		},
 		resolutions,
 	)
-	if len(filtered) != 1 || !reflect.DeepEqual(unverifiable, []string{"<unknown>", "open-family"}) {
+	if len(filtered) != 1 || !reflect.DeepEqual(unverifiable, []string{"<unknown>"}) {
 		t.Fatalf("filtered=%#v unverifiable=%#v", filtered, unverifiable)
-	}
-	if got := searchScopeMessageID(map[string]any{}); got != "<unknown>" {
-		t.Fatalf("missing message ID=%q", got)
-	}
-	if got := searchScopeMessageID(map[string]any{"openMessageId": "message-1"}); got != "message-1" {
-		t.Fatalf("message ID=%q", got)
 	}
 	err := searchSenderScopeUnverifiedError(
 		append(resolutions, resolutions...),

@@ -27,6 +27,7 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -578,14 +579,13 @@ func TestCrossPlatformCoverageChatMessagesAdditionalValidationAndHelpers(t *test
 	}
 }
 
-func TestChatMessagesSenderScopeRejectsUnmappedIdentityFamily(t *testing.T) {
+func TestChatMessagesSenderScopeIgnoresNonMatchingIdentityFamily(t *testing.T) {
 	filter := chatMessagesSenderFilter{
-		requested:  true,
-		applied:    true,
-		inputs:     []string{"DAAAAAAAAAAAiE"},
-		inputMode:  "sender",
-		stableIDs:  map[string]bool{"DAAAAAAAAAAAiE": true},
-		hasOpenIDs: true,
+		requested: true,
+		applied:   true,
+		inputs:    []string{"DAAAAAAAAAAAiE"},
+		inputMode: "sender",
+		stableIDs: map[string]bool{"DAAAAAAAAAAAiE": true},
 	}
 	payload := map[string]any{
 		"complete": true,
@@ -594,23 +594,103 @@ func TestChatMessagesSenderScopeRejectsUnmappedIdentityFamily(t *testing.T) {
 	filtered := applyOptionalChatMessagesSenderFilter(
 		chatMessagesRuntimeForTest(t, nil),
 		payload,
-		[]map[string]any{{"openMessageId": "m-user-family", "senderUserId": "user-1"}},
+		[]map[string]any{
+			{"openMessageId": "wanted", "senderOpenDingTalkId": "DAAAAAAAAAAAiE"},
+			{"openMessageId": "other-family", "senderUserId": "other-user"},
+		},
 		&filter,
 	)
-	if len(filtered) != 0 || filter.scopeErr == nil || payload["complete"] != false {
+	if len(filtered) != 1 || filter.scopeErr != nil || payload["complete"] != true || payload["count"] != 1 {
 		t.Fatalf("filtered=%#v filter=%#v payload=%#v", filtered, filter, payload)
 	}
 }
 
 func TestCrossPlatformCoverageChatMessagesSenderFilterFailureEdges(t *testing.T) {
-	t.Run("direct resolution stops after first error", func(t *testing.T) {
+	t.Run("unrelated unique directory candidate never replaces the supplied user id", func(t *testing.T) {
+		fake := &platformCoverageCaller{
+			contactSearchResult: `{"result":[{"userId":"other-user","name":"其他用户"}],"hasMore":false}`,
+		}
+		helpers.InitDeps(fake)
+		filter := resolveOptionalChatMessagesSenderFilter(chatMessagesRuntimeForTest(t, map[string]string{
+			"sender": "fixture-user-id",
+		}))
+		if !filter.applied || !filter.stableIDs["fixture-user-id"] || filter.stableIDs["other-user"] {
+			t.Fatalf("filter=%#v", filter)
+		}
+	})
+
+	t.Run("direct user ids continue when directory is unavailable", func(t *testing.T) {
 		fake := &platformCoverageCaller{failTool: "contact/search_contact_by_key_word"}
 		helpers.InitDeps(fake)
 		filter := resolveOptionalChatMessagesSenderFilter(chatMessagesRuntimeForTest(t, map[string]string{
 			"sender": testCurrentDOpenID + ",fixture-name,ignored-name",
 		}))
-		if filter.applied || filter.resolutionErr == nil || len(fake.calls) != 1 {
+		if !filter.applied || filter.resolutionErr != nil || len(fake.calls) != 2 ||
+			!filter.stableIDs["fixture-name"] || !filter.stableIDs["ignored-name"] {
 			t.Fatalf("filter=%#v calls=%#v", filter, fake.calls)
+		}
+	})
+
+	t.Run("unverified mixed sender becomes verified by an exact sender id match", func(t *testing.T) {
+		payload := map[string]any{"complete": true, "failures": []map[string]any{}}
+		resolution := targetresolver.UserResolution{
+			Status:     targetresolver.StatusResolved,
+			EntityType: "user",
+			Query:      "stable-user-id",
+			MatchType:  "unverified_user_id",
+			Selected:   targetresolver.User{UserID: "stable-user-id"},
+		}
+		filter := chatMessagesSenderFilter{
+			requested:   true,
+			applied:     true,
+			inputs:      []string{"stable-user-id"},
+			inputMode:   "sender",
+			stableIDs:   map[string]bool{"stable-user-id": true},
+			resolutions: []targetresolver.UserResolution{resolution},
+		}
+		filtered := applyOptionalChatMessagesSenderFilter(
+			chatMessagesRuntimeForTest(t, nil), payload,
+			[]map[string]any{
+				{"openMessageId": "wanted", "senderUserId": "stable-user-id"},
+				{"openMessageId": "other", "senderUserId": "other-user"},
+			}, &filter,
+		)
+		if len(filtered) != 1 || payload["complete"] != true || len(payload["failures"].([]map[string]any)) != 0 {
+			t.Fatalf("filtered=%#v payload=%#v", filtered, payload)
+		}
+		identity := payload["identityResult"].(map[string]any)
+		if identity["status"] != "evaluated" || identity["negativeConclusionAllowed"] != true {
+			t.Fatalf("identityResult=%#v", identity)
+		}
+	})
+
+	t.Run("unverified mixed sender without a match blocks complete negative conclusion", func(t *testing.T) {
+		payload := map[string]any{"complete": true, "failures": []map[string]any{}}
+		resolution := targetresolver.UserResolution{
+			Status:     targetresolver.StatusResolved,
+			EntityType: "user",
+			Query:      "possibly-a-name",
+			MatchType:  "unverified_user_id",
+			Selected:   targetresolver.User{UserID: "possibly-a-name"},
+		}
+		filter := chatMessagesSenderFilter{
+			requested:   true,
+			applied:     true,
+			inputs:      []string{"possibly-a-name"},
+			inputMode:   "sender",
+			stableIDs:   map[string]bool{"possibly-a-name": true},
+			resolutions: []targetresolver.UserResolution{resolution},
+		}
+		filtered := applyOptionalChatMessagesSenderFilter(
+			chatMessagesRuntimeForTest(t, nil), payload,
+			[]map[string]any{{"openMessageId": "other", "senderUserId": "other-user"}}, &filter,
+		)
+		if len(filtered) != 0 || payload["complete"] != false || payload["failedCount"] != 1 {
+			t.Fatalf("filtered=%#v payload=%#v", filtered, payload)
+		}
+		identity := payload["identityResult"].(map[string]any)
+		if identity["status"] != "identity_unverified" || identity["negativeConclusionAllowed"] != false {
+			t.Fatalf("identityResult=%#v", identity)
 		}
 	})
 
@@ -634,15 +714,14 @@ func TestCrossPlatformCoverageChatMessagesSenderFilterFailureEdges(t *testing.T)
 		}
 	})
 
-	t.Run("rejects missing and unmapped identity families", func(t *testing.T) {
+	t.Run("rejects only missing identities", func(t *testing.T) {
 		payload := map[string]any{"complete": true, "failures": []map[string]any{}}
 		filter := chatMessagesSenderFilter{
-			requested:  true,
-			applied:    true,
-			inputs:     []string{"fixture"},
-			inputMode:  "sender",
-			stableIDs:  map[string]bool{"wanted-user": true},
-			hasUserIDs: true,
+			requested: true,
+			applied:   true,
+			inputs:    []string{"fixture"},
+			inputMode: "sender",
+			stableIDs: map[string]bool{"wanted-user": true},
 		}
 		filtered := applyOptionalChatMessagesSenderFilter(
 			chatMessagesRuntimeForTest(t, nil),
@@ -654,26 +733,43 @@ func TestCrossPlatformCoverageChatMessagesSenderFilterFailureEdges(t *testing.T)
 			},
 			&filter,
 		)
-		if len(filtered) != 1 || filter.scopeErr == nil || chatMessagesMessageID(map[string]any{}) != "<unknown>" || chatMessagesMessageID(filtered[0]) != "wanted" {
+		if len(filtered) != 1 || filter.scopeErr == nil {
 			t.Fatalf("filtered=%#v filter=%#v payload=%#v", filtered, filter, payload)
 		}
 	})
 
-	t.Run("rejects user identity when only open ids were resolved", func(t *testing.T) {
+	t.Run("ignores user identity when only open ids were resolved", func(t *testing.T) {
 		payload := map[string]any{"complete": true, "failures": []map[string]any{}}
 		filter := chatMessagesSenderFilter{
-			requested:  true,
-			applied:    true,
-			inputs:     []string{testCurrentDOpenID},
-			inputMode:  "sender",
-			stableIDs:  map[string]bool{testCurrentDOpenID: true},
-			hasOpenIDs: true,
+			requested: true,
+			applied:   true,
+			inputs:    []string{testCurrentDOpenID},
+			inputMode: "sender",
+			stableIDs: map[string]bool{testCurrentDOpenID: true},
 		}
 		applyOptionalChatMessagesSenderFilter(
 			chatMessagesRuntimeForTest(t, nil), payload,
 			[]map[string]any{{"senderUserId": "other-user"}}, &filter,
 		)
-		if filter.scopeErr == nil {
+		if filter.scopeErr != nil || payload["complete"] != true {
+			t.Fatalf("filter=%#v", filter)
+		}
+	})
+
+	t.Run("ignores open identity when only user ids were resolved", func(t *testing.T) {
+		payload := map[string]any{"complete": true, "failures": []map[string]any{}}
+		filter := chatMessagesSenderFilter{
+			requested: true,
+			applied:   true,
+			inputs:    []string{"wanted-user"},
+			inputMode: "sender",
+			stableIDs: map[string]bool{"wanted-user": true},
+		}
+		applyOptionalChatMessagesSenderFilter(
+			chatMessagesRuntimeForTest(t, nil), payload,
+			[]map[string]any{{"senderOpenDingTalkId": testCurrentDOpenID}}, &filter,
+		)
+		if filter.scopeErr != nil || payload["complete"] != true {
 			t.Fatalf("filter=%#v", filter)
 		}
 	})
