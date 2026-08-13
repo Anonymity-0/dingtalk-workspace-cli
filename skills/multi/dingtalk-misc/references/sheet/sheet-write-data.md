@@ -386,9 +386,14 @@ Flags:
 **dropdown（下拉列表）**：
 ```json
 { "type": "text", "text": "High", "dataValidation": { "type": "dropdown", "options": [{"value":"High","color":"#00ff00"},{"value":"Low","color":"#ff0000"}], "enableMultiSelect": false } }
+{ "dataValidation": { "type": "dropdown", "sourceRange": {"sheetId":"SOURCE_SHEET_ID","a1Notation":"T1:T3"}, "enableMultiSelect": false } }
 ```
-- `options`：必填，`[{value, color?}]` 数组
+- `options` 与 `sourceRange` 必须且只能提供一个
+- Inline：`options` 为非空 `[{value, color?}]` 数组
+- SourceRange：`sourceRange` 为 `{sheetId,a1Notation}`；可引用同一工作簿内其他工作表，支持普通区域、整行和整列。`a1Notation` 不带工作表前缀，不接受公式或多区域；颜色写入暂不支持
 - `enableMultiSelect`：可选，是否多选，默认 false
+- SourceRange 当前不会随工作表重命名或行列插入、删除、移动自动更新，结构操作后应重新写入
+- 复合 cell 写入中，如果值或样式已成功落盘但 SourceRange 校验失败，服务端可返回 `success:true` 并通过 `message` 说明下拉未创建；必须检查 `message` 并按需回读
 
 **checkbox（复选框）**：
 ```json

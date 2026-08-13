@@ -60,11 +60,43 @@ func translateBatchOp(op map[string]any) (map[string]any, error) {
 	if !ok {
 		return nil, fmt.Errorf("unsupported toolName %q: must be a CLI command name (e.g. \"range clear\", \"range update\", \"merge-cells\"). Run 'dws sheet batch-update --help' for the full list", toolName)
 	}
+	if toolName == "set-dropdown" {
+		if err := validateBatchSetDropdownInput(input); err != nil {
+			return nil, err
+		}
+	}
 
 	return map[string]any{
 		"toolName": mapping.mcpTool,
 		"input":    mapping.build(input),
 	}, nil
+}
+
+func validateBatchSetDropdownInput(input map[string]any) error {
+	if _, exists := input["source-colors"]; exists {
+		return fmt.Errorf("set-dropdown: SourceRange 颜色写入暂不支持")
+	}
+	if _, exists := input["colors"]; exists {
+		return fmt.Errorf("set-dropdown: SourceRange 颜色写入暂不支持")
+	}
+
+	options, hasOptions := input["options"]
+	hasOptions = hasOptions && options != nil
+	sourceRange := batchStr(input, "source-range")
+	sourceSheetID := batchStr(input, "source-sheet-id")
+	hasSourceRange := sourceRange != ""
+	if hasOptions == hasSourceRange {
+		return fmt.Errorf("set-dropdown: options 与 source-range 必须且只能指定一个")
+	}
+	if hasSourceRange != (sourceSheetID != "") {
+		return fmt.Errorf("set-dropdown: source-range 与 source-sheet-id 必须同时指定")
+	}
+	if hasSourceRange {
+		if err := validateDropdownSourceRangeNotation(sourceRange); err != nil {
+			return fmt.Errorf("set-dropdown: %w", err)
+		}
+	}
+	return nil
 }
 
 // ── BuildXxxArgs: CLI flag → MCP param 转换函数 ──────────────────────────────────
@@ -215,7 +247,15 @@ func BuildSetDropdownArgs(input map[string]any) map[string]any {
 	args := map[string]any{
 		"sheetId": batchStr(input, "sheet-id"),
 		"range":   batchStr(input, "range"),
-		"options": input["options"],
+	}
+	if options, ok := input["options"]; ok && options != nil {
+		args["options"] = options
+	}
+	if sourceRange := batchStr(input, "source-range"); sourceRange != "" {
+		args["sourceRange"] = map[string]any{
+			"sheetId":    batchStr(input, "source-sheet-id"),
+			"a1Notation": sourceRange,
+		}
 	}
 	if v, ok := input["multi-select"]; ok {
 		args["enableMultiSelect"] = v
