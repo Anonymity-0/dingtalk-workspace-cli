@@ -209,6 +209,30 @@ type OAApprovalInstanceFinishedOutput struct {
 	EventTime         int64  `json:"event_time" description:"审批实例事件业务时间" format:"timestamp_ms"`
 }
 
+// VoIPCallReceiveInviteOutput is the stable business-facing output emitted
+// when the current user receives a VoIP call invitation. BizID is preserved
+// because it is the business event's retry-stable deduplication key.
+type VoIPCallReceiveInviteOutput struct {
+	Type         string `json:"type" description:"事件类型，固定为当前 event_key"`
+	EventID      string `json:"event_id" description:"transport 事件 ID，可用于传输层去重"`
+	Timestamp    int64  `json:"timestamp" description:"事件发生时间戳" format:"timestamp_ms"`
+	SubscribeID  string `json:"subscribe_id" description:"订阅 ID"`
+	BizID        string `json:"biz_id" description:"业务事件唯一 ID；同一事件重试时保持不变，可用于业务去重"`
+	CorpID       string `json:"corp_id" description:"事件所属组织的 corpId"`
+	OrgID        int64  `json:"org_id" description:"事件所属组织 ID"`
+	TargetUID    int64  `json:"target_uid" description:"订阅并接收邀请的目标用户 UID"`
+	CallID       string `json:"call_id" description:"通话会话 ID"`
+	CallerUID    int64  `json:"caller_uid" description:"主叫用户 UID"`
+	CallerCorpID string `json:"caller_corp_id" description:"主叫用户所属组织 corpId"`
+	CalleeUID    int64  `json:"callee_uid" description:"被叫用户 UID"`
+	CalleeCorpID string `json:"callee_corp_id" description:"被叫用户所属组织 corpId"`
+	CallType     string `json:"call_type" description:"通话类型；值以服务端实际推送为准"`
+	RoomID       string `json:"room_id" description:"会议房间 ID"`
+	RoomCode     string `json:"room_code" description:"敏感入会码，仅用于当前通话入会，不应记录或转发"`
+	CreateTime   int64  `json:"create_time" description:"通话邀请创建时间" format:"timestamp_ms"`
+	EventTime    int64  `json:"event_time" description:"通话邀请事件业务时间" format:"timestamp_ms"`
+}
+
 type GroupMemberEventOutput struct {
 	Type                   string                   `json:"type" description:"事件类型，固定为当前 event_key"`
 	EventID                string                   `json:"event_id" description:"事件 ID，可用于去重"`
@@ -332,6 +356,27 @@ type personalOAApprovalBody struct {
 	Result            string `json:"result"`
 	CreateTime        int64  `json:"createTime"`
 	FinishTime        int64  `json:"finishTime"`
+}
+
+type personalVoIPCallReceiveInvitePayload struct {
+	BizID     string                            `json:"bizid"`
+	EventTime int64                             `json:"event_time"`
+	CorpID    string                            `json:"corpid"`
+	OrgID     int64                             `json:"orgId"`
+	UID       int64                             `json:"uid"`
+	Body      personalVoIPCallReceiveInviteBody `json:"body"`
+}
+
+type personalVoIPCallReceiveInviteBody struct {
+	CallID       string `json:"callId"`
+	CallerUID    int64  `json:"callerUid"`
+	CallerCorpID string `json:"callerCorpId"`
+	CalleeUID    int64  `json:"calleeUid"`
+	CalleeCorpID string `json:"calleeCorpId"`
+	CallType     string `json:"callType"`
+	RoomID       string `json:"roomId"`
+	RoomCode     string `json:"roomCode"`
+	CreateTime   int64  `json:"createTime"`
 }
 
 func (b *personalReactionBody) UnmarshalJSON(data []byte) error {
@@ -460,9 +505,42 @@ func ProjectOutput(ev transport.Event) (any, error) {
 		}, nil
 	case isOAEvent(eventType):
 		return projectOAApprovalEvent(ev, base, data.Payload)
+	case isVoIPEvent(eventType):
+		return projectVoIPCallReceiveInviteEvent(ev, base, data.Payload)
 	default:
 		return ev, fmt.Errorf("unsupported personal event type %q", eventType)
 	}
+}
+
+func projectVoIPCallReceiveInviteEvent(ev transport.Event, base baseEventOutput, raw json.RawMessage) (any, error) {
+	var payload personalVoIPCallReceiveInvitePayload
+	if err := decodeRequiredPayload(raw, &payload); err != nil {
+		return ev, fmt.Errorf("decode personal VoIP payload: %w", err)
+	}
+	if strings.TrimSpace(payload.BizID) == "" {
+		return ev, fmt.Errorf("decode personal VoIP payload: bizid is required")
+	}
+
+	return VoIPCallReceiveInviteOutput{
+		Type:         base.Type,
+		EventID:      base.EventID,
+		Timestamp:    base.Timestamp,
+		SubscribeID:  base.SubscribeID,
+		BizID:        payload.BizID,
+		CorpID:       payload.CorpID,
+		OrgID:        payload.OrgID,
+		TargetUID:    payload.UID,
+		CallID:       payload.Body.CallID,
+		CallerUID:    payload.Body.CallerUID,
+		CallerCorpID: payload.Body.CallerCorpID,
+		CalleeUID:    payload.Body.CalleeUID,
+		CalleeCorpID: payload.Body.CalleeCorpID,
+		CallType:     payload.Body.CallType,
+		RoomID:       payload.Body.RoomID,
+		RoomCode:     payload.Body.RoomCode,
+		CreateTime:   payload.Body.CreateTime,
+		EventTime:    payload.EventTime,
+	}, nil
 }
 
 func projectMessageEventContext(message personalMessageContext) MessageEventContext {
@@ -875,6 +953,8 @@ func outputTypeForEvent(eventKey string) reflect.Type {
 		return reflect.TypeOf(OAApprovalInstanceTerminatedOutput{})
 	case eventKey == EventOAApprovalInstanceFinished:
 		return reflect.TypeOf(OAApprovalInstanceFinishedOutput{})
+	case isVoIPEvent(eventKey):
+		return reflect.TypeOf(VoIPCallReceiveInviteOutput{})
 	default:
 		return reflect.TypeOf(baseEventOutput{})
 	}
@@ -908,6 +988,10 @@ func isOAEvent(eventKey string) bool {
 		eventKey == EventOAApprovalInstanceStarted ||
 		eventKey == EventOAApprovalInstanceTerminated ||
 		eventKey == EventOAApprovalInstanceFinished
+}
+
+func isVoIPEvent(eventKey string) bool {
+	return eventKey == EventVoIPCallReceiveInvite
 }
 
 func isOAApprovalTaskEvent(eventKey string) bool {

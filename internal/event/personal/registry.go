@@ -45,6 +45,7 @@ const (
 	EventOAApprovalInstanceStarted    = "user_oa_approval_instance_started"
 	EventOAApprovalInstanceTerminated = "user_oa_approval_instance_terminated"
 	EventOAApprovalInstanceFinished   = "user_oa_approval_instance_finished"
+	EventVoIPCallReceiveInvite        = "user_voip_call_receive_invite"
 )
 
 const (
@@ -339,6 +340,17 @@ var definitions = []Definition{
 		DisplayName:    "审批单完成",
 		Description:    "审批实例完成，发送给审批单发起人",
 		Category:       "oa",
+		RuleType:       "all",
+		Status:         StatusEnabled,
+		RequiredParams: nil,
+		Auth:           map[string]any{"identity": "user"},
+		Public:         true,
+	},
+	{
+		EventKey:       EventVoIPCallReceiveInvite,
+		DisplayName:    "语音通话接收邀请",
+		Description:    "被叫用户收到语音通话邀请，通话已切换为会议模式",
+		Category:       "voip",
 		RuleType:       "all",
 		Status:         StatusEnabled,
 		RequiredParams: nil,

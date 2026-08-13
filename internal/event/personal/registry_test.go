@@ -52,6 +52,7 @@ func TestCatalogEnabledEvents(t *testing.T) {
 		EventOAApprovalInstanceStarted,
 		EventOAApprovalInstanceTerminated,
 		EventOAApprovalInstanceFinished,
+		EventVoIPCallReceiveInvite,
 	}
 	if !reflect.DeepEqual(keys, want) {
 		t.Fatalf("keys = %#v, want %#v", keys, want)
@@ -84,6 +85,46 @@ func TestOAEventCatalogDefinitions(t *testing.T) {
 		if item.Auth["identity"] != "user" {
 			t.Fatalf("Catalog(oa)[%d].auth = %#v, want user identity", i, item.Auth)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageVoIPEventCatalogDefinitionAndSchema(t *testing.T) {
+	items := Catalog("voip", true, false)
+	if len(items) != 1 {
+		t.Fatalf("Catalog(voip) = %#v, want one event", items)
+	}
+	item := items[0]
+	if item.EventKey != EventVoIPCallReceiveInvite || item.Category != "voip" || item.RuleType != "all" || item.Status != StatusEnabled || !item.Public {
+		t.Fatalf("Catalog(voip)[0] = %#v, want public enabled voip/all event", item)
+	}
+	if len(item.RequiredParams) != 0 || item.Constraints != nil || item.Auth["identity"] != "user" {
+		t.Fatalf("Catalog(voip)[0] parameters/auth = %#v/%#v/%#v", item.RequiredParams, item.Constraints, item.Auth)
+	}
+
+	doc := BuildSchemaDocumentForMode(item, true)
+	if doc.JQRootPath != "." {
+		t.Fatalf("jq_root_path = %q, want .", doc.JQRootPath)
+	}
+	properties, ok := doc.Schema["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("schema.properties = %#v", doc.Schema["properties"])
+	}
+	wantProperties := []string{
+		"type", "event_id", "timestamp", "subscribe_id", "biz_id", "corp_id", "org_id", "target_uid",
+		"call_id", "caller_uid", "caller_corp_id", "callee_uid", "callee_corp_id", "call_type",
+		"room_id", "room_code", "create_time", "event_time",
+	}
+	if len(properties) != len(wantProperties) {
+		t.Fatalf("schema.properties = %#v, want exactly %d fields", properties, len(wantProperties))
+	}
+	for _, name := range wantProperties {
+		if _, ok := properties[name].(map[string]any); !ok {
+			t.Fatalf("schema.properties.%s = %#v, want object", name, properties[name])
+		}
+	}
+	roomCode := properties["room_code"].(map[string]any)
+	if !strings.Contains(roomCode["description"].(string), "敏感") {
+		t.Fatalf("room_code description = %#v, want sensitive handling guidance", roomCode)
 	}
 }
 
@@ -160,6 +201,7 @@ func TestSchemaDocumentsDefaultToTransportEnvelope(t *testing.T) {
 		EventOAApprovalInstanceStarted,
 		EventOAApprovalInstanceTerminated,
 		EventOAApprovalInstanceFinished,
+		EventVoIPCallReceiveInvite,
 	} {
 		t.Run(eventKey, func(t *testing.T) {
 			def, ok := Lookup(eventKey)
@@ -635,6 +677,7 @@ func TestBuildRuleParamAllEvents(t *testing.T) {
 		EventOAApprovalInstanceStarted,
 		EventOAApprovalInstanceTerminated,
 		EventOAApprovalInstanceFinished,
+		EventVoIPCallReceiveInvite,
 	} {
 		t.Run(eventKey, func(t *testing.T) {
 			rule, param, err := BuildRuleParam(eventKey, RuleOptions{})
@@ -847,6 +890,7 @@ func TestSupportsMessageFilter(t *testing.T) {
 		EventOAApprovalInstanceStarted,
 		EventOAApprovalInstanceTerminated,
 		EventOAApprovalInstanceFinished,
+		EventVoIPCallReceiveInvite,
 		"unknown_event",
 	} {
 		if SupportsMessageFilter(eventKey) {

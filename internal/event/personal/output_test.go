@@ -203,6 +203,34 @@ func personalOAData(eventKey string) string {
 	return string(encoded)
 }
 
+func personalVoIPData() string {
+	return `{
+		"eventId":"voip-event",
+		"eventKey":"user_voip_call_receive_invite",
+		"occurredAtMs":1780630479124,
+		"subId":"voip-data-sub",
+		"payload":{
+			"bizid":"VOIP_room-1_3559506650",
+			"event_time":1780630479123,
+			"corpid":"ding-callee-corp",
+			"orgId":21001,
+			"uid":3559506650,
+			"filterSubId":"internal-filter",
+			"body":{
+				"callId":"call-1",
+				"callerUid":1000000001,
+				"callerCorpId":"ding-caller-corp",
+				"calleeUid":3559506650,
+				"calleeCorpId":"ding-callee-corp",
+				"callType":"conference",
+				"roomId":"room-1",
+				"roomCode":"sensitive-code",
+				"createTime":1780630479000
+			}
+		}
+	}`
+}
+
 func TestCrossPlatformCoverageProjectOutputMessageEvents(t *testing.T) {
 	for _, eventKey := range []string{EventMention, EventSingleChat, EventInChat, EventFromUser, EventAllSingleChat, EventAllGroupChat} {
 		t.Run(eventKey, func(t *testing.T) {
@@ -571,6 +599,78 @@ func TestCrossPlatformCoverageProjectOutputOAEvents(t *testing.T) {
 				t.Fatalf("ProjectOutput() = %#v, want %#v", projected, tt.want)
 			}
 			assertNoInternalActionFields(t, projected)
+		})
+	}
+}
+
+func TestCrossPlatformCoverageProjectOutputVoIPCallReceiveInvite(t *testing.T) {
+	projected, err := ProjectOutput(transport.Event{
+		EventID:       "outer-event",
+		EventBornTime: 11,
+		EventType:     EventVoIPCallReceiveInvite,
+		SubscribeID:   "outer-sub",
+		Data:          personalVoIPData(),
+	})
+	if err != nil {
+		t.Fatalf("ProjectOutput() error = %v", err)
+	}
+	want := VoIPCallReceiveInviteOutput{
+		Type:         EventVoIPCallReceiveInvite,
+		EventID:      "voip-event",
+		Timestamp:    1780630479124,
+		SubscribeID:  "outer-sub",
+		BizID:        "VOIP_room-1_3559506650",
+		CorpID:       "ding-callee-corp",
+		OrgID:        21001,
+		TargetUID:    3559506650,
+		CallID:       "call-1",
+		CallerUID:    1000000001,
+		CallerCorpID: "ding-caller-corp",
+		CalleeUID:    3559506650,
+		CalleeCorpID: "ding-callee-corp",
+		CallType:     "conference",
+		RoomID:       "room-1",
+		RoomCode:     "sensitive-code",
+		CreateTime:   1780630479000,
+		EventTime:    1780630479123,
+	}
+	if !reflect.DeepEqual(projected, want) {
+		t.Fatalf("ProjectOutput() = %#v, want %#v", projected, want)
+	}
+
+	encoded, err := json.Marshal(projected)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	if !strings.Contains(string(encoded), `"biz_id":"VOIP_room-1_3559506650"`) || strings.Contains(string(encoded), "filterSubId") {
+		t.Fatalf("flattened VoIP output = %s, want biz_id without internal filterSubId", encoded)
+	}
+}
+
+func TestCrossPlatformCoverageProjectOutputRejectsInvalidVoIPPayload(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload string
+		want    string
+	}{
+		{name: "missing", want: "payload is missing"},
+		{name: "missing body", payload: `,"payload":{"bizid":"biz-1"}`, want: "payload body is missing"},
+		{name: "missing bizid", payload: `,"payload":{"body":{"callId":"call-1"}}`, want: "bizid is required"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ev := transport.Event{
+				EventID:   "outer-event",
+				EventType: EventVoIPCallReceiveInvite,
+				Data:      fmt.Sprintf(`{"eventKey":%q%s}`, EventVoIPCallReceiveInvite, tt.payload),
+			}
+			projected, err := ProjectOutput(ev)
+			if err == nil || !strings.Contains(err.Error(), tt.want) || !strings.Contains(err.Error(), "decode personal VoIP payload") {
+				t.Fatalf("ProjectOutput() error = %v, want VoIP context and %q", err, tt.want)
+			}
+			if got, ok := projected.(transport.Event); !ok || !reflect.DeepEqual(got, ev) {
+				t.Fatalf("ProjectOutput() fallback = %#v, want %#v", projected, ev)
+			}
 		})
 	}
 }

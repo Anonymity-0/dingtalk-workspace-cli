@@ -1,6 +1,6 @@
-# dws event — 个人 IM 与 OA 审批事件
+# dws event — 个人 IM、OA 审批与 VoIP 通话事件
 
-通过个人 Stream 长连接监听当前用户的钉钉消息接收、已读、撤回、表情回应、群生命周期，以及审批任务和审批实例事件，NDJSON 输出到 stdout，用于驱动事件触发的 Agent。普通 IM 监听默认使用 `dws event +listen-im`；OA 审批、群生命周期、显式 EventKey、Filter DSL、subscribe_id 复用或原始 envelope 使用 `dws event consume`。不要写脚本轮询消息历史或审批列表。
+通过个人 Stream 长连接监听当前用户的钉钉消息接收、已读、撤回、表情回应、群生命周期、审批任务与实例，以及 VoIP 通话邀请事件，NDJSON 输出到 stdout，用于驱动事件触发的 Agent。普通 IM 监听默认使用 `dws event +listen-im`；OA 审批、VoIP 通话邀请、群生命周期、显式 EventKey、Filter DSL、subscribe_id 复用或原始 envelope 使用 `dws event consume`。不要写脚本轮询消息历史、审批列表或通话记录。
 
 ## 运行方式
 
@@ -15,6 +15,7 @@
 |---|---|
 | `dws event +listen-im --kind ... [flags]` | 普通 message/reaction/read/recall 监听；支持自然姓名/群名唯一解析 |
 | `dws event list --category oa` | 查看当前公开的 OA 个人事件目录 |
+| `dws event list --category voip` | 查看当前公开的 VoIP 个人事件目录 |
 | `dws event schema <event_key> --flatten` | 查看 Agent 使用的顶层业务字段 schema |
 | `dws event consume <event_key> [event_key...] --flatten [flags]` | 高级入口：阻塞消费显式 EventKey，事件写到 stdout，用 `-f ndjson` |
 | `dws event status --event <event_key>` | 查看个人订阅、bus、本地 consume |
@@ -49,8 +50,9 @@
 | `user_oa_approval_instance_started` | 审批实例已发起 | 无 |
 | `user_oa_approval_instance_terminated` | 审批实例已终止 | 无 |
 | `user_oa_approval_instance_finished` | 审批实例完成，发送给审批单发起人 | 无 |
+| `user_voip_call_receive_invite` | 当前用户作为被叫收到语音通话邀请 | 无 |
 
-只承认上表 22 个事件码。默认身份就是当前用户，使用当前用户 OAuth 登录态，不要额外加身份切换 flag。六个 OA 事件订阅当前用户相关的全部审批事件，规则均为 `all`、空 `filterRule`，不需要目标参数。
+只承认上表 23 个事件码。默认身份就是当前用户，使用当前用户 OAuth 登录态，不要额外加身份切换 flag。六个 OA 事件与一个 VoIP 事件均使用 `all` 规则和空 `filterRule`，不需要目标参数。
 
 ## Intent mapping
 
@@ -79,20 +81,22 @@
 | "有审批单终止时通知我" | `event consume`，事件码 `user_oa_approval_instance_terminated`，参数 `--flatten -f ndjson` |
 | "监听我发起的审批何时完成" / "审批实例完成时通知我" | `event consume`，事件码 `user_oa_approval_instance_finished`，参数 `--flatten -f ndjson` |
 | "同时监听全部已公开 OA 事件" | 一个 consume 放入六个 OA event key，不加目标或消息过滤参数 |
+| "收到语音通话邀请时通知我" / "监听 VoIP 来电" | `dws event consume user_voip_call_receive_invite --flatten -f ndjson` |
+| "查看 VoIP 事件目录" | `dws event list --category voip` |
 | "查看个人事件 schema" | `dws event schema <event_key> --flatten` |
 | "看个人事件订阅状态" | `dws event status --event <event_key>` |
 | "停止这个个人事件订阅" | `dws event stop <subscribe_id> --dry-run`，确认后改用 `--yes` |
 
 多候选让用户确认。缺必填 ID 且解析不出先追问，不要猜。企业内部 userId 使用 `--user`；明确给出 openDingtalkId，或目标是外部联系人、机器人、跨组织身份时使用 `--open-dingtalk-id`。两者严格二选一，不得混填、猜测或自动转换身份类型。
 
-“我和某人的单聊”使用 `receive_o2o`；“某人发给我的消息/某人发送的消息”使用 `receive_user`，后者覆盖该发送人的单聊和群聊消息。只有明确说“所有”时才使用 `receive_o2o_all/receive_group_all`，指定对象仍使用范围更小的事件。用户要求执行“撤回消息”时走 `dws chat`；只有“监听/订阅消息撤回”才走 `dws event`。“贴标签”表示给消息贴表情时，对应 `reaction` 表情回应事件。OA 事件不接受 `--user`、`--open-dingtalk-id`、`--group`、`--query` 或 `--filter-json`。
+“我和某人的单聊”使用 `receive_o2o`；“某人发给我的消息/某人发送的消息”使用 `receive_user`，后者覆盖该发送人的单聊和群聊消息。只有明确说“所有”时才使用 `receive_o2o_all/receive_group_all`，指定对象仍使用范围更小的事件。用户要求执行“撤回消息”时走 `dws chat`；只有“监听/订阅消息撤回”才走 `dws event`。“贴标签”表示给消息贴表情时，对应 `reaction` 表情回应事件。OA 与 VoIP 事件不接受 `--user`、`--open-dingtalk-id`、`--group`、`--query` 或 `--filter-json`。
 
 ## Call flow
 
-1. 普通 IM 意图选择 `+listen-im` 的 `--kind` 与 `--events`；人名/群名直接用 `--user-query`/`--chat-query` 唯一解析。OA 审批与高级事件控制手选 EventKey。
+1. 普通 IM 意图选择 `+listen-im` 的 `--kind` 与 `--events`；人名/群名直接用 `--user-query`/`--chat-query` 唯一解析。OA 审批、VoIP 通话邀请与高级事件控制手选 EventKey。
 2. 需要了解字段时运行 `dws event schema <event_key> --flatten`，读取 `schema.properties`；此模式的 `jq_root_path` 为 `.`。
-3. 普通 IM 启动 `dws event +listen-im ... -f ndjson`；OA 或高级任务启动 `dws event consume <event_key> [event_key...] ... --flatten -f ndjson`。等待真实 ready marker；多事件记录每条 subscription，再等待整体 ready。不要用 `sleep` 猜测。
-4. stdout 每行是一个扁平事件 JSON；消息、动作、群成员加入/退出及 OA 审批事件读取顶层业务字段。群标题变更和群解散只读取公共字段和 `payload` 中实际存在的字段。
+3. 普通 IM 启动 `dws event +listen-im ... -f ndjson`；OA、VoIP 或高级任务启动 `dws event consume <event_key> [event_key...] ... --flatten -f ndjson`。等待真实 ready marker；多事件记录每条 subscription，再等待整体 ready。不要用 `sleep` 猜测。
+4. stdout 每行是一个扁平事件 JSON；消息、动作、群成员加入/退出、OA 审批及 VoIP 通话邀请读取顶层业务字段。群标题变更和群解散只读取公共字段和 `payload` 中实际存在的字段。
 5. 需要确认监听状态时运行 `dws event status --event <event_key>`，查看 `Subscriptions` 和 `Consumers`。
 6. 任务完成后优雅结束 consume；本次新建的订阅会自动取消。复用已有订阅或需要从外部主动取消时，先运行 `dws event stop <subscribe_id> --dry-run`，向用户确认后再以 `--yes` 执行；自测可在 consume 加 `--max-events` 或 `--duration` 自动退出。
 
@@ -132,6 +136,7 @@ dws event schema user_oa_approval_task_redirected --flatten
 dws event schema user_oa_approval_instance_started --flatten
 dws event schema user_oa_approval_instance_terminated --flatten
 dws event schema user_oa_approval_instance_finished --flatten
+dws event schema user_voip_call_receive_invite --flatten
 ```
 
 ```bash
@@ -159,6 +164,7 @@ dws event consume user_oa_approval_task_redirected --flatten -f ndjson
 dws event consume user_oa_approval_instance_started --flatten -f ndjson
 dws event consume user_oa_approval_instance_terminated --flatten -f ndjson
 dws event consume user_oa_approval_instance_finished --flatten -f ndjson
+dws event consume user_voip_call_receive_invite --flatten -f ndjson
 ```
 
 同一目标、同一过滤条件的兼容事件优先使用一个多事件命令：
@@ -191,7 +197,7 @@ dws event consume \
   -f ndjson
 ```
 
-用户类事件共享 `--user` 或 `--open-dingtalk-id`，群类事件共享 `--group`，无目标 IM 事件可加入任一组合。用户类与群类、不同目标或不同过滤条件要拆成多个进程。六个 OA 事件可以同进程消费并共享 personal bus，但各自建立独立订阅。多事件共享 `--query` / `--filter-json` 时，所选事件必须全部是 IM 消息接收事件；OA 事件单独或组合消费都禁止使用这两个消息过滤参数。
+用户类事件共享 `--user` 或 `--open-dingtalk-id`，群类事件共享 `--group`，无目标 IM 事件可加入任一组合。用户类与群类、不同目标或不同过滤条件要拆成多个进程。六个 OA 事件与 VoIP 事件都可共享 personal bus，但每个 EventKey 建立独立订阅。多事件共享 `--query` / `--filter-json` 时，所选事件必须全部是 IM 消息接收事件；OA 与 VoIP 事件单独或组合消费都禁止使用这两个消息过滤参数。
 
 上述所有 `*_o2o` 命令和 `user_im_message_receive_user` 都可将 `--user <userId>` 替换为 `--open-dingtalk-id <openDingtalkId>`，但两个参数不能同时使用。
 
@@ -216,7 +222,7 @@ dws event stop --all --yes
 
 ## 订阅创建失败与重试预算
 
-以下约束适用于上表全部 22 个公开个人事件（16 个 IM + 6 个 OA）以及多事件命令中的每一项，只治理 `[event] ready` 之前的订阅创建；ready 之后的 Stream 断线由长连接重连机制处理。
+以下约束适用于上表全部 23 个公开个人事件（16 个 IM + 6 个 OA + 1 个 VoIP）以及多事件命令中的每一项，只治理 `[event] ready` 之前的订阅创建；ready 之后的 Stream 断线由长连接重连机制处理。
 
 - `0/2/1` 是 **Agent/host 编排约束**，不是 CLI 持久化硬总次数上限。每次 `dws event consume` 调用对每个逻辑订阅最多发送一次订阅创建 HTTP 请求，进程内不会自动重试。CLI 本地状态只持久化 `in_flight`、`cooldown`、`terminal_hold` 三种保护状态，不持久化或计算跨调用的 Agent/host 尝试次数。
 - 解析人名或群名、执行 `event consume` 以及后续 `event status/stop` 必须使用同一个 `--profile`。不得把其它 profile 下解析出的 userId、openDingtalkId 或 openConversationId 直接带入当前 profile 的订阅。
@@ -247,8 +253,9 @@ dws event stop --all --yes
 - 群成员加入/退出事件读取 `conversation_id/operator/operator_open_dingtalk_id/members/event_time`。`operator` 是执行操作的人，`members` 是本次加入或退出的成员数组，成员项包含 `nick/open_dingtalk_id`；系统操作或成员自行退出时操作人字段可能为空。
 - 群标题变更和群解散当前只承诺 `type/event_id/timestamp/subscribe_id/payload`；以实际 `payload` 为准，不猜测群标题、操作者等字段。
 - OA 事件读取顶层 `process_instance_id/process_code/title/status/create_time/event_time`；任务事件另有 `task_id`，完成、转交或终止事件按对应 schema 提供 `finish_time`，任务完成、任务转交和实例完成还提供 `result`。`status/result` 保留服务端实际值，不推断完整枚举；缺少稳定 ID 或 payload 非法时 stderr 会输出 warning，stdout 回退为原始 transport envelope。
+- VoIP 事件读取顶层 `biz_id/corp_id/org_id/target_uid/call_id/caller_uid/callee_uid/call_type/room_id/room_code/create_time/event_time`。`biz_id` 是重试稳定的业务去重 ID；`room_code` 是敏感入会码，只用于当前通话入会，不记录或转发。
 - 图片、文件等媒体消息的 `content` 可能是可读描述；合并转发媒体的下载定位信息位于对应 `forward_messages[].content`。需要实际媒体文件时调用 `dws chat message download-media`。
-- 正常动作事件输出不含内部 `payload/uid/corpid/clientId/filterSubId/bizid`；原始排查才使用 `-f raw` 或 `--debug-raw-events`。
+- 普通 IM/OA 动作事件输出不含内部 `payload/uid/corpid/clientId/filterSubId/bizid`；VoIP 按已评审协议将所需字段映射为 `target_uid/corp_id/biz_id`。原始排查才使用 `-f raw` 或 `--debug-raw-events`。
 - 自己发的消息不作为事件回来（`isSelfLoop` 过滤）；自发验证会看到 0 事件，测试投递使用别人或机器人发消息。
 - `--jq <表达式>` 可进一步过滤或投影扁平输出。
 - `--debug-raw-events` 仅用于服务端联调，正常消费不要使用；它和 `--flatten` 互斥，`-f raw` 也不能与 `--flatten` 同时使用。
@@ -265,3 +272,4 @@ dws event stop --all --yes
 - multi skill: `skills/multi/dingtalk-event/SKILL.md`
 - IM task index: `skills/multi/dingtalk-event/references/event-im.md`
 - OA reference: `skills/multi/dingtalk-event/references/event-oa.md`
+- VoIP reference: `skills/multi/dingtalk-event/references/event-voip.md`

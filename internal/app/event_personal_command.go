@@ -285,7 +285,7 @@ func runPersonalEventConsumeSingle(c *cobra.Command, opts personalConsumeOptions
 	if err := ensurePublicPersonalEvent(opts.EventKey); err != nil {
 		return personalSubscriptionValidationError(err)
 	}
-	if err := validatePersonalOAOptions(opts.EventKey, opts); err != nil {
+	if err := validatePersonalBusinessEventOptions(opts.EventKey, opts); err != nil {
 		return fmt.Errorf("event consume --as user: %w", personalSubscriptionValidationError(err))
 	}
 	rawFormat := ""
@@ -756,7 +756,7 @@ func preparePersonalMultiOptions(opts personalConsumeOptions) ([]personalConsume
 		if !def.Public {
 			return nil, personal.PublicAvailabilityError(eventKey)
 		}
-		if err := validatePersonalOAOptions(eventKey, opts); err != nil {
+		if err := validatePersonalBusinessEventOptions(eventKey, opts); err != nil {
 			return nil, err
 		}
 		switch def.RuleType {
@@ -885,7 +885,7 @@ func applyPersonalConsumeFilters(cfg *consume.Config, opts personalConsumeOption
 }
 
 func validatePersonalSubscriptionOptions(opts personalConsumeOptions) error {
-	if err := validatePersonalOAOptions(opts.EventKey, opts); err != nil {
+	if err := validatePersonalBusinessEventOptions(opts.EventKey, opts); err != nil {
 		return err
 	}
 	if _, _, err := personal.BuildRuleParam(opts.EventKey, personal.RuleOptions{
@@ -900,19 +900,26 @@ func validatePersonalSubscriptionOptions(opts personalConsumeOptions) error {
 	return err
 }
 
-func validatePersonalOAOptions(eventKey string, opts personalConsumeOptions) error {
-	changed := personalOAOptionNames(opts)
+func validatePersonalBusinessEventOptions(eventKey string, opts personalConsumeOptions) error {
+	changed := personalUnsupportedOptionNames(opts)
 	if len(changed) == 0 {
 		return nil
 	}
 	def, ok := personalLookupDefinition(strings.TrimSpace(eventKey))
-	if !ok || def.Category != "oa" {
+	if !ok {
 		return nil
 	}
-	return fmt.Errorf("%s not supported for OA event %s", strings.Join(changed, ", "), eventKey)
+	categoryName := map[string]string{
+		"oa":   "OA",
+		"voip": "VoIP",
+	}[def.Category]
+	if categoryName == "" {
+		return nil
+	}
+	return fmt.Errorf("%s not supported for %s event %s", strings.Join(changed, ", "), categoryName, eventKey)
 }
 
-func personalOAOptionNames(opts personalConsumeOptions) []string {
+func personalUnsupportedOptionNames(opts personalConsumeOptions) []string {
 	var changed []string
 	for _, item := range []struct {
 		name  string
@@ -944,7 +951,7 @@ func preparePersonalSubscription(identity personal.Identity, opts personalConsum
 	if err := ensurePublicPersonalEvent(opts.EventKey); err != nil {
 		return personalPreparedSubscription{}, err
 	}
-	if err := validatePersonalOAOptions(opts.EventKey, opts); err != nil {
+	if err := validatePersonalBusinessEventOptions(opts.EventKey, opts); err != nil {
 		return personalPreparedSubscription{}, err
 	}
 	ruleType, ruleParam, err := personal.BuildRuleParam(opts.EventKey, personal.RuleOptions{
@@ -1016,7 +1023,7 @@ func ensurePersonalSubscription(ctx context.Context, client *personal.Client, id
 		if err := ensurePublicPersonalEvent(eventKey); err != nil {
 			return nil, "", "", err
 		}
-		if err := validatePersonalOAOptions(eventKey, opts); err != nil {
+		if err := validatePersonalBusinessEventOptions(eventKey, opts); err != nil {
 			return nil, "", "", err
 		}
 		ruleType := firstNonEmptyPersonalString(sub.RuleType, opts.Rule)
