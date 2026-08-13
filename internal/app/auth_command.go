@@ -113,12 +113,17 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 支持的登录方式:
   - OAuth Loopback 流 (默认): 本机自动起 127.0.0.1 监听接收回调，浏览器授权后自动完成
   - OAuth 设备流 (--device): 显示 user_code + 短 URL，适合 SSH 远程 / 容器 / 无头环境
+  - 自有应用 OAuth (--client-id/--client-secret): 使用指定应用完成用户授权
   - 直接提供 Token (--token): 跳过授权，使用已有 token
 
 不支持的登录方式:
   - 邮箱/密码登录
   - 手机号/验证码登录
-  - 应用凭证 (AppKey/AppSecret) 直接登录
+  - 无用户授权的纯应用凭证 (client_credentials) 登录
+
+区域:
+  - 默认使用国内钉钉 .com 登录与服务端点
+  - --intl（或 --international）使用国际版 .io 登录；后续业务命令按所选 profile 自动路由
 
 注意: SSH 远程或无头环境（无本地浏览器可访问远端的 127.0.0.1）请使用 --device，
       否则 OAuth 回调会跳到本机不可达的 127.0.0.1 链接，授权完成后无法回写 token。
@@ -126,7 +131,7 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 示例:
   dws auth login              # 本机登录并新增/刷新一个组织 profile
   dws auth login --profile <corpId>  # 指定本次授权目标组织，不持久切换当前组织
-  dws auth login --intl       # 使用钉钉国际登录入口
+  dws auth login --intl       # 使用钉钉国际版 .io 登录入口
   dws auth login --intl --pre-url https://pre-login.dingtalk.io
   dws auth login --intl --pre-url https://pre-mcp.dingtalk.io
   dws auth login --recommend  # 无交互批量授权服务端推荐权限
@@ -318,8 +323,8 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 	}
 	cmd.Flags().String("token", "", "Access token")
 	cmd.Flags().Bool("device", false, "Use device authorization flow")
-	cmd.Flags().Bool("intl", false, "Use DingTalk international login")
-	cmd.Flags().Bool("international", false, "Use DingTalk international login")
+	cmd.Flags().Bool("intl", false, "Use DingTalk international (.io) login and service endpoints")
+	cmd.Flags().Bool("international", false, "Use DingTalk international (.io) login and service endpoints")
 	cmd.Flags().String("pre-url", "", "Override pre-release login/MCP base URL for this login")
 	cmd.Flags().String("mcp-url", "", "Override MCP base URL for this login")
 	cmd.Flags().Bool("force", false, "兼容保留；login 默认已忽略缓存并进入授权流程")
