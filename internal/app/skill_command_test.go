@@ -122,6 +122,9 @@ func TestResolveSkillTargetPath(t *testing.T) {
 func TestCrossPlatformCoverageUniversalSkillInstallTargetsUseCanonical(t *testing.T) {
 	home := t.TempDir()
 	testseam.Swap(t, &skillUserHomeDir, func() (string, error) { return home, nil })
+	if isUniversalSkillInstallTarget("missing-agent") {
+		t.Fatal("unknown Agent target classified as universal")
+	}
 	for _, target := range []string{
 		"amp", "antigravity", "antigravity-cli", "cline", "codex", "cursor",
 		"deepagents", "dexto", "firebender", "gemini", "gemini-cli", "github",

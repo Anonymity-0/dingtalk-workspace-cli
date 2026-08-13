@@ -1121,9 +1121,6 @@ func detectExistingAgentHomes(home, mode string) []string {
 				return
 			}
 		}
-		if base == "" {
-			return
-		}
 		dest := agentHomeForMode(base, mode)
 		key := skillSetupPathKey(dest)
 		if !seen[key] {
