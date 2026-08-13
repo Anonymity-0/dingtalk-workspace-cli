@@ -622,7 +622,7 @@ func defaultChatMessageTimeRange(cmd *cobra.Command, lookback time.Duration) (st
 }
 
 func formatChatMessageListAllTime(ms int64) string {
-	return time.UnixMilli(ms).In(shanghaiLocation()).Format("2006-01-02 15:04:05")
+	return time.UnixMilli(ms).Format("2006-01-02 15:04:05")
 }
 
 func chatMessageSearchAdvancedArgs(cmd *cobra.Command) (map[string]any, error) {
