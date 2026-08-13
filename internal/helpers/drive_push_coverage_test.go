@@ -283,7 +283,7 @@ func TestCrossPlatformCoverageDrivePush_missingLocalRootFails(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────
-// walkRemoteForPush — 分页、递归、深度上限、非法/空名跳过
+// walkRemoteForPush — 分页、递归、深度上限、非镜像类型跳过
 // ──────────────────────────────────────────────────────────
 
 func TestCrossPlatformCoverageWalkRemoteForPush_paginationRecursionAndSkips(t *testing.T) {
@@ -299,8 +299,7 @@ func TestCrossPlatformCoverageWalkRemoteForPush_paginationRecursionAndSkips(t *t
 		}
 		if parent == "ROOT" && token == "P2" {
 			return `{"result":{"items":[` +
-				`{"name":"","type":"file","fileId":"EMPTY"},` +
-				`{"name":"../bad.txt","type":"file","fileId":"BAD"},` +
+				`{"name":"online.adoc","type":"document","fileId":"DOC"},` +
 				`{"name":"ok.txt","type":"file","fileId":"OK"}` +
 				`],"nextToken":""}}`, nil
 		}
@@ -325,10 +324,8 @@ func TestCrossPlatformCoverageWalkRemoteForPush_paginationRecursionAndSkips(t *t
 	if _, ok := files["ok.txt"]; !ok {
 		t.Error("second page file must be indexed")
 	}
-	for _, bad := range []string{"", "../bad.txt"} {
-		if _, ok := files[bad]; ok {
-			t.Errorf("unsafe/empty name %q must be skipped", bad)
-		}
+	if _, ok := files["online.adoc"]; ok {
+		t.Error("non-file document must remain outside the folder mirror index")
 	}
 }
 

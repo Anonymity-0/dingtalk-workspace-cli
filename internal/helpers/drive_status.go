@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -133,14 +132,11 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 		}
 
 		for _, it := range items {
-			name := it.name()
-			if name == "" {
-				continue
+			name, included, err := remoteMirrorEntryName(it, relBase)
+			if err != nil {
+				return err
 			}
-			// 远端名称可能含 ..、分隔符或卷标，拼进 rel_path 会逃逸本地根目录：
-			// 非规范名称直接跳过（同名文件夹也不递归），不纳入索引。
-			if !isSafeRemoteSegment(name) {
-				slog.Warn("overlay: 跳过含非法路径成分的远端条目", "name", name, "relBase", relBase)
+			if !included {
 				continue
 			}
 			// rel_path 由文件夹名逐层拼接，统一用 / 分隔，与本地相对路径对齐。
@@ -163,10 +159,7 @@ func walkRemoteDir(ctx context.Context, spaceID, parentID, relBase string, out m
 				}
 				continue
 			}
-			// 只纳入明确 type=FILE 的条目；在线文档、快捷方式等其它类型一律跳过。
-			if !it.isFile() {
-				continue
-			}
+			// 非文件类型已由 remoteMirrorEntryName 过滤；目录在上方完成递归后返回。
 			if err := claimRemotePath(occupied, childRel, "文件"); err != nil {
 				return err
 			}
@@ -199,6 +192,27 @@ func claimRemotePath(occupied map[string]string, rel, kind string) error {
 	}
 	occupied[rel] = kind
 	return nil
+}
+
+// remoteMirrorEntryName 只选择文件夹镜像支持的 file / folder 条目，并验证其名称
+// 能安全、无歧义地表示为本地单层路径。无法表示的镜像条目必须中止整棵远端树构建；
+// 静默跳过会让 status/pull/push/sync 在遗漏文件或目录子树时误报成功。
+func remoteMirrorEntryName(it driveItem, relBase string) (string, bool, error) {
+	kind := ""
+	switch {
+	case it.isFolder():
+		kind = "目录"
+	case it.isFile():
+		kind = "文件"
+	default:
+		return "", false, nil
+	}
+
+	name := it.name()
+	if !isSafeRemoteSegment(name) {
+		return "", false, fmt.Errorf("远端%s名称 %q 无法安全映射到本地路径（父路径 %q），已中止", kind, name, relBase)
+	}
+	return name, true, nil
 }
 
 // callDriveListFiles 让文件夹同步族在 --dry-run 下仍可通过受控只读通道获取

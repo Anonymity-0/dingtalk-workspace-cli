@@ -120,9 +120,7 @@ func TestCrossPlatformCoverageDriveStatus_endToEndNestedTree(t *testing.T) {
 			return `{"result":{"items":[` +
 				`{"name":"root.txt","type":"file","fileId":"R1","modifyTime":1000},` +
 				`{"name":"sub","type":"folder","fileId":"SUB"},` +
-				`{"name":"online.adoc","type":"document","fileId":"D1"},` +
-				`{"name":"","type":"file","fileId":"EMPTY"},` +
-				`{"name":"../escape.txt","type":"file","fileId":"BAD"}` +
+				`{"name":"online.adoc","type":"document","fileId":"D1"}` +
 				`],"nextToken":""}}`, nil
 		case "SUB":
 			return `{"result":{"items":[{"name":"nested.txt","type":"file","fileId":"N1","modifyTime":2000}],"nextToken":""}}`, nil
@@ -134,7 +132,7 @@ func TestCrossPlatformCoverageDriveStatus_endToEndNestedTree(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// 递归进入 sub 一次；空名/非法名/在线文档都不产生额外调用。
+	// 递归进入 sub 一次；不属于文件夹镜像范围的在线文档不产生额外调用。
 	if got := len(caller.callsFor("list_files")); got != 2 {
 		t.Errorf("expected 2 list_files calls (ROOT + SUB), got %d", got)
 	}

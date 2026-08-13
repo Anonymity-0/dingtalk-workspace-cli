@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -257,13 +256,11 @@ func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, f
 		}
 
 		for _, it := range items {
-			name := it.name()
-			if name == "" {
-				continue
+			name, included, err := remoteMirrorEntryName(it, relBase)
+			if err != nil {
+				return err
 			}
-			// 与 walkRemoteDir 一致：非规范名称跳过，避免逃逸性 rel_path 进入索引。
-			if !isSafeRemoteSegment(name) {
-				slog.Warn("overlay: 跳过含非法路径成分的远端条目", "name", name, "relBase", relBase)
+			if !included {
 				continue
 			}
 			childRel := name
@@ -284,9 +281,7 @@ func walkRemoteForPush(ctx context.Context, spaceID, parentID, relBase string, f
 				}
 				continue
 			}
-			if !it.isFile() {
-				continue
-			}
+			// 非文件类型已由 remoteMirrorEntryName 过滤；目录在上方完成递归后返回。
 			if err := claimRemotePath(occupied, childRel, "文件"); err != nil {
 				return err
 			}
