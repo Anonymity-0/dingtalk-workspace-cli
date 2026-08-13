@@ -515,10 +515,7 @@ func searchMsgParams(rt *shortcut.RuntimeContext) (map[string]any, searchResolve
 		resolvedFilters.Senders = append(resolvedFilters.Senders, resolvedUsers...)
 	}
 	appendResolvedSearchActorIDs(params, resolvedFilters.Senders, "senderUserIds", "senderOpenDingTakIds")
-	atUsers, err := resolveSearchStableActorTargets(rt, rt.StrSlice("at-ids"))
-	if err != nil {
-		return nil, searchResolvedFilters{}, err
-	}
+	atUsers := resolveSearchStableActorTargets(rt, rt.StrSlice("at-ids"))
 	appendResolvedSearchActorIDs(params, atUsers, "atUserIds", "atOpenDingTakIds")
 	if rt.Bool("at-me") || rt.Bool("is-at-me") {
 		params["atMe"] = true
@@ -560,16 +557,15 @@ func searchMsgParams(rt *shortcut.RuntimeContext) (map[string]any, searchResolve
 func resolveSearchStableActorTargets(
 	rt *shortcut.RuntimeContext,
 	values []string,
-) ([]targetresolver.UserResolution, error) {
+) []targetresolver.UserResolution {
 	resolvedUsers := make([]targetresolver.UserResolution, 0, len(values))
 	for _, value := range uniqueSearchStrings(values) {
-		resolved, err := targetresolver.ResolveStableUserTarget(rt, value, targetresolver.IdentityAny)
-		if err != nil {
-			return nil, err
-		}
+		// IdentityAny accepts every non-empty value as exactly one stable ID
+		// family, and uniqueSearchStrings has already removed empty values.
+		resolved, _ := targetresolver.ResolveStableUserTarget(rt, value, targetresolver.IdentityAny)
 		resolvedUsers = append(resolvedUsers, resolved)
 	}
-	return resolvedUsers, nil
+	return resolvedUsers
 }
 
 // appendResolvedSearchActorIDs prefers openDingTalkId whenever directory

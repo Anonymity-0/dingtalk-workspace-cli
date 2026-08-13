@@ -782,6 +782,20 @@ func TestCrossPlatformCoverageChatMessagesSenderFilterFailureEdges(t *testing.T)
 }
 
 func TestCrossPlatformCoverageChatMessagesSenderFailureOutputEdges(t *testing.T) {
+	t.Run("ambiguous direct sender prioritizes output error", func(t *testing.T) {
+		caller := &platformCoverageCaller{contactSearchResult: `{"result":[
+			{"userId":"fixture-user-1","name":"测试同名发送者"},
+			{"userId":"fixture-user-2","name":"测试同名发送者"}
+		],"hasMore":false}`}
+		helpers.InitDeps(caller)
+		root := newPlatformCoverageRoot()
+		root.SetOut(chatMessagesFailWriter{})
+		root.SetArgs([]string{"chat", "+chat-messages", "--conversation-id", "cid", "--sender", "测试同名发送者"})
+		if err := root.Execute(); err == nil || err.Error() != "fixture output failure" {
+			t.Fatalf("error=%v", err)
+		}
+	})
+
 	for _, tc := range []struct {
 		name   string
 		sender string

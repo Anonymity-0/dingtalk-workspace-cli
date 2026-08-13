@@ -245,6 +245,18 @@ func TestCrossPlatformCoverageSearchMsgResolutionFailureEdges(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageSearchMsgRejectsAmbiguousDirectSender(t *testing.T) {
+	caller := &searchMsgExecutionCaller{contactResponse: `{"result":[
+		{"userId":"fixture-user-1","name":"测试同名发送者"},
+		{"userId":"fixture-user-2","name":"测试同名发送者"}
+	],"hasMore":false}`}
+	_, err := executeSearchMsgResult(caller, "--sender", "测试同名发送者", "--no-enrich")
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || typed.Reason != "resolution_ambiguous" {
+		t.Fatalf("error=%#v, want resolution_ambiguous", err)
+	}
+}
+
 func TestCrossPlatformCoverageSearchMsgStableUserIDContinuesWhenDirectoryIsUnavailable(t *testing.T) {
 	t.Run("unrelated unique directory candidate never replaces the supplied user id", func(t *testing.T) {
 		caller := &searchMsgExecutionCaller{

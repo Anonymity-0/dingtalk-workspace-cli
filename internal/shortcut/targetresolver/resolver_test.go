@@ -715,7 +715,7 @@ func TestCrossPlatformCoverageLooksLikeCurrentDOpenDingTalkID(t *testing.T) {
 	}
 }
 
-func TestResolveUserTargetUsesFormatClassificationWithoutIDPreflight(t *testing.T) {
+func TestCrossPlatformCoverageResolveUserTargetUsesFormatClassificationWithoutIDPreflight(t *testing.T) {
 	const openID = "DAAAAAAAAAAAiE"
 	calls := 0
 	resolved, err := ResolveUserTarget(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
@@ -780,6 +780,21 @@ func TestCrossPlatformCoverageResolveSenderTargetScopesStableIDPreferenceToSende
 	}
 	if calls != 4 {
 		t.Fatalf("calls=%d", calls)
+	}
+}
+
+func TestCrossPlatformCoverageResolveSenderTargetRoutesCurrentDWithoutDirectoryLookup(t *testing.T) {
+	const openID = "DAAAAAAAAAAAiE"
+	calls := 0
+	resolved, err := ResolveSenderTarget(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
+		calls++
+		return nil, stderrors.New("unexpected directory call")
+	}), openID, IdentityAny)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 0 || resolved.MatchType != "stable_id" || resolved.Selected.OpenDingTalkID != openID {
+		t.Fatalf("calls=%d resolved=%#v", calls, resolved)
 	}
 }
 
@@ -864,7 +879,7 @@ func TestCrossPlatformCoverageResolveSenderTargetOpenIDFailureEdges(t *testing.T
 	})
 }
 
-func TestValidateExplicitOpenDingTalkIDNeverFallsBack(t *testing.T) {
+func TestCrossPlatformCoverageValidateExplicitOpenDingTalkIDNeverFallsBack(t *testing.T) {
 	if err := ValidateExplicitOpenDingTalkID("--open-dingtalk-id", "DAAAAAAAAAAAiE"); err != nil {
 		t.Fatalf("valid format: %v", err)
 	}
@@ -895,7 +910,7 @@ func TestCrossPlatformCoverageResolveStableUserTargetPassesExplicitUserIDWithout
 	}
 }
 
-func TestResolveStableUserTargetRoutesCurrentDWithoutDirectoryLookup(t *testing.T) {
+func TestCrossPlatformCoverageResolveStableUserTargetRoutesCurrentDWithoutDirectoryLookup(t *testing.T) {
 	const openID = "DAAAAAAAAAAAiE"
 	calls := 0
 	resolved, err := ResolveStableUserTarget(resolverReaderFunc(func(string, string, map[string]any) (map[string]any, error) {
