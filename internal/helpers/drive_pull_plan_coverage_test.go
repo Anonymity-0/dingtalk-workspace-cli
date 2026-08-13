@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -350,9 +351,13 @@ func TestCrossPlatformCoverageDrivePullPlanCallers(t *testing.T) {
 			if name == "a.txt" && !moved {
 				moved = true
 				if renameErr := os.Rename(dir, dir+"-pinned"); renameErr != nil {
-					t.Fatal(renameErr)
-				}
-				if mkdirErr := os.Mkdir(dir, 0o755); mkdirErr != nil {
+					// Windows 在固定目录上持有句柄时会锁住它，移走于该平台物理
+					// 不可达；注入等价的根身份变化，命中同一条二次校验分支。
+					if runtime.GOOS != "windows" {
+						t.Fatal(renameErr)
+					}
+					swapPinnedRootIdentity(t, dir)
+				} else if mkdirErr := os.Mkdir(dir, 0o755); mkdirErr != nil {
 					t.Fatal(mkdirErr)
 				}
 			}

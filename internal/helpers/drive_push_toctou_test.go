@@ -5,21 +5,37 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
-func replacePinnedMirrorRoot(t *testing.T, root, moved string) {
+// replacePinnedMirrorRoot 返回 true 表示原目录被真实移走、原名处已换成另一个目录；
+// 返回 false 表示走了 Windows 身份注入降级，原目录仍留在原处。依赖「替代目录内容」
+// 的断言必须按返回值分流。
+func replacePinnedMirrorRoot(t *testing.T, root, moved string) bool {
 	t.Helper()
+	if forcePinnedFallbackForTest {
+		swapPinnedRootIdentity(t, root)
+		return false
+	}
 	if err := os.Rename(root, moved); err != nil {
-		t.Fatalf("move pinned root: %v", err)
+		// Windows 在目录内有已打开的句柄（如上传读取中的源文件）时会锁住该目录，
+		// 移走固定根于该平台物理不可达。退化为等价的根身份注入，命中同一条
+		// fail-closed 分支。
+		if runtime.GOOS != "windows" {
+			t.Fatalf("move pinned root: %v", err)
+		}
+		swapPinnedRootIdentity(t, root)
+		return false
 	}
 	if err := os.Mkdir(root, 0o755); err != nil {
 		t.Fatalf("create replacement root: %v", err)
 	}
 	mustWrite(t, filepath.Join(root, "a.txt"), "outside-replacement")
+	return true
 }
 
 // 本地扫描完成后、任何 create_folder/get_upload_info/commit_upload 前若命令行根已
@@ -36,10 +52,11 @@ func TestCrossPlatformCoverageDrivePushSyncRejectRootReplacementBeforeRemoteWrit
 			mustWrite(t, filepath.Join(root, "a.txt"), "pinned-original")
 
 			replaced := false
+			realMove := false
 			caller := &driveScriptCaller{reply: func(tool string, _ map[string]any, _ int) (string, error) {
 				if tool == "list_files" {
 					if !replaced {
-						replacePinnedMirrorRoot(t, root, moved)
+						realMove = replacePinnedMirrorRoot(t, root, moved)
 						replaced = true
 					}
 					return `{"result":{"items":[],"nextToken":""}}`, nil
@@ -68,7 +85,12 @@ func TestCrossPlatformCoverageDrivePushSyncRejectRootReplacementBeforeRemoteWrit
 			if putCalls != 0 {
 				t.Fatalf("OSS PUT must not run after root replacement, got %d", putCalls)
 			}
-			if b, err := os.ReadFile(filepath.Join(root, "a.txt")); err != nil || string(b) != "outside-replacement" {
+			want := "outside-replacement"
+			if !realMove {
+				// 身份注入降级：原目录仍在原处，内容同样不得被镜像流程改写。
+				want = "pinned-original"
+			}
+			if b, err := os.ReadFile(filepath.Join(root, "a.txt")); err != nil || string(b) != want {
 				t.Fatalf("replacement tree changed: %q err=%v", string(b), err)
 			}
 		})
@@ -100,9 +122,10 @@ func TestCrossPlatformCoverageDrivePushSyncUploadReadsPinnedFileHandle(t *testin
 
 			var uploaded string
 			putCalls := 0
+			realMove := false
 			testseam.Swap(t, &pushPutOpenedFile, func(_ context.Context, _ string, _ map[string]string, file *os.File, _ int64) error {
 				putCalls++
-				replacePinnedMirrorRoot(t, root, moved)
+				realMove = replacePinnedMirrorRoot(t, root, moved)
 				body, err := io.ReadAll(file)
 				if err != nil {
 					return err
@@ -125,10 +148,15 @@ func TestCrossPlatformCoverageDrivePushSyncUploadReadsPinnedFileHandle(t *testin
 			if commits := caller.callsFor("commit_upload"); len(commits) != 0 {
 				t.Fatalf("root replacement must prevent commit_upload: %v", commits)
 			}
-			if b, readErr := os.ReadFile(filepath.Join(root, "a.txt")); readErr != nil || string(b) != "outside-replacement" {
-				t.Fatalf("replacement file was read or changed: %q err=%v", string(b), readErr)
-			}
-			if b, readErr := os.ReadFile(filepath.Join(moved, "a.txt")); readErr != nil || string(b) != "pinned-original" {
+			if realMove {
+				if b, readErr := os.ReadFile(filepath.Join(root, "a.txt")); readErr != nil || string(b) != "outside-replacement" {
+					t.Fatalf("replacement file was read or changed: %q err=%v", string(b), readErr)
+				}
+				if b, readErr := os.ReadFile(filepath.Join(moved, "a.txt")); readErr != nil || string(b) != "pinned-original" {
+					t.Fatalf("pinned original changed: %q err=%v", string(b), readErr)
+				}
+			} else if b, readErr := os.ReadFile(filepath.Join(root, "a.txt")); readErr != nil || string(b) != "pinned-original" {
+				// 身份注入降级：原目录仍在原处，内容同样不得被上传路径改写。
 				t.Fatalf("pinned original changed: %q err=%v", string(b), readErr)
 			}
 		})

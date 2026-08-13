@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -30,13 +31,45 @@ func replacePullAncestorWithOutsideLink(t *testing.T, root, outside string) stri
 	t.Helper()
 	sub := filepath.Join(root, "sub")
 	parked := filepath.Join(root, "sub-pinned")
+	if forcePinnedFallbackForTest {
+		swapPinnedParentIdentity(t, "sub")
+		return sub
+	}
 	if err := os.Rename(sub, parked); err != nil {
-		t.Fatal(err)
+		// Windows 在目录内有已打开的句柄（如 pull 的临时文件）时会锁住该目录，
+		// 移走再换链于该平台物理不可达。退化为等价的父目录身份注入，命中
+		// verifyParent 同一条 fail-closed 分支；原目录未移动，故返回 sub。
+		if runtime.GOOS != "windows" {
+			t.Fatal(err)
+		}
+		swapPinnedParentIdentity(t, "sub")
+		return sub
 	}
 	if err := os.Symlink(outside, sub); err != nil {
 		t.Skipf("平台不支持创建符号链接: %v", err)
 	}
 	return parked
+}
+
+// replacePullCommandRootWithOutsideLink 把命令根整体移走，并在原名处放置指向根外的
+// 符号链接，复现「固定后命令根被换掉」的场景。Windows 在根目录持有已打开句柄时会
+// 锁住该目录，移走于该平台物理不可达，此时退化为等价的根身份注入。
+func replacePullCommandRootWithOutsideLink(t *testing.T, root, parked, outside string) {
+	t.Helper()
+	if forcePinnedFallbackForTest {
+		swapPinnedRootIdentity(t, root)
+		return
+	}
+	if err := os.Rename(root, parked); err != nil {
+		if runtime.GOOS != "windows" {
+			t.Fatal(err)
+		}
+		swapPinnedRootIdentity(t, root)
+		return
+	}
+	if err := os.Symlink(outside, root); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
 }
 
 func runPullTOCTOUCase(t *testing.T, command string, root string) error {
@@ -587,12 +620,7 @@ func TestCrossPlatformCoverageDrivePullCommandPinsRootAcrossAllFiles(t *testing.
 			return err
 		}
 		if calls == 1 {
-			if err := os.Rename(root, parked); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.Symlink(outside, root); err != nil {
-				t.Skipf("symlink unsupported: %v", err)
-			}
+			replacePullCommandRootWithOutsideLink(t, root, parked, outside)
 		}
 		return nil
 	})
@@ -622,12 +650,7 @@ func TestCrossPlatformCoverageDrivePullPlansExistingRootBeforeRemoteRead(t *test
 		if tool != "list_files" {
 			t.Fatalf("root replacement must stop before %s", tool)
 		}
-		if err := os.Rename(root, parked); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Symlink(outside, root); err != nil {
-			t.Skipf("symlink unsupported: %v", err)
-		}
+		replacePullCommandRootWithOutsideLink(t, root, parked, outside)
 		return `{"result":{"items":[{"name":"a.txt","type":"file","fileId":"A"}]}}`, nil
 	}}
 	getCalls := 0
@@ -727,12 +750,7 @@ func TestCrossPlatformCoverageDriveSyncCommandPinsRootAcrossAllFiles(t *testing.
 			return err
 		}
 		if calls == 1 {
-			if err := os.Rename(root, parked); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.Symlink(outside, root); err != nil {
-				t.Skipf("symlink unsupported: %v", err)
-			}
+			replacePullCommandRootWithOutsideLink(t, root, parked, outside)
 		}
 		return nil
 	})
