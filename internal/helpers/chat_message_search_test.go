@@ -748,15 +748,15 @@ func TestCrossPlatformCoverageChatMessageListDefaultTimeUsesShanghaiLocation(t *
 		},
 		{
 			name:       "user open DingTalk ID fallback",
-			args:       []string{"message", "list", "--user", "D-user", "--limit", "50"},
+			args:       []string{"message", "list", "--user", helperCurrentDOpenID, "--limit", "50"},
 			wantTool:   "list_individual_chat_message",
-			wantTarget: map[string]any{"openDingTalkId": "D-user"},
+			wantTarget: map[string]any{"openDingTalkId": helperCurrentDOpenID},
 		},
 		{
 			name:       "open DingTalk ID",
-			args:       []string{"message", "list", "--open-dingtalk-id", "D-open", "--limit", "50"},
+			args:       []string{"message", "list", "--open-dingtalk-id", helperCurrentDOpenID, "--limit", "50"},
 			wantTool:   "list_individual_chat_message",
-			wantTarget: map[string]any{"openDingTalkId": "D-open"},
+			wantTarget: map[string]any{"openDingTalkId": helperCurrentDOpenID},
 		},
 		{
 			name:       "direct user",
@@ -766,9 +766,9 @@ func TestCrossPlatformCoverageChatMessageListDefaultTimeUsesShanghaiLocation(t *
 		},
 		{
 			name:       "direct open DingTalk ID",
-			args:       []string{"message", "list-direct", "--open-dingtalk-id", "D-direct", "--limit", "50"},
+			args:       []string{"message", "list-direct", "--open-dingtalk-id", helperCurrentDOpenID, "--limit", "50"},
 			wantTool:   "list_individual_chat_message",
-			wantTarget: map[string]any{"openDingTalkId": "D-direct"},
+			wantTarget: map[string]any{"openDingTalkId": helperCurrentDOpenID},
 		},
 	}
 
