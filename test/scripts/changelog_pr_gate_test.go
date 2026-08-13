@@ -1025,9 +1025,20 @@ func TestChangelogPRFastPathWorkflowContract(t *testing.T) {
 		t.Fatal("Code Admission workflow missing Policy job boundaries")
 	}
 	policyJob := admission[policyStart:policyEnd]
-	if strings.Count(policyJob, "RELEASE_SEAL_ONLY: ${{ needs.lint.outputs.release_seal_only }}") != 2 {
-		t.Error("Policy job must pass release-seal classification to both PR and main metadata validators")
+	requirePolicyEnv := func(step, nextStep string) {
+		t.Helper()
+		start := strings.Index(policyJob, "      - name: "+step+"\n")
+		end := strings.Index(policyJob[start+1:], "      - name: "+nextStep+"\n")
+		if start < 0 || end < 0 {
+			t.Fatalf("Policy job missing %q step boundary", step)
+		}
+		block := policyJob[start : start+1+end]
+		if !strings.Contains(block, "RELEASE_SEAL_ONLY: ${{ needs.lint.outputs.release_seal_only }}") {
+			t.Errorf("Policy %q step must receive release-seal classification", step)
+		}
 	}
+	requirePolicyEnv("Validate changed CHANGELOG content", "Validate release fragment lifecycle")
+	requirePolicyEnv("Validate trusted main metadata-only push", "Record CHANGELOG-only fast path")
 	for _, want := range []string{
 		"name: CI",
 		"files.length === 1",
