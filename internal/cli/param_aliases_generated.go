@@ -1456,11 +1456,10 @@ var generatedParamAliases = []ParamAliasEntry{
 	{
 		CLIPath: "chat message read-status",
 		Aliases: map[string]string{
-			"chat-id":              "conversation-id",
-			"msg-id":               "message-id",
-			"open-conversation-id": "conversation-id",
-			"open-message-id":      "message-id",
-			"user-ids":             "users",
+			"chat-id":         "conversation-id",
+			"msg-id":          "message-id",
+			"open-message-id": "message-id",
+			"user-ids":        "users",
 		},
 		Blocked: []string{"at-user-ids", "conversation-ids", "dest-conversation-id", "group-id", "group-ids", "group-name", "message-ids", "msg-ids", "name", "open-conversation-ids", "open-message-ids", "open-task-id", "ref-msg-id", "resource-id", "source", "src-conversation-id", "src-msg-id", "staff-id", "target", "topic-id", "uid", "userid"},
 	},
