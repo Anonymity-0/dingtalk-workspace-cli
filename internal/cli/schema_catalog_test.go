@@ -1357,6 +1357,7 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		{"chat message edit", "message-id", "openMessageId", true, ""},
 		{"chat message edit", "at-open-dingtalk-ids", "atOpenDingTalkIds", false, "array"},
 		{"chat message update-text-emotion", "message-id", "openMsgId", true, ""},
+		{"chat message send", "idempotency-key", "uuid", false, ""},
 		{"chat message send-card", "at-all", "atAll", false, ""},
 		{"chat message send-card", "at-open-dingtalk-ids", "atOpenDingTalkIds", false, "array"},
 		{"chat message update-text-emotion", "old-emotion-id", "oldEmotionId", true, ""},
@@ -1407,6 +1408,14 @@ func TestDeliveryCatalogChatParamDeclsFrom87910880Reviewed(t *testing.T) {
 		if _, ok := editParams[hidden]; ok {
 			t.Fatalf("chat message edit unexpectedly publishes hidden alias --%s", hidden)
 		}
+	}
+	sendLeaf, err = queryDeliverySchemaPayload([]string{"chat message send"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sendParams = schemaMap(sendLeaf["parameters"])
+	if _, ok := sendParams["uuid"]; ok {
+		t.Fatal("chat message send unexpectedly publishes hidden alias --uuid")
 	}
 	listByConv, err := queryDeliverySchemaPayload([]string{"chat category list-by-conv"})
 	if err != nil {
