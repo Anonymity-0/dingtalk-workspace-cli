@@ -63,7 +63,7 @@ Flags:
 - 执行方式：钉盘与知识库（--workspace）两路由统一为**客户端过滤**——全量扫描当前目录后在进程内筛选；
   与 `--depth>1` 组合时递归扫描后筛（被滤掉的条目仍占 2000 条全局上限）。
 - 互斥：与 `--versions`/`--cursor`/`--order-by`/`--order`/`--limit` 不能同时使用（过滤模式为全量扫描，
-  无游标与服务端排序语义）；可与 `--latest`/`--pattern`/`--depth` 组合，`+--latest` 表示「符合条件的条目中最新 N 个」。
+  无游标与服务端排序语义）；可与 `--latest`/`--pattern`/`--depth` 组合，`--latest` 表示「符合条件的条目中最新 N 个」。
 - 输出形态：带过滤时输出从单页透传变为聚合形态 `{items, maxDepth, truncated, errors}`。
 - 已知代价：大目录（>2000 条）触顶截断时 `truncated=true`（退出码 0，结果每条都正确但没扫完）；
   建议用 `--folder` 指定子目录缩小扫描范围；带关键词的过滤场景改用 `dws drive search`。

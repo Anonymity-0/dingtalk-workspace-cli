@@ -242,6 +242,7 @@ func TestCrossPlatformCoverageDriveListFilterPanStartWithLatest(t *testing.T) {
 func TestCrossPlatformCoverageDriveListFilterExclusiveFlags(t *testing.T) {
 	cases := [][]string{
 		{"list", "--type", "file", "--cursor", "c1"},
+		{"list", "--type", "file", "--cursor", ""},
 		{"list", "--type", "file", "--order-by", "name"},
 		{"list", "--start", "7d", "--order", "asc"},
 		{"list", "--type", "file", "--limit", "5"},
@@ -560,5 +561,27 @@ func TestCrossPlatformCoverageDriveListPatternPassthroughEdges(t *testing.T) {
 	mixed := decodeDepthResult(t, mixedBuf)["items"].([]any)
 	if len(mixed) != 2 || mixed[0] != "raw-entry" || mixed[1].(map[string]any)["fileId"] != "f1" {
 		t.Fatalf("items = %#v", mixed)
+	}
+}
+
+// 13. --type folder --latest 回归（P1 CR）：latest 对过滤后的目录按时间取 Top-N，
+// 不再「先留目录再剔目录」返回空列表。
+func TestCrossPlatformCoverageDriveListFilterFolderLatest(t *testing.T) {
+	useDriveListArgs(t)
+	now := time.Now().UnixMilli()
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: fmt.Sprintf(`{"items":[
+			{"fileId":"d1","name":"old-dir","type":"FOLDER","modifyTime":%d},
+			{"fileId":"d2","name":"new-dir","type":"FOLDER","modifyTime":%d},
+			{"fileId":"f1","name":"a.txt","type":"FILE","modifyTime":%d}
+		]}`, now-5000, now, now)},
+	}}
+	buf, err := executeDriveListCapture(t, caller, "list", "--type", "folder", "--latest", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := decodeDepthResult(t, buf)["items"].([]any)
+	if len(items) != 1 || items[0].(map[string]any)["fileId"] != "d2" {
+		t.Fatalf("folder latest items = %#v", items)
 	}
 }

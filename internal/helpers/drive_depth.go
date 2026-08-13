@@ -370,7 +370,8 @@ func emitDriveDepthResult(items []map[string]any, errs []driveDepthError, trunca
 		items = applyDriveListFilter(items, route, filter)
 	}
 	if latest > 0 {
-		items = applyDriveListLatest(items, latest)
+		// --type folder 时 latest 对过滤后的目录取 Top-N，避免「先留目录再剔目录」的空结果。
+		items = applyDriveListLatest(items, latest, filter.nodeType == "folder")
 	} else {
 		// 排列为 rel_path 树序：BFS 只决定截断时哪些条目入选，树序决定呈现顺序。
 		sort.SliceStable(items, func(i, j int) bool {

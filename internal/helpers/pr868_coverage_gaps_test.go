@@ -611,7 +611,7 @@ func TestCrossPlatformCoverageDriveLatestRemaining(t *testing.T) {
 		{"name": "c", "sortTime": int64(5), "rel_path": "z", "fileId": "3", "type": "file"},
 		{"nodeType": "Folder", "name": "folder"},
 	}
-	got := applyDriveListLatest(items, 10)
+	got := applyDriveListLatest(items, 10, false)
 	if len(got) != 3 {
 		t.Fatalf("len=%d", len(got))
 	}

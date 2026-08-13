@@ -85,8 +85,11 @@ func parseDriveListFilter(cmd *cobra.Command) (driveListFilter, error) {
 	if cmd.Flags().Changed("versions") {
 		return filter, driveListFilterExclusiveError("versions", "--versions 为独立的版本列表模式，请去掉 --versions 或过滤条件")
 	}
-	if v := flagOrFallback(cmd, "cursor", "next-token", "page-token"); v != "" {
-		return filter, driveListFilterExclusiveError("cursor", "过滤模式为从头全量扫描，无连续游标；如需逐页翻页请去掉过滤条件")
+	// 用 Changed 判定而非值非空：显式 --cursor= 空值同样视为启用游标分页。
+	for _, f := range []string{"cursor", "next-token", "page-token"} {
+		if fl := cmd.Flags().Lookup(f); fl != nil && fl.Changed {
+			return filter, driveListFilterExclusiveError("cursor", "过滤模式为从头全量扫描，无连续游标；如需逐页翻页请去掉过滤条件")
+		}
 	}
 	for _, f := range []string{"order-by", "order"} {
 		if cmd.Flags().Changed(f) {
