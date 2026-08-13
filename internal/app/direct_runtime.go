@@ -74,6 +74,20 @@ func defaultPATMCPEndpoint() string {
 
 func defaultPATGatewayBaseURL() string {
 	raw := strings.TrimSpace(authpkg.GetMCPBaseURL())
+	return mcpGatewayBaseURL(raw)
+}
+
+func defaultPATGatewayBaseURLForLoginRegion(region authpkg.LoginRegion) string {
+	raw := strings.TrimSpace(authpkg.GetMCPBaseURL())
+	if override := authpkg.MCPBaseURLOverride(); override != "" {
+		raw = override
+	} else {
+		raw = mcpBaseURLForLoginRegion(raw, region)
+	}
+	return mcpGatewayBaseURL(raw)
+}
+
+func mcpGatewayBaseURL(raw string) string {
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return strings.TrimRight(raw, "/")
@@ -98,6 +112,33 @@ func defaultPATGatewayBaseURL() string {
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
 	return strings.TrimRight(parsed.String(), "/")
+}
+
+func mcpBaseURLForLoginRegion(raw string, region authpkg.LoginRegion) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return raw
+	}
+	host := strings.ToLower(parsed.Hostname())
+	fromSuffix, toSuffix := ".dingtalk.io", ".dingtalk.com"
+	if region.IsInternational() {
+		fromSuffix, toSuffix = toSuffix, fromSuffix
+	}
+	bareFrom := strings.TrimPrefix(fromSuffix, ".")
+	if host != bareFrom && !strings.HasSuffix(host, fromSuffix) {
+		return raw
+	}
+	if host == bareFrom {
+		host = strings.TrimPrefix(toSuffix, ".")
+	} else {
+		host = strings.TrimSuffix(host, fromSuffix) + toSuffix
+	}
+	if port := parsed.Port(); port != "" {
+		parsed.Host = net.JoinHostPort(host, port)
+	} else {
+		parsed.Host = host
+	}
+	return parsed.String()
 }
 
 // SetDynamicServers injects server data discovered from servers.json.
@@ -262,6 +303,19 @@ func directRuntimeEndpoint(productID, toolName string) (string, bool) {
 	return "", false
 }
 
+func hasDirectRuntimeEndpointOverride(productID string) bool {
+	normalized := normalizeDirectRuntimeProductID(productID)
+	for _, candidate := range []string{strings.TrimSpace(productID), normalized} {
+		if candidate == "" {
+			continue
+		}
+		if _, ok := productEndpointOverride(candidate); ok {
+			return true
+		}
+	}
+	return false
+}
+
 func editionServerEndpoint(productID string) (string, bool) {
 	productID = strings.TrimSpace(productID)
 	if productID == "" {
@@ -299,6 +353,14 @@ func endpointFromEditionServers(productID string, fn func() []edition.ServerInfo
 }
 
 func activeDingTalkGatewayEndpoint(endpoint string) string {
+	return activeDingTalkGatewayEndpointWithBase(endpoint, defaultPATGatewayBaseURL())
+}
+
+func activeDingTalkGatewayEndpointForLoginRegion(endpoint string, region authpkg.LoginRegion) string {
+	return activeDingTalkGatewayEndpointWithBase(endpoint, defaultPATGatewayBaseURLForLoginRegion(region))
+}
+
+func activeDingTalkGatewayEndpointWithBase(endpoint, gatewayBaseURL string) string {
 	endpoint = strings.TrimSpace(endpoint)
 	parsed, err := url.Parse(endpoint)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
@@ -307,7 +369,7 @@ func activeDingTalkGatewayEndpoint(endpoint string) string {
 	if !isDingTalkMCPGatewayHost(parsed.Hostname()) {
 		return endpoint
 	}
-	base, err := url.Parse(defaultPATGatewayBaseURL())
+	base, err := url.Parse(gatewayBaseURL)
 	if err != nil || base.Scheme == "" || base.Host == "" {
 		return endpoint
 	}
@@ -323,6 +385,11 @@ func isDingTalkMCPGatewayHost(host string) bool {
 	default:
 		return false
 	}
+}
+
+func isDingTalkMCPGatewayEndpoint(endpoint string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(endpoint))
+	return err == nil && isDingTalkMCPGatewayHost(parsed.Hostname())
 }
 
 // DirectRuntimeProductIDs returns product IDs that should stay visible for
