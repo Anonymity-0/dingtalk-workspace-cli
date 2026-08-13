@@ -210,6 +210,10 @@ func TestChatMessagePaginationUsesDefaultTimeWindows(t *testing.T) {
 			if startMs < wantStartMin || startMs > wantStartMax {
 				t.Fatalf("startTime = %d, want between %d and %d", startMs, wantStartMin, wantStartMax)
 			}
+			if tt.wantTool == "search_messages_by_time_range" {
+				assertChatMessageListAllTimeFormat(t, got.args["startTime"])
+				assertChatMessageListAllTimeFormat(t, got.args["endTime"])
+			}
 		})
 	}
 }
@@ -276,7 +280,7 @@ func TestChatMessagePaginationDefaultsStartFromExplicitEnd(t *testing.T) {
 				t.Fatalf("startTime = %d, want %d", startMs, wantStartMs)
 			}
 			if tt.wantTool == "search_messages_by_time_range" {
-				assertStringArg(t, got.args["startTime"], time.UnixMilli(wantStartMs).Format(time.RFC3339))
+				assertStringArg(t, got.args["startTime"], formatChatMessageListAllTime(wantStartMs))
 				assertStringArg(t, got.args["endTime"], endRaw)
 			}
 		})
@@ -344,7 +348,7 @@ func TestChatMessagePaginationDefaultsEndFromNowWhenOnlyStartProvided(t *testing
 			}
 			if tt.wantTool == "search_messages_by_time_range" {
 				assertStringArg(t, got.args["startTime"], startRaw)
-				parseChatMessageListAllTimeArg(t, got.args["endTime"])
+				assertChatMessageListAllTimeFormat(t, got.args["endTime"])
 			}
 		})
 	}
@@ -438,6 +442,20 @@ func parseChatMessageListAllTimeArg(t *testing.T, value any) time.Time {
 		t.Fatalf("time arg = %q, parse err = %v", raw, err)
 	}
 	return parsed
+}
+
+func assertChatMessageListAllTimeFormat(t *testing.T, value any) {
+	t.Helper()
+	raw, ok := value.(string)
+	if !ok {
+		t.Fatalf("time arg = %#v, want time string", value)
+	}
+	if strings.Contains(raw, "T") {
+		t.Fatalf("time arg = %q, want yyyy-MM-dd HH:mm:ss without RFC3339 separator", raw)
+	}
+	if _, err := time.ParseInLocation("2006-01-02 15:04:05", raw, time.Local); err != nil {
+		t.Fatalf("time arg = %q, parse err = %v", raw, err)
+	}
 }
 
 func assertStringArg(t *testing.T, value any, want string) {

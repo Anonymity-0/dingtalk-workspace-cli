@@ -724,7 +724,7 @@ func TestCrossPlatformCoverageChatMessageListUsesMCPMetadataGroupKey(t *testing.
 	}
 }
 
-func TestCrossPlatformCoverageChatMessageListDefaultTimeUsesShanghaiLocation(t *testing.T) {
+func TestCrossPlatformCoverageChatMessageListDefaultTimeUsesLocalLocation(t *testing.T) {
 	previousLocal := time.Local
 	time.Local = time.UTC
 	t.Cleanup(func() { time.Local = previousLocal })
@@ -753,12 +753,12 @@ func TestCrossPlatformCoverageChatMessageListDefaultTimeUsesShanghaiLocation(t *
 			if !ok || raw == "" {
 				t.Fatalf("time arg = %#v, want non-empty string", caller.calls[0].args["time"])
 			}
-			got, err := time.ParseInLocation("2006-01-02 15:04:05", raw, shanghaiLocation())
+			got, err := time.ParseInLocation("2006-01-02 15:04:05", raw, time.Local)
 			if err != nil {
 				t.Fatalf("time arg = %q, parse err = %v", raw, err)
 			}
 			if got.Before(before.Add(-time.Second)) || got.After(after.Add(time.Second)) {
-				t.Fatalf("time arg = %q (%s), want current time in Shanghai between %s and %s", raw, got, before, after)
+				t.Fatalf("time arg = %q (%s), want current local time between %s and %s", raw, got, before, after)
 			}
 			if caller.calls[0].args["forward"] != false {
 				t.Fatalf("forward = %#v, want false when --time is omitted", caller.calls[0].args["forward"])

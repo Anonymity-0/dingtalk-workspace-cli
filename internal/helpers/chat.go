@@ -467,7 +467,7 @@ func validateNativeSearchConversationScope(conversationIDs []string) error {
 }
 
 func chatMessageListAllArgs(cmd *cobra.Command) (map[string]any, error) {
-	startRaw, endRaw, err := defaultChatMessageTimeRange(cmd, 24*time.Hour)
+	startRaw, endRaw, err := defaultChatMessageListAllTimeRange(cmd, 24*time.Hour)
 	if err != nil {
 		return nil, err
 	}
@@ -478,6 +478,25 @@ func chatMessageListAllArgs(cmd *cobra.Command) (map[string]any, error) {
 		"limit":     chatIntFlagOrFallback(cmd, "limit", "size"),
 		"cursor":    cursor,
 	}, nil
+}
+
+func defaultChatMessageListAllTimeRange(cmd *cobra.Command, lookback time.Duration) (string, string, error) {
+	startRaw := mustGetFlag(cmd, "start")
+	endRaw := mustGetFlag(cmd, "end")
+	anchor := time.Now()
+	if endRaw == "" {
+		endRaw = formatChatMessageListAllTime(anchor.UnixMilli())
+	} else if startRaw == "" {
+		endMs, err := parseISOTimeToMillis("end", endRaw)
+		if err != nil {
+			return "", "", err
+		}
+		anchor = time.UnixMilli(endMs)
+	}
+	if startRaw == "" {
+		startRaw = formatChatMessageListAllTime(anchor.Add(-lookback).UnixMilli())
+	}
+	return startRaw, endRaw, nil
 }
 
 func chatMessageListBySenderArgs(cmd *cobra.Command) (map[string]any, error) {
@@ -616,7 +635,7 @@ func formatChatMessageListAllTime(ms int64) string {
 }
 
 func defaultChatMessageListTime() string {
-	return time.Now().In(shanghaiLocation()).Format("2006-01-02 15:04:05")
+	return time.Now().Format("2006-01-02 15:04:05")
 }
 
 func chatMessageSearchAdvancedArgs(cmd *cobra.Command) (map[string]any, error) {
