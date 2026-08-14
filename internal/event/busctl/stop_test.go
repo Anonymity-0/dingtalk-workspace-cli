@@ -23,7 +23,10 @@ import (
 	"testing"
 	"time"
 
+	dwsevent "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/bus"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/transport"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestStop_NotRunningWhenLockMissing(t *testing.T) {
@@ -43,6 +46,87 @@ func TestStop_NotRunningWhenPIDDead(t *testing.T) {
 	err := Stop(StopConfig{WorkDir: dir})
 	if !errors.Is(err, ErrNotRunning) {
 		t.Fatalf("Stop on dead PID = %v, want ErrNotRunning", err)
+	}
+}
+
+func TestCrossPlatformCoverageStopPrefersGracefulIPC(t *testing.T) {
+	const pid = 4242
+	stopped := false
+	signals := 0
+	testseam.Swap(t, &stopReadHolderPID, func(string) int { return pid })
+	testseam.Swap(t, &stopAlive, func(int) bool { return !stopped })
+	proc, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &stopFindProcess, func(int) (*os.Process, error) { return proc, nil })
+	testseam.Swap(t, &stopRequest, func(endpoint string) error {
+		if endpoint != "test-endpoint" {
+			t.Fatalf("stop endpoint = %q", endpoint)
+		}
+		stopped = true
+		return nil
+	})
+	testseam.Swap(t, &stopSignalProcess, func(*os.Process, os.Signal) error {
+		signals++
+		return nil
+	})
+
+	if err := Stop(StopConfig{
+		WorkDir:     "test-workdir",
+		IPCEndpoint: "test-endpoint",
+		Timeout:     time.Second,
+	}); err != nil {
+		t.Fatalf("Stop() = %v", err)
+	}
+	if signals != 0 {
+		t.Fatalf("graceful IPC stop used %d process signals", signals)
+	}
+}
+
+func TestCrossPlatformCoverageRequestBusStopProtocol(t *testing.T) {
+	dir := shortTempDir(t)
+	endpoint := dwsevent.IPCEndpoint(
+		dir,
+		"open",
+		dwsevent.SourceKindAppStream,
+		dwsevent.IdentityHash(dir),
+	)
+	listener, err := transport.Listen(endpoint)
+	if err != nil {
+		t.Fatalf("Listen() = %v", err)
+	}
+	defer listener.Close()
+	serverDone := make(chan error, 1)
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			serverDone <- err
+			return
+		}
+		defer conn.Close()
+		r := transport.NewReader(conn)
+		w := transport.NewWriter(conn)
+		var hello transport.Hello
+		if err := r.ReadJSON(&hello); err != nil {
+			serverDone <- err
+			return
+		}
+		if hello.Type != transport.FrameTypeHello || hello.Role != transport.HelloRoleStop {
+			serverDone <- errors.New("unexpected stop hello")
+			return
+		}
+		serverDone <- w.WriteJSON(transport.Bye{
+			Type:   transport.FrameTypeBye,
+			Reason: "stop_request",
+		})
+	}()
+
+	if err := requestBusStop(endpoint); err != nil {
+		t.Fatalf("requestBusStop() = %v", err)
+	}
+	if err := <-serverDone; err != nil {
+		t.Fatalf("stop protocol server = %v", err)
 	}
 }
 
