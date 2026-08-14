@@ -470,6 +470,11 @@ var md5File = func(path string) (string, error) {
 // FileInfo 来复现 Windows 上无法创建的符号链接场景。
 var statusRootLstat = os.Lstat
 
+// statusWalkDir 是本地目录遍历的注入 seam。改造根类型校验后，filepath.WalkDir
+// 的错误分支（walkLocalTreeEntry 之外的外层错误）在 macOS/Windows 上都难以自然
+// 触发，需要 seam 让该分支可以确定性回归。
+var statusWalkDir = filepath.WalkDir
+
 // walkLocalTree 递归遍历本地目录，只收集常规文件（跳过符号链接、设备文件等）。
 // rel_path 统一使用 / 作为分隔符，相对于 root。
 //
@@ -491,7 +496,7 @@ func walkLocalTree(root string) (map[string]*localFile, error) {
 		return nil, fmt.Errorf("本地根目录 %q 不是目录", root)
 	}
 	files := make(map[string]*localFile)
-	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err = statusWalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		return walkLocalTreeEntry(root, path, d, err, files)
 	})
 	if err != nil {

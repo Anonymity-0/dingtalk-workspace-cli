@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -324,6 +325,20 @@ func TestCrossPlatformCoverageWalkLocalTree_rejectsSymlinkRootReal(t *testing.T)
 		t.Fatalf("symlink root must fail closed, got %v", err)
 	}
 }
+
+// 根类型校验通过后 WalkDir 内部返回的错误必须原样上抛，不能被吞掉；根消失或
+// 权限变更之类的情形在 Linux/Windows runner 上都难以稳定复现，用 seam 注入。
+func TestCrossPlatformCoverageWalkLocalTree_propagatesWalkDirError(t *testing.T) {
+	testseam.Swap(t, &statusWalkDir, func(string, fs.WalkDirFunc) error {
+		return errWalkDirSentinel
+	})
+	dir := t.TempDir()
+	if _, err := walkLocalTree(dir); !errors.Is(err, errWalkDirSentinel) {
+		t.Fatalf("walk dir error must be surfaced, got %v", err)
+	}
+}
+
+var errWalkDirSentinel = errors.New("simulated walk dir failure")
 
 // 根路径既非目录也非符号链接（例如普通文件被误传）时，也必须报错而非空索引。
 func TestCrossPlatformCoverageWalkLocalTree_rejectsNonDirectoryRoot(t *testing.T) {
