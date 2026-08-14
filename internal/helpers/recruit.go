@@ -151,35 +151,67 @@ func recruitResultCall(cmd *cobra.Command, tool string, args map[string]any) (ou
 	if err != nil {
 		return nil, err
 	}
-	if tool != recruitListJobsTool {
-		return output.Success(data), nil
-	}
-	clean, meta, err := recruitListResultData(data)
+	clean, err := recruitBusinessResultData(data, tool)
 	if err != nil {
-		return output.Failure(&output.ErrorInfo{
-			Type: "api", Subtype: "pagination_inconsistent", Message: err.Error(),
-			Hint: "保留原始响应并停止翻页；不要把当前页当作完整结果。",
-		}), nil
+		return recruitInvalidResponse(err), nil
 	}
-	return output.Success(clean, output.WithMeta(meta)), nil
+	if tool != recruitListJobsTool {
+		return output.Success(clean), nil
+	}
+	listData, meta, err := recruitListResultData(clean)
+	if err != nil {
+		return recruitInvalidResponse(err), nil
+	}
+	return output.Success(listData, output.WithMeta(meta)), nil
+}
+
+func recruitBusinessResultData(data any, tool string) (map[string]any, error) {
+	object, ok := data.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("%s 返回值必须是 JSON 对象", tool)
+	}
+	successValue, hasSuccess := object["success"]
+	resultValue, hasResult := object["result"]
+	if !hasSuccess && !hasResult {
+		return object, nil
+	}
+	if !hasSuccess || !hasResult {
+		return nil, fmt.Errorf("%s 返回的 Connector 信封必须同时包含 success 和 result", tool)
+	}
+	success, ok := successValue.(bool)
+	if !ok {
+		return nil, fmt.Errorf("%s 返回的 Connector 信封字段 success 必须是布尔值", tool)
+	}
+	if !success {
+		message, _ := object["message"].(string)
+		if strings.TrimSpace(message) == "" {
+			message = "Connector 返回 success=false"
+		}
+		return nil, fmt.Errorf("%s 调用失败: %s", tool, message)
+	}
+	result, ok := resultValue.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("%s 返回值的 result 必须是 JSON 对象", tool)
+	}
+	return result, nil
+}
+
+func recruitInvalidResponse(err error) output.CommandResult {
+	return output.Failure(&output.ErrorInfo{
+		Type: "api", Subtype: "invalid_response", Message: err.Error(),
+		Hint: "保留原始响应并停止后续操作；不要依据不完整结果继续处理。",
+	})
 }
 
 func recruitListResultData(data any) (any, *output.Meta, error) {
-	object, ok := data.(map[string]any)
-	if !ok {
-		return nil, nil, fmt.Errorf("list_jobs 返回值必须是 JSON 对象")
+	object, err := recruitBusinessResultData(data, recruitListJobsTool)
+	if err != nil {
+		return nil, nil, err
 	}
 	// The recruit Connector returns the ATS service envelope unchanged:
 	// {success:true,result:{list:[...],hasMore:false,nextCursor:null}}.
 	// Keep accepting the historical flattened shape as well, but normalize the
 	// fixed Connector shape before enforcing the public CLI result contract.
-	if nested, exists := object["result"]; exists {
-		var nestedOK bool
-		object, nestedOK = nested.(map[string]any)
-		if !nestedOK {
-			return nil, nil, fmt.Errorf("list_jobs 返回值的 result 必须是 JSON 对象")
-		}
-	}
 	hasMore, ok := object["hasMore"].(bool)
 	if !ok {
 		return nil, nil, fmt.Errorf("list_jobs 返回值缺少布尔字段 hasMore")

@@ -4,6 +4,7 @@
 package helpers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	stderrors "errors"
@@ -134,7 +135,7 @@ func TestRecruitJobListCursorRoundTrip(t *testing.T) {
 
 func TestRecruitJobListResponseCursorRoundTrip(t *testing.T) {
 	caller := withRecruitCaller(t)
-	caller.text = `{"result":{"list":[],"hasMore":true,"nextCursor":9223372036854775807}}`
+	caller.text = `{"success":true,"result":{"list":[],"hasMore":true,"nextCursor":9223372036854775807}}`
 
 	data, err := CallMCPToolDataOnServer(context.Background(), recruitServerID, recruitListJobsTool, map[string]any{"size": 20})
 	if err != nil {
@@ -388,7 +389,7 @@ func TestRecruitListResultData(t *testing.T) {
 		t.Fatalf("wrapped meta = %#v", wrappedMeta)
 	}
 
-	if _, _, err := recruitListResultData(map[string]any{"result": nil}); err == nil ||
+	if _, _, err := recruitListResultData(map[string]any{"success": true, "result": nil}); err == nil ||
 		!strings.Contains(err.Error(), "result 必须是 JSON 对象") {
 		t.Fatalf("nil result error = %v", err)
 	}
@@ -400,6 +401,140 @@ func TestRecruitResultCallPropagatesMCPError(t *testing.T) {
 	cmd := prepareRecruitTestCommand(newRecruitJobGetCommand())
 	if _, err := recruitResultCall(cmd, recruitGetJobTool, map[string]any{"jobId": "job-1"}); err == nil {
 		t.Fatal("expected MCP error")
+	}
+}
+
+func TestRecruitResultCallUnwrapsConnectorEnvelopeForGetAndCreate(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		tool string
+		text string
+		want map[string]any
+	}{
+		{
+			name: "get detail",
+			tool: recruitGetJobTool,
+			text: `{"success":true,"result":{"jobId":"job-detail","name":"Java 工程师","status":1}}`,
+			want: map[string]any{"jobId": "job-detail", "name": "Java 工程师", "status": json.Number("1")},
+		},
+		{
+			name: "create job",
+			tool: recruitCreateJobTool,
+			text: `{"success":true,"result":{"jobId":"job-created"}}`,
+			want: map[string]any{"jobId": "job-created"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := withRecruitCaller(t)
+			caller.text = test.text
+			data, err := CallMCPToolDataOnServer(context.Background(), recruitServerID, test.tool, map[string]any{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			clean, err := recruitBusinessResultData(data, test.tool)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(clean, test.want) {
+				t.Fatalf("normalized data = %#v, want %#v", clean, test.want)
+			}
+			if _, hasSuccess := clean["success"]; hasSuccess {
+				t.Fatalf("normalized data retained Connector envelope: %#v", clean)
+			}
+			if _, hasResult := clean["result"]; hasResult {
+				t.Fatalf("normalized data retained nested result: %#v", clean)
+			}
+		})
+	}
+}
+
+func TestRecruitCommandsPublishUnwrappedConnectorResult(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		leaf   func() *cobra.Command
+		args   func(*testing.T) []string
+		text   string
+		wantID string
+	}{
+		{
+			name:   "get detail",
+			leaf:   newRecruitJobGetCommand,
+			args:   func(*testing.T) []string { return []string{"--job-id", "job-detail"} },
+			text:   `{"success":true,"result":{"jobId":"job-detail","name":"Java 工程师","status":1}}`,
+			wantID: "job-detail",
+		},
+		{
+			name: "create job",
+			leaf: newRecruitJobCreateCommand,
+			args: func(t *testing.T) []string {
+				path, _ := writeRecruitJobFixture(t)
+				return []string{"--from", path, "--yes"}
+			},
+			text:   `{"success":true,"result":{"jobId":"job-created"}}`,
+			wantID: "job-created",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := withRecruitCaller(t)
+			caller.text = test.text
+			root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
+			ctx, _ := output.WithResultStore(context.Background())
+			root.SetContext(ctx)
+			root.PersistentFlags().String("format", "json", "")
+			root.PersistentFlags().String("fields", "", "")
+			root.PersistentFlags().String("jq", "", "")
+			root.PersistentFlags().Bool("dry-run", false, "")
+			root.PersistentFlags().Bool("yes", false, "")
+			root.PersistentPostRunE = func(cmd *cobra.Command, _ []string) error {
+				_, _, err := output.EmitStoredResult(cmd)
+				return err
+			}
+			leaf := test.leaf()
+			root.AddCommand(leaf)
+			var stdout bytes.Buffer
+			root.SetOut(&stdout)
+			root.SetArgs(append([]string{leaf.Name()}, test.args(t)...))
+			if err := root.Execute(); err != nil {
+				t.Fatal(err)
+			}
+			var envelope struct {
+				Data map[string]any `json:"data"`
+			}
+			if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+				t.Fatalf("decode output %q: %v", stdout.String(), err)
+			}
+			if envelope.Data["jobId"] != test.wantID {
+				t.Fatalf("data = %#v, want top-level jobId %q", envelope.Data, test.wantID)
+			}
+			if _, exists := envelope.Data["success"]; exists {
+				t.Fatalf("public data retained Connector success: %#v", envelope.Data)
+			}
+			if _, exists := envelope.Data["result"]; exists {
+				t.Fatalf("public data retained Connector result: %#v", envelope.Data)
+			}
+		})
+	}
+}
+
+func TestRecruitBusinessResultDataRejectsInvalidConnectorEnvelope(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		data any
+		want string
+	}{
+		{name: "not object", data: []any{}, want: "必须是 JSON 对象"},
+		{name: "missing result", data: map[string]any{"success": true}, want: "同时包含 success 和 result"},
+		{name: "missing success", data: map[string]any{"result": map[string]any{}}, want: "同时包含 success 和 result"},
+		{name: "invalid success", data: map[string]any{"success": "true", "result": map[string]any{}}, want: "success 必须是布尔值"},
+		{name: "business failure", data: map[string]any{"success": false, "message": "职位不存在", "result": map[string]any{}}, want: "职位不存在"},
+		{name: "business failure without message", data: map[string]any{"success": false, "result": map[string]any{}}, want: "Connector 返回 success=false"},
+		{name: "invalid result", data: map[string]any{"success": true, "result": nil}, want: "result 必须是 JSON 对象"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := recruitBusinessResultData(test.data, recruitGetJobTool); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want %q", err, test.want)
+			}
+		})
 	}
 }
 
