@@ -263,10 +263,14 @@ func TestCrossPlatformCoverageConfiguredAgentRootsMatchUpstreamAndCustomHomes(t 
 	}
 }
 
-func TestCrossPlatformCoverageUpgradeCanonicalFailureOnlyFailsFastWithDependents(t *testing.T) {
+func TestCrossPlatformCoverageUpgradeCanonicalFailureFailsFastUnconditionally(t *testing.T) {
 	for _, mode := range []string{"mono", "multi"} {
 		t.Run(mode, func(t *testing.T) {
-			home := withFakeHome(t)
+			withFakeHome(t)
+			// Canonical-only configuration (no non-universal dependents): a failed
+			// canonical publish must still fail the whole upgrade. Universal agents
+			// read canonical directly, so silently succeeding here would leave the
+			// machine without any usable Skill while reporting success.
 			testseam.Swap(t, &knownSkillDirs, []string{".agents/skills"})
 			testseam.Swap(t, &upgradeCopyDir, func(string, string) error { return errors.New("canonical denied") })
 
@@ -279,14 +283,11 @@ func TestCrossPlatformCoverageUpgradeCanonicalFailureOnlyFailsFastWithDependents
 				src = writeMultiBundle(t, src, "dingtalk-chat")
 			}
 			result, err := UpgradeSkillLocations(src)
-			if err != nil {
-				t.Fatalf("standalone canonical failure should be reported per-target, not fail fast: %v", err)
+			if err == nil || !strings.Contains(err.Error(), "canonical Skill 安装失败") {
+				t.Fatalf("canonical publish failure must propagate an error, got (%v)", err)
 			}
-			if len(result.Failed()) != 1 || len(result.Succeeded()) != 0 {
+			if result == nil || len(result.Failed()) != 1 || len(result.Succeeded()) != 0 {
 				t.Fatalf("result = %#v", result)
-			}
-			if hasDependentSkillRoot(home, filepath.Join(home, ".agents", "skills")) {
-				t.Fatal("canonical-only configuration unexpectedly has a dependent root")
 			}
 		})
 	}
