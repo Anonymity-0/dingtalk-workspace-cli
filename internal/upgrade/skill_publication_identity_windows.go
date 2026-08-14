@@ -15,3 +15,7 @@ func skillPathFileIncarnation(info os.FileInfo) string {
 	}
 	return fmt.Sprintf("%d:%d", stat.CreationTime.HighDateTime, stat.CreationTime.LowDateTime)
 }
+
+func skillPathSameFileIdentity(left, right os.FileInfo) bool {
+	return skillPathFileIncarnation(left) == skillPathFileIncarnation(right)
+}
