@@ -226,6 +226,7 @@ func TestInstallDevappScriptsReportSkillRollbackFailures(t *testing.T) {
 	}{
 		{filepath.Join("..", "..", "scripts", "install-devapp.sh"), "Skill rollback failed; backup retained at", "[ -z \"$backup\" ] || mv \"$backup\" \"$dest\" 2>/dev/null || true"},
 		{filepath.Join("..", "..", "scripts", "install-devapp.ps1"), "Die \"Skill install failed:", "(skill install skipped:"},
+		{filepath.Join("..", "..", "scripts", "install-event.sh"), "Skill rollback failed; backup retained at", "[ -z \"$backup\" ] || mv \"$backup\" \"$dest\" 2>/dev/null || true"},
 	}
 	for _, check := range checks {
 		data, err := os.ReadFile(check.path)
@@ -239,6 +240,210 @@ func TestInstallDevappScriptsReportSkillRollbackFailures(t *testing.T) {
 		if strings.Contains(text, check.forbidden) {
 			t.Errorf("%s still contains silent failure path %q", check.path, check.forbidden)
 		}
+	}
+}
+
+func TestInstallScriptsRemoveJunctionStagesLexically(t *testing.T) {
+	t.Parallel()
+
+	checks := []struct {
+		path      string
+		required  []string
+		forbidden []string
+	}{
+		{
+			filepath.Join("..", "..", "scripts", "install.ps1"),
+			[]string{
+				"function Remove-LinkStageRoot",
+				// Windows PowerShell 5.1 follows reparse points during
+				// Remove-Item -Recurse; published junctions must be removed
+				// lexically so rollback never deletes canonical content.
+				"Remove-SkillPathLexically -Path $Published[$i]",
+				"Remove-LinkStageRoot -StageRoot $stageRoot",
+			},
+			[]string{"Remove-Item -LiteralPath $Published[$i] -Recurse -Force"},
+		},
+		{
+			filepath.Join("..", "..", "scripts", "install-devapp.ps1"),
+			[]string{
+				"function Remove-DevLinkStageRoot",
+				"Remove-DevLinkStageRoot $stageRoot",
+			},
+			[]string{},
+		},
+	}
+	for _, check := range checks {
+		data, err := os.ReadFile(check.path)
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", check.path, err)
+		}
+		text := string(data)
+		for _, want := range check.required {
+			if !strings.Contains(text, want) {
+				t.Errorf("%s missing junction-safe removal contract %q", check.path, want)
+			}
+		}
+		for _, avoid := range check.forbidden {
+			if strings.Contains(text, avoid) {
+				t.Errorf("%s still removes junction-capable rollback paths recursively: %q", check.path, avoid)
+			}
+		}
+	}
+}
+
+func TestInstallEventScriptDegradesFailedAgentLoudly(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell installer test is for unix-like hosts")
+	}
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skipf("unsupported test os %s", runtime.GOOS)
+	}
+	if runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" {
+		t.Skipf("unsupported test arch %s", runtime.GOARCH)
+	}
+
+	root := t.TempDir()
+	fakeHome := filepath.Join(root, "home")
+	installDir := filepath.Join(root, "bin")
+	releaseDir := filepath.Join(root, "release")
+	stubRoot := filepath.Join(root, "stubs")
+
+	assetName := "dws-" + runtime.GOOS + "-" + runtime.GOARCH + ".tar.gz"
+	if err := os.MkdirAll(releaseDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(%s) error = %v", releaseDir, err)
+	}
+	writeTarGz(t, filepath.Join(releaseDir, assetName), map[string]string{
+		"dws": "fake-event-binary\n",
+	})
+	writeZip(t, filepath.Join(releaseDir, "dws-skills.zip"), map[string]string{
+		"multi/dingtalk-event/SKILL.md":  "event skill user_im_message_receive_o2o\n",
+		"multi/dingtalk-shared/SKILL.md": "shared prerequisite\n",
+		"multi/dingtalk-misc/SKILL.md":   "clean misc oa routing\n",
+		"mono/SKILL.md":                  "mono skill user_im_message_receive_o2o\n",
+	})
+	writeInstallerFixtureChecksums(t, releaseDir)
+	writeFakeCurl(t, filepath.Join(stubRoot, "curl"))
+
+	// A regular file where an agent skill base belongs makes that one agent
+	// target uninstallable, while later agents (.zcode) stay reachable.
+	mustWriteFile(t, filepath.Join(fakeHome, ".aider-desk", "skills"), []byte("not a directory\n"), 0o644)
+	mustWriteFile(t, filepath.Join(fakeHome, ".zcode", "keep.txt"), []byte("zcode home\n"), 0o644)
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-event.sh"))
+	if err != nil {
+		t.Fatalf("Abs(install-event.sh) error = %v", err)
+	}
+	cmd := exec.Command("sh", scriptPath)
+	cmd.Env = append(os.Environ(),
+		"HOME="+fakeHome,
+		"PATH="+stubRoot+":"+os.Getenv("PATH"),
+		"EVENT_VERSION=v1.0.51",
+		"DWS_INSTALL_DIR="+installDir,
+		"FAKE_RELEASE_DIR="+releaseDir,
+		"FAKE_ASSET_NAME="+assetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("install-event.sh should fail loudly when an agent target fails:\n%s", string(output))
+	}
+	got := string(output)
+	for _, want := range []string{
+		"Agent 目标安装失败，已跳过",
+		"dingtalk-event 分发到 Agent 目录失败",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("install-event output missing degrade report %q:\n%s", want, got)
+		}
+	}
+	// The failed agent must not abort the loop: later agents still get links.
+	if _, err := os.Stat(filepath.Join(fakeHome, ".zcode", "skills", "dingtalk-event", "SKILL.md")); err != nil {
+		t.Fatalf("later agent link missing after per-agent degrade: %v\noutput:\n%s", err, got)
+	}
+	if _, err := os.Stat(filepath.Join(fakeHome, ".agents", "skills", "dingtalk-event", "SKILL.md")); err != nil {
+		t.Fatalf("canonical Skill missing: %v", err)
+	}
+}
+
+func TestInstallPowerShellJunctionsResolvePhysicalRoot(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			pwsh, err = exec.LookPath("powershell")
+		}
+		if err != nil {
+			t.Skip("PowerShell is not available")
+		}
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.ps1 main section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	probe := prefix + `
+$canonical = Join-Path $env:DWS_TEST_HOME '.agents\skills\dingtalk-chat'
+New-Item -ItemType Directory -Path $canonical -Force | Out-Null
+$linkParent = Join-Path $env:DWS_TEST_HOME '.zcode\skills'
+New-Item -ItemType Directory -Path $linkParent -Force | Out-Null
+$link = Join-Path $linkParent 'dingtalk-chat'
+New-Item -ItemType Junction -Path $link -Target $canonical | Out-Null
+if (Test-SamePhysicalSkillRoot -Left $link -Right $canonical) { exit 0 }
+exit 3
+`
+	probePath := filepath.Join(t.TempDir(), "junction-probe.ps1")
+	mustWriteFile(t, probePath, []byte(probe), 0o644)
+	home := t.TempDir()
+	probeCmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", probePath)
+	probeCmd.Env = append(os.Environ(), "DWS_TEST_HOME="+home)
+	if output, err := probeCmd.CombinedOutput(); err != nil {
+		t.Fatalf("junction must resolve to its physical target (lexical Resolve-Path regression):\n%s", string(output))
+	}
+
+	// A rerun over an already-linked agent base must be idempotent: the
+	// junction is recognized as published and never re-backed-up.
+	install := prefix + `
+if (!(Install-MultiSkillsToHomes -MultiSrc $env:DWS_TEST_MULTI -Root $env:DWS_TEST_HOME)) { exit 2 }
+exit 0
+`
+	installPath := filepath.Join(t.TempDir(), "junction-idempotent.ps1")
+	mustWriteFile(t, installPath, []byte(install), 0o644)
+	multi := filepath.Join(t.TempDir(), "multi")
+	mustWriteFile(t, filepath.Join(multi, "dingtalk-chat", "SKILL.md"), []byte("new chat\n"), 0o644)
+	mustWriteFile(t, filepath.Join(home, ".zcode", "v2", "config.json"), []byte("{}\n"), 0o644)
+
+	runInstall := func() string {
+		cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", installPath)
+		cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+home, "DWS_TEST_MULTI="+multi)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("PowerShell junction idempotency harness failed: %v\n%s", err, string(output))
+		}
+		return string(output)
+	}
+	countBackups := func() int {
+		entries, err := os.ReadDir(filepath.Join(home, ".dws", "skill-backups"))
+		if err != nil {
+			return 0
+		}
+		return len(entries)
+	}
+	runInstall()
+	first := countBackups()
+	runInstall()
+	if second := countBackups(); second != first {
+		t.Fatalf("rerun re-backed-up already-published junctions (backup churn): first=%d second=%d", first, second)
+	}
+	linkData, err := os.ReadFile(filepath.Join(home, ".zcode", "skills", "dingtalk-chat", "SKILL.md"))
+	if err != nil || string(linkData) != "new chat\n" {
+		t.Fatalf("linked ZCode Skill content mismatch: %v %q", err, string(linkData))
 	}
 }
 
@@ -1544,15 +1749,18 @@ if link_canonical_skills_to_base "$HOME" "$DWS_TEST_BASE" multi; then
   exit 2
 fi
 identity_dest="$DWS_TEST_BASE/identity-link"
+identity_anchor="$HOME/identity-anchor"
 identity_manifest="$HOME/identity.manifest"
-command ln -s ../same-target "$identity_dest"
-identity_inode="$(skill_link_inode "$identity_dest")"
+command ln -s ../same-target "$identity_anchor"
+command ln -P "$identity_anchor" "$identity_dest"
+identity_inode="$(skill_link_inode "$identity_anchor")"
 printf '%s\n%s\n%s\n' "$identity_dest" ../same-target "$identity_inode" > "$identity_manifest"
 rm -f "$identity_dest"
 command ln -s ../same-target "$identity_dest"
 if restore_linked_skill_set "$identity_manifest" /dev/null; then
   exit 3
 fi
+rm -f "$identity_anchor"
 `
 			cmd := exec.Command("sh", "-c", harness)
 			cmd.Env = append(os.Environ(),
