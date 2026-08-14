@@ -101,7 +101,7 @@
       <tr><td>节点</td><td><code>+wiki-new-doc</code></td><td>按唯一空间名创建，nodeId 与文档详情读回一致。</td><td><span class="tag full">PASS</span></td></tr>
       <tr><td>动态</td><td><code>+feed-list</code></td><td>创建/移动操作后返回真实 feeds 数组，缺字段不会被接受。</td><td><span class="tag full">PASS</span></td></tr>
     </tbody></table></div>
-    <p class="small">可复跑入口：<code>make build</code> 后设置临时 <code>DWS_WIKI_E2E_MEMBER_ID</code>，运行 <code>./scripts/dev/wiki-shortcut-e2e.py</code>。脚本只输出能力标签，不输出业务对象。</p>
+    <p class="small">可复跑入口：<code>make build</code> 后设置临时 <code>DWS_WIKI_E2E_MEMBER_ID</code>，在交互终端运行 <code>./scripts/dev/wiki-shortcut-e2e.py</code>。脚本只输出能力标签，不输出业务对象；受保护操作及最终清理均由命令逐项获取终端确认，非交互环境会在创建测试数据前拒绝运行。</p>
   </section>
 
   <section class="card">

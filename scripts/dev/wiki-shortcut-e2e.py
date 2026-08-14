@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Run destructive, real-data Wiki Shortcut verification on a disposable space.
+"""Run interactive, real-data Wiki Shortcut verification on a disposable space.
 
 Requires an authenticated `dws` session. Set DWS_WIKI_E2E_MEMBER_ID to a real
 internal user ID that may be granted temporary access to the empty fixture.
 The script prints capability labels only; business IDs, names, URLs, and raw
-responses remain in memory. The disposable Wiki space is deleted in `finally`.
+responses remain in memory. Commands that require confirmation use the normal
+`dws` terminal prompt, including the disposable-space cleanup in `finally`.
 """
 
 from __future__ import annotations
@@ -26,11 +27,15 @@ class E2EFailure(RuntimeError):
     pass
 
 
-def invoke(args: list[str]) -> dict:
+def invoke(args: list[str], *, require_confirmation: bool = False) -> dict:
     process = subprocess.run(
         [str(DWS), "wiki", *args, "--format", "json"],
         cwd=ROOT,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        # Confirmation prompts are written to stderr. Keep that stream on the
+        # terminal for guarded operations so dws itself obtains the user's
+        # answer; ordinary calls stay quiet and redact raw backend errors.
+        stderr=None if require_confirmation else subprocess.PIPE,
         text=True,
         check=False,
     )
@@ -62,6 +67,10 @@ def member_role(data: dict, user_id: str) -> str:
 
 
 def main() -> int:
+    if not sys.stdin.isatty() or not sys.stderr.isatty():
+        raise E2EFailure(
+            "run in an interactive terminal; guarded operations require an explicit dws confirmation"
+        )
     if not DWS.exists():
         raise E2EFailure("build ./dws first with make build")
     if not MEMBER_ID:
@@ -128,16 +137,25 @@ def main() -> int:
             time.sleep(2)
         check("node-search", search_ok)
 
-        copied = invoke(["+node-copy", "--workspace", workspace, "--folder", folder_id, "--node", node_id, "--yes"])
+        copied = invoke(
+            ["+node-copy", "--workspace", workspace, "--folder", folder_id, "--node", node_id],
+            require_confirmation=True,
+        )
         copy_id = str(copied.get("nodeId") or "")
         disposable_nodes.append(copy_id)
         check("node-copy-readback", bool(copy_id) and bool(copied.get("copy")))
 
-        moved = invoke(["+move", "--workspace", workspace, "--folder", folder_id, "--node", node_id, "--yes"])
+        moved = invoke(
+            ["+move", "--workspace", workspace, "--folder", folder_id, "--node", node_id],
+            require_confirmation=True,
+        )
         check("move-readback", moved.get("node", {}).get("workspaceId") == workspace and moved.get("node", {}).get("folderId") == folder_id)
-        moved_out = invoke(["+move-to-drive", "--node", node_id, "--yes"])
+        moved_out = invoke(["+move-to-drive", "--node", node_id], require_confirmation=True)
         check("move-to-drive-readback", moved_out.get("node", {}).get("workspaceId") != workspace)
-        moved_back = invoke(["+node-move", "--workspace", workspace, "--folder", folder_id, "--node", node_id, "--yes"])
+        moved_back = invoke(
+            ["+node-move", "--workspace", workspace, "--folder", folder_id, "--node", node_id],
+            require_confirmation=True,
+        )
         check("node-move-alias-readback", moved_back.get("node", {}).get("workspaceId") == workspace)
 
         named = invoke(["+wiki-new-doc", "--space", space_name, "--title", "E2E Name Resolved"])
@@ -167,7 +185,10 @@ def main() -> int:
 
         # Exercise high-risk delete before final whole-space cleanup.
         delete_target = disposable_nodes.pop()
-        deleted = invoke(["+node-delete", "--workspace", workspace, "--node", delete_target, "--yes"])
+        deleted = invoke(
+            ["+node-delete", "--workspace", workspace, "--node", delete_target],
+            require_confirmation=True,
+        )
         check("node-delete-terminal", deleted.get("success") is True and deleted.get("deleted") is True)
         return 0
     finally:
@@ -178,7 +199,10 @@ def main() -> int:
                 except Exception:
                     pass
             try:
-                deleted = invoke(["+space-delete", "--workspace", workspace, "--yes"])
+                deleted = invoke(
+                    ["+space-delete", "--workspace", workspace],
+                    require_confirmation=True,
+                )
                 check("space-delete-alias-cleanup", deleted.get("success") is True and deleted.get("deleted") is True)
             except Exception as exc:
                 print(f"CLEANUP FAILED: {exc}", file=sys.stderr)
