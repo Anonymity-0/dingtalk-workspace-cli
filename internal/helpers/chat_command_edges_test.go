@@ -287,6 +287,7 @@ func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T)
 		{"category", "remove-conv", "--group=cid", "--category-ids=1,2"},
 		{"message", "list-by-ids", "--msg-ids=" + strings.Repeat("id,", 51) + "last"},
 		{"group", "transfer-owner", "--group=cid", "--new-owner=D-owner"},
+		{"group", "transfer-owner", "--group=cid", "--new-owner=DAAAAAAAAAAAiE"},
 		{"group", "update-icon", "--group=cid", "--icon-media-id=@valid"},
 		{"group", "set-history", "--group=cid", "--option=ALL"},
 		{"group", "audit-join-validation", "--conversation-id=cid", "--record-id=1", "--applicant=D1", "--inviter=D2", "--status=AuditApprove", "--description=ok"},
@@ -435,8 +436,8 @@ func TestCrossPlatformCoverageChatSendCardHiddenAliasesMapToCanonicalPayload(t *
 		},
 		{
 			name: "receiver alias",
-			args: []string{"--receiver=D1"},
-			want: map[string]any{"receiverOpenDingTalkId": "D1"},
+			args: []string{"--receiver=DAAAAAAAAAAAiE"},
+			want: map[string]any{"receiverOpenDingTalkId": "DAAAAAAAAAAAiE"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
