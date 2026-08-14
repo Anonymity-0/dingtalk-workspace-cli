@@ -49,7 +49,8 @@ func oaFormValues(raw string) ([]map[string]string, error) {
 // get_processInstance_records, list_initiated_instances, list_pending_tasks,
 // list_user_visible_process, append_task, search_form, oa_ding_user, revert_task,
 // get_inst_revert_activities, get_process_schema, forecast_process,
-// start_process_instance
+// start_process_instance, get_attachment_download_url, auth_download_file,
+// auth_preview_attachment
 // ──────────────────────────────────────────────────────────
 
 func newOaCommand() *cobra.Command {
@@ -58,9 +59,10 @@ func newOaCommand() *cobra.Command {
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "oa",
 		Selection: contract.ProductSelectionDecl{
-			AgentSummary: "查询和处理 OA 审批实例、任务、记录、抄送与评论",
+			AgentSummary: "查询和处理 OA 审批实例、任务、记录、抄送、评论与附件授权",
 			UseWhen: []string{
 				"查看待审、已办、已发起或抄送审批，并执行同意、拒绝、撤销、转交等审批动作时",
+				"获取审批附件下载链接，或为当前用户授权下载、预览审批附件时",
 			},
 			AvoidWhen: []string{
 				"不要用于普通待办任务或工作日志；需要实时监听未来的审批任务/实例事件时使用 event consume",
@@ -70,7 +72,7 @@ func newOaCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "oa",
 		Short: "OA 审批 / 同意 / 拒绝 / 撤销",
-		Long:  `管理钉钉 OA 审批：待办查询、审批详情、同意、拒绝、撤销、操作记录、已发起列表、表单列表。`,
+		Long:  `管理钉钉 OA 审批：待办查询、审批详情、同意、拒绝、撤销、操作记录、已发起列表、表单列表与附件授权。`,
 		RunE:  groupRunE,
 	}
 
@@ -1376,6 +1378,7 @@ func newOaCommand() *cobra.Command {
 		approvalForecastCmd,
 		approvalCreateCmd,
 	)
+	approvalCmd.AddCommand(newOAAttachmentCommand())
 	root.AddCommand(approvalCmd)
 
 	return root
