@@ -276,7 +276,8 @@ restore_linked_skill_set() {
 cleanup_nested_staged_link() {
   _cnsl_nested="$1/$2"
   _cnsl_target="$3"
-  if skill_link_matches "$_cnsl_nested" "$_cnsl_target"; then
+  _cnsl_inode="${4-}"
+  if skill_link_matches "$_cnsl_nested" "$_cnsl_target" "$_cnsl_inode"; then
     rm -f "$_cnsl_nested"
   fi
 }
@@ -618,20 +619,18 @@ link_canonical_skills_to_base() {
     _lcs_link_target="$(readlink "$_lcs_staged" 2>/dev/null)" || {
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     }
+    # Keep the staged hardlink alive until the whole transaction finishes. It
+    # pins the inode, so a concurrently recreated link cannot reuse the
+    # identity recorded in the publication manifest.
+    _lcs_inode="$(skill_link_inode "$_lcs_staged")" || {
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
+    }
     # Hard-link the staged symlink itself. This never overwrites a
     # concurrently-created destination. If that destination became a
     # directory, the unique staged basename can only be linked inside it;
     # post-validation detects that case and removes only our link.
-    if ! ln -P "$_lcs_staged" "$_lcs_dest" 2>/dev/null || ! skill_link_matches "$_lcs_dest" "$_lcs_link_target"; then
-      cleanup_nested_staged_link "$_lcs_dest" "$_lcs_stage_name" "$_lcs_link_target" || true
-      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
-    fi
-    _lcs_inode="$(skill_link_inode "$_lcs_dest")" || {
-      if skill_link_matches "$_lcs_dest" "$_lcs_link_target"; then rm -f "$_lcs_dest" || true; fi
-      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
-    }
-    if ! rm -f "$_lcs_staged"; then
-      if skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then rm -f "$_lcs_dest" || true; fi
+    if ! ln -P "$_lcs_staged" "$_lcs_dest" 2>/dev/null || ! skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then
+      cleanup_nested_staged_link "$_lcs_dest" "$_lcs_stage_name" "$_lcs_link_target" "$_lcs_inode" || true
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     fi
     if ! printf '%s\n%s\n%s\n' "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode" >> "$_lcs_published"; then
