@@ -202,6 +202,20 @@ function Remove-DevSkillPathLexically([string]$Path) {
     }
 }
 
+# Removes a staging directory that may hold junction/symlink children. Link
+# children must be removed non-recursively first: Windows PowerShell 5.1 can
+# follow reparse points during Remove-Item -Recurse and would delete the
+# canonical store's contents through the staged link.
+function Remove-DevLinkStageRoot([string]$StageRoot) {
+    if (!(Test-Path -LiteralPath $StageRoot)) { return $true }
+    $ok = $true
+    foreach ($child in @(Get-ChildItem -LiteralPath $StageRoot -Force -ErrorAction SilentlyContinue)) {
+        try { Remove-DevSkillPathLexically $child.FullName } catch { $ok = $false }
+    }
+    try { Remove-Item -LiteralPath $StageRoot -Force -ErrorAction Stop } catch { $ok = $false }
+    return $ok
+}
+
 function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
     if (Test-PathLexically $Destination) { throw "move destination already exists: $Destination" }
     $destinationParent = Split-Path $Destination -Parent
@@ -220,7 +234,9 @@ function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
         Assert-DevSkillPathCopy $Source $stage
         Move-DevSkillPath $stage $Destination
         Assert-DevSkillPathCopy $Source $Destination
-        Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction Stop
+        if (!(Remove-DevLinkStageRoot $stageRoot)) {
+            throw "Skill staging cleanup failed (published content untouched): $stageRoot"
+        }
         try { Remove-DevSkillPathLexically $Source } catch {
             throw "Skill target published but source removal failed; both retained ($Source, $Destination): $_"
         }
@@ -228,8 +244,8 @@ function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
     } catch {
         $failure = $_
         if (Test-Path -LiteralPath $stageRoot) {
-            try { Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction Stop } catch {
-                throw "$failure; cross-device Skill staging cleanup failed $stageRoot`: $_"
+            if (!(Remove-DevLinkStageRoot $stageRoot)) {
+                throw "$failure; cross-device Skill staging cleanup failed $stageRoot (backup and original retained)"
             }
         }
         throw $failure
@@ -276,7 +292,7 @@ function Publish-DevSkillCopy([string]$Source, [string]$Destination) {
             throw $publishFailure
         }
     } finally {
-        if (Test-Path -LiteralPath $stageRoot) { Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction SilentlyContinue }
+        Remove-DevLinkStageRoot $stageRoot | Out-Null
     }
 }
 
@@ -302,7 +318,10 @@ function Publish-DevSkillJunction([string]$Target, [string]$Destination) {
             throw $publishFailure
         }
     } finally {
-        if (Test-Path -LiteralPath $stageRoot) { Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction SilentlyContinue }
+        # The staged payload is a junction to the canonical store; it must be
+        # removed lexically or Windows PowerShell 5.1 recursion could delete
+        # canonical content through the reparse point.
+        Remove-DevLinkStageRoot $stageRoot | Out-Null
     }
 }
 
@@ -404,6 +423,7 @@ if (-not $NoSkills) {
             $canonical = Join-Path $canonicalBase $SkillName
             Publish-DevSkillCopy $src $canonical
             $installed = 1
+            $failed = 0
             $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
             foreach ($row in @($AgentRegistryRows) + @($LegacyAgentCleanupRows)) {
                 $parts = $row.Split('|'); $universal = $parts[1] -eq "1"
@@ -413,12 +433,27 @@ if (-not $NoSkills) {
                 if (!$seen.Add($baseKey) -or $baseKey -eq [System.IO.Path]::GetFullPath($canonicalBase).TrimEnd([char[]]@('\', '/'))) { continue }
                 if (!(Test-AgentBaseDetected $parts[0] $base)) { continue }
                 $dest = Join-Path $base $SkillName
-                if ($universal) { Backup-DevSkill $dest; continue }
+                if ($universal) {
+                    try { Backup-DevSkill $dest } catch {
+                        Say "⚠️ Agent Skill 旧副本备份失败，保留原目录: $dest ($($_.Exception.Message))"
+                        $failed++
+                    }
+                    continue
+                }
                 New-Item -ItemType Directory -Path $base -Force | Out-Null
+                # Per-agent degrade like install.sh: a failed link→copy fallback
+                # skips that agent loudly instead of aborting the whole loop.
                 try { Publish-DevSkillJunction $canonical $dest }
-                catch { Publish-DevSkillCopy $canonical $dest }
+                catch {
+                    try { Publish-DevSkillCopy $canonical $dest } catch {
+                        Say "⚠️ Agent Skill 目标安装失败，已跳过: $dest ($($_.Exception.Message))"
+                        $failed++
+                        continue
+                    }
+                }
                 $installed++
             }
+            if ($failed -gt 0) { Die "有 $failed 个 Agent 目标安装 $SkillName 失败（其余目标已安装）" }
             Say "Skill dingtalk-misc -> $installed agent dir(s)"
         } else {
             Say "(dingtalk-misc not found in skills bundle; skipped)"

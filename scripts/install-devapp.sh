@@ -128,7 +128,14 @@ link_or_copy_skill() {
   target_real="$(CDPATH= cd -- "$canonical" && pwd -P)" || return 1
   relative="$(awk -v from="$parent_real" -v to="$target_real" 'BEGIN { nf=split(from,f,"/"); nt=split(to,t,"/"); i=1; while(i<=nf&&i<=nt&&f[i]==t[i])i++; out=""; for(j=i;j<=nf;j++)if(f[j]!="")out=out"../"; for(j=i;j<=nt;j++)if(t[j]!="")out=out t[j](j<nt?"/":""); if(out=="")out="."; print out }')"
   stage="$(mktemp -d "$parent/.dws-link.tmp.XXXXXX")" || return 1
-  if ! ln -s "$relative" "$stage/skill" 2>/dev/null; then rm -rf "$stage"; copy_tree "$src" "$dest"; return; fi
+  if ! ln -s "$relative" "$stage/skill" 2>/dev/null; then
+    rm -rf "$stage"
+    if copy_tree "$src" "$dest"; then
+      printf '  ℹ️  %s 已自动使用兼容方式安装，可正常使用\n' "$dest" >&2
+      return 0
+    fi
+    return 1
+  fi
   backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
   if mv "$stage/skill" "$dest"; then rm -rf "$stage"; return 0; fi
   rm -rf "$stage"
@@ -198,14 +205,31 @@ install_skill() {
   canonical="$HOME/.agents/skills/$SKILL_NAME"
   copy_tree "$src" "$canonical" || return 1
   installed=1
+  failed=0
   for agent_dir in $(agent_skill_dirs); do
     base="$(resolve_agent_skill_base "$agent_dir")"
     agent_skill_base_detected "$agent_dir" "$base" || continue
     same_physical_skill "$base" "$HOME/.agents/skills" && continue
-    if is_cleanup_only_agent_dir "$agent_dir"; then backup_skill_dir "$base/$SKILL_NAME" >/dev/null || return 1; continue; fi
-    link_or_copy_skill "$canonical" "$src" "$base/$SKILL_NAME" || return 1
+    if is_cleanup_only_agent_dir "$agent_dir"; then
+      if ! backup_skill_dir "$base/$SKILL_NAME" >/dev/null; then
+        printf '  ⚠️  Agent Skill 旧副本备份失败，保留原目录: %s\n' "$base/$SKILL_NAME" >&2
+        failed=$((failed + 1))
+      fi
+      continue
+    fi
+    # Per-agent degrade like install.sh: a failed target is reported and
+    # skipped loudly instead of aborting the remaining agents mid-loop.
+    if ! link_or_copy_skill "$canonical" "$src" "$base/$SKILL_NAME"; then
+      printf '  ⚠️  Agent 目标安装失败，已跳过: %s\n' "$base/$SKILL_NAME" >&2
+      failed=$((failed + 1))
+      continue
+    fi
     installed=$((installed + 1))
   done
+  if [ "$failed" -gt 0 ]; then
+    printf '  ⚠️  有 %s 个 Agent 目标安装 %s 失败\n' "$failed" "$SKILL_NAME" >&2
+    return 1
+  fi
   say "✅ Skill dingtalk-misc → ${installed} agent dir(s)"
 }
 
@@ -248,7 +272,7 @@ main() {
       mkdir -p "$tmp/sk"
       if command -v unzip >/dev/null 2>&1; then unzip -q "$tmp/skills.zip" -d "$tmp/sk"; else tar -xf "$tmp/skills.zip" -C "$tmp/sk"; fi
       say ""
-      install_skill "$tmp/sk"
+      install_skill "$tmp/sk" || err "dingtalk-misc Skill 安装失败，详见上方告警"
     else
       say "  (no dws-skills.zip in release ${DEVAPP_VERSION}; skill skipped)"
     fi
