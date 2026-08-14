@@ -176,13 +176,16 @@ func TestCoverageWorkflowShardsAndBaselineCache(t *testing.T) {
 	}
 
 	baselineJob := admission[baselineStart:gateStart]
-	baselineKey := "dws-coverage-full-v1-${{ env.COVERAGE_BASE_REF }}-go${{ steps.setup-go.outputs.go-version }}"
+	cachePath := "coverage-cache.txt"
+	baselineKey := "dws-coverage-full-v2-${{ env.COVERAGE_BASE_REF }}-go${{ steps.setup-go.outputs.go-version }}"
 	for _, want := range []string{
 		"uses: actions/cache/restore@v4",
 		"uses: actions/cache/save@v4",
-		"path: coverage-base.txt",
+		"path: " + cachePath,
 		"key: " + baselineKey,
 		"if: steps.baseline-cache.outputs.cache-hit != 'true'",
+		"cp coverage-cache.txt coverage-base.txt",
+		"cp coverage-base.txt coverage-cache.txt",
 	} {
 		if !strings.Contains(baselineJob, want) {
 			t.Errorf("coverage-baseline missing cache contract %q", want)
@@ -190,6 +193,12 @@ func TestCoverageWorkflowShardsAndBaselineCache(t *testing.T) {
 	}
 	if strings.Count(baselineJob, "key: "+baselineKey) != 2 {
 		t.Error("coverage-baseline restore and save must use the identical exact cache key")
+	}
+	if strings.Count(baselineJob, "path: "+cachePath) != 2 {
+		t.Error("coverage-baseline restore and save must use the identical cache path/version")
+	}
+	if strings.Contains(baselineJob, "restore-keys") {
+		t.Error("coverage baseline cache must stay exact-key; prefix restore-keys can resurrect a wrong-commit baseline")
 	}
 
 	gateJob := admission[gateStart:policyStart]
@@ -200,7 +209,9 @@ func TestCoverageWorkflowShardsAndBaselineCache(t *testing.T) {
 		"test ! -f coverage.txt",
 		`test "$(head -n 1 "$profile")" = "mode: atomic"`,
 		"github.event_name == 'push'",
-		"key: dws-coverage-full-v1-${{ github.sha }}-go${{ steps.setup-go.outputs.go-version }}",
+		"cp coverage.txt coverage-cache.txt",
+		"path: " + cachePath,
+		"key: dws-coverage-full-v2-${{ github.sha }}-go${{ steps.setup-go.outputs.go-version }}",
 		`"current shards:$CURRENT_FULL_RESULT:$current_full_expected"`,
 	} {
 		if !strings.Contains(gateJob, want) {
@@ -208,7 +219,7 @@ func TestCoverageWorkflowShardsAndBaselineCache(t *testing.T) {
 		}
 	}
 
-	if strings.Contains(admission, "restore-keys") {
-		t.Error("coverage caches must stay exact-key; prefix restore-keys can resurrect a wrong-commit baseline")
+	if strings.Count(gateJob, "path: "+cachePath) != 1 {
+		t.Error("green main push must save the candidate profile through the same cache path/version as baseline restore")
 	}
 }

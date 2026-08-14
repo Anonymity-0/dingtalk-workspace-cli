@@ -1132,8 +1132,16 @@ jobs:
         if: needs.lint.outputs.full_suite == 'true'
         uses: actions/cache/restore@v4
         with:
-          path: coverage-base.txt
-          key: dws-coverage-full-v1-${{ env.COVERAGE_BASE_REF }}-go${{ steps.setup-go.outputs.go-version }}
+          path: coverage-cache.txt
+          key: dws-coverage-full-v2-${{ env.COVERAGE_BASE_REF }}-go${{ steps.setup-go.outputs.go-version }}
+
+      - name: Materialize cached merge-base coverage profile
+        if: needs.lint.outputs.full_suite == 'true' && steps.baseline-cache.outputs.cache-hit == 'true'
+        run: |
+          set -eu
+          test -s coverage-cache.txt
+          test "$(head -n 1 coverage-cache.txt)" = "mode: atomic"
+          cp coverage-cache.txt coverage-base.txt
 
       - name: Install archive tooling
         if: needs.lint.outputs.full_suite == 'true' && steps.baseline-cache.outputs.cache-hit != 'true'
@@ -1189,12 +1197,20 @@ jobs:
             fi
           )
 
+      - name: Prepare merge-base coverage profile cache
+        if: needs.lint.outputs.full_suite == 'true' && steps.baseline-cache.outputs.cache-hit != 'true'
+        run: |
+          set -eu
+          test -s coverage-base.txt
+          test "$(head -n 1 coverage-base.txt)" = "mode: atomic"
+          cp coverage-base.txt coverage-cache.txt
+
       - name: Save merge-base coverage profile cache
         if: needs.lint.outputs.full_suite == 'true' && steps.baseline-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: coverage-base.txt
-          key: dws-coverage-full-v1-${{ env.COVERAGE_BASE_REF }}-go${{ steps.setup-go.outputs.go-version }}
+          path: coverage-cache.txt
+          key: dws-coverage-full-v2-${{ env.COVERAGE_BASE_REF }}-go${{ steps.setup-go.outputs.go-version }}
 
       - name: Upload baseline coverage profile
         uses: actions/upload-artifact@v4
@@ -1376,13 +1392,23 @@ jobs:
 
       # Publish this push's full-suite profile as the merge-base cache for
       # future PRs whose merge-base is exactly this commit. Saved only after
-      # the gate passed so a broken run never becomes a baseline.
+      # the gate passed so a broken run never becomes a baseline. Both producer
+      # and consumer use coverage-cache.txt because the cache version includes
+      # the configured path as well as the compression tool.
+      - name: Prepare push coverage profile as merge-base cache
+        if: github.event_name == 'push' && needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && needs.lint.outputs.full_suite == 'true'
+        run: |
+          set -eu
+          test -s coverage.txt
+          test "$(head -n 1 coverage.txt)" = "mode: atomic"
+          cp coverage.txt coverage-cache.txt
+
       - name: Save push coverage profile as merge-base cache
         if: github.event_name == 'push' && needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true' && needs.lint.outputs.full_suite == 'true'
         uses: actions/cache/save@v4
         with:
-          path: coverage.txt
-          key: dws-coverage-full-v1-${{ github.sha }}-go${{ steps.setup-go.outputs.go-version }}
+          path: coverage-cache.txt
+          key: dws-coverage-full-v2-${{ github.sha }}-go${{ steps.setup-go.outputs.go-version }}
 
       - name: Generate coverage report
         if: needs.lint.outputs.changelog_only != 'true' && needs.lint.outputs.docs_only != 'true'
