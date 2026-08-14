@@ -1503,6 +1503,101 @@ func TestInstallerShellLinksZCodeRootToCanonical(t *testing.T) {
 	}
 }
 
+func TestInstallerShellLinkPublicationRacePreservesConcurrentDirectories(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			base := filepath.Join(home, ".zcode", "skills")
+			first := filepath.Join(base, "dingtalk-first")
+			second := filepath.Join(base, "dingtalk-second")
+			mustWriteFile(t, filepath.Join(home, ".agents", "skills", "dingtalk-first", "SKILL.md"), []byte("first\n"), 0o644)
+			mustWriteFile(t, filepath.Join(home, ".agents", "skills", "dingtalk-second", "SKILL.md"), []byte("second\n"), 0o644)
+
+			harness := `. "$DWS_TEST_LIBRARY"
+ln() {
+  if [ "$1" = -P ] && [ "$3" = "$DWS_TEST_SECOND" ]; then
+    rm -f "$DWS_TEST_FIRST"
+    mkdir -p "$DWS_TEST_FIRST" "$DWS_TEST_SECOND"
+    printf '%s\n' first-user-data > "$DWS_TEST_FIRST/user.txt"
+    printf '%s\n' second-user-data > "$DWS_TEST_SECOND/user.txt"
+  fi
+  command ln "$@"
+}
+if link_canonical_skills_to_base "$HOME" "$DWS_TEST_BASE" multi; then
+  exit 2
+fi
+identity_dest="$DWS_TEST_BASE/identity-link"
+identity_manifest="$HOME/identity.manifest"
+command ln -s ../same-target "$identity_dest"
+identity_inode="$(skill_link_inode "$identity_dest")"
+printf '%s\n%s\n%s\n' "$identity_dest" ../same-target "$identity_inode" > "$identity_manifest"
+rm -f "$identity_dest"
+command ln -s ../same-target "$identity_dest"
+if restore_linked_skill_set "$identity_manifest" /dev/null; then
+  exit 3
+fi
+`
+			cmd := exec.Command("sh", "-c", harness)
+			cmd.Env = append(os.Environ(),
+				"HOME="+home,
+				"DWS_TEST_LIBRARY="+library,
+				"DWS_TEST_BASE="+base,
+				"DWS_TEST_FIRST="+first,
+				"DWS_TEST_SECOND="+second,
+			)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s race harness failed: %v\n%s", scriptName, err, output)
+			}
+			if !strings.Contains(string(output), "跳过回滚已被并发修改的 Skill 路径: "+first) {
+				t.Fatalf("%s did not report identity-protected rollback:\n%s", scriptName, output)
+			}
+			identityDest := filepath.Join(base, "identity-link")
+			if target, err := os.Readlink(identityDest); err != nil || target != "../same-target" {
+				t.Fatalf("%s replacement link was removed: target=%q, err=%v", scriptName, target, err)
+			}
+			for path, want := range map[string]string{
+				filepath.Join(first, "user.txt"):  "first-user-data\n",
+				filepath.Join(second, "user.txt"): "second-user-data\n",
+			} {
+				got, err := os.ReadFile(path)
+				if err != nil || string(got) != want {
+					t.Fatalf("%s concurrent data at %s = %q, err=%v", scriptName, path, got, err)
+				}
+			}
+			for _, dir := range []string{first, second} {
+				entries, err := os.ReadDir(dir)
+				if err != nil {
+					t.Fatalf("%s read concurrent directory %s: %v", scriptName, dir, err)
+				}
+				if len(entries) != 1 || entries[0].Name() != "user.txt" {
+					t.Fatalf("%s transaction artifacts remain in %s: %v", scriptName, dir, entries)
+				}
+			}
+			if matches, err := filepath.Glob(filepath.Join(base, ".dws-link-set.*")); err != nil || len(matches) != 0 {
+				t.Fatalf("%s staging leftovers = %v, err=%v", scriptName, matches, err)
+			}
+		})
+	}
+}
+
 func TestInstallerShellUsesUpstreamXDGAndCustomAgentRoots(t *testing.T) {
 	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
 		t.Run(scriptName, func(t *testing.T) {
