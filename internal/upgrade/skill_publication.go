@@ -38,9 +38,13 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 	if err != nil {
 		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: %w", destination, err)
 	}
+	publishedFingerprint, err := fingerprintSkillPath(destination)
+	if err != nil {
+		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 内容失败 %s（对象保留）: %w", destination, err)
+	}
 	// Force os.SameFile to resolve and cache any path-backed identity (notably
 	// on Windows) while the just-published object is known to occupy the path.
-	if !os.SameFile(identity, publishedIdentity) {
+	if !os.SameFile(identity, publishedIdentity) || publishedFingerprint != fingerprint {
 		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: staging 身份已变化", destination)
 	}
 	_ = os.SameFile(publishedIdentity, publishedIdentity)
