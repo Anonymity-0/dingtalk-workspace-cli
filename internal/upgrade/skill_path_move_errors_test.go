@@ -134,12 +134,40 @@ func TestCrossPlatformCoverageSkillPathMoveSystemErrors(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageSkillPathPermissionRestorationErrors(t *testing.T) {
+	t.Run("source preparation error", func(t *testing.T) {
+		testseam.Swap(t, &skillPathWalkDir, func(string, fs.WalkDirFunc) error {
+			return errors.New("prepare failed")
+		})
+		if err := removePublishedSkillSource("ignored"); err == nil || !strings.Contains(err.Error(), "prepare failed") {
+			t.Fatalf("error = %v", err)
+		}
+	})
+
 	t.Run("walk error", func(t *testing.T) {
 		testseam.Swap(t, &skillPathWalkDir, func(root string, fn fs.WalkDirFunc) error {
 			return fn(root, nil, errors.New("walk failed"))
 		})
 		if _, err := prepareSkillPathTreeRemoval("ignored"); err == nil || !strings.Contains(err.Error(), "walk failed") {
 			t.Fatalf("error = %v", err)
+		}
+	})
+
+	t.Run("writable mode preparation", func(t *testing.T) {
+		entry := skillPathModeDirEntry{mode: os.ModeDir | 0o500}
+		testseam.Swap(t, &skillPathWalkDir, func(root string, fn fs.WalkDirFunc) error {
+			return fn(root, entry, nil)
+		})
+		var chmodMode os.FileMode
+		testseam.Swap(t, &skillPathChmod, func(_ string, mode os.FileMode) error {
+			chmodMode = mode
+			return nil
+		})
+		modes, err := prepareSkillPathTreeRemoval("source")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if chmodMode != 0o700 || len(modes) != 1 || modes[0].path != "source" || modes[0].mode != 0o500 {
+			t.Fatalf("prepared mode = %v, records = %#v", chmodMode, modes)
 		}
 	})
 
@@ -475,3 +503,14 @@ func (skillPathErrorDirEntry) Name() string               { return "broken" }
 func (skillPathErrorDirEntry) IsDir() bool                { return true }
 func (skillPathErrorDirEntry) Type() os.FileMode          { return os.ModeDir }
 func (skillPathErrorDirEntry) Info() (os.FileInfo, error) { return nil, errors.New("info failed") }
+
+type skillPathModeDirEntry struct {
+	mode os.FileMode
+}
+
+func (skillPathModeDirEntry) Name() string            { return "directory" }
+func (skillPathModeDirEntry) IsDir() bool             { return true }
+func (entry skillPathModeDirEntry) Type() os.FileMode { return entry.mode.Type() }
+func (entry skillPathModeDirEntry) Info() (os.FileInfo, error) {
+	return skillPathFakeInfo{mode: entry.mode}, nil
+}
