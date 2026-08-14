@@ -70,6 +70,19 @@ func TestCrossPlatformCoverageSkillPublicationNoClobberAndOwnedRollback(t *testi
 func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 	failure := errors.New("injected publication failure")
 
+	t.Run("platform no-replace path encoding", func(t *testing.T) {
+		if err := renameSkillPathNoReplace("invalid\x00source", filepath.Join(t.TempDir(), "dest")); err == nil {
+			t.Fatal("expected invalid source path failure")
+		}
+		source := filepath.Join(t.TempDir(), "source")
+		if err := os.WriteFile(source, []byte("value"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := renameSkillPathNoReplace(source, "invalid\x00destination"); err == nil {
+			t.Fatal("expected invalid destination path failure")
+		}
+	})
+
 	t.Run("publish identity", func(t *testing.T) {
 		if _, err := PublishSkillPathNoReplace(filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "dest")); err == nil {
 			t.Fatal("expected identity failure")
