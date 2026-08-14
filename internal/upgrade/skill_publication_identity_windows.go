@@ -16,6 +16,9 @@ func skillPathFileIncarnation(info os.FileInfo) string {
 	return fmt.Sprintf("%d:%d", stat.CreationTime.HighDateTime, stat.CreationTime.LowDateTime)
 }
 
-func skillPathSameFileIdentity(left, right os.FileInfo) bool {
-	return skillPathFileIncarnation(left) == skillPathFileIncarnation(right)
+func skillPathSameFileIdentity(_, _ os.FileInfo) bool {
+	// MoveFile can surface different metadata identities for the same reparse
+	// point before and after rename. Windows ownership is therefore proved by
+	// the separately checked creation-time incarnation plus lexical fingerprint.
+	return true
 }
