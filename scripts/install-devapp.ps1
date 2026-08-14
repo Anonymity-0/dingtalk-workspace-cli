@@ -110,7 +110,13 @@ function Test-PathLexically([string]$path) {
 }
 
 function Move-DevSkillPath([string]$Source, [string]$Destination) {
-    Move-Item -LiteralPath $Source -Destination $Destination -ErrorAction Stop
+    if (Test-PathLexically $Destination) { throw "Skill move destination already exists: $Destination" }
+    $sourceItem = Get-Item -LiteralPath $Source -Force -ErrorAction Stop
+    if ($sourceItem.PSIsContainer) {
+        [System.IO.Directory]::Move($Source, $Destination)
+    } else {
+        [System.IO.File]::Move($Source, $Destination)
+    }
 }
 
 function Test-DevCrossDeviceMoveError([System.Management.Automation.ErrorRecord]$Record) {
@@ -263,8 +269,60 @@ function Backup-DevSkill([string]$path, [ref]$BackupPath) {
     if ($null -ne $BackupPath) { $BackupPath.Value = $target }
 }
 
-function Restore-DevSkillBackup([string]$Destination, [string]$Backup) {
-    if (Test-PathLexically $Destination) { Remove-DevSkillPathLexically $Destination }
+function Get-DevSkillLinkSignature([string]$Path) {
+    try { $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop } catch { return $null }
+    if (!$item.LinkType) { return $null }
+    return ([string]$item.LinkType + "`0" + ((@($item.Target) | ForEach-Object { [string]$_ }) -join "`0"))
+}
+
+function New-DevRollbackFailure([string]$Message) {
+    $failure = [System.InvalidOperationException]::new($Message)
+    $failure.Data["DWSRollbackFailed"] = $true
+    return $failure
+}
+
+function Remove-VerifiedDevSkillPublication(
+    [string]$Destination,
+    [string]$PublishedSource,
+    [string]$PublishedLinkSignature
+) {
+    $parent = Split-Path $Destination -Parent
+    $quarantine = Join-Path $parent (".dws-dev-rollback-" + [guid]::NewGuid().ToString("N"))
+    Move-DevSkillPath $Destination $quarantine
+    try {
+        if (![string]::IsNullOrWhiteSpace($PublishedLinkSignature)) {
+            if ((Get-DevSkillLinkSignature $quarantine) -ne $PublishedLinkSignature) {
+                throw "published Skill link was replaced by another process: $Destination"
+            }
+        } elseif (![string]::IsNullOrWhiteSpace($PublishedSource)) {
+            Assert-DevSkillPathCopy $PublishedSource $quarantine
+        } else {
+            throw "Skill restore destination is occupied by another process: $Destination"
+        }
+        Remove-DevSkillPathLexically $quarantine
+    } catch {
+        $failure = $_
+        if (Test-PathLexically $quarantine) {
+            try {
+                if (Test-PathLexically $Destination) { throw "original path is occupied" }
+                Move-DevSkillPath $quarantine $Destination
+            } catch {
+                throw "$failure; concurrent object retained at $quarantine`: $_"
+            }
+        }
+        throw $failure
+    }
+}
+
+function Restore-DevSkillBackup(
+    [string]$Destination,
+    [string]$Backup,
+    [string]$PublishedSource = "",
+    [string]$PublishedLinkSignature = ""
+) {
+    if (Test-PathLexically $Destination) {
+        Remove-VerifiedDevSkillPublication $Destination $PublishedSource $PublishedLinkSignature
+    }
     if (![string]::IsNullOrWhiteSpace($Backup)) {
         Move-DevSkillPathRecoverably $Backup $Destination
     }
@@ -276,6 +334,7 @@ function Publish-DevSkillCopy([string]$Source, [string]$Destination) {
     $stageRoot = Join-Path $parent (".dws-dev-copy-" + [guid]::NewGuid().ToString("N"))
     $stage = Join-Path $stageRoot "payload"
     $backup = ""
+    $publishedSource = ""
     New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
     try {
         Copy-DevSkillPathLexically $Source $stage
@@ -283,11 +342,12 @@ function Publish-DevSkillCopy([string]$Source, [string]$Destination) {
         Backup-DevSkill $Destination ([ref]$backup)
         try {
             Move-DevSkillPath $stage $Destination
+            $publishedSource = $Source
             Assert-DevSkillPathCopy $Source $Destination
         } catch {
             $publishFailure = $_
-            try { Restore-DevSkillBackup $Destination $backup } catch {
-                throw "$publishFailure; Skill rollback failed; backup retained at $backup`: $_"
+            try { Restore-DevSkillBackup $Destination $backup $publishedSource "" } catch {
+                throw (New-DevRollbackFailure "$publishFailure; Skill rollback failed; backup retained at $backup`: $_")
             }
             throw $publishFailure
         }
@@ -302,6 +362,7 @@ function Publish-DevSkillJunction([string]$Target, [string]$Destination) {
     $stageRoot = Join-Path $parent (".dws-dev-link-" + [guid]::NewGuid().ToString("N"))
     $stage = Join-Path $stageRoot "payload"
     $backup = ""
+    $publishedSignature = ""
     New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
     try {
         New-Item -ItemType Junction -Path $stage -Target ([System.IO.Path]::GetFullPath($Target)) -ErrorAction Stop | Out-Null
@@ -310,10 +371,12 @@ function Publish-DevSkillJunction([string]$Target, [string]$Destination) {
             Move-DevSkillPath $stage $Destination
             $published = Get-Item -LiteralPath $Destination -Force -ErrorAction Stop
             if (!$published.LinkType) { throw "published Skill path is not a junction: $Destination" }
+            $publishedSignature = Get-DevSkillLinkSignature $Destination
+            if ([string]::IsNullOrEmpty($publishedSignature)) { throw "published Skill link identity is unavailable: $Destination" }
         } catch {
             $publishFailure = $_
-            try { Restore-DevSkillBackup $Destination $backup } catch {
-                throw "$publishFailure; Skill rollback failed; backup retained at $backup`: $_"
+            try { Restore-DevSkillBackup $Destination $backup "" $publishedSignature } catch {
+                throw (New-DevRollbackFailure "$publishFailure; Skill rollback failed; backup retained at $backup`: $_")
             }
             throw $publishFailure
         }
@@ -440,16 +503,22 @@ if (-not $NoSkills) {
                     }
                     continue
                 }
-                New-Item -ItemType Directory -Path $base -Force | Out-Null
                 # Per-agent degrade like install.sh: a failed link→copy fallback
                 # skips that agent loudly instead of aborting the whole loop.
-                try { Publish-DevSkillJunction $canonical $dest }
-                catch {
-                    try { Publish-DevSkillCopy $canonical $dest } catch {
-                        Say "⚠️ Agent Skill 目标安装失败，已跳过: $dest ($($_.Exception.Message))"
-                        $failed++
-                        continue
+                try {
+                    New-Item -ItemType Directory -Path $base -Force -ErrorAction Stop | Out-Null
+                    try { Publish-DevSkillJunction $canonical $dest }
+                    catch {
+                        # A failed rollback leaves the old backup as the only
+                        # trusted copy. Do not run a second publisher over that
+                        # state; surface the failure and continue other agents.
+                        if ($_.Exception.Data["DWSRollbackFailed"]) { throw }
+                        Publish-DevSkillCopy $canonical $dest
                     }
+                } catch {
+                    Say "⚠️ Agent Skill 目标安装失败，已跳过: $dest ($($_.Exception.Message))"
+                    $failed++
+                    continue
                 }
                 $installed++
             }
