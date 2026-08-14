@@ -238,6 +238,49 @@ restore_multi_skill_set() {
   [ "$_rms_ok" -eq 1 ]
 }
 
+# A link publication manifest stores destination/target/inode triples. Rollback
+# only removes links that still have the identity created by this transaction;
+# a path concurrently replaced with a file, directory, or new link is preserved.
+skill_link_inode() {
+  _sli_entry="$(ls -di "$1" 2>/dev/null)" || return 1
+  printf '%s\n' "$_sli_entry" | awk '{print $1}'
+}
+
+skill_link_matches() {
+  [ -L "$1" ] || return 1
+  _slm_target="$(readlink "$1" 2>/dev/null)" || return 1
+  [ "$_slm_target" = "$2" ] || return 1
+  _slm_expected_inode="${3-}"
+  [ -z "$_slm_expected_inode" ] || [ "$(skill_link_inode "$1")" = "$_slm_expected_inode" ]
+}
+
+restore_linked_skill_set() {
+  _rls_published="$1"
+  _rls_backups="$2"
+  _rls_ok=1
+  if [ -f "$_rls_published" ]; then
+    while IFS= read -r _rls_dest && IFS= read -r _rls_target && IFS= read -r _rls_inode; do
+      [ -n "$_rls_dest" ] || continue
+      if skill_link_matches "$_rls_dest" "$_rls_target" "$_rls_inode"; then
+        rm -f "$_rls_dest" || _rls_ok=0
+      else
+        printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s\n' "$_rls_dest"
+        _rls_ok=0
+      fi
+    done < "$_rls_published"
+  fi
+  restore_multi_skill_set /dev/null "$_rls_backups" || _rls_ok=0
+  [ "$_rls_ok" -eq 1 ]
+}
+
+cleanup_nested_staged_link() {
+  _cnsl_nested="$1/$2"
+  _cnsl_target="$3"
+  if skill_link_matches "$_cnsl_nested" "$_cnsl_target"; then
+    rm -f "$_cnsl_nested"
+  fi
+}
+
 # publish_skill_cache <source> <cache-dir>
 # Stages a complete sibling cache before publishing it. Any copy or publish
 # failure leaves the previous cache in place (or in the reported recovery dir
@@ -537,6 +580,7 @@ link_canonical_skills_to_base() {
   _lcs_base_real="$(CDPATH= cd -- "$_lcs_base" && pwd -P)" || return 1
   _lcs_stage="$(mktemp -d "$_lcs_base/.dws-link-set.XXXXXX")" || return 1
   _lcs_backups="$_lcs_stage/.backups"; _lcs_published="$_lcs_stage/.published"
+  _lcs_stage_token="$(basename "$_lcs_stage")"
   : > "$_lcs_backups" || { rm -rf "$_lcs_stage"; return 1; }
   : > "$_lcs_published" || { rm -rf "$_lcs_stage"; return 1; }
   if [ "$_lcs_mode" = "mono" ]; then
@@ -553,7 +597,8 @@ link_canonical_skills_to_base() {
     if same_physical_skill_root "$_lcs_base/$_lcs_name" "$_lcs_canonical/$_lcs_name"; then continue; fi
     _lcs_target_real="$(CDPATH= cd -- "$_lcs_canonical/$_lcs_name" && pwd -P)" || { rm -rf "$_lcs_stage"; return 1; }
     _lcs_link_target="$(awk -v from="$_lcs_base_real" -v to="$_lcs_target_real" 'BEGIN { nf=split(from,f,"/"); nt=split(to,t,"/"); i=1; while(i<=nf&&i<=nt&&f[i]==t[i])i++; out=""; for(j=i;j<=nf;j++)if(f[j]!="")out=out"../"; for(j=i;j<=nt;j++)if(t[j]!="")out=out t[j](j<nt?"/":""); if(out=="")out="."; print out }')"
-    ln -s "$_lcs_link_target" "$_lcs_stage/$_lcs_name" || { rm -rf "$_lcs_stage"; return 1; }
+    _lcs_stage_name="${_lcs_stage_token}.${_lcs_name}"
+    ln -s "$_lcs_link_target" "$_lcs_stage/$_lcs_stage_name" || { rm -rf "$_lcs_stage"; return 1; }
     _lcs_publish_names="$_lcs_publish_names $_lcs_name"
   done
   for _lcs_victim in "$_lcs_base/dws" "$_lcs_base"/*; do
@@ -567,13 +612,33 @@ link_canonical_skills_to_base() {
     fi
   done
   for _lcs_name in $_lcs_publish_names; do
-    printf '%s\n' "$_lcs_base/$_lcs_name" >> "$_lcs_published" || {
-      restore_multi_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1;
+    _lcs_dest="$_lcs_base/$_lcs_name"
+    _lcs_stage_name="${_lcs_stage_token}.${_lcs_name}"
+    _lcs_staged="$_lcs_stage/$_lcs_stage_name"
+    _lcs_link_target="$(readlink "$_lcs_staged" 2>/dev/null)" || {
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     }
-    if ! mv "$_lcs_stage/$_lcs_name" "$_lcs_base/$_lcs_name"; then
-      restore_multi_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
+    # Hard-link the staged symlink itself. This never overwrites a
+    # concurrently-created destination. If that destination became a
+    # directory, the unique staged basename can only be linked inside it;
+    # post-validation detects that case and removes only our link.
+    if ! ln -P "$_lcs_staged" "$_lcs_dest" 2>/dev/null || ! skill_link_matches "$_lcs_dest" "$_lcs_link_target"; then
+      cleanup_nested_staged_link "$_lcs_dest" "$_lcs_stage_name" "$_lcs_link_target" || true
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     fi
-    printf '  ↪ Skills → %s\n' "$_lcs_base/$_lcs_name"
+    _lcs_inode="$(skill_link_inode "$_lcs_dest")" || {
+      if skill_link_matches "$_lcs_dest" "$_lcs_link_target"; then rm -f "$_lcs_dest" || true; fi
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
+    }
+    if ! rm -f "$_lcs_staged"; then
+      if skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then rm -f "$_lcs_dest" || true; fi
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
+    fi
+    if ! printf '%s\n%s\n%s\n' "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode" >> "$_lcs_published"; then
+      if skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then rm -f "$_lcs_dest" || true; fi
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
+    fi
+    printf '  ↪ Skills → %s\n' "$_lcs_dest"
   done
   rm -rf "$_lcs_stage"
 }
