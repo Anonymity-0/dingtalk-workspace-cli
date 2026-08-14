@@ -124,3 +124,9 @@ func TestCrossPlatformCoverageWindowsSpawnRemovesInheritedReadyFD(t *testing.T) 
 		t.Fatalf("withoutReadyFDEnv() = %#v", env)
 	}
 }
+
+func TestCrossPlatformCoverageWindowsUnixReadyPipeValidation(t *testing.T) {
+	if _, err := spawnWithReadyPipe(SpawnConfig{}); err == nil {
+		t.Fatal("spawnWithReadyPipe() unexpectedly accepted an empty client ID")
+	}
+}
