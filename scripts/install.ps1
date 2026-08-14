@@ -258,7 +258,19 @@ function Move-SkillPath {
         [string]$Source,
         [string]$Destination
     )
-    Move-Item -LiteralPath $Source -Destination $Destination -ErrorAction Stop
+    if (Test-SkillPathLexically -Path $Destination) {
+        throw "Skill move destination already exists: $Destination"
+    }
+    $sourceItem = Get-Item -LiteralPath $Source -Force -ErrorAction Stop
+    if ($sourceItem.PSIsContainer) {
+        # Move-Item treats an existing directory as a container and nests the
+        # source below it. Directory.Move has the exact rename semantics this
+        # transaction requires: an occupied destination fails without touching
+        # either path.
+        [System.IO.Directory]::Move($Source, $Destination)
+    } else {
+        [System.IO.File]::Move($Source, $Destination)
+    }
 }
 
 function Test-CrossDeviceMoveError {
@@ -408,10 +420,16 @@ function Get-PhysicalSkillPath {
     try { $item = Get-Item -LiteralPath $candidate -Force -ErrorAction Stop } catch { return $null }
     $target = @($item.Target) | Where-Object { $_ } | Select-Object -First 1
     if ($item.LinkType -and $target) {
+        $targetPath = ""
         if ([System.IO.Path]::IsPathRooted([string]$target)) {
-            return ([string]$target).TrimEnd([char[]]@('\', '/'))
+            $targetPath = [string]$target
+        } else {
+            $targetPath = Join-Path $parentPhysical ([string]$target)
         }
-        return [System.IO.Path]::GetFullPath((Join-Path $parentPhysical ([string]$target)))
+        # Resolve the target recursively as well. A custom HOME or canonical
+        # root can itself sit below another junction, which must compare equal
+        # to the fully physical path just like EvalSymlinks/realpath do.
+        return Get-PhysicalSkillPath -Path ([System.IO.Path]::GetFullPath($targetPath)) -Depth ($Depth + 1)
     }
     return $candidate
 }
@@ -723,6 +741,68 @@ function Backup-SkillDir {
     return $true
 }
 
+function Get-SkillLinkSignature {
+    param([string]$Path)
+    try {
+        $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    } catch {
+        return $null
+    }
+    if (!$item.LinkType) { return $null }
+    $targets = @($item.Target) | ForEach-Object { [string]$_ }
+    return ([string]$item.LinkType + "`0" + ($targets -join "`0"))
+}
+
+function New-PublishedSkillLinkRecord {
+    param([string]$Path)
+    $signature = Get-SkillLinkSignature -Path $Path
+    if ([string]::IsNullOrEmpty($signature)) {
+        throw "published Skill path is not a link: $Path"
+    }
+    return [pscustomobject]@{ Path = $Path; LinkSignature = $signature }
+}
+
+function New-PublishedSkillCopyRecord {
+    param([string]$Path, [string]$Source)
+    Assert-SkillPathCopy -Source $Source -Destination $Path
+    return [pscustomobject]@{ Path = $Path; Source = $Source }
+}
+
+function Remove-PublishedSkillPathSafely {
+    param($Record)
+    $path = [string]$Record.Path
+    $parent = Split-Path $path -Parent
+    $quarantine = Join-Path $parent (".dws-link-rollback-" + [guid]::NewGuid().ToString("N"))
+
+    # Claim the current directory entry with an exact same-filesystem rename.
+    # If another process replaced our link, verification below fails and that
+    # object is moved back instead of ever being recursively removed.
+    Move-SkillPath -Source $path -Destination $quarantine
+    try {
+        if ($Record.LinkSignature) {
+            if ((Get-SkillLinkSignature -Path $quarantine) -ne [string]$Record.LinkSignature) {
+                throw "发布链接已被其他进程替换，拒绝删除"
+            }
+        } elseif ($Record.Source) {
+            Assert-SkillPathCopy -Source ([string]$Record.Source) -Destination $quarantine
+        } else {
+            throw "发布路径缺少事务身份，拒绝删除"
+        }
+        Remove-SkillPathLexically -Path $quarantine
+    } catch {
+        $failure = $_
+        if (Test-SkillPathLexically -Path $quarantine) {
+            try {
+                if (Test-SkillPathLexically -Path $path) { throw "原路径已被占用" }
+                Move-SkillPath -Source $quarantine -Destination $path
+            } catch {
+                throw "$failure；并发对象保留于 $quarantine`: $_"
+            }
+        }
+        throw $failure
+    }
+}
+
 function Restore-MultiSkillSet {
     param(
         [array]$Published,
@@ -730,16 +810,18 @@ function Restore-MultiSkillSet {
     )
     $ok = $true
     for ($i = $Published.Count - 1; $i -ge 0; $i--) {
+        $publishedItem = $Published[$i]
+        $publishedPath = if ($publishedItem -is [string]) { $publishedItem } else { [string]$publishedItem.Path }
         try {
-            if (Test-SkillPathLexically -Path $Published[$i]) {
-                # Junction publications must never be removed with -Recurse:
-                # Windows PowerShell 5.1 can follow the reparse point and
-                # delete the canonical store's contents. Link targets remove
-                # lexically; copied directories still remove recursively.
-                Remove-SkillPathLexically -Path $Published[$i]
+            if (Test-SkillPathLexically -Path $publishedPath) {
+                if (!($publishedItem -is [string])) {
+                    Remove-PublishedSkillPathSafely -Record $publishedItem
+                } else {
+                    Remove-SkillPathLexically -Path $publishedPath
+                }
             }
         } catch {
-            Write-Say "⚠️  无法移除失败发布目录 $($Published[$i]): $_"
+            Write-Say "⚠️  无法移除失败发布目录 $publishedPath`: $_"
             $ok = $false
         }
     }
@@ -899,8 +981,11 @@ function Publish-CanonicalSkillLinks {
         }
         foreach ($name in $publishNames) {
             $dest = Join-Path $BaseDir $name
-            $published += $dest
             Move-SkillPath -Source (Join-Path $stageRoot $name) -Destination $dest
+            # Only record a publication after the staged junction has occupied
+            # the exact destination. Rollback also checks this identity before
+            # deleting, so a concurrent user directory is never removed.
+            $published += New-PublishedSkillLinkRecord -Path $dest
             Write-Say "↪ Skills → $dest"
         }
         return $true
@@ -1188,8 +1273,8 @@ function Install-MonoToBase {
             }
         }
 
-        $published += $dest
         Move-SkillPath -Source $stagedSkill -Destination $dest
+        $published += New-PublishedSkillCopyRecord -Path $dest -Source $SkillSrc
     } catch {
         $transactionError = $_
         if (!(Restore-MultiSkillSet -Published $published -Backups $backups)) {
@@ -1383,8 +1468,8 @@ function Install-MultiToBase {
 
         foreach ($skillDir in $skillDirs) {
             $dest = Join-Path $BaseDir $skillDir.Name
-            $published += $dest
             Move-SkillPath -Source (Join-Path $stageRoot $skillDir.Name) -Destination $dest
+            $published += New-PublishedSkillCopyRecord -Path $dest -Source $skillDir.FullName
         }
     } catch {
         $transactionError = $_

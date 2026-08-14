@@ -417,12 +417,18 @@ New-Item -ItemType Junction -Path $junction -Target $canonical -ErrorAction Sile
 if (Test-Path -LiteralPath $junction) {
     $asserted = 1
     if (!(Test-SamePhysicalSkillRoot -Left $junction -Right $canonical)) { exit 3 }
+    $junctionChain = Join-Path $linkParent 'dingtalk-chat-chain'
+    New-Item -ItemType Junction -Path $junctionChain -Target $junction -ErrorAction Stop | Out-Null
+    if (!(Test-SamePhysicalSkillRoot -Left $junctionChain -Right $canonical)) { exit 5 }
 }
 $symlink = Join-Path $linkParent 'dingtalk-shared'
 New-Item -ItemType SymbolicLink -Path $symlink -Target $other -ErrorAction SilentlyContinue | Out-Null
 if (Test-Path -LiteralPath $symlink) {
     $asserted = 1
     if (!(Test-SamePhysicalSkillRoot -Left $symlink -Right $other)) { exit 3 }
+    $symlinkChain = Join-Path $linkParent 'dingtalk-shared-chain'
+    New-Item -ItemType SymbolicLink -Path $symlinkChain -Target $symlink -ErrorAction Stop | Out-Null
+    if (!(Test-SamePhysicalSkillRoot -Left $symlinkChain -Right $other)) { exit 5 }
 }
 if ($asserted -eq 0) { exit 4 }
 if (Test-SamePhysicalSkillRoot -Left $canonical -Right $other) { exit 3 }
@@ -544,6 +550,20 @@ Set-Content -LiteralPath (Join-Path $publishedPath 'concurrent-user-data.txt') -
 $restored = Restore-MultiSkillSet -Published @($record) -Backups @()
 if ($restored) { exit 15 }
 if (!(Test-Path -LiteralPath (Join-Path $publishedPath 'concurrent-user-data.txt') -PathType Leaf)) { exit 16 }
+
+# Copied mono/multi publications use the same identity-protected rollback.
+$copySource = Join-Path $root 'copy-source'
+$copyPath = Join-Path $root 'published-copy'
+New-Item -ItemType Directory -Path $copySource -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $copySource 'SKILL.md') -Value 'transaction copy'
+Copy-SkillPathLexically -Source $copySource -Destination $copyPath
+$copyRecord = New-PublishedSkillCopyRecord -Path $copyPath -Source $copySource
+Remove-SkillPathLexically -Path $copyPath
+New-Item -ItemType Directory -Path $copyPath -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $copyPath 'concurrent-copy-data.txt') -Value 'keep'
+$copyRestored = Restore-MultiSkillSet -Published @($copyRecord) -Backups @()
+if ($copyRestored) { exit 17 }
+if (!(Test-Path -LiteralPath (Join-Path $copyPath 'concurrent-copy-data.txt') -PathType Leaf)) { exit 18 }
 exit 0
 `
 	harnessPath := filepath.Join(t.TempDir(), "publication-race.ps1")
@@ -3047,6 +3067,80 @@ try {
 	}
 	if matches, err := filepath.Glob(filepath.Join(filepath.Dir(destination), ".dws-dev-copy-*")); err != nil || len(matches) != 0 {
 		t.Fatalf("devapp publish staging leftovers = %v, %v", matches, err)
+	}
+}
+
+func TestInstallDevappPowerShellPublicationRacePreservesConcurrentDirectory(t *testing.T) {
+	powerShellNames := []string{"pwsh"}
+	if runtime.GOOS == "windows" {
+		powerShellNames = []string{"powershell", "pwsh"}
+	}
+	pwsh := ""
+	for _, name := range powerShellNames {
+		if candidate, err := exec.LookPath(name); err == nil {
+			pwsh = candidate
+			break
+		}
+	}
+	if pwsh == "" {
+		t.Skip("PowerShell is not available")
+	}
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-devapp.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.Index(string(data), "# Read the releases list")
+	if cut < 0 {
+		t.Fatal("install-devapp.ps1 release section not found")
+	}
+	root := t.TempDir()
+	home := filepath.Join(root, "home")
+	source := filepath.Join(root, "bundle", "dingtalk-misc")
+	destination := filepath.Join(root, "external", "dingtalk-misc")
+	mustWriteFile(t, filepath.Join(source, "SKILL.md"), []byte("new dev skill\n"), 0o640)
+	mustWriteFile(t, filepath.Join(destination, "SKILL.md"), []byte("old dev skill\n"), 0o644)
+
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	harness := prefix + `
+$script:OriginalBackupDevSkill = ${function:Backup-DevSkill}
+function Backup-DevSkill([string]$path, [ref]$BackupPath) {
+    & $script:OriginalBackupDevSkill $path $BackupPath
+    # Simulate another installer recreating the destination after the old
+    # content was backed up but before this transaction publishes its stage.
+    New-Item -ItemType Directory -Path $path -Force -ErrorAction Stop | Out-Null
+    Set-Content -LiteralPath (Join-Path $path 'concurrent-user-data.txt') -Value 'keep'
+}
+try {
+    Publish-DevSkillCopy $env:DWS_TEST_SOURCE $env:DWS_TEST_DESTINATION
+    exit 2
+} catch {
+    if (!$_.Exception.Data['DWSRollbackFailed']) { Write-Error $_; exit 3 }
+}
+if (!(Test-Path -LiteralPath (Join-Path $env:DWS_TEST_DESTINATION 'concurrent-user-data.txt') -PathType Leaf)) { exit 4 }
+if (Test-Path -LiteralPath (Join-Path $env:DWS_TEST_DESTINATION 'payload')) { exit 5 }
+exit 0
+`
+	harnessPath := filepath.Join(t.TempDir(), "install-devapp-publication-race.ps1")
+	mustWriteFile(t, harnessPath, []byte(harness), 0o644)
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(),
+		"DWS_TEST_HOME="+home,
+		"DWS_TEST_SOURCE="+source,
+		"DWS_TEST_DESTINATION="+destination,
+	)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("PowerShell devapp publication race must retain concurrent directory: %v\n%s", err, output)
+	}
+	if got, err := os.ReadFile(filepath.Join(destination, "concurrent-user-data.txt")); err != nil || strings.TrimSpace(string(got)) != "keep" {
+		t.Fatalf("concurrent devapp data = %q, %v", got, err)
+	}
+	if backup := findSkillBackup(home, "dingtalk-misc", "old dev skill\n"); backup == "" {
+		t.Fatal("original devapp backup must be retained after publication race")
 	}
 }
 
