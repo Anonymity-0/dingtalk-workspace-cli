@@ -49,8 +49,10 @@ func TestCrossPlatformCoverageSkillPathCrossDeviceMove(t *testing.T) {
 		if got, err := os.ReadFile(filepath.Join(dst, "SKILL.md")); err != nil || string(got) != "chat\n" {
 			t.Fatalf("copied file = %q, %v", got, err)
 		}
-		if info, err := os.Stat(filepath.Join(dst, "SKILL.md")); err != nil || info.Mode().Perm() != 0o640 {
-			t.Fatalf("copied file mode = %v, %v", info, err)
+		if info, err := os.Stat(filepath.Join(dst, "SKILL.md")); err != nil {
+			t.Fatalf("copied file stat = %v, %v", info, err)
+		} else if runtime.GOOS != "windows" && info.Mode().Perm() != 0o640 {
+			t.Fatalf("copied file mode = %v; want 0640", info.Mode().Perm())
 		}
 		if linksCreated {
 			for name, want := range map[string]string{"skill-link": "SKILL.md", "dangling-link": "missing.md"} {
