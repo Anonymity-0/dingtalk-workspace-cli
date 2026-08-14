@@ -741,6 +741,19 @@ func pushUploadFilePinned(ctx context.Context, spaceID, parentID, overwriteFileI
 			if err := pushPutOpenedFile(ctx, resourceURL, ossHeaders, file, local.Size); err != nil {
 				return err
 			}
+			// OSS 传输期间若源文件被原地改写（编辑器覆盖、截断重写、mmap），
+			// PUT 里发送的可能是新旧内容的混合体，root.verify() 又不检查文件本身。
+			// commit 前对已打开句柄再取一次身份，与 PUT 前的 inode/size/mtime 逐项比对;
+			// 任一变化都拒绝 commit，避免 overwrite/local-wins 场景把混合内容覆盖到远端。
+			after, err := pushStatOpenedFile(file)
+			if err != nil {
+				return fmt.Errorf("上传后读取本地上传文件身份失败: %w", err)
+			}
+			if !os.SameFile(info, after) ||
+				after.Size() != info.Size() ||
+				after.ModTime().UnixMilli() != info.ModTime().UnixMilli() {
+				return fmt.Errorf("本地上传目标 %q 在传输期间被修改，已中止提交", local.RelPath)
+			}
 			// OSS 传输期间若命令行根已被替换，不提交这个上传会话；已发送的字节仍来自
 			// 固定根内的原文件句柄，不可能读取替代路径或根外内容。
 			return root.verify()

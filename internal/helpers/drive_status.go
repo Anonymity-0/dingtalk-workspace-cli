@@ -466,14 +466,32 @@ var md5File = func(path string) (string, error) {
 	return base64.StdEncoding.EncodeToString(h.Sum(nil)), nil
 }
 
+// statusRootLstat 是根类型校验的注入 seam；测试通过 testseam.Swap 注入不同的
+// FileInfo 来复现 Windows 上无法创建的符号链接场景。
+var statusRootLstat = os.Lstat
+
 // walkLocalTree 递归遍历本地目录，只收集常规文件（跳过符号链接、设备文件等）。
 // rel_path 统一使用 / 作为分隔符，相对于 root。
 //
 // 这里只记录路径与 mtime，不计算 MD5：本地 hash 采用惰性策略，仅在文件双端
 // 都存在且非 quick 模式时，由 compareTrees 按需计算（见 judgeFileMatch）。
 func walkLocalTree(root string) (map[string]*localFile, error) {
+	// filepath.WalkDir 不会跟随根本身的符号链接：若 root 是指向目录的 symlink，
+	// WalkDir 只以 symlink 身份触发一次回调，随后 !IsRegular 分支静默跳过，最终
+	// 返回空索引，让 status 把所有远端文件报成 new_remote。fail-closed 于遍历前：
+	// 根必须是真实目录，任何其它类型都必须报错。
+	info, err := statusRootLstat(root)
+	if err != nil {
+		return nil, fmt.Errorf("读取本地根目录身份失败: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("本地根目录 %q 是符号链接，请传入真实目录路径", root)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("本地根目录 %q 不是目录", root)
+	}
 	files := make(map[string]*localFile)
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		return walkLocalTreeEntry(root, path, d, err, files)
 	})
 	if err != nil {

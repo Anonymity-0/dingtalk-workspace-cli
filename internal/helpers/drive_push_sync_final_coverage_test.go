@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
@@ -183,9 +184,82 @@ func TestCrossPlatformCoverageDrivePushFinalPinnedUploadGuards(t *testing.T) {
 			t.Fatalf("second verification error=%v", err)
 		}
 	})
-}
 
-func TestCrossPlatformCoverageDrivePushFinalWalkAndCommandGates(t *testing.T) {
+	// PUT 期间源文件被原地改写（编辑器覆盖、截断重写、mmap）时，PUT 已把混合内容
+	// 送到 OSS；如果 commit 只看根身份而不复核文件本身，overwrite/local-wins 会把
+	// 半新半旧的字节流覆盖到远端。commit 前必须再取一次源身份，size/mtime/inode
+	// 任一变化都要拒绝提交。
+	for _, mutation := range []struct {
+		name   string
+		mutate func(t *testing.T, dir string)
+	}{
+		{"size grows during PUT", func(t *testing.T, dir string) {
+			path := filepath.Join(dir, "a.txt")
+			if err := os.WriteFile(path, []byte("payload-mutated-mid-transfer"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"mtime advances during PUT", func(t *testing.T, dir string) {
+			path := filepath.Join(dir, "a.txt")
+			future := time.Now().Add(2 * time.Second)
+			if err := os.Chtimes(path, future, future); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	} {
+		t.Run("mid transfer source modification: "+mutation.name, func(t *testing.T) {
+			rootPath, root, local := openDriveFinalCoverageRoot(t)
+			caller := pushOKCaller(nil)
+			testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+			testseam.Swap(t, &os.Args, []string{"dws", "drive"})
+
+			putCalls := 0
+			testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error {
+				putCalls++
+				mutation.mutate(t, rootPath)
+				return nil
+			})
+
+			err := pushUploadFilePinned(context.Background(), "", "P", "", "a.txt", root, local)
+			if err == nil || !strings.Contains(err.Error(), "在传输期间被修改") {
+				t.Fatalf("PUT-time mutation must abort commit, got err=%v", err)
+			}
+			if putCalls != 1 {
+				t.Fatalf("PUT must run exactly once, got %d", putCalls)
+			}
+			if commits := caller.callsFor("commit_upload"); len(commits) != 0 {
+				t.Fatalf("commit_upload must not run after mid-transfer mutation, got %v", commits)
+			}
+		})
+		// PUT 之后再取源身份可能因文件被移动/删除失败：那也必须拒绝 commit，防止
+		// 一个不能被验证的传输被提交到远端。
+		t.Run("mid transfer stat failure aborts commit", func(t *testing.T) {
+			_, root, local := openDriveFinalCoverageRoot(t)
+			caller := pushOKCaller(nil)
+			testseam.Swap(t, &deps, &Deps{Caller: caller, Out: &Formatter{w: io.Discard}})
+			testseam.Swap(t, &os.Args, []string{"dws", "drive"})
+
+			calls := 0
+			testseam.Swap(t, &pushStatOpenedFile, func(file *os.File) (os.FileInfo, error) {
+				calls++
+				if calls == 1 {
+					return file.Stat()
+				}
+				return nil, errDriveFinalCoverage
+			})
+			testseam.Swap(t, &pushPutOpenedFile, func(context.Context, string, map[string]string, *os.File, int64) error {
+				return nil
+			})
+
+			err := pushUploadFilePinned(context.Background(), "", "P", "", "a.txt", root, local)
+			if err == nil || !strings.Contains(err.Error(), "上传后读取本地上传文件身份失败") {
+				t.Fatalf("post-PUT stat failure must abort commit, got %v", err)
+			}
+			if commits := caller.callsFor("commit_upload"); len(commits) != 0 {
+				t.Fatalf("commit_upload must not run after post-PUT stat failure, got %v", commits)
+			}
+		})
+	}
 	t.Run("command scan errors", func(t *testing.T) {
 		for _, command := range []string{"push", "sync"} {
 			t.Run(command, func(t *testing.T) {

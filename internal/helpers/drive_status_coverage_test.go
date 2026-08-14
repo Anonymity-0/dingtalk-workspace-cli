@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -299,6 +300,50 @@ func TestCrossPlatformCoverageWalkLocalTree_missingRootErrors(t *testing.T) {
 		t.Fatal("expected error for missing local root")
 	}
 }
+
+// 根路径是指向目录的符号链接时，filepath.WalkDir 只把根本身当成一次 !IsRegular
+// 回调静默跳过，结果是空索引，而 status 会把所有远端文件误报为 new_remote。
+// 必须在遍历前 fail-closed。这里通过 seam 注入，兼顾无法真实创建 symlink 的平台。
+func TestCrossPlatformCoverageWalkLocalTree_rejectsSymlinkRootViaSeam(t *testing.T) {
+	testseam.Swap(t, &statusRootLstat, func(string) (os.FileInfo, error) {
+		return fakeSymlinkFileInfo{}, nil
+	})
+	if _, err := walkLocalTree(t.TempDir()); err == nil || !strings.Contains(err.Error(), "符号链接") {
+		t.Fatalf("symlink root must fail closed, got %v", err)
+	}
+}
+
+// 真实 symlink 复现：非 Windows 平台可以直接创建，进一步保证 seam 与真实语义一致。
+func TestCrossPlatformCoverageWalkLocalTree_rejectsSymlinkRootReal(t *testing.T) {
+	target := t.TempDir()
+	link := filepath.Join(t.TempDir(), "root-link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	if _, err := walkLocalTree(link); err == nil || !strings.Contains(err.Error(), "符号链接") {
+		t.Fatalf("symlink root must fail closed, got %v", err)
+	}
+}
+
+// 根路径既非目录也非符号链接（例如普通文件被误传）时，也必须报错而非空索引。
+func TestCrossPlatformCoverageWalkLocalTree_rejectsNonDirectoryRoot(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "not-a-dir")
+	mustWrite(t, file, "x")
+	if _, err := walkLocalTree(file); err == nil || !strings.Contains(err.Error(), "不是目录") {
+		t.Fatalf("file root must fail closed, got %v", err)
+	}
+}
+
+// fakeSymlinkFileInfo 是一个 Mode()&os.ModeSymlink != 0 的 os.FileInfo。Windows
+// 上创建目录符号链接需要管理员权限，测试通过它绕过创建步骤。
+type fakeSymlinkFileInfo struct{}
+
+func (fakeSymlinkFileInfo) Name() string       { return "root-link" }
+func (fakeSymlinkFileInfo) Size() int64        { return 0 }
+func (fakeSymlinkFileInfo) Mode() os.FileMode  { return os.ModeSymlink | 0o755 }
+func (fakeSymlinkFileInfo) ModTime() time.Time { return time.Time{} }
+func (fakeSymlinkFileInfo) IsDir() bool        { return false }
+func (fakeSymlinkFileInfo) Sys() any           { return nil }
 
 // 非常规文件（FIFO/符号链接目标缺失等）不计入本地索引。
 func TestCrossPlatformCoverageWalkLocalTree_skipsIrregularEntries(t *testing.T) {
