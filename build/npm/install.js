@@ -698,10 +698,133 @@ function samePhysicalDir(left, right) {
   }
 }
 
+function writeSkillFingerprintField(hash, value) {
+  const bytes = Buffer.from(String(value), "utf8");
+  hash.update(String(bytes.length), "utf8");
+  hash.update(":", "utf8");
+  hash.update(bytes);
+}
+
+function skillPathFingerprint(target) {
+  const hash = crypto.createHash("sha256");
+  const visit = (current) => {
+    const stat = fs.lstatSync(current, { bigint: true });
+    writeSkillFingerprintField(hash, Number(stat.mode & 0o170000n));
+    writeSkillFingerprintField(hash, Number(stat.mode & 0o777n));
+    if (stat.isDirectory()) {
+      const names = fs.readdirSync(current).sort((a, b) => Buffer.from(a).compare(Buffer.from(b)));
+      writeSkillFingerprintField(hash, names.length);
+      for (const name of names) {
+        writeSkillFingerprintField(hash, name);
+        visit(path.join(current, name));
+      }
+      return;
+    }
+    if (stat.isSymbolicLink()) {
+      writeSkillFingerprintField(hash, fs.readlinkSync(current));
+      return;
+    }
+    if (stat.isFile()) {
+      writeSkillFingerprintField(hash, stat.size.toString());
+      hash.update(fs.readFileSync(current));
+      return;
+    }
+    throw new Error(`unsupported Skill path type: ${current}`);
+  };
+  visit(target);
+  return hash.digest("hex");
+}
+
+function captureSkillPublication(source, destination) {
+  const stat = fs.lstatSync(source, { bigint: true });
+  return {
+    destination,
+    device: stat.dev.toString(),
+    inode: stat.ino.toString(),
+    fingerprint: skillPathFingerprint(source),
+  };
+}
+
+function skillPublicationMatches(target, publication) {
+  const stat = fs.lstatSync(target, { bigint: true });
+  return stat.dev.toString() === publication.device
+    && stat.ino.toString() === publication.inode
+    && skillPathFingerprint(target) === publication.fingerprint;
+}
+
+function removeSkillPathLexically(target) {
+  const stat = fs.lstatSync(target);
+  if (stat.isDirectory() && !stat.isSymbolicLink()) {
+    fs.rmSync(target, { recursive: true, force: true });
+  } else {
+    fs.unlinkSync(target);
+  }
+}
+
+function skillPathExistsLexically(target) {
+  try {
+    fs.lstatSync(target);
+    return true;
+  } catch (err) {
+    if (err && err.code === "ENOENT") return false;
+    throw err;
+  }
+}
+
+function rollbackPublishedSkillPath(publication, options = {}) {
+  const renameFn = options.renameFn || fs.renameSync;
+  const removeFn = options.removeFn || removeSkillPathLexically;
+  const destination = publication.destination;
+  const quarantineRoot = fs.mkdtempSync(path.join(path.dirname(destination), `.${path.basename(destination)}.rollback-`));
+  const quarantine = path.join(quarantineRoot, "payload");
+  try {
+    renameFn(destination, quarantine);
+  } catch (err) {
+    fs.rmSync(quarantineRoot, { recursive: true, force: true });
+    if (err && err.code === "ENOENT") return;
+    throw new Error(`failed to quarantine published Skill ${destination}: ${err.message}`);
+  }
+  let owned = false;
+  try {
+    owned = skillPublicationMatches(quarantine, publication);
+  } catch (err) {
+    throw new Error(`refusing to delete unverifiable Skill ${destination}; object retained at ${quarantine}: ${err.message}`);
+  }
+  if (!owned) {
+    throw new Error(`refusing to delete non-transaction Skill ${destination}; concurrent object retained at ${quarantine}`);
+  }
+  removeFn(quarantine);
+  fs.rmSync(quarantineRoot, { recursive: true, force: true });
+}
+
+function publishCanonicalLinkNoReplace(staged, destination, options = {}) {
+  const publication = captureSkillPublication(staged, destination);
+  if (process.platform === "win32") {
+    const renameFn = options.publishRenameFn || fs.renameSync;
+    renameFn(staged, destination);
+  } else {
+    const linkFn = options.publishLinkFn || ((source, target) => {
+      const result = childProcess.spawnSync("ln", ["-P", source, target], { encoding: "utf8" });
+      if (result.error) throw result.error;
+      if (result.status !== 0) {
+        const detail = (result.stderr || result.stdout || "ln -P failed").trim();
+        const error = new Error(detail);
+        if (skillPathExistsLexically(target)) error.code = "EEXIST";
+        throw error;
+      }
+    });
+    linkFn(staged, destination);
+  }
+  if (!skillPublicationMatches(destination, publication)) {
+    throw new Error(`published Skill identity changed before confirmation: ${destination}`);
+  }
+  return publication;
+}
+
 function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names, victims, options = {}) {
   const moveOptions = skillMoveOptions(options);
-  const publishRenameFn = options.publishRenameFn || fs.renameSync;
-  const publishRemoveFn = options.publishRemoveFn || ((target) => fs.rmSync(target, { recursive: true, force: true }));
+  const publishRemoveFn = options.publishRemoveFn || removeSkillPathLexically;
+  const rollbackRenameFn = options.rollbackRenameFn || fs.renameSync;
   fs.mkdirSync(baseDir, { recursive: true });
   const realBaseDir = fs.realpathSync(baseDir);
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-link-set.tmp-"));
@@ -713,9 +836,9 @@ function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names,
     const restoreErrors = [];
     for (let i = published.length - 1; i >= 0; i -= 1) {
       try {
-        publishRemoveFn(published[i]);
+        rollbackPublishedSkillPath(published[i], { renameFn: rollbackRenameFn, removeFn: publishRemoveFn });
       } catch (err) {
-        restoreErrors.push(`remove ${published[i]}: ${err.message}`);
+        restoreErrors.push(`remove ${published[i].destination}: ${err.message}`);
       }
     }
     for (let i = backups.length - 1; i >= 0; i -= 1) {
@@ -752,8 +875,8 @@ function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names,
       backupAndRemoveSkillDir(homeDir, victim, backups, moveOptions);
     }
     for (const item of staged) {
-      publishRenameFn(item.staged, item.dest);
-      published.push(item.dest);
+      const publication = publishCanonicalLinkNoReplace(item.staged, item.dest, options);
+      published.push(publication);
     }
   } catch (err) {
     try {
@@ -807,6 +930,7 @@ function publishManagedMultiSkillSetAtomically(
   const copyFn = options.copyFn || copyChildren;
   const renameFn = options.renameFn || fs.renameSync;
   const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
+  const rollbackRenameFn = options.rollbackRenameFn || fs.renameSync;
   const moveOptions = skillMoveOptions(options);
   fs.mkdirSync(baseDir, { recursive: true });
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-multi-set.tmp-"));
@@ -818,9 +942,9 @@ function publishManagedMultiSkillSetAtomically(
     const restoreErrors = [];
     for (let i = published.length - 1; i >= 0; i -= 1) {
       try {
-        removeFn(published[i]);
+        rollbackPublishedSkillPath(published[i], { renameFn: rollbackRenameFn, removeFn });
       } catch (err) {
-        restoreErrors.push(`remove ${published[i]}: ${err.message}`);
+        restoreErrors.push(`remove ${published[i].destination}: ${err.message}`);
       }
     }
     for (let i = backups.length - 1; i >= 0; i -= 1) {
@@ -855,8 +979,11 @@ function publishManagedMultiSkillSetAtomically(
     }
 
     for (const item of staged) {
+      const publication = captureSkillPublication(item.staged, item.dest);
+      if (skillPathExistsLexically(item.dest)) throw new Error(`Skill publish destination already exists: ${item.dest}`);
       renameFn(item.staged, item.dest);
-      published.push(item.dest);
+      if (!skillPublicationMatches(item.dest, publication)) throw new Error(`published Skill identity changed before confirmation: ${item.dest}`);
+      published.push(publication);
     }
   } catch (err) {
     try {
@@ -883,6 +1010,7 @@ function publishManagedMonoSkillSetAtomically(
   const copyFn = options.copyFn || copyChildren;
   const renameFn = options.renameFn || fs.renameSync;
   const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
+  const rollbackRenameFn = options.rollbackRenameFn || fs.renameSync;
   const moveOptions = skillMoveOptions(options);
   fs.mkdirSync(baseDir, { recursive: true });
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-mono-set.tmp-"));
@@ -895,9 +1023,9 @@ function publishManagedMonoSkillSetAtomically(
     const restoreErrors = [];
     for (let i = published.length - 1; i >= 0; i -= 1) {
       try {
-        removeFn(published[i]);
+        rollbackPublishedSkillPath(published[i], { renameFn: rollbackRenameFn, removeFn });
       } catch (err) {
-        restoreErrors.push(`remove ${published[i]}: ${err.message}`);
+        restoreErrors.push(`remove ${published[i].destination}: ${err.message}`);
       }
     }
     for (let i = backups.length - 1; i >= 0; i -= 1) {
@@ -927,8 +1055,11 @@ function publishManagedMonoSkillSetAtomically(
       backupAndRemoveSkillDir(homeDir, victim, backups, moveOptions);
     }
 
-    published.push(destDir);
+    const publication = captureSkillPublication(stagedDir, destDir);
+    if (skillPathExistsLexically(destDir)) throw new Error(`Skill publish destination already exists: ${destDir}`);
     renameFn(stagedDir, destDir);
+    if (!skillPublicationMatches(destDir, publication)) throw new Error(`published Skill identity changed before confirmation: ${destDir}`);
+    published.push(publication);
   } catch (err) {
     try {
       restore();

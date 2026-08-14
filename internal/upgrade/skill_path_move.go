@@ -11,23 +11,24 @@ import (
 )
 
 var (
-	skillPathRename    = func(src, dst string) error { return upgradeRename(src, dst) }
-	skillPathCopy      = copySkillPathLexically
-	skillPathVerify    = verifySkillPathCopy
-	skillPathRemoveAll = os.RemoveAll
-	skillPathMkdirAll  = os.MkdirAll
-	skillPathMkdirTemp = os.MkdirTemp
-	skillPathChmod     = os.Chmod
-	skillPathLstat     = os.Lstat
-	skillPathMkdir     = os.Mkdir
-	skillPathReadDir   = os.ReadDir
-	skillPathReadlink  = os.Readlink
-	skillPathSymlink   = os.Symlink
-	skillPathOpen      = os.Open
-	skillPathOpenFile  = os.OpenFile
-	skillPathCopyBytes = io.Copy
-	skillPathSync      = func(file *os.File) error { return file.Sync() }
-	skillPathWalkDir   = filepath.WalkDir
+	skillPathRename          = func(src, dst string) error { return upgradeRename(src, dst) }
+	skillPathRenameNoReplace = renameSkillPathNoReplace
+	skillPathCopy            = copySkillPathLexically
+	skillPathVerify          = verifySkillPathCopy
+	skillPathRemoveAll       = os.RemoveAll
+	skillPathMkdirAll        = os.MkdirAll
+	skillPathMkdirTemp       = os.MkdirTemp
+	skillPathChmod           = os.Chmod
+	skillPathLstat           = os.Lstat
+	skillPathMkdir           = os.Mkdir
+	skillPathReadDir         = os.ReadDir
+	skillPathReadlink        = os.Readlink
+	skillPathSymlink         = os.Symlink
+	skillPathOpen            = os.Open
+	skillPathOpenFile        = os.OpenFile
+	skillPathCopyBytes       = io.Copy
+	skillPathSync            = func(file *os.File) error { return file.Sync() }
+	skillPathWalkDir         = filepath.WalkDir
 )
 
 // moveSkillPathRecoverably moves one managed Skill path without weakening the
@@ -44,7 +45,7 @@ func moveSkillPathRecoverably(src, dst string) (err error) {
 	if err := skillPathMkdirAll(filepath.Dir(dst), dirPermShared); err != nil {
 		return fmt.Errorf("创建移动目标目录失败 %s: %w", filepath.Dir(dst), err)
 	}
-	if renameErr := skillPathRename(src, dst); renameErr == nil {
+	if renameErr := skillPathRenameNoReplace(src, dst); renameErr == nil {
 		return nil
 	} else if !isCrossDeviceError(renameErr) {
 		return fmt.Errorf("移动 Skill 路径失败 %s -> %s: %w", src, dst, renameErr)
@@ -85,7 +86,7 @@ func moveSkillPathRecoverably(src, dst string) (err error) {
 			return fmt.Errorf("准备跨设备 Skill staging 发布失败 %s: %w", stage, err)
 		}
 	}
-	if err := skillPathRename(stage, dst); err != nil {
+	if err := skillPathRenameNoReplace(stage, dst); err != nil {
 		return fmt.Errorf("发布跨设备 Skill 备份失败 %s: %w", dst, err)
 	}
 	if stageInfo.IsDir() {

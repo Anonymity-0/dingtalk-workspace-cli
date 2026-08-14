@@ -287,7 +287,7 @@ function runCrossDeviceMoveContract() {
             }
             fs.renameSync(source, target);
           },
-          publishRenameFn() { throw new Error("link publish failed"); },
+		  publishLinkFn() { throw new Error("link publish failed"); },
         }),
         /link publish failed/,
       );
@@ -682,6 +682,75 @@ scenario("cache copy failure preserves the previous complete cache", () => {
       !fs.readdirSync(path.dirname(cache)).some((name) => name.startsWith(".multi.tmp-")),
       "failed refresh must clean its staging directory",
     );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("canonical link publication never clobbers or deletes concurrent user data", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-canonical-race-"));
+  try {
+    {
+      const home = path.join(tmp, "no-clobber-home");
+      const canonical = path.join(home, ".agents", "skills");
+      const base = path.join(home, ".cursor", "skills");
+      const destination = path.join(base, "dingtalk-chat");
+      writeFile(path.join(canonical, "dingtalk-chat", "SKILL.md"), "new\n");
+      assert.throws(
+        () => publishCanonicalLinksAtomically(home, canonical, base, ["dingtalk-chat"], [], {
+          publishLinkFn(_source, target) {
+            writeFile(path.join(target, "concurrent-user-data.txt"), "must survive\n");
+            throw Object.assign(new Error("concurrent destination exists"), { code: "EEXIST" });
+          },
+        }),
+        /concurrent destination exists/,
+      );
+      assert.equal(fs.readFileSync(path.join(destination, "concurrent-user-data.txt"), "utf8"), "must survive\n");
+    }
+
+    {
+      const home = path.join(tmp, "rollback-home");
+      const canonical = path.join(home, ".agents", "skills");
+      const base = path.join(home, ".cursor", "skills");
+      const first = path.join(base, "dingtalk-first");
+      const second = path.join(base, "dingtalk-second");
+      for (const name of ["dingtalk-first", "dingtalk-second"]) {
+        writeFile(path.join(canonical, name, "SKILL.md"), `new ${name}\n`);
+        writeFile(path.join(base, name, "SKILL.md"), `old ${name}\n`);
+      }
+      let publishCalls = 0;
+      assert.throws(
+        () => publishCanonicalLinksAtomically(
+          home,
+          canonical,
+          base,
+          ["dingtalk-first", "dingtalk-second"],
+          [first, second],
+          {
+            publishLinkFn(source, target) {
+              publishCalls += 1;
+              if (publishCalls === 1) {
+                const result = childProcess.spawnSync("ln", ["-P", source, target], { encoding: "utf8" });
+                if (result.status !== 0) throw new Error(result.stderr || "ln -P failed");
+                return;
+              }
+              fs.unlinkSync(first);
+              writeFile(path.join(first, "concurrent-user-data.txt"), "must survive\n");
+              throw new Error("injected second canonical publish failure");
+            },
+          },
+        ),
+        /concurrent object retained|rollback failed/,
+      );
+      assert.equal(fs.readFileSync(path.join(first, "SKILL.md"), "utf8"), "old dingtalk-first\n");
+      assert.equal(fs.readFileSync(path.join(second, "SKILL.md"), "utf8"), "old dingtalk-second\n");
+      const retained = fs.readdirSync(base)
+        .filter((name) => name.startsWith(".dingtalk-first.rollback-"))
+        .map((name) => path.join(base, name, "payload", "concurrent-user-data.txt"))
+        .filter((candidate) => fs.existsSync(candidate));
+      assert.equal(retained.length, 1, "concurrent replacement must be retained in quarantine");
+      assert.equal(fs.readFileSync(retained[0], "utf8"), "must survive\n");
+    }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

@@ -143,6 +143,8 @@ var (
 	skillSetupReadState       = skillstate.Read
 	skillSetupWriteState      = skillstate.Write
 	skillSetupRemoveState     = skillstate.Remove
+	skillSetupPublishPath     = upgrade.PublishSkillPathNoReplace
+	skillSetupRollbackPaths   = upgrade.RollbackSkillPathPublications
 	skillSetupNow             = time.Now
 	skillSetupFoldPathCase    = runtime.GOOS == "windows"
 )
@@ -2035,13 +2037,8 @@ func stageSkillSetupTarget(plan *skillSetupPlan, target skillSetupTargetPlan) (s
 
 // restoreSkillSetupTarget removes a partially published replacement and
 // restores every original directory from its exact backup path.
-func restoreSkillSetupTarget(published []string, backups []skillSetupBackedUpDir) error {
-	var restoreErr error
-	for i := len(published) - 1; i >= 0; i-- {
-		if err := skillSetupRemoveAll(published[i]); err != nil {
-			restoreErr = errors.Join(restoreErr, fmt.Errorf("移除失败发布目录 %s: %w", published[i], err))
-		}
-	}
+func restoreSkillSetupTarget(published []upgrade.SkillPathPublication, backups []skillSetupBackedUpDir) error {
+	restoreErr := skillSetupRollbackPaths(published)
 	for i := len(backups) - 1; i >= 0; i-- {
 		item := backups[i]
 		if _, err := skillSetupLstat(item.original); err == nil {
@@ -2088,18 +2085,17 @@ func backupSkillSetupTarget(home string, planned []skillSetupBackup, out io.Writ
 }
 
 func publishSkillSetupTarget(staged []skillSetupStagedDir, backups []skillSetupBackedUpDir) error {
-	published := make([]string, 0, len(staged))
+	published := make([]upgrade.SkillPathPublication, 0, len(staged))
 	for _, item := range staged {
-		// Record before rename so rollback also removes a destination created by
-		// a platform-specific partial failure.
-		published = append(published, item.dest)
-		if err := skillSetupPublishRename(item.staged, item.dest); err != nil {
+		publication, err := skillSetupPublishPath(item.staged, item.dest)
+		if err != nil {
 			publishErr := fmt.Errorf("发布 Skill 失败 %s: %w", item.dest, err)
 			if restoreErr := restoreSkillSetupTarget(published, backups); restoreErr != nil {
 				return errors.Join(publishErr, fmt.Errorf("Skill setup 回滚不完整: %w", restoreErr))
 			}
 			return publishErr
 		}
+		published = append(published, publication)
 	}
 	return nil
 }
