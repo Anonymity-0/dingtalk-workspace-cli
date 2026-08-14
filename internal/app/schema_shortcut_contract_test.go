@@ -154,6 +154,55 @@ func TestDeliveryWikiSpaceSearchPreservesHistoricalParameterProperties(t *testin
 	}
 }
 
+func TestAllShortcutsWikiSchemaExamplesIncludeRequiredParameters(t *testing.T) {
+	tools := deliverySchemaAllToolsForHelpFlagTest(t, NewRootCommand())
+	checked := 0
+	for _, declared := range shortcut.All() {
+		if declared.Service != "wiki" || declared.UserDefined || !shortcut.InPublicCatalog(declared.Service, declared.Command) {
+			continue
+		}
+		checked++
+		canonical := shortcutSchemaCanonical(declared)
+		tool := tools[canonical]
+		if tool == nil {
+			t.Fatalf("delivery schema --all is missing %s", canonical)
+		}
+		examples := schemaContractStringSlice(tool["examples"])
+		if len(examples) == 0 {
+			t.Fatalf("%s has no delivered examples", canonical)
+		}
+		for _, example := range examples {
+			argv, err := cli.ParseAgentExampleArgv(example)
+			if err != nil {
+				t.Fatalf("%s example %q is not valid argv: %v", canonical, example, err)
+			}
+			for _, flag := range declared.Flags {
+				if !flag.Required {
+					continue
+				}
+				names := append([]string{flag.Name}, flag.Aliases...)
+				if !schemaExampleHasLongFlag(argv, names...) {
+					t.Errorf("%s example %q is missing required --%s", canonical, example, flag.Name)
+				}
+			}
+		}
+	}
+	if checked != 20 {
+		t.Fatalf("checked Wiki shortcut examples = %d, want 20", checked)
+	}
+}
+
+func schemaExampleHasLongFlag(argv []string, names ...string) bool {
+	for _, argument := range argv {
+		for _, name := range names {
+			if argument == "--"+name || strings.HasPrefix(argument, "--"+name+"=") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func assertSchemaSummarySafety(
 	t testing.TB,
 	summaries map[string]map[string]any,
