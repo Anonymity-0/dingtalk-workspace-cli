@@ -18,6 +18,16 @@ var (
 	skillPathMkdirAll  = os.MkdirAll
 	skillPathMkdirTemp = os.MkdirTemp
 	skillPathChmod     = os.Chmod
+	skillPathLstat     = os.Lstat
+	skillPathMkdir     = os.Mkdir
+	skillPathReadDir   = os.ReadDir
+	skillPathReadlink  = os.Readlink
+	skillPathSymlink   = os.Symlink
+	skillPathOpen      = os.Open
+	skillPathOpenFile  = os.OpenFile
+	skillPathCopyBytes = io.Copy
+	skillPathSync      = func(file *os.File) error { return file.Sync() }
+	skillPathWalkDir   = filepath.WalkDir
 )
 
 // moveSkillPathRecoverably moves one managed Skill path without weakening the
@@ -26,7 +36,7 @@ var (
 // path before removing the source. Any failure before source removal leaves the
 // source intact; a removal failure deliberately leaves both verified copies.
 func moveSkillPathRecoverably(src, dst string) (err error) {
-	if _, statErr := os.Lstat(dst); statErr == nil {
+	if _, statErr := skillPathLstat(dst); statErr == nil {
 		return fmt.Errorf("目标已存在: %s", dst)
 	} else if !os.IsNotExist(statErr) {
 		return fmt.Errorf("检查移动目标失败 %s: %w", dst, statErr)
@@ -62,7 +72,7 @@ func moveSkillPathRecoverably(src, dst string) (err error) {
 	if err := skillPathVerify(src, stage); err != nil {
 		return fmt.Errorf("校验跨设备 Skill staging 失败 %s: %w", stage, err)
 	}
-	stageInfo, err := os.Lstat(stage)
+	stageInfo, err := skillPathLstat(stage)
 	if err != nil {
 		return fmt.Errorf("检查跨设备 Skill staging 失败 %s: %w", stage, err)
 	}
@@ -108,7 +118,7 @@ func removePublishedSkillSource(src string) error {
 	}
 	removeErr := skillPathRemoveAll(src)
 	if removeErr == nil {
-		if _, statErr := os.Lstat(src); os.IsNotExist(statErr) {
+		if _, statErr := skillPathLstat(src); os.IsNotExist(statErr) {
 			return nil
 		} else if statErr == nil {
 			removeErr = errors.New("源路径仍存在")
@@ -121,7 +131,7 @@ func removePublishedSkillSource(src string) error {
 
 func prepareSkillPathTreeRemoval(root string) ([]skillPathDirMode, error) {
 	var modes []skillPathDirMode
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+	err := skillPathWalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -152,7 +162,7 @@ func restoreSkillPathDirModes(modes []skillPathDirMode) error {
 	var restoreErr error
 	for i := len(modes) - 1; i >= 0; i-- {
 		item := modes[i]
-		if _, err := os.Lstat(item.path); os.IsNotExist(err) {
+		if _, err := skillPathLstat(item.path); os.IsNotExist(err) {
 			continue
 		} else if err != nil {
 			restoreErr = errors.Join(restoreErr, err)
@@ -169,9 +179,9 @@ func makeSkillPathTreeWritable(root string) {
 	// Best effort only: RemoveAll below remains the source of truth and its
 	// error is returned. This preparation lets it traverse read-only staging
 	// directories left by a copy or verification failure.
-	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+	_ = skillPathWalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr == nil && entry.IsDir() {
-			_ = os.Chmod(path, 0o700)
+			_ = skillPathChmod(path, 0o700)
 		}
 		return nil
 	})
@@ -184,7 +194,7 @@ func RestoreSkillPath(backup, original string) error {
 }
 
 func copySkillPathLexically(src, dst string) error {
-	info, err := os.Lstat(src)
+	info, err := skillPathLstat(src)
 	if err != nil {
 		return err
 	}
@@ -193,10 +203,10 @@ func copySkillPathLexically(src, dst string) error {
 		// Staging must remain writable while children are copied. Restore the
 		// source mode only after the directory is complete so read-only Skill
 		// directories (for example 0555) can still be migrated lexically.
-		if err := os.Mkdir(dst, 0o700); err != nil {
+		if err := skillPathMkdir(dst, 0o700); err != nil {
 			return err
 		}
-		entries, err := os.ReadDir(src)
+		entries, err := skillPathReadDir(src)
 		if err != nil {
 			return err
 		}
@@ -207,11 +217,11 @@ func copySkillPathLexically(src, dst string) error {
 		}
 		return os.Chmod(dst, info.Mode().Perm())
 	case info.Mode()&os.ModeSymlink != 0:
-		target, err := os.Readlink(src)
+		target, err := skillPathReadlink(src)
 		if err != nil {
 			return err
 		}
-		return os.Symlink(target, dst)
+		return skillPathSymlink(target, dst)
 	case info.Mode().IsRegular():
 		return copyRegularSkillFile(src, dst, info.Mode().Perm())
 	default:
@@ -220,31 +230,31 @@ func copySkillPathLexically(src, dst string) error {
 }
 
 func copyRegularSkillFile(src, dst string, mode os.FileMode) (err error) {
-	in, err := os.Open(src)
+	in, err := skillPathOpen(src)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, in.Close()) }()
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	out, err := skillPathOpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, out.Close()) }()
-	if _, err := io.Copy(out, in); err != nil {
+	if _, err := skillPathCopyBytes(out, in); err != nil {
 		return err
 	}
-	if err := out.Sync(); err != nil {
+	if err := skillPathSync(out); err != nil {
 		return err
 	}
 	return os.Chmod(dst, mode)
 }
 
 func verifySkillPathCopy(src, dst string) error {
-	srcInfo, err := os.Lstat(src)
+	srcInfo, err := skillPathLstat(src)
 	if err != nil {
 		return err
 	}
-	dstInfo, err := os.Lstat(dst)
+	dstInfo, err := skillPathLstat(dst)
 	if err != nil {
 		return err
 	}
@@ -277,11 +287,11 @@ func verifySkillPathCopy(src, dst string) error {
 		}
 		return nil
 	case srcInfo.Mode()&os.ModeSymlink != 0:
-		srcTarget, err := os.Readlink(src)
+		srcTarget, err := skillPathReadlink(src)
 		if err != nil {
 			return err
 		}
-		dstTarget, err := os.Readlink(dst)
+		dstTarget, err := skillPathReadlink(dst)
 		if err != nil {
 			return err
 		}
@@ -314,7 +324,7 @@ func verifySkillPathCopy(src, dst string) error {
 }
 
 func skillPathEntryNames(dir string) ([]string, error) {
-	entries, err := os.ReadDir(dir)
+	entries, err := skillPathReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -327,13 +337,13 @@ func skillPathEntryNames(dir string) ([]string, error) {
 }
 
 func skillPathFileDigest(path string) ([sha256.Size]byte, error) {
-	f, err := os.Open(path)
+	f, err := skillPathOpen(path)
 	if err != nil {
 		return [sha256.Size]byte{}, err
 	}
 	defer f.Close()
 	hash := sha256.New()
-	if _, err := io.Copy(hash, f); err != nil {
+	if _, err := skillPathCopyBytes(hash, f); err != nil {
 		return [sha256.Size]byte{}, err
 	}
 	var digest [sha256.Size]byte
