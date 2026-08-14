@@ -101,8 +101,9 @@ func TestCrossPlatformCoverageSkillSetupCanonicalTargetsAndAgentCapabilities(t *
 }
 
 func TestCrossPlatformCoverageSkillSetupDetectsShallowAndApplicationAgents(t *testing.T) {
+	// Keep the destination HOME synthetic: app-bundle detection is deliberately
+	// machine-scoped and must not depend on the selected installation HOME.
 	home := t.TempDir()
-	testseam.Swap(t, &skillSetupSystemHomeDir, func() (string, error) { return home, nil })
 	testseam.Swap(t, &skillSetupGetenv, func(string) string { return "" })
 	for _, dir := range []string{filepath.Join(home, ".config", "kimchi"), filepath.Join(home, ".tabnine")} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {

@@ -127,7 +127,6 @@ var (
 	skillSetupExecutable      = os.Executable
 	skillSetupGetwd           = os.Getwd
 	skillSetupUserHomeDir     = os.UserHomeDir
-	skillSetupSystemHomeDir   = os.UserHomeDir
 	skillSetupRemoveAll       = os.RemoveAll
 	skillSetupBackupAndRemove = upgrade.BackupAndRemoveSkillDir
 	skillSetupRestoreBackup   = upgrade.RestoreSkillPath
@@ -1097,24 +1096,20 @@ func detectExistingAgentHomes(home, mode string) []string {
 	dests := []string{canonical}
 	canonicalKey := skillSetupPathKey(canonical)
 	seen := map[string]bool{canonicalKey: true}
-	systemHome, _ := skillSetupSystemHomeDir()
-	allowSystemApps := sameSkillSetupPath(home, systemHome)
 	addDetected := func(rel, base string) {
 		detectedDir := filepath.Dir(base)
 		switch filepath.ToSlash(filepath.Clean(rel)) {
 		case ".config/kimchi/harness/skills", ".tabnine/agent/skills":
 			detectedDir = filepath.Dir(filepath.Dir(base))
 		case ".zcode/skills":
-			if allowSystemApps {
-				if info, err := skillSetupStat(filepath.Join(string(filepath.Separator), "Applications", "ZCode.app")); err == nil && info.IsDir() {
-					detectedDir = ""
-				}
+			// Application bundles are machine-scoped detection signals. Keep this
+			// independent of HOME so setup matches npm, Shell, and PowerShell.
+			if info, err := skillSetupStat(filepath.Join(string(filepath.Separator), "Applications", "ZCode.app")); err == nil && info.IsDir() {
+				detectedDir = ""
 			}
 		case ".minimax/skills":
-			if allowSystemApps {
-				if info, err := skillSetupStat(filepath.Join(string(filepath.Separator), "Applications", "MiniMax Code.app")); err == nil && info.IsDir() {
-					detectedDir = ""
-				}
+			if info, err := skillSetupStat(filepath.Join(string(filepath.Separator), "Applications", "MiniMax Code.app")); err == nil && info.IsDir() {
+				detectedDir = ""
 			}
 		}
 		if detectedDir != "" {

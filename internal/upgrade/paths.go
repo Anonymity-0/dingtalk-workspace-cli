@@ -141,7 +141,6 @@ var universalSkillDirs = map[string]bool{
 
 var (
 	upgradeUserHomeDir     = os.UserHomeDir
-	upgradeSystemHomeDir   = os.UserHomeDir
 	upgradeExecutable      = os.Executable
 	upgradeEvalSymlinks    = filepath.EvalSymlinks
 	upgradeCopyDir         = copyDir
@@ -693,26 +692,22 @@ func configuredSkillRoots(homeDir string) []resolvedSkillRoot {
 	return roots
 }
 
-func skillRootDetectedBase(homeDir string, root resolvedSkillRoot) bool {
+func skillRootDetectedBase(root resolvedSkillRoot) bool {
 	detectedDir := filepath.Dir(root.base)
-	systemHome, _ := upgradeSystemHomeDir()
-	allowSystemApps := skillRootPathKey(homeDir) == skillRootPathKey(systemHome)
 	switch filepath.ToSlash(filepath.Clean(root.label)) {
 	case ".config/kimchi/harness/skills":
 		detectedDir = filepath.Dir(filepath.Dir(root.base))
 	case ".tabnine/agent/skills":
 		detectedDir = filepath.Dir(filepath.Dir(root.base))
 	case ".zcode/skills":
-		if allowSystemApps {
-			if info, err := upgradeStat(filepath.Join(string(filepath.Separator), "Applications", "ZCode.app")); err == nil && info.IsDir() {
-				return true
-			}
+		// Application bundles are machine-scoped detection signals. Keep this
+		// independent of HOME so upgrade matches npm, Shell, and PowerShell.
+		if info, err := upgradeStat(filepath.Join(string(filepath.Separator), "Applications", "ZCode.app")); err == nil && info.IsDir() {
+			return true
 		}
 	case ".minimax/skills":
-		if allowSystemApps {
-			if info, err := upgradeStat(filepath.Join(string(filepath.Separator), "Applications", "MiniMax Code.app")); err == nil && info.IsDir() {
-				return true
-			}
+		if info, err := upgradeStat(filepath.Join(string(filepath.Separator), "Applications", "MiniMax Code.app")); err == nil && info.IsDir() {
+			return true
 		}
 	}
 	info, err := upgradeStat(detectedDir)
@@ -738,7 +733,7 @@ func skillRootPathKey(path string) string {
 
 func hasDependentSkillRoot(homeDir, canonicalBase string) bool {
 	for _, root := range configuredSkillRoots(homeDir) {
-		if root.canonical || root.universal || isBlacklisted(root.label) || !skillRootDetectedBase(homeDir, root) {
+		if root.canonical || root.universal || isBlacklisted(root.label) || !skillRootDetectedBase(root) {
 			continue
 		}
 		if !samePhysicalSkillRoot(root.base, canonicalBase) {
@@ -848,7 +843,7 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirBlacklisted})
 			continue
 		}
-		if !skillRootDetectedBase(homeDir, root) {
+		if !skillRootDetectedBase(root) {
 			result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirSkipped})
 			continue
 		}
@@ -920,7 +915,7 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirBlacklisted})
 			continue
 		}
-		if !skillRootDetectedBase(homeDir, root) {
+		if !skillRootDetectedBase(root) {
 			result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirSkipped})
 			continue
 		}
