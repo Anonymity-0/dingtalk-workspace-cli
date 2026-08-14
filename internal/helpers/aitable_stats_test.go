@@ -114,6 +114,33 @@ func TestCrossPlatformCoverageAitableStatsRejectsInvalidInputsBeforeCallingMCP(t
 			wantErr: "大写",
 		},
 		{
+			name:    "records stats require at least one item",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[]`},
+			wantErr: "至少需要一个统计项",
+		},
+		{
+			name: "records stats enforce item cap",
+			args: []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[
+				{"fieldId":"f01","statsType":"COUNT"},{"fieldId":"f02","statsType":"COUNT"},
+				{"fieldId":"f03","statsType":"COUNT"},{"fieldId":"f04","statsType":"COUNT"},
+				{"fieldId":"f05","statsType":"COUNT"},{"fieldId":"f06","statsType":"COUNT"},
+				{"fieldId":"f07","statsType":"COUNT"},{"fieldId":"f08","statsType":"COUNT"},
+				{"fieldId":"f09","statsType":"COUNT"},{"fieldId":"f10","statsType":"COUNT"},
+				{"fieldId":"f11","statsType":"COUNT"},{"fieldId":"f12","statsType":"COUNT"},
+				{"fieldId":"f13","statsType":"COUNT"},{"fieldId":"f14","statsType":"COUNT"},
+				{"fieldId":"f15","statsType":"COUNT"},{"fieldId":"f16","statsType":"COUNT"},
+				{"fieldId":"f17","statsType":"COUNT"},{"fieldId":"f18","statsType":"COUNT"},
+				{"fieldId":"f19","statsType":"COUNT"},{"fieldId":"f20","statsType":"COUNT"},
+				{"fieldId":"f21","statsType":"COUNT"}
+			]`},
+			wantErr: "单次最多支持 20 个统计项",
+		},
+		{
+			name:    "records stats require item fields",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":" ","statsType":"COUNT"}]`},
+			wantErr: "均不能为空",
+		},
+		{
 			name:    "records stats reject duplicate field",
 			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"},{"fieldId":"f","statsType":"SUM"}]`},
 			wantErr: "重复",
@@ -137,6 +164,61 @@ func TestCrossPlatformCoverageAitableStatsRejectsInvalidInputsBeforeCallingMCP(t
 			name:    "filters require logical root",
 			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--filters", `{"operator":"eq","operands":[]}`},
 			wantErr: "and 或 or",
+		},
+		{
+			name:    "records filters reject malformed JSON",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--filters", `{`},
+			wantErr: "必须是 JSON 对象",
+		},
+		{
+			name:    "records filters reject null",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--filters", `null`},
+			wantErr: "不能是 null",
+		},
+		{
+			name:    "records filters reject a second JSON value",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--filters", `{} {}`},
+			wantErr: "只能包含一个 JSON 对象",
+		},
+		{
+			name:    "records filters reject invalid trailing content",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--filters", `{} trailing`},
+			wantErr: "无效的尾随内容",
+		},
+		{
+			name:    "records filters require operand array",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--filters", `{"operator":"and","operands":{}}`},
+			wantErr: "operands 必须是 JSON 数组",
+		},
+		{
+			name:    "records sort requires an item",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--sort", `[]`},
+			wantErr: "至少需要一个条目",
+		},
+		{
+			name:    "records sort items must be objects",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--sort", `[1]`},
+			wantErr: "必须是 JSON 对象",
+		},
+		{
+			name:    "records limit must be positive",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--limit", "0"},
+			wantErr: "必须大于 0",
+		},
+		{
+			name:    "group filters reject malformed JSON",
+			args:    []string{"record", "group-stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"count"}]`, "--filters", `{`},
+			wantErr: "必须是 JSON 对象",
+		},
+		{
+			name:    "group filters require logical root",
+			args:    []string{"record", "group-stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"count"}]`, "--filters", `{"operator":"eq","operands":[]}`},
+			wantErr: "and 或 or",
+		},
+		{
+			name:    "group sort rejects invalid DSL",
+			args:    []string{"record", "group-stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"count"}]`, "--sort", `{}`},
+			wantErr: "JSON 数组",
 		},
 	}
 	for _, test := range tests {
