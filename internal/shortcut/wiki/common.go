@@ -263,9 +263,16 @@ func collectWikiPages(rt *shortcut.RuntimeContext, operation string, pageSize in
 		if err != nil {
 			return nil, nil, err
 		}
+		maxItems := rt.Int("max-items")
+		if maxItems > 0 {
+			remaining := maxItems - len(all)
+			if len(items) > remaining {
+				items = items[:remaining]
+			}
+		}
 		all = append(all, items...)
 		lastPage = page
-		if maxItems := rt.Int("max-items"); maxItems > 0 && len(all) >= maxItems {
+		if maxItems > 0 && len(all) >= maxItems {
 			lastPage["autoPageComplete"] = false
 			lastPage["autoPageStopReason"] = "max_items"
 			lastPage["pagesFetched"] = pageNumber

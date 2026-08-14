@@ -491,13 +491,35 @@ func TestCrossPlatformCoverageWikiPaginationFailureModes(t *testing.T) {
 		}
 	})
 
-	t.Run("max items", func(t *testing.T) {
+	t.Run("max items trims first page", func(t *testing.T) {
 		caller := &wikiCoverageCaller{responses: map[string][]string{
-			"wiki/list_wikiSpaces": {`{"wikiSpaces":[{"workspaceId":"w1"}],"hasMore":true,"nextCursor":"next"}`},
+			"wiki/list_wikiSpaces": {`{"wikiSpaces":[{"workspaceId":"w1"},{"workspaceId":"w2"}],"hasMore":true,"nextCursor":"next"}`},
 		}}
 		out, err := runWikiCoverageCLI(t, caller, "+space-list", "--limit", "2", "--page-all", "--max-items", "1")
-		if err != nil || out["autoPageStopReason"] != "max_items" {
+		spaces, ok := out["spaces"].([]any)
+		if err != nil || !ok || out["count"] != float64(1) || len(spaces) != 1 || out["autoPageStopReason"] != "max_items" {
 			t.Fatalf("max-items output=%#v err=%v", out, err)
+		}
+	})
+
+	t.Run("max items trims remaining page", func(t *testing.T) {
+		caller := &wikiCoverageCaller{responses: map[string][]string{
+			"wiki/list_wikiSpaces": {
+				`{"wikiSpaces":[{"workspaceId":"w1"},{"workspaceId":"w2"}],"hasMore":true,"nextCursor":"next"}`,
+				`{"wikiSpaces":[{"workspaceId":"w3"},{"workspaceId":"w4"}],"hasMore":false}`,
+			},
+		}}
+		out, err := runWikiCoverageCLI(t, caller, "+space-list", "--limit", "2", "--page-all", "--page-limit", "2", "--max-items", "3")
+		spaces, ok := out["spaces"].([]any)
+		if err != nil || !ok || out["count"] != float64(3) || len(spaces) != 3 || out["autoPageStopReason"] != "max_items" {
+			t.Fatalf("max-items output=%#v err=%v calls=%#v", out, err, caller.calls)
+		}
+		if len(caller.calls) != 2 || caller.calls[1].args["pageSize"] != 1 {
+			t.Fatalf("remaining page request=%#v, want pageSize=1", caller.calls)
+		}
+		third, ok := spaces[2].(map[string]any)
+		if !ok || third["workspaceId"] != "w3" {
+			t.Fatalf("trimmed spaces=%#v, want w3 as final item", spaces)
 		}
 	})
 
