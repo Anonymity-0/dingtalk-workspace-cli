@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -71,6 +72,7 @@ func runWikiCoverageCLI(t *testing.T, caller *wikiCoverageCaller, args ...string
 	ctx, _ := output.WithResultStore(context.Background())
 	root.SetContext(ctx)
 	root.AddCommand(shortcut.Commands()...)
+	root.SetIn(strings.NewReader(""))
 	stdout := &bytes.Buffer{}
 	root.SetOut(stdout)
 	root.SetErr(&bytes.Buffer{})
@@ -284,6 +286,31 @@ func TestCrossPlatformCoverageWikiReadWorkflows(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageWikiWriteWorkflows(t *testing.T) {
+	t.Run("confirmation gates precede every remote call", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			args []string
+		}{
+			{name: "delete space", args: []string{"+delete-space", "--workspace", "w"}},
+			{name: "copy node", args: []string{"+node-copy", "--workspace", "w", "--node", "source"}},
+			{name: "move node", args: []string{"+move", "--workspace", "target", "--node", "n"}},
+			{name: "move node to drive", args: []string{"+move-to-drive", "--node", "n"}},
+			{name: "delete node", args: []string{"+node-delete", "--workspace", "w", "--node", "n"}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				caller := &wikiCoverageCaller{}
+				_, err := runWikiCoverageCLI(t, caller, tc.args...)
+				var typed *apperrors.Error
+				if !errors.As(err, &typed) || typed.Reason != "confirmation_required" {
+					t.Fatalf("unconfirmed error = %#v, want confirmation_required", err)
+				}
+				if len(caller.calls) != 0 {
+					t.Fatalf("unconfirmed shortcut reached MCP: %#v", caller.calls)
+				}
+			})
+		}
+	})
+
 	t.Run("node create dry and verified", func(t *testing.T) {
 		dry := &wikiCoverageCaller{}
 		out, err := runWikiCoverageCLI(t, dry, "+node-create", "--workspace", "w", "--folder", "f", "--name", "Doc", "--type", "adoc", "--dry-run")
