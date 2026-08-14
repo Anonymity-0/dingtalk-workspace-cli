@@ -40,6 +40,7 @@ var (
 	stopAlive         = process.Alive
 	stopFindProcess   = os.FindProcess
 	stopSignalProcess = func(proc *os.Process, signal os.Signal) error { return proc.Signal(signal) }
+	stopDial          = transport.Dial
 	stopRequest       = requestBusStop
 )
 
@@ -108,7 +109,7 @@ func Stop(cfg StopConfig) error {
 }
 
 func requestBusStop(endpoint string) error {
-	conn, err := transport.Dial(endpoint)
+	conn, err := stopDial(endpoint)
 	if err != nil {
 		return fmt.Errorf("busctl: dial bus for stop: %w", err)
 	}

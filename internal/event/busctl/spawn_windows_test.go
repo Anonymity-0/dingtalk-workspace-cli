@@ -65,6 +65,24 @@ func TestCrossPlatformCoverageWindowsSpawnReportsCleanEarlyExit(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageWindowsSpawnResolvesExecutable(t *testing.T) {
+	endpoint := fmt.Sprintf(`\\.\pipe\dws-event-spawn-resolve-%d-%d`, os.Getpid(), time.Now().UnixNano())
+	testseam.Swap(t, &spawnExecutable, func() (string, error) { return os.Args[0], nil })
+	pid, err := spawnWithMarker(t, "windows-ready", func(cfg *SpawnConfig) {
+		cfg.ExecPath = ""
+		cfg.IPCEndpoint = endpoint
+		cfg.Env = append(cfg.Env, childEndpointEnv+"="+endpoint)
+	})
+	if err != nil {
+		t.Fatalf("Spawn() = %v", err)
+	}
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = proc.Kill()
+}
+
 func TestCrossPlatformCoverageWindowsSpawnValidationAndStartErrors(t *testing.T) {
 	endpoint := fmt.Sprintf(`\\.\pipe\dws-event-spawn-errors-%d-%d`, os.Getpid(), time.Now().UnixNano())
 	if _, err := Spawn(SpawnConfig{ClientID: "client"}); err == nil {

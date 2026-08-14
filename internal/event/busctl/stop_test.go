@@ -16,6 +16,7 @@ package busctl
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,7 +38,7 @@ func TestStop_NotRunningWhenLockMissing(t *testing.T) {
 	}
 }
 
-func TestStop_NotRunningWhenPIDDead(t *testing.T) {
+func TestCrossPlatformCoverageStopNotRunningWhenPIDDead(t *testing.T) {
 	dir := shortTempDir(t)
 	// Write a definitely-dead PID into bus.lock.
 	if err := os.WriteFile(LockPath(dir), []byte("2147483646\n"), 0o600); err != nil {
@@ -128,6 +129,64 @@ func TestCrossPlatformCoverageRequestBusStopProtocol(t *testing.T) {
 	if err := <-serverDone; err != nil {
 		t.Fatalf("stop protocol server = %v", err)
 	}
+}
+
+func TestCrossPlatformCoverageRequestBusStopErrors(t *testing.T) {
+	t.Run("dial", func(t *testing.T) {
+		testseam.Swap(t, &stopDial, func(string) (net.Conn, error) {
+			return nil, errors.New("dial failed")
+		})
+		if err := requestBusStop("test-endpoint"); err == nil {
+			t.Fatal("requestBusStop() unexpectedly succeeded")
+		}
+	})
+
+	t.Run("write", func(t *testing.T) {
+		testseam.Swap(t, &stopDial, func(string) (net.Conn, error) {
+			return &queryErrorConn{failAt: 1}, nil
+		})
+		if err := requestBusStop("test-endpoint"); err == nil {
+			t.Fatal("requestBusStop() unexpectedly succeeded")
+		}
+	})
+
+	t.Run("read", func(t *testing.T) {
+		testseam.Swap(t, &stopDial, func(string) (net.Conn, error) {
+			return &queryErrorConn{}, nil
+		})
+		if err := requestBusStop("test-endpoint"); err == nil {
+			t.Fatal("requestBusStop() unexpectedly succeeded")
+		}
+	})
+
+	t.Run("unexpected response", func(t *testing.T) {
+		client, server := net.Pipe()
+		t.Cleanup(func() {
+			_ = client.Close()
+			_ = server.Close()
+		})
+		testseam.Swap(t, &stopDial, func(string) (net.Conn, error) {
+			return client, nil
+		})
+		serverDone := make(chan error, 1)
+		go func() {
+			var hello transport.Hello
+			if err := transport.NewReader(server).ReadJSON(&hello); err != nil {
+				serverDone <- err
+				return
+			}
+			serverDone <- transport.NewWriter(server).WriteJSON(transport.Bye{
+				Type:   transport.FrameTypeBye,
+				Reason: "unexpected",
+			})
+		}()
+		if err := requestBusStop("test-endpoint"); err == nil {
+			t.Fatal("requestBusStop() unexpectedly succeeded")
+		}
+		if err := <-serverDone; err != nil {
+			t.Fatalf("stop protocol server = %v", err)
+		}
+	})
 }
 
 func TestStop_SignalsLiveProcess(t *testing.T) {
