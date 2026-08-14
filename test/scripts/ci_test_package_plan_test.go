@@ -14,6 +14,39 @@ func TestCITestPackagePlanCoversDefaultPackagesExactlyOnce(t *testing.T) {
 	if !strings.Contains(output, "default packages exactly once") {
 		t.Fatalf("verify output = %q, want coverage summary", output)
 	}
+	if !strings.Contains(output, "full-suite packages exactly once") {
+		t.Fatalf("verify output = %q, want coverage shard plan summary", output)
+	}
+}
+
+func TestCICoveragePackagePlanRoutesFullSuiteScope(t *testing.T) {
+	root := testPackagePlanRoot(t)
+	remaining := strings.Fields(runTestPackagePlan(t, root, "list-coverage", "remaining"))
+
+	for _, suffix := range []string{"/cmd", "/internal/output", "/skills"} {
+		if !containsPackageSuffix(remaining, suffix) {
+			t.Errorf("coverage remaining shard does not contain package ending in %q", suffix)
+		}
+	}
+	for _, suffix := range []string{
+		"/internal/app",
+		"/internal/cli",
+		"/internal/generator",
+		"/internal/helpers",
+		"/test/smoke",
+		"/test/scripts",
+		"/pkg/cmdutil",
+		"/scripts/policy/coverage-gate",
+	} {
+		if containsPackageSuffix(remaining, suffix) {
+			t.Errorf("coverage remaining shard unexpectedly contains package ending in %q", suffix)
+		}
+	}
+
+	app := strings.Fields(runTestPackagePlan(t, root, "list-coverage", "app"))
+	if !containsPackageSuffix(app, "/internal/app") {
+		t.Error("coverage app shard does not contain /internal/app")
+	}
 }
 
 func TestCITestPackagePlanRoutesPublicTestSuites(t *testing.T) {
@@ -44,6 +77,25 @@ func TestCITestPackagePlanRoutesPublicTestSuites(t *testing.T) {
 	}
 	if !containsPackageSuffix(releaseScripts, "/test/scripts") {
 		t.Error("release-scripts shard does not contain /test/scripts")
+	}
+}
+
+func TestCIAppRacePartitionsCoverTopLevelTestsExactlyOnce(t *testing.T) {
+	root := testPackagePlanRoot(t)
+	packages := strings.Fields(runTestPackagePlan(t, root, "list", "app"))
+	if len(packages) != 1 {
+		t.Fatalf("app package shard = %v, want exactly one package", packages)
+	}
+
+	script := filepath.Join(root, "scripts", "ci", "run-app-race-tests.sh")
+	cmd := exec.Command("sh", script, "verify", packages[0])
+	cmd.Dir = root
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%s verify %s failed: %v\n%s", script, packages[0], err, output)
+	}
+	if !strings.Contains(string(output), "top-level tests exactly once") {
+		t.Fatalf("verify output = %q, want exact coverage summary", output)
 	}
 }
 
