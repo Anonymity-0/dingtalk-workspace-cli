@@ -511,6 +511,22 @@ func flagErrorWithSuggestions(cmd *cobra.Command, err error) error {
 	// 无论哪种格式，子串 "--help' for usage." 都可被检索到。
 	tail := fmt.Sprintf("\nSee '%s --help' for usage.", cmd.CommandPath())
 	msgWithTail := errMsg + tail
+	if strings.Contains(errMsg, "unknown flag: --from") {
+		switch cmd.CommandPath() {
+		case "dws chat +search-msg", "dws chat +chat-messages":
+			return apperrors.NewValidation(
+				msgWithTail,
+				apperrors.WithHint("--from 在消息查询中含义不明确：按发送者过滤请使用 --sender <姓名|userId|openDingTalkId>；指定时间起点请使用 --start <RFC3339>"),
+				apperrors.WithReason("ambiguous_flag"),
+				apperrors.WithCause(err),
+				apperrors.WithActions(
+					"Use --sender <姓名|userId|openDingTalkId> to filter by sender",
+					"Use --start <RFC3339> together with --end <RFC3339> to set a time range",
+				),
+				apperrors.WithAvailableFlags(cmdutil.VisibleFlagNames(cmd)...),
+			)
+		}
+	}
 	if flag, protection, ok := reviewedFlagProtection(cmd, errMsg); ok {
 		hint := fmt.Sprintf("Parameter --%s is blocked from automatic normalization on %q; choose an explicit flag from --help.", flag, cmd.CommandPath())
 		reason := "blocked_flag"
