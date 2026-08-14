@@ -370,6 +370,52 @@ function Remove-SkillPathLexically {
     }
 }
 
+# Removes a staging directory that may hold unpublished junction/symlink
+# children. Every link child must be removed non-recursively first: Windows
+# PowerShell 5.1 (the advertised irm|iex surface) can follow reparse points
+# during Remove-Item -Recurse and would delete the canonical store's contents
+# through the staged link. CI runs pwsh 7, which masks this behavior.
+function Remove-LinkStageRoot {
+    param([string]$StageRoot)
+    if (!(Test-Path -LiteralPath $StageRoot)) { return $true }
+    $ok = $true
+    foreach ($child in @(Get-ChildItem -LiteralPath $StageRoot -Force -ErrorAction SilentlyContinue)) {
+        try { Remove-SkillPathLexically -Path $child.FullName } catch { $ok = $false }
+    }
+    try {
+        Remove-Item -LiteralPath $StageRoot -Force -ErrorAction Stop
+    } catch {
+        $ok = $false
+    }
+    return $ok
+}
+
+# Resolves a path to its physical location, dereferencing junction/symlink
+# reparse points at any depth. Resolve-Path alone is lexical and never
+# recognizes DWS's own junctions, so every rerun would back them up and
+# recreate them. Mirrors EvalSymlinks (Go), realpathSync (npm), and cd -P
+# (shell) on the other installer surfaces.
+function Get-PhysicalSkillPath {
+    param([string]$Path, [int]$Depth = 0)
+    if ($Depth -gt 40) { return $null }
+    $parent = Split-Path $Path -Parent
+    if ([string]::IsNullOrWhiteSpace($parent)) { return $Path }
+    $parentPhysical = Get-PhysicalSkillPath -Path $parent -Depth ($Depth + 1)
+    if ($null -eq $parentPhysical) { return $null }
+    $leaf = Split-Path $Path -Leaf
+    if ([string]::IsNullOrEmpty($leaf)) { return $parentPhysical }
+    $candidate = Join-Path $parentPhysical $leaf
+    try { $item = Get-Item -LiteralPath $candidate -Force -ErrorAction Stop } catch { return $null }
+    $target = @($item.Target) | Where-Object { $_ } | Select-Object -First 1
+    if ($item.LinkType -and $target) {
+        if ([System.IO.Path]::IsPathRooted([string]$target)) {
+            return ([string]$target).TrimEnd([char[]]@('\', '/'))
+        }
+        return [System.IO.Path]::GetFullPath((Join-Path $parentPhysical ([string]$target)))
+    }
+    return $candidate
+}
+
 # Same-volume moves remain atomic. For a cross-volume backup/restore, stage on
 # the destination filesystem, copy links lexically, verify, publish, then
 # remove the source. Before source removal every failure keeps the original;
@@ -394,7 +440,9 @@ function Move-SkillPathRecoverably {
         Assert-SkillPathCopy -Source $Source -Destination $stage
         Move-SkillPath -Source $stage -Destination $Destination
         Assert-SkillPathCopy -Source $Source -Destination $Destination
-        Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction Stop
+        if (!(Remove-LinkStageRoot -StageRoot $stageRoot)) {
+            throw "Skill staging 清理失败（已发布内容不受影响）: $stageRoot"
+        }
         try {
             Remove-SkillPathLexically -Path $Source
         } catch {
@@ -406,10 +454,8 @@ function Move-SkillPathRecoverably {
     } catch {
         $failure = $_
         if (Test-Path -LiteralPath $stageRoot) {
-            try {
-                Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction Stop
-            } catch {
-                throw "$failure；跨设备 Skill staging 清理失败 $stageRoot`: $_"
+            if (!(Remove-LinkStageRoot -StageRoot $stageRoot)) {
+                throw "$failure；跨设备 Skill staging 清理失败 $stageRoot（备份与原路径均保留）"
             }
         }
         throw $failure
@@ -686,7 +732,11 @@ function Restore-MultiSkillSet {
     for ($i = $Published.Count - 1; $i -ge 0; $i--) {
         try {
             if (Test-SkillPathLexically -Path $Published[$i]) {
-                Remove-Item -LiteralPath $Published[$i] -Recurse -Force -ErrorAction Stop
+                # Junction publications must never be removed with -Recurse:
+                # Windows PowerShell 5.1 can follow the reparse point and
+                # delete the canonical store's contents. Link targets remove
+                # lexically; copied directories still remove recursively.
+                Remove-SkillPathLexically -Path $Published[$i]
             }
         } catch {
             Write-Say "⚠️  无法移除失败发布目录 $($Published[$i]): $_"
@@ -772,7 +822,10 @@ function Test-AgentSkillBaseDetected {
 function Test-SamePhysicalSkillRoot {
     param([string]$Left, [string]$Right)
     if (!(Test-Path $Left) -or !(Test-Path $Right)) { return $false }
-    try { return (Resolve-Path $Left).Path -eq (Resolve-Path $Right).Path } catch { return $false }
+    $leftPhysical = Get-PhysicalSkillPath -Path $Left
+    $rightPhysical = Get-PhysicalSkillPath -Path $Right
+    if ($null -eq $leftPhysical -or $null -eq $rightPhysical) { return $false }
+    return $leftPhysical.TrimEnd([char[]]@('\', '/')) -ieq $rightPhysical.TrimEnd([char[]]@('\', '/'))
 }
 
 function Move-AgentSkillRootToBackup {
@@ -856,7 +909,7 @@ function Publish-CanonicalSkillLinks {
         Write-Say "⚠️  Skill 链接发布失败，已回滚: $BaseDir ($_)"
         return $false
     } finally {
-        Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-LinkStageRoot -StageRoot $stageRoot | Out-Null
     }
 }
 
