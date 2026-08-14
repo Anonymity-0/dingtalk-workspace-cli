@@ -1355,6 +1355,25 @@ func TestCrossPlatformCoveragePersistAuthLoginMCPBaseURL(t *testing.T) {
 		}
 	})
 
+	t.Run("international login preserves an unmanaged explicit override", func(t *testing.T) {
+		configDir := t.TempDir()
+		mcpURLPath := filepath.Join(configDir, "mcp_url")
+		const customURL = "https://private-mcp.example.com"
+		if err := os.WriteFile(mcpURLPath, []byte(customURL), config.FilePerm); err != nil {
+			t.Fatal(err)
+		}
+		if err := persistAuthLoginMCPBaseURL(configDir, authpkg.InternationalMCPBaseURL, authLoginMCPUseManagedRegion); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(mcpURLPath)
+		if err != nil || string(data) != customURL {
+			t.Fatalf("explicit mcp_url = %q, %v; want preserved custom URL", string(data), err)
+		}
+		if _, err := os.Stat(filepath.Join(configDir, config.ManagedMCPURLRegionFileName)); !os.IsNotExist(err) {
+			t.Fatalf("unmanaged override acquired a managed marker: %v", err)
+		}
+	})
+
 	t.Run("center login resets a managed international URL", func(t *testing.T) {
 		configDir := t.TempDir()
 		if err := persistAuthLoginMCPBaseURL(configDir, authpkg.InternationalMCPBaseURL, authLoginMCPUseManagedRegion); err != nil {
@@ -1406,6 +1425,29 @@ func TestCrossPlatformCoveragePersistAuthLoginMCPBaseURL(t *testing.T) {
 			t.Fatalf("custom mcp_url = %q, %v", string(data), err)
 		}
 	})
+
+	t.Run("international login clears a stale marker without changing a custom URL", func(t *testing.T) {
+		configDir := t.TempDir()
+		mcpURLPath := filepath.Join(configDir, "mcp_url")
+		managedRegionPath := filepath.Join(configDir, config.ManagedMCPURLRegionFileName)
+		const customURL = "https://private-mcp.example.com"
+		if err := os.WriteFile(mcpURLPath, []byte(customURL), config.FilePerm); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(managedRegionPath, []byte(authpkg.DefaultMCPBaseURL), config.FilePerm); err != nil {
+			t.Fatal(err)
+		}
+		if err := persistAuthLoginMCPBaseURL(configDir, authpkg.InternationalMCPBaseURL, authLoginMCPUseManagedRegion); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(mcpURLPath)
+		if err != nil || string(data) != customURL {
+			t.Fatalf("custom mcp_url = %q, %v", string(data), err)
+		}
+		if _, err := os.Stat(managedRegionPath); !os.IsNotExist(err) {
+			t.Fatalf("stale managed marker remains: %v", err)
+		}
+	})
 }
 
 func TestCrossPlatformCoveragePersistAuthLoginMCPBaseURLErrors(t *testing.T) {
@@ -1432,6 +1474,42 @@ func TestCrossPlatformCoveragePersistAuthLoginMCPBaseURLErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("managed marker read", func(t *testing.T) {
+		testseam.Swap(t, &authReadFile, func(string) ([]byte, error) { return nil, fail })
+		if err := persistAuthLoginMCPBaseURL(t.TempDir(), authpkg.InternationalMCPBaseURL, authLoginMCPUseManagedRegion); !errors.Is(err, fail) {
+			t.Fatalf("managed marker read error = %v", err)
+		}
+	})
+
+	t.Run("managed MCP URL read", func(t *testing.T) {
+		reads := 0
+		testseam.Swap(t, &authReadFile, func(string) ([]byte, error) {
+			reads++
+			if reads == 1 {
+				return nil, os.ErrNotExist
+			}
+			return nil, fail
+		})
+		if err := persistAuthLoginMCPBaseURL(t.TempDir(), authpkg.InternationalMCPBaseURL, authLoginMCPUseManagedRegion); !errors.Is(err, fail) {
+			t.Fatalf("managed MCP URL read error = %v", err)
+		}
+	})
+
+	t.Run("managed stale marker cleanup", func(t *testing.T) {
+		reads := 0
+		testseam.Swap(t, &authReadFile, func(string) ([]byte, error) {
+			reads++
+			if reads == 1 {
+				return []byte(authpkg.DefaultMCPBaseURL), nil
+			}
+			return []byte("https://private-mcp.example.com"), nil
+		})
+		testseam.Swap(t, &authRemove, func(string) error { return fail })
+		if err := persistAuthLoginMCPBaseURL(t.TempDir(), authpkg.InternationalMCPBaseURL, authLoginMCPUseManagedRegion); !errors.Is(err, fail) {
+			t.Fatalf("managed stale marker cleanup error = %v", err)
+		}
+	})
+
 	t.Run("managed URL write cleans marker", func(t *testing.T) {
 		writes := 0
 		removed := false
@@ -1448,7 +1526,7 @@ func TestCrossPlatformCoveragePersistAuthLoginMCPBaseURLErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("managed marker read", func(t *testing.T) {
+	t.Run("default managed marker read", func(t *testing.T) {
 		testseam.Swap(t, &authReadFile, func(string) ([]byte, error) { return nil, fail })
 		if err := persistAuthLoginMCPBaseURL(t.TempDir(), authpkg.DefaultMCPBaseURL, authLoginMCPUseDefault); !errors.Is(err, fail) {
 			t.Fatalf("managed marker read error = %v", err)

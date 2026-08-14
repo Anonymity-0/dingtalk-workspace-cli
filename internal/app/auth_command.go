@@ -1409,6 +1409,19 @@ func persistAuthLoginMCPBaseURL(configDir, mcpBaseURL string, persistence authLo
 		}
 		return nil
 	case authLoginMCPUseManagedRegion:
+		managedURL, managedErr := authReadFile(managedRegionPath)
+		if managedErr != nil && !os.IsNotExist(managedErr) {
+			return fmt.Errorf("read managed MCP region: %w", managedErr)
+		}
+		currentURL, currentErr := authReadFile(mcpURLPath)
+		switch {
+		case currentErr == nil && os.IsNotExist(managedErr):
+			return nil
+		case currentErr == nil && strings.TrimSpace(string(currentURL)) != strings.TrimSpace(string(managedURL)):
+			return removeAuthLoginManagedMCPRegion(managedRegionPath)
+		case currentErr != nil && !os.IsNotExist(currentErr):
+			return fmt.Errorf("read MCP URL: %w", currentErr)
+		}
 		if err := authAtomicWrite(managedRegionPath, []byte(mcpBaseURL), config.FilePerm); err != nil {
 			return fmt.Errorf("save managed MCP region: %w", err)
 		}

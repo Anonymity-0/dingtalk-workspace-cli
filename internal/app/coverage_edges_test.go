@@ -1032,6 +1032,18 @@ func TestCrossPlatformCoverageAuthLoginTokenCommandCoverage(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(configDir, config.ManagedMCPURLRegionFileName)); !os.IsNotExist(err) {
 			t.Fatalf("managed MCP region marker remains: %v", err)
 		}
+
+		const customURL = "https://private-mcp.example.com"
+		if err := os.WriteFile(filepath.Join(configDir, "mcp_url"), []byte(customURL), config.FilePerm); err != nil {
+			t.Fatal(err)
+		}
+		runLogin(true)
+		if data, err := os.ReadFile(filepath.Join(configDir, "mcp_url")); err != nil || string(data) != customURL {
+			t.Fatalf("explicit mcp_url after international login = %q, %v; want preserved custom URL", string(data), err)
+		}
+		if _, err := os.Stat(filepath.Join(configDir, config.ManagedMCPURLRegionFileName)); !os.IsNotExist(err) {
+			t.Fatalf("explicit mcp_url acquired a managed marker: %v", err)
+		}
 	})
 
 	for _, hidden := range []bool{false, true} {
