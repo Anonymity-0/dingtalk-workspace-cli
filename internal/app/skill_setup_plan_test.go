@@ -48,16 +48,13 @@ func TestCrossPlatformCoverageSkillSetupPlanPreviewDeclineAndExecutionMatch(t *t
 	backupCalls, copyCalls := []string{}, 0
 	testseam.Swap(t, &skillSetupBackupAndRemove, func(_ string, path string) (string, error) {
 		backupCalls = append(backupCalls, path)
+		if err := os.RemoveAll(path); err != nil {
+			return "", err
+		}
 		return "backup", nil
 	})
 	testseam.Swap(t, &skillSetupCopyDir, func(string, string) error { copyCalls++; return nil })
 	testseam.Swap(t, &skillSetupWriteFile, func(string, []byte, os.FileMode) error { return nil })
-	testseam.Swap(t, &skillSetupPublishRename, func(src, dest string) error {
-		if err := os.RemoveAll(dest); err != nil {
-			return err
-		}
-		return os.Rename(src, dest)
-	})
 	dryRunCmd := skillSetupCoverageCommand(t, skillSetupModeMulti, false)
 	var dryRunOut bytes.Buffer
 	dryRunCmd.SetOut(&dryRunOut)
@@ -119,6 +116,9 @@ func TestCrossPlatformCoverageSkillSetupPlanPreviewDeclineAndExecutionMatch(t *t
 
 	// A filtered multi plan replaces only selected same-name skills and leaves
 	// unselected siblings out of the backup set.
+	if err := os.MkdirAll(filepath.Join(dest, "dws"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	filtered, err := buildSkillSetupPlan(skillSetupModeMulti, source, []string{dest}, []string{"dingtalk-a"}, true)
 	if err != nil {
 		t.Fatal(err)

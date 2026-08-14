@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/upgrade"
 )
 
 func canonicalFailurePlan(t *testing.T) (string, *skillSetupPlan) {
@@ -62,7 +63,9 @@ func TestCrossPlatformCoverageSkillSetupCanonicalHomeBackupAndPublishFailures(t 
 	t.Run("publish", func(t *testing.T) {
 		home, plan := canonicalFailurePlan(t)
 		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
-		testseam.Swap(t, &skillSetupPublishRename, func(string, string) error { return errors.New("publish denied") })
+		testseam.Swap(t, &skillSetupPublishPath, func(string, string) (upgrade.SkillPathPublication, error) {
+			return upgrade.SkillPathPublication{}, errors.New("publish denied")
+		})
 		if _, _, err := executeSkillSetupPlan(plan, &bytes.Buffer{}, &bytes.Buffer{}); err == nil || !strings.Contains(err.Error(), "canonical Skill 发布失败") {
 			t.Fatalf("publish failure = %v", err)
 		}

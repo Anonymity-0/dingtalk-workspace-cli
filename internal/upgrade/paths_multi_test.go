@@ -625,8 +625,8 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiFallbackCleanupFailure(t
 	}
 	useUpgradeManagedNames(t, filepath.Base(staleDir))
 
-	origRename := upgradeRename
-	testseam.Swap(t, &upgradeRename, func(src, dst string) error {
+	origRename := skillPathRenameNoReplace
+	testseam.Swap(t, &skillPathRenameNoReplace, func(src, dst string) error {
 		if strings.Contains(src, "dingtalk-stale") {
 			return errors.New("injected backup failure")
 		}
@@ -814,14 +814,14 @@ func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
 	if err := os.MkdirAll(victim4, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	testseam.Swap(t, &upgradeRename, func(string, string) error { return errors.New("rename denied") })
+	testseam.Swap(t, &skillPathRenameNoReplace, func(string, string) error { return errors.New("rename denied") })
 	if _, err := backupAndRemoveSkillDir(home, victim4); err == nil || !strings.Contains(err.Error(), "备份技能目录失败") {
 		t.Fatalf("rename error = %v", err)
 	}
 	if _, err := os.Stat(victim4); err != nil {
 		t.Fatalf("victim4 must survive rename failure: %v", err)
 	}
-	testseam.Swap(t, &upgradeRename, os.Rename)
+	testseam.Swap(t, &skillPathRenameNoReplace, renameSkillPathNoReplace)
 }
 
 // TestCrossPlatformCoveragePruneSkillBackupsEdges pins the backup retention:
@@ -949,11 +949,11 @@ func TestCrossPlatformCoverageMonoUpgradeBackupAndFallbackEdges(t *testing.T) {
 	os.MkdirAll(filepath.Join(home, ".agents", "skills", "dws"), 0o755)
 	os.WriteFile(filepath.Join(home, ".agents", "skills", "dws", "SKILL.md"), []byte("old"), 0o644)
 	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
-	testseam.Swap(t, &upgradeRename, func(src, dst string) error {
+	testseam.Swap(t, &skillPathRenameNoReplace, func(src, dst string) error {
 		if strings.Contains(src, ".agents") {
 			return errors.New("backup denied")
 		}
-		return os.Rename(src, dst)
+		return renameSkillPathNoReplace(src, dst)
 	})
 	result, err := UpgradeSkillLocations(mono)
 	if err == nil || len(result.Failed()) != 1 || len(result.Succeeded()) != 0 {
@@ -1014,7 +1014,7 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 	// Backup failure of a multi leftover aborts cleanupMultiLeftovers.
 	os.MkdirAll(filepath.Join(base, "dingtalk-stale"), 0o755)
 	useUpgradeManagedNames(t, "dingtalk-stale")
-	testseam.Swap(t, &upgradeRename, func(string, string) error { return errors.New("backup denied") })
+	testseam.Swap(t, &skillPathRenameNoReplace, func(string, string) error { return errors.New("backup denied") })
 	if err := cleanupMultiLeftovers(home, base); err == nil || !strings.Contains(err.Error(), "备份并清理 multi 残留失败") {
 		t.Fatalf("cleanupMultiLeftovers backup error = %v", err)
 	}
@@ -1024,19 +1024,19 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 	if err := cleanupOppositeModeLeftovers(home, base, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "备份并清理对面模式残留失败") {
 		t.Fatalf("opposite cleanup mono backup error = %v", err)
 	}
-	testseam.Swap(t, &upgradeRename, os.Rename)
+	testseam.Swap(t, &skillPathRenameNoReplace, renameSkillPathNoReplace)
 
 	// Backup failure of a stale (non-mono) skill aborts with its own message.
-	testseam.Swap(t, &upgradeRename, func(src, dst string) error {
+	testseam.Swap(t, &skillPathRenameNoReplace, func(src, dst string) error {
 		if strings.Contains(src, "dingtalk-stale") {
 			return errors.New("backup denied")
 		}
-		return os.Rename(src, dst)
+		return renameSkillPathNoReplace(src, dst)
 	})
 	if err := cleanupOppositeModeLeftovers(home, base, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "备份并清理对面模式残留失败") {
 		t.Fatalf("opposite cleanup stale backup error = %v", err)
 	}
-	testseam.Swap(t, &upgradeRename, os.Rename)
+	testseam.Swap(t, &skillPathRenameNoReplace, renameSkillPathNoReplace)
 
 	// Success matrix: mono leftover + stale skill removed into backups, bundle
 	// skill and regular file preserved.

@@ -140,26 +140,28 @@ var universalSkillDirs = map[string]bool{
 }
 
 var (
-	upgradeUserHomeDir     = os.UserHomeDir
-	upgradeExecutable      = os.Executable
-	upgradeEvalSymlinks    = filepath.EvalSymlinks
-	upgradeCopyDir         = copyDir
-	upgradeEnsureDir       = ensureDir
-	upgradeRemoveAll       = os.RemoveAll
-	upgradeMkdirAll        = os.MkdirAll
-	upgradeMkdirTemp       = os.MkdirTemp
-	upgradeReadDir         = os.ReadDir
-	upgradeStat            = os.Stat
-	upgradeLstat           = os.Lstat
-	upgradeSymlink         = os.Symlink
-	upgradeRel             = filepath.Rel
-	upgradeGetenv          = os.Getenv
-	upgradeBuildProvenance = skillprovenance.Build
-	upgradeReadSkillState  = skillstate.Read
-	upgradeBackupStamp     = func() string { return time.Now().UTC().Format("20060102-150405") }
-	upgradeWriteSkillState = skillstate.Write
-	upgradeNow             = time.Now
-	upgradeFoldPathCase    = runtime.GOOS == "windows"
+	upgradeUserHomeDir                 = os.UserHomeDir
+	upgradeExecutable                  = os.Executable
+	upgradeEvalSymlinks                = filepath.EvalSymlinks
+	upgradeCopyDir                     = copyDir
+	upgradeEnsureDir                   = ensureDir
+	upgradeRemoveAll                   = os.RemoveAll
+	upgradeMkdirAll                    = os.MkdirAll
+	upgradeMkdirTemp                   = os.MkdirTemp
+	upgradeReadDir                     = os.ReadDir
+	upgradeStat                        = os.Stat
+	upgradeLstat                       = os.Lstat
+	upgradeSymlink                     = os.Symlink
+	upgradeRel                         = filepath.Rel
+	upgradeGetenv                      = os.Getenv
+	upgradeBuildProvenance             = skillprovenance.Build
+	upgradeReadSkillState              = skillstate.Read
+	upgradePublishSkillPath            = PublishSkillPathNoReplace
+	upgradeRollbackPublishedSkillPaths = RollbackSkillPathPublications
+	upgradeBackupStamp                 = func() string { return time.Now().UTC().Format("20060102-150405") }
+	upgradeWriteSkillState             = skillstate.Write
+	upgradeNow                         = time.Now
+	upgradeFoldPathCase                = runtime.GOOS == "windows"
 )
 
 // skillBackupSubdir is the user-level directory where skill directories are
@@ -492,13 +494,8 @@ func uniqueSkillDirs(paths []string) []string {
 
 // restoreSkillSet removes any newly published directories, then restores all
 // original directories in reverse backup order.
-func restoreSkillSet(published []string, backups []backedUpSkillDir) error {
-	var restoreErr error
-	for i := len(published) - 1; i >= 0; i-- {
-		if err := upgradeRemoveAll(published[i]); err != nil {
-			restoreErr = errors.Join(restoreErr, fmt.Errorf("移除失败发布目录 %s: %w", published[i], err))
-		}
-	}
+func restoreSkillSet(published []SkillPathPublication, backups []backedUpSkillDir) error {
+	restoreErr := upgradeRollbackPublishedSkillPaths(published)
 	for i := len(backups) - 1; i >= 0; i-- {
 		backup := backups[i]
 		if err := upgradeMkdirAll(filepath.Dir(backup.original), dirPermShared); err != nil {
@@ -538,16 +535,17 @@ func publishStagedSkillSet(homeDir string, staged []stagedSkillDir, victims []st
 	if err != nil {
 		return err
 	}
-	published := make([]string, 0, len(staged))
+	published := make([]SkillPathPublication, 0, len(staged))
 	for _, skill := range staged {
-		if err := upgradeRename(skill.staged, skill.dest); err != nil {
-			publishErr := fmt.Errorf("发布 Skill 失败 %s: %w", skill.dest, err)
+		publication, publishErr := upgradePublishSkillPath(skill.staged, skill.dest)
+		if publishErr != nil {
+			publishErr := fmt.Errorf("发布 Skill 失败 %s: %w", skill.dest, publishErr)
 			if restoreErr := restoreSkillSet(published, backups); restoreErr != nil {
 				return errors.Join(publishErr, fmt.Errorf("恢复原 Skill 集合失败: %w", restoreErr))
 			}
 			return publishErr
 		}
-		published = append(published, skill.dest)
+		published = append(published, publication)
 	}
 	return nil
 }
