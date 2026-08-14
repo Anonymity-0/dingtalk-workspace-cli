@@ -731,18 +731,6 @@ func skillRootPathKey(path string) string {
 	return clean
 }
 
-func hasDependentSkillRoot(homeDir, canonicalBase string) bool {
-	for _, root := range configuredSkillRoots(homeDir) {
-		if root.canonical || root.universal || isBlacklisted(root.label) || !skillRootDetectedBase(root) {
-			continue
-		}
-		if !samePhysicalSkillRoot(root.base, canonicalBase) {
-			return true
-		}
-	}
-	return false
-}
-
 func retireManagedSkillRoot(homeDir, base string, managed map[string]bool) error {
 	victims, err := managedMultiSkillVictims(base, managed)
 	if err != nil {
@@ -826,10 +814,11 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 	canonicalDest := filepath.Join(canonicalBase, "dws")
 	if err := publishMonoUpgradeTarget(homeDir, canonicalBase, skillSrc, managedNames); err != nil {
 		result.Results = append(result.Results, SkillDirResult{Dir: canonicalDest, Status: SkillDirFailed, Err: err})
-		if hasDependentSkillRoot(homeDir, canonicalBase) {
-			return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
-		}
-		return result, nil
+		// Canonical is the mandatory store: universal agents read it directly, so a
+		// failed canonical publish means nobody received the upgrade. Always fail
+		// loud — including universal-only machines — instead of reporting success
+		// with nothing installed.
+		return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
 	}
 	result.Results = append(result.Results, SkillDirResult{Dir: canonicalDest, Status: SkillDirOK})
 
@@ -899,10 +888,10 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 	canonicalBase := filepath.Join(homeDir, ".agents", "skills")
 	if err := publishMultiUpgradeTarget(homeDir, canonicalBase, multiRoot, skills, skillSet, managedNames); err != nil {
 		result.Results = append(result.Results, SkillDirResult{Dir: canonicalBase, Status: SkillDirFailed, Err: err})
-		if hasDependentSkillRoot(homeDir, canonicalBase) {
-			return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
-		}
-		return result, nil
+		// Canonical is the mandatory store (see the mono branch): fail loud even
+		// on universal-only machines instead of reporting success with nothing
+		// installed.
+		return result, fmt.Errorf("canonical Skill 安装失败: %w", err)
 	}
 	result.Results = append(result.Results, SkillDirResult{Dir: canonicalBase, Status: SkillDirOK})
 
