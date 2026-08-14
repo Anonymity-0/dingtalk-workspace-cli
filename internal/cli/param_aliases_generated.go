@@ -974,7 +974,8 @@ var generatedParamAliases = []ParamAliasEntry{
 		Aliases: map[string]string{
 			"chat-id": "conversation-id",
 		},
-		Blocked: []string{"conversation-ids", "dest-conversation-id", "group-id", "group-ids", "group-name", "name", "open-conversation-ids", "source", "src-conversation-id", "target"},
+		Blocked:   []string{"conversation-ids", "dest-conversation-id", "group-id", "group-ids", "group-name", "name", "open-conversation-ids", "source", "src-conversation-id", "target"},
+		Ambiguous: []string{"staff-id", "uid", "user", "user-id", "userid"},
 	},
 	{
 		CLIPath: "chat group bots",

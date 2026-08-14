@@ -564,6 +564,18 @@ func TestGeneratedParamAliasesBlockPluralListSpellingsOnSingleIDCommands(t *test
 	}
 }
 
+func TestGeneratedParamAliasesKeepAuditJoinUserRoleAmbiguous(t *testing.T) {
+	entry, ok := LookupParamAlias("chat group audit-join-validation")
+	if !ok {
+		t.Fatal("missing generated alias entry for chat group audit-join-validation")
+	}
+	for _, name := range []string{"user", "user-id", "userid", "uid", "staff-id"} {
+		if !entry.IsAmbiguous(cmdutil.Morph(name)) {
+			t.Fatalf("%q not ambiguous; entry = %#v", name, entry)
+		}
+	}
+}
+
 // TestGeneratedParamAliasesAreWellFormed guards the committed generated table
 // at the Go level, complementing the byte-identity drift gate.
 func TestGeneratedParamAliasesAreWellFormed(t *testing.T) {
