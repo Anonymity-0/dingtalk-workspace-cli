@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -139,9 +140,26 @@ var universalSkillDirs = map[string]bool{
 	".amp/skills":      true,
 }
 
+// upgradeCurrentUser is the test seam backing ResolveSystemHomeDir.
+var upgradeCurrentUser = user.Current
+
+// ResolveSystemHomeDir returns the operating-system user's real home directory
+// independent of the $HOME environment variable. $HOME may be overridden in
+// isolated or verifier contexts, so the app-bundle detection gate
+// (allowSystemApps = homeDir == systemHome) must compare against a HOME-
+// independent source to actually mean "operating on the real user profile".
+// It prefers the OS user database (getpwuid on Unix) and falls back to $HOME
+// only when the user record cannot be resolved.
+func ResolveSystemHomeDir() (string, error) {
+	if u, err := upgradeCurrentUser(); err == nil && u.HomeDir != "" {
+		return u.HomeDir, nil
+	}
+	return os.UserHomeDir()
+}
+
 var (
 	upgradeUserHomeDir     = os.UserHomeDir
-	upgradeSystemHomeDir   = os.UserHomeDir
+	upgradeSystemHomeDir   = ResolveSystemHomeDir
 	upgradeExecutable      = os.Executable
 	upgradeEvalSymlinks    = filepath.EvalSymlinks
 	upgradeCopyDir         = copyDir

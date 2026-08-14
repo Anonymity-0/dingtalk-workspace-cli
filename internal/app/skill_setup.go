@@ -127,7 +127,7 @@ var (
 	skillSetupExecutable      = os.Executable
 	skillSetupGetwd           = os.Getwd
 	skillSetupUserHomeDir     = os.UserHomeDir
-	skillSetupSystemHomeDir   = os.UserHomeDir
+	skillSetupSystemHomeDir   = upgrade.ResolveSystemHomeDir
 	skillSetupRemoveAll       = os.RemoveAll
 	skillSetupBackupAndRemove = upgrade.BackupAndRemoveSkillDir
 	skillSetupRestoreBackup   = upgrade.RestoreSkillPath
