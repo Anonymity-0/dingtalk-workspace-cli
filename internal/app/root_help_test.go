@@ -432,6 +432,24 @@ func TestCalendarEventShareInfoRequiresEventID(t *testing.T) {
 	}
 }
 
+func TestCalendarEventShareInfoOmitsOptionalArgs(t *testing.T) {
+	got, err := executeRootCaptureStdout(t, []string{
+		"--dry-run", "calendar", "event", "share-info",
+		"--id", "EVT_001",
+	})
+	if err != nil {
+		t.Fatalf("calendar event share-info --dry-run with only --id error = %v\n%s", err, got)
+	}
+	if !strings.Contains(got, "\"eventId\"") {
+		t.Fatalf("calendar event share-info dry-run output missing eventId:\n%s", got)
+	}
+	for _, unwanted := range []string{"\"calendarId\"", "\"language\""} {
+		if strings.Contains(got, unwanted) {
+			t.Fatalf("calendar event share-info dry-run with only --id should not contain %q:\n%s", unwanted, got)
+		}
+	}
+}
+
 func TestRootKeepsSVIPChatCompatibilityFlags(t *testing.T) {
 	root := NewRootCommand()
 

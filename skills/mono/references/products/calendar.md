@@ -173,7 +173,7 @@ Example:
 Flags:
       --id string            日程 ID (必填)
       --calendar-id string   日历 ID (可选，默认 primary 主日历)
-      --language string      语言代码 (可选，默认 en-US，如 zh-CN)
+      --language string      语言代码 (可选，如 zh-CN)
 ```
 
 > **说明**：根据日程 ID 获取日程的分享信息，展示日程主题、组织人、地点、入会信息等，用于向他人分享日程（如发送到群聊、邮件）。中文内容建议传 `--language zh-CN`。
@@ -738,7 +738,7 @@ dws calendar event list --start "2026-03-10T14:00:00+08:00" --end "2026-03-10T15
 - **日历本**：`book list` 返回的 `id` 才是合法 `calendarId`；如无明确说明，`event list` / `event get` 都不要带 `--calendar-id`，让接口默认走 primary 主日历
 - **分页查询**：`event list` / `event instances` 均支持 `--limit`（控制每页条数，默认/最大 100）和 `--cursor`（翻页游标）；**首次查询无需传 `--cursor`**，仅当返回体中包含 `nextCursor` 时，将其作为 `--cursor` 传入可获取下一页
 - **循环日程实例**：`event instances` 用于按时间范围展开重复日程（SeriesMaster）的每一个实例；**普通非循环日程调用该命令将查不到任何实例信息**
-- **日程分享**：`event share-info` 获取日程的分享信息（主题、组织人、地点、入会信息等）；`--language` 控制文案语言（默认 en-US，中文场景传 zh-CN）
+- **日程分享**：`event share-info` 获取日程的分享信息（主题、组织人、地点、入会信息等）；`--language` 控制文案语言（中文场景传 zh-CN）
 - **日程提醒**：`event create` 支持 `--remind-minutes` 设置开始前提醒，逗号分隔多个分钟数（如 `--remind-minutes 5,10,15`），不传则默认15分钟提醒
 - **会议室分页**：`room search` 支持 `--limit`（每页条数，默认100，最大100）和 `--page`（分页起始位置，默认0），与 `room list-groups` 分页风格一致
 

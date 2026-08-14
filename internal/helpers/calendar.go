@@ -2265,8 +2265,8 @@ func newCalendarCommand() *cobra.Command {
 		Short:   "获取日程的分享信息",
 		Long:    `根据日程 ID 获取日程的分享信息，展示日程主题、组织人、地点、入会信息等，用于向他人分享日程。`,
 		Example: `  dws calendar event share-info --id EVENT_ID  # 查询 eventId: dws calendar event list
-	 dws calendar event share-info --id EVENT_ID --language zh-CN
-	 dws calendar event share-info --id EVENT_ID --calendar-id primary`,
+  dws calendar event share-info --id EVENT_ID --language zh-CN
+  dws calendar event share-info --id EVENT_ID --calendar-id primary`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			eventID, err := mustFlagOrFallback(cmd, "id", "event", "event-id", "eventId")
 			if err != nil {
@@ -2335,7 +2335,7 @@ func newCalendarCommand() *cobra.Command {
 	_ = eventShareInfoCmd.Flags().MarkHidden("calendarId")
 	eventShareInfoCmd.Flags().String("calendar", "", "")
 	_ = eventShareInfoCmd.Flags().MarkHidden("calendar")
-	eventShareInfoCmd.Flags().String("language", "", "语言代码 (可选，默认 en-US，如 zh-CN)")
+	eventShareInfoCmd.Flags().String("language", "", "语言代码 (可选，如 zh-CN)")
 	eventShareInfoCmd.Flags().String("lang", "", "")
 	_ = eventShareInfoCmd.Flags().MarkHidden("lang")
 
