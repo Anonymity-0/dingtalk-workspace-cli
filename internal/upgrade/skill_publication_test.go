@@ -132,6 +132,32 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		}
 	})
 
+	t.Run("publish confirmation fingerprint", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		originalRename := skillPathRenameNoReplace
+		published := false
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRename(source, target); err != nil {
+				return err
+			}
+			published = true
+			return nil
+		})
+		originalReadDir := skillPathReadDir
+		testseam.Swap(t, &skillPathReadDir, func(path string) ([]os.DirEntry, error) {
+			if published && path == destination {
+				return nil, failure
+			}
+			return originalReadDir(path)
+		})
+		if _, err := PublishSkillPathNoReplace(staged, destination); !errors.Is(err, failure) || !strings.Contains(err.Error(), "内容失败") {
+			t.Fatalf("publish fingerprint confirmation error = %v", err)
+		}
+	})
+
 	t.Run("rollback temp", func(t *testing.T) {
 		testseam.Swap(t, &skillPathMkdirTemp, func(string, string) (string, error) { return "", failure })
 		if err := RollbackSkillPathPublications([]SkillPathPublication{{Destination: "dest"}}); !errors.Is(err, failure) {
