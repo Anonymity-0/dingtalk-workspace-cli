@@ -80,6 +80,16 @@ func TestCrossPlatformCoverageFramework2MCPDataEdges(t *testing.T) {
 	if _, err := CallMCPToolDataOnServer(context.Background(), "dev", "get_thing", nil); err == nil {
 		t.Fatal("expected invalid JSON error")
 	}
+
+	InitDeps(&coverageErrorCaller{result: &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: `{} {}`}}}})
+	if _, err := CallMCPToolDataOnServer(context.Background(), "dev", "get_thing", nil); err == nil || !strings.Contains(err.Error(), "存在多个 JSON 值") {
+		t.Fatalf("multiple JSON values error = %v", err)
+	}
+
+	InitDeps(&coverageErrorCaller{result: &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: `{} {`}}}})
+	if _, err := CallMCPToolDataOnServer(context.Background(), "dev", "get_thing", nil); err == nil || !strings.Contains(err.Error(), "解析 get_thing 返回失败") {
+		t.Fatalf("trailing invalid JSON error = %v", err)
+	}
 }
 
 func TestCrossPlatformCoverageFramework2LegacyTextAdapter(t *testing.T) {
