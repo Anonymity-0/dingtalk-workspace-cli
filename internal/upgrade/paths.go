@@ -193,8 +193,11 @@ func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
 	backupRoot := filepath.Join(homeDir, skillBackupSubdir, stamp)
 	target := filepath.Join(backupRoot, name)
 	for i := 1; ; i++ {
-		if _, err := os.Stat(target); os.IsNotExist(err) {
-			break
+		if _, err := upgradeLstat(target); err != nil {
+			if os.IsNotExist(err) {
+				break
+			}
+			return "", fmt.Errorf("检查备份目标失败 %s: %w", target, err)
 		}
 		backupRoot = filepath.Join(homeDir, skillBackupSubdir, fmt.Sprintf("%s-%d", stamp, i))
 		target = filepath.Join(backupRoot, name)
@@ -205,7 +208,7 @@ func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
 	if err := upgradeMkdirAll(backupRoot, dirPermShared); err != nil {
 		return "", fmt.Errorf("创建备份目录失败 %s: %w", backupRoot, err)
 	}
-	if err := upgradeRename(dir, target); err != nil {
+	if err := moveSkillPathRecoverably(dir, target); err != nil {
 		return "", fmt.Errorf("备份技能目录失败 %s: %w", dir, err)
 	}
 	// Keep the backup directory bounded; a prune failure must not fail the
@@ -503,7 +506,7 @@ func restoreSkillSet(published []string, backups []backedUpSkillDir) error {
 			restoreErr = errors.Join(restoreErr, fmt.Errorf("创建 Skill 恢复目录 %s: %w", filepath.Dir(backup.original), err))
 			continue
 		}
-		if err := upgradeRename(backup.backup, backup.original); err != nil {
+		if err := moveSkillPathRecoverably(backup.backup, backup.original); err != nil {
 			restoreErr = errors.Join(restoreErr, fmt.Errorf("恢复原 Skill 失败 %s: %w", backup.original, err))
 		}
 	}

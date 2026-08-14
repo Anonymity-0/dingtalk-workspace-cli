@@ -261,6 +261,161 @@ function Move-SkillPath {
     Move-Item -LiteralPath $Source -Destination $Destination -ErrorAction Stop
 }
 
+function Test-CrossDeviceMoveError {
+    param([System.Management.Automation.ErrorRecord]$Record)
+    $exception = $Record.Exception
+    while ($null -ne $exception) {
+        # Win32 ERROR_NOT_SAME_DEVICE is 17 (0x11). Move-Item surfaces it as
+        # the low word of an IOException HRESULT.
+        if (($exception.HResult -band 0xffff) -eq 17) { return $true }
+        $exception = $exception.InnerException
+    }
+    return $false
+}
+
+function Copy-SkillPathMetadata {
+    param($SourceItem, [string]$Destination)
+    (Get-Item -LiteralPath $Destination -Force -ErrorAction Stop).Attributes = $SourceItem.Attributes
+    $nativeWindows = $env:OS -eq "Windows_NT" -or $PSVersionTable.PSEdition -eq "Desktop"
+    if ($nativeWindows) {
+        Set-Acl -LiteralPath $Destination -AclObject (Get-Acl -LiteralPath $SourceItem.FullName -ErrorAction Stop) -ErrorAction Stop
+    } else {
+        $mode = [System.IO.File]::GetUnixFileMode($SourceItem.FullName)
+        [System.IO.File]::SetUnixFileMode($Destination, $mode)
+    }
+}
+
+function Get-SkillPathPermissionFingerprint {
+    param([string]$Path)
+    $nativeWindows = $env:OS -eq "Windows_NT" -or $PSVersionTable.PSEdition -eq "Desktop"
+    if ($nativeWindows) {
+        return (Get-Acl -LiteralPath $Path -ErrorAction Stop).Sddl
+    }
+    return [string][System.IO.File]::GetUnixFileMode($Path)
+}
+
+function Copy-SkillPathLexically {
+    param([string]$Source, [string]$Destination)
+    $item = Get-Item -LiteralPath $Source -Force -ErrorAction Stop
+    if ($item.LinkType) {
+        $itemType = if ($item.LinkType -eq "Junction") { "Junction" } else { "SymbolicLink" }
+        New-Item -ItemType $itemType -Path $Destination -Target $item.Target -ErrorAction Stop | Out-Null
+        return
+    }
+    if ($item.PSIsContainer) {
+        New-Item -ItemType Directory -Path $Destination -ErrorAction Stop | Out-Null
+        foreach ($child in @(Get-ChildItem -LiteralPath $Source -Force -ErrorAction Stop)) {
+            Copy-SkillPathLexically -Source $child.FullName -Destination (Join-Path $Destination $child.Name)
+        }
+        Copy-SkillPathMetadata -SourceItem $item -Destination $Destination
+        return
+    }
+    if ($item -isnot [System.IO.FileInfo]) {
+        throw "不支持复制特殊 Skill 路径 $Source"
+    }
+    [System.IO.File]::Copy($Source, $Destination, $false)
+    Copy-SkillPathMetadata -SourceItem $item -Destination $Destination
+}
+
+function Assert-SkillPathCopy {
+    param([string]$Source, [string]$Destination)
+    $sourceItem = Get-Item -LiteralPath $Source -Force -ErrorAction Stop
+    $destinationItem = Get-Item -LiteralPath $Destination -Force -ErrorAction Stop
+    if ([bool]$sourceItem.LinkType -ne [bool]$destinationItem.LinkType -or
+        $sourceItem.PSIsContainer -ne $destinationItem.PSIsContainer) {
+        throw "Skill 路径类型不一致: $Source != $Destination"
+    }
+    if ($sourceItem.LinkType) {
+        if ($sourceItem.LinkType -ne $destinationItem.LinkType -or
+            ($sourceItem.Target -join "`0") -ne ($destinationItem.Target -join "`0")) {
+            throw "Skill 链接目标不一致: $Source != $Destination"
+        }
+        return
+    }
+    if ((Get-SkillPathPermissionFingerprint -Path $Source) -ne
+        (Get-SkillPathPermissionFingerprint -Path $Destination)) {
+        throw "Skill 路径权限不一致: $Source != $Destination"
+    }
+    if ($sourceItem.PSIsContainer) {
+        $sourceChildren = @(Get-ChildItem -LiteralPath $Source -Force -ErrorAction Stop | Sort-Object -Property Name)
+        $destinationChildren = @(Get-ChildItem -LiteralPath $Destination -Force -ErrorAction Stop | Sort-Object -Property Name)
+        if ($sourceChildren.Count -ne $destinationChildren.Count) {
+            throw "Skill 目录项数量不一致: $Source != $Destination"
+        }
+        for ($i = 0; $i -lt $sourceChildren.Count; $i++) {
+            if ($sourceChildren[$i].Name -ne $destinationChildren[$i].Name) {
+                throw "Skill 目录项不一致: $Source != $Destination"
+            }
+            Assert-SkillPathCopy -Source $sourceChildren[$i].FullName -Destination $destinationChildren[$i].FullName
+        }
+        return
+    }
+    if ($sourceItem.Length -ne $destinationItem.Length) {
+        throw "Skill 文件大小不一致: $Source != $Destination"
+    }
+    $sourceHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256 -ErrorAction Stop).Hash
+    $destinationHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256 -ErrorAction Stop).Hash
+    if ($sourceHash -ne $destinationHash) {
+        throw "Skill 文件内容摘要不一致: $Source != $Destination"
+    }
+}
+
+function Remove-SkillPathLexically {
+    param([string]$Path)
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if ($item.PSIsContainer -and !$item.LinkType) {
+        Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+    } else {
+        Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+    }
+}
+
+# Same-volume moves remain atomic. For a cross-volume backup/restore, stage on
+# the destination filesystem, copy links lexically, verify, publish, then
+# remove the source. Before source removal every failure keeps the original;
+# a removal failure deliberately leaves both verified copies and fails loud.
+function Move-SkillPathRecoverably {
+    param([string]$Source, [string]$Destination)
+    if (Test-SkillPathLexically -Path $Destination) { throw "移动目标已存在: $Destination" }
+    $destinationParent = Split-Path $Destination -Parent
+    New-Item -ItemType Directory -Path $destinationParent -Force -ErrorAction Stop | Out-Null
+    try {
+        Move-SkillPath -Source $Source -Destination $Destination
+        return
+    } catch {
+        if (!(Test-CrossDeviceMoveError -Record $_)) { throw }
+    }
+
+    $stageRoot = Join-Path $destinationParent ("." + (Split-Path $Destination -Leaf) + ".cross-device-" + [guid]::NewGuid().ToString("N"))
+    $stage = Join-Path $stageRoot "payload"
+    New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
+    try {
+        Copy-SkillPathLexically -Source $Source -Destination $stage
+        Assert-SkillPathCopy -Source $Source -Destination $stage
+        Move-SkillPath -Source $stage -Destination $Destination
+        Assert-SkillPathCopy -Source $Source -Destination $Destination
+        Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction Stop
+        try {
+            Remove-SkillPathLexically -Path $Source
+        } catch {
+            throw "Skill 目标已发布但源路径删除失败（源 $Source 与目标 $Destination 均保留）: $_"
+        }
+        if (Test-SkillPathLexically -Path $Source) {
+            throw "Skill 目标已发布但源路径仍存在（源 $Source 与目标 $Destination 均保留）"
+        }
+    } catch {
+        $failure = $_
+        if (Test-Path -LiteralPath $stageRoot) {
+            try {
+                Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction Stop
+            } catch {
+                throw "$failure；跨设备 Skill staging 清理失败 $stageRoot`: $_"
+            }
+        }
+        throw $failure
+    }
+}
+
 function Get-Arch {
     # Allow manual override via environment variable
     if ($env:DWS_ARCH) {
@@ -338,6 +493,26 @@ function Get-GiteeAssetUrl {
         if ($a.name -eq $Name) { return $a.browser_download_url }
     }
     return ""
+}
+
+function Assert-ReleaseAssetChecksum {
+    param([string]$AssetPath, [string]$AssetName, [string]$TempDir)
+    if ($GiteeRepo -ne "") { $checksumUrl = Get-GiteeAssetUrl "checksums.txt" } else { $checksumUrl = "https://github.com/$Repo/releases/download/$Version/checksums.txt" }
+    if (-not $checksumUrl) { Write-Err "Could not resolve checksums.txt for $Version." }
+    $checksumPath = Join-Path $TempDir "checksums.txt"
+    try {
+        Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumPath -UseBasicParsing -ErrorAction Stop
+    } catch {
+        Write-Err "Could not download checksums.txt for $Version; refusing unverified $AssetName."
+    }
+    $expectedLine = Get-Content -LiteralPath $checksumPath | Where-Object {
+        $_ -match "^[0-9A-Fa-f]{64}[ ]+[*]?$([regex]::Escape($AssetName))$"
+    } | Select-Object -First 1
+    if (-not $expectedLine) { Write-Err "$AssetName is missing from checksums.txt." }
+    $expected = ($expectedLine -split '\s+')[0].ToLowerInvariant()
+    $actual = (Get-FileHash -LiteralPath $AssetPath -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+    if ($actual -ne $expected) { Write-Err "SHA256 checksum mismatch for $AssetName. Expected $expected, got $actual." }
+    Write-Say "✅ SHA256 checksum verified: $AssetName"
 }
 
 function Resolve-Source {
@@ -482,7 +657,7 @@ function Backup-SkillDir {
     $name = Split-Path $Dir -Leaf
     $target = Join-Path (Join-Path $backupRoot $stamp) $name
     $i = 1
-    while (Test-Path $target) {
+    while (Test-SkillPathLexically -Path $target) {
         $target = Join-Path (Join-Path $backupRoot "$stamp-$i") $name
         $i++
         if ($i -gt 1000) {
@@ -492,9 +667,9 @@ function Backup-SkillDir {
     }
     try {
         New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force -ErrorAction Stop | Out-Null
-        Move-SkillPath -Source $Dir -Destination $target
+        Move-SkillPathRecoverably -Source $Dir -Destination $target
     } catch {
-        Write-Say "⚠️  备份失败，保留原目录 $Dir"
+        Write-Say "⚠️  备份失败，保留原目录 $Dir`: $_"
         return $false
     }
     if ($null -ne $BackupPath) { $BackupPath.Value = $target }
@@ -525,7 +700,7 @@ function Restore-MultiSkillSet {
                 throw "恢复目标仍存在"
             }
             New-Item -ItemType Directory -Path (Split-Path $item.Original -Parent) -Force -ErrorAction Stop | Out-Null
-            Move-SkillPath -Source $item.Backup -Destination $item.Original
+            Move-SkillPathRecoverably -Source $item.Backup -Destination $item.Original
         } catch {
             Write-Say "⚠️  无法恢复原 Skill $($item.Original)；备份保留于 $($item.Backup): $_"
             $ok = $false
@@ -811,26 +986,7 @@ function Install-Binary {
         $archivePath = Join-Path $tmpDir $archiveName
         Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath -UseBasicParsing
 
-        # Download and verify SHA256 checksum
-        if ($GiteeRepo -ne "") { $checksumUrl = Get-GiteeAssetUrl "checksums.txt" } else { $checksumUrl = "https://github.com/$Repo/releases/download/$Version/checksums.txt" }
-        try {
-            $checksumPath = Join-Path $tmpDir "checksums.txt"
-            Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumPath -UseBasicParsing
-            $checksumContent = Get-Content $checksumPath
-            $expectedLine = $checksumContent | Where-Object { $_ -match [regex]::Escape($archiveName) }
-            if ($expectedLine) {
-                $expected = ($expectedLine -split '\s+')[0]
-                $actual = (Get-FileHash -Path $archivePath -Algorithm SHA256).Hash.ToLower()
-                if ($actual -ne $expected.ToLower()) {
-                    Write-Err "SHA256 checksum mismatch! Expected $expected, got $actual. Aborting."
-                }
-                Write-Say "✅ SHA256 checksum verified"
-            } else {
-                Write-Say "⚠️  Archive not found in checksums.txt; skipping verification"
-            }
-        } catch {
-            Write-Say "⚠️  Could not download checksums.txt; skipping verification"
-        }
+        Assert-ReleaseAssetChecksum -AssetPath $archivePath -AssetName $archiveName -TempDir $tmpDir
 
         Write-Say "📦 Extracting..."
         Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force
@@ -1256,6 +1412,7 @@ function Install-Skills {
                 Write-Err "Cannot download skills from GitHub and no local source checkout found."
             }
         }
+        Assert-ReleaseAssetChecksum -AssetPath $zipPath -AssetName "dws-skills.zip" -TempDir $tmpDir
 
         $extractRoot = Join-Path $tmpDir "skills"
         Expand-Archive -Path $zipPath -DestinationPath $extractRoot -Force

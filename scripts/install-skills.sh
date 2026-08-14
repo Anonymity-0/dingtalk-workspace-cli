@@ -123,6 +123,29 @@ sha256_stdin() {
   fi
 }
 
+verify_release_asset_checksum() {
+  _checksum_asset="$1"
+  _checksum_path="$2"
+  _checksum_dir="$3"
+  _checksum_url="$(asset_url checksums.txt)"
+  [ -n "$_checksum_url" ] || { printf '❌ Could not resolve checksums.txt for %s.\n' "$VERSION" >&2; return 1; }
+  curl -fsSL "$_checksum_url" -o "$_checksum_dir/checksums.txt" || {
+    printf '❌ Could not download checksums.txt for %s; refusing unverified %s.\n' "$VERSION" "$_checksum_asset" >&2
+    return 1
+  }
+  _checksum_expected="$(awk -v file="$_checksum_asset" '$2 == file {print $1; exit}' "$_checksum_dir/checksums.txt")"
+  [ -n "$_checksum_expected" ] || { printf '❌ %s is missing from checksums.txt.\n' "$_checksum_asset" >&2; return 1; }
+  _checksum_actual="$(sha256_stdin < "$_checksum_path")" || {
+    printf '❌ Could not compute SHA256 for %s; install sha256sum, shasum, or openssl.\n' "$_checksum_asset" >&2
+    return 1
+  }
+  [ "$_checksum_actual" = "$_checksum_expected" ] || {
+    printf '❌ SHA256 checksum mismatch for %s. Expected %s, got %s.\n' "$_checksum_asset" "$_checksum_expected" "$_checksum_actual" >&2
+    return 1
+  }
+  printf '  ✅ SHA256 checksum verified: %s\n' "$_checksum_asset"
+}
+
 digest_skill_dir() {
   _digest_dir="$1"
   _digest="$({
@@ -813,6 +836,7 @@ main() {
   [ -n "$ASSET_URL" ] || { printf '❌ Could not resolve download URL for dws-skills.zip (version %s).\n' "$VERSION" >&2; exit 1; }
   printf '  ⬇  Downloading skills from GitHub Releases: %s (%s)\n' "$REPO" "$VERSION"
   curl -fsSL "$ASSET_URL" -o "$TMPDIR_WORK/dws-skills.zip"
+  verify_release_asset_checksum "dws-skills.zip" "$TMPDIR_WORK/dws-skills.zip" "$TMPDIR_WORK"
   extract_zip "$TMPDIR_WORK/dws-skills.zip" "$TMPDIR_WORK/extracted"
 
   # Prefer the explicit mono/ subtree; fall back to legacy nested or zip root.

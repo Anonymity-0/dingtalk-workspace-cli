@@ -26,6 +26,28 @@ say() { printf '  %s\n' "$@"; }
 err() { printf '  ❌ %s\n' "$@" >&2; exit 1; }
 need_cmd() { command -v "$1" >/dev/null 2>&1 || err "Missing required command: $1"; }
 
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v openssl >/dev/null 2>&1; then openssl dgst -sha256 "$1" | awk '{print $NF}'
+  else return 1
+  fi
+}
+
+verify_release_asset() {
+  name="$1"; file="$2"
+  checksums="$tmp/checksums.txt"
+  if [ ! -f "$checksums" ]; then
+    curl -fsSL "https://github.com/${DEVAPP_REPO}/releases/download/${DEVAPP_VERSION}/checksums.txt" -o "$checksums" \
+      || err "Could not download checksums.txt; refusing unverified release assets."
+  fi
+  expected="$(awk -v asset="$name" '$2 == asset {print $1; exit}' "$checksums")"
+  [ -n "$expected" ] || err "${name} is missing from checksums.txt."
+  actual="$(sha256_file "$file")" || err "Could not compute SHA256 for ${name}."
+  [ "$actual" = "$expected" ] || err "SHA256 checksum mismatch for ${name}."
+  say "✅ SHA256 checksum verified: ${name}"
+}
+
 copy_tree() {
   src="$1"; dest="$2"; parent="$(dirname "$dest")"
   mkdir -p "$parent" || return 1
@@ -33,7 +55,10 @@ copy_tree() {
   if ! cp -R "$src/." "$stage/"; then rm -rf "$stage"; return 1; fi
   backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
   if mv "$stage" "$dest"; then return 0; fi
-  rm -rf "$stage"; [ -z "$backup" ] || mv "$backup" "$dest" 2>/dev/null || true
+  rm -rf "$stage"
+  if [ -n "$backup" ] && ! mv "$backup" "$dest"; then
+    printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+  fi
   return 1
 }
 
@@ -106,7 +131,10 @@ link_or_copy_skill() {
   if ! ln -s "$relative" "$stage/skill" 2>/dev/null; then rm -rf "$stage"; copy_tree "$src" "$dest"; return; fi
   backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
   if mv "$stage/skill" "$dest"; then rm -rf "$stage"; return 0; fi
-  rm -rf "$stage"; [ -z "$backup" ] || mv "$backup" "$dest" 2>/dev/null || true
+  rm -rf "$stage"
+  if [ -n "$backup" ] && ! mv "$backup" "$dest"; then
+    printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+  fi
   return 1
 }
 
@@ -202,6 +230,7 @@ main() {
   say "⬇  Downloading ${asset} ..."
   curl -fsSL "https://github.com/${DEVAPP_REPO}/releases/download/${DEVAPP_VERSION}/${asset}" -o "$tmp/$asset" \
     || err "Binary download failed — does release ${DEVAPP_VERSION} have ${asset}?"
+  verify_release_asset "$asset" "$tmp/$asset"
   if [ "$os" = "windows" ]; then
     need_cmd unzip; unzip -q "$tmp/$asset" -d "$tmp"
   else
@@ -215,6 +244,7 @@ main() {
   # 2) dev skill from the release's skills bundle
   if [ "$NO_SKILLS" != "1" ]; then
     if curl -fsSL "https://github.com/${DEVAPP_REPO}/releases/download/${DEVAPP_VERSION}/dws-skills.zip" -o "$tmp/skills.zip" 2>/dev/null; then
+      verify_release_asset "dws-skills.zip" "$tmp/skills.zip"
       mkdir -p "$tmp/sk"
       if command -v unzip >/dev/null 2>&1; then unzip -q "$tmp/skills.zip" -d "$tmp/sk"; else tar -xf "$tmp/skills.zip" -C "$tmp/sk"; fi
       say ""

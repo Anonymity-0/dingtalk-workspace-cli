@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -214,13 +216,41 @@ func TestInstallPowerShellScriptInstallsToAgentsDir(t *testing.T) {
 	}
 }
 
+func TestInstallDevappScriptsReportSkillRollbackFailures(t *testing.T) {
+	t.Parallel()
+
+	checks := []struct {
+		path      string
+		required  string
+		forbidden string
+	}{
+		{filepath.Join("..", "..", "scripts", "install-devapp.sh"), "Skill rollback failed; backup retained at", "[ -z \"$backup\" ] || mv \"$backup\" \"$dest\" 2>/dev/null || true"},
+		{filepath.Join("..", "..", "scripts", "install-devapp.ps1"), "Die \"Skill install failed:", "(skill install skipped:"},
+	}
+	for _, check := range checks {
+		data, err := os.ReadFile(check.path)
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", check.path, err)
+		}
+		text := string(data)
+		if !strings.Contains(text, check.required) {
+			t.Errorf("%s missing explicit failure contract %q", check.path, check.required)
+		}
+		if strings.Contains(text, check.forbidden) {
+			t.Errorf("%s still contains silent failure path %q", check.path, check.forbidden)
+		}
+	}
+}
+
 func TestInstallScriptsUseGitHubReleaseSkillsAsset(t *testing.T) {
 	t.Parallel()
 
 	for _, rel := range []string{
 		filepath.Join("..", "..", "scripts", "install.sh"),
 		filepath.Join("..", "..", "scripts", "install-event.sh"),
+		filepath.Join("..", "..", "scripts", "install-devapp.sh"),
 		filepath.Join("..", "..", "scripts", "install.ps1"),
+		filepath.Join("..", "..", "scripts", "install-devapp.ps1"),
 		filepath.Join("..", "..", "scripts", "install-skills.sh"),
 	} {
 		scriptPath, err := filepath.Abs(rel)
@@ -236,6 +266,9 @@ func TestInstallScriptsUseGitHubReleaseSkillsAsset(t *testing.T) {
 		text := string(data)
 		if !strings.Contains(text, "releases/download") || !strings.Contains(text, "dws-skills.zip") {
 			t.Fatalf("%s should download dws-skills.zip from GitHub Releases", scriptPath)
+		}
+		if !strings.Contains(text, "checksums.txt") || !strings.Contains(strings.ToLower(text), "sha256") {
+			t.Fatalf("%s should verify dws-skills.zip against release checksums", scriptPath)
 		}
 		if strings.Contains(text, "archive/refs/heads/main.tar.gz") || strings.Contains(text, "archive/refs/tags/") {
 			t.Fatalf("%s should not download skills from repository archive refs", scriptPath)
@@ -319,6 +352,7 @@ func TestInstallEventScriptInstallsBinaryAndEventSkills(t *testing.T) {
 		"mono/SKILL.md":                  "mono skill user_im_message_receive_o2o\n",
 		"SKILL.md":                       "legacy mono root\n",
 	})
+	writeInstallerFixtureChecksums(t, releaseDir)
 	writeFakeCurl(t, filepath.Join(stubRoot, "curl"))
 
 	for _, dir := range []string{
@@ -439,6 +473,7 @@ func TestInstallEventScriptSkillsOnlySkipsBinary(t *testing.T) {
 		"multi/dingtalk-misc/SKILL.md":   "clean misc oa routing\n",
 		"mono/SKILL.md":                  "mono skill user_im_message_receive_o2o\n",
 	})
+	writeInstallerFixtureChecksums(t, releaseDir)
 	writeFakeCurl(t, filepath.Join(stubRoot, "curl"))
 
 	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-event.sh"))
@@ -484,6 +519,7 @@ func TestInstallEventScriptPreflightFailureDoesNotChangeSkills(t *testing.T) {
 		"multi/dingtalk-shared/SKILL.md": "new shared\n",
 		"mono/SKILL.md":                  "new mono\n",
 	})
+	writeInstallerFixtureChecksums(t, releaseDir)
 	writeFakeCurl(t, filepath.Join(stubRoot, "curl"))
 
 	existing := filepath.Join(fakeHome, ".agents", "skills", "dingtalk-event", "SKILL.md")
@@ -518,6 +554,46 @@ func TestInstallEventScriptPreflightFailureDoesNotChangeSkills(t *testing.T) {
 	}
 }
 
+func TestInstallEventChecksumMismatchPreservesExistingSkills(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell installer test is for unix-like hosts")
+	}
+	root := t.TempDir()
+	home := filepath.Join(root, "home")
+	releaseDir := filepath.Join(root, "release")
+	stubRoot := filepath.Join(root, "stubs")
+	writeZip(t, filepath.Join(releaseDir, "dws-skills.zip"), map[string]string{
+		"multi/dingtalk-event/SKILL.md":  "new event\n",
+		"multi/dingtalk-shared/SKILL.md": "new shared\n",
+		"multi/dingtalk-misc/SKILL.md":   "new misc\n",
+		"mono/SKILL.md":                  "new mono\n",
+	})
+	mustWriteFile(t, filepath.Join(releaseDir, "checksums.txt"), []byte(strings.Repeat("0", 64)+"  dws-skills.zip\n"), 0o644)
+	writeFakeCurl(t, filepath.Join(stubRoot, "curl"))
+	existing := filepath.Join(home, ".agents", "skills", "dingtalk-event", "SKILL.md")
+	mustWriteFile(t, existing, []byte("old event stays\n"), 0o644)
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-event.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("sh", scriptPath)
+	cmd.Env = append(os.Environ(),
+		"HOME="+home,
+		"PATH="+stubRoot+":"+os.Getenv("PATH"),
+		"EVENT_VERSION=v1.0.51",
+		"DWS_SKILLS_ONLY=1",
+		"FAKE_RELEASE_DIR="+releaseDir,
+		"FAKE_ASSET_NAME=unused",
+	)
+	output, runErr := cmd.CombinedOutput()
+	if runErr == nil || !strings.Contains(string(output), "checksum mismatch") {
+		t.Fatalf("checksum mismatch result = %v\n%s", runErr, output)
+	}
+	if got, err := os.ReadFile(existing); err != nil || string(got) != "old event stays\n" {
+		t.Fatalf("existing Skill after checksum mismatch = %q, %v", got, err)
+	}
+}
+
 func TestInstallEventScriptNoSkillsOnlyInstallsBinary(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
@@ -540,6 +616,7 @@ func TestInstallEventScriptNoSkillsOnlyInstallsBinary(t *testing.T) {
 	writeTarGz(t, filepath.Join(releaseDir, assetName), map[string]string{
 		"dws": "fake-event-binary\n",
 	})
+	writeInstallerFixtureChecksums(t, releaseDir)
 	writeFakeCurl(t, filepath.Join(stubRoot, "curl"))
 	for _, name := range []string{"dingtalk-event", "dingtalk-shared", "dingtalk-misc"} {
 		mustWriteFile(t, filepath.Join(fakeHome, ".agents", "skills", name, "SKILL.md"), []byte("keep "+name+"\n"), 0o644)
@@ -596,6 +673,7 @@ func TestInstallEventScriptDefaultsToLatestStableRelease(t *testing.T) {
 	writeTarGz(t, filepath.Join(releaseDir, assetName), map[string]string{
 		"dws": "fake-event-binary\n",
 	})
+	writeInstallerFixtureChecksums(t, releaseDir)
 	writeFakeCurl(t, filepath.Join(stubRoot, "curl"))
 	writeFakeGH(t, filepath.Join(stubRoot, "gh"), "v1.0.51")
 
@@ -1192,6 +1270,82 @@ install_multi_skills_to_root "$DWS_TEST_MULTI" "$DWS_TEST_ROOT"
 	}
 	if _, err := os.Stat(filepath.Join(base, "dingtalk-test")); !os.IsNotExist(err) {
 		t.Fatalf("multi installed after backup failure, stat err=%v", err)
+	}
+}
+
+func TestInstallSkillsShellMvCrossFilesystemBackupAndRestore(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("real cross-filesystem mv fixture uses Linux /dev/shm")
+	}
+	sharedMemoryRoot, err := os.MkdirTemp("/dev/shm", "dws-shell-exdev-")
+	if err != nil {
+		t.Skipf("/dev/shm is unavailable: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(sharedMemoryRoot) })
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-skills.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "\nmain\n")
+	if cut < 0 {
+		t.Fatal("install-skills.sh final main invocation not found")
+	}
+	library := filepath.Join(t.TempDir(), "install-skills-lib.sh")
+	mustWriteFile(t, library, data[:cut], 0o755)
+
+	source := filepath.Join(t.TempDir(), "dingtalk-chat")
+	mustWriteFile(t, filepath.Join(source, "SKILL.md"), []byte("old skill\n"), 0o640)
+	if err := os.Symlink("SKILL.md", filepath.Join(source, "skill-link")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("missing.md", filepath.Join(source, "dangling-link")); err != nil {
+		t.Fatal(err)
+	}
+	probe := filepath.Join(sharedMemoryRoot, "rename-probe")
+	if err := os.Rename(source, probe); err == nil {
+		if restoreErr := os.Rename(probe, source); restoreErr != nil {
+			t.Fatal(restoreErr)
+		}
+		t.Skip("/dev/shm and the test temp directory share a filesystem")
+	} else if !strings.Contains(strings.ToLower(err.Error()), "cross-device") {
+		t.Skipf("could not establish a cross-filesystem fixture: %v", err)
+	}
+
+	home := filepath.Join(sharedMemoryRoot, "home")
+	manifest := filepath.Join(sharedMemoryRoot, "backups.manifest")
+	harness := `. "$DWS_TEST_LIBRARY"
+backup_and_remove_skill_dir "$DWS_TEST_SOURCE"
+backup=$DWS_LAST_SKILL_BACKUP
+[ -n "$backup" ] && [ -d "$backup" ] && [ ! -e "$DWS_TEST_SOURCE" ]
+printf '%s\n%s\n' "$DWS_TEST_SOURCE" "$backup" > "$DWS_TEST_MANIFEST"
+restore_multi_skill_set /dev/null "$DWS_TEST_MANIFEST"
+`
+	cmd := exec.Command("sh", "-c", harness)
+	cmd.Env = append(os.Environ(),
+		"HOME="+home,
+		"DWS_TEST_LIBRARY="+library,
+		"DWS_TEST_SOURCE="+source,
+		"DWS_TEST_MANIFEST="+manifest,
+	)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("cross-filesystem shell backup/restore failed: %v\n%s", err, output)
+	}
+	if got, err := os.ReadFile(filepath.Join(source, "SKILL.md")); err != nil || string(got) != "old skill\n" {
+		t.Fatalf("restored shell content = %q, %v", got, err)
+	}
+	for name, want := range map[string]string{"skill-link": "SKILL.md", "dangling-link": "missing.md"} {
+		info, err := os.Lstat(filepath.Join(source, name))
+		if err != nil || info.Mode()&os.ModeSymlink == 0 {
+			t.Fatalf("shell %s must remain a symlink: %v, %v", name, info, err)
+		}
+		if got, err := os.Readlink(filepath.Join(source, name)); err != nil || got != want {
+			t.Fatalf("shell %s target = %q, %v; want %q", name, got, err, want)
+		}
 	}
 }
 
@@ -2196,6 +2350,295 @@ exit 0
 	}
 }
 
+func TestInstallPowerShellCrossDeviceMoveContract(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			pwsh, err = exec.LookPath("powershell")
+		}
+		if err != nil {
+			t.Skip("PowerShell is not available")
+		}
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.ps1 main section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+
+	for _, phase := range []string{"success", "copy", "verify", "remove", "permission"} {
+		phase := phase
+		t.Run(phase, func(t *testing.T) {
+			root := t.TempDir()
+			home := filepath.Join(root, "home")
+			source := filepath.Join(root, "external", "skill")
+			destination := filepath.Join(home, ".dws", "skill-backups", "stamp", "skill")
+			restored := filepath.Join(root, "external", "restored-skill")
+			mustWriteFile(t, filepath.Join(source, "SKILL.md"), []byte("old skill\n"), 0o640)
+			linksCreated := false
+			if phase == "success" {
+				if err := os.Symlink("SKILL.md", filepath.Join(source, "skill-link")); err == nil {
+					if err := os.Symlink("missing.md", filepath.Join(source, "dangling-link")); err != nil {
+						t.Fatal(err)
+					}
+					linksCreated = true
+				} else if runtime.GOOS != "windows" {
+					t.Fatal(err)
+				}
+			}
+
+			harness := prefix + `
+$script:OriginalCopySkillPathLexically = ${function:Copy-SkillPathLexically}
+$script:OriginalAssertSkillPathCopy = ${function:Assert-SkillPathCopy}
+$script:OriginalRemoveSkillPathLexically = ${function:Remove-SkillPathLexically}
+function New-CrossDeviceError { return [System.IO.IOException]::new("injected cross-device rename", -2147024879) }
+function Move-SkillPath {
+    param([string]$Source, [string]$Destination)
+    if ($env:DWS_TEST_PHASE -eq "permission" -and $Source -eq $env:DWS_TEST_SOURCE) {
+        throw [System.UnauthorizedAccessException]::new("permission denied")
+    }
+    if (($Source -eq $env:DWS_TEST_SOURCE -and $Destination -eq $env:DWS_TEST_DESTINATION) -or
+        ($Source -eq $env:DWS_TEST_DESTINATION -and $Destination -eq $env:DWS_TEST_RESTORED)) {
+        throw (New-CrossDeviceError)
+    }
+    Microsoft.PowerShell.Management\Move-Item -LiteralPath $Source -Destination $Destination -ErrorAction Stop
+}
+function Copy-SkillPathLexically {
+    param([string]$Source, [string]$Destination)
+    if ($env:DWS_TEST_PHASE -eq "copy") { throw "copy failed" }
+    if ($env:DWS_TEST_PHASE -eq "permission") {
+        [System.IO.File]::WriteAllText($env:DWS_TEST_COPY_MARKER, "called")
+    }
+    & $script:OriginalCopySkillPathLexically -Source $Source -Destination $Destination
+}
+function Assert-SkillPathCopy {
+    param([string]$Source, [string]$Destination)
+    if ($env:DWS_TEST_PHASE -eq "verify") { throw "verify failed" }
+    & $script:OriginalAssertSkillPathCopy -Source $Source -Destination $Destination
+}
+function Remove-SkillPathLexically {
+    param([string]$Path)
+    if ($env:DWS_TEST_PHASE -eq "remove" -and $Path -eq $env:DWS_TEST_SOURCE) { throw "remove failed" }
+    & $script:OriginalRemoveSkillPathLexically -Path $Path
+}
+try {
+    Move-SkillPathRecoverably -Source $env:DWS_TEST_SOURCE -Destination $env:DWS_TEST_DESTINATION
+    if ($env:DWS_TEST_PHASE -ne "success") { exit 2 }
+    Move-SkillPathRecoverably -Source $env:DWS_TEST_DESTINATION -Destination $env:DWS_TEST_RESTORED
+    exit 0
+} catch {
+    if ($env:DWS_TEST_PHASE -eq "success") { Write-Error $_; exit 3 }
+    if ($env:DWS_TEST_PHASE -eq "copy" -and $_ -notmatch "copy failed") { Write-Error $_; exit 4 }
+    if ($env:DWS_TEST_PHASE -eq "verify" -and $_ -notmatch "verify failed") { Write-Error $_; exit 5 }
+    if ($env:DWS_TEST_PHASE -eq "remove" -and $_ -notmatch "均保留") { Write-Error $_; exit 6 }
+    if ($env:DWS_TEST_PHASE -eq "permission" -and $_ -notmatch "permission denied") { Write-Error $_; exit 7 }
+    exit 0
+}
+`
+			harnessPath := filepath.Join(t.TempDir(), "install-cross-device-harness.ps1")
+			mustWriteFile(t, harnessPath, []byte(harness), 0o644)
+			copyMarker := filepath.Join(root, "copy-called")
+			cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+			cmd.Env = append(os.Environ(),
+				"DWS_TEST_HOME="+home,
+				"DWS_TEST_SOURCE="+source,
+				"DWS_TEST_DESTINATION="+destination,
+				"DWS_TEST_RESTORED="+restored,
+				"DWS_TEST_COPY_MARKER="+copyMarker,
+				"DWS_TEST_PHASE="+phase,
+			)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("PowerShell %s EXDEV harness failed: %v\n%s", phase, err, output)
+			}
+
+			if phase == "success" {
+				if got, err := os.ReadFile(filepath.Join(restored, "SKILL.md")); err != nil || string(got) != "old skill\n" {
+					t.Fatalf("restored content = %q, %v", got, err)
+				}
+				if _, err := os.Lstat(source); !os.IsNotExist(err) {
+					t.Fatalf("source must be removed: %v", err)
+				}
+				if _, err := os.Lstat(destination); !os.IsNotExist(err) {
+					t.Fatalf("backup must be consumed by rollback: %v", err)
+				}
+				if linksCreated {
+					for name, want := range map[string]string{"skill-link": "SKILL.md", "dangling-link": "missing.md"} {
+						info, err := os.Lstat(filepath.Join(restored, name))
+						if err != nil || info.Mode()&os.ModeSymlink == 0 {
+							t.Fatalf("%s must remain a symlink: %v, %v", name, info, err)
+						}
+						if got, err := os.Readlink(filepath.Join(restored, name)); err != nil || got != want {
+							t.Fatalf("%s target = %q, %v; want %q", name, got, err, want)
+						}
+					}
+				}
+				return
+			}
+
+			if got, err := os.ReadFile(filepath.Join(source, "SKILL.md")); err != nil || string(got) != "old skill\n" {
+				t.Fatalf("source after %s failure = %q, %v", phase, got, err)
+			}
+			if phase == "remove" {
+				if got, err := os.ReadFile(filepath.Join(destination, "SKILL.md")); err != nil || string(got) != "old skill\n" {
+					t.Fatalf("published backup after remove failure = %q, %v", got, err)
+				}
+			} else if _, err := os.Lstat(destination); !os.IsNotExist(err) {
+				t.Fatalf("destination after %s failure = %v", phase, err)
+			}
+			if phase == "permission" {
+				if _, err := os.Stat(copyMarker); !os.IsNotExist(err) {
+					t.Fatalf("permission error must not trigger copy fallback: %v", err)
+				}
+			}
+			if matches, err := filepath.Glob(filepath.Join(filepath.Dir(destination), ".skill.cross-device-*")); err != nil || len(matches) != 0 {
+				t.Fatalf("PowerShell %s staging leftovers = %v, %v", phase, matches, err)
+			}
+		})
+	}
+}
+
+func TestInstallDevappPowerShellCrossDeviceBackup(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			pwsh, err = exec.LookPath("powershell")
+		}
+		if err != nil {
+			t.Skip("PowerShell is not available")
+		}
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-devapp.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.Index(string(data), "# Read the releases list")
+	if cut < 0 {
+		t.Fatal("install-devapp.ps1 release section not found")
+	}
+	root := t.TempDir()
+	home := filepath.Join(root, "home")
+	source := filepath.Join(root, "external", "dingtalk-misc")
+	mustWriteFile(t, filepath.Join(source, "SKILL.md"), []byte("old dev skill\n"), 0o640)
+	linksCreated := false
+	if err := os.Symlink("SKILL.md", filepath.Join(source, "skill-link")); err == nil {
+		if err := os.Symlink("missing.md", filepath.Join(source, "dangling-link")); err != nil {
+			t.Fatal(err)
+		}
+		linksCreated = true
+	} else if runtime.GOOS != "windows" {
+		t.Fatal(err)
+	}
+
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	prefix += `
+function Move-DevSkillPath([string]$Source, [string]$Destination) {
+    if ($Source -eq $env:DWS_TEST_SOURCE) {
+        throw [System.IO.IOException]::new("injected cross-device rename", -2147024879)
+    }
+    Microsoft.PowerShell.Management\Move-Item -LiteralPath $Source -Destination $Destination -ErrorAction Stop
+}
+Backup-DevSkill $env:DWS_TEST_SOURCE
+if (Test-PathLexically $env:DWS_TEST_SOURCE) { exit 2 }
+`
+	harnessPath := filepath.Join(t.TempDir(), "install-devapp-cross-device-harness.ps1")
+	mustWriteFile(t, harnessPath, []byte(prefix), 0o644)
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+home, "DWS_TEST_SOURCE="+source)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("PowerShell devapp EXDEV backup failed: %v\n%s", err, output)
+	}
+	backup := findSkillBackup(home, "dingtalk-misc", "old dev skill\n")
+	if backup == "" {
+		t.Fatal("PowerShell devapp backup missing")
+	}
+	if linksCreated {
+		for name, want := range map[string]string{"skill-link": "SKILL.md", "dangling-link": "missing.md"} {
+			info, err := os.Lstat(filepath.Join(backup, name))
+			if err != nil || info.Mode()&os.ModeSymlink == 0 {
+				t.Fatalf("devapp %s must remain a symlink: %v, %v", name, info, err)
+			}
+			if got, err := os.Readlink(filepath.Join(backup, name)); err != nil || got != want {
+				t.Fatalf("devapp %s target = %q, %v; want %q", name, got, err, want)
+			}
+		}
+	}
+}
+
+func TestInstallDevappPowerShellPublishFailureRestoresAcrossDevice(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			pwsh, err = exec.LookPath("powershell")
+		}
+		if err != nil {
+			t.Skip("PowerShell is not available")
+		}
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-devapp.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.Index(string(data), "# Read the releases list")
+	if cut < 0 {
+		t.Fatal("install-devapp.ps1 release section not found")
+	}
+	root := t.TempDir()
+	home := filepath.Join(root, "home")
+	source := filepath.Join(root, "bundle", "dingtalk-misc")
+	destination := filepath.Join(root, "external", "dingtalk-misc")
+	mustWriteFile(t, filepath.Join(source, "SKILL.md"), []byte("new dev skill\n"), 0o640)
+	mustWriteFile(t, filepath.Join(destination, "SKILL.md"), []byte("old dev skill\n"), 0o644)
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	prefix += `
+function Move-DevSkillPath([string]$Source, [string]$Destination) {
+    if ($Source -match "[\\/].dws-dev-copy-[^\\/]+[\\/]payload$") { throw "injected publish failure" }
+    if ($Source -match "[\\/]skill-backups[\\/]" -and $Destination -eq $env:DWS_TEST_DESTINATION) {
+        throw [System.IO.IOException]::new("injected cross-device rollback", -2147024879)
+    }
+    Microsoft.PowerShell.Management\Move-Item -LiteralPath $Source -Destination $Destination -ErrorAction Stop
+}
+try {
+    Publish-DevSkillCopy $env:DWS_TEST_SOURCE $env:DWS_TEST_DESTINATION
+    exit 2
+} catch {
+    if ($_ -notmatch "injected publish failure") { Write-Error $_; exit 3 }
+}
+`
+	harnessPath := filepath.Join(t.TempDir(), "install-devapp-publish-rollback-harness.ps1")
+	mustWriteFile(t, harnessPath, []byte(prefix), 0o644)
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(),
+		"DWS_TEST_HOME="+home,
+		"DWS_TEST_SOURCE="+source,
+		"DWS_TEST_DESTINATION="+destination,
+	)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("PowerShell devapp publish rollback failed: %v\n%s", err, output)
+	}
+	if got, err := os.ReadFile(filepath.Join(destination, "SKILL.md")); err != nil || string(got) != "old dev skill\n" {
+		t.Fatalf("restored devapp content = %q, %v", got, err)
+	}
+	if matches, err := filepath.Glob(filepath.Join(filepath.Dir(destination), ".dws-dev-copy-*")); err != nil || len(matches) != 0 {
+		t.Fatalf("devapp publish staging leftovers = %v, %v", matches, err)
+	}
+}
+
 func TestInstallPowerShellMonoTransactionFailuresRestoreOldSet(t *testing.T) {
 	pwsh, err := exec.LookPath("pwsh")
 	if err != nil {
@@ -2416,10 +2859,32 @@ done
 case "$url" in
   *"/${FAKE_ASSET_NAME}") cp "$FAKE_RELEASE_DIR/$FAKE_ASSET_NAME" "$out" ;;
   *"/dws-skills.zip") cp "$FAKE_RELEASE_DIR/dws-skills.zip" "$out" ;;
+  *"/checksums.txt") cp "$FAKE_RELEASE_DIR/checksums.txt" "$out" ;;
   *) echo "fake curl: unexpected URL $url" >&2; exit 1 ;;
 esac
 `
 	mustWriteFile(t, path, []byte(script), 0o755)
+}
+
+func writeInstallerFixtureChecksums(t *testing.T, releaseDir string) {
+	t.Helper()
+	entries, err := os.ReadDir(releaseDir)
+	if err != nil {
+		t.Fatalf("ReadDir(%s) error = %v", releaseDir, err)
+	}
+	var lines []string
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Name() == "checksums.txt" {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(releaseDir, entry.Name()))
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", entry.Name(), err)
+		}
+		digest := sha256.Sum256(data)
+		lines = append(lines, hex.EncodeToString(digest[:])+"  "+entry.Name())
+	}
+	mustWriteFile(t, filepath.Join(releaseDir, "checksums.txt"), []byte(strings.Join(lines, "\n")+"\n"), 0o644)
 }
 
 func writeFakeGH(t *testing.T, path, version string) {

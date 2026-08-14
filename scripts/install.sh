@@ -141,6 +141,23 @@ sha256_stdin() {
   fi
 }
 
+verify_release_asset_checksum() {
+  _checksum_asset="$1"
+  _checksum_path="$2"
+  _checksum_dir="$3"
+  _checksum_url="$(asset_url checksums.txt)"
+  [ -n "$_checksum_url" ] || err "Could not resolve checksums.txt for ${VERSION}."
+  download "$_checksum_url" "$_checksum_dir/checksums.txt" 2>/dev/null || \
+    err "Could not download checksums.txt for ${VERSION}; refusing unverified ${_checksum_asset}."
+  _checksum_expected="$(awk -v file="$_checksum_asset" '$2 == file {print $1; exit}' "$_checksum_dir/checksums.txt")"
+  [ -n "$_checksum_expected" ] || err "${_checksum_asset} is missing from checksums.txt."
+  _checksum_actual="$(sha256_stdin < "$_checksum_path")" || \
+    err "Could not compute SHA256 for ${_checksum_asset}; install sha256sum, shasum, or openssl."
+  [ "$_checksum_actual" = "$_checksum_expected" ] || \
+    err "SHA256 checksum mismatch for ${_checksum_asset}. Expected ${_checksum_expected}, got ${_checksum_actual}."
+  say "✅ SHA256 checksum verified: ${_checksum_asset}"
+}
+
 digest_skill_dir() {
   _digest_dir="$1"
   _digest="$({
@@ -1085,32 +1102,7 @@ install_binary() {
 
   download "$download_url" "$tmpdir/$archive_name"
 
-  # Download and verify SHA256 checksum
-  checksum_url="$(asset_url checksums.txt)"
-  if download "$checksum_url" "$tmpdir/checksums.txt" 2>/dev/null; then
-    expected="$(awk -v file="$archive_name" '$2 == file {print $1; exit}' "$tmpdir/checksums.txt")"
-    if [ -n "$expected" ]; then
-      if need_cmd sha256sum; then
-        actual="$(sha256sum "$tmpdir/$archive_name" | awk '{print $1}')"
-      elif need_cmd shasum; then
-        actual="$(shasum -a 256 "$tmpdir/$archive_name" | awk '{print $1}')"
-      else
-        actual=""
-      fi
-      if [ -n "$actual" ] && [ "$actual" != "$expected" ]; then
-        err "SHA256 checksum mismatch! Expected ${expected}, got ${actual}. Aborting."
-      fi
-      if [ -n "$actual" ]; then
-        say "✅ SHA256 checksum verified"
-      else
-        say "⚠️  Could not compute checksum (sha256sum/shasum not found); skipping verification"
-      fi
-    else
-      say "⚠️  Archive not found in checksums.txt; skipping verification"
-    fi
-  else
-    say "⚠️  Could not download checksums.txt; skipping verification"
-  fi
+  verify_release_asset_checksum "$archive_name" "$tmpdir/$archive_name" "$tmpdir"
 
   say "📦 Extracting..."
   tar xzf "$tmpdir/$archive_name" -C "$tmpdir"
@@ -1174,6 +1166,8 @@ install_skills() {
       err "Cannot download skills from GitHub and no local source checkout found."
     fi
   fi
+
+  verify_release_asset_checksum "$skills_archive" "$tmpdir_skills/$skills_archive" "$tmpdir_skills"
 
   extract_root="$tmpdir_skills/skills"
   mkdir -p "$extract_root"

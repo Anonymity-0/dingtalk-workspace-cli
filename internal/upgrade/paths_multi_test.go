@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -732,6 +733,46 @@ func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
 	if _, err := os.Stat(victim); !os.IsNotExist(err) {
 		t.Fatalf("victim must be gone after backup, stat err=%v", err)
 	}
+
+	// A dangling link at the first backup target is still an occupied lexical
+	// path and must select a numbered target rather than being overwritten.
+	danglingVictim := filepath.Join(home, ".agents", "skills", "dangling-collision")
+	if err := os.MkdirAll(danglingVictim, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	danglingTaken := filepath.Join(home, skillBackupSubdir, "20260810-000000", ".agents-skills-dangling-collision")
+	if err := os.Symlink("missing-backup", danglingTaken); err == nil {
+		got, err = backupAndRemoveSkillDir(home, danglingVictim)
+		if err != nil {
+			t.Fatalf("backup with dangling collision error = %v", err)
+		}
+		want = filepath.Join(home, skillBackupSubdir, "20260810-000000-1", ".agents-skills-dangling-collision")
+		if got != want {
+			t.Fatalf("dangling collision backup path = %q, want %q", got, want)
+		}
+	} else if runtime.GOOS != "windows" {
+		t.Fatal(err)
+	}
+
+	// An unreadable target probe is not equivalent to a free path.
+	probeVictim := filepath.Join(home, "probe-victim")
+	if err := os.MkdirAll(probeVictim, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	probeTarget := filepath.Join(home, skillBackupSubdir, "20260810-000000", "probe-victim")
+	testseam.Swap(t, &upgradeLstat, func(path string) (os.FileInfo, error) {
+		if path == probeTarget {
+			return nil, errors.New("target probe denied")
+		}
+		return os.Lstat(path)
+	})
+	if _, err := backupAndRemoveSkillDir(home, probeVictim); err == nil || !strings.Contains(err.Error(), "检查备份目标失败") {
+		t.Fatalf("target probe error = %v", err)
+	}
+	if _, err := os.Stat(probeVictim); err != nil {
+		t.Fatalf("probe victim must survive target check failure: %v", err)
+	}
+	testseam.Swap(t, &upgradeLstat, os.Lstat)
 
 	// Unresolvable collision (>1000 numbered stamps taken) fails and keeps dir.
 	victim2 := filepath.Join(home, "victim2")

@@ -165,6 +165,14 @@ Agent 私有 global 目录；注册表中的 `globalSkillsDir` 仍用于识别�
 4. 逐项发布 staging；任一发布失败时删除已发布的新目录，并逆序恢复该目标的全部旧目录；
 5. 仅在没有目标失败且至少一个目标成功时更新状态快照。
 
+旧集合可能位于外部卷或自定义 Agent 根，而备份固定写入
+`~/.dws/skill-backups`。因此备份与反向恢复统一采用 rename-first：同卷直接原子
+rename；遇到跨文件系统错误时，在目标所在文件系统创建临时 staging，词法复制并
+保留目录/文件权限、普通文件、符号链接及 dangling symlink，校验路径类型、目录项、
+文件大小与 SHA256、链接目标后，再将 staging 原子 rename 为正式目标。正式目标
+再次校验成功后才删除源路径。复制、校验或发布失败时保留源并清理 staging；源删除
+失败时允许源与正式目标同时存在，但必须返回明确错误，不能报告成功。
+
 Go upgrade 当前提供 **单 Agent 目标级事务恢复**：复制失败发生在旧目录移动前；
 备份中途失败会恢复此前已移动的目录；发布中途失败会恢复该目标的完整旧集合。不同
 Agent 目标仍彼此独立，一个目标失败不会回滚此前已经成功升级的其他目标，这与
@@ -173,10 +181,18 @@ Agent 目标仍彼此独立，一个目标失败不会回滚此前已经成功�
 ## 9. 备份合同
 
 - 路径：`~/.dws/skill-backups/<UTC 时间戳>/...`；
-- 主要操作：同一文件系统内使用 rename 移动；
+- 主要操作：同一文件系统内使用 rename 移动；跨文件系统使用目标卷 staging 的
+  copy → verify → publish → remove 回退；
 - 失败语义：备份失败时原目录保持不变，目标安装失败；
+- 恢复语义：反向恢复使用相同回退；若删除备份源失败，原路径和备份可同时存在，
+  但恢复必须失败并明确提示两份均被保留；
 - 可见性：计划和执行日志显示原路径与备份路径；
 - 保留策略：自动修剪，仅保留最近 5 批。
+
+跨卷回退只有 staging → 正式目标的发布 rename 是原子的，整次迁移不是跨文件系统
+原子事务；该边界由“发布前不删源、发布后再次校验、删除失败保留两份”补偿。Shell
+入口继续使用系统 `mv` 的跨文件系统复制/删除能力；Go、npm 与 PowerShell 显式实现
+上述验证和失败合同。
 
 备份是安装安全机制，不等于独立 rollback 产品。需要切回 mono 时重新运行
 `dws skill setup --mode mono`。
@@ -226,6 +242,9 @@ Homebrew 不直接向 Agent home 铺设 Skill；安装 CLI 后由 setup 执行�
 - Windows、macOS、Linux 的路径和覆盖率门禁；
 - symlinked parent、Windows junction、链接失败复制回退与 broken link 修复；
 - Claude/Codex/Hermes 自定义根目录及 OpenClaw 历史目录优先级；
+- `CLAUDE_CONFIG_DIR`、`HERMES_HOME`、`XDG_CONFIG_HOME` 等自定义根跨文件系统时的
+  正向备份、反向恢复、普通链接及 dangling symlink 词法保留；
+- copy、verify、publish、remove 各阶段故障，以及非跨设备权限错误不得进入复制回退；
 - npm、Shell、PowerShell 与包管理器安装冒烟。
 
 ## 13. 后续演进

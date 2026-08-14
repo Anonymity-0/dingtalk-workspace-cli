@@ -65,7 +65,10 @@ const {
   UPSTREAM_AGENTS,
   resolvedAgentTargets,
   agentTargetDetected,
+  backupAndRemoveSkillDir,
+  movePathRecoverablySync,
   publishCacheAtomically,
+  publishCanonicalLinksAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
 } = require(installJsSource);
@@ -124,6 +127,175 @@ function writeManagedState(home, names) {
     updated_at: "2026-01-01T00:00:00Z",
   };
   writeFile(path.join(home, ".dws", "skills-state.json"), `${JSON.stringify(state, null, 2)}\n`);
+}
+
+function crossDeviceError() {
+  return Object.assign(new Error("injected cross-device rename"), { code: "EXDEV" });
+}
+
+function runCrossDeviceMoveContract() {
+  const roots = [];
+  const fixture = (name) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), `dws-installjs-exdev-${name}-`));
+    roots.push(root);
+    const src = path.join(root, "external", "skill");
+    const dest = path.join(root, "home", ".dws", "skill-backups", "stamp", "skill");
+    writeFile(path.join(src, "SKILL.md"), "old skill\n", 0o640);
+    return { root, src, dest };
+  };
+  const injectedRename = (source, target) => {
+    if (path.basename(source) === "skill" && path.basename(target) === "skill") {
+      throw crossDeviceError();
+    }
+    fs.renameSync(source, target);
+  };
+  try {
+    {
+      const { src, dest } = fixture("success");
+      fs.symlinkSync("SKILL.md", path.join(src, "skill-link"));
+      fs.symlinkSync("missing.md", path.join(src, "dangling-link"));
+      movePathRecoverablySync(src, dest, { renameFn: injectedRename });
+      assert.equal(fs.lstatSync(dest).isDirectory(), true);
+      assert.equal(fs.statSync(path.join(dest, "SKILL.md")).mode & 0o777, 0o640);
+      assert.equal(fs.lstatSync(path.join(dest, "skill-link")).isSymbolicLink(), true);
+      assert.equal(fs.readlinkSync(path.join(dest, "skill-link")), "SKILL.md");
+      assert.equal(fs.lstatSync(path.join(dest, "dangling-link")).isSymbolicLink(), true);
+      assert.equal(fs.readlinkSync(path.join(dest, "dangling-link")), "missing.md");
+      assert.equal(fs.existsSync(src), false, "verified EXDEV move removes source last");
+
+      const restored = path.join(path.dirname(src), "restored-skill");
+      movePathRecoverablySync(dest, restored, {
+        renameFn(source, target) {
+          if (source === dest && target === restored) throw crossDeviceError();
+          fs.renameSync(source, target);
+        },
+      });
+      assert.equal(fs.readFileSync(path.join(restored, "SKILL.md"), "utf8"), "old skill\n");
+      assert.equal(fs.existsSync(dest), false, "EXDEV rollback consumes verified backup");
+    }
+
+    for (const [name, options] of [
+      ["copy", { copyFn() { throw new Error("copy failed"); } }],
+      ["verify", { verifyFn() { throw new Error("verify failed"); } }],
+    ]) {
+      const { root, src, dest } = fixture(name);
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, { renameFn: injectedRename, ...options }),
+        new RegExp(`${name} failed`),
+      );
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+      assert.equal(fs.existsSync(dest), false);
+      const backupParent = path.dirname(dest);
+      if (fs.existsSync(backupParent)) {
+        assert.equal(
+          fs.readdirSync(backupParent).some((entry) => entry.startsWith(".skill.cross-device-")),
+          false,
+          `${name} failure cleans destination-filesystem staging`,
+        );
+      }
+      assert.ok(root);
+    }
+
+    {
+      const { src, dest } = fixture("remove");
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, {
+          renameFn: injectedRename,
+          removeFn(target) {
+            if (target === src) throw new Error("remove failed");
+            fs.rmSync(target, { recursive: true, force: true });
+          },
+        }),
+        /both copies retained .*remove failed/,
+      );
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+      assert.equal(fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"), "old skill\n");
+    }
+
+    {
+      const { src, dest } = fixture("read-only");
+      fs.chmodSync(src, 0o555);
+      movePathRecoverablySync(src, dest, { renameFn: injectedRename });
+      assert.equal(fs.statSync(dest).mode & 0o777, 0o555, "read-only directory mode is restored after publish");
+      assert.equal(fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"), "old skill\n");
+      fs.chmodSync(dest, 0o755);
+    }
+
+    {
+      const { src, dest } = fixture("read-only-remove-failure");
+      fs.chmodSync(src, 0o555);
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, {
+          renameFn: injectedRename,
+          removeFn(target) {
+            if (target === src) throw new Error("remove failed");
+            fs.rmSync(target, { recursive: true, force: true });
+          },
+        }),
+        /both copies retained .*remove failed/,
+      );
+      assert.equal(fs.statSync(src).mode & 0o777, 0o555, "failed removal restores source directory mode");
+      fs.chmodSync(src, 0o755);
+      fs.chmodSync(dest, 0o755);
+    }
+
+    {
+      const { src, dest } = fixture("permission");
+      let copied = false;
+      const permission = Object.assign(new Error("permission denied"), { code: "EACCES" });
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, {
+          renameFn() { throw permission; },
+          copyFn() { copied = true; },
+        }),
+        /permission denied/,
+      );
+      assert.equal(copied, false, "EACCES must not be mistaken for EXDEV");
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+    }
+
+    {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-dangling-collision-"));
+      roots.push(root);
+      const home = path.join(root, "home");
+      const victim = path.join(home, ".agents", "skills", "dingtalk-chat");
+      writeFile(path.join(victim, "SKILL.md"), "old\n");
+      const stamp = "20260813-150000";
+      const occupied = path.join(home, ".dws", "skill-backups", stamp, ".agents-skills-dingtalk-chat");
+      fs.mkdirSync(path.dirname(occupied), { recursive: true });
+      fs.symlinkSync("missing-backup", occupied);
+      const backup = backupAndRemoveSkillDir(home, victim, null, { backupStampFn: () => stamp });
+      assert.ok(backup.includes(`${stamp}-1`), "dangling backup target selects a numbered sibling");
+      assert.equal(fs.readlinkSync(occupied), "missing-backup", "dangling collision is never overwritten");
+    }
+
+    {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-link-rollback-"));
+      roots.push(root);
+      const home = path.join(root, "home");
+      const canonical = path.join(home, ".agents", "skills");
+      const base = path.join(home, ".cursor", "skills");
+      const canonicalSkill = path.join(canonical, "dingtalk-chat");
+      const victim = path.join(base, "dingtalk-chat");
+      writeFile(path.join(canonicalSkill, "SKILL.md"), "new\n");
+      writeFile(path.join(victim, "SKILL.md"), "old\n");
+      assert.throws(
+        () => publishCanonicalLinksAtomically(home, canonical, base, ["dingtalk-chat"], [victim], {
+          renameFn(source, target) {
+            if (source === victim || (source.includes(`${path.sep}skill-backups${path.sep}`) && target === victim)) {
+              throw crossDeviceError();
+            }
+            fs.renameSync(source, target);
+          },
+          publishRenameFn() { throw new Error("link publish failed"); },
+        }),
+        /link publish failed/,
+      );
+      assert.equal(fs.readFileSync(path.join(victim, "SKILL.md"), "utf8"), "old\n");
+    }
+  } finally {
+    for (const root of roots) fs.rmSync(root, { recursive: true, force: true });
+  }
 }
 
 // stagePkg builds a fake npm package whose assets/dws-skills.zip contains
@@ -300,33 +472,54 @@ scenario("upstream Agent roots honor XDG and custom homes with relative links", 
   });
   const xdg = path.join(tmp, "xdg config");
   const autohand = path.join(tmp, "autohand home");
+  const claude = path.join(tmp, "claude config");
   const codex = path.join(tmp, "codex home");
+  const hermes = path.join(tmp, "hermes home");
   try {
     writeFile(path.join(xdg, "goose", "config.yaml"), "enabled: true\n");
     writeFile(path.join(xdg, "agents", "detection.marker"), "amp\n");
     writeFile(path.join(xdg, "agents", "skills", "dingtalk-chat", "SKILL.md"), "old amp copy\n");
     writeFile(path.join(autohand, "config.json"), "{}\n");
+    writeFile(path.join(claude, "config.json"), "{}\n");
+    writeFile(path.join(claude, "skills", "dingtalk-chat", "SKILL.md"), "old claude copy\n");
     writeFile(path.join(codex, "config.toml"), "model=test\n");
     writeFile(path.join(codex, "skills", "dingtalk-chat", "SKILL.md"), "old codex copy\n");
+    writeFile(path.join(hermes, "config.json"), "{}\n");
+    writeFile(path.join(hermes, "skills", "dingtalk-chat", "SKILL.md"), "old hermes copy\n");
     writeFile(path.join(home, ".qoderwork", "config.json"), "{}\n");
     writeFile(path.join(home, ".amp", "skills", "dingtalk-chat", "SKILL.md"), "old DWS path\n");
 
     const res = runInstall(pkg, home, "multi", {
       XDG_CONFIG_HOME: xdg,
       AUTOHAND_HOME: autohand,
+      CLAUDE_CONFIG_DIR: claude,
       CODEX_HOME: codex,
+      HERMES_HOME: hermes,
     });
     assert.equal(res.status, 0, `exit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`);
 
     for (const linked of [
       path.join(xdg, "goose", "skills", "dingtalk-chat"),
       path.join(autohand, "skills", "dingtalk-chat"),
+      path.join(claude, "skills", "dingtalk-chat"),
+      path.join(hermes, "skills", "dingtalk-chat"),
       path.join(home, ".qoderwork", "skills", "dingtalk-chat"),
     ]) {
       assert.ok(fs.lstatSync(linked).isSymbolicLink(), `${linked} is linked`);
       assert.ok(!path.isAbsolute(fs.readlinkSync(linked)), `${linked} uses a relative link`);
       assert.equal(fs.readFileSync(path.join(linked, "SKILL.md"), "utf8"), "# dingtalk-chat\n");
     }
+    const backupText = [];
+    const collectBackupText = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) collectBackupText(full);
+        else if (entry.isFile()) backupText.push(fs.readFileSync(full, "utf8"));
+      }
+    };
+    collectBackupText(path.join(home, ".dws", "skill-backups"));
+    assert.ok(backupText.includes("old claude copy\n"), "CLAUDE_CONFIG_DIR content is recoverably backed up");
+    assert.ok(backupText.includes("old hermes copy\n"), "HERMES_HOME content is recoverably backed up");
     for (const retired of [
       path.join(xdg, "agents", "skills", "dingtalk-chat"),
       path.join(codex, "skills", "dingtalk-chat"),
@@ -518,6 +711,13 @@ scenario("multi set publish failure restores the complete previous set", () => {
           [first, second],
           {
             renameFn(src, dest) {
+              if (
+                src === first ||
+                src === second ||
+                (src.includes(`${path.sep}skill-backups${path.sep}`) && (dest === first || dest === second))
+              ) {
+                throw crossDeviceError();
+              }
               if (src.includes(".dws-multi-set.tmp-") && path.basename(src) === "dingtalk-second") {
                 throw new Error("injected second publish failure");
               }
@@ -603,6 +803,14 @@ for (const failureKind of ["backup", "publish"]) {
               }
               if (
                 failureKind === "publish" &&
+                (src === first ||
+                  src === second ||
+                  (src.includes(`${path.sep}skill-backups${path.sep}`) && (target === first || target === second)))
+              ) {
+                throw crossDeviceError();
+              }
+              if (
+                failureKind === "publish" &&
                 src.includes(".dws-mono-set.tmp-") &&
                 path.basename(src) === "dws"
               ) {
@@ -625,6 +833,10 @@ for (const failureKind of ["backup", "publish"]) {
     }
   });
 }
+
+process.stdout.write("• EXDEV copy/verify/remove and transaction rollback contract ... ");
+runCrossDeviceMoveContract();
+process.stdout.write("ok\n");
 
 for (const [name, fn] of scenarios) {
   process.stdout.write(`• ${name} ... `);
