@@ -15,3 +15,7 @@ func skillPathFileIncarnation(info os.FileInfo) string {
 	}
 	return fmt.Sprintf("%d:%d:%d:%d", stat.Dev, stat.Ino, stat.Ctim.Sec, stat.Ctim.Nsec)
 }
+
+func skillPathSameFileIdentity(left, right os.FileInfo) bool {
+	return os.SameFile(left, right)
+}
