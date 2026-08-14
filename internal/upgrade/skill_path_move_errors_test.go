@@ -171,6 +171,19 @@ func TestCrossPlatformCoverageSkillPathPermissionRestorationErrors(t *testing.T)
 		}
 	})
 
+	t.Run("writable mode preparation chmod error", func(t *testing.T) {
+		entry := skillPathModeDirEntry{mode: os.ModeDir | 0o500}
+		testseam.Swap(t, &skillPathWalkDir, func(root string, fn fs.WalkDirFunc) error {
+			return fn(root, entry, nil)
+		})
+		testseam.Swap(t, &skillPathChmod, func(string, os.FileMode) error {
+			return errors.New("chmod failed")
+		})
+		if _, err := prepareSkillPathTreeRemoval("source"); err == nil || !strings.Contains(err.Error(), "chmod failed") {
+			t.Fatalf("error = %v", err)
+		}
+	})
+
 	t.Run("entry info error", func(t *testing.T) {
 		testseam.Swap(t, &skillPathWalkDir, func(root string, fn fs.WalkDirFunc) error {
 			return fn(root, skillPathErrorDirEntry{}, nil)
