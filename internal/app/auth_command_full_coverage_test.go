@@ -1457,7 +1457,7 @@ func TestCrossPlatformCoverageAuthCoveragePortableExchangeAndReset(t *testing.T)
 	authRemove = func(string) error { removed++; return errors.New("ignored") }
 	authDeleteAppConfig = func(string) error { removed++; return errors.New("ignored") }
 	edition.Override(&edition.Hooks{})
-	if err := reset.RunE(reset, nil); err != nil || removed != 3 || !strings.Contains(out.String(), "重新登录") {
+	if err := reset.RunE(reset, nil); err != nil || removed != 4 || !strings.Contains(out.String(), "重新登录") {
 		t.Fatalf("reset = %q, %v, removed=%d", out.String(), err, removed)
 	}
 	edition.Override(&edition.Hooks{IsEmbedded: true})

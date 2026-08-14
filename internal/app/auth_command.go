@@ -60,6 +60,14 @@ type authLoginEndpointOverrides struct {
 	MCPURL   string
 }
 
+type authLoginMCPPersistence uint8
+
+const (
+	authLoginMCPUseDefault authLoginMCPPersistence = iota
+	authLoginMCPUseManagedRegion
+	authLoginMCPUseExplicitOverride
+)
+
 type authLoginGuideAction string
 
 const (
@@ -154,7 +162,7 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 				restoreLoginBaseURL := authpkg.PushLoginBaseURLOverride(preOverrides.LoginURL)
 				defer restoreLoginBaseURL()
 			}
-			mcpBaseURL, persistMCPURL, err := authLoginMCPBaseURLForConfig(cfg, preOverrides)
+			mcpBaseURL, mcpPersistence, err := authLoginMCPBaseURLForConfig(cfg, preOverrides)
 			if err != nil {
 				return err
 			}
@@ -224,7 +232,7 @@ func newAuthLoginCommand(patCaller edition.ToolCaller) *cobra.Command {
 			}
 
 			if tokenData != nil {
-				if err := persistAuthLoginMCPBaseURL(configDir, mcpBaseURL, persistMCPURL); err != nil {
+				if err := persistAuthLoginMCPBaseURL(configDir, mcpBaseURL, mcpPersistence); err != nil {
 					return apperrors.NewInternal(fmt.Sprintf("failed to persist MCP URL: %v", err))
 				}
 			}
@@ -1019,6 +1027,7 @@ func newAuthResetCommand() *cobra.Command {
 				return apperrors.NewInternal(fmt.Sprintf("failed to reset token data: %v", err))
 			}
 			_ = authRemove(filepath.Join(configDir, "mcp_url"))
+			_ = authRemove(filepath.Join(configDir, config.ManagedMCPURLRegionFileName))
 			_ = authRemove(filepath.Join(configDir, "token"))
 			_ = authDeleteAppConfig(configDir)
 			ResetRuntimeTokenCache()
@@ -1362,35 +1371,84 @@ func authLoginEndpointOverridesForPreURL(raw string) (authLoginEndpointOverrides
 	}
 }
 
-func authLoginMCPBaseURLForConfig(cfg authLoginConfig, preOverrides authLoginEndpointOverrides) (string, bool, error) {
+func authLoginMCPBaseURLForConfig(cfg authLoginConfig, preOverrides authLoginEndpointOverrides) (string, authLoginMCPPersistence, error) {
 	if cfg.MCPURL != "" {
 		_, normalized, err := normalizeAuthLoginBaseURL(cfg.MCPURL, "--mcp-url")
 		if err != nil {
-			return "", false, err
+			return "", authLoginMCPUseDefault, err
 		}
-		return normalized, true, nil
+		return normalized, authLoginMCPUseExplicitOverride, nil
 	}
 	if cfg.PreURL != "" {
 		if preOverrides.MCPURL == "" {
 			var err error
 			preOverrides, err = authLoginEndpointOverridesForPreURL(cfg.PreURL)
 			if err != nil {
-				return "", false, err
+				return "", authLoginMCPUseDefault, err
 			}
 		}
-		return preOverrides.MCPURL, true, nil
+		return preOverrides.MCPURL, authLoginMCPUseExplicitOverride, nil
 	}
 	if cfg.International {
-		return authpkg.InternationalMCPBaseURL, true, nil
+		return authpkg.InternationalMCPBaseURL, authLoginMCPUseManagedRegion, nil
 	}
-	return authpkg.DefaultMCPBaseURL, false, nil
+	return authpkg.DefaultMCPBaseURL, authLoginMCPUseDefault, nil
 }
 
-func persistAuthLoginMCPBaseURL(configDir, mcpBaseURL string, persist bool) error {
-	if !persist {
+func persistAuthLoginMCPBaseURL(configDir, mcpBaseURL string, persistence authLoginMCPPersistence) error {
+	mcpURLPath := filepath.Join(configDir, "mcp_url")
+	managedRegionPath := filepath.Join(configDir, config.ManagedMCPURLRegionFileName)
+
+	switch persistence {
+	case authLoginMCPUseExplicitOverride:
+		if err := removeAuthLoginManagedMCPRegion(managedRegionPath); err != nil {
+			return fmt.Errorf("clear managed MCP region: %w", err)
+		}
+		if err := authAtomicWrite(mcpURLPath, []byte(mcpBaseURL), config.FilePerm); err != nil {
+			return fmt.Errorf("save explicit MCP URL: %w", err)
+		}
 		return nil
+	case authLoginMCPUseManagedRegion:
+		if err := authAtomicWrite(managedRegionPath, []byte(mcpBaseURL), config.FilePerm); err != nil {
+			return fmt.Errorf("save managed MCP region: %w", err)
+		}
+		if err := authAtomicWrite(mcpURLPath, []byte(mcpBaseURL), config.FilePerm); err != nil {
+			_ = authRemove(managedRegionPath)
+			return fmt.Errorf("save managed MCP URL: %w", err)
+		}
+		return nil
+	case authLoginMCPUseDefault:
+		managedURL, err := authReadFile(managedRegionPath)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("read managed MCP region: %w", err)
+		}
+		currentURL, err := authReadFile(mcpURLPath)
+		if os.IsNotExist(err) {
+			return removeAuthLoginManagedMCPRegion(managedRegionPath)
+		}
+		if err != nil {
+			return fmt.Errorf("read MCP URL: %w", err)
+		}
+		if strings.TrimSpace(string(currentURL)) != strings.TrimSpace(string(managedURL)) {
+			return removeAuthLoginManagedMCPRegion(managedRegionPath)
+		}
+		if err := authAtomicWrite(mcpURLPath, []byte(mcpBaseURL), config.FilePerm); err != nil {
+			return fmt.Errorf("restore default MCP URL: %w", err)
+		}
+		return removeAuthLoginManagedMCPRegion(managedRegionPath)
+	default:
+		return fmt.Errorf("unsupported MCP persistence mode %d", persistence)
 	}
-	return authpkg.NewManager(configDir, nil).SaveMCPURL(mcpBaseURL)
+}
+
+func removeAuthLoginManagedMCPRegion(path string) error {
+	if err := authRemove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 func normalizeAuthLoginBaseURL(raw, flagName string) (*url.URL, string, error) {

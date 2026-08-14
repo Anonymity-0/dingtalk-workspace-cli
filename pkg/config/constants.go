@@ -166,6 +166,11 @@ const (
 	// Override at runtime via ~/.dws/mcp_url file.
 	DefaultMCPBaseURL = "https://mcp.dingtalk.com"
 
+	// ManagedMCPURLRegionFileName records an MCP URL written automatically by
+	// login region selection, so a later region change does not delete a user's
+	// explicit MCP override.
+	ManagedMCPURLRegionFileName = "mcp_url.login_region"
+
 	// DefaultTerminalBaseURL is the DingTalk developer platform base URL.
 	// Override at runtime via ~/.dws/terminal_url file.
 	DefaultTerminalBaseURL = "https://open-dev.dingtalk.com"

@@ -36,6 +36,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillstate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/transport"
 	upgradepkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/upgrade"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/config"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/mcptypes"
 	tea "github.com/charmbracelet/bubbletea"
@@ -997,6 +998,41 @@ func TestCrossPlatformCoverageAuthLoginTokenCommandCoverage(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("international then domestic login restores domestic MCP URL", func(t *testing.T) {
+		configDir := t.TempDir()
+		t.Setenv("DWS_CONFIG_DIR", configDir)
+		runLogin := func(international bool) {
+			t.Helper()
+			root := &cobra.Command{Use: "dws"}
+			root.PersistentFlags().String("format", "table", "")
+			root.PersistentFlags().Bool("yes", false, "")
+			root.PersistentFlags().String("profile", "", "")
+			root.AddCommand(newAuthLoginCommand(nil))
+			args := []string{"login", "--token", "manual-token", "--yes"}
+			if international {
+				args = append(args, "--intl")
+			}
+			root.SetArgs(args)
+			root.SetOut(io.Discard)
+			root.SetErr(io.Discard)
+			if err := root.Execute(); err != nil {
+				t.Fatalf("international=%v login error = %v", international, err)
+			}
+		}
+
+		runLogin(true)
+		if data, err := os.ReadFile(filepath.Join(configDir, "mcp_url")); err != nil || string(data) != authpkg.InternationalMCPBaseURL {
+			t.Fatalf("international mcp_url = %q, %v", string(data), err)
+		}
+		runLogin(false)
+		if data, err := os.ReadFile(filepath.Join(configDir, "mcp_url")); err != nil || string(data) != authpkg.DefaultMCPBaseURL {
+			t.Fatalf("domestic mcp_url = %q, %v", string(data), err)
+		}
+		if _, err := os.Stat(filepath.Join(configDir, config.ManagedMCPURLRegionFileName)); !os.IsNotExist(err) {
+			t.Fatalf("managed MCP region marker remains: %v", err)
+		}
+	})
 
 	for _, hidden := range []bool{false, true} {
 		old := edition.Get()
