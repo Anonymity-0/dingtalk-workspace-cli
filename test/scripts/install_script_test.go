@@ -1544,15 +1544,18 @@ if link_canonical_skills_to_base "$HOME" "$DWS_TEST_BASE" multi; then
   exit 2
 fi
 identity_dest="$DWS_TEST_BASE/identity-link"
+identity_anchor="$HOME/identity-anchor"
 identity_manifest="$HOME/identity.manifest"
-command ln -s ../same-target "$identity_dest"
-identity_inode="$(skill_link_inode "$identity_dest")"
+command ln -s ../same-target "$identity_anchor"
+command ln -P "$identity_anchor" "$identity_dest"
+identity_inode="$(skill_link_inode "$identity_anchor")"
 printf '%s\n%s\n%s\n' "$identity_dest" ../same-target "$identity_inode" > "$identity_manifest"
 rm -f "$identity_dest"
 command ln -s ../same-target "$identity_dest"
 if restore_linked_skill_set "$identity_manifest" /dev/null; then
   exit 3
 fi
+rm -f "$identity_anchor"
 `
 			cmd := exec.Command("sh", "-c", harness)
 			cmd.Env = append(os.Environ(),
