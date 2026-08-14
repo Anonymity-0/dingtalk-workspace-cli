@@ -162,8 +162,9 @@ func TestCrossPlatformCoverageCanonicalSkillLinksFallBackToCopies(t *testing.T) 
 }
 
 func TestCrossPlatformCoverageConfiguredRootsDetectShallowAndApplicationAgents(t *testing.T) {
+	// Keep the destination HOME synthetic: app-bundle detection is deliberately
+	// machine-scoped and must not depend on the selected installation HOME.
 	home := t.TempDir()
-	testseam.Swap(t, &upgradeSystemHomeDir, func() (string, error) { return home, nil })
 	testseam.Swap(t, &upgradeGetenv, func(string) string { return "" })
 	for _, dir := range []string{filepath.Join(home, ".config", "kimchi"), filepath.Join(home, ".tabnine")} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -196,7 +197,7 @@ func TestCrossPlatformCoverageConfiguredRootsDetectShallowAndApplicationAgents(t
 	for _, root := range configuredSkillRoots(home) {
 		label := filepath.ToSlash(root.label)
 		if _, ok := want[label]; ok {
-			want[label] = skillRootDetectedBase(home, root)
+			want[label] = skillRootDetectedBase(root)
 		}
 	}
 	for label, detected := range want {
