@@ -136,6 +136,9 @@ var NodeCopy = writeShortcut("+node-copy", "复制知识库节点并读回验证
 	if err != nil {
 		return err
 	}
+	if firstWikiString(verified, "nodeId", "id", "fileId") != id {
+		return wikiResponseError("doc/copy_document", "readback_id_mismatch", "复制后读回节点 ID 不一致")
+	}
 	return rt.Output(map[string]any{"success": true, "sourceNodeId": rt.Str("node"), "nodeId": id, "copy": verified})
 })
 

@@ -628,6 +628,10 @@ func TestCrossPlatformCoverageWikiNodeFailureBranches(t *testing.T) {
 	assertErr("copy id", &wikiCoverageCaller{responses: map[string][]string{"doc/copy_document": {`{"success":true}`}}}, copyArgs...)
 	assertErr("copy readback call", &wikiCoverageCaller{responses: map[string][]string{"doc/copy_document": {`{"success":true,"fileId":"n"}`}}, errors: map[string][]error{"doc/get_document_info": {backend}}}, copyArgs...)
 	assertErr("copy readback object", &wikiCoverageCaller{responses: map[string][]string{"doc/copy_document": {`{"success":true,"fileId":"n"}`}, "doc/get_document_info": {`{"success":true}`}}}, copyArgs...)
+	copyMismatch := &wikiCoverageCaller{responses: map[string][]string{"doc/copy_document": {`{"success":true,"result":{"fileId":"n"}}`}, "doc/get_document_info": {`{"success":true,"result":{"nodeId":"other"}}`}}}
+	if _, err := runWikiCoverageCLI(t, copyMismatch, copyArgs...); err == nil || !strings.Contains(err.Error(), "不一致") {
+		t.Fatalf("copy mismatch error=%v calls=%#v", err, copyMismatch.calls)
+	}
 
 	moveArgs := []string{"+move", "--workspace", "target", "--node", "n", "--yes"}
 	assertErr("move preflight call", &wikiCoverageCaller{errors: map[string][]error{"doc/get_document_info": {backend}}}, moveArgs...)
