@@ -336,6 +336,35 @@ func TestRecruitListResultData(t *testing.T) {
 	if err != nil || !terminal.Pagination.EndpointExhausted || terminal.Pagination.NextToken != "" {
 		t.Fatalf("terminal meta = %#v, err = %v", terminal, err)
 	}
+
+	wrapped, wrappedMeta, err := recruitListResultData(map[string]any{
+		"success": true,
+		"result": map[string]any{
+			"list":       []any{map[string]any{"jobId": "job-2", "name": "测试工程师"}},
+			"hasMore":    false,
+			"nextCursor": nil,
+			"totalCount": float64(1),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrappedData := wrapped.(map[string]any)
+	jobs, ok := wrappedData["jobs"].([]any)
+	if !ok || len(jobs) != 1 || wrappedData["totalCount"] != float64(1) {
+		t.Fatalf("wrapped data = %#v", wrappedData)
+	}
+	if _, exists := wrappedData["list"]; exists {
+		t.Fatalf("wrapped data retained Connector list field: %#v", wrappedData)
+	}
+	if wrappedMeta.Count == nil || *wrappedMeta.Count != 1 || !wrappedMeta.Pagination.EndpointExhausted {
+		t.Fatalf("wrapped meta = %#v", wrappedMeta)
+	}
+
+	if _, _, err := recruitListResultData(map[string]any{"result": nil}); err == nil ||
+		!strings.Contains(err.Error(), "result 必须是 JSON 对象") {
+		t.Fatalf("nil result error = %v", err)
+	}
 }
 
 func TestRecruitResultCallPropagatesMCPError(t *testing.T) {

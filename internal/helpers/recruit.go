@@ -169,6 +169,17 @@ func recruitListResultData(data any) (any, *output.Meta, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("list_jobs 返回值必须是 JSON 对象")
 	}
+	// The recruit Connector returns the ATS service envelope unchanged:
+	// {success:true,result:{list:[...],hasMore:false,nextCursor:null}}.
+	// Keep accepting the historical flattened shape as well, but normalize the
+	// fixed Connector shape before enforcing the public CLI result contract.
+	if nested, exists := object["result"]; exists {
+		var nestedOK bool
+		object, nestedOK = nested.(map[string]any)
+		if !nestedOK {
+			return nil, nil, fmt.Errorf("list_jobs 返回值的 result 必须是 JSON 对象")
+		}
+	}
 	hasMore, ok := object["hasMore"].(bool)
 	if !ok {
 		return nil, nil, fmt.Errorf("list_jobs 返回值缺少布尔字段 hasMore")
@@ -195,6 +206,12 @@ func recruitListResultData(data any) (any, *output.Meta, error) {
 		if key != "hasMore" && key != "nextCursor" {
 			clean[key] = value
 		}
+	}
+	if jobs, exists := clean["list"]; exists {
+		if _, alreadyNormalized := clean["jobs"]; !alreadyNormalized {
+			clean["jobs"] = jobs
+		}
+		delete(clean, "list")
 	}
 	pagination := &output.Pagination{EndpointExhausted: !hasMore, NextToken: nextToken, Pages: 1}
 	meta := &output.Meta{Pagination: pagination}
