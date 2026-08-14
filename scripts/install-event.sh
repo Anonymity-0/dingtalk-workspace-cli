@@ -39,6 +39,28 @@ say() { printf '  %s\n' "$@"; }
 err() { printf '  ERROR: %s\n' "$@" >&2; exit 1; }
 need_cmd() { command -v "$1" >/dev/null 2>&1 || err "Missing required command: $1"; }
 
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v openssl >/dev/null 2>&1; then openssl dgst -sha256 "$1" | awk '{print $NF}'
+  else return 1
+  fi
+}
+
+verify_release_asset() {
+  name="$1"; file="$2"
+  checksums="$tmp/checksums.txt"
+  if [ ! -f "$checksums" ]; then
+    curl -fsSL "https://github.com/${EVENT_REPO}/releases/download/${EVENT_VERSION}/checksums.txt" -o "$checksums" \
+      || err "Could not download checksums.txt; refusing unverified release assets."
+  fi
+  expected="$(awk -v asset="$name" '$2 == asset {print $1; exit}' "$checksums")"
+  [ -n "$expected" ] || err "${name} is missing from checksums.txt."
+  actual="$(sha256_file "$file")" || err "Could not compute SHA256 for ${name}."
+  [ "$actual" = "$expected" ] || err "SHA256 checksum mismatch for ${name}."
+  say "SHA256 checksum verified: ${name}"
+}
+
 detect_os() {
   case "$(uname -s)" in
     Linux*)  echo linux ;;
@@ -283,6 +305,7 @@ install_binary() {
   say "Downloading ${asset} ..."
   curl -fsSL "https://github.com/${EVENT_REPO}/releases/download/${EVENT_VERSION}/${asset}" -o "$tmp/$asset" \
     || err "Binary download failed. Does release ${EVENT_VERSION} have ${asset}?"
+  verify_release_asset "$asset" "$tmp/$asset"
 
   if [ "$os" = "windows" ]; then
     extract_zip "$tmp/$asset" "$tmp/bin"
@@ -311,6 +334,7 @@ install_skills() {
   say "Downloading dws-skills.zip ..."
   curl -fsSL "https://github.com/${EVENT_REPO}/releases/download/${EVENT_VERSION}/dws-skills.zip" -o "$tmp/dws-skills.zip" \
     || err "dws-skills.zip download failed for release ${EVENT_VERSION}"
+  verify_release_asset "dws-skills.zip" "$tmp/dws-skills.zip"
 
   mkdir -p "$tmp/skills"
   extract_zip "$tmp/dws-skills.zip" "$tmp/skills"

@@ -109,13 +109,201 @@ function Test-PathLexically([string]$path) {
         Where-Object { $_.Name -eq $leaf } | Select-Object -First 1)
 }
 
-function Backup-DevSkill([string]$path) {
+function Move-DevSkillPath([string]$Source, [string]$Destination) {
+    Move-Item -LiteralPath $Source -Destination $Destination -ErrorAction Stop
+}
+
+function Test-DevCrossDeviceMoveError([System.Management.Automation.ErrorRecord]$Record) {
+    $exception = $Record.Exception
+    while ($null -ne $exception) {
+        if (($exception.HResult -band 0xffff) -eq 17) { return $true }
+        $exception = $exception.InnerException
+    }
+    return $false
+}
+
+function Copy-DevSkillMetadata($SourceItem, [string]$Destination) {
+    (Get-Item -LiteralPath $Destination -Force -ErrorAction Stop).Attributes = $SourceItem.Attributes
+    $nativeWindows = $env:OS -eq "Windows_NT" -or $PSVersionTable.PSEdition -eq "Desktop"
+    if ($nativeWindows) {
+        Set-Acl -LiteralPath $Destination -AclObject (Get-Acl -LiteralPath $SourceItem.FullName -ErrorAction Stop) -ErrorAction Stop
+    } else {
+        $mode = [System.IO.File]::GetUnixFileMode($SourceItem.FullName)
+        [System.IO.File]::SetUnixFileMode($Destination, $mode)
+    }
+}
+
+function Get-DevSkillPermissionFingerprint([string]$Path) {
+    $nativeWindows = $env:OS -eq "Windows_NT" -or $PSVersionTable.PSEdition -eq "Desktop"
+    if ($nativeWindows) { return (Get-Acl -LiteralPath $Path -ErrorAction Stop).Sddl }
+    return [string][System.IO.File]::GetUnixFileMode($Path)
+}
+
+function Copy-DevSkillPathLexically([string]$Source, [string]$Destination) {
+    $item = Get-Item -LiteralPath $Source -Force -ErrorAction Stop
+    if ($item.LinkType) {
+        $itemType = if ($item.LinkType -eq "Junction") { "Junction" } else { "SymbolicLink" }
+        New-Item -ItemType $itemType -Path $Destination -Target $item.Target -ErrorAction Stop | Out-Null
+        return
+    }
+    if ($item.PSIsContainer) {
+        New-Item -ItemType Directory -Path $Destination -ErrorAction Stop | Out-Null
+        foreach ($child in @(Get-ChildItem -LiteralPath $Source -Force -ErrorAction Stop)) {
+            Copy-DevSkillPathLexically $child.FullName (Join-Path $Destination $child.Name)
+        }
+        Copy-DevSkillMetadata $item $Destination
+        return
+    }
+    if ($item -isnot [System.IO.FileInfo]) { throw "unsupported special Skill path $Source" }
+    [System.IO.File]::Copy($Source, $Destination, $false)
+    Copy-DevSkillMetadata $item $Destination
+}
+
+function Assert-DevSkillPathCopy([string]$Source, [string]$Destination) {
+    $sourceItem = Get-Item -LiteralPath $Source -Force -ErrorAction Stop
+    $destinationItem = Get-Item -LiteralPath $Destination -Force -ErrorAction Stop
+    if ([bool]$sourceItem.LinkType -ne [bool]$destinationItem.LinkType -or
+        $sourceItem.PSIsContainer -ne $destinationItem.PSIsContainer) {
+        throw "Skill path type mismatch: $Source != $Destination"
+    }
+    if ($sourceItem.LinkType) {
+        if ($sourceItem.LinkType -ne $destinationItem.LinkType -or
+            ($sourceItem.Target -join "`0") -ne ($destinationItem.Target -join "`0")) {
+            throw "Skill link target mismatch: $Source != $Destination"
+        }
+        return
+    }
+    if ((Get-DevSkillPermissionFingerprint $Source) -ne (Get-DevSkillPermissionFingerprint $Destination)) {
+        throw "Skill path permissions mismatch: $Source != $Destination"
+    }
+    if ($sourceItem.PSIsContainer) {
+        $sourceChildren = @(Get-ChildItem -LiteralPath $Source -Force -ErrorAction Stop | Sort-Object -Property Name)
+        $destinationChildren = @(Get-ChildItem -LiteralPath $Destination -Force -ErrorAction Stop | Sort-Object -Property Name)
+        if ($sourceChildren.Count -ne $destinationChildren.Count) { throw "Skill directory entries mismatch: $Source != $Destination" }
+        for ($i = 0; $i -lt $sourceChildren.Count; $i++) {
+            if ($sourceChildren[$i].Name -ne $destinationChildren[$i].Name) { throw "Skill directory entries mismatch: $Source != $Destination" }
+            Assert-DevSkillPathCopy $sourceChildren[$i].FullName $destinationChildren[$i].FullName
+        }
+        return
+    }
+    if ($sourceItem.Length -ne $destinationItem.Length) { throw "Skill file size mismatch: $Source != $Destination" }
+    if ((Get-FileHash -LiteralPath $Source -Algorithm SHA256 -ErrorAction Stop).Hash -ne
+        (Get-FileHash -LiteralPath $Destination -Algorithm SHA256 -ErrorAction Stop).Hash) {
+        throw "Skill file digest mismatch: $Source != $Destination"
+    }
+}
+
+function Remove-DevSkillPathLexically([string]$Path) {
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if ($item.PSIsContainer -and !$item.LinkType) {
+        Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+    } else {
+        Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+    }
+}
+
+function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
+    if (Test-PathLexically $Destination) { throw "move destination already exists: $Destination" }
+    $destinationParent = Split-Path $Destination -Parent
+    New-Item -ItemType Directory -Path $destinationParent -Force -ErrorAction Stop | Out-Null
+    try {
+        Move-DevSkillPath $Source $Destination
+        return
+    } catch {
+        if (!(Test-DevCrossDeviceMoveError $_)) { throw }
+    }
+    $stageRoot = Join-Path $destinationParent ("." + (Split-Path $Destination -Leaf) + ".cross-device-" + [guid]::NewGuid().ToString("N"))
+    $stage = Join-Path $stageRoot "payload"
+    New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
+    try {
+        Copy-DevSkillPathLexically $Source $stage
+        Assert-DevSkillPathCopy $Source $stage
+        Move-DevSkillPath $stage $Destination
+        Assert-DevSkillPathCopy $Source $Destination
+        Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction Stop
+        try { Remove-DevSkillPathLexically $Source } catch {
+            throw "Skill target published but source removal failed; both retained ($Source, $Destination): $_"
+        }
+        if (Test-PathLexically $Source) { throw "Skill source still exists; both retained ($Source, $Destination)" }
+    } catch {
+        $failure = $_
+        if (Test-Path -LiteralPath $stageRoot) {
+            try { Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction Stop } catch {
+                throw "$failure; cross-device Skill staging cleanup failed $stageRoot`: $_"
+            }
+        }
+        throw $failure
+    }
+}
+
+function Backup-DevSkill([string]$path, [ref]$BackupPath) {
+    if ($null -ne $BackupPath) { $BackupPath.Value = "" }
     if (!(Test-PathLexically $path)) { return }
     $backupRoot = Join-Path $HOME ".dws\skill-backups\$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))"
     New-Item -ItemType Directory -Path $backupRoot -Force -ErrorAction Stop | Out-Null
     $target = Join-Path $backupRoot (Split-Path $path -Leaf)
     while (Test-PathLexically $target) { $target += "-$([guid]::NewGuid().ToString('N'))" }
-    Move-Item -LiteralPath $path -Destination $target -ErrorAction Stop
+    Move-DevSkillPathRecoverably $path $target
+    if ($null -ne $BackupPath) { $BackupPath.Value = $target }
+}
+
+function Restore-DevSkillBackup([string]$Destination, [string]$Backup) {
+    if (Test-PathLexically $Destination) { Remove-DevSkillPathLexically $Destination }
+    if (![string]::IsNullOrWhiteSpace($Backup)) {
+        Move-DevSkillPathRecoverably $Backup $Destination
+    }
+}
+
+function Publish-DevSkillCopy([string]$Source, [string]$Destination) {
+    $parent = Split-Path $Destination -Parent
+    New-Item -ItemType Directory -Path $parent -Force -ErrorAction Stop | Out-Null
+    $stageRoot = Join-Path $parent (".dws-dev-copy-" + [guid]::NewGuid().ToString("N"))
+    $stage = Join-Path $stageRoot "payload"
+    $backup = ""
+    New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
+    try {
+        Copy-DevSkillPathLexically $Source $stage
+        Assert-DevSkillPathCopy $Source $stage
+        Backup-DevSkill $Destination ([ref]$backup)
+        try {
+            Move-DevSkillPath $stage $Destination
+            Assert-DevSkillPathCopy $Source $Destination
+        } catch {
+            $publishFailure = $_
+            try { Restore-DevSkillBackup $Destination $backup } catch {
+                throw "$publishFailure; Skill rollback failed; backup retained at $backup`: $_"
+            }
+            throw $publishFailure
+        }
+    } finally {
+        if (Test-Path -LiteralPath $stageRoot) { Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+function Publish-DevSkillJunction([string]$Target, [string]$Destination) {
+    $parent = Split-Path $Destination -Parent
+    New-Item -ItemType Directory -Path $parent -Force -ErrorAction Stop | Out-Null
+    $stageRoot = Join-Path $parent (".dws-dev-link-" + [guid]::NewGuid().ToString("N"))
+    $stage = Join-Path $stageRoot "payload"
+    $backup = ""
+    New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
+    try {
+        New-Item -ItemType Junction -Path $stage -Target ([System.IO.Path]::GetFullPath($Target)) -ErrorAction Stop | Out-Null
+        Backup-DevSkill $Destination ([ref]$backup)
+        try {
+            Move-DevSkillPath $stage $Destination
+            $published = Get-Item -LiteralPath $Destination -Force -ErrorAction Stop
+            if (!$published.LinkType) { throw "published Skill path is not a junction: $Destination" }
+        } catch {
+            $publishFailure = $_
+            try { Restore-DevSkillBackup $Destination $backup } catch {
+                throw "$publishFailure; Skill rollback failed; backup retained at $backup`: $_"
+            }
+            throw $publishFailure
+        }
+    } finally {
+        if (Test-Path -LiteralPath $stageRoot) { Remove-Item -LiteralPath $stageRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }
 
 function Get-Arch {
@@ -131,6 +319,26 @@ function Get-Arch {
         "ARM64" { return "arm64" }
         default { Die "Could not detect architecture. Set DWS_ARCH to amd64 or arm64." }
     }
+}
+
+function Assert-DevReleaseAssetChecksum([string]$AssetPath, [string]$AssetName, [string]$TempDir) {
+    $checksums = Join-Path $TempDir "checksums.txt"
+    if (!(Test-Path -LiteralPath $checksums -PathType Leaf)) {
+        try {
+            Invoke-WebRequest -Uri "https://github.com/$Repo/releases/download/$Version/checksums.txt" `
+                -OutFile $checksums -UseBasicParsing -ErrorAction Stop
+        } catch {
+            Die "Could not download checksums.txt; refusing unverified release assets."
+        }
+    }
+    $line = Get-Content -LiteralPath $checksums | Where-Object {
+        $_ -match "^[0-9A-Fa-f]{64}[ ]+[*]?$([regex]::Escape($AssetName))$"
+    } | Select-Object -First 1
+    if (-not $line) { Die "$AssetName is missing from checksums.txt." }
+    $expected = ($line -split '\s+')[0].ToLowerInvariant()
+    $actual = (Get-FileHash -LiteralPath $AssetPath -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+    if ($actual -ne $expected) { Die "SHA256 checksum mismatch for $AssetName." }
+    Say "SHA256 checksum verified: $AssetName"
 }
 
 # Read the releases list (newest first) and take the top tag, so this also works
@@ -163,6 +371,7 @@ try {
     Invoke-WebRequest -Uri "https://github.com/$Repo/releases/download/$Version/$asset" `
         -OutFile $zip -UseBasicParsing
 } catch { Die "Binary download failed - does release $Version have $asset?" }
+Assert-DevReleaseAssetChecksum $zip $asset $tmp
 
 Expand-Archive -Path $zip -DestinationPath $tmp -Force
 $exe = Get-ChildItem -Path $tmp -Recurse -Filter "dws.exe" | Select-Object -First 1
@@ -177,6 +386,7 @@ if (-not $NoSkills) {
         $skzip = Join-Path $tmp "dws-skills.zip"
         Invoke-WebRequest -Uri "https://github.com/$Repo/releases/download/$Version/dws-skills.zip" `
             -OutFile $skzip -UseBasicParsing
+        Assert-DevReleaseAssetChecksum $skzip "dws-skills.zip" $tmp
         $skdir = Join-Path $tmp "sk"
         Expand-Archive -Path $skzip -DestinationPath $skdir -Force
 
@@ -188,15 +398,11 @@ if (-not $NoSkills) {
         if ($src) {
             # cache so `dws skill setup --mode multi` can find a source later
             $cache = Join-Path $HOME ".dws\skills\multi\$SkillName"
-            if (Test-Path $cache) { Remove-Item -Recurse -Force $cache }
-            New-Item -ItemType Directory -Path $cache -Force | Out-Null
-            Copy-Item -Path "$src\*" -Destination $cache -Recurse -Force
+            Publish-DevSkillCopy $src $cache
 
             $canonicalBase = Join-Path $HOME ".agents\skills"
             $canonical = Join-Path $canonicalBase $SkillName
-            Backup-DevSkill $canonical
-            New-Item -ItemType Directory -Path $canonical -Force | Out-Null
-            Copy-Item -Path "$src\*" -Destination $canonical -Recurse -Force
+            Publish-DevSkillCopy $src $canonical
             $installed = 1
             $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
             foreach ($row in @($AgentRegistryRows) + @($LegacyAgentCleanupRows)) {
@@ -209,9 +415,8 @@ if (-not $NoSkills) {
                 $dest = Join-Path $base $SkillName
                 if ($universal) { Backup-DevSkill $dest; continue }
                 New-Item -ItemType Directory -Path $base -Force | Out-Null
-                Backup-DevSkill $dest
-                try { New-Item -ItemType Junction -Path $dest -Target ([System.IO.Path]::GetFullPath($canonical)) -ErrorAction Stop | Out-Null }
-                catch { New-Item -ItemType Directory -Path $dest -Force | Out-Null; Copy-Item -Path "$src\*" -Destination $dest -Recurse -Force }
+                try { Publish-DevSkillJunction $canonical $dest }
+                catch { Publish-DevSkillCopy $canonical $dest }
                 $installed++
             }
             Say "Skill dingtalk-misc -> $installed agent dir(s)"
@@ -219,7 +424,7 @@ if (-not $NoSkills) {
             Say "(dingtalk-misc not found in skills bundle; skipped)"
         }
     } catch {
-        Say "(skill install skipped: $($_.Exception.Message))"
+        Die "Skill install failed: $($_.Exception.Message)"
     }
 }
 

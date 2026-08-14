@@ -445,14 +445,14 @@ func TestCrossPlatformCoverageSkillSetupTransactionFailureEdges(t *testing.T) {
 			}
 		})
 		t.Run("stat", func(t *testing.T) {
-			testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, failure })
+			testseam.Swap(t, &skillSetupLstat, func(string) (os.FileInfo, error) { return nil, failure })
 			err := restoreSkillSetupTarget(nil, []skillSetupBackedUpDir{{original: "original", backup: "backup"}})
 			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "检查 Skill 恢复目标失败") {
 				t.Fatalf("restore stat error = %v", err)
 			}
 		})
 		t.Run("mkdir", func(t *testing.T) {
-			testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+			testseam.Swap(t, &skillSetupLstat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
 			testseam.Swap(t, &skillSetupMkdirAll, func(string, os.FileMode) error { return failure })
 			err := restoreSkillSetupTarget(nil, []skillSetupBackedUpDir{{original: "original", backup: "backup"}})
 			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "创建 Skill 恢复目录失败") {
@@ -460,9 +460,9 @@ func TestCrossPlatformCoverageSkillSetupTransactionFailureEdges(t *testing.T) {
 			}
 		})
 		t.Run("rename", func(t *testing.T) {
-			testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+			testseam.Swap(t, &skillSetupLstat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
 			testseam.Swap(t, &skillSetupMkdirAll, func(string, os.FileMode) error { return nil })
-			testseam.Swap(t, &skillSetupPublishRename, func(string, string) error { return failure })
+			testseam.Swap(t, &skillSetupRestoreBackup, func(string, string) error { return failure })
 			err := restoreSkillSetupTarget(nil, []skillSetupBackedUpDir{{original: "original", backup: "backup"}})
 			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "恢复原 Skill 失败") {
 				t.Fatalf("restore rename error = %v", err)
@@ -479,10 +479,10 @@ func TestCrossPlatformCoverageSkillSetupTransactionFailureEdges(t *testing.T) {
 			}
 			return "", failure
 		})
-		testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+		testseam.Swap(t, &skillSetupLstat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
 		testseam.Swap(t, &skillSetupMkdirAll, func(string, os.FileMode) error { return nil })
 		restoreErr := errors.New("restore failure")
-		testseam.Swap(t, &skillSetupPublishRename, func(string, string) error { return restoreErr })
+		testseam.Swap(t, &skillSetupRestoreBackup, func(string, string) error { return restoreErr })
 		_, err := backupSkillSetupTarget("home", []skillSetupBackup{{Path: "first"}, {Path: "second"}}, io.Discard)
 		if !errors.Is(err, failure) || !errors.Is(err, restoreErr) {
 			t.Fatalf("backup rollback error = %v", err)
@@ -491,7 +491,8 @@ func TestCrossPlatformCoverageSkillSetupTransactionFailureEdges(t *testing.T) {
 
 	t.Run("publish rollback failure", func(t *testing.T) {
 		testseam.Swap(t, &skillSetupPublishRename, func(string, string) error { return failure })
-		testseam.Swap(t, &skillSetupStat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+		testseam.Swap(t, &skillSetupRestoreBackup, func(string, string) error { return failure })
+		testseam.Swap(t, &skillSetupLstat, func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
 		testseam.Swap(t, &skillSetupMkdirAll, func(string, os.FileMode) error { return nil })
 		err := publishSkillSetupTarget(
 			[]skillSetupStagedDir{{staged: "staged", dest: "dest"}},

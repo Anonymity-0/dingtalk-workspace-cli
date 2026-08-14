@@ -130,6 +130,7 @@ var (
 	skillSetupSystemHomeDir   = os.UserHomeDir
 	skillSetupRemoveAll       = os.RemoveAll
 	skillSetupBackupAndRemove = upgrade.BackupAndRemoveSkillDir
+	skillSetupRestoreBackup   = upgrade.RestoreSkillPath
 	skillSetupMkdirAll        = os.MkdirAll
 	skillSetupWalk            = filepath.Walk
 	skillSetupRel             = filepath.Rel
@@ -2048,7 +2049,7 @@ func restoreSkillSetupTarget(published []string, backups []skillSetupBackedUpDir
 	}
 	for i := len(backups) - 1; i >= 0; i-- {
 		item := backups[i]
-		if _, err := skillSetupStat(item.original); err == nil {
+		if _, err := skillSetupLstat(item.original); err == nil {
 			restoreErr = errors.Join(restoreErr, fmt.Errorf("恢复目标仍存在 %s；备份保留于 %s", item.original, item.backup))
 			continue
 		} else if !errors.Is(err, os.ErrNotExist) {
@@ -2059,7 +2060,7 @@ func restoreSkillSetupTarget(published []string, backups []skillSetupBackedUpDir
 			restoreErr = errors.Join(restoreErr, fmt.Errorf("创建 Skill 恢复目录失败 %s: %w；备份保留于 %s", filepath.Dir(item.original), err, item.backup))
 			continue
 		}
-		if err := skillSetupPublishRename(item.backup, item.original); err != nil {
+		if err := skillSetupRestoreBackup(item.backup, item.original); err != nil {
 			restoreErr = errors.Join(restoreErr, fmt.Errorf("恢复原 Skill 失败 %s: %w；备份保留于 %s", item.original, err, item.backup))
 		}
 	}

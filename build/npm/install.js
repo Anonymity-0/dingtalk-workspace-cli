@@ -153,18 +153,222 @@ function backupStamp() {
   );
 }
 
+function pathExistsLexicallySync(target) {
+  try {
+    fs.lstatSync(target);
+    return true;
+  } catch (err) {
+    if (err && err.code === "ENOENT") return false;
+    throw err;
+  }
+}
+
+function copyPathLexicallySync(src, dest) {
+  const info = fs.lstatSync(src);
+  if (info.isDirectory()) {
+    fs.mkdirSync(dest, { mode: 0o700 });
+    for (const name of fs.readdirSync(src)) {
+      copyPathLexicallySync(path.join(src, name), path.join(dest, name));
+    }
+    fs.chmodSync(dest, info.mode & 0o777);
+    return;
+  }
+  if (info.isSymbolicLink()) {
+    fs.symlinkSync(fs.readlinkSync(src), dest);
+    return;
+  }
+  if (!info.isFile()) {
+    throw new Error(`unsupported special Skill path ${src} (mode=${info.mode.toString(8)})`);
+  }
+  fs.copyFileSync(src, dest, fs.constants.COPYFILE_EXCL);
+  fs.chmodSync(dest, info.mode & 0o777);
+}
+
+function restoreDirectoryModesSync(modes, chmodFn) {
+  const failures = [];
+  for (let i = modes.length - 1; i >= 0; i -= 1) {
+    const item = modes[i];
+    try {
+      if (pathExistsLexicallySync(item.path)) chmodFn(item.path, item.mode);
+    } catch (err) {
+      failures.push(`restore source directory mode ${item.path}: ${err.message}`);
+    }
+  }
+  if (failures.length > 0) throw new Error(failures.join("; "));
+}
+
+function prepareTreeRemovalSync(root, chmodFn) {
+  const modes = [];
+  const visit = (target) => {
+    const info = fs.lstatSync(target);
+    if (!info.isDirectory()) return;
+    const mode = info.mode & 0o777;
+    if ((mode & 0o700) !== 0o700) {
+      chmodFn(target, mode | 0o700);
+      modes.push({ path: target, mode });
+    }
+    for (const name of fs.readdirSync(target)) visit(path.join(target, name));
+  };
+  try {
+    visit(root);
+    return modes;
+  } catch (err) {
+    try {
+      restoreDirectoryModesSync(modes, chmodFn);
+    } catch (restoreErr) {
+      throw new Error(`${err.message}; ${restoreErr.message}`);
+    }
+    throw err;
+  }
+}
+
+function makeTreeWritableBestEffortSync(root) {
+  try {
+    const info = fs.lstatSync(root);
+    if (!info.isDirectory()) return;
+    try { fs.chmodSync(root, 0o700); } catch {}
+    let names = [];
+    try { names = fs.readdirSync(root); } catch {}
+    for (const name of names) makeTreeWritableBestEffortSync(path.join(root, name));
+  } catch {}
+}
+
+function removePublishedSourceSync(src, removeFn, chmodFn) {
+  const modes = prepareTreeRemovalSync(src, chmodFn);
+  try {
+    removeFn(src);
+    if (pathExistsLexicallySync(src)) throw new Error("source still exists after removal");
+  } catch (err) {
+    try {
+      restoreDirectoryModesSync(modes, chmodFn);
+    } catch (restoreErr) {
+      throw new Error(`${err.message}; ${restoreErr.message}`);
+    }
+    throw err;
+  }
+}
+
+function fileDigestSync(file) {
+  return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
+function verifyPathCopySync(src, dest) {
+  const srcInfo = fs.lstatSync(src);
+  const destInfo = fs.lstatSync(dest);
+  const srcType = srcInfo.mode & fs.constants.S_IFMT;
+  const destType = destInfo.mode & fs.constants.S_IFMT;
+  if (srcType !== destType) {
+    throw new Error(`Skill path type mismatch: ${src} != ${dest}`);
+  }
+  if (srcInfo.isDirectory()) {
+    if ((srcInfo.mode & 0o777) !== (destInfo.mode & 0o777)) {
+      throw new Error(`Skill directory mode mismatch: ${src} != ${dest}`);
+    }
+    const bytewise = (left, right) => Buffer.from(left).compare(Buffer.from(right));
+    const srcNames = fs.readdirSync(src).sort(bytewise);
+    const destNames = fs.readdirSync(dest).sort(bytewise);
+    if (srcNames.length !== destNames.length || srcNames.some((name, index) => name !== destNames[index])) {
+      throw new Error(`Skill directory entries mismatch: ${src} != ${dest}`);
+    }
+    for (const name of srcNames) {
+      verifyPathCopySync(path.join(src, name), path.join(dest, name));
+    }
+    return;
+  }
+  if (srcInfo.isSymbolicLink()) {
+    if (fs.readlinkSync(src) !== fs.readlinkSync(dest)) {
+      throw new Error(`Skill symlink target mismatch: ${src} != ${dest}`);
+    }
+    return;
+  }
+  if (!srcInfo.isFile()) {
+    throw new Error(`unsupported special Skill path ${src} (mode=${srcInfo.mode.toString(8)})`);
+  }
+  if ((srcInfo.mode & 0o777) !== (destInfo.mode & 0o777)) {
+    throw new Error(`Skill file mode mismatch: ${src} != ${dest}`);
+  }
+  if (srcInfo.size !== destInfo.size) {
+    throw new Error(`Skill file size mismatch: ${src} != ${dest}`);
+  }
+  if (fileDigestSync(src) !== fileDigestSync(dest)) {
+    throw new Error(`Skill file digest mismatch: ${src} != ${dest}`);
+  }
+}
+
+function movePathRecoverablySync(src, dest, options = {}) {
+  const renameFn = options.renameFn || fs.renameSync;
+  const copyFn = options.copyFn || copyPathLexicallySync;
+  const verifyFn = options.verifyFn || verifyPathCopySync;
+  const removeFn = options.removeFn || ((target) => fs.rmSync(target, { recursive: true, force: true }));
+  const mkdirTempFn = options.mkdirTempFn || fs.mkdtempSync;
+  const chmodFn = options.chmodFn || fs.chmodSync;
+  if (pathExistsLexicallySync(dest)) {
+    throw new Error(`move destination already exists: ${dest}`);
+  }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  try {
+    renameFn(src, dest);
+    return;
+  } catch (err) {
+    if (!err || err.code !== "EXDEV") throw err;
+  }
+
+  const stageRoot = mkdirTempFn(path.join(path.dirname(dest), `.${path.basename(dest)}.cross-device-`));
+  const stage = path.join(stageRoot, "payload");
+  let stageCleaned = false;
+  try {
+    copyFn(src, stage);
+    verifyFn(src, stage);
+    const stageInfo = fs.lstatSync(stage);
+    const stageMode = stageInfo.mode & 0o777;
+    if (stageInfo.isDirectory()) chmodFn(stage, stageMode | 0o700);
+    renameFn(stage, dest);
+    if (stageInfo.isDirectory()) chmodFn(dest, stageMode);
+    verifyFn(src, dest);
+    makeTreeWritableBestEffortSync(stageRoot);
+    removeFn(stageRoot);
+    stageCleaned = true;
+    try {
+      removePublishedSourceSync(src, removeFn, chmodFn);
+    } catch (err) {
+      throw new Error(`verified target published but source removal failed; both copies retained (${src}, ${dest}): ${err.message}`);
+    }
+    if (pathExistsLexicallySync(src)) {
+      throw new Error(`verified target published but source still exists; both copies retained (${src}, ${dest})`);
+    }
+  } catch (err) {
+    if (!stageCleaned) {
+      try {
+        makeTreeWritableBestEffortSync(stageRoot);
+        removeFn(stageRoot);
+      } catch (cleanupErr) {
+        throw new Error(`${err.message}; cross-device staging cleanup failed: ${cleanupErr.message}`);
+      }
+    }
+    throw err;
+  }
+}
+
+function skillMoveOptions(options = {}) {
+  return {
+    renameFn: options.renameFn,
+    copyFn: options.backupCopyFn,
+    verifyFn: options.backupVerifyFn,
+    removeFn: options.backupRemoveFn,
+    mkdirTempFn: options.backupMkdirTempFn,
+  };
+}
+
 // backupAndRemoveSkillDir moves dir into <homeDir>/.dws/skill-backups/
 // <stamp>/<rel-or-basename> instead of destroying it (non-interactive
 // installs cannot confirm, so removals must stay reversible). Missing paths
 // are a no-op success. On any backup failure the directory is left in place
-// and false is returned so callers skip that target rather than silently
-// deleting data.
-function backupAndRemoveSkillDir(homeDir, dir, backups = null, renameFn = fs.renameSync) {
-  let info;
+// and an error is returned so callers cannot silently delete data.
+function backupAndRemoveSkillDir(homeDir, dir, backups = null, options = {}) {
   try {
-    info = fs.lstatSync(dir);
+    fs.lstatSync(dir);
   } catch (err) {
-    if (err && err.code === "ENOENT") return true;
+    if (err && err.code === "ENOENT") return "";
     throw err;
   }
   const rel = path.relative(homeDir, dir);
@@ -172,30 +376,29 @@ function backupAndRemoveSkillDir(homeDir, dir, backups = null, renameFn = fs.ren
     rel && rel !== "." && !rel.startsWith("..") && !path.isAbsolute(rel)
       ? rel.split(path.sep).join("-")
       : path.basename(dir);
-  const stamp = backupStamp();
+  const stamp = (options.backupStampFn || backupStamp)();
   const backupRoot = path.join(homeDir, ".dws", "skill-backups");
   let targetRoot = path.join(backupRoot, stamp);
   let target = path.join(targetRoot, name);
-  for (let i = 1; fs.existsSync(target); i++) {
+  for (let i = 1; pathExistsLexicallySync(target); i++) {
     if (i > 1000) {
-      console.warn(`⚠️  备份目录冲突，保留原目录 ${dir}`);
-      return false;
+      throw new Error(`backup directory collision limit exceeded; source retained: ${dir}`);
     }
     targetRoot = path.join(backupRoot, `${stamp}-${i}`);
     target = path.join(targetRoot, name);
   }
   try {
     fs.mkdirSync(targetRoot, { recursive: true });
-    renameFn(dir, target);
+    movePathRecoverablySync(dir, target, options);
   } catch (err) {
     console.warn(`⚠️  备份失败，保留原目录 ${dir}: ${err.message}`);
-    return false;
+    throw new Error(`failed to back up Skill directory ${dir}: ${err.message}`);
   }
   if (backups) {
     backups.push({ original: dir, backup: target });
   }
   console.log(`  × 已备份并移除 ${dir} → ${target}`);
-  return true;
+  return target;
 }
 
 function findBinary(root) {
@@ -453,7 +656,8 @@ function isManagedMultiSkillDir(dir, managedNames) {
   return LEGACY_OFFICIAL_MULTI_SKILLS.has(name) || managedNames.has(name);
 }
 
-function retireManagedSkillRoot(homeDir, baseDir, managedNames) {
+function retireManagedSkillRoot(homeDir, baseDir, managedNames, options = {}) {
+  const moveOptions = skillMoveOptions(options);
   const victims = [path.join(baseDir, "dws")];
   if (fs.existsSync(baseDir)) {
     for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
@@ -465,16 +669,14 @@ function retireManagedSkillRoot(homeDir, baseDir, managedNames) {
   const backups = [];
   try {
     for (const victim of victims) {
-      if (!backupAndRemoveSkillDir(homeDir, victim, backups)) {
-        throw new Error(`failed to back up Skill directory ${victim}`);
-      }
+      backupAndRemoveSkillDir(homeDir, victim, backups, moveOptions);
     }
   } catch (err) {
     const restoreErrors = [];
     for (let i = backups.length - 1; i >= 0; i -= 1) {
       try {
         fs.mkdirSync(path.dirname(backups[i].original), { recursive: true });
-        fs.renameSync(backups[i].backup, backups[i].original);
+        movePathRecoverablySync(backups[i].backup, backups[i].original, moveOptions);
       } catch (restoreErr) {
         restoreErrors.push(`${backups[i].original}: ${restoreErr.message}`);
       }
@@ -496,7 +698,10 @@ function samePhysicalDir(left, right) {
   }
 }
 
-function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names, victims) {
+function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names, victims, options = {}) {
+  const moveOptions = skillMoveOptions(options);
+  const publishRenameFn = options.publishRenameFn || fs.renameSync;
+  const publishRemoveFn = options.publishRemoveFn || ((target) => fs.rmSync(target, { recursive: true, force: true }));
   fs.mkdirSync(baseDir, { recursive: true });
   const realBaseDir = fs.realpathSync(baseDir);
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-link-set.tmp-"));
@@ -505,12 +710,24 @@ function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names,
   const published = [];
   const correctLinks = new Set();
   const restore = () => {
+    const restoreErrors = [];
     for (let i = published.length - 1; i >= 0; i -= 1) {
-      fs.rmSync(published[i], { recursive: true, force: true });
+      try {
+        publishRemoveFn(published[i]);
+      } catch (err) {
+        restoreErrors.push(`remove ${published[i]}: ${err.message}`);
+      }
     }
     for (let i = backups.length - 1; i >= 0; i -= 1) {
-      fs.mkdirSync(path.dirname(backups[i].original), { recursive: true });
-      fs.renameSync(backups[i].backup, backups[i].original);
+      try {
+        fs.mkdirSync(path.dirname(backups[i].original), { recursive: true });
+        movePathRecoverablySync(backups[i].backup, backups[i].original, moveOptions);
+      } catch (err) {
+        restoreErrors.push(`restore ${backups[i].original} from ${backups[i].backup}: ${err.message}`);
+      }
+    }
+    if (restoreErrors.length > 0) {
+      throw new Error(restoreErrors.join("; "));
     }
   };
   try {
@@ -532,12 +749,10 @@ function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names,
       const normalized = path.resolve(victim);
       if (seen.has(normalized) || correctLinks.has(normalized)) continue;
       seen.add(normalized);
-      if (!backupAndRemoveSkillDir(homeDir, victim, backups)) {
-        throw new Error(`failed to back up Skill directory ${victim}`);
-      }
+      backupAndRemoveSkillDir(homeDir, victim, backups, moveOptions);
     }
     for (const item of staged) {
-      fs.renameSync(item.staged, item.dest);
+      publishRenameFn(item.staged, item.dest);
       published.push(item.dest);
     }
   } catch (err) {
@@ -592,6 +807,7 @@ function publishManagedMultiSkillSetAtomically(
   const copyFn = options.copyFn || copyChildren;
   const renameFn = options.renameFn || fs.renameSync;
   const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
+  const moveOptions = skillMoveOptions(options);
   fs.mkdirSync(baseDir, { recursive: true });
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-multi-set.tmp-"));
   const staged = [];
@@ -611,7 +827,7 @@ function publishManagedMultiSkillSetAtomically(
       const item = backups[i];
       try {
         fs.mkdirSync(path.dirname(item.original), { recursive: true });
-        renameFn(item.backup, item.original);
+        movePathRecoverablySync(item.backup, item.original, moveOptions);
       } catch (err) {
         restoreErrors.push(`restore ${item.original} from ${item.backup}: ${err.message}`);
       }
@@ -635,9 +851,7 @@ function publishManagedMultiSkillSetAtomically(
         continue;
       }
       seen.add(normalized);
-      if (!backupAndRemoveSkillDir(homeDir, victim, backups, renameFn)) {
-        throw new Error(`failed to back up Skill directory ${victim}`);
-      }
+      backupAndRemoveSkillDir(homeDir, victim, backups, moveOptions);
     }
 
     for (const item of staged) {
@@ -669,6 +883,7 @@ function publishManagedMonoSkillSetAtomically(
   const copyFn = options.copyFn || copyChildren;
   const renameFn = options.renameFn || fs.renameSync;
   const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
+  const moveOptions = skillMoveOptions(options);
   fs.mkdirSync(baseDir, { recursive: true });
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-mono-set.tmp-"));
   const stagedDir = path.join(stageRoot, "dws");
@@ -689,7 +904,7 @@ function publishManagedMonoSkillSetAtomically(
       const item = backups[i];
       try {
         fs.mkdirSync(path.dirname(item.original), { recursive: true });
-        renameFn(item.backup, item.original);
+        movePathRecoverablySync(item.backup, item.original, moveOptions);
       } catch (err) {
         restoreErrors.push(`restore ${item.original} from ${item.backup}: ${err.message}`);
       }
@@ -709,9 +924,7 @@ function publishManagedMonoSkillSetAtomically(
         continue;
       }
       seen.add(normalized);
-      if (!backupAndRemoveSkillDir(homeDir, victim, backups, renameFn)) {
-        throw new Error(`failed to back up Skill directory ${victim}`);
-      }
+      backupAndRemoveSkillDir(homeDir, victim, backups, moveOptions);
     }
 
     published.push(destDir);
@@ -995,7 +1208,12 @@ module.exports = {
   UPSTREAM_AGENTS,
   resolvedAgentTargets,
   agentTargetDetected,
+  backupAndRemoveSkillDir,
+  copyPathLexicallySync,
+  movePathRecoverablySync,
   publishCacheAtomically,
+  publishCanonicalLinksAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
+  verifyPathCopySync,
 };
