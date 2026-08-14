@@ -94,6 +94,44 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		}
 	})
 
+	t.Run("publish confirmation missing", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		originalRename := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRename(source, target); err != nil {
+				return err
+			}
+			return os.RemoveAll(target)
+		})
+		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "对象保留") {
+			t.Fatalf("publish confirmation error = %v", err)
+		}
+	})
+
+	t.Run("publish confirmation identity changed", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		originalRename := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRename(source, target); err != nil {
+				return err
+			}
+			if err := os.RemoveAll(target); err != nil {
+				return err
+			}
+			seedUpgradeSkill(t, target, "replacement", false)
+			return nil
+		})
+		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "staging 身份已变化") {
+			t.Fatalf("publish identity error = %v", err)
+		}
+	})
+
 	t.Run("rollback temp", func(t *testing.T) {
 		testseam.Swap(t, &skillPathMkdirTemp, func(string, string) (string, error) { return "", failure })
 		if err := RollbackSkillPathPublications([]SkillPathPublication{{Destination: "dest"}}); !errors.Is(err, failure) {
@@ -115,11 +153,58 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 	})
 
 	t.Run("quarantine rename", func(t *testing.T) {
-		destination := filepath.Join(t.TempDir(), "destination")
-		seedUpgradeSkill(t, destination, "value", false)
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		publication, err := PublishSkillPathNoReplace(staged, destination)
+		if err != nil {
+			t.Fatal(err)
+		}
 		testseam.Swap(t, &skillPathRename, func(string, string) error { return failure })
-		if err := RollbackSkillPathPublications([]SkillPathPublication{{Destination: destination}}); !errors.Is(err, failure) {
+		if err := RollbackSkillPathPublications([]SkillPathPublication{publication}); !errors.Is(err, failure) {
 			t.Fatalf("quarantine error = %v", err)
+		}
+	})
+
+	t.Run("live verification", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		publication, err := PublishSkillPathNoReplace(staged, destination)
+		if err != nil {
+			t.Fatal(err)
+		}
+		originalReadDir := skillPathReadDir
+		testseam.Swap(t, &skillPathReadDir, func(path string) ([]os.DirEntry, error) {
+			if path == destination {
+				return nil, failure
+			}
+			return originalReadDir(path)
+		})
+		if err := RollbackSkillPathPublications([]SkillPathPublication{publication}); !errors.Is(err, failure) {
+			t.Fatalf("live verification error = %v", err)
+		}
+	})
+
+	t.Run("destination disappears before quarantine", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		publication, err := PublishSkillPathNoReplace(staged, destination)
+		if err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillPathRename, func(source, target string) error {
+			if err := os.RemoveAll(source); err != nil {
+				return err
+			}
+			return &os.PathError{Op: "rename", Path: source, Err: os.ErrNotExist}
+		})
+		if err := RollbackSkillPathPublications([]SkillPathPublication{publication}); err != nil {
+			t.Fatal(err)
 		}
 	})
 
@@ -174,10 +259,16 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.RemoveAll(destination); err != nil {
-			t.Fatal(err)
-		}
-		seedUpgradeSkill(t, destination, "replacement", false)
+		originalRename := skillPathRename
+		testseam.Swap(t, &skillPathRename, func(source, target string) error {
+			if source == destination {
+				if err := os.RemoveAll(source); err != nil {
+					return err
+				}
+				seedUpgradeSkill(t, source, "replacement", false)
+			}
+			return originalRename(source, target)
+		})
 		originalRemove := skillPathRemoveAll
 		testseam.Swap(t, &skillPathRemoveAll, func(path string) error {
 			if strings.Contains(filepath.Base(path), ".destination.rollback-") {
@@ -200,10 +291,16 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.RemoveAll(destination); err != nil {
-			t.Fatal(err)
-		}
-		seedUpgradeSkill(t, destination, "replacement", false)
+		originalRename := skillPathRename
+		testseam.Swap(t, &skillPathRename, func(source, target string) error {
+			if source == destination {
+				if err := os.RemoveAll(source); err != nil {
+					return err
+				}
+				seedUpgradeSkill(t, source, "replacement", false)
+			}
+			return originalRename(source, target)
+		})
 		testseam.Swap(t, &skillPathRenameNoReplace, func(string, string) error { return failure })
 		if err := RollbackSkillPathPublications([]SkillPathPublication{publication}); !errors.Is(err, failure) || !strings.Contains(err.Error(), "并发对象保留") {
 			t.Fatalf("mismatch restore error = %v", err)
@@ -211,6 +308,17 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 	})
 
 	t.Run("fingerprint read failures and lexical types", func(t *testing.T) {
+		t.Run("directory ordering", func(t *testing.T) {
+			dir := t.TempDir()
+			for _, name := range []string{"b", "a"} {
+				if err := os.WriteFile(filepath.Join(dir, name), []byte(name), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := fingerprintSkillPath(dir); err != nil {
+				t.Fatal(err)
+			}
+		})
 		t.Run("directory read", func(t *testing.T) {
 			dir := t.TempDir()
 			testseam.Swap(t, &skillPathReadDir, func(string) ([]os.DirEntry, error) { return nil, failure })
@@ -245,6 +353,15 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 				t.Fatalf("readlink error = %v", err)
 			}
 		})
+		t.Run("symlink success", func(t *testing.T) {
+			link := filepath.Join(t.TempDir(), "link")
+			if err := os.Symlink("missing", link); err != nil {
+				t.Skipf("symlink unavailable: %v", err)
+			}
+			if _, err := fingerprintSkillPath(link); err != nil {
+				t.Fatal(err)
+			}
+		})
 		t.Run("file digest", func(t *testing.T) {
 			file := filepath.Join(t.TempDir(), "file")
 			if err := os.WriteFile(file, []byte("value"), 0o644); err != nil {
@@ -261,6 +378,11 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 			})
 			if err := fingerprintSkillPathInto(sha256.New(), "special"); err == nil {
 				t.Fatal("expected special path error")
+			}
+		})
+		t.Run("unknown platform identity shape", func(t *testing.T) {
+			if got := skillPathFileIncarnation(skillPathFakeInfo{}); got == "" {
+				t.Fatal("empty incarnation")
 			}
 		})
 	})

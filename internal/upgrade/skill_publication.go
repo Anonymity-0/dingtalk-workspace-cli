@@ -17,6 +17,7 @@ type SkillPathPublication struct {
 	Destination string
 	fingerprint [sha256.Size]byte
 	identity    os.FileInfo
+	incarnation string
 }
 
 // PublishSkillPathNoReplace atomically publishes a staged path without ever
@@ -33,7 +34,22 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 	if err := skillPathRenameNoReplace(staged, destination); err != nil {
 		return SkillPathPublication{}, fmt.Errorf("目标必须不存在的 Skill 发布失败 %s: %w", destination, err)
 	}
-	return SkillPathPublication{Destination: destination, fingerprint: fingerprint, identity: identity}, nil
+	publishedIdentity, err := skillPathLstat(destination)
+	if err != nil {
+		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: %w", destination, err)
+	}
+	// Force os.SameFile to resolve and cache any path-backed identity (notably
+	// on Windows) while the just-published object is known to occupy the path.
+	if !os.SameFile(identity, publishedIdentity) {
+		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: staging 身份已变化", destination)
+	}
+	_ = os.SameFile(publishedIdentity, publishedIdentity)
+	return SkillPathPublication{
+		Destination: destination,
+		fingerprint: fingerprint,
+		identity:    publishedIdentity,
+		incarnation: skillPathFileIncarnation(publishedIdentity),
+	}, nil
 }
 
 // RollbackSkillPathPublications removes only objects that can still be proven
@@ -64,6 +80,27 @@ func rollbackSkillPathPublication(publication SkillPathPublication) (err error) 
 		return nil
 	}
 
+	liveIdentity, liveIdentityErr := skillPathLstat(destination)
+	if os.IsNotExist(liveIdentityErr) {
+		return cleanupRoot()
+	}
+	liveFingerprint, liveFingerprintErr := fingerprintSkillPath(destination)
+	liveVerificationErr := errors.Join(liveIdentityErr, liveFingerprintErr)
+	if liveVerificationErr != nil {
+		return errors.Join(
+			fmt.Errorf("拒绝删除无法验证的 Skill %s: %w", destination, liveVerificationErr),
+			cleanupRoot(),
+		)
+	}
+	if publication.identity == nil || !os.SameFile(publication.identity, liveIdentity) ||
+		publication.incarnation != skillPathFileIncarnation(liveIdentity) ||
+		liveFingerprint != publication.fingerprint {
+		return errors.Join(
+			fmt.Errorf("拒绝删除非本事务 Skill %s: 发布对象身份已变化", destination),
+			cleanupRoot(),
+		)
+	}
+
 	if err := skillPathRename(destination, quarantine); err != nil {
 		cleanupErr := cleanupRoot()
 		if os.IsNotExist(err) {
@@ -74,8 +111,9 @@ func rollbackSkillPathPublication(publication SkillPathPublication) (err error) 
 
 	actualIdentity, identityErr := skillPathLstat(quarantine)
 	actual, fingerprintErr := fingerprintSkillPath(quarantine)
-	if identityErr == nil && fingerprintErr == nil && publication.identity != nil &&
-		os.SameFile(publication.identity, actualIdentity) && actual == publication.fingerprint {
+	if identityErr == nil && fingerprintErr == nil &&
+		os.SameFile(publication.identity, actualIdentity) &&
+		actual == publication.fingerprint {
 		if removeErr := removePublishedSkillSource(quarantine); removeErr != nil {
 			return fmt.Errorf("移除事务发布的 Skill 失败 %s（隔离于 %s）: %w", destination, quarantine, removeErr)
 		}
