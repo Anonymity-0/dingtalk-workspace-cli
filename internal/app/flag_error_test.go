@@ -104,6 +104,22 @@ func TestFlagErrorWithSuggestionsChatFromExplainsBothMeanings(t *testing.T) {
 	if !strings.HasSuffix(ae.Message, "See 'dws chat +search-msg --help' for usage.") {
 		t.Fatalf("Message = %q", ae.Message)
 	}
+
+	for _, flag := range []string{"from-file", "from-user"} {
+		t.Run(flag, func(t *testing.T) {
+			err := flagErrorWithSuggestions(search, fmt.Errorf("unknown flag: --%s", flag))
+			var structured *apperrors.Error
+			if stderrors.As(err, &structured) && structured.Reason == "ambiguous_flag" {
+				t.Fatalf("--%s incorrectly used --from ambiguity handling: %#v", flag, structured)
+			}
+			if strings.Contains(err.Error(), "--from 在消息查询中含义不明确") {
+				t.Fatalf("--%s incorrectly received --from ambiguity hint: %v", flag, err)
+			}
+			if !strings.Contains(err.Error(), "unknown flag: --"+flag) {
+				t.Fatalf("error = %q, want original flag --%s", err, flag)
+			}
+		})
+	}
 }
 
 // TestFlagErrorWithSuggestions_fallbackTailHint 验证 fallback 路径（非 unknown flag 类错误，

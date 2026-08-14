@@ -511,7 +511,7 @@ func flagErrorWithSuggestions(cmd *cobra.Command, err error) error {
 	// 无论哪种格式，子串 "--help' for usage." 都可被检索到。
 	tail := fmt.Sprintf("\nSee '%s --help' for usage.", cmd.CommandPath())
 	msgWithTail := errMsg + tail
-	if strings.Contains(errMsg, "unknown flag: --from") {
+	if flag, ok := unknownFlagName(errMsg); ok && flag == "from" {
 		switch cmd.CommandPath() {
 		case "dws chat +search-msg", "dws chat +chat-messages":
 			return apperrors.NewValidation(
@@ -595,14 +595,9 @@ func reviewedFlagProtection(cmd *cobra.Command, errMsg string) (string, pipeline
 	if cmd == nil {
 		return "", "", false
 	}
-	const prefix = "unknown flag: --"
-	idx := strings.Index(errMsg, prefix)
-	if idx < 0 {
+	flag, ok := unknownFlagName(errMsg)
+	if !ok {
 		return "", "", false
-	}
-	flag := strings.TrimSpace(errMsg[idx+len(prefix):])
-	if i := strings.IndexAny(flag, " =\n\t"); i >= 0 {
-		flag = flag[:i]
 	}
 	entry, ok := cli.LookupParamAlias(cmd.CommandPath())
 	if !ok {
@@ -616,6 +611,19 @@ func reviewedFlagProtection(cmd *cobra.Command, errMsg string) (string, pipeline
 		return flag, pipeline.FlagProtectionAmbiguous, true
 	}
 	return "", "", false
+}
+
+func unknownFlagName(errMsg string) (string, bool) {
+	const prefix = "unknown flag: --"
+	idx := strings.Index(errMsg, prefix)
+	if idx < 0 {
+		return "", false
+	}
+	flag := strings.TrimSpace(errMsg[idx+len(prefix):])
+	if i := strings.IndexAny(flag, " =\n\t"); i >= 0 {
+		flag = flag[:i]
+	}
+	return flag, flag != ""
 }
 
 func printExecutionError(root *cobra.Command, stdout, stderr io.Writer, err error) error {
