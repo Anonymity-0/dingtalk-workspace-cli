@@ -313,28 +313,20 @@ func TestCrossPlatformCoverageSkillPathVerificationErrors(t *testing.T) {
 	t.Run("directory and file modes", func(t *testing.T) {
 		for _, tc := range []struct {
 			name string
-			dir  bool
+			src  os.FileMode
+			dst  os.FileMode
 		}{
-			{name: "directory", dir: true},
-			{name: "file"},
+			{name: "directory", src: os.ModeDir | 0o700, dst: os.ModeDir | 0o755},
+			{name: "file", src: 0o600, dst: 0o644},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				src, dst := filepath.Join(t.TempDir(), "src"), filepath.Join(t.TempDir(), "dst")
-				if tc.dir {
-					if err := os.Mkdir(src, 0o700); err != nil {
-						t.Fatal(err)
+				src, dst := "src", "dst"
+				testseam.Swap(t, &skillPathLstat, func(path string) (os.FileInfo, error) {
+					if path == src {
+						return skillPathFakeInfo{mode: tc.src}, nil
 					}
-					if err := os.Mkdir(dst, 0o755); err != nil {
-						t.Fatal(err)
-					}
-				} else {
-					if err := os.WriteFile(src, []byte("x"), 0o600); err != nil {
-						t.Fatal(err)
-					}
-					if err := os.WriteFile(dst, []byte("x"), 0o644); err != nil {
-						t.Fatal(err)
-					}
-				}
+					return skillPathFakeInfo{mode: tc.dst}, nil
+				})
 				if err := verifySkillPathCopy(src, dst); err == nil || !strings.Contains(err.Error(), "权限") {
 					t.Fatalf("error = %v", err)
 				}
