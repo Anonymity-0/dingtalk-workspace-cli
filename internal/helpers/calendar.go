@@ -2263,8 +2263,8 @@ func newCalendarCommand() *cobra.Command {
 		Use:     "share-info",
 		Aliases: []string{"share_info"},
 		Short:   "获取日程的分享信息",
-		Long:    `根据日程 ID 获取日程的分享信息，展示日程主题、组织人、地点、入会信息等，用于向他人分享日程。`,
-		Example: `  dws calendar event share-info --id EVENT_ID  # 查询 eventId: dws calendar event list
+		Long:    `根据日程 ID 获取日程的分享信息，展示日程主题、组织人、地点、入会信息等，用于向他人分享日程。eventId 可通过 dws calendar event list 获取。`,
+		Example: `  dws calendar event share-info --id EVENT_ID
   dws calendar event share-info --id EVENT_ID --language zh-CN
   dws calendar event share-info --id EVENT_ID --calendar-id primary`,
 		RunE: func(cmd *cobra.Command, args []string) error {
