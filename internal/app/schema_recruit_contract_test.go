@@ -54,6 +54,18 @@ func TestRecruitDeliveredSchemaPublishesResultAndPagination(t *testing.T) {
 				if cursor["type"] != "string" || cursor["interface_type"] != "number" {
 					t.Fatalf("cursor contract = %#v, want CLI string converted to MCP number", cursor)
 				}
+				size, _ := parameters["size"].(map[string]any)
+				if required, _ := size["required"].(bool); required {
+					t.Fatalf("size required = true, want false: %#v", size)
+				}
+				if size["default"] != "20" {
+					t.Fatalf("size default = %#v, want 20", size["default"])
+				}
+				compactParameters, _ := compact["parameters"].(map[string]any)
+				compactSize, _ := compactParameters["size"].(map[string]any)
+				if compactRequired, _ := compactSize["required"].(bool); compactRequired || compactSize["default"] != "20" {
+					t.Fatalf("compact size contract = %#v, want required=false default=20", compactSize)
+				}
 			} else if full["pagination"] != nil || compact["pagination"] != nil {
 				t.Fatalf("non-list pagination must be absent: full=%#v compact=%#v", full["pagination"], compact["pagination"])
 			}

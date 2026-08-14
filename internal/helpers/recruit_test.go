@@ -132,6 +132,33 @@ func TestRecruitJobListCursorRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRecruitJobListResponseCursorRoundTrip(t *testing.T) {
+	caller := withRecruitCaller(t)
+	caller.text = `{"result":{"list":[],"hasMore":true,"nextCursor":9223372036854775807}}`
+
+	data, err := CallMCPToolDataOnServer(context.Background(), recruitServerID, recruitListJobsTool, map[string]any{"size": 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, meta, err := recruitListResultData(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := meta.Pagination.NextToken; got != "9223372036854775807" {
+		t.Fatalf("next token = %q, want lossless max int64", got)
+	}
+
+	caller.text = `{"jobs":[],"hasMore":false}`
+	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
+	cmd.SetArgs([]string{"--cursor", meta.Pagination.NextToken})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := caller.args["cursor"]; got != int64(9223372036854775807) {
+		t.Fatalf("replayed cursor = %#v (%T), want max int64", got, got)
+	}
+}
+
 func TestRecruitJobListDefaultsAndValidation(t *testing.T) {
 	caller := withRecruitCaller(t)
 	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())

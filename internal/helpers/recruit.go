@@ -100,7 +100,7 @@ func newRecruitJobListCommand() *cobra.Command {
 			{Name: "keyword", Usage: "职位搜索关键词", Bind: "keyword", Trim: true, OmitEmpty: true},
 			{Name: "category", Usage: "职位分类", Bind: "category", Trim: true, OmitEmpty: true},
 			{Name: "cursor", Usage: "分页游标；首次查询不传，翻页时原样回填返回的 nextCursor", Bind: "cursor", Trim: true, OmitEmpty: true, Transform: transformRecruitCursor},
-			{Name: "size", Usage: "分页大小，默认 20", Kind: LeafInt, Bind: "size", ArgDefault: "20"},
+			{Name: "size", Usage: "分页大小，默认 20", Kind: LeafInt, Bind: "size", Default: "20", ArgDefault: "20"},
 		},
 		Validate:   validateRecruitList,
 		ResultCall: recruitResultCall,
@@ -189,6 +189,8 @@ func recruitListResultData(data any) (any, *output.Meta, error) {
 		switch value := raw.(type) {
 		case string:
 			nextToken = strings.TrimSpace(value)
+		case json.Number:
+			nextToken = string(value)
 		case float64:
 			nextToken = strconv.FormatFloat(value, 'f', -1, 64)
 		default:
@@ -299,7 +301,7 @@ func recruitListParamDecls() []contract.ParamDecl {
 		{Name: "keyword", Property: "param.keyword", InterfaceType: "string"},
 		{Name: "category", Property: "param.category", InterfaceType: "string"},
 		{Name: "cursor", Property: "cursor", InterfaceType: "number"},
-		{Name: "size", Property: "size", Required: boolPtr(true), InterfaceType: "number"},
+		{Name: "size", Property: "size", InterfaceType: "number"},
 	}
 }
 
