@@ -36,7 +36,6 @@
   "不是文件: ": "not a file: ",
   "人才查询": "Talent query",
   "优先级: 10低/20普通/30较高/40紧急": "Priority: 10=low/20=normal/30=high/40=urgent",
-  "使用体验反馈问卷（1 分钟）": "Share your feedback (1 min)",
   "使用授权码换取 Access Token...": "Exchanging authorization code for Access Token...",
   "保存 token 失败": "Failed to save token",
   "保存Keyword subscription规则": "Save keyword subscription rule",

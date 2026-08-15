@@ -121,9 +121,15 @@ func renderRootHelp(root *cobra.Command) {
 // than the help rule width, and breaking it would stop terminals from
 // recognizing it as a clickable hyperlink. Soft wrapping performed by the
 // terminal itself keeps the link intact.
+//
+// The label is intentionally not routed through i18n. Everything surrounding it
+// in this listing — service descriptions, utility descriptions, global flag
+// usage — is hardcoded Chinese, so translating this one line would render it in
+// English on any host whose LANG is not zh_*, leaving a single English line
+// inside an otherwise Chinese screen.
 func renderRootFeedback(w io.Writer) {
 	_, _ = fmt.Fprintln(w, tui.Section("Feedback:"))
-	_, _ = fmt.Fprintf(w, "  %s %s\n", tui.Bullet(), tui.Dim(i18n.T("使用体验反馈问卷（1 分钟）")))
+	_, _ = fmt.Fprintf(w, "  %s %s\n", tui.Bullet(), tui.Dim("使用体验反馈问卷（1 分钟）"))
 	_, _ = fmt.Fprintf(w, "    %s\n", tui.Cyan(feedbackFormURL))
 }
 

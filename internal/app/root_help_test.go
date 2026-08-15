@@ -63,7 +63,10 @@ func TestRootHelpShowsFeedbackEntry(t *testing.T) {
 		t.Fatalf("root help: %v\n%s", err, out.String())
 	}
 	help := out.String()
-	for _, want := range []string{"Feedback:", feedbackFormURL} {
+	// The label stays Chinese regardless of the host locale: the rest of this
+	// listing is hardcoded Chinese, so a translated label would show up as a
+	// lone English line on any host whose LANG is not zh_*.
+	for _, want := range []string{"Feedback:", "使用体验反馈问卷", feedbackFormURL} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("root help missing %q:\n%s", want, help)
 		}
