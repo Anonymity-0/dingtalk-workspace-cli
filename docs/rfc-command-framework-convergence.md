@@ -673,6 +673,51 @@ func (k Key[T]) Declare(opts ...FlagOption[T]) FlagSpec
 - 构造时拒绝 `InputSourceInvalid`。
 - 当前没有任何 Shortcut 或 Leaf 声明 `Input`，因此 M1 增加能力且零上线表面变化。让现有命令采用它属于 §9 下的用户可见变更。
 
+`Input` 的框架能力今日已在 `corecmd` 落地（声明即执行的过渡形态，语义与上文目标一致），使用指南：
+
+**今日声明形态**：`FlagSpec.Input []string`，源常量 `corecmd.InputFile`（`"file"`）/ `corecmd.InputStdin`（`"stdin"`）。`helpers.LeafFlag` 是 `corecmd.FlagSpec` 别名，直接可用；`shortcut.Flag.Input` 同形声明，经 `FromShortcut` 映射到 `FlagSpec`。
+
+```go
+// LeafSpec / helpers
+Flags: []helpers.LeafFlag{
+    {
+        Name:  "content",
+        Usage: "文档内容（支持 @文件路径 或 - 读 stdin）",
+        Bind:  "content",
+        Input: []string{corecmd.InputFile, corecmd.InputStdin},
+    },
+}
+
+// shortcut
+Flags: []shortcut.Flag{
+    {Name: "markdown", Desc: "Markdown 内容（支持 @文件路径 或 -）",
+     Input: []string{"file", "stdin"}},
+}
+```
+
+**运行时语义**（`resolveInputFlags`，在 `runDeclaredPreflight` 内、required/enum/约束/Validate 之前执行，原地改写 cobra flag 值）：
+
+- `--flag @path`：文件内容替换取值；`--flag -`：stdin 内容替换取值。
+- `--flag @@value`：转义为字面 `@value`，不做来源解析。
+- 只解析显式 CLI token（主名或别名）；EnvVar 回落与注册默认值透传不解析。
+- 内容前置剥离 UTF-8 BOM；`Trim` 等既有语义照常作用于解析后的值。
+- 读取失败、源不支持、`@` 后空路径都是类型化校验错误（退出码 3）；同时声明两种源而文件读取失败时附 stdin 引导 hint。
+
+**作者守则**：
+
+- 声明即全部能力：required/enum/约束/Validate 校验的已是解析后的真实内容，`Execute`/`Invoke` 无需任何额外代码。
+- `Usage`/`Desc` 必须写明支持 `@路径`/`-`；框架不自动改写 help 文案，今日也不向 Schema 投影（新增投影字段须先过 homology 评审，避免 catalog drift）。
+- `user_required` 确认的写命令若声明 `InputStdin`：stdin 在校验阶段被消费，交互确认将 fail-closed 为 `confirmation_required`，此类调用必须显式 `--yes`（或 `--dry-run`）。
+- 声明在构造期校验（fail-closed panic）：仅限 `KindString`；源值必须是 `file`/`stdin` 且不重复。
+
+**今日实现与目标形态的差异**（迁移到本节目标 `FlagSpec` 时收敛）：
+
+| 维度 | 今日 | 目标 |
+|---|---|---|
+| 源类型 | `[]string` 常量 | 类型化 `InputSource` |
+| 路径边界 | 直接本地文件 IO | 复用 §5.5.2 本地文件 effect 边界 |
+| Schema 投影 | 无（靠作者在 Usage 声明） | 声明即最终源，随 Catalog 透传 |
+
 核心 FlagSpec 故意没有：
 
 - `Bind`；
