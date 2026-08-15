@@ -292,7 +292,7 @@ Definition（仅声明；不可编译）
 
 下列字段**是**框架声明面（经 `corecmd.New` 生效并嵌入 `dws.schema.*`）：
 
-- `Flags`（含 Name/Kind/Default/Required/MarkRequired/Usage 等注册面）
+- `Flags`（含 Name/Kind/Default/Required/MarkRequired/Usage 等注册面；`Input` 是取值来源声明，经 `corecmd.New` 生效但**不**嵌入 `dws.schema.*`，能力靠 `Usage` 文案声明，见 §5.3）
 - `Constraints`
 - **非空** `Risk`（空值 = 运行时当只读确认，且**不**嵌入 `dws.schema.risk`）
 - `ConstParams`（载荷声明；不上用户 flag 表）
