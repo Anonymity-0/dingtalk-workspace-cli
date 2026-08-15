@@ -424,8 +424,21 @@ func TestCrossPlatformCoverageUpgradeAgentBranchFailures(t *testing.T) {
 					return origRename(src, dst)
 				})
 				result, err := UpgradeSkillLocations(makeSource(t))
-				if err != nil || len(result.Failed()) != 1 {
-					t.Fatalf("retire failure = %#v, %v", result, err)
+				if err != nil {
+					t.Fatalf("retire failure must not fail the upgrade: %v", err)
+				}
+				if len(result.Failed()) != 0 {
+					t.Fatalf("retire failure must not count as an install failure: %#v", result.Failed())
+				}
+				warnings := result.RetireWarnings()
+				if len(warnings) != 1 || warnings[0].Err == nil {
+					t.Fatalf("retire warnings = %#v", warnings)
+				}
+				if len(result.Succeeded()) == 0 {
+					t.Fatalf("canonical must still be published: %#v", result)
+				}
+				if _, statErr := os.Lstat(victim); statErr != nil {
+					t.Fatalf("unretired copy must be preserved: %v", statErr)
 				}
 			})
 

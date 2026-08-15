@@ -223,6 +223,13 @@ verify_compatible_skill_base() {
     name=$(basename "$(dirname "$skill_md")")
     target="$base/$name"
     if [ -L "$target" ]; then
+      link_target="$(readlink "$target")" || err "could not read canonical Skill link at $target"
+      # Relative link targets are the headline invariant of the canonical store:
+      # an absolute target breaks as soon as the home directory moves or the
+      # store is relocated, so reject it even though it resolves today.
+      case "$link_target" in
+        /*) err "canonical Skill link must be relative at $target (target=$link_target)" ;;
+      esac
       linked_real="$(CDPATH= cd -- "$target" 2>/dev/null && pwd -P)" || err "broken canonical Skill link at $target"
       canonical_real="$(CDPATH= cd -- "$canonical/$name" && pwd -P)" || err "canonical Skill missing at $canonical/$name"
       [ "$linked_real" = "$canonical_real" ] || err "Skill link does not resolve to canonical source at $target"
@@ -233,6 +240,23 @@ verify_compatible_skill_base() {
     fi
   done
   [ ! -e "$base/dws" ] && [ ! -L "$base/dws" ] || err "unexpected mono Skill layout found in $base/dws"
+}
+
+# Universal Agents read the canonical store directly, so they must own no copy
+# of ANY canonical Skill. Iterate the real store instead of a hardcoded name
+# list: a hardcoded list silently passed leftover copies of every other
+# dingtalk-* Skill from earlier betas.
+verify_universal_skill_base() {
+  home_root="$1"; base="$2"; canonical="$home_root/.agents/skills"
+  for skill_md in "$canonical"/*/SKILL.md; do
+    [ -f "$skill_md" ] || continue
+    name=$(basename "$(dirname "$skill_md")")
+    { [ ! -e "$base/$name" ] && [ ! -L "$base/$name" ]; } || \
+      err "unexpected duplicate Skill found in universal Agent root $base/$name"
+  done
+  # The mono layout is absent from a multi canonical store, so gate it directly.
+  { [ ! -e "$base/dws" ] && [ ! -L "$base/dws" ]; } || \
+    err "unexpected duplicate Skill found in universal Agent root $base/dws"
 }
 
 verify_skill_targets() {
@@ -253,10 +277,7 @@ verify_skill_targets() {
     [ "$base" != "$home_root/.agents/skills" ] || continue
     [ -d "${base%/skills}" ] || continue
     if [ "$universal" -eq 1 ]; then
-      for name in dingtalk-shared dingtalk-misc dws; do
-        { [ ! -e "$base/$name" ] && [ ! -L "$base/$name" ]; } || \
-          err "unexpected duplicate Skill found in universal Agent root $base/$name"
-      done
+      verify_universal_skill_base "$home_root" "$base"
       continue
     fi
     verify_compatible_skill_base "$home_root" "$base"

@@ -239,13 +239,17 @@ const (
 	SkillDirSkipped                           // agent not detected, directory skipped
 	SkillDirBlacklisted                       // blacklisted, never touched
 	SkillDirFailed                            // installation attempted but failed
+	// SkillDirRetireWarning marks a universal Agent whose obsolete private copy
+	// could not be retired. Nothing is installed below such a root, so the
+	// leftover is reported without counting as an install failure.
+	SkillDirRetireWarning
 )
 
 // SkillDirResult holds the per-directory install result.
 type SkillDirResult struct {
 	Dir    string         // destination directory (e.g. ~/.claude/skills/dws)
 	Status SkillDirStatus // outcome
-	Err    error          // non-nil when Status == SkillDirFailed
+	Err    error          // non-nil when Status == SkillDirFailed or SkillDirRetireWarning
 }
 
 // SkillUpgradeResult aggregates the outcome of an UpgradeSkillLocations call.
@@ -269,6 +273,18 @@ func (r *SkillUpgradeResult) Failed() []SkillDirResult {
 	var out []SkillDirResult
 	for _, d := range r.Results {
 		if d.Status == SkillDirFailed {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// RetireWarnings returns universal Agent roots that still hold an obsolete
+// private copy because retiring it failed.
+func (r *SkillUpgradeResult) RetireWarnings() []SkillDirResult {
+	var out []SkillDirResult
+	for _, d := range r.Results {
+		if d.Status == SkillDirRetireWarning {
 			out = append(out, d)
 		}
 	}
@@ -789,7 +805,7 @@ func publishLinkedUpgradeTarget(homeDir, destBase, canonicalBase string, names [
 		}
 		needed = append(needed, name)
 	}
-	filteredVictims := victims[:0]
+	filteredVictims := make([]string, 0, len(victims))
 	for _, victim := range victims {
 		if !correct[filepath.Clean(victim)] {
 			filteredVictims = append(filteredVictims, victim)
@@ -840,7 +856,9 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 		}
 		if root.universal {
 			if err := retireManagedSkillRoot(homeDir, destBase, managedNames); err != nil {
-				result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
+				// Nothing is installed below a universal root, so a stale copy that
+				// resists retirement is a warning, not an install failure.
+				result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirRetireWarning, Err: err})
 			} else {
 				result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirSkipped})
 			}
@@ -912,7 +930,9 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 		}
 		if root.universal {
 			if err := retireManagedSkillRoot(homeDir, destBase, managedNames); err != nil {
-				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
+				// Nothing is installed below a universal root, so a stale copy that
+				// resists retirement is a warning, not an install failure.
+				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirRetireWarning, Err: err})
 			} else {
 				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirSkipped})
 			}
@@ -1005,23 +1025,6 @@ func skillTreeHasRoot(dir string) bool {
 	return err == nil && !info.IsDir()
 }
 
-// cleanupMultiLeftovers backs up + removes every proven DWS-managed
-// multi-mode skill directory inside one agent home before mono is installed.
-// A missing base directory simply means no leftovers; any other read failure
-// is reported so mono never silently co-exists with multi. Removal is
-// reversible: each leftover is preserved under ~/.dws/skill-backups/ and a
-// backup failure aborts the removal for that home.
-func cleanupMultiLeftovers(homeDir, baseDir string) error {
-	victims, err := managedMultiSkillVictims(baseDir, readManagedSkillNames(homeDir))
-	if err != nil {
-		return err
-	}
-	if _, err := backupSkillSet(homeDir, victims); err != nil {
-		return fmt.Errorf("备份并清理 multi 残留失败: %w", err)
-	}
-	return nil
-}
-
 func managedMultiSkillVictims(baseDir string, managed ...map[string]bool) ([]string, error) {
 	entries, err := upgradeReadDir(baseDir)
 	if err != nil {
@@ -1038,24 +1041,6 @@ func managedMultiSkillVictims(baseDir string, managed ...map[string]bool) ([]str
 		victims = append(victims, filepath.Join(baseDir, e.Name()))
 	}
 	return victims, nil
-}
-
-// cleanupOppositeModeLeftovers backs up + removes, inside one agent home, the
-// legacy mono directory (dws/) and every proven DWS-managed multi skill
-// directory that is not part of the new bundle. A dingtalk-* prefix alone is
-// not proof of ownership because market/user skills may use the same prefix.
-// Removal is reversible: each
-// directory is preserved under ~/.dws/skill-backups/ and a backup failure
-// aborts the removal for that home.
-func cleanupOppositeModeLeftovers(homeDir, destBase string, skillSet map[string]bool) error {
-	victims, err := oppositeModeSkillVictims(destBase, skillSet, readManagedSkillNames(homeDir))
-	if err != nil {
-		return err
-	}
-	if _, err := backupSkillSet(homeDir, victims); err != nil {
-		return fmt.Errorf("备份并清理对面模式残留失败: %w", err)
-	}
-	return nil
 }
 
 func oppositeModeSkillVictims(destBase string, skillSet map[string]bool, managed ...map[string]bool) ([]string, error) {

@@ -153,6 +153,42 @@ function backupStamp() {
   );
 }
 
+// SKILL_BACKUP_KEEP bounds ~/.dws/skill-backups/ growth: only the newest
+// stamped backup directories are kept. Mirrors skillBackupKeep and
+// pruneSkillBackups in internal/upgrade/paths.go so every installer surface
+// applies the same retention.
+const SKILL_BACKUP_KEEP = 5;
+
+// Backup roots this process created are never pruned: an in-flight
+// transaction still needs them to roll back.
+const currentRunBackupRoots = new Set();
+
+// pruneSkillBackups removes the oldest stamped backup directories once more
+// than SKILL_BACKUP_KEEP remain. Stamps sort lexicographically in
+// chronological order (`YYYYmmdd-HHMMSS`), so name order is age order.
+function pruneSkillBackups(homeDir) {
+  const root = path.join(homeDir, ".dws", "skill-backups");
+  let entries;
+  try {
+    entries = fs.readdirSync(root, { withFileTypes: true });
+  } catch (err) {
+    if (err && (err.code === "ENOENT" || err.code === "ENOTDIR")) return;
+    throw err;
+  }
+  const names = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort((a, b) => Buffer.from(a).compare(Buffer.from(b)));
+  let excess = names.length - SKILL_BACKUP_KEEP;
+  for (const name of names) {
+    if (excess <= 0) break;
+    const candidate = path.join(root, name);
+    if (currentRunBackupRoots.has(candidate)) continue;
+    fs.rmSync(candidate, { recursive: true, force: true });
+    excess -= 1;
+  }
+}
+
 function pathExistsLexicallySync(target) {
   try {
     fs.lstatSync(target);
@@ -397,6 +433,14 @@ function backupAndRemoveSkillDir(homeDir, dir, backups = null, options = {}) {
   if (backups) {
     backups.push({ original: dir, backup: target });
   }
+  currentRunBackupRoots.add(targetRoot);
+  // Keep the backup root bounded. The backup itself already succeeded, so a
+  // prune failure is only a warning (matches Go's best-effort prune call).
+  try {
+    pruneSkillBackups(homeDir);
+  } catch (err) {
+    console.warn(`⚠️  旧备份清理失败（备份本身已成功）: ${err.message}`);
+  }
   console.log(`  × 已备份并移除 ${dir} → ${target}`);
   return target;
 }
@@ -568,11 +612,14 @@ function installSkillsToHomes(skillRoot) {
       if (!agentTargetDetected(target) || samePhysicalDir(baseDir, canonicalBase)) continue;
       attempted += 1;
       if (universal) {
+        // Cleanup-only migration: universal Agents read the canonical store
+        // directly, so nothing is installed here. A retire failure leaves an
+        // obsolete copy in place — worth a warning, never a reason to fail an
+        // install whose canonical store and links all succeeded.
         try {
           retireManagedSkillRoot(homeDir, baseDir, managedNames);
         } catch (err) {
-          console.warn(`⚠️  Agent Skill 旧副本迁移失败 ${baseDir}: ${err.message}`);
-          failed += 1;
+          console.warn(`⚠️  Agent Skill 旧副本迁移失败（不影响本次安装）${baseDir}: ${err.message}`);
         }
         continue;
       }
@@ -799,6 +846,15 @@ function rollbackPublishedSkillPath(publication, options = {}) {
 
 function publishCanonicalLinkNoReplace(staged, destination, options = {}) {
   const publication = captureSkillPublication(staged, destination);
+  // No-replace is a hard property of this publisher, so it is checked before
+  // either platform's publish call. Windows rename replaces the destination
+  // outright (libuv passes MOVEFILE_REPLACE_EXISTING) and `ln -P` treats an
+  // existing directory as a container to link INTO; in both cases the identity
+  // confirmation below compares against the staged object and could not
+  // recover the user's data. The sibling copy publishers guard identically.
+  if (skillPathExistsLexically(destination)) {
+    throw Object.assign(new Error(`Skill publish destination already exists: ${destination}`), { code: "EEXIST" });
+  }
   if (process.platform === "win32") {
     const renameFn = options.publishRenameFn || fs.renameSync;
     renameFn(staged, destination);
@@ -825,6 +881,9 @@ function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names,
   const moveOptions = skillMoveOptions(options);
   const publishRemoveFn = options.publishRemoveFn || removeSkillPathLexically;
   const rollbackRenameFn = options.rollbackRenameFn || fs.renameSync;
+  // Injectable so the Windows junction type and absolute link target can be
+  // asserted from a non-Windows host.
+  const symlinkFn = options.symlinkFn || fs.symlinkSync;
   fs.mkdirSync(baseDir, { recursive: true });
   const realBaseDir = fs.realpathSync(baseDir);
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-link-set.tmp-"));
@@ -864,7 +923,7 @@ function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names,
       const stagedPath = path.join(stageRoot, name);
       const realTarget = fs.realpathSync(target);
       const linkTarget = process.platform === "win32" ? realTarget : path.relative(realBaseDir, realTarget);
-      fs.symlinkSync(linkTarget, stagedPath, process.platform === "win32" ? "junction" : "dir");
+      symlinkFn(linkTarget, stagedPath, process.platform === "win32" ? "junction" : "dir");
       staged.push({ staged: stagedPath, dest: path.join(baseDir, name) });
     }
     const seen = new Set();
@@ -1181,11 +1240,14 @@ function installMultiSkillsToHomes(multiRoot) {
       if (!agentTargetDetected(target) || samePhysicalDir(baseDir, canonicalBase)) continue;
       attempted += 1;
       if (universal) {
+        // Cleanup-only migration (see installSkillsToHomes): nothing is
+        // installed in a universal root, so a retire failure must not fail an
+        // otherwise complete install. Go records the same case as a failed
+        // directory yet still returns success for the run.
         try {
           retireManagedSkillRoot(homeDir, baseDir, managedNames);
         } catch (err) {
-          console.warn(`⚠️  Agent Skill 旧副本迁移失败 ${baseDir}: ${err.message}`);
-          failed += 1;
+          console.warn(`⚠️  Agent Skill 旧副本迁移失败（不影响本次安装）${baseDir}: ${err.message}`);
         }
         continue;
       }

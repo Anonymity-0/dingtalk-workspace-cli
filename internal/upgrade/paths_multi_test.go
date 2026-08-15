@@ -994,6 +994,30 @@ func TestCrossPlatformCoverageMultiUpgradeBackupAndFallbackEdges(t *testing.T) {
 	}
 }
 
+// The production wrappers that used to bundle these two steps were removed as
+// dead code; the test keeps exercising the live building blocks they composed.
+func cleanupMultiLeftoversForTest(homeDir, baseDir string) error {
+	victims, err := managedMultiSkillVictims(baseDir, readManagedSkillNames(homeDir))
+	if err != nil {
+		return err
+	}
+	if _, err := backupSkillSet(homeDir, victims); err != nil {
+		return fmt.Errorf("备份并清理 multi 残留失败: %w", err)
+	}
+	return nil
+}
+
+func cleanupOppositeModeLeftoversForTest(homeDir, destBase string, skillSet map[string]bool) error {
+	victims, err := oppositeModeSkillVictims(destBase, skillSet, readManagedSkillNames(homeDir))
+	if err != nil {
+		return err
+	}
+	if _, err := backupSkillSet(homeDir, victims); err != nil {
+		return fmt.Errorf("备份并清理对面模式残留失败: %w", err)
+	}
+	return nil
+}
+
 // TestCrossPlatformCoverageCleanupLeftoversEdges pins the cleanup helpers:
 // read failures surface, backup failures abort, and the opposite-mode cleanup
 // preserves bundle skills while removing the mono leftover.
@@ -1003,11 +1027,11 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 
 	// Read failure (non-ENOENT) surfaces from both cleanups.
 	testseam.Swap(t, &upgradeReadDir, func(string) ([]os.DirEntry, error) { return nil, errors.New("read denied") })
-	if err := cleanupMultiLeftovers(home, base); err == nil || !strings.Contains(err.Error(), "读取技能目录失败") {
-		t.Fatalf("cleanupMultiLeftovers read error = %v", err)
+	if err := cleanupMultiLeftoversForTest(home, base); err == nil || !strings.Contains(err.Error(), "读取技能目录失败") {
+		t.Fatalf("cleanupMultiLeftoversForTest read error = %v", err)
 	}
-	if err := cleanupOppositeModeLeftovers(home, base, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "读取技能目录失败") {
-		t.Fatalf("cleanupOppositeModeLeftovers read error = %v", err)
+	if err := cleanupOppositeModeLeftoversForTest(home, base, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "读取技能目录失败") {
+		t.Fatalf("cleanupOppositeModeLeftoversForTest read error = %v", err)
 	}
 	testseam.Swap(t, &upgradeReadDir, os.ReadDir)
 
@@ -1015,13 +1039,13 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 	os.MkdirAll(filepath.Join(base, "dingtalk-stale"), 0o755)
 	useUpgradeManagedNames(t, "dingtalk-stale")
 	testseam.Swap(t, &skillPathRenameNoReplace, func(string, string) error { return errors.New("backup denied") })
-	if err := cleanupMultiLeftovers(home, base); err == nil || !strings.Contains(err.Error(), "备份并清理 multi 残留失败") {
+	if err := cleanupMultiLeftoversForTest(home, base); err == nil || !strings.Contains(err.Error(), "备份并清理 multi 残留失败") {
 		t.Fatalf("cleanupMultiLeftovers backup error = %v", err)
 	}
 
 	// Backup failure of the mono leftover aborts the opposite-mode cleanup.
 	os.MkdirAll(filepath.Join(base, "dws"), 0o755)
-	if err := cleanupOppositeModeLeftovers(home, base, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "备份并清理对面模式残留失败") {
+	if err := cleanupOppositeModeLeftoversForTest(home, base, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "备份并清理对面模式残留失败") {
 		t.Fatalf("opposite cleanup mono backup error = %v", err)
 	}
 	testseam.Swap(t, &skillPathRenameNoReplace, renameSkillPathNoReplace)
@@ -1033,7 +1057,7 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 		}
 		return renameSkillPathNoReplace(src, dst)
 	})
-	if err := cleanupOppositeModeLeftovers(home, base, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "备份并清理对面模式残留失败") {
+	if err := cleanupOppositeModeLeftoversForTest(home, base, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "备份并清理对面模式残留失败") {
 		t.Fatalf("opposite cleanup stale backup error = %v", err)
 	}
 	testseam.Swap(t, &skillPathRenameNoReplace, renameSkillPathNoReplace)
@@ -1044,7 +1068,7 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 	skillSet := map[string]bool{"dingtalk-keep": true}
 	os.MkdirAll(filepath.Join(base, "dingtalk-keep"), 0o755)
 	os.WriteFile(filepath.Join(base, "regular-file"), []byte("x"), 0o644)
-	if err := cleanupOppositeModeLeftovers(home, base, skillSet); err != nil {
+	if err := cleanupOppositeModeLeftoversForTest(home, base, skillSet); err != nil {
 		t.Fatalf("cleanupOppositeModeLeftovers() error = %v", err)
 	}
 	for _, gone := range []string{"dws", "dingtalk-stale"} {
@@ -1064,7 +1088,7 @@ func TestCrossPlatformCoverageCleanupLeftoversEdges(t *testing.T) {
 	}
 
 	// cleanupMultiLeftovers on a missing base is a no-op.
-	if err := cleanupMultiLeftovers(home, filepath.Join(home, "missing")); err != nil {
+	if err := cleanupMultiLeftoversForTest(home, filepath.Join(home, "missing")); err != nil {
 		t.Fatalf("missing base must be a no-op, got %v", err)
 	}
 }

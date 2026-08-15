@@ -180,9 +180,11 @@ func TestPackageManagerVerifierAcceptsOnlyCorrectLinksOrCopies(t *testing.T) {
 	}{
 		{
 			name: "correct-link",
-			prepare: func(t *testing.T, home, base string) {
+			prepare: func(t *testing.T, _, base string) {
 				t.Helper()
-				if err := os.Symlink(filepath.Join(home, ".agents", "skills", "dingtalk-shared"), filepath.Join(base, "dingtalk-shared")); err != nil {
+				// The canonical layout publishes RELATIVE links; the verifier now
+				// rejects absolute targets, so the fixture must match production.
+				if err := os.Symlink(filepath.Join("..", "..", ".agents", "skills", "dingtalk-shared"), filepath.Join(base, "dingtalk-shared")); err != nil {
 					t.Fatal(err)
 				}
 			},
