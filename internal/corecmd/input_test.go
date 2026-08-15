@@ -239,6 +239,39 @@ func TestResolveInputFlags_NoInputSpecPassthrough(t *testing.T) {
 	}
 }
 
+// Registration defaults and env fallback are never input-resolved: @file only
+// applies to what the user literally typed on the command line.
+func TestResolveInputFlags_DefaultNotResolved(t *testing.T) {
+	var got map[string]any
+	cmd := newInputCommand([]FlagSpec{
+		{Name: "content", Usage: "C", Bind: "content", Default: "@not-a-file", Input: []string{InputFile}},
+	}, &got)
+
+	if err := runInputCommand(t, cmd); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if got["content"] != "@not-a-file" {
+		t.Fatalf("toolArgs[content] = %q", got["content"])
+	}
+}
+
+// Trim flags judge usability on the trimmed value (rawValue), so a leading
+// whitespace before @ must still resolve instead of shipping as a literal.
+func TestResolveInputFlags_TrimmedLeadingSpace(t *testing.T) {
+	var got map[string]any
+	cmd := newInputCommand([]FlagSpec{
+		{Name: "content", Usage: "C", Bind: "content", Trim: true, Input: []string{InputFile}},
+	}, &got)
+	path := writeInputFile(t, "trimmed payload")
+
+	if err := runInputCommand(t, cmd, "--content", " @"+path); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if got["content"] != "trimmed payload" {
+		t.Fatalf("toolArgs[content] = %q", got["content"])
+	}
+}
+
 func TestValidateInputSpecs_Panics(t *testing.T) {
 	cases := []struct {
 		name string

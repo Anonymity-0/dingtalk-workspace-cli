@@ -125,6 +125,11 @@ func resolveInputFlags(cmd *cobra.Command, flags []FlagSpec) error {
 			continue
 		}
 		raw := cmdutil.MustGetFlag(cmd, name)
+		// Trim flags judge usability on the trimmed value (rawValue), so the
+		// prefix check must agree or " @path" would slip through unresolved.
+		if flag.Trim {
+			raw = strings.TrimSpace(raw)
+		}
 
 		switch {
 		case raw == "-":
@@ -169,15 +174,15 @@ func resolveInputFlags(cmd *cobra.Command, flags []FlagSpec) error {
 			}
 			data, err := os.ReadFile(path)
 			if err != nil {
-				verr := apperrors.NewValidation(
-					fmt.Sprintf("参数 --%s 读取文件 %q 失败：%v", flag.Name, path, err))
+				var opts []apperrors.Option
 				if inputSupports(flag, InputStdin) {
-					verr = apperrors.NewValidation(
-						fmt.Sprintf("参数 --%s 读取文件 %q 失败：%v", flag.Name, path, err),
-						apperrors.WithHint(fmt.Sprintf(
-							"该参数也支持 stdin：把文件内容管道进命令并传 --%s -", flag.Name)))
+					// Rejected @file paths are usually absolute (temp files).
+					// Steer toward stdin rather than copying the file around.
+					opts = append(opts, apperrors.WithHint(fmt.Sprintf(
+						"该参数也支持 stdin：把文件内容管道进命令并传 --%s -", flag.Name)))
 				}
-				return verr
+				return apperrors.NewValidation(
+					fmt.Sprintf("参数 --%s 读取文件 %q 失败：%v", flag.Name, path, err), opts...)
 			}
 			if err := cmd.Flags().Set(name, strings.TrimPrefix(string(data), utf8BOM)); err != nil {
 				return apperrors.NewValidation(
