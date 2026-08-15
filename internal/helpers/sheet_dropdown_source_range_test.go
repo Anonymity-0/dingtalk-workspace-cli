@@ -74,6 +74,8 @@ func TestCrossPlatformCoverageSetDropdownModeConstraints(t *testing.T) {
 		{name: "sheet prefix", args: []string{"--source-sheet-id", "source", "--source-range", "Sheet2!A1:A3"}, want: "不能包含工作表前缀"},
 		{name: "formula", args: []string{"--source-sheet-id", "source", "--source-range", "=A1:A3"}, want: "必须是单一连续区域"},
 		{name: "multi region", args: []string{"--source-sheet-id", "source", "--source-range", "A1:A3,C1:C3"}, want: "必须是单一连续区域"},
+		{name: "blank source range", args: []string{"--source-sheet-id", "source", "--source-range", " \t "}, want: "--source-range 不能为空"},
+		{name: "blank source sheet", args: []string{"--source-sheet-id", " \t ", "--source-range", "A1:A3"}, want: "--source-sheet-id 不能为空"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -166,6 +168,56 @@ func TestCrossPlatformCoverageBatchSetDropdownSourceRange(t *testing.T) {
 		if _, err := translateBatchOp(map[string]any{"toolName": "set-dropdown", "input": value}); err == nil {
 			t.Errorf("invalid batch SourceRange input %#v returned nil", value)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageBatchSetDropdownValidationGuidance(t *testing.T) {
+	tests := []struct {
+		name  string
+		input map[string]any
+		want  string
+	}{
+		{
+			name:  "inline top-level colors",
+			input: map[string]any{"options": []any{map[string]any{"value": "one"}}, "colors": []any{"#fff"}},
+			want:  "Inline 颜色请写入 options[].color",
+		},
+		{
+			name:  "source top-level colors",
+			input: map[string]any{"source-sheet-id": "source", "source-range": "A1:A3", "source-colors": []any{"#fff"}},
+			want:  "SourceRange 颜色写入暂不支持",
+		},
+		{
+			name:  "blank source range",
+			input: map[string]any{"source-sheet-id": "source", "source-range": " \t "},
+			want:  "--source-range 不能为空",
+		},
+		{
+			name:  "blank source sheet",
+			input: map[string]any{"source-sheet-id": " \t ", "source-range": "A1:A3"},
+			want:  "--source-sheet-id 不能为空",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := translateBatchOp(map[string]any{"toolName": "set-dropdown", "input": tc.input})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want contains %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageDropdownHelpDescribesDynamicAndInvalidContracts(t *testing.T) {
+	setDropdown := dimensionCoverageCommand(t, "set-dropdown")
+	if !strings.Contains(setDropdown.Long, "会自动调整引用并保持 valid") ||
+		!strings.Contains(setDropdown.Long, "只有 invalid 时才重新选择来源并写入") {
+		t.Fatalf("set-dropdown help does not describe verified structural behavior:\n%s", setDropdown.Long)
+	}
+	getDropdown := dimensionCoverageCommand(t, "get-dropdown")
+	if !strings.Contains(getDropdown.Long, `仅在 sourceRangeStatus="valid" 时返回`) ||
+		!strings.Contains(getDropdown.Long, "invalid 结果仍保留配置组，但省略 sourceRange") {
+		t.Fatalf("get-dropdown help does not describe conditional sourceRange readback:\n%s", getDropdown.Long)
 	}
 }
 

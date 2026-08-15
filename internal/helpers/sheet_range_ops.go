@@ -184,7 +184,7 @@ dws sheet info --node NODE_ID --sheet-id SHEET_ID --format json，并读取 merg
   - 只设样式或批量刷整片区域样式请用 dws sheet range set-style；写值同时设置少量 cell 样式可用 cellStyles
   - 目标范围与已有合并区域冲突时，range update 会返回 MERGED_CELLS_CONFLICT；先用 sheet info 查看 mergedRanges，取消合并后写入，必要时再重新合并
   - csv-put 的合并处理不同：目标区域含合并单元格时会打散合并并写入 CSV 值或公式
-  - SourceRange 当前不会随工作表重命名或行列结构调整自动更新；执行结构操作后应重新写入
+  - SourceRange 在已验证的重命名、引用前插入行/列、删除引用前行的场景会自动调整；move-dimension 及其他未覆盖的删除/移动场景后先回读 sourceRangeStatus，仅 invalid 时重新选源写入
   - 同一 cell 的 value/style 已写入但 SourceRange 校验失败时，服务端可返回 success=true，并通过 message 明确下拉未创建；必须检查 message，必要时重新读取确认
   - 清空整片区域请用 dws sheet range clear`,
 		Example: `  # 写入文本

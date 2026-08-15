@@ -19,7 +19,14 @@ func sizeTypeEnumHint(dimension string) string {
 	return "pixel / standard"
 }
 
-func validateDropdownSourceRangeNotation(sourceRange string) error {
+func validateDropdownSourceRangeInput(sourceSheetID, sourceRange string) error {
+	if strings.TrimSpace(sourceSheetID) == "" {
+		return fmt.Errorf("--source-sheet-id 不能为空")
+	}
+	sourceRange = strings.TrimSpace(sourceRange)
+	if sourceRange == "" {
+		return fmt.Errorf("--source-range 不能为空")
+	}
 	if strings.Contains(sourceRange, "!") {
 		return fmt.Errorf("--source-range 不能包含工作表前缀；请通过 --source-sheet-id 指定来源工作表")
 	}
@@ -801,8 +808,9 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 --source-range 只接受不含工作表前缀的 A1 区域，例如 T1:T3、T:T 或 1:3；
 来源工作表由 --source-sheet-id 单独指定。SourceRange 颜色写入暂不支持。
 
-已知限制：服务端写入的 SourceRange 不会在工作表重命名或行列插入、删除、移动后
-自动更新；执行这些结构操作后应重新写入下拉来源。`,
+已验证行为：工作表重命名、在引用前插入行/列、删除引用前的行会自动调整引用并保持 valid；
+已验证的 move-dimension 场景会使引用变为 invalid。列删除、删除整个来源区域或来源工作表等未覆盖场景不能预设结果；
+结构操作后应先回读 sourceRangeStatus，只有 invalid 时才重新选择来源并写入。`,
 		Example: `  # 设置单选下拉列表
   dws sheet set-dropdown --node NODE_ID --sheet-id SHEET_ID --range "A2:A100" \
     --options '[{"value":"选项1"},{"value":"选项2"},{"value":"选项3"}]'
@@ -862,7 +870,7 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 				}
 				toolArgs["options"] = options
 			} else {
-				if err := validateDropdownSourceRangeNotation(sourceRange); err != nil {
+				if err := validateDropdownSourceRangeInput(sourceSheetID, sourceRange); err != nil {
 					return err
 				}
 				toolArgs["sourceRange"] = map[string]any{
@@ -930,7 +938,8 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
 		Long: `查询钉钉表格指定范围内的下拉列表配置。
 
 Inline 配置返回 conditionValues 和 options；SourceRange 配置返回
-sourceType/sourceRange/sourceRangeStatus/enableMultiSelect，不展开来源区域的候选值或颜色。
+sourceType/sourceRangeStatus/enableMultiSelect，且仅在 sourceRangeStatus="valid" 时返回
+sourceRange。invalid 结果仍保留配置组，但省略 sourceRange；两种状态都不展开来源区域的候选值或颜色。
 如果范围内存在多个不同的下拉列表配置，会分别返回每组配置及其覆盖的单元格列表。
 如果范围内没有设置下拉列表，返回空。
 

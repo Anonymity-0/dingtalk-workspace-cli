@@ -160,11 +160,11 @@ Flags:
 | `dropdown` Inline | `options: [{value: string, color?: string}]` | 下拉选项列表 |
 | `dropdown` Inline | `enableMultiSelect: boolean` | 是否允许多选 |
 | `dropdown` SourceRange | `sourceType: "sourceRange"` | 区域来源模式 |
-| `dropdown` SourceRange | `sourceRange: {sheetId, a1Notation}` | 同一工作簿内的来源工作表和规范化 A1 区域 |
-| `dropdown` SourceRange | `sourceRangeStatus: "valid" / "invalid"` | 底层引用是否可解析；无效引用仍返回配置 |
+| `dropdown` SourceRange | `sourceRange: {sheetId, a1Notation}` | 仅 `sourceRangeStatus:"valid"` 时返回的来源工作表和规范化 A1 区域；`invalid` 时省略 |
+| `dropdown` SourceRange | `sourceRangeStatus: "valid" / "invalid"` | 底层引用是否可解析；无效引用仍返回配置，但不返回 `sourceRange` |
 | `checkbox` | `checked: boolean` | 当前勾选状态 |
 
-SourceRange 模式只返回引用元数据，不动态拉取或展开来源区域的候选值，因此不返回 `options` 或颜色。
+SourceRange 模式不动态拉取或展开来源区域的候选值，因此不返回 `options` 或颜色。`invalid` 时只能依赖 `sourceRangeStatus` 判定需要重新选源，不得假定仍能从 `sourceRange` 取回旧坐标。
 
 **hyperlink 结构**：
 
