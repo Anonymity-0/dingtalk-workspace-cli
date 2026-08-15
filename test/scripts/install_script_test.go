@@ -1862,18 +1862,24 @@ func TestInstallerShellLinkPublicationRacePreservesConcurrentDirectories(t *test
 			second := filepath.Join(base, "dingtalk-second")
 			mustWriteFile(t, filepath.Join(home, ".agents", "skills", "dingtalk-first", "SKILL.md"), []byte("first\n"), 0o644)
 			mustWriteFile(t, filepath.Join(home, ".agents", "skills", "dingtalk-second", "SKILL.md"), []byte("second\n"), 0o644)
+			bundle := filepath.Join(t.TempDir(), "multi")
+			mustWriteFile(t, filepath.Join(bundle, "dingtalk-first", "SKILL.md"), []byte("first\n"), 0o644)
+			mustWriteFile(t, filepath.Join(bundle, "dingtalk-second", "SKILL.md"), []byte("second\n"), 0o644)
 
+			// Publication now moves a staged symlink instead of using `ln -P`
+			// (BusyBox has no -P), and multi mode requires the bundle source so
+			// that only bundle skills are linked. Inject the race on that move.
 			harness := `. "$DWS_TEST_LIBRARY"
-ln() {
-  if [ "$1" = -P ] && [ "$3" = "$DWS_TEST_SECOND" ]; then
+mv() {
+  if [ "$2" = "$DWS_TEST_SECOND" ]; then
     rm -f "$DWS_TEST_FIRST"
     mkdir -p "$DWS_TEST_FIRST" "$DWS_TEST_SECOND"
     printf '%s\n' first-user-data > "$DWS_TEST_FIRST/user.txt"
     printf '%s\n' second-user-data > "$DWS_TEST_SECOND/user.txt"
   fi
-  command ln "$@"
+  command mv "$@"
 }
-if link_canonical_skills_to_base "$HOME" "$DWS_TEST_BASE" multi; then
+if link_canonical_skills_to_base "$HOME" "$DWS_TEST_BASE" multi "$DWS_TEST_BUNDLE"; then
   exit 2
 fi
 identity_dest="$DWS_TEST_BASE/identity-link"
@@ -1895,6 +1901,7 @@ rm -f "$identity_anchor"
 				"HOME="+home,
 				"DWS_TEST_LIBRARY="+library,
 				"DWS_TEST_BASE="+base,
+				"DWS_TEST_BUNDLE="+bundle,
 				"DWS_TEST_FIRST="+first,
 				"DWS_TEST_SECOND="+second,
 			)

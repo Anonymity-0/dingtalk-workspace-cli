@@ -704,6 +704,57 @@ function Publish-SkillCache {
     }
 }
 
+# Get-SkillBackupName encodes the HOME-relative path of a backed-up Skill
+# directory ('.codex\skills\dingtalk-chat' → '.codex-skills-dingtalk-chat') so
+# copies retired from different Agent roots stay distinguishable inside one
+# stamp. Mirrors build/npm/install.js and internal/upgrade/paths.go. Paths
+# outside HOME fall back to the bare leaf.
+function Get-SkillBackupName {
+    param([string]$Dir)
+    $leaf = Split-Path $Dir -Leaf
+    try {
+        $full = [System.IO.Path]::GetFullPath($Dir)
+        $root = [System.IO.Path]::GetFullPath($HOME).TrimEnd([char[]]@('\', '/'))
+    } catch {
+        return $leaf
+    }
+    if ([string]::IsNullOrWhiteSpace($root)) { return $leaf }
+    foreach ($sep in @('\', '/')) {
+        $prefix = $root + $sep
+        if ($full.Length -gt $prefix.Length -and
+            $full.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $rel = $full.Substring($prefix.Length).Trim([char[]]@('\', '/'))
+            if (![string]::IsNullOrWhiteSpace($rel)) { return ($rel -replace '[\\/]+', '-') }
+        }
+    }
+    return $leaf
+}
+
+# SkillBackupKeep bounds $HOME\.dws\skill-backups growth: only the newest
+# stamped backup directories are kept, matching skillBackupKeep and
+# pruneSkillBackups in internal/upgrade/paths.go.
+$SkillBackupKeep = 5
+$script:SkillBackupRootsThisRun = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+# Remove-OldSkillBackups deletes the oldest stamped backup directories once
+# more than $SkillBackupKeep remain. Stamps sort lexicographically in
+# chronological order, so name order is age order. Roots created during this
+# run are never pruned: an in-flight transaction still needs them to roll
+# back. Best-effort — a prune failure never fails the install.
+function Remove-OldSkillBackups {
+    $root = Join-Path $HOME ".dws\skill-backups"
+    if (!(Test-Path -LiteralPath $root -PathType Container)) { return }
+    $dirs = @(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction SilentlyContinue |
+        Sort-Object -Property Name)
+    $excess = $dirs.Count - $SkillBackupKeep
+    foreach ($dir in $dirs) {
+        if ($excess -le 0) { break }
+        if ($script:SkillBackupRootsThisRun.Contains($dir.FullName)) { continue }
+        Remove-Item -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        $excess--
+    }
+}
+
 # Backup-SkillDir moves $Dir into $HOME\.dws\skill-backups\<stamp>\<name>
 # instead of destroying it (non-interactive installs cannot confirm, so
 # removals must stay reversible). Missing paths are a no-op success. On any
@@ -718,11 +769,13 @@ function Backup-SkillDir {
     if (!(Test-SkillPathLexically -Path $Dir)) { return $true }
     $backupRoot = Join-Path $HOME ".dws\skill-backups"
     $stamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss")
-    $name = Split-Path $Dir -Leaf
-    $target = Join-Path (Join-Path $backupRoot $stamp) $name
+    $name = Get-SkillBackupName -Dir $Dir
+    $targetRoot = Join-Path $backupRoot $stamp
+    $target = Join-Path $targetRoot $name
     $i = 1
     while (Test-SkillPathLexically -Path $target) {
-        $target = Join-Path (Join-Path $backupRoot "$stamp-$i") $name
+        $targetRoot = Join-Path $backupRoot "$stamp-$i"
+        $target = Join-Path $targetRoot $name
         $i++
         if ($i -gt 1000) {
             Write-Say "⚠️  备份目录冲突，保留原目录 $Dir"
@@ -737,6 +790,12 @@ function Backup-SkillDir {
         return $false
     }
     if ($null -ne $BackupPath) { $BackupPath.Value = $target }
+    try {
+        $script:SkillBackupRootsThisRun.Add([System.IO.Path]::GetFullPath($targetRoot)) | Out-Null
+        Remove-OldSkillBackups
+    } catch {
+        Write-Say "⚠️  旧备份清理失败（备份本身已成功）: $_"
+    }
     Write-Say "  × 已备份并移除 $Dir → $target"
     return $true
 }
@@ -942,7 +1001,7 @@ function Move-AgentSkillRootToBackup {
 }
 
 function Publish-CanonicalSkillLinks {
-    param([string]$Root, [string]$BaseDir, [string]$Mode)
+    param([string]$Root, [string]$BaseDir, [string]$Mode, [string[]]$BundleNames = @())
     $canonical = Join-Path $Root ".agents\skills"
     if (!(Test-Path $BaseDir)) { New-Item -ItemType Directory -Path $BaseDir -Force | Out-Null }
     if (Test-SamePhysicalSkillRoot -Left $BaseDir -Right $canonical) { return $true }
@@ -953,10 +1012,17 @@ function Publish-CanonicalSkillLinks {
         New-Item -ItemType Directory -Path $stageRoot -Force -ErrorAction Stop | Out-Null
         if ($Mode -eq "mono") {
             $names = @($SkillName)
+        } elseif ($BundleNames.Count -gt 0) {
+            # The canonical store is SHARED: enumerate the link set from the
+            # installed bundle, never from ~\.agents\skills, or third-party and
+            # user skills would be republished into every Agent root.
+            $names = @($BundleNames)
         } else {
-            $names = @(Get-ChildItem -Path $canonical -Directory -ErrorAction Stop | Where-Object {
-                Test-Path (Join-Path $_.FullName "SKILL.md")
-            } | ForEach-Object { $_.Name })
+            # No bundle list means we cannot tell DWS skills apart from the
+            # user's own entries in the shared store. Fail this Agent (the
+            # caller degrades to a copy install) instead of guessing, matching
+            # link_canonical_skills_to_base in scripts/install-skills.sh.
+            throw "multi mode requires the installed bundle skill names"
         }
         $publishNames = @()
         foreach ($name in $names) {
@@ -970,6 +1036,12 @@ function Publish-CanonicalSkillLinks {
         foreach ($existing in Get-ChildItem -Path $BaseDir -Force -ErrorAction SilentlyContinue) {
             if ($existing.FullName -eq $stageRoot) { continue }
             if (Test-ManagedMultiSkillDir -Dir $existing.FullName) { $victims.Add($existing.FullName) }
+        }
+        # Every published name replaces whatever occupies its destination, even
+        # when that copy predates central ownership metadata; the loop below
+        # still skips destinations that are already correct links.
+        foreach ($name in $names) {
+            $victims.Add((Join-Path $BaseDir $name))
         }
         $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
         foreach ($victim in $victims) {
@@ -1315,7 +1387,13 @@ function Install-SkillsToHomes {
         if (Test-SamePhysicalSkillRoot -Left $baseDir -Right $canonical) { continue }
         $attempted++
         if ($agent.Universal) {
-            if (!(Move-AgentSkillRootToBackup -Root $Root -BaseDir $baseDir)) { $failed++ }
+            # Cleanup-only migration: universal Agents read the canonical store
+            # directly, so nothing is installed here. Leaving an obsolete copy
+            # behind is a warning, never a reason to fail an install whose
+            # canonical store and links all succeeded.
+            if (!(Move-AgentSkillRootToBackup -Root $Root -BaseDir $baseDir)) {
+                Write-Say "⚠️  Agent Skill 旧副本迁移失败（不影响本次安装）: $baseDir"
+            }
             continue
         }
         if (Publish-CanonicalSkillLinks -Root $Root -BaseDir $baseDir -Mode "mono") {
@@ -1370,6 +1448,11 @@ function Install-MultiSkillsToHomes {
     $attempted = 1
     $failed = 0
     $canonical = Join-Path $Root ".agents\skills"
+    # The link set must come from the installed bundle, not from the shared
+    # canonical store (which may also hold user/third-party skills).
+    $bundleNames = @(Get-ChildItem -Path $MultiSrc -Directory -ErrorAction SilentlyContinue | Where-Object {
+        Test-Path (Join-Path $_.FullName "SKILL.md")
+    } | ForEach-Object { $_.Name })
     if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $canonical -Root $Root -AgentDir ".agents\skills") { $installed++ } else { $failed++ }
     if ($installed -eq 0) { return $false }
     $seenBases = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
@@ -1382,10 +1465,14 @@ function Install-MultiSkillsToHomes {
         if (Test-SamePhysicalSkillRoot -Left $baseDir -Right $canonical) { continue }
         $attempted++
         if ($agent.Universal) {
-            if (!(Move-AgentSkillRootToBackup -Root $Root -BaseDir $baseDir)) { $failed++ }
+            # Cleanup-only migration (see Install-SkillsToHomes): a retire
+            # failure must not fail an otherwise complete install.
+            if (!(Move-AgentSkillRootToBackup -Root $Root -BaseDir $baseDir)) {
+                Write-Say "⚠️  Agent Skill 旧副本迁移失败（不影响本次安装）: $baseDir"
+            }
             continue
         }
-        if (Publish-CanonicalSkillLinks -Root $Root -BaseDir $baseDir -Mode "multi") {
+        if (Publish-CanonicalSkillLinks -Root $Root -BaseDir $baseDir -Mode "multi" -BundleNames $bundleNames) {
             $installed++
         } else {
             if (Install-MultiToBase -MultiSrc $MultiSrc -BaseDir $baseDir -Root $Root -AgentDir $agent.Dir) {

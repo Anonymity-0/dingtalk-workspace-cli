@@ -127,9 +127,44 @@ copy_tree() {
   return 1
 }
 
+# refresh_cache_tree <src> <dest>
+# Same staged, atomic swap as copy_tree, but for the ephemeral ~/.dws/skills
+# caches: those trees are byte-reproducible from the release asset, so archiving
+# every stale generation into ~/.dws/skill-backups only grows that directory
+# without bound. The previous cache is deleted, exactly like install-devapp.sh —
+# but only after the replacement is fully staged and published.
+refresh_cache_tree() {
+  src="$1"
+  dest="$2"
+  parent="$(dirname "$dest")"
+  mkdir -p "$parent" || return 1
+  stage="$(mktemp -d "$parent/.dws-cache.tmp.XXXXXX")" || return 1
+  if ! cp -R "$src/." "$stage/"; then rm -rf "$stage"; return 1; fi
+  old=""
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    old="$(mktemp -d "$parent/.dws-cache.old.XXXXXX")" || { rm -rf "$stage"; return 1; }
+    rmdir "$old" || { rm -rf "$stage" "$old"; return 1; }
+    if ! mv "$dest" "$old"; then rm -rf "$stage"; return 1; fi
+  fi
+  if mv "$stage" "$dest"; then
+    if [ -n "$old" ] && ! rm -rf "$old"; then
+      printf '  ⚠️  新缓存已生效，但旧缓存清理失败: %s\n' "$old" >&2
+    fi
+    return 0
+  fi
+  rm -rf "$stage"
+  if [ -n "$old" ] && ! mv "$old" "$dest"; then
+    printf '  ⚠️  缓存刷新失败，原缓存保留在 %s\n' "$old" >&2
+  fi
+  return 1
+}
+
 backup_skill_dir() {
   victim="$1"
   [ -e "$victim" ] || [ -L "$victim" ] || { printf '\n'; return 0; }
+  # Prune before creating this run's archive, so the backup the caller is about
+  # to depend on for rollback can never be a prune candidate.
+  prune_skill_backups
   stamp="$(date -u +%Y%m%d-%H%M%S)"
   name="$(printf '%s' "$victim" | sed 's#[/\\]#-#g; s#^-##')"
   backup_root="$HOME/.dws/skill-backups/$stamp"
@@ -137,10 +172,41 @@ backup_skill_dir() {
   i=0
   while [ -e "$backup" ] || [ -L "$backup" ]; do
     i=$((i + 1)); backup_root="$HOME/.dws/skill-backups/$stamp-$i"; backup="$backup_root/$name"
+    # Same bail-out as install-skills.sh: never spin forever on a pathological
+    # backup root, report it and keep the original directory instead.
+    if [ "$i" -gt 1000 ]; then
+      printf '  ⚠️  备份目录冲突，保留原目录 %s\n' "$victim" >&2
+      return 1
+    fi
   done
   mkdir -p "$backup_root" || return 1
   mv "$victim" "$backup" || return 1
   printf '%s\n' "$backup"
+}
+
+# prune_skill_backups keeps only the newest SKILL_BACKUP_KEEP stamped backup
+# directories under $HOME/.dws/skill-backups, matching Go's skillBackupKeep /
+# pruneSkillBackups. Glob order is lexicographic and the stamps are UTC
+# YYYYmmdd-HHMMSS, so the oldest sort first. Best-effort: a removal failure is
+# reported and never fatal.
+SKILL_BACKUP_KEEP=5
+prune_skill_backups() {
+  prune_root="$HOME/.dws/skill-backups"
+  [ -d "$prune_root" ] || return 0
+  prune_total=0
+  for prune_entry in "$prune_root"/*; do
+    [ -d "$prune_entry" ] || continue
+    prune_total=$((prune_total + 1))
+  done
+  [ "$prune_total" -gt "$SKILL_BACKUP_KEEP" ] || return 0
+  prune_drop=$((prune_total - SKILL_BACKUP_KEEP))
+  prune_seen=0
+  for prune_entry in "$prune_root"/*; do
+    [ -d "$prune_entry" ] || continue
+    prune_seen=$((prune_seen + 1))
+    [ "$prune_seen" -le "$prune_drop" ] || break
+    rm -rf "$prune_entry" || printf '  ⚠️  旧 Skill 备份清理失败: %s\n' "$prune_entry" >&2
+  done
 }
 
 same_physical_skill() {
@@ -221,14 +287,18 @@ install_skill_to_homes() {
   copy_tree "$src" "$canonical" || return 1
   installed=1
   failed=0
+  retire_failed=0
   for agent_dir in $(agent_skill_dirs); do
     base="$(resolve_agent_skill_base "$agent_dir")"
     agent_skill_base_detected "$agent_dir" "$base" || continue
     same_physical_skill "$base" "$HOME/.agents/skills" && continue
     if is_cleanup_only_agent_dir "$agent_dir"; then
+      # Cleanup-only: universal Agents read the canonical store directly, so
+      # nothing is installed here. A retire failure only leaves an obsolete copy
+      # behind and must never fail an otherwise complete install.
       if ! backup_skill_dir "$base/$skill_name" >/dev/null; then
-        printf '  ⚠️  Agent Skill 旧副本备份失败，保留原目录: %s\n' "$base/$skill_name" >&2
-        failed=$((failed + 1))
+        printf '  ⚠️  Agent Skill 旧副本备份失败，保留原目录（不影响本次安装）: %s\n' "$base/$skill_name" >&2
+        retire_failed=$((retire_failed + 1))
       fi
       continue
     fi
@@ -241,6 +311,9 @@ install_skill_to_homes() {
     fi
     installed=$((installed + 1))
   done
+  if [ "$retire_failed" -gt 0 ]; then
+    printf '  ⚠️  有 %s 个 Agent 旧副本未能迁移（安装已完成，可稍后手动删除）\n' "$retire_failed" >&2
+  fi
   if [ "$failed" -gt 0 ]; then
     printf '  ⚠️  有 %s 个 Agent 目标安装 %s 失败\n' "$failed" "$skill_name" >&2
     return 1
@@ -298,12 +371,12 @@ install_skills_from_bundle() {
   event_cache="$HOME/.dws/skills/multi/$EVENT_SKILL_NAME"
   shared_cache="$HOME/.dws/skills/multi/$SHARED_SKILL_NAME"
   misc_cache="$HOME/.dws/skills/multi/$MISC_SKILL_NAME"
-  copy_tree "$event_src" "$event_cache"
-  copy_tree "$shared_src" "$shared_cache"
-  copy_tree "$misc_src" "$misc_cache"
+  refresh_cache_tree "$event_src" "$event_cache" || err "${EVENT_SKILL_NAME} 缓存刷新失败: ${event_cache}"
+  refresh_cache_tree "$shared_src" "$shared_cache" || err "${SHARED_SKILL_NAME} 缓存刷新失败: ${shared_cache}"
+  refresh_cache_tree "$misc_src" "$misc_cache" || err "${MISC_SKILL_NAME} 缓存刷新失败: ${misc_cache}"
 
   mono_cache="$HOME/.dws/skills/mono"
-  copy_tree "$mono_src" "$mono_cache"
+  refresh_cache_tree "$mono_src" "$mono_cache" || err "mono ${MONO_SKILL_NAME} 缓存刷新失败: ${mono_cache}"
 
   event_installed="$(install_skill_to_homes "$event_src" "$EVENT_SKILL_NAME")" \
     || err "${EVENT_SKILL_NAME} 分发到 Agent 目录失败，详见上方告警"

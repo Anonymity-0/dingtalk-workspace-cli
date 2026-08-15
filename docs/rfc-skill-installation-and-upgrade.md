@@ -194,6 +194,13 @@ Agent 目标仍彼此独立，一个目标失败不会回滚此前已经成功�
 入口继续使用系统 `mv` 的跨文件系统复制/删除能力；Go、npm 与 PowerShell 显式实现
 上述验证和失败合同。
 
+原子 no-replace 发布（Linux `RENAME_NOREPLACE`、Darwin `RENAME_EXCL`）依赖底层文件
+系统支持：`rename(2)` 只列出 ext4、btrfs、tmpfs 与 cifs，因此 NFS、FUSE 与
+overlayfs 家目录会以 `EINVAL` 拒绝该 flag。这些文件系统不得让安装整体失败，而是降级
+为“显式存在性检查 + 普通 rename”：不覆盖既有目标的契约保持不变，仅失去原子性，
+其检查与 rename 之间的竞态窗口与普通 rename 本身一致，并由发布后的身份与内容校验
+兜底。Windows `MoveFile` 本身即拒绝已存在的目标，无需降级。
+
 备份是安装安全机制，不等于独立 rollback 产品。需要切回 mono 时重新运行
 `dws skill setup --mode mono`。
 

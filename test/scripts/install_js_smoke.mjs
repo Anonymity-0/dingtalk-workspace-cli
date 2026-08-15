@@ -16,22 +16,37 @@
  *                             skills, mono leftover dws/ and stale
  *                             dingtalk-* are removed, and the
  *                             ~/.dws/skills/{multi,mono} caches fill.
- *   2. empty multi/ tree    — warns and falls back to mono instead of
+ *   2. universal topology   — canonical store installed, pre-existing private
+ *                             copies retired and recoverable under
+ *                             ~/.dws/skill-backups/<stamp>/<home-rel-name>.
+ *   3. second run           — idempotent: an already-correct link is neither
+ *                             re-backed-up nor rewritten.
+ *   4. unretireable universal root — a cleanup-only failure WARNS; canonical
+ *                             store, non-universal links and skills-state.json
+ *                             are all still written and the install exits 0.
+ *   5. empty multi/ tree    — warns and falls back to mono instead of
  *                             crashing postinstall; a previously good multi
  *                             cache is NOT wiped.
- *   3. bogus mode           — DWS_SKILL_MODE=bogus exits non-zero with an
+ *   6. bogus mode           — DWS_SKILL_MODE=bogus exits non-zero with an
  *                             "invalid DWS_SKILL_MODE" error.
- *   4. multi-only zip, mono — mono install is skipped with a warning; the
+ *   7. multi-only zip, mono — mono install is skipped with a warning; the
  *                             staging root is NOT copied into a dws/ dir.
- *   5. multi backup failure — preserves mono, writes no multi skill, and
+ *   8. multi backup failure — preserves mono, writes no multi skill, and
  *                             reports postinstall failure.
- *   6. mono backup failure  — preserves multi, writes no mono skill, and
+ *   9. mono backup failure  — preserves multi, writes no mono skill, and
  *                             reports postinstall failure.
- *   7. mono switch          — migrates only centrally owned multi Skills.
- *   8. cache copy failure   — preserves the previous complete cache.
- *   9. multi publish failure — restores the complete previous Skill set.
- *  10. multi backup failure  — restores every earlier successful backup.
- *  11. mono transaction failure — restores every managed multi Skill after
+ *  10. mono switch          — migrates only centrally owned multi Skills.
+ *  11. cache copy failure   — preserves the previous complete cache.
+ *  12. no-replace publish   — an occupied destination that is not a victim is
+ *                             refused, not replaced or linked into.
+ *  13. simulated win32      — junction type + ABSOLUTE canonical target and
+ *                             the rename publish path with its no-replace
+ *                             guard, exercised by swapping process.platform
+ *                             instead of requiring a Windows host.
+ *  14. backup retention     — ~/.dws/skill-backups keeps the newest 5 stamps.
+ *  15. multi publish failure — restores the complete previous Skill set.
+ *  16. multi backup failure  — restores every earlier successful backup.
+ *  17. mono transaction failure — restores every managed multi Skill after
  *                                 later backup or mono publish failure.
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
@@ -131,6 +146,24 @@ function writeManagedState(home, names) {
 
 function crossDeviceError() {
   return Object.assign(new Error("injected cross-device rename"), { code: "EXDEV" });
+}
+
+// withSimulatedWin32 runs fn with process.platform === "win32" so the
+// Windows-only publish branches (junction type, absolute link target, rename
+// publish + its no-replace guard) get real execution coverage on a unix host.
+// fs.symlinkSync ignores the type argument off Windows, so the same call is
+// safe here. Create every temp path BEFORE calling: os.tmpdir() follows the
+// simulated platform.
+function withSimulatedWin32(fn) {
+  const original = process.platform;
+  const set = (value) =>
+    Object.defineProperty(process, "platform", { value, configurable: true, enumerable: true, writable: false });
+  set("win32");
+  try {
+    return fn();
+  } finally {
+    set(original);
+  }
 }
 
 function runCrossDeviceMoveContract() {
@@ -465,6 +498,93 @@ scenario("ZCode links its Agent root to the canonical store", () => {
   }
 });
 
+scenario("a second install run is idempotent and preserves correct links", () => {
+  const { tmp, pkg, home } = stagePkg({
+    "mono/SKILL.md": "# mono fixture\n",
+    "multi/dingtalk-chat/SKILL.md": "# dingtalk-chat\n",
+  });
+  try {
+    writeFile(path.join(home, ".zcode", "v2", "config.json"), "{}\n");
+
+    const first = runInstall(pkg, home, "multi", { XDG_CONFIG_HOME: path.join(home, ".config") });
+    assert.equal(first.status, 0, `exit=${first.status}\nstdout=${first.stdout}\nstderr=${first.stderr}`);
+    const linked = path.join(home, ".zcode", "skills", "dingtalk-chat");
+    const firstTarget = fs.readlinkSync(linked);
+    const firstState = JSON.parse(fs.readFileSync(path.join(home, ".dws", "skills-state.json"), "utf8"));
+
+    const second = runInstall(pkg, home, "multi", { XDG_CONFIG_HOME: path.join(home, ".config") });
+    assert.equal(second.status, 0, `exit=${second.status}\nstdout=${second.stdout}\nstderr=${second.stderr}`);
+    assert.equal(fs.lstatSync(linked).isSymbolicLink(), true, "an already-correct link stays a link");
+    assert.equal(fs.readlinkSync(linked), firstTarget, "an already-correct link is not rewritten");
+    assert.equal(fs.readFileSync(path.join(linked, "SKILL.md"), "utf8"), "# dingtalk-chat\n");
+    assert.ok(
+      !second.stdout.includes(`已备份并移除 ${linked}`),
+      "an already-correct link must not be backed up again",
+    );
+    const secondState = JSON.parse(fs.readFileSync(path.join(home, ".dws", "skills-state.json"), "utf8"));
+    assert.deepEqual(secondState.official_skills, firstState.official_skills, "state is stable across runs");
+    assert.deepEqual(
+      secondState.managed_skills.map((record) => record.digest),
+      firstState.managed_skills.map((record) => record.digest),
+      "re-installing the same bundle yields the same provenance digests",
+    );
+    assert.ok(
+      fs.readdirSync(path.join(home, ".dws", "skill-backups")).length <= 5,
+      "repeated installs keep the backup root bounded",
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("unretireable universal copy warns but still completes the install", () => {
+  const { tmp, pkg, home } = stagePkg({
+    "mono/SKILL.md": "# mono fixture\n",
+    "multi/dingtalk-chat/SKILL.md": "# dingtalk-chat\n",
+  });
+  const codexSkills = path.join(home, ".codex", "skills");
+  try {
+    // Non-universal Agent that must still receive its link.
+    writeFile(path.join(home, ".zcode", "v2", "config.json"), "{}\n");
+    // Universal Agent whose obsolete copy cannot be moved out: r-x on the
+    // parent means rename() fails with EACCES.
+    writeFile(path.join(codexSkills, "dingtalk-chat", "SKILL.md"), "old codex copy\n");
+    fs.chmodSync(codexSkills, 0o500);
+
+    const res = runInstall(pkg, home, "multi", {
+      XDG_CONFIG_HOME: path.join(home, ".config"),
+      CODEX_HOME: "",
+    });
+    assert.equal(
+      res.status,
+      0,
+      `a cleanup-only failure must not fail the install\nexit=${res.status}\nstdout=${res.stdout}\nstderr=${res.stderr}`,
+    );
+    assert.match(res.stderr, /旧副本迁移失败/, "the retire failure is reported as a warning");
+    assert.ok(
+      fs.existsSync(path.join(home, ".agents", "skills", "dingtalk-chat", "SKILL.md")),
+      "canonical store is still installed",
+    );
+    const linked = path.join(home, ".zcode", "skills", "dingtalk-chat");
+    assert.equal(fs.lstatSync(linked).isSymbolicLink(), true, "non-universal link is still installed");
+    assert.equal(fs.readFileSync(path.join(linked, "SKILL.md"), "utf8"), "# dingtalk-chat\n");
+    assert.ok(
+      fs.existsSync(path.join(home, ".dws", "skills-state.json")),
+      "skills-state.json is written even when a retire failed",
+    );
+    assert.equal(
+      fs.readFileSync(path.join(codexSkills, "dingtalk-chat", "SKILL.md"), "utf8"),
+      "old codex copy\n",
+      "a copy that cannot be backed up is never deleted",
+    );
+  } finally {
+    try {
+      fs.chmodSync(codexSkills, 0o700);
+    } catch {}
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 scenario("upstream Agent roots honor XDG and custom homes with relative links", () => {
   const { tmp, pkg, home } = stagePkg({
     "mono/SKILL.md": "# mono fixture\n",
@@ -510,16 +630,28 @@ scenario("upstream Agent roots honor XDG and custom homes with relative links", 
       assert.equal(fs.readFileSync(path.join(linked, "SKILL.md"), "utf8"), "# dingtalk-chat\n");
     }
     const backupText = [];
+    const backupNames = [];
     const collectBackupText = (dir) => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) collectBackupText(full);
-        else if (entry.isFile()) backupText.push(fs.readFileSync(full, "utf8"));
+        if (entry.isDirectory()) {
+          backupNames.push(entry.name);
+          collectBackupText(full);
+        } else if (entry.isFile()) backupText.push(fs.readFileSync(full, "utf8"));
       }
     };
     collectBackupText(path.join(home, ".dws", "skill-backups"));
     assert.ok(backupText.includes("old claude copy\n"), "CLAUDE_CONFIG_DIR content is recoverably backed up");
     assert.ok(backupText.includes("old hermes copy\n"), "HERMES_HOME content is recoverably backed up");
+    // Retired universal copies are the PR's advertised recovery story: every
+    // one of them must be readable back out of ~/.dws/skill-backups.
+    assert.ok(backupText.includes("old amp copy\n"), "retired XDG agents copy is recoverable");
+    assert.ok(backupText.includes("old codex copy\n"), "retired CODEX_HOME copy is recoverable");
+    assert.ok(backupText.includes("old DWS path\n"), "retired legacy ~/.amp copy is recoverable");
+    assert.ok(
+      backupNames.includes(".amp-skills-dingtalk-chat"),
+      `backup names record the HOME-relative origin, got ${backupNames.join(",")}`,
+    );
     for (const retired of [
       path.join(xdg, "agents", "skills", "dingtalk-chat"),
       path.join(codex, "skills", "dingtalk-chat"),
@@ -691,21 +823,31 @@ scenario("canonical link publication never clobbers or deletes concurrent user d
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-canonical-race-"));
   try {
     {
+      // Real no-replace property: the destination is occupied by data this
+      // transaction never backed up (it is not a victim), so the production
+      // publisher must refuse rather than replace or link into it. No stub
+      // creates or destroys anything here.
       const home = path.join(tmp, "no-clobber-home");
       const canonical = path.join(home, ".agents", "skills");
       const base = path.join(home, ".cursor", "skills");
       const destination = path.join(base, "dingtalk-chat");
       writeFile(path.join(canonical, "dingtalk-chat", "SKILL.md"), "new\n");
+      writeFile(path.join(destination, "concurrent-user-data.txt"), "must survive\n");
       assert.throws(
-        () => publishCanonicalLinksAtomically(home, canonical, base, ["dingtalk-chat"], [], {
-          publishLinkFn(_source, target) {
-            writeFile(path.join(target, "concurrent-user-data.txt"), "must survive\n");
-            throw Object.assign(new Error("concurrent destination exists"), { code: "EEXIST" });
-          },
-        }),
-        /concurrent destination exists/,
+        () => publishCanonicalLinksAtomically(home, canonical, base, ["dingtalk-chat"], []),
+        /Skill publish destination already exists/,
       );
       assert.equal(fs.readFileSync(path.join(destination, "concurrent-user-data.txt"), "utf8"), "must survive\n");
+      assert.deepEqual(
+        fs.readdirSync(destination),
+        ["concurrent-user-data.txt"],
+        "refused publication must not leave anything inside the occupied destination",
+      );
+      assert.equal(fs.lstatSync(destination).isDirectory(), true, "the user's directory is still a directory");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-link-set.tmp-")),
+        "refused publication cleans its staging root",
+      );
     }
 
     {
@@ -751,6 +893,111 @@ scenario("canonical link publication never clobbers or deletes concurrent user d
       assert.equal(retained.length, 1, "concurrent replacement must be retained in quarantine");
       assert.equal(fs.readFileSync(retained[0], "utf8"), "must survive\n");
     }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("simulated win32 publishes junctions with absolute canonical targets", () => {
+  // Temp roots are created before entering the simulated platform: os.tmpdir()
+  // would otherwise resolve through Windows environment variables.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-win32-link-"));
+  try {
+    const home = path.join(tmp, "home");
+    const canonical = path.join(home, ".agents", "skills");
+    const canonicalSkill = path.join(canonical, "dingtalk-chat");
+    const base = path.join(home, ".zcode", "skills");
+    const dest = path.join(base, "dingtalk-chat");
+    writeFile(path.join(canonicalSkill, "SKILL.md"), "# dingtalk-chat\n");
+    writeFile(path.join(dest, "SKILL.md"), "old zcode copy\n");
+
+    const symlinkCalls = [];
+    const renameCalls = [];
+    withSimulatedWin32(() => {
+      publishCanonicalLinksAtomically(home, canonical, base, ["dingtalk-chat"], [dest], {
+        symlinkFn(target, linkPath, type) {
+          symlinkCalls.push({ target, linkPath, type });
+          fs.symlinkSync(target, linkPath, type);
+        },
+        publishRenameFn(source, destination) {
+          renameCalls.push({ source, destination });
+          fs.renameSync(source, destination);
+        },
+      });
+    });
+
+    assert.equal(symlinkCalls.length, 1, "one staged link per bundle skill");
+    assert.equal(symlinkCalls[0].type, "junction", "Windows must publish junctions, not symlinks");
+    assert.equal(path.isAbsolute(symlinkCalls[0].target), true, "junctions require an absolute target");
+    assert.equal(symlinkCalls[0].target, fs.realpathSync(canonicalSkill), "junction targets the canonical store");
+    assert.equal(renameCalls.length, 1, "win32 publishes by rename, not by ln -P");
+    assert.equal(renameCalls[0].destination, dest);
+    assert.equal(fs.readlinkSync(dest), fs.realpathSync(canonicalSkill), "published junction kept its absolute target");
+    assert.equal(fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"), "# dingtalk-chat\n");
+    const backupRoot = path.join(home, ".dws", "skill-backups");
+    const stamps = fs.readdirSync(backupRoot);
+    assert.equal(stamps.length, 1, "the replaced copy produced exactly one backup stamp");
+    assert.deepEqual(
+      fs.readdirSync(path.join(backupRoot, stamps[0])),
+      [".zcode-skills-dingtalk-chat"],
+      "backups encode the HOME-relative origin of the retired copy",
+    );
+    assert.equal(
+      fs.readFileSync(path.join(backupRoot, stamps[0], ".zcode-skills-dingtalk-chat", "SKILL.md"), "utf8"),
+      "old zcode copy\n",
+      "the replaced copy stays recoverable",
+    );
+
+    // FIX 5: the win32 rename path must never replace an object that appeared
+    // at the destination (libuv passes MOVEFILE_REPLACE_EXISTING).
+    const raceBase = path.join(home, ".qoder", "skills");
+    const occupied = path.join(raceBase, "dingtalk-chat");
+    writeFile(path.join(occupied, "concurrent-user-data.txt"), "must survive\n");
+    let renames = 0;
+    withSimulatedWin32(() => {
+      assert.throws(
+        () => publishCanonicalLinksAtomically(home, canonical, raceBase, ["dingtalk-chat"], [], {
+          publishRenameFn(source, destination) {
+            renames += 1;
+            fs.renameSync(source, destination);
+          },
+        }),
+        /Skill publish destination already exists/,
+      );
+    });
+    assert.equal(renames, 0, "win32 publish must not rename over an existing destination");
+    assert.deepEqual(fs.readdirSync(occupied), ["concurrent-user-data.txt"]);
+    assert.equal(fs.readFileSync(path.join(occupied, "concurrent-user-data.txt"), "utf8"), "must survive\n");
+    assert.equal(process.platform !== "win32", true, "the simulated platform is restored");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("skill backups stay bounded to the newest five stamps", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-backup-prune-"));
+  const home = path.join(tmp, "home");
+  const backupRoot = path.join(home, ".dws", "skill-backups");
+  try {
+    for (const stamp of [
+      "20260101-000001", "20260101-000002", "20260101-000003",
+      "20260101-000004", "20260101-000005", "20260101-000006", "20260101-000007",
+    ]) {
+      writeFile(path.join(backupRoot, stamp, "placeholder", "SKILL.md"), `${stamp}\n`);
+    }
+    const victim = path.join(home, ".codex", "skills", "dingtalk-chat");
+    writeFile(path.join(victim, "SKILL.md"), "old codex copy\n");
+
+    const backup = backupAndRemoveSkillDir(home, victim, null, { backupStampFn: () => "20260102-000000" });
+
+    const stamps = fs.readdirSync(backupRoot).sort();
+    assert.equal(stamps.length, 5, `backup root must stay bounded, got ${stamps.join(",")}`);
+    assert.ok(stamps.includes("20260102-000000"), "the backup from this run survives pruning");
+    assert.ok(!stamps.includes("20260101-000001"), "the oldest stamps are pruned first");
+    assert.ok(!stamps.includes("20260101-000003"), "pruning removes exactly the excess");
+    assert.ok(stamps.includes("20260101-000004"), "the newest kept stamps are retained");
+    assert.equal(path.basename(backup), ".codex-skills-dingtalk-chat");
+    assert.equal(fs.readFileSync(path.join(backup, "SKILL.md"), "utf8"), "old codex copy\n");
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

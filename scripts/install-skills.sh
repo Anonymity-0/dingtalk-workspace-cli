@@ -80,6 +80,31 @@ backup_and_remove_skill_dir() {
   return 1
 }
 
+# prune_skill_backups keeps only the newest DWS_SKILL_BACKUP_KEEP stamped backup
+# directories under $HOME/.dws/skill-backups, matching Go's skillBackupKeep /
+# pruneSkillBackups. Best-effort: a removal failure is reported, never fatal.
+# Only safe to call once every backup manifest of this run has been consumed,
+# because a single transaction can span more than one timestamp.
+DWS_SKILL_BACKUP_KEEP=5
+prune_skill_backups() {
+  _psb_root="${HOME}/.dws/skill-backups"
+  [ -d "$_psb_root" ] || return 0
+  _psb_total=0
+  for _psb_entry in "$_psb_root"/*; do
+    [ -d "$_psb_entry" ] || continue
+    _psb_total=$((_psb_total + 1))
+  done
+  [ "$_psb_total" -gt "$DWS_SKILL_BACKUP_KEEP" ] || return 0
+  _psb_drop=$((_psb_total - DWS_SKILL_BACKUP_KEEP))
+  _psb_seen=0
+  for _psb_entry in "$_psb_root"/*; do
+    [ -d "$_psb_entry" ] || continue
+    _psb_seen=$((_psb_seen + 1))
+    [ "$_psb_seen" -le "$_psb_drop" ] || break
+    rm -rf "$_psb_entry" || printf '  ⚠️  旧 Skill 备份清理失败: %s\n' "$_psb_entry"
+  done
+}
+
 # A dingtalk-* prefix alone is not ownership evidence: market/user skills may
 # use it too. Ownership comes from the centralized skills-state.json.
 is_managed_multi_skill_dir() {
@@ -475,42 +500,46 @@ multi_tree_has_skills() {
   return 1
 }
 
-# ~/.agents/skills is the canonical store under the universal convention.
-# Universal Agents read it directly; other Agents receive
-# relative links and fall back to copies only when links are unavailable.
-is_universal_agent_dir() {
-  case "$1" in
-    ".config/agents/skills"|".gemini/antigravity/skills"|".gemini/antigravity-cli/skills"|".codex/skills"|".cursor/skills"|".deepagents/agent/skills"|".firebender/skills"|".gemini/skills"|".copilot/skills"|".config/opencode/skills"|".github/skills"|".windsurf/skills"|".cline/skills"|".amp/skills") return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 # Exact upstream registry (76 IDs): id|classification|effective-global-root.
 # `-` means no global directory; `.agents/skills` means canonical-direct.
-readonly DWS_UPSTREAM_AGENT_REGISTRY='aider-desk|N|.aider-desk/skills amp|U|.config/agents/skills antigravity|U|.gemini/antigravity/skills antigravity-cli|U|.gemini/antigravity-cli/skills astrbot|N|.astrbot/data/skills autohand-code|N|.autohand/skills augment|N|.augment/skills bob|N|.bob/skills claude-code|N|.claude/skills openclaw|N|.openclaw/skills cline|U|.agents/skills codearts-agent|N|.codeartsdoer/skills codebuddy|N|.codebuddy/skills codemaker|N|.codemaker/skills codestudio|N|.codestudio/skills codex|U|.codex/skills command-code|N|.commandcode/skills continue|N|.continue/skills cortex|N|.snowflake/cortex/skills crush|N|.config/crush/skills cursor|U|.cursor/skills deepagents|U|.deepagents/agent/skills devin|N|.config/devin/skills dexto|U|.agents/skills droid|N|.factory/skills eve|N|- firebender|U|.firebender/skills forgecode|N|.forge/skills gemini-cli|U|.gemini/skills github-copilot|U|.copilot/skills goose|N|.config/goose/skills grok|N|.grok/skills hermes-agent|N|.hermes/skills inference-sh|N|.inferencesh/skills jazz|N|.jazz/skills junie|N|.junie/skills iflow-cli|N|.iflow/skills kilo|N|.kilocode/skills kimchi|N|.config/kimchi/harness/skills kimi-code-cli|U|.agents/skills kiro-cli|N|.kiro/skills kode|N|.kode/skills lingma|N|.lingma/skills loaf|U|.agents/skills mcpjam|N|.mcpjam/skills minimax-code|N|.minimax/skills mistral-vibe|N|.vibe/skills moxby|N|.moxby/skills mux|N|.mux/skills opencode|U|.config/opencode/skills openhands|N|.openhands/skills ona|N|.ona/skills pi|N|.pi/agent/skills qoder|N|.qoder/skills qoder-cn|N|.qoder-cn/skills qwen-code|N|.qwen/skills replit|U|.config/agents/skills reasonix|N|.reasonix/skills rovodev|N|.rovodev/skills roo|N|.roo/skills tabnine-cli|N|.tabnine/agent/skills terramind|N|.terramind/skills tinycloud|N|.tinycloud/skills trae|N|.trae/skills trae-cn|N|.trae-cn/skills warp|U|.agents/skills windsurf|N|.codeium/windsurf/skills zed|U|.agents/skills zcode|N|.zcode/skills zencoder|N|.zencoder/skills zenflow|N|.zencoder/skills neovate|N|.neovate/skills pochi|N|.pochi/skills promptscript|U|- adal|N|.adal/skills universal|U|.config/agents/skills'
+# Not readonly: the library must stay re-sourceable inside one shell.
+DWS_UPSTREAM_AGENT_REGISTRY='aider-desk|N|.aider-desk/skills amp|U|.config/agents/skills antigravity|U|.gemini/antigravity/skills antigravity-cli|U|.gemini/antigravity-cli/skills astrbot|N|.astrbot/data/skills autohand-code|N|.autohand/skills augment|N|.augment/skills bob|N|.bob/skills claude-code|N|.claude/skills openclaw|N|.openclaw/skills cline|U|.agents/skills codearts-agent|N|.codeartsdoer/skills codebuddy|N|.codebuddy/skills codemaker|N|.codemaker/skills codestudio|N|.codestudio/skills codex|U|.codex/skills command-code|N|.commandcode/skills continue|N|.continue/skills cortex|N|.snowflake/cortex/skills crush|N|.config/crush/skills cursor|U|.cursor/skills deepagents|U|.deepagents/agent/skills devin|N|.config/devin/skills dexto|U|.agents/skills droid|N|.factory/skills eve|N|- firebender|U|.firebender/skills forgecode|N|.forge/skills gemini-cli|U|.gemini/skills github-copilot|U|.copilot/skills goose|N|.config/goose/skills grok|N|.grok/skills hermes-agent|N|.hermes/skills inference-sh|N|.inferencesh/skills jazz|N|.jazz/skills junie|N|.junie/skills iflow-cli|N|.iflow/skills kilo|N|.kilocode/skills kimchi|N|.config/kimchi/harness/skills kimi-code-cli|U|.agents/skills kiro-cli|N|.kiro/skills kode|N|.kode/skills lingma|N|.lingma/skills loaf|U|.agents/skills mcpjam|N|.mcpjam/skills minimax-code|N|.minimax/skills mistral-vibe|N|.vibe/skills moxby|N|.moxby/skills mux|N|.mux/skills opencode|U|.config/opencode/skills openhands|N|.openhands/skills ona|N|.ona/skills pi|N|.pi/agent/skills qoder|N|.qoder/skills qoder-cn|N|.qoder-cn/skills qwen-code|N|.qwen/skills replit|U|.config/agents/skills reasonix|N|.reasonix/skills rovodev|N|.rovodev/skills roo|N|.roo/skills tabnine-cli|N|.tabnine/agent/skills terramind|N|.terramind/skills tinycloud|N|.tinycloud/skills trae|N|.trae/skills trae-cn|N|.trae-cn/skills warp|U|.agents/skills windsurf|N|.codeium/windsurf/skills zed|U|.agents/skills zcode|N|.zcode/skills zencoder|N|.zencoder/skills zenflow|N|.zencoder/skills neovate|N|.neovate/skills pochi|N|.pochi/skills promptscript|U|- adal|N|.adal/skills universal|U|.config/agents/skills'
 upstream_agent_registry() {
   for _uar_record in $DWS_UPSTREAM_AGENT_REGISTRY; do printf '%s\n' "$_uar_record"; done
 }
 
+# DWS-only compatibility roots, same id|classification|root format. Qoderwork
+# stays a real non-universal install target; the other four are global paths
+# older DWS installers wrote by mistake, so they are retired like universal
+# roots. Kept separate so the upstream pin above stays byte-comparable.
+DWS_LEGACY_AGENT_ROOTS='dws-qoderwork|N|.qoderwork/skills dws-legacy-github|U|.github/skills dws-legacy-windsurf|U|.windsurf/skills dws-legacy-cline|U|.cline/skills dws-legacy-amp|U|.amp/skills'
+legacy_agent_roots() {
+  for _lar_record in $DWS_LEGACY_AGENT_ROOTS; do printf '%s\n' "$_lar_record"; done
+}
+
+# ~/.agents/skills is the canonical store under the universal convention.
+# Universal Agents read it directly; other Agents receive relative links and
+# fall back to copies only when links are unavailable.
+#
+# Both agent_skill_dirs and is_universal_agent_dir are DERIVED from the pinned
+# registries above, so a registry edit changes real install behaviour instead of
+# only a test count, and pin/behaviour drift is impossible by construction.
+is_universal_agent_dir() {
+  for _iua_record in $DWS_UPSTREAM_AGENT_REGISTRY $DWS_LEGACY_AGENT_ROOTS; do
+    [ "${_iua_record##*|}" = "$1" ] || continue
+    case "$_iua_record" in
+      *"|U|"*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# Effective global roots, in pinned registry order, de-duplicated. Records
+# without a global root (`-`) and canonical-direct records (`.agents/skills`)
+# are not per-Agent targets and are skipped.
 agent_skill_dirs() {
-  printf '%s\n' \
-    ".config/agents/skills" ".gemini/antigravity/skills" ".gemini/antigravity-cli/skills" \
-    ".codex/skills" ".cursor/skills" ".deepagents/agent/skills" ".firebender/skills" \
-    ".gemini/skills" ".copilot/skills" ".config/opencode/skills" \
-    ".aider-desk/skills" ".astrbot/data/skills" ".autohand/skills" ".augment/skills" \
-    ".bob/skills" ".claude/skills" ".openclaw/skills" ".codeartsdoer/skills" \
-    ".codebuddy/skills" ".codemaker/skills" ".codestudio/skills" ".commandcode/skills" \
-    ".continue/skills" ".snowflake/cortex/skills" ".config/crush/skills" \
-    ".config/devin/skills" ".factory/skills" ".forge/skills" ".config/goose/skills" \
-    ".grok/skills" ".hermes/skills" ".inferencesh/skills" ".jazz/skills" ".junie/skills" \
-    ".iflow/skills" ".kilocode/skills" ".config/kimchi/harness/skills" ".kiro/skills" \
-    ".kode/skills" ".lingma/skills" ".mcpjam/skills" ".minimax/skills" ".vibe/skills" \
-    ".moxby/skills" ".mux/skills" ".openhands/skills" ".ona/skills" ".pi/agent/skills" \
-    ".qoder/skills" ".qoder-cn/skills" ".qwen/skills" ".reasonix/skills" \
-    ".rovodev/skills" ".roo/skills" ".tabnine/agent/skills" ".terramind/skills" \
-    ".tinycloud/skills" ".trae/skills" ".trae-cn/skills" ".codeium/windsurf/skills" \
-    ".zcode/skills" ".zencoder/skills" ".neovate/skills" ".pochi/skills" ".adal/skills" \
-    ".qoderwork/skills" ".github/skills" ".windsurf/skills" ".cline/skills" ".amp/skills"
+  { upstream_agent_registry; legacy_agent_roots; } | awk -F'|' '
+    $3 != "-" && $3 != ".agents/skills" && !seen[$3]++ { print $3 }'
 }
 
 resolve_agent_skill_base() {
@@ -548,8 +577,11 @@ agent_skill_base_detected() {
 
 same_physical_skill_root() {
   [ -d "$1" ] && [ -d "$2" ] || return 1
-  _sps_left="$(cd -P "$1" 2>/dev/null && pwd)" || return 1
-  _sps_right="$(cd -P "$2" 2>/dev/null && pwd)" || return 1
+  # CDPATH= and -- are required: an exported CDPATH makes `cd` echo the resolved
+  # directory into the command substitution, which would silently report two
+  # identical roots as different.
+  _sps_left="$(CDPATH= cd -- "$1" 2>/dev/null && pwd -P)" || return 1
+  _sps_right="$(CDPATH= cd -- "$2" 2>/dev/null && pwd -P)" || return 1
   [ "$_sps_left" = "$_sps_right" ]
 }
 
@@ -573,26 +605,55 @@ retire_agent_skill_root() {
   rm -rf "$_rgs_stage"
 }
 
+# link_canonical_skills_to_base <root> <base> <mode> [bundle-src]
+# <bundle-src> is the installed multi bundle and is REQUIRED in multi mode: the
+# link set must come from the bundle, never from the whole canonical store.
+# ~/.agents/skills is now shared, so third-party/user Skills live there too and
+# must not be published into every detected Agent root (they are absent from
+# skills-state.json, so nothing could ever reclaim those links). Go
+# publishLinkedUpgradeTarget and build/npm/install.js pass the bundle skill list
+# the same way.
 link_canonical_skills_to_base() {
-  _lcs_root="$1"; _lcs_base="$2"; _lcs_mode="$3"
+  _lcs_root="$1"; _lcs_base="$2"; _lcs_mode="$3"; _lcs_bundle="${4-}"
   _lcs_canonical="$_lcs_root/.agents/skills"
   mkdir -p "$_lcs_base" || return 1
   same_physical_skill_root "$_lcs_base" "$_lcs_canonical" && return 0
+  if [ "$_lcs_mode" = "mono" ]; then
+    _lcs_names="dws"
+  else
+    [ -n "$_lcs_bundle" ] && [ -d "$_lcs_bundle" ] || return 1
+    _lcs_names=""
+    for _lcs_skill in "$_lcs_bundle"/*/; do
+      [ -f "${_lcs_skill}SKILL.md" ] || continue
+      _lcs_names="$_lcs_names $(basename "$_lcs_skill")"
+    done
+    [ -n "$_lcs_names" ] || return 1
+  fi
+  # Collision pre-flight: the victim loop below deliberately refuses to back up
+  # entries that are not DWS-managed, and publication must never replace them.
+  # Report the exact colliding paths before touching anything, so the fall back
+  # to the legacy full-copy layout is observable and actionable.
+  _lcs_collision=0
+  for _lcs_name in $_lcs_names; do
+    _lcs_dest="$_lcs_base/$_lcs_name"
+    { [ -e "$_lcs_dest" ] || [ -L "$_lcs_dest" ]; } || continue
+    same_physical_skill_root "$_lcs_dest" "$_lcs_canonical/$_lcs_name" && continue
+    [ "$_lcs_name" = "dws" ] && continue
+    is_managed_multi_skill_dir "$_lcs_dest" && continue
+    printf '  ⚠️  %s 已存在且不是 DWS 安装的 Skill，无法在此建立指向 %s 的共享链接\n' "$_lcs_dest" "$_lcs_canonical/$_lcs_name"
+    _lcs_collision=1
+  done
+  if [ "$_lcs_collision" -eq 1 ]; then
+    printf '  ⚠️  已保留上述目录（不会删除用户数据），该 Agent 改用独立副本方式安装；\n'
+    printf '      移走或改名后重新运行安装即可切换为共享 %s 布局。\n' "$_lcs_canonical"
+    return 1
+  fi
   _lcs_base_real="$(CDPATH= cd -- "$_lcs_base" && pwd -P)" || return 1
   _lcs_stage="$(mktemp -d "$_lcs_base/.dws-link-set.XXXXXX")" || return 1
   _lcs_backups="$_lcs_stage/.backups"; _lcs_published="$_lcs_stage/.published"
   _lcs_stage_token="$(basename "$_lcs_stage")"
   : > "$_lcs_backups" || { rm -rf "$_lcs_stage"; return 1; }
   : > "$_lcs_published" || { rm -rf "$_lcs_stage"; return 1; }
-  if [ "$_lcs_mode" = "mono" ]; then
-    _lcs_names="dws"
-  else
-    _lcs_names=""
-    for _lcs_skill in "$_lcs_canonical"/*/; do
-      [ -f "${_lcs_skill}SKILL.md" ] || continue
-      _lcs_names="$_lcs_names $(basename "$_lcs_skill")"
-    done
-  fi
   _lcs_publish_names=""
   for _lcs_name in $_lcs_names; do
     if same_physical_skill_root "$_lcs_base/$_lcs_name" "$_lcs_canonical/$_lcs_name"; then continue; fi
@@ -619,17 +680,24 @@ link_canonical_skills_to_base() {
     _lcs_link_target="$(readlink "$_lcs_staged" 2>/dev/null)" || {
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     }
-    # Keep the staged hardlink alive until the whole transaction finishes. It
-    # pins the inode, so a concurrently recreated link cannot reuse the
-    # identity recorded in the publication manifest.
+    # The staged symlink keeps its inode across the rename below (the staging
+    # directory is a sibling inside the same Agent root), so the identity
+    # recorded in the publication manifest stays exact.
     _lcs_inode="$(skill_link_inode "$_lcs_staged")" || {
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     }
-    # Hard-link the staged symlink itself. This never overwrites a
-    # concurrently-created destination. If that destination became a
-    # directory, the unique staged basename can only be linked inside it;
-    # post-validation detects that case and removes only our link.
-    if ! ln -P "$_lcs_staged" "$_lcs_dest" 2>/dev/null || ! skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then
+    # Anything still present here appeared after the pre-flight scan, i.e. a
+    # concurrent writer. Never let `mv` clobber it.
+    if [ -e "$_lcs_dest" ] || [ -L "$_lcs_dest" ]; then
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
+    fi
+    # Publish by moving the staged symlink. `mv` is POSIX; `ln -P` is not (it is
+    # absent from BusyBox `ln`, which silently degraded every non-universal
+    # Agent to the copy layout on Alpine and most containers). install-event.sh
+    # and install-devapp.sh already publish this way. The staged basename stays
+    # unique, so a destination a concurrent process turned into a directory can
+    # only receive our link and post-validation removes exactly that.
+    if ! mv "$_lcs_staged" "$_lcs_dest" 2>/dev/null || ! skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then
       cleanup_nested_staged_link "$_lcs_dest" "$_lcs_stage_name" "$_lcs_link_target" "$_lcs_inode" || true
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     fi
@@ -649,6 +717,7 @@ install_multi_skills_to_root() {
   installed=0
   attempted=1
   failed=0
+  retire_failed=0
   if _install_multi_to_base "$multi_src" "$root/.agents/skills" "$root" ".agents/skills"; then installed=1; else failed=1; fi
   [ "$installed" -gt 0 ] || { printf '  ⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败\n'; return 1; }
   for agent_dir in $(agent_skill_dirs)
@@ -658,10 +727,10 @@ install_multi_skills_to_root() {
     same_physical_skill_root "$base_dir" "$root/.agents/skills" && continue
     attempted=$((attempted + 1))
     if is_universal_agent_dir "$agent_dir"; then
-      retire_agent_skill_root "$root" "$base_dir" || failed=$((failed + 1))
+      retire_agent_skill_root "$root" "$base_dir" || retire_failed=$((retire_failed + 1))
       continue
     fi
-    if link_canonical_skills_to_base "$root" "$base_dir" multi; then
+    if link_canonical_skills_to_base "$root" "$base_dir" multi "$multi_src"; then
       installed=$((installed + 1))
     else
       if _install_multi_to_base "$multi_src" "$base_dir" "$root" "$agent_dir"; then
@@ -675,6 +744,9 @@ install_multi_skills_to_root() {
   if [ "$installed" -eq 0 ]; then
     printf '  ⚠️  未安装任何 multi Skill：所有检测到的 Agent 目标均失败\n'
     return 1
+  fi
+  if [ "$retire_failed" -gt 0 ]; then
+    printf '  ⚠️  有 %s 个 Agent 旧副本未能迁移（安装已完成，可稍后手动删除）\n' "$retire_failed"
   fi
   if [ "$failed" -gt 0 ]; then
     printf '  ⚠️  有 %s 个 Agent 目标安装失败\n' "$failed"
@@ -841,6 +913,7 @@ install_skills_to_root() {
   installed=0
   attempted=1
   failed=0
+  retire_failed=0
   if _install_mono_to_base "$skill_src" "$root/.agents/skills" "$root/.agents/skills/$SKILL_NAME"; then installed=1; else failed=1; fi
   [ "$installed" -gt 0 ] || { printf '  ⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败\n'; return 1; }
   for agent_dir in $(agent_skill_dirs)
@@ -850,7 +923,7 @@ install_skills_to_root() {
     same_physical_skill_root "$base_dir" "$root/.agents/skills" && continue
     attempted=$((attempted + 1))
     if is_universal_agent_dir "$agent_dir"; then
-      retire_agent_skill_root "$root" "$base_dir" || failed=$((failed + 1))
+      retire_agent_skill_root "$root" "$base_dir" || retire_failed=$((retire_failed + 1))
       continue
     fi
     if link_canonical_skills_to_base "$root" "$base_dir" mono; then
@@ -867,6 +940,9 @@ install_skills_to_root() {
   if [ "$installed" -eq 0 ]; then
     printf '  ⚠️  未安装任何 mono Skill：所有检测到的 Agent 目标均失败\n'
     return 1
+  fi
+  if [ "$retire_failed" -gt 0 ]; then
+    printf '  ⚠️  有 %s 个 Agent 旧副本未能迁移（安装已完成，可稍后手动删除）\n' "$retire_failed"
   fi
   if [ "$failed" -gt 0 ]; then
     printf '  ⚠️  有 %s 个 Agent 目标安装 mono Skill 失败\n' "$failed"
@@ -948,6 +1024,10 @@ main() {
       printf '  ⚠️ Mono Skill 缓存刷新失败，未覆盖原缓存: %s\n' "$mono_cache"
     fi
   fi
+
+  # Every transaction of this run has finished, so old stamped archives can no
+  # longer be needed for a rollback.
+  prune_skill_backups
 
   printf '\n'
   printf '  📖 Skill includes:\n'

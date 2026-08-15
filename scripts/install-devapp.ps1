@@ -258,15 +258,73 @@ function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
     }
 }
 
+# Get-DevSkillBackupName encodes the HOME-relative path of a backed-up Skill
+# directory ('.codex\skills\dingtalk-misc' → '.codex-skills-dingtalk-misc') so
+# copies retired from different Agent roots stay distinguishable. Mirrors
+# build/npm/install.js and internal/upgrade/paths.go; paths outside HOME fall
+# back to the bare leaf.
+function Get-DevSkillBackupName([string]$Dir) {
+    $leaf = Split-Path $Dir -Leaf
+    try {
+        $full = [System.IO.Path]::GetFullPath($Dir)
+        $root = [System.IO.Path]::GetFullPath($HOME).TrimEnd([char[]]@('\', '/'))
+    } catch { return $leaf }
+    if ([string]::IsNullOrWhiteSpace($root)) { return $leaf }
+    foreach ($sep in @('\', '/')) {
+        $prefix = $root + $sep
+        if ($full.Length -gt $prefix.Length -and
+            $full.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $rel = $full.Substring($prefix.Length).Trim([char[]]@('\', '/'))
+            if (![string]::IsNullOrWhiteSpace($rel)) { return ($rel -replace '[\\/]+', '-') }
+        }
+    }
+    return $leaf
+}
+
+# Keep $HOME\.dws\skill-backups bounded to the newest stamped roots, matching
+# skillBackupKeep / pruneSkillBackups in internal/upgrade/paths.go. Roots this
+# run created are never pruned: a rollback still needs them.
+$DevSkillBackupKeep = 5
+$script:DevSkillBackupRootsThisRun = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+function Remove-OldDevSkillBackups {
+    $root = Join-Path $HOME ".dws\skill-backups"
+    if (!(Test-Path -LiteralPath $root -PathType Container)) { return }
+    $dirs = @(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction SilentlyContinue |
+        Sort-Object -Property Name)
+    $excess = $dirs.Count - $DevSkillBackupKeep
+    foreach ($dir in $dirs) {
+        if ($excess -le 0) { break }
+        if ($script:DevSkillBackupRootsThisRun.Contains($dir.FullName)) { continue }
+        Remove-Item -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        $excess--
+    }
+}
+
 function Backup-DevSkill([string]$path, [ref]$BackupPath) {
     if ($null -ne $BackupPath) { $BackupPath.Value = "" }
     if (!(Test-PathLexically $path)) { return }
-    $backupRoot = Join-Path $HOME ".dws\skill-backups\$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))"
+    $backupBase = Join-Path $HOME ".dws\skill-backups"
+    $stamp = [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')
+    $name = Get-DevSkillBackupName $path
+    $backupRoot = Join-Path $backupBase $stamp
+    $target = Join-Path $backupRoot $name
+    $i = 1
+    while (Test-PathLexically $target) {
+        $backupRoot = Join-Path $backupBase "$stamp-$i"
+        $target = Join-Path $backupRoot $name
+        $i++
+        if ($i -gt 1000) { throw "备份目录冲突无法解决，保留原目录: $path" }
+    }
     New-Item -ItemType Directory -Path $backupRoot -Force -ErrorAction Stop | Out-Null
-    $target = Join-Path $backupRoot (Split-Path $path -Leaf)
-    while (Test-PathLexically $target) { $target += "-$([guid]::NewGuid().ToString('N'))" }
     Move-DevSkillPathRecoverably $path $target
     if ($null -ne $BackupPath) { $BackupPath.Value = $target }
+    try {
+        $script:DevSkillBackupRootsThisRun.Add([System.IO.Path]::GetFullPath($backupRoot)) | Out-Null
+        Remove-OldDevSkillBackups
+    } catch {
+        Say "⚠️ 旧备份清理失败（备份本身已成功）: $($_.Exception.Message)"
+    }
 }
 
 function Get-DevSkillLinkSignature([string]$Path) {
@@ -487,6 +545,7 @@ if (-not $NoSkills) {
             Publish-DevSkillCopy $src $canonical
             $installed = 1
             $failed = 0
+            $retireFailed = 0
             $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
             foreach ($row in @($AgentRegistryRows) + @($LegacyAgentCleanupRows)) {
                 $parts = $row.Split('|'); $universal = $parts[1] -eq "1"
@@ -497,9 +556,13 @@ if (-not $NoSkills) {
                 if (!(Test-AgentBaseDetected $parts[0] $base)) { continue }
                 $dest = Join-Path $base $SkillName
                 if ($universal) {
+                    # Cleanup-only migration: universal Agents read the
+                    # canonical store directly, so nothing is installed here. A
+                    # retire failure only leaves an obsolete copy behind and
+                    # must never fail an otherwise complete install.
                     try { Backup-DevSkill $dest } catch {
-                        Say "⚠️ Agent Skill 旧副本备份失败，保留原目录: $dest ($($_.Exception.Message))"
-                        $failed++
+                        Say "⚠️ Agent Skill 旧副本备份失败，保留原目录（不影响本次安装）: $dest ($($_.Exception.Message))"
+                        $retireFailed++
                     }
                     continue
                 }
@@ -523,6 +586,9 @@ if (-not $NoSkills) {
                 $installed++
             }
             if ($failed -gt 0) { Die "有 $failed 个 Agent 目标安装 $SkillName 失败（其余目标已安装）" }
+            if ($retireFailed -gt 0) {
+                Say "⚠️ 有 $retireFailed 个 Agent 旧副本未能迁移（安装已完成，可稍后手动删除）"
+            }
             Say "Skill dingtalk-misc -> $installed agent dir(s)"
         } else {
             Say "(dingtalk-misc not found in skills bundle; skipped)"

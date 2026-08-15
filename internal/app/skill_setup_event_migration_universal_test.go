@@ -112,7 +112,9 @@ func TestCrossPlatformCoverageSkillSetupUniversalRetirementFailures(t *testing.T
 		}
 	})
 
-	t.Run("backup propagates through command", func(t *testing.T) {
+	// Retiring an obsolete universal copy installs nothing, so its failure is
+	// surfaced as a warning and the successful installation is kept.
+	t.Run("backup failure warns without failing the command", func(t *testing.T) {
 		home := t.TempDir()
 		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
 		codex := filepath.Join(home, ".codex", "skills")
@@ -121,14 +123,17 @@ func TestCrossPlatformCoverageSkillSetupUniversalRetirementFailures(t *testing.T
 		testseam.Swap(t, &skillSetupBackupAndRemove, func(string, string) (string, error) {
 			return "", failure
 		})
-		_, _, err := executeMultiSkillSetupTest(
+		_, stderr, err := executeMultiSkillSetupTest(
 			t,
 			src,
 			[]string{filepath.Join(home, ".agents", "skills"), codex},
 			"--skill", "event", "--yes",
 		)
-		if !errors.Is(err, failure) || !strings.Contains(err.Error(), "退役 universal Agent") {
-			t.Fatalf("retirement backup failure = %v, want wrapped %v", err, failure)
+		if err != nil {
+			t.Fatalf("retirement backup failure must not fail the command: %v", err)
+		}
+		if !strings.Contains(stderr, "退役 universal Agent") {
+			t.Fatalf("retirement backup failure must be reported, stderr = %q", stderr)
 		}
 	})
 }

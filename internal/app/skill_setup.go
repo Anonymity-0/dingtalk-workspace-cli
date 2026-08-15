@@ -388,7 +388,9 @@ func runSkillSetup(cmd *cobra.Command, _ []string) error {
 			retiredNames = append(retiredNames, multiMiscSkill)
 		}
 		if retireErr := retireMigratedUniversalSkills(migrateEventMiscTargets, retiredNames, out); retireErr != nil {
-			return retireErr
+			// Retiring an obsolete universal copy installs nothing; report it and
+			// keep the successful installation rather than failing the run.
+			fmt.Fprintf(errOut, "  ⚠️  %v\n", retireErr)
 		}
 	}
 	if skipped > 0 {
@@ -1231,63 +1233,6 @@ func samePhysicalSkillSetupPath(left, right string) bool {
 	return leftErr == nil && rightErr == nil && sameSkillSetupPath(leftReal, rightReal)
 }
 
-func genericSkillCleanupTarget(dests []string, managed map[string]bool) (*skillSetupTargetPlan, error) {
-	// Derive HOME from a concrete Agent destination instead of resolving it a
-	// second time. The destinations were already resolved from HOME by the
-	// caller, and a later/transient UserHomeDir failure must not turn an
-	// otherwise valid setup plan into an error. Direct/custom destinations that
-	// do not match a known concrete Agent root have no generic-root migration.
-	home := ""
-	for _, dest := range dests {
-		base := dest
-		if filepath.Base(dest) == "dws" {
-			base = filepath.Dir(dest)
-		}
-		base = filepath.Clean(base)
-		for i, rel := range skillSetupAgentHomes {
-			if i == 0 {
-				continue
-			}
-			suffix := filepath.Clean(filepath.FromSlash(rel))
-			needle := string(filepath.Separator) + suffix
-			if strings.HasSuffix(base, needle) {
-				home = strings.TrimSuffix(base, needle)
-				break
-			}
-		}
-		if home != "" {
-			break
-		}
-	}
-	if home == "" {
-		return nil, nil
-	}
-	genericBase := filepath.Join(home, ".agents", "skills")
-
-	target := &skillSetupTargetPlan{Destination: genericBase, CleanupOnly: true}
-	add := func(path, reason string) {
-		if info, statErr := skillSetupStat(path); statErr == nil && info.IsDir() {
-			target.Backups = append(target.Backups, skillSetupBackup{Path: path, Reason: reason})
-		}
-	}
-	add(filepath.Join(genericBase, "dws"), skillSetupBackupMutual)
-	entries, readErr := skillSetupReadDir(genericBase)
-	if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
-		return nil, fmt.Errorf("扫描通用 Skill 根目录失败 %s: %w", genericBase, readErr)
-	}
-	for _, entry := range entries {
-		path := filepath.Join(genericBase, entry.Name())
-		if entry.IsDir() && isManagedDWSMultiSkillDir(path, managed) {
-			target.Backups = append(target.Backups, skillSetupBackup{Path: path, Reason: skillSetupBackupStale})
-		}
-	}
-	if len(target.Backups) == 0 {
-		return nil, nil
-	}
-	sort.Slice(target.Backups, func(i, j int) bool { return target.Backups[i].Path < target.Backups[j].Path })
-	return target, nil
-}
-
 func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filtered bool) (*skillSetupPlan, error) {
 	if mode != skillSetupModeMono && mode != skillSetupModeMulti {
 		return nil, fmt.Errorf("内部错误：未知 mode %q", mode)
@@ -2116,14 +2061,15 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 		}
 		isCanonical := target.CanonicalBase != "" && sameSkillSetupPath(skillSetupBaseForMode(target.Destination, plan.Mode), target.CanonicalBase)
 		if target.CleanupOnly {
+			// Nothing is installed below a universal root, so a stale copy that
+			// resists retirement must not count as a skipped install: any skipped
+			// count fails the whole setup, even when every real target succeeded.
 			if homeErr != nil {
-				fmt.Fprintf(errOut, "  ✗ 无法解析 HOME，保留 universal Agent 旧副本 %s: %v\n", target.Destination, homeErr)
-				skipped++
+				fmt.Fprintf(errOut, "  ⚠️  无法解析 HOME，保留 universal Agent 旧副本 %s: %v\n", target.Destination, homeErr)
 				continue
 			}
 			if _, cleanupErr := backupSkillSetupTarget(home, target.Backups, out); cleanupErr != nil {
-				fmt.Fprintf(errOut, "  ✗ universal Agent 旧副本迁移失败，已回滚 %s: %v\n", target.Destination, cleanupErr)
-				skipped++
+				fmt.Fprintf(errOut, "  ⚠️  universal Agent 旧副本迁移失败，已回滚，可手动删除 %s: %v\n", target.Destination, cleanupErr)
 			}
 			continue
 		}
