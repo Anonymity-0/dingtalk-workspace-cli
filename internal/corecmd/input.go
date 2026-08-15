@@ -81,16 +81,21 @@ func inputSupports(flag FlagSpec, source string) bool {
 }
 
 // explicitInputFlagName picks the declared name that carries the user's
-// explicit token, mirroring rawValue's order: the main flag wins only when
-// changed and non-empty, then declared aliases in order. EnvVar fallback and
+// explicit token, mirroring rawValue's order and usability judgement exactly:
+// the main flag wins only when changed and usable (trim-judged only when
+// Trim is set), then declared aliases in order. Diverging here could rewrite
+// an alias that rawValue would shadow (or vice versa). EnvVar fallback and
 // registration defaults are never input-resolved — @file only applies to what
 // the user literally typed.
 func explicitInputFlagName(cmd *cobra.Command, flag FlagSpec) string {
-	for _, name := range append([]string{flag.Name}, flag.Aliases...) {
-		if !cmd.Flags().Changed(name) {
-			continue
+	usable := func(v string) bool {
+		if flag.Trim {
+			v = strings.TrimSpace(v)
 		}
-		if strings.TrimSpace(cmdutil.MustGetFlag(cmd, name)) != "" {
+		return v != ""
+	}
+	for _, name := range append([]string{flag.Name}, flag.Aliases...) {
+		if cmd.Flags().Changed(name) && usable(cmdutil.MustGetFlag(cmd, name)) {
 			return name
 		}
 	}

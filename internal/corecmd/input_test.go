@@ -160,6 +160,26 @@ func TestResolveInputFlags_AliasResolved(t *testing.T) {
 	}
 }
 
+// When the main flag shadows a changed alias (rawValue usability order), the
+// shadowed alias must not be input-resolved: resolution targets exactly the
+// name the fallback chain will read. The whitespace main value is usable for
+// a non-Trim flag, and the alias path does not exist on purpose — a resolver
+// that wrongly picked the alias would fail the read instead of shipping "   ".
+func TestResolveInputFlags_ShadowedAliasNotResolved(t *testing.T) {
+	var got map[string]any
+	cmd := newInputCommand([]FlagSpec{
+		{Name: "content", Usage: "C", Bind: "content", Aliases: []string{"body"}, Input: []string{InputFile}},
+	}, &got)
+	missing := filepath.Join(t.TempDir(), "missing.txt")
+
+	if err := runInputCommand(t, cmd, "--content", "   ", "--body", "@"+missing); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if got["content"] != "   " {
+		t.Fatalf("toolArgs[content] = %q", got["content"])
+	}
+}
+
 func TestResolveInputFlags_FileNotSupported(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
