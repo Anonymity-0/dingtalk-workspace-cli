@@ -178,7 +178,8 @@ func executeHistoryRevert(rt *shortcut.RuntimeContext) error {
 			map[string]any{"available": false, "reason": "the requested revert completed; verify the current document before any further write"},
 		)
 	}
-	verified := revertResultMatchesVersion(reverted, target) || currentDocumentMatchesRestoredVersion(current, target)
+	verified := !revertResponseHasExplicitFailure(reverted) &&
+		(revertResultMatchesVersion(reverted, target) || currentDocumentMatchesRestoredVersion(current, target))
 	if !verified {
 		return docPartialWriteError(
 			"doc.history_revert", "doc_history_revert_target_unproven", "verify",
@@ -206,8 +207,11 @@ func executeHistoryRevert(rt *shortcut.RuntimeContext) error {
 }
 
 func revertResultMatchesVersion(value map[string]any, target int) bool {
+	if revertResponseHasExplicitFailure(value) {
+		return false
+	}
 	return versionEvidenceMatches(value, target, map[string]bool{
-		"version": true, "targetversion": true, "appliedversion": true,
+		"targetversion": true, "appliedversion": true,
 		"restoredversion": true, "revertedversion": true, "revertedtoversion": true, "sourceversion": true,
 	})
 }
@@ -272,6 +276,9 @@ func versionEvidenceMatches(value any, target int, acceptedKeys map[string]bool)
 	case map[string]any:
 		for key, child := range typed {
 			normalized := strings.ToLower(strings.NewReplacer("_", "", "-", "").Replace(key))
+			if versionEvidenceRequestEchoKeys[normalized] {
+				continue
+			}
 			if acceptedKeys[normalized] {
 				if versionNumberMatches(child, target) {
 					return true
@@ -289,6 +296,63 @@ func versionEvidenceMatches(value any, target int, acceptedKeys map[string]bool)
 		}
 	}
 	return false
+}
+
+var versionEvidenceRequestEchoKeys = map[string]bool{
+	"args": true, "arguments": true, "input": true, "inputs": true,
+	"params": true, "parameters": true, "request": true, "requestbody": true,
+	"requestparams": true, "toolargs": true, "toolarguments": true,
+}
+
+func revertResponseHasExplicitFailure(value any) bool {
+	switch typed := value.(type) {
+	case map[string]any:
+		for key, child := range typed {
+			normalized := strings.ToLower(strings.NewReplacer("_", "", "-", "").Replace(key))
+			if versionEvidenceRequestEchoKeys[normalized] {
+				continue
+			}
+			if normalized == "success" {
+				if success, ok := child.(bool); ok && !success {
+					return true
+				}
+				if success, ok := child.(string); ok && strings.EqualFold(strings.TrimSpace(success), "false") {
+					return true
+				}
+			}
+			if normalized == "errorcode" {
+				if revertErrorCodeIsFailure(child) {
+					return true
+				}
+			}
+			if revertResponseHasExplicitFailure(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range typed {
+			if revertResponseHasExplicitFailure(child) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func revertErrorCodeIsFailure(value any) bool {
+	switch typed := value.(type) {
+	case string:
+		switch strings.ToLower(strings.TrimSpace(typed)) {
+		case "", "0", "ok", "success", "succeed":
+			return false
+		default:
+			return true
+		}
+	case float64:
+		return typed != 0
+	default:
+		return false
+	}
 }
 
 func versionNumberMatches(value any, target int) bool {

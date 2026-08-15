@@ -58,7 +58,7 @@ func (f *docCoverageCaller) CallTool(_ context.Context, _, tool string, params m
 	}
 	value := docCoveragePayload(tool)
 	if tool == "revert_doc_version" {
-		value = map[string]any{"version": params["version"]}
+		value = map[string]any{"revertedToVersion": params["version"]}
 	}
 	if queue := f.responses[tool]; len(queue) > 0 {
 		value = queue[0]
@@ -592,6 +592,45 @@ func TestCrossPlatformCoverageDocVersionRevertPaginationAndVerification(t *testi
 			t.Fatalf("unproven revert details = %#v", typed.Details)
 		}
 	})
+
+	for _, test := range []struct {
+		name     string
+		response map[string]any
+		current  map[string]any
+		wantOK   bool
+	}{
+		{name: "explicit server evidence", response: map[string]any{"data": map[string]any{"revertResult": map[string]any{"revertedToVersion": 3}}}, wantOK: true},
+		{name: "bare request parameter echo", response: map[string]any{"version": 3}},
+		{name: "nested request parameter echo", response: map[string]any{"data": map[string]any{"request": map[string]any{"nodeId": "n", "version": 3}}}},
+		{name: "accepted field inside request echo", response: map[string]any{"data": map[string]any{"request": map[string]any{"targetVersion": 3}}}},
+		{name: "nested business failure with request echo", response: map[string]any{"data": map[string]any{"success": false, "errorCode": "REVERT_FAILED", "request": map[string]any{"version": 3}}}},
+		{
+			name:     "nested business failure overrides all evidence",
+			response: map[string]any{"data": map[string]any{"success": false, "revertResult": map[string]any{"revertedToVersion": 3}}},
+			current:  map[string]any{"targetVersion": 3},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			responses := map[string][]map[string]any{
+				"revert_doc_version": {test.response},
+			}
+			if test.current != nil {
+				responses["get_document_info"] = []map[string]any{test.current}
+			}
+			caller := &docCoverageCaller{responses: responses}
+			err := runDocCoverage(t, VersionRevert, caller, "--node", "n", "--version", "3", "--yes")
+			if test.wantOK {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			var typed *apperrors.Error
+			if !errors.As(err, &typed) || typed.Reason != "doc_history_revert_target_unproven" || typed.Details["status"] != "partial_success" {
+				t.Fatalf("request echo response %#v produced %#v", test.response, err)
+			}
+		})
+	}
 
 	for _, test := range []struct {
 		name      string

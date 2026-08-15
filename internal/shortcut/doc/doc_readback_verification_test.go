@@ -224,8 +224,29 @@ func TestCrossPlatformCoverageVersionRevertRequiresTargetEvidence(t *testing.T) 
 	if revertResultMatchesVersion(map[string]any{"ok": true}, 3) || currentDocumentMatchesRestoredVersion(map[string]any{"version": 99}, 3) {
 		t.Fatal("readability or an unrelated current version must not prove a revert")
 	}
+	if revertResultMatchesVersion(map[string]any{"version": 3}, 3) {
+		t.Fatal("the request version parameter must not prove its own revert")
+	}
+	if revertResultMatchesVersion(map[string]any{"data": map[string]any{"request": map[string]any{"targetVersion": 3}}}, 3) {
+		t.Fatal("request echo containers must not provide version evidence")
+	}
+	for _, failed := range []map[string]any{
+		{"data": map[string]any{"success": "false", "revertedToVersion": 3}},
+		{"data": []any{map[string]any{"error_code": "REVERT_FAILED", "revertedToVersion": 3}}},
+		{"data": map[string]any{"errorCode": 500.0, "revertedToVersion": 3}},
+	} {
+		if revertResultMatchesVersion(failed, 3) {
+			t.Fatalf("explicit failure %#v must override target-version evidence", failed)
+		}
+	}
 	if !revertResultMatchesVersion(map[string]any{"revertedToVersion": 3}, 3) {
 		t.Fatal("explicit target-version acknowledgement was not accepted")
+	}
+	if !revertResultMatchesVersion(map[string]any{"errorCode": "0", "revertedToVersion": 3}, 3) {
+		t.Fatal("a success error-code sentinel must not suppress target-version evidence")
+	}
+	if revertErrorCodeIsFailure(nil) {
+		t.Fatal("an absent error code must not be treated as an explicit failure")
 	}
 }
 
