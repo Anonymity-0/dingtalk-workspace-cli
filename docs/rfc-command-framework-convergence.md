@@ -708,6 +708,7 @@ Flags: []shortcut.Flag{
 - 声明即全部能力：required/enum/约束/Validate 校验的已是解析后的真实内容，`Execute`/`Invoke` 无需任何额外代码。
 - `Usage`/`Desc` 必须写明支持 `@路径`/`-`；框架不自动改写 help 文案，今日也不向 Schema 投影（新增投影字段须先过 homology 评审，避免 catalog drift）。
 - `user_required` 确认的写命令若声明 `InputStdin`：stdin 在校验阶段被消费，交互确认将 fail-closed 为 `confirmation_required`，此类调用必须显式 `--yes`（或 `--dry-run`）。
+- **声明前先确认取值空间不会被前缀吃掉**：声明 `InputFile` 后，任何以 `@` 开头的合法值都会被当成文件路径（本产品尤其常见的是 at 提及类取值，如 `--at-user @zhangsan` 会报读取文件失败），用户只能改用 `@@` 转义；声明 `InputStdin` 后字面值 `-` 不可达（与 curl 等约定一致）。若该 flag 的正常取值可能命中这两种形态，就不要声明对应来源。
 - 声明在构造期校验（fail-closed panic）：仅限 `KindString`；源值必须是 `file`/`stdin` 且不重复。
 
 **今日实现与目标形态的差异**（迁移到本节目标 `FlagSpec` 时收敛）：
