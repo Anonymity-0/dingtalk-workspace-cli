@@ -612,7 +612,7 @@ jobs:
               exit 1
             }
           done
-          if [ "$TEST_SHARD" = app ]; then
+          if [ "$TEST_SHARD" = "app" ]; then
             # A single long-lived app test process retains every constructed
             # command tree in framework registries. Isolate Schema assembly and
             # bounded name ranges so each process releases that state on exit.
@@ -620,7 +620,7 @@ jobs:
             ./scripts/ci/run-app-race-tests.sh run "${packages[0]}"
             exit 0
           fi
-          if [ "$TEST_SHARD" = release-scripts ]; then
+          if [ "$TEST_SHARD" = "release-scripts" ]; then
             # Mirror the dedicated release-contract job: these suites shell out
             # to archive tooling and are not race-instrumented there.
             go test -v -count=1 -timeout=10m "${packages[@]}"
@@ -629,8 +629,8 @@ jobs:
           # cli/smoke own heavy NewRootCommand / Schema assembly under -race;
           # give them a dedicated package timeout on slower hosted runners.
           timeout_budget=12m
-          if [ "$TEST_SHARD" = cli ] ||
-             [ "$TEST_SHARD" = smoke ]; then
+          if [ "$TEST_SHARD" = "cli" ] ||
+             [ "$TEST_SHARD" = "smoke" ]; then
             timeout_budget=15m
           fi
           go test -v -race -count=1 -timeout="$timeout_budget" "${packages[@]}"
