@@ -51,7 +51,7 @@ func writeInputFile(t *testing.T, content string) string {
 	return path
 }
 
-func TestResolveInputFlags_File(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsFile(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Input: []string{InputFile, InputStdin}},
@@ -66,7 +66,7 @@ func TestResolveInputFlags_File(t *testing.T) {
 	}
 }
 
-func TestResolveInputFlags_Stdin(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsStdin(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Input: []string{InputStdin}},
@@ -83,7 +83,7 @@ func TestResolveInputFlags_Stdin(t *testing.T) {
 
 // The @@ escape keeps a literal leading @ inline and must not be treated as a
 // source reference even when Input is declared.
-func TestResolveInputFlags_EscapedAtStaysInline(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsEscapedAtStaysInline(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Input: []string{InputFile, InputStdin}},
@@ -97,7 +97,7 @@ func TestResolveInputFlags_EscapedAtStaysInline(t *testing.T) {
 	}
 }
 
-func TestResolveInputFlags_BOMStripped(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsBOMStripped(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Input: []string{InputFile}},
@@ -114,7 +114,7 @@ func TestResolveInputFlags_BOMStripped(t *testing.T) {
 
 // Required must be satisfied by the resolved payload, proving resolution runs
 // before the required stage.
-func TestResolveInputFlags_SatisfiesRequired(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsSatisfiesRequired(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Required: true, Input: []string{InputFile}},
@@ -130,7 +130,7 @@ func TestResolveInputFlags_SatisfiesRequired(t *testing.T) {
 }
 
 // Enum validation sees the resolved content, not the "@path" token.
-func TestResolveInputFlags_EnumValidatesResolvedContent(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsEnumValidatesResolvedContent(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "mode", Usage: "M", Bind: "mode", Enum: []string{"asc", "desc"}, Input: []string{InputFile}},
@@ -145,7 +145,7 @@ func TestResolveInputFlags_EnumValidatesResolvedContent(t *testing.T) {
 
 // A value passed through a declared alias is resolved exactly like the main
 // name (fallback-chain parity).
-func TestResolveInputFlags_AliasResolved(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsAliasResolved(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Aliases: []string{"body"}, Input: []string{InputFile}},
@@ -165,7 +165,7 @@ func TestResolveInputFlags_AliasResolved(t *testing.T) {
 // name the fallback chain will read. The whitespace main value is usable for
 // a non-Trim flag, and the alias path does not exist on purpose — a resolver
 // that wrongly picked the alias would fail the read instead of shipping "   ".
-func TestResolveInputFlags_ShadowedAliasNotResolved(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsShadowedAliasNotResolved(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Aliases: []string{"body"}, Input: []string{InputFile}},
@@ -180,7 +180,7 @@ func TestResolveInputFlags_ShadowedAliasNotResolved(t *testing.T) {
 	}
 }
 
-func TestResolveInputFlags_FileNotSupported(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsFileNotSupported(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Input: []string{InputStdin}},
@@ -192,7 +192,7 @@ func TestResolveInputFlags_FileNotSupported(t *testing.T) {
 	}
 }
 
-func TestResolveInputFlags_StdinNotSupported(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsStdinNotSupported(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Input: []string{InputFile}},
@@ -205,7 +205,7 @@ func TestResolveInputFlags_StdinNotSupported(t *testing.T) {
 	}
 }
 
-func TestResolveInputFlags_SingleStdinConsumer(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsSingleStdinConsumer(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "first", Usage: "F", Bind: "first", Input: []string{InputStdin}},
@@ -219,7 +219,22 @@ func TestResolveInputFlags_SingleStdinConsumer(t *testing.T) {
 	}
 }
 
-func TestResolveInputFlags_FileNotFound(t *testing.T) {
+// failingReader (corecmd_test.go) fails every read, making the stdin error
+// branch reachable.
+func TestCrossPlatformCoverageResolveInputFlagsStdinReadFailure(t *testing.T) {
+	var got map[string]any
+	cmd := newInputCommand([]FlagSpec{
+		{Name: "content", Usage: "C", Bind: "content", Input: []string{InputStdin}},
+	}, &got)
+	cmd.SetIn(failingReader{})
+
+	err := runInputCommand(t, cmd, "--content", "-")
+	if err == nil || !strings.Contains(err.Error(), "读取 stdin 失败") {
+		t.Fatalf("expected stdin read failure, got %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageResolveInputFlagsFileNotFound(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Input: []string{InputFile, InputStdin}},
@@ -231,7 +246,7 @@ func TestResolveInputFlags_FileNotFound(t *testing.T) {
 	}
 }
 
-func TestResolveInputFlags_EmptyPathAfterAt(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsEmptyPathAfterAt(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Input: []string{InputFile}},
@@ -245,7 +260,7 @@ func TestResolveInputFlags_EmptyPathAfterAt(t *testing.T) {
 
 // A flag without Input keeps its literal value even when it looks like a
 // source reference — resolution is strictly opt-in per declaration.
-func TestResolveInputFlags_NoInputSpecPassthrough(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsNoInputSpecPassthrough(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "token", Usage: "T", Bind: "token"},
@@ -261,7 +276,7 @@ func TestResolveInputFlags_NoInputSpecPassthrough(t *testing.T) {
 
 // Registration defaults and env fallback are never input-resolved: @file only
 // applies to what the user literally typed on the command line.
-func TestResolveInputFlags_DefaultNotResolved(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsDefaultNotResolved(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Default: "@not-a-file", Input: []string{InputFile}},
@@ -277,7 +292,7 @@ func TestResolveInputFlags_DefaultNotResolved(t *testing.T) {
 
 // Trim flags judge usability on the trimmed value (rawValue), so a leading
 // whitespace before @ must still resolve instead of shipping as a literal.
-func TestResolveInputFlags_TrimmedLeadingSpace(t *testing.T) {
+func TestCrossPlatformCoverageResolveInputFlagsTrimmedLeadingSpace(t *testing.T) {
 	var got map[string]any
 	cmd := newInputCommand([]FlagSpec{
 		{Name: "content", Usage: "C", Bind: "content", Trim: true, Input: []string{InputFile}},
@@ -292,7 +307,7 @@ func TestResolveInputFlags_TrimmedLeadingSpace(t *testing.T) {
 	}
 }
 
-func TestValidateInputSpecs_Panics(t *testing.T) {
+func TestCrossPlatformCoverageValidateInputSpecsPanics(t *testing.T) {
 	cases := []struct {
 		name string
 		flag FlagSpec

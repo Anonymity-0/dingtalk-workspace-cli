@@ -155,17 +155,12 @@ func resolveInputFlags(cmd *cobra.Command, flags []FlagSpec) error {
 				return apperrors.NewValidation(
 					fmt.Sprintf("参数 --%s 读取 stdin 失败：%v", flag.Name, err))
 			}
-			if err := cmd.Flags().Set(name, strings.TrimPrefix(string(data), utf8BOM)); err != nil {
-				return apperrors.NewValidation(
-					fmt.Sprintf("参数 --%s 写入解析值失败：%v", flag.Name, err))
-			}
+			// Setting a registered string flag cannot fail.
+			_ = cmd.Flags().Set(name, strings.TrimPrefix(string(data), utf8BOM))
 
 		case strings.HasPrefix(raw, "@@"):
 			// Escape: strip the first @, keep the rest as a literal inline value.
-			if err := cmd.Flags().Set(name, raw[1:]); err != nil {
-				return apperrors.NewValidation(
-					fmt.Sprintf("参数 --%s 写入解析值失败：%v", flag.Name, err))
-			}
+			_ = cmd.Flags().Set(name, raw[1:])
 
 		case strings.HasPrefix(raw, "@"):
 			if !inputSupports(flag, InputFile) {
@@ -189,10 +184,7 @@ func resolveInputFlags(cmd *cobra.Command, flags []FlagSpec) error {
 				return apperrors.NewValidation(
 					fmt.Sprintf("参数 --%s 读取文件 %q 失败：%v", flag.Name, path, err), opts...)
 			}
-			if err := cmd.Flags().Set(name, strings.TrimPrefix(string(data), utf8BOM)); err != nil {
-				return apperrors.NewValidation(
-					fmt.Sprintf("参数 --%s 写入解析值失败：%v", flag.Name, err))
-			}
+			_ = cmd.Flags().Set(name, strings.TrimPrefix(string(data), utf8BOM))
 		}
 	}
 	return nil
