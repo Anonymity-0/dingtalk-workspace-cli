@@ -577,33 +577,41 @@ jobs:
           if [ -z "$package_output" ]; then
             echo "No buildable Go package in shard $TEST_SHARD is affected by this revision." \
               >> "$GITHUB_STEP_SUMMARY"
+            echo "affected=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          {
-            echo "packages<<SHARD_PACKAGES_EOF"
-            printf '%s\n' "$package_output"
-            echo "SHARD_PACKAGES_EOF"
-          } >> "$GITHUB_OUTPUT"
+          # The package list travels through a file rather than a step output:
+          # reading it with `mapfile < file` has unambiguous line semantics,
+          # whereas a here-string over a multi-line output would append an extra
+          # empty element if the value ever carried a trailing newline, and an
+          # empty element would reach go test as an empty package argument.
+          printf '%s\n' "$package_output" > "$RUNNER_TEMP/focused-shard-packages.txt"
+          echo "affected=true" >> "$GITHUB_OUTPUT"
 
       - name: Build
-        if: ${{ matrix.shard == 'remaining' && steps.select.outputs.packages != '' }}
+        if: ${{ matrix.shard == 'remaining' && steps.select.outputs.affected == 'true' }}
         run: make build
 
       - name: Install archive tooling
-        if: ${{ matrix.shard == 'release-scripts' && steps.select.outputs.packages != '' }}
+        if: ${{ matrix.shard == 'release-scripts' && steps.select.outputs.affected == 'true' }}
         run: sudo apt-get update && sudo apt-get install -y zip unzip
 
       - name: Test shard with Race Detection
-        if: ${{ steps.select.outputs.packages != '' }}
+        if: ${{ steps.select.outputs.affected == 'true' }}
         shell: bash
         env:
           DWS_PACKAGE_VERSION: 0.0.0-test
           TEST_SHARD: ${{ matrix.shard }}
-          SHARD_PACKAGES: ${{ steps.select.outputs.packages }}
         run: |
           set -euo pipefail
-          mapfile -t packages <<< "$SHARD_PACKAGES"
+          mapfile -t packages < "$RUNNER_TEMP/focused-shard-packages.txt"
           test "${#packages[@]}" -gt 0
+          for package in "${packages[@]}"; do
+            test -n "$package" || {
+              echo "shard package list contains an empty entry" >&2
+              exit 1
+            }
+          done
           if [ "$TEST_SHARD" = app ]; then
             # A single long-lived app test process retains every constructed
             # command tree in framework registries. Isolate Schema assembly and
