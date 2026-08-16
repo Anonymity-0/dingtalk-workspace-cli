@@ -6,16 +6,35 @@ ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 usage() {
 	printf '%s\n' \
 		"usage: $0 verify <app-package>" \
-		"       $0 run <app-package>" >&2
+		"       $0 run <app-package> [partition]" \
+		"       $0 list-partitions" >&2
 	exit 2
 }
 
-[ "$#" -eq 2 ] || usage
-mode="$1"
-app_package="$2"
+# Single source of truth for the partition set. CI runs one job per partition and
+# pins its shard names to this list, so a name that appears here without a
+# dispatch entry below fails closed rather than silently skipping tests.
+APP_PARTITIONS='schema a-b c d-r s-z-example-fuzz'
 
+mode="${1:-}"
+partition=""
 case "$mode" in
-	verify|run) ;;
+	list-partitions)
+		[ "$#" -eq 1 ] || usage
+		for name in $APP_PARTITIONS; do
+			printf '%s\n' "$name"
+		done
+		exit 0
+		;;
+	verify)
+		[ "$#" -eq 2 ] || usage
+		app_package="$2"
+		;;
+	run)
+		[ "$#" -eq 2 ] || [ "$#" -eq 3 ] || usage
+		app_package="$2"
+		partition="${3:-}"
+		;;
 	*) usage ;;
 esac
 
@@ -70,19 +89,47 @@ if [ "$unmatched_count" -ne 0 ]; then
 	exit 1
 fi
 
-for partition in \
+# The loop variable is deliberately not named "partition": that name holds the
+# partition requested on the command line, and run mode still executes this
+# discovery pass before dispatching.
+classified=''
+for spec in \
 	"schema:$schema_count" \
 	"a-b:$ab_count" \
 	"c:$c_count" \
 	"d-r:$dr_count" \
 	"s-z-example-fuzz:$sz_count"
 do
-	name="${partition%%:*}"
-	count="${partition#*:}"
+	name="${spec%%:*}"
+	count="${spec#*:}"
+	classified="$classified $name"
 	if [ "$count" -eq 0 ]; then
 		printf 'app race partition %s is empty\n' "$name" >&2
 		exit 1
 	fi
+done
+
+# The counters above and APP_PARTITIONS must describe the same set in both
+# directions. A counted partition missing from APP_PARTITIONS would never be
+# dispatched by any CI job, and a dispatchable partition with no counter would
+# escape the exact-coverage check above.
+for name in $APP_PARTITIONS; do
+	case " $classified " in
+		*" $name "*) ;;
+		*)
+			printf 'app partition %s has no coverage counter\n' "$name" >&2
+			exit 1
+			;;
+	esac
+done
+for name in $classified; do
+	case " $APP_PARTITIONS " in
+		*" $name "*) ;;
+		*)
+			printf 'counted partition %s is not a dispatchable app partition\n' "$name" >&2
+			exit 1
+			;;
+	esac
 done
 
 total_count="$(wc -l < "$tests" | tr -d ' ')"
@@ -142,8 +189,32 @@ run_partition() {
 # build is allocation-heavy, and -race made the partition roughly 11x slower
 # (26s -> 291s locally, 357s in CI) without being able to report anything.
 schema_pattern='^Test.*Schema'
-run_partition schema no-race "$schema_pattern"
-run_partition a-b race '^Test[A-B]' "$schema_pattern"
-run_partition c race '^TestC' "$schema_pattern"
-run_partition d-r race '^Test[D-R]' "$schema_pattern"
-run_partition s-z-example-fuzz race '^(Test[S-Z]|Example|Fuzz)' "$schema_pattern"
+
+# Dispatch table for the partition set declared in APP_PARTITIONS. CI passes one
+# partition per job so they run concurrently; running without a partition keeps
+# the original end-to-end behaviour for local use and for any caller that wants
+# the whole package in one invocation.
+run_named_partition() {
+	case "$1" in
+		schema) run_partition schema no-race "$schema_pattern" ;;
+		a-b) run_partition a-b race '^Test[A-B]' "$schema_pattern" ;;
+		c) run_partition c race '^TestC' "$schema_pattern" ;;
+		d-r) run_partition d-r race '^Test[D-R]' "$schema_pattern" ;;
+		s-z-example-fuzz)
+			run_partition s-z-example-fuzz race '^(Test[S-Z]|Example|Fuzz)' "$schema_pattern"
+			;;
+		*)
+			printf 'unknown app partition: %s\n' "$1" >&2
+			exit 1
+			;;
+	esac
+}
+
+if [ -n "$partition" ]; then
+	run_named_partition "$partition"
+	exit 0
+fi
+
+for name in $APP_PARTITIONS; do
+	run_named_partition "$name"
+done
