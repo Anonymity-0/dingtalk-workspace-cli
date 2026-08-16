@@ -101,26 +101,49 @@ fi
 
 run_partition() {
 	name="$1"
-	run_pattern="$2"
-	skip_pattern="${3:-}"
+	instrumentation="$2"
+	run_pattern="$3"
+	skip_pattern="${4:-}"
 
-	printf 'running internal/app race partition %s\n' "$name"
+	# Fail closed on an unrecognized mode: a typo must not silently drop race
+	# instrumentation from a partition that is supposed to carry it.
+	case "$instrumentation" in
+		race|no-race) ;;
+		*)
+			printf 'unknown instrumentation %s for app partition %s\n' \
+				"$instrumentation" "$name" >&2
+			exit 1
+			;;
+	esac
+
+	printf 'running internal/app %s partition %s\n' "$instrumentation" "$name"
+	set -- -v -count=1 -timeout=15m -run "$run_pattern"
 	if [ -n "$skip_pattern" ]; then
-		go test -v -race -count=1 -timeout=15m \
-			-run "$run_pattern" -skip "$skip_pattern" "$app_package"
-	else
-		go test -v -race -count=1 -timeout=15m \
-			-run "$run_pattern" "$app_package"
+		set -- "$@" -skip "$skip_pattern"
 	fi
+	if [ "$instrumentation" = race ]; then
+		set -- -race "$@"
+	fi
+	go test "$@" "$app_package"
 }
 
 # Schema assembly has the largest transient memory footprint. Run those tests
 # in a fresh process, then keep each remaining name range in its own process so
 # command trees retained by process-global registries are released between
 # partitions. The complementary run/skip patterns preserve the full test set.
+#
+# The schema partition runs uninstrumented. Its tests assert structural
+# Schema-to-Cobra contracts over a single goroutine: none of them call
+# t.Parallel or start a goroutine, so the race detector has no concurrent access
+# to observe here. The process-global lazy metadata that does need race coverage
+# (schema_source_root's atomic.Value, the parameter-binding lazy loaders) is
+# exercised by internal/cli's concurrent tests, which stay instrumented. The
+# instrumentation is not free on this partition: its shared sync.Once Catalog
+# build is allocation-heavy, and -race made the partition roughly 11x slower
+# (26s -> 291s locally, 357s in CI) without being able to report anything.
 schema_pattern='^Test.*Schema'
-run_partition schema "$schema_pattern"
-run_partition a-b '^Test[A-B]' "$schema_pattern"
-run_partition c '^TestC' "$schema_pattern"
-run_partition d-r '^Test[D-R]' "$schema_pattern"
-run_partition s-z-example-fuzz '^(Test[S-Z]|Example|Fuzz)' "$schema_pattern"
+run_partition schema no-race "$schema_pattern"
+run_partition a-b race '^Test[A-B]' "$schema_pattern"
+run_partition c race '^TestC' "$schema_pattern"
+run_partition d-r race '^Test[D-R]' "$schema_pattern"
+run_partition s-z-example-fuzz race '^(Test[S-Z]|Example|Fuzz)' "$schema_pattern"
