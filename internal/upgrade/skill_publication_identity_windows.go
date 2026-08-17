@@ -38,34 +38,27 @@ func skillPathSameFileIdentityImpl(_, _ os.FileInfo) bool {
 // carries a relative target computed for the final destination, which may not
 // resolve from the staging directory. Opening the reparse point yields a file
 // ID that is stable across the rename and is the correct identity to compare.
-func skillPathFileIdentityImpl(path string) string {
-	p, err := windows.UTF16PtrFromString(path)
-	if err != nil {
-		return ""
+func skillPathFileIdentityImpl(path string) (id string) {
+	if p, err := windows.UTF16PtrFromString(path); err == nil {
+		if handle, err := windows.CreateFile(
+			p, windows.FILE_READ_ATTRIBUTES,
+			windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+			nil, windows.OPEN_EXISTING,
+			windows.FILE_FLAG_BACKUP_SEMANTICS|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0,
+		); err == nil {
+			defer windows.CloseHandle(handle)
+			var info windows.ByHandleFileInformation
+			if err := windows.GetFileInformationByHandle(handle, &info); err == nil {
+				id = fmt.Sprintf("%d:%d:%d", info.VolumeSerialNumber, info.FileIndexHigh, info.FileIndexLow)
+			}
+		}
 	}
-	handle, err := windows.CreateFile(
-		p, windows.FILE_READ_ATTRIBUTES,
-		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
-		nil, windows.OPEN_EXISTING,
-		windows.FILE_FLAG_BACKUP_SEMANTICS|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0,
-	)
-	if err != nil {
-		return ""
-	}
-	defer windows.CloseHandle(handle)
-	var info windows.ByHandleFileInformation
-	if err := windows.GetFileInformationByHandle(handle, &info); err != nil {
-		return ""
-	}
-	return fmt.Sprintf("%d:%d:%d", info.VolumeSerialNumber, info.FileIndexHigh, info.FileIndexLow)
+	return
 }
 
 // skillPathIdentityProven is the real identity proof on Windows. An empty
 // expected value means the file ID could not be obtained at publish time, so
 // identity cannot be proven and the caller must refuse the auto-delete.
 func skillPathIdentityProven(_, _ os.FileInfo, expected, actual string) bool {
-	if expected == "" {
-		return false
-	}
-	return expected == actual
+	return expected != "" && expected == actual
 }
