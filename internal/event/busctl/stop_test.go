@@ -120,6 +120,67 @@ func TestCrossPlatformCoverageStopDoesNotSignalUnverifiedReusedPID(t *testing.T)
 	}
 }
 
+func TestCrossPlatformCoverageStopAcceptsExitAtGracefulTimeoutBoundary(t *testing.T) {
+	const pid = 4242
+
+	t.Run("before ownership validation", func(t *testing.T) {
+		exited := false
+		validated := false
+		testseam.Swap(t, &stopReadHolderPID, func(string) int { return pid })
+		testseam.Swap(t, &stopAlive, func(int) bool { return !exited })
+		proc, err := os.FindProcess(os.Getpid())
+		if err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &stopFindProcess, func(int) (*os.Process, error) { return proc, nil })
+		testseam.Swap(t, &stopRequest, func(string) error { return nil })
+		testseam.Swap(t, &stopWaitForBusExit, func(int, time.Duration) bool {
+			exited = true
+			return false
+		})
+		testseam.Swap(t, &stopValidateHolderOwner, func(string, int) (bool, error) {
+			validated = true
+			return false, nil
+		})
+
+		if err := Stop(StopConfig{WorkDir: "test-workdir", IPCEndpoint: "test-endpoint"}); err != nil {
+			t.Fatalf("Stop() = %v, want success after bus exit", err)
+		}
+		if validated {
+			t.Fatal("ownership was validated after the bus had already exited")
+		}
+	})
+
+	t.Run("during ownership validation", func(t *testing.T) {
+		exited := false
+		signals := 0
+		testseam.Swap(t, &stopReadHolderPID, func(string) int { return pid })
+		testseam.Swap(t, &stopAlive, func(int) bool { return !exited })
+		proc, err := os.FindProcess(os.Getpid())
+		if err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &stopFindProcess, func(int) (*os.Process, error) { return proc, nil })
+		testseam.Swap(t, &stopRequest, func(string) error { return nil })
+		testseam.Swap(t, &stopWaitForBusExit, func(int, time.Duration) bool { return false })
+		testseam.Swap(t, &stopValidateHolderOwner, func(string, int) (bool, error) {
+			exited = true
+			return false, nil
+		})
+		testseam.Swap(t, &stopSignalProcess, func(*os.Process, os.Signal) error {
+			signals++
+			return nil
+		})
+
+		if err := Stop(StopConfig{WorkDir: "test-workdir", IPCEndpoint: "test-endpoint"}); err != nil {
+			t.Fatalf("Stop() = %v, want success after exit during ownership validation", err)
+		}
+		if signals != 0 {
+			t.Fatalf("exited bus received %d fallback signals", signals)
+		}
+	})
+}
+
 func TestCrossPlatformCoverageStopReportsOwnershipValidationError(t *testing.T) {
 	const pid = 4242
 	errInjected := errors.New("ownership validation failed")

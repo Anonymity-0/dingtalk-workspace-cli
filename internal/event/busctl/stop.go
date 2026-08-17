@@ -48,6 +48,7 @@ var (
 	stopSignalProcess       = func(proc *os.Process, signal os.Signal) error { return proc.Signal(signal) }
 	stopDial                = transport.Dial
 	stopRequest             = requestBusStop
+	stopWaitForBusExit      = waitForBusExit
 )
 
 // StopConfig identifies the target bus and tunes timing.
@@ -94,16 +95,28 @@ func Stop(cfg StopConfig) error {
 		return fmt.Errorf("busctl: find process %d: %w", pid, err)
 	}
 	if strings.TrimSpace(cfg.IPCEndpoint) != "" {
-		if err := stopRequest(cfg.IPCEndpoint); err == nil && waitForBusExit(pid, cfg.Timeout) {
+		if err := stopRequest(cfg.IPCEndpoint); err == nil && stopWaitForBusExit(pid, cfg.Timeout) {
 			return nil
 		}
 	}
 
+	// The bus may finish shutting down immediately after the graceful wait
+	// reaches its deadline (or after a failed IPC request). Recheck before
+	// inspecting ownership so a completed stop is not reported as stale.
+	if !stopAlive(pid) {
+		return nil
+	}
 	owner, err := stopValidateHolderOwner(LockPath(cfg.WorkDir), pid)
 	if err != nil {
 		return fmt.Errorf("busctl: verify bus pid=%d ownership: %w", pid, err)
 	}
 	if !owner {
+		// ValidateHolderOwnership observes a released lock both for a stale,
+		// reused PID and for a bus that exits during the ownership probe. Only
+		// the still-alive case is unsafe to signal.
+		if !stopAlive(pid) {
+			return nil
+		}
 		return fmt.Errorf("%w: pid=%d does not own %s; stale PID was not signalled", ErrOwnerUnverified, pid, LockPath(cfg.WorkDir))
 	}
 
@@ -116,7 +129,7 @@ func Stop(cfg StopConfig) error {
 		return fmt.Errorf("busctl: signal bus pid=%d: %w", pid, err)
 	}
 
-	if waitForBusExit(pid, cfg.Timeout) {
+	if stopWaitForBusExit(pid, cfg.Timeout) {
 		return nil
 	}
 	return fmt.Errorf("busctl: bus pid=%d did not exit within %s", pid, cfg.Timeout)
