@@ -312,7 +312,7 @@ func revertResponseHasExplicitFailure(value any) bool {
 			if versionEvidenceRequestEchoKeys[normalized] {
 				continue
 			}
-			if normalized == "success" {
+			if normalized == "success" || normalized == "ok" {
 				if success, ok := child.(bool); ok && !success {
 					return true
 				}
@@ -320,7 +320,10 @@ func revertResponseHasExplicitFailure(value any) bool {
 					return true
 				}
 			}
-			if normalized == "errorcode" {
+			if (normalized == "status" || normalized == "state") && revertStatusIsFailure(child) {
+				return true
+			}
+			if normalized == "errorcode" || normalized == "code" {
 				if revertErrorCodeIsFailure(child) {
 					return true
 				}
@@ -339,17 +342,38 @@ func revertResponseHasExplicitFailure(value any) bool {
 	return false
 }
 
+func revertStatusIsFailure(value any) bool {
+	status, ok := value.(string)
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "fail", "failed", "failure", "error", "errored", "reject", "rejected", "deny", "denied", "cancel", "cancelled", "canceled", "abort", "aborted":
+		return true
+	default:
+		return false
+	}
+}
+
 func revertErrorCodeIsFailure(value any) bool {
 	switch typed := value.(type) {
 	case string:
-		switch strings.ToLower(strings.TrimSpace(typed)) {
-		case "", "0", "ok", "success", "succeed":
+		normalized := strings.ToLower(strings.TrimSpace(typed))
+		switch normalized {
+		case "", "ok", "success", "succeed", "succeeded":
 			return false
-		default:
-			return true
 		}
+		if parsed, err := strconv.Atoi(normalized); err == nil {
+			return parsed != 0 && (parsed < 200 || parsed >= 300)
+		}
+		return true
 	case float64:
-		return typed != 0
+		return typed != 0 && (typed < 200 || typed >= 300)
+	case json.Number:
+		parsed, err := typed.Int64()
+		return err != nil || (parsed != 0 && (parsed < 200 || parsed >= 300))
+	case int:
+		return typed != 0 && (typed < 200 || typed >= 300)
 	default:
 		return false
 	}

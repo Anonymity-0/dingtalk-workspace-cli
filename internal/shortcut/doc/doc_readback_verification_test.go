@@ -5,6 +5,7 @@ package doc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -232,21 +233,41 @@ func TestCrossPlatformCoverageVersionRevertRequiresTargetEvidence(t *testing.T) 
 	}
 	for _, failed := range []map[string]any{
 		{"data": map[string]any{"success": "false", "revertedToVersion": 3}},
+		{"data": map[string]any{"ok": false, "revertedToVersion": 3}},
+		{"data": map[string]any{"status": "FAILED", "revertedToVersion": 3}},
+		{"data": map[string]any{"state": "failure", "revertedToVersion": 3}},
 		{"data": []any{map[string]any{"error_code": "REVERT_FAILED", "revertedToVersion": 3}}},
 		{"data": map[string]any{"errorCode": 500.0, "revertedToVersion": 3}},
+		{"data": map[string]any{"code": json.Number("500"), "revertedToVersion": 3}},
 	} {
 		if revertResultMatchesVersion(failed, 3) {
 			t.Fatalf("explicit failure %#v must override target-version evidence", failed)
 		}
 	}
-	if !revertResultMatchesVersion(map[string]any{"revertedToVersion": 3}, 3) {
-		t.Fatal("explicit target-version acknowledgement was not accepted")
+	for _, succeeded := range []map[string]any{
+		{"revertedToVersion": 3},
+		{"status": "SUCCESS", "revertedToVersion": 3},
+		{"state": "succeeded", "revertedToVersion": 3},
+		{"errorCode": "0", "revertedToVersion": 3},
+		{"code": 200, "revertedToVersion": 3},
+		{"code": "204", "revertedToVersion": 3},
+	} {
+		if !revertResultMatchesVersion(succeeded, 3) {
+			t.Fatalf("explicit success %#v suppressed target-version evidence", succeeded)
+		}
 	}
-	if !revertResultMatchesVersion(map[string]any{"errorCode": "0", "revertedToVersion": 3}, 3) {
-		t.Fatal("a success error-code sentinel must not suppress target-version evidence")
+	for _, absentOrSuccess := range []any{nil, "", "OK", "SUCCESS", json.Number("0"), json.Number("200"), 0.0, 201.0, 0, 202} {
+		if revertErrorCodeIsFailure(absentOrSuccess) {
+			t.Fatalf("success code %#v was treated as an explicit failure", absentOrSuccess)
+		}
 	}
-	if revertErrorCodeIsFailure(nil) {
-		t.Fatal("an absent error code must not be treated as an explicit failure")
+	for _, failedCode := range []any{json.Number("bad"), json.Number("500"), 1.0, 500.0, 1, 500} {
+		if !revertErrorCodeIsFailure(failedCode) {
+			t.Fatalf("failure code %#v was not treated as an explicit failure", failedCode)
+		}
+	}
+	if revertStatusIsFailure(500) || revertStatusIsFailure("PROCESSING") {
+		t.Fatal("non-failure status was treated as an explicit failure")
 	}
 }
 

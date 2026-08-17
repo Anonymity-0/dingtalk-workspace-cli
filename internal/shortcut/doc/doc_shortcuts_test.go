@@ -604,9 +604,11 @@ func TestCrossPlatformCoverageDocVersionRevertPaginationAndVerification(t *testi
 		{name: "nested request parameter echo", response: map[string]any{"data": map[string]any{"request": map[string]any{"nodeId": "n", "version": 3}}}},
 		{name: "accepted field inside request echo", response: map[string]any{"data": map[string]any{"request": map[string]any{"targetVersion": 3}}}},
 		{name: "nested business failure with request echo", response: map[string]any{"data": map[string]any{"success": false, "errorCode": "REVERT_FAILED", "request": map[string]any{"version": 3}}}},
+		{name: "failed status overrides target evidence", response: map[string]any{"data": map[string]any{"status": "FAILED", "revertResult": map[string]any{"revertedToVersion": 3}}}},
+		{name: "failed code overrides target evidence", response: map[string]any{"data": map[string]any{"code": "REVERT_FAILED", "revertResult": map[string]any{"revertedToVersion": 3}}}},
 		{
 			name:     "nested business failure overrides all evidence",
-			response: map[string]any{"data": map[string]any{"success": false, "revertResult": map[string]any{"revertedToVersion": 3}}},
+			response: map[string]any{"data": map[string]any{"state": "FAILURE", "revertResult": map[string]any{"revertedToVersion": 3}}},
 			current:  map[string]any{"targetVersion": 3},
 		},
 	} {
