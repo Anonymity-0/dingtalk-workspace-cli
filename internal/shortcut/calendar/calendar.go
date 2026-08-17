@@ -19,6 +19,7 @@ package calendar
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -440,29 +441,29 @@ var RoomFind = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "start", Type: shortcut.FlagString, Desc: "开始时间 ISO-8601；起止时间必须是 RFC3339/ISO-8601，且 end 晚于 start"},
 		{Name: "end", Type: shortcut.FlagString, Desc: "结束时间 ISO-8601；起止时间必须是 RFC3339/ISO-8601，且 end 晚于 start"},
-		{Name: "available", Type: shortcut.FlagBool, Hidden: true, Desc: "兼容旧调用；该命令本身始终只返回可用会议室"},
+		{Name: "available", Type: shortcut.FlagBool, Desc: "仅返回可用会议室；保留已发布参数兼容性"},
 		{Name: "group-id", Type: shortcut.FlagString, Desc: "会议室分组 ID"},
 		{Name: "room-name", Type: shortcut.FlagString, Desc: "会议室名称过滤"},
-		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "pageSize；limit 必须在 1-100 之间，page 不能小于 0"},
-		{Name: "page", Type: shortcut.FlagInt, Default: "0", Desc: "pageIndex；limit 必须在 1-100 之间，page 不能小于 0"},
+		{Name: "limit", Type: shortcut.FlagString, Desc: "每页条数 (pageSize)；保留 string 类型兼容性；limit 必须在 1-100 之间"},
+		{Name: "page", Type: shortcut.FlagString, Desc: "页码 (pageIndex，从 0 开始)；保留 string 类型兼容性；page 不能小于 0"},
 	},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		if err := rt.RangeInt("limit", 1, 100); err != nil {
-			return err
-		}
-		if rt.Int("page") < 0 {
-			return fmt.Errorf("--page 不能小于 0")
-		}
-		return nil
+		_, _, err := roomFindPageValues(rt)
+		return err
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "起止时间必须是 RFC3339/ISO-8601，且 end 晚于 start"},
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit", "page"}, Description: "limit 必须在 1-100 之间，page 不能小于 0"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "limit 必须在 1-100 之间"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"page"}, Description: "page 不能小于 0"},
 	},
 	Tips: []string{
 		`dws calendar +room-find --start "2026-03-10T14:00:00+08:00" --end "2026-03-10T15:00:00+08:00"`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		pageSize, pageIndex, err := roomFindPageValues(rt)
+		if err != nil {
+			return err
+		}
 		now := time.Now()
 		startStr := rt.Str("start")
 		endStr := rt.Str("end")
@@ -486,8 +487,11 @@ var RoomFind = shortcut.Shortcut{
 		params := map[string]any{
 			"startTime": startMs,
 			"endTime":   endMs,
-			"pageSize":  fmt.Sprint(rt.Int("limit")),
-			"pageIndex": fmt.Sprint(rt.Int("page")),
+			"pageSize":  strconv.Itoa(pageSize),
+			"pageIndex": strconv.Itoa(pageIndex),
+		}
+		if rt.Bool("available") {
+			params["needAvailable"] = true
 		}
 		if rt.Changed("group-id") {
 			params["groupId"] = rt.Str("group-id")
@@ -513,7 +517,7 @@ var RoomFind = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		out := map[string]any{"count": len(rooms), "rooms": rooms, "page": rt.Int("page"), "pageSize": rt.Int("limit"), "complete": false}
+		out := map[string]any{"count": len(rooms), "rooms": rooms, "page": pageIndex, "pageSize": pageSize, "complete": false}
 		for _, key := range []string{"hasMore", "totalCount", "total", "pageIndex", "pageSize"} {
 			if value, ok := container[key]; ok && value != nil {
 				out[key] = value
@@ -524,6 +528,23 @@ var RoomFind = shortcut.Shortcut{
 		}
 		return rt.Output(out)
 	},
+}
+
+func roomFindPageValues(rt *shortcut.RuntimeContext) (pageSize int, pageIndex int, err error) {
+	pageSize = 20
+	if rt.Changed("limit") {
+		pageSize, err = strconv.Atoi(strings.TrimSpace(rt.Str("limit")))
+		if err != nil || pageSize < 1 || pageSize > 100 {
+			return 0, 0, fmt.Errorf("--limit 必须是 1-100 之间的整数")
+		}
+	}
+	if rt.Changed("page") {
+		pageIndex, err = strconv.Atoi(strings.TrimSpace(rt.Str("page")))
+		if err != nil || pageIndex < 0 {
+			return 0, 0, fmt.Errorf("--page 必须是大于或等于 0 的整数")
+		}
+	}
+	return pageSize, pageIndex, nil
 }
 
 // RoomAdd → add_meeting_room

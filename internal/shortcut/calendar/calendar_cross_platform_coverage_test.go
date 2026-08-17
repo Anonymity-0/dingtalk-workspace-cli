@@ -165,3 +165,44 @@ func TestCrossPlatformCoverageCalendarAlignedContracts(t *testing.T) {
 		t.Fatal("calendar writes must require confirmation")
 	}
 }
+
+func TestCrossPlatformCoverageCalendarRoomFindPreservesPublishedFlags(t *testing.T) {
+	flags := make(map[string]shortcut.Flag, len(RoomFind.Flags))
+	for _, flag := range RoomFind.Flags {
+		flags[flag.Name] = flag
+	}
+	if flag := flags["available"]; flag.Type != shortcut.FlagBool || flag.Hidden {
+		t.Fatalf("available flag=%+v, want visible bool", flag)
+	}
+	for _, name := range []string{"limit", "page"} {
+		if flag := flags[name]; flag.Type != shortcut.FlagString || flag.Hidden {
+			t.Fatalf("%s flag=%+v, want visible string", name, flag)
+		}
+	}
+
+	caller := &calendarCoverageCaller{responses: map[string][]string{
+		"query_available_meeting_room": {`{"success":true,"result":{"rooms":[],"hasMore":false}}`},
+	}}
+	err := runCalendarCoverage(t, RoomFind, caller,
+		"--start", "2026-03-10T14:00:00+08:00",
+		"--end", "2026-03-10T15:00:00+08:00",
+		"--available", "--limit", "25", "--page", "2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(caller.arguments) != 1 {
+		t.Fatalf("calls=%d, want 1", len(caller.arguments))
+	}
+	arguments := caller.arguments[0]
+	if arguments["pageSize"] != "25" || arguments["pageIndex"] != "2" || arguments["needAvailable"] != true {
+		t.Fatalf("arguments=%#v", arguments)
+	}
+
+	invalid := &calendarCoverageCaller{responses: map[string][]string{}}
+	if err := runCalendarCoverage(t, RoomFind, invalid, "--limit", "101"); err == nil || !strings.Contains(err.Error(), "1-100") {
+		t.Fatalf("invalid limit error=%v", err)
+	}
+	if len(invalid.history) != 0 {
+		t.Fatalf("invalid input made calls: %v", invalid.history)
+	}
+}
