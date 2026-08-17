@@ -5,9 +5,19 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
+
+type mockSpecialInfo struct{}
+
+func (mockSpecialInfo) Name() string       { return "source" }
+func (mockSpecialInfo) Size() int64        { return 0 }
+func (mockSpecialInfo) Mode() os.FileMode  { return os.ModeNamedPipe }
+func (mockSpecialInfo) ModTime() time.Time { return time.Time{} }
+func (mockSpecialInfo) IsDir() bool        { return false }
+func (mockSpecialInfo) Sys() interface{}   { return nil }
 
 // TestCrossPlatformCoverageNoReplaceRenameFallback pins the degradation path for
 // filesystems that reject RENAME_NOREPLACE / RENAME_EXCL (NFS, FUSE, overlayfs).
@@ -184,6 +194,96 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		}
 		if data, err := os.ReadFile(filepath.Join(destination, "SKILL.md")); err != nil || string(data) != "payload" {
 			t.Fatalf("cross-device destination = %q, %v", data, err)
+		}
+	})
+
+	t.Run("mkdir failure with non-EEXIST error surfaces", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "payload", false)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		testseam.Swap(t, &skillPathMkdir, func(string, os.FileMode) error { return os.ErrPermission })
+		err := renameSkillPathNoReplace(source, destination)
+		if !errors.Is(err, os.ErrPermission) {
+			t.Fatalf("mkdir error must surface, got %v", err)
+		}
+		assertUpgradeSkillContent(t, source, "payload")
+	})
+
+	t.Run("remove failure after rename failure surfaces", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "payload", false)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		testseam.Swap(t, &skillPathRename, func(string, string) error { return errors.New("rename failed") })
+		removeErr := errors.New("simulated remove failure")
+		testseam.Swap(t, &skillPathRemove, func(string) error { return removeErr })
+		err := renameSkillPathNoReplace(source, destination)
+		if !errors.Is(err, removeErr) {
+			t.Fatalf("remove error must surface, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); statErr != nil {
+			t.Fatalf("destination must still exist after remove failure: %v", statErr)
+		}
+		assertUpgradeSkillContent(t, source, "payload")
+		_ = os.RemoveAll(destination)
+	})
+
+	t.Run("directory retry rename after removing claimed empty dir", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "payload", false)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		calls := 0
+		originalRename := skillPathRename
+		testseam.Swap(t, &skillPathRename, func(src, dst string) error {
+			calls++
+			if calls == 1 {
+				return os.ErrExist
+			}
+			return originalRename(src, dst)
+		})
+		if err := renameSkillPathNoReplace(source, destination); err != nil {
+			t.Fatalf("retry must publish, got %v", err)
+		}
+		assertUpgradeSkillContent(t, destination, "payload")
+		if _, err := os.Lstat(source); !os.IsNotExist(err) {
+			t.Fatalf("source must be gone, stat err=%v", err)
+		}
+	})
+
+	t.Run("directory publish when first rename replaces empty dir", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "payload", false)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		originalRename := skillPathRename
+		testseam.Swap(t, &skillPathRename, func(src, dst string) error {
+			_ = os.Remove(dst)
+			return originalRename(src, dst)
+		})
+		if err := renameSkillPathNoReplace(source, destination); err != nil {
+			t.Fatalf("publish must succeed when rename replaces empty dir, got %v", err)
+		}
+		assertUpgradeSkillContent(t, destination, "payload")
+	})
+
+	t.Run("non-regular non-directory source fails safely", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		if err := os.WriteFile(source, []byte("payload"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		testseam.Swap(t, &skillPathLstat, func(string) (os.FileInfo, error) { return mockSpecialInfo{}, nil })
+		err := renameSkillPathNoReplace(source, destination)
+		if !errors.Is(err, errNoReplaceRenameUnsupported) {
+			t.Fatalf("unsupported error must surface for special files, got %v", err)
 		}
 	})
 }
