@@ -321,22 +321,13 @@ func queryDeletedRecordsByIDs(rt *shortcut.RuntimeContext, baseID, tableID strin
 	for offset := 0; offset < len(ids); offset += recordQueryServicePageSize {
 		end := minInt(offset+recordQueryServicePageSize, len(ids))
 		chunk := ids[offset:end]
-		data, err := rt.CallMCPData(serverMain, "query_records", map[string]any{
-			"baseId": baseID, "tableId": tableID, "recordIds": chunk, "limit": len(chunk),
-		})
+		window, err := queryRecordWindow(rt, map[string]any{
+			"baseId": baseID, "tableId": tableID, "recordIds": chunk,
+		}, len(chunk))
 		if err != nil {
 			return nil, err
 		}
-		records, found := findRecords(data)
-		if !found {
-			if explicitEmptyRecordQuery(data) {
-				continue
-			}
-			return nil, fmt.Errorf("query_records deletion read-back chunk %d is missing records", offset/recordQueryServicePageSize+1)
-		}
-		// Exact-ID absence is complete evidence for deletion even when the
-		// service retains an unrelated continuation marker.
-		remaining = append(remaining, records...)
+		remaining = append(remaining, window.Records...)
 	}
 	return remaining, nil
 }

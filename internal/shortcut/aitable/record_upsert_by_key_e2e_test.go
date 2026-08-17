@@ -584,16 +584,62 @@ func TestCrossPlatformCoverageRecordQueryFailureAndContinuationBranches(t *testi
 		}
 	})
 
-	t.Run("delete readback ignores residual continuation", func(t *testing.T) {
-		caller := &upsertByKeyCaller{callFn: func(_ int, _, tool string, _ map[string]any) (string, error) {
-			if tool == "query_records" {
-				return `{"success":true,"data":{"records":[],"hasMore":true,"nextCursor":"unexpected"}}`, nil
+	t.Run("delete readback follows active continuation to absence", func(t *testing.T) {
+		caller := &upsertByKeyCaller{callFn: func(call int, _, tool string, args map[string]any) (string, error) {
+			if tool != "query_records" {
+				return `{"deletedCount":1}`, nil
 			}
-			return `{"deletedCount":1}`, nil
+			if call == 1 {
+				if _, exists := args["cursor"]; exists {
+					t.Fatalf("first deletion readback unexpectedly has cursor: %#v", args)
+				}
+				return `{"success":true,"data":{"records":[],"hasMore":true,"nextCursor":"c1"}}`, nil
+			}
+			if args["cursor"] != "c1" {
+				t.Fatalf("continued deletion readback cursor = %#v", args["cursor"])
+			}
+			return `{"success":true,"data":{"records":[],"hasMore":false}}`, nil
 		}}
 		out, err := runRecordDeleteCLI(t, caller, []string{"r1"})
-		if err != nil || out == "" || len(caller.calls) != 2 || caller.calls[1].tool != "query_records" {
-			t.Fatalf("delete residual continuation output=%q error=%v calls=%#v", out, err, caller.calls)
+		if err != nil || out == "" || len(caller.calls) != 3 {
+			t.Fatalf("delete continued absence output=%q error=%v calls=%#v", out, err, caller.calls)
+		}
+	})
+
+	t.Run("delete readback follows active continuation to remaining record", func(t *testing.T) {
+		caller := &upsertByKeyCaller{callFn: func(call int, _, tool string, _ map[string]any) (string, error) {
+			if tool != "query_records" {
+				return `{"deletedCount":1}`, nil
+			}
+			if call == 1 {
+				return `{"success":true,"data":{"records":[],"hasMore":true,"nextCursor":"c1"}}`, nil
+			}
+			return `{"success":true,"data":{"records":[{"recordId":"r1"}],"hasMore":false}}`, nil
+		}}
+		out, err := runRecordDeleteCLI(t, caller, []string{"r1"})
+		if err == nil || out != "" || len(caller.calls) != 3 {
+			t.Fatalf("delete continued remaining output=%q error=%v calls=%#v", out, err, caller.calls)
+		}
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || typed.Reason != "aitable_composite_unknown" {
+			t.Fatalf("delete continued remaining error = %#v", err)
+		}
+	})
+
+	t.Run("delete readback fails closed on empty continuation stall", func(t *testing.T) {
+		caller := &upsertByKeyCaller{callFn: func(call int, _, tool string, _ map[string]any) (string, error) {
+			if tool != "query_records" {
+				return `{"deletedCount":1}`, nil
+			}
+			return fmt.Sprintf(`{"success":true,"data":{"records":[],"hasMore":true,"nextCursor":"c%d"}}`, call), nil
+		}}
+		out, err := runRecordDeleteCLI(t, caller, []string{"r1"})
+		if err == nil || out != "" || len(caller.calls) != recordQueryMaxConsecutiveEmptyPages+1 {
+			t.Fatalf("delete stalled continuation output=%q error=%v calls=%#v", out, err, caller.calls)
+		}
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || typed.Reason != "aitable_composite_unknown" {
+			t.Fatalf("delete stalled continuation error = %#v", err)
 		}
 	})
 }
