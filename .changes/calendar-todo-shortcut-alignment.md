@@ -1,16 +1,11 @@
 ---
-type: feature
-scope: shortcut
+category: Added
 ---
 
-Align Calendar and Todo shortcuts with the corresponding lark-cli user tasks,
-while preserving DingTalk-specific workflows and compatibility names. The new
-shortcut contracts reject malformed or missing collections instead of
-reporting false empty success, retain bounded pagination evidence, and require
-stable business identifiers plus read-back or explicit terminal receipts for
-writes.
-
-Add deterministic contract tests, a PII-safe real-data E2E runner, and a
-sanitized HTML capability review that records supported, partial, and
-platform-unavailable mappings. Product Skill content is intentionally
-unchanged.
+- **Calendar and To-do Shortcut workflows** — aligns 47 public task-oriented
+  entries with lark-cli where the DingTalk backend supports equivalent
+  semantics, rejects malformed or missing collections instead of returning
+  false empty success, preserves truthful pagination, and requires stable
+  identifiers plus read-back or explicit terminal receipts for writes. Adds
+  deterministic contract coverage, a PII-safe live E2E runner, and a sanitized
+  capability review with documented platform boundaries.
