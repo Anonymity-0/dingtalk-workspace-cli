@@ -206,3 +206,39 @@ func TestCrossPlatformCoverageCalendarRoomFindPreservesPublishedFlags(t *testing
 		t.Fatalf("invalid input made calls: %v", invalid.history)
 	}
 }
+
+func TestCrossPlatformCoverageCalendarAgendaPreservesPublishedSchema(t *testing.T) {
+	properties := make(map[string]string, len(EventList.Contract.Parameters))
+	for _, parameter := range EventList.Contract.Parameters {
+		properties[parameter.Name] = parameter.Property
+	}
+	if properties["start"] != "start" || properties["end"] != "end" {
+		t.Fatalf("agenda time properties=%#v", properties)
+	}
+	for _, flag := range EventList.Flags {
+		if flag.Name == "limit" && flag.Default != "" {
+			t.Fatalf("agenda limit default=%q, want published empty default", flag.Default)
+		}
+	}
+
+	caller := &calendarCoverageCaller{responses: map[string][]string{
+		"list_calendar_events": {`{"success":true,"result":{"events":[],"hasMore":false}}`},
+	}}
+	if err := runCalendarCoverage(t, EventList, caller); err != nil {
+		t.Fatal(err)
+	}
+	if len(caller.arguments) != 1 {
+		t.Fatalf("calls=%d, want 1", len(caller.arguments))
+	}
+	if _, ok := caller.arguments[0]["limit"]; ok {
+		t.Fatalf("unset limit unexpectedly sent: %#v", caller.arguments[0])
+	}
+
+	invalid := &calendarCoverageCaller{responses: map[string][]string{}}
+	if err := runCalendarCoverage(t, EventList, invalid, "--limit", "101"); err == nil || !strings.Contains(err.Error(), "1") {
+		t.Fatalf("invalid limit error=%v", err)
+	}
+	if len(invalid.history) != 0 {
+		t.Fatalf("invalid input made calls: %v", invalid.history)
+	}
+}

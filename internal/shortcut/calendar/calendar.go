@@ -83,7 +83,7 @@ var EventList = shortcut.Shortcut{
 		{Name: "end", Type: shortcut.FlagString, Desc: "结束时间 ISO-8601；起止时间必须是 RFC3339/ISO-8601，且 end 晚于 start；默认今天 23:59"},
 		{Name: "calendar-id", Type: shortcut.FlagString, Desc: "日历 ID (默认 primary 主日历)"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标 (上一次返回的 nextCursor)"},
-		{Name: "limit", Type: shortcut.FlagInt, Default: "100", Desc: "每页返回条数；limit 必须在 1-100 之间"},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回条数（服务端默认 100）；limit 必须在 1-100 之间"},
 	},
 	Tips: []string{
 		`dws calendar +agenda`,
@@ -958,10 +958,15 @@ func bookSearchFirst(m map[string]any, keys ...string) (any, bool) {
 // BookUpdate → update_calendar
 func init() {
 	EventList.Contract.Parameters = []contract.ParamDecl{
-		{Name: "start", Property: "startTime"}, {Name: "end", Property: "endTime"},
+		{Name: "start", Property: "start"}, {Name: "end", Property: "end"},
 		{Name: "calendar-id", Property: "calendarId"}, {Name: "cursor", Property: "cursor"}, {Name: "limit", Property: "limit"},
 	}
-	EventList.Validate = func(rt *shortcut.RuntimeContext) error { return rt.RangeInt("limit", 1, 100) }
+	EventList.Validate = func(rt *shortcut.RuntimeContext) error {
+		if !rt.Changed("limit") {
+			return nil
+		}
+		return rt.RangeInt("limit", 1, 100)
+	}
 	EventList.Constraints = []shortcut.Constraint{
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "起止时间必须是 RFC3339/ISO-8601，且 end 晚于 start"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "limit 必须在 1-100 之间"},
