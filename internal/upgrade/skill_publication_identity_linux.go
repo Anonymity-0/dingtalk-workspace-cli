@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-func skillPathFileIncarnation(info os.FileInfo) string {
+func skillPathFileIncarnationImpl(info os.FileInfo) string {
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok {
 		return fmt.Sprintf("unknown:%T", info.Sys())
@@ -18,4 +18,12 @@ func skillPathFileIncarnation(info os.FileInfo) string {
 
 func skillPathSameFileIdentity(left, right os.FileInfo) bool {
 	return os.SameFile(left, right)
+}
+
+func skillPathFileIdentityImpl(_ string) string {
+	return ""
+}
+
+func skillPathIdentityProven(staged, published os.FileInfo, _, _ string) bool {
+	return skillPathSameFileIdentity(staged, published)
 }

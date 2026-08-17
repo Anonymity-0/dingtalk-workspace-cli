@@ -18,6 +18,7 @@ type SkillPathPublication struct {
 	fingerprint [sha256.Size]byte
 	identity    os.FileInfo
 	incarnation string
+	fileID      string
 }
 
 // PublishSkillPathNoReplace atomically publishes a staged path without ever
@@ -31,6 +32,7 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 	if err != nil {
 		return SkillPathPublication{}, fmt.Errorf("计算待发布 Skill 身份失败 %s: %w", staged, err)
 	}
+	stagedFileID := skillPathFileIdentity(staged)
 	if err := skillPathRenameNoReplace(staged, destination); err != nil {
 		return SkillPathPublication{}, fmt.Errorf("目标必须不存在的 Skill 发布失败 %s: %w", destination, err)
 	}
@@ -42,7 +44,8 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 	if err != nil {
 		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 内容失败 %s（对象保留）: %w", destination, err)
 	}
-	if !skillPathSameFileIdentity(identity, publishedIdentity) || publishedFingerprint != fingerprint {
+	publishedFileID := skillPathFileIdentity(destination)
+	if !skillPathIdentityProven(identity, publishedIdentity, stagedFileID, publishedFileID) || publishedFingerprint != fingerprint {
 		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: staging 身份已变化", destination)
 	}
 	return SkillPathPublication{
@@ -50,6 +53,7 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 		fingerprint: fingerprint,
 		identity:    publishedIdentity,
 		incarnation: skillPathFileIncarnation(publishedIdentity),
+		fileID:      publishedFileID,
 	}, nil
 }
 
@@ -93,7 +97,8 @@ func rollbackSkillPathPublication(publication SkillPathPublication) (err error) 
 			cleanupRoot(),
 		)
 	}
-	if publication.identity == nil || !skillPathSameFileIdentity(publication.identity, liveIdentity) ||
+	if publication.identity == nil ||
+		!skillPathIdentityProven(publication.identity, liveIdentity, publication.fileID, skillPathFileIdentity(destination)) ||
 		publication.incarnation != skillPathFileIncarnation(liveIdentity) ||
 		liveFingerprint != publication.fingerprint {
 		return errors.Join(
@@ -113,7 +118,7 @@ func rollbackSkillPathPublication(publication SkillPathPublication) (err error) 
 	actualIdentity, identityErr := skillPathLstat(quarantine)
 	actual, fingerprintErr := fingerprintSkillPath(quarantine)
 	if identityErr == nil && fingerprintErr == nil &&
-		skillPathSameFileIdentity(publication.identity, actualIdentity) &&
+		skillPathIdentityProven(publication.identity, actualIdentity, publication.fileID, skillPathFileIdentity(quarantine)) &&
 		actual == publication.fingerprint {
 		if removeErr := removePublishedSkillSource(quarantine); removeErr != nil {
 			return fmt.Errorf("移除事务发布的 Skill 失败 %s（隔离于 %s）: %w", destination, quarantine, removeErr)

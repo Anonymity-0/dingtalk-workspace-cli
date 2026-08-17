@@ -65,6 +65,31 @@ func TestCrossPlatformCoverageSkillPublicationNoClobberAndOwnedRollback(t *testi
 		}
 		assertUpgradeSkillContent(t, destination, "new")
 	})
+
+	t.Run("tunneled replacement with same creation time is still refused", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "new", false)
+		// NTFS file tunneling can restore the original creation time for a
+		// same-named recreation, defeating the incarnation check. The file ID
+		// (or inode on Unix) must still differ and block the rollback.
+		testseam.Swap(t, &skillPathFileIncarnation, func(os.FileInfo) string { return "tunneled" })
+		publication, err := PublishSkillPathNoReplace(staged, destination)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.RemoveAll(destination); err != nil {
+			t.Fatal(err)
+		}
+		seedUpgradeSkill(t, destination, "new", false)
+
+		err = RollbackSkillPathPublications([]SkillPathPublication{publication})
+		if err == nil || !strings.Contains(err.Error(), "拒绝删除非本事务") {
+			t.Fatalf("tunneled replacement rollback error = %v", err)
+		}
+		assertUpgradeSkillContent(t, destination, "new")
+	})
 }
 
 func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
