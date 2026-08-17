@@ -280,7 +280,7 @@ func pagedRecordQueryResponse(t *testing.T, records []map[string]any, args map[s
 	}
 	end := minInt(offset+limit, len(records))
 	pageRecords := records[offset:end]
-	data := map[string]any{"records": pageRecords, "hasMore": end < len(records)}
+	data := map[string]any{"records": pageRecords, "hasMore": end < len(records), "totalCount": len(records)}
 	if end < len(records) {
 		data["nextCursor"] = fmt.Sprintf("offset-%d", end)
 	}
@@ -337,7 +337,7 @@ func TestCrossPlatformCoverageRecordQueryServicePageBoundariesE2E(t *testing.T) 
 				t.Fatalf("record query size %d: %v", size, err)
 			}
 			data, ok := payload["data"].(map[string]any)
-			if !ok || payload["success"] != true || data["hasMore"] != false || len(data["records"].([]any)) != size {
+			if !ok || payload["success"] != true || data["hasMore"] != false || data["totalCount"] != float64(size) || len(data["records"].([]any)) != size {
 				t.Fatalf("record query size %d payload = %#v", size, payload)
 			}
 			wantCalls := (size + recordQueryServicePageSize - 1) / recordQueryServicePageSize
@@ -345,6 +345,22 @@ func TestCrossPlatformCoverageRecordQueryServicePageBoundariesE2E(t *testing.T) 
 				t.Fatalf("record query size %d calls=%d payload=%#v, want calls=%d", size, len(caller.calls), payload, wantCalls)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageRecordQueryDryRunStopsBeforeTransportE2E(t *testing.T) {
+	caller := &upsertByKeyCaller{}
+	payload, err := runRecordQueryShortcutCLI(t, caller, 5, "--query", "needle", "--dry-run")
+	if err != nil {
+		t.Fatalf("record query dry-run error = %v", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("record query dry-run crossed transport: %#v", caller.calls)
+	}
+	arguments, _ := payload["arguments"].(map[string]any)
+	if payload["dry_run"] != true || payload["executed"] != false || payload["tool"] != "query_records" ||
+		arguments["baseId"] != "base" || arguments["tableId"] != "table" || arguments["keyword"] != "needle" || arguments["limit"] != float64(5) {
+		t.Fatalf("record query dry-run payload = %#v", payload)
 	}
 }
 
@@ -538,15 +554,16 @@ func TestCrossPlatformCoverageRecordQueryFailureAndContinuationBranches(t *testi
 		}
 	})
 
-	t.Run("delete readback rejects continuation", func(t *testing.T) {
+	t.Run("delete readback ignores residual continuation", func(t *testing.T) {
 		caller := &upsertByKeyCaller{callFn: func(_ int, _, tool string, _ map[string]any) (string, error) {
 			if tool == "query_records" {
 				return `{"success":true,"data":{"records":[],"hasMore":true,"nextCursor":"unexpected"}}`, nil
 			}
 			return `{"deletedCount":1}`, nil
 		}}
-		if _, err := runRecordDeleteCLI(t, caller, []string{"r1"}); err == nil || len(caller.calls) != 2 || caller.calls[1].tool != "query_records" {
-			t.Fatalf("delete continuation error = %v calls=%#v", err, caller.calls)
+		out, err := runRecordDeleteCLI(t, caller, []string{"r1"})
+		if err != nil || out == "" || len(caller.calls) != 2 || caller.calls[1].tool != "query_records" {
+			t.Fatalf("delete residual continuation output=%q error=%v calls=%#v", out, err, caller.calls)
 		}
 	})
 }

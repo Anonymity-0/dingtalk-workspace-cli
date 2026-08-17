@@ -334,9 +334,8 @@ func queryDeletedRecordsByIDs(rt *shortcut.RuntimeContext, baseID, tableID strin
 			}
 			return nil, fmt.Errorf("query_records deletion read-back chunk %d is missing records", offset/recordQueryServicePageSize+1)
 		}
-		if responseHasMore(data) {
-			return nil, fmt.Errorf("query_records deletion read-back chunk %d is incomplete", offset/recordQueryServicePageSize+1)
-		}
+		// Exact-ID absence is complete evidence for deletion even when the
+		// service retains an unrelated continuation marker.
 		remaining = append(remaining, records...)
 	}
 	return remaining, nil

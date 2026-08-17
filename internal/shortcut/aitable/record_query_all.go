@@ -21,10 +21,12 @@ const (
 )
 
 type recordQueryWindow struct {
-	Records    []map[string]any
-	HasMore    bool
-	NextCursor string
-	Pages      int
+	Records       []map[string]any
+	HasMore       bool
+	NextCursor    string
+	Pages         int
+	TotalCount    any
+	HasTotalCount bool
 }
 
 func queryRecordWindow(rt *shortcut.RuntimeContext, params map[string]any, limit int) (recordQueryWindow, error) {
@@ -52,6 +54,9 @@ func queryRecordWindow(rt *shortcut.RuntimeContext, params map[string]any, limit
 		data, err := rt.CallMCPData(serverMain, "query_records", request)
 		if err != nil {
 			return recordQueryWindow{}, err
+		}
+		if !window.HasTotalCount {
+			window.TotalCount, window.HasTotalCount = responseTotalCount(data)
 		}
 		records, found := findRecords(data)
 		if !found {
@@ -119,6 +124,14 @@ func explicitEmptyRecordQuery(data map[string]any) bool {
 }
 
 func executeRecordQuery(rt *shortcut.RuntimeContext, params map[string]any) error {
+	if rt.DryRun() {
+		return rt.Output(map[string]any{
+			"dry_run":   true,
+			"executed":  false,
+			"tool":      "query_records",
+			"arguments": params,
+		})
+	}
 	limit := 100
 	if rt.Changed("limit") {
 		limit = rt.Int("limit")
@@ -168,11 +181,27 @@ func executeRecordQuery(rt *shortcut.RuntimeContext, params map[string]any) erro
 	if window.NextCursor != "" {
 		data["nextCursor"] = window.NextCursor
 	}
+	if window.HasTotalCount {
+		data["totalCount"] = window.TotalCount
+	}
 	return rt.Output(map[string]any{
 		"success": true,
 		"status":  "success",
 		"data":    data,
 	})
+}
+
+func responseTotalCount(data map[string]any) (any, bool) {
+	for {
+		if totalCount, exists := data["totalCount"]; exists {
+			return totalCount, true
+		}
+		nested, ok := data["data"].(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		data = nested
+	}
 }
 
 func recordQueryRequestedIDs(params map[string]any) ([]string, bool, error) {
