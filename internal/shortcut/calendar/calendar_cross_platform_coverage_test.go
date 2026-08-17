@@ -47,11 +47,12 @@ func (*calendarCoverageCaller) JQ() string     { return "" }
 func runCalendarCoverage(t *testing.T, declaration shortcut.Shortcut, caller *calendarCoverageCaller, args ...string) error {
 	t.Helper()
 	helpers.InitDepsForTest(t, caller)
-	declaration.OutputRollout = output.RolloutLegacyOnly
 	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
 	root.PersistentFlags().Bool("yes", false, "")
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.PersistentFlags().String("format", "json", "")
+	ctx, _ := output.WithResultStore(context.Background())
+	root.SetContext(ctx)
 	service := &cobra.Command{Use: "calendar"}
 	service.AddCommand(corecmd.New(shortcut.FromShortcut(declaration)))
 	root.AddCommand(service)

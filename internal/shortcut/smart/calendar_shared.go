@@ -497,9 +497,6 @@ func calendarSmartDeleteAndVerify(rt *shortcut.RuntimeContext, eventID string) e
 	}
 	event, err := calendarSmartRequireEvent(data, "calendar/get_calendar_detail", eventID)
 	if err != nil {
-		if calendarSmartNotFound(err) {
-			return nil
-		}
 		return err
 	}
 	status := strings.ToLower(calendarSmartFirstString(event, "status", "eventStatus", "event_status"))

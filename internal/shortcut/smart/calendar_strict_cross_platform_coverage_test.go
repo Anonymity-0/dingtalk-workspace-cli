@@ -8,13 +8,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
+	"github.com/spf13/cobra"
 )
 
 type calendarSmartTestStep struct {
@@ -337,5 +341,207 @@ func TestCrossPlatformCoverageCalendarSmartDeleteAndRollbackVerifyAbsence(t *tes
 	payload, outputText, err = runCalendarSmartCLI(t, rollback, "calendar", "+book", "--title", "fixture title", "--start", "2026-08-17T09:00:00+08:00", "--end", "2026-08-17T10:00:00+08:00", "--with", "fixture person", "--yes")
 	if err == nil || payload != nil || outputText != "" || rollback.counts["calendar/delete_calendar_event"] != 1 || rollback.counts["calendar/get_calendar_detail"] != 1 {
 		t.Fatalf("rollback was not verified payload=%#v output=%q err=%v counts=%#v", payload, outputText, err, rollback.counts)
+	}
+}
+
+func TestCrossPlatformCoverageCalendarSmartSharedFailureBranches(t *testing.T) {
+	for _, response := range []map[string]any{{}, {"success": "yes"}, {"success": false}} {
+		if _, err := calendarSmartRequireSuccess(response, "calendar/test"); err == nil {
+			t.Fatalf("bad success envelope accepted: %#v", response)
+		}
+	}
+	for _, response := range []map[string]any{
+		{"success": true},
+		{"success": true, "result": map[string]any{}},
+		{"success": true, "result": map[string]any{"summary": "missing id"}},
+		{"success": true, "result": map[string]any{"id": "wrong"}},
+	} {
+		if _, err := calendarSmartRequireEvent(response, "calendar/get", "event-1"); err == nil {
+			t.Fatalf("bad event accepted: %#v", response)
+		}
+	}
+	if event, err := calendarSmartRequireEvent(map[string]any{"success": true, "result": map[string]any{"id": "event-1"}}, "calendar/get", "event-1"); err != nil || event["id"] != "event-1" {
+		t.Fatalf("valid event=%#v %v", event, err)
+	}
+	if calendarSmartEventID(map[string]any{"eventId": "direct"}) != "direct" || calendarSmartEventID(map[string]any{"data": map[string]any{"id": "nested"}}) != "nested" || calendarSmartEventID(map[string]any{}) != "" {
+		t.Fatal("event id discovery drift")
+	}
+
+	invalidPages := []map[string]any{
+		{"success": true, "result": []any{}},
+		{"success": true, "result": map[string]any{"events": []any{}, "hasMore": "bad"}},
+		{"success": true, "result": map[string]any{"events": []any{}, "hasMore": true, "nextCursor": 1}},
+		{"success": true, "result": map[string]any{"events": []any{map[string]any{"summary": "no id", "start": map[string]any{"dateTime": "2026-08-17T09:00:00+08:00"}, "end": map[string]any{"dateTime": "2026-08-17T10:00:00+08:00"}}}, "hasMore": false}},
+		{"success": true, "result": map[string]any{"events": []any{map[string]any{"id": "x", "end": map[string]any{"dateTime": "2026-08-17T10:00:00+08:00"}}}, "hasMore": false}},
+		{"success": true, "result": map[string]any{"events": []any{map[string]any{"id": "x", "start": map[string]any{"dateTime": "2026-08-17T09:00:00+08:00"}}}, "hasMore": false}},
+	}
+	for index, response := range invalidPages {
+		if _, _, _, err := calendarSmartEventPage(response); err == nil {
+			t.Fatalf("bad page %d accepted", index)
+		}
+	}
+
+	for _, response := range []map[string]any{
+		{"success": true, "result": map[string]any{}},
+		{"success": true, "result": []any{"bad"}},
+		{"success": true, "result": []any{map[string]any{"other": true}}},
+		{"success": true, "result": []any{map[string]any{"scheduleItems": map[string]any{}}}},
+		{"success": true, "result": []any{map[string]any{"scheduleItems": []any{"bad"}}}},
+		{"success": true, "result": []any{map[string]any{"scheduleItems": []any{map[string]any{"start": ""}}}}},
+	} {
+		if _, err := calendarSmartBusySlots(response); err == nil {
+			t.Fatalf("bad busy slots accepted: %#v", response)
+		}
+	}
+	busy, err := calendarSmartBusySlots(map[string]any{"success": true, "result": []any{map[string]any{"scheduleItems": []any{map[string]any{"start": map[string]any{"dateTime": "s"}, "end": map[string]any{"date": "e"}}}}}})
+	if err != nil || len(busy) != 1 {
+		t.Fatalf("busy slots=%#v %v", busy, err)
+	}
+
+	for _, response := range []map[string]any{
+		{"success": true, "result": []any{}},
+		{"success": true, "result": map[string]any{"recommendEventTimes": map[string]any{}}},
+		{"success": true, "result": map[string]any{"recommendEventTimes": []any{"bad"}}},
+	} {
+		if _, err := calendarSmartSuggestedSlots(response); err == nil {
+			t.Fatalf("bad suggested slots accepted: %#v", response)
+		}
+	}
+	slots, err := calendarSmartSuggestedSlots(map[string]any{"success": true, "result": map[string]any{"recommendEventTimes": []any{map[string]any{"startTime": "s", "endTime": "e", "timeConflictAttendees": []any{nil, "u"}}}}})
+	if err != nil || len(slots) != 1 || len(slots[0]["conflicts"].([]any)) != 1 {
+		t.Fatalf("suggested slots=%#v %v", slots, err)
+	}
+
+	for _, response := range []map[string]any{
+		{"success": false},
+		{"success": true},
+		{"success": true, "result": map[string]any{}},
+		{"success": true, "result": "bad"},
+		{"success": true, "result": map[string]any{"attendees": map[string]any{}}},
+		{"success": true, "result": []any{"bad"}},
+		{"success": true, "result": []any{map[string]any{"role": "none"}}},
+		{"success": true, "result": []any{map[string]any{"userId": "u", "self": "yes"}}},
+	} {
+		if _, err := calendarSmartAttendees(response); err == nil {
+			t.Fatalf("bad attendees accepted: %#v", response)
+		}
+	}
+	attendees, err := calendarSmartAttendees(map[string]any{"success": true, "result": map[string]any{"participants": []any{map[string]any{"userId": "u", "displayName": "name", "self": true}}}})
+	if err != nil || !attendees["u"] || !attendees["name"] || !attendees["__self__"] {
+		t.Fatalf("attendees=%#v %v", attendees, err)
+	}
+
+	event := map[string]any{"startDateTime": "2026-08-17T09:00:00+08:00", "endDateTime": "2026-08-17T10:00:00+08:00"}
+	if err := calendarSmartVerifyEventTimes(event, "2026-08-17T09:00:00+08:00", "2026-08-17T10:00:00+08:00"); err != nil {
+		t.Fatal(err)
+	}
+	if err := calendarSmartVerifyEventTimes(event, "bad", "2026-08-17T10:00:00+08:00"); err == nil {
+		t.Fatal("bad expected event time accepted")
+	}
+	if _, ok := calendarSmartEventTime(1); ok {
+		t.Fatal("non-string event time accepted")
+	}
+	if _, ok := calendarSmartEventTime("bad"); ok {
+		t.Fatal("bad event time accepted")
+	}
+	if calendarSmartNotFound(nil) || !calendarSmartNotFound(errors.New("404 not found")) || calendarSmartNotFound(errors.New("temporary")) {
+		t.Fatal("not-found classification drift")
+	}
+	for _, pair := range [][2]string{{"bad", "2026-08-17T10:00:00+08:00"}, {"2026-08-17T09:00:00+08:00", "bad"}, {"2026-08-17T10:00:00+08:00", "2026-08-17T09:00:00+08:00"}} {
+		if err := calendarSmartValidateRange(pair[0], pair[1]); err == nil {
+			t.Fatalf("bad range accepted: %#v", pair)
+		}
+	}
+	if err := calendarSmartVerifyCreatedEvent(map[string]any{"id": "wrong", "summary": "title"}, "event-1", "title", "s", "e"); err == nil {
+		t.Fatal("wrong created event id accepted")
+	}
+	if err := calendarSmartVerifyCreatedEvent(map[string]any{"id": "event-1", "summary": "wrong"}, "event-1", "title", "s", "e"); err == nil {
+		t.Fatal("wrong created event title accepted")
+	}
+	if err := calendarSmartVerifyAttendees(map[string]bool{}, []string{"u"}, nil, ""); err == nil {
+		t.Fatal("missing attendee accepted")
+	}
+	if err := calendarSmartVerifyAttendees(map[string]bool{"name": true}, []string{"u"}, []string{"name"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := calendarSmartVerifyAttendees(map[string]bool{"__self__": true}, []string{"u"}, nil, "u"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func calendarSmartRuntimeForTest(t *testing.T, caller edition.ToolCaller) *shortcut.RuntimeContext {
+	t.Helper()
+	helpers.InitDepsForTest(t, caller)
+	cmd := &cobra.Command{Use: "calendar-test"}
+	ctx, _ := output.WithResultStore(context.Background())
+	cmd.SetContext(ctx)
+	return shortcut.RuntimeContextForTest(cmd, shortcut.Shortcut{Service: "calendar", Product: "calendar"})
+}
+
+func TestCrossPlatformCoverageCalendarSmartCurrentUserDeleteAndPageCap(t *testing.T) {
+	for name, steps := range map[string][]calendarSmartTestStep{
+		"call":    {{err: errors.New("profile failure")}},
+		"missing": {{text: `{"success":true,"result":{}}`}},
+		"success": {{text: `{"success":true,"result":{"userId":"user-placeholder"}}`}},
+	} {
+		t.Run("profile-"+name, func(t *testing.T) {
+			caller := &calendarSmartTestCaller{steps: map[string][]calendarSmartTestStep{"contact/get_current_user_profile": steps}}
+			id, err := calendarSmartCurrentUserID(calendarSmartRuntimeForTest(t, caller), map[string]bool{"__self__": true})
+			if name == "success" {
+				if err != nil || id == "" {
+					t.Fatalf("id=%q err=%v", id, err)
+				}
+			} else if err == nil {
+				t.Fatal("bad profile accepted")
+			}
+		})
+	}
+	if id, err := calendarSmartCurrentUserID(calendarSmartRuntimeForTest(t, &calendarSmartTestCaller{}), map[string]bool{}); err != nil || id != "" {
+		t.Fatalf("profile unnecessarily called: id=%q err=%v", id, err)
+	}
+
+	deleteCases := map[string]*calendarSmartTestCaller{
+		"write-call":              {steps: map[string][]calendarSmartTestStep{"calendar/delete_calendar_event": {{err: errors.New("write")}}}},
+		"receipt":                 {steps: map[string][]calendarSmartTestStep{"calendar/delete_calendar_event": {{text: `{"result":{}}`}}}},
+		"read-unknown":            {steps: map[string][]calendarSmartTestStep{"calendar/delete_calendar_event": {{text: `{"success":true}`}}, "calendar/get_calendar_detail": {{err: errors.New("temporary")}}}},
+		"read-malformed":          {steps: map[string][]calendarSmartTestStep{"calendar/delete_calendar_event": {{text: `{"success":true}`}}, "calendar/get_calendar_detail": {{text: `{"success":true,"result":{}}`}}}},
+		"read-not-found-response": {steps: map[string][]calendarSmartTestStep{"calendar/delete_calendar_event": {{text: `{"success":true}`}}, "calendar/get_calendar_detail": {{text: `{"success":false,"message":"not found"}`}}}},
+		"present":                 {steps: map[string][]calendarSmartTestStep{"calendar/delete_calendar_event": {{text: `{"success":true}`}}, "calendar/get_calendar_detail": {{text: `{"success":true,"result":{"id":"event-placeholder","status":"active"}}`}}}},
+		"tombstone":               {steps: map[string][]calendarSmartTestStep{"calendar/delete_calendar_event": {{text: `{"success":true}`}}, "calendar/get_calendar_detail": {{text: `{"success":true,"result":{"id":"event-placeholder","status":"deleted"}}`}}}},
+	}
+	for name, caller := range deleteCases {
+		t.Run("delete-"+name, func(t *testing.T) {
+			err := calendarSmartDeleteAndVerify(calendarSmartRuntimeForTest(t, caller), "event-placeholder")
+			if name == "tombstone" || name == "read-not-found-response" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil {
+				t.Fatal("bad delete path accepted")
+			}
+		})
+	}
+
+	steps := make([]calendarSmartTestStep, calendarSmartMaxPages)
+	for index := range steps {
+		steps[index] = calendarSmartTestStep{text: fmt.Sprintf(`{"success":true,"result":{"events":[],"hasMore":true,"nextCursor":"cursor-%d"}}`, index+1)}
+	}
+	capCaller := &calendarSmartTestCaller{steps: map[string][]calendarSmartTestStep{"calendar/list_calendar_events": steps}}
+	if _, err := calendarSmartListAll(calendarSmartRuntimeForTest(t, capCaller), map[string]any{}); err == nil {
+		t.Fatal("calendar page cap accepted incomplete events")
+	}
+	callFailure := &calendarSmartTestCaller{steps: map[string][]calendarSmartTestStep{"calendar/list_calendar_events": {{err: errors.New("list")}}}}
+	if _, err := calendarSmartListAll(calendarSmartRuntimeForTest(t, callFailure), map[string]any{}); err == nil {
+		t.Fatal("calendar list transport failure accepted")
+	}
+	_ = calendarProjectEvents([]map[string]any{calendarSmartTestEvent("event-placeholder")})
+	item := shortcut.Shortcut{}
+	finalizeCalendarSmart(&item, "description")
+	if item.Contract.Result == nil {
+		t.Fatal("finalized smart shortcut missing result")
+	}
+	start, end := calendarDayRange(0)
+	if !end.After(start) || end.Sub(start) < 23*time.Hour {
+		t.Fatalf("day range=%v..%v", start, end)
 	}
 }
