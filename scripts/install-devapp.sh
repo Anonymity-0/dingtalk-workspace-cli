@@ -95,8 +95,8 @@ refresh_cache_tree() {
 backup_skill_dir() {
   victim="$1"
   [ -e "$victim" ] || [ -L "$victim" ] || { printf '\n'; return 0; }
-  # Prune before creating this run's archive, so the backup the caller is about
-  # to depend on for rollback can never be a prune candidate.
+  # Prune before creating this run's archive; every stamp this run has already
+  # created is registered, so pruning can only remove earlier-run batches.
   prune_skill_backups
   stamp="$(date -u +%Y%m%d-%H%M%S)"
   name="$(printf '%s' "$victim" | sed 's#[/\\]#-#g; s#^-##')"
@@ -110,17 +110,33 @@ backup_skill_dir() {
       return 1
     fi
   done
+  record_current_run_backup_stamp "$backup_root"
   mkdir -p "$backup_root" || return 1
   mv "$victim" "$backup" || return 1
   printf '%s\n' "$backup"
 }
 
 # prune_skill_backups keeps only the newest SKILL_BACKUP_KEEP stamped backup
-# directories under $HOME/.dws/skill-backups, matching Go's skillBackupKeep /
-# pruneSkillBackups. Glob order is lexicographic and the stamps are UTC
-# YYYYmmdd-HHMMSS, so the oldest sort first. Best-effort: a removal failure is
-# reported and never fatal.
+# directories from earlier runs under $HOME/.dws/skill-backups, matching Go's
+# skillBackupKeep / pruneSkillBackups. Stamp directories created by the
+# current process are never pruned (mirroring Go's run-root registry and
+# install.js's currentRunBackupRoots), so a migration that retires more than
+# SKILL_BACKUP_KEEP batches stays reversible. Glob order is lexicographic and
+# the stamps are UTC YYYYmmdd-HHMMSS, so the oldest sort first. Best-effort:
+# a removal failure is reported and never fatal.
 SKILL_BACKUP_KEEP=5
+
+# Stamp directories created by this run, recorded by backup_skill_dir so
+# pruning can never delete a backup the running migration may still need to
+# roll back to.
+CURRENT_RUN_BACKUP_STAMPS=""
+
+record_current_run_backup_stamp() {
+  case " $CURRENT_RUN_BACKUP_STAMPS " in
+    *" $1 "*) return 0 ;;
+  esac
+  CURRENT_RUN_BACKUP_STAMPS="${CURRENT_RUN_BACKUP_STAMPS} $1"
+}
 
 # is_skill_backup_stamp accepts only directory names DWS itself writes: UTC
 # YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry in
@@ -153,13 +169,15 @@ prune_skill_backups() {
   done
   [ "$prune_total" -gt "$SKILL_BACKUP_KEEP" ] || return 0
   prune_drop=$((prune_total - SKILL_BACKUP_KEEP))
-  prune_seen=0
   for prune_entry in "$prune_root"/*; do
+    [ "$prune_drop" -gt 0 ] || break
     [ -d "$prune_entry" ] || continue
     is_skill_backup_stamp "${prune_entry##*/}" || continue
-    prune_seen=$((prune_seen + 1))
-    [ "$prune_seen" -le "$prune_drop" ] || break
+    case " $CURRENT_RUN_BACKUP_STAMPS " in
+      *" $prune_entry "*) continue ;;
+    esac
     rm -rf "$prune_entry" || printf '  ⚠️  旧 Skill 备份清理失败: %s\n' "$prune_entry" >&2
+    prune_drop=$((prune_drop - 1))
   done
 }
 

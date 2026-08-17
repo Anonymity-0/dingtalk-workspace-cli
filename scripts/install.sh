@@ -85,6 +85,7 @@ backup_and_remove_skill_dir() {
       return 1
     fi
   done
+  record_current_run_backup_stamp "$(dirname "$_bed_target")"
   mkdir -p "$(dirname "$_bed_target")" 2>/dev/null || {
     say "  ⚠️  无法创建备份目录，保留原目录 $_bed_dir"
     return 1
@@ -98,12 +99,26 @@ backup_and_remove_skill_dir() {
   return 1
 }
 
-# prune_skill_backups keeps only the newest DWS_SKILL_BACKUP_KEEP stamped backup
-# directories under $HOME/.dws/skill-backups, matching Go's skillBackupKeep /
-# pruneSkillBackups. Best-effort: a removal failure is reported, never fatal.
-# Only safe to call once every backup manifest of this run has been consumed,
-# because a single transaction can span more than one timestamp.
+# prune_skill_backups keeps only the newest DWS_SKILL_BACKUP_KEEP stamped
+# backup directories from earlier runs under $HOME/.dws/skill-backups,
+# matching Go's skillBackupKeep / pruneSkillBackups. Stamp directories created
+# by the current process are never pruned (mirroring Go's run-root registry
+# and install.js's currentRunBackupRoots), so a migration that retires more
+# than DWS_SKILL_BACKUP_KEEP batches stays reversible. Best-effort: a removal
+# failure is reported, never fatal.
 DWS_SKILL_BACKUP_KEEP=5
+
+# Stamp directories created by this run, recorded by
+# backup_and_remove_skill_dir so pruning can never delete a backup the
+# running migration may still need to roll back to.
+DWS_CURRENT_RUN_BACKUP_STAMPS=""
+
+record_current_run_backup_stamp() {
+  case " $DWS_CURRENT_RUN_BACKUP_STAMPS " in
+    *" $1 "*) return 0 ;;
+  esac
+  DWS_CURRENT_RUN_BACKUP_STAMPS="${DWS_CURRENT_RUN_BACKUP_STAMPS} $1"
+}
 
 # is_skill_backup_stamp accepts only directory names DWS itself writes: UTC
 # YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry in
@@ -136,13 +151,15 @@ prune_skill_backups() {
   done
   [ "$_psb_total" -gt "$DWS_SKILL_BACKUP_KEEP" ] || return 0
   _psb_drop=$((_psb_total - DWS_SKILL_BACKUP_KEEP))
-  _psb_seen=0
   for _psb_entry in "$_psb_root"/*; do
+    [ "$_psb_drop" -gt 0 ] || break
     [ -d "$_psb_entry" ] || continue
     is_skill_backup_stamp "${_psb_entry##*/}" || continue
-    _psb_seen=$((_psb_seen + 1))
-    [ "$_psb_seen" -le "$_psb_drop" ] || break
+    case " $DWS_CURRENT_RUN_BACKUP_STAMPS " in
+      *" $_psb_entry "*) continue ;;
+    esac
     rm -rf "$_psb_entry" || say "  ⚠️  旧 Skill 备份清理失败: $_psb_entry"
+    _psb_drop=$((_psb_drop - 1))
   done
 }
 
