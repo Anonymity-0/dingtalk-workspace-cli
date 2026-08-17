@@ -692,6 +692,13 @@ func TestRecruitResultCallRejectsInvalidJobResults(t *testing.T) {
 			wantMessage: "缺少非空字符串字段 jobId",
 		},
 		{
+			name:        "get request missing job id",
+			tool:        recruitGetJobTool,
+			args:        map[string]any{},
+			text:        `{"success":true,"result":{"jobId":"job-returned"}}`,
+			wantMessage: "请求缺少非空字符串字段 jobId",
+		},
+		{
 			name:        "get mismatched job id",
 			tool:        recruitGetJobTool,
 			args:        map[string]any{"jobId": "job-requested"},
