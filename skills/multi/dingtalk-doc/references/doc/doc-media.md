@@ -16,10 +16,22 @@ dws doc +media-download --node <DOC_ID> --resource-id <RESOURCE_ID> --output ./d
 dws doc +media-preview --node <DOC_ID> --resource-id <RESOURCE_ID> --format json
 ```
 
+## 封面与背景 Shortcut
+
+```bash
+dws doc +resource-update --node <DOC_ID> --file ./cover.png --format json
+dws doc +resource-download --node <DOC_ID> --output ./cover.png --format json
+dws doc +resource-delete --node <DOC_ID> --format json
+dws doc +background-update --node <DOC_ID> --color "#E8F2FE" --format json
+dws doc +background-delete --node <DOC_ID> --format json
+```
+
+封面不是正文媒体 block；背景仅接受 `#RRGGBB` 纯色。设置/清除后用一次 `+inspect --include-style` 验证，禁止为这些已知能力查询 shortcut Catalog。
+
 ## 稳定 ID 与结果
 
 - `resourceId`、`blockId`、`nodeId` 必须来自真实 media/block 返回，不能从标题或本地文件名猜测。
-- 插入后保留 `resourceId` 和插入结果；下载必须检查 `localPath`、`sizeBytes > 0`。
+- 插入后使用回执中的 `insertedBlockId/affectedBlockIds` 定位；`insertedBlockId` 是媒体容器，不是图后空块。只有 `position.followingBlockExists=true` 时才删除真实 `followingBlockId`；为 `false` 时不得删除媒体容器。插入回执成功后禁止重传媒体。下载必须检查 `localPath`、`sizeBytes > 0`。
 - 下载输出只接受工作目录内相对路径，默认 no-clobber。
 - 删除源文件是独立的破坏性本地操作，不属于媒体下载；只有用户明确要求且下载验证成功后才能执行。
 
