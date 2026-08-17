@@ -21,6 +21,8 @@ var (
 	skillPathChmod           = os.Chmod
 	skillPathLstat           = os.Lstat
 	skillPathMkdir           = os.Mkdir
+	skillPathLink            = os.Link
+	skillPathRemove          = os.Remove
 	skillPathReadDir         = os.ReadDir
 	skillPathReadlink        = os.Readlink
 	skillPathSymlink         = os.Symlink
