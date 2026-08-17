@@ -88,6 +88,24 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		}
 	})
 
+	t.Run("file link failure with non-EEXIST error surfaces", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		if err := os.WriteFile(source, []byte("payload"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		testseam.Swap(t, &skillPathLink, func(string, string) error { return os.ErrPermission })
+		err := renameSkillPathNoReplace(source, destination)
+		if !errors.Is(err, os.ErrPermission) {
+			t.Fatalf("link error must surface, got %v", err)
+		}
+		if _, statErr := os.Lstat(source); statErr != nil {
+			t.Fatalf("source must be preserved: %v", statErr)
+		}
+	})
+
 	t.Run("refuses an occupied directory destination via mkdir EEXIST", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
