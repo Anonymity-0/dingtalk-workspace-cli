@@ -79,6 +79,13 @@ func TestCrossPlatformCoverageSkillPublicationNoClobberAndOwnedRollback(t *testi
 		if err != nil {
 			t.Fatal(err)
 		}
+		// Simulate the identity change that a concurrent replacement causes.
+		// On Windows, skillPathIdentityProven compares file IDs from
+		// GetFileInformationByHandle and ignores this seam. On Unix, where the
+		// file ID is unavailable, this swap replaces the os.SameFile check
+		// (which can return true for a recreated file on tmpfs due to inode
+		// reuse) so the test is deterministic across filesystems.
+		testseam.Swap(t, &skillPathSameFileIdentity, func(_, _ os.FileInfo) bool { return false })
 		if err := os.RemoveAll(destination); err != nil {
 			t.Fatal(err)
 		}

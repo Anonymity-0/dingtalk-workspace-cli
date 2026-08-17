@@ -17,7 +17,7 @@ func skillPathFileIncarnationImpl(info os.FileInfo) string {
 		stat.Ctimespec.Sec, stat.Ctimespec.Nsec, stat.Birthtimespec.Sec, stat.Birthtimespec.Nsec)
 }
 
-func skillPathSameFileIdentity(left, right os.FileInfo) bool {
+func skillPathSameFileIdentityImpl(left, right os.FileInfo) bool {
 	return os.SameFile(left, right)
 }
 

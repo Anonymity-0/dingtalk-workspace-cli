@@ -24,8 +24,9 @@ var (
 	skillPathLink            = os.Link
 	skillPathRemove          = os.Remove
 	skillPathReadDir         = os.ReadDir
-	skillPathFileIdentity    = skillPathFileIdentityImpl
-	skillPathFileIncarnation = skillPathFileIncarnationImpl
+	skillPathFileIdentity     = skillPathFileIdentityImpl
+	skillPathFileIncarnation  = skillPathFileIncarnationImpl
+	skillPathSameFileIdentity = skillPathSameFileIdentityImpl
 	skillPathReadlink        = os.Readlink
 	skillPathSymlink         = os.Symlink
 	skillPathOpen            = os.Open
