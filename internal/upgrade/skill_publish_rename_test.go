@@ -12,11 +12,13 @@ import (
 // TestCrossPlatformCoverageNoReplaceRenameFallback pins the degradation path for
 // filesystems that reject RENAME_NOREPLACE / RENAME_EXCL (NFS, FUSE, overlayfs).
 // Those installs must still publish, and must still refuse to clobber an
-// occupied destination.
+// occupied destination. The fallback uses atomic no-clobber primitives
+// (os.Mkdir for directories, os.Link for files) instead of a TOCTOU-prone
+// check-then-rename.
 func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 	unsupported := testNoReplaceUnsupportedErrors()
 
-	t.Run("publishes when the filesystem rejects the flag", func(t *testing.T) {
+	t.Run("publishes a file when the filesystem rejects the flag", func(t *testing.T) {
 		for _, unsupportedErr := range unsupported {
 			dir := t.TempDir()
 			source := filepath.Join(dir, "source")
@@ -37,7 +39,24 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		}
 	})
 
-	t.Run("still refuses an occupied destination", func(t *testing.T) {
+	t.Run("publishes a directory when the filesystem rejects the flag", func(t *testing.T) {
+		for _, unsupportedErr := range unsupported {
+			dir := t.TempDir()
+			source := filepath.Join(dir, "source")
+			destination := filepath.Join(dir, "destination")
+			seedUpgradeSkill(t, source, "payload", false)
+			testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return unsupportedErr })
+			if err := renameSkillPathNoReplace(source, destination); err != nil {
+				t.Fatalf("fallback must publish for %v, got %v", unsupportedErr, err)
+			}
+			assertUpgradeSkillContent(t, destination, "payload")
+			if _, err := os.Lstat(source); !os.IsNotExist(err) {
+				t.Fatalf("source must be gone, stat err=%v", err)
+			}
+		}
+	})
+
+	t.Run("still refuses an occupied destination for files", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
 		destination := filepath.Join(dir, "destination")
@@ -59,6 +78,49 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		}
 	})
 
+	t.Run("refuses an occupied directory destination via mkdir EEXIST", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "payload", false)
+		seedUpgradeSkill(t, destination, "existing", false)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		err := renameSkillPathNoReplace(source, destination)
+		if !errors.Is(err, os.ErrExist) {
+			t.Fatalf("occupied destination must report ErrExist, got %v", err)
+		}
+		assertUpgradeSkillContent(t, destination, "existing")
+		assertUpgradeSkillContent(t, source, "payload")
+	})
+
+	t.Run("concurrent creation between mkdir and rename is detected", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "payload", false)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		renameErr := errors.New("simulated ENOTEMPTY: destination populated by another process")
+		testseam.Swap(t, &skillPathRename, func(string, string) error { return renameErr })
+		var removeCalled bool
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == destination {
+				removeCalled = true
+			}
+			return os.Remove(path)
+		})
+		err := renameSkillPathNoReplace(source, destination)
+		if !errors.Is(err, renameErr) {
+			t.Fatalf("rename failure must surface, got %v", err)
+		}
+		if !removeCalled {
+			t.Fatal("empty destination must be cleaned up after rename failure")
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("destination must not exist after cleanup, stat err=%v", statErr)
+		}
+		assertUpgradeSkillContent(t, source, "payload")
+	})
+
 	t.Run("a genuine error is not retried", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
@@ -78,7 +140,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		}
 	})
 
-	t.Run("stat failure on destination surfaces without rename", func(t *testing.T) {
+	t.Run("source stat failure surfaces without rename", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
 		if err := os.WriteFile(source, []byte("payload"), 0o644); err != nil {
