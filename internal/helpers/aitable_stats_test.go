@@ -77,7 +77,7 @@ func TestCrossPlatformCoverageAitableGroupStatsForwardsStringDSL(t *testing.T) {
 		"--base-id", "base-stats",
 		"--table-id", "table-stats",
 		"--stats", `[{"fieldId":"fldStore","statsType":"distinct"},{"fieldId":"fldAmount","statsType":"avg"}]`,
-		"--filters", `{"operator":"OR","operands":[{"operator":"date_between","operands":["fldDate",[1,2]]}]}`,
+		"--filters", `{"operator":"OR","operands":[{"operator":"not_before","operands":["fldDate","2026-01-01"]}]}`,
 		"--group", group,
 		"--sort", sortDSL,
 		"--limit", "1000",
@@ -141,6 +141,11 @@ func TestCrossPlatformCoverageAitableStatsRejectsInvalidInputsBeforeCallingMCP(t
 			wantErr: "均不能为空",
 		},
 		{
+			name:    "records stats reject unknown item fields",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT","unknownKey":123}]`},
+			wantErr: "不支持的字段",
+		},
+		{
 			name:    "records stats reject duplicate field",
 			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"},{"fieldId":"f","statsType":"SUM"}]`},
 			wantErr: "重复",
@@ -163,7 +168,7 @@ func TestCrossPlatformCoverageAitableStatsRejectsInvalidInputsBeforeCallingMCP(t
 		{
 			name:    "filters require logical root",
 			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--filters", `{"operator":"eq","operands":[]}`},
-			wantErr: "and 或 or",
+			wantErr: `root "operator" must be "and" or "or"`,
 		},
 		{
 			name:    "records filters reject malformed JSON",
@@ -188,7 +193,12 @@ func TestCrossPlatformCoverageAitableStatsRejectsInvalidInputsBeforeCallingMCP(t
 		{
 			name:    "records filters require operand array",
 			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--filters", `{"operator":"and","operands":{}}`},
-			wantErr: "operands 必须是 JSON 数组",
+			wantErr: `"operands" must be an array`,
+		},
+		{
+			name:    "records filters reject silently unsupported operators",
+			args:    []string{"record", "stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"COUNT"}]`, "--filters", `{"operator":"and","operands":[{"operator":"date_between","operands":["fldDate",[1,2]]}]}`},
+			wantErr: `unsupported filter operator "date_between"`,
 		},
 		{
 			name:    "records sort requires an item",
@@ -213,7 +223,12 @@ func TestCrossPlatformCoverageAitableStatsRejectsInvalidInputsBeforeCallingMCP(t
 		{
 			name:    "group filters require logical root",
 			args:    []string{"record", "group-stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"count"}]`, "--filters", `{"operator":"eq","operands":[]}`},
-			wantErr: "and 或 or",
+			wantErr: `root "operator" must be "and" or "or"`,
+		},
+		{
+			name:    "group filters reject silently unsupported operators",
+			args:    []string{"record", "group-stats", "--base-id", "b", "--table-id", "t", "--stats", `[{"fieldId":"f","statsType":"count"}]`, "--filters", `{"operator":"and","operands":[{"operator":"date_between","operands":["fldDate",[1,2]]}]}`},
+			wantErr: `unsupported filter operator "date_between"`,
 		},
 		{
 			name:    "group sort rejects invalid DSL",

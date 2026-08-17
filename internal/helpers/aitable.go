@@ -534,6 +534,13 @@ func parseAitableStatsItems(raw string, uppercase, uniqueFields bool, maxItems i
 	if err := json.Unmarshal([]byte(raw), &items); err != nil {
 		return nil, aitableStatsValidationf("--stats 必须是 JSON 数组: %v", err)
 	}
+	var strictItems []aitableStatsItem
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&strictItems); err != nil {
+		return nil, aitableStatsValidationf("--stats 包含不支持的字段: %v", err)
+	}
+	items = strictItems
 	if len(items) == 0 {
 		return nil, aitableStatsValidationf("--stats 至少需要一个统计项")
 	}
@@ -586,13 +593,9 @@ func parseAitableObjectFlag(name, raw string) (map[string]any, error) {
 	return value, nil
 }
 
-func validateAitableStatsFilterRoot(value map[string]any) error {
-	operator, ok := value["operator"].(string)
-	if !ok || (strings.ToLower(operator) != "and" && strings.ToLower(operator) != "or") {
-		return aitableStatsValidationf("--filters 根节点 operator 必须是 and 或 or")
-	}
-	if _, ok := value["operands"].([]any); !ok {
-		return aitableStatsValidationf("--filters 根节点 operands 必须是 JSON 数组")
+func validateAitableStatsFilters(value map[string]any, rawJSON string) error {
+	if err := validateFiltersStructure(value, rawJSON); err != nil {
+		return aitableStatsValidationf("%v", err)
 	}
 	return nil
 }
@@ -2376,7 +2379,7 @@ lt/gt/lte/gte 的过滤值必须使用 JSON 数字；单选/多选过滤建议�
 				if err != nil {
 					return err
 				}
-				if err := validateAitableStatsFilterRoot(filters); err != nil {
+				if err := validateAitableStatsFilters(filters, raw); err != nil {
 					return err
 				}
 				toolArgs["filters"] = normalizeFilters(filters)
@@ -2385,6 +2388,8 @@ lt/gt/lte/gte 的过滤值必须使用 JSON 数字；单选/多选过滤建议�
 				if err := validateAitableArrayDSL("sort", raw); err != nil {
 					return err
 				}
+				// query_records_stats 的 MCP Schema 将 sort 定义为 JSON 数组编码后的字符串，
+				// 与 query_records 使用的数组类型不同。
 				toolArgs["sort"] = raw
 			}
 			if value, _ := cmd.Flags().GetInt("limit"); cmd.Flags().Changed("limit") {
@@ -2469,7 +2474,7 @@ lt/gt/lte/gte 的过滤值必须使用 JSON 数字；单选/多选过滤建议�
 				if err != nil {
 					return err
 				}
-				if err := validateAitableStatsFilterRoot(filters); err != nil {
+				if err := validateAitableStatsFilters(filters, raw); err != nil {
 					return err
 				}
 				toolArgs["filters"] = normalizeFilters(filters)
