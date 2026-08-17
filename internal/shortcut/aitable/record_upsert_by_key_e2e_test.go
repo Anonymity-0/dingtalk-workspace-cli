@@ -364,6 +364,36 @@ func TestCrossPlatformCoverageRecordQueryDryRunStopsBeforeTransportE2E(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageRecordQueryDryRunRejectsInvalidLocalPlanE2E(t *testing.T) {
+	for _, testCase := range []struct {
+		name  string
+		limit int
+		extra []string
+		want  string
+	}{
+		{name: "zero limit", limit: 0, extra: []string{"--dry-run"}, want: "--limit must be in [1,100]"},
+		{name: "excessive limit", limit: recordBatchSize + 1, extra: []string{"--dry-run"}, want: "--limit must be in [1,100]"},
+		{name: "empty record IDs", limit: 100, extra: []string{"--record-ids", " ", "--dry-run"}, want: "至少包含一个非空 recordId"},
+		{
+			name:  "excessive record IDs",
+			limit: 100,
+			extra: []string{"--record-ids", strings.Join(recordIDFixtures(recordBatchSize+1), ","), "--dry-run"},
+			want:  "at most 100 unique IDs",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			caller := &upsertByKeyCaller{}
+			payload, err := runRecordQueryShortcutCLI(t, caller, testCase.limit, testCase.extra...)
+			if err == nil || !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("record query dry-run error = %v, want %q (payload=%#v)", err, testCase.want, payload)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("invalid record query dry-run crossed transport: %#v", caller.calls)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageRecordQueryExactIDsIgnoreResidualContinuationE2E(t *testing.T) {
 	caller := &upsertByKeyCaller{callFn: func(call int, _, tool string, args map[string]any) (string, error) {
 		if tool != "query_records" {

@@ -124,14 +124,6 @@ func explicitEmptyRecordQuery(data map[string]any) bool {
 }
 
 func executeRecordQuery(rt *shortcut.RuntimeContext, params map[string]any) error {
-	if rt.DryRun() {
-		return rt.Output(map[string]any{
-			"dry_run":   true,
-			"executed":  false,
-			"tool":      "query_records",
-			"arguments": params,
-		})
-	}
 	limit := 100
 	if rt.Changed("limit") {
 		limit = rt.Int("limit")
@@ -150,6 +142,14 @@ func executeRecordQuery(rt *shortcut.RuntimeContext, params map[string]any) erro
 		params = cloneAnyMap(params)
 		params["recordIds"] = requestedIDs
 		limit = minInt(limit, len(requestedIDs))
+	}
+	if rt.DryRun() {
+		return rt.Output(map[string]any{
+			"dry_run":   true,
+			"executed":  false,
+			"tool":      "query_records",
+			"arguments": params,
+		})
 	}
 	window, err := queryRecordWindow(rt, params, limit)
 	if err != nil {
