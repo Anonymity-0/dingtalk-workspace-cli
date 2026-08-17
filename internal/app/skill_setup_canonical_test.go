@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/upgrade"
 )
 
 func TestCrossPlatformCoverageSkillSetupCanonicalTargetsAndAgentCapabilities(t *testing.T) {
@@ -267,6 +268,209 @@ func TestCrossPlatformCoverageSkillSetupCanonicalCopyFallbackMessage(t *testing.
 	info, err := os.Lstat(filepath.Join(claude, "dingtalk-chat"))
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		t.Fatalf("copy fallback = %#v, %v", info, err)
+	}
+}
+
+// Publishing a staged symlink has no atomic no-clobber primitive, so
+// renameSkillPathNoReplace refuses it whenever the kernel flag is unavailable
+// (NFS, FUSE, overlayfs). Creating the link still succeeds, so the failure
+// surfaces at publish time and must still degrade to a direct copy.
+func rejectSymlinkPublish(t *testing.T) {
+	t.Helper()
+	realPublish := skillSetupPublishPath
+	testseam.Swap(t, &skillSetupPublishPath, func(staged, dest string) (upgrade.SkillPathPublication, error) {
+		if info, err := os.Lstat(staged); err == nil && info.Mode()&os.ModeSymlink != 0 {
+			return upgrade.SkillPathPublication{}, errors.New("平台不支持原子 no-replace rename: 源路径类型不支持降级发布")
+		}
+		return realPublish(staged, dest)
+	})
+}
+
+func TestCrossPlatformCoverageSkillSetupCopyFallbackWhenPublishRejectsSymlink(t *testing.T) {
+	home := t.TempDir()
+	canonical := filepath.Join(home, ".agents", "skills")
+	claude := filepath.Join(home, ".claude", "skills")
+	src := t.TempDir()
+	skillSrc := filepath.Join(src, "dingtalk-chat")
+	if err := os.MkdirAll(skillSrc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillSrc, "SKILL.md"), []byte("chat"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	rejectSymlinkPublish(t)
+
+	plan, err := buildSkillSetupPlan(skillSetupModeMulti, src, []string{canonical, claude}, []string{"dingtalk-chat"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
+	if err != nil || installed != 2 || skipped != 0 {
+		t.Fatalf("execute = installed %d skipped %d err %v; stderr=%s", installed, skipped, err, errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "自动改用兼容安装") {
+		t.Fatalf("human-readable fallback message missing: %s", errOut.String())
+	}
+	info, err := os.Lstat(filepath.Join(claude, "dingtalk-chat"))
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("copy fallback = %#v, %v", info, err)
+	}
+	body, err := os.ReadFile(filepath.Join(claude, "dingtalk-chat", "SKILL.md"))
+	if err != nil || string(body) != "chat" {
+		t.Fatalf("copied payload = %q, %v", body, err)
+	}
+}
+
+func TestCrossPlatformCoverageSkillSetupCopyFallbackReplacesExistingCanonicalLink(t *testing.T) {
+	home := t.TempDir()
+	canonical := filepath.Join(home, ".agents", "skills")
+	claude := filepath.Join(home, ".claude", "skills")
+	src := t.TempDir()
+	names := []string{"dingtalk-chat", "dingtalk-doc"}
+	for _, name := range names {
+		dir := filepath.Join(src, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Canonical already holds one Skill and Claude already links to it, so the
+	// link plan records no backup for that destination.
+	if err := os.MkdirAll(filepath.Join(canonical, "dingtalk-chat"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(canonical, "dingtalk-chat", "SKILL.md"), []byte("dingtalk-chat"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(claude, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("..", "..", ".agents", "skills", "dingtalk-chat"), filepath.Join(claude, "dingtalk-chat")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	rejectSymlinkPublish(t)
+
+	plan, err := buildSkillSetupPlan(skillSetupModeMulti, src, []string{canonical, claude}, names, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
+	if err != nil || skipped != 0 {
+		t.Fatalf("execute = installed %d skipped %d err %v; stderr=%s", installed, skipped, err, errOut.String())
+	}
+	for _, name := range names {
+		path := filepath.Join(claude, name)
+		info, statErr := os.Lstat(path)
+		if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			t.Fatalf("%s = %#v, %v; stderr=%s", path, info, statErr, errOut.String())
+		}
+		body, readErr := os.ReadFile(filepath.Join(path, "SKILL.md"))
+		if readErr != nil || string(body) != name {
+			t.Fatalf("%s payload = %q, %v", path, body, readErr)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageSkillSetupCopyFallbackKeepsPlannedBackups(t *testing.T) {
+	home := t.TempDir()
+	canonical := filepath.Join(home, ".agents", "skills")
+	claude := filepath.Join(home, ".claude", "skills")
+	src := t.TempDir()
+	names := []string{"dingtalk-chat", "dingtalk-doc"}
+	for _, name := range names {
+		dir := filepath.Join(src, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Claude already holds a real private copy of every bundled Skill, so the
+		// plan records a replacement backup for each one.
+		old := filepath.Join(claude, name)
+		if err := os.MkdirAll(old, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(old, "SKILL.md"), []byte("stale"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	rejectSymlinkPublish(t)
+
+	plan, err := buildSkillSetupPlan(skillSetupModeMulti, src, []string{canonical, claude}, names, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
+	if err != nil || skipped != 0 {
+		t.Fatalf("execute = installed %d skipped %d err %v; stderr=%s", installed, skipped, err, errOut.String())
+	}
+	for _, name := range names {
+		body, readErr := os.ReadFile(filepath.Join(claude, name, "SKILL.md"))
+		if readErr != nil || string(body) != name {
+			t.Fatalf("%s payload = %q, %v", name, body, readErr)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageSkillSetupCopyFallbackReportsUnreadableReplacement(t *testing.T) {
+	home := t.TempDir()
+	canonical := filepath.Join(home, ".agents", "skills")
+	claude := filepath.Join(home, ".claude", "skills")
+	src := t.TempDir()
+	names := []string{"dingtalk-chat", "dingtalk-doc"}
+	for _, name := range names {
+		dir := filepath.Join(src, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(canonical, "dingtalk-chat"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(canonical, "dingtalk-chat", "SKILL.md"), []byte("dingtalk-chat"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(claude, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	linked := filepath.Join(claude, "dingtalk-chat")
+	if err := os.Symlink(filepath.Join("..", "..", ".agents", "skills", "dingtalk-chat"), linked); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	rejectSymlinkPublish(t)
+	// The already-linked destination carries no planned backup, so the converter
+	// has to stat it; an error other than "not exist" must abort the retry.
+	testseam.Swap(t, &skillSetupLstat, func(path string) (os.FileInfo, error) {
+		if path == linked {
+			return nil, os.ErrPermission
+		}
+		return os.Lstat(path)
+	})
+
+	plan, err := buildSkillSetupPlan(skillSetupModeMulti, src, []string{canonical, claude}, names, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
+	if err != nil || installed != 2 || skipped != 2 {
+		t.Fatalf("execute = installed %d skipped %d err %v; stderr=%s", installed, skipped, err, errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "检查将被替换的 Skill 失败") {
+		t.Fatalf("converter failure not reported: %s", errOut.String())
 	}
 }
 

@@ -188,6 +188,11 @@ const (
 	skillSetupBackupReplace = "same-name Skill"
 )
 
+// errSkillSetupStateUncertain marks a failure whose rollback could not fully
+// restore the Agent directory. The target is left in a partially modified
+// state, so no automatic retry may run over it.
+var errSkillSetupStateUncertain = errors.New("Skill setup 状态不确定")
+
 func newSkillSetupCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
@@ -2010,7 +2015,7 @@ func backupSkillSetupTarget(home string, planned []skillSetupBackup, out io.Writ
 		backup, err := skillSetupBackupAndRemove(home, item.Path)
 		if err != nil {
 			if restoreErr := restoreSkillSetupTarget(nil, backups); restoreErr != nil {
-				return nil, errors.Join(err, fmt.Errorf("恢复已备份 Skill 失败: %w", restoreErr))
+				return nil, errors.Join(err, fmt.Errorf("恢复已备份 Skill 失败: %w", restoreErr), errSkillSetupStateUncertain)
 			}
 			return nil, err
 		}
@@ -2036,13 +2041,97 @@ func publishSkillSetupTarget(staged []skillSetupStagedDir, backups []skillSetupB
 		if err != nil {
 			publishErr := fmt.Errorf("发布 Skill 失败 %s: %w", item.dest, err)
 			if restoreErr := restoreSkillSetupTarget(published, backups); restoreErr != nil {
-				return errors.Join(publishErr, fmt.Errorf("Skill setup 回滚不完整: %w", restoreErr))
+				return errors.Join(publishErr, fmt.Errorf("Skill setup 回滚不完整: %w", restoreErr), errSkillSetupStateUncertain)
 			}
 			return publishErr
 		}
 		published = append(published, publication)
 	}
 	return nil
+}
+
+// skillSetupAttemptPhase identifies which stage of a single target transaction
+// failed so the caller can keep its per-phase diagnostics.
+type skillSetupAttemptPhase int
+
+const (
+	skillSetupAttemptDone skillSetupAttemptPhase = iota
+	skillSetupAttemptStage
+	skillSetupAttemptBackup
+	skillSetupAttemptPublish
+)
+
+// skillSetupCopyFallbackTarget converts a canonical-link target into a
+// direct-copy target. buildSkillSetupPlan omits the replacement backup for a
+// destination that already points at canonical, because linking would leave it
+// untouched. A copy must replace that destination instead, and
+// PublishSkillPathNoReplace refuses to overwrite it, so those paths are
+// re-added before the retry.
+func skillSetupCopyFallbackTarget(plan *skillSetupPlan, target skillSetupTargetPlan) (skillSetupTargetPlan, error) {
+	fallback := target
+	fallback.LinkCanonical = false
+	fallback.Backups = append([]skillSetupBackup(nil), target.Backups...)
+	seen := make(map[string]bool, len(fallback.Backups))
+	for _, backup := range fallback.Backups {
+		seen[backup.Path] = true
+	}
+	replacements := []string{target.Destination}
+	if plan.Mode == skillSetupModeMulti {
+		replacements = make([]string, 0, len(plan.MultiSkillNames))
+		for _, name := range plan.MultiSkillNames {
+			replacements = append(replacements, filepath.Join(target.Destination, name))
+		}
+	}
+	for _, path := range replacements {
+		if seen[path] {
+			continue
+		}
+		if _, err := skillSetupLstat(path); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return skillSetupTargetPlan{}, fmt.Errorf("检查将被替换的 Skill 失败 %s: %w", path, err)
+		}
+		seen[path] = true
+		fallback.Backups = append(fallback.Backups, skillSetupBackup{Path: path, Reason: skillSetupBackupReplace})
+	}
+	sort.Slice(fallback.Backups, func(i, j int) bool { return fallback.Backups[i].Path < fallback.Backups[j].Path })
+	return fallback, nil
+}
+
+// runSkillSetupTargetAttempt performs one complete stage → backup → publish
+// transaction for a single Agent target. On failure it reports the phase that
+// failed; unless the error wraps errSkillSetupStateUncertain the original
+// directories are restored, so the caller may retry with another strategy.
+func runSkillSetupTargetAttempt(
+	plan *skillSetupPlan,
+	target skillSetupTargetPlan,
+	home string,
+	out, errOut io.Writer,
+) ([]skillSetupStagedDir, skillSetupAttemptPhase, error) {
+	stageRoot, staged, stageErr := stageSkillSetupTarget(plan, target)
+	if stageErr != nil {
+		return nil, skillSetupAttemptStage, stageErr
+	}
+	backups, backupErr := backupSkillSetupTarget(home, target.Backups, out)
+	if backupErr != nil {
+		if cleanupErr := skillSetupRemoveAll(stageRoot); cleanupErr != nil {
+			backupErr = errors.Join(backupErr, fmt.Errorf("清理 Skill staging 失败 %s: %w", stageRoot, cleanupErr))
+		}
+		return nil, skillSetupAttemptBackup, backupErr
+	}
+	publishErr := publishSkillSetupTarget(staged, backups)
+	cleanupErr := skillSetupRemoveAll(stageRoot)
+	if publishErr != nil {
+		if cleanupErr != nil {
+			publishErr = errors.Join(publishErr, fmt.Errorf("清理 Skill staging 失败 %s: %w", stageRoot, cleanupErr))
+		}
+		return nil, skillSetupAttemptPublish, publishErr
+	}
+	if cleanupErr != nil {
+		fmt.Fprintf(errOut, "  ⚠️  Skill staging 清理失败 %s: %v\n", stageRoot, cleanupErr)
+	}
+	return staged, skillSetupAttemptDone, nil
 }
 
 func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (installed, skipped int, err error) {
@@ -2086,48 +2175,41 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 			continue
 		}
 
-		stageRoot, staged, stageErr := stageSkillSetupTarget(plan, target)
-		if stageErr != nil && target.LinkCanonical {
+		staged, phase, attemptErr := runSkillSetupTargetAttempt(plan, target, home, out, errOut)
+		// A canonical link can fail either while staging (no symlink support) or
+		// while publishing (the no-replace rename fallback used on NFS, FUSE and
+		// overlayfs refuses a symlink source). Both mean links are unusable here,
+		// so retry the whole transaction as a direct copy — but only when the
+		// failed attempt left the original directories intact.
+		if attemptErr != nil && target.LinkCanonical && !errors.Is(attemptErr, errSkillSetupStateUncertain) {
 			fmt.Fprintf(errOut, "  ℹ️  %s 无法使用共享安装方式，正在自动改用兼容安装\n", target.Destination)
-			fallback := target
-			fallback.LinkCanonical = false
-			stageRoot, staged, stageErr = stageSkillSetupTarget(plan, fallback)
-		}
-		if stageErr != nil {
-			if isCanonical && hasCanonicalDependents {
-				return installed, skipped + perTarget, fmt.Errorf("canonical Skill staging 失败 %s: %w", target.Destination, stageErr)
+			fallback, fallbackErr := skillSetupCopyFallbackTarget(plan, target)
+			if fallbackErr != nil {
+				attemptErr = errors.Join(attemptErr, fallbackErr)
+			} else {
+				staged, phase, attemptErr = runSkillSetupTargetAttempt(plan, fallback, home, out, errOut)
 			}
-			fmt.Fprintf(errOut, "  ✗ Skill staging 失败，保留原集合 %s: %v\n", target.Destination, stageErr)
+		}
+		if attemptErr != nil {
+			switch phase {
+			case skillSetupAttemptBackup:
+				if isCanonical && hasCanonicalDependents {
+					return installed, skipped + perTarget, fmt.Errorf("canonical Skill 备份失败，已执行回滚 %s: %w", target.Destination, attemptErr)
+				}
+				fmt.Fprintf(errOut, "  ✗ Skill 备份失败，已执行回滚，跳过整个 Agent 目标 %s: %v\n", target.Destination, attemptErr)
+			case skillSetupAttemptPublish:
+				if isCanonical && hasCanonicalDependents {
+					return installed, skipped + perTarget, fmt.Errorf("canonical Skill 发布失败，已执行回滚 %s: %w", target.Destination, attemptErr)
+				}
+				fmt.Fprintf(errOut, "  ✗ Skill 发布失败，已执行回滚，跳过整个 Agent 目标 %s: %v\n", target.Destination, attemptErr)
+			default:
+				if isCanonical && hasCanonicalDependents {
+					return installed, skipped + perTarget, fmt.Errorf("canonical Skill staging 失败 %s: %w", target.Destination, attemptErr)
+				}
+				fmt.Fprintf(errOut, "  ✗ Skill staging 失败，保留原集合 %s: %v\n", target.Destination, attemptErr)
+			}
 			skipped += perTarget
 			continue
-		}
-		backups, backupErr := backupSkillSetupTarget(home, target.Backups, out)
-		if backupErr != nil {
-			if cleanupErr := skillSetupRemoveAll(stageRoot); cleanupErr != nil {
-				backupErr = errors.Join(backupErr, fmt.Errorf("清理 Skill staging 失败 %s: %w", stageRoot, cleanupErr))
-			}
-			if isCanonical && hasCanonicalDependents {
-				return installed, skipped + perTarget, fmt.Errorf("canonical Skill 备份失败，已执行回滚 %s: %w", target.Destination, backupErr)
-			}
-			fmt.Fprintf(errOut, "  ✗ Skill 备份失败，已执行回滚，跳过整个 Agent 目标 %s: %v\n", target.Destination, backupErr)
-			skipped += perTarget
-			continue
-		}
-		publishErr := publishSkillSetupTarget(staged, backups)
-		cleanupErr := skillSetupRemoveAll(stageRoot)
-		if publishErr != nil {
-			if cleanupErr != nil {
-				publishErr = errors.Join(publishErr, fmt.Errorf("清理 Skill staging 失败 %s: %w", stageRoot, cleanupErr))
-			}
-			if isCanonical && hasCanonicalDependents {
-				return installed, skipped + perTarget, fmt.Errorf("canonical Skill 发布失败，已执行回滚 %s: %w", target.Destination, publishErr)
-			}
-			fmt.Fprintf(errOut, "  ✗ Skill 发布失败，已执行回滚，跳过整个 Agent 目标 %s: %v\n", target.Destination, publishErr)
-			skipped += perTarget
-			continue
-		}
-		if cleanupErr != nil {
-			fmt.Fprintf(errOut, "  ⚠️  Skill staging 清理失败 %s: %v\n", stageRoot, cleanupErr)
 		}
 		for _, item := range staged {
 			fmt.Fprintf(out, "  ✓ %s\n", item.dest)
