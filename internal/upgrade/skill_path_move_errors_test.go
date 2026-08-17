@@ -133,6 +133,79 @@ func TestCrossPlatformCoverageSkillPathMoveSystemErrors(t *testing.T) {
 	})
 }
 
+// TestCrossPlatformCoverageSkillMoveShellCleanup covers the emptied-source
+// shell handling in moveSkillPathRecoverably: a child-move publication (the
+// degraded-filesystem slow path) leaves the source behind as an empty shell,
+// and move semantics require that shell to be gone once the move reports
+// success — including the failure branches around its removal.
+func TestCrossPlatformCoverageSkillMoveShellCleanup(t *testing.T) {
+	forceSlowClaimMove := func(t *testing.T, src, dst string) {
+		t.Helper()
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error {
+			return errNoReplaceRenameUnsupported
+		})
+		forceFastClaimRenameFailure(t, src, dst)
+	}
+
+	t.Run("slow path shell is removed after publication", func(t *testing.T) {
+		src, dst := makeSkillMoveFixture(t)
+		forceSlowClaimMove(t, src, dst)
+		if err := moveSkillPathRecoverably(src, dst); err != nil {
+			t.Fatalf("slow-path move must succeed, got %v", err)
+		}
+		assertUpgradeSkillContent(t, dst, "old")
+		if _, statErr := os.Lstat(src); !os.IsNotExist(statErr) {
+			t.Fatalf("emptied source shell must be removed, stat err=%v", statErr)
+		}
+	})
+
+	t.Run("shell removal failure preserves both", func(t *testing.T) {
+		src, dst := makeSkillMoveFixture(t)
+		forceSlowClaimMove(t, src, dst)
+		originalRemove := skillPathRemove
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == src {
+				return os.ErrPermission
+			}
+			return originalRemove(path)
+		})
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "源路径删除失败") {
+			t.Fatalf("shell removal failure must surface, got %v", err)
+		}
+		assertUpgradeSkillContent(t, dst, "old")
+		if _, statErr := os.Lstat(src); statErr != nil {
+			t.Fatalf("source shell must be reported as preserved, stat err=%v", statErr)
+		}
+	})
+
+	t.Run("shell stat failure after publication surfaces", func(t *testing.T) {
+		src, dst := makeSkillMoveFixture(t)
+		forceSlowClaimMove(t, src, dst)
+		published := false
+		originalNoReplace := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(from, to string) error {
+			err := originalNoReplace(from, to)
+			if err == nil && from == src && to == dst {
+				published = true
+			}
+			return err
+		})
+		originalLstat := skillPathLstat
+		testseam.Swap(t, &skillPathLstat, func(path string) (os.FileInfo, error) {
+			if path == src && published {
+				return nil, os.ErrPermission
+			}
+			return originalLstat(path)
+		})
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "检查已移动 Skill 源路径失败") {
+			t.Fatalf("shell stat failure must surface, got %v", err)
+		}
+		assertUpgradeSkillContent(t, dst, "old")
+	})
+}
+
 func TestCrossPlatformCoverageSkillPathPermissionRestorationErrors(t *testing.T) {
 	t.Run("source preparation error", func(t *testing.T) {
 		testseam.Swap(t, &skillPathWalkDir, func(string, fs.WalkDirFunc) error {

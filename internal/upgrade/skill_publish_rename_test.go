@@ -266,6 +266,107 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		assertUpgradeSkillContent(t, source, "payload")
 	})
 
+	t.Run("directory fallback source stat failure surfaces", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "payload", false)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		// The dispatch lstat must succeed so the directory fallback runs;
+		// its own identity probe then fails.
+		calls := 0
+		originalLstat := skillPathLstat
+		testseam.Swap(t, &skillPathLstat, func(path string) (os.FileInfo, error) {
+			calls++
+			if calls > 1 {
+				return nil, os.ErrPermission
+			}
+			return originalLstat(path)
+		})
+		err := renameSkillPathNoReplace(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "读取源 Skill 身份失败") {
+			t.Fatalf("fallback stat failure must surface, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("destination must stay unclaimed, stat err=%v", statErr)
+		}
+		assertUpgradeSkillContent(t, source, "payload")
+	})
+
+	t.Run("directory fallback readdir failure removes the claim", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "payload", false)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		forceFastClaimRenameFailure(t, source, destination)
+		testseam.Swap(t, &skillPathReadDir, func(string) ([]os.DirEntry, error) { return nil, os.ErrPermission })
+		err := renameSkillPathNoReplace(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "读取源 Skill 目录失败") {
+			t.Fatalf("readdir failure must surface, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("claim must be removed after readdir failure, stat err=%v", statErr)
+		}
+		assertUpgradeSkillContent(t, source, "payload")
+	})
+
+	t.Run("directory fallback child failure returns already moved children", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "first", false)
+		if err := os.WriteFile(filepath.Join(source, "zz-second.md"), []byte("second"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		originalRename := skillPathRename
+		testseam.Swap(t, &skillPathRename, func(src, dst string) error {
+			if src == source {
+				return os.ErrExist
+			}
+			if filepath.Base(dst) == "zz-second.md" {
+				return os.ErrPermission
+			}
+			return originalRename(src, dst)
+		})
+		err := renameSkillPathNoReplace(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "迁移 Skill 目录项失败") {
+			t.Fatalf("child failure must surface, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("claim must be removed after rollback, stat err=%v", statErr)
+		}
+		assertUpgradeSkillContent(t, source, "first")
+		if content, readErr := os.ReadFile(filepath.Join(source, "zz-second.md")); readErr != nil || string(content) != "second" {
+			t.Fatalf("second child must stay in the source, content=%q err=%v", content, readErr)
+		}
+	})
+
+	t.Run("directory fallback chmod failure rolls back", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		seedUpgradeSkill(t, source, "payload", false)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		forceFastClaimRenameFailure(t, source, destination)
+		originalChmod := skillPathChmod
+		testseam.Swap(t, &skillPathChmod, func(path string, mode os.FileMode) error {
+			if path == destination {
+				return os.ErrPermission
+			}
+			return originalChmod(path, mode)
+		})
+		err := renameSkillPathNoReplace(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "恢复已发布 Skill 目录权限失败") {
+			t.Fatalf("chmod failure must surface, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("claim must be removed after chmod rollback, stat err=%v", statErr)
+		}
+		assertUpgradeSkillContent(t, source, "payload")
+	})
+
 	t.Run("directory slow path moves children into the claim", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
@@ -368,4 +469,18 @@ func TestCrossPlatformCoverageNoReplaceRenameFallbackNeverUnlinksClaim(t *testin
 	}
 	assertUpgradeSkillContent(t, destination, "payload")
 	assertSourceConsumed(t, source)
+}
+
+// forceFastClaimRenameFailure makes the plain rename of source onto the just
+// claimed destination fail so the child-move slow path runs, while every
+// later rename (the children themselves) executes for real.
+func forceFastClaimRenameFailure(t *testing.T, source, destination string) {
+	t.Helper()
+	originalRename := skillPathRename
+	testseam.Swap(t, &skillPathRename, func(src, dst string) error {
+		if src == source && dst == destination {
+			return os.ErrExist
+		}
+		return originalRename(src, dst)
+	})
 }
