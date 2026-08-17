@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -141,6 +142,13 @@ func WrapErrorWithOperation(err error, operation string) error {
 	// 误路由（commandPath 含 "permission" 的命令会被判成 AUTH_PERMISSION_DENIED，
 	// 其余则丢失 reason 退化为 UNCLASSIFIED）。
 	if apperrors.IsConfirmationRequired(err) {
+		return err
+	}
+	// 已被结构化分类的错误（internal/errors.Error，如委托鉴权拒绝）直通，
+	// 不再二次分类：与上方 CLIError/PATError 直通同语义。用 errors.As
+	// 穿透 Cause 链，与 PrintJSON 侧的识别逻辑同源。
+	var structured *apperrors.Error
+	if errors.As(err, &structured) {
 		return err
 	}
 	msg := err.Error()
