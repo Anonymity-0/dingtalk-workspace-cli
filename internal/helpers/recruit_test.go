@@ -646,6 +646,101 @@ func TestRecruitResultCallRejectsInconsistentPagination(t *testing.T) {
 	}
 }
 
+func TestRecruitResultCallRejectsInvalidJobResults(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		tool        string
+		args        map[string]any
+		text        string
+		wantMessage string
+	}{
+		{
+			name:        "create empty response",
+			tool:        recruitCreateJobTool,
+			text:        "   ",
+			wantMessage: "缺少非空字符串字段 jobId",
+		},
+		{
+			name:        "create empty object",
+			tool:        recruitCreateJobTool,
+			text:        `{}`,
+			wantMessage: "缺少非空字符串字段 jobId",
+		},
+		{
+			name:        "create envelope missing job id",
+			tool:        recruitCreateJobTool,
+			text:        `{"success":true,"result":{}}`,
+			wantMessage: "缺少非空字符串字段 jobId",
+		},
+		{
+			name:        "create empty job id",
+			tool:        recruitCreateJobTool,
+			text:        `{"success":true,"result":{"jobId":"  "}}`,
+			wantMessage: "缺少非空字符串字段 jobId",
+		},
+		{
+			name:        "create non-string job id",
+			tool:        recruitCreateJobTool,
+			text:        `{"success":true,"result":{"jobId":123}}`,
+			wantMessage: "缺少非空字符串字段 jobId",
+		},
+		{
+			name:        "get missing job id",
+			tool:        recruitGetJobTool,
+			args:        map[string]any{"jobId": "job-requested"},
+			text:        `{"success":true,"result":{"name":"Java 工程师"}}`,
+			wantMessage: "缺少非空字符串字段 jobId",
+		},
+		{
+			name:        "get mismatched job id",
+			tool:        recruitGetJobTool,
+			args:        map[string]any{"jobId": "job-requested"},
+			text:        `{"success":true,"result":{"jobId":"job-other"}}`,
+			wantMessage: "与请求的 jobId",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := withRecruitCaller(t)
+			caller.text = test.text
+			result, err := recruitResultCall(prepareRecruitTestCommand(&cobra.Command{}), test.tool, test.args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			envelope, err := output.EnvelopeFromResult(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if envelope.Outcome != output.OutcomeFailure || envelope.Error == nil {
+				t.Fatalf("envelope = %#v, want failure", envelope)
+			}
+			if envelope.Error.Type != "api" || envelope.Error.Subtype != "invalid_response" ||
+				!strings.Contains(envelope.Error.Message, test.wantMessage) {
+				t.Fatalf("error = %#v, want invalid_response containing %q", envelope.Error, test.wantMessage)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("MCP calls = %d, want exactly one", len(caller.calls))
+			}
+		})
+	}
+}
+
+func TestRecruitResultCallRejectsToolWithoutResultValidator(t *testing.T) {
+	caller := withRecruitCaller(t)
+	caller.text = `{"jobId":"job-created"}`
+	result, err := recruitResultCall(prepareRecruitTestCommand(&cobra.Command{}), "future_write_tool", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	envelope, err := output.EnvelopeFromResult(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Outcome != output.OutcomeFailure || envelope.Error == nil ||
+		envelope.Error.Subtype != "invalid_response" || !strings.Contains(envelope.Error.Message, "不支持校验") {
+		t.Fatalf("envelope = %#v, want unsupported validator failure", envelope)
+	}
+}
+
 func TestRecruitResultCallDryRun(t *testing.T) {
 	caller := withRecruitCaller(t)
 	caller.dryRun = true

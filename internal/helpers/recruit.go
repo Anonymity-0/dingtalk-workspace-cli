@@ -158,14 +158,39 @@ func recruitResultCall(cmd *cobra.Command, tool string, args map[string]any) (ou
 	if err != nil {
 		return recruitResponseFailure(err), nil
 	}
-	if tool != recruitListJobsTool {
+	switch tool {
+	case recruitListJobsTool:
+		listData, meta, err := recruitListResultData(clean)
+		if err != nil {
+			return recruitInvalidResponse(err), nil
+		}
+		return output.Success(listData, output.WithMeta(meta)), nil
+	case recruitGetJobTool, recruitCreateJobTool:
+		if err := validateRecruitJobResult(clean, tool, args); err != nil {
+			return recruitInvalidResponse(err), nil
+		}
 		return output.Success(clean), nil
+	default:
+		return recruitInvalidResponse(fmt.Errorf("不支持校验 %s 的业务结果", tool)), nil
 	}
-	listData, meta, err := recruitListResultData(clean)
-	if err != nil {
-		return recruitInvalidResponse(err), nil
+}
+
+func validateRecruitJobResult(data map[string]any, tool string, args map[string]any) error {
+	jobID, ok := data["jobId"].(string)
+	if !ok || strings.TrimSpace(jobID) == "" {
+		return fmt.Errorf("%s 返回值缺少非空字符串字段 jobId", tool)
 	}
-	return output.Success(listData, output.WithMeta(meta)), nil
+	if tool != recruitGetJobTool {
+		return nil
+	}
+	requestedJobID, ok := args["jobId"].(string)
+	if !ok || strings.TrimSpace(requestedJobID) == "" {
+		return fmt.Errorf("%s 请求缺少非空字符串字段 jobId", tool)
+	}
+	if strings.TrimSpace(jobID) != strings.TrimSpace(requestedJobID) {
+		return fmt.Errorf("%s 返回的 jobId %q 与请求的 jobId %q 不一致", tool, jobID, requestedJobID)
+	}
+	return nil
 }
 
 func callRecruitMCPToolData(ctx context.Context, tool string, args map[string]any) (any, error) {
