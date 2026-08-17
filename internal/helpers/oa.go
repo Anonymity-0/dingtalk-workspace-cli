@@ -46,7 +46,7 @@ func oaFormValues(raw string) ([]map[string]string, error) {
 func parseOAAttachmentFileInfos(raw string) ([]map[string]any, error) {
 	decoder := json.NewDecoder(strings.NewReader(raw))
 	decoder.UseNumber()
-	var items []map[string]json.RawMessage
+	var items []map[string]any
 	if err := decoder.Decode(&items); err != nil {
 		return nil, fmt.Errorf("--file-infos JSON 解析失败: %w", err)
 	}
@@ -65,28 +65,22 @@ func parseOAAttachmentFileInfos(raw string) ([]map[string]any, error) {
 			}
 		}
 
-		spaceRaw, ok := item["spaceId"]
+		spaceValue, ok := item["spaceId"]
 		if !ok {
 			return nil, fmt.Errorf("--file-infos 第 %d 项缺少 spaceId", index+1)
-		}
-		spaceDecoder := json.NewDecoder(strings.NewReader(string(spaceRaw)))
-		spaceDecoder.UseNumber()
-		var spaceValue any
-		if err := spaceDecoder.Decode(&spaceValue); err != nil {
-			return nil, fmt.Errorf("--file-infos 第 %d 项 spaceId 不是有效数字: %w", index+1, err)
 		}
 		spaceID, ok := spaceValue.(json.Number)
 		if !ok {
 			return nil, fmt.Errorf("--file-infos 第 %d 项 spaceId 必须是数字", index+1)
 		}
 
-		fileRaw, ok := item["fileId"]
+		fileValue, ok := item["fileId"]
 		if !ok {
 			return nil, fmt.Errorf("--file-infos 第 %d 项缺少 fileId", index+1)
 		}
-		var fileID string
-		if err := json.Unmarshal(fileRaw, &fileID); err != nil {
-			return nil, fmt.Errorf("--file-infos 第 %d 项 fileId 必须是字符串: %w", index+1, err)
+		fileID, ok := fileValue.(string)
+		if !ok {
+			return nil, fmt.Errorf("--file-infos 第 %d 项 fileId 必须是字符串", index+1)
 		}
 		fileID = strings.TrimSpace(fileID)
 		if fileID == "" {

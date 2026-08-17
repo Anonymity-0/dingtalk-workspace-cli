@@ -188,9 +188,11 @@ func TestCrossPlatformCoverageOAAttachmentRejectsInvalidFileInfos(t *testing.T) 
 		{name: "missing space ID", raw: `[{"fileId":"file-1"}]`},
 		{name: "string space ID", raw: `[{"spaceId":"27827223951","fileId":"file-1"}]`},
 		{name: "missing file ID", raw: `[{"spaceId":27827223951}]`},
+		{name: "numeric file ID", raw: `[{"spaceId":27827223951,"fileId":232271651278}]`},
 		{name: "blank file ID", raw: `[{"spaceId":27827223951,"fileId":"  "}]`},
 		{name: "unknown property", raw: `[{"spaceId":27827223951,"fileId":"file-1","extra":true}]`},
 		{name: "trailing JSON", raw: `[` + valid + `] {}`},
+		{name: "malformed trailing JSON", raw: `[` + valid + `] {`},
 	}
 
 	for _, test := range tests {
