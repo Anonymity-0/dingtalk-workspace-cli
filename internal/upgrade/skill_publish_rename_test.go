@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,27 @@ func (mockSpecialInfo) Mode() os.FileMode  { return os.ModeNamedPipe }
 func (mockSpecialInfo) ModTime() time.Time { return time.Time{} }
 func (mockSpecialInfo) IsDir() bool        { return false }
 func (mockSpecialInfo) Sys() interface{}   { return nil }
+
+// assertSourceConsumed accepts both publication shapes: a rename that
+// consumed the source entirely, and the child-move slow path that leaves an
+// emptied source shell behind as its identity-changed signal.
+func assertSourceConsumed(t *testing.T, source string) {
+	t.Helper()
+	info, err := os.Lstat(source)
+	if os.IsNotExist(err) {
+		return
+	}
+	if err != nil {
+		t.Fatalf("source stat = %v", err)
+	}
+	if !info.IsDir() {
+		t.Fatalf("leftover source must be a shell directory, mode=%v", info.Mode())
+	}
+	entries, readErr := os.ReadDir(source)
+	if readErr != nil || len(entries) != 0 {
+		t.Fatalf("leftover source shell must be empty, entries=%v, err=%v", entries, readErr)
+	}
+}
 
 // TestCrossPlatformCoverageNoReplaceRenameFallback pins the degradation path for
 // filesystems that reject RENAME_NOREPLACE / RENAME_EXCL (NFS, FUSE, overlayfs).
@@ -60,9 +82,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 				t.Fatalf("fallback must publish for %v, got %v", unsupportedErr, err)
 			}
 			assertUpgradeSkillContent(t, destination, "payload")
-			if _, err := os.Lstat(source); !os.IsNotExist(err) {
-				t.Fatalf("source must be gone, stat err=%v", err)
-			}
+			assertSourceConsumed(t, source)
 		}
 	})
 
@@ -229,27 +249,24 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		assertUpgradeSkillContent(t, source, "payload")
 	})
 
-	t.Run("remove failure after rename failure surfaces", func(t *testing.T) {
+	t.Run("child move failure rolls back and surfaces", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
 		destination := filepath.Join(dir, "destination")
 		seedUpgradeSkill(t, source, "payload", false)
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
 		testseam.Swap(t, &skillPathRename, func(string, string) error { return errors.New("rename failed") })
-		removeErr := errors.New("simulated remove failure")
-		testseam.Swap(t, &skillPathRemove, func(string) error { return removeErr })
 		err := renameSkillPathNoReplace(source, destination)
-		if !errors.Is(err, removeErr) {
-			t.Fatalf("remove error must surface, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "降级发布 Skill 目录失败") {
+			t.Fatalf("slow-path failure must surface, got %v", err)
 		}
-		if _, statErr := os.Lstat(destination); statErr != nil {
-			t.Fatalf("destination must still exist after remove failure: %v", statErr)
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("claim must be removed after rollback, stat err=%v", statErr)
 		}
 		assertUpgradeSkillContent(t, source, "payload")
-		_ = os.RemoveAll(destination)
 	})
 
-	t.Run("directory retry rename after removing claimed empty dir", func(t *testing.T) {
+	t.Run("directory slow path moves children into the claim", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
 		destination := filepath.Join(dir, "destination")
@@ -265,11 +282,13 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 			return originalRename(src, dst)
 		})
 		if err := renameSkillPathNoReplace(source, destination); err != nil {
-			t.Fatalf("retry must publish, got %v", err)
+			t.Fatalf("slow path must publish, got %v", err)
 		}
 		assertUpgradeSkillContent(t, destination, "payload")
-		if _, err := os.Lstat(source); !os.IsNotExist(err) {
-			t.Fatalf("source must be gone, stat err=%v", err)
+		assertSourceConsumed(t, source)
+		info, err := os.Lstat(destination)
+		if err != nil || info.Mode().Perm() != 0o755 {
+			t.Fatalf("published mode = %v, %v; want 0755", info.Mode(), err)
 		}
 	})
 
@@ -304,4 +323,49 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 			t.Fatalf("unsupported error must surface for special files, got %v", err)
 		}
 	})
+}
+
+// TestCrossPlatformCoverageNoReplaceRenameFallbackNeverUnlinksClaim locks in
+// the invariant the unlink→rename redesign provides. The previous design
+// removed its mkdir claim and retried a plain rename, opening a window in
+// which a foreign directory could appear at the destination and be silently
+// overwritten. The claim is now held for the whole transaction, so the
+// destination is never unlinked during a successful publish and a concurrent
+// creator can only ever lose the initial mkdir race. This is asserted
+// platform-independently by forcing the slow path and recording every remove.
+func TestCrossPlatformCoverageNoReplaceRenameFallbackNeverUnlinksClaim(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source")
+	destination := filepath.Join(dir, "destination")
+	seedUpgradeSkill(t, source, "payload", false)
+	testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+
+	// Force the slow path: refuse the fast rename, then move children for real.
+	originalRename := skillPathRename
+	first := true
+	testseam.Swap(t, &skillPathRename, func(src, dst string) error {
+		if first && src == source {
+			first = false
+			return os.ErrExist
+		}
+		return originalRename(src, dst)
+	})
+
+	originalRemove := skillPathRemove
+	var removed []string
+	testseam.Swap(t, &skillPathRemove, func(path string) error {
+		removed = append(removed, path)
+		return originalRemove(path)
+	})
+
+	if err := renameSkillPathNoReplace(source, destination); err != nil {
+		t.Fatalf("slow path must publish, got %v", err)
+	}
+	for _, path := range removed {
+		if path == destination {
+			t.Fatalf("destination claim must never be unlinked during publish, removed=%v", removed)
+		}
+	}
+	assertUpgradeSkillContent(t, destination, "payload")
+	assertSourceConsumed(t, source)
 }

@@ -45,8 +45,20 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 内容失败 %s（对象保留）: %w", destination, err)
 	}
 	publishedFileID := skillPathFileIdentity(destination)
-	if !skillPathIdentityProven(identity, publishedIdentity, stagedFileID, publishedFileID) || publishedFingerprint != fingerprint {
-		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: staging 身份已变化", destination)
+	if publishedFingerprint != fingerprint {
+		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: staging 内容已变化", destination)
+	}
+	// The rename consumed the staged path: the published object is the staged
+	// object itself, which identity proves. The rename left the staged path
+	// behind (the no-replace fallback moves children into a fresh claim):
+	// identity cannot span that move, so the proof is the content equality
+	// verified above.
+	if _, stagedErr := skillPathLstat(staged); os.IsNotExist(stagedErr) {
+		if !skillPathIdentityProven(identity, publishedIdentity, stagedFileID, publishedFileID) {
+			return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: staging 身份已变化", destination)
+		}
+	} else if stagedErr != nil {
+		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: 无法确认 staging 状态", destination)
 	}
 	return SkillPathPublication{
 		Destination: destination,

@@ -156,7 +156,7 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		}
 	})
 
-	t.Run("publish confirmation identity changed", func(t *testing.T) {
+	t.Run("publish confirmation content changed", func(t *testing.T) {
 		root := t.TempDir()
 		staged := filepath.Join(root, "staged")
 		destination := filepath.Join(root, "destination")
@@ -172,8 +172,82 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 			seedUpgradeSkill(t, target, "replacement", false)
 			return nil
 		})
+		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "staging 内容已变化") {
+			t.Fatalf("publish content error = %v", err)
+		}
+	})
+
+	t.Run("publish confirmation identity changed", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		originalRename := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRename(source, target); err != nil {
+				return err
+			}
+			if err := os.RemoveAll(target); err != nil {
+				return err
+			}
+			// Same content, different object: only the identity check can catch it.
+			seedUpgradeSkill(t, target, "value", false)
+			return nil
+		})
 		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "staging 身份已变化") {
 			t.Fatalf("publish identity error = %v", err)
+		}
+	})
+
+	t.Run("publish confirmation accepts child-move publication", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			// Simulate the no-replace fallback slow path: the destination is a
+			// fresh claim holding the moved children, and the staged shell stays.
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return err
+			}
+			return os.Rename(filepath.Join(source, "SKILL.md"), filepath.Join(target, "SKILL.md"))
+		})
+		publication, err := PublishSkillPathNoReplace(staged, destination)
+		if err != nil {
+			t.Fatalf("child-move publication must succeed on content proof, got %v", err)
+		}
+		assertUpgradeSkillContent(t, publication.Destination, "value")
+	})
+
+	t.Run("publish confirmation unreadable staged state fails closed", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return err
+			}
+			return os.Rename(filepath.Join(source, "SKILL.md"), filepath.Join(target, "SKILL.md"))
+		})
+		renamed := false
+		originalLstat := skillPathLstat
+		originalRenameNoReplace := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRenameNoReplace(source, target); err != nil {
+				return err
+			}
+			renamed = true
+			return nil
+		})
+		testseam.Swap(t, &skillPathLstat, func(path string) (os.FileInfo, error) {
+			if renamed && path == staged {
+				return nil, errors.New("stat denied")
+			}
+			return originalLstat(path)
+		})
+		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "无法确认 staging 状态") {
+			t.Fatalf("unreadable staged state must fail closed, got %v", err)
 		}
 	})
 

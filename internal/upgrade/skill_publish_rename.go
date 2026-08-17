@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // errNoReplaceRenameUnsupported marks a platform that has no atomic no-replace
@@ -55,17 +56,26 @@ func renameSkillPathNoReplaceFallback(source, destination string) error {
 	}
 }
 
-// renameSkillDirNoReplaceFallback atomically claims the destination with
-// mkdir (which fails with EEXIST if the path is already occupied) and then
-// replaces the empty, self-owned directory with a plain rename. On Linux
-// rename(2) replaces an empty directory directly. On Darwin and Windows
-// rename(2) refuses to replace any existing directory, so the empty dir is
-// removed and the rename retried. If someone populated the claimed directory
-// between mkdir and remove, Remove fails (ENOTEMPTY) and no data is lost.
-// If someone creates a new path at the destination between remove and rename,
-// the second Rename detects it and fails. Neither step has a TOCTOU window
-// that could silently clobber data.
+// renameSkillDirNoReplaceFallback claims the destination once with mkdir and
+// never unlinks it for the remainder of the transaction. The fast path
+// renames the source over the claim; on platforms that permit replacing an
+// empty directory (Linux) that rename only ever touches the claim we own.
+// Platforms that refuse to rename over any directory (macOS returns EEXIST
+// even for an empty target) take the slow path instead: the source children
+// are moved into the claim one by one, so the destination stays occupied by
+// us the whole time. Removing the claim and retrying the rename — the
+// previous design — opened an unlink→rename window in which a foreign
+// directory could appear and be silently overwritten, breaking the
+// no-replace contract. The destination is therefore never deleted here: a
+// concurrent creator either loses the mkdir race (EEXIST) or finds the path
+// claimed until publication completes. The slow path is not
+// all-or-nothing-visible, which is acceptable on the degraded filesystems
+// that need it; every other property of the no-replace contract holds.
 func renameSkillDirNoReplaceFallback(source, destination string) error {
+	sourceInfo, err := skillPathLstat(source)
+	if err != nil {
+		return fmt.Errorf("读取源 Skill 身份失败 %s: %w", source, err)
+	}
 	if err := skillPathMkdir(destination, 0o700); err != nil {
 		if os.IsExist(err) {
 			return &os.LinkError{Op: "rename", Old: source, New: destination, Err: os.ErrExist}
@@ -75,11 +85,46 @@ func renameSkillDirNoReplaceFallback(source, destination string) error {
 	if err := skillPathRename(source, destination); err == nil {
 		return nil
 	}
-	if rmErr := skillPathRemove(destination); rmErr != nil {
-		return fmt.Errorf("清理已声明 Skill 目标失败 %s: %w", destination, rmErr)
+	if err := moveSkillDirChildrenIntoClaim(source, destination, sourceInfo.Mode().Perm()); err != nil {
+		return fmt.Errorf("降级发布 Skill 目录失败 %s: %w", destination, err)
 	}
-	if err := skillPathRename(source, destination); err != nil {
-		return fmt.Errorf("发布 Skill 到已声明目标失败 %s: %w", destination, err)
+	return nil
+}
+
+// moveSkillDirChildrenIntoClaim moves every top-level child of source into
+// the claimed destination and restores the source mode on the claim. Any
+// failure moves the already relocated children back and removes only the
+// claim, leaving the source intact. Each child rename targets a path that
+// does not exist inside the empty claim, so no step can replace a foreign
+// object. The emptied source shell is intentionally left behind: callers of
+// renameSkillPathNoReplace use its presence to tell that the publication was
+// a child move into a fresh claim (new identity) rather than a rename that
+// consumed the source (identity preserved), and moveSkillPathRecoverably
+// removes it once the move is confirmed.
+func moveSkillDirChildrenIntoClaim(source, destination string, sourceMode os.FileMode) error {
+	entries, err := skillPathReadDir(source)
+	if err != nil {
+		_ = skillPathRemove(destination)
+		return fmt.Errorf("读取源 Skill 目录失败 %s: %w", source, err)
+	}
+	moved := make([]string, 0, len(entries))
+	rollback := func() {
+		for i := len(moved) - 1; i >= 0; i-- {
+			_ = skillPathRename(filepath.Join(destination, moved[i]), filepath.Join(source, moved[i]))
+		}
+		_ = skillPathRemove(destination)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if err := skillPathRename(filepath.Join(source, name), filepath.Join(destination, name)); err != nil {
+			rollback()
+			return fmt.Errorf("迁移 Skill 目录项失败 %s: %w", name, err)
+		}
+		moved = append(moved, name)
+	}
+	if err := skillPathChmod(destination, sourceMode); err != nil {
+		rollback()
+		return fmt.Errorf("恢复已发布 Skill 目录权限失败 %s: %w", destination, err)
 	}
 	return nil
 }

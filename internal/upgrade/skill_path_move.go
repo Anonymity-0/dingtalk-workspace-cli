@@ -51,6 +51,16 @@ func moveSkillPathRecoverably(src, dst string) (err error) {
 		return fmt.Errorf("创建移动目标目录失败 %s: %w", filepath.Dir(dst), err)
 	}
 	if renameErr := skillPathRenameNoReplace(src, dst); renameErr == nil {
+		// The no-replace fallback may have published by moving the children
+		// into a fresh claim, leaving an emptied source shell behind. Move
+		// semantics require the source to be gone afterwards.
+		if _, shellErr := skillPathLstat(src); shellErr == nil {
+			if removeErr := skillPathRemove(src); removeErr != nil {
+				return fmt.Errorf("Skill 目标已发布但源路径删除失败（源 %s 与目标 %s 均保留）: %w", src, dst, removeErr)
+			}
+		} else if !os.IsNotExist(shellErr) {
+			return fmt.Errorf("检查已移动 Skill 源路径失败 %s: %w", src, shellErr)
+		}
 		return nil
 	} else if !isCrossDeviceError(renameErr) {
 		return fmt.Errorf("移动 Skill 路径失败 %s -> %s: %w", src, dst, renameErr)
