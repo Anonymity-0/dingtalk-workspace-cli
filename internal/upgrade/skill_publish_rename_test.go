@@ -372,6 +372,11 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		source := filepath.Join(dir, "source")
 		destination := filepath.Join(dir, "destination")
 		seedUpgradeSkill(t, source, "payload", false)
+		sourceInfo, err := os.Lstat(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sourceMode := sourceInfo.Mode().Perm()
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
 		calls := 0
 		originalRename := skillPathRename
@@ -388,8 +393,8 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		assertUpgradeSkillContent(t, destination, "payload")
 		assertSourceConsumed(t, source)
 		info, err := os.Lstat(destination)
-		if err != nil || info.Mode().Perm() != 0o755 {
-			t.Fatalf("published mode = %v, %v; want 0755", info.Mode(), err)
+		if err != nil || info.Mode().Perm() != sourceMode {
+			t.Fatalf("published mode = %v, %v; want source mode %v", info.Mode(), err, sourceMode)
 		}
 	})
 
