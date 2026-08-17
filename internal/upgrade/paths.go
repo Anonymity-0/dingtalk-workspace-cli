@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/skillprovenance"
@@ -207,6 +208,7 @@ func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
 			return "", fmt.Errorf("备份目录冲突无法解决: %s", target)
 		}
 	}
+	rememberSkillBackupRoot(backupRoot)
 	if err := upgradeMkdirAll(backupRoot, dirPermShared); err != nil {
 		return "", fmt.Errorf("创建备份目录失败 %s: %w", backupRoot, err)
 	}
@@ -395,11 +397,34 @@ func isSkillBackupStamp(name string) bool {
 	return skillBackupStampRegexp.MatchString(name)
 }
 
+// skillBackupRunRoots records every backup stamp directory this process
+// created, keyed by normalized absolute path. Pruning must never delete them:
+// one migration retires copies across many Agent roots, the stamp only has
+// second precision, and so a single run easily produces more than
+// skillBackupKeep stamps. Bounding by count alone would delete the very
+// backups that make the current transaction reversible.
+var (
+	skillBackupRunMu    sync.Mutex
+	skillBackupRunRoots = map[string]bool{}
+)
+
+func rememberSkillBackupRoot(path string) {
+	skillBackupRunMu.Lock()
+	defer skillBackupRunMu.Unlock()
+	skillBackupRunRoots[skillRootPathKey(path)] = true
+}
+
+func isSkillBackupRunRoot(path string) bool {
+	skillBackupRunMu.Lock()
+	defer skillBackupRunMu.Unlock()
+	return skillBackupRunRoots[skillRootPathKey(path)]
+}
+
 // pruneSkillBackups removes the oldest backup directories when more than
 // skillBackupKeep remain. Only directories whose names match the DWS backup
-// stamp format are candidates; unknown directories are preserved. Best-effort:
-// a removal failure never aborts, but pruning failures are reported so
-// callers can warn the user.
+// stamp format are candidates; unknown directories and stamps created by the
+// current run are preserved. Best-effort: a removal failure never aborts, but
+// pruning failures are reported so callers can warn the user.
 func pruneSkillBackups(homeDir string) error {
 	root := filepath.Join(homeDir, skillBackupSubdir)
 	entries, err := upgradeReadDir(root)
@@ -417,10 +442,17 @@ func pruneSkillBackups(homeDir string) error {
 	}
 	sort.Strings(names)
 	var firstErr error
-	for len(names) > skillBackupKeep {
-		old := filepath.Join(root, names[0])
-		names = names[1:]
-		if err := upgradeRemoveAll(old); err != nil && firstErr == nil {
+	excess := len(names) - skillBackupKeep
+	for _, name := range names {
+		if excess <= 0 {
+			break
+		}
+		candidate := filepath.Join(root, name)
+		if isSkillBackupRunRoot(candidate) {
+			continue
+		}
+		excess--
+		if err := upgradeRemoveAll(candidate); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}

@@ -824,6 +824,55 @@ func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
 	testseam.Swap(t, &skillPathRenameNoReplace, renameSkillPathNoReplace)
 }
 
+// TestCrossPlatformCoveragePruneKeepsCurrentRunBackups pins the reversibility
+// guarantee. The backup stamp only has second precision, so a migration that
+// retires copies across many Agent roots produces far more than
+// skillBackupKeep stamps. Bounding the backup root by count alone deleted the
+// backups this very transaction depends on for rollback.
+func TestCrossPlatformCoveragePruneKeepsCurrentRunBackups(t *testing.T) {
+	home := t.TempDir()
+	root := filepath.Join(home, skillBackupSubdir)
+	// Pre-existing backups from earlier runs are still prunable.
+	for i := 0; i < 3; i++ {
+		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("20250101-00000%d", i)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stamp := 0
+	testseam.Swap(t, &upgradeBackupStamp, func() string {
+		stamp++
+		return fmt.Sprintf("20260101-0000%02d", stamp)
+	})
+	total := skillBackupKeep + 3
+	backups := make([]string, 0, total)
+	for i := 0; i < total; i++ {
+		victim := filepath.Join(home, ".claude", "skills", fmt.Sprintf("dingtalk-s%d", i))
+		if err := os.MkdirAll(victim, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(victim, "SKILL.md"), []byte("payload"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		backup, err := backupAndRemoveSkillDir(home, victim)
+		if err != nil {
+			t.Fatalf("backupAndRemoveSkillDir(%d) error = %v", i, err)
+		}
+		backups = append(backups, backup)
+	}
+	for i, backup := range backups {
+		body, err := os.ReadFile(filepath.Join(backup, "SKILL.md"))
+		if err != nil || string(body) != "payload" {
+			t.Fatalf("backup %d unrecoverable: %q, %v", i, body, err)
+		}
+	}
+	for i := 0; i < 3; i++ {
+		stale := filepath.Join(root, fmt.Sprintf("20250101-00000%d", i))
+		if _, err := os.Stat(stale); !os.IsNotExist(err) {
+			t.Errorf("foreign backup %s must still be pruned, stat err=%v", stale, err)
+		}
+	}
+}
+
 // TestCrossPlatformCoveragePruneSkillBackupsEdges pins the backup retention:
 // oldest stamps beyond skillBackupKeep are pruned and a prune failure is
 // reported without aborting callers.
