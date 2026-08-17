@@ -36,9 +36,9 @@ var paramAliasCompleteCommands = map[string][]string{
 	"aitable +record-share-url":                {"aitable", "+record-share-url", "--base-id", "base-1", "--table-id", "table-1", "--record-ids", "record-1"},
 	"aitable +table-get":                       {"aitable", "+table-get", "--base-id", "base-1"},
 	"aitable +workflow-list":                   {"aitable", "+workflow-list", "--base-id", "base-1", "--limit", "7"},
-	"aitable attachment upload":                {"aitable", "attachment", "upload", "--base-id", "base-1", "--file-name", "fixture.txt", "--size", "7", "--yes"},
+	"aitable attachment upload":                {"aitable", "attachment", "upload", "--base-id", "base-1", "--file-name", "fixture.txt", "--size", "7"},
 	"aitable base list":                        {"aitable", "base", "list", "--cursor", "cursor-1", "--limit", "7"},
-	"aitable base update":                      {"aitable", "base", "update", "--base-id", "base-1", "--name", "Fixture Base", "--desc", "fixture description", "--yes"},
+	"aitable base update":                      {"aitable", "base", "update", "--base-id", "base-1", "--name", "Fixture Base", "--desc", "fixture description"},
 	"aitable field search-options":             {"aitable", "field", "search-options", "--base-id", "base-1", "--table-id", "table-1", "--field-id", "field-1", "--keyword", "fixture", "--limit", "7"},
 	"aitable record query":                     {"aitable", "record", "query", "--base-id", "base-1", "--table-id", "table-1", "--limit", "7"},
 	"aitable workflow get":                     {"aitable", "workflow", "get", "--base-id", "base-1", "--workflow-id", "workflow-1"},
@@ -383,16 +383,19 @@ var paramAliasNewDriveCases = []struct {
 	{command: "drive +upload", emitted: "file-id", canonical: "node"},
 }
 
-// paramAliasNewDriveConfirmationCases selects one newly reviewed alias for
-// every Drive command in the expansion whose declared runtime safety requires
-// confirmation. The full matrix below proves all spellings preserve the
-// confirmed payload; this smaller matrix proves aliases cannot cross the
-// confirmation boundary before any transport call is made.
-var paramAliasNewDriveConfirmationCases = []struct {
+// paramAliasNewConfirmationCases selects newly reviewed aliases for commands
+// whose declared runtime safety requires confirmation. The full matrix below
+// proves all spellings preserve the confirmed payload; this smaller matrix
+// proves aliases cannot cross the confirmation boundary before any transport
+// call is made.
+var paramAliasNewConfirmationCases = []struct {
 	command   string
 	emitted   string
 	canonical string
 }{
+	{command: "aitable workflow run", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable workflow run", emitted: "flow-id", canonical: "workflow-id"},
+	{command: "aitable workflow run", emitted: "table", canonical: "table-id"},
 	{command: "drive +delete", emitted: "file-id", canonical: "node"},
 	{command: "drive +publish-unset", emitted: "document-url", canonical: "node"},
 	{command: "drive +recycle-restore", emitted: "recycle-item-id", canonical: "id"},
@@ -660,13 +663,13 @@ func TestCrossPlatformCoverageNewDriveParamAliasesReachCanonicalEquivalentFinalP
 	}
 }
 
-func TestCrossPlatformCoverageNewDriveParamAliasesCannotBypassConfirmation(t *testing.T) {
-	for _, test := range paramAliasNewDriveConfirmationCases {
+func TestCrossPlatformCoverageNewParamAliasesCannotBypassConfirmation(t *testing.T) {
+	for _, test := range paramAliasNewConfirmationCases {
 		test := test
 		t.Run(test.command+"/"+test.emitted, func(t *testing.T) {
 			complete, ok := paramAliasCompleteCommand(test.command, test.canonical)
 			if !ok {
-				t.Fatal("reviewed Drive confirmation alias has no complete-command E2E template")
+				t.Fatal("reviewed confirmation alias has no complete-command E2E template")
 			}
 			aliasArgs, replacements := replaceLongFlag(complete, test.canonical, test.emitted)
 			if replacements != 1 {
@@ -680,7 +683,7 @@ func TestCrossPlatformCoverageNewDriveParamAliasesCannotBypassConfirmation(t *te
 			entry, exists := cli.LookupParamAlias(test.command)
 			target, active := entry.ResolveAlias(test.emitted)
 			if !exists || !active || target != test.canonical {
-				t.Fatalf("reviewed Drive alias --%s resolution = exists:%v active:%v target:%q, want --%s", test.emitted, exists, active, target, test.canonical)
+				t.Fatalf("reviewed confirmation alias --%s resolution = exists:%v active:%v target:%q, want --%s", test.emitted, exists, active, target, test.canonical)
 			}
 
 			caller := &paramAliasCaptureCaller{}
