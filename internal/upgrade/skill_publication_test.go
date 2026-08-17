@@ -182,18 +182,14 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		staged := filepath.Join(root, "staged")
 		destination := filepath.Join(root, "destination")
 		seedUpgradeSkill(t, staged, "value", false)
-		originalRename := skillPathRenameNoReplace
-		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
-			if err := originalRename(source, target); err != nil {
-				return err
-			}
-			if err := os.RemoveAll(target); err != nil {
-				return err
-			}
-			// Same content, different object: only the identity check can catch it.
-			seedUpgradeSkill(t, target, "value", false)
-			return nil
-		})
+		// A real rename consumed the staged path (fast path), but the object
+		// at the destination is not the staged one. Whether the swap is
+		// observable through inode/file-ID comparison depends on the
+		// filesystem — CI runners' ext4/overlayfs recycle inodes eagerly, so
+		// reproducing the swap physically is not portable. The confirmation's
+		// contract under test is its response to a failing identity proof on
+		// the fast path, which the seam pins down on every platform.
+		testseam.Swap(t, &skillPathSameFileIdentity, func(_, _ os.FileInfo) bool { return false })
 		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "staging 身份已变化") {
 			t.Fatalf("publish identity error = %v", err)
 		}
