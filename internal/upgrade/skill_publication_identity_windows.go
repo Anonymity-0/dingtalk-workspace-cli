@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+
+	"golang.org/x/sys/windows"
 )
 
-func skillPathFileIncarnation(info os.FileInfo) string {
+func skillPathFileIncarnationImpl(info os.FileInfo) string {
 	stat, ok := info.Sys().(*syscall.Win32FileAttributeData)
 	if !ok {
 		return fmt.Sprintf("unknown:%T", info.Sys())
@@ -16,13 +18,47 @@ func skillPathFileIncarnation(info os.FileInfo) string {
 	return fmt.Sprintf("%d:%d", stat.CreationTime.HighDateTime, stat.CreationTime.LowDateTime)
 }
 
+// skillPathSameFileIdentity returns false because os.FileInfo on Windows does
+// not expose the stable file ID (VolumeSerialNumber / FileIndex from
+// GetFileInformationByHandle), which is the only primitive that distinguishes
+// a recreated file from the original after NTFS file tunneling restores the
+// creation time. Callers must use skillPathIdentityProven, which compares file
+// IDs obtained via GetFileInformationByHandle.
 func skillPathSameFileIdentity(_, _ os.FileInfo) bool {
-	// MoveFile can surface different metadata identities for the same reparse
-	// point before and after rename, so Windows ownership relies on the
-	// separately checked creation-time incarnation plus the lexical fingerprint.
-	// That pair is strong evidence but not proof: NTFS file tunneling restores
-	// the original creation time when a same-named object is recreated in the
-	// same directory shortly afterwards, so a byte-identical concurrent
-	// replacement can still be attributed to this transaction.
-	return true
+	return false
+}
+
+// skillPathFileIdentityImpl queries the stable volume serial number and file
+// index via GetFileInformationByHandle. Unlike creation time (which NTFS file
+// tunneling can restore for a recreated same-named object), the file index
+// uniquely identifies the file on the volume for its lifetime.
+func skillPathFileIdentityImpl(path string) string {
+	p, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return ""
+	}
+	handle, err := windows.CreateFile(
+		p, windows.FILE_READ_ATTRIBUTES,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+		nil, windows.OPEN_EXISTING, windows.FILE_FLAG_BACKUP_SEMANTICS, 0,
+	)
+	if err != nil {
+		return ""
+	}
+	defer windows.CloseHandle(handle)
+	var info windows.ByHandleFileInformation
+	if err := windows.GetFileInformationByHandle(handle, &info); err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%d:%d:%d", info.VolumeSerialNumber, info.FileIndexHigh, info.FileIndexLow)
+}
+
+// skillPathIdentityProven is the real identity proof on Windows. An empty
+// expected value means the file ID could not be obtained at publish time, so
+// identity cannot be proven and the caller must refuse the auto-delete.
+func skillPathIdentityProven(_, _ os.FileInfo, expected, actual string) bool {
+	if expected == "" {
+		return false
+	}
+	return expected == actual
 }
