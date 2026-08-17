@@ -365,33 +365,32 @@ func TestRecruitListResultData(t *testing.T) {
 		t.Fatalf("terminal meta = %#v, err = %v", terminal, err)
 	}
 
-	wrapped, wrappedMeta, err := recruitListResultData(map[string]any{
-		"success": true,
-		"result": map[string]any{
-			"list":       []any{map[string]any{"jobId": "job-2", "name": "测试工程师"}},
-			"hasMore":    false,
-			"nextCursor": nil,
-			"totalCount": float64(1),
-		},
+	normalized, normalizedMeta, err := recruitListResultData(map[string]any{
+		"list":       []any{map[string]any{"jobId": "job-2", "name": "测试工程师"}},
+		"hasMore":    false,
+		"nextCursor": nil,
+		"totalCount": float64(1),
+		"success":    true,
+		"result":     map[string]any{"source": "business-payload"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	wrappedData := wrapped.(map[string]any)
-	jobs, ok := wrappedData["jobs"].([]any)
-	if !ok || len(jobs) != 1 || wrappedData["totalCount"] != float64(1) {
-		t.Fatalf("wrapped data = %#v", wrappedData)
+	normalizedData := normalized.(map[string]any)
+	jobs, ok := normalizedData["jobs"].([]any)
+	if !ok || len(jobs) != 1 || normalizedData["totalCount"] != float64(1) {
+		t.Fatalf("normalized data = %#v", normalizedData)
 	}
-	if _, exists := wrappedData["list"]; exists {
-		t.Fatalf("wrapped data retained Connector list field: %#v", wrappedData)
+	if _, exists := normalizedData["list"]; exists {
+		t.Fatalf("normalized data retained Connector list field: %#v", normalizedData)
 	}
-	if wrappedMeta.Count == nil || *wrappedMeta.Count != 1 || !wrappedMeta.Pagination.EndpointExhausted {
-		t.Fatalf("wrapped meta = %#v", wrappedMeta)
+	if normalizedData["success"] != true || !reflect.DeepEqual(
+		normalizedData["result"], map[string]any{"source": "business-payload"},
+	) {
+		t.Fatalf("business success/result fields were unwrapped: %#v", normalizedData)
 	}
-
-	if _, _, err := recruitListResultData(map[string]any{"success": true, "result": nil}); err == nil ||
-		!strings.Contains(err.Error(), "result 必须是 JSON 对象") {
-		t.Fatalf("nil result error = %v", err)
+	if normalizedMeta.Count == nil || *normalizedMeta.Count != 1 || !normalizedMeta.Pagination.EndpointExhausted {
+		t.Fatalf("normalized meta = %#v", normalizedMeta)
 	}
 }
 
@@ -531,8 +530,62 @@ func TestRecruitBusinessResultDataRejectsInvalidConnectorEnvelope(t *testing.T) 
 		{name: "invalid result", data: map[string]any{"success": true, "result": nil}, want: "result 必须是 JSON 对象"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := recruitBusinessResultData(test.data, recruitGetJobTool); err == nil || !strings.Contains(err.Error(), test.want) {
+			_, err := recruitBusinessResultData(test.data, recruitGetJobTool)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("error = %v, want %q", err, test.want)
+			}
+			var businessFailure *recruitBusinessFailure
+			isBusinessFailure := stderrors.As(err, &businessFailure)
+			wantBusinessFailure := strings.HasPrefix(test.name, "business failure")
+			if isBusinessFailure != wantBusinessFailure {
+				t.Fatalf("business failure classification = %t, want %t", isBusinessFailure, wantBusinessFailure)
+			}
+		})
+	}
+}
+
+func TestRecruitResultCallClassifiesBusinessAndMalformedFailures(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		text        string
+		wantSubtype string
+		wantMessage string
+		wantHint    bool
+	}{
+		{
+			name:        "business failure",
+			text:        `{"success":false,"message":"职位不存在","result":{}}`,
+			wantMessage: "职位不存在",
+		},
+		{
+			name:        "malformed envelope",
+			text:        `{"success":true}`,
+			wantSubtype: "invalid_response",
+			wantMessage: "同时包含 success 和 result",
+			wantHint:    true,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := withRecruitCaller(t)
+			caller.text = test.text
+			cmd := prepareRecruitTestCommand(newRecruitJobGetCommand())
+			result, err := recruitResultCall(cmd, recruitGetJobTool, map[string]any{"jobId": "job-1"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			envelope, err := output.EnvelopeFromResult(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if envelope.Outcome != output.OutcomeFailure || envelope.Error == nil {
+				t.Fatalf("envelope = %#v", envelope)
+			}
+			if envelope.Error.Type != "api" || envelope.Error.Subtype != test.wantSubtype ||
+				!strings.Contains(envelope.Error.Message, test.wantMessage) {
+				t.Fatalf("error = %#v", envelope.Error)
+			}
+			if (envelope.Error.Hint != "") != test.wantHint {
+				t.Fatalf("hint = %q, want present %t", envelope.Error.Hint, test.wantHint)
 			}
 		})
 	}

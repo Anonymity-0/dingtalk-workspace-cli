@@ -5,6 +5,7 @@ package helpers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -153,6 +154,12 @@ func recruitResultCall(cmd *cobra.Command, tool string, args map[string]any) (ou
 	}
 	clean, err := recruitBusinessResultData(data, tool)
 	if err != nil {
+		var businessFailure *recruitBusinessFailure
+		if errors.As(err, &businessFailure) {
+			return output.Failure(&output.ErrorInfo{
+				Type: "api", Message: businessFailure.Error(),
+			}), nil
+		}
 		return recruitInvalidResponse(err), nil
 	}
 	if tool != recruitListJobsTool {
@@ -163,6 +170,14 @@ func recruitResultCall(cmd *cobra.Command, tool string, args map[string]any) (ou
 		return recruitInvalidResponse(err), nil
 	}
 	return output.Success(listData, output.WithMeta(meta)), nil
+}
+
+type recruitBusinessFailure struct {
+	message string
+}
+
+func (e *recruitBusinessFailure) Error() string {
+	return e.message
 }
 
 func recruitBusinessResultData(data any, tool string) (map[string]any, error) {
@@ -187,7 +202,7 @@ func recruitBusinessResultData(data any, tool string) (map[string]any, error) {
 		if strings.TrimSpace(message) == "" {
 			message = "Connector 返回 success=false"
 		}
-		return nil, fmt.Errorf("%s 调用失败: %s", tool, message)
+		return nil, &recruitBusinessFailure{message: fmt.Sprintf("%s 调用失败: %s", tool, message)}
 	}
 	result, ok := resultValue.(map[string]any)
 	if !ok {
@@ -204,14 +219,13 @@ func recruitInvalidResponse(err error) output.CommandResult {
 }
 
 func recruitListResultData(data any) (any, *output.Meta, error) {
-	object, err := recruitBusinessResultData(data, recruitListJobsTool)
-	if err != nil {
-		return nil, nil, err
+	object, ok := data.(map[string]any)
+	if !ok {
+		return nil, nil, fmt.Errorf("%s 返回值必须是 JSON 对象", recruitListJobsTool)
 	}
-	// The recruit Connector returns the ATS service envelope unchanged:
-	// {success:true,result:{list:[...],hasMore:false,nextCursor:null}}.
-	// Keep accepting the historical flattened shape as well, but normalize the
-	// fixed Connector shape before enforcing the public CLI result contract.
+	// The Connector envelope has already been removed by recruitResultCall.
+	// Only normalize the list business payload here so fields named success or
+	// result inside that payload cannot be mistaken for another envelope.
 	hasMore, ok := object["hasMore"].(bool)
 	if !ok {
 		return nil, nil, fmt.Errorf("list_jobs 返回值缺少布尔字段 hasMore")
