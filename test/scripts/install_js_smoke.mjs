@@ -49,6 +49,10 @@
  *  17. multi backup failure  — restores every earlier successful backup.
  *  18. mono transaction failure — restores every managed multi Skill after
  *                                 later backup or mono publish failure.
+ *  19. copy publish no-replace  — mono/multi set publication refuses a
+ *                                 concurrently occupied destination (atomic
+ *                                 claim, no check-then-rename window) on
+ *                                 POSIX and simulated win32.
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
  * install.js itself shells out to). Skips cleanly on win32.
@@ -901,6 +905,113 @@ scenario("canonical link publication never clobbers or deletes concurrent user d
   }
 });
 
+scenario("mono and multi set publication never clobbers or deletes concurrent user data", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-copy-race-"));
+  try {
+    {
+      // Real no-replace property for the multi copy publisher: the destination
+      // is occupied by data this transaction never backed up (it is not a
+      // victim), so publication must refuse rather than rename over it. The
+      // claim (mkdir) is the existence check itself — a concurrent creator
+      // either loses the claim race or is never touched.
+      const home = path.join(tmp, "multi-home");
+      const source = path.join(tmp, "multi-source");
+      const base = path.join(home, ".cursor", "skills");
+      writeFile(path.join(source, "dingtalk-first", "SKILL.md"), "new first\n");
+      writeFile(path.join(source, "dingtalk-second", "SKILL.md"), "new second\n");
+      writeFile(path.join(base, "dingtalk-second", "concurrent-user-data.txt"), "must survive\n");
+      assert.throws(
+        () => publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-first", "dingtalk-second"], []),
+        /Skill publish destination already exists/,
+      );
+      assert.deepEqual(
+        fs.readdirSync(path.join(base, "dingtalk-second")),
+        ["concurrent-user-data.txt"],
+        "refused publication must not leave anything inside the occupied destination",
+      );
+      assert.equal(
+        fs.readFileSync(path.join(base, "dingtalk-second", "concurrent-user-data.txt"), "utf8"),
+        "must survive\n",
+      );
+      assert.ok(!fs.existsSync(path.join(base, "dingtalk-first")), "the earlier publication is rolled back");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-multi-set.tmp-")),
+        "refused publication cleans its staging root",
+      );
+    }
+
+    {
+      // Same contract for the mono publisher (canonical publish and the
+      // copy fallback both flow through it).
+      const home = path.join(tmp, "mono-home");
+      const source = path.join(tmp, "mono-source");
+      const base = path.join(home, ".agents", "skills");
+      writeFile(path.join(source, "SKILL.md"), "new mono\n");
+      writeFile(path.join(base, "dws", "concurrent-user-data.txt"), "must survive\n");
+      assert.throws(
+        () => publishManagedMonoSkillSetAtomically(home, source, base, []),
+        /Skill publish destination already exists/,
+      );
+      assert.deepEqual(fs.readdirSync(path.join(base, "dws")), ["concurrent-user-data.txt"]);
+      assert.equal(fs.readFileSync(path.join(base, "dws", "concurrent-user-data.txt"), "utf8"), "must survive\n");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-mono-set.tmp-")),
+        "refused publication cleans its staging root",
+      );
+    }
+
+    {
+      // Injected race: a concurrent creator occupies the destination the
+      // instant before the claim. The old check-then-rename code replaced it;
+      // the claim must now fail with EEXIST and leave the user object intact.
+      const home = path.join(tmp, "race-home");
+      const source = path.join(tmp, "race-source");
+      const base = path.join(home, ".zcode", "skills");
+      const secondDest = path.join(base, "dingtalk-second");
+      writeFile(path.join(source, "dingtalk-first", "SKILL.md"), "new first\n");
+      writeFile(path.join(source, "dingtalk-second", "SKILL.md"), "new second\n");
+      assert.throws(
+        () =>
+          publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-first", "dingtalk-second"], [], {
+            publishMkdirFn(target) {
+              if (target === secondDest) {
+                writeFile(path.join(target, "concurrent-user-data.txt"), "must survive\n");
+              }
+              fs.mkdirSync(target);
+            },
+          }),
+        /Skill publish destination already exists/,
+      );
+      assert.deepEqual(fs.readdirSync(secondDest), ["concurrent-user-data.txt"], "the concurrent object is neither replaced nor linked into");
+      assert.equal(fs.readFileSync(path.join(secondDest, "concurrent-user-data.txt"), "utf8"), "must survive\n");
+      assert.ok(!fs.existsSync(path.join(base, "dingtalk-first")), "the earlier publication is rolled back");
+    }
+
+    {
+      // The guarantee holds on the simulated Windows publisher path as well
+      // (libuv's rename replaces outright there, so the claim matters most).
+      const home = path.join(tmp, "win32-home");
+      const source = path.join(tmp, "win32-source");
+      const base = path.join(home, ".qoder", "skills");
+      writeFile(path.join(source, "dingtalk-first", "SKILL.md"), "new first\n");
+      writeFile(path.join(base, "dingtalk-first", "concurrent-user-data.txt"), "must survive\n");
+      withSimulatedWin32(() => {
+        assert.throws(
+          () => publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-first"], []),
+          /Skill publish destination already exists/,
+        );
+      });
+      assert.deepEqual(fs.readdirSync(path.join(base, "dingtalk-first")), ["concurrent-user-data.txt"]);
+      assert.equal(
+        fs.readFileSync(path.join(base, "dingtalk-first", "concurrent-user-data.txt"), "utf8"),
+        "must survive\n",
+      );
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 scenario("simulated win32 publishes junctions with absolute canonical targets", () => {
   // Temp roots are created before entering the simulated platform: os.tmpdir()
   // would otherwise resolve through Windows environment variables.
@@ -1080,7 +1191,10 @@ scenario("multi set publish failure restores the complete previous set", () => {
               ) {
                 throw crossDeviceError();
               }
-              if (src.includes(".dws-multi-set.tmp-") && path.basename(src) === "dingtalk-second") {
+              originalRename(src, dest);
+            },
+            publishRenameFn(src, dest) {
+              if (src.includes(".dws-multi-set.tmp-") && src.includes(`${path.sep}dingtalk-second${path.sep}`)) {
                 throw new Error("injected second publish failure");
               }
               originalRename(src, dest);
@@ -1171,11 +1285,10 @@ for (const failureKind of ["backup", "publish"]) {
               ) {
                 throw crossDeviceError();
               }
-              if (
-                failureKind === "publish" &&
-                src.includes(".dws-mono-set.tmp-") &&
-                path.basename(src) === "dws"
-              ) {
+              originalRename(src, target);
+            },
+            publishRenameFn(src, target) {
+              if (failureKind === "publish" && src.includes(".dws-mono-set.tmp-")) {
                 throw new Error("injected mono publish failure");
               }
               originalRename(src, target);

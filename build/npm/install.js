@@ -856,6 +856,64 @@ function rollbackPublishedSkillPath(publication, options = {}) {
   fs.rmSync(quarantineRoot, { recursive: true, force: true });
 }
 
+// Publish a staged Skill directory with a truly atomic no-replace claim.
+// fs.mkdirSync fails with EEXIST when anything occupies the destination, so
+// the claim itself is the existence check — there is no check-then-rename
+// window a concurrent file, symlink, or empty directory could slip through
+// (fs.renameSync replaces the destination outright on every platform,
+// including Windows where libuv passes MOVEFILE_REPLACE_EXISTING). Children
+// then move into the claimed directory one by one; each child rename targets
+// a path inside a directory this transaction owns, so no step can replace a
+// foreign object. The publication identity is the claim's: it is captured
+// after the claim succeeds and re-verified by the caller once the move
+// completes. On a failed child move the relocated children are moved back and
+// only the (now empty) claim is removed, so the destination returns to the
+// foreign object or to nothing — never to a partial publication.
+function publishSkillDirNoReplace(staged, destination, options = {}) {
+  const mkdirFn = options.publishMkdirFn || ((target) => fs.mkdirSync(target, { mode: 0o700 }));
+  const renameFn = options.publishRenameFn || fs.renameSync;
+  const chmodFn = options.publishChmodFn || fs.chmodSync;
+  const sourceStat = fs.lstatSync(staged);
+  try {
+    mkdirFn(destination);
+  } catch (err) {
+    if (err && err.code === "EEXIST") {
+      throw Object.assign(new Error(`Skill publish destination already exists: ${destination}`), { code: "EEXIST" });
+    }
+    throw err;
+  }
+  const claimStat = fs.lstatSync(destination, { bigint: true });
+  const publication = {
+    destination,
+    device: claimStat.dev.toString(),
+    inode: claimStat.ino.toString(),
+    fingerprint: skillPathFingerprint(staged),
+  };
+  const moved = [];
+  try {
+    for (const name of fs.readdirSync(staged)) {
+      renameFn(path.join(staged, name), path.join(destination, name));
+      moved.push(name);
+    }
+    chmodFn(destination, sourceStat.mode & 0o7777);
+  } catch (err) {
+    for (let i = moved.length - 1; i >= 0; i -= 1) {
+      try {
+        renameFn(path.join(destination, moved[i]), path.join(staged, moved[i]));
+      } catch (_) {
+        // Best effort: the claim cleanup below reports whatever is left.
+      }
+    }
+    try {
+      fs.rmdirSync(destination);
+    } catch (cleanupErr) {
+      throw new Error(`${err.message}; failed to remove the claimed Skill destination ${destination}: ${cleanupErr.message}`);
+    }
+    throw err;
+  }
+  return publication;
+}
+
 function publishCanonicalLinkNoReplace(staged, destination, options = {}) {
   const publication = captureSkillPublication(staged, destination);
   // No-replace is a hard property of this publisher, so it is checked before
@@ -999,7 +1057,6 @@ function publishManagedMultiSkillSetAtomically(
   options = {},
 ) {
   const copyFn = options.copyFn || copyChildren;
-  const renameFn = options.renameFn || fs.renameSync;
   const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
   const rollbackRenameFn = options.rollbackRenameFn || fs.renameSync;
   const moveOptions = skillMoveOptions(options);
@@ -1050,9 +1107,7 @@ function publishManagedMultiSkillSetAtomically(
     }
 
     for (const item of staged) {
-      const publication = captureSkillPublication(item.staged, item.dest);
-      if (skillPathExistsLexically(item.dest)) throw new Error(`Skill publish destination already exists: ${item.dest}`);
-      renameFn(item.staged, item.dest);
+      const publication = publishSkillDirNoReplace(item.staged, item.dest, options);
       if (!skillPublicationMatches(item.dest, publication)) throw new Error(`published Skill identity changed before confirmation: ${item.dest}`);
       published.push(publication);
     }
@@ -1079,7 +1134,6 @@ function publishManagedMonoSkillSetAtomically(
   options = {},
 ) {
   const copyFn = options.copyFn || copyChildren;
-  const renameFn = options.renameFn || fs.renameSync;
   const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
   const rollbackRenameFn = options.rollbackRenameFn || fs.renameSync;
   const moveOptions = skillMoveOptions(options);
@@ -1126,9 +1180,7 @@ function publishManagedMonoSkillSetAtomically(
       backupAndRemoveSkillDir(homeDir, victim, backups, moveOptions);
     }
 
-    const publication = captureSkillPublication(stagedDir, destDir);
-    if (skillPathExistsLexically(destDir)) throw new Error(`Skill publish destination already exists: ${destDir}`);
-    renameFn(stagedDir, destDir);
+    const publication = publishSkillDirNoReplace(stagedDir, destDir, options);
     if (!skillPublicationMatches(destDir, publication)) throw new Error(`published Skill identity changed before confirmation: ${destDir}`);
     published.push(publication);
   } catch (err) {
