@@ -190,12 +190,34 @@ backup_skill_dir() {
 # YYYYmmdd-HHMMSS, so the oldest sort first. Best-effort: a removal failure is
 # reported and never fatal.
 SKILL_BACKUP_KEEP=5
+
+# is_skill_backup_stamp accepts only directory names DWS itself writes: UTC
+# YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry in
+# the backup root is foreign (user data, unrelated tooling) and is preserved
+# so pruning can never remove a directory it cannot prove DWS created.
+is_skill_backup_stamp() {
+  case "$1" in
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9])
+      return 0 ;;
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-*)
+      # base stamp is YYYYMMDD-HHMMSS (15 chars) + suffix dash (16th); strip
+      # those 16 chars and require the remainder to be all digits.
+      _isbs_suffix="${1#????????????????}"
+      case "$_isbs_suffix" in
+        ""|*[!0-9]*) return 1 ;;
+      esac
+      return 0 ;;
+  esac
+  return 1
+}
+
 prune_skill_backups() {
   prune_root="$HOME/.dws/skill-backups"
   [ -d "$prune_root" ] || return 0
   prune_total=0
   for prune_entry in "$prune_root"/*; do
     [ -d "$prune_entry" ] || continue
+    is_skill_backup_stamp "${prune_entry##*/}" || continue
     prune_total=$((prune_total + 1))
   done
   [ "$prune_total" -gt "$SKILL_BACKUP_KEEP" ] || return 0
@@ -203,6 +225,7 @@ prune_skill_backups() {
   prune_seen=0
   for prune_entry in "$prune_root"/*; do
     [ -d "$prune_entry" ] || continue
+    is_skill_backup_stamp "${prune_entry##*/}" || continue
     prune_seen=$((prune_seen + 1))
     [ "$prune_seen" -le "$prune_drop" ] || break
     rm -rf "$prune_entry" || printf '  ⚠️  旧 Skill 备份清理失败: %s\n' "$prune_entry" >&2

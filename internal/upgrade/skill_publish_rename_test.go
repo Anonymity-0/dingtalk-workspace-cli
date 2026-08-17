@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
@@ -15,7 +14,7 @@ import (
 // Those installs must still publish, and must still refuse to clobber an
 // occupied destination.
 func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
-	unsupported := []error{syscall.EINVAL, syscall.ENOSYS, errNoReplaceRenameUnsupported}
+	unsupported := testNoReplaceUnsupportedErrors()
 
 	t.Run("publishes when the filesystem rejects the flag", func(t *testing.T) {
 		for _, unsupportedErr := range unsupported {
@@ -47,7 +46,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return syscall.EINVAL })
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
 		err := renameSkillPathNoReplace(source, destination)
 		if !errors.Is(err, os.ErrExist) {
 			t.Fatalf("occupied destination must report ErrExist, got %v", err)
@@ -80,8 +79,9 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 	})
 
 	t.Run("cross-device errors still reach the copy fallback", func(t *testing.T) {
-		if isNoReplaceRenameUnsupported(syscall.EXDEV) {
-			t.Fatal("EXDEV must not be treated as an unsupported flag")
+		crossDevice := testCrossDeviceError()
+		if isNoReplaceRenameUnsupported(crossDevice) {
+			t.Fatal("cross-device error must not be treated as an unsupported flag")
 		}
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
@@ -95,7 +95,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		original := skillPathRenameNoReplaceAtomic
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(from, to string) error {
 			if from == source {
-				return syscall.EXDEV
+				return crossDevice
 			}
 			return original(from, to)
 		})

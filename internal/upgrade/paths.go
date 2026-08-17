@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -383,9 +384,22 @@ func buildUpgradeProvenanceRecords(root string, names []string, version string) 
 // backups are kept.
 const skillBackupKeep = 5
 
+// skillBackupStampRegexp matches only directory names DWS itself writes:
+// UTC YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry
+// in the backup root is foreign (user data, unrelated tooling) and must be
+// left untouched, so pruning is restricted to names it can prove DWS created.
+var skillBackupStampRegexp = regexp.MustCompile(`^[0-9]{8}-[0-9]{6}(-[0-9]+)?$`)
+
+// isSkillBackupStamp reports whether name is a DWS-created backup stamp.
+func isSkillBackupStamp(name string) bool {
+	return skillBackupStampRegexp.MatchString(name)
+}
+
 // pruneSkillBackups removes the oldest backup directories when more than
-// skillBackupKeep remain. Best-effort: a removal failure never aborts, but
-// pruning failures are reported so callers can warn the user.
+// skillBackupKeep remain. Only directories whose names match the DWS backup
+// stamp format are candidates; unknown directories are preserved. Best-effort:
+// a removal failure never aborts, but pruning failures are reported so
+// callers can warn the user.
 func pruneSkillBackups(homeDir string) error {
 	root := filepath.Join(homeDir, skillBackupSubdir)
 	entries, err := upgradeReadDir(root)
@@ -397,7 +411,7 @@ func pruneSkillBackups(homeDir string) error {
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if e.IsDir() {
+		if e.IsDir() && isSkillBackupStamp(e.Name()) {
 			names = append(names, e.Name())
 		}
 	}

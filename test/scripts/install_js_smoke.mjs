@@ -44,9 +44,10 @@
  *                             guard, exercised by swapping process.platform
  *                             instead of requiring a Windows host.
  *  14. backup retention     — ~/.dws/skill-backups keeps the newest 5 stamps.
- *  15. multi publish failure — restores the complete previous Skill set.
- *  16. multi backup failure  — restores every earlier successful backup.
- *  17. mono transaction failure — restores every managed multi Skill after
+ *  15. unknown preservation — prune never removes non-DWS directories in skill-backups.
+ *  16. multi publish failure — restores the complete previous Skill set.
+ *  17. multi backup failure  — restores every earlier successful backup.
+ *  18. mono transaction failure — restores every managed multi Skill after
  *                                 later backup or mono publish failure.
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
@@ -80,6 +81,8 @@ const {
   UPSTREAM_AGENTS,
   resolvedAgentTargets,
   agentTargetDetected,
+  isSkillBackupStamp,
+  pruneSkillBackups,
   backupAndRemoveSkillDir,
   movePathRecoverablySync,
   publishCacheAtomically,
@@ -998,6 +1001,49 @@ scenario("skill backups stay bounded to the newest five stamps", () => {
     assert.ok(stamps.includes("20260101-000004"), "the newest kept stamps are retained");
     assert.equal(path.basename(backup), ".codex-skills-dingtalk-chat");
     assert.equal(fs.readFileSync(path.join(backup, "SKILL.md"), "utf8"), "old codex copy\n");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("prune preserves unknown directories in skill-backups", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-prune-unknown-"));
+  const home = path.join(tmp, "home");
+  const backupRoot = path.join(home, ".dws", "skill-backups");
+  try {
+    for (const stamp of [
+      "20260101-000001", "20260101-000002", "20260101-000003",
+      "20260101-000004", "20260101-000005", "20260101-000006", "20260101-000007",
+    ]) {
+      writeFile(path.join(backupRoot, stamp, "placeholder", "SKILL.md"), `${stamp}\n`);
+    }
+    const unknowns = [
+      "user-personal-backup",
+      "20260101-00000",      // too few digits in the time part
+      "20260101-000000-abc", // non-numeric suffix
+      "notes",
+      "20260101",            // missing time portion
+    ];
+    for (const name of unknowns) {
+      writeFile(path.join(backupRoot, name, "marker.txt"), `unknown:${name}\n`);
+    }
+
+    pruneSkillBackups(home);
+
+    const remaining = fs.readdirSync(backupRoot).sort();
+    const stamped = remaining.filter((n) => isSkillBackupStamp(n));
+    assert.equal(stamped.length, 5, `stamped backups = ${stamped.length}, want 5`);
+    assert.ok(!stamped.includes("20260101-000001"), "oldest stamps pruned first");
+    assert.ok(!stamped.includes("20260101-000002"), "second-oldest pruned");
+    assert.ok(stamped.includes("20260101-000005"), "newest kept stamps retained");
+    for (const name of unknowns) {
+      assert.ok(remaining.includes(name), `unknown directory ${name} must survive pruning`);
+      assert.equal(
+        fs.readFileSync(path.join(backupRoot, name, "marker.txt"), "utf8"),
+        `unknown:${name}\n`,
+        `unknown directory ${name} contents must be intact`,
+      );
+    }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
