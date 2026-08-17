@@ -90,37 +90,9 @@ var EventList = shortcut.Shortcut{
 		`dws calendar +agenda --start "2026-03-10T00:00:00+08:00" --end "2026-03-31T23:59:59+08:00" --limit 50`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		params := map[string]any{}
-		now := time.Now()
-		if rt.Changed("start") {
-			ms, err := parseMillis("start", rt.Str("start"))
-			if err != nil {
-				return err
-			}
-			params["startTime"] = ms
-		} else {
-			params["startTime"] = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).UnixMilli()
-		}
-		if rt.Changed("end") {
-			ms, err := parseMillis("end", rt.Str("end"))
-			if err != nil {
-				return err
-			}
-			params["endTime"] = ms
-		} else {
-			params["endTime"] = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location()).UnixMilli()
-		}
-		if rt.Changed("calendar-id") {
-			params["calendarId"] = rt.Str("calendar-id")
-		}
-		if rt.Changed("cursor") {
-			params["cursor"] = rt.Str("cursor")
-		}
-		if rt.Changed("limit") {
-			params["limit"] = rt.Int("limit")
-		}
-		if params["endTime"].(int64) <= params["startTime"].(int64) {
-			return fmt.Errorf("--end 必须晚于 --start")
+		params, err := calendarAgendaParams(rt, time.Now())
+		if err != nil {
+			return err
 		}
 		data, err := rt.CallMCPData("calendar", "list_calendar_events", params)
 		if err != nil {
@@ -133,6 +105,45 @@ var EventList = shortcut.Shortcut{
 		out := map[string]any{"count": len(events), "events": events}
 		return outputCalendarPage(rt, out, page)
 	},
+}
+
+// calendarAgendaParams is the explicit adapter from the published composite
+// Shortcut properties (start/end) to list_calendar_events RPC properties
+// (startTime/endTime). The public Schema property names predate this adapter
+// and remain stable for backwards compatibility.
+func calendarAgendaParams(rt *shortcut.RuntimeContext, now time.Time) (map[string]any, error) {
+	params := map[string]any{}
+	if rt.Changed("start") {
+		ms, err := parseMillis("start", rt.Str("start"))
+		if err != nil {
+			return nil, err
+		}
+		params["startTime"] = ms
+	} else {
+		params["startTime"] = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).UnixMilli()
+	}
+	if rt.Changed("end") {
+		ms, err := parseMillis("end", rt.Str("end"))
+		if err != nil {
+			return nil, err
+		}
+		params["endTime"] = ms
+	} else {
+		params["endTime"] = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location()).UnixMilli()
+	}
+	if rt.Changed("calendar-id") {
+		params["calendarId"] = rt.Str("calendar-id")
+	}
+	if rt.Changed("cursor") {
+		params["cursor"] = rt.Str("cursor")
+	}
+	if rt.Changed("limit") {
+		params["limit"] = rt.Int("limit")
+	}
+	if params["endTime"].(int64) <= params["startTime"].(int64) {
+		return nil, fmt.Errorf("--end 必须晚于 --start")
+	}
+	return params, nil
 }
 
 // eventListProject reshapes the raw list_calendar_events response into a clean,
@@ -274,7 +285,7 @@ func attendeeListProject(data map[string]any) ([]map[string]any, error) {
 		"userId":         {"userId", "user_id", "id", "staffId", "staff_id", "unionId", "union_id"},
 		"responseStatus": {"responseStatus", "response_status", "status", "attendeeStatus", "attendee_status", "responseType", "response"},
 		"self":           {"self"},
-	}, "displayName")
+	}, "displayName", "userId")
 }
 
 // attendeeListContainer locates the participant slice across candidate wrapper

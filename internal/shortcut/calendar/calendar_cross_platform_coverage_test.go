@@ -10,6 +10,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
@@ -206,9 +207,45 @@ func TestCrossPlatformCoverageCalendarRoomFindPreservesPublishedFlags(t *testing
 	if len(invalid.history) != 0 {
 		t.Fatalf("invalid input made calls: %v", invalid.history)
 	}
+
+	fixedNow := time.Date(2026, time.August, 17, 12, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60))
+	defaultParams, err := calendarAgendaParams(calendarRuntimeForTest(t, EventList, nil), fixedNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if defaultParams["startTime"] != time.Date(2026, time.August, 17, 0, 0, 0, 0, fixedNow.Location()).UnixMilli() ||
+		defaultParams["endTime"] != time.Date(2026, time.August, 17, 23, 59, 59, 0, fixedNow.Location()).UnixMilli() {
+		t.Fatalf("agenda default adapter arguments=%#v", defaultParams)
+	}
+
+	allParams, err := calendarAgendaParams(calendarRuntimeForTest(t, EventList, map[string]string{
+		"start":       calendarCoverageStart,
+		"end":         calendarCoverageEnd,
+		"calendar-id": "primary",
+		"cursor":      "cursor-1",
+		"limit":       "7",
+	}), fixedNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if allParams["calendarId"] != "primary" || allParams["cursor"] != "cursor-1" || allParams["limit"] != 7 {
+		t.Fatalf("agenda optional adapter arguments=%#v", allParams)
+	}
+
+	for name, values := range map[string]map[string]string{
+		"invalid-start": {"start": "bad"},
+		"invalid-end":   {"end": "bad"},
+		"reversed":      {"start": calendarCoverageEnd, "end": calendarCoverageStart},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := calendarAgendaParams(calendarRuntimeForTest(t, EventList, values), fixedNow); err == nil {
+				t.Fatal("invalid agenda adapter input was accepted")
+			}
+		})
+	}
 }
 
-func TestCrossPlatformCoverageCalendarAgendaPreservesPublishedSchema(t *testing.T) {
+func TestCrossPlatformCoverageCalendarAgendaSchemaUsesExplicitRuntimeAdapter(t *testing.T) {
 	properties := make(map[string]string, len(EventList.Contract.Parameters))
 	for _, parameter := range EventList.Contract.Parameters {
 		properties[parameter.Name] = parameter.Property
@@ -225,7 +262,10 @@ func TestCrossPlatformCoverageCalendarAgendaPreservesPublishedSchema(t *testing.
 	caller := &calendarCoverageCaller{responses: map[string][]string{
 		"list_calendar_events": {`{"success":true,"result":{"events":[],"hasMore":false}}`},
 	}}
-	if err := runCalendarCoverage(t, EventList, caller); err != nil {
+	if err := runCalendarCoverage(t, EventList, caller,
+		"--start", calendarCoverageStart,
+		"--end", calendarCoverageEnd,
+	); err != nil {
 		t.Fatal(err)
 	}
 	if len(caller.arguments) != 1 {
@@ -234,6 +274,23 @@ func TestCrossPlatformCoverageCalendarAgendaPreservesPublishedSchema(t *testing.
 	if _, ok := caller.arguments[0]["limit"]; ok {
 		t.Fatalf("unset limit unexpectedly sent: %#v", caller.arguments[0])
 	}
+	start, err := parseMillis("start", calendarCoverageStart)
+	if err != nil {
+		t.Fatal(err)
+	}
+	end, err := parseMillis("end", calendarCoverageEnd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if caller.arguments[0]["startTime"] != start || caller.arguments[0]["endTime"] != end {
+		t.Fatalf("agenda adapter arguments=%#v, published properties=%#v", caller.arguments[0], properties)
+	}
+	if _, leaked := caller.arguments[0][properties["start"]]; leaked {
+		t.Fatalf("published composite property leaked into RPC arguments: %#v", caller.arguments[0])
+	}
+	if _, leaked := caller.arguments[0][properties["end"]]; leaked {
+		t.Fatalf("published composite property leaked into RPC arguments: %#v", caller.arguments[0])
+	}
 
 	invalid := &calendarCoverageCaller{responses: map[string][]string{}}
 	if err := runCalendarCoverage(t, EventList, invalid, "--limit", "101"); err == nil || !strings.Contains(err.Error(), "1") {
@@ -241,5 +298,32 @@ func TestCrossPlatformCoverageCalendarAgendaPreservesPublishedSchema(t *testing.
 	}
 	if len(invalid.history) != 0 {
 		t.Fatalf("invalid input made calls: %v", invalid.history)
+	}
+}
+
+func TestCrossPlatformCoverageCalendarAttendeeProjectionAcceptsStableUserID(t *testing.T) {
+	attendees, err := attendeeListProject(map[string]any{
+		"success": true,
+		"result": map[string]any{
+			"attendees": []any{map[string]any{
+				"userId":         "user-1",
+				"responseStatus": "accepted",
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("userId-only attendee rejected: %v", err)
+	}
+	if len(attendees) != 1 || attendees[0]["userId"] != "user-1" {
+		t.Fatalf("attendees=%#v", attendees)
+	}
+
+	if _, err := attendeeListProject(map[string]any{
+		"success": true,
+		"result": map[string]any{
+			"attendees": []any{map[string]any{"responseStatus": "accepted"}},
+		},
+	}); err == nil {
+		t.Fatal("attendee without displayName or userId was accepted")
 	}
 }
