@@ -52,6 +52,8 @@ func (c *paramAliasCaptureCaller) paramAliasResponseForTool(tool string) string 
 	switch tool {
 	case "list_calendar_events":
 		return `{"result":{"events":[]}}`
+	case "query_records":
+		return `{"success":true,"status":"success","error":{},"data":{}}`
 	case "search_mail_users":
 		return `{"users":[{"name":"Fixture User","email":"fixture@example.com","id":"fixture-user"}]}`
 	case "search_dept_by_keyword":
@@ -63,7 +65,7 @@ func (c *paramAliasCaptureCaller) paramAliasResponseForTool(tool string) string 
 	case "list_doc_versions":
 		return `{"result":{"items":[{"version":3}]}}`
 	case "revert_doc_version":
-		return `{"version":3}`
+		return `{"revertedToVersion":3}`
 	case "search_doc_templates":
 		return `{"result":[{"templateId":"fixture-template-id"}]}`
 	case "create_document":
@@ -479,7 +481,11 @@ func TestCrossPlatformCoverageChatReactionConversationAliasesReachCanonicalPaylo
 					if err != nil {
 						t.Fatalf("alias execution failed: %v", err)
 					}
-					if ctx == nil || len(ctx.Corrections) != 1 || ctx.Corrections[0].Original != "--"+alias || ctx.Corrections[0].Corrected != "--conversation-id" {
+					if alias == "open-conversation-id" {
+						if ctx == nil || len(ctx.Corrections) != 0 {
+							t.Fatalf("alias corrections = %#v", ctx)
+						}
+					} else if ctx == nil || len(ctx.Corrections) != 1 || ctx.Corrections[0].Original != "--"+alias || ctx.Corrections[0].Corrected != "--conversation-id" {
 						t.Fatalf("alias corrections = %#v", ctx)
 					}
 					if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
