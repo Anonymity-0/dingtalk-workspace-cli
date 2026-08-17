@@ -85,6 +85,41 @@ func TestCrossPlatformCoverageStopPrefersGracefulIPC(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageStopDoesNotSignalUnverifiedReusedPID(t *testing.T) {
+	const pid = 4242
+	testseam.Swap(t, &stopReadHolderPID, func(string) int { return pid })
+	testseam.Swap(t, &stopAlive, func(int) bool { return true })
+	proc, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &stopFindProcess, func(int) (*os.Process, error) { return proc, nil })
+	testseam.Swap(t, &stopRequest, func(string) error { return errors.New("stale endpoint") })
+	testseam.Swap(t, &stopValidateHolderOwner, func(path string, gotPID int) (bool, error) {
+		if path != LockPath("test-workdir") || gotPID != pid {
+			t.Fatalf("ownership check path=%q pid=%d", path, gotPID)
+		}
+		return false, nil
+	})
+	signals := 0
+	testseam.Swap(t, &stopSignalProcess, func(*os.Process, os.Signal) error {
+		signals++
+		return nil
+	})
+
+	err = Stop(StopConfig{
+		WorkDir:     "test-workdir",
+		IPCEndpoint: "stale-endpoint",
+		Timeout:     time.Millisecond,
+	})
+	if !errors.Is(err, ErrOwnerUnverified) {
+		t.Fatalf("Stop() error = %v, want ErrOwnerUnverified", err)
+	}
+	if signals != 0 {
+		t.Fatalf("unverified reused PID received %d signals", signals)
+	}
+}
+
 func TestCrossPlatformCoverageRequestBusStopProtocol(t *testing.T) {
 	dir := shortTempDir(t)
 	endpoint := dwsevent.IPCEndpoint(
@@ -206,6 +241,7 @@ func TestStop_SignalsLiveProcess(t *testing.T) {
 		}
 	}()
 	pid := cmd.Process.Pid
+	testseam.Swap(t, &stopValidateHolderOwner, func(string, int) (bool, error) { return true, nil })
 
 	// Reap the child in background so Wait doesn't leave a zombie.
 	waited := make(chan error, 1)
@@ -254,6 +290,7 @@ func TestStop_TimeoutWhenChildIgnoresSignal(t *testing.T) {
 		_, _ = cmd.Process.Wait()
 	}()
 	pid := cmd.Process.Pid
+	testseam.Swap(t, &stopValidateHolderOwner, func(string, int) (bool, error) { return true, nil })
 
 	if err := os.WriteFile(LockPath(dir), []byte(strconv.Itoa(pid)+"\n"), 0o600); err != nil {
 		t.Fatal(err)

@@ -112,6 +112,57 @@ func TestReadHolderPID_MalformedReturnsZero(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageValidateHolderOwnershipHeldLock(t *testing.T) {
+	path := filepath.Join(t.TempDir(), LockFileName)
+	held, err := busTryAcquire(path)
+	if err != nil {
+		t.Fatalf("hold lock: %v", err)
+	}
+	defer held.Close()
+	if err := truncateAndWritePID(held.File(), os.Getpid()); err != nil {
+		t.Fatalf("write holder PID: %v", err)
+	}
+
+	owned, err := ValidateHolderOwnership(path, os.Getpid())
+	if err != nil {
+		t.Fatalf("ValidateHolderOwnership: %v", err)
+	}
+	if !owned {
+		t.Fatal("held lock was not attributed to its recorded PID")
+	}
+}
+
+func TestCrossPlatformCoverageValidateHolderOwnershipClearsReusedPID(t *testing.T) {
+	path := filepath.Join(t.TempDir(), LockFileName)
+	// The current PID is alive but deliberately does not hold this lock. This
+	// models a stale daemon PID that the OS has reassigned to another process.
+	if err := os.WriteFile(path, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0o600); err != nil {
+		t.Fatalf("write stale PID: %v", err)
+	}
+
+	owned, err := ValidateHolderOwnership(path, os.Getpid())
+	if err != nil {
+		t.Fatalf("ValidateHolderOwnership: %v", err)
+	}
+	if owned {
+		t.Fatal("live reused PID without the bus lock was accepted as owner")
+	}
+	if got := ReadHolderPID(path); got != 0 {
+		t.Fatalf("stale PID after validation = %d, want cleared", got)
+	}
+}
+
+func TestCrossPlatformCoverageValidateHolderOwnershipRejectsMismatch(t *testing.T) {
+	path := filepath.Join(t.TempDir(), LockFileName)
+	if err := os.WriteFile(path, []byte("123\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	owned, err := ValidateHolderOwnership(path, 456)
+	if err != nil || owned {
+		t.Fatalf("ValidateHolderOwnership mismatch = %v, %v", owned, err)
+	}
+}
+
 func TestAcquire_AfterReleaseReclaimable(t *testing.T) {
 	path := filepath.Join(t.TempDir(), LockFileName)
 	l1, err := Acquire(path)

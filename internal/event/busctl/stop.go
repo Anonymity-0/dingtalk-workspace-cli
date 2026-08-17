@@ -35,13 +35,19 @@ const DefaultStopTimeout = 5 * time.Second
 // distinguish "nothing to stop" from "failed to stop".
 var ErrNotRunning = errors.New("busctl: bus is not running")
 
+// ErrOwnerUnverified indicates the PID from bus.lock is alive but no longer
+// owns that lock. Stop refuses to send a process-level signal in this state
+// because the operating system may have reused the stale PID.
+var ErrOwnerUnverified = errors.New("busctl: bus process ownership could not be verified")
+
 var (
-	stopReadHolderPID = bus.ReadHolderPID
-	stopAlive         = process.Alive
-	stopFindProcess   = os.FindProcess
-	stopSignalProcess = func(proc *os.Process, signal os.Signal) error { return proc.Signal(signal) }
-	stopDial          = transport.Dial
-	stopRequest       = requestBusStop
+	stopReadHolderPID       = bus.ReadHolderPID
+	stopValidateHolderOwner = bus.ValidateHolderOwnership
+	stopAlive               = process.Alive
+	stopFindProcess         = os.FindProcess
+	stopSignalProcess       = func(proc *os.Process, signal os.Signal) error { return proc.Signal(signal) }
+	stopDial                = transport.Dial
+	stopRequest             = requestBusStop
 )
 
 // StopConfig identifies the target bus and tunes timing.
@@ -91,6 +97,14 @@ func Stop(cfg StopConfig) error {
 		if err := stopRequest(cfg.IPCEndpoint); err == nil && waitForBusExit(pid, cfg.Timeout) {
 			return nil
 		}
+	}
+
+	owner, err := stopValidateHolderOwner(LockPath(cfg.WorkDir), pid)
+	if err != nil {
+		return fmt.Errorf("busctl: verify bus pid=%d ownership: %w", pid, err)
+	}
+	if !owner {
+		return fmt.Errorf("%w: pid=%d does not own %s; stale PID was not signalled", ErrOwnerUnverified, pid, LockPath(cfg.WorkDir))
 	}
 
 	if err := stopSignalProcess(proc, stopSignal()); err != nil {
