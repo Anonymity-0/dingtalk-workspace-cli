@@ -744,7 +744,11 @@ $script:SkillBackupRootsThisRun = [System.Collections.Generic.HashSet[string]]::
 function Remove-OldSkillBackups {
     $root = Join-Path $HOME ".dws\skill-backups"
     if (!(Test-Path -LiteralPath $root -PathType Container)) { return }
+    # Only directories whose names match the DWS backup stamp format (UTC
+    # yyyyMMdd-HHmmss, optional -N collision suffix) are candidates; any
+    # other entry is foreign data and is preserved.
     $dirs = @(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' } |
         Sort-Object -Property Name)
     $excess = $dirs.Count - $SkillBackupKeep
     foreach ($dir in $dirs) {

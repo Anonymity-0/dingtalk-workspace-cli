@@ -163,9 +163,21 @@ const SKILL_BACKUP_KEEP = 5;
 // transaction still needs them to roll back.
 const currentRunBackupRoots = new Set();
 
+// skillBackupStampPattern matches only directory names DWS itself writes:
+// UTC YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry
+// in the backup root is foreign (user data, unrelated tooling) and must be
+// left untouched, so pruning is restricted to names it can prove DWS created.
+const skillBackupStampPattern = /^[0-9]{8}-[0-9]{6}(-[0-9]+)?$/;
+
+function isSkillBackupStamp(name) {
+  return skillBackupStampPattern.test(name);
+}
+
 // pruneSkillBackups removes the oldest stamped backup directories once more
-// than SKILL_BACKUP_KEEP remain. Stamps sort lexicographically in
-// chronological order (`YYYYmmdd-HHMMSS`), so name order is age order.
+// than SKILL_BACKUP_KEEP remain. Only directories whose names match the DWS
+// backup stamp format are candidates; unknown directories are preserved.
+// Stamps sort lexicographically in chronological order (`YYYYmmdd-HHMMSS`),
+// so name order is age order.
 function pruneSkillBackups(homeDir) {
   const root = path.join(homeDir, ".dws", "skill-backups");
   let entries;
@@ -176,7 +188,7 @@ function pruneSkillBackups(homeDir) {
     throw err;
   }
   const names = entries
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && isSkillBackupStamp(entry.name))
     .map((entry) => entry.name)
     .sort((a, b) => Buffer.from(a).compare(Buffer.from(b)));
   let excess = names.length - SKILL_BACKUP_KEEP;
@@ -1401,6 +1413,8 @@ module.exports = {
   UPSTREAM_AGENTS,
   resolvedAgentTargets,
   agentTargetDetected,
+  isSkillBackupStamp,
+  pruneSkillBackups,
   backupAndRemoveSkillDir,
   copyPathLexicallySync,
   movePathRecoverablySync,

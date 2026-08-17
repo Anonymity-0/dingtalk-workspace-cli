@@ -86,12 +86,34 @@ backup_and_remove_skill_dir() {
 # Only safe to call once every backup manifest of this run has been consumed,
 # because a single transaction can span more than one timestamp.
 DWS_SKILL_BACKUP_KEEP=5
+
+# is_skill_backup_stamp accepts only directory names DWS itself writes: UTC
+# YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry in
+# the backup root is foreign (user data, unrelated tooling) and is preserved
+# so pruning can never remove a directory it cannot prove DWS created.
+is_skill_backup_stamp() {
+  case "$1" in
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9])
+      return 0 ;;
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-*)
+      # base stamp is YYYYMMDD-HHMMSS (15 chars) + suffix dash (16th); strip
+      # those 16 chars and require the remainder to be all digits.
+      _isbs_suffix="${1#????????????????}"
+      case "$_isbs_suffix" in
+        ""|*[!0-9]*) return 1 ;;
+      esac
+      return 0 ;;
+  esac
+  return 1
+}
+
 prune_skill_backups() {
   _psb_root="${HOME}/.dws/skill-backups"
   [ -d "$_psb_root" ] || return 0
   _psb_total=0
   for _psb_entry in "$_psb_root"/*; do
     [ -d "$_psb_entry" ] || continue
+    is_skill_backup_stamp "${_psb_entry##*/}" || continue
     _psb_total=$((_psb_total + 1))
   done
   [ "$_psb_total" -gt "$DWS_SKILL_BACKUP_KEEP" ] || return 0
@@ -99,6 +121,7 @@ prune_skill_backups() {
   _psb_seen=0
   for _psb_entry in "$_psb_root"/*; do
     [ -d "$_psb_entry" ] || continue
+    is_skill_backup_stamp "${_psb_entry##*/}" || continue
     _psb_seen=$((_psb_seen + 1))
     [ "$_psb_seen" -le "$_psb_drop" ] || break
     rm -rf "$_psb_entry" || printf '  ⚠️  旧 Skill 备份清理失败: %s\n' "$_psb_entry"

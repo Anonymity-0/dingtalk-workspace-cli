@@ -877,6 +877,60 @@ func TestCrossPlatformCoveragePruneSkillBackupsEdges(t *testing.T) {
 	testseam.Swap(t, &upgradeRemoveAll, os.RemoveAll)
 }
 
+// TestCrossPlatformCoveragePruneSkillBackupsPreservesUnknown pins that
+// pruneSkillBackups only retires directories whose names match the DWS backup
+// stamp format. Any foreign directory in the backup root must survive even when
+// more than skillBackupKeep stamped backups exist.
+func TestCrossPlatformCoveragePruneSkillBackupsPreservesUnknown(t *testing.T) {
+	home := t.TempDir()
+	root := filepath.Join(home, skillBackupSubdir)
+	for i := 0; i < skillBackupKeep+2; i++ {
+		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("20260910-00000%d", i)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A collision-suffixed stamp is still a valid DWS backup and is eligible.
+	if err := os.MkdirAll(filepath.Join(root, "20260910-000000-7"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	unknown := []string{
+		"user-personal-backup",
+		"20260910-000000-abc", // stamp-shaped but non-numeric suffix
+		"20260910-00000",      // too short
+		"notes",
+	}
+	for _, name := range unknown {
+		if err := os.MkdirAll(filepath.Join(root, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := pruneSkillBackups(home); err != nil {
+		t.Fatalf("pruneSkillBackups() error = %v", err)
+	}
+
+	for _, name := range unknown {
+		if _, err := os.Stat(filepath.Join(root, name)); err != nil {
+			t.Errorf("unknown backup entry %s must be preserved, stat err=%v", name, err)
+		}
+	}
+	// Only stamped backups beyond skillBackupKeep are pruned; foreign entries
+	// are excluded from the count, so the stamp total stays at skillBackupKeep.
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stamps := 0
+	for _, e := range entries {
+		if isSkillBackupStamp(e.Name()) {
+			stamps++
+		}
+	}
+	if stamps != skillBackupKeep {
+		t.Errorf("stamped backups after prune = %d, want %d", stamps, skillBackupKeep)
+	}
+}
+
 // TestCrossPlatformCoverageResolveSkillSrcLayouts pins every fallback branch of
 // the mono-source resolver and the multi-bundle child lookup.
 func TestCrossPlatformCoverageResolveSkillSrcLayouts(t *testing.T) {
