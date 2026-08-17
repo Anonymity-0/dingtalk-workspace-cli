@@ -456,6 +456,12 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 				t.Fatal("empty incarnation")
 			}
 		})
+		t.Run("synthetic info does not match same-file identity", func(t *testing.T) {
+			fake := skillPathFakeInfo{}
+			if skillPathSameFileIdentity(fake, fake) {
+				t.Fatal("synthetic info should not match")
+			}
+		})
 	})
 }
 
