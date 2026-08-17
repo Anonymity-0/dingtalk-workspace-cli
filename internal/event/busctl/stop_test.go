@@ -120,6 +120,34 @@ func TestCrossPlatformCoverageStopDoesNotSignalUnverifiedReusedPID(t *testing.T)
 	}
 }
 
+func TestCrossPlatformCoverageStopReportsOwnershipValidationError(t *testing.T) {
+	const pid = 4242
+	errInjected := errors.New("ownership validation failed")
+	testseam.Swap(t, &stopReadHolderPID, func(string) int { return pid })
+	testseam.Swap(t, &stopAlive, func(int) bool { return true })
+	proc, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &stopFindProcess, func(int) (*os.Process, error) { return proc, nil })
+	testseam.Swap(t, &stopValidateHolderOwner, func(string, int) (bool, error) {
+		return false, errInjected
+	})
+	signals := 0
+	testseam.Swap(t, &stopSignalProcess, func(*os.Process, os.Signal) error {
+		signals++
+		return nil
+	})
+
+	err = Stop(StopConfig{WorkDir: "test-workdir"})
+	if !errors.Is(err, errInjected) {
+		t.Fatalf("Stop() error = %v, want injected ownership error", err)
+	}
+	if signals != 0 {
+		t.Fatalf("ownership validation error sent %d signals", signals)
+	}
+}
+
 func TestCrossPlatformCoverageRequestBusStopProtocol(t *testing.T) {
 	dir := shortTempDir(t)
 	endpoint := dwsevent.IPCEndpoint(
