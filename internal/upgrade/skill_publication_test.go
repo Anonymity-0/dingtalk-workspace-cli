@@ -193,13 +193,16 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		// every platform.
 		testseam.Swap(t, &skillPathSameFileIdentity, func(_, _ os.FileInfo) bool { return false })
 		originalFileIdentity := skillPathFileIdentity
-		seen := ""
+		stagedID := ""
 		testseam.Swap(t, &skillPathFileIdentity, func(path string) string {
 			id := originalFileIdentity(path)
-			if seen == "" {
-				seen = id
+			if stagedID == "" {
+				stagedID = id
+				return id
 			}
-			return seen
+			// The published probe must report a different object than the
+			// staged one so the proof fails on both platforms.
+			return id + ":swapped"
 		})
 		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "staging 身份已变化") {
 			t.Fatalf("publish identity error = %v", err)
