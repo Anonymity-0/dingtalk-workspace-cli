@@ -4,9 +4,11 @@
 package helpers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -148,7 +150,7 @@ func recruitResultCall(cmd *cobra.Command, tool string, args map[string]any) (ou
 			"tool": tool, "arguments": toolArgs, "executed": false,
 		}, output.WithDryRun()), nil
 	}
-	data, err := CallMCPToolDataOnServer(cmd.Context(), recruitServerID, tool, toolArgs)
+	data, err := callRecruitMCPToolData(cmd.Context(), tool, toolArgs)
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +166,29 @@ func recruitResultCall(cmd *cobra.Command, tool string, args map[string]any) (ou
 		return recruitInvalidResponse(err), nil
 	}
 	return output.Success(listData, output.WithMeta(meta)), nil
+}
+
+func callRecruitMCPToolData(ctx context.Context, tool string, args map[string]any) (any, error) {
+	text, err := callMCPToolReturnTextOnServer(ctx, recruitServerID, tool, args)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(text) == "" {
+		return map[string]any{}, nil
+	}
+	var data any
+	decoder := json.NewDecoder(strings.NewReader(text))
+	decoder.UseNumber()
+	if err := decoder.Decode(&data); err != nil {
+		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", tool, err))
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			err = fmt.Errorf("存在多个 JSON 值")
+		}
+		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", tool, err))
+	}
+	return data, nil
 }
 
 func recruitResponseFailure(err error) output.CommandResult {

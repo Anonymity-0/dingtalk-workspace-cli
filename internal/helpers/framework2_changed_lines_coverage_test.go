@@ -6,7 +6,6 @@ package helpers
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -59,10 +58,10 @@ func TestCrossPlatformCoverageFramework2MCPDataEdges(t *testing.T) {
 		t.Fatalf("decoded data=%#v err=%v", data, err)
 	}
 
-	InitDeps(&coverageErrorCaller{result: &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: `{"cursor":9223372036854775807}`}}}})
+	InitDeps(&coverageErrorCaller{result: &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: `{"count":7}`}}}})
 	data, err = CallMCPToolDataOnServer(context.Background(), "dev", "get_thing", nil)
-	if err != nil || data.(map[string]any)["cursor"] != json.Number("9223372036854775807") {
-		t.Fatalf("lossless number data=%#v err=%v", data, err)
+	if err != nil || data.(map[string]any)["count"] != float64(7) {
+		t.Fatalf("legacy float64 number data=%#v err=%v", data, err)
 	}
 
 	InitDeps(&coverageErrorCaller{err: errors.New("transport failed")})

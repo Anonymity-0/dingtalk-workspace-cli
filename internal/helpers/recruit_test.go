@@ -408,6 +408,41 @@ func TestRecruitResultCallPropagatesMCPError(t *testing.T) {
 	}
 }
 
+func TestRecruitMCPDataDecoderIsLosslessAndStrict(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		text    string
+		wantErr string
+	}{
+		{name: "empty", text: "   "},
+		{name: "invalid JSON", text: "{", wantErr: "解析 list_jobs 返回失败"},
+		{name: "multiple values", text: `{} {}`, wantErr: "存在多个 JSON 值"},
+		{name: "invalid trailing value", text: `{} {`, wantErr: "解析 list_jobs 返回失败"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := withRecruitCaller(t)
+			caller.text = test.text
+			data, err := callRecruitMCPToolData(context.Background(), recruitListJobsTool, map[string]any{})
+			if test.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), test.wantErr) {
+					t.Fatalf("error = %v, want %q", err, test.wantErr)
+				}
+				return
+			}
+			if err != nil || len(data.(map[string]any)) != 0 {
+				t.Fatalf("empty response data = %#v, err = %v", data, err)
+			}
+		})
+	}
+
+	caller := withRecruitCaller(t)
+	caller.text = `{"nextCursor":9223372036854775807}`
+	data, err := callRecruitMCPToolData(context.Background(), recruitListJobsTool, map[string]any{})
+	if err != nil || data.(map[string]any)["nextCursor"] != json.Number("9223372036854775807") {
+		t.Fatalf("lossless recruit number data = %#v, err = %v", data, err)
+	}
+}
+
 func TestRecruitResultCallUnwrapsConnectorEnvelopeForGetAndCreate(t *testing.T) {
 	for _, test := range []struct {
 		name string
@@ -431,7 +466,7 @@ func TestRecruitResultCallUnwrapsConnectorEnvelopeForGetAndCreate(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			caller := withRecruitCaller(t)
 			caller.text = test.text
-			data, err := CallMCPToolDataOnServer(context.Background(), recruitServerID, test.tool, map[string]any{})
+			data, err := callRecruitMCPToolData(context.Background(), test.tool, map[string]any{})
 			if err != nil {
 				t.Fatal(err)
 			}

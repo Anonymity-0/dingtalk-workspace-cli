@@ -286,7 +286,6 @@ func CallMCPToolDataOnServer(ctx context.Context, serverID, toolName string, arg
 	}
 	var data any
 	decoder := json.NewDecoder(strings.NewReader(text))
-	decoder.UseNumber()
 	if err := decoder.Decode(&data); err != nil {
 		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", toolName, err))
 	}
