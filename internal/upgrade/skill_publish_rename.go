@@ -130,13 +130,47 @@ func moveSkillDirChildrenIntoClaim(source, destination string, sourceMode os.Fil
 }
 
 // renameSkillFileNoReplaceFallback uses os.Link, which atomically fails if the
-// destination exists, then removes the source to complete the move.
+// destination exists, then removes the source to complete the move. If the
+// source removal fails, the link just created is retracted so the failed
+// publish leaves no untracked object at the destination (the caller has no
+// publication record to roll back, and a backup restore would refuse the
+// occupied path).
 func renameSkillFileNoReplaceFallback(source, destination string) error {
+	sourceInfo, err := skillPathLstat(source)
+	if err != nil {
+		return fmt.Errorf("读取源 Skill 身份失败 %s: %w", source, err)
+	}
+	sourceFileID := skillPathFileIdentity(source)
 	if err := skillPathLink(source, destination); err != nil {
 		if os.IsExist(err) {
 			return &os.LinkError{Op: "rename", Old: source, New: destination, Err: os.ErrExist}
 		}
 		return fmt.Errorf("发布 Skill 文件失败 %s: %w", destination, err)
 	}
-	return skillPathRemove(source)
+	if err := skillPathRemove(source); err != nil {
+		return errors.Join(
+			fmt.Errorf("移动 Skill 文件失败（源 %s 与目标 %s 均尝试保留）: %w", source, destination, err),
+			retractLinkedSkillFile(source, destination, sourceInfo, sourceFileID),
+		)
+	}
+	return nil
+}
+
+// retractLinkedSkillFile removes the hard link the fallback just created at
+// destination. The link shares the source inode, and only that proven
+// identity may be removed: if destination no longer resolves to the linked
+// object (a concurrent replacement won the path), it is left untouched and
+// reported instead.
+func retractLinkedSkillFile(source, destination string, sourceInfo os.FileInfo, sourceFileID string) error {
+	destInfo, err := skillPathLstat(destination)
+	if err != nil {
+		return fmt.Errorf("确认待撤回 Skill 文件失败 %s: %w", destination, err)
+	}
+	if !skillPathIdentityProven(sourceInfo, destInfo, sourceFileID, skillPathFileIdentity(destination)) {
+		return fmt.Errorf("待撤回 Skill 文件已被替换，保留目标 %s", destination)
+	}
+	if err := skillPathRemove(destination); err != nil {
+		return fmt.Errorf("撤回已链接 Skill 文件失败 %s（源 %s 与目标 %s 均保留）: %w", destination, source, destination, err)
+	}
+	return nil
 }

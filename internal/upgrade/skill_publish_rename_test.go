@@ -126,6 +126,153 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		}
 	})
 
+	t.Run("file source removal failure retracts the linked destination", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		if err := os.WriteFile(source, []byte("payload"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		originalRemove := skillPathRemove
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == source {
+				return os.ErrPermission
+			}
+			return originalRemove(path)
+		})
+		err := renameSkillPathNoReplace(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "移动 Skill 文件失败") {
+			t.Fatalf("source removal failure must surface, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("linked destination must be retracted, stat err=%v", statErr)
+		}
+		if content, readErr := os.ReadFile(source); readErr != nil || string(content) != "payload" {
+			t.Fatalf("source must stay intact, content=%q err=%v", content, readErr)
+		}
+	})
+
+	t.Run("file source removal failure with unremovable destination keeps both", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		if err := os.WriteFile(source, []byte("payload"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		testseam.Swap(t, &skillPathRemove, func(string) error { return os.ErrPermission })
+		err := renameSkillPathNoReplace(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "撤回已链接 Skill 文件失败") {
+			t.Fatalf("retract failure must be reported, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); statErr != nil {
+			t.Fatalf("destination must be reported as retained, stat err=%v", statErr)
+		}
+		if _, statErr := os.Lstat(source); statErr != nil {
+			t.Fatalf("source must stay intact, stat err=%v", statErr)
+		}
+	})
+
+	t.Run("file retract refuses a replaced destination", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		if err := os.WriteFile(source, []byte("payload"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		testseam.Swap(t, &skillPathSameFileIdentity, func(_, _ os.FileInfo) bool { return false })
+		originalFileIdentity := skillPathFileIdentity
+		stagedID := ""
+		testseam.Swap(t, &skillPathFileIdentity, func(path string) string {
+			id := originalFileIdentity(path)
+			if stagedID == "" {
+				stagedID = id
+				return id
+			}
+			return id + ":swapped"
+		})
+		originalRemove := skillPathRemove
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == source {
+				return os.ErrPermission
+			}
+			return originalRemove(path)
+		})
+		err := renameSkillPathNoReplace(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "待撤回 Skill 文件已被替换") {
+			t.Fatalf("replaced destination must be refused, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); statErr != nil {
+			t.Fatalf("replaced destination must be retained, stat err=%v", statErr)
+		}
+	})
+
+	t.Run("file fallback source stat failure surfaces", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		if err := os.WriteFile(source, []byte("payload"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		calls := 0
+		originalLstat := skillPathLstat
+		testseam.Swap(t, &skillPathLstat, func(path string) (os.FileInfo, error) {
+			calls++
+			if calls > 1 {
+				return nil, os.ErrPermission
+			}
+			return originalLstat(path)
+		})
+		err := renameSkillPathNoReplace(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "读取源 Skill 身份失败") {
+			t.Fatalf("file fallback stat failure must surface, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("destination must stay unlinked, stat err=%v", statErr)
+		}
+	})
+
+	t.Run("file retract destination stat failure surfaces", func(t *testing.T) {
+		dir := t.TempDir()
+		source := filepath.Join(dir, "source")
+		destination := filepath.Join(dir, "destination")
+		if err := os.WriteFile(source, []byte("payload"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		linked := false
+		originalLink := skillPathLink
+		testseam.Swap(t, &skillPathLink, func(src, dst string) error {
+			err := originalLink(src, dst)
+			linked = err == nil
+			return err
+		})
+		originalLstat := skillPathLstat
+		testseam.Swap(t, &skillPathLstat, func(path string) (os.FileInfo, error) {
+			if path == destination && linked {
+				return nil, os.ErrPermission
+			}
+			return originalLstat(path)
+		})
+		originalRemove := skillPathRemove
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == source {
+				return os.ErrPermission
+			}
+			return originalRemove(path)
+		})
+		err := renameSkillPathNoReplace(source, destination)
+		if err == nil || !strings.Contains(err.Error(), "确认待撤回 Skill 文件失败") {
+			t.Fatalf("retract stat failure must surface, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); statErr != nil {
+			t.Fatalf("destination must be retained when its state is unreadable, stat err=%v", statErr)
+		}
+	})
+
 	t.Run("refuses an occupied directory destination via mkdir EEXIST", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
