@@ -154,13 +154,7 @@ func recruitResultCall(cmd *cobra.Command, tool string, args map[string]any) (ou
 	}
 	clean, err := recruitBusinessResultData(data, tool)
 	if err != nil {
-		var businessFailure *recruitBusinessFailure
-		if errors.As(err, &businessFailure) {
-			return output.Failure(&output.ErrorInfo{
-				Type: "api", Message: businessFailure.Error(),
-			}), nil
-		}
-		return recruitInvalidResponse(err), nil
+		return recruitResponseFailure(err), nil
 	}
 	if tool != recruitListJobsTool {
 		return output.Success(clean), nil
@@ -170,6 +164,16 @@ func recruitResultCall(cmd *cobra.Command, tool string, args map[string]any) (ou
 		return recruitInvalidResponse(err), nil
 	}
 	return output.Success(listData, output.WithMeta(meta)), nil
+}
+
+func recruitResponseFailure(err error) output.CommandResult {
+	var businessFailure *recruitBusinessFailure
+	if errors.As(err, &businessFailure) {
+		return output.Failure(&output.ErrorInfo{
+			Type: "api", Message: businessFailure.Error(),
+		})
+	}
+	return recruitInvalidResponse(err)
 }
 
 type recruitBusinessFailure struct {

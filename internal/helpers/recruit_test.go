@@ -137,20 +137,25 @@ func TestRecruitJobListResponseCursorRoundTrip(t *testing.T) {
 	caller := withRecruitCaller(t)
 	caller.text = `{"success":true,"result":{"list":[],"hasMore":true,"nextCursor":9223372036854775807}}`
 
-	data, err := CallMCPToolDataOnServer(context.Background(), recruitServerID, recruitListJobsTool, map[string]any{"size": 20})
+	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
+	result, err := recruitResultCall(cmd, recruitListJobsTool, map[string]any{"size": 20})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, meta, err := recruitListResultData(data)
+	envelope, err := output.EnvelopeFromResult(result)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if envelope.Outcome != output.OutcomeSuccess || envelope.Meta == nil || envelope.Meta.Pagination == nil {
+		t.Fatalf("envelope = %#v", envelope)
+	}
+	meta := envelope.Meta
 	if got := meta.Pagination.NextToken; got != "9223372036854775807" {
 		t.Fatalf("next token = %q, want lossless max int64", got)
 	}
 
 	caller.text = `{"jobs":[],"hasMore":false}`
-	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
+	cmd = prepareRecruitTestCommand(newRecruitJobListCommand())
 	cmd.SetArgs([]string{"--cursor", meta.Pagination.NextToken})
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
@@ -566,13 +571,15 @@ func TestRecruitResultCallClassifiesBusinessAndMalformedFailures(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			caller := withRecruitCaller(t)
-			caller.text = test.text
-			cmd := prepareRecruitTestCommand(newRecruitJobGetCommand())
-			result, err := recruitResultCall(cmd, recruitGetJobTool, map[string]any{"jobId": "job-1"})
-			if err != nil {
+			var payload any
+			if err := json.Unmarshal([]byte(test.text), &payload); err != nil {
 				t.Fatal(err)
 			}
+			_, responseErr := recruitBusinessResultData(payload, recruitGetJobTool)
+			if responseErr == nil {
+				t.Fatal("expected response error")
+			}
+			result := recruitResponseFailure(responseErr)
 			envelope, err := output.EnvelopeFromResult(result)
 			if err != nil {
 				t.Fatal(err)
