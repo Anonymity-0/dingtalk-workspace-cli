@@ -32,8 +32,8 @@ var ReportLatest = shortcut.Shortcut{
 	),
 	Flags: []shortcut.Flag{
 		{Name: "keyword", Type: shortcut.FlagString, Desc: "按日志模板名称精确过滤"},
-		{Name: "start", Type: shortcut.FlagString, Desc: "创建开始时间 ISO-8601；必须与 --end 同时提供，跨度不得超过 20 天"},
-		{Name: "end", Type: shortcut.FlagString, Desc: "创建结束时间 ISO-8601；必须与 --start 同时提供，跨度不得超过 20 天"},
+		{Name: "start", Type: shortcut.FlagString, Desc: "创建开始时间 ISO-8601；--start 与 --end 必须同时提供，且创建时间范围必须有效并不得超过 20 天"},
+		{Name: "end", Type: shortcut.FlagString, Desc: "创建结束时间 ISO-8601；--start 与 --end 必须同时提供，且创建时间范围必须有效并不得超过 20 天"},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "--start 与 --end 必须同时提供，且创建时间范围必须有效并不得超过 20 天"},
