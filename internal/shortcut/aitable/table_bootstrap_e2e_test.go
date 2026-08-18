@@ -33,6 +33,14 @@ func TestCrossPlatformCoverageTableBootstrapCreatesChunksAndVerifies(t *testing.
 	if got := len(caller.calls); got != 4 {
 		t.Fatalf("table bootstrap calls = %d, want 4: %#v", got, caller.calls)
 	}
+	wantFirstArgs := map[string]any{
+		"baseId":    "base",
+		"tableName": "任务",
+		"fields":    fields[:15],
+	}
+	if caller.calls[0].product != serverMain || caller.calls[0].tool != "create_table" || mustJSON(t, caller.calls[0].args) != mustJSON(t, wantFirstArgs) {
+		t.Fatalf("table bootstrap first call = %#v, want product:%q tool:create_table args:%s", caller.calls[0], serverMain, mustJSON(t, wantFirstArgs))
+	}
 	if caller.calls[0].tool != "create_table" || caller.calls[1].tool != "create_fields" || caller.calls[2].tool != "get_tables" || caller.calls[3].tool != "get_fields" {
 		t.Fatalf("table bootstrap call order = %#v", caller.calls)
 	}
@@ -41,6 +49,22 @@ func TestCrossPlatformCoverageTableBootstrapCreatesChunksAndVerifies(t *testing.
 	}
 	if got := len(caller.calls[1].args["fields"].([]any)); got != 1 {
 		t.Fatalf("remaining fields = %d, want 1", got)
+	}
+}
+
+func TestCrossPlatformCoverageTableBootstrapRequiresConfirmationBeforeMCP(t *testing.T) {
+	caller := &upsertByKeyCaller{}
+	out, err := runAITableCompositeCLI(t, caller, "+table-bootstrap",
+		"--base-id", "base", "--name", "任务", "--fields", mustJSON(t, bootstrapFields(1)))
+	if out != "" {
+		t.Fatalf("unconfirmed table bootstrap output = %q, want empty", out)
+	}
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || typed.Reason != "confirmation_required" {
+		t.Fatalf("unconfirmed table bootstrap error = %#v, want confirmation_required", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("unconfirmed table bootstrap calls = %#v, want none", caller.calls)
 	}
 }
 
