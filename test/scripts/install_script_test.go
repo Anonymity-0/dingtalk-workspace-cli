@@ -294,6 +294,39 @@ func TestInstallScriptsRemoveJunctionStagesLexically(t *testing.T) {
 			t.Errorf("install-devapp.ps1 missing junction-safe removal contract %q", want)
 		}
 	}
+
+	// The backup prune must also be reparse-safe: a stamp tree can hold
+	// junction/symlink entries at any depth (victims are collected before
+	// the physical-equality filter), and Windows PowerShell 5.1 follows
+	// reparse points during Remove-Item -Recurse.
+	for scriptName, pruneFn := range map[string]string{
+		"install.ps1":        "Remove-OldSkillBackups",
+		"install-devapp.ps1": "Remove-OldDevSkillBackups",
+	} {
+		scriptData, err := os.ReadFile(filepath.Join("..", "..", "scripts", scriptName))
+		if err != nil {
+			t.Fatalf("ReadFile(%s) error = %v", scriptName, err)
+		}
+		body := extractPowerShellFunction(t, string(scriptData), pruneFn)
+		if strings.Contains(body, "-Recurse") {
+			t.Errorf("%s %s must delegate to child-first lexical removal, not Remove-Item -Recurse:\n%s", scriptName, pruneFn, body)
+		}
+	}
+}
+
+// extractPowerShellFunction returns a `function Name { ... }` body from a
+// PowerShell script, terminated by the next top-level function declaration.
+func extractPowerShellFunction(t *testing.T, text, name string) string {
+	t.Helper()
+	begin := strings.Index(text, "function "+name)
+	if begin < 0 {
+		t.Fatalf("function %s not found", name)
+	}
+	end := strings.Index(text[begin+1:], "\nfunction ")
+	if end < 0 {
+		end = len(text) - begin - 1
+	}
+	return text[begin : begin+1+end]
 }
 
 func TestInstallEventScriptDegradesFailedAgentLoudly(t *testing.T) {
@@ -776,6 +809,364 @@ exit 0
 		t.Fatalf("PowerShell devapp backup marker harness failed: %v\n%s", err, string(output))
 	}
 	assertSkillBackupOwnershipResult(t, home)
+}
+
+// lookPowerShellForScripts prefers Windows PowerShell 5.1 (the advertised
+// irm|iex surface) on Windows and falls back to pwsh everywhere.
+func lookPowerShellForScripts(t *testing.T) string {
+	t.Helper()
+	powerShellNames := []string{"pwsh"}
+	if runtime.GOOS == "windows" {
+		powerShellNames = []string{"powershell", "pwsh"}
+	}
+	for _, name := range powerShellNames {
+		if candidate, err := exec.LookPath(name); err == nil {
+			return candidate
+		}
+	}
+	t.Skip("PowerShell is not available")
+	return ""
+}
+
+// TestInstallPowerShellPruneRemovesLinkChildrenWithoutFollowingTargets pins
+// the Blocker 2 fix: pruning a stamp root that contains a junction/symlink
+// child must delete the link itself while the link target's contents survive.
+// Windows PowerShell 5.1 follows reparse points during Remove-Item -Recurse,
+// so the prune removes children lexically, recursing real directories only.
+func TestInstallPowerShellPruneRemovesLinkChildrenWithoutFollowingTargets(t *testing.T) {
+	pwsh := lookPowerShellForScripts(t)
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.ps1 main section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	// Junctions need no privilege on Windows but silently no-op on non-Windows
+	// pwsh builds; symlinks need no privilege on Unix. Exit 4 marks "no link
+	// flavor testable on this host".
+	harness := prefix + `
+$backupRoot = Join-Path $env:DWS_TEST_HOME '.dws\skill-backups'
+$linkType = if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) { 'Junction' } else { 'SymbolicLink' }
+$precious = Join-Path $env:DWS_TEST_HOME 'precious-store'
+New-Item -ItemType Directory -Path $precious -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $precious 'target-data.txt'), 'must survive')
+# The oldest of six verified stamps is prunable and holds a link child.
+$oldest = Join-Path $backupRoot '20200101-000001'
+New-Item -ItemType Directory -Path (Join-Path $oldest 'payload') -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $oldest 'payload\SKILL.md'), 'old')
+Write-SkillBackupMarker -Root $oldest
+$link = Join-Path $oldest 'linked-skill'
+New-Item -ItemType $linkType -Path $link -Target $precious -ErrorAction SilentlyContinue | Out-Null
+if (!(Test-Path -LiteralPath $link)) { exit 4 }
+foreach ($stamp in @('20200101-000002','20200101-000003','20200101-000004','20200101-000005','20200101-000006')) {
+    $stampRoot = Join-Path $backupRoot $stamp
+    New-Item -ItemType Directory -Path (Join-Path $stampRoot 'payload') -Force | Out-Null
+    Write-SkillBackupMarker -Root $stampRoot
+}
+Remove-OldSkillBackups
+if (Test-Path -LiteralPath $oldest) { exit 5 }
+if (!(Test-Path -LiteralPath (Join-Path $precious 'target-data.txt') -PathType Leaf)) { exit 6 }
+foreach ($stamp in @('20200101-000002','20200101-000003','20200101-000004','20200101-000005','20200101-000006')) {
+    if (!(Test-Path -LiteralPath (Join-Path $backupRoot $stamp) -PathType Container)) { exit 7 }
+}
+exit 0
+`
+	home := filepath.Join(t.TempDir(), "home")
+	harnessPath := filepath.Join(t.TempDir(), "skill-backup-link-prune.ps1")
+	mustWriteFile(t, harnessPath, []byte(harness), 0o644)
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+home)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 4 {
+			t.Skipf("no junction/symlink flavor can be created on this host:\n%s", string(output))
+		}
+		t.Fatalf("PowerShell link-aware prune harness failed: %v\n%s", err, string(output))
+	}
+	if got, err := os.ReadFile(filepath.Join(home, "precious-store", "target-data.txt")); err != nil || string(got) != "must survive" {
+		t.Fatalf("link target content = %q, %v; want it to survive pruning", got, err)
+	}
+	entries, err := os.ReadDir(filepath.Join(home, ".dws", "skill-backups"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var surviving []string
+	for _, entry := range entries {
+		surviving = append(surviving, entry.Name())
+	}
+	want := []string{"20200101-000002", "20200101-000003", "20200101-000004", "20200101-000005", "20200101-000006"}
+	if len(surviving) != len(want) {
+		t.Fatalf("after pruning the link-bearing stamp, surviving stamps = %v, want %v", surviving, want)
+	}
+	for _, stamp := range want {
+		if _, err := os.Stat(filepath.Join(home, ".dws", "skill-backups", stamp)); err != nil {
+			t.Fatalf("stamp %s must survive pruning: %v", stamp, err)
+		}
+	}
+}
+
+// TestInstallDevappPowerShellPruneRemovesLinkChildrenWithoutFollowingTargets
+// is the install-devapp.ps1 twin of the link-aware prune contract above.
+func TestInstallDevappPowerShellPruneRemovesLinkChildrenWithoutFollowingTargets(t *testing.T) {
+	pwsh := lookPowerShellForScripts(t)
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-devapp.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.Index(string(data), "# Read the releases list")
+	if cut < 0 {
+		t.Fatal("install-devapp.ps1 release section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	harness := prefix + `
+$backupRoot = Join-Path $env:DWS_TEST_HOME '.dws\skill-backups'
+$linkType = if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) { 'Junction' } else { 'SymbolicLink' }
+$precious = Join-Path $env:DWS_TEST_HOME 'precious-store'
+New-Item -ItemType Directory -Path $precious -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $precious 'target-data.txt'), 'must survive')
+$oldest = Join-Path $backupRoot '20200101-000001'
+New-Item -ItemType Directory -Path (Join-Path $oldest 'payload') -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $oldest 'payload\SKILL.md'), 'old')
+Write-DevSkillBackupMarker $oldest
+$link = Join-Path $oldest 'linked-skill'
+New-Item -ItemType $linkType -Path $link -Target $precious -ErrorAction SilentlyContinue | Out-Null
+if (!(Test-PathLexically $link)) { exit 4 }
+foreach ($stamp in @('20200101-000002','20200101-000003','20200101-000004','20200101-000005','20200101-000006')) {
+    $stampRoot = Join-Path $backupRoot $stamp
+    New-Item -ItemType Directory -Path (Join-Path $stampRoot 'payload') -Force | Out-Null
+    Write-DevSkillBackupMarker $stampRoot
+}
+Remove-OldDevSkillBackups
+if (Test-PathLexically $oldest) { exit 5 }
+if (!(Test-PathLexically (Join-Path $precious 'target-data.txt'))) { exit 6 }
+foreach ($stamp in @('20200101-000002','20200101-000003','20200101-000004','20200101-000005','20200101-000006')) {
+    if (!(Test-PathLexically (Join-Path $backupRoot $stamp))) { exit 7 }
+}
+exit 0
+`
+	home := filepath.Join(t.TempDir(), "home")
+	harnessPath := filepath.Join(t.TempDir(), "devapp-skill-backup-link-prune.ps1")
+	mustWriteFile(t, harnessPath, []byte(harness), 0o644)
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+home)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 4 {
+			t.Skipf("no junction/symlink flavor can be created on this host:\n%s", string(output))
+		}
+		t.Fatalf("PowerShell devapp link-aware prune harness failed: %v\n%s", err, string(output))
+	}
+	if got, err := os.ReadFile(filepath.Join(home, "precious-store", "target-data.txt")); err != nil || string(got) != "must survive" {
+		t.Fatalf("link target content = %q, %v; want it to survive pruning", got, err)
+	}
+	for _, stamp := range []string{"20200101-000002", "20200101-000003", "20200101-000004", "20200101-000005", "20200101-000006"} {
+		if _, err := os.Stat(filepath.Join(home, ".dws", "skill-backups", stamp)); err != nil {
+			t.Fatalf("stamp %s must survive pruning: %v", stamp, err)
+		}
+	}
+}
+
+// TestInstallPowerShellBackupNeverClaimsUnverifiedStampRoot pins the
+// collision-loop fix: a stamp root that exists without the verified
+// ownership marker is foreign data, so Backup-SkillDir bumps to a -N root
+// instead of writing its marker (and later prune eligibility) into it.
+// Foreign roots are seeded for the current second and the next nine so the
+// stamp Backup-SkillDir picks is always a pre-existing unverified root.
+func TestInstallPowerShellBackupNeverClaimsUnverifiedStampRoot(t *testing.T) {
+	pwsh := lookPowerShellForScripts(t)
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.ps1 main section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	harness := prefix + `
+$backupRoot = Join-Path $env:DWS_TEST_HOME '.dws\skill-backups'
+New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
+$now = [DateTime]::UtcNow
+$seeded = @()
+for ($i = 0; $i -lt 10; $i++) {
+    $stamp = $now.AddSeconds($i).ToString('yyyyMMdd-HHmmss')
+    $seeded += $stamp
+    $foreign = Join-Path $backupRoot $stamp
+    New-Item -ItemType Directory -Path $foreign -Force | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $foreign 'user-data.txt'), 'foreign')
+}
+$victim = Join-Path $env:DWS_TEST_HOME '.zcode\skills\dingtalk-chat'
+New-Item -ItemType Directory -Path $victim -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $victim 'SKILL.md'), 'old copy')
+$backupPath = ''
+if (!(Backup-SkillDir -Dir $victim -BackupPath ([ref]$backupPath))) { exit 2 }
+if (!$backupPath) { exit 3 }
+foreach ($stamp in $seeded) {
+    $foreign = Join-Path $backupRoot $stamp
+    if (Test-Path -LiteralPath (Join-Path $foreign '.dws-skill-backup')) { exit 4 }
+    $children = @(Get-ChildItem -LiteralPath $foreign -Force | ForEach-Object { $_.Name })
+    if ($children.Count -ne 1 -or $children[0] -ne 'user-data.txt') { exit 5 }
+}
+# Every plain stamp root was foreign, so the payload must sit in a -N root.
+if ($backupPath -notmatch '-[0-9]+[\\/]\.zcode-skills-dingtalk-chat$') { exit 6 }
+if (!(Test-Path -LiteralPath (Join-Path $backupPath 'SKILL.md') -PathType Leaf)) { exit 7 }
+exit 0
+`
+	home := filepath.Join(t.TempDir(), "home")
+	harnessPath := filepath.Join(t.TempDir(), "skill-backup-collision.ps1")
+	mustWriteFile(t, harnessPath, []byte(harness), 0o644)
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+home)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("PowerShell backup collision harness failed: %v\n%s", err, string(output))
+	}
+	// The foreign same-second roots stay untouched: no marker, no payload.
+	entries, err := os.ReadDir(filepath.Join(home, ".dws", "skill-backups"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreignIntact, bumped := 0, ""
+	for _, entry := range entries {
+		children, err := os.ReadDir(filepath.Join(home, ".dws", "skill-backups", entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		hasPayload, hasMarker := false, false
+		for _, child := range children {
+			if child.Name() == ".dws-skill-backup" {
+				hasMarker = true
+			}
+			if child.Name() == ".zcode-skills-dingtalk-chat" {
+				hasPayload = true
+			}
+		}
+		if hasPayload {
+			bumped = entry.Name()
+			if !hasMarker {
+				t.Fatalf("backup stamp root %s must carry the ownership marker", bumped)
+			}
+			continue
+		}
+		if hasMarker {
+			t.Fatalf("foreign stamp root %s must never be marked DWS-owned", entry.Name())
+		}
+		if len(children) != 1 || children[0].Name() != "user-data.txt" {
+			t.Fatalf("foreign stamp root %s must stay untouched, children = %v", entry.Name(), children)
+		}
+		foreignIntact++
+	}
+	if foreignIntact != 10 || bumped == "" || !strings.Contains(bumped, "-") {
+		t.Fatalf("want 10 untouched foreign roots plus one -N backup root, got %d intact and backup root %q", foreignIntact, bumped)
+	}
+}
+
+// TestInstallDevappPowerShellCrossDeviceRetractVerifiesPublication pins the
+// path-blind retract fix: after a cross-device publish, a post-occupy
+// verification failure must retract the destination only through
+// Remove-VerifiedDevSkillPublication, so a concurrently replaced destination
+// is restored instead of deleted.
+func TestInstallDevappPowerShellCrossDeviceRetractVerifiesPublication(t *testing.T) {
+	pwsh, err := exec.LookPath("pwsh")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			pwsh, err = exec.LookPath("powershell")
+		}
+		if err != nil {
+			t.Skip("PowerShell is not available")
+		}
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-devapp.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.Index(string(data), "# Read the releases list")
+	if cut < 0 {
+		t.Fatal("install-devapp.ps1 release section not found")
+	}
+	root := t.TempDir()
+	home := filepath.Join(root, "home")
+	source := filepath.Join(root, "bundle", "dingtalk-misc")
+	destination := filepath.Join(root, "external", "dingtalk-misc")
+	if err := os.MkdirAll(home, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWriteFile(t, filepath.Join(source, "SKILL.md"), []byte("new dev skill\n"), 0o640)
+
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	prefix += `
+# The first move throws the cross-device error, so the recoverable path
+# stages and publishes a copy; right after that publish another process
+# replaces the destination, and post-occupy verification fails.
+$script:ReplacedPublished = $false
+function Move-DevSkillPath([string]$Source, [string]$Destination) {
+    if ($Source -eq $env:DWS_TEST_SOURCE -and $Destination -eq $env:DWS_TEST_DESTINATION) {
+        throw [System.IO.IOException]::new("injected cross-device rename", -2147024879)
+    }
+    Microsoft.PowerShell.Management\Move-Item -LiteralPath $Source -Destination $Destination -ErrorAction Stop
+    if (!$script:ReplacedPublished -and $Destination -eq $env:DWS_TEST_DESTINATION) {
+        $script:ReplacedPublished = $true
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $Destination (Join-Path $env:DWS_TEST_HOME 'replaced-published') -ErrorAction Stop
+        New-Item -ItemType Directory -Path $Destination -Force -ErrorAction Stop | Out-Null
+        Set-Content -LiteralPath (Join-Path $Destination 'concurrent-user-data.txt') -Value 'keep'
+    }
+}
+try {
+    Move-DevSkillPathRecoverably $env:DWS_TEST_SOURCE $env:DWS_TEST_DESTINATION
+    exit 2
+} catch {
+    if ($_.Exception.Message -notmatch 'state uncertain') { Write-Error $_; exit 3 }
+}
+if (!(Test-PathLexically (Join-Path $env:DWS_TEST_DESTINATION 'concurrent-user-data.txt'))) { exit 4 }
+if (!(Test-PathLexically (Join-Path $env:DWS_TEST_SOURCE 'SKILL.md'))) { exit 5 }
+exit 0
+`
+	harnessPath := filepath.Join(t.TempDir(), "install-devapp-retract-verify-harness.ps1")
+	mustWriteFile(t, harnessPath, []byte(prefix), 0o644)
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(),
+		"DWS_TEST_HOME="+home,
+		"DWS_TEST_SOURCE="+source,
+		"DWS_TEST_DESTINATION="+destination,
+	)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("PowerShell devapp verified retract must retain the concurrent replacement: %v\n%s", err, string(output))
+	}
+	if got, err := os.ReadFile(filepath.Join(destination, "concurrent-user-data.txt")); err != nil || strings.TrimSpace(string(got)) != "keep" {
+		t.Fatalf("concurrent replacement data = %q, %v; want it retained", got, err)
+	}
+	if got, err := os.ReadFile(filepath.Join(source, "SKILL.md")); err != nil || string(got) != "new dev skill\n" {
+		t.Fatalf("source must be retained after the failed cross-device move, got %q, %v", got, err)
+	}
+	if _, err := os.Stat(filepath.Join(home, "replaced-published")); err != nil {
+		t.Fatalf("the replaced original copy must stay inspectable, not be deleted: %v", err)
+	}
+	for _, pattern := range []string{".dws-dev-rollback-*", ".dingtalk-misc.cross-device-*"} {
+		if matches, err := filepath.Glob(filepath.Join(root, "external", pattern)); err != nil || len(matches) != 0 {
+			t.Fatalf("devapp rollback leftovers %s = %v, %v", pattern, matches, err)
+		}
+	}
 }
 
 func TestInstallScriptLinkPublicationRacePreservesConcurrentObjects(t *testing.T) {
@@ -2637,6 +3028,167 @@ fi
 			if matches, err := filepath.Glob(filepath.Join(base, ".dws-multi-set.*")); err != nil || len(matches) != 0 {
 				t.Fatalf("%s staging leftovers = %v, err=%v", scriptName, matches, err)
 			}
+		})
+	}
+}
+
+// TestInstallerShellBackupMarkerWriteFailurePreservesSameStampSibling pins
+// the review blocker on the shared stamp root: the backup collision loop
+// tests the payload path, so two backups in the same stamp second land in
+// ONE stamp root. When the second call fails to write the ownership marker,
+// the old `rm -rf` cleanup destroyed the first, already completed sibling
+// payload whose original directory had already been moved away. The cleanup
+// must be non-recursive and may only drop a stamp root the failing call
+// itself created (marker file plus empty root; rmdir refuses non-empty).
+func TestInstallerShellBackupMarkerWriteFailurePreservesSameStampSibling(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell semantics are unavailable")
+	}
+	// Both scenarios rely on permission-bit enforcement (unwritable marker
+	// file, unwritable fresh root), which root bypasses entirely.
+	if os.Geteuid() == 0 {
+		t.Skip("running as root ignores permission bits, the marker write would succeed")
+	}
+	for _, scriptName := range []string{"install.sh", "install-skills.sh", "install-event.sh", "install-devapp.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			backupFn := "backup_and_remove_skill_dir"
+			emitsMarkerWarning := true
+			if scriptName == "install-event.sh" || scriptName == "install-devapp.sh" {
+				backupFn = "backup_skill_dir"
+				emitsMarkerWarning = false
+			}
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			// Pin the stamp: a stub `date` always prints the same UTC second,
+			// so consecutive backups deterministically share one stamp root.
+			const stamp = "20260818-120000"
+			stubDir := filepath.Join(t.TempDir(), "bin")
+			mustWriteFile(t, filepath.Join(stubDir, "date"), []byte("#!/bin/sh\nprintf '"+stamp+"\\n'\n"), 0o755)
+
+			t.Run("same-stamp sibling payload survives marker write failure", func(t *testing.T) {
+				home := t.TempDir()
+				root := filepath.Join(home, ".dws", "skill-backups", stamp)
+				victimA := filepath.Join(home, ".agents", "skills", "skill-a")
+				victimB := filepath.Join(home, ".agents", "skills", "skill-b")
+				mustWriteFile(t, filepath.Join(victimA, "SKILL.md"), []byte("payload A\n"), 0o644)
+				mustWriteFile(t, filepath.Join(victimB, "SKILL.md"), []byte("victim B\n"), 0o644)
+
+				// The first backup succeeds and moves victim A into the stamp
+				// root; the marker is then made unwritable so the second,
+				// same-second backup fails exactly at the marker write.
+				harness := `. "$DWS_TEST_LIBRARY"
+if ` + backupFn + ` "$DWS_TEST_VICTIM_A"; then :; else exit 10; fi
+chmod 000 "$DWS_TEST_ROOT/` + skillBackupMarkerFile + `"
+if ` + backupFn + ` "$DWS_TEST_VICTIM_B"; then
+  exit 11
+fi
+[ -d "$DWS_TEST_ROOT" ] || exit 12
+[ -f "$DWS_TEST_VICTIM_B/SKILL.md" ] || exit 13
+`
+				cmd := exec.Command("sh", "-c", harness)
+				cmd.Env = append(os.Environ(),
+					"HOME="+home,
+					"PATH="+stubDir+":"+os.Getenv("PATH"),
+					"DWS_TEST_LIBRARY="+library,
+					"DWS_TEST_ROOT="+root,
+					"DWS_TEST_VICTIM_A="+victimA,
+					"DWS_TEST_VICTIM_B="+victimB,
+				)
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("%s sibling marker-failure harness failed: %v\n%s", scriptName, err, output)
+				}
+				if emitsMarkerWarning && !strings.Contains(string(output), "无法写入备份所有权标记") {
+					t.Fatalf("%s did not report the marker write failure:\n%s", scriptName, output)
+				}
+				if _, err := os.Lstat(victimA); !os.IsNotExist(err) {
+					t.Fatalf("%s first victim must have been moved into the stamp root: %v", scriptName, err)
+				}
+				entries, err := os.ReadDir(root)
+				if err != nil {
+					t.Fatalf("%s stamp root must survive the failed marker write: %v", scriptName, err)
+				}
+				var payloadDirs []string
+				for _, entry := range entries {
+					if entry.Name() == skillBackupMarkerFile {
+						continue
+					}
+					if !entry.IsDir() {
+						t.Fatalf("%s stamp root carries an unexpected non-marker entry %s", scriptName, entry.Name())
+					}
+					payloadDirs = append(payloadDirs, entry.Name())
+				}
+				if len(payloadDirs) != 1 {
+					t.Fatalf("%s stamp root must retain exactly the first payload, got %v", scriptName, payloadDirs)
+				}
+				got, err := os.ReadFile(filepath.Join(root, payloadDirs[0], "SKILL.md"))
+				if err != nil || string(got) != "payload A\n" {
+					t.Fatalf("%s completed sibling payload was destroyed: %q, %v", scriptName, got, err)
+				}
+				if got, err := os.ReadFile(filepath.Join(victimB, "SKILL.md")); err != nil || string(got) != "victim B\n" {
+					t.Fatalf("%s second victim must stay at its original path: %q, %v", scriptName, got, err)
+				}
+			})
+
+			t.Run("fresh stamp root is dropped non-recursively", func(t *testing.T) {
+				home := t.TempDir()
+				root := filepath.Join(home, ".dws", "skill-backups", stamp)
+				victim := filepath.Join(home, ".agents", "skills", "skill-fresh")
+				mustWriteFile(t, filepath.Join(victim, "SKILL.md"), []byte("fresh victim\n"), 0o644)
+
+				// The failing call itself created the root, so the cleanup
+				// must drop it again: mkdir is intercepted to hand back a
+				// non-writable root, failing the marker write while the root
+				// stays removable through its writable parent directory.
+				harness := `. "$DWS_TEST_LIBRARY"
+mkdir() {
+  command mkdir "$@"
+  _mk_rc=$?
+  if [ "${1:-}" = "-p" ] && [ "${2:-}" = "$DWS_TEST_ROOT" ]; then
+    chmod 0555 "$DWS_TEST_ROOT"
+  fi
+  return "$_mk_rc"
+}
+if ` + backupFn + ` "$DWS_TEST_VICTIM"; then
+  exit 11
+fi
+[ ! -e "$DWS_TEST_ROOT" ] || exit 12
+[ -f "$DWS_TEST_VICTIM/SKILL.md" ] || exit 13
+`
+				cmd := exec.Command("sh", "-c", harness)
+				cmd.Env = append(os.Environ(),
+					"HOME="+home,
+					"PATH="+stubDir+":"+os.Getenv("PATH"),
+					"DWS_TEST_LIBRARY="+library,
+					"DWS_TEST_ROOT="+root,
+					"DWS_TEST_VICTIM="+victim,
+				)
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("%s fresh marker-failure harness failed: %v\n%s", scriptName, err, output)
+				}
+				if _, err := os.Lstat(root); !os.IsNotExist(err) {
+					t.Fatalf("%s fresh stamp root must be removed again: %v", scriptName, err)
+				}
+				if got, err := os.ReadFile(filepath.Join(victim, "SKILL.md")); err != nil || string(got) != "fresh victim\n" {
+					t.Fatalf("%s victim must stay untouched at its original path: %q, %v", scriptName, got, err)
+				}
+			})
 		})
 	}
 }

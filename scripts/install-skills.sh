@@ -69,6 +69,11 @@ backup_and_remove_skill_dir() {
   done
   _bed_stamp_root="$(dirname "$_bed_target")"
   record_current_run_backup_stamp "$_bed_stamp_root"
+  # Freshness must be sampled before mkdir: the collision loop tests the
+  # payload path, so a second backup in the same stamp second reuses this
+  # root while a sibling payload from this run already lives in it.
+  _bed_fresh=1
+  [ ! -d "$_bed_stamp_root" ] || _bed_fresh=0
   mkdir -p "$_bed_stamp_root" 2>/dev/null || {
     printf '  ⚠️  无法创建备份目录，保留原目录 %s\n' "$_bed_dir"
     return 1
@@ -77,7 +82,14 @@ backup_and_remove_skill_dir() {
   # stamp-shaped name alone is not evidence, so pruning only ever removes
   # roots carrying this marker — it must exist before any payload moves in.
   printf '%s\n' 'dws skill backup v1' > "$_bed_stamp_root/.dws-skill-backup" 2>/dev/null || {
-    rm -rf "$_bed_stamp_root"
+    # Non-recursive cleanup, sibling protection: only a root this call
+    # created may be dropped, and only the marker plus an empty root (rmdir
+    # refuses a non-empty directory) — rm -rf here would destroy a completed
+    # same-second sibling backup whose original is already moved away.
+    if [ "$_bed_fresh" -eq 1 ]; then
+      rm -f "$_bed_stamp_root/.dws-skill-backup"
+      rmdir "$_bed_stamp_root" 2>/dev/null || true
+    fi
     printf '  ⚠️  无法写入备份所有权标记，保留原目录 %s\n' "$_bed_dir"
     return 1
   }
@@ -205,7 +217,10 @@ sha256_stdin() {
 }
 
 # sha256_file <path>: content digest used by skill_dir_content_digest. Never
-# emits on failure so the identity fails instead of parsing a wrong token.
+# emits on failure. Callers that capture its status directly detect that
+# failure; skill_dir_content_digest cannot — see the pipeline caveat there:
+# POSIX sh returns only the right-hand pipeline status, so a subshell exit on
+# its left side is discarded and digest-failure detection stays best-effort.
 sha256_file() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" 2>/dev/null | awk '{print $1}'
@@ -484,8 +499,11 @@ skill_dir_identity() {
 # Recursive content digest over a published tree, mirroring the Go
 # fingerprint: sorted relative paths emit type+permission bits plus either a
 # content sha256 or the symlink target, and the whole line stream feeds
-# sha256_stdin. Digest failures surface as a non-zero identity instead of a
-# wrong-but-parseable token.
+# sha256_stdin. Failure detection is asymmetric and best-effort: with no hash
+# tool installed sha256_stdin itself returns 1 and the identity genuinely
+# fails, but an unreadable file only exits the left-hand subshell — /bin/sh
+# has no pipefail, so the pipeline returns sha256_stdin's status and the
+# digest is computed over a truncated stream instead of failing.
 skill_dir_content_digest() {
   (
     cd "$1" 2>/dev/null || exit 1

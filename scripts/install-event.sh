@@ -137,7 +137,13 @@ copy_tree() {
     fi
     for _ct_child in "$dest"/* "$dest"/.[!.]* "$dest"/..?*; do
       [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
-      mv "$_ct_child" "$stage/" || true
+      # Bounded failure like install.sh's publish rollback: a child that
+      # cannot move back leaves dest occupied; stop instead of swallowing
+      # the error so the restore below reports the failed rollback.
+      if ! mv "$_ct_child" "$stage/"; then
+        _ct_failed=1
+        break
+      fi
     done
     rmdir "$dest" 2>/dev/null || true
   fi
@@ -217,12 +223,24 @@ backup_skill_dir() {
     fi
   done
   record_current_run_backup_stamp "$backup_root"
+  # Freshness must be sampled before mkdir: the collision loop tests the
+  # payload path, so a second backup in the same stamp second reuses this
+  # root while a sibling payload from this run already lives in it.
+  fresh=1
+  [ ! -d "$backup_root" ] || fresh=0
   mkdir -p "$backup_root" || return 1
   # Ownership proof, the exact bytes Go's writeSkillBackupMarker stamps: a
   # stamp-shaped name alone is not evidence, so pruning only ever removes
   # roots carrying this marker — it must exist before the payload moves in.
   printf '%s\n' 'dws skill backup v1' > "$backup_root/.dws-skill-backup" || {
-    rm -rf "$backup_root"
+    # Non-recursive cleanup, sibling protection: only a root this call
+    # created may be dropped, and only the marker plus an empty root (rmdir
+    # refuses a non-empty directory) — rm -rf here would destroy a completed
+    # same-second sibling backup whose original is already moved away.
+    if [ "$fresh" -eq 1 ]; then
+      rm -f "$backup_root/.dws-skill-backup"
+      rmdir "$backup_root" 2>/dev/null || true
+    fi
     return 1
   }
   mv "$victim" "$backup" || return 1

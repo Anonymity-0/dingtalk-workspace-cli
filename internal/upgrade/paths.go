@@ -233,11 +233,30 @@ func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
 		}
 	}
 	rememberSkillBackupRoot(backupRoot)
+	// The stamp only has second precision and the collision loop dedupes on
+	// the payload target, not on the root, so a second skill dir backed up in
+	// the same second shares this root. Record whether this call created the
+	// root: marker-failure cleanup must never delete a root that may already
+	// hold a sibling's moved payload — its original is gone, so that loss
+	// would be unrecoverable.
+	fresh := false
+	if _, statErr := upgradeLstat(backupRoot); statErr != nil && os.IsNotExist(statErr) {
+		fresh = true
+	}
 	if err := upgradeMkdirAll(backupRoot, dirPermShared); err != nil {
 		return "", fmt.Errorf("创建备份目录失败 %s: %w", backupRoot, err)
 	}
 	if err := writeSkillBackupMarker(backupRoot); err != nil {
-		_ = upgradeRemoveAll(backupRoot)
+		// Clean up only a root this call created (empty by construction) and
+		// only non-recursively: os.Remove refuses a non-empty root, which is
+		// the intended guard against a concurrent writer or a sibling payload
+		// already moved into a shared root. A pre-existing root is foreign
+		// from this call's perspective and is left untouched. The victim was
+		// never moved, so it stays in place.
+		if fresh {
+			_ = os.Remove(filepath.Join(backupRoot, skillBackupMarkerFile))
+			_ = os.Remove(backupRoot)
+		}
 		return "", fmt.Errorf("写入备份所有权标记失败 %s: %w", backupRoot, err)
 	}
 	if err := moveSkillPathRecoverably(dir, target); err != nil {

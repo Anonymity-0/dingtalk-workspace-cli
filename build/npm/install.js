@@ -619,11 +619,11 @@ function backupAndRemoveSkillDir(homeDir, dir, backups = null, options = {}) {
     // leave an unmarked (never-prunable) stamp behind.
     writeSkillBackupMarker(targetRoot);
   } catch (err) {
-    // Never leave an empty unowned stamp root behind. The removal is
-    // deliberately non-recursive so a pre-existing non-empty root (foreign
-    // data) is never destroyed.
+    // Never leave an empty unowned stamp root behind. rmdirSync removes an
+    // empty root but deliberately fails on a non-empty one, so a pre-existing
+    // root holding foreign data is never destroyed.
     try {
-      fs.rmSync(targetRoot, { force: true });
+      fs.rmdirSync(targetRoot);
     } catch {
       // Non-empty pre-existing root: foreign data stays.
     }
@@ -1041,8 +1041,14 @@ function rollbackPublishedSkillPath(publication, options = {}) {
     }
   } catch (err) {
     if (err && err.code === "ENOENT") {
-      cleanupRoot();
-      return;
+      // ENOENT from the fingerprint walk means the destination itself is
+      // gone only when it no longer exists lexically; a concurrently removed
+      // CHILD produces the same error and must fall through to the refusal
+      // below instead of skipping rollback.
+      if (!pathExistsLexicallySync(destination)) {
+        cleanupRoot();
+        return;
+      }
     }
     if (String(err.message || "").startsWith("refusing to delete non-transaction Skill")
         || String(err.message || "").startsWith("failed to clean Skill rollback quarantine")) {

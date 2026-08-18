@@ -964,6 +964,54 @@ func TestCrossPlatformCoverageSkillBackupMarkerOwnership(t *testing.T) {
 			t.Fatalf("victim must stay in place: %v", statErr)
 		}
 	})
+
+	t.Run("marker write failure preserves a sibling backup in the same stamp", func(t *testing.T) {
+		home := t.TempDir()
+		// Pin one stamp: a second skill dir backed up in the same second
+		// shares the root with the first (collision dedupe is per payload).
+		testseam.Swap(t, &upgradeBackupStamp, func() string { return "20260818-010101" })
+		newVictim := func(name, body string) string {
+			victim := filepath.Join(home, ".claude", "skills", name)
+			if err := os.MkdirAll(victim, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(victim, "SKILL.md"), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return victim
+		}
+		victimA := newVictim("dingtalk-a", "payload-a")
+		victimB := newVictim("dingtalk-b", "payload-b")
+		backupA, err := backupAndRemoveSkillDir(home, victimA)
+		if err != nil {
+			t.Fatal(err)
+		}
+		root := filepath.Dir(backupA)
+
+		testseam.Swap(t, &upgradeWriteFile, func(string, []byte, os.FileMode) error { return errors.New("write denied") })
+		backupB, err := backupAndRemoveSkillDir(home, victimB)
+		testseam.Swap(t, &upgradeWriteFile, os.WriteFile)
+		if err == nil || !strings.Contains(err.Error(), "备份所有权标记") {
+			t.Fatalf("marker write failure must fail the backup, got %v", err)
+		}
+		if backupB != "" {
+			t.Fatalf("failed backup must not return a path: %q", backupB)
+		}
+		// The root existed before B's call, so its contents — including A's
+		// already-moved payload, the only remaining copy — must be untouched.
+		if body, readErr := os.ReadFile(filepath.Join(backupA, "SKILL.md")); readErr != nil || string(body) != "payload-a" {
+			t.Fatalf("sibling backup must survive, body = %q, err = %v", body, readErr)
+		}
+		if _, statErr := os.Stat(root); statErr != nil {
+			t.Fatalf("stamp root must survive: %v", statErr)
+		}
+		if body, readErr := os.ReadFile(filepath.Join(root, skillBackupMarkerFile)); readErr != nil || string(body) != skillBackupMarkerBody {
+			t.Fatalf("ownership marker must survive, body = %q, err = %v", body, readErr)
+		}
+		if body, readErr := os.ReadFile(filepath.Join(victimB, "SKILL.md")); readErr != nil || string(body) != "payload-b" {
+			t.Fatalf("victim B must stay in place, body = %q, err = %v", body, readErr)
+		}
+	})
 }
 
 func TestCrossPlatformCoveragePruneSkillBackupsEdges(t *testing.T) {
