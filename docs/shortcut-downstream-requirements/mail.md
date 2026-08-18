@@ -1,14 +1,14 @@
 # Mail Shortcut 下游业务能力需求规格
 
 > 日期：2026-08-18
-> DWS 基线：`effde762277ad717a246e38b237a8297fa49aab7`
+> Live executable 基线：`0ad61b3a9d60adf917311987039d51b43b217315`；8 个公开入口均在该 clean HEAD 完成 exact Shortcut + owning raw 双层验证
 > 对比基线：lark-cli 1.0.87
-> 范围：Shortcut only；不修改 `skills/multi` 或 `skills/mono`
+> 范围：Shortcut only；不改 `skills/multi` 或 `skills/mono` 的路由、流程或业务逻辑。仓库 policy 强制的可见 Shortcut 自动生成块单独机械同步。
 > 发布属性：仓库安全版本；不包含真实邮箱、人员、组织、邮件内容、资源 ID 或请求标识。
 
 ## 1. 执行摘要
 
-本轮对 18 个 Mail Shortcut 完成严格 success、固定集合路径、稳定 ID、分页完整性和统一 Result 收口。静态发布候选为 8 个只读入口，仍须在最终 clean HEAD 逐条完成 Shortcut 与原子层的真实数据双层复核；`+unread-mail`、`+recent-mail`、`+thread-list`、`+tag-list`、`+template-list`、`+contact-list` 因缺少可控 guaranteed-zero fixture 保持 `unavailable`；4 个草稿/模板写入口因无法证明清理终态同样不进入公开 Catalog。
+本轮对 18 个 Mail Shortcut 完成严格 success、固定集合路径、稳定 ID、分页完整性和统一 Result 收口。8 个公开只读入口已在 clean executable HEAD `0ad61b3a` 逐条完成 Shortcut 与原子层的真实数据双层复核；`+unread-mail`、`+recent-mail`、`+thread-list`、`+tag-list`、`+template-list`、`+contact-list` 因缺少可控 guaranteed-zero fixture 保持 `unavailable`；4 个草稿/模板写入口因无法证明清理终态同样不进入公开 Catalog。
 
 仍不能诚实对齐的任务集中在草稿/模板清理终态、发送终态、回复/转发草稿语义、批量修改/删除逐项结果、回执、签名、事件监听、模板附件事务和联系人创建身份回执。它们不是再包一层 Shortcut 就能解决，需要下游业务接口或安全测试 fixture 补足可验证合同。
 
@@ -167,12 +167,23 @@
 | Shortcut | 上游根因 | 已完成修复 | 回归证据 |
 |---|---|---|---|
 | 全部 list/search | 容忍式探测任意 result/data/list/items，坏元素静默丢弃 | 固定已观测路径、严格 success/数组/item/ID；无双态 fixture 的 leaf 不发布 | deterministic 响应矩阵；live 证据逐 leaf 记录，不作泛化 |
-| `+search-mail` / `+triage` | `$` 终止游标被误作下一页；零命中占位对象被当邮件 | 明确 `$` 终页；仅窄规则归一化已观测哨兵 | fresh query 可构造 known-nonempty + guaranteed-zero；clean HEAD 重跑后收口 |
+| `+search-mail` / `+triage` | `$` 终止游标被误作下一页；零命中占位对象被当邮件 | 明确 `$` 终页；仅窄规则归一化已观测哨兵 | `0ad61b3a` 上各完成 known-nonempty 20 + fresh guaranteed-zero；stable ID set 与 raw pagination/meta 精确一致 |
 | `+unread-mail` / `+recent-mail` / `+thread-list` | 固定条件或文件夹不能保证零命中 | 严格响应代码已完成，但没有空邮箱/空文件夹证据时关闭发布 | BLOCKED fixture；不得修改真实邮件状态造空 |
-| `+user-search` / `+find-mail-user` | `hasMore`/`nextCursor` 未交付；零命中被误报 validation error | 发布 complete/nextCursor；合法空成功 | clean HEAD 待执行 exact/raw 非空与随机零命中双验 |
+| `+user-search` / `+find-mail-user` | `hasMore`/`nextCursor` 未交付；零命中被误报 validation error | 发布 complete/nextCursor；合法空成功 | `0ad61b3a` 上各完成 known-nonempty 19 + fresh guaranteed-zero；stable identity set 与 raw pagination/meta 精确一致 |
 | `+tag-list` / `+template-list` / `+contact-list` | 无 query 的列表容易把末页/删除后列表误作合法空 | 严格响应代码已完成；无专用空邮箱和 typed cleanup 时关闭发布 | BLOCKED fixture；不把临时资源从列表消失记为零态 PASS |
-| `+message(s)` / `+thread` | 缺任务层完整读取和身份绑定 | 自动邮箱解析、精确请求 ID 读回、保序多读 | clean HEAD 待执行同 ID exact/raw 双验 |
+| `+message(s)` / `+thread` | 缺任务层完整读取和身份绑定 | 自动邮箱解析、精确请求 ID 读回、保序多读 | `0ad61b3a` 上 `+message`/`+thread` 与同稳定 ID raw 完整对象一致；`+messages` 用两个不同 ID 验证输入顺序与逐对象一致 |
 | 草稿/模板写 | 仅写回执会产生假成功 | 稳定 ID + exact get + 请求字段核对；清理无法证明时保持 unavailable | deterministic 回执/读回矩阵 PASS；live cleanup BLOCKED |
+
+### 6.1 clean executable HEAD 双层证据
+
+| 公开入口 | exact Shortcut + owning raw 证据 | 状态 |
+|---|---|---|
+| `+search-mail`, `+triage` | 各 20 条 known-nonempty 与 fresh guaranteed-zero；稳定 message ID 集合和分页状态一致 | `PASS@0ad61b3a` |
+| `+user-search`, `+find-mail-user` | 各 19 条 known-nonempty 与 fresh guaranteed-zero；条件身份集合和分页状态一致 | `PASS@0ad61b3a` |
+| `+folder-list` | 顶层 5 条 nonempty；本轮先由 raw 验证同一父文件夹确实为空，再由 Shortcut 返回显式空；ID 集合一致 | `PASS@0ad61b3a` |
+| `+message`, `+messages`, `+thread` | 单邮件/会话同稳定 ID 完整对象一致；批量用两个不同 ID 验证请求顺序和逐对象一致 | `PASS@0ad61b3a` |
+
+后续 Attendance 代码和非执行文档/生成块提交不改变 Mail runtime；发布前仍在最终 clean HEAD 从零重跑 8 个入口，最终 SHA 写入 PR 证据，不反向伪造本文自身 commit。
 
 ## 7. 安全与脱敏声明
 
