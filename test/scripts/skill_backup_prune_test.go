@@ -34,6 +34,14 @@ var shellPruneScriptTargets = []string{
 	"install-devapp.sh",
 }
 
+// The ownership-marker contract shared with the Go core
+// (internal/upgrade/paths.go): every stamp root DWS creates carries the
+// marker, and prune only counts or removes roots with these exact bytes.
+const (
+	skillBackupMarkerFile = ".dws-skill-backup"
+	skillBackupMarkerBody = "dws skill backup v1\n"
+)
+
 // extractShellFunction pulls a top-level `name() { ... }` definition out of a
 // script so the shipped logic — not a copy — is what the test exercises.
 func extractShellFunction(t *testing.T, scriptPath, name string) string {
@@ -55,16 +63,33 @@ func extractShellFunction(t *testing.T, scriptPath, name string) string {
 	return text[start : start+end+3]
 }
 
+// mkdirStampWithMarker creates a DWS-owned stamp fixture: the stamp directory
+// plus the exact ownership marker bytes prune verifies. Without the marker a
+// stamp-shaped directory is foreign data that prune must neither count nor
+// remove.
+func mkdirStampWithMarker(t *testing.T, backupRoot, stamp string) {
+	t.Helper()
+	dir := filepath.Join(backupRoot, stamp)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWriteFile(t, filepath.Join(dir, skillBackupMarkerFile), []byte(skillBackupMarkerBody), 0o644)
+}
+
 // runShellPruneScenario builds a sandbox HOME with the given pre-existing
-// (foreign) stamps, registers the given stamps as created by the current run,
-// runs the script's own prune_skill_backups, and returns the surviving stamp
-// directories.
-func runShellPruneScenario(t *testing.T, scriptPath string, foreignStamps, runStamps []string) []string {
+// (earlier-run) stamps, registers the given stamps as created by the current
+// run, optionally also plants stamp-shaped directories without the ownership
+// marker, runs the script's own prune_skill_backups, and returns the
+// surviving stamp directories.
+func runShellPruneScenario(t *testing.T, scriptPath string, foreignStamps, runStamps []string, unmarkedStamps ...string) []string {
 	t.Helper()
 	home := t.TempDir()
 	backupRoot := filepath.Join(home, ".dws", "skill-backups")
 	for _, stamp := range foreignStamps {
-		if err := os.MkdirAll(filepath.Join(backupRoot, stamp), 0o755); err != nil {
+		mkdirStampWithMarker(t, backupRoot, stamp)
+	}
+	for _, stamp := range unmarkedStamps {
+		if err := os.MkdirAll(filepath.Join(backupRoot, stamp, "payload"), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -83,9 +108,7 @@ func runShellPruneScenario(t *testing.T, scriptPath string, foreignStamps, runSt
 	driver.WriteString(extractShellFunction(t, scriptPath, "prune_skill_backups"))
 	driver.WriteString("\n")
 	for _, stamp := range runStamps {
-		if err := os.MkdirAll(filepath.Join(backupRoot, stamp), 0o755); err != nil {
-			t.Fatal(err)
-		}
+		mkdirStampWithMarker(t, backupRoot, stamp)
 		driver.WriteString("record_current_run_backup_stamp \"$HOME/.dws/skill-backups/" + stamp + "\"\n")
 	}
 	driver.WriteString("prune_skill_backups\n")
@@ -178,6 +201,24 @@ func TestInstallShellPruneKeepsCurrentRunBackups(t *testing.T) {
 				assertStampsSurvive(t, surviving,
 					oldStampName(3), oldStampName(4), oldStampName(5),
 					oldStampName(6), oldStampName(7))
+			})
+
+			// A stamp-shaped directory without the ownership marker is foreign
+			// data: it must be preserved untouched, never counted toward the
+			// keep limit, and never treated as prunable excess. Oldest on
+			// purpose — if the marker were not required, this directory would
+			// be the first pruning candidate.
+			t.Run("unmarked stamp-shaped directory is preserved and uncounted", func(t *testing.T) {
+				var foreignStamps []string
+				for i := 1; i <= 7; i++ {
+					foreignStamps = append(foreignStamps, oldStampName(i))
+				}
+				unmarked := "20200101-000000"
+				surviving := runShellPruneScenario(t, scriptPath, foreignStamps, nil, unmarked)
+				assertStampsSurvive(t, surviving,
+					append([]string{unmarked},
+						oldStampName(3), oldStampName(4), oldStampName(5),
+						oldStampName(6), oldStampName(7))...)
 			})
 		})
 	}

@@ -53,6 +53,9 @@
  *                                 concurrently occupied destination (atomic
  *                                 claim, no check-then-rename window) on
  *                                 POSIX and simulated win32.
+ *  20. unmarked stamps       — stamp-shaped directories without the exact
+ *                              ownership marker survive pruning and never
+ *                              consume a keep slot.
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
  * install.js itself shells out to). Skips cleanly on win32.
@@ -134,6 +137,18 @@ function sh(command, args, options = {}) {
 function writeFile(filePath, content, mode = 0o644) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, { mode });
+}
+
+// Cross-surface backup ownership contract (mirrors internal/upgrade/paths.go,
+// scripts/install.ps1, scripts/install-devapp.ps1, and scripts/install.sh):
+// every DWS-created stamp root carries .dws-skill-backup whose entire content
+// is exactly these bytes. Hardcoded here on purpose so drift from any writer
+// fails the smoke test.
+const SKILL_BACKUP_MARKER_FILE = ".dws-skill-backup";
+const SKILL_BACKUP_MARKER_BODY = "dws skill backup v1\n";
+
+function markBackupStamp(stampRoot) {
+  writeFile(path.join(stampRoot, SKILL_BACKUP_MARKER_FILE), SKILL_BACKUP_MARKER_BODY);
 }
 
 function writeManagedState(home, names) {
@@ -1215,9 +1230,14 @@ scenario("simulated win32 publishes junctions with absolute canonical targets", 
     const stamps = fs.readdirSync(backupRoot);
     assert.equal(stamps.length, 1, "the replaced copy produced exactly one backup stamp");
     assert.deepEqual(
-      fs.readdirSync(path.join(backupRoot, stamps[0])),
-      [".zcode-skills-dingtalk-chat"],
-      "backups encode the HOME-relative origin of the retired copy",
+      fs.readdirSync(path.join(backupRoot, stamps[0])).sort(),
+      [SKILL_BACKUP_MARKER_FILE, ".zcode-skills-dingtalk-chat"],
+      "the stamp root carries the ownership marker next to the backup payload",
+    );
+    assert.equal(
+      fs.readFileSync(path.join(backupRoot, stamps[0], SKILL_BACKUP_MARKER_FILE), "utf8"),
+      SKILL_BACKUP_MARKER_BODY,
+      "backup creation stamps the exact cross-surface marker bytes",
     );
     assert.equal(
       fs.readFileSync(path.join(backupRoot, stamps[0], ".zcode-skills-dingtalk-chat", "SKILL.md"), "utf8"),
@@ -1259,7 +1279,9 @@ scenario("skill backups stay bounded to the newest five stamps", () => {
       "20260101-000001", "20260101-000002", "20260101-000003",
       "20260101-000004", "20260101-000005", "20260101-000006", "20260101-000007",
     ]) {
-      writeFile(path.join(backupRoot, stamp, "placeholder", "SKILL.md"), `${stamp}\n`);
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "placeholder", "SKILL.md"), `${stamp}\n`);
+      markBackupStamp(stampRoot);
     }
     const victim = path.join(home, ".codex", "skills", "dingtalk-chat");
     writeFile(path.join(victim, "SKILL.md"), "old codex copy\n");
@@ -1288,7 +1310,9 @@ scenario("prune preserves unknown directories in skill-backups", () => {
       "20260101-000001", "20260101-000002", "20260101-000003",
       "20260101-000004", "20260101-000005", "20260101-000006", "20260101-000007",
     ]) {
-      writeFile(path.join(backupRoot, stamp, "placeholder", "SKILL.md"), `${stamp}\n`);
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "placeholder", "SKILL.md"), `${stamp}\n`);
+      markBackupStamp(stampRoot);
     }
     const unknowns = [
       "user-personal-backup",
@@ -1315,6 +1339,73 @@ scenario("prune preserves unknown directories in skill-backups", () => {
         fs.readFileSync(path.join(backupRoot, name, "marker.txt"), "utf8"),
         `unknown:${name}\n`,
         `unknown directory ${name} contents must be intact`,
+      );
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("prune preserves unmarked stamp directories without consuming keep slots", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-prune-unmarked-"));
+  const home = path.join(tmp, "home");
+  const backupRoot = path.join(home, ".dws", "skill-backups");
+  try {
+    // Exactly SKILL_BACKUP_KEEP verified stamps: nothing may be pruned, even
+    // though foreign stamp-shaped siblings would push the naive count past
+    // the limit.
+    const marked = ["20260101-000001", "20260101-000002", "20260101-000003", "20260101-000004", "20260101-000005"];
+    for (const stamp of marked) {
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "placeholder", "SKILL.md"), `${stamp}\n`);
+      markBackupStamp(stampRoot);
+    }
+    const foreign = [
+      { stamp: "20260102-000001", body: null },              // no marker at all
+      { stamp: "20260102-000002", body: "dws skill backup v2\n" }, // wrong body
+      { stamp: "20260101-000000", body: "dws skill backup v1" },   // missing trailing LF
+      { stamp: "20260101-000099", body: "dws skill backup v1\r\n" }, // CRLF is not the exact contract bytes
+    ];
+    for (const { stamp, body } of foreign) {
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "user-data.txt"), `foreign:${stamp}\n`);
+      if (body !== null) writeFile(path.join(stampRoot, SKILL_BACKUP_MARKER_FILE), body);
+    }
+
+    pruneSkillBackups(home);
+
+    let remaining = fs.readdirSync(backupRoot).sort();
+    assert.deepEqual(
+      remaining,
+      [...marked, ...foreign.map(({ stamp }) => stamp)].sort(),
+      "with exactly keep-many verified stamps, nothing is pruned and unmarked stamps never count",
+    );
+
+    // Force real pruning: three more verified stamps push marked history to
+    // eight, so exactly the three oldest verified stamps go while every
+    // unmarked sibling stays put (still not consuming a keep slot).
+    for (const stamp of ["20260103-000001", "20260103-000002", "20260103-000003"]) {
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "placeholder", "SKILL.md"), `${stamp}\n`);
+      markBackupStamp(stampRoot);
+    }
+
+    pruneSkillBackups(home);
+
+    remaining = fs.readdirSync(backupRoot).sort();
+    for (const pruned of marked.slice(0, 3)) {
+      assert.ok(!remaining.includes(pruned), `oldest verified stamp ${pruned} is pruned`);
+    }
+    assert.deepEqual(
+      remaining,
+      [marked[3], marked[4], ...foreign.map(({ stamp }) => stamp), "20260103-000001", "20260103-000002", "20260103-000003"].sort(),
+      "pruning keeps exactly the newest five verified stamps and preserves every unmarked sibling",
+    );
+    for (const { stamp } of foreign) {
+      assert.equal(
+        fs.readFileSync(path.join(backupRoot, stamp, "user-data.txt"), "utf8"),
+        `foreign:${stamp}\n`,
+        `unmarked stamp ${stamp} contents must be intact`,
       );
     }
   } finally {

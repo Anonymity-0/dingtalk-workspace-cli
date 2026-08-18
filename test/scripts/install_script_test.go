@@ -575,6 +575,209 @@ exit 0
 	}
 }
 
+// The ownership-marker contract (skillBackupMarkerFile / skillBackupMarkerBody,
+// declared in skill_backup_prune_test.go) is shared by the Go core
+// (internal/upgrade/paths.go), install.sh, both PowerShell installers, and
+// build/npm/install.js: every stamp root DWS creates carries the marker, and
+// pruning only deletes stamp-named directories whose marker verifies.
+
+// seedSkillBackupOwnershipFixture fills ~/.dws/skill-backups with five
+// verified stamps (marker bytes exactly as the Go core writes them, proving
+// cross-surface acceptance) plus three foreign stamp-shaped siblings: two
+// without a marker and one with a wrong marker body.
+func seedSkillBackupOwnershipFixture(t *testing.T, home string) {
+	t.Helper()
+	backupRoot := filepath.Join(home, ".dws", "skill-backups")
+	for _, stamp := range []string{
+		"20260101-000001", "20260101-000002", "20260101-000003",
+		"20260101-000004", "20260101-000005",
+	} {
+		mustWriteFile(t, filepath.Join(backupRoot, stamp, "placeholder", "SKILL.md"), []byte(stamp+"\n"), 0o644)
+		mustWriteFile(t, filepath.Join(backupRoot, stamp, skillBackupMarkerFile), []byte(skillBackupMarkerBody), 0o644)
+	}
+	for _, stamp := range []string{"20260102-000001", "20260102-000002", "20260101-000000"} {
+		mustWriteFile(t, filepath.Join(backupRoot, stamp, "user-data.txt"), []byte("foreign:"+stamp+"\n"), 0o644)
+	}
+	mustWriteFile(t, filepath.Join(backupRoot, "20260101-000000", skillBackupMarkerFile), []byte("dws skill backup v2\n"), 0o644)
+}
+
+// assertSkillBackupOwnershipResult checks the post-prune contract shared by
+// both PowerShell installers: the four oldest verified stamps are gone
+// (three by the final prune, one by the backup's internal prune), exactly
+// five verified stamps survive, every foreign stamp-shaped sibling is intact,
+// and the current-run stamp carries the exact marker bytes next to the moved
+// payload.
+func assertSkillBackupOwnershipResult(t *testing.T, home string) {
+	t.Helper()
+	backupRoot := filepath.Join(home, ".dws", "skill-backups")
+	for _, pruned := range []string{"20260101-000001", "20260101-000002", "20260101-000003", "20260101-000004"} {
+		if _, err := os.Lstat(filepath.Join(backupRoot, pruned)); !os.IsNotExist(err) {
+			t.Fatalf("verified stamp %s must be pruned, err = %v", pruned, err)
+		}
+	}
+	entries, err := os.ReadDir(backupRoot)
+	if err != nil {
+		t.Fatalf("ReadDir(%s) error = %v", backupRoot, err)
+	}
+	surviving := map[string]bool{}
+	runStamps := []string{}
+	for _, entry := range entries {
+		surviving[entry.Name()] = true
+		if entry.Name() >= "20260801-000000" {
+			runStamps = append(runStamps, entry.Name())
+		}
+	}
+	for _, want := range []string{
+		"20260101-000005",
+		"20260101-000000", "20260102-000001", "20260102-000002",
+		"20260103-000001", "20260103-000002", "20260103-000003",
+	} {
+		if !surviving[want] {
+			t.Fatalf("stamp %s must survive pruning, surviving = %v", want, surviving)
+		}
+	}
+	if len(runStamps) != 1 || len(entries) != 8 {
+		t.Fatalf("expected the five newest verified stamps, three foreign stamps, and one run stamp, got %d entries (run stamps %v)", len(entries), runStamps)
+	}
+	runRoot := filepath.Join(backupRoot, runStamps[0])
+	marker, err := os.ReadFile(filepath.Join(runRoot, skillBackupMarkerFile))
+	if err != nil || string(marker) != skillBackupMarkerBody {
+		t.Fatalf("run stamp marker = %q, %v; want exactly %q", string(marker), err, skillBackupMarkerBody)
+	}
+	if backup := findSkillBackupContent(home, "old copy\n"); backup == "" {
+		t.Fatalf("backed-up Skill content missing from run stamp %s", runRoot)
+	}
+	for _, stamp := range []string{"20260101-000000", "20260102-000001", "20260102-000002"} {
+		data, err := os.ReadFile(filepath.Join(backupRoot, stamp, "user-data.txt"))
+		if err != nil || string(data) != "foreign:"+stamp+"\n" {
+			t.Fatalf("foreign stamp %s must be intact, got %q, %v", stamp, string(data), err)
+		}
+	}
+}
+
+func TestInstallPowerShellPruneVerifiesBackupOwnershipMarker(t *testing.T) {
+	powerShellNames := []string{"pwsh"}
+	if runtime.GOOS == "windows" {
+		powerShellNames = []string{"powershell", "pwsh"}
+	}
+	pwsh := ""
+	for _, name := range powerShellNames {
+		if candidate, lookupErr := exec.LookPath(name); lookupErr == nil {
+			pwsh = candidate
+			break
+		}
+	}
+	if pwsh == "" {
+		t.Skip("PowerShell is not available")
+	}
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.ps1 main section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	harness := prefix + `
+$backupRoot = Join-Path $env:DWS_TEST_HOME '.dws\skill-backups'
+# Five verified stamps plus three foreign stamp-shaped siblings: the foreign
+# entries must not count against the keep limit, so nothing is pruned here.
+Remove-OldSkillBackups
+foreach ($stamp in @('20260101-000001','20260101-000002','20260101-000003','20260101-000004','20260101-000005','20260101-000000','20260102-000001','20260102-000002')) {
+    if (!(Test-Path -LiteralPath (Join-Path $backupRoot $stamp) -PathType Container)) { exit 10 }
+}
+# A real backup both proves the writer stamps the exact marker bytes and adds
+# a current-run root that pruning must keep.
+$victim = Join-Path $env:DWS_TEST_HOME '.zcode\skills\dingtalk-chat'
+New-Item -ItemType Directory -Path $victim -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $victim 'SKILL.md'), "old copy` + "`n" + `")
+if (!(Backup-SkillDir -Dir $victim)) { exit 11 }
+if (Test-Path -LiteralPath $victim) { exit 12 }
+foreach ($stamp in @('20260103-000001','20260103-000002','20260103-000003')) {
+    $stampRoot = Join-Path $backupRoot $stamp
+    New-Item -ItemType Directory -Path (Join-Path $stampRoot 'placeholder') -Force | Out-Null
+    Write-SkillBackupMarker -Root $stampRoot
+}
+Remove-OldSkillBackups
+exit 0
+`
+	home := filepath.Join(t.TempDir(), "home")
+	seedSkillBackupOwnershipFixture(t, home)
+	harnessPath := filepath.Join(t.TempDir(), "skill-backup-marker.ps1")
+	mustWriteFile(t, harnessPath, []byte(harness), 0o644)
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+home)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("PowerShell backup marker harness failed: %v\n%s", err, string(output))
+	}
+	assertSkillBackupOwnershipResult(t, home)
+}
+
+func TestInstallDevappPowerShellPruneVerifiesBackupOwnershipMarker(t *testing.T) {
+	pwsh := ""
+	if candidate, err := exec.LookPath("pwsh"); err == nil {
+		pwsh = candidate
+	} else if runtime.GOOS == "windows" {
+		if candidate, err := exec.LookPath("powershell"); err == nil {
+			pwsh = candidate
+		}
+	}
+	if pwsh == "" {
+		t.Skip("PowerShell is not available")
+	}
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-devapp.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.Index(string(data), "# Read the releases list")
+	if cut < 0 {
+		t.Fatal("install-devapp.ps1 release section not found")
+	}
+	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
+	harness := prefix + `
+$backupRoot = Join-Path $env:DWS_TEST_HOME '.dws\skill-backups'
+# Five verified stamps plus three foreign stamp-shaped siblings: the foreign
+# entries must not count against the keep limit, so nothing is pruned here.
+Remove-OldDevSkillBackups
+foreach ($stamp in @('20260101-000001','20260101-000002','20260101-000003','20260101-000004','20260101-000005','20260101-000000','20260102-000001','20260102-000002')) {
+    if (!(Test-PathLexically (Join-Path $backupRoot $stamp))) { exit 10 }
+}
+$victim = Join-Path $env:DWS_TEST_HOME '.zcode\skills\dingtalk-chat'
+New-Item -ItemType Directory -Path $victim -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $victim 'SKILL.md'), "old copy` + "`n" + `")
+Backup-DevSkill $victim
+if (Test-PathLexically $victim) { exit 12 }
+foreach ($stamp in @('20260103-000001','20260103-000002','20260103-000003')) {
+    $stampRoot = Join-Path $backupRoot $stamp
+    New-Item -ItemType Directory -Path (Join-Path $stampRoot 'placeholder') -Force | Out-Null
+    Write-DevSkillBackupMarker $stampRoot
+}
+Remove-OldDevSkillBackups
+exit 0
+`
+	home := filepath.Join(t.TempDir(), "home")
+	seedSkillBackupOwnershipFixture(t, home)
+	harnessPath := filepath.Join(t.TempDir(), "devapp-skill-backup-marker.ps1")
+	mustWriteFile(t, harnessPath, []byte(harness), 0o644)
+	cmd := exec.Command(pwsh, "-NoProfile", "-NonInteractive", "-File", harnessPath)
+	cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+home)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("PowerShell devapp backup marker harness failed: %v\n%s", err, string(output))
+	}
+	assertSkillBackupOwnershipResult(t, home)
+}
+
 func TestInstallScriptLinkPublicationRacePreservesConcurrentObjects(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX shell semantics are unavailable")
@@ -1006,6 +1209,15 @@ func TestInstallEventScriptInstallsBinaryAndEventSkills(t *testing.T) {
 	sibling, err := os.ReadFile(filepath.Join(fakeHome, ".agents", "skills", "dingtalk-chat", "SKILL.md"))
 	if err != nil || string(sibling) != "keep sibling\n" {
 		t.Fatalf("unrelated sibling changed: data=%q err=%v", sibling, err)
+	}
+	// The replaced standalone Event skill must sit in a marker-stamped backup
+	// root: that marker is what lets a later prune count and recycle it. The
+	// event installer archives under the flattened source path, so locate the
+	// backup by content and the stamp root two levels above it.
+	if got := findSkillBackupContent(fakeHome, "old standalone event\n"); got == "" {
+		t.Fatalf("replaced standalone Event skill should be backed up under .dws/skill-backups")
+	} else {
+		assertSkillBackupMarker(t, filepath.Dir(filepath.Dir(got)))
 	}
 	if _, err := os.Stat(filepath.Join(fakeHome, ".agents", "skills", "dingtalk-dev")); !os.IsNotExist(err) {
 		t.Fatalf("dingtalk-dev should not be installed by install-event.sh, stat err=%v", err)
@@ -1571,12 +1783,17 @@ func TestInstallScriptSourceModeDefaultMultiInstall(t *testing.T) {
 		}
 	}
 	// Removals must be reversible: the displaced dirs land under
-	// ~/.dws/skill-backups/ instead of being destroyed.
-	if findSkillBackup(fixture.fakeHome, "dws", "old mono\n") == "" {
+	// ~/.dws/skill-backups/ instead of being destroyed, each inside a stamp
+	// root stamped with the ownership marker.
+	if got := findSkillBackup(fixture.fakeHome, "dws", "old mono\n"); got == "" {
 		t.Errorf("old mono dws/ should be backed up under .dws/skill-backups, output:\n%s", output)
+	} else {
+		assertSkillBackupMarker(t, filepath.Dir(got))
 	}
-	if findSkillBackup(fixture.fakeHome, "dingtalk-stale", "stale\n") == "" {
+	if got := findSkillBackup(fixture.fakeHome, "dingtalk-stale", "stale\n"); got == "" {
 		t.Errorf("stale dingtalk-* should be backed up under .dws/skill-backups, output:\n%s", output)
+	} else {
+		assertSkillBackupMarker(t, filepath.Dir(got))
 	}
 	if _, err := os.Stat(filepath.Join(base, "other-skill", "SKILL.md")); err != nil {
 		t.Errorf("non-DWS skill must be preserved: %v", err)
@@ -1736,6 +1953,73 @@ func findSkillBackup(fakeHome, name, content string) string {
 		return nil
 	})
 	return found
+}
+
+// assertSkillBackupMarker pins the ownership contract shared with the Go core:
+// every stamp root a shell installer creates carries .dws-skill-backup with
+// exactly "dws skill backup v1\n", because pruning only ever removes
+// stamp-shaped roots with those exact bytes.
+func assertSkillBackupMarker(t *testing.T, stampRoot string) {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(stampRoot, skillBackupMarkerFile))
+	if err != nil {
+		t.Fatalf("backup ownership marker missing in %s: %v", stampRoot, err)
+	}
+	if string(data) != skillBackupMarkerBody {
+		t.Fatalf("backup ownership marker in %s = %q, want %q", stampRoot, data, skillBackupMarkerBody)
+	}
+}
+
+// TestInstallScriptPrunePreservesUnmarkedStampDirs runs the real install.sh
+// (whose main ends with prune_skill_backups) against a HOME whose backup root
+// already holds a full marked history plus one unmarked stamp-shaped
+// directory. The end-of-run prune must remove the marked excess while the
+// unmarked directory — foreign data without the ownership marker — is neither
+// deleted nor counted toward the keep limit, and the stamp this run creates
+// must carry the exact marker bytes.
+func TestInstallScriptPrunePreservesUnmarkedStampDirs(t *testing.T) {
+	t.Parallel()
+
+	fixture := newInstallSourceFixture(t)
+	installDir := filepath.Join(fixture.root, "bin")
+	backupRoot := filepath.Join(fixture.fakeHome, ".dws", "skill-backups")
+
+	// Oldest on purpose: without the marker check this directory would be the
+	// first pruning candidate and would inflate the excess count.
+	unmarked := filepath.Join(backupRoot, "20200101-000000")
+	mustWriteFile(t, filepath.Join(unmarked, "user-data.txt"), []byte("foreign\n"), 0o644)
+	for i := 1; i <= 6; i++ {
+		mustWriteFile(t, filepath.Join(backupRoot, oldStampName(i), "skill", "SKILL.md"), []byte("old batch\n"), 0o644)
+		mustWriteFile(t, filepath.Join(backupRoot, oldStampName(i), skillBackupMarkerFile), []byte(skillBackupMarkerBody), 0o644)
+	}
+	seedAgentHome(t, fixture.fakeHome, "dws", "old mono\n")
+
+	runInstallScript(t, fixture.scriptPath, fixture.envWithSkillMode("mono",
+		"DWS_INSTALL_DIR="+installDir,
+		"DWS_NO_SKILLS=0",
+	))
+
+	// Six marked batches plus this run's one exceed the keep limit of five,
+	// so exactly the two oldest marked batches are excess and must be gone —
+	// proving the prune actually ran.
+	for _, gone := range []string{oldStampName(1), oldStampName(2)} {
+		if _, err := os.Stat(filepath.Join(backupRoot, gone)); !os.IsNotExist(err) {
+			t.Fatalf("marked excess stamp %s should have been pruned, stat err=%v", gone, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(backupRoot, oldStampName(3))); err != nil {
+		t.Fatalf("marked keep-range stamp should survive the prune: %v", err)
+	}
+	// The unmarked directory is never counted and never removed, even though
+	// it sorts before every pruned batch.
+	if data, err := os.ReadFile(filepath.Join(unmarked, "user-data.txt")); err != nil || string(data) != "foreign\n" {
+		t.Fatalf("unmarked stamp-shaped directory must be preserved untouched: data=%q err=%v", data, err)
+	}
+	got := findSkillBackup(fixture.fakeHome, "dws", "old mono\n")
+	if got == "" {
+		t.Fatal("this run's dws backup is missing after the prune")
+	}
+	assertSkillBackupMarker(t, filepath.Dir(got))
 }
 
 // TestInstallScriptBackupFailureKeepsOriginalDir pins the fail-safe contract:

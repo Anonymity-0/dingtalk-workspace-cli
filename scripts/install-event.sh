@@ -218,13 +218,23 @@ backup_skill_dir() {
   done
   record_current_run_backup_stamp "$backup_root"
   mkdir -p "$backup_root" || return 1
+  # Ownership proof, the exact bytes Go's writeSkillBackupMarker stamps: a
+  # stamp-shaped name alone is not evidence, so pruning only ever removes
+  # roots carrying this marker — it must exist before the payload moves in.
+  printf '%s\n' 'dws skill backup v1' > "$backup_root/.dws-skill-backup" || {
+    rm -rf "$backup_root"
+    return 1
+  }
   mv "$victim" "$backup" || return 1
   printf '%s\n' "$backup"
 }
 
 # prune_skill_backups keeps only the newest SKILL_BACKUP_KEEP stamped backup
 # directories from earlier runs under $HOME/.dws/skill-backups, matching Go's
-# skillBackupKeep / pruneSkillBackups. Stamp directories created by the
+# skillBackupKeep / pruneSkillBackups. Only stamp-shaped roots carrying the
+# .dws-skill-backup marker with the exact expected content are counted or
+# removed: foreign data with a stamp-like name never consumes a keep slot
+# and is never deleted, silently. Stamp directories created by the
 # current process are never pruned (mirroring Go's run-root registry and
 # install.js's currentRunBackupRoots), so a migration that retires more than
 # SKILL_BACKUP_KEEP batches stays reversible. Glob order is lexicographic and
@@ -244,10 +254,12 @@ record_current_run_backup_stamp() {
   CURRENT_RUN_BACKUP_STAMPS="${CURRENT_RUN_BACKUP_STAMPS} $1"
 }
 
-# is_skill_backup_stamp accepts only directory names DWS itself writes: UTC
-# YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry in
-# the backup root is foreign (user data, unrelated tooling) and is preserved
-# so pruning can never remove a directory it cannot prove DWS created.
+# is_skill_backup_stamp accepts only directory names with the stamp shape DWS
+# itself writes: UTC YYYYmmdd-HHMMSS, with an optional -N collision suffix.
+# Shape is necessary but not sufficient — pruning additionally verifies the
+# .dws-skill-backup ownership marker — while any other entry in the backup
+# root is foreign (user data, unrelated tooling) and is preserved so pruning
+# can never remove a directory it cannot prove DWS created.
 is_skill_backup_stamp() {
   case "$1" in
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9])
@@ -271,6 +283,7 @@ prune_skill_backups() {
   for prune_entry in "$prune_root"/*; do
     [ -d "$prune_entry" ] || continue
     is_skill_backup_stamp "${prune_entry##*/}" || continue
+    [ "$(cat "$prune_entry/.dws-skill-backup" 2>/dev/null)" = "dws skill backup v1" ] || continue
     prune_total=$((prune_total + 1))
   done
   [ "$prune_total" -gt "$SKILL_BACKUP_KEEP" ] || return 0
@@ -279,6 +292,7 @@ prune_skill_backups() {
     [ "$prune_drop" -gt 0 ] || break
     [ -d "$prune_entry" ] || continue
     is_skill_backup_stamp "${prune_entry##*/}" || continue
+    [ "$(cat "$prune_entry/.dws-skill-backup" 2>/dev/null)" = "dws skill backup v1" ] || continue
     case " $CURRENT_RUN_BACKUP_STAMPS " in
       *" $prune_entry "*) continue ;;
     esac

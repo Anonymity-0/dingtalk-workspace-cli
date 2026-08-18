@@ -765,6 +765,42 @@ function Get-SkillBackupName {
 $SkillBackupKeep = 5
 $script:SkillBackupRootsThisRun = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
+# Ownership marker: every stamp root DWS creates carries .dws-skill-backup
+# with exactly "dws skill backup v1" + LF — the same bytes internal/upgrade/
+# paths.go, install.sh, and build/npm/install.js write. A stamp-shaped name
+# alone is not ownership proof, so pruning only deletes directories whose
+# marker content verifies.
+$SkillBackupMarkerFile = ".dws-skill-backup"
+$SkillBackupMarkerBody = "dws skill backup v1"
+
+# Write-SkillBackupMarker stamps a freshly created stamp root as DWS-owned.
+# [IO.File]::WriteAllText pins the exact LF-terminated bytes (Set-Content
+# would append a platform newline on Windows PowerShell 5.1).
+function Write-SkillBackupMarker {
+    param([string]$Root)
+    [System.IO.File]::WriteAllText(
+        (Join-Path $Root $SkillBackupMarkerFile),
+        "$SkillBackupMarkerBody`n",
+        [System.Text.UTF8Encoding]::new($false))
+}
+
+# Test-SkillBackupMarker reports whether a stamp root carries the ownership
+# marker. The check normalizes CRLF→LF and drops trailing newlines before
+# comparing, so this surface accepts every surface's exact-LF bytes (writer
+# and checker agree); any other content, or a missing/unreadable marker,
+# means foreign data.
+function Test-SkillBackupMarker {
+    param([string]$Dir)
+    try {
+        $marker = Join-Path $Dir $SkillBackupMarkerFile
+        if (![System.IO.File]::Exists($marker)) { return $false }
+        $body = [System.IO.File]::ReadAllText($marker).Replace("`r`n", "`n").TrimEnd("`r", "`n")
+        return ($body -eq $SkillBackupMarkerBody)
+    } catch {
+        return $false
+    }
+}
+
 # Remove-OldSkillBackups deletes the oldest stamped backup directories once
 # more than $SkillBackupKeep remain. Stamps sort lexicographically in
 # chronological order, so name order is age order. Roots created during this
@@ -774,10 +810,11 @@ function Remove-OldSkillBackups {
     $root = Join-Path $HOME ".dws\skill-backups"
     if (!(Test-Path -LiteralPath $root -PathType Container)) { return }
     # Only directories whose names match the DWS backup stamp format (UTC
-    # yyyyMMdd-HHmmss, optional -N collision suffix) are candidates; any
-    # other entry is foreign data and is preserved.
+    # yyyyMMdd-HHmmss, optional -N collision suffix) AND whose ownership
+    # marker verifies are candidates; anything else is foreign data —
+    # preserved and never counted against $SkillBackupKeep.
     $dirs = @(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' } |
+        Where-Object { $_.Name -match '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' -and (Test-SkillBackupMarker -Dir $_.FullName) } |
         Sort-Object -Property Name)
     $excess = $dirs.Count - $SkillBackupKeep
     foreach ($dir in $dirs) {
@@ -817,6 +854,19 @@ function Backup-SkillDir {
     }
     try {
         New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force -ErrorAction Stop | Out-Null
+        # Stamp ownership immediately after creating the stamp root and
+        # before any skill directory moves into it, so an interrupted backup
+        # can never leave an unmarked (never-prunable) stamp behind.
+        Write-SkillBackupMarker -Root $targetRoot
+    } catch {
+        # The removal stays non-recursive so a pre-existing non-empty root
+        # (foreign data) is never destroyed; a failed marker write must not
+        # leave an empty unowned stamp root behind either.
+        Remove-Item -LiteralPath $targetRoot -Force -ErrorAction SilentlyContinue
+        Write-Say "⚠️  备份失败，保留原目录 $Dir`: $_"
+        return $false
+    }
+    try {
         Move-SkillPathRecoverably -Source $Dir -Destination $target
     } catch {
         Write-Say "⚠️  备份失败，保留原目录 $Dir`: $_"

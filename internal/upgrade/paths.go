@@ -151,6 +151,8 @@ var (
 	upgradeMkdirAll                    = os.MkdirAll
 	upgradeMkdirTemp                   = os.MkdirTemp
 	upgradeReadDir                     = os.ReadDir
+	upgradeReadFile                    = os.ReadFile
+	upgradeWriteFile                   = os.WriteFile
 	upgradeStat                        = os.Stat
 	upgradeLstat                       = os.Lstat
 	upgradeSymlink                     = os.Symlink
@@ -171,6 +173,28 @@ var (
 // interactive flows (install scripts, npm postinstall, `dws upgrade`) cannot
 // ask for confirmation, so deletions must stay reversible instead.
 const skillBackupSubdir = ".dws/skill-backups"
+
+// skillBackupMarkerFile is the ownership proof written into every stamp root
+// DWS creates. A stamp-shaped name alone is not evidence: users and other
+// tools can legitimately write `YYYYMMDD-HHMMSS` directories into the backup
+// root, so pruning only deletes directories whose marker content matches.
+// Installers on every surface (Go, sh, PowerShell, npm) write and verify the
+// exact same bytes.
+const skillBackupMarkerFile = ".dws-skill-backup"
+
+const skillBackupMarkerBody = "dws skill backup v1\n"
+
+// writeSkillBackupMarker stamps a freshly created stamp root as DWS-owned.
+func writeSkillBackupMarker(root string) error {
+	return upgradeWriteFile(filepath.Join(root, skillBackupMarkerFile), []byte(skillBackupMarkerBody), 0o644)
+}
+
+// isProvenSkillBackupRoot reports whether root carries the DWS ownership
+// marker with the exact expected content.
+func isProvenSkillBackupRoot(root string) bool {
+	body, err := upgradeReadFile(filepath.Join(root, skillBackupMarkerFile))
+	return err == nil && string(body) == skillBackupMarkerBody
+}
 
 // backupAndRemoveSkillDir moves dir into <homeDir>/.dws/skill-backups/
 // <stamp>/<rel> instead of destroying it, and returns the backup path. It is
@@ -211,6 +235,10 @@ func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
 	rememberSkillBackupRoot(backupRoot)
 	if err := upgradeMkdirAll(backupRoot, dirPermShared); err != nil {
 		return "", fmt.Errorf("创建备份目录失败 %s: %w", backupRoot, err)
+	}
+	if err := writeSkillBackupMarker(backupRoot); err != nil {
+		_ = upgradeRemoveAll(backupRoot)
+		return "", fmt.Errorf("写入备份所有权标记失败 %s: %w", backupRoot, err)
 	}
 	if err := moveSkillPathRecoverably(dir, target); err != nil {
 		return "", fmt.Errorf("备份技能目录失败 %s: %w", dir, err)
@@ -422,9 +450,11 @@ func isSkillBackupRunRoot(path string) bool {
 
 // pruneSkillBackups removes the oldest backup directories when more than
 // skillBackupKeep remain. Only directories whose names match the DWS backup
-// stamp format are candidates; unknown directories and stamps created by the
-// current run are preserved. Best-effort: a removal failure never aborts, but
-// pruning failures are reported so callers can warn the user.
+// stamp format AND whose ownership marker verifies are candidates; a
+// stamp-shaped name alone is not proof of ownership, so unmarked directories
+// are neither counted nor deleted, and stamps created by the current run are
+// preserved. Best-effort: a removal failure never aborts, but pruning
+// failures are reported so callers can warn the user.
 func pruneSkillBackups(homeDir string) error {
 	root := filepath.Join(homeDir, skillBackupSubdir)
 	entries, err := upgradeReadDir(root)
@@ -436,9 +466,13 @@ func pruneSkillBackups(homeDir string) error {
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if e.IsDir() && isSkillBackupStamp(e.Name()) {
-			names = append(names, e.Name())
+		if !e.IsDir() || !isSkillBackupStamp(e.Name()) {
+			continue
 		}
+		if !isProvenSkillBackupRoot(filepath.Join(root, e.Name())) {
+			continue
+		}
+		names = append(names, e.Name())
 	}
 	sort.Strings(names)
 	var firstErr error

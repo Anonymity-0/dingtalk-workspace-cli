@@ -163,6 +163,31 @@ const SKILL_BACKUP_KEEP = 5;
 // transaction still needs them to roll back.
 const currentRunBackupRoots = new Set();
 
+// Ownership marker: every stamp root DWS creates carries .dws-skill-backup
+// with exactly these bytes — the same bytes internal/upgrade/paths.go,
+// install.sh, and the PowerShell installers write. A stamp-shaped name alone
+// is not ownership proof, so pruning only deletes directories whose marker
+// content matches byte-for-byte (cross-surface exact-LF contract; a
+// PowerShell writer's hypothetical CRLF is normalized away on that surface,
+// while every writer here emits LF).
+const SKILL_BACKUP_MARKER_FILE = ".dws-skill-backup";
+const SKILL_BACKUP_MARKER_BODY = "dws skill backup v1\n";
+
+// writeSkillBackupMarker stamps a freshly created stamp root as DWS-owned.
+function writeSkillBackupMarker(root) {
+  fs.writeFileSync(path.join(root, SKILL_BACKUP_MARKER_FILE), SKILL_BACKUP_MARKER_BODY);
+}
+
+// isProvenSkillBackupRoot reports whether a stamp root carries the ownership
+// marker with the exact expected bytes; anything else is foreign data.
+function isProvenSkillBackupRoot(root) {
+  try {
+    return fs.readFileSync(path.join(root, SKILL_BACKUP_MARKER_FILE), "utf8") === SKILL_BACKUP_MARKER_BODY;
+  } catch {
+    return false;
+  }
+}
+
 // skillBackupStampPattern matches only directory names DWS itself writes:
 // UTC YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry
 // in the backup root is foreign (user data, unrelated tooling) and must be
@@ -175,9 +200,10 @@ function isSkillBackupStamp(name) {
 
 // pruneSkillBackups removes the oldest stamped backup directories once more
 // than SKILL_BACKUP_KEEP remain. Only directories whose names match the DWS
-// backup stamp format are candidates; unknown directories are preserved.
-// Stamps sort lexicographically in chronological order (`YYYYmmdd-HHMMSS`),
-// so name order is age order.
+// backup stamp format AND whose ownership marker verifies are candidates;
+// unknown or unmarked directories are foreign data — preserved and never
+// counted against SKILL_BACKUP_KEEP. Stamps sort lexicographically in
+// chronological order (`YYYYmmdd-HHMMSS`), so name order is age order.
 function pruneSkillBackups(homeDir) {
   const root = path.join(homeDir, ".dws", "skill-backups");
   let entries;
@@ -189,6 +215,7 @@ function pruneSkillBackups(homeDir) {
   }
   const names = entries
     .filter((entry) => entry.isDirectory() && isSkillBackupStamp(entry.name))
+    .filter((entry) => isProvenSkillBackupRoot(path.join(root, entry.name)))
     .map((entry) => entry.name)
     .sort((a, b) => Buffer.from(a).compare(Buffer.from(b)));
   let excess = names.length - SKILL_BACKUP_KEEP;
@@ -587,6 +614,23 @@ function backupAndRemoveSkillDir(homeDir, dir, backups = null, options = {}) {
   }
   try {
     fs.mkdirSync(targetRoot, { recursive: true });
+    // Stamp ownership immediately after creating the stamp root and before
+    // the skill directory moves into it, so an interrupted backup can never
+    // leave an unmarked (never-prunable) stamp behind.
+    writeSkillBackupMarker(targetRoot);
+  } catch (err) {
+    // Never leave an empty unowned stamp root behind. The removal is
+    // deliberately non-recursive so a pre-existing non-empty root (foreign
+    // data) is never destroyed.
+    try {
+      fs.rmSync(targetRoot, { force: true });
+    } catch {
+      // Non-empty pre-existing root: foreign data stays.
+    }
+    console.warn(`⚠️  备份失败，保留原目录 ${dir}: ${err.message}`);
+    throw new Error(`failed to back up Skill directory ${dir}: ${err.message}`);
+  }
+  try {
     movePathRecoverablySync(dir, target, options);
   } catch (err) {
     console.warn(`⚠️  备份失败，保留原目录 ${dir}: ${err.message}`);

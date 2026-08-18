@@ -312,14 +312,49 @@ function Get-DevSkillBackupName([string]$Dir) {
 $DevSkillBackupKeep = 5
 $script:DevSkillBackupRootsThisRun = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
+# Ownership marker: every stamp root DWS creates carries .dws-skill-backup
+# with exactly "dws skill backup v1" + LF — the same bytes internal/upgrade/
+# paths.go, install.sh, and build/npm/install.js write. A stamp-shaped name
+# alone is not ownership proof, so pruning only deletes directories whose
+# marker content verifies.
+$DevSkillBackupMarkerFile = ".dws-skill-backup"
+$DevSkillBackupMarkerBody = "dws skill backup v1"
+
+# Write-DevSkillBackupMarker stamps a freshly created stamp root as DWS-owned.
+# [IO.File]::WriteAllText pins the exact LF-terminated bytes (Set-Content
+# would append a platform newline on Windows PowerShell 5.1).
+function Write-DevSkillBackupMarker([string]$Root) {
+    [System.IO.File]::WriteAllText(
+        (Join-Path $Root $DevSkillBackupMarkerFile),
+        "$DevSkillBackupMarkerBody`n",
+        [System.Text.UTF8Encoding]::new($false))
+}
+
+# Test-DevSkillBackupMarker reports whether a stamp root carries the ownership
+# marker. The check normalizes CRLF→LF and drops trailing newlines before
+# comparing, so this surface accepts every surface's exact-LF bytes (writer
+# and checker agree); any other content, or a missing/unreadable marker,
+# means foreign data.
+function Test-DevSkillBackupMarker([string]$Dir) {
+    try {
+        $marker = Join-Path $Dir $DevSkillBackupMarkerFile
+        if (![System.IO.File]::Exists($marker)) { return $false }
+        $body = [System.IO.File]::ReadAllText($marker).Replace("`r`n", "`n").TrimEnd("`r", "`n")
+        return ($body -eq $DevSkillBackupMarkerBody)
+    } catch {
+        return $false
+    }
+}
+
 function Remove-OldDevSkillBackups {
     $root = Join-Path $HOME ".dws\skill-backups"
     if (!(Test-Path -LiteralPath $root -PathType Container)) { return }
     # Only directories whose names match the DWS backup stamp format (UTC
-    # yyyyMMdd-HHmmss, optional -N collision suffix) are candidates; any
-    # other entry is foreign data and is preserved.
+    # yyyyMMdd-HHmmss, optional -N collision suffix) AND whose ownership
+    # marker verifies are candidates; anything else is foreign data —
+    # preserved and never counted against $DevSkillBackupKeep.
     $dirs = @(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' } |
+        Where-Object { $_.Name -match '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' -and (Test-DevSkillBackupMarker $_.FullName) } |
         Sort-Object -Property Name)
     $excess = $dirs.Count - $DevSkillBackupKeep
     foreach ($dir in $dirs) {
@@ -346,6 +381,18 @@ function Backup-DevSkill([string]$path, [ref]$BackupPath) {
         if ($i -gt 1000) { throw "备份目录冲突无法解决，保留原目录: $path" }
     }
     New-Item -ItemType Directory -Path $backupRoot -Force -ErrorAction Stop | Out-Null
+    # Stamp ownership immediately after creating the stamp root and before
+    # any skill directory moves into it, so an interrupted backup can never
+    # leave an unmarked (never-prunable) stamp behind.
+    try {
+        Write-DevSkillBackupMarker $backupRoot
+    } catch {
+        # The removal stays non-recursive so a pre-existing non-empty root
+        # (foreign data) is never destroyed; a failed marker write must not
+        # leave an empty unowned stamp root behind either.
+        Remove-Item -LiteralPath $backupRoot -Force -ErrorAction SilentlyContinue
+        throw
+    }
     Move-DevSkillPathRecoverably $path $target
     if ($null -ne $BackupPath) { $BackupPath.Value = $target }
     try {

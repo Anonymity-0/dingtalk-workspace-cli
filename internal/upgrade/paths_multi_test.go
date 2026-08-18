@@ -824,6 +824,17 @@ func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
 	testseam.Swap(t, &skillPathRenameNoReplace, renameSkillPathNoReplace)
 }
 
+// seedSkillBackupStamp creates a prune-eligible DWS backup stamp directory.
+func seedSkillBackupStamp(t *testing.T, root, name string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(root, name), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, name, skillBackupMarkerFile), []byte(skillBackupMarkerBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TestCrossPlatformCoveragePruneKeepsCurrentRunBackups pins the reversibility
 // guarantee. The backup stamp only has second precision, so a migration that
 // retires copies across many Agent roots produces far more than
@@ -834,9 +845,7 @@ func TestCrossPlatformCoveragePruneKeepsCurrentRunBackups(t *testing.T) {
 	root := filepath.Join(home, skillBackupSubdir)
 	// Pre-existing backups from earlier runs are still prunable.
 	for i := 0; i < 3; i++ {
-		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("20250101-00000%d", i)), 0o755); err != nil {
-			t.Fatal(err)
-		}
+		seedSkillBackupStamp(t, root, fmt.Sprintf("20250101-00000%d", i))
 	}
 	stamp := 0
 	testseam.Swap(t, &upgradeBackupStamp, func() string {
@@ -868,7 +877,7 @@ func TestCrossPlatformCoveragePruneKeepsCurrentRunBackups(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		stale := filepath.Join(root, fmt.Sprintf("20250101-00000%d", i))
 		if _, err := os.Stat(stale); !os.IsNotExist(err) {
-			t.Errorf("foreign backup %s must still be pruned, stat err=%v", stale, err)
+			t.Errorf("marked stale backup %s must still be pruned, stat err=%v", stale, err)
 		}
 	}
 }
@@ -876,13 +885,92 @@ func TestCrossPlatformCoveragePruneKeepsCurrentRunBackups(t *testing.T) {
 // TestCrossPlatformCoveragePruneSkillBackupsEdges pins the backup retention:
 // oldest stamps beyond skillBackupKeep are pruned and a prune failure is
 // reported without aborting callers.
+// TestCrossPlatformCoverageSkillBackupMarkerOwnership pins the prune ownership
+// contract: backups carry the DWS marker, a mismatched marker is foreign data,
+// and a backup whose marker cannot be written never removes the source.
+func TestCrossPlatformCoverageSkillBackupMarkerOwnership(t *testing.T) {
+	t.Run("backup creation writes the ownership marker", func(t *testing.T) {
+		home := t.TempDir()
+		victim := filepath.Join(home, ".claude", "skills", "dingtalk-chat")
+		if err := os.MkdirAll(victim, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		backup, err := backupAndRemoveSkillDir(home, victim)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, readErr := os.ReadFile(filepath.Join(filepath.Dir(backup), skillBackupMarkerFile))
+		if readErr != nil || string(body) != skillBackupMarkerBody {
+			t.Fatalf("backup marker = %q, %v", body, readErr)
+		}
+	})
+
+	t.Run("stamp with mismatched marker content is preserved", func(t *testing.T) {
+		home := t.TempDir()
+		root := filepath.Join(home, skillBackupSubdir)
+		for i := 0; i < skillBackupKeep+1; i++ {
+			seedSkillBackupStamp(t, root, fmt.Sprintf("20261210-00000%d", i))
+		}
+		forged := filepath.Join(root, "20261210-999999")
+		if err := os.MkdirAll(forged, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(forged, skillBackupMarkerFile), []byte("forged\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := pruneSkillBackups(home); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(forged); err != nil {
+			t.Fatalf("forged-marker backup must be preserved: %v", err)
+		}
+	})
+
+	t.Run("unreadable marker is treated as foreign", func(t *testing.T) {
+		home := t.TempDir()
+		root := filepath.Join(home, skillBackupSubdir)
+		for i := 0; i < skillBackupKeep+1; i++ {
+			seedSkillBackupStamp(t, root, fmt.Sprintf("20261211-00000%d", i))
+		}
+		testseam.Swap(t, &upgradeReadFile, func(string) ([]byte, error) { return nil, errors.New("read denied") })
+		if err := pruneSkillBackups(home); err != nil {
+			t.Fatalf("prune with unreadable markers = %v", err)
+		}
+		testseam.Swap(t, &upgradeReadFile, os.ReadFile)
+		entries, err := os.ReadDir(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != skillBackupKeep+1 {
+			t.Fatalf("unreadable markers must disable pruning, entries = %d", len(entries))
+		}
+	})
+
+	t.Run("marker write failure keeps the source in place", func(t *testing.T) {
+		home := t.TempDir()
+		victim := filepath.Join(home, ".claude", "skills", "dingtalk-chat")
+		if err := os.MkdirAll(victim, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		testseam.Swap(t, &upgradeWriteFile, func(string, []byte, os.FileMode) error { return errors.New("write denied") })
+		backup, err := backupAndRemoveSkillDir(home, victim)
+		if err == nil || !strings.Contains(err.Error(), "备份所有权标记") {
+			t.Fatalf("marker write failure must fail the backup, got %v", err)
+		}
+		if backup != "" {
+			t.Fatalf("failed backup must not return a path: %q", backup)
+		}
+		if _, statErr := os.Stat(victim); statErr != nil {
+			t.Fatalf("victim must stay in place: %v", statErr)
+		}
+	})
+}
+
 func TestCrossPlatformCoveragePruneSkillBackupsEdges(t *testing.T) {
 	home := t.TempDir()
 	root := filepath.Join(home, skillBackupSubdir)
 	for i := 0; i < skillBackupKeep+2; i++ {
-		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("20260810-00000%d", i)), 0o755); err != nil {
-			t.Fatal(err)
-		}
+		seedSkillBackupStamp(t, root, fmt.Sprintf("20260810-00000%d", i))
 	}
 	if err := pruneSkillBackups(home); err != nil {
 		t.Fatalf("pruneSkillBackups() error = %v", err)
@@ -915,9 +1003,7 @@ func TestCrossPlatformCoveragePruneSkillBackupsEdges(t *testing.T) {
 	// Removal failure is reported as the first error. Seed more than
 	// skillBackupKeep dirs again so the prune loop actually runs.
 	for i := 0; i < skillBackupKeep+2; i++ {
-		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("20260811-00000%d", i)), 0o755); err != nil {
-			t.Fatal(err)
-		}
+		seedSkillBackupStamp(t, root, fmt.Sprintf("20260811-00000%d", i))
 	}
 	testseam.Swap(t, &upgradeRemoveAll, func(string) error { return errors.New("remove denied") })
 	if err := pruneSkillBackups(home); err == nil {
@@ -928,20 +1014,17 @@ func TestCrossPlatformCoveragePruneSkillBackupsEdges(t *testing.T) {
 
 // TestCrossPlatformCoveragePruneSkillBackupsPreservesUnknown pins that
 // pruneSkillBackups only retires directories whose names match the DWS backup
-// stamp format. Any foreign directory in the backup root must survive even when
-// more than skillBackupKeep stamped backups exist.
+// stamp format and whose ownership marker verifies. Any foreign or unmarked
+// directory in the backup root must survive even when more than
+// skillBackupKeep stamped backups exist.
 func TestCrossPlatformCoveragePruneSkillBackupsPreservesUnknown(t *testing.T) {
 	home := t.TempDir()
 	root := filepath.Join(home, skillBackupSubdir)
 	for i := 0; i < skillBackupKeep+2; i++ {
-		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("20260910-00000%d", i)), 0o755); err != nil {
-			t.Fatal(err)
-		}
+		seedSkillBackupStamp(t, root, fmt.Sprintf("20260910-00000%d", i))
 	}
 	// A collision-suffixed stamp is still a valid DWS backup and is eligible.
-	if err := os.MkdirAll(filepath.Join(root, "20260910-000000-7"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	seedSkillBackupStamp(t, root, "20260910-000000-7")
 	unknown := []string{
 		"user-personal-backup",
 		"20260910-000000-abc", // stamp-shaped but non-numeric suffix
@@ -953,12 +1036,18 @@ func TestCrossPlatformCoveragePruneSkillBackupsPreservesUnknown(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// A stamp-shaped directory without the DWS ownership marker is foreign
+	// data: never counted toward the keep limit, never deleted.
+	unmarked := "20991231-235959"
+	if err := os.MkdirAll(filepath.Join(root, unmarked), 0o755); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := pruneSkillBackups(home); err != nil {
 		t.Fatalf("pruneSkillBackups() error = %v", err)
 	}
 
-	for _, name := range unknown {
+	for _, name := range append(append([]string{}, unknown...), unmarked) {
 		if _, err := os.Stat(filepath.Join(root, name)); err != nil {
 			t.Errorf("unknown backup entry %s must be preserved, stat err=%v", name, err)
 		}
@@ -975,8 +1064,8 @@ func TestCrossPlatformCoveragePruneSkillBackupsPreservesUnknown(t *testing.T) {
 			stamps++
 		}
 	}
-	if stamps != skillBackupKeep {
-		t.Errorf("stamped backups after prune = %d, want %d", stamps, skillBackupKeep)
+	if stamps != skillBackupKeep+1 {
+		t.Errorf("stamped backups after prune = %d, want %d (kept plus the unmarked foreign one)", stamps, skillBackupKeep+1)
 	}
 }
 
