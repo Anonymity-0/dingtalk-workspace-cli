@@ -156,8 +156,9 @@ function crossDeviceError() {
 }
 
 // withSimulatedWin32 runs fn with process.platform === "win32" so the
-// Windows-only publish branches (junction type, absolute link target, rename
-// publish + its no-replace guard) get real execution coverage on a unix host.
+// Windows-only publish branches (junction type, absolute link target, and
+// the atomic junction creation at the destination) get real execution
+// coverage on a unix host.
 // fs.symlinkSync ignores the type argument off Windows, so the same call is
 // safe here. Create every temp path BEFORE calling: os.tmpdir() follows the
 // simulated platform.
@@ -327,7 +328,7 @@ function runCrossDeviceMoveContract() {
             }
             fs.renameSync(source, target);
           },
-		  publishLinkFn() { throw new Error("link publish failed"); },
+		  publishSymlinkFn() { throw new Error("link publish failed"); },
         }),
         /link publish failed/,
       );
@@ -876,11 +877,10 @@ scenario("canonical link publication never clobbers or deletes concurrent user d
           ["dingtalk-first", "dingtalk-second"],
           [first, second],
           {
-            publishLinkFn(source, target) {
+            publishSymlinkFn(target, linkPath, type) {
               publishCalls += 1;
               if (publishCalls === 1) {
-                const result = childProcess.spawnSync("ln", ["-P", source, target], { encoding: "utf8" });
-                if (result.status !== 0) throw new Error(result.stderr || "ln -P failed");
+                fs.symlinkSync(target, linkPath, type);
                 return;
               }
               fs.unlinkSync(first);
@@ -899,6 +899,42 @@ scenario("canonical link publication never clobbers or deletes concurrent user d
         .filter((candidate) => fs.existsSync(candidate));
       assert.equal(retained.length, 1, "concurrent replacement must be retained in quarantine");
       assert.equal(fs.readFileSync(retained[0], "utf8"), "must survive\n");
+    }
+
+    {
+      // Injected race: a concurrent creator occupies the destination at the
+      // instant of publication. Link creation must fail atomically with
+      // EEXIST, leaving the foreign object and its contents completely
+      // unchanged — nothing is replaced, and nothing is linked into it (the
+      // old `ln -P` publish treated an occupied directory as a container and
+      // left its stray link behind because the publication had not yet
+      // entered the rollback list).
+      const home = path.join(tmp, "injected-race-home");
+      const canonical = path.join(home, ".agents", "skills");
+      const base = path.join(home, ".codex", "skills");
+      const dest = path.join(base, "dingtalk-chat");
+      writeFile(path.join(canonical, "dingtalk-chat", "SKILL.md"), "new\n");
+      assert.throws(
+        () =>
+          publishCanonicalLinksAtomically(home, canonical, base, ["dingtalk-chat"], [], {
+            publishSymlinkFn(target, linkPath, type) {
+              writeFile(path.join(linkPath, "concurrent-user-data.txt"), "must survive\n");
+              fs.symlinkSync(target, linkPath, type);
+            },
+          }),
+        /Skill publish destination already exists/,
+      );
+      assert.deepEqual(
+        fs.readdirSync(dest),
+        ["concurrent-user-data.txt"],
+        "the foreign object is neither replaced nor linked into",
+      );
+      assert.equal(fs.readFileSync(path.join(dest, "concurrent-user-data.txt"), "utf8"), "must survive\n");
+      assert.equal(fs.lstatSync(dest).isDirectory(), true, "the foreign directory is untouched");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-link-set.tmp-")),
+        "refused publication cleans its staging root",
+      );
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -1026,26 +1062,27 @@ scenario("simulated win32 publishes junctions with absolute canonical targets", 
     writeFile(path.join(dest, "SKILL.md"), "old zcode copy\n");
 
     const symlinkCalls = [];
-    const renameCalls = [];
+    const publishCalls = [];
     withSimulatedWin32(() => {
       publishCanonicalLinksAtomically(home, canonical, base, ["dingtalk-chat"], [dest], {
         symlinkFn(target, linkPath, type) {
           symlinkCalls.push({ target, linkPath, type });
           fs.symlinkSync(target, linkPath, type);
         },
-        publishRenameFn(source, destination) {
-          renameCalls.push({ source, destination });
-          fs.renameSync(source, destination);
+        publishSymlinkFn(target, linkPath, type) {
+          publishCalls.push({ target, linkPath, type });
+          fs.symlinkSync(target, linkPath, type);
         },
       });
     });
 
     assert.equal(symlinkCalls.length, 1, "one staged link per bundle skill");
-    assert.equal(symlinkCalls[0].type, "junction", "Windows must publish junctions, not symlinks");
+    assert.equal(symlinkCalls[0].type, "junction", "Windows must stage junctions, not symlinks");
     assert.equal(path.isAbsolute(symlinkCalls[0].target), true, "junctions require an absolute target");
     assert.equal(symlinkCalls[0].target, fs.realpathSync(canonicalSkill), "junction targets the canonical store");
-    assert.equal(renameCalls.length, 1, "win32 publishes by rename, not by ln -P");
-    assert.equal(renameCalls[0].destination, dest);
+    assert.equal(publishCalls.length, 1, "win32 publishes by creating the junction directly at the destination");
+    assert.equal(publishCalls[0].linkPath, dest);
+    assert.equal(publishCalls[0].type, "junction");
     assert.equal(fs.readlinkSync(dest), fs.realpathSync(canonicalSkill), "published junction kept its absolute target");
     assert.equal(fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"), "# dingtalk-chat\n");
     const backupRoot = path.join(home, ".dws", "skill-backups");
@@ -1062,25 +1099,24 @@ scenario("simulated win32 publishes junctions with absolute canonical targets", 
       "the replaced copy stays recoverable",
     );
 
-    // FIX 5: the win32 rename path must never replace an object that appeared
-    // at the destination (libuv passes MOVEFILE_REPLACE_EXISTING).
+    // FIX 5: an object appearing at the destination at publish time must never
+    // be replaced — junction creation fails atomically with EEXIST (the old
+    // win32 rename passed MOVEFILE_REPLACE_EXISTING and replaced it).
     const raceBase = path.join(home, ".qoder", "skills");
     const occupied = path.join(raceBase, "dingtalk-chat");
-    writeFile(path.join(occupied, "concurrent-user-data.txt"), "must survive\n");
-    let renames = 0;
     withSimulatedWin32(() => {
       assert.throws(
-        () => publishCanonicalLinksAtomically(home, canonical, raceBase, ["dingtalk-chat"], [], {
-          publishRenameFn(source, destination) {
-            renames += 1;
-            fs.renameSync(source, destination);
-          },
-        }),
+        () =>
+          publishCanonicalLinksAtomically(home, canonical, raceBase, ["dingtalk-chat"], [], {
+            publishSymlinkFn(target, linkPath, type) {
+              writeFile(path.join(linkPath, "concurrent-user-data.txt"), "must survive\n");
+              fs.symlinkSync(target, linkPath, type);
+            },
+          }),
         /Skill publish destination already exists/,
       );
     });
-    assert.equal(renames, 0, "win32 publish must not rename over an existing destination");
-    assert.deepEqual(fs.readdirSync(occupied), ["concurrent-user-data.txt"]);
+    assert.deepEqual(fs.readdirSync(occupied), ["concurrent-user-data.txt"], "the concurrent object is neither replaced nor linked into");
     assert.equal(fs.readFileSync(path.join(occupied, "concurrent-user-data.txt"), "utf8"), "must survive\n");
     assert.equal(process.platform !== "win32", true, "the simulated platform is restored");
   } finally {

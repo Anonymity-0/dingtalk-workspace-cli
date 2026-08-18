@@ -794,16 +794,6 @@ function skillPathFingerprint(target) {
   return hash.digest("hex");
 }
 
-function captureSkillPublication(source, destination) {
-  const stat = fs.lstatSync(source, { bigint: true });
-  return {
-    destination,
-    device: stat.dev.toString(),
-    inode: stat.ino.toString(),
-    fingerprint: skillPathFingerprint(source),
-  };
-}
-
 function skillPublicationMatches(target, publication) {
   const stat = fs.lstatSync(target, { bigint: true });
   return stat.dev.toString() === publication.device
@@ -914,33 +904,41 @@ function publishSkillDirNoReplace(staged, destination, options = {}) {
   return publication;
 }
 
+// Publish a staged canonical link by creating the link directly at the
+// destination. Link creation is the atomic no-replace primitive on every
+// platform: the kernel refuses with EEXIST when anything — file, symlink, or
+// directory — already occupies the path, and unlike a rename (which Windows
+// performs with MOVEFILE_REPLACE_EXISTING) or `ln -P source target` (which
+// links INTO a directory that appeared at the target) it has no
+// check-then-publish window and never treats the destination as a container.
+// Staging still proves beforehand that links can be created on this
+// filesystem, before any victim moves. The publication identity is captured
+// from the destination after creation — no primitive carries the staged
+// inode across this publish — and confirmation re-reads the live path, so a
+// concurrent replacement surfaces before the publication enters the rollback
+// list instead of being recorded as owned.
 function publishCanonicalLinkNoReplace(staged, destination, options = {}) {
-  const publication = captureSkillPublication(staged, destination);
-  // No-replace is a hard property of this publisher, so it is checked before
-  // either platform's publish call. Windows rename replaces the destination
-  // outright (libuv passes MOVEFILE_REPLACE_EXISTING) and `ln -P` treats an
-  // existing directory as a container to link INTO; in both cases the identity
-  // confirmation below compares against the staged object and could not
-  // recover the user's data. The sibling copy publishers guard identically.
-  if (skillPathExistsLexically(destination)) {
-    throw Object.assign(new Error(`Skill publish destination already exists: ${destination}`), { code: "EEXIST" });
+  const linkTarget = fs.readlinkSync(staged);
+  const linkType = process.platform === "win32" ? "junction" : "dir";
+  const symlinkFn = options.publishSymlinkFn || fs.symlinkSync;
+  try {
+    symlinkFn(linkTarget, destination, linkType);
+  } catch (err) {
+    if (err && err.code === "EEXIST") {
+      throw Object.assign(new Error(`Skill publish destination already exists: ${destination}`), { code: "EEXIST" });
+    }
+    throw err;
   }
-  if (process.platform === "win32") {
-    const renameFn = options.publishRenameFn || fs.renameSync;
-    renameFn(staged, destination);
-  } else {
-    const linkFn = options.publishLinkFn || ((source, target) => {
-      const result = childProcess.spawnSync("ln", ["-P", source, target], { encoding: "utf8" });
-      if (result.error) throw result.error;
-      if (result.status !== 0) {
-        const detail = (result.stderr || result.stdout || "ln -P failed").trim();
-        const error = new Error(detail);
-        if (skillPathExistsLexically(target)) error.code = "EEXIST";
-        throw error;
-      }
-    });
-    linkFn(staged, destination);
+  const stat = fs.lstatSync(destination, { bigint: true });
+  if (!stat.isSymbolicLink() || fs.readlinkSync(destination) !== linkTarget) {
+    throw new Error(`published Skill identity changed before confirmation: ${destination}`);
   }
+  const publication = {
+    destination,
+    device: stat.dev.toString(),
+    inode: stat.ino.toString(),
+    fingerprint: skillPathFingerprint(destination),
+  };
   if (!skillPublicationMatches(destination, publication)) {
     throw new Error(`published Skill identity changed before confirmation: ${destination}`);
   }
