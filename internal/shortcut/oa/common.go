@@ -46,6 +46,17 @@ func oaObjectResult(description string) *contract.ResultSpec {
 	}
 }
 
+func oaWriteResult(description string) *contract.ResultSpec {
+	return &contract.ResultSpec{
+		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		DataSchema: json.RawMessage(fmt.Sprintf(
+			`{"type":"object","description":%q,"properties":{"processInstanceId":{"type":"string","description":"被处理审批实例的稳定 ID"},"taskId":{"type":"string","description":"被处理审批任务的稳定 ID"},"verified":{"type":"boolean","description":"写后精确任务读回是否证明目标任务不再待处理"}},"required":["processInstanceId","taskId","verified"],"additionalProperties":false}`,
+			description,
+		)),
+		SensitivePaths: []string{"processInstanceId", "taskId"},
+	}
+}
+
 func oaReadSafety() contract.SafetySpec {
 	return contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}
 }
@@ -91,6 +102,17 @@ func oaResponseError(operation, reason, message string) error {
 		apperrors.WithOperation(operation),
 		apperrors.WithOrigin("mcp"),
 		apperrors.WithFailureStage("response_validation"),
+		apperrors.WithRetryable(false),
+		apperrors.WithReason(reason),
+	)
+}
+
+func oaPostWriteError(operation, reason, message string) error {
+	return apperrors.NewAPI(message,
+		apperrors.WithOperation(operation),
+		apperrors.WithOrigin("mcp"),
+		apperrors.WithFailureStage("write_verification"),
+		apperrors.WithExecutionStarted(true),
 		apperrors.WithRetryable(false),
 		apperrors.WithReason(reason),
 	)
@@ -260,6 +282,12 @@ func oaProjectInstances(data map[string]any, operation, path string) ([]map[stri
 		if status := oaScalarString(item["status"]); status != "" {
 			row["status"] = status
 		}
+		if businessID := oaIdentity(item, "businessId"); businessID != "" {
+			row["businessId"] = businessID
+		}
+		if originator := oaFirstString(item, "originatorName", "originatorUserName"); originator != "" {
+			row["originatorName"] = originator
+		}
 		for _, key := range []string{"processCreateTime", "createTime"} {
 			if value, present := item[key]; present && value != nil {
 				row["createTime"] = value
@@ -269,6 +297,54 @@ func oaProjectInstances(data map[string]any, operation, path string) ([]map[stri
 		instances = append(instances, row)
 	}
 	return instances, nil
+}
+
+func oaProjectTasks(data map[string]any, operation string) ([]map[string]any, error) {
+	items, err := oaRequireCollection(data, operation, "result.taskIdList")
+	if err != nil {
+		return nil, err
+	}
+	tasks := make([]map[string]any, 0, len(items))
+	seen := make(map[string]struct{}, len(items))
+	for index, item := range items {
+		id := oaIdentity(item, "taskId")
+		if id == "" {
+			return nil, oaResponseError(operation, "missing_item_identity", fmt.Sprintf("审批任务第 %d 项缺少 taskId", index))
+		}
+		if _, duplicate := seen[id]; duplicate {
+			return nil, oaResponseError(operation, "duplicate_item_identity", "审批任务响应包含重复 taskId")
+		}
+		seen[id] = struct{}{}
+		tasks = append(tasks, map[string]any{"taskId": id})
+	}
+	return tasks, nil
+}
+
+func oaCursorPage(result map[string]any, operation string, current int) (oaPageEvidence, error) {
+	raw, present := result["hasMore"]
+	if !present {
+		return oaPageEvidence{}, oaResponseError(operation, "missing_pagination", "游标响应缺少 hasMore；不能把当前页当作完整结果")
+	}
+	hasMore, ok := raw.(bool)
+	if !ok {
+		return oaPageEvidence{}, oaResponseError(operation, "malformed_pagination", "OA 响应 hasMore 应为布尔值")
+	}
+	page := oaPageEvidence{Known: true, HasMore: hasMore}
+	next := oaScalarString(result["nextCursor"])
+	if !hasMore {
+		if next != "" {
+			return oaPageEvidence{}, oaResponseError(operation, "conflicting_pagination", "hasMore=false 但 nextCursor 非空")
+		}
+		return page, nil
+	}
+	if next == "" {
+		return oaPageEvidence{}, oaResponseError(operation, "missing_next_cursor", "hasMore=true 但缺少 nextCursor")
+	}
+	if next == strconv.Itoa(current) {
+		return oaPageEvidence{}, oaResponseError(operation, "stalled_cursor", "nextCursor 与当前 cursor 相同")
+	}
+	page.Next = next
+	return page, nil
 }
 
 func oaHasMorePage(result map[string]any, operation string, itemCount, currentPage int) (oaPageEvidence, error) {
@@ -313,6 +389,15 @@ func outputOAPage(rt *shortcut.RuntimeContext, collection string, items []map[st
 		return oaResponseError("oa/pagination", "invalid_pagination", err.Error())
 	}
 	meta := &output.Meta{Count: output.NewCount(len(items)), Pagination: pagination}
+	return output.StoreResult(rt.Command().Context(), output.Success(payload, output.WithMeta(meta)))
+}
+
+func outputOACompleteCollection(rt *shortcut.RuntimeContext, collection string, items []map[string]any) error {
+	payload := map[string]any{"count": len(items), collection: items, "complete": true}
+	if !output.UsesUnifiedResult(rt.Command()) {
+		return rt.Output(payload)
+	}
+	meta := &output.Meta{Count: output.NewCount(len(items))}
 	return output.StoreResult(rt.Command().Context(), output.Success(payload, output.WithMeta(meta)))
 }
 

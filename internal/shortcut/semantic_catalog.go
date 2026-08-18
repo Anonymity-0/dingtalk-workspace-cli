@@ -40,6 +40,9 @@ var attendanceSemanticCatalogJSON []byte
 //go:embed semantic_catalog_mail.json
 var mailSemanticCatalogJSON []byte
 
+//go:embed semantic_catalog_oa.json
+var oaSemanticCatalogJSON []byte
+
 type semanticCatalogFile struct {
 	Version      int                              `json:"version"`
 	Service      string                           `json:"service"`
@@ -69,6 +72,7 @@ var reviewedSemanticCatalog = mustLoadSemanticCatalogs(
 	todoSemanticCatalogJSON,
 	attendanceSemanticCatalogJSON,
 	mailSemanticCatalogJSON,
+	oaSemanticCatalogJSON,
 )
 
 func mustLoadSemanticCatalogs(sources ...[]byte) map[string]semanticCatalogRecord {

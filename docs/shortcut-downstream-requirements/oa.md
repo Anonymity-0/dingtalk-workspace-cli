@@ -1,0 +1,90 @@
+# OA Shortcut 下游能力需求
+
+基线：`c0b286c1e10b6fcebdff4ed522d3b1cf30549866`；Comparator：`lark-cli 1.0.87`；审计日期：2026-08-18。
+
+本文只记录脱敏的能力标签与聚合事实。没有资源 ID、业务标题、姓名、邮箱、精确业务时间、trace/request ID 或原始响应。
+
+## 结论与 surface
+
+- 源码 Shortcut：10。
+- 公开：4（`+list-executed`、`+list-submitted`、`+my-initiated`、`+search-forms`）。
+- 隐藏：6，其中 unavailable 5；`+done-approvals` 是 available 但隐藏的兼容入口。
+- 所有 10 条均声明 `Contract`、`Safety`、`Result` 并启用 unified output；写入口在首次远端调用前由 Runtime 确认门禁阻断。
+
+| Exact Shortcut 证明 | 标签 | 聚合事实 |
+|---|---|---|
+| `+list-executed` | PASS | 已知非空 7；保证零命中 0；分页终态明确 |
+| `+list-submitted` | PASS | 已知非空 14；保证零命中 0；分页终态明确 |
+| `+my-initiated` | PASS | 已知非空 14；保证零命中 0；不再回退原始响应 |
+| `+search-forms` | PASS | 已知非空 2；保证零命中 0；显式完整结果 |
+| `+done-approvals`（隐藏兼容） | PASS | 已知非空 7；首屏终态明确 |
+| `+list-forms` fail-closed | PASS | 非空页缺 continuation 被拒绝；两个 cursor 的 93/93 项重叠 92 项 |
+| `+approve-by` 确认门禁单测 | PASS | 确认前 0 调用；确认后固定为读待办、读任务、写审批、精确任务读回 |
+
+未列为 PASS 的能力没有安全的已知非空或可逆写 fixture，保持 unavailable；显式空结果不替代非空证明。
+
+## Lark 1.0.87 用户任务映射
+
+Lark approval 共 14 个任务；映射按用户结果而不是命令名判断。
+
+| Lark 任务 | DWS 当前路线 | 分类 | 临时处置 |
+|---|---|---|---|
+| approvals get | `oa approval form-schema` | routed | 使用原子读取 |
+| approvals search | `oa +search-forms` | covered | 公开 Shortcut |
+| instances initiated | `oa +list-submitted` / `+my-initiated` | covered | 公开 Shortcut |
+| instances get | `oa approval detail` | routed | 使用原子读取 |
+| instances cancel | `oa approval revoke` | routed | 高风险原子写；无可逆 fixture，不新增公开 Shortcut |
+| instances cc | `oa approval oa-cc-noticer` | routed | 无安全 fixture，保持原子入口 |
+| instances create | `oa approval forecast-process` + `create-instance` | routed | 无可清理实例 fixture，不新增公开 Shortcut |
+| tasks query | 四类列表与 `oa approval tasks` | partial | 已办/已发起公开；待办/抄送/任务 unavailable |
+| tasks add_sign | `oa approval append-task` | routed | 无安全 fixture，保持原子入口 |
+| tasks approve | `oa approval approve` / `+approve-by` | partial | Shortcut unavailable；原子写需用户确认 |
+| tasks reject | `oa approval reject` | routed | 无安全 fixture，保持原子入口 |
+| tasks remind | `ding-info` 后串联 DING 发送 | downstream_required | 缺少一个可验证的稳定催办回执合同 |
+| tasks rollback | `revert-activities` + `revert-task` | routed | 无可恢复 fixture，保持原子入口 |
+| tasks transfer | `redirect-task` | routed | 无安全 fixture，保持原子入口 |
+
+DWS 现有原子能力还覆盖审批记录、表单 Schema、流程预测、评论、可回退节点等产品原生任务。它们当前应由精确原子命令承担；在取得稳定 Result、fixture 与写后验证前，不为增加数量而包装 Shortcut。
+
+## `DS-oa-001`：可证明前进的可见表单分页
+
+- 优先级：P1；类型：adapter defect / contract insufficient；Owner：OA MCP adapter 与业务接口。
+- 影响：`oa +list-forms` 当前 unavailable。Exact Shortcut 与同参数 atomic/raw 均显示非空列表，但响应没有 `hasMore`、`nextCursor` 或等价 continuation；改变 cursor 后集合高度重叠，已排除 Shortcut 投影错误。
+- 所需合同：
+  - 请求明确 `cursor`（首次为 0）与 `pageSize`（1–100）。
+  - 成功必须是布尔 `success=true`，并包含显式 `result.processCodeList` 数组。
+  - 每个元素必须包含唯一、非空 `processCode` 和非空名称。
+  - 必须返回布尔 `hasMore`；`hasMore=true` 时返回非空、与当前值不同且单调前进的 `nextCursor`；`hasMore=false` 时不得返回非空 continuation。
+  - cursor 不得被忽略；重复页、回退游标与循环必须返回稳定非成功错误。
+  - 明确页面大小上限、总页/总项边界和合法空首页语义。
+- 验收：Exact Shortcut 与 atomic/raw 对同一脱敏 fixture 逐页得到不重复稳定身份集合；已知非空和保证零命中均通过；缺失、重复、循环和错型 continuation 都返回非零。
+- 临时处置：`+list-forms` 保持 hidden/unavailable；需要精确定位定义时使用公开 `+search-forms`。
+
+## `DS-oa-002`：可重复的审批读写 E2E fixture
+
+- 优先级：P1；类型：tenant-or-fixture；Owner：OA 测试租户/权限与测试数据平台。
+- 影响：待办、抄送、任务、同意/拒绝/撤回/转交/加签/退回/催办等用户任务不能完成安全 live proof。
+- 所需 fixture：
+  - 隔离测试身份与专用审批定义，可创建至少一条待办、一条抄送和一条已办实例。
+  - 创建回执返回稳定实例 ID；任务查询返回稳定 taskId 和明确任务状态。
+  - 写操作可在隔离资源上完成，且具有确定的恢复、撤回或自动到期路径。
+  - fixture 权限最小化，支持在测试结束后验证零残留；不得复用真实业务审批。
+- 验收：每个 list/search 同时通过已知非空与保证零命中；每个写在确认前 0 调用，确认后只写一次，按同一实例和 taskId 精确读回终态并完成清理。
+- 临时处置：相关 Shortcut 保持 hidden/unavailable；精确原子写仅在用户明确确认并提供真实目标时执行，不记为自动化 E2E PASS。
+
+## `DS-oa-003`：审批写入的稳定终态回执与读回语义
+
+- 优先级：P1；类型：contract insufficient；Owner：OA 业务服务与 MCP adapter。
+- 影响：即使写调用返回 nominal success，也难以区分已提交、处理中、已生效与 commit-unknown，阻止安全公开 `+approve-by` 及其他复合写任务。
+- 所需合同：
+  - 写回执必须包含 `success=true`、稳定 `processInstanceId`、稳定 `taskId`、终态或 typed pending 状态及操作类型。
+  - `success=false`、缺 success、空响应、错型 ID、业务错误码冲突必须非零；不得以请求 echo 作为成功证据。
+  - 同一 taskId 的查询必须提供明确 pending/approved/rejected/transferred/rolled_back 状态，或明确从待处理集合移除的强一致性窗口。
+  - 异步操作返回可执行查询动作、轮询边界和 terminal failure；超时保留 commit-unknown，禁止自动重试非幂等写。
+  - 批量/多步操作提供逐项 ledger；任一失败不得返回整体 success。
+- 验收：Exact Shortcut 写入后以相同实例与 taskId 读回请求关键状态；回执缺失、读回不一致、异步超时和部分失败均机器可检测；安全 fixture 完成恢复与零残留。
+- 临时处置：`+approve-by` 保持 hidden/unavailable；当前实现即使写调用成功，读回无法证明时也返回非成功且标记 execution started。
+
+## 超越 Lark 的机会
+
+在上述两个下游合同和安全 fixture 就绪后，可把 DingTalk 原生的“流程预测→精确实例创建→节点/任务读回→操作记录审计”组合成一条带逐步 ledger 的 Golden Route。它应保持每一步稳定身份、支持 typed pending/partial/commit-unknown，并在创建后的任一步失败时给出可执行恢复动作；在此之前不发布该复合 Shortcut。

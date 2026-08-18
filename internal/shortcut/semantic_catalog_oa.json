@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "service": "oa",
+  "default_availability": "unavailable",
+  "shortcuts": {
+    "+list-executed": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格验证 success、result.values、稳定 processInstanceId 与 hasMore，并把下一页凭据发布到统一分页元数据；真实非空和保证零命中均已执行。",
+      "risk": "read",
+      "availability": "available",
+      "public": true,
+      "reviewed": true
+    },
+    "+list-submitted": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格返回当前用户已发起审批实例及页完整性；缺集合、错型、坏元素和缺失分页均失败，真实非空和保证零命中均已执行。",
+      "risk": "read",
+      "availability": "available",
+      "public": true,
+      "reviewed": true
+    },
+    "+my-initiated": {
+      "disposition": "alias_internal",
+      "semantic_delta": "保留历史 initiated 字段与命令身份，同时复用已发起审批的严格响应和分页契约；空投影不再回退原始响应。",
+      "risk": "read",
+      "availability": "available",
+      "primary": "+list-submitted",
+      "public": true,
+      "reviewed": true
+    },
+    "+search-forms": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "按关键字搜索可发起审批定义，严格要求显式 result 数组和稳定 processCode；已完成已知非空与保证零命中证明。",
+      "risk": "read",
+      "availability": "available",
+      "public": true,
+      "reviewed": true
+    },
+    "+done-approvals": {
+      "disposition": "alias_internal",
+      "semantic_delta": "保留旧的首屏已处理审批摘要；已验证严格非空结果，但不提供页码，新的 Agent 路由统一使用 +list-executed。",
+      "risk": "read",
+      "availability": "available",
+      "primary": "+list-executed",
+      "public": false,
+      "reviewed": true
+    },
+    "+list-forms": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "真实非空页不返回 continuation，且 cursor 0/1 的集合高度重叠；严格实现拒绝缺失或停滞游标，下游修复前不可公开。",
+      "risk": "read",
+      "public": false,
+      "reviewed": true
+    },
+    "+list-pending": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格待办投影与分页已实现，但当前安全账号只有显式空结果，缺少已知非空待审批 fixture。",
+      "risk": "read",
+      "public": false,
+      "reviewed": true
+    },
+    "+pending": {
+      "disposition": "alias_internal",
+      "semantic_delta": "历史首屏待办摘要缺少页码且当前没有已知非空安全 fixture；新调用应使用 +list-pending，当前保持不可用。",
+      "risk": "read",
+      "primary": "+list-pending",
+      "public": false,
+      "reviewed": true
+    },
+    "+list-cc": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格抄送列表与审核过的空页终态已实现，但当前没有已知非空抄送审批 fixture，不能完成 exact Shortcut 非空证明。",
+      "risk": "read",
+      "public": false,
+      "reviewed": true
+    },
+    "+approve-by": {
+      "disposition": "primary_smart",
+      "semantic_delta": "唯一定位实例和任务、确认后写入、精确任务读回的严格编排已实现；缺少可撤销的待办审批 fixture 和可靠清理路径，保持不可用。",
+      "risk": "high-risk-write",
+      "public": false,
+      "reviewed": true
+    }
+  }
+}

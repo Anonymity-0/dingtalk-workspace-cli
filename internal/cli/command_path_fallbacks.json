@@ -191,12 +191,12 @@
       "from": "oa +list-processes",
       "mode": "ambiguous",
       "candidates": [
-        "oa +list-forms",
+        "oa +search-forms",
         "oa +my-initiated",
         "oa approval list-initiated"
       ],
       "reviewed": true,
-      "review_reason": "20260720 merged evaluation emitted +list-processes, but process can mean approval forms/templates or approval instances initiated by the current user; stop and present both shortcut workflows plus the exact native instance leaf."
+      "review_reason": "20260818 review keeps +list-forms unavailable because its live response lacks trustworthy continuation; process can still mean a searchable approval definition or an instance initiated by the current user, so stop and present the public keyword-search and initiated workflows."
     },
     {
       "from": "chat +conversation-detail",

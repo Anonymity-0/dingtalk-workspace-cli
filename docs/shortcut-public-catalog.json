@@ -3602,53 +3602,44 @@
       "availability": "available"
     },
     {
-      "suite": "read",
-      "service": "oa",
-      "command": "+list-cc",
-      "risk": "read",
-      "status": "real-ok"
-    },
-    {
-      "suite": "read",
+      "suite": "semantic",
       "service": "oa",
       "command": "+list-executed",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格验证 success、result.values、稳定 processInstanceId 与 hasMore，并把下一页凭据发布到统一分页元数据；真实非空和保证零命中均已执行。",
+      "availability": "available"
     },
     {
-      "suite": "read",
-      "service": "oa",
-      "command": "+list-forms",
-      "risk": "read",
-      "status": "real-ok"
-    },
-    {
-      "suite": "read",
-      "service": "oa",
-      "command": "+list-pending",
-      "risk": "read",
-      "status": "real-ok"
-    },
-    {
-      "suite": "read",
+      "suite": "semantic",
       "service": "oa",
       "command": "+list-submitted",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格返回当前用户已发起审批实例及页完整性；缺集合、错型、坏元素和缺失分页均失败，真实非空和保证零命中均已执行。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "oa",
       "command": "+my-initiated",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "alias_internal",
+      "semantic_delta": "保留历史 initiated 字段与命令身份，同时复用已发起审批的严格响应和分页契约；空投影不再回退原始响应。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "oa",
       "command": "+search-forms",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "按关键字搜索可发起审批定义，严格要求显式 result 数组和稳定 processCode；已完成已知非空与保证零命中证明。",
+      "availability": "available"
     },
     {
       "suite": "read",
