@@ -14,8 +14,9 @@ dws todo task create --title "每日站会" --executors <USER_ID> --due "2026-08
 
 1. 把姓名唯一解析成 `userId`；同名或零匹配先消歧。
 2. 生成最多 30 条的 JSON 数组，字段为 `title`、`executors`，可选 `priority`、`due`、`recurrence`。
-3. 执行 `python scripts/todo_batch_create.py todos.json`。
-4. 只把 ledger 中 `status=verified` 的条目报告为完成；`unknown` 与 `unverified` 按返回的标题/`taskId` 查询对账。
+3. 执行 `python scripts/todo_batch_create.py todos.json`，核对脚本展示的整批摘要并输入 `yes`；确认前脚本不会调用写命令。
+4. 已在外部取得用户对该精确批次的明确确认时，可用 `--yes` 非交互执行；不得把它作为未确认的默认参数。
+5. 只把 ledger 中 `status=verified` 的条目报告为完成；`unknown` 与 `unverified` 按返回的标题/`taskId` 查询对账。
 
 ## 指派并通知
 

@@ -173,10 +173,14 @@ class TodoBatchCreateTest(unittest.TestCase):
 
             stdout = io.StringIO()
             with mock.patch.object(BATCH, "run_dws_json", side_effect=fake_run):
-                with contextlib.redirect_stdout(stdout):
-                    code = BATCH.run([str(source)])
+                with mock.patch.object(BATCH.sys.stdin, "isatty", return_value=True):
+                    with mock.patch.object(BATCH.sys.stdin, "readline", return_value="yes\n"):
+                        with contextlib.redirect_stdout(stdout):
+                            code = BATCH.run([str(source)])
         self.assertEqual(0, code)
         self.assertEqual(2, len(calls))
+        self.assertIn("--yes", calls[0])
+        self.assertNotIn("--yes", calls[1])
         due = calls[0][calls[0].index("--due") + 1]
         self.assertIn("T23:59:59+08:00", due)
         self.assertEqual(
@@ -185,6 +189,22 @@ class TodoBatchCreateTest(unittest.TestCase):
         payload = json.loads(stdout.getvalue())
         self.assertTrue(payload["complete"])
         self.assertEqual("verified", payload["ledger"][0]["status"])
+
+    def test_batch_rejects_unconfirmed_noninteractive_write_before_any_call(self):
+        with tempfile.TemporaryDirectory() as raw:
+            source = Path(raw) / "todos.json"
+            source.write_text(
+                '[{"title":"reviewed task","executors":"user1"}]',
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with mock.patch.object(BATCH, "run_dws_json") as run_dws:
+                with mock.patch.object(BATCH.sys.stdin, "isatty", return_value=False):
+                    with contextlib.redirect_stdout(stdout):
+                        code = BATCH.run([str(source)])
+        self.assertEqual(2, code)
+        run_dws.assert_not_called()
+        self.assertIn("--yes", json.loads(stdout.getvalue())["error"])
 
     def test_possible_commit_is_preserved_as_unknown(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -196,7 +216,7 @@ class TodoBatchCreateTest(unittest.TestCase):
             stdout = io.StringIO()
             with mock.patch.object(BATCH, "run_dws_json", side_effect=failure):
                 with contextlib.redirect_stdout(stdout):
-                    code = BATCH.run([str(source)])
+                    code = BATCH.run([str(source), "--yes"])
         self.assertEqual(2, code)
         payload = json.loads(stdout.getvalue())
         self.assertEqual(1, payload["unknownCount"])
