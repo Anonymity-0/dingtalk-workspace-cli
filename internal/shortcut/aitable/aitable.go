@@ -3110,6 +3110,7 @@ func init() {
 		BaseSchemaSnapshot,
 		BaseBootstrap,
 		TableGet,
+		TableBootstrap,
 		TableCopy,
 		TableUpdate,
 		TableDelete,

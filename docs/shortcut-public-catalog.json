@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-17T15:52:13.675461",
-  "count": 435,
+  "generated_at": "2026-08-18T14:20:44.224405",
+  "count": 436,
   "results": [
     {
       "suite": "semantic",
@@ -690,6 +690,16 @@
       "status": "reviewed_available",
       "disposition": "semantic_adapter",
       "semantic_delta": "按当前父目录语义调整文件夹展示顺序。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "aitable",
+      "command": "+table-bootstrap",
+      "risk": "write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "在已有 Base 中声明式创建一张表和字段，字段自动分片，逐层读回验证并发布可恢复检查点。",
       "availability": "available"
     },
     {

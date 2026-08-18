@@ -238,6 +238,10 @@ func TestCrossPlatformCoverageBaseBootstrapExecuteRejectsInvalidTablesE2E(t *tes
 	if err == nil || out != "" {
 		t.Fatalf("invalid bootstrap tables = output:%q err:%v", out, err)
 	}
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || len(typed.Actions) != 1 || len(typed.AvailableFlags) != 4 {
+		t.Fatalf("invalid bootstrap recovery = %#v", err)
+	}
 }
 
 func TestCrossPlatformCoverageBaseBootstrapFailureStagesE2E(t *testing.T) {
@@ -272,6 +276,21 @@ func TestCrossPlatformCoverageBaseBootstrapFailureStagesE2E(t *testing.T) {
 				t.Fatalf("bootstrap failure = output:%q err:%v", out, err)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageBaseBootstrapFailurePublishesExactRecovery(t *testing.T) {
+	out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{steps: []upsertByKeyStep{{text: `{}`}}},
+		"+base-bootstrap", "--name", "Project", "--tables", marshalBootstrapTables(t, nil), "--yes")
+	if out != "" || err == nil {
+		t.Fatalf("bootstrap recovery = output:%q err:%v", out, err)
+	}
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || len(typed.Actions) != 1 || len(typed.AvailableFlags) != 4 {
+		t.Fatalf("bootstrap typed recovery = %#v", err)
+	}
+	if typed.Actions[0] != `dws aitable +base-search --query "Project" --format json` {
+		t.Fatalf("bootstrap next command = %#v", typed.Actions)
 	}
 }
 

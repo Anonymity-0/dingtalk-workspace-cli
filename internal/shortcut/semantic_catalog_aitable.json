@@ -15,6 +15,7 @@
     "+url-resolve": {"disposition":"primary_smart","semantic_delta":"严格解析 alidocs AI 表格 URL 的 base/table/view/record ID，并可通过最深层只读接口验证目标存在。","risk":"read","public":true,"reviewed":true},
 
     "+table-get": {"disposition":"semantic_adapter","semantic_delta":"批量读取表级信息、字段和视图目录，为后续 Schema 与记录操作提供 ID。","risk":"read","public":true,"reviewed":true},
+    "+table-bootstrap": {"disposition":"primary_smart","semantic_delta":"在已有 Base 中声明式创建一张表和字段，字段自动分片，逐层读回验证并发布可恢复检查点。","risk":"write","public":true,"reviewed":true},
     "+table-copy": {"disposition":"primary_smart","semantic_delta":"在没有服务端 table-copy task 的情况下，本地重建安全字段、映射 fieldId，并可分片复制及读回验证全部记录。","risk":"write","public":true,"reviewed":true},
     "+table-update": {"disposition":"schema_leaf","semantic_delta":"统一表名、备注和行命名规则的 PATCH 风格更新。","risk":"write","public":true,"reviewed":true},
     "+table-delete": {"disposition":"schema_leaf","semantic_delta":"不可逆删除数据表的一对一入口，显式发布高风险确认事实。","risk":"high-risk-write","public":true,"reviewed":true},

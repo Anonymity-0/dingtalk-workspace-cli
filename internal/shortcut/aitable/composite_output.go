@@ -57,15 +57,33 @@ func compositeError(result compositeResult, cause error, retryable bool) error {
 	if result.Status == "success" {
 		result.Status = "unknown"
 	}
-	return apperrors.NewAPI(fmt.Sprintf("AI Table composite %s ended with status %s", result.Operation, result.Status),
-		apperrors.WithOperation("aitable."+result.Operation),
+	options := []apperrors.Option{
+		apperrors.WithOperation("aitable." + result.Operation),
 		apperrors.WithOrigin("mcp"),
 		apperrors.WithFailureStage("composite_execution"),
 		apperrors.WithExecutionStarted(result.Executed),
 		apperrors.WithRetryable(retryable),
-		apperrors.WithReason("aitable_composite_"+result.Status),
+		apperrors.WithReason("aitable_composite_" + result.Status),
 		apperrors.WithHint("inspect error.details.result before retrying; unknown means the remote effect could not be proven"),
 		apperrors.WithDetails(map[string]any{"result": result}),
 		apperrors.WithCause(cause),
-	)
+	}
+	if result.NextCommand != "" {
+		options = append(options, apperrors.WithActions(result.NextCommand))
+	}
+	if flags := compositeRecoveryFlags(result.Operation); len(flags) > 0 {
+		options = append(options, apperrors.WithAvailableFlags(flags...))
+	}
+	return apperrors.NewAPI(fmt.Sprintf("AI Table composite %s ended with status %s", result.Operation, result.Status), options...)
+}
+
+func compositeRecoveryFlags(operation string) []string {
+	switch operation {
+	case "base_bootstrap":
+		return []string{"name", "folder-id", "template-id", "tables"}
+	case "table_bootstrap":
+		return []string{"base-id", "name", "fields"}
+	default:
+		return nil
+	}
 }
