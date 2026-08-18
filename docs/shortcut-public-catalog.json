@@ -2494,32 +2494,14 @@
       "status": "real-ok"
     },
     {
-      "suite": "read",
-      "service": "ding",
-      "command": "+list",
-      "risk": "read",
-      "status": "real-ok"
-    },
-    {
-      "suite": "write",
-      "service": "ding",
-      "command": "+recall-personal",
-      "risk": "high-risk-write",
-      "status": "real-ok"
-    },
-    {
-      "suite": "read",
+      "suite": "semantic",
       "service": "ding",
       "command": "+receiver-status",
       "risk": "read",
-      "status": "real-ok"
-    },
-    {
-      "suite": "write",
-      "service": "ding",
-      "command": "+send-personal",
-      "risk": "write",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "按稳定 openDingId 精确查询，严格拒绝缺集合、错型、空集合、坏元素与身份不匹配；exact Shortcut 已完成真实非空身份匹配证明。",
+      "availability": "available"
     },
     {
       "suite": "semantic",

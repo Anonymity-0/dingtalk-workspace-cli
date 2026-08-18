@@ -18,7 +18,7 @@ import (
 const (
 	publicShortcutCount = 422
 	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
-	// including the hidden historical minutes.shortcut_minutes_search contract.
+	// including reviewed hidden compatibility and unavailable contracts.
 	schemaPublishedShortcutCount = 447
 	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
 	publiclyDeliveredShortcutCount = 422

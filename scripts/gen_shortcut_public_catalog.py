@@ -30,6 +30,7 @@ SEMANTIC_PATHS = [
     ROOT / "internal" / "shortcut" / "semantic_catalog_attendance.json",
     ROOT / "internal" / "shortcut" / "semantic_catalog_mail.json",
     ROOT / "internal" / "shortcut" / "semantic_catalog_oa.json",
+    ROOT / "internal" / "shortcut" / "semantic_catalog_ding.json",
 ]
 
 
