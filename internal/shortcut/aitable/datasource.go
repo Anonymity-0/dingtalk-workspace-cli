@@ -39,7 +39,7 @@ var DatasourceCreate = shortcut.Shortcut{
 	Risk:        shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
-		Confirmation: "not_required", Idempotency: "not_idempotent",
+		Confirmation: "not_required", Idempotency: "non_idempotent",
 	},
 	Contract: corecmd.ContractDecl{
 		Identity: contract.ToolIdentitySpec{
@@ -117,7 +117,7 @@ var DatasourceUpdate = shortcut.Shortcut{
 	Risk:        shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
-		Confirmation: "not_required", Idempotency: "not_idempotent",
+		Confirmation: "not_required", Idempotency: "non_idempotent",
 	},
 	Contract: corecmd.ContractDecl{
 		Identity: contract.ToolIdentitySpec{
@@ -193,7 +193,7 @@ var DatasourceSync = shortcut.Shortcut{
 	Risk:        shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
-		Confirmation: "not_required", Idempotency: "not_idempotent",
+		Confirmation: "not_required", Idempotency: "non_idempotent",
 	},
 	Contract: corecmd.ContractDecl{
 		Identity: contract.ToolIdentitySpec{
