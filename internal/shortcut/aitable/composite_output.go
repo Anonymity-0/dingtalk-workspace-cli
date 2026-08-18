@@ -5,6 +5,7 @@ package aitable
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -55,11 +56,35 @@ func newCompositeResult(operation string) compositeResult {
 }
 
 func aitableRecoveryCommand(argv ...string) string {
+	return aitableRecoveryCommandForPlatform(runtime.GOOS, argv...)
+}
+
+func aitableRecoveryCommandForPlatform(goos string, argv ...string) string {
 	quoted := make([]string, len(argv))
 	for index, arg := range argv {
+		// POSIX 单引号不能保护 cmd.exe；Windows 下只允许跨 shell 均可裸放的
+		// 保守白名单值进入可复制命令，其余值改成不含 shell 元字符的占位符。
+		if goos == "windows" && helpers.ShellQuoteArg(arg) != arg {
+			quoted[index] = aitableRecoveryPlaceholder(argv, index)
+			continue
+		}
 		quoted[index] = helpers.ShellQuoteArg(arg)
 	}
 	return strings.Join(quoted, " ")
+}
+
+func aitableRecoveryPlaceholder(argv []string, index int) string {
+	if index > 0 {
+		switch argv[index-1] {
+		case "--query":
+			return "REPLACE_QUERY"
+		case "--base-id":
+			return "REPLACE_BASE_ID"
+		case "--table-id":
+			return "REPLACE_TABLE_ID"
+		}
+	}
+	return "REPLACE_VALUE"
 }
 
 func compositeError(result compositeResult, cause error, retryable bool) error {

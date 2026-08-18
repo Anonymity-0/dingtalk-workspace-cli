@@ -215,7 +215,7 @@ func executeBaseBootstrap(rt *shortcut.RuntimeContext) error {
 	if err != nil {
 		result.Status = "unknown"
 		result.FailedCount = len(tables)
-		result.Checkpoint = map[string]any{"nextStep": "resolve whether base was created before retrying"}
+		result.Checkpoint = map[string]any{"nextStep": "resolve whether base was created before retrying", "name": rt.Str("name")}
 		result.NextCommand = aitableRecoveryCommand("dws", "aitable", "+base-search", "--query", rt.Str("name"), "--format", "json")
 		return compositeError(result, err, false)
 	}
@@ -223,7 +223,7 @@ func executeBaseBootstrap(rt *shortcut.RuntimeContext) error {
 	if baseID == "" {
 		result.Status = "unknown"
 		result.Result = baseData
-		result.Checkpoint = map[string]any{"nextStep": "locate the created Base by exact name before retrying"}
+		result.Checkpoint = map[string]any{"nextStep": "locate the created Base by exact name before retrying", "name": rt.Str("name")}
 		result.NextCommand = aitableRecoveryCommand("dws", "aitable", "+base-search", "--query", rt.Str("name"), "--format", "json")
 		return compositeError(result, fmt.Errorf("create_base response is missing baseId"), false)
 	}

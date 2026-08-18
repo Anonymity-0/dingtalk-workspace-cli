@@ -806,9 +806,10 @@ func callAitableToolContext(ctx context.Context, toolName string, args map[strin
 		if attempt > 0 {
 			backoff := time.Duration(1<<(attempt-1)) * time.Second // 1s, 2s, 4s
 			fmt.Fprintf(os.Stderr, "[aitable retry %d/%d] %s after %v...\n", attempt, aitableMaxRetries, toolName, backoff)
-			helperSleep(backoff)
-			if err := ctx.Err(); err != nil {
-				return err
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-helperAfter(backoff):
 			}
 		}
 

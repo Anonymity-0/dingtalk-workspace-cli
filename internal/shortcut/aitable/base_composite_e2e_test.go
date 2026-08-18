@@ -368,6 +368,48 @@ func TestCrossPlatformCoverageAITableRecoveryCommandsQuoteUntrustedValues(t *tes
 	})
 }
 
+func TestCrossPlatformCoverageAITableRecoveryCommandsUseWindowsPlaceholders(t *testing.T) {
+	tests := []struct {
+		name string
+		argv []string
+		want string
+	}{
+		{
+			name: "query ampersand",
+			argv: []string{"dws", "aitable", "+base-search", "--query", "x&calc", "--format", "json"},
+			want: "dws aitable +base-search --query REPLACE_QUERY --format json",
+		},
+		{
+			name: "base id pipe",
+			argv: []string{"dws", "aitable", "+base-get", "--base-id", "base|whoami", "--format", "json"},
+			want: "dws aitable +base-get --base-id REPLACE_BASE_ID --format json",
+		},
+		{
+			name: "table id variable expansion",
+			argv: []string{"dws", "aitable", "+table-get", "--base-id", "base", "--table-id", "%PATH%", "--format", "json"},
+			want: "dws aitable +table-get --base-id base --table-id REPLACE_TABLE_ID --format json",
+		},
+		{
+			name: "portable values stay inline",
+			argv: []string{"dws", "aitable", "+table-get", "--base-id", "base-1", "--table-id", "table_2", "--format", "json"},
+			want: "dws aitable +table-get --base-id base-1 --table-id table_2 --format json",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := aitableRecoveryCommandForPlatform("windows", tc.argv...)
+			if got != tc.want {
+				t.Fatalf("windows recovery = %q, want %q", got, tc.want)
+			}
+			for _, hostile := range []string{"&", "|", "%PATH%"} {
+				if strings.Contains(got, hostile) {
+					t.Fatalf("windows recovery contains hostile token %q: %s", hostile, got)
+				}
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageBaseBootstrapRecoversFieldCallErrorE2E(t *testing.T) {
 	fields := bootstrapFields(16)
 	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
