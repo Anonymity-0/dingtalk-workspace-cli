@@ -12,7 +12,7 @@
     },
     "+receiver-status": {
       "disposition": "semantic_adapter",
-      "semantic_delta": "按稳定 openDingId 精确查询，严格拒绝缺集合、错型、空集合、坏元素与身份不匹配；exact Shortcut 已完成真实非空身份匹配证明。",
+      "semantic_delta": "按稳定 openDingId 精确查询，严格拒绝缺集合、错型、空集合、坏元素与身份不匹配；current HEAD exact Shortcut 与 owning atomic/raw 的请求身份、1 项结果和完整接收行集合一致。",
       "risk": "read",
       "availability": "available",
       "public": true,

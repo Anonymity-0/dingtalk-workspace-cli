@@ -47,6 +47,14 @@
 | `+send-by-message` | capability gate，远端调用 0 | 自发源消息稳定任务/消息/会话身份均通过；APP DING 回执 1、接收状态 1；稳定接收人身份字段 0 | downstream blocked |
 | `+recall-personal` | capability gate，远端调用 0 | 撤回业务成功为布尔值，但目标回执 0；撤回后精确接收状态仍为 1 | downstream blocked |
 
+### Current HEAD 公开 Shortcut 双层发布矩阵
+
+| EVERY public Shortcut | Exact Shortcut | Owning atomic/raw | 稳定身份与结果 | current HEAD 结论 |
+|---|---|---|---|---|
+| `ding +receiver-status` | `dws ding +receiver-status --ding-id <stable-id> --format json` | 先以 `dws ding message list --type ALL --format json` 取得同一稳定 ID，再执行 `dws ding message receiver-status --ding-id <same-id> --format json` | 原子来源页 50；exact/raw 接收项均为 1；请求 DING ID、每项 DING ID 与完整接收行集合一致 | `PASS-DING-RECEIVER-DOUBLE`；fully unlocked |
+
+这是精确稳定 ID 读取，不是 list/search，因此不制造随机不存在 ID 的“零命中”。实现与严格响应测试位于 `internal/shortcut/ding/ding.go`、`internal/shortcut/ding/common.go` 和 `internal/shortcut/ding/ding_strict_cross_platform_coverage_test.go`。
+
 隔离 APP fixture 撤回后，`SEND`、`DELETED`、`ALL` 首屏均未出现目标；但 `+list` 的 continuation 已被证明停滞，首屏缺席不能升级为全局零残留证明。源聊天消息也在执行撤回后仍可按稳定身份读取，因此不能把“记录仍可查询”擅自解释为已删除或未删除。
 
 ## 5. 下游需求
