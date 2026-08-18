@@ -6656,19 +6656,6 @@ var generatedParamAliases = []ParamAliasEntry{
 		Blocked: []string{"file", "file-path", "path", "template-ids"},
 	},
 	{
-		CLIPath: "oa +list-executed",
-		Aliases: map[string]string{
-			"max-result":  "limit",
-			"max-results": "limit",
-			"page-size":   "limit",
-			"per-page":    "limit",
-			"size":        "limit",
-			"take":        "limit",
-			"top":         "limit",
-		},
-		Blocked: []string{"count", "cursor"},
-	},
-	{
 		CLIPath: "oa +search-forms",
 		Aliases: map[string]string{
 			"keyword":     "query",

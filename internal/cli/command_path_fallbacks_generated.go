@@ -242,9 +242,9 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 	{
 		From:         "oa +list-processes",
 		Mode:         "ambiguous",
-		Candidates:   []string{"oa +search-forms", "oa +my-initiated", "oa approval list-initiated"},
+		Candidates:   []string{"oa +search-forms", "oa approval list-submitted", "oa approval list-initiated"},
 		Reviewed:     true,
-		ReviewReason: "20260818 review keeps +list-forms unavailable because its live response lacks trustworthy continuation; process can still mean a searchable approval definition or an instance initiated by the current user, so stop and present the public keyword-search and initiated workflows.",
+		ReviewReason: "20260818 review keeps +list-forms unavailable because its live response lacks trustworthy continuation and removes +my-initiated from discovery because guaranteed-zero responses omit hasMore; process can still mean a searchable approval definition or an instance initiated by the current user, so stop and present the public keyword-search or exact atomic initiated routes.",
 	},
 }
 
