@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -319,6 +320,9 @@ func TestCrossPlatformCoverageAITableRecoveryCommandsQuoteUntrustedValues(t *tes
 			t.Fatalf("hostile base name error = %#v", err)
 		}
 		want := `dws aitable +base-search --query '项目 $(touch /tmp/pwn) '\''Q'\''' --format json`
+		if runtime.GOOS == "windows" {
+			want = `dws aitable +base-search --query REPLACE_QUERY --format json`
+		}
 		if typed.Actions[0] != want {
 			t.Fatalf("base name recovery = %q, want %q", typed.Actions[0], want)
 		}
@@ -340,6 +344,9 @@ func TestCrossPlatformCoverageAITableRecoveryCommandsQuoteUntrustedValues(t *tes
 			t.Fatalf("hostile base id error = %#v", err)
 		}
 		want := `dws aitable +base-get --base-id 'base;printf hacked' --format json`
+		if runtime.GOOS == "windows" {
+			want = `dws aitable +base-get --base-id REPLACE_BASE_ID --format json`
+		}
 		if typed.Actions[0] != want {
 			t.Fatalf("base id recovery = %q, want %q", typed.Actions[0], want)
 		}
@@ -362,6 +369,9 @@ func TestCrossPlatformCoverageAITableRecoveryCommandsQuoteUntrustedValues(t *tes
 			t.Fatalf("hostile table ids error = %#v", err)
 		}
 		want := `dws aitable +table-get --base-id 'base id;exit 1' --table-id 'table` + "`uname`" + `'\''x' --format json`
+		if runtime.GOOS == "windows" {
+			want = `dws aitable +table-get --base-id REPLACE_BASE_ID --table-id REPLACE_TABLE_ID --format json`
+		}
 		if typed.Actions[0] != want {
 			t.Fatalf("table ids recovery = %q, want %q", typed.Actions[0], want)
 		}
@@ -393,6 +403,11 @@ func TestCrossPlatformCoverageAITableRecoveryCommandsUseWindowsPlaceholders(t *t
 			name: "portable values stay inline",
 			argv: []string{"dws", "aitable", "+table-get", "--base-id", "base-1", "--table-id", "table_2", "--format", "json"},
 			want: "dws aitable +table-get --base-id base-1 --table-id table_2 --format json",
+		},
+		{
+			name: "unknown argument fallback",
+			argv: []string{"dws", "aitable", "unsafe value"},
+			want: "dws aitable REPLACE_VALUE",
 		},
 	}
 	for _, tc := range tests {
