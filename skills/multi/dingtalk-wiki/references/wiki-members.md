@@ -21,4 +21,4 @@ dws wiki +member-remove --workspace <workspaceId> --users <userId> --format json
 
 成员 add/update/remove 当前只能以写接口 `success=true` 作为终态证据，并显式返回 `verification.status=terminal_response_only`；成员列表受上限限制，不能被包装成精确读回验证。
 
-若写响应丢失，先用 `+member-list --filter-role` 做有限核对；仍无法证明时报告未知效果，不自动重放批量成员写入。
+若 add/update 写响应丢失，先用 `dws wiki +member-list --workspace <workspaceId> --filter-role <MANAGER|EDITOR|DOWNLOADER|READER> --limit 50 --format json` 做有限核对；remove 按写前已知的原角色过滤，原角色不确定时省略 `--filter-role`。成员列表仍不能证明完整结果；无法证明时报告未知效果，不自动重放批量成员写入。
