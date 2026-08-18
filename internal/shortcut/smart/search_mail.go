@@ -171,14 +171,63 @@ func searchMailFirstMailbox(rt *shortcut.RuntimeContext) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	mailboxes, err := smartMailRows(data, "mail/list_user_mailboxes", "emailAccounts", "email")
+	mailboxes, err := searchMailMailboxAddresses(data)
 	if err != nil {
 		return "", err
 	}
 	if len(mailboxes) > 0 {
-		return searchMailFirstString(mailboxes[0], "email"), nil
+		return mailboxes[0], nil
 	}
 	return "", apperrors.NewValidation("未找到可用邮箱，请用 --email 指定要搜索的邮箱地址")
+}
+
+// searchMailMailboxAddresses accepts the two reviewed mailbox wire shapes:
+// non-empty address strings and non-empty objects carrying an email field.
+// The collection itself and every item remain fail-closed, so malformed rows
+// cannot be skipped and misreported as an empty mailbox list.
+func searchMailMailboxAddresses(data map[string]any) ([]string, error) {
+	const operation = "mail/list_user_mailboxes"
+	if err := smartMailSuccess(data, operation); err != nil {
+		return nil, err
+	}
+	paths := []string{"emailAccounts", "result.emailAccounts", "data.emailAccounts"}
+	var value any
+	selectedPath := ""
+	for _, path := range paths {
+		candidate, present := smartMailLookup(data, path)
+		if !present {
+			continue
+		}
+		if selectedPath != "" {
+			return nil, smartMailError(operation, "conflicting_collection", fmt.Sprintf("响应同时包含 %s 与 %s，无法选择唯一邮箱集合", selectedPath, path))
+		}
+		value = candidate
+		selectedPath = path
+	}
+	if selectedPath == "" {
+		return nil, smartMailError(operation, "missing_collection", "成功响应缺少 emailAccounts 数组；不能把未知响应结构当作空结果")
+	}
+	raw, ok := value.([]any)
+	if !ok {
+		return nil, smartMailError(operation, "malformed_collection", fmt.Sprintf("响应 %s 应为数组，实际为 %T", selectedPath, value))
+	}
+	addresses := make([]string, 0, len(raw))
+	for index, item := range raw {
+		var address string
+		switch typed := item.(type) {
+		case string:
+			address = strings.TrimSpace(typed)
+		case map[string]any:
+			address = searchMailFirstString(typed, "email")
+		default:
+			return nil, smartMailError(operation, "malformed_item", fmt.Sprintf("响应 %s[%d] 必须是邮箱字符串或含 email 的对象", selectedPath, index))
+		}
+		if address == "" {
+			return nil, smartMailError(operation, "missing_item_identity", fmt.Sprintf("响应 %s[%d] 缺少非空邮箱地址", selectedPath, index))
+		}
+		addresses = append(addresses, address)
+	}
+	return addresses, nil
 }
 
 // searchMailFrom reads a message's sender, tolerating both a plain string and a
@@ -187,8 +236,8 @@ func searchMailFrom(m map[string]any) (any, error) {
 	raw, present := m["from"]
 	switch v := raw.(type) {
 	case string:
-		if v != "" {
-			return v, nil
+		if normalized := strings.TrimSpace(v); normalized != "" {
+			return normalized, nil
 		}
 	case map[string]any:
 		name := searchMailFirstString(v, "name", "displayName")
@@ -212,7 +261,10 @@ func searchMailFrom(m map[string]any) (any, error) {
 	if s := searchMailFirstString(m, "sender", "fromAddress", "fromName", "fromEmail"); s != "" {
 		return s, nil
 	}
-	return "", nil
+	if present {
+		return nil, smartMailError("mail/search_emails", "malformed_sender", "from 不能为空")
+	}
+	return nil, smartMailError("mail/search_emails", "missing_sender", "消息缺少可验证的发件人字段")
 }
 
 func searchMailFirstString(m map[string]any, keys ...string) string {

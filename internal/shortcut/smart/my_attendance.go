@@ -117,7 +117,7 @@ var MyAttendance = shortcut.Shortcut{
 	},
 }
 
-// myAttendanceCurrentUserID extracts the current user's userId from a
+// strictAttendanceCurrentUserID extracts the current user's userId from a
 // get_current_user_profile response. The gateway returns one of several shapes,
 // so probe them defensively (mirrors helpers.getCurrentUserID):
 //   - {"result": [ {"orgEmployeeModel": {"userId": ...}} ]}

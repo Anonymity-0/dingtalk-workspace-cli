@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -157,6 +158,39 @@ func TestCrossPlatformCoverageSmartMailSchemaAndOutputBoundaries(t *testing.T) {
 
 func TestCrossPlatformCoverageSmartMailSenderAndProjectionVariants(t *testing.T) {
 	for _, tc := range []struct {
+		name string
+		data map[string]any
+		want string
+	}{
+		{name: "top string", data: map[string]any{"success": true, "emailAccounts": []any{" mail@example.invalid "}}, want: "mail@example.invalid"},
+		{name: "top object", data: map[string]any{"success": true, "emailAccounts": []any{map[string]any{"email": "mail@example.invalid"}}}, want: "mail@example.invalid"},
+		{name: "result string", data: map[string]any{"success": true, "result": map[string]any{"emailAccounts": []any{"mail@example.invalid"}}}, want: "mail@example.invalid"},
+		{name: "result object", data: map[string]any{"success": true, "result": map[string]any{"emailAccounts": []any{map[string]any{"email": "mail@example.invalid"}}}}, want: "mail@example.invalid"},
+		{name: "data string", data: map[string]any{"success": true, "data": map[string]any{"emailAccounts": []any{"mail@example.invalid"}}}, want: "mail@example.invalid"},
+		{name: "data object", data: map[string]any{"success": true, "data": map[string]any{"emailAccounts": []any{map[string]any{"email": "mail@example.invalid"}}}}, want: "mail@example.invalid"},
+	} {
+		t.Run("mailbox "+tc.name, func(t *testing.T) {
+			got, err := searchMailMailboxAddresses(tc.data)
+			if err != nil || len(got) != 1 || got[0] != tc.want {
+				t.Fatalf("addresses=%#v want=%q err=%v", got, tc.want, err)
+			}
+		})
+	}
+	for name, data := range map[string]map[string]any{
+		"remote failure":   {"success": false},
+		"missing":          {"success": true},
+		"malformed object": {"success": true, "result": map[string]any{"emailAccounts": []any{map[string]any{"email": 7}}}},
+		"bad later item":   {"success": true, "emailAccounts": []any{"mail@example.invalid", 7}},
+		"multiple paths":   {"success": true, "emailAccounts": []any{"one@example.invalid"}, "data": map[string]any{"emailAccounts": []any{"two@example.invalid"}}},
+	} {
+		t.Run("mailbox "+name, func(t *testing.T) {
+			if _, err := searchMailMailboxAddresses(data); err == nil {
+				t.Fatal("invalid mailbox response unexpectedly succeeded")
+			}
+		})
+	}
+
+	for _, tc := range []struct {
 		message map[string]any
 		want    any
 	}{
@@ -165,14 +199,14 @@ func TestCrossPlatformCoverageSmartMailSenderAndProjectionVariants(t *testing.T)
 		{message: map[string]any{"from": map[string]any{"email": "sender@example.invalid"}}, want: "sender@example.invalid"},
 		{message: map[string]any{"from": map[string]any{"name": "Sender"}}, want: "Sender"},
 		{message: map[string]any{"sender": "sender@example.invalid"}, want: "sender@example.invalid"},
-		{message: map[string]any{}, want: ""},
+		{message: map[string]any{"from": " ", "sender": "sender@example.invalid"}, want: "sender@example.invalid"},
 	} {
 		got, err := searchMailFrom(tc.message)
 		if err != nil || got != tc.want {
 			t.Fatalf("sender=%#v want=%#v err=%v", got, tc.want, err)
 		}
 	}
-	for _, message := range []map[string]any{{"from": nil}, {"from": map[string]any{}}, {"from": 7}} {
+	for _, message := range []map[string]any{{}, {"from": " "}, {"from": nil}, {"from": map[string]any{}}, {"from": 7}} {
 		if _, err := searchMailFrom(message); err == nil {
 			t.Fatal("malformed sender unexpectedly succeeded")
 		}
@@ -212,6 +246,8 @@ func TestCrossPlatformCoverageSmartMailLeafFailureBoundaries(t *testing.T) {
 		wantCalls   int
 	}{
 		{name: "search mailbox malformed", declaration: SearchMail, args: []string{"--query", "fixture"}, responses: map[string]string{"list_user_mailboxes": `{"success":true,"emailAccounts":{}}`}, wantCalls: 1},
+		{name: "search mailbox blank string", declaration: SearchMail, args: []string{"--query", "fixture"}, responses: map[string]string{"list_user_mailboxes": `{"success":true,"emailAccounts":[" "]}`}, wantCalls: 1},
+		{name: "search mailbox malformed item", declaration: SearchMail, args: []string{"--query", "fixture"}, responses: map[string]string{"list_user_mailboxes": `{"success":true,"emailAccounts":[7]}`}, wantCalls: 1},
 		{name: "search mailbox empty", declaration: SearchMail, args: []string{"--query", "fixture"}, responses: map[string]string{"list_user_mailboxes": `{"success":true,"emailAccounts":[]}`}, wantCalls: 1},
 		{name: "search rows malformed", declaration: SearchMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture"}, responses: map[string]string{"search_emails": `{"success":true,"messages":{}}`}, wantCalls: 1},
 		{name: "search sender malformed", declaration: SearchMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture"}, responses: map[string]string{"search_emails": `{"success":true,"messages":[{"id":"message-1","from":[]}],"hasMore":false,"nextCursor":""}`}, wantCalls: 1},
@@ -287,6 +323,21 @@ func TestCrossPlatformCoverageSmartMailInboxAndSenderFallbacks(t *testing.T) {
 			}, wantCalls: 3,
 		},
 		{
+			name: "search resolves wrapped string mailbox", declaration: SearchMail, args: []string{"--query", "fixture"},
+			responses: map[string]string{
+				"list_user_mailboxes": `{"success":true,"result":{"emailAccounts":["mail@example.invalid"]}}`,
+				"search_emails":       `{"success":true,"messages":[],"total":0,"hasMore":false,"nextCursor":""}`,
+			}, wantCalls: 2,
+		},
+		{
+			name: "triage resolves string mailbox and inbox", declaration: TriageMail,
+			responses: map[string]string{
+				"list_user_mailboxes": `{"success":true,"emailAccounts":["mail@example.invalid"]}`,
+				"list_folders":        `{"success":true,"folders":[{"id":"folder-1","displayName":"Inbox"}]}`,
+				"search_emails":       `{"success":true,"messages":[],"total":0,"hasMore":false,"nextCursor":""}`,
+			}, wantCalls: 3,
+		},
+		{
 			name: "recent resolves inbox", declaration: RecentMail, args: []string{"--email", "mail@example.invalid"},
 			responses: map[string]string{
 				"list_folders":         `{"success":true,"folders":[{"id":"folder-1","displayName":"Inbox"}]}`,
@@ -310,6 +361,28 @@ func TestCrossPlatformCoverageSmartMailInboxAndSenderFallbacks(t *testing.T) {
 			}
 			if len(caller.calls) != tc.wantCalls {
 				t.Fatalf("calls=%d want=%d", len(caller.calls), tc.wantCalls)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name     string
+		response string
+		reason   string
+	}{
+		{name: "blank sender", response: `{"success":true,"messages":[{"id":"message-1","from":" "}],"hasMore":false,"nextCursor":""}`, reason: "malformed_sender"},
+		{name: "missing sender", response: `{"success":true,"messages":[{"id":"message-1"}],"hasMore":false,"nextCursor":""}`, reason: "missing_sender"},
+	} {
+		t.Run(tc.name+" typed reason", func(t *testing.T) {
+			caller := &smartMailCursorCaller{responses: map[string]string{"search_emails": tc.response}}
+			err := runSmartMailDeclaration(t, SearchMail, caller, "--email", "mail@example.invalid", "--query", "fixture")
+			typed, ok := err.(*apperrors.Error)
+			if err == nil || !ok || typed.Reason != tc.reason || len(caller.calls) != 1 {
+				reason := ""
+				if ok {
+					reason = typed.Reason
+				}
+				t.Fatalf("err=%v reason=%q calls=%d", err, reason, len(caller.calls))
 			}
 		})
 	}

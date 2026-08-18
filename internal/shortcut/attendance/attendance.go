@@ -88,7 +88,7 @@ func flexDateTime(s string) (string, error) {
 }
 
 // dateToMillis parses YYYY-MM-DD / datetime; when endOfDay is set a bare date
-// resolves to 23:59:59 (mirrors helper parseDateToTimestamp "end" behaviour).
+// resolves to the final millisecond before the next local calendar day.
 func dateToMillis(s string, endOfDay bool) (int64, error) {
 	s = strings.TrimSpace(s)
 	if t, err := time.ParseInLocation("2006-01-02 15:04:05", s, time.Local); err == nil {
@@ -96,7 +96,7 @@ func dateToMillis(s string, endOfDay bool) (int64, error) {
 	}
 	if t, err := time.ParseInLocation("2006-01-02", s, time.Local); err == nil {
 		if endOfDay {
-			return t.Add(23*time.Hour + 59*time.Minute + 59*time.Second).UnixMilli(), nil
+			return t.AddDate(0, 0, 1).Add(-time.Millisecond).UnixMilli(), nil
 		}
 		return t.UnixMilli(), nil
 	}
@@ -265,7 +265,7 @@ var CheckResult = shortcut.Shortcut{
 			return err
 		}
 		startMillis, _ := dayMillis(rt.Str("start"))
-		endMillis, _ := dayMillis(rt.Str("end"))
+		endMillis, _ := dateToMillis(rt.Str("end"), true)
 		if err := attendanceValidateUserAndTimeBinding(records, serverWukong+"/query_check_result", rt.StrSlice("users"), "userId", "workDate", startMillis, endMillis); err != nil {
 			return err
 		}
@@ -360,8 +360,7 @@ var CheckRecord = shortcut.Shortcut{
 		}
 		startMillis, _ := dayMillis(rt.Str("start"))
 		endMillis, _ := dateToMillis(rt.Str("end"), true)
-		items, err = attendanceFilterUserAndTimeBinding(items, operation, rt.StrSlice("users"), "userId", "workDate", startMillis, endMillis)
-		if err != nil {
+		if err := attendanceValidateUserAndTimeBinding(items, operation, rt.StrSlice("users"), "userId", "userCheckTime", startMillis, endMillis); err != nil {
 			return err
 		}
 		return attendanceOutputCollection(rt, "records", items, true, nil, false, "")
@@ -484,7 +483,7 @@ var ListApprove = shortcut.Shortcut{
 				requestedTypes[value] = struct{}{}
 			}
 			startMillis, _ := dayMillis(rt.Str("start"))
-			endMillis, _ := dayMillis(rt.Str("end"))
+			endMillis, _ := dateToMillis(rt.Str("end"), true)
 			return attendanceValidateApprovalBinding(items, serverWukong+"/query_user_approve", rt.StrSlice("users"), requestedTypes, startMillis, endMillis)
 		}, "result")
 	},

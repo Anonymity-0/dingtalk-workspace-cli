@@ -246,7 +246,8 @@
 | Shortcut | 上游根因 | 已完成修复 | 回归证据 |
 |---|---|---|---|
 | 最终保留公开的 Attendance 集合查询 | 容错 projector 可能把缺字段、错型或坏元素投成 `[]` | 共享严格 success/result/collection 校验；显式空数组才合法；稳定 ID 和请求用户/时间/类型必须绑定 | 单元负向矩阵已完成；9 个公开入口已按适用语义完成真实 nonempty/zero、详情或模板 exact/raw 双层复核；最终 PR HEAD 仍从零复核 |
-| `+check-record` | `query_check_record` 在真实非空查询中会额外返回请求开始日前一个业务日的记录；把 raw 全量直接做范围断言会使合法请求整体失败 | 仅该叶子在完整 raw 集合通过显式 collection、全量正整数唯一 ID、用户身份与时间字段类型校验后，过滤请求区间外的下游 overfetch；错用户、缺字段、错型、坏时间与重复 ID 仍 fail-closed。`+check-result`、`+get-schedule` 保持原严格范围拒绝，不共享该过滤语义 | helper/Execute 负向矩阵通过；raw 157 条、exact 156 条，逐对象精确等于 raw 的请求用户与本地日期范围子集，仅过滤 start-24h 一项；fresh zero 双层通过 |
+| `+check-record` | 初版误用业务归属日 `workDate` 校验按 `checkDateFrom/checkDateTo` 发起的实际打卡查询，导致跨午夜下班卡被静默丢弃 | 改用 `userCheckTime` 严格绑定请求日期范围；`workDate` 只作为班次归属日原样保留。完整 raw 集合仍必须先通过显式 collection、全量正整数唯一 ID、请求用户和实际打卡时间校验；任何实际时间越界都整次 fail-closed，不再静默过滤 | reviewer 反馈后以脱敏 live 字段关系确认：旧轮唯一 `workDate=start-24h` 项的 `userCheckTime` 在请求范围内，属于跨午夜 OffDuty；night-shift、missing/wrong/out-of-range actual-time 与稳定 ID 负向回归通过，最终 clean HEAD 待从零复核 |
+| `+check-result`, `+list-approve` | 初版把裸日期 `--end` 解析为当天 00:00，可能拒绝结束日白天的结果；旧 end-of-day 语义还会漏最后 999ms | 裸日期结束边界改为本地下一日 00:00 前 1ms；显式 datetime 保持精确值；结束日中午与最后 1ms 可接受，下一日 00:00 非零拒绝 | Execute 回归覆盖结束日中午/最后毫秒/下一日，并锁定 `request_range_mismatch` reason；最终 clean HEAD 待真实双层复核 |
 | `+get-approve-template` | 把请求维度 `approveType` 误作集合唯一身份，会拒绝同一类型下多个合法模板 | 改用非空唯一 `processCode` 作为资源身份；`approveType` 仅做请求精确绑定；每项 `submitUrl` 必须非空；允许 TRAVEL/OUT 同类型多项 | missing/wrong/duplicate processCode、wrong approveType、missing/blank submitUrl 负向矩阵；clean HEAD 上 5 个类型 exact/raw 全通过，TRAVEL/OUT 双项集合一致 |
 | `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | 嵌套 `shiftVO/entityVO` 导致身份投影风险 | 固定审核路径、展开 wrapper、要求正整数且不重复的稳定 ID，严格校验分页矛盾与无前进页 | 坏 item/空 ID/重复 ID/分页矛盾单元回归通过；clean HEAD 上 nonempty/guaranteed-zero 与 raw 对照通过，班次/加班规则另完成实际多页前进与终止 |
 | `+get-overtime-rule` | 能力存在但缺少请求 ID 与响应对象的强绑定 | 详情对象要求非空且 `id` 与请求精确一致 | missing/false/null/malformed/wrong-ID/valid Execute 级矩阵；clean HEAD 上 exact/raw 同真实搜索 ID 对象一致，raw 对不存在 ID 返回错对象时 exact 非零拒绝 |
@@ -259,7 +260,7 @@
 | 叶子 | clean executable HEAD 双层证据 | 发布状态 |
 |---|---|---|
 | `+check-result` | exact/raw known-nonempty 以 20/20/8 三页前进并终止；48 个 ID、用户绑定与逐页对象一致；合法未来日显式空双层一致 | `PASS`；最终 SHA 见 PR 证据 |
-| `+check-record` | raw 157 条先全部通过集合、ID、用户与时间类型校验；exact 156 条逐对象等于 raw 的请求用户+本地日期范围子集，唯一过滤 start-24h 一项；fresh future zero 双层一致 | `PASS`；最终 SHA 见 PR 证据 |
+| `+check-record` | 旧轮 raw 157→exact 156 的差异已被确认是错误过滤跨午夜夜班记录，不再作为 PASS 证据；修复后按 `userCheckTime` 绑定并保留该记录 | 最终 clean HEAD 必须从零复核 nonempty/zero 后才能恢复 `PASS` |
 | `+list-approve`, `+get-schedule` | exact/raw known-nonempty 分别 7/54 条，稳定 ID、用户/类型或用户/日期绑定及完整数组一致；合法未来日显式空双层一致 | `PASS`；最终 SHA 见 PR 证据 |
 | `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | exact/raw known-nonempty 与随机唯一词 guaranteed-zero 通过；稳定 ID 集合与分页终止一致，班次为 5/5/3 三页，加班规则为 1/1/1 三页 | `PASS`；最终 SHA 见 PR 证据 |
 | `+get-overtime-rule` | 使用本轮真实搜索取得的 ID，exact 与 raw 单项对象一致；不存在 ID 的 raw 返回错 ID 对象时 exact 非零拒绝 | `PASS`；最终 SHA 见 PR 证据 |

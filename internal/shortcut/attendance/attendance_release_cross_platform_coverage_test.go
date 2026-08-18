@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -71,6 +72,8 @@ func TestCrossPlatformCoverageAttendanceRequestBindingMatrices(t *testing.T) {
 	}{
 		{"valid", []map[string]any{{"userId": "u1", "workDate": float64(1000)}}, true},
 		{"missing user", []map[string]any{{"workDate": float64(1000)}}, false},
+		{"wrong user type", []map[string]any{{"userId": 1, "workDate": float64(1000)}}, false},
+		{"blank user", []map[string]any{{"userId": " ", "workDate": float64(1000)}}, false},
 		{"wrong user", []map[string]any{{"userId": "u2", "workDate": float64(1000)}}, false},
 		{"missing time", []map[string]any{{"userId": "u1"}}, false},
 		{"wrong time type", []map[string]any{{"userId": "u1", "workDate": "1000"}}, false},
@@ -96,6 +99,8 @@ func TestCrossPlatformCoverageAttendanceRequestBindingMatrices(t *testing.T) {
 		{"wrong type", map[string]any{"userId": "u1", "bizType": float64(4), "beginTime": float64(900), "endTime": float64(1100)}, false},
 		{"invalid range", map[string]any{"userId": "u1", "bizType": float64(3), "beginTime": float64(1001), "endTime": float64(999)}, false},
 		{"before range", map[string]any{"userId": "u1", "bizType": float64(3), "beginTime": float64(700), "endTime": float64(899)}, false},
+		{"crosses start", map[string]any{"userId": "u1", "bizType": float64(3), "beginTime": float64(800), "endTime": float64(900)}, true},
+		{"crosses end", map[string]any{"userId": "u1", "bizType": float64(3), "beginTime": float64(1100), "endTime": float64(1200)}, true},
 		{"after range", map[string]any{"userId": "u1", "bizType": float64(3), "beginTime": float64(1101), "endTime": float64(1200)}, false},
 	}
 	for _, tc := range approvalCases {
@@ -109,47 +114,43 @@ func TestCrossPlatformCoverageAttendanceRequestBindingMatrices(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageAttendanceCheckRecordOverfetchFilter(t *testing.T) {
+func TestCrossPlatformCoverageAttendanceCheckRecordActualTimeBinding(t *testing.T) {
 	const startMillis, endMillis = int64(1000), int64(2000)
-	items := []map[string]any{
-		{"id": 1, "userId": "u1", "workDate": startMillis - 1},
-		{"id": 2, "userId": "u1", "workDate": startMillis},
-		{"id": 3, "userId": "u1", "workDate": endMillis},
-		{"id": 4, "userId": "u1", "workDate": endMillis + 1},
-	}
-	filtered, err := attendanceFilterUserAndTimeBinding(items, "attendance/test", []string{"u1"}, "userId", "workDate", startMillis, endMillis)
-	if err != nil || len(filtered) != 2 || filtered[0]["id"] != 2 || filtered[1]["id"] != 3 {
-		t.Fatalf("filtered=%#v err=%v", filtered, err)
+	items := []map[string]any{{"id": 1, "userId": "u1", "workDate": startMillis - 24*60*60*1000, "userCheckTime": startMillis}}
+	if err := attendanceValidateUserAndTimeBinding(items, "attendance/test", []string{"u1"}, "userId", "userCheckTime", startMillis, endMillis); err != nil {
+		t.Fatalf("cross-midnight work date with in-range actual check was rejected: %v", err)
 	}
 
 	invalid := []struct {
-		name  string
-		items []map[string]any
-		start int64
-		end   int64
+		name   string
+		item   map[string]any
+		reason string
 	}{
-		{"reversed request", nil, endMillis, startMillis},
-		{"missing user", []map[string]any{{"workDate": startMillis}}, startMillis, endMillis},
-		{"wrong user type", []map[string]any{{"userId": 1, "workDate": startMillis}}, startMillis, endMillis},
-		{"empty user", []map[string]any{{"userId": " ", "workDate": startMillis}}, startMillis, endMillis},
-		{"wrong user outside range", []map[string]any{{"userId": "u2", "workDate": startMillis - 1}}, startMillis, endMillis},
-		{"missing time", []map[string]any{{"userId": "u1"}}, startMillis, endMillis},
-		{"wrong time type", []map[string]any{{"userId": "u1", "workDate": "1000"}}, startMillis, endMillis},
-		{"zero time", []map[string]any{{"userId": "u1", "workDate": 0}}, startMillis, endMillis},
+		{"before range", map[string]any{"userId": "u1", "userCheckTime": startMillis - 1}, "request_range_mismatch"},
+		{"after range", map[string]any{"userId": "u1", "userCheckTime": endMillis + 1}, "request_range_mismatch"},
+		{"missing actual time", map[string]any{"userId": "u1", "workDate": startMillis}, "missing_request_binding"},
+		{"null actual time", map[string]any{"userId": "u1", "userCheckTime": nil}, "malformed_request_binding"},
+		{"wrong actual time type", map[string]any{"userId": "u1", "userCheckTime": "1000"}, "malformed_request_binding"},
+		{"zero actual time", map[string]any{"userId": "u1", "userCheckTime": 0}, "malformed_request_binding"},
 	}
 	for _, tc := range invalid {
 		t.Run(tc.name, func(t *testing.T) {
-			if got, err := attendanceFilterUserAndTimeBinding(tc.items, "attendance/test", []string{"u1"}, "userId", "workDate", tc.start, tc.end); err == nil || got != nil {
-				t.Fatalf("filtered=%#v err=%v", got, err)
+			err := attendanceValidateUserAndTimeBinding([]map[string]any{tc.item}, "attendance/test", []string{"u1"}, "userId", "userCheckTime", startMillis, endMillis)
+			typed, ok := err.(*apperrors.Error)
+			reason := ""
+			if ok {
+				reason = typed.Reason
+			}
+			if err == nil || !ok || typed.Reason != tc.reason {
+				t.Fatalf("err=%v reason=%q want=%q", err, reason, tc.reason)
 			}
 		})
 	}
 }
 
-func TestCrossPlatformCoverageAttendanceCheckRecordExecuteFiltersValidatedOverfetch(t *testing.T) {
+func TestCrossPlatformCoverageAttendanceCheckRecordExecuteBindsActualCheckTime(t *testing.T) {
 	values := map[string]string{"users": "u1", "start": "2026-01-01", "end": "2026-01-31"}
 	startMillis, _ := dayMillis(values["start"])
-	endMillis, _ := dateToMillis(values["end"], true)
 	execute := func(t *testing.T, records []map[string]any) (map[string]any, error) {
 		t.Helper()
 		caller := &attendanceCoverageCaller{text: attendanceResponseJSON(t, map[string]any{"success": true, "result": records})}
@@ -182,33 +183,24 @@ func TestCrossPlatformCoverageAttendanceCheckRecordExecuteFiltersValidatedOverfe
 		return envelope, nil
 	}
 
-	t.Run("keeps in-range and filters start minus 24 hours", func(t *testing.T) {
+	t.Run("keeps cross-midnight work date when actual check is in range", func(t *testing.T) {
 		envelope, err := execute(t, []map[string]any{
-			{"id": 1, "userId": "u1", "workDate": startMillis - 24*60*60*1000},
-			{"id": 2, "userId": "u1", "workDate": startMillis},
+			{"id": 1, "userId": "u1", "workDate": startMillis - 24*60*60*1000, "userCheckTime": startMillis + 1000},
+			{"id": 2, "userId": "u1", "workDate": startMillis, "userCheckTime": startMillis},
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 		data, ok := envelope["data"].(map[string]any)
 		records, recordsOK := data["records"].([]any)
-		if !ok || !recordsOK || data["count"] != float64(1) || len(records) != 1 || records[0].(map[string]any)["id"] != float64(2) {
+		if !ok || !recordsOK || data["count"] != float64(2) || len(records) != 2 || records[0].(map[string]any)["id"] != float64(1) || records[1].(map[string]any)["id"] != float64(2) {
 			t.Fatalf("data=%#v", envelope["data"])
 		}
 	})
 
-	t.Run("all valid overfetch becomes explicit empty", func(t *testing.T) {
-		envelope, err := execute(t, []map[string]any{
-			{"id": 1, "userId": "u1", "workDate": startMillis - 24*60*60*1000},
-			{"id": 2, "userId": "u1", "workDate": endMillis + 1},
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		data, ok := envelope["data"].(map[string]any)
-		records, recordsOK := data["records"].([]any)
-		if !ok || !recordsOK || data["count"] != float64(0) || len(records) != 0 {
-			t.Fatalf("data=%#v", envelope["data"])
+	t.Run("actual-time overfetch fails closed", func(t *testing.T) {
+		if _, err := execute(t, []map[string]any{{"id": 1, "userId": "u1", "workDate": startMillis, "userCheckTime": startMillis - 1}}); err == nil {
+			t.Fatal("out-of-range actual check was silently filtered")
 		}
 	})
 
@@ -216,11 +208,12 @@ func TestCrossPlatformCoverageAttendanceCheckRecordExecuteFiltersValidatedOverfe
 		name    string
 		records []map[string]any
 	}{
-		{"missing identity outside range", []map[string]any{{"userId": "u1", "workDate": startMillis - 1}}},
-		{"zero identity outside range", []map[string]any{{"id": 0, "userId": "u1", "workDate": startMillis - 1}}},
-		{"wrong user outside range", []map[string]any{{"id": 1, "userId": "other", "workDate": startMillis - 1}}},
-		{"malformed time outside range", []map[string]any{{"id": 1, "userId": "u1", "workDate": "bad"}}},
-		{"duplicate identities outside range", []map[string]any{{"id": 1, "userId": "u1", "workDate": startMillis - 2}, {"id": 1, "userId": "u1", "workDate": startMillis - 1}}},
+		{"missing identity outside range", []map[string]any{{"userId": "u1", "userCheckTime": startMillis - 1}}},
+		{"zero identity outside range", []map[string]any{{"id": 0, "userId": "u1", "userCheckTime": startMillis - 1}}},
+		{"wrong user outside range", []map[string]any{{"id": 1, "userId": "other", "userCheckTime": startMillis - 1}}},
+		{"missing actual time", []map[string]any{{"id": 1, "userId": "u1", "workDate": startMillis - 1}}},
+		{"malformed actual time outside range", []map[string]any{{"id": 1, "userId": "u1", "userCheckTime": "bad"}}},
+		{"duplicate identities outside range", []map[string]any{{"id": 1, "userId": "u1", "userCheckTime": startMillis - 2}, {"id": 1, "userId": "u1", "userCheckTime": startMillis - 1}}},
 	}
 	for _, tc := range invalid {
 		t.Run(tc.name, func(t *testing.T) {
@@ -826,8 +819,19 @@ func TestCrossPlatformCoverageAttendanceChangedValidators(t *testing.T) {
 
 func TestCrossPlatformCoverageAttendanceExactRecordExecutors(t *testing.T) {
 	startMillis, _ := dayMillis("2026-01-01")
-	endMillis, _ := dayMillis("2026-01-31")
+	endStartMillis, _ := dayMillis("2026-01-31")
+	endMillis, _ := dateToMillis("2026-01-31", true)
+	nextDayStartMillis, _ := dayMillis("2026-02-01")
+	finalDayNoon := endStartMillis + 12*60*60*1000
 	validRecord := map[string]any{"id": 1, "userId": "u1", "workDate": startMillis}
+	if endMillis != nextDayStartMillis-1 {
+		t.Fatalf("end-of-day=%d want=%d", endMillis, nextDayStartMillis-1)
+	}
+	explicitEnd, err := dateToMillis("2026-01-31 12:34:56", true)
+	explicitWant, _ := flexMillis("2026-01-31 12:34:56")
+	if err != nil || explicitEnd != explicitWant {
+		t.Fatalf("explicit datetime end=%d want=%d err=%v", explicitEnd, explicitWant, err)
+	}
 
 	t.Run("check result bad execute bounds", func(t *testing.T) {
 		for _, values := range []map[string]string{
@@ -874,6 +878,44 @@ func TestCrossPlatformCoverageAttendanceExactRecordExecutors(t *testing.T) {
 		}
 	})
 
+	t.Run("end date includes the full business day", func(t *testing.T) {
+		checkValues := map[string]string{"users": "u1", "start": "2026-01-01", "end": "2026-01-31", "limit": "2"}
+		checkRow := map[string]any{"id": 1, "userId": "u1", "workDate": finalDayNoon}
+		caller, err := executeAttendanceResponse(t, CheckResult, checkValues, attendanceResponseJSON(t, map[string]any{"success": true, "result": []any{checkRow}}))
+		if err != nil || caller.calls != 1 {
+			t.Fatalf("check result rejected final-day midday row: err=%v calls=%d", err, caller.calls)
+		}
+
+		approveValues := map[string]string{"users": "u1", "types": "leave", "start": "2026-01-01", "end": "2026-01-31"}
+		approval := map[string]any{"id": 1, "userId": "u1", "bizType": 3, "beginTime": finalDayNoon, "endTime": finalDayNoon + 60*60*1000}
+		caller, err = executeAttendanceResponse(t, ListApprove, approveValues, attendanceResponseJSON(t, map[string]any{"success": true, "result": []any{approval}}))
+		if err != nil || caller.calls != 1 {
+			t.Fatalf("approval rejected final-day midday interval: err=%v calls=%d", err, caller.calls)
+		}
+
+		checkRow["workDate"] = endMillis
+		caller, err = executeAttendanceResponse(t, CheckResult, checkValues, attendanceResponseJSON(t, map[string]any{"success": true, "result": []any{checkRow}}))
+		if err != nil || caller.calls != 1 {
+			t.Fatalf("check result rejected final millisecond: err=%v calls=%d", err, caller.calls)
+		}
+		checkRow["workDate"] = nextDayStartMillis
+		if caller, err = executeAttendanceResponse(t, CheckResult, checkValues, attendanceResponseJSON(t, map[string]any{"success": true, "result": []any{checkRow}})); err == nil || caller.calls != 1 {
+			t.Fatalf("check result accepted next-day row: err=%v calls=%d", err, caller.calls)
+		}
+
+		approval["beginTime"] = nextDayStartMillis
+		approval["endTime"] = nextDayStartMillis + 1000
+		caller, err = executeAttendanceResponse(t, ListApprove, approveValues, attendanceResponseJSON(t, map[string]any{"success": true, "result": []any{approval}}))
+		typed, ok := err.(*apperrors.Error)
+		reason := ""
+		if ok {
+			reason = typed.Reason
+		}
+		if err == nil || caller.calls != 1 || !ok || typed.Reason != "request_range_mismatch" {
+			t.Fatalf("approval next-day result err=%v calls=%d reason=%q", err, caller.calls, reason)
+		}
+	})
+
 	collectionCases := []struct {
 		name        string
 		declaration shortcut.Shortcut
@@ -881,7 +923,7 @@ func TestCrossPlatformCoverageAttendanceExactRecordExecutors(t *testing.T) {
 		valid       map[string]any
 		invalid     map[string]any
 	}{
-		{"check record", CheckRecord, map[string]string{"users": "u1", "start": "2026-01-01", "end": "2026-01-31"}, validRecord, map[string]any{"id": 1, "userId": "other", "workDate": startMillis}},
+		{"check record", CheckRecord, map[string]string{"users": "u1", "start": "2026-01-01", "end": "2026-01-31"}, map[string]any{"id": 1, "userId": "u1", "workDate": startMillis - 24*60*60*1000, "userCheckTime": startMillis}, map[string]any{"id": 1, "userId": "other", "userCheckTime": startMillis}},
 		{"approve", ListApprove, map[string]string{"users": "u1", "types": "leave", "start": "2026-01-01", "end": "2026-01-31"}, map[string]any{"id": 1, "userId": "u1", "bizType": 3, "beginTime": startMillis, "endTime": endMillis}, map[string]any{"id": 1, "userId": "u1", "bizType": 4, "beginTime": startMillis, "endTime": endMillis}},
 		{"schedule", GetSchedule, map[string]string{"users": "u1", "start": "2026-01-01", "end": "2026-01-31"}, validRecord, map[string]any{"id": 1, "userId": "other", "workDate": startMillis}},
 	}

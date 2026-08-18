@@ -168,6 +168,7 @@
 |---|---|---|---|
 | 全部 list/search | 容忍式探测任意 result/data/list/items，坏元素静默丢弃 | 固定已观测路径、严格 success/数组/item/ID；无双态 fixture 的 leaf 不发布 | deterministic 响应矩阵；live 证据逐 leaf 记录，不作泛化 |
 | `+search-mail` / `+triage` | `$` 终止游标被误作下一页；零命中占位对象被当邮件 | 明确 `$` 终页；仅窄规则归一化已观测哨兵 | 各完成 known-nonempty 20 + fresh guaranteed-zero；stable ID set 与 raw pagination/meta 精确一致 |
+| `+search-mail` / `+triage` 自动邮箱解析 | 严格化时只接受顶层对象数组，会拒绝历史已观测的字符串数组和 `result/data.emailAccounts` 包装 | 仅接受三个审核路径 `emailAccounts` / `result.emailAccounts` / `data.emailAccounts`，每项可为非空邮箱字符串或含非空 `email` 的对象；缺集合、错型、坏项或多路径冲突全部 fail-closed；空发件人也不再投影为空字符串成功 | top/result/data × string/object、blank/wrong/multiple-path 与 sender missing/null/wrong-type 回归覆盖；最终 clean HEAD 待真实自动解析复核 |
 | `+unread-mail` / `+recent-mail` / `+thread-list` | 固定条件或文件夹不能保证零命中 | 严格响应代码已完成，但没有空邮箱/空文件夹证据时关闭发布 | BLOCKED fixture；不得修改真实邮件状态造空 |
 | `+user-search` / `+find-mail-user` | `hasMore`/`nextCursor` 未交付；零命中被误报 validation error | 发布 complete/nextCursor；合法空成功 | 各完成 known-nonempty 19 + fresh guaranteed-zero；stable identity set 与 raw pagination/meta 精确一致 |
 | `+tag-list` / `+template-list` / `+contact-list` | 无 query 的列表容易把末页/删除后列表误作合法空 | 严格响应代码已完成；无专用空邮箱和 typed cleanup 时关闭发布 | BLOCKED fixture；不把临时资源从列表消失记为零态 PASS |
