@@ -571,7 +571,7 @@ Flags:
 --本地图片、文件、音频或视频统一用 --msg-type file --file；图片会作为可下载的文件附件发送。--msg-type image --media-id 仅用于上游已经提供有效 mediaId 的场景。
 ```
 Usage:
-  dws chat message send [flags] [<text>]
+  dws chat message send [flags] [<content>]
 
 富媒体消息路由:
   场景                                     → msgType → 发送参数
@@ -581,27 +581,28 @@ Usage:
   注意：本地 .png/.jpg 也按 file 发送，接收方看到的是可下载附件；DWS CLI 不能把本地文件转换成 mediaId。
 
 Example:
-  dws chat message send --group <openconversation_id> --content "hello"
+  dws chat message send --conversation-id <openconversation_id> --content "hello"
   dws chat message send --user <userId> --content "请查收"
   dws chat message send --open-dingtalk-id <openDingTalkId> --content "请查收"
-  dws chat message send --group <openconversation_id> "hello"
-  dws chat message send --group <openconversation_id> --title "周报提醒" --content "请大家本周五前提交周报"
+  dws chat message send --conversation-id <openconversation_id> "hello"
+  dws chat message send --conversation-id <openconversation_id> --title "周报提醒" --content "请大家本周五前提交周报"
   # 图文混排 Markdown：公网图片 URL 需要写成 ![图片标题](URL) 才会以内联图片展示
-  dws chat message send --group <openconversation_id> --content $'这是图文说明\n\n![这个是展示图片标题](https://down.dingtalk.com/media/lQLPM5jiBEiBNjswMLAKd_CTzm8eowpEWPT_7-cA_48_48.png)'
-  # 幂等发送（24h 内相同 uuid 不重复投递）
-  dws chat message send --group <openconversation_id> --content "hello" --uuid "unique-id-123"
-  dws chat message send --group <openconversation_id> --at-all "<@all> 请大家注意"
-  dws chat message send --group <openconversation_id> --at-open-dingtalk-ids openDingTalkId1,openDingTalkId2 "<@openDingTalkId1> <@openDingTalkId2> 请查收"
+  dws chat message send --conversation-id <openconversation_id> --content $'这是图文说明\n\n![这个是展示图片标题](https://down.dingtalk.com/media/lQLPM5jiBEiBNjswMLAKd_CTzm8eowpEWPT_7-cA_48_48.png)'
+  # 幂等发送（24h 内相同 idempotency key 不重复投递）
+  dws chat message send --conversation-id <openconversation_id> --content "hello" --idempotency-key "unique-id-123"
+  dws chat message send --conversation-id <openconversation_id> --at-all "<@all> 请大家注意"
+  dws chat message send --conversation-id <openconversation_id> --at-open-dingtalk-ids openDingTalkId1,openDingTalkId2 "<@openDingTalkId1> <@openDingTalkId2> 请查收"
   # 本地图片/文件/音频/视频统一作为 file 附件发送
-  dws chat message send --group <openconversation_id> --msg-type file --file ./screenshot.png
-  dws chat message send --group <openconversation_id> --msg-type file --file ./report.pdf
-  dws chat message send --group <openconversation_id> --msg-type file --file ./recording.mp3
-  dws chat message send --group <openconversation_id> --msg-type file --file ./demo.mp4
+  dws chat message send --conversation-id <openconversation_id> --msg-type file --file ./screenshot.png
+  dws chat message send --conversation-id <openconversation_id> --msg-type file --file ./report.pdf
+  dws chat message send --conversation-id <openconversation_id> --msg-type file --file ./recording.mp3
+  dws chat message send --conversation-id <openconversation_id> --msg-type file --file ./demo.mp4
   # 仅当上游已有有效 mediaId 时发送内联图片
-  dws chat message send --group <openconversation_id> --msg-type image --media-id <mediaId>
+  dws chat message send --conversation-id <openconversation_id> --msg-type image --media-id <mediaId>
 Flags:
       --content string           消息内容（推荐使用，也可用位置参数）
-      --group string             群聊 openconversation_id（群聊时必填）
+      --conversation-id string   群聊 openconversation_id（群聊时必填）
+      --group string             --conversation-id 的兼容别名
       --user string              单聊接收人 userId（单聊时与 --open-dingtalk-id 二选一）
       --open-dingtalk-id string  单聊接收人 openDingTalkId（单聊时与 --user 二选一）
       --title string             消息标题（可选，默认「消息」）
@@ -615,15 +616,15 @@ Flags:
       --file-type string         已有钉盘文件类型/扩展名（元数据兼容模式）
       --file string              本地文件路径（本地图片/文件/音视频配合 msgType=file 使用）
       --file-size int64          已有钉盘文件大小，单位字节（元数据兼容模式）
-      --uuid string             幂等 UUID，相同 uuid 在 24h 内不会重复发送（可选）
+      --idempotency-key string   幂等键，相同 key 在 24h 内不会重复发送（可选）
       --ai-tag                   消息是否带 AI 发送角标（可选，默认 true）
 
 注意:
   - --content 和位置参数二选一，--content 优先
-  - --group、--user、--open-dingtalk-id 三者互斥，只需指定其一：群聊用 --group，单聊用 --user 或 --open-dingtalk-id
+  - --conversation-id、--user、--open-dingtalk-id 三者互斥，只需指定其一：群聊用 --conversation-id，单聊用 --user 或 --open-dingtalk-id
   - 纯文本/Markdown 单聊发送时 `--user` 和 `--open-dingtalk-id` 都可用；传 `--user` 时直接走 userId 发送能力
-  - --group 的别名: --id, --chat, --conversation-id (均可替代 --group)
-  - --at-all 和 --at-open-dingtalk-ids 仅在 --group 群聊时生效，单聊时无效；当设置--at-all时，消息内容中一定要包含对应的占位符<@all>;当设置--at-open-dingtalk-ids openDingTalkId1,openDingTalkId2时，消息内容中一定要包含对应格式的占位符<@openDingTalkId1> <@openDingTalkId2>
+  - --conversation-id 的兼容别名: --group, --id, --chat
+  - --at-all 和 --at-open-dingtalk-ids 仅在 --conversation-id 群聊时生效，单聊时无效；当设置--at-all时，消息内容中一定要包含对应的占位符<@all>;当设置--at-open-dingtalk-ids openDingTalkId1,openDingTalkId2时，消息内容中一定要包含对应格式的占位符<@openDingTalkId1> <@openDingTalkId2>
   - **换行符**：消息内容按 Markdown 渲染，换行有两层要求，缺一不可：
     1. 必须使用**真实换行符**（Unicode `U+000A`），而非字面量字符串 `\n`（反斜杠 + 字母 n）。程序或大模型构造参数时，须确保已正确反转义；否则全部内容会渲染在同一行
     2. Markdown 规范下**单个换行不产生换行效果**。需要换行时请使用：段落分隔（连续两个真实换行符 `\n\n`）、行尾两个空格 + 真实换行符（硬换行 `<br>`），或直接写 HTML 的 `<br>` 标签
@@ -632,7 +633,7 @@ Flags:
   - `--msg-type image --media-id` 仅接受上游已经提供的有效 mediaId；DWS CLI 不提供本地文件到 mediaId 的上传或转换能力
   - audio/video 仍是兼容的 file 语义别名，但本地文件的推荐路径保持为 `--msg-type file --file`
   - dentryId/spaceId 等参数仅用于调用方已经持有钉盘文件元数据的兼容场景，不是发送本地文件的前置步骤
-  - --uuid 用于幂等发送，传入相同 uuid 在 24h 内不会重复投递消息（可选，群聊和单聊均支持）
+  - --idempotency-key 用于幂等发送，传入相同 key 在 24h 内不会重复投递消息；旧参数 --uuid 保留兼容（可选，群聊和单聊均支持）
   - 富媒体消息的单聊优先使用 `--open-dingtalk-id`；传 `--user` 时 CLI 会尝试解析成 openDingTalkId 后发送
   - 发送文字 + 文件时，先发送 `--msg-type file --file` 文件消息，再补一条文本或 Markdown 说明；这是两条独立消息
 ```
@@ -645,7 +646,7 @@ Flags:
 
 发送本地文件消息仍然支持，统一使用：
 ```
-dws chat message send --group <openConversationId> --msg-type file --file ./report.pdf --format json
+dws chat message send --conversation-id <openConversationId> --msg-type file --file ./report.pdf --format json
 dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file ./report.pdf --format json
 ```
 
@@ -679,14 +680,14 @@ Flags:
 
 ```bash
 # 1. 发送后保留 openTaskId
-dws chat message send --group <openConversationId> --content "原始内容"
+dws chat message send --conversation-id <openConversationId> --content "原始内容"
 # 2. 查询得到 openMessageId 和 openConversationId
 dws chat message query-send-status --open-task-id <openTaskId>
 # 3. 编辑消息
 dws chat message edit --conversation-id <openConversationId> --msg-id <openMessageId> --text "更新后的内容"
 
 # 发送后撤回使用同一 ID 链
-dws chat message send --group <openConversationId> --content "待撤回的内容"
+dws chat message send --conversation-id <openConversationId> --content "待撤回的内容"
 dws chat message query-send-status --open-task-id <openTaskId>
 dws chat message recall --conversation-id <openConversationId> --msg-id <openMessageId>
 ```
@@ -2087,7 +2088,7 @@ Flags:
 用户说"拉取和某人的单聊记录/单聊消息" → `chat message list --user`（用户明确说"单聊"时使用）
 用户说"@我的消息/at我的/提及我的" → `chat message list-mentions`
 用户说"未读消息会话/未读会话列表/我的未读会话" → `chat message list-unread-conversations`
-用户说"发群消息(以个人身份)" → `chat message send --group`
+用户说"发群消息(以个人身份)" → `chat message send --conversation-id`
 用户说"发单聊消息(以个人身份)" → `chat message send --user`（有 userId 时）或 `chat message send --open-dingtalk-id`（有 openDingTalkId 时）
 用户说"机器人发消息/机器人群发" → `chat message send-by-bot`
 用户说"撤回我发的消息/撤回消息" → `chat message recall`（通过 IM 接口撤回当前用户自己发出的消息，需要 openConversationId + openMessageId）
@@ -2250,7 +2251,7 @@ dws chat message list --group <openconversation_id> --time "2025-03-01 00:00:00"
 dws chat message list-unread-conversations --count 20 --format json
 
 # 3. 以个人身份发送群消息
-dws chat message send --group <openconversation_id> --title "周报提醒" "请大家本周五前提交周报" --format json
+dws chat message send --conversation-id <openconversation_id> --title "周报提醒" "请大家本周五前提交周报" --format json
 
 # 4. 以个人身份单聊（通过 userId）
 dws chat message send --user <userId> "你好" --format json
@@ -2352,8 +2353,8 @@ dws chat message send-by-bot --robot-code <robot-code> --group <openconversation
 如果用户明确要求机器人身份，两条消息都必须改用 `chat message send-by-bot`，不得降级为个人身份发送。
 
 ```bash
-dws chat message send --group <openconversation_id> --msg-type file --file ./screenshot.png --format json
-dws chat message send --group <openconversation_id> --content "这是本周的数据汇总" --format json
+dws chat message send --conversation-id <openconversation_id> --msg-type file --file ./screenshot.png --format json
+dws chat message send --conversation-id <openconversation_id> --content "这是本周的数据汇总" --format json
 ```
 
 机器人身份发送文件及说明：
@@ -2374,7 +2375,7 @@ dws chat message send-by-bot --robot-code <robot-code> --group <openconversation
 dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --msg-type image --image-url "https://example.com/image.png" --format json
 
 # 当前用户发送文件
-dws chat message send --group <openConversationId> --msg-type file --file ./report.pdf --format json
+dws chat message send --conversation-id <openConversationId> --msg-type file --file ./report.pdf --format json
 
 # 机器人发送文件
 dws chat message send-by-bot --robot-code <robot-code> --group <openConversationId> --msg-type file --file-path ./report.pdf --format json
@@ -2390,7 +2391,7 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --content "这是本�
 **已有 mediaId（仅当上游已经提供有效 mediaId 时才用）**：
 
 ```bash
-dws chat message send --group <openConversationId> --msg-type image --media-id "@lQLPD4JNnliqBq3NBQDNA8Cw" --format json
+dws chat message send --conversation-id <openConversationId> --msg-type image --media-id "@lQLPD4JNnliqBq3NBQDNA8Cw" --format json
 ```
 
 #### 创建并推送流式卡片 — 向群聊或单聊发送流式卡片消息
@@ -2471,13 +2472,13 @@ Flags:
   - 审查方式：将即将发送的**全部参数**（收件人/群、消息内容、@对象、消息类型等）与用户的**原始需求**逐一对比，确认每个参数都能从原始需求中找到明确依据
   - 如果存在任何不明确、有歧义或原始需求中未提及的参数（例如：用户没说发给谁、没说发到哪个群、消息内容与用户意图有出入、不确定是否需要 @某人等），**必须先向用户确认**，严禁自行假设或补全
   - 典型需要确认的场景：用户只说了"发个消息"但没指定群/人；用户的描述可匹配多个群或多个联系人；消息文本由 agent 组织而非用户原文提供时需确认措辞
-- uuid 幂等参数（发消息最佳实践）：
-  - 发消息时建议始终带上 `--uuid` 参数，传入用户自行生成的唯一标识（如 UUID v4），用于幂等控制
-  - 如果发送失败需要重试，重试时 `--uuid` 必须与首次发送保持一致，服务端据此去重，避免重复发消息
-  - 如果不传 `--uuid`，每次调用都视为新消息，重试可能导致消息重复发送
+- idempotency key 幂等参数（发消息最佳实践）：
+  - 发消息时建议始终带上 `--idempotency-key` 参数，传入用户自行生成的唯一标识（如 UUID v4），用于幂等控制
+  - 如果发送失败需要重试，重试时 `--idempotency-key` 必须与首次发送保持一致，服务端据此去重，避免重复发消息
+  - 如果不传 `--idempotency-key`，每次调用都视为新消息，重试可能导致消息重复发送
   - 此参数适用于 `chat message send`（群聊和单聊均支持）
 - `--group` 为群聊会话 ID (openconversation_id)，可从群搜索或群聊信息中获取
-- `chat message send` 的正文可用 `--content` 或位置参数（恰好 1 个）；群聊用 `--group`，单聊用 `--user`（userId）或 `--open-dingtalk-id`（openDingTalkId），三者互斥；纯文本/Markdown 单聊传 `--user` 时直接走 userId 发送能力；`--at-all`、`--at-open-dingtalk-ids` 仅在 `--group` 群聊时生效；本地图片/文件/音视频统一用 `--msg-type file --file`，其中图片是可下载附件；`--msg-type image --media-id` 仅用于上游已经提供有效 mediaId 的内联图片
+- `chat message send` 的正文可用 `--content` 或位置参数（恰好 1 个）；群聊用 `--conversation-id`，单聊用 `--user`（userId）或 `--open-dingtalk-id`（openDingTalkId），三者互斥；纯文本/Markdown 单聊传 `--user` 时直接走 userId 发送能力；`--at-all`、`--at-open-dingtalk-ids` 仅在 `--conversation-id` 群聊时生效；本地图片/文件/音视频统一用 `--msg-type file --file`，其中图片是可下载附件；`--msg-type image --media-id` 仅用于上游已经提供有效 mediaId 的内联图片
 - `chat message list-all` 的四个参数（--start、--end、--limit、--cursor）每次请求都必须传递；翻页时用响应中的 nextCursor 值作为下次 --cursor
 - `chat message list` 的 `--group`、`--user`、`--open-dingtalk-id` 三者互斥，必须且只能指定其一
 - `chat message list-by-sender` 不需要指定单聊/群聊，返回结果自带会话类型标识；`--sender-user-id`（userId）与 `--sender-open-dingtalk-id`（openDingTalkId）二选一；时间用 `--start`/`--end`（ISO-8601），分页用 `--limit`/`--cursor`

@@ -46,7 +46,7 @@ func newChatMediaUploadCommand() *cobra.Command {
 发送本地图片或文件时，请使用 chat message send --msg-type file --file。
 该路径会把图片作为可下载的 file 消息发送，不会生成 mediaId，也不会渲染成内联 image 消息。
 如果上游已经提供 mediaId，仍可使用 chat message send --msg-type image --media-id。`,
-		Example: "  dws chat message send --group <openConversationId> --msg-type file --file ./screenshot.png\n" +
+		Example: "  dws chat message send --conversation-id <openConversationId> --msg-type file --file ./screenshot.png\n" +
 			"  dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file ./report.pdf",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,

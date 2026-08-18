@@ -279,7 +279,7 @@ alidocs 链接表面长得一样（`https://alidocs.dingtalk.com/i/nodes/{id}`�
   - 已持有 openDingTalkId 时优先使用显式 `--open-dingtalk-id`，避免额外解析
 - "发本地图片/文件/语音/视频到群里" — `dws chat message send ... --msg-type file --file <本地路径>`，CLI 内部自动上传并发送；png/jpg/pdf/mp4/zip 等任意扩展名都走这条，接收方看到的是可下载的文件附件。图片不会内联渲染，也不会生成 mediaId
 - "用已有 mediaId 发内联图片" — 仅当上游已经提供有效 mediaId 时，使用 `dws chat message send ... --msg-type image --media-id <mediaId>`；DWS CLI 不能把本地图片转换成 mediaId
-- "发图片+文字说明" — 不要硬塞进一条命令；先发图片/文件消息再补一条 `--text "..."` 即可
+- "发图片+文字说明" — 不要硬塞进一条命令；先发图片/文件消息再补一条 `--content "..."` 即可
 
 ```bash
 dws chat +messages-send --as user --chat-id <openConversationId> --msg-type file --file ./screenshot.png --idempotency-key <key> --format json
@@ -465,7 +465,7 @@ dws todo task create --title "任务内容" --executors <USER_ID> --format json
 
 ```bash
 # 群聊
-dws chat message send --group <openConversationId> --msg-type file --file <本地路径> --format json
+dws chat message send --conversation-id <openConversationId> --msg-type file --file <本地路径> --format json
 
 # 单聊（推荐 --open-dingtalk-id；--user 也支持）
 dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file <本地路径> --format json
@@ -475,7 +475,7 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file
 
 ### 图片/文件 + 文字说明
 
-不要把文字塞进 `--msg-type file` 命令（该命令不读 `--text`）。先发文件再补一条文本消息即可：
+不要把文字塞进 `--msg-type file` 命令（该命令不读 `--content`）。先发文件再补一条文本消息即可：
 
 ```bash
 dws chat message send --open-dingtalk-id <openDingTalkId> --msg-type file --file ./screenshot.png --format json
@@ -487,5 +487,5 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --content "这是本�
 仅当上游已经提供有效的 `@lQL...` 形式 mediaId 时使用；DWS CLI 不提供本地文件到 mediaId 的转换能力：
 
 ```bash
-dws chat message send --group <openConversationId> --msg-type image --media-id "@lQLPD4JNnliqBq3NBQDNA8Cw" --format json
+dws chat message send --conversation-id <openConversationId> --msg-type image --media-id "@lQLPD4JNnliqBq3NBQDNA8Cw" --format json
 ```

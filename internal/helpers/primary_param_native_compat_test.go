@@ -147,6 +147,18 @@ func TestNativePrimaryParamFlagSurfaces(t *testing.T) {
 	assertNativePrimaryFlagPair(t, send, "file", "file-path")
 	sendByWebhook := findNativePrimaryLeaf(t, chat, "message", "send-by-webhook")
 	assertNativePrimaryFlagPair(t, sendByWebhook, "content", "text")
+	sendByBot := findNativePrimaryLeaf(t, chat, "message", "send-by-bot")
+	for _, name := range []string{"text", "file-path"} {
+		flag := sendByBot.Flags().Lookup(name)
+		if flag == nil || flag.Hidden {
+			t.Fatalf("%s --%s = %#v, want unchanged visible Primary", sendByBot.CommandPath(), name, flag)
+		}
+	}
+	for _, name := range []string{"content", "file"} {
+		if flag := sendByBot.Flags().Lookup(name); flag != nil && !flag.Hidden {
+			t.Fatalf("%s --%s = %#v, pending migration must not become visible", sendByBot.CommandPath(), name, flag)
+		}
+	}
 	reply := findNativePrimaryLeaf(t, chat, "message", "reply")
 	assertNativePrimaryFlagPair(t, reply, "group", "conversation-id")
 	assertNativePrimaryFlagPair(t, reply, "content", "text")
@@ -247,7 +259,7 @@ func TestNativePrimaryParamTextPayloadCompatibility(t *testing.T) {
 		for _, spelling := range nativePrimaryParamSpellings("group", "conversation-id") {
 			t.Run(spelling.name, func(t *testing.T) {
 				caller := &nativePrimaryParamCaller{}
-				args := []string{"message", "reply", "--ref-msg-id", "mid", "--ref-sender", "D-sender", "--content", "fixed-content"}
+				args := []string{"message", "reply", "--ref-msg-id", "mid", "--ref-sender", helperCurrentDOpenID, "--content", "fixed-content"}
 				args = append(args, spelling.args...)
 				if err := runChatCoverageCommand(t, caller, args...); err != nil {
 					t.Fatal(err)
@@ -264,7 +276,7 @@ func TestNativePrimaryParamTextPayloadCompatibility(t *testing.T) {
 		for _, spelling := range nativePrimaryParamSpellings("content", "text") {
 			t.Run(spelling.name, func(t *testing.T) {
 				caller := &nativePrimaryParamCaller{}
-				args := []string{"message", "reply", "--group", "cid", "--ref-msg-id", "mid", "--ref-sender", "D-sender"}
+				args := []string{"message", "reply", "--group", "cid", "--ref-msg-id", "mid", "--ref-sender", helperCurrentDOpenID}
 				args = append(args, spelling.args...)
 				if err := runChatCoverageCommand(t, caller, args...); err != nil {
 					t.Fatal(err)
@@ -413,10 +425,10 @@ func TestNativePrimaryParamMissingErrorsRecommendPrimaryOnly(t *testing.T) {
 		runChatCoverageCommand(t, &nativePrimaryParamCaller{}, "message", "send-by-webhook", "--token", "token", "--title", "title"),
 		"content", "text")
 	assertNativePrimaryErrorHint(t,
-		runChatCoverageCommand(t, &nativePrimaryParamCaller{}, "message", "reply", "--ref-msg-id", "mid", "--ref-sender", "D-sender", "--content", "body"),
+		runChatCoverageCommand(t, &nativePrimaryParamCaller{}, "message", "reply", "--ref-msg-id", "mid", "--ref-sender", helperCurrentDOpenID, "--content", "body"),
 		"group", "conversation-id")
 	assertNativePrimaryErrorHint(t,
-		runChatCoverageCommand(t, &nativePrimaryParamCaller{}, "message", "reply", "--group", "cid", "--ref-msg-id", "mid", "--ref-sender", "D-sender"),
+		runChatCoverageCommand(t, &nativePrimaryParamCaller{}, "message", "reply", "--group", "cid", "--ref-msg-id", "mid", "--ref-sender", helperCurrentDOpenID),
 		"content", "text")
 
 	os.Args = []string{"dws", "doc"}

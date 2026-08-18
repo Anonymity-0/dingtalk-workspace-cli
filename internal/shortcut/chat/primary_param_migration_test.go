@@ -147,7 +147,7 @@ func TestPrimaryParamMigrationMessagesReplyPayloadCompatibility(t *testing.T) {
 			root.SetOut(&output)
 			args := []string{
 				"chat", "+messages-reply", "--message-id", "msg",
-				"--ref-sender", "D-sender",
+				"--ref-sender", fixtureCurrentDOpenID,
 			}
 			args = append(args, spelling.args...)
 			args = append(args, "--yes")
@@ -188,7 +188,7 @@ func TestPrimaryParamMigrationMessagesReplyPayloadCompatibility(t *testing.T) {
 		var output bytes.Buffer
 		root.SetOut(&output)
 		root.SetArgs([]string{
-			"chat", "+messages-reply", "--message-id", "msg", "--ref-sender", "D-sender",
+			"chat", "+messages-reply", "--message-id", "msg", "--ref-sender", fixtureCurrentDOpenID,
 			"--conversation-id", "legacy-cid", "--group", "canonical-cid",
 			"--text", "legacy-body", "--content", "canonical-body",
 			"--dry-run", "--yes",

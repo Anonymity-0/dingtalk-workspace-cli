@@ -683,8 +683,8 @@ Agent 安装 dws skill 后，仅依据 skill 提供的参考文档，将自然�
 
 **chat_chat_message_send_001**
 - Prompt: 在群 openConvABC 发一条消息：大家好
-- Expected: `dws chat message send --group openConvABC "大家好" --format json`
-- Flags: `--group` = `openConvABC`
+- Expected: `dws chat message send --conversation-id openConvABC "大家好" --format json`
+- Flags: `--conversation-id` = `openConvABC`
 
 **chat_chat_message_send_002**
 - Prompt: 给userId123发一条私聊消息，标题是提醒，内容是请查收报告
@@ -693,8 +693,8 @@ Agent 安装 dws skill 后，仅依据 skill 提供的参考文档，将自然�
 
 **chat_chat_message_send_003**
 - Prompt: 在群 groupId456 发一条带标题的通知：周报提醒，请大家本周五前提交周报
-- Expected: `dws chat message send --group groupId456 --title "周报提醒" "请大家本周五前提交周报" --format json`
-- Flags: `--group` = `groupId456`, `--title` = `周报提醒`
+- Expected: `dws chat message send --conversation-id groupId456 --title "周报提醒" "请大家本周五前提交周报" --format json`
+- Flags: `--conversation-id` = `groupId456`, `--title` = `周报提醒`
 
 #### `dws chat message send-by-bot`
 

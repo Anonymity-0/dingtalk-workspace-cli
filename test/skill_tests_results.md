@@ -887,7 +887,7 @@
 **chat_chat_message_send_001** ✅ PASS
 
 - Prompt: 在群 openConvABC 发一条消息：大家好
-- Expected: `dws chat message send --group openConvABC "大家好" --format json`
+- Expected: `dws chat message send --conversation-id openConvABC "大家好" --format json`
 - Skill Reference: references/products/chat.md
 - Command path: PASS (chat message send)
 - Flags: PASS (1 flags validated)
@@ -903,7 +903,7 @@
 **chat_chat_message_send_003** ✅ PASS
 
 - Prompt: 在群 groupId456 发一条带标题的通知：周报提醒，请大家本周五前提交周报
-- Expected: `dws chat message send --group groupId456 --title "周报提醒" "请大家本周五前提交周报" --format json`
+- Expected: `dws chat message send --conversation-id groupId456 --title "周报提醒" "请大家本周五前提交周报" --format json`
 - Skill Reference: references/products/chat.md
 - Command path: PASS (chat message send)
 - Flags: PASS (2 flags validated)
