@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-18T14:20:44.224405",
+  "generated_at": "2026-08-18T17:38:50.904696",
   "count": 436,
   "results": [
     {
@@ -489,7 +489,7 @@
       "risk": "read",
       "status": "reviewed_available",
       "disposition": "semantic_adapter",
-      "semantic_delta": "统一 ID、筛选、关键词和分页查询，并投影稳定的 records/count/cursor 结果。",
+      "semantic_delta": "统一 ID、筛选、关键词、字段投影和分页查询；fieldIds 只返回用户要求的列，并投影稳定的 records/count/cursor 结果。",
       "availability": "available"
     },
     {

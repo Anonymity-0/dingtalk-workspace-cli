@@ -12,6 +12,16 @@ dws aitable dashboard get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --fo
 dws aitable chart get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --chart-id <CHART_ID> --format json
 ```
 
+只按名称创建、改名并确认时，不需要读取配置示例或 Help：
+
+```bash
+dws aitable dashboard create --base-id <BASE_ID> --name <名称> --format json
+dws aitable +dashboard-update --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --name <新名称> --format json
+dws aitable +dashboard-get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --format json
+```
+
+部分服务端更新回执可能仍回显更新前名称；只做一次 `+dashboard-get` 读回，以该后续权威读回为最终状态。读回已是目标名称时判定更新完成，不重放写操作，也不因旧回执继续探测 Help。
+
 ## 要点
 
 - `dashboard get` 返回的 `charts[].chartId` 可直接给 `chart get` 使用

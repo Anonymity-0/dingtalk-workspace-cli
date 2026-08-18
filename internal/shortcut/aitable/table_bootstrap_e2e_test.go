@@ -6,11 +6,38 @@ package aitable
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 )
+
+func TestCrossPlatformCoverageTableBootstrapPublishesResultContract(t *testing.T) {
+	result, err := contract.NormalizeResultSpec(TableBootstrap.Contract.Result, "aitable.shortcut_table_bootstrap")
+	if err != nil {
+		t.Fatalf("normalize table bootstrap Result: %v", err)
+	}
+	wantOutcomes := []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure}
+	if result == nil || !reflect.DeepEqual(result.Outcomes, wantOutcomes) {
+		t.Fatalf("table bootstrap outcomes = %#v, want %#v", result, wantOutcomes)
+	}
+	var schema map[string]any
+	if err := json.Unmarshal(result.DataSchema, &schema); err != nil {
+		t.Fatalf("decode table bootstrap data_schema: %v", err)
+	}
+	properties, _ := schema["properties"].(map[string]any)
+	status, _ := properties["status"].(map[string]any)
+	if got, want := mustJSON(t, status["enum"]), `["success","planned","partial_success","unknown"]`; got != want {
+		t.Fatalf("table bootstrap status enum = %s, want %s", got, want)
+	}
+	for _, property := range []string{"contractVersion", "operation", "executed", "retryable", "plan", "completedSteps", "verification", "checkpoint", "knownSideEffects", "result"} {
+		if properties[property] == nil {
+			t.Errorf("table bootstrap data_schema is missing %q", property)
+		}
+	}
+}
 
 func TestCrossPlatformCoverageTableBootstrapCreatesChunksAndVerifies(t *testing.T) {
 	fields := bootstrapFields(16)

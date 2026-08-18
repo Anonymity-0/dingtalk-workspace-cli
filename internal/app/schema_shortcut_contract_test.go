@@ -140,6 +140,25 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 	assertChatCatalogCompleteLeafContracts(t)
 }
 
+func TestCrossPlatformCoverageAITableTableBootstrapPublishesResultContract(t *testing.T) {
+	leaf := executeShortcutSchemaQuery(t, "--cli-path", "aitable +table-bootstrap")
+	result, _ := leaf["result"].(map[string]any)
+	if got, want := schemaContractStringSlice(result["outcomes"]), []string{"success", "failure"}; !schemaContractJSONEqual(got, want) {
+		t.Fatalf("aitable +table-bootstrap outcomes = %#v, want %#v", got, want)
+	}
+	dataSchema, _ := result["data_schema"].(map[string]any)
+	properties := schemaContractMap(dataSchema["properties"])
+	status := properties["status"]
+	if got, want := schemaContractStringSlice(status["enum"]), []string{"success", "planned", "partial_success", "unknown"}; !schemaContractJSONEqual(got, want) {
+		t.Fatalf("aitable +table-bootstrap status enum = %#v, want %#v", got, want)
+	}
+	for _, property := range []string{"contractVersion", "operation", "executed", "retryable", "plan", "completedSteps", "verification", "checkpoint", "knownSideEffects", "result"} {
+		if properties[property] == nil {
+			t.Errorf("aitable +table-bootstrap final Result data_schema is missing %q", property)
+		}
+	}
+}
+
 func TestDeliveryWikiSpaceSearchDeclaresCompatibilityAdapter(t *testing.T) {
 	leaf := executeShortcutSchemaQuery(t, "--cli-path", "wiki +space-search")
 	if got := schemaContractString(leaf["interface_mode"]); got != "composite" {

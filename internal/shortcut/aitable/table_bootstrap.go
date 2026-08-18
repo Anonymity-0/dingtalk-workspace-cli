@@ -9,25 +9,28 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
 var TableBootstrap = shortcut.Shortcut{
-	Service:     "aitable",
-	Command:     "+table-bootstrap",
-	Product:     serverMain,
-	Description: "在已有 Base 中一次创建数据表和字段，自动分片并读回验证",
-	Intent:      "当你已有 baseId、需要新增一张带完整字段结构的数据表时使用；替代 table create 后连续 field create 和手工验证。",
-	Risk:        shortcut.RiskWrite,
+	OutputRollout: output.RolloutUnifiedActive,
+	Service:       "aitable",
+	Command:       "+table-bootstrap",
+	Product:       serverMain,
+	Description:   "在已有 Base 中一次创建数据表和字段，自动分片并读回验证",
+	Intent:        "当你已有 baseId、需要新增一张带完整字段结构的数据表时使用；替代 table create 后连续 field create 和手工验证。",
+	Risk:          shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "non_idempotent",
 	},
-	Contract: aitableCompositeContract(
+	Contract: aitableCompositeContractWithResult(
 		"+table-bootstrap",
 		"在已有 Base 中一次创建数据表和字段，自动分片并读回验证",
 		"当你已有 baseId、需要新增一张带完整字段结构的数据表时使用；替代 table create 后连续 field create 和手工验证。",
 		"需要同时新建 Base 用 +base-bootstrap；复制现有表用 +table-copy；只补字段用 field create",
 		`dws aitable +table-bootstrap --base-id BASE_ID --name "任务" --fields '[{"fieldName":"标题","type":"text"}]'`,
+		aitableTableBootstrapResultSpec(),
 	),
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},

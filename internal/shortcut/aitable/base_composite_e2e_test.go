@@ -5,6 +5,7 @@ package aitable
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/spf13/cobra"
 )
@@ -25,11 +27,18 @@ func runAITableCompositeCLI(t *testing.T, caller *upsertByKeyCaller, command str
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.PersistentFlags().String("format", "json", "")
 	root.AddCommand(shortcut.Commands()...)
+	ctx, _ := output.WithResultStore(context.Background())
+	root.SetContext(ctx)
 	stdout := &bytes.Buffer{}
 	root.SetOut(stdout)
 	root.SetErr(&bytes.Buffer{})
 	root.SetArgs(append([]string{"aitable", command}, args...))
-	err := root.Execute()
+	executed, err := root.ExecuteC()
+	if err == nil && output.UsesUnifiedResult(executed) {
+		if _, _, emitErr := output.EmitStoredResult(executed); emitErr != nil {
+			return stdout.String(), emitErr
+		}
+	}
 	return stdout.String(), err
 }
 

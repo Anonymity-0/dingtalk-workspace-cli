@@ -1,6 +1,6 @@
-# AI 表格执行 Reference
+# AI 表格执行 Reference（兼容索引，非默认入口）
 
-根 Skill 只负责选路；高频命令的准确 flags、JSON 形状与失败恢复集中在本文件。命中下列路径后直接执行，不再调用 `--help`，也不加载产品级 Catalog。
+根 Skill 已包含高频 Golden Route 的准确参数，参数足够时直接执行，不读取本文件。本文件仅作兼容索引：只有根 Skill 与精确操作 Reference 都无法覆盖时，才可把它作为该 Case 唯一读取的 Reference；读取后不再加载第二个 Reference、`--help` 或产品级 Catalog。
 
 ## 高频 Golden Route（准确 flags）
 
@@ -32,6 +32,7 @@ dws aitable chart create --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --con
 # 查询记录；选择器按意图传一个，不猜 flag
 dws aitable +record-query --base-id <BASE_ID> --table-id <TABLE_ID>
 dws aitable +record-query --base-id <BASE_ID> --table-id <TABLE_ID> --record-ids <RECORD_ID_1,RECORD_ID_2>
+dws aitable +record-query --base-id <BASE_ID> --table-id <TABLE_ID> --record-ids <RECORD_ID_1,RECORD_ID_2> --field-ids <FIELD_ID_1,FIELD_ID_2>
 dws aitable +record-query --base-id <BASE_ID> --table-id <TABLE_ID> --filters '<FILTER_JSON>'
 dws aitable +record-query --base-id <BASE_ID> --table-id <TABLE_ID> --query "关键词"
 
@@ -65,12 +66,13 @@ dws aitable +import-data --import-id <IMPORT_ID> --table-id <TABLE_ID>
 |---|---|---|
 | AI 表格 URL | `dws aitable +url-resolve --url <URL>` | 解析 URL 中已有的 baseId/tableId/viewId/recordId；不做远端名称搜索 |
 | 已知 Base/Table ID | 直接传给最终命令 | 不重复解析 |
-| Base 精确名称或关键词 | `dws aitable +resolve-base --name <名称>` | 默认精确匹配；明确需要模糊匹配时加 `--fuzzy`，零/多候选均停止 |
+| Base 精确名称，且要唯一定位后操作 | `dws aitable +resolve-base --name <名称>` | 默认精确匹配；明确需要模糊匹配时加 `--fuzzy`，零/多候选均停止 |
+| 搜索 Base 候选、关键词查找或存在性检查 | `dws aitable +base-search --query <关键词>` | 直接检查返回候选，不先执行 `+resolve-base`；对象明确为 Base 时不得改走人员搜索 |
 | Base ID + Table 名称 | `dws aitable +resolve-table --base <B> --name <T>` | 默认精确匹配；明确需要模糊匹配时加 `--fuzzy` |
 | Base ID，只需目录 | `dws aitable +list-tables --base <B>` | 只投影 tableId/tableName，不额外读取字段 |
 | 需要字段或视图目录 | `dws aitable +field-get ...` / `dws aitable +view-get ...` | 只读取当前任务需要的目标范围 |
 
-`+record-query` 只接受真实 `base-id` / `table-id`，因此 URL 或名称须先按上表解析。`+base-list` 只表示最近访问，不是组织内全量 Base；`+base-search --query <Q>` 是单次搜索。名称匹配零命中或多候选时停止，不选第一项。
+`+record-query` 只接受真实 `base-id` / `table-id`，因此 URL 或名称须先按上表解析。`+base-list` 只表示最近访问，不是组织内全量 Base；`+base-search --query <Q>` 是单次搜索。唯一操作目标零命中或多候选时停止，不选第一项；“搜索候选/如果没有就创建”不要再串行调用 resolver 和 search。
 
 ## 低频命令族
 
