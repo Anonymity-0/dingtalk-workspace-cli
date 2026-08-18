@@ -245,9 +245,9 @@
 
 | Shortcut | 上游根因 | 已完成修复 | 回归证据 |
 |---|---|---|---|
-| 最终保留公开的 Attendance 集合查询 | 容错 projector 可能把缺字段、错型或坏元素投成 `[]` | 共享严格 success/result/collection 校验；显式空数组才合法；稳定 ID 和请求用户/时间/类型必须绑定 | 单元负向矩阵已完成；9 个公开入口已按适用语义完成真实 nonempty/zero、详情或模板 exact/raw 双层复核；最终 PR HEAD 仍从零复核 |
-| `+check-record` | 初版误用业务归属日 `workDate` 校验按 `checkDateFrom/checkDateTo` 发起的实际打卡查询，导致跨午夜下班卡被静默丢弃 | 改用 `userCheckTime` 严格绑定请求日期范围；`workDate` 只作为班次归属日原样保留。完整 raw 集合仍必须先通过显式 collection、全量正整数唯一 ID、请求用户和实际打卡时间校验；任何实际时间越界都整次 fail-closed，不再静默过滤 | reviewer 反馈后以脱敏 live 字段关系确认：旧轮唯一 `workDate=start-24h` 项的 `userCheckTime` 在请求范围内，属于跨午夜 OffDuty；night-shift、missing/wrong/out-of-range actual-time 与稳定 ID 负向回归通过，最终 clean HEAD 待从零复核 |
-| `+check-result`, `+list-approve` | 初版把裸日期 `--end` 解析为当天 00:00，可能拒绝结束日白天的结果；旧 end-of-day 语义还会漏最后 999ms | 裸日期结束边界改为本地下一日 00:00 前 1ms；显式 datetime 保持精确值；结束日中午与最后 1ms 可接受，下一日 00:00 非零拒绝 | Execute 回归覆盖结束日中午/最后毫秒/下一日，并锁定 `request_range_mismatch` reason；最终 clean HEAD 待真实双层复核 |
+| 最终保留公开的 Attendance 集合查询 | 容错 projector 可能把缺字段、错型或坏元素投成 `[]` | 共享严格 success/result/collection 校验；显式空数组才合法；稳定 ID 和请求用户/时间/类型必须绑定 | 单元负向矩阵与最终 clean runtime tree 的 9 个公开入口真实 nonempty/zero、详情或模板 exact/raw 双层复核均完成 |
+| `+check-record` | 初版误用业务归属日 `workDate` 校验按 `checkDateFrom/checkDateTo` 发起的实际打卡查询，导致跨午夜下班卡被静默丢弃 | 改用 `userCheckTime` 严格绑定请求日期范围；`workDate` 只作为班次归属日原样保留。完整 raw 集合仍必须先通过显式 collection、全量正整数唯一 ID、请求用户和实际打卡时间校验；任何实际时间越界都整次 fail-closed，不再静默过滤 | 最终 live 复核 exact/raw 均为 157 条且完整对象一致；旧轮 `workDate=start-24h`、`userCheckTime` 在范围内的跨午夜 OffDuty 记录明确保留；fresh zero 双层显式空，不由过滤制造 |
+| `+check-result`, `+list-approve` | 初版把裸日期 `--end` 解析为当天 00:00，可能拒绝结束日白天的结果；旧 end-of-day 语义还会漏最后 999ms | 裸日期结束边界改为本地下一日 00:00 前 1ms；显式 datetime 保持精确值；结束日中午与最后 1ms 可接受，下一日 00:00 非零拒绝 | Execute 回归覆盖结束日中午/最后毫秒/下一日并锁定 reason；最终 live 的 `+check-result` 有真实 end-date item，`+list-approve` end-date 单日 probe exact/raw 一致 |
 | `+get-approve-template` | 把请求维度 `approveType` 误作集合唯一身份，会拒绝同一类型下多个合法模板 | 改用非空唯一 `processCode` 作为资源身份；`approveType` 仅做请求精确绑定；每项 `submitUrl` 必须非空；允许 TRAVEL/OUT 同类型多项 | missing/wrong/duplicate processCode、wrong approveType、missing/blank submitUrl 负向矩阵；clean HEAD 上 5 个类型 exact/raw 全通过，TRAVEL/OUT 双项集合一致 |
 | `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | 嵌套 `shiftVO/entityVO` 导致身份投影风险 | 固定审核路径、展开 wrapper、要求正整数且不重复的稳定 ID，严格校验分页矛盾与无前进页 | 坏 item/空 ID/重复 ID/分页矛盾单元回归通过；clean HEAD 上 nonempty/guaranteed-zero 与 raw 对照通过，班次/加班规则另完成实际多页前进与终止 |
 | `+get-overtime-rule` | 能力存在但缺少请求 ID 与响应对象的强绑定 | 详情对象要求非空且 `id` 与请求精确一致 | missing/false/null/malformed/wrong-ID/valid Execute 级矩阵；clean HEAD 上 exact/raw 同真实搜索 ID 对象一致，raw 对不存在 ID 返回错对象时 exact 非零拒绝 |
@@ -260,7 +260,7 @@
 | 叶子 | clean executable HEAD 双层证据 | 发布状态 |
 |---|---|---|
 | `+check-result` | exact/raw known-nonempty 以 20/20/8 三页前进并终止；48 个 ID、用户绑定与逐页对象一致；合法未来日显式空双层一致 | `PASS`；最终 SHA 见 PR 证据 |
-| `+check-record` | 旧轮 raw 157→exact 156 的差异已被确认是错误过滤跨午夜夜班记录，不再作为 PASS 证据；修复后按 `userCheckTime` 绑定并保留该记录 | 最终 clean HEAD 必须从零复核 nonempty/zero 后才能恢复 `PASS` |
+| `+check-record` | exact/raw 均 157 条且完整对象、稳定 ID 集合一致；跨午夜 `workDate=start-24h`、`userCheckTime` 在范围内的记录已保留；fresh zero 两层均为显式空 | `PASS`；最终 SHA 见 PR 证据 |
 | `+list-approve`, `+get-schedule` | exact/raw known-nonempty 分别 7/54 条，稳定 ID、用户/类型或用户/日期绑定及完整数组一致；合法未来日显式空双层一致 | `PASS`；最终 SHA 见 PR 证据 |
 | `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | exact/raw known-nonempty 与随机唯一词 guaranteed-zero 通过；稳定 ID 集合与分页终止一致，班次为 5/5/3 三页，加班规则为 1/1/1 三页 | `PASS`；最终 SHA 见 PR 证据 |
 | `+get-overtime-rule` | 使用本轮真实搜索取得的 ID，exact 与 raw 单项对象一致；不存在 ID 的 raw 返回错 ID 对象时 exact 非零拒绝 | `PASS`；最终 SHA 见 PR 证据 |
@@ -270,7 +270,7 @@
 
 pre-rebase discovery 轮次的多页加班规则 raw 验证曾一次返回字面量 `null` 且进程退出 0；该次结果没有计为 PASS，重试后才完成同场景双层分页核对。这是 owning atomic/raw 的下游/renderer 终态合同风险：atomic 不应把 transport/null 失败表示为零退出。Shortcut 自身对 `null` 仍严格非零，不会把它投影为空集合；后续最终轮次未再出现该 transient。
 
-上述 9 个公开入口均在相同 runtime tree 从零重跑，未继承 discovery PASS。rebase 后的最终 clean PR HEAD 仍需做一次发布复核；最终 SHA 写入 PR 证据而不反向伪造本文自身 commit。
+上述 9 个公开入口均在最终 clean runtime tree 从零重跑，未继承 discovery PASS；最终可执行 SHA 写入 PR 证据，本文只保留脱敏业务断言。
 
 ## 7. 安全与脱敏声明
 

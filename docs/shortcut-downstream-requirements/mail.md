@@ -167,10 +167,10 @@
 | Shortcut | 上游根因 | 已完成修复 | 回归证据 |
 |---|---|---|---|
 | 全部 list/search | 容忍式探测任意 result/data/list/items，坏元素静默丢弃 | 固定已观测路径、严格 success/数组/item/ID；无双态 fixture 的 leaf 不发布 | deterministic 响应矩阵；live 证据逐 leaf 记录，不作泛化 |
-| `+search-mail` / `+triage` | `$` 终止游标被误作下一页；零命中占位对象被当邮件 | 明确 `$` 终页；仅窄规则归一化已观测哨兵 | 各完成 known-nonempty 20 + fresh guaranteed-zero；stable ID set 与 raw pagination/meta 精确一致 |
-| `+search-mail` / `+triage` 自动邮箱解析 | 严格化时只接受顶层对象数组，会拒绝历史已观测的字符串数组和 `result/data.emailAccounts` 包装 | 仅接受三个审核路径 `emailAccounts` / `result.emailAccounts` / `data.emailAccounts`，每项可为非空邮箱字符串或含非空 `email` 的对象；缺集合、错型、坏项或多路径冲突全部 fail-closed；空发件人也不再投影为空字符串成功 | top/result/data × string/object、blank/wrong/multiple-path 与 sender missing/null/wrong-type 回归覆盖；最终 clean HEAD 待真实自动解析复核 |
+| `+search-mail` / `+triage` | `$` 终止游标被误作下一页；零命中占位对象被当邮件 | 明确 `$` 终页；仅窄规则归一化已观测哨兵 | 各完成 known-nonempty 20；3 个 fresh 零命中 raw 均为 `total=0` + 无稳定 ID/正文且收件字段全空的 reviewed sentinel + terminal cursor，exact 才归一化为显式 `[]`；不把该下游特例描述成 raw 空数组 |
+| `+search-mail` / `+triage` 自动邮箱解析 | 严格化时只接受顶层对象数组，会拒绝历史已观测的字符串数组和 `result/data.emailAccounts` 包装 | 仅接受三个审核路径 `emailAccounts` / `result.emailAccounts` / `data.emailAccounts`，每项可为非空邮箱字符串或含非空 `email` 的对象；缺集合、错型、坏项或多路径冲突全部 fail-closed；空发件人也不再投影为空字符串成功 | top/result/data × string/object、blank/wrong/multiple-path 与 sender missing/null/wrong-type 回归覆盖；最终 live 未传 `--email` 执行 `+search-mail`/`+triage`，owning 响应为顶层 object-item 形态并成功解析 |
 | `+unread-mail` / `+recent-mail` / `+thread-list` | 固定条件或文件夹不能保证零命中 | 严格响应代码已完成，但没有空邮箱/空文件夹证据时关闭发布 | BLOCKED fixture；不得修改真实邮件状态造空 |
-| `+user-search` / `+find-mail-user` | `hasMore`/`nextCursor` 未交付；零命中被误报 validation error | 发布 complete/nextCursor；合法空成功 | 各完成 known-nonempty 19 + fresh guaranteed-zero；stable identity set 与 raw pagination/meta 精确一致 |
+| `+user-search` / `+find-mail-user` | `hasMore`/`nextCursor` 未交付；零命中被误报 validation error | 发布 complete/nextCursor；合法空成功 | 各完成 known-nonempty 20 + fresh raw 显式空；stable identity set 与 raw pagination/meta 精确一致；`+user-search` 同轮实跑历史 string `--limit` |
 | `+tag-list` / `+template-list` / `+contact-list` | 无 query 的列表容易把末页/删除后列表误作合法空 | 严格响应代码已完成；无专用空邮箱和 typed cleanup 时关闭发布 | BLOCKED fixture；不把临时资源从列表消失记为零态 PASS |
 | `+message(s)` / `+thread` | 缺任务层完整读取和身份绑定 | 自动邮箱解析、精确请求 ID 读回、保序多读 | `+message`/`+thread` 与同稳定 ID raw 完整对象一致；`+messages` 用两个不同 ID 验证输入顺序与逐对象一致 |
 | 草稿/模板写 | 仅写回执会产生假成功 | 稳定 ID + exact get + 请求字段核对；清理无法证明时保持 unavailable | deterministic 回执/读回矩阵 PASS；live cleanup BLOCKED |
@@ -179,12 +179,12 @@
 
 | 公开入口 | exact Shortcut + owning raw 证据 | 状态 |
 |---|---|---|
-| `+search-mail`, `+triage` | 各 20 条 known-nonempty 与 fresh guaranteed-zero；稳定 message ID 集合和分页状态一致 | `PASS`；最终 SHA 见 PR 证据 |
-| `+user-search`, `+find-mail-user` | 各 19 条 known-nonempty 与 fresh guaranteed-zero；条件身份集合和分页状态一致 | `PASS`；最终 SHA 见 PR 证据 |
+| `+search-mail`, `+triage` | 各 20 条 known-nonempty；3 个独立 fresh 零命中由 raw `total=0`、无稳定 ID/正文的单 sentinel 与 terminal cursor 共同证明，exact 严格归一化为显式空；稳定 message ID 集合和分页状态一致 | `PASS_WITH_REVIEWED_ZERO_ENCODING`；最终 SHA 见 PR 证据 |
+| `+user-search`, `+find-mail-user` | 各 20 条 known-nonempty 与 raw 显式 fresh zero；条件身份集合和分页状态一致 | `PASS`；最终 SHA 见 PR 证据 |
 | `+folder-list` | 顶层 5 条 nonempty；本轮先由 raw 验证同一父文件夹确实为空，再由 Shortcut 返回显式空；ID 集合一致 | `PASS`；最终 SHA 见 PR 证据 |
 | `+message`, `+messages`, `+thread` | 单邮件/会话同稳定 ID 完整对象一致；批量用两个不同 ID 验证请求顺序和逐对象一致 | `PASS`；最终 SHA 见 PR 证据 |
 
-后续 Attendance 代码、rebase 与非执行文档/生成块提交不改变 Mail runtime；发布前仍在最终 clean PR HEAD 从零重跑 8 个入口，最终 SHA 写入 PR 证据，不反向伪造本文自身 commit。
+8 个公开入口均在最终 clean runtime tree 从零重跑；其中 6 个使用标准 raw 显式空或精确对象证据，2 个邮件搜索使用上述审核过的下游零命中 sentinel 编码。最终可执行 SHA 写入 PR 证据，本文只保留脱敏业务断言。
 
 ## 7. 安全与脱敏声明
 
