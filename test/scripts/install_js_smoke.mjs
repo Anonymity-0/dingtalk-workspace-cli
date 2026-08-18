@@ -56,6 +56,12 @@
  *  20. unmarked stamps       — stamp-shaped directories without the exact
  *                              ownership marker survive pruning and never
  *                              consume a keep slot.
+ *  24. stamp-root cleanup    — a failed marker write removes an empty fresh
+ *                              root (rmdir path) but never a non-empty
+ *                              foreign root.
+ *  25. rollback ENOENT gate  — a vanished child makes the destination
+ *                              unverifiable (rollback refused), never
+ *                              "destination already gone".
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
  * install.js itself shells out to). Skips cleanly on win32.
@@ -1561,6 +1567,95 @@ for (const failureKind of ["backup", "publish"]) {
     }
   });
 }
+
+// A stamp root whose ownership marker write fails must not linger: an empty
+// fresh root is removed (rmdir, never a recursive delete), while a
+// pre-existing non-empty root holding foreign data always survives.
+scenario("a failed marker write never leaves an empty unowned stamp root", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-stamp-cleanup-"));
+  try {
+    const home = path.join(tmp, "home");
+    const victim = path.join(home, ".codex", "skills", "dingtalk-chat");
+    writeFile(path.join(victim, "SKILL.md"), "old codex copy\n");
+
+    // Fresh root: created by this call, then the marker write is poisoned so
+    // the backup aborts before any payload moves.
+    const stamp = "20260801-000000";
+    const markerPath = path.join(home, ".dws", "skill-backups", stamp, SKILL_BACKUP_MARKER_FILE);
+    const originalWriteFileSync = fs.writeFileSync;
+    fs.writeFileSync = (target, data, options) => {
+      if (target === markerPath) {
+        throw Object.assign(new Error("injected marker write failure"), { code: "EACCES" });
+      }
+      return originalWriteFileSync(target, data, options);
+    };
+    try {
+      assert.throws(
+        () => backupAndRemoveSkillDir(home, victim, null, { backupStampFn: () => stamp }),
+        /failed to back up Skill directory/,
+      );
+    } finally {
+      fs.writeFileSync = originalWriteFileSync;
+    }
+    assert.equal(fs.readFileSync(path.join(victim, "SKILL.md"), "utf8"), "old codex copy\n", "the source stays in place");
+    assert.equal(
+      fs.existsSync(path.join(home, ".dws", "skill-backups", stamp)),
+      false,
+      "an empty unowned stamp root is cleaned up",
+    );
+
+    // Foreign non-empty root: the marker path is a directory (the write fails
+    // with EISDIR), and rmdir must fail on the non-empty root, keeping it.
+    const foreignStamp = "20260801-000001";
+    const foreignRoot = path.join(home, ".dws", "skill-backups", foreignStamp);
+    writeFile(path.join(foreignRoot, "user-data.txt"), "foreign\n");
+    fs.mkdirSync(path.join(foreignRoot, SKILL_BACKUP_MARKER_FILE));
+    assert.throws(
+      () => backupAndRemoveSkillDir(home, victim, null, { backupStampFn: () => foreignStamp }),
+      /failed to back up Skill directory/,
+    );
+    assert.equal(fs.readFileSync(path.join(victim, "SKILL.md"), "utf8"), "old codex copy\n", "the source stays in place");
+    assert.equal(fs.readFileSync(path.join(foreignRoot, "user-data.txt"), "utf8"), "foreign\n", "a non-empty foreign stamp root survives");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// ENOENT during the pre-quarantine identity walk means "already gone" only
+// when the destination itself is missing; a concurrently removed CHILD must
+// fail the rollback loudly instead of silently skipping it.
+scenario("rollback refuses an unverifiable destination whose child vanished", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-rollback-enoent-"));
+  try {
+    const dest = path.join(tmp, "skill");
+    writeFile(path.join(dest, "SKILL.md"), "payload\n");
+    writeFile(path.join(dest, "child.md"), "child\n");
+    const publication = recordSkillPathPublicationSync(dest);
+
+    // Remove the child while the pre-quarantine fingerprint walk sits between
+    // its readdir and the per-child lstat, so the walk itself fails ENOENT.
+    const firstChild = path.join(dest, "SKILL.md");
+    const vanishedChild = path.join(dest, "child.md");
+    const originalReadFileSync = fs.readFileSync;
+    fs.readFileSync = (target, options) => {
+      if (target === firstChild) {
+        fs.rmSync(vanishedChild);
+      }
+      return originalReadFileSync(target, options);
+    };
+    try {
+      assert.throws(
+        () => rollbackPublishedSkillPath(publication),
+        /refusing to delete unverifiable Skill/,
+      );
+    } finally {
+      fs.readFileSync = originalReadFileSync;
+    }
+    assert.equal(fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"), "payload\n", "the unverifiable destination is preserved");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
 
 process.stdout.write("• EXDEV copy/verify/remove and transaction rollback contract ... ");
 runCrossDeviceMoveContract();

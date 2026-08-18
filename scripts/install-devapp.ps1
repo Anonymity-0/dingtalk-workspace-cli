@@ -260,7 +260,13 @@ function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
         } catch {
             $postErr = $_
             try {
-                if (Test-PathLexically $Destination) { Remove-DevSkillPathLexically $Destination }
+                # Retract only after proving the destination is still this
+                # transaction's copy (mirrors install.ps1's
+                # Remove-PublishedSkillPathSafely retract): a path-blind
+                # lexical removal would delete a concurrent replacement.
+                if (Test-PathLexically $Destination) {
+                    Remove-VerifiedDevSkillPublication $Destination $Source ""
+                }
             } catch {
                 throw "Skill move state uncertain: $postErr; failed to retract $Destination`: $_; source $Source and dest $Destination retained"
             }
@@ -346,6 +352,23 @@ function Test-DevSkillBackupMarker([string]$Dir) {
     }
 }
 
+# Removes a whole stamp root child-first without ever following a reparse
+# point: link children are deleted non-recursively, real directories are
+# recursed the same way, and only an emptied directory is removed. Backup
+# trees can contain junctions/symlinks (victims are collected before the
+# physical-equality filter), and Windows PowerShell 5.1 can follow reparse
+# points during Remove-Item -Recurse — the invariant Remove-DevLinkStageRoot
+# enforces for staging roots, applied at every depth here.
+function Remove-DevSkillBackupTreeLexically([string]$Path) {
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if ($item.PSIsContainer -and !$item.LinkType) {
+        foreach ($child in @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop)) {
+            Remove-DevSkillBackupTreeLexically $child.FullName
+        }
+    }
+    Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+}
+
 function Remove-OldDevSkillBackups {
     $root = Join-Path $HOME ".dws\skill-backups"
     if (!(Test-Path -LiteralPath $root -PathType Container)) { return }
@@ -360,7 +383,7 @@ function Remove-OldDevSkillBackups {
     foreach ($dir in $dirs) {
         if ($excess -le 0) { break }
         if ($script:DevSkillBackupRootsThisRun.Contains($dir.FullName)) { continue }
-        Remove-Item -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        try { Remove-DevSkillBackupTreeLexically $dir.FullName } catch { }
         $excess--
     }
 }

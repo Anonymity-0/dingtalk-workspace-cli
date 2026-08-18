@@ -801,6 +801,24 @@ function Test-SkillBackupMarker {
     }
 }
 
+# Removes a whole stamp root child-first without ever following a reparse
+# point: link children are deleted non-recursively, real directories are
+# recursed the same way, and only an emptied directory is removed. Backup
+# trees can contain junctions/symlinks (victims are collected before the
+# physical-equality filter), and Windows PowerShell 5.1 can follow reparse
+# points during Remove-Item -Recurse — the invariant Remove-LinkStageRoot
+# enforces for staging roots, applied at every depth here.
+function Remove-SkillBackupTreeLexically {
+    param([string]$Path)
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if ($item.PSIsContainer -and !$item.LinkType) {
+        foreach ($child in @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop)) {
+            Remove-SkillBackupTreeLexically -Path $child.FullName
+        }
+    }
+    Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+}
+
 # Remove-OldSkillBackups deletes the oldest stamped backup directories once
 # more than $SkillBackupKeep remain. Stamps sort lexicographically in
 # chronological order, so name order is age order. Roots created during this
@@ -820,7 +838,7 @@ function Remove-OldSkillBackups {
     foreach ($dir in $dirs) {
         if ($excess -le 0) { break }
         if ($script:SkillBackupRootsThisRun.Contains($dir.FullName)) { continue }
-        Remove-Item -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        try { Remove-SkillBackupTreeLexically -Path $dir.FullName } catch { }
         $excess--
     }
 }
@@ -843,7 +861,12 @@ function Backup-SkillDir {
     $targetRoot = Join-Path $backupRoot $stamp
     $target = Join-Path $targetRoot $name
     $i = 1
-    while (Test-SkillPathLexically -Path $target) {
+    # Bump not only when <stamp>\<name> is taken but also when the stamp root
+    # itself exists without a verified ownership marker: a same-second
+    # foreign directory must never be stamped DWS-owned and pruned later. A
+    # marker-verified root from this run's same second stays reusable.
+    while ((Test-SkillPathLexically -Path $target) -or
+        ((Test-SkillPathLexically -Path $targetRoot) -and !(Test-SkillBackupMarker -Dir $targetRoot))) {
         $targetRoot = Join-Path $backupRoot "$stamp-$i"
         $target = Join-Path $targetRoot $name
         $i++
