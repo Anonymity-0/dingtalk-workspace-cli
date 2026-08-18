@@ -93,6 +93,8 @@ const {
   publishCanonicalLinksAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
+  recordSkillPathPublicationSync,
+  rollbackPublishedSkillPath,
 } = require(installJsSource);
 
 assert.equal(UPSTREAM_AGENTS.length, 76, "the complete upstream Agent registry is pinned");
@@ -967,6 +969,62 @@ scenario("canonical link publication never clobbers or deletes concurrent user d
         .map((name) => path.join(base, name, "payload", "concurrent-user-data.txt"))
         .filter((candidate) => fs.existsSync(candidate));
       assert.equal(retained.length, 0, "restored concurrent object must not stay hidden in quarantine");
+    }
+
+    {
+      // Direct rollback of a recorded publication after a concurrent writer
+      // replaced dest: ownership is proven at dest first, so the foreign
+      // object is never claimed into quarantine.
+      const dest = path.join(tmp, "direct-rollback", "dingtalk-chat");
+      writeFile(path.join(dest, "SKILL.md"), "published\n");
+      const publication = recordSkillPathPublicationSync(dest);
+      fs.rmSync(dest, { recursive: true, force: true });
+      writeFile(path.join(dest, "concurrent-user-data.txt"), "must survive\n");
+      assert.throws(
+        () => rollbackPublishedSkillPath(publication),
+        /refusing to delete non-transaction Skill/,
+      );
+      assert.equal(
+        fs.readFileSync(path.join(dest, "concurrent-user-data.txt"), "utf8"),
+        "must survive\n",
+        "concurrent replacement stays at the original destination",
+      );
+      assert.deepEqual(fs.readdirSync(dest), ["concurrent-user-data.txt"]);
+      const parent = path.dirname(dest);
+      assert.equal(
+        fs.readdirSync(parent).some((name) => name.startsWith(".dingtalk-chat.rollback-")),
+        false,
+        "unowned dest must not be moved into quarantine",
+      );
+    }
+
+    {
+      // Dest matched at the pre-check, then the quarantined object no longer
+      // matches: restore it onto dest with no-replace instead of deleting.
+      const dest = path.join(tmp, "post-quarantine", "dingtalk-chat");
+      writeFile(path.join(dest, "SKILL.md"), "published\n");
+      const publication = recordSkillPathPublicationSync(dest);
+      assert.throws(
+        () => rollbackPublishedSkillPath(publication, {
+          quarantineRenameFn(source, target) {
+            fs.renameSync(source, target);
+            fs.writeFileSync(path.join(target, "SKILL.md"), "mutated-in-quarantine\n");
+          },
+        }),
+        /refusing to delete non-transaction Skill/,
+      );
+      assert.equal(
+        fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"),
+        "mutated-in-quarantine\n",
+        "post-quarantine mismatch is restored onto dest",
+      );
+      const parent = path.dirname(dest);
+      assert.equal(
+        fs.readdirSync(parent).some((name) => name.startsWith(".dingtalk-chat.rollback-")
+          && fs.existsSync(path.join(parent, name, "payload", "SKILL.md"))),
+        false,
+        "restored dest must not stay hidden in quarantine",
+      );
     }
 
     {

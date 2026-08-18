@@ -971,33 +971,47 @@ function skillPathExistsLexically(target) {
 }
 
 function rollbackPublishedSkillPath(publication, options = {}) {
-  // Quarantine must be a same-inode rename. A no-replace mkdir-claim (or a
-  // fresh symlink/hard-link) would give the payload a new identity and make
-  // this transaction's own publication look foreign. Restore of an unmatched
-  // object is the no-replace publish: dest must not already hold a replacement.
+  // Prove ownership at dest first. Quarantining before that check would move
+  // a concurrent replacement off its original path; if the later match fails
+  // and restore cannot republish, user data stays hidden under .rollback-*.
+  // Quarantine itself is a same-inode rename — a no-replace mkdir-claim
+  // would mint a new identity and make this transaction's own dest look
+  // foreign. A post-quarantine mismatch is restored with no-replace.
   const quarantineRenameFn = options.quarantineRenameFn || fs.renameSync;
   const restoreRenameFn = options.restoreRenameFn || options.renameFn || ((source, target) => renamePathNoReplaceSync(source, target));
   const removeFn = options.removeFn || removeSkillPathLexically;
   const destination = publication.destination;
   const quarantineRoot = fs.mkdtempSync(path.join(path.dirname(destination), `.${path.basename(destination)}.rollback-`));
   const quarantine = path.join(quarantineRoot, "payload");
-  const restoreUnowned = (cause) => {
-    try {
-      restoreRenameFn(quarantine, destination);
-    } catch (restoreErr) {
-      throw new Error(`refusing to delete non-transaction Skill ${destination}: ${cause}; concurrent object retained at ${quarantine}; restore failed: ${restoreErr.message}`);
-    }
+  const cleanupRoot = () => {
     try {
       fs.rmSync(quarantineRoot, { recursive: true, force: true });
-    } catch (_) {
-      // Dest is restored; leftover empty quarantine root is best-effort.
+    } catch (cleanupErr) {
+      throw new Error(`failed to clean Skill rollback quarantine ${quarantineRoot}: ${cleanupErr.message}`);
     }
-    throw new Error(`refusing to delete non-transaction Skill ${destination}: ${cause}`);
   };
+  try {
+    if (!skillPublicationMatches(destination, publication)) {
+      cleanupRoot();
+      throw new Error(`refusing to delete non-transaction Skill ${destination}: concurrent object identity changed`);
+    }
+  } catch (err) {
+    if (err && err.code === "ENOENT") {
+      cleanupRoot();
+      return;
+    }
+    if (String(err.message || "").startsWith("refusing to delete non-transaction Skill")
+        || String(err.message || "").startsWith("failed to clean Skill rollback quarantine")) {
+      throw err;
+    }
+    cleanupRoot();
+    throw new Error(`refusing to delete unverifiable Skill ${destination}: ${err.message}`);
+  }
+
   try {
     quarantineRenameFn(destination, quarantine);
   } catch (err) {
-    fs.rmSync(quarantineRoot, { recursive: true, force: true });
+    cleanupRoot();
     if (err && err.code === "ENOENT") return;
     throw new Error(`failed to quarantine published Skill ${destination}: ${err.message}`);
   }
@@ -1005,13 +1019,25 @@ function rollbackPublishedSkillPath(publication, options = {}) {
   try {
     owned = skillPublicationMatches(quarantine, publication);
   } catch (err) {
-    restoreUnowned(err.message);
+    try {
+      restoreRenameFn(quarantine, destination);
+    } catch (restoreErr) {
+      throw new Error(`refusing to delete non-transaction Skill ${destination}: ${err.message}; concurrent object retained at ${quarantine}; restore failed: ${restoreErr.message}`);
+    }
+    cleanupRoot();
+    throw new Error(`refusing to delete non-transaction Skill ${destination}: ${err.message}`);
   }
   if (!owned) {
-    restoreUnowned("concurrent object identity changed");
+    try {
+      restoreRenameFn(quarantine, destination);
+    } catch (restoreErr) {
+      throw new Error(`refusing to delete non-transaction Skill ${destination}: concurrent object identity changed; concurrent object retained at ${quarantine}; restore failed: ${restoreErr.message}`);
+    }
+    cleanupRoot();
+    throw new Error(`refusing to delete non-transaction Skill ${destination}: concurrent object identity changed`);
   }
   removeFn(quarantine);
-  fs.rmSync(quarantineRoot, { recursive: true, force: true });
+  cleanupRoot();
 }
 
 // Publish a staged Skill directory with a truly atomic no-replace claim.
@@ -1687,5 +1713,7 @@ module.exports = {
   publishCanonicalLinksAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
+  recordSkillPathPublicationSync,
+  rollbackPublishedSkillPath,
   verifyPathCopySync,
 };
