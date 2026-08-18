@@ -37,11 +37,11 @@ dws doc +create --name "<文档名>" --content @body.json --doc-format jsonml --
 
 ## 创作与执行策略
 
-借鉴 Lark 的 Plan → Execute → Observe → Iterate，但将循环放在本地内容与定点修正上，不把长文拆成一串远程创建/追加：
+采用 Plan → Execute → Observe → Iterate，将循环放在本地内容与定点修正上，不把长文拆成一串远程创建/追加：
 
 1. **Plan**：明确受众、目的、范围和结构；正文由一个主上下文串行维护，避免按章节并行生成造成重复、矛盾和语气漂移。
 2. **Draft**：短内容可直接传；多行、长文或含特殊字符时先形成 cwd 内相对文件。用户未要求富结构时优先 Markdown；只有样式/引用/嵌套结构确有必要时才用 JSONML。
-3. **Execute**：只调用一次 `+create`。DWS Runtime 会分片长 Markdown、记录每步并回读验证；Agent 不再复制 Lark 的“先骨架、再逐节远程插入”流程，以减少网络次数、顺序错误和 commit-unknown 面。
+3. **Execute**：只调用一次 `+create`。DWS Runtime 会分片长 Markdown、记录每步并回读验证；Agent 不采用“先骨架、再逐节远程插入”流程，以减少网络次数、顺序错误和 commit-unknown 面。
 4. **Observe**：先检查回执中的 `nodeId`、`verified`、`steps` 和失败状态。回执已证明完整时不重复拉全文；需要内容质量验收时，只用 `+fetch --scope section/keyword` 读取待检查部分。
 5. **Iterate**：后续修正复用同一 `nodeId`，按 [`doc-update.md`](doc-update.md) 做最小 block/文本修改，禁止重新创建整篇。
 
