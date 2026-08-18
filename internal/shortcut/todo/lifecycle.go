@@ -60,21 +60,6 @@ func parseTodoMillis(flag, value string) (int64, error) {
 	return parsed.UnixMilli(), nil
 }
 
-func validateTodoDueAndPriority(rt *shortcut.RuntimeContext) error {
-	if rt.Changed("due") {
-		if _, err := parseTodoMillis("due", rt.Str("due")); err != nil {
-			return err
-		}
-	}
-	if rt.Changed("priority") {
-		priority := rt.Int("priority")
-		if priority != 10 && priority != 20 && priority != 30 && priority != 40 {
-			return apperrors.NewValidation("--priority 仅接受 10/20/30/40")
-		}
-	}
-	return nil
-}
-
 func createTodo(rt *shortcut.RuntimeContext) error {
 	title := rt.Str("title")
 	executors := nonEmptyStrings(rt.StrSlice("executors"))
@@ -129,15 +114,10 @@ var Create = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "title", Type: shortcut.FlagString, Desc: "待办标题", Required: true},
 		{Name: "executors", Type: shortcut.FlagStringSlice, Desc: "执行人 userId", Required: true},
-		{Name: "due", Type: shortcut.FlagString, Desc: "截止时间；--due 必须是带时区的 ISO-8601 时间"},
+		{Name: "due", Type: shortcut.FlagString, Desc: "截止时间（ISO8601）"},
 		{Name: "priority", Type: shortcut.FlagInt, Desc: "优先级；--priority 仅接受 10/20/30/40"},
 	},
-	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"due"}, Description: "--due 必须是带时区的 ISO-8601 时间"},
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"priority"}, Description: "--priority 仅接受 10/20/30/40"},
-	},
-	Validate: validateTodoDueAndPriority,
-	Execute:  createTodo,
+	Execute: createTodo,
 }
 
 func updateTodo(rt *shortcut.RuntimeContext) error {
@@ -200,16 +180,10 @@ var Update = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "task-id", Type: shortcut.FlagString, Desc: "待办 taskId", Required: true},
 		{Name: "title", Type: shortcut.FlagString, Desc: "新标题"},
-		{Name: "due", Type: shortcut.FlagString, Desc: "新截止时间；--due 必须是带时区的 ISO-8601 时间"},
+		{Name: "due", Type: shortcut.FlagString, Desc: "新截止时间（ISO8601）"},
 		{Name: "priority", Type: shortcut.FlagInt, Desc: "新优先级；--priority 仅接受 10/20/30/40"},
 	},
-	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"title", "due", "priority"}},
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"due"}, Description: "--due 必须是带时区的 ISO-8601 时间"},
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"priority"}, Description: "--priority 仅接受 10/20/30/40"},
-	},
-	Validate: validateTodoDueAndPriority,
-	Execute:  updateTodo,
+	Execute: updateTodo,
 }
 
 func setTodoDone(rt *shortcut.RuntimeContext, target bool) error {
@@ -396,15 +370,10 @@ var Reminder = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "task-id", Type: shortcut.FlagString, Desc: "待办 taskId", Required: true},
 		{Name: "clear", Type: shortcut.FlagBool, Desc: "清除全部提醒规则"},
-		{Name: "base-time", Type: shortcut.FlagString, Enum: []string{"dueTime", "customTime"}, Desc: "提醒基准；dueTime 要求 --due-date-offset；customTime 要求带时区的 ISO-8601 --at；未选中的参数不得提供"},
-		{Name: "due-date-offset", Type: shortcut.FlagInt, Desc: "相对截止时间的分钟偏移；dueTime 要求 --due-date-offset；customTime 要求带时区的 ISO-8601 --at；未选中的参数不得提供"},
-		{Name: "at", Type: shortcut.FlagString, Desc: "customTime 的时间；dueTime 要求 --due-date-offset；customTime 要求带时区的 ISO-8601 --at；未选中的参数不得提供"},
+		{Name: "base-time", Type: shortcut.FlagString, Enum: []string{"dueTime", "customTime"}, Desc: "提醒基准"},
+		{Name: "due-date-offset", Type: shortcut.FlagInt, Desc: "相对截止时间的分钟偏移"},
+		{Name: "at", Type: shortcut.FlagString, Desc: "customTime 的 ISO8601 时间"},
 	},
-	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"clear", "base-time"}},
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"base-time", "due-date-offset", "at"}, Description: "dueTime 要求 --due-date-offset；customTime 要求带时区的 ISO-8601 --at；未选中的参数不得提供"},
-	},
-	Validate: validateTodoReminder,
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		taskID := rt.Str("task-id")
 		clear := rt.Bool("clear")
@@ -457,37 +426,6 @@ var Reminder = shortcut.Shortcut{
 		}
 		return rt.Output(map[string]any{"taskId": taskID, "action": action, "terminalReceipt": true, "verified": false})
 	},
-}
-
-func validateTodoReminder(rt *shortcut.RuntimeContext) error {
-	clear := rt.Bool("clear")
-	baseTime := rt.Str("base-time")
-	if clear == (baseTime != "") {
-		return apperrors.NewValidation("必须且只能选择 --clear 或 --base-time")
-	}
-	if clear {
-		if rt.Changed("due-date-offset") || rt.Changed("at") {
-			return apperrors.NewValidation("--clear 不能与 --due-date-offset 或 --at 同时使用")
-		}
-		return nil
-	}
-	if baseTime == "dueTime" {
-		if !rt.Changed("due-date-offset") {
-			return apperrors.NewValidation("--base-time=dueTime 要求 --due-date-offset")
-		}
-		if rt.Changed("at") {
-			return apperrors.NewValidation("--base-time=dueTime 不能同时提供 --at")
-		}
-		return nil
-	}
-	if !rt.Changed("at") {
-		return apperrors.NewValidation("--base-time=customTime 要求 --at")
-	}
-	if rt.Changed("due-date-offset") {
-		return apperrors.NewValidation("--base-time=customTime 不能同时提供 --due-date-offset")
-	}
-	_, err := parseTodoMillis("at", rt.Str("at"))
-	return err
 }
 
 var UploadAttachment = shortcut.Shortcut{

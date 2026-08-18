@@ -79,20 +79,7 @@ var Remind = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "task", Type: shortcut.FlagString, Desc: "待办标题/内容", Required: true},
-		{Name: "at", Type: shortcut.FlagString, Desc: "--at 必须是带时区的 ISO-8601 截止时间；它不是独立提醒时间；写入 dueTime，不是提醒时间"},
-	},
-	Constraints: []shortcut.Constraint{
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"at"}, Description: "--at 必须是带时区的 ISO-8601 截止时间；它不是独立提醒时间"},
-	},
-	Validate: func(rt *shortcut.RuntimeContext) error {
-		if strings.TrimSpace(rt.Str("task")) == "" {
-			return apperrors.NewValidation("--task 不能为空")
-		}
-		if rt.Changed("at") {
-			_, err := shortcutRemindParseMillis("at", rt.Str("at"))
-			return err
-		}
-		return nil
+		{Name: "at", Type: shortcut.FlagString, Desc: "截止时间（ISO8601，可选，写入 dueTime，不是提醒时间）"},
 	},
 	Tips: []string{`dws todo +remind --task "交周报" --at 2026-03-10T18:00:00+08:00`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
