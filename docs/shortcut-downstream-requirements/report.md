@@ -28,14 +28,18 @@ Report 的 Shortcut surface 没有 “delivery hardened but downstream blocked�
 
 ## 3. Exact Shortcut E2E 矩阵
 
-| Exact Shortcut | 已知非空 | 保证零项/零命中 | 身份与分页 | 结论 |
-|---|---:|---:|---|---|
-| `+template-search` | PASS（1） | PASS（0） | 完整模板集合验证后本地筛选；稳定模板身份 | fully unlocked |
-| `+inbox-list` | PASS（累计 92） | PASS（0） | 5 个非空页；cursor 严格前进；首对相邻页身份交集 0；终页明确耗尽 | fully unlocked |
-| `+outbox-list` | PASS（1） | PASS（0） | 非空页 `complete=true` 且 endpoint exhausted；570 天有界扫描合同异常 0 | fully unlocked |
-| `+report-latest` | PASS（候选 1） | 不适用：精确组合读取 | 显式不超过 20 天窗口；按唯一最高创建时间选取；详情身份精确匹配；字段集合 3 | fully unlocked |
+| EVERY public Shortcut | Exact Shortcut | Owning atomic/raw | current HEAD 双层证据 | 结论 |
+|---|---|---|---|---|
+| `report +template-search` | `dws report +template-search --query <known-or-random-query> --format json` | `dws report template list --format json` 后对同一完整集合执行同语义本地筛选 | 已知 1/1，稳定模板 ID 集合一致；随机 UUID 0/0；原子完整集合 73 且接口无 cursor surface | `PASS-RPT-TEMPLATE-DOUBLE`；fully unlocked |
+| `report +inbox-list` | `dws report +inbox-list --start <start> --end <end> --cursor 0 --size 20 --format json` | `dws report inbox list` 使用完全相同参数；从 `_internalDetailCommands` 取得同页精确 `reportId` | 已知 20/20，稳定 ID 集合一致，exact/raw next cursor 一致；独立未来范围 0/0 且双方明确终止 | `PASS-RPT-INBOX-DOUBLE`；fully unlocked |
+| `report +outbox-list` | `dws report +outbox-list --start <start> --end <end> --cursor 0 --size 20 --format json` | `dws report outbox list` 使用完全相同参数；从 `_internalDetailCommands` 取得同页精确 `reportId` | 已知 1/1，稳定 ID 集合一致且双方明确终止；独立未来范围 0/0 且双方明确终止 | `PASS-RPT-OUTBOX-DOUBLE`；fully unlocked |
+| `report +report-latest` | `dws report +report-latest --start <start> --end <end> --format json` | 同范围 `dws report outbox list`，再以所选稳定 ID 执行 `dws report entry get --report-id <same-id> --format json` | exact ID、原子候选 ID、原子详情 ID 三者一致；详情字段计数均为 3，候选页明确终止 | `PASS-RPT-LATEST-DOUBLE`；fully unlocked |
 
-所有列表/搜索严格拒绝空响应、缺或错型 `success`、缺或错型集合、坏元素、重复身份、缺 continuation、空页续页和不前进 cursor。服务端在终页回显的整数 cursor 只作为页面收据，不发布为 `next_token`。
+`+inbox-list` 的长期分页证据仍为 20、20、20、20、12 后明确终止，累计 92，首对相邻页身份交集 0；`+outbox-list` 的 fixture 扫描仍为 30 个连续 19 天窗口、总项 1、非空窗口 1、合同异常 0。这里的零项均来自独立保证零范围，不是已知非空集合后的空页。
+
+所有列表/搜索严格拒绝空响应、缺或错型 `success`、缺或错型集合、坏元素和重复身份；带分页的列表还拒绝缺 continuation、空页续页和不前进 cursor。服务端在终页回显的整数 cursor 只作为页面收据，不发布为 `next_token`。
+
+实现与严格响应测试位于 `internal/shortcut/report/report.go`、`internal/shortcut/report/latest.go`、`internal/shortcut/report/common.go` 和 `internal/shortcut/report/report_strict_cross_platform_coverage_test.go`；原子命令实现位于 `internal/helpers/report.go`。本文只保留命令模板、PASS 标签与聚合事实，运行时稳定 ID、标题和原始响应均未落盘。
 
 ## 4. 已关闭需求
 
