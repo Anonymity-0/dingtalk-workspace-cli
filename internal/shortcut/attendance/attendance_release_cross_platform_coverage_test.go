@@ -211,25 +211,6 @@ func TestCrossPlatformCoverageAttendanceSelfSettingExecuteBinding(t *testing.T) 
 		}
 	}
 
-	var schema map[string]any
-	if err := json.Unmarshal(GetSelfSetting.Contract.Result.DataSchema, &schema); err != nil {
-		t.Fatal(err)
-	}
-	properties := schema["properties"].(map[string]any)["value"].(map[string]any)["properties"].(map[string]any)
-	expectedTypes := map[string]string{
-		"checkRemindSetting":       "object",
-		"fastCheckLateNeedConfirm": "boolean",
-		"checkResultMsg":           "integer",
-		"lackRemindUser":           "integer",
-		"personDailyReportSwitch":  "integer",
-		"bossMonthReportType":      "integer",
-	}
-	for field, expectedType := range expectedTypes {
-		property, ok := properties[field].(map[string]any)
-		if !ok || property["type"] != expectedType || strings.TrimSpace(fmt.Sprint(property["description"])) == "" {
-			t.Errorf("self-setting schema %s=%#v, want type=%s and description", field, properties[field], expectedType)
-		}
-	}
 }
 
 func TestCrossPlatformCoverageAttendanceParamMappingsAreExplicit(t *testing.T) {
@@ -924,9 +905,10 @@ func TestCrossPlatformCoverageAttendanceRemainingChangedExecutors(t *testing.T) 
 			calls    int
 		}{
 			{"invalid", `{"success":true,"result":[]}`, false, 0},
-			{"leave", `{"success":true,"result":[{"approveType":"OVERTIME"}]}`, false, 1},
-			{"leave", `{"success":true,"result":[{"approveType":"LEAVE"}]}`, true, 1},
-			{"OUT", `{"success":true,"result":[{"approveType":"OUT"}]}`, true, 1},
+			{"leave", `{"success":true,"result":[{"processCode":"p1","approveType":"OVERTIME","submitUrl":"https://example.invalid/1"}]}`, false, 1},
+			{"leave", `{"success":true,"result":[{"processCode":"p1","approveType":"LEAVE","submitUrl":"https://example.invalid/1"}]}`, true, 1},
+			{"TRAVEL", `{"success":true,"result":[{"processCode":"p1","approveType":"TRAVEL","submitUrl":"https://example.invalid/1"},{"processCode":"p2","approveType":"TRAVEL","submitUrl":"https://example.invalid/2"}]}`, true, 1},
+			{"OUT", `{"success":true,"result":[{"processCode":"p1","approveType":"OUT","submitUrl":"https://example.invalid/1"},{"processCode":"p2","approveType":"OUT","submitUrl":"https://example.invalid/2"}]}`, true, 1},
 		} {
 			caller, err := executeAttendanceResponse(t, GetApproveTemplate, map[string]string{"type": tc.value}, tc.response)
 			if (err == nil) != tc.valid || caller.calls != tc.calls {

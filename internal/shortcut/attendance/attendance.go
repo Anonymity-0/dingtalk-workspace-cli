@@ -530,7 +530,7 @@ var GetApproveTemplate = shortcut.Shortcut{
 		return attendanceCallCollection(rt, serverWukong, "query_at_approve_template", map[string]any{
 			"approveType": approveType,
 		}, "templates", true, nil, func(items []map[string]any) error {
-			return attendanceValidateExpectedStrings(items, serverWukong+"/query_at_approve_template", "approveType", approveType)
+			return attendanceValidateApproveTemplates(items, serverWukong+"/query_at_approve_template", approveType)
 		}, "result")
 	},
 }

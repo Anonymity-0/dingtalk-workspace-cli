@@ -24,14 +24,12 @@ func TestCrossPlatformCoveragePublicAttendanceContractsAreUnifiedAndTyped(t *tes
 		{CheckResult.Command, CheckResult.OutputRollout, CheckResult.Contract.Result != nil, string(CheckResult.Contract.Result.DataSchema), `"id"`, "offset"},
 		{CheckRecord.Command, CheckRecord.OutputRollout, CheckRecord.Contract.Result != nil, string(CheckRecord.Contract.Result.DataSchema), `"id"`, ""},
 		{ListApprove.Command, ListApprove.OutputRollout, ListApprove.Contract.Result != nil, string(ListApprove.Contract.Result.DataSchema), `"id"`, ""},
-		{GetApproveTemplate.Command, GetApproveTemplate.OutputRollout, GetApproveTemplate.Contract.Result != nil, string(GetApproveTemplate.Contract.Result.DataSchema), `"approveType"`, ""},
+		{GetApproveTemplate.Command, GetApproveTemplate.OutputRollout, GetApproveTemplate.Contract.Result != nil, string(GetApproveTemplate.Contract.Result.DataSchema), `"processCode"`, ""},
 		{GetSchedule.Command, GetSchedule.OutputRollout, GetSchedule.Contract.Result != nil, string(GetSchedule.Contract.Result.DataSchema), `"id"`, ""},
 		{SearchClass.Command, SearchClass.OutputRollout, SearchClass.Contract.Result != nil, string(SearchClass.Contract.Result.DataSchema), `"classId"`, "page"},
-		{GetClass.Command, GetClass.OutputRollout, GetClass.Contract.Result != nil, string(GetClass.Contract.Result.DataSchema), `"shiftVO"`, ""},
 		{SearchAdjustmentRule.Command, SearchAdjustmentRule.OutputRollout, SearchAdjustmentRule.Contract.Result != nil, string(SearchAdjustmentRule.Contract.Result.DataSchema), `"ruleId"`, "page"},
 		{GetOvertimeRule.Command, GetOvertimeRule.OutputRollout, GetOvertimeRule.Contract.Result != nil, string(GetOvertimeRule.Contract.Result.DataSchema), `"id"`, ""},
 		{SearchOvertimeRule.Command, SearchOvertimeRule.OutputRollout, SearchOvertimeRule.Contract.Result != nil, string(SearchOvertimeRule.Contract.Result.DataSchema), `"ruleId"`, "page"},
-		{GetSelfSetting.Command, GetSelfSetting.OutputRollout, GetSelfSetting.Contract.Result != nil, string(GetSelfSetting.Contract.Result.DataSchema), `"userId"`, ""},
 	}
 	for _, item := range shortcuts {
 		if item.rollout != output.RolloutUnifiedActive {
@@ -60,7 +58,7 @@ func TestCrossPlatformCoveragePublicAttendanceContractsAreUnifiedAndTyped(t *tes
 }
 
 func attendanceDeclarationByName(name string) *shortcut.Shortcut {
-	for _, declaration := range []*shortcut.Shortcut{&CheckResult, &CheckRecord, &ListApprove, &GetApproveTemplate, &GetSchedule, &SearchClass, &GetClass, &SearchAdjustmentRule, &GetOvertimeRule, &SearchOvertimeRule, &GetSelfSetting} {
+	for _, declaration := range []*shortcut.Shortcut{&CheckResult, &CheckRecord, &ListApprove, &GetApproveTemplate, &GetSchedule, &SearchClass, &SearchAdjustmentRule, &GetOvertimeRule, &SearchOvertimeRule} {
 		if declaration.Command == name {
 			return declaration
 		}
@@ -69,7 +67,7 @@ func attendanceDeclarationByName(name string) *shortcut.Shortcut {
 }
 
 func TestCrossPlatformCoverageAttendanceEmptyOnlyLeavesAreUnavailable(t *testing.T) {
-	for _, declaration := range []*shortcut.Shortcut{&GetSummary, &ListLeaveTypes, &GetLeaveRecords, &GetCheckinRecord} {
+	for _, declaration := range []*shortcut.Shortcut{&GetSummary, &ListLeaveTypes, &GetLeaveRecords, &GetCheckinRecord, &GetClass, &GetSelfSetting} {
 		if declaration.OutputRollout != output.RolloutLegacyOnly || declaration.Contract.Result != nil || declaration.Contract.Pagination != nil {
 			t.Errorf("%s unavailable contract = rollout %q result=%v pagination=%v", declaration.Command, declaration.OutputRollout, declaration.Contract.Result, declaration.Contract.Pagination)
 		}
@@ -178,5 +176,89 @@ func TestCrossPlatformCoverageAttendanceStableIdentityRejectsZeroBlankAndDuplica
 	}
 	if err := attendanceValidateExpectedStrings([]map[string]any{{"approveType": "LEAVE"}, {"approveType": "LEAVE"}}, "attendance/test", "approveType", "LEAVE"); err == nil {
 		t.Fatal("duplicate string identity accepted")
+	}
+}
+
+func TestCrossPlatformCoverageAttendanceApproveTemplateIdentityAndBinding(t *testing.T) {
+	valid := []map[string]any{
+		{"processCode": "process-1", "approveType": "TRAVEL", "submitUrl": "https://example.invalid/1"},
+		{"processCode": "process-2", "approveType": "TRAVEL", "submitUrl": "https://example.invalid/2"},
+	}
+	if err := attendanceValidateApproveTemplates(valid, "attendance/test", "TRAVEL"); err != nil {
+		t.Fatalf("same approveType with unique processCode rejected: %v", err)
+	}
+	valid[0]["processCode"] = " process-1 "
+	if err := attendanceValidateApproveTemplates(valid, "attendance/test", "TRAVEL"); err != nil || valid[0]["processCode"] != "process-1" {
+		t.Fatalf("processCode was not normalized: value=%#v err=%v", valid[0]["processCode"], err)
+	}
+	valid[0]["approveType"] = "OUT"
+	valid[1]["approveType"] = "OUT"
+	if err := attendanceValidateApproveTemplates(valid, "attendance/test", "OUT"); err != nil {
+		t.Fatalf("OUT templates with unique processCode rejected: %v", err)
+	}
+
+	invalid := []struct {
+		name  string
+		items []map[string]any
+	}{
+		{"missing processCode", []map[string]any{{"approveType": "TRAVEL", "submitUrl": "https://example.invalid/1"}}},
+		{"wrong processCode type", []map[string]any{{"processCode": 1, "approveType": "TRAVEL", "submitUrl": "https://example.invalid/1"}}},
+		{"blank processCode", []map[string]any{{"processCode": " ", "approveType": "TRAVEL", "submitUrl": "https://example.invalid/1"}}},
+		{"duplicate processCode", []map[string]any{{"processCode": "same", "approveType": "TRAVEL", "submitUrl": "https://example.invalid/1"}, {"processCode": "same", "approveType": "TRAVEL", "submitUrl": "https://example.invalid/2"}}},
+		{"missing approveType", []map[string]any{{"processCode": "process-1", "submitUrl": "https://example.invalid/1"}}},
+		{"null approveType", []map[string]any{{"processCode": "process-1", "approveType": nil, "submitUrl": "https://example.invalid/1"}}},
+		{"wrong approveType type", []map[string]any{{"processCode": "process-1", "approveType": 1, "submitUrl": "https://example.invalid/1"}}},
+		{"wrong approveType", []map[string]any{{"processCode": "process-1", "approveType": "OUT", "submitUrl": "https://example.invalid/1"}}},
+		{"missing submitUrl", []map[string]any{{"processCode": "process-1", "approveType": "TRAVEL"}}},
+		{"null submitUrl", []map[string]any{{"processCode": "process-1", "approveType": "TRAVEL", "submitUrl": nil}}},
+		{"wrong submitUrl type", []map[string]any{{"processCode": "process-1", "approveType": "TRAVEL", "submitUrl": 1}}},
+		{"blank submitUrl", []map[string]any{{"processCode": "process-1", "approveType": "TRAVEL", "submitUrl": " "}}},
+	}
+	for _, tc := range invalid {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := attendanceValidateApproveTemplates(tc.items, "attendance/test", "TRAVEL"); err == nil {
+				t.Fatalf("invalid templates accepted: %#v", tc.items)
+			}
+		})
+	}
+
+	var schema map[string]any
+	if err := json.Unmarshal(GetApproveTemplate.Contract.Result.DataSchema, &schema); err != nil {
+		t.Fatal(err)
+	}
+	items := schema["properties"].(map[string]any)["templates"].(map[string]any)["items"].(map[string]any)
+	required := items["required"].([]any)
+	for _, name := range []string{"processCode", "approveType", "submitUrl"} {
+		found := false
+		for _, value := range required {
+			if value == name {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("template schema required=%#v missing %s", required, name)
+		}
+	}
+	if got, want := strings.Join(GetApproveTemplate.Contract.Result.SensitivePaths, ","), "templates.formName,templates.processCode,templates.submitUrl"; got != want {
+		t.Fatalf("template sensitive paths = %q, want %q", got, want)
+	}
+	properties := items["properties"].(map[string]any)
+	for _, name := range []string{"processCode", "submitUrl"} {
+		property := properties[name].(map[string]any)
+		if property["type"] != "string" || property["minLength"] != float64(1) {
+			t.Errorf("template schema %s = %#v, want nonempty string", name, property)
+		}
+	}
+	approveType := properties["approveType"].(map[string]any)
+	if approveType["type"] != "string" {
+		t.Errorf("template schema approveType = %#v, want string", approveType)
+	}
+	enum := approveType["enum"].([]any)
+	values := make([]string, 0, len(enum))
+	for _, value := range enum {
+		values = append(values, value.(string))
+	}
+	if got, want := strings.Join(values, ","), "REPAIR_CHECK,LEAVE,OVERTIME,TRAVEL,OUT"; got != want {
+		t.Errorf("template approveType enum = %q, want %q", got, want)
 	}
 }

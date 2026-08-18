@@ -1,16 +1,16 @@
 # Attendance Shortcut 下游业务能力需求规格
 
 > 日期：2026-08-18
-> DWS 基线：`effde762277ad717a246e38b237a8297fa49aab7`
+> Live discovery 基线：`85c3f307eed5ca753991804ef64228eb7b1f3794`；本轮修复后的 clean HEAD 尚待提交与完整重跑
 > 对比基线：Lark CLI 1.0.87
 > 范围：Attendance Shortcut only；不修改 DWS 产品 Skill 或 multi Skill。
 
 ## 1. 执行摘要
 
-- Attendance 共审核 35 个源码 Shortcut；11 个具备公开条件，24 个保持 hidden/unavailable。公开数量按「严格响应合同 + 稳定身份 + 安全真实 fixture」的发布门计算，不把空数组或仅退出码 0 计为通过。
+- Attendance 共审核 35 个源码 Shortcut；9 个具备公开条件，26 个保持 hidden/unavailable。公开数量按「严格响应合同 + 稳定身份 + 安全真实 fixture」的发布门计算，不把空数组或仅退出码 0 计为通过。
 - `+check-result` 已覆盖 Lark CLI 当前唯一 Attendance 用户任务 `attendance user_tasks query`，并提供打卡流水、审批、排班、班次、规则、设置、假期和个人视图等更宽能力。
-- 已确认 5 组下游需求：补卡规则详情返回空结果、报表合同不足、打卡结果分页缺少服务端确定终止证据、缺少安全可回收的管理员/写操作 fixture，以及 6 个读场景缺少请求绑定字段或 nonempty/zero 双态 fixture。
-- 班次详情曾因未公开而缺失，现已通过“搜索非空结果 → 同一稳定 ID 详情”闭环恢复；严格响应校验、统一 Result 和空结果判定均属于上游修复，不要求下游改动。
+- 已确认 7 组下游需求：补卡规则详情返回空结果、报表合同不足、打卡结果分页缺少服务端确定终止证据、缺少安全可回收的管理员/写操作 fixture、6 个读场景缺少请求绑定字段或 nonempty/zero 双态 fixture、班次详情不回显稳定 ID，以及个人设置缺少逐场景权限发现与安全 fixture。
+- 审批模板的同类型多模板问题已在上游修复：以 `processCode` 作为资源身份，`approveType` 只做请求绑定，并要求 `submitUrl` 非空。班次详情与个人设置仍有下游合同/权限前置，不能以请求 echo 或部分场景成功伪造整体可用。
 
 | ID | 优先级 | 类型 | 用户任务 | 当前状态 | 建议 Owner | 解锁的 Shortcut |
 |---|---|---|---|---|---|---|
@@ -19,18 +19,21 @@
 | `DS-ATTENDANCE-003` | P2 | contract insufficient | 可靠翻完打卡结果 | partial | Attendance 打卡查询服务 | `+check-result` 完整分页 |
 | `DS-ATTENDANCE-004` | P1 | tenant-or-fixture / permission | 验证考勤组、全局设置、余额和写操作 | blocked / unavailable | Attendance 产品测试基础设施 / 权限 Owner | 14 个读写 Shortcut |
 | `DS-ATTENDANCE-005` | P1 | response contract / tenant-or-fixture | 可验证地读取摘要、假期、签到和个人考勤 | blocked / unavailable | Attendance 查询服务 / 产品测试基础设施 | 6 个读 Shortcut |
+| `DS-ATTENDANCE-006` | P1 | response contract | 用搜索得到的班次 ID 精确读取同一班次详情 | unavailable | Attendance Wukong 班次服务 | `+get-class` |
+| `DS-ATTENDANCE-007` | P1 | capability / permission fixture | 可发现地读取全部个人设置场景 | blocked / unavailable | Attendance 设置服务 / 权限 Owner / 测试基础设施 | `+get-self-setting` |
 
 ## 2. 用户任务与能力缺口总览
 
 | 用户任务 / Golden Route | DWS Shortcut | Lark CLI 对应 | 当前能力 | 缺口分类 | 临时处置 |
 |---|---|---|---|---|---|
 | 批量查询员工打卡结果 | `attendance +check-result` | `attendance user_tasks query` | covered；框架分页 token 由当前页保守派生 | contract insufficient | 声明 `Pagination(kind=cursor,cursor_parameter=offset)`；续页只放 `meta.pagination`，业务 `data` 仅含 `count/records` |
-| 搜索并读取班次 | `+search-class` → `+get-class` | 无同级入口 | covered | 无 | 公开，严格身份闭环 |
+| 搜索并读取班次 | `+search-class` → `+get-class` | 无同级入口 | partial | response contract | 只公开搜索；详情因不回显请求 classId 而 unavailable |
 | 搜索并读取补卡规则 | `+search-adjustment-rule` → `+get-adjustment-rule` | 无同级入口 | partial | business-service defect | 只公开搜索；详情 unavailable |
 | 发现字段并查询考勤报表 | `+list-report-columns` → `+query-report-data` | 无同级入口 | unavailable | contract insufficient | 两个入口均保持 hidden/unavailable |
 | 查询假期报表 | `+query-report-leave` | 无同级入口 | unavailable | business-service defect | hidden/unavailable |
 | 搜索并读取考勤组 | `+search-group` → `+get-group` | 无同级入口 | blocked | tenant-or-fixture | 无已知非空安全 fixture，全部 hidden |
 | 查询企业全局设置和假期余额 | `+get-global-setting`, `+get-leave-balance` | 无同级入口 | blocked | permission / fixture | hidden/unavailable |
+| 查询个人设置 | `+get-self-setting` | 无同级入口 | partial | capability / permission fixture | 前五个场景已验证；全部场景发布前保持 hidden/unavailable |
 | 修改排班、班次、考勤组、假期和打卡结果 | 9 个写 Shortcut | 无同级入口 | unsafe to verify | tenant-or-fixture / contract insufficient | hidden/unavailable，不以 dry-run 记通过 |
 
 ## 3. 下游需求明细
@@ -172,6 +175,56 @@
 
 在上述证据完整前，6 个 Shortcut 均保持 hidden/unavailable；已实现的严格校验不等于已获得发布证据。
 
+### `DS-ATTENDANCE-006` — 让班次详情回显可验证的稳定身份
+
+#### A. 用户任务与现状
+
+- 用户任务：先用 `+search-class` 浏览班次并取得稳定 `classId`，再用同一 ID 读取班次详情。
+- canonical Shortcut：`+search-class`、`+get-class`；atomic/raw route：`attendance class search`、`attendance class get`。
+- 在 clean discovery HEAD 上，搜索 exact/raw 均返回同一组非空正整数 `classId`；使用其中真实 ID 调用 raw detail，服务端返回 `success=true` 和非空 `shiftVO`，但对象没有 `id` 或 `classId`。
+- 上游不能把请求 ID 注入响应来伪造 readback，也不能仅凭“非空详情”证明详情属于请求资源。因此 `+get-class` 保持 unavailable。
+- 安全证据句柄：`ATT-CLASS-ID-ECHO-GAP-01`；不保存 raw body、资源 ID 或 trace。
+
+#### B. 需要下游提供的合同
+
+- `get_class_detail` 成功对象必须回显与请求精确一致的稳定 `id`/`classId`，类型与 `get_class_list` 列表身份字段一致。
+- 存在、已删除、不存在、无权限和租户未开通必须返回可区分的 typed terminal 状态；不得以非空但无身份对象表示可验证成功。
+- 明确班次 ID 的租户作用域、生命周期和搜索→详情一致性；如详情存在版本号，也应返回稳定版本字段以支持更新前读回。
+- 改动需 additive/versioned；现有详情业务字段保持兼容。
+
+#### C. 验收标准与临时处置
+
+1. exact/raw 搜索得到同一非空 `classId`，同 ID detail 均返回身份精确匹配的非空对象。
+2. 不存在、已删除和无权限分别非零 typed failure，不能成为 `success=true + result=null` 或无身份对象。
+3. 上游 `+get-class` 的 missing/false/null/malformed/wrong-ID 回归与真实 E2E 全部通过。
+
+下游补齐稳定 ID 回显前，`+get-class` 保持 hidden/unavailable；`+search-class` 仍可独立公开。
+
+### `DS-ATTENDANCE-007` — 提供个人设置逐场景 capability 与权限安全 fixture
+
+#### A. 用户任务与现状
+
+- `+get-self-setting` 公开参数包含 6 个场景。clean discovery HEAD 上，前 5 个场景的 exact/raw 均能精确绑定请求 userId、场景字段和已观测类型；`bossAttendStatNotify` 在两层均返回稳定业务错误 `NO_PERMISSION`。
+- 当前接口没有 capability discovery 告知调用身份可读哪些场景，也没有可安全授权的隔离 fixture。只验证 5/6 不能宣称整个公开枚举可用。
+- 这不是把权限错误误判为业务空结果；exact/raw 均非零退出。上游保留严格 user/scene/type 校验，但发布面整体降级。
+- 安全证据句柄：`ATT-SELF-SETTING-PERMISSION-GAP-01`。
+
+#### B. 需要下游提供的合同与 fixture
+
+- 提供 capability discovery，返回当前调用身份逐场景的 readable/forbidden/unsupported 状态、所需最小 scope/角色和租户功能开通状态。
+- 为 6 个场景提供字段名、类型、可空性和版本化语义；成功必须回显请求 userId，并明确返回对应场景字段。
+- 提供隔离测试身份或可撤销的临时最小权限授权 fixture，使 6 个场景均能完成 exact/raw 同场景验证；测试后权限必须回收。
+- 无权限、场景不支持、用户不存在和设置未配置必须返回不同 typed error；不得统一为 `null`、空对象或无标识空成功。
+
+#### C. 验收标准与临时处置
+
+1. capability discovery 与 6 个场景实际调用一致，不遗漏权限前置。
+2. 每个场景 exact/raw 的 userId、场景字段、类型和对象内容一致；`null`、错类型、错用户均非零。
+3. bogus user、invalid scene、无权限和未开通均返回可区分非零错误。
+4. 权限 fixture 全程最小化、可撤销，结束后无授权残留。
+
+能力发现和安全 fixture 到位前，`+get-self-setting` 保持 hidden/unavailable。
+
 ## 4. Lark 对齐与平台差异
 
 | Lark 用户任务 | 所需下游能力 | 可精确对齐 | 平台差异 | DWS 推荐结论 |
@@ -193,10 +246,25 @@
 | Shortcut | 上游根因 | 已完成修复 | 回归证据 |
 |---|---|---|---|
 | 最终保留公开的 Attendance 集合查询 | 容错 projector 可能把缺字段、错型或坏元素投成 `[]` | 共享严格 success/result/collection 校验；显式空数组才合法；稳定 ID 和请求用户/时间/类型必须绑定 | 已完成单元负向矩阵；最终 clean-HEAD 真实 nonempty/zero 双层矩阵待发布前集中执行，本文不提前泛化声称全通过 |
+| `+get-approve-template` | 把请求维度 `approveType` 误作集合唯一身份，会拒绝同一类型下多个合法模板 | 改用非空唯一 `processCode` 作为资源身份；`approveType` 仅做请求精确绑定；每项 `submitUrl` 必须非空；允许 TRAVEL/OUT 同类型多项 | missing/wrong/duplicate processCode、wrong approveType、missing/blank submitUrl 负向矩阵；TRAVEL/OUT 双项成功矩阵。修复后 clean-HEAD live 待重跑 |
 | `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | 嵌套 `shiftVO/entityVO` 导致身份投影风险 | 固定审核路径、展开 wrapper、要求正整数且不重复的稳定 ID，严格校验分页矛盾与无前进页 | 已有坏 item/空 ID/重复 ID/分页矛盾单元回归；最终搜索 nonempty/guaranteed-zero 与 raw 对照待 clean-HEAD 集中执行 |
-| `+get-class`, `+get-overtime-rule` | 能力存在但无请求 ID 与响应对象的强绑定 | 详情对象要求非空且 `shiftVO.id` / `id` 与请求精确一致 | missing/false/null/malformed/wrong-ID/valid Execute 级矩阵；最终同 ID live 读回待 clean-HEAD 集中执行 |
-| `+get-self-setting` | 仅检查场景 key 存在会让 `null` 伪成功；用户外围空白可造成下传/比较漂移 | 用户输入只归一化一次并以同值下传/比较；场景字段必须非空且符合已观测 object/boolean/integer 类型 | 5 个可用 scene 的 exact/raw 同场景双层对照；boss scene 当前身份双层均显式业务失败，不冒充成功 fixture |
+| `+get-overtime-rule` | 能力存在但缺少请求 ID 与响应对象的强绑定 | 详情对象要求非空且 `id` 与请求精确一致 | missing/false/null/malformed/wrong-ID/valid Execute 级矩阵；discovery HEAD 上 exact/raw 同真实搜索 ID 对象一致 |
+| `+get-class` | 上游已严格要求 `shiftVO.id`，但真实下游详情不回显任何 ID | 没有注入请求 ID 或放宽校验；按真实合同降级 unavailable | discovery HEAD 上真实搜索→raw detail 非空但 ID 缺失；等待 `DS-ATTENDANCE-006`，修复后再重跑 |
+| `+get-self-setting` | 仅检查场景 key 存在会让 `null` 伪成功；用户外围空白可造成下传/比较漂移 | 用户输入只归一化一次并以同值下传/比较；场景字段必须非空且符合已观测 object/boolean/integer 类型；因 1/6 场景权限不可验证而整体 unavailable | 5 个 scene exact/raw 对照通过；boss scene exact/raw 均 `NO_PERMISSION`，等待 `DS-ATTENDANCE-007`，不把部分场景成功当整体 PASS |
 | `+my-attendance`, `+this-month` | 旧的当前用户解析可跳过 malformed row，也可把 success=false 中的 stale result 当身份 | 改为严格 business success/result/唯一用户身份，坏 profile 后考勤 raw 调用为 0；每条打卡要求唯一正整数 ID | 静态/Execute 回归已通过；因当前只有合法空集合而保持 unavailable，不记 live PASS |
+
+### 6.1 clean-HEAD live 发布门状态
+
+| 叶子 | discovery HEAD 结果 | 修复后 clean HEAD 发布状态 |
+|---|---|---|
+| `+check-result`, `+check-record`, `+list-approve`, `+get-schedule` | exact/raw 同场景已观测 known-nonempty 与 guaranteed-zero；打卡结果另完成多页 cursor 前进与终止 | `PENDING_RERUN`；旧 PASS 不继承 |
+| `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | exact/raw 同场景已观测 known-nonempty、随机唯一词 guaranteed-zero、稳定 ID 与终止分页 | `PENDING_RERUN`；旧 PASS 不继承 |
+| `+get-overtime-rule` | 使用同一次真实搜索取得的 ID，exact projector 与 raw 单项对象一致；不存在/非法 ID 非零 | `PENDING_RERUN`；旧 PASS 不继承 |
+| `+get-approve-template` | discovery 暴露同类型多模板；本轮已修 identity/request-binding 分工 | `PENDING_RERUN`；必须逐一覆盖 5 个 approveType |
+| `+get-class` | raw 非空但不回显请求 ID | unavailable；等待下游合同，不以旧调用记 PASS |
+| `+get-self-setting` | 5 个场景通过，1 个场景 `NO_PERMISSION` | unavailable；等待 capability/权限 fixture，不以部分结果记 PASS |
+
+以上 live 结果只用于发现问题和决定发布面；当前实现修复完成并形成新的 clean commit 后，9 个 public 叶子必须从零完整重跑，任何 discovery PASS 都不能直接继承。
 
 ## 7. 安全与脱敏声明
 

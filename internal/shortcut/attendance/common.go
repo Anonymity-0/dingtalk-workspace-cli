@@ -26,20 +26,10 @@ func attendanceIntegerObjectResult(description, identity string) *contract.Resul
 	}
 }
 
-func attendanceNestedIntegerObjectResult(description, container, identity string) *contract.ResultSpec {
-	return &contract.ResultSpec{
-		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-		DataSchema: json.RawMessage(fmt.Sprintf(
-			`{"type":"object","description":%q,"properties":{"value":{"type":"object","description":"严格校验后的考勤业务结果","properties":{%q:{"type":"object","description":"承载详情稳定身份的业务对象","properties":{%q:{"type":"integer","minimum":1,"description":"与请求精确绑定的稳定业务 ID"}},"required":[%q],"additionalProperties":true}},"required":[%q],"additionalProperties":true}},"required":["value"],"additionalProperties":false}`,
-			description, container, identity, identity, container,
-		)),
-	}
-}
-
-func attendanceSelfSettingResult() *contract.ResultSpec {
+func attendanceApproveTemplateResult() *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-		DataSchema: json.RawMessage(`{"type":"object","description":"严格绑定用户与设置场景的个人考勤设置","properties":{"value":{"type":"object","description":"个人考勤设置对象","properties":{"userId":{"type":"string","minLength":1,"description":"与请求精确绑定的用户 ID"},"checkRemindSetting":{"type":"object","description":"打卡提醒场景设置","additionalProperties":true},"fastCheckLateNeedConfirm":{"type":"boolean","description":"极速打卡场景设置"},"checkResultMsg":{"type":"integer","description":"打卡结果通知场景设置"},"lackRemindUser":{"type":"integer","description":"缺卡提醒场景设置"},"personDailyReportSwitch":{"type":"integer","description":"个人考勤统计通知场景设置"},"bossMonthReportType":{"type":"integer","description":"团队考勤统计通知场景设置"}},"required":["userId"],"anyOf":[{"required":["checkRemindSetting"]},{"required":["fastCheckLateNeedConfirm"]},{"required":["checkResultMsg"]},{"required":["lackRemindUser"]},{"required":["personDailyReportSwitch"]},{"required":["bossMonthReportType"]}],"additionalProperties":true}},"required":["value"],"additionalProperties":false}`),
+		DataSchema: json.RawMessage(`{"type":"object","description":"严格校验且绑定请求类型的考勤审批模板","properties":{"count":{"type":"integer","minimum":0,"description":"当前响应中的有效审批模板数量"},"templates":{"type":"array","description":"可发起的考勤审批模板","items":{"type":"object","description":"具备稳定流程身份与提交入口的考勤审批模板","properties":{"processCode":{"type":"string","minLength":1,"description":"模板的稳定唯一流程编码"},"approveType":{"type":"string","enum":["REPAIR_CHECK","LEAVE","OVERTIME","TRAVEL","OUT"],"description":"与请求精确绑定的审批类型"},"submitUrl":{"type":"string","minLength":1,"description":"非空审批提交入口"},"formName":{"type":"string","description":"审批模板展示名称"}},"required":["processCode","approveType","submitUrl"],"additionalProperties":true}}},"required":["count","templates"],"additionalProperties":false}`),
 	}
 }
 
@@ -91,7 +81,6 @@ func hardenPublicAttendanceContracts() {
 		{&CheckResult, "records", "严格校验的员工打卡结果", "id", "integer", "offset"},
 		{&CheckRecord, "records", "严格校验的员工打卡流水", "id", "integer", ""},
 		{&ListApprove, "approvals", "严格校验的考勤审批记录", "id", "integer", ""},
-		{&GetApproveTemplate, "templates", "严格校验的考勤审批模板", "approveType", "string", ""},
 		{&GetSchedule, "schedules", "严格校验的员工排班记录", "id", "integer", ""},
 		{&SearchClass, "classes", "严格校验的班次搜索结果", "classId", "integer", "page"},
 		{&SearchAdjustmentRule, "rules", "严格校验的补卡规则搜索结果", "ruleId", "integer", "page"},
@@ -107,21 +96,16 @@ func hardenPublicAttendanceContracts() {
 	CheckResult.Contract.Result.SensitivePaths = []string{"records.corpId", "records.record", "records.userId"}
 	CheckRecord.Contract.Result.SensitivePaths = []string{"records.baseAddress", "records.baseLatitude", "records.baseLongitude", "records.corpId", "records.deviceId", "records.features", "records.userAddress", "records.userId", "records.userLatitude", "records.userLongitude"}
 	ListApprove.Contract.Result.SensitivePaths = []string{"approvals.corpId", "approvals.originId", "approvals.subType", "approvals.tagName", "approvals.userId"}
+	GetApproveTemplate.OutputRollout = output.RolloutUnifiedActive
+	GetApproveTemplate.Contract.Result = attendanceApproveTemplateResult()
 	GetApproveTemplate.Contract.Result.SensitivePaths = []string{"templates.formName", "templates.processCode", "templates.submitUrl"}
 	GetSchedule.Contract.Result.SensitivePaths = []string{"schedules.className", "schedules.corpId", "schedules.userId"}
 	SearchClass.Contract.Result.SensitivePaths = []string{"classes.name", "classes.ownerName"}
 	SearchAdjustmentRule.Contract.Result.SensitivePaths = []string{"rules.name"}
 	SearchOvertimeRule.Contract.Result.SensitivePaths = []string{"rules.name"}
-	GetClass.OutputRollout = output.RolloutUnifiedActive
-	GetClass.Contract.Result = attendanceNestedIntegerObjectResult("严格校验的班次详情", "shiftVO", "id")
-	GetClass.Contract.Result.SensitivePaths = []string{"value.shiftVO.name", "value.shiftVO.owner", "value.shiftVO.ownerName", "value.shiftVO.sections"}
 	GetOvertimeRule.OutputRollout = output.RolloutUnifiedActive
 	GetOvertimeRule.Contract.Result = attendanceIntegerObjectResult("严格校验的加班规则详情", "id")
 	GetOvertimeRule.Contract.Result.SensitivePaths = []string{"value.content", "value.groupIdAndNames", "value.name", "value.owner", "value.ownerList", "value.scopes"}
-	GetSelfSetting.OutputRollout = output.RolloutUnifiedActive
-	GetSelfSetting.Contract.Result = attendanceSelfSettingResult()
-	GetSelfSetting.Contract.Result.SensitivePaths = []string{"value.bossMonthReportType", "value.checkRemindSetting", "value.checkResultMsg", "value.fastCheckLateNeedConfirm", "value.lackRemindUser", "value.personDailyReportSwitch", "value.userId"}
-
 	for _, item := range []struct {
 		declaration *shortcut.Shortcut
 		reason      string
@@ -130,6 +114,8 @@ func hardenPublicAttendanceContracts() {
 		{&ListLeaveTypes, "当前安全身份只有非空假期类型列表，且命令没有筛选参数；缺少合法空结果专用租户，无法完成 empty/nonempty 双态发布证明。"},
 		{&GetLeaveRecords, "使用真实用户和已发现 leaveCode 只能得到合法空集合；缺少已知非空变更流水 fixture，无法排除空结果假阳性。"},
 		{&GetCheckinRecord, "当前安全身份只有合法空签到结果；缺少已知非空签到 fixture，无法排除空结果假阳性。"},
+		{&GetClass, "下游 get_class_detail 对搜索得到的真实 classId 返回非空详情，但 shiftVO 不回显 id/classId，Shortcut 无法诚实地把详情精确绑定到请求 ID；需要下游补充稳定 ID 回显。"},
+		{&GetSelfSetting, "query_self_setting 的 bossAttendStatNotify 场景在当前安全身份下返回 NO_PERMISSION，且缺少 capability discovery、逐场景权限合同与安全权限 fixture，无法完成全部公开场景的真实验证。"},
 	} {
 		markAttendanceUnavailable(item.declaration, item.reason)
 	}
@@ -260,6 +246,37 @@ func attendanceValidateExpectedStrings(items []map[string]any, operation, field,
 			return responsecheck.Error(operation, "duplicate_item_identity", fmt.Sprintf("第 %d 项 %s 重复", index, field))
 		}
 		seen[value] = struct{}{}
+	}
+	return nil
+}
+
+func attendanceValidateApproveTemplates(items []map[string]any, operation, expectedType string) error {
+	expectedType = strings.TrimSpace(expectedType)
+	seenProcessCodes := make(map[string]struct{}, len(items))
+	for index, item := range items {
+		processCodeValue, present := item["processCode"]
+		if !present {
+			return responsecheck.Error(operation, "missing_item_identity", fmt.Sprintf("第 %d 项缺少稳定 processCode", index))
+		}
+		processCode, ok := processCodeValue.(string)
+		processCode = strings.TrimSpace(processCode)
+		if !ok || processCode == "" {
+			return responsecheck.Error(operation, "invalid_item_identity", fmt.Sprintf("第 %d 项 processCode 必须是非空字符串", index))
+		}
+		item["processCode"] = processCode
+		if _, duplicate := seenProcessCodes[processCode]; duplicate {
+			return responsecheck.Error(operation, "duplicate_item_identity", fmt.Sprintf("第 %d 项 processCode 重复", index))
+		}
+		seenProcessCodes[processCode] = struct{}{}
+
+		approveType, ok := item["approveType"].(string)
+		if !ok || approveType != expectedType {
+			return responsecheck.Error(operation, "request_identity_mismatch", fmt.Sprintf("第 %d 项 approveType 与请求不一致", index))
+		}
+		submitURL, ok := item["submitUrl"].(string)
+		if !ok || strings.TrimSpace(submitURL) == "" {
+			return responsecheck.Error(operation, "malformed_item", fmt.Sprintf("第 %d 项缺少非空 submitUrl", index))
+		}
 	}
 	return nil
 }

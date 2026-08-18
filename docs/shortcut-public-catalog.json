@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-18T19:08:40.354559",
-  "count": 425,
+  "generated_at": "2026-08-18T20:52:37.246788",
+  "count": 423,
   "results": [
     {
       "suite": "semantic",
@@ -959,17 +959,7 @@
       "risk": "read",
       "status": "reviewed_available",
       "disposition": "semantic_adapter",
-      "semantic_delta": "把补卡、请假、加班、外出、出差映射为审批模板类型，并严格验证模板数组。",
-      "availability": "available"
-    },
-    {
-      "suite": "semantic",
-      "service": "attendance",
-      "command": "+get-class",
-      "risk": "read",
-      "status": "reviewed_available",
-      "disposition": "schema_leaf",
-      "semantic_delta": "使用搜索得到的班次 ID 读取详情，要求显式成功、非空 result，且 shiftVO.id 与请求 classId 精确一致。",
+      "semantic_delta": "把补卡、请假、加班、外出、出差映射为审批模板类型；每项以非空唯一 processCode 作为稳定身份，approveType 精确绑定请求且 submitUrl 必须非空，允许同类型返回多个模板。",
       "availability": "available"
     },
     {
@@ -990,16 +980,6 @@
       "status": "reviewed_available",
       "disposition": "semantic_adapter",
       "semantic_delta": "规范日期范围并严格验证排班数组；每条要求唯一正整数 ID 且用户/工作日绑定请求，缺失或畸形响应失败。",
-      "availability": "available"
-    },
-    {
-      "suite": "semantic",
-      "service": "attendance",
-      "command": "+get-self-setting",
-      "risk": "read",
-      "status": "reviewed_available",
-      "disposition": "schema_leaf",
-      "semantic_delta": "按归一化 userId 和场景读取个人考勤设置；响应用户必须精确匹配，场景字段必须非空并符合已观测 object/boolean/integer 类型。",
       "availability": "available"
     },
     {
