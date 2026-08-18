@@ -39,8 +39,14 @@ var (
 // moveSkillPathRecoverably moves one managed Skill path without weakening the
 // backup contract when source and destination are on different filesystems.
 // The cross-device path publishes a fully copied and verified sibling staging
-// path before removing the source. Any failure before source removal leaves the
-// source intact; a removal failure deliberately leaves both verified copies.
+// path before removing the source. Any failure before the destination is
+// published leaves the source intact. After the staging path has been renamed
+// onto the destination, a later failure (mode restore, copy verification, or
+// staging cleanup) retracts that identity-proven destination so the caller is
+// not left with an unrecorded leftover that would block retries; a retract
+// failure returns an uncertain-state error naming both retained locations. A
+// source-removal failure after a verified publication deliberately leaves both
+// copies.
 func moveSkillPathRecoverably(src, dst string) (err error) {
 	if _, statErr := skillPathLstat(dst); statErr == nil {
 		return fmt.Errorf("目标已存在: %s", dst)
@@ -115,22 +121,50 @@ func moveSkillPathRecoverably(src, dst string) (err error) {
 	if err := skillPathRenameNoReplace(stage, dst); err != nil {
 		return fmt.Errorf("发布跨设备 Skill 备份失败 %s: %w", dst, err)
 	}
+	// The destination is now occupied by this transaction, but the caller has
+	// not recorded it as a backup. Capture a verifiable publication identity
+	// immediately so any later failure can retract dest instead of leaving an
+	// untracked leftover that would make retries fail with "目标已存在".
+	publication, recErr := recordSkillPathPublication(dst)
+	if recErr != nil {
+		return fmt.Errorf("Skill 移动状态不确定：跨设备发布后无法登记目标 %s: %w；源 %s 与目标 %s 均保留", dst, recErr, src, dst)
+	}
 	if stageInfo.IsDir() {
 		if err := skillPathChmod(dst, stageInfo.Mode().Perm()); err != nil {
-			return fmt.Errorf("恢复已发布 Skill 目录权限失败 %s: %w", dst, err)
+			return retractCrossDevicePublication(src, dst, publication, fmt.Errorf("恢复已发布 Skill 目录权限失败 %s: %w", dst, err))
 		}
+		// chmod updates mode (and ctime on some filesystems). Fingerprint and
+		// incarnation include both, so refresh the record before later steps
+		// can fail; a stale record would refuse to retract dest.
+		refreshed, recErr := recordSkillPathPublication(dst)
+		if recErr != nil {
+			return fmt.Errorf("Skill 移动状态不确定：跨设备发布后无法登记已恢复权限的目标 %s: %w；源 %s 与目标 %s 均保留", dst, recErr, src, dst)
+		}
+		publication = refreshed
 	}
 	if err := skillPathVerify(src, dst); err != nil {
-		return fmt.Errorf("校验已发布 Skill 备份失败 %s: %w", dst, err)
+		return retractCrossDevicePublication(src, dst, publication, fmt.Errorf("校验已发布 Skill 备份失败 %s: %w", dst, err))
 	}
 	if err := skillPathRemoveAll(stageRoot); err != nil {
-		return fmt.Errorf("清理已发布 Skill staging 失败 %s: %w", stageRoot, err)
+		return retractCrossDevicePublication(src, dst, publication, fmt.Errorf("清理已发布 Skill staging 失败 %s: %w", stageRoot, err))
 	}
 	stageCleaned = true
 	if err := removePublishedSkillSource(src); err != nil {
 		return fmt.Errorf("Skill 目标已发布但源路径删除失败（源 %s 与目标 %s 均保留）: %w", src, dst, err)
 	}
 	return nil
+}
+
+// retractCrossDevicePublication withdraws an identity-proven destination
+// published by the cross-device copy path. The source is still intact and the
+// caller has not recorded this destination as a backup. If retract fails, the
+// error names both retained locations so a later retry is not mistaken for a
+// clean original layout.
+func retractCrossDevicePublication(src, dst string, publication SkillPathPublication, cause error) error {
+	if retractErr := rollbackSkillPathPublication(publication); retractErr != nil {
+		return fmt.Errorf("Skill 移动状态不确定：%v；撤回目标 %s 失败: %v；源 %s 与目标 %s 均保留", cause, dst, retractErr, src, dst)
+	}
+	return fmt.Errorf("Skill 移动失败，目标已撤回，原路径保留 %s: %w", src, cause)
 }
 
 // retractSkillDirChildMove undoes the no-replace fallback child move when the

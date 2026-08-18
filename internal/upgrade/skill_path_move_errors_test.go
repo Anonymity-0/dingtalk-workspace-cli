@@ -87,13 +87,24 @@ func TestCrossPlatformCoverageSkillPathMoveSystemErrors(t *testing.T) {
 				}
 				return original(path, mode)
 			})
-			if err := moveSkillPathRecoverably(src, dst); err == nil || !strings.Contains(err.Error(), tc.want) {
+			err := moveSkillPathRecoverably(src, dst)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error = %v", err)
+			}
+			if tc.name != "restore published mode" {
+				return
+			}
+			if !strings.Contains(err.Error(), "目标已撤回") {
+				t.Fatalf("post-publish chmod failure must retract dest, got %v", err)
+			}
+			assertSkillSourcePreserved(t, src)
+			if _, statErr := os.Lstat(dst); !os.IsNotExist(statErr) {
+				t.Fatalf("unrecorded destination must be retracted: %v", statErr)
 			}
 		})
 	}
 
-	t.Run("published staging cleanup", func(t *testing.T) {
+	t.Run("published staging cleanup retracts dest", func(t *testing.T) {
 		src, dst := makeSkillMoveFixture(t)
 		forceCrossDeviceRename(t, src, dst)
 		original := skillPathRemoveAll
@@ -103,8 +114,13 @@ func TestCrossPlatformCoverageSkillPathMoveSystemErrors(t *testing.T) {
 			}
 			return original(path)
 		})
-		if err := moveSkillPathRecoverably(src, dst); err == nil || !strings.Contains(err.Error(), "清理已发布") {
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "清理已发布") || !strings.Contains(err.Error(), "目标已撤回") {
 			t.Fatalf("error = %v", err)
+		}
+		assertSkillSourcePreserved(t, src)
+		if _, statErr := os.Lstat(dst); !os.IsNotExist(statErr) {
+			t.Fatalf("unrecorded destination must be retracted: %v", statErr)
 		}
 	})
 

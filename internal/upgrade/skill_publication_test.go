@@ -287,6 +287,28 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		}
 	})
 
+	t.Run("record published identity", func(t *testing.T) {
+		if _, err := recordSkillPathPublication(filepath.Join(t.TempDir(), "missing")); err == nil || !strings.Contains(err.Error(), "读取已发布 Skill 身份失败") {
+			t.Fatalf("missing record identity error = %v", err)
+		}
+	})
+
+	t.Run("record published fingerprint", func(t *testing.T) {
+		root := t.TempDir()
+		path := filepath.Join(root, "published")
+		seedUpgradeSkill(t, path, "value", false)
+		originalReadDir := skillPathReadDir
+		testseam.Swap(t, &skillPathReadDir, func(dir string) ([]os.DirEntry, error) {
+			if dir == path {
+				return nil, failure
+			}
+			return originalReadDir(dir)
+		})
+		if _, err := recordSkillPathPublication(path); !errors.Is(err, failure) {
+			t.Fatalf("record fingerprint error = %v", err)
+		}
+	})
+
 	t.Run("rollback temp", func(t *testing.T) {
 		testseam.Swap(t, &skillPathMkdirTemp, func(string, string) (string, error) { return "", failure })
 		if err := RollbackSkillPathPublications([]SkillPathPublication{{Destination: "dest"}}); !errors.Is(err, failure) {

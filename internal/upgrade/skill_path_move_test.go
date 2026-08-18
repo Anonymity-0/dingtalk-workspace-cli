@@ -198,7 +198,7 @@ func TestCrossPlatformCoverageSkillPathCrossDeviceFailures(t *testing.T) {
 		assertNoCrossDeviceStage(t, dst)
 	})
 
-	t.Run("published verification failure preserves both", func(t *testing.T) {
+	t.Run("published verification failure retracts dest", func(t *testing.T) {
 		src, dst := makeSkillMoveFixture(t)
 		forceCrossDeviceRename(t, src, dst)
 		calls := 0
@@ -209,14 +209,93 @@ func TestCrossPlatformCoverageSkillPathCrossDeviceFailures(t *testing.T) {
 			}
 			return nil
 		})
-		if err := moveSkillPathRecoverably(src, dst); err == nil || !strings.Contains(err.Error(), "published verify failed") {
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "published verify failed") || !strings.Contains(err.Error(), "目标已撤回") {
 			t.Fatalf("error = %v", err)
 		}
 		assertSkillSourcePreserved(t, src)
-		if _, err := os.Lstat(dst); err != nil {
-			t.Fatalf("verified backup candidate must remain: %v", err)
+		if _, statErr := os.Lstat(dst); !os.IsNotExist(statErr) {
+			t.Fatalf("unrecorded destination must be retracted: %v", statErr)
 		}
 		assertNoCrossDeviceStage(t, dst)
+	})
+
+	t.Run("publication record failure after publish reports uncertain state", func(t *testing.T) {
+		src, dst := makeSkillMoveFixture(t)
+		forceCrossDeviceRename(t, src, dst)
+		originalLstat := skillPathLstat
+		testseam.Swap(t, &skillPathLstat, func(path string) (os.FileInfo, error) {
+			info, err := originalLstat(path)
+			if path == dst && err == nil {
+				return nil, os.ErrPermission
+			}
+			return info, err
+		})
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "状态不确定") || !strings.Contains(err.Error(), dst) {
+			t.Fatalf("unrecordable destination must be reported as uncertain, got %v", err)
+		}
+		assertSkillSourcePreserved(t, src)
+		if _, statErr := os.Lstat(dst); statErr != nil {
+			t.Fatalf("unrecordable destination must remain at the reported location: %v", statErr)
+		}
+	})
+
+	t.Run("publication record refresh after mode restore reports uncertain state", func(t *testing.T) {
+		src, dst := makeSkillMoveFixture(t)
+		forceCrossDeviceRename(t, src, dst)
+		originalChmod := skillPathChmod
+		modeRestored := false
+		testseam.Swap(t, &skillPathChmod, func(path string, mode os.FileMode) error {
+			err := originalChmod(path, mode)
+			if path == dst && err == nil {
+				modeRestored = true
+			}
+			return err
+		})
+		originalLstat := skillPathLstat
+		testseam.Swap(t, &skillPathLstat, func(path string) (os.FileInfo, error) {
+			if path == dst && modeRestored {
+				return nil, os.ErrPermission
+			}
+			return originalLstat(path)
+		})
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "状态不确定") || !strings.Contains(err.Error(), dst) {
+			t.Fatalf("unrecordable restored destination must be reported as uncertain, got %v", err)
+		}
+		assertSkillSourcePreserved(t, src)
+		if _, statErr := os.Lstat(dst); statErr != nil {
+			t.Fatalf("unrecordable destination must remain at the reported location: %v", statErr)
+		}
+	})
+
+	t.Run("published verification retract failure reports uncertain state", func(t *testing.T) {
+		src, dst := makeSkillMoveFixture(t)
+		forceCrossDeviceRename(t, src, dst)
+		calls := 0
+		testseam.Swap(t, &skillPathVerify, func(string, string) error {
+			calls++
+			if calls == 2 {
+				return errors.New("published verify failed")
+			}
+			return nil
+		})
+		originalMkdirTemp := skillPathMkdirTemp
+		testseam.Swap(t, &skillPathMkdirTemp, func(dir, pattern string) (string, error) {
+			if strings.Contains(pattern, ".rollback-") {
+				return "", os.ErrPermission
+			}
+			return originalMkdirTemp(dir, pattern)
+		})
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "状态不确定") || !strings.Contains(err.Error(), dst) {
+			t.Fatalf("failed retract must report the retained locations, got %v", err)
+		}
+		assertSkillSourcePreserved(t, src)
+		if _, statErr := os.Lstat(dst); statErr != nil {
+			t.Fatalf("destination must remain when retract fails: %v", statErr)
+		}
 	})
 
 	t.Run("source removal failure preserves both", func(t *testing.T) {

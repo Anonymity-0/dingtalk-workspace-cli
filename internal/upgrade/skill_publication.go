@@ -60,13 +60,32 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 	} else if stagedErr != nil {
 		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: 无法确认 staging 状态", destination)
 	}
+	return recordSkillPathPublicationFrom(destination, publishedIdentity, fingerprint, publishedFileID), nil
+}
+
+// recordSkillPathPublication captures the live identity of a path that this
+// transaction just published so a later retract can prove the object is still
+// the one it created. Callers must not invent records for paths they do not own.
+func recordSkillPathPublication(path string) (SkillPathPublication, error) {
+	identity, err := skillPathLstat(path)
+	if err != nil {
+		return SkillPathPublication{}, fmt.Errorf("读取已发布 Skill 身份失败 %s: %w", path, err)
+	}
+	fingerprint, err := fingerprintSkillPath(path)
+	if err != nil {
+		return SkillPathPublication{}, fmt.Errorf("计算已发布 Skill 身份失败 %s: %w", path, err)
+	}
+	return recordSkillPathPublicationFrom(path, identity, fingerprint, skillPathFileIdentity(path)), nil
+}
+
+func recordSkillPathPublicationFrom(path string, identity os.FileInfo, fingerprint [sha256.Size]byte, fileID string) SkillPathPublication {
 	return SkillPathPublication{
-		Destination: destination,
+		Destination: path,
 		fingerprint: fingerprint,
-		identity:    publishedIdentity,
-		incarnation: skillPathFileIncarnation(publishedIdentity),
-		fileID:      publishedFileID,
-	}, nil
+		identity:    identity,
+		incarnation: skillPathFileIncarnation(identity),
+		fileID:      fileID,
+	}
 }
 
 // RollbackSkillPathPublications removes only objects that can still be proven
