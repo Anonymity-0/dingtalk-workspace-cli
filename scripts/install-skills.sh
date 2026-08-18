@@ -204,6 +204,20 @@ sha256_stdin() {
   fi
 }
 
+# sha256_file <path>: content digest used by skill_dir_content_digest. Never
+# emits on failure so the identity fails instead of parsing a wrong token.
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" 2>/dev/null | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+  elif command -v openssl >/dev/null 2>&1; then
+    openssl dgst -sha256 -r "$1" 2>/dev/null | awk '{print $1}'
+  else
+    return 1
+  fi
+}
+
 verify_release_asset_checksum() {
   _checksum_asset="$1"
   _checksum_path="$2"
@@ -450,10 +464,12 @@ skill_link_inode() {
   printf '%s\n' "$_sli_entry" | awk '{print $1}'
 }
 
-# Directory publication identity is inode plus a stable child-name list.
-# Inode reuse on Linux overlayfs would otherwise make a concurrent directory
-# look owned. The token has no colon so dest:identity manifest parsing stays
-# dest="${entry%:*}" / identity="${entry##*:}".
+# Directory publication identity is inode, a stable child-name list, and a
+# recursive content digest. Inode reuse on Linux overlayfs would otherwise
+# make a concurrent directory look owned, and an in-place content edit after
+# publish (same inode, same names) would otherwise be retracted as this
+# transaction's object. The token has no colon so dest:identity manifest
+# parsing stays dest="${entry%:*}" / identity="${entry##*:}".
 skill_dir_identity() {
   _sdi_inode="$(skill_link_inode "$1")" || return 1
   if [ -L "$1" ] || [ ! -d "$1" ]; then
@@ -461,7 +477,34 @@ skill_dir_identity() {
     return 0
   fi
   _sdi_names="$(LC_ALL=C ls -A "$1" 2>/dev/null | tr '\n' ',')"
-  printf '%s,%s\n' "$_sdi_inode" "$_sdi_names"
+  _sdi_digest="$(skill_dir_content_digest "$1")" || return 1
+  printf '%s,%s,%s\n' "$_sdi_inode" "$_sdi_names" "$_sdi_digest"
+}
+
+# Recursive content digest over a published tree, mirroring the Go
+# fingerprint: sorted relative paths emit type+permission bits plus either a
+# content sha256 or the symlink target, and the whole line stream feeds
+# sha256_stdin. Digest failures surface as a non-zero identity instead of a
+# wrong-but-parseable token.
+skill_dir_content_digest() {
+  (
+    cd "$1" 2>/dev/null || exit 1
+    find . -print 2>/dev/null |
+      LC_ALL=C sort |
+      while IFS= read -r _sdcd_path; do
+        _sdcd_mode="$(ls -ld "$_sdcd_path" 2>/dev/null | cut -c1-10)"
+        if [ -L "$_sdcd_path" ]; then
+          printf '%s|%s|link|%s\n' "$_sdcd_path" "$_sdcd_mode" "$(readlink "$_sdcd_path" 2>/dev/null)"
+        elif [ -d "$_sdcd_path" ]; then
+          printf '%s|%s|dir\n' "$_sdcd_path" "$_sdcd_mode"
+        elif [ -f "$_sdcd_path" ]; then
+          _sdcd_hash="$(sha256_file "$_sdcd_path")" || exit 1
+          printf '%s|%s|file|%s\n' "$_sdcd_path" "$_sdcd_mode" "$_sdcd_hash"
+        else
+          printf '%s|%s|other\n' "$_sdcd_path" "$_sdcd_mode"
+        fi
+      done
+  ) | sha256_stdin
 }
 
 skill_link_matches() {
@@ -505,8 +548,9 @@ cleanup_nested_staged_link() {
 # staging directory is created under the same umask as the claim, so their
 # modes match by construction). A failed child move relocates the children
 # back and removes only the claim. On success the destination's inode is
-# recorded as <dest>:<inode,child-names> so rollback only ever deletes this
-# transaction's object even when the filesystem recycles the claim inode.
+# recorded as <dest>:<inode,child-names,content-digest> so rollback only ever
+# deletes this transaction's object even when the filesystem recycles the
+# claim inode or the published files are edited in place afterwards.
 publish_skill_dir_no_replace() {
   _psd_stage="$1"
   _psd_dest="$2"

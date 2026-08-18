@@ -2553,6 +2553,94 @@ fi
 	}
 }
 
+// TestInstallerShellRollbackPreservesInPlaceEditedSkill pins the P1 contract:
+// a published Skill directory whose file contents were edited in place (same
+// directory inode, same child names) must not be deleted by the rollback of a
+// later failed publication. The recorded identity carries a recursive content
+// digest, so the edit makes the dest provably not-this-transaction's object.
+func TestInstallerShellRollbackPreservesInPlaceEditedSkill(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			base := filepath.Join(home, ".zcode", "skills")
+			first := filepath.Join(base, "dingtalk-first")
+			second := filepath.Join(base, "dingtalk-second")
+			mustWriteFile(t, filepath.Join(first, "SKILL.md"), []byte("old first\n"), 0o644)
+			mustWriteFile(t, filepath.Join(second, "SKILL.md"), []byte("old second\n"), 0o644)
+			src := filepath.Join(t.TempDir(), "multi")
+			mustWriteFile(t, filepath.Join(src, "dingtalk-first", "SKILL.md"), []byte("new first\n"), 0o644)
+			mustWriteFile(t, filepath.Join(src, "dingtalk-first", "references", "guide.md"), []byte("guide\n"), 0o644)
+			mustWriteFile(t, filepath.Join(src, "dingtalk-second", "SKILL.md"), []byte("new second\n"), 0o644)
+
+			// Inside the second publication's child move — after the first
+			// skill has been published and its identity recorded — edit a file
+			// inside the first destination in place (append keeps the inode,
+			// directory inode and child names are untouched), then fail the
+			// transaction. Rollback must detect the content drift through the
+			// recorded digest and leave the user's edit alone.
+			harness := `. "$DWS_TEST_LIBRARY"
+mv() {
+  case "$1" in
+    */.dws-multi-set.*)
+      if [ "$2" = "$DWS_TEST_SECOND/" ]; then
+        printf 'user-edit\n' >> "$DWS_TEST_FIRST/references/guide.md"
+        return 1
+      fi
+      ;;
+  esac
+  command mv "$@"
+}
+if _install_multi_to_base "$DWS_TEST_SRC" "$DWS_TEST_BASE" "$HOME" ".zcode/skills"; then
+  exit 2
+fi
+`
+			cmd := exec.Command("sh", "-c", harness)
+			cmd.Env = append(os.Environ(),
+				"HOME="+home,
+				"DWS_TEST_LIBRARY="+library,
+				"DWS_TEST_BASE="+base,
+				"DWS_TEST_SRC="+src,
+				"DWS_TEST_FIRST="+first,
+				"DWS_TEST_SECOND="+second,
+			)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s in-place edit harness failed: %v\n%s", scriptName, err, output)
+			}
+			if !strings.Contains(string(output), "跳过回滚已被并发修改的 Skill 路径: "+first) {
+				t.Fatalf("%s did not skip in-place-edited rollback:\n%s", scriptName, output)
+			}
+			got, err := os.ReadFile(filepath.Join(first, "references", "guide.md"))
+			if err != nil || string(got) != "guide\nuser-edit\n" {
+				t.Fatalf("%s in-place user edit was lost: %q, %v", scriptName, string(got), err)
+			}
+			if restored, err := os.ReadFile(filepath.Join(second, "SKILL.md")); err != nil || string(restored) != "old second\n" {
+				t.Fatalf("%s second skill was not restored from backup: %q, %v", scriptName, string(restored), err)
+			}
+			if matches, err := filepath.Glob(filepath.Join(base, ".dws-multi-set.*")); err != nil || len(matches) != 0 {
+				t.Fatalf("%s staging leftovers = %v, err=%v", scriptName, matches, err)
+			}
+		})
+	}
+}
+
 func TestInstallerShellUsesUpstreamXDGAndCustomAgentRoots(t *testing.T) {
 	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
 		t.Run(scriptName, func(t *testing.T) {
