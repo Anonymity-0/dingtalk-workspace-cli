@@ -6,11 +6,15 @@ import importlib.util
 import io
 import json
 import re
+import sys
 import tempfile
 import unittest
 from datetime import timedelta
 from pathlib import Path
 from unittest import mock
+
+
+sys.dont_write_bytecode = True
 
 
 ROOT = Path(__file__).resolve().parents[2]
