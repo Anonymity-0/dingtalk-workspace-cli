@@ -1,6 +1,6 @@
 ---
 name: dingtalk-doc
-description: 钉钉在线文字文档（adoc）本体及其内容的操作：查找、创建、读取、文档信息、编辑、块、评论、附件与媒体、白板卡片、导入、导出(docx/markdown/pdf)、版本、模板、权限、分享及Markdown/JSONML写入。不包括：文档空间与钉盘的文件管理（归 dingtalk-drive，doc 同名原子命令已弃用）、知识库空间与节点管理（归 dingtalk-wiki）、原生 .md 文件读写（归 dingtalk-misc）、电子表格 axls（归 dingtalk-misc）、AI 表格 able（归 dingtalk-aitable）。命令前缀：dws doc。
+description: 钉钉在线文字文档（adoc）的查找、创建、读取、编辑、块、评论、媒体、导入导出、版本、模板、权限与分享；本地文件转在线文档、“传上去后在线改”或协作编辑归 dingtalk-doc。保留原文件及文件夹管理归 dingtalk-drive，知识库节点归 dingtalk-wiki，原生 .md/axls 归 dingtalk-misc，able 归 dingtalk-aitable。命令前缀：dws doc。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -40,6 +40,7 @@ metadata:
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
 | 按标题或主题定位文档 | `dws doc +search --query <关键词>` | 检查候选类型与分页；需要正文时再用真实 `nodeId` 执行 `+fetch` |
+| 最近访问文档 | `dws doc +search`（省略 `--query`） | `--limit` 为每页量，`--max-items` 为总上限；完整集合才加 `--page-all` 并检查 `complete` |
 | 已知 ID/URL 读取正文或局部内容 | `dws doc +fetch --node <ID或URL>` | 具体术语直用 `keyword`；章节先 `outline` 再 `section`；只有整篇任务才用默认 `full` |
 | 聚合查看信息、权限、版本、媒体或评论 | `dws doc +inspect --node <ID或URL>` | 仅打开任务所需的 `--include-*`，不要默认全取 |
 | 新建在线文字文档并写入内容 | `dws doc +create --name <标题> --content @<相对文件>` | 先在本地完成正文；Runtime 负责 Markdown 分片和回读，禁止 Agent 自行拆成多次远程写入 |
@@ -47,7 +48,7 @@ metadata:
 | 重要内容更新且需要恢复点 | `dws doc +checkpoint-update` | 自动保存版本、更新并回读；检查 `steps` 和 `compensation` |
 | 版本操作 | `dws doc +version-save --node` / `dws doc +version-list --node` / `dws doc +version-revert --node --version` | 快照/列表/回滚 |
 | 导出为 docx/markdown/pdf | `dws doc +export --export-format <格式>` | 格式必须显式指定；普通文件下载切 `dingtalk-drive` |
-| 导入本地文件为在线对象 | `dws doc +import --file <相对路径>` | 用户要在线编辑/转换时使用；只存原文件或明确不转换时切 `dingtalk-drive` |
+| 本地文件转在线文档 | `dws doc +import --file <相对路径>` | “传上去/放进文件夹”不改变路由；在线改、协作编辑或转换用 import，仅保留原文件切 `dingtalk-drive` |
 | 封面/背景 | `+resource-update/+resource-delete`；`+background-update/+background-delete` | 写后 `+inspect --include-style`；禁查 Catalog |
 | 浏览模板 | `dws doc +template-list [--source MY\|PUBLIC]` | “我的/我这边”只查 MY；明确公开才查 PUBLIC；“有哪些/全部”翻页至完整 |
 | 搜索模板 | `dws doc +template-search --query <关键词> [--source MY\|PUBLIC]` | 继承来源；零命中停止，禁止拿无关模板替代；多候选消歧 |
