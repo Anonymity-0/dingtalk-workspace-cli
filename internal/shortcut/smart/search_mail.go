@@ -14,6 +14,8 @@
 package smart
 
 import (
+	"fmt"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -82,6 +84,7 @@ var SearchMail = shortcut.Shortcut{
 		{Name: "query", Type: shortcut.FlagString, Desc: "KQL 搜索表达式（如 subject:周报、from:alice、folderId:2）", Required: true},
 		{Name: "email", Type: shortcut.FlagString, Desc: "要搜索的邮箱地址（可选，默认取你绑定的第一个邮箱）", Required: false},
 		{Name: "size", Type: shortcut.FlagString, Desc: "返回条数上限（可选，默认 20）", Required: false},
+		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自上一页 nextCursor", Required: false},
 	},
 	Tips: []string{
 		`dws mail +search-mail --query "subject:周报"`,
@@ -109,27 +112,42 @@ var SearchMail = shortcut.Shortcut{
 		if size == "" {
 			size = "20"
 		}
-		data, err := rt.CallMCPData("mail", "search_emails", map[string]any{
+		args := map[string]any{
 			"email": email,
 			"query": rt.Str("query"),
 			"size":  size,
-		})
+		}
+		if rt.Changed("cursor") {
+			args["cursor"] = rt.Str("cursor")
+		}
+		data, err := rt.CallMCPData("mail", "search_emails", args)
 		if err != nil {
 			return err
 		}
 
 		// Step 3 — project each message to a compact record.
-		messages := searchMailMessages(data)
+		messages, err := smartMailSearchRows(data, "mail/search_emails")
+		if err != nil {
+			return err
+		}
 		out := make([]map[string]any, 0, len(messages))
 		for _, m := range messages {
+			from, err := searchMailFrom(m)
+			if err != nil {
+				return err
+			}
 			out = append(out, map[string]any{
 				"subject":   searchMailFirstString(m, "subject", "title", "topic"),
-				"from":      searchMailFrom(m),
+				"from":      from,
 				"date":      searchMailFirstAny(m, "date", "sentDate", "receivedDate", "sentTime", "internalDate", "createTime"),
 				"messageId": searchMailFirstString(m, "messageId", "id", "mailId", "emailId", "internetMessageId"),
 			})
 		}
-		return rt.Output(map[string]any{"messages": out, "email": email})
+		complete, next, err := smartMailPage(data, "mail/search_emails", "")
+		if err != nil {
+			return err
+		}
+		return rt.Output(smartMailPayload("messages", out, complete, next))
 	},
 }
 
@@ -142,109 +160,48 @@ func searchMailFirstMailbox(rt *shortcut.RuntimeContext) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if addr := searchMailPickMailbox(data); addr != "" {
-		return addr, nil
+	mailboxes, err := smartMailRows(data, "mail/list_user_mailboxes", "emailAccounts", "email")
+	if err != nil {
+		return "", err
+	}
+	if len(mailboxes) > 0 {
+		return searchMailFirstString(mailboxes[0], "email"), nil
 	}
 	return "", apperrors.NewValidation("未找到可用邮箱，请用 --email 指定要搜索的邮箱地址")
 }
 
-// searchMailPickMailbox resolves the first usable mailbox address from a
-// list_user_mailboxes response. It tolerates every observed shape: objects with
-// an email field (result.emailAccounts[].email) and bare string arrays
-// (result.emailAccounts[]), each at the top level or one level under a
-// result/data wrapper. searchMailToMaps drops plain strings, so the bare-string
-// case is scanned separately — otherwise all three smart mail shortcuts wrongly
-// report that no mailbox exists.
-func searchMailPickMailbox(data map[string]any) string {
-	containers := []string{"emailAccounts", "mailboxes", "list", "items", "data", "result", "records"}
-	for _, m := range searchMailUnwrapList(data, containers...) {
-		if addr := searchMailFirstString(m, "email", "emailAddress", "mailbox", "address", "account"); addr != "" {
-			return addr
-		}
-	}
-	scanStrings := func(m map[string]any) string {
-		for _, key := range containers {
-			if arr, ok := m[key].([]any); ok {
-				for _, it := range arr {
-					if s, ok := it.(string); ok && s != "" {
-						return s
-					}
-				}
-			}
-		}
-		return ""
-	}
-	if s := scanStrings(data); s != "" {
-		return s
-	}
-	for _, wrap := range []string{"result", "data"} {
-		if inner, ok := data[wrap].(map[string]any); ok {
-			if s := scanStrings(inner); s != "" {
-				return s
-			}
-		}
-	}
-	return ""
-}
-
-// searchMailMessages extracts the message list from a search_emails response.
-// The helper documents the list under "messages".
-func searchMailMessages(data map[string]any) []map[string]any {
-	return searchMailUnwrapList(data, "messages", "emails", "list", "items", "data", "result", "records")
-}
-
-// searchMailUnwrapList probes the given container keys at the top level, and one
-// level deep, returning the first list found as []map[string]any.
-func searchMailUnwrapList(data map[string]any, keys ...string) []map[string]any {
-	for _, key := range keys {
-		if arr, ok := data[key].([]any); ok {
-			return searchMailToMaps(arr)
-		}
-		if inner, ok := data[key].(map[string]any); ok {
-			for _, k2 := range keys {
-				if arr, ok := inner[k2].([]any); ok {
-					return searchMailToMaps(arr)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func searchMailToMaps(arr []any) []map[string]any {
-	out := make([]map[string]any, 0, len(arr))
-	for _, it := range arr {
-		if m, ok := it.(map[string]any); ok {
-			out = append(out, m)
-		}
-	}
-	return out
-}
-
 // searchMailFrom reads a message's sender, tolerating both a plain string and a
 // nested object ({name, email/address}).
-func searchMailFrom(m map[string]any) any {
-	switch v := m["from"].(type) {
+func searchMailFrom(m map[string]any) (any, error) {
+	raw, present := m["from"]
+	switch v := raw.(type) {
 	case string:
 		if v != "" {
-			return v
+			return v, nil
 		}
 	case map[string]any:
 		name := searchMailFirstString(v, "name", "displayName")
 		addr := searchMailFirstString(v, "email", "emailAddress", "address")
 		switch {
 		case name != "" && addr != "":
-			return name + " <" + addr + ">"
+			return name + " <" + addr + ">", nil
 		case addr != "":
-			return addr
+			return addr, nil
 		case name != "":
-			return name
+			return name, nil
 		}
+		return nil, smartMailError("mail/search_emails", "malformed_sender", "from 对象缺少姓名或邮箱")
+	case nil:
+		if present {
+			return nil, smartMailError("mail/search_emails", "malformed_sender", "from 不能为 null")
+		}
+	default:
+		return nil, smartMailError("mail/search_emails", "malformed_sender", fmt.Sprintf("from 字段类型错误：%T", raw))
 	}
 	if s := searchMailFirstString(m, "sender", "fromAddress", "fromName", "fromEmail"); s != "" {
-		return s
+		return s, nil
 	}
-	return ""
+	return "", nil
 }
 
 func searchMailFirstString(m map[string]any, keys ...string) string {
@@ -269,5 +226,6 @@ func searchMailFirstAny(m map[string]any, keys ...string) any {
 }
 
 func init() {
+	hardenSmartMail(&SearchMail, "messages", "严格校验的邮件搜索摘要")
 	shortcut.Register(SearchMail)
 }

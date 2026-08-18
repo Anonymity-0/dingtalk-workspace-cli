@@ -110,74 +110,18 @@ var ThreadList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		threads := threadListProject(data)
-		return rt.Output(map[string]any{"count": len(threads), "threads": threads})
+		threads, err := mailProjectCollection(data, "mail/list_mailbox_threads", "result.conversations", []string{"id"}, map[string][]string{
+			"conversationId": {"id"}, "subject": {"subject"}, "lastUpdated": {"lastModifiedDateTime"}, "isRead": {"isRead"},
+		})
+		if err != nil {
+			return err
+		}
+		complete, next, err := mailPage(data, "mail/list_mailbox_threads", "result")
+		if err != nil {
+			return err
+		}
+		return rt.Output(mailCollectionPayload("threads", threads, complete, next))
 	},
-}
-
-// threadListProject reshapes the raw list_mailbox_threads response into a clean
-// {conversationId, subject, lastUpdated, isRead} thread list —
-// clean output projection. Both the list container and per-item
-// field names are probed defensively across candidate keys, so an empty/unknown
-// shape yields an empty list rather than a crash or fabricated data.
-func threadListProject(data map[string]any) []map[string]any {
-	raw := threadListResolveList(data)
-	out := make([]map[string]any, 0, len(raw))
-	for _, item := range raw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		row := map[string]any{}
-		if v, ok := threadListFirst(m, "conversationId", "conversation_id", "id", "threadId"); ok {
-			row["conversationId"] = v
-		}
-		if v, ok := threadListFirst(m, "subject", "title", "topic"); ok {
-			row["subject"] = v
-		}
-		if v, ok := threadListFirst(m, "lastUpdated", "last_updated", "lastModifiedDateTime", "updateTime", "modifiedTime", "sentDateTime"); ok {
-			row["lastUpdated"] = v
-		}
-		if v, ok := threadListFirst(m, "isRead", "is_read", "read", "unread"); ok {
-			row["isRead"] = v
-		}
-		if len(row) > 0 {
-			out = append(out, row)
-		}
-	}
-	return out
-}
-
-// threadListResolveList locates the list payload inside the response, tolerating
-// a bare top-level array container or nesting one level deeper.
-func threadListResolveList(data map[string]any) []any {
-	for _, key := range []string{"result", "data", "list", "items", "threads", "conversations"} {
-		v, ok := data[key]
-		if !ok {
-			continue
-		}
-		if arr, ok := v.([]any); ok {
-			return arr
-		}
-		if inner, ok := v.(map[string]any); ok {
-			for _, ik := range []string{"list", "items", "threads", "conversations", "result", "data"} {
-				if arr, ok := inner[ik].([]any); ok {
-					return arr
-				}
-			}
-		}
-	}
-	return []any{}
-}
-
-// threadListFirst returns the first present candidate key's value.
-func threadListFirst(m map[string]any, keys ...string) (any, bool) {
-	for _, k := range keys {
-		if v, ok := m[k]; ok {
-			return v, true
-		}
-	}
-	return nil, false
 }
 
 // Thread 根据会话 ID 获取会话详情。
@@ -238,71 +182,14 @@ var FolderList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		folders := folderListProject(data)
-		return rt.Output(map[string]any{"count": len(folders), "folders": folders})
+		folders, err := mailProjectCollection(data, "mail/list_folders", "folders", []string{"id"}, map[string][]string{
+			"id": {"id"}, "name": {"displayName"}, "parentId": {"parentFolderId"},
+		})
+		if err != nil {
+			return err
+		}
+		return rt.Output(mailCollectionPayload("folders", folders, true, ""))
 	},
-}
-
-// folderListProject reshapes the raw list_folders response into a clean
-// {id, name, parentId} folder list — clean output projection. Both
-// the list container and per-item field names are probed defensively across
-// candidate keys, so an empty/unknown shape yields an empty list rather than a
-// crash or fabricated data.
-func folderListProject(data map[string]any) []map[string]any {
-	raw := folderListResolveList(data)
-	out := make([]map[string]any, 0, len(raw))
-	for _, item := range raw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		row := map[string]any{}
-		if v, ok := folderListFirst(m, "id", "folderId", "folder_id"); ok {
-			row["id"] = v
-		}
-		if v, ok := folderListFirst(m, "name", "folderName", "folder_name", "displayName"); ok {
-			row["name"] = v
-		}
-		if v, ok := folderListFirst(m, "parentId", "parent_id", "parentFolderId"); ok {
-			row["parentId"] = v
-		}
-		if len(row) > 0 {
-			out = append(out, row)
-		}
-	}
-	return out
-}
-
-// folderListResolveList locates the list payload inside the response, tolerating
-// a bare top-level array container or nesting one level deeper.
-func folderListResolveList(data map[string]any) []any {
-	for _, key := range []string{"result", "data", "list", "items", "folders"} {
-		v, ok := data[key]
-		if !ok {
-			continue
-		}
-		if arr, ok := v.([]any); ok {
-			return arr
-		}
-		if inner, ok := v.(map[string]any); ok {
-			for _, ik := range []string{"list", "items", "folders", "result", "data"} {
-				if arr, ok := inner[ik].([]any); ok {
-					return arr
-				}
-			}
-		}
-	}
-	return []any{}
-}
-
-// folderListFirst returns the first present candidate key's value.
-func folderListFirst(m map[string]any, keys ...string) (any, bool) {
-	for _, k := range keys {
-		if v, ok := m[k]; ok {
-			return v, true
-		}
-	}
-	return nil, false
 }
 
 // FolderCreate 创建邮件文件夹。
@@ -356,71 +243,14 @@ var TagList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		tags := tagListProject(data)
-		return rt.Output(map[string]any{"count": len(tags), "tags": tags})
+		tags, err := mailProjectCollection(data, "mail/list_tags", "tags", []string{"id"}, map[string][]string{
+			"id": {"id"}, "name": {"name"}, "parentId": {"parentId"},
+		})
+		if err != nil {
+			return err
+		}
+		return rt.Output(mailCollectionPayload("tags", tags, true, ""))
 	},
-}
-
-// tagListProject reshapes the raw list_tags response into a clean
-// {id, name, parentId} tag list — clean output projection. Both the
-// list container and per-item field names are probed defensively across
-// candidate keys, so an empty/unknown shape yields an empty list rather than a
-// crash or fabricated data.
-func tagListProject(data map[string]any) []map[string]any {
-	raw := tagListResolveList(data)
-	out := make([]map[string]any, 0, len(raw))
-	for _, item := range raw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		row := map[string]any{}
-		if v, ok := tagListFirst(m, "id", "tagId", "tag_id"); ok {
-			row["id"] = v
-		}
-		if v, ok := tagListFirst(m, "name", "tagName", "tag_name", "displayName"); ok {
-			row["name"] = v
-		}
-		if v, ok := tagListFirst(m, "parentId", "parent_id"); ok {
-			row["parentId"] = v
-		}
-		if len(row) > 0 {
-			out = append(out, row)
-		}
-	}
-	return out
-}
-
-// tagListResolveList locates the list payload inside the response, tolerating a
-// bare top-level array container or nesting one level deeper.
-func tagListResolveList(data map[string]any) []any {
-	for _, key := range []string{"result", "data", "list", "items", "tags"} {
-		v, ok := data[key]
-		if !ok {
-			continue
-		}
-		if arr, ok := v.([]any); ok {
-			return arr
-		}
-		if inner, ok := v.(map[string]any); ok {
-			for _, ik := range []string{"list", "items", "tags", "result", "data"} {
-				if arr, ok := inner[ik].([]any); ok {
-					return arr
-				}
-			}
-		}
-	}
-	return []any{}
-}
-
-// tagListFirst returns the first present candidate key's value.
-func tagListFirst(m map[string]any, keys ...string) (any, bool) {
-	for _, k := range keys {
-		if v, ok := m[k]; ok {
-			return v, true
-		}
-	}
-	return nil, false
 }
 
 // TagCreate 创建邮件标签。
@@ -499,74 +329,18 @@ var UserSearch = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		users := userSearchProject(data)
-		return rt.Output(map[string]any{"count": len(users), "users": users})
+		users, err := mailProjectCollection(data, "mail/search_mail_users", "users", []string{"id", "email"}, map[string][]string{
+			"name": {"name"}, "email": {"email"}, "employeeNo": {"employeeNo"}, "userId": {"id"},
+		})
+		if err != nil {
+			return err
+		}
+		complete, next, err := mailPage(data, "mail/search_mail_users", "")
+		if err != nil {
+			return err
+		}
+		return rt.Output(mailCollectionPayload("users", users, complete, next))
 	},
-}
-
-// userSearchProject reshapes the raw search_mail_users response into a clean
-// {name, email, employeeNo, userId} user list — clean output projection.
-// Both the list container and per-item field names are probed defensively
-// across candidate keys, so an empty/unknown shape yields an empty list rather
-// than a crash or fabricated data.
-func userSearchProject(data map[string]any) []map[string]any {
-	raw := userSearchResolveList(data)
-	out := make([]map[string]any, 0, len(raw))
-	for _, item := range raw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		row := map[string]any{}
-		if v, ok := userSearchFirst(m, "name", "userName", "displayName", "nickName"); ok {
-			row["name"] = v
-		}
-		if v, ok := userSearchFirst(m, "email", "mail", "emailAddress"); ok {
-			row["email"] = v
-		}
-		if v, ok := userSearchFirst(m, "employeeNo", "employee_no", "employeeNumber", "jobNumber"); ok {
-			row["employeeNo"] = v
-		}
-		if v, ok := userSearchFirst(m, "userId", "user_id", "id"); ok {
-			row["userId"] = v
-		}
-		if len(row) > 0 {
-			out = append(out, row)
-		}
-	}
-	return out
-}
-
-// userSearchResolveList locates the list payload inside the response, tolerating
-// a bare top-level array container or nesting one level deeper.
-func userSearchResolveList(data map[string]any) []any {
-	for _, key := range []string{"result", "data", "list", "items", "users"} {
-		v, ok := data[key]
-		if !ok {
-			continue
-		}
-		if arr, ok := v.([]any); ok {
-			return arr
-		}
-		if inner, ok := v.(map[string]any); ok {
-			for _, ik := range []string{"list", "items", "users", "result", "data"} {
-				if arr, ok := inner[ik].([]any); ok {
-					return arr
-				}
-			}
-		}
-	}
-	return []any{}
-}
-
-// userSearchFirst returns the first present candidate key's value.
-func userSearchFirst(m map[string]any, keys ...string) (any, bool) {
-	for _, k := range keys {
-		if v, ok := m[k]; ok {
-			return v, true
-		}
-	}
-	return nil, false
 }
 
 // ── attachment ─────────────────────────────────────────────
@@ -628,71 +402,18 @@ var TemplateList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		templates := templateListProject(data)
-		return rt.Output(map[string]any{"count": len(templates), "templates": templates})
+		templates, err := mailProjectCollection(data, "mail/list_user_message_templates", "templates", []string{"id"}, map[string][]string{
+			"id": {"id"}, "name": {"name"}, "subject": {"subject"},
+		})
+		if err != nil {
+			return err
+		}
+		complete, next, err := mailPage(data, "mail/list_user_message_templates", "")
+		if err != nil {
+			return err
+		}
+		return rt.Output(mailCollectionPayload("templates", templates, complete, next))
 	},
-}
-
-// templateListProject reshapes the raw list_user_message_templates response into
-// a clean {id, name, subject} template list — clean output projection.
-// Both the list container and per-item field names are probed defensively
-// across candidate keys, so an empty/unknown shape yields an empty list rather
-// than a crash or fabricated data.
-func templateListProject(data map[string]any) []map[string]any {
-	raw := templateListResolveList(data)
-	out := make([]map[string]any, 0, len(raw))
-	for _, item := range raw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		row := map[string]any{}
-		if v, ok := templateListFirst(m, "id", "templateId", "template_id"); ok {
-			row["id"] = v
-		}
-		if v, ok := templateListFirst(m, "name", "templateName", "template_name", "displayName"); ok {
-			row["name"] = v
-		}
-		if v, ok := templateListFirst(m, "subject", "title"); ok {
-			row["subject"] = v
-		}
-		if len(row) > 0 {
-			out = append(out, row)
-		}
-	}
-	return out
-}
-
-// templateListResolveList locates the list payload inside the response,
-// tolerating a bare top-level array container or nesting one level deeper.
-func templateListResolveList(data map[string]any) []any {
-	for _, key := range []string{"result", "data", "list", "items", "templates"} {
-		v, ok := data[key]
-		if !ok {
-			continue
-		}
-		if arr, ok := v.([]any); ok {
-			return arr
-		}
-		if inner, ok := v.(map[string]any); ok {
-			for _, ik := range []string{"list", "items", "templates", "result", "data"} {
-				if arr, ok := inner[ik].([]any); ok {
-					return arr
-				}
-			}
-		}
-	}
-	return []any{}
-}
-
-// templateListFirst returns the first present candidate key's value.
-func templateListFirst(m map[string]any, keys ...string) (any, bool) {
-	for _, k := range keys {
-		if v, ok := m[k]; ok {
-			return v, true
-		}
-	}
-	return nil, false
 }
 
 // TemplateGet 获取邮件模板详情。
@@ -754,71 +475,18 @@ var ContactList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		contacts := contactListProject(data)
-		return rt.Output(map[string]any{"count": len(contacts), "contacts": contacts})
+		contacts, err := mailProjectCollection(data, "mail/list_user_mail_contacts", "contacts", []string{"id"}, map[string][]string{
+			"id": {"id"}, "contactEmail": {"contactEmail", "email"}, "displayName": {"displayName", "name"},
+		})
+		if err != nil {
+			return err
+		}
+		complete, next, err := mailPage(data, "mail/list_user_mail_contacts", "")
+		if err != nil {
+			return err
+		}
+		return rt.Output(mailCollectionPayload("contacts", contacts, complete, next))
 	},
-}
-
-// contactListProject reshapes the raw list_user_mail_contacts response into a
-// clean {id, contactEmail, displayName} contact list — output-projection
-// clean output projection. Both the list container and per-item field names are probed
-// defensively across candidate keys, so an empty/unknown shape yields an empty
-// list rather than a crash or fabricated data.
-func contactListProject(data map[string]any) []map[string]any {
-	raw := contactListResolveList(data)
-	out := make([]map[string]any, 0, len(raw))
-	for _, item := range raw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		row := map[string]any{}
-		if v, ok := contactListFirst(m, "id", "contactId", "contact_id"); ok {
-			row["id"] = v
-		}
-		if v, ok := contactListFirst(m, "contactEmail", "contact_email", "email"); ok {
-			row["contactEmail"] = v
-		}
-		if v, ok := contactListFirst(m, "displayName", "display_name", "name"); ok {
-			row["displayName"] = v
-		}
-		if len(row) > 0 {
-			out = append(out, row)
-		}
-	}
-	return out
-}
-
-// contactListResolveList locates the list payload inside the response,
-// tolerating a bare top-level array container or nesting one level deeper.
-func contactListResolveList(data map[string]any) []any {
-	for _, key := range []string{"result", "data", "list", "items", "contacts"} {
-		v, ok := data[key]
-		if !ok {
-			continue
-		}
-		if arr, ok := v.([]any); ok {
-			return arr
-		}
-		if inner, ok := v.(map[string]any); ok {
-			for _, ik := range []string{"list", "items", "contacts", "result", "data"} {
-				if arr, ok := inner[ik].([]any); ok {
-					return arr
-				}
-			}
-		}
-	}
-	return []any{}
-}
-
-// contactListFirst returns the first present candidate key's value.
-func contactListFirst(m map[string]any, keys ...string) (any, bool) {
-	for _, k := range keys {
-		if v, ok := m[k]; ok {
-			return v, true
-		}
-	}
-	return nil, false
 }
 
 // ContactUpdate 更新邮件联系人。
@@ -834,6 +502,7 @@ func contactListFirst(m map[string]any, keys ...string) (any, bool) {
 // RuleDelete 删除个人收信规则。
 // RuleAdjust 调整收信规则排序。
 func init() {
+	hardenPublicMailContracts()
 	shortcut.Register(
 		ThreadList,
 		FolderList,

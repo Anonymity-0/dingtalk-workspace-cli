@@ -81,6 +81,7 @@ var UnreadMail = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "email", Type: shortcut.FlagString, Desc: "要查询的邮箱地址（可选，默认取你绑定的第一个邮箱）", Required: false},
 		{Name: "size", Type: shortcut.FlagString, Desc: "返回条数上限（可选，默认 20）", Required: false},
+		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自上一页 nextCursor", Required: false},
 	},
 	Tips: []string{
 		`dws mail +unread-mail`,
@@ -105,30 +106,46 @@ var UnreadMail = shortcut.Shortcut{
 		if size == "" {
 			size = "20"
 		}
-		data, err := rt.CallMCPData("mail", "search_emails", map[string]any{
+		args := map[string]any{
 			"email": email,
 			"query": "isRead:false",
 			"size":  size,
-		})
+		}
+		if rt.Changed("cursor") {
+			args["cursor"] = rt.Str("cursor")
+		}
+		data, err := rt.CallMCPData("mail", "search_emails", args)
 		if err != nil {
 			return err
 		}
 
 		// Step 3 — project each message to a compact record (shared helpers).
-		messages := searchMailMessages(data)
+		messages, err := smartMailSearchRows(data, "mail/search_emails")
+		if err != nil {
+			return err
+		}
 		out := make([]map[string]any, 0, len(messages))
 		for _, m := range messages {
+			from, err := searchMailFrom(m)
+			if err != nil {
+				return err
+			}
 			out = append(out, map[string]any{
 				"subject":   searchMailFirstString(m, "subject", "title", "topic"),
-				"from":      searchMailFrom(m),
+				"from":      from,
 				"date":      searchMailFirstAny(m, "date", "sentDate", "receivedDate", "sentTime", "internalDate", "createTime"),
 				"messageId": searchMailFirstString(m, "messageId", "id", "mailId", "emailId", "internetMessageId"),
 			})
 		}
-		return rt.Output(map[string]any{"messages": out, "email": email})
+		complete, next, err := smartMailPage(data, "mail/search_emails", "")
+		if err != nil {
+			return err
+		}
+		return rt.Output(smartMailPayload("messages", out, complete, next))
 	},
 }
 
 func init() {
+	hardenSmartMail(&UnreadMail, "messages", "严格校验的未读邮件摘要")
 	shortcut.Register(UnreadMail)
 }

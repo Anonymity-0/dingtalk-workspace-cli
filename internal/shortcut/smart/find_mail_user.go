@@ -19,7 +19,6 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
-	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -107,7 +106,10 @@ var FindMailUser = shortcut.Shortcut{
 		}
 
 		// Step 2 — project matched users.
-		users := findMailUserUnwrap(data)
+		users, err := smartMailRows(data, "mail/search_mail_users", "users", "id", "email")
+		if err != nil {
+			return err
+		}
 		results := make([]map[string]any, 0, len(users))
 		for _, u := range users {
 			results = append(results, map[string]any{
@@ -121,43 +123,12 @@ var FindMailUser = shortcut.Shortcut{
 			})
 		}
 
-		// Step 3 — empty result guard.
-		if len(results) == 0 {
-			return apperrors.NewValidation("没搜到邮箱联系人")
+		complete, next, err := smartMailPage(data, "mail/search_mail_users", "")
+		if err != nil {
+			return err
 		}
-
-		return rt.Output(map[string]any{"users": results, "count": len(results)})
+		return rt.Output(smartMailPayload("users", results, complete, next))
 	},
-}
-
-// findMailUserUnwrap extracts the user list from a search_mail_users response.
-// The helper documents the list under "users"; we probe several container keys
-// at the top level and one level deep, defensively.
-func findMailUserUnwrap(data map[string]any) []map[string]any {
-	keys := []string{"users", "contacts", "result", "data", "list", "items", "records"}
-	for _, key := range keys {
-		if arr, ok := data[key].([]any); ok {
-			return findMailUserToMaps(arr)
-		}
-		if inner, ok := data[key].(map[string]any); ok {
-			for _, k2 := range keys {
-				if arr, ok := inner[k2].([]any); ok {
-					return findMailUserToMaps(arr)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func findMailUserToMaps(arr []any) []map[string]any {
-	out := make([]map[string]any, 0, len(arr))
-	for _, it := range arr {
-		if m, ok := it.(map[string]any); ok {
-			out = append(out, m)
-		}
-	}
-	return out
 }
 
 func findMailUserString(m map[string]any, keys ...string) string {
@@ -182,5 +153,6 @@ func findMailUserAny(m map[string]any, keys ...string) any {
 }
 
 func init() {
+	hardenSmartMail(&FindMailUser, "users", "严格校验的邮箱用户搜索结果")
 	shortcut.Register(FindMailUser)
 }

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "service": "mail",
+  "default_availability": "unavailable",
+  "shortcuts": {
+    "+triage": {"disposition":"primary_smart","semantic_delta":"对齐 Lark triage 任务入口，并超过其显式邮箱要求：可自动解析当前邮箱与收件箱，严格处理邮件搜索的终止游标和零命中哨兵。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+search-mail": {"disposition":"semantic_adapter","semantic_delta":"用 KQL 搜索邮件摘要；只接受已观测 messages 数组、稳定 messageId 和完整分页证据，窄化支持 Mail 专属 total=0 占位哨兵。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+unread-mail": {"disposition":"primary_smart","semantic_delta":"自动解析邮箱并以 isRead:false 搜索未读邮件；不修改已读状态，严格区分合法零命中与坏消息对象。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+recent-mail": {"disposition":"primary_smart","semantic_delta":"自动解析邮箱和收件箱，严格读取 result.conversations、稳定会话 ID 与 hasMore/nextCursor 证据。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+message": {"disposition":"primary_smart","semantic_delta":"对齐 Lark 单封完整读入口；自动解析邮箱，要求顶层 message 非空且返回 ID 与请求 messageId 精确一致。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+messages": {"disposition":"primary_smart","semantic_delta":"对齐 Lark 多封完整读入口；最多 100 个 ID，保持请求顺序，任何单封缺失、错型或身份不一致都会使整次调用失败。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+thread": {"disposition":"primary_smart","semantic_delta":"对齐 Lark 完整会话读取；自动解析邮箱并要求 conversation.id 与请求精确一致。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+thread-list": {"disposition":"semantic_adapter","semantic_delta":"严格读取 result.conversations，要求每项稳定 ID，并发布 hasMore/nextCursor 完整性。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+folder-list": {"disposition":"semantic_adapter","semantic_delta":"只接受显式 folders 数组及稳定 folder ID；缺字段、错型和坏元素不再退化为空列表。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+tag-list": {"disposition":"semantic_adapter","semantic_delta":"只接受显式 tags 数组及稳定 tag ID；真实非空标签 fixture 已验证。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+user-search": {"disposition":"semantic_adapter","semantic_delta":"搜索企业邮箱用户并保留 hasMore/nextCursor；显式空数组合法，坏用户或缺稳定 ID 失败。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+find-mail-user": {"disposition":"primary_smart","semantic_delta":"面向联系人解析的精简用户搜索；修复零命中被误报为调用失败，并严格验证用户数组、身份和分页。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+template-list": {"disposition":"semantic_adapter","semantic_delta":"严格读取 templates 数组、稳定模板 ID 和 nextCursor；已用临时模板证明非空、删除后证明零命中。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+contact-list": {"disposition":"semantic_adapter","semantic_delta":"严格读取 contacts 数组、稳定联系人 ID，并兼容已观测的字符串 hasMore；已完成创建到列表到清理闭环。","risk":"read","availability":"available","public":true,"reviewed":true},
+    "+draft-create": {"disposition":"primary_smart","semantic_delta":"对齐 Lark 新建草稿；确认后创建但不发送，要求稳定 messageId 并按同一 ID 读回核对主题和正文。","risk":"write","availability":"available","public":true,"reviewed":true},
+    "+draft-edit": {"disposition":"primary_smart","semantic_delta":"对齐 Lark 草稿编辑；至少一个变化字段，严格写回执后按原 messageId 读回核对。","risk":"write","availability":"available","public":true,"reviewed":true},
+    "+template-create": {"disposition":"primary_smart","semantic_delta":"对齐 Lark 模板创建的核心字段；取得稳定模板 ID 后读回核对名称、主题和正文，附件能力另列下游缺口。","risk":"write","availability":"available","public":true,"reviewed":true},
+    "+template-update": {"disposition":"primary_smart","semantic_delta":"对齐 Lark 草稿模板更新；严格业务成功后按原模板 ID 读回核对全部请求变更。","risk":"write","availability":"available","public":true,"reviewed":true}
+  }
+}
