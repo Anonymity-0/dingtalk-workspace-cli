@@ -19,7 +19,7 @@ import (
 
 const (
 	dingCompositeReason        = "Reviewed DING Shortcut composite: the executable CLI owns strict business-success validation, exact collection paths, stable DING identity checks, truthful pagination, and unified output projection."
-	dingWriteUnavailableReason = "DING mutation is unavailable to Agents until a dedicated reversible fixture proves confirmation-before-call, a stable write receipt, exact receiver/readback identity, and cleanup without residual notifications."
+	dingWriteUnavailableReason = "DING mutation is unavailable to Agents until the downstream exposes stable receiver identities and a queryable recall terminal state; isolated self-fixtures already prove stable DING receipts but cannot prove those two facts."
 )
 
 type dingPageEvidence struct {
@@ -304,7 +304,7 @@ func outputDingPage(rt *shortcut.RuntimeContext, messages []map[string]any, page
 }
 
 func dingUnavailable(operation string) error {
-	return apperrors.NewDiscovery("该 DING 写 Shortcut 尚无可逆真实 fixture、精确接收人读回与零残留清理证据，当前不可执行",
+	return apperrors.NewDiscovery("该 DING 写 Shortcut 虽有稳定写回执，但下游没有稳定接收人身份和可查询撤回终态，当前不可执行",
 		apperrors.WithOperation(operation),
 		apperrors.WithOrigin("shortcut_registry"),
 		apperrors.WithFailureStage("capability_gate"),

@@ -100,7 +100,7 @@ var ReceiverStatus = shortcut.Shortcut{
 
 var SendPersonal = unavailableDingWrite(
 	"+send-personal", "以本人身份发送 DING 给指定人",
-	"需要以当前用户身份向明确的 openDingTalkId 接收人发送 DING 时使用；下游提供精确回执、接收人读回和可验证清理前不可执行。",
+	"需要以当前用户身份向明确的 openDingTalkId 接收人发送 DING 时使用；下游提供稳定接收人身份与可查询撤回终态前不可执行。",
 	shortcut.RiskWrite, false,
 	[]shortcut.Flag{
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "接收人 openDingTalkId 列表 (CSV)", Required: true},
@@ -117,7 +117,7 @@ var SendPersonal = unavailableDingWrite(
 
 var SendByMessage = unavailableDingWrite(
 	"+send-by-message", "针对某条消息发起 DING 提醒",
-	"需要把指定聊天消息转成应用内、短信或电话 DING 时使用；对应 lark-cli 的三种 urgent 任务，但安全 fixture 与精确清理闭环未具备。",
+	"需要把指定聊天消息转成应用内、短信或电话 DING 时使用；对应 lark-cli 的三种 urgent 任务，但接收人稳定身份与精确撤回终态仍缺失。",
 	shortcut.RiskWrite, false,
 	[]shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "openConversationId", Required: true},
@@ -136,7 +136,7 @@ var SendByMessage = unavailableDingWrite(
 
 var RecallPersonal = unavailableDingWrite(
 	"+recall-personal", "撤回本人发起的 DING",
-	"需要撤回本人发出的 DING 时使用；必须先有稳定写回执，并能精确证明目标已撤回且没有残留通知，当前尚不满足。",
+	"需要撤回本人发出的 DING 时使用；必须能按稳定目标精确读回撤回终态且证明没有残留通知，当前下游尚不满足。",
 	shortcut.RiskHighWrite, true,
 	[]shortcut.Flag{{Name: "id", Type: shortcut.FlagString, Desc: "openDingId", Required: true}},
 	[]contract.ParamDecl{{Name: "id", Property: "openDingId"}},
