@@ -76,7 +76,7 @@ metadata:
 ## 关键结果语义
 
 - `+list/+search/+recent` 检查集合、hasMore 和 nextCursor；缺少集合不能当空结果，多候选禁止默认第一项。
-- `+download` 验证相对路径存在且 sizeBytes > 0；`+upload` 检查最终 nodeId、名称、类型和大小。
+- `+download` 验证相对路径存在且 sizeBytes > 0；`+upload` 检查最终 nodeId、名称、类型和大小。只有源端与结果都提供可比哈希时才核对 checksum；缺失时保留现有证据，不虚构端到端校验和。
 - copy/move/rename/create-folder 检查 `ok/outcome` 和读回；`partial_success` 不是完成。
 - status 检查分类集合；pull/push/sync 检查 summary 和逐项结果，failed/unknown 必须保留。
 - 分页未结束时返回 continuation；目录树或大列表必须有最大深度、页数和条目数。

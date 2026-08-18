@@ -36,5 +36,5 @@ dws drive sync --local-folder /abs/local --remote-folder <folderId> --on-conflic
 
 - status 检查 `new_local/new_remote/modified/unchanged/unknown`。
 - pull/push/sync 检查 summary 与逐条 items；任何 failed/unknown 必须保留，不把部分结果称为成功。
-- 下载先写临时文件再原子替换；失败时保留原目标。上传失败按远端路径、名称和大小读回，不能直接重放可能已提交项。
+- 下载先写临时文件再原子替换；失败时保留原目标。上传在提交前明确失败时直接返回；只有提交后超时、连接中断或响应丢失等效果未知时，才按远端路径、名称和大小读回，不能直接重放可能已提交项。服务未同时提供源端与结果的可比哈希时，不虚构 checksum 验证。
 - dry-run 与正式执行必须使用同一 local-folder、remote-folder、space-id 和策略；不要在确认后静默改变方向或冲突策略。
