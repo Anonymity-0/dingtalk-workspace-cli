@@ -42,6 +42,7 @@ metadata:
 |---|---|---|
 | 按名称解析唯一知识库 | `+space-list --type <orgWikiSpace\|myWikiSpace> --limit 50 --page-all` 后精确匹配名称 | 先明确组织/个人范围；仅 `autoPageComplete=true` 且全量中恰好一个同名项时取 workspaceId |
 | 搜索或列出知识库 | `+space-search --query <关键词>` / `+space-list [--type orgWikiSpace\|myWikiSpace]` | 用户要求全部时加 `--page-all`；个人知识库必须明确语义 |
+| 为 Drive 发现钉盘存储空间 | `dws wiki space list --type <orgSpace\|mySpace> --format json` | managed 只读前置；返回 spaceId/rootFolderId 后切回 Drive，不进入 Wiki node/member 路由 |
 | 已知 workspace 查看详情 | `dws wiki +space-get --workspace <ID或URL>` | 已知 ID 不重复搜索 |
 | 创建或删除知识库 | `+space-create --name <名称>` / `+delete-space --workspace <ID>` | 创建会读回；删除整个空间是高风险操作 |
 | 浏览或搜索库内节点 | `+node-list --workspace <ID> [--folder <ID>]` / `+node-search --workspace <ID> --query <词>` | 列目录与关键词搜索分开；全量列表加 `--page-all` |
@@ -61,7 +62,7 @@ metadata:
 - 已知 nodeId/URL：元数据直接 `+node-get`；正文直接切 Doc，不先 list/search。
 - 创建节点后返回的 nodeId 直接传给 Doc；不通过同名搜索重新定位。
 - move/copy/delete 已含预检或读回时，不由 Agent 重复拼装原子命令。
-- 普通“文档空间/我的文档”不先调用 Wiki 获取默认位置，按存储意图走 Drive。
+- 普通“文档空间/我的文档”的文件操作按存储意图走 Drive；仅当缺少 Drive spaceId/rootFolderId、需要发现 `orgSpace/mySpace` 时调用 managed `wiki space list`。`orgSpace` 以返回的 nextToken 续页，`mySpace` 不分页；取 ID 后立即回到 Drive。
 
 ## 关键结果语义
 
@@ -106,4 +107,5 @@ Golden Route 参数足够时不读 reference；否则最多读取一个：
 - 明确知识库容器、成员、库内层级与动态 → Wiki。
 - 锁定库内 adoc 节点后的正文读写/导出 → Doc；axls 内容 → Sheet；able 记录/字段 → AITable。
 - 普通文件、文件夹、“我的文档/文档空间”的存储搜索、传输和整理 → Drive。
+- Drive 存储空间发现可复用 managed `wiki space list --type orgSpace|mySpace`；结果是 spaceId/rootFolderId，不能交给 Wiki node/member。知识库 `orgWikiSpace/myWikiSpace` 仍返回 workspaceId。
 - Wiki 节点移入/移出使用 `+move/+move-to-drive`；不要把 workspaceId 当普通 Drive folderId。

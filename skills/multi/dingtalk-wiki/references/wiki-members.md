@@ -12,6 +12,9 @@ dws wiki +member-remove --workspace <workspaceId> --users <userId> --format json
 - `--users` 接受 1-30 个真实 userId；姓名先由联系人/人员搜索产品解析，不能直接当 userId。
 - 角色仅 `MANAGER|EDITOR|DOWNLOADER|READER`，修改前必须由用户明确角色。
 - workspaceId 来自当前 profile 下真实知识库；不能跨组织复用。
+- 成员接口仅用于组织知识库。`myWikiSpace` 是个人空间，不支持容器级成员管理；若用户只想分享其中某个节点，改走 Drive 节点级权限。
+- `OWNER` 不在成员角色枚举中，不能通过 add/update/remove 创建、降级或移除所有者；所有权变更必须走对应所有者转移能力并遵守其独立确认约束。
+- 调用者需要知识库 OWNER 或 MANAGER 权限；权限不足时如实返回，不切账号或改用节点权限绕过容器规则。
 
 ## 列表完整性
 

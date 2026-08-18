@@ -2,7 +2,8 @@
 
 | 用户表达 | 应用 | 不应用 | 理由 |
 |---|---|---|---|
-| 全局找文件、最近文件、我的文件/文档空间目录 | Drive | Wiki | 未限定知识库 workspace，属于普通存储域 |
+| 全局找文件、最近文件、浏览已知“我的文件”/文档空间目录 | Drive | Wiki node | 未限定知识库 workspace，属于普通存储域 |
+| 列出/发现钉盘企业空间或“我的文件”空间 | managed `dws wiki space list --type orgSpace|mySpace` 发现 spaceId/rootFolderId 后回 Drive | `wiki +space-list` 的 orgWikiSpace/myWikiSpace | Drive 存储空间前置；spaceId、rootFolderId 与知识库 workspaceId 不可互换 |
 | 明确知识库内列节点、移动节点、搜索节点 | Wiki | Drive | workspace 内层级由 Wiki 管理 |
 | 普通文件或文件夹移动、重命名、删除 | Drive | Doc | 节点存储动作不修改正文 |
 | 普通文件创建独立副本 | Drive download→upload | Drive `+copy` | 当前 `+copy` 会拒绝普通钉盘文件，避免把 `.dlink` 快捷方式伪装成副本 |

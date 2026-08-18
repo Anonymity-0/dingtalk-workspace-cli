@@ -39,6 +39,7 @@ metadata:
 |---|---|---|
 | 全局按名称或关键词找文件 | `dws drive +search --query <关键词>` | 多候选停止；在线文档正文搜索走 `doc +search` |
 | 浏览根目录或已知文件夹 | `dws drive +list [--folder <dentryUuid>]` | 默认一页，处理 nextCursor |
+| 发现钉盘企业空间或“我的文件”空间 | `dws wiki space list --type <orgSpace\|mySpace> --format json` | Drive 只读前置；orgSpace 按 nextToken 续页，取 spaceId/rootFolderId 后回到 Drive |
 | 查看最近访问/编辑 | `dws drive +recent [--operate-type 1] --limit <N>` | 1=最近编辑；默认最近访问 |
 | 查看节点类型和元数据 | `dws drive +inspect --node <dentryUuid>` | 按需加 stats/publish/cover，不为普通列表强制调用 |
 | 下载普通文件 | `dws drive +download --node <dentryUuid> --output <相对路径>` | 当前 shortcut 接受 ID；在线文档用 `doc +export` |
@@ -48,8 +49,8 @@ metadata:
 | 移动节点 | `dws drive +move --node <ID> --folder <目标ID>` | 破坏性变更，按 Runtime confirmation |
 | 重命名节点 | `dws drive +rename --node <ID> --name <新名称>` | 写后检查最终名称 |
 | 比较本地与钉盘文件夹 | `dws drive status --local-folder <绝对路径> --remote-folder <folderId>` | 只读；默认精确 MD5，不先拉取或推送 |
-| 钉盘文件夹拉到本地 | `dws drive pull --local-folder <绝对路径> --remote-folder <folderId> --if-exists smart` | 先以相同参数 `--dry-run`，再按确认执行 |
-| 本地文件夹推到钉盘 | `dws drive push --local-folder <绝对路径> --remote-folder <folderId> --if-exists smart` | 先 dry-run；不会删除远端多余文件 |
+| 钉盘文件夹拉到本地 | `dws drive pull --local-folder <绝对路径> --remote-folder <folderId> --if-exists skip` | 安全默认不覆盖；先以相同参数 `--dry-run`，再按确认执行 |
+| 本地文件夹推到钉盘 | `dws drive push --local-folder <绝对路径> --remote-folder <folderId> --if-exists skip` | 安全默认不覆盖；先 dry-run；不会删除远端多余文件 |
 | 双向补齐文件夹 | `dws drive sync --local-folder <绝对路径> --remote-folder <folderId> --on-conflict skip` | 先 dry-run；冲突策略必须显式保留 |
 
 ### 低频入口
@@ -63,6 +64,7 @@ metadata:
 ## 当前最短路径
 
 - 已知 dentryUuid：直接执行 inspect/download/list/move/rename，禁止先 search；仅确认是受支持的在线文档节点后才执行 copy。
+- 目标 Drive 空间未知：先明确企业空间 `orgSpace` 或“我的文件”`mySpace`，用 `dws wiki space list --type <类型> --format json` 发现空间；`orgSpace` 在 `nextToken` 非空时以 `--cursor <nextToken>` 续页，`mySpace` 固定单条且不分页。按后续命令取真实 spaceId 或 rootFolderId 后立即回到 Drive；已知这些 ID 时不做空间发现。
 - 只有名称：`+search` → 唯一候选的 nodeId → 目标命令；不得自动选择第一项。
 - 只有文件夹层级：从最近的已知 folder ID 开始 `+list`，不要从根目录无界递归。
 - 上传新文件：单条 `+upload`；不要退回 upload-info + 手写 HTTP + commit。
@@ -117,4 +119,5 @@ Golden Route 参数足够时禁止读取 reference。其余最多读取一个精
 - 普通文件/文件夹及在线文档节点的存储管理 → Drive；正文/内容分别走 Doc、Sheet、AITable。
 - able 外层移动/重命名走 Drive；结构复制、Base 删除（`+base-delete`）及 Base 内操作走 AITable。
 - 明确知识库 workspace 层级 → Wiki；泛称“文档空间/我的文档”仍走 Drive。
+- 钉盘存储空间发现例外地复用 managed `dws wiki space list --type orgSpace|mySpace`；只取真实 spaceId/rootFolderId 后回到 Drive。spaceId 用于空间参数，rootFolderId 才可作为空间根目录 folder；`orgWikiSpace/myWikiSpace` 返回 workspaceId，不能混入 Drive 参数。
 - Word/Markdown/Text 转在线文档用 `doc +import`；Drive upload 只保留原文件。

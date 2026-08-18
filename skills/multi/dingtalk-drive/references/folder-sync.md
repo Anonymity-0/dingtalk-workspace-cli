@@ -19,14 +19,14 @@
 
 ```bash
 dws drive status --local-folder /abs/local --remote-folder <folderId> --format json
-dws drive pull --local-folder /abs/local --remote-folder <folderId> --if-exists smart --dry-run --format json
-dws drive push --local-folder /abs/local --remote-folder <folderId> --if-exists smart --dry-run --format json
+dws drive pull --local-folder /abs/local --remote-folder <folderId> --if-exists skip --dry-run --format json
+dws drive push --local-folder /abs/local --remote-folder <folderId> --if-exists skip --dry-run --format json
 dws drive sync --local-folder /abs/local --remote-folder <folderId> --on-conflict skip --dry-run --format json
 ```
 
 ## 策略
 
-- pull/push `--if-exists`: `skip` 最保守；`smart` 按修改时间做增量；`overwrite` 以来源侧覆盖目标侧。
+- pull/push `--if-exists`: `skip` 是不覆盖的安全默认；`smart` 按修改时间做增量；`overwrite` 以来源侧覆盖目标侧。用户未明确选择覆盖策略时，Agent 必须保留 `skip`，不得代选 `smart/overwrite`；只有回显 dry-run 的覆盖项并得到明确授权后，才使用后两者。
 - sync `--on-conflict`: `skip` 默认保留两侧；`remote-wins` 覆盖本地；`local-wins` 覆盖远端；`keep-both` 先改名本地再拉远端；`ask` 需要交互。
 - 默认 exact 通过 MD5 比较；远端缺少可靠 MD5 时进入 `unknown` 并跳过。只有用户接受时间戳近似时才加 `--quick`。
 - 这些命令只处理普通 `type=file` 和目录；在线文档、快捷方式不会按普通二进制同步。

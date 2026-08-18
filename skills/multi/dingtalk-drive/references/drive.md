@@ -79,6 +79,8 @@ dws drive +publish-unset --node <dentryUuid>
 
 只在意图命中时读取一个精确 leaf Schema。成员变更、转移所有者、发起申请和公开状态变更必须明确节点、用户、角色与影响范围。转移所有者时，在构造最终命令前必须让用户分别明确决定 `--reserve-role <MANAGER|EDITOR|DOWNLOADER|READER|NONE>` 和 `--recursive=<true|false>`；Agent 不得根据默认值、对象类型或便捷性自行选择任一项。两项决策与目标、新所有者均明确后，才按 Runtime confirmation 构造首次正式调用。
 
+发起权限申请先只读执行 `permission apply-info`。正式 `permission apply` 会通知审批人；调用前必须向用户逐项回显并确认资源、申请角色、审批人和理由。Agent 不得默认选择第一位审批人、最高/最低角色或代写申请理由；用户未明确同意完整申请内容时停在确认环节。
+
 ## 快捷方式节点
 
 `+create-shortcut --node <源ID> [--folder <目标ID>|--workspace <知识库ID>]` 创建链接。在线文档节点需要保留版式的独立副本时使用 `+copy`；普通钉盘文件的独立副本必须经用户授权后走 download→upload，因为当前 `+copy` 会拒绝普通文件。源/目标类型不兼容时停止，不把快捷方式当普通文件继续覆盖。
