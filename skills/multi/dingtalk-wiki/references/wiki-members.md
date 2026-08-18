@@ -1,0 +1,24 @@
+# Wiki 成员管理
+
+## 入口
+
+```bash
+dws wiki +member-list --workspace <workspaceId> --limit 30 --format json
+dws wiki +member-add --workspace <workspaceId> --users <userId> --role READER --format json
+dws wiki +member-update --workspace <workspaceId> --users <userId> --role EDITOR --format json
+dws wiki +member-remove --workspace <workspaceId> --users <userId> --format json
+```
+
+- `--users` 接受 1-30 个真实 userId；姓名先由联系人/人员搜索产品解析，不能直接当 userId。
+- 角色仅 `MANAGER|EDITOR|DOWNLOADER|READER`，修改前必须由用户明确角色。
+- workspaceId 来自当前 profile 下真实知识库；不能跨组织复用。
+
+## 列表完整性
+
+`+member-list` 的服务端单次上限为 50，且没有可续游标。结果能证明“本次返回的成员”，不能据此断言大型知识库的完整成员全集。不要伪造 `--page-all` 或不断提高 limit。
+
+## 写入验证
+
+成员 add/update/remove 当前只能以写接口 `success=true` 作为终态证据，并显式返回 `verification.status=terminal_response_only`；成员列表受上限限制，不能被包装成精确读回验证。
+
+若写响应丢失，先用 `+member-list --filter-role` 做有限核对；仍无法证明时报告未知效果，不自动重放批量成员写入。
