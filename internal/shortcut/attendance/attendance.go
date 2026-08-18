@@ -340,20 +340,31 @@ var CheckRecord = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return attendanceCallCollection(rt, serverWukong, "query_check_record", map[string]any{
+		data, err := rt.CallMCPData(serverWukong, "query_check_record", map[string]any{
 			"QueryCheckRecordRequest": map[string]any{
 				"userIds":       rt.StrSlice("users"),
 				"checkDateFrom": from,
 				"checkDateTo":   to,
 			},
-		}, "records", true, nil, func(items []map[string]any) error {
-			if err := attendanceValidatePositiveIntegerIDs(items, serverWukong+"/query_check_record", "id"); err != nil {
-				return err
-			}
-			startMillis, _ := dayMillis(rt.Str("start"))
-			endMillis, _ := dayMillis(rt.Str("end"))
-			return attendanceValidateUserAndTimeBinding(items, serverWukong+"/query_check_record", rt.StrSlice("users"), "userId", "workDate", startMillis, endMillis)
-		}, "result")
+		})
+		if err != nil {
+			return err
+		}
+		operation := serverWukong + "/query_check_record"
+		items, err := responsecheck.RequireObjectCollection(data, operation, "result")
+		if err != nil {
+			return err
+		}
+		if err := attendanceValidatePositiveIntegerIDs(items, operation, "id"); err != nil {
+			return err
+		}
+		startMillis, _ := dayMillis(rt.Str("start"))
+		endMillis, _ := dateToMillis(rt.Str("end"), true)
+		items, err = attendanceFilterUserAndTimeBinding(items, operation, rt.StrSlice("users"), "userId", "workDate", startMillis, endMillis)
+		if err != nil {
+			return err
+		}
+		return attendanceOutputCollection(rt, "records", items, true, nil, false, "")
 	},
 }
 

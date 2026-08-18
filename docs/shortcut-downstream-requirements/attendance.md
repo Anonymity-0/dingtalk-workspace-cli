@@ -1,7 +1,7 @@
 # Attendance Shortcut 下游业务能力需求规格
 
 > 日期：2026-08-18
-> Live discovery 基线：`85c3f307eed5ca753991804ef64228eb7b1f3794`；本轮修复后的 clean HEAD 尚待提交与完整重跑
+> Live discovery 基线：`0ad61b3a9d60adf917311987039d51b43b217315`；本轮 `+check-record` overfetch 修复后的 clean HEAD 尚待提交与完整重跑
 > 对比基线：Lark CLI 1.0.87
 > 范围：Attendance Shortcut only；不修改 DWS 产品 Skill 或 multi Skill。
 
@@ -246,9 +246,10 @@
 | Shortcut | 上游根因 | 已完成修复 | 回归证据 |
 |---|---|---|---|
 | 最终保留公开的 Attendance 集合查询 | 容错 projector 可能把缺字段、错型或坏元素投成 `[]` | 共享严格 success/result/collection 校验；显式空数组才合法；稳定 ID 和请求用户/时间/类型必须绑定 | 已完成单元负向矩阵；最终 clean-HEAD 真实 nonempty/zero 双层矩阵待发布前集中执行，本文不提前泛化声称全通过 |
-| `+get-approve-template` | 把请求维度 `approveType` 误作集合唯一身份，会拒绝同一类型下多个合法模板 | 改用非空唯一 `processCode` 作为资源身份；`approveType` 仅做请求精确绑定；每项 `submitUrl` 必须非空；允许 TRAVEL/OUT 同类型多项 | missing/wrong/duplicate processCode、wrong approveType、missing/blank submitUrl 负向矩阵；TRAVEL/OUT 双项成功矩阵。修复后 clean-HEAD live 待重跑 |
-| `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | 嵌套 `shiftVO/entityVO` 导致身份投影风险 | 固定审核路径、展开 wrapper、要求正整数且不重复的稳定 ID，严格校验分页矛盾与无前进页 | 已有坏 item/空 ID/重复 ID/分页矛盾单元回归；最终搜索 nonempty/guaranteed-zero 与 raw 对照待 clean-HEAD 集中执行 |
-| `+get-overtime-rule` | 能力存在但缺少请求 ID 与响应对象的强绑定 | 详情对象要求非空且 `id` 与请求精确一致 | missing/false/null/malformed/wrong-ID/valid Execute 级矩阵；discovery HEAD 上 exact/raw 同真实搜索 ID 对象一致 |
+| `+check-record` | `query_check_record` 在真实非空查询中会额外返回请求开始日前一个业务日的记录；把 raw 全量直接做范围断言会使合法请求整体失败 | 仅该叶子在完整 raw 集合通过显式 collection、全量正整数唯一 ID、用户身份与时间字段类型校验后，过滤请求区间外的下游 overfetch；错用户、缺字段、错型、坏时间与重复 ID 仍 fail-closed。`+check-result`、`+get-schedule` 保持原严格范围拒绝，不共享该过滤语义 | helper 覆盖 missing/wrong/malformed、前后边界；Execute 覆盖 in-range + start-24h 成功、全 out-of-range 显式空、错用户/坏时间/重复 ID 不可被过滤隐藏。修复后 clean-HEAD live 待重跑 |
+| `+get-approve-template` | 把请求维度 `approveType` 误作集合唯一身份，会拒绝同一类型下多个合法模板 | 改用非空唯一 `processCode` 作为资源身份；`approveType` 仅做请求精确绑定；每项 `submitUrl` 必须非空；允许 TRAVEL/OUT 同类型多项 | missing/wrong/duplicate processCode、wrong approveType、missing/blank submitUrl 负向矩阵；clean HEAD 上 5 个类型 exact/raw 全通过，TRAVEL/OUT 双项集合一致 |
+| `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | 嵌套 `shiftVO/entityVO` 导致身份投影风险 | 固定审核路径、展开 wrapper、要求正整数且不重复的稳定 ID，严格校验分页矛盾与无前进页 | 坏 item/空 ID/重复 ID/分页矛盾单元回归通过；clean HEAD 上 nonempty/guaranteed-zero 与 raw 对照通过，班次/加班规则另完成实际多页前进与终止 |
+| `+get-overtime-rule` | 能力存在但缺少请求 ID 与响应对象的强绑定 | 详情对象要求非空且 `id` 与请求精确一致 | missing/false/null/malformed/wrong-ID/valid Execute 级矩阵；clean HEAD 上 exact/raw 同真实搜索 ID 对象一致，raw 对不存在 ID 返回错对象时 exact 非零拒绝 |
 | `+get-class` | 上游已严格要求 `shiftVO.id`，但真实下游详情不回显任何 ID | 没有注入请求 ID 或放宽校验；按真实合同降级 unavailable | discovery HEAD 上真实搜索→raw detail 非空但 ID 缺失；等待 `DS-ATTENDANCE-006`，修复后再重跑 |
 | `+get-self-setting` | 仅检查场景 key 存在会让 `null` 伪成功；用户外围空白可造成下传/比较漂移 | 用户输入只归一化一次并以同值下传/比较；场景字段必须非空且符合已观测 object/boolean/integer 类型；因 1/6 场景权限不可验证而整体 unavailable | 5 个 scene exact/raw 对照通过；boss scene exact/raw 均 `NO_PERMISSION`，等待 `DS-ATTENDANCE-007`，不把部分场景成功当整体 PASS |
 | `+my-attendance`, `+this-month` | 旧的当前用户解析可跳过 malformed row，也可把 success=false 中的 stale result 当身份 | 改为严格 business success/result/唯一用户身份，坏 profile 后考勤 raw 调用为 0；每条打卡要求唯一正整数 ID | 静态/Execute 回归已通过；因当前只有合法空集合而保持 unavailable，不记 live PASS |
@@ -257,14 +258,18 @@
 
 | 叶子 | discovery HEAD 结果 | 修复后 clean HEAD 发布状态 |
 |---|---|---|
-| `+check-result`, `+check-record`, `+list-approve`, `+get-schedule` | exact/raw 同场景已观测 known-nonempty 与 guaranteed-zero；打卡结果另完成多页 cursor 前进与终止 | `PENDING_RERUN`；旧 PASS 不继承 |
-| `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | exact/raw 同场景已观测 known-nonempty、随机唯一词 guaranteed-zero、稳定 ID 与终止分页 | `PENDING_RERUN`；旧 PASS 不继承 |
-| `+get-overtime-rule` | 使用同一次真实搜索取得的 ID，exact projector 与 raw 单项对象一致；不存在/非法 ID 非零 | `PENDING_RERUN`；旧 PASS 不继承 |
-| `+get-approve-template` | discovery 暴露同类型多模板；本轮已修 identity/request-binding 分工 | `PENDING_RERUN`；必须逐一覆盖 5 个 approveType |
+| `+check-result` | clean HEAD 上 exact/raw 同场景 known-nonempty 与合法 guaranteed-zero 均通过；非空三页实际前进并终止，稳定 ID 集合、请求用户与每页内容一致 | `PASS@0ad61b3a`；后续任一代码修复产生新 HEAD 时仍需重跑，不跨 HEAD 继承 |
+| `+check-record` | clean HEAD 的 raw 非空集合含一个 start-24h overfetch；其余行按 Asia/Shanghai 业务日一致，exact 因严格范围校验非零，未误记成功；合法 guaranteed-zero 双层通过 | `FAIL@0ad61b3a`；本轮已加入“全量先验证、再过滤 overfetch”的专用上游修复，新 clean HEAD 必须重跑 nonempty/zero |
+| `+list-approve`, `+get-schedule` | clean HEAD 上 exact/raw 同场景 known-nonempty 与合法 guaranteed-zero 均通过；稳定 ID、用户/类型或用户/日期绑定及集合一致 | `PASS@0ad61b3a`；新 HEAD 必须重跑 |
+| `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | clean HEAD 上 exact/raw 同场景 known-nonempty、随机唯一词 guaranteed-zero、稳定 ID 集合与分页终止通过；班次与加班规则另完成真实多页前进 | `PASS@0ad61b3a`；新 HEAD 必须重跑 |
+| `+get-overtime-rule` | clean HEAD 上使用同一次真实搜索取得的 ID，exact 与 raw 单项对象一致；不存在 ID 的 raw 返回错 ID 对象时 exact 非零拒绝 | `PASS@0ad61b3a`；新 HEAD 必须重跑 |
+| `+get-approve-template` | clean HEAD 上 5 个 approveType 全部 exact/raw 通过；TRAVEL/OUT 多项的 `processCode` 非空唯一且集合一致，类型绑定和提交入口均有效 | `PASS@0ad61b3a`；新 HEAD 必须重跑 |
 | `+get-class` | raw 非空但不回显请求 ID | unavailable；等待下游合同，不以旧调用记 PASS |
 | `+get-self-setting` | 5 个场景通过，1 个场景 `NO_PERMISSION` | unavailable；等待 capability/权限 fixture，不以部分结果记 PASS |
 
-以上 live 结果只用于发现问题和决定发布面；当前实现修复完成并形成新的 clean commit 后，9 个 public 叶子必须从零完整重跑，任何 discovery PASS 都不能直接继承。
+同轮多页加班规则 raw 验证曾一次返回字面量 `null` 且进程退出 0；该次结果没有计为 PASS，重试后才完成同场景双层分页核对。这是 owning atomic/raw 的下游/renderer 终态合同风险：atomic 不应把 transport/null 失败表示为零退出。Shortcut 自身对 `null` 仍严格非零，不会把它投影为空集合。
+
+以上 live 结果只用于发现问题和决定发布面；当前 `+check-record` 修复形成新的 clean commit 后，9 个 public 叶子必须从零完整重跑，任何 `PASS@0ad61b3a` 都不能直接继承。
 
 ## 7. 安全与脱敏声明
 

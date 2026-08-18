@@ -109,6 +109,143 @@ func TestCrossPlatformCoverageAttendanceRequestBindingMatrices(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageAttendanceCheckRecordOverfetchFilter(t *testing.T) {
+	const startMillis, endMillis = int64(1000), int64(2000)
+	items := []map[string]any{
+		{"id": 1, "userId": "u1", "workDate": startMillis - 1},
+		{"id": 2, "userId": "u1", "workDate": startMillis},
+		{"id": 3, "userId": "u1", "workDate": endMillis},
+		{"id": 4, "userId": "u1", "workDate": endMillis + 1},
+	}
+	filtered, err := attendanceFilterUserAndTimeBinding(items, "attendance/test", []string{"u1"}, "userId", "workDate", startMillis, endMillis)
+	if err != nil || len(filtered) != 2 || filtered[0]["id"] != 2 || filtered[1]["id"] != 3 {
+		t.Fatalf("filtered=%#v err=%v", filtered, err)
+	}
+
+	invalid := []struct {
+		name  string
+		items []map[string]any
+		start int64
+		end   int64
+	}{
+		{"reversed request", nil, endMillis, startMillis},
+		{"missing user", []map[string]any{{"workDate": startMillis}}, startMillis, endMillis},
+		{"wrong user type", []map[string]any{{"userId": 1, "workDate": startMillis}}, startMillis, endMillis},
+		{"empty user", []map[string]any{{"userId": " ", "workDate": startMillis}}, startMillis, endMillis},
+		{"wrong user outside range", []map[string]any{{"userId": "u2", "workDate": startMillis - 1}}, startMillis, endMillis},
+		{"missing time", []map[string]any{{"userId": "u1"}}, startMillis, endMillis},
+		{"wrong time type", []map[string]any{{"userId": "u1", "workDate": "1000"}}, startMillis, endMillis},
+		{"zero time", []map[string]any{{"userId": "u1", "workDate": 0}}, startMillis, endMillis},
+	}
+	for _, tc := range invalid {
+		t.Run(tc.name, func(t *testing.T) {
+			if got, err := attendanceFilterUserAndTimeBinding(tc.items, "attendance/test", []string{"u1"}, "userId", "workDate", tc.start, tc.end); err == nil || got != nil {
+				t.Fatalf("filtered=%#v err=%v", got, err)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageAttendanceCheckRecordExecuteFiltersValidatedOverfetch(t *testing.T) {
+	values := map[string]string{"users": "u1", "start": "2026-01-01", "end": "2026-01-31"}
+	startMillis, _ := dayMillis(values["start"])
+	endMillis, _ := dateToMillis(values["end"], true)
+	execute := func(t *testing.T, records []map[string]any) (map[string]any, error) {
+		t.Helper()
+		caller := &attendanceCoverageCaller{text: attendanceResponseJSON(t, map[string]any{"success": true, "result": records})}
+		helpers.InitDepsForTest(t, caller)
+		cmd := corecmd.New(shortcut.FromShortcut(CheckRecord))
+		for name, value := range values {
+			if err := cmd.Flags().Set(name, value); err != nil {
+				t.Fatalf("set --%s: %v", name, err)
+			}
+		}
+		ctx, _ := output.WithResultStore(context.Background())
+		cmd.SetContext(ctx)
+		var stdout bytes.Buffer
+		cmd.SetOut(&stdout)
+		cmd.SetErr(io.Discard)
+		err := CheckRecord.Execute(shortcut.RuntimeContextForTest(cmd, CheckRecord))
+		if err != nil {
+			return nil, err
+		}
+		if caller.calls != 1 {
+			t.Fatalf("calls=%d", caller.calls)
+		}
+		if code, emitted, err := output.EmitStoredResult(cmd); err != nil || !emitted || code != 0 {
+			t.Fatalf("emit code=%d emitted=%t err=%v", code, emitted, err)
+		}
+		var envelope map[string]any
+		if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil {
+			t.Fatalf("decode envelope: %v", err)
+		}
+		return envelope, nil
+	}
+
+	t.Run("keeps in-range and filters start minus 24 hours", func(t *testing.T) {
+		envelope, err := execute(t, []map[string]any{
+			{"id": 1, "userId": "u1", "workDate": startMillis - 24*60*60*1000},
+			{"id": 2, "userId": "u1", "workDate": startMillis},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, ok := envelope["data"].(map[string]any)
+		records, recordsOK := data["records"].([]any)
+		if !ok || !recordsOK || data["count"] != float64(1) || len(records) != 1 || records[0].(map[string]any)["id"] != float64(2) {
+			t.Fatalf("data=%#v", envelope["data"])
+		}
+	})
+
+	t.Run("all valid overfetch becomes explicit empty", func(t *testing.T) {
+		envelope, err := execute(t, []map[string]any{
+			{"id": 1, "userId": "u1", "workDate": startMillis - 24*60*60*1000},
+			{"id": 2, "userId": "u1", "workDate": endMillis + 1},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, ok := envelope["data"].(map[string]any)
+		records, recordsOK := data["records"].([]any)
+		if !ok || !recordsOK || data["count"] != float64(0) || len(records) != 0 {
+			t.Fatalf("data=%#v", envelope["data"])
+		}
+	})
+
+	invalid := []struct {
+		name    string
+		records []map[string]any
+	}{
+		{"missing identity outside range", []map[string]any{{"userId": "u1", "workDate": startMillis - 1}}},
+		{"zero identity outside range", []map[string]any{{"id": 0, "userId": "u1", "workDate": startMillis - 1}}},
+		{"wrong user outside range", []map[string]any{{"id": 1, "userId": "other", "workDate": startMillis - 1}}},
+		{"malformed time outside range", []map[string]any{{"id": 1, "userId": "u1", "workDate": "bad"}}},
+		{"duplicate identities outside range", []map[string]any{{"id": 1, "userId": "u1", "workDate": startMillis - 2}, {"id": 1, "userId": "u1", "workDate": startMillis - 1}}},
+	}
+	for _, tc := range invalid {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := execute(t, tc.records); err == nil {
+				t.Fatal("invalid raw overfetch was hidden")
+			}
+		})
+	}
+
+	t.Run("downstream failure", func(t *testing.T) {
+		caller := &attendanceCoverageCaller{err: fmt.Errorf("backend unavailable")}
+		helpers.InitDepsForTest(t, caller)
+		if err := CheckRecord.Execute(attendanceRuntimeForTest(t, CheckRecord, values)); err == nil || caller.calls != 1 {
+			t.Fatalf("err=%v calls=%d", err, caller.calls)
+		}
+	})
+
+	t.Run("missing collection", func(t *testing.T) {
+		caller, err := executeAttendanceResponse(t, CheckRecord, values, `{"success":true,"result":null}`)
+		if err == nil || caller.calls != 1 {
+			t.Fatalf("err=%v calls=%d", err, caller.calls)
+		}
+	})
+}
+
 func TestCrossPlatformCoverageAttendanceDetailExecuteFailsClosed(t *testing.T) {
 	detailCases := []struct {
 		name        string

@@ -360,6 +360,53 @@ func attendanceValidateUserAndTimeBinding(items []map[string]any, operation stri
 	return nil
 }
 
+// attendanceFilterUserAndTimeBinding validates every raw row's request
+// binding before filtering service-side range overfetch. Callers must validate
+// stable identities for the complete raw collection first: an out-of-range row
+// is allowed to be omitted from the projection, but it must never hide a
+// malformed user/time binding or a row belonging to another requested user.
+func attendanceFilterUserAndTimeBinding(items []map[string]any, operation string, requestedUsers []string, userField, timeField string, startMillis, endMillis int64) ([]map[string]any, error) {
+	if startMillis > endMillis {
+		return nil, responsecheck.Error(operation, "invalid_request_range", "请求开始时间不能晚于结束时间")
+	}
+	users := make(map[string]struct{}, len(requestedUsers))
+	for _, user := range requestedUsers {
+		users[strings.TrimSpace(user)] = struct{}{}
+	}
+	timestamps := make([]int64, len(items))
+	for index, item := range items {
+		rawUser, present := item[userField]
+		if !present {
+			return nil, responsecheck.Error(operation, "missing_request_binding", fmt.Sprintf("第 %d 项缺少用户身份回显", index))
+		}
+		user, ok := rawUser.(string)
+		user = strings.TrimSpace(user)
+		if !ok || user == "" {
+			return nil, responsecheck.Error(operation, "malformed_request_binding", fmt.Sprintf("第 %d 项用户身份回显必须是非空字符串", index))
+		}
+		if _, requested := users[user]; !requested {
+			return nil, responsecheck.Error(operation, "request_identity_mismatch", fmt.Sprintf("第 %d 项用户身份不在请求集合中", index))
+		}
+		rawTimestamp, present := item[timeField]
+		if !present {
+			return nil, responsecheck.Error(operation, "missing_request_binding", fmt.Sprintf("第 %d 项缺少时间回显", index))
+		}
+		timestamp, valid := attendancePositiveInteger(rawTimestamp)
+		if !valid {
+			return nil, responsecheck.Error(operation, "malformed_request_binding", fmt.Sprintf("第 %d 项时间回显必须是大于 0 的整数毫秒时间戳", index))
+		}
+		timestamps[index] = timestamp
+	}
+	filtered := make([]map[string]any, 0, len(items))
+	for index, item := range items {
+		if timestamps[index] < startMillis || timestamps[index] > endMillis {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered, nil
+}
+
 func attendanceValidateApprovalBinding(items []map[string]any, operation string, requestedUsers []string, requestedTypes map[int]struct{}, startMillis, endMillis int64) error {
 	users := make(map[string]struct{}, len(requestedUsers))
 	for _, user := range requestedUsers {
