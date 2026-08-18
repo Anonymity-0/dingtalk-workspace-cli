@@ -1882,7 +1882,7 @@ var ChatRoleSetUser = shortcut.Shortcut{
 	Command:     "+chat-role-set-user",
 	Product:     "im",
 	Description: "设置用户的群身份（覆盖该用户的全部群身份）",
-	Intent:      "当你想为某成员整体设定其在群内的身份时使用；会实际改写该用户的群身份集合（覆盖其原有全部身份），需传群、用户和 openRoleId 列表（传空则清除全部）。",
+	Intent:      "当你想为某成员整体设定其在群内的身份时使用；会实际改写该用户的群身份集合（覆盖其原有全部身份），需传群、用户和一个 openRoleId。",
 	Risk:        shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
@@ -1904,22 +1904,29 @@ var ChatRoleSetUser = shortcut.Shortcut{
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "设置用户的群身份（覆盖该用户的全部群身份）",
-			UseWhen:      []string{"当你想为某成员整体设定其在群内的身份时使用；会实际改写该用户的群身份集合（覆盖其原有全部身份），需传群、用户和 openRoleId 列表（传空则清除全部）。"},
+			UseWhen:      []string{"当你想为某成员整体设定其在群内的身份时使用；会实际改写该用户的群身份集合（覆盖其原有全部身份），需传群、用户和一个 openRoleId。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
-			Examples:     []string{"dws chat +chat-role-set-user --group <openConversationId> --user <userId> --role-ids roleId1,roleId2"},
+			Examples:     []string{"dws chat +chat-role-set-user --group <openConversationId> --user <userId> --role-id <openRoleId>"},
 		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "user", Type: shortcut.FlagString, Desc: "用户 userId 或 openDingTalkId", Required: true},
-		{Name: "role-ids", Type: shortcut.FlagStringSlice, Desc: "群身份 openRoleId 列表（空则清除全部）", Required: true},
+		{Name: "role-id", Type: shortcut.FlagString, Desc: "群身份 openRoleId"},
+		{Name: "role-ids", Type: shortcut.FlagStringSlice, Desc: "已隐藏的兼容参数：群身份 openRoleId 列表", Hidden: true},
 	},
-	Tips: []string{`dws chat +chat-role-set-user --group <openConversationId> --user <userId> --role-ids roleId1,roleId2`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"role-id"}, Description: "公开入口必须提供一个非空群身份 openRoleId"},
+	},
+	Tips: []string{`dws chat +chat-role-set-user --group <openConversationId> --user <userId> --role-id <openRoleId>`},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return validateChatRoleSetUserRoleFlags(rt)
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		user := rt.Str("user")
 		params := map[string]any{
 			"openConversationId": rt.Str("group"),
-			"openRoleIds":        rt.StrSlice("role-ids"),
+			"openRoleIds":        chatRoleSetUserRoleIDs(rt),
 		}
 		if isOpenID(user) {
 			params["openDingTalkId"] = user
@@ -1928,6 +1935,28 @@ var ChatRoleSetUser = shortcut.Shortcut{
 		}
 		return rt.CallMCP("set_custom_user_roles", params)
 	},
+}
+
+func validateChatRoleSetUserRoleFlags(rt *shortcut.RuntimeContext) error {
+	roleIDChanged := rt.Changed("role-id")
+	roleIDsChanged := rt.Changed("role-ids")
+	switch {
+	case roleIDChanged && roleIDsChanged:
+		return apperrors.NewValidation("--role-id 与 --role-ids 不能同时指定")
+	case roleIDChanged && rt.Str("role-id") == "":
+		return apperrors.NewValidation("--role-id 不能为空")
+	case !roleIDChanged && !roleIDsChanged:
+		return apperrors.NewValidation("缺少必填参数 --role-id")
+	default:
+		return nil
+	}
+}
+
+func chatRoleSetUserRoleIDs(rt *shortcut.RuntimeContext) []string {
+	if rt.Changed("role-id") {
+		return []string{rt.Str("role-id")}
+	}
+	return rt.StrSlice("role-ids")
 }
 
 // ChatRoleRemoveUser removes specific roles from a user (remove_custom_user_roles, im).
