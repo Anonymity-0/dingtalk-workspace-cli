@@ -290,7 +290,7 @@ backup_and_record_skill_dir() {
   backup_and_remove_skill_dir "$_bars_victim" || return 1
   if [ -n "$DWS_LAST_SKILL_BACKUP" ]; then
     if ! printf '%s\n%s\n' "$_bars_victim" "$DWS_LAST_SKILL_BACKUP" >> "$_bars_manifest"; then
-      mv "$DWS_LAST_SKILL_BACKUP" "$_bars_victim" 2>/dev/null || say "  ⚠️  备份记录失败且无法自动恢复: $_bars_victim（备份位于 $DWS_LAST_SKILL_BACKUP）"
+      mv "$DWS_LAST_SKILL_BACKUP" "$_bars_victim" 2>/dev/null || say "  ⚠️  备份记录失败且无法自动恢复: ${_bars_victim}（备份位于 ${DWS_LAST_SKILL_BACKUP}）"
       return 1
     fi
   fi
@@ -298,23 +298,34 @@ backup_and_record_skill_dir() {
 
 # restore_multi_skill_set <published-manifest> <backup-manifest>
 # Removes partial new publications, then restores every old directory from
-# its exact backup path. Paths containing newlines are outside the supported
-# installer path contract; spaces are preserved.
+# its exact backup path. Publication manifest entries are <dest>:<inode>
+# pairs recorded at publish time; a destination whose inode no longer matches
+# was concurrently replaced after publication and is preserved untouched —
+# never blind-deleted by path. Paths containing newlines are outside the
+# supported installer path contract; spaces are preserved.
 restore_multi_skill_set() {
   _rms_published="$1"
   _rms_backups="$2"
   _rms_ok=1
   if [ -f "$_rms_published" ]; then
-    while IFS= read -r _rms_dest; do
-      [ -n "$_rms_dest" ] || continue
-      rm -rf "$_rms_dest" || _rms_ok=0
+    while IFS= read -r _rms_entry; do
+      [ -n "$_rms_entry" ] || continue
+      _rms_dest="${_rms_entry%:*}"
+      _rms_inode="${_rms_entry##*:}"
+      [ "$_rms_dest" != "$_rms_entry" ] || { say "  ⚠️  跳过格式异常的发布记录: $_rms_entry"; _rms_ok=0; continue; }
+      if [ "$(skill_link_inode "$_rms_dest")" = "$_rms_inode" ]; then
+        rm -rf "$_rms_dest" || _rms_ok=0
+      else
+        say "  ⚠️  跳过回滚已被并发修改的 Skill 路径: $_rms_dest"
+        _rms_ok=0
+      fi
     done < "$_rms_published"
   fi
   if [ -f "$_rms_backups" ]; then
     while IFS= read -r _rms_original && IFS= read -r _rms_backup; do
       [ -n "$_rms_backup" ] || continue
       if [ -e "$_rms_original" ] || [ -L "$_rms_original" ] || ! mkdir -p "$(dirname "$_rms_original")" || ! mv "$_rms_backup" "$_rms_original"; then
-        say "  ⚠️  无法恢复原 Skill: $_rms_original（备份保留于 $_rms_backup）"
+        say "  ⚠️  无法恢复原 Skill: ${_rms_original}（备份保留于 ${_rms_backup}）"
         _rms_ok=0
       fi
     done < "$_rms_backups"
@@ -364,6 +375,49 @@ cleanup_nested_staged_link() {
   if skill_link_matches "$_cnsl_nested" "$_cnsl_target" "$_cnsl_inode"; then
     rm -f "$_cnsl_nested"
   fi
+}
+
+# publish_skill_dir_no_replace <staged-dir> <dest> <published-manifest>
+# Publishes a staged Skill directory with an atomic no-replace claim: mkdir
+# fails with EEXIST when anything a concurrent writer created occupies the
+# destination, so the claim itself is the existence check — plain `mv` after a
+# backup could still replace a concurrently created object. Staged children
+# then move into the claim one by one (each rename targets a path inside a
+# directory this transaction owns, so no step replaces a foreign object; the
+# staging directory is created under the same umask as the claim, so their
+# modes match by construction). A failed child move relocates the children
+# back and removes only the claim. On success the destination's inode is
+# recorded as <dest>:<inode> so rollback only ever deletes this transaction's
+# object.
+publish_skill_dir_no_replace() {
+  _psd_stage="$1"
+  _psd_dest="$2"
+  _psd_manifest="$3"
+
+  if ! mkdir "$_psd_dest" 2>/dev/null; then
+    return 1
+  fi
+  _psd_failed=0
+  for _psd_child in "$_psd_stage"/* "$_psd_stage"/.[!.]* "$_psd_stage"/..?*; do
+    [ -e "$_psd_child" ] || [ -L "$_psd_child" ] || continue
+    if ! mv "$_psd_child" "$_psd_dest/"; then
+      _psd_failed=1
+      break
+    fi
+  done
+  if [ "$_psd_failed" -eq 0 ]; then
+    _psd_inode="$(skill_link_inode "$_psd_dest")" || _psd_failed=1
+    if [ "$_psd_failed" -eq 0 ] && printf '%s:%s\n' "$_psd_dest" "$_psd_inode" >> "$_psd_manifest"; then
+      return 0
+    fi
+    _psd_failed=1
+  fi
+  for _psd_child in "$_psd_dest"/* "$_psd_dest"/.[!.]* "$_psd_dest"/..?*; do
+    [ -e "$_psd_child" ] || [ -L "$_psd_child" ] || continue
+    mv "$_psd_child" "$_psd_stage/" || return 1
+  done
+  rmdir "$_psd_dest" 2>/dev/null || return 1
+  return 1
 }
 
 # publish_skill_cache <source> <cache-dir>
@@ -753,12 +807,7 @@ _install_mono_to_base() {
   done
 
   _mono_dest="$_mono_base/$SKILL_NAME"
-  printf '%s\n' "$_mono_dest" >> "$_mono_published" || {
-    restore_multi_skill_set "$_mono_published" "$_mono_backups" || true
-    rm -rf "$_mono_stage"
-    return 1
-  }
-  if ! mv "$_mono_stage/$SKILL_NAME" "$_mono_dest"; then
+  if ! publish_skill_dir_no_replace "$_mono_stage/$SKILL_NAME" "$_mono_dest" "$_mono_published"; then
     say "  ⚠️  mono Skill 集合发布失败，正在恢复原集合: $_mono_dest"
     restore_multi_skill_set "$_mono_published" "$_mono_backups" || say "  ⚠️  原 Skill 集合自动恢复不完整，请检查上方备份路径"
     rm -rf "$_mono_stage"
@@ -1196,12 +1245,7 @@ _install_multi_to_base() {
     [ -f "${skill_dir}SKILL.md" ] || continue
     _name="$(basename "$skill_dir")"
     _dest="$_base/$_name"
-    printf '%s\n' "$_dest" >> "$_ms_published" || {
-      restore_multi_skill_set "$_ms_published" "$_ms_backups" || true
-      rm -rf "$_ms_stage"
-      return 1
-    }
-    if ! mv "$_ms_stage/$_name" "$_dest"; then
+    if ! publish_skill_dir_no_replace "$_ms_stage/$_name" "$_dest" "$_ms_published"; then
       say "  ⚠️  multi Skill 集合发布失败，正在恢复原集合: $_dest"
       restore_multi_skill_set "$_ms_published" "$_ms_backups" || say "  ⚠️  原 Skill 集合自动恢复不完整，请检查上方备份路径"
       rm -rf "$_ms_stage"

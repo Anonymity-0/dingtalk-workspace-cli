@@ -2097,6 +2097,89 @@ rm -f "$identity_anchor"
 	}
 }
 
+func TestInstallerShellCopyPublicationRacePreservesConcurrentDirectories(t *testing.T) {
+	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			base := filepath.Join(home, ".zcode", "skills")
+			first := filepath.Join(base, "dingtalk-first")
+			second := filepath.Join(base, "dingtalk-second")
+			mustWriteFile(t, filepath.Join(first, "SKILL.md"), []byte("old first\n"), 0o644)
+			mustWriteFile(t, filepath.Join(second, "SKILL.md"), []byte("old second\n"), 0o644)
+			src := filepath.Join(t.TempDir(), "multi")
+			mustWriteFile(t, filepath.Join(src, "dingtalk-first", "SKILL.md"), []byte("new first\n"), 0o644)
+			mustWriteFile(t, filepath.Join(src, "dingtalk-second", "SKILL.md"), []byte("new second\n"), 0o644)
+
+			// Inject the race inside the second publication's child move: the
+			// first skill has already been published and recorded, so this
+			// simulates a concurrent writer replacing it and the transaction
+			// failing afterwards — rollback must verify identity and retain
+			// the foreign object instead of blind-deleting the path.
+			harness := `. "$DWS_TEST_LIBRARY"
+mv() {
+  if [ "$2" = "$DWS_TEST_SECOND/" ]; then
+    rm -rf "$DWS_TEST_FIRST"
+    mkdir -p "$DWS_TEST_FIRST"
+    printf '%s\n' first-user-data > "$DWS_TEST_FIRST/concurrent-user-data.txt"
+    return 1
+  fi
+  command mv "$@"
+}
+if _install_multi_to_base "$DWS_TEST_SRC" "$DWS_TEST_BASE" "$HOME" ".zcode/skills"; then
+  exit 2
+fi
+`
+			cmd := exec.Command("sh", "-c", harness)
+			cmd.Env = append(os.Environ(),
+				"HOME="+home,
+				"DWS_TEST_LIBRARY="+library,
+				"DWS_TEST_BASE="+base,
+				"DWS_TEST_SRC="+src,
+				"DWS_TEST_FIRST="+first,
+				"DWS_TEST_SECOND="+second,
+			)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s copy race harness failed: %v\n%s", scriptName, err, output)
+			}
+			if !strings.Contains(string(output), "跳过回滚已被并发修改的 Skill 路径: "+first) {
+				t.Fatalf("%s did not skip identity-mismatched rollback:\n%s", scriptName, output)
+			}
+			got, err := os.ReadFile(filepath.Join(first, "concurrent-user-data.txt"))
+			if err != nil || string(got) != "first-user-data\n" {
+				t.Fatalf("%s concurrent directory was deleted or modified: %q, %v", scriptName, string(got), err)
+			}
+			entries, err := os.ReadDir(first)
+			if err != nil || len(entries) != 1 || entries[0].Name() != "concurrent-user-data.txt" {
+				t.Fatalf("%s foreign directory contents changed: %v, %v", scriptName, entries, err)
+			}
+			if restored, err := os.ReadFile(filepath.Join(second, "SKILL.md")); err != nil || string(restored) != "old second\n" {
+				t.Fatalf("%s second skill was not restored from backup: %q, %v", scriptName, string(restored), err)
+			}
+			if matches, err := filepath.Glob(filepath.Join(base, ".dws-multi-set.*")); err != nil || len(matches) != 0 {
+				t.Fatalf("%s staging leftovers = %v, err=%v", scriptName, matches, err)
+			}
+		})
+	}
+}
+
 func TestInstallerShellUsesUpstreamXDGAndCustomAgentRoots(t *testing.T) {
 	for _, scriptName := range []string{"install.sh", "install-skills.sh"} {
 		t.Run(scriptName, func(t *testing.T) {
@@ -2694,7 +2777,7 @@ mv() {
   fi
   if [ "$DWS_TEST_FAILURE_KIND" = publish ]; then
     case "$1" in
-      */.dws-multi-set.*/dingtalk-second) return 1 ;;
+      */.dws-multi-set.*/dingtalk-second/*) return 1 ;;
     esac
   fi
   command mv "$@"
@@ -2828,7 +2911,7 @@ mv() {
   fi
   if [ "$DWS_TEST_FAILURE_KIND" = publish ]; then
     case "$1" in
-      */.dws-mono-set.*/dws) return 1 ;;
+      */.dws-mono-set.*/dws/*) return 1 ;;
     esac
   fi
   command mv "$@"
