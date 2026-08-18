@@ -3517,6 +3517,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 	}
 
 	commentCmd.AddCommand(commentListCmd, commentCreateCmd, commentReplyCmd, commentUpdateCmd, commentDeleteCmd, commentCreateInlineCmd)
+	commentCmd.AddCommand(newCommentBaseCommands("doc")...)
 
 	// ── permission (文档协作权限) ────────────────────────────
 	permissionCmd := &cobra.Command{
