@@ -3624,18 +3624,24 @@
       "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "report",
       "command": "+inbox-list",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格验证 success、result.report_list、稳定 reportId 与 hasMore/cursor；exact Shortcut 已完成已知非空、保证零项、cursor 严格前进、相邻页无重复及终止页证明。终止页回显 cursor 只作已验证收据且不发布 next_token。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "report",
-      "command": "+outbox-list",
+      "command": "+template-search",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "在严格验证完整可用模板集合、稳定 templateId 与名称后执行本地不区分大小写搜索；exact Shortcut 同时证明已知非空与保证零命中。",
+      "availability": "available"
     },
     {
       "suite": "read",

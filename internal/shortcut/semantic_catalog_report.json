@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "service": "report",
+  "default_availability": "unavailable",
+  "shortcuts": {
+    "+inbox-list": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格验证 success、result.report_list、稳定 reportId 与 hasMore/cursor；exact Shortcut 已完成已知非空、保证零项、cursor 严格前进、相邻页无重复及终止页证明。终止页回显 cursor 只作已验证收据且不发布 next_token。",
+      "risk": "read",
+      "availability": "available",
+      "public": true,
+      "reviewed": true
+    },
+    "+outbox-list": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格验证发件箱集合、项目身份和分页终止证据；exact Shortcut 只证明多个时间窗口的零项结果，缺少已知非空 fixture，不能发布。",
+      "risk": "read",
+      "public": false,
+      "reviewed": true
+    },
+    "+template-search": {
+      "disposition": "semantic_adapter",
+      "semantic_delta": "在严格验证完整可用模板集合、稳定 templateId 与名称后执行本地不区分大小写搜索；exact Shortcut 同时证明已知非空与保证零命中。",
+      "risk": "read",
+      "availability": "available",
+      "public": true,
+      "reviewed": true
+    },
+    "+report-latest": {
+      "disposition": "primary_smart",
+      "semantic_delta": "完整验证最近 20 天发件箱后按每项 createTime 选择最新稳定 reportId，再精确读回身份匹配的详情；当前账号没有非空发件箱 fixture，无法证明完整两步链路，保持不可用。",
+      "risk": "read",
+      "public": false,
+      "reviewed": true
+    }
+  }
+}

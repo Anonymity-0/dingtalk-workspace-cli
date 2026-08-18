@@ -379,7 +379,7 @@ func generatedPublicShortcutCatalog() map[string]struct{} {
 		"oa\u0000+my-initiated":                         {},
 		"oa\u0000+search-forms":                         {},
 		"report\u0000+inbox-list":                       {},
-		"report\u0000+outbox-list":                      {},
+		"report\u0000+template-search":                  {},
 		"sheet\u0000+list-sheets":                       {},
 		"sheet\u0000+read":                              {},
 		"todo\u0000+assign":                             {},
