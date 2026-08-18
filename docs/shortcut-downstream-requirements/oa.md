@@ -11,6 +11,21 @@
 - 隐藏：6，其中 unavailable 5；`+done-approvals` 是 available 但隐藏的兼容入口。
 - 所有 10 条均声明 `Contract`、`Safety`、`Result` 并启用 unified output；写入口在首次远端调用前由 Runtime 确认门禁阻断。
 
+### Residual-gap 分类
+
+| Shortcut / 用户路线 | 最终分类 | 依据 |
+|---|---|---|
+| `+list-executed`、`+list-submitted`、`+my-initiated`、`+search-forms` | fully unlocked | exact 非空与保证零命中均通过；public |
+| `+done-approvals` | routed | available 的隐藏兼容别名；新调用路由到 `+list-executed` |
+| `+list-forms` | delivery hardened but downstream blocked | exact 与 raw 均缺 continuation，改变 cursor 后集合高度重叠 |
+| `+list-pending` | delivery hardened but downstream blocked | exact 与 raw 均得到 `success=true`，但 `result.values` 为 `null` 而不是合法空数组 |
+| `+pending` | unavailable | 隐藏兼容入口路由到同一受阻待办能力，没有独立安全 fixture |
+| `+list-cc` | delivery hardened but downstream blocked | exact 与 raw 隔离到错型业务状态与 `null` 集合，不能解释为合法零项 |
+| `+approve-by` | unavailable | 复合编排与确认门禁已实现，但没有隔离待办、终态读回和可恢复清理 fixture |
+| 已知实例/任务的详情与写操作 | routed | 使用精确 OA 原子命令；必须由用户提供真实目标并单独确认，不等于 Shortcut 已解锁 |
+
+OA 不能作为整体宣称 fully unlocked：源码 10 条中仅 4 条 fully unlocked，1 条兼容路由，3 条下游阻塞，2 条 unavailable。
+
 | Exact Shortcut 证明 | 标签 | 聚合事实 |
 |---|---|---|
 | `+list-executed` | PASS | 已知非空 7；保证零命中 0；分页终态明确 |
@@ -20,8 +35,11 @@
 | `+done-approvals`（隐藏兼容） | PASS | 已知非空 7；首屏终态明确 |
 | `+list-forms` fail-closed | PASS | 非空页缺 continuation 被拒绝；两个 cursor 的 93/93 项重叠 92 项 |
 | `+approve-by` 确认门禁单测 | PASS | 确认前 0 调用；确认后固定为读待办、读任务、写审批、精确任务读回 |
+| `+list-pending` fail-closed | PASS | exact 与 raw 均隔离到布尔成功、对象结果、`null` 集合；拒绝伪造空数组 |
+| `+pending` fail-closed | PASS | 与主入口一致拒绝 `null` 集合；没有独立宽松回退 |
+| `+list-cc` fail-closed | PASS | exact 与 raw 均拒绝错型业务状态及 `null` 集合 |
 
-未列为 PASS 的能力没有安全的已知非空或可逆写 fixture，保持 unavailable；显式空结果不替代非空证明。
+未列为 fully unlocked 的能力没有安全的已知非空或可逆写 fixture，或下游响应合同本身不合法；`null` 集合不是显式空结果，不能替代合法零项证明。
 
 ## Lark 1.0.87 用户任务映射
 
@@ -36,9 +54,9 @@ Lark approval 共 14 个任务；映射按用户结果而不是命令名判断�
 | instances cancel | `oa approval revoke` | routed | 高风险原子写；无可逆 fixture，不新增公开 Shortcut |
 | instances cc | `oa approval oa-cc-noticer` | routed | 无安全 fixture，保持原子入口 |
 | instances create | `oa approval forecast-process` + `create-instance` | routed | 无可清理实例 fixture，不新增公开 Shortcut |
-| tasks query | 四类列表与 `oa approval tasks` | partial | 已办/已发起公开；待办/抄送/任务 unavailable |
+| tasks query | 四类列表与 `oa approval tasks` | delivery hardened but downstream blocked | 已办/已发起公开；待办返回 `null` 集合，抄送返回错型状态与 `null` 集合 |
 | tasks add_sign | `oa approval append-task` | routed | 无安全 fixture，保持原子入口 |
-| tasks approve | `oa approval approve` / `+approve-by` | partial | Shortcut unavailable；原子写需用户确认 |
+| tasks approve | `oa approval approve` / `+approve-by` | routed / unavailable | 原子写需用户确认；复合 Shortcut unavailable |
 | tasks reject | `oa approval reject` | routed | 无安全 fixture，保持原子入口 |
 | tasks remind | `ding-info` 后串联 DING 发送 | downstream_required | 缺少一个可验证的稳定催办回执合同 |
 | tasks rollback | `revert-activities` + `revert-task` | routed | 无可恢复 fixture，保持原子入口 |
@@ -63,7 +81,7 @@ DWS 现有原子能力还覆盖审批记录、表单 Schema、流程预测、评
 ## `DS-oa-002`：可重复的审批读写 E2E fixture
 
 - 优先级：P1；类型：tenant-or-fixture；Owner：OA 测试租户/权限与测试数据平台。
-- 影响：待办、抄送、任务、同意/拒绝/撤回/转交/加签/退回/催办等用户任务不能完成安全 live proof。
+- 影响：待办、抄送、任务、同意/拒绝/撤回/转交/加签/退回/催办等用户任务不能完成安全 live proof。当前 raw 待办集合为 `null`；抄送同时存在错型业务状态与 `null` 集合，二者都不是合法空页。
 - 所需 fixture：
   - 隔离测试身份与专用审批定义，可创建至少一条待办、一条抄送和一条已办实例。
   - 创建回执返回稳定实例 ID；任务查询返回稳定 taskId 和明确任务状态。

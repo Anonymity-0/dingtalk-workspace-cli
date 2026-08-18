@@ -54,14 +54,14 @@
     },
     "+list-pending": {
       "disposition": "semantic_adapter",
-      "semantic_delta": "严格待办投影与分页已实现，但当前安全账号只有显式空结果，缺少已知非空待审批 fixture。",
+      "semantic_delta": "严格待办投影与分页已实现；exact Shortcut 与同参数 atomic/raw 均隔离到 success=true 但 result.values=null，错型集合被拒绝，且当前没有安全非空待审批 fixture。",
       "risk": "read",
       "public": false,
       "reviewed": true
     },
     "+pending": {
       "disposition": "alias_internal",
-      "semantic_delta": "历史首屏待办摘要缺少页码且当前没有已知非空安全 fixture；新调用应使用 +list-pending，当前保持不可用。",
+      "semantic_delta": "历史首屏待办入口路由到 +list-pending；同一真实响应的 result.values 为 null 而不是合法空数组，且当前没有已知非空安全 fixture，因此别名与主入口均不可用。",
       "risk": "read",
       "primary": "+list-pending",
       "public": false,
@@ -69,7 +69,7 @@
     },
     "+list-cc": {
       "disposition": "semantic_adapter",
-      "semantic_delta": "严格抄送列表与审核过的空页终态已实现，但当前没有已知非空抄送审批 fixture，不能完成 exact Shortcut 非空证明。",
+      "semantic_delta": "严格抄送列表与分页校验已实现；exact Shortcut 和同参数 atomic/raw 隔离到错型业务状态与 null 集合，不能把响应解释为空页，且当前没有安全非空抄送 fixture。",
       "risk": "read",
       "public": false,
       "reviewed": true
