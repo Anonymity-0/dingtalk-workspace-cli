@@ -5,6 +5,7 @@ package aitable
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -102,10 +103,21 @@ func parseBootstrapTables(raw string) ([]bootstrapTable, error) {
 				return nil, baseBootstrapValidation(fmt.Sprintf("--tables[%d].fields 必须是 JSON 数组", index))
 			}
 		}
+		fieldNames := map[string]bool{}
 		for fieldIndex, field := range fields {
 			object, ok := field.(map[string]any)
-			if !ok || strings.TrimSpace(stringValue(object, "fieldName", "name")) == "" || strings.TrimSpace(stringValue(object, "type")) == "" {
+			fieldName := strings.TrimSpace(stringValue(object, "fieldName", "name"))
+			if !ok || fieldName == "" || strings.TrimSpace(stringValue(object, "type")) == "" {
 				return nil, baseBootstrapValidation(fmt.Sprintf("--tables[%d].fields[%d] 必须包含 fieldName 和 type", index, fieldIndex))
+			}
+			if fieldNames[fieldName] {
+				return nil, baseBootstrapValidation(fmt.Sprintf("--tables[%d].fields[%d].fieldName %q 不能重复", index, fieldIndex, fieldName))
+			}
+			fieldNames[fieldName] = true
+			if config, exists := object["config"]; exists {
+				if _, ok := config.(map[string]any); !ok {
+					return nil, baseBootstrapValidation(fmt.Sprintf("--tables[%d].fields[%d].config 必须是 JSON 对象", index, fieldIndex))
+				}
 			}
 		}
 		out = append(out, bootstrapTable{Name: name, Fields: fields})
@@ -271,10 +283,13 @@ func executeBaseBootstrap(rt *shortcut.RuntimeContext) error {
 		}
 		fieldsData, verifyErr := rt.CallMCPData(serverMain, "get_fields", map[string]any{"baseId": baseID, "tableId": tableID})
 		fields, found := findNamedObjectList(fieldsData, "fields", "fieldList")
-		if verifyErr != nil || !found || !containsAllFieldNames(fields, spec.Fields) {
-			if verifyErr == nil {
-				verifyErr = fmt.Errorf("field read-back for table %s does not contain the declared field set", tableID)
-			}
+		if verifyErr == nil && !found {
+			verifyErr = fmt.Errorf("field read-back for table %s is missing the fields collection", tableID)
+		}
+		if verifyErr == nil {
+			verifyErr = verifyDeclaredFieldStructures(fields, spec.Fields)
+		}
+		if verifyErr != nil {
 			result.Status = "partial_success"
 			result.CompletedCount = index
 			result.FailedCount = len(tables) - index
@@ -391,16 +406,73 @@ func deepContainsString(value any, expected string) bool {
 	return false
 }
 
-func containsAllFieldNames(actual []map[string]any, expected []any) bool {
-	names := map[string]bool{}
+func verifyDeclaredFieldStructures(actual []map[string]any, expected []any) error {
+	actualByName := map[string][]map[string]any{}
 	for _, field := range actual {
-		names[stringValue(field, "fieldName", "name")] = true
-	}
-	for _, raw := range expected {
-		field, _ := raw.(map[string]any)
-		if !names[stringValue(field, "fieldName", "name")] {
-			return false
+		name := strings.TrimSpace(stringValue(field, "fieldName", "name"))
+		if name != "" {
+			actualByName[name] = append(actualByName[name], field)
 		}
 	}
-	return true
+	for index, raw := range expected {
+		field, ok := raw.(map[string]any)
+		if !ok {
+			return fmt.Errorf("declared field at index %d is not an object", index)
+		}
+		name := strings.TrimSpace(stringValue(field, "fieldName", "name"))
+		matches := actualByName[name]
+		if len(matches) == 0 {
+			return fmt.Errorf("field read-back is missing declared field %q", name)
+		}
+		if len(matches) != 1 {
+			return fmt.Errorf("field read-back contains %d fields named %q", len(matches), name)
+		}
+		actualField := matches[0]
+		expectedType := strings.TrimSpace(stringValue(field, "type"))
+		actualType := strings.TrimSpace(stringValue(actualField, "type", "fieldType"))
+		if actualType != expectedType {
+			return fmt.Errorf("field %q type mismatch: got %q, want %q", name, actualType, expectedType)
+		}
+		for _, key := range []string{"config", "aiConfig"} {
+			expectedConfig, declared := field[key]
+			if !declared {
+				continue
+			}
+			actualConfig, found := actualField[key]
+			if !found || !declaredValueMatches(actualConfig, expectedConfig) {
+				return fmt.Errorf("field %q %s mismatch", name, key)
+			}
+		}
+	}
+	return nil
+}
+
+func declaredValueMatches(actual, expected any) bool {
+	switch expectedValue := expected.(type) {
+	case map[string]any:
+		actualValue, ok := actual.(map[string]any)
+		if !ok {
+			return false
+		}
+		for key, expectedChild := range expectedValue {
+			actualChild, found := actualValue[key]
+			if !found || !declaredValueMatches(actualChild, expectedChild) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		actualValue, ok := actual.([]any)
+		if !ok || len(actualValue) != len(expectedValue) {
+			return false
+		}
+		for index := range expectedValue {
+			if !declaredValueMatches(actualValue[index], expectedValue[index]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return reflect.DeepEqual(actual, expected)
+	}
 }

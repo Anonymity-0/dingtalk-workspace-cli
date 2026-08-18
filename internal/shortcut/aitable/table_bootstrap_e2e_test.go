@@ -89,6 +89,8 @@ func TestCrossPlatformCoverageTableBootstrapInputValidation(t *testing.T) {
 		"too many fields":    mustJSON(t, tooMany),
 		"non-object field":   `[1]`,
 		"field missing type": `[{"fieldName":"标题"}]`,
+		"duplicate name":     `[{"fieldName":"标题","type":"text"},{"fieldName":" 标题 ","type":"number"}]`,
+		"config not object":  `[{"fieldName":"标题","type":"text","config":[]}]`,
 	}
 	for name, raw := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -101,6 +103,36 @@ func TestCrossPlatformCoverageTableBootstrapInputValidation(t *testing.T) {
 				t.Fatalf("typed validation recovery = %#v", err)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageTableBootstrapRejectsDuplicateFieldsBeforeMCP(t *testing.T) {
+	caller := &upsertByKeyCaller{}
+	out, err := runAITableCompositeCLI(t, caller, "+table-bootstrap",
+		"--base-id", "base", "--name", "任务",
+		"--fields", `[{"fieldName":"标题","type":"text"},{"fieldName":"标题","type":"number"}]`, "--yes")
+	if out != "" || err == nil || len(caller.calls) != 0 {
+		t.Fatalf("duplicate field validation = output:%q err:%v calls:%#v", out, err, caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageTableBootstrapVerifiesTypeAndDeclaredConfig(t *testing.T) {
+	fields := []any{map[string]any{
+		"fieldName": "状态",
+		"type":      "singleSelect",
+		"config": map[string]any{
+			"options": []any{map[string]any{"name": "待办"}},
+		},
+	}}
+	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+		{text: `{"tableId":"table-new"}`},
+		{text: `{"tables":[{"tableId":"table-new"}]}`},
+		{text: `{"fields":[{"fieldId":"field-1","fieldName":"状态","fieldType":"singleSelect","config":{"options":[{"name":"待办","optionId":"option-1"}],"extra":true}}]}`},
+	}}
+	out, err := runAITableCompositeCLI(t, caller, "+table-bootstrap",
+		"--base-id", "base", "--name", "任务", "--fields", mustJSON(t, fields), "--yes")
+	if err != nil || !strings.Contains(out, `"status": "verified"`) {
+		t.Fatalf("typed config verification = output:%q err:%v", out, err)
 	}
 }
 
@@ -127,6 +159,9 @@ func TestCrossPlatformCoverageTableBootstrapFailureStages(t *testing.T) {
 		{name: "get fields error", fields: oneField, steps: []upsertByKeyStep{{text: `{"tableId":"table-new"}`}, {text: `{"tables":[{"tableId":"table-new"}]}`}, {err: errors.New("get fields failed")}}},
 		{name: "get fields missing collection", fields: oneField, steps: []upsertByKeyStep{{text: `{"tableId":"table-new"}`}, {text: `{"tables":[{"tableId":"table-new"}]}`}, {text: `{}`}}},
 		{name: "get fields mismatch", fields: oneField, steps: []upsertByKeyStep{{text: `{"tableId":"table-new"}`}, {text: `{"tables":[{"tableId":"table-new"}]}`}, {text: `{"fields":[]}`}}},
+		{name: "get fields type mismatch", fields: oneField, steps: []upsertByKeyStep{{text: `{"tableId":"table-new"}`}, {text: `{"tables":[{"tableId":"table-new"}]}`}, {text: `{"fields":[{"fieldName":"F00","fieldType":"number"}]}`}}},
+		{name: "get fields config mismatch", fields: []any{map[string]any{"fieldName": "状态", "type": "singleSelect", "config": map[string]any{"multiple": false}}}, steps: []upsertByKeyStep{{text: `{"tableId":"table-new"}`}, {text: `{"tables":[{"tableId":"table-new"}]}`}, {text: `{"fields":[{"fieldName":"状态","fieldType":"singleSelect","config":{"multiple":true}}]}`}}},
+		{name: "get fields duplicate name", fields: oneField, steps: []upsertByKeyStep{{text: `{"tableId":"table-new"}`}, {text: `{"tables":[{"tableId":"table-new"}]}`}, {text: `{"fields":[{"fieldName":"F00","fieldType":"text"},{"fieldName":"F00","fieldType":"text"}]}`}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

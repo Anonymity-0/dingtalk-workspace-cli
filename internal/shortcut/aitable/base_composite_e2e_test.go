@@ -197,6 +197,8 @@ func TestCrossPlatformCoverageBaseBootstrapInputValidation(t *testing.T) {
 		"fields not array":   `[{"name":"T","fields":{}}]`,
 		"field not object":   `[{"name":"T","fields":[1]}]`,
 		"field missing type": `[{"name":"T","fields":[{"fieldName":"F"}]}]`,
+		"duplicate field":    `[{"name":"T","fields":[{"fieldName":"F","type":"text"},{"fieldName":" F ","type":"number"}]}]`,
+		"field config array": `[{"name":"T","fields":[{"fieldName":"F","type":"text","config":[]}]}]`,
 	}
 	for name, raw := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -260,6 +262,7 @@ func TestCrossPlatformCoverageBaseBootstrapFailureStagesE2E(t *testing.T) {
 		{name: "verify table error", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{"tableId":"t"}`}, {err: errors.New("verify table failed")}}},
 		{name: "verify table wrong id", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{"tableId":"t"}`}, {text: `{"tables":[]}`}}},
 		{name: "verify fields error", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{"tableId":"t"}`}, {text: `{"tables":[{"tableId":"t"}]}`}, {err: errors.New("verify fields failed")}}},
+		{name: "verify fields missing collection", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{"tableId":"t"}`}, {text: `{"tables":[{"tableId":"t"}]}`}, {text: `{}`}}},
 		{name: "verify fields mismatch", steps: []upsertByKeyStep{{text: `{"baseId":"b"}`}, {text: `{"baseId":"b"}`}, {text: `{"tableId":"t"}`}, {text: `{"tables":[{"tableId":"t"}]}`}, {text: `{"fields":[]}`}}, extra: []string{"--folder-id", "folder", "--template-id", "template"}, withField: true},
 	}
 	for _, tc := range cases {
@@ -383,8 +386,20 @@ func TestCrossPlatformCoverageBaseCompositeShapeHelpers(t *testing.T) {
 	if _, ok := findNamedObjectList(map[string]any{"tables": []any{"bad"}}, "tables"); ok {
 		t.Fatal("non-object list item must fail")
 	}
-	if containsAllFieldNames([]map[string]any{{"fieldName": "A"}}, []any{map[string]any{"fieldName": "B"}}) {
+	if err := verifyDeclaredFieldStructures([]map[string]any{{"fieldName": "A", "fieldType": "text"}}, []any{map[string]any{"fieldName": "B", "type": "text"}}); err == nil {
 		t.Fatal("missing field name must fail")
+	}
+	if err := verifyDeclaredFieldStructures(nil, []any{"bad"}); err == nil {
+		t.Fatal("non-object declaration must fail")
+	}
+	if declaredValueMatches("bad", map[string]any{"x": 1}) {
+		t.Fatal("object declaration must not match a scalar")
+	}
+	if declaredValueMatches("bad", []any{}) || declaredValueMatches([]any{}, []any{1}) {
+		t.Fatal("array declaration must require an array of equal length")
+	}
+	if declaredValueMatches([]any{1}, []any{2}) {
+		t.Fatal("array declaration must compare each item")
 	}
 	if got := findStringByKeys(map[string]any{"items": []any{map[string]any{"nested": " value "}}}, "nested"); got != "value" {
 		t.Fatalf("nested array string = %q", got)

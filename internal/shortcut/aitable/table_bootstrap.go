@@ -60,10 +60,21 @@ func parseBootstrapFields(raw string) ([]any, error) {
 	if len(fields) > 100 {
 		return nil, tableBootstrapValidation("--fields 最多接受 100 个字段")
 	}
+	seen := map[string]bool{}
 	for index, rawField := range fields {
 		field, ok := rawField.(map[string]any)
-		if !ok || strings.TrimSpace(stringValue(field, "fieldName", "name")) == "" || strings.TrimSpace(stringValue(field, "type")) == "" {
+		name := strings.TrimSpace(stringValue(field, "fieldName", "name"))
+		if !ok || name == "" || strings.TrimSpace(stringValue(field, "type")) == "" {
 			return nil, tableBootstrapValidation(fmt.Sprintf("--fields[%d] 必须包含 fieldName 和 type", index))
+		}
+		if seen[name] {
+			return nil, tableBootstrapValidation(fmt.Sprintf("--fields[%d].fieldName %q 不能重复", index, name))
+		}
+		seen[name] = true
+		if config, exists := field["config"]; exists {
+			if _, ok := config.(map[string]any); !ok {
+				return nil, tableBootstrapValidation(fmt.Sprintf("--fields[%d].config 必须是 JSON 对象", index))
+			}
 		}
 	}
 	return fields, nil
@@ -149,10 +160,13 @@ func createAndVerifyTableStructure(rt *shortcut.RuntimeContext, baseID, tableNam
 	}
 	fieldsData, err := rt.CallMCPData(serverMain, "get_fields", map[string]any{"baseId": baseID, "tableId": created.TableID})
 	created.Fields, _ = findNamedObjectList(fieldsData, "fields", "fieldList")
-	if err != nil || created.Fields == nil || !containsAllFieldNames(created.Fields, fields) {
-		if err == nil {
-			err = fmt.Errorf("field read-back for table %s does not contain the declared field set", created.TableID)
-		}
+	if err == nil && created.Fields == nil {
+		err = fmt.Errorf("field read-back for table %s is missing the fields collection", created.TableID)
+	}
+	if err == nil {
+		err = verifyDeclaredFieldStructures(created.Fields, fields)
+	}
+	if err != nil {
 		return created, err
 	}
 	return created, nil
