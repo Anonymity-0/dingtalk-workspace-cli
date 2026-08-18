@@ -31,7 +31,7 @@ dws doc +background-delete --node <DOC_ID> --format json
 ## 稳定 ID 与结果
 
 - `resourceId`、`blockId`、`nodeId` 必须来自真实 media/block 返回，不能从标题或本地文件名猜测。
-- 插入后使用回执中的 `insertedBlockId/affectedBlockIds` 定位；`insertedBlockId` 是媒体容器，不是图后空块。只有 `position.followingBlockExists=true` 时才删除真实 `followingBlockId`；为 `false` 时不得删除媒体容器。插入回执成功后禁止重传媒体。下载必须检查 `localPath`、`sizeBytes > 0`。
+- 插入成功回执在 `data.blockId` 返回已回读验证的媒体块 ID；后续定位只复用该 `blockId`。回执不提供相邻空块字段，不得据此猜测或自动删除其他块。插入回执成功后禁止重传媒体。下载必须检查 `localPath`、`sizeBytes > 0`。
 - 下载输出只接受工作目录内相对路径，默认 no-clobber。
 - 删除源文件是独立的破坏性本地操作，不属于媒体下载；只有用户明确要求且下载验证成功后才能执行。
 
