@@ -61,16 +61,18 @@ func renameSkillPathNoReplaceFallback(source, destination string) error {
 // renames the source over the claim; on platforms that permit replacing an
 // empty directory (Linux) that rename only ever touches the claim we own.
 // Platforms that refuse to rename over any directory (macOS returns EEXIST
-// even for an empty target) take the slow path instead: the source children
-// are moved into the claim one by one, so the destination stays occupied by
-// us the whole time. Removing the claim and retrying the rename — the
-// previous design — opened an unlink→rename window in which a foreign
-// directory could appear and be silently overwritten, breaking the
-// no-replace contract. The destination is therefore never deleted here: a
-// concurrent creator either loses the mkdir race (EEXIST) or finds the path
-// claimed until publication completes. The slow path is not
-// all-or-nothing-visible, which is acceptable on the degraded filesystems
-// that need it; every other property of the no-replace contract holds.
+// even for an empty target) take the slow path instead — but only after
+// proving the claim is still empty: a rename that failed because a
+// concurrent writer landed inside the claim must abort with the destination
+// retained, never fall through to child moves whose per-entry primitives
+// would collide with (and rollback would delete) the foreign data. The slow
+// path moves the source children into the claim one by one, each through an
+// atomic no-clobber primitive (mkdir claim for directories, os.Link for
+// files, os.Symlink for links), so a same-name concurrent entry aborts the
+// move and a foreign entry of any name — detected by re-reading the claim —
+// retains the destination instead of letting the rollback delete it. The
+// destination claim is removed only while still empty, so a foreign entry
+// always survives a failed publication.
 func renameSkillDirNoReplaceFallback(source, destination string) error {
 	sourceInfo, err := skillPathLstat(source)
 	if err != nil {
@@ -85,18 +87,112 @@ func renameSkillDirNoReplaceFallback(source, destination string) error {
 	if err := skillPathRename(source, destination); err == nil {
 		return nil
 	}
+	claimEntries, claimErr := skillPathReadDir(destination)
+	if claimErr != nil {
+		return fmt.Errorf("降级发布 Skill 目录失败 %s: %w", destination, claimErr)
+	}
+	if len(claimEntries) > 0 {
+		return fmt.Errorf("降级发布中止，目标在声明后被并发写入 %s: %w", destination, os.ErrExist)
+	}
 	if err := moveSkillDirChildrenIntoClaim(source, destination, sourceInfo.Mode().Perm()); err != nil {
 		return fmt.Errorf("降级发布 Skill 目录失败 %s: %w", destination, err)
 	}
 	return nil
 }
 
+// moveSkillDirChildNoReplace moves one child of a staged directory into the
+// claimed destination through an atomic no-clobber primitive: directories
+// recursively claim with mkdir, regular files publish via os.Link, and
+// symlinks are recreated with os.Symlink. Every primitive fails with EEXIST
+// when the destination entry was taken concurrently, so no step can replace
+// a foreign object.
+func moveSkillDirChildNoReplace(source, destination string) error {
+	info, err := skillPathLstat(source)
+	if err != nil {
+		return fmt.Errorf("读取源 Skill 目录项失败 %s: %w", source, err)
+	}
+	switch {
+	case info.IsDir():
+		if err := renameSkillDirNoReplaceFallback(source, destination); err != nil {
+			return err
+		}
+		// The nested slow path leaves an emptied shell at the source (the
+		// fast-path rename consumed it). os.Remove only deletes an empty
+		// directory, so clearing the shell restores the single-rename
+		// outcome the parent's rollback and shell signal expect; a
+		// concurrent writer inside our own staging shell fails the removal
+		// and surfaces through the parent's uncertain-state path instead of
+		// being silently discarded.
+		if err := skillPathRemove(source); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("清理已迁移 Skill 子目录失败 %s: %w", source, err)
+		}
+		return nil
+	case info.Mode().IsRegular():
+		return renameSkillFileNoReplaceFallback(source, destination)
+	case info.Mode()&os.ModeSymlink != 0:
+		return renameSkillSymlinkNoReplaceFallback(source, destination)
+	default:
+		return &os.LinkError{
+			Op: "rename", Old: source, New: destination,
+			Err: fmt.Errorf("%w: 源路径类型不支持降级发布", errNoReplaceRenameUnsupported),
+		}
+	}
+}
+
+// renameSkillSymlinkNoReplaceFallback recreates the link at the destination
+// with os.Symlink — atomic, EEXIST when taken — and then removes the source.
+// A failed source removal retracts the recreated link only while it still
+// carries the same target, so a concurrent replacement survives and the
+// object itself always remains reachable.
+func renameSkillSymlinkNoReplaceFallback(source, destination string) error {
+	target, err := skillPathReadlink(source)
+	if err != nil {
+		return fmt.Errorf("读取源 Skill 链接失败 %s: %w", source, err)
+	}
+	if err := skillPathSymlink(target, destination); err != nil {
+		if os.IsExist(err) {
+			return &os.LinkError{Op: "rename", Old: source, New: destination, Err: os.ErrExist}
+		}
+		return fmt.Errorf("发布 Skill 链接失败 %s: %w", destination, err)
+	}
+	if err := skillPathRemove(source); err != nil {
+		if current, readErr := skillPathReadlink(destination); readErr == nil && current == target {
+			_ = skillPathRemove(destination)
+		}
+		return fmt.Errorf("移动 Skill 链接失败（源 %s 与目标 %s 至少一者保留）: %w", source, destination, err)
+	}
+	return nil
+}
+
+// removeClaimIfEmpty deletes the claimed destination only while it still
+// holds no entries. A foreign entry that appeared after the claim must never
+// be removed: the rollback has no ownership proof for it.
+func removeClaimIfEmpty(destination string) error {
+	entries, err := skillPathReadDir(destination)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("检查降级发布目标失败 %s: %w", destination, err)
+	}
+	if len(entries) > 0 {
+		return nil
+	}
+	if err := skillPathRemove(destination); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("清理降级发布目标失败 %s: %w", destination, err)
+	}
+	return nil
+}
+
 // moveSkillDirChildrenIntoClaim moves every top-level child of source into
-// the claimed destination and restores the source mode on the claim. Any
-// failure moves the already relocated children back and removes only the
-// claim, leaving the source intact. Each child rename targets a path that
-// does not exist inside the empty claim, so no step can replace a foreign
-// object. The emptied source shell is intentionally left behind: callers of
+// the claimed destination — each through moveSkillDirChildNoReplace, so a
+// concurrently created same-name entry fails atomically — and restores the
+// source mode on the claim. The claim is re-read after the moves: an entry
+// count above the source's means a different-named foreign object landed
+// mid-move, and the publication aborts with the destination retained. Any
+// failure moves the already relocated children back and removes the claim
+// only while it is empty, leaving the source intact and foreign entries in
+// place. The emptied source shell is intentionally left behind: callers of
 // renameSkillPathNoReplace use its presence to tell that the publication was
 // a child move into a fresh claim (new identity) rather than a rename that
 // consumed the source (identity preserved), and moveSkillPathRecoverably
@@ -104,27 +200,47 @@ func renameSkillDirNoReplaceFallback(source, destination string) error {
 func moveSkillDirChildrenIntoClaim(source, destination string, sourceMode os.FileMode) error {
 	entries, err := skillPathReadDir(source)
 	if err != nil {
-		_ = skillPathRemove(destination)
-		return fmt.Errorf("读取源 Skill 目录失败 %s: %w", source, err)
+		return errors.Join(
+			fmt.Errorf("读取源 Skill 目录失败 %s: %w", source, err),
+			removeClaimIfEmpty(destination),
+		)
 	}
 	moved := make([]string, 0, len(entries))
-	rollback := func() {
+	rollback := func() error {
+		var rollbackErr error
 		for i := len(moved) - 1; i >= 0; i-- {
-			_ = skillPathRename(filepath.Join(destination, moved[i]), filepath.Join(source, moved[i]))
+			if err := skillPathRename(filepath.Join(destination, moved[i]), filepath.Join(source, moved[i])); err != nil {
+				rollbackErr = errors.Join(rollbackErr, err)
+			}
 		}
-		_ = skillPathRemove(destination)
+		rollbackErr = errors.Join(rollbackErr, removeClaimIfEmpty(destination))
+		return rollbackErr
 	}
 	for _, entry := range entries {
 		name := entry.Name()
-		if err := skillPathRename(filepath.Join(source, name), filepath.Join(destination, name)); err != nil {
-			rollback()
-			return fmt.Errorf("迁移 Skill 目录项失败 %s: %w", name, err)
+		if err := moveSkillDirChildNoReplace(filepath.Join(source, name), filepath.Join(destination, name)); err != nil {
+			return errors.Join(fmt.Errorf("迁移 Skill 目录项失败 %s: %w", name, err), rollback())
 		}
 		moved = append(moved, name)
 	}
+	live, liveErr := skillPathReadDir(destination)
+	if liveErr != nil {
+		return errors.Join(
+			fmt.Errorf("确认降级发布目标失败 %s: %w", destination, liveErr),
+			rollback(),
+		)
+	}
+	if len(live) > len(entries) {
+		return errors.Join(
+			fmt.Errorf("降级发布中止，目标出现并发目录项 %s: %w", destination, os.ErrExist),
+			rollback(),
+		)
+	}
 	if err := skillPathChmod(destination, sourceMode); err != nil {
-		rollback()
-		return fmt.Errorf("恢复已发布 Skill 目录权限失败 %s: %w", destination, err)
+		return errors.Join(
+			fmt.Errorf("恢复已发布 Skill 目录权限失败 %s: %w", destination, err),
+			rollback(),
+		)
 	}
 	return nil
 }

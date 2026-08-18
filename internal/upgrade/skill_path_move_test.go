@@ -626,15 +626,21 @@ func TestCrossPlatformCoverageSkillPathMoveShellRetraction(t *testing.T) {
 		src, dst := makeSkillMoveFixture(t)
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
 		forceFastClaimRenameFailure(t, src, dst)
+		retracting := false
 		testseam.Swap(t, &skillPathRemove, func(path string) error {
 			if path == src {
+				retracting = true
 				return os.ErrPermission
 			}
 			return os.Remove(path)
 		})
 		originalReadDir := skillPathReadDir
 		testseam.Swap(t, &skillPathReadDir, func(dir string) ([]os.DirEntry, error) {
-			if dir == dst {
+			// The claim stays readable while the publication itself runs
+			// (empty-claim gate and live re-read); only the retraction of the
+			// published claim becomes unreadable, which is the state the
+			// caller must be warned about with the data location.
+			if dir == dst && retracting {
 				return nil, os.ErrPermission
 			}
 			return originalReadDir(dir)
