@@ -65,7 +65,7 @@ metadata:
 - 状态恢复：`partial_success` 只补未完成步骤；`unknown` 先回读、不重试写；`retryable` 仅限明确未开始；权限/参数/认证失败停止。
 - 仅在结果明确且关键内容回读匹配后报告写入完成。
 - 搜索/列表检查 `complete`、`hasMore`、cursor 和失败项。“有哪些/列出/全部”逐页至完整；只有示例/前 N 条可提前停止并声明范围。
-- `+import` 已含上传、转换和轮询；按终态与 `steps` 判断，不能因有 `taskId` 就说仍异步。截断回读不算验证，改用 `keyword`/局部 scope 核对。
+- `+import` 已含上传、转换和轮询；成功检查 `success=true`、`taskId`、`documentUrl`。超时或中断保留 `taskId`、查询原任务，禁止重导。
 - 导出/下载仅用工作目录相对路径，默认不覆盖并原子落盘。
 
 ## 参数与安全边界

@@ -55,7 +55,7 @@ block ID 必须来自 `+fetch --detail with-ids` 或真实 block 列表，禁止
 
 ## Block ID 生命周期与保真
 
-- `block_replace` / `block_delete` 后，受影响的旧 ID 不再作为后续锚点；需要继续操作该位置时局部 `+fetch` 重新取 ID。
+- `block_replace` 成功后 Runtime 使用同一 `blockId` 回读验证，该 ID 可继续作为锚点；验证失败时先局部 `+fetch` 核对现状。`block_delete` 成功后旧 ID 失效，不得继续复用。
 - `block_insert_after` / `block_copy_insert_after` 后，原锚点通常仍可识别，但新 block 的 ID 必须来自真实返回或局部回读，禁止按顺序猜测。
 - `str_replace` 的简单行内替换通常不要求重新取 ID；若后续依赖块结构，仍以局部回读为准。
 - 从 Markdown 读取后覆盖整篇可能丢失图片、附件、@人/@文档、评论锚点、表格样式和嵌套块。只改局部时使用 block 手术；确需整篇保真改写时使用 `full` JSONML，并以 `--expected-revision` 防止覆盖并发修改。
