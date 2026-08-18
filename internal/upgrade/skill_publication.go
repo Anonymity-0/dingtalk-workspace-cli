@@ -33,6 +33,7 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 		return SkillPathPublication{}, fmt.Errorf("计算待发布 Skill 身份失败 %s: %w", staged, err)
 	}
 	stagedFileID := skillPathFileIdentity(staged)
+	token, marked := markSkillPublication(staged)
 	if err := skillPathRenameNoReplace(staged, destination); err != nil {
 		return SkillPathPublication{}, fmt.Errorf("目标必须不存在的 Skill 发布失败 %s: %w", destination, err)
 	}
@@ -48,10 +49,13 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 		return SkillPathPublication{}, fmt.Errorf("Skill 发布状态不确定：发布后无法登记目标 %s: %w；目标 %s 保留", destination, recErr, destination)
 	}
 	if publication.fingerprint != fingerprint {
-		if _, stagedErr := skillPathLstat(staged); os.IsNotExist(stagedErr) &&
-			!skillPathIdentityProven(identity, publication.identity, stagedFileID, publication.fileID) {
-			// Dest is not the staged object: a concurrent writer won the path
-			// after the rename returned. Leave that object in place.
+		// Retract only dest this transaction still owns. Linux overlayfs
+		// recycles device+inode, so SameFile can be true for a concurrent
+		// replacement. The pre-rename xattr mark lives only on that inode;
+		// dest without the mark is left in place unless staged still exists
+		// (child-move created a fresh claim). Without a mark, fall back to
+		// identity proof plus the same staged-exists rule.
+		if !skillPublicationOwned(destination, staged, token, marked, identity, publication, stagedFileID) {
 			return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s: staging 内容已变化", destination)
 		}
 		return SkillPathPublication{}, retractUnconfirmedSkillPublication(publication, fmt.Errorf("确认已发布 Skill 身份失败 %s: staging 内容已变化", destination))
@@ -69,6 +73,24 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 		return SkillPathPublication{}, retractUnconfirmedSkillPublication(publication, fmt.Errorf("确认已发布 Skill 身份失败 %s: 无法确认 staging 状态", destination))
 	}
 	return publication, nil
+}
+
+// skillPublicationOwned reports whether dest is still this transaction's
+// object after a content mismatch. The pre-rename xattr mark lives only on
+// the staged inode; dest without that mark is left in place unless staged
+// still exists (child-move created a fresh claim). Without a mark, fall back
+// to identity proof plus the same staged-exists rule.
+func skillPublicationOwned(destination, staged, token string, marked bool, stagedIdentity os.FileInfo, publication SkillPathPublication, stagedFileID string) bool {
+	if marked && skillPublicationHasMark(destination, token) {
+		return true
+	}
+	if _, stagedErr := skillPathLstat(staged); stagedErr == nil {
+		return true
+	}
+	if marked {
+		return false
+	}
+	return skillPathIdentityProven(stagedIdentity, publication.identity, stagedFileID, publication.fileID)
 }
 
 // retractUnconfirmedSkillPublication withdraws a dest that this transaction

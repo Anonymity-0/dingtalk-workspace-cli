@@ -333,16 +333,32 @@ restore_quarantine_no_replace() {
 }
 
 # quarantine_retract_or_restore <dest> <expected-inode> [expected-link-target]
-# Claims dest into a sibling quarantine, re-checks identity there, deletes
-# only on match, and restores with a no-replace publish on mismatch. An
-# in-place inode check followed by rm would delete a concurrent replacement
-# that won dest after the check.
+# Prove ownership at dest first (inode plus child names for directories).
+# Quarantining before that check would move a concurrent replacement off its
+# original path. Linux overlayfs recycles inodes, so inode alone is not
+# enough — a dest whose children no longer match the recorded publication
+# stays put. After a matching dest is claimed, identity is re-checked in
+# quarantine; a mismatch is restored with no-replace.
 quarantine_retract_or_restore() {
   _qrr_dest="$1"
   _qrr_inode="$2"
   _qrr_link_target="${3-}"
   if [ ! -e "$_qrr_dest" ] && [ ! -L "$_qrr_dest" ]; then
     return 0
+  fi
+  _qrr_owned=0
+  if [ -n "$_qrr_link_target" ]; then
+    if [ -L "$_qrr_dest" ] &&
+       [ "$(readlink "$_qrr_dest" 2>/dev/null)" = "$_qrr_link_target" ] &&
+       [ "$(skill_link_inode "$_qrr_dest")" = "$_qrr_inode" ]; then
+      _qrr_owned=1
+    fi
+  elif [ "$(skill_dir_identity "$_qrr_dest")" = "$_qrr_inode" ]; then
+    _qrr_owned=1
+  fi
+  if [ "$_qrr_owned" -eq 0 ]; then
+    printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s\n' "$_qrr_dest"
+    return 1
   fi
   _qrr_parent="$(dirname "$_qrr_dest")"
   _qrr_base="$(basename "$_qrr_dest")"
@@ -363,7 +379,7 @@ quarantine_retract_or_restore() {
        [ "$(skill_link_inode "$_qrr_payload")" = "$_qrr_inode" ]; then
       _qrr_owned=1
     fi
-  elif [ "$(skill_link_inode "$_qrr_payload")" = "$_qrr_inode" ]; then
+  elif [ "$(skill_dir_identity "$_qrr_payload")" = "$_qrr_inode" ]; then
     _qrr_owned=1
   fi
   if [ "$_qrr_owned" -eq 1 ]; then
@@ -418,6 +434,20 @@ skill_link_inode() {
   printf '%s\n' "$_sli_entry" | awk '{print $1}'
 }
 
+# Directory publication identity is inode plus a stable child-name list.
+# Inode reuse on Linux overlayfs would otherwise make a concurrent directory
+# look owned. The token has no colon so dest:identity manifest parsing stays
+# dest="${entry%:*}" / identity="${entry##*:}".
+skill_dir_identity() {
+  _sdi_inode="$(skill_link_inode "$1")" || return 1
+  if [ -L "$1" ] || [ ! -d "$1" ]; then
+    printf '%s\n' "$_sdi_inode"
+    return 0
+  fi
+  _sdi_names="$(LC_ALL=C ls -A "$1" 2>/dev/null | tr '\n' ',')"
+  printf '%s,%s\n' "$_sdi_inode" "$_sdi_names"
+}
+
 skill_link_matches() {
   [ -L "$1" ] || return 1
   _slm_target="$(readlink "$1" 2>/dev/null)" || return 1
@@ -459,8 +489,8 @@ cleanup_nested_staged_link() {
 # staging directory is created under the same umask as the claim, so their
 # modes match by construction). A failed child move relocates the children
 # back and removes only the claim. On success the destination's inode is
-# recorded as <dest>:<inode> so rollback only ever deletes this transaction's
-# object.
+# recorded as <dest>:<inode,child-names> so rollback only ever deletes this
+# transaction's object even when the filesystem recycles the claim inode.
 publish_skill_dir_no_replace() {
   _psd_stage="$1"
   _psd_dest="$2"
@@ -478,7 +508,7 @@ publish_skill_dir_no_replace() {
     fi
   done
   if [ "$_psd_failed" -eq 0 ]; then
-    _psd_inode="$(skill_link_inode "$_psd_dest")" || _psd_failed=1
+    _psd_inode="$(skill_dir_identity "$_psd_dest")" || _psd_failed=1
     if [ "$_psd_failed" -eq 0 ] && printf '%s:%s\n' "$_psd_dest" "$_psd_inode" >> "$_psd_manifest"; then
       return 0
     fi

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 func skillPathFileIncarnationImpl(info os.FileInfo) string {
@@ -20,10 +22,28 @@ func skillPathSameFileIdentityImpl(left, right os.FileInfo) bool {
 	return os.SameFile(left, right)
 }
 
-func skillPathFileIdentityImpl(_ string) string {
-	return ""
+// skillPathFileIdentityImpl records device, inode, and birth time. os.SameFile
+// on Linux compares only device+inode; ext4/overlayfs recycle those numbers
+// immediately, so a concurrent replacement can look like the staged object.
+// ctime is omitted: writing a child updates the directory ctime and would
+// make an owned dest look foreign.
+func skillPathFileIdentityImpl(path string) string {
+	var stx unix.Statx_t
+	if err := unix.Statx(unix.AT_FDCWD, path, unix.AT_SYMLINK_NOFOLLOW, unix.STATX_BASIC_STATS|unix.STATX_BTIME, &stx); err != nil {
+		return ""
+	}
+	if stx.Mask&unix.STATX_BTIME == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d:%d:%d:%d:%d", stx.Dev_major, stx.Dev_minor, stx.Ino, stx.Btime.Sec, stx.Btime.Nsec)
 }
 
-func skillPathIdentityProven(staged, published os.FileInfo, _, _ string) bool {
-	return skillPathSameFileIdentity(staged, published)
+// skillPathIdentityProven prefers the Statx token. An empty expected ID means
+// identity cannot be proven and the caller must refuse auto-delete.
+func skillPathIdentityProven(staged, published os.FileInfo, expected, actual string) bool {
+	if expected != "" || actual != "" {
+		return expected != "" && expected == actual
+	}
+	return skillPathSameFileIdentity(staged, published) &&
+		skillPathFileIncarnation(staged) == skillPathFileIncarnation(published)
 }
