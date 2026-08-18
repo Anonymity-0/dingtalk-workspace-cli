@@ -542,4 +542,47 @@ func TestCrossPlatformCoverageSkillPathMoveShellRetraction(t *testing.T) {
 			t.Fatalf("source shell must still exist, stat err=%v", statErr)
 		}
 	})
+
+	t.Run("retraction read failure reports the data location", func(t *testing.T) {
+		src, dst := makeSkillMoveFixture(t)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		forceFastClaimRenameFailure(t, src, dst)
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == src {
+				return os.ErrPermission
+			}
+			return os.Remove(path)
+		})
+		originalReadDir := skillPathReadDir
+		testseam.Swap(t, &skillPathReadDir, func(dir string) ([]os.DirEntry, error) {
+			if dir == dst {
+				return nil, os.ErrPermission
+			}
+			return originalReadDir(dir)
+		})
+
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "状态不确定") || !strings.Contains(err.Error(), dst) {
+			t.Fatalf("unreadable retraction target must be reported with the data location, got %v", err)
+		}
+		assertUpgradeSkillContent(t, dst, "old")
+	})
+
+	t.Run("retraction withdraw failure reports the data location", func(t *testing.T) {
+		src, dst := makeSkillMoveFixture(t)
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		forceFastClaimRenameFailure(t, src, dst)
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == src || path == dst {
+				return os.ErrPermission
+			}
+			return os.Remove(path)
+		})
+
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "状态不确定") || !strings.Contains(err.Error(), dst) {
+			t.Fatalf("withdraw failure must be reported with the data location, got %v", err)
+		}
+		assertUpgradeSkillContent(t, src, "old")
+	})
 }

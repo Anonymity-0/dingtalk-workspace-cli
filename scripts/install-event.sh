@@ -313,10 +313,26 @@ link_or_copy_skill() {
     return 1
   fi
   backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
-  if mv "$stage/skill" "$dest"; then rm -rf "$stage"; return 0; fi
+  # Create the link directly at the destination: symlink(2) refuses an
+  # occupied path with EEXIST, so publication itself is the atomic no-replace
+  # check (`mv` after the backup could still replace a file or symlink a
+  # concurrent writer created in between). A directory that slipped in turns
+  # `ln -s` into a container: remove exactly our nested link and roll back.
+  if ln -s "$relative" "$dest" 2>/dev/null && [ -L "$dest" ]; then
+    rm -rf "$stage"
+    return 0
+  fi
+  nested="$dest/${relative##*/}"
+  if [ -L "$nested" ] && [ "$(readlink "$nested" 2>/dev/null)" = "$relative" ]; then
+    rm -f "$nested" || true
+  fi
   rm -rf "$stage"
-  if [ -n "$backup" ] && ! mv "$backup" "$dest"; then
-    printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+  if [ -n "$backup" ]; then
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+      printf '  ⚠️  %s 在发布期间被并发写入占用，原 Skill 保留于备份: %s\n' "$dest" "$backup" >&2
+    elif ! mv "$backup" "$dest"; then
+      printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+    fi
   fi
   return 1
 }

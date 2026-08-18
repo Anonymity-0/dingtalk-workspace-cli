@@ -159,6 +159,22 @@ func TestCrossPlatformCoverageSkillMoveShellCleanup(t *testing.T) {
 		}
 	})
 
+	t.Run("shell vanished concurrently after publication completes the move", func(t *testing.T) {
+		src, dst := makeSkillMoveFixture(t)
+		forceSlowClaimMove(t, src, dst)
+		originalRemove := skillPathRemove
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == src {
+				return &os.PathError{Op: "remove", Path: path, Err: os.ErrNotExist}
+			}
+			return originalRemove(path)
+		})
+		if err := moveSkillPathRecoverably(src, dst); err != nil {
+			t.Fatalf("concurrent shell removal must complete the move, got %v", err)
+		}
+		assertUpgradeSkillContent(t, dst, "old")
+	})
+
 	t.Run("shell removal failure retracts the publication and restores the source", func(t *testing.T) {
 		src, dst := makeSkillMoveFixture(t)
 		forceSlowClaimMove(t, src, dst)

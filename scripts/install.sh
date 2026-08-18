@@ -961,29 +961,35 @@ link_canonical_skills_to_base() {
       rm -rf "$_lcs_stage"
       return 1
     }
-    # The staged symlink keeps its inode across the rename below (the staging
-    # directory is a sibling inside the same Agent root), so the identity
-    # recorded in the publication manifest stays exact.
-    _lcs_inode="$(skill_link_inode "$_lcs_staged")" || {
-      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true
-      rm -rf "$_lcs_stage"
-      return 1
-    }
-    # Anything still present here appeared after the pre-flight scan, i.e. a
-    # concurrent writer. Never let `mv` clobber it.
-    if [ -e "$_lcs_dest" ] || [ -L "$_lcs_dest" ]; then
+    # Publish by creating the link directly at the destination: symlink(2)
+    # refuses an occupied path with EEXIST, so the creation itself is the
+    # atomic no-replace check. `mv` after any pre-check could still replace a
+    # file or symlink a concurrent writer created in between, and `ln -P`
+    # stays unusable (absent from BusyBox `ln`, which silently degraded every
+    # non-universal Agent to the copy layout on Alpine and most containers).
+    if ! ln -s "$_lcs_link_target" "$_lcs_dest" 2>/dev/null; then
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true
       rm -rf "$_lcs_stage"
       return 1
     fi
-    # Publish by moving the staged symlink. `mv` is POSIX; `ln -P` is not (it is
-    # absent from BusyBox `ln`, which silently degraded every non-universal
-    # Agent to the copy layout on Alpine and most containers). install-event.sh
-    # and install-devapp.sh already publish this way. The staged basename stays
-    # unique, so a destination a concurrent process turned into a directory can
-    # only receive our link and post-validation removes exactly that.
-    if ! mv "$_lcs_staged" "$_lcs_dest" 2>/dev/null || ! skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then
-      cleanup_nested_staged_link "$_lcs_dest" "$_lcs_stage_name" "$_lcs_link_target" "$_lcs_inode" || true
+    # A directory that appeared at the destination turns `ln -s` into a
+    # container: the link lands inside it under the target basename. Remove
+    # exactly our link after an identity check and roll back; the foreign
+    # directory stays untouched.
+    if [ ! -L "$_lcs_dest" ]; then
+      _lcs_nested_name="${_lcs_link_target##*/}"
+      _lcs_nested_inode="$(skill_link_inode "$_lcs_dest/$_lcs_nested_name" 2>/dev/null)" || _lcs_nested_inode=""
+      cleanup_nested_staged_link "$_lcs_dest" "$_lcs_nested_name" "$_lcs_link_target" "$_lcs_nested_inode" || true
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true
+      rm -rf "$_lcs_stage"
+      return 1
+    fi
+    _lcs_inode="$(skill_link_inode "$_lcs_dest")" || {
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true
+      rm -rf "$_lcs_stage"
+      return 1
+    }
+    if ! skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true
       rm -rf "$_lcs_stage"
       return 1

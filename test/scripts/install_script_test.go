@@ -575,6 +575,160 @@ exit 0
 	}
 }
 
+func TestInstallScriptLinkPublicationRacePreservesConcurrentObjects(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell semantics are unavailable")
+	}
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "# ── Main")
+	if cut < 0 {
+		t.Fatal("install.sh main section not found")
+	}
+	harness := string(data[:cut]) + `
+ROOT="$DWS_TEST_HOME/root"
+BASE="$ROOT/agent/skills"
+CANONICAL="$ROOT/.agents/skills"
+BUNDLE="$DWS_TEST_HOME/bundle"
+mkdir -p "$CANONICAL/dingtalk-chat" "$BASE" "$BUNDLE/dingtalk-chat" || exit 9
+printf 'canonical\n' > "$CANONICAL/dingtalk-chat/SKILL.md" || exit 9
+printf 'bundled\n' > "$BUNDLE/dingtalk-chat/SKILL.md" || exit 9
+
+race_case="$1"
+dest="$BASE/dingtalk-chat"
+
+# Inject the concurrent writer at the exact instant before publication: the
+# publish loop reads every staged link first, so the override occupies the
+# destination right before the real creation attempt. The override runs in a
+# command-substitution subshell, so only its on-disk effects are asserted.
+readlink() {
+  case "$1" in
+    *.dws-link-set.*dingtalk-chat)
+      case "$race_case" in
+        file) printf 'must survive\n' > "$dest" ;;
+        dir)
+          mkdir -p "$dest" || exit 9
+          printf 'must survive\n' > "$dest/concurrent-user-data.txt" || exit 9
+          ;;
+      esac
+      ;;
+  esac
+  command readlink "$1"
+}
+
+if link_canonical_skills_to_base "$ROOT" "$BASE" multi "$BUNDLE"; then
+  printf 'UNEXPECTED-SUCCESS\n'
+  exit 1
+fi
+case "$race_case" in
+  file)
+    [ -f "$dest" ] || { printf 'MISSING-FILE\n'; exit 3; }
+    [ "$(cat "$dest")" = "must survive" ] || { printf 'FILE-CONTENT\n'; exit 4; }
+    ;;
+  dir)
+    [ -d "$dest" ] || { printf 'MISSING-DIR\n'; exit 3; }
+    [ "$(cat "$dest/concurrent-user-data.txt")" = "must survive" ] || { printf 'DIR-CONTENT\n'; exit 4; }
+    if [ -n "$(ls -A "$dest" | grep -v '^concurrent-user-data\.txt$')" ]; then
+      printf 'NESTED-LEFTOVER\n'
+      exit 5
+    fi
+    ;;
+esac
+case "$(ls -A "$BASE")" in
+  *".dws-link-set."*) printf 'STAGE-LEAK\n'; exit 6 ;;
+esac
+exit 0
+`
+	for _, raceCase := range []string{"file", "dir"} {
+		harnessPath := filepath.Join(t.TempDir(), "link-publication-race.sh")
+		mustWriteFile(t, harnessPath, []byte(harness), 0o755)
+		cmd := exec.Command("sh", harnessPath, raceCase)
+		cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+t.TempDir())
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("install.sh link publication race (%s) must preserve the concurrent object: %v\n%s", raceCase, err, string(output))
+		}
+	}
+}
+
+func TestInstallEventScriptLinkPublicationRacePreservesConcurrentObjects(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell semantics are unavailable")
+	}
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-event.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.LastIndex(string(data), "\nmain\n")
+	if cut < 0 {
+		t.Fatal("install-event.sh main call not found")
+	}
+	harness := string(data[:cut]) + `
+ROOT="$DWS_TEST_HOME"
+CANONICAL="$ROOT/.agents/skills/dingtalk-chat"
+SRC="$ROOT/src/dingtalk-chat"
+DEST="$ROOT/agent/skills/dingtalk-chat"
+mkdir -p "$CANONICAL" "$SRC" || exit 9
+printf 'canonical\n' > "$CANONICAL/SKILL.md" || exit 9
+printf 'src\n' > "$SRC/SKILL.md" || exit 9
+
+# Inject the concurrent writer at the exact instant before publication:
+# backup_skill_dir is the last call before the link is created at DEST. The
+# override runs in a command-substitution subshell, so only its on-disk
+# effects are asserted.
+backup_skill_dir() {
+  case "$RACE_CASE" in
+    file) printf 'must survive\n' > "$DEST" || exit 9 ;;
+    dir)
+      mkdir -p "$DEST" || exit 9
+      printf 'must survive\n' > "$DEST/concurrent-user-data.txt" || exit 9
+      ;;
+  esac
+  printf '\n'
+}
+
+if link_or_copy_skill "$CANONICAL" "$SRC" "$DEST"; then
+  printf 'UNEXPECTED-SUCCESS\n'
+  exit 1
+fi
+case "$RACE_CASE" in
+  file)
+    [ -f "$DEST" ] || { printf 'MISSING-FILE\n'; exit 3; }
+    [ "$(cat "$DEST")" = "must survive" ] || { printf 'FILE-CONTENT\n'; exit 4; }
+    ;;
+  dir)
+    [ -d "$DEST" ] || { printf 'MISSING-DIR\n'; exit 3; }
+    [ "$(cat "$DEST/concurrent-user-data.txt")" = "must survive" ] || { printf 'DIR-CONTENT\n'; exit 4; }
+    if [ -n "$(ls -A "$DEST" | grep -v '^concurrent-user-data\.txt$')" ]; then
+      printf 'NESTED-LEFTOVER\n'
+      exit 5
+    fi
+    ;;
+esac
+exit 0
+`
+	for _, raceCase := range []string{"file", "dir"} {
+		harnessPath := filepath.Join(t.TempDir(), "event-link-publication-race.sh")
+		mustWriteFile(t, harnessPath, []byte(harness), 0o755)
+		cmd := exec.Command("sh", harnessPath)
+		cmd.Env = append(os.Environ(), "DWS_TEST_HOME="+t.TempDir(), "EVENT_VERSION=1.0.0-test", "RACE_CASE="+raceCase)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("install-event.sh link publication race (%s) must preserve the concurrent object: %v\n%s", raceCase, err, string(output))
+		}
+	}
+}
+
 func TestInstallScriptsUseGitHubReleaseSkillsAsset(t *testing.T) {
 	t.Parallel()
 
@@ -1866,18 +2020,20 @@ func TestInstallerShellLinkPublicationRacePreservesConcurrentDirectories(t *test
 			mustWriteFile(t, filepath.Join(bundle, "dingtalk-first", "SKILL.md"), []byte("first\n"), 0o644)
 			mustWriteFile(t, filepath.Join(bundle, "dingtalk-second", "SKILL.md"), []byte("second\n"), 0o644)
 
-			// Publication now moves a staged symlink instead of using `ln -P`
-			// (BusyBox has no -P), and multi mode requires the bundle source so
-			// that only bundle skills are linked. Inject the race on that move.
+			// Publication creates the link directly at the destination with
+			// `ln -s` (symlink(2) refuses an occupied path atomically; BusyBox
+			// has no `ln -P`), and multi mode requires the bundle source so
+			// that only bundle skills are linked. Inject the race on that
+			// creation.
 			harness := `. "$DWS_TEST_LIBRARY"
-mv() {
-  if [ "$2" = "$DWS_TEST_SECOND" ]; then
+ln() {
+  if [ "$#" -eq 3 ] && [ "$1" = "-s" ] && [ "$3" = "$DWS_TEST_SECOND" ]; then
     rm -f "$DWS_TEST_FIRST"
     mkdir -p "$DWS_TEST_FIRST" "$DWS_TEST_SECOND"
     printf '%s\n' first-user-data > "$DWS_TEST_FIRST/user.txt"
     printf '%s\n' second-user-data > "$DWS_TEST_SECOND/user.txt"
   fi
-  command mv "$@"
+  command ln "$@"
 }
 if link_canonical_skills_to_base "$HOME" "$DWS_TEST_BASE" multi "$DWS_TEST_BUNDLE"; then
   exit 2
