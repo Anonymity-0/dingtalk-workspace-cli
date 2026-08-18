@@ -12,6 +12,8 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -122,6 +124,22 @@ func validateOAPreviewFileIDs(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+func callOAAttachmentResult(cmd *cobra.Command, tool string, args map[string]any) (output.CommandResult, error) {
+	data, err := CallMCPToolDataOnServer(cmd.Context(), "oa", tool, args)
+	if err != nil {
+		return nil, err
+	}
+	response, ok := data.(map[string]any)
+	if !ok {
+		return nil, apperrors.NewInternal(fmt.Sprintf("oa/%s 返回值不是 JSON 对象", tool))
+	}
+	result, ok := response["result"]
+	if !ok {
+		return nil, apperrors.NewInternal(fmt.Sprintf("oa/%s 返回值缺少 result", tool))
+	}
+	return output.Success(result), nil
+}
+
 func newOAAttachmentCommand() *cobra.Command {
 	attachmentCmd := &cobra.Command{
 		Use:   "attachment",
@@ -130,15 +148,13 @@ func newOAAttachmentCommand() *cobra.Command {
 	}
 
 	downloadURLCmd := NewLeafCommand(LeafSpec{
-		Use:     "download-url",
-		Short:   "获取审批附件下载链接",
-		Example: "  dws oa approval attachment download-url --instance-id <processInstanceId> --file-id <fileId>",
-		Server:  "oa",
-		Tool:    "get_attachment_download_url",
-		Call: func(_ *cobra.Command, tool string, args map[string]any) error {
-			jsonOutput := strings.EqualFold(strings.TrimSpace(deps.Caller.Format()), "json")
-			return callMCPToolInternalOpts("oa", tool, args, jsonOutput)
-		},
+		Use:           "download-url",
+		Short:         "获取审批附件下载链接",
+		Example:       "  dws oa approval attachment download-url --instance-id <processInstanceId> --file-id <fileId>",
+		Server:        "oa",
+		Tool:          "get_attachment_download_url",
+		OutputRollout: output.RolloutUnifiedActive,
+		ResultCall:    callOAAttachmentResult,
 		Flags: []LeafFlag{
 			{Name: "instance-id", Usage: "审批实例 ID (必填)", Bind: "processInstanceId", Trim: true, Required: true, MarkRequired: true},
 			{Name: "file-id", Usage: "审批附件文件 ID (必填)", Bind: "fileId", Trim: true, Required: true, MarkRequired: true},
@@ -157,6 +173,11 @@ func newOAAttachmentCommand() *cobra.Command {
 				PrimaryCLIPath: "oa approval attachment download-url",
 			},
 			Description: "获取审批附件下载授权并生成临时下载链接",
+			Result: &contract.ResultSpec{
+				Outcomes:       []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema:     json.RawMessage(`{"type":"object","description":"审批附件临时下载信息","properties":{"spaceId":{"type":"integer","description":"审批附件所在钉盘空间 ID"},"agentId":{"type":"integer","description":"审批应用 Agent ID"},"downloadUri":{"type":"string","description":"带临时授权签名的附件下载链接"},"class":{"type":"string","description":"服务端响应类型标识"},"fileId":{"type":"string","description":"审批附件文件 ID"}},"required":["spaceId","agentId","downloadUri","fileId"],"additionalProperties":true}`),
+				SensitivePaths: []string{"downloadUri"},
+			},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
@@ -180,12 +201,14 @@ func newOAAttachmentCommand() *cobra.Command {
 	})
 
 	authorizeDownloadCmd := NewLeafCommand(LeafSpec{
-		Use:     "authorize-download",
-		Short:   "授权当前用户下载审批钉盘文件",
-		Long:    "批量授权当前用户下载指定的审批钉盘文件。",
-		Example: `  dws oa approval attachment authorize-download --file-infos '[{"spaceId":27827223951,"fileId":"232271651278"}]'`,
-		Server:  "oa",
-		Tool:    "auth_download_file",
+		Use:           "authorize-download",
+		Short:         "授权当前用户下载审批钉盘文件",
+		Long:          "批量授权当前用户下载指定的审批钉盘文件。",
+		Example:       `  dws oa approval attachment authorize-download --file-infos '[{"spaceId":27827223951,"fileId":"232271651278"}]'`,
+		Server:        "oa",
+		Tool:          "auth_download_file",
+		OutputRollout: output.RolloutUnifiedActive,
+		ResultCall:    callOAAttachmentResult,
 		Flags: []LeafFlag{
 			{
 				Name: "file-infos", Usage: "审批钉盘文件信息 JSON 数组 (必填)",
@@ -213,6 +236,10 @@ func newOAAttachmentCommand() *cobra.Command {
 				PrimaryCLIPath: "oa approval attachment authorize-download",
 			},
 			Description: "批量授权当前用户下载指定的审批钉盘文件",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: json.RawMessage(`{"type":"boolean","description":"是否成功为当前用户授予审批钉盘文件下载权限"}`),
+			},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",
@@ -234,12 +261,14 @@ func newOAAttachmentCommand() *cobra.Command {
 	})
 
 	authorizePreviewCmd := NewLeafCommand(LeafSpec{
-		Use:     "authorize-preview",
-		Short:   "授权当前用户预览审批附件",
-		Long:    "批量授权当前用户预览审批单中的附件。",
-		Example: "  dws oa approval attachment authorize-preview --instance-id <processInstanceId> --file-ids <fileId1>,<fileId2>",
-		Server:  "oa",
-		Tool:    "auth_preview_attachment",
+		Use:           "authorize-preview",
+		Short:         "授权当前用户预览审批附件",
+		Long:          "批量授权当前用户预览审批单中的附件。",
+		Example:       "  dws oa approval attachment authorize-preview --instance-id <processInstanceId> --file-ids <fileId1>,<fileId2>",
+		Server:        "oa",
+		Tool:          "auth_preview_attachment",
+		OutputRollout: output.RolloutUnifiedActive,
+		ResultCall:    callOAAttachmentResult,
 		Flags: []LeafFlag{
 			{Name: "instance-id", Usage: "审批实例 ID (必填)", Bind: "processInstanceId", Trim: true, Required: true, MarkRequired: true},
 			{Name: "file-ids", Usage: "附件 ID 列表，多个用逗号分隔 (必填)", Kind: LeafStringSlice, Bind: "fileIdList", Required: true, MarkRequired: true},
@@ -263,6 +292,10 @@ func newOAAttachmentCommand() *cobra.Command {
 				PrimaryCLIPath: "oa approval attachment authorize-preview",
 			},
 			Description: "批量授权当前用户预览审批单中的附件",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: json.RawMessage(`{"type":"object","description":"审批附件预览授权信息","properties":{"spaceId":{"type":"integer","description":"审批附件所在钉盘空间 ID"},"agentId":{"type":"integer","description":"审批应用 Agent ID"},"class":{"type":"string","description":"服务端响应类型标识"}},"required":["spaceId","agentId"],"additionalProperties":true}`),
+			},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "mcp",
 				Availability: "available",

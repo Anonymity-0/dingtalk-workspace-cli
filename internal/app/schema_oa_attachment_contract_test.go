@@ -6,17 +6,21 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 )
 
 func TestCrossPlatformCoverageOAAttachmentDeliveredSchemaMatchesExecutableHelp(t *testing.T) {
 	tests := []struct {
-		cliPath     string
-		canonical   string
-		rpc         string
-		description string
-		effect      string
+		cliPath        string
+		canonical      string
+		rpc            string
+		description    string
+		effect         string
+		resultType     string
+		resultFields   map[string]string
+		sensitivePaths []string
 	}{
 		{
 			cliPath:     "oa approval attachment download-url",
@@ -24,6 +28,12 @@ func TestCrossPlatformCoverageOAAttachmentDeliveredSchemaMatchesExecutableHelp(t
 			rpc:         "get_attachment_download_url",
 			description: "获取审批附件下载授权并生成临时下载链接",
 			effect:      "read",
+			resultType:  "object",
+			resultFields: map[string]string{
+				"spaceId": "integer", "agentId": "integer", "downloadUri": "string",
+				"class": "string", "fileId": "string",
+			},
+			sensitivePaths: []string{"downloadUri"},
 		},
 		{
 			cliPath:     "oa approval attachment authorize-download",
@@ -31,6 +41,7 @@ func TestCrossPlatformCoverageOAAttachmentDeliveredSchemaMatchesExecutableHelp(t
 			rpc:         "auth_download_file",
 			description: "批量授权当前用户下载指定的审批钉盘文件",
 			effect:      "write",
+			resultType:  "boolean",
 		},
 		{
 			cliPath:     "oa approval attachment authorize-preview",
@@ -38,12 +49,16 @@ func TestCrossPlatformCoverageOAAttachmentDeliveredSchemaMatchesExecutableHelp(t
 			rpc:         "auth_preview_attachment",
 			description: "批量授权当前用户预览审批单中的附件",
 			effect:      "write",
+			resultType:  "object",
+			resultFields: map[string]string{
+				"spaceId": "integer", "agentId": "integer", "class": "string",
+			},
 		},
 	}
 
-	root := NewRootCommand()
 	for _, test := range tests {
 		t.Run(test.rpc, func(t *testing.T) {
+			root := NewRootCommand()
 			command := exactCommandForTest(root, test.cliPath)
 			if command == nil {
 				t.Fatalf("executable command %q is missing", test.cliPath)
@@ -95,9 +110,57 @@ func TestCrossPlatformCoverageOAAttachmentDeliveredSchemaMatchesExecutableHelp(t
 			if got := schemaContractString(tool["idempotency"]); got != "idempotent" {
 				t.Fatalf("idempotency = %q, want idempotent", got)
 			}
+			fullResult := oaAttachmentResultContract(t, tool, test.resultType, test.resultFields, test.sensitivePaths)
+
+			stdout.Reset()
+			stderr.Reset()
+			root.SetArgs([]string{"schema", test.cliPath, "--compact", "--format", "json"})
+			if err := root.Execute(); err != nil {
+				t.Fatalf("execute compact delivery schema leaf: %v; stderr=%s", err, stderr.String())
+			}
+			var compactTool map[string]any
+			if err := json.Unmarshal(stdout.Bytes(), &compactTool); err != nil {
+				t.Fatalf("decode compact delivery schema leaf: %v", err)
+			}
+			compactResult, ok := compactTool["result"].(map[string]any)
+			if !ok {
+				t.Fatalf("compact result = %#v, want object", compactTool["result"])
+			}
+			if !reflect.DeepEqual(compactResult, fullResult) {
+				t.Fatalf("compact/full result projection differs\ncompact: %#v\nfull: %#v", compactResult, fullResult)
+			}
 			if problem := schemaHelpFlagCompletenessProblem(test.canonical, test.cliPath, command, tool); problem != "" {
 				t.Fatal(problem)
 			}
 		})
 	}
+}
+
+func oaAttachmentResultContract(t *testing.T, tool map[string]any, resultType string, fields map[string]string, sensitivePaths []string) map[string]any {
+	t.Helper()
+	result, ok := tool["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("full result = %#v, want object", tool["result"])
+	}
+	if got, want := schemaContractStringSlice(result["outcomes"]), []string{"success", "failure"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("result.outcomes = %#v, want %#v", got, want)
+	}
+	if got := schemaContractStringSlice(result["sensitive_paths"]); !reflect.DeepEqual(got, sensitivePaths) {
+		t.Fatalf("result.sensitive_paths = %#v, want %#v", got, sensitivePaths)
+	}
+	dataSchema, ok := result["data_schema"].(map[string]any)
+	if !ok || schemaContractString(dataSchema["type"]) != resultType {
+		t.Fatalf("result.data_schema = %#v, want type %q", result["data_schema"], resultType)
+	}
+	properties, _ := dataSchema["properties"].(map[string]any)
+	if len(properties) != len(fields) {
+		t.Fatalf("result.data_schema.properties = %#v, want fields %#v", properties, fields)
+	}
+	for name, fieldType := range fields {
+		property, ok := properties[name].(map[string]any)
+		if !ok || schemaContractString(property["type"]) != fieldType {
+			t.Fatalf("result.data_schema.properties.%s = %#v, want type %q", name, properties[name], fieldType)
+		}
+	}
+	return result
 }

@@ -5,14 +5,18 @@ package helpers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
+	"github.com/spf13/cobra"
 )
 
 func executeOAAttachmentCommandCapturingOutput(t *testing.T, caller *scriptedToolCaller, args ...string) (string, error) {
@@ -26,6 +30,13 @@ func executeOAAttachmentCommandCapturingOutput(t *testing.T, caller *scriptedToo
 
 	cmd := newOaCommand()
 	cmd.PersistentFlags().Bool("yes", false, "跳过确认")
+	cmd.PersistentFlags().String("format", caller.Format(), "输出格式")
+	ctx, _ := output.WithResultStore(context.Background())
+	cmd.SetContext(ctx)
+	cmd.PersistentPostRunE = func(executed *cobra.Command, _ []string) error {
+		_, _, err := output.EmitStoredResult(executed)
+		return err
+	}
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
 	cmd.SetOut(&stdout)
@@ -65,6 +76,17 @@ func TestCrossPlatformCoverageOAAttachmentDownloadURLPreservesSignedQuery(t *tes
 		if strings.Contains(stdout, `\u0026`) {
 			t.Fatalf("stdout contains escaped query separator: %q", stdout)
 		}
+		var envelope map[string]any
+		if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+			t.Fatalf("decode unified output: %v", err)
+		}
+		if envelope["ok"] != true || envelope["outcome"] != "success" {
+			t.Fatalf("unified envelope = %#v", envelope)
+		}
+		data, ok := envelope["data"].(map[string]any)
+		if !ok || !strings.Contains(data["downloadUri"].(string), "&Signature=") {
+			t.Fatalf("unified data = %#v", envelope["data"])
+		}
 	})
 
 	t.Run("raw compatibility", func(t *testing.T) {
@@ -73,10 +95,86 @@ func TestCrossPlatformCoverageOAAttachmentDownloadURLPreservesSignedQuery(t *tes
 		if err != nil {
 			t.Fatalf("execute command: %v", err)
 		}
-		if stdout != response+"\n" {
-			t.Fatalf("stdout = %q, want %q", stdout, response+"\n")
+		const want = `{"downloadUri":"https://example.test/file?Expires=1&OSSAccessKeyId=2&Signature=3"}` + "\n"
+		if stdout != want {
+			t.Fatalf("stdout = %q, want %q", stdout, want)
 		}
 	})
+}
+
+func TestCrossPlatformCoverageOAAttachmentProjectsUnifiedBusinessData(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		response string
+		wantData any
+	}{
+		{
+			name:     "download authorization",
+			args:     []string{"approval", "attachment", "authorize-download", "--file-infos", `[{"spaceId":27827223951,"fileId":"file-1"}]`},
+			response: `{"result":true,"success":true,"dingOpenErrcode":0,"errorMsg":"ok"}`,
+			wantData: true,
+		},
+		{
+			name:     "preview authorization",
+			args:     []string{"approval", "attachment", "authorize-preview", "--instance-id", "instance-1", "--file-ids", "file-1"},
+			response: `{"result":{"spaceId":27827223951,"agentId":4115627346,"class":"com.dingtalk.bpms.oapi.vo.AppSpaceResponse"},"success":true,"dingOpenErrcode":0,"errorMsg":"ok"}`,
+			wantData: map[string]any{
+				"spaceId": float64(27827223951), "agentId": float64(4115627346),
+				"class": "com.dingtalk.bpms.oapi.vo.AppSpaceResponse",
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: test.response}}}
+			stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, test.args...)
+			if err != nil {
+				t.Fatalf("execute command: %v", err)
+			}
+			var envelope map[string]any
+			if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+				t.Fatalf("decode unified output: %v", err)
+			}
+			if envelope["ok"] != true || envelope["outcome"] != "success" || !reflect.DeepEqual(envelope["data"], test.wantData) {
+				t.Fatalf("unified envelope = %#v, want data %#v", envelope, test.wantData)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageOAAttachmentRejectsSuccessWithoutResult(t *testing.T) {
+	caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"success":true,"dingOpenErrcode":0,"errorMsg":"ok"}`}}}
+	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "authorize-download",
+		"--file-infos", `[{"spaceId":27827223951,"fileId":"file-1"}]`,
+	)
+	if err == nil || !strings.Contains(err.Error(), "缺少 result") {
+		t.Fatalf("execute error = %v, want missing result", err)
+	}
+}
+
+func TestCrossPlatformCoverageOAAttachmentRejectsInvalidToolResult(t *testing.T) {
+	tests := []struct {
+		name string
+		step scriptedToolStep
+		want string
+	}{
+		{name: "non-object response", step: scriptedToolStep{text: `[]`}, want: "不是 JSON 对象"},
+		{name: "tool error", step: scriptedToolStep{err: errors.New("tool unavailable")}, want: "tool unavailable"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{test.step}}
+			_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+				"approval", "attachment", "authorize-download",
+				"--file-infos", `[{"spaceId":27827223951,"fileId":"file-1"}]`,
+			)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("execute error = %v, want %q", err, test.want)
+			}
+		})
+	}
 }
 
 func TestCrossPlatformCoverageOAAttachmentPayloads(t *testing.T) {
@@ -162,8 +260,8 @@ func TestCrossPlatformCoverageOAAttachmentPayloads(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			caller := &scriptedToolCaller{}
-			if err := executeOACommand(t, caller, test.args...); err != nil {
+			caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":{},"success":true}`}}}
+			if _, err := executeOAAttachmentCommandCapturingOutput(t, caller, test.args...); err != nil {
 				t.Fatalf("execute command: %v", err)
 			}
 			if caller.server != "oa" || caller.tool != test.wantTool {
