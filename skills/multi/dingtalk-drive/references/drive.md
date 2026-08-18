@@ -65,7 +65,7 @@ dws drive +publish-get --node <dentryUuid>
 dws drive +publish-unset --node <dentryUuid>
 ```
 
-`+publish-get` 只读；`+publish-unset` 为高风险写。公开 catalog 没有 `+publish-set`，且当前普通文件和在线文档都没有经过验证的开启公开闭环。用户明确要求开启公开时，说明当前 Agent 路由不支持并停止；不要查询或执行 `drive publish set`。只有补齐受支持节点上的真实 set→get→unset 闭环证据并更新 Runtime 路由后，才重新开放该能力。
+`+publish-get` 只读；`+publish-unset` 为高风险写。Runtime 虽注册了 `+publish-set`，但当前普通文件和在线文档都没有经过验证的开启公开闭环，因此根 Skill 明确不将它开放给 Agent。用户要求开启公开时，说明当前 Agent 路由不支持并停止；不要查询或执行 `+publish-set`、`drive publish set` 或其他替代写入口。只有补齐受支持节点上的真实 set→get→unset 闭环证据并更新 Agent 路由后，才重新开放该能力。
 
 ## 权限
 
