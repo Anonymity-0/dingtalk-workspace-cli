@@ -33,7 +33,7 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 		return SkillPathPublication{}, fmt.Errorf("计算待发布 Skill 身份失败 %s: %w", staged, err)
 	}
 	stagedFileID := skillPathFileIdentity(staged)
-	token, marked := markSkillPublication(staged)
+	token, marked := skillPathMarkPublication(staged)
 	if err := skillPathRenameNoReplace(staged, destination); err != nil {
 		return SkillPathPublication{}, fmt.Errorf("目标必须不存在的 Skill 发布失败 %s: %w", destination, err)
 	}
@@ -81,7 +81,7 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 // still exists (child-move created a fresh claim). Without a mark, fall back
 // to identity proof plus the same staged-exists rule.
 func skillPublicationOwned(destination, staged, token string, marked bool, stagedIdentity os.FileInfo, publication SkillPathPublication, stagedFileID string) bool {
-	if marked && skillPublicationHasMark(destination, token) {
+	if marked && skillPathPublicationHasMark(destination, token) {
 		return true
 	}
 	if _, stagedErr := skillPathLstat(staged); stagedErr == nil {

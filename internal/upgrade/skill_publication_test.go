@@ -298,6 +298,78 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		assertUpgradeSkillContent(t, destination, "value")
 	})
 
+	t.Run("marked dest without mark and staged gone is left in place", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		testseam.Swap(t, &skillPathMarkPublication, func(string) (string, bool) { return "tok", true })
+		testseam.Swap(t, &skillPathPublicationHasMark, func(string, string) bool { return false })
+		originalRename := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRename(source, target); err != nil {
+				return err
+			}
+			if err := os.RemoveAll(target); err != nil {
+				return err
+			}
+			seedUpgradeSkill(t, target, "replacement", false)
+			return nil
+		})
+		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "staging 内容已变化") || strings.Contains(err.Error(), "目标已撤回") {
+			t.Fatalf("unmarked replacement must stay on dest, got %v", err)
+		}
+		assertUpgradeSkillContent(t, destination, "replacement")
+	})
+
+	t.Run("marked dest without mark but staged remains retracts dest", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		testseam.Swap(t, &skillPathMarkPublication, func(string) (string, bool) { return "tok", true })
+		testseam.Swap(t, &skillPathPublicationHasMark, func(string, string) bool { return false })
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return err
+			}
+			if err := os.Rename(filepath.Join(source, "SKILL.md"), filepath.Join(target, "SKILL.md")); err != nil {
+				return err
+			}
+			return os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("mutated\n"), 0o644)
+		})
+		_, err := PublishSkillPathNoReplace(staged, destination)
+		if err == nil || !strings.Contains(err.Error(), "staging 内容已变化") || !strings.Contains(err.Error(), "目标已撤回") {
+			t.Fatalf("child-move dest still owned via staged leftover must retract, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("child-move dest must be retracted: %v", statErr)
+		}
+	})
+
+	t.Run("marked dest with mark retracts on content drift", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		testseam.Swap(t, &skillPathMarkPublication, func(string) (string, bool) { return "tok", true })
+		testseam.Swap(t, &skillPathPublicationHasMark, func(_, token string) bool { return token == "tok" })
+		originalRename := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRename(source, target); err != nil {
+				return err
+			}
+			return os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("mutated\n"), 0o644)
+		})
+		_, err := PublishSkillPathNoReplace(staged, destination)
+		if err == nil || !strings.Contains(err.Error(), "staging 内容已变化") || !strings.Contains(err.Error(), "目标已撤回") {
+			t.Fatalf("marked owned dest drift must retract dest, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("marked mutated dest must be retracted: %v", statErr)
+		}
+	})
+
 	t.Run("owned dest content drift after publish retracts dest", func(t *testing.T) {
 		root := t.TempDir()
 		staged := filepath.Join(root, "staged")
@@ -358,6 +430,27 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 			t.Fatalf("failed retract must name dest, got %v", err)
 		}
 		assertUpgradeSkillContent(t, destination, "value")
+	})
+
+	t.Run("publication mark helpers", func(t *testing.T) {
+		if skillPublicationHasMark("", "tok") || skillPublicationHasMark(filepath.Join(t.TempDir(), "missing"), "tok") || skillPublicationHasMark(t.TempDir(), "") {
+			t.Fatal("missing dest must not report a publication mark")
+		}
+		if token, ok := markSkillPublication(filepath.Join(t.TempDir(), "missing")); ok || token != "" {
+			t.Fatal("missing dest must not accept a publication mark")
+		}
+		dir := t.TempDir()
+		seedUpgradeSkill(t, dir, "value", false)
+		token, ok := markSkillPublication(dir)
+		if !ok {
+			if skillPublicationHasMark(dir, "tok") {
+				t.Fatal("unmarked dest must not report a publication mark")
+			}
+			return
+		}
+		if !skillPublicationHasMark(dir, token) || skillPublicationHasMark(dir, "other") {
+			t.Fatal("publication mark must match only the token written on dest")
+		}
 	})
 
 	t.Run("record published identity", func(t *testing.T) {

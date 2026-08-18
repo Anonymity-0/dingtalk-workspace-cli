@@ -11,29 +11,31 @@ import (
 )
 
 var (
-	skillPathRename           = func(src, dst string) error { return upgradeRename(src, dst) }
-	skillPathRenameNoReplace  = renameSkillPathNoReplace
-	skillPathCopy             = copySkillPathLexically
-	skillPathVerify           = verifySkillPathCopy
-	skillPathRemoveAll        = os.RemoveAll
-	skillPathMkdirAll         = os.MkdirAll
-	skillPathMkdirTemp        = os.MkdirTemp
-	skillPathChmod            = os.Chmod
-	skillPathLstat            = os.Lstat
-	skillPathMkdir            = os.Mkdir
-	skillPathLink             = os.Link
-	skillPathRemove           = os.Remove
-	skillPathReadDir          = os.ReadDir
-	skillPathFileIdentity     = skillPathFileIdentityImpl
-	skillPathFileIncarnation  = skillPathFileIncarnationImpl
-	skillPathSameFileIdentity = skillPathSameFileIdentityImpl
-	skillPathReadlink         = os.Readlink
-	skillPathSymlink          = os.Symlink
-	skillPathOpen             = os.Open
-	skillPathOpenFile         = os.OpenFile
-	skillPathCopyBytes        = io.Copy
-	skillPathSync             = func(file *os.File) error { return file.Sync() }
-	skillPathWalkDir          = filepath.WalkDir
+	skillPathRename             = func(src, dst string) error { return upgradeRename(src, dst) }
+	skillPathRenameNoReplace    = renameSkillPathNoReplace
+	skillPathCopy               = copySkillPathLexically
+	skillPathVerify             = verifySkillPathCopy
+	skillPathRemoveAll          = os.RemoveAll
+	skillPathMkdirAll           = os.MkdirAll
+	skillPathMkdirTemp          = os.MkdirTemp
+	skillPathChmod              = os.Chmod
+	skillPathLstat              = os.Lstat
+	skillPathMkdir              = os.Mkdir
+	skillPathLink               = os.Link
+	skillPathRemove             = os.Remove
+	skillPathReadDir            = os.ReadDir
+	skillPathFileIdentity       = skillPathFileIdentityImpl
+	skillPathFileIncarnation    = skillPathFileIncarnationImpl
+	skillPathSameFileIdentity   = skillPathSameFileIdentityImpl
+	skillPathMarkPublication    = markSkillPublication
+	skillPathPublicationHasMark = skillPublicationHasMark
+	skillPathReadlink           = os.Readlink
+	skillPathSymlink            = os.Symlink
+	skillPathOpen               = os.Open
+	skillPathOpenFile           = os.OpenFile
+	skillPathCopyBytes          = io.Copy
+	skillPathSync               = func(file *os.File) error { return file.Sync() }
+	skillPathWalkDir            = filepath.WalkDir
 )
 
 // moveSkillPathRecoverably moves one managed Skill path without weakening the
