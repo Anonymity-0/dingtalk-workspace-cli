@@ -1,6 +1,7 @@
 package upgrade
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -29,6 +30,7 @@ var (
 	skillPathSameFileIdentity   = skillPathSameFileIdentityImpl
 	skillPathMarkPublication    = markSkillPublication
 	skillPathPublicationHasMark = skillPublicationHasMark
+	skillPathRandomRead         = rand.Read
 	skillPathReadlink           = os.Readlink
 	skillPathSymlink            = os.Symlink
 	skillPathOpen               = os.Open

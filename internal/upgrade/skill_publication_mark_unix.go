@@ -3,7 +3,6 @@
 package upgrade
 
 import (
-	"crypto/rand"
 	"encoding/hex"
 
 	"golang.org/x/sys/unix"
@@ -17,7 +16,7 @@ const skillPublicationXattr = "user.dws.skill-pub"
 // concurrent replacement that recycled the inode number does not.
 func markSkillPublication(path string) (string, bool) {
 	raw := make([]byte, 16)
-	if _, err := rand.Read(raw); err != nil {
+	if _, err := skillPathRandomRead(raw); err != nil {
 		return "", false
 	}
 	token := hex.EncodeToString(raw)

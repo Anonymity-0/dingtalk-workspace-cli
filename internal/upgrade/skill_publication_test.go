@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -370,6 +371,51 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		}
 	})
 
+	t.Run("unmarked publication falls back to identity proof", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		// Filesystems without usable xattrs leave the transaction unmarked;
+		// ownership must then fall back to inode/file-ID identity.
+		testseam.Swap(t, &skillPathMarkPublication, func(string) (string, bool) { return "", false })
+		originalRename := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRename(source, target); err != nil {
+				return err
+			}
+			return os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("mutated\n"), 0o644)
+		})
+		_, err := PublishSkillPathNoReplace(staged, destination)
+		if err == nil || !strings.Contains(err.Error(), "staging 内容已变化") || !strings.Contains(err.Error(), "目标已撤回") {
+			t.Fatalf("unmarked identity-proven drift must retract dest, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("identity-proven dest must be retracted: %v", statErr)
+		}
+	})
+
+	t.Run("identity proof falls back without file IDs", func(t *testing.T) {
+		dir := t.TempDir()
+		info, err := os.Lstat(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if runtime.GOOS == "windows" {
+			if skillPathIdentityProven(info, info, "", "") {
+				t.Fatal("windows must refuse identity proof without file IDs")
+			}
+		} else if !skillPathIdentityProven(info, info, "", "") {
+			t.Fatal("same object must stay proven without file IDs")
+		}
+		if skillPathIdentityProven(info, info, "", "id") || skillPathIdentityProven(info, info, "id", "") {
+			t.Fatal("mixed empty and non-empty file IDs must not count as proven")
+		}
+		if !skillPathIdentityProven(info, info, "id", "id") {
+			t.Fatal("equal non-empty file IDs must be proven")
+		}
+	})
+
 	t.Run("owned dest content drift after publish retracts dest", func(t *testing.T) {
 		root := t.TempDir()
 		staged := filepath.Join(root, "staged")
@@ -439,6 +485,9 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		if token, ok := markSkillPublication(filepath.Join(t.TempDir(), "missing")); ok || token != "" {
 			t.Fatal("missing dest must not accept a publication mark")
 		}
+		if skillPathFileIdentity(filepath.Join(t.TempDir(), "missing")) != "" {
+			t.Fatal("missing dest must not report a file identity")
+		}
 		dir := t.TempDir()
 		seedUpgradeSkill(t, dir, "value", false)
 		token, ok := markSkillPublication(dir)
@@ -450,6 +499,10 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		}
 		if !skillPublicationHasMark(dir, token) || skillPublicationHasMark(dir, "other") {
 			t.Fatal("publication mark must match only the token written on dest")
+		}
+		testseam.Swap(t, &skillPathRandomRead, func([]byte) (int, error) { return 0, errors.New("entropy unavailable") })
+		if token, ok := markSkillPublication(dir); ok || token != "" {
+			t.Fatal("entropy failure must refuse to mark dest")
 		}
 	})
 
