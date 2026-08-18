@@ -444,3 +444,56 @@ func TestNativePrimaryParamMissingErrorsRecommendPrimaryOnly(t *testing.T) {
 		executeTodoEdge(t, &scriptedToolCaller{}, "task", "add-attachment", "--task-id", "42"),
 		"file", "file-path")
 }
+
+func TestNativePrimaryParamPromotionErrorsPropagate(t *testing.T) {
+	chat := newChatCommand()
+	assertPromotionError := func(t *testing.T, err error) {
+		t.Helper()
+		if err == nil || !strings.Contains(err.Error(), "trying to get string value of flag of type bool") {
+			t.Fatalf("promotion error = %v", err)
+		}
+	}
+
+	t.Run("webhook RunE", func(t *testing.T) {
+		target := findNativePrimaryLeaf(t, chat, "message", "send-by-webhook")
+		cmd := &cobra.Command{}
+		cmd.Flags().String("content", "", "")
+		cmd.Flags().Bool("text", false, "")
+		if err := cmd.Flags().Set("text", "true"); err != nil {
+			t.Fatal(err)
+		}
+		assertPromotionError(t, target.RunE(cmd, nil))
+	})
+
+	reply := findNativePrimaryLeaf(t, chat, "message", "reply")
+	newInvalidGroupCommand := func(t *testing.T) *cobra.Command {
+		t.Helper()
+		cmd := &cobra.Command{}
+		cmd.Flags().String("group", "", "")
+		cmd.Flags().Bool("conversation-id", false, "")
+		if err := cmd.Flags().Set("conversation-id", "true"); err != nil {
+			t.Fatal(err)
+		}
+		return cmd
+	}
+
+	t.Run("reply PreRunE group", func(t *testing.T) {
+		assertPromotionError(t, reply.PreRunE(newInvalidGroupCommand(t), nil))
+	})
+
+	t.Run("reply RunE group", func(t *testing.T) {
+		assertPromotionError(t, reply.RunE(newInvalidGroupCommand(t), nil))
+	})
+
+	t.Run("reply RunE content", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		cmd.Flags().String("group", "cid", "")
+		cmd.Flags().String("conversation-id", "", "")
+		cmd.Flags().String("content", "", "")
+		cmd.Flags().Bool("text", false, "")
+		if err := cmd.Flags().Set("text", "true"); err != nil {
+			t.Fatal(err)
+		}
+		assertPromotionError(t, reply.RunE(cmd, nil))
+	})
+}

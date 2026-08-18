@@ -23,6 +23,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/runtimeannotate"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/spf13/cobra"
 )
 
 func TestPrimaryParamMigrationSmartPayloadCompatibility(t *testing.T) {
@@ -182,6 +183,23 @@ func TestPrimaryParamMigrationSmartSurfaceAndContract(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestPrimaryParamMigrationDocAppendRejectsBlankContent(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().String("doc", "", "")
+	cmd.Flags().String("content", "", "")
+	cmd.Flags().String("text", "", "")
+	if err := cmd.Flags().Set("doc", "doc-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Flags().Set("content", "   "); err != nil {
+		t.Fatal(err)
+	}
+	err := DocAppend.Execute(shortcut.RuntimeContextForTest(cmd, DocAppend))
+	if err == nil || !strings.Contains(err.Error(), "--content 不能为空") {
+		t.Fatalf("blank --content error = %v", err)
 	}
 }
 
