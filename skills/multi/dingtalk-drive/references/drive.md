@@ -81,7 +81,7 @@ dws drive +publish-unset --node <dentryUuid>
 
 ## 快捷方式节点
 
-`+create-shortcut --node <源ID> [--folder <目标ID>|--workspace <知识库ID>]` 创建链接；需要独立副本使用 `+copy`。源/目标类型不兼容时停止，不把快捷方式当普通文件继续覆盖。
+`+create-shortcut --node <源ID> [--folder <目标ID>|--workspace <知识库ID>]` 创建链接。在线文档节点需要保留版式的独立副本时使用 `+copy`；普通钉盘文件的独立副本必须经用户授权后走 download→upload，因为当前 `+copy` 会拒绝普通文件。源/目标类型不兼容时停止，不把快捷方式当普通文件继续覆盖。
 
 ## 错误恢复
 
