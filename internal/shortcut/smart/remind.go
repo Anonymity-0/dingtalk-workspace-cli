@@ -84,9 +84,6 @@ var Remind = shortcut.Shortcut{
 	Tips: []string{`dws todo +remind --task "交周报" --at 2026-03-10T18:00:00+08:00`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		task := strings.TrimSpace(rt.Str("task"))
-		if task == "" {
-			return apperrors.NewValidation("--task 不能为空")
-		}
 		var dueMillis int64
 		if rt.Changed("at") {
 			var err error

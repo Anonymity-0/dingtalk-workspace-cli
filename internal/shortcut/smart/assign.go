@@ -19,7 +19,6 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
-	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	todoshortcut "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/todo"
@@ -77,9 +76,6 @@ var Assign = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		name := strings.TrimSpace(rt.Str("to"))
 		task := strings.TrimSpace(rt.Str("task"))
-		if name == "" || task == "" {
-			return apperrors.NewValidation("--to 与 --task 均不能为空")
-		}
 		var dueMillis int64
 		if rt.Changed("due") {
 			var err error

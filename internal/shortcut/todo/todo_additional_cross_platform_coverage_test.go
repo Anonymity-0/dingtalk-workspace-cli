@@ -91,7 +91,7 @@ func TestCrossPlatformCoverageTodoCommonStrictBranches(t *testing.T) {
 	if _, err := requireTodoResponse(map[string]any{"result": map[string]any{}}, "todo/test"); err != nil {
 		t.Fatalf("response without optional success rejected: %v", err)
 	}
-	for _, response := range []map[string]any{{}, {"result": map[string]any{}}, {"success": false}} {
+	for _, response := range []map[string]any{{}, {"result": map[string]any{}}, {"success": "yes"}, {"success": false}} {
 		if err := requireTodoWriteReceipt(response, "todo/test"); err == nil {
 			t.Fatalf("bad receipt accepted: %#v", response)
 		}
@@ -431,11 +431,14 @@ func TestCrossPlatformCoverageTodoCommentAndReminder(t *testing.T) {
 	}
 
 	for name, args := range map[string][]string{
-		"none":         {"--task-id", "task-1", "--yes"},
-		"both":         {"--task-id", "task-1", "--clear", "--base-time", "dueTime", "--yes"},
-		"due-offset":   {"--task-id", "task-1", "--base-time", "dueTime", "--yes"},
-		"custom-at":    {"--task-id", "task-1", "--base-time", "customTime", "--yes"},
-		"custom-value": {"--task-id", "task-1", "--base-time", "customTime", "--at", "bad", "--yes"},
+		"none":          {"--task-id", "task-1", "--yes"},
+		"both":          {"--task-id", "task-1", "--clear", "--base-time", "dueTime", "--yes"},
+		"clear-offset":  {"--task-id", "task-1", "--clear", "--due-date-offset", "-30", "--yes"},
+		"due-offset":    {"--task-id", "task-1", "--base-time", "dueTime", "--yes"},
+		"due-at":        {"--task-id", "task-1", "--base-time", "dueTime", "--due-date-offset", "-30", "--at", todoCoverageTime, "--yes"},
+		"custom-at":     {"--task-id", "task-1", "--base-time", "customTime", "--yes"},
+		"custom-offset": {"--task-id", "task-1", "--base-time", "customTime", "--at", todoCoverageTime, "--due-date-offset", "-30", "--yes"},
+		"custom-value":  {"--task-id", "task-1", "--base-time", "customTime", "--at", "bad", "--yes"},
 	} {
 		t.Run("reminder-"+name, func(t *testing.T) {
 			if err := runTodoCoverage(t, Reminder, &todoCoverageCaller{responses: map[string][]string{}}, args...); err == nil {
@@ -542,11 +545,12 @@ func TestCrossPlatformCoverageTodoVerificationHelpers(t *testing.T) {
 
 func TestCrossPlatformCoverageTodoGetMyTasksAndListLeaves(t *testing.T) {
 	for name, args := range map[string][]string{
-		"page":     {"--page", "0"},
-		"size":     {"--size", "21"},
-		"priority": {"--priority", "11"},
-		"role":     {"--role-types", "owner"},
-		"max":      {"--all", "--max-pages", "0"},
+		"page":      {"--page", "0"},
+		"size":      {"--size", "21"},
+		"priority":  {"--priority", "11"},
+		"role":      {"--role-types", "owner"},
+		"max":       {"--all", "--max-pages", "0"},
+		"max-alone": {"--max-pages", "1"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := runTodoCoverage(t, GetMyTasks, &todoCoverageCaller{responses: map[string][]string{}}, args...); err == nil {
