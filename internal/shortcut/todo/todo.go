@@ -22,9 +22,49 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
+
+func validateTodoPage(rt *shortcut.RuntimeContext) error {
+	page, err := strconv.Atoi(rt.Str("page"))
+	if err != nil || page < 1 {
+		return apperrors.NewValidation("--page 必须是大于 0 的整数")
+	}
+	size, err := strconv.Atoi(rt.Str("size"))
+	if err != nil || size < 1 || size > todoPageSize {
+		return apperrors.NewValidation("--size 必须是 1 到 20 的整数")
+	}
+	return nil
+}
+
+func validateGetMyTasks(rt *shortcut.RuntimeContext) error {
+	if err := validateTodoPage(rt); err != nil {
+		return err
+	}
+	if rt.Changed("max-pages") && !rt.Bool("all") {
+		return apperrors.NewValidation("--max-pages 只能与 --all 一起使用")
+	}
+	if rt.Bool("all") {
+		maxPages := rt.Int("max-pages")
+		if maxPages < 1 || maxPages > todoMaxPages {
+			return apperrors.NewValidation("--max-pages 必须是 1 到 40")
+		}
+	}
+	for _, p := range rt.StrSlice("priority") {
+		n, err := strconv.Atoi(p)
+		if err != nil || (n != 10 && n != 20 && n != 30 && n != 40) {
+			return apperrors.NewValidation("--priority 仅接受 10/20/30/40")
+		}
+	}
+	for _, role := range rt.StrSlice("role-types") {
+		if role != "creator" && role != "executor" && role != "participant" {
+			return apperrors.NewValidation("--role-types 仅接受 creator/executor/participant")
+		}
+	}
+	return nil
+}
 
 // Create maps helper `create_personal_todo`.
 // CreateSub maps helper `create_personal_sub_todo`.
@@ -64,18 +104,28 @@ var GetMyTasks = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "page", Type: shortcut.FlagString, Default: "1", Desc: "页码"},
-		{Name: "size", Type: shortcut.FlagString, Default: "20", Desc: "每页数量"},
+		{Name: "page", Type: shortcut.FlagString, Default: "1", Desc: "页码；--page 必须大于 0；--size 必须在 1-20"},
+		{Name: "size", Type: shortcut.FlagString, Default: "20", Desc: "每页数量；--page 必须大于 0；--size 必须在 1-20"},
 		{Name: "status", Type: shortcut.FlagString, Enum: []string{"true", "false"}, Desc: "true=已完成, false=未完成"},
-		{Name: "priority", Type: shortcut.FlagStringSlice, Desc: "优先级过滤: 10/20/30/40"},
-		{Name: "role-types", Type: shortcut.FlagStringSlice, Default: "executor", Desc: "角色类型: creator/executor/participant"},
+		{Name: "priority", Type: shortcut.FlagStringSlice, Desc: "优先级过滤；--priority 仅接受 10/20/30/40"},
+		{Name: "role-types", Type: shortcut.FlagStringSlice, Default: "executor", Desc: "角色类型；--role-types 仅接受 creator/executor/participant"},
 		{Name: "plan-finish-start", Type: shortcut.FlagInt, Desc: "截止时间范围开始（Unix 毫秒时间戳）"},
 		{Name: "plan-finish-end", Type: shortcut.FlagInt, Desc: "截止时间范围结束（Unix 毫秒时间戳）"},
-		{Name: "all", Type: shortcut.FlagBool, Desc: "遍历全部分页；达到安全页数上限仍有下一页时失败"},
-		{Name: "max-pages", Type: shortcut.FlagInt, Default: "40", Desc: "--all 的最大页数（1-40）"},
+		{Name: "all", Type: shortcut.FlagBool, Desc: "遍历全部分页；--max-pages 仅用于 --all，且必须在 1-40"},
+		{Name: "max-pages", Type: shortcut.FlagInt, Default: "40", Desc: "--all 的最大页数；--max-pages 仅用于 --all，且必须在 1-40"},
 	},
-	Tips: []string{`dws todo +get-my-tasks --status false --priority 40,30`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"page", "size"}, Description: "--page 必须大于 0；--size 必须在 1-20"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"priority"}, Description: "--priority 仅接受 10/20/30/40"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"role-types"}, Description: "--role-types 仅接受 creator/executor/participant"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"all", "max-pages"}, Description: "--max-pages 仅用于 --all，且必须在 1-40"},
+	},
+	Validate: validateGetMyTasks,
+	Tips:     []string{`dws todo +get-my-tasks --status false --priority 40,30`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		if rt.Changed("max-pages") && !rt.Bool("all") {
+			return todoResponseError("todo/+get-my-tasks", "invalid_page_limit", "--max-pages 只能与 --all 一起使用")
+		}
 		page, err := strconv.Atoi(rt.Str("page"))
 		if err != nil || page < 1 {
 			return todoResponseError("todo/+get-my-tasks", "invalid_page", "--page 必须是大于 0 的整数")
@@ -587,10 +637,14 @@ var ListComment = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "task-id", Type: shortcut.FlagString, Desc: "待办任务 ID", Required: true},
-		{Name: "page", Type: shortcut.FlagString, Default: "1", Desc: "页码"},
-		{Name: "size", Type: shortcut.FlagString, Default: "20", Desc: "每页数量"},
+		{Name: "page", Type: shortcut.FlagString, Default: "1", Desc: "页码；--page 必须大于 0；--size 必须在 1-20"},
+		{Name: "size", Type: shortcut.FlagString, Default: "20", Desc: "每页数量；--page 必须大于 0；--size 必须在 1-20"},
 	},
-	Tips: []string{`dws todo +list-comment --task-id <taskId>`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"page", "size"}, Description: "--page 必须大于 0；--size 必须在 1-20"},
+	},
+	Validate: validateTodoPage,
+	Tips:     []string{`dws todo +list-comment --task-id <taskId>`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		page, err := strconv.Atoi(rt.Str("page"))
 		if err != nil || page < 1 {
