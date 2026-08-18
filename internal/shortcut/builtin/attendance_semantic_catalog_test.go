@@ -40,6 +40,19 @@ func TestCrossPlatformCoverageAttendanceSemanticCatalogExactlyCoversRegisteredSu
 		t.Fatalf("registered/catalog = %d/%d, want 35/35", len(registered), len(source.Shortcuts))
 	}
 	public := 0
+	compatibilityVisible := 0
+	wantCompatibilityVisible := map[string]bool{
+		"+get-adjustment-rule": true,
+		"+get-checkin-record":  true,
+		"+get-leave-records":   true,
+		"+get-self-setting":    true,
+		"+get-summary":         true,
+		"+list-leave-types":    true,
+		"+my-attendance":       true,
+		"+query-report-data":   true,
+		"+search-group":        true,
+		"+this-month":          true,
+	}
 	var missing, stale []string
 	for command, item := range registered {
 		record, ok := source.Shortcuts[command]
@@ -65,8 +78,14 @@ func TestCrossPlatformCoverageAttendanceSemanticCatalogExactlyCoversRegisteredSu
 			if item.Contract.Empty() || item.Contract.Result == nil || strings.TrimSpace(item.Safety.Effect) == "" || item.OutputRollout != output.RolloutUnifiedActive {
 				t.Errorf("%s: public shortcut lacks contract/safety/result/unified output", command)
 			}
-		} else if availability == shortcut.AvailabilityAvailable || !item.Hidden {
-			t.Errorf("%s: unavailable shortcut must stay hidden", command)
+		} else if availability == shortcut.AvailabilityAvailable || item.Hidden == record.CompatibilityVisible {
+			t.Errorf("%s: unavailable shortcut compatibility visibility drifted", command)
+		}
+		if record.CompatibilityVisible {
+			compatibilityVisible++
+		}
+		if record.CompatibilityVisible != wantCompatibilityVisible[command] {
+			t.Errorf("%s: compatibility-visible=%v, want %v", command, record.CompatibilityVisible, wantCompatibilityVisible[command])
 		}
 	}
 	for command := range source.Shortcuts {
@@ -79,7 +98,7 @@ func TestCrossPlatformCoverageAttendanceSemanticCatalogExactlyCoversRegisteredSu
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 9 {
-		t.Fatalf("public attendance shortcuts = %d, want 9", public)
+	if public != 9 || compatibilityVisible != 10 {
+		t.Fatalf("public/compatibility-visible attendance shortcuts = %d/%d, want 9/10", public, compatibilityVisible)
 	}
 }

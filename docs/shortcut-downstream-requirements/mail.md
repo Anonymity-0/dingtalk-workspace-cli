@@ -8,7 +8,7 @@
 
 ## 1. 执行摘要
 
-本轮对 18 个 Mail Shortcut 完成严格 success、固定集合路径、稳定 ID、分页完整性和统一 Result 收口。8 个公开只读入口已在相同 runtime tree 逐条完成 Shortcut 与原子层的真实数据双层复核；`+unread-mail`、`+recent-mail`、`+thread-list`、`+tag-list`、`+template-list`、`+contact-list` 因缺少可控 guaranteed-zero fixture 保持 `unavailable`；4 个草稿/模板写入口因无法证明清理终态同样不进入公开 Catalog。
+本轮对 18 个 Mail Shortcut 完成严格 success、固定集合路径、稳定 ID、分页完整性和统一 Result 收口。8 个公开只读入口已在相同 runtime tree 逐条完成 Shortcut 与原子层的真实数据双层复核；`+unread-mail`、`+recent-mail`、`+thread-list`、`+tag-list`、`+template-list`、`+contact-list` 因缺少可控 guaranteed-zero fixture 保持 Agent-unavailable，但为守住既有 argv/Help 合同继续以 compatibility-visible 形式留在 CLI；4 个草稿/模板写入口因无法证明清理终态同样不进入公开 Catalog。
 
 仍不能诚实对齐的任务集中在草稿/模板清理终态、发送终态、回复/转发草稿语义、批量修改/删除逐项结果、回执、签名、事件监听、模板附件事务和联系人创建身份回执。它们不是再包一层 Shortcut 就能解决，需要下游业务接口或安全测试 fixture 补足可验证合同。
 

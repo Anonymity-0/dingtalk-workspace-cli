@@ -91,26 +91,62 @@ func TestCrossPlatformCoverageSmartMailUnavailableReadsMatchRuntimeBoundary(t *t
 	}
 }
 
-func TestCrossPlatformCoverageSmartMailDefaultsAreDeclared(t *testing.T) {
-	for _, tc := range []struct {
-		declaration *shortcut.Shortcut
-		flag        string
-	}{
-		{&SearchMail, "size"},
-		{&UnreadMail, "size"},
-		{&RecentMail, "limit"},
-	} {
+func TestCrossPlatformCoverageSmartMailHistoricalStringSizeAndRuntimeDefault(t *testing.T) {
+	for _, declaration := range []*shortcut.Shortcut{&SearchMail, &UnreadMail} {
 		found := false
-		for _, flag := range tc.declaration.Flags {
-			if flag.Name == tc.flag {
-				found = true
-				if flag.Default != "20" {
-					t.Fatalf("%s --%s default=%q, want 20", tc.declaration.Command, tc.flag, flag.Default)
-				}
+		for _, flag := range declaration.Flags {
+			if flag.Name != "size" {
+				continue
+			}
+			found = true
+			if flag.Type != shortcut.FlagString || flag.Default != "" {
+				t.Fatalf("%s --size type/default=%q/%q, want string/empty", declaration.Command, flag.Type, flag.Default)
 			}
 		}
 		if !found {
-			t.Fatalf("%s missing --%s", tc.declaration.Command, tc.flag)
+			t.Fatalf("%s missing --size", declaration.Command)
+		}
+		cmd := corecmd.New(shortcut.FromShortcut(*declaration))
+		if flag := cmd.Flags().Lookup("size"); flag == nil || flag.Value.Type() != "string" || flag.DefValue != "" {
+			t.Fatalf("%s Cobra --size=%#v, want historical string with empty default", declaration.Command, flag)
+		}
+	}
+
+	for _, tc := range []struct {
+		name        string
+		declaration shortcut.Shortcut
+		args        []string
+		wantSize    string
+	}{
+		{name: "search default", declaration: SearchMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture"}, wantSize: "20"},
+		{name: "search explicit", declaration: SearchMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture", "--size", "100"}, wantSize: "100"},
+		{name: "unread default", declaration: UnreadMail, args: []string{"--email", "mail@example.invalid"}, wantSize: "20"},
+		{name: "unread explicit", declaration: UnreadMail, args: []string{"--email", "mail@example.invalid", "--size", "1"}, wantSize: "1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &smartMailCursorCaller{responses: map[string]string{"search_emails": `{"success":true,"messages":[],"hasMore":false,"nextCursor":""}`}}
+			if err := runSmartMailDeclaration(t, tc.declaration, caller, tc.args...); err != nil {
+				t.Fatalf("compatible execution failed: %v", err)
+			}
+			if len(caller.calls) != 1 || caller.calls[0].args["size"] != tc.wantSize {
+				t.Fatalf("calls=%#v, want one call with size=%q", caller.calls, tc.wantSize)
+			}
+		})
+	}
+
+	for _, declaration := range []shortcut.Shortcut{SearchMail, UnreadMail} {
+		caller := &smartMailCursorCaller{responses: map[string]string{}}
+		helpers.InitDepsForTest(t, caller)
+		values := map[string]string{"email": "mail@example.invalid", "size": "bad"}
+		if declaration.Command == "+search-mail" {
+			values["query"] = "fixture"
+		}
+		rt := smartMailRuntimeForCoverage(t, declaration, values)
+		if err := declaration.Execute(rt); err == nil {
+			t.Fatalf("%s direct Execute accepted malformed string size", declaration.Command)
+		}
+		if len(caller.calls) != 0 {
+			t.Fatalf("%s direct Execute reached %d remote calls", declaration.Command, len(caller.calls))
 		}
 	}
 }
@@ -260,7 +296,15 @@ func TestCrossPlatformCoverageSmartMailLimitValidationHasZeroCalls(t *testing.T)
 		declaration shortcut.Shortcut
 		args        []string
 	}{
+		{name: "search blank", declaration: SearchMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture", "--size", " "}},
+		{name: "search nonnumeric", declaration: SearchMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture", "--size", "bad"}},
 		{name: "search zero", declaration: SearchMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture", "--size", "0"}},
+		{name: "search negative", declaration: SearchMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture", "--size", "-1"}},
+		{name: "search high", declaration: SearchMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture", "--size", "101"}},
+		{name: "unread blank", declaration: UnreadMail, args: []string{"--email", "mail@example.invalid", "--size", " "}},
+		{name: "unread nonnumeric", declaration: UnreadMail, args: []string{"--email", "mail@example.invalid", "--size", "bad"}},
+		{name: "unread zero", declaration: UnreadMail, args: []string{"--email", "mail@example.invalid", "--size", "0"}},
+		{name: "unread negative", declaration: UnreadMail, args: []string{"--email", "mail@example.invalid", "--size", "-1"}},
 		{name: "unread high", declaration: UnreadMail, args: []string{"--email", "mail@example.invalid", "--size", "101"}},
 		{name: "triage zero", declaration: TriageMail, args: []string{"--email", "mail@example.invalid", "--query", "fixture", "--limit", "0"}},
 		{name: "find high", declaration: FindMailUser, args: []string{"--query", "fixture", "--limit", "101"}},

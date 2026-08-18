@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -263,6 +264,115 @@ func TestCrossPlatformCoverageMailValidationRejectsBeforeRemoteCall(t *testing.T
 				t.Fatalf("invalid input reached remote calls: %d", len(caller.calls))
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageMailLegacyStringLimitsStayCompatibleAndStrict(t *testing.T) {
+	if err := mailValidatePageSize(mailRuntimeForCoverage(t, ThreadList, nil), "limit", false); err != nil {
+		t.Fatalf("omitted optional integer limit should remain valid: %v", err)
+	}
+
+	tests := []struct {
+		name        string
+		declaration *shortcut.Shortcut
+		args        []string
+		tool        string
+		response    string
+		wantSize    string
+		wantPresent bool
+	}{
+		{name: "user limit", declaration: &UserSearch, args: []string{"mail", "+user-search", "--keyword", "fixture", "--limit", "1"}, tool: "search_mail_users", response: `{"success":true,"users":[],"hasMore":false,"nextCursor":""}`, wantSize: "1", wantPresent: true},
+		{name: "user omitted limit", declaration: &UserSearch, args: []string{"mail", "+user-search", "--keyword", "fixture"}, tool: "search_mail_users", response: `{"success":true,"users":[],"hasMore":false,"nextCursor":""}`},
+		{name: "template limit", declaration: &TemplateList, args: []string{"mail", "+template-list", "--email", "mail@example.invalid", "--limit", "100"}, tool: "list_user_message_templates", response: `{"success":true,"templates":[],"hasMore":false,"nextCursor":""}`, wantSize: "100", wantPresent: true},
+		{name: "contact limit", declaration: &ContactList, args: []string{"mail", "+contact-list", "--email", "mail@example.invalid", "--limit", "20"}, tool: "list_user_mail_contacts", response: `{"success":true,"contacts":[],"hasMore":false,"nextCursor":""}`, wantSize: "20", wantPresent: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			found := false
+			for _, flag := range tc.declaration.Flags {
+				if flag.Name != "limit" {
+					continue
+				}
+				found = true
+				if flag.Type != shortcut.FlagString || flag.Default != "" {
+					t.Fatalf("declaration --limit type/default = %q/%q, want string/empty", flag.Type, flag.Default)
+				}
+			}
+			if !found {
+				t.Fatal("declaration missing --limit")
+			}
+			cmd := corecmd.New(shortcut.FromShortcut(*tc.declaration))
+			if flag := cmd.Flags().Lookup("limit"); flag == nil || flag.Value.Type() != "string" || flag.DefValue != "" {
+				t.Fatalf("Cobra --limit = %#v, want historical string with empty default", flag)
+			}
+
+			caller := &mailWriteContractCaller{responses: map[string][]string{tc.tool: {tc.response}}, errors: map[string]error{}}
+			if err := runConfirmedMailWriteContract(t, caller, tc.args...); err != nil {
+				t.Fatalf("compatible execution failed: %v", err)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("calls=%d, want 1", len(caller.calls))
+			}
+			gotSize, present := caller.calls[0].args["size"]
+			if present != tc.wantPresent || (present && gotSize != tc.wantSize) {
+				t.Fatalf("size=%#v present=%v, want %q present=%v", gotSize, present, tc.wantSize, tc.wantPresent)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name        string
+		declaration shortcut.Shortcut
+		values      map[string]string
+	}{
+		{name: "user execute guard", declaration: UserSearch, values: map[string]string{"keyword": "fixture", "limit": "bad"}},
+		{name: "template execute guard", declaration: TemplateList, values: map[string]string{"email": "mail@example.invalid", "limit": "bad"}},
+		{name: "contact execute guard", declaration: ContactList, values: map[string]string{"email": "mail@example.invalid", "limit": "bad"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &mailWriteContractCaller{responses: map[string][]string{}, errors: map[string]error{}}
+			helpers.InitDepsForTest(t, caller)
+			rt := mailRuntimeForCoverage(t, tc.declaration, tc.values)
+			if err := tc.declaration.Execute(rt); err == nil {
+				t.Fatal("direct Execute accepted malformed string limit")
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("direct Execute reached %d remote calls", len(caller.calls))
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageMailLegacyStringLimitsRejectEveryInvalidClassWithZeroCalls(t *testing.T) {
+	for _, leaf := range []struct {
+		name string
+		args []string
+	}{
+		{name: "user", args: []string{"mail", "+user-search", "--keyword", "fixture"}},
+		{name: "template", args: []string{"mail", "+template-list", "--email", "mail@example.invalid"}},
+		{name: "contact", args: []string{"mail", "+contact-list", "--email", "mail@example.invalid"}},
+	} {
+		for _, invalid := range []struct {
+			name  string
+			value string
+		}{
+			{name: "blank", value: " "},
+			{name: "nonnumeric", value: "bad"},
+			{name: "zero", value: "0"},
+			{name: "negative", value: "-1"},
+			{name: "too large", value: "101"},
+		} {
+			t.Run(leaf.name+"/"+invalid.name, func(t *testing.T) {
+				caller := &mailWriteContractCaller{responses: map[string][]string{}, errors: map[string]error{}}
+				args := append(append([]string{}, leaf.args...), "--limit", invalid.value)
+				if err := runConfirmedMailWriteContract(t, caller, args...); err == nil {
+					t.Fatal("invalid legacy string limit unexpectedly succeeded")
+				}
+				if len(caller.calls) != 0 {
+					t.Fatalf("invalid legacy string limit reached %d remote calls", len(caller.calls))
+				}
+			})
+		}
 	}
 }
 

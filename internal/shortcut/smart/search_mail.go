@@ -15,7 +15,6 @@ package smart
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
@@ -85,7 +84,7 @@ var SearchMail = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "KQL 搜索表达式（如 subject:周报、from:alice、folderId:2），不能为空", Required: true},
 		{Name: "email", Type: shortcut.FlagString, Desc: "要搜索的邮箱地址（可选，默认取你绑定的第一个邮箱）", Required: false},
-		{Name: "size", Type: shortcut.FlagInt, Default: "20", Desc: "返回条数上限（可选，默认 20，范围 1-100）", Required: false},
+		{Name: "size", Type: shortcut.FlagString, Desc: "返回条数上限（可选，默认 20；显式提供时必须是 1-100 之间的整数）", Required: false},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自上一页 nextCursor", Required: false},
 	},
 	Constraints: []shortcut.Constraint{
@@ -96,7 +95,7 @@ var SearchMail = shortcut.Shortcut{
 		if err := smartMailValidateRequiredText(rt, "query"); err != nil {
 			return err
 		}
-		return smartMailValidatePageSize(rt, "size", false)
+		return smartMailValidateStringPageSize(rt, "size")
 	},
 	Tips: []string{
 		`dws mail +search-mail --query "subject:周报"`,
@@ -105,6 +104,10 @@ var SearchMail = shortcut.Shortcut{
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		if err := rt.RequireAll("query"); err != nil {
+			return err
+		}
+		size, err := smartMailStringPageSize(rt, "size", "20")
+		if err != nil {
 			return err
 		}
 
@@ -123,7 +126,7 @@ var SearchMail = shortcut.Shortcut{
 		args := map[string]any{
 			"email": email,
 			"query": rt.Str("query"),
-			"size":  strconv.Itoa(rt.Int("size")),
+			"size":  size,
 		}
 		if rt.Changed("cursor") {
 			args["cursor"] = rt.Str("cursor")

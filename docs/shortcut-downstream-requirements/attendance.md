@@ -7,7 +7,7 @@
 
 ## 1. 执行摘要
 
-- Attendance 共审核 35 个源码 Shortcut；9 个具备公开条件，26 个保持 hidden/unavailable。公开数量按「严格响应合同 + 稳定身份 + 安全真实 fixture」的发布门计算，不把空数组或仅退出码 0 计为通过。
+- Attendance 共审核 35 个源码 Shortcut；9 个具备 Agent 公开条件，26 个保持 unavailable。为守住已发布 CLI 的 argv/Help 兼容，其中 10 个历史可见入口继续以 compatibility-visible 形式可发现，但仍从 Agent public Catalog 排除、保持 legacy 输出且不发布 Result/Pagination；其余 16 个保持 hidden。公开数量按「严格响应合同 + 稳定身份 + 安全真实 fixture」的发布门计算，不把空数组或仅退出码 0 计为通过。
 - `+check-result` 已覆盖 Lark CLI 当前唯一 Attendance 用户任务 `attendance user_tasks query`，并提供打卡流水、审批、排班、班次、规则、设置、假期和个人视图等更宽能力。
 - 已确认 7 组下游需求：补卡规则详情返回空结果、报表合同不足、打卡结果分页缺少服务端确定终止证据、缺少安全可回收的管理员/写操作 fixture、6 个读场景缺少请求绑定字段或 nonempty/zero 双态 fixture、班次详情不回显稳定 ID，以及个人设置缺少逐场景权限发现与安全 fixture。
 - 审批模板的同类型多模板问题已在上游修复：以 `processCode` 作为资源身份，`approveType` 只做请求绑定，并要求 `submitUrl` 非空。班次详情与个人设置仍有下游合同/权限前置，不能以请求 echo 或部分场景成功伪造整体可用。
@@ -29,11 +29,11 @@
 | 批量查询员工打卡结果 | `attendance +check-result` | `attendance user_tasks query` | covered；框架分页 token 由当前页保守派生 | contract insufficient | 声明 `Pagination(kind=cursor,cursor_parameter=offset)`；续页只放 `meta.pagination`，业务 `data` 仅含 `count/records` |
 | 搜索并读取班次 | `+search-class` → `+get-class` | 无同级入口 | partial | response contract | 只公开搜索；详情因不回显请求 classId 而 unavailable |
 | 搜索并读取补卡规则 | `+search-adjustment-rule` → `+get-adjustment-rule` | 无同级入口 | partial | business-service defect | 只公开搜索；详情 unavailable |
-| 发现字段并查询考勤报表 | `+list-report-columns` → `+query-report-data` | 无同级入口 | unavailable | contract insufficient | 两个入口均保持 hidden/unavailable |
+| 发现字段并查询考勤报表 | `+list-report-columns` → `+query-report-data` | 无同级入口 | unavailable | contract insufficient | 两个入口均不进入 Agent Catalog；历史 `+query-report-data` 仅保留 CLI 兼容可见性 |
 | 查询假期报表 | `+query-report-leave` | 无同级入口 | unavailable | business-service defect | hidden/unavailable |
-| 搜索并读取考勤组 | `+search-group` → `+get-group` | 无同级入口 | blocked | tenant-or-fixture | 无已知非空安全 fixture，全部 hidden |
+| 搜索并读取考勤组 | `+search-group` → `+get-group` | 无同级入口 | blocked | tenant-or-fixture | 无已知非空安全 fixture；历史 `+search-group` 仅保留 CLI 兼容可见性，二者都不进入 Agent Catalog |
 | 查询企业全局设置和假期余额 | `+get-global-setting`, `+get-leave-balance` | 无同级入口 | blocked | permission / fixture | hidden/unavailable |
-| 查询个人设置 | `+get-self-setting` | 无同级入口 | partial | capability / permission fixture | 前五个场景已验证；全部场景发布前保持 hidden/unavailable |
+| 查询个人设置 | `+get-self-setting` | 无同级入口 | partial | capability / permission fixture | 前五个场景已验证；全部场景发布前保持 Agent-unavailable，仅保留历史 CLI 兼容可见性 |
 | 修改排班、班次、考勤组、假期和打卡结果 | 9 个写 Shortcut | 无同级入口 | unsafe to verify | tenant-or-fixture / contract insufficient | hidden/unavailable，不以 dry-run 记通过 |
 
 ## 3. 下游需求明细
@@ -67,7 +67,7 @@
 
 #### D. 临时处置
 
-`+get-adjustment-rule` 保持 hidden/unavailable 并从 Agent Schema 排除；`+search-adjustment-rule` 不再承诺详情入口可用。
+`+get-adjustment-rule` 保持 Agent-unavailable 并从公开 Catalog 排除；旧 CLI 入口仅为 argv/Help 兼容继续可见，`+search-adjustment-rule` 不再承诺详情入口可用。
 
 ### `DS-ATTENDANCE-002` — 提供可发现、可验证的考勤报表合同
 
@@ -100,7 +100,7 @@
 
 #### D. 临时处置
 
-三个报表 Shortcut 均保持 hidden/unavailable；不得用 `null`、请求 echo 或未验证列产生的空数组标记 PASS。
+三个报表 Shortcut 均保持 Agent-unavailable；其中历史 `+query-report-data` 只保留 CLI 兼容可见性。不得用 `null`、请求 echo 或未验证列产生的空数组标记 PASS。
 
 ### `DS-ATTENDANCE-003` — 为打卡结果提供确定的分页终止证据
 
@@ -173,7 +173,7 @@
 2. 非空项的稳定 ID、用户和时间绑定在两层结果中一致；空结果仍有显式业务 success 和正确集合容器。
 3. malformed/null/success=false/错身份/超范围均非零失败，且不会继续调用后续考勤接口。
 
-在上述证据完整前，6 个 Shortcut 均保持 hidden/unavailable；已实现的严格校验不等于已获得发布证据。
+在上述证据完整前，6 个 Shortcut 均保持 Agent-unavailable，并仅为历史 argv/Help 保留 CLI 兼容可见性；已实现的严格校验不等于已获得发布证据。
 
 ### `DS-ATTENDANCE-006` — 让班次详情回显可验证的稳定身份
 
@@ -223,7 +223,7 @@
 3. bogus user、invalid scene、无权限和未开通均返回可区分非零错误。
 4. 权限 fixture 全程最小化、可撤销，结束后无授权残留。
 
-能力发现和安全 fixture 到位前，`+get-self-setting` 保持 hidden/unavailable。
+能力发现和安全 fixture 到位前，`+get-self-setting` 保持 Agent-unavailable；旧 CLI 入口仅保留兼容可见性。
 
 ## 4. Lark 对齐与平台差异
 

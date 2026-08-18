@@ -14,8 +14,6 @@
 package smart
 
 import (
-	"strconv"
-
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -82,12 +80,12 @@ var UnreadMail = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "email", Type: shortcut.FlagString, Desc: "要查询的邮箱地址（可选，默认取你绑定的第一个邮箱）", Required: false},
-		{Name: "size", Type: shortcut.FlagInt, Default: "20", Desc: "返回条数上限（可选，默认 20，范围 1-100）", Required: false},
+		{Name: "size", Type: shortcut.FlagString, Desc: "返回条数上限（可选，默认 20；显式提供时必须是 1-100 之间的整数）", Required: false},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自上一页 nextCursor", Required: false},
 	},
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"size"}, Description: "显式 --size 必须在 1-100 之间"}},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		return smartMailValidatePageSize(rt, "size", false)
+		return smartMailValidateStringPageSize(rt, "size")
 	},
 	Tips: []string{
 		`dws mail +unread-mail`,
@@ -95,6 +93,10 @@ var UnreadMail = shortcut.Shortcut{
 		`dws mail +unread-mail --size 50`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		size, err := smartMailStringPageSize(rt, "size", "20")
+		if err != nil {
+			return err
+		}
 		// Step 1 — resolve the mailbox address.
 		email := rt.Str("email")
 		if email == "" {
@@ -111,7 +113,7 @@ var UnreadMail = shortcut.Shortcut{
 		args := map[string]any{
 			"email": email,
 			"query": "isRead:false",
-			"size":  strconv.Itoa(rt.Int("size")),
+			"size":  size,
 		}
 		if rt.Changed("cursor") {
 			args["cursor"] = rt.Str("cursor")

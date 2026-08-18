@@ -38,6 +38,15 @@ func TestCrossPlatformCoverageMailSemanticCatalogExactlyCoversRegisteredSurface(
 	var missing, stale []string
 	public := 0
 	unavailable := 0
+	compatibilityVisible := 0
+	wantCompatibilityVisible := map[string]bool{
+		"+contact-list":  true,
+		"+recent-mail":   true,
+		"+tag-list":      true,
+		"+template-list": true,
+		"+thread-list":   true,
+		"+unread-mail":   true,
+	}
 	for command, item := range registered {
 		record, ok := source.Shortcuts[command]
 		if !ok {
@@ -65,8 +74,8 @@ func TestCrossPlatformCoverageMailSemanticCatalogExactlyCoversRegisteredSurface(
 		}
 		if availability == shortcut.AvailabilityUnavailable {
 			unavailable++
-			if !item.Hidden || item.Availability != shortcut.AvailabilityUnavailable {
-				t.Errorf("%s: unavailable shortcut remains visible", command)
+			if item.Hidden == record.CompatibilityVisible || item.Availability != shortcut.AvailabilityUnavailable {
+				t.Errorf("%s: unavailable shortcut compatibility visibility drifted", command)
 			}
 			if item.Contract.Interface == nil || item.Contract.Interface.Availability != "unavailable" || strings.TrimSpace(item.Contract.Interface.Reason) == "" {
 				t.Errorf("%s: unavailable runtime interface is not explicit", command)
@@ -74,6 +83,12 @@ func TestCrossPlatformCoverageMailSemanticCatalogExactlyCoversRegisteredSurface(
 			if item.Contract.Result != nil || item.Contract.Pagination != nil || item.OutputRollout != output.RolloutLegacyOnly {
 				t.Errorf("%s: unavailable runtime still publishes result/pagination/unified rollout", command)
 			}
+		}
+		if record.CompatibilityVisible {
+			compatibilityVisible++
+		}
+		if record.CompatibilityVisible != wantCompatibilityVisible[command] {
+			t.Errorf("%s: compatibility-visible=%v, want %v", command, record.CompatibilityVisible, wantCompatibilityVisible[command])
 		}
 	}
 	for command := range source.Shortcuts {
@@ -86,7 +101,7 @@ func TestCrossPlatformCoverageMailSemanticCatalogExactlyCoversRegisteredSurface(
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 8 || unavailable != 10 {
-		t.Fatalf("mail public/unavailable shortcuts = %d/%d, want 8/10", public, unavailable)
+	if public != 8 || unavailable != 10 || compatibilityVisible != 6 {
+		t.Fatalf("mail public/unavailable/compatibility-visible shortcuts = %d/%d/%d, want 8/10/6", public, unavailable, compatibilityVisible)
 	}
 }

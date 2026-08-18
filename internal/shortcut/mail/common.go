@@ -6,6 +6,7 @@ package mail
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -98,6 +99,22 @@ func mailValidatePageSize(rt *shortcut.RuntimeContext, flag string, required boo
 		return apperrors.NewValidation(fmt.Sprintf("--%s 必须在 1-100 之间", flag))
 	}
 	return nil
+}
+
+func mailStringPageSize(rt *shortcut.RuntimeContext, flag string, required bool) (string, error) {
+	if !required && !rt.Changed(flag) {
+		return "", nil
+	}
+	value, err := strconv.Atoi(rt.Str(flag))
+	if err != nil || value < 1 || value > 100 {
+		return "", apperrors.NewValidation(fmt.Sprintf("--%s 必须是 1-100 之间的整数", flag))
+	}
+	return strconv.Itoa(value), nil
+}
+
+func mailValidateStringPageSize(rt *shortcut.RuntimeContext, flag string, required bool) error {
+	_, err := mailStringPageSize(rt, flag, required)
+	return err
 }
 
 func mailValidateRequiredText(rt *shortcut.RuntimeContext, flag string) error {

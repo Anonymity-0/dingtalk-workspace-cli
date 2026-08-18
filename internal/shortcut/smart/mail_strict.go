@@ -36,6 +36,22 @@ func smartMailValidatePageSize(rt *shortcut.RuntimeContext, flag string, require
 	return nil
 }
 
+func smartMailStringPageSize(rt *shortcut.RuntimeContext, flag, fallback string) (string, error) {
+	if !rt.Changed(flag) {
+		return fallback, nil
+	}
+	value, err := strconv.Atoi(rt.Str(flag))
+	if err != nil || value < 1 || value > 100 {
+		return "", apperrors.NewValidation(fmt.Sprintf("--%s 必须是 1-100 之间的整数", flag))
+	}
+	return strconv.Itoa(value), nil
+}
+
+func smartMailValidateStringPageSize(rt *shortcut.RuntimeContext, flag string) error {
+	_, err := smartMailStringPageSize(rt, flag, "")
+	return err
+}
+
 func smartMailValidateRequiredText(rt *shortcut.RuntimeContext, flag string) error {
 	if strings.TrimSpace(rt.Str(flag)) == "" {
 		return apperrors.NewValidation(fmt.Sprintf("--%s 不能为空", flag))

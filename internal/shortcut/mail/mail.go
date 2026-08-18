@@ -18,7 +18,6 @@
 package mail
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
@@ -326,7 +325,7 @@ var UserSearch = shortcut.Shortcut{
 		{Name: "employee-no", Type: shortcut.FlagString, Desc: "按工号精确搜索；显式提供时不能为空"},
 		{Name: "email", Type: shortcut.FlagString, Desc: "搜索目标邮箱地址"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自响应中的 nextCursor"},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量，必须在 1-100 之间"},
+		{Name: "limit", Type: shortcut.FlagString, Desc: "每页返回数量，必须是 1-100 之间的整数"},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"keyword", "employee-no"}},
@@ -334,7 +333,7 @@ var UserSearch = shortcut.Shortcut{
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "1-100"},
 	},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		if err := mailValidatePageSize(rt, "limit", false); err != nil {
+		if err := mailValidateStringPageSize(rt, "limit", false); err != nil {
 			return err
 		}
 		for _, name := range []string{"keyword", "employee-no"} {
@@ -352,6 +351,10 @@ var UserSearch = shortcut.Shortcut{
 		`dws mail +user-search --email user@company.com --employee-no "E123456"`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		size, err := mailStringPageSize(rt, "limit", false)
+		if err != nil {
+			return err
+		}
 		params := map[string]any{}
 		if rt.Str("keyword") != "" {
 			params["keyword"] = rt.Str("keyword")
@@ -366,7 +369,7 @@ var UserSearch = shortcut.Shortcut{
 			params["cursor"] = rt.Str("cursor")
 		}
 		if rt.Changed("limit") {
-			params["size"] = fmt.Sprintf("%d", rt.Int("limit"))
+			params["size"] = size
 		}
 		data, err := rt.CallMCPData("mail", "search_mail_users", params)
 		if err != nil {
@@ -428,20 +431,24 @@ var TemplateList = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "email", Type: shortcut.FlagString, Desc: "用户邮箱地址", Required: true},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量，必须在 1-100 之间", Required: true},
+		{Name: "limit", Type: shortcut.FlagString, Desc: "每页返回数量，必须是 1-100 之间的整数", Required: true},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自响应中的 nextCursor"},
 	},
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须在 1-100 之间"}},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		return mailValidatePageSize(rt, "limit", true)
+		return mailValidateStringPageSize(rt, "limit", true)
 	},
 	Tips: []string{
 		`dws mail +template-list --email user@company.com --limit 20`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		size, err := mailStringPageSize(rt, "limit", true)
+		if err != nil {
+			return err
+		}
 		params := map[string]any{
 			"email": rt.Str("email"),
-			"size":  fmt.Sprintf("%d", rt.Int("limit")),
+			"size":  size,
 		}
 		if rt.Changed("cursor") {
 			params["cursor"] = rt.Str("cursor")
@@ -506,20 +513,24 @@ var ContactList = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "email", Type: shortcut.FlagString, Desc: "用户邮箱地址", Required: true},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量，必须在 1-100 之间", Required: true},
+		{Name: "limit", Type: shortcut.FlagString, Desc: "每页返回数量，必须是 1-100 之间的整数", Required: true},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自响应中的 nextCursor"},
 	},
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须在 1-100 之间"}},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		return mailValidatePageSize(rt, "limit", true)
+		return mailValidateStringPageSize(rt, "limit", true)
 	},
 	Tips: []string{
 		`dws mail +contact-list --email user@company.com --limit 20`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		size, err := mailStringPageSize(rt, "limit", true)
+		if err != nil {
+			return err
+		}
 		params := map[string]any{
 			"email": rt.Str("email"),
-			"size":  fmt.Sprintf("%d", rt.Int("limit")),
+			"size":  size,
 		}
 		if rt.Changed("cursor") {
 			params["cursor"] = rt.Str("cursor")
