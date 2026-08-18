@@ -346,3 +346,15 @@ func TestCrossPlatformCoverageSmartMailWhitespaceIdentityFailsClosed(t *testing.
 		})
 	}
 }
+
+func TestCrossPlatformCoverageFindMailUserKeepsStableQueryProperty(t *testing.T) {
+	for _, parameter := range FindMailUser.Contract.Parameters {
+		if parameter.Name == "query" {
+			if parameter.Property != "query" {
+				t.Fatalf("query property = %q, want stable composite property query", parameter.Property)
+			}
+			return
+		}
+	}
+	t.Fatal("FindMailUser query parameter declaration is missing")
+}

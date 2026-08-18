@@ -72,7 +72,9 @@ var FindMailUser = shortcut.Shortcut{
 		},
 		Description: "按关键词搜索邮箱联系人并投影列表（姓名/昵称/邮箱/工号等）",
 		Parameters: []contract.ParamDecl{
-			{Name: "query", Property: "keyword"},
+			// Keep the published composite Shortcut property stable. Execute owns
+			// the explicit query -> keyword adapter for search_mail_users.
+			{Name: "query", Property: "query"},
 			{Name: "limit", Property: "size"},
 			{Name: "cursor", Property: "cursor"},
 		},
