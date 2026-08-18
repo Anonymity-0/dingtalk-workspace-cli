@@ -29,4 +29,3 @@ dws todo task create --title "每日站会" --executors <USER_ID> --due "2026-08
 2. 缺少责任人或时间时向用户补齐；不要从空白来源编造。
 3. 单人使用 `+assign`，多人同一事项使用 `+assign-multi`，多事项使用批量脚本。
 4. 保留“听记行动项 → Todo taskId”的逐项映射，只汇报已验证条目。
-

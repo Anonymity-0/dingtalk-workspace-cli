@@ -63,4 +63,3 @@ python scripts/todo_batch_create.py todos.json
 ```
 
 批量脚本单批最多 30 条，输出逐项 ledger。`unknown` 表示写可能已提交，`unverified` 表示已有 `taskId` 但读回未通过；两者都需对账，不能自动重试。
-
