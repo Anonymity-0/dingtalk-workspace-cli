@@ -383,6 +383,100 @@ var paramAliasNewDriveCases = []struct {
 	{command: "drive +upload", emitted: "file-id", canonical: "node"},
 }
 
+// paramAliasAITableDeleteDisableCompleteCommands contains complete invocations
+// for every AITable delete/disable command whose confirmation boundary is
+// reached by aliases introduced in the AITable expansion. These templates are
+// intentionally separate from paramAliasCompleteCommands: that map mirrors
+// the reviewed validation fixture one-for-one, while this matrix exhaustively
+// proves the safety boundary for generated aliases beyond the fixture sample.
+var paramAliasAITableDeleteDisableCompleteCommands = map[string][]string{
+	"aitable +advperm-disable":      {"aitable", "+advperm-disable", "--base-id", "base-1", "--yes"},
+	"aitable +base-delete":          {"aitable", "+base-delete", "--base-id", "base-1", "--yes"},
+	"aitable +chart-delete":         {"aitable", "+chart-delete", "--base-id", "base-1", "--dashboard-id", "dashboard-1", "--chart-id", "chart-1", "--yes"},
+	"aitable +dashboard-delete":     {"aitable", "+dashboard-delete", "--base-id", "base-1", "--dashboard-id", "dashboard-1", "--yes"},
+	"aitable +field-delete":         {"aitable", "+field-delete", "--base-id", "base-1", "--table-id", "table-1", "--field-id", "field-1", "--yes"},
+	"aitable +form-delete":          {"aitable", "+form-delete", "--base-id", "base-1", "--table-id", "table-1", "--view-id", "view-1", "--yes"},
+	"aitable +record-delete":        {"aitable", "+record-delete", "--base-id", "base-1", "--table-id", "table-1", "--record-ids", "record-1", "--yes"},
+	"aitable +role-delete":          {"aitable", "+role-delete", "--base-id", "base-1", "--role-id", "role-1", "--yes"},
+	"aitable +section-delete":       {"aitable", "+section-delete", "--base-id", "base-1", "--section-id", "section-1", "--yes"},
+	"aitable +table-delete":         {"aitable", "+table-delete", "--base-id", "base-1", "--table-id", "table-1", "--yes"},
+	"aitable +view-delete":          {"aitable", "+view-delete", "--base-id", "base-1", "--table-id", "table-1", "--view-id", "view-1", "--yes"},
+	"aitable +workflow-disable":     {"aitable", "+workflow-disable", "--base-id", "base-1", "--workflow-id", "workflow-1", "--yes"},
+	"aitable advperm disable":       {"aitable", "advperm", "disable", "--base-id", "base-1", "--yes"},
+	"aitable advperm role-delete":   {"aitable", "advperm", "role-delete", "--base-id", "base-1", "--role-id", "role-1", "--yes"},
+	"aitable base delete":           {"aitable", "base", "delete", "--base-id", "base-1", "--yes"},
+	"aitable chart delete":          {"aitable", "chart", "delete", "--base-id", "base-1", "--dashboard-id", "dashboard-1", "--chart-id", "chart-1", "--yes"},
+	"aitable dashboard delete":      {"aitable", "dashboard", "delete", "--base-id", "base-1", "--dashboard-id", "dashboard-1", "--yes"},
+	"aitable field delete":          {"aitable", "field", "delete", "--base-id", "base-1", "--table-id", "table-1", "--field-id", "field-1", "--yes"},
+	"aitable form delete":           {"aitable", "form", "delete", "--base-id", "base-1", "--table-id", "table-1", "--view-id", "view-1", "--yes"},
+	"aitable form questions delete": {"aitable", "form", "questions", "delete", "--base-id", "base-1", "--table-id", "table-1", "--field-id", "field-1", "--yes"},
+	"aitable record delete":         {"aitable", "record", "delete", "--base-id", "base-1", "--table-id", "table-1", "--record-ids", "record-1", "--yes"},
+	"aitable table delete":          {"aitable", "table", "delete", "--base-id", "base-1", "--table-id", "table-1", "--yes"},
+	"aitable view delete":           {"aitable", "view", "delete", "--base-id", "base-1", "--table-id", "table-1", "--view-id", "view-1", "--yes"},
+	"aitable workflow disable":      {"aitable", "workflow", "disable", "--base-id", "base-1", "--workflow-id", "workflow-1", "--yes"},
+}
+
+// paramAliasNewAITableDeleteDisableCases is the exhaustive set of alias
+// tuples newly introduced by this change on AITable delete/disable commands
+// that require confirmation. Every tuple must remain on both sides of the
+// confirmation gate: rejected with zero calls before --yes, and exactly
+// payload-equivalent to its canonical spelling after --yes.
+var paramAliasNewAITableDeleteDisableCases = []struct {
+	command   string
+	emitted   string
+	canonical string
+}{
+	{command: "aitable +advperm-disable", emitted: "base", canonical: "base-id"},
+	{command: "aitable +advperm-disable", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +base-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +base-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +chart-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +chart-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +dashboard-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +dashboard-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +field-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +field-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +field-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +form-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +form-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +form-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +record-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +record-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +record-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +role-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +role-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +section-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +section-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +table-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +table-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +table-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +view-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +view-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +view-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +workflow-disable", emitted: "base", canonical: "base-id"},
+	{command: "aitable +workflow-disable", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +workflow-disable", emitted: "flow-id", canonical: "workflow-id"},
+	{command: "aitable advperm disable", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable advperm role-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable base delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable chart delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable dashboard delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable field delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable field delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable form delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable form delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable form questions delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable form questions delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable record delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable record delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable table delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable table delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable view delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable view delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable workflow disable", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable workflow disable", emitted: "flow-id", canonical: "workflow-id"},
+}
+
 // paramAliasNewConfirmationCases selects newly reviewed aliases for commands
 // whose declared runtime safety requires confirmation. The full matrix below
 // proves all spellings preserve the confirmed payload; this smaller matrix
@@ -660,6 +754,109 @@ func TestCrossPlatformCoverageNewDriveParamAliasesReachCanonicalEquivalentFinalP
 	}
 	if activeAliases != len(paramAliasNewDriveCases) {
 		t.Fatalf("new Drive aliases active in embedded table = %d, want %d", activeAliases, len(paramAliasNewDriveCases))
+	}
+}
+
+func TestCrossPlatformCoverageNewAITableDeleteDisableAliasesPreserveConfirmationAndPayload(t *testing.T) {
+	coveredCommands := make(map[string]bool)
+	reviewedAliases := make(map[string]string, len(paramAliasNewAITableDeleteDisableCases))
+	for _, test := range paramAliasNewAITableDeleteDisableCases {
+		test := test
+		caseKey := paramAliasPayloadCaseKey(test.command, test.emitted)
+		if previous, duplicate := reviewedAliases[caseKey]; duplicate {
+			t.Fatalf("duplicate AITable delete/disable alias case %q: --%s and --%s", caseKey, previous, test.canonical)
+		}
+		reviewedAliases[caseKey] = test.canonical
+		t.Run(test.command+"/"+test.emitted, func(t *testing.T) {
+			complete, ok := paramAliasAITableDeleteDisableCompleteCommands[test.command]
+			if !ok {
+				t.Fatal("reviewed AITable delete/disable alias has no complete safety template")
+			}
+			coveredCommands[test.command] = true
+
+			canonicalArgs := append([]string(nil), complete...)
+			aliasArgs, replacements := replaceLongFlag(canonicalArgs, test.canonical, test.emitted)
+			if replacements != 1 {
+				t.Fatalf("complete command must contain canonical --%s exactly once; replacements=%d args=%v", test.canonical, replacements, canonicalArgs)
+			}
+			unconfirmedArgs, removals := removeExactArg(aliasArgs, "--yes")
+			if removals != 1 {
+				t.Fatalf("safety template must contain --yes exactly once; removals=%d args=%v", removals, aliasArgs)
+			}
+
+			entry, exists := cli.LookupParamAlias(test.command)
+			target, active := entry.ResolveAlias(test.emitted)
+			if !exists || !active || target != test.canonical {
+				t.Fatalf("reviewed AITable alias --%s resolution = exists:%v active:%v target:%q, want --%s", test.emitted, exists, active, target, test.canonical)
+			}
+
+			unconfirmedCaller := &paramAliasCaptureCaller{}
+			ctx, unconfirmedErr := executeParamAliasPayloadE2E(t, unconfirmedCaller, unconfirmedArgs...)
+			if ctx == nil {
+				t.Fatal("unconfirmed AITable alias command skipped PreParse")
+			}
+			var appErr *apperrors.Error
+			if !errors.As(unconfirmedErr, &appErr) || appErr.Reason != "confirmation_required" {
+				t.Fatalf("unconfirmed AITable alias command error = %#v, want confirmation_required\nargs=%v", unconfirmedErr, unconfirmedArgs)
+			}
+			if len(unconfirmedCaller.calls) != 0 {
+				t.Fatalf("unconfirmed AITable alias crossed the transport boundary: args=%v calls=%#v", unconfirmedArgs, unconfirmedCaller.calls)
+			}
+
+			canonicalCaller := &paramAliasCaptureCaller{}
+			_, canonicalErr := executeParamAliasPayloadE2E(t, canonicalCaller, canonicalArgs...)
+			if canonicalErr != nil {
+				t.Fatalf("confirmed canonical command failed: %v\nargs=%v\ncalls=%#v", canonicalErr, canonicalArgs, canonicalCaller.calls)
+			}
+			if len(canonicalCaller.calls) == 0 {
+				t.Fatalf("confirmed canonical command reached no final transport payload: args=%v", canonicalArgs)
+			}
+
+			aliasCaller := &paramAliasCaptureCaller{}
+			aliasCtx, aliasErr := executeParamAliasPayloadE2E(t, aliasCaller, aliasArgs...)
+			if aliasErr != nil {
+				t.Fatalf("confirmed alias command failed: %v\nargs=%v\ncalls=%#v", aliasErr, aliasArgs, aliasCaller.calls)
+			}
+			if aliasCtx == nil {
+				t.Fatal("confirmed AITable alias command skipped PreParse")
+			}
+			if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
+				t.Fatalf("confirmed final transport calls differ\ncanonical args: %v\nalias args: %v\ncanonical calls: %#v\nalias calls: %#v", canonicalArgs, aliasArgs, canonicalCaller.calls, aliasCaller.calls)
+			}
+		})
+	}
+
+	for command := range paramAliasAITableDeleteDisableCompleteCommands {
+		if !coveredCommands[command] {
+			t.Errorf("AITable delete/disable safety template %q has no reviewed alias case", command)
+		}
+	}
+	if len(coveredCommands) != len(paramAliasAITableDeleteDisableCompleteCommands) {
+		t.Fatalf("AITable delete/disable safety coverage = %d commands, want %d", len(coveredCommands), len(paramAliasAITableDeleteDisableCompleteCommands))
+	}
+
+	activeAliases := 0
+	for command := range paramAliasAITableDeleteDisableCompleteCommands {
+		entry, exists := cli.LookupParamAlias(command)
+		if !exists {
+			t.Errorf("AITable delete/disable safety command %q has no generated alias entry", command)
+			continue
+		}
+		for emitted, canonical := range entry.Aliases {
+			activeAliases++
+			caseKey := paramAliasPayloadCaseKey(command, emitted)
+			reviewedCanonical, reviewed := reviewedAliases[caseKey]
+			if !reviewed {
+				t.Errorf("active AITable delete/disable alias %q --%s -> --%s has no confirmation/payload case", command, emitted, canonical)
+				continue
+			}
+			if reviewedCanonical != canonical {
+				t.Errorf("reviewed AITable delete/disable alias %q --%s target = --%s, generated --%s", command, emitted, reviewedCanonical, canonical)
+			}
+		}
+	}
+	if activeAliases != len(reviewedAliases) {
+		t.Fatalf("AITable delete/disable generated alias coverage = %d, want %d reviewed cases", activeAliases, len(reviewedAliases))
 	}
 }
 
