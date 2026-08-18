@@ -174,7 +174,7 @@ var SearchForms = shortcut.Shortcut{
 		[]contract.ParamDecl{{Name: "query", Property: "query"}},
 		"dws oa +search-forms --query 报销",
 	),
-	Flags:       []shortcut.Flag{{Name: "query", Type: shortcut.FlagString, Desc: "关键字（匹配 processCode 或表单名称）", Required: true}},
+	Flags:       []shortcut.Flag{{Name: "query", Type: shortcut.FlagString, Desc: "关键字（匹配 processCode 或表单名称）；去除空白后不能为空", Required: true}},
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"query"}, Description: "--query 去除空白后不能为空"}},
 	Tips:        []string{`dws oa +search-forms --query 报销`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
@@ -207,12 +207,15 @@ func oaNumberedInstanceShortcut(command, tool, description, intent string) short
 			[]contract.ParamDecl{{Name: "page", Property: "pageNumber"}, {Name: "limit", Property: "pageSize"}, {Name: "query", Property: "query"}},
 			"dws oa "+command+" --page 1 --limit 20"),
 		Flags: []shortcut.Flag{
-			{Name: "page", Type: shortcut.FlagString, Default: "1", Desc: "分页页码"},
-			{Name: "limit", Type: shortcut.FlagString, Default: "20", Desc: "每页大小"},
+			{Name: "page", Type: shortcut.FlagString, Default: "1", Desc: "分页页码；--page 必须大于 0"},
+			{Name: "limit", Type: shortcut.FlagString, Default: "20", Desc: "每页大小；--limit 必须在 1-100"},
 			{Name: "query", Type: shortcut.FlagString, Desc: "关键字搜索"},
 		},
-		Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"page", "limit"}, Description: "--page 必须大于 0；--limit 必须在 1-100"}},
-		Tips:        []string{"dws oa " + command + " --page 1 --limit 20"},
+		Constraints: []shortcut.Constraint{
+			{Kind: shortcut.ConstraintCustom, Flags: []string{"page"}, Description: "--page 必须大于 0"},
+			{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须在 1-100"},
+		},
+		Tips: []string{"dws oa " + command + " --page 1 --limit 20"},
 	}
 	declaration.Validate = func(rt *shortcut.RuntimeContext) error {
 		page, err := parseOAStringPage(rt, "page", 1)

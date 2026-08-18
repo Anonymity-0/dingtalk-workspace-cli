@@ -118,12 +118,15 @@ var MyInitiated = shortcut.Shortcut{
 	),
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "关键字搜索（可选）"},
-		{Name: "page", Type: shortcut.FlagInt, Desc: "分页页码（可选，默认 1）", Default: "1"},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页大小（可选，默认 20）", Default: "20"},
+		{Name: "page", Type: shortcut.FlagInt, Desc: "分页页码（可选，默认 1）；--page 必须大于 0", Default: "1"},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页大小（可选，默认 20）；--limit 必须在 1-100", Default: "20"},
 	},
-	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"page", "limit"}, Description: "--page 必须大于 0；--limit 必须在 1-100"}},
-	Tips:        []string{`dws oa +my-initiated`, `dws oa +my-initiated --query 报销`, `dws oa +my-initiated --page 2 --limit 50`},
-	Validate:    func(rt *shortcut.RuntimeContext) error { return validateOAPage(rt.Int("page"), rt.Int("limit")) },
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"page"}, Description: "--page 必须大于 0"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须在 1-100"},
+	},
+	Tips:     []string{`dws oa +my-initiated`, `dws oa +my-initiated --query 报销`, `dws oa +my-initiated --page 2 --limit 50`},
+	Validate: func(rt *shortcut.RuntimeContext) error { return validateOAPage(rt.Int("page"), rt.Int("limit")) },
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		const operation = "oa/get_submitted_instances"
 		params := map[string]any{"pageNumber": float64(rt.Int("page")), "pageSize": float64(rt.Int("limit"))}
