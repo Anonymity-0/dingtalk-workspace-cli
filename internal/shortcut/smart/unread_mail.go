@@ -14,6 +14,8 @@
 package smart
 
 import (
+	"strconv"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -80,8 +82,12 @@ var UnreadMail = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "email", Type: shortcut.FlagString, Desc: "要查询的邮箱地址（可选，默认取你绑定的第一个邮箱）", Required: false},
-		{Name: "size", Type: shortcut.FlagString, Desc: "返回条数上限（可选，默认 20）", Required: false},
+		{Name: "size", Type: shortcut.FlagInt, Default: "20", Desc: "返回条数上限（可选，默认 20，范围 1-100）", Required: false},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自上一页 nextCursor", Required: false},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"size"}, Description: "显式 --size 必须在 1-100 之间"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return smartMailValidatePageSize(rt, "size", false)
 	},
 	Tips: []string{
 		`dws mail +unread-mail`,
@@ -102,14 +108,10 @@ var UnreadMail = shortcut.Shortcut{
 		// Step 2 — search unread mail. email/query/size mirror the search_emails
 		// call in helpers.messageSearch; the isRead:false KQL filter matches the
 		// isRead field documented there; size is passed as a string.
-		size := rt.Str("size")
-		if size == "" {
-			size = "20"
-		}
 		args := map[string]any{
 			"email": email,
 			"query": "isRead:false",
-			"size":  size,
+			"size":  strconv.Itoa(rt.Int("size")),
 		}
 		if rt.Changed("cursor") {
 			args["cursor"] = rt.Str("cursor")
@@ -137,15 +139,16 @@ var UnreadMail = shortcut.Shortcut{
 				"messageId": searchMailFirstString(m, "messageId", "id", "mailId", "emailId", "internetMessageId"),
 			})
 		}
-		complete, next, err := smartMailPage(data, "mail/search_emails", "")
+		complete, next, err := smartMailPage(data, "mail/search_emails", "", rt.Str("cursor"))
 		if err != nil {
 			return err
 		}
-		return rt.Output(smartMailPayload("messages", out, complete, next))
+		return smartMailOutputPage(rt, "messages", out, complete, next)
 	},
 }
 
 func init() {
 	hardenSmartMail(&UnreadMail, "messages", "严格校验的未读邮件摘要")
+	markSmartMailUnavailable(&UnreadMail, "固定 isRead:false 查询没有可控 guaranteed-zero 条件；当前没有专用空邮箱 fixture，且不得修改真实邮件已读状态来制造零命中。")
 	shortcut.Register(UnreadMail)
 }

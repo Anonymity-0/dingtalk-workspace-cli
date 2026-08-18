@@ -15,6 +15,8 @@ package smart
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -81,10 +83,20 @@ var SearchMail = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "query", Type: shortcut.FlagString, Desc: "KQL 搜索表达式（如 subject:周报、from:alice、folderId:2）", Required: true},
+		{Name: "query", Type: shortcut.FlagString, Desc: "KQL 搜索表达式（如 subject:周报、from:alice、folderId:2），不能为空", Required: true},
 		{Name: "email", Type: shortcut.FlagString, Desc: "要搜索的邮箱地址（可选，默认取你绑定的第一个邮箱）", Required: false},
-		{Name: "size", Type: shortcut.FlagString, Desc: "返回条数上限（可选，默认 20）", Required: false},
+		{Name: "size", Type: shortcut.FlagInt, Default: "20", Desc: "返回条数上限（可选，默认 20，范围 1-100）", Required: false},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自上一页 nextCursor", Required: false},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"query"}, Description: "不能为空"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"size"}, Description: "1-100"},
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if err := smartMailValidateRequiredText(rt, "query"); err != nil {
+			return err
+		}
+		return smartMailValidatePageSize(rt, "size", false)
 	},
 	Tips: []string{
 		`dws mail +search-mail --query "subject:周报"`,
@@ -108,14 +120,10 @@ var SearchMail = shortcut.Shortcut{
 
 		// Step 2 — search that mailbox. email/query/size mirror the search_emails
 		// call in helpers.messageSearch; size is passed as a string.
-		size := rt.Str("size")
-		if size == "" {
-			size = "20"
-		}
 		args := map[string]any{
 			"email": email,
 			"query": rt.Str("query"),
-			"size":  size,
+			"size":  strconv.Itoa(rt.Int("size")),
 		}
 		if rt.Changed("cursor") {
 			args["cursor"] = rt.Str("cursor")
@@ -143,11 +151,11 @@ var SearchMail = shortcut.Shortcut{
 				"messageId": searchMailFirstString(m, "messageId", "id", "mailId", "emailId", "internetMessageId"),
 			})
 		}
-		complete, next, err := smartMailPage(data, "mail/search_emails", "")
+		complete, next, err := smartMailPage(data, "mail/search_emails", "", rt.Str("cursor"))
 		if err != nil {
 			return err
 		}
-		return rt.Output(smartMailPayload("messages", out, complete, next))
+		return smartMailOutputPage(rt, "messages", out, complete, next)
 	},
 }
 
@@ -206,8 +214,8 @@ func searchMailFrom(m map[string]any) (any, error) {
 
 func searchMailFirstString(m map[string]any, keys ...string) string {
 	for _, key := range keys {
-		if s, ok := m[key].(string); ok && s != "" {
-			return s
+		if s, ok := m[key].(string); ok && strings.TrimSpace(s) != "" {
+			return strings.TrimSpace(s)
 		}
 	}
 	return ""
@@ -216,8 +224,11 @@ func searchMailFirstString(m map[string]any, keys ...string) string {
 func searchMailFirstAny(m map[string]any, keys ...string) any {
 	for _, key := range keys {
 		if v, ok := m[key]; ok && v != nil {
-			if s, isStr := v.(string); isStr && s == "" {
-				continue
+			if s, isStr := v.(string); isStr {
+				if strings.TrimSpace(s) == "" {
+					continue
+				}
+				return strings.TrimSpace(s)
 			}
 			return v
 		}

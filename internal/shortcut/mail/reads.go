@@ -57,8 +57,12 @@ var Message = shortcut.Shortcut{
 	Risk: shortcut.RiskRead, Safety: mailReadSafety(),
 	Contract: mailReadContract("+message", "读取一封邮件的完整正文与附件元数据", "已知单个 messageId，需要读取完整正文和附件元数据时使用；自动解析当前邮箱，并要求返回邮件 ID 与请求精确一致。", mailObjectResult("身份匹配的单封邮件详情"), []contract.ParamDecl{{Name: "id", Property: "messageId"}}, `dws mail +message --id <messageId> --format json`),
 	Flags: []shortcut.Flag{
-		{Name: "id", Type: shortcut.FlagString, Required: true, Desc: "邮件 messageId"},
+		{Name: "id", Type: shortcut.FlagString, Required: true, Desc: "邮件 messageId，不能为空"},
 		{Name: "email", Type: shortcut.FlagString, Desc: "邮箱地址；不传时自动取当前身份首个邮箱"},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"id"}, Description: "不能为空"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return mailValidateRequiredText(rt, "id")
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		email, err := mailResolveMailbox(rt)
@@ -80,14 +84,18 @@ var Messages = shortcut.Shortcut{
 	Risk: shortcut.RiskRead, Safety: mailReadSafety(),
 	Contract: mailReadContract("+messages", "按请求顺序读取多封邮件并逐封验证身份", "需要一次读取多个 messageId 时使用；按输入顺序逐封读取，任何缺失、错型或身份不匹配都会使整次任务失败。", mailCollectionResult("messages", "身份匹配且保持请求顺序的邮件详情"), []contract.ParamDecl{{Name: "ids", Property: "messageIds"}}, `dws mail +messages --ids <id1>,<id2> --format json`),
 	Flags: []shortcut.Flag{
-		{Name: "ids", Type: shortcut.FlagStringSlice, Required: true, Desc: "邮件 messageId 列表，最多 100 个"},
+		{Name: "ids", Type: shortcut.FlagStringSlice, Required: true, Desc: "邮件 messageId 列表，1-100 个且每项不能为空"},
 		{Name: "email", Type: shortcut.FlagString, Desc: "邮箱地址；不传时自动取当前身份首个邮箱"},
+	},
+	Constraints: []shortcut.Constraint{{
+		Kind: shortcut.ConstraintCustom, Flags: []string{"ids"},
+		Description: "1-100 个且不能为空",
+	}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return mailValidateMessageIDs(rt.StrSlice("ids"))
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		ids := rt.StrSlice("ids")
-		if len(ids) == 0 || len(ids) > 100 {
-			return apperrors.NewValidation("--ids 需要 1 到 100 个邮件 ID")
-		}
 		email, err := mailResolveMailbox(rt)
 		if err != nil {
 			return err
@@ -104,8 +112,20 @@ var Messages = shortcut.Shortcut{
 			}
 			messages = append(messages, message)
 		}
-		return rt.Output(mailCollectionPayload("messages", messages, true, ""))
+		return rt.Output(mailBusinessCollectionPayload("messages", messages))
 	},
+}
+
+func mailValidateMessageIDs(ids []string) error {
+	if len(ids) == 0 || len(ids) > 100 {
+		return apperrors.NewValidation("--ids 需要 1 到 100 个邮件 ID")
+	}
+	for index, id := range ids {
+		if strings.TrimSpace(id) == "" {
+			return apperrors.NewValidation(fmt.Sprintf("--ids 第 %d 项为空", index))
+		}
+	}
+	return nil
 }
 
 var Thread = shortcut.Shortcut{
@@ -115,8 +135,12 @@ var Thread = shortcut.Shortcut{
 	Risk: shortcut.RiskRead, Safety: mailReadSafety(),
 	Contract: mailReadContract("+thread", "读取完整邮件会话并精确验证 conversationId", "已知一个 conversationId，需要查看同一主题的会话上下文时使用；自动解析邮箱并拒绝空对象或错会话。", mailObjectResult("身份匹配的邮件会话详情"), []contract.ParamDecl{{Name: "id", Property: "conversationId"}}, `dws mail +thread --id <conversationId> --format json`),
 	Flags: []shortcut.Flag{
-		{Name: "id", Type: shortcut.FlagString, Required: true, Desc: "邮件会话 conversationId"},
+		{Name: "id", Type: shortcut.FlagString, Required: true, Desc: "邮件会话 conversationId，不能为空"},
 		{Name: "email", Type: shortcut.FlagString, Desc: "邮箱地址；不传时自动取当前身份首个邮箱"},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"id"}, Description: "不能为空"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return mailValidateRequiredText(rt, "id")
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		email, err := mailResolveMailbox(rt)

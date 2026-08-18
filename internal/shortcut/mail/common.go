@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -18,12 +19,58 @@ import (
 const mailCompositeReason = "Reviewed Mail Shortcut composite: the executable CLI owns strict response validation, pagination evidence, stable-identity checks, output projection, and confirmation; no single MCP interface represents the complete command contract."
 
 func mailCollectionResult(collection, description string) *contract.ResultSpec {
+	identity := mailCollectionIdentitySchema(collection)
 	return &contract.ResultSpec{
-		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		Outcomes:       []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		SensitivePaths: mailCollectionSensitivePaths(collection),
 		DataSchema: json.RawMessage(fmt.Sprintf(
-			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","description":"当前响应中的有效记录数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"严格校验后的邮件业务记录","additionalProperties":true}},"complete":{"type":"boolean","description":"服务端分页证据是否证明结果完整"},"nextCursor":{"type":"string","description":"结果未完整时的下一页游标"}},"required":["count",%q,"complete"],"additionalProperties":false}`,
-			description, collection, description, collection,
+			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","minimum":0,"description":"当前响应中的有效记录数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"严格校验后的邮件业务记录",%s,"additionalProperties":true}}},"required":["count",%q],"additionalProperties":false}`,
+			description, collection, description, identity, collection,
 		)),
+	}
+}
+
+func mailCollectionSensitivePaths(collection string) []string {
+	switch collection {
+	case "threads":
+		return []string{"threads.subject", "threads.lastUpdated"}
+	case "folders":
+		return []string{"folders.name"}
+	case "tags":
+		return []string{"tags.name"}
+	case "users":
+		return []string{"users.name", "users.email", "users.employeeNo"}
+	case "templates":
+		return []string{"templates.name", "templates.subject"}
+	case "contacts":
+		return []string{"contacts.contactEmail", "contacts.displayName"}
+	case "messages":
+		return []string{"messages.subject", "messages.body", "messages.markdownBody", "messages.from", "messages.toRecipients", "messages.ccRecipients", "messages.bccRecipients", "messages.attachments", "messages.receivedDateTime", "messages.sentDateTime"}
+	default:
+		panic("unsupported Mail collection sensitive paths: " + collection)
+	}
+}
+
+func mailCollectionIdentitySchema(collection string) string {
+	switch collection {
+	case "threads":
+		return `"properties":{"conversationId":{"type":"string","minLength":1,"description":"稳定邮件会话 ID"}},"required":["conversationId"]`
+	case "folders", "tags", "templates", "contacts", "messages":
+		return `"properties":{"id":{"type":"string","minLength":1,"description":"稳定邮件业务对象 ID"}},"required":["id"]`
+	case "users":
+		return `"properties":{"userId":{"type":["string","number"],"description":"稳定邮箱用户 ID"},"email":{"type":"string","minLength":1,"description":"稳定邮箱地址身份"}},"anyOf":[{"required":["userId"]},{"required":["email"]}]`
+	default:
+		panic("unsupported Mail collection Result identity: " + collection)
+	}
+}
+
+func mailCursorPagination() *contract.PaginationSpec {
+	return &contract.PaginationSpec{
+		Kind:                  contract.PaginationKindCursor,
+		CursorParameter:       "cursor",
+		MetaPath:              contract.PaginationMetaPath,
+		EndpointExhaustedPath: contract.PaginationExhaustedPath,
+		NextTokenPath:         contract.PaginationNextTokenPath,
 	}
 }
 
@@ -31,15 +78,60 @@ func mailObjectResult(description string) *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
 		DataSchema: json.RawMessage(fmt.Sprintf(
-			`{"type":"object","description":%q,"properties":{"value":{"type":"object","description":"严格校验且身份匹配的邮件业务对象","additionalProperties":true}},"required":["value"],"additionalProperties":false}`,
+			`{"type":"object","description":%q,"properties":{"value":{"type":"object","description":"严格校验且身份匹配的邮件业务对象","properties":{"id":{"type":"string","minLength":1,"description":"稳定邮件业务对象 ID"}},"required":["id"],"additionalProperties":true}},"required":["value"],"additionalProperties":false}`,
 			description,
 		)),
-		SensitivePaths: []string{"value.body", "value.markdownBody", "value.subject", "value.from", "value.toRecipients", "value.ccRecipients", "value.bccRecipients"},
+		SensitivePaths: []string{"value.body", "value.markdownBody", "value.subject", "value.summary", "value.name", "value.email", "value.contactEmail", "value.displayName", "value.from", "value.toRecipients", "value.ccRecipients", "value.bccRecipients", "value.senders", "value.attachments", "value.receivedDateTime", "value.sentDateTime"},
 	}
 }
 
 func mailReadSafety() contract.SafetySpec {
 	return contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"}
+}
+
+func mailValidatePageSize(rt *shortcut.RuntimeContext, flag string, required bool) error {
+	if !required && !rt.Changed(flag) {
+		return nil
+	}
+	value := rt.Int(flag)
+	if value < 1 || value > 100 {
+		return apperrors.NewValidation(fmt.Sprintf("--%s 必须在 1-100 之间", flag))
+	}
+	return nil
+}
+
+func mailValidateRequiredText(rt *shortcut.RuntimeContext, flag string) error {
+	if strings.TrimSpace(rt.Str(flag)) == "" {
+		return apperrors.NewValidation(fmt.Sprintf("--%s 不能为空", flag))
+	}
+	return nil
+}
+
+func mailValidateThreadList(rt *shortcut.RuntimeContext) error {
+	if err := mailValidatePageSize(rt, "limit", true); err != nil {
+		return err
+	}
+	parsed := make(map[string]time.Time, 2)
+	for _, flag := range []string{"start", "end"} {
+		if !rt.Changed(flag) {
+			continue
+		}
+		value, err := time.Parse(time.RFC3339, strings.TrimSpace(rt.Str(flag)))
+		if err != nil {
+			return apperrors.NewValidation(fmt.Sprintf("--%s 必须是 RFC3339 时间", flag))
+		}
+		_, offset := value.Zone()
+		if offset != 0 {
+			return apperrors.NewValidation(fmt.Sprintf("--%s 必须使用 UTC 时区", flag))
+		}
+		parsed[flag] = value
+	}
+	start, hasStart := parsed["start"]
+	end, hasEnd := parsed["end"]
+	if hasStart && hasEnd && end.Before(start) {
+		return apperrors.NewValidation("--end 不能早于 --start")
+	}
+	return nil
 }
 
 func mailWriteSafety(idempotency string) contract.SafetySpec {
@@ -160,12 +252,64 @@ func mailRequireIdentity(object map[string]any, operation, expected string, keys
 }
 
 func mailValidateRows(items []map[string]any, operation string, identityKeys ...string) error {
+	allowNumericID := false
+	for _, key := range identityKeys {
+		if key == "email" {
+			allowNumericID = true
+			break
+		}
+	}
 	for index, item := range items {
-		if mailFirstString(item, identityKeys...) == "" {
+		valid := mailFirstString(item, identityKeys...) != ""
+		if !valid && allowNumericID {
+			valid = mailNumericIdentity(item["id"])
+		}
+		if !valid {
 			return mailResponseError(operation, "missing_item_identity", fmt.Sprintf("结果第 %d 项缺少稳定 ID", index))
 		}
 	}
 	return nil
+}
+
+func mailNumericIdentity(value any) bool {
+	switch value.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, json.Number:
+		return true
+	default:
+		return false
+	}
+}
+
+func mailProjectValue(operation, outputName string, value any) (any, bool, error) {
+	if value == nil {
+		return nil, false, nil
+	}
+	switch outputName {
+	case "email":
+		text, ok := value.(string)
+		if !ok {
+			return nil, false, mailResponseError(operation, "malformed_item_identity", "邮箱用户 email 必须是字符串")
+		}
+		text = strings.TrimSpace(text)
+		return text, text != "", nil
+	case "userId":
+		if text, ok := value.(string); ok {
+			text = strings.TrimSpace(text)
+			return text, text != "", nil
+		}
+		if !mailNumericIdentity(value) {
+			return nil, false, mailResponseError(operation, "malformed_item_identity", "邮箱用户 userId 必须是字符串或数字")
+		}
+		return value, true, nil
+	default:
+		if text, ok := value.(string); ok {
+			if strings.TrimSpace(text) == "" {
+				return nil, false, nil
+			}
+			return text, true, nil
+		}
+		return value, true, nil
+	}
 }
 
 func mailProjectCollection(data map[string]any, operation, path string, identityKeys []string, fields map[string][]string) ([]map[string]any, error) {
@@ -182,7 +326,14 @@ func mailProjectCollection(data map[string]any, operation, path string, identity
 		for outputName, candidates := range fields {
 			for _, candidate := range candidates {
 				if value, present := item[candidate]; present && value != nil {
-					row[outputName] = value
+					projectedValue, include, err := mailProjectValue(operation, outputName, value)
+					if err != nil {
+						return nil, err
+					}
+					if !include {
+						continue
+					}
+					row[outputName] = projectedValue
 					break
 				}
 			}
@@ -192,7 +343,7 @@ func mailProjectCollection(data map[string]any, operation, path string, identity
 	return projected, nil
 }
 
-func mailPage(data map[string]any, operation, prefix string) (bool, string, error) {
+func mailPage(data map[string]any, operation, prefix, currentCursor string) (bool, string, error) {
 	container := data
 	if prefix != "" {
 		value, present := mailLookup(data, prefix)
@@ -225,10 +376,16 @@ func mailPage(data map[string]any, operation, prefix string) (bool, string, erro
 		if !hasMore {
 			return true, "", nil
 		}
+		if strings.TrimSpace(currentCursor) != "" && strings.TrimSpace(next) == strings.TrimSpace(currentCursor) {
+			return false, "", mailResponseError(operation, "stalled_pagination", "服务端返回了与当前请求相同的 nextCursor")
+		}
 		return false, next, nil
 	}
 	if strings.TrimSpace(next) == "" || strings.TrimSpace(next) == "$" {
 		return true, "", nil
+	}
+	if strings.TrimSpace(currentCursor) != "" && strings.TrimSpace(next) == strings.TrimSpace(currentCursor) {
+		return false, "", mailResponseError(operation, "stalled_pagination", "服务端返回了与当前请求相同的 nextCursor")
 	}
 	return false, next, nil
 }
@@ -280,22 +437,61 @@ func mailCollectionPayload(collection string, items []map[string]any, complete b
 	return payload
 }
 
+func mailBusinessCollectionPayload(collection string, items []map[string]any) map[string]any {
+	return map[string]any{"count": len(items), collection: items}
+}
+
+// mailOutputPage preserves legacy payload compatibility while keeping cursor
+// controls in the unified envelope's meta.pagination contract.
+func mailOutputPage(rt *shortcut.RuntimeContext, collection string, items []map[string]any, complete bool, next string) error {
+	payload := mailCollectionPayload(collection, items, complete, next)
+	if !output.UsesUnifiedResult(rt.Command()) {
+		return rt.Output(payload)
+	}
+	pagination, err := output.NewPagination(complete, next)
+	if err != nil {
+		return mailResponseError("mail/pagination", "invalid_pagination", err.Error())
+	}
+	business := map[string]any{"count": len(items), collection: items}
+	meta := &output.Meta{Pagination: pagination, Count: output.NewCount(len(items))}
+	return output.StoreResult(rt.Command().Context(), output.Success(business, output.WithMeta(meta)))
+}
+
 func hardenPublicMailContracts() {
 	collections := []struct {
 		declaration *shortcut.Shortcut
 		collection  string
 		description string
+		paginated   bool
 	}{
-		{&ThreadList, "threads", "严格校验的邮件会话列表"},
-		{&FolderList, "folders", "严格校验的邮箱文件夹列表"},
-		{&TagList, "tags", "严格校验的邮件标签列表"},
-		{&UserSearch, "users", "严格校验的企业邮箱用户搜索结果"},
-		{&TemplateList, "templates", "严格校验的邮件模板列表"},
-		{&ContactList, "contacts", "严格校验的邮件联系人列表"},
+		{&ThreadList, "threads", "严格校验的邮件会话列表", true},
+		{&FolderList, "folders", "严格校验的邮箱文件夹列表", false},
+		{&TagList, "tags", "严格校验的邮件标签列表", false},
+		{&UserSearch, "users", "严格校验的企业邮箱用户搜索结果", true},
+		{&TemplateList, "templates", "严格校验的邮件模板列表", true},
+		{&ContactList, "contacts", "严格校验的邮件联系人列表", true},
 	}
 	for _, item := range collections {
 		item.declaration.OutputRollout = output.RolloutUnifiedActive
 		item.declaration.Contract.Result = mailCollectionResult(item.collection, item.description)
+		if item.paginated {
+			item.declaration.Contract.Pagination = mailCursorPagination()
+		}
 		item.declaration.Contract.Interface = &contract.InterfaceSpec{Mode: contract.InterfaceModeComposite, Availability: contract.InterfaceAvailable, Reason: mailCompositeReason}
+	}
+	markMailUnavailable(&ThreadList, "当前租户全部可见文件夹均有会话，且时间过滤未提供可靠零命中；没有已验证空文件夹 fixture，无法完成 known-nonempty + guaranteed-zero 双态发布审计。")
+	markMailUnavailable(&TagList, "标签列表没有 query/parent 过滤；当前没有专用空邮箱 fixture，不能用删除后的列表或越界状态冒充 guaranteed-zero。")
+	markMailUnavailable(&TemplateList, "模板列表没有 query 过滤；当前没有专用空邮箱 fixture，且模板删除后缺少 typed nonfound 清理证据，无法证明 guaranteed-zero。")
+	markMailUnavailable(&ContactList, "联系人列表没有 query 过滤；当前没有专用空邮箱 fixture，且 create/delete 缺稳定身份闭环，无法安全构造 guaranteed-zero。")
+}
+
+func markMailUnavailable(declaration *shortcut.Shortcut, reason string) {
+	declaration.OutputRollout = output.RolloutLegacyOnly
+	declaration.Contract.Result = nil
+	declaration.Contract.Pagination = nil
+	declaration.Contract.Interface = &contract.InterfaceSpec{
+		Mode:         contract.InterfaceModeComposite,
+		Availability: contract.InterfaceUnavailable,
+		Reason:       reason,
 	}
 }

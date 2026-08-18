@@ -4,6 +4,8 @@
 package smart
 
 import (
+	"strconv"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -37,8 +39,12 @@ var TriageMail = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "可选 KQL 条件；不传时列出收件箱"},
 		{Name: "email", Type: shortcut.FlagString, Desc: "邮箱地址；不传时自动取当前身份首个邮箱"},
-		{Name: "limit", Type: shortcut.FlagString, Default: "20", Desc: "每页摘要数量"},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "每页摘要数量，必须在 1-100 之间"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标"},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "1-100"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return smartMailValidatePageSize(rt, "limit", true)
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		email := rt.Str("email")
@@ -57,7 +63,7 @@ var TriageMail = shortcut.Shortcut{
 			}
 			query = "folderId:" + folderID
 		}
-		args := map[string]any{"email": email, "query": query, "size": rt.Str("limit")}
+		args := map[string]any{"email": email, "query": query, "size": strconv.Itoa(rt.Int("limit"))}
 		if rt.Changed("cursor") {
 			args["cursor"] = rt.Str("cursor")
 		}
@@ -82,11 +88,11 @@ var TriageMail = shortcut.Shortcut{
 				"date":      searchMailFirstAny(message, "receivedDateTime", "date", "sentDateTime"),
 			})
 		}
-		complete, next, err := smartMailPage(data, "mail/search_emails", "")
+		complete, next, err := smartMailPage(data, "mail/search_emails", "", rt.Str("cursor"))
 		if err != nil {
 			return err
 		}
-		return rt.Output(smartMailPayload("messages", rows, complete, next))
+		return smartMailOutputPage(rt, "messages", rows, complete, next)
 	},
 }
 

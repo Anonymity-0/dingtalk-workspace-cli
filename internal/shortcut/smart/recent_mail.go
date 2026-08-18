@@ -15,6 +15,7 @@ package smart
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -73,6 +74,12 @@ var RecentMail = shortcut.Shortcut{
 			PrimaryCLIPath: "mail +recent-mail",
 		},
 		Description: "列出收件箱近期邮件会话并投影列表（主题/发件人/时间/threadId）",
+		Parameters: []contract.ParamDecl{
+			{Name: "limit", Property: "size"},
+			{Name: "email", Property: "email"},
+			{Name: "folder", Property: "folderId"},
+			{Name: "cursor", Property: "cursor"},
+		},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
@@ -89,9 +96,14 @@ var RecentMail = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "返回会话条数上限（可选，默认 20，最大 100）", Required: false},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "返回会话条数上限（可选，默认 20，最大 100）", Required: false},
 		{Name: "email", Type: shortcut.FlagString, Desc: "要查看的邮箱地址（可选，默认取你绑定的第一个邮箱）", Required: false},
 		{Name: "folder", Type: shortcut.FlagString, Desc: "文件夹 ID（可选，默认定位收件箱）", Required: false},
+		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自上一页 nextCursor", Required: false},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "显式 --limit 必须在 1-100 之间"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return smartMailValidatePageSize(rt, "limit", false)
 	},
 	Tips: []string{
 		`dws mail +recent-mail`,
@@ -121,18 +133,15 @@ var RecentMail = shortcut.Shortcut{
 
 		// Step 3 — list threads. email/folderId/size mirror the helpers.mail
 		// thread-list call; size is an int in 1..100.
-		size := rt.Int("limit")
-		if size <= 0 {
-			size = 20
-		}
-		if size > 100 {
-			size = 100
-		}
-		data, err := rt.CallMCPData("mail", "list_mailbox_threads", map[string]any{
+		args := map[string]any{
 			"email":    email,
 			"folderId": folderID,
-			"size":     size,
-		})
+			"size":     rt.Int("limit"),
+		}
+		if rt.Changed("cursor") {
+			args["cursor"] = rt.Str("cursor")
+		}
+		data, err := rt.CallMCPData("mail", "list_mailbox_threads", args)
 		if err != nil {
 			return err
 		}
@@ -156,11 +165,11 @@ var RecentMail = shortcut.Shortcut{
 			})
 		}
 
-		complete, next, err := smartMailPage(data, "mail/list_mailbox_threads", "result")
+		complete, next, err := smartMailPage(data, "mail/list_mailbox_threads", "result", rt.Str("cursor"))
 		if err != nil {
 			return err
 		}
-		return rt.Output(smartMailPayload("mails", results, complete, next))
+		return smartMailOutputPage(rt, "mails", results, complete, next)
 	},
 }
 
@@ -182,7 +191,7 @@ func recentMailInboxFolder(rt *shortcut.RuntimeContext, email string) (string, e
 		"收件箱": true, "inbox": true,
 	}
 	for _, f := range folders {
-		name := searchMailFirstString(f, "displayName", "name", "folderName")
+		name := strings.ToLower(strings.TrimSpace(searchMailFirstString(f, "displayName", "name", "folderName")))
 		if inboxNames[name] {
 			if id := searchMailFirstString(f, "id", "folderId"); id != "" {
 				return id, nil
@@ -230,5 +239,6 @@ func recentMailSenders(t map[string]any) (any, error) {
 
 func init() {
 	hardenSmartMail(&RecentMail, "mails", "严格校验的近期邮件会话摘要")
+	markSmartMailUnavailable(&RecentMail, "当前租户全部可见文件夹均有会话，且本入口没有可控零命中筛选；缺少已验证空文件夹 fixture。")
 	shortcut.Register(RecentMail)
 }

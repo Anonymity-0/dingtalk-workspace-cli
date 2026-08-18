@@ -26,6 +26,7 @@ package attendance
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -198,11 +199,33 @@ var CheckResult = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "用户 userId 列表，逗号分隔，最多 100 人", Required: true},
-		{Name: "start", Type: shortcut.FlagString, Desc: "起始日期 YYYY-MM-DD", Required: true},
-		{Name: "end", Type: shortcut.FlagString, Desc: "结束日期 YYYY-MM-DD，跨度不超过 1 个月", Required: true},
-		{Name: "offset", Type: shortcut.FlagInt, Default: "0", Desc: "分页偏移量，默认 0"},
-		{Name: "limit", Type: shortcut.FlagInt, Default: "100", Desc: "分页大小，1-1000，默认 100"},
+		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "--users 不能为空，用户 ID 不能重复，最多 100 个，逗号分隔", Required: true},
+		{Name: "start", Type: shortcut.FlagString, Desc: "--start 必须是 YYYY-MM-DD", Required: true},
+		{Name: "end", Type: shortcut.FlagString, Desc: "--end 必须是 YYYY-MM-DD，不能早于 --start，且与 --start 跨度不超过 1 个月", Required: true},
+		{Name: "offset", Type: shortcut.FlagInt, Default: "0", Desc: "--offset 不能小于 0，默认 0"},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "100", Desc: "--limit 必须大于 0 且不超过 1000，默认 100"},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"users"}, Description: "--users 不能为空，用户 ID 不能重复，最多 100 个"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"start"}, Description: "--start 必须是 YYYY-MM-DD"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"end"}, Description: "--end 必须是 YYYY-MM-DD，不能早于 --start，且与 --start 跨度不超过 1 个月"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须大于 0 且不超过 1000"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"offset"}, Description: "--offset 不能小于 0"},
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if err := attendanceValidateUserIDs(rt.StrSlice("users"), 100); err != nil {
+			return err
+		}
+		if err := attendanceValidateMonthRange(rt.Str("start"), rt.Str("end")); err != nil {
+			return err
+		}
+		if limit := rt.Int("limit"); limit < 1 || limit > 1000 {
+			return fmt.Errorf("--limit 必须在 1 到 1000 之间")
+		}
+		if rt.Int("offset") < 0 {
+			return fmt.Errorf("--offset 不能小于 0")
+		}
+		return nil
 	},
 	Tips: []string{`dws attendance +check-result --users userId1,userId2 --start 2026-04-01 --end 2026-04-30 --limit 50`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
@@ -238,12 +261,23 @@ var CheckResult = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
+		if err := attendanceValidatePositiveIntegerIDs(records, serverWukong+"/query_check_result", "id"); err != nil {
+			return err
+		}
+		startMillis, _ := dayMillis(rt.Str("start"))
+		endMillis, _ := dayMillis(rt.Str("end"))
+		if err := attendanceValidateUserAndTimeBinding(records, serverWukong+"/query_check_result", rt.StrSlice("users"), "userId", "workDate", startMillis, endMillis); err != nil {
+			return err
+		}
 		complete := len(records) < limit
 		extra := map[string]any{"limit": limit}
+		nextToken := ""
 		if !complete {
-			extra["nextOffset"] = offset + len(records)
+			nextOffset := offset + len(records)
+			extra["nextOffset"] = nextOffset
+			nextToken = strconv.Itoa(nextOffset)
 		}
-		return rt.Output(attendanceCollectionPayload("records", records, complete, extra))
+		return attendanceOutputCollection(rt, "records", records, complete, extra, true, nextToken)
 	},
 }
 
@@ -281,9 +315,20 @@ var CheckRecord = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "用户 userId 列表，逗号分隔", Required: true},
-		{Name: "start", Type: shortcut.FlagString, Desc: "起始日期 YYYY-MM-DD", Required: true},
-		{Name: "end", Type: shortcut.FlagString, Desc: "结束日期 YYYY-MM-DD，跨度不超过 1 个月", Required: true},
+		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "--users 不能为空，用户 ID 不能重复，逗号分隔", Required: true},
+		{Name: "start", Type: shortcut.FlagString, Desc: "--start 必须是 YYYY-MM-DD", Required: true},
+		{Name: "end", Type: shortcut.FlagString, Desc: "--end 必须是 YYYY-MM-DD，不能早于 --start，且与 --start 跨度不超过 1 个月", Required: true},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"users"}, Description: "--users 不能为空，用户 ID 不能重复"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"start"}, Description: "--start 必须是 YYYY-MM-DD"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"end"}, Description: "--end 必须是 YYYY-MM-DD，不能早于 --start，且与 --start 跨度不超过 1 个月"},
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if err := attendanceValidateUserIDs(rt.StrSlice("users"), 0); err != nil {
+			return err
+		}
+		return attendanceValidateMonthRange(rt.Str("start"), rt.Str("end"))
 	},
 	Tips: []string{`dws attendance +check-record --users userId1 --start 2026-04-01 --end 2026-04-30`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
@@ -301,7 +346,14 @@ var CheckRecord = shortcut.Shortcut{
 				"checkDateFrom": from,
 				"checkDateTo":   to,
 			},
-		}, "records", true, nil, "result")
+		}, "records", true, nil, func(items []map[string]any) error {
+			if err := attendanceValidatePositiveIntegerIDs(items, serverWukong+"/query_check_record", "id"); err != nil {
+				return err
+			}
+			startMillis, _ := dayMillis(rt.Str("start"))
+			endMillis, _ := dayMillis(rt.Str("end"))
+			return attendanceValidateUserAndTimeBinding(items, serverWukong+"/query_check_record", rt.StrSlice("users"), "userId", "workDate", startMillis, endMillis)
+		}, "result")
 	},
 }
 
@@ -341,10 +393,47 @@ var ListApprove = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "用户 userId 列表，逗号分隔", Required: true},
-		{Name: "types", Type: shortcut.FlagStringSlice, Desc: "审批类型，逗号分隔：overtime/加班、trip/travel/出差/外出、leave/请假、patch/补卡", Required: true},
-		{Name: "start", Type: shortcut.FlagString, Desc: "起始日期 YYYY-MM-DD", Required: true},
-		{Name: "end", Type: shortcut.FlagString, Desc: "结束日期 YYYY-MM-DD", Required: true},
+		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "--users 不能为空，用户 ID 不能重复，逗号分隔", Required: true},
+		{Name: "types", Type: shortcut.FlagStringSlice, Desc: "--types 不能为空，映射后的审批类型不能重复；overtime/加班、trip/travel/出差/外出、leave/请假、patch/补卡", Required: true},
+		{Name: "start", Type: shortcut.FlagString, Desc: "--start 必须是 YYYY-MM-DD", Required: true},
+		{Name: "end", Type: shortcut.FlagString, Desc: "--end 必须是 YYYY-MM-DD，且不能早于 --start", Required: true},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"users"}, Description: "--users 不能为空，用户 ID 不能重复"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"types"}, Description: "--types 不能为空，映射后的审批类型不能重复"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"start"}, Description: "--start 必须是 YYYY-MM-DD"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"end"}, Description: "--end 必须是 YYYY-MM-DD，且不能早于 --start"},
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if err := attendanceValidateUserIDs(rt.StrSlice("users"), 0); err != nil {
+			return err
+		}
+		start, err := dayMillis(rt.Str("start"))
+		if err != nil {
+			return err
+		}
+		end, err := dayMillis(rt.Str("end"))
+		if err != nil {
+			return err
+		}
+		if end < start {
+			return fmt.Errorf("--end 不能早于 --start")
+		}
+		seen := map[int]struct{}{}
+		for _, value := range rt.StrSlice("types") {
+			mapped, ok := approveTypeMapping[strings.ToLower(strings.TrimSpace(value))]
+			if !ok {
+				return fmt.Errorf("无效的审批类型: %s", value)
+			}
+			if _, duplicate := seen[mapped]; duplicate {
+				return fmt.Errorf("审批类型不能重复")
+			}
+			seen[mapped] = struct{}{}
+		}
+		if len(seen) == 0 {
+			return fmt.Errorf("--types 不能为空")
+		}
+		return nil
 	},
 	Tips: []string{`dws attendance +list-approve --users userId1 --types overtime,leave --start 2026-04-01 --end 2026-04-30`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
@@ -375,7 +464,18 @@ var ListApprove = shortcut.Shortcut{
 				"fromDate": from,
 				"toDate":   to,
 			},
-		}, "approvals", true, nil, "result")
+		}, "approvals", true, nil, func(items []map[string]any) error {
+			if err := attendanceValidatePositiveIntegerIDs(items, serverWukong+"/query_user_approve", "id"); err != nil {
+				return err
+			}
+			requestedTypes := make(map[int]struct{}, len(bizTypes))
+			for _, value := range bizTypes {
+				requestedTypes[value] = struct{}{}
+			}
+			startMillis, _ := dayMillis(rt.Str("start"))
+			endMillis, _ := dayMillis(rt.Str("end"))
+			return attendanceValidateApprovalBinding(items, serverWukong+"/query_user_approve", rt.StrSlice("users"), requestedTypes, startMillis, endMillis)
+		}, "result")
 	},
 }
 
@@ -429,7 +529,9 @@ var GetApproveTemplate = shortcut.Shortcut{
 		}
 		return attendanceCallCollection(rt, serverWukong, "query_at_approve_template", map[string]any{
 			"approveType": approveType,
-		}, "templates", true, nil, "result")
+		}, "templates", true, nil, func(items []map[string]any) error {
+			return attendanceValidateExpectedStrings(items, serverWukong+"/query_at_approve_template", "approveType", approveType)
+		}, "result")
 	},
 }
 
@@ -472,9 +574,31 @@ var GetSchedule = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "用户 userId 列表，逗号分隔", Required: true},
-		{Name: "start", Type: shortcut.FlagString, Desc: "开始日期 YYYY-MM-DD 或 yyyy-MM-dd HH:mm:ss", Required: true},
-		{Name: "end", Type: shortcut.FlagString, Desc: "结束日期 YYYY-MM-DD 或 yyyy-MM-dd HH:mm:ss", Required: true},
+		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "--users 不能为空，用户 ID 不能重复，逗号分隔", Required: true},
+		{Name: "start", Type: shortcut.FlagString, Desc: "--start 必须是 YYYY-MM-DD 或 yyyy-MM-dd HH:mm:ss", Required: true},
+		{Name: "end", Type: shortcut.FlagString, Desc: "--end 必须是 YYYY-MM-DD 或 yyyy-MM-dd HH:mm:ss，且不能早于 --start", Required: true},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"users"}, Description: "--users 不能为空，用户 ID 不能重复"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"start"}, Description: "--start 必须是 YYYY-MM-DD 或 yyyy-MM-dd HH:mm:ss"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"end"}, Description: "--end 必须是 YYYY-MM-DD 或 yyyy-MM-dd HH:mm:ss，且不能早于 --start"},
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if err := attendanceValidateUserIDs(rt.StrSlice("users"), 0); err != nil {
+			return err
+		}
+		start, err := dateToMillis(rt.Str("start"), false)
+		if err != nil {
+			return err
+		}
+		end, err := dateToMillis(rt.Str("end"), true)
+		if err != nil {
+			return err
+		}
+		if end < start {
+			return fmt.Errorf("--end 不能早于 --start")
+		}
+		return nil
 	},
 	Tips: []string{`dws attendance +get-schedule --users user001,user002 --start 2026-04-01 --end 2026-04-30`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
@@ -492,7 +616,12 @@ var GetSchedule = shortcut.Shortcut{
 				"workDateBegin": begin,
 				"workDateEnd":   end,
 			},
-		}, "schedules", true, nil, "result")
+		}, "schedules", true, nil, func(items []map[string]any) error {
+			if err := attendanceValidatePositiveIntegerIDs(items, serverWukong+"/getScheduleByRange", "id"); err != nil {
+				return err
+			}
+			return attendanceValidateUserAndTimeBinding(items, serverWukong+"/getScheduleByRange", rt.StrSlice("users"), "userId", "workDate", begin, end)
+		}, "result")
 	},
 }
 
@@ -582,10 +711,15 @@ var SearchClass = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "班次名称关键字，模糊搜索"},
 		{Name: "filter-type", Type: shortcut.FlagString, Enum: []string{"ALL", "MINE_OWN"}, Desc: "班次类型：ALL 全部 / MINE_OWN 我负责的"},
-		{Name: "page", Type: shortcut.FlagInt, Default: "1", Desc: "页码，从 1 开始"},
-		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "每页条数，最大 200"},
+		{Name: "page", Type: shortcut.FlagInt, Default: "1", Desc: "--page 必须大于 0，从 1 开始"},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "--limit 必须大于 0 且不超过 200"},
 	},
-	Tips: []string{`dws attendance +search-class --query "早班" --filter-type MINE_OWN`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"page"}, Description: "--page 必须大于 0"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须大于 0 且不超过 200"},
+	},
+	Validate: attendanceValidatePageRequest,
+	Tips:     []string{`dws attendance +search-class --query "早班" --filter-type MINE_OWN`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		page, limit, err := attendancePageInput(rt)
 		if err != nil {
@@ -614,11 +748,15 @@ var SearchClass = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_class_list", page, limit)
+		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_class_list", page, limit, len(classes))
 		if err != nil {
 			return err
 		}
-		return rt.Output(attendanceCollectionPayload("classes", classes, complete, extra))
+		nextToken := ""
+		if !complete {
+			nextToken = strconv.Itoa(page + 1)
+		}
+		return attendanceOutputCollection(rt, "classes", classes, complete, extra, true, nextToken)
 	},
 }
 
@@ -647,10 +785,11 @@ func searchClassProject(data map[string]any) ([]map[string]any, error) {
 		}
 		row := map[string]any{}
 		v, ok := attendanceFirst(m, "id", "classId", "class_id")
-		if !ok || v == nil {
+		identity, validIdentity := attendancePositiveInteger(v)
+		if !ok || !validIdentity {
 			return nil, responsecheck.Error(serverWukong+"/get_class_list", "missing_item_identity", fmt.Sprintf("result.items[%d] 缺少班次 ID", index))
 		}
-		row["classId"] = v
+		row["classId"] = identity
 		if v, ok := attendanceFirst(m, "name", "className", "class_name"); ok {
 			row["name"] = v
 		}
@@ -658,6 +797,9 @@ func searchClassProject(data map[string]any) ([]map[string]any, error) {
 			row["ownerName"] = v
 		}
 		out = append(out, row)
+	}
+	if err := attendanceValidatePositiveIntegerIDs(out, serverWukong+"/get_class_list", "classId"); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
@@ -706,13 +848,32 @@ var GetClass = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "class-id", Type: shortcut.FlagInt, Desc: "班次 ID", Required: true},
+		{Name: "class-id", Type: shortcut.FlagInt, Desc: "--class-id 必须大于 0，表示班次 ID", Required: true},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"class-id"}, Description: "--class-id 必须大于 0"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Int("class-id") <= 0 {
+			return fmt.Errorf("--class-id 必须大于 0")
+		}
+		return nil
 	},
 	Tips: []string{`dws attendance +get-class --class-id 1170996821`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return attendanceCallObject(rt, serverWukong, "get_class_detail", map[string]any{
-			"classId": int64(rt.Int("class-id")),
-		})
+		requested := int64(rt.Int("class-id"))
+		data, err := rt.CallMCPData(serverWukong, "get_class_detail", map[string]any{"classId": requested})
+		if err != nil {
+			return err
+		}
+		value, err := responsecheck.RequireSingleObjectResult(data, serverWukong+"/get_class_detail")
+		if err != nil {
+			return err
+		}
+		identityValue, ok := attendanceNestedValue(value, "shiftVO", "id")
+		identity, valid := attendancePositiveInteger(identityValue)
+		if !ok || !valid || identity != requested {
+			return responsecheck.Error(serverWukong+"/get_class_detail", "object_identity_mismatch", "响应 shiftVO.id 与请求 classId 不一致")
+		}
+		return rt.Output(map[string]any{"value": value})
 	},
 }
 
@@ -873,10 +1034,15 @@ var SearchAdjustmentRule = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "补卡规则名称关键字，模糊搜索"},
-		{Name: "page", Type: shortcut.FlagInt, Default: "1", Desc: "页码，从 1 开始"},
-		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "每页条数，200 以内"},
+		{Name: "page", Type: shortcut.FlagInt, Default: "1", Desc: "--page 必须大于 0，从 1 开始"},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "--limit 必须大于 0 且不超过 200"},
 	},
-	Tips: []string{`dws attendance +search-adjustment-rule --query "标准" --page 1 --limit 50`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"page"}, Description: "--page 必须大于 0"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须大于 0 且不超过 200"},
+	},
+	Validate: attendanceValidatePageRequest,
+	Tips:     []string{`dws attendance +search-adjustment-rule --query "标准" --page 1 --limit 50`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		param := map[string]any{}
 		if v := rt.Str("query"); v != "" {
@@ -898,11 +1064,15 @@ var SearchAdjustmentRule = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_adjustment_rule", page, limit)
+		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_adjustment_rule", page, limit, len(rules))
 		if err != nil {
 			return err
 		}
-		return rt.Output(attendanceCollectionPayload("rules", rules, complete, extra))
+		nextToken := ""
+		if !complete {
+			nextToken = strconv.Itoa(page + 1)
+		}
+		return attendanceOutputCollection(rt, "rules", rules, complete, extra, true, nextToken)
 	},
 }
 
@@ -932,14 +1102,18 @@ func searchRuleProject(data map[string]any, operation string, paths ...string) (
 		}
 		row := map[string]any{}
 		v, ok := attendanceFirst(m, "id", "ruleId", "rule_id", "adjustmentId", "overtimeId")
-		if !ok || v == nil {
+		identity, validIdentity := attendancePositiveInteger(v)
+		if !ok || !validIdentity {
 			return nil, responsecheck.Error(operation, "missing_item_identity", fmt.Sprintf("规则结果第 %d 项缺少规则 ID", index))
 		}
-		row["ruleId"] = v
+		row["ruleId"] = identity
 		if v, ok := attendanceFirst(m, "name", "ruleName", "rule_name"); ok {
 			row["name"] = v
 		}
 		out = append(out, row)
+	}
+	if err := attendanceValidatePositiveIntegerIDs(out, operation, "ruleId"); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
@@ -980,13 +1154,31 @@ var GetOvertimeRule = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "overtime-id", Type: shortcut.FlagInt, Desc: "加班规则主键 ID", Required: true},
+		{Name: "overtime-id", Type: shortcut.FlagInt, Desc: "--overtime-id 必须大于 0，表示加班规则主键 ID", Required: true},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"overtime-id"}, Description: "--overtime-id 必须大于 0"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Int("overtime-id") <= 0 {
+			return fmt.Errorf("--overtime-id 必须大于 0")
+		}
+		return nil
 	},
 	Tips: []string{`dws attendance +get-overtime-rule --overtime-id 12345`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return attendanceCallObject(rt, serverWukong, "get_overtime_rule_detail", map[string]any{
-			"overtimeId": int64(rt.Int("overtime-id")),
-		})
+		requested := int64(rt.Int("overtime-id"))
+		data, err := rt.CallMCPData(serverWukong, "get_overtime_rule_detail", map[string]any{"overtimeId": requested})
+		if err != nil {
+			return err
+		}
+		value, err := responsecheck.RequireSingleObjectResult(data, serverWukong+"/get_overtime_rule_detail")
+		if err != nil {
+			return err
+		}
+		identity, valid := attendancePositiveInteger(value["id"])
+		if !valid || identity != requested {
+			return responsecheck.Error(serverWukong+"/get_overtime_rule_detail", "object_identity_mismatch", "响应 id 与请求 overtimeId 不一致")
+		}
+		return rt.Output(map[string]any{"value": value})
 	},
 }
 
@@ -1025,10 +1217,15 @@ var SearchOvertimeRule = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "加班规则名称关键字，模糊搜索"},
-		{Name: "page", Type: shortcut.FlagInt, Default: "1", Desc: "页码，从 1 开始"},
-		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "每页条数，200 以内"},
+		{Name: "page", Type: shortcut.FlagInt, Default: "1", Desc: "--page 必须大于 0，从 1 开始"},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "--limit 必须大于 0 且不超过 200"},
 	},
-	Tips: []string{`dws attendance +search-overtime-rule --query "节假日" --page 1 --limit 50`},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"page"}, Description: "--page 必须大于 0"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须大于 0 且不超过 200"},
+	},
+	Validate: attendanceValidatePageRequest,
+	Tips:     []string{`dws attendance +search-overtime-rule --query "节假日" --page 1 --limit 50`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		param := map[string]any{}
 		if v := rt.Str("query"); v != "" {
@@ -1050,11 +1247,15 @@ var SearchOvertimeRule = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_overtime_rule", page, limit)
+		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_overtime_rule", page, limit, len(rules))
 		if err != nil {
 			return err
 		}
-		return rt.Output(attendanceCollectionPayload("rules", rules, complete, extra))
+		nextToken := ""
+		if !complete {
+			nextToken = strconv.Itoa(page + 1)
+		}
+		return attendanceOutputCollection(rt, "rules", rules, complete, extra, true, nextToken)
 	},
 }
 
@@ -1138,7 +1339,7 @@ var SearchGroup = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_simple_groups", page, limit)
+		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_simple_groups", page, limit, len(groups))
 		if err != nil {
 			return err
 		}
@@ -1469,17 +1670,78 @@ var GetSelfSetting = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "setting-scene", Type: shortcut.FlagString, Enum: []string{"checkRemind", "fastCheck", "checkResultNotify", "lackRemind", "personalAttendStatNotify", "bossAttendStatNotify"}, Desc: "查询设置项场景", Required: true},
-		{Name: "user", Type: shortcut.FlagString, Desc: "查询用户 userId", Required: true},
+		{Name: "user", Type: shortcut.FlagString, Desc: "--user 不能为空，表示查询用户 userId", Required: true},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"user"}, Description: "--user 不能为空"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Str("user") == "" {
+			return fmt.Errorf("--user 不能为空")
+		}
+		return nil
 	},
 	Tips: []string{`dws attendance +get-self-setting --setting-scene checkRemind --user USER_ID`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return attendanceCallObject(rt, serverWukong, "query_self_setting", map[string]any{
+		userID := rt.Str("user")
+		scene := rt.Str("setting-scene")
+		data, err := rt.CallMCPData(serverWukong, "query_self_setting", map[string]any{
 			"RuleMcpQuerySelfSettingRequest": map[string]any{
-				"settingScene": rt.Str("setting-scene"),
-				"userId":       rt.Str("user"),
+				"settingScene": scene,
+				"userId":       userID,
 			},
 		})
+		if err != nil {
+			return err
+		}
+		value, err := responsecheck.RequireSingleObjectResult(data, serverWukong+"/query_self_setting")
+		if err != nil {
+			return err
+		}
+		if err := attendanceValidateSelfSetting(value, userID, scene); err != nil {
+			return err
+		}
+		return rt.Output(map[string]any{"value": value})
 	},
+}
+
+func attendanceValidateSelfSetting(value map[string]any, requestedUser, scene string) error {
+	operation := serverWukong + "/query_self_setting"
+	requestedUser = strings.TrimSpace(requestedUser)
+	if requestedUser == "" {
+		return responsecheck.Error(operation, "object_identity_mismatch", "请求 userId 不能为空")
+	}
+	returnedUser, ok := value["userId"].(string)
+	if !ok || returnedUser == "" || returnedUser != requestedUser {
+		return responsecheck.Error(operation, "object_identity_mismatch", "响应 userId 与请求用户不一致")
+	}
+	type sceneContract struct {
+		field string
+		valid func(any) bool
+	}
+	contracts := map[string]sceneContract{
+		"checkRemind":              {field: "checkRemindSetting", valid: func(v any) bool { _, ok := v.(map[string]any); return ok }},
+		"fastCheck":                {field: "fastCheckLateNeedConfirm", valid: func(v any) bool { _, ok := v.(bool); return ok }},
+		"checkResultNotify":        {field: "checkResultMsg", valid: attendanceSettingInteger},
+		"lackRemind":               {field: "lackRemindUser", valid: attendanceSettingInteger},
+		"personalAttendStatNotify": {field: "personDailyReportSwitch", valid: attendanceSettingInteger},
+		"bossAttendStatNotify":     {field: "bossMonthReportType", valid: attendanceSettingInteger},
+	}
+	expected, ok := contracts[scene]
+	if !ok {
+		return fmt.Errorf("无效的 --setting-scene: %s", scene)
+	}
+	setting, present := value[expected.field]
+	if !present || setting == nil {
+		return responsecheck.Error(operation, "setting_scene_mismatch", "响应缺少请求场景对应的非空设置字段")
+	}
+	if !expected.valid(setting) {
+		return responsecheck.Error(operation, "malformed_setting", "响应中请求场景的设置字段类型不正确")
+	}
+	return nil
+}
+
+func attendanceSettingInteger(value any) bool {
+	number, ok := value.(float64)
+	return ok && !math.IsNaN(number) && !math.IsInf(number, 0) && math.Trunc(number) == number
 }
 
 // ── global setting ──────────────────────────────────────────
@@ -1668,7 +1930,9 @@ var ListLeaveTypes = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		return attendanceCallCollection(rt, serverWukong, "get_leave_types", map[string]any{
 			"McpLeaveTypeRequest": map[string]any{},
-		}, "leaveTypes", true, nil, "result")
+		}, "leaveTypes", true, nil, func(items []map[string]any) error {
+			return attendanceValidateExpectedStrings(items, serverWukong+"/get_leave_types", "leaveCode", "")
+		}, "result")
 	},
 }
 
@@ -1737,6 +2001,27 @@ var GetLeaveRecords = shortcut.Shortcut{
 		{Name: "start", Type: shortcut.FlagString, Desc: "查询开始日期 YYYY-MM-DD", Required: true},
 		{Name: "end", Type: shortcut.FlagString, Desc: "查询结束日期 YYYY-MM-DD", Required: true},
 	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"user"}, Description: "--user 去空白后必须非空"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "--start/--end 必须是 YYYY-MM-DD 且 end 不早于 start"},
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Str("user") == "" {
+			return fmt.Errorf("--user 不能为空")
+		}
+		start, err := dayMillis(rt.Str("start"))
+		if err != nil {
+			return err
+		}
+		end, err := dayMillis(rt.Str("end"))
+		if err != nil {
+			return err
+		}
+		if end < start {
+			return fmt.Errorf("--end 不能早于 --start")
+		}
+		return nil
+	},
 	Tips: []string{`dws attendance +get-leave-records --user USER_ID --leave-code a1b2c3d4-e5f6-7890-abcd-ef1234567890 --start 2026-04-01 --end 2026-04-22`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		start, err := dayMillis(rt.Str("start"))
@@ -1757,7 +2042,7 @@ var GetLeaveRecords = shortcut.Shortcut{
 		}
 		return attendanceCallCollection(rt, serverWukong, "get_leave_balance_records_v2", map[string]any{
 			"McpLeaveRecordRequest": req,
-		}, "records", true, nil, "result")
+		}, "records", true, nil, nil, "result")
 	},
 }
 
@@ -1921,6 +2206,33 @@ var GetCheckinRecord = shortcut.Shortcut{
 		{Name: "start", Type: shortcut.FlagString, Desc: "开始时间 yyyy-MM-dd HH:mm:ss", Required: true},
 		{Name: "end", Type: shortcut.FlagString, Desc: "结束时间 yyyy-MM-dd HH:mm:ss，跨度最多 7 天", Required: true},
 	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"staff-ids"}, Description: "--staff-ids 去空白后必须为 1..100 个且不能重复"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "--start/--end 必须是 yyyy-MM-dd HH:mm:ss，end 不早于 start，且跨度不超过 7 天"},
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if err := attendanceValidateUserIDs(rt.StrSlice("staff-ids"), 100); err != nil {
+			return err
+		}
+		if rt.Str("operator-corp-id") == "" || rt.Str("operator-staff-id") == "" {
+			return fmt.Errorf("--operator-corp-id 与 --operator-staff-id 不能为空")
+		}
+		start, err := time.ParseInLocation("2006-01-02 15:04:05", rt.Str("start"), time.Local)
+		if err != nil {
+			return fmt.Errorf("--start 格式错误，应为 yyyy-MM-dd HH:mm:ss: %w", err)
+		}
+		end, err := time.ParseInLocation("2006-01-02 15:04:05", rt.Str("end"), time.Local)
+		if err != nil {
+			return fmt.Errorf("--end 格式错误，应为 yyyy-MM-dd HH:mm:ss: %w", err)
+		}
+		if end.Before(start) {
+			return fmt.Errorf("--end 不能早于 --start")
+		}
+		if end.Sub(start) > 7*24*time.Hour {
+			return fmt.Errorf("--start 到 --end 的跨度不能超过 7 天")
+		}
+		return nil
+	},
 	Tips: []string{`dws attendance +get-checkin-record --operator-corp-id dingXXX --operator-staff-id op001 --staff-ids user001,user002 --start "2026-04-01 00:00:00" --end "2026-04-07 00:00:00"`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		startStr := rt.Str("start")
@@ -1944,7 +2256,7 @@ var GetCheckinRecord = shortcut.Shortcut{
 				"startTime":       startStr,
 				"endTime":         endStr,
 			},
-		}, "records", true, nil, "result.list")
+		}, "records", true, nil, nil, "result.list")
 	},
 }
 

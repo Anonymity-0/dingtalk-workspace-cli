@@ -7,9 +7,9 @@
 
 ## 1. 执行摘要
 
-- Attendance 共审核 35 个源码 Shortcut；17 个具备公开条件，18 个保持 hidden/unavailable。
+- Attendance 共审核 35 个源码 Shortcut；11 个具备公开条件，24 个保持 hidden/unavailable。公开数量按「严格响应合同 + 稳定身份 + 安全真实 fixture」的发布门计算，不把空数组或仅退出码 0 计为通过。
 - `+check-result` 已覆盖 Lark CLI 当前唯一 Attendance 用户任务 `attendance user_tasks query`，并提供打卡流水、审批、排班、班次、规则、设置、假期和个人视图等更宽能力。
-- 已确认 4 组下游需求：补卡规则详情返回空结果、报表合同不足、打卡结果分页缺少确定终止证据、缺少安全可回收的管理员/写操作 fixture。
+- 已确认 5 组下游需求：补卡规则详情返回空结果、报表合同不足、打卡结果分页缺少服务端确定终止证据、缺少安全可回收的管理员/写操作 fixture，以及 6 个读场景缺少请求绑定字段或 nonempty/zero 双态 fixture。
 - 班次详情曾因未公开而缺失，现已通过“搜索非空结果 → 同一稳定 ID 详情”闭环恢复；严格响应校验、统一 Result 和空结果判定均属于上游修复，不要求下游改动。
 
 | ID | 优先级 | 类型 | 用户任务 | 当前状态 | 建议 Owner | 解锁的 Shortcut |
@@ -18,12 +18,13 @@
 | `DS-ATTENDANCE-002` | P1 | business-service defect / contract insufficient | 发现报表列并查询考勤/假期报表 | unavailable | Attendance 报表服务 / MCP adapter | `+list-report-columns`, `+query-report-data`, `+query-report-leave` |
 | `DS-ATTENDANCE-003` | P2 | contract insufficient | 可靠翻完打卡结果 | partial | Attendance 打卡查询服务 | `+check-result` 完整分页 |
 | `DS-ATTENDANCE-004` | P1 | tenant-or-fixture / permission | 验证考勤组、全局设置、余额和写操作 | blocked / unavailable | Attendance 产品测试基础设施 / 权限 Owner | 14 个读写 Shortcut |
+| `DS-ATTENDANCE-005` | P1 | response contract / tenant-or-fixture | 可验证地读取摘要、假期、签到和个人考勤 | blocked / unavailable | Attendance 查询服务 / 产品测试基础设施 | 6 个读 Shortcut |
 
 ## 2. 用户任务与能力缺口总览
 
 | 用户任务 / Golden Route | DWS Shortcut | Lark CLI 对应 | 当前能力 | 缺口分类 | 临时处置 |
 |---|---|---|---|---|---|
-| 批量查询员工打卡结果 | `attendance +check-result` | `attendance user_tasks query` | covered；分页终止为保守推断 | contract insufficient | 返回 `complete`/`nextOffset`，不声明框架 cursor 分页 |
+| 批量查询员工打卡结果 | `attendance +check-result` | `attendance user_tasks query` | covered；框架分页 token 由当前页保守派生 | contract insufficient | 声明 `Pagination(kind=cursor,cursor_parameter=offset)`；续页只放 `meta.pagination`，业务 `data` 仅含 `count/records` |
 | 搜索并读取班次 | `+search-class` → `+get-class` | 无同级入口 | covered | 无 | 公开，严格身份闭环 |
 | 搜索并读取补卡规则 | `+search-adjustment-rule` → `+get-adjustment-rule` | 无同级入口 | partial | business-service defect | 只公开搜索；详情 unavailable |
 | 发现字段并查询考勤报表 | `+list-report-columns` → `+query-report-data` | 无同级入口 | unavailable | contract insufficient | 两个入口均保持 hidden/unavailable |
@@ -103,7 +104,7 @@
 #### A. 用户任务与现状
 
 - `+check-result` 已真实返回非空打卡结果并覆盖 Lark 任务；当前接口只接受 `offset/limit`，响应缺少稳定总量、hasMore 或 nextOffset。
-- DWS 只能在返回条数小于 limit 时证明结束；满页时保守输出 `complete=false` 和建议 nextOffset，不能声明全量完成。
+- DWS 只能在返回条数小于 limit 时证明结束；满页时保守输出 `meta.pagination.endpoint_exhausted=false` 和 `next_token=offset+count`，不能声明全量完成。`complete/nextOffset/limit` 仅保留在 legacy 兼容输出，unified 业务 `data` 不冒充分页协议。
 - 安全证据句柄：`ATT-CHECK-PAGE-01`。
 
 #### B. 需要下游提供的合同
@@ -116,7 +117,7 @@
 #### C. 验收标准与临时处置
 
 - 验收覆盖多页、最后一页、零记录、满页但仍有下一页、重复 token/offset 和并发变更。
-- 下游完成前，DWS 保留数据层 `complete/nextOffset`，不伪造 cursor PaginationSpec，也不把满页当完整结果。
+- 下游完成前，DWS 使用框架 `PaginationSpec` 和 `meta.pagination`表达保守续页；`cursor_parameter=offset` 表示调用者将 `next_token` 作为下一次 `--offset`，不表示下游已提供服务端 opaque cursor。满页始终不会被当作已完整。
 
 ### `DS-ATTENDANCE-004` — 建立可回收的 Attendance 管理员与写操作测试资源
 
@@ -146,6 +147,31 @@
 
 在完整 fixture 到位前，相关 Shortcut 保持 hidden/unavailable。
 
+### `DS-ATTENDANCE-005` — 为 6 个读场景提供请求绑定与双态 fixture
+
+#### A. 用户任务与现状
+
+- `+get-summary`：真实响应只含统计项，不回显请求 user、period 或 statsType，上游无法证明返回属于哪个请求。
+- `+list-leave-types`：当前安全租户只有已知非空列表，而命令无筛选参数；不能用越界分页或错误请求伪造合法空结果。
+- `+get-leave-records`、`+get-checkin-record`：当前只取得合法空结果，缺少已知非空流水 fixture，无法排除响应投影或请求绑定错误。
+- `+my-attendance`、`+this-month`：上游已严格验证当前用户 profile 与每条打卡 ID，但当前期间仅有合法空数组，缺少同一身份下的已知非空 fixture。
+- 安全证据句柄：`ATT-READ-FIXTURE-GAP-01`；不保存 raw body、用户 ID 或打卡时间。
+
+#### B. 需要下游提供的合同与 fixture
+
+- 摘要响应回显稳定 userId、统计周期起止和 statsType，或返回可校验的请求摘要；任一字段不一致必须 typed failure。
+- 提供隔离的「无假期类型」测试租户，以显式 `success=true + result=[]` 证明 `+list-leave-types` 的合法空语义。
+- 提供可创建、读取并清理的假期变更流水、签到流水和打卡流水；每项都必须包含稳定 ID、请求用户和时间范围回显。
+- 为 nonempty 与 guaranteed-zero 提供独立 fixture；未知用户、无权限、未开通和合法空集合必须可区分，不得都返回裸 `null` 或无标识空数组。
+
+#### C. 验收标准与临时处置
+
+1. 每个集合叶子都用 exact Shortcut 和 owning atomic/raw 在同一参数下各证明一次已知非空和一次合法保证零命中。
+2. 非空项的稳定 ID、用户和时间绑定在两层结果中一致；空结果仍有显式业务 success 和正确集合容器。
+3. malformed/null/success=false/错身份/超范围均非零失败，且不会继续调用后续考勤接口。
+
+在上述证据完整前，6 个 Shortcut 均保持 hidden/unavailable；已实现的严格校验不等于已获得发布证据。
+
 ## 4. Lark 对齐与平台差异
 
 | Lark 用户任务 | 所需下游能力 | 可精确对齐 | 平台差异 | DWS 推荐结论 |
@@ -166,10 +192,11 @@
 
 | Shortcut | 上游根因 | 已完成修复 | 回归证据 |
 |---|---|---|---|
-| 所有公开 Attendance 集合查询 | 容错 projector 可能把缺字段、错型或坏元素投成 `[]` | 共享严格 success/result/collection 校验；显式空数组才合法 | 单元负向矩阵；真实非空与零命中 E2E |
-| `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | 嵌套 `shiftVO/entityVO` 导致身份投影风险 | 固定审核路径、展开 wrapper、要求稳定 ID、公开分页完成证据 | 非空搜索、零命中、详情闭环和坏 item 回归 |
-| `+get-class` | 能力存在但未公开、无 Result/严格读回 | 补 Contract/Safety/Result，搜索 ID 精确读回并恢复公开 | exact live E2E |
-| `+my-attendance`, `+this-month` | 直接透传 raw data，缺严格空结果边界 | 统一结果 envelope 并复用严格打卡流水校验 | exact live E2E 与 contract gate |
+| 最终保留公开的 Attendance 集合查询 | 容错 projector 可能把缺字段、错型或坏元素投成 `[]` | 共享严格 success/result/collection 校验；显式空数组才合法；稳定 ID 和请求用户/时间/类型必须绑定 | 已完成单元负向矩阵；最终 clean-HEAD 真实 nonempty/zero 双层矩阵待发布前集中执行，本文不提前泛化声称全通过 |
+| `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | 嵌套 `shiftVO/entityVO` 导致身份投影风险 | 固定审核路径、展开 wrapper、要求正整数且不重复的稳定 ID，严格校验分页矛盾与无前进页 | 已有坏 item/空 ID/重复 ID/分页矛盾单元回归；最终搜索 nonempty/guaranteed-zero 与 raw 对照待 clean-HEAD 集中执行 |
+| `+get-class`, `+get-overtime-rule` | 能力存在但无请求 ID 与响应对象的强绑定 | 详情对象要求非空且 `shiftVO.id` / `id` 与请求精确一致 | missing/false/null/malformed/wrong-ID/valid Execute 级矩阵；最终同 ID live 读回待 clean-HEAD 集中执行 |
+| `+get-self-setting` | 仅检查场景 key 存在会让 `null` 伪成功；用户外围空白可造成下传/比较漂移 | 用户输入只归一化一次并以同值下传/比较；场景字段必须非空且符合已观测 object/boolean/integer 类型 | 5 个可用 scene 的 exact/raw 同场景双层对照；boss scene 当前身份双层均显式业务失败，不冒充成功 fixture |
+| `+my-attendance`, `+this-month` | 旧的当前用户解析可跳过 malformed row，也可把 success=false 中的 stale result 当身份 | 改为严格 business success/result/唯一用户身份，坏 profile 后考勤 raw 调用为 0；每条打卡要求唯一正整数 ID | 静态/Execute 回归已通过；因当前只有合法空集合而保持 unavailable，不记 live PASS |
 
 ## 7. 安全与脱敏声明
 

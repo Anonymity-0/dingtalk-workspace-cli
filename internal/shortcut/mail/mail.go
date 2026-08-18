@@ -18,8 +18,12 @@
 package mail
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -64,6 +68,13 @@ var ThreadList = shortcut.Shortcut{
 			PrimaryCLIPath: "mail +thread-list",
 		},
 		Description: "列出指定邮箱文件夹下的邮件会话（thread）",
+		Parameters: []contract.ParamDecl{
+			{Name: "folder", Property: "folderId"},
+			{Name: "limit", Property: "size"},
+			{Name: "start", Property: "startTime"},
+			{Name: "end", Property: "endTime"},
+			{Name: "ascending", Property: "isAscending"},
+		},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
@@ -84,6 +95,13 @@ var ThreadList = shortcut.Shortcut{
 		{Name: "start", Type: shortcut.FlagString, Desc: "开始 UTC 时间，如 2024-01-01T00:00:00Z"},
 		{Name: "end", Type: shortcut.FlagString, Desc: "结束 UTC 时间，如 2024-12-31T23:59:59Z"},
 		{Name: "ascending", Type: shortcut.FlagBool, Desc: "是否按时间升序"},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须在 1-100 之间"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "--start/--end 必须是 UTC RFC3339 时间，且 end 不能早于 start"},
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return mailValidateThreadList(rt)
 	},
 	Tips: []string{
 		`dws mail +thread-list --email user@company.com --folder 104 --limit 20`,
@@ -116,11 +134,11 @@ var ThreadList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		complete, next, err := mailPage(data, "mail/list_mailbox_threads", "result")
+		complete, next, err := mailPage(data, "mail/list_mailbox_threads", "result", rt.Str("cursor"))
 		if err != nil {
 			return err
 		}
-		return rt.Output(mailCollectionPayload("threads", threads, complete, next))
+		return mailOutputPage(rt, "threads", threads, complete, next)
 	},
 }
 
@@ -152,6 +170,7 @@ var FolderList = shortcut.Shortcut{
 			PrimaryCLIPath: "mail +folder-list",
 		},
 		Description: "列出顶层文件夹或指定父文件夹下的子文件夹",
+		Parameters:  []contract.ParamDecl{{Name: "folder", Property: "folderId"}},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
@@ -165,8 +184,12 @@ var FolderList = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "email", Type: shortcut.FlagString, Desc: "邮件所属邮箱地址", Required: true},
+		{Name: "email", Type: shortcut.FlagString, Desc: "邮件所属邮箱地址，不能为空", Required: true},
 		{Name: "folder", Type: shortcut.FlagString, Desc: "父文件夹 ID，不传则返回顶层文件夹"},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"email"}, Description: "不能为空"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return mailValidateRequiredText(rt, "email")
 	},
 	Tips: []string{
 		`dws mail +folder-list --email user@company.com`,
@@ -188,7 +211,7 @@ var FolderList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return rt.Output(mailCollectionPayload("folders", folders, true, ""))
+		return rt.Output(mailBusinessCollectionPayload("folders", folders))
 	},
 }
 
@@ -249,7 +272,7 @@ var TagList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return rt.Output(mailCollectionPayload("tags", tags, true, ""))
+		return rt.Output(mailBusinessCollectionPayload("tags", tags))
 	},
 }
 
@@ -279,6 +302,10 @@ var UserSearch = shortcut.Shortcut{
 			PrimaryCLIPath: "mail +user-search",
 		},
 		Description: "按关键词或工号搜索邮箱用户（仅企业邮箱）",
+		Parameters: []contract.ParamDecl{
+			{Name: "employee-no", Property: "employeeNo"},
+			{Name: "limit", Property: "size"},
+		},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
@@ -295,14 +322,30 @@ var UserSearch = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "keyword", Type: shortcut.FlagString, Desc: "搜索关键词（未提供 --employee-no 时为必填）"},
-		{Name: "employee-no", Type: shortcut.FlagString, Desc: "按工号精确搜索"},
+		{Name: "keyword", Type: shortcut.FlagString, Desc: "搜索关键词；显式提供时不能为空（未提供 --employee-no 时为必填）"},
+		{Name: "employee-no", Type: shortcut.FlagString, Desc: "按工号精确搜索；显式提供时不能为空"},
 		{Name: "email", Type: shortcut.FlagString, Desc: "搜索目标邮箱地址"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自响应中的 nextCursor"},
-		{Name: "limit", Type: shortcut.FlagString, Desc: "每页返回数量"},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量，必须在 1-100 之间"},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"keyword", "employee-no"}},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"keyword", "employee-no"}, Description: "不能为空"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "1-100"},
+	},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if err := mailValidatePageSize(rt, "limit", false); err != nil {
+			return err
+		}
+		for _, name := range []string{"keyword", "employee-no"} {
+			if rt.Changed(name) && strings.TrimSpace(rt.Str(name)) == "" {
+				return apperrors.NewValidation("--" + name + " 显式提供时不能为空")
+			}
+		}
+		if strings.TrimSpace(rt.Str("keyword")) == "" && strings.TrimSpace(rt.Str("employee-no")) == "" {
+			return apperrors.NewValidation("--keyword 和 --employee-no 至少需要一个非空值")
+		}
+		return nil
 	},
 	Tips: []string{
 		`dws mail +user-search --keyword "张三"`,
@@ -323,7 +366,7 @@ var UserSearch = shortcut.Shortcut{
 			params["cursor"] = rt.Str("cursor")
 		}
 		if rt.Changed("limit") {
-			params["size"] = rt.Str("limit")
+			params["size"] = fmt.Sprintf("%d", rt.Int("limit"))
 		}
 		data, err := rt.CallMCPData("mail", "search_mail_users", params)
 		if err != nil {
@@ -335,11 +378,11 @@ var UserSearch = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		complete, next, err := mailPage(data, "mail/search_mail_users", "")
+		complete, next, err := mailPage(data, "mail/search_mail_users", "", rt.Str("cursor"))
 		if err != nil {
 			return err
 		}
-		return rt.Output(mailCollectionPayload("users", users, complete, next))
+		return mailOutputPage(rt, "users", users, complete, next)
 	},
 }
 
@@ -370,6 +413,7 @@ var TemplateList = shortcut.Shortcut{
 			PrimaryCLIPath: "mail +template-list",
 		},
 		Description: "列出指定邮箱的所有邮件模板",
+		Parameters:  []contract.ParamDecl{{Name: "limit", Property: "size"}},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
@@ -384,8 +428,12 @@ var TemplateList = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "email", Type: shortcut.FlagString, Desc: "用户邮箱地址", Required: true},
-		{Name: "limit", Type: shortcut.FlagString, Desc: "每页返回数量", Required: true},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量，必须在 1-100 之间", Required: true},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自响应中的 nextCursor"},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须在 1-100 之间"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return mailValidatePageSize(rt, "limit", true)
 	},
 	Tips: []string{
 		`dws mail +template-list --email user@company.com --limit 20`,
@@ -393,7 +441,7 @@ var TemplateList = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{
 			"email": rt.Str("email"),
-			"size":  rt.Str("limit"),
+			"size":  fmt.Sprintf("%d", rt.Int("limit")),
 		}
 		if rt.Changed("cursor") {
 			params["cursor"] = rt.Str("cursor")
@@ -408,11 +456,11 @@ var TemplateList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		complete, next, err := mailPage(data, "mail/list_user_message_templates", "")
+		complete, next, err := mailPage(data, "mail/list_user_message_templates", "", rt.Str("cursor"))
 		if err != nil {
 			return err
 		}
-		return rt.Output(mailCollectionPayload("templates", templates, complete, next))
+		return mailOutputPage(rt, "templates", templates, complete, next)
 	},
 }
 
@@ -443,6 +491,7 @@ var ContactList = shortcut.Shortcut{
 			PrimaryCLIPath: "mail +contact-list",
 		},
 		Description: "列出指定邮箱的所有邮件联系人",
+		Parameters:  []contract.ParamDecl{{Name: "limit", Property: "size"}},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
@@ -457,8 +506,12 @@ var ContactList = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "email", Type: shortcut.FlagString, Desc: "用户邮箱地址", Required: true},
-		{Name: "limit", Type: shortcut.FlagString, Desc: "每页返回数量", Required: true},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量，必须在 1-100 之间", Required: true},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自响应中的 nextCursor"},
+	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "--limit 必须在 1-100 之间"}},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		return mailValidatePageSize(rt, "limit", true)
 	},
 	Tips: []string{
 		`dws mail +contact-list --email user@company.com --limit 20`,
@@ -466,7 +519,7 @@ var ContactList = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{
 			"email": rt.Str("email"),
-			"size":  rt.Str("limit"),
+			"size":  fmt.Sprintf("%d", rt.Int("limit")),
 		}
 		if rt.Changed("cursor") {
 			params["cursor"] = rt.Str("cursor")
@@ -481,11 +534,11 @@ var ContactList = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		complete, next, err := mailPage(data, "mail/list_user_mail_contacts", "")
+		complete, next, err := mailPage(data, "mail/list_user_mail_contacts", "", rt.Str("cursor"))
 		if err != nil {
 			return err
 		}
-		return rt.Output(mailCollectionPayload("contacts", contacts, complete, next))
+		return mailOutputPage(rt, "contacts", contacts, complete, next)
 	},
 }
 

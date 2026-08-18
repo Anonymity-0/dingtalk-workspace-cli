@@ -1,16 +1,16 @@
 # Mail Shortcut 下游业务能力需求规格
 
-> 日期：2026-08-18  
-> DWS 基线：`effde762277ad717a246e38b237a8297fa49aab7`  
-> 对比基线：lark-cli 1.0.87  
-> 范围：Shortcut only；不修改 `skills/multi` 或 `skills/mono`  
+> 日期：2026-08-18
+> DWS 基线：`effde762277ad717a246e38b237a8297fa49aab7`
+> 对比基线：lark-cli 1.0.87
+> 范围：Shortcut only；不修改 `skills/multi` 或 `skills/mono`
 > 发布属性：仓库安全版本；不包含真实邮箱、人员、组织、邮件内容、资源 ID 或请求标识。
 
 ## 1. 执行摘要
 
-本轮把 Mail 从 10 个列表/搜索入口扩展并收紧为 18 个公开 Shortcut：新增 `+triage`、`+message`、`+messages`、`+thread`、`+draft-create`、`+draft-edit`、`+template-create`、`+template-update`；现有列表和 smart 入口全部改为严格 success、固定集合路径、稳定 ID、分页完整性和统一 Result。真实 E2E 已覆盖已知非空、保证零命中、单封/多封/会话身份绑定、草稿与模板写后读回、联系人和模板临时 fixture 清理。
+本轮对 18 个 Mail Shortcut 完成严格 success、固定集合路径、稳定 ID、分页完整性和统一 Result 收口。静态发布候选为 8 个只读入口，仍须在最终 clean HEAD 逐条完成 Shortcut 与原子层的真实数据双层复核；`+unread-mail`、`+recent-mail`、`+thread-list`、`+tag-list`、`+template-list`、`+contact-list` 因缺少可控 guaranteed-zero fixture 保持 `unavailable`；4 个草稿/模板写入口因无法证明清理终态同样不进入公开 Catalog。
 
-仍不能诚实对齐的任务集中在发送终态、回复/转发草稿语义、批量修改/删除逐项结果、回执、签名、事件监听、模板附件事务和联系人创建身份回执。它们不是再包一层 Shortcut 就能解决，需要下游业务接口补足可验证合同。
+仍不能诚实对齐的任务集中在草稿/模板清理终态、发送终态、回复/转发草稿语义、批量修改/删除逐项结果、回执、签名、事件监听、模板附件事务和联系人创建身份回执。它们不是再包一层 Shortcut 就能解决，需要下游业务接口或安全测试 fixture 补足可验证合同。
 
 | ID | 优先级 | 类型 | 用户任务 | 当前状态 | 下游 Owner | 解锁的 Shortcut |
 |---|---|---|---|---|---|---|
@@ -23,15 +23,17 @@
 | `DS-Mail-007` | P1 | adapter defect | 创建联系人并取得稳定身份 | blocked | Mail adapter | `+contact-create/update/delete` |
 | `DS-Mail-008` | P1 | adapter defect | 一致的成功、空结果与分页合同 | partial | Mail adapter | 全部 list/search Shortcut |
 | `DS-Mail-009` | P1 | tenant-or-fixture | 安全验证发送、回执、分享和监听 | blocked | Product QA / tenant admin | 全部高影响 Mail Shortcut |
+| `DS-Mail-010` | P0 | contract insufficient | 草稿/模板可证明的清理终态 | blocked | Mail service / adapter | `+draft-create/edit`、`+template-create/update` |
 
 ## 2. 用户任务与能力缺口总览
 
 | 用户任务 / Golden Route | DWS Shortcut | Lark CLI 对应 | 当前能力 | 缺口分类 | 临时处置 |
 |---|---|---|---|---|---|
-| 浏览/筛选摘要 | `+triage`、`+search-mail`、`+unread-mail`、`+recent-mail` | `+triage` | covered | 无 | 公开，严格分页 |
+| 浏览/筛选摘要 | `+triage`、`+search-mail` | `+triage` | covered | 无 | 公开，严格分页 |
+| 固定未读/近期列表 | `+unread-mail`、`+recent-mail` | Lark 对应任务入口 | blocked | 固定查询/文件夹缺可控 guaranteed-zero fixture | 保持 unavailable |
 | 读取一封、多封、会话 | `+message`、`+messages`、`+thread` | 同名入口 | covered | 无 | 公开，精确 ID 读回 |
-| 新建/编辑草稿 | `+draft-create`、`+draft-edit` | 同名入口 | covered | 无 | 公开，确认 + 写后读回 |
-| 创建/更新基础模板 | `+template-create`、`+template-update` | 同名入口 | partial | 附件与 HTML 资源事务缺失 | 公开核心字段；不承诺附件对齐 |
+| 新建/编辑草稿 | `+draft-create`、`+draft-edit` | 同名入口 | blocked | 两次 batch-delete 后同 ID 仍可读，无法证明零残留 | 保持 unavailable |
+| 创建/更新基础模板 | `+template-create`、`+template-update` | 同名入口 | blocked | delete 后 get 没有 typed nonfound；from/isDraft 也不可读回 | 保持 unavailable |
 | 发送新邮件/已有草稿 | 无公开 Shortcut；存在 raw send | `+send`、`+draft-send` | partial | 终态、逐项结果、幂等不足 | 保持 raw，不宣称对齐 |
 | 回复/回复全部/转发 | 无公开 Shortcut；raw 路径会立即发送 | `+reply`、`+reply-all`、`+forward` | partial | 缺少默认草稿与邮件头保真合同 | 保持 raw，不宣称对齐 |
 | 修改/删除邮件 | 无公开 Shortcut；存在 raw batch route | `+message-modify`、`+message-trash` | partial | 无逐项 ledger 和严格终态 | 保持 raw，不宣称对齐 |
@@ -40,7 +42,7 @@
 | 分享邮件到聊天 | raw 高风险入口 | `+share-to-chat` | partial | 缺安全 fixture、逐目标结果与读回 | 不公开 Shortcut |
 | HTML lint | 无 | `+lint-html` | unavailable | 缺统一邮件 HTML 规则包 | 下游或本地规则能力需求 |
 | 监听新邮件 | 无公开 Mail Shortcut | `+watch` | unavailable | 订阅生命周期和安全事件合同不足 | 不公开 Shortcut |
-| 文件夹/标签/联系人/企业邮箱用户 | 现有严格列表与搜索入口 | 无同名任务入口 | DWS extra | 非对齐项 | 作为 DWS 原生增量保留 |
+| 文件夹/标签/联系人/企业邮箱用户 | `+folder-list`、`+user-search`、`+find-mail-user` 公开；其余列表不公开 | 无同名任务入口 | partial DWS extra | 标签/模板/联系人/会话列表缺安全双态 fixture | 无双态证据的入口保持 unavailable |
 
 ## 3. 下游需求明细
 
@@ -111,7 +113,7 @@
 ### `DS-Mail-008` — 统一成功、空结果与分页协议
 
 - 用户任务：可靠地区分“确实没有结果”“还有下一页”“服务异常或响应漂移”。
-- 当前证据：同一产品的 success 同时出现布尔和字符串；hasMore 也出现两种编码；搜索终页用 `$`，部分列表用空串；零命中邮件会返回 `total=0` 加一个只有空收件人字段的占位对象。
+- 当前证据：同一产品的 success 同时出现布尔和字符串；hasMore 也出现两种编码；搜索终页用 `$`，部分列表用空串；零命中邮件会返回 `total=0` 加一个只有空收件人字段的占位对象。当前租户又没有空邮箱或空邮件文件夹，不能为无筛选列表证明 guaranteed-zero。
 - 所需接口合同：
   - success 与 hasMore 统一为布尔；所有列表显式数组，合法空只返回 `[]`。
   - 统一 `nextCursor` 与 `endpointExhausted`；终页不使用业务哨兵对象或魔法值。
@@ -126,13 +128,21 @@
 - 权限：最小 Mail read/write/event、Drive attachment、IM share scopes 分离；可测试 user/bot 差异和缺权限错误。
 - 验收：stdout 只输出 PASS 标签与聚合计数；原始 JSON 只在临时目录；finally 清理；远端零测试草稿/模板/联系人/邮件/订阅残留；仓库和历史扫描无身份数据。
 
+### `DS-Mail-010` — 草稿/模板可证明的清理终态
+
+- 用户任务：用可回收 fixture 验证草稿与模板写 Shortcut，不留下无法确认的远端测试对象。
+- 当前证据：草稿创建/更新回执和 exact-ID 读回成功，但同一 ID 连续两次 batch-delete 后仍可读；模板 delete 返回成功后，get 仅为未分类失败，既非 typed nonfound 也不能证明 tombstone。
+- 所需接口合同：分离软删除与永久删除；返回稳定 ID、终态和幂等证据；get-by-id 对已永久删除对象返回稳定 `not_found/deleted` 错误或已审核 tombstone，不得空 body、通用失败或继续返回对象。
+- 验收：create/update → exact-ID readback → permanent delete → exact Shortcut + raw get 双层 typed absence；有界轮询后仍可读或终态未知时整体非零，且不得发布 Shortcut。
+- 临时处置：四个写 Shortcut 保持 `public=false` / `unavailable`，直到安全 fixture 与 typed absence 同时可证明。
+
 ## 4. Lark 对齐与平台差异
 
 | Lark 用户任务 | 可精确对齐 | 平台差异 | DWS 推荐结论 |
 |---|---|---|---|
 | `+message` / `+messages` / `+thread` / `+triage` | yes | DWS 额外自动解析邮箱和收件箱，并严格发布完整性 | 已公开 |
-| `+draft-create` / `+draft-edit` | yes（核心正文） | 附件编辑仍依赖下游事务 | 已公开，附件不宣称完整对齐 |
-| `+template-create` / `+template-update` | partial | 核心字段已读回；附件/内联资源/并发更新不足 | 已公开核心能力，差异写入合同 |
+| `+draft-create` / `+draft-edit` | blocked | 核心写回可证，但删除后同 ID 仍可读，无安全清理终态 | 不公开，保持 unavailable |
+| `+template-create` / `+template-update` | blocked | 核心字段可读回，但 from/isDraft 不可验且删除后缺 typed nonfound | 不公开，保持 unavailable |
 | `+send` / `+draft-send` | no | DWS raw 偏立即发送且缺统一终态/逐项 ledger | 暂不公开 Shortcut |
 | `+reply` / `+reply-all` / `+forward` | no | DWS raw 会立即发送，Lark 默认保存草稿 | 暂不公开 Shortcut |
 | `+message-modify` / `+message-trash` | no | 聚合 success 不足以证明逐项终态 | 暂不公开 Shortcut |
@@ -156,16 +166,19 @@
 
 | Shortcut | 上游根因 | 已完成修复 | 回归证据 |
 |---|---|---|---|
-| 全部 list/search | 容忍式探测任意 result/data/list/items，坏元素静默丢弃 | 固定已观测路径、严格 success/数组/item/ID | 单测矩阵 + live 非空/空结果 |
-| `+search-mail` / `+unread-mail` / `+triage` | `$` 终止游标被误作下一页；零命中占位对象被当邮件 | 明确 `$` 终页；仅窄规则归一化已观测哨兵 | exact live 零命中 |
-| `+user-search` / `+find-mail-user` | `hasMore`/`nextCursor` 未交付；零命中被误报 validation error | 发布 complete/nextCursor；合法空成功 | exact live 非空和随机零命中 |
-| `+contact-list` | 字符串 `hasMore` 会造成漂移或误判 | 只接受已观测布尔/精确字符串 true/false | 临时联系人 create→list→delete |
-| `+message(s)` / `+thread` | 缺任务层完整读取和身份绑定 | 自动邮箱解析、精确请求 ID 读回、保序多读 | exact live 同 ID |
-| 草稿/模板写 | 仅写回执会产生假成功 | 稳定 ID + exact get + 请求字段核对 | exact live create/update/readback/cleanup |
+| 全部 list/search | 容忍式探测任意 result/data/list/items，坏元素静默丢弃 | 固定已观测路径、严格 success/数组/item/ID；无双态 fixture 的 leaf 不发布 | deterministic 响应矩阵；live 证据逐 leaf 记录，不作泛化 |
+| `+search-mail` / `+triage` | `$` 终止游标被误作下一页；零命中占位对象被当邮件 | 明确 `$` 终页；仅窄规则归一化已观测哨兵 | fresh query 可构造 known-nonempty + guaranteed-zero；clean HEAD 重跑后收口 |
+| `+unread-mail` / `+recent-mail` / `+thread-list` | 固定条件或文件夹不能保证零命中 | 严格响应代码已完成，但没有空邮箱/空文件夹证据时关闭发布 | BLOCKED fixture；不得修改真实邮件状态造空 |
+| `+user-search` / `+find-mail-user` | `hasMore`/`nextCursor` 未交付；零命中被误报 validation error | 发布 complete/nextCursor；合法空成功 | clean HEAD 待执行 exact/raw 非空与随机零命中双验 |
+| `+tag-list` / `+template-list` / `+contact-list` | 无 query 的列表容易把末页/删除后列表误作合法空 | 严格响应代码已完成；无专用空邮箱和 typed cleanup 时关闭发布 | BLOCKED fixture；不把临时资源从列表消失记为零态 PASS |
+| `+message(s)` / `+thread` | 缺任务层完整读取和身份绑定 | 自动邮箱解析、精确请求 ID 读回、保序多读 | clean HEAD 待执行同 ID exact/raw 双验 |
+| 草稿/模板写 | 仅写回执会产生假成功 | 稳定 ID + exact get + 请求字段核对；清理无法证明时保持 unavailable | deterministic 回执/读回矩阵 PASS；live cleanup BLOCKED |
 
 ## 7. 安全与脱敏声明
 
 - 本文不含用户、组织、租户、profile、邮箱、人员姓名、邮件/会话/模板/联系人/聊天真实 ID。
 - 本文不含邮件主题正文、收发件人、trace/request ID、token、签名 URL、电话或真实业务时间。
 - 真实 E2E 原始响应仅在仓库外临时目录解析；普通输出只保留能力标签、计数和布尔断言。
-- 临时草稿已移出草稿箱，临时模板和联系人已删除并复查；最终提交前仍需扫描最终树、未跟踪文件和 `origin/main..HEAD` 全部历史。
+- 临时草稿虽已执行两次 batch-delete 但仍可按同 ID 读取；临时模板删除后也未获得 typed nonfound。两者都不记为清理 PASS，四个写 Shortcut 因此保持 unavailable。
+- 当前邮箱没有已验证的空邮件文件夹或专用空邮箱；因此 `+unread-mail`、`+recent-mail`、`+thread-list`、`+tag-list`、`+template-list`、`+contact-list` 不记 live 双态 PASS，并保持 unavailable。
+- 最终提交前仍需扫描最终树、未跟踪文件和 `origin/main..HEAD` 全部历史。

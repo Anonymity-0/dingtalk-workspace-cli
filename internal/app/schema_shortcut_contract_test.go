@@ -16,12 +16,12 @@ import (
 )
 
 const (
-	publicShortcutCount = 440
+	publicShortcutCount = 424
 	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
 	// including the hidden historical minutes.shortcut_minutes_search contract.
 	schemaPublishedShortcutCount = 446
 	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
-	publiclyDeliveredShortcutCount = 440
+	publiclyDeliveredShortcutCount = 424
 )
 
 func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {

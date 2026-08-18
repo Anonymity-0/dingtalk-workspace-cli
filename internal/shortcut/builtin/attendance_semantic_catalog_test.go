@@ -79,7 +79,7 @@ func TestCrossPlatformCoverageAttendanceSemanticCatalogExactlyCoversRegisteredSu
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 17 {
-		t.Fatalf("public attendance shortcuts = %d, want 17", public)
+	if public != 11 {
+		t.Fatalf("public attendance shortcuts = %d, want 11", public)
 	}
 }

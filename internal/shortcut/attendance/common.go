@@ -6,6 +6,9 @@ package attendance
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
@@ -13,63 +16,133 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/responsecheck"
 )
 
-func attendanceObjectResult(description string) *contract.ResultSpec {
+func attendanceIntegerObjectResult(description, identity string) *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
 		DataSchema: json.RawMessage(fmt.Sprintf(
-			`{"type":"object","description":%q,"properties":{"value":{"description":"严格校验后的考勤业务结果"}},"required":["value"],"additionalProperties":false}`,
-			description,
+			`{"type":"object","description":%q,"properties":{"value":{"type":"object","description":"严格校验后的考勤业务结果","properties":{%q:{"type":"integer","minimum":1,"description":"与请求精确绑定的稳定业务 ID"}},"required":[%q],"additionalProperties":true}},"required":["value"],"additionalProperties":false}`,
+			description, identity, identity,
 		)),
 	}
 }
 
-func attendanceCollectionResult(collection, description string) *contract.ResultSpec {
+func attendanceNestedIntegerObjectResult(description, container, identity string) *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
 		DataSchema: json.RawMessage(fmt.Sprintf(
-			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","description":"当前响应中的有效业务记录数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"考勤业务记录","additionalProperties":true}},"complete":{"type":"boolean","description":"现有服务端证据是否证明结果已经完整"},"page":{"type":"integer","description":"当前页码"},"limit":{"type":"integer","description":"请求的分页大小"},"totalCount":{"type":"integer","description":"服务端报告的总记录数"},"totalPage":{"type":"integer","description":"服务端报告的总页数"},"nextPage":{"type":"integer","description":"结果未完整时建议请求的下一页"},"nextOffset":{"type":"integer","description":"结果未完整时建议请求的下一偏移量"}},"required":["count",%q,"complete"],"additionalProperties":false}`,
-			description, collection, description, collection,
+			`{"type":"object","description":%q,"properties":{"value":{"type":"object","description":"严格校验后的考勤业务结果","properties":{%q:{"type":"object","description":"承载详情稳定身份的业务对象","properties":{%q:{"type":"integer","minimum":1,"description":"与请求精确绑定的稳定业务 ID"}},"required":[%q],"additionalProperties":true}},"required":[%q],"additionalProperties":true}},"required":["value"],"additionalProperties":false}`,
+			description, container, identity, identity, container,
 		)),
+	}
+}
+
+func attendanceSelfSettingResult() *contract.ResultSpec {
+	return &contract.ResultSpec{
+		Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		DataSchema: json.RawMessage(`{"type":"object","description":"严格绑定用户与设置场景的个人考勤设置","properties":{"value":{"type":"object","description":"个人考勤设置对象","properties":{"userId":{"type":"string","minLength":1,"description":"与请求精确绑定的用户 ID"},"checkRemindSetting":{"type":"object","description":"打卡提醒场景设置","additionalProperties":true},"fastCheckLateNeedConfirm":{"type":"boolean","description":"极速打卡场景设置"},"checkResultMsg":{"type":"integer","description":"打卡结果通知场景设置"},"lackRemindUser":{"type":"integer","description":"缺卡提醒场景设置"},"personDailyReportSwitch":{"type":"integer","description":"个人考勤统计通知场景设置"},"bossMonthReportType":{"type":"integer","description":"团队考勤统计通知场景设置"}},"required":["userId"],"anyOf":[{"required":["checkRemindSetting"]},{"required":["fastCheckLateNeedConfirm"]},{"required":["checkResultMsg"]},{"required":["lackRemindUser"]},{"required":["personDailyReportSwitch"]},{"required":["bossMonthReportType"]}],"additionalProperties":true}},"required":["value"],"additionalProperties":false}`),
+	}
+}
+
+func attendanceCollectionResult(collection, description, identity, identityType string) *contract.ResultSpec {
+	identityConstraint := `"minLength":1`
+	if identityType == "integer" {
+		identityConstraint = `"minimum":1`
+	}
+	return &contract.ResultSpec{
+		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		DataSchema: json.RawMessage(fmt.Sprintf(
+			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","minimum":0,"description":"当前响应中的有效业务记录数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"具备稳定身份的考勤业务记录","properties":{%q:{"type":%q,%s,"description":"记录的稳定业务身份"}},"required":[%q],"additionalProperties":true}}},"required":["count",%q],"additionalProperties":false}`,
+			description, collection, description, identity, identityType, identityConstraint, identity, collection,
+		)),
+	}
+}
+
+func attendanceCursorPagination(cursorParameter string) *contract.PaginationSpec {
+	return &contract.PaginationSpec{
+		Kind:                  contract.PaginationKindCursor,
+		CursorParameter:       cursorParameter,
+		MetaPath:              contract.PaginationMetaPath,
+		EndpointExhaustedPath: contract.PaginationExhaustedPath,
+		NextTokenPath:         contract.PaginationNextTokenPath,
 	}
 }
 
 func hardenPublicAttendanceContracts() {
+	CheckResult.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "userIds"}, {Name: "start", Property: "workDateFrom"}, {Name: "end", Property: "workDateTo"}, {Name: "offset", Property: "offset"}, {Name: "limit", Property: "limit"}}
+	CheckRecord.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "userIds"}, {Name: "start", Property: "checkDateFrom"}, {Name: "end", Property: "checkDateTo"}}
+	ListApprove.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "userIds"}, {Name: "types", Property: "bizTypes"}, {Name: "start", Property: "fromDate"}, {Name: "end", Property: "toDate"}}
+	GetApproveTemplate.Contract.Parameters = []contract.ParamDecl{{Name: "type", Property: "approveType"}}
+	GetSchedule.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "userIdList"}, {Name: "start", Property: "workDateBegin"}, {Name: "end", Property: "workDateEnd"}}
+	SearchClass.Contract.Parameters = []contract.ParamDecl{{Name: "query", Property: "searchName"}, {Name: "filter-type", Property: "filterType"}, {Name: "page", Property: "pageIndex"}, {Name: "limit", Property: "pageSize"}}
+	GetClass.Contract.Parameters = []contract.ParamDecl{{Name: "class-id", Property: "classId"}}
+	SearchAdjustmentRule.Contract.Parameters = []contract.ParamDecl{{Name: "query", Property: "name"}, {Name: "page", Property: "currentPage"}, {Name: "limit", Property: "pageSize"}}
+	GetOvertimeRule.Contract.Parameters = []contract.ParamDecl{{Name: "overtime-id", Property: "overtimeId"}}
+	SearchOvertimeRule.Contract.Parameters = []contract.ParamDecl{{Name: "query", Property: "name"}, {Name: "page", Property: "currentPage"}, {Name: "limit", Property: "pageSize"}}
+	GetSelfSetting.Contract.Parameters = []contract.ParamDecl{{Name: "setting-scene", Property: "settingScene"}, {Name: "user", Property: "userId"}}
+
 	collections := []struct {
-		declaration *shortcut.Shortcut
-		collection  string
-		description string
+		declaration  *shortcut.Shortcut
+		collection   string
+		description  string
+		identity     string
+		identityType string
+		cursor       string
 	}{
-		{&CheckResult, "records", "严格校验的员工打卡结果"},
-		{&CheckRecord, "records", "严格校验的员工打卡流水"},
-		{&ListApprove, "approvals", "严格校验的考勤审批记录"},
-		{&GetApproveTemplate, "templates", "严格校验的考勤审批模板"},
-		{&GetSchedule, "schedules", "严格校验的员工排班记录"},
-		{&SearchClass, "classes", "严格校验的班次搜索结果"},
-		{&SearchAdjustmentRule, "rules", "严格校验的补卡规则搜索结果"},
-		{&SearchOvertimeRule, "rules", "严格校验的加班规则搜索结果"},
-		{&SearchGroup, "groups", "严格校验的考勤组搜索结果"},
-		{&ListLeaveTypes, "leaveTypes", "严格校验的假期类型列表"},
-		{&GetLeaveRecords, "records", "严格校验的假期余额变更记录"},
-		{&GetCheckinRecord, "records", "严格校验的签到记录"},
+		{&CheckResult, "records", "严格校验的员工打卡结果", "id", "integer", "offset"},
+		{&CheckRecord, "records", "严格校验的员工打卡流水", "id", "integer", ""},
+		{&ListApprove, "approvals", "严格校验的考勤审批记录", "id", "integer", ""},
+		{&GetApproveTemplate, "templates", "严格校验的考勤审批模板", "approveType", "string", ""},
+		{&GetSchedule, "schedules", "严格校验的员工排班记录", "id", "integer", ""},
+		{&SearchClass, "classes", "严格校验的班次搜索结果", "classId", "integer", "page"},
+		{&SearchAdjustmentRule, "rules", "严格校验的补卡规则搜索结果", "ruleId", "integer", "page"},
+		{&SearchOvertimeRule, "rules", "严格校验的加班规则搜索结果", "ruleId", "integer", "page"},
 	}
 	for _, item := range collections {
 		item.declaration.OutputRollout = output.RolloutUnifiedActive
-		item.declaration.Contract.Result = attendanceCollectionResult(item.collection, item.description)
+		item.declaration.Contract.Result = attendanceCollectionResult(item.collection, item.description, item.identity, item.identityType)
+		if item.cursor != "" {
+			item.declaration.Contract.Pagination = attendanceCursorPagination(item.cursor)
+		}
 	}
-	objects := []struct {
+	CheckResult.Contract.Result.SensitivePaths = []string{"records.corpId", "records.record", "records.userId"}
+	CheckRecord.Contract.Result.SensitivePaths = []string{"records.baseAddress", "records.baseLatitude", "records.baseLongitude", "records.corpId", "records.deviceId", "records.features", "records.userAddress", "records.userId", "records.userLatitude", "records.userLongitude"}
+	ListApprove.Contract.Result.SensitivePaths = []string{"approvals.corpId", "approvals.originId", "approvals.subType", "approvals.tagName", "approvals.userId"}
+	GetApproveTemplate.Contract.Result.SensitivePaths = []string{"templates.formName", "templates.processCode", "templates.submitUrl"}
+	GetSchedule.Contract.Result.SensitivePaths = []string{"schedules.className", "schedules.corpId", "schedules.userId"}
+	SearchClass.Contract.Result.SensitivePaths = []string{"classes.name", "classes.ownerName"}
+	SearchAdjustmentRule.Contract.Result.SensitivePaths = []string{"rules.name"}
+	SearchOvertimeRule.Contract.Result.SensitivePaths = []string{"rules.name"}
+	GetClass.OutputRollout = output.RolloutUnifiedActive
+	GetClass.Contract.Result = attendanceNestedIntegerObjectResult("严格校验的班次详情", "shiftVO", "id")
+	GetClass.Contract.Result.SensitivePaths = []string{"value.shiftVO.name", "value.shiftVO.owner", "value.shiftVO.ownerName", "value.shiftVO.sections"}
+	GetOvertimeRule.OutputRollout = output.RolloutUnifiedActive
+	GetOvertimeRule.Contract.Result = attendanceIntegerObjectResult("严格校验的加班规则详情", "id")
+	GetOvertimeRule.Contract.Result.SensitivePaths = []string{"value.content", "value.groupIdAndNames", "value.name", "value.owner", "value.ownerList", "value.scopes"}
+	GetSelfSetting.OutputRollout = output.RolloutUnifiedActive
+	GetSelfSetting.Contract.Result = attendanceSelfSettingResult()
+	GetSelfSetting.Contract.Result.SensitivePaths = []string{"value.bossMonthReportType", "value.checkRemindSetting", "value.checkResultMsg", "value.fastCheckLateNeedConfirm", "value.lackRemindUser", "value.personDailyReportSwitch", "value.userId"}
+
+	for _, item := range []struct {
 		declaration *shortcut.Shortcut
-		description string
+		reason      string
 	}{
-		{&GetClass, "严格校验的班次详情"},
-		{&GetAdjustmentRule, "严格校验的补卡规则详情"},
-		{&GetOvertimeRule, "严格校验的加班规则详情"},
-		{&GetSummary, "严格校验的个人考勤统计摘要"},
-		{&GetSelfSetting, "严格校验的个人考勤设置"},
-		{&QueryReportData, "严格校验的考勤报表数据"},
+		{&GetSummary, "真实详情响应不回显请求用户、统计周期或统计类型，无法把结果精确绑定到请求。"},
+		{&ListLeaveTypes, "当前安全身份只有非空假期类型列表，且命令没有筛选参数；缺少合法空结果专用租户，无法完成 empty/nonempty 双态发布证明。"},
+		{&GetLeaveRecords, "使用真实用户和已发现 leaveCode 只能得到合法空集合；缺少已知非空变更流水 fixture，无法排除空结果假阳性。"},
+		{&GetCheckinRecord, "当前安全身份只有合法空签到结果；缺少已知非空签到 fixture，无法排除空结果假阳性。"},
+	} {
+		markAttendanceUnavailable(item.declaration, item.reason)
 	}
-	for _, item := range objects {
-		item.declaration.OutputRollout = output.RolloutUnifiedActive
-		item.declaration.Contract.Result = attendanceObjectResult(item.description)
+}
+
+func markAttendanceUnavailable(declaration *shortcut.Shortcut, reason string) {
+	declaration.OutputRollout = output.RolloutLegacyOnly
+	declaration.Contract.Result = nil
+	declaration.Contract.Pagination = nil
+	declaration.Contract.Interface = &contract.InterfaceSpec{
+		Mode:         "composite",
+		Availability: "unavailable",
+		Reason:       reason,
 	}
 }
 
@@ -80,6 +153,7 @@ func attendanceCallCollection(
 	collection string,
 	complete bool,
 	extra map[string]any,
+	validate func([]map[string]any) error,
 	paths ...string,
 ) error {
 	data, err := rt.CallMCPData(product, tool, params)
@@ -90,15 +164,12 @@ func attendanceCallCollection(
 	if err != nil {
 		return err
 	}
-	payload := map[string]any{
-		"count":    len(items),
-		collection: items,
-		"complete": complete,
+	if validate != nil {
+		if err := validate(items); err != nil {
+			return err
+		}
 	}
-	for key, value := range extra {
-		payload[key] = value
-	}
-	return rt.Output(payload)
+	return attendanceOutputCollection(rt, collection, items, complete, extra, false, "")
 }
 
 func attendanceCallValue(rt *shortcut.RuntimeContext, product, tool string, params map[string]any) error {
@@ -137,28 +208,253 @@ func attendanceCollectionPayload(collection string, items []map[string]any, comp
 	return payload
 }
 
-func attendancePageEvidence(data map[string]any, operation string, page, limit int) (bool, map[string]any, error) {
+func attendanceOutputCollection(rt *shortcut.RuntimeContext, collection string, items []map[string]any, complete bool, legacyExtra map[string]any, paginated bool, nextToken string) error {
+	payload := attendanceCollectionPayload(collection, items, complete, legacyExtra)
+	if !output.UsesUnifiedResult(rt.Command()) {
+		return rt.Output(payload)
+	}
+	business := map[string]any{"count": len(items), collection: items}
+	meta := &output.Meta{Count: output.NewCount(len(items))}
+	if paginated {
+		pagination, err := output.NewPagination(complete, nextToken)
+		if err != nil {
+			return responsecheck.Error("attendance/pagination", "invalid_pagination", err.Error())
+		}
+		meta.Pagination = pagination
+	}
+	return output.StoreResult(rt.Command().Context(), output.Success(business, output.WithMeta(meta)))
+}
+
+func attendanceValidatePositiveIntegerIDs(items []map[string]any, operation string, path ...string) error {
+	seen := make(map[int64]struct{}, len(items))
+	for index, item := range items {
+		value, ok := attendanceNestedValue(item, path...)
+		if !ok {
+			return responsecheck.Error(operation, "missing_item_identity", fmt.Sprintf("第 %d 项缺少稳定 ID", index))
+		}
+		identity, ok := attendancePositiveInteger(value)
+		if !ok {
+			return responsecheck.Error(operation, "invalid_item_identity", fmt.Sprintf("第 %d 项稳定 ID 必须是大于 0 的整数", index))
+		}
+		if _, duplicate := seen[identity]; duplicate {
+			return responsecheck.Error(operation, "duplicate_item_identity", fmt.Sprintf("第 %d 项稳定 ID 重复", index))
+		}
+		seen[identity] = struct{}{}
+	}
+	return nil
+}
+
+func attendanceValidateExpectedStrings(items []map[string]any, operation, field, expected string) error {
+	expected = strings.TrimSpace(expected)
+	seen := make(map[string]struct{}, len(items))
+	for index, item := range items {
+		value, ok := item[field].(string)
+		value = strings.TrimSpace(value)
+		if !ok || value == "" {
+			return responsecheck.Error(operation, "invalid_item_identity", fmt.Sprintf("第 %d 项 %s 必须是非空字符串", index, field))
+		}
+		if expected != "" && value != expected {
+			return responsecheck.Error(operation, "item_identity_mismatch", fmt.Sprintf("第 %d 项 %s 与请求不一致", index, field))
+		}
+		if _, duplicate := seen[value]; duplicate {
+			return responsecheck.Error(operation, "duplicate_item_identity", fmt.Sprintf("第 %d 项 %s 重复", index, field))
+		}
+		seen[value] = struct{}{}
+	}
+	return nil
+}
+
+func attendanceNestedValue(item map[string]any, path ...string) (any, bool) {
+	var current any = item
+	for _, key := range path {
+		object, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		current, ok = object[key]
+		if !ok {
+			return nil, false
+		}
+	}
+	return current, true
+}
+
+func attendancePositiveInteger(value any) (int64, bool) {
+	switch number := value.(type) {
+	case int:
+		return int64(number), number > 0
+	case int32:
+		return int64(number), number > 0
+	case int64:
+		return number, number > 0
+	case float64:
+		return int64(number), number > 0 && number == float64(int64(number))
+	case json.Number:
+		parsed, err := strconv.ParseInt(string(number), 10, 64)
+		return parsed, err == nil && parsed > 0
+	default:
+		return 0, false
+	}
+}
+
+func attendanceValidateUserIDs(values []string, maximum int) error {
+	if len(values) == 0 {
+		return fmt.Errorf("用户 ID 列表不能为空")
+	}
+	if maximum > 0 && len(values) > maximum {
+		return fmt.Errorf("用户 ID 数量不能超过 %d", maximum)
+	}
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return fmt.Errorf("用户 ID 不能为空字符串")
+		}
+		if value != trimmed {
+			return fmt.Errorf("用户 ID 不能包含首尾空白")
+		}
+		if _, duplicate := seen[trimmed]; duplicate {
+			return fmt.Errorf("用户 ID 不能重复")
+		}
+		seen[trimmed] = struct{}{}
+	}
+	return nil
+}
+
+func attendanceValidateUserAndTimeBinding(items []map[string]any, operation string, requestedUsers []string, userField, timeField string, startMillis, endMillis int64) error {
+	users := make(map[string]struct{}, len(requestedUsers))
+	for _, user := range requestedUsers {
+		users[user] = struct{}{}
+	}
+	for index, item := range items {
+		user, ok := item[userField].(string)
+		user = strings.TrimSpace(user)
+		if !ok || user == "" {
+			return responsecheck.Error(operation, "missing_request_binding", fmt.Sprintf("第 %d 项缺少用户身份回显", index))
+		}
+		if _, requested := users[user]; !requested {
+			return responsecheck.Error(operation, "request_identity_mismatch", fmt.Sprintf("第 %d 项用户身份不在请求集合中", index))
+		}
+		timestamp, ok := attendancePositiveInteger(item[timeField])
+		if !ok || timestamp < startMillis || timestamp > endMillis {
+			return responsecheck.Error(operation, "request_range_mismatch", fmt.Sprintf("第 %d 项时间不在请求范围内", index))
+		}
+	}
+	return nil
+}
+
+func attendanceValidateApprovalBinding(items []map[string]any, operation string, requestedUsers []string, requestedTypes map[int]struct{}, startMillis, endMillis int64) error {
+	users := make(map[string]struct{}, len(requestedUsers))
+	for _, user := range requestedUsers {
+		users[user] = struct{}{}
+	}
+	for index, item := range items {
+		user, ok := item["userId"].(string)
+		user = strings.TrimSpace(user)
+		if !ok || user == "" {
+			return responsecheck.Error(operation, "missing_request_binding", fmt.Sprintf("第 %d 项缺少用户身份回显", index))
+		}
+		if _, requested := users[user]; !requested {
+			return responsecheck.Error(operation, "request_identity_mismatch", fmt.Sprintf("第 %d 项用户身份不在请求集合中", index))
+		}
+		bizType, ok := attendancePositiveInteger(item["bizType"])
+		if !ok {
+			return responsecheck.Error(operation, "missing_request_binding", fmt.Sprintf("第 %d 项缺少审批类型回显", index))
+		}
+		if _, requested := requestedTypes[int(bizType)]; !requested {
+			return responsecheck.Error(operation, "request_type_mismatch", fmt.Sprintf("第 %d 项审批类型不在请求集合中", index))
+		}
+		begin, beginOK := attendancePositiveInteger(item["beginTime"])
+		end, endOK := attendancePositiveInteger(item["endTime"])
+		if !beginOK || !endOK || end < begin || end < startMillis || begin > endMillis {
+			return responsecheck.Error(operation, "request_range_mismatch", fmt.Sprintf("第 %d 项审批时间不与请求范围相交", index))
+		}
+	}
+	return nil
+}
+
+func attendanceValidateMonthRange(startText, endText string) error {
+	start, err := time.ParseInLocation("2006-01-02", strings.TrimSpace(startText), time.Local)
+	if err != nil {
+		return fmt.Errorf("--start 日期格式错误，应为 YYYY-MM-DD: %w", err)
+	}
+	end, err := time.ParseInLocation("2006-01-02", strings.TrimSpace(endText), time.Local)
+	if err != nil {
+		return fmt.Errorf("--end 日期格式错误，应为 YYYY-MM-DD: %w", err)
+	}
+	if end.Before(start) {
+		return fmt.Errorf("--end 不能早于 --start")
+	}
+	if end.After(start.AddDate(0, 1, 0)) {
+		return fmt.Errorf("--start 到 --end 的跨度不能超过 1 个月")
+	}
+	return nil
+}
+
+func attendanceValidatePageRequest(rt *shortcut.RuntimeContext) error {
+	_, _, err := attendancePageInput(rt)
+	return err
+}
+
+func attendancePageEvidence(data map[string]any, operation string, page, limit, itemCount int) (bool, map[string]any, error) {
+	if page < 1 || limit < 1 || itemCount < 0 || itemCount > limit {
+		return false, nil, responsecheck.Error(operation, "invalid_pagination_request", "页码、页大小或当前项数无效")
+	}
 	result, err := responsecheck.RequireObjectResult(data, operation)
 	if err != nil {
 		return false, nil, err
 	}
 	extra := map[string]any{"page": page, "limit": limit}
-	if currentPage, ok := attendanceInt(result["currentPage"]); ok && currentPage != page {
-		return false, nil, responsecheck.Error(operation, "pagination_page_mismatch", "服务端 currentPage 与请求页码不一致")
+	if raw, present := result["currentPage"]; present {
+		currentPage, ok := attendanceInt(raw)
+		if !ok {
+			return false, nil, responsecheck.Error(operation, "invalid_pagination_evidence", "服务端 currentPage 必须是整数")
+		}
+		if currentPage != page {
+			return false, nil, responsecheck.Error(operation, "pagination_page_mismatch", "服务端 currentPage 与请求页码不一致")
+		}
 	}
 	var evidence []bool
-	if totalPage, ok := attendanceInt(result["totalPage"]); ok {
+	var totalPageValue, totalCountValue *int
+	if raw, present := result["totalPage"]; present {
+		totalPage, ok := attendanceInt(raw)
+		if !ok {
+			return false, nil, responsecheck.Error(operation, "invalid_pagination_evidence", "服务端 totalPage 必须是整数")
+		}
 		if totalPage < 0 {
 			return false, nil, responsecheck.Error(operation, "invalid_pagination_evidence", "服务端 totalPage 不能为负数")
 		}
 		extra["totalPage"] = totalPage
-		evidence = append(evidence, page >= totalPage)
+		totalPageValue = &totalPage
+		if totalPage == 0 {
+			if page != 1 || itemCount != 0 {
+				return false, nil, responsecheck.Error(operation, "pagination_count_mismatch", "totalPage=0 只允许第一页为空")
+			}
+			evidence = append(evidence, true)
+		} else {
+			if page > totalPage {
+				return false, nil, responsecheck.Error(operation, "pagination_page_out_of_range", "请求页码超过服务端 totalPage")
+			}
+			evidence = append(evidence, page == totalPage)
+		}
 	}
-	if totalCount, ok := attendanceInt(result["totalCount"]); ok {
+	if raw, present := result["totalCount"]; present {
+		totalCount, ok := attendanceInt(raw)
+		if !ok {
+			return false, nil, responsecheck.Error(operation, "invalid_pagination_evidence", "服务端 totalCount 必须是整数")
+		}
 		if totalCount < 0 {
 			return false, nil, responsecheck.Error(operation, "invalid_pagination_evidence", "服务端 totalCount 不能为负数")
 		}
 		extra["totalCount"] = totalCount
+		totalCountValue = &totalCount
+		if totalCount > 0 && itemCount == 0 {
+			return false, nil, responsecheck.Error(operation, "empty_page_with_nonzero_total", "totalCount>0 但当前集合为空，不能证明前进或终止")
+		}
+		pageStart := (page - 1) * limit
+		if pageStart > totalCount || pageStart+itemCount > totalCount {
+			return false, nil, responsecheck.Error(operation, "pagination_count_mismatch", "当前页项数与 totalCount/page/limit 矛盾")
+		}
 		evidence = append(evidence, page*limit >= totalCount)
 	}
 	if len(evidence) == 0 {
@@ -168,6 +464,27 @@ func attendancePageEvidence(data map[string]any, operation string, page, limit i
 	for _, candidate := range evidence[1:] {
 		if candidate != complete {
 			return false, nil, responsecheck.Error(operation, "conflicting_pagination_evidence", "服务端 totalCount 与 totalPage 对当前页是否完成给出矛盾证据")
+		}
+	}
+	if totalPageValue != nil && totalCountValue != nil {
+		expectedPages := 0
+		if *totalCountValue > 0 {
+			expectedPages = (*totalCountValue + limit - 1) / limit
+		}
+		if *totalPageValue != expectedPages {
+			return false, nil, responsecheck.Error(operation, "pagination_total_mismatch", "totalPage 与 totalCount/limit 矛盾")
+		}
+	}
+	if !complete && itemCount == 0 {
+		return false, nil, responsecheck.Error(operation, "pagination_no_progress", "未完成页没有返回任何稳定项，无法安全前进")
+	}
+	if !complete && itemCount != limit {
+		return false, nil, responsecheck.Error(operation, "pagination_short_page", "未完成页返回项数小于 limit，与继续分页证据矛盾")
+	}
+	if complete && totalCountValue != nil {
+		pageStart := (page - 1) * limit
+		if pageStart+itemCount != *totalCountValue {
+			return false, nil, responsecheck.Error(operation, "pagination_count_mismatch", "终止页项数未精确覆盖 totalCount")
 		}
 	}
 	if !complete {

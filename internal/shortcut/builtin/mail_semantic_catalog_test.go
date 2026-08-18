@@ -37,6 +37,7 @@ func TestCrossPlatformCoverageMailSemanticCatalogExactlyCoversRegisteredSurface(
 	}
 	var missing, stale []string
 	public := 0
+	unavailable := 0
 	for command, item := range registered {
 		record, ok := source.Shortcuts[command]
 		if !ok {
@@ -62,6 +63,18 @@ func TestCrossPlatformCoverageMailSemanticCatalogExactlyCoversRegisteredSurface(
 				t.Errorf("%s: public shortcut lacks contract/safety/result/unified output", command)
 			}
 		}
+		if availability == shortcut.AvailabilityUnavailable {
+			unavailable++
+			if !item.Hidden || item.Availability != shortcut.AvailabilityUnavailable {
+				t.Errorf("%s: unavailable shortcut remains visible", command)
+			}
+			if item.Contract.Interface == nil || item.Contract.Interface.Availability != "unavailable" || strings.TrimSpace(item.Contract.Interface.Reason) == "" {
+				t.Errorf("%s: unavailable runtime interface is not explicit", command)
+			}
+			if item.Contract.Result != nil || item.Contract.Pagination != nil || item.OutputRollout != output.RolloutLegacyOnly {
+				t.Errorf("%s: unavailable runtime still publishes result/pagination/unified rollout", command)
+			}
+		}
 	}
 	for command := range source.Shortcuts {
 		if _, ok := registered[command]; !ok {
@@ -73,7 +86,7 @@ func TestCrossPlatformCoverageMailSemanticCatalogExactlyCoversRegisteredSurface(
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 18 {
-		t.Fatalf("public mail shortcuts = %d, want 18", public)
+	if public != 8 || unavailable != 10 {
+		t.Fatalf("mail public/unavailable shortcuts = %d/%d, want 8/10", public, unavailable)
 	}
 }

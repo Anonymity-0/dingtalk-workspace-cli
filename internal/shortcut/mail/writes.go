@@ -5,6 +5,7 @@ package mail
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -23,6 +24,87 @@ func mailRecipients(values []string) []string {
 		}
 	}
 	return out
+}
+
+func mailNormalizedAddresses(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		normalized := strings.ToLower(strings.TrimSpace(value))
+		if normalized != "" {
+			seen[normalized] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for value := range seen {
+		out = append(out, value)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func mailReadAddresses(message map[string]any, operation, field string) ([]string, error) {
+	raw, present := message[field]
+	if !present {
+		return nil, mailResponseError(operation, "missing_verification_field", fmt.Sprintf("读回邮件缺少 %s", field))
+	}
+	items, ok := raw.([]any)
+	if !ok {
+		return nil, mailResponseError(operation, "malformed_verification_field", fmt.Sprintf("读回邮件 %s 应为数组", field))
+	}
+	addresses := make([]string, 0, len(items))
+	for index, item := range items {
+		var address string
+		switch typed := item.(type) {
+		case string:
+			address = typed
+		case map[string]any:
+			address = mailFirstString(typed, "email", "address")
+		default:
+			return nil, mailResponseError(operation, "malformed_verification_field", fmt.Sprintf("读回邮件 %s[%d] 类型无效", field, index))
+		}
+		if strings.TrimSpace(address) == "" {
+			return nil, mailResponseError(operation, "malformed_verification_field", fmt.Sprintf("读回邮件 %s[%d] 缺少邮箱地址", field, index))
+		}
+		addresses = append(addresses, address)
+	}
+	return mailNormalizedAddresses(addresses), nil
+}
+
+func mailVerifyAddresses(message map[string]any, operation, field string, requested []string) error {
+	actual, err := mailReadAddresses(message, operation, field)
+	if err != nil {
+		return err
+	}
+	expected := mailNormalizedAddresses(requested)
+	if len(actual) != len(expected) {
+		return mailResponseError(operation, "verification_mismatch", fmt.Sprintf("读回邮件 %s 与请求不一致", field))
+	}
+	for index := range expected {
+		if actual[index] != expected[index] {
+			return mailResponseError(operation, "verification_mismatch", fmt.Sprintf("读回邮件 %s 与请求不一致", field))
+		}
+	}
+	return nil
+}
+
+func mailVerifySender(message map[string]any, operation, requested string) error {
+	raw, present := message["from"]
+	if !present {
+		return mailResponseError(operation, "missing_verification_field", "读回邮件缺少 from")
+	}
+	var actual string
+	switch typed := raw.(type) {
+	case string:
+		actual = typed
+	case map[string]any:
+		actual = mailFirstString(typed, "email", "address")
+	default:
+		return mailResponseError(operation, "malformed_verification_field", "读回邮件 from 类型无效")
+	}
+	if !strings.EqualFold(strings.TrimSpace(actual), strings.TrimSpace(requested)) {
+		return mailResponseError(operation, "verification_mismatch", "读回邮件发件地址与请求不一致")
+	}
+	return nil
 }
 
 func mailDraftMessage(data map[string]any, operation string) (map[string]any, error) {
@@ -92,6 +174,7 @@ var DraftCreate = shortcut.Shortcut{
 		{Name: "subject", Type: shortcut.FlagString, Required: true, Desc: "草稿主题"},
 		{Name: "body", Type: shortcut.FlagString, Desc: "草稿正文"},
 	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"to", "cc", "subject", "body"}}},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{"from": rt.Str("from"), "subject": rt.Str("subject")}
 		if recipients := mailRecipients(rt.StrSlice("to")); len(recipients) > 0 {
@@ -125,6 +208,19 @@ var DraftCreate = shortcut.Shortcut{
 		if rt.Changed("body") && mailFirstString(verified, "markdownBody", "body") != rt.Str("body") {
 			return mailResponseError("mail/create_draft", "verification_mismatch", "草稿读回正文与请求不一致")
 		}
+		if err := mailVerifySender(verified, "mail/create_draft", rt.Str("from")); err != nil {
+			return err
+		}
+		if rt.Changed("to") {
+			if err := mailVerifyAddresses(verified, "mail/create_draft", "toRecipients", mailRecipients(rt.StrSlice("to"))); err != nil {
+				return err
+			}
+		}
+		if rt.Changed("cc") {
+			if err := mailVerifyAddresses(verified, "mail/create_draft", "ccRecipients", mailRecipients(rt.StrSlice("cc"))); err != nil {
+				return err
+			}
+		}
 		return rt.Output(map[string]any{"value": verified})
 	},
 }
@@ -143,6 +239,7 @@ var DraftEdit = shortcut.Shortcut{
 		{Name: "subject", Type: shortcut.FlagString, Desc: "新主题"},
 		{Name: "body", Type: shortcut.FlagString, Desc: "新正文"},
 	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"to", "cc", "subject", "body"}}},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		if !rt.Changed("to") && !rt.Changed("cc") && !rt.Changed("subject") && !rt.Changed("body") {
 			return apperrors.NewValidation("至少指定 --to、--cc、--subject、--body 之一")
@@ -184,6 +281,19 @@ var DraftEdit = shortcut.Shortcut{
 		if rt.Changed("body") && mailFirstString(verified, "markdownBody", "body") != rt.Str("body") {
 			return mailResponseError("mail/update_draft", "verification_mismatch", "草稿读回正文与请求不一致")
 		}
+		if err := mailVerifySender(verified, "mail/update_draft", rt.Str("from")); err != nil {
+			return err
+		}
+		if rt.Changed("to") {
+			if err := mailVerifyAddresses(verified, "mail/update_draft", "toRecipients", mailRecipients(rt.StrSlice("to"))); err != nil {
+				return err
+			}
+		}
+		if rt.Changed("cc") {
+			if err := mailVerifyAddresses(verified, "mail/update_draft", "ccRecipients", mailRecipients(rt.StrSlice("cc"))); err != nil {
+				return err
+			}
+		}
 		return rt.Output(map[string]any{"value": verified})
 	},
 }
@@ -193,20 +303,15 @@ var TemplateCreate = shortcut.Shortcut{
 	Service:       "mail", Command: "+template-create", Product: "mail",
 	Description: "创建个人邮件模板并按模板 ID 读回", Intent: "保存可复用邮件主题和正文；创建后按稳定模板 ID 读取并核对名称、主题和正文。",
 	Risk: shortcut.RiskWrite, Safety: mailWriteSafety("non_idempotent"),
-	Contract: mailWriteContract("+template-create", "创建个人邮件模板并按模板 ID 读回", "保存可复用邮件主题和正文；创建后按稳定模板 ID 读取并核对名称、主题和正文。", []contract.ParamDecl{{Name: "email", Property: "email"}, {Name: "from", Property: "from"}, {Name: "body", Property: "body"}, {Name: "draft", Property: "isDraft"}}, `dws mail +template-create --email user@company.com --name "模板" --subject "主题" --body "正文" --format json`),
+	Contract: mailWriteContract("+template-create", "创建个人邮件模板并按模板 ID 读回", "保存可复用邮件主题和正文；创建后按稳定模板 ID 读取并核对名称、主题和正文。", []contract.ParamDecl{{Name: "email", Property: "email"}, {Name: "body", Property: "body"}}, `dws mail +template-create --email user@company.com --name "模板" --subject "主题" --body "正文" --format json`),
 	Flags: []shortcut.Flag{
 		{Name: "email", Type: shortcut.FlagString, Required: true, Desc: "模板所属邮箱"},
-		{Name: "from", Type: shortcut.FlagString, Desc: "模板发件邮箱"},
 		{Name: "name", Type: shortcut.FlagString, Required: true, Desc: "模板名称"},
 		{Name: "subject", Type: shortcut.FlagString, Required: true, Desc: "模板主题"},
 		{Name: "body", Type: shortcut.FlagString, Required: true, Desc: "模板正文"},
-		{Name: "draft", Type: shortcut.FlagBool, Desc: "创建可编辑的草稿模板"},
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		params := map[string]any{"email": rt.Str("email"), "name": rt.Str("name"), "subject": rt.Str("subject"), "body": rt.Str("body"), "isDraft": rt.Bool("draft")}
-		if rt.Changed("from") {
-			params["from"] = rt.Str("from")
-		}
+		params := map[string]any{"email": rt.Str("email"), "name": rt.Str("name"), "subject": rt.Str("subject"), "body": rt.Str("body")}
 		if rt.DryRun() {
 			return rt.Output(map[string]any{"value": map[string]any{"dryRun": true, "executed": false, "operation": "mail/create_user_message_template"}})
 		}
@@ -245,6 +350,7 @@ var TemplateUpdate = shortcut.Shortcut{
 		{Name: "subject", Type: shortcut.FlagString, Desc: "新主题"},
 		{Name: "body", Type: shortcut.FlagString, Desc: "新正文"},
 	},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"name", "subject", "body"}}},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		if !rt.Changed("name") && !rt.Changed("subject") && !rt.Changed("body") {
 			return apperrors.NewValidation("至少指定 --name、--subject、--body 之一")
@@ -283,5 +389,9 @@ var TemplateUpdate = shortcut.Shortcut{
 }
 
 func init() {
+	markMailUnavailable(&DraftCreate, "真实草稿连续两次 batch-delete 后仍能按同 messageId 读取，无法证明安全 fixture 的清理终态。")
+	markMailUnavailable(&DraftEdit, "真实草稿连续两次 batch-delete 后仍能按同 messageId 读取，无法证明安全 fixture 的清理终态。")
+	markMailUnavailable(&TemplateCreate, "模板 delete 后 get 仅返回未分类失败，无 typed nonfound/tombstone 证据可证明零残留。")
+	markMailUnavailable(&TemplateUpdate, "模板 delete 后 get 仅返回未分类失败，无 typed nonfound/tombstone 证据可证明零残留。")
 	shortcut.Register(DraftCreate, DraftEdit, TemplateCreate, TemplateUpdate)
 }

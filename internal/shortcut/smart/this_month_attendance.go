@@ -42,7 +42,7 @@ import (
 //
 //	dws attendance +this-month
 var ThisMonthAttendance = shortcut.Shortcut{
-	OutputRollout: output.RolloutUnifiedActive,
+	OutputRollout: output.RolloutLegacyOnly,
 	Service:       "attendance",
 	Command:       "+this-month",
 	Product:       "attendance",
@@ -66,8 +66,8 @@ var ThisMonthAttendance = shortcut.Shortcut{
 		Description: "查我本月的考勤打卡记录（打卡流水，自动解析当前用户）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
-			Availability: "available",
-			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+			Availability: "unavailable",
+			Reason:       "当前安全身份在固定的本月时间窗只返回合法空集合；缺少已知非空本月打卡 fixture，无法排除 exact Shortcut 的空结果假阳性。",
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "查我本月的考勤打卡记录（打卡流水，自动解析当前用户）",
@@ -75,7 +75,6 @@ var ThisMonthAttendance = shortcut.Shortcut{
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws attendance +this-month"},
 		},
-		Result: attendanceRecordsResult(),
 	},
 	Flags: []shortcut.Flag{},
 	Tips: []string{
@@ -87,7 +86,7 @@ var ThisMonthAttendance = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		userID := myAttendanceCurrentUserID(profile)
+		userID := strictAttendanceCurrentUserID(profile)
 		if userID == "" {
 			return apperrors.NewValidation(
 				"没能解析出当前登录用户的 userId，无法查询你的打卡记录；请确认已登录后重试。")

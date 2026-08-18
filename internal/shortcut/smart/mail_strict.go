@@ -25,6 +25,24 @@ func smartMailError(operation, reason, message string) error {
 	)
 }
 
+func smartMailValidatePageSize(rt *shortcut.RuntimeContext, flag string, required bool) error {
+	if !required && !rt.Changed(flag) {
+		return nil
+	}
+	value := rt.Int(flag)
+	if value < 1 || value > 100 {
+		return apperrors.NewValidation(fmt.Sprintf("--%s 必须在 1-100 之间", flag))
+	}
+	return nil
+}
+
+func smartMailValidateRequiredText(rt *shortcut.RuntimeContext, flag string) error {
+	if strings.TrimSpace(rt.Str(flag)) == "" {
+		return apperrors.NewValidation(fmt.Sprintf("--%s 不能为空", flag))
+	}
+	return nil
+}
+
 func smartMailSuccess(data map[string]any, operation string) error {
 	if len(data) == 0 {
 		return smartMailError(operation, "empty_tool_response", "服务返回空响应，无法证明结果确实为空")
@@ -157,7 +175,7 @@ func smartMailInt(value any) (int, bool) {
 	}
 }
 
-func smartMailPage(data map[string]any, operation, prefix string) (bool, string, error) {
+func smartMailPage(data map[string]any, operation, prefix, currentCursor string) (bool, string, error) {
 	container := data
 	if prefix != "" {
 		value, present := smartMailLookup(data, prefix)
@@ -187,10 +205,16 @@ func smartMailPage(data map[string]any, operation, prefix string) (bool, string,
 		if !hasMore {
 			return true, "", nil
 		}
+		if strings.TrimSpace(currentCursor) != "" && strings.TrimSpace(next) == strings.TrimSpace(currentCursor) {
+			return false, "", smartMailError(operation, "stalled_pagination", "服务端返回了与当前请求相同的 nextCursor")
+		}
 		return false, next, nil
 	}
 	if strings.TrimSpace(next) == "" || strings.TrimSpace(next) == "$" {
 		return true, "", nil
+	}
+	if strings.TrimSpace(currentCursor) != "" && strings.TrimSpace(next) == strings.TrimSpace(currentCursor) {
+		return false, "", smartMailError(operation, "stalled_pagination", "服务端返回了与当前请求相同的 nextCursor")
 	}
 	return false, next, nil
 }
@@ -211,19 +235,69 @@ func smartMailBool(value any) (bool, bool) {
 }
 
 func smartMailResult(collection, description string) *contract.ResultSpec {
+	identity := smartMailIdentitySchema(collection)
 	return &contract.ResultSpec{
-		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
-		DataSchema: json.RawMessage(fmt.Sprintf(`{"type":"object","description":%q,"properties":{"count":{"type":"integer","description":"当前响应中的有效记录数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"严格校验后的邮件记录","additionalProperties":true}},"complete":{"type":"boolean","description":"分页证据是否证明结果完整"},"nextCursor":{"type":"string","description":"结果未完整时的下一页游标"}},"required":["count",%q,"complete"],"additionalProperties":false}`,
-			description, collection, description, collection)),
+		Outcomes:       []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+		SensitivePaths: smartMailSensitivePaths(collection),
+		DataSchema: json.RawMessage(fmt.Sprintf(`{"type":"object","description":%q,"properties":{"count":{"type":"integer","minimum":0,"description":"当前响应中的有效记录数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"严格校验后的邮件记录",%s,"additionalProperties":true}}},"required":["count",%q],"additionalProperties":false}`,
+			description, collection, description, identity, collection)),
+	}
+}
+
+func smartMailSensitivePaths(collection string) []string {
+	switch collection {
+	case "messages":
+		return []string{"messages.subject", "messages.from", "messages.date"}
+	case "mails":
+		return []string{"mails.subject", "mails.from", "mails.date"}
+	case "users":
+		return []string{"users.name", "users.nickname", "users.email", "users.employeeNo", "users.jobTitle", "users.workLocation"}
+	default:
+		panic("unsupported smart Mail sensitive paths: " + collection)
+	}
+}
+
+func smartMailIdentitySchema(collection string) string {
+	switch collection {
+	case "messages":
+		return `"properties":{"messageId":{"type":"string","minLength":1,"description":"稳定邮件 ID"}},"required":["messageId"]`
+	case "mails":
+		return `"properties":{"threadId":{"type":"string","minLength":1,"description":"稳定邮件会话 ID"}},"required":["threadId"]`
+	case "users":
+		return `"properties":{"id":{"type":["string","number"],"description":"稳定邮箱用户 ID"},"email":{"type":"string","minLength":1,"description":"稳定邮箱地址身份"}},"anyOf":[{"required":["id"]},{"required":["email"]}]`
+	default:
+		panic("unsupported smart Mail Result identity: " + collection)
+	}
+}
+
+func smartMailCursorPagination() *contract.PaginationSpec {
+	return &contract.PaginationSpec{
+		Kind:                  contract.PaginationKindCursor,
+		CursorParameter:       "cursor",
+		MetaPath:              contract.PaginationMetaPath,
+		EndpointExhaustedPath: contract.PaginationExhaustedPath,
+		NextTokenPath:         contract.PaginationNextTokenPath,
 	}
 }
 
 func hardenSmartMail(declaration *shortcut.Shortcut, collection, description string) {
 	declaration.OutputRollout = output.RolloutUnifiedActive
 	declaration.Contract.Result = smartMailResult(collection, description)
+	declaration.Contract.Pagination = smartMailCursorPagination()
 	declaration.Contract.Interface = &contract.InterfaceSpec{
 		Mode: contract.InterfaceModeComposite, Availability: contract.InterfaceAvailable,
 		Reason: "Reviewed Mail Shortcut composite: strict success, collection, stable-ID and pagination validation are owned by the executable CLI.",
+	}
+}
+
+func markSmartMailUnavailable(declaration *shortcut.Shortcut, reason string) {
+	declaration.OutputRollout = output.RolloutLegacyOnly
+	declaration.Contract.Result = nil
+	declaration.Contract.Pagination = nil
+	declaration.Contract.Interface = &contract.InterfaceSpec{
+		Mode:         contract.InterfaceModeComposite,
+		Availability: contract.InterfaceUnavailable,
+		Reason:       reason,
 	}
 }
 
@@ -233,4 +307,18 @@ func smartMailPayload(collection string, items []map[string]any, complete bool, 
 		payload["nextCursor"] = next
 	}
 	return payload
+}
+
+func smartMailOutputPage(rt *shortcut.RuntimeContext, collection string, items []map[string]any, complete bool, next string) error {
+	payload := smartMailPayload(collection, items, complete, next)
+	if !output.UsesUnifiedResult(rt.Command()) {
+		return rt.Output(payload)
+	}
+	pagination, err := output.NewPagination(complete, next)
+	if err != nil {
+		return smartMailError("mail/pagination", "invalid_pagination", err.Error())
+	}
+	business := map[string]any{"count": len(items), collection: items}
+	meta := &output.Meta{Pagination: pagination, Count: output.NewCount(len(items))}
+	return output.StoreResult(rt.Command().Context(), output.Success(business, output.WithMeta(meta)))
 }
