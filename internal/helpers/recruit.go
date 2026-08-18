@@ -379,11 +379,11 @@ func newRecruitJobCreateCommand() *cobra.Command {
 			Interface:   recruitMCPInterface(recruitCreateJobTool),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "使用结构化 JSON 创建招聘职位",
-				UseWhen:      []string{"用户明确要求新建职位，并已准备或同意生成职位 JSON 时；文件必须包含 name、description、jobNature、requiredEdu、minSalary、maxSalary"},
+				UseWhen:      []string{"用户明确要求新建职位，并已准备或同意生成职位 JSON 时；文件必须包含 name、description、jobNature、requiredEdu、extData；jobNature 固定为 FULL-TIME；创建人和负责人分别使用真实 creatorUserId 与 ownerUserIds"},
 				AvoidWhen:    []string{"仅查询职位时使用 recruit job list 或 recruit job get"},
 				Examples:     []string{"dws recruit job create --from ./job.json --dry-run --format json"},
 			},
-			Parameters: []contract.ParamDecl{{Name: "from", Property: "atsAddJobParam", Required: boolPtr(true), InterfaceType: "object", Description: "职位 JSON 文件；CLI 读取后作为 atsAddJobParam 对象发送"}},
+			Parameters: []contract.ParamDecl{{Name: "from", Property: "atsAddJobParam", Required: boolPtr(true), InterfaceType: "object", Description: "职位 JSON 文件；CLI 校验后原样作为 atsAddJobParam 对象发送；creatorUserId 为创建人 userId，ownerUserIds 为负责人 userId 字符串数组"}},
 		},
 	})
 }
@@ -479,7 +479,7 @@ func loadRecruitJobFile(path string) (any, error) {
 }
 
 func validateRecruitJob(job map[string]any) error {
-	for _, name := range []string{"name", "description", "jobNature", "requiredEdu", "minSalary", "maxSalary"} {
+	for _, name := range []string{"name", "description", "jobNature", "requiredEdu", "extData"} {
 		value, ok := job[name]
 		if !ok || value == nil || (isString(value) && strings.TrimSpace(value.(string)) == "") {
 			return apperrors.NewValidation(fmt.Sprintf("职位 JSON 缺少必填字段 %s", name))
@@ -490,13 +490,170 @@ func validateRecruitJob(job map[string]any) error {
 			return apperrors.NewValidation(fmt.Sprintf("职位 JSON 字段 %s 必须是字符串", name))
 		}
 	}
-	for _, name := range []string{"requiredEdu", "minSalary", "maxSalary"} {
-		if _, ok := job[name].(float64); !ok {
-			return apperrors.NewValidation(fmt.Sprintf("职位 JSON 字段 %s 必须是数字", name))
+	if job["jobNature"].(string) != "FULL-TIME" {
+		return apperrors.NewValidation("职位 JSON 字段 jobNature 当前仅支持 FULL-TIME")
+	}
+	requiredEdu, ok := job["requiredEdu"].(float64)
+	if !ok {
+		return apperrors.NewValidation("职位 JSON 字段 requiredEdu 必须是数字")
+	}
+	if requiredEdu < 1 || requiredEdu > 9 || requiredEdu != float64(int(requiredEdu)) {
+		return apperrors.NewValidation("职位 JSON 字段 requiredEdu 必须是 1 到 9 的整数")
+	}
+
+	minSalary, hasMinSalary, err := optionalRecruitNumber(job, "minSalary")
+	if err != nil {
+		return err
+	}
+	maxSalary, hasMaxSalary, err := optionalRecruitNumber(job, "maxSalary")
+	if err != nil {
+		return err
+	}
+	if hasMinSalary && hasMaxSalary && minSalary > maxSalary {
+		return apperrors.NewValidation("职位 JSON 中 minSalary 不能大于 maxSalary")
+	}
+
+	for _, name := range []string{"province", "city", "district", "category"} {
+		if value, exists := job[name]; exists && value != nil && !isString(value) {
+			return apperrors.NewValidation(fmt.Sprintf("职位 JSON 字段 %s 必须是字符串", name))
 		}
 	}
-	if job["minSalary"].(float64) > job["maxSalary"].(float64) {
-		return apperrors.NewValidation("职位 JSON 中 minSalary 不能大于 maxSalary")
+	if value, exists := job["campus"]; exists && value != nil {
+		if _, ok := value.(bool); !ok {
+			return apperrors.NewValidation("职位 JSON 字段 campus 必须是布尔值")
+		}
+	}
+	if err := validateRecruitIdentityFields(job); err != nil {
+		return err
+	}
+	if err := validateRecruitAddress(job); err != nil {
+		return err
+	}
+	extData, ok := job["extData"].(map[string]any)
+	if !ok {
+		return apperrors.NewValidation("职位 JSON 字段 extData 必须是对象")
+	}
+	if err := validateRecruitExtData(extData); err != nil {
+		return err
+	}
+	return nil
+}
+
+func optionalRecruitNumber(values map[string]any, name string) (float64, bool, error) {
+	value, exists := values[name]
+	if !exists || value == nil {
+		return 0, false, nil
+	}
+	number, ok := value.(float64)
+	if !ok {
+		return 0, false, apperrors.NewValidation(fmt.Sprintf("职位 JSON 字段 %s 必须是数字", name))
+	}
+	return number, true, nil
+}
+
+func validateRecruitIdentityFields(job map[string]any) error {
+	if value, exists := job["creatorUserId"]; exists && value != nil {
+		creatorUserID, ok := value.(string)
+		if !ok || strings.TrimSpace(creatorUserID) == "" {
+			return apperrors.NewValidation("职位 JSON 字段 creatorUserId 必须是非空字符串")
+		}
+	}
+	if value, exists := job["ownerUserIds"]; exists && value != nil {
+		ownerUserIDs, ok := value.([]any)
+		if !ok {
+			return apperrors.NewValidation("职位 JSON 字段 ownerUserIds 必须是字符串数组")
+		}
+		for _, owner := range ownerUserIDs {
+			ownerUserID, ok := owner.(string)
+			if !ok || strings.TrimSpace(ownerUserID) == "" {
+				return apperrors.NewValidation("职位 JSON 字段 ownerUserIds 只能包含非空字符串")
+			}
+		}
+	}
+	return nil
+}
+
+func validateRecruitAddress(job map[string]any) error {
+	value, exists := job["address"]
+	if !exists || value == nil {
+		return nil
+	}
+	address, ok := value.(map[string]any)
+	if !ok {
+		return apperrors.NewValidation("职位 JSON 字段 address 必须是对象")
+	}
+	for _, name := range []string{"name", "detail", "longitude", "latitude"} {
+		field, exists := address[name]
+		text, ok := field.(string)
+		if !exists || !ok || strings.TrimSpace(text) == "" {
+			return apperrors.NewValidation(fmt.Sprintf("职位 JSON 字段 address.%s 必须是非空字符串", name))
+		}
+	}
+	return nil
+}
+
+func validateRecruitExtData(extData map[string]any) error {
+	if value, exists := extData["headCount"]; exists && value != nil {
+		headCount, ok := value.(float64)
+		if !ok || headCount < 1 || headCount > 999 || headCount != float64(int(headCount)) {
+			return apperrors.NewValidation("职位 JSON 字段 extData.headCount 必须是 1 到 999 的整数")
+		}
+	}
+	if value, exists := extData["source"]; exists && value != nil && !isString(value) {
+		return apperrors.NewValidation("职位 JSON 字段 extData.source 必须是字符串")
+	}
+	if value, exists := extData["fullTimeExtData"]; exists && value != nil {
+		fullTime, ok := value.(map[string]any)
+		if !ok {
+			return apperrors.NewValidation("职位 JSON 字段 extData.fullTimeExtData 必须是对象")
+		}
+		if err := validateRecruitFullTimeExtData(fullTime); err != nil {
+			return err
+		}
+	}
+	if value, exists := extData["tags"]; exists && value != nil {
+		tags, ok := value.([]any)
+		if !ok {
+			return apperrors.NewValidation("职位 JSON 字段 extData.tags 必须是数组")
+		}
+		for _, value := range tags {
+			tag, ok := value.(map[string]any)
+			if !ok {
+				return apperrors.NewValidation("职位 JSON 字段 extData.tags 只能包含对象")
+			}
+			name, ok := tag["name"].(string)
+			if !ok || strings.TrimSpace(name) == "" {
+				return apperrors.NewValidation("职位 JSON 字段 extData.tags[].name 必须是非空字符串")
+			}
+		}
+	}
+	return nil
+}
+
+func validateRecruitFullTimeExtData(fullTime map[string]any) error {
+	salaryMonth, hasSalaryMonth, err := optionalRecruitNumber(fullTime, "salaryMonth")
+	if err != nil {
+		return err
+	}
+	if hasSalaryMonth && (salaryMonth < 12 || salaryMonth > 24 || salaryMonth != float64(int(salaryMonth))) {
+		return apperrors.NewValidation("职位 JSON 字段 extData.fullTimeExtData.salaryMonth 必须是 12 到 24 的整数")
+	}
+	minExperience, hasMinExperience, err := optionalRecruitNumber(fullTime, "minJobExperience")
+	if err != nil {
+		return err
+	}
+	maxExperience, hasMaxExperience, err := optionalRecruitNumber(fullTime, "maxJobExperience")
+	if err != nil {
+		return err
+	}
+	if hasMinExperience && minExperience < 0 {
+		return apperrors.NewValidation("职位 JSON 字段 extData.fullTimeExtData.minJobExperience 不能小于 0")
+	}
+	if hasMaxExperience && maxExperience < 0 {
+		return apperrors.NewValidation("职位 JSON 字段 extData.fullTimeExtData.maxJobExperience 不能小于 0")
+	}
+	if hasMinExperience && hasMaxExperience && minExperience > maxExperience {
+		return apperrors.NewValidation("职位 JSON 中 minJobExperience 不能大于 maxJobExperience")
 	}
 	return nil
 }

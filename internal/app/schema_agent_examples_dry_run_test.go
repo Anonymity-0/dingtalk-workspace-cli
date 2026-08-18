@@ -291,7 +291,7 @@ func newAgentExampleFiles(t testing.TB, root string) agentExampleFiles {
 		markdown: []byte("# Agent dry-run fixture\n\nNo business call is allowed.\n"),
 		jsonFile: []byte(`[{"content":"Agent dry-run fixture","sort":"0","key":"fixture","contentType":"markdown","type":"1"}]`),
 		batch:    []byte(`[{"sheetId":"Sheet1","range":"A1:B2","fontWeight":"bold"}]`),
-		job:      []byte(`{"name":"Java 工程师","description":"服务端开发","jobNature":"FULL_TIME","requiredEdu":1,"minSalary":20000,"maxSalary":35000}`),
+		job:      []byte(`{"name":"Java 工程师","description":"服务端开发","jobNature":"FULL-TIME","requiredEdu":6,"minSalary":20000,"maxSalary":35000,"extData":{"headCount":1,"fullTimeExtData":{"salaryMonth":12}},"creatorUserId":"creator-user-id","ownerUserIds":["owner-user-id"]}`),
 		binary:   []byte("%PDF-1.4\n%%EOF\n"),
 		image:    {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'},
 	} {

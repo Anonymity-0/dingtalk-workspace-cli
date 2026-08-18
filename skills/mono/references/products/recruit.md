@@ -24,6 +24,15 @@ dws recruit job create --from ./job.json --dry-run --format json
 dws recruit job create --from ./job.json --format json
 ```
 
-JSON 必填字段为 `name`、`description`、`jobNature`、`requiredEdu`、
-`minSalary`、`maxSalary`。后三者为数字，且最低薪资不得大于最高薪资。文件只写
-职位对象，不要添加 MCP 信封字段 `atsAddJobParam`。
+JSON 必填字段为 `name`、`description`、`jobNature`、`requiredEdu`、`extData`。
+`jobNature` 当前固定为 `FULL-TIME`；学历枚举为 1小学、2初中、3高中、4中专、
+5大专、6本科、7硕士、8博士、9其他。`minSalary`、`maxSalary` 可选；两者同时
+提供时最低薪资不得高于最高薪资。
+
+职位对象应显式包含真实的 `creatorUserId` 和 `ownerUserIds`；前者是当前创建人
+userId，后者是负责人 userId 的 JSON 字符串数组。所有 userId 必须来自同一 profile
+下的真实通讯录结果，禁止猜测。`extData.headCount` 范围 1–999，薪资月份范围
+12–24；提供地址时必须包含地点名、详细地址和可信的经纬度。
+
+文件只写职位对象，不要添加 MCP 信封字段 `atsAddJobParam`、`corpId`、`bizCode`
+或 `opUserId`；这些字段由 CLI 或 Connector 处理。

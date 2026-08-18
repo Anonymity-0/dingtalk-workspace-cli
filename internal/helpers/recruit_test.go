@@ -207,8 +207,13 @@ func writeRecruitJobFixture(t *testing.T) (string, map[string]any) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "job.json")
 	job := map[string]any{
-		"name": "Java 工程师", "description": "服务端开发", "jobNature": "FULL_TIME",
-		"requiredEdu": 1, "minSalary": 20000, "maxSalary": 35000,
+		"name": "Java 工程师", "description": "服务端开发", "jobNature": "FULL-TIME",
+		"requiredEdu": 6, "minSalary": 20000, "maxSalary": 35000,
+		"creatorUserId": "creator-user-id", "ownerUserIds": []string{"owner-user-id-1", "owner-user-id-2"},
+		"extData": map[string]any{
+			"headCount":       1,
+			"fullTimeExtData": map[string]any{"salaryMonth": 12, "minJobExperience": 1, "maxJobExperience": 3},
+		},
 	}
 	data, err := json.Marshal(job)
 	if err != nil {
@@ -254,8 +259,13 @@ func TestRecruitJobCreateCallsRemoteOnceWhenConfirmed(t *testing.T) {
 		t.Fatalf("dispatch = %s/%s, want %s/%s", call.productID, call.tool, recruitServerID, recruitCreateJobTool)
 	}
 	wantArgs := map[string]any{"atsAddJobParam": map[string]any{
-		"name": "Java 工程师", "description": "服务端开发", "jobNature": "FULL_TIME",
-		"requiredEdu": float64(1), "minSalary": float64(20000), "maxSalary": float64(35000),
+		"name": "Java 工程师", "description": "服务端开发", "jobNature": "FULL-TIME",
+		"requiredEdu": float64(6), "minSalary": float64(20000), "maxSalary": float64(35000),
+		"creatorUserId": "creator-user-id", "ownerUserIds": []any{"owner-user-id-1", "owner-user-id-2"},
+		"extData": map[string]any{
+			"headCount":       float64(1),
+			"fullTimeExtData": map[string]any{"salaryMonth": float64(12), "minJobExperience": float64(1), "maxJobExperience": float64(3)},
+		},
 	}}
 	if !reflect.DeepEqual(call.args, wantArgs) {
 		t.Fatalf("args = %#v, want %#v", call.args, wantArgs)
@@ -307,8 +317,13 @@ func TestRecruitValidationBranches(t *testing.T) {
 	}
 
 	base := map[string]any{
-		"name": "Java 工程师", "description": "服务端开发", "jobNature": "FULL_TIME",
-		"requiredEdu": float64(1), "minSalary": float64(20000), "maxSalary": float64(35000),
+		"name": "Java 工程师", "description": "服务端开发", "jobNature": "FULL-TIME",
+		"requiredEdu": float64(6), "minSalary": float64(20000), "maxSalary": float64(35000),
+		"creatorUserId": "creator-user-id", "ownerUserIds": []any{"owner-user-id"},
+		"extData": map[string]any{
+			"headCount":       float64(1),
+			"fullTimeExtData": map[string]any{"salaryMonth": float64(12), "minJobExperience": float64(1), "maxJobExperience": float64(3)},
+		},
 	}
 	for _, test := range []struct {
 		name   string
@@ -317,7 +332,61 @@ func TestRecruitValidationBranches(t *testing.T) {
 	}{
 		{name: "string type", mutate: func(job map[string]any) { job["name"] = 1 }, want: "name 必须是字符串"},
 		{name: "number type", mutate: func(job map[string]any) { job["requiredEdu"] = "本科" }, want: "requiredEdu 必须是数字"},
+		{name: "missing ext data", mutate: func(job map[string]any) { delete(job, "extData") }, want: "缺少必填字段 extData"},
+		{name: "ext data type", mutate: func(job map[string]any) { job["extData"] = "invalid" }, want: "extData 必须是对象"},
+		{name: "job nature enum", mutate: func(job map[string]any) { job["jobNature"] = "FULL_TIME" }, want: "仅支持 FULL-TIME"},
+		{name: "education range", mutate: func(job map[string]any) { job["requiredEdu"] = float64(10) }, want: "1 到 9 的整数"},
 		{name: "salary range", mutate: func(job map[string]any) { job["minSalary"] = float64(40000) }, want: "minSalary 不能大于 maxSalary"},
+		{name: "min salary type", mutate: func(job map[string]any) { job["minSalary"] = "20000" }, want: "minSalary 必须是数字"},
+		{name: "salary type", mutate: func(job map[string]any) { job["maxSalary"] = "35000" }, want: "maxSalary 必须是数字"},
+		{name: "creator type", mutate: func(job map[string]any) { job["creatorUserId"] = " " }, want: "creatorUserId 必须是非空字符串"},
+		{name: "owners type", mutate: func(job map[string]any) { job["ownerUserIds"] = "owner-user-id" }, want: "ownerUserIds 必须是字符串数组"},
+		{name: "owner item", mutate: func(job map[string]any) { job["ownerUserIds"] = []any{""} }, want: "ownerUserIds 只能包含非空字符串"},
+		{name: "campus type", mutate: func(job map[string]any) { job["campus"] = "false" }, want: "campus 必须是布尔值"},
+		{name: "region type", mutate: func(job map[string]any) { job["city"] = 330100 }, want: "city 必须是字符串"},
+		{name: "address type", mutate: func(job map[string]any) { job["address"] = "杭州" }, want: "address 必须是对象"},
+		{name: "address required field", mutate: func(job map[string]any) {
+			job["address"] = map[string]any{"name": "亲橙Park", "detail": "杭州市余杭区", "longitude": "120.0"}
+		}, want: "address.latitude 必须是非空字符串"},
+		{name: "head count range", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"headCount": float64(0)}
+		}, want: "headCount 必须是 1 到 999 的整数"},
+		{name: "source type", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"source": true}
+		}, want: "extData.source 必须是字符串"},
+		{name: "full time ext data type", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"fullTimeExtData": "invalid"}
+		}, want: "fullTimeExtData 必须是对象"},
+		{name: "salary month range", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"fullTimeExtData": map[string]any{"salaryMonth": float64(25)}}
+		}, want: "salaryMonth 必须是 12 到 24 的整数"},
+		{name: "salary month type", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"fullTimeExtData": map[string]any{"salaryMonth": "12"}}
+		}, want: "salaryMonth 必须是数字"},
+		{name: "min experience type", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"fullTimeExtData": map[string]any{"minJobExperience": "1"}}
+		}, want: "minJobExperience 必须是数字"},
+		{name: "max experience type", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"fullTimeExtData": map[string]any{"maxJobExperience": "3"}}
+		}, want: "maxJobExperience 必须是数字"},
+		{name: "negative min experience", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"fullTimeExtData": map[string]any{"minJobExperience": float64(-1)}}
+		}, want: "minJobExperience 不能小于 0"},
+		{name: "negative max experience", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"fullTimeExtData": map[string]any{"maxJobExperience": float64(-1)}}
+		}, want: "maxJobExperience 不能小于 0"},
+		{name: "experience range", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"fullTimeExtData": map[string]any{"minJobExperience": float64(5), "maxJobExperience": float64(3)}}
+		}, want: "minJobExperience 不能大于 maxJobExperience"},
+		{name: "tags type", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"tags": "五险一金"}
+		}, want: "extData.tags 必须是数组"},
+		{name: "tag item type", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"tags": []any{"五险一金"}}
+		}, want: "extData.tags 只能包含对象"},
+		{name: "tag name", mutate: func(job map[string]any) {
+			job["extData"] = map[string]any{"tags": []any{map[string]any{"name": ""}}}
+		}, want: "tags[].name 必须是非空字符串"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			job := make(map[string]any, len(base))
@@ -329,6 +398,31 @@ func TestRecruitValidationBranches(t *testing.T) {
 				t.Fatalf("validation error = %v, want %q", err, test.want)
 			}
 		})
+	}
+
+	withoutSalary := make(map[string]any, len(base))
+	for key, value := range base {
+		withoutSalary[key] = value
+	}
+	delete(withoutSalary, "minSalary")
+	delete(withoutSalary, "maxSalary")
+	if err := validateRecruitJob(withoutSalary); err != nil {
+		t.Fatalf("optional salary validation error = %v, want nil", err)
+	}
+
+	completeAddress := make(map[string]any, len(base)+1)
+	for key, value := range base {
+		completeAddress[key] = value
+	}
+	completeAddress["address"] = map[string]any{
+		"name": "亲橙Park", "detail": "浙江省杭州市余杭区", "longitude": "120.008822", "latitude": "30.270739",
+	}
+	completeAddress["campus"] = false
+	completeAddress["province"] = "330000"
+	completeAddress["city"] = "330100"
+	completeAddress["district"] = "330110"
+	if err := validateRecruitJob(completeAddress); err != nil {
+		t.Fatalf("complete job validation error = %v, want nil", err)
 	}
 }
 
