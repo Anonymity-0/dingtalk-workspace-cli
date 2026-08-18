@@ -159,7 +159,7 @@ func TestCrossPlatformCoverageSkillMoveShellCleanup(t *testing.T) {
 		}
 	})
 
-	t.Run("shell removal failure preserves both", func(t *testing.T) {
+	t.Run("shell removal failure retracts the publication and restores the source", func(t *testing.T) {
 		src, dst := makeSkillMoveFixture(t)
 		forceSlowClaimMove(t, src, dst)
 		originalRemove := skillPathRemove
@@ -170,12 +170,12 @@ func TestCrossPlatformCoverageSkillMoveShellCleanup(t *testing.T) {
 			return originalRemove(path)
 		})
 		err := moveSkillPathRecoverably(src, dst)
-		if err == nil || !strings.Contains(err.Error(), "源路径删除失败") {
-			t.Fatalf("shell removal failure must surface, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "原路径已恢复") {
+			t.Fatalf("shell removal failure must surface with the source restored, got %v", err)
 		}
-		assertUpgradeSkillContent(t, dst, "old")
-		if _, statErr := os.Lstat(src); statErr != nil {
-			t.Fatalf("source shell must be reported as preserved, stat err=%v", statErr)
+		assertUpgradeSkillContent(t, src, "old")
+		if _, statErr := os.Lstat(dst); !os.IsNotExist(statErr) {
+			t.Fatalf("retracted destination must be gone, stat err=%v", statErr)
 		}
 	})
 

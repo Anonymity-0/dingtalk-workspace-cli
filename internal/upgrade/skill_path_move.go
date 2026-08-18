@@ -53,10 +53,21 @@ func moveSkillPathRecoverably(src, dst string) (err error) {
 	if renameErr := skillPathRenameNoReplace(src, dst); renameErr == nil {
 		// The no-replace fallback may have published by moving the children
 		// into a fresh claim, leaving an emptied source shell behind. Move
-		// semantics require the source to be gone afterwards.
+		// semantics require the source to be gone afterwards. If the shell
+		// cannot be removed, the children are moved back into it and the
+		// destination is retracted: reporting a plain failure while the data
+		// sits at dst would leave the caller without a recorded backup and
+		// the original path empty, breaking the contract that a failed move
+		// keeps the source intact.
 		if _, shellErr := skillPathLstat(src); shellErr == nil {
 			if removeErr := skillPathRemove(src); removeErr != nil {
-				return fmt.Errorf("Skill 目标已发布但源路径删除失败（源 %s 与目标 %s 均保留）: %w", src, dst, removeErr)
+				if os.IsNotExist(removeErr) {
+					return nil
+				}
+				if retractErr := retractSkillDirChildMove(src, dst); retractErr != nil {
+					return fmt.Errorf("Skill 移动状态不确定：源空壳 %s 删除失败: %v；撤回目标 %s 也失败: %v；数据位于 %s", src, removeErr, dst, retractErr, dst)
+				}
+				return fmt.Errorf("Skill 移动失败，原路径已恢复 %s: %w", src, removeErr)
 			}
 		} else if !os.IsNotExist(shellErr) {
 			return fmt.Errorf("检查已移动 Skill 源路径失败 %s: %w", src, shellErr)
@@ -118,6 +129,30 @@ func moveSkillPathRecoverably(src, dst string) (err error) {
 	stageCleaned = true
 	if err := removePublishedSkillSource(src); err != nil {
 		return fmt.Errorf("Skill 目标已发布但源路径删除失败（源 %s 与目标 %s 均保留）: %w", src, dst, err)
+	}
+	return nil
+}
+
+// retractSkillDirChildMove undoes the no-replace fallback child move when the
+// emptied source shell cannot be removed afterwards: every child of the
+// published destination moves back into the shell, then the destination is
+// withdrawn. The renames mirror the forward child move — each targets a path
+// inside a directory this transaction owns — so no step replaces a foreign
+// object, and a failed retraction surfaces with the data location reported
+// instead of being dropped by a plain failure.
+func retractSkillDirChildMove(src, dst string) error {
+	entries, err := skillPathReadDir(dst)
+	if err != nil {
+		return fmt.Errorf("读取待撤回 Skill 目标失败 %s: %w", dst, err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if err := skillPathRename(filepath.Join(dst, name), filepath.Join(src, name)); err != nil {
+			return fmt.Errorf("回迁 Skill 目录项失败 %s: %w", name, err)
+		}
+	}
+	if err := skillPathRemove(dst); err != nil {
+		return fmt.Errorf("撤回已清空 Skill 目标失败 %s: %w", dst, err)
 	}
 	return nil
 }

@@ -449,3 +449,97 @@ func assertNoCrossDeviceStage(t *testing.T, dst string) {
 		}
 	}
 }
+
+func TestCrossPlatformCoverageSkillPathMoveShellRetraction(t *testing.T) {
+	t.Run("shell removal failure retracts the published children", func(t *testing.T) {
+		root := t.TempDir()
+		src := filepath.Join(root, "external", "dingtalk-chat")
+		dst := filepath.Join(root, "home", ".dws", "skill-backups", "stamp", "dingtalk-chat")
+		if err := os.MkdirAll(filepath.Join(src, "references"), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(src, "SKILL.md"), []byte("chat\n"), 0o640); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(src, "references", "guide.md"), []byte("guide\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if runtime.GOOS != "windows" {
+			if err := os.Symlink("SKILL.md", filepath.Join(src, "skill-link")); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		// Force the degraded publication: no atomic no-replace rename, and
+		// the claim fast path refused, so the children move into the claim
+		// and an emptied source shell is left behind.
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		forceFastClaimRenameFailure(t, src, dst)
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == src {
+				return os.ErrPermission
+			}
+			return os.Remove(path)
+		})
+
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "原路径已恢复") {
+			t.Fatalf("shell removal failure must surface with the source restored, got %v", err)
+		}
+		if got, readErr := os.ReadFile(filepath.Join(src, "SKILL.md")); readErr != nil || string(got) != "chat\n" {
+			t.Fatalf("restored file = %q, %v", got, readErr)
+		}
+		if got, readErr := os.ReadFile(filepath.Join(src, "references", "guide.md")); readErr != nil || string(got) != "guide\n" {
+			t.Fatalf("restored nested file = %q, %v", got, readErr)
+		}
+		if runtime.GOOS != "windows" {
+			if got, readErr := os.Readlink(filepath.Join(src, "skill-link")); readErr != nil || got != "SKILL.md" {
+				t.Fatalf("restored symlink = %q, %v", got, readErr)
+			}
+		}
+		if _, statErr := os.Lstat(dst); !os.IsNotExist(statErr) {
+			t.Fatalf("retracted destination must be gone, stat err=%v", statErr)
+		}
+	})
+
+	t.Run("retraction failure reports the data location", func(t *testing.T) {
+		root := t.TempDir()
+		src := filepath.Join(root, "external", "dingtalk-chat")
+		dst := filepath.Join(root, "home", ".dws", "skill-backups", "stamp", "dingtalk-chat")
+		if err := os.MkdirAll(src, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(src, "SKILL.md"), []byte("chat\n"), 0o640); err != nil {
+			t.Fatal(err)
+		}
+
+		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
+		testseam.Swap(t, &skillPathRemove, func(path string) error {
+			if path == src {
+				return os.ErrPermission
+			}
+			return os.Remove(path)
+		})
+		originalRename := skillPathRename
+		testseam.Swap(t, &skillPathRename, func(source, destination string) error {
+			if source == src && destination == dst {
+				return os.ErrExist
+			}
+			if strings.HasPrefix(source, dst+string(filepath.Separator)) {
+				return os.ErrPermission
+			}
+			return originalRename(source, destination)
+		})
+
+		err := moveSkillPathRecoverably(src, dst)
+		if err == nil || !strings.Contains(err.Error(), "状态不确定") || !strings.Contains(err.Error(), dst) {
+			t.Fatalf("failed retraction must report the data location, got %v", err)
+		}
+		if got, readErr := os.ReadFile(filepath.Join(dst, "SKILL.md")); readErr != nil || string(got) != "chat\n" {
+			t.Fatalf("data must remain at the reported destination, got %q, %v", got, readErr)
+		}
+		if _, statErr := os.Lstat(src); statErr != nil {
+			t.Fatalf("source shell must still exist, stat err=%v", statErr)
+		}
+	})
+}
