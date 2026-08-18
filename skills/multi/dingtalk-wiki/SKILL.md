@@ -40,14 +40,14 @@ metadata:
 
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
-| 按名称解析唯一知识库 | `dws wiki +resolve-space --name <名称>` | 0 条或多条停止；只想看候选用 `+space-search` |
+| 按名称解析唯一知识库 | `+space-list --type <orgWikiSpace\|myWikiSpace> --limit 50 --page-all` 后精确匹配名称 | 先明确组织/个人范围；仅 `autoPageComplete=true` 且全量中恰好一个同名项时取 workspaceId |
 | 搜索或列出知识库 | `+space-search --query <关键词>` / `+space-list [--type orgWikiSpace\|myWikiSpace]` | 用户要求全部时加 `--page-all`；个人知识库必须明确语义 |
 | 已知 workspace 查看详情 | `dws wiki +space-get --workspace <ID或URL>` | 已知 ID 不重复搜索 |
 | 创建或删除知识库 | `+space-create --name <名称>` / `+delete-space --workspace <ID>` | 创建会读回；删除整个空间是高风险操作 |
 | 浏览或搜索库内节点 | `+node-list --workspace <ID> [--folder <ID>]` / `+node-search --workspace <ID> --query <词>` | 列目录与关键词搜索分开；全量列表加 `--page-all` |
 | 查看节点元数据 | `dws wiki +node-get --node <ID或URL>` | 正文读写随后切 Doc |
 | 已知 workspace 创建节点 | `+node-create --workspace <ID> --name <名称> [--type <类型>]` | 支持 adoc/axls/able/appt/adraw/amind/folder；创建后读回 |
-| 只有知识库名称时新建空文档 | `+wiki-new-doc --space <名称> --title <标题>` | 内部唯一解析空间；正文另走 Doc |
+| 只有知识库名称时新建空文档 | 先按全量 `+space-list` 唯一解析，再 `+node-create --workspace <ID> --name <标题> --type adoc` | 不用单页 `+wiki-new-doc` 猜空间；正文另走 Doc |
 | 复制、移入知识库或移出到我的文档 | `+node-copy` / `+move` / `+move-to-drive` | 使用真实 nodeId/workspaceId/folderId；按 Runtime confirmation |
 | 删除库内节点 | `+node-delete --workspace <ID> --node <ID>` | 删除前核对归属并确认 |
 | 列出或修改知识库成员 | `+member-list` / `+member-add` / `+member-update` / `+member-remove` | userId 1-30 个；角色必须显式 |
@@ -56,7 +56,8 @@ metadata:
 ## 当前最短路径
 
 - 已知 workspaceId：直接执行 space/node/member/feed 目标命令，不再 resolve。
-- 只有知识库名称：需要唯一 ID 用 `+resolve-space`；只需创建空 adoc 用 `+wiki-new-doc`；需要候选列表用 `+space-search`。
+- 只有知识库名称：先明确组织/个人范围，用 `+space-list --limit 50 --page-all` 取完该范围后按完整名称唯一匹配；未知范围先消歧，不同时扫描两个范围并猜测。
+- `+space-search` 只用于快速浏览候选；当前 `+resolve-space/+wiki-new-doc` 不暴露名称搜索的分页完成证据，不作为权威唯一解析或写入 Golden Route。
 - 已知 nodeId/URL：元数据直接 `+node-get`；正文直接切 Doc，不先 list/search。
 - 创建节点后返回的 nodeId 直接传给 Doc；不通过同名搜索重新定位。
 - move/copy/delete 已含预检或读回时，不由 Agent 重复拼装原子命令。
@@ -66,7 +67,8 @@ metadata:
 
 - `+space-list/+node-list/+feed-list` 默认单页；全量请求显式加 `--page-all`，并检查 `autoPageComplete/autoPageStopReason/pagesFetched` 与分页元数据。
 - `+space-search/+node-search` 缺少业务数组不是零命中；只有显式空数组才可报告空结果。
-- `+resolve-space` 只有 `resolved=true` 才提供唯一空间；多候选必须返回候选让用户消歧。
+- 名称解析只有在 scoped `+space-list` 返回 `autoPageComplete=true` 且全量中恰好一个精确同名项时才成立；0 条、多条或分页未完成都停止。
+- `+space-search`、`+resolve-space` 的单页结果不能证明全局唯一；不得把首页唯一候选直接用于写入。
 - 创建空间/节点和复制节点必须取得新 ID 并读回；移动必须验证 workspace/folder；删除必须有 `success=true`。
 - 成员列表服务端没有续页游标且最多 50，不能把上限内结果宣称为全量；成员写只具备终态响应证据，不虚构精确读回。
 - `partial_failure`、分页未完成或写入效果未知都不是成功。
@@ -93,7 +95,7 @@ Golden Route 参数足够时不读 reference；否则最多读取一个：
 
 ## 错误最短路径
 
-1. 空响应、缺失集合、零/多候选或分页不完整：停止后续写入并返回证据，不把异常投影为空成功。
+1. 空响应、缺失集合、零/多候选或分页不完整：停止后续写入并返回证据；`+resolve-space resolved=true` 也不能替代完整空间列表的分页完成证据。
 2. workspace/node 归属不一致：停止，不尝试换一个 ID 或 profile。
 3. 写响应缺少新 ID 或 `success=true`：效果未知，按名称/ID定向回读，不盲目重放。
 4. `unknown flag` 只查当前 leaf Help；`unknown command` 只查一次 Wiki Shortcut 清单。

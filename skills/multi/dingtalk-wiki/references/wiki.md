@@ -7,11 +7,13 @@
 | 已知条件 | 入口 |
 |---|---|
 | 精确 workspaceId 或知识库 URL | `+space-get --workspace <值>` |
-| 名称且必须得到唯一 ID | `+resolve-space --name <名称>` |
+| 名称且必须得到唯一 ID | `+space-list --type <orgWikiSpace\|myWikiSpace> --limit 50 --page-all` 后按完整名称精确匹配 |
 | 关键词且需要浏览候选 | `+space-search --query <关键词>` |
 | 明确要列出组织/个人知识库 | `+space-list --type orgWikiSpace|myWikiSpace` |
 
-`+resolve-space` 返回多候选时停止；不要改用列表第一项。空关键词不能构造 `--query ""`。
+名称解析前先明确组织知识库还是个人知识库；范围未知时向用户消歧。只有 `+space-list` 返回 `autoPageComplete=true`，并且完整结果中恰好一个名称精确相等的空间时，才可把其 workspaceId 交给后续写操作。0 条、多条、分页未完成都停止，不选择第一项。
+
+`+space-search` 用于候选发现，但当前没有可执行的续页 flag；`+resolve-space` 和 `+wiki-new-doc` 的内部名称搜索也不暴露分页完成证据。因此这三个入口的单页结果都不能证明全局唯一，当前不用于写入前的权威身份解析。空关键词不能构造 `--query ""`。
 
 ## Runtime 确认与首次执行
 
@@ -26,6 +28,7 @@
 
 ```bash
 dws wiki +space-list --page-all --page-limit 20 --format json
+dws wiki +space-list --type orgWikiSpace --limit 50 --page-all --format json
 dws wiki +node-list --workspace <ID> --page-all --max-items 500 --format json
 dws wiki +feed-list --workspace <ID> --page-all --format json
 ```

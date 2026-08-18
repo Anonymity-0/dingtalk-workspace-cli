@@ -8,7 +8,7 @@ dws wiki +node-create --workspace <workspaceId> --name "新文档" --type adoc -
 
 `--type` 可用 `adoc|axls|able|appt|adraw|amind|folder`，父目录加 `--folder <nodeId>`。创建成功从结果取新 nodeId，并按类型交给 Doc/Sheet/AITable；不要靠同名搜索重新定位。
 
-只有空间名称且只创建空 adoc 时用 `+wiki-new-doc --space <名称> --title <标题>`。它会唯一解析空间并验证节点，但不写正文；正文仍切 Doc。
+只有空间名称时，先明确组织/个人范围，用 `+space-list --type <orgWikiSpace|myWikiSpace> --limit 50 --page-all` 取完并按完整名称唯一匹配；再将真实 workspaceId 传给 `+node-create`。当前不要用 `+wiki-new-doc` 直接写入，因为其内部名称搜索不暴露分页完成证据。正文仍切 Doc。
 
 ## 读取、搜索与列表
 
