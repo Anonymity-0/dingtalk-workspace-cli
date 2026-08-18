@@ -65,7 +65,7 @@ dws drive +publish-get --node <dentryUuid>
 dws drive +publish-unset --node <dentryUuid>
 ```
 
-`+publish-get` 只读；`+publish-unset` 为高风险写。公开 catalog 没有 `+publish-set`；明确要求开启公开时只查询一次 `drive publish set` 精确 leaf，并按 Runtime confirmation 执行，不猜造 Shortcut。
+`+publish-get` 只读；`+publish-unset` 为高风险写。公开 catalog 没有 `+publish-set`，且当前普通文件和在线文档都没有经过验证的开启公开闭环。用户明确要求开启公开时，说明当前 Agent 路由不支持并停止；不要查询或执行 `drive publish set`。只有补齐受支持节点上的真实 set→get→unset 闭环证据并更新 Runtime 路由后，才重新开放该能力。
 
 ## 权限
 
@@ -77,7 +77,7 @@ dws drive +publish-unset --node <dentryUuid>
 | 查看可申请权限和审批人 | `permission apply-info` |
 | 发起权限申请 | `permission apply` |
 
-只在意图命中时读取一个精确 leaf Schema。成员变更、转移所有者、发起申请和公开状态变更必须明确节点、用户、角色与影响范围。
+只在意图命中时读取一个精确 leaf Schema。成员变更、转移所有者、发起申请和公开状态变更必须明确节点、用户、角色与影响范围。转移所有者时，在构造最终命令前必须让用户分别明确决定 `--reserve-role <MANAGER|EDITOR|DOWNLOADER|READER|NONE>` 和 `--recursive=<true|false>`；Agent 不得根据默认值、对象类型或便捷性自行选择任一项。两项决策与目标、新所有者均明确后，才按 Runtime confirmation 构造首次正式调用。
 
 ## 快捷方式节点
 
