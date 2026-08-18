@@ -296,6 +296,67 @@ function runCrossDeviceMoveContract() {
     }
 
     {
+      const { src, dest } = fixture("dest-verify");
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, {
+          renameFn: injectedRename,
+          verifyFn(left, right) {
+            if (right === dest) throw new Error("dest-verify failed");
+          },
+        }),
+        /dest retracted|dest-verify failed/,
+      );
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+      assert.equal(fs.existsSync(dest), false, "post-occupy verify failure retracts dest");
+    }
+
+    {
+      const { src, dest } = fixture("dest-chmod");
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, {
+          renameFn: injectedRename,
+          chmodFn(target, mode) {
+            if (target === dest) throw new Error("chmod failed");
+            fs.chmodSync(target, mode);
+          },
+        }),
+        /dest retracted|chmod failed/,
+      );
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+      assert.equal(fs.existsSync(dest), false, "post-occupy chmod failure retracts dest");
+    }
+
+    {
+      const { src, dest } = fixture("dest-cleanup");
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, {
+          renameFn: injectedRename,
+          removeFn(target) {
+            if (target !== src && path.basename(target).startsWith(".skill.cross-device-")) {
+              throw new Error("cleanup failed");
+            }
+            fs.rmSync(target, { recursive: true, force: true });
+          },
+        }),
+        /dest retracted|cleanup failed/,
+      );
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+      assert.equal(fs.existsSync(dest), false, "post-occupy staging cleanup failure retracts dest");
+    }
+
+    {
+      const { src, dest } = fixture("same-volume-occupied");
+      writeFile(path.join(dest, "concurrent-user-data.txt"), "must survive\n");
+      assert.throws(
+        () => movePathRecoverablySync(src, dest),
+        /already exists/,
+      );
+      assert.deepEqual(fs.readdirSync(dest), ["concurrent-user-data.txt"]);
+      assert.equal(fs.readFileSync(path.join(dest, "concurrent-user-data.txt"), "utf8"), "must survive\n");
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+    }
+
+    {
       const root = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-dangling-collision-"));
       roots.push(root);
       const home = path.join(root, "home");
@@ -889,16 +950,23 @@ scenario("canonical link publication never clobbers or deletes concurrent user d
             },
           },
         ),
-        /concurrent object retained|rollback failed/,
+        /rollback failed|refusing to delete non-transaction Skill/,
       );
-      assert.equal(fs.readFileSync(path.join(first, "SKILL.md"), "utf8"), "old dingtalk-first\n");
+      assert.equal(
+        fs.readFileSync(path.join(first, "concurrent-user-data.txt"), "utf8"),
+        "must survive\n",
+        "unmatched quarantine must be restored onto dest",
+      );
+      assert.ok(
+        !fs.existsSync(path.join(first, "SKILL.md")),
+        "restored concurrent dest must not be replaced by the backup",
+      );
       assert.equal(fs.readFileSync(path.join(second, "SKILL.md"), "utf8"), "old dingtalk-second\n");
       const retained = fs.readdirSync(base)
         .filter((name) => name.startsWith(".dingtalk-first.rollback-"))
         .map((name) => path.join(base, name, "payload", "concurrent-user-data.txt"))
         .filter((candidate) => fs.existsSync(candidate));
-      assert.equal(retained.length, 1, "concurrent replacement must be retained in quarantine");
-      assert.equal(fs.readFileSync(retained[0], "utf8"), "must survive\n");
+      assert.equal(retained.length, 0, "restored concurrent object must not stay hidden in quarantine");
     }
 
     {

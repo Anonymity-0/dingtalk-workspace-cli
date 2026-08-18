@@ -115,7 +115,18 @@ function Move-DevSkillPath([string]$Source, [string]$Destination) {
     if ($sourceItem.PSIsContainer) {
         [System.IO.Directory]::Move($Source, $Destination)
     } else {
-        [System.IO.File]::Move($Source, $Destination)
+        [System.IO.File]::Copy($Source, $Destination, $false)
+        try {
+            Remove-DevSkillPathLexically $Source
+        } catch {
+            $removeErr = $_
+            try {
+                Remove-DevSkillPathLexically $Destination
+            } catch {
+                throw "Skill move state uncertain; source $Source and dest $Destination retained: $removeErr; retract failed: $_"
+            }
+            throw $removeErr
+        }
     }
 }
 
@@ -235,13 +246,25 @@ function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
     $stageRoot = Join-Path $destinationParent ("." + (Split-Path $Destination -Leaf) + ".cross-device-" + [guid]::NewGuid().ToString("N"))
     $stage = Join-Path $stageRoot "payload"
     New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
+    $published = $false
     try {
         Copy-DevSkillPathLexically $Source $stage
         Assert-DevSkillPathCopy $Source $stage
         Move-DevSkillPath $stage $Destination
-        Assert-DevSkillPathCopy $Source $Destination
-        if (!(Remove-DevLinkStageRoot $stageRoot)) {
-            throw "Skill staging cleanup failed (published content untouched): $stageRoot"
+        $published = $true
+        try {
+            Assert-DevSkillPathCopy $Source $Destination
+            if (!(Remove-DevLinkStageRoot $stageRoot)) {
+                throw "Skill staging cleanup failed: $stageRoot"
+            }
+        } catch {
+            $postErr = $_
+            try {
+                if (Test-PathLexically $Destination) { Remove-DevSkillPathLexically $Destination }
+            } catch {
+                throw "Skill move state uncertain: $postErr; failed to retract $Destination`: $_; source $Source and dest $Destination retained"
+            }
+            throw "Skill move failed, dest retracted, source retained ${Source}: $postErr"
         }
         try { Remove-DevSkillPathLexically $Source } catch {
             throw "Skill target published but source removal failed; both retained ($Source, $Destination): $_"
@@ -251,7 +274,9 @@ function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
         $failure = $_
         if (Test-Path -LiteralPath $stageRoot) {
             if (!(Remove-DevLinkStageRoot $stageRoot)) {
-                throw "$failure; cross-device Skill staging cleanup failed $stageRoot (backup and original retained)"
+                if (-not $published) {
+                    throw "$failure; cross-device Skill staging cleanup failed $stageRoot (backup and original retained)"
+                }
             }
         }
         throw $failure

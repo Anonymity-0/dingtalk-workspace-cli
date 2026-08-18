@@ -151,8 +151,11 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 			}
 			return os.RemoveAll(target)
 		})
-		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "对象保留") {
+		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "确认已发布 Skill 身份失败") {
 			t.Fatalf("publish confirmation error = %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("missing dest after publish must stay missing: %v", statErr)
 		}
 	})
 
@@ -175,6 +178,7 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "staging 内容已变化") {
 			t.Fatalf("publish content error = %v", err)
 		}
+		assertUpgradeSkillContent(t, destination, "replacement")
 	})
 
 	t.Run("publish confirmation identity changed", func(t *testing.T) {
@@ -207,6 +211,7 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "staging 身份已变化") {
 			t.Fatalf("publish identity error = %v", err)
 		}
+		assertUpgradeSkillContent(t, destination, "value")
 	})
 
 	t.Run("publish confirmation accepts child-move publication", func(t *testing.T) {
@@ -256,8 +261,12 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 			}
 			return originalLstat(path)
 		})
-		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "无法确认 staging 状态") {
-			t.Fatalf("unreadable staged state must fail closed, got %v", err)
+		_, err := PublishSkillPathNoReplace(staged, destination)
+		if err == nil || !strings.Contains(err.Error(), "无法确认 staging 状态") || !strings.Contains(err.Error(), "目标已撤回") {
+			t.Fatalf("unreadable staged state must retract dest, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("unconfirmed dest must be retracted: %v", statErr)
 		}
 	})
 
@@ -282,9 +291,73 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 			}
 			return originalReadDir(path)
 		})
-		if _, err := PublishSkillPathNoReplace(staged, destination); !errors.Is(err, failure) || !strings.Contains(err.Error(), "内容失败") {
-			t.Fatalf("publish fingerprint confirmation error = %v", err)
+		_, err := PublishSkillPathNoReplace(staged, destination)
+		if err == nil || !errors.Is(err, failure) || !strings.Contains(err.Error(), "状态不确定") {
+			t.Fatalf("unrecordable dest must be reported as uncertain, got %v", err)
 		}
+		assertUpgradeSkillContent(t, destination, "value")
+	})
+
+	t.Run("owned dest content drift after publish retracts dest", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		originalRename := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRename(source, target); err != nil {
+				return err
+			}
+			return os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("mutated\n"), 0o644)
+		})
+		_, err := PublishSkillPathNoReplace(staged, destination)
+		if err == nil || !strings.Contains(err.Error(), "staging 内容已变化") || !strings.Contains(err.Error(), "目标已撤回") {
+			t.Fatalf("owned dest drift must retract dest, got %v", err)
+		}
+		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
+			t.Fatalf("mutated owned dest must be retracted: %v", statErr)
+		}
+	})
+
+	t.Run("confirm retract failure reports uncertain state", func(t *testing.T) {
+		root := t.TempDir()
+		staged := filepath.Join(root, "staged")
+		destination := filepath.Join(root, "destination")
+		seedUpgradeSkill(t, staged, "value", false)
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return err
+			}
+			return os.Rename(filepath.Join(source, "SKILL.md"), filepath.Join(target, "SKILL.md"))
+		})
+		renamed := false
+		originalRename := skillPathRenameNoReplace
+		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) error {
+			if err := originalRename(source, target); err != nil {
+				return err
+			}
+			renamed = true
+			return nil
+		})
+		originalLstat := skillPathLstat
+		testseam.Swap(t, &skillPathLstat, func(path string) (os.FileInfo, error) {
+			if renamed && path == staged {
+				return nil, errors.New("stat denied")
+			}
+			return originalLstat(path)
+		})
+		originalMkdirTemp := skillPathMkdirTemp
+		testseam.Swap(t, &skillPathMkdirTemp, func(dir, pattern string) (string, error) {
+			if strings.Contains(pattern, ".rollback-") {
+				return "", os.ErrPermission
+			}
+			return originalMkdirTemp(dir, pattern)
+		})
+		_, err := PublishSkillPathNoReplace(staged, destination)
+		if err == nil || !strings.Contains(err.Error(), "状态不确定") || !strings.Contains(err.Error(), destination) {
+			t.Fatalf("failed retract must name dest, got %v", err)
+		}
+		assertUpgradeSkillContent(t, destination, "value")
 	})
 
 	t.Run("record published identity", func(t *testing.T) {

@@ -143,7 +143,9 @@ Agent 仍只需以 `SKILL.md` 发现和加载 Skill；统一元数据位于 Agen
 升级器始终先发布 `~/.agents/skills` canonical 集合。固定兼容注册表中被分类为
 universal 的 Agent 不再保留 Agent 私有副本；检测到的
 非 universal Agent（如 Claude、OpenClaw、Hermes、Windsurf）使用指向 canonical
-的目录链接，Windows 使用 junction。链接不可用时回退为内容完整的直接复制。
+的目录链接：npm 与 PowerShell 安装器在 Windows 上创建 junction，`dws upgrade` /
+`dws skill setup` 创建符号链接（`os.Symlink`）。链接不可用时回退为内容完整的
+直接复制，包括未开启开发者模式、因而无法创建符号链接的 Windows。
 自定义 `CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`HERMES_HOME`、`AUTOHAND_HOME`、
 `GROK_HOME`、`VIBE_HOME`、`XDG_CONFIG_HOME` 与 OpenClaw 历史目录 `.clawdbot`、
 `.moltbot` 必须按 Agent 实际优先级解析。
@@ -252,7 +254,8 @@ Homebrew 不直接向 Agent home 铺设 Skill；安装 CLI 后由 setup 执行�
 - 复制失败不留下 Agent 可见的残缺官方目录；
 - 普通 upgrade 恢复被删除的预制 Skill，并安装新增官方 Skill；
 - Windows、macOS、Linux 的路径和覆盖率门禁；
-- symlinked parent、Windows junction、链接失败复制回退与 broken link 修复；
+- symlinked parent、npm/PowerShell 的 Windows junction、`dws upgrade` /
+  `dws skill setup` 的符号链接、链接失败复制回退与 broken link 修复；
 - Claude/Codex/Hermes 自定义根目录及 OpenClaw 历史目录优先级；
 - `CLAUDE_CONFIG_DIR`、`HERMES_HOME`、`XDG_CONFIG_HOME` 等自定义根跨文件系统时的
   正向备份、反向恢复、普通链接及 dangling symlink 词法保留；

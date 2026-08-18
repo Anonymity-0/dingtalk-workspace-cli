@@ -36,17 +36,25 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 	if err := skillPathRenameNoReplace(staged, destination); err != nil {
 		return SkillPathPublication{}, fmt.Errorf("目标必须不存在的 Skill 发布失败 %s: %w", destination, err)
 	}
-	publishedIdentity, err := skillPathLstat(destination)
-	if err != nil {
-		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: %w", destination, err)
+	// Dest is now occupied by this transaction, but callers only record a
+	// publication after this function returns. Capture identity immediately
+	// so a later confirmation failure can retract dest instead of leaving an
+	// untracked leftover that blocks backup restore.
+	publication, recErr := recordSkillPathPublication(destination)
+	if recErr != nil {
+		if _, statErr := skillPathLstat(destination); os.IsNotExist(statErr) {
+			return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s: %w", destination, recErr)
+		}
+		return SkillPathPublication{}, fmt.Errorf("Skill 发布状态不确定：发布后无法登记目标 %s: %w；目标 %s 保留", destination, recErr, destination)
 	}
-	publishedFingerprint, err := fingerprintSkillPath(destination)
-	if err != nil {
-		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 内容失败 %s（对象保留）: %w", destination, err)
-	}
-	publishedFileID := skillPathFileIdentity(destination)
-	if publishedFingerprint != fingerprint {
-		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: staging 内容已变化", destination)
+	if publication.fingerprint != fingerprint {
+		if _, stagedErr := skillPathLstat(staged); os.IsNotExist(stagedErr) &&
+			!skillPathIdentityProven(identity, publication.identity, stagedFileID, publication.fileID) {
+			// Dest is not the staged object: a concurrent writer won the path
+			// after the rename returned. Leave that object in place.
+			return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s: staging 内容已变化", destination)
+		}
+		return SkillPathPublication{}, retractUnconfirmedSkillPublication(publication, fmt.Errorf("确认已发布 Skill 身份失败 %s: staging 内容已变化", destination))
 	}
 	// The rename consumed the staged path: the published object is the staged
 	// object itself, which identity proves. The rename left the staged path
@@ -54,13 +62,23 @@ func PublishSkillPathNoReplace(staged, destination string) (SkillPathPublication
 	// identity cannot span that move, so the proof is the content equality
 	// verified above.
 	if _, stagedErr := skillPathLstat(staged); os.IsNotExist(stagedErr) {
-		if !skillPathIdentityProven(identity, publishedIdentity, stagedFileID, publishedFileID) {
-			return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: staging 身份已变化", destination)
+		if !skillPathIdentityProven(identity, publication.identity, stagedFileID, publication.fileID) {
+			return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s: staging 身份已变化", destination)
 		}
 	} else if stagedErr != nil {
-		return SkillPathPublication{}, fmt.Errorf("确认已发布 Skill 身份失败 %s（对象保留）: 无法确认 staging 状态", destination)
+		return SkillPathPublication{}, retractUnconfirmedSkillPublication(publication, fmt.Errorf("确认已发布 Skill 身份失败 %s: 无法确认 staging 状态", destination))
 	}
-	return recordSkillPathPublicationFrom(destination, publishedIdentity, fingerprint, publishedFileID), nil
+	return publication, nil
+}
+
+// retractUnconfirmedSkillPublication withdraws a dest that this transaction
+// occupied but never handed to the caller. A failed retract names dest so a
+// later restore is not mistaken for a clean original layout.
+func retractUnconfirmedSkillPublication(publication SkillPathPublication, cause error) error {
+	if retractErr := rollbackSkillPathPublication(publication); retractErr != nil {
+		return fmt.Errorf("Skill 发布状态不确定：%v；撤回目标 %s 失败: %v；目标 %s 保留", cause, publication.Destination, retractErr, publication.Destination)
+	}
+	return fmt.Errorf("Skill 发布失败，目标已撤回: %w", cause)
 }
 
 // recordSkillPathPublication captures the live identity of a path that this

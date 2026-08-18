@@ -277,9 +277,113 @@ backup_and_record_skill_dir() {
   fi
 }
 
+# restore_quarantine_no_replace <quarantined> <dest>
+# Puts an unmatched quarantined object back onto dest without replacing
+# anything that occupied dest after the claim. Directories use mkdir-claim
+# plus child moves; links are created at dest; files hard-link then drop
+# the quarantine copy.
+restore_quarantine_no_replace() {
+  _rqn_src="$1"
+  _rqn_dest="$2"
+  if [ -L "$_rqn_src" ]; then
+    _rqn_target="$(readlink "$_rqn_src")" || return 1
+    if ! ln -s "$_rqn_target" "$_rqn_dest" 2>/dev/null || ! [ -L "$_rqn_dest" ]; then
+      _rqn_nested="$_rqn_dest/${_rqn_target##*/}"
+      if [ -L "$_rqn_nested" ] && [ "$(readlink "$_rqn_nested" 2>/dev/null)" = "$_rqn_target" ]; then
+        rm -f "$_rqn_nested"
+      fi
+      return 1
+    fi
+    rm -f "$_rqn_src"
+    return 0
+  fi
+  if [ -d "$_rqn_src" ]; then
+    mkdir "$_rqn_dest" 2>/dev/null || return 1
+    _rqn_failed=0
+    for _rqn_child in "$_rqn_src"/* "$_rqn_src"/.[!.]* "$_rqn_src"/..?*; do
+      [ -e "$_rqn_child" ] || [ -L "$_rqn_child" ] || continue
+      if ! mv "$_rqn_child" "$_rqn_dest/"; then
+        _rqn_failed=1
+        break
+      fi
+    done
+    if [ "$_rqn_failed" -eq 0 ]; then
+      rmdir "$_rqn_src" 2>/dev/null || return 1
+      return 0
+    fi
+    for _rqn_child in "$_rqn_dest"/* "$_rqn_dest"/.[!.]* "$_rqn_dest"/..?*; do
+      [ -e "$_rqn_child" ] || [ -L "$_rqn_child" ] || continue
+      mv "$_rqn_child" "$_rqn_src/" || return 1
+    done
+    rmdir "$_rqn_dest" 2>/dev/null || return 1
+    return 1
+  fi
+  if [ -f "$_rqn_src" ]; then
+    # Shell `ln` treats an occupied directory as a container. Refuse that
+    # dest and drop any nested name instead of leaving a hardlink inside it.
+    if ! ln "$_rqn_src" "$_rqn_dest" 2>/dev/null || [ -d "$_rqn_dest" ]; then
+      _rqn_nested="$_rqn_dest/$(basename "$_rqn_src")"
+      [ -f "$_rqn_nested" ] && rm -f "$_rqn_nested"
+      return 1
+    fi
+    rm -f "$_rqn_src"
+    return 0
+  fi
+  return 1
+}
+
+# quarantine_retract_or_restore <dest> <expected-inode> [expected-link-target]
+# Claims dest into a sibling quarantine, re-checks identity there, deletes
+# only on match, and restores with a no-replace publish on mismatch. An
+# in-place inode check followed by rm would delete a concurrent replacement
+# that won dest after the check.
+quarantine_retract_or_restore() {
+  _qrr_dest="$1"
+  _qrr_inode="$2"
+  _qrr_link_target="${3-}"
+  if [ ! -e "$_qrr_dest" ] && [ ! -L "$_qrr_dest" ]; then
+    return 0
+  fi
+  _qrr_parent="$(dirname "$_qrr_dest")"
+  _qrr_base="$(basename "$_qrr_dest")"
+  _qrr_root="$(mktemp -d "$_qrr_parent/.${_qrr_base}.rollback.XXXXXX")" || return 1
+  _qrr_payload="$_qrr_root/payload"
+  if ! mv "$_qrr_dest" "$_qrr_payload"; then
+    rmdir "$_qrr_root" 2>/dev/null || rm -rf "$_qrr_root"
+    if [ ! -e "$_qrr_dest" ] && [ ! -L "$_qrr_dest" ]; then
+      return 0
+    fi
+    printf '  ⚠️  无法隔离待回滚 Skill: %s\n' "$_qrr_dest"
+    return 1
+  fi
+  _qrr_owned=0
+  if [ -n "$_qrr_link_target" ]; then
+    if [ -L "$_qrr_payload" ] &&
+       [ "$(readlink "$_qrr_payload" 2>/dev/null)" = "$_qrr_link_target" ] &&
+       [ "$(skill_link_inode "$_qrr_payload")" = "$_qrr_inode" ]; then
+      _qrr_owned=1
+    fi
+  elif [ "$(skill_link_inode "$_qrr_payload")" = "$_qrr_inode" ]; then
+    _qrr_owned=1
+  fi
+  if [ "$_qrr_owned" -eq 1 ]; then
+    rm -rf "$_qrr_root" || return 1
+    return 0
+  fi
+  if restore_quarantine_no_replace "$_qrr_payload" "$_qrr_dest"; then
+    rmdir "$_qrr_root" 2>/dev/null || true
+    printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s\n' "$_qrr_dest"
+    return 1
+  fi
+  printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s（并发对象保留于 %s）\n' "$_qrr_dest" "$_qrr_payload"
+  return 1
+}
+
 # restore_multi_skill_set <published-manifest> <backup-manifest>
 # Removes partial new publications, then restores every old directory from
-# its exact backup path. Paths containing newlines are outside the supported
+# its exact backup path. Dest is claimed into quarantine first; identity is
+# re-checked there so a concurrent replacement is renamed back instead of
+# being deleted by path. Paths containing newlines are outside the supported
 # installer path contract; spaces are preserved.
 restore_multi_skill_set() {
   _rms_published="$1"
@@ -291,18 +395,13 @@ restore_multi_skill_set() {
       _rms_dest="${_rms_entry%:*}"
       _rms_inode="${_rms_entry##*:}"
       [ "$_rms_dest" != "$_rms_entry" ] || { printf '  ⚠️  跳过格式异常的发布记录: %s\n' "$_rms_entry"; _rms_ok=0; continue; }
-      if [ "$(skill_link_inode "$_rms_dest")" = "$_rms_inode" ]; then
-        rm -rf "$_rms_dest" || _rms_ok=0
-      else
-        printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s\n' "$_rms_dest"
-        _rms_ok=0
-      fi
+      quarantine_retract_or_restore "$_rms_dest" "$_rms_inode" || _rms_ok=0
     done < "$_rms_published"
   fi
   if [ -f "$_rms_backups" ]; then
     while IFS= read -r _rms_original && IFS= read -r _rms_backup; do
       [ -n "$_rms_backup" ] || continue
-      if [ -e "$_rms_original" ] || [ -L "$_rms_original" ] || ! mkdir -p "$(dirname "$_rms_original")" || ! mv "$_rms_backup" "$_rms_original"; then
+      if ! mkdir -p "$(dirname "$_rms_original")" || ! restore_quarantine_no_replace "$_rms_backup" "$_rms_original"; then
         printf '  ⚠️  无法恢复原 Skill: %s（备份保留于 %s）\n' "$_rms_original" "$_rms_backup"
         _rms_ok=0
       fi
@@ -334,12 +433,7 @@ restore_linked_skill_set() {
   if [ -f "$_rls_published" ]; then
     while IFS= read -r _rls_dest && IFS= read -r _rls_target && IFS= read -r _rls_inode; do
       [ -n "$_rls_dest" ] || continue
-      if skill_link_matches "$_rls_dest" "$_rls_target" "$_rls_inode"; then
-        rm -f "$_rls_dest" || _rls_ok=0
-      else
-        printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s\n' "$_rls_dest"
-        _rls_ok=0
-      fi
+      quarantine_retract_or_restore "$_rls_dest" "$_rls_inode" "$_rls_target" || _rls_ok=0
     done < "$_rls_published"
   fi
   restore_multi_skill_set /dev/null "$_rls_backups" || _rls_ok=0

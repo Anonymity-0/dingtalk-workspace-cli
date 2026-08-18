@@ -119,10 +119,47 @@ copy_tree() {
   stage="$(mktemp -d "$parent/.dws-skill.tmp.XXXXXX")" || return 1
   if ! cp -R "$src/." "$stage/"; then rm -rf "$stage"; return 1; fi
   backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
-  if mv "$stage" "$dest"; then return 0; fi
+  # mkdir is the atomic no-replace claim: POSIX `mv` of a staging directory
+  # onto an occupied dest treats dest as a container and nests the stage
+  # inside it. Children then move into a directory this transaction owns.
+  if mkdir "$dest" 2>/dev/null; then
+    _ct_failed=0
+    for _ct_child in "$stage"/* "$stage"/.[!.]* "$stage"/..?*; do
+      [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
+      if ! mv "$_ct_child" "$dest/"; then
+        _ct_failed=1
+        break
+      fi
+    done
+    if [ "$_ct_failed" -eq 0 ]; then
+      rm -rf "$stage"
+      return 0
+    fi
+    for _ct_child in "$dest"/* "$dest"/.[!.]* "$dest"/..?*; do
+      [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
+      mv "$_ct_child" "$stage/" || true
+    done
+    rmdir "$dest" 2>/dev/null || true
+  fi
   rm -rf "$stage"
-  if [ -n "$backup" ] && ! mv "$backup" "$dest"; then
-    printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+  if [ -n "$backup" ]; then
+    if mkdir "$dest" 2>/dev/null; then
+      _ct_restore_failed=0
+      for _ct_child in "$backup"/* "$backup"/.[!.]* "$backup"/..?*; do
+        [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
+        if ! mv "$_ct_child" "$dest/"; then
+          _ct_restore_failed=1
+          break
+        fi
+      done
+      if [ "$_ct_restore_failed" -eq 0 ]; then
+        rmdir "$backup" 2>/dev/null || true
+      else
+        printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+      fi
+    else
+      printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+    fi
   fi
   return 1
 }

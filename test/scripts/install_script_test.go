@@ -729,6 +729,76 @@ exit 0
 	}
 }
 
+func TestInstallerStandaloneCopyPublicationRacePreservesConcurrentDirectories(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell semantics are unavailable")
+	}
+
+	for _, scriptName := range []string{"install-event.sh", "install-devapp.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			src := filepath.Join(t.TempDir(), "src-skill")
+			dest := filepath.Join(home, "agent", "skills", "dingtalk-misc")
+			mustWriteFile(t, filepath.Join(src, "SKILL.md"), []byte("new skill\n"), 0o644)
+			mustWriteFile(t, filepath.Join(dest, "SKILL.md"), []byte("old skill\n"), 0o644)
+
+			harness := `. "$DWS_TEST_LIBRARY"
+mkdir() {
+  if [ "$1" = "$DWS_TEST_DEST" ]; then
+    command mkdir -p "$1"
+    printf '%s\n' must-survive > "$1/concurrent-user-data.txt"
+    return 1
+  fi
+  command mkdir "$@"
+}
+if copy_tree "$DWS_TEST_SRC" "$DWS_TEST_DEST"; then
+  exit 2
+fi
+[ -f "$DWS_TEST_DEST/concurrent-user-data.txt" ] || exit 3
+[ "$(cat "$DWS_TEST_DEST/concurrent-user-data.txt")" = "must-survive" ] || exit 4
+if [ -n "$(ls -A "$DWS_TEST_DEST" | grep -v '^concurrent-user-data\.txt$')" ]; then
+  exit 5
+fi
+[ -n "$(find "$HOME/.dws/skill-backups" -name SKILL.md -print 2>/dev/null)" ] || exit 6
+`
+			cmd := exec.Command("sh", "-c", harness)
+			cmd.Env = append(os.Environ(),
+				"HOME="+home,
+				"DWS_TEST_LIBRARY="+library,
+				"DWS_TEST_SRC="+src,
+				"DWS_TEST_DEST="+dest,
+			)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("%s copy publication race must preserve the concurrent object: %v\n%s", scriptName, err, output)
+			}
+			got, err := os.ReadFile(filepath.Join(dest, "concurrent-user-data.txt"))
+			if err != nil || strings.TrimSpace(string(got)) != "must-survive" {
+				t.Fatalf("%s concurrent dest = %q, %v", scriptName, got, err)
+			}
+			if backup := findSkillBackupContent(home, "old skill\n"); backup == "" {
+				t.Fatalf("%s original backup must be retained after refused publish", scriptName)
+			}
+		})
+	}
+}
+
 func TestInstallScriptsUseGitHubReleaseSkillsAsset(t *testing.T) {
 	t.Parallel()
 
@@ -1638,6 +1708,21 @@ func TestInstallScriptSourceModeMonoMultiMonoExclusion(t *testing.T) {
 // directory named name whose SKILL.md equals content, returning its path
 // ("" when absent). The layout is <skill-backups>/<stamp>/<name> with
 // optional -N collision suffixes on the stamp.
+func findSkillBackupContent(fakeHome, content string) string {
+	root := filepath.Join(fakeHome, ".dws", "skill-backups")
+	var found string
+	_ = filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
+		if err != nil || found != "" || info.IsDir() || info.Name() != "SKILL.md" {
+			return nil
+		}
+		if data, err := os.ReadFile(p); err == nil && string(data) == content {
+			found = p
+		}
+		return nil
+	})
+	return found
+}
+
 func findSkillBackup(fakeHome, name, content string) string {
 	root := filepath.Join(fakeHome, ".dws", "skill-backups")
 	var found string
@@ -2134,12 +2219,16 @@ func TestInstallerShellCopyPublicationRacePreservesConcurrentDirectories(t *test
 			// the foreign object instead of blind-deleting the path.
 			harness := `. "$DWS_TEST_LIBRARY"
 mv() {
-  if [ "$2" = "$DWS_TEST_SECOND/" ]; then
-    rm -rf "$DWS_TEST_FIRST"
-    mkdir -p "$DWS_TEST_FIRST"
-    printf '%s\n' first-user-data > "$DWS_TEST_FIRST/concurrent-user-data.txt"
-    return 1
-  fi
+  case "$1" in
+    */.dws-multi-set.*)
+      if [ "$2" = "$DWS_TEST_SECOND/" ]; then
+        rm -rf "$DWS_TEST_FIRST"
+        mkdir -p "$DWS_TEST_FIRST"
+        printf '%s\n' first-user-data > "$DWS_TEST_FIRST/concurrent-user-data.txt"
+        return 1
+      fi
+      ;;
+  esac
   command mv "$@"
 }
 if _install_multi_to_base "$DWS_TEST_SRC" "$DWS_TEST_BASE" "$HOME" ".zcode/skills"; then
@@ -3051,7 +3140,7 @@ func TestInstallPowerShellCrossDeviceMoveContract(t *testing.T) {
 	}
 	prefix := strings.ReplaceAll(string(data[:cut]), "$HOME", "$env:DWS_TEST_HOME")
 
-	for _, phase := range []string{"success", "copy", "verify", "remove", "permission"} {
+	for _, phase := range []string{"success", "copy", "verify", "remove", "permission", "dest-verify"} {
 		phase := phase
 		t.Run(phase, func(t *testing.T) {
 			root := t.TempDir()
@@ -3099,6 +3188,7 @@ function Copy-SkillPathLexically {
 function Assert-SkillPathCopy {
     param([string]$Source, [string]$Destination)
     if ($env:DWS_TEST_PHASE -eq "verify") { throw "verify failed" }
+    if ($env:DWS_TEST_PHASE -eq "dest-verify" -and $Destination -eq $env:DWS_TEST_DESTINATION) { throw "dest-verify failed" }
     & $script:OriginalAssertSkillPathCopy -Source $Source -Destination $Destination
 }
 function Remove-SkillPathLexically {
@@ -3117,6 +3207,7 @@ try {
     if ($env:DWS_TEST_PHASE -eq "verify" -and $_ -notmatch "verify failed") { Write-Error $_; exit 5 }
     if ($env:DWS_TEST_PHASE -eq "remove" -and $_ -notmatch "均保留") { Write-Error $_; exit 6 }
     if ($env:DWS_TEST_PHASE -eq "permission" -and $_ -notmatch "permission denied") { Write-Error $_; exit 7 }
+    if ($env:DWS_TEST_PHASE -eq "dest-verify" -and $_ -notmatch "目标已撤回|dest-verify failed|状态不确定") { Write-Error $_; exit 8 }
     exit 0
 }
 `

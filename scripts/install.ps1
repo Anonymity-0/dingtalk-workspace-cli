@@ -269,7 +269,21 @@ function Move-SkillPath {
         # either path.
         [System.IO.Directory]::Move($Source, $Destination)
     } else {
-        [System.IO.File]::Move($Source, $Destination)
+        # File.Move replaces an occupied dest on Windows. Copy without
+        # overwrite refuses that dest, then the source is removed only after
+        # the exclusive copy succeeds.
+        [System.IO.File]::Copy($Source, $Destination, $false)
+        try {
+            Remove-SkillPathLexically -Path $Source
+        } catch {
+            $removeErr = $_
+            try {
+                Remove-SkillPathLexically -Path $Destination
+            } catch {
+                throw "Skill move state uncertain; source $Source and dest $Destination retained: $removeErr; retract failed: $_"
+            }
+            throw $removeErr
+        }
     }
 }
 
@@ -453,13 +467,26 @@ function Move-SkillPathRecoverably {
     $stageRoot = Join-Path $destinationParent ("." + (Split-Path $Destination -Leaf) + ".cross-device-" + [guid]::NewGuid().ToString("N"))
     $stage = Join-Path $stageRoot "payload"
     New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
+    $published = $false
     try {
         Copy-SkillPathLexically -Source $Source -Destination $stage
         Assert-SkillPathCopy -Source $Source -Destination $stage
         Move-SkillPath -Source $stage -Destination $Destination
-        Assert-SkillPathCopy -Source $Source -Destination $Destination
-        if (!(Remove-LinkStageRoot -StageRoot $stageRoot)) {
-            throw "Skill staging 清理失败（已发布内容不受影响）: $stageRoot"
+        $published = $true
+        $publication = [pscustomobject]@{ Path = $Destination; Source = $Source }
+        try {
+            Assert-SkillPathCopy -Source $Source -Destination $Destination
+            if (!(Remove-LinkStageRoot -StageRoot $stageRoot)) {
+                throw "Skill staging 清理失败: $stageRoot"
+            }
+        } catch {
+            $postErr = $_
+            try {
+                Remove-PublishedSkillPathSafely -Record $publication
+            } catch {
+                throw "Skill 移动状态不确定：$postErr；撤回目标 $Destination 失败: $_；源 $Source 与目标 $Destination 均保留"
+            }
+            throw "Skill 移动失败，目标已撤回，原路径保留 ${Source}: $postErr"
         }
         try {
             Remove-SkillPathLexically -Path $Source
@@ -473,7 +500,9 @@ function Move-SkillPathRecoverably {
         $failure = $_
         if (Test-Path -LiteralPath $stageRoot) {
             if (!(Remove-LinkStageRoot -StageRoot $stageRoot)) {
-                throw "$failure；跨设备 Skill staging 清理失败 $stageRoot（备份与原路径均保留）"
+                if (-not $published) {
+                    throw "$failure；跨设备 Skill staging 清理失败 $stageRoot（备份与原路径均保留）"
+                }
             }
         }
         throw $failure
