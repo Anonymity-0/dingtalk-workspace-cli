@@ -170,6 +170,9 @@ orphan_scripts_allowlist:
   - path: dingtalk-aitable/scripts/aitable_import_via_task.py
     disposition: defer
     reason: "helper referenced indirectly / pending doc"
+  - path: dingtalk-drive/scripts/drive_tree_list.py
+    disposition: defer
+    reason: "legacy helper retained for compatibility; multi Drive uses bounded +list until the helper is revalidated"
   - path: dingtalk-minutes/scripts/minutes_list_parse.py
     disposition: defer
     reason: "pending doc reference"
