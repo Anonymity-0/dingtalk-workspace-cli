@@ -116,16 +116,13 @@ func TestCrossPlatformCoverageOAStrictResponseMatrix(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageOAPaginationFailsClosed(t *testing.T) {
-	if _, err := oaHasMorePage(map[string]any{}, "oa/page", 1, 1); err == nil {
-		t.Fatal("nonempty numbered page without hasMore was accepted")
+	if _, err := oaHasMorePage(map[string]any{}, "oa/page", 1); err == nil {
+		t.Fatal("numbered page without hasMore was accepted")
 	}
-	if page, err := oaHasMorePage(map[string]any{}, "oa/page", 0, 1); err != nil || !page.Known || page.HasMore {
-		t.Fatalf("reviewed empty numbered terminal page=%+v err=%v", page, err)
-	}
-	if _, err := oaHasMorePage(map[string]any{"hasMore": "false"}, "oa/page", 0, 1); err == nil {
+	if _, err := oaHasMorePage(map[string]any{"hasMore": "false"}, "oa/page", 1); err == nil {
 		t.Fatal("wrong hasMore type was accepted")
 	}
-	page, err := oaHasMorePage(map[string]any{"hasMore": true}, "oa/page", 1, 2)
+	page, err := oaHasMorePage(map[string]any{"hasMore": true}, "oa/page", 2)
 	if err != nil || !page.HasMore || page.Next != "3" {
 		t.Fatalf("numbered continuation=%+v err=%v", page, err)
 	}
@@ -146,7 +143,7 @@ func TestCrossPlatformCoverageOAPaginationFailsClosed(t *testing.T) {
 
 func TestCrossPlatformCoverageMyInitiatedNeverFallsBackToRawResponse(t *testing.T) {
 	caller := &oaCoverageCaller{responses: map[string][]string{
-		"get_submitted_instances": {`{"success":"true","result":{"values":[]}}`},
+		"get_submitted_instances": {`{"success":"true","result":{"values":[],"hasMore":false}}`},
 	}}
 	cmd, err := runOACoverage(t, MyInitiated, caller, "--page", "1", "--limit", "20")
 	if err != nil {

@@ -7,15 +7,17 @@
 ## 结论与 surface
 
 - 源码 Shortcut：10。
-- 公开：4（`+list-executed`、`+list-submitted`、`+my-initiated`、`+search-forms`）。
-- 隐藏：6，其中 unavailable 5；`+done-approvals` 是 available 但隐藏的兼容入口。
+- 公开：1（`+search-forms`）。
+- 隐藏：9，其中 unavailable 8；`+done-approvals` 是 available 但隐藏的兼容入口。
 - 所有 10 条均声明 `Contract`、`Safety`、`Result` 并启用 unified output；写入口在首次远端调用前由 Runtime 确认门禁阻断。
 
 ### Residual-gap 分类
 
 | Shortcut / 用户路线 | 最终分类 | 依据 |
 |---|---|---|
-| `+list-executed`、`+list-submitted`、`+my-initiated`、`+search-forms` | fully unlocked | exact 非空与保证零命中均通过；public |
+| `+search-forms` | fully unlocked | current HEAD exact/raw：已知非空 1、保证零命中 0，稳定身份集合一致；public |
+| `+list-executed` | delivery hardened but downstream blocked | known-nonempty exact/raw 7 个稳定身份一致；guaranteed-zero raw 缺 `hasMore`，严格实现拒绝 |
+| `+list-submitted`、`+my-initiated` | delivery hardened but downstream blocked | known-nonempty exact/raw 14 个稳定身份一致；guaranteed-zero raw 缺 `hasMore`，严格实现拒绝 |
 | `+done-approvals` | routed | available 的隐藏兼容别名；新调用路由到 `+list-executed` |
 | `+list-forms` | delivery hardened but downstream blocked | exact 与 raw 均缺 continuation，改变 cursor 后集合高度重叠 |
 | `+list-pending` | delivery hardened but downstream blocked | exact 与 raw 均得到 `success=true`，但 `result.values` 为 `null` 而不是合法空数组 |
@@ -24,14 +26,22 @@
 | `+approve-by` | unavailable | 复合编排与确认门禁已实现，但没有隔离待办、终态读回和可恢复清理 fixture |
 | 已知实例/任务的详情与写操作 | routed | 使用精确 OA 原子命令；必须由用户提供真实目标并单独确认，不等于 Shortcut 已解锁 |
 
-OA 不能作为整体宣称 fully unlocked：源码 10 条中仅 4 条 fully unlocked，1 条兼容路由，3 条下游阻塞，2 条 unavailable。
+OA 不能作为整体宣称 fully unlocked：源码 10 条中仅 1 条 fully unlocked，1 条兼容路由，6 条 delivery hardened but downstream blocked，2 条业务能力 unavailable；Catalog unavailable 共 8 条。
+
+### Current HEAD 公开 Shortcut 双层发布矩阵
+
+| EVERY public Shortcut | Exact Shortcut | Owning atomic/raw | known-nonempty / guaranteed-zero | current HEAD 结论 |
+|---|---|---|---|---|
+| `oa +search-forms` | `dws oa +search-forms --query <known-or-random-query> --format json` | `dws oa approval search-forms --query <same-query> --format json` | 已知查询 1/1，稳定 `processCode` 集合相等；随机 UUID 查询 0/0 | `PASS-OA-SEARCH-DOUBLE`；fully unlocked |
+
+该搜索接口一次返回完整匹配集合，不声明 cursor；双层证据验证的是同场景完整集合、稳定身份和独立随机零命中，而不是把已知集合后的空页当零命中。实现与严格响应测试位于 `internal/shortcut/oa/oa.go`、`internal/shortcut/oa/common.go` 和 `internal/shortcut/oa/oa_strict_cross_platform_coverage_test.go`。
 
 | Exact Shortcut 证明 | 标签 | 聚合事实 |
 |---|---|---|
-| `+list-executed` | PASS | 已知非空 7；保证零命中 0；分页终态明确 |
-| `+list-submitted` | PASS | 已知非空 14；保证零命中 0；分页终态明确 |
-| `+my-initiated` | PASS | 已知非空 14；保证零命中 0；不再回退原始响应 |
-| `+search-forms` | PASS | 已知非空 2；保证零命中 0；显式完整结果 |
+| `+list-executed` fail-closed | PASS | current HEAD known-nonempty exact/raw 为 7 且稳定身份集合一致；guaranteed-zero raw 缺 `hasMore`，exact 返回 `missing_pagination` |
+| `+list-submitted` fail-closed | PASS | current HEAD known-nonempty exact/raw 为 14 且稳定身份集合一致；guaranteed-zero raw 缺 `hasMore`，exact 返回 `missing_pagination` |
+| `+my-initiated` fail-closed | PASS | current HEAD known-nonempty exact/raw 为 14 且稳定身份集合一致；不回退 raw；guaranteed-zero 缺分页时失败 |
+| `+search-forms` | PASS | current HEAD 已知非空 1、保证零命中 0；exact/raw 稳定身份集合一致 |
 | `+done-approvals`（隐藏兼容） | PASS | 已知非空 7；首屏终态明确 |
 | `+list-forms` fail-closed | PASS | 非空页缺 continuation 被拒绝；两个 cursor 的 93/93 项重叠 92 项 |
 | `+approve-by` 确认门禁单测 | PASS | 确认前 0 调用；确认后固定为读待办、读任务、写审批、精确任务读回 |
@@ -49,12 +59,12 @@ Lark approval 共 14 个任务；映射按用户结果而不是命令名判断�
 |---|---|---|---|
 | approvals get | `oa approval form-schema` | routed | 使用原子读取 |
 | approvals search | `oa +search-forms` | covered | 公开 Shortcut |
-| instances initiated | `oa +list-submitted` / `+my-initiated` | covered | 公开 Shortcut |
+| instances initiated | `oa approval list-submitted` | routed | 两条 Shortcut 因 guaranteed-zero 缺分页证据而 unavailable；使用精确原子读取 |
 | instances get | `oa approval detail` | routed | 使用原子读取 |
 | instances cancel | `oa approval revoke` | routed | 高风险原子写；无可逆 fixture，不新增公开 Shortcut |
 | instances cc | `oa approval oa-cc-noticer` | routed | 无安全 fixture，保持原子入口 |
 | instances create | `oa approval forecast-process` + `create-instance` | routed | 无可清理实例 fixture，不新增公开 Shortcut |
-| tasks query | 四类列表与 `oa approval tasks` | delivery hardened but downstream blocked | 已办/已发起公开；待办返回 `null` 集合，抄送返回错型状态与 `null` 集合 |
+| tasks query | 四类列表与 `oa approval tasks` | delivery hardened but downstream blocked | 已办/已发起非空可读，但零命中缺分页；待办返回 `null` 集合，抄送返回错型状态与 `null` 集合 |
 | tasks add_sign | `oa approval append-task` | routed | 无安全 fixture，保持原子入口 |
 | tasks approve | `oa approval approve` / `+approve-by` | routed / unavailable | 原子写需用户确认；复合 Shortcut unavailable |
 | tasks reject | `oa approval reject` | routed | 无安全 fixture，保持原子入口 |
@@ -102,6 +112,13 @@ DWS 现有原子能力还覆盖审批记录、表单 Schema、流程预测、评
   - 批量/多步操作提供逐项 ledger；任一失败不得返回整体 success。
 - 验收：Exact Shortcut 写入后以相同实例与 taskId 读回请求关键状态；回执缺失、读回不一致、异步超时和部分失败均机器可检测；安全 fixture 完成恢复与零残留。
 - 临时处置：`+approve-by` 保持 hidden/unavailable；当前实现即使写调用成功，读回无法证明时也返回非成功且标记 execution started。
+
+## `DS-oa-004`：编号列表零命中的分页终态
+
+- 优先级：P1；类型：contract insufficient；Owner：OA MCP adapter 与业务接口。
+- 影响：`+list-executed`、`+list-submitted`、`+my-initiated`。current HEAD 的 known-nonempty exact/raw 分别以 7、14、14 个稳定身份完全对齐，且 raw 明确 `hasMore=false`；但 guaranteed-zero-query 的 raw 响应只返回显式空 `values`，缺少 `hasMore`。
+- 严格处置：空数组不推导分页终态。Shortcut 对缺 `hasMore` 返回 `missing_pagination`，三条命令均为 hidden/unavailable。
+- 验收：同一 guaranteed-zero-query 的 raw 响应必须返回布尔 `hasMore=false`；若将来允许 continuation，则必须提供可执行且严格前进的页码/游标，不能依赖集合长度推断。
 
 ## 超越 Lark 的机会
 

@@ -41,7 +41,7 @@ func oaInstancePage(rt *shortcut.RuntimeContext, tool string, params map[string]
 	if err != nil {
 		return err
 	}
-	evidence, err := oaHasMorePage(result, operation, len(instances), page)
+	evidence, err := oaHasMorePage(result, operation, page)
 	if err != nil {
 		return err
 	}

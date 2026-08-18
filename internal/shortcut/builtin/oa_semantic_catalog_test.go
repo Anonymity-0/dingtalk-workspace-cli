@@ -77,7 +77,7 @@ func TestCrossPlatformCoverageOASemanticCatalogExactlyCoversRegisteredSurface(t 
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 4 || unavailable != 5 {
-		t.Fatalf("public/unavailable=%d/%d, want 4/5", public, unavailable)
+	if public != 1 || unavailable != 8 {
+		t.Fatalf("public/unavailable=%d/%d, want 1/8", public, unavailable)
 	}
 }

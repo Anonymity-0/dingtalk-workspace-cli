@@ -347,17 +347,10 @@ func oaCursorPage(result map[string]any, operation string, current int) (oaPageE
 	return page, nil
 }
 
-func oaHasMorePage(result map[string]any, operation string, itemCount, currentPage int) (oaPageEvidence, error) {
+func oaHasMorePage(result map[string]any, operation string, currentPage int) (oaPageEvidence, error) {
 	raw, present := result["hasMore"]
 	if !present {
-		// Reviewed OA zero-page encoding: get_done_tasks,
-		// get_submitted_instances, and get_noticed_instances omit hasMore only
-		// when result.values is an explicit empty array. No other missing
-		// pagination shape is accepted.
-		if itemCount == 0 {
-			return oaPageEvidence{Known: true}, nil
-		}
-		return oaPageEvidence{}, oaResponseError(operation, "missing_pagination", "非空审批列表缺少 hasMore，无法证明结果完整或提供续页凭据")
+		return oaPageEvidence{}, oaResponseError(operation, "missing_pagination", "审批列表缺少 hasMore，无法证明结果完整或提供续页凭据")
 	}
 	hasMore, ok := raw.(bool)
 	if !ok {
