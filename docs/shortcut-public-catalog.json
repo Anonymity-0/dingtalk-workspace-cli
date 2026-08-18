@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-18T17:38:50.904696",
-  "count": 436,
+  "generated_at": "2026-08-18T12:08:16.875520",
+  "count": 433,
   "results": [
     {
       "suite": "semantic",
@@ -933,137 +933,174 @@
       "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+check-record",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "查询原始打卡流水；只有显式成功数组可表示空结果，缺字段、错型或坏记录均失败。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+check-result",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "对齐 Lark attendance user_tasks query 的打卡结果任务；严格验证 success 与显式 result 数组，并公开 offset/limit 的完整性和 nextOffset 证据。",
+      "availability": "available"
     },
     {
-      "suite": "read",
-      "service": "attendance",
-      "command": "+get-adjustment-rule",
-      "risk": "read",
-      "status": "real-ok"
-    },
-    {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+get-approve-template",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "把补卡、请假、加班、外出、出差映射为审批模板类型，并严格验证模板数组。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+get-checkin-record",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格读取 result.list 签到数组，区分外勤签到与考勤打卡流水。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
+      "service": "attendance",
+      "command": "+get-class",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "使用搜索得到的班次 ID 读取详情，要求显式成功和非空 result；已用同一真实班次完成搜索到详情闭环。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
       "service": "attendance",
       "command": "+get-leave-records",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "按用户、假期编码和日期读取余额变更记录；显式空数组合法，缺失结果或坏记录失败。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+get-overtime-rule",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "使用搜索得到的加班规则 ID 读取详情，严格拒绝空 result；真实搜索到详情闭环已通过。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+get-schedule",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "规范日期范围并严格验证排班数组；缺失或畸形响应不再成为空排班。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+get-self-setting",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "按用户和设置场景读取个人考勤开关，要求显式业务成功和非空 result。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+get-summary",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "schema_leaf",
+      "semantic_delta": "按周或月读取个人考勤摘要，要求显式业务成功和非空 result。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+list-approve",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "把审批类型语义映射为业务枚举并严格验证审批数组；真实非空与空结果均已执行。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+list-leave-types",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格验证显式假期类型数组，为假期编码的后续读取提供可验证入口。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+my-attendance",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "自动解析当前用户并查询今天的打卡流水，最终仍按严格 success/result 数组契约输出。",
+      "availability": "available"
     },
     {
-      "suite": "read",
-      "service": "attendance",
-      "command": "+query-report-data",
-      "risk": "read",
-      "status": "real-ok"
-    },
-    {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+search-adjustment-rule",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格读取 result.adjustmentList、展开 entityVO、要求稳定规则 ID，并公开分页完整性证据。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+search-class",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格读取 result.items、展开 shiftVO、要求稳定班次 ID，并公开 page/totalCount 完整性证据。",
+      "availability": "available"
     },
     {
-      "suite": "read",
-      "service": "attendance",
-      "command": "+search-group",
-      "risk": "read",
-      "status": "real-ok"
-    },
-    {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+search-overtime-rule",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格读取 result.atRuleList、展开 entityVO、要求稳定规则 ID，并公开分页完整性证据。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "attendance",
       "command": "+this-month",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "自动解析当前用户并查询本月打卡流水，最终仍按严格 success/result 数组契约输出。",
+      "availability": "available"
     },
     {
       "suite": "semantic",

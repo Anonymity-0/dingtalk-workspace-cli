@@ -34,6 +34,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/responsecheck"
 )
 
 const (
@@ -205,6 +206,13 @@ var CheckResult = shortcut.Shortcut{
 	},
 	Tips: []string{`dws attendance +check-result --users userId1,userId2 --start 2026-04-01 --end 2026-04-30 --limit 50`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		limit, offset := rt.Int("limit"), rt.Int("offset")
+		if limit < 1 || limit > 1000 {
+			return fmt.Errorf("--limit 必须在 1 到 1000 之间")
+		}
+		if offset < 0 {
+			return fmt.Errorf("--offset 不能小于 0")
+		}
 		from, err := dayDateTime(rt.Str("start"))
 		if err != nil {
 			return err
@@ -213,15 +221,29 @@ var CheckResult = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return rt.CallMCP("query_check_result", map[string]any{
+		params := map[string]any{
 			"QueryCheckResultRequest": map[string]any{
 				"userIds":      rt.StrSlice("users"),
 				"workDateFrom": from,
 				"workDateTo":   to,
-				"offset":       rt.Int("offset"),
-				"limit":        rt.Int("limit"),
+				"offset":       offset,
+				"limit":        limit,
 			},
-		})
+		}
+		data, err := rt.CallMCPData(serverWukong, "query_check_result", params)
+		if err != nil {
+			return err
+		}
+		records, err := responsecheck.RequireObjectCollection(data, serverWukong+"/query_check_result", "result")
+		if err != nil {
+			return err
+		}
+		complete := len(records) < limit
+		extra := map[string]any{"limit": limit}
+		if !complete {
+			extra["nextOffset"] = offset + len(records)
+		}
+		return rt.Output(attendanceCollectionPayload("records", records, complete, extra))
 	},
 }
 
@@ -273,13 +295,13 @@ var CheckRecord = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return rt.CallMCP("query_check_record", map[string]any{
+		return attendanceCallCollection(rt, serverWukong, "query_check_record", map[string]any{
 			"QueryCheckRecordRequest": map[string]any{
 				"userIds":       rt.StrSlice("users"),
 				"checkDateFrom": from,
 				"checkDateTo":   to,
 			},
-		})
+		}, "records", true, nil, "result")
 	},
 }
 
@@ -346,14 +368,14 @@ var ListApprove = shortcut.Shortcut{
 			}
 			bizTypes = append(bizTypes, bizType)
 		}
-		return rt.CallMCP("query_user_approve", map[string]any{
+		return attendanceCallCollection(rt, serverWukong, "query_user_approve", map[string]any{
 			"QueryUserApproveRequest": map[string]any{
 				"userIds":  rt.StrSlice("users"),
 				"bizTypes": bizTypes,
 				"fromDate": from,
 				"toDate":   to,
 			},
-		})
+		}, "approvals", true, nil, "result")
 	},
 }
 
@@ -405,9 +427,9 @@ var GetApproveTemplate = shortcut.Shortcut{
 		default:
 			return fmt.Errorf("无效的审批类型: %s，支持: repair-check/补卡、leave/请假、overtime/加班、travel/外出、out/出差，或 REPAIR_CHECK/LEAVE/OVERTIME/TRAVEL/OUT", input)
 		}
-		return rt.CallMCP("query_at_approve_template", map[string]any{
+		return attendanceCallCollection(rt, serverWukong, "query_at_approve_template", map[string]any{
 			"approveType": approveType,
-		})
+		}, "templates", true, nil, "result")
 	},
 }
 
@@ -464,13 +486,13 @@ var GetSchedule = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return rt.CallMCP("getScheduleByRange", map[string]any{
+		return attendanceCallCollection(rt, serverWukong, "getScheduleByRange", map[string]any{
 			"GetScheduleByRangeRequest": map[string]any{
 				"userIdList":    rt.StrSlice("users"),
 				"workDateBegin": begin,
 				"workDateEnd":   end,
 			},
-		})
+		}, "schedules", true, nil, "result")
 	},
 }
 
@@ -565,13 +587,11 @@ var SearchClass = shortcut.Shortcut{
 	},
 	Tips: []string{`dws attendance +search-class --query "早班" --filter-type MINE_OWN`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		pageQuery := map[string]any{}
-		if v := rt.Int("page"); v > 0 {
-			pageQuery["pageIndex"] = v
+		page, limit, err := attendancePageInput(rt)
+		if err != nil {
+			return err
 		}
-		if v := rt.Int("limit"); v > 0 {
-			pageQuery["pageSize"] = v
-		}
+		pageQuery := map[string]any{"pageIndex": page, "pageSize": limit}
 		shiftParam := map[string]any{}
 		if v := rt.Str("query"); v != "" {
 			shiftParam["searchName"] = v
@@ -590,69 +610,56 @@ var SearchClass = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		classes := searchClassProject(data)
-		return rt.Output(map[string]any{"count": len(classes), "classes": classes})
+		classes, err := searchClassProject(data)
+		if err != nil {
+			return err
+		}
+		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_class_list", page, limit)
+		if err != nil {
+			return err
+		}
+		return rt.Output(attendanceCollectionPayload("classes", classes, complete, extra))
 	},
 }
 
 // searchClassProject reshapes the raw get_class_list response into a clean class
 // list ({classId, name, ownerName}) — clean output projection. Both
 // the list container and per-item field names are probed defensively across
-// candidate keys, so an unknown/empty shape yields an empty list rather than a
-// crash or fabricated data.
-func searchClassProject(data map[string]any) []map[string]any {
-	raw := attendanceResolveList(data, "classList", "shiftList", "list", "items")
+// result.items is the reviewed wire path. Missing/wrong collections and bad
+// rows fail closed instead of becoming an empty list.
+func searchClassProject(data map[string]any) ([]map[string]any, error) {
+	raw, err := responsecheck.RequireObjectCollection(data, serverWukong+"/get_class_list", "result.items")
+	if err != nil {
+		return nil, err
+	}
 	out := make([]map[string]any, 0, len(raw))
-	for _, item := range raw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
+	for index, item := range raw {
+		m := item
 		// get_class_list wraps each shift's identity/label under shiftVO
 		// (item = {"shiftVO": {id, name, ...}}); unwrap it first, otherwise every
 		// row projects empty and the whole command silently returns nothing.
-		if vo, ok := m["shiftVO"].(map[string]any); ok {
+		if value, present := m["shiftVO"]; present {
+			vo, ok := value.(map[string]any)
+			if !ok || len(vo) == 0 {
+				return nil, responsecheck.Error(serverWukong+"/get_class_list", "malformed_item", fmt.Sprintf("result.items[%d].shiftVO 不是非空对象", index))
+			}
 			m = vo
 		}
 		row := map[string]any{}
-		if v, ok := attendanceFirst(m, "id", "classId", "class_id"); ok {
-			row["classId"] = v
+		v, ok := attendanceFirst(m, "id", "classId", "class_id")
+		if !ok || v == nil {
+			return nil, responsecheck.Error(serverWukong+"/get_class_list", "missing_item_identity", fmt.Sprintf("result.items[%d] 缺少班次 ID", index))
 		}
+		row["classId"] = v
 		if v, ok := attendanceFirst(m, "name", "className", "class_name"); ok {
 			row["name"] = v
 		}
 		if v, ok := attendanceFirst(m, "ownerName", "owner_name", "owner"); ok {
 			row["ownerName"] = v
 		}
-		if len(row) > 0 {
-			out = append(out, row)
-		}
+		out = append(out, row)
 	}
-	return out
-}
-
-// attendanceResolveList locates the list payload inside a response, tolerating a
-// bare top-level array under a common container key or nesting one level deeper
-// under result/data. extraKeys are probed ahead of the generic containers.
-func attendanceResolveList(data map[string]any, extraKeys ...string) []any {
-	keys := append(append([]string{}, extraKeys...), "result", "data", "list", "items")
-	for _, key := range keys {
-		v, ok := data[key]
-		if !ok {
-			continue
-		}
-		if arr, ok := v.([]any); ok {
-			return arr
-		}
-		if inner, ok := v.(map[string]any); ok {
-			for _, ik := range append(append([]string{}, extraKeys...), "list", "items", "result", "data") {
-				if arr, ok := inner[ik].([]any); ok {
-					return arr
-				}
-			}
-		}
-	}
-	return []any{}
+	return out, nil
 }
 
 // attendanceFirst returns the first present candidate key's value.
@@ -673,12 +680,37 @@ var GetClass = shortcut.Shortcut{
 	Description: "根据班次 ID 查询班次详情",
 	Intent:      "当你已知某个班次的 ID、想查看它的完整配置（上下班时间段、休息时段、负责人等）时使用，例如更新班次前先读取现状；输入班次 ID，返回该班次的详细设置。若不知道班次 ID，先用 +search-class 搜索。",
 	Risk:        shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "attendance",
+			Name:           "shortcut_get_class",
+			CanonicalPath:  "attendance.shortcut_get_class",
+			CLIPath:        "attendance +get-class",
+			PrimaryCLIPath: "attendance +get-class",
+		},
+		Description: "根据班次 ID 查询班次详情",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns strict response validation and output projection for this attendance detail operation.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "根据班次 ID 查询班次详情",
+			UseWhen:      []string{"当你已知某个班次的 ID、想查看它的完整配置（上下班时间段、休息时段、负责人等）时使用，例如更新班次前先读取现状；输入班次 ID，返回该班次的详细设置。若不知道班次 ID，先用 +search-class 搜索。"},
+			AvoidWhen:    []string{"不知道班次 ID 时先用 +search-class；不要用本读取命令代替创建或更新班次。"},
+			Examples:     []string{"dws attendance +get-class --class-id 12345"},
+		},
+	},
 	Flags: []shortcut.Flag{
 		{Name: "class-id", Type: shortcut.FlagInt, Desc: "班次 ID", Required: true},
 	},
 	Tips: []string{`dws attendance +get-class --class-id 1170996821`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return rt.CallMCP("get_class_detail", map[string]any{
+		return attendanceCallObject(rt, serverWukong, "get_class_detail", map[string]any{
 			"classId": int64(rt.Int("class-id")),
 		})
 	},
@@ -785,8 +817,8 @@ var GetAdjustmentRule = shortcut.Shortcut{
 		Description: "根据补卡规则主键 ID 查询补卡规则详情",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
-			Availability: "available",
-			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+			Availability: "unavailable",
+			Reason:       "The detail service returns success=true with result=null for IDs obtained from the live adjustment-rule search; the command remains hidden until the downstream ID/result contract is repaired.",
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "根据补卡规则主键 ID 查询补卡规则详情",
@@ -800,7 +832,7 @@ var GetAdjustmentRule = shortcut.Shortcut{
 	},
 	Tips: []string{`dws attendance +get-adjustment-rule --adjustment-id 12345`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return rt.CallMCP("get_adjustment_rule_detail", map[string]any{
+		return attendanceCallObject(rt, serverWukong, "get_adjustment_rule_detail", map[string]any{
 			"adjustmentId": int64(rt.Int("adjustment-id")),
 		})
 	},
@@ -812,7 +844,7 @@ var SearchAdjustmentRule = shortcut.Shortcut{
 	Command:     "+search-adjustment-rule",
 	Product:     serverWukong,
 	Description: "查询当前用户可管理的补卡规则列表",
-	Intent:      "当你要浏览或按名称查找当前用户可管理的补卡规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回补卡规则列表。要看某条规则的完整内容用 +get-adjustment-rule。",
+	Intent:      "当你要浏览或按名称查找当前用户可管理的补卡规则时使用；可选按规则名关键字模糊搜索并分页，返回带稳定候选 ID 的补卡规则列表。当前下游详情接口对搜索得到的 ID 返回空 result，因此本命令不承诺可继续读取详情。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
@@ -834,8 +866,8 @@ var SearchAdjustmentRule = shortcut.Shortcut{
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "查询当前用户可管理的补卡规则列表",
-			UseWhen:      []string{"当你要浏览或按名称查找当前用户可管理的补卡规则、以便拿到规则 ID 做进一步查看时使用；可选按规则名关键字模糊搜索并分页，返回补卡规则列表。要看某条规则的完整内容用 +get-adjustment-rule。"},
-			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			UseWhen:      []string{"当你要浏览或按名称查找当前用户可管理的补卡规则时使用；可选按规则名关键字模糊搜索并分页，返回带稳定候选 ID 的补卡规则列表。当前下游详情接口对搜索得到的 ID 返回空 result，因此本命令不承诺可继续读取详情。"},
+			AvoidWhen:    []string{"需要完整补卡规则详情时应报告当前下游详情能力 unavailable，不要把搜索摘要或空 result 当作详情成功"},
 			Examples:     []string{"dws attendance +search-adjustment-rule --query \"标准\" --page 1 --limit 50"},
 		},
 	},
@@ -850,13 +882,9 @@ var SearchAdjustmentRule = shortcut.Shortcut{
 		if v := rt.Str("query"); v != "" {
 			param["name"] = v
 		}
-		page := rt.Int("page")
-		if page <= 0 {
-			page = 1
-		}
-		limit := rt.Int("limit")
-		if limit <= 0 {
-			limit = 20
+		page, limit, err := attendancePageInput(rt)
+		if err != nil {
+			return err
 		}
 		param["currentPage"] = page
 		param["pageSize"] = limit
@@ -866,44 +894,54 @@ var SearchAdjustmentRule = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		rules := searchRuleProject(data)
-		return rt.Output(map[string]any{"count": len(rules), "rules": rules})
+		rules, err := searchRuleProject(data, serverWukong+"/get_adjustment_rule", "result.adjustmentList")
+		if err != nil {
+			return err
+		}
+		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_adjustment_rule", page, limit)
+		if err != nil {
+			return err
+		}
+		return rt.Output(attendanceCollectionPayload("rules", rules, complete, extra))
 	},
 }
 
 // searchRuleProject reshapes the raw get_adjustment_rule / get_overtime_rule
-// response into a clean rule list ({ruleId, name}) — output-projection fidelity
-// for clean output. The list container and per-item field names are probed defensively
-// across candidate keys, so an unknown/empty shape yields an empty list rather
-// than a crash or fabricated data.
-func searchRuleProject(data map[string]any) []map[string]any {
+// response into a clean rule list ({ruleId, name}). Each caller supplies the
+// single reviewed collection path; missing/wrong collections and malformed
+// rows fail closed instead of becoming an empty list.
+func searchRuleProject(data map[string]any, operation string, paths ...string) ([]map[string]any, error) {
 	// get_overtime_rule nests the list under result.atRuleList and
 	// get_adjustment_rule under result.adjustmentList; both wrap each rule's
 	// identity/label under entityVO. Probe those container keys AND unwrap
 	// entityVO, otherwise +search-overtime-rule / +search-adjustment-rule
 	// silently return empty despite the backend returning rules.
-	raw := attendanceResolveList(data, "atRuleList", "adjustmentList", "ruleList", "rules", "list", "items")
+	raw, err := responsecheck.RequireObjectCollection(data, operation, paths...)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]map[string]any, 0, len(raw))
-	for _, item := range raw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		if vo, ok := m["entityVO"].(map[string]any); ok {
+	for index, item := range raw {
+		m := item
+		if value, present := m["entityVO"]; present {
+			vo, ok := value.(map[string]any)
+			if !ok || len(vo) == 0 {
+				return nil, responsecheck.Error(operation, "malformed_item", fmt.Sprintf("规则结果第 %d 项 entityVO 不是非空对象", index))
+			}
 			m = vo
 		}
 		row := map[string]any{}
-		if v, ok := attendanceFirst(m, "id", "ruleId", "rule_id", "adjustmentId", "overtimeId"); ok {
-			row["ruleId"] = v
+		v, ok := attendanceFirst(m, "id", "ruleId", "rule_id", "adjustmentId", "overtimeId")
+		if !ok || v == nil {
+			return nil, responsecheck.Error(operation, "missing_item_identity", fmt.Sprintf("规则结果第 %d 项缺少规则 ID", index))
 		}
+		row["ruleId"] = v
 		if v, ok := attendanceFirst(m, "name", "ruleName", "rule_name"); ok {
 			row["name"] = v
 		}
-		if len(row) > 0 {
-			out = append(out, row)
-		}
+		out = append(out, row)
 	}
-	return out
+	return out, nil
 }
 
 // ── overtime rule ───────────────────────────────────────────
@@ -946,7 +984,7 @@ var GetOvertimeRule = shortcut.Shortcut{
 	},
 	Tips: []string{`dws attendance +get-overtime-rule --overtime-id 12345`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return rt.CallMCP("get_overtime_rule_detail", map[string]any{
+		return attendanceCallObject(rt, serverWukong, "get_overtime_rule_detail", map[string]any{
 			"overtimeId": int64(rt.Int("overtime-id")),
 		})
 	},
@@ -996,13 +1034,9 @@ var SearchOvertimeRule = shortcut.Shortcut{
 		if v := rt.Str("query"); v != "" {
 			param["name"] = v
 		}
-		page := rt.Int("page")
-		if page <= 0 {
-			page = 1
-		}
-		limit := rt.Int("limit")
-		if limit <= 0 {
-			limit = 20
+		page, limit, err := attendancePageInput(rt)
+		if err != nil {
+			return err
 		}
 		param["currentPage"] = page
 		param["pageSize"] = limit
@@ -1012,8 +1046,15 @@ var SearchOvertimeRule = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		rules := searchRuleProject(data)
-		return rt.Output(map[string]any{"count": len(rules), "rules": rules})
+		rules, err := searchRuleProject(data, serverWukong+"/get_overtime_rule", "result.atRuleList")
+		if err != nil {
+			return err
+		}
+		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_overtime_rule", page, limit)
+		if err != nil {
+			return err
+		}
+		return rt.Output(attendanceCollectionPayload("rules", rules, complete, extra))
 	},
 }
 
@@ -1042,8 +1083,8 @@ var SearchGroup = shortcut.Shortcut{
 		Description: "查询当前用户可管理的考勤组列表",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
-			Availability: "available",
-			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+			Availability: "unavailable",
+			Reason:       "Strict projection is implemented, but the current safe tenant has no known non-empty attendance-group fixture; live empty-only evidence is insufficient for publication.",
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "查询当前用户可管理的考勤组列表",
@@ -1079,13 +1120,9 @@ var SearchGroup = shortcut.Shortcut{
 			searchParam["queryPositionAndWifiNames"] = false
 			searchParam["queryBleDeviceList"] = false
 		}
-		page := rt.Int("page")
-		if page <= 0 {
-			page = 1
-		}
-		limit := rt.Int("limit")
-		if limit <= 0 {
-			limit = 20
+		page, limit, err := attendancePageInput(rt)
+		if err != nil {
+			return err
 		}
 		data, err := rt.CallMCPData(serverWukong, "get_simple_groups", map[string]any{
 			"param": searchParam,
@@ -1097,39 +1134,44 @@ var SearchGroup = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		groups := searchGroupProject(data)
-		return rt.Output(map[string]any{"count": len(groups), "groups": groups})
+		groups, err := searchGroupProject(data)
+		if err != nil {
+			return err
+		}
+		complete, extra, err := attendancePageEvidence(data, serverWukong+"/get_simple_groups", page, limit)
+		if err != nil {
+			return err
+		}
+		return rt.Output(attendanceCollectionPayload("groups", groups, complete, extra))
 	},
 }
 
 // searchGroupProject reshapes the raw get_simple_groups response into a clean
 // attendance-group list ({groupId, name, type}) — clean output projection.
-// The list container and per-item field names are probed defensively
-// across candidate keys, so an unknown/empty shape yields an empty list rather
-// than a crash or fabricated data.
-func searchGroupProject(data map[string]any) []map[string]any {
-	raw := attendanceResolveList(data, "groupList", "groups", "list", "items")
+// The exact result.items collection and each row identity are required, so an
+// unknown shape cannot masquerade as a legitimate empty search result.
+func searchGroupProject(data map[string]any) ([]map[string]any, error) {
+	raw, err := responsecheck.RequireObjectCollection(data, serverWukong+"/get_simple_groups", "result.items")
+	if err != nil {
+		return nil, err
+	}
 	out := make([]map[string]any, 0, len(raw))
-	for _, item := range raw {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
+	for index, m := range raw {
 		row := map[string]any{}
-		if v, ok := attendanceFirst(m, "id", "groupId", "group_id"); ok {
-			row["groupId"] = v
+		v, ok := attendanceFirst(m, "id", "groupId", "group_id")
+		if !ok || v == nil {
+			return nil, responsecheck.Error(serverWukong+"/get_simple_groups", "missing_item_identity", fmt.Sprintf("result.items[%d] 缺少考勤组 ID", index))
 		}
+		row["groupId"] = v
 		if v, ok := attendanceFirst(m, "name", "groupName", "group_name"); ok {
 			row["name"] = v
 		}
 		if v, ok := attendanceFirst(m, "type", "groupType", "group_type"); ok {
 			row["type"] = v
 		}
-		if len(row) > 0 {
-			out = append(out, row)
-		}
+		out = append(out, row)
 	}
-	return out
+	return out, nil
 }
 
 // GetGroup 根据考勤组 ID 查询考勤组全量信息（get_group_detail）。
@@ -1379,7 +1421,7 @@ var GetSummary = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return rt.CallMCP("get_user_attendance_summary", map[string]any{
+		return attendanceCallObject(rt, serverWukong, "get_user_attendance_summary", map[string]any{
 			"userId":    rt.Str("user"),
 			"queryDate": queryDate,
 			"statsType": rt.Str("stats-type"),
@@ -1431,7 +1473,7 @@ var GetSelfSetting = shortcut.Shortcut{
 	},
 	Tips: []string{`dws attendance +get-self-setting --setting-scene checkRemind --user USER_ID`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return rt.CallMCP("query_self_setting", map[string]any{
+		return attendanceCallObject(rt, serverWukong, "query_self_setting", map[string]any{
 			"RuleMcpQuerySelfSettingRequest": map[string]any{
 				"settingScene": rt.Str("setting-scene"),
 				"userId":       rt.Str("user"),
@@ -1503,8 +1545,8 @@ var QueryReportData = shortcut.Shortcut{
 		Description: "根据字段查询考勤报表数据（仅管理员）",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
-			Availability: "available",
-			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+			Availability: "unavailable",
+			Reason:       "The downstream report-column discovery returns null, so no verified column ID exists for an exact non-empty report-data E2E; the command remains hidden until that contract is repaired.",
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "根据字段查询考勤报表数据（仅管理员）",
@@ -1541,7 +1583,7 @@ var QueryReportData = shortcut.Shortcut{
 			}
 			columnIds = append(columnIds, id)
 		}
-		return rt.CallMCP("get_report_columns_value", map[string]any{
+		return attendanceCallValue(rt, serverWukong, "get_report_columns_value", map[string]any{
 			"McpQueryParam": map[string]any{
 				"targetUserIds": rt.StrSlice("users"),
 				"columnIds":     columnIds,
@@ -1624,9 +1666,9 @@ var ListLeaveTypes = shortcut.Shortcut{
 	},
 	Tips: []string{`dws attendance +list-leave-types`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		return rt.CallMCP("get_leave_types", map[string]any{
+		return attendanceCallCollection(rt, serverWukong, "get_leave_types", map[string]any{
 			"McpLeaveTypeRequest": map[string]any{},
-		})
+		}, "leaveTypes", true, nil, "result")
 	},
 }
 
@@ -1713,9 +1755,9 @@ var GetLeaveRecords = shortcut.Shortcut{
 		if v := rt.Str("leave-code"); v != "" {
 			req["leaveCode"] = v
 		}
-		return rt.CallMCP("get_leave_balance_records_v2", map[string]any{
+		return attendanceCallCollection(rt, serverWukong, "get_leave_balance_records_v2", map[string]any{
 			"McpLeaveRecordRequest": req,
-		})
+		}, "records", true, nil, "result")
 	},
 }
 
@@ -1894,7 +1936,7 @@ var GetCheckinRecord = shortcut.Shortcut{
 		if endT.Before(startT) {
 			return fmt.Errorf("--end 不能早于 --start")
 		}
-		return rt.CallMCP("get_checkin_record", map[string]any{
+		return attendanceCallCollection(rt, serverWukong, "get_checkin_record", map[string]any{
 			"QueryMcpUserRecordRequest": map[string]any{
 				"operatorCorpId":  rt.Str("operator-corp-id"),
 				"operatorStaffId": rt.Str("operator-staff-id"),
@@ -1902,7 +1944,7 @@ var GetCheckinRecord = shortcut.Shortcut{
 				"startTime":       startStr,
 				"endTime":         endStr,
 			},
-		})
+		}, "records", true, nil, "result.list")
 	},
 }
 
@@ -1954,6 +1996,7 @@ var BossCheck = shortcut.Shortcut{
 }
 
 func init() {
+	hardenPublicAttendanceContracts()
 	shortcut.Register(
 		CheckResult,
 		CheckRecord,
