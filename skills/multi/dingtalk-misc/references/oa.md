@@ -31,6 +31,57 @@ Flags:
       --instance-id string   审批实例 ID (必填)
 ```
 
+### 审批附件授权与下载
+
+先从 `approval detail` 的返回中取得审批实例 `processInstanceId`、附件 `fileId`，以及授权下载所需的 `spaceId`。根据目标选择命令：
+
+- 需要单个附件的临时下载链接：`attachment download-url`
+- 已有钉盘 `spaceId/fileId`，需要为当前用户批量开通下载权限：`attachment authorize-download`
+- 需要在审批场景内批量预览附件：`attachment authorize-preview`
+
+#### 获取审批附件临时下载链接
+
+```
+Usage:
+  dws oa approval attachment download-url [flags]
+Example:
+  dws oa approval attachment download-url --instance-id <processInstanceId> --file-id <fileId> --format json
+Flags:
+      --instance-id string          审批实例 ID (必填)
+      --file-id string              审批附件文件 ID (必填)
+      --with-comment-attachment     是否包含评论中的附件 (可选，默认不包含)
+```
+
+该命令只返回临时下载链接，不会自动保存文件。链接包含 OSS 签名参数，应在生成后立即使用；JSON 输出中的 `&` 是签名参数分隔符，复制链接时必须完整保留。附件来自审批评论时增加 `--with-comment-attachment`。
+
+#### 批量授权下载审批钉盘文件
+
+```
+Usage:
+  dws oa approval attachment authorize-download [flags]
+Example:
+  dws oa approval attachment authorize-download --file-infos '[{"spaceId":27827223951,"fileId":"232271651278"}]' --format json
+Flags:
+      --file-infos string   文件信息 JSON 数组 (必填)，每项包含数字类型 spaceId 和字符串类型 fileId，最多 10 项
+```
+
+该命令为当前用户开通文件下载权限，但不返回下载链接。需要链接时继续调用 `attachment download-url`。
+
+#### 批量授权预览审批附件
+
+```
+Usage:
+  dws oa approval attachment authorize-preview [flags]
+Example:
+  dws oa approval attachment authorize-preview --instance-id <processInstanceId> --file-ids <fileId1>,<fileId2> --format json
+Flags:
+      --instance-id string          审批实例 ID (必填)
+      --file-ids strings            附件 ID 列表，逗号分隔 (必填)，最多 20 项
+      --with-comment-attachment     是否包含评论中的附件 (可选，默认不包含)
+```
+
+该命令只授权审批场景内的附件预览，不等同于下载授权。附件来自审批评论时增加 `--with-comment-attachment`。
+
 ### 同意审批
 
 > **CAUTION:** 审批决策不可撤回 — 执行前必须向用户确认。
@@ -670,6 +721,9 @@ Flags:
   - 示例："有没有外出申请的审批" → `approval list-pending --query 外出申请`
   - 示例："待审批"（无关键词）→ `approval list-pending`
 用户说"审批详情/看审批" → `approval detail`
+用户说"下载审批附件/获取审批附件下载链接" → `approval attachment download-url`（需 --instance-id 和 --file-id；评论附件增加 --with-comment-attachment）
+用户说"授权下载审批钉盘文件/批量开通附件下载权限" → `approval attachment authorize-download`（需 --file-infos，最多 10 项）
+用户说"预览审批附件/批量授权预览附件" → `approval attachment authorize-preview`（需 --instance-id 和 --file-ids，最多 20 项；评论附件增加 --with-comment-attachment）
 用户说"同意审批/批准" → 先 `tasks` 获取 taskId，再 `approve`
 用户说"拒绝审批/驳回" → 先 `tasks` 获取 taskId，再 `reject`
 用户说"撤回审批/取消审批" → `approval revoke`
