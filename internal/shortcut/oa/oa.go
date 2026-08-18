@@ -77,7 +77,8 @@ var ListPending = shortcut.Shortcut{
 		{Name: "limit", Type: shortcut.FlagString, Desc: "每页大小"},
 		{Name: "query", Type: shortcut.FlagString, Desc: "关键字搜索"},
 	},
-	Tips: []string{`dws oa +list-pending --start 1741536000000 --end 1741622399000 --page 1 --limit 20`},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end", "page", "limit"}, Description: "--start/--end 必须是递增的正整数 epoch 毫秒；--page 必须大于 0；--limit 必须在 1-100"}},
+	Tips:        []string{`dws oa +list-pending --start 1741536000000 --end 1741622399000 --page 1 --limit 20`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		if rt.Int("start") <= 0 || rt.Int("end") <= rt.Int("start") {
 			return apperrors.NewValidation("--start/--end 必须是递增的正整数 epoch 毫秒范围")
@@ -126,7 +127,8 @@ var ListForms = shortcut.Shortcut{
 		{Name: "cursor", Type: shortcut.FlagInt, Default: "0", Desc: "分页游标，首次传 0"},
 		{Name: "limit", Type: shortcut.FlagInt, Default: "100", Desc: "每页大小，最大 100"},
 	},
-	Tips: []string{`dws oa +list-forms --cursor 0 --limit 100`},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"cursor", "limit"}, Description: "--cursor 不能小于 0；--limit 必须在 1-100"}},
+	Tips:        []string{`dws oa +list-forms --cursor 0 --limit 100`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		if rt.Int("cursor") < 0 {
 			return apperrors.NewValidation("--cursor 不能小于 0")
@@ -172,8 +174,9 @@ var SearchForms = shortcut.Shortcut{
 		[]contract.ParamDecl{{Name: "query", Property: "query"}},
 		"dws oa +search-forms --query 报销",
 	),
-	Flags: []shortcut.Flag{{Name: "query", Type: shortcut.FlagString, Desc: "关键字（匹配 processCode 或表单名称）", Required: true}},
-	Tips:  []string{`dws oa +search-forms --query 报销`},
+	Flags:       []shortcut.Flag{{Name: "query", Type: shortcut.FlagString, Desc: "关键字（匹配 processCode 或表单名称）", Required: true}},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"query"}, Description: "--query 去除空白后不能为空"}},
+	Tips:        []string{`dws oa +search-forms --query 报销`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		if rt.Str("query") == "" {
 			return apperrors.NewValidation("--query 不能为空")
@@ -208,7 +211,8 @@ func oaNumberedInstanceShortcut(command, tool, description, intent string) short
 			{Name: "limit", Type: shortcut.FlagString, Default: "20", Desc: "每页大小"},
 			{Name: "query", Type: shortcut.FlagString, Desc: "关键字搜索"},
 		},
-		Tips: []string{"dws oa " + command + " --page 1 --limit 20"},
+		Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"page", "limit"}, Description: "--page 必须大于 0；--limit 必须在 1-100"}},
+		Tips:        []string{"dws oa " + command + " --page 1 --limit 20"},
 	}
 	declaration.Validate = func(rt *shortcut.RuntimeContext) error {
 		page, err := parseOAStringPage(rt, "page", 1)

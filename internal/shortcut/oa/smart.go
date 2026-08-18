@@ -52,8 +52,9 @@ var PendingApprovals = shortcut.Shortcut{
 		oaCollectionResult("pending", "严格验证的待审批摘要"), nil,
 		[]contract.ParamDecl{{Name: "limit", Property: "pageSize"}}, "dws oa +pending --limit 10",
 	),
-	Flags: []shortcut.Flag{{Name: "limit", Type: shortcut.FlagInt, Desc: "最多列出多少条（可选）"}},
-	Tips:  []string{`dws oa +pending --limit 10`},
+	Flags:       []shortcut.Flag{{Name: "limit", Type: shortcut.FlagInt, Desc: "最多列出多少条（可选）"}},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "显式 --limit 必须在 1-100"}},
+	Tips:        []string{`dws oa +pending --limit 10`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		if rt.Changed("limit") && (rt.Int("limit") <= 0 || rt.Int("limit") > 100) {
 			return apperrors.NewValidation("--limit 必须在 1 到 100 之间")
@@ -83,8 +84,9 @@ var DoneApprovals = shortcut.Shortcut{
 		oaCollectionResult("done", "严格验证的已处理审批摘要"), nil,
 		[]contract.ParamDecl{{Name: "limit", Property: "pageSize"}}, "dws oa +done-approvals --limit 10",
 	),
-	Flags: []shortcut.Flag{{Name: "limit", Type: shortcut.FlagInt, Desc: "最多列出多少条（可选）"}},
-	Tips:  []string{`dws oa +done-approvals --limit 10`},
+	Flags:       []shortcut.Flag{{Name: "limit", Type: shortcut.FlagInt, Desc: "最多列出多少条（可选）"}},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"limit"}, Description: "显式 --limit 必须在 1-100"}},
+	Tips:        []string{`dws oa +done-approvals --limit 10`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		if rt.Changed("limit") && (rt.Int("limit") <= 0 || rt.Int("limit") > 100) {
 			return apperrors.NewValidation("--limit 必须在 1 到 100 之间")
@@ -119,8 +121,9 @@ var MyInitiated = shortcut.Shortcut{
 		{Name: "page", Type: shortcut.FlagInt, Desc: "分页页码（可选，默认 1）", Default: "1"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页大小（可选，默认 20）", Default: "20"},
 	},
-	Tips:     []string{`dws oa +my-initiated`, `dws oa +my-initiated --query 报销`, `dws oa +my-initiated --page 2 --limit 50`},
-	Validate: func(rt *shortcut.RuntimeContext) error { return validateOAPage(rt.Int("page"), rt.Int("limit")) },
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"page", "limit"}, Description: "--page 必须大于 0；--limit 必须在 1-100"}},
+	Tips:        []string{`dws oa +my-initiated`, `dws oa +my-initiated --query 报销`, `dws oa +my-initiated --page 2 --limit 50`},
+	Validate:    func(rt *shortcut.RuntimeContext) error { return validateOAPage(rt.Int("page"), rt.Int("limit")) },
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		const operation = "oa/get_submitted_instances"
 		params := map[string]any{"pageNumber": float64(rt.Int("page")), "pageSize": float64(rt.Int("limit"))}
@@ -184,7 +187,8 @@ var Approve = shortcut.Shortcut{
 		{Name: "keyword", Type: shortcut.FlagString, Desc: "待审批单据的单号或标题关键词", Required: true},
 		{Name: "comment", Type: shortcut.FlagString, Desc: "审批意见（可选）"},
 	},
-	Tips: []string{`dws oa +approve-by --keyword 报销`, `dws oa +approve-by --keyword 出差单 --comment "同意"`},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"keyword"}, Description: "--keyword 去除空白后不能为空，且必须唯一匹配完整待办集合中的一条实例"}},
+	Tips:        []string{`dws oa +approve-by --keyword 报销`, `dws oa +approve-by --keyword 出差单 --comment "同意"`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		if rt.Str("keyword") == "" {
 			return apperrors.NewValidation("--keyword 不能为空")
