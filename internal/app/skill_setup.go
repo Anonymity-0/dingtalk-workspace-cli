@@ -158,8 +158,12 @@ type skillSetupTargetPlan struct {
 	Destination   string
 	CanonicalBase string
 	Backups       []skillSetupBackup
-	CleanupOnly   bool
-	LinkCanonical bool
+	// OmittedCanonical lists replacement dests left out of Backups because
+	// they already resolved to canonical at plan time. Only these may be
+	// re-added by the copy fallback.
+	OmittedCanonical []string
+	CleanupOnly      bool
+	LinkCanonical    bool
 }
 
 type skillSetupPlan struct {
@@ -1314,6 +1318,9 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 		}
 		for _, path := range replacements {
 			if target.LinkCanonical && samePhysicalSkillSetupPath(path, filepath.Join(target.CanonicalBase, filepath.Base(path))) {
+				if !seen[path] {
+					target.OmittedCanonical = append(target.OmittedCanonical, path)
+				}
 				continue
 			}
 			_, statErr := skillSetupLstat(path)
@@ -1326,6 +1333,7 @@ func buildSkillSetupPlan(mode, src string, dests, multiSkillNames []string, filt
 			add(path, skillSetupBackupReplace)
 		}
 		sort.Slice(target.Backups, func(i, j int) bool { return target.Backups[i].Path < target.Backups[j].Path })
+		sort.Strings(target.OmittedCanonical)
 		if !target.CleanupOnly || len(target.Backups) > 0 {
 			plan.Targets = append(plan.Targets, target)
 		}
@@ -2065,15 +2073,35 @@ const (
 // direct-copy target. buildSkillSetupPlan omits the replacement backup for a
 // destination that already points at canonical, because linking would leave it
 // untouched. A copy must replace that destination instead, and
-// PublishSkillPathNoReplace refuses to overwrite it, so those paths are
-// re-added before the retry.
+// PublishSkillPathNoReplace refuses to overwrite it, so exactly those plan-time
+// omitted canonical links are re-added — and only while they still resolve to
+// canonical. This is not a live rescan of every dest: anything else that exists
+// now was absent from or has changed since the confirmed plan, so the fallback
+// aborts and the destination is left for a regenerated, reconfirmed plan.
 func skillSetupCopyFallbackTarget(plan *skillSetupPlan, target skillSetupTargetPlan) (skillSetupTargetPlan, error) {
 	fallback := target
 	fallback.LinkCanonical = false
 	fallback.Backups = append([]skillSetupBackup(nil), target.Backups...)
+	fallback.OmittedCanonical = nil
 	seen := make(map[string]bool, len(fallback.Backups))
 	for _, backup := range fallback.Backups {
 		seen[backup.Path] = true
+	}
+	for _, path := range target.OmittedCanonical {
+		if seen[path] {
+			continue
+		}
+		if _, err := skillSetupLstat(path); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return skillSetupTargetPlan{}, fmt.Errorf("检查将被替换的 Skill 失败 %s: %w", path, err)
+		}
+		if !samePhysicalSkillSetupPath(path, filepath.Join(target.CanonicalBase, filepath.Base(path))) {
+			return skillSetupTargetPlan{}, fmt.Errorf("确认后 Skill 目录已不再指向 canonical，需重新生成并确认安装计划 %s", path)
+		}
+		seen[path] = true
+		fallback.Backups = append(fallback.Backups, skillSetupBackup{Path: path, Reason: skillSetupBackupReplace})
 	}
 	replacements := []string{target.Destination}
 	if plan.Mode == skillSetupModeMulti {
@@ -2092,8 +2120,7 @@ func skillSetupCopyFallbackTarget(plan *skillSetupPlan, target skillSetupTargetP
 			}
 			return skillSetupTargetPlan{}, fmt.Errorf("检查将被替换的 Skill 失败 %s: %w", path, err)
 		}
-		seen[path] = true
-		fallback.Backups = append(fallback.Backups, skillSetupBackup{Path: path, Reason: skillSetupBackupReplace})
+		return skillSetupTargetPlan{}, fmt.Errorf("确认后同名 Skill 目录被占用，需重新生成并确认安装计划 %s", path)
 	}
 	sort.Slice(fallback.Backups, func(i, j int) bool { return fallback.Backups[i].Path < fallback.Backups[j].Path })
 	return fallback, nil

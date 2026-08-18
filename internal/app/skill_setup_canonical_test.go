@@ -474,6 +474,227 @@ func TestCrossPlatformCoverageSkillSetupCopyFallbackReportsUnreadableReplacement
 	}
 }
 
+func TestCrossPlatformCoverageSkillSetupCopyFallbackRefusesDestCreatedAfterConfirm(t *testing.T) {
+	home := t.TempDir()
+	canonical := filepath.Join(home, ".agents", "skills")
+	claude := filepath.Join(home, ".claude", "skills")
+	src := t.TempDir()
+	skillSrc := filepath.Join(src, "dingtalk-chat")
+	if err := os.MkdirAll(skillSrc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillSrc, "SKILL.md"), []byte("chat"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(claude, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	rejectSymlinkPublish(t)
+
+	// The Claude destination does not exist at plan time, so the confirmed
+	// plan records neither a backup nor an omitted canonical link for it.
+	plan, err := buildSkillSetupPlan(skillSetupModeMulti, src, []string{canonical, claude}, []string{"dingtalk-chat"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var claudePlan *skillSetupTargetPlan
+	for i := range plan.Targets {
+		if plan.Targets[i].Destination == claude {
+			claudePlan = &plan.Targets[i]
+		}
+	}
+	if claudePlan == nil {
+		t.Fatal("claude target missing from plan")
+	}
+	dest := filepath.Join(claude, "dingtalk-chat")
+	if len(claudePlan.Backups) != 0 || len(claudePlan.OmittedCanonical) != 0 {
+		t.Fatalf("claude backups = %#v omitted = %#v", claudePlan.Backups, claudePlan.OmittedCanonical)
+	}
+	// A concurrent writer occupies the destination after the user confirmed.
+	if err := os.MkdirAll(dest, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dest, "SKILL.md"), []byte("concurrent"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errOut bytes.Buffer
+	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
+	if err != nil {
+		t.Fatalf("execute err = %v; stderr=%s", err, errOut.String())
+	}
+	if installed != 1 || skipped != 1 {
+		t.Fatalf("execute = installed %d skipped %d; stderr=%s", installed, skipped, errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "确认后同名 Skill 目录被占用，需重新生成并确认安装计划") {
+		t.Fatalf("reconfirm guidance missing: %s", errOut.String())
+	}
+	body, readErr := os.ReadFile(filepath.Join(dest, "SKILL.md"))
+	if readErr != nil || string(body) != "concurrent" {
+		t.Fatalf("concurrent dest disturbed: %q, %v", body, readErr)
+	}
+	if strings.Contains(out.String(), "已备份并移除同名 Skill "+dest) {
+		t.Fatalf("unplanned dest was backed up: %s", out.String())
+	}
+}
+
+func TestCrossPlatformCoverageSkillSetupCopyFallbackReconfirmBacksUpNewDest(t *testing.T) {
+	home := t.TempDir()
+	canonical := filepath.Join(home, ".agents", "skills")
+	claude := filepath.Join(home, ".claude", "skills")
+	src := t.TempDir()
+	skillSrc := filepath.Join(src, "dingtalk-chat")
+	if err := os.MkdirAll(skillSrc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillSrc, "SKILL.md"), []byte("chat"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The destination exists before the plan is built, so a regenerated plan
+	// lists it as a confirmed replacement backup.
+	dest := filepath.Join(claude, "dingtalk-chat")
+	if err := os.MkdirAll(dest, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dest, "SKILL.md"), []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	rejectSymlinkPublish(t)
+
+	plan, err := buildSkillSetupPlan(skillSetupModeMulti, src, []string{canonical, claude}, []string{"dingtalk-chat"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var claudePlan *skillSetupTargetPlan
+	for i := range plan.Targets {
+		if plan.Targets[i].Destination == claude {
+			claudePlan = &plan.Targets[i]
+		}
+	}
+	if claudePlan == nil {
+		t.Fatal("claude target missing from plan")
+	}
+	planned := map[string]bool{}
+	for _, backup := range claudePlan.Backups {
+		planned[backup.Path] = true
+	}
+	if !planned[dest] {
+		t.Fatalf("regenerated plan does not back up %s: %#v", dest, claudePlan.Backups)
+	}
+
+	var out, errOut bytes.Buffer
+	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
+	if err != nil || installed != 2 || skipped != 0 {
+		t.Fatalf("execute = installed %d skipped %d err %v; stderr=%s", installed, skipped, err, errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "自动改用兼容安装") {
+		t.Fatalf("fallback message missing: %s", errOut.String())
+	}
+	// Every backup the run performed must be one the confirmed plan listed.
+	lastBackup := ""
+	for _, line := range strings.Split(out.String(), "\n") {
+		if !strings.HasPrefix(line, "  × 已备份并移除同名 Skill ") {
+			continue
+		}
+		fields := strings.SplitN(strings.TrimPrefix(line, "  × 已备份并移除同名 Skill "), " → ", 2)
+		if len(fields) != 2 || !planned[fields[0]] {
+			t.Fatalf("unplanned backup %q; plan = %#v", line, claudePlan.Backups)
+		}
+		if fields[0] == dest {
+			lastBackup = fields[1]
+		}
+	}
+	if lastBackup == "" {
+		t.Fatalf("dest never backed up: %s", out.String())
+	}
+	body, readErr := os.ReadFile(filepath.Join(lastBackup, "SKILL.md"))
+	if readErr != nil || string(body) != "stale" {
+		t.Fatalf("backup payload = %q, %v", body, readErr)
+	}
+	body, readErr = os.ReadFile(filepath.Join(dest, "SKILL.md"))
+	if readErr != nil || string(body) != "chat" {
+		t.Fatalf("published payload = %q, %v", body, readErr)
+	}
+}
+
+func TestCrossPlatformCoverageSkillSetupCopyFallbackAbortsWhenOmittedLinkNoLongerCanonical(t *testing.T) {
+	home := t.TempDir()
+	canonical := filepath.Join(home, ".agents", "skills")
+	claude := filepath.Join(home, ".claude", "skills")
+	src := t.TempDir()
+	skillSrc := filepath.Join(src, "dingtalk-chat")
+	if err := os.MkdirAll(skillSrc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillSrc, "SKILL.md"), []byte("chat"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(canonical, "dingtalk-chat"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(canonical, "dingtalk-chat", "SKILL.md"), []byte("canonical"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(claude, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(claude, "dingtalk-chat")
+	if err := os.Symlink(filepath.Join("..", "..", ".agents", "skills", "dingtalk-chat"), dest); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+	rejectSymlinkPublish(t)
+
+	plan, err := buildSkillSetupPlan(skillSetupModeMulti, src, []string{canonical, claude}, []string{"dingtalk-chat"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var claudePlan *skillSetupTargetPlan
+	for i := range plan.Targets {
+		if plan.Targets[i].Destination == claude {
+			claudePlan = &plan.Targets[i]
+		}
+	}
+	if claudePlan == nil {
+		t.Fatal("claude target missing from plan")
+	}
+	if len(claudePlan.OmittedCanonical) != 1 || claudePlan.OmittedCanonical[0] != dest {
+		t.Fatalf("omitted canonical = %#v", claudePlan.OmittedCanonical)
+	}
+	// After confirmation the link is replaced by unrelated content, so the
+	// fallback must not treat it as the planned canonical link anymore.
+	if err := os.Remove(dest); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dest, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dest, "SKILL.md"), []byte("hijack"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errOut bytes.Buffer
+	installed, skipped, err := executeSkillSetupPlan(plan, &out, &errOut)
+	if err != nil {
+		t.Fatalf("execute err = %v; stderr=%s", err, errOut.String())
+	}
+	if installed != 1 || skipped != 1 {
+		t.Fatalf("execute = installed %d skipped %d; stderr=%s", installed, skipped, errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "确认后 Skill 目录已不再指向 canonical，需重新生成并确认安装计划") {
+		t.Fatalf("reconfirm guidance missing: %s", errOut.String())
+	}
+	body, readErr := os.ReadFile(filepath.Join(dest, "SKILL.md"))
+	if readErr != nil || string(body) != "hijack" {
+		t.Fatalf("hijacked dest disturbed: %q, %v", body, readErr)
+	}
+	if strings.Contains(out.String(), "已备份并移除同名 Skill "+dest) {
+		t.Fatalf("unplanned dest was backed up: %s", out.String())
+	}
+}
+
 func TestCrossPlatformCoverageUpstreamAgentEnumerationAndEffectiveRoots(t *testing.T) {
 	home := t.TempDir()
 	testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
