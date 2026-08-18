@@ -27,9 +27,15 @@ func skillPathSameFileIdentityImpl(left, right os.FileInfo) bool {
 // immediately, so a concurrent replacement can look like the staged object.
 // ctime is omitted: writing a child updates the directory ctime and would
 // make an owned dest look foreign.
+// skillPathStatx is the seam behind skillPathFileIdentityImpl so tests can
+// exercise the kernels/filesystems that do not report STATX_BTIME.
+var skillPathStatx = func(path string, stx *unix.Statx_t) error {
+	return unix.Statx(unix.AT_FDCWD, path, unix.AT_SYMLINK_NOFOLLOW, unix.STATX_BASIC_STATS|unix.STATX_BTIME, stx)
+}
+
 func skillPathFileIdentityImpl(path string) string {
 	var stx unix.Statx_t
-	if err := unix.Statx(unix.AT_FDCWD, path, unix.AT_SYMLINK_NOFOLLOW, unix.STATX_BASIC_STATS|unix.STATX_BTIME, &stx); err != nil {
+	if err := skillPathStatx(path, &stx); err != nil {
 		return ""
 	}
 	if stx.Mask&unix.STATX_BTIME == 0 {
