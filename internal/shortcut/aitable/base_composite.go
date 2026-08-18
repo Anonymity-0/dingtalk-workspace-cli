@@ -204,7 +204,7 @@ func executeBaseBootstrap(rt *shortcut.RuntimeContext) error {
 		result.Status = "unknown"
 		result.FailedCount = len(tables)
 		result.Checkpoint = map[string]any{"nextStep": "resolve whether base was created before retrying"}
-		result.NextCommand = fmt.Sprintf("dws aitable +base-search --query %q --format json", rt.Str("name"))
+		result.NextCommand = aitableRecoveryCommand("dws", "aitable", "+base-search", "--query", rt.Str("name"), "--format", "json")
 		return compositeError(result, err, false)
 	}
 	baseID := findStringByKeys(baseData, "baseId")
@@ -212,11 +212,11 @@ func executeBaseBootstrap(rt *shortcut.RuntimeContext) error {
 		result.Status = "unknown"
 		result.Result = baseData
 		result.Checkpoint = map[string]any{"nextStep": "locate the created Base by exact name before retrying"}
-		result.NextCommand = fmt.Sprintf("dws aitable +base-search --query %q --format json", rt.Str("name"))
+		result.NextCommand = aitableRecoveryCommand("dws", "aitable", "+base-search", "--query", rt.Str("name"), "--format", "json")
 		return compositeError(result, fmt.Errorf("create_base response is missing baseId"), false)
 	}
 	result.Resolved = map[string]any{"baseId": baseID}
-	result.NextCommand = fmt.Sprintf("dws aitable +base-get --base-id %s --format json", baseID)
+	result.NextCommand = aitableRecoveryCommand("dws", "aitable", "+base-get", "--base-id", baseID, "--format", "json")
 	result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": "create_base", "baseId": baseID})
 	result.CompletedSteps = append(result.CompletedSteps, compositeStep{Index: 1, Name: "create base", Tool: "create_base", Status: "completed", Result: baseData})
 	baseRead, err := rt.CallMCPData(serverMain, "get_base", map[string]any{"baseId": baseID})
@@ -248,7 +248,7 @@ func executeBaseBootstrap(rt *shortcut.RuntimeContext) error {
 			return compositeError(result, createErr, false)
 		}
 		result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": "create_table", "baseId": baseID, "tableId": tableID, "name": spec.Name})
-		result.NextCommand = fmt.Sprintf("dws aitable +table-get --base-id %s --table-id %s --format json", baseID, tableID)
+		result.NextCommand = aitableRecoveryCommand("dws", "aitable", "+table-get", "--base-id", baseID, "--table-id", tableID, "--format", "json")
 		for offset := initialEnd; offset < len(spec.Fields); offset += 15 {
 			end := minInt(offset+15, len(spec.Fields))
 			_, fieldErr := rt.CallMCPWriteDataStrict(serverMain, "create_fields", map[string]any{

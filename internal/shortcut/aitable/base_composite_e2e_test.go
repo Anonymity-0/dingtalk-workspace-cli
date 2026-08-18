@@ -289,9 +289,71 @@ func TestCrossPlatformCoverageBaseBootstrapFailurePublishesExactRecovery(t *test
 	if !errors.As(err, &typed) || len(typed.Actions) != 1 || len(typed.AvailableFlags) != 4 {
 		t.Fatalf("bootstrap typed recovery = %#v", err)
 	}
-	if typed.Actions[0] != `dws aitable +base-search --query "Project" --format json` {
+	if typed.Actions[0] != `dws aitable +base-search --query Project --format json` {
 		t.Fatalf("bootstrap next command = %#v", typed.Actions)
 	}
+}
+
+func TestCrossPlatformCoverageAITableRecoveryCommandsQuoteUntrustedValues(t *testing.T) {
+	t.Run("base name", func(t *testing.T) {
+		name := `项目 $(touch /tmp/pwn) 'Q'`
+		out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{steps: []upsertByKeyStep{{text: `{}`}}},
+			"+base-bootstrap", "--name", name, "--tables", marshalBootstrapTables(t, nil), "--yes")
+		if out != "" || err == nil {
+			t.Fatalf("hostile base name recovery = output:%q err:%v", out, err)
+		}
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || len(typed.Actions) != 1 {
+			t.Fatalf("hostile base name error = %#v", err)
+		}
+		want := `dws aitable +base-search --query '项目 $(touch /tmp/pwn) '\''Q'\''' --format json`
+		if typed.Actions[0] != want {
+			t.Fatalf("base name recovery = %q, want %q", typed.Actions[0], want)
+		}
+	})
+
+	t.Run("base id", func(t *testing.T) {
+		baseID := `base;printf hacked`
+		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+			{text: mustJSON(t, map[string]any{"baseId": baseID})},
+			{err: errors.New("verify base failed")},
+		}}
+		out, err := runAITableCompositeCLI(t, caller, "+base-bootstrap",
+			"--name", "Project", "--tables", marshalBootstrapTables(t, nil), "--yes")
+		if out != "" || err == nil {
+			t.Fatalf("hostile base id recovery = output:%q err:%v", out, err)
+		}
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || len(typed.Actions) != 1 {
+			t.Fatalf("hostile base id error = %#v", err)
+		}
+		want := `dws aitable +base-get --base-id 'base;printf hacked' --format json`
+		if typed.Actions[0] != want {
+			t.Fatalf("base id recovery = %q, want %q", typed.Actions[0], want)
+		}
+	})
+
+	t.Run("base and table ids", func(t *testing.T) {
+		baseID := `base id;exit 1`
+		tableID := "table`uname`'x"
+		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+			{text: mustJSON(t, map[string]any{"tableId": tableID})},
+			{err: errors.New("verify table failed")},
+		}}
+		out, err := runAITableCompositeCLI(t, caller, "+table-bootstrap",
+			"--base-id", baseID, "--name", "任务", "--fields", `[]`, "--yes")
+		if out != "" || err == nil {
+			t.Fatalf("hostile table ids recovery = output:%q err:%v", out, err)
+		}
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || len(typed.Actions) != 1 {
+			t.Fatalf("hostile table ids error = %#v", err)
+		}
+		want := `dws aitable +table-get --base-id 'base id;exit 1' --table-id 'table` + "`uname`" + `'\''x' --format json`
+		if typed.Actions[0] != want {
+			t.Fatalf("table ids recovery = %q, want %q", typed.Actions[0], want)
+		}
+	})
 }
 
 func TestCrossPlatformCoverageBaseBootstrapRecoversFieldCallErrorE2E(t *testing.T) {

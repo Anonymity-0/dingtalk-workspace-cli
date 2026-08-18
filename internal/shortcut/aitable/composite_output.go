@@ -5,8 +5,10 @@ package aitable
 
 import (
 	"fmt"
+	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 )
 
 const aitableCompositeContractVersion = "aitable.composite.v1"
@@ -50,6 +52,14 @@ func newCompositeResult(operation string) compositeResult {
 		Status:          "success",
 		Executed:        true,
 	}
+}
+
+func aitableRecoveryCommand(argv ...string) string {
+	quoted := make([]string, len(argv))
+	for index, arg := range argv {
+		quoted[index] = helpers.ShellQuoteArg(arg)
+	}
+	return strings.Join(quoted, " ")
 }
 
 func compositeError(result compositeResult, cause error, retryable bool) error {

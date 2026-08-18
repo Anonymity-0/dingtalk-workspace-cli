@@ -98,7 +98,7 @@ func executeTableBootstrap(rt *shortcut.RuntimeContext) error {
 	if created.TableID != "" {
 		result.Resolved["tableId"] = created.TableID
 		result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": "create_table", "baseId": baseID, "tableId": created.TableID, "name": tableName})
-		result.NextCommand = fmt.Sprintf("dws aitable +table-get --base-id %s --table-id %s --format json", baseID, created.TableID)
+		result.NextCommand = aitableRecoveryCommand("dws", "aitable", "+table-get", "--base-id", baseID, "--table-id", created.TableID, "--format", "json")
 	}
 	if err != nil {
 		if created.TableID == "" {

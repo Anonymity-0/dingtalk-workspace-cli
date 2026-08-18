@@ -26,7 +26,7 @@ dws aitable chart get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --chart-
 | `dashboard get` | 获取仪表盘详情（含 charts 列表） | `--base-id` `--dashboard-id` | — |
 | `dashboard create` | 创建仪表盘 | `--base-id` + (`--config` 或 `--name`) | `--name` 简化版创建空看板；`--config` 传完整 JSON |
 | `dashboard update` | 更新仪表盘 | `--base-id` `--dashboard-id` + (`--config` 或 `--name`) | `--name` 仅改名；`--config` 更新完整配置 |
-| `dashboard delete` | 删除仪表盘 | `--base-id` `--dashboard-id` `--yes` | 级联删除全部 chart，不可逆 |
+| `dashboard delete` | 删除仪表盘 | `--base-id` `--dashboard-id` | 级联删除全部 chart，不可逆；由 Runtime 请求确认，Reference 不携带确认绕过参数 |
 | `dashboard config-example` | 查看仪表盘配置模板 | 无 | 创建前先调此命令了解 config 结构 |
 | `dashboard arrange` | 自动重排图表布局 | `--base-id` `--dashboard-id` | 把图表按行铺满网格，避免某行只占半幅、留下大片空白；返回 `{totalColumns, layout, alignedChartCount}` |
 
@@ -37,7 +37,7 @@ dws aitable chart get --base-id <BASE_ID> --dashboard-id <DASHBOARD_ID> --chart-
 | `chart get` | 获取图表详情 | `--base-id` `--dashboard-id` `--chart-id` |
 | `chart create` | 创建图表 | `--base-id` `--dashboard-id` `--config` `--layout` |
 | `chart update` | 更新图表配置 | `--base-id` `--dashboard-id` `--chart-id` `--config` |
-| `chart delete` | 删除图表 | `--base-id` `--dashboard-id` `--chart-id` `--yes` |
+| `chart delete` | 删除图表 | `--base-id` `--dashboard-id` `--chart-id` | 不可逆；由 Runtime 请求确认，Reference 不携带确认绕过参数 |
 | `+chart-widgets-example` | 查看所有图表类型的 widgets 模板 | 无 |
 
 ## 配置获取流程
