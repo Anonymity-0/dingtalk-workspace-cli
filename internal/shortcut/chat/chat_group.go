@@ -1912,8 +1912,7 @@ var ChatRoleSetUser = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "群 openConversationId", Required: true},
 		{Name: "user", Type: shortcut.FlagString, Desc: "用户 userId 或 openDingTalkId", Required: true},
-		{Name: "role-id", Type: shortcut.FlagString, Desc: "群身份 openRoleId"},
-		{Name: "role-ids", Type: shortcut.FlagStringSlice, Desc: "已隐藏的兼容参数：群身份 openRoleId 列表", Hidden: true},
+		{Name: "role-id", Type: shortcut.FlagStringSlice, Desc: "群身份 openRoleId；公开入口必须提供一个非空群身份 openRoleId", Aliases: []string{"role-ids"}},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"role-id"}, Description: "公开入口必须提供一个非空群身份 openRoleId"},
@@ -1943,20 +1942,35 @@ func validateChatRoleSetUserRoleFlags(rt *shortcut.RuntimeContext) error {
 	switch {
 	case roleIDChanged && roleIDsChanged:
 		return apperrors.NewValidation("--role-id 与 --role-ids 不能同时指定")
-	case roleIDChanged && rt.Str("role-id") == "":
-		return apperrors.NewValidation("--role-id 不能为空")
+	case roleIDChanged:
+		roleIDs := compactChatRoleSetUserRoleIDs(rt.StrSlice("role-id"))
+		if len(roleIDs) == 0 {
+			return apperrors.NewValidation("--role-id 不能为空")
+		}
+		if len(roleIDs) > 1 {
+			return apperrors.NewValidation("--role-id 只允许指定一个群身份")
+		}
 	case !roleIDChanged && !roleIDsChanged:
 		return apperrors.NewValidation("缺少必填参数 --role-id")
-	default:
-		return nil
 	}
+	return nil
 }
 
 func chatRoleSetUserRoleIDs(rt *shortcut.RuntimeContext) []string {
 	if rt.Changed("role-id") {
-		return []string{rt.Str("role-id")}
+		return compactChatRoleSetUserRoleIDs(rt.StrSlice("role-id"))
 	}
 	return rt.StrSlice("role-ids")
+}
+
+func compactChatRoleSetUserRoleIDs(values []string) []string {
+	out := values[:0]
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			out = append(out, value)
+		}
+	}
+	return out
 }
 
 // ChatRoleRemoveUser removes specific roles from a user (remove_custom_user_roles, im).

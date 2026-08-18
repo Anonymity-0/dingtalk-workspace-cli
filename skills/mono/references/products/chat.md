@@ -2456,7 +2456,7 @@ Flags:
 | `chat conversation-info` | `newCSpaceIdIM` | 独立钉盘存储流程的共享空间 ID；不是发送本地聊天附件的前置条件 |
 | `chat file upload` | 无（已下线） | 不要调用；常规发图/发文件用 `chat message send --msg-type file --file-path` |
 | `chat message list` | `openMsgId` | message read-status 的 --message-id |
-| `chat group-role list` | `openRoleId` | group-role update/remove/set-user/remove-user 的 --role-id |
+| `chat group-role list` | `openRoleId` | group-role update/remove/set-user 的 --role-id；remove-user 的 --role-ids |
 | `chat message create-text-emotion` | `emotionId` | add-text-emotion 的 --emotion-id |
 | `chat category list` | `categoryId` | category list-conversations 的 --category-id |
 | `chat group get-by-group-id` | `openConversationId` | 同 chat search，将群号转为 openConversationId |

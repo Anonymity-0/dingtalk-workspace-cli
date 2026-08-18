@@ -7792,6 +7792,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatGroupRoleSetUserCmd.Flags().String("role-id", "", "群身份 openRoleId，由 group-role list 返回 (必填)")
 	chatGroupRoleSetUserCmd.Flags().String("role-ids", "", "已隐藏的兼容参数：群身份 openRoleId 列表，逗号分隔")
 	_ = chatGroupRoleSetUserCmd.Flags().MarkHidden("role-ids")
+	corecmd.AnnotateFlagAlias(chatGroupRoleSetUserCmd, "role-ids", "role-id")
 
 	chatGroupRoleRemoveUserCmd := &cobra.Command{
 		Use:     "remove-user",
