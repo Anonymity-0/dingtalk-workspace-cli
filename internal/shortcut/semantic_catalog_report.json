@@ -13,9 +13,10 @@
     },
     "+outbox-list": {
       "disposition": "semantic_adapter",
-      "semantic_delta": "严格验证发件箱集合、项目身份和分页终止证据；exact Shortcut 只证明多个时间窗口的零项结果，缺少已知非空 fixture，不能发布。",
+      "semantic_delta": "严格验证发件箱集合、稳定 reportId 和分页终止证据；exact Shortcut 已在连续有界历史窗口中同时证明已知非空与保证零项。",
       "risk": "read",
-      "public": false,
+      "availability": "available",
+      "public": true,
       "reviewed": true
     },
     "+template-search": {
@@ -28,9 +29,10 @@
     },
     "+report-latest": {
       "disposition": "primary_smart",
-      "semantic_delta": "完整验证最近 20 天发件箱后按每项 createTime 选择最新稳定 reportId，再精确读回身份匹配的详情；当前账号没有非空发件箱 fixture，无法证明完整两步链路，保持不可用。",
+      "semantic_delta": "完整验证默认最近 20 天或显式不超过 20 天的发件箱；要求唯一最高 createTime，按稳定 reportId 精确读回身份匹配且字段集合严格的详情。",
       "risk": "read",
-      "public": false,
+      "availability": "available",
+      "public": true,
       "reviewed": true
     }
   }

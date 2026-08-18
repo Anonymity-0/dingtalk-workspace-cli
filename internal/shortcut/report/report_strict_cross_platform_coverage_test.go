@@ -264,16 +264,27 @@ func TestCrossPlatformCoverageReportLatestRequiresCompleteOrderedListAndExactRea
 		t.Fatalf("incomplete err=%v history=%v", err, incomplete.history)
 	}
 
+	tied := &reportCoverageCaller{responses: map[string][]string{
+		"get_send_report_list": {`{"success":true,"result":{"report_list":[{"reportId":"report-1","createTime":2},{"reportId":"report-2","createTime":2}]},"hasMore":false}`},
+	}}
+	if _, err := runReportCoverage(t, ReportLatest, tied); err == nil || len(tied.history) != 1 {
+		t.Fatalf("tied latest err=%v history=%v", err, tied.history)
+	}
+
 	caller := &reportCoverageCaller{responses: map[string][]string{
 		"get_send_report_list":     {`{"success":true,"result":{"report_list":[{"reportId":"report-1","createTime":1},{"reportId":"report-2","createTime":2}]},"hasMore":false}`},
 		"get_report_entry_details": {`{"success":true,"result":{"report_Id":"report-2","report_name":"fixture","createTime":2,"report_content":[{"key":"field","value":"value","sort":1,"type":2}]}}`},
 	}}
-	cmd, err := runReportCoverage(t, ReportLatest, caller)
+	cmd, err := runReportCoverage(t, ReportLatest, caller,
+		"--start", "2026-07-01T00:00:00+08:00", "--end", "2026-07-20T00:00:00+08:00")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(caller.history) != 2 || caller.history[0].tool != "get_send_report_list" || caller.history[1].tool != "get_report_entry_details" || caller.history[1].args["report_id"] != "report-2" {
 		t.Fatalf("exact call history=%#v", caller.history)
+	}
+	if caller.history[0].args["startTime"] != int64(1782835200000) || caller.history[0].args["endTime"] != int64(1784476800000) {
+		t.Fatalf("explicit range args=%#v", caller.history[0].args)
 	}
 	var stdout bytes.Buffer
 	cmd.SetOut(&stdout)
@@ -299,6 +310,8 @@ func TestCrossPlatformCoverageReportValidationRejectsInvalidRangesBeforeMCP(t *t
 		{InboxList, []string{"--start", "2026-07-02T00:00:00+08:00", "--end", "2026-07-01T00:00:00+08:00"}},
 		{InboxList, []string{"--start", "2026-07-01T00:00:00+08:00", "--end", "2026-07-02T00:00:00+08:00", "--size", "21"}},
 		{OutboxList, []string{"--modified-start", "2026-07-01T00:00:00+08:00"}},
+		{ReportLatest, []string{"--start", "2026-07-01T00:00:00+08:00"}},
+		{ReportLatest, []string{"--start", "2026-07-22T00:00:00+08:00", "--end", "2026-07-01T00:00:00+08:00"}},
 	}
 	for _, test := range tests {
 		caller := &reportCoverageCaller{responses: map[string][]string{}}

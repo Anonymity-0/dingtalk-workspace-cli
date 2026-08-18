@@ -77,7 +77,7 @@ func TestCrossPlatformCoverageReportSemanticCatalogExactlyCoversRegisteredSurfac
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 2 || unavailable != 2 {
-		t.Fatalf("public/unavailable=%d/%d, want 2/2", public, unavailable)
+	if public != 4 || unavailable != 0 {
+		t.Fatalf("public/unavailable=%d/%d, want 4/0", public, unavailable)
 	}
 }

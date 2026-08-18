@@ -5,89 +5,68 @@
 > 对比基线：lark-cli 1.0.87（无 Report 产品域）
 > 范围：仅 Report Shortcut；证据只记录 PASS 标签与聚合事实
 
-## 1. 执行摘要
+## 1. 最终 surface
 
-- 源码 Shortcut 共 4 个；公开 2 个，unavailable 2 个。
-- `+template-search` 已完成严格模板集合、已知非空和保证零命中证明，可公开。
-- `+inbox-list` 已完成已知非空、保证零项、多页 cursor 严格前进、相邻页稳定身份无重复和明确耗尽证明，可公开。
-- `+outbox-list` 在多个有界窗口只得到合法零项结果；缺少已知非空证明，因此保持 unavailable。
-- `+report-latest` 依赖完整非空发件箱和精确详情读回；当前没有安全 fixture，因此保持 unavailable，且不再回退原始列表行。
-- Report 原子层具有模板、收件箱、发件箱、详情、统计和创建能力；创建缺少可验证删除/回收能力，本轮未执行写操作。
+- 源码 Shortcut：4；公开：4；unavailable：0。
+- `+template-search`、`+inbox-list`、`+outbox-list`、`+report-latest` 均声明严格 Result/Safety/Contract，使用 unified output。
+- 30 个连续 19 天窗口覆盖 570 天发件箱历史：总项数 1、非空窗口 1、合同异常 0。该安全只读 fixture 关闭了原先“没有非空发件箱”的误判。
+- Report 创建原子能力仍缺少删除/回收能力，本轮没有执行 Report 写入；这不阻塞四条只读 Shortcut，但继续阻止新增写 Shortcut。
 
-| ID | 优先级 | 类型 | 用户任务 | 当前处置 | 解锁的 Shortcut |
-|---|---|---|---|---|---|
-| `DS-Report-001` | P1 | tenant-or-fixture / missing capability | 读取自己发出的日志及最新详情 | hidden + unavailable | `+outbox-list`、`+report-latest` |
+## 2. Residual-gap 分类
 
-## 2. 用户任务与证据矩阵
+| 能力 | 最终分类 | PASS 证据 | 公开状态 |
+|---|---|---|---|
+| `+template-search` | fully unlocked | `PASS-RPT-TEMPLATE-NONEMPTY`：1；`PASS-RPT-TEMPLATE-ZERO`：0；原子完整集合 73 | public |
+| `+inbox-list` | fully unlocked | `PASS-RPT-INBOX-PAGES`：20、20、20、20、12 后终止；`PASS-RPT-INBOX-ZERO`：0 | public |
+| `+outbox-list` | fully unlocked | `PASS-RPT-OUTBOX-HISTORY`：30 个连续窗口、总项 1、非空窗口 1、合同异常 0；`PASS-RPT-OUTBOX-ZERO`：0 | public |
+| `+report-latest` | fully unlocked | `PASS-RPT-LATEST-READBACK`：候选 1，详情身份精确一致，严格字段 3 | public |
+| 模板读取、详情、统计 | routed | 使用现有精确原子读取；不重复包装 Shortcut | 非 Shortcut |
+| 日志提交 | routed | 现有原子写可处理用户明确目标；无清理能力，不作为自动 E2E fixture | 非 Shortcut |
+| Report Shortcut residual unavailable | unavailable | `PASS-RPT-SURFACE-CLOSURE`：源码 4 条中为 0 | 无 |
 
-| 用户任务 | Shortcut | Lark CLI 对应 | Exact Shortcut 证据 | Atomic/raw 对照 | 结论 |
-|---|---|---|---|---|---|
-| 按名称搜索可用日志模板 | `+template-search` | 无 | `PASS-RPT-TEMPLATE-NONEMPTY`：1 项；`PASS-RPT-TEMPLATE-ZERO`：0 项 | `PASS-RPT-TEMPLATE-COLLECTION`：完整集合聚合数量 73 | available / public |
-| 分页查看收到的日志 | `+inbox-list` | 无 | `PASS-RPT-INBOX-PAGES`：页大小依次为 20、20、20、20、12，随后明确耗尽；`PASS-RPT-INBOX-ZERO`：0 项 | `PASS-RPT-INBOX-CURSOR`：非终止 cursor 严格递增；首对相邻页稳定身份交集为 0 | available / public |
-| 分页查看自己发出的日志 | `+outbox-list` | 无 | `PASS-RPT-OUTBOX-ZERO`：多个有界窗口均为 0 项 | `PASS-RPT-OUTBOX-TERMINAL`：零项页具有明确成功与终止证据 | unavailable |
-| 读取自己最新提交的日志详情 | `+report-latest` | 无 | `PASS-RPT-LATEST-ZERO`：发件箱为空时在一次列表调用后停止 | `PASS-RPT-DETAIL-SHAPE`：独立详情能力可返回稳定身份与严格字段数组，但没有安全发件箱目标可串联 | unavailable |
+Report 的 Shortcut surface 没有 “delivery hardened but downstream blocked” 项。未来若增加写 Shortcut，仍需先解决下文的写 fixture 生命周期，不得把四条读取已解锁解释为 Report 写能力也已完成。
 
-## 3. 已验证分页合同
+## 3. Exact Shortcut E2E 矩阵
 
-- `PASS-RPT-INBOX-CURSOR`：所有非终止页均返回正整数、相对请求严格前进的 continuation。
-- `PASS-RPT-INBOX-PAGES`：exact Shortcut 沿服务端返回 cursor 读取 5 个非空页，聚合数量 92，末页明确 `hasMore=false`。
-- `PASS-RPT-INBOX-OVERLAP`：首对相邻非空页的稳定身份交集为 0。
-- `PASS-RPT-INBOX-ZERO`：独立有界查询返回合法 0 项、`complete=true` 与 endpoint exhausted。
-- 服务端在终止页仍回显整数 cursor；DWS 只把它当页面收据，不发布 `next_token`。错型或冲突 cursor 仍失败。
-- DWS 严格拒绝空响应、缺/错型 `success`、缺/错型集合、坏元素、重复身份、缺 continuation、空页续页和不前进 cursor。
+| Exact Shortcut | 已知非空 | 保证零项/零命中 | 身份与分页 | 结论 |
+|---|---:|---:|---|---|
+| `+template-search` | PASS（1） | PASS（0） | 完整模板集合验证后本地筛选；稳定模板身份 | fully unlocked |
+| `+inbox-list` | PASS（累计 92） | PASS（0） | 5 个非空页；cursor 严格前进；首对相邻页身份交集 0；终页明确耗尽 | fully unlocked |
+| `+outbox-list` | PASS（1） | PASS（0） | 非空页 `complete=true` 且 endpoint exhausted；570 天有界扫描合同异常 0 | fully unlocked |
+| `+report-latest` | PASS（候选 1） | 不适用：精确组合读取 | 显式不超过 20 天窗口；按唯一最高创建时间选取；详情身份精确匹配；字段集合 3 | fully unlocked |
 
-## 4. 下游需求明细
+所有列表/搜索严格拒绝空响应、缺或错型 `success`、缺或错型集合、坏元素、重复身份、缺 continuation、空页续页和不前进 cursor。服务端在终页回显的整数 cursor 只作为页面收据，不发布为 `next_token`。
 
-### `DS-Report-001` — 提供可回收的发件箱 E2E fixture
+## 4. 已关闭需求
 
-#### 用户结果
+### `DS-Report-001` — 非空发件箱与最新详情链路
 
-用户能够可靠列出自己发出的日志，并在完整候选集合中选出最新一篇，再按稳定 `reportId` 读取身份一致的详情。
+- 状态：`PASS-RPT-RESIDUAL-CLOSED`。
+- 归因修正：原先只检查近期窗口，错误地把账号判定为没有安全非空 fixture。扩大为连续 570 天有界 exact 扫描后发现 1 个非空窗口。
+- 验收事实：exact `+outbox-list` 的非空、零项、稳定身份和终止证据均通过；exact `+report-latest` 新增成对 `--start/--end` 参数后，在同一窗口完成一次完整列表与一次精确详情读取，身份一致。
+- 确定性：若最高 `createTime` 并列，命令拒绝任意选取；显式窗口缺一端、倒序或超过 20 天均在远端调用前失败。
 
-#### 当前证据与归因
+## 5. 未解决但不阻塞当前 Shortcut 的下游缺口
 
-- `PASS-RPT-OUTBOX-ZERO`：多个独立有界窗口均为合法 0 项；这只能证明零结果合同，不能证明非空项目投影。
-- `PASS-RPT-LATEST-ZERO`：组合命令遇到空发件箱后停止，没有调用详情，也没有把空结果伪装成成功详情。
-- `PASS-RPT-DETAIL-SHAPE`：在独立安全读取中，详情结果具备稳定身份、时间字段与非空字段集合；统计读取也具备明确成功对象。
-- 原子层可以创建日志，但没有对应删除/回收能力。仅凭创建成功回执不能满足写后精确读回、清理和零残留要求，因此本轮没有创建测试数据。
+### `DS-Report-002` — Report 写 fixture 生命周期
 
-#### 所需 fixture / 能力
+- 分类：routed；影响未来日志提交类 Shortcut，不影响当前四条只读 Shortcut。
+- 当前事实：原子层可提交日志，但没有按稳定回执删除、回收或证明自动过期的能力；因此本轮写调用数为 0。
+- 解锁条件：专用无业务内容 fixture，确认前 0 写调用，确认后稳定创建回执、精确读回、无条件清理，以及发件箱和详情的零残留证明。
 
-- 首选：租户提供专用、无业务内容、定期自动过期的已发送日志 fixture，并保证测试身份可读取。
-- 或者：新增精确删除/回收能力，使测试可按创建回执中的稳定身份读回并在 `defer` 清理，最后证明发件箱与详情均无残留。
-- 非空发件箱响应必须包含布尔 `success=true`、精确集合、每项稳定 `reportId`、正整数 `createTime` 和真实分页终止证据。
-- 详情响应必须返回与请求完全一致的稳定身份；字段集合必须为数组，坏元素不能被跳过。
-- 若创建执行结果不确定，必须返回 commit-unknown 分类与安全的核查动作，不能建议盲目重试。
+## 6. Lark 对齐
 
-#### 验收标准
+lark-cli 1.0.87 没有 Report/日志产品域，四条公开 Shortcut 都是 DWS 原生增量能力，不虚构一对一映射：
 
-1. exact `+outbox-list` 同时证明已知非空与保证零项。
-2. 非空项目均有稳定身份与排序时间，分页遍历至终止且无重复。
-3. exact `+report-latest` 只调用一次完整列表和一次精确详情，详情身份与所选目标一致。
-4. 若用创建产生 fixture：确认前 0 次写调用；确认后稳定回执；按回执精确读回；无条件清理；最终证明零残留。
-5. 没有可验证清理能力时，不执行创建，并继续保持相关 Shortcut unavailable。
-
-## 5. Lark 对齐与平台差异
-
-lark-cli 1.0.87 没有 Report/日志产品域，因此 4 个 Report Shortcut 均无一对一 Lark 任务。它们是 DWS 的平台原生增量能力，不应虚构映射：
-
-| DWS 用户任务 | Lark 映射 | 推荐结论 |
+| DWS 用户任务 | Lark 映射 | 结论 |
 |---|---|---|
-| 搜索日志模板 | 无 | DWS 原生能力；公开 `+template-search` |
-| 查看收到的日志 | 无 | DWS 原生能力；公开 `+inbox-list` |
-| 查看发出的日志或最新详情 | 无 | DWS 原生能力；非空链路验证前保持 unavailable |
+| 搜索日志模板 | 无 | DWS 原生；fully unlocked |
+| 查看收到的日志 | 无 | DWS 原生；fully unlocked |
+| 查看发出的日志 | 无 | DWS 原生；fully unlocked |
+| 读取指定窗口内最新日志详情 | 无 | DWS 原生；fully unlocked |
 
-## 6. 无需下游变更的上游修复
+## 7. 安全与脱敏
 
-| Shortcut | 已完成修复 | 回归证据 |
-|---|---|---|
-| 全部 4 个 | 统一 Result/Safety/Contract、unified output；空响应、缺/错型 success、缺集合、坏元素与重复身份全部失败 | `PASS-RPT-STRICT-MATRIX` |
-| `+inbox-list`、`+outbox-list` | 发布真实 cursor pagination；缺失、冲突、错型和不前进 cursor 全部失败；终止页不发布回显 cursor | `PASS-RPT-PAGINATION-MATRIX` |
-| `+template-search` | 严格验证完整模板集合后本地筛选；不从坏元素或未知形状制造空结果 | `PASS-RPT-TEMPLATE-MATRIX` |
-| `+report-latest` | 删除原始列表行回退；仅接受完整候选集合、可排序时间和身份匹配详情 | `PASS-RPT-LATEST-READBACK` |
-
-## 7. 安全与脱敏声明
-
-- 本文不包含真实 ID、标题、人名、邮箱、正文、原始响应、trace/request ID、token 或签名 URL。
-- 所有真实证据只以 `PASS-RPT-*` 标签和聚合数量表达；不得用这些标签反查或推断具体资源。
-- 写能力因缺少可验证清理合同未执行；不存在为了测试而遗留的 Report 数据。
+- PASS：本文不含真实 ID、标题、人名、邮箱、正文、精确业务时间、原始响应、trace/request ID、token 或签名 URL。
+- PASS：真实证据只保留命令级标签和聚合计数，无法反推出具体资源。
+- PASS：没有为测试创建 Report 数据，因此没有新增业务残留。

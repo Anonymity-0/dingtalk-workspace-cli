@@ -16,24 +16,51 @@ import (
 var ReportLatest = shortcut.Shortcut{
 	Service: "report", Command: "+report-latest", Product: "report",
 	Description:   "读取我最近提交的一篇日志详情",
-	Intent:        "只想查看自己最近 20 天提交的最新日志详情时使用；必须先证明发件箱结果完整、每项都有稳定 reportId 与创建时间，再按精确 ID 读回详情。",
+	Intent:        "只想查看明确 20 天内自己提交的最新日志详情时使用；默认最近 20 天，也可成对指定创建时间窗，完整验证候选后按精确 reportId 读回详情。",
 	Risk:          shortcut.RiskRead,
 	Safety:        reportReadSafety(),
 	OutputRollout: output.RolloutUnifiedActive,
 	Contract: reportContract(
 		"+report-latest", "读取我最近提交的一篇日志详情",
-		"只想查看自己最近 20 天提交的最新日志详情时使用；必须先证明发件箱结果完整、每项都有稳定 reportId 与创建时间，再按精确 ID 读回详情。",
+		"只想查看明确 20 天内自己提交的最新日志详情时使用；默认最近 20 天，也可成对指定创建时间窗，完整验证候选后按精确 reportId 读回详情。",
 		reportLatestResult(), nil,
-		[]contract.ParamDecl{{Name: "keyword", Property: "report_template_name"}},
-		"dws report +report-latest", "dws report +report-latest --keyword 周报",
+		[]contract.ParamDecl{
+			{Name: "keyword", Property: "report_template_name"},
+			{Name: "start", Property: "startTime"}, {Name: "end", Property: "endTime"},
+		},
+		"dws report +report-latest", `dws report +report-latest --start "2026-03-01T00:00:00+08:00" --end "2026-03-20T00:00:00+08:00"`,
 	),
-	Flags: []shortcut.Flag{{Name: "keyword", Type: shortcut.FlagString, Desc: "按日志模板名称精确过滤"}},
-	Tips:  []string{"dws report +report-latest", "dws report +report-latest --keyword 周报"},
+	Flags: []shortcut.Flag{
+		{Name: "keyword", Type: shortcut.FlagString, Desc: "按日志模板名称精确过滤"},
+		{Name: "start", Type: shortcut.FlagString, Desc: "创建开始时间 ISO-8601；必须与 --end 同时提供，跨度不得超过 20 天"},
+		{Name: "end", Type: shortcut.FlagString, Desc: "创建结束时间 ISO-8601；必须与 --start 同时提供，跨度不得超过 20 天"},
+	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "--start 与 --end 必须同时提供，且创建时间范围必须有效并不得超过 20 天"},
+	},
+	Tips: []string{"dws report +report-latest", `dws report +report-latest --start "2026-03-01T00:00:00+08:00" --end "2026-03-20T00:00:00+08:00"`},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Changed("start") != rt.Changed("end") {
+			return apperrors.NewValidation("--start 与 --end 必须同时提供", apperrors.WithReason("incomplete_creation_range"))
+		}
+		if rt.Changed("start") {
+			_, _, err := reportValidateRange("start", rt.Str("start"), "end", rt.Str("end"), reportMaximumOutboxDays)
+			return err
+		}
+		return nil
+	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		const listOperation = "report/get_send_report_list"
 		now := time.Now()
 		end := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location())
 		start := end.Add(-reportMaximumOutboxDays * 24 * time.Hour)
+		if rt.Changed("start") {
+			startMillis, endMillis, err := reportValidateRange("start", rt.Str("start"), "end", rt.Str("end"), reportMaximumOutboxDays)
+			if err != nil {
+				return err
+			}
+			start, end = time.UnixMilli(startMillis), time.UnixMilli(endMillis)
+		}
 		params := map[string]any{
 			"cursor": 0, "size": 20,
 			"startTime": start.UnixMilli(), "endTime": end.UnixMilli(),
@@ -75,6 +102,7 @@ var ReportLatest = shortcut.Shortcut{
 func reportLatestEntryID(entries []map[string]any, operation string) (string, error) {
 	var latestID string
 	var latestTime int64
+	latestCount := 0
 	for index, entry := range entries {
 		created, ok := entry["createTime"].(int64)
 		if !ok || created <= 0 {
@@ -86,7 +114,13 @@ func reportLatestEntryID(entries []map[string]any, operation string) (string, er
 		}
 		if index == 0 || created > latestTime {
 			latestID, latestTime = id, created
+			latestCount = 1
+		} else if created == latestTime {
+			latestCount++
 		}
+	}
+	if latestCount != 1 {
+		return "", reportResponseError(operation, "ambiguous_latest_order", "多篇日志具有相同的最高 createTime，不能确定唯一最新日志")
 	}
 	return latestID, nil
 }

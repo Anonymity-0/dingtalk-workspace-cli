@@ -143,13 +143,13 @@ var InboxList = shortcut.Shortcut{
 var OutboxList = shortcut.Shortcut{
 	Service: "report", Command: "+outbox-list", Product: "report",
 	Description:   "列出我发出的日志",
-	Intent:        "需要按创建或修改时间回顾自己提交的日志并取得稳定 reportId 时使用；当前缺少可证明非空的真实发件箱 fixture。",
+	Intent:        "需要按创建或修改时间回顾自己提交的日志并取得稳定 reportId 时使用；每次创建或修改时间窗不得超过 20 天。",
 	Risk:          shortcut.RiskRead,
 	Safety:        reportReadSafety(),
 	OutputRollout: output.RolloutUnifiedActive,
 	Contract: reportContract(
 		"+outbox-list", "列出我发出的日志",
-		"需要按创建或修改时间回顾自己提交的日志并取得稳定 reportId 时使用；当前缺少可证明非空的真实发件箱 fixture。",
+		"需要按创建或修改时间回顾自己提交的日志并取得稳定 reportId 时使用；每次创建或修改时间窗不得超过 20 天。",
 		reportCollectionResult("reports", "严格验证的发件箱日志页"), reportPagination(),
 		[]contract.ParamDecl{
 			{Name: "cursor", Property: "cursor"}, {Name: "size", Property: "size"},
