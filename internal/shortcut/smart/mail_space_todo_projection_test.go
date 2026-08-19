@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
@@ -103,13 +104,19 @@ func runShortcut(t *testing.T, fake *stubMailboxCaller, argv ...string) string {
 	root.PersistentFlags().Bool("yes", false, "")
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.PersistentFlags().String("format", "json", "")
+	ctx, _ := output.WithResultStore(context.Background())
+	root.SetContext(ctx)
 	root.AddCommand(shortcut.Commands()...)
 	var buf bytes.Buffer
 	root.SetOut(&buf)
 	root.SetErr(io.Discard)
 	root.SetArgs(argv)
-	if err := root.Execute(); err != nil {
+	executed, err := root.ExecuteC()
+	if err != nil {
 		t.Fatalf("execute %v: %v", argv, err)
+	}
+	if _, _, err := output.EmitStoredResult(executed); err != nil {
+		t.Fatalf("emit %v: %v", argv, err)
 	}
 	return buf.String()
 }
@@ -121,6 +128,8 @@ func runShortcutErr(t *testing.T, fake *stubMailboxCaller, argv ...string) error
 	root.PersistentFlags().Bool("yes", false, "")
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.PersistentFlags().String("format", "json", "")
+	ctx, _ := output.WithResultStore(context.Background())
+	root.SetContext(ctx)
 	root.AddCommand(shortcut.Commands()...)
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)
@@ -168,14 +177,15 @@ func TestCreatedTodosProjectsCards(t *testing.T) {
 		"get_user_todos_in_current_org": `{"result":{"todoCards":[
 			{"subject":"todoA","taskId":"111","dueTime":1784686500000},
 			{"subject":"todoB","taskId":"222"}
-		]}}`,
+		],"hasMore":false}}`,
 	}}
 	out := runShortcut(t, fake, "todo", "+created-todos", "--format", "json")
 	var d map[string]any
 	if err := json.Unmarshal([]byte(out), &d); err != nil {
 		t.Fatalf("output not json: %q", out)
 	}
-	created, _ := d["created"].([]any)
+	payload, _ := d["data"].(map[string]any)
+	created, _ := payload["created"].([]any)
 	if len(created) != 2 {
 		t.Fatalf("lower/upper mismatch: 2 todos in backend, projection created=%d (%s)", len(created), out)
 	}

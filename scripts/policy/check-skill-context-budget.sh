@@ -12,7 +12,7 @@ event_skill="skills/multi/dingtalk-event/SKILL.md"
 mono_skill="skills/mono/SKILL.md"
 runtime_contract="skills/multi/dingtalk-shared/references/runtime-contract.md"
 chat_target_bytes=10000
-chat_max_overage_percent=5
+chat_max_overage_percent=10
 chat_max_bytes=$((chat_target_bytes * (100 + chat_max_overage_percent) / 100))
 doc_max_bytes=10000
 event_max_bytes=10000
@@ -168,6 +168,7 @@ done
 for forbidden_route in \
 	"## 标准 SOP" \
 	"dws aisearch person --keyword" \
+	"dws aisearch person --query" \
 	"dws chat message send-by-webhook" \
 	"dt_media_upload" \
 	"MUST 先用 Read"

@@ -6,6 +6,180 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.59-beta.3] - 2026-08-19
+
+### Added
+
+- **Robot group reference replies** (#928) — `chat message send-by-bot` supports paired `--reply` and `--ref-sender` flags for Markdown replies that quote an existing group message.
+
+- **AI Table server-side statistics** — adds `dws aitable record stats` for
+  ungrouped record-set metrics through `query_records_stats`, plus `dws aitable
+  record group-stats` for grouped, distinct, and advanced aggregation through
+  `query_stats`; both commands validate their JSON aggregation contracts before
+  dispatch.
+
+- **Calendar event share-info** (#980) — adds `dws calendar event share-info` to fetch a calendar event's share info (title, organizer, location, join info) for sharing with others; supports `--calendar-id` and `--language`.
+
+- **Calendar and To-do Shortcut workflows** — aligns 47 public task-oriented
+  entries with lark-cli where the DingTalk backend supports equivalent
+  semantics, rejects malformed or missing collections instead of returning
+  false empty success, preserves truthful pagination, and requires stable
+  identifiers plus read-back or explicit terminal receipts for writes. Adds
+  deterministic contract coverage, a PII-safe live E2E runner, and a sanitized
+  capability review with documented platform boundaries.
+
+- **Doc and Sheet comment lifecycle commands** — adds `comment batch-query`,
+  `comment resolve`, `comment restore`, and the lightweight
+  `comment react-reply` to both `dws doc` and `dws sheet`. The two domains share
+  the same `doc-comment` MCP capabilities; batch queries preserve input order
+  for repeated `topicId:commentKey` references, while reaction replies require
+  DingTalk reaction names such as `憨笑` or `鼓掌` rather than raw Unicode emoji.
+
+- **Sheet SourceRange dropdowns** — supports range-backed dropdowns across direct, cell, and batch write paths, with structured readback for valid and invalid references. Batch `set-dropdown` now rejects unsupported top-level `colors` / `source-colors`; Inline colors belong in `options[].color`, while SourceRange color writes remain unsupported.
+- **Sheet read completion metadata** — documents and preserves returned ranges, truncation reasons, and partial-read status for large range and CSV reads.
+
+### Changed
+
+- **AI Table parameter aliases** — accepts reviewed equivalent spellings for Base, table, workflow, search, pagination, and description parameters while keeping role-changing or semantically ambiguous inputs blocked.
+
+- **Doc/drive description scope** — restates the `dingtalk-doc` description as document-entity-and-content operations with an explicit exclusion list, and narrows `dingtalk-drive` to file-level management of DingTalk documents, so first-round Agent selection separates content work from file management without changing CLI behavior.
+
+### Fixed
+
+- **Aitable pagination and Minutes unshare verification** (#1006) — keeps
+  record queries on the service's 20-record page boundary so multi-page reads
+  and mutation readbacks no longer report false retryable failures, preserves
+  `totalCount` when supplied, validates `--dry-run` plans before transport,
+  follows active deletion readback continuations before proving absence, and
+  rejects Minutes unshare success until the listening note exists and the
+  service acknowledges the exact task and member targets.
+
+- **Document write verification** (#960) — avoids false partial-success results when normalized Markdown, paginated blocks, inline images, or version reverts are confirmed by server readback. Document reverts and media inserts now require explicit readback evidence and report partial success when the server cannot prove the requested result.
+
+- **Chat sender identity guards** — preserves unverified mixed sender inputs after exact message `senderId` matches and aligns `--sender-query` Skill guidance with fail-closed Runtime behavior.
+
+- **Windows event bus lifecycle** — start event consumers without unsupported inherited file descriptors, stop buses through local IPC with a termination fallback, and preserve subscription cleanup when startup fails.
+
+
+## [1.0.59-beta.2] - 2026-08-17
+
+### Added
+
+- **Privacy-safe CLI telemetry** (#1009) — reports reviewed command outcomes and profile identity dimensions while excluding command arguments, output, paths, device fingerprints, and automatic system dimensions; `DO_NOT_TRACK=1` disables reporting.
+
+- **Feedback survey entry in root help** (#1019) — `dws --help` now closes with a Feedback section linking the user-experience survey form.
+
+- **Wiki Shortcut workflows** — publishes 20 reviewed space, member, node, and
+  activity shortcuts with strict collection validation, cursor handling,
+  write-terminal evidence, safe read-backs where the backend supports them,
+  task-oriented routing, and documented backend
+  boundaries.
+
+### Changed
+
+- **Chat IM ID flags** (#954) — standardizes chat command entry points on `--conversation-id` for conversation IDs and `--message-id` for message IDs, so help, Schema, and Agent recommendations use the same canonical flags.
+- **Legacy chat flag compatibility** (#954) — keeps older chat IM ID flags such as `--group`, `--id`, `--chat`, `--open-conversation-id`, `--msg-id`, and `--open-message-id` working as compatibility aliases where applicable, while hiding migrated aliases from recommended help and Schema surfaces.
+- **Chat group bots target flag** (#954) — keeps `dws chat group bots` on the visible `--group` flag; this command does not register `--group-name`, and `--group` accepts either an openConversationId or a uniquely resolved group name.
+
+- **Faster Schema Catalog assembly** — projects typed values into payload JSON
+  without re-running a validation scan over documents `json.Marshal` has just
+  produced, cutting roughly a third of the projection work across the full tool
+  set. Untrusted JSON input keeps its existing validation.
+
+### Fixed
+
+- **Chat card update evidence** — distinguishes an accepted update request from an independently verified visible update, preserving the real `bizId` and warning callers not to repeat an unverified write.
+- **Chat command guidance** — splits message and group references by task and explains that `--from` is ambiguous between sender and time-range intent.
+
+
+## [1.0.59-beta.1] - 2026-08-14
+
+### Added
+
+- **Drive list type/time filtering** (#942) — `dws drive list` gains `--type
+  file|folder`, `--start`, and `--end` for client-side filtering by node type
+  and modification time on both the pan and workspace routes. Filtering runs
+  a bounded full scan of the target directory (2000-entry cap, reported via
+  `truncated=true`), composes with `--latest`/`--pattern`/`--depth`, and is
+  mutually exclusive with `--versions`/`--cursor`/`--order-by`/`--order`/
+  `--limit`. Time values accept relative forms (`24h`/`7d`/`2w`), RFC 3339,
+  zone-less ISO 8601 (Asia/Shanghai), or a plain date.
+
+- **Drive folder synchronization** — adds `dws drive status`, `dws drive pull`,
+  `dws drive push`, and `dws drive sync` for file-level comparison and transfer
+  between a local folder and a Drive folder. Differences come from exact MD5 by
+  default or from modification time with `--quick`; `status` is read-only, `pull`
+  and `push` are one-directional with `--if-exists skip|smart|overwrite`, and
+  `sync` is bidirectional with `--on-conflict remote-wins|local-wins|keep-both|ask`.
+  Only regular files are transferred — online documents and shortcuts are skipped,
+  neither side deletes extra files, downloads are staged through a temporary file
+  and committed with an atomic rename, and remote names that would escape
+  `--local-folder` are reported as failures instead of being written. Every command
+  prints a structured summary on stdout and exits non-zero when any item fails.
+
+- **International DingTalk region support** — adds `.io` login and MCP routing, pre-release endpoint overrides, and profile-aware gateway selection while preserving the existing `.com` flow.
+
+### Changed
+
+- **Chat identity routing** — validates explicit `openDingTalkId` inputs and improves name, `userId`, and `openDingTalkId` routing for message shortcuts.
+
+### Fixed
+
+- **Drive `--latest` refuses incomplete Top-N** (#899) — `dws drive list --latest` used to
+  exit 0 with a "Top-N" computed over a partially scanned tree whenever a directory read
+  failed mid-recursion (permission denied, API error), letting an incomplete set pose as the
+  globally newest files. Truncation at the 2000-item scan cap and mid-recursion directory
+  failures now both fail closed (`LATEST_SCAN_TRUNCATED` / `LATEST_SCAN_INCOMPLETE`), report
+  the first failing folder with its depth and reason, and emit a recovery command that
+  reproduces the original candidate set — query domain, `--folder`, `--pattern`, `--type`,
+  `--start` and `--end` are all carried over. On POSIX shells each user-supplied value is
+  quoted so a URL query string or a shell metacharacter cannot change how the copied command
+  parses. On Windows no quoting form is safe for both `cmd.exe` and PowerShell, so values
+  containing metacharacters are not inlined at all: the command carries a placeholder and the
+  original value is shown on a separate line marked as data rather than an executable command.
+  Unrecoverable errors under `--latest` return the root cause instead of a partial result.
+  Remote-controlled folder names and server error text are stripped of ANSI escapes and
+  control characters before they reach the plain-text stderr message. The internal `sortTime`
+  sort key no longer leaks into `drive list --depth` output on any path.
+
+- **Drive list pattern filtering** (#942) — `dws drive list --pattern` on the
+  single-layer pan route now filters the returned page by name pattern; the
+  flag was previously accepted but silently ignored.
+
+- **Drive list `--type folder --latest` composition** (#942) — `--latest` now
+  ranks the filtered entries (folders included when `--type folder` is set)
+  instead of unconditionally dropping folders, so the documented combination
+  returns the most recently modified folders rather than an empty list.
+
+- **Chat message time defaults** (#973) — default omitted `chat message list-all` time bounds in `Asia/Shanghai` when emitting timezone-less `yyyy-MM-dd HH:mm:ss` values, matching parsing semantics and rejecting reversed windows.
+
+- **Doc and Drive parameter aliases** — normalizes reviewed identifier, pagination, path, version, and role synonyms while blocking ambiguous values before dispatch.
+
+
+## [1.0.58] - 2026-08-13
+
+This release promotes the sealed `v1.0.58-beta.6` contents to stable.
+
+### Changed
+
+- **Expanded collaborative workflows** — adds full AI Table, Sheet, Minutes,
+  approval-event, Drive-comment, document export, and CSV workflow support,
+  including safer validation, explicit confirmation for writes, and
+  machine-readable completion receipts.
+- **More capable Chat operations** — adds robot image/file messages, toolbar
+  management, streaming-card mentions, automatic pagination controls, and
+  clearer post-send ID, Markdown-image, paging, and result-shape guidance.
+- **Reliable Agent and CLI contracts** — expands Agent-visible Chat and
+  Minutes commands, aligns bundled skills, improves schema/result envelopes,
+  and hardens parameter, pagination, runtime-token, and write-result
+  verification so ambiguous or incomplete operations fail closed.
+- **Multi-skill install and upgrade** — makes the multi-skill layout the
+  default for fresh installs and upgrades while preserving an explicit legacy
+  mono option.
+- **Safer release delivery** — strengthens release-equivalent compatibility,
+  sealing, package verification, and evaluation-dispatch checks for more
+  reliable cross-platform releases.
+
 ## [1.0.58-beta.6] - 2026-08-13
 
 ### Fixed
