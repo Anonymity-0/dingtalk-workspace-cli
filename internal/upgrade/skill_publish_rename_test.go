@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,7 +38,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 				t.Fatal(err)
 			}
 			testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return unsupportedErr })
-			if err := renameSkillPathNoReplace(source, destination); err != nil {
+			if _, err := renameSkillPathNoReplace(source, destination); err != nil {
 				t.Fatalf("fallback must publish for %v, got %v", unsupportedErr, err)
 			}
 			if data, err := os.ReadFile(destination); err != nil || string(data) != "payload" {
@@ -56,7 +57,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 			destination := filepath.Join(dir, "destination")
 			seedUpgradeSkill(t, source, "payload", false)
 			testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return unsupportedErr })
-			if err := renameSkillPathNoReplace(source, destination); err != nil {
+			if _, err := renameSkillPathNoReplace(source, destination); err != nil {
 				t.Fatalf("fallback must publish for %v, got %v", unsupportedErr, err)
 			}
 			assertUpgradeSkillContent(t, destination, "payload")
@@ -76,7 +77,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 			}
 		}
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
-		err := renameSkillPathNoReplace(source, destination)
+		_, err := renameSkillPathNoReplace(source, destination)
 		if !errors.Is(err, os.ErrExist) {
 			t.Fatalf("occupied destination must report ErrExist, got %v", err)
 		}
@@ -97,7 +98,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		}
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
 		testseam.Swap(t, &skillPathLink, func(string, string) error { return os.ErrPermission })
-		err := renameSkillPathNoReplace(source, destination)
+		_, err := renameSkillPathNoReplace(source, destination)
 		if !errors.Is(err, os.ErrPermission) {
 			t.Fatalf("link error must surface, got %v", err)
 		}
@@ -113,7 +114,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		seedUpgradeSkill(t, source, "payload", false)
 		seedUpgradeSkill(t, destination, "existing", false)
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
-		err := renameSkillPathNoReplace(source, destination)
+		_, err := renameSkillPathNoReplace(source, destination)
 		if !errors.Is(err, os.ErrExist) {
 			t.Fatalf("occupied destination must report ErrExist, got %v", err)
 		}
@@ -121,30 +122,27 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		assertUpgradeSkillContent(t, source, "payload")
 	})
 
-	t.Run("concurrent creation between mkdir and rename is detected", func(t *testing.T) {
+	t.Run("concurrent entry in the claimed directory aborts with the destination retained", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
 		destination := filepath.Join(dir, "destination")
 		seedUpgradeSkill(t, source, "payload", false)
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
-		renameErr := errors.New("simulated ENOTEMPTY: destination populated by another process")
-		testseam.Swap(t, &skillPathRename, func(string, string) error { return renameErr })
-		var removeCalled bool
-		testseam.Swap(t, &skillPathRemove, func(path string) error {
-			if path == destination {
-				removeCalled = true
+		testseam.Swap(t, &skillPathRename, func(_, dst string) error {
+			// A concurrent writer lands inside the empty claim before the
+			// slow path can take it; the fast-path rename then fails the
+			// way it would against a populated target.
+			if err := os.WriteFile(filepath.Join(dst, "foreign"), []byte("foreign"), 0o644); err != nil {
+				return err
 			}
-			return os.Remove(path)
+			return os.ErrExist
 		})
-		err := renameSkillPathNoReplace(source, destination)
-		if !errors.Is(err, renameErr) {
-			t.Fatalf("rename failure must surface, got %v", err)
+		_, err := renameSkillPathNoReplace(source, destination)
+		if !errors.Is(err, os.ErrExist) || !strings.Contains(err.Error(), "并发写入") {
+			t.Fatalf("concurrent claim entry must abort with ErrExist, got %v", err)
 		}
-		if !removeCalled {
-			t.Fatal("empty destination must be cleaned up after rename failure")
-		}
-		if _, statErr := os.Lstat(destination); !os.IsNotExist(statErr) {
-			t.Fatalf("destination must not exist after cleanup, stat err=%v", statErr)
+		if data, readErr := os.ReadFile(filepath.Join(destination, "foreign")); readErr != nil || string(data) != "foreign" {
+			t.Fatalf("foreign entry must be retained, got %q, %v", data, readErr)
 		}
 		assertUpgradeSkillContent(t, source, "payload")
 	})
@@ -160,7 +158,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 			calls++
 			return os.ErrPermission
 		})
-		if err := renameSkillPathNoReplace(source, filepath.Join(dir, "destination")); !errors.Is(err, os.ErrPermission) {
+		if _, err := renameSkillPathNoReplace(source, filepath.Join(dir, "destination")); !errors.Is(err, os.ErrPermission) {
 			t.Fatalf("permission error must surface, got %v", err)
 		}
 		if calls != 1 {
@@ -177,7 +175,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		destination := filepath.Join(dir, "destination")
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
 		testseam.Swap(t, &skillPathLstat, func(string) (os.FileInfo, error) { return nil, os.ErrPermission })
-		err := renameSkillPathNoReplace(source, destination)
+		_, err := renameSkillPathNoReplace(source, destination)
 		if !errors.Is(err, os.ErrPermission) {
 			t.Fatalf("stat error must surface, got %v", err)
 		}
@@ -222,7 +220,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		seedUpgradeSkill(t, source, "payload", false)
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
 		testseam.Swap(t, &skillPathMkdir, func(string, os.FileMode) error { return os.ErrPermission })
-		err := renameSkillPathNoReplace(source, destination)
+		_, err := renameSkillPathNoReplace(source, destination)
 		if !errors.Is(err, os.ErrPermission) {
 			t.Fatalf("mkdir error must surface, got %v", err)
 		}
@@ -238,7 +236,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		testseam.Swap(t, &skillPathRename, func(string, string) error { return errors.New("rename failed") })
 		removeErr := errors.New("simulated remove failure")
 		testseam.Swap(t, &skillPathRemove, func(string) error { return removeErr })
-		err := renameSkillPathNoReplace(source, destination)
+		_, err := renameSkillPathNoReplace(source, destination)
 		if !errors.Is(err, removeErr) {
 			t.Fatalf("remove error must surface, got %v", err)
 		}
@@ -249,23 +247,18 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		_ = os.RemoveAll(destination)
 	})
 
-	t.Run("directory retry rename after removing claimed empty dir", func(t *testing.T) {
+	t.Run("fast-path rename failure alone publishes through child-move", func(t *testing.T) {
 		dir := t.TempDir()
 		source := filepath.Join(dir, "source")
 		destination := filepath.Join(dir, "destination")
 		seedUpgradeSkill(t, source, "payload", false)
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
-		calls := 0
-		originalRename := skillPathRename
-		testseam.Swap(t, &skillPathRename, func(src, dst string) error {
-			calls++
-			if calls == 1 {
-				return os.ErrExist
-			}
-			return originalRename(src, dst)
-		})
-		if err := renameSkillPathNoReplace(source, destination); err != nil {
-			t.Fatalf("retry must publish, got %v", err)
+		// macOS refuses to rename over any directory, empty or not. The
+		// claim's verified emptiness — not the rename error — decides
+		// whether the child-move slow path may proceed.
+		testseam.Swap(t, &skillPathRename, func(string, string) error { return os.ErrExist })
+		if _, err := renameSkillPathNoReplace(source, destination); err != nil {
+			t.Fatalf("child-move must publish despite rename failure, got %v", err)
 		}
 		assertUpgradeSkillContent(t, destination, "payload")
 		if _, err := os.Lstat(source); !os.IsNotExist(err) {
@@ -284,7 +277,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 			_ = os.Remove(dst)
 			return originalRename(src, dst)
 		})
-		if err := renameSkillPathNoReplace(source, destination); err != nil {
+		if _, err := renameSkillPathNoReplace(source, destination); err != nil {
 			t.Fatalf("publish must succeed when rename replaces empty dir, got %v", err)
 		}
 		assertUpgradeSkillContent(t, destination, "payload")
@@ -299,7 +292,7 @@ func TestCrossPlatformCoverageNoReplaceRenameFallback(t *testing.T) {
 		}
 		testseam.Swap(t, &skillPathRenameNoReplaceAtomic, func(string, string) error { return errNoReplaceRenameUnsupported })
 		testseam.Swap(t, &skillPathLstat, func(string) (os.FileInfo, error) { return mockSpecialInfo{}, nil })
-		err := renameSkillPathNoReplace(source, destination)
+		_, err := renameSkillPathNoReplace(source, destination)
 		if !errors.Is(err, errNoReplaceRenameUnsupported) {
 			t.Fatalf("unsupported error must surface for special files, got %v", err)
 		}

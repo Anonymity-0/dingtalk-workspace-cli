@@ -884,6 +884,14 @@ func upgradeMonoSkillLocations(homeDir, skillSrc string) (*SkillUpgradeResult, e
 			continue
 		}
 		if err := publishLinkedUpgradeTarget(homeDir, destBase, canonicalBase, []string{"dws"}, victims); err != nil {
+			// An uncertain destination may belong to a concurrent writer.
+			// The copy fallback below would back that object aside and
+			// replace it — exactly what the sentinel forbids — so surface
+			// the uncertain state instead of retrying over it.
+			if errors.Is(err, ErrSkillPathPublicationUncertain) {
+				result.Results = append(result.Results, SkillDirResult{Dir: destDir, Status: SkillDirFailed, Err: err})
+				continue
+			}
 			// Match the upstream installer: platforms/filesystems that reject
 			// links receive a direct copy rather than losing Agent support.
 			if copyErr := publishMonoUpgradeTarget(homeDir, destBase, skillSrc, managedNames); copyErr != nil {
@@ -958,6 +966,12 @@ func upgradeMultiSkillLocations(homeDir, multiRoot string, skills []string) (*Sk
 			continue
 		}
 		if err := publishLinkedUpgradeTarget(homeDir, destBase, canonicalBase, skills, victims); err != nil {
+			// An uncertain destination may belong to a concurrent writer;
+			// the copy fallback must not displace it (see the mono branch).
+			if errors.Is(err, ErrSkillPathPublicationUncertain) {
+				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: err})
+				continue
+			}
 			if copyErr := publishMultiUpgradeTarget(homeDir, destBase, multiRoot, skills, skillSet, managedNames); copyErr != nil {
 				result.Results = append(result.Results, SkillDirResult{Dir: destBase, Status: SkillDirFailed, Err: errors.Join(err, copyErr)})
 				continue

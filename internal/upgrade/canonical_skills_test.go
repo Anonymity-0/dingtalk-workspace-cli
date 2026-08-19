@@ -417,9 +417,9 @@ func TestCrossPlatformCoverageUpgradeAgentBranchFailures(t *testing.T) {
 					useUpgradeManagedNames(t, "dingtalk-chat")
 				}
 				origRename := skillPathRenameNoReplace
-				testseam.Swap(t, &skillPathRenameNoReplace, func(src, dst string) error {
+				testseam.Swap(t, &skillPathRenameNoReplace, func(src, dst string) (string, error) {
 					if src == victim {
-						return errors.New("retire denied")
+						return "", errors.New("retire denied")
 					}
 					return origRename(src, dst)
 				})

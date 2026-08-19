@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -68,6 +69,24 @@ func TestCrossPlatformCoverageSkillSetupCanonicalHomeBackupAndPublishFailures(t 
 		})
 		if _, _, err := executeSkillSetupPlan(plan, &bytes.Buffer{}, &bytes.Buffer{}); err == nil || !strings.Contains(err.Error(), "canonical Skill 发布失败") {
 			t.Fatalf("publish failure = %v", err)
+		}
+	})
+
+	t.Run("uncertain-publish", func(t *testing.T) {
+		home, plan := canonicalFailurePlan(t)
+		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+		testseam.Swap(t, &skillSetupPublishPath, func(string, string) (upgrade.SkillPathPublication, error) {
+			return upgrade.SkillPathPublication{}, fmt.Errorf("并发写入: %w", upgrade.ErrSkillPathPublicationUncertain)
+		})
+		errOut := &bytes.Buffer{}
+		_, _, err := executeSkillSetupPlan(plan, &bytes.Buffer{}, errOut)
+		if err == nil || !strings.Contains(err.Error(), "canonical Skill 发布状态不确定") {
+			t.Fatalf("uncertain publish = %v", err)
+		}
+		// The destination was deliberately retained, so the canonical error
+		// must not claim a rollback happened.
+		if strings.Contains(err.Error(), "回滚") {
+			t.Fatalf("uncertain error must not claim a rollback: %v", err)
 		}
 	})
 }

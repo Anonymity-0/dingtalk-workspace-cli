@@ -15,6 +15,9 @@ func skillPathSameFileIdentityImpl(left, right os.FileInfo) bool {
 	return os.SameFile(left, right)
 }
 
+// skillPathFileIdentityImpl reports no identity on platforms whose stat
+// layout we do not decode; the child-move claim witness degrades gracefully
+// to the publication fingerprint backstop.
 func skillPathFileIdentityImpl(_ string) string {
 	return ""
 }

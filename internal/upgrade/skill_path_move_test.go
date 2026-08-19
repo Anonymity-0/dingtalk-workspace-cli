@@ -140,7 +140,7 @@ func TestCrossPlatformCoverageSkillPathCrossDeviceFailures(t *testing.T) {
 	t.Run("non cross-device rename never copies", func(t *testing.T) {
 		src, dst := makeSkillMoveFixture(t)
 		copied := false
-		testseam.Swap(t, &skillPathRenameNoReplace, func(string, string) error { return os.ErrPermission })
+		testseam.Swap(t, &skillPathRenameNoReplace, func(string, string) (string, error) { return "", os.ErrPermission })
 		testseam.Swap(t, &skillPathCopy, func(string, string) error { copied = true; return nil })
 		if err := moveSkillPathRecoverably(src, dst); !errors.Is(err, os.ErrPermission) {
 			t.Fatalf("error = %v", err)
@@ -182,12 +182,12 @@ func TestCrossPlatformCoverageSkillPathCrossDeviceFailures(t *testing.T) {
 	t.Run("staging publish failure", func(t *testing.T) {
 		src, dst := makeSkillMoveFixture(t)
 		originalRename := skillPathRenameNoReplace
-		testseam.Swap(t, &skillPathRenameNoReplace, func(from, to string) error {
+		testseam.Swap(t, &skillPathRenameNoReplace, func(from, to string) (string, error) {
 			if from == src && to == dst {
-				return testCrossDeviceError()
+				return "", testCrossDeviceError()
 			}
 			if to == dst {
-				return errors.New("publish failed")
+				return "", errors.New("publish failed")
 			}
 			return originalRename(from, to)
 		})
@@ -403,9 +403,9 @@ func TestCrossPlatformCoverageVerifySkillPathCopyMismatches(t *testing.T) {
 func forceCrossDeviceRename(t *testing.T, src, dst string) {
 	t.Helper()
 	originalRename := skillPathRenameNoReplace
-	testseam.Swap(t, &skillPathRenameNoReplace, func(from, to string) error {
+	testseam.Swap(t, &skillPathRenameNoReplace, func(from, to string) (string, error) {
 		if from == src && to == dst {
-			return testCrossDeviceError()
+			return "", testCrossDeviceError()
 		}
 		return originalRename(from, to)
 	})

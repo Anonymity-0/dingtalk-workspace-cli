@@ -93,9 +93,9 @@ func TestCrossPlatformCoverageMultiUpgradeTransactionPreservesOldSet(t *testing.
 	t.Run("backup failure restores earlier victims", func(t *testing.T) {
 		home, base, multiRoot, skills, skillSet := seedMultiUpgradeTarget(t)
 		originalRename := skillPathRenameNoReplace
-		testseam.Swap(t, &skillPathRenameNoReplace, func(src, dest string) error {
+		testseam.Swap(t, &skillPathRenameNoReplace, func(src, dest string) (string, error) {
 			if src == filepath.Join(base, "dingtalk-b") {
-				return failure
+				return "", failure
 			}
 			return originalRename(src, dest)
 		})
@@ -223,7 +223,7 @@ func TestCrossPlatformCoverageSkillPublishTransactionFailureEdges(t *testing.T) 
 	})
 
 	t.Run("restore reports rename failure", func(t *testing.T) {
-		testseam.Swap(t, &skillPathRenameNoReplace, func(string, string) error { return restoreFailure })
+		testseam.Swap(t, &skillPathRenameNoReplace, func(string, string) (string, error) { return "", restoreFailure })
 		err := restoreSkillSet(nil, []backedUpSkillDir{{original: filepath.Join(t.TempDir(), "old"), backup: filepath.Join(t.TempDir(), "backup")}})
 		if !errors.Is(err, restoreFailure) {
 			t.Fatalf("restore rename error = %v", err)
@@ -237,12 +237,12 @@ func TestCrossPlatformCoverageSkillPublishTransactionFailureEdges(t *testing.T) 
 		seedUpgradeSkill(t, first, "first", false)
 		seedUpgradeSkill(t, second, "second", false)
 		originalRename := skillPathRenameNoReplace
-		testseam.Swap(t, &skillPathRenameNoReplace, func(src, dest string) error {
+		testseam.Swap(t, &skillPathRenameNoReplace, func(src, dest string) (string, error) {
 			switch {
 			case src == second:
-				return failure
+				return "", failure
 			case strings.Contains(filepath.ToSlash(src), skillBackupSubdir):
-				return restoreFailure
+				return "", restoreFailure
 			default:
 				return originalRename(src, dest)
 			}
@@ -263,9 +263,9 @@ func TestCrossPlatformCoverageSkillPublishTransactionFailureEdges(t *testing.T) 
 			return SkillPathPublication{}, failure
 		})
 		originalRename := skillPathRenameNoReplace
-		testseam.Swap(t, &skillPathRenameNoReplace, func(src, dest string) error {
+		testseam.Swap(t, &skillPathRenameNoReplace, func(src, dest string) (string, error) {
 			if strings.Contains(filepath.ToSlash(src), skillBackupSubdir) {
-				return restoreFailure
+				return "", restoreFailure
 			}
 			return originalRename(src, dest)
 		})

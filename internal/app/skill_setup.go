@@ -2120,9 +2120,18 @@ func executeSkillSetupPlan(plan *skillSetupPlan, out, errOut io.Writer) (install
 				publishErr = errors.Join(publishErr, fmt.Errorf("清理 Skill staging 失败 %s: %w", stageRoot, cleanupErr))
 			}
 			if isCanonical && hasCanonicalDependents {
+				if errors.Is(publishErr, upgrade.ErrSkillPathPublicationUncertain) {
+					return installed, skipped + perTarget, fmt.Errorf("canonical Skill 发布状态不确定，目标可能属于并发写入并已保留 %s: %w", target.Destination, publishErr)
+				}
 				return installed, skipped + perTarget, fmt.Errorf("canonical Skill 发布失败，已执行回滚 %s: %w", target.Destination, publishErr)
 			}
-			fmt.Fprintf(errOut, "  ✗ Skill 发布失败，已执行回滚，跳过整个 Agent 目标 %s: %v\n", target.Destination, publishErr)
+			if errors.Is(publishErr, upgrade.ErrSkillPathPublicationUncertain) {
+				// The destination may belong to a concurrent writer and was
+				// deliberately retained; the rollback refuses to displace it.
+				fmt.Fprintf(errOut, "  ✗ Skill 发布状态不确定，目标可能属于并发写入并已保留 %s: %v\n", target.Destination, publishErr)
+			} else {
+				fmt.Fprintf(errOut, "  ✗ Skill 发布失败，已执行回滚，跳过整个 Agent 目标 %s: %v\n", target.Destination, publishErr)
+			}
 			skipped += perTarget
 			continue
 		}

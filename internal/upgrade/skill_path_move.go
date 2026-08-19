@@ -50,7 +50,10 @@ func moveSkillPathRecoverably(src, dst string) (err error) {
 	if err := skillPathMkdirAll(filepath.Dir(dst), dirPermShared); err != nil {
 		return fmt.Errorf("创建移动目标目录失败 %s: %w", filepath.Dir(dst), err)
 	}
-	if renameErr := skillPathRenameNoReplace(src, dst); renameErr == nil {
+	// moveSkillPathRecoverably is not a publication path; ignore any
+	// claim identity returned by the rename — no ownership check follows
+	// on this destination.
+	if _, renameErr := skillPathRenameNoReplace(src, dst); renameErr == nil {
 		return nil
 	} else if !isCrossDeviceError(renameErr) {
 		return fmt.Errorf("移动 Skill 路径失败 %s -> %s: %w", src, dst, renameErr)
@@ -91,7 +94,9 @@ func moveSkillPathRecoverably(src, dst string) (err error) {
 			return fmt.Errorf("准备跨设备 Skill staging 发布失败 %s: %w", stage, err)
 		}
 	}
-	if err := skillPathRenameNoReplace(stage, dst); err != nil {
+	// Cross-device staging publishes via a self-owned staging directory,
+	// so the claim identity is not consulted; discard it.
+	if _, err := skillPathRenameNoReplace(stage, dst); err != nil {
 		return fmt.Errorf("发布跨设备 Skill 备份失败 %s: %w", dst, err)
 	}
 	if stageInfo.IsDir() {
