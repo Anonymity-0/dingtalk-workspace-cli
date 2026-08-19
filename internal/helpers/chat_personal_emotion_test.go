@@ -26,6 +26,9 @@ func (c *personalEmotionCaller) CallTool(_ context.Context, server, tool string,
 		copied[key] = value
 	}
 	c.calls = append(c.calls, personalEmotionCall{server: server, tool: tool, args: copied})
+	if server == "contact" && tool == "get_user_info_by_user_ids" {
+		return textToolResult(`{"result":[{"userId":"u1","openDingTalkId":"` + helperCurrentDOpenID2 + `"}]}`), nil
+	}
 	return textToolResult(`{"ok":true}`), nil
 }
 
@@ -124,6 +127,37 @@ func TestChatEmotionSendTreatsOpenDingTalkIDPassedAsUserAsResolvedTarget(t *test
 		"mediaId":                "@media",
 		"receiverOpenDingTalkId": helperCurrentDOpenID,
 	})
+}
+
+func TestChatEmotionSendResolvesUserIDTarget(t *testing.T) {
+	// TC-004b: --user 收到普通 userId 时先解析为 openDingTalkId，再发送个人收藏表情。
+	caller := &personalEmotionCaller{}
+	err := executePersonalEmotionCommand(t, caller,
+		"emotion", "send",
+		"--media-id", "@media",
+		"--user", "u1",
+	)
+	if err != nil {
+		t.Fatalf("chat emotion send returned error: %v", err)
+	}
+	if len(caller.calls) != 2 {
+		t.Fatalf("calls = %d, want contact resolve then send: %+v", len(caller.calls), caller.calls)
+	}
+	resolveCall := caller.calls[0]
+	if resolveCall.server != "contact" || resolveCall.tool != "get_user_info_by_user_ids" {
+		t.Fatalf("resolve call = %s/%s, want contact/get_user_info_by_user_ids", resolveCall.server, resolveCall.tool)
+	}
+	sendCall := caller.calls[1]
+	if sendCall.server != "im" || sendCall.tool != "send_personal_emotion" {
+		t.Fatalf("send call = %s/%s, want im/send_personal_emotion", sendCall.server, sendCall.tool)
+	}
+	want := map[string]any{
+		"mediaId":                "@media",
+		"receiverOpenDingTalkId": helperCurrentDOpenID2,
+	}
+	if !reflect.DeepEqual(sendCall.args, want) {
+		t.Fatalf("send args = %#v, want %#v", sendCall.args, want)
+	}
 }
 
 func TestChatEmotionSendRejectsInvalidTargets(t *testing.T) {
