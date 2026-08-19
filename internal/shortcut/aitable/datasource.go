@@ -11,11 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This file declares the 5 datasource shortcuts for the aitable service:
-// create / update / sync / sync-status / get-config. Each maps 1:1 onto a
-// datasource MCP tool on the "aitable" server. datasource-type is passed
-// through without CLI-side enum validation; source-config is validated as a
-// JSON object and passed through as a parsed value.
+// This file declares the 7 datasource shortcuts for the aitable service:
+// create / update / sync / sync-status / get-config / list-sources /
+// get-fields. Each maps 1:1 onto a datasource MCP tool on the "aitable"
+// server. datasource-type is passed through without CLI-side enum
+// validation; source-config is validated as a JSON object but passed
+// through as a raw string (MCP types it as string).
 
 package aitable
 
@@ -63,32 +64,31 @@ var DatasourceCreate = shortcut.Shortcut{
 				"仅需触发已有数据源表的同步时（改用 +datasource-sync）",
 			},
 			Examples: []string{
-				`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX"}'`,
-				`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX"}' --auto`,
+				`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+				`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"time_range","startDate":"2025-01-01","endDate":"2025-12-31","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' --auto`,
 			},
 		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID（通过 +base-list / +base-search 获取）", Required: true},
 		{Name: "datasource-type", Type: shortcut.FlagString, Desc: "数据源类型，目前支持审批（OA）", Required: true},
-		{Name: "source-config", Type: shortcut.FlagString, Desc: "源配置 JSON 字符串，由用户提供", Required: true},
+		{Name: "source-config", Type: shortcut.FlagString, Desc: "源配置 JSON 字符串。OA 审批必填字段：processCode（+datasource-list-sources 返回的 result）、name（展示名称，从 +datasource-list-sources 获取）、dataType（time_range/start_time/recent_time）、iconUrl、url（须从 +datasource-list-sources 结果原样透传）；按 dataType 提供时间参数：recentDays（7d/30d/1y，默认 30d）/ startDate（yyyy-MM-dd，默认 30 天前）/ endDate（yyyy-MM-dd，默认当天）；可选：keepRemovedFields（默认 false）", Required: true},
 		{Name: "auto", Type: shortcut.FlagBool, Desc: "是否开启自动同步，默认 false"},
 		{Name: "field-ids", Type: shortcut.FlagStringSlice, Desc: "需要同步的字段 ID 列表，不传时同步全部字段"},
-		{Name: "conflict-strategy", Type: shortcut.FlagInt, Desc: "冲突策略：0=自动重命名（默认），1=返回已有配置"},
+		{Name: "conflict-strategy", Type: shortcut.FlagInt, Desc: "冲突策略：0=覆盖（默认），1=跳过"},
 	},
 	Tips: []string{
-		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX"}'`,
-		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX"}' --auto`,
+		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"time_range","startDate":"2025-01-01","endDate":"2025-12-31","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' --auto`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		sourceConfig, err := parseJSONObject("source-config", rt.Str("source-config"))
-		if err != nil {
+		if _, err := parseJSONObject("source-config", rt.Str("source-config")); err != nil {
 			return err
 		}
 		params := map[string]any{
 			"baseId":         rt.Str("base-id"),
 			"datasourceType": rt.Str("datasource-type"),
-			"sourceConfig":   sourceConfig,
+			"sourceConfig":   rt.Str("source-config"),
 		}
 		if rt.Changed("auto") {
 			params["auto"] = rt.Bool("auto")
@@ -98,6 +98,12 @@ var DatasourceCreate = shortcut.Shortcut{
 		}
 		if rt.Changed("conflict-strategy") {
 			params["syncConflictStrategy"] = rt.Int("conflict-strategy")
+		}
+		if rt.Changed("auto-sync-setting") {
+			if _, err := parseJSONObject("auto-sync-setting", rt.Str("auto-sync-setting")); err != nil {
+				return err
+			}
+			params["autoSyncSetting"] = rt.Str("auto-sync-setting")
 		}
 		data, err := rt.CallMCPData(serverMain, "create_datasource", params)
 		if err != nil {
@@ -142,20 +148,21 @@ var DatasourceUpdate = shortcut.Shortcut{
 			},
 			Examples: []string{
 				`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --auto`,
-				`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --source-config '{"processCode":"PROC-YYYY"}'`,
+				`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --source-config '{"processCode":"PROC-YYYY","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 			},
 		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},
-		{Name: "table-id", Type: shortcut.FlagString, Desc: "已存在的数据源表 ID（由 +datasource-create 返回）", Required: true},
-		{Name: "source-config", Type: shortcut.FlagString, Desc: "新的源配置 JSON，不传时保持原有配置"},
+		{Name: "table-id", Type: shortcut.FlagString, Desc: "已存在的数据源表 ID（通过 +base-get / +table-list 获取，仅允许传入 sync=true 的数据源表）", Required: true},
+		{Name: "source-config", Type: shortcut.FlagString, Desc: "新的源配置 JSON 字符串。不传时保持原有配置不变；传入时整体覆盖。OA 审批必填字段：processCode、name、dataType、iconUrl、url（须从 +datasource-list-sources 结果原样透传）；可选字段：recentDays（默认 30d）、startDate（默认 30 天前）、endDate（默认当天）、keepRemovedFields（默认 false）"},
 		{Name: "auto", Type: shortcut.FlagBool, Desc: "是否开启自动同步，不传时保持原有设置"},
 		{Name: "field-ids", Type: shortcut.FlagStringSlice, Desc: "需要同步的字段 ID 列表，不传时同步全部字段"},
+			{Name: "auto-sync-setting", Type: shortcut.FlagString, Desc: "自动同步频率配置 JSON 字符串，仅在 --auto=true 时生效。字段：syncType（必填，hourly|schedule）、hourlyInterval（hourly 时必填，正整数小时）、scheduleType（schedule 时必填，day|week|month）、timeValue（schedule 时必填，HH:mm）、selectedMonthDays（month 时可选）、selectedWeekdays（week 时可选）、skipNonWorkingDay（可选，默认 false）。不传时保持原有自动同步频率配置"},
 	},
 	Tips: []string{
 		`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --auto`,
-		`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --source-config '{"processCode":"PROC-YYYY"}'`,
+		`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --source-config '{"processCode":"PROC-YYYY","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{
@@ -163,17 +170,22 @@ var DatasourceUpdate = shortcut.Shortcut{
 			"tableId": rt.Str("table-id"),
 		}
 		if rt.Changed("source-config") {
-			sourceConfig, err := parseJSONObject("source-config", rt.Str("source-config"))
-			if err != nil {
+			if _, err := parseJSONObject("source-config", rt.Str("source-config")); err != nil {
 				return err
 			}
-			params["sourceConfig"] = sourceConfig
+			params["sourceConfig"] = rt.Str("source-config")
 		}
 		if rt.Changed("auto") {
 			params["auto"] = rt.Bool("auto")
 		}
 		if rt.Changed("field-ids") {
 			params["fieldIds"] = rt.StrSlice("field-ids")
+		}
+		if rt.Changed("auto-sync-setting") {
+			if _, err := parseJSONObject("auto-sync-setting", rt.Str("auto-sync-setting")); err != nil {
+				return err
+			}
+			params["autoSyncSetting"] = rt.Str("auto-sync-setting")
 		}
 		data, err := rt.CallMCPData(serverMain, "update_datasource_config", params)
 		if err != nil {
@@ -224,7 +236,7 @@ var DatasourceSync = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},
-		{Name: "table-ids", Type: shortcut.FlagStringSlice, Desc: "待触发同步的数据源表 ID 列表（1-5 个）", Required: true},
+		{Name: "table-ids", Type: shortcut.FlagStringSlice, Desc: "待触发同步的数据源表 ID 列表（通过 +base-get / +table-list 获取，仅允许 sync=true 的表，1-5 个）", Required: true},
 	},
 	Tips: []string{
 		`dws aitable +datasource-sync --base-id BASE123 --table-ids TBL1,TBL2`,
@@ -283,7 +295,7 @@ var DatasourceSyncStatus = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},
-		{Name: "table-id", Type: shortcut.FlagString, Desc: "数据源表 ID", Required: true},
+		{Name: "table-id", Type: shortcut.FlagString, Desc: "数据源表 ID（通过 +base-get / +table-list 获取，仅允许传入 sync=true 的表）", Required: true},
 		{Name: "task-ids", Type: shortcut.FlagStringSlice, Desc: "待查询的同步任务 ID 列表（1-5 个），不传时查询最近一次"},
 	},
 	Tips: []string{
@@ -311,7 +323,7 @@ var DatasourceGetConfig = shortcut.Shortcut{
 	Service:     "aitable",
 	Command:     "+datasource-get-config",
 	Product:     serverMain,
-	Description: "获取指定数据源表的同步配置信息，包括源配置、同步模式、自动同步开关和同步状态。仅适用于数据源表。",
+	Description: "获取指定数据源表的同步配置信息，包括源配置、同步模式、自动同步开关和同步状态。仅适用于数据源表。仅支持 OA 审批数据源（datasourceType=OA）。",
 	Intent:      "当用户需要查看已有数据源表的配置详情（如确认当前同步的审批模板、字段选择、自动同步状态）时使用。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
@@ -326,14 +338,14 @@ var DatasourceGetConfig = shortcut.Shortcut{
 			CLIPath:        "aitable +datasource-get-config",
 			PrimaryCLIPath: "aitable +datasource-get-config",
 		},
-		Description: "获取指定数据源表的同步配置信息，包括源配置、同步模式、自动同步开关和同步状态。仅适用于数据源表。",
+		Description: "获取指定数据源表的同步配置信息，包括源配置、同步模式、自动同步开关和同步状态。仅适用于数据源表。仅支持 OA 审批数据源（datasourceType=OA）。",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
 			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
 		Selection: contract.SelectionSpec{
-			AgentSummary: "获取指定数据源表的同步配置信息，包括源配置、同步模式、自动同步开关和同步状态。仅适用于数据源表。",
+			AgentSummary: "获取指定数据源表的同步配置信息，包括源配置、同步模式、自动同步开关和同步状态。仅适用于数据源表。仅支持 OA 审批数据源（datasourceType=OA）。",
 			UseWhen:      []string{"当用户需要查看已有数据源表的同步配置详情时"},
 			AvoidWhen: []string{
 				"需要更新配置时（改用 +datasource-update）",
@@ -346,7 +358,7 @@ var DatasourceGetConfig = shortcut.Shortcut{
 	},
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},
-		{Name: "table-id", Type: shortcut.FlagString, Desc: "数据源表 ID", Required: true},
+		{Name: "table-id", Type: shortcut.FlagString, Desc: "数据源表 ID（通过 +base-get / +table-list 获取，仅允许传入 sync=true 的表）", Required: true},
 	},
 	Tips: []string{
 		`dws aitable +datasource-get-config --base-id BASE123 --table-id TBL456`,
@@ -364,6 +376,127 @@ var DatasourceGetConfig = shortcut.Shortcut{
 	},
 }
 
+// DatasourceListSources 列出指定数据源类型可用的来源（list_datasource_sources）。
+var DatasourceListSources = shortcut.Shortcut{
+	Service:     "aitable",
+	Command:     "+datasource-list-sources",
+	Product:     serverMain,
+	Description: "列出指定 Base 下可用的数据源条目。返回结果可作为 +datasource-create / +datasource-update 的 --source-config 使用。每个条目包含 iconUrl 与 url，创建/更新 OA 审批数据源时须原样透传回 sourceConfig。仅支持 OA 审批数据源（datasourceType=OA）。",
+	Intent:      "当用户需要查看某类数据源（如审批）的可用来源信息、获取 result/processCode 以便创建或更新数据源配置时使用。",
+	Risk:        shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_datasource_list_sources",
+			CanonicalPath:  "aitable.shortcut_datasource_list_sources",
+			CLIPath:        "aitable +datasource-list-sources",
+			PrimaryCLIPath: "aitable +datasource-list-sources",
+		},
+		Description: "列出指定 Base 下可用的数据源条目。返回结果可作为 +datasource-create / +datasource-update 的 --source-config 使用。每个条目包含 iconUrl 与 url，创建/更新 OA 审批数据源时须原样透传回 sourceConfig。仅支持 OA 审批数据源（datasourceType=OA）。",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "列出指定 Base 下可用的数据源条目（含 result/processCode、iconUrl、url、sourceUrl），用于构造 --source-config。仅支持 OA。",
+			UseWhen:      []string{"当用户需要在创建或更新数据源前查看可用来源、获取 result/processCode 时"},
+			AvoidWhen: []string{
+				"需要创建数据源表时（改用 +datasource-create）",
+				"需要获取数据源字段结构时（改用 +datasource-get-fields）",
+			},
+			Examples: []string{
+				`dws aitable +datasource-list-sources --base-id BASE123 --datasource-type OA`,
+			},
+		},
+	},
+	Flags: []shortcut.Flag{
+		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},
+		{Name: "datasource-type", Type: shortcut.FlagString, Desc: "数据源类型，目前支持审批（OA）", Required: true},
+	},
+	Tips: []string{
+		`dws aitable +datasource-list-sources --base-id BASE123 --datasource-type OA`,
+	},
+	Execute: func(rt *shortcut.RuntimeContext) error {
+		params := map[string]any{
+			"baseId":         rt.Str("base-id"),
+			"datasourceType": rt.Str("datasource-type"),
+		}
+		data, err := rt.CallMCPData(serverMain, "list_datasource_sources", params)
+		if err != nil {
+			return err
+		}
+		return rt.Output(data)
+	},
+}
+
+// DatasourceGetFields 获取指定数据源来源的可同步字段列表（get_datasource_fields）。
+var DatasourceGetFields = shortcut.Shortcut{
+	Service:     "aitable",
+	Command:     "+datasource-get-fields",
+	Product:     serverMain,
+	Description: "获取指定数据源下可供同步的字段列表，包括字段 ID、字段名称、字段类型和是否主键等，用于在 +datasource-create / +datasource-update 中决定同步哪些字段。传入从 +datasource-list-sources 获取的 sourceConfig。仅支持 OA 审批数据源（datasourceType=OA）。",
+	Intent:      "当用户需要查看某数据源来源有哪些可同步字段、以便在创建或更新数据源时指定 field-ids 时使用。",
+	Risk:        shortcut.RiskRead,
+	Safety: contract.SafetySpec{
+		Effect: "read", Risk: "low",
+		Confirmation: "not_required", Idempotency: "idempotent",
+	},
+	Contract: corecmd.ContractDecl{
+		Identity: contract.ToolIdentitySpec{
+			ProductID:      "aitable",
+			Name:           "shortcut_datasource_get_fields",
+			CanonicalPath:  "aitable.shortcut_datasource_get_fields",
+			CLIPath:        "aitable +datasource-get-fields",
+			PrimaryCLIPath: "aitable +datasource-get-fields",
+		},
+		Description: "获取指定数据源下可供同步的字段列表，包括字段 ID、字段名称、字段类型和是否主键等，用于在 +datasource-create / +datasource-update 中决定同步哪些字段。传入从 +datasource-list-sources 获取的 sourceConfig。仅支持 OA 审批数据源（datasourceType=OA）。",
+		Interface: &contract.InterfaceSpec{
+			Mode:         "composite",
+			Availability: "available",
+			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
+		},
+		Selection: contract.SelectionSpec{
+			AgentSummary: "获取指定数据源的可同步字段列表（字段 ID/名称/类型/是否主键），用于决定 field-ids。仅支持 OA。",
+			UseWhen:      []string{"当用户需要在创建或更新数据源前查看可同步字段、以便指定 field-ids 时"},
+			AvoidWhen: []string{
+				"需要列出可用来源时（改用 +datasource-list-sources）",
+				"需要创建数据源表时（改用 +datasource-create）",
+			},
+			Examples: []string{
+				`dws aitable +datasource-get-fields --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+			},
+		},
+	},
+	Flags: []shortcut.Flag{
+		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},
+		{Name: "datasource-type", Type: shortcut.FlagString, Desc: "数据源类型，目前支持审批（OA）", Required: true},
+		{Name: "source-config", Type: shortcut.FlagString, Desc: "源配置 JSON 字符串。结构同 +datasource-create 的 --source-config，需含 processCode、dataType、iconUrl、url 及对应时间字段", Required: true},
+	},
+	Tips: []string{
+		`dws aitable +datasource-get-fields --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+	},
+	Execute: func(rt *shortcut.RuntimeContext) error {
+		if _, err := parseJSONObject("source-config", rt.Str("source-config")); err != nil {
+			return err
+		}
+		params := map[string]any{
+			"baseId":         rt.Str("base-id"),
+			"datasourceType": rt.Str("datasource-type"),
+			"sourceConfig":   rt.Str("source-config"),
+		}
+		data, err := rt.CallMCPData(serverMain, "get_datasource_fields", params)
+		if err != nil {
+			return err
+		}
+		return rt.Output(data)
+	},
+}
+
 func init() {
 	shortcut.Register(withReviewedAITableShortcutContracts(
 		DatasourceCreate,
@@ -371,5 +504,7 @@ func init() {
 		DatasourceSync,
 		DatasourceSyncStatus,
 		DatasourceGetConfig,
+		DatasourceListSources,
+		DatasourceGetFields,
 	)...)
 }
