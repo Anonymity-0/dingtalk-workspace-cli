@@ -75,7 +75,7 @@ func executeRecordPrimaryDocGet(rt *shortcut.RuntimeContext) error {
 		}
 		return err
 	}
-	nodeID := findStringByKeys(data, "nodeId", "dentryUuid")
+	nodeID := primaryDocNodeID(data)
 	if nodeID == "" {
 		if knownPrimaryDocUnassociatedData(data) {
 			return rt.Output(map[string]any{
@@ -96,38 +96,47 @@ func knownPrimaryDocUnassociatedError(err error) bool {
 	return strings.Contains(message, "no record") || strings.Contains(message, "unassociated")
 }
 
-func knownPrimaryDocUnassociatedData(value any) bool {
-	var walk func(any) bool
-	walk = func(current any) bool {
-		switch typed := current.(type) {
-		case map[string]any:
-			if exists, ok := typed["exists"].(bool); ok && !exists {
-				return true
-			}
-			for _, key := range []string{"nodeId", "dentryUuid"} {
-				if nodeID, exists := typed[key]; exists && (nodeID == nil || strings.TrimSpace(fmt.Sprint(nodeID)) == "") {
-					return true
-				}
-			}
-			if status, ok := typed["status"].(string); ok {
-				status = strings.ToLower(strings.TrimSpace(status))
-				if status == "unassociated" || status == "no_record" {
-					return true
-				}
-			}
-			for _, child := range typed {
-				if walk(child) {
-					return true
-				}
-			}
-		case []any:
-			for _, child := range typed {
-				if walk(child) {
-					return true
-				}
-			}
+func primaryDocNodeID(value any) string {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return ""
+	}
+	for _, key := range []string{"nodeId", "dentryUuid"} {
+		if nodeID, ok := object[key].(string); ok && strings.TrimSpace(nodeID) != "" {
+			return strings.TrimSpace(nodeID)
 		}
+	}
+	for _, envelopeKey := range []string{"data", "result", "response"} {
+		if nodeID := primaryDocNodeID(object[envelopeKey]); nodeID != "" {
+			return nodeID
+		}
+	}
+	return ""
+}
+
+func knownPrimaryDocUnassociatedData(value any) bool {
+	object, ok := value.(map[string]any)
+	if !ok {
 		return false
 	}
-	return walk(value)
+	if exists, ok := object["exists"].(bool); ok && !exists {
+		return true
+	}
+	for _, key := range []string{"nodeId", "dentryUuid"} {
+		if nodeID, exists := object[key]; exists && (nodeID == nil || strings.TrimSpace(fmt.Sprint(nodeID)) == "") {
+			return true
+		}
+	}
+	if status, ok := object["status"].(string); ok {
+		status = strings.ToLower(strings.TrimSpace(status))
+		if status == "unassociated" || status == "no_record" {
+			return true
+		}
+	}
+	for _, envelopeKey := range []string{"data", "result", "response"} {
+		if child, ok := object[envelopeKey].(map[string]any); ok && knownPrimaryDocUnassociatedData(child) {
+			return true
+		}
+	}
+	return false
 }

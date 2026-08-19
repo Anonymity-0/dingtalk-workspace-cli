@@ -546,6 +546,12 @@ func TestCrossPlatformCoverageAitableViewFilterFailureAndShapeEdges(t *testing.T
 	if got, ok := findAitableObjectList([]any{"skip", map[string]any{"nested": map[string]any{"fields": []any{map[string]any{"fieldId": "f"}}}}}, "fields"); !ok || len(got) != 1 {
 		t.Fatalf("recursive fields = %#v, %v", got, ok)
 	}
+	if got, ok := findAitableObjectList(map[string]any{
+		"fieldList": []any{map[string]any{"fieldId": "legacy"}},
+		"fields":    []any{map[string]any{"fieldId": "canonical"}},
+	}, "fields", "fieldList"); !ok || len(got) != 1 || got[0]["fieldId"] != "canonical" {
+		t.Fatalf("declared collection priority = %#v, %v", got, ok)
+	}
 
 	invalidFilters := []struct {
 		filter []any
@@ -564,11 +570,14 @@ func TestCrossPlatformCoverageAitableViewFilterFailureAndShapeEdges(t *testing.T
 			t.Errorf("validate filter %#v = %v, want %q", tc.filter, err, tc.want)
 		}
 	}
-	if _, err := expandAitableMultiSelectAnyOf("multi", nil); err == nil {
+	if err := validateAitableMultiSelectOptionNames(nil); err == nil {
 		t.Fatal("empty any_of array must fail")
 	}
-	if _, err := expandAitableMultiSelectAnyOf("multi", []any{"ok", 1}); err == nil {
+	if err := validateAitableMultiSelectOptionNames([]any{"ok", 1}); err == nil {
 		t.Fatal("non-string any_of option must fail")
+	}
+	if err := validateAitableMultiSelectOptionNames([]any{"first", " second "}); err != nil {
+		t.Fatalf("valid any_of option names = %v", err)
 	}
 	if got := compactJSON(make(chan int)); !strings.HasPrefix(got, "(chan int)") {
 		t.Fatalf("compactJSON fallback = %q", got)

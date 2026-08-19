@@ -180,7 +180,7 @@ func TestCrossPlatformCoverageRecordPrimaryDocFailureAndShapeEdgesE2E(t *testing
 		map[string]any{"exists": false},
 		map[string]any{"dentryUuid": ""},
 		map[string]any{"status": "NO_RECORD"},
-		map[string]any{"nested": []any{map[string]any{"status": "unassociated"}}},
+		map[string]any{"data": map[string]any{"result": map[string]any{"status": "unassociated"}}},
 	} {
 		if !knownPrimaryDocUnassociatedData(value) {
 			t.Errorf("known unassociated shape not recognized: %#v", value)
@@ -188,6 +188,20 @@ func TestCrossPlatformCoverageRecordPrimaryDocFailureAndShapeEdgesE2E(t *testing
 	}
 	if knownPrimaryDocUnassociatedData([]any{"unrelated"}) || knownPrimaryDocUnassociatedData(nil) {
 		t.Fatal("unrelated shapes must not be unassociated")
+	}
+	for _, value := range []any{
+		map[string]any{"metadata": map[string]any{"exists": false}},
+		map[string]any{"items": []any{map[string]any{"nodeId": nil}}},
+	} {
+		if knownPrimaryDocUnassociatedData(value) {
+			t.Errorf("unrelated nested marker must not be unassociated: %#v", value)
+		}
+	}
+	if got := primaryDocNodeID(map[string]any{"metadata": map[string]any{"nodeId": "wrong"}}); got != "" {
+		t.Fatalf("unrelated nested nodeId = %q, want empty", got)
+	}
+	if got := primaryDocNodeID(map[string]any{"data": map[string]any{"response": map[string]any{"dentryUuid": " node-1 "}}}); got != "node-1" {
+		t.Fatalf("known envelope nodeId = %q, want node-1", got)
 	}
 }
 

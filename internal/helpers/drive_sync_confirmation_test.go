@@ -278,8 +278,11 @@ func TestCrossPlatformCoverageDriveSyncDryRunPlanBranchMatrix(t *testing.T) {
 	for _, policy := range []string{syncConflictRemoteWins, syncConflictLocalWins, syncConflictKeepBoth, syncConflictAsk, syncConflictSkip} {
 		t.Run(policy, func(t *testing.T) {
 			res := &driveSyncResult{}
-			appendDriveSyncDryRunPlan(res, localDirs, localFiles, remoteFiles, remoteFolders,
-				[]string{"new/file.txt", "missing/file.txt"}, []string{"remote.txt"}, []string{"conflict.txt"}, []string{"unknown.txt"}, policy)
+			appendDriveSyncDryRunPlan(res, driveSyncDryRunPlanInput{
+				LocalDirs: localDirs, LocalByRel: localFiles, RemoteFiles: remoteFiles, RemoteFolders: remoteFolders,
+				NewLocal: []string{"new/file.txt", "missing/file.txt"}, NewRemote: []string{"remote.txt"},
+				Modified: []string{"conflict.txt"}, Unknown: []string{"unknown.txt"}, OnConflict: policy,
+			})
 			if res.Summary.PlannedSkips == 0 || res.Summary.PlannedFolders == 0 || res.Summary.PlannedPulls == 0 || res.Summary.Failed != 2 {
 				t.Fatalf("dry-run plan summary for %s = %#v; items=%#v", policy, res.Summary, res.Items)
 			}

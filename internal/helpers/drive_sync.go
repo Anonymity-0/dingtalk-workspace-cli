@@ -280,8 +280,10 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 	// --dry-run：只算差异、不执行任何同步动作。
 	if deps.Caller.DryRun() {
 		if len(preflight) == 0 && res.Summary.Failed == 0 {
-			appendDriveSyncDryRunPlan(&res, localDirs, localByRel, remoteFiles, remoteFolders,
-				newLocal, newRemote, modified, unknown, onConflict)
+			appendDriveSyncDryRunPlan(&res, driveSyncDryRunPlanInput{
+				LocalDirs: localDirs, LocalByRel: localByRel, RemoteFiles: remoteFiles, RemoteFolders: remoteFolders,
+				NewLocal: newLocal, NewRemote: newRemote, Modified: modified, Unknown: unknown, OnConflict: onConflict,
+			})
 		}
 		return deps.Out.PrintJSON(driveSyncDryRunResult{
 			DryRun: true, Executed: false, PreviewKind: "plan", Operation: "drive sync", Plan: res,
@@ -410,16 +412,20 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func appendDriveSyncDryRunPlan(
-	res *driveSyncResult,
-	localDirs []string,
-	localByRel map[string]localPushFile,
-	remoteFiles map[string]*remoteFile,
-	remoteFolders map[string]string,
-	newLocal, newRemote, modified, unknown []string,
-	onConflict string,
-) {
-	for _, rel := range unknown {
+type driveSyncDryRunPlanInput struct {
+	LocalDirs     []string
+	LocalByRel    map[string]localPushFile
+	RemoteFiles   map[string]*remoteFile
+	RemoteFolders map[string]string
+	NewLocal      []string
+	NewRemote     []string
+	Modified      []string
+	Unknown       []string
+	OnConflict    string
+}
+
+func appendDriveSyncDryRunPlan(res *driveSyncResult, input driveSyncDryRunPlanInput) {
+	for _, rel := range input.Unknown {
 		res.Summary.PlannedSkips++
 		res.Items = append(res.Items, driveSyncItem{
 			RelPath: rel, Action: syncActionPlannedSkip, Direction: syncDirectionConflict,
@@ -427,11 +433,11 @@ func appendDriveSyncDryRunPlan(
 		})
 	}
 
-	plannedFolders := make(map[string]string, len(remoteFolders)+len(localDirs))
-	for rel, fileID := range remoteFolders {
+	plannedFolders := make(map[string]string, len(input.RemoteFolders)+len(input.LocalDirs))
+	for rel, fileID := range input.RemoteFolders {
 		plannedFolders[rel] = fileID
 	}
-	for _, dir := range localDirs {
+	for _, dir := range input.LocalDirs {
 		if _, ok := plannedFolders[dir]; ok {
 			continue
 		}
@@ -446,11 +452,11 @@ func appendDriveSyncDryRunPlan(
 		res.Items = append(res.Items, driveSyncItem{RelPath: dir, Action: syncActionPlannedFolderCreate, Direction: syncDirectionPush})
 	}
 
-	for _, rel := range newRemote {
+	for _, rel := range input.NewRemote {
 		res.Summary.PlannedPulls++
 		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionPlannedDownload, Direction: syncDirectionPull})
 	}
-	for _, rel := range newLocal {
+	for _, rel := range input.NewLocal {
 		parentRel, _ := splitRel(rel)
 		if plannedFolders[parentRel] == "" {
 			res.Summary.Failed++
@@ -461,23 +467,23 @@ func appendDriveSyncDryRunPlan(
 		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionPlannedUpload, Direction: syncDirectionPush})
 	}
 
-	occupied := make(map[string]bool, len(localByRel)+len(localDirs)+len(remoteFiles)+len(remoteFolders))
-	for rel := range localByRel {
+	occupied := make(map[string]bool, len(input.LocalByRel)+len(input.LocalDirs)+len(input.RemoteFiles)+len(input.RemoteFolders))
+	for rel := range input.LocalByRel {
 		occupied[rel] = true
 	}
-	for _, rel := range localDirs {
+	for _, rel := range input.LocalDirs {
 		occupied[rel] = true
 	}
-	for rel := range remoteFiles {
+	for rel := range input.RemoteFiles {
 		occupied[rel] = true
 	}
-	for rel := range remoteFolders {
+	for rel := range input.RemoteFolders {
 		if rel != "" {
 			occupied[rel] = true
 		}
 	}
-	for _, rel := range modified {
-		switch onConflict {
+	for _, rel := range input.Modified {
+		switch input.OnConflict {
 		case syncConflictRemoteWins:
 			res.Summary.PlannedPulls++
 			res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionPlannedDownload, Direction: syncDirectionPull})
@@ -485,7 +491,7 @@ func appendDriveSyncDryRunPlan(
 			res.Summary.PlannedPushes++
 			res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionPlannedOverwrite, Direction: syncDirectionConflict})
 		case syncConflictKeepBoth:
-			candidate := driveSyncSuffixedRel(rel, remoteFiles[rel].FileID, occupied)
+			candidate := driveSyncSuffixedRel(rel, input.RemoteFiles[rel].FileID, occupied)
 			occupied[candidate] = true
 			res.Summary.PlannedPulls++
 			res.Items = append(res.Items,

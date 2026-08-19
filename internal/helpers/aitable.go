@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1383,34 +1384,46 @@ func loadAitableFieldTypes(ctx context.Context, baseID, tableID string) (map[str
 }
 
 func findAitableObjectList(value any, names ...string) ([]map[string]any, bool) {
-	wanted := make(map[string]bool, len(names))
+	wanted := make([]string, 0, len(names))
+	seen := make(map[string]bool, len(names))
 	for _, name := range names {
-		wanted[strings.ToLower(name)] = true
+		name = strings.ToLower(name)
+		if !seen[name] {
+			wanted = append(wanted, name)
+			seen[name] = true
+		}
 	}
 	var walk func(any) ([]map[string]any, bool)
 	walk = func(current any) ([]map[string]any, bool) {
 		switch typed := current.(type) {
 		case map[string]any:
-			for key, child := range typed {
-				if !wanted[strings.ToLower(key)] {
-					continue
-				}
-				items, ok := child.([]any)
-				if !ok {
-					return nil, false
-				}
-				out := make([]map[string]any, 0, len(items))
-				for _, item := range items {
-					object, ok := item.(map[string]any)
+			keys := make([]string, 0, len(typed))
+			for key := range typed {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, name := range wanted {
+				for _, key := range keys {
+					if !strings.EqualFold(key, name) {
+						continue
+					}
+					items, ok := typed[key].([]any)
 					if !ok {
 						return nil, false
 					}
-					out = append(out, object)
+					out := make([]map[string]any, 0, len(items))
+					for _, item := range items {
+						object, ok := item.(map[string]any)
+						if !ok {
+							return nil, false
+						}
+						out = append(out, object)
+					}
+					return out, true
 				}
-				return out, true
 			}
-			for _, child := range typed {
-				if found, ok := walk(child); ok {
+			for _, key := range keys {
+				if found, ok := walk(typed[key]); ok {
 					return found, true
 				}
 			}
@@ -1477,7 +1490,7 @@ func validateAitableViewFilterCondition(condition map[string]any, fieldTypes map
 		}
 		if operator == "any_of" {
 			if values, ok := operands[1].([]any); ok {
-				if _, err := expandAitableMultiSelectAnyOf(fieldID, values); err != nil {
+				if err := validateAitableMultiSelectOptionNames(values); err != nil {
 					return err
 				}
 				return fmt.Errorf("multipleSelect any_of with multiple values is not supported by the persisted view protocol; use one scalar option or separate views")
@@ -1490,22 +1503,18 @@ func validateAitableViewFilterCondition(condition map[string]any, fieldTypes map
 	return nil
 }
 
-func expandAitableMultiSelectAnyOf(fieldID string, values []any) ([]any, error) {
+func validateAitableMultiSelectOptionNames(values []any) error {
 	if len(values) == 0 {
-		return nil, fmt.Errorf("multipleSelect any_of array must not be empty")
+		return fmt.Errorf("multipleSelect any_of array must not be empty")
 	}
-	expanded := make([]any, 0, len(values))
 	for index, value := range values {
 		text, ok := value.(string)
 		text = strings.TrimSpace(text)
 		if !ok || text == "" {
-			return nil, fmt.Errorf("multipleSelect any_of value %d must be a non-empty option-name string", index)
+			return fmt.Errorf("multipleSelect any_of value %d must be a non-empty option-name string", index)
 		}
-		expanded = append(expanded, map[string]any{
-			"operator": "eq", "operands": []any{fieldID, text},
-		})
 	}
-	return expanded, nil
+	return nil
 }
 
 func isAitableDateFieldType(fieldType string) bool {
