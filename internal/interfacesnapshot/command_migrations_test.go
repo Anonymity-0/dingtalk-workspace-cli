@@ -170,6 +170,110 @@ func TestCrossPlatformCoverageCommandMigrationValidationEdges(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageFlagExtractionRejectsRequiredLegacyFlag(t *testing.T) {
+	migration := commandMigrationManifest(CommandMigrationPending).Migrations[1]
+	migration.LegacyFlag.Before.Required = true
+	migration.LegacyFlag.After.Required = true
+
+	if err := migration.validate(); err == nil || !strings.Contains(err.Error(), "optional") {
+		t.Fatalf("required legacy flag validation error=%v, want optional-only rejection", err)
+	}
+}
+
+func TestCrossPlatformCoverageCommandMoveRejectsRunnableParent(t *testing.T) {
+	migration := commandMigrationManifest(CommandMigrationPending).Migrations[0]
+	migration.Legacy.Command = "dws agoal"
+	migration.Replacement.Command = "dws goal"
+	migration.Schema = CommandMigrationSchema{
+		ProductID:         "agoal",
+		SourceToolID:      "agoal.root",
+		ReplacementToolID: "agoal.root",
+		Parameters:        []CommandParameterMigration{},
+	}
+	authority := CommandMigrationManifest{
+		Version:    CommandMigrationManifestVersion,
+		Migrations: []CommandMigration{migration},
+	}
+	consumed := authority
+	consumed.Migrations = append([]CommandMigration(nil), authority.Migrations...)
+	consumed.Migrations[0].State = CommandMigrationConsumed
+
+	before := testSnapshot(
+		testCommand("dws"),
+		testCommand("dws agoal"),
+		testCommand("dws agoal strategy"),
+		testCommand("dws agoal strategy list"),
+	)
+	after := testSnapshot(
+		testCommand("dws"),
+		Command{Path: "dws agoal", Runnable: true, Hidden: true},
+		testCommand("dws goal"),
+	)
+
+	_, err := AuthorizeCommandMigrations(
+		after,
+		map[string]Snapshot{"merge-base": before, "stable": before},
+		authority,
+		consumed,
+	)
+	if err == nil || !strings.Contains(err.Error(), "must be a leaf") {
+		t.Fatalf("runnable parent command_move error=%v, want leaf-only rejection", err)
+	}
+}
+
+func TestCrossPlatformCoverageCommandMoveAllowsReplacementParent(t *testing.T) {
+	before := commandMigrationSnapshot(false, false)
+	after := commandMigrationSnapshot(true, false)
+	after.Commands = append(after.Commands, testCommand("dws chat topic new detail"))
+	pending := singleCommandMigrationManifest(CommandMigrationPending)
+	consumed := singleCommandMigrationManifest(CommandMigrationConsumed)
+	if err := validateCommandMoveLegacyLeaves(testSnapshot(testCommand("dws")), pending); err != nil {
+		t.Fatalf("absent legacy topology should remain a lifecycle concern: %v", err)
+	}
+
+	got, err := AuthorizeCommandMigrations(
+		after,
+		map[string]Snapshot{"merge-base": before, "stable": before},
+		pending,
+		consumed,
+	)
+	if err != nil {
+		t.Fatalf("replacement parent command_move was rejected: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("replacement parent command_move authorizations=%d, want 1", len(got))
+	}
+}
+
+func TestCrossPlatformCoverageCommandMoveRejectsAncestorOverlap(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		legacy      string
+		replacement string
+	}{
+		{
+			name:        "legacy ancestor",
+			legacy:      "dws chat message",
+			replacement: "dws chat message list",
+		},
+		{
+			name:        "replacement ancestor",
+			legacy:      "dws chat message list",
+			replacement: "dws chat message",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			migration := commandMigrationManifest(CommandMigrationPending).Migrations[0]
+			migration.Legacy.Command = test.legacy
+			migration.Replacement.Command = test.replacement
+
+			if err := migration.validate(); err == nil || !strings.Contains(err.Error(), "must not have an ancestor relationship") {
+				t.Fatalf("overlapping command_move error=%v, want ancestor-overlap rejection", err)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageCommandMigrationLifecycleEdges(t *testing.T) {
 	before := commandMigrationSnapshot(false, false)
 	after := commandMigrationSnapshot(true, false)

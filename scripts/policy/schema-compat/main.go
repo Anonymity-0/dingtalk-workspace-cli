@@ -1415,6 +1415,7 @@ func normalizeSchemaCommandMigrations(
 				continue
 			}
 			renames := make(map[string]string, len(migration.Schema.Parameters))
+			renameTargets := make(map[string]struct{}, len(migration.Schema.Parameters))
 			for _, parameter := range migration.Schema.Parameters {
 				oldParameter, existed := oldTool.Parameters[parameter.From]
 				if !existed {
@@ -1445,6 +1446,29 @@ func normalizeSchemaCommandMigrations(
 				delete(normalizedTool.Parameters, parameter.From)
 				normalizedTool.Parameters[parameter.To] = newParameter
 				renames[parameter.From] = parameter.To
+				renameTargets[parameter.To] = struct{}{}
+			}
+			parameterNames := make([]string, 0, len(newSource.Parameters))
+			for name := range newSource.Parameters {
+				parameterNames = append(parameterNames, name)
+			}
+			sort.Strings(parameterNames)
+			for _, name := range parameterNames {
+				parameter := newSource.Parameters[name]
+				if _, existed := oldTool.Parameters[name]; existed {
+					continue
+				}
+				if _, approvedRename := renameTargets[name]; approvedRename {
+					continue
+				}
+				if parameter.Required || parameter.CLIRequired || parameter.RequiredWhen != "" {
+					return schemaContract{}, fmt.Errorf(
+						"approved command migration %q replacement Schema tool %q introduced unregistered required Schema parameter %q",
+						migration.Legacy.Command,
+						migration.Schema.SourceToolID,
+						name,
+					)
+				}
 			}
 			if oldTool.Constraints != newSource.Constraints {
 				oldConstraints, oldOK := canonicalizeMigratedConstraints(oldTool.Constraints, renames)

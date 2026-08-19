@@ -75,6 +75,48 @@ func TestCrossPlatformCoverageSchemaCommandMigrationsFailClosedOnDrift(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageSchemaCommandMigrationRejectsUnregisteredRequiredParameters(t *testing.T) {
+	baseline := schemaCommandMigrationContract(false)
+	migrations := schemaCommandMigrationAuthorizations()
+
+	for _, test := range []struct {
+		name      string
+		parameter parameterSchema
+	}{
+		{name: "required", parameter: parameterSchema{Type: `"string"`, Property: "must", Required: true}},
+		{name: "cli_required", parameter: parameterSchema{Type: `"string"`, Property: "must", CLIRequired: true}},
+		{name: "required_when", parameter: parameterSchema{Type: `"string"`, Property: "must", RequiredWhen: "mode=forced"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			current := schemaCommandMigrationContract(true)
+			product := current.Products["chat"]
+			tool := product.Tools["chat.move"]
+			tool.Parameters["must"] = test.parameter
+			product.Tools["chat.move"] = tool
+			current.Products["chat"] = product
+
+			if _, err := normalizeSchemaCommandMigrations(baseline, current, migrations); err == nil ||
+				!strings.Contains(err.Error(), `introduced unregistered required Schema parameter "must"`) {
+				t.Fatalf("unregistered required parameter error=%v", err)
+			}
+		})
+	}
+
+	current := schemaCommandMigrationContract(true)
+	product := current.Products["chat"]
+	tool := product.Tools["chat.move"]
+	tool.Parameters["optional"] = parameterSchema{Type: `"string"`, Property: "optional"}
+	product.Tools["chat.move"] = tool
+	current.Products["chat"] = product
+	normalized, err := normalizeSchemaCommandMigrations(baseline, current, migrations)
+	if err != nil {
+		t.Fatalf("optional addition should remain compatible: %v", err)
+	}
+	if failures := checkCompatibility(normalized, current); len(failures) != 0 {
+		t.Fatalf("optional addition should remain compatible: %v", failures)
+	}
+}
+
 func TestCrossPlatformCoverageSchemaCommandMigrationNormalizationEdges(t *testing.T) {
 	baseline := schemaCommandMigrationContract(false)
 	current := schemaCommandMigrationContract(true)
@@ -272,6 +314,19 @@ func TestCrossPlatformCoverageSchemaCommandMigrationLifecycleAndRun(t *testing.T
 	stderr.Reset()
 	if code := run(args, &stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), "normalize approved Schema command migrations") {
 		t.Fatalf("command normalization error code=%d stderr=%q", code, stderr.String())
+	}
+
+	requiredAddition := schemaCommandMigrationContract(true)
+	product = requiredAddition.Products["chat"]
+	tool = product.Tools["chat.move"]
+	tool.Parameters["must"] = parameterSchema{Type: `"string"`, Property: "must", Required: true, CLIRequired: true}
+	product.Tools["chat.move"] = tool
+	requiredAddition.Products["chat"] = product
+	writeRawSchemaContractFile(t, currentPath, requiredAddition)
+	stderr.Reset()
+	if code := run(args, &stdout, &stderr); code != 2 ||
+		!strings.Contains(stderr.String(), `introduced unregistered required Schema parameter "must"`) {
+		t.Fatalf("unregistered required addition code=%d stderr=%q", code, stderr.String())
 	}
 }
 

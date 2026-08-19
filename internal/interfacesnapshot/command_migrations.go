@@ -156,6 +156,10 @@ func (m CommandMigration) validate() error {
 	}
 	switch m.Kind {
 	case CommandMigrationMove:
+		if strings.HasPrefix(m.Replacement.Command, m.Legacy.Command+" ") ||
+			strings.HasPrefix(m.Legacy.Command, m.Replacement.Command+" ") {
+			return fmt.Errorf("command_move legacy and replacement command paths must not have an ancestor relationship")
+		}
 		if !m.Legacy.After.Hidden {
 			return fmt.Errorf("command_move legacy command must migrate exactly from visible to hidden")
 		}
@@ -207,6 +211,9 @@ func (f CommandMigrationFlag) validate() error {
 	}
 	if !f.Before.Present || !f.After.Present || f.Before.Hidden || !f.After.Hidden {
 		return fmt.Errorf("legacy_flag must migrate exactly from visible to hidden while remaining present")
+	}
+	if f.Before.Required || f.After.Required {
+		return fmt.Errorf("legacy_flag must remain optional before and after extraction")
 	}
 	before := f.Before
 	after := f.After
@@ -297,7 +304,45 @@ func AuthorizeCommandMigrations(
 	if err := candidate.Validate(); err != nil {
 		return nil, fmt.Errorf("validate candidate command migrations: %w", err)
 	}
+	type commandMoveTopologyCheck struct {
+		label    string
+		snapshot Snapshot
+		manifest CommandMigrationManifest
+	}
+	topologyChecks := []commandMoveTopologyCheck{
+		{label: "approved", snapshot: current, manifest: authority},
+		{label: "candidate", snapshot: current, manifest: candidate},
+	}
+	if mergeBase, _, ok := flagMigrationAuthoritySnapshot(references); ok {
+		topologyChecks = append(topologyChecks,
+			commandMoveTopologyCheck{label: "approved base", snapshot: mergeBase, manifest: authority},
+			commandMoveTopologyCheck{label: "candidate base", snapshot: mergeBase, manifest: candidate},
+		)
+	}
+	for _, check := range topologyChecks {
+		if err := validateCommandMoveLegacyLeaves(check.snapshot, check.manifest); err != nil {
+			return nil, fmt.Errorf("validate %s command migration topology: %w", check.label, err)
+		}
+	}
 	return evaluateCommandMigrationLifecycle(current, references, authority, candidate)
+}
+
+func validateCommandMoveLegacyLeaves(snapshot Snapshot, manifest CommandMigrationManifest) error {
+	commands := commandIndex(snapshot)
+	for _, migration := range manifest.Migrations {
+		if migration.Kind != CommandMigrationMove {
+			continue
+		}
+		if _, present := commands[migration.Legacy.Command]; !present {
+			continue
+		}
+		for _, command := range snapshot.Commands {
+			if strings.HasPrefix(command.Path, migration.Legacy.Command+" ") {
+				return fmt.Errorf("command_move legacy command %q must be a leaf", migration.Legacy.Command)
+			}
+		}
+	}
+	return nil
 }
 
 func evaluateCommandMigrationLifecycle(
