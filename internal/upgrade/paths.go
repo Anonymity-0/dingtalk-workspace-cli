@@ -192,23 +192,43 @@ func backupAndRemoveSkillDir(homeDir, dir string) (string, error) {
 	}
 	name := strings.NewReplacer(string(filepath.Separator), "-", "/", "-").Replace(rel)
 	stamp := upgradeBackupStamp()
-	backupRoot := filepath.Join(homeDir, skillBackupSubdir, stamp)
-	target := filepath.Join(backupRoot, name)
-	for i := 1; ; i++ {
-		if _, err := upgradeLstat(target); err != nil {
-			if os.IsNotExist(err) {
-				break
-			}
+	if err := upgradeMkdirAll(filepath.Join(homeDir, skillBackupSubdir), dirPermShared); err != nil {
+		return "", fmt.Errorf("创建备份根目录失败 %s: %w", filepath.Join(homeDir, skillBackupSubdir), err)
+	}
+	var backupRoot, target string
+	for i := 0; ; i++ {
+		candidate := stamp
+		if i > 0 {
+			candidate = fmt.Sprintf("%s-%d", stamp, i)
+		}
+		if i > 1000 {
+			return "", fmt.Errorf("备份目录冲突无法解决: %s", filepath.Join(homeDir, skillBackupSubdir, candidate))
+		}
+		backupRoot = filepath.Join(homeDir, skillBackupSubdir, candidate)
+		target = filepath.Join(backupRoot, name)
+		if _, err := upgradeLstat(target); err == nil {
+			continue // payload name already taken in this stamp root
+		} else if !os.IsNotExist(err) {
 			return "", fmt.Errorf("检查备份目标失败 %s: %w", target, err)
 		}
-		backupRoot = filepath.Join(homeDir, skillBackupSubdir, fmt.Sprintf("%s-%d", stamp, i))
-		target = filepath.Join(backupRoot, name)
-		if i > 1000 {
-			return "", fmt.Errorf("备份目录冲突无法解决: %s", target)
+		if err := skillPathMkdir(backupRoot, dirPermShared); err == nil {
+			// We created the root: stamp ownership before any payload moves
+			// in, so an interrupted backup never leaves an unmarked
+			// (never-prunable) stamp behind.
+			if err := skillBackupWriteMarker(backupRoot); err != nil {
+				// Bounded cleanup: the root is empty and ours alone.
+				_ = skillPathRemove(backupRoot)
+				return "", fmt.Errorf("写入备份所有权标记失败 %s: %w", backupRoot, err)
+			}
+			break
+		} else if !os.IsExist(err) {
+			return "", fmt.Errorf("创建备份目录失败 %s: %w", backupRoot, err)
+		} else if skillBackupMarkerValid(backupRoot) {
+			break // proven ours: same-stamp payloads from this run reuse it
 		}
-	}
-	if err := upgradeMkdirAll(backupRoot, dirPermShared); err != nil {
-		return "", fmt.Errorf("创建备份目录失败 %s: %w", backupRoot, err)
+		// A stamp-shaped directory we cannot prove ours must never be
+		// adopted — writing the marker or the payload into it would turn
+		// its foreign contents into prunable DWS backups.
 	}
 	if err := moveSkillPathRecoverably(dir, target); err != nil {
 		return "", fmt.Errorf("备份技能目录失败 %s: %w", dir, err)
@@ -384,6 +404,36 @@ func buildUpgradeProvenanceRecords(root string, names []string, version string) 
 // backups are kept.
 const skillBackupKeep = 5
 
+// The ownership marker inside a stamp root. Every DWS surface writes the
+// exact same bytes (install.sh, install-skills.sh, install-event.sh,
+// install-devapp.sh, the PowerShell installers, and build/npm/install.js):
+// a stamp-shaped directory name alone is not ownership proof, because users
+// and unrelated tools can create 20260819-120000-shaped names. Counting or
+// deleting a backup root requires the marker to verify, and adopting an
+// existing root for a new backup requires it first.
+const (
+	skillBackupMarkerName    = ".dws-skill-backup"
+	skillBackupMarkerContent = "dws skill backup v1\n"
+)
+
+var (
+	skillBackupReadMarker = func(root string) (string, error) {
+		data, err := os.ReadFile(filepath.Join(root, skillBackupMarkerName))
+		return string(data), err
+	}
+	skillBackupWriteMarker = func(root string) error {
+		return os.WriteFile(filepath.Join(root, skillBackupMarkerName), []byte(skillBackupMarkerContent), 0o644)
+	}
+)
+
+// skillBackupMarkerValid reports whether root carries the ownership marker
+// with exactly the expected bytes; a missing, unreadable, or differently
+// worded marker means the directory is foreign data.
+func skillBackupMarkerValid(root string) bool {
+	body, err := skillBackupReadMarker(root)
+	return err == nil && body == skillBackupMarkerContent
+}
+
 // skillBackupStampRegexp matches only directory names DWS itself writes:
 // UTC YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry
 // in the backup root is foreign (user data, unrelated tooling) and must be
@@ -397,7 +447,9 @@ func isSkillBackupStamp(name string) bool {
 
 // pruneSkillBackups removes the oldest backup directories when more than
 // skillBackupKeep remain. Only directories whose names match the DWS backup
-// stamp format are candidates; unknown directories are preserved. Best-effort:
+// stamp format AND whose ownership marker verifies are candidates; unknown
+// or unmarked directories — including stamp roots created before the
+// ownership marker existed — are foreign data and preserved. Best-effort:
 // a removal failure never aborts, but pruning failures are reported so
 // callers can warn the user.
 func pruneSkillBackups(homeDir string) error {
@@ -411,7 +463,12 @@ func pruneSkillBackups(homeDir string) error {
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if e.IsDir() && isSkillBackupStamp(e.Name()) {
+		if !e.IsDir() || !isSkillBackupStamp(e.Name()) {
+			continue
+		}
+		// A stamp-shaped name alone is not ownership proof: only roots
+		// whose marker verifies are counted or deleted.
+		if skillBackupMarkerValid(filepath.Join(root, e.Name())) {
 			names = append(names, e.Name())
 		}
 	}

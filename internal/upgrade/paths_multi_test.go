@@ -655,6 +655,15 @@ func TestCrossPlatformCoverageUpgradeSkillLocationsMultiFallbackCleanupFailure(t
 	}
 }
 
+// seedSkillBackupMarker stamps a backup root as DWS-owned, the way every
+// install surface does before any payload moves in.
+func seedSkillBackupMarker(t *testing.T, root string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(root, skillBackupMarkerName), []byte(skillBackupMarkerContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges pins the fail-safe
 // contract of the backup helper: all lexical paths are preserved, a colliding backup
 // target gets a numbered stamp, and any failure (mkdir / rename / unresolvable
@@ -801,7 +810,7 @@ func TestCrossPlatformCoverageBackupAndRemoveSkillDirEdges(t *testing.T) {
 		t.Fatal(err)
 	}
 	testseam.Swap(t, &upgradeMkdirAll, func(string, os.FileMode) error { return errors.New("mkdir denied") })
-	if _, err := backupAndRemoveSkillDir(home, victim3); err == nil || !strings.Contains(err.Error(), "创建备份目录失败") {
+	if _, err := backupAndRemoveSkillDir(home, victim3); err == nil || !strings.Contains(err.Error(), "创建备份根目录失败") {
 		t.Fatalf("mkdir error = %v", err)
 	}
 	if _, err := os.Stat(victim3); err != nil {
@@ -831,9 +840,11 @@ func TestCrossPlatformCoveragePruneSkillBackupsEdges(t *testing.T) {
 	home := t.TempDir()
 	root := filepath.Join(home, skillBackupSubdir)
 	for i := 0; i < skillBackupKeep+2; i++ {
-		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("20260810-00000%d", i)), 0o755); err != nil {
+		stampDir := filepath.Join(root, fmt.Sprintf("20260810-00000%d", i))
+		if err := os.MkdirAll(stampDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
+		seedSkillBackupMarker(t, stampDir)
 	}
 	if err := pruneSkillBackups(home); err != nil {
 		t.Fatalf("pruneSkillBackups() error = %v", err)
@@ -866,9 +877,11 @@ func TestCrossPlatformCoveragePruneSkillBackupsEdges(t *testing.T) {
 	// Removal failure is reported as the first error. Seed more than
 	// skillBackupKeep dirs again so the prune loop actually runs.
 	for i := 0; i < skillBackupKeep+2; i++ {
-		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("20260811-00000%d", i)), 0o755); err != nil {
+		stampDir := filepath.Join(root, fmt.Sprintf("20260811-00000%d", i))
+		if err := os.MkdirAll(stampDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
+		seedSkillBackupMarker(t, stampDir)
 	}
 	testseam.Swap(t, &upgradeRemoveAll, func(string) error { return errors.New("remove denied") })
 	if err := pruneSkillBackups(home); err == nil {
@@ -885,12 +898,32 @@ func TestCrossPlatformCoveragePruneSkillBackupsPreservesUnknown(t *testing.T) {
 	home := t.TempDir()
 	root := filepath.Join(home, skillBackupSubdir)
 	for i := 0; i < skillBackupKeep+2; i++ {
-		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("20260910-00000%d", i)), 0o755); err != nil {
+		stampDir := filepath.Join(root, fmt.Sprintf("20260910-00000%d", i))
+		if err := os.MkdirAll(stampDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
+		seedSkillBackupMarker(t, stampDir)
 	}
 	// A collision-suffixed stamp is still a valid DWS backup and is eligible.
-	if err := os.MkdirAll(filepath.Join(root, "20260910-000000-7"), 0o755); err != nil {
+	suffixed := filepath.Join(root, "20260910-000000-7")
+	if err := os.MkdirAll(suffixed, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	seedSkillBackupMarker(t, suffixed)
+	// Stamp-shaped names without a verifying marker are foreign data too:
+	// the name format alone proves nothing.
+	unmarked := filepath.Join(root, "20260901-000000")
+	if err := os.MkdirAll(unmarked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(unmarked, "user-data.txt"), []byte("must survive"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wrongMarker := filepath.Join(root, "20260902-000000")
+	if err := os.MkdirAll(wrongMarker, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wrongMarker, skillBackupMarkerName), []byte("not dws"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	unknown := []string{
@@ -898,6 +931,8 @@ func TestCrossPlatformCoveragePruneSkillBackupsPreservesUnknown(t *testing.T) {
 		"20260910-000000-abc", // stamp-shaped but non-numeric suffix
 		"20260910-00000",      // too short
 		"notes",
+		"20260901-000000", // stamp-shaped but unmarked
+		"20260902-000000", // stamp-shaped but wrong marker content
 	}
 	for _, name := range unknown {
 		if err := os.MkdirAll(filepath.Join(root, name), 0o755); err != nil {
@@ -914,20 +949,24 @@ func TestCrossPlatformCoveragePruneSkillBackupsPreservesUnknown(t *testing.T) {
 			t.Errorf("unknown backup entry %s must be preserved, stat err=%v", name, err)
 		}
 	}
-	// Only stamped backups beyond skillBackupKeep are pruned; foreign entries
-	// are excluded from the count, so the stamp total stays at skillBackupKeep.
+	// Only marker-proven backups beyond skillBackupKeep are pruned; foreign
+	// entries (including unmarked stamp-shaped ones) are excluded from the
+	// count, so the proven total stays at skillBackupKeep.
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	stamps := 0
+	proven := 0
 	for _, e := range entries {
-		if isSkillBackupStamp(e.Name()) {
-			stamps++
+		if isSkillBackupStamp(e.Name()) && skillBackupMarkerValid(filepath.Join(root, e.Name())) {
+			proven++
 		}
 	}
-	if stamps != skillBackupKeep {
-		t.Errorf("stamped backups after prune = %d, want %d", stamps, skillBackupKeep)
+	if proven != skillBackupKeep {
+		t.Errorf("marker-proven backups after prune = %d, want %d", proven, skillBackupKeep)
+	}
+	if data, err := os.ReadFile(filepath.Join(unmarked, "user-data.txt")); err != nil || string(data) != "must survive" {
+		t.Errorf("unmarked stamp-shaped data must survive, got %q, %v", data, err)
 	}
 }
 

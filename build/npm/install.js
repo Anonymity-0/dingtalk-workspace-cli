@@ -178,6 +178,20 @@ function writeSkillBackupMarker(root) {
   fs.writeFileSync(path.join(root, SKILL_BACKUP_MARKER_FILE), SKILL_BACKUP_MARKER_BODY);
 }
 
+// skillBackupRootUsable reports whether a stamp root may be written into:
+// either it does not exist yet (this transaction creates it fresh) or its
+// ownership marker already verifies. A stamp-shaped directory created by
+// anyone else must never be adopted — writing our marker into it would turn
+// its foreign contents into prunable DWS backups.
+function skillBackupRootUsable(root) {
+  if (!pathExistsLexicallySync(root)) return true;
+  // A root this very process created is ours by construction and stays
+  // reusable even when its marker cannot be re-verified mid-run (for
+  // example a permission failure after the first payload moved in).
+  if (currentRunBackupRoots.has(root)) return true;
+  return isProvenSkillBackupRoot(root);
+}
+
 // isProvenSkillBackupRoot reports whether a stamp root carries the ownership
 // marker with the exact expected bytes; anything else is foreign data.
 function isProvenSkillBackupRoot(root) {
@@ -741,7 +755,11 @@ function backupAndRemoveSkillDir(homeDir, dir, backups = null, options = {}) {
   const backupRoot = path.join(homeDir, ".dws", "skill-backups");
   let targetRoot = path.join(backupRoot, stamp);
   let target = path.join(targetRoot, name);
-  for (let i = 1; pathExistsLexicallySync(target); i++) {
+  // Bump not only when the payload path is taken but also when the stamp
+  // root exists without a verified ownership marker: a same-second foreign
+  // directory must never be stamped DWS-owned and made prunable. A
+  // marker-verified root from this run's same second stays reusable.
+  for (let i = 1; pathExistsLexicallySync(target) || !skillBackupRootUsable(targetRoot); i++) {
     if (i > 1000) {
       throw new Error(`backup directory collision limit exceeded; source retained: ${dir}`);
     }

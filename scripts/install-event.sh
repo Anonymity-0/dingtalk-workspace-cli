@@ -325,7 +325,13 @@ backup_skill_dir() {
   backup_root="$HOME/.dws/skill-backups/$stamp"
   backup="$backup_root/$name"
   i=0
-  while [ -e "$backup" ] || [ -L "$backup" ]; do
+  # Bump not only when the payload path is taken but also when the stamp
+  # root exists without a verified ownership marker: a same-second foreign
+  # directory must never be stamped DWS-owned and made prunable. A
+  # marker-verified root from this run's same second stays reusable.
+  while [ -e "$backup" ] || [ -L "$backup" ] ||
+    { [ -d "$backup_root" ] && ! is_current_run_backup_stamp "$backup_root" &&
+      [ "$(cat "$backup_root/.dws-skill-backup" 2>/dev/null)" != "dws skill backup v1" ]; }; do
     i=$((i + 1)); backup_root="$HOME/.dws/skill-backups/$stamp-$i"; backup="$backup_root/$name"
     # Same bail-out as install-skills.sh: never spin forever on a pathological
     # backup root, report it and keep the original directory instead.
@@ -382,6 +388,17 @@ record_current_run_backup_stamp() {
     *" $1 "*) return 0 ;;
   esac
   CURRENT_RUN_BACKUP_STAMPS="${CURRENT_RUN_BACKUP_STAMPS} $1"
+}
+
+# is_current_run_backup_stamp reports whether the stamp root was created by
+# this very process. Such a root is ours by construction and stays reusable
+# even when its marker cannot be re-verified mid-run (for example a
+# permission failure after the first payload moved in).
+is_current_run_backup_stamp() {
+  case " $CURRENT_RUN_BACKUP_STAMPS " in
+    *" $1 "*) return 0 ;;
+  esac
+  return 1
 }
 
 # is_skill_backup_stamp accepts only directory names with the stamp shape DWS

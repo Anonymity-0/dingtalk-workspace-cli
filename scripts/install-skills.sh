@@ -57,10 +57,18 @@ backup_and_remove_skill_dir() {
   _bed_root="${HOME}/.dws/skill-backups"
   _bed_stamp="$(date -u +%Y%m%d-%H%M%S)"
   _bed_name="$(basename "$_bed_dir")"
-  _bed_target="$_bed_root/$_bed_stamp/$_bed_name"
+  _bed_stamp_root="$_bed_root/$_bed_stamp"
+  _bed_target="$_bed_stamp_root/$_bed_name"
   _bed_i=1
-  while [ -e "$_bed_target" ] || [ -L "$_bed_target" ]; do
-    _bed_target="$_bed_root/$_bed_stamp-$_bed_i/$_bed_name"
+  # Bump not only when the payload path is taken but also when the stamp
+  # root exists without a verified ownership marker: a same-second foreign
+  # directory must never be stamped DWS-owned and made prunable. A
+  # marker-verified root from this run's same second stays reusable.
+  while [ -e "$_bed_target" ] || [ -L "$_bed_target" ] ||
+    { [ -d "$_bed_stamp_root" ] && ! is_current_run_backup_stamp "$_bed_stamp_root" &&
+      [ "$(cat "$_bed_stamp_root/.dws-skill-backup" 2>/dev/null)" != "dws skill backup v1" ]; }; do
+    _bed_stamp_root="$_bed_root/$_bed_stamp-$_bed_i"
+    _bed_target="$_bed_stamp_root/$_bed_name"
     _bed_i=$((_bed_i + 1))
     if [ "$_bed_i" -gt 1000 ]; then
       printf '  ⚠️  备份目录冲突，保留原目录 %s\n' "$_bed_dir"
@@ -124,6 +132,17 @@ record_current_run_backup_stamp() {
     *" $1 "*) return 0 ;;
   esac
   DWS_CURRENT_RUN_BACKUP_STAMPS="${DWS_CURRENT_RUN_BACKUP_STAMPS} $1"
+}
+
+# is_current_run_backup_stamp reports whether the stamp root was created by
+# this very process. Such a root is ours by construction and stays reusable
+# even when its marker cannot be re-verified mid-run (for example a
+# permission failure after the first payload moved in).
+is_current_run_backup_stamp() {
+  case " $DWS_CURRENT_RUN_BACKUP_STAMPS " in
+    *" $1 "*) return 0 ;;
+  esac
+  return 1
 }
 
 # is_skill_backup_stamp accepts only directory names with the stamp shape DWS

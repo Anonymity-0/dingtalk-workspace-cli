@@ -1606,18 +1606,34 @@ scenario("a failed marker write never leaves an empty unowned stamp root", () =>
       "an empty unowned stamp root is cleaned up",
     );
 
-    // Foreign non-empty root: the marker path is a directory (the write fails
-    // with EISDIR), and rmdir must fail on the non-empty root, keeping it.
+    // Foreign non-empty root with the marker path occupied by a directory:
+    // unusable, so the backup moves to a suffixed root and the foreign root
+    // is never touched.
     const foreignStamp = "20260801-000001";
     const foreignRoot = path.join(home, ".dws", "skill-backups", foreignStamp);
     writeFile(path.join(foreignRoot, "user-data.txt"), "foreign\n");
     fs.mkdirSync(path.join(foreignRoot, SKILL_BACKUP_MARKER_FILE));
-    assert.throws(
-      () => backupAndRemoveSkillDir(home, victim, null, { backupStampFn: () => foreignStamp }),
-      /failed to back up Skill directory/,
+    const foreignBackup = backupAndRemoveSkillDir(home, victim, null, { backupStampFn: () => foreignStamp });
+    assert.ok(foreignBackup.includes(`${foreignStamp}-1`), `the backup moves to a suffixed root: ${foreignBackup}`);
+    assert.equal(fs.readFileSync(path.join(foreignRoot, "user-data.txt"), "utf8"), "foreign\n", "a non-empty foreign stamp root survives untouched");
+
+    // Plain foreign root (ordinary files, no marker): must never be adopted —
+    // the backup lands in the suffixed root instead, and the foreign root
+    // never receives our marker.
+    writeFile(path.join(victim, "SKILL.md"), "old codex copy\n");
+    const plainStamp = "20260801-000002";
+    const plainRoot = path.join(home, ".dws", "skill-backups", plainStamp);
+    writeFile(path.join(plainRoot, "user-data.txt"), "foreign\n");
+    const plainBackup = backupAndRemoveSkillDir(home, victim, null, { backupStampFn: () => plainStamp });
+    assert.ok(plainBackup.includes("20260801-000002-1"), `the backup moves to a suffixed root: ${plainBackup}`);
+    assert.equal(fs.readFileSync(path.join(plainRoot, "user-data.txt"), "utf8"), "foreign\n", "plain foreign data survives");
+    assert.equal(fs.existsSync(path.join(plainRoot, SKILL_BACKUP_MARKER_FILE)), false, "the foreign root never receives our marker");
+    assert.equal(fs.readFileSync(path.join(plainBackup, "SKILL.md"), "utf8"), "old codex copy\n", "the payload is intact in the suffixed root");
+    assert.equal(
+      fs.readFileSync(path.join(path.dirname(plainBackup), SKILL_BACKUP_MARKER_FILE), "utf8"),
+      "dws skill backup v1\n",
+      "the suffixed root carries the ownership marker",
     );
-    assert.equal(fs.readFileSync(path.join(victim, "SKILL.md"), "utf8"), "old codex copy\n", "the source stays in place");
-    assert.equal(fs.readFileSync(path.join(foreignRoot, "user-data.txt"), "utf8"), "foreign\n", "a non-empty foreign stamp root survives");
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

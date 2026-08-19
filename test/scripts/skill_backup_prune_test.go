@@ -238,3 +238,83 @@ func twoDigits(i int) string {
 	}
 	return string(rune('0'+i/10)) + string(rune('0'+i%10))
 }
+
+// TestInstallShellBackupNeverAdoptsUnprovenStampRoots pins the ownership
+// contract at creation time: a stamp-shaped directory whose marker does not
+// verify must never receive the DWS marker or a payload — the backup moves
+// to a fresh suffixed root instead, and the foreign data survives untouched.
+func TestInstallShellBackupNeverAdoptsUnprovenStampRoots(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell semantics are unavailable")
+	}
+
+	for _, scriptName := range []string{"install.sh", "install-skills.sh", "install-event.sh", "install-devapp.sh"} {
+		scriptName := scriptName
+		t.Run(scriptName, func(t *testing.T) {
+			t.Parallel()
+			scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cut := strings.LastIndex(string(data), "\nmain\n")
+			if cut < 0 {
+				t.Fatalf("%s final main invocation not found", scriptName)
+			}
+			library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+			mustWriteFile(t, library, data[:cut], 0o755)
+
+			home := t.TempDir()
+			// install.sh and install-skills.sh name the payload by basename;
+			// the standalone event/devapp publishers mangle the full path.
+			payloadName := "victim"
+			if scriptName == "install-event.sh" || scriptName == "install-devapp.sh" {
+				// Mirror the scripts' own mangling: full path, slashes and
+				// backslashes to dashes, leading dash dropped.
+				payloadName = strings.NewReplacer("/", "-", "\\", "-").Replace(filepath.Join(home, "victim"))
+				payloadName = strings.TrimPrefix(payloadName, "-")
+			}
+			harness := `. "$DWS_TEST_LIBRARY"
+date() { printf '%s\n' 20260101-120000; }
+ROOT="$HOME/.dws/skill-backups"
+mkdir -p "$ROOT/20260101-120000" || exit 9
+printf 'must-survive\n' > "$ROOT/20260101-120000/user-data.txt" || exit 9
+mkdir -p "$HOME/victim" || exit 9
+printf 'payload\n' > "$HOME/victim/SKILL.md" || exit 9
+if ! backup_fn "$HOME/victim" >/dev/null 2>&1; then
+  if [ -e "$HOME/victim/SKILL.md" ]; then
+    exit 0 # a refused backup that keeps the source is contract-compliant
+  fi
+  exit 9
+fi
+[ -f "$ROOT/20260101-120000-1/` + "`printf '%s' \"" + payloadName + "\"`" + `/SKILL.md" ] || exit 3
+[ ! -e "$HOME/victim" ] || exit 4
+[ -f "$ROOT/20260101-120000/user-data.txt" ] || exit 5
+[ "$(cat "$ROOT/20260101-120000/user-data.txt")" = "must-survive" ] || exit 6
+[ ! -e "$ROOT/20260101-120000/.dws-skill-backup" ] || exit 7
+[ "$(cat "$ROOT/20260101-120000-1/.dws-skill-backup" 2>/dev/null)" = "dws skill backup v1" ] || exit 8
+exit 0
+`
+			harnessPath := filepath.Join(t.TempDir(), "backup-adoption.sh")
+			mustWriteFile(t, harnessPath, []byte(harness), 0o755)
+			cmd := exec.Command("sh", "-c", "backup_fn() { "+backupFnName(scriptName)+" \"$1\"; }\n. \"$0\"", harnessPath)
+			cmd.Env = append(os.Environ(), "HOME="+home, "DWS_TEST_LIBRARY="+library)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("%s must not adopt an unproven stamp root: %v\n%s", scriptName, err, string(output))
+			}
+			if backup := findSkillBackupContent(home, "payload\n"); !strings.Contains(backup, "20260101-120000-1") {
+				t.Fatalf("%s payload must land in the suffixed root, got %s", scriptName, backup)
+			}
+		})
+	}
+}
+
+func backupFnName(scriptName string) string {
+	if scriptName == "install-event.sh" || scriptName == "install-devapp.sh" {
+		return "backup_skill_dir"
+	}
+	return "backup_and_remove_skill_dir"
+}
