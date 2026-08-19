@@ -55,7 +55,8 @@ metadata:
 | 从模板创建 | `dws doc +create-from-template --template-id <唯一ID>` | 已有唯一 templateId 才创建；不重复 list/search |
 | 创建评论或聚合待处理评论 | `dws doc +comment-create [--selection]` / `+review` | 划词统一用 `+comment-create`；后续操作使用真实 `commentKey` |
 | 添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to <姓名列表,逗号分隔>` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；没有 --user-ids；先读取现有权限；姓名歧义或 profile 不一致时禁止写入 |
-| 授权后向多人分享链接 | `dws doc +grant-and-share` | 返回逐人执行账本；部分失败不等于整体成功 |
+| 只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | canonical（`+share-doc` 仅兼容）；收件人已有权限时用它，不要改走 `+grant-and-share` 多做一次权限写入；普通文本私信走 `dws chat +dm` |
+| 授权后向多人分享链接 | `dws doc +grant-and-share` | 需变更权限时才用（必填 `--node`，`--role` 默认 READER）；返回逐人执行账本，部分失败不等于整体成功 |
 | 插入或下载正文媒体 | `dws doc +media-insert/+media-download` | 本地路径必须位于工作目录；下载默认 no-clobber |
 
 ## 关键结果语义
