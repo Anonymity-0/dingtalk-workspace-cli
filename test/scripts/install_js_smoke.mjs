@@ -1452,11 +1452,13 @@ scenario("multi set publish failure restores the complete previous set", () => {
               }
               originalRename(src, dest);
             },
-            publishRenameFn(src, dest) {
+            // Child files publish through the link primitive now, so the
+            // injected failure rides the link seam.
+            publishLinkFn(src, dest) {
               if (src.includes(".dws-multi-set.tmp-") && src.includes(`${path.sep}dingtalk-second${path.sep}`)) {
                 throw new Error("injected second publish failure");
               }
-              originalRename(src, dest);
+              return fs.linkSync(src, dest);
             },
           },
         ),
@@ -1546,11 +1548,11 @@ for (const failureKind of ["backup", "publish"]) {
               }
               originalRename(src, target);
             },
-            publishRenameFn(src, target) {
+            publishLinkFn(src, target) {
               if (failureKind === "publish" && src.includes(".dws-mono-set.tmp-")) {
                 throw new Error("injected mono publish failure");
               }
-              originalRename(src, target);
+              return fs.linkSync(src, target);
             },
           }),
         /injected|failed to back up/,
@@ -1652,6 +1654,107 @@ scenario("rollback refuses an unverifiable destination whose child vanished", ()
       fs.readFileSync = originalReadFileSync;
     }
     assert.equal(fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"), "payload\n", "the unverifiable destination is preserved");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("per-child no-clobber refuses same-name concurrent entries after the claim", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-child-race-"));
+  try {
+    const buildFixture = (label) => {
+      const home = path.join(tmp, label);
+      const source = path.join(tmp, `${label}-src`);
+      fs.mkdirSync(path.join(source, "dingtalk-chat", "references"), { recursive: true });
+      writeFile(path.join(source, "dingtalk-chat", "SKILL.md"), "new chat\n");
+      writeFile(path.join(source, "dingtalk-chat", "notes.md"), "notes\n");
+      writeFile(path.join(source, "dingtalk-chat", "references", "guide.md"), "guide\n");
+      fs.symlinkSync("SKILL.md", path.join(source, "dingtalk-chat", "rel-link"));
+      return { home, source, base: path.join(home, ".zcode", "skills") };
+    };
+
+    {
+      // Same-name concurrent FILE: the foreign file lands at
+      // <claim>/SKILL.md between the claim and the per-child link primitive.
+      const { home, source, base } = buildFixture("file-race");
+      const dest = path.join(base, "dingtalk-chat");
+      const planted = path.join(dest, "SKILL.md");
+      assert.throws(
+        () =>
+          publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-chat"], [], {
+            publishLinkFn(src, target) {
+              if (target === planted && !fs.existsSync(planted)) {
+                writeFile(planted, "concurrent-user-edit\n");
+              }
+              return fs.linkSync(src, target);
+            },
+          }),
+        /Skill move destination already exists/,
+      );
+      assert.equal(fs.readFileSync(planted, "utf8"), "concurrent-user-edit\n", "the concurrent file is never replaced");
+      assert.deepEqual(
+        fs.readdirSync(dest).sort(),
+        ["SKILL.md"],
+        "no other child may move once the concurrent entry is seen",
+      );
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-multi-set.tmp-")),
+        "failed publish must clean the staging root",
+      );
+    }
+
+    {
+      // Same-name concurrent DIRECTORY at <claim>/references.
+      const { home, source, base } = buildFixture("dir-race");
+      const dest = path.join(base, "dingtalk-chat");
+      const planted = path.join(dest, "references");
+      assert.throws(
+        () =>
+          publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-chat"], [], {
+            publishMkdirFn(target) {
+              if (target === planted && !fs.existsSync(planted)) {
+                fs.mkdirSync(path.join(planted, "user-data"), { recursive: true });
+                writeFile(path.join(planted, "user-data", "keep.txt"), "keep\n");
+              }
+              fs.mkdirSync(target, { mode: 0o700 });
+            },
+          }),
+        /Skill move destination already exists/,
+      );
+      assert.equal(
+        fs.readFileSync(path.join(planted, "user-data", "keep.txt"), "utf8"),
+        "keep\n",
+        "the concurrent directory survives byte-identical",
+      );
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-multi-set.tmp-")),
+        "failed publish must clean the staging root",
+      );
+    }
+
+    {
+      // Same-name concurrent SYMLINK at <claim>/rel-link.
+      const { home, source, base } = buildFixture("link-race");
+      const dest = path.join(base, "dingtalk-chat");
+      const planted = path.join(dest, "rel-link");
+      assert.throws(
+        () =>
+          publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-chat"], [], {
+            publishSymlinkFn(target, linkname) {
+              if (linkname === planted && !fs.existsSync(planted)) {
+                fs.symlinkSync("foreign-target", planted);
+              }
+              return fs.symlinkSync(target, linkname);
+            },
+          }),
+        /Skill move destination already exists/,
+      );
+      assert.equal(fs.readlinkSync(planted), "foreign-target", "the concurrent link is never replaced");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-multi-set.tmp-")),
+        "failed publish must clean the staging root",
+      );
+    }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

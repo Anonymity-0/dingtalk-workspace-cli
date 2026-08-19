@@ -370,56 +370,192 @@ function verifyPathCopySync(src, dest) {
   }
 }
 
-function renamePathNoReplaceSync(source, destination, renameFn = fs.renameSync) {
+// removeClaimIfEmptySync deletes a claimed destination only while it holds no
+// entries. A foreign entry that appeared after the claim must never be
+// removed: the rollback has no ownership proof for it.
+function removeClaimIfEmptySync(destination) {
+  try {
+    fs.rmdirSync(destination);
+  } catch (err) {
+    if (err && (err.code === "ENOTEMPTY" || err.code === "EEXIST" || err.code === "EPERM")) {
+      return;
+    }
+    throw err;
+  }
+}
+
+function destinationExistsError(destination) {
+  return Object.assign(new Error(`Skill move destination already exists: ${destination}`), { code: "EEXIST" });
+}
+
+// moveChildIntoClaimNoClobberSync moves one staged child into the claimed
+// destination through an atomic no-clobber primitive: directories recursively
+// claim with mkdir, regular files publish via fs.linkSync, and symlinks are
+// recreated with fs.symlinkSync. Every primitive fails with EEXIST when the
+// destination entry was taken concurrently, so no step can replace a foreign
+// object the way a plain rename would.
+function moveChildIntoClaimNoClobberSync(source, destination, fns) {
   const sourceStat = fs.lstatSync(source);
   if (sourceStat.isDirectory() && !sourceStat.isSymbolicLink()) {
     try {
-      fs.mkdirSync(destination, { mode: 0o700 });
+      fns.mkdirFn(destination);
     } catch (err) {
-      if (err && err.code === "EEXIST") {
-        throw Object.assign(new Error(`Skill move destination already exists: ${destination}`), { code: "EEXIST" });
+      if (err && err.code === "EEXIST") throw destinationExistsError(destination);
+      throw err;
+    }
+    moveChildrenIntoClaimSync(source, destination, sourceStat.mode & 0o777, fns);
+    // The recursive move leaves an emptied shell at the source. rmdirSync
+    // only deletes an empty directory, so clearing the shell keeps the
+    // single-move outcome the parent's rollback expects; a shell that gained
+    // a concurrent entry fails the removal and retracts the publication
+    // instead of silently discarding it.
+    try {
+      fs.rmdirSync(source);
+    } catch (err) {
+      const rollbackErr = moveChildrenBackOutOfClaimSync(source, destination, fs.readdirSync(destination), fns);
+      removeClaimIfEmptySync(destination);
+      throw new Error(
+        `Skill move state uncertain; source shell ${source} removal failed: ${err.message}` +
+          (rollbackErr ? `; rollback failed: ${rollbackErr.message}` : ""),
+      );
+    }
+    return;
+  }
+  if (sourceStat.isSymbolicLink()) {
+    const target = fs.readlinkSync(source);
+    try {
+      fns.symlinkFn(target, destination);
+    } catch (err) {
+      if (err && err.code === "EEXIST") throw destinationExistsError(destination);
+      throw err;
+    }
+    try {
+      fs.unlinkSync(source);
+    } catch (err) {
+      let current = null;
+      try {
+        current = fs.readlinkSync(destination);
+      } catch (_) {
+        // Dest no longer carries our link; leave whatever replaced it.
+      }
+      if (current === target) fs.unlinkSync(destination);
+      throw err;
+    }
+    return;
+  }
+  if (sourceStat.isFile()) {
+    try {
+      fns.linkFn(source, destination);
+    } catch (err) {
+      if (err && err.code === "EEXIST") throw destinationExistsError(destination);
+      throw err;
+    }
+    try {
+      fs.unlinkSync(source);
+    } catch (err) {
+      try {
+        const destStat = fs.lstatSync(destination, { bigint: true });
+        if (destStat.ino === sourceStat.ino && destStat.dev === sourceStat.dev) {
+          fs.unlinkSync(destination);
+        }
+      } catch (_) {
+        // Best effort; the error below names both retained paths.
       }
       throw err;
     }
-    const moved = [];
+    return;
+  }
+  throw new Error(`unsupported Skill path type for no-replace move: ${source}`);
+}
+
+// moveChildrenBackOutOfClaimSync returns the already relocated children to
+// the source with plain renames — every one of them is an object this
+// transaction published, so a replacing rename is safe — and removes the
+// claim only while it is empty.
+function moveChildrenBackOutOfClaimSync(source, destination, moved, fns) {
+  let firstErr = null;
+  for (let i = moved.length - 1; i >= 0; i -= 1) {
     try {
-      for (const name of fs.readdirSync(source)) {
-        renameFn(path.join(source, name), path.join(destination, name));
-        moved.push(name);
-      }
-      fs.chmodSync(destination, sourceStat.mode & 0o777);
-      try {
-        fs.rmdirSync(source);
-      } catch (err) {
-        // Dest already holds the children. A leftover source shell would make
-        // callers think the move succeeded while the original path still
-        // exists (empty) — retract dest so source remains the only live copy.
-        for (let i = moved.length - 1; i >= 0; i -= 1) {
-          try {
-            renameFn(path.join(destination, moved[i]), path.join(source, moved[i]));
-          } catch (_) {
-            // Best effort: claim cleanup below reports whatever is left.
-          }
-        }
-        try {
-          fs.rmdirSync(destination);
-        } catch (cleanupErr) {
-          throw new Error(`Skill move state uncertain; source ${source} and dest ${destination} retained: ${err.message}; retract failed: ${cleanupErr.message}`);
-        }
-        throw err;
-      }
+      fns.renameFn(path.join(destination, moved[i]), path.join(source, moved[i]));
     } catch (err) {
-      for (let i = moved.length - 1; i >= 0; i -= 1) {
-        try {
-          renameFn(path.join(destination, moved[i]), path.join(source, moved[i]));
-        } catch (_) {
-          // Best effort: claim cleanup below reports whatever is left.
-        }
+      firstErr = firstErr || err;
+    }
+  }
+  try {
+    removeClaimIfEmptySync(destination);
+  } catch (err) {
+    firstErr = firstErr || err;
+  }
+  return firstErr;
+}
+
+// moveChildrenIntoClaimSync populates an already-claimed destination from the
+// staged source. The claim must still be empty when it runs (a concurrent
+// writer landing between the claim and here aborts the publication with the
+// destination retained), every child moves through an atomic no-clobber
+// primitive, and a live re-read catches a different-named foreign entry that
+// landed mid-move. Any failure returns the moved children to the source and
+// removes the claim only while it is empty, so foreign data always survives.
+function moveChildrenIntoClaimSync(source, destination, sourceMode, fns) {
+  const claimEntries = fs.readdirSync(destination);
+  if (claimEntries.length > 0) {
+    throw destinationExistsError(destination);
+  }
+  const entries = fs.readdirSync(source);
+  const moved = [];
+  for (const name of entries) {
+    try {
+      moveChildIntoClaimNoClobberSync(path.join(source, name), path.join(destination, name), fns);
+    } catch (err) {
+      const rollbackErr = moveChildrenBackOutOfClaimSync(source, destination, moved, fns);
+      if (rollbackErr) {
+        throw new Error(`${err.message}; rollback failed: ${rollbackErr.message}`);
       }
-      try {
-        fs.rmdirSync(destination);
-      } catch (cleanupErr) {
-        throw new Error(`${err.message}; failed to remove the claimed Skill destination ${destination}: ${cleanupErr.message}`);
+      throw err;
+    }
+    moved.push(name);
+  }
+  const live = fs.readdirSync(destination);
+  if (live.length > entries.length) {
+    const abortErr = destinationExistsError(destination);
+    const rollbackErr = moveChildrenBackOutOfClaimSync(source, destination, moved, fns);
+    if (rollbackErr) {
+      throw new Error(`${abortErr.message}; rollback failed: ${rollbackErr.message}`);
+    }
+    throw abortErr;
+  }
+  fns.chmodFn(destination, sourceMode);
+}
+
+function defaultClaimFns(renameFn) {
+  return {
+    mkdirFn: (target) => fs.mkdirSync(target, { mode: 0o700 }),
+    renameFn: renameFn || fs.renameSync,
+    linkFn: fs.linkSync,
+    symlinkFn: fs.symlinkSync,
+    chmodFn: fs.chmodSync,
+  };
+}
+
+function renamePathNoReplaceSync(source, destination, renameFn = fs.renameSync) {
+  const sourceStat = fs.lstatSync(source);
+  if (sourceStat.isDirectory() && !sourceStat.isSymbolicLink()) {
+    const fns = defaultClaimFns(renameFn);
+    try {
+      fns.mkdirFn(destination);
+    } catch (err) {
+      if (err && err.code === "EEXIST") {
+        throw destinationExistsError(destination);
+      }
+      throw err;
+    }
+    moveChildrenIntoClaimSync(source, destination, sourceStat.mode & 0o777, fns);
+    try {
+      fs.rmdirSync(source);
+    } catch (err) {
+      const rollbackErr = moveChildrenBackOutOfClaimSync(source, destination, fs.readdirSync(destination), fns);
+      if (rollbackErr) {
+        throw new Error(`Skill move state uncertain; source ${source} and dest ${destination} retained: ${err.message}; retract failed: ${rollbackErr.message}`);
       }
       throw err;
     }
@@ -430,7 +566,7 @@ function renamePathNoReplaceSync(source, destination, renameFn = fs.renameSync) 
       fs.symlinkSync(fs.readlinkSync(source), destination);
     } catch (err) {
       if (err && err.code === "EEXIST") {
-        throw Object.assign(new Error(`Skill move destination already exists: ${destination}`), { code: "EEXIST" });
+        throw destinationExistsError(destination);
       }
       throw err;
     }
@@ -451,7 +587,7 @@ function renamePathNoReplaceSync(source, destination, renameFn = fs.renameSync) 
       fs.linkSync(source, destination);
     } catch (err) {
       if (err && err.code === "EEXIST") {
-        throw Object.assign(new Error(`Skill move destination already exists: ${destination}`), { code: "EEXIST" });
+        throw destinationExistsError(destination);
       }
       throw err;
     }
@@ -1104,12 +1240,16 @@ function rollbackPublishedSkillPath(publication, options = {}) {
 // only the (now empty) claim is removed, so the destination returns to the
 // foreign object or to nothing — never to a partial publication.
 function publishSkillDirNoReplace(staged, destination, options = {}) {
-  const mkdirFn = options.publishMkdirFn || ((target) => fs.mkdirSync(target, { mode: 0o700 }));
-  const renameFn = options.publishRenameFn || fs.renameSync;
-  const chmodFn = options.publishChmodFn || fs.chmodSync;
+  const fns = {
+    mkdirFn: options.publishMkdirFn || ((target) => fs.mkdirSync(target, { mode: 0o700 })),
+    renameFn: options.publishRenameFn || fs.renameSync,
+    linkFn: options.publishLinkFn || fs.linkSync,
+    symlinkFn: options.publishSymlinkFn || fs.symlinkSync,
+    chmodFn: options.publishChmodFn || fs.chmodSync,
+  };
   const sourceStat = fs.lstatSync(staged);
   try {
-    mkdirFn(destination);
+    fns.mkdirFn(destination);
   } catch (err) {
     if (err && err.code === "EEXIST") {
       throw Object.assign(new Error(`Skill publish destination already exists: ${destination}`), { code: "EEXIST" });
@@ -1123,28 +1263,7 @@ function publishSkillDirNoReplace(staged, destination, options = {}) {
     inode: claimStat.ino.toString(),
     fingerprint: skillPathFingerprint(staged),
   };
-  const moved = [];
-  try {
-    for (const name of fs.readdirSync(staged)) {
-      renameFn(path.join(staged, name), path.join(destination, name));
-      moved.push(name);
-    }
-    chmodFn(destination, sourceStat.mode & 0o7777);
-  } catch (err) {
-    for (let i = moved.length - 1; i >= 0; i -= 1) {
-      try {
-        renameFn(path.join(destination, moved[i]), path.join(staged, moved[i]));
-      } catch (_) {
-        // Best effort: the claim cleanup below reports whatever is left.
-      }
-    }
-    try {
-      fs.rmdirSync(destination);
-    } catch (cleanupErr) {
-      throw new Error(`${err.message}; failed to remove the claimed Skill destination ${destination}: ${cleanupErr.message}`);
-    }
-    throw err;
-  }
+  moveChildrenIntoClaimSync(staged, destination, sourceStat.mode & 0o7777, fns);
   return publication;
 }
 
