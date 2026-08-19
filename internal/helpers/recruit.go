@@ -379,11 +379,11 @@ func newRecruitJobCreateCommand() *cobra.Command {
 			Interface:   recruitMCPInterface(recruitCreateJobTool),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "使用结构化 JSON 创建招聘职位",
-				UseWhen:      []string{"用户明确要求新建职位，并已准备或同意生成职位 JSON 时；文件必须包含 name、description、jobNature、requiredEdu、extData；jobNature 固定为 FULL-TIME；创建人和负责人分别使用真实 creatorUserId 与 ownerUserIds"},
+				UseWhen:      []string{"用户明确要求新建职位，并已准备或同意生成职位 JSON 时；文件必须包含 name、description、jobNature、requiredEdu、extData、creatorUserId；jobNature 固定为 FULL-TIME；creatorUserId 必须使用真实创建人 userId；ownerUserIds 可选"},
 				AvoidWhen:    []string{"仅查询职位时使用 recruit job list 或 recruit job get"},
 				Examples:     []string{"dws recruit job create --from ./job.json --dry-run --format json"},
 			},
-			Parameters: []contract.ParamDecl{{Name: "from", Property: "atsAddJobParam", Required: boolPtr(true), InterfaceType: "object", Description: "职位 JSON 文件；CLI 校验后原样作为 atsAddJobParam 对象发送；creatorUserId 为创建人 userId，ownerUserIds 为负责人 userId 字符串数组"}},
+			Parameters: []contract.ParamDecl{{Name: "from", Property: "atsAddJobParam", Required: boolPtr(true), InterfaceType: "object", Description: "职位 JSON 文件；CLI 校验后原样作为 atsAddJobParam 对象发送；creatorUserId 为必填的创建人 userId，ownerUserIds 为可选的负责人 userId 字符串数组"}},
 		},
 	})
 }
@@ -479,7 +479,7 @@ func loadRecruitJobFile(path string) (any, error) {
 }
 
 func validateRecruitJob(job map[string]any) error {
-	for _, name := range []string{"name", "description", "jobNature", "requiredEdu", "extData"} {
+	for _, name := range []string{"name", "description", "jobNature", "requiredEdu", "extData", "creatorUserId"} {
 		value, ok := job[name]
 		if !ok || value == nil || (isString(value) && strings.TrimSpace(value.(string)) == "") {
 			return apperrors.NewValidation(fmt.Sprintf("职位 JSON 缺少必填字段 %s", name))
@@ -552,11 +552,8 @@ func optionalRecruitNumber(values map[string]any, name string) (float64, bool, e
 }
 
 func validateRecruitIdentityFields(job map[string]any) error {
-	if value, exists := job["creatorUserId"]; exists && value != nil {
-		creatorUserID, ok := value.(string)
-		if !ok || strings.TrimSpace(creatorUserID) == "" {
-			return apperrors.NewValidation("职位 JSON 字段 creatorUserId 必须是非空字符串")
-		}
+	if _, ok := job["creatorUserId"].(string); !ok {
+		return apperrors.NewValidation("职位 JSON 字段 creatorUserId 必须是非空字符串")
 	}
 	if value, exists := job["ownerUserIds"]; exists && value != nil {
 		ownerUserIDs, ok := value.([]any)

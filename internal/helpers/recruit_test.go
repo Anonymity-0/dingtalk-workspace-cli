@@ -286,6 +286,64 @@ func TestRecruitCreateValidatesJobFile(t *testing.T) {
 	}
 }
 
+func TestRecruitCreateRejectsInvalidCreatorBeforeRemoteCall(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		creator string
+	}{
+		{name: "missing", creator: ""},
+		{name: "null", creator: `,"creatorUserId":null`},
+		{name: "blank", creator: `,"creatorUserId":" "`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := withRecruitCaller(t)
+			path := filepath.Join(t.TempDir(), "job.json")
+			payload := `{"name":"Java 工程师","description":"服务端开发","jobNature":"FULL-TIME","requiredEdu":6,"extData":{}` + test.creator + `}`
+			if err := os.WriteFile(path, []byte(payload), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := prepareRecruitTestCommand(newRecruitJobCreateCommand())
+			cmd.Flags().Bool("yes", false, "确认创建")
+			cmd.SetArgs([]string{"--from", path, "--yes"})
+			if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "creatorUserId") {
+				t.Fatalf("creator validation error = %v, want creatorUserId error", err)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("MCP calls with invalid creator = %d, want 0", len(caller.calls))
+			}
+		})
+	}
+}
+
+func TestRecruitCreateAllowsOptionalOwners(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		owner string
+	}{
+		{name: "missing"},
+		{name: "null", owner: `,"ownerUserIds":null`},
+		{name: "empty array", owner: `,"ownerUserIds":[]`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := withRecruitCaller(t)
+			path := filepath.Join(t.TempDir(), "job.json")
+			payload := `{"name":"Java 工程师","description":"服务端开发","jobNature":"FULL-TIME","requiredEdu":6,"extData":{},"creatorUserId":"creator-user-id"` + test.owner + `}`
+			if err := os.WriteFile(path, []byte(payload), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := prepareRecruitTestCommand(newRecruitJobCreateCommand())
+			cmd.Flags().Bool("yes", false, "确认创建")
+			cmd.SetArgs([]string{"--from", path, "--yes"})
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("optional owner create error = %v, want nil", err)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("MCP calls with optional owner = %d, want 1", len(caller.calls))
+			}
+		})
+	}
+}
+
 func TestRecruitValidationBranches(t *testing.T) {
 	statuses, err := transformRecruitStatuses(" open, ,open,closed ")
 	if err != nil || !reflect.DeepEqual(statuses, []int{1, 3}) {
@@ -333,13 +391,16 @@ func TestRecruitValidationBranches(t *testing.T) {
 		{name: "string type", mutate: func(job map[string]any) { job["name"] = 1 }, want: "name 必须是字符串"},
 		{name: "number type", mutate: func(job map[string]any) { job["requiredEdu"] = "本科" }, want: "requiredEdu 必须是数字"},
 		{name: "missing ext data", mutate: func(job map[string]any) { delete(job, "extData") }, want: "缺少必填字段 extData"},
+		{name: "missing creator", mutate: func(job map[string]any) { delete(job, "creatorUserId") }, want: "缺少必填字段 creatorUserId"},
+		{name: "null creator", mutate: func(job map[string]any) { job["creatorUserId"] = nil }, want: "缺少必填字段 creatorUserId"},
 		{name: "ext data type", mutate: func(job map[string]any) { job["extData"] = "invalid" }, want: "extData 必须是对象"},
 		{name: "job nature enum", mutate: func(job map[string]any) { job["jobNature"] = "FULL_TIME" }, want: "仅支持 FULL-TIME"},
 		{name: "education range", mutate: func(job map[string]any) { job["requiredEdu"] = float64(10) }, want: "1 到 9 的整数"},
 		{name: "salary range", mutate: func(job map[string]any) { job["minSalary"] = float64(40000) }, want: "minSalary 不能大于 maxSalary"},
 		{name: "min salary type", mutate: func(job map[string]any) { job["minSalary"] = "20000" }, want: "minSalary 必须是数字"},
 		{name: "salary type", mutate: func(job map[string]any) { job["maxSalary"] = "35000" }, want: "maxSalary 必须是数字"},
-		{name: "creator type", mutate: func(job map[string]any) { job["creatorUserId"] = " " }, want: "creatorUserId 必须是非空字符串"},
+		{name: "creator type", mutate: func(job map[string]any) { job["creatorUserId"] = " " }, want: "缺少必填字段 creatorUserId"},
+		{name: "creator non-string", mutate: func(job map[string]any) { job["creatorUserId"] = float64(123) }, want: "creatorUserId 必须是非空字符串"},
 		{name: "owners type", mutate: func(job map[string]any) { job["ownerUserIds"] = "owner-user-id" }, want: "ownerUserIds 必须是字符串数组"},
 		{name: "owner item", mutate: func(job map[string]any) { job["ownerUserIds"] = []any{""} }, want: "ownerUserIds 只能包含非空字符串"},
 		{name: "campus type", mutate: func(job map[string]any) { job["campus"] = "false" }, want: "campus 必须是布尔值"},
