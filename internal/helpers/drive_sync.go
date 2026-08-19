@@ -65,6 +65,14 @@ const (
 	syncActionRenamedLocal  = "renamed_local"
 	syncActionSkipped       = "skipped"
 	syncActionFailed        = "failed"
+
+	syncActionPlannedDownload     = "planned_download"
+	syncActionPlannedUpload       = "planned_upload"
+	syncActionPlannedOverwrite    = "planned_overwrite"
+	syncActionPlannedFolderCreate = "planned_folder_create"
+	syncActionPlannedRenameLocal  = "planned_rename_local"
+	syncActionPlannedSkip         = "planned_skip"
+	syncActionDecisionRequired    = "decision_required"
 )
 
 // driveSyncItem 是输出 items[] 中每条操作的明细。
@@ -77,10 +85,14 @@ type driveSyncItem struct {
 
 // driveSyncSummary 是各方向的计数汇总。
 type driveSyncSummary struct {
-	Pulled  int `json:"pulled"`
-	Pushed  int `json:"pushed"`
-	Skipped int `json:"skipped"`
-	Failed  int `json:"failed"`
+	Pulled         int `json:"pulled"`
+	Pushed         int `json:"pushed"`
+	Skipped        int `json:"skipped"`
+	Failed         int `json:"failed"`
+	PlannedPulls   int `json:"planned_pulls,omitempty"`
+	PlannedPushes  int `json:"planned_pushes,omitempty"`
+	PlannedSkips   int `json:"planned_skips,omitempty"`
+	PlannedFolders int `json:"planned_folders,omitempty"`
 }
 
 // driveSyncDiff 是本次同步前算出的五类差异（与 status 同源）。
@@ -267,6 +279,10 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 
 	// --dry-run：只算差异、不执行任何同步动作。
 	if deps.Caller.DryRun() {
+		if len(preflight) == 0 && res.Summary.Failed == 0 {
+			appendDriveSyncDryRunPlan(&res, localDirs, localByRel, remoteFiles, remoteFolders,
+				newLocal, newRemote, modified, unknown, onConflict)
+		}
 		return deps.Out.PrintJSON(driveSyncDryRunResult{
 			DryRun: true, Executed: false, PreviewKind: "plan", Operation: "drive sync", Plan: res,
 		})
@@ -392,6 +408,100 @@ func runDriveSync(cmd *cobra.Command, _ []string) error {
 		return &driveSyncFailure{failed: res.Summary.Failed}
 	}
 	return nil
+}
+
+func appendDriveSyncDryRunPlan(
+	res *driveSyncResult,
+	localDirs []string,
+	localByRel map[string]localPushFile,
+	remoteFiles map[string]*remoteFile,
+	remoteFolders map[string]string,
+	newLocal, newRemote, modified, unknown []string,
+	onConflict string,
+) {
+	for _, rel := range unknown {
+		res.Summary.PlannedSkips++
+		res.Items = append(res.Items, driveSyncItem{
+			RelPath: rel, Action: syncActionPlannedSkip, Direction: syncDirectionConflict,
+			Error: "远端无可靠 md5，内容无法核对，执行时会跳过（可改用 --quick 按 modified_time 比对）",
+		})
+	}
+
+	plannedFolders := make(map[string]string, len(remoteFolders)+len(localDirs))
+	for rel, fileID := range remoteFolders {
+		plannedFolders[rel] = fileID
+	}
+	for _, dir := range localDirs {
+		if _, ok := plannedFolders[dir]; ok {
+			continue
+		}
+		parentRel, _ := splitRel(dir)
+		if plannedFolders[parentRel] == "" {
+			res.Summary.Failed++
+			res.Items = append(res.Items, driveSyncItem{RelPath: dir, Action: syncActionFailed, Direction: syncDirectionPush, Error: "父目录未能创建"})
+			continue
+		}
+		plannedFolders[dir] = "dry-run-planned-folder"
+		res.Summary.PlannedFolders++
+		res.Items = append(res.Items, driveSyncItem{RelPath: dir, Action: syncActionPlannedFolderCreate, Direction: syncDirectionPush})
+	}
+
+	for _, rel := range newRemote {
+		res.Summary.PlannedPulls++
+		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionPlannedDownload, Direction: syncDirectionPull})
+	}
+	for _, rel := range newLocal {
+		parentRel, _ := splitRel(rel)
+		if plannedFolders[parentRel] == "" {
+			res.Summary.Failed++
+			res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionFailed, Direction: syncDirectionPush, Error: "父目录未能创建"})
+			continue
+		}
+		res.Summary.PlannedPushes++
+		res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionPlannedUpload, Direction: syncDirectionPush})
+	}
+
+	occupied := make(map[string]bool, len(localByRel)+len(localDirs)+len(remoteFiles)+len(remoteFolders))
+	for rel := range localByRel {
+		occupied[rel] = true
+	}
+	for _, rel := range localDirs {
+		occupied[rel] = true
+	}
+	for rel := range remoteFiles {
+		occupied[rel] = true
+	}
+	for rel := range remoteFolders {
+		if rel != "" {
+			occupied[rel] = true
+		}
+	}
+	for _, rel := range modified {
+		switch onConflict {
+		case syncConflictRemoteWins:
+			res.Summary.PlannedPulls++
+			res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionPlannedDownload, Direction: syncDirectionPull})
+		case syncConflictLocalWins:
+			res.Summary.PlannedPushes++
+			res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionPlannedOverwrite, Direction: syncDirectionConflict})
+		case syncConflictKeepBoth:
+			candidate := driveSyncSuffixedRel(rel, remoteFiles[rel].FileID, occupied)
+			occupied[candidate] = true
+			res.Summary.PlannedPulls++
+			res.Items = append(res.Items,
+				driveSyncItem{RelPath: candidate, Action: syncActionPlannedRenameLocal, Direction: syncDirectionConflict},
+				driveSyncItem{RelPath: rel, Action: syncActionPlannedDownload, Direction: syncDirectionPull},
+			)
+		case syncConflictAsk:
+			res.Items = append(res.Items, driveSyncItem{
+				RelPath: rel, Action: syncActionDecisionRequired, Direction: syncDirectionConflict,
+				Error: "执行时需要交互选择 remote-wins、local-wins、keep-both 或 skip",
+			})
+		default:
+			res.Summary.PlannedSkips++
+			res.Items = append(res.Items, driveSyncItem{RelPath: rel, Action: syncActionPlannedSkip, Direction: syncDirectionConflict})
+		}
+	}
 }
 
 // syncPathBlockedByTypeConflict 判断 rel 本身或任一祖先是否是文件/目录类型冲突根。

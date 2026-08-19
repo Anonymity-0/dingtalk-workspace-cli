@@ -23,27 +23,38 @@ type aitableWorkflowCall struct {
 }
 
 type aitableWorkflowCaller struct {
-	calls []aitableWorkflowCall
+	calls    []aitableWorkflowCall
+	response string
+	dryRun   bool
 }
 
 func (c *aitableWorkflowCaller) CallTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
 	c.calls = append(c.calls, aitableWorkflowCall{productID: productID, toolName: toolName, args: args})
+	response := c.response
+	if response == "" {
+		response = `{"status":"success","data":{"valid":true,"flowId":"flow-test","issues":[]}}`
+	}
 	return &edition.ToolResult{Content: []edition.ContentBlock{{
 		Type: "text",
-		Text: `{"status":"success","data":{"valid":true,"flowId":"flow-test","issues":[]}}`,
+		Text: response,
 	}}}, nil
 }
 
 func (*aitableWorkflowCaller) Format() string { return "json" }
-func (*aitableWorkflowCaller) DryRun() bool   { return false }
+func (c *aitableWorkflowCaller) DryRun() bool { return c.dryRun }
 func (*aitableWorkflowCaller) Fields() string { return "" }
 func (*aitableWorkflowCaller) JQ() string     { return "" }
 
 func runAitableWorkflowCommand(t *testing.T, stdin io.Reader, args ...string) (*aitableWorkflowCaller, error) {
 	t.Helper()
+	caller := &aitableWorkflowCaller{}
+	return caller, runAitableWorkflowCommandWithCaller(t, caller, stdin, args...)
+}
+
+func runAitableWorkflowCommandWithCaller(t *testing.T, caller *aitableWorkflowCaller, stdin io.Reader, args ...string) error {
+	t.Helper()
 	testseam.Protect(t, &os.Args)
 
-	caller := &aitableWorkflowCaller{}
 	InitDepsForTest(t, caller)
 	deps.Out.w = io.Discard
 	os.Args = append([]string{"dws", "aitable", "workflow"}, args...)
@@ -51,6 +62,7 @@ func runAitableWorkflowCommand(t *testing.T, stdin io.Reader, args ...string) (*
 	cmd := newAitableCommand()
 	cmd.PersistentFlags().String("format", "json", "output format")
 	cmd.PersistentFlags().Bool("yes", false, "skip confirmation")
+	cmd.PersistentFlags().Bool("dry-run", false, "preview only")
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
 	cmd.SetArgs(append([]string{"workflow"}, args...))
@@ -58,7 +70,7 @@ func runAitableWorkflowCommand(t *testing.T, stdin io.Reader, args ...string) (*
 		stdin = strings.NewReader("")
 	}
 	cmd.SetIn(stdin)
-	return caller, cmd.Execute()
+	return cmd.Execute()
 }
 
 func TestAitableWorkflowCreateMapsDSLWithoutRetry(t *testing.T) {
@@ -90,6 +102,47 @@ func TestAitableWorkflowCreateMapsDSLWithoutRetry(t *testing.T) {
 	if !reflect.DeepEqual(call.args, wantArgs) {
 		t.Fatalf("tool args = %#v, want %#v", call.args, wantArgs)
 	}
+}
+
+func TestCrossPlatformCoverageAitableWorkflowPublishRejectsFalseSuccess(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		want     string
+	}{
+		{name: "valid false", response: `{"status":"success","data":{"valid":false,"issues":[{"message":"bad dsl"}]}}`, want: "valid=false"},
+		{name: "missing valid", response: `{"status":"success","data":{"flowId":"flow-test"}}`, want: "missing valid"},
+		{name: "missing flow id", response: `{"status":"success","data":{"valid":true}}`, want: "missing a non-empty flowId"},
+		{name: "wrong valid type", response: `{"status":"success","data":{"valid":"true","flowId":"flow-test"}}`, want: "valid must be boolean"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &aitableWorkflowCaller{response: tc.response}
+			err := runAitableWorkflowCommandWithCaller(t, caller, nil,
+				"create", "--base-id", "base", "--dsl", `{"version":"workflow-dsl/v1","name":"test"}`)
+			if err == nil || !strings.Contains(err.Error(), tc.want) || len(caller.calls) != 1 {
+				t.Fatalf("workflow false success = err:%v calls:%#v", err, caller.calls)
+			}
+		})
+	}
+
+	t.Run("update uses the same strict contract", func(t *testing.T) {
+		caller := &aitableWorkflowCaller{response: `{"status":"success","data":{"valid":false}}`}
+		err := runAitableWorkflowCommandWithCaller(t, caller, nil,
+			"update", "--base-id", "base", "--workflow-id", "flow", "--dsl", `{"version":"workflow-dsl/v1","name":"test"}`)
+		if err == nil || !strings.Contains(err.Error(), "valid=false") || len(caller.calls) != 1 || caller.calls[0].toolName != "update_workflow" {
+			t.Fatalf("workflow update false success = err:%v calls:%#v", err, caller.calls)
+		}
+	})
+
+	t.Run("dry-run does not call publish tool", func(t *testing.T) {
+		caller := &aitableWorkflowCaller{dryRun: true}
+		err := runAitableWorkflowCommandWithCaller(t, caller, nil,
+			"create", "--base-id", "base", "--dsl", `{"version":"workflow-dsl/v1","name":"test"}`, "--dry-run")
+		if err != nil || len(caller.calls) != 0 {
+			t.Fatalf("workflow create dry-run = err:%v calls:%#v", err, caller.calls)
+		}
+	})
 }
 
 func TestAitableWorkflowEditExampleMapsEmptyArguments(t *testing.T) {

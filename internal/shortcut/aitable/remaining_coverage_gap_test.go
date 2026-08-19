@@ -77,6 +77,10 @@ func TestCrossPlatformCoverageAITableProjectionValidAndMissingIdentityShapes(t *
 	if err != nil || len(workflows) != 1 {
 		t.Fatalf("workflow projection = %#v, %v", workflows, err)
 	}
+	workflows, err = workflowListProject(map[string]any{"list": []any{map[string]any{"flowId": "flow", "name": "real service shape"}}})
+	if err != nil || len(workflows) != 1 || workflows[0]["workflowId"] != "flow" {
+		t.Fatalf("workflow flowId projection = %#v, %v", workflows, err)
+	}
 }
 
 func TestCrossPlatformCoverageCompositeAndReviewedContractFallbacks(t *testing.T) {
@@ -183,6 +187,7 @@ func TestCrossPlatformCoverageViewPresetValidationAndDryRunE2E(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageViewPresetReadBackFailuresAndUpdateE2E(t *testing.T) {
+	disableViewPresetSleep(t)
 	preflight := `{"views":[{"viewId":"v","viewName":"X","viewType":"Grid","config":{"f":0}}]}`
 	cases := []struct {
 		name     string

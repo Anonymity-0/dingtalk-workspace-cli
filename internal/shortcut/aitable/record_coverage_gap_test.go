@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 )
 
 func TestCrossPlatformCoverageRecordObjectAndIDValidation(t *testing.T) {
@@ -88,6 +90,67 @@ func TestCrossPlatformCoverageRecordDeleteDryRunAndDualFailureE2E(t *testing.T) 
 	if err == nil || out != "" {
 		t.Fatalf("delete excessive IDs = output:%q err:%v", out, err)
 	}
+}
+
+func TestCrossPlatformCoverageRecordPrimaryDocPreflightAndNormalizationE2E(t *testing.T) {
+	t.Run("record not found is classified", func(t *testing.T) {
+		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+			{text: `{"fields":[{"fieldId":"primary","type":"primaryDoc"}]}`},
+			{text: `{"records":[]}`},
+		}}
+		out, err := runAITableCompositeCLI(t, caller, "+record-primary-doc-get", "--base-id", "base", "--table-id", "table", "--record-id", "missing")
+		var typed *apperrors.Error
+		if err == nil || out != "" || !errors.As(err, &typed) || typed.Reason != "RESOURCE_NOT_FOUND" {
+			t.Fatalf("missing primary-doc record = output:%q err:%#v", out, err)
+		}
+	})
+
+	t.Run("table without primary doc field is normalized", func(t *testing.T) {
+		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+			{text: `{"fields":[{"fieldId":"text","type":"text"}]}`},
+			{text: `{"records":[{"recordId":"r1","cells":{"text":"x"}}]}`},
+		}}
+		out, err := runAITableCompositeCLI(t, caller, "+record-primary-doc-get", "--base-id", "base", "--table-id", "table", "--record-id", "r1")
+		if err != nil || !strings.Contains(out, `"status": "no_primary_doc_field"`) || !strings.Contains(out, `"exists": false`) || len(caller.calls) != 2 {
+			t.Fatalf("no primary field = output:%q err:%v calls:%#v", out, err, caller.calls)
+		}
+	})
+
+	t.Run("empty primary doc cell is unassociated", func(t *testing.T) {
+		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+			{text: `{"fields":[{"fieldId":"primary","type":"primaryDoc"}]}`},
+			{text: `{"records":[{"recordId":"r1","cells":{}}]}`},
+			{text: `{"data":{"nodeId":null}}`},
+		}}
+		out, err := runAITableCompositeCLI(t, caller, "+record-primary-doc-get", "--base-id", "base", "--table-id", "table", "--record-id", "r1")
+		if err != nil || !strings.Contains(out, `"status": "unassociated"`) || !strings.Contains(out, `"exists": false`) || len(caller.calls) != 3 || caller.calls[2].tool != "get_primary_doc" {
+			t.Fatalf("unassociated primary doc = output:%q err:%v calls:%#v", out, err, caller.calls)
+		}
+	})
+
+	t.Run("known helper no-record error is unassociated", func(t *testing.T) {
+		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+			{text: `{"fields":[{"fieldId":"primary","type":"primaryDoc"}]}`},
+			{text: `{"records":[{"recordId":"r1","cells":{}}]}`},
+			{err: errors.New("no record")},
+		}}
+		out, err := runAITableCompositeCLI(t, caller, "+record-primary-doc-get", "--base-id", "base", "--table-id", "table", "--record-id", "r1")
+		if err != nil || !strings.Contains(out, `"status": "unassociated"`) || !strings.Contains(out, `"exists": false`) || len(caller.calls) != 3 {
+			t.Fatalf("no-record primary doc = output:%q err:%v calls:%#v", out, err, caller.calls)
+		}
+	})
+
+	t.Run("associated doc is resolved through helper", func(t *testing.T) {
+		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+			{text: `{"fields":[{"fieldId":"primary","type":"primaryDoc"}]}`},
+			{text: `{"records":[{"recordId":"r1","cells":{"primary":{"associated":true}}}]}`},
+			{text: `{"data":{"nodeId":"node-1"}}`},
+		}}
+		out, err := runAITableCompositeCLI(t, caller, "+record-primary-doc-get", "--base-id", "base", "--table-id", "table", "--record-id", "r1")
+		if err != nil || !strings.Contains(out, `"nodeId": "node-1"`) || !strings.Contains(out, `"exists": true`) || len(caller.calls) != 3 || caller.calls[2].tool != "get_primary_doc" {
+			t.Fatalf("associated primary doc = output:%q err:%v calls:%#v", out, err, caller.calls)
+		}
+	})
 }
 
 func TestCrossPlatformCoverageRecordBatchVerificationEdgesE2E(t *testing.T) {
