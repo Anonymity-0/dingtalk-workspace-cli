@@ -275,6 +275,9 @@ func TestCrossPlatformCoverageOAApprovalNewCommandValidationAndRequestModes(t *t
 		{"approval", "list-by-admin", "--request", `{"processCode":"PROC","endTime":"NOT-A-TIME","cursor":0,"pageSize":20}`},
 		{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01 09:00:00","endTime":"2030-01-01","cursor":0,"pageSize":20}`},
 		{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01 09:00:00","endTime":"2030-01-01 09:00:00","cursor":0,"pageSize":20}`},
+		{"approval", "list-by-admin", "--request", `{"startTime":"2030-01-01 09:00:00","cursor":0,"pageSize":20}`},
+		{"approval", "list-by-admin", "--request", `{"processCode":"","startTime":"2030-01-01 09:00:00","cursor":0,"pageSize":20}`},
+		{"approval", "list-by-admin", "--request", `{"processCode":123,"startTime":"2030-01-01 09:00:00","cursor":0,"pageSize":20}`},
 	}
 	for _, args := range invalidCases {
 		caller := &scriptedToolCaller{}

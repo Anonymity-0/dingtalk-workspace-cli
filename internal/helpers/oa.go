@@ -327,6 +327,21 @@ func newOAAttachmentCommand() *cobra.Command {
 // get_process_instances_by_admin.
 const oaAdminQueryMaxPageSize = float64(20)
 
+// validateOARequestProcessCode checks the processCode field of a decoded
+// --request payload: the tool requires it, and the backend answers a bad
+// processCode with success:true and an empty list, so reject it client-side.
+func validateOARequestProcessCode(request map[string]any) error {
+	v, ok := request["processCode"]
+	if !ok {
+		return fmt.Errorf("--request 缺少必填字段 processCode")
+	}
+	s, ok := v.(string)
+	if !ok || s == "" {
+		return fmt.Errorf("--request processCode 必须为非空字符串")
+	}
+	return nil
+}
+
 // validateOARequestPageSize checks the pageSize field of a decoded
 // --request payload (json.Number values from decodeOARequest).
 func validateOARequestPageSize(request map[string]any) error {
@@ -1539,6 +1554,9 @@ func newOaCommand() *cobra.Command {
 				request, err := decodeOARequest(raw)
 				if err != nil {
 					return fmt.Errorf("--request JSON 解析失败: %w", err)
+				}
+				if err := validateOARequestProcessCode(request); err != nil {
+					return err
 				}
 				if err := validateOARequestPageSize(request); err != nil {
 					return err
