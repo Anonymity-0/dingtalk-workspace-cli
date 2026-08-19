@@ -497,6 +497,9 @@ func TestRecruitListResultData(t *testing.T) {
 		{name: "missing hasMore", data: map[string]any{}, want: "缺少布尔字段 hasMore"},
 		{name: "invalid cursor", data: map[string]any{"hasMore": true, "nextCursor": true}, want: "必须是字符串或数字"},
 		{name: "missing cursor", data: map[string]any{"hasMore": true}, want: "缺少 nextCursor"},
+		{name: "exponent cursor", data: map[string]any{"hasMore": true, "nextCursor": json.Number("1e3")}, want: "非负十进制 int64"},
+		{name: "decimal cursor", data: map[string]any{"hasMore": true, "nextCursor": json.Number("1.5")}, want: "非负十进制 int64"},
+		{name: "overflow cursor", data: map[string]any{"hasMore": true, "nextCursor": json.Number("9223372036854775808")}, want: "非负十进制 int64"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if _, _, err := recruitListResultData(test.data); err == nil || !strings.Contains(err.Error(), test.want) {
@@ -518,6 +521,13 @@ func TestRecruitListResultData(t *testing.T) {
 	clean := data.(map[string]any)
 	if _, exists := clean["hasMore"]; exists || clean["jobs"] == nil {
 		t.Fatalf("clean data = %#v", clean)
+	}
+
+	_, normalizedCursor, err := recruitListResultData(map[string]any{
+		"jobs": []any{}, "hasMore": true, "nextCursor": "00012",
+	})
+	if err != nil || normalizedCursor.Pagination.NextToken != "12" {
+		t.Fatalf("normalized cursor meta = %#v, err = %v", normalizedCursor, err)
 	}
 
 	_, terminal, err := recruitListResultData(map[string]any{"jobs": []any{}, "hasMore": false, "nextCursor": "ignored"})
@@ -789,15 +799,29 @@ func TestRecruitResultCallClassifiesBusinessAndMalformedFailures(t *testing.T) {
 }
 
 func TestRecruitResultCallRejectsInconsistentPagination(t *testing.T) {
-	caller := withRecruitCaller(t)
-	caller.text = `{"jobs":[],"hasMore":true}`
-	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
-	result, err := recruitResultCall(cmd, recruitListJobsTool, map[string]any{"size": 20})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Outcome() != output.OutcomeFailure {
-		t.Fatalf("outcome = %s, want failure", result.Outcome())
+	for _, response := range []string{
+		`{"jobs":[],"hasMore":true}`,
+		`{"jobs":[],"hasMore":true,"nextCursor":1e3}`,
+		`{"jobs":[],"hasMore":true,"nextCursor":1.5}`,
+		`{"jobs":[],"hasMore":true,"nextCursor":9223372036854775808}`,
+	} {
+		t.Run(response, func(t *testing.T) {
+			caller := withRecruitCaller(t)
+			caller.text = response
+			cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
+			result, err := recruitResultCall(cmd, recruitListJobsTool, map[string]any{"size": 20})
+			if err != nil {
+				t.Fatal(err)
+			}
+			envelope, err := output.EnvelopeFromResult(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if envelope.Outcome != output.OutcomeFailure || envelope.Error == nil ||
+				envelope.Error.Subtype != "invalid_response" {
+				t.Fatalf("envelope = %#v, want invalid_response failure", envelope)
+			}
+		})
 	}
 }
 

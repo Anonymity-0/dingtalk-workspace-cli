@@ -285,23 +285,17 @@ func recruitListResultData(data any) (any, *output.Meta, error) {
 		return nil, nil, fmt.Errorf("list_jobs 返回值缺少布尔字段 hasMore")
 	}
 	nextToken := ""
-	if raw, exists := object["nextCursor"]; exists && raw != nil {
-		switch value := raw.(type) {
-		case string:
-			nextToken = strings.TrimSpace(value)
-		case json.Number:
-			nextToken = string(value)
-		case float64:
-			nextToken = strconv.FormatFloat(value, 'f', -1, 64)
-		default:
-			return nil, nil, fmt.Errorf("list_jobs 的 nextCursor 必须是字符串或数字")
+	if hasMore {
+		if raw, exists := object["nextCursor"]; exists && raw != nil {
+			var err error
+			nextToken, err = normalizeRecruitNextCursor(raw)
+			if err != nil {
+				return nil, nil, err
+			}
 		}
-	}
-	if hasMore && nextToken == "" {
-		return nil, nil, fmt.Errorf("list_jobs 返回 hasMore=true 但缺少 nextCursor")
-	}
-	if !hasMore {
-		nextToken = ""
+		if nextToken == "" {
+			return nil, nil, fmt.Errorf("list_jobs 返回 hasMore=true 但缺少 nextCursor")
+		}
 	}
 	clean := make(map[string]any, len(object)-2)
 	for key, value := range object {
@@ -322,6 +316,25 @@ func recruitListResultData(data any) (any, *output.Meta, error) {
 		pagination.Items = len(jobs)
 	}
 	return clean, meta, nil
+}
+
+func normalizeRecruitNextCursor(raw any) (string, error) {
+	var value string
+	switch cursor := raw.(type) {
+	case string:
+		value = strings.TrimSpace(cursor)
+	case json.Number:
+		value = string(cursor)
+	case float64:
+		value = strconv.FormatFloat(cursor, 'f', -1, 64)
+	default:
+		return "", fmt.Errorf("list_jobs 的 nextCursor 必须是字符串或数字")
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || parsed < 0 {
+		return "", fmt.Errorf("list_jobs 的 nextCursor 必须是可回填的非负十进制 int64 游标")
+	}
+	return strconv.FormatInt(parsed, 10), nil
 }
 
 func newRecruitJobGetCommand() *cobra.Command {
