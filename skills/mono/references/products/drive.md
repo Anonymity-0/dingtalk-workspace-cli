@@ -595,6 +595,7 @@ Flags:
 用户说"恢复文件/还原删除的文件/从回收站恢复/还原回收站文件" → `recycle restore`
 用户说"给文档授权/分享权限" → `permission add`
 用户说"授权并通知对方/加权限后告知他/通知一下被授权的人" → `permission add --members ... --notify`（未提通知需求时不传 `--notify`）
+用户说"权限设置/权限模式/分享范围/水印等策略配置" → `permission get-setting`
 用户说"公开文件/互联网公开/设置公开/让互联网所有人可访问" → `publish set`
 用户说"关闭公开/取消公开/取消互联网访问" → `publish unset`
 用户说"查看公开状态/是否公开/发布状态" → `publish get`
@@ -724,6 +725,7 @@ Usage:
   dws drive permission update --node <ID> --members '[{"type":"CONVERSATION","id":"cidXXX","roleId":"READER"}]'
   dws drive permission list --node <ID>
   dws drive permission list --node <ID> --limit 50 --next-token <上次返回的 nextToken>
+  dws drive permission get-setting --node <ID>
   dws drive permission remove --node <ID> --users uid1
   dws drive permission remove --node <ID> --members '[{"type":"USER","id":"uid1","corpId":"xxx"},{"type":"DEPT","id":"deptId1","corpId":"xxx"}]'
 Flags:
@@ -753,6 +755,8 @@ Flags:
 > - 操作者须满足该节点配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 `forbidden.accessDenied`
 > - 单次请求最多 30 个成员，超出请分批调用
 > - list 命令底层一次性返回全量成员后在内存中按 pageSize 分页，当 `hasMore` 为 true 时，传入 `--next-token` 即可获取下一页
+
+`get-setting` 返回节点权限配置（不是成员清单）：`permissionMode`（INHERITED 继承上级 / INDEPENDENT 独立管理）、`shareScope`（可见范围与链接分享设置）、`policies`（水印、组织外分享、添加成员门槛等策略列表）。查询协作者清单仍用 `permission list`。
 
 ### 文件互联网公开发布
 
