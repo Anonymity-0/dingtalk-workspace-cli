@@ -470,6 +470,10 @@ func validateRecruitList(cmd *cobra.Command, _ []string) error {
 	if cmd.Flags().Changed("size") && (size < 1 || size > 100) {
 		return apperrors.NewValidation("--size 必须在 1 到 100 之间")
 	}
+	requiredEdu, _ := cmd.Flags().GetInt("required-edu")
+	if cmd.Flags().Changed("required-edu") && (requiredEdu < 1 || requiredEdu > 9) {
+		return apperrors.NewValidation("--required-edu 必须在 1 到 9 之间")
+	}
 	return nil
 }
 

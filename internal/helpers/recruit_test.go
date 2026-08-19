@@ -85,7 +85,7 @@ func TestRecruitJobListWrapsQueryParameters(t *testing.T) {
 	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
 	cmd.SetArgs([]string{
 		"--keyword", "Java", "--status", "open,draft", "--creator-user-ids", "u1,u2",
-		"--campus=false", "--cursor", "10", "--size", "30",
+		"--campus=false", "--required-edu", "9", "--cursor", "10", "--size", "30",
 	})
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
@@ -100,7 +100,7 @@ func TestRecruitJobListWrapsQueryParameters(t *testing.T) {
 	if !ok {
 		t.Fatalf("param = %#v, want object", caller.args["param"])
 	}
-	if param["keyword"] != "Java" || param["campus"] != false {
+	if param["keyword"] != "Java" || param["campus"] != false || param["requiredEdu"] != 9 {
 		t.Fatalf("param = %#v", param)
 	}
 	statuses, ok := param["statusList"].([]int)
@@ -188,6 +188,20 @@ func TestRecruitJobListDefaultsAndValidation(t *testing.T) {
 	badSize.SetArgs([]string{"--size", "101"})
 	if err := badSize.Execute(); err == nil || !strings.Contains(err.Error(), "1 到 100") {
 		t.Fatalf("invalid size error = %v", err)
+	}
+
+	for _, requiredEdu := range []string{"0", "10"} {
+		t.Run("required edu "+requiredEdu, func(t *testing.T) {
+			caller := withRecruitCaller(t)
+			invalid := prepareRecruitTestCommand(newRecruitJobListCommand())
+			invalid.SetArgs([]string{"--required-edu", requiredEdu})
+			if err := invalid.Execute(); err == nil || !strings.Contains(err.Error(), "1 到 9") {
+				t.Fatalf("required edu %s error = %v", requiredEdu, err)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("MCP calls with invalid required edu = %d, want 0", len(caller.calls))
+			}
+		})
 	}
 }
 
