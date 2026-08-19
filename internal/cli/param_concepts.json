@@ -832,6 +832,8 @@
       {"command":"calendar +search-event","emitted":"page","expect":"did-you-mean:blocked","via":"guard:cursor-vs-page-index"},
       {"command":"calendar +suggestion","emitted":"user-ids","expect":"users","via":"concept:user_ids"},
       {"command":"calendar +suggestion","emitted":"duration-minutes","expect":"duration","via":"concept:calendar_duration_minutes"},
+      {"command":"calendar +suggestion","emitted":"from","expect":"start","via":"concept:time_start"},
+      {"command":"calendar +suggestion","emitted":"to","expect":"end","via":"override:scoped_strict"},
       {"command":"calendar +suggestion","emitted":"tz","expect":"timezone","via":"concept:calendar_timezone"},
       {"command":"calendar +suggestion","emitted":"attendee-names","expect":"did-you-mean:blocked","via":"guard:name-vs-user-id"},
       {"command":"calendar +update","emitted":"event-id","expect":"event","via":"concept:calendar_event_id"},
