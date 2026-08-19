@@ -77,8 +77,12 @@ func TestCrossPlatformCoverageMailSemanticCatalogExactlyCoversRegisteredSurface(
 			if item.Hidden == record.CompatibilityVisible || item.Availability != shortcut.AvailabilityUnavailable {
 				t.Errorf("%s: unavailable shortcut compatibility visibility drifted", command)
 			}
-			if item.Contract.Interface == nil || item.Contract.Interface.Availability != "unavailable" || strings.TrimSpace(item.Contract.Interface.Reason) == "" {
-				t.Errorf("%s: unavailable runtime interface is not explicit", command)
+			wantInterfaceAvailability := "unavailable"
+			if record.CompatibilityVisible {
+				wantInterfaceAvailability = "available"
+			}
+			if item.Contract.Interface == nil || item.Contract.Interface.Availability != wantInterfaceAvailability || strings.TrimSpace(item.Contract.Interface.Reason) == "" {
+				t.Errorf("%s: runtime compatibility interface is not explicit", command)
 			}
 			if item.Contract.Result != nil || item.Contract.Pagination != nil || item.OutputRollout != output.RolloutLegacyOnly {
 				t.Errorf("%s: unavailable runtime still publishes result/pagination/unified rollout", command)

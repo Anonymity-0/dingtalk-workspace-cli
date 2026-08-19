@@ -151,6 +151,6 @@ var UnreadMail = shortcut.Shortcut{
 
 func init() {
 	hardenSmartMail(&UnreadMail, "messages", "严格校验的未读邮件摘要")
-	markSmartMailUnavailable(&UnreadMail, "固定 isRead:false 查询没有可控 guaranteed-zero 条件；当前没有专用空邮箱 fixture，且不得修改真实邮件已读状态来制造零命中。")
+	markSmartMailCompatibilityOnly(&UnreadMail)
 	shortcut.Register(UnreadMail)
 }

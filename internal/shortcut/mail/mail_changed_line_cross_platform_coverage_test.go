@@ -49,6 +49,7 @@ func TestCrossPlatformCoverageMailReadLeavesExerciseExactIdentityAndMailboxBranc
 	}{
 		{name: "message explicit mailbox", args: []string{"mail", "+message", "--email", "mail@example.invalid", "--id", "message-1"}, responses: map[string][]string{"get_email_by_message_id": {`{"success":true,"message":{"id":"message-1"}}`}}, wantCalls: 1},
 		{name: "message auto mailbox", args: []string{"mail", "+message", "--id", "message-1"}, responses: map[string][]string{"list_user_mailboxes": {`{"success":true,"emailAccounts":[{"email":"mail@example.invalid"}]}`}, "get_email_by_message_id": {`{"success":true,"message":{"id":"message-1"}}`}}, wantCalls: 2},
+		{name: "message auto nested string mailbox", args: []string{"mail", "+message", "--id", "message-1"}, responses: map[string][]string{"list_user_mailboxes": {`{"success":true,"result":{"emailAccounts":["mail@example.invalid"]}}`}, "get_email_by_message_id": {`{"success":true,"message":{"id":"message-1"}}`}}, wantCalls: 2},
 		{name: "mailbox transport", args: []string{"mail", "+message", "--id", "message-1"}, responses: map[string][]string{}, errors: map[string]error{"list_user_mailboxes": fmt.Errorf("mailbox transport")}, wantErr: true, wantCalls: 1},
 		{name: "mailbox missing collection", args: []string{"mail", "+message", "--id", "message-1"}, responses: map[string][]string{"list_user_mailboxes": {`{"success":true}`}}, wantErr: true, wantCalls: 1},
 		{name: "mailbox empty", args: []string{"mail", "+message", "--id", "message-1"}, responses: map[string][]string{"list_user_mailboxes": {`{"success":true,"emailAccounts":[]}`}}, wantErr: true, wantCalls: 1},
@@ -57,9 +58,11 @@ func TestCrossPlatformCoverageMailReadLeavesExerciseExactIdentityAndMailboxBranc
 		{name: "message malformed", args: []string{"mail", "+message", "--email", "mail@example.invalid", "--id", "message-1"}, responses: map[string][]string{"get_email_by_message_id": {`{"success":true,"message":[]}`}}, wantErr: true, wantCalls: 1},
 		{name: "message wrong identity", args: []string{"mail", "+message", "--email", "mail@example.invalid", "--id", "message-1"}, responses: map[string][]string{"get_email_by_message_id": {`{"success":true,"message":{"id":"other"}}`}}, wantErr: true, wantCalls: 1},
 		{name: "messages ordered", args: []string{"mail", "+messages", "--email", "mail@example.invalid", "--ids", "message-1,message-2"}, responses: map[string][]string{"get_email_by_message_id": {`{"success":true,"message":{"id":"message-1"}}`, `{"success":true,"message":{"id":"message-2"}}`}}, wantCalls: 2},
+		{name: "messages auto data mailbox", args: []string{"mail", "+messages", "--ids", "message-1"}, responses: map[string][]string{"list_user_mailboxes": {`{"success":true,"data":{"emailAccounts":[{"email":"mail@example.invalid"}]}}`}, "get_email_by_message_id": {`{"success":true,"message":{"id":"message-1"}}`}}, wantCalls: 2},
 		{name: "messages second fails", args: []string{"mail", "+messages", "--email", "mail@example.invalid", "--ids", "message-1,message-2"}, responses: map[string][]string{"get_email_by_message_id": {`{"success":true,"message":{"id":"message-1"}}`, `{"success":true,"message":{"id":"other"}}`}}, wantErr: true, wantCalls: 2},
 		{name: "messages mailbox resolution fails", args: []string{"mail", "+messages", "--ids", "message-1"}, responses: map[string][]string{}, errors: map[string]error{"list_user_mailboxes": fmt.Errorf("mailbox transport")}, wantErr: true, wantCalls: 1},
 		{name: "thread exact", args: []string{"mail", "+thread", "--email", "mail@example.invalid", "--id", "thread-1"}, responses: map[string][]string{"get_thread": {`{"success":true,"conversation":{"id":"thread-1"}}`}}, wantCalls: 1},
+		{name: "thread auto result mailbox", args: []string{"mail", "+thread", "--id", "thread-1"}, responses: map[string][]string{"list_user_mailboxes": {`{"success":true,"result":{"emailAccounts":[{"email":"mail@example.invalid"}]}}`}, "get_thread": {`{"success":true,"conversation":{"id":"thread-1"}}`}}, wantCalls: 2},
 		{name: "thread transport", args: []string{"mail", "+thread", "--email", "mail@example.invalid", "--id", "thread-1"}, responses: map[string][]string{}, errors: map[string]error{"get_thread": fmt.Errorf("thread transport")}, wantErr: true, wantCalls: 1},
 		{name: "thread mailbox resolution fails", args: []string{"mail", "+thread", "--id", "thread-1"}, responses: map[string][]string{}, errors: map[string]error{"list_user_mailboxes": fmt.Errorf("mailbox transport")}, wantErr: true, wantCalls: 1},
 		{name: "thread missing result", args: []string{"mail", "+thread", "--email", "mail@example.invalid", "--id", "thread-1"}, responses: map[string][]string{"get_thread": {`{"success":true}`}}, wantErr: true, wantCalls: 1},
@@ -97,6 +100,62 @@ func TestCrossPlatformCoverageMailReadLeavesExerciseExactIdentityAndMailboxBranc
 	}
 	if len(caller.calls) != 0 {
 		t.Fatalf("defensive empty-id guard made %d calls", len(caller.calls))
+	}
+}
+
+func TestCrossPlatformCoverageMailMailboxResolverSupportsReviewedShapesAndFailsClosed(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		data map[string]any
+	}{
+		{
+			name: "top string",
+			data: map[string]any{"success": true, "emailAccounts": []any{" mail@example.invalid "}},
+		},
+		{
+			name: "top object",
+			data: map[string]any{"success": true, "emailAccounts": []any{map[string]any{"email": "mail@example.invalid"}}},
+		},
+		{
+			name: "result string",
+			data: map[string]any{"success": true, "result": map[string]any{"emailAccounts": []any{"mail@example.invalid"}}},
+		},
+		{
+			name: "result object",
+			data: map[string]any{"success": true, "result": map[string]any{"emailAccounts": []any{map[string]any{"email": "mail@example.invalid"}}}},
+		},
+		{
+			name: "data string",
+			data: map[string]any{"success": true, "data": map[string]any{"emailAccounts": []any{"mail@example.invalid"}}},
+		},
+		{
+			name: "data object",
+			data: map[string]any{"success": true, "data": map[string]any{"emailAccounts": []any{map[string]any{"email": "mail@example.invalid"}}}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := mailMailboxAddresses(tc.data)
+			if err != nil || len(got) != 1 || got[0] != "mail@example.invalid" {
+				t.Fatalf("addresses=%#v err=%v", got, err)
+			}
+		})
+	}
+
+	for name, data := range map[string]map[string]any{
+		"remote failure":       {"success": false},
+		"missing collection":   {"success": true},
+		"malformed collection": {"success": true, "emailAccounts": map[string]any{}},
+		"blank string":         {"success": true, "emailAccounts": []any{" "}},
+		"missing object email": {"success": true, "emailAccounts": []any{map[string]any{"name": "mailbox"}}},
+		"wrong object email":   {"success": true, "emailAccounts": []any{map[string]any{"email": 7}}},
+		"bad later item":       {"success": true, "emailAccounts": []any{"mail@example.invalid", 7}},
+		"multiple paths":       {"success": true, "emailAccounts": []any{"one@example.invalid"}, "result": map[string]any{"emailAccounts": []any{"two@example.invalid"}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := mailMailboxAddresses(data); err == nil {
+				t.Fatal("invalid mailbox response unexpectedly succeeded")
+			}
+		})
 	}
 }
 

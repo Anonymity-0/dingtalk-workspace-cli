@@ -306,14 +306,14 @@ func hardenSmartMail(declaration *shortcut.Shortcut, collection, description str
 	}
 }
 
-func markSmartMailUnavailable(declaration *shortcut.Shortcut, reason string) {
+func markSmartMailCompatibilityOnly(declaration *shortcut.Shortcut) {
 	declaration.OutputRollout = output.RolloutLegacyOnly
 	declaration.Contract.Result = nil
 	declaration.Contract.Pagination = nil
 	declaration.Contract.Interface = &contract.InterfaceSpec{
 		Mode:         contract.InterfaceModeComposite,
-		Availability: contract.InterfaceUnavailable,
-		Reason:       reason,
+		Availability: contract.InterfaceAvailable,
+		Reason:       "Historical executable Schema compatibility: this command remains callable, but the reviewed Shortcut catalog keeps it non-public until its live-data proof gap is closed.",
 	}
 }
 

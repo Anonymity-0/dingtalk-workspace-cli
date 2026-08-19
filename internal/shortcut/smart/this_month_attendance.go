@@ -65,9 +65,9 @@ var ThisMonthAttendance = shortcut.Shortcut{
 		},
 		Description: "查我本月的考勤打卡记录（打卡流水，自动解析当前用户）",
 		Interface: &contract.InterfaceSpec{
-			Mode:         "composite",
-			Availability: "unavailable",
-			Reason:       "当前安全身份在固定的本月时间窗只返回合法空集合；缺少已知非空本月打卡 fixture，无法排除 exact Shortcut 的空结果假阳性。",
+			Mode:         contract.InterfaceModeComposite,
+			Availability: contract.InterfaceAvailable,
+			Reason:       "Historical executable Schema compatibility: this command remains callable, but the reviewed Shortcut catalog keeps it non-public until a known-nonempty current-month fixture closes the false-empty proof gap.",
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "查我本月的考勤打卡记录（打卡流水，自动解析当前用户）",

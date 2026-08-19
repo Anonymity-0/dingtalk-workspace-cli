@@ -19,6 +19,8 @@ import (
 
 const mailCompositeReason = "Reviewed Mail Shortcut composite: the executable CLI owns strict response validation, pagination evidence, stable-identity checks, output projection, and confirmation; no single MCP interface represents the complete command contract."
 
+const mailCompatibilityInterfaceReason = "Historical executable Schema compatibility: this command remains callable, but the reviewed Shortcut catalog keeps it non-public until its live-data or cleanup proof gap is closed."
+
 func mailCollectionResult(collection, description string) *contract.ResultSpec {
 	identity := mailCollectionIdentitySchema(collection)
 	return &contract.ResultSpec{
@@ -496,10 +498,21 @@ func hardenPublicMailContracts() {
 		}
 		item.declaration.Contract.Interface = &contract.InterfaceSpec{Mode: contract.InterfaceModeComposite, Availability: contract.InterfaceAvailable, Reason: mailCompositeReason}
 	}
-	markMailUnavailable(&ThreadList, "当前租户全部可见文件夹均有会话，且时间过滤未提供可靠零命中；没有已验证空文件夹 fixture，无法完成 known-nonempty + guaranteed-zero 双态发布审计。")
-	markMailUnavailable(&TagList, "标签列表没有 query/parent 过滤；当前没有专用空邮箱 fixture，不能用删除后的列表或越界状态冒充 guaranteed-zero。")
-	markMailUnavailable(&TemplateList, "模板列表没有 query 过滤；当前没有专用空邮箱 fixture，且模板删除后缺少 typed nonfound 清理证据，无法证明 guaranteed-zero。")
-	markMailUnavailable(&ContactList, "联系人列表没有 query 过滤；当前没有专用空邮箱 fixture，且 create/delete 缺稳定身份闭环，无法安全构造 guaranteed-zero。")
+	markMailCompatibilityOnly(&ThreadList)
+	markMailCompatibilityOnly(&TagList)
+	markMailCompatibilityOnly(&TemplateList)
+	markMailCompatibilityOnly(&ContactList)
+}
+
+func markMailCompatibilityOnly(declaration *shortcut.Shortcut) {
+	declaration.OutputRollout = output.RolloutLegacyOnly
+	declaration.Contract.Result = nil
+	declaration.Contract.Pagination = nil
+	declaration.Contract.Interface = &contract.InterfaceSpec{
+		Mode:         contract.InterfaceModeComposite,
+		Availability: contract.InterfaceAvailable,
+		Reason:       mailCompatibilityInterfaceReason,
+	}
 }
 
 func markMailUnavailable(declaration *shortcut.Shortcut, reason string) {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -31,8 +32,8 @@ func TestCrossPlatformCoverageSmartAttendanceEmptyOnlyLeavesAreUnavailable(t *te
 		if declaration.rollout != output.RolloutLegacyOnly {
 			t.Errorf("%s rollout = %q, want legacy_only while unavailable", declaration.name, declaration.rollout)
 		}
-		if declaration.hasResult || declaration.availability != "unavailable" {
-			t.Errorf("%s must omit Result and publish unavailable", declaration.name)
+		if declaration.hasResult || declaration.availability != contract.InterfaceAvailable {
+			t.Errorf("%s must omit Result and preserve its Schema-compatible non-public Interface", declaration.name)
 		}
 	}
 }

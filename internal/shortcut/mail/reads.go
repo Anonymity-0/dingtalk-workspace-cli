@@ -21,18 +21,73 @@ func mailResolveMailbox(rt *shortcut.RuntimeContext) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	mailboxes, err := mailRequireCollection(data, "mail/list_user_mailboxes", "emailAccounts")
+	mailboxes, err := mailMailboxAddresses(data)
 	if err != nil {
 		return "", err
 	}
 	if len(mailboxes) == 0 {
 		return "", apperrors.NewValidation("当前身份没有可用邮箱，请用 --email 指定")
 	}
-	email := mailFirstString(mailboxes[0], "email")
-	if email == "" {
-		return "", mailResponseError("mail/list_user_mailboxes", "missing_mailbox_identity", "首个邮箱对象缺少 email")
+	return mailboxes[0], nil
+}
+
+// mailMailboxAddresses accepts the reviewed mailbox collection paths and item
+// shapes used by the Mail gateway. The complete selected array is validated
+// before the first address is returned so a malformed later row cannot be
+// hidden behind an otherwise usable first mailbox.
+func mailMailboxAddresses(data map[string]any) ([]string, error) {
+	const operation = "mail/list_user_mailboxes"
+	if err := mailRequireSuccess(data, operation); err != nil {
+		return nil, err
 	}
-	return email, nil
+
+	paths := []string{"emailAccounts", "result.emailAccounts", "data.emailAccounts"}
+	var value any
+	selectedPath := ""
+	for _, path := range paths {
+		candidate, present := mailLookup(data, path)
+		if !present {
+			continue
+		}
+		if selectedPath != "" {
+			return nil, mailResponseError(operation, "conflicting_collection", fmt.Sprintf("响应同时包含 %s 与 %s，无法选择唯一邮箱集合", selectedPath, path))
+		}
+		value = candidate
+		selectedPath = path
+	}
+	if selectedPath == "" {
+		return nil, mailResponseError(operation, "missing_collection", "成功响应缺少 emailAccounts 数组；不能把未知响应结构当作空结果")
+	}
+
+	raw, ok := value.([]any)
+	if !ok {
+		return nil, mailResponseError(operation, "malformed_collection", fmt.Sprintf("响应 %s 应为数组，实际为 %T", selectedPath, value))
+	}
+	addresses := make([]string, 0, len(raw))
+	for index, item := range raw {
+		var address string
+		switch typed := item.(type) {
+		case string:
+			address = strings.TrimSpace(typed)
+		case map[string]any:
+			rawEmail, present := typed["email"]
+			if present && rawEmail != nil {
+				var valid bool
+				address, valid = rawEmail.(string)
+				if !valid {
+					return nil, mailResponseError(operation, "malformed_item", fmt.Sprintf("响应 %s[%d].email 必须是字符串", selectedPath, index))
+				}
+				address = strings.TrimSpace(address)
+			}
+		default:
+			return nil, mailResponseError(operation, "malformed_item", fmt.Sprintf("响应 %s[%d] 必须是邮箱字符串或含 email 的对象", selectedPath, index))
+		}
+		if address == "" {
+			return nil, mailResponseError(operation, "missing_item_identity", fmt.Sprintf("响应 %s[%d] 缺少非空邮箱地址", selectedPath, index))
+		}
+		addresses = append(addresses, address)
+	}
+	return addresses, nil
 }
 
 func mailReadMessage(rt *shortcut.RuntimeContext, email, id string) (map[string]any, error) {

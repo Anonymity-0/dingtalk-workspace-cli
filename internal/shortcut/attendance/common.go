@@ -16,6 +16,8 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/responsecheck"
 )
 
+const attendanceCompatibilityInterfaceReason = "Historical executable Schema compatibility: this command remains callable, but the reviewed Shortcut catalog keeps it non-public until its live-data or downstream proof gap is closed."
+
 func attendanceIntegerObjectResult(description, identity string) *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
@@ -58,17 +60,21 @@ func attendanceCursorPagination(cursorParameter string) *contract.PaginationSpec
 }
 
 func hardenPublicAttendanceContracts() {
-	CheckResult.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "userIds"}, {Name: "start", Property: "workDateFrom"}, {Name: "end", Property: "workDateTo"}, {Name: "offset", Property: "offset"}, {Name: "limit", Property: "limit"}}
-	CheckRecord.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "userIds"}, {Name: "start", Property: "checkDateFrom"}, {Name: "end", Property: "checkDateTo"}}
-	ListApprove.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "userIds"}, {Name: "types", Property: "bizTypes"}, {Name: "start", Property: "fromDate"}, {Name: "end", Property: "toDate"}}
-	GetApproveTemplate.Contract.Parameters = []contract.ParamDecl{{Name: "type", Property: "approveType"}}
-	GetSchedule.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "userIdList"}, {Name: "start", Property: "workDateBegin"}, {Name: "end", Property: "workDateEnd"}}
-	SearchClass.Contract.Parameters = []contract.ParamDecl{{Name: "query", Property: "searchName"}, {Name: "filter-type", Property: "filterType"}, {Name: "page", Property: "pageIndex"}, {Name: "limit", Property: "pageSize"}}
+	// Composite Shortcut properties are the stable published workflow inputs.
+	// Execute owns the explicit adapters to the differently named MCP fields;
+	// redirecting an existing non-empty Schema property requires a versioned
+	// migration and cannot be folded into this hardening change.
+	CheckResult.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "users"}, {Name: "start", Property: "start"}, {Name: "end", Property: "end"}, {Name: "offset", Property: "offset"}, {Name: "limit", Property: "limit"}}
+	CheckRecord.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "users"}, {Name: "start", Property: "start"}, {Name: "end", Property: "end"}}
+	ListApprove.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "users"}, {Name: "types", Property: "types"}, {Name: "start", Property: "start"}, {Name: "end", Property: "end"}}
+	GetApproveTemplate.Contract.Parameters = []contract.ParamDecl{{Name: "type", Property: "type"}}
+	GetSchedule.Contract.Parameters = []contract.ParamDecl{{Name: "users", Property: "users"}, {Name: "start", Property: "start"}, {Name: "end", Property: "end"}}
+	SearchClass.Contract.Parameters = []contract.ParamDecl{{Name: "query", Property: "query"}, {Name: "filter-type", Property: "filterType"}, {Name: "page", Property: "page"}, {Name: "limit", Property: "limit"}}
 	GetClass.Contract.Parameters = []contract.ParamDecl{{Name: "class-id", Property: "classId"}}
-	SearchAdjustmentRule.Contract.Parameters = []contract.ParamDecl{{Name: "query", Property: "name"}, {Name: "page", Property: "currentPage"}, {Name: "limit", Property: "pageSize"}}
+	SearchAdjustmentRule.Contract.Parameters = []contract.ParamDecl{{Name: "query", Property: "query"}, {Name: "page", Property: "page"}, {Name: "limit", Property: "limit"}}
 	GetOvertimeRule.Contract.Parameters = []contract.ParamDecl{{Name: "overtime-id", Property: "overtimeId"}}
-	SearchOvertimeRule.Contract.Parameters = []contract.ParamDecl{{Name: "query", Property: "name"}, {Name: "page", Property: "currentPage"}, {Name: "limit", Property: "pageSize"}}
-	GetSelfSetting.Contract.Parameters = []contract.ParamDecl{{Name: "setting-scene", Property: "settingScene"}, {Name: "user", Property: "userId"}}
+	SearchOvertimeRule.Contract.Parameters = []contract.ParamDecl{{Name: "query", Property: "query"}, {Name: "page", Property: "page"}, {Name: "limit", Property: "limit"}}
+	GetSelfSetting.Contract.Parameters = []contract.ParamDecl{{Name: "setting-scene", Property: "settingScene"}, {Name: "user", Property: "user"}}
 
 	collections := []struct {
 		declaration  *shortcut.Shortcut
@@ -106,18 +112,22 @@ func hardenPublicAttendanceContracts() {
 	GetOvertimeRule.OutputRollout = output.RolloutUnifiedActive
 	GetOvertimeRule.Contract.Result = attendanceIntegerObjectResult("严格校验的加班规则详情", "id")
 	GetOvertimeRule.Contract.Result.SensitivePaths = []string{"value.content", "value.groupIdAndNames", "value.name", "value.owner", "value.ownerList", "value.scopes"}
-	for _, item := range []struct {
-		declaration *shortcut.Shortcut
-		reason      string
-	}{
-		{&GetSummary, "真实详情响应不回显请求用户、统计周期或统计类型，无法把结果精确绑定到请求。"},
-		{&ListLeaveTypes, "当前安全身份只有非空假期类型列表，且命令没有筛选参数；缺少合法空结果专用租户，无法完成 empty/nonempty 双态发布证明。"},
-		{&GetLeaveRecords, "使用真实用户和已发现 leaveCode 只能得到合法空集合；缺少已知非空变更流水 fixture，无法排除空结果假阳性。"},
-		{&GetCheckinRecord, "当前安全身份只有合法空签到结果；缺少已知非空签到 fixture，无法排除空结果假阳性。"},
-		{&GetClass, "下游 get_class_detail 对搜索得到的真实 classId 返回非空详情，但 shiftVO 不回显 id/classId，Shortcut 无法诚实地把详情精确绑定到请求 ID；需要下游补充稳定 ID 回显。"},
-		{&GetSelfSetting, "query_self_setting 的 bossAttendStatNotify 场景在当前安全身份下返回 NO_PERMISSION，且缺少 capability discovery、逐场景权限合同与安全权限 fixture，无法完成全部公开场景的真实验证。"},
-	} {
-		markAttendanceUnavailable(item.declaration, item.reason)
+	markAttendanceCompatibilityOnly(&GetSummary)
+	markAttendanceCompatibilityOnly(&ListLeaveTypes)
+	markAttendanceCompatibilityOnly(&GetLeaveRecords)
+	markAttendanceCompatibilityOnly(&GetCheckinRecord)
+	markAttendanceUnavailable(&GetClass, "下游 get_class_detail 对搜索得到的真实 classId 返回非空详情，但 shiftVO 不回显 id/classId，Shortcut 无法诚实地把详情精确绑定到请求 ID；需要下游补充稳定 ID 回显。")
+	markAttendanceCompatibilityOnly(&GetSelfSetting)
+}
+
+func markAttendanceCompatibilityOnly(declaration *shortcut.Shortcut) {
+	declaration.OutputRollout = output.RolloutLegacyOnly
+	declaration.Contract.Result = nil
+	declaration.Contract.Pagination = nil
+	declaration.Contract.Interface = &contract.InterfaceSpec{
+		Mode:         contract.InterfaceModeComposite,
+		Availability: contract.InterfaceAvailable,
+		Reason:       attendanceCompatibilityInterfaceReason,
 	}
 }
 
@@ -126,8 +136,8 @@ func markAttendanceUnavailable(declaration *shortcut.Shortcut, reason string) {
 	declaration.Contract.Result = nil
 	declaration.Contract.Pagination = nil
 	declaration.Contract.Interface = &contract.InterfaceSpec{
-		Mode:         "composite",
-		Availability: "unavailable",
+		Mode:         contract.InterfaceModeComposite,
+		Availability: contract.InterfaceUnavailable,
 		Reason:       reason,
 	}
 }

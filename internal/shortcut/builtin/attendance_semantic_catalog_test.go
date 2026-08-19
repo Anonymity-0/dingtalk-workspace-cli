@@ -81,6 +81,15 @@ func TestCrossPlatformCoverageAttendanceSemanticCatalogExactlyCoversRegisteredSu
 		} else if availability == shortcut.AvailabilityAvailable || item.Hidden == record.CompatibilityVisible {
 			t.Errorf("%s: unavailable shortcut compatibility visibility drifted", command)
 		}
+		if availability == shortcut.AvailabilityUnavailable && item.Contract.Interface != nil {
+			wantInterfaceAvailability := "unavailable"
+			if record.CompatibilityVisible {
+				wantInterfaceAvailability = "available"
+			}
+			if item.Contract.Interface.Availability != wantInterfaceAvailability || strings.TrimSpace(item.Contract.Interface.Reason) == "" {
+				t.Errorf("%s: runtime compatibility interface is not explicit", command)
+			}
+		}
 		if record.CompatibilityVisible {
 			compatibilityVisible++
 		}

@@ -68,11 +68,11 @@ var ThreadList = shortcut.Shortcut{
 		},
 		Description: "列出指定邮箱文件夹下的邮件会话（thread）",
 		Parameters: []contract.ParamDecl{
-			{Name: "folder", Property: "folderId"},
-			{Name: "limit", Property: "size"},
-			{Name: "start", Property: "startTime"},
-			{Name: "end", Property: "endTime"},
-			{Name: "ascending", Property: "isAscending"},
+			{Name: "folder", Property: "folder"},
+			{Name: "limit", Property: "limit"},
+			{Name: "start", Property: "start"},
+			{Name: "end", Property: "end"},
+			{Name: "ascending", Property: "ascending"},
 		},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -169,7 +169,7 @@ var FolderList = shortcut.Shortcut{
 			PrimaryCLIPath: "mail +folder-list",
 		},
 		Description: "列出顶层文件夹或指定父文件夹下的子文件夹",
-		Parameters:  []contract.ParamDecl{{Name: "folder", Property: "folderId"}},
+		Parameters:  []contract.ParamDecl{{Name: "folder", Property: "folder"}},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
@@ -303,7 +303,7 @@ var UserSearch = shortcut.Shortcut{
 		Description: "按关键词或工号搜索邮箱用户（仅企业邮箱）",
 		Parameters: []contract.ParamDecl{
 			{Name: "employee-no", Property: "employeeNo"},
-			{Name: "limit", Property: "size"},
+			{Name: "limit", Property: "limit"},
 		},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -416,7 +416,7 @@ var TemplateList = shortcut.Shortcut{
 			PrimaryCLIPath: "mail +template-list",
 		},
 		Description: "列出指定邮箱的所有邮件模板",
-		Parameters:  []contract.ParamDecl{{Name: "limit", Property: "size"}},
+		Parameters:  []contract.ParamDecl{{Name: "limit", Property: "limit"}},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
@@ -498,7 +498,7 @@ var ContactList = shortcut.Shortcut{
 			PrimaryCLIPath: "mail +contact-list",
 		},
 		Description: "列出指定邮箱的所有邮件联系人",
-		Parameters:  []contract.ParamDecl{{Name: "limit", Property: "size"}},
+		Parameters:  []contract.ParamDecl{{Name: "limit", Property: "limit"}},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",

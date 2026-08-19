@@ -75,9 +75,9 @@ var RecentMail = shortcut.Shortcut{
 		},
 		Description: "列出收件箱近期邮件会话并投影列表（主题/发件人/时间/threadId）",
 		Parameters: []contract.ParamDecl{
-			{Name: "limit", Property: "size"},
+			{Name: "limit", Property: "limit"},
 			{Name: "email", Property: "email"},
-			{Name: "folder", Property: "folderId"},
+			{Name: "folder", Property: "folder"},
 			{Name: "cursor", Property: "cursor"},
 		},
 		Interface: &contract.InterfaceSpec{
@@ -96,7 +96,7 @@ var RecentMail = shortcut.Shortcut{
 		},
 	},
 	Flags: []shortcut.Flag{
-		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "返回会话条数上限（可选，默认 20，最大 100）", Required: false},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "返回会话条数上限（可选，默认 20，最大 100）", Required: false},
 		{Name: "email", Type: shortcut.FlagString, Desc: "要查看的邮箱地址（可选，默认取你绑定的第一个邮箱）", Required: false},
 		{Name: "folder", Type: shortcut.FlagString, Desc: "文件夹 ID（可选，默认定位收件箱）", Required: false},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，取自上一页 nextCursor", Required: false},
@@ -133,10 +133,14 @@ var RecentMail = shortcut.Shortcut{
 
 		// Step 3 — list threads. email/folderId/size mirror the helpers.mail
 		// thread-list call; size is an int in 1..100.
+		limit := 20
+		if rt.Changed("limit") {
+			limit = rt.Int("limit")
+		}
 		args := map[string]any{
 			"email":    email,
 			"folderId": folderID,
-			"size":     rt.Int("limit"),
+			"size":     limit,
 		}
 		if rt.Changed("cursor") {
 			args["cursor"] = rt.Str("cursor")
@@ -239,6 +243,6 @@ func recentMailSenders(t map[string]any) (any, error) {
 
 func init() {
 	hardenSmartMail(&RecentMail, "mails", "严格校验的近期邮件会话摘要")
-	markSmartMailUnavailable(&RecentMail, "当前租户全部可见文件夹均有会话，且本入口没有可控零命中筛选；缺少已验证空文件夹 fixture。")
+	markSmartMailCompatibilityOnly(&RecentMail)
 	shortcut.Register(RecentMail)
 }

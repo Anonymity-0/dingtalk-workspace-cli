@@ -10,6 +10,8 @@
 
 本轮对 18 个 Mail Shortcut 完成严格 success、固定集合路径、稳定 ID、分页完整性和统一 Result 收口。8 个公开只读入口已在相同 runtime tree 逐条完成 Shortcut 与原子层的真实数据双层复核；`+unread-mail`、`+recent-mail`、`+thread-list`、`+tag-list`、`+template-list`、`+contact-list` 因缺少可控 guaranteed-zero fixture 保持 Agent-unavailable，但为守住既有 argv/Help 合同继续以 compatibility-visible 形式留在 CLI；4 个草稿/模板写入口因无法证明清理终态同样不进入公开 Catalog。
 
+上述 6 个 compatibility-visible 入口在完整 Schema 中保留历史 `availability=available` 与既有 workflow property，仅表示旧调用仍可执行；其 Shortcut 语义状态仍为 `public=false/unavailable`，默认 Shortcut 列表与 Agent public Catalog 均不发布。底层 `folderId`、`size` 等 MCP 字段继续由 Execute 显式适配，不能在未经过版本化迁移时改写已发布 Schema property。
+
 仍不能诚实对齐的任务集中在草稿/模板清理终态、发送终态、回复/转发草稿语义、批量修改/删除逐项结果、回执、签名、事件监听、模板附件事务和联系人创建身份回执。它们不是再包一层 Shortcut 就能解决，需要下游业务接口或安全测试 fixture 补足可验证合同。
 
 | ID | 优先级 | 类型 | 用户任务 | 当前状态 | 下游 Owner | 解锁的 Shortcut |

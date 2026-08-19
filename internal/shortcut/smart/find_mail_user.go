@@ -75,7 +75,7 @@ var FindMailUser = shortcut.Shortcut{
 			// Keep the published composite Shortcut property stable. Execute owns
 			// the explicit query -> keyword adapter for search_mail_users.
 			{Name: "query", Property: "query"},
-			{Name: "limit", Property: "size"},
+			{Name: "limit", Property: "limit"},
 			{Name: "cursor", Property: "cursor"},
 		},
 		Interface: &contract.InterfaceSpec{

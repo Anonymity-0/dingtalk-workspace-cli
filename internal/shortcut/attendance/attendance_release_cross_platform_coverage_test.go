@@ -345,17 +345,17 @@ func TestCrossPlatformCoverageAttendanceSelfSettingExecuteBinding(t *testing.T) 
 
 func TestCrossPlatformCoverageAttendanceParamMappingsAreExplicit(t *testing.T) {
 	expected := map[*shortcut.Shortcut]map[string]string{
-		&CheckResult:          {"users": "userIds", "start": "workDateFrom", "end": "workDateTo", "offset": "offset", "limit": "limit"},
-		&CheckRecord:          {"users": "userIds", "start": "checkDateFrom", "end": "checkDateTo"},
-		&ListApprove:          {"users": "userIds", "types": "bizTypes", "start": "fromDate", "end": "toDate"},
-		&GetApproveTemplate:   {"type": "approveType"},
-		&GetSchedule:          {"users": "userIdList", "start": "workDateBegin", "end": "workDateEnd"},
-		&SearchClass:          {"query": "searchName", "filter-type": "filterType", "page": "pageIndex", "limit": "pageSize"},
+		&CheckResult:          {"users": "users", "start": "start", "end": "end", "offset": "offset", "limit": "limit"},
+		&CheckRecord:          {"users": "users", "start": "start", "end": "end"},
+		&ListApprove:          {"users": "users", "types": "types", "start": "start", "end": "end"},
+		&GetApproveTemplate:   {"type": "type"},
+		&GetSchedule:          {"users": "users", "start": "start", "end": "end"},
+		&SearchClass:          {"query": "query", "filter-type": "filterType", "page": "page", "limit": "limit"},
 		&GetClass:             {"class-id": "classId"},
-		&SearchAdjustmentRule: {"query": "name", "page": "currentPage", "limit": "pageSize"},
+		&SearchAdjustmentRule: {"query": "query", "page": "page", "limit": "limit"},
 		&GetOvertimeRule:      {"overtime-id": "overtimeId"},
-		&SearchOvertimeRule:   {"query": "name", "page": "currentPage", "limit": "pageSize"},
-		&GetSelfSetting:       {"setting-scene": "settingScene", "user": "userId"},
+		&SearchOvertimeRule:   {"query": "query", "page": "page", "limit": "limit"},
+		&GetSelfSetting:       {"setting-scene": "settingScene", "user": "user"},
 	}
 	for declaration, want := range expected {
 		got := make(map[string]string, len(declaration.Contract.Parameters))

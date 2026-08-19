@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -80,13 +81,13 @@ func TestCrossPlatformCoverageSmartMailContractsAreUnifiedAndTyped(t *testing.T)
 	}
 }
 
-func TestCrossPlatformCoverageSmartMailUnavailableReadsMatchRuntimeBoundary(t *testing.T) {
+func TestCrossPlatformCoverageSmartMailCompatibilityReadsMatchRuntimeBoundary(t *testing.T) {
 	for _, declaration := range []*shortcut.Shortcut{&UnreadMail, &RecentMail} {
 		if declaration.OutputRollout != output.RolloutLegacyOnly || declaration.Contract.Result != nil || declaration.Contract.Pagination != nil {
 			t.Errorf("%s unavailable runtime still publishes unified result/pagination", declaration.Command)
 		}
-		if declaration.Contract.Interface == nil || declaration.Contract.Interface.Availability != "unavailable" || declaration.Contract.Interface.Reason == "" {
-			t.Errorf("%s missing precise unavailable interface", declaration.Command)
+		if declaration.Contract.Interface == nil || declaration.Contract.Interface.Availability != contract.InterfaceAvailable || declaration.Contract.Interface.Reason == "" {
+			t.Errorf("%s missing Schema-compatible non-public interface", declaration.Command)
 		}
 	}
 }

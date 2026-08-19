@@ -987,9 +987,9 @@ var GetAdjustmentRule = shortcut.Shortcut{
 		},
 		Description: "根据补卡规则主键 ID 查询补卡规则详情",
 		Interface: &contract.InterfaceSpec{
-			Mode:         "composite",
-			Availability: "unavailable",
-			Reason:       "The detail service returns success=true with result=null for IDs obtained from the live adjustment-rule search; the command remains hidden until the downstream ID/result contract is repaired.",
+			Mode:         contract.InterfaceModeComposite,
+			Availability: contract.InterfaceAvailable,
+			Reason:       attendanceCompatibilityInterfaceReason,
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "根据补卡规则主键 ID 查询补卡规则详情",
@@ -1293,9 +1293,9 @@ var SearchGroup = shortcut.Shortcut{
 		},
 		Description: "查询当前用户可管理的考勤组列表",
 		Interface: &contract.InterfaceSpec{
-			Mode:         "composite",
-			Availability: "unavailable",
-			Reason:       "Strict projection is implemented, but the current safe tenant has no known non-empty attendance-group fixture; live empty-only evidence is insufficient for publication.",
+			Mode:         contract.InterfaceModeComposite,
+			Availability: contract.InterfaceAvailable,
+			Reason:       attendanceCompatibilityInterfaceReason,
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "查询当前用户可管理的考勤组列表",
@@ -1816,9 +1816,9 @@ var QueryReportData = shortcut.Shortcut{
 		},
 		Description: "根据字段查询考勤报表数据（仅管理员）",
 		Interface: &contract.InterfaceSpec{
-			Mode:         "composite",
-			Availability: "unavailable",
-			Reason:       "The downstream report-column discovery returns null, so no verified column ID exists for an exact non-empty report-data E2E; the command remains hidden until that contract is repaired.",
+			Mode:         contract.InterfaceModeComposite,
+			Availability: contract.InterfaceAvailable,
+			Reason:       attendanceCompatibilityInterfaceReason,
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "根据字段查询考勤报表数据（仅管理员）",

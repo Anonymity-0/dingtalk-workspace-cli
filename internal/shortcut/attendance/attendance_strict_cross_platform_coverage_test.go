@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
@@ -67,13 +68,16 @@ func attendanceDeclarationByName(name string) *shortcut.Shortcut {
 }
 
 func TestCrossPlatformCoverageAttendanceEmptyOnlyLeavesAreUnavailable(t *testing.T) {
-	for _, declaration := range []*shortcut.Shortcut{&GetSummary, &ListLeaveTypes, &GetLeaveRecords, &GetCheckinRecord, &GetClass, &GetSelfSetting} {
+	for _, declaration := range []*shortcut.Shortcut{&GetSummary, &ListLeaveTypes, &GetLeaveRecords, &GetCheckinRecord, &GetSelfSetting} {
 		if declaration.OutputRollout != output.RolloutLegacyOnly || declaration.Contract.Result != nil || declaration.Contract.Pagination != nil {
 			t.Errorf("%s unavailable contract = rollout %q result=%v pagination=%v", declaration.Command, declaration.OutputRollout, declaration.Contract.Result, declaration.Contract.Pagination)
 		}
-		if declaration.Contract.Interface == nil || declaration.Contract.Interface.Availability != "unavailable" || strings.TrimSpace(declaration.Contract.Interface.Reason) == "" {
-			t.Errorf("%s must publish a precise unavailable Interface", declaration.Command)
+		if declaration.Contract.Interface == nil || declaration.Contract.Interface.Availability != contract.InterfaceAvailable || declaration.Contract.Interface.Reason != attendanceCompatibilityInterfaceReason {
+			t.Errorf("%s must preserve its Schema-compatible non-public Interface", declaration.Command)
 		}
+	}
+	if GetClass.OutputRollout != output.RolloutLegacyOnly || GetClass.Contract.Result != nil || GetClass.Contract.Pagination != nil || GetClass.Contract.Interface == nil || GetClass.Contract.Interface.Availability != contract.InterfaceUnavailable || strings.TrimSpace(GetClass.Contract.Interface.Reason) == "" {
+		t.Error("get-class must publish a precise unavailable Interface")
 	}
 }
 
