@@ -5,6 +5,8 @@ package app
 
 import (
 	"errors"
+	"os"
+	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
@@ -17,6 +19,8 @@ import (
 const (
 	appFixtureCurrentDOpenID  = "DAAAAAAAAAAAiE"
 	appFixtureCurrentDOpenID2 = "DAQEBAQEBAQEiE"
+
+	paramAliasCalendarPayloadChildEnv = "DWS_TEST_CALENDAR_PARAM_ALIAS_PAYLOAD_CHILD"
 )
 
 // paramAliasCompleteCommands is deliberately keyed by the exact reviewed
@@ -562,82 +566,6 @@ var paramAliasRepresentativePayloadCases = map[string]bool{
 	paramAliasPayloadCaseKey("aitable workflow run", "table"):                        true, // Table ID concept alias on a confirmed write
 	paramAliasPayloadCaseKey("attendance check result", "user-ids"):                  true, // list-valued concept alias
 	paramAliasPayloadCaseKey("calendar event list", "date"):                          true, // time concept alias
-	paramAliasPayloadCaseKey("calendar +agenda", "from"):                             true,
-	paramAliasPayloadCaseKey("calendar +agenda", "to"):                               true,
-	paramAliasPayloadCaseKey("calendar +agenda", "max-results"):                      true,
-	paramAliasPayloadCaseKey("calendar +agenda", "next-cursor"):                      true,
-	paramAliasPayloadCaseKey("calendar +agenda", "calendar-book-id"):                 true,
-	paramAliasPayloadCaseKey("calendar +attendee-list", "event-id"):                  true,
-	paramAliasPayloadCaseKey("calendar +attendee-list", "calendar-book-id"):          true,
-	paramAliasPayloadCaseKey("calendar +book", "summary"):                            true,
-	paramAliasPayloadCaseKey("calendar +book", "attendee-names"):                     true,
-	paramAliasPayloadCaseKey("calendar +book-search", "keyword"):                     true,
-	paramAliasPayloadCaseKey("calendar +book-search", "search"):                      true,
-	paramAliasPayloadCaseKey("calendar +book-search", "name"):                        true,
-	paramAliasPayloadCaseKey("calendar +cancel-event", "event-id"):                   true,
-	paramAliasPayloadCaseKey("calendar +cancel-event", "id"):                         true,
-	paramAliasPayloadCaseKey("calendar +free", "name"):                               true,
-	paramAliasPayloadCaseKey("calendar +free-slots", "start-hour"):                   true,
-	paramAliasPayloadCaseKey("calendar +free-slots", "end-hour"):                     true,
-	paramAliasPayloadCaseKey("calendar +free-slots", "day-offset"):                   true,
-	paramAliasPayloadCaseKey("calendar +freebusy", "user-ids"):                       true,
-	paramAliasPayloadCaseKey("calendar +freebusy", "room-ids"):                       true,
-	paramAliasPayloadCaseKey("calendar +freebusy", "room-id"):                        true,
-	paramAliasPayloadCaseKey("calendar +my-free", "from"):                            true,
-	paramAliasPayloadCaseKey("calendar +my-free", "to"):                              true,
-	paramAliasPayloadCaseKey("calendar +invite", "id"):                               true,
-	paramAliasPayloadCaseKey("calendar +invite", "participant-names"):                true,
-	paramAliasPayloadCaseKey("calendar +reschedule", "id"):                           true,
-	paramAliasPayloadCaseKey("calendar +reschedule", "from"):                         true,
-	paramAliasPayloadCaseKey("calendar +reschedule", "to"):                           true,
-	paramAliasPayloadCaseKey("calendar +room-groups", "page-size"):                   true,
-	paramAliasPayloadCaseKey("calendar +room-groups", "page-index"):                  true,
-	paramAliasPayloadCaseKey("calendar +room-search", "query"):                       true,
-	paramAliasPayloadCaseKey("calendar +suggest-time", "duration-minutes"):           true,
-	paramAliasPayloadCaseKey("calendar +suggest-time", "attendee-names"):             true,
-	paramAliasPayloadCaseKey("calendar +conflicts", "day-offset"):                    true,
-	paramAliasPayloadCaseKey("calendar busy search", "room-id"):                      true,
-	paramAliasPayloadCaseKey("calendar event create", "reminder-minutes"):            true,
-	paramAliasPayloadCaseKey("calendar event create", "tz"):                          true,
-	paramAliasPayloadCaseKey("calendar event create", "room-id"):                     true,
-	paramAliasPayloadCaseKey("calendar event respond", "response-status"):            true,
-	paramAliasPayloadCaseKey("calendar event suggest", "duration-minutes"):           true,
-	paramAliasPayloadCaseKey("calendar event update", "tz"):                          true,
-	paramAliasPayloadCaseKey("calendar room add", "room-id"):                         true,
-	paramAliasPayloadCaseKey("calendar room delete", "room-id"):                      true,
-	paramAliasPayloadCaseKey("calendar room search", "room-group-id"):                true,
-	paramAliasPayloadCaseKey("calendar +create", "summary"):                          true,
-	paramAliasPayloadCaseKey("calendar +create", "description"):                      true,
-	paramAliasPayloadCaseKey("calendar +create", "user-ids"):                         true,
-	paramAliasPayloadCaseKey("calendar +create", "room-ids"):                         true,
-	paramAliasPayloadCaseKey("calendar +create", "room-id"):                          true,
-	paramAliasPayloadCaseKey("calendar +create", "calendar-book-id"):                 true,
-	paramAliasPayloadCaseKey("calendar +create", "to"):                               true,
-	paramAliasPayloadCaseKey("calendar +create", "from"):                             true,
-	paramAliasPayloadCaseKey("calendar +get", "event-id"):                            true,
-	paramAliasPayloadCaseKey("calendar +get", "calendar-book-id"):                    true,
-	paramAliasPayloadCaseKey("calendar +room-find", "from"):                          true,
-	paramAliasPayloadCaseKey("calendar +room-find", "to"):                            true,
-	paramAliasPayloadCaseKey("calendar +room-find", "page-size"):                     true,
-	paramAliasPayloadCaseKey("calendar +room-find", "page-index"):                    true,
-	paramAliasPayloadCaseKey("calendar +room-find", "room-group-id"):                 true,
-	paramAliasPayloadCaseKey("calendar +room-find", "query"):                         true,
-	paramAliasPayloadCaseKey("calendar +rsvp", "event-id"):                           true,
-	paramAliasPayloadCaseKey("calendar +rsvp", "response-status"):                    true,
-	paramAliasPayloadCaseKey("calendar +search-event", "keyword"):                    true,
-	paramAliasPayloadCaseKey("calendar +search-event", "from"):                       true,
-	paramAliasPayloadCaseKey("calendar +search-event", "to"):                         true,
-	paramAliasPayloadCaseKey("calendar +search-event", "next-cursor"):                true,
-	paramAliasPayloadCaseKey("calendar +search-event", "max-results"):                true,
-	paramAliasPayloadCaseKey("calendar +suggestion", "user-ids"):                     true,
-	paramAliasPayloadCaseKey("calendar +suggestion", "duration-minutes"):             true,
-	paramAliasPayloadCaseKey("calendar +suggestion", "tz"):                           true,
-	paramAliasPayloadCaseKey("calendar +update", "event-id"):                         true,
-	paramAliasPayloadCaseKey("calendar +update", "from"):                             true,
-	paramAliasPayloadCaseKey("calendar +update", "summary"):                          true,
-	paramAliasPayloadCaseKey("calendar +update", "description"):                      true,
-	paramAliasPayloadCaseKey("calendar +update", "add-user-ids"):                     true,
-	paramAliasPayloadCaseKey("calendar +update", "remove-user-ids"):                  true,
 	paramAliasPayloadCaseKey("chat message add-favorite", "msg-id"):                  true, // scoped IM identifier alias
 	paramAliasPayloadCaseKey("contact user profile get", "user-id"):                  true, // native compatibility flag
 	paramAliasPayloadCaseKey("devdoc article search", "current-page"):                true, // command override
@@ -670,6 +598,91 @@ var paramAliasRepresentativePayloadCases = map[string]bool{
 	paramAliasPayloadCaseKey("drive info", "workspace"):                              true, // published numeric storage-space compatibility remains payload-equivalent
 	paramAliasPayloadCaseKey("mail folder update", "folder-id"):                      true, // write-command identifier alias
 	paramAliasPayloadCaseKey("report list", "from-date"):                             true, // date-range concept alias
+}
+
+// paramAliasCalendarPayloadCases keeps the full reviewed Calendar expansion
+// separate from the long-lived app-c race process. Each case still executes
+// both canonical and alias argv through the real PreParse/Cobra path and
+// compares the final captured transport calls; the owning top-level test runs
+// these allocations in a short-lived race-instrumented subprocess so all Root
+// registrations are released together when that process exits.
+var paramAliasCalendarPayloadCases = map[string]bool{
+	paramAliasPayloadCaseKey("calendar +agenda", "from"):                    true,
+	paramAliasPayloadCaseKey("calendar +agenda", "to"):                      true,
+	paramAliasPayloadCaseKey("calendar +agenda", "max-results"):             true,
+	paramAliasPayloadCaseKey("calendar +agenda", "next-cursor"):             true,
+	paramAliasPayloadCaseKey("calendar +agenda", "calendar-book-id"):        true,
+	paramAliasPayloadCaseKey("calendar +attendee-list", "event-id"):         true,
+	paramAliasPayloadCaseKey("calendar +attendee-list", "calendar-book-id"): true,
+	paramAliasPayloadCaseKey("calendar +book", "summary"):                   true,
+	paramAliasPayloadCaseKey("calendar +book", "attendee-names"):            true,
+	paramAliasPayloadCaseKey("calendar +book-search", "keyword"):            true,
+	paramAliasPayloadCaseKey("calendar +book-search", "search"):             true,
+	paramAliasPayloadCaseKey("calendar +book-search", "name"):               true,
+	paramAliasPayloadCaseKey("calendar +cancel-event", "event-id"):          true,
+	paramAliasPayloadCaseKey("calendar +cancel-event", "id"):                true,
+	paramAliasPayloadCaseKey("calendar +free", "name"):                      true,
+	paramAliasPayloadCaseKey("calendar +free-slots", "start-hour"):          true,
+	paramAliasPayloadCaseKey("calendar +free-slots", "end-hour"):            true,
+	paramAliasPayloadCaseKey("calendar +free-slots", "day-offset"):          true,
+	paramAliasPayloadCaseKey("calendar +freebusy", "user-ids"):              true,
+	paramAliasPayloadCaseKey("calendar +freebusy", "room-ids"):              true,
+	paramAliasPayloadCaseKey("calendar +freebusy", "room-id"):               true,
+	paramAliasPayloadCaseKey("calendar +my-free", "from"):                   true,
+	paramAliasPayloadCaseKey("calendar +my-free", "to"):                     true,
+	paramAliasPayloadCaseKey("calendar +invite", "id"):                      true,
+	paramAliasPayloadCaseKey("calendar +invite", "participant-names"):       true,
+	paramAliasPayloadCaseKey("calendar +reschedule", "id"):                  true,
+	paramAliasPayloadCaseKey("calendar +reschedule", "from"):                true,
+	paramAliasPayloadCaseKey("calendar +reschedule", "to"):                  true,
+	paramAliasPayloadCaseKey("calendar +room-groups", "page-size"):          true,
+	paramAliasPayloadCaseKey("calendar +room-groups", "page-index"):         true,
+	paramAliasPayloadCaseKey("calendar +room-search", "query"):              true,
+	paramAliasPayloadCaseKey("calendar +suggest-time", "duration-minutes"):  true,
+	paramAliasPayloadCaseKey("calendar +suggest-time", "attendee-names"):    true,
+	paramAliasPayloadCaseKey("calendar +conflicts", "day-offset"):           true,
+	paramAliasPayloadCaseKey("calendar busy search", "room-id"):             true,
+	paramAliasPayloadCaseKey("calendar event create", "reminder-minutes"):   true,
+	paramAliasPayloadCaseKey("calendar event create", "tz"):                 true,
+	paramAliasPayloadCaseKey("calendar event create", "room-id"):            true,
+	paramAliasPayloadCaseKey("calendar event respond", "response-status"):   true,
+	paramAliasPayloadCaseKey("calendar event suggest", "duration-minutes"):  true,
+	paramAliasPayloadCaseKey("calendar event update", "tz"):                 true,
+	paramAliasPayloadCaseKey("calendar room add", "room-id"):                true,
+	paramAliasPayloadCaseKey("calendar room delete", "room-id"):             true,
+	paramAliasPayloadCaseKey("calendar room search", "room-group-id"):       true,
+	paramAliasPayloadCaseKey("calendar +create", "summary"):                 true,
+	paramAliasPayloadCaseKey("calendar +create", "description"):             true,
+	paramAliasPayloadCaseKey("calendar +create", "user-ids"):                true,
+	paramAliasPayloadCaseKey("calendar +create", "room-ids"):                true,
+	paramAliasPayloadCaseKey("calendar +create", "room-id"):                 true,
+	paramAliasPayloadCaseKey("calendar +create", "calendar-book-id"):        true,
+	paramAliasPayloadCaseKey("calendar +create", "to"):                      true,
+	paramAliasPayloadCaseKey("calendar +create", "from"):                    true,
+	paramAliasPayloadCaseKey("calendar +get", "event-id"):                   true,
+	paramAliasPayloadCaseKey("calendar +get", "calendar-book-id"):           true,
+	paramAliasPayloadCaseKey("calendar +room-find", "from"):                 true,
+	paramAliasPayloadCaseKey("calendar +room-find", "to"):                   true,
+	paramAliasPayloadCaseKey("calendar +room-find", "page-size"):            true,
+	paramAliasPayloadCaseKey("calendar +room-find", "page-index"):           true,
+	paramAliasPayloadCaseKey("calendar +room-find", "room-group-id"):        true,
+	paramAliasPayloadCaseKey("calendar +room-find", "query"):                true,
+	paramAliasPayloadCaseKey("calendar +rsvp", "event-id"):                  true,
+	paramAliasPayloadCaseKey("calendar +rsvp", "response-status"):           true,
+	paramAliasPayloadCaseKey("calendar +search-event", "keyword"):           true,
+	paramAliasPayloadCaseKey("calendar +search-event", "from"):              true,
+	paramAliasPayloadCaseKey("calendar +search-event", "to"):                true,
+	paramAliasPayloadCaseKey("calendar +search-event", "next-cursor"):       true,
+	paramAliasPayloadCaseKey("calendar +search-event", "max-results"):       true,
+	paramAliasPayloadCaseKey("calendar +suggestion", "user-ids"):            true,
+	paramAliasPayloadCaseKey("calendar +suggestion", "duration-minutes"):    true,
+	paramAliasPayloadCaseKey("calendar +suggestion", "tz"):                  true,
+	paramAliasPayloadCaseKey("calendar +update", "event-id"):                true,
+	paramAliasPayloadCaseKey("calendar +update", "from"):                    true,
+	paramAliasPayloadCaseKey("calendar +update", "summary"):                 true,
+	paramAliasPayloadCaseKey("calendar +update", "description"):             true,
+	paramAliasPayloadCaseKey("calendar +update", "add-user-ids"):            true,
+	paramAliasPayloadCaseKey("calendar +update", "remove-user-ids"):         true,
 }
 
 func TestCrossPlatformCoverageReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads(t *testing.T) {
@@ -705,28 +718,7 @@ func TestCrossPlatformCoverageReviewedParamAliasesHaveCompleteTemplatesAndRepres
 		}
 		executedRepresentatives[caseKey] = true
 		t.Run(fixture.Command+"/"+fixture.Emitted, func(t *testing.T) {
-
-			canonicalCaller := &paramAliasCaptureCaller{}
-			_, canonicalErr := executeParamAliasPayloadE2E(t, canonicalCaller, canonicalArgs...)
-			if canonicalErr != nil {
-				t.Fatalf("complete canonical command failed: %v\nargs=%v\ncalls=%#v", canonicalErr, canonicalArgs, canonicalCaller.calls)
-			}
-			if len(canonicalCaller.calls) == 0 {
-				t.Fatalf("complete canonical command reached no final transport payload: args=%v", canonicalArgs)
-			}
-
-			aliasCaller := &paramAliasCaptureCaller{}
-			ctx, aliasErr := executeParamAliasPayloadE2E(t, aliasCaller, aliasArgs...)
-			if aliasErr != nil {
-				t.Fatalf("complete alias command failed: %v\nargs=%v\ncalls=%#v", aliasErr, aliasArgs, aliasCaller.calls)
-			}
-			if ctx == nil {
-				t.Fatal("complete alias command skipped PreParse")
-			}
-			normalizeParamAliasVolatileDefaults(fixture.Command, canonicalCaller, aliasCaller)
-			if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
-				t.Fatalf("final transport calls differ\ncanonical args: %v\nalias args: %v\ncanonical calls: %#v\nalias calls: %#v", canonicalArgs, aliasArgs, canonicalCaller.calls, aliasCaller.calls)
-			}
+			assertParamAliasFinalPayloadEquivalent(t, fixture.Command, canonicalArgs, aliasArgs)
 		})
 	}
 
@@ -753,6 +745,84 @@ func TestCrossPlatformCoverageReviewedParamAliasesHaveCompleteTemplatesAndRepres
 	}
 	if len(executedRepresentatives) != len(paramAliasRepresentativePayloadCases) {
 		t.Fatalf("representative final-payload coverage = %d, want %d", len(executedRepresentatives), len(paramAliasRepresentativePayloadCases))
+	}
+}
+
+func TestReviewedCalendarParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
+	if os.Getenv(paramAliasCalendarPayloadChildEnv) != "1" {
+		command := exec.Command(
+			os.Args[0],
+			"-test.run=^TestReviewedCalendarParamAliasesReachCanonicalEquivalentFinalPayloads$",
+			"-test.count=1",
+			"-test.timeout=5m",
+		)
+		command.Env = append(os.Environ(), paramAliasCalendarPayloadChildEnv+"=1")
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Calendar param-alias payload subprocess failed: %v\n%s", err, strings.TrimSpace(string(output)))
+		}
+		return
+	}
+
+	concepts, err := cli.LoadParamConcepts()
+	if err != nil {
+		t.Fatalf("LoadParamConcepts() error = %v", err)
+	}
+
+	executed := make(map[string]bool)
+	for _, fixture := range concepts.Fixture {
+		caseKey := paramAliasPayloadCaseKey(fixture.Command, fixture.Emitted)
+		if !paramAliasCalendarPayloadCases[caseKey] {
+			continue
+		}
+		executed[caseKey] = true
+		fixture := fixture
+		t.Run(fixture.Command+"/"+fixture.Emitted, func(t *testing.T) {
+			complete, ok := paramAliasCompleteCommand(fixture.Command, fixture.Expect)
+			if !ok {
+				t.Fatal("reviewed Calendar alias has no complete-command E2E template")
+			}
+			canonicalArgs := append([]string(nil), complete...)
+			aliasArgs, replacements := replaceLongFlag(canonicalArgs, fixture.Expect, fixture.Emitted)
+			if replacements != 1 {
+				t.Fatalf("complete Calendar command must contain canonical --%s exactly once; replacements=%d args=%v", fixture.Expect, replacements, canonicalArgs)
+			}
+			assertParamAliasFinalPayloadEquivalent(t, fixture.Command, canonicalArgs, aliasArgs)
+		})
+	}
+
+	for caseKey := range paramAliasCalendarPayloadCases {
+		if !executed[caseKey] {
+			t.Errorf("Calendar final-payload case %q has no active reviewed fixture", caseKey)
+		}
+	}
+	if len(executed) != len(paramAliasCalendarPayloadCases) {
+		t.Fatalf("Calendar final-payload coverage = %d, want %d", len(executed), len(paramAliasCalendarPayloadCases))
+	}
+}
+
+func assertParamAliasFinalPayloadEquivalent(t *testing.T, command string, canonicalArgs, aliasArgs []string) {
+	t.Helper()
+	canonicalCaller := &paramAliasCaptureCaller{}
+	_, canonicalErr := executeParamAliasPayloadE2E(t, canonicalCaller, canonicalArgs...)
+	if canonicalErr != nil {
+		t.Fatalf("complete canonical command failed: %v\nargs=%v\ncalls=%#v", canonicalErr, canonicalArgs, canonicalCaller.calls)
+	}
+	if len(canonicalCaller.calls) == 0 {
+		t.Fatalf("complete canonical command reached no final transport payload: args=%v", canonicalArgs)
+	}
+
+	aliasCaller := &paramAliasCaptureCaller{}
+	ctx, aliasErr := executeParamAliasPayloadE2E(t, aliasCaller, aliasArgs...)
+	if aliasErr != nil {
+		t.Fatalf("complete alias command failed: %v\nargs=%v\ncalls=%#v", aliasErr, aliasArgs, aliasCaller.calls)
+	}
+	if ctx == nil {
+		t.Fatal("complete alias command skipped PreParse")
+	}
+	normalizeParamAliasVolatileDefaults(command, canonicalCaller, aliasCaller)
+	if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
+		t.Fatalf("final transport calls differ\ncanonical args: %v\nalias args: %v\ncanonical calls: %#v\nalias calls: %#v", canonicalArgs, aliasArgs, canonicalCaller.calls, aliasCaller.calls)
 	}
 }
 
