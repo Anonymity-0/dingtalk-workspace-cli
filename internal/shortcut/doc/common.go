@@ -15,6 +15,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/google/uuid"
 )
 
 const (
@@ -353,4 +354,15 @@ func blockIdentity(values map[string]any, inherited string) string {
 		}
 	}
 	return inherited
+}
+
+// validateDocResourceID rejects resource IDs that are not UUIDs before any
+// network call, so fabricated values (OSS signature fragments, URL path
+// segments) fail locally with an actionable hint instead of an opaque
+// backend error that invites blind retries.
+func validateDocResourceID(raw string) error {
+	if _, err := uuid.Parse(strings.TrimSpace(raw)); err != nil {
+		return apperrors.NewValidation("--resource-id 应为 UUID 格式（来自 +media-list 返回的 resourceId 字段），不要从 OSS/URL 链接中提取；请先执行 dws doc +media-list --node <DOC_ID> --format json 获取")
+	}
+	return nil
 }

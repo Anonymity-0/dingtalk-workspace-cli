@@ -19,6 +19,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -2857,8 +2858,8 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		Long: `获取钉钉文档中指定附件的 OSS 临时下载链接。
 
 传入 nodeId（文档标识）和 resourceId（附件资源 ID），返回 downloadUrl。
-resourceId 需通过 dws doc block list 获取：查询目标文档的块列表，
-找到 blockType 为 attachment 的元素，取其 resourceId。`,
+resourceId 需通过 dws doc +media-list --node <DOC_ID> 获取（返回的 resourceId 字段）；
+也可用 dws doc block list 查块列表，找 blockType 为 attachment 的元素取其 resourceId。`,
 		Example: `  dws doc media download --node DOC_ID --resource-id RESOURCE_ID
   dws doc media download --node "https://alidocs.dingtalk.com/i/nodes/xxx" --resource-id RESOURCE_ID`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -2869,9 +2870,13 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 			if err := validateRequiredFlags(cmd, "resource-id"); err != nil {
 				return err
 			}
+			resourceID := mustGetFlag(cmd, "resource-id")
+			if _, err := uuid.Parse(strings.TrimSpace(resourceID)); err != nil {
+				return fmt.Errorf("--resource-id 应为 UUID 格式（来自 +media-list 返回的 resourceId 字段），不要从 OSS/URL 链接中提取；请先执行 dws doc +media-list --node <DOC_ID> --format json 获取")
+			}
 			return callMCPToolUnescaped("download_doc_attachment", map[string]any{
 				"nodeId":     nodeID,
-				"resourceId": mustGetFlag(cmd, "resource-id"),
+				"resourceId": resourceID,
 			})
 		},
 	}
