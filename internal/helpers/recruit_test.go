@@ -564,6 +564,40 @@ func TestRecruitListResultData(t *testing.T) {
 	}
 }
 
+func TestRecruitListResultDataAcceptsMinimalTerminalPage(t *testing.T) {
+	data, meta, err := recruitListResultData(map[string]any{"hasMore": false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	clean, ok := data.(map[string]any)
+	if !ok || len(clean) != 0 {
+		t.Fatalf("data = %#v, want empty object", data)
+	}
+	if meta == nil || meta.Pagination == nil || !meta.Pagination.EndpointExhausted ||
+		meta.Pagination.NextToken != "" || meta.Pagination.Pages != 1 || meta.Pagination.Items != 0 {
+		t.Fatalf("meta = %#v, want exhausted terminal page", meta)
+	}
+	if meta.Count != nil {
+		t.Fatalf("count = %#v, want nil when jobs is absent", meta.Count)
+	}
+
+	caller := withRecruitCaller(t)
+	caller.text = `{"success":true,"result":{"hasMore":false}}`
+	cmd := prepareRecruitTestCommand(newRecruitJobListCommand())
+	result, err := recruitResultCall(cmd, recruitListJobsTool, map[string]any{"size": 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	envelope, err := output.EnvelopeFromResult(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Outcome != output.OutcomeSuccess || envelope.Meta == nil ||
+		envelope.Meta.Pagination == nil || !envelope.Meta.Pagination.EndpointExhausted {
+		t.Fatalf("envelope = %#v, want successful exhausted terminal page", envelope)
+	}
+}
+
 func TestRecruitResultCallPropagatesMCPError(t *testing.T) {
 	caller := withRecruitCaller(t)
 	caller.err = stderrors.New("transport failed")

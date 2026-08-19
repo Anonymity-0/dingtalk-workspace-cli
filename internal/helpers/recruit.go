@@ -297,7 +297,7 @@ func recruitListResultData(data any) (any, *output.Meta, error) {
 			return nil, nil, fmt.Errorf("list_jobs 返回 hasMore=true 但缺少 nextCursor")
 		}
 	}
-	clean := make(map[string]any, len(object)-2)
+	clean := make(map[string]any, len(object))
 	for key, value := range object {
 		if key != "hasMore" && key != "nextCursor" {
 			clean[key] = value
