@@ -9,7 +9,7 @@
 
 - Attendance 共审核 35 个源码 Shortcut；8 个具备 Agent 公开条件，27 个保持 unavailable。为守住已发布 CLI 的 argv/Help 兼容，其中 11 个历史可见入口继续以 compatibility-visible 形式可发现，但仍从 Agent public Catalog 排除、保持 legacy 输出且不发布 Result/Pagination；其余 16 个保持 hidden。公开数量按「严格响应合同 + 稳定身份 + 安全真实 fixture」的发布门计算，不把空数组或仅退出码 0 计为通过。
 - 这 11 个 compatibility-visible 入口在完整 Schema 中保留历史 `availability=available` 与既有 workflow property，仅表示旧调用仍可执行；它们的 Shortcut 语义状态仍为 `public=false/unavailable`，默认 Shortcut 列表与 Agent public Catalog 均不发布。底层 MCP 字段名由 Execute 的显式 adapter 负责，不能在未经过版本化迁移时重定向已发布 Schema property。
-- `+check-result` 已覆盖 Lark CLI 当前唯一 Attendance 用户任务 `attendance user_tasks query`，并提供打卡流水、审批、排班、班次、规则、设置、假期和个人视图等更宽能力。
+- `+check-result` 已覆盖 Lark CLI 当前唯一 Attendance 用户任务 `attendance user_tasks query`；DWS inventory 还包含打卡流水、审批、班次、规则、设置、假期和个人视图等更宽能力。排班查询入口虽然保留历史 CLI 兼容，但因 `DS-ATTENDANCE-008` 当前保持 Agent-unavailable。
 - 已确认 8 组下游需求：补卡规则详情返回空结果、报表合同不足、打卡结果分页缺少服务端确定终止证据、缺少安全可回收的管理员/写操作 fixture、6 个读场景缺少请求绑定字段或 nonempty/zero 双态 fixture、班次详情不回显稳定 ID、个人设置缺少逐场景权限发现与安全 fixture，以及排班查询对合法非空/空请求均返回 `exit 0 + literal null`。
 - 审批模板的同类型多模板问题已在上游修复：以 `processCode` 作为资源身份，`approveType` 只做请求绑定，并要求 `submitUrl` 非空。班次详情与个人设置仍有下游合同/权限前置，不能以请求 echo 或部分场景成功伪造整体可用。
 
