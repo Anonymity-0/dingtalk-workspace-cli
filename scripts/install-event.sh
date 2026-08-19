@@ -111,61 +111,173 @@ resolve_event_version() {
   [ -n "$EVENT_VERSION" ] || err "No stable release found on ${EVENT_REPO}. Set EVENT_VERSION to a published release tag."
 }
 
+
+# perm_of <path>
+# Prints the octal permission bits of path. Linux stat and BSD/macOS stat
+# disagree on flags, so try both spellings and fail loudly when neither is
+# available.
+perm_of() {
+  _po_mode="$(stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1" 2>/dev/null)" || return 1
+  printf '%s\n' "$_po_mode"
+}
+
+# discard_stage <dir>
+# Best-effort removal of our own staging tree. Read-only directories copied
+# from the skill bundle resist rm -rf, so grant owner write access first.
+discard_stage() {
+  chmod -R u+w "$1" 2>/dev/null || true
+  rm -rf "$1" 2>/dev/null || true
+}
+
+# count_tree_entries <dir>
+count_tree_entries() {
+  _cte_n=0
+  for _cte_e in "$1"/* "$1"/.[!.]* "$1"/..?*; do
+    [ -e "$_cte_e" ] || [ -L "$_cte_e" ] || continue
+    _cte_n=$((_cte_n+1))
+  done
+  printf '%s\n' "$_cte_n"
+}
+
+# publish_tree_children <stage> <dest> <manifest>
+# Publishes every child of the staging directory into the claimed dest through
+# an atomic no-clobber primitive: directories claim with mkdir and recurse,
+# regular files publish via ln (a hard link is a single atomic rename-class
+# syscall that fails with EEXIST when the target exists) and then drop the
+# staging source, and symlinks are recreated with ln -s. A POSIX `mv` cannot
+# be used here: renaming a directory onto a concurrently created same-name
+# (empty) directory replaces it, and mv offers no kernel-level no-replace.
+# Every primitive therefore refuses a concurrently created object instead of
+# replacing it. The absolute destination path of each published entry is
+# appended to the manifest so the rollback only ever retracts entries this
+# transaction published. The recursion runs in a subshell so the caller's
+# loop variables survive; manifest appends and filesystem effects persist.
+# After each level the destination is re-counted: more entries than the
+# staging side had means a different-named concurrent writer landed
+# mid-publish, and the whole publication aborts with the destination kept.
+publish_tree_children() {
+  _ptc_stage="$1"; _ptc_dest="$2"; _ptc_manifest="$3"
+  _ptc_staged="$(count_tree_entries "$_ptc_stage")"
+  for _ptc_child in "$_ptc_stage"/* "$_ptc_stage"/.[!.]* "$_ptc_stage"/..?*; do
+    [ -e "$_ptc_child" ] || [ -L "$_ptc_child" ] || continue
+    _ptc_name="$(basename "$_ptc_child")"
+    _ptc_target="${_ptc_dest%/}/$_ptc_name"
+    if [ -L "$_ptc_child" ]; then
+      _ptc_link="$(readlink "$_ptc_child")" || return 1
+      ln -s "$_ptc_link" "$_ptc_target" 2>/dev/null || {
+        [ -e "$_ptc_target" ] || [ -L "$_ptc_target" ] || return 1
+        printf '  并发目录项已保留，拒绝覆盖 %s\n' "$_ptc_target" >&2
+        return 1
+      }
+      rm -f "$_ptc_child" || return 1
+    elif [ -d "$_ptc_child" ]; then
+      _ptc_mode="$(perm_of "$_ptc_child")" || return 1
+      # The staging tree is ours alone: skill trees ship read-only
+      # directories (0555), which would block unlinking the children and
+      # removing the emptied shell. Grant owner write access for the move;
+      # the published target receives the recorded mode below.
+      chmod u+w "$_ptc_child" || return 1
+      mkdir "$_ptc_target" 2>/dev/null || {
+        [ -e "$_ptc_target" ] || [ -L "$_ptc_target" ] || return 1
+        printf '  并发目录项已保留，拒绝覆盖 %s\n' "$_ptc_target" >&2
+        return 1
+      }
+      ( publish_tree_children "$_ptc_child" "$_ptc_target" "$_ptc_manifest" ) || return 1
+      chmod "$_ptc_mode" "$_ptc_target" || return 1
+      rmdir "$_ptc_child" 2>/dev/null || return 1
+    else
+      ln "$_ptc_child" "$_ptc_target" 2>/dev/null || {
+        [ -e "$_ptc_target" ] || [ -L "$_ptc_target" ] || return 1
+        printf '  并发目录项已保留，拒绝覆盖 %s\n' "$_ptc_target" >&2
+        return 1
+      }
+      rm -f "$_ptc_child" || return 1
+    fi
+    printf '%s\n' "$_ptc_target" >> "$_ptc_manifest"
+  done
+  _ptc_live="$(count_tree_entries "$_ptc_dest")"
+  if [ "$_ptc_live" -gt "$_ptc_staged" ]; then
+    printf '  目标出现并发目录项，中止发布并保留 %s\n' "$_ptc_dest" >&2
+    return 1
+  fi
+  return 0
+}
+
+# retract_published_children <stage_root> <dest_root> <manifest>
+# Moves the manifest-recorded entries back into the staging tree in reverse
+# publication order, so deeper entries move before (or together with, when a
+# containing directory retraction carries them) the directories that hold
+# them. Only entries this transaction published are touched; a concurrently
+# created object is never retracted. An entry that no longer exists was
+# carried away with an ancestor; a genuine move failure stops the retraction
+# so the caller reports the retained destination.
+retract_published_children() {
+  _rpc_stage_root="$1"; _rpc_dest_root="$2"; _rpc_manifest="$3"
+  [ -s "$_rpc_manifest" ] || return 0
+  _rpc_rev="${_rpc_manifest}.rev"
+  sed '1!G;h;$!d' "$_rpc_manifest" > "$_rpc_rev" || { rm -f "$_rpc_rev"; return 1; }
+  while IFS= read -r _rpc_entry; do
+    [ -n "$_rpc_entry" ] || continue
+    _rpc_rel="${_rpc_entry#"${_rpc_dest_root%/}/"}"
+    _rpc_back="${_rpc_stage_root%/}/$_rpc_rel"
+    mkdir -p "$(dirname "$_rpc_back")" 2>/dev/null || break
+    rmdir "$_rpc_back" 2>/dev/null || true
+    mv "$_rpc_entry" "$_rpc_back" 2>/dev/null || {
+      [ -e "$_rpc_entry" ] || [ -L "$_rpc_entry" ] || continue
+      break
+    }
+  done < "$_rpc_rev"
+  rm -f "$_rpc_rev"
+  return 0
+}
+
 copy_tree() {
   src="$1"
   dest="$2"
   parent="$(dirname "$dest")"
   mkdir -p "$parent" || return 1
   stage="$(mktemp -d "$parent/.dws-skill.tmp.XXXXXX")" || return 1
-  if ! cp -R "$src/." "$stage/"; then rm -rf "$stage"; return 1; fi
-  backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
-  # mkdir is the atomic no-replace claim: POSIX `mv` of a staging directory
-  # onto an occupied dest treats dest as a container and nests the stage
-  # inside it. Children then move into a directory this transaction owns.
+  manifest="$(mktemp "$parent/.dws-skill.txn.XXXXXX")" || { rm -rf "$stage"; return 1; }
+  if ! cp -R "$src/." "$stage/"; then discard_stage "$stage"; rm -f "$manifest"; return 1; fi
+  chmod u+w "$stage" 2>/dev/null || true
+  backup="$(backup_skill_dir "$dest")" || { discard_stage "$stage"; rm -f "$manifest"; return 1; }
+  _ct_mode="$(perm_of "$src")" || { discard_stage "$stage"; rm -f "$manifest"; return 1; }
+  # mkdir is the atomic no-replace claim: it fails when the path is already
+  # occupied, and the claim is then held for the whole transaction. Children
+  # publish into the claim through per-entry no-clobber primitives (see
+  # publish_tree_children) so a concurrent writer can never be replaced; the
+  # rollback only retracts what the manifest recorded, and the claim itself
+  # is removed only while still empty, so foreign entries always survive.
   if mkdir "$dest" 2>/dev/null; then
-    _ct_failed=0
-    for _ct_child in "$stage"/* "$stage"/.[!.]* "$stage"/..?*; do
-      [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
-      if ! mv "$_ct_child" "$dest/"; then
-        _ct_failed=1
-        break
-      fi
-    done
-    if [ "$_ct_failed" -eq 0 ]; then
-      rm -rf "$stage"
+    if publish_tree_children "$stage" "$dest" "$manifest"; then
+      chmod "$_ct_mode" "$dest" 2>/dev/null || true
+      discard_stage "$stage"
+      rm -f "$manifest"
       return 0
     fi
-    for _ct_child in "$dest"/* "$dest"/.[!.]* "$dest"/..?*; do
-      [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
-      # Bounded failure like install.sh's publish rollback: a child that
-      # cannot move back leaves dest occupied; stop instead of swallowing
-      # the error so the restore below reports the failed rollback.
-      if ! mv "$_ct_child" "$stage/"; then
-        _ct_failed=1
-        break
-      fi
-    done
+    retract_published_children "$stage" "$dest" "$manifest"
     rmdir "$dest" 2>/dev/null || true
   fi
-  rm -rf "$stage"
+  discard_stage "$stage"
+  rm -f "$manifest"
   if [ -n "$backup" ]; then
+    restore_manifest="$(mktemp "$parent/.dws-skill.txn.XXXXXX")" || return 1
     if mkdir "$dest" 2>/dev/null; then
-      _ct_restore_failed=0
-      for _ct_child in "$backup"/* "$backup"/.[!.]* "$backup"/..?*; do
-        [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
-        if ! mv "$_ct_child" "$dest/"; then
-          _ct_restore_failed=1
-          break
-        fi
-      done
-      if [ "$_ct_restore_failed" -eq 0 ]; then
+      # The restore publishes the backup through the same no-clobber
+      # discipline: a concurrent writer that took the emptied path (or any
+      # entry inside it) is refused and the backup is kept intact instead
+      # of being partially drained by an overwriting move.
+      if publish_tree_children "$backup" "$dest" "$restore_manifest"; then
         rmdir "$backup" 2>/dev/null || true
       else
-        printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+        retract_published_children "$backup" "$dest" "$restore_manifest"
+        rmdir "$dest" 2>/dev/null || true
+        printf '  Skill rollback failed; backup retained at %s\n' "$backup" >&2
       fi
     else
-      printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+      printf '  Skill rollback failed; backup retained at %s\n' "$backup" >&2
     fi
+    rm -f "$restore_manifest"
   fi
   return 1
 }
@@ -400,7 +512,7 @@ link_or_copy_skill() {
     if [ -e "$dest" ] || [ -L "$dest" ]; then
       printf '  ⚠️  %s 在发布期间被并发写入占用，原 Skill 保留于备份: %s\n' "$dest" "$backup" >&2
     elif ! mv "$backup" "$dest"; then
-      printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+      printf '  Skill rollback failed; backup retained at %s\n' "$backup" >&2
     fi
   fi
   return 1

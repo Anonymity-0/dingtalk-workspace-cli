@@ -1427,6 +1427,117 @@ func TestInstallScriptsUseGitHubReleaseSkillsAsset(t *testing.T) {
 	}
 }
 
+func TestInstallerStandaloneCopyChildRacePreservesConcurrentObjects(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell semantics are unavailable")
+	}
+
+	// sameName: a concurrently created same-name empty child directory must
+	// refuse the publish (a POSIX mv would have replaced it wholesale).
+	// foreignName: a different-named entry landing inside the claimed dest
+	// mid-publish aborts the transaction with the destination retained.
+	for _, scriptName := range []string{"install-event.sh", "install-devapp.sh"} {
+		for _, raceCase := range []string{"same-name", "foreign-name"} {
+			scriptName, raceCase := scriptName, raceCase
+			t.Run(scriptName+"/"+raceCase, func(t *testing.T) {
+				t.Parallel()
+				scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", scriptName))
+				if err != nil {
+					t.Fatal(err)
+				}
+				data, err := os.ReadFile(scriptPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				cut := strings.LastIndex(string(data), "\nmain\n")
+				if cut < 0 {
+					t.Fatalf("%s final main invocation not found", scriptName)
+				}
+				library := filepath.Join(t.TempDir(), scriptName+"-lib.sh")
+				mustWriteFile(t, library, data[:cut], 0o755)
+
+				home := t.TempDir()
+				src := filepath.Join(t.TempDir(), "src-skill")
+				dest := filepath.Join(home, "agent", "skills", "dingtalk-misc")
+				mustWriteFile(t, filepath.Join(src, "SKILL.md"), []byte("new skill\n"), 0o644)
+				if err := os.MkdirAll(filepath.Join(src, "aaa-subdir"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				mustWriteFile(t, filepath.Join(src, "aaa-subdir", "inner.txt"), []byte("inner\n"), 0o644)
+				mustWriteFile(t, filepath.Join(dest, "SKILL.md"), []byte("old skill\n"), 0o644)
+
+				harness := `. "$DWS_TEST_LIBRARY"
+case "$RACE_CASE" in
+  same-name)
+    mkdir() {
+      if [ "$1" = "$DWS_TEST_DEST/aaa-subdir" ]; then
+        # The concurrent writer takes the child path as an empty directory
+        # between the top-level claim and the child publish. POSIX mv would
+        # replace it; the no-clobber child primitive must refuse instead.
+        command mkdir -p "$1"
+        printf '%s\n' must-survive > "$1/concurrent-user-data.txt"
+        return 1
+      fi
+      command mkdir "$@"
+    }
+    ;;
+  foreign-name)
+    ln() {
+      if [ "$2" = "$DWS_TEST_DEST/SKILL.md" ]; then
+        command ln "$@"
+        # A different-named foreign entry lands inside the claim while the
+        # remaining staged children are still publishing.
+        printf '%s\n' must-survive > "$DWS_TEST_DEST/zzz-foreign"
+        return 0
+      fi
+      command ln "$@"
+    }
+    ;;
+esac
+if copy_tree "$DWS_TEST_SRC" "$DWS_TEST_DEST"; then
+  exit 2
+fi
+case "$RACE_CASE" in
+  same-name)
+    [ -f "$DWS_TEST_DEST/aaa-subdir/concurrent-user-data.txt" ] || exit 3
+    [ "$(cat "$DWS_TEST_DEST/aaa-subdir/concurrent-user-data.txt")" = "must-survive" ] || exit 4
+    [ ! -e "$DWS_TEST_DEST/aaa-subdir/inner.txt" ] || exit 5
+    [ ! -e "$DWS_TEST_DEST/SKILL.md" ] || exit 6
+    ;;
+  foreign-name)
+    [ -f "$DWS_TEST_DEST/zzz-foreign" ] || exit 3
+    [ "$(cat "$DWS_TEST_DEST/zzz-foreign")" = "must-survive" ] || exit 4
+    # The transaction's own children are retracted; only the foreign entry
+    # remains in the retained destination.
+    if [ -n "$(ls -A "$DWS_TEST_DEST" | grep -v '^zzz-foreign$')" ]; then
+      ls -A "$DWS_TEST_DEST" >&2
+      exit 5
+    fi
+    ;;
+esac
+exit 0
+`
+				harnessPath := filepath.Join(t.TempDir(), "copy-child-race.sh")
+				mustWriteFile(t, harnessPath, []byte(harness), 0o755)
+				cmd := exec.Command("sh", harnessPath)
+				cmd.Env = append(os.Environ(),
+					"HOME="+home,
+					"DWS_TEST_LIBRARY="+library,
+					"DWS_TEST_SRC="+src,
+					"DWS_TEST_DEST="+dest,
+					"RACE_CASE="+raceCase,
+				)
+				if output, err := cmd.CombinedOutput(); err != nil {
+					t.Fatalf("%s copy child race (%s) must preserve the concurrent object: %v\n%s", scriptName, raceCase, err, string(output))
+				}
+				if backup := findSkillBackupContent(home, "old skill\n"); backup == "" {
+					t.Fatalf("%s original backup must be retained after refused publish (%s)", scriptName, raceCase)
+				}
+			})
+		}
+	}
+}
+
 func TestInstallEventScriptStaticExpectations(t *testing.T) {
 	t.Parallel()
 
