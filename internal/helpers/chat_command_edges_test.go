@@ -361,6 +361,37 @@ func TestChatGroupRoleSetUserRejectsMissingOrEmptyPublicRoleID(t *testing.T) {
 	}
 }
 
+func TestChatGroupRoleSetUserRoleIDResolverDefensiveBranches(t *testing.T) {
+	newCommand := func(t *testing.T) *cobra.Command {
+		t.Helper()
+		cmd := &cobra.Command{}
+		cmd.Flags().String("role-id", "", "")
+		cmd.Flags().String("role-ids", "", "")
+		return cmd
+	}
+
+	t.Run("legacy flag without pre-run promotion", func(t *testing.T) {
+		cmd := newCommand(t)
+		if err := cmd.Flags().Set("role-ids", "r1,r2"); err != nil {
+			t.Fatal(err)
+		}
+		got, err := resolveChatGroupRoleSetUserRoleIDs(cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{"r1", "r2"}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("role IDs = %#v, want %#v", got, want)
+		}
+	})
+
+	t.Run("no role flag", func(t *testing.T) {
+		_, err := resolveChatGroupRoleSetUserRoleIDs(newCommand(t))
+		if err == nil || !strings.Contains(err.Error(), "缺少必填参数 --role-id") {
+			t.Fatalf("error = %v, want missing --role-id validation", err)
+		}
+	})
+}
+
 func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T) {
 	previousDeps, previousArgs := deps, os.Args
 	os.Args = []string{"dws", "chat"}
