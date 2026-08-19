@@ -73,13 +73,13 @@ var paramAliasCompleteCommands = map[string][]string{
 	"calendar +suggestion":                     {"calendar", "+suggestion", "--users", "user-1,user-2", "--duration", "30", "--start", "2026-03-10T09:00:00+08:00", "--end", "2026-03-10T18:00:00+08:00", "--timezone", "Asia/Shanghai"},
 	"calendar +update":                         {"calendar", "+update", "--event", "event-1", "--title", "Fixture Updated Meeting", "--desc", "fixture updated description", "--start", "2026-03-10T10:00:00+08:00", "--end", "2026-03-10T11:00:00+08:00", "--add-attendees", "user-2", "--remove-attendees", "user-1", "--yes"},
 	"calendar busy search":                     {"calendar", "busy", "search", "--users", "user-1,user-2", "--rooms", "room-1,room-2", "--start", "2026-03-10T09:00:00+08:00", "--end", "2026-03-10T18:00:00+08:00"},
-	"calendar event create":                    {"calendar", "event", "create", "--title", "Fixture Meeting", "--start", "2026-03-10T09:00:00+08:00", "--end", "2026-03-10T10:00:00+08:00", "--remind-minutes", "15", "--timezone", "Asia/Shanghai", "--rooms", "room-1,room-2", "--yes"},
+	"calendar event create":                    {"calendar", "event", "create", "--title", "Fixture Meeting", "--start", "2026-03-10T09:00:00+08:00", "--end", "2026-03-10T10:00:00+08:00", "--remind-minutes", "15", "--timezone", "Asia/Shanghai", "--rooms", "room-1,room-2"},
 	"calendar event list":                      {"calendar", "event", "list", "--start", "2026-03-10T14:00:00+08:00", "--end", "2026-03-10T18:00:00+08:00", "--calendar-id", "primary", "--cursor", "cursor-1", "--limit", "7"},
-	"calendar event respond":                   {"calendar", "event", "respond", "--id", "event-1", "--status", "accepted", "--yes"},
+	"calendar event respond":                   {"calendar", "event", "respond", "--id", "event-1", "--status", "accepted"},
 	"calendar event suggest":                   {"calendar", "event", "suggest", "--users", "user-1,user-2", "--duration", "30", "--start", "2026-03-10T09:00:00+08:00", "--end", "2026-03-10T18:00:00+08:00", "--timezone", "Asia/Shanghai"},
-	"calendar event update":                    {"calendar", "event", "update", "--id", "event-1", "--timezone", "Asia/Shanghai", "--yes"},
-	"calendar room add":                        {"calendar", "room", "add", "--event", "event-1", "--rooms", "room-1,room-2", "--yes"},
-	"calendar room delete":                     {"calendar", "room", "delete", "--event", "event-1", "--rooms", "room-1,room-2", "--yes"},
+	"calendar event update":                    {"calendar", "event", "update", "--id", "event-1", "--timezone", "Asia/Shanghai"},
+	"calendar room add":                        {"calendar", "room", "add", "--event", "event-1", "--rooms", "room-1,room-2"},
+	"calendar room delete":                     {"calendar", "room", "delete", "--event", "event-1", "--rooms", "room-1,room-2"},
 	"calendar room search":                     {"calendar", "room", "search", "--room-name", "Fixture Room", "--group-id", "group-1", "--start", "2027-03-10T09:00:00+08:00", "--end", "2027-03-10T10:00:00+08:00", "--page", "1", "--limit", "7"},
 	"chat +chat-messages":                      {"chat", "+chat-messages", "--group", "fixture-conversation"},
 	"chat +chat-add-bot":                       {"chat", "+chat-add-bot", "--id", "fixture-conversation", "--robot-code", "robot-1", "--yes"},
@@ -687,6 +687,21 @@ var paramAliasCalendarPayloadCases = map[string]bool{
 	paramAliasPayloadCaseKey("calendar +update", "remove-user-ids"):         true,
 }
 
+// paramAliasCalendarConfirmationCases selects one newly reviewed alias for
+// every Calendar Shortcut whose runtime contract requires user confirmation.
+// The complete Calendar matrix proves confirmed canonical/alias payload
+// equality; these representatives additionally prove semantic normalization
+// cannot cross the confirmation boundary before the first transport call.
+var paramAliasCalendarConfirmationCases = map[string]bool{
+	paramAliasPayloadCaseKey("calendar +book", "summary"):          true,
+	paramAliasPayloadCaseKey("calendar +cancel-event", "event-id"): true,
+	paramAliasPayloadCaseKey("calendar +create", "summary"):        true,
+	paramAliasPayloadCaseKey("calendar +invite", "id"):             true,
+	paramAliasPayloadCaseKey("calendar +reschedule", "from"):       true,
+	paramAliasPayloadCaseKey("calendar +rsvp", "response-status"):  true,
+	paramAliasPayloadCaseKey("calendar +update", "event-id"):       true,
+}
+
 func TestCrossPlatformCoverageReviewedParamAliasesHaveCompleteTemplatesAndRepresentativeFinalPayloads(t *testing.T) {
 	concepts, err := cli.LoadParamConcepts()
 	if err != nil {
@@ -772,6 +787,7 @@ func TestCrossPlatformCoverageReviewedCalendarParamAliasesReachCanonicalEquivale
 	}
 
 	executed := make(map[string]bool)
+	executedConfirmation := make(map[string]bool)
 	for _, fixture := range concepts.Fixture {
 		caseKey := paramAliasPayloadCaseKey(fixture.Command, fixture.Emitted)
 		if !paramAliasCalendarPayloadCases[caseKey] {
@@ -790,6 +806,10 @@ func TestCrossPlatformCoverageReviewedCalendarParamAliasesReachCanonicalEquivale
 				t.Fatalf("complete Calendar command must contain canonical --%s exactly once; replacements=%d args=%v", fixture.Expect, replacements, canonicalArgs)
 			}
 			assertParamAliasFinalPayloadEquivalent(t, fixture.Command, canonicalArgs, aliasArgs)
+			if paramAliasCalendarConfirmationCases[caseKey] {
+				executedConfirmation[caseKey] = true
+				assertParamAliasCannotBypassConfirmation(t, aliasArgs)
+			}
 		})
 	}
 
@@ -800,6 +820,35 @@ func TestCrossPlatformCoverageReviewedCalendarParamAliasesReachCanonicalEquivale
 	}
 	if len(executed) != len(paramAliasCalendarPayloadCases) {
 		t.Fatalf("Calendar final-payload coverage = %d, want %d", len(executed), len(paramAliasCalendarPayloadCases))
+	}
+	for caseKey := range paramAliasCalendarConfirmationCases {
+		if !executedConfirmation[caseKey] {
+			t.Errorf("Calendar confirmation case %q has no active reviewed fixture", caseKey)
+		}
+	}
+	if len(executedConfirmation) != len(paramAliasCalendarConfirmationCases) {
+		t.Fatalf("Calendar confirmation coverage = %d, want %d", len(executedConfirmation), len(paramAliasCalendarConfirmationCases))
+	}
+}
+
+func assertParamAliasCannotBypassConfirmation(t *testing.T, aliasArgs []string) {
+	t.Helper()
+	unconfirmedArgs, removals := removeExactArg(aliasArgs, "--yes")
+	if removals != 1 {
+		t.Fatalf("confirmation template must contain --yes exactly once; removals=%d args=%v", removals, aliasArgs)
+	}
+
+	caller := &paramAliasCaptureCaller{}
+	ctx, err := executeParamAliasPayloadE2E(t, caller, unconfirmedArgs...)
+	if ctx == nil {
+		t.Fatal("unconfirmed Calendar alias command skipped PreParse")
+	}
+	var appErr *apperrors.Error
+	if !errors.As(err, &appErr) || appErr.Reason != "confirmation_required" {
+		t.Fatalf("unconfirmed Calendar alias command error = %#v, want confirmation_required\nargs=%v", err, unconfirmedArgs)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("unconfirmed Calendar alias crossed the transport boundary: args=%v calls=%#v", unconfirmedArgs, caller.calls)
 	}
 }
 
