@@ -283,6 +283,55 @@ func TestCrossPlatformCoverageSchemaFlagExtractionRequiresCompleteReplacementPro
 		}
 	})
 
+	for _, test := range []struct {
+		name   string
+		mutate func([]interfacesnapshot.CommandMigration)
+		want   string
+	}{
+		{
+			name: "duplicate historical mapping",
+			mutate: func(migrations []interfacesnapshot.CommandMigration) {
+				migrations[1].Schema.Parameters = append(
+					migrations[1].Schema.Parameters,
+					migrations[1].Schema.Parameters[0],
+				)
+			},
+			want: "maps historical Schema parameter \"name\" more than once",
+		},
+		{
+			name: "legacy mapping has two targets",
+			mutate: func(migrations []interfacesnapshot.CommandMigration) {
+				migrations[1].Schema.Parameters[3].To = "thread"
+			},
+			want: "must map to one replacement constant",
+		},
+		{
+			name: "shared mapping has no target",
+			mutate: func(migrations []interfacesnapshot.CommandMigration) {
+				migrations[1].Schema.Parameters[0].To = ""
+			},
+			want: "must map to one replacement parameter",
+		},
+		{
+			name: "duplicate replacement target",
+			mutate: func(migrations []interfacesnapshot.CommandMigration) {
+				migrations[1].Schema.Parameters[1].To = "name"
+			},
+			want: "is mapped from both \"name\" and \"type\"",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			baseline := schemaCommandMigrationContract(false)
+			current := schemaCommandMigrationContract(true)
+			migrations := schemaCommandMigrationAuthorizations()
+			test.mutate(migrations)
+			if _, err := normalizeSchemaCommandMigrations(baseline, current, migrations); err == nil ||
+				!strings.Contains(err.Error(), test.want) {
+				t.Fatalf("invalid mapping error=%v, want %q", err, test.want)
+			}
+		})
+	}
+
 	t.Run("replacement removes historical dry run", func(t *testing.T) {
 		baseline := schemaCommandMigrationContract(false)
 		mutateSchemaCommandMigrationTool(&baseline, "chat.create_group", func(tool *toolSchema) {
@@ -357,6 +406,15 @@ func TestCrossPlatformCoverageSchemaFlagExtractionRequiresCompleteReplacementPro
 			mutate: func(current *schemaContract) {
 				mutateSchemaCommandMigrationTool(current, "chat.create_topic", func(tool *toolSchema) {
 					tool.Positionals[0].Name = "topic-name"
+				})
+			},
+			want: "changed positionals",
+		},
+		{
+			name: "positionals length drift",
+			mutate: func(current *schemaContract) {
+				mutateSchemaCommandMigrationTool(current, "chat.create_topic", func(tool *toolSchema) {
+					tool.Positionals = append(tool.Positionals, positionalSchema{Name: "type", Index: 1, Type: "string"})
 				})
 			},
 			want: "changed positionals",

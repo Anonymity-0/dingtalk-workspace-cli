@@ -11,6 +11,11 @@ import (
 )
 
 func TestCrossPlatformCoverageInterfaceBoolConstParamsRegistryClonesAndDeletes(t *testing.T) {
+	attachInterfaceBoolConstParams(nil, map[string]any{"ignored": true})
+	if got := InterfaceBoolConstParams(nil); got != nil {
+		t.Fatalf("nil command evidence = %#v, want nil", got)
+	}
+
 	cmd := &cobra.Command{Use: "send"}
 	declared := map[string]any{"convThreadEnabled": true, "precheckOnly": false}
 	attachInterfaceBoolConstParams(cmd, declared)

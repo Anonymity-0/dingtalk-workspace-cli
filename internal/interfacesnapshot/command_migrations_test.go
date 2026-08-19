@@ -196,6 +196,7 @@ func TestCrossPlatformCoverageCommandMigrationValidationEdges(t *testing.T) {
 		{"move constant", CommandMigrationMove, func(s *CommandMigrationSchema) {
 			s.Parameters[0].ReplacementConstant = &CommandReplacementConstant{Property: "property", Value: true}
 		}, "must not declare replacement_constant"},
+		{"invalid kind", "anything", func(*CommandMigrationSchema) {}, "invalid command migration kind"},
 	} {
 		t.Run("schema "+test.name, func(t *testing.T) {
 			schema := validSchema
@@ -216,11 +217,19 @@ func TestCrossPlatformCoverageCommandMigrationValidationEdges(t *testing.T) {
 		{"both targets", func(s *CommandMigrationSchema) {
 			s.Parameters[0].ReplacementConstant = &CommandReplacementConstant{Property: "name", Value: true}
 		}, "exactly one target"},
+		{"bad to", func(s *CommandMigrationSchema) { s.Parameters[0].To = "bad name" }, "to must be an exact parameter name"},
 		{"bad constant property", func(s *CommandMigrationSchema) { s.Parameters[3].ReplacementConstant.Property = "bad/property" }, "exact property"},
 		{"duplicate parameter target", func(s *CommandMigrationSchema) { s.Parameters[1].To = s.Parameters[0].To }, "duplicates to"},
 		{"duplicate constant target", func(s *CommandMigrationSchema) {
 			s.Parameters[0] = CommandParameterMigration{From: "name", ReplacementConstant: &CommandReplacementConstant{Property: "convThreadEnabled", Value: true}}
 		}, "duplicates replacement_constant property"},
+		{"constant before parameter target", func(s *CommandMigrationSchema) {
+			s.Parameters[3].ReplacementConstant.Property = "name"
+			s.Parameters[0], s.Parameters[3] = s.Parameters[3], s.Parameters[0]
+		}, "duplicates parameter target"},
+		{"parameter target before constant", func(s *CommandMigrationSchema) {
+			s.Parameters[3].ReplacementConstant.Property = "name"
+		}, "duplicates parameter target"},
 	} {
 		t.Run("extraction schema "+test.name, func(t *testing.T) {
 			schema := cloneCommandMigration(validExtraction).Schema
