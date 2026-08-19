@@ -89,6 +89,29 @@ func TestCrossPlatformCoverageSkillSetupCanonicalHomeBackupAndPublishFailures(t 
 			t.Fatalf("uncertain error must not claim a rollback: %v", err)
 		}
 	})
+
+	t.Run("uncertain dependent target is retained and reported", func(t *testing.T) {
+		home, plan := canonicalFailurePlan(t)
+		testseam.Swap(t, &skillSetupUserHomeDir, func() (string, error) { return home, nil })
+		originalPublish := skillSetupPublishPath
+		testseam.Swap(t, &skillSetupPublishPath, func(staged, destination string) (upgrade.SkillPathPublication, error) {
+			if strings.HasPrefix(destination, filepath.Join(home, ".claude")) {
+				return upgrade.SkillPathPublication{}, fmt.Errorf("并发写入: %w", upgrade.ErrSkillPathPublicationUncertain)
+			}
+			return originalPublish(staged, destination)
+		})
+		errOut := &bytes.Buffer{}
+		_, skipped, err := executeSkillSetupPlan(plan, &bytes.Buffer{}, errOut)
+		if err != nil {
+			t.Fatalf("dependent uncertain publish = %v", err)
+		}
+		if skipped != 1 {
+			t.Fatalf("skipped = %d, want 1", skipped)
+		}
+		if !strings.Contains(errOut.String(), "发布状态不确定") || strings.Contains(errOut.String(), "已执行回滚") {
+			t.Fatalf("errOut = %q, want retained-destination notice", errOut.String())
+		}
+	})
 }
 
 func TestCrossPlatformCoverageSkillSetupLinkResolutionFailures(t *testing.T) {

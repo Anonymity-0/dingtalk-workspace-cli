@@ -29,7 +29,7 @@ func skillPathSameFileIdentityImpl(left, right os.FileInfo) bool {
 // which the publication fingerprint backstop still catches. An unreadable
 // or unrecognizable path reports "" and callers treat that as "no witness".
 func skillPathFileIdentityImpl(path string) string {
-	info, err := os.Lstat(path)
+	info, err := skillPathLstat(path)
 	if err != nil {
 		return ""
 	}
