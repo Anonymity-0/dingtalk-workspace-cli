@@ -47,6 +47,8 @@ func resolveChatGroupRoleSetUserRoleIDs(cmd *cobra.Command) ([]string, error) {
 	default:
 		return nil, apperrors.NewValidation("缺少必填参数 --role-id")
 	}
+}
+
 // promoteLegacyChatString copies an explicitly supplied legacy flag into the
 // new canonical flag. Cobra validates MarkFlagRequired after PreRunE, and the
 // overwrite also preserves the migration rule that a legacy value wins when
