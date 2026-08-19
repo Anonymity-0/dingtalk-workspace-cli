@@ -119,10 +119,53 @@ copy_tree() {
   stage="$(mktemp -d "$parent/.dws-skill.tmp.XXXXXX")" || return 1
   if ! cp -R "$src/." "$stage/"; then rm -rf "$stage"; return 1; fi
   backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
-  if mv "$stage" "$dest"; then return 0; fi
+  # mkdir is the atomic no-replace claim: POSIX `mv` of a staging directory
+  # onto an occupied dest treats dest as a container and nests the stage
+  # inside it. Children then move into a directory this transaction owns.
+  if mkdir "$dest" 2>/dev/null; then
+    _ct_failed=0
+    for _ct_child in "$stage"/* "$stage"/.[!.]* "$stage"/..?*; do
+      [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
+      if ! mv "$_ct_child" "$dest/"; then
+        _ct_failed=1
+        break
+      fi
+    done
+    if [ "$_ct_failed" -eq 0 ]; then
+      rm -rf "$stage"
+      return 0
+    fi
+    for _ct_child in "$dest"/* "$dest"/.[!.]* "$dest"/..?*; do
+      [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
+      # Bounded failure like install.sh's publish rollback: a child that
+      # cannot move back leaves dest occupied; stop instead of swallowing
+      # the error so the restore below reports the failed rollback.
+      if ! mv "$_ct_child" "$stage/"; then
+        _ct_failed=1
+        break
+      fi
+    done
+    rmdir "$dest" 2>/dev/null || true
+  fi
   rm -rf "$stage"
-  if [ -n "$backup" ] && ! mv "$backup" "$dest"; then
-    printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+  if [ -n "$backup" ]; then
+    if mkdir "$dest" 2>/dev/null; then
+      _ct_restore_failed=0
+      for _ct_child in "$backup"/* "$backup"/.[!.]* "$backup"/..?*; do
+        [ -e "$_ct_child" ] || [ -L "$_ct_child" ] || continue
+        if ! mv "$_ct_child" "$dest/"; then
+          _ct_restore_failed=1
+          break
+        fi
+      done
+      if [ "$_ct_restore_failed" -eq 0 ]; then
+        rmdir "$backup" 2>/dev/null || true
+      else
+        printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+      fi
+    else
+      printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+    fi
   fi
   return 1
 }
@@ -162,8 +205,8 @@ refresh_cache_tree() {
 backup_skill_dir() {
   victim="$1"
   [ -e "$victim" ] || [ -L "$victim" ] || { printf '\n'; return 0; }
-  # Prune before creating this run's archive, so the backup the caller is about
-  # to depend on for rollback can never be a prune candidate.
+  # Prune before creating this run's archive; every stamp this run has already
+  # created is registered, so pruning can only remove earlier-run batches.
   prune_skill_backups
   stamp="$(date -u +%Y%m%d-%H%M%S)"
   name="$(printf '%s' "$victim" | sed 's#[/\\]#-#g; s#^-##')"
@@ -179,22 +222,62 @@ backup_skill_dir() {
       return 1
     fi
   done
+  record_current_run_backup_stamp "$backup_root"
+  # Freshness must be sampled before mkdir: the collision loop tests the
+  # payload path, so a second backup in the same stamp second reuses this
+  # root while a sibling payload from this run already lives in it.
+  fresh=1
+  [ ! -d "$backup_root" ] || fresh=0
   mkdir -p "$backup_root" || return 1
+  # Ownership proof, the exact bytes Go's writeSkillBackupMarker stamps: a
+  # stamp-shaped name alone is not evidence, so pruning only ever removes
+  # roots carrying this marker — it must exist before the payload moves in.
+  printf '%s\n' 'dws skill backup v1' > "$backup_root/.dws-skill-backup" || {
+    # Non-recursive cleanup, sibling protection: only a root this call
+    # created may be dropped, and only the marker plus an empty root (rmdir
+    # refuses a non-empty directory) — rm -rf here would destroy a completed
+    # same-second sibling backup whose original is already moved away.
+    if [ "$fresh" -eq 1 ]; then
+      rm -f "$backup_root/.dws-skill-backup"
+      rmdir "$backup_root" 2>/dev/null || true
+    fi
+    return 1
+  }
   mv "$victim" "$backup" || return 1
   printf '%s\n' "$backup"
 }
 
 # prune_skill_backups keeps only the newest SKILL_BACKUP_KEEP stamped backup
-# directories under $HOME/.dws/skill-backups, matching Go's skillBackupKeep /
-# pruneSkillBackups. Glob order is lexicographic and the stamps are UTC
-# YYYYmmdd-HHMMSS, so the oldest sort first. Best-effort: a removal failure is
-# reported and never fatal.
+# directories from earlier runs under $HOME/.dws/skill-backups, matching Go's
+# skillBackupKeep / pruneSkillBackups. Only stamp-shaped roots carrying the
+# .dws-skill-backup marker with the exact expected content are counted or
+# removed: foreign data with a stamp-like name never consumes a keep slot
+# and is never deleted, silently. Stamp directories created by the
+# current process are never pruned (mirroring Go's run-root registry and
+# install.js's currentRunBackupRoots), so a migration that retires more than
+# SKILL_BACKUP_KEEP batches stays reversible. Glob order is lexicographic and
+# the stamps are UTC YYYYmmdd-HHMMSS, so the oldest sort first. Best-effort:
+# a removal failure is reported and never fatal.
 SKILL_BACKUP_KEEP=5
 
-# is_skill_backup_stamp accepts only directory names DWS itself writes: UTC
-# YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry in
-# the backup root is foreign (user data, unrelated tooling) and is preserved
-# so pruning can never remove a directory it cannot prove DWS created.
+# Stamp directories created by this run, recorded by backup_skill_dir so
+# pruning can never delete a backup the running migration may still need to
+# roll back to.
+CURRENT_RUN_BACKUP_STAMPS=""
+
+record_current_run_backup_stamp() {
+  case " $CURRENT_RUN_BACKUP_STAMPS " in
+    *" $1 "*) return 0 ;;
+  esac
+  CURRENT_RUN_BACKUP_STAMPS="${CURRENT_RUN_BACKUP_STAMPS} $1"
+}
+
+# is_skill_backup_stamp accepts only directory names with the stamp shape DWS
+# itself writes: UTC YYYYmmdd-HHMMSS, with an optional -N collision suffix.
+# Shape is necessary but not sufficient — pruning additionally verifies the
+# .dws-skill-backup ownership marker — while any other entry in the backup
+# root is foreign (user data, unrelated tooling) and is preserved so pruning
+# can never remove a directory it cannot prove DWS created.
 is_skill_backup_stamp() {
   case "$1" in
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9])
@@ -218,17 +301,21 @@ prune_skill_backups() {
   for prune_entry in "$prune_root"/*; do
     [ -d "$prune_entry" ] || continue
     is_skill_backup_stamp "${prune_entry##*/}" || continue
+    [ "$(cat "$prune_entry/.dws-skill-backup" 2>/dev/null)" = "dws skill backup v1" ] || continue
     prune_total=$((prune_total + 1))
   done
   [ "$prune_total" -gt "$SKILL_BACKUP_KEEP" ] || return 0
   prune_drop=$((prune_total - SKILL_BACKUP_KEEP))
-  prune_seen=0
   for prune_entry in "$prune_root"/*; do
+    [ "$prune_drop" -gt 0 ] || break
     [ -d "$prune_entry" ] || continue
     is_skill_backup_stamp "${prune_entry##*/}" || continue
-    prune_seen=$((prune_seen + 1))
-    [ "$prune_seen" -le "$prune_drop" ] || break
+    [ "$(cat "$prune_entry/.dws-skill-backup" 2>/dev/null)" = "dws skill backup v1" ] || continue
+    case " $CURRENT_RUN_BACKUP_STAMPS " in
+      *" $prune_entry "*) continue ;;
+    esac
     rm -rf "$prune_entry" || printf '  ⚠️  旧 Skill 备份清理失败: %s\n' "$prune_entry" >&2
+    prune_drop=$((prune_drop - 1))
   done
 }
 
@@ -295,10 +382,26 @@ link_or_copy_skill() {
     return 1
   fi
   backup="$(backup_skill_dir "$dest")" || { rm -rf "$stage"; return 1; }
-  if mv "$stage/skill" "$dest"; then rm -rf "$stage"; return 0; fi
+  # Create the link directly at the destination: symlink(2) refuses an
+  # occupied path with EEXIST, so publication itself is the atomic no-replace
+  # check (`mv` after the backup could still replace a file or symlink a
+  # concurrent writer created in between). A directory that slipped in turns
+  # `ln -s` into a container: remove exactly our nested link and roll back.
+  if ln -s "$relative" "$dest" 2>/dev/null && [ -L "$dest" ]; then
+    rm -rf "$stage"
+    return 0
+  fi
+  nested="$dest/${relative##*/}"
+  if [ -L "$nested" ] && [ "$(readlink "$nested" 2>/dev/null)" = "$relative" ]; then
+    rm -f "$nested" || true
+  fi
   rm -rf "$stage"
-  if [ -n "$backup" ] && ! mv "$backup" "$dest"; then
-    printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+  if [ -n "$backup" ]; then
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+      printf '  ⚠️  %s 在发布期间被并发写入占用，原 Skill 保留于备份: %s\n' "$dest" "$backup" >&2
+    elif ! mv "$backup" "$dest"; then
+      printf '  ❌ Skill rollback failed; backup retained at %s\n' "$backup" >&2
+    fi
   fi
   return 1
 }

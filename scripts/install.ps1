@@ -269,7 +269,21 @@ function Move-SkillPath {
         # either path.
         [System.IO.Directory]::Move($Source, $Destination)
     } else {
-        [System.IO.File]::Move($Source, $Destination)
+        # File.Move replaces an occupied dest on Windows. Copy without
+        # overwrite refuses that dest, then the source is removed only after
+        # the exclusive copy succeeds.
+        [System.IO.File]::Copy($Source, $Destination, $false)
+        try {
+            Remove-SkillPathLexically -Path $Source
+        } catch {
+            $removeErr = $_
+            try {
+                Remove-SkillPathLexically -Path $Destination
+            } catch {
+                throw "Skill move state uncertain; source $Source and dest $Destination retained: $removeErr; retract failed: $_"
+            }
+            throw $removeErr
+        }
     }
 }
 
@@ -453,13 +467,26 @@ function Move-SkillPathRecoverably {
     $stageRoot = Join-Path $destinationParent ("." + (Split-Path $Destination -Leaf) + ".cross-device-" + [guid]::NewGuid().ToString("N"))
     $stage = Join-Path $stageRoot "payload"
     New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
+    $published = $false
     try {
         Copy-SkillPathLexically -Source $Source -Destination $stage
         Assert-SkillPathCopy -Source $Source -Destination $stage
         Move-SkillPath -Source $stage -Destination $Destination
-        Assert-SkillPathCopy -Source $Source -Destination $Destination
-        if (!(Remove-LinkStageRoot -StageRoot $stageRoot)) {
-            throw "Skill staging 清理失败（已发布内容不受影响）: $stageRoot"
+        $published = $true
+        $publication = [pscustomobject]@{ Path = $Destination; Source = $Source }
+        try {
+            Assert-SkillPathCopy -Source $Source -Destination $Destination
+            if (!(Remove-LinkStageRoot -StageRoot $stageRoot)) {
+                throw "Skill staging 清理失败: $stageRoot"
+            }
+        } catch {
+            $postErr = $_
+            try {
+                Remove-PublishedSkillPathSafely -Record $publication
+            } catch {
+                throw "Skill 移动状态不确定：$postErr；撤回目标 $Destination 失败: $_；源 $Source 与目标 $Destination 均保留"
+            }
+            throw "Skill 移动失败，目标已撤回，原路径保留 ${Source}: $postErr"
         }
         try {
             Remove-SkillPathLexically -Path $Source
@@ -473,7 +500,9 @@ function Move-SkillPathRecoverably {
         $failure = $_
         if (Test-Path -LiteralPath $stageRoot) {
             if (!(Remove-LinkStageRoot -StageRoot $stageRoot)) {
-                throw "$failure；跨设备 Skill staging 清理失败 $stageRoot（备份与原路径均保留）"
+                if (-not $published) {
+                    throw "$failure；跨设备 Skill staging 清理失败 $stageRoot（备份与原路径均保留）"
+                }
             }
         }
         throw $failure
@@ -736,6 +765,60 @@ function Get-SkillBackupName {
 $SkillBackupKeep = 5
 $script:SkillBackupRootsThisRun = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
+# Ownership marker: every stamp root DWS creates carries .dws-skill-backup
+# with exactly "dws skill backup v1" + LF — the same bytes internal/upgrade/
+# paths.go, install.sh, and build/npm/install.js write. A stamp-shaped name
+# alone is not ownership proof, so pruning only deletes directories whose
+# marker content verifies.
+$SkillBackupMarkerFile = ".dws-skill-backup"
+$SkillBackupMarkerBody = "dws skill backup v1"
+
+# Write-SkillBackupMarker stamps a freshly created stamp root as DWS-owned.
+# [IO.File]::WriteAllText pins the exact LF-terminated bytes (Set-Content
+# would append a platform newline on Windows PowerShell 5.1).
+function Write-SkillBackupMarker {
+    param([string]$Root)
+    [System.IO.File]::WriteAllText(
+        (Join-Path $Root $SkillBackupMarkerFile),
+        "$SkillBackupMarkerBody`n",
+        [System.Text.UTF8Encoding]::new($false))
+}
+
+# Test-SkillBackupMarker reports whether a stamp root carries the ownership
+# marker. The check normalizes CRLF→LF and drops trailing newlines before
+# comparing, so this surface accepts every surface's exact-LF bytes (writer
+# and checker agree); any other content, or a missing/unreadable marker,
+# means foreign data.
+function Test-SkillBackupMarker {
+    param([string]$Dir)
+    try {
+        $marker = Join-Path $Dir $SkillBackupMarkerFile
+        if (![System.IO.File]::Exists($marker)) { return $false }
+        $body = [System.IO.File]::ReadAllText($marker).Replace("`r`n", "`n").TrimEnd("`r", "`n")
+        return ($body -eq $SkillBackupMarkerBody)
+    } catch {
+        return $false
+    }
+}
+
+# Removes a whole stamp root child-first without ever following a reparse
+# point: link children are deleted non-recursively, real directories are
+# recursed the same way, and only an emptied directory is removed. Backup
+# trees can contain junctions/symlinks (victims are collected before the
+# physical-equality filter), and Windows PowerShell 5.1 can follow reparse
+# points during Remove-Item -Recurse — the invariant Remove-LinkStageRoot
+# enforces for staging roots, applied at every depth here.
+function Remove-SkillBackupTreeLexically {
+    param([string]$Path)
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if ($item.PSIsContainer -and !$item.LinkType) {
+        foreach ($child in @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop)) {
+            Remove-SkillBackupTreeLexically -Path $child.FullName
+        }
+    }
+    Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+}
+
 # Remove-OldSkillBackups deletes the oldest stamped backup directories once
 # more than $SkillBackupKeep remain. Stamps sort lexicographically in
 # chronological order, so name order is age order. Roots created during this
@@ -745,16 +828,17 @@ function Remove-OldSkillBackups {
     $root = Join-Path $HOME ".dws\skill-backups"
     if (!(Test-Path -LiteralPath $root -PathType Container)) { return }
     # Only directories whose names match the DWS backup stamp format (UTC
-    # yyyyMMdd-HHmmss, optional -N collision suffix) are candidates; any
-    # other entry is foreign data and is preserved.
+    # yyyyMMdd-HHmmss, optional -N collision suffix) AND whose ownership
+    # marker verifies are candidates; anything else is foreign data —
+    # preserved and never counted against $SkillBackupKeep.
     $dirs = @(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' } |
+        Where-Object { $_.Name -match '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' -and (Test-SkillBackupMarker -Dir $_.FullName) } |
         Sort-Object -Property Name)
     $excess = $dirs.Count - $SkillBackupKeep
     foreach ($dir in $dirs) {
         if ($excess -le 0) { break }
         if ($script:SkillBackupRootsThisRun.Contains($dir.FullName)) { continue }
-        Remove-Item -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        try { Remove-SkillBackupTreeLexically -Path $dir.FullName } catch { }
         $excess--
     }
 }
@@ -777,7 +861,12 @@ function Backup-SkillDir {
     $targetRoot = Join-Path $backupRoot $stamp
     $target = Join-Path $targetRoot $name
     $i = 1
-    while (Test-SkillPathLexically -Path $target) {
+    # Bump not only when <stamp>\<name> is taken but also when the stamp root
+    # itself exists without a verified ownership marker: a same-second
+    # foreign directory must never be stamped DWS-owned and pruned later. A
+    # marker-verified root from this run's same second stays reusable.
+    while ((Test-SkillPathLexically -Path $target) -or
+        ((Test-SkillPathLexically -Path $targetRoot) -and !(Test-SkillBackupMarker -Dir $targetRoot))) {
         $targetRoot = Join-Path $backupRoot "$stamp-$i"
         $target = Join-Path $targetRoot $name
         $i++
@@ -788,6 +877,19 @@ function Backup-SkillDir {
     }
     try {
         New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force -ErrorAction Stop | Out-Null
+        # Stamp ownership immediately after creating the stamp root and
+        # before any skill directory moves into it, so an interrupted backup
+        # can never leave an unmarked (never-prunable) stamp behind.
+        Write-SkillBackupMarker -Root $targetRoot
+    } catch {
+        # The removal stays non-recursive so a pre-existing non-empty root
+        # (foreign data) is never destroyed; a failed marker write must not
+        # leave an empty unowned stamp root behind either.
+        Remove-Item -LiteralPath $targetRoot -Force -ErrorAction SilentlyContinue
+        Write-Say "⚠️  备份失败，保留原目录 $Dir`: $_"
+        return $false
+    }
+    try {
         Move-SkillPathRecoverably -Source $Dir -Destination $target
     } catch {
         Write-Say "⚠️  备份失败，保留原目录 $Dir`: $_"

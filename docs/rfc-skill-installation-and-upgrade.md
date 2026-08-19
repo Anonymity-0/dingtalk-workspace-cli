@@ -143,7 +143,9 @@ Agent 仍只需以 `SKILL.md` 发现和加载 Skill；统一元数据位于 Agen
 升级器始终先发布 `~/.agents/skills` canonical 集合。固定兼容注册表中被分类为
 universal 的 Agent 不再保留 Agent 私有副本；检测到的
 非 universal Agent（如 Claude、OpenClaw、Hermes、Windsurf）使用指向 canonical
-的目录链接，Windows 使用 junction。链接不可用时回退为内容完整的直接复制。
+的目录链接：npm 与 PowerShell 安装器在 Windows 上创建 junction，`dws upgrade` /
+`dws skill setup` 创建符号链接（`os.Symlink`）。链接不可用时回退为内容完整的
+直接复制，包括未开启开发者模式、因而无法创建符号链接的 Windows。
 自定义 `CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`HERMES_HOME`、`AUTOHAND_HOME`、
 `GROK_HOME`、`VIBE_HOME`、`XDG_CONFIG_HOME` 与 OpenClaw 历史目录 `.clawdbot`、
 `.moltbot` 必须按 Agent 实际优先级解析。
@@ -197,9 +199,14 @@ Agent 目标仍彼此独立，一个目标失败不会回滚此前已经成功�
 原子 no-replace 发布（Linux `RENAME_NOREPLACE`、Darwin `RENAME_EXCL`）依赖底层文件
 系统支持：`rename(2)` 只列出 ext4、btrfs、tmpfs 与 cifs，因此 NFS、FUSE 与
 overlayfs 家目录会以 `EINVAL` 拒绝该 flag。这些文件系统不得让安装整体失败，而是降级
-为“显式存在性检查 + 普通 rename”：不覆盖既有目标的契约保持不变，仅失去原子性，
-其检查与 rename 之间的竞态窗口与普通 rename 本身一致，并由发布后的身份与内容校验
-兜底。Windows `MoveFile` 本身即拒绝已存在的目标，无需降级。
+为原子占位发布：目录目标用 `mkdir` 认领（已占用即 `EEXIST`，认领期间目标始终被本事务
+持有，源子项逐个移入认领目录，最终以 rename 覆盖仅属于本事务的空认领或直接移入）；
+普通文件目标用硬链接占位（同样以 `EEXIST` 拒绝已占用路径）后删除源。任何一步失败都会
+回迁已移动的子项并只撤销本事务的占位，被并发创建的对象（文件、符号链接或目录）既不会
+被覆盖，也不会被链接进内部。逐子项移动路径不是全量原子可见（降级文件系统上的可接受
+边界），但不覆盖契约在所有平台保持不变。Windows `MoveFile` 本身即拒绝已存在的目标，
+无需降级。npm 与 Shell 安装面遵循同一占位模型：目录用 `mkdir`/子项移动，链接直接在
+目标路径创建（symlink(2) 原子拒绝已占用路径）。
 
 备份是安装安全机制，不等于独立 rollback 产品。需要切回 mono 时重新运行
 `dws skill setup --mode mono`。
@@ -247,7 +254,8 @@ Homebrew 不直接向 Agent home 铺设 Skill；安装 CLI 后由 setup 执行�
 - 复制失败不留下 Agent 可见的残缺官方目录；
 - 普通 upgrade 恢复被删除的预制 Skill，并安装新增官方 Skill；
 - Windows、macOS、Linux 的路径和覆盖率门禁；
-- symlinked parent、Windows junction、链接失败复制回退与 broken link 修复；
+- symlinked parent、npm/PowerShell 的 Windows junction、`dws upgrade` /
+  `dws skill setup` 的符号链接、链接失败复制回退与 broken link 修复；
 - Claude/Codex/Hermes 自定义根目录及 OpenClaw 历史目录优先级；
 - `CLAUDE_CONFIG_DIR`、`HERMES_HOME`、`XDG_CONFIG_HOME` 等自定义根跨文件系统时的
   正向备份、反向恢复、普通链接及 dangling symlink 词法保留；

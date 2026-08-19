@@ -115,7 +115,18 @@ function Move-DevSkillPath([string]$Source, [string]$Destination) {
     if ($sourceItem.PSIsContainer) {
         [System.IO.Directory]::Move($Source, $Destination)
     } else {
-        [System.IO.File]::Move($Source, $Destination)
+        [System.IO.File]::Copy($Source, $Destination, $false)
+        try {
+            Remove-DevSkillPathLexically $Source
+        } catch {
+            $removeErr = $_
+            try {
+                Remove-DevSkillPathLexically $Destination
+            } catch {
+                throw "Skill move state uncertain; source $Source and dest $Destination retained: $removeErr; retract failed: $_"
+            }
+            throw $removeErr
+        }
     }
 }
 
@@ -235,13 +246,31 @@ function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
     $stageRoot = Join-Path $destinationParent ("." + (Split-Path $Destination -Leaf) + ".cross-device-" + [guid]::NewGuid().ToString("N"))
     $stage = Join-Path $stageRoot "payload"
     New-Item -ItemType Directory -Path $stageRoot -ErrorAction Stop | Out-Null
+    $published = $false
     try {
         Copy-DevSkillPathLexically $Source $stage
         Assert-DevSkillPathCopy $Source $stage
         Move-DevSkillPath $stage $Destination
-        Assert-DevSkillPathCopy $Source $Destination
-        if (!(Remove-DevLinkStageRoot $stageRoot)) {
-            throw "Skill staging cleanup failed (published content untouched): $stageRoot"
+        $published = $true
+        try {
+            Assert-DevSkillPathCopy $Source $Destination
+            if (!(Remove-DevLinkStageRoot $stageRoot)) {
+                throw "Skill staging cleanup failed: $stageRoot"
+            }
+        } catch {
+            $postErr = $_
+            try {
+                # Retract only after proving the destination is still this
+                # transaction's copy (mirrors install.ps1's
+                # Remove-PublishedSkillPathSafely retract): a path-blind
+                # lexical removal would delete a concurrent replacement.
+                if (Test-PathLexically $Destination) {
+                    Remove-VerifiedDevSkillPublication $Destination $Source ""
+                }
+            } catch {
+                throw "Skill move state uncertain: $postErr; failed to retract $Destination`: $_; source $Source and dest $Destination retained"
+            }
+            throw "Skill move failed, dest retracted, source retained ${Source}: $postErr"
         }
         try { Remove-DevSkillPathLexically $Source } catch {
             throw "Skill target published but source removal failed; both retained ($Source, $Destination): $_"
@@ -251,7 +280,9 @@ function Move-DevSkillPathRecoverably([string]$Source, [string]$Destination) {
         $failure = $_
         if (Test-Path -LiteralPath $stageRoot) {
             if (!(Remove-DevLinkStageRoot $stageRoot)) {
-                throw "$failure; cross-device Skill staging cleanup failed $stageRoot (backup and original retained)"
+                if (-not $published) {
+                    throw "$failure; cross-device Skill staging cleanup failed $stageRoot (backup and original retained)"
+                }
             }
         }
         throw $failure
@@ -287,20 +318,72 @@ function Get-DevSkillBackupName([string]$Dir) {
 $DevSkillBackupKeep = 5
 $script:DevSkillBackupRootsThisRun = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
+# Ownership marker: every stamp root DWS creates carries .dws-skill-backup
+# with exactly "dws skill backup v1" + LF — the same bytes internal/upgrade/
+# paths.go, install.sh, and build/npm/install.js write. A stamp-shaped name
+# alone is not ownership proof, so pruning only deletes directories whose
+# marker content verifies.
+$DevSkillBackupMarkerFile = ".dws-skill-backup"
+$DevSkillBackupMarkerBody = "dws skill backup v1"
+
+# Write-DevSkillBackupMarker stamps a freshly created stamp root as DWS-owned.
+# [IO.File]::WriteAllText pins the exact LF-terminated bytes (Set-Content
+# would append a platform newline on Windows PowerShell 5.1).
+function Write-DevSkillBackupMarker([string]$Root) {
+    [System.IO.File]::WriteAllText(
+        (Join-Path $Root $DevSkillBackupMarkerFile),
+        "$DevSkillBackupMarkerBody`n",
+        [System.Text.UTF8Encoding]::new($false))
+}
+
+# Test-DevSkillBackupMarker reports whether a stamp root carries the ownership
+# marker. The check normalizes CRLF→LF and drops trailing newlines before
+# comparing, so this surface accepts every surface's exact-LF bytes (writer
+# and checker agree); any other content, or a missing/unreadable marker,
+# means foreign data.
+function Test-DevSkillBackupMarker([string]$Dir) {
+    try {
+        $marker = Join-Path $Dir $DevSkillBackupMarkerFile
+        if (![System.IO.File]::Exists($marker)) { return $false }
+        $body = [System.IO.File]::ReadAllText($marker).Replace("`r`n", "`n").TrimEnd("`r", "`n")
+        return ($body -eq $DevSkillBackupMarkerBody)
+    } catch {
+        return $false
+    }
+}
+
+# Removes a whole stamp root child-first without ever following a reparse
+# point: link children are deleted non-recursively, real directories are
+# recursed the same way, and only an emptied directory is removed. Backup
+# trees can contain junctions/symlinks (victims are collected before the
+# physical-equality filter), and Windows PowerShell 5.1 can follow reparse
+# points during Remove-Item -Recurse — the invariant Remove-DevLinkStageRoot
+# enforces for staging roots, applied at every depth here.
+function Remove-DevSkillBackupTreeLexically([string]$Path) {
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if ($item.PSIsContainer -and !$item.LinkType) {
+        foreach ($child in @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop)) {
+            Remove-DevSkillBackupTreeLexically $child.FullName
+        }
+    }
+    Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+}
+
 function Remove-OldDevSkillBackups {
     $root = Join-Path $HOME ".dws\skill-backups"
     if (!(Test-Path -LiteralPath $root -PathType Container)) { return }
     # Only directories whose names match the DWS backup stamp format (UTC
-    # yyyyMMdd-HHmmss, optional -N collision suffix) are candidates; any
-    # other entry is foreign data and is preserved.
+    # yyyyMMdd-HHmmss, optional -N collision suffix) AND whose ownership
+    # marker verifies are candidates; anything else is foreign data —
+    # preserved and never counted against $DevSkillBackupKeep.
     $dirs = @(Get-ChildItem -LiteralPath $root -Directory -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' } |
+        Where-Object { $_.Name -match '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' -and (Test-DevSkillBackupMarker $_.FullName) } |
         Sort-Object -Property Name)
     $excess = $dirs.Count - $DevSkillBackupKeep
     foreach ($dir in $dirs) {
         if ($excess -le 0) { break }
         if ($script:DevSkillBackupRootsThisRun.Contains($dir.FullName)) { continue }
-        Remove-Item -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        try { Remove-DevSkillBackupTreeLexically $dir.FullName } catch { }
         $excess--
     }
 }
@@ -321,6 +404,18 @@ function Backup-DevSkill([string]$path, [ref]$BackupPath) {
         if ($i -gt 1000) { throw "备份目录冲突无法解决，保留原目录: $path" }
     }
     New-Item -ItemType Directory -Path $backupRoot -Force -ErrorAction Stop | Out-Null
+    # Stamp ownership immediately after creating the stamp root and before
+    # any skill directory moves into it, so an interrupted backup can never
+    # leave an unmarked (never-prunable) stamp behind.
+    try {
+        Write-DevSkillBackupMarker $backupRoot
+    } catch {
+        # The removal stays non-recursive so a pre-existing non-empty root
+        # (foreign data) is never destroyed; a failed marker write must not
+        # leave an empty unowned stamp root behind either.
+        Remove-Item -LiteralPath $backupRoot -Force -ErrorAction SilentlyContinue
+        throw
+    }
     Move-DevSkillPathRecoverably $path $target
     if ($null -ne $BackupPath) { $BackupPath.Value = $target }
     try {

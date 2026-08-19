@@ -163,6 +163,31 @@ const SKILL_BACKUP_KEEP = 5;
 // transaction still needs them to roll back.
 const currentRunBackupRoots = new Set();
 
+// Ownership marker: every stamp root DWS creates carries .dws-skill-backup
+// with exactly these bytes — the same bytes internal/upgrade/paths.go,
+// install.sh, and the PowerShell installers write. A stamp-shaped name alone
+// is not ownership proof, so pruning only deletes directories whose marker
+// content matches byte-for-byte (cross-surface exact-LF contract; a
+// PowerShell writer's hypothetical CRLF is normalized away on that surface,
+// while every writer here emits LF).
+const SKILL_BACKUP_MARKER_FILE = ".dws-skill-backup";
+const SKILL_BACKUP_MARKER_BODY = "dws skill backup v1\n";
+
+// writeSkillBackupMarker stamps a freshly created stamp root as DWS-owned.
+function writeSkillBackupMarker(root) {
+  fs.writeFileSync(path.join(root, SKILL_BACKUP_MARKER_FILE), SKILL_BACKUP_MARKER_BODY);
+}
+
+// isProvenSkillBackupRoot reports whether a stamp root carries the ownership
+// marker with the exact expected bytes; anything else is foreign data.
+function isProvenSkillBackupRoot(root) {
+  try {
+    return fs.readFileSync(path.join(root, SKILL_BACKUP_MARKER_FILE), "utf8") === SKILL_BACKUP_MARKER_BODY;
+  } catch {
+    return false;
+  }
+}
+
 // skillBackupStampPattern matches only directory names DWS itself writes:
 // UTC YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry
 // in the backup root is foreign (user data, unrelated tooling) and must be
@@ -175,9 +200,10 @@ function isSkillBackupStamp(name) {
 
 // pruneSkillBackups removes the oldest stamped backup directories once more
 // than SKILL_BACKUP_KEEP remain. Only directories whose names match the DWS
-// backup stamp format are candidates; unknown directories are preserved.
-// Stamps sort lexicographically in chronological order (`YYYYmmdd-HHMMSS`),
-// so name order is age order.
+// backup stamp format AND whose ownership marker verifies are candidates;
+// unknown or unmarked directories are foreign data — preserved and never
+// counted against SKILL_BACKUP_KEEP. Stamps sort lexicographically in
+// chronological order (`YYYYmmdd-HHMMSS`), so name order is age order.
 function pruneSkillBackups(homeDir) {
   const root = path.join(homeDir, ".dws", "skill-backups");
   let entries;
@@ -189,6 +215,7 @@ function pruneSkillBackups(homeDir) {
   }
   const names = entries
     .filter((entry) => entry.isDirectory() && isSkillBackupStamp(entry.name))
+    .filter((entry) => isProvenSkillBackupRoot(path.join(root, entry.name)))
     .map((entry) => entry.name)
     .sort((a, b) => Buffer.from(a).compare(Buffer.from(b)));
   let excess = names.length - SKILL_BACKUP_KEEP;
@@ -343,8 +370,270 @@ function verifyPathCopySync(src, dest) {
   }
 }
 
+// removeClaimIfEmptySync deletes a claimed destination only while it holds no
+// entries. A foreign entry that appeared after the claim must never be
+// removed: the rollback has no ownership proof for it.
+function removeClaimIfEmptySync(destination) {
+  try {
+    fs.rmdirSync(destination);
+  } catch (err) {
+    if (err && (err.code === "ENOTEMPTY" || err.code === "EEXIST" || err.code === "EPERM")) {
+      return;
+    }
+    throw err;
+  }
+}
+
+function destinationExistsError(destination) {
+  return Object.assign(new Error(`Skill move destination already exists: ${destination}`), { code: "EEXIST" });
+}
+
+// moveChildIntoClaimNoClobberSync moves one staged child into the claimed
+// destination through an atomic no-clobber primitive: directories recursively
+// claim with mkdir, regular files publish via fs.linkSync, and symlinks are
+// recreated with fs.symlinkSync. Every primitive fails with EEXIST when the
+// destination entry was taken concurrently, so no step can replace a foreign
+// object the way a plain rename would.
+function moveChildIntoClaimNoClobberSync(source, destination, fns) {
+  const sourceStat = fs.lstatSync(source);
+  if (sourceStat.isDirectory() && !sourceStat.isSymbolicLink()) {
+    try {
+      fns.mkdirFn(destination);
+    } catch (err) {
+      if (err && err.code === "EEXIST") throw destinationExistsError(destination);
+      throw err;
+    }
+    moveChildrenIntoClaimSync(source, destination, sourceStat.mode & 0o777, fns);
+    // The recursive move leaves an emptied shell at the source. rmdirSync
+    // only deletes an empty directory, so clearing the shell keeps the
+    // single-move outcome the parent's rollback expects; a shell that gained
+    // a concurrent entry fails the removal and retracts the publication
+    // instead of silently discarding it.
+    try {
+      fs.rmdirSync(source);
+    } catch (err) {
+      const rollbackErr = moveChildrenBackOutOfClaimSync(source, destination, fs.readdirSync(destination), fns);
+      removeClaimIfEmptySync(destination);
+      throw new Error(
+        `Skill move state uncertain; source shell ${source} removal failed: ${err.message}` +
+          (rollbackErr ? `; rollback failed: ${rollbackErr.message}` : ""),
+      );
+    }
+    return;
+  }
+  if (sourceStat.isSymbolicLink()) {
+    const target = fs.readlinkSync(source);
+    try {
+      fns.symlinkFn(target, destination);
+    } catch (err) {
+      if (err && err.code === "EEXIST") throw destinationExistsError(destination);
+      throw err;
+    }
+    try {
+      fs.unlinkSync(source);
+    } catch (err) {
+      let current = null;
+      try {
+        current = fs.readlinkSync(destination);
+      } catch (_) {
+        // Dest no longer carries our link; leave whatever replaced it.
+      }
+      if (current === target) fs.unlinkSync(destination);
+      throw err;
+    }
+    return;
+  }
+  if (sourceStat.isFile()) {
+    try {
+      fns.linkFn(source, destination);
+    } catch (err) {
+      if (err && err.code === "EEXIST") throw destinationExistsError(destination);
+      throw err;
+    }
+    try {
+      fs.unlinkSync(source);
+    } catch (err) {
+      try {
+        const destStat = fs.lstatSync(destination, { bigint: true });
+        if (destStat.ino === sourceStat.ino && destStat.dev === sourceStat.dev) {
+          fs.unlinkSync(destination);
+        }
+      } catch (_) {
+        // Best effort; the error below names both retained paths.
+      }
+      throw err;
+    }
+    return;
+  }
+  throw new Error(`unsupported Skill path type for no-replace move: ${source}`);
+}
+
+// moveChildrenBackOutOfClaimSync returns the already relocated children to
+// the source with plain renames — every one of them is an object this
+// transaction published, so a replacing rename is safe — and removes the
+// claim only while it is empty.
+function moveChildrenBackOutOfClaimSync(source, destination, moved, fns) {
+  let firstErr = null;
+  for (let i = moved.length - 1; i >= 0; i -= 1) {
+    try {
+      fns.renameFn(path.join(destination, moved[i]), path.join(source, moved[i]));
+    } catch (err) {
+      firstErr = firstErr || err;
+    }
+  }
+  try {
+    removeClaimIfEmptySync(destination);
+  } catch (err) {
+    firstErr = firstErr || err;
+  }
+  return firstErr;
+}
+
+// moveChildrenIntoClaimSync populates an already-claimed destination from the
+// staged source. The claim must still be empty when it runs (a concurrent
+// writer landing between the claim and here aborts the publication with the
+// destination retained), every child moves through an atomic no-clobber
+// primitive, and a live re-read catches a different-named foreign entry that
+// landed mid-move. Any failure returns the moved children to the source and
+// removes the claim only while it is empty, so foreign data always survives.
+function moveChildrenIntoClaimSync(source, destination, sourceMode, fns) {
+  const claimEntries = fs.readdirSync(destination);
+  if (claimEntries.length > 0) {
+    throw destinationExistsError(destination);
+  }
+  const entries = fs.readdirSync(source);
+  const moved = [];
+  for (const name of entries) {
+    try {
+      moveChildIntoClaimNoClobberSync(path.join(source, name), path.join(destination, name), fns);
+    } catch (err) {
+      const rollbackErr = moveChildrenBackOutOfClaimSync(source, destination, moved, fns);
+      if (rollbackErr) {
+        throw new Error(`${err.message}; rollback failed: ${rollbackErr.message}`);
+      }
+      throw err;
+    }
+    moved.push(name);
+  }
+  const live = fs.readdirSync(destination);
+  if (live.length > entries.length) {
+    const abortErr = destinationExistsError(destination);
+    const rollbackErr = moveChildrenBackOutOfClaimSync(source, destination, moved, fns);
+    if (rollbackErr) {
+      throw new Error(`${abortErr.message}; rollback failed: ${rollbackErr.message}`);
+    }
+    throw abortErr;
+  }
+  fns.chmodFn(destination, sourceMode);
+}
+
+function defaultClaimFns(renameFn) {
+  return {
+    mkdirFn: (target) => fs.mkdirSync(target, { mode: 0o700 }),
+    renameFn: renameFn || fs.renameSync,
+    linkFn: fs.linkSync,
+    symlinkFn: fs.symlinkSync,
+    chmodFn: fs.chmodSync,
+  };
+}
+
+function renamePathNoReplaceSync(source, destination, renameFn = fs.renameSync) {
+  const sourceStat = fs.lstatSync(source);
+  if (sourceStat.isDirectory() && !sourceStat.isSymbolicLink()) {
+    const fns = defaultClaimFns(renameFn);
+    try {
+      fns.mkdirFn(destination);
+    } catch (err) {
+      if (err && err.code === "EEXIST") {
+        throw destinationExistsError(destination);
+      }
+      throw err;
+    }
+    moveChildrenIntoClaimSync(source, destination, sourceStat.mode & 0o777, fns);
+    try {
+      fs.rmdirSync(source);
+    } catch (err) {
+      const rollbackErr = moveChildrenBackOutOfClaimSync(source, destination, fs.readdirSync(destination), fns);
+      if (rollbackErr) {
+        throw new Error(`Skill move state uncertain; source ${source} and dest ${destination} retained: ${err.message}; retract failed: ${rollbackErr.message}`);
+      }
+      throw err;
+    }
+    return;
+  }
+  if (sourceStat.isSymbolicLink()) {
+    try {
+      fs.symlinkSync(fs.readlinkSync(source), destination);
+    } catch (err) {
+      if (err && err.code === "EEXIST") {
+        throw destinationExistsError(destination);
+      }
+      throw err;
+    }
+    try {
+      fs.unlinkSync(source);
+    } catch (err) {
+      try {
+        fs.unlinkSync(destination);
+      } catch (retractErr) {
+        throw new Error(`Skill move state uncertain; source ${source} and dest ${destination} retained: ${err.message}; retract failed: ${retractErr.message}`);
+      }
+      throw err;
+    }
+    return;
+  }
+  if (sourceStat.isFile()) {
+    try {
+      fs.linkSync(source, destination);
+    } catch (err) {
+      if (err && err.code === "EEXIST") {
+        throw destinationExistsError(destination);
+      }
+      throw err;
+    }
+    try {
+      fs.unlinkSync(source);
+    } catch (err) {
+      try {
+        const destStat = fs.lstatSync(destination);
+        if (destStat.ino === sourceStat.ino && destStat.dev === sourceStat.dev) {
+          fs.unlinkSync(destination);
+        }
+      } catch (retractErr) {
+        throw new Error(`Skill move state uncertain; source ${source} and dest ${destination} retained: ${err.message}; retract failed: ${retractErr.message}`);
+      }
+      throw err;
+    }
+    return;
+  }
+  throw new Error(`unsupported Skill path type for no-replace move: ${source}`);
+}
+
+function recordSkillPathPublicationSync(destination) {
+  const stat = fs.lstatSync(destination, { bigint: true });
+  return {
+    destination,
+    device: stat.dev.toString(),
+    inode: stat.ino.toString(),
+    fingerprint: skillPathFingerprint(destination),
+  };
+}
+
+function retractUnconfirmedSkillPublicationSync(src, dest, publication, cause, options = {}) {
+  try {
+    rollbackPublishedSkillPath(publication, {
+      quarantineRenameFn: options.quarantineRenameFn,
+      restoreRenameFn: options.restoreRenameFn || options.renameFn,
+      removeFn: options.removeFn,
+    });
+  } catch (retractErr) {
+    throw new Error(`Skill move state uncertain: ${cause.message}; failed to retract ${dest}: ${retractErr.message}; source ${src} and dest ${dest} retained`);
+  }
+  throw new Error(`Skill move failed, dest retracted, source retained (${src}): ${cause.message}`);
+}
+
 function movePathRecoverablySync(src, dest, options = {}) {
-  const renameFn = options.renameFn || fs.renameSync;
+  const renameFn = options.renameFn || ((source, target) => renamePathNoReplaceSync(source, target));
   const copyFn = options.copyFn || copyPathLexicallySync;
   const verifyFn = options.verifyFn || verifyPathCopySync;
   const removeFn = options.removeFn || ((target) => fs.rmSync(target, { recursive: true, force: true }));
@@ -364,18 +653,39 @@ function movePathRecoverablySync(src, dest, options = {}) {
   const stageRoot = mkdirTempFn(path.join(path.dirname(dest), `.${path.basename(dest)}.cross-device-`));
   const stage = path.join(stageRoot, "payload");
   let stageCleaned = false;
+  let destOccupied = false;
   try {
     copyFn(src, stage);
     verifyFn(src, stage);
     const stageInfo = fs.lstatSync(stage);
     const stageMode = stageInfo.mode & 0o777;
     if (stageInfo.isDirectory()) chmodFn(stage, stageMode | 0o700);
-    renameFn(stage, dest);
-    if (stageInfo.isDirectory()) chmodFn(dest, stageMode);
-    verifyFn(src, dest);
-    makeTreeWritableBestEffortSync(stageRoot);
-    removeFn(stageRoot);
-    stageCleaned = true;
+    // Dest publication is always no-replace. The injected renameFn is the
+    // same-volume EXDEV probe; using it here would re-open a replacing
+    // rename on Windows (MOVEFILE_REPLACE_EXISTING).
+    renamePathNoReplaceSync(stage, dest, renameFn);
+    destOccupied = true;
+    let publication;
+    try {
+      publication = recordSkillPathPublicationSync(dest);
+    } catch (recErr) {
+      if (!pathExistsLexicallySync(dest)) throw recErr;
+      throw new Error(`Skill move state uncertain: published dest ${dest} could not be recorded: ${recErr.message}; source ${src} and dest ${dest} retained`);
+    }
+    try {
+      if (stageInfo.isDirectory()) {
+        chmodFn(dest, stageMode);
+        publication = recordSkillPathPublicationSync(dest);
+      }
+      verifyFn(src, dest);
+      makeTreeWritableBestEffortSync(stageRoot);
+      removeFn(stageRoot);
+      stageCleaned = true;
+    } catch (postErr) {
+      retractUnconfirmedSkillPublicationSync(src, dest, publication, postErr, {
+        removeFn,
+      });
+    }
     try {
       removePublishedSourceSync(src, removeFn, chmodFn);
     } catch (err) {
@@ -389,8 +699,11 @@ function movePathRecoverablySync(src, dest, options = {}) {
       try {
         makeTreeWritableBestEffortSync(stageRoot);
         removeFn(stageRoot);
+        stageCleaned = true;
       } catch (cleanupErr) {
-        throw new Error(`${err.message}; cross-device staging cleanup failed: ${cleanupErr.message}`);
+        if (!destOccupied) {
+          throw new Error(`${err.message}; cross-device staging cleanup failed: ${cleanupErr.message}`);
+        }
       }
     }
     throw err;
@@ -437,6 +750,23 @@ function backupAndRemoveSkillDir(homeDir, dir, backups = null, options = {}) {
   }
   try {
     fs.mkdirSync(targetRoot, { recursive: true });
+    // Stamp ownership immediately after creating the stamp root and before
+    // the skill directory moves into it, so an interrupted backup can never
+    // leave an unmarked (never-prunable) stamp behind.
+    writeSkillBackupMarker(targetRoot);
+  } catch (err) {
+    // Never leave an empty unowned stamp root behind. rmdirSync removes an
+    // empty root but deliberately fails on a non-empty one, so a pre-existing
+    // root holding foreign data is never destroyed.
+    try {
+      fs.rmdirSync(targetRoot);
+    } catch {
+      // Non-empty pre-existing root: foreign data stays.
+    }
+    console.warn(`⚠️  备份失败，保留原目录 ${dir}: ${err.message}`);
+    throw new Error(`failed to back up Skill directory ${dir}: ${err.message}`);
+  }
+  try {
     movePathRecoverablySync(dir, target, options);
   } catch (err) {
     console.warn(`⚠️  备份失败，保留原目录 ${dir}: ${err.message}`);
@@ -794,16 +1124,6 @@ function skillPathFingerprint(target) {
   return hash.digest("hex");
 }
 
-function captureSkillPublication(source, destination) {
-  const stat = fs.lstatSync(source, { bigint: true });
-  return {
-    destination,
-    device: stat.dev.toString(),
-    inode: stat.ino.toString(),
-    fingerprint: skillPathFingerprint(source),
-  };
-}
-
 function skillPublicationMatches(target, publication) {
   const stat = fs.lstatSync(target, { bigint: true });
   return stat.dev.toString() === publication.device
@@ -831,15 +1151,53 @@ function skillPathExistsLexically(target) {
 }
 
 function rollbackPublishedSkillPath(publication, options = {}) {
-  const renameFn = options.renameFn || fs.renameSync;
+  // Prove ownership at dest first. Quarantining before that check would move
+  // a concurrent replacement off its original path; if the later match fails
+  // and restore cannot republish, user data stays hidden under .rollback-*.
+  // Quarantine itself is a same-inode rename — a no-replace mkdir-claim
+  // would mint a new identity and make this transaction's own dest look
+  // foreign. A post-quarantine mismatch is restored with no-replace.
+  const quarantineRenameFn = options.quarantineRenameFn || fs.renameSync;
+  const restoreRenameFn = options.restoreRenameFn || options.renameFn || ((source, target) => renamePathNoReplaceSync(source, target));
   const removeFn = options.removeFn || removeSkillPathLexically;
   const destination = publication.destination;
   const quarantineRoot = fs.mkdtempSync(path.join(path.dirname(destination), `.${path.basename(destination)}.rollback-`));
   const quarantine = path.join(quarantineRoot, "payload");
+  const cleanupRoot = () => {
+    try {
+      fs.rmSync(quarantineRoot, { recursive: true, force: true });
+    } catch (cleanupErr) {
+      throw new Error(`failed to clean Skill rollback quarantine ${quarantineRoot}: ${cleanupErr.message}`);
+    }
+  };
   try {
-    renameFn(destination, quarantine);
+    if (!skillPublicationMatches(destination, publication)) {
+      cleanupRoot();
+      throw new Error(`refusing to delete non-transaction Skill ${destination}: concurrent object identity changed`);
+    }
   } catch (err) {
-    fs.rmSync(quarantineRoot, { recursive: true, force: true });
+    if (err && err.code === "ENOENT") {
+      // ENOENT from the fingerprint walk means the destination itself is
+      // gone only when it no longer exists lexically; a concurrently removed
+      // CHILD produces the same error and must fall through to the refusal
+      // below instead of skipping rollback.
+      if (!pathExistsLexicallySync(destination)) {
+        cleanupRoot();
+        return;
+      }
+    }
+    if (String(err.message || "").startsWith("refusing to delete non-transaction Skill")
+        || String(err.message || "").startsWith("failed to clean Skill rollback quarantine")) {
+      throw err;
+    }
+    cleanupRoot();
+    throw new Error(`refusing to delete unverifiable Skill ${destination}: ${err.message}`);
+  }
+
+  try {
+    quarantineRenameFn(destination, quarantine);
+  } catch (err) {
+    cleanupRoot();
     if (err && err.code === "ENOENT") return;
     throw new Error(`failed to quarantine published Skill ${destination}: ${err.message}`);
   }
@@ -847,43 +1205,121 @@ function rollbackPublishedSkillPath(publication, options = {}) {
   try {
     owned = skillPublicationMatches(quarantine, publication);
   } catch (err) {
-    throw new Error(`refusing to delete unverifiable Skill ${destination}; object retained at ${quarantine}: ${err.message}`);
+    try {
+      restoreRenameFn(quarantine, destination);
+    } catch (restoreErr) {
+      throw new Error(`refusing to delete non-transaction Skill ${destination}: ${err.message}; concurrent object retained at ${quarantine}; restore failed: ${restoreErr.message}`);
+    }
+    cleanupRoot();
+    throw new Error(`refusing to delete non-transaction Skill ${destination}: ${err.message}`);
   }
   if (!owned) {
-    throw new Error(`refusing to delete non-transaction Skill ${destination}; concurrent object retained at ${quarantine}`);
+    try {
+      restoreRenameFn(quarantine, destination);
+    } catch (restoreErr) {
+      throw new Error(`refusing to delete non-transaction Skill ${destination}: concurrent object identity changed; concurrent object retained at ${quarantine}; restore failed: ${restoreErr.message}`);
+    }
+    cleanupRoot();
+    throw new Error(`refusing to delete non-transaction Skill ${destination}: concurrent object identity changed`);
   }
   removeFn(quarantine);
-  fs.rmSync(quarantineRoot, { recursive: true, force: true });
+  cleanupRoot();
 }
 
+// Publish a staged Skill directory with a truly atomic no-replace claim.
+// fs.mkdirSync fails with EEXIST when anything occupies the destination, so
+// the claim itself is the existence check — there is no check-then-rename
+// window a concurrent file, symlink, or empty directory could slip through
+// (fs.renameSync replaces the destination outright on every platform,
+// including Windows where libuv passes MOVEFILE_REPLACE_EXISTING). Children
+// then move into the claimed directory one by one; each child rename targets
+// a path inside a directory this transaction owns, so no step can replace a
+// foreign object. The publication identity is the claim's: it is captured
+// after the claim succeeds and re-verified by the caller once the move
+// completes. On a failed child move the relocated children are moved back and
+// only the (now empty) claim is removed, so the destination returns to the
+// foreign object or to nothing — never to a partial publication.
+function publishSkillDirNoReplace(staged, destination, options = {}) {
+  const fns = {
+    mkdirFn: options.publishMkdirFn || ((target) => fs.mkdirSync(target, { mode: 0o700 })),
+    renameFn: options.publishRenameFn || fs.renameSync,
+    linkFn: options.publishLinkFn || fs.linkSync,
+    symlinkFn: options.publishSymlinkFn || fs.symlinkSync,
+    chmodFn: options.publishChmodFn || fs.chmodSync,
+  };
+  const sourceStat = fs.lstatSync(staged);
+  try {
+    fns.mkdirFn(destination);
+  } catch (err) {
+    if (err && err.code === "EEXIST") {
+      throw Object.assign(new Error(`Skill publish destination already exists: ${destination}`), { code: "EEXIST" });
+    }
+    throw err;
+  }
+  const claimStat = fs.lstatSync(destination, { bigint: true });
+  const publication = {
+    destination,
+    device: claimStat.dev.toString(),
+    inode: claimStat.ino.toString(),
+    fingerprint: skillPathFingerprint(staged),
+  };
+  moveChildrenIntoClaimSync(staged, destination, sourceStat.mode & 0o7777, fns);
+  return publication;
+}
+
+// Publish a staged canonical link by creating the link directly at the
+// destination. Link creation is the atomic no-replace primitive on every
+// platform: the kernel refuses with EEXIST when anything — file, symlink, or
+// directory — already occupies the path, and unlike a rename (which Windows
+// performs with MOVEFILE_REPLACE_EXISTING) or `ln -P source target` (which
+// links INTO a directory that appeared at the target) it has no
+// check-then-publish window and never treats the destination as a container.
+// Staging still proves beforehand that links can be created on this
+// filesystem, before any victim moves. The publication identity is captured
+// from the destination after creation — no primitive carries the staged
+// inode across this publish — and confirmation re-reads the live path, so a
+// concurrent replacement surfaces before the publication enters the rollback
+// list instead of being recorded as owned.
 function publishCanonicalLinkNoReplace(staged, destination, options = {}) {
-  const publication = captureSkillPublication(staged, destination);
-  // No-replace is a hard property of this publisher, so it is checked before
-  // either platform's publish call. Windows rename replaces the destination
-  // outright (libuv passes MOVEFILE_REPLACE_EXISTING) and `ln -P` treats an
-  // existing directory as a container to link INTO; in both cases the identity
-  // confirmation below compares against the staged object and could not
-  // recover the user's data. The sibling copy publishers guard identically.
-  if (skillPathExistsLexically(destination)) {
-    throw Object.assign(new Error(`Skill publish destination already exists: ${destination}`), { code: "EEXIST" });
+  const linkTarget = fs.readlinkSync(staged);
+  const linkType = process.platform === "win32" ? "junction" : "dir";
+  const symlinkFn = options.publishSymlinkFn || fs.symlinkSync;
+  try {
+    symlinkFn(linkTarget, destination, linkType);
+  } catch (err) {
+    if (err && err.code === "EEXIST") {
+      throw Object.assign(new Error(`Skill publish destination already exists: ${destination}`), { code: "EEXIST" });
+    }
+    throw err;
   }
-  if (process.platform === "win32") {
-    const renameFn = options.publishRenameFn || fs.renameSync;
-    renameFn(staged, destination);
-  } else {
-    const linkFn = options.publishLinkFn || ((source, target) => {
-      const result = childProcess.spawnSync("ln", ["-P", source, target], { encoding: "utf8" });
-      if (result.error) throw result.error;
-      if (result.status !== 0) {
-        const detail = (result.stderr || result.stdout || "ln -P failed").trim();
-        const error = new Error(detail);
-        if (skillPathExistsLexically(target)) error.code = "EEXIST";
-        throw error;
+  let publication;
+  try {
+    publication = recordSkillPathPublicationSync(destination);
+  } catch (recErr) {
+    if (!skillPathExistsLexically(destination)) throw recErr;
+    throw new Error(`Skill publish state uncertain: dest ${destination} occupied but unrecorded: ${recErr.message}`);
+  }
+  let destStat;
+  try {
+    destStat = fs.lstatSync(destination, { bigint: true });
+  } catch (err) {
+    throw new Error(`published Skill identity changed before confirmation: ${destination}: ${err.message}`);
+  }
+  if (!destStat.isSymbolicLink() || fs.readlinkSync(destination) !== linkTarget) {
+    // Dest is not the link this transaction created. Leave the occupant.
+    throw new Error(`published Skill identity changed before confirmation: ${destination}`);
+  }
+  const sameInode = publication
+    && destStat.dev.toString() === publication.device
+    && destStat.ino.toString() === publication.inode;
+  if (!publication || !sameInode || !skillPublicationMatches(destination, publication)) {
+    if (sameInode) {
+      try {
+        rollbackPublishedSkillPath(publication);
+      } catch (retractErr) {
+        throw new Error(`Skill publish state uncertain: published dest ${destination} confirmation failed; retract failed: ${retractErr.message}`);
       }
-    });
-    linkFn(staged, destination);
-  }
-  if (!skillPublicationMatches(destination, publication)) {
+    }
     throw new Error(`published Skill identity changed before confirmation: ${destination}`);
   }
   return publication;
@@ -892,7 +1328,7 @@ function publishCanonicalLinkNoReplace(staged, destination, options = {}) {
 function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names, victims, options = {}) {
   const moveOptions = skillMoveOptions(options);
   const publishRemoveFn = options.publishRemoveFn || removeSkillPathLexically;
-  const rollbackRenameFn = options.rollbackRenameFn || fs.renameSync;
+  const rollbackRenameFn = options.rollbackRenameFn || ((source, target) => renamePathNoReplaceSync(source, target));
   // Injectable so the Windows junction type and absolute link target can be
   // asserted from a non-Windows host.
   const symlinkFn = options.symlinkFn || fs.symlinkSync;
@@ -907,7 +1343,7 @@ function publishCanonicalLinksAtomically(homeDir, canonicalBase, baseDir, names,
     const restoreErrors = [];
     for (let i = published.length - 1; i >= 0; i -= 1) {
       try {
-        rollbackPublishedSkillPath(published[i], { renameFn: rollbackRenameFn, removeFn: publishRemoveFn });
+        rollbackPublishedSkillPath(published[i], { restoreRenameFn: rollbackRenameFn, removeFn: publishRemoveFn });
       } catch (err) {
         restoreErrors.push(`remove ${published[i].destination}: ${err.message}`);
       }
@@ -999,9 +1435,8 @@ function publishManagedMultiSkillSetAtomically(
   options = {},
 ) {
   const copyFn = options.copyFn || copyChildren;
-  const renameFn = options.renameFn || fs.renameSync;
   const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
-  const rollbackRenameFn = options.rollbackRenameFn || fs.renameSync;
+  const rollbackRenameFn = options.rollbackRenameFn || ((source, target) => renamePathNoReplaceSync(source, target));
   const moveOptions = skillMoveOptions(options);
   fs.mkdirSync(baseDir, { recursive: true });
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-multi-set.tmp-"));
@@ -1013,7 +1448,7 @@ function publishManagedMultiSkillSetAtomically(
     const restoreErrors = [];
     for (let i = published.length - 1; i >= 0; i -= 1) {
       try {
-        rollbackPublishedSkillPath(published[i], { renameFn: rollbackRenameFn, removeFn });
+        rollbackPublishedSkillPath(published[i], { restoreRenameFn: rollbackRenameFn, removeFn });
       } catch (err) {
         restoreErrors.push(`remove ${published[i].destination}: ${err.message}`);
       }
@@ -1050,10 +1485,23 @@ function publishManagedMultiSkillSetAtomically(
     }
 
     for (const item of staged) {
-      const publication = captureSkillPublication(item.staged, item.dest);
-      if (skillPathExistsLexically(item.dest)) throw new Error(`Skill publish destination already exists: ${item.dest}`);
-      renameFn(item.staged, item.dest);
-      if (!skillPublicationMatches(item.dest, publication)) throw new Error(`published Skill identity changed before confirmation: ${item.dest}`);
+      const publication = publishSkillDirNoReplace(item.staged, item.dest, options);
+      if (!skillPublicationMatches(item.dest, publication)) {
+        let live = null;
+        try {
+          live = fs.lstatSync(item.dest, { bigint: true });
+        } catch (_) {
+          live = null;
+        }
+        if (live && live.dev.toString() === publication.device && live.ino.toString() === publication.inode) {
+          try {
+            rollbackPublishedSkillPath(publication, { restoreRenameFn: rollbackRenameFn, removeFn });
+          } catch (retractErr) {
+            throw new Error(`Skill publish state uncertain: dest ${item.dest} confirmation failed; retract failed: ${retractErr.message}`);
+          }
+        }
+        throw new Error(`published Skill identity changed before confirmation: ${item.dest}`);
+      }
       published.push(publication);
     }
   } catch (err) {
@@ -1079,9 +1527,8 @@ function publishManagedMonoSkillSetAtomically(
   options = {},
 ) {
   const copyFn = options.copyFn || copyChildren;
-  const renameFn = options.renameFn || fs.renameSync;
   const removeFn = options.removeFn || ((dir) => fs.rmSync(dir, { recursive: true, force: true }));
-  const rollbackRenameFn = options.rollbackRenameFn || fs.renameSync;
+  const rollbackRenameFn = options.rollbackRenameFn || ((source, target) => renamePathNoReplaceSync(source, target));
   const moveOptions = skillMoveOptions(options);
   fs.mkdirSync(baseDir, { recursive: true });
   const stageRoot = fs.mkdtempSync(path.join(baseDir, ".dws-mono-set.tmp-"));
@@ -1094,7 +1541,7 @@ function publishManagedMonoSkillSetAtomically(
     const restoreErrors = [];
     for (let i = published.length - 1; i >= 0; i -= 1) {
       try {
-        rollbackPublishedSkillPath(published[i], { renameFn: rollbackRenameFn, removeFn });
+        rollbackPublishedSkillPath(published[i], { restoreRenameFn: rollbackRenameFn, removeFn });
       } catch (err) {
         restoreErrors.push(`remove ${published[i].destination}: ${err.message}`);
       }
@@ -1126,10 +1573,23 @@ function publishManagedMonoSkillSetAtomically(
       backupAndRemoveSkillDir(homeDir, victim, backups, moveOptions);
     }
 
-    const publication = captureSkillPublication(stagedDir, destDir);
-    if (skillPathExistsLexically(destDir)) throw new Error(`Skill publish destination already exists: ${destDir}`);
-    renameFn(stagedDir, destDir);
-    if (!skillPublicationMatches(destDir, publication)) throw new Error(`published Skill identity changed before confirmation: ${destDir}`);
+    const publication = publishSkillDirNoReplace(stagedDir, destDir, options);
+    if (!skillPublicationMatches(destDir, publication)) {
+      let live = null;
+      try {
+        live = fs.lstatSync(destDir, { bigint: true });
+      } catch (_) {
+        live = null;
+      }
+      if (live && live.dev.toString() === publication.device && live.ino.toString() === publication.inode) {
+        try {
+          rollbackPublishedSkillPath(publication, { restoreRenameFn: rollbackRenameFn, removeFn });
+        } catch (retractErr) {
+          throw new Error(`Skill publish state uncertain: dest ${destDir} confirmation failed; retract failed: ${retractErr.message}`);
+        }
+      }
+      throw new Error(`published Skill identity changed before confirmation: ${destDir}`);
+    }
     published.push(publication);
   } catch (err) {
     try {
@@ -1422,5 +1882,7 @@ module.exports = {
   publishCanonicalLinksAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
+  recordSkillPathPublicationSync,
+  rollbackPublishedSkillPath,
   verifyPathCopySync,
 };

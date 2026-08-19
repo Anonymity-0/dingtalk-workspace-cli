@@ -67,8 +67,30 @@ backup_and_remove_skill_dir() {
       return 1
     fi
   done
-  mkdir -p "$(dirname "$_bed_target")" 2>/dev/null || {
+  _bed_stamp_root="$(dirname "$_bed_target")"
+  record_current_run_backup_stamp "$_bed_stamp_root"
+  # Freshness must be sampled before mkdir: the collision loop tests the
+  # payload path, so a second backup in the same stamp second reuses this
+  # root while a sibling payload from this run already lives in it.
+  _bed_fresh=1
+  [ ! -d "$_bed_stamp_root" ] || _bed_fresh=0
+  mkdir -p "$_bed_stamp_root" 2>/dev/null || {
     printf '  ⚠️  无法创建备份目录，保留原目录 %s\n' "$_bed_dir"
+    return 1
+  }
+  # Ownership proof, the exact bytes Go's writeSkillBackupMarker stamps: a
+  # stamp-shaped name alone is not evidence, so pruning only ever removes
+  # roots carrying this marker — it must exist before any payload moves in.
+  printf '%s\n' 'dws skill backup v1' > "$_bed_stamp_root/.dws-skill-backup" 2>/dev/null || {
+    # Non-recursive cleanup, sibling protection: only a root this call
+    # created may be dropped, and only the marker plus an empty root (rmdir
+    # refuses a non-empty directory) — rm -rf here would destroy a completed
+    # same-second sibling backup whose original is already moved away.
+    if [ "$_bed_fresh" -eq 1 ]; then
+      rm -f "$_bed_stamp_root/.dws-skill-backup"
+      rmdir "$_bed_stamp_root" 2>/dev/null || true
+    fi
+    printf '  ⚠️  无法写入备份所有权标记，保留原目录 %s\n' "$_bed_dir"
     return 1
   }
   if mv "$_bed_dir" "$_bed_target" 2>/dev/null; then
@@ -80,17 +102,36 @@ backup_and_remove_skill_dir() {
   return 1
 }
 
-# prune_skill_backups keeps only the newest DWS_SKILL_BACKUP_KEEP stamped backup
-# directories under $HOME/.dws/skill-backups, matching Go's skillBackupKeep /
-# pruneSkillBackups. Best-effort: a removal failure is reported, never fatal.
-# Only safe to call once every backup manifest of this run has been consumed,
-# because a single transaction can span more than one timestamp.
+# prune_skill_backups keeps only the newest DWS_SKILL_BACKUP_KEEP stamped
+# backup directories from earlier runs under $HOME/.dws/skill-backups,
+# matching Go's skillBackupKeep / pruneSkillBackups. Only stamp-shaped roots
+# carrying the .dws-skill-backup marker with the exact expected content are
+# counted or removed: foreign data with a stamp-like name never consumes a
+# keep slot and is never deleted, silently. Stamp directories created
+# by the current process are never pruned (mirroring Go's run-root registry
+# and install.js's currentRunBackupRoots), so a migration that retires more
+# than DWS_SKILL_BACKUP_KEEP batches stays reversible. Best-effort: a removal
+# failure is reported, never fatal.
 DWS_SKILL_BACKUP_KEEP=5
 
-# is_skill_backup_stamp accepts only directory names DWS itself writes: UTC
-# YYYYmmdd-HHMMSS, with an optional -N collision suffix. Any other entry in
-# the backup root is foreign (user data, unrelated tooling) and is preserved
-# so pruning can never remove a directory it cannot prove DWS created.
+# Stamp directories created by this run, recorded by
+# backup_and_remove_skill_dir so pruning can never delete a backup the
+# running migration may still need to roll back to.
+DWS_CURRENT_RUN_BACKUP_STAMPS=""
+
+record_current_run_backup_stamp() {
+  case " $DWS_CURRENT_RUN_BACKUP_STAMPS " in
+    *" $1 "*) return 0 ;;
+  esac
+  DWS_CURRENT_RUN_BACKUP_STAMPS="${DWS_CURRENT_RUN_BACKUP_STAMPS} $1"
+}
+
+# is_skill_backup_stamp accepts only directory names with the stamp shape DWS
+# itself writes: UTC YYYYmmdd-HHMMSS, with an optional -N collision suffix.
+# Shape is necessary but not sufficient — pruning additionally verifies the
+# .dws-skill-backup ownership marker — while any other entry in the backup
+# root is foreign (user data, unrelated tooling) and is preserved so pruning
+# can never remove a directory it cannot prove DWS created.
 is_skill_backup_stamp() {
   case "$1" in
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9])
@@ -114,17 +155,21 @@ prune_skill_backups() {
   for _psb_entry in "$_psb_root"/*; do
     [ -d "$_psb_entry" ] || continue
     is_skill_backup_stamp "${_psb_entry##*/}" || continue
+    [ "$(cat "$_psb_entry/.dws-skill-backup" 2>/dev/null)" = "dws skill backup v1" ] || continue
     _psb_total=$((_psb_total + 1))
   done
   [ "$_psb_total" -gt "$DWS_SKILL_BACKUP_KEEP" ] || return 0
   _psb_drop=$((_psb_total - DWS_SKILL_BACKUP_KEEP))
-  _psb_seen=0
   for _psb_entry in "$_psb_root"/*; do
+    [ "$_psb_drop" -gt 0 ] || break
     [ -d "$_psb_entry" ] || continue
     is_skill_backup_stamp "${_psb_entry##*/}" || continue
-    _psb_seen=$((_psb_seen + 1))
-    [ "$_psb_seen" -le "$_psb_drop" ] || break
+    [ "$(cat "$_psb_entry/.dws-skill-backup" 2>/dev/null)" = "dws skill backup v1" ] || continue
+    case " $DWS_CURRENT_RUN_BACKUP_STAMPS " in
+      *" $_psb_entry "*) continue ;;
+    esac
     rm -rf "$_psb_entry" || printf '  ⚠️  旧 Skill 备份清理失败: %s\n' "$_psb_entry"
+    _psb_drop=$((_psb_drop - 1))
   done
 }
 
@@ -166,6 +211,23 @@ sha256_stdin() {
     shasum -a 256 | awk '{print $1}'
   elif command -v openssl >/dev/null 2>&1; then
     openssl dgst -sha256 | awk '{print $NF}'
+  else
+    return 1
+  fi
+}
+
+# sha256_file <path>: content digest used by skill_dir_content_digest. Never
+# emits on failure. Callers that capture its status directly detect that
+# failure; skill_dir_content_digest cannot — see the pipeline caveat there:
+# POSIX sh returns only the right-hand pipeline status, so a subshell exit on
+# its left side is discarded and digest-failure detection stays best-effort.
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" 2>/dev/null | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+  elif command -v openssl >/dev/null 2>&1; then
+    openssl dgst -sha256 -r "$1" 2>/dev/null | awk '{print $1}'
   else
     return 1
   fi
@@ -260,24 +322,147 @@ backup_and_record_skill_dir() {
   fi
 }
 
+# restore_quarantine_no_replace <quarantined> <dest>
+# Puts an unmatched quarantined object back onto dest without replacing
+# anything that occupied dest after the claim. Directories use mkdir-claim
+# plus child moves; links are created at dest; files hard-link then drop
+# the quarantine copy.
+restore_quarantine_no_replace() {
+  _rqn_src="$1"
+  _rqn_dest="$2"
+  if [ -L "$_rqn_src" ]; then
+    _rqn_target="$(readlink "$_rqn_src")" || return 1
+    if ! ln -s "$_rqn_target" "$_rqn_dest" 2>/dev/null || ! [ -L "$_rqn_dest" ]; then
+      _rqn_nested="$_rqn_dest/${_rqn_target##*/}"
+      if [ -L "$_rqn_nested" ] && [ "$(readlink "$_rqn_nested" 2>/dev/null)" = "$_rqn_target" ]; then
+        rm -f "$_rqn_nested"
+      fi
+      return 1
+    fi
+    rm -f "$_rqn_src"
+    return 0
+  fi
+  if [ -d "$_rqn_src" ]; then
+    mkdir "$_rqn_dest" 2>/dev/null || return 1
+    _rqn_failed=0
+    for _rqn_child in "$_rqn_src"/* "$_rqn_src"/.[!.]* "$_rqn_src"/..?*; do
+      [ -e "$_rqn_child" ] || [ -L "$_rqn_child" ] || continue
+      if ! mv "$_rqn_child" "$_rqn_dest/"; then
+        _rqn_failed=1
+        break
+      fi
+    done
+    if [ "$_rqn_failed" -eq 0 ]; then
+      rmdir "$_rqn_src" 2>/dev/null || return 1
+      return 0
+    fi
+    for _rqn_child in "$_rqn_dest"/* "$_rqn_dest"/.[!.]* "$_rqn_dest"/..?*; do
+      [ -e "$_rqn_child" ] || [ -L "$_rqn_child" ] || continue
+      mv "$_rqn_child" "$_rqn_src/" || return 1
+    done
+    rmdir "$_rqn_dest" 2>/dev/null || return 1
+    return 1
+  fi
+  if [ -f "$_rqn_src" ]; then
+    # Shell `ln` treats an occupied directory as a container. Refuse that
+    # dest and drop any nested name instead of leaving a hardlink inside it.
+    if ! ln "$_rqn_src" "$_rqn_dest" 2>/dev/null || [ -d "$_rqn_dest" ]; then
+      _rqn_nested="$_rqn_dest/$(basename "$_rqn_src")"
+      [ -f "$_rqn_nested" ] && rm -f "$_rqn_nested"
+      return 1
+    fi
+    rm -f "$_rqn_src"
+    return 0
+  fi
+  return 1
+}
+
+# quarantine_retract_or_restore <dest> <expected-inode> [expected-link-target]
+# Prove ownership at dest first (inode plus child names for directories).
+# Quarantining before that check would move a concurrent replacement off its
+# original path. Linux overlayfs recycles inodes, so inode alone is not
+# enough — a dest whose children no longer match the recorded publication
+# stays put. After a matching dest is claimed, identity is re-checked in
+# quarantine; a mismatch is restored with no-replace.
+quarantine_retract_or_restore() {
+  _qrr_dest="$1"
+  _qrr_inode="$2"
+  _qrr_link_target="${3-}"
+  if [ ! -e "$_qrr_dest" ] && [ ! -L "$_qrr_dest" ]; then
+    return 0
+  fi
+  _qrr_owned=0
+  if [ -n "$_qrr_link_target" ]; then
+    if [ -L "$_qrr_dest" ] &&
+       [ "$(readlink "$_qrr_dest" 2>/dev/null)" = "$_qrr_link_target" ] &&
+       [ "$(skill_link_inode "$_qrr_dest")" = "$_qrr_inode" ]; then
+      _qrr_owned=1
+    fi
+  elif [ "$(skill_dir_identity "$_qrr_dest")" = "$_qrr_inode" ]; then
+    _qrr_owned=1
+  fi
+  if [ "$_qrr_owned" -eq 0 ]; then
+    printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s\n' "$_qrr_dest"
+    return 1
+  fi
+  _qrr_parent="$(dirname "$_qrr_dest")"
+  _qrr_base="$(basename "$_qrr_dest")"
+  _qrr_root="$(mktemp -d "$_qrr_parent/.${_qrr_base}.rollback.XXXXXX")" || return 1
+  _qrr_payload="$_qrr_root/payload"
+  if ! mv "$_qrr_dest" "$_qrr_payload"; then
+    rmdir "$_qrr_root" 2>/dev/null || rm -rf "$_qrr_root"
+    if [ ! -e "$_qrr_dest" ] && [ ! -L "$_qrr_dest" ]; then
+      return 0
+    fi
+    printf '  ⚠️  无法隔离待回滚 Skill: %s\n' "$_qrr_dest"
+    return 1
+  fi
+  _qrr_owned=0
+  if [ -n "$_qrr_link_target" ]; then
+    if [ -L "$_qrr_payload" ] &&
+       [ "$(readlink "$_qrr_payload" 2>/dev/null)" = "$_qrr_link_target" ] &&
+       [ "$(skill_link_inode "$_qrr_payload")" = "$_qrr_inode" ]; then
+      _qrr_owned=1
+    fi
+  elif [ "$(skill_dir_identity "$_qrr_payload")" = "$_qrr_inode" ]; then
+    _qrr_owned=1
+  fi
+  if [ "$_qrr_owned" -eq 1 ]; then
+    rm -rf "$_qrr_root" || return 1
+    return 0
+  fi
+  if restore_quarantine_no_replace "$_qrr_payload" "$_qrr_dest"; then
+    rmdir "$_qrr_root" 2>/dev/null || true
+    printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s\n' "$_qrr_dest"
+    return 1
+  fi
+  printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s（并发对象保留于 %s）\n' "$_qrr_dest" "$_qrr_payload"
+  return 1
+}
+
 # restore_multi_skill_set <published-manifest> <backup-manifest>
 # Removes partial new publications, then restores every old directory from
-# its exact backup path. Paths containing newlines are outside the supported
+# its exact backup path. Dest is claimed into quarantine first; identity is
+# re-checked there so a concurrent replacement is renamed back instead of
+# being deleted by path. Paths containing newlines are outside the supported
 # installer path contract; spaces are preserved.
 restore_multi_skill_set() {
   _rms_published="$1"
   _rms_backups="$2"
   _rms_ok=1
   if [ -f "$_rms_published" ]; then
-    while IFS= read -r _rms_dest; do
-      [ -n "$_rms_dest" ] || continue
-      rm -rf "$_rms_dest" || _rms_ok=0
+    while IFS= read -r _rms_entry; do
+      [ -n "$_rms_entry" ] || continue
+      _rms_dest="${_rms_entry%:*}"
+      _rms_inode="${_rms_entry##*:}"
+      [ "$_rms_dest" != "$_rms_entry" ] || { printf '  ⚠️  跳过格式异常的发布记录: %s\n' "$_rms_entry"; _rms_ok=0; continue; }
+      quarantine_retract_or_restore "$_rms_dest" "$_rms_inode" || _rms_ok=0
     done < "$_rms_published"
   fi
   if [ -f "$_rms_backups" ]; then
     while IFS= read -r _rms_original && IFS= read -r _rms_backup; do
       [ -n "$_rms_backup" ] || continue
-      if [ -e "$_rms_original" ] || [ -L "$_rms_original" ] || ! mkdir -p "$(dirname "$_rms_original")" || ! mv "$_rms_backup" "$_rms_original"; then
+      if ! mkdir -p "$(dirname "$_rms_original")" || ! restore_quarantine_no_replace "$_rms_backup" "$_rms_original"; then
         printf '  ⚠️  无法恢复原 Skill: %s（备份保留于 %s）\n' "$_rms_original" "$_rms_backup"
         _rms_ok=0
       fi
@@ -292,6 +477,52 @@ restore_multi_skill_set() {
 skill_link_inode() {
   _sli_entry="$(ls -di "$1" 2>/dev/null)" || return 1
   printf '%s\n' "$_sli_entry" | awk '{print $1}'
+}
+
+# Directory publication identity is inode, a stable child-name list, and a
+# recursive content digest. Inode reuse on Linux overlayfs would otherwise
+# make a concurrent directory look owned, and an in-place content edit after
+# publish (same inode, same names) would otherwise be retracted as this
+# transaction's object. The token has no colon so dest:identity manifest
+# parsing stays dest="${entry%:*}" / identity="${entry##*:}".
+skill_dir_identity() {
+  _sdi_inode="$(skill_link_inode "$1")" || return 1
+  if [ -L "$1" ] || [ ! -d "$1" ]; then
+    printf '%s\n' "$_sdi_inode"
+    return 0
+  fi
+  _sdi_names="$(LC_ALL=C ls -A "$1" 2>/dev/null | tr '\n' ',')"
+  _sdi_digest="$(skill_dir_content_digest "$1")" || return 1
+  printf '%s,%s,%s\n' "$_sdi_inode" "$_sdi_names" "$_sdi_digest"
+}
+
+# Recursive content digest over a published tree, mirroring the Go
+# fingerprint: sorted relative paths emit type+permission bits plus either a
+# content sha256 or the symlink target, and the whole line stream feeds
+# sha256_stdin. Failure detection is asymmetric and best-effort: with no hash
+# tool installed sha256_stdin itself returns 1 and the identity genuinely
+# fails, but an unreadable file only exits the left-hand subshell — /bin/sh
+# has no pipefail, so the pipeline returns sha256_stdin's status and the
+# digest is computed over a truncated stream instead of failing.
+skill_dir_content_digest() {
+  (
+    cd "$1" 2>/dev/null || exit 1
+    find . -print 2>/dev/null |
+      LC_ALL=C sort |
+      while IFS= read -r _sdcd_path; do
+        _sdcd_mode="$(ls -ld "$_sdcd_path" 2>/dev/null | cut -c1-10)"
+        if [ -L "$_sdcd_path" ]; then
+          printf '%s|%s|link|%s\n' "$_sdcd_path" "$_sdcd_mode" "$(readlink "$_sdcd_path" 2>/dev/null)"
+        elif [ -d "$_sdcd_path" ]; then
+          printf '%s|%s|dir\n' "$_sdcd_path" "$_sdcd_mode"
+        elif [ -f "$_sdcd_path" ]; then
+          _sdcd_hash="$(sha256_file "$_sdcd_path")" || exit 1
+          printf '%s|%s|file|%s\n' "$_sdcd_path" "$_sdcd_mode" "$_sdcd_hash"
+        else
+          printf '%s|%s|other\n' "$_sdcd_path" "$_sdcd_mode"
+        fi
+      done
+  ) | sha256_stdin
 }
 
 skill_link_matches() {
@@ -309,12 +540,7 @@ restore_linked_skill_set() {
   if [ -f "$_rls_published" ]; then
     while IFS= read -r _rls_dest && IFS= read -r _rls_target && IFS= read -r _rls_inode; do
       [ -n "$_rls_dest" ] || continue
-      if skill_link_matches "$_rls_dest" "$_rls_target" "$_rls_inode"; then
-        rm -f "$_rls_dest" || _rls_ok=0
-      else
-        printf '  ⚠️  跳过回滚已被并发修改的 Skill 路径: %s\n' "$_rls_dest"
-        _rls_ok=0
-      fi
+      quarantine_retract_or_restore "$_rls_dest" "$_rls_inode" "$_rls_target" || _rls_ok=0
     done < "$_rls_published"
   fi
   restore_multi_skill_set /dev/null "$_rls_backups" || _rls_ok=0
@@ -328,6 +554,50 @@ cleanup_nested_staged_link() {
   if skill_link_matches "$_cnsl_nested" "$_cnsl_target" "$_cnsl_inode"; then
     rm -f "$_cnsl_nested"
   fi
+}
+
+# publish_skill_dir_no_replace <staged-dir> <dest> <published-manifest>
+# Publishes a staged Skill directory with an atomic no-replace claim: mkdir
+# fails with EEXIST when anything a concurrent writer created occupies the
+# destination, so the claim itself is the existence check — plain `mv` after a
+# backup could still replace a concurrently created object. Staged children
+# then move into the claim one by one (each rename targets a path inside a
+# directory this transaction owns, so no step replaces a foreign object; the
+# staging directory is created under the same umask as the claim, so their
+# modes match by construction). A failed child move relocates the children
+# back and removes only the claim. On success the destination's inode is
+# recorded as <dest>:<inode,child-names,content-digest> so rollback only ever
+# deletes this transaction's object even when the filesystem recycles the
+# claim inode or the published files are edited in place afterwards.
+publish_skill_dir_no_replace() {
+  _psd_stage="$1"
+  _psd_dest="$2"
+  _psd_manifest="$3"
+
+  if ! mkdir "$_psd_dest" 2>/dev/null; then
+    return 1
+  fi
+  _psd_failed=0
+  for _psd_child in "$_psd_stage"/* "$_psd_stage"/.[!.]* "$_psd_stage"/..?*; do
+    [ -e "$_psd_child" ] || [ -L "$_psd_child" ] || continue
+    if ! mv "$_psd_child" "$_psd_dest/"; then
+      _psd_failed=1
+      break
+    fi
+  done
+  if [ "$_psd_failed" -eq 0 ]; then
+    _psd_inode="$(skill_dir_identity "$_psd_dest")" || _psd_failed=1
+    if [ "$_psd_failed" -eq 0 ] && printf '%s:%s\n' "$_psd_dest" "$_psd_inode" >> "$_psd_manifest"; then
+      return 0
+    fi
+    _psd_failed=1
+  fi
+  for _psd_child in "$_psd_dest"/* "$_psd_dest"/.[!.]* "$_psd_dest"/..?*; do
+    [ -e "$_psd_child" ] || [ -L "$_psd_child" ] || continue
+    mv "$_psd_child" "$_psd_stage/" || return 1
+  done
+  rmdir "$_psd_dest" 2>/dev/null || return 1
+  return 1
 }
 
 # publish_skill_cache <source> <cache-dir>
@@ -703,25 +973,29 @@ link_canonical_skills_to_base() {
     _lcs_link_target="$(readlink "$_lcs_staged" 2>/dev/null)" || {
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     }
-    # The staged symlink keeps its inode across the rename below (the staging
-    # directory is a sibling inside the same Agent root), so the identity
-    # recorded in the publication manifest stays exact.
-    _lcs_inode="$(skill_link_inode "$_lcs_staged")" || {
-      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
-    }
-    # Anything still present here appeared after the pre-flight scan, i.e. a
-    # concurrent writer. Never let `mv` clobber it.
-    if [ -e "$_lcs_dest" ] || [ -L "$_lcs_dest" ]; then
+    # Publish by creating the link directly at the destination: symlink(2)
+    # refuses an occupied path with EEXIST, so the creation itself is the
+    # atomic no-replace check. `mv` after any pre-check could still replace a
+    # file or symlink a concurrent writer created in between, and `ln -P`
+    # stays unusable (absent from BusyBox `ln`, which silently degraded every
+    # non-universal Agent to the copy layout on Alpine and most containers).
+    if ! ln -s "$_lcs_link_target" "$_lcs_dest" 2>/dev/null; then
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     fi
-    # Publish by moving the staged symlink. `mv` is POSIX; `ln -P` is not (it is
-    # absent from BusyBox `ln`, which silently degraded every non-universal
-    # Agent to the copy layout on Alpine and most containers). install-event.sh
-    # and install-devapp.sh already publish this way. The staged basename stays
-    # unique, so a destination a concurrent process turned into a directory can
-    # only receive our link and post-validation removes exactly that.
-    if ! mv "$_lcs_staged" "$_lcs_dest" 2>/dev/null || ! skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then
-      cleanup_nested_staged_link "$_lcs_dest" "$_lcs_stage_name" "$_lcs_link_target" "$_lcs_inode" || true
+    # A directory that appeared at the destination turns `ln -s` into a
+    # container: the link lands inside it under the target basename. Remove
+    # exactly our link after an identity check and roll back; the foreign
+    # directory stays untouched.
+    if [ ! -L "$_lcs_dest" ]; then
+      _lcs_nested_name="${_lcs_link_target##*/}"
+      _lcs_nested_inode="$(skill_link_inode "$_lcs_dest/$_lcs_nested_name" 2>/dev/null)" || _lcs_nested_inode=""
+      cleanup_nested_staged_link "$_lcs_dest" "$_lcs_nested_name" "$_lcs_link_target" "$_lcs_nested_inode" || true
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
+    fi
+    _lcs_inode="$(skill_link_inode "$_lcs_dest")" || {
+      restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
+    }
+    if ! skill_link_matches "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode"; then
       restore_linked_skill_set "$_lcs_published" "$_lcs_backups" || true; rm -rf "$_lcs_stage"; return 1
     fi
     if ! printf '%s\n%s\n%s\n' "$_lcs_dest" "$_lcs_link_target" "$_lcs_inode" >> "$_lcs_published"; then
@@ -854,12 +1128,7 @@ _install_multi_to_base() {
     [ -f "${skill_dir}SKILL.md" ] || continue
     _name="$(basename "$skill_dir")"
     _dest="$_base/$_name"
-    printf '%s\n' "$_dest" >> "$_ms_published" || {
-      restore_multi_skill_set "$_ms_published" "$_ms_backups" || true
-      rm -rf "$_ms_stage"
-      return 1
-    }
-    if ! mv "$_ms_stage/$_name" "$_dest"; then
+    if ! publish_skill_dir_no_replace "$_ms_stage/$_name" "$_dest" "$_ms_published"; then
       printf '  ⚠️  multi Skill 集合发布失败，正在恢复原集合: %s\n' "$_dest"
       restore_multi_skill_set "$_ms_published" "$_ms_backups" || printf '  ⚠️  原 Skill 集合自动恢复不完整，请检查上方备份路径\n'
       rm -rf "$_ms_stage"
@@ -913,12 +1182,7 @@ _install_mono_to_base() {
   done
 
   _mono_dest="$_mono_base/$SKILL_NAME"
-  printf '%s\n' "$_mono_dest" >> "$_mono_published" || {
-    restore_multi_skill_set "$_mono_published" "$_mono_backups" || true
-    rm -rf "$_mono_stage"
-    return 1
-  }
-  if ! mv "$_mono_stage/$SKILL_NAME" "$_mono_dest"; then
+  if ! publish_skill_dir_no_replace "$_mono_stage/$SKILL_NAME" "$_mono_dest" "$_mono_published"; then
     printf '  ⚠️  mono Skill 集合发布失败，正在恢复原集合: %s\n' "$_mono_dest"
     restore_multi_skill_set "$_mono_published" "$_mono_backups" || printf '  ⚠️  原 Skill 集合自动恢复不完整，请检查上方备份路径\n'
     rm -rf "$_mono_stage"

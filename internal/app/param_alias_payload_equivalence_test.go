@@ -27,12 +27,23 @@ const (
 // its spelling while holding every other input constant.
 var paramAliasCompleteCommands = map[string][]string{
 	"aitable +base-search":                     {"aitable", "+base-search", "--query", "fixture"},
+	"aitable +export-data":                     {"aitable", "+export-data", "--base-id", "base-1", "--scope", "all", "--format", "excel"},
 	"aitable +field-get":                       {"aitable", "+field-get", "--base-id", "base-1", "--table-id", "table-1"},
+	"aitable +find-record":                     {"aitable", "+find-record", "--base", "base-1", "--table", "table-1", "--query", "fixture"},
 	"aitable +list-tables":                     {"aitable", "+list-tables", "--base", "base-1"},
 	"aitable +record-query":                    {"aitable", "+record-query", "--base-id", "base-1", "--table-id", "table-1", "--query", "fixture"},
+	"aitable +record-share-links":              {"aitable", "+record-share-links", "--base", "base-1", "--table", "table-1", "--record-ids", "record-1"},
 	"aitable +record-share-url":                {"aitable", "+record-share-url", "--base-id", "base-1", "--table-id", "table-1", "--record-ids", "record-1"},
 	"aitable +table-get":                       {"aitable", "+table-get", "--base-id", "base-1"},
+	"aitable +workflow-list":                   {"aitable", "+workflow-list", "--base-id", "base-1", "--limit", "7"},
+	"aitable attachment upload":                {"aitable", "attachment", "upload", "--base-id", "base-1", "--file-name", "fixture.txt", "--size", "7"},
+	"aitable base list":                        {"aitable", "base", "list", "--cursor", "cursor-1", "--limit", "7"},
+	"aitable base update":                      {"aitable", "base", "update", "--base-id", "base-1", "--name", "Fixture Base", "--desc", "fixture description"},
+	"aitable field search-options":             {"aitable", "field", "search-options", "--base-id", "base-1", "--table-id", "table-1", "--field-id", "field-1", "--keyword", "fixture", "--limit", "7"},
 	"aitable record query":                     {"aitable", "record", "query", "--base-id", "base-1", "--table-id", "table-1", "--limit", "7"},
+	"aitable workflow get":                     {"aitable", "workflow", "get", "--base-id", "base-1", "--workflow-id", "workflow-1"},
+	"aitable workflow history":                 {"aitable", "workflow", "history", "--base-id", "base-1", "--workflow-id", "workflow-1", "--after-time", "1000", "--before-time", "2000", "--page", "2", "--size", "25"},
+	"aitable workflow run":                     {"aitable", "workflow", "run", "--base-id", "base-1", "--workflow-id", "workflow-1", "--table-id", "table-1", "--record-ids", "record-1", "--yes"},
 	"attendance check result":                  {"attendance", "check", "result", "--users", "user-1,user-2", "--start", "2026-03-01", "--end", "2026-03-02"},
 	"attendance +check-result":                 {"attendance", "+check-result", "--users", "user-1,user-2", "--start", "2026-03-01", "--end", "2026-03-02"},
 	"calendar event list":                      {"calendar", "event", "list", "--start", "2026-03-10T14:00:00+08:00", "--end", "2026-03-10T18:00:00+08:00", "--calendar-id", "primary", "--cursor", "cursor-1", "--limit", "7"},
@@ -62,12 +73,12 @@ var paramAliasCompleteCommands = map[string][]string{
 	"chat +messages-list":                      {"chat", "+messages-list", "--group", "fixture-conversation", "--time", "2026-03-10 00:00:00", "--limit", "7"},
 	"chat +messages-list-direct":               {"chat", "+messages-list-direct", "--user", "user-1", "--time", "2026-03-10 00:00:00", "--limit", "7"},
 	"chat +messages-list-unread-conversations": {"chat", "+messages-list-unread-conversations", "--count", "7", "--exclude-muted"},
-	"chat +messages-reply":                     {"chat", "+messages-reply", "--conversation-id", "fixture-conversation", "--ref-msg-id", "message-1", "--ref-sender", appFixtureCurrentDOpenID, "--text", "hello fixture", "--yes"},
+	"chat +messages-reply":                     {"chat", "+messages-reply", "--group", "fixture-conversation", "--ref-msg-id", "message-1", "--ref-sender", appFixtureCurrentDOpenID, "--content", "hello fixture", "--yes"},
 	"chat +messages-resource-download":         {"chat", "+messages-resource-download", "--resource-id", "resource-1", "--message-id", "message-1", "--open-conversation-id", "fixture-conversation", "--output", "downloads/fixture.bin"},
 	"chat +messages-set-pin":                   {"chat", "+messages-set-pin", "--open-conversation-id", "fixture-conversation", "--msg-id", "message-1", "--yes"},
-	"chat +messages-send-by-webhook":           {"chat", "+messages-send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--text", "fixture", "--at-users", "user-1,user-2", "--yes"},
+	"chat +messages-send-by-webhook":           {"chat", "+messages-send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--content", "fixture", "--at-users", "user-1,user-2", "--yes"},
 	"chat +search-msg":                         {"chat", "+search-msg", "--group", "fixture-conversation", "--query", "fixture", "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-11T00:00:00+08:00", "--no-enrich"},
-	"chat +send-to-group":                      {"chat", "+send-to-group", "--group", "Fixture Group", "--text", "hello fixture", "--yes"},
+	"chat +send-to-group":                      {"chat", "+send-to-group", "--group", "Fixture Group", "--content", "hello fixture", "--yes"},
 	"chat +unread-chats":                       {"chat", "+unread-chats", "--count", "7", "--exclude-muted"},
 	"chat bot find":                            {"chat", "bot", "find", "--query", "fixture", "--limit", "7"},
 	"chat bot search":                          {"chat", "bot", "search", "--name", "Fixture Bot", "--page", "2", "--size", "7"},
@@ -93,11 +104,11 @@ var paramAliasCompleteCommands = map[string][]string{
 	"chat message list-by-ids":                 {"chat", "message", "list-by-ids", "--msg-ids", "message-1,message-2"},
 	"chat message list-unread-conversations":   {"chat", "message", "list-unread-conversations", "--count", "7", "--exclude-muted"},
 	"chat message recall":                      {"chat", "message", "recall", "--conversation-id", "fixture-conversation", "--msg-id", "message-1", "--yes"},
-	"chat message reply":                       {"chat", "message", "reply", "--conversation-id", "fixture-conversation", "--ref-msg-id", "message-1", "--ref-sender", appFixtureCurrentDOpenID, "--text", "hello fixture", "--yes"},
+	"chat message reply":                       {"chat", "message", "reply", "--group", "fixture-conversation", "--ref-msg-id", "message-1", "--ref-sender", appFixtureCurrentDOpenID, "--content", "hello fixture", "--yes"},
 	"chat message search-advanced":             {"chat", "message", "search-advanced", "--conversation-ids", "fixture-conversation", "--query", "fixture"},
-	"chat message send":                        {"chat", "message", "send", "--user", appFixtureCurrentDOpenID, "--text", "hello fixture", "--idempotency-key", "param-alias-equivalence", "--yes"},
+	"chat message send":                        {"chat", "message", "send", "--user", appFixtureCurrentDOpenID, "--content", "hello fixture", "--idempotency-key", "param-alias-equivalence", "--yes"},
 	"chat message send-by-bot":                 {"chat", "message", "send-by-bot", "--robot-code", "robot-1", "--group", "fixture-conversation", "--title", "Fixture Alert", "--text", "@user-1 @user-2 fixture", "--at-user-ids", "user-1,user-2", "--yes"},
-	"chat message send-by-webhook":             {"chat", "message", "send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--text", "fixture", "--at-users", "user-1,user-2", "--yes"},
+	"chat message send-by-webhook":             {"chat", "message", "send-by-webhook", "--token", "fixture-token", "--title", "Fixture Alert", "--content", "fixture", "--at-users", "user-1,user-2", "--yes"},
 	"contact +dept-members":                    {"contact", "+dept-members", "--dept", "Fixture Dept"},
 	"contact +list-sub-depts":                  {"contact", "+list-sub-depts", "--dept", "1"},
 	"contact +resolve-dept":                    {"contact", "+resolve-dept", "--name", "Fixture Dept"},
@@ -116,7 +127,7 @@ var paramAliasCompleteCommands = map[string][]string{
 	"doc +copy":                                {"doc", "+copy", "--node", "node-1", "--workspace", "workspace-1", "--yes"},
 	"doc +create":                              {"doc", "+create", "--name", "Fixture Document", "--content", "fixture body", "--doc-format", "markdown"},
 	"doc +create-from-template":                {"doc", "+create-from-template", "--query", "fixture template", "--name", "Fixture From Template", "--folder", "folder-1", "--workspace", "workspace-1"},
-	"doc +doc-append":                          {"doc", "+doc-append", "--doc", "node-1", "--text", "fixture appendix", "--yes"},
+	"doc +doc-append":                          {"doc", "+doc-append", "--doc", "node-1", "--content", "fixture appendix", "--yes"},
 	"doc +export-submit":                       {"doc", "+export-submit", "--node", "node-1", "--export-format", "docx"},
 	"doc +fetch":                               {"doc", "+fetch", "--node", "node-1", "--scope", "section", "--start-block-id", "block-1"},
 	"doc +find-doc":                            {"doc", "+find-doc", "--query", "fixture", "--limit", "7"},
@@ -132,8 +143,8 @@ var paramAliasCompleteCommands = map[string][]string{
 	"doc +version-save":                        {"doc", "+version-save", "--node", "node-1", "--yes"},
 	"doc +update":                              {"doc", "+update", "--node", "node-1", "--command", "overwrite", "--content", `["root",{}]`, "--doc-format", "jsonml", "--expected-revision", "1", "--yes"},
 	"doc +export":                              {"doc", "+export", "--node", "node-1", "--export-format", "docx", "--output", "exports/fixture.docx"},
-	"doc block insert":                         {"doc", "block", "insert", "--node", "node-1", "--text", "fixture paragraph", "--yes"},
-	"doc block update":                         {"doc", "block", "update", "--node", "node-1", "--block-id", "block-1", "--text", "fixture paragraph", "--yes"},
+	"doc block insert":                         {"doc", "block", "insert", "--node", "node-1", "--content", "fixture paragraph", "--yes"},
+	"doc block update":                         {"doc", "block", "update", "--node", "node-1", "--block-id", "block-1", "--content", "fixture paragraph", "--yes"},
 	"doc comment create":                       {"doc", "comment", "create", "--node", "node-1", "--content", "fixture comment", "--yes"},
 	"doc comment create-inline":                {"doc", "comment", "create-inline", "--node", "node-1", "--block-id", "block-1", "--start", "0", "--end", "7", "--content", "fixture comment", "--yes"},
 	"doc comment delete":                       {"doc", "comment", "delete", "--node", "node-1", "--comment-key", "comment-1", "--yes"},
@@ -196,7 +207,7 @@ var paramAliasCompleteCommandVariants = map[string]map[string][]string{
 		"workspace": {"doc", "+copy", "--node", "node-1", "--workspace", "workspace-1", "--yes"},
 	},
 	"doc block insert": {
-		"parent-block": {"doc", "block", "insert", "--node", "node-1", "--parent-block", "parent-block-1", "--index", "0", "--text", "fixture paragraph", "--yes"},
+		"parent-block": {"doc", "block", "insert", "--node", "node-1", "--parent-block", "parent-block-1", "--index", "0", "--content", "fixture paragraph", "--yes"},
 	},
 	"doc +inspect": {
 		"include-permissions": {"doc", "+inspect", "--node", "node-1", "--include-permissions"},
@@ -219,8 +230,8 @@ var paramAliasCompleteCommandVariants = map[string]map[string][]string{
 		"sender-open-dingtalk-id": {"chat", "message", "list-by-sender", "--sender-open-dingtalk-id", appFixtureCurrentDOpenID, "--start", "2026-03-10T00:00:00+08:00", "--end", "2026-03-11T00:00:00+08:00", "--limit", "7", "--cursor", "0"},
 	},
 	"chat message send": {
-		"group":     {"chat", "message", "send", "--group", "fixture-conversation", "--text", "hello fixture", "--idempotency-key", "param-alias-equivalence-group", "--yes"},
-		"file-path": {"chat", "message", "send", "--group", "fixture-conversation", "--msg-type", "file", "--file-path", "../../go.mod", "--dentry-id", "1", "--space-id", "2", "--idempotency-key", "param-alias-equivalence-file", "--yes"},
+		"group": {"chat", "message", "send", "--group", "fixture-conversation", "--content", "hello fixture", "--idempotency-key", "param-alias-equivalence-group", "--yes"},
+		"file":  {"chat", "message", "send", "--group", "fixture-conversation", "--msg-type", "file", "--file", "../../go.mod", "--dentry-id", "1", "--space-id", "2", "--idempotency-key", "param-alias-equivalence-file", "--yes"},
 	},
 	"chat +conversation-set-top": {
 		"conversation-ids": {"chat", "+conversation-set-top", "--conversation-ids", "fixture-conversation-1,fixture-conversation-2", "--yes"},
@@ -260,7 +271,6 @@ var paramAliasNewIMCases = []struct {
 	{command: "chat message list-favorites", emitted: "limit", canonical: "size"},
 	{command: "chat message list-unread-conversations", emitted: "limit", canonical: "count"},
 	{command: "chat message list-unread-conversations", emitted: "size", canonical: "count"},
-	{command: "chat message send", emitted: "file", canonical: "file-path"},
 	{command: "chat message send-by-bot", emitted: "at-users", canonical: "at-user-ids"},
 	{command: "chat message send-by-webhook", emitted: "at-user-ids", canonical: "at-users"},
 	{command: "chat +chat-update", emitted: "chat-id", canonical: "group"},
@@ -278,7 +288,7 @@ var paramAliasNewIMCases = []struct {
 	{command: "chat +chat-members-get", emitted: "chat", canonical: "id"},
 	{command: "chat +messages-list", emitted: "start", canonical: "time"},
 	{command: "chat +messages-reply", emitted: "msg-id", canonical: "ref-msg-id"},
-	{command: "chat +messages-reply", emitted: "chat", canonical: "conversation-id"},
+	{command: "chat +messages-reply", emitted: "chat", canonical: "group"},
 	{command: "chat +flag-cancel", emitted: "group", canonical: "conversation-id"},
 	{command: "chat +flag-cancel", emitted: "chat", canonical: "conversation-id"},
 	{command: "chat +flag-create", emitted: "group", canonical: "conversation-id"},
@@ -372,16 +382,113 @@ var paramAliasNewDriveCases = []struct {
 	{command: "drive +upload", emitted: "file-id", canonical: "node"},
 }
 
-// paramAliasNewDriveConfirmationCases selects one newly reviewed alias for
-// every Drive command in the expansion whose declared runtime safety requires
-// confirmation. The full matrix below proves all spellings preserve the
-// confirmed payload; this smaller matrix proves aliases cannot cross the
-// confirmation boundary before any transport call is made.
-var paramAliasNewDriveConfirmationCases = []struct {
+// paramAliasAITableDeleteDisableCompleteCommands contains complete invocations
+// for every AITable delete/disable command whose confirmation boundary is
+// reached by aliases introduced in the AITable expansion. These templates are
+// intentionally separate from paramAliasCompleteCommands: that map mirrors
+// the reviewed validation fixture one-for-one, while this matrix exhaustively
+// proves the safety boundary for generated aliases beyond the fixture sample.
+var paramAliasAITableDeleteDisableCompleteCommands = map[string][]string{
+	"aitable +advperm-disable":      {"aitable", "+advperm-disable", "--base-id", "base-1", "--yes"},
+	"aitable +base-delete":          {"aitable", "+base-delete", "--base-id", "base-1", "--yes"},
+	"aitable +chart-delete":         {"aitable", "+chart-delete", "--base-id", "base-1", "--dashboard-id", "dashboard-1", "--chart-id", "chart-1", "--yes"},
+	"aitable +dashboard-delete":     {"aitable", "+dashboard-delete", "--base-id", "base-1", "--dashboard-id", "dashboard-1", "--yes"},
+	"aitable +field-delete":         {"aitable", "+field-delete", "--base-id", "base-1", "--table-id", "table-1", "--field-id", "field-1", "--yes"},
+	"aitable +form-delete":          {"aitable", "+form-delete", "--base-id", "base-1", "--table-id", "table-1", "--view-id", "view-1", "--yes"},
+	"aitable +record-delete":        {"aitable", "+record-delete", "--base-id", "base-1", "--table-id", "table-1", "--record-ids", "record-1", "--yes"},
+	"aitable +role-delete":          {"aitable", "+role-delete", "--base-id", "base-1", "--role-id", "role-1", "--yes"},
+	"aitable +section-delete":       {"aitable", "+section-delete", "--base-id", "base-1", "--section-id", "section-1", "--yes"},
+	"aitable +table-delete":         {"aitable", "+table-delete", "--base-id", "base-1", "--table-id", "table-1", "--yes"},
+	"aitable +view-delete":          {"aitable", "+view-delete", "--base-id", "base-1", "--table-id", "table-1", "--view-id", "view-1", "--yes"},
+	"aitable +workflow-disable":     {"aitable", "+workflow-disable", "--base-id", "base-1", "--workflow-id", "workflow-1", "--yes"},
+	"aitable advperm disable":       {"aitable", "advperm", "disable", "--base-id", "base-1", "--yes"},
+	"aitable advperm role-delete":   {"aitable", "advperm", "role-delete", "--base-id", "base-1", "--role-id", "role-1", "--yes"},
+	"aitable base delete":           {"aitable", "base", "delete", "--base-id", "base-1", "--yes"},
+	"aitable chart delete":          {"aitable", "chart", "delete", "--base-id", "base-1", "--dashboard-id", "dashboard-1", "--chart-id", "chart-1", "--yes"},
+	"aitable dashboard delete":      {"aitable", "dashboard", "delete", "--base-id", "base-1", "--dashboard-id", "dashboard-1", "--yes"},
+	"aitable field delete":          {"aitable", "field", "delete", "--base-id", "base-1", "--table-id", "table-1", "--field-id", "field-1", "--yes"},
+	"aitable form delete":           {"aitable", "form", "delete", "--base-id", "base-1", "--table-id", "table-1", "--view-id", "view-1", "--yes"},
+	"aitable form questions delete": {"aitable", "form", "questions", "delete", "--base-id", "base-1", "--table-id", "table-1", "--field-id", "field-1", "--yes"},
+	"aitable record delete":         {"aitable", "record", "delete", "--base-id", "base-1", "--table-id", "table-1", "--record-ids", "record-1", "--yes"},
+	"aitable table delete":          {"aitable", "table", "delete", "--base-id", "base-1", "--table-id", "table-1", "--yes"},
+	"aitable view delete":           {"aitable", "view", "delete", "--base-id", "base-1", "--table-id", "table-1", "--view-id", "view-1", "--yes"},
+	"aitable workflow disable":      {"aitable", "workflow", "disable", "--base-id", "base-1", "--workflow-id", "workflow-1", "--yes"},
+}
+
+// paramAliasNewAITableDeleteDisableCases is the exhaustive set of alias
+// tuples newly introduced by this change on AITable delete/disable commands
+// that require confirmation. Every tuple must remain on both sides of the
+// confirmation gate: rejected with zero calls before --yes, and exactly
+// payload-equivalent to its canonical spelling after --yes.
+var paramAliasNewAITableDeleteDisableCases = []struct {
 	command   string
 	emitted   string
 	canonical string
 }{
+	{command: "aitable +advperm-disable", emitted: "base", canonical: "base-id"},
+	{command: "aitable +advperm-disable", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +base-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +base-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +chart-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +chart-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +dashboard-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +dashboard-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +field-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +field-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +field-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +form-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +form-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +form-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +record-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +record-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +record-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +role-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +role-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +section-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +section-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +table-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +table-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +table-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +view-delete", emitted: "base", canonical: "base-id"},
+	{command: "aitable +view-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +view-delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable +workflow-disable", emitted: "base", canonical: "base-id"},
+	{command: "aitable +workflow-disable", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable +workflow-disable", emitted: "flow-id", canonical: "workflow-id"},
+	{command: "aitable advperm disable", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable advperm role-delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable base delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable chart delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable dashboard delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable field delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable field delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable form delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable form delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable form questions delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable form questions delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable record delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable record delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable table delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable table delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable view delete", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable view delete", emitted: "table", canonical: "table-id"},
+	{command: "aitable workflow disable", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable workflow disable", emitted: "flow-id", canonical: "workflow-id"},
+}
+
+// paramAliasNewConfirmationCases selects newly reviewed aliases for commands
+// whose declared runtime safety requires confirmation. The full matrix below
+// proves all spellings preserve the confirmed payload; this smaller matrix
+// proves aliases cannot cross the confirmation boundary before any transport
+// call is made.
+var paramAliasNewConfirmationCases = []struct {
+	command   string
+	emitted   string
+	canonical string
+}{
+	{command: "aitable workflow run", emitted: "base-token", canonical: "base-id"},
+	{command: "aitable workflow run", emitted: "flow-id", canonical: "workflow-id"},
+	{command: "aitable workflow run", emitted: "table", canonical: "table-id"},
 	{command: "drive +delete", emitted: "file-id", canonical: "node"},
 	{command: "drive +publish-unset", emitted: "document-url", canonical: "node"},
 	{command: "drive +recycle-restore", emitted: "recycle-item-id", canonical: "id"},
@@ -402,7 +509,27 @@ var paramAliasNewDriveConfirmationCases = []struct {
 // That duplicated command construction was enough to push the pre-existing
 // macOS app suite beyond its package-level 10-minute timeout.
 var paramAliasRepresentativePayloadCases = map[string]bool{
+	paramAliasPayloadCaseKey("aitable +export-data", "export-format"):                true, // shortcut-local export format keeps the final payload
+	paramAliasPayloadCaseKey("aitable +find-record", "base-id"):                      true, // shortcut Base ID compatibility
+	paramAliasPayloadCaseKey("aitable +find-record", "table-id"):                     true, // shortcut Table ID compatibility
 	paramAliasPayloadCaseKey("aitable +record-query", "base"):                        true, // concept alias on a shortcut read
+	paramAliasPayloadCaseKey("aitable +record-share-links", "base-id"):               true, // observed experiment Base ID spelling
+	paramAliasPayloadCaseKey("aitable +record-share-links", "table-id"):              true, // observed experiment Table ID spelling
+	paramAliasPayloadCaseKey("aitable +workflow-list", "max-results"):                true, // shortcut pagination-size alias
+	paramAliasPayloadCaseKey("aitable attachment upload", "file-size"):               true, // byte-size command override
+	paramAliasPayloadCaseKey("aitable base list", "next-cursor"):                     true, // cursor concept alias
+	paramAliasPayloadCaseKey("aitable base update", "description"):                   true, // plain description alias on a write command
+	paramAliasPayloadCaseKey("aitable field search-options", "query"):                true, // search keyword concept alias
+	paramAliasPayloadCaseKey("aitable workflow get", "flow-id"):                      true, // workflow ID concept alias
+	paramAliasPayloadCaseKey("aitable workflow history", "base-token"):               true, // Base ID concept alias
+	paramAliasPayloadCaseKey("aitable workflow history", "end-time"):                 true, // upper time-bound override
+	paramAliasPayloadCaseKey("aitable workflow history", "flow-id"):                  true, // workflow ID concept alias
+	paramAliasPayloadCaseKey("aitable workflow history", "page-index"):               true, // zero-based page override
+	paramAliasPayloadCaseKey("aitable workflow history", "page-size"):                true, // page-size concept alias
+	paramAliasPayloadCaseKey("aitable workflow history", "start-time"):               true, // lower time-bound override
+	paramAliasPayloadCaseKey("aitable workflow run", "base-token"):                   true, // Base ID concept alias on a confirmed write
+	paramAliasPayloadCaseKey("aitable workflow run", "flow-id"):                      true, // workflow ID concept alias on a confirmed write
+	paramAliasPayloadCaseKey("aitable workflow run", "table"):                        true, // Table ID concept alias on a confirmed write
 	paramAliasPayloadCaseKey("attendance check result", "user-ids"):                  true, // list-valued concept alias
 	paramAliasPayloadCaseKey("calendar event list", "date"):                          true, // time concept alias
 	paramAliasPayloadCaseKey("chat message add-favorite", "msg-id"):                  true, // scoped IM identifier alias
@@ -426,7 +553,11 @@ var paramAliasRepresentativePayloadCases = map[string]bool{
 	paramAliasPayloadCaseKey("doc +update", "revision"):                              true, // optimistic edit revision alias
 	paramAliasPayloadCaseKey("doc +access-grant", "doc-id"):                          true, // permission write keeps document identity
 	paramAliasPayloadCaseKey("doc +version-revert", "version-number"):                true, // high-write version role with canonical confirmation
-	paramAliasPayloadCaseKey("doc block insert", "content"):                          true, // block write content alias
+	paramAliasPayloadCaseKey("chat +messages-reply", "conversation-id"):              true, // renamed conversation Primary keeps final reply payload
+	paramAliasPayloadCaseKey("chat message send", "file-path"):                       true, // renamed local-file Primary reaches the same final payload
+	paramAliasPayloadCaseKey("doc +doc-append", "text"):                              true, // shortcut content rename keeps append payload
+	paramAliasPayloadCaseKey("doc block insert", "text"):                             true, // block write content compatibility alias
+	paramAliasPayloadCaseKey("doc block update", "text"):                             true, // update uses the same typed compatibility path
 	paramAliasPayloadCaseKey("doc block insert", "parent-block-id"):                  true, // scoped block-role alias
 	paramAliasPayloadCaseKey("doc comment delete", "comment-id"):                     true, // destructive comment-key alias
 	paramAliasPayloadCaseKey("doc comment reply", "mentioned-open-conversation-ids"): true, // list-valued group mention role
@@ -629,13 +760,116 @@ func TestCrossPlatformCoverageNewDriveParamAliasesReachCanonicalEquivalentFinalP
 	}
 }
 
-func TestCrossPlatformCoverageNewDriveParamAliasesCannotBypassConfirmation(t *testing.T) {
-	for _, test := range paramAliasNewDriveConfirmationCases {
+func TestCrossPlatformCoverageNewAITableDeleteDisableAliasesPreserveConfirmationAndPayload(t *testing.T) {
+	coveredCommands := make(map[string]bool)
+	reviewedAliases := make(map[string]string, len(paramAliasNewAITableDeleteDisableCases))
+	for _, test := range paramAliasNewAITableDeleteDisableCases {
+		test := test
+		caseKey := paramAliasPayloadCaseKey(test.command, test.emitted)
+		if previous, duplicate := reviewedAliases[caseKey]; duplicate {
+			t.Fatalf("duplicate AITable delete/disable alias case %q: --%s and --%s", caseKey, previous, test.canonical)
+		}
+		reviewedAliases[caseKey] = test.canonical
+		t.Run(test.command+"/"+test.emitted, func(t *testing.T) {
+			complete, ok := paramAliasAITableDeleteDisableCompleteCommands[test.command]
+			if !ok {
+				t.Fatal("reviewed AITable delete/disable alias has no complete safety template")
+			}
+			coveredCommands[test.command] = true
+
+			canonicalArgs := append([]string(nil), complete...)
+			aliasArgs, replacements := replaceLongFlag(canonicalArgs, test.canonical, test.emitted)
+			if replacements != 1 {
+				t.Fatalf("complete command must contain canonical --%s exactly once; replacements=%d args=%v", test.canonical, replacements, canonicalArgs)
+			}
+			unconfirmedArgs, removals := removeExactArg(aliasArgs, "--yes")
+			if removals != 1 {
+				t.Fatalf("safety template must contain --yes exactly once; removals=%d args=%v", removals, aliasArgs)
+			}
+
+			entry, exists := cli.LookupParamAlias(test.command)
+			target, active := entry.ResolveAlias(test.emitted)
+			if !exists || !active || target != test.canonical {
+				t.Fatalf("reviewed AITable alias --%s resolution = exists:%v active:%v target:%q, want --%s", test.emitted, exists, active, target, test.canonical)
+			}
+
+			unconfirmedCaller := &paramAliasCaptureCaller{}
+			ctx, unconfirmedErr := executeParamAliasPayloadE2E(t, unconfirmedCaller, unconfirmedArgs...)
+			if ctx == nil {
+				t.Fatal("unconfirmed AITable alias command skipped PreParse")
+			}
+			var appErr *apperrors.Error
+			if !errors.As(unconfirmedErr, &appErr) || appErr.Reason != "confirmation_required" {
+				t.Fatalf("unconfirmed AITable alias command error = %#v, want confirmation_required\nargs=%v", unconfirmedErr, unconfirmedArgs)
+			}
+			if len(unconfirmedCaller.calls) != 0 {
+				t.Fatalf("unconfirmed AITable alias crossed the transport boundary: args=%v calls=%#v", unconfirmedArgs, unconfirmedCaller.calls)
+			}
+
+			canonicalCaller := &paramAliasCaptureCaller{}
+			_, canonicalErr := executeParamAliasPayloadE2E(t, canonicalCaller, canonicalArgs...)
+			if canonicalErr != nil {
+				t.Fatalf("confirmed canonical command failed: %v\nargs=%v\ncalls=%#v", canonicalErr, canonicalArgs, canonicalCaller.calls)
+			}
+			if len(canonicalCaller.calls) == 0 {
+				t.Fatalf("confirmed canonical command reached no final transport payload: args=%v", canonicalArgs)
+			}
+
+			aliasCaller := &paramAliasCaptureCaller{}
+			aliasCtx, aliasErr := executeParamAliasPayloadE2E(t, aliasCaller, aliasArgs...)
+			if aliasErr != nil {
+				t.Fatalf("confirmed alias command failed: %v\nargs=%v\ncalls=%#v", aliasErr, aliasArgs, aliasCaller.calls)
+			}
+			if aliasCtx == nil {
+				t.Fatal("confirmed AITable alias command skipped PreParse")
+			}
+			if !reflect.DeepEqual(aliasCaller.calls, canonicalCaller.calls) {
+				t.Fatalf("confirmed final transport calls differ\ncanonical args: %v\nalias args: %v\ncanonical calls: %#v\nalias calls: %#v", canonicalArgs, aliasArgs, canonicalCaller.calls, aliasCaller.calls)
+			}
+		})
+	}
+
+	for command := range paramAliasAITableDeleteDisableCompleteCommands {
+		if !coveredCommands[command] {
+			t.Errorf("AITable delete/disable safety template %q has no reviewed alias case", command)
+		}
+	}
+	if len(coveredCommands) != len(paramAliasAITableDeleteDisableCompleteCommands) {
+		t.Fatalf("AITable delete/disable safety coverage = %d commands, want %d", len(coveredCommands), len(paramAliasAITableDeleteDisableCompleteCommands))
+	}
+
+	activeAliases := 0
+	for command := range paramAliasAITableDeleteDisableCompleteCommands {
+		entry, exists := cli.LookupParamAlias(command)
+		if !exists {
+			t.Errorf("AITable delete/disable safety command %q has no generated alias entry", command)
+			continue
+		}
+		for emitted, canonical := range entry.Aliases {
+			activeAliases++
+			caseKey := paramAliasPayloadCaseKey(command, emitted)
+			reviewedCanonical, reviewed := reviewedAliases[caseKey]
+			if !reviewed {
+				t.Errorf("active AITable delete/disable alias %q --%s -> --%s has no confirmation/payload case", command, emitted, canonical)
+				continue
+			}
+			if reviewedCanonical != canonical {
+				t.Errorf("reviewed AITable delete/disable alias %q --%s target = --%s, generated --%s", command, emitted, reviewedCanonical, canonical)
+			}
+		}
+	}
+	if activeAliases != len(reviewedAliases) {
+		t.Fatalf("AITable delete/disable generated alias coverage = %d, want %d reviewed cases", activeAliases, len(reviewedAliases))
+	}
+}
+
+func TestCrossPlatformCoverageNewParamAliasesCannotBypassConfirmation(t *testing.T) {
+	for _, test := range paramAliasNewConfirmationCases {
 		test := test
 		t.Run(test.command+"/"+test.emitted, func(t *testing.T) {
 			complete, ok := paramAliasCompleteCommand(test.command, test.canonical)
 			if !ok {
-				t.Fatal("reviewed Drive confirmation alias has no complete-command E2E template")
+				t.Fatal("reviewed confirmation alias has no complete-command E2E template")
 			}
 			aliasArgs, replacements := replaceLongFlag(complete, test.canonical, test.emitted)
 			if replacements != 1 {
@@ -649,7 +883,7 @@ func TestCrossPlatformCoverageNewDriveParamAliasesCannotBypassConfirmation(t *te
 			entry, exists := cli.LookupParamAlias(test.command)
 			target, active := entry.ResolveAlias(test.emitted)
 			if !exists || !active || target != test.canonical {
-				t.Fatalf("reviewed Drive alias --%s resolution = exists:%v active:%v target:%q, want --%s", test.emitted, exists, active, target, test.canonical)
+				t.Fatalf("reviewed confirmation alias --%s resolution = exists:%v active:%v target:%q, want --%s", test.emitted, exists, active, target, test.canonical)
 			}
 
 			caller := &paramAliasCaptureCaller{}

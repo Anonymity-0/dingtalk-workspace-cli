@@ -49,6 +49,19 @@
  *  17. multi backup failure  — restores every earlier successful backup.
  *  18. mono transaction failure — restores every managed multi Skill after
  *                                 later backup or mono publish failure.
+ *  19. copy publish no-replace  — mono/multi set publication refuses a
+ *                                 concurrently occupied destination (atomic
+ *                                 claim, no check-then-rename window) on
+ *                                 POSIX and simulated win32.
+ *  20. unmarked stamps       — stamp-shaped directories without the exact
+ *                              ownership marker survive pruning and never
+ *                              consume a keep slot.
+ *  24. stamp-root cleanup    — a failed marker write removes an empty fresh
+ *                              root (rmdir path) but never a non-empty
+ *                              foreign root.
+ *  25. rollback ENOENT gate  — a vanished child makes the destination
+ *                              unverifiable (rollback refused), never
+ *                              "destination already gone".
  *
  * Requirements: unix host with tar/zip/unzip on PATH (the same tools
  * install.js itself shells out to). Skips cleanly on win32.
@@ -89,6 +102,8 @@ const {
   publishCanonicalLinksAtomically,
   publishManagedMonoSkillSetAtomically,
   publishManagedMultiSkillSetAtomically,
+  recordSkillPathPublicationSync,
+  rollbackPublishedSkillPath,
 } = require(installJsSource);
 
 assert.equal(UPSTREAM_AGENTS.length, 76, "the complete upstream Agent registry is pinned");
@@ -130,6 +145,18 @@ function writeFile(filePath, content, mode = 0o644) {
   fs.writeFileSync(filePath, content, { mode });
 }
 
+// Cross-surface backup ownership contract (mirrors internal/upgrade/paths.go,
+// scripts/install.ps1, scripts/install-devapp.ps1, and scripts/install.sh):
+// every DWS-created stamp root carries .dws-skill-backup whose entire content
+// is exactly these bytes. Hardcoded here on purpose so drift from any writer
+// fails the smoke test.
+const SKILL_BACKUP_MARKER_FILE = ".dws-skill-backup";
+const SKILL_BACKUP_MARKER_BODY = "dws skill backup v1\n";
+
+function markBackupStamp(stampRoot) {
+  writeFile(path.join(stampRoot, SKILL_BACKUP_MARKER_FILE), SKILL_BACKUP_MARKER_BODY);
+}
+
 function writeManagedState(home, names) {
   const state = {
     version: "old",
@@ -152,8 +179,9 @@ function crossDeviceError() {
 }
 
 // withSimulatedWin32 runs fn with process.platform === "win32" so the
-// Windows-only publish branches (junction type, absolute link target, rename
-// publish + its no-replace guard) get real execution coverage on a unix host.
+// Windows-only publish branches (junction type, absolute link target, and
+// the atomic junction creation at the destination) get real execution
+// coverage on a unix host.
 // fs.symlinkSync ignores the type argument off Windows, so the same call is
 // safe here. Create every temp path BEFORE calling: os.tmpdir() follows the
 // simulated platform.
@@ -291,6 +319,67 @@ function runCrossDeviceMoveContract() {
     }
 
     {
+      const { src, dest } = fixture("dest-verify");
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, {
+          renameFn: injectedRename,
+          verifyFn(left, right) {
+            if (right === dest) throw new Error("dest-verify failed");
+          },
+        }),
+        /dest retracted|dest-verify failed/,
+      );
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+      assert.equal(fs.existsSync(dest), false, "post-occupy verify failure retracts dest");
+    }
+
+    {
+      const { src, dest } = fixture("dest-chmod");
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, {
+          renameFn: injectedRename,
+          chmodFn(target, mode) {
+            if (target === dest) throw new Error("chmod failed");
+            fs.chmodSync(target, mode);
+          },
+        }),
+        /dest retracted|chmod failed/,
+      );
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+      assert.equal(fs.existsSync(dest), false, "post-occupy chmod failure retracts dest");
+    }
+
+    {
+      const { src, dest } = fixture("dest-cleanup");
+      assert.throws(
+        () => movePathRecoverablySync(src, dest, {
+          renameFn: injectedRename,
+          removeFn(target) {
+            if (target !== src && path.basename(target).startsWith(".skill.cross-device-")) {
+              throw new Error("cleanup failed");
+            }
+            fs.rmSync(target, { recursive: true, force: true });
+          },
+        }),
+        /dest retracted|cleanup failed/,
+      );
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+      assert.equal(fs.existsSync(dest), false, "post-occupy staging cleanup failure retracts dest");
+    }
+
+    {
+      const { src, dest } = fixture("same-volume-occupied");
+      writeFile(path.join(dest, "concurrent-user-data.txt"), "must survive\n");
+      assert.throws(
+        () => movePathRecoverablySync(src, dest),
+        /already exists/,
+      );
+      assert.deepEqual(fs.readdirSync(dest), ["concurrent-user-data.txt"]);
+      assert.equal(fs.readFileSync(path.join(dest, "concurrent-user-data.txt"), "utf8"), "must survive\n");
+      assert.equal(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"), "old skill\n");
+    }
+
+    {
       const root = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-dangling-collision-"));
       roots.push(root);
       const home = path.join(root, "home");
@@ -323,7 +412,7 @@ function runCrossDeviceMoveContract() {
             }
             fs.renameSync(source, target);
           },
-		  publishLinkFn() { throw new Error("link publish failed"); },
+		  publishSymlinkFn() { throw new Error("link publish failed"); },
         }),
         /link publish failed/,
       );
@@ -872,11 +961,10 @@ scenario("canonical link publication never clobbers or deletes concurrent user d
           ["dingtalk-first", "dingtalk-second"],
           [first, second],
           {
-            publishLinkFn(source, target) {
+            publishSymlinkFn(target, linkPath, type) {
               publishCalls += 1;
               if (publishCalls === 1) {
-                const result = childProcess.spawnSync("ln", ["-P", source, target], { encoding: "utf8" });
-                if (result.status !== 0) throw new Error(result.stderr || "ln -P failed");
+                fs.symlinkSync(target, linkPath, type);
                 return;
               }
               fs.unlinkSync(first);
@@ -885,16 +973,222 @@ scenario("canonical link publication never clobbers or deletes concurrent user d
             },
           },
         ),
-        /concurrent object retained|rollback failed/,
+        /rollback failed|refusing to delete non-transaction Skill/,
       );
-      assert.equal(fs.readFileSync(path.join(first, "SKILL.md"), "utf8"), "old dingtalk-first\n");
+      assert.equal(
+        fs.readFileSync(path.join(first, "concurrent-user-data.txt"), "utf8"),
+        "must survive\n",
+        "unmatched quarantine must be restored onto dest",
+      );
+      assert.ok(
+        !fs.existsSync(path.join(first, "SKILL.md")),
+        "restored concurrent dest must not be replaced by the backup",
+      );
       assert.equal(fs.readFileSync(path.join(second, "SKILL.md"), "utf8"), "old dingtalk-second\n");
       const retained = fs.readdirSync(base)
         .filter((name) => name.startsWith(".dingtalk-first.rollback-"))
         .map((name) => path.join(base, name, "payload", "concurrent-user-data.txt"))
         .filter((candidate) => fs.existsSync(candidate));
-      assert.equal(retained.length, 1, "concurrent replacement must be retained in quarantine");
-      assert.equal(fs.readFileSync(retained[0], "utf8"), "must survive\n");
+      assert.equal(retained.length, 0, "restored concurrent object must not stay hidden in quarantine");
+    }
+
+    {
+      // Direct rollback of a recorded publication after a concurrent writer
+      // replaced dest: ownership is proven at dest first, so the foreign
+      // object is never claimed into quarantine.
+      const dest = path.join(tmp, "direct-rollback", "dingtalk-chat");
+      writeFile(path.join(dest, "SKILL.md"), "published\n");
+      const publication = recordSkillPathPublicationSync(dest);
+      fs.rmSync(dest, { recursive: true, force: true });
+      writeFile(path.join(dest, "concurrent-user-data.txt"), "must survive\n");
+      assert.throws(
+        () => rollbackPublishedSkillPath(publication),
+        /refusing to delete non-transaction Skill/,
+      );
+      assert.equal(
+        fs.readFileSync(path.join(dest, "concurrent-user-data.txt"), "utf8"),
+        "must survive\n",
+        "concurrent replacement stays at the original destination",
+      );
+      assert.deepEqual(fs.readdirSync(dest), ["concurrent-user-data.txt"]);
+      const parent = path.dirname(dest);
+      assert.equal(
+        fs.readdirSync(parent).some((name) => name.startsWith(".dingtalk-chat.rollback-")),
+        false,
+        "unowned dest must not be moved into quarantine",
+      );
+    }
+
+    {
+      // Dest matched at the pre-check, then the quarantined object no longer
+      // matches: restore it onto dest with no-replace instead of deleting.
+      const dest = path.join(tmp, "post-quarantine", "dingtalk-chat");
+      writeFile(path.join(dest, "SKILL.md"), "published\n");
+      const publication = recordSkillPathPublicationSync(dest);
+      assert.throws(
+        () => rollbackPublishedSkillPath(publication, {
+          quarantineRenameFn(source, target) {
+            fs.renameSync(source, target);
+            fs.writeFileSync(path.join(target, "SKILL.md"), "mutated-in-quarantine\n");
+          },
+        }),
+        /refusing to delete non-transaction Skill/,
+      );
+      assert.equal(
+        fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"),
+        "mutated-in-quarantine\n",
+        "post-quarantine mismatch is restored onto dest",
+      );
+      const parent = path.dirname(dest);
+      assert.equal(
+        fs.readdirSync(parent).some((name) => name.startsWith(".dingtalk-chat.rollback-")
+          && fs.existsSync(path.join(parent, name, "payload", "SKILL.md"))),
+        false,
+        "restored dest must not stay hidden in quarantine",
+      );
+    }
+
+    {
+      // Injected race: a concurrent creator occupies the destination at the
+      // instant of publication. Link creation must fail atomically with
+      // EEXIST, leaving the foreign object and its contents completely
+      // unchanged — nothing is replaced, and nothing is linked into it (the
+      // old `ln -P` publish treated an occupied directory as a container and
+      // left its stray link behind because the publication had not yet
+      // entered the rollback list).
+      const home = path.join(tmp, "injected-race-home");
+      const canonical = path.join(home, ".agents", "skills");
+      const base = path.join(home, ".codex", "skills");
+      const dest = path.join(base, "dingtalk-chat");
+      writeFile(path.join(canonical, "dingtalk-chat", "SKILL.md"), "new\n");
+      assert.throws(
+        () =>
+          publishCanonicalLinksAtomically(home, canonical, base, ["dingtalk-chat"], [], {
+            publishSymlinkFn(target, linkPath, type) {
+              writeFile(path.join(linkPath, "concurrent-user-data.txt"), "must survive\n");
+              fs.symlinkSync(target, linkPath, type);
+            },
+          }),
+        /Skill publish destination already exists/,
+      );
+      assert.deepEqual(
+        fs.readdirSync(dest),
+        ["concurrent-user-data.txt"],
+        "the foreign object is neither replaced nor linked into",
+      );
+      assert.equal(fs.readFileSync(path.join(dest, "concurrent-user-data.txt"), "utf8"), "must survive\n");
+      assert.equal(fs.lstatSync(dest).isDirectory(), true, "the foreign directory is untouched");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-link-set.tmp-")),
+        "refused publication cleans its staging root",
+      );
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("mono and multi set publication never clobbers or deletes concurrent user data", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-copy-race-"));
+  try {
+    {
+      // Real no-replace property for the multi copy publisher: the destination
+      // is occupied by data this transaction never backed up (it is not a
+      // victim), so publication must refuse rather than rename over it. The
+      // claim (mkdir) is the existence check itself — a concurrent creator
+      // either loses the claim race or is never touched.
+      const home = path.join(tmp, "multi-home");
+      const source = path.join(tmp, "multi-source");
+      const base = path.join(home, ".cursor", "skills");
+      writeFile(path.join(source, "dingtalk-first", "SKILL.md"), "new first\n");
+      writeFile(path.join(source, "dingtalk-second", "SKILL.md"), "new second\n");
+      writeFile(path.join(base, "dingtalk-second", "concurrent-user-data.txt"), "must survive\n");
+      assert.throws(
+        () => publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-first", "dingtalk-second"], []),
+        /Skill publish destination already exists/,
+      );
+      assert.deepEqual(
+        fs.readdirSync(path.join(base, "dingtalk-second")),
+        ["concurrent-user-data.txt"],
+        "refused publication must not leave anything inside the occupied destination",
+      );
+      assert.equal(
+        fs.readFileSync(path.join(base, "dingtalk-second", "concurrent-user-data.txt"), "utf8"),
+        "must survive\n",
+      );
+      assert.ok(!fs.existsSync(path.join(base, "dingtalk-first")), "the earlier publication is rolled back");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-multi-set.tmp-")),
+        "refused publication cleans its staging root",
+      );
+    }
+
+    {
+      // Same contract for the mono publisher (canonical publish and the
+      // copy fallback both flow through it).
+      const home = path.join(tmp, "mono-home");
+      const source = path.join(tmp, "mono-source");
+      const base = path.join(home, ".agents", "skills");
+      writeFile(path.join(source, "SKILL.md"), "new mono\n");
+      writeFile(path.join(base, "dws", "concurrent-user-data.txt"), "must survive\n");
+      assert.throws(
+        () => publishManagedMonoSkillSetAtomically(home, source, base, []),
+        /Skill publish destination already exists/,
+      );
+      assert.deepEqual(fs.readdirSync(path.join(base, "dws")), ["concurrent-user-data.txt"]);
+      assert.equal(fs.readFileSync(path.join(base, "dws", "concurrent-user-data.txt"), "utf8"), "must survive\n");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-mono-set.tmp-")),
+        "refused publication cleans its staging root",
+      );
+    }
+
+    {
+      // Injected race: a concurrent creator occupies the destination the
+      // instant before the claim. The old check-then-rename code replaced it;
+      // the claim must now fail with EEXIST and leave the user object intact.
+      const home = path.join(tmp, "race-home");
+      const source = path.join(tmp, "race-source");
+      const base = path.join(home, ".zcode", "skills");
+      const secondDest = path.join(base, "dingtalk-second");
+      writeFile(path.join(source, "dingtalk-first", "SKILL.md"), "new first\n");
+      writeFile(path.join(source, "dingtalk-second", "SKILL.md"), "new second\n");
+      assert.throws(
+        () =>
+          publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-first", "dingtalk-second"], [], {
+            publishMkdirFn(target) {
+              if (target === secondDest) {
+                writeFile(path.join(target, "concurrent-user-data.txt"), "must survive\n");
+              }
+              fs.mkdirSync(target);
+            },
+          }),
+        /Skill publish destination already exists/,
+      );
+      assert.deepEqual(fs.readdirSync(secondDest), ["concurrent-user-data.txt"], "the concurrent object is neither replaced nor linked into");
+      assert.equal(fs.readFileSync(path.join(secondDest, "concurrent-user-data.txt"), "utf8"), "must survive\n");
+      assert.ok(!fs.existsSync(path.join(base, "dingtalk-first")), "the earlier publication is rolled back");
+    }
+
+    {
+      // The guarantee holds on the simulated Windows publisher path as well
+      // (libuv's rename replaces outright there, so the claim matters most).
+      const home = path.join(tmp, "win32-home");
+      const source = path.join(tmp, "win32-source");
+      const base = path.join(home, ".qoder", "skills");
+      writeFile(path.join(source, "dingtalk-first", "SKILL.md"), "new first\n");
+      writeFile(path.join(base, "dingtalk-first", "concurrent-user-data.txt"), "must survive\n");
+      withSimulatedWin32(() => {
+        assert.throws(
+          () => publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-first"], []),
+          /Skill publish destination already exists/,
+        );
+      });
+      assert.deepEqual(fs.readdirSync(path.join(base, "dingtalk-first")), ["concurrent-user-data.txt"]);
+      assert.equal(
+        fs.readFileSync(path.join(base, "dingtalk-first", "concurrent-user-data.txt"), "utf8"),
+        "must survive\n",
+      );
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -915,35 +1209,41 @@ scenario("simulated win32 publishes junctions with absolute canonical targets", 
     writeFile(path.join(dest, "SKILL.md"), "old zcode copy\n");
 
     const symlinkCalls = [];
-    const renameCalls = [];
+    const publishCalls = [];
     withSimulatedWin32(() => {
       publishCanonicalLinksAtomically(home, canonical, base, ["dingtalk-chat"], [dest], {
         symlinkFn(target, linkPath, type) {
           symlinkCalls.push({ target, linkPath, type });
           fs.symlinkSync(target, linkPath, type);
         },
-        publishRenameFn(source, destination) {
-          renameCalls.push({ source, destination });
-          fs.renameSync(source, destination);
+        publishSymlinkFn(target, linkPath, type) {
+          publishCalls.push({ target, linkPath, type });
+          fs.symlinkSync(target, linkPath, type);
         },
       });
     });
 
     assert.equal(symlinkCalls.length, 1, "one staged link per bundle skill");
-    assert.equal(symlinkCalls[0].type, "junction", "Windows must publish junctions, not symlinks");
+    assert.equal(symlinkCalls[0].type, "junction", "Windows must stage junctions, not symlinks");
     assert.equal(path.isAbsolute(symlinkCalls[0].target), true, "junctions require an absolute target");
     assert.equal(symlinkCalls[0].target, fs.realpathSync(canonicalSkill), "junction targets the canonical store");
-    assert.equal(renameCalls.length, 1, "win32 publishes by rename, not by ln -P");
-    assert.equal(renameCalls[0].destination, dest);
+    assert.equal(publishCalls.length, 1, "win32 publishes by creating the junction directly at the destination");
+    assert.equal(publishCalls[0].linkPath, dest);
+    assert.equal(publishCalls[0].type, "junction");
     assert.equal(fs.readlinkSync(dest), fs.realpathSync(canonicalSkill), "published junction kept its absolute target");
     assert.equal(fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"), "# dingtalk-chat\n");
     const backupRoot = path.join(home, ".dws", "skill-backups");
     const stamps = fs.readdirSync(backupRoot);
     assert.equal(stamps.length, 1, "the replaced copy produced exactly one backup stamp");
     assert.deepEqual(
-      fs.readdirSync(path.join(backupRoot, stamps[0])),
-      [".zcode-skills-dingtalk-chat"],
-      "backups encode the HOME-relative origin of the retired copy",
+      fs.readdirSync(path.join(backupRoot, stamps[0])).sort(),
+      [SKILL_BACKUP_MARKER_FILE, ".zcode-skills-dingtalk-chat"],
+      "the stamp root carries the ownership marker next to the backup payload",
+    );
+    assert.equal(
+      fs.readFileSync(path.join(backupRoot, stamps[0], SKILL_BACKUP_MARKER_FILE), "utf8"),
+      SKILL_BACKUP_MARKER_BODY,
+      "backup creation stamps the exact cross-surface marker bytes",
     );
     assert.equal(
       fs.readFileSync(path.join(backupRoot, stamps[0], ".zcode-skills-dingtalk-chat", "SKILL.md"), "utf8"),
@@ -951,25 +1251,24 @@ scenario("simulated win32 publishes junctions with absolute canonical targets", 
       "the replaced copy stays recoverable",
     );
 
-    // FIX 5: the win32 rename path must never replace an object that appeared
-    // at the destination (libuv passes MOVEFILE_REPLACE_EXISTING).
+    // FIX 5: an object appearing at the destination at publish time must never
+    // be replaced — junction creation fails atomically with EEXIST (the old
+    // win32 rename passed MOVEFILE_REPLACE_EXISTING and replaced it).
     const raceBase = path.join(home, ".qoder", "skills");
     const occupied = path.join(raceBase, "dingtalk-chat");
-    writeFile(path.join(occupied, "concurrent-user-data.txt"), "must survive\n");
-    let renames = 0;
     withSimulatedWin32(() => {
       assert.throws(
-        () => publishCanonicalLinksAtomically(home, canonical, raceBase, ["dingtalk-chat"], [], {
-          publishRenameFn(source, destination) {
-            renames += 1;
-            fs.renameSync(source, destination);
-          },
-        }),
+        () =>
+          publishCanonicalLinksAtomically(home, canonical, raceBase, ["dingtalk-chat"], [], {
+            publishSymlinkFn(target, linkPath, type) {
+              writeFile(path.join(linkPath, "concurrent-user-data.txt"), "must survive\n");
+              fs.symlinkSync(target, linkPath, type);
+            },
+          }),
         /Skill publish destination already exists/,
       );
     });
-    assert.equal(renames, 0, "win32 publish must not rename over an existing destination");
-    assert.deepEqual(fs.readdirSync(occupied), ["concurrent-user-data.txt"]);
+    assert.deepEqual(fs.readdirSync(occupied), ["concurrent-user-data.txt"], "the concurrent object is neither replaced nor linked into");
     assert.equal(fs.readFileSync(path.join(occupied, "concurrent-user-data.txt"), "utf8"), "must survive\n");
     assert.equal(process.platform !== "win32", true, "the simulated platform is restored");
   } finally {
@@ -986,7 +1285,9 @@ scenario("skill backups stay bounded to the newest five stamps", () => {
       "20260101-000001", "20260101-000002", "20260101-000003",
       "20260101-000004", "20260101-000005", "20260101-000006", "20260101-000007",
     ]) {
-      writeFile(path.join(backupRoot, stamp, "placeholder", "SKILL.md"), `${stamp}\n`);
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "placeholder", "SKILL.md"), `${stamp}\n`);
+      markBackupStamp(stampRoot);
     }
     const victim = path.join(home, ".codex", "skills", "dingtalk-chat");
     writeFile(path.join(victim, "SKILL.md"), "old codex copy\n");
@@ -1015,7 +1316,9 @@ scenario("prune preserves unknown directories in skill-backups", () => {
       "20260101-000001", "20260101-000002", "20260101-000003",
       "20260101-000004", "20260101-000005", "20260101-000006", "20260101-000007",
     ]) {
-      writeFile(path.join(backupRoot, stamp, "placeholder", "SKILL.md"), `${stamp}\n`);
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "placeholder", "SKILL.md"), `${stamp}\n`);
+      markBackupStamp(stampRoot);
     }
     const unknowns = [
       "user-personal-backup",
@@ -1042,6 +1345,73 @@ scenario("prune preserves unknown directories in skill-backups", () => {
         fs.readFileSync(path.join(backupRoot, name, "marker.txt"), "utf8"),
         `unknown:${name}\n`,
         `unknown directory ${name} contents must be intact`,
+      );
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("prune preserves unmarked stamp directories without consuming keep slots", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-prune-unmarked-"));
+  const home = path.join(tmp, "home");
+  const backupRoot = path.join(home, ".dws", "skill-backups");
+  try {
+    // Exactly SKILL_BACKUP_KEEP verified stamps: nothing may be pruned, even
+    // though foreign stamp-shaped siblings would push the naive count past
+    // the limit.
+    const marked = ["20260101-000001", "20260101-000002", "20260101-000003", "20260101-000004", "20260101-000005"];
+    for (const stamp of marked) {
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "placeholder", "SKILL.md"), `${stamp}\n`);
+      markBackupStamp(stampRoot);
+    }
+    const foreign = [
+      { stamp: "20260102-000001", body: null },              // no marker at all
+      { stamp: "20260102-000002", body: "dws skill backup v2\n" }, // wrong body
+      { stamp: "20260101-000000", body: "dws skill backup v1" },   // missing trailing LF
+      { stamp: "20260101-000099", body: "dws skill backup v1\r\n" }, // CRLF is not the exact contract bytes
+    ];
+    for (const { stamp, body } of foreign) {
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "user-data.txt"), `foreign:${stamp}\n`);
+      if (body !== null) writeFile(path.join(stampRoot, SKILL_BACKUP_MARKER_FILE), body);
+    }
+
+    pruneSkillBackups(home);
+
+    let remaining = fs.readdirSync(backupRoot).sort();
+    assert.deepEqual(
+      remaining,
+      [...marked, ...foreign.map(({ stamp }) => stamp)].sort(),
+      "with exactly keep-many verified stamps, nothing is pruned and unmarked stamps never count",
+    );
+
+    // Force real pruning: three more verified stamps push marked history to
+    // eight, so exactly the three oldest verified stamps go while every
+    // unmarked sibling stays put (still not consuming a keep slot).
+    for (const stamp of ["20260103-000001", "20260103-000002", "20260103-000003"]) {
+      const stampRoot = path.join(backupRoot, stamp);
+      writeFile(path.join(stampRoot, "placeholder", "SKILL.md"), `${stamp}\n`);
+      markBackupStamp(stampRoot);
+    }
+
+    pruneSkillBackups(home);
+
+    remaining = fs.readdirSync(backupRoot).sort();
+    for (const pruned of marked.slice(0, 3)) {
+      assert.ok(!remaining.includes(pruned), `oldest verified stamp ${pruned} is pruned`);
+    }
+    assert.deepEqual(
+      remaining,
+      [marked[3], marked[4], ...foreign.map(({ stamp }) => stamp), "20260103-000001", "20260103-000002", "20260103-000003"].sort(),
+      "pruning keeps exactly the newest five verified stamps and preserves every unmarked sibling",
+    );
+    for (const { stamp } of foreign) {
+      assert.equal(
+        fs.readFileSync(path.join(backupRoot, stamp, "user-data.txt"), "utf8"),
+        `foreign:${stamp}\n`,
+        `unmarked stamp ${stamp} contents must be intact`,
       );
     }
   } finally {
@@ -1080,10 +1450,15 @@ scenario("multi set publish failure restores the complete previous set", () => {
               ) {
                 throw crossDeviceError();
               }
-              if (src.includes(".dws-multi-set.tmp-") && path.basename(src) === "dingtalk-second") {
+              originalRename(src, dest);
+            },
+            // Child files publish through the link primitive now, so the
+            // injected failure rides the link seam.
+            publishLinkFn(src, dest) {
+              if (src.includes(".dws-multi-set.tmp-") && src.includes(`${path.sep}dingtalk-second${path.sep}`)) {
                 throw new Error("injected second publish failure");
               }
-              originalRename(src, dest);
+              return fs.linkSync(src, dest);
             },
           },
         ),
@@ -1171,14 +1546,13 @@ for (const failureKind of ["backup", "publish"]) {
               ) {
                 throw crossDeviceError();
               }
-              if (
-                failureKind === "publish" &&
-                src.includes(".dws-mono-set.tmp-") &&
-                path.basename(src) === "dws"
-              ) {
+              originalRename(src, target);
+            },
+            publishLinkFn(src, target) {
+              if (failureKind === "publish" && src.includes(".dws-mono-set.tmp-")) {
                 throw new Error("injected mono publish failure");
               }
-              originalRename(src, target);
+              return fs.linkSync(src, target);
             },
           }),
         /injected|failed to back up/,
@@ -1195,6 +1569,196 @@ for (const failureKind of ["backup", "publish"]) {
     }
   });
 }
+
+// A stamp root whose ownership marker write fails must not linger: an empty
+// fresh root is removed (rmdir, never a recursive delete), while a
+// pre-existing non-empty root holding foreign data always survives.
+scenario("a failed marker write never leaves an empty unowned stamp root", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-stamp-cleanup-"));
+  try {
+    const home = path.join(tmp, "home");
+    const victim = path.join(home, ".codex", "skills", "dingtalk-chat");
+    writeFile(path.join(victim, "SKILL.md"), "old codex copy\n");
+
+    // Fresh root: created by this call, then the marker write is poisoned so
+    // the backup aborts before any payload moves.
+    const stamp = "20260801-000000";
+    const markerPath = path.join(home, ".dws", "skill-backups", stamp, SKILL_BACKUP_MARKER_FILE);
+    const originalWriteFileSync = fs.writeFileSync;
+    fs.writeFileSync = (target, data, options) => {
+      if (target === markerPath) {
+        throw Object.assign(new Error("injected marker write failure"), { code: "EACCES" });
+      }
+      return originalWriteFileSync(target, data, options);
+    };
+    try {
+      assert.throws(
+        () => backupAndRemoveSkillDir(home, victim, null, { backupStampFn: () => stamp }),
+        /failed to back up Skill directory/,
+      );
+    } finally {
+      fs.writeFileSync = originalWriteFileSync;
+    }
+    assert.equal(fs.readFileSync(path.join(victim, "SKILL.md"), "utf8"), "old codex copy\n", "the source stays in place");
+    assert.equal(
+      fs.existsSync(path.join(home, ".dws", "skill-backups", stamp)),
+      false,
+      "an empty unowned stamp root is cleaned up",
+    );
+
+    // Foreign non-empty root: the marker path is a directory (the write fails
+    // with EISDIR), and rmdir must fail on the non-empty root, keeping it.
+    const foreignStamp = "20260801-000001";
+    const foreignRoot = path.join(home, ".dws", "skill-backups", foreignStamp);
+    writeFile(path.join(foreignRoot, "user-data.txt"), "foreign\n");
+    fs.mkdirSync(path.join(foreignRoot, SKILL_BACKUP_MARKER_FILE));
+    assert.throws(
+      () => backupAndRemoveSkillDir(home, victim, null, { backupStampFn: () => foreignStamp }),
+      /failed to back up Skill directory/,
+    );
+    assert.equal(fs.readFileSync(path.join(victim, "SKILL.md"), "utf8"), "old codex copy\n", "the source stays in place");
+    assert.equal(fs.readFileSync(path.join(foreignRoot, "user-data.txt"), "utf8"), "foreign\n", "a non-empty foreign stamp root survives");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// ENOENT during the pre-quarantine identity walk means "already gone" only
+// when the destination itself is missing; a concurrently removed CHILD must
+// fail the rollback loudly instead of silently skipping it.
+scenario("rollback refuses an unverifiable destination whose child vanished", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-rollback-enoent-"));
+  try {
+    const dest = path.join(tmp, "skill");
+    writeFile(path.join(dest, "SKILL.md"), "payload\n");
+    writeFile(path.join(dest, "child.md"), "child\n");
+    const publication = recordSkillPathPublicationSync(dest);
+
+    // Remove the child while the pre-quarantine fingerprint walk sits between
+    // its readdir and the per-child lstat, so the walk itself fails ENOENT.
+    const firstChild = path.join(dest, "SKILL.md");
+    const vanishedChild = path.join(dest, "child.md");
+    const originalReadFileSync = fs.readFileSync;
+    fs.readFileSync = (target, options) => {
+      if (target === firstChild) {
+        fs.rmSync(vanishedChild);
+      }
+      return originalReadFileSync(target, options);
+    };
+    try {
+      assert.throws(
+        () => rollbackPublishedSkillPath(publication),
+        /refusing to delete unverifiable Skill/,
+      );
+    } finally {
+      fs.readFileSync = originalReadFileSync;
+    }
+    assert.equal(fs.readFileSync(path.join(dest, "SKILL.md"), "utf8"), "payload\n", "the unverifiable destination is preserved");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+scenario("per-child no-clobber refuses same-name concurrent entries after the claim", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dws-installjs-child-race-"));
+  try {
+    const buildFixture = (label) => {
+      const home = path.join(tmp, label);
+      const source = path.join(tmp, `${label}-src`);
+      fs.mkdirSync(path.join(source, "dingtalk-chat", "references"), { recursive: true });
+      writeFile(path.join(source, "dingtalk-chat", "SKILL.md"), "new chat\n");
+      writeFile(path.join(source, "dingtalk-chat", "notes.md"), "notes\n");
+      writeFile(path.join(source, "dingtalk-chat", "references", "guide.md"), "guide\n");
+      fs.symlinkSync("SKILL.md", path.join(source, "dingtalk-chat", "rel-link"));
+      return { home, source, base: path.join(home, ".zcode", "skills") };
+    };
+
+    {
+      // Same-name concurrent FILE: the foreign file lands at
+      // <claim>/SKILL.md between the claim and the per-child link primitive.
+      const { home, source, base } = buildFixture("file-race");
+      const dest = path.join(base, "dingtalk-chat");
+      const planted = path.join(dest, "SKILL.md");
+      assert.throws(
+        () =>
+          publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-chat"], [], {
+            publishLinkFn(src, target) {
+              if (target === planted && !fs.existsSync(planted)) {
+                writeFile(planted, "concurrent-user-edit\n");
+              }
+              return fs.linkSync(src, target);
+            },
+          }),
+        /Skill move destination already exists/,
+      );
+      assert.equal(fs.readFileSync(planted, "utf8"), "concurrent-user-edit\n", "the concurrent file is never replaced");
+      assert.deepEqual(
+        fs.readdirSync(dest).sort(),
+        ["SKILL.md"],
+        "no other child may move once the concurrent entry is seen",
+      );
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-multi-set.tmp-")),
+        "failed publish must clean the staging root",
+      );
+    }
+
+    {
+      // Same-name concurrent DIRECTORY at <claim>/references.
+      const { home, source, base } = buildFixture("dir-race");
+      const dest = path.join(base, "dingtalk-chat");
+      const planted = path.join(dest, "references");
+      assert.throws(
+        () =>
+          publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-chat"], [], {
+            publishMkdirFn(target) {
+              if (target === planted && !fs.existsSync(planted)) {
+                fs.mkdirSync(path.join(planted, "user-data"), { recursive: true });
+                writeFile(path.join(planted, "user-data", "keep.txt"), "keep\n");
+              }
+              fs.mkdirSync(target, { mode: 0o700 });
+            },
+          }),
+        /Skill move destination already exists/,
+      );
+      assert.equal(
+        fs.readFileSync(path.join(planted, "user-data", "keep.txt"), "utf8"),
+        "keep\n",
+        "the concurrent directory survives byte-identical",
+      );
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-multi-set.tmp-")),
+        "failed publish must clean the staging root",
+      );
+    }
+
+    {
+      // Same-name concurrent SYMLINK at <claim>/rel-link.
+      const { home, source, base } = buildFixture("link-race");
+      const dest = path.join(base, "dingtalk-chat");
+      const planted = path.join(dest, "rel-link");
+      assert.throws(
+        () =>
+          publishManagedMultiSkillSetAtomically(home, source, base, ["dingtalk-chat"], [], {
+            publishSymlinkFn(target, linkname) {
+              if (linkname === planted && !fs.existsSync(planted)) {
+                fs.symlinkSync("foreign-target", planted);
+              }
+              return fs.symlinkSync(target, linkname);
+            },
+          }),
+        /Skill move destination already exists/,
+      );
+      assert.equal(fs.readlinkSync(planted), "foreign-target", "the concurrent link is never replaced");
+      assert.ok(
+        !fs.readdirSync(base).some((name) => name.startsWith(".dws-multi-set.tmp-")),
+        "failed publish must clean the staging root",
+      );
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
 
 process.stdout.write("• EXDEV copy/verify/remove and transaction rollback contract ... ");
 runCrossDeviceMoveContract();
