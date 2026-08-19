@@ -31,3 +31,15 @@ func TestCrossPlatformCoverageSearchMobilePreservesEmptyObjectSemantics(t *testi
 		t.Fatalf("empty result projected users: %#v", users)
 	}
 }
+
+func TestCrossPlatformCoverageSearchMobileProjectsArrayAndMissingResult(t *testing.T) {
+	users := searchUserProject(map[string]any{
+		"result": []any{map[string]any{"name": "Alice", "userId": "u1"}},
+	})
+	if len(users) != 1 || users[0]["userId"] != "u1" || users[0]["name"] != "Alice" {
+		t.Fatalf("array envelope projection = %#v, want one user", users)
+	}
+	if users := searchUserProject(map[string]any{"success": true}); len(users) != 0 {
+		t.Fatalf("missing result projected users: %#v", users)
+	}
+}

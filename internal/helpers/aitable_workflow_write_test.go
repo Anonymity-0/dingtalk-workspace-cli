@@ -77,7 +77,7 @@ func runAitableWorkflowCommandWithCaller(t *testing.T, caller *aitableWorkflowCa
 	return cmd.Execute()
 }
 
-func TestAitableWorkflowCreateMapsDSLWithoutRetry(t *testing.T) {
+func TestCrossPlatformCoverageAitableWorkflowCreateMapsDSLWithoutRetry(t *testing.T) {
 	wantDSL := map[string]any{
 		"version": "workflow-dsl/v1",
 		"name":    "create test",
