@@ -323,6 +323,44 @@ func TestChatGroupRoleSetUserRejectsMultiplePublicRoleIDs(t *testing.T) {
 	}
 }
 
+func TestChatGroupRoleSetUserRejectsMissingOrEmptyPublicRoleID(t *testing.T) {
+	previousDeps, previousArgs := deps, os.Args
+	os.Args = []string{"dws", "chat"}
+	t.Cleanup(func() { deps, os.Args = previousDeps, previousArgs })
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "missing public role id",
+			args: []string{"group-role", "set-user", "--group=cid", "--user=D1"},
+			want: "role-id",
+		},
+		{
+			name: "empty public role id",
+			args: []string{"group-role", "set-user", "--group=cid", "--user=D1", "--role-id="},
+			want: "--role-id 不能为空",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			err := runChatCoverageCommand(t, caller, tc.args...)
+			if err == nil {
+				t.Fatal("set-user accepted a missing or empty --role-id, want validation error")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want substring %q", err, tc.want)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("tool calls = %d, want 0", caller.calls)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T) {
 	previousDeps, previousArgs := deps, os.Args
 	os.Args = []string{"dws", "chat"}
