@@ -242,6 +242,40 @@ func TestCrossPlatformCoverageViewPresetPureMatching(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageViewPresetProjectionShapeEdges(t *testing.T) {
+	if !presetViewMatches(map[string]any{"viewType": "Grid", "f": 1}, "Grid", map[string]any{"f": 1}) {
+		t.Fatal("top-level projected config must match")
+	}
+	invalid := []map[string]any{
+		{"columns": "bad", "custom": map[string]any{}},
+		{"columns": []any{"f"}, "custom": map[string]any{"hiddenFields": map[string]any{"f": "bad"}}},
+		{"columns": []any{1}, "custom": map[string]any{"hiddenFields": map[string]any{"1": false}}},
+		{"columns": []any{"f"}, "custom": map[string]any{"hiddenFields": map[string]any{}}},
+		{"columns": []any{"f"}, "custom": map[string]any{"hiddenFields": []any{}}},
+		{"columns": []any{1}, "custom": map[string]any{"hiddenFields": []any{false}}},
+		{"columns": []any{"f"}, "custom": map[string]any{"hiddenFields": []any{"bad"}}},
+	}
+	for _, view := range invalid {
+		if got, ok := projectedVisibleFieldIDs(view); ok || got != nil {
+			t.Errorf("invalid projection %#v = %#v, %v", view, got, ok)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageViewPresetReadBackDuplicateStopsE2E(t *testing.T) {
+	disableViewPresetSleep(t)
+	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+		{text: `{"views":[]}`},
+		{text: `{"viewId":"v1"}`},
+		{text: `{"views":[{"viewId":"v1","viewName":"X"},{"viewId":"v2","viewName":"X"}]}`},
+	}}
+	out, err := runAITableCompositeCLI(t, caller, "+view-preset-apply",
+		"--base-id", "base", "--table-id", "table", "--name", "X", "--view-type", "Grid", "--config", `{"f":1}`, "--yes")
+	if err == nil || out != "" || len(caller.calls) != 3 {
+		t.Fatalf("duplicate readback = output:%q err:%v calls:%#v", out, err, caller.calls)
+	}
+}
+
 func TestCrossPlatformCoverageWorkflowDeployValidationAndFailureStagesE2E(t *testing.T) {
 	cases := []struct {
 		name  string

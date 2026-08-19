@@ -92,9 +92,6 @@ func executeBaseCopy(rt *shortcut.RuntimeContext) error {
 	if verifyErr != nil {
 		result.Status = "partial_success"
 		result.Verification = map[string]any{"status": "failed", "newBaseId": newBaseID, "error": verifyErr.Error()}
-		if writeErr != nil {
-			result.Warnings = append(result.Warnings, "copy response error: "+writeErr.Error())
-		}
 		return compositeError(result, verifyErr, false)
 	}
 
@@ -102,10 +99,6 @@ func executeBaseCopy(rt *shortcut.RuntimeContext) error {
 	result.CompletedSteps = append(result.CompletedSteps, compositeStep{Index: 2, Name: "copy base", Tool: "copy_base", Status: "completed", Result: map[string]any{"newBaseId": newBaseID}})
 	result.Verification = map[string]any{"status": "verified", "newBaseId": newBaseID}
 	result.Result = map[string]any{"newBaseId": newBaseID, "base": readBack}
-	if writeErr != nil {
-		result.Status = "recovered"
-		result.Warnings = append(result.Warnings, "copy response was an error, but the new Base was proven by exact read-back")
-	}
 	return rt.Output(result)
 }
 

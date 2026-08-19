@@ -267,6 +267,36 @@ func TestCrossPlatformCoverageDriveSyncDryRunReturnsRealActionPlan(t *testing.T)
 	}
 }
 
+func TestCrossPlatformCoverageDriveSyncDryRunPlanBranchMatrix(t *testing.T) {
+	remoteFiles := map[string]*remoteFile{
+		"conflict.txt": {FileID: "remote-file"},
+	}
+	remoteFolders := map[string]string{"": "root", "existing": "existing-id"}
+	localDirs := []string{"existing", "new", "missing/child"}
+	localFiles := map[string]localPushFile{"conflict.txt": {}, "new/file.txt": {}}
+
+	for _, policy := range []string{syncConflictRemoteWins, syncConflictLocalWins, syncConflictKeepBoth, syncConflictAsk, syncConflictSkip} {
+		t.Run(policy, func(t *testing.T) {
+			res := &driveSyncResult{}
+			appendDriveSyncDryRunPlan(res, localDirs, localFiles, remoteFiles, remoteFolders,
+				[]string{"new/file.txt", "missing/file.txt"}, []string{"remote.txt"}, []string{"conflict.txt"}, []string{"unknown.txt"}, policy)
+			if res.Summary.PlannedSkips == 0 || res.Summary.PlannedFolders == 0 || res.Summary.PlannedPulls == 0 || res.Summary.Failed != 2 {
+				t.Fatalf("dry-run plan summary for %s = %#v; items=%#v", policy, res.Summary, res.Items)
+			}
+			switch policy {
+			case syncConflictRemoteWins, syncConflictKeepBoth:
+				if res.Summary.PlannedPulls < 2 {
+					t.Fatalf("%s planned pulls = %d", policy, res.Summary.PlannedPulls)
+				}
+			case syncConflictLocalWins:
+				if res.Summary.PlannedPushes < 2 {
+					t.Fatalf("local wins planned pushes = %d", res.Summary.PlannedPushes)
+				}
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageDrivePull_dryRunPlanBranches(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "skip.txt"), "skip")

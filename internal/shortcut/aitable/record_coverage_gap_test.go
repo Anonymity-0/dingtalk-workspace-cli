@@ -4,6 +4,7 @@
 package aitable
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -151,6 +152,62 @@ func TestCrossPlatformCoverageRecordPrimaryDocPreflightAndNormalizationE2E(t *te
 			t.Fatalf("associated primary doc = output:%q err:%v calls:%#v", out, err, caller.calls)
 		}
 	})
+}
+
+func TestCrossPlatformCoverageRecordPrimaryDocFailureAndShapeEdgesE2E(t *testing.T) {
+	cases := []struct {
+		name  string
+		steps []upsertByKeyStep
+	}{
+		{name: "fields transport", steps: []upsertByKeyStep{{err: context.Canceled}}},
+		{name: "missing fields collection", steps: []upsertByKeyStep{{text: `{}`}}},
+		{name: "primary field missing id", steps: []upsertByKeyStep{{text: `{"fields":[{"type":"primaryDoc"}]}`}}},
+		{name: "record query error", steps: []upsertByKeyStep{{text: `{"fields":[]}`}, {err: context.DeadlineExceeded}}},
+		{name: "wrong record identity", steps: []upsertByKeyStep{{text: `{"fields":[]}`}, {text: `{"records":[{"recordId":"other"}]}`}}},
+		{name: "helper unknown error", steps: []upsertByKeyStep{{text: `{"fields":[{"fieldId":"p","type":"primaryDoc"}]}`}, {text: `{"records":[{"recordId":"r1"}]}`}, {err: errors.New("permission denied")}}},
+		{name: "helper missing node", steps: []upsertByKeyStep{{text: `{"fields":[{"fieldId":"p","type":"primaryDoc"}]}`}, {text: `{"records":[{"recordId":"r1"}]}`}, {text: `{"data":{"message":"ok"}}`}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			out, err := runAITableCompositeCLI(t, &upsertByKeyCaller{steps: tc.steps}, "+record-primary-doc-get", "--base-id", "base", "--table-id", "table", "--record-id", "r1")
+			if err == nil || out != "" {
+				t.Fatalf("primary doc failure = output:%q err:%v", out, err)
+			}
+		})
+	}
+
+	for _, value := range []any{
+		map[string]any{"exists": false},
+		map[string]any{"dentryUuid": ""},
+		map[string]any{"status": "NO_RECORD"},
+		map[string]any{"nested": []any{map[string]any{"status": "unassociated"}}},
+	} {
+		if !knownPrimaryDocUnassociatedData(value) {
+			t.Errorf("known unassociated shape not recognized: %#v", value)
+		}
+	}
+	if knownPrimaryDocUnassociatedData([]any{"unrelated"}) || knownPrimaryDocUnassociatedData(nil) {
+		t.Fatal("unrelated shapes must not be unassociated")
+	}
+}
+
+func TestCrossPlatformCoverageRecordDeleteRejectsMalformedPreflightRecordsE2E(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		records string
+	}{
+		{name: "missing id", records: `[{"cells":{}}]`},
+		{name: "unexpected id", records: `[{"recordId":"other"}]`},
+		{name: "duplicate id", records: `[{"recordId":"r1"},{"recordId":"r1"}]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &upsertByKeyCaller{steps: []upsertByKeyStep{{text: `{"records":` + tc.records + `}`}}}
+			out, err := runRecordDeleteCLI(t, caller, []string{"r1"})
+			if err == nil || out != "" || len(caller.calls) != 1 {
+				t.Fatalf("delete malformed preflight = output:%q err:%v calls:%#v", out, err, caller.calls)
+			}
+		})
+	}
 }
 
 func TestCrossPlatformCoverageRecordBatchVerificationEdgesE2E(t *testing.T) {

@@ -470,3 +470,110 @@ func TestCrossPlatformCoverageAitableViewFilterValidationAndReadBack(t *testing.
 		}
 	})
 }
+
+func TestCrossPlatformCoverageAitableViewFilterFailureAndShapeEdges(t *testing.T) {
+	testseam.Swap(t, &aitableViewFilterReadbackSleep, func(time.Duration) {})
+	testseam.Protect(t, &os.Args)
+	os.Args = []string{"dws", "aitable"}
+	fields := `{"data":{"fields":[{"fieldId":"fldA","type":"text"}]}}`
+	filter := `[{"operator":"eq","operands":["fldA","x"]}]`
+	args := []string{"view", "update", "filter", "--base-id=b", "--table-id=t", "--view-id=view", "--json=" + filter}
+
+	t.Run("update transport error", func(t *testing.T) {
+		caller := &aitableTestCaller{responses: []string{fields}, errors: []error{nil, context.Canceled}}
+		if err := runAitableCoverageCommand(t, caller, args...); err == nil || !strings.Contains(err.Error(), context.Canceled.Error()) || len(caller.calls) != 2 {
+			t.Fatalf("update error = %v, calls=%#v", err, caller.calls)
+		}
+	})
+
+	t.Run("readback transport errors exhaust", func(t *testing.T) {
+		errs := []error{nil, nil}
+		for range aitableViewFilterReadbackAttempts {
+			errs = append(errs, context.DeadlineExceeded)
+		}
+		caller := &aitableTestCaller{responses: []string{fields, `{"success":true}`}, errors: errs}
+		if err := runAitableCoverageCommand(t, caller, args...); err == nil || len(caller.calls) != 2+aitableViewFilterReadbackAttempts {
+			t.Fatalf("readback errors = %v, calls=%d", err, len(caller.calls))
+		}
+	})
+
+	t.Run("readback wrong identity exhausts", func(t *testing.T) {
+		responses := []string{fields, `{"success":true}`}
+		for range aitableViewFilterReadbackAttempts {
+			responses = append(responses, `{"data":{"views":[{"viewId":"other","filter":[]}]}}`)
+		}
+		caller := &aitableTestCaller{responses: responses}
+		if err := runAitableCoverageCommand(t, caller, args...); err == nil || !strings.Contains(err.Error(), "returned viewId") {
+			t.Fatalf("wrong readback identity = %v", err)
+		}
+	})
+
+	loadCases := []struct {
+		name      string
+		response  string
+		callErr   error
+		wantError string
+	}{
+		{name: "transport", callErr: context.Canceled, wantError: "context canceled"},
+		{name: "invalid json", response: `{`, wantError: "not valid JSON"},
+		{name: "missing collection", response: `{}`, wantError: "missing the fields collection"},
+		{name: "missing identity", response: `{"fields":[{"type":"text"}]}`, wantError: "missing fieldId or type"},
+	}
+	for _, tc := range loadCases {
+		t.Run("load fields "+tc.name, func(t *testing.T) {
+			caller := &aitableTestCaller{responses: []string{tc.response}, errors: []error{tc.callErr}}
+			installAitableDeps(t, caller)
+			if _, err := loadAitableFieldTypes(context.Background(), "b", "t"); err == nil || !strings.Contains(err.Error(), tc.wantError) {
+				t.Fatalf("load fields error = %v, want %q", err, tc.wantError)
+			}
+		})
+	}
+	t.Run("load legacy field keys", func(t *testing.T) {
+		caller := &aitableTestCaller{responses: []string{`{"fieldList":[{"id":"legacy","fieldType":"text"}]}`}}
+		installAitableDeps(t, caller)
+		got, err := loadAitableFieldTypes(context.Background(), "b", "t")
+		if err != nil || got["legacy"] != "text" {
+			t.Fatalf("legacy field keys = %#v, %v", got, err)
+		}
+	})
+
+	if _, ok := findAitableObjectList(map[string]any{"fields": "bad"}, "fields"); ok {
+		t.Fatal("scalar fields collection must fail")
+	}
+	if _, ok := findAitableObjectList(map[string]any{"fields": []any{"bad"}}, "fields"); ok {
+		t.Fatal("scalar field item must fail")
+	}
+	if got, ok := findAitableObjectList([]any{"skip", map[string]any{"nested": map[string]any{"fields": []any{map[string]any{"fieldId": "f"}}}}}, "fields"); !ok || len(got) != 1 {
+		t.Fatalf("recursive fields = %#v, %v", got, ok)
+	}
+
+	invalidFilters := []struct {
+		filter []any
+		want   string
+	}{
+		{filter: []any{"bad"}, want: "must be an object"},
+		{filter: []any{map[string]any{"operator": "bogus", "operands": []any{}}}, want: "unsupported operator"},
+		{filter: []any{map[string]any{"operator": "eq", "operands": "bad"}}, want: "requires an operands array"},
+		{filter: []any{map[string]any{"operator": "and", "operands": []any{}}}, want: "logical operator"},
+		{filter: []any{map[string]any{"operator": "exist", "operands": []any{"f", "extra"}}}, want: "requires 1 operands"},
+		{filter: []any{map[string]any{"operator": "eq", "operands": []any{1, "x"}}}, want: "requires a fieldId"},
+		{filter: []any{map[string]any{"operator": "any_of", "operands": []any{"multi", 1}}}, want: "one option-name string"},
+	}
+	for _, tc := range invalidFilters {
+		if err := validateAitableViewFilter(tc.filter, map[string]string{"f": "text", "multi": "multipleSelect"}); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("validate filter %#v = %v, want %q", tc.filter, err, tc.want)
+		}
+	}
+	if _, err := expandAitableMultiSelectAnyOf("multi", nil); err == nil {
+		t.Fatal("empty any_of array must fail")
+	}
+	if _, err := expandAitableMultiSelectAnyOf("multi", []any{"ok", 1}); err == nil {
+		t.Fatal("non-string any_of option must fail")
+	}
+	if got := compactJSON(make(chan int)); !strings.HasPrefix(got, "(chan int)") {
+		t.Fatalf("compactJSON fallback = %q", got)
+	}
+	if persistedViewFilterMatches("bad", nil) || persistedViewFilterMatches(map[string]any{"operator": "or"}, nil) {
+		t.Fatal("invalid persisted wrapper must not match")
+	}
+}

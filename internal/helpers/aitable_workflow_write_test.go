@@ -25,11 +25,15 @@ type aitableWorkflowCall struct {
 type aitableWorkflowCaller struct {
 	calls    []aitableWorkflowCall
 	response string
+	err      error
 	dryRun   bool
 }
 
 func (c *aitableWorkflowCaller) CallTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
 	c.calls = append(c.calls, aitableWorkflowCall{productID: productID, toolName: toolName, args: args})
+	if c.err != nil {
+		return nil, c.err
+	}
 	response := c.response
 	if response == "" {
 		response = `{"status":"success","data":{"valid":true,"flowId":"flow-test","issues":[]}}`
@@ -114,6 +118,11 @@ func TestCrossPlatformCoverageAitableWorkflowPublishRejectsFalseSuccess(t *testi
 		{name: "missing valid", response: `{"status":"success","data":{"flowId":"flow-test"}}`, want: "missing valid"},
 		{name: "missing flow id", response: `{"status":"success","data":{"valid":true}}`, want: "missing a non-empty flowId"},
 		{name: "wrong valid type", response: `{"status":"success","data":{"valid":"true","flowId":"flow-test"}}`, want: "valid must be boolean"},
+		{name: "malformed response", response: `{`, want: "not a JSON object"},
+		{name: "null response", response: `null`, want: "not a JSON object"},
+		{name: "conflicting valid", response: `{"valid":true,"data":{"valid":false,"flowId":"flow-test"}}`, want: "conflicting valid values"},
+		{name: "invalid flow id", response: `{"valid":true,"flowId":1}`, want: "flowId must be a non-empty string"},
+		{name: "conflicting workflow ids", response: `{"valid":true,"flowId":"one","data":{"workflowId":"two"}}`, want: "conflicting workflow IDs"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -143,6 +152,19 @@ func TestCrossPlatformCoverageAitableWorkflowPublishRejectsFalseSuccess(t *testi
 			t.Fatalf("workflow create dry-run = err:%v calls:%#v", err, caller.calls)
 		}
 	})
+
+	t.Run("transport error", func(t *testing.T) {
+		caller := &aitableWorkflowCaller{err: context.Canceled}
+		err := runAitableWorkflowCommandWithCaller(t, caller, nil,
+			"create", "--base-id", "base", "--dsl", `{"version":"workflow-dsl/v1","name":"test"}`)
+		if err == nil || !strings.Contains(err.Error(), context.Canceled.Error()) || len(caller.calls) != 1 {
+			t.Fatalf("workflow transport error = err:%v calls:%#v", err, caller.calls)
+		}
+	})
+
+	if _, _, _, err := strictAitableWorkflowPublishResult(nil); err == nil || !strings.Contains(err.Error(), "empty response") {
+		t.Fatalf("nil workflow envelope = %v", err)
+	}
 }
 
 func TestAitableWorkflowEditExampleMapsEmptyArguments(t *testing.T) {
