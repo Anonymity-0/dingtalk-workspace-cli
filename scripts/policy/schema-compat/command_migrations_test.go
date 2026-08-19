@@ -117,6 +117,32 @@ func TestCrossPlatformCoverageSchemaCommandMigrationRejectsUnregisteredRequiredP
 	}
 }
 
+func TestCrossPlatformCoverageSchemaCommandMigrationRejectsParameterTargetCollision(t *testing.T) {
+	baseline := schemaCommandMigrationContract(false)
+	current := schemaCommandMigrationContract(true)
+	migrations := schemaCommandMigrationAuthorizations()
+	migrations[0].Schema.Parameters = []interfacesnapshot.CommandParameterMigration{{From: "old-id", To: "keep"}}
+
+	product := current.Products["chat"]
+	tool := product.Tools["chat.move"]
+	delete(tool.Parameters, "new-id")
+	tool.Parameters["keep"] = baseline.Products["chat"].Tools["chat.move"].Parameters["old-id"]
+	tool.Constraints = baseline.Products["chat"].Tools["chat.move"].Constraints
+	product.Tools["chat.move"] = tool
+	current.Products["chat"] = product
+
+	normalized, err := normalizeSchemaCommandMigrations(baseline, current, migrations)
+	if err == nil {
+		if failures := checkCompatibility(normalized, current); len(failures) != 0 {
+			t.Fatalf("hostile target-collision fixture should otherwise pass compatibility: %v", failures)
+		}
+		t.Fatal("parameter target collision was accepted")
+	}
+	if !strings.Contains(err.Error(), `target "keep" already exists in historical Schema tool`) {
+		t.Fatalf("parameter target collision error=%v", err)
+	}
+}
+
 func TestCrossPlatformCoverageSchemaCommandMigrationNormalizationEdges(t *testing.T) {
 	baseline := schemaCommandMigrationContract(false)
 	current := schemaCommandMigrationContract(true)

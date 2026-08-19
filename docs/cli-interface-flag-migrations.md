@@ -58,7 +58,8 @@ scripts/policy/interface-migrations/approved-command-migrations-v1.json
 `command_move` 只能隐藏没有子命令的 legacy leaf，且 legacy 与 replacement
 不得互为祖先路径；整棵命令树的迁移需要单独设计逐叶治理，不能复用这一原语。
 稳定 Schema tool 可以继续接受普通的 optional 参数新增，但不得借路径迁移引入清单未登记的
-`required`、`cli_required` 或 `required_when` 参数。`flag_extraction` 只接受
+`required`、`cli_required` 或 `required_when` 参数；参数改名的目标也不得与历史
+Schema 中已有的其他参数重名，避免把两个历史参数静默合并。`flag_extraction` 只接受
 optional legacy flag，不能隐藏仍由 Cobra hard-required 的参数。
 
 两种迁移都要求旧 argv 继续可执行。删除旧命令、删除旧 flag、把 legacy 改成 non-runnable、改变未登记的历史参数、改变 interface / safety，或只完成部分 before → after 转换都会 fail closed。命令别名会先规范到 reference 的 canonical path，但清单本身仍只能记录精确 canonical 命令，不能用 alias 或前缀扩大授权。

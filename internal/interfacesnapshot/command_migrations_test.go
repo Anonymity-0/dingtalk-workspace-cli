@@ -171,12 +171,21 @@ func TestCrossPlatformCoverageCommandMigrationValidationEdges(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageFlagExtractionRejectsRequiredLegacyFlag(t *testing.T) {
-	migration := commandMigrationManifest(CommandMigrationPending).Migrations[1]
-	migration.LegacyFlag.Before.Required = true
-	migration.LegacyFlag.After.Required = true
+	for _, test := range []struct {
+		name   string
+		mutate func(*CommandMigrationFlag)
+	}{
+		{"before required", func(flag *CommandMigrationFlag) { flag.Before.Required = true }},
+		{"after required", func(flag *CommandMigrationFlag) { flag.After.Required = true }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			migration := commandMigrationManifest(CommandMigrationPending).Migrations[1]
+			test.mutate(&migration.LegacyFlag)
 
-	if err := migration.validate(); err == nil || !strings.Contains(err.Error(), "optional") {
-		t.Fatalf("required legacy flag validation error=%v, want optional-only rejection", err)
+			if err := migration.validate(); err == nil || !strings.Contains(err.Error(), "optional") {
+				t.Fatalf("required legacy flag validation error=%v, want optional-only rejection", err)
+			}
+		})
 	}
 }
 

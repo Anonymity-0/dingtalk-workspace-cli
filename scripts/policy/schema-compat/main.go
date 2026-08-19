@@ -1425,6 +1425,14 @@ func normalizeSchemaCommandMigrations(
 						parameter.From,
 					)
 				}
+				if _, exists := oldTool.Parameters[parameter.To]; exists {
+					return schemaContract{}, fmt.Errorf(
+						"approved command migration %q Schema parameter target %q already exists in historical Schema tool %q",
+						migration.Legacy.Command,
+						parameter.To,
+						migration.Schema.SourceToolID,
+					)
+				}
 				if _, exists := newSource.Parameters[parameter.From]; exists {
 					return schemaContract{}, fmt.Errorf(
 						"approved command migration %q still publishes legacy Schema parameter %q",
