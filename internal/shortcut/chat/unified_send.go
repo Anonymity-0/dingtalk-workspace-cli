@@ -664,8 +664,10 @@ func executeMessagesSendUserFile(
 	if err != nil {
 		return err
 	}
-	targetArgs := map[string]any{}
-	addMessagesSendUserTarget(targetArgs, group, openID)
+	uploadTargetArgs := map[string]any{}
+	addMessagesSendUserUploadTarget(uploadTargetArgs, group, openID)
+	sendTargetArgs := map[string]any{}
+	addMessagesSendUserTarget(sendTargetArgs, group, openID)
 	idempotencyKey := messagesSendIdempotencyKey(rt)
 	if rt.DryRun() {
 		return rt.Output(map[string]any{
@@ -678,6 +680,7 @@ func executeMessagesSendUserFile(
 				{
 					"identity": "user",
 					"tool":     "init/commit_conversation_file_upload",
+					"target":   uploadTargetArgs,
 					"file": map[string]any{
 						"path":      rawPath,
 						"name":      meta.FileName,
@@ -689,7 +692,7 @@ func executeMessagesSendUserFile(
 					"tool":                 "send_personal_message",
 					"requestedMessageType": requestedType,
 					"effectiveMessageType": "file",
-					"target":               targetArgs,
+					"target":               sendTargetArgs,
 				},
 			},
 		})
@@ -698,7 +701,7 @@ func executeMessagesSendUserFile(
 		rt.Command().Context(), messagesSendFileUploadTimeout)
 	defer cancelUpload()
 	commitText, err := helpers.UploadConversationLocalFile(
-		uploadContext, targetArgs, meta, idempotencyKey)
+		uploadContext, uploadTargetArgs, meta, idempotencyKey)
 	if err != nil {
 		return err
 	}
@@ -742,6 +745,14 @@ func addMessagesSendUserTarget(params map[string]any, group, openID string) {
 		return
 	}
 	params["receiverOpenDingTalkId"] = openID
+}
+
+func addMessagesSendUserUploadTarget(params map[string]any, group, openID string) {
+	if group != "" {
+		params["openConversationId"] = group
+		return
+	}
+	params["openDingTalkId"] = openID
 }
 
 func nonEmptyStringCount(values ...string) int {

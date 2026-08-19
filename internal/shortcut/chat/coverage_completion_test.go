@@ -520,6 +520,12 @@ func TestCrossPlatformCoverageMessagesSendRejectsMismatchedCurrentUserMentions(t
 			wantErr: "必须在正文中使用对应",
 		},
 		{
+			name:    "declared member only appears as a longer token prefix",
+			body:    "@" + fixtureCurrentDOpenID + "_suffix 请查收",
+			atIDs:   fixtureCurrentDOpenID,
+			wantErr: "必须在正文中使用对应",
+		},
+		{
 			name:    "body member missing from declaration",
 			body:    "<@" + fixtureCurrentDOpenID + "> 请查收",
 			wantErr: "必须同时通过 --at-open-dingtalk-ids 声明",
