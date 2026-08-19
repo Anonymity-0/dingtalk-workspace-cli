@@ -1,6 +1,6 @@
 ---
 name: dingtalk-doc
-description: 钉钉在线文字文档（adoc）的查找创建、读写、文档信息、白板卡片、附件、评论、媒体、导入导出、版本、模板、权限分享；本地文件转在线文档或协作编辑归 dingtalk-doc。原文件/文件夹归 dingtalk-drive，知识库归 dingtalk-wiki，原生 .md/axls 归 dingtalk-misc，able 归 dingtalk-aitable。前缀：dws doc。
+description: 钉钉在线文字文档（adoc）本体及其内容的操作：查找、创建、读取、文档信息、编辑、块、评论、附件与媒体、白板卡片、导入、导出(docx/markdown/pdf)、版本、模板、协作者权限、分享及Markdown/JSONML写入。不包括：文档空间与钉盘的文件管理（归 dingtalk-drive，doc 同名原子命令已弃用）、知识库空间与节点管理（归 dingtalk-wiki）、原生 .md 文件读写（归 dingtalk-misc）、电子表格 axls（归 dingtalk-misc）、AI 表格 able（归 dingtalk-aitable）。命令前缀：dws doc。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -54,7 +54,7 @@ metadata:
 | 搜索模板 | `dws doc +template-search --query <名称或关键词>` | 来源可选 MY/PUBLIC；零命中停止，禁止拿无关模板替代；多候选消歧 |
 | 从模板创建 | `dws doc +create-from-template --template-id <唯一ID>` | 已有唯一 templateId 才创建；不重复 list/search |
 | 创建评论或聚合待处理评论 | `dws doc +comment-create [--selection]` / `+review` | 划词统一用 `+comment-create`；后续操作使用真实 `commentKey` |
-| 添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | 先读取现有权限；姓名歧义或 profile 不一致时禁止写入 |
+| 添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to <姓名列表,逗号分隔>` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；没有 --user-ids；先读取现有权限；姓名歧义或 profile 不一致时禁止写入 |
 | 授权后向多人分享链接 | `dws doc +grant-and-share` | 返回逐人执行账本；部分失败不等于整体成功 |
 | 插入或下载正文媒体 | `dws doc +media-insert/+media-download` | 本地路径必须位于工作目录；下载默认 no-clobber |
 
