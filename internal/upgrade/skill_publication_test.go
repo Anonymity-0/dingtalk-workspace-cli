@@ -80,12 +80,19 @@ func TestCrossPlatformCoverageSkillPublicationNoClobberAndOwnedRollback(t *testi
 			t.Fatal(err)
 		}
 		// Simulate the identity change that a concurrent replacement causes.
-		// On Windows, skillPathIdentityProven compares file IDs from
-		// GetFileInformationByHandle and ignores this seam. On Unix, where the
-		// file ID is unavailable, this swap replaces the os.SameFile check
-		// (which can return true for a recreated file on tmpfs due to inode
-		// reuse) so the test is deterministic across filesystems.
+		// On Windows, skillPathIdentityProven compares the recorded file ID
+		// from GetFileInformationByHandle with the live one and ignores the
+		// SameFile seam; NTFS can reuse the freed MFT record for the
+		// recreation, so the live probe is perturbed through the file-ID
+		// seam as well. On Unix, where the file ID is advisory, this swap
+		// replaces the os.SameFile check (which can return true for a
+		// recreated file on tmpfs due to inode reuse) so the test is
+		// deterministic across filesystems.
 		testseam.Swap(t, &skillPathSameFileIdentity, func(_, _ os.FileInfo) bool { return false })
+		originalFileIdentity := skillPathFileIdentity
+		testseam.Swap(t, &skillPathFileIdentity, func(path string) string {
+			return originalFileIdentity(path) + ":replaced"
+		})
 		if err := os.RemoveAll(destination); err != nil {
 			t.Fatal(err)
 		}
@@ -161,20 +168,32 @@ func TestCrossPlatformCoverageSkillPublicationFailureEdges(t *testing.T) {
 		staged := filepath.Join(root, "staged")
 		destination := filepath.Join(root, "destination")
 		seedUpgradeSkill(t, staged, "value", false)
-		originalRename := skillPathRenameNoReplace
-		testseam.Swap(t, &skillPathRenameNoReplace, func(source, target string) (string, error) {
-			if _, err := originalRename(source, target); err != nil {
-				return "", err
+		// A real rename consumed the staged path (fast path), but the object
+		// at the destination must be proven to be the staged one. Whether a
+		// same-content swap is observable through inode/file-ID comparison
+		// depends on the filesystem — CI runners' ext4/overlayfs recycle
+		// inodes eagerly and NTFS can immediately reuse the freed MFT record,
+		// so reproducing the swap physically is not portable. Force the
+		// failure through both underlying primitives the platform-specific
+		// proof consults: os.SameFile (Unix) and the stable file ID
+		// (Windows), pinning the confirmation's rejection on every platform.
+		testseam.Swap(t, &skillPathSameFileIdentity, func(_, _ os.FileInfo) bool { return false })
+		originalFileIdentity := skillPathFileIdentity
+		stagedID := ""
+		testseam.Swap(t, &skillPathFileIdentity, func(path string) string {
+			id := originalFileIdentity(path)
+			if stagedID == "" {
+				stagedID = id
+				return id
 			}
-			if err := os.RemoveAll(target); err != nil {
-				return "", err
-			}
-			seedUpgradeSkill(t, target, "replacement", false)
-			return "", nil
+			// The published probe must report a different object than the
+			// staged one so the proof fails on both platforms.
+			return id + ":swapped"
 		})
 		if _, err := PublishSkillPathNoReplace(staged, destination); err == nil || !strings.Contains(err.Error(), "staging 身份已变化") {
 			t.Fatalf("publish identity error = %v", err)
 		}
+		assertUpgradeSkillContent(t, destination, "value")
 	})
 
 	t.Run("publish confirmation fingerprint", func(t *testing.T) {
