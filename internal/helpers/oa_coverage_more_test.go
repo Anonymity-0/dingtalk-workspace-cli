@@ -212,6 +212,16 @@ func TestCrossPlatformCoverageOAApprovalNewCommandValidationAndRequestModes(t *t
 			args: []string{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01 09:00:00","cursor":0,"pageSize":20}`},
 			tool: "get_process_instances_by_admin",
 		},
+		{
+			name: "list-by-admin request mode without pageSize",
+			args: []string{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01 09:00:00","cursor":0}`},
+			tool: "get_process_instances_by_admin",
+		},
+		{
+			name: "list-by-admin request mode with endTime",
+			args: []string{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01 09:00:00","endTime":"2030-01-01 23:59:59","cursor":0,"pageSize":20}`},
+			tool: "get_process_instances_by_admin",
+		},
 	}
 	for _, tc := range validCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -252,6 +262,7 @@ func TestCrossPlatformCoverageOAApprovalNewCommandValidationAndRequestModes(t *t
 		{"approval", "list-by-admin", "--process-code", "PROC", "--start", "2030-01-01T09:00:00+08:00", "--limit", "bad"},
 		{"approval", "list-by-admin", "--process-code", "PROC", "--start", "2030-01-01T09:00:00+08:00", "--limit", "21"},
 		{"approval", "list-by-admin", "--process-code", "PROC", "--start", "2030-01-01T09:00:00+08:00", "--limit", "0"},
+		{"approval", "list-by-admin", "--process-code", "PROC", "--start", ""},
 		{"approval", "list-by-admin", "--request", "{"},
 		{"approval", "list-by-admin", "--request", "null"},
 		{"approval", "list-by-admin", "--request", `{"processCode":"PROC"}`, "--process-code", "PROC"},
@@ -261,6 +272,9 @@ func TestCrossPlatformCoverageOAApprovalNewCommandValidationAndRequestModes(t *t
 		{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01","cursor":0,"pageSize":20}`},
 		{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01 10:00:00","endTime":"2030-01-01 09:00:00","cursor":0,"pageSize":20}`},
 		{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01 09:00:00","endTime":1893463200000,"cursor":0,"pageSize":20}`},
+		{"approval", "list-by-admin", "--request", `{"processCode":"PROC","endTime":"NOT-A-TIME","cursor":0,"pageSize":20}`},
+		{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01 09:00:00","endTime":"2030-01-01","cursor":0,"pageSize":20}`},
+		{"approval", "list-by-admin", "--request", `{"processCode":"PROC","startTime":"2030-01-01 09:00:00","endTime":"2030-01-01 09:00:00","cursor":0,"pageSize":20}`},
 	}
 	for _, args := range invalidCases {
 		caller := &scriptedToolCaller{}

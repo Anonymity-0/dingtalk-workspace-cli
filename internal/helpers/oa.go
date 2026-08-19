@@ -363,12 +363,13 @@ func formatOAAdminQueryTime(ms int64) string {
 }
 
 // validateOARequestTimeRange checks startTime/endTime of a decoded
-// --request payload: both must be yyyy-MM-dd HH:mm:ss strings, and
-// endTime must not precede startTime.
+// --request payload: startTime is required, both must be
+// yyyy-MM-dd HH:mm:ss strings, and endTime must be strictly after
+// startTime (matching simple mode's ValidateTimeRange).
 func validateOARequestTimeRange(request map[string]any) error {
 	startRaw, ok := request["startTime"]
 	if !ok {
-		return nil
+		return fmt.Errorf("--request 缺少必填字段 startTime")
 	}
 	startStr, ok := startRaw.(string)
 	if !ok {
@@ -390,8 +391,8 @@ func validateOARequestTimeRange(request map[string]any) error {
 	if err != nil {
 		return fmt.Errorf("endTime 必须为 %s 格式，got: %s", oaAdminTimeLayoutHint, endStr)
 	}
-	if end.Before(start) {
-		return fmt.Errorf("--request endTime 不能早于 startTime")
+	if !end.After(start) {
+		return fmt.Errorf("--request endTime 必须晚于 startTime")
 	}
 	return nil
 }
