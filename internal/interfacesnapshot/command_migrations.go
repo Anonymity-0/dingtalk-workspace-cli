@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -66,8 +67,14 @@ type CommandMigrationSchema struct {
 }
 
 type CommandParameterMigration struct {
-	From string `json:"from"`
-	To   string `json:"to,omitempty"`
+	From                string                      `json:"from"`
+	To                  string                      `json:"to,omitempty"`
+	ReplacementConstant *CommandReplacementConstant `json:"replacement_constant,omitempty"`
+}
+
+type CommandReplacementConstant struct {
+	Property string `json:"property"`
+	Value    bool   `json:"value"`
 }
 
 func ReadCommandMigrationManifest(r io.Reader) (CommandMigrationManifest, error) {
@@ -179,8 +186,33 @@ func (m CommandMigration) validate() error {
 		if m.Schema.SourceToolID == m.Schema.ReplacementToolID {
 			return fmt.Errorf("flag_extraction requires a distinct replacement Schema tool")
 		}
-		if len(m.Schema.Parameters) != 1 || m.Schema.Parameters[0].From != m.LegacyFlag.Name || m.Schema.Parameters[0].To != "" {
-			return fmt.Errorf("flag_extraction must declare the exact extracted flag as one removed Schema parameter")
+		if m.LegacyFlag.Before.Type != "bool" || m.LegacyFlag.After.Type != "bool" {
+			return fmt.Errorf("flag_extraction legacy_flag must be an optional bool")
+		}
+		var extracted *CommandParameterMigration
+		constantCount := 0
+		for index := range m.Schema.Parameters {
+			parameter := &m.Schema.Parameters[index]
+			if parameter.ReplacementConstant == nil {
+				continue
+			}
+			constantCount++
+			if parameter.From == m.LegacyFlag.Name {
+				extracted = parameter
+			}
+		}
+		if constantCount != 1 {
+			return fmt.Errorf("flag_extraction must declare exactly one replacement constant")
+		}
+		if extracted == nil {
+			return fmt.Errorf("flag_extraction must map the exact extracted flag to replacement_constant")
+		}
+		if !extracted.ReplacementConstant.Value {
+			return fmt.Errorf("flag_extraction v1 replacement_constant must be true")
+		}
+		wantNoOpt := strconv.FormatBool(extracted.ReplacementConstant.Value)
+		if m.LegacyFlag.Before.NoOpt != wantNoOpt || m.LegacyFlag.After.NoOpt != wantNoOpt {
+			return fmt.Errorf("flag_extraction legacy_flag no_opt must equal replacement constant %q", wantNoOpt)
 		}
 	}
 	return nil
@@ -240,6 +272,7 @@ func (s CommandMigrationSchema) validate(kind string) error {
 	}
 	seenFrom := map[string]bool{}
 	seenTo := map[string]bool{}
+	seenConstantProperty := map[string]bool{}
 	for index, parameter := range s.Parameters {
 		if !isExactFlagName(parameter.From) {
 			return fmt.Errorf("schema parameter %d from must be an exact parameter name", index)
@@ -249,6 +282,9 @@ func (s CommandMigrationSchema) validate(kind string) error {
 		}
 		seenFrom[parameter.From] = true
 		if kind == CommandMigrationMove {
+			if parameter.ReplacementConstant != nil {
+				return fmt.Errorf("command_move schema parameter %d must not declare replacement_constant", index)
+			}
 			if !isExactFlagName(parameter.To) || parameter.To == parameter.From {
 				return fmt.Errorf("command_move schema parameter %d requires a distinct exact to name", index)
 			}
@@ -256,9 +292,44 @@ func (s CommandMigrationSchema) validate(kind string) error {
 				return fmt.Errorf("schema parameter %d duplicates to %q", index, parameter.To)
 			}
 			seenTo[parameter.To] = true
-		} else if parameter.To != "" {
-			return fmt.Errorf("flag_extraction schema parameters must not declare to")
+			continue
 		}
+		if kind != CommandMigrationFlagExtraction {
+			return fmt.Errorf("invalid command migration kind %q", kind)
+		}
+
+		hasTo := parameter.To != ""
+		hasConstant := parameter.ReplacementConstant != nil
+		if !hasTo && !hasConstant {
+			return fmt.Errorf("flag_extraction schema parameter %d requires an exact to or replacement_constant", index)
+		}
+		if hasTo && hasConstant {
+			return fmt.Errorf("flag_extraction schema parameter %d must declare exactly one target", index)
+		}
+		if hasTo {
+			if !isExactFlagName(parameter.To) {
+				return fmt.Errorf("flag_extraction schema parameter %d to must be an exact parameter name", index)
+			}
+			if seenTo[parameter.To] {
+				return fmt.Errorf("schema parameter %d duplicates to %q", index, parameter.To)
+			}
+			if seenConstantProperty[parameter.To] {
+				return fmt.Errorf("schema parameter %d duplicates parameter target %q", index, parameter.To)
+			}
+			seenTo[parameter.To] = true
+			continue
+		}
+		property := parameter.ReplacementConstant.Property
+		if !isExactSchemaIdentifier(property) {
+			return fmt.Errorf("flag_extraction schema parameter %d replacement_constant requires an exact property", index)
+		}
+		if seenConstantProperty[property] {
+			return fmt.Errorf("schema parameter %d duplicates replacement_constant property %q", index, property)
+		}
+		if seenTo[property] {
+			return fmt.Errorf("schema parameter %d duplicates parameter target %q", index, property)
+		}
+		seenConstantProperty[property] = true
 	}
 	return nil
 }
@@ -464,6 +535,11 @@ func matchCommandMigrationPhase(snapshot Snapshot, migration CommandMigration) c
 		}
 		before = before && flagState == migration.LegacyFlag.Before
 		after = after && flagState == migration.LegacyFlag.After
+		if replacement, replacementExists := commands[migration.Replacement.Command]; replacementExists {
+			after = after && commandMigrationReplacementConstantsMatch(replacement, migration)
+		} else {
+			after = false
+		}
 	}
 	if before {
 		return commandMigrationBefore
@@ -472,6 +548,17 @@ func matchCommandMigrationPhase(snapshot Snapshot, migration CommandMigration) c
 		return commandMigrationAfter
 	}
 	return commandMigrationPartial
+}
+
+func commandMigrationReplacementConstantsMatch(command Command, migration CommandMigration) bool {
+	expected := make(map[string]bool)
+	for _, parameter := range migration.Schema.Parameters {
+		if parameter.ReplacementConstant == nil {
+			continue
+		}
+		expected[parameter.ReplacementConstant.Property] = parameter.ReplacementConstant.Value
+	}
+	return reflect.DeepEqual(command.BoolConstParams, expected)
 }
 
 func commandMigrationStateForCommand(commands map[string]Command, path string) CommandMigrationState {

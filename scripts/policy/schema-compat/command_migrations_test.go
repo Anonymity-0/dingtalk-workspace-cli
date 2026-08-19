@@ -264,6 +264,249 @@ func TestCrossPlatformCoverageSchemaCommandMigrationNormalizationEdges(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageSchemaFlagExtractionRequiresCompleteReplacementProjection(t *testing.T) {
+	t.Run("missing historical mapping", func(t *testing.T) {
+		baseline := schemaCommandMigrationContract(false)
+		current := schemaCommandMigrationContract(true)
+		migrations := schemaCommandMigrationAuthorizations()
+		parameters := make([]interfacesnapshot.CommandParameterMigration, 0, len(migrations[1].Schema.Parameters)-1)
+		for _, parameter := range migrations[1].Schema.Parameters {
+			if parameter.From != "users" {
+				parameters = append(parameters, parameter)
+			}
+		}
+		migrations[1].Schema.Parameters = parameters
+
+		if _, err := normalizeSchemaCommandMigrations(baseline, current, migrations); err == nil ||
+			!strings.Contains(err.Error(), `does not map historical Schema parameter "users"`) {
+			t.Fatalf("missing historical mapping error=%v", err)
+		}
+	})
+
+	t.Run("replacement removes historical dry run", func(t *testing.T) {
+		baseline := schemaCommandMigrationContract(false)
+		mutateSchemaCommandMigrationTool(&baseline, "chat.create_group", func(tool *toolSchema) {
+			tool.DryRun = `{"mode":"native"}`
+		})
+		current := schemaCommandMigrationContract(true)
+		mutateSchemaCommandMigrationTool(&current, "chat.create_group", func(tool *toolSchema) {
+			tool.DryRun = `{"mode":"native"}`
+		})
+
+		if _, err := normalizeSchemaCommandMigrations(baseline, current, schemaCommandMigrationAuthorizations()); err == nil ||
+			!strings.Contains(err.Error(), "changed or removed dry_run") {
+			t.Fatalf("replacement dry_run error=%v, want monotonic preservation rejection", err)
+		}
+	})
+
+	t.Run("replacement adds dry run", func(t *testing.T) {
+		baseline := schemaCommandMigrationContract(false)
+		current := schemaCommandMigrationContract(true)
+		mutateSchemaCommandMigrationTool(&current, "chat.create_topic", func(tool *toolSchema) {
+			tool.DryRun = `{"mode":"native"}`
+		})
+
+		if _, err := normalizeSchemaCommandMigrations(baseline, current, schemaCommandMigrationAuthorizations()); err != nil {
+			t.Fatalf("additive replacement dry_run was rejected: %v", err)
+		}
+	})
+
+	for _, test := range []struct {
+		name   string
+		mutate func(*schemaContract)
+		want   string
+	}{
+		{
+			name: "missing shared parameter",
+			mutate: func(current *schemaContract) {
+				mutateSchemaCommandMigrationTool(current, "chat.create_topic", func(tool *toolSchema) {
+					delete(tool.Parameters, "users")
+				})
+			},
+			want: `does not publish mapped Schema parameter "users"`,
+		},
+		{
+			name: "shared parameter field drift",
+			mutate: func(current *schemaContract) {
+				mutateSchemaCommandMigrationParameter(current, "chat.create_topic", "users", func(parameter *parameterSchema) {
+					parameter.Property = "differentUserIds"
+				})
+			},
+			want: "changed a non-name field",
+		},
+		{
+			name: "extra replacement parameter",
+			mutate: func(current *schemaContract) {
+				mutateSchemaCommandMigrationTool(current, "chat.create_topic", func(tool *toolSchema) {
+					tool.Parameters["extra"] = parameterSchema{Type: `"string"`, Property: "extra"}
+				})
+			},
+			want: `publishes unmapped Schema parameter "extra"`,
+		},
+		{
+			name: "constraints drift",
+			mutate: func(current *schemaContract) {
+				mutateSchemaCommandMigrationTool(current, "chat.create_topic", func(tool *toolSchema) {
+					tool.Constraints = `{"require_one_of":[["name","type"]]}`
+				})
+			},
+			want: "changed constraints",
+		},
+		{
+			name: "positionals drift",
+			mutate: func(current *schemaContract) {
+				mutateSchemaCommandMigrationTool(current, "chat.create_topic", func(tool *toolSchema) {
+					tool.Positionals[0].Name = "topic-name"
+				})
+			},
+			want: "changed positionals",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			baseline := schemaCommandMigrationContract(false)
+			current := schemaCommandMigrationContract(true)
+			test.mutate(&current)
+			if _, err := normalizeSchemaCommandMigrations(baseline, current, schemaCommandMigrationAuthorizations()); err == nil ||
+				!strings.Contains(err.Error(), test.want) {
+				t.Fatalf("replacement projection error=%v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageSchemaFlagExtractionValidatesBooleanConstant(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*schemaContract, *schemaContract, []interfacesnapshot.CommandMigration)
+		want   string
+	}{
+		{
+			name: "constant property mismatch",
+			mutate: func(_, _ *schemaContract, migrations []interfacesnapshot.CommandMigration) {
+				migrations[1].Schema.Parameters[3].ReplacementConstant.Property = "differentProperty"
+			},
+			want: "constant property",
+		},
+		{
+			name: "constant false",
+			mutate: func(_, _ *schemaContract, migrations []interfacesnapshot.CommandMigration) {
+				migrations[1].Schema.Parameters[3].ReplacementConstant.Value = false
+			},
+			want: "constant true",
+		},
+		{
+			name: "legacy type",
+			mutate: func(baseline, _ *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationParameter(baseline, "chat.create_group", "thread", func(parameter *parameterSchema) {
+					parameter.Type = `"string"`
+				})
+			},
+			want: "must have boolean type",
+		},
+		{
+			name: "legacy required",
+			mutate: func(baseline, _ *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationParameter(baseline, "chat.create_group", "thread", func(parameter *parameterSchema) {
+					parameter.Required = true
+				})
+			},
+			want: "must remain optional",
+		},
+		{
+			name: "legacy cli required",
+			mutate: func(baseline, _ *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationParameter(baseline, "chat.create_group", "thread", func(parameter *parameterSchema) {
+					parameter.CLIRequired = true
+				})
+			},
+			want: "must remain optional",
+		},
+		{
+			name: "legacy required when",
+			mutate: func(baseline, _ *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationParameter(baseline, "chat.create_group", "thread", func(parameter *parameterSchema) {
+					parameter.RequiredWhen = "mode=topic"
+				})
+			},
+			want: "must not declare required_when",
+		},
+		{
+			name: "legacy default true",
+			mutate: func(baseline, _ *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationParameter(baseline, "chat.create_group", "thread", func(parameter *parameterSchema) {
+					parameter.Default = "true"
+				})
+			},
+			want: "default must be absent or false",
+		},
+		{
+			name: "legacy interface default true",
+			mutate: func(baseline, _ *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationParameter(baseline, "chat.create_group", "thread", func(parameter *parameterSchema) {
+					parameter.InterfaceDefault = "true"
+				})
+			},
+			want: "interface_default must be absent or false",
+		},
+		{
+			name: "legacy interface type",
+			mutate: func(baseline, _ *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationParameter(baseline, "chat.create_group", "thread", func(parameter *parameterSchema) {
+					parameter.InterfaceType = "string"
+				})
+			},
+			want: "interface_type must be empty or boolean",
+		},
+		{
+			name: "legacy enum excludes true",
+			mutate: func(baseline, _ *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationParameter(baseline, "chat.create_group", "thread", func(parameter *parameterSchema) {
+					parameter.Enum = []string{"false"}
+				})
+			},
+			want: "enum must allow true",
+		},
+		{
+			name: "legacy format",
+			mutate: func(baseline, _ *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationParameter(baseline, "chat.create_group", "thread", func(parameter *parameterSchema) {
+					parameter.Format = "custom-bool"
+				})
+			},
+			want: "format must be empty",
+		},
+		{
+			name: "replacement publishes constant property",
+			mutate: func(_, current *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationTool(current, "chat.create_topic", func(tool *toolSchema) {
+					tool.Parameters["thread-copy"] = parameterSchema{Type: `"boolean"`, Property: "threadEnabled"}
+				})
+			},
+			want: "still publishes replacement constant property",
+		},
+		{
+			name: "source renames constant property",
+			mutate: func(_, current *schemaContract, _ []interfacesnapshot.CommandMigration) {
+				mutateSchemaCommandMigrationTool(current, "chat.create_group", func(tool *toolSchema) {
+					tool.Parameters["thread-copy"] = parameterSchema{Type: `"boolean"`, Property: "threadEnabled"}
+				})
+			},
+			want: "source Schema tool still publishes replacement constant property",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			baseline := schemaCommandMigrationContract(false)
+			current := schemaCommandMigrationContract(true)
+			migrations := schemaCommandMigrationAuthorizations()
+			test.mutate(&baseline, &current, migrations)
+			if _, err := normalizeSchemaCommandMigrations(baseline, current, migrations); err == nil ||
+				!strings.Contains(err.Error(), test.want) {
+				t.Fatalf("replacement constant error=%v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageSchemaCommandMigrationLifecycleAndRun(t *testing.T) {
 	directory := t.TempDir()
 	baselinePath := filepath.Join(directory, "baseline.json")
@@ -359,17 +602,34 @@ func TestCrossPlatformCoverageSchemaCommandMigrationLifecycleAndRun(t *testing.T
 func schemaCommandMigrationContract(after bool) schemaContract {
 	id := parameterSchema{Type: `"string"`, Property: "resourceId", Required: true, CLIRequired: true}
 	keep := parameterSchema{Type: `"string"`, Property: "keep"}
-	thread := parameterSchema{Type: `"boolean"`, Property: "threadEnabled"}
+	name := parameterSchema{Type: `"string"`, Property: "name"}
+	groupType := parameterSchema{Type: `"string"`, Property: "type"}
+	users := parameterSchema{Type: `"array"`, Property: "userIds"}
+	thread := parameterSchema{
+		Type:             `"boolean"`,
+		Property:         "threadEnabled",
+		InterfaceType:    "boolean",
+		Default:          "false",
+		InterfaceDefault: "false",
+		Enum:             []string{"false", "true"},
+	}
 	group := toolSchema{
 		PrimaryCLIPath: "chat group create",
 		InterfaceMode:  "mcp",
 		InterfaceRef:   `{"product_id":"im","rpc_name":"create_group"}`,
 		Availability:   "available",
-		Parameters:     map[string]parameterSchema{"name": keep, "thread": thread},
-		Effect:         "write",
-		Risk:           "medium",
-		Confirmation:   "not_required",
-		Idempotency:    "unknown",
+		Parameters: map[string]parameterSchema{
+			"name":   name,
+			"thread": thread,
+			"type":   groupType,
+			"users":  users,
+		},
+		Constraints:  `{"require_together":[["name","type"]]}`,
+		Positionals:  []positionalSchema{{Name: "name", Index: 0, Type: "string", Required: true}},
+		Effect:       "write",
+		Risk:         "medium",
+		Confirmation: "not_required",
+		Idempotency:  "unknown",
 	}
 	move := toolSchema{
 		PrimaryCLIPath: "chat message old",
@@ -388,6 +648,11 @@ func schemaCommandMigrationContract(after bool) schemaContract {
 		delete(group.Parameters, "thread")
 		tools["chat.create_group"] = group
 		replacement := group
+		replacement.Parameters = make(map[string]parameterSchema, len(group.Parameters))
+		for name, parameter := range group.Parameters {
+			replacement.Parameters[name] = parameter
+		}
+		replacement.Positionals = append([]positionalSchema(nil), group.Positionals...)
 		replacement.PrimaryCLIPath = "chat topic create"
 		tools["chat.create_topic"] = replacement
 		delete(move.Parameters, "old-id")
@@ -432,14 +697,25 @@ func schemaCommandMigrationAuthorizations() []interfacesnapshot.CommandMigration
 			},
 			LegacyFlag: interfacesnapshot.CommandMigrationFlag{
 				Name:   "thread",
-				Before: interfacesnapshot.FlagMigrationState{Present: true, Type: "bool", Scope: "local"},
-				After:  interfacesnapshot.FlagMigrationState{Present: true, Type: "bool", Hidden: true, Scope: "local"},
+				Before: interfacesnapshot.FlagMigrationState{Present: true, Type: "bool", NoOpt: "true", Scope: "local"},
+				After:  interfacesnapshot.FlagMigrationState{Present: true, Type: "bool", Hidden: true, NoOpt: "true", Scope: "local"},
 			},
 			Schema: interfacesnapshot.CommandMigrationSchema{
 				ProductID:         "chat",
 				SourceToolID:      "chat.create_group",
 				ReplacementToolID: "chat.create_topic",
-				Parameters:        []interfacesnapshot.CommandParameterMigration{{From: "thread"}},
+				Parameters: []interfacesnapshot.CommandParameterMigration{
+					{From: "name", To: "name"},
+					{From: "type", To: "type"},
+					{From: "users", To: "users"},
+					{
+						From: "thread",
+						ReplacementConstant: &interfacesnapshot.CommandReplacementConstant{
+							Property: "threadEnabled",
+							Value:    true,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -465,7 +741,7 @@ func schemaCommandMigrationSnapshot(after bool) interfacesnapshot.Snapshot {
 			Runnable: true,
 			Aliases:  []string{},
 			LocalFlags: []interfacesnapshot.Flag{{
-				Name: "thread", Type: "bool",
+				Name: "thread", Type: "bool", NoOpt: "true",
 			}},
 			InheritedFlags: []interfacesnapshot.Flag{},
 		},
@@ -475,7 +751,14 @@ func schemaCommandMigrationSnapshot(after bool) interfacesnapshot.Snapshot {
 		commands[1].LocalFlags[0].Hidden = true
 		commands[2].Hidden = true
 		commands = append(commands,
-			interfacesnapshot.Command{Path: "dws chat topic create", Runnable: true, Aliases: []string{}, LocalFlags: []interfacesnapshot.Flag{}, InheritedFlags: []interfacesnapshot.Flag{}},
+			interfacesnapshot.Command{
+				Path:            "dws chat topic create",
+				Runnable:        true,
+				Aliases:         []string{},
+				LocalFlags:      []interfacesnapshot.Flag{},
+				InheritedFlags:  []interfacesnapshot.Flag{},
+				BoolConstParams: map[string]bool{"threadEnabled": true},
+			},
 			interfacesnapshot.Command{Path: "dws chat topic new", Runnable: true, Aliases: []string{}, LocalFlags: []interfacesnapshot.Flag{}, InheritedFlags: []interfacesnapshot.Flag{}},
 		)
 	}
@@ -487,6 +770,27 @@ func schemaCommandMigrationSnapshot(after bool) interfacesnapshot.Snapshot {
 		},
 		Commands: commands,
 	}
+}
+
+func mutateSchemaCommandMigrationTool(contract *schemaContract, toolID string, mutate func(*toolSchema)) {
+	product := contract.Products["chat"]
+	tool := product.Tools[toolID]
+	mutate(&tool)
+	product.Tools[toolID] = tool
+	contract.Products["chat"] = product
+}
+
+func mutateSchemaCommandMigrationParameter(
+	contract *schemaContract,
+	toolID string,
+	parameterName string,
+	mutate func(*parameterSchema),
+) {
+	mutateSchemaCommandMigrationTool(contract, toolID, func(tool *toolSchema) {
+		parameter := tool.Parameters[parameterName]
+		mutate(&parameter)
+		tool.Parameters[parameterName] = parameter
+	})
 }
 
 func writeCommandMigrationManifestFile(t *testing.T, path string, manifest interfacesnapshot.CommandMigrationManifest) {

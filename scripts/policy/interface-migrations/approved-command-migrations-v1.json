@@ -22,7 +22,18 @@
         "product_id": "chat",
         "source_tool_id": "chat.create_group_conversation",
         "replacement_tool_id": "chat.create_topic_conversation",
-        "parameters": [{"from": "thread"}]
+        "parameters": [
+          {"from": "name", "to": "name"},
+          {"from": "type", "to": "type"},
+          {"from": "users", "to": "users"},
+          {
+            "from": "thread",
+            "replacement_constant": {
+              "property": "convThreadEnabled",
+              "value": true
+            }
+          }
+        ]
       },
       "state": "pending",
       "reason": "Move topic-conversation creation to the dedicated chat topic command while retaining the legacy --thread execution path."

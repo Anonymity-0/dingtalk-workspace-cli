@@ -32,6 +32,10 @@ func TestCrossPlatformCoverageReadCommandMigrationManifestFailsClosed(t *testing
 	if _, err := ReadCommandMigrationManifest(strings.NewReader(valid)); err != nil {
 		t.Fatalf("valid command migration manifest: %v", err)
 	}
+	validExtraction := flagExtractionCommandMigrationManifestJSON()
+	if _, err := ReadCommandMigrationManifest(strings.NewReader(validExtraction)); err != nil {
+		t.Fatalf("valid flag extraction command migration manifest: %v", err)
+	}
 	for _, test := range []struct {
 		input string
 		want  string
@@ -42,6 +46,9 @@ func TestCrossPlatformCoverageReadCommandMigrationManifestFailsClosed(t *testing
 		{strings.Replace(valid, "dws chat message old", "dws chat *", 1), "exact command paths"},
 		{strings.Replace(valid, `"kind": "command_move"`, `"kind": "anything"`, 1), "invalid kind"},
 		{`{"version":1,"migrations":null}`, "must be an array"},
+		{strings.Replace(validExtraction, `"replacement_constant":{"property":"convThreadEnabled","value":true}`, `"replacement_constant":null`, 1), "must be an object"},
+		{strings.Replace(validExtraction, `,"value":true`, ``, 1), `must be true`},
+		{strings.Replace(validExtraction, `"value":true`, `"value":"true"`, 1), "bool"},
 	} {
 		if _, err := ReadCommandMigrationManifest(strings.NewReader(test.input)); err == nil || !strings.Contains(err.Error(), test.want) {
 			t.Fatalf("ReadCommandMigrationManifest() error=%v, want %q", err, test.want)
@@ -101,16 +108,45 @@ func TestCrossPlatformCoverageCommandMigrationValidationEdges(t *testing.T) {
 		{"legacy changed", func(m *CommandMigration) { m.Legacy.After.Hidden = true }, "remain visible"},
 		{"invalid legacy flag", func(m *CommandMigration) { m.LegacyFlag.Name = "bad name" }, "exact flag"},
 		{"same tool", func(m *CommandMigration) { m.Schema.ReplacementToolID = m.Schema.SourceToolID }, "distinct replacement"},
-		{"wrong parameter", func(m *CommandMigration) { m.Schema.Parameters[0].From = "other" }, "exact extracted flag"},
+		{"wrong parameter", func(m *CommandMigration) { m.Schema.Parameters[3].From = "other" }, "exact extracted flag"},
+		{"wrong type", func(m *CommandMigration) {
+			m.LegacyFlag.Before.Type = "string"
+			m.LegacyFlag.After.Type = "string"
+		}, "optional bool"},
+		{"wrong no opt", func(m *CommandMigration) {
+			m.LegacyFlag.Before.NoOpt = "false"
+			m.LegacyFlag.After.NoOpt = "false"
+		}, "no_opt"},
+		{"missing extracted mapping", func(m *CommandMigration) {
+			m.Schema.Parameters = m.Schema.Parameters[:3]
+		}, "exactly one replacement constant"},
+		{"duplicate extracted mapping", func(m *CommandMigration) {
+			m.Schema.Parameters = append(m.Schema.Parameters, m.Schema.Parameters[3])
+		}, "duplicates from"},
+		{"multiple constants", func(m *CommandMigration) {
+			m.Schema.Parameters[0] = CommandParameterMigration{
+				From: "name",
+				ReplacementConstant: &CommandReplacementConstant{
+					Property: "name",
+					Value:    true,
+				},
+			}
+		}, "exactly one replacement constant"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			migration := validExtraction
-			migration.Schema.Parameters = append([]CommandParameterMigration(nil), validExtraction.Schema.Parameters...)
+			migration := cloneCommandMigration(validExtraction)
 			test.mutate(&migration)
 			if err := migration.validate(); err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("validate error=%v, want %q", err, test.want)
 			}
 		})
+	}
+	falseConstant := cloneCommandMigration(validExtraction)
+	falseConstant.Schema.Parameters[3].ReplacementConstant.Value = false
+	falseConstant.LegacyFlag.Before.NoOpt = "false"
+	falseConstant.LegacyFlag.After.NoOpt = "false"
+	if err := falseConstant.validate(); err == nil || !strings.Contains(err.Error(), "must be true") {
+		t.Fatalf("false replacement constant validation error=%v, want v1 true-only rejection", err)
 	}
 
 	for _, state := range []CommandMigrationState{
@@ -157,13 +193,39 @@ func TestCrossPlatformCoverageCommandMigrationValidationEdges(t *testing.T) {
 		{"duplicate to", CommandMigrationMove, func(s *CommandMigrationSchema) {
 			s.Parameters = append(s.Parameters, CommandParameterMigration{From: "other", To: s.Parameters[0].To})
 		}, "duplicates to"},
-		{"extraction to", CommandMigrationFlagExtraction, func(s *CommandMigrationSchema) { s.Parameters[0].To = "new-id" }, "must not declare to"},
+		{"move constant", CommandMigrationMove, func(s *CommandMigrationSchema) {
+			s.Parameters[0].ReplacementConstant = &CommandReplacementConstant{Property: "property", Value: true}
+		}, "must not declare replacement_constant"},
 	} {
 		t.Run("schema "+test.name, func(t *testing.T) {
 			schema := validSchema
 			schema.Parameters = append([]CommandParameterMigration(nil), validSchema.Parameters...)
 			test.mutate(&schema)
 			if err := schema.validate(test.kind); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("schema validate error=%v, want %q", err, test.want)
+			}
+		})
+	}
+
+	for _, test := range []struct {
+		name   string
+		mutate func(*CommandMigrationSchema)
+		want   string
+	}{
+		{"missing target", func(s *CommandMigrationSchema) { s.Parameters[0].To = "" }, "requires an exact to or replacement_constant"},
+		{"both targets", func(s *CommandMigrationSchema) {
+			s.Parameters[0].ReplacementConstant = &CommandReplacementConstant{Property: "name", Value: true}
+		}, "exactly one target"},
+		{"bad constant property", func(s *CommandMigrationSchema) { s.Parameters[3].ReplacementConstant.Property = "bad/property" }, "exact property"},
+		{"duplicate parameter target", func(s *CommandMigrationSchema) { s.Parameters[1].To = s.Parameters[0].To }, "duplicates to"},
+		{"duplicate constant target", func(s *CommandMigrationSchema) {
+			s.Parameters[0] = CommandParameterMigration{From: "name", ReplacementConstant: &CommandReplacementConstant{Property: "convThreadEnabled", Value: true}}
+		}, "duplicates replacement_constant property"},
+	} {
+		t.Run("extraction schema "+test.name, func(t *testing.T) {
+			schema := cloneCommandMigration(validExtraction).Schema
+			test.mutate(&schema)
+			if err := schema.validate(CommandMigrationFlagExtraction); err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("schema validate error=%v, want %q", err, test.want)
 			}
 		})
@@ -429,6 +491,55 @@ func TestCrossPlatformCoverageCommandMigrationLifecycleAndExactFiltering(t *test
 	}
 }
 
+func TestCrossPlatformCoverageFlagExtractionRequiresReplacementConstantEvidence(t *testing.T) {
+	before := commandMigrationSnapshot(false, false)
+	after := commandMigrationSnapshot(true, false)
+	pending := flagExtractionCommandMigrationManifest(CommandMigrationPending)
+	consumed := flagExtractionCommandMigrationManifest(CommandMigrationConsumed)
+	empty := CommandMigrationManifest{Version: CommandMigrationManifestVersion, Migrations: []CommandMigration{}}
+	migration := pending.Migrations[0]
+
+	if phase := matchCommandMigrationPhase(before, migration); phase != commandMigrationBefore {
+		t.Fatalf("before phase=%s, want %s", phase, commandMigrationBefore)
+	}
+	if phase := matchCommandMigrationPhase(after, migration); phase != commandMigrationAfter {
+		t.Fatalf("after phase=%s, want %s", phase, commandMigrationAfter)
+	}
+
+	for _, test := range []struct {
+		name   string
+		values map[string]bool
+	}{
+		{name: "missing", values: nil},
+		{name: "wrong property", values: map[string]bool{"otherProperty": true}},
+		{name: "wrong value", values: map[string]bool{"convThreadEnabled": false}},
+		{name: "extra", values: map[string]bool{"convThreadEnabled": true, "otherProperty": true}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			current := withCommandBoolConstParams(after, "dws chat topic create", test.values)
+			if phase := matchCommandMigrationPhase(current, migration); phase != commandMigrationPartial {
+				t.Fatalf("phase=%s, want %s", phase, commandMigrationPartial)
+			}
+			if _, err := AuthorizeCommandMigrations(
+				current,
+				map[string]Snapshot{"merge-base": before, "stable": before},
+				pending,
+				consumed,
+			); err == nil || !strings.Contains(err.Error(), "partially applied") {
+				t.Fatalf("constant evidence lifecycle error=%v, want partial rejection", err)
+			}
+			if _, err := AuthorizeCommandMigrations(
+				current,
+				map[string]Snapshot{"merge-base": before, "stable": before},
+				empty,
+				pending,
+			); err == nil || !strings.Contains(err.Error(), "cannot authorize its own interface change") {
+				t.Fatalf("constant evidence self-authorization error=%v", err)
+			}
+		})
+	}
+}
+
 func commandMigrationManifestJSON() string {
 	return `{
   "version": 1,
@@ -452,6 +563,43 @@ func commandMigrationManifestJSON() string {
     },
     "state": "pending",
     "reason": "Reviewed command move."
+  }]
+}`
+}
+
+func flagExtractionCommandMigrationManifestJSON() string {
+	return `{
+  "version": 1,
+  "migrations": [{
+    "kind": "flag_extraction",
+    "legacy": {
+      "command": "dws chat group create",
+      "before": {"present": true, "runnable": true},
+      "after": {"present": true, "runnable": true}
+    },
+    "replacement": {
+      "command": "dws chat topic create",
+      "before": {"present": false},
+      "after": {"present": true, "runnable": true}
+    },
+    "legacy_flag": {
+      "name": "thread",
+      "before": {"present": true, "type": "bool", "no_opt": "true", "scope": "local"},
+      "after": {"present": true, "type": "bool", "hidden": true, "no_opt": "true", "scope": "local"}
+    },
+    "schema": {
+      "product_id": "chat",
+      "source_tool_id": "chat.create_group",
+      "replacement_tool_id": "chat.create_topic",
+      "parameters": [
+        {"from":"name","to":"name"},
+        {"from":"type","to":"type"},
+        {"from":"users","to":"users"},
+        {"from":"thread","replacement_constant":{"property":"convThreadEnabled","value":true}}
+      ]
+    },
+    "state": "pending",
+    "reason": "Reviewed flag extraction."
   }]
 }`
 }
@@ -499,12 +647,42 @@ func commandMigrationManifest(state string) CommandMigrationManifest {
 			ProductID:         "chat",
 			SourceToolID:      "chat.create_group",
 			ReplacementToolID: "chat.create_topic",
-			Parameters:        []CommandParameterMigration{{From: "thread"}},
+			Parameters: []CommandParameterMigration{
+				{From: "name", To: "name"},
+				{From: "type", To: "type"},
+				{From: "users", To: "users"},
+				{
+					From: "thread",
+					ReplacementConstant: &CommandReplacementConstant{
+						Property: "convThreadEnabled",
+						Value:    true,
+					},
+				},
+			},
 		},
 		State:  state,
 		Reason: "Reviewed flag extraction.",
 	}
 	return CommandMigrationManifest{Version: CommandMigrationManifestVersion, Migrations: []CommandMigration{move, extraction}}
+}
+
+func flagExtractionCommandMigrationManifest(state string) CommandMigrationManifest {
+	manifest := commandMigrationManifest(state)
+	manifest.Migrations = manifest.Migrations[1:]
+	return manifest
+}
+
+func cloneCommandMigration(source CommandMigration) CommandMigration {
+	cloned := source
+	cloned.Schema.Parameters = append([]CommandParameterMigration(nil), source.Schema.Parameters...)
+	for index, parameter := range source.Schema.Parameters {
+		if parameter.ReplacementConstant == nil {
+			continue
+		}
+		constant := *parameter.ReplacementConstant
+		cloned.Schema.Parameters[index].ReplacementConstant = &constant
+	}
+	return cloned
 }
 
 func singleCommandMigrationManifest(state string) CommandMigrationManifest {
@@ -534,10 +712,24 @@ func commandMigrationSnapshot(after, removeUnrelated bool) Snapshot {
 		if removeUnrelated {
 			commands[2].LocalFlags = commands[2].LocalFlags[:1]
 		}
+		topicCreate := testCommand("dws chat topic create")
+		topicCreate.BoolConstParams = map[string]bool{"convThreadEnabled": true}
 		commands = append(commands,
-			testCommand("dws chat topic create"),
+			topicCreate,
 			testCommand("dws chat topic new", Flag{Name: "new-id", Type: "string", Required: true}),
 		)
 	}
 	return testSnapshot(commands...)
+}
+
+func withCommandBoolConstParams(snapshot Snapshot, path string, values map[string]bool) Snapshot {
+	cloned := snapshot
+	cloned.Commands = append([]Command(nil), snapshot.Commands...)
+	for index := range cloned.Commands {
+		if cloned.Commands[index].Path == path {
+			cloned.Commands[index].BoolConstParams = values
+			break
+		}
+	}
+	return cloned
 }

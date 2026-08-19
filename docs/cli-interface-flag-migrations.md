@@ -53,20 +53,42 @@ scripts/policy/interface-migrations/approved-command-migrations-v1.json
 | kind | CLI after 状态 | Schema 允许的精确投影 |
 |---|---|---|
 | `command_move` | legacy 命令仍 runnable、由 visible 变 hidden；replacement 由 absent 变 visible runnable | 同一 stable tool identity 的 `primary_cli_path` 改到 replacement；只允许清单列出的参数改名，参数类型、property、requiredness、default 等必须等价 |
-| `flag_extraction` | legacy 命令保持 visible runnable；指定 legacy flag 仍可执行但由 visible 变 hidden；replacement 由 absent 变 visible runnable | source tool 只删除指定参数；replacement tool 必须位于精确的新路径，并保持 source 的 interface 与 safety identity |
+| `flag_extraction` | legacy 命令保持 visible runnable；指定 legacy flag 仍可执行但由 visible 变 hidden；replacement 由 absent 变 visible runnable | source tool 只删除指定参数；replacement tool 必须位于精确的新路径，并保持 source 的 interface 与 safety identity；清单必须完整列出每个 source 参数到 replacement 参数或常量 property 的承接关系 |
 
 `command_move` 只能隐藏没有子命令的 legacy leaf，且 legacy 与 replacement
 不得互为祖先路径；整棵命令树的迁移需要单独设计逐叶治理，不能复用这一原语。
 稳定 Schema tool 可以继续接受普通的 optional 参数新增，但不得借路径迁移引入清单未登记的
 `required`、`cli_required` 或 `required_when` 参数；参数改名的目标也不得与历史
 Schema 中已有的其他参数重名，避免把两个历史参数静默合并。`flag_extraction` 只接受
-optional legacy flag，不能隐藏仍由 Cobra hard-required 的参数。
+optional bool legacy flag，不能隐藏仍由 Cobra hard-required 的参数。它必须对 source tool
+的全部历史参数逐项声明：普通参数使用精确 `from` → `to`（同名也必须显式写出），且恰好
+一个与 legacy flag 同名的 `from` 使用 `replacement_constant`，不得同时声明 `to`；所有
+`from` 与 replacement 参数/property 目标必须唯一。legacy bool flag 的 `no_opt` 必须等于
+常量布尔值的字符串形式。v1 只治理 optional bool flag 的 `NoOpt=true` 激活分支，因此
+`replacement_constant.value` 与 legacy `no_opt` 都必须是 `true`；negative flag、默认即
+`true` 或固定 `false` 的语义不在本轮证明范围，必须另行设计，不能借本清单放行。
+
+`replacement_constant` 不是清单自报即可成立的例外。after 阶段的 Interface Snapshot
+必须从 replacement 命令的同一份框架运行时声明中捕获完全一致的 property/value，缺失、
+值不符或额外常量都会使 lifecycle 落入 partial。对于 #1054，`dws chat topic create`
+必须通过 `NewLeafCommand` 的 `ConstParams` 声明并实际注入
+`convThreadEnabled=true`；手写 `RunE` 固定值、Cobra annotation 或只改清单都不能提供这份
+同源证据，Snapshot 只读取 `corecmd` 包内私有注册表公开的只读副本。第一次向旧快照增加
+bool 常量证据属于 bootstrap；一旦任一历史快照已记录该
+证据，普通 Interface Compare 会持续要求 property/value 集合完全一致，因此 ledger 清理后
+删除、翻转或增加常量仍会阻塞。若 candidate 改动 command ledger，则
+`internal/corecmd/corecmd.go`、`internal/corecmd/interface_const_params.go` 与
+`internal/helpers/leaf.go` 三份执行/证据桥必须保持 base Git blob 不变；框架演进必须先用
+独立 PR 合入，不能和产品消费混在一起。
+
+replacement 必须保留 source 已发布的 dry-run 能力：历史 `dry_run` 非空时不得删除或改值；
+历史未声明时允许 replacement 新增 dry-run。这与普通 Schema 兼容规则保持同一单调边界。
 
 两种迁移都要求旧 argv 继续可执行。删除旧命令、删除旧 flag、把 legacy 改成 non-runnable、改变未登记的历史参数、改变 interface / safety，或只完成部分 before → after 转换都会 fail closed。命令别名会先规范到 reference 的 canonical path，但清单本身仍只能记录精确 canonical 命令，不能用 alias 或前缀扩大授权。
 
 跨命令清单复用下文同一套 `pending → consumed → cleanup` 生命周期。治理 PR 只能新增 `pending` 且产品 surface 必须仍是 before；后续产品 PR 才能一次性切到 after 并改为 `consumed`。candidate 新增的 pending 记录不能批准自己的改动。
 
-当前首批 pending 记录覆盖 `chat topic` 收口：`chat group create --thread` 拆到 `chat topic create`，以及 `chat message list-topic-replies` / `forward-topic` 迁到对应的 `chat topic` 命令。产品 PR 消费这些记录时只能把三条 `state` 改为 `consumed`，不得改写其 before、after、Schema mapping 或 reason。
+当前首批 pending 记录覆盖 `chat topic` 收口：`chat group create --thread` 拆到 `chat topic create`，以及 `chat message list-topic-replies` / `forward-topic` 迁到对应的 `chat topic` 命令。前一条完整登记 `name` / `type` / `users` 的同名承接，以及 `thread` → `convThreadEnabled=true` 的常量承接。产品 PR 消费这些记录时只能把三条 `state` 改为 `consumed`，不得改写其 before、after、Schema mapping、constant 或 reason。
 
 ## 两阶段迁移与回执清理
 

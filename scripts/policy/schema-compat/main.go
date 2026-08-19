@@ -1512,28 +1512,299 @@ func normalizeSchemaCommandMigrations(
 					migration.Legacy.Command,
 				)
 			}
-			for _, parameter := range migration.Schema.Parameters {
-				if _, existed := oldTool.Parameters[parameter.From]; !existed {
-					return schemaContract{}, fmt.Errorf(
-						"approved flag extraction %q historical Schema tool lacks parameter %q",
-						migration.Legacy.Command,
-						parameter.From,
-					)
-				}
-				if _, exists := newSource.Parameters[parameter.From]; exists {
-					return schemaContract{}, fmt.Errorf(
-						"approved flag extraction %q still publishes extracted Schema parameter %q",
-						migration.Legacy.Command,
-						parameter.From,
-					)
-				}
-				delete(normalizedTool.Parameters, parameter.From)
+			if oldTool.DryRun != "" && oldTool.DryRun != replacement.DryRun {
+				return schemaContract{}, fmt.Errorf(
+					"approved flag extraction %q replacement Schema tool changed or removed dry_run",
+					migration.Legacy.Command,
+				)
+			}
+			var err error
+			normalizedTool, err = normalizeFlagExtractionSchemaMigration(
+				migration,
+				oldTool,
+				newSource,
+				replacement,
+				normalizedTool,
+			)
+			if err != nil {
+				return schemaContract{}, err
 			}
 		}
 		normalizedProduct.Tools[migration.Schema.SourceToolID] = normalizedTool
 		normalized.Products[migration.Schema.ProductID] = normalizedProduct
 	}
 	return normalized, nil
+}
+
+func normalizeFlagExtractionSchemaMigration(
+	migration interfacesnapshot.CommandMigration,
+	oldTool toolSchema,
+	newSource toolSchema,
+	replacement toolSchema,
+	normalizedSource toolSchema,
+) (toolSchema, error) {
+	mappingsBySource := make(map[string]interfacesnapshot.CommandParameterMigration, len(migration.Schema.Parameters))
+	for _, mapping := range migration.Schema.Parameters {
+		if _, duplicate := mappingsBySource[mapping.From]; duplicate {
+			return toolSchema{}, fmt.Errorf(
+				"approved flag extraction %q maps historical Schema parameter %q more than once",
+				migration.Legacy.Command,
+				mapping.From,
+			)
+		}
+		if _, exists := oldTool.Parameters[mapping.From]; !exists {
+			return toolSchema{}, fmt.Errorf(
+				"approved flag extraction %q historical Schema tool lacks parameter %q",
+				migration.Legacy.Command,
+				mapping.From,
+			)
+		}
+		mappingsBySource[mapping.From] = mapping
+	}
+
+	historicalNames := make([]string, 0, len(oldTool.Parameters))
+	for name := range oldTool.Parameters {
+		historicalNames = append(historicalNames, name)
+	}
+	sort.Strings(historicalNames)
+	for _, name := range historicalNames {
+		if _, mapped := mappingsBySource[name]; !mapped {
+			return toolSchema{}, fmt.Errorf(
+				"approved flag extraction %q does not map historical Schema parameter %q",
+				migration.Legacy.Command,
+				name,
+			)
+		}
+	}
+
+	legacyName := migration.LegacyFlag.Name
+	legacyMapping, mapped := mappingsBySource[legacyName]
+	if !mapped || legacyMapping.To != "" || legacyMapping.ReplacementConstant == nil {
+		return toolSchema{}, fmt.Errorf(
+			"approved flag extraction %q legacy Schema parameter %q must map to one replacement constant",
+			migration.Legacy.Command,
+			legacyName,
+		)
+	}
+	legacyParameter := oldTool.Parameters[legacyName]
+	if err := validateFlagExtractionBooleanConstant(migration, legacyParameter, legacyMapping.ReplacementConstant); err != nil {
+		return toolSchema{}, err
+	}
+	constantProperty := legacyMapping.ReplacementConstant.Property
+	if _, exists := newSource.Parameters[legacyName]; exists {
+		return toolSchema{}, fmt.Errorf(
+			"approved flag extraction %q still publishes extracted Schema parameter %q",
+			migration.Legacy.Command,
+			legacyName,
+		)
+	}
+	sourceNames := make([]string, 0, len(newSource.Parameters))
+	for name := range newSource.Parameters {
+		sourceNames = append(sourceNames, name)
+	}
+	sort.Strings(sourceNames)
+	for _, name := range sourceNames {
+		if newSource.Parameters[name].Property == constantProperty {
+			return toolSchema{}, fmt.Errorf(
+				"approved flag extraction %q source Schema tool still publishes replacement constant property %q through parameter %q on %q",
+				migration.Legacy.Command,
+				constantProperty,
+				name,
+				migration.Schema.SourceToolID,
+			)
+		}
+	}
+
+	replacementNames := make([]string, 0, len(replacement.Parameters))
+	for name := range replacement.Parameters {
+		replacementNames = append(replacementNames, name)
+	}
+	sort.Strings(replacementNames)
+	for _, name := range replacementNames {
+		if replacement.Parameters[name].Property == constantProperty {
+			return toolSchema{}, fmt.Errorf(
+				"approved flag extraction %q replacement Schema tool %q still publishes replacement constant property %q through parameter %q",
+				migration.Legacy.Command,
+				migration.Schema.ReplacementToolID,
+				constantProperty,
+				name,
+			)
+		}
+	}
+
+	replacementTargets := make(map[string]string, len(historicalNames)-1)
+	renames := make(map[string]string, len(historicalNames)-1)
+	for _, sourceName := range historicalNames {
+		if sourceName == legacyName {
+			continue
+		}
+		mapping := mappingsBySource[sourceName]
+		if mapping.To == "" || mapping.ReplacementConstant != nil {
+			return toolSchema{}, fmt.Errorf(
+				"approved flag extraction %q shared Schema parameter %q must map to one replacement parameter",
+				migration.Legacy.Command,
+				sourceName,
+			)
+		}
+		if previous, duplicate := replacementTargets[mapping.To]; duplicate {
+			return toolSchema{}, fmt.Errorf(
+				"approved flag extraction %q replacement Schema parameter %q is mapped from both %q and %q",
+				migration.Legacy.Command,
+				mapping.To,
+				previous,
+				sourceName,
+			)
+		}
+		replacementParameter, exists := replacement.Parameters[mapping.To]
+		if !exists {
+			return toolSchema{}, fmt.Errorf(
+				"approved flag extraction %q replacement Schema tool %q does not publish mapped Schema parameter %q",
+				migration.Legacy.Command,
+				migration.Schema.ReplacementToolID,
+				mapping.To,
+			)
+		}
+		if err := validateEquivalentCommandSchemaParameter(migration, mapping, oldTool.Parameters[sourceName], replacementParameter); err != nil {
+			return toolSchema{}, err
+		}
+		replacementTargets[mapping.To] = sourceName
+		renames[sourceName] = mapping.To
+	}
+	for _, name := range replacementNames {
+		if _, mapped := replacementTargets[name]; !mapped {
+			return toolSchema{}, fmt.Errorf(
+				"approved flag extraction %q replacement Schema tool %q publishes unmapped Schema parameter %q",
+				migration.Legacy.Command,
+				migration.Schema.ReplacementToolID,
+				name,
+			)
+		}
+	}
+
+	oldConstraints, oldConstraintsOK := canonicalizeMigratedConstraints(oldTool.Constraints, renames)
+	replacementConstraints, replacementConstraintsOK := canonicalizeMigratedConstraints(replacement.Constraints, nil)
+	if !oldConstraintsOK || !replacementConstraintsOK || oldConstraints != replacementConstraints {
+		return toolSchema{}, fmt.Errorf(
+			"approved flag extraction %q replacement Schema tool changed constraints",
+			migration.Legacy.Command,
+		)
+	}
+	if !equivalentMigratedPositionals(oldTool.Positionals, replacement.Positionals, renames) {
+		return toolSchema{}, fmt.Errorf(
+			"approved flag extraction %q replacement Schema tool changed positionals",
+			migration.Legacy.Command,
+		)
+	}
+
+	delete(normalizedSource.Parameters, legacyName)
+	return normalizedSource, nil
+}
+
+func validateFlagExtractionBooleanConstant(
+	migration interfacesnapshot.CommandMigration,
+	parameter parameterSchema,
+	constant *interfacesnapshot.CommandReplacementConstant,
+) error {
+	if strings.TrimSpace(constant.Property) == "" || parameter.Property != constant.Property {
+		return fmt.Errorf(
+			"approved flag extraction %q replacement constant property %q does not match historical Schema property %q",
+			migration.Legacy.Command,
+			constant.Property,
+			parameter.Property,
+		)
+	}
+	if !constant.Value {
+		return fmt.Errorf(
+			"approved flag extraction %q replacement constant for Schema property %q must be constant true",
+			migration.Legacy.Command,
+			constant.Property,
+		)
+	}
+	if parameter.Type != `"boolean"` {
+		return fmt.Errorf(
+			"approved flag extraction %q legacy Schema parameter %q must have boolean type",
+			migration.Legacy.Command,
+			migration.LegacyFlag.Name,
+		)
+	}
+	if parameter.Required || parameter.CLIRequired {
+		return fmt.Errorf(
+			"approved flag extraction %q legacy Schema parameter %q must remain optional",
+			migration.Legacy.Command,
+			migration.LegacyFlag.Name,
+		)
+	}
+	if parameter.RequiredWhen != "" {
+		return fmt.Errorf(
+			"approved flag extraction %q legacy Schema parameter %q must not declare required_when",
+			migration.Legacy.Command,
+			migration.LegacyFlag.Name,
+		)
+	}
+	if parameter.Default != "" && parameter.Default != "false" {
+		return fmt.Errorf(
+			"approved flag extraction %q legacy Schema parameter %q default must be absent or false",
+			migration.Legacy.Command,
+			migration.LegacyFlag.Name,
+		)
+	}
+	if parameter.InterfaceDefault != "" && parameter.InterfaceDefault != "false" {
+		return fmt.Errorf(
+			"approved flag extraction %q legacy Schema parameter %q interface_default must be absent or false",
+			migration.Legacy.Command,
+			migration.LegacyFlag.Name,
+		)
+	}
+	if parameter.InterfaceType != "" && parameter.InterfaceType != "boolean" {
+		return fmt.Errorf(
+			"approved flag extraction %q legacy Schema parameter %q interface_type must be empty or boolean",
+			migration.Legacy.Command,
+			migration.LegacyFlag.Name,
+		)
+	}
+	if parameter.Format != "" {
+		return fmt.Errorf(
+			"approved flag extraction %q legacy Schema parameter %q format must be empty",
+			migration.Legacy.Command,
+			migration.LegacyFlag.Name,
+		)
+	}
+	if len(parameter.Enum) > 0 {
+		allowsTrue := false
+		for _, value := range parameter.Enum {
+			if value == "true" {
+				allowsTrue = true
+				break
+			}
+		}
+		if !allowsTrue {
+			return fmt.Errorf(
+				"approved flag extraction %q legacy Schema parameter %q enum must allow true",
+				migration.Legacy.Command,
+				migration.LegacyFlag.Name,
+			)
+		}
+	}
+	return nil
+}
+
+func equivalentMigratedPositionals(
+	historical []positionalSchema,
+	replacement []positionalSchema,
+	renames map[string]string,
+) bool {
+	if len(historical) != len(replacement) {
+		return false
+	}
+	for index, positional := range historical {
+		if renamed := renames[positional.Name]; renamed != "" {
+			positional.Name = renamed
+		}
+		if positional != replacement[index] {
+			return false
+		}
+	}
+	return true
 }
 
 func validateEquivalentCommandSchemaParameter(

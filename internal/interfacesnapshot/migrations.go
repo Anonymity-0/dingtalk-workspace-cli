@@ -99,6 +99,12 @@ func validateLabeledMigrationJSONValue(decoder *json.Decoder, path string, schem
 	if err != nil {
 		return fmt.Errorf("read %s migration manifest value at %s: %w", label, path, err)
 	}
+	for schema.Kind() == reflect.Pointer {
+		if token == nil {
+			return migrationJSONTypeError(path, schema.Elem(), token, label)
+		}
+		schema = schema.Elem()
+	}
 
 	switch schema.Kind() {
 	case reflect.Struct:

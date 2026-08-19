@@ -16,7 +16,10 @@ MIGRATION_MANIFEST_REL="scripts/policy/interface-migrations/approved-flag-migrat
 COMMAND_MIGRATION_MANIFEST_REL="scripts/policy/interface-migrations/approved-command-migrations-v1.json"
 MIGRATIONS_REL="internal/interfacesnapshot/migrations.go"
 COMMAND_MIGRATIONS_REL="internal/interfacesnapshot/command_migrations.go"
+CORECMD_BRIDGE_REL="internal/corecmd/corecmd.go"
 ALIAS_CONTRACT_REL="internal/corecmd/runtimeannotate/interface_alias.go"
+CONST_PARAMS_REGISTRY_REL="internal/corecmd/interface_const_params.go"
+LEAF_ADAPTER_REL="internal/helpers/leaf.go"
 
 usage() {
 	printf '%s\n' "usage: $0 --base-ref <ref> [--stable-ref <ref>] [--candidate-ref <ref>]" >&2
@@ -146,6 +149,17 @@ commit_path_is_regular_file() {
 	[ "$2" = blob ] && [ "$4" = "$tree_path" ]
 }
 
+commit_path_blob() {
+	tree_commit="$1"
+	tree_path="$2"
+	tree_entry="$(git -C "$ROOT" ls-tree "$tree_commit" -- "$tree_path")"
+	[ -n "$tree_entry" ] || return 1
+	set -- $tree_entry
+	[ "$#" -eq 4 ] || return 1
+	[ "$2" = blob ] && [ "$4" = "$tree_path" ] || return 1
+	printf '%s\n' "$3"
+}
+
 has_modern_interface_helper() {
 	governance_commit="$1"
 	commit_path_is_regular_file "$governance_commit" cmd/interface-snapshot/main.go &&
@@ -179,17 +193,63 @@ has_complete_schema_command_migration_governance() {
 	governance_commit="$1"
 	has_complete_schema_migration_governance "$governance_commit" &&
 		commit_path_is_regular_file "$governance_commit" "$COMMAND_MIGRATIONS_REL" &&
+		commit_path_is_regular_file "$governance_commit" "$CONST_PARAMS_REGISTRY_REL" &&
 		commit_path_is_regular_file "$governance_commit" "$COMMAND_MIGRATION_MANIFEST_REL"
 }
 
 has_any_schema_command_migration_governance_artifact() {
 	governance_commit="$1"
-	for relative_path in "$COMMAND_MIGRATIONS_REL" "$COMMAND_MIGRATION_MANIFEST_REL"; do
+	for relative_path in "$COMMAND_MIGRATIONS_REL" "$CONST_PARAMS_REGISTRY_REL" "$COMMAND_MIGRATION_MANIFEST_REL"; do
 		if commit_path_exists "$governance_commit" "$relative_path"; then
 			return 0
 		fi
 	done
 	return 1
+}
+
+check_candidate_const_params_source_policy() {
+	source_policy_failed=false
+	for token in attachInterfaceBoolConstParams InterfaceBoolConstParams interfaceBoolConstParamsRegistry; do
+		matches="$(git -C "$CANDIDATE_WORKTREE" grep -l -w -F -e "$token" -- '*.go' || true)"
+		[ -z "$matches" ] && continue
+		while IFS= read -r relative_path; do
+			[ -n "$relative_path" ] || continue
+			case "$relative_path" in
+			*_test.go)
+				continue
+				;;
+			internal/corecmd/interface_const_params.go)
+				continue
+				;;
+			internal/corecmd/corecmd.go)
+				[ "$token" = attachInterfaceBoolConstParams ] && continue
+				;;
+			internal/interfacesnapshot/snapshot.go)
+				[ "$token" = InterfaceBoolConstParams ] && continue
+				;;
+			esac
+			if [ "$source_policy_failed" = false ]; then
+				printf 'error: candidate production source may not access framework-owned bool ConstParams registry:\n' >&2
+			fi
+			printf '  %s: protected bool ConstParams registry identifier %s\n' "$relative_path" "$token" >&2
+			source_policy_failed=true
+		done <<EOF
+$matches
+EOF
+	done
+	if [ "$source_policy_failed" = true ]; then
+		exit 2
+	fi
+}
+
+install_authority_const_params_registry() {
+	source_root="$1"
+	worktree="$2"
+
+	[ "$source_root" = "$worktree" ] && return
+	mkdir -p "$worktree/$(dirname "$CONST_PARAMS_REGISTRY_REL")"
+	rm -f "$worktree/$CONST_PARAMS_REGISTRY_REL"
+	cp "$source_root/$CONST_PARAMS_REGISTRY_REL" "$worktree/$CONST_PARAMS_REGISTRY_REL"
 }
 
 require_complete_candidate_schema_command_governance() {
@@ -198,6 +258,23 @@ require_complete_candidate_schema_command_governance() {
 			"$CANDIDATE_COMMIT" >&2
 		exit 2
 	fi
+}
+
+require_base_identical_command_migration_bridges() {
+	base_command_manifest_blob="$(commit_path_blob "$BASE_COMMIT" "$COMMAND_MIGRATION_MANIFEST_REL")"
+	candidate_command_manifest_blob="$(commit_path_blob "$CANDIDATE_COMMIT" "$COMMAND_MIGRATION_MANIFEST_REL")"
+	[ "$base_command_manifest_blob" != "$candidate_command_manifest_blob" ] || return 0
+
+	for protected_bridge_path in "$CORECMD_BRIDGE_REL" "$CONST_PARAMS_REGISTRY_REL" "$LEAF_ADAPTER_REL"; do
+		base_protected_bridge_blob="$(commit_path_blob "$BASE_COMMIT" "$protected_bridge_path" || true)"
+		candidate_protected_bridge_blob="$(commit_path_blob "$CANDIDATE_COMMIT" "$protected_bridge_path" || true)"
+		if [ -z "$base_protected_bridge_blob" ] ||
+			[ "$candidate_protected_bridge_blob" != "$base_protected_bridge_blob" ]; then
+			printf 'candidate command migration manifest differs from base; protected bridge must preserve the base Git blob: %s\n' \
+				"$protected_bridge_path" >&2
+			exit 2
+		fi
+	done
 }
 
 check_candidate_alias_source_policy() {
@@ -252,6 +329,7 @@ if ! has_complete_schema_migration_governance "$CANDIDATE_COMMIT"; then
 	exit 2
 fi
 check_candidate_alias_source_policy
+check_candidate_const_params_source_policy
 
 EMPTY_MANIFEST="$TMP_ROOT/empty-migrations.json"
 printf '%s\n' '{"version":1,"migrations":[]}' >"$EMPTY_MANIFEST"
@@ -285,6 +363,7 @@ if has_complete_schema_command_migration_governance "$BASE_COMMIT"; then
 	APPROVED_COMMAND_MANIFEST="$BASE_WORKTREE/$COMMAND_MIGRATION_MANIFEST_REL"
 	CANDIDATE_COMMAND_MANIFEST="$CANDIDATE_WORKTREE/$COMMAND_MIGRATION_MANIFEST_REL"
 	require_complete_candidate_schema_command_governance
+	require_base_identical_command_migration_bridges
 elif has_any_schema_command_migration_governance_artifact "$BASE_COMMIT"; then
 	printf 'error: merge-base contains an incomplete Schema command migration governance artifact set: %s\n' \
 		"$BASE_REF" >&2
@@ -293,6 +372,11 @@ elif has_any_schema_command_migration_governance_artifact "$CANDIDATE_COMMIT"; t
 	# Bootstrap keeps the old base-owned checker in control and therefore grants
 	# no command migration authorization in the governance PR itself.
 	require_complete_candidate_schema_command_governance
+fi
+
+if [ "$USE_COMMAND_MIGRATION_GOVERNANCE" = true ]; then
+	install_authority_const_params_registry "$BASE_WORKTREE" "$CANDIDATE_WORKTREE"
+	install_authority_const_params_registry "$BASE_WORKTREE" "$STABLE_WORKTREE"
 fi
 
 BASE_BIN="$TMP_ROOT/base-dws"
