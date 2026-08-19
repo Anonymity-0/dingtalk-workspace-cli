@@ -35,11 +35,14 @@ func resolveChatGroupRoleSetUserRoleIDs(cmd *cobra.Command) ([]string, error) {
 	case roleIDChanged && roleIDsChanged:
 		return nil, apperrors.NewValidation("--role-id 与 --role-ids 不能同时指定")
 	case roleIDChanged:
-		roleID := mustGetFlag(cmd, "role-id")
-		if roleID == "" {
+		roleIDs := parseCSVValues(mustGetFlag(cmd, "role-id"))
+		if len(roleIDs) == 0 {
 			return nil, apperrors.NewValidation("--role-id 不能为空")
 		}
-		return []string{roleID}, nil
+		if len(roleIDs) > 1 {
+			return nil, apperrors.NewValidation("--role-id 只允许指定一个群身份")
+		}
+		return roleIDs, nil
 	case roleIDsChanged:
 		return parseCSVValues(mustGetFlag(cmd, "role-ids")), nil
 	default:

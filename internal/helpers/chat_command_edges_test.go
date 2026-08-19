@@ -304,6 +304,25 @@ func TestChatGroupRoleSetUserRejectsConflictingRoleFlags(t *testing.T) {
 	}
 }
 
+func TestChatGroupRoleSetUserRejectsMultiplePublicRoleIDs(t *testing.T) {
+	previousDeps, previousArgs := deps, os.Args
+	os.Args = []string{"dws", "chat"}
+	t.Cleanup(func() { deps, os.Args = previousDeps, previousArgs })
+
+	caller := &scriptedToolCaller{}
+	err := runChatCoverageCommand(t, caller,
+		"group-role", "set-user", "--group=cid", "--user=D1", "--role-id=r1,r2")
+	if err == nil {
+		t.Fatal("set-user accepted multiple --role-id values, want validation error")
+	}
+	if !strings.Contains(err.Error(), "--role-id 只允许指定一个群身份") {
+		t.Fatalf("error = %v", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("tool calls = %d, want 0", caller.calls)
+	}
+}
+
 func TestCrossPlatformCoverageChatCommandValidationAndSuccessEdges(t *testing.T) {
 	previousDeps, previousArgs := deps, os.Args
 	os.Args = []string{"dws", "chat"}
