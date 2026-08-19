@@ -28,11 +28,7 @@ def run_dws_json(
 ) -> Dict[str, Any]:
     try:
         result = subprocess.run(
-            [dws, *args],
-            capture_output=True,
-            text=True,
-            stdin=subprocess.DEVNULL,
-            timeout=120,
+            [dws, *args], capture_output=True, text=True, timeout=120
         )
     except subprocess.TimeoutExpired as exc:
         raise ScriptError("dws timed out", commit_unknown=write_started) from exc
@@ -159,33 +155,11 @@ def validate(items: Any) -> List[Dict[str, Any]]:
     return validated
 
 
-def confirm_batch(items: List[Dict[str, Any]]) -> None:
-    if not sys.stdin.isatty():
-        raise ScriptError(
-            "batch confirmation requires an interactive terminal; "
-            "review the input and rerun with --yes to confirm the whole batch"
-        )
-    print(f"About to create {len(items)} Todo task(s):", file=sys.stderr)
-    for index, item in enumerate(items, 1):
-        print(
-            f"  {index}. {item['title']} -> {item['executors']}",
-            file=sys.stderr,
-        )
-    print("Type yes to create this exact batch: ", end="", file=sys.stderr, flush=True)
-    if sys.stdin.readline().strip().lower() != "yes":
-        raise ScriptError("batch creation was not confirmed")
-
-
 def run(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
     parser.add_argument("--dws", default="dws")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument(
-        "--yes",
-        action="store_true",
-        help="confirm the reviewed batch non-interactively",
-    )
     args = parser.parse_args(argv)
 
     try:
@@ -197,13 +171,6 @@ def run(argv: Optional[List[str]] = None) -> int:
     except (OSError, json.JSONDecodeError, ScriptError) as exc:
         print(json.dumps({"complete": False, "error": str(exc)}, ensure_ascii=False))
         return 2
-
-    if not args.dry_run and not args.yes:
-        try:
-            confirm_batch(items)
-        except ScriptError as exc:
-            print(json.dumps({"complete": False, "error": str(exc)}, ensure_ascii=False))
-            return 2
 
     ledger: List[Dict[str, Any]] = []
     for item in items:
@@ -226,8 +193,6 @@ def run(argv: Optional[List[str]] = None) -> int:
         if args.dry_run:
             ledger.append({"title": item["title"], "command": [args.dws, *create]})
             continue
-
-        create.append("--yes")
 
         entry: Dict[str, Any] = {"title": item["title"], "status": "unknown"}
         try:

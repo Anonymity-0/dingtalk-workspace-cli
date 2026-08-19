@@ -62,4 +62,4 @@ python scripts/todo_overdue_check.py
 python scripts/todo_batch_create.py todos.json
 ```
 
-批量脚本单批最多 30 条，会先展示整批摘要并要求输入 `yes`，确认前零写入。仅在外部已取得对精确批次的明确确认时使用 `--yes`。脚本输出逐项 ledger；`unknown` 表示写可能已提交，`unverified` 表示已有 `taskId` 但读回未通过，两者都需对账，不能自动重试。
+批量脚本单批最多 30 条，输出逐项 ledger。`unknown` 表示写可能已提交，`unverified` 表示已有 `taskId` 但读回未通过；两者都需对账，不能自动重试。
