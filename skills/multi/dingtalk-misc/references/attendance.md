@@ -1419,7 +1419,6 @@ dws attendance boss-check --plan-id 948964045503 --time "2026-05-13 18:00" --res
 | `dws attendance +check-result` | read | 查询用户打卡结果（迟到/早退/缺卡等） |
 | `dws attendance +get-approve-template` | read | 查询补卡/请假/加班/外出/出差审批提交链接 |
 | `dws attendance +get-overtime-rule` | read | 根据加班规则主键 ID 查询加班规则详情 |
-| `dws attendance +get-schedule` | read | 获取指定用户一段时间内的排班记录 |
 | `dws attendance +list-approve` | read | 查询用户考勤审批单（补卡/加班/请假/出差外出） |
 | `dws attendance +search-adjustment-rule` | read | 查询当前用户可管理的补卡规则列表 |
 | `dws attendance +search-class` | read | 查询当前用户可管理的班次详情列表 |

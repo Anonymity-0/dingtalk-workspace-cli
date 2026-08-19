@@ -26,7 +26,6 @@ func TestCrossPlatformCoveragePublicAttendanceContractsAreUnifiedAndTyped(t *tes
 		{CheckRecord.Command, CheckRecord.OutputRollout, CheckRecord.Contract.Result != nil, string(CheckRecord.Contract.Result.DataSchema), `"id"`, ""},
 		{ListApprove.Command, ListApprove.OutputRollout, ListApprove.Contract.Result != nil, string(ListApprove.Contract.Result.DataSchema), `"id"`, ""},
 		{GetApproveTemplate.Command, GetApproveTemplate.OutputRollout, GetApproveTemplate.Contract.Result != nil, string(GetApproveTemplate.Contract.Result.DataSchema), `"processCode"`, ""},
-		{GetSchedule.Command, GetSchedule.OutputRollout, GetSchedule.Contract.Result != nil, string(GetSchedule.Contract.Result.DataSchema), `"id"`, ""},
 		{SearchClass.Command, SearchClass.OutputRollout, SearchClass.Contract.Result != nil, string(SearchClass.Contract.Result.DataSchema), `"classId"`, "page"},
 		{SearchAdjustmentRule.Command, SearchAdjustmentRule.OutputRollout, SearchAdjustmentRule.Contract.Result != nil, string(SearchAdjustmentRule.Contract.Result.DataSchema), `"ruleId"`, "page"},
 		{GetOvertimeRule.Command, GetOvertimeRule.OutputRollout, GetOvertimeRule.Contract.Result != nil, string(GetOvertimeRule.Contract.Result.DataSchema), `"id"`, ""},
@@ -59,7 +58,7 @@ func TestCrossPlatformCoveragePublicAttendanceContractsAreUnifiedAndTyped(t *tes
 }
 
 func attendanceDeclarationByName(name string) *shortcut.Shortcut {
-	for _, declaration := range []*shortcut.Shortcut{&CheckResult, &CheckRecord, &ListApprove, &GetApproveTemplate, &GetSchedule, &SearchClass, &SearchAdjustmentRule, &GetOvertimeRule, &SearchOvertimeRule} {
+	for _, declaration := range []*shortcut.Shortcut{&CheckResult, &CheckRecord, &ListApprove, &GetApproveTemplate, &SearchClass, &SearchAdjustmentRule, &GetOvertimeRule, &SearchOvertimeRule} {
 		if declaration.Command == name {
 			return declaration
 		}
@@ -68,7 +67,7 @@ func attendanceDeclarationByName(name string) *shortcut.Shortcut {
 }
 
 func TestCrossPlatformCoverageAttendanceEmptyOnlyLeavesAreUnavailable(t *testing.T) {
-	for _, declaration := range []*shortcut.Shortcut{&GetSummary, &ListLeaveTypes, &GetLeaveRecords, &GetCheckinRecord, &GetSelfSetting} {
+	for _, declaration := range []*shortcut.Shortcut{&GetSummary, &ListLeaveTypes, &GetLeaveRecords, &GetCheckinRecord, &GetSchedule, &GetSelfSetting} {
 		if declaration.OutputRollout != output.RolloutLegacyOnly || declaration.Contract.Result != nil || declaration.Contract.Pagination != nil {
 			t.Errorf("%s unavailable contract = rollout %q result=%v pagination=%v", declaration.Command, declaration.OutputRollout, declaration.Contract.Result, declaration.Contract.Pagination)
 		}

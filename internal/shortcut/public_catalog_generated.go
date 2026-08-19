@@ -103,7 +103,6 @@ func generatedPublicShortcutCatalog() map[string]struct{} {
 		"attendance\u0000+check-result":                 {},
 		"attendance\u0000+get-approve-template":         {},
 		"attendance\u0000+get-overtime-rule":            {},
-		"attendance\u0000+get-schedule":                 {},
 		"attendance\u0000+list-approve":                 {},
 		"attendance\u0000+search-adjustment-rule":       {},
 		"attendance\u0000+search-class":                 {},

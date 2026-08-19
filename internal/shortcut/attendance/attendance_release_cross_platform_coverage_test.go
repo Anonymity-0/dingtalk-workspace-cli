@@ -927,6 +927,29 @@ func TestCrossPlatformCoverageAttendanceExactRecordExecutors(t *testing.T) {
 		{"approve", ListApprove, map[string]string{"users": "u1", "types": "leave", "start": "2026-01-01", "end": "2026-01-31"}, map[string]any{"id": 1, "userId": "u1", "bizType": 3, "beginTime": startMillis, "endTime": endMillis}, map[string]any{"id": 1, "userId": "u1", "bizType": 4, "beginTime": startMillis, "endTime": endMillis}},
 		{"schedule", GetSchedule, map[string]string{"users": "u1", "start": "2026-01-01", "end": "2026-01-31"}, validRecord, map[string]any{"id": 1, "userId": "other", "workDate": startMillis}},
 	}
+	t.Run("schedule null responses fail closed", func(t *testing.T) {
+		values := map[string]string{"users": "u1", "start": "2026-01-01", "end": "2026-01-31"}
+		for _, tc := range []struct {
+			name     string
+			response string
+			reason   string
+		}{
+			{name: "literal null", response: `null`, reason: "empty_tool_response"},
+			{name: "null collection", response: `{"success":true,"result":null}`, reason: "malformed_collection"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				caller, err := executeAttendanceResponse(t, GetSchedule, values, tc.response)
+				typed, ok := err.(*apperrors.Error)
+				actualReason := ""
+				if ok {
+					actualReason = typed.Reason
+				}
+				if err == nil || caller.calls != 1 || !ok || actualReason != tc.reason {
+					t.Fatalf("err=%v calls=%d reason=%q want=%q", err, caller.calls, actualReason, tc.reason)
+				}
+			})
+		}
+	})
 	for _, tc := range collectionCases {
 		t.Run(tc.name+" valid", func(t *testing.T) {
 			caller, err := executeAttendanceResponse(t, tc.declaration, tc.values, attendanceResponseJSON(t, map[string]any{"success": true, "result": []any{tc.valid}}))

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-19T10:24:45.967709",
-  "count": 424,
+  "generated_at": "2026-08-19T10:35:58.304269",
+  "count": 423,
   "results": [
     {
       "suite": "semantic",
@@ -970,16 +970,6 @@
       "status": "reviewed_available",
       "disposition": "schema_leaf",
       "semantic_delta": "使用搜索得到的加班规则 ID 读取详情，严格拒绝空 result，且响应 id 必须与请求 overtimeId 精确一致。",
-      "availability": "available"
-    },
-    {
-      "suite": "semantic",
-      "service": "attendance",
-      "command": "+get-schedule",
-      "risk": "read",
-      "status": "reviewed_available",
-      "disposition": "semantic_adapter",
-      "semantic_delta": "规范日期范围并严格验证排班数组；每条要求唯一正整数 ID 且用户/工作日绑定请求，缺失或畸形响应失败。",
       "availability": "available"
     },
     {

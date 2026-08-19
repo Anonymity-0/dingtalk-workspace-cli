@@ -46,6 +46,7 @@ func TestCrossPlatformCoverageAttendanceSemanticCatalogExactlyCoversRegisteredSu
 		"+get-checkin-record":  true,
 		"+get-leave-records":   true,
 		"+get-self-setting":    true,
+		"+get-schedule":        true,
 		"+get-summary":         true,
 		"+list-leave-types":    true,
 		"+my-attendance":       true,
@@ -107,7 +108,7 @@ func TestCrossPlatformCoverageAttendanceSemanticCatalogExactlyCoversRegisteredSu
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 9 || compatibilityVisible != 10 {
-		t.Fatalf("public/compatibility-visible attendance shortcuts = %d/%d, want 9/10", public, compatibilityVisible)
+	if public != 8 || compatibilityVisible != 11 {
+		t.Fatalf("public/compatibility-visible attendance shortcuts = %d/%d, want 8/11", public, compatibilityVisible)
 	}
 }

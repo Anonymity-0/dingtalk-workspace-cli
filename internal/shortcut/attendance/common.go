@@ -87,7 +87,6 @@ func hardenPublicAttendanceContracts() {
 		{&CheckResult, "records", "严格校验的员工打卡结果", "id", "integer", "offset"},
 		{&CheckRecord, "records", "严格校验的员工打卡流水", "id", "integer", ""},
 		{&ListApprove, "approvals", "严格校验的考勤审批记录", "id", "integer", ""},
-		{&GetSchedule, "schedules", "严格校验的员工排班记录", "id", "integer", ""},
 		{&SearchClass, "classes", "严格校验的班次搜索结果", "classId", "integer", "page"},
 		{&SearchAdjustmentRule, "rules", "严格校验的补卡规则搜索结果", "ruleId", "integer", "page"},
 		{&SearchOvertimeRule, "rules", "严格校验的加班规则搜索结果", "ruleId", "integer", "page"},
@@ -105,7 +104,6 @@ func hardenPublicAttendanceContracts() {
 	GetApproveTemplate.OutputRollout = output.RolloutUnifiedActive
 	GetApproveTemplate.Contract.Result = attendanceApproveTemplateResult()
 	GetApproveTemplate.Contract.Result.SensitivePaths = []string{"templates.formName", "templates.processCode", "templates.submitUrl"}
-	GetSchedule.Contract.Result.SensitivePaths = []string{"schedules.className", "schedules.corpId", "schedules.userId"}
 	SearchClass.Contract.Result.SensitivePaths = []string{"classes.name", "classes.ownerName"}
 	SearchAdjustmentRule.Contract.Result.SensitivePaths = []string{"rules.name"}
 	SearchOvertimeRule.Contract.Result.SensitivePaths = []string{"rules.name"}
@@ -116,6 +114,7 @@ func hardenPublicAttendanceContracts() {
 	markAttendanceCompatibilityOnly(&ListLeaveTypes)
 	markAttendanceCompatibilityOnly(&GetLeaveRecords)
 	markAttendanceCompatibilityOnly(&GetCheckinRecord)
+	markAttendanceCompatibilityOnly(&GetSchedule)
 	markAttendanceUnavailable(&GetClass, "下游 get_class_detail 对搜索得到的真实 classId 返回非空详情，但 shiftVO 不回显 id/classId，Shortcut 无法诚实地把详情精确绑定到请求 ID；需要下游补充稳定 ID 回显。")
 	markAttendanceCompatibilityOnly(&GetSelfSetting)
 }

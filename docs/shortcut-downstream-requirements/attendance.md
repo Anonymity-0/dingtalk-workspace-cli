@@ -7,10 +7,10 @@
 
 ## 1. 执行摘要
 
-- Attendance 共审核 35 个源码 Shortcut；9 个具备 Agent 公开条件，26 个保持 unavailable。为守住已发布 CLI 的 argv/Help 兼容，其中 10 个历史可见入口继续以 compatibility-visible 形式可发现，但仍从 Agent public Catalog 排除、保持 legacy 输出且不发布 Result/Pagination；其余 16 个保持 hidden。公开数量按「严格响应合同 + 稳定身份 + 安全真实 fixture」的发布门计算，不把空数组或仅退出码 0 计为通过。
-- 这 10 个 compatibility-visible 入口在完整 Schema 中保留历史 `availability=available` 与既有 workflow property，仅表示旧调用仍可执行；它们的 Shortcut 语义状态仍为 `public=false/unavailable`，默认 Shortcut 列表与 Agent public Catalog 均不发布。底层 MCP 字段名由 Execute 的显式 adapter 负责，不能在未经过版本化迁移时重定向已发布 Schema property。
+- Attendance 共审核 35 个源码 Shortcut；8 个具备 Agent 公开条件，27 个保持 unavailable。为守住已发布 CLI 的 argv/Help 兼容，其中 11 个历史可见入口继续以 compatibility-visible 形式可发现，但仍从 Agent public Catalog 排除、保持 legacy 输出且不发布 Result/Pagination；其余 16 个保持 hidden。公开数量按「严格响应合同 + 稳定身份 + 安全真实 fixture」的发布门计算，不把空数组或仅退出码 0 计为通过。
+- 这 11 个 compatibility-visible 入口在完整 Schema 中保留历史 `availability=available` 与既有 workflow property，仅表示旧调用仍可执行；它们的 Shortcut 语义状态仍为 `public=false/unavailable`，默认 Shortcut 列表与 Agent public Catalog 均不发布。底层 MCP 字段名由 Execute 的显式 adapter 负责，不能在未经过版本化迁移时重定向已发布 Schema property。
 - `+check-result` 已覆盖 Lark CLI 当前唯一 Attendance 用户任务 `attendance user_tasks query`，并提供打卡流水、审批、排班、班次、规则、设置、假期和个人视图等更宽能力。
-- 已确认 7 组下游需求：补卡规则详情返回空结果、报表合同不足、打卡结果分页缺少服务端确定终止证据、缺少安全可回收的管理员/写操作 fixture、6 个读场景缺少请求绑定字段或 nonempty/zero 双态 fixture、班次详情不回显稳定 ID，以及个人设置缺少逐场景权限发现与安全 fixture。
+- 已确认 8 组下游需求：补卡规则详情返回空结果、报表合同不足、打卡结果分页缺少服务端确定终止证据、缺少安全可回收的管理员/写操作 fixture、6 个读场景缺少请求绑定字段或 nonempty/zero 双态 fixture、班次详情不回显稳定 ID、个人设置缺少逐场景权限发现与安全 fixture，以及排班查询对合法非空/空请求均返回 `exit 0 + literal null`。
 - 审批模板的同类型多模板问题已在上游修复：以 `processCode` 作为资源身份，`approveType` 只做请求绑定，并要求 `submitUrl` 非空。班次详情与个人设置仍有下游合同/权限前置，不能以请求 echo 或部分场景成功伪造整体可用。
 
 | ID | 优先级 | 类型 | 用户任务 | 当前状态 | 建议 Owner | 解锁的 Shortcut |
@@ -22,6 +22,7 @@
 | `DS-ATTENDANCE-005` | P1 | response contract / tenant-or-fixture | 可验证地读取摘要、假期、签到和个人考勤 | blocked / unavailable | Attendance 查询服务 / 产品测试基础设施 | 6 个读 Shortcut |
 | `DS-ATTENDANCE-006` | P1 | response contract | 用搜索得到的班次 ID 精确读取同一班次详情 | unavailable | Attendance Wukong 班次服务 | `+get-class` |
 | `DS-ATTENDANCE-007` | P1 | capability / permission fixture | 可发现地读取全部个人设置场景 | blocked / unavailable | Attendance 设置服务 / 权限 Owner / 测试基础设施 | `+get-self-setting` |
+| `DS-ATTENDANCE-008` | P1 | response contract | 可验证地读取员工排班 | unavailable | Attendance Wukong 排班服务 / MCP adapter | `+get-schedule` |
 
 ## 2. 用户任务与能力缺口总览
 
@@ -35,6 +36,7 @@
 | 搜索并读取考勤组 | `+search-group` → `+get-group` | 无同级入口 | blocked | tenant-or-fixture | 无已知非空安全 fixture；历史 `+search-group` 仅保留 CLI 兼容可见性，二者都不进入 Agent Catalog |
 | 查询企业全局设置和假期余额 | `+get-global-setting`, `+get-leave-balance` | 无同级入口 | blocked | permission / fixture | hidden/unavailable |
 | 查询个人设置 | `+get-self-setting` | 无同级入口 | partial | capability / permission fixture | 前五个场景已验证；全部场景发布前保持 Agent-unavailable，仅保留历史 CLI 兼容可见性 |
+| 查询员工排班 | `+get-schedule` | 无同级入口 | unavailable | response contract | 合法非空与保证零命中请求均收到 `exit 0 + literal null`；旧 CLI 兼容可见，但不进入 Agent Catalog |
 | 修改排班、班次、考勤组、假期和打卡结果 | 9 个写 Shortcut | 无同级入口 | unsafe to verify | tenant-or-fixture / contract insufficient | hidden/unavailable，不以 dry-run 记通过 |
 
 ## 3. 下游需求明细
@@ -226,6 +228,32 @@
 
 能力发现和安全 fixture 到位前，`+get-self-setting` 保持 Agent-unavailable；旧 CLI 入口仅保留兼容可见性。
 
+### `DS-ATTENDANCE-008` — 让排班查询返回可判定的成功集合或业务错误
+
+#### A. 用户任务与现状
+
+- 用户任务：按员工和日期范围读取逐日排班，用稳定排班 ID 继续执行只读分析或受控的 BOSS 改签。
+- canonical Shortcut：`attendance +get-schedule`；owning raw route：`attendance-wukong/getScheduleByRange`。
+- 两次独立 clean HEAD 的真实验证中，已知历史非空区间与保证零命中的未来区间都得到同一结果：owning raw 进程退出 0，但响应为 literal `null`；Exact Shortcut 均以 `response_validation/empty_tool_response` 非零拒绝。
+- 这既不能证明排班非空，也不能证明合法为空。上游严格校验已避免把 `null` 投影成 `[]`，但在下游提供可判定合同前无法公开该能力。
+- 安全证据句柄：`ATT-SCHEDULE-NULL-01`；仓库不保存用户、日期、排班 ID、raw body 或 trace。
+
+#### B. 需要下游提供的合同
+
+- 成功查询必须返回显式排班数组；每项包含稳定非空排班 ID、请求用户身份、业务日期、班次身份和是否休息等字段。
+- 合法零结果必须返回 `success=true + result=[]`（或等价的已审核显式集合），不得以裸 `null`、缺字段或空 body 表示。
+- 无权限、用户不存在、租户未开通、日期范围非法和服务异常必须返回可区分的 typed nonzero error；不得继续用进程退出 0 掩盖业务失败。
+- 如服务存在分页，必须提供页大小、前进 token/页号、hasMore/total 和明确终止证据；同一请求的 item identity 不得跨页重复。
+
+#### C. 验收标准与临时处置
+
+1. 已知非空 fixture 的 raw 与 exact 均返回同一显式数组，稳定 ID 集合、用户和日期绑定一致。
+2. 保证零命中 fixture 的 raw 与 exact 均返回显式空数组，并有明确终止证据。
+3. `null`、缺集合、错型 item、重复/空 ID、错用户和越界日期全部非零；错误 reason 可稳定区分。
+4. 新 clean HEAD 完成 nonempty/zero 双层 E2E，仓库和远端均无测试残留。
+
+下游修复前，`+get-schedule` 保持 `public=false/unavailable`、legacy 输出且不发布 Result/Pagination；旧 CLI/Help/full Schema 仅为历史兼容继续可发现，不代表 Agent 可用。
+
 ## 4. Lark 对齐与平台差异
 
 | Lark 用户任务 | 所需下游能力 | 可精确对齐 | 平台差异 | DWS 推荐结论 |
@@ -246,7 +274,7 @@
 
 | Shortcut | 上游根因 | 已完成修复 | 回归证据 |
 |---|---|---|---|
-| 最终保留公开的 Attendance 集合查询 | 容错 projector 可能把缺字段、错型或坏元素投成 `[]` | 共享严格 success/result/collection 校验；显式空数组才合法；稳定 ID 和请求用户/时间/类型必须绑定 | 单元负向矩阵与最终 clean runtime tree 的 9 个公开入口真实 nonempty/zero、详情或模板 exact/raw 双层复核均完成 |
+| 最终保留公开的 Attendance 集合查询 | 容错 projector 可能把缺字段、错型或坏元素投成 `[]` | 共享严格 success/result/collection 校验；显式空数组才合法；稳定 ID 和请求用户/时间/类型必须绑定 | 单元负向矩阵与最终 clean runtime tree 的 8 个公开入口真实 nonempty/zero、详情或模板 exact/raw 双层复核均完成 |
 | `+check-record` | 初版误用业务归属日 `workDate` 校验按 `checkDateFrom/checkDateTo` 发起的实际打卡查询，导致跨午夜下班卡被静默丢弃 | 改用 `userCheckTime` 严格绑定请求日期范围；`workDate` 只作为班次归属日原样保留。完整 raw 集合仍必须先通过显式 collection、全量正整数唯一 ID、请求用户和实际打卡时间校验；任何实际时间越界都整次 fail-closed，不再静默过滤 | 最终 live 复核 exact/raw 均为 157 条且完整对象一致；旧轮 `workDate=start-24h`、`userCheckTime` 在范围内的跨午夜 OffDuty 记录明确保留；fresh zero 双层显式空，不由过滤制造 |
 | `+check-result`, `+list-approve` | 初版把裸日期 `--end` 解析为当天 00:00，可能拒绝结束日白天的结果；旧 end-of-day 语义还会漏最后 999ms | 裸日期结束边界改为本地下一日 00:00 前 1ms；显式 datetime 保持精确值；结束日中午与最后 1ms 可接受，下一日 00:00 非零拒绝 | Execute 回归覆盖结束日中午/最后毫秒/下一日并锁定 reason；最终 live 的 `+check-result` 有真实 end-date item，`+list-approve` end-date 单日 probe exact/raw 一致 |
 | `+get-approve-template` | 把请求维度 `approveType` 误作集合唯一身份，会拒绝同一类型下多个合法模板 | 改用非空唯一 `processCode` 作为资源身份；`approveType` 仅做请求精确绑定；每项 `submitUrl` 必须非空；允许 TRAVEL/OUT 同类型多项 | missing/wrong/duplicate processCode、wrong approveType、missing/blank submitUrl 负向矩阵；clean HEAD 上 5 个类型 exact/raw 全通过，TRAVEL/OUT 双项集合一致 |
@@ -262,7 +290,8 @@
 |---|---|---|
 | `+check-result` | exact/raw known-nonempty 以 20/20/8 三页前进并终止；48 个 ID、用户绑定与逐页对象一致；合法未来日显式空双层一致 | `PASS`；最终 SHA 见 PR 证据 |
 | `+check-record` | exact/raw 均 157 条且完整对象、稳定 ID 集合一致；跨午夜 `workDate=start-24h`、`userCheckTime` 在范围内的记录已保留；fresh zero 两层均为显式空 | `PASS`；最终 SHA 见 PR 证据 |
-| `+list-approve`, `+get-schedule` | exact/raw known-nonempty 分别 7/54 条，稳定 ID、用户/类型或用户/日期绑定及完整数组一致；合法未来日显式空双层一致 | `PASS`；最终 SHA 见 PR 证据 |
+| `+list-approve` | exact/raw known-nonempty 为 7 条，稳定 ID、用户、类型、日期范围及完整数组一致；合法未来日显式空双层一致 | `PASS`；最终 SHA 见 PR 证据 |
+| `+get-schedule` | 两次独立 clean HEAD 的 known-nonempty 与 guaranteed-zero 均为 raw `exit 0 + literal null`，Exact Shortcut 均非零 `empty_tool_response`；没有把未知结果投影成空数组 | unavailable；等待 `DS-ATTENDANCE-008`，旧 CLI 仅兼容可见 |
 | `+search-class`, `+search-adjustment-rule`, `+search-overtime-rule` | exact/raw known-nonempty 与随机唯一词 guaranteed-zero 通过；稳定 ID 集合与分页终止一致，班次为 5/5/3 三页，加班规则为 1/1/1 三页 | `PASS`；最终 SHA 见 PR 证据 |
 | `+get-overtime-rule` | 使用本轮真实搜索取得的 ID，exact 与 raw 单项对象一致；不存在 ID 的 raw 返回错 ID 对象时 exact 非零拒绝 | `PASS`；最终 SHA 见 PR 证据 |
 | `+get-approve-template` | 5 个 approveType 全部 exact/raw 通过，数量 1/1/1/2/2；TRAVEL/OUT 多项 `processCode` 非空唯一且集合一致，类型绑定和提交入口有效 | `PASS`；最终 SHA 见 PR 证据 |
@@ -271,7 +300,7 @@
 
 pre-rebase discovery 轮次的多页加班规则 raw 验证曾一次返回字面量 `null` 且进程退出 0；该次结果没有计为 PASS，重试后才完成同场景双层分页核对。这是 owning atomic/raw 的下游/renderer 终态合同风险：atomic 不应把 transport/null 失败表示为零退出。Shortcut 自身对 `null` 仍严格非零，不会把它投影为空集合；后续最终轮次未再出现该 transient。
 
-上述 9 个公开入口均在最终 clean runtime tree 从零重跑，未继承 discovery PASS；最终可执行 SHA 写入 PR 证据，本文只保留脱敏业务断言。
+上述 8 个公开入口均在最终 clean runtime tree 从零重跑，未继承 discovery PASS；最终可执行 SHA 写入 PR 证据，本文只保留脱敏业务断言。`+get-schedule` 的四次 raw `null` 与 Exact 非零结果作为降级证据保留，不计入公开通过数。
 
 ## 7. 安全与脱敏声明
 
