@@ -86,6 +86,7 @@ func main() {
 func run(args []string, stdout, stderr io.Writer) int {
 	var normalizePath, checkPath, mergePath, currentPath string
 	var approvedFlagMigrationsPath, candidateFlagMigrationsPath string
+	var approvedCommandMigrationsPath, candidateCommandMigrationsPath string
 	var migrationCurrentSnapshotPath, migrationBaseSnapshotPath, migrationStableSnapshotPath string
 	flags := flag.NewFlagSet("schema-compat", flag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -95,6 +96,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flags.StringVar(&currentPath, "current", "", "raw current complete Schema response")
 	flags.StringVar(&approvedFlagMigrationsPath, "approved-flag-migrations", "", "base-owned approved flag migration manifest")
 	flags.StringVar(&candidateFlagMigrationsPath, "candidate-flag-migrations", "", "detached candidate flag migration manifest")
+	flags.StringVar(&approvedCommandMigrationsPath, "approved-command-migrations", "", "base-owned approved command migration manifest")
+	flags.StringVar(&candidateCommandMigrationsPath, "candidate-command-migrations", "", "detached candidate command migration manifest")
 	flags.StringVar(&migrationCurrentSnapshotPath, "migration-current-snapshot", "", "current interface snapshot used for migration authorization")
 	flags.StringVar(&migrationBaseSnapshotPath, "migration-base-snapshot", "", "merge-base interface snapshot used for migration authorization")
 	flags.StringVar(&migrationStableSnapshotPath, "migration-stable-snapshot", "", "stable interface snapshot used for migration authorization")
@@ -112,25 +115,38 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "exactly one of --normalize, --check, or --merge is required")
 		return 2
 	}
-	migrationInputs := []string{
-		approvedFlagMigrationsPath,
-		candidateFlagMigrationsPath,
+	flagMigrationPair := approvedFlagMigrationsPath != "" || candidateFlagMigrationsPath != ""
+	commandMigrationPair := approvedCommandMigrationsPath != "" || candidateCommandMigrationsPath != ""
+	if flagMigrationPair && (approvedFlagMigrationsPath == "" || candidateFlagMigrationsPath == "") {
+		fmt.Fprintln(stderr, "Schema flag migration authorization requires both flag manifests")
+		return 2
+	}
+	if commandMigrationPair && (approvedCommandMigrationsPath == "" || candidateCommandMigrationsPath == "") {
+		fmt.Fprintln(stderr, "Schema command migration authorization requires both command manifests")
+		return 2
+	}
+	migrationSnapshots := []string{
 		migrationCurrentSnapshotPath,
 		migrationBaseSnapshotPath,
 		migrationStableSnapshotPath,
 	}
-	migrationInputCount := 0
-	for _, path := range migrationInputs {
+	migrationSnapshotCount := 0
+	for _, path := range migrationSnapshots {
 		if path != "" {
-			migrationInputCount++
+			migrationSnapshotCount++
 		}
 	}
-	if migrationInputCount != 0 && migrationInputCount != len(migrationInputs) {
-		fmt.Fprintln(stderr, "Schema flag migration authorization requires all five migration inputs")
+	migrationsEnabled := flagMigrationPair || commandMigrationPair
+	if migrationsEnabled && migrationSnapshotCount != len(migrationSnapshots) {
+		fmt.Fprintln(stderr, "Schema migration authorization requires all three interface snapshots")
 		return 2
 	}
-	if migrationInputCount != 0 && checkPath == "" {
-		fmt.Fprintln(stderr, "Schema flag migration authorization is only valid with --check")
+	if !migrationsEnabled && migrationSnapshotCount != 0 {
+		fmt.Fprintln(stderr, "Schema migration snapshots require a flag or command migration manifest pair")
+		return 2
+	}
+	if migrationsEnabled && checkPath == "" {
+		fmt.Fprintln(stderr, "Schema migration authorization is only valid with --check")
 		return 2
 	}
 
@@ -159,7 +175,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "read schema baseline: %v\n", err)
 			return 2
 		}
-		if migrationInputCount != 0 {
+		if flagMigrationPair {
 			migrations, err := authorizeSchemaFlagMigrations(
 				approvedFlagMigrationsPath,
 				candidateFlagMigrationsPath,
@@ -174,6 +190,24 @@ func run(args []string, stdout, stderr io.Writer) int {
 			baseline, err = normalizeSchemaFlagMigrations(baseline, current, migrations)
 			if err != nil {
 				fmt.Fprintf(stderr, "normalize approved Schema flag migrations: %v\n", err)
+				return 2
+			}
+		}
+		if commandMigrationPair {
+			migrations, err := authorizeSchemaCommandMigrations(
+				approvedCommandMigrationsPath,
+				candidateCommandMigrationsPath,
+				migrationCurrentSnapshotPath,
+				migrationBaseSnapshotPath,
+				migrationStableSnapshotPath,
+			)
+			if err != nil {
+				fmt.Fprintf(stderr, "authorize Schema command migrations: %v\n", err)
+				return 2
+			}
+			baseline, err = normalizeSchemaCommandMigrations(baseline, current, migrations)
+			if err != nil {
+				fmt.Fprintf(stderr, "normalize approved Schema command migrations: %v\n", err)
 				return 2
 			}
 		}
@@ -249,6 +283,49 @@ func readFlagMigrationManifestFile(path string) (interfacesnapshot.FlagMigration
 		return interfacesnapshot.FlagMigrationManifest{}, err
 	}
 	return interfacesnapshot.ReadFlagMigrationManifest(bytes.NewReader(data))
+}
+
+func authorizeSchemaCommandMigrations(
+	approvedManifestPath string,
+	candidateManifestPath string,
+	currentSnapshotPath string,
+	baseSnapshotPath string,
+	stableSnapshotPath string,
+) ([]interfacesnapshot.CommandMigration, error) {
+	approved, err := readCommandMigrationManifestFile(approvedManifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("read approved command migrations: %w", err)
+	}
+	candidate, err := readCommandMigrationManifestFile(candidateManifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("read candidate command migrations: %w", err)
+	}
+	current, err := readInterfaceSnapshotFile(currentSnapshotPath)
+	if err != nil {
+		return nil, fmt.Errorf("read migration current snapshot: %w", err)
+	}
+	base, err := readInterfaceSnapshotFile(baseSnapshotPath)
+	if err != nil {
+		return nil, fmt.Errorf("read migration base snapshot: %w", err)
+	}
+	stable, err := readInterfaceSnapshotFile(stableSnapshotPath)
+	if err != nil {
+		return nil, fmt.Errorf("read migration stable snapshot: %w", err)
+	}
+	return interfacesnapshot.AuthorizeCommandMigrations(
+		current,
+		map[string]interfacesnapshot.Snapshot{"merge-base": base, "stable": stable},
+		approved,
+		candidate,
+	)
+}
+
+func readCommandMigrationManifestFile(path string) (interfacesnapshot.CommandMigrationManifest, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return interfacesnapshot.CommandMigrationManifest{}, err
+	}
+	return interfacesnapshot.ReadCommandMigrationManifest(bytes.NewReader(data))
 }
 
 func readInterfaceSnapshotFile(path string) (interfacesnapshot.Snapshot, error) {
@@ -1288,6 +1365,169 @@ func normalizeSchemaFlagMigrations(
 	}
 
 	return normalized, nil
+}
+
+// normalizeSchemaCommandMigrations projects only the Schema consequences that
+// are coupled to an already-authorized CLI command migration. It rewrites a
+// cloned historical contract; the ordinary checker still rejects every field
+// not proven equivalent here.
+func normalizeSchemaCommandMigrations(
+	baseline schemaContract,
+	current schemaContract,
+	migrations []interfacesnapshot.CommandMigration,
+) (schemaContract, error) {
+	normalized := cloneContract(baseline)
+	for _, migration := range migrations {
+		oldProduct, productExists := baseline.Products[migration.Schema.ProductID]
+		oldTool, toolExists := oldProduct.Tools[migration.Schema.SourceToolID]
+		if !productExists || !toolExists {
+			// The historical baseline predates this Schema tool, so it has no
+			// compatibility surface for this migration.
+			continue
+		}
+		newProduct, productExists := current.Products[migration.Schema.ProductID]
+		newSource, sourceExists := newProduct.Tools[migration.Schema.SourceToolID]
+		if !productExists || !sourceExists {
+			// Preserve the baseline so the ordinary checker reports the removal.
+			continue
+		}
+		legacyPath := strings.TrimPrefix(migration.Legacy.Command, "dws ")
+		replacementPath := strings.TrimPrefix(migration.Replacement.Command, "dws ")
+		if oldTool.PrimaryCLIPath == replacementPath {
+			// A consumed receipt can still be needed for the stable baseline after
+			// main has already reached the after state.
+			continue
+		}
+		if oldTool.PrimaryCLIPath != legacyPath {
+			return schemaContract{}, fmt.Errorf(
+				"approved command migration %s historical Schema tool %q has primary_cli_path %q",
+				migration.Kind,
+				migration.Schema.SourceToolID,
+				oldTool.PrimaryCLIPath,
+			)
+		}
+
+		normalizedProduct := normalized.Products[migration.Schema.ProductID]
+		normalizedTool := normalizedProduct.Tools[migration.Schema.SourceToolID]
+		switch migration.Kind {
+		case interfacesnapshot.CommandMigrationMove:
+			if newSource.PrimaryCLIPath != replacementPath {
+				continue
+			}
+			renames := make(map[string]string, len(migration.Schema.Parameters))
+			for _, parameter := range migration.Schema.Parameters {
+				oldParameter, existed := oldTool.Parameters[parameter.From]
+				if !existed {
+					return schemaContract{}, fmt.Errorf(
+						"approved command migration %q historical Schema tool lacks parameter %q",
+						migration.Legacy.Command,
+						parameter.From,
+					)
+				}
+				if _, exists := newSource.Parameters[parameter.From]; exists {
+					return schemaContract{}, fmt.Errorf(
+						"approved command migration %q still publishes legacy Schema parameter %q",
+						migration.Legacy.Command,
+						parameter.From,
+					)
+				}
+				newParameter, exists := newSource.Parameters[parameter.To]
+				if !exists {
+					return schemaContract{}, fmt.Errorf(
+						"approved command migration %q does not publish replacement Schema parameter %q",
+						migration.Replacement.Command,
+						parameter.To,
+					)
+				}
+				if err := validateEquivalentCommandSchemaParameter(migration, parameter, oldParameter, newParameter); err != nil {
+					return schemaContract{}, err
+				}
+				delete(normalizedTool.Parameters, parameter.From)
+				normalizedTool.Parameters[parameter.To] = newParameter
+				renames[parameter.From] = parameter.To
+			}
+			if oldTool.Constraints != newSource.Constraints {
+				oldConstraints, oldOK := canonicalizeMigratedConstraints(oldTool.Constraints, renames)
+				newConstraints, newOK := canonicalizeMigratedConstraints(newSource.Constraints, nil)
+				if oldOK && newOK && oldConstraints == newConstraints {
+					normalizedTool.Constraints = newSource.Constraints
+				}
+			}
+			normalizedTool.PrimaryCLIPath = replacementPath
+
+		case interfacesnapshot.CommandMigrationFlagExtraction:
+			if newSource.PrimaryCLIPath != legacyPath {
+				continue
+			}
+			replacement, exists := newProduct.Tools[migration.Schema.ReplacementToolID]
+			if !exists || replacement.PrimaryCLIPath != replacementPath {
+				return schemaContract{}, fmt.Errorf(
+					"approved flag extraction %q lacks replacement Schema tool %q at %q",
+					migration.Legacy.Command,
+					migration.Schema.ReplacementToolID,
+					replacementPath,
+				)
+			}
+			if oldTool.InterfaceMode != replacement.InterfaceMode ||
+				oldTool.InterfaceRef != replacement.InterfaceRef ||
+				oldTool.Availability != replacement.Availability ||
+				oldTool.Effect != replacement.Effect ||
+				oldTool.Risk != replacement.Risk ||
+				oldTool.Confirmation != replacement.Confirmation ||
+				oldTool.Idempotency != replacement.Idempotency {
+				return schemaContract{}, fmt.Errorf(
+					"approved flag extraction %q replacement Schema tool changed interface or safety identity",
+					migration.Legacy.Command,
+				)
+			}
+			for _, parameter := range migration.Schema.Parameters {
+				if _, existed := oldTool.Parameters[parameter.From]; !existed {
+					return schemaContract{}, fmt.Errorf(
+						"approved flag extraction %q historical Schema tool lacks parameter %q",
+						migration.Legacy.Command,
+						parameter.From,
+					)
+				}
+				if _, exists := newSource.Parameters[parameter.From]; exists {
+					return schemaContract{}, fmt.Errorf(
+						"approved flag extraction %q still publishes extracted Schema parameter %q",
+						migration.Legacy.Command,
+						parameter.From,
+					)
+				}
+				delete(normalizedTool.Parameters, parameter.From)
+			}
+		}
+		normalizedProduct.Tools[migration.Schema.SourceToolID] = normalizedTool
+		normalized.Products[migration.Schema.ProductID] = normalizedProduct
+	}
+	return normalized, nil
+}
+
+func validateEquivalentCommandSchemaParameter(
+	migration interfacesnapshot.CommandMigration,
+	parameter interfacesnapshot.CommandParameterMigration,
+	oldParameter parameterSchema,
+	newParameter parameterSchema,
+) error {
+	if oldParameter.Type != newParameter.Type ||
+		oldParameter.Property != newParameter.Property ||
+		oldParameter.InterfaceType != newParameter.InterfaceType ||
+		oldParameter.Required != newParameter.Required ||
+		oldParameter.CLIRequired != newParameter.CLIRequired ||
+		oldParameter.RequiredWhen != newParameter.RequiredWhen ||
+		oldParameter.Default != newParameter.Default ||
+		oldParameter.InterfaceDefault != newParameter.InterfaceDefault ||
+		oldParameter.Format != newParameter.Format ||
+		!equalStringSlices(oldParameter.Enum, newParameter.Enum) {
+		return fmt.Errorf(
+			"approved command migration %q Schema parameter %q -> %q changed a non-name field",
+			migration.Legacy.Command,
+			parameter.From,
+			parameter.To,
+		)
+	}
+	return nil
 }
 
 func schemaToolsByPrimaryPath(contract schemaContract, primaryPath string) []schemaToolRef {

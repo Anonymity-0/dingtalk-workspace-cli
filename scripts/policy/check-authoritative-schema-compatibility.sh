@@ -13,7 +13,9 @@ STABLE_REF=""
 CANDIDATE_REF="HEAD"
 SCHEMA_CHECKER_REL="scripts/policy/schema-compat/main.go"
 MIGRATION_MANIFEST_REL="scripts/policy/interface-migrations/approved-flag-migrations-v1.json"
+COMMAND_MIGRATION_MANIFEST_REL="scripts/policy/interface-migrations/approved-command-migrations-v1.json"
 MIGRATIONS_REL="internal/interfacesnapshot/migrations.go"
+COMMAND_MIGRATIONS_REL="internal/interfacesnapshot/command_migrations.go"
 ALIAS_CONTRACT_REL="internal/corecmd/runtimeannotate/interface_alias.go"
 
 usage() {
@@ -173,6 +175,31 @@ has_any_schema_migration_governance_artifact() {
 	return 1
 }
 
+has_complete_schema_command_migration_governance() {
+	governance_commit="$1"
+	has_complete_schema_migration_governance "$governance_commit" &&
+		commit_path_is_regular_file "$governance_commit" "$COMMAND_MIGRATIONS_REL" &&
+		commit_path_is_regular_file "$governance_commit" "$COMMAND_MIGRATION_MANIFEST_REL"
+}
+
+has_any_schema_command_migration_governance_artifact() {
+	governance_commit="$1"
+	for relative_path in "$COMMAND_MIGRATIONS_REL" "$COMMAND_MIGRATION_MANIFEST_REL"; do
+		if commit_path_exists "$governance_commit" "$relative_path"; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+require_complete_candidate_schema_command_governance() {
+	if ! has_complete_schema_command_migration_governance "$CANDIDATE_COMMIT"; then
+		printf 'error: candidate must preserve the complete Schema command migration governance artifact set at %s\n' \
+			"$CANDIDATE_COMMIT" >&2
+		exit 2
+	fi
+}
+
 check_candidate_alias_source_policy() {
 	source_policy_failed=false
 	for token in \
@@ -229,6 +256,7 @@ check_candidate_alias_source_policy
 EMPTY_MANIFEST="$TMP_ROOT/empty-migrations.json"
 printf '%s\n' '{"version":1,"migrations":[]}' >"$EMPTY_MANIFEST"
 USE_MIGRATION_GOVERNANCE=false
+USE_COMMAND_MIGRATION_GOVERNANCE=false
 
 if has_complete_schema_migration_governance "$BASE_COMMIT"; then
 	USE_MIGRATION_GOVERNANCE=true
@@ -250,6 +278,21 @@ else
 			"$BOOTSTRAP_MANIFEST" >&2
 		exit 2
 	fi
+fi
+
+if has_complete_schema_command_migration_governance "$BASE_COMMIT"; then
+	USE_COMMAND_MIGRATION_GOVERNANCE=true
+	APPROVED_COMMAND_MANIFEST="$BASE_WORKTREE/$COMMAND_MIGRATION_MANIFEST_REL"
+	CANDIDATE_COMMAND_MANIFEST="$CANDIDATE_WORKTREE/$COMMAND_MIGRATION_MANIFEST_REL"
+	require_complete_candidate_schema_command_governance
+elif has_any_schema_command_migration_governance_artifact "$BASE_COMMIT"; then
+	printf 'error: merge-base contains an incomplete Schema command migration governance artifact set: %s\n' \
+		"$BASE_REF" >&2
+	exit 2
+elif has_any_schema_command_migration_governance_artifact "$CANDIDATE_COMMIT"; then
+	# Bootstrap keeps the old base-owned checker in control and therefore grants
+	# no command migration authorization in the governance PR itself.
+	require_complete_candidate_schema_command_governance
 fi
 
 BASE_BIN="$TMP_ROOT/base-dws"
@@ -337,16 +380,28 @@ generate_interface_snapshot "$CANDIDATE_WORKTREE" "$CURRENT_INTERFACE_SNAPSHOT"
 generate_interface_snapshot "$BASE_WORKTREE" "$BASE_INTERFACE_SNAPSHOT"
 generate_interface_snapshot "$STABLE_WORKTREE" "$STABLE_INTERFACE_SNAPSHOT"
 
-check_schema_contract "PR merge-base" "$BASE_REF" "$BASELINE" \
-	--approved-flag-migrations "$APPROVED_MANIFEST" \
-	--candidate-flag-migrations "$CANDIDATE_MANIFEST" \
-	--migration-current-snapshot "$CURRENT_INTERFACE_SNAPSHOT" \
-	--migration-base-snapshot "$BASE_INTERFACE_SNAPSHOT" \
-	--migration-stable-snapshot "$STABLE_INTERFACE_SNAPSHOT"
+check_with_migrations() {
+	historical_kind="$1"
+	historical_ref="$2"
+	historical_baseline="$3"
+	if [ "$USE_COMMAND_MIGRATION_GOVERNANCE" = true ]; then
+		check_schema_contract "$historical_kind" "$historical_ref" "$historical_baseline" \
+			--approved-flag-migrations "$APPROVED_MANIFEST" \
+			--candidate-flag-migrations "$CANDIDATE_MANIFEST" \
+			--approved-command-migrations "$APPROVED_COMMAND_MANIFEST" \
+			--candidate-command-migrations "$CANDIDATE_COMMAND_MANIFEST" \
+			--migration-current-snapshot "$CURRENT_INTERFACE_SNAPSHOT" \
+			--migration-base-snapshot "$BASE_INTERFACE_SNAPSHOT" \
+			--migration-stable-snapshot "$STABLE_INTERFACE_SNAPSHOT"
+	else
+		check_schema_contract "$historical_kind" "$historical_ref" "$historical_baseline" \
+			--approved-flag-migrations "$APPROVED_MANIFEST" \
+			--candidate-flag-migrations "$CANDIDATE_MANIFEST" \
+			--migration-current-snapshot "$CURRENT_INTERFACE_SNAPSHOT" \
+			--migration-base-snapshot "$BASE_INTERFACE_SNAPSHOT" \
+			--migration-stable-snapshot "$STABLE_INTERFACE_SNAPSHOT"
+	fi
+}
 
-check_schema_contract "stable" "$STABLE_REF" "$STABLE_BASELINE" \
-	--approved-flag-migrations "$APPROVED_MANIFEST" \
-	--candidate-flag-migrations "$CANDIDATE_MANIFEST" \
-	--migration-current-snapshot "$CURRENT_INTERFACE_SNAPSHOT" \
-	--migration-base-snapshot "$BASE_INTERFACE_SNAPSHOT" \
-	--migration-stable-snapshot "$STABLE_INTERFACE_SNAPSHOT"
+check_with_migrations "PR merge-base" "$BASE_REF" "$BASELINE"
+check_with_migrations "stable" "$STABLE_REF" "$STABLE_BASELINE"

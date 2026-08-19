@@ -12,6 +12,8 @@ BASE_REF=""
 STABLE_REF=""
 CANDIDATE_REF="HEAD"
 MIGRATION_MANIFEST_REL="scripts/policy/interface-migrations/approved-flag-migrations-v1.json"
+COMMAND_MIGRATION_MANIFEST_REL="scripts/policy/interface-migrations/approved-command-migrations-v1.json"
+COMMAND_MIGRATIONS_REL="internal/interfacesnapshot/command_migrations.go"
 ALIAS_CONTRACT_REL="internal/corecmd/runtimeannotate/interface_alias.go"
 
 usage() {
@@ -166,6 +168,31 @@ require_complete_candidate_governance() {
   fi
 }
 
+has_complete_command_migration_governance() {
+  governance_commit="$1"
+  has_complete_migration_governance "$governance_commit" &&
+    commit_path_is_regular_file "$governance_commit" "$COMMAND_MIGRATIONS_REL" &&
+    commit_path_is_regular_file "$governance_commit" "$COMMAND_MIGRATION_MANIFEST_REL"
+}
+
+has_any_command_migration_governance_artifact() {
+  governance_commit="$1"
+  for relative_path in "$COMMAND_MIGRATIONS_REL" "$COMMAND_MIGRATION_MANIFEST_REL"; do
+    if commit_path_exists "$governance_commit" "$relative_path"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+require_complete_candidate_command_governance() {
+  if ! has_complete_command_migration_governance "$CANDIDATE_COMMIT"; then
+    printf 'candidate must preserve the complete command migration governance artifact set at %s\n' \
+      "$CANDIDATE_COMMIT" >&2
+    exit 2
+  fi
+}
+
 check_candidate_alias_source_policy() {
   source_policy_failed=false
   for token in \
@@ -225,6 +252,7 @@ install_authority_helper() {
 EMPTY_MANIFEST="$TMP_ROOT/empty-migrations.json"
 printf '%s\n' '{"version":1,"migrations":[]}' >"$EMPTY_MANIFEST"
 USE_MIGRATION_GOVERNANCE=false
+USE_COMMAND_MIGRATION_GOVERNANCE=false
 
 if has_complete_migration_governance "$BASE_COMMIT"; then
   USE_MIGRATION_GOVERNANCE=true
@@ -260,6 +288,21 @@ else
   install_authority_helper "$AUTHORITY_ROOT" "$CANDIDATE_WORKTREE" false
 fi
 
+if has_complete_command_migration_governance "$BASE_COMMIT"; then
+  USE_COMMAND_MIGRATION_GOVERNANCE=true
+  APPROVED_COMMAND_MANIFEST="$BASE_WORKTREE/$COMMAND_MIGRATION_MANIFEST_REL"
+  CANDIDATE_COMMAND_MANIFEST="$CANDIDATE_WORKTREE/$COMMAND_MIGRATION_MANIFEST_REL"
+  require_complete_candidate_command_governance
+elif has_any_command_migration_governance_artifact "$BASE_COMMIT"; then
+  printf 'merge-base contains an incomplete command migration governance artifact set: %s\n' \
+    "$BASE_REF" >&2
+  exit 2
+elif has_any_command_migration_governance_artifact "$CANDIDATE_COMMIT"; then
+  # Bootstrap is safe because the base-owned comparator receives no new
+  # authorization input and still performs the ordinary compatibility check.
+  require_complete_candidate_command_governance
+fi
+
 install_authority_helper "$AUTHORITY_ROOT" "$BASE_WORKTREE" "$USE_MIGRATION_GOVERNANCE"
 install_authority_helper "$AUTHORITY_ROOT" "$STABLE_WORKTREE" "$USE_MIGRATION_GOVERNANCE"
 
@@ -280,7 +323,19 @@ generate_snapshot "$CANDIDATE_WORKTREE" "$CANDIDATE"
 generate_snapshot "$BASE_WORKTREE" "$BASELINE"
 generate_snapshot "$STABLE_WORKTREE" "$STABLE"
 
-if [ "$USE_MIGRATION_GOVERNANCE" = true ]; then
+if [ "$USE_COMMAND_MIGRATION_GOVERNANCE" = true ]; then
+  (
+    cd "$AUTHORITY_ROOT"
+    go run ./cmd/interface-snapshot compare \
+      --current "$CANDIDATE" \
+      --base "$BASELINE" \
+      --stable "$STABLE" \
+      --approved-flag-migrations "$APPROVED_MANIFEST" \
+      --candidate-flag-migrations "$CANDIDATE_MANIFEST" \
+      --approved-command-migrations "$APPROVED_COMMAND_MANIFEST" \
+      --candidate-command-migrations "$CANDIDATE_COMMAND_MANIFEST"
+  )
+elif [ "$USE_MIGRATION_GOVERNANCE" = true ]; then
   (
     cd "$AUTHORITY_ROOT"
     go run ./cmd/interface-snapshot compare \
