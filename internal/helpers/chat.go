@@ -32,7 +32,10 @@ func resolveChatGroupRoleSetUserRoleIDs(cmd *cobra.Command) ([]string, error) {
 	roleIDsChanged := cmd.Flags().Changed("role-ids")
 	switch {
 	case roleIDChanged && roleIDsChanged:
-		return nil, apperrors.NewValidation("--role-id 与 --role-ids 不能同时指定")
+		// PreRunE rejects callers that explicitly pass both flags. Reaching this
+		// branch means the hidden legacy flag was promoted to satisfy Cobra's
+		// required marker on the public canonical flag.
+		return parseCSVValues(mustGetFlag(cmd, "role-ids")), nil
 	case roleIDChanged:
 		roleIDs := parseCSVValues(mustGetFlag(cmd, "role-id"))
 		if len(roleIDs) == 0 {
@@ -47,6 +50,13 @@ func resolveChatGroupRoleSetUserRoleIDs(cmd *cobra.Command) ([]string, error) {
 	default:
 		return nil, apperrors.NewValidation("缺少必填参数 --role-id")
 	}
+}
+
+func prepareChatGroupRoleSetUserRoleID(cmd *cobra.Command) error {
+	if cmd.Flags().Changed("role-id") && cmd.Flags().Changed("role-ids") {
+		return apperrors.NewValidation("--role-id 与 --role-ids 不能同时指定")
+	}
+	return promoteLegacyChatString(cmd, "role-id", "role-ids")
 }
 
 // promoteLegacyChatString copies an explicitly supplied legacy flag into the
@@ -7778,6 +7788,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		Example: `  dws chat group-role set-user --conversation-id <openConversationId> --user <userId> --role-id <openRoleId>
   # 查询人员: dws contact user search --keyword "姓名" --format json
   # 查询 role-id: dws chat group-role list --conversation-id <openConversationId>`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return prepareChatGroupRoleSetUserRoleID(cmd)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "conversation-id"); err != nil {
 				return err
@@ -7843,6 +7856,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatGroupRoleSetUserCmd.Flags().String("role-ids", "", "已隐藏的兼容参数：群身份 openRoleId 列表，逗号分隔")
 	_ = chatGroupRoleSetUserCmd.Flags().MarkHidden("role-ids")
 	corecmd.AnnotateFlagAlias(chatGroupRoleSetUserCmd, "role-ids", "role-id")
+	_ = chatGroupRoleSetUserCmd.MarkFlagRequired("role-id")
 
 	chatGroupRoleRemoveUserCmd := &cobra.Command{
 		Use:     "remove-user",

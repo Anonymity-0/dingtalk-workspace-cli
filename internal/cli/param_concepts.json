@@ -153,6 +153,7 @@
     "chat +chat-role-update": {"block": ["role-ids"], "note": "This command requires one role id; list cardinality is not reduced automatically."},
     "chat group-role remove": {"block": ["role-ids"], "note": "This command requires one role id; list cardinality is not reduced automatically."},
     "chat group-role update": {"block": ["role-ids"], "note": "This command requires one role id; list cardinality is not reduced automatically."},
+    "chat +chat-role-set-user": {"block": ["role-id"], "note": "This command requires a role-id list; one id is not promoted into a batch input."},
     "chat group-role remove-user": {"block": ["role-id"], "note": "This command requires a role-id list; one id is not promoted into a batch input."},
     "chat +messages-send-by-webhook": {"scoped_aliases": {"at-user-ids": "at-users"}, "scope_strict": true, "note": "Both names denote the same userId list used for @ mentions on this exact shortcut."},
     "chat message send-by-webhook": {"scoped_aliases": {"at-user-ids": "at-users"}, "scope_strict": true, "note": "Both names denote the same userId list used for @ mentions on this exact command."},
