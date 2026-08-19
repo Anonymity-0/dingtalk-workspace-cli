@@ -49,7 +49,7 @@ metadata:
 | “给我自己记一条待办” | `dws todo +remind --task "<标题>" [--at "<截止ISO>"] --format json` | 自动解析当前用户；`--at` 是截止时间，不是提醒时间 |
 | “给张三建待办” | `dws todo +assign --to "张三" --task "<标题>" --format json` | 姓名必须唯一解析后才创建 |
 | “给张三、李四建同一条待办” | `dws todo +assign-multi --to "张三,李四" --task "<标题>" --format json` | 任一姓名不唯一则零写入 |
-| 已有 `userId`，创建普通待办 | `dws todo +create --title "<标题>" --executors <USER_ID> [--due "<截止ISO>"] [--priority 10|20|30|40] --format json` | 返回稳定 `taskId`，并读回核验标题 |
+| 已有 `userId`，创建普通待办 | `dws todo +create --title "<标题>" --executors <USER_ID> [--due "<截止ISO>"] [--priority 10\|20\|30\|40] --format json` | 返回稳定 `taskId`，并读回核验标题 |
 | 今天到期 / 已逾期 | `dws todo +due-today --format json` / `dws todo +overdue --format json` | 均有界拉全分页；空集合也是成功结果 |
 | 当前组织下我的执行待办 | `dws todo +get-my-tasks --all --status false --format json` | `--all` 达到 40 页仍未耗尽会失败，不伪装完整 |
 | 与我相关的全部待办 | `dws todo +get-related-tasks --format json` | 创建人、执行人、参与人三种角色并集，按 `taskId` 去重 |
@@ -62,7 +62,7 @@ metadata:
 | 基于截止时间提前提醒 | `dws todo +reminder --task-id <TASK_ID> --base-time dueTime --due-date-offset -30 --format json` | 待办必须已有截止时间；偏移单位为分钟 |
 | 清除全部提醒 | `dws todo +reminder --task-id <TASK_ID> --clear --format json` | 清除写操作；不能与提醒参数混用 |
 | 批量创建 | `python scripts/todo_batch_create.py <todos.json>` | 单批最多 30 条；保留逐项 `taskId`、verified/unverified/unknown 状态，不盲重试 |
-| 今天/明天/本周汇总 | `python scripts/todo_daily_summary.py today|tomorrow|week` | 走 `+get-my-tasks --all`，只纳入范围内且有截止时间的未完成待办 |
+| 今天/明天/本周汇总 | `python scripts/todo_daily_summary.py today\|tomorrow\|week` | 走 `+get-my-tasks --all`，只纳入范围内且有截止时间的未完成待办 |
 
 ## 低频原子能力
 

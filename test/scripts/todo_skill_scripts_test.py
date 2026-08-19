@@ -55,6 +55,13 @@ class TodoSkillAlignmentTest(unittest.TestCase):
         self.assertIn("一次最多加载一个操作 Reference", skill)
         self.assertLessEqual(len(skill.encode("utf-8")), 16000)
 
+    def test_golden_route_table_keeps_exactly_three_columns(self):
+        skill = (TODO_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        table = skill.split("## Golden Routes", 1)[1].split("## 低频原子能力", 1)[0]
+        for row in (line for line in table.splitlines() if line.startswith("|")):
+            with self.subTest(row=row):
+                self.assertEqual(5, len(re.split(r"(?<!\\)\|", row)), row)
+
     def test_references_are_todo_only_and_reminder_contract_is_consistent(self):
         combined = "\n".join(
             path.read_text(encoding="utf-8")
