@@ -76,6 +76,7 @@ var DatasourceCreate = shortcut.Shortcut{
 		{Name: "auto", Type: shortcut.FlagBool, Desc: "是否开启自动同步，默认 false"},
 		{Name: "field-ids", Type: shortcut.FlagStringSlice, Desc: "需要同步的字段 ID 列表，不传时同步全部字段"},
 		{Name: "conflict-strategy", Type: shortcut.FlagInt, Desc: "冲突策略：0=覆盖（默认），1=跳过"},
+		{Name: "auto-sync-setting", Type: shortcut.FlagString, Desc: "自动同步频率配置 JSON 字符串，仅在 --auto=true 时生效。字段：syncType（必填，hourly|schedule）、hourlyInterval（hourly 时必填，正整数小时）、scheduleType（schedule 时必填，day/week/month）、timeValue（schedule 时必填，HH:mm）、selectedMonthDays（month 时可选）、selectedWeekdays（week 时可选）、skipNonWorkingDay（可选，默认 false）。不传时使用下游默认自动同步策略"},
 	},
 	Tips: []string{
 		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
@@ -200,7 +201,7 @@ var DatasourceSync = shortcut.Shortcut{
 	Service:     "aitable",
 	Command:     "+datasource-sync",
 	Product:     serverMain,
-	Description: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，每张表独立提交，部分失败不影响其他表。",
+	Description: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，每张表独立提交，部分失败不影响其他表。返回结果包含文档链接，用户可打开文档查看同步进度与最终数据。同步运行中（errorCode=4014）属于幂等冲突，会被标记为 failed 并允许调用方稍后重试。非数据源表（sync=false）不能用此工具触发同步，会以参数错误返回。",
 	Intent:      "当用户需要手动触发已有数据源表的同步（而非创建或更新配置）时使用。同步任务 ID 可通过 +datasource-sync-status 查询结果。",
 	Risk:        shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
@@ -215,14 +216,14 @@ var DatasourceSync = shortcut.Shortcut{
 			CLIPath:        "aitable +datasource-sync",
 			PrimaryCLIPath: "aitable +datasource-sync",
 		},
-		Description: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，每张表独立提交，部分失败不影响其他表。",
+		Description: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，每张表独立提交，部分失败不影响其他表。返回结果包含文档链接，用户可打开文档查看同步进度与最终数据。同步运行中（errorCode=4014）属于幂等冲突，会被标记为 failed 并允许调用方稍后重试。非数据源表（sync=false）不能用此工具触发同步，会以参数错误返回。",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
 			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
 		Selection: contract.SelectionSpec{
-			AgentSummary: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，每张表独立提交，部分失败不影响其他表。",
+			AgentSummary: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，部分失败不影响其他表。返回文档链接；errorCode=4014 为幂等冲突可重试；非数据源表（sync=false）会以参数错误返回。",
 			UseWhen:      []string{"当用户需要手动触发已有数据源表的数据同步时"},
 			AvoidWhen: []string{
 				"需要创建新数据源表时（改用 +datasource-create）",
@@ -439,7 +440,7 @@ var DatasourceGetFields = shortcut.Shortcut{
 	Service:     "aitable",
 	Command:     "+datasource-get-fields",
 	Product:     serverMain,
-	Description: "获取指定数据源下可供同步的字段列表，包括字段 ID、字段名称、字段类型和是否主键等，用于在 +datasource-create / +datasource-update 中决定同步哪些字段。传入从 +datasource-list-sources 获取的 sourceConfig。仅支持 OA 审批数据源（datasourceType=OA），其他数据源类型暂不支持，待后续开放。",
+	Description: "获取指定数据源下可供同步的字段列表，用于在 +datasource-create / +datasource-update 中决定同步哪些字段。传入从 +datasource-list-sources 获取的 sourceConfig。仅支持 OA 审批数据源（datasourceType=OA），其他数据源类型暂不支持，待后续开放。",
 	Intent:      "当用户需要查看某数据源来源有哪些可同步字段、以便在创建或更新数据源时指定 field-ids 时使用。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
@@ -454,7 +455,7 @@ var DatasourceGetFields = shortcut.Shortcut{
 			CLIPath:        "aitable +datasource-get-fields",
 			PrimaryCLIPath: "aitable +datasource-get-fields",
 		},
-		Description: "获取指定数据源下可供同步的字段列表，包括字段 ID、字段名称、字段类型和是否主键等，用于在 +datasource-create / +datasource-update 中决定同步哪些字段。传入从 +datasource-list-sources 获取的 sourceConfig。仅支持 OA 审批数据源（datasourceType=OA），其他数据源类型暂不支持，待后续开放。",
+		Description: "获取指定数据源下可供同步的字段列表，用于在 +datasource-create / +datasource-update 中决定同步哪些字段。传入从 +datasource-list-sources 获取的 sourceConfig。仅支持 OA 审批数据源（datasourceType=OA），其他数据源类型暂不支持，待后续开放。",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
