@@ -39,25 +39,25 @@ metadata:
 
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
-| 按标题或主题定位文档 | `dws doc +search --query <关键词>` | 检查候选类型与分页；需要正文时再用真实 `nodeId` 执行 `+fetch` |
+| <!-- dws-intent: doc.search.by_title -->按标题或主题定位文档 | `dws doc +search --query <关键词>` | 检查候选类型与分页；需要正文时再用真实 `nodeId` 执行 `+fetch` |
 | 最近访问文档 | `dws doc +search`（省略 `--query`） | `--limit` 为每页量，`--max-items` 为总上限；完整集合才加 `--page-all` 并检查 `complete` |
-| 已知 ID/URL 读取正文或局部内容 | `dws doc +fetch --node <ID或URL>` | 具体术语直用 `keyword`；章节先 `outline` 再 `section`；只有整篇任务才用默认 `full` |
+| <!-- dws-intent: doc.content.read -->已知 ID/URL 读取正文或局部内容 | `dws doc +fetch --node <ID或URL>` | 具体术语直用 `keyword`；章节先 `outline` 再 `section`；只有整篇任务才用默认 `full` |
 | 聚合查看信息、权限、版本、媒体或评论 | `dws doc +inspect --node <ID或URL>` | 仅打开任务所需的 `--include-*`，不要默认全取 |
 | 新建在线文字文档并写入内容 | `dws doc +create --name <标题> --content @<相对文件>` | 先在本地完成正文；Runtime 负责 Markdown 分片和回读，禁止 Agent 自行拆成多次远程写入 |
-| 追加、覆盖或精确编辑 block | `dws doc +update --node <ID或URL> --command <动作>` | 唯一文本直接 `str_replace`；章节/block 先局部取 ID 再精准修改；整篇覆盖才用 overwrite |
+| <!-- dws-intent: doc.content.update -->追加、覆盖或精确编辑 block | `dws doc +update --node <ID或URL> --command <动作>` | 唯一文本直接 `str_replace`；章节/block 先局部取 ID 再精准修改；整篇覆盖才用 overwrite |
 | 重要内容更新且需要恢复点 | `dws doc +checkpoint-update` | 自动保存版本、更新并回读；检查 `steps` 和 `compensation` |
 | 版本操作 | `dws doc +version-save --node` / `dws doc +version-list --node` / `dws doc +version-revert --node --version` | 快照/列表/回滚 |
-| 导出为 docx/markdown/pdf | `dws doc +export --export-format <格式>` | 格式必须显式指定；普通文件下载切 `dingtalk-drive` |
-| 本地文件转在线文档 | `dws doc +import --file <相对路径>` | “传上去/放进文件夹”不改变路由；在线改、协作编辑或转换用 import，仅保留原文件切 `dingtalk-drive` |
+| <!-- dws-intent: doc.export.format -->导出为 docx/markdown/pdf | `dws doc +export --export-format <格式>` | 格式必须显式指定；普通文件下载切 `dingtalk-drive` |
+| <!-- dws-intent: doc.import.local_file -->本地文件转在线文档 | `dws doc +import --file <相对路径>` | “传上去/放进文件夹”不改变路由；在线改、协作编辑或转换用 import，仅保留原文件切 `dingtalk-drive` |
 | 封面/背景 | `+resource-update/+resource-delete`；`+background-update/+background-delete` | 写后 `+inspect --include-style`；禁查 Catalog |
 | 浏览模板 | `dws doc +template-list [--source MY\|PUBLIC]` | “我的/我这边”只查 MY；明确公开才查 PUBLIC；“有哪些/全部”翻页至完整 |
 | 搜索模板 | `dws doc +template-search --query <名称或关键词>` | 来源可选 MY/PUBLIC；零命中停止，禁止拿无关模板替代；多候选消歧 |
 | 从模板创建 | `dws doc +create-from-template --template-id <唯一ID>` | 已有唯一 templateId 才创建；不重复 list/search |
 | 创建评论或聚合待处理评论 | `dws doc +comment-create [--selection]` / `+review` | 划词统一用 `+comment-create`；后续操作使用真实 `commentKey` |
-| 添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to <姓名列表,逗号分隔>` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；没有 --user-ids；先读取现有权限；姓名歧义或 profile 不一致时禁止写入 |
-| 只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | canonical（`+share-doc` 仅兼容）；收件人已有权限时用它，不要改走 `+grant-and-share` 多做一次权限写入；普通文本私信走 `dws chat +dm` |
+| <!-- dws-intent: doc.access.grant -->添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to <姓名列表,逗号分隔>` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；没有 --user-ids；先读取现有权限；姓名歧义或 profile 不一致时禁止写入 |
+| <!-- dws-intent: doc.share.link_only -->只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | canonical（`+share-doc` 仅兼容）；收件人已有权限时用它，不要改走 `+grant-and-share` 多做一次权限写入；普通文本私信走 `dws chat +dm` |
 | 授权后向多人分享链接 | `dws doc +grant-and-share` | 需变更权限时才用（必填 `--node`，`--role` 默认 READER）；返回逐人执行账本，部分失败不等于整体成功 |
-| 插入或下载正文媒体 | `dws doc +media-insert/+media-download` | 本地路径必须位于工作目录；下载默认 no-clobber |
+| <!-- dws-intent: doc.media.insert -->插入或下载正文媒体 | `dws doc +media-insert/+media-download` | 本地路径必须位于工作目录；下载默认 no-clobber |
 
 ## 关键结果语义
 

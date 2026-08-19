@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "marker_roots": [
+    "skills/multi/dingtalk-doc"
+  ],
+  "intents": [
+    {
+      "id": "doc.search.by_title",
+      "preferred_tool": "doc.shortcut_search",
+      "forbidden_default_tools": [
+        "doc.search_documents"
+      ],
+      "references": [
+        "skills/multi/dingtalk-doc/SKILL.md"
+      ]
+    },
+    {
+      "id": "doc.content.read",
+      "preferred_tool": "doc.shortcut_fetch",
+      "forbidden_default_tools": [
+        "doc.get_document_content"
+      ],
+      "references": [
+        "skills/multi/dingtalk-doc/SKILL.md"
+      ]
+    },
+    {
+      "id": "doc.content.update",
+      "preferred_tool": "doc.shortcut_update",
+      "forbidden_default_tools": [
+        "doc.update_document"
+      ],
+      "references": [
+        "skills/multi/dingtalk-doc/SKILL.md"
+      ]
+    },
+    {
+      "id": "doc.export.format",
+      "preferred_tool": "doc.shortcut_export",
+      "references": [
+        "skills/multi/dingtalk-doc/SKILL.md"
+      ]
+    },
+    {
+      "id": "doc.import.local_file",
+      "preferred_tool": "doc.shortcut_import",
+      "forbidden_default_tools": [
+        "doc.upload"
+      ],
+      "references": [
+        "skills/multi/dingtalk-doc/SKILL.md"
+      ]
+    },
+    {
+      "id": "doc.access.grant",
+      "preferred_tool": "doc.shortcut_access_grant",
+      "forbidden_default_tools": [
+        "doc.add_permission"
+      ],
+      "references": [
+        "skills/multi/dingtalk-doc/SKILL.md"
+      ]
+    },
+    {
+      "id": "doc.share.link_only",
+      "preferred_tool": "doc.shortcut_share",
+      "forbidden_default_tools": [
+        "doc.shortcut_grant_and_share"
+      ],
+      "references": [
+        "skills/multi/dingtalk-doc/SKILL.md"
+      ]
+    },
+    {
+      "id": "doc.media.insert",
+      "preferred_tool": "doc.shortcut_media_insert",
+      "forbidden_default_tools": [
+        "doc.media_insert"
+      ],
+      "references": [
+        "skills/multi/dingtalk-doc/SKILL.md"
+      ]
+    }
+  ]
+}
