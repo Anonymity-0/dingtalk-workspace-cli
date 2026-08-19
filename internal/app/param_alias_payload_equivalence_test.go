@@ -750,11 +750,11 @@ func TestCrossPlatformCoverageReviewedParamAliasesHaveCompleteTemplatesAndRepres
 	}
 }
 
-func TestReviewedCalendarParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
+func TestCrossPlatformCoverageReviewedCalendarParamAliasesReachCanonicalEquivalentFinalPayloads(t *testing.T) {
 	if os.Getenv(paramAliasCalendarPayloadChildEnv) != "1" {
 		command := exec.Command(
 			os.Args[0],
-			"-test.run=^TestReviewedCalendarParamAliasesReachCanonicalEquivalentFinalPayloads$",
+			"-test.run=^TestCrossPlatformCoverageReviewedCalendarParamAliasesReachCanonicalEquivalentFinalPayloads$",
 			"-test.count=1",
 			"-test.timeout=5m",
 		)
