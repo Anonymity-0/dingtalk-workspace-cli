@@ -5,11 +5,12 @@ package app
 
 import (
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
-func TestCrossPlatformCoverageWhiteboardPublicShortcutsStayAvailableInSchema(t *testing.T) {
-	root := NewRootCommand()
-	tools := deliverySchemaAllToolsForHelpFlagTest(t, root)
+func assertWhiteboardPublicShortcutsStayAvailableInSchema(t *testing.T, root *cobra.Command, tools map[string]map[string]any) {
+	t.Helper()
 	for canonical, command := range map[string]string{
 		"whiteboard.shortcut_query":  "+query",
 		"whiteboard.shortcut_update": "+update",

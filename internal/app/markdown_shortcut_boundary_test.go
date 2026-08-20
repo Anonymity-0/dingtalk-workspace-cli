@@ -8,9 +8,19 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/spf13/cobra"
 )
 
-func TestCrossPlatformCoverageMarkdownLarkTasksRouteWithoutDuplicateShortcuts(t *testing.T) {
+func TestCrossPlatformCoverageSheetWhiteboardMarkdownRoutes(t *testing.T) {
+	root := NewRootCommand()
+	tools := deliverySchemaAllToolsForHelpFlagTest(t, root)
+	assertMarkdownLarkTasksRouteWithoutDuplicateShortcuts(t, root, tools)
+	assertMarkdownDriveRoutesStayCrossProduct(t, root, tools)
+	assertWhiteboardPublicShortcutsStayAvailableInSchema(t, root, tools)
+}
+
+func assertMarkdownLarkTasksRouteWithoutDuplicateShortcuts(t *testing.T, root *cobra.Command, tools map[string]map[string]any) {
+	t.Helper()
 	registered := 0
 	for _, item := range shortcut.All() {
 		if item.Service == "markdown" {
@@ -49,8 +59,6 @@ func TestCrossPlatformCoverageMarkdownLarkTasksRouteWithoutDuplicateShortcuts(t 
 		},
 	}
 
-	root := NewRootCommand()
-	tools := deliverySchemaAllToolsForHelpFlagTest(t, root)
 	group := mustFindCommand(t, root, "markdown")
 	children := map[string]bool{}
 	for _, child := range group.Commands() {
@@ -106,10 +114,8 @@ func TestCrossPlatformCoverageMarkdownLarkTasksRouteWithoutDuplicateShortcuts(t 
 	}
 }
 
-func TestCrossPlatformCoverageMarkdownDriveRoutesStayCrossProduct(t *testing.T) {
-	root := NewRootCommand()
-	tools := deliverySchemaAllToolsForHelpFlagTest(t, root)
-
+func assertMarkdownDriveRoutesStayCrossProduct(t *testing.T, root *cobra.Command, tools map[string]map[string]any) {
+	t.Helper()
 	driveShortcuts := map[string]string{
 		"+copy":             "drive.shortcut_copy",
 		"+delete":           "drive.shortcut_delete",
