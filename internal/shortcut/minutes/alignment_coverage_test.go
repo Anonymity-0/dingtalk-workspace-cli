@@ -497,10 +497,30 @@ func TestCrossPlatformCoverageMinutesLegacyListsAndRecordCommandsE2E(t *testing.
 			if err != nil || payload["accepted"] != true || payload["command"] != test.cmd {
 				t.Fatalf("payload=%#v err=%v", payload, err)
 			}
+			if test.cmd == "create" {
+				if payload["bound"] != false || payload["controlReady"] != false || payload["reason"] != "gateway_did_not_return_task_uuid" {
+					t.Fatalf("unbound create payload=%#v", payload)
+				}
+				if _, exists := payload["taskUuid"]; exists {
+					t.Fatalf("unbound create invented taskUuid: %#v", payload)
+				}
+			} else if payload["bound"] != true || payload["controlReady"] != true || payload["taskUuid"] != test.id {
+				t.Fatalf("bound control payload=%#v", payload)
+			}
 			if caller.arguments["minutes/"+listeningNoteCmdTool][0]["sessionId"] != "session" {
 				t.Fatalf("args=%#v", caller.arguments)
 			}
 		})
+	}
+	boundStart := &minutesE2ECaller{responses: map[string][]string{
+		"minutes/" + listeningNoteCmdTool: {`{"success":true,"result":{"cmd":"create","taskUuid":"new-u1"}}`},
+	}}
+	boundPayload, _, err := runMinutesAlignmentCLI(t, boundStart, "minutes", "+record-start", "--yes")
+	if err != nil || boundPayload["bound"] != true || boundPayload["controlReady"] != true || boundPayload["taskUuid"] != "new-u1" {
+		t.Fatalf("bound start payload=%#v err=%v", boundPayload, err)
+	}
+	if len(boundStart.arguments) != 1 || len(boundStart.arguments["minutes/"+listeningNoteCmdTool]) != 1 {
+		t.Fatalf("record start made unexpected fallback calls: %#v", boundStart.arguments)
 	}
 	recordCall := &minutesE2ECaller{failAt: map[string]int{"minutes/" + listeningNoteCmdTool: 1}}
 	if _, _, err := runMinutesAlignmentCLI(t, recordCall, "minutes", "+record-start", "--yes"); err == nil {

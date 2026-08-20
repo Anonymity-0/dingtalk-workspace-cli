@@ -23,6 +23,16 @@ func minutesListResult() *contract.ResultSpec {
 	}
 }
 
+func minutesRecordResult() *contract.ResultSpec {
+	return &contract.ResultSpec{
+		Outcomes: []contract.ResultOutcome{
+			contract.ResultOutcomeSuccess,
+			contract.ResultOutcomeFailure,
+		},
+		DataSchema: json.RawMessage(`{"type":"object","description":"带稳定绑定状态的听记录音控制回执","properties":{"accepted":{"type":"boolean","description":"网关是否明确接受录音控制指令"},"command":{"type":"string","description":"已确认执行的录音控制指令"},"bound":{"type":"boolean","description":"回执是否包含可归属于本次录音的稳定 taskUuid"},"controlReady":{"type":"boolean","description":"是否可以安全执行后续 pause/resume/stop 控制"},"taskUuid":{"type":"string","description":"已由回执确认的听记稳定 taskUuid"},"reason":{"type":"string","description":"已受理但无法安全绑定时的停止原因"},"result":{"type":"object","description":"经校验的网关原始业务回执","additionalProperties":true}},"required":["accepted","command","bound","controlReady","result"],"additionalProperties":false}`),
+	}
+}
+
 func minutesCursorPagination() *contract.PaginationSpec {
 	return &contract.PaginationSpec{
 		Kind:                  contract.PaginationKindCursor,
@@ -66,6 +76,11 @@ func withMinutesDryRun(decl corecmd.ContractDecl, kind string, remoteReads bool)
 func withMinutesListResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
 	decl.Result = minutesListResult()
 	decl.Pagination = minutesCursorPagination()
+	return decl
+}
+
+func withMinutesRecordResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
+	decl.Result = minutesRecordResult()
 	return decl
 }
 

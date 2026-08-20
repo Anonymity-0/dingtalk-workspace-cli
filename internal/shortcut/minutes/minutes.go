@@ -375,7 +375,7 @@ var RecordStart = shortcut.Shortcut{
 	Command:     "+record-start",
 	Product:     "minutes",
 	Description: "发起听记（开始录音）",
-	Intent:      "当你要开始一场实时会议/通话的 AI 听记、立刻启动录音时使用；可选传入 AI 助理会话 ID。当前网关 create 回执不返回 taskUuid，只能证明录音指令已被接受；随后需用 +latest/+search 定位新听记。",
+	Intent:      "当你要开始一场实时会议/通话的 AI 听记、立刻启动录音时使用；可选传入 AI 助理会话 ID。只有回执明确返回 taskUuid 时才标记为已绑定并允许后续控制；若只确认受理则返回 controlReady=false 并停止，绝不通过最新一条听记猜测录音目标。",
 	Risk:        shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium",
@@ -397,10 +397,11 @@ var RecordStart = shortcut.Shortcut{
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "发起听记（开始录音）",
-			UseWhen:      []string{"当你要开始一场实时会议/通话的 AI 听记、立刻启动录音时使用；网关 create 只返回已接受回执，不返回 taskUuid，随后需用 +latest/+search 定位新听记。"},
+			UseWhen:      []string{"当你要开始一场实时会议/通话的 AI 听记、立刻启动录音时使用；只有回执明确返回 taskUuid 才能继续控制，未返回时必须报告未绑定并停止。"},
 			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
 			Examples:     []string{"dws minutes +record-start --session-id <sessionId>"},
 		},
+		Result: minutesRecordResult(),
 	},
 	Flags: []shortcut.Flag{
 		{Name: "session-id", Type: shortcut.FlagString, Desc: "AI 助理会话 ID (可选)"},
@@ -425,13 +426,13 @@ var RecordPause = shortcut.Shortcut{
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown",
 	},
-	Contract: minutesContract(
+	Contract: withMinutesRecordResult(minutesContract(
 		"+record-pause",
 		"暂停听记录音",
 		"实时听记仍在录制，但要临时中断且保留后续恢复能力时使用；必须传当前录制任务的 taskUuid。",
 		[]string{"会议已经结束时使用 +record-stop；只是查看听记状态或内容时使用只读命令"},
 		[]string{"dws minutes +record-pause --id <taskUuid>"},
-	),
+	)),
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "听记 taskUuid", Required: true},
 		{Name: "session-id", Type: shortcut.FlagString, Desc: "AI 助理会话 ID (可选)"},
@@ -456,13 +457,13 @@ var RecordResume = shortcut.Shortcut{
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown",
 	},
-	Contract: minutesContract(
+	Contract: withMinutesRecordResult(minutesContract(
 		"+record-resume",
 		"恢复听记录音",
 		"实时听记此前已暂停、现在要继续向同一 taskUuid 追加录音时使用。",
 		[]string{"已经结束的听记不能恢复；要新建录制时使用 +record-start"},
 		[]string{"dws minutes +record-resume --id <taskUuid>"},
-	),
+	)),
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "听记 taskUuid", Required: true},
 		{Name: "session-id", Type: shortcut.FlagString, Desc: "AI 助理会话 ID (可选)"},
@@ -487,13 +488,13 @@ var RecordStop = shortcut.Shortcut{
 	Safety: contract.SafetySpec{
 		Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown",
 	},
-	Contract: minutesContract(
+	Contract: withMinutesRecordResult(minutesContract(
 		"+record-stop",
 		"结束听记录音",
 		"会议结束且要永久停止指定 taskUuid 的实时录制，让服务进入转写和纪要处理阶段时使用。",
 		[]string{"仍计划继续录音时使用 +record-pause；结束后不能通过 +record-resume 继续同一条录制"},
 		[]string{"dws minutes +record-stop --id <taskUuid>"},
-	),
+	)),
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "听记 taskUuid", Required: true},
 		{Name: "session-id", Type: shortcut.FlagString, Desc: "AI 助理会话 ID (可选)"},
@@ -517,12 +518,23 @@ func executeRecordCommand(rt *shortcut.RuntimeContext, expectedCmd, taskUUID str
 	if err != nil {
 		return err
 	}
-	return rt.Output(map[string]any{
-		"accepted": true,
-		"command":  expectedCmd,
-		"taskUuid": taskUUID,
-		"result":   result,
-	})
+	boundTaskUUID := taskUUID
+	if expectedCmd == "create" {
+		boundTaskUUID = minutesdata.TaskUUID(result)
+	}
+	payload := map[string]any{
+		"accepted":     true,
+		"command":      expectedCmd,
+		"bound":        boundTaskUUID != "",
+		"controlReady": boundTaskUUID != "",
+		"result":       result,
+	}
+	if boundTaskUUID != "" {
+		payload["taskUuid"] = boundTaskUUID
+	} else {
+		payload["reason"] = "gateway_did_not_return_task_uuid"
+	}
+	return rt.Output(payload)
 }
 
 // ── mind-graph ──────────────────────────────────────────────────────────────

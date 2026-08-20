@@ -687,15 +687,15 @@ func newMinutesCommand() *cobra.Command {
 				CLIPath:        "minutes record start",
 				PrimaryCLIPath: "minutes record start",
 			},
-			Description: "发起听记并开始录音。",
+			Description: "发起听记并开始录音；网关可能只确认受理而不返回 taskUuid。",
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
 				Reason:       "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command.",
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "发起听记并开始录音。",
-				UseWhen:      []string{"需要发起听记并开始录音，取得 taskUuid 时"},
+				AgentSummary: "发起听记并开始录音；只有回执明确返回 taskUuid 时才可继续控制。",
+				UseWhen:      []string{"需要发起听记并开始录音时；若回执未返回 taskUuid，停止并报告未绑定，不得通过最新听记猜测"},
 				AvoidWhen:    []string{"已有进行中的录音只需 pause/resume/stop 时不要重复 start"},
 				Examples: []string{
 					"dws minutes record start",
