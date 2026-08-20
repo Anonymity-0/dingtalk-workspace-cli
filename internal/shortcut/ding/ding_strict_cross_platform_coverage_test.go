@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"strings"
 	"testing"
 
@@ -22,11 +23,17 @@ import (
 
 type dingCoverageCaller struct {
 	responses map[string][]string
+	failures  map[string]error
 	history   []string
+	arguments []map[string]any
 }
 
-func (caller *dingCoverageCaller) CallTool(_ context.Context, _, tool string, _ map[string]any) (*edition.ToolResult, error) {
+func (caller *dingCoverageCaller) CallTool(_ context.Context, _, tool string, arguments map[string]any) (*edition.ToolResult, error) {
 	caller.history = append(caller.history, tool)
+	caller.arguments = append(caller.arguments, arguments)
+	if err := caller.failures[tool]; err != nil {
+		return nil, err
+	}
 	queue := caller.responses[tool]
 	if len(queue) == 0 {
 		return nil, errors.New("missing DING fake response for " + tool)
@@ -50,6 +57,20 @@ func runDingCoverage(t *testing.T, declaration shortcut.Shortcut, caller *dingCo
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs(args)
 	return cmd, cmd.Execute()
+}
+
+func runDingCoverageOutput(t *testing.T, declaration shortcut.Shortcut, caller *dingCoverageCaller, args ...string) ([]byte, error) {
+	t.Helper()
+	helpers.InitDepsForTest(t, caller)
+	cmd := corecmd.New(shortcut.FromShortcut(declaration))
+	ctx, _ := output.WithResultStore(context.Background())
+	cmd.SetContext(ctx)
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	return stdout.Bytes(), err
 }
 
 func TestCrossPlatformCoverageDINGContractsAreStrictTypedAndUnified(t *testing.T) {
@@ -103,7 +124,7 @@ func TestCrossPlatformCoverageDINGListResponseMatrix(t *testing.T) {
 		"empty":                  {},
 		"missing success":        {"result": map[string]any{"dingMessages": []any{}, "hasMore": false}},
 		"wrong success":          {"success": "true", "result": map[string]any{"dingMessages": []any{}, "hasMore": false}},
-		"false success":          {"success": false, "result": map[string]any{"dingMessages": []any{}, "hasMore": false}},
+		"false success":          {"success": false, "errorMsg": "fixture failure", "result": map[string]any{"dingMessages": []any{}, "hasMore": false}},
 		"missing result":         {"success": true},
 		"missing collection":     {"success": true, "result": map[string]any{"hasMore": false}},
 		"wrong collection":       {"success": true, "result": map[string]any{"dingMessages": map[string]any{}, "hasMore": false}},
@@ -123,6 +144,40 @@ func TestCrossPlatformCoverageDINGListResponseMatrix(t *testing.T) {
 			t.Errorf("%s returned success: %#v", name, projected)
 		}
 	}
+	if _, _, err := dingProjectMessages(map[string]any{"success": false, "errorMsg": "fixture failure"}, "im/list_ding_messages"); err == nil || !strings.Contains(err.Error(), "fixture failure") {
+		t.Fatalf("remote failure message was not preserved: %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDINGIntegerRepresentations(t *testing.T) {
+	for name, test := range map[string]struct {
+		value any
+		want  int64
+	}{
+		"float64":     {value: float64(1), want: 1},
+		"int":         {value: int(2), want: 2},
+		"int64":       {value: int64(3), want: 3},
+		"json number": {value: json.Number("4"), want: 4},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got, ok := dingInteger(test.value); !ok || got != test.want {
+				t.Fatalf("dingInteger(%T(%v))=(%d,%t), want (%d,true)", test.value, test.value, got, ok, test.want)
+			}
+		})
+	}
+	for name, value := range map[string]any{
+		"nan":             math.NaN(),
+		"fraction":        1.5,
+		"overflow":        math.MaxFloat64,
+		"bad json number": json.Number("not-an-integer"),
+		"wrong type":      "1",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got, ok := dingInteger(value); ok {
+				t.Fatalf("dingInteger(%T(%v))=(%d,true), want invalid", value, value, got)
+			}
+		})
+	}
 }
 
 func TestCrossPlatformCoverageDINGReceiverResponseMatrix(t *testing.T) {
@@ -136,6 +191,7 @@ func TestCrossPlatformCoverageDINGReceiverResponseMatrix(t *testing.T) {
 		"missing collection": {"success": true, "result": map[string]any{}},
 		"empty collection":   {"success": true, "result": map[string]any{"receivers": []any{}}},
 		"bad item":           {"success": true, "result": map[string]any{"receivers": []any{"bad"}}},
+		"missing item id":    {"success": true, "result": map[string]any{"receivers": []any{map[string]any{"confirmedStatus": float64(1), "receiverNick": "fixture"}}}},
 		"identity mismatch":  {"success": true, "result": map[string]any{"receivers": []any{map[string]any{"openDingId": "other", "confirmedStatus": float64(1), "receiverNick": "fixture"}}}},
 		"wrong status":       {"success": true, "result": map[string]any{"receivers": []any{map[string]any{"openDingId": "ding-1", "confirmedStatus": "1", "receiverNick": "fixture"}}}},
 		"missing receiver":   {"success": true, "result": map[string]any{"receivers": []any{map[string]any{"openDingId": "ding-1", "confirmedStatus": float64(1)}}}},
@@ -144,6 +200,112 @@ func TestCrossPlatformCoverageDINGReceiverResponseMatrix(t *testing.T) {
 			t.Errorf("%s returned success: %#v", name, projected)
 		}
 	}
+}
+
+func TestCrossPlatformCoverageDINGListExecutionFailuresPaginationAndLegacy(t *testing.T) {
+	t.Run("negative cursor validates before call", func(t *testing.T) {
+		caller := &dingCoverageCaller{responses: map[string][]string{}}
+		if _, err := runDingCoverage(t, List, caller, "--cursor", "-1"); err == nil || len(caller.history) != 0 {
+			t.Fatalf("negative cursor error=%v calls=%v", err, caller.history)
+		}
+	})
+
+	t.Run("transport failure", func(t *testing.T) {
+		caller := &dingCoverageCaller{
+			responses: map[string][]string{},
+			failures:  map[string]error{"list_ding_messages": errors.New("fixture transport failure")},
+		}
+		if _, err := runDingCoverage(t, List, caller); err == nil || strings.Join(caller.history, ",") != "list_ding_messages" {
+			t.Fatalf("transport error=%v calls=%v", err, caller.history)
+		}
+	})
+
+	t.Run("projection failure", func(t *testing.T) {
+		caller := &dingCoverageCaller{responses: map[string][]string{
+			"list_ding_messages": {`{"success":true,"result":{"dingMessages":[],"hasMore":true,"nextCursor":2}}`},
+		}}
+		if _, err := runDingCoverage(t, List, caller); err == nil {
+			t.Fatal("malformed empty continuation returned success")
+		}
+	})
+
+	t.Run("stalled cursor", func(t *testing.T) {
+		caller := &dingCoverageCaller{responses: map[string][]string{
+			"list_ding_messages": {`{"success":true,"result":{"dingMessages":[{"openDingId":"ding-1"}],"hasMore":true,"nextCursor":2}}`},
+		}}
+		if _, err := runDingCoverage(t, List, caller, "--cursor", "2"); err == nil || !strings.Contains(err.Error(), "nextCursor") {
+			t.Fatalf("stalled cursor error=%v", err)
+		}
+	})
+
+	t.Run("advancing cursor legacy output", func(t *testing.T) {
+		legacy := List
+		legacy.OutputRollout = output.RolloutLegacyOnly
+		caller := &dingCoverageCaller{responses: map[string][]string{
+			"list_ding_messages": {`{"success":true,"result":{"dingMessages":[{"openDingId":"ding-1"}],"hasMore":true,"nextCursor":3}}`},
+		}}
+		stdout, err := runDingCoverageOutput(t, legacy, caller, "--cursor", "2")
+		if err != nil {
+			t.Fatalf("legacy advancing page: %v", err)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(stdout, &payload); err != nil || payload["nextCursor"] != "3" || payload["complete"] != false {
+			t.Fatalf("legacy payload=%#v decode=%v", payload, err)
+		}
+		if len(caller.arguments) != 1 || caller.arguments[0]["cursor"] != 2 {
+			t.Fatalf("legacy cursor arguments=%#v", caller.arguments)
+		}
+	})
+
+	t.Run("invalid unified page evidence", func(t *testing.T) {
+		cmd := corecmd.New(shortcut.FromShortcut(List))
+		ctx, _ := output.WithResultStore(context.Background())
+		cmd.SetContext(ctx)
+		rt := shortcut.RuntimeContextForTest(cmd, List)
+		if err := outputDingPage(rt, nil, dingPageEvidence{HasMore: true}); err == nil {
+			t.Fatal("continuation without next cursor returned success")
+		}
+	})
+}
+
+func TestCrossPlatformCoverageDINGReceiverExecutionFailuresAndLegacy(t *testing.T) {
+	t.Run("transport failure", func(t *testing.T) {
+		caller := &dingCoverageCaller{
+			responses: map[string][]string{},
+			failures:  map[string]error{"list_ding_receiver_status": errors.New("fixture transport failure")},
+		}
+		if _, err := runDingCoverage(t, ReceiverStatus, caller, "--ding-id", "ding-1"); err == nil {
+			t.Fatal("receiver transport failure returned success")
+		}
+	})
+
+	t.Run("projection failure", func(t *testing.T) {
+		caller := &dingCoverageCaller{responses: map[string][]string{
+			"list_ding_receiver_status": {`{"success":true,"result":{"receivers":[]}}`},
+		}}
+		if _, err := runDingCoverage(t, ReceiverStatus, caller, "--ding-id", "ding-1"); err == nil {
+			t.Fatal("empty receiver response returned success")
+		}
+	})
+
+	t.Run("legacy output", func(t *testing.T) {
+		legacy := ReceiverStatus
+		legacy.OutputRollout = output.RolloutLegacyOnly
+		caller := &dingCoverageCaller{responses: map[string][]string{
+			"list_ding_receiver_status": {`{"success":true,"result":{"receivers":[{"openDingId":"ding-1","confirmedStatus":1,"receiverNick":"fixture"}]}}`},
+		}}
+		stdout, err := runDingCoverageOutput(t, legacy, caller, "--ding-id", "ding-1")
+		if err != nil {
+			t.Fatalf("receiver legacy output: %v", err)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(stdout, &payload); err != nil || payload["count"] != float64(1) {
+			t.Fatalf("receiver legacy payload=%#v decode=%v", payload, err)
+		}
+		if len(caller.arguments) != 1 || caller.arguments[0]["openDingId"] != "ding-1" {
+			t.Fatalf("receiver arguments=%#v", caller.arguments)
+		}
+	})
 }
 
 func TestCrossPlatformCoverageDINGExactReadShortcutsProjectUnifiedData(t *testing.T) {

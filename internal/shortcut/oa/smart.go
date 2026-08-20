@@ -25,10 +25,7 @@ func oaFirstPageOnly(rt *shortcut.RuntimeContext, tool, collection string, param
 	if err != nil {
 		return err
 	}
-	result, err := oaRequireObject(data, operation, "result")
-	if err != nil {
-		return err
-	}
+	result, _ := data["result"].(map[string]any)
 	page, err := oaHasMorePage(result, operation, 1)
 	if err != nil {
 		return err
@@ -141,10 +138,7 @@ var MyInitiated = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		result, err := oaRequireObject(data, operation, "result")
-		if err != nil {
-			return err
-		}
+		result, _ := data["result"].(map[string]any)
 		page, err := oaHasMorePage(result, operation, rt.Int("page"))
 		if err != nil {
 			return err
@@ -211,10 +205,7 @@ var Approve = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		result, err := oaRequireObject(pending, "oa/list_pending_approvals", "result")
-		if err != nil {
-			return err
-		}
+		result, _ := pending["result"].(map[string]any)
 		page, err := oaHasMorePage(result, "oa/list_pending_approvals", 1)
 		if err != nil {
 			return err

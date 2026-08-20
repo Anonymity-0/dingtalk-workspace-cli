@@ -37,10 +37,7 @@ func oaInstancePage(rt *shortcut.RuntimeContext, tool string, params map[string]
 	if err != nil {
 		return err
 	}
-	result, err := oaRequireObject(data, operation, "result")
-	if err != nil {
-		return err
-	}
+	result, _ := data["result"].(map[string]any)
 	evidence, err := oaHasMorePage(result, operation, page)
 	if err != nil {
 		return err
@@ -148,10 +145,7 @@ var ListForms = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		result, err := oaRequireObject(data, operation, "result")
-		if err != nil {
-			return err
-		}
+		result, _ := data["result"].(map[string]any)
 		page, err := oaCursorPage(result, operation, rt.Int("cursor"))
 		if err != nil {
 			return err
