@@ -187,13 +187,14 @@ var Approve = shortcut.Shortcut{
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"keyword"}, Description: "--keyword 去除空白后不能为空，且必须唯一匹配完整待办集合中的一条实例"}},
 	Tips:        []string{`dws oa +approve-by --keyword 报销`, `dws oa +approve-by --keyword 出差单 --comment "同意"`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		if rt.Str("keyword") == "" {
+		keyword := strings.TrimSpace(rt.Str("keyword"))
+		if keyword == "" {
 			return apperrors.NewValidation("--keyword 不能为空")
 		}
 		return nil
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		keyword := rt.Str("keyword")
+		keyword := strings.TrimSpace(rt.Str("keyword"))
 		now := time.Now()
 		pending, err := rt.CallMCPData("oa", "list_pending_approvals", map[string]any{
 			"starTime": float64(now.AddDate(0, 0, -90).UnixMilli()), "endTime": float64(now.UnixMilli()), "query": keyword,
