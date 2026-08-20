@@ -51,4 +51,4 @@ dws doc +create --name "<文档名>" --content @body.json --doc-format jsonml --
 
 只有 shortcut 未公开所需的底层参数或需要原始响应时，才读取精确 leaf Schema 后使用 `dws doc create`。不要因为熟悉旧参数就默认退回原子命令，也不要使用已删除的 Python 创建脚本。
 
-复杂排版按需读取 [doc-style-guideline.md](style/doc-style-guideline.md)；命令选路仍以本页的 `+create` 为准。
+复杂排版按需读取 [doc-style-guideline.md](style/doc-style-guideline.md)；需要 JSONML 起稿判定与起稿前设计规划时读 [doc-create-workflow.md](style/doc-create-workflow.md)；两者只按当前需求选一，命令选路仍以本页的 `+create` 为准。

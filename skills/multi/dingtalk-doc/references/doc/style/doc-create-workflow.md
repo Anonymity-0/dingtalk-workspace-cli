@@ -399,7 +399,7 @@ dws doc +update --node <nodeId> --command append --content @./drafts/<name>-resu
 - element JSON 次选：`doc block insert` / `doc block update` 不带 `--content-format jsonml` 时按老接口 JSON 解析；仅在 JSONML 不支持某字段时使用
 - markdown 兜底：`doc update --mode append`（末尾追加纯文本段落，无富结构需保留时）
 
-字段结构以 [`doc.md`](../../doc.md) 为准；何时用何种精修路径见 [doc-update-workflow.md §3「改写路径速查」](./doc-update-workflow.md)。
+字段结构以精确 leaf Schema 为准；何时用何种精修路径见 [doc-update-workflow.md §3「改写路径速查」](./doc-update-workflow.md)。
 
 ## 交付口径
 
