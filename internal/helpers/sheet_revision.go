@@ -19,9 +19,11 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
@@ -215,6 +217,17 @@ var sheetChangesetResult = &contract.ResultSpec{
 	}`),
 }
 
+type sheetPublishedResultSchemaCache struct {
+	once   sync.Once
+	schema map[string]any
+	err    error
+}
+
+var (
+	sheetRevisionPublishedSchemaCache  sheetPublishedResultSchemaCache
+	sheetChangesetPublishedSchemaCache sheetPublishedResultSchemaCache
+)
+
 func newSheetRevisionCmds() []*cobra.Command {
 	return []*cobra.Command{newSheetRevisionGetCmd(), newSheetChangesetGetCmd()}
 }
@@ -385,6 +398,14 @@ func decodeSheetRevisionResult(tool, raw string) (any, error) {
 			return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v%s", tool, err, sheetResultLogIDSuffix(object)))
 		}
 	}
+	if err := validateSheetPublishedResult(tool, object); err != nil {
+		return nil, invalidSheetRevisionResponse(tool,
+			fmt.Sprintf("MCP sheet read tool returned data that does not match its published result contract: %v%s",
+				err, sheetResultLogIDSuffix(object)),
+			"invalid_tool_response",
+			false,
+		)
+	}
 	return object, nil
 }
 
@@ -457,6 +478,72 @@ func normalizeSheetChangesetTransport(object map[string]any) error {
 	}
 
 	return fmt.Errorf("成功响应缺少 changesetsJson")
+}
+
+func validateSheetPublishedResult(tool string, object map[string]any) error {
+	var rawSchema json.RawMessage
+	var cache *sheetPublishedResultSchemaCache
+	switch tool {
+	case sheetRevisionGetRemoteTool:
+		rawSchema = sheetRevisionResult.DataSchema
+		cache = &sheetRevisionPublishedSchemaCache
+	case sheetChangesetGetRemoteTool:
+		rawSchema = sheetChangesetResult.DataSchema
+		cache = &sheetChangesetPublishedSchemaCache
+	default:
+		return fmt.Errorf("未知工具 %q", tool)
+	}
+
+	cache.once.Do(func() { cache.err = json.Unmarshal(rawSchema, &cache.schema) })
+	if cache.err != nil {
+		return fmt.Errorf("读取已发布 Result Schema 失败: %v", cache.err)
+	}
+	schema := cache.schema
+	if err := cli.ValidateJSONSchemaValue(object, schema); err != nil {
+		return err
+	}
+	if strings.TrimSpace(object["logId"].(string)) == "" {
+		return fmt.Errorf("$.logId 不能为空")
+	}
+
+	switch tool {
+	case sheetRevisionGetRemoteTool:
+		if _, err := sheetNonNegativeInteger(object["revision"]); err != nil {
+			return fmt.Errorf("$.revision %v", err)
+		}
+	case sheetChangesetGetRemoteTool:
+		latest, err := sheetNonNegativeInteger(object["latestRevision"])
+		if err != nil {
+			return fmt.Errorf("$.latestRevision %v", err)
+		}
+		start, err := sheetNonNegativeInteger(object["startRevision"])
+		if err != nil {
+			return fmt.Errorf("$.startRevision %v", err)
+		}
+		end, err := sheetNonNegativeInteger(object["endRevision"])
+		if err != nil {
+			return fmt.Errorf("$.endRevision %v", err)
+		}
+		if start > end {
+			return fmt.Errorf("$.startRevision 不能大于 $.endRevision")
+		}
+		if end > latest {
+			return fmt.Errorf("$.endRevision 不能大于 $.latestRevision")
+		}
+	}
+	return nil
+}
+
+func sheetNonNegativeInteger(value any) (int64, error) {
+	number, ok := value.(json.Number)
+	if !ok {
+		return 0, fmt.Errorf("必须是非负整数")
+	}
+	parsed, err := strconv.ParseInt(number.String(), 10, 64)
+	if err != nil || parsed < 0 {
+		return 0, fmt.Errorf("必须是非负整数")
+	}
+	return parsed, nil
 }
 
 func sheetRevisionNumberArg(raw string) (any, error) {

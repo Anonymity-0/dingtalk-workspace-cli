@@ -172,7 +172,7 @@ func TestSheetChangesetGetAcceptsZeroStartAndOmitsOptionalEnd(t *testing.T) {
 			"changes":[{
 				"type":"RANGE_CONTENT_SET",
 				"targets":[{"scope":"RANGE","sheetId":"sheet-id","sheetName":"项目","sheetNameSource":"AT_CHANGE","a1Range":"C2","role":"AFFECTED"}],
-				"details":{"cell":{"value":"完成"},"futureSafeField":{"x":1}},
+				"details":{"cell":{"value":{"kind":"STRING","stringValue":"完成"}},"futureSafeField":{"x":1}},
 				"detailsStatus":"COMPLETE",
 				"omissions":[]
 			}]
@@ -224,7 +224,7 @@ func TestSheetChangesetGetSendsNumericEndRevision(t *testing.T) {
 }
 
 func TestDecodeSheetChangesetTransportAcceptsLegacyArray(t *testing.T) {
-	const response = `{"success":true,"changesets":[{"revision":9007199254740993}]}`
+	const response = `{"success":true,"logId":"trace-legacy","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":9007199254740993,"startRevision":9007199254740992,"endRevision":9007199254740993,"summary":{"changeCount":0,"completeChangeCount":0,"partialChangeCount":0,"unsupportedChangeCount":0,"containsStateReset":false,"containsIncompleteChanges":false,"affectedSheets":[]},"changesets":[{"revision":9007199254740993,"createTime":"2026-08-20T10:00:00+08:00","isSelfEdit":true,"eventType":"EDIT","detailsStatus":"COMPLETE","changes":[]}]}`
 	decoded, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool, response)
 	if err != nil {
 		t.Fatalf("decode legacy array: %v", err)
@@ -326,6 +326,84 @@ func TestSheetRevisionCommandsRejectInvalidResponsesWithoutSuccessEnvelope(t *te
 			}
 			if strings.TrimSpace(got) != "" {
 				t.Fatalf("failure path emitted a success envelope: %s", got)
+			}
+		})
+	}
+}
+
+func TestSheetRevisionCommandsRejectPublishedResultContractDrift(t *testing.T) {
+	validSummary := `"summary":{"changeCount":0,"completeChangeCount":0,"partialChangeCount":0,"unsupportedChangeCount":0,"containsStateReset":false,"containsIncompleteChanges":false,"affectedSheets":[]}`
+	validChangesetPrefix := `"success":true,"logId":"trace-contract","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":1,"startRevision":0,"endRevision":1,`
+	validChangesets := `"changesets":[]`
+
+	tests := []struct {
+		name     string
+		tool     string
+		response string
+		build    func() *cobra.Command
+		args     []string
+	}{
+		{
+			name: "revision missing required field", tool: sheetRevisionGetRemoteTool,
+			response: `{"success":true,"logId":"trace-contract"}`,
+			build:    newSheetRevisionGetCmd, args: []string{"--node", "node-1"},
+		},
+		{
+			name: "revision wrong field type", tool: sheetRevisionGetRemoteTool,
+			response: `{"success":true,"logId":"trace-contract","revision":"1"}`,
+			build:    newSheetRevisionGetCmd, args: []string{"--node", "node-1"},
+		},
+		{
+			name: "revision empty log id", tool: sheetRevisionGetRemoteTool,
+			response: `{"success":true,"logId":" ","revision":1}`,
+			build:    newSheetRevisionGetCmd, args: []string{"--node", "node-1"},
+		},
+		{
+			name: "changeset missing summary", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{`+validChangesetPrefix+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "changeset wrong revision type", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-contract","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":"1","startRevision":0,"endRevision":1,`+validSummary+`,`+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "changeset wrong schema version", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-contract","schemaVersion":3,"changeSemantics":"FORWARD_ONLY","latestRevision":1,"startRevision":0,"endRevision":1,`+validSummary+`,`+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "changeset wrong semantics", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-contract","schemaVersion":2,"changeSemantics":"BIDIRECTIONAL","latestRevision":1,"startRevision":0,"endRevision":1,`+validSummary+`,`+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "changeset malformed summary", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{`+validChangesetPrefix+`"summary":{"changeCount":0},`+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "changeset item missing required field", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{`+validChangesetPrefix+validSummary+`,"changesets":[{"revision":1,"isSelfEdit":true,"eventType":"EDIT","detailsStatus":"COMPLETE","changes":[]}]}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &sheetRevisionTestCaller{responses: map[string]string{test.tool: test.response}}
+			got, err := executeSheetRevisionCommand(t, caller, test.build(), test.args...)
+			if err == nil {
+				t.Fatalf("command unexpectedly accepted contract drift with output %q", got)
+			}
+			var apiErr *apperrors.Error
+			if !errors.As(err, &apiErr) || apiErr.Reason != "invalid_tool_response" ||
+				apiErr.Operation != "sheet/"+test.tool || apiErr.FailureStage != "response_validation" {
+				t.Fatalf("contract drift error = %#v", err)
+			}
+			if strings.TrimSpace(got) != "" {
+				t.Fatalf("contract drift emitted a success envelope: %s", got)
 			}
 		})
 	}
