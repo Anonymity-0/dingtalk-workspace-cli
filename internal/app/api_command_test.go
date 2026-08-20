@@ -20,10 +20,13 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/apiclient"
+	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 )
 
@@ -124,7 +127,16 @@ func (g failingAppTokenGetter) GetToken(context.Context) (string, error) {
 
 func TestRunAPIDryRunHasZeroCredentialFileAndNetworkSideEffects(t *testing.T) {
 	oldProvider := newAppTokenProvider
-	t.Cleanup(func() { newAppTokenProvider = oldProvider })
+	oldResolver := resolveRawAPICredentials
+	t.Cleanup(func() {
+		newAppTokenProvider = oldProvider
+		resolveRawAPICredentials = oldResolver
+	})
+	resolverCalled := false
+	resolveRawAPICredentials = func(string, string, string) (rawAPICredentials, error) {
+		resolverCalled = true
+		return rawAPICredentials{}, errors.New("credential resolver must not run")
+	}
 	called := false
 	newAppTokenProvider = func(_, _, _ string) appTokenGetter {
 		return failingAppTokenGetter{called: &called}
@@ -146,6 +158,9 @@ func TestRunAPIDryRunHasZeroCredentialFileAndNetworkSideEffects(t *testing.T) {
 	}
 	if called {
 		t.Fatal("dry-run called AppTokenProvider")
+	}
+	if resolverCalled {
+		t.Fatal("dry-run resolved app credentials")
 	}
 	got := stdout.String()
 	if strings.Contains(got, "must-not-be-shown") || !strings.Contains(got, "not opened") || !strings.Contains(got, "Auth:") {
@@ -198,10 +213,246 @@ func TestAPIFileFlagCompatibilityAndValidation(t *testing.T) {
 }
 
 func TestResolveRawAPIExplicitTokenIsTemporaryAppToken(t *testing.T) {
-	got, err := resolveRawAPIToken(context.Background(), " temporary-app-token ")
+	oldResolver := resolveRawAPICredentials
+	oldProvider := newAppTokenProvider
+	t.Cleanup(func() {
+		resolveRawAPICredentials = oldResolver
+		newAppTokenProvider = oldProvider
+	})
+	resolveRawAPICredentials = func(string, string, string) (rawAPICredentials, error) {
+		t.Fatal("explicit token resolved AppKey/AppSecret")
+		return rawAPICredentials{}, nil
+	}
+	newAppTokenProvider = func(string, string, string) appTokenGetter {
+		t.Fatal("explicit token created AppTokenProvider")
+		return nil
+	}
+
+	got, err := resolveRawAPIToken(context.Background(), " temporary-app-token ", "flag-id", "flag-secret")
 	if err != nil || got != "temporary-app-token" {
 		t.Fatalf("explicit App Token = %q, %v", got, err)
 	}
+}
+
+func TestResolveRawAPICredentialsUsesAtomicSourcePairs(t *testing.T) {
+	tests := []struct {
+		name          string
+		flagID        string
+		flagSecret    string
+		envID         string
+		envSecret     string
+		configID      string
+		configSecret  any
+		wantID        string
+		wantSecret    string
+		wantSource    string
+		wantErr       string
+		withoutConfig bool
+	}{
+		{
+			name:   "complete flags override half env and config",
+			flagID: "flag-id", flagSecret: "flag-secret",
+			envSecret: "env-secret", configID: "config-id", configSecret: "config-secret",
+			wantID: "flag-id", wantSecret: "flag-secret", wantSource: "flag",
+		},
+		{
+			name:   "half flag pair fails before complete env",
+			flagID: "flag-id", envID: "env-id", envSecret: "env-secret",
+			wantErr: "--client-id 和 --client-secret 必须同时提供",
+		},
+		{
+			name:       "half flag secret fails before complete env",
+			flagSecret: "flag-secret", envID: "env-id", envSecret: "env-secret",
+			wantErr: "--client-id 和 --client-secret 必须同时提供",
+		},
+		{
+			name:  "complete env overrides config",
+			envID: "env-id", envSecret: "env-secret", configID: "config-id", configSecret: "config-secret",
+			wantID: "env-id", wantSecret: "env-secret", wantSource: "env",
+		},
+		{
+			name:      "half env does not mix with complete config",
+			envSecret: "env-secret", configID: "config-id", configSecret: "config-secret",
+			wantErr: "DWS_CLIENT_ID 和 DWS_CLIENT_SECRET 必须同时设置",
+		},
+		{
+			name:         "half env id does not mix with complete config",
+			envID:        "env-id",
+			configID:     "config-id",
+			configSecret: "config-secret",
+			wantErr:      "DWS_CLIENT_ID 和 DWS_CLIENT_SECRET 必须同时设置",
+		},
+		{
+			name:      "legacy mixed pair reproduction fails",
+			envSecret: "new-secret", configID: "old-client-id", configSecret: "",
+			wantErr: "DWS_CLIENT_ID 和 DWS_CLIENT_SECRET 必须同时设置",
+		},
+		{
+			name:     "complete plain app config",
+			configID: "config-id", configSecret: "config-secret",
+			wantID: "config-id", wantSecret: "config-secret", wantSource: "app_config",
+		},
+		{
+			name:     "app config missing secret",
+			configID: "config-id", configSecret: "",
+			wantErr: "本地应用配置不完整",
+		},
+		{
+			name:         "app config missing client id",
+			configSecret: "config-secret",
+			wantErr:      "本地应用配置不完整",
+		},
+		{
+			name:          "missing all credential sources",
+			withoutConfig: true,
+			wantErr:       "缺少应用凭证",
+		},
+		{
+			name:   "placeholder flag pair rejected",
+			flagID: "<APP_KEY>", flagSecret: "<APP_SECRET>",
+			wantErr: "占位符",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(authpkg.EnvClientID, tt.envID)
+			t.Setenv(authpkg.EnvClientSecret, tt.envSecret)
+			configDir := t.TempDir()
+			if !tt.withoutConfig {
+				writeRawAPIAppConfig(t, configDir, tt.configID, tt.configSecret)
+			}
+
+			got, err := resolveRawAPICredentialsFromSources(tt.flagID, tt.flagSecret, configDir)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error = %v, want %q", err, tt.wantErr)
+				}
+				for _, secret := range []string{tt.flagSecret, tt.envSecret, secretString(tt.configSecret)} {
+					if secret != "" && strings.Contains(err.Error(), secret) {
+						t.Fatalf("error leaked secret %q: %v", secret, err)
+					}
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ClientID != tt.wantID || got.ClientSecret != tt.wantSecret || got.Source != tt.wantSource {
+				t.Fatalf("credentials = %#v, want id=%q source=%q", got, tt.wantID, tt.wantSource)
+			}
+		})
+	}
+}
+
+func TestResolveRawAPICredentialsSupportsFileSecretRef(t *testing.T) {
+	t.Setenv(authpkg.EnvClientID, "")
+	t.Setenv(authpkg.EnvClientSecret, "")
+	configDir := t.TempDir()
+	secretPath := filepath.Join(configDir, "app-secret")
+	if err := os.WriteFile(secretPath, []byte("file-secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writeRawAPIAppConfig(t, configDir, "config-id", map[string]any{"source": "file", "id": secretPath})
+
+	got, err := resolveRawAPICredentialsFromSources("", "", configDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ClientID != "config-id" || got.ClientSecret != "file-secret" || got.Source != "app_config" {
+		t.Fatalf("file-ref credentials = %#v", got)
+	}
+}
+
+func TestResolveRawAPICredentialsRejectsUnreadableSecretRef(t *testing.T) {
+	t.Setenv(authpkg.EnvClientID, "")
+	t.Setenv(authpkg.EnvClientSecret, "")
+	configDir := t.TempDir()
+	missingSecretPath := filepath.Join(configDir, "missing-secret")
+	writeRawAPIAppConfig(t, configDir, "config-id", map[string]any{"source": "file", "id": missingSecretPath})
+
+	_, err := resolveRawAPICredentialsFromSources("", "", configDir)
+	if err == nil || !strings.Contains(err.Error(), "无法从 Keychain 解析 Client Secret") {
+		t.Fatalf("unreadable SecretRef error = %v", err)
+	}
+	if strings.Contains(err.Error(), missingSecretPath) {
+		t.Fatalf("unreadable SecretRef error leaked backend details: %v", err)
+	}
+}
+
+func TestResolveRawAPITokenPassesOneResolvedPairToProvider(t *testing.T) {
+	oldResolver := resolveRawAPICredentials
+	oldProvider := newAppTokenProvider
+	t.Cleanup(func() {
+		resolveRawAPICredentials = oldResolver
+		newAppTokenProvider = oldProvider
+	})
+	resolveRawAPICredentials = func(flagID, flagSecret, _ string) (rawAPICredentials, error) {
+		if flagID != "flag-id" || flagSecret != "flag-secret" {
+			t.Fatalf("resolver flags = %q/%q", flagID, flagSecret)
+		}
+		return rawAPICredentials{ClientID: "resolved-id", ClientSecret: "resolved-secret", Source: "env"}, nil
+	}
+	newAppTokenProvider = func(_ string, clientID, clientSecret string) appTokenGetter {
+		if clientID != "resolved-id" || clientSecret != "resolved-secret" {
+			t.Fatalf("provider pair = %q/%q", clientID, clientSecret)
+		}
+		return fakeAppTokenGetter{token: " app-token "}
+	}
+
+	got, err := resolveRawAPIToken(context.Background(), "", "flag-id", "flag-secret")
+	if err != nil || got != "app-token" {
+		t.Fatalf("app token = %q, %v", got, err)
+	}
+}
+
+func TestResolveRawAPITokenRejectsHalfPairsBeforeProvider(t *testing.T) {
+	oldResolver := resolveRawAPICredentials
+	oldProvider := newAppTokenProvider
+	t.Cleanup(func() {
+		resolveRawAPICredentials = oldResolver
+		newAppTokenProvider = oldProvider
+	})
+	resolveRawAPICredentials = resolveRawAPICredentialsFromSources
+	newAppTokenProvider = func(string, string, string) appTokenGetter {
+		t.Fatal("half credential pair created AppTokenProvider")
+		return nil
+	}
+
+	t.Run("flags", func(t *testing.T) {
+		t.Setenv(authpkg.EnvClientID, "env-id")
+		t.Setenv(authpkg.EnvClientSecret, "env-secret")
+		if _, err := resolveRawAPIToken(context.Background(), "", "flag-id", ""); err == nil || !strings.Contains(err.Error(), "必须同时提供") {
+			t.Fatalf("half flag pair error = %v", err)
+		}
+	})
+
+	t.Run("environment", func(t *testing.T) {
+		t.Setenv(authpkg.EnvClientID, "env-id")
+		t.Setenv(authpkg.EnvClientSecret, "")
+		if _, err := resolveRawAPIToken(context.Background(), "", "", ""); err == nil || !strings.Contains(err.Error(), "必须同时设置") {
+			t.Fatalf("half env pair error = %v", err)
+		}
+	})
+}
+
+func writeRawAPIAppConfig(t *testing.T, configDir, clientID string, clientSecret any) {
+	t.Helper()
+	payload, err := json.Marshal(map[string]any{
+		"clientId":     clientID,
+		"clientSecret": clientSecret,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "app.json"), payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func secretString(value any) string {
+	secret, _ := value.(string)
+	return secret
 }
 
 type apiRoundTripper func(*http.Request) (*http.Response, error)

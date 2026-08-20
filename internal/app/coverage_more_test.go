@@ -113,12 +113,12 @@ func TestCrossPlatformCoverageRawAPIAndTokenCoverage(t *testing.T) {
 			t.Fatalf("query JSON %q empty", raw)
 		}
 	}
-	if got, err := resolveRawAPIToken(context.Background(), " token "); err != nil || got != "token" {
+	if got, err := resolveRawAPIToken(context.Background(), " token ", "", ""); err != nil || got != "token" {
 		t.Fatalf("explicit raw token = %q, %v", got, err)
 	}
 	authpkg.SetClientID("")
 	authpkg.SetClientSecret("")
-	if _, err := resolveRawAPIToken(context.Background(), ""); err == nil {
+	if _, err := resolveRawAPIToken(context.Background(), "", "", ""); err == nil {
 		t.Fatal("missing app credentials succeeded")
 	}
 

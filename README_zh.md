@@ -563,9 +563,15 @@ Agent 工作流和事件参数详见 `skills/multi/dingtalk-event/SKILL.md`。
 
 > **前置条件**：必须使用自有应用凭证登录（见[自建应用模式](#开始使用)）。通过 MCP 默认凭证登录 不支持 raw API 调用。
 
+Client ID/Client Secret 必须来自同一完整凭证对，优先级为：完整 `--client-id/--client-secret` > 完整 `DWS_CLIENT_ID/DWS_CLIENT_SECRET` > 完整 app config。任一来源只提供一项都会明确失败，不会与其他来源拼接。单次 flags/env 不持久化 AppSecret，但获取到的 App Token 会按 `app-token:<clientID>` 缓存；隐藏 `--token` 仅临时使用调用方提供的 App Token，不持久化、不自动刷新。
+
 ```bash
 # 登录（仅首次）
 dws auth login --client-id <APP_KEY> --client-secret <APP_SECRET>
+
+# 或使用一对环境变量，完整 env pair 会整体覆盖 app config
+export DWS_CLIENT_ID=<APP_KEY>
+export DWS_CLIENT_SECRET=<APP_SECRET>
 
 # === api.dingtalk.com ===
 

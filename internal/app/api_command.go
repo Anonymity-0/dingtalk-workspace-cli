@@ -16,6 +16,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -49,10 +50,13 @@ var newAppTokenProvider = func(configDir, appKey, appSecret string) appTokenGett
 
 var newRawAPIClient = apiclient.NewClient
 
-var (
-	apiClientID     = authpkg.ClientID
-	apiClientSecret = authpkg.ClientSecret
-)
+type rawAPICredentials struct {
+	ClientID     string
+	ClientSecret string
+	Source       string
+}
+
+var resolveRawAPICredentials = resolveRawAPICredentialsFromSources
 
 // newAPICommand creates the `dws api` subcommand for raw DingTalk OpenAPI calls.
 func newAPICommand(flags *GlobalFlags) *cobra.Command {
@@ -71,7 +75,11 @@ oapi.dingtalk.com:
   Token 通过 URL 查询参数 (access_token) 传递。
   路径格式: /topapi/v2/xxx 或完整 URL https://oapi.dingtalk.com/topapi/...
 
-仅限使用自有应用凭证（--client-id/--client-secret）登录后使用。
+仅限使用自有应用的完整 Client ID/Client Secret pair。凭证优先级为:
+  完整 --client-id/--client-secret > 完整 DWS_CLIENT_ID/DWS_CLIENT_SECRET > 完整 app config。
+同一来源只提供一项会明确失败，绝不会与其他来源拼接。
+单次 flags/env 不持久化 Client Secret；获取到的 App Token 会按 Client ID 独立缓存。
+隐藏 --token 仅临时使用调用方提供的 App Token，不持久化、不自动刷新。
 通过 MCP 默认凭证登录获取的加密 token 不支持 raw API 调用。
 
 示例:
@@ -257,7 +265,7 @@ func runAPI(cmd *cobra.Command, args []string, gf *GlobalFlags, af *apiFlags) er
 	// 9. Resolve app-level token (with timeout).
 	tokenCtx, tokenCancel := context.WithTimeout(ctx, 15*time.Second)
 	defer tokenCancel()
-	token, err := resolveRawAPIToken(tokenCtx, gf.Token)
+	token, err := resolveRawAPIToken(tokenCtx, gf.Token, gf.ClientID, gf.ClientSecret)
 	if err != nil {
 		return err
 	}
@@ -353,41 +361,97 @@ func parseQueryStringToJSON(rawQuery string) string {
 // It uses AppTokenProvider to fetch from the unified POST /v1.0/oauth2/accessToken
 // endpoint. The same token works for both api.dingtalk.com and oapi.dingtalk.com.
 // Tokens are cached in keychain and auto-refreshed when expired.
-func resolveRawAPIToken(ctx context.Context, explicitToken string) (string, error) {
+func resolveRawAPIToken(ctx context.Context, explicitToken, flagClientID, flagClientSecret string) (string, error) {
 	// Hidden compatibility flag: the caller supplies a temporary App Token.
 	// It is never persisted and must not be interpreted as an OAuth User Token.
 	if t := strings.TrimSpace(explicitToken); t != "" {
 		return t, nil
 	}
 
-	// Resolve app credentials (clientID/clientSecret).
-	appKey := apiClientID()
-	appSecret := apiClientSecret()
-
-	if appKey == "" || appSecret == "" || strings.HasPrefix(appKey, "<") || strings.HasPrefix(appSecret, "<") {
-		return "", apperrors.NewAuth(
-			"缺少应用凭证。dws api 需要使用自有应用的 AppKey/AppSecret 获取 accessToken。\n\n" +
-				"解决方法:\n" +
-				"  1. 使用自有应用凭证登录:\n" +
-				"     dws auth login --client-id <APP_KEY> --client-secret <APP_SECRET>\n\n" +
-				"  2. 或通过环境变量设置:\n" +
-				"     export DWS_CLIENT_ID=<APP_KEY>\n" +
-				"     export DWS_CLIENT_SECRET=<APP_SECRET>\n" +
-				"     dws auth login\n\n" +
-				"说明: 通过 MCP 默认凭证登录的加密 token 无法用于 raw API 调用。",
-		)
+	configDir := defaultConfigDir()
+	credentials, err := resolveRawAPICredentials(flagClientID, flagClientSecret, configDir)
+	if err != nil {
+		return "", err
 	}
 
 	// Use AppTokenProvider for automatic caching and refresh.
-	configDir := defaultConfigDir()
-	provider := newAppTokenProvider(configDir, appKey, appSecret)
+	provider := newAppTokenProvider(configDir, credentials.ClientID, credentials.ClientSecret)
 	token, err := provider.GetToken(ctx)
 	if err != nil {
-		return "", apperrors.NewAuth(fmt.Sprintf("获取应用级访问令牌失败: %v", err))
+		return "", apperrors.NewAuth(fmt.Sprintf("获取应用级访问令牌失败 (凭证来源: %s): %v", credentials.Source, err))
 	}
 	if strings.TrimSpace(token) == "" {
 		return "", apperrors.NewAuth("应用级访问令牌为空，请检查应用凭证是否正确")
 	}
 
 	return strings.TrimSpace(token), nil
+}
+
+func resolveRawAPICredentialsFromSources(flagClientID, flagClientSecret, configDir string) (rawAPICredentials, error) {
+	flagIDSet := rawAPICredentialSet(flagClientID)
+	flagSecretSet := rawAPICredentialSet(flagClientSecret)
+	if flagIDSet != flagSecretSet {
+		return rawAPICredentials{}, apperrors.NewAuth("--client-id 和 --client-secret 必须同时提供；不会与环境变量或 app config 混用")
+	}
+	if flagIDSet {
+		return validateRawAPICredentialPair(flagClientID, flagClientSecret, "flag")
+	}
+
+	envClientID := os.Getenv(authpkg.EnvClientID)
+	envClientSecret := os.Getenv(authpkg.EnvClientSecret)
+	envIDSet := rawAPICredentialSet(envClientID)
+	envSecretSet := rawAPICredentialSet(envClientSecret)
+	if envIDSet != envSecretSet {
+		return rawAPICredentials{}, apperrors.NewAuth("DWS_CLIENT_ID 和 DWS_CLIENT_SECRET 必须同时设置；不会与 app config 混用")
+	}
+	if envIDSet {
+		return validateRawAPICredentialPair(envClientID, envClientSecret, "env")
+	}
+
+	clientID, clientSecret, clientIDSource, clientSecretSource, err := authpkg.ResolveAppCredentialsStrict(configDir)
+	if err != nil {
+		return rawAPICredentials{}, classifyRawAPIAppConfigError(err)
+	}
+	if clientIDSource != authpkg.CredentialSourceAppConfig ||
+		(clientSecretSource != authpkg.CredentialSourceKeychain && clientSecretSource != authpkg.CredentialSourcePlainConfig) {
+		return rawAPICredentials{}, apperrors.NewAuth("本地应用配置的 Client ID 和 Client Secret 来源不一致，已拒绝混用")
+	}
+	return validateRawAPICredentialPair(clientID, clientSecret, "app_config")
+}
+
+func validateRawAPICredentialPair(clientID, clientSecret, source string) (rawAPICredentials, error) {
+	trimmedClientID := strings.TrimSpace(clientID)
+	if trimmedClientID == "" || strings.TrimSpace(clientSecret) == "" ||
+		strings.HasPrefix(trimmedClientID, "<") || strings.HasPrefix(strings.TrimSpace(clientSecret), "<") {
+		return rawAPICredentials{}, apperrors.NewAuth(fmt.Sprintf("%s 凭证不完整或仍为占位符，Client ID 和 Client Secret 必须同时提供有效值", source))
+	}
+	return rawAPICredentials{
+		ClientID:     trimmedClientID,
+		ClientSecret: clientSecret,
+		Source:       source,
+	}, nil
+}
+
+func classifyRawAPIAppConfigError(err error) error {
+	switch {
+	case errors.Is(err, authpkg.ErrAppConfigMissing):
+		return apperrors.NewAuth(
+			"缺少应用凭证。dws api 需要完整的 Client ID/Client Secret pair。\n\n" +
+				"可选择以下任一方式:\n" +
+				"  1. 同时传入 --client-id 和 --client-secret\n" +
+				"  2. 同时设置 DWS_CLIENT_ID 和 DWS_CLIENT_SECRET\n" +
+				"  3. 使用自有应用凭证执行 dws auth login\n\n" +
+				"说明: 通过 MCP 默认凭证登录的加密 token 无法用于 raw API 调用。",
+		)
+	case errors.Is(err, authpkg.ErrClientIDEmpty), errors.Is(err, authpkg.ErrClientSecretEmpty):
+		return apperrors.NewAuth("本地应用配置不完整，缺少 Client ID 或 Client Secret；请完整设置环境变量 pair、CLI pair，或重新配置自有应用凭证")
+	case errors.Is(err, authpkg.ErrSecretResolve):
+		return apperrors.NewAuth("无法从 Keychain 解析 Client Secret；请检查 Keychain 状态，或同时设置 DWS_CLIENT_ID 和 DWS_CLIENT_SECRET")
+	default:
+		return apperrors.NewAuth(fmt.Sprintf("解析本地应用凭证失败: %v", err))
+	}
+}
+
+func rawAPICredentialSet(value string) bool {
+	return strings.TrimSpace(value) != ""
 }

@@ -569,9 +569,15 @@ See `skills/multi/dingtalk-event/SKILL.md` for the Agent workflow and supported 
 
 > **Prerequisite**: Must login with your own app credentials (see [Custom App mode](#getting-started)). Encrypted tokens from MCP default-credential login are not supported for raw API calls.
 
+Client ID and Client Secret are resolved only as one complete pair, in this order: complete `--client-id/--client-secret` > complete `DWS_CLIENT_ID/DWS_CLIENT_SECRET` > complete app config. A half-configured source fails explicitly and is never combined with another source. One-shot flags/env do not persist the App Secret, while the acquired App Token is cached under `app-token:<clientID>`; the hidden `--token` accepts a temporary caller-supplied App Token and neither persists nor refreshes it.
+
 ```bash
 # Login (first time only)
 dws auth login --client-id <APP_KEY> --client-secret <APP_SECRET>
+
+# Or use one environment pair; a complete env pair overrides app config atomically
+export DWS_CLIENT_ID=<APP_KEY>
+export DWS_CLIENT_SECRET=<APP_SECRET>
 
 # === api.dingtalk.com ===
 
