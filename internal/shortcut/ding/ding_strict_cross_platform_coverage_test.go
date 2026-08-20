@@ -362,6 +362,13 @@ func TestCrossPlatformCoverageDINGUnavailableWritesNeverCallMCP(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageDINGCompatibilityWritesRequireConfirmationAndExecute(t *testing.T) {
+	for input, want := range map[string]string{"app": "APP", " sms ": "SMS", "call": "PHONE"} {
+		got, err := dingPersonalRemindType(input)
+		if err != nil || got != want {
+			t.Errorf("dingPersonalRemindType(%q)=(%q,%v), want (%q,nil)", input, got, err, want)
+		}
+	}
+
 	sendArgs := []string{"--users", "D-fixture", "--content", "fixture", "--type", "call", "--uuid", "fixture-uuid"}
 	unconfirmedSend := &dingCoverageCaller{responses: map[string][]string{}}
 	if err := runDingRoot(t, SendPersonal, unconfirmedSend, false, sendArgs...); err == nil || len(unconfirmedSend.history) != 0 {
