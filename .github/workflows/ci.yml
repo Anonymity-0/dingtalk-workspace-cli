@@ -1173,13 +1173,7 @@ jobs:
           test -n "$package_output"
           mapfile -t packages <<< "$package_output"
           test "${#packages[@]}" -gt 0
-          progress_flags=()
-          if [ "$COVERAGE_SHARD" = app ]; then
-            # app is one long package; keep per-test progress visible while its
-            # authoritative serial coverage profile is being generated.
-            progress_flags=(-v)
-          fi
-          go test "${progress_flags[@]}" -count=1 -p 1 \
+          go test -count=1 -p 1 \
             -coverprofile="coverage-shard-$COVERAGE_SHARD.txt" \
             -covermode=atomic \
             "${packages[@]}"
