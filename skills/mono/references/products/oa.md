@@ -27,7 +27,7 @@ Flags:
       --instance-id string   审批实例 ID (必填)
 ```
 
-### 审批附件授权与下载
+### 审批附件授权、上传与下载
 
 先从 `approval detail` 的返回中取得审批实例 `processInstanceId`、附件 `fileId`，以及授权下载所需的 `spaceId`。根据目标选择命令：
 

@@ -152,7 +152,7 @@ func validateOAAttachmentFileSize(cmd *cobra.Command, _ []string) error {
 func newOAAttachmentCommand() *cobra.Command {
 	attachmentCmd := &cobra.Command{
 		Use:   "attachment",
-		Short: "审批附件授权与下载链接",
+		Short: "审批附件授权、上传、下载与链接管理",
 		RunE:  groupRunE,
 	}
 
