@@ -1,6 +1,6 @@
 # OA Shortcut 下游能力需求
 
-基线：`c0b286c1e10b6fcebdff4ed522d3b1cf30549866`；Comparator：`lark-cli 1.0.87`；审计日期：2026-08-18。
+当前 main 基线：`b6eaf3c5af77b26cf1b1559fb7ea173fd0c5b971`；Comparator：`lark-cli 1.0.87`；审计日期：2026-08-20。
 
 本文只记录脱敏的能力标签与聚合事实。没有资源 ID、业务标题、姓名、邮箱、精确业务时间、trace/request ID 或原始响应。
 
@@ -15,7 +15,7 @@
 
 | Shortcut / 用户路线 | 最终分类 | 依据 |
 |---|---|---|
-| `+search-forms` | fully unlocked | current HEAD exact/raw：已知非空 1、保证零命中 0，稳定身份集合一致；public |
+| `+search-forms` | fully unlocked | current HEAD exact/raw：已知非空 2、保证零命中 0，稳定身份集合一致；public |
 | `+list-executed` | delivery hardened but downstream blocked | known-nonempty exact/raw 7 个稳定身份一致；guaranteed-zero raw 缺 `hasMore`，严格实现拒绝 |
 | `+list-submitted`、`+my-initiated` | delivery hardened but downstream blocked | known-nonempty exact/raw 14 个稳定身份一致；guaranteed-zero raw 缺 `hasMore`，严格实现拒绝 |
 | `+done-approvals` | routed | available 的隐藏兼容别名；新调用路由到 `+list-executed` |
@@ -32,16 +32,16 @@ OA 不能作为整体宣称 fully unlocked：源码 10 条中仅 1 条 fully unl
 
 | EVERY public Shortcut | Exact Shortcut | Owning atomic/raw | known-nonempty / guaranteed-zero | current HEAD 结论 |
 |---|---|---|---|---|
-| `oa +search-forms` | `dws oa +search-forms --query <known-or-random-query> --format json` | `dws oa approval search-forms --query <same-query> --format json` | 已知查询 1/1，稳定 `processCode` 集合相等；随机 UUID 查询 0/0 | `PASS-OA-SEARCH-DOUBLE`；fully unlocked |
+| `oa +search-forms` | `dws oa +search-forms --query <known-or-random-query> --format json` | `dws oa approval search-forms --query <same-query> --format json` | 已知查询 2/2，稳定 `processCode` 集合相等；随机唯一查询 0/0 | `PASS-OA-SEARCH-DOUBLE`；fully unlocked |
 
 该搜索接口一次返回完整匹配集合，不声明 cursor；双层证据验证的是同场景完整集合、稳定身份和独立随机零命中，而不是把已知集合后的空页当零命中。实现与严格响应测试位于 `internal/shortcut/oa/oa.go`、`internal/shortcut/oa/common.go` 和 `internal/shortcut/oa/oa_strict_cross_platform_coverage_test.go`。
 
 | Exact Shortcut 证明 | 标签 | 聚合事实 |
 |---|---|---|
-| `+list-executed` fail-closed | PASS | current HEAD known-nonempty exact/raw 为 7 且稳定身份集合一致；guaranteed-zero raw 缺 `hasMore`，exact 返回 `missing_pagination` |
-| `+list-submitted` fail-closed | PASS | current HEAD known-nonempty exact/raw 为 14 且稳定身份集合一致；guaranteed-zero raw 缺 `hasMore`，exact 返回 `missing_pagination` |
-| `+my-initiated` fail-closed | PASS | current HEAD known-nonempty exact/raw 为 14 且稳定身份集合一致；不回退 raw；guaranteed-zero 缺分页时失败 |
-| `+search-forms` | PASS | current HEAD 已知非空 1、保证零命中 0；exact/raw 稳定身份集合一致 |
+| `+list-executed` fail-closed | PASS | 先前同租户隔离诊断中 known-nonempty exact/raw 为 7 且稳定身份集合一致；guaranteed-zero raw 缺 `hasMore`，exact 返回 `missing_pagination` |
+| `+list-submitted` fail-closed | PASS | 先前同租户隔离诊断中 known-nonempty exact/raw 为 14 且稳定身份集合一致；guaranteed-zero raw 缺 `hasMore`，exact 返回 `missing_pagination` |
+| `+my-initiated` fail-closed | PASS | 先前同租户隔离诊断中 known-nonempty exact/raw 为 14 且稳定身份集合一致；不回退 raw；guaranteed-zero 缺分页时失败 |
+| `+search-forms` | PASS | current HEAD 已知非空 2、保证零命中 0；exact/raw 稳定身份集合一致 |
 | `+done-approvals`（隐藏兼容） | PASS | 已知非空 7；首屏终态明确 |
 | `+list-forms` fail-closed | PASS | 非空页缺 continuation 被拒绝；两个 cursor 的 93/93 项重叠 92 项 |
 | `+approve-by` 确认门禁单测 | PASS | 确认前 0 调用；确认后固定为读待办、读任务、写审批、精确任务读回 |
@@ -116,7 +116,7 @@ DWS 现有原子能力还覆盖审批记录、表单 Schema、流程预测、评
 ## `DS-oa-004`：编号列表零命中的分页终态
 
 - 优先级：P1；类型：contract insufficient；Owner：OA MCP adapter 与业务接口。
-- 影响：`+list-executed`、`+list-submitted`、`+my-initiated`。current HEAD 的 known-nonempty exact/raw 分别以 7、14、14 个稳定身份完全对齐，且 raw 明确 `hasMore=false`；但 guaranteed-zero-query 的 raw 响应只返回显式空 `values`，缺少 `hasMore`。
+- 影响：`+list-executed`、`+list-submitted`、`+my-initiated`。先前同租户隔离诊断的 known-nonempty exact/raw 分别以 7、14、14 个稳定身份完全对齐，且 raw 明确 `hasMore=false`；但 guaranteed-zero-query 的 raw 响应只返回显式空 `values`，缺少 `hasMore`。这些非公开入口未计入本轮 current-HEAD 发布 PASS。
 - 严格处置：空数组不推导分页终态。Shortcut 对缺 `hasMore` 返回 `missing_pagination`，三条命令均为 hidden/unavailable。
 - 验收：同一 guaranteed-zero-query 的 raw 响应必须返回布尔 `hasMore=false`；若将来允许 continuation，则必须提供可执行且严格前进的页码/游标，不能依赖集合长度推断。
 

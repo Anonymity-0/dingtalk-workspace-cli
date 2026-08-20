@@ -1,7 +1,7 @@
 # DING Shortcut 下游业务能力需求规格
 
-> 日期：2026-08-18
-> DWS 基线：`c0b286c1e10b6fcebdff4ed522d3b1cf30549866`
+> 日期：2026-08-20
+> 当前 main 基线：`b6eaf3c5af77b26cf1b1559fb7ea173fd0c5b971`
 > 对比基线：lark-cli 1.0.87
 > 范围：Shortcut-only DING surface
 
@@ -38,6 +38,8 @@
 | 撤回个人 DING | `ding message recall-personal` | 无直接任务 | routed；Shortcut unavailable |
 
 ## 4. Exact Shortcut 与隔离 raw 证据
+
+下表中 `+receiver-status` 是本轮 current-HEAD 发布证据；其余非公开入口为先前同租户隔离诊断，只用于说明下游缺口，不计入本轮公开能力 PASS。
 
 | 能力 | Exact Shortcut | Atomic/raw 隔离事实 | 结论 |
 |---|---|---|---|
