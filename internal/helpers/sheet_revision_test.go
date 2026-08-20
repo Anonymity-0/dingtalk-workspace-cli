@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
 	"strings"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -266,14 +268,76 @@ func TestDecodeSheetChangesetTransportPreservesLogIDInParseError(t *testing.T) {
 	}
 }
 
-func TestDecodeSheetChangesetTransportPassesFailureWithoutPayload(t *testing.T) {
+func TestDecodeSheetChangesetTransportRejectsBusinessFailure(t *testing.T) {
 	const response = `{"success":false,"logId":"trace","errorCode":"UPSTREAM","errorMsg":"failed"}`
-	decoded, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool, response)
-	if err != nil {
-		t.Fatalf("decode failure response: %v", err)
+	_, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool, response)
+	var cliErr *CLIError
+	if !errors.As(err, &cliErr) || cliErr.Code != CodeMCPToolError ||
+		cliErr.Operation != "sheet/"+sheetChangesetGetRemoteTool {
+		t.Fatalf("decode failure error = %#v, want sheet MCP business failure", err)
 	}
-	if decoded.(map[string]any)["errorCode"] != "UPSTREAM" {
-		t.Fatalf("failure response = %#v", decoded)
+	if !strings.Contains(cliErr.Message, `"errorCode":"UPSTREAM"`) {
+		t.Fatalf("business failure message = %q, want backend error payload", cliErr.Message)
+	}
+}
+
+func TestSheetRevisionCommandsRejectInvalidResponsesWithoutSuccessEnvelope(t *testing.T) {
+	tests := []struct {
+		name     string
+		tool     string
+		response string
+		build    func() *cobra.Command
+		args     []string
+	}{
+		{
+			name: "revision empty response", tool: sheetRevisionGetRemoteTool, response: "  \n ",
+			build: newSheetRevisionGetCmd, args: []string{"--node", "node-1"},
+		},
+		{
+			name: "changeset empty response", tool: sheetChangesetGetRemoteTool, response: "",
+			build: newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "revision non-object response", tool: sheetRevisionGetRemoteTool, response: `[]`,
+			build: newSheetRevisionGetCmd, args: []string{"--node", "node-1"},
+		},
+		{
+			name: "changeset missing success", tool: sheetChangesetGetRemoteTool, response: `{"changesetsJson":"[]"}`,
+			build: newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "revision business failure", tool: sheetRevisionGetRemoteTool,
+			response: `{"success":false,"errorCode":"UPSTREAM","errorMsg":"failed"}`,
+			build:    newSheetRevisionGetCmd, args: []string{"--node", "node-1"},
+		},
+		{
+			name: "changeset business failure", tool: sheetChangesetGetRemoteTool,
+			response: `{"success":false,"errorCode":"UPSTREAM","errorMsg":"failed"}`,
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &sheetRevisionTestCaller{responses: map[string]string{test.tool: test.response}}
+			got, err := executeSheetRevisionCommand(t, caller, test.build(), test.args...)
+			if err == nil {
+				t.Fatalf("command unexpectedly succeeded with output %q", got)
+			}
+			if strings.TrimSpace(got) != "" {
+				t.Fatalf("failure path emitted a success envelope: %s", got)
+			}
+		})
+	}
+}
+
+func TestDecodeSheetRevisionEmptyResponseHasStructuredRetryableError(t *testing.T) {
+	_, err := decodeSheetRevisionResult(sheetRevisionGetRemoteTool, " \n ")
+	var apiErr *apperrors.Error
+	if !errors.As(err, &apiErr) || apiErr.Reason != "empty_tool_response" ||
+		apiErr.Operation != "sheet/"+sheetRevisionGetRemoteTool ||
+		apiErr.FailureStage != "response_validation" || !apiErr.RetryableSet || !apiErr.Retryable {
+		t.Fatalf("empty response error = %#v", err)
 	}
 }
 

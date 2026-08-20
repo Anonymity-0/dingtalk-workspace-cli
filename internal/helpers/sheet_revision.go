@@ -346,25 +346,59 @@ func callSheetRevisionResult(cmd *cobra.Command, tool string, args map[string]an
 
 func decodeSheetRevisionResult(tool, raw string) (any, error) {
 	if strings.TrimSpace(raw) == "" {
-		return map[string]any{}, nil
+		return nil, invalidSheetRevisionResponse(tool,
+			"MCP sheet read tool returned no non-empty text content",
+			"empty_tool_response",
+			true,
+		)
 	}
 	data, err := decodeSheetSingleJSON(raw)
 	if err != nil {
 		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", tool, err))
 	}
-	if tool == sheetChangesetGetRemoteTool {
-		if err := normalizeSheetChangesetTransport(data); err != nil {
-			return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v%s", tool, err, sheetResultLogIDSuffix(data)))
-		}
-	}
-	return data, nil
-}
-
-func sheetResultLogIDSuffix(data any) string {
 	object, ok := data.(map[string]any)
 	if !ok {
-		return ""
+		return nil, invalidSheetRevisionResponse(tool,
+			"MCP sheet read tool returned a non-object business result",
+			"invalid_tool_response",
+			false,
+		)
 	}
+	if isBusinessError(object) {
+		return nil, &CLIError{
+			Code:       CodeMCPToolError,
+			Message:    raw,
+			Suggestion: suggestForBusinessError(object),
+			Operation:  "sheet/" + tool,
+		}
+	}
+	success, ok := object["success"].(bool)
+	if !ok || !success {
+		return nil, invalidSheetRevisionResponse(tool,
+			"MCP sheet read tool returned a business result without success=true",
+			"invalid_tool_response",
+			false,
+		)
+	}
+	if tool == sheetChangesetGetRemoteTool {
+		if err := normalizeSheetChangesetTransport(object); err != nil {
+			return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v%s", tool, err, sheetResultLogIDSuffix(object)))
+		}
+	}
+	return object, nil
+}
+
+func invalidSheetRevisionResponse(tool, message, reason string, retryable bool) error {
+	return apperrors.NewAPI(message,
+		apperrors.WithOperation("sheet/"+tool),
+		apperrors.WithOrigin("mcp"),
+		apperrors.WithFailureStage("response_validation"),
+		apperrors.WithRetryable(retryable),
+		apperrors.WithReason(reason),
+	)
+}
+
+func sheetResultLogIDSuffix(object map[string]any) string {
 	logID, ok := object["logId"].(string)
 	if !ok || strings.TrimSpace(logID) == "" {
 		return ""
@@ -389,12 +423,7 @@ func decodeSheetSingleJSON(raw string) (any, error) {
 	return data, nil
 }
 
-func normalizeSheetChangesetTransport(data any) error {
-	object, ok := data.(map[string]any)
-	if !ok {
-		return fmt.Errorf("业务结果不是 JSON 对象")
-	}
-
+func normalizeSheetChangesetTransport(object map[string]any) error {
 	encoded, hasEncoded := object["changesetsJson"]
 	if hasEncoded {
 		changesetsJSON, ok := encoded.(string)
@@ -427,10 +456,7 @@ func normalizeSheetChangesetTransport(data any) error {
 		return nil
 	}
 
-	if success, _ := object["success"].(bool); success {
-		return fmt.Errorf("成功响应缺少 changesetsJson")
-	}
-	return nil
+	return fmt.Errorf("成功响应缺少 changesetsJson")
 }
 
 func sheetRevisionNumberArg(raw string) (any, error) {
