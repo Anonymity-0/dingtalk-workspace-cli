@@ -1,6 +1,6 @@
 ---
 name: dingtalk-chat
-description: 钉钉群聊与消息。Use when 用户提到发消息、单聊/群聊、群管理、@消息、搜索记录、话题回复、收藏/置顶、机器人群发、Webhook、收发图片与文件。不做紧急 DING/短信/电话、邮件、班级群。前缀：dws chat。
+description: 钉钉群聊与消息。Use when 用户提到 发消息/编辑或撤回消息/单聊/群聊/建群/普通群升级外部群/群昵称/会话分组/群成员管理/@消息/搜索聊天记录/话题回复/收藏消息/机器人群发/Webhook通知/发送或下载消息图片与文件。不做紧急 DING/短信/电话（走 dingtalk-misc）、邮件（走 dingtalk-mail）、班级群（走 dingtalk-misc）。命令前缀：dws chat。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -35,7 +35,7 @@ metadata:
 
 ## Golden Route
 
-按任务选择最小充分入口；Resolver、发送执行、消息投影和错误契约在 Runtime 内复用。
+按用户任务选择最小充分入口。公开层按意图分流；Resolver、发送执行、消息投影和错误契约在 Runtime 内复用，不把所有能力塞进一个万能命令。
 
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
@@ -47,10 +47,10 @@ metadata:
 | 查看指定群成员（用户/机器人） | `dws chat +chat-members-list --group <群名或ID>` | 唯一解析并全量读取 |
 | 获取群邀请链接 | `dws chat +chat-invite-url --group <群名或ID>` | 多候选时停止 |
 | 查看群机器人 | `dws chat +chat-bots --group <群名或ID>` | 返回稳定 `bots[]` |
-| 查看个人收藏表情 | `dws chat emotion list` | MCP `im/list_personal_emotions`；入参 `{}`，当前用户由 server 注入 |
-| 发送个人收藏表情 | `dws chat emotion send --media-id <mediaId>` | MCP `im/send_personal_emotion`；`--emotion-id` 可选；目标 `--conversation-id/--group`、`--user`、`--open-dingtalk-id` 三选一；`--user` 解析为 openDingTalkId；`--uuid/--idempotency-key` -> `uuid` |
-| 新增个人收藏表情 | `dws chat emotion favorite --media-id <mediaId>` | MCP `im/favorite_personal_emotion`；`--name` 可选；`--source-conversation-id/--source-message-id` 成对 |
-| 修改群名称 | `dws chat group rename --id <openConversationId> --name <新名称>` | 只知群名先用 `+chat-search --query <群名>` 唯一解析 ID；不猜 `+chat-rename` |
+| 查看个人收藏表情 | `dws chat emotion list` | 当前用户身份由 MCP server 注入 |
+| 发送个人收藏表情 | `dws chat emotion send --media-id <mediaId> --group <openConversationId>` | 目标为 `--conversation-id/--group`、`--user`、`--open-dingtalk-id` 三选一；`--user` 会解析为 openDingTalkId |
+| 新增个人收藏表情 | `dws chat emotion favorite --media-id <mediaId>` | `--source-conversation-id` 与 `--source-message-id` 必须成对指定 |
+| 修改群名称 | `dws chat group rename --id <openConversationId> --name <新名称>` | 只知群名时先用 `+chat-search --query <群名>` 唯一解析 ID；不猜 `+chat-rename` |
 | 查看指定群内 @我的消息 | `dws chat +at-me --group <群名> --page-all` | 检查 `complete`；空结果仍返回数组 |
 | 查看全部会话 | `dws chat +conversation-list --page-all` | 检查 `complete` / `failures` |
 | 读取并下载消息资源 | 查询命令加 `--download-resources` | 不另起手工下载循环；下载失败项保留在结果中 |
@@ -73,22 +73,22 @@ metadata:
 
 ### 发送入口边界
 
-- `+dm`：姓名目标的简单文本/Markdown。
-- `+send-to-group`：群名或稳定 ID 目标的简单文本/Markdown。
+- `+dm`：姓名目标的简单文本/Markdown，参数空间最小。
+- `+send-to-group`：群名或稳定 ID 目标的简单文本/Markdown，避免暴露无关身份矩阵。
 - Markdown 中的公网图片必须写成 `![图片标题](https://example.com/image.png)` 才会内联展示；
   省略开头的 `!` 时只会显示为链接。
-- `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。已知 ID 可直传，也可用 `--user-query` / `--chat-query` 解析；Bot 多群用 `--groups/--groups-file`，返回 `im.batch-write.v1`。
+- `+messages-send`：文件、Bot、Webhook、复杂 @ 或幂等控制。user 已知 ID 可直接传，也可用 `--user-query` / `--chat-query` 运行同一只读解析链；Bot 多群使用 `--groups/--groups-file`，返回 `im.batch-write.v1`；bot/webhook 只使用下层真实支持的文本/Markdown 能力。
 - 文件直接传 `+messages-send --file <相对路径>`；不要先独立上传并提取 mediaId。
 - Webhook 使用 `+messages-send --as webhook --webhook-token <token>`；不要退回原子 Webhook 命令。
-- 流式卡片用 `+messages-send-card`；群聊@传 ID/`--at-all`；禁写占位符；仅 text。
+- 流式卡片用 `+messages-send-card`；群聊@传 ID/`--at-all`，Runtime 把 create 返回前缀加到 `--content`；禁写占位符；仅 text。
 
 ## 关键结果语义
 
 - `openTaskId` 是发送任务 ID，不是回复或撤回所需的消息 ID；消息 ID 必须来自真实查询结果。
-- 消息查询默认保留稳定 ID、会话/thread、发送者、文本、时间、reaction、引用、转发和 `resourceRefs`。
+- 消息查询默认保留稳定 ID、会话/thread、发送者、文本、时间、reaction、引用、转发和 `resourceRefs`；`--no-reactions` 可关闭 reaction。
 - 查询结果必须检查 `complete`、`hasMore`、`failures` 和资源下载 ledger；partial result 不得表述为完整成功。
 - 子消息使用自己的 `messageId`；仅缺会话 ID 时继承父消息的 `conversationId`。
-- 下载只允许工作目录内安全相对路径，默认不覆盖；覆盖必须显式传 `--overwrite`。读取和下载不需要 `--yes`。
+- 下载只允许工作目录内安全相对路径，默认不覆盖并原子落盘；覆盖必须由用户显式传 `--overwrite`。读取和下载不需要 `--yes`。
 - Favorite、消息 Pin、消息 Top、会话 Top 是不同对象层级，不能互换。
 
 ## 按需加载
