@@ -10,7 +10,9 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -338,123 +340,248 @@ func TestCrossPlatformCoverageOAAttachmentRejectsInvalidPreviewFileIDs(t *testin
 	}
 }
 
-func TestCrossPlatformCoverageOAAttachmentInitUploadPayload(t *testing.T) {
-	const response = `{"result":{"uploadKey":"key-123","resourceUrls":["https://oss.example.test/upload"],"storageDriver":"oss","expirationSeconds":3600,"region":"cn-hangzhou","class":"com.dingtalk.oapi.response"},"success":true}`
-	commandArgs := []string{
-		"approval", "attachment", "init-upload",
-		"--file-name", "合同.pdf",
-		"--file-size", "102400",
-		"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+const oaUploadInitResponse = `{"result":{"uploadKey":"key-123","resourceUrls":["https://oss.example.test/upload"],"headers":{"x-oss-date":"20260820T000000Z","Authorization":"OSS signature"},"storageDriver":"oss"},"success":true}`
+
+func oaUploadCommitResponse(size int64) string {
+	return `{"result":{"spaceId":27827223951,"fileName":"合同.pdf","fileSize":` +
+		strconv.FormatInt(size, 10) +
+		`,"class":"com.dingtalk.oapi.response","fileType":"pdf","fileId":"file-abc"},"success":true}`
+}
+
+// writeOAAttachmentTempFile 落地一个临时文件，返回其绝对路径与字节数。
+func writeOAAttachmentTempFile(t *testing.T, name, content string) (string, int64) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
 	}
-	wantArgs := map[string]any{
+	return path, int64(len(content))
+}
+
+// capturedPut 记录一次 httpPutFile 调用的入参，供断言 PUT 使用了解析出的
+// resourceURL 与签名 headers。
+type capturedPut struct {
+	calls    int
+	url      string
+	headers  map[string]string
+	filePath string
+	fileSize int64
+}
+
+func mockOAAttachmentPut(t *testing.T) *capturedPut {
+	t.Helper()
+	put := &capturedPut{}
+	SetHTTPPutFile(func(_ context.Context, url string, headers map[string]string, filePath string, fileSize int64) error {
+		put.calls++
+		put.url = url
+		put.headers = headers
+		put.filePath = filePath
+		put.fileSize = fileSize
+		return nil
+	})
+	t.Cleanup(func() { SetHTTPPutFile(nil) })
+	return put
+}
+
+func TestCrossPlatformCoverageOAAttachmentUploadEndToEnd(t *testing.T) {
+	const content = "pdf-bytes-content"
+	filePath, fileSize := writeOAAttachmentTempFile(t, "source.pdf", content)
+	put := mockOAAttachmentPut(t)
+
+	caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+		{text: oaUploadInitResponse},
+		{text: oaUploadCommitResponse(fileSize)},
+	}}
+	stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", filePath,
+		"--file-name", "合同.pdf",
+		"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+	)
+	if err != nil {
+		t.Fatalf("execute command: %v", err)
+	}
+
+	if caller.calls != 2 {
+		t.Fatalf("MCP calls = %d, want 2 (init+commit)", caller.calls)
+	}
+	if caller.toolLog[0] != "init_attachment_upload_info" || caller.serverLog[0] != "oa" {
+		t.Fatalf("first call = %s/%s, want oa/init_attachment_upload_info", caller.serverLog[0], caller.toolLog[0])
+	}
+	wantInit := map[string]any{
 		"fileName": "合同.pdf",
-		"fileSize": 102400,
+		"fileSize": float64(fileSize),
 		"md5":      "d41d8cd98f00b204e9800998ecf8427e",
 	}
-
-	t.Run("json", func(t *testing.T) {
-		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: response}}}
-		stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, commandArgs...)
-		if err != nil {
-			t.Fatalf("execute command: %v", err)
-		}
-		if caller.server != "oa" || caller.tool != "init_attachment_upload_info" {
-			t.Fatalf("called %s/%s, want oa/init_attachment_upload_info", caller.server, caller.tool)
-		}
-		if !reflect.DeepEqual(caller.args, wantArgs) {
-			t.Fatalf("args = %#v, want %#v", caller.args, wantArgs)
-		}
-		var envelope map[string]any
-		if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
-			t.Fatalf("decode unified output: %v", err)
-		}
-		if envelope["ok"] != true || envelope["outcome"] != "success" {
-			t.Fatalf("unified envelope = %#v", envelope)
-		}
-		data, ok := envelope["data"].(map[string]any)
-		if !ok || data["uploadKey"] != "key-123" {
-			t.Fatalf("unified data = %#v", envelope["data"])
-		}
-	})
-
-	t.Run("optional md5 omitted", func(t *testing.T) {
-		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":{},"success":true}`}}}
-		if _, err := executeOAAttachmentCommandCapturingOutput(t, caller,
-			"approval", "attachment", "init-upload",
-			"--file-name", "report.xlsx",
-			"--file-size", "2048",
-		); err != nil {
-			t.Fatalf("execute command: %v", err)
-		}
-		if _, exists := caller.args["md5"]; exists {
-			t.Fatalf("optional md5 should be omitted: %#v", caller.args)
-		}
-	})
-}
-
-func TestCrossPlatformCoverageOAAttachmentCommitUploadPayload(t *testing.T) {
-	const response = `{"result":{"spaceId":27827223951,"fileName":"合同.pdf","fileSize":102400,"class":"com.dingtalk.oapi.response","fileType":"pdf","fileId":"file-abc"},"success":true}`
-	commandArgs := []string{
-		"approval", "attachment", "commit-upload",
-		"--file-name", "合同.pdf",
-		"--upload-key", "key-123",
-		"--file-size", "102400",
+	if !reflect.DeepEqual(caller.argsLog[0], wantInit) {
+		t.Fatalf("init args = %#v, want %#v", caller.argsLog[0], wantInit)
 	}
-	wantArgs := map[string]any{
+
+	if put.calls != 1 {
+		t.Fatalf("httpPutFile called %d times, want 1", put.calls)
+	}
+	if put.url != "https://oss.example.test/upload" {
+		t.Fatalf("PUT url = %q, want parsed resourceURL", put.url)
+	}
+	if put.headers["Authorization"] != "OSS signature" || put.headers["x-oss-date"] != "20260820T000000Z" {
+		t.Fatalf("PUT headers = %#v, want parsed signed headers", put.headers)
+	}
+	if put.filePath != filePath || put.fileSize != fileSize {
+		t.Fatalf("PUT file = %q size = %d, want %q/%d", put.filePath, put.fileSize, filePath, fileSize)
+	}
+
+	if caller.toolLog[1] != "commit_attachment_upload_info" {
+		t.Fatalf("second call = %s, want commit_attachment_upload_info", caller.toolLog[1])
+	}
+	wantCommit := map[string]any{
 		"fileName":  "合同.pdf",
 		"uploadKey": "key-123",
-		"fileSize":  102400,
+		"fileSize":  float64(fileSize),
+	}
+	if !reflect.DeepEqual(caller.argsLog[1], wantCommit) {
+		t.Fatalf("commit args = %#v, want %#v", caller.argsLog[1], wantCommit)
 	}
 
-	t.Run("json", func(t *testing.T) {
-		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: response}}}
-		stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, commandArgs...)
-		if err != nil {
-			t.Fatalf("execute command: %v", err)
-		}
-		if caller.server != "oa" || caller.tool != "commit_attachment_upload_info" {
-			t.Fatalf("called %s/%s, want oa/commit_attachment_upload_info", caller.server, caller.tool)
-		}
-		if !reflect.DeepEqual(caller.args, wantArgs) {
-			t.Fatalf("args = %#v, want %#v", caller.args, wantArgs)
-		}
-		var envelope map[string]any
-		if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
-			t.Fatalf("decode unified output: %v", err)
-		}
-		if envelope["ok"] != true || envelope["outcome"] != "success" {
-			t.Fatalf("unified envelope = %#v", envelope)
-		}
-		data, ok := envelope["data"].(map[string]any)
-		if !ok || data["fileId"] != "file-abc" {
-			t.Fatalf("unified data = %#v", envelope["data"])
-		}
-	})
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+		t.Fatalf("decode unified output: %v", err)
+	}
+	if envelope["ok"] != true || envelope["outcome"] != "success" {
+		t.Fatalf("unified envelope = %#v", envelope)
+	}
+	data, ok := envelope["data"].(map[string]any)
+	if !ok || data["fileId"] != "file-abc" {
+		t.Fatalf("unified data = %#v, want fileId file-abc", envelope["data"])
+	}
 }
 
-func TestCrossPlatformCoverageOAAttachmentUploadRequiredFlagValidation(t *testing.T) {
+func TestCrossPlatformCoverageOAAttachmentUploadAutoMD5AndDefaultName(t *testing.T) {
+	const content = "auto-md5-content"
+	filePath, fileSize := writeOAAttachmentTempFile(t, "report.xlsx", content)
+	wantMD5, err := fileMD5Hex(filePath)
+	if err != nil {
+		t.Fatalf("compute expected md5: %v", err)
+	}
+	mockOAAttachmentPut(t)
+
+	caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+		{text: oaUploadInitResponse},
+		{text: oaUploadCommitResponse(fileSize)},
+	}}
+	// 既不传 --file-name 也不传 --md5：文件名应回退为 basename，md5 应自动计算。
+	if _, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", filePath,
+	); err != nil {
+		t.Fatalf("execute command: %v", err)
+	}
+
+	if got := caller.argsLog[0]["fileName"]; got != "report.xlsx" {
+		t.Fatalf("default fileName = %#v, want basename report.xlsx", got)
+	}
+	if got := caller.argsLog[0]["md5"]; got != wantMD5 {
+		t.Fatalf("auto md5 = %#v, want computed %q", got, wantMD5)
+	}
+	if got := caller.argsLog[0]["fileSize"]; got != float64(fileSize) {
+		t.Fatalf("fileSize = %#v, want number %d", got, fileSize)
+	}
+}
+
+func TestCrossPlatformCoverageOAAttachmentUploadMalformedInitResponse(t *testing.T) {
 	tests := []struct {
-		name string
-		args []string
+		name     string
+		response string
+		wantErr  string
 	}{
-		{name: "init-upload missing file-name", args: []string{"approval", "attachment", "init-upload", "--file-size", "1024"}},
-		{name: "init-upload missing file-size", args: []string{"approval", "attachment", "init-upload", "--file-name", "test.pdf"}},
-		{name: "commit-upload missing file-name", args: []string{"approval", "attachment", "commit-upload", "--upload-key", "k", "--file-size", "1024"}},
-		{name: "commit-upload missing upload-key", args: []string{"approval", "attachment", "commit-upload", "--file-name", "test.pdf", "--file-size", "1024"}},
-		{name: "commit-upload missing file-size", args: []string{"approval", "attachment", "commit-upload", "--file-name", "test.pdf", "--upload-key", "k"}},
-		{name: "init-upload negative file-size", args: []string{"approval", "attachment", "init-upload", "--file-name", "test.pdf", "--file-size", "-1"}},
-		{name: "commit-upload negative file-size", args: []string{"approval", "attachment", "commit-upload", "--file-name", "test.pdf", "--upload-key", "k", "--file-size", "-1"}},
+		{
+			name:     "missing result",
+			response: `{"success":true}`,
+			wantErr:  "缺少 result",
+		},
+		{
+			name:     "missing uploadKey",
+			response: `{"result":{"resourceUrls":["https://oss.example.test/upload"],"headers":{"Authorization":"sig","x-oss-date":"d"}},"success":true}`,
+			wantErr:  "缺少 uploadKey",
+		},
+		{
+			name:     "empty uploadKey",
+			response: `{"result":{"uploadKey":"  ","resourceUrls":["https://oss.example.test/upload"],"headers":{"Authorization":"sig","x-oss-date":"d"}},"success":true}`,
+			wantErr:  "缺少 uploadKey",
+		},
+		{
+			name:     "empty resourceUrls",
+			response: `{"result":{"uploadKey":"key-1","resourceUrls":[],"headers":{"Authorization":"sig","x-oss-date":"d"}},"success":true}`,
+			wantErr:  "缺少 resourceUrls",
+		},
+		{
+			name:     "missing headers",
+			response: `{"result":{"uploadKey":"key-1","resourceUrls":["https://oss.example.test/upload"]},"success":true}`,
+			wantErr:  "缺少 headers",
+		},
+		{
+			name:     "headers missing Authorization",
+			response: `{"result":{"uploadKey":"key-1","resourceUrls":["https://oss.example.test/upload"],"headers":{"x-oss-date":"20260820T000000Z"}},"success":true}`,
+			wantErr:  "Authorization",
+		},
+		{
+			name:     "headers missing x-oss-date",
+			response: `{"result":{"uploadKey":"key-1","resourceUrls":["https://oss.example.test/upload"],"headers":{"Authorization":"OSS sig"}},"success":true}`,
+			wantErr:  "x-oss-date",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			filePath, _ := writeOAAttachmentTempFile(t, "test.pdf", "data")
+			put := mockOAAttachmentPut(t)
+			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+				{text: test.response},
+				// second step should never be reached
+				{text: `{"result":{},"success":true}`},
+			}}
+			_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+				"approval", "attachment", "upload",
+				"--file", filePath,
+				"--file-name", "test.pdf",
+				"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+			)
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", test.wantErr)
+			}
+			if !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("error = %v, want substring %q", err, test.wantErr)
+			}
+			if caller.calls != 1 {
+				t.Fatalf("MCP calls = %d, want 1 (init only, no commit)", caller.calls)
+			}
+			if put.calls != 0 {
+				t.Fatalf("httpPutFile called %d times, want 0 (should not PUT)", put.calls)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageOAAttachmentUploadRequiredFlagValidation(t *testing.T) {
+	existing, _ := writeOAAttachmentTempFile(t, "exists.bin", "x")
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "missing file", args: []string{"approval", "attachment", "upload"}},
+		{name: "file does not exist", args: []string{"approval", "attachment", "upload", "--file", filepath.Join(existing, "missing.bin")}},
+		{name: "file is directory", args: []string{"approval", "attachment", "upload", "--file", filepath.Dir(existing)}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mockOAAttachmentPut(t)
 			caller := &scriptedToolCaller{}
 			err := executeOACommand(t, caller, test.args...)
 			if err == nil {
 				t.Fatalf("%s unexpectedly succeeded", test.name)
 			}
 			if caller.calls != 0 {
-				t.Fatalf("missing required flag made %d MCP call(s)", caller.calls)
+				t.Fatalf("invalid upload made %d MCP call(s)", caller.calls)
 			}
 		})
 	}
