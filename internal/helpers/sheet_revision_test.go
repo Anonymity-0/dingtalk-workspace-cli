@@ -260,11 +260,37 @@ func TestDecodeSheetChangesetTransportRejectsInvalidJSONStrings(t *testing.T) {
 	}
 }
 
-func TestDecodeSheetChangesetTransportPreservesLogIDInParseError(t *testing.T) {
-	const response = `{"success":true,"logId":"trace-malformed-changeset","changesetsJson":"not-json"}`
-	_, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool, response)
-	if err == nil || !strings.Contains(err.Error(), "logId=trace-malformed-changeset") {
-		t.Fatalf("parse error = %v, want backend logId", err)
+func TestDecodeSheetRevisionProtocolFailuresHaveMCPResponseMetadata(t *testing.T) {
+	tests := []struct {
+		name      string
+		tool      string
+		response  string
+		wantLogID string
+	}{
+		{
+			name: "malformed outer json", tool: sheetRevisionGetRemoteTool,
+			response: `{"success":true`,
+		},
+		{
+			name: "malformed changesets json", tool: sheetChangesetGetRemoteTool,
+			response:  `{"success":true,"logId":"trace-malformed-changeset","changesetsJson":"not-json"}`,
+			wantLogID: "trace-malformed-changeset",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := decodeSheetRevisionResult(test.tool, test.response)
+			var apiErr *apperrors.Error
+			if !errors.As(err, &apiErr) || apiErr.Origin != "mcp" ||
+				apiErr.FailureStage != "response_validation" || apiErr.Reason != "invalid_tool_response" ||
+				apiErr.Operation != "sheet/"+test.tool || !apiErr.RetryableSet || apiErr.Retryable {
+				t.Fatalf("protocol failure error = %#v", err)
+			}
+			if test.wantLogID != "" && !strings.Contains(err.Error(), "logId="+test.wantLogID) {
+				t.Fatalf("protocol failure error = %v, want backend logId", err)
+			}
+		})
 	}
 }
 
@@ -359,6 +385,11 @@ func TestSheetRevisionCommandsRejectPublishedResultContractDrift(t *testing.T) {
 			build:    newSheetRevisionGetCmd, args: []string{"--node", "node-1"},
 		},
 		{
+			name: "revision negative integer", tool: sheetRevisionGetRemoteTool,
+			response: `{"success":true,"logId":"trace-contract","revision":-1}`,
+			build:    newSheetRevisionGetCmd, args: []string{"--node", "node-1"},
+		},
+		{
 			name: "changeset missing summary", tool: sheetChangesetGetRemoteTool,
 			response: encodeSheetChangesetTransport(t, `{`+validChangesetPrefix+validChangesets+`}`),
 			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
@@ -384,6 +415,31 @@ func TestSheetRevisionCommandsRejectPublishedResultContractDrift(t *testing.T) {
 			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
 		},
 		{
+			name: "changeset negative latest revision", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-contract","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":-1,"startRevision":0,"endRevision":0,`+validSummary+`,`+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "changeset negative start revision", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-contract","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":1,"startRevision":-1,"endRevision":0,`+validSummary+`,`+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "changeset negative end revision", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-contract","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":1,"startRevision":0,"endRevision":-1,`+validSummary+`,`+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "changeset start after end", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-contract","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":2,"startRevision":2,"endRevision":1,`+validSummary+`,`+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
+			name: "changeset end after latest", tool: sheetChangesetGetRemoteTool,
+			response: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-contract","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":1,"startRevision":0,"endRevision":2,`+validSummary+`,`+validChangesets+`}`),
+			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
+		},
+		{
 			name: "changeset item missing required field", tool: sheetChangesetGetRemoteTool,
 			response: encodeSheetChangesetTransport(t, `{`+validChangesetPrefix+validSummary+`,"changesets":[{"revision":1,"isSelfEdit":true,"eventType":"EDIT","detailsStatus":"COMPLETE","changes":[]}]}`),
 			build:    newSheetChangesetGetCmd, args: []string{"--node", "node-1", "--start-revision", "0"},
@@ -406,6 +462,22 @@ func TestSheetRevisionCommandsRejectPublishedResultContractDrift(t *testing.T) {
 				t.Fatalf("contract drift emitted a success envelope: %s", got)
 			}
 		})
+	}
+}
+
+func TestValidateSheetPublishedResultCoversDefensiveFailures(t *testing.T) {
+	if err := validateSheetPublishedResult("unknown-tool", map[string]any{}); err == nil {
+		t.Fatal("unknown tool unexpectedly accepted")
+	}
+
+	cache := &sheetPublishedResultSchemaCache{}
+	if err := validateSheetPublishedResultWithSchema(sheetRevisionGetRemoteTool, map[string]any{},
+		json.RawMessage(`{`), cache); err == nil {
+		t.Fatal("invalid published schema unexpectedly accepted")
+	}
+
+	if _, err := sheetNonNegativeInteger(int64(1)); err == nil {
+		t.Fatal("non-json number unexpectedly accepted")
 	}
 }
 

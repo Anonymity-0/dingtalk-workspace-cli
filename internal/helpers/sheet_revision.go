@@ -367,7 +367,11 @@ func decodeSheetRevisionResult(tool, raw string) (any, error) {
 	}
 	data, err := decodeSheetSingleJSON(raw)
 	if err != nil {
-		return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v", tool, err))
+		return nil, invalidSheetRevisionResponse(tool,
+			fmt.Sprintf("MCP sheet read tool returned invalid JSON: %v", err),
+			"invalid_tool_response",
+			false,
+		)
 	}
 	object, ok := data.(map[string]any)
 	if !ok {
@@ -395,7 +399,12 @@ func decodeSheetRevisionResult(tool, raw string) (any, error) {
 	}
 	if tool == sheetChangesetGetRemoteTool {
 		if err := normalizeSheetChangesetTransport(object); err != nil {
-			return nil, apperrors.NewInternal(fmt.Sprintf("解析 %s 返回失败: %v%s", tool, err, sheetResultLogIDSuffix(object)))
+			return nil, invalidSheetRevisionResponse(tool,
+				fmt.Sprintf("MCP sheet read tool returned invalid changeset data: %v%s",
+					err, sheetResultLogIDSuffix(object)),
+				"invalid_tool_response",
+				false,
+			)
 		}
 	}
 	if err := validateSheetPublishedResult(tool, object); err != nil {
@@ -493,7 +502,12 @@ func validateSheetPublishedResult(tool string, object map[string]any) error {
 	default:
 		return fmt.Errorf("未知工具 %q", tool)
 	}
+	return validateSheetPublishedResultWithSchema(tool, object, rawSchema, cache)
+}
 
+func validateSheetPublishedResultWithSchema(tool string, object map[string]any,
+	rawSchema json.RawMessage, cache *sheetPublishedResultSchemaCache,
+) error {
 	cache.once.Do(func() { cache.err = json.Unmarshal(rawSchema, &cache.schema) })
 	if cache.err != nil {
 		return fmt.Errorf("读取已发布 Result Schema 失败: %v", cache.err)
