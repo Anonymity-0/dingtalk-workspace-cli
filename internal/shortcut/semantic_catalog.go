@@ -28,6 +28,18 @@ var driveSemanticCatalogJSON []byte
 //go:embed semantic_catalog_wiki.json
 var wikiSemanticCatalogJSON []byte
 
+//go:embed semantic_catalog_calendar.json
+var calendarSemanticCatalogJSON []byte
+
+//go:embed semantic_catalog_todo.json
+var todoSemanticCatalogJSON []byte
+
+//go:embed semantic_catalog_attendance.json
+var attendanceSemanticCatalogJSON []byte
+
+//go:embed semantic_catalog_mail.json
+var mailSemanticCatalogJSON []byte
+
 type semanticCatalogFile struct {
 	Version      int                              `json:"version"`
 	Service      string                           `json:"service"`
@@ -36,13 +48,14 @@ type semanticCatalogFile struct {
 }
 
 type semanticCatalogRecord struct {
-	Disposition   SemanticDisposition `json:"disposition"`
-	SemanticDelta string              `json:"semantic_delta"`
-	Risk          Risk                `json:"risk"`
-	Availability  Availability        `json:"availability,omitempty"`
-	Primary       string              `json:"primary,omitempty"`
-	Public        bool                `json:"public"`
-	Reviewed      bool                `json:"reviewed"`
+	Disposition          SemanticDisposition `json:"disposition"`
+	SemanticDelta        string              `json:"semantic_delta"`
+	Risk                 Risk                `json:"risk"`
+	Availability         Availability        `json:"availability,omitempty"`
+	Primary              string              `json:"primary,omitempty"`
+	Public               bool                `json:"public"`
+	CompatibilityVisible bool                `json:"compatibility_visible,omitempty"`
+	Reviewed             bool                `json:"reviewed"`
 }
 
 var reviewedSemanticCatalog = mustLoadSemanticCatalogs(
@@ -52,6 +65,10 @@ var reviewedSemanticCatalog = mustLoadSemanticCatalogs(
 	minutesSemanticCatalogJSON,
 	driveSemanticCatalogJSON,
 	wikiSemanticCatalogJSON,
+	calendarSemanticCatalogJSON,
+	todoSemanticCatalogJSON,
+	attendanceSemanticCatalogJSON,
+	mailSemanticCatalogJSON,
 )
 
 func mustLoadSemanticCatalogs(sources ...[]byte) map[string]semanticCatalogRecord {
@@ -112,6 +129,13 @@ func loadSemanticCatalog(raw []byte, out map[string]semanticCatalogRecord) {
 			panic(fmt.Sprintf("semantic catalog command %q cannot be public with availability %q",
 				command, record.Availability))
 		}
+		// A command that was already part of the visible CLI contract cannot be
+		// hidden in the same feature change merely because Agent publication is
+		// withdrawn. This narrow fact preserves historical discovery/argv while
+		// the unavailable Interface and public=false keep it out of Agent routes.
+		if record.CompatibilityVisible && (record.Public || record.Availability != AvailabilityUnavailable) {
+			panic(fmt.Sprintf("semantic catalog command %q can be compatibility-visible only when non-public and unavailable", command))
+		}
 		key := publicCatalogKey(source.Service, command)
 		if _, exists := out[key]; exists {
 			panic(fmt.Sprintf("duplicate shortcut semantic catalog entry %s %s", source.Service, command))
@@ -130,6 +154,7 @@ func applyReviewedSemanticCatalog(s Shortcut) (Shortcut, bool) {
 	s.Availability = record.Availability
 	s.PrimaryCommand = record.Primary
 	s.SemanticReviewed = record.Reviewed
-	s.Hidden = !record.Public
+	s.CompatibilityVisible = record.CompatibilityVisible
+	s.Hidden = !record.Public && !record.CompatibilityVisible
 	return s, true
 }
