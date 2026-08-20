@@ -8422,6 +8422,351 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 		sectionMoveNodeCmd,
 	)
 
+	// ── datasource: 数据源同步管理 ──────────────────────────────
+
+	datasourceCmd := &cobra.Command{Use: "datasource", Short: "数据源同步管理", RunE: groupRunE}
+
+	datasourceGetConfigCmd := &cobra.Command{
+		Use:     "get-config",
+		Short:   "获取数据源表同步配置",
+		Example: `  dws aitable datasource get-config --base-id BASE_ID --table-id TABLE_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "table-id"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			return callAitableTool("get_datasource_config", map[string]any{
+				"baseId":  baseID,
+				"tableId": mustGetFlag(cmd, "table-id"),
+			})
+		},
+	}
+	DeclareLeafMetadata(datasourceGetConfigCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_get_config",
+				CanonicalPath:  "aitable.datasource_get_config",
+				CLIPath:        "aitable datasource get-config",
+				PrimaryCLIPath: "aitable datasource get-config",
+			},
+			Description: "获取数据源表的同步配置信息。",
+			Interface:   aitableMCPInterface("get_datasource_config"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取数据源表的同步配置信息。",
+				UseWhen:      []string{"查看已有数据源表的配置详情时"},
+				AvoidWhen:    []string{"更新配置用 datasource update；查询同步状态用 datasource sync-status"},
+				Examples:     []string{"dws aitable datasource get-config --base-id <BASE_ID> --table-id <TABLE_ID>"},
+			},
+		},
+	})
+	datasourceGetConfigCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceGetConfigCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
+
+	datasourceListSourcesCmd := &cobra.Command{
+		Use:     "list-sources",
+		Short:   "列出可用数据源来源",
+		Example: `  dws aitable datasource list-sources --base-id BASE_ID --datasource-type OA`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "datasource-type"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			return callAitableTool("list_datasource_sources", map[string]any{
+				"baseId":         baseID,
+				"datasourceType": mustGetFlag(cmd, "datasource-type"),
+			})
+		},
+	}
+	DeclareLeafMetadata(datasourceListSourcesCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_list_sources",
+				CanonicalPath:  "aitable.datasource_list_sources",
+				CLIPath:        "aitable datasource list-sources",
+				PrimaryCLIPath: "aitable datasource list-sources",
+			},
+			Description: "列出指定 Base 下可用的数据源条目。",
+			Interface:   aitableMCPInterface("list_datasource_sources"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "列出指定 Base 下可用的数据源条目（OA 审批模板等）。",
+				UseWhen:      []string{"创建或更新数据源前需要查看可用来源时"},
+				AvoidWhen:    []string{"获取字段结构用 datasource get-fields"},
+				Examples:     []string{"dws aitable datasource list-sources --base-id <BASE_ID> --datasource-type OA"},
+			},
+		},
+	})
+	datasourceListSourcesCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceListSourcesCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
+
+	datasourceGetFieldsCmd := &cobra.Command{
+		Use:     "get-fields",
+		Short:   "获取数据源可同步字段列表",
+		Example: `  dws aitable datasource get-fields --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}'`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "datasource-type", "source-config"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			return callAitableTool("get_datasource_fields", map[string]any{
+				"baseId":         baseID,
+				"datasourceType": mustGetFlag(cmd, "datasource-type"),
+				"sourceConfig":   mustGetFlag(cmd, "source-config"),
+			})
+		},
+	}
+	DeclareLeafMetadata(datasourceGetFieldsCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_get_fields",
+				CanonicalPath:  "aitable.datasource_get_fields",
+				CLIPath:        "aitable datasource get-fields",
+				PrimaryCLIPath: "aitable datasource get-fields",
+			},
+			Description: "获取指定数据源来源的可同步字段列表。",
+			Interface:   aitableMCPInterface("get_datasource_fields"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取指定数据源来源的可同步字段列表（字段 ID/名称/类型/是否主键）。",
+				UseWhen:      []string{"创建或更新数据源前需要查看可同步字段以决定 field-ids 时"},
+				AvoidWhen:    []string{"列出可用来源用 datasource list-sources"},
+				Examples:     []string{`dws aitable datasource get-fields --base-id <BASE_ID> --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}'`},
+			},
+		},
+	})
+	datasourceGetFieldsCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceGetFieldsCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
+	datasourceGetFieldsCmd.Flags().String("source-config", "", "源配置 JSON 字符串，需含 processCode、dataType 等字段 (必填)")
+
+	datasourceCreateCmd := &cobra.Command{
+		Use:     "create",
+		Short:   "创建数据源表并触发首次同步",
+		Example: `  dws aitable datasource create --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}'`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "datasource-type", "source-config"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			toolArgs := map[string]any{
+				"baseId":         baseID,
+				"datasourceType": mustGetFlag(cmd, "datasource-type"),
+				"sourceConfig":   mustGetFlag(cmd, "source-config"),
+			}
+			if cmd.Flags().Changed("auto") {
+				v, _ := cmd.Flags().GetBool("auto")
+				toolArgs["auto"] = v
+			}
+			return callAitableTool("create_datasource", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(datasourceCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_create",
+				CanonicalPath:  "aitable.datasource_create",
+				CLIPath:        "aitable datasource create",
+				PrimaryCLIPath: "aitable datasource create",
+			},
+			Description: "为指定 Base 创建数据源表并触发首次全量同步。",
+			Interface:   aitableMCPInterface("create_datasource"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "为指定 Base 创建数据源表并触发首次全量同步，返回新建表 ID 和同步任务 ID。",
+				UseWhen:      []string{"需要将外部数据源接入 AI 表格、创建新的数据源表时"},
+				AvoidWhen:    []string{"已有数据源表改配置用 datasource update；仅触发同步用 datasource sync"},
+				Examples:     []string{`dws aitable datasource create --base-id <BASE_ID> --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}'`},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "datasource-type", Property: "datasourceType", Required: boolPtr(true)},
+				{Name: "source-config", Property: "sourceConfig", Required: boolPtr(true)},
+				{Name: "auto", Property: "auto"},
+			},
+		},
+	})
+	datasourceCreateCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceCreateCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
+	datasourceCreateCmd.Flags().String("source-config", "", "源配置 JSON 字符串 (必填)")
+	datasourceCreateCmd.Flags().Bool("auto", false, "是否开启自动同步")
+
+	datasourceUpdateCmd := &cobra.Command{
+		Use:     "update",
+		Short:   "更新数据源表同步配置并触发同步",
+		Example: `  dws aitable datasource update --base-id BASE_ID --table-id TABLE_ID --auto`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "table-id"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			toolArgs := map[string]any{
+				"baseId":  baseID,
+				"tableId": mustGetFlag(cmd, "table-id"),
+			}
+			if cmd.Flags().Changed("source-config") {
+				toolArgs["sourceConfig"] = mustGetFlag(cmd, "source-config")
+			}
+			if cmd.Flags().Changed("auto") {
+				v, _ := cmd.Flags().GetBool("auto")
+				toolArgs["auto"] = v
+			}
+			return callAitableTool("update_datasource_config", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(datasourceUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_update",
+				CanonicalPath:  "aitable.datasource_update",
+				CLIPath:        "aitable datasource update",
+				PrimaryCLIPath: "aitable datasource update",
+			},
+			Description: "更新已有数据源表的同步配置并触发一次同步。",
+			Interface:   aitableMCPInterface("update_datasource_config"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "更新已有数据源表的同步配置并触发一次同步。",
+				UseWhen:      []string{"需要修改已有数据源表的配置（更换模板、调整字段、开关自动同步）时"},
+				AvoidWhen:    []string{"创建新数据源表用 datasource create；仅触发同步用 datasource sync"},
+				Examples:     []string{"dws aitable datasource update --base-id <BASE_ID> --table-id <TABLE_ID> --auto"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "table-id", Property: "tableId", Required: boolPtr(true)},
+				{Name: "source-config", Property: "sourceConfig"},
+				{Name: "auto", Property: "auto"},
+			},
+		},
+	})
+	datasourceUpdateCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceUpdateCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
+	datasourceUpdateCmd.Flags().String("source-config", "", "新的源配置 JSON 字符串（可选，整体覆盖）")
+	datasourceUpdateCmd.Flags().Bool("auto", false, "是否开启自动同步")
+
+	datasourceSyncCmd := &cobra.Command{
+		Use:     "sync",
+		Short:   "触发数据源表手动同步",
+		Example: `  dws aitable datasource sync --base-id BASE_ID --table-ids TBL1,TBL2`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "table-ids"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			tableIDs, _ := cmd.Flags().GetStringSlice("table-ids")
+			return callAitableTool("run_datasource_sync", map[string]any{
+				"baseId":   baseID,
+				"tableIds": tableIDs,
+			})
+		},
+	}
+	DeclareLeafMetadata(datasourceSyncCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_sync",
+				CanonicalPath:  "aitable.datasource_sync",
+				CLIPath:        "aitable datasource sync",
+				PrimaryCLIPath: "aitable datasource sync",
+			},
+			Description: "对已有数据源表触发手动同步（单次最多 5 张），仅触发即返回。",
+			Interface:   aitableMCPInterface("run_datasource_sync"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "对已有数据源表触发手动同步（单次最多 5 张），仅触发即返回同步任务 ID。",
+				UseWhen:      []string{"需要手动触发已有数据源表的数据同步时"},
+				AvoidWhen:    []string{"创建新数据源表用 datasource create；更新配置用 datasource update"},
+				Examples:     []string{"dws aitable datasource sync --base-id <BASE_ID> --table-ids TBL1,TBL2"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "table-ids", Property: "tableIds", Required: boolPtr(true)},
+			},
+		},
+	})
+	datasourceSyncCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceSyncCmd.Flags().StringSlice("table-ids", nil, "待触发同步的数据源表 ID 列表（1-5 个，必填）")
+
+	datasourceSyncStatusCmd := &cobra.Command{
+		Use:     "sync-status",
+		Short:   "查询数据源同步任务状态",
+		Example: `  dws aitable datasource sync-status --base-id BASE_ID --table-id TABLE_ID --task-ids TASK1,TASK2`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "table-id"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			toolArgs := map[string]any{
+				"baseId":  baseID,
+				"tableId": mustGetFlag(cmd, "table-id"),
+			}
+			if cmd.Flags().Changed("task-ids") {
+				ids, _ := cmd.Flags().GetStringSlice("task-ids")
+				toolArgs["taskIds"] = ids
+			}
+			return callAitableTool("get_datasource_sync_status", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(datasourceSyncStatusCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_sync_status",
+				CanonicalPath:  "aitable.datasource_sync_status",
+				CLIPath:        "aitable datasource sync-status",
+				PrimaryCLIPath: "aitable datasource sync-status",
+			},
+			Description: "查询数据源同步任务状态（RUNNING/FINISHED/FAILED）。",
+			Interface:   aitableMCPInterface("get_datasource_sync_status"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "批量查询数据源同步任务状态（RUNNING/FINISHED/FAILED），与 sync/create/update 触发后配对使用。",
+				UseWhen:      []string{"触发同步后需要查询任务是否完成时"},
+				AvoidWhen:    []string{"触发同步用 datasource sync"},
+				Examples:     []string{"dws aitable datasource sync-status --base-id <BASE_ID> --table-id <TABLE_ID> --task-ids TASK1"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "table-id", Property: "tableId", Required: boolPtr(true)},
+				{Name: "task-ids", Property: "taskIds"},
+			},
+		},
+	})
+	datasourceSyncStatusCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceSyncStatusCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
+	datasourceSyncStatusCmd.Flags().StringSlice("task-ids", nil, "待查询的同步任务 ID 列表（最多 5 个，可选）")
+
+	datasourceCmd.AddCommand(
+		datasourceGetConfigCmd, datasourceListSourcesCmd, datasourceGetFieldsCmd,
+		datasourceCreateCmd, datasourceUpdateCmd,
+		datasourceSyncCmd, datasourceSyncStatusCmd,
+	)
+
 	// 组装 aitable 命令树
 	root.AddCommand(
 		baseCmd, tableCmd, fieldCmd,
@@ -8432,6 +8777,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 		attachmentCmd, templateCmd,
 		advpermCmd,
 		sectionCmd,
+		datasourceCmd,
 	)
 
 	// 批量注册 --base 作为 --base-id 的隐藏别名
