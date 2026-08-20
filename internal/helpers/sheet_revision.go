@@ -244,7 +244,7 @@ func newSheetRevisionGetCmd() *cobra.Command {
 				PrimaryCLIPath: "sheet revision-get",
 			},
 			Description: "获取在线电子表格工作簿当前持久化 revision；结果为后续 changeset 区间查询的 revision 锚点。",
-			DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewInvocation, RemoteReads: false},
+			DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewRequest, RemoteReads: false},
 			Result:      sheetRevisionResult,
 			Interface: &contract.InterfaceSpec{
 				Mode:         contract.InterfaceModeMCP,
@@ -301,7 +301,7 @@ func newSheetChangesetGetCmd() *cobra.Command {
 				PrimaryCLIPath: "sheet changeset-get",
 			},
 			Description: "获取在线电子表格工作簿 revision 区间内连续、语义化的前向 changeset；区间语义为 (startRevision, endRevision]。",
-			DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewInvocation, RemoteReads: false},
+			DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewRequest, RemoteReads: false},
 			Result:      sheetChangesetResult,
 			Interface: &contract.InterfaceSpec{
 				Mode:         contract.InterfaceModeMCP,

@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -245,6 +246,8 @@ func TestDecodeSheetChangesetTransportRejectsInvalidJSONStrings(t *testing.T) {
 		{name: "object root", raw: `{"success":true,"changesetsJson":"{}"}`},
 		{name: "multiple values", raw: `{"success":true,"changesetsJson":"[] []"}`},
 		{name: "missing", raw: `{"success":true}`},
+		{name: "non object response", raw: `[]`},
+		{name: "legacy changesets not array", raw: `{"success":true,"changesets":{}}`},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -320,6 +323,7 @@ func TestSheetChangesetGetRejectsInvalidRangesBeforeDispatch(t *testing.T) {
 		{name: "missing node", args: []string{"--start-revision", "0"}, want: "--node"},
 		{name: "missing start", args: []string{"--node", "node-1"}, want: "--start-revision"},
 		{name: "non integer start", args: []string{"--node", "node-1", "--start-revision", "1.5"}, want: "--start-revision 必须是 64 位整数"},
+		{name: "non integer end", args: []string{"--node", "node-1", "--start-revision", "0", "--end-revision", "1.5"}, want: "--end-revision 必须是 64 位整数"},
 		{name: "negative start", args: []string{"--node", "node-1", "--start-revision", "-1"}, want: "--start-revision 必须是非负整数"},
 		{name: "negative end", args: []string{"--node", "node-1", "--start-revision", "0", "--end-revision", "-1"}, want: "--end-revision 必须是非负整数"},
 		{name: "end before start", args: []string{"--node", "node-1", "--start-revision", "9", "--end-revision", "8"}, want: "必须大于或等于"},
@@ -366,6 +370,9 @@ func TestSheetRevisionCommandsPublishHelpAndReviewedContracts(t *testing.T) {
 		}
 		if final.Result == nil || len(final.Result.DataSchema) == 0 {
 			t.Fatalf("sheet %s result = %#v", name, final.Result)
+		}
+		if final.DryRun == nil || final.DryRun.PreviewKind != contract.DryRunPreviewRequest {
+			t.Fatalf("sheet %s dry-run = %#v, want request preview", name, final.DryRun)
 		}
 		if output.CommandRollout(command) != output.RolloutUnifiedActive {
 			t.Fatalf("sheet %s rollout = %s, want unified_active so Result is Agent-visible", name, output.CommandRollout(command))
