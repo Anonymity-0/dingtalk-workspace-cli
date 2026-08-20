@@ -183,6 +183,18 @@ func TestAitableDatasourceGetFieldsRejectsInvalidSourceConfig(t *testing.T) {
 	}
 }
 
+func TestAitableDatasourceGetFieldsRejectsNonObjectSourceConfig(t *testing.T) {
+	cases := []string{`[]`, `"text"`, `1`, `true`, `null`}
+	for _, raw := range cases {
+		_, err := runAitableDatasourceCommand(t, "get-fields",
+			"--base-id", "BASE123", "--datasource-type", "OA",
+			"--source-config", raw)
+		if err == nil || !strings.Contains(err.Error(), "source-config") {
+			t.Fatalf("source-config %q: error = %v, want source-config validation error", raw, err)
+		}
+	}
+}
+
 func TestAitableDatasourceGetFieldsSuccess(t *testing.T) {
 	caller, err := runAitableDatasourceCommand(t, "get-fields",
 		"--base-id", "BASE123", "--datasource-type", "OA",
@@ -212,6 +224,18 @@ func TestAitableDatasourceCreateRejectsInvalidSourceConfig(t *testing.T) {
 		"--source-config", `not-json`)
 	if err == nil || !strings.Contains(err.Error(), "source-config") {
 		t.Fatalf("error = %v, want source-config validation error", err)
+	}
+}
+
+func TestAitableDatasourceCreateRejectsNonObjectSourceConfig(t *testing.T) {
+	cases := []string{`[]`, `"text"`, `1`, `true`, `null`}
+	for _, raw := range cases {
+		_, err := runAitableDatasourceCommand(t, "create",
+			"--base-id", "BASE123", "--datasource-type", "OA",
+			"--source-config", raw)
+		if err == nil || !strings.Contains(err.Error(), "source-config") {
+			t.Fatalf("source-config %q: error = %v, want source-config validation error", raw, err)
+		}
 	}
 }
 
@@ -288,6 +312,18 @@ func TestAitableDatasourceUpdateRejectsInvalidSourceConfig(t *testing.T) {
 		"--source-config", `not-json`)
 	if err == nil || !strings.Contains(err.Error(), "source-config") {
 		t.Fatalf("error = %v, want source-config validation error", err)
+	}
+}
+
+func TestAitableDatasourceUpdateRejectsNonObjectSourceConfig(t *testing.T) {
+	cases := []string{`[]`, `"text"`, `1`, `true`, `null`}
+	for _, raw := range cases {
+		_, err := runAitableDatasourceCommand(t, "update",
+			"--base-id", "BASE123", "--table-id", "TBL456",
+			"--source-config", raw)
+		if err == nil || !strings.Contains(err.Error(), "source-config") {
+			t.Fatalf("source-config %q: error = %v, want source-config validation error", raw, err)
+		}
 	}
 }
 
@@ -368,5 +404,41 @@ func TestAitableDatasourceUpdateRejectsInvalidAutoSyncSetting(t *testing.T) {
 		"--auto-sync-setting", `not-json`)
 	if err == nil || !strings.Contains(err.Error(), "auto-sync-setting") {
 		t.Fatalf("error = %v, want auto-sync-setting validation error", err)
+	}
+}
+
+func TestAitableDatasourceUpdateRejectsNonObjectAutoSyncSetting(t *testing.T) {
+	cases := []string{`[]`, `"text"`, `1`, `true`, `null`}
+	for _, raw := range cases {
+		_, err := runAitableDatasourceCommand(t, "update",
+			"--base-id", "BASE123", "--table-id", "TBL456",
+			"--auto-sync-setting", raw)
+		if err == nil || !strings.Contains(err.Error(), "auto-sync-setting") {
+			t.Fatalf("auto-sync-setting %q: error = %v, want auto-sync-setting validation error", raw, err)
+		}
+	}
+}
+
+func TestAitableDatasourceUpdateRejectsEmptyExplicitFieldIDs(t *testing.T) {
+	caller, err := runAitableDatasourceCommand(t, "update",
+		"--base-id", "BASE123", "--table-id", "TBL456",
+		"--field-ids", "")
+	if err == nil || !strings.Contains(err.Error(), "field-ids") {
+		t.Fatalf("error = %v, want field-ids empty error", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("MCP should not be called when empty field-ids is rejected")
+	}
+}
+
+func TestAitableDatasourceUpdateRejectsEmptyExplicitAutoSyncSetting(t *testing.T) {
+	caller, err := runAitableDatasourceCommand(t, "update",
+		"--base-id", "BASE123", "--table-id", "TBL456",
+		"--auto-sync-setting", "")
+	if err == nil || !strings.Contains(err.Error(), "auto-sync-setting") {
+		t.Fatalf("error = %v, want auto-sync-setting empty error", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("MCP should not be called when empty auto-sync-setting is rejected")
 	}
 }

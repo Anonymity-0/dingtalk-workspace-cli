@@ -8510,8 +8510,11 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 
 	validateJSONObject := func(flag, raw string) error {
 		var v any
-		if err := json.Unmarshal([]byte(raw), &v); err != nil || v == nil {
+		if err := json.Unmarshal([]byte(raw), &v); err != nil {
 			return fmt.Errorf("--%s must be a valid JSON object: %w", flag, err)
+		}
+		if _, ok := v.(map[string]any); !ok {
+			return fmt.Errorf("--%s must be a JSON object, got %T", flag, v)
 		}
 		return nil
 	}
@@ -8660,10 +8663,18 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				auto, _ := cmd.Flags().GetBool("auto")
 				toolArgs["auto"] = auto
 			}
-			if v, _ := cmd.Flags().GetString("field-ids"); v != "" {
+			if cmd.Flags().Changed("field-ids") {
+				v := mustGetFlag(cmd, "field-ids")
+				if v == "" {
+					return fmt.Errorf("--field-ids 显式提供时不能为空，如需保持默认请勿传入")
+				}
 				toolArgs["fieldIds"] = parseCSVValues(v)
 			}
-			if v, _ := cmd.Flags().GetString("auto-sync-setting"); v != "" {
+			if cmd.Flags().Changed("auto-sync-setting") {
+				v := mustGetFlag(cmd, "auto-sync-setting")
+				if v == "" {
+					return fmt.Errorf("--auto-sync-setting 显式提供时不能为空，如需保持默认请勿传入")
+				}
 				if err := validateAutoSyncSetting(v); err != nil {
 					return err
 				}
