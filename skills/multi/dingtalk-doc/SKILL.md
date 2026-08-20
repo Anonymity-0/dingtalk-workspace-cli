@@ -55,7 +55,7 @@ metadata:
 | 从模板创建 | `dws doc +create-from-template --template-id <唯一ID>` | 已有唯一 templateId 才创建；不重复 list/search |
 | 创建评论或聚合待处理评论 | `dws doc +comment-create [--selection]` / `+review` | 划词统一用 `+comment-create`；后续操作使用真实 `commentKey` |
 | <!-- dws-intent: doc.access.grant -->添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to <姓名列表,逗号分隔>` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；没有 --user-ids；先读取现有权限；姓名歧义或 profile 不一致时禁止写入 |
-| <!-- dws-intent: doc.share.link_only -->只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | canonical（`+share-doc` 仅兼容）；收件人已有权限时用它，不要改走 `+grant-and-share` 多做一次权限写入；普通文本私信走 `dws chat +dm` |
+| <!-- dws-intent: doc.share.link_only -->只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | canonical（`+share-doc` 仅兼容）；收件人已有权限时用它，不要改走 `+grant-and-share`；普通文本私信走 `dws chat +dm` |
 | 授权后向多人分享链接 | `dws doc +grant-and-share` | 需变更权限时才用（必填 `--node`，`--role` 默认 READER）；返回逐人执行账本，部分失败不等于整体成功 |
 | <!-- dws-intent: doc.media.insert -->插入或下载正文媒体 | `dws doc +media-insert/+media-download` | 本地路径必须位于工作目录；下载默认 no-clobber |
 
@@ -89,7 +89,7 @@ Golden Route 已给出命令且参数足够时，禁止读取 reference。其余
 | block/划词评论/媒体/封面/背景高级参数 | [block](references/doc/doc-block.md) / [comment](references/doc/doc-comment.md) / [media](references/doc/doc-media.md) |
 | 导出/导入失败恢复 | [export](references/doc/doc-export.md) / [import](references/doc/doc-import.md) |
 
-常规 `+create`、`+fetch`、`+update` append/overwrite、`+export`、`+import` 禁止读取 reference；需策略时仅读上表一项，禁预加载/连读。
+常规 `+create`、`+fetch`、`+update` append/overwrite、`+export`、`+import` 禁止读取 reference；禁预加载/连读。
 
 ## 错误最短路径
 
@@ -103,7 +103,7 @@ Golden Route 已给出命令且参数足够时，禁止读取 reference。其余
 ## 跨产品边界
 
 - 普通文件、目录、纯上传下载、节点存储权限 → `dingtalk-drive`；文档空间原文件用 `drive upload --workspace`，在线协作转换用 `doc +import --workspace`
-- 在线文档节点的复制、移动（含“以某篇文档为模板另存”）→ `dingtalk-drive` 的 `drive +copy` / `drive +move`；doc 同名 `+copy`/`+move` 仅兼容保留，不作为默认路由
+- 在线文档节点的复制、移动与模板另存 → `dingtalk-drive` 的 `drive +copy` / `drive +move`；doc 同名 `+copy`/`+move` 仅兼容保留
 - 知识库空间、节点层级和成员管理 → `dingtalk-wiki`
 - 原生 `.md` 文件读取和编辑 → `dingtalk-misc`
 - `axls` / `able` → 对应电子表格或多维表 Skill

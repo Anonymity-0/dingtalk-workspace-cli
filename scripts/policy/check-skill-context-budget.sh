@@ -14,7 +14,7 @@ runtime_contract="skills/multi/dingtalk-shared/references/runtime-contract.md"
 chat_target_bytes=10000
 chat_max_overage_percent=10
 chat_max_bytes=$((chat_target_bytes * (100 + chat_max_overage_percent) / 100))
-doc_max_bytes=12000
+doc_max_bytes=11000
 event_max_bytes=10000
 runtime_contract_max_bytes=3000
 
