@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"testing"
@@ -331,7 +332,14 @@ func TestCrossPlatformCoverageTodoCreateAndUpdate(t *testing.T) {
 		{value: float64(40), want: 40, ok: true},
 		{value: json.Number("40"), want: 40, ok: true},
 		{value: " 40 ", want: 40, ok: true},
+		{value: float64(math.MinInt64), want: math.MinInt64, ok: true},
 		{value: 1786932000000.5},
+		{value: math.NaN()},
+		{value: math.Inf(1)},
+		{value: math.Inf(-1)},
+		{value: float64(math.MaxInt64)},
+		{value: 1e300},
+		{value: -1e300},
 		{value: json.Number("not-a-number")},
 		{value: "not-a-number"},
 		{value: true},
