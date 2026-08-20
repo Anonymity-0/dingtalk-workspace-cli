@@ -213,6 +213,9 @@ func TestAitableDatasourceCreateSuccess(t *testing.T) {
 	if len(caller.calls) != 1 || caller.calls[0].tool != "create_datasource" {
 		t.Fatalf("unexpected calls: %#v", caller.calls)
 	}
+	if v, ok := caller.calls[0].args["auto"]; !ok || v != false {
+		t.Fatalf("auto = %v, want false when not provided", v)
+	}
 }
 
 func TestAitableDatasourceCreateWithAuto(t *testing.T) {
@@ -258,5 +261,8 @@ func TestAitableDatasourceUpdateWithSourceConfig(t *testing.T) {
 	}
 	if caller.calls[0].args["sourceConfig"] != `{"processCode":"PROC-YYYY","name":"出差申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}` {
 		t.Fatalf("sourceConfig not passed as raw string: %v", caller.calls[0].args["sourceConfig"])
+	}
+	if v, ok := caller.calls[0].args["auto"]; !ok || v != false {
+		t.Fatalf("auto = %v, want false when not provided", v)
 	}
 }

@@ -173,7 +173,7 @@ dws aitable +datasource-create --base-id BASE_ID --datasource-type OA \
 | `--base-id` | 是 | 目标 Base ID |
 | `--datasource-type` | 是 | 数据源类型，当前仅支持 `OA` |
 | `--source-config` | 是 | 源配置 JSON 字符串（见上方字段协议） |
-| `--auto` | 否 | 是否开启自动同步，默认 false |
+| `--auto` | 否 | 是否开启自动同步，默认 false；无论是否传入，CLI 都会把该字段下发给下游 |
 | `--auto-sync-setting` | 否 | 自动同步频率配置 JSON 字符串，仅 --auto=true 时生效 |
 | `--field-ids` | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
 

@@ -110,7 +110,7 @@ dws aitable +datasource-create [flags]
 | `--base-id` | string | 是 | 目标 Base ID（通过 `+base-list` / `+base-search` 获取） |
 | `--datasource-type` | string | 是 | 数据源类型，目前支持审批（OA） |
 | `--source-config` | string | 是 | 源配置 JSON 字符串（格式见下方） |
-| `--auto` | bool | 否 | 是否开启自动同步，默认 false |
+| `--auto` | bool | 否 | 是否开启自动同步，默认 false；无论是否传入，CLI 都会把该字段下发给下游 |
 | `--auto-sync-setting` | string | 否 | 自动同步频率配置 JSON 字符串，仅在 `--auto=true` 时生效，格式见下方 |
 | `--field-ids` | stringSlice | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
 
@@ -201,7 +201,7 @@ dws aitable +datasource-update [flags]
 | `--base-id` | string | 是 | 目标 Base ID |
 | `--table-id` | string | 是 | 已存在的数据源表 ID（由 `+datasource-create` 返回） |
 | `--source-config` | string | 否 | 新的源配置 JSON 字符串，不传时保持原有配置。结构同 `+datasource-create` |
-| `--auto` | bool | 否 | 是否开启自动同步，不传时保持原有设置 |
+| `--auto` | bool | 否 | 是否开启自动同步，默认 false；无论是否传入，CLI 都会把该字段下发给下游 |
 | `--auto-sync-setting` | string | 否 | 自动同步频率配置 JSON 字符串，仅在 `--auto=true` 时生效；不传时保持原频率配置 |
 | `--field-ids` | stringSlice | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
 

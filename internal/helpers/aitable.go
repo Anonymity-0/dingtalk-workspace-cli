@@ -8563,14 +8563,12 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 			if err != nil {
 				return err
 			}
+			auto, _ := cmd.Flags().GetBool("auto")
 			toolArgs := map[string]any{
 				"baseId":         baseID,
 				"datasourceType": mustGetFlag(cmd, "datasource-type"),
 				"sourceConfig":   mustGetFlag(cmd, "source-config"),
-			}
-			if cmd.Flags().Changed("auto") {
-				v, _ := cmd.Flags().GetBool("auto")
-				toolArgs["auto"] = v
+				"auto":           auto,
 			}
 			return callAitableTool("create_datasource", toolArgs)
 		},
@@ -8604,7 +8602,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	datasourceCreateCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceCreateCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
 	datasourceCreateCmd.Flags().String("source-config", "", "源配置 JSON 字符串，须从 list-sources 原样透传 processCode/name/iconUrl/url，并设置 dataType 及对应时间字段 (必填)")
-	datasourceCreateCmd.Flags().Bool("auto", false, "是否开启自动同步")
+	datasourceCreateCmd.Flags().Bool("auto", false, "是否开启自动同步，默认 false；无论是否传入都会下发给下游")
 
 	datasourceUpdateCmd := &cobra.Command{
 		Use:     "update",
@@ -8618,16 +8616,14 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 			if err != nil {
 				return err
 			}
+			auto, _ := cmd.Flags().GetBool("auto")
 			toolArgs := map[string]any{
 				"baseId":  baseID,
 				"tableId": mustGetFlag(cmd, "table-id"),
+				"auto":    auto,
 			}
 			if cmd.Flags().Changed("source-config") {
 				toolArgs["sourceConfig"] = mustGetFlag(cmd, "source-config")
-			}
-			if cmd.Flags().Changed("auto") {
-				v, _ := cmd.Flags().GetBool("auto")
-				toolArgs["auto"] = v
 			}
 			return callAitableTool("update_datasource_config", toolArgs)
 		},
@@ -8664,7 +8660,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	datasourceUpdateCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceUpdateCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
 	datasourceUpdateCmd.Flags().String("source-config", "", "可选。新的源配置 JSON 字符串，传入时整体覆盖，须含 processCode、name、iconUrl、url、dataType 及对应时间字段")
-	datasourceUpdateCmd.Flags().Bool("auto", false, "是否开启自动同步")
+	datasourceUpdateCmd.Flags().Bool("auto", false, "是否开启自动同步，默认 false；无论是否传入都会下发给下游")
 
 	datasourceSyncCmd := &cobra.Command{
 		Use:     "sync",
