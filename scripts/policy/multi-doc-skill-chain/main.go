@@ -32,6 +32,7 @@ var (
 	intentIDPattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
 	reasonCodePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 	intentMarker      = regexp.MustCompile(`<!--\s*dws-intent:\s*([a-z0-9][a-z0-9._-]*)\s*-->`)
+	markdownLink      = regexp.MustCompile(`\]\(([^)#\s]+\.md)(?:#[^)]*)?\)`)
 	mainGetwd         = os.Getwd
 	mainExit          = os.Exit
 	markerOpen        = os.Open
@@ -40,9 +41,10 @@ var (
 )
 
 type routeManifest struct {
-	Version     int           `json:"version"`
-	MarkerRoots []string      `json:"marker_roots"`
-	Intents     []intentRoute `json:"intents"`
+	Version         int           `json:"version"`
+	MarkerRoots     []string      `json:"marker_roots"`
+	OrphanAllowlist []string      `json:"orphan_allowlist,omitempty"`
+	Intents         []intentRoute `json:"intents"`
 }
 
 type intentRoute struct {
@@ -223,7 +225,7 @@ func validateManifest(rootPath string, manifest routeManifest, tools map[string]
 		}
 	}
 
-	markerFailures, markers := scanMarkers(rootPath, manifest.MarkerRoots, intentByID, tools)
+	markerFailures, markers := scanMarkers(rootPath, manifest.MarkerRoots, manifest.OrphanAllowlist, intentByID, tools)
 	failures = append(failures, markerFailures...)
 	for _, route := range manifest.Intents {
 		for _, reference := range route.References {
@@ -240,9 +242,11 @@ func validateManifest(rootPath string, manifest routeManifest, tools map[string]
 	return failures
 }
 
-func scanMarkers(rootPath string, roots []string, intents map[string]intentRoute, tools map[string]toolFact) ([]string, map[string]int) {
+func scanMarkers(rootPath string, roots []string, orphanAllowlist []string, intents map[string]intentRoute, tools map[string]toolFact) ([]string, map[string]int) {
 	var failures []string
 	markers := map[string]int{}
+	inbound := map[string]int{}
+	var treeFiles []string
 	for _, relativeRoot := range roots {
 		if !safeRepositoryPath(relativeRoot) {
 			failures = append(failures, fmt.Sprintf("invalid marker root %q", relativeRoot))
@@ -263,12 +267,27 @@ func scanMarkers(rootPath string, roots []string, intents map[string]intentRoute
 			defer file.Close()
 			relative, _ := filepath.Rel(rootPath, path)
 			relative = filepath.ToSlash(relative)
+			treeFiles = append(treeFiles, relative)
 			scanner := bufio.NewScanner(file)
 			scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
 			lineNumber := 0
 			for scanner.Scan() {
 				lineNumber++
 				line := scanner.Text()
+				for _, link := range markdownLink.FindAllStringSubmatch(line, -1) {
+					target := link[1]
+					if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+						continue
+					}
+					resolved := filepath.Clean(filepath.Join(filepath.Dir(path), filepath.FromSlash(target)))
+					if _, statErr := os.Stat(resolved); statErr != nil {
+						failures = append(failures, fmt.Sprintf("%s:%d dead reference link %q", relative, lineNumber, target))
+						continue
+					}
+					if resolvedRelative, relErr := filepath.Rel(rootPath, resolved); relErr == nil {
+						inbound[filepath.ToSlash(resolvedRelative)]++
+					}
+				}
 				for _, match := range intentMarker.FindAllStringSubmatch(line, -1) {
 					id := match[1]
 					route, ok := intents[id]
@@ -299,6 +318,15 @@ func scanMarkers(rootPath string, roots []string, intents map[string]intentRoute
 		if err != nil {
 			failures = append(failures, fmt.Sprintf("scan marker root %s: %v", relativeRoot, err))
 		}
+	}
+	for _, relative := range treeFiles {
+		if filepath.Base(relative) == "SKILL.md" {
+			continue
+		}
+		if inbound[relative] > 0 || stringSliceContains(orphanAllowlist, relative) {
+			continue
+		}
+		failures = append(failures, fmt.Sprintf("orphan reference %s (no inbound links; add a link or list it in orphan_allowlist)", relative))
 	}
 	return failures, markers
 }
