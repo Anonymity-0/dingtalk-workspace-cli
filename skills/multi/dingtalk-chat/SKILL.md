@@ -47,9 +47,7 @@ metadata:
 | 查看指定群成员（用户/机器人） | `dws chat +chat-members-list --group <群名或ID>` | 唯一解析并全量读取 |
 | 获取群邀请链接 | `dws chat +chat-invite-url --group <群名或ID>` | 多候选时停止 |
 | 查看群机器人 | `dws chat +chat-bots --group <群名或ID>` | 返回稳定 `bots[]` |
-| 查看个人收藏表情 | `dws chat emotion list` | 当前用户身份由 MCP server 注入 |
-| 发送个人收藏表情 | `dws chat emotion send --media-id <mediaId> --group <openConversationId>` | 目标为 `--conversation-id/--group`、`--user`、`--open-dingtalk-id` 三选一；`--user` 会解析为 openDingTalkId |
-| 新增个人收藏表情 | `dws chat emotion favorite --media-id <mediaId>` | `--source-conversation-id` 与 `--source-message-id` 必须成对指定 |
+| 个人收藏表情列表/发送/收藏 | `dws chat emotion list/send/favorite` | 约束见 leaf Schema |
 | 修改群名称 | `dws chat group rename --id <openConversationId> --name <新名称>` | 只知群名时先用 `+chat-search --query <群名>` 唯一解析 ID；不猜 `+chat-rename` |
 | 查看指定群内 @我的消息 | `dws chat +at-me --group <群名> --page-all` | 检查 `complete`；空结果仍返回数组 |
 | 查看全部会话 | `dws chat +conversation-list --page-all` | 检查 `complete` / `failures` |
