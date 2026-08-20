@@ -5,10 +5,10 @@
 管理钉钉在线电子表格的历史版本快照。当用户说"保存版本/存个快照/看历史版本/版本列表/回滚到某个版本/恢复到之前的表格"时使用。
 
 - 手动保存当前表格为一个版本快照 → `version save`
-- 查看表格的历史版本列表（含版本号、名称、创建人、创建时间） → `version list`（别名 `ls`）
-- 把表格回滚到指定历史版本 → `version revert`（危险操作，默认需二次确认）
+- 查看表格的历史版本列表 → `version list`（别名 `ls`）。返回不含版本名称；列表项包含 `version`、`type`、`userId`、`createTime`、`updateTime`、`editorList` 等服务端字段
+- 把表格回滚到指定历史版本或已确认的精确 revision → `version revert`（危险操作，默认需二次确认）
 
-三个命令统一用 `--node` 指定表格文档（ID 或 URL）。回滚用的**版本号 `--version` 从 `version list` 的返回中获取**，禁止臆测。
+三个命令统一用 `--node` 指定表格文档（ID 或 URL）。默认从 `version list` 选择稳定的历史版本。用户明确要求恢复到某个精确 revision 时，也可把已从同一工作簿真实查询结果确认的 revision 传给 `--version`，即使它没有出现在版本列表中。禁止猜测版本号或 revision。
 
 ## 命令详细参考
 
@@ -38,7 +38,7 @@ Flags:
       --limit int       返回版本数量上限 (可选)
       --cursor string   分页游标 (可选，游标分页)
 ```
-返回表格的历史版本列表；回滚前先用它拿到目标 `version`（版本号）。
+返回表格的历史版本列表；顶层包含 `versions`、`nextCursor`、`hasMore`，列表项不含 `name`。回滚前先从列表项拿到真实 `version`（版本号）。
 
 ### 回滚表格到指定版本
 ```
@@ -49,21 +49,35 @@ Example:
 
 Flags:
       --node string    表格文档 ID 或 URL (必填)
-      --version int    目标版本号 (必填，从 version list 获取)
+      --version int    目标历史版本或已确认 revision (必填，通常从 version list 获取)
 ```
-把表格回滚到指定历史版本。**危险操作**：会覆盖当前内容，默认弹出二次确认；AI Agent 或脚本执行时可加全局 `--yes` 跳过确认。
+把表格回滚到指定历史版本或精确 revision。**危险操作**：会覆盖当前内容，默认弹出二次确认；AI Agent 或脚本只有在已经取得用户确认时才可加全局 `--yes`。
+
+`version list` 只列选定的保存或回滚点，并不包含每一个 revision。未列入版本列表的 revision 只有在服务端仍可恢复时才能回滚成功；过旧或内容不可用时应直接报告失败，禁止改猜相邻 revision 重试。
+
+### 精确 revision 回滚
+
+只有用户明确要求恢复到某个 revision 时才走此流程：
+
+1. 用 `revision-get` 记录回滚前的当前 revision。
+2. 目标 revision 必须来自同一工作簿的真实查询结果，或由用户明确提供；不要根据次数、时间或相邻版本推算。
+3. 向用户确认目标 revision 及当前内容将被覆盖，再执行 `version revert --version <REVISION> --yes`。
+4. 用 `csv-get`、`range read` 或其他对应读取命令回读所需内容。
+5. 需要审计回滚事件时，用回滚前后的 revision 查询 `changeset-get`，确认出现 `STATE_RESET`，且 `reset.targetRevision` 等于目标 revision。
 
 ## 上下文传递
 
 | 操作 | 从返回中提取 | 用于 |
 |------|-------------|------|
 | `version list` | `version`（版本号） | 作为 `version revert --version` 的入参 |
+| `revision-get` / `changeset-get` | 已确认属于同一工作簿的 `revision` | 用户明确要求精确恢复时，作为 `version revert --version` 的入参 |
 | `version save` | 版本快照结果 | 确认已生成快照 |
 | `version revert` | 回滚结果 | 确认回滚完成，回读表格内容验证 |
 
 ## 注意事项
 
 - ★ 回滚 `version revert` 会**覆盖当前表格内容**，属危险操作，默认二次确认；确认无误再执行，脚本/Agent 场景加 `--yes`
-- ★ `--version` 必须来自 `version list` 的真实返回，禁止臆测版本号
-- 底层复用 doc 域的历史版本能力（`save_doc_version` / `list_doc_versions` / `revert_doc_version`），`--node` 传在线电子表格文档即可
+- ★ 默认从 `version list` 选择历史版本；只有用户明确要求精确 revision 时，才使用同一工作簿真实查询结果中已确认的 revision
+- ★ 未列入版本列表的 revision 不保证仍可恢复；失败时直接说明，不猜测其他 revision，不自动重试
+- ★ `version list` 返回的 `version` 可作为 `changeset-get` 的 start/end 锚点，但相邻历史版本之间可能包含多个 revision。需要查看逐次变更时读 [sheet-revision-changeset](./sheet-revision-changeset.md)
 - 回滚后应用独立读命令（`csv-get` / `range read`）回读确认，避免"写返回不等于完成"
