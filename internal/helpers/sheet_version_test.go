@@ -15,6 +15,7 @@ package helpers
 
 import (
 	"bytes"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -39,5 +40,39 @@ func TestSheetVersionRevertHelpDocumentsConfirmedRevisionTargets(t *testing.T) {
 		if !strings.Contains(help, expected) {
 			t.Fatalf("sheet version revert help missing %q:\n%s", expected, help)
 		}
+	}
+	if strings.Contains(help, "--yes") {
+		t.Fatalf("sheet version revert help must not publish a confirmation-bypass example:\n%s", help)
+	}
+}
+
+func TestSheetVersionRevertRequiresConfirmationAndCallsExactToolWhenConfirmed(t *testing.T) {
+	args := []string{"version", "revert", "--node", "node-1", "--version", "37"}
+
+	caller := &guardedMutationCaller{}
+	err := executeGuardedMutationCommand(t, caller, newSheetCommand, args...)
+	requireTypedConfirmationError(t, err)
+	if len(caller.calls) != 0 {
+		t.Fatalf("expected 0 MCP calls before confirmation, got %d: %+v", len(caller.calls), caller.calls)
+	}
+
+	caller = &guardedMutationCaller{}
+	confirmedArgs := append(append([]string(nil), args...), "--yes")
+	if err := executeGuardedMutationCommand(t, caller, newSheetCommand, confirmedArgs...); err != nil {
+		t.Fatalf("sheet version revert after confirmation returned error: %v", err)
+	}
+	want := guardedMutationCall{
+		productID: "doc",
+		toolName:  "revert_doc_version",
+		args: map[string]any{
+			"nodeId":  "node-1",
+			"version": 37,
+		},
+	}
+	if len(caller.calls) != 1 {
+		t.Fatalf("expected exactly 1 MCP call after confirmation, got %d: %+v", len(caller.calls), caller.calls)
+	}
+	if !reflect.DeepEqual(caller.calls[0], want) {
+		t.Fatalf("tool call = %#v, want %#v", caller.calls[0], want)
 	}
 }

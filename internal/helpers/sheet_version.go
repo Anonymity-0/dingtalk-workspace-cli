@@ -118,7 +118,7 @@ func newSheetVersionCmd() *cobra.Command {
 通常应从 version list 选择已保存的历史版本。用户明确要求恢复到某个精确 revision 时，
 也可传入已从同一工作簿真实查询结果确认的 revision，即使它不在版本列表中。未列入
 版本列表的 revision 只有在服务端仍可恢复时才能成功；禁止猜测 revision。`,
-		Example: `  dws sheet version revert --node SHEET_ID --version 3 --yes`,
+		Example: `  dws sheet version revert --node SHEET_ID --version 3`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
