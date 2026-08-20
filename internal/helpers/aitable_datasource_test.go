@@ -262,7 +262,18 @@ func TestAitableDatasourceUpdateWithSourceConfig(t *testing.T) {
 	if caller.calls[0].args["sourceConfig"] != `{"processCode":"PROC-YYYY","name":"出差申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}` {
 		t.Fatalf("sourceConfig not passed as raw string: %v", caller.calls[0].args["sourceConfig"])
 	}
+	if _, ok := caller.calls[0].args["auto"]; ok {
+		t.Fatalf("auto should not be sent when --auto is omitted")
+	}
+}
+
+func TestAitableDatasourceUpdateWithAutoFalse(t *testing.T) {
+	caller, err := runAitableDatasourceCommand(t, "update",
+		"--base-id", "BASE123", "--table-id", "TBL456", "--auto=false")
+	if err != nil {
+		t.Fatalf("update with --auto=false should succeed: %v", err)
+	}
 	if v, ok := caller.calls[0].args["auto"]; !ok || v != false {
-		t.Fatalf("auto = %v, want false when not provided", v)
+		t.Fatalf("auto = %v, want false", v)
 	}
 }

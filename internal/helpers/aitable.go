@@ -8602,7 +8602,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	datasourceCreateCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceCreateCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
 	datasourceCreateCmd.Flags().String("source-config", "", "源配置 JSON 字符串，须从 list-sources 原样透传 processCode/name/iconUrl/url，并设置 dataType 及对应时间字段 (必填)")
-	datasourceCreateCmd.Flags().Bool("auto", false, "是否开启自动同步，默认 false；无论是否传入都会下发给下游")
+	datasourceCreateCmd.Flags().Bool("auto", false, "是否开启自动同步，默认 false；创建新数据源表时始终下发给下游")
 
 	datasourceUpdateCmd := &cobra.Command{
 		Use:     "update",
@@ -8616,14 +8616,16 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 			if err != nil {
 				return err
 			}
-			auto, _ := cmd.Flags().GetBool("auto")
 			toolArgs := map[string]any{
 				"baseId":  baseID,
 				"tableId": mustGetFlag(cmd, "table-id"),
-				"auto":    auto,
 			}
 			if cmd.Flags().Changed("source-config") {
 				toolArgs["sourceConfig"] = mustGetFlag(cmd, "source-config")
+			}
+			if cmd.Flags().Changed("auto") {
+				auto, _ := cmd.Flags().GetBool("auto")
+				toolArgs["auto"] = auto
 			}
 			return callAitableTool("update_datasource_config", toolArgs)
 		},
@@ -8659,8 +8661,8 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	})
 	datasourceUpdateCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceUpdateCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
-	datasourceUpdateCmd.Flags().String("source-config", "", "可选。新的源配置 JSON 字符串，传入时整体覆盖，须含 processCode、name、iconUrl、url、dataType 及对应时间字段")
-	datasourceUpdateCmd.Flags().Bool("auto", false, "是否开启自动同步，默认 false；无论是否传入都会下发给下游")
+	datasourceUpdateCmd.Flags().String("source-config", "", "可选。新的源配置 JSON 字符串，不传时保持原配置；传入时整体覆盖，须含 processCode、name、iconUrl、url、dataType 及对应时间字段")
+	datasourceUpdateCmd.Flags().Bool("auto", false, "可选。是否开启自动同步；仅显式设置时下发给下游，省略时保持原设置")
 
 	datasourceSyncCmd := &cobra.Command{
 		Use:     "sync",
