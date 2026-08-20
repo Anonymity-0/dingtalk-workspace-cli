@@ -66,8 +66,6 @@ metadata:
 | `dws aitable +datasource-sync` | write | 对已有数据源表触发一次手动同步（单次最多 5 张表） |
 | `dws aitable +datasource-sync-status` | read | 查询数据源表的同步任务状态（支持批量查询） |
 | `dws aitable +datasource-update` | write | 更新已有数据源表的同步配置并触发同步 |
-| `dws aitable +datasource-get-fields` | read | 获取指定数据源下可供同步的字段列表（用于决定 field-ids） |
-| `dws aitable +datasource-list-sources` | read | 列出指定 Base 下可用的数据源条目（OA 审批模板等） |
 | `dws aitable +export-data` | read | 导出 AI 表格数据（创建导出任务或按 taskId 续等） |
 | `dws aitable +field-delete` | high-risk-write | 删除指定字段（不可逆） |
 | `dws aitable +field-get` | read | 批量获取字段详情（含类型相关完整配置） |
