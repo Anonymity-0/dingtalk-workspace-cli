@@ -4383,7 +4383,7 @@ var generatedParamAliases = []ParamAliasEntry{
 			"output-path":      "output",
 			"save-path":        "output",
 		},
-		Blocked:   []string{"before-block-id", "comment-id", "comment-key", "content-file", "dentry-id", "file", "file-path", "folder", "folder-id", "job-id", "name", "parent-block-id", "parent-id", "ref-block-id", "reference-block-id", "revision", "role", "space-id", "task-id", "template-id", "version", "workspace", "workspace-id"},
+		Blocked:   []string{"before-block-id", "comment-id", "comment-key", "content-file", "dentry-id", "file", "file-path", "folder", "folder-id", "job-id", "name", "parent-block-id", "parent-id", "ref-block-id", "reference-block-id", "revision", "role", "space-id", "task-id", "template-id", "workspace", "workspace-id"},
 		Ambiguous: []string{"block-id"},
 	},
 	{
