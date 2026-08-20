@@ -8675,7 +8675,10 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 			if err != nil {
 				return err
 			}
-			tableIDs, _ := cmd.Flags().GetStringSlice("table-ids")
+			tableIDs := parseCSVValues(mustGetFlag(cmd, "table-ids"))
+			if len(tableIDs) == 0 {
+				return fmt.Errorf("--table-ids must not be empty\n  hint: provide comma-separated tableIds")
+			}
 			return callAitableTool("run_datasource_sync", map[string]any{
 				"baseId":   baseID,
 				"tableIds": tableIDs,
@@ -8707,7 +8710,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 		},
 	})
 	datasourceSyncCmd.Flags().String("base-id", "", "Base ID (必填)")
-	datasourceSyncCmd.Flags().StringSlice("table-ids", nil, "待触发同步的数据源表 ID 列表（1-5 个，必填）")
+	datasourceSyncCmd.Flags().String("table-ids", "", "待触发同步的数据源表 ID 列表，逗号分隔，1-5 个 (必填)")
 
 	datasourceSyncStatusCmd := &cobra.Command{
 		Use:     "sync-status",
@@ -8726,7 +8729,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				"tableId": mustGetFlag(cmd, "table-id"),
 			}
 			if cmd.Flags().Changed("task-ids") {
-				ids, _ := cmd.Flags().GetStringSlice("task-ids")
+				ids := parseCSVValues(mustGetFlag(cmd, "task-ids"))
 				toolArgs["taskIds"] = ids
 			}
 			return callAitableTool("get_datasource_sync_status", toolArgs)
@@ -8759,7 +8762,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	})
 	datasourceSyncStatusCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceSyncStatusCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
-	datasourceSyncStatusCmd.Flags().StringSlice("task-ids", nil, "待查询的同步任务 ID 列表（最多 5 个，可选）")
+	datasourceSyncStatusCmd.Flags().String("task-ids", "", "待查询的同步任务 ID 列表，逗号分隔，最多 5 个（可选）")
 
 	datasourceCmd.AddCommand(
 		datasourceGetConfigCmd, datasourceListSourcesCmd, datasourceGetFieldsCmd,
