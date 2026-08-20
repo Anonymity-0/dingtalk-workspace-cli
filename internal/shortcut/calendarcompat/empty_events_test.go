@@ -5,7 +5,7 @@ package calendarcompat
 
 import "testing"
 
-func TestNormalizeTerminalEmptyEvents(t *testing.T) {
+func TestCrossPlatformCoverageNormalizeTerminalEmptyEvents(t *testing.T) {
 	sentinel := []any{map[string]any{
 		"attendees": nil, "categories": nil, "meetingRooms": nil, "reminders": nil,
 	}}
@@ -16,9 +16,11 @@ func TestNormalizeTerminalEmptyEvents(t *testing.T) {
 	for name, items := range map[string][]any{
 		"empty object":   {map[string]any{}},
 		"missing fields": {map[string]any{"attendees": nil}},
-		"unknown field":  {map[string]any{"summary": nil}},
+		"unknown field": {map[string]any{
+			"attendees": nil, "categories": nil, "meetingRooms": nil, "summary": nil,
+		}},
 		"non-null field": {map[string]any{
-			"attendees": []any{}, "categories": nil,
+			"attendees": []any{}, "categories": nil, "meetingRooms": nil, "reminders": nil,
 		}},
 		"mixed rows": {sentinel[0], map[string]any{"id": "event-1"}},
 	} {

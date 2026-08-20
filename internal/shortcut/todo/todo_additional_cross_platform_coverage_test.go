@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"math"
 	"strconv"
 	"strings"
 	"testing"
@@ -322,10 +321,28 @@ func TestCrossPlatformCoverageTodoCreateAndUpdate(t *testing.T) {
 	if todoUpdateFieldMatches("dueTime", float64(1786932000000), int64(1786932000001)) {
 		t.Fatal("different dueTime milliseconds matched")
 	}
-	for _, value := range []any{1786932000000.5, "not-a-number", uint64(math.MaxInt64) + 1} {
-		if _, ok := todoExactInteger(value); ok {
-			t.Fatalf("invalid integer accepted: %#v", value)
+	for _, tc := range []struct {
+		value any
+		want  int64
+		ok    bool
+	}{
+		{value: int(40), want: 40, ok: true},
+		{value: int64(1786932000000), want: 1786932000000, ok: true},
+		{value: float64(40), want: 40, ok: true},
+		{value: json.Number("40"), want: 40, ok: true},
+		{value: " 40 ", want: 40, ok: true},
+		{value: 1786932000000.5},
+		{value: json.Number("not-a-number")},
+		{value: "not-a-number"},
+		{value: true},
+	} {
+		got, ok := todoExactInteger(tc.value)
+		if got != tc.want || ok != tc.ok {
+			t.Fatalf("todoExactInteger(%#v) = %d/%v, want %d/%v", tc.value, got, ok, tc.want, tc.ok)
 		}
+	}
+	if todoUpdateFieldMatches("unknown", 1, 1) {
+		t.Fatal("unknown update field matched")
 	}
 }
 

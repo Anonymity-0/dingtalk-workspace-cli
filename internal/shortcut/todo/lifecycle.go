@@ -186,30 +186,8 @@ func todoExactInteger(value any) (int64, bool) {
 	switch typed := value.(type) {
 	case int:
 		return int64(typed), true
-	case int8:
-		return int64(typed), true
-	case int16:
-		return int64(typed), true
-	case int32:
-		return int64(typed), true
 	case int64:
 		return typed, true
-	case uint:
-		if uint64(typed) > math.MaxInt64 {
-			return 0, false
-		}
-		return int64(typed), true
-	case uint8:
-		return int64(typed), true
-	case uint16:
-		return int64(typed), true
-	case uint32:
-		return int64(typed), true
-	case uint64:
-		if typed > math.MaxInt64 {
-			return 0, false
-		}
-		return int64(typed), true
 	case float64:
 		return todoExactFloat(typed)
 	case json.Number:

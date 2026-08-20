@@ -5,7 +5,7 @@ package commentreaction
 
 import "testing"
 
-func TestValidate(t *testing.T) {
+func TestCrossPlatformCoverageValidate(t *testing.T) {
 	for _, value := range []string{"憨笑", "鼓掌", "比心", "赞", "OK", "Done", "平安健康"} {
 		if err := Validate(value); err != nil {
 			t.Errorf("supported reaction %q rejected: %v", value, err)

@@ -145,6 +145,16 @@ func TestCrossPlatformCoverageCommentReplyRejectsUnsupportedEmojiBeforeRPC(t *te
 			t.Fatalf("unsupported reaction %q reached RPC %d time(s)", content, caller.calls)
 		}
 	}
+
+	caller := &docCoverageCaller{responses: map[string][]map[string]any{}}
+	if err := runDocCoverage(t, CommentReply, caller,
+		"--node", "node-1", "--comment-key", "comment-1",
+		"--content", "鼓掌", "--emoji", "--yes"); err != nil {
+		t.Fatal(err)
+	}
+	if caller.calls != 1 || caller.history[0].params["emoji"] != true {
+		t.Fatalf("valid reaction call = %#v", caller.history)
+	}
 }
 
 func TestCrossPlatformCoverageRevisionSelectionAndKeywordUseLiveShapes(t *testing.T) {
