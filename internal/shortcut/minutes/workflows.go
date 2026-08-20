@@ -160,6 +160,9 @@ var PrepareASR = shortcut.Shortcut{
 		{Name: "words", Type: shortcut.FlagStringSlice, Desc: "目标热词，逗号分隔", Required: true},
 		{Name: "sync", Type: shortcut.FlagBool, Desc: "[已迁移] 请使用 +sync-asr", Hidden: true},
 	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"sync"}, Description: "--sync 已迁移；需要删除多余热词时必须改用 +sync-asr"},
+	},
 	Tips: []string{`dws minutes +prepare-asr --words "DWS,听记"`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		if rt.Changed("sync") {
