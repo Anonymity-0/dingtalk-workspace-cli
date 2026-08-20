@@ -28,7 +28,8 @@
       "id": "doc.content.update",
       "preferred_tool": "doc.shortcut_update",
       "forbidden_default_tools": [
-        "doc.update_document"
+        "doc.update_document",
+        "doc.shortcut_doc_append"
       ],
       "references": [
         "skills/multi/dingtalk-doc/SKILL.md"
