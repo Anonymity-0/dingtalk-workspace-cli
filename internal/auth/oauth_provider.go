@@ -817,7 +817,8 @@ func (p *OAuthProvider) lockedRefresh(ctx context.Context) (*TokenData, error) {
 	}
 	// A stale identity slot can survive an older organization-only refresh.
 	// Retry once with the same-corp organization mirror while holding the
-	// existing dual lock; the refresh path repairs both persisted slots.
+	// existing dual lock; the fallback marks the publication so the rotated
+	// credential is written back into the mirror slot it consumed.
 	logging.AuthDebug(
 		"auth.refresh.fallback.triggered",
 		"corp_id", strings.TrimSpace(data.CorpID),
@@ -873,6 +874,11 @@ func (p *OAuthProvider) refreshFromOrgSlot(ctx context.Context, current *TokenDa
 		orgData.UserID = current.UserID
 		orgData.UserName = current.UserName
 	}
+	// The refresh below consumes the mirror's refresh_token. Mark the
+	// publication so persistence writes the rotated credential back into the
+	// organization slot even under an explicit runtime selector whose plan
+	// would otherwise skip it (for example a preserved unresolved sibling).
+	orgData.RepairOrganizationMirror = true
 	refreshed, err := oauthRefreshToken(p, ctx, orgData)
 	if err != nil {
 		return nil, err

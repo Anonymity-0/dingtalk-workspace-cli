@@ -20,6 +20,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -137,6 +139,127 @@ func TestCrossPlatformCoverageLockedRefreshFallsBackToOrgSlot(t *testing.T) {
 	}
 	if f.orgLoads != 1 {
 		t.Fatalf("organization slot loads = %d, want 1", f.orgLoads)
+	}
+}
+
+func TestCrossPlatformCoverageRepairMarkerForcesOrganizationSlotWrite(t *testing.T) {
+	cfg := &ProfilesConfig{
+		Version: profilesVersion,
+		Profiles: []Profile{
+			{Name: "legacy", CorpID: "corp-1", UserID: ""},
+			{Name: "user-1", CorpID: "corp-1", UserID: "user-1"},
+		},
+	}
+	selector := profileSelector("corp-1", "user-1")
+
+	without := &TokenData{CorpID: "corp-1", UserID: "user-1"}
+	if plan := planTokenPersistenceWrites(cfg, without, selector); plan.WriteOrganization {
+		t.Fatalf("explicit selector preserved unresolved org slot: WriteOrganization = true, want false")
+	}
+
+	with := &TokenData{CorpID: "corp-1", UserID: "user-1", RepairOrganizationMirror: true}
+	if plan := planTokenPersistenceWrites(cfg, with, selector); !plan.WriteOrganization {
+		t.Fatalf("repair marker did not force the organization slot write")
+	}
+}
+
+func TestCrossPlatformCoverageLockedRefreshFallbackRepairsPersistedSlots(t *testing.T) {
+	isolateOAuthPersistence(t)
+	t.Setenv("DWS_CLIENT_ID", "")
+	t.Setenv("DWS_CLIENT_SECRET", "")
+
+	// Fake MCP refresh endpoint: the first call rejects the stale identity
+	// refresh_token with the reviewed business code; the second call (the
+	// organization mirror) succeeds and returns a rotated credential.
+	var refreshCalls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if refreshCalls.Add(1) == 1 {
+			fmt.Fprint(w, `{"errorCode":"invalidParameter.authCode.notFound","errorMsg":"authCode not found"}`)
+			return
+		}
+		fmt.Fprint(w, `{"accessToken":"new-access","refreshToken":"new-refresh","expiresIn":7200,"corpId":"corp-1","userId":"user-1","userName":"User One"}`)
+	}))
+	defer srv.Close()
+
+	configDir := setupMCPConfigDir(t, srv.URL)
+	resetAppConfigCache()
+
+	// Seed the pre-fallback state: an identity slot whose refresh_token the
+	// server rejects, plus a legacy organization mirror (no userId) with a
+	// still-valid refresh_token and a preserved unresolved sibling profile so
+	// an explicit --profile refresh would normally skip the org slot.
+	cfg := &ProfilesConfig{
+		Version: profilesVersion,
+		Profiles: []Profile{
+			{Name: "corp-1", CorpID: "corp-1", UserID: "", ClientID: "mcp-client"},
+			{Name: "user-1", CorpID: "corp-1", UserID: "user-1", UserName: "User One", ClientID: "mcp-client"},
+		},
+	}
+	if err := SaveProfiles(configDir, cfg); err != nil {
+		t.Fatalf("SaveProfiles() error = %v", err)
+	}
+	orgMirror := &TokenData{
+		AccessToken:  "org-access",
+		RefreshToken: "org-refresh",
+		ExpiresAt:    time.Now().Add(-time.Minute),
+		RefreshExpAt: time.Now().Add(time.Hour),
+		CorpID:       "corp-1",
+		Source:       "mcp",
+		ClientID:     "mcp-client",
+	}
+	if err := SaveTokenDataKeychainForCorpID("corp-1", orgMirror); err != nil {
+		t.Fatalf("SaveTokenDataKeychainForCorpID() error = %v", err)
+	}
+	staleIdentity := &TokenData{
+		AccessToken:  "stale-access",
+		RefreshToken: "stale-refresh",
+		ExpiresAt:    time.Now().Add(-time.Hour),
+		RefreshExpAt: time.Now().Add(time.Hour),
+		CorpID:       "corp-1",
+		UserID:       "user-1",
+		UserName:     "User One",
+		Source:       "mcp",
+		ClientID:     "mcp-client",
+	}
+	if err := SaveTokenDataKeychainForIdentity("corp-1", "user-1", staleIdentity); err != nil {
+		t.Fatalf("SaveTokenDataKeychainForIdentity() error = %v", err)
+	}
+
+	SetRuntimeProfile("corp-1:user-1")
+	t.Cleanup(func() { SetRuntimeProfile("") })
+
+	p := &OAuthProvider{
+		configDir:  configDir,
+		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Output:     io.Discard,
+		httpClient: srv.Client(),
+	}
+	got, err := p.lockedRefresh(context.Background())
+	if err != nil {
+		t.Fatalf("lockedRefresh() error = %v", err)
+	}
+	if got == nil || got.AccessToken != "new-access" || got.RefreshToken != "new-refresh" {
+		t.Fatalf("lockedRefresh() = %#v, want rotated credential", got)
+	}
+	if refreshCalls.Load() != 2 {
+		t.Fatalf("MCP refresh calls = %d, want primary rejection plus fallback", refreshCalls.Load())
+	}
+
+	// The fallback consumed the mirror's refresh_token: both persisted slots
+	// must now carry the rotated credential instead of the consumed one.
+	orgSlot, err := LoadTokenDataKeychainForCorpID("corp-1")
+	if err != nil {
+		t.Fatalf("LoadTokenDataKeychainForCorpID() error = %v", err)
+	}
+	if orgSlot.RefreshToken != "new-refresh" || orgSlot.UserID != "user-1" {
+		t.Fatalf("organization slot = %#v, want new-refresh for user-1", orgSlot)
+	}
+	identitySlot, err := LoadTokenDataKeychainForIdentity("corp-1", "user-1")
+	if err != nil {
+		t.Fatalf("LoadTokenDataKeychainForIdentity() error = %v", err)
+	}
+	if identitySlot.RefreshToken != "new-refresh" {
+		t.Fatalf("identity slot = %#v, want new-refresh", identitySlot)
 	}
 }
 
