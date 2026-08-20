@@ -337,3 +337,125 @@ func TestCrossPlatformCoverageOAAttachmentRejectsInvalidPreviewFileIDs(t *testin
 		})
 	}
 }
+
+func TestCrossPlatformCoverageOAAttachmentInitUploadPayload(t *testing.T) {
+	const response = `{"result":{"uploadKey":"key-123","resourceUrls":["https://oss.example.test/upload"],"storageDriver":"oss","expirationSeconds":3600,"region":"cn-hangzhou","class":"com.dingtalk.oapi.response"},"success":true}`
+	commandArgs := []string{
+		"approval", "attachment", "init-upload",
+		"--file-name", "合同.pdf",
+		"--file-size", "102400",
+		"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+	}
+	wantArgs := map[string]any{
+		"fileName": "合同.pdf",
+		"fileSize": 102400,
+		"md5":      "d41d8cd98f00b204e9800998ecf8427e",
+	}
+
+	t.Run("json", func(t *testing.T) {
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: response}}}
+		stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, commandArgs...)
+		if err != nil {
+			t.Fatalf("execute command: %v", err)
+		}
+		if caller.server != "oa" || caller.tool != "init_attachment_upload_info" {
+			t.Fatalf("called %s/%s, want oa/init_attachment_upload_info", caller.server, caller.tool)
+		}
+		if !reflect.DeepEqual(caller.args, wantArgs) {
+			t.Fatalf("args = %#v, want %#v", caller.args, wantArgs)
+		}
+		var envelope map[string]any
+		if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+			t.Fatalf("decode unified output: %v", err)
+		}
+		if envelope["ok"] != true || envelope["outcome"] != "success" {
+			t.Fatalf("unified envelope = %#v", envelope)
+		}
+		data, ok := envelope["data"].(map[string]any)
+		if !ok || data["uploadKey"] != "key-123" {
+			t.Fatalf("unified data = %#v", envelope["data"])
+		}
+	})
+
+	t.Run("optional md5 omitted", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":{},"success":true}`}}}
+		if _, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+			"approval", "attachment", "init-upload",
+			"--file-name", "report.xlsx",
+			"--file-size", "2048",
+		); err != nil {
+			t.Fatalf("execute command: %v", err)
+		}
+		if _, exists := caller.args["md5"]; exists {
+			t.Fatalf("optional md5 should be omitted: %#v", caller.args)
+		}
+	})
+}
+
+func TestCrossPlatformCoverageOAAttachmentCommitUploadPayload(t *testing.T) {
+	const response = `{"result":{"spaceId":27827223951,"fileName":"合同.pdf","fileSize":102400,"class":"com.dingtalk.oapi.response","fileType":"pdf","fileId":"file-abc"},"success":true}`
+	commandArgs := []string{
+		"approval", "attachment", "commit-upload",
+		"--file-name", "合同.pdf",
+		"--upload-key", "key-123",
+		"--file-size", "102400",
+	}
+	wantArgs := map[string]any{
+		"fileName":  "合同.pdf",
+		"uploadKey": "key-123",
+		"fileSize":  102400,
+	}
+
+	t.Run("json", func(t *testing.T) {
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: response}}}
+		stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller, commandArgs...)
+		if err != nil {
+			t.Fatalf("execute command: %v", err)
+		}
+		if caller.server != "oa" || caller.tool != "commit_attachment_upload_info" {
+			t.Fatalf("called %s/%s, want oa/commit_attachment_upload_info", caller.server, caller.tool)
+		}
+		if !reflect.DeepEqual(caller.args, wantArgs) {
+			t.Fatalf("args = %#v, want %#v", caller.args, wantArgs)
+		}
+		var envelope map[string]any
+		if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+			t.Fatalf("decode unified output: %v", err)
+		}
+		if envelope["ok"] != true || envelope["outcome"] != "success" {
+			t.Fatalf("unified envelope = %#v", envelope)
+		}
+		data, ok := envelope["data"].(map[string]any)
+		if !ok || data["fileId"] != "file-abc" {
+			t.Fatalf("unified data = %#v", envelope["data"])
+		}
+	})
+}
+
+func TestCrossPlatformCoverageOAAttachmentUploadRequiredFlagValidation(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "init-upload missing file-name", args: []string{"approval", "attachment", "init-upload", "--file-size", "1024"}},
+		{name: "init-upload missing file-size", args: []string{"approval", "attachment", "init-upload", "--file-name", "test.pdf"}},
+		{name: "commit-upload missing file-name", args: []string{"approval", "attachment", "commit-upload", "--upload-key", "k", "--file-size", "1024"}},
+		{name: "commit-upload missing upload-key", args: []string{"approval", "attachment", "commit-upload", "--file-name", "test.pdf", "--file-size", "1024"}},
+		{name: "commit-upload missing file-size", args: []string{"approval", "attachment", "commit-upload", "--file-name", "test.pdf", "--upload-key", "k"}},
+		{name: "init-upload negative file-size", args: []string{"approval", "attachment", "init-upload", "--file-name", "test.pdf", "--file-size", "-1"}},
+		{name: "commit-upload negative file-size", args: []string{"approval", "attachment", "commit-upload", "--file-name", "test.pdf", "--upload-key", "k", "--file-size", "-1"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			err := executeOACommand(t, caller, test.args...)
+			if err == nil {
+				t.Fatalf("%s unexpectedly succeeded", test.name)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("missing required flag made %d MCP call(s)", caller.calls)
+			}
+		})
+	}
+}

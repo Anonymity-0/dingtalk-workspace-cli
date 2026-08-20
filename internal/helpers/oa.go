@@ -140,6 +140,15 @@ func callOAAttachmentResult(cmd *cobra.Command, tool string, args map[string]any
 	return output.Success(result), nil
 }
 
+// validateOAAttachmentFileSize 校验 --file-size 非负，与 MCP inputSchema 的
+// fileSize >= 0 约束保持一致，避免把非法负值下发到后端。
+func validateOAAttachmentFileSize(cmd *cobra.Command, _ []string) error {
+	if size, _ := cmd.Flags().GetInt("file-size"); size < 0 {
+		return apperrors.NewValidation("--file-size 必须大于等于 0")
+	}
+	return nil
+}
+
 func newOAAttachmentCommand() *cobra.Command {
 	attachmentCmd := &cobra.Command{
 		Use:   "attachment",
@@ -318,7 +327,113 @@ func newOAAttachmentCommand() *cobra.Command {
 		},
 	})
 
-	attachmentCmd.AddCommand(downloadURLCmd, authorizeDownloadCmd, authorizePreviewCmd)
+	initUploadCmd := NewLeafCommand(LeafSpec{
+		Use:           "init-upload",
+		Short:         "初始化审批附件上传信息，使用获取到的信息上传文件",
+		Example:       "  dws oa approval attachment init-upload --file-name 合同.pdf --file-size 102400",
+		Server:        "oa",
+		Tool:          "init_attachment_upload_info",
+		OutputRollout: output.RolloutUnifiedActive,
+		ResultCall:    callOAAttachmentResult,
+		Flags: []LeafFlag{
+			{Name: "file-name", Usage: "完整文件名，例如 合同.pdf (必填)", Bind: "fileName", Trim: true, Required: true, MarkRequired: true},
+			{Name: "file-size", Usage: "文件字节数，必须大于等于 0 (必填)", Kind: LeafInt, Bind: "fileSize", Required: true, MarkRequired: true},
+			{Name: "md5", Usage: "文件原始字节内容的 MD5，32位十六进制字符串", Bind: "md5", Trim: true, OmitEmpty: true},
+		},
+		Validate: validateOAAttachmentFileSize,
+		Safety: contract.SafetySpec{
+			Effect: "read", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "init_attachment_upload_info",
+				CanonicalPath:  "oa.init_attachment_upload_info",
+				CLIPath:        "oa approval attachment init-upload",
+				PrimaryCLIPath: "oa approval attachment init-upload",
+			},
+			Description: "初始化审批附件上传信息，返回 OSS 上传凭证",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: json.RawMessage(`{"type":"object","description":"审批附件上传初始化信息","properties":{"uploadKey":{"type":"string","description":"上传凭证标识"},"resourceUrls":{"type":"array","description":"资源上传地址列表","items":{"type":"string","description":"单个上传地址"}},"storageDriver":{"type":"string","description":"存储驱动类型"},"expirationSeconds":{"type":"integer","description":"凭证过期秒数"},"region":{"type":"string","description":"存储区域"},"class":{"type":"string","description":"服务端响应类型标识"}},"required":["uploadKey","resourceUrls"],"additionalProperties":true}`),
+			},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "init_attachment_upload_info"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "初始化审批附件上传，获取 OSS 上传凭证和地址",
+				UseWhen:      []string{"需要上传审批附件，先初始化获取上传凭证时"},
+				AvoidWhen: []string{
+					"文件已上传完成需要提交确认时使用 attachment commit-upload",
+					"需要下载或预览已有附件时使用 attachment download-url 或 authorize-preview",
+				},
+				Examples: []string{"dws oa approval attachment init-upload --file-name 合同.pdf --file-size 102400"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "file-name", Property: "fileName", InterfaceType: "string"},
+				{Name: "file-size", Property: "fileSize", InterfaceType: "integer"},
+				{Name: "md5", Property: "md5", InterfaceType: "string"},
+			},
+		},
+	})
+
+	commitUploadCmd := NewLeafCommand(LeafSpec{
+		Use:           "commit-upload",
+		Short:         "提交附件上传信息",
+		Example:       "  dws oa approval attachment commit-upload --file-name 合同.pdf --upload-key <uploadKey> --file-size 102400",
+		Server:        "oa",
+		Tool:          "commit_attachment_upload_info",
+		OutputRollout: output.RolloutUnifiedActive,
+		ResultCall:    callOAAttachmentResult,
+		Flags: []LeafFlag{
+			{Name: "file-name", Usage: "完整文件名，例如 合同.pdf (必填)", Bind: "fileName", Trim: true, Required: true, MarkRequired: true},
+			{Name: "upload-key", Usage: "初始化接口返回的 uploadKey (必填)", Bind: "uploadKey", Trim: true, Required: true, MarkRequired: true},
+			{Name: "file-size", Usage: "文件字节数，必须大于等于 0 (必填)", Kind: LeafInt, Bind: "fileSize", Required: true, MarkRequired: true},
+		},
+		Validate: validateOAAttachmentFileSize,
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low",
+			Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "oa",
+				Name:           "commit_attachment_upload_info",
+				CanonicalPath:  "oa.commit_attachment_upload_info",
+				CLIPath:        "oa approval attachment commit-upload",
+				PrimaryCLIPath: "oa approval attachment commit-upload",
+			},
+			Description: "提交附件上传信息，完成附件上传流程",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: json.RawMessage(`{"type":"object","description":"审批附件上传提交结果","properties":{"spaceId":{"type":"integer","description":"审批附件所在钉盘空间 ID"},"fileName":{"type":"string","description":"文件名"},"fileSize":{"type":"integer","description":"文件字节数"},"class":{"type":"string","description":"服务端响应类型标识"},"fileType":{"type":"string","description":"文件类型"},"fileId":{"type":"string","description":"文件 ID"}},"required":["spaceId","fileName","fileSize","fileId"],"additionalProperties":true}`),
+			},
+			Interface: &contract.InterfaceSpec{
+				Mode:         "mcp",
+				Availability: "available",
+				Ref:          &contract.InterfaceRefSpec{ProductID: "oa", RPCName: "commit_attachment_upload_info"},
+			},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "提交附件上传信息，确认文件上传完成",
+				UseWhen:      []string{"文件已通过 OSS 上传完成，需要提交确认附件上传时"},
+				AvoidWhen: []string{
+					"尚未初始化上传信息时使用 attachment init-upload",
+					"需要下载或预览已有附件时使用 attachment download-url 或 authorize-preview",
+				},
+				Examples: []string{"dws oa approval attachment commit-upload --file-name 合同.pdf --upload-key <uploadKey> --file-size 102400"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "file-name", Property: "fileName", InterfaceType: "string"},
+				{Name: "upload-key", Property: "uploadKey", InterfaceType: "string"},
+				{Name: "file-size", Property: "fileSize", InterfaceType: "integer"},
+			},
+		},
+	})
+
+	attachmentCmd.AddCommand(downloadURLCmd, authorizeDownloadCmd, authorizePreviewCmd, initUploadCmd, commitUploadCmd)
 	return attachmentCmd
 }
 
@@ -330,7 +445,7 @@ func newOAAttachmentCommand() *cobra.Command {
 // list_user_visible_process, append_task, search_form, oa_ding_user, revert_task,
 // get_inst_revert_activities, get_process_schema, forecast_process,
 // start_process_instance, get_attachment_download_url, auth_download_file,
-// auth_preview_attachment
+// auth_preview_attachment, init_attachment_upload_info, commit_attachment_upload_info
 // ──────────────────────────────────────────────────────────
 
 func newOaCommand() *cobra.Command {

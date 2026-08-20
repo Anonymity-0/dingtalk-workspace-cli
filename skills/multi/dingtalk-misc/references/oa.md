@@ -38,6 +38,8 @@ Flags:
 - 需要单个附件的临时下载链接：`attachment download-url`
 - 已有钉盘 `spaceId/fileId`，需要为当前用户批量开通下载权限：`attachment authorize-download`
 - 需要在审批场景内批量预览附件：`attachment authorize-preview`
+- 需要上传审批附件，先初始化获取上传凭证：`attachment init-upload`
+- 文件已上传至 OSS，需要提交确认：`attachment commit-upload`
 
 #### 获取审批附件临时下载链接
 
@@ -81,6 +83,36 @@ Flags:
 ```
 
 该命令只授权审批场景内的附件预览，不等同于下载授权。附件来自审批评论时增加 `--with-comment-attachment`。
+
+#### 初始化审批附件上传
+
+```
+Usage:
+  dws oa approval attachment init-upload [flags]
+Example:
+  dws oa approval attachment init-upload --file-name 合同.pdf --file-size 102400 --format json
+Flags:
+      --file-name string   完整文件名，例如 合同.pdf (必填)
+      --file-size int      文件字节数，必须大于等于 0 (必填)
+      --md5 string         文件原始字节内容的 MD5，32位十六进制字符串 (可选)
+```
+
+该命令初始化审批附件上传，返回 OSS 上传凭证和地址。上传流程：先调用 `attachment init-upload` 获取 uploadKey 和 resourceUrls，使用返回信息将文件上传到 OSS，最后调用 `attachment commit-upload` 提交确认。
+
+#### 提交附件上传信息
+
+```
+Usage:
+  dws oa approval attachment commit-upload [flags]
+Example:
+  dws oa approval attachment commit-upload --file-name 合同.pdf --upload-key <uploadKey> --file-size 102400 --format json
+Flags:
+      --file-name string   完整文件名，例如 合同.pdf (必填)
+      --upload-key string  初始化接口返回的 uploadKey (必填)
+      --file-size int      文件字节数，必须大于等于 0 (必填)
+```
+
+该命令提交附件上传信息，完成附件上传流程。uploadKey 来自 `attachment init-upload` 的返回结果。
 
 ### 同意审批
 
@@ -724,6 +756,8 @@ Flags:
 用户说"下载审批附件/获取审批附件下载链接" → `approval attachment download-url`（需 --instance-id 和 --file-id；评论附件增加 --with-comment-attachment）
 用户说"授权下载审批钉盘文件/批量开通附件下载权限" → `approval attachment authorize-download`（需 --file-infos，最多 10 项）
 用户说"预览审批附件/批量授权预览附件" → `approval attachment authorize-preview`（需 --instance-id 和 --file-ids，最多 20 项；评论附件增加 --with-comment-attachment）
+用户说"上传审批附件/初始化附件上传" → `approval attachment init-upload`（需 --file-name 和 --file-size；可选 --md5）
+用户说"提交附件上传/确认附件上传" → `approval attachment commit-upload`（需 --file-name、--upload-key 和 --file-size）
 用户说"同意审批/批准" → 先 `tasks` 获取 taskId，再 `approve`
 用户说"拒绝审批/驳回" → 先 `tasks` 获取 taskId，再 `reject`
 用户说"撤回审批/取消审批" → `approval revoke`

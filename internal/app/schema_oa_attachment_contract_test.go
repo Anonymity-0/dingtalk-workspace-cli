@@ -54,6 +54,30 @@ func TestCrossPlatformCoverageOAAttachmentDeliveredSchemaMatchesExecutableHelp(t
 				"spaceId": "integer", "agentId": "integer", "class": "string",
 			},
 		},
+		{
+			cliPath:     "oa approval attachment init-upload",
+			canonical:   "oa.init_attachment_upload_info",
+			rpc:         "init_attachment_upload_info",
+			description: "初始化审批附件上传信息，返回 OSS 上传凭证",
+			effect:      "read",
+			resultType:  "object",
+			resultFields: map[string]string{
+				"uploadKey": "string", "resourceUrls": "array", "storageDriver": "string",
+				"expirationSeconds": "integer", "region": "string", "class": "string",
+			},
+		},
+		{
+			cliPath:     "oa approval attachment commit-upload",
+			canonical:   "oa.commit_attachment_upload_info",
+			rpc:         "commit_attachment_upload_info",
+			description: "提交附件上传信息，完成附件上传流程",
+			effect:      "write",
+			resultType:  "object",
+			resultFields: map[string]string{
+				"spaceId": "integer", "fileName": "string", "fileSize": "integer",
+				"class": "string", "fileType": "string", "fileId": "string",
+			},
+		},
 	}
 
 	for _, test := range tests {

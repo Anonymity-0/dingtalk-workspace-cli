@@ -37,6 +37,8 @@ func TestCrossPlatformCoverageOAAttachmentDeliveryPolicy(t *testing.T) {
 		"download-url":       "get_attachment_download_url",
 		"authorize-download": "auth_download_file",
 		"authorize-preview":  "auth_preview_attachment",
+		"init-upload":        "init_attachment_upload_info",
+		"commit-upload":      "commit_attachment_upload_info",
 	}
 	gotTools := make(map[string]string, len(wantTools))
 	foundConstructor := false
@@ -78,6 +80,8 @@ func TestCrossPlatformCoverageOAAttachmentDeliveryPolicy(t *testing.T) {
 			"dws oa approval attachment download-url",
 			"dws oa approval attachment authorize-download",
 			"dws oa approval attachment authorize-preview",
+			"dws oa approval attachment init-upload",
+			"dws oa approval attachment commit-upload",
 			"临时下载链接",
 			"最多 10",
 			"最多 20",
