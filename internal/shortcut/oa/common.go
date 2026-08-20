@@ -340,8 +340,12 @@ func oaCursorPage(result map[string]any, operation string, current int) (oaPageE
 	if next == "" {
 		return oaPageEvidence{}, oaResponseError(operation, "missing_next_cursor", "hasMore=true 但缺少 nextCursor")
 	}
-	if next == strconv.Itoa(current) {
-		return oaPageEvidence{}, oaResponseError(operation, "stalled_cursor", "nextCursor 与当前 cursor 相同")
+	nextValue, err := strconv.Atoi(next)
+	if err != nil {
+		return oaPageEvidence{}, oaResponseError(operation, "malformed_pagination", "nextCursor 应为整数")
+	}
+	if nextValue <= current {
+		return oaPageEvidence{}, oaResponseError(operation, "stalled_cursor", "nextCursor 没有严格前进")
 	}
 	page.Next = next
 	return page, nil

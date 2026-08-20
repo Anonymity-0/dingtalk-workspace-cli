@@ -154,6 +154,12 @@ func TestCrossPlatformCoverageOAPaginationFailsClosed(t *testing.T) {
 	if _, err := oaCursorPage(map[string]any{"hasMore": true, "nextCursor": float64(1)}, "oa/cursor", 1); err == nil {
 		t.Fatal("stalled cursor was accepted")
 	}
+	if _, err := oaCursorPage(map[string]any{"hasMore": true, "nextCursor": float64(1)}, "oa/cursor", 2); err == nil {
+		t.Fatal("backward cursor was accepted")
+	}
+	if _, err := oaCursorPage(map[string]any{"hasMore": true, "nextCursor": "not-a-number"}, "oa/cursor", 1); err == nil {
+		t.Fatal("non-integer cursor was accepted")
+	}
 	page, err = oaCursorPage(map[string]any{"hasMore": true, "nextCursor": float64(2)}, "oa/cursor", 1)
 	if err != nil || page.Next != "2" {
 		t.Fatalf("cursor continuation=%+v err=%v", page, err)
