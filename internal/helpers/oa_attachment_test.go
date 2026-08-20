@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -32,6 +33,7 @@ func executeOAAttachmentCommandCapturingOutput(t *testing.T, caller *scriptedToo
 
 	cmd := newOaCommand()
 	cmd.PersistentFlags().Bool("yes", false, "跳过确认")
+	cmd.PersistentFlags().Bool("dry-run", false, "仅预览不执行")
 	cmd.PersistentFlags().String("format", caller.Format(), "输出格式")
 	ctx, _ := output.WithResultStore(context.Background())
 	cmd.SetContext(ctx)
@@ -514,6 +516,11 @@ func TestCrossPlatformCoverageOAAttachmentUploadMalformedInitResponse(t *testing
 			wantErr:  "缺少 resourceUrls",
 		},
 		{
+			name:     "empty resourceUrls element",
+			response: `{"result":{"uploadKey":"key-1","resourceUrls":[""],"headers":{"Authorization":"sig","x-oss-date":"d"}},"success":true}`,
+			wantErr:  "首个 resourceUrls 为空",
+		},
+		{
 			name:     "missing headers",
 			response: `{"result":{"uploadKey":"key-1","resourceUrls":["https://oss.example.test/upload"]},"success":true}`,
 			wantErr:  "缺少 headers",
@@ -584,5 +591,188 @@ func TestCrossPlatformCoverageOAAttachmentUploadRequiredFlagValidation(t *testin
 				t.Fatalf("invalid upload made %d MCP call(s)", caller.calls)
 			}
 		})
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentUploadDryRunDoesNotCallRemoteOrPut 验证
+// --dry-run 在任何远程调用（init/PUT/commit）之前 early return：零 MCP 调用、
+// 零 PUT，且输出一个包含 3 个 planned step 的 plan 预览。
+func TestCrossPlatformCoverageOAAttachmentUploadDryRunDoesNotCallRemoteOrPut(t *testing.T) {
+	const content = "dry-run-preview-content"
+	filePath, fileSize := writeOAAttachmentTempFile(t, "plan.pdf", content)
+	wantMD5, err := fileMD5Hex(filePath)
+	if err != nil {
+		t.Fatalf("compute expected md5: %v", err)
+	}
+	put := mockOAAttachmentPut(t)
+
+	// caller.dry 驱动 deps.Caller.DryRun()==true；同时传入 --dry-run 以镜像生产路径。
+	caller := &scriptedToolCaller{format: "json", dry: true}
+	stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", filePath,
+		"--dry-run",
+	)
+	if err != nil {
+		t.Fatalf("execute command: %v", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("dry-run made %d MCP call(s), want 0", caller.calls)
+	}
+	if put.calls != 0 {
+		t.Fatalf("dry-run made %d PUT call(s), want 0", put.calls)
+	}
+
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+		t.Fatalf("decode unified output: %v\noutput: %s", err, stdout)
+	}
+	data, ok := envelope["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("unified data missing/invalid: %#v", envelope["data"])
+	}
+	if data["dry_run"] != true || data["executed"] != false || data["preview_kind"] != "plan" {
+		t.Fatalf("plan flags = %#v", data)
+	}
+	if data["operation"] != "attachment_upload" || data["source"] != "oa" {
+		t.Fatalf("plan operation/source = %#v", data)
+	}
+	if data["file_name"] != "plan.pdf" || data["file_size"] != float64(fileSize) || data["md5"] != wantMD5 {
+		t.Fatalf("plan file metadata = %#v (want file_name=plan.pdf size=%d md5=%s)", data, fileSize, wantMD5)
+	}
+	steps, ok := data["steps"].([]any)
+	if !ok || len(steps) != 3 {
+		t.Fatalf("plan steps = %#v, want 3 planned steps", data["steps"])
+	}
+	wantTools := []string{"oa/init_attachment_upload_info", "HTTP PUT", "oa/commit_attachment_upload_info"}
+	for i, raw := range steps {
+		step, ok := raw.(map[string]any)
+		if !ok {
+			t.Fatalf("step %d not an object: %#v", i, raw)
+		}
+		if step["tool"] != wantTools[i] {
+			t.Fatalf("step %d tool = %#v, want %q", i, step["tool"], wantTools[i])
+		}
+		if step["status"] != "planned" {
+			t.Fatalf("step %d status = %#v, want planned", i, step["status"])
+		}
+	}
+
+	// The commit step (index 2) must NOT contain uploadKey in args (remote-only field)
+	// and must declare the dependency via a "requires" entry.
+	commitStep := steps[2].(map[string]any)
+	commitArgs, _ := commitStep["args"].(map[string]any)
+	if _, hasUploadKey := commitArgs["uploadKey"]; hasUploadKey {
+		t.Fatalf("commit step args must not contain uploadKey, got: %#v", commitArgs)
+	}
+	requires, ok := commitStep["requires"].([]any)
+	if !ok || len(requires) == 0 {
+		t.Fatalf("commit step must have non-empty requires, got: %#v", commitStep["requires"])
+	}
+	found := false
+	for _, r := range requires {
+		if s, ok := r.(string); ok && (len(s) > 0 && strings.Contains(s, "uploadKey") && strings.Contains(s, "init")) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("commit step requires should mention uploadKey and init, got: %#v", requires)
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentUploadMD5Failure 触发 stat 成功但读取失败的文件，
+// 覆盖 runOAAttachmentUpload 中 fileMD5Hex 失败分支：命令报错且无任何远程/PUT 调用。
+func TestCrossPlatformCoverageOAAttachmentUploadMD5Failure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0000 不能在 windows 上可靠地阻止读取")
+	}
+	filePath, _ := writeOAAttachmentTempFile(t, "unreadable.bin", "secret")
+	if err := os.Chmod(filePath, 0o000); err != nil {
+		t.Fatalf("chmod 0000: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(filePath, 0o600) })
+	// 若环境（如 root）仍可读取 0000 文件，该分支无法触发，跳过以避免偽成功。
+	if f, err := os.Open(filePath); err == nil {
+		_ = f.Close()
+		t.Skip("当前环境仍可读取 0000 文件，fileMD5Hex 失败分支无法触发")
+	}
+
+	put := mockOAAttachmentPut(t)
+	caller := &scriptedToolCaller{format: "json"}
+	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", filePath,
+	)
+	if err == nil {
+		t.Fatal("expected md5 failure error, got nil")
+	}
+	if !strings.Contains(err.Error(), "MD5") {
+		t.Fatalf("error = %v, want md5 failure", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("md5 failure made %d MCP call(s), want 0", caller.calls)
+	}
+	if put.calls != 0 {
+		t.Fatalf("md5 failure made %d PUT call(s), want 0", put.calls)
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentUploadHTTPPutError 注入一个返回错误的 PUT，
+// 覆盖 runOAAttachmentUpload 中 httpPutFile 失败分支：init 后报错（1 次 MCP 调用）且不提交。
+func TestCrossPlatformCoverageOAAttachmentUploadHTTPPutError(t *testing.T) {
+	filePath, _ := writeOAAttachmentTempFile(t, "put-fail.pdf", "data")
+	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error {
+		return errors.New("oss put failed")
+	})
+	t.Cleanup(func() { SetHTTPPutFile(nil) })
+
+	caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+		{text: oaUploadInitResponse},
+		// commit 不应被达到
+		{text: `{"result":{},"success":true}`},
+	}}
+	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", filePath,
+		"--file-name", "put-fail.pdf",
+		"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+	)
+	if err == nil || !strings.Contains(err.Error(), "oss put failed") {
+		t.Fatalf("error = %v, want oss put failed", err)
+	}
+	if caller.calls != 1 {
+		t.Fatalf("MCP calls = %d, want 1 (init only, no commit after PUT failure)", caller.calls)
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentUploadCommitError 脚本化 init 返回合法、
+// commit 返回错误，覆盖 callOAAttachmentResultCtx（commit 步）失败分支：
+// PUT 发生一次，init+commit 均尝试（共 2 次 MCP 调用），命令报错。
+func TestCrossPlatformCoverageOAAttachmentUploadCommitError(t *testing.T) {
+	filePath, _ := writeOAAttachmentTempFile(t, "commit-fail.pdf", "data")
+	put := mockOAAttachmentPut(t)
+
+	caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+		{text: oaUploadInitResponse},
+		{err: errors.New("commit upload failed")},
+	}}
+	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", filePath,
+		"--file-name", "commit-fail.pdf",
+		"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+	)
+	if err == nil || !strings.Contains(err.Error(), "commit upload failed") {
+		t.Fatalf("error = %v, want commit upload failed", err)
+	}
+	if put.calls != 1 {
+		t.Fatalf("PUT calls = %d, want 1", put.calls)
+	}
+	if caller.calls != 2 {
+		t.Fatalf("MCP calls = %d, want 2 (init + commit attempted)", caller.calls)
+	}
+	if caller.toolLog[0] != "init_attachment_upload_info" || caller.toolLog[1] != "commit_attachment_upload_info" {
+		t.Fatalf("tool sequence = %v, want init then commit", caller.toolLog)
 	}
 }

@@ -223,6 +223,43 @@ func runOAAttachmentUpload(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// --dry-run：本地只读工作（校验、Stat、大小、文件名、MD5）已完成，
+	// 在任何远程调用（init/PUT/commit）之前 early return，输出 plan 预览。
+	// 本命令是 RolloutUnifiedActive，必须经 output.StoreResult 存入统一结果，
+	// 不能直接 PrintJSON（否则框架报 "returned without a CommandResult"）。
+	// 不伪造 uploadKey/resourceURL/fileId/spaceId——它们只能由远程调用返回。
+	if deps.Caller.DryRun() {
+		return output.StoreResult(cmd.Context(), output.Success(map[string]any{
+			"dry_run":      true,
+			"executed":     false,
+			"preview_kind": "plan",
+			"operation":    "attachment_upload",
+			"source":       "oa",
+			"file":         filePath,
+			"file_name":    fileName,
+			"file_size":    fileSize,
+			"md5":          md5Hex,
+			"steps": []map[string]any{
+				{
+					"tool":   "oa/init_attachment_upload_info",
+					"args":   map[string]any{"fileName": fileName, "fileSize": fileSize, "md5": md5Hex},
+					"status": "planned",
+				},
+				{
+					"tool":   "HTTP PUT",
+					"args":   map[string]any{"file": filePath, "fileSize": fileSize},
+					"status": "planned",
+				},
+				{
+					"tool":     "oa/commit_attachment_upload_info",
+					"args":     map[string]any{"fileName": fileName, "fileSize": fileSize},
+					"requires": []string{"uploadKey from oa/init_attachment_upload_info"},
+					"status":   "planned",
+				},
+			},
+		}, output.WithDryRun()))
+	}
+
 	ctx, cancel := context.WithTimeout(cmd.Context(), 10*time.Minute)
 	defer cancel()
 

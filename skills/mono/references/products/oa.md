@@ -449,9 +449,10 @@ Flags:
 > ```bash
 > # 1) 上传附件，拿到 fileId/spaceId/fileName/fileSize/fileType
 > dws oa approval attachment upload --file ./a.pdf
-> # 2) 组装 value 并发起（value 为 JSON 数组转义字符串）
+> # 2) 组装 value 后先向用户展示提单汇总；确认前不要追加 --yes
 > dws oa approval create-instance --process-code PROC-xxx \
->   --form-values '{"附件":"[{\"spaceId\":\"163xxx\",\"fileName\":\"a.pdf\",\"fileSize\":\"333\",\"fileType\":\"pdf\",\"fileId\":\"643xxx\"}]"}' --yes
+>   --form-values '{"附件":"[{\"spaceId\":\"163xxx\",\"fileName\":\"a.pdf\",\"fileSize\":\"333\",\"fileType\":\"pdf\",\"fileId\":\"643xxx\"}]"}'
+> # 用户确认模板、表单值、流程路径和人员后，才可在同一命令末尾追加 --yes
 > ```
 
 > **部分支持的控件：** `DDPhotoField`（图片控件）**支持通过 URL 直接提交**（见上方速查表），仅不支持本地文件上传（CLI 未封装钉盘 CDN 上传流程）。若用户只有本地文件，需告知在钉钉客户端补充。
