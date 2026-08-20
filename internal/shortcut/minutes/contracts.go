@@ -4,12 +4,34 @@
 package minutes
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
+
+func minutesListResult() *contract.ResultSpec {
+	return &contract.ResultSpec{
+		Outcomes: []contract.ResultOutcome{
+			contract.ResultOutcomeSuccess,
+			contract.ResultOutcomePartialFailure,
+			contract.ResultOutcomeFailure,
+		},
+		DataSchema: json.RawMessage(`{"type":"object","description":"带范围与完整性证据的听记列表","properties":{"scope":{"type":"string","description":"本次列表的产品范围"},"count":{"type":"integer","description":"本次返回的去重听记数量"},"scannedCount":{"type":"integer","description":"标题过滤前扫描到的去重听记数量"},"minutes":{"type":"array","description":"稳定投影后的听记条目","items":{"type":"object","description":"包含稳定 taskUuid 的听记条目","additionalProperties":true}},"pages":{"type":"integer","description":"本次实际读取的页数"},"complete":{"type":"boolean","description":"是否已证明目标产品范围完整"},"endpointExhausted":{"type":"boolean","description":"本次调用的服务端分页端点是否耗尽"},"nextToken":{"type":"string","description":"单页预览可继续读取的分页 token"},"nextAction":{"type":"string","description":"当前结果不完整时的安全继续方式"},"scopeLedger":{"type":"array","description":"accessible 聚合时各范围的完整性台账","items":{"type":"object","description":"一个底层范围的分页与结果状态","additionalProperties":true}}},"required":["scope","count","minutes","pages","complete","endpointExhausted"],"additionalProperties":true}`),
+	}
+}
+
+func minutesCursorPagination() *contract.PaginationSpec {
+	return &contract.PaginationSpec{
+		Kind:                  contract.PaginationKindCursor,
+		CursorParameter:       "cursor",
+		MetaPath:              contract.PaginationMetaPath,
+		EndpointExhaustedPath: contract.PaginationExhaustedPath,
+		NextTokenPath:         contract.PaginationNextTokenPath,
+	}
+}
 
 func minutesContract(command, description, useWhen string, avoidWhen []string, examples []string) corecmd.ContractDecl {
 	name := "shortcut_" + strings.ReplaceAll(strings.TrimPrefix(command, "+"), "-", "_")
@@ -38,6 +60,12 @@ func minutesContract(command, description, useWhen string, avoidWhen []string, e
 
 func withMinutesDryRun(decl corecmd.ContractDecl, kind string, remoteReads bool) corecmd.ContractDecl {
 	decl.DryRun = &contract.DryRunSpec{PreviewKind: kind, RemoteReads: remoteReads}
+	return decl
+}
+
+func withMinutesListResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
+	decl.Result = minutesListResult()
+	decl.Pagination = minutesCursorPagination()
 	return decl
 }
 

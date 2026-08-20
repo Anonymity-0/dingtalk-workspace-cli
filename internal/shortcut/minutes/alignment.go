@@ -31,10 +31,10 @@ var Search = shortcut.Shortcut{
 	Intent:      "需要按标题关键词或时间范围搜索自己创建、他人共享或全部可访问听记时使用；对后端返回再做确定性标题匹配，返回稳定 taskUuid 投影与完整性信息。",
 	Risk:        shortcut.RiskRead,
 	Safety:      contract.SafetySpec{Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
-	Contract: minutesContract("+search", "按范围、标题关键词和时间搜索听记，支持安全全量翻页",
+	Contract: withMinutesListResult(minutesContract("+search", "按范围、标题关键词和时间搜索听记，支持安全全量翻页",
 		"需要按标题关键词或时间范围搜索自己创建、他人共享或全部可访问听记，并拿到可继续操作的 taskUuid 时使用",
 		[]string{"只想无条件浏览一页时可用 +list-mine/+list-shared/+list-all", "DWS 后端不支持 owner/participant 精确过滤，不要伪造该条件"},
-		[]string{`dws minutes +search --query "周会" --scope all`, `dws minutes +search --start "2026-08-01T00:00:00+08:00" --scope mine --page-all`}),
+		[]string{`dws minutes +search --query "周会" --scope all`, `dws minutes +search --start "2026-08-01T00:00:00+08:00" --scope mine --page-all`})),
 	Flags: []shortcut.Flag{
 		{Name: "query", Type: shortcut.FlagString, Desc: "标题关键词；shortcut 会对后端结果再次精确包含过滤"},
 		{Name: "scope", Type: shortcut.FlagString, Default: "all", Desc: "搜索范围", Enum: []string{"mine", "shared", "all"}},
@@ -47,6 +47,7 @@ var Search = shortcut.Shortcut{
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"query", "start", "end"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"cursor", "page-all"}},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit", "page-limit"}, Description: "--limit/--page-limit 必须大于 0"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "时间必须是 RFC3339 且开始时间不能晚于结束时间"},
 	},
@@ -224,66 +225,33 @@ func executeMinutesSearch(rt *shortcut.RuntimeContext) error {
 	if err != nil {
 		return err
 	}
-	belonging := map[string]string{"mine": "createdByMe", "shared": "sharedToMe", "all": "noLimit"}[rt.Str("scope")]
-	token := rt.Str("cursor")
-	seenTokens := map[string]bool{}
-	seenIDs := map[string]bool{}
-	rows := make([]map[string]any, 0)
-	pages := 0
-	complete := false
-	nextToken := ""
-	for {
-		if seenTokens[token] {
-			return fmt.Errorf("minutes search cursor stalled or cycled")
-		}
-		seenTokens[token] = true
-		params := map[string]any{"belongingConditionId": belonging, "maxResults": rt.Int("limit")}
+	base := map[string]any{}
+	if start != 0 {
+		base["createTimeStart"] = float64(start)
+	}
+	if end != 0 {
+		base["createTimeEnd"] = float64(end)
+	}
+	scope := rt.Str("scope")
+	var result minutesListCollection
+	var ledger []map[string]any
+	var readErr error
+	if scope == "all" && rt.Bool("page-all") {
+		result, ledger, readErr = collectAccessibleMinutes(rt, base)
+	} else {
+		base["belongingConditionId"] = map[string]string{"mine": "created", "shared": "shared", "all": "noLimit"}[scope]
+		base["maxResults"] = rt.Int("limit")
 		if query := strings.TrimSpace(rt.Str("query")); query != "" {
-			params["keyword"] = query
+			base["keyword"] = query
 		}
-		if start != 0 {
-			params["createTimeStart"] = float64(start)
+		result, readErr = collectMinutesListScope(rt, base, rt.Str("cursor"), rt.Bool("page-all"), rt.Int("page-limit"))
+		if scope == "all" {
+			result.Complete = false
 		}
-		if end != 0 {
-			params["createTimeEnd"] = float64(end)
-		}
-		if token != "" {
-			params["nextToken"] = token
-		}
-		data, err := rt.CallMCPData("minutes", "list_by_keyword_and_time_range", params)
-		if err != nil {
-			return err
-		}
-		page, err := minutesdata.ParseListPage(data)
-		if err != nil {
-			return err
-		}
-		projected, err := minutesdata.ProjectList(page)
-		if err != nil {
-			return err
-		}
-		for _, row := range projected {
-			id := row["taskUuid"].(string)
-			if seenIDs[id] {
-				continue
-			}
-			seenIDs[id] = true
-			rows = append(rows, row)
-		}
-		pages++
-		nextToken = page.NextToken
-		if !page.HasMore {
-			complete = true
-			nextToken = ""
-			break
-		}
-		if !rt.Bool("page-all") {
-			break
-		}
-		if pages >= rt.Int("page-limit") {
-			return fmt.Errorf("minutes search exceeded page safety limit %d", rt.Int("page-limit"))
-		}
-		token = page.NextToken
+	}
+	rows := result.Rows
+	if readErr != nil && result.Pages == 0 {
+		return readErr
 	}
 	scanned := len(rows)
 	if query := strings.TrimSpace(rt.Str("query")); query != "" {
@@ -297,11 +265,22 @@ func executeMinutesSearch(rt *shortcut.RuntimeContext) error {
 		}
 		rows = filtered
 	}
-	payload := map[string]any{"count": len(rows), "scannedCount": scanned, "minutes": rows, "pages": pages, "complete": complete}
-	if nextToken != "" {
-		payload["nextToken"] = nextToken
+	result.Rows = rows
+	payload := minutesListPayload(scope, result)
+	payload["scannedCount"] = scanned
+	if len(ledger) > 0 {
+		payload["scopeLedger"] = ledger
 	}
-	return rt.Output(payload)
+	if scope == "all" && !rt.Bool("page-all") {
+		payload["nextAction"] = "rerun with --page-all to prove accessible completeness"
+	}
+	if readErr != nil {
+		payload["nextAction"] = "resume the incomplete scope from its reported nextToken"
+	}
+	if outputErr := rt.Output(payload); outputErr != nil {
+		return outputErr
+	}
+	return readErr
 }
 
 func executeMinutesDownload(rt *shortcut.RuntimeContext) error {

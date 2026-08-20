@@ -101,7 +101,7 @@ func TestCrossPlatformCoverageMinutesSearchPaginatesFiltersAndRejectsUnknownE2E(
 			`{"success":true,"result":{"itemList":[{"uuid":"u1","title":"周会 A","startTime":1},{"uuid":"u3","title":"周会 B","startTime":3}],"hasNext":false}}`,
 		},
 	}}
-	payload, _, err := runMinutesAlignmentCLI(t, caller, "minutes", "+search", "--query", "周会", "--page-all")
+	payload, _, err := runMinutesAlignmentCLI(t, caller, "minutes", "+search", "--query", "周会", "--scope", "mine", "--page-all")
 	if err != nil || payload["count"] != float64(2) || payload["scannedCount"] != float64(3) || payload["pages"] != float64(2) || payload["complete"] != true {
 		t.Fatalf("search payload=%#v err=%v", payload, err)
 	}
@@ -112,17 +112,18 @@ func TestCrossPlatformCoverageMinutesSearchPaginatesFiltersAndRejectsUnknownE2E(
 	for _, test := range []struct {
 		scope     string
 		belonging string
+		complete  bool
 	}{
-		{scope: "mine", belonging: "createdByMe"},
-		{scope: "shared", belonging: "sharedToMe"},
-		{scope: "all", belonging: "noLimit"},
+		{scope: "mine", belonging: "created", complete: true},
+		{scope: "shared", belonging: "shared", complete: true},
+		{scope: "all", belonging: "noLimit", complete: false},
 	} {
 		t.Run("scope "+test.scope, func(t *testing.T) {
 			scoped := &minutesE2ECaller{responses: map[string][]string{
 				"minutes/list_by_keyword_and_time_range": {`{"success":true,"result":{"itemList":[],"hasNext":false}}`},
 			}}
 			payload, _, err := runMinutesAlignmentCLI(t, scoped, "minutes", "+search", "--query", "needle", "--scope", test.scope, "--limit", "1")
-			if err != nil || payload["count"] != float64(0) || payload["complete"] != true {
+			if err != nil || payload["count"] != float64(0) || payload["complete"] != test.complete {
 				t.Fatalf("scope %s payload=%#v err=%v", test.scope, payload, err)
 			}
 			calls := scoped.arguments["minutes/list_by_keyword_and_time_range"]
