@@ -95,11 +95,11 @@ func TestCrossPlatformCoverageDINGContractsAreStrictTypedAndUnified(t *testing.T
 	}
 	for _, declaration := range []shortcut.Shortcut{SendPersonal, RecallPersonal} {
 		if declaration.Safety.Confirmation != "user_required" || declaration.Contract.Interface == nil || declaration.Contract.Interface.Availability != "available" {
-			t.Errorf("%s compatibility-visible write safety/interface drift", declaration.Command)
+			t.Errorf("%s compatibility write safety/interface drift", declaration.Command)
 		}
 	}
 	if SendByMessage.Safety.Confirmation != "user_required" || SendByMessage.Contract.Interface == nil || SendByMessage.Contract.Interface.Availability != "unavailable" {
-		t.Errorf("%s write safety/interface drift", SendByMessage.Command)
+		t.Errorf("%s unavailable write safety/interface drift", SendByMessage.Command)
 	}
 	if List.Contract.Pagination == nil {
 		t.Fatal("+list lacks cursor pagination")
@@ -348,27 +348,58 @@ func TestCrossPlatformCoverageDINGExactReadShortcutsProjectUnifiedData(t *testin
 }
 
 func TestCrossPlatformCoverageDINGUnavailableWritesNeverCallMCP(t *testing.T) {
-	cases := []struct {
-		declaration shortcut.Shortcut
-		args        []string
-	}{
-		{SendPersonal, []string{"--users", "D-fixture", "--content", "fixture"}},
-		{SendByMessage, []string{"--group", "cid-fixture", "--message-id", "mid-fixture", "--users", "D-fixture"}},
-		{RecallPersonal, []string{"--id", "ding-fixture"}},
+	args := []string{"--group", "cid-fixture", "--message-id", "mid-fixture", "--users", "D-fixture"}
+	unconfirmed := &dingCoverageCaller{responses: map[string][]string{}}
+	err := runDingRoot(t, SendByMessage, unconfirmed, false, args...)
+	if err == nil || len(unconfirmed.history) != 0 {
+		t.Fatalf("unconfirmed error=%v calls=%v", err, unconfirmed.history)
 	}
-	for _, test := range cases {
-		t.Run(test.declaration.Command, func(t *testing.T) {
-			unconfirmed := &dingCoverageCaller{responses: map[string][]string{}}
-			err := runDingRoot(t, test.declaration, unconfirmed, false, test.args...)
-			if err == nil || len(unconfirmed.history) != 0 {
-				t.Fatalf("unconfirmed error=%v calls=%v", err, unconfirmed.history)
-			}
-			confirmed := &dingCoverageCaller{responses: map[string][]string{}}
-			err = runDingRoot(t, test.declaration, confirmed, true, test.args...)
-			if err == nil || !strings.Contains(err.Error(), "当前不可执行") || len(confirmed.history) != 0 {
-				t.Fatalf("confirmed unavailable error=%v calls=%v", err, confirmed.history)
-			}
-		})
+	confirmed := &dingCoverageCaller{responses: map[string][]string{}}
+	err = runDingRoot(t, SendByMessage, confirmed, true, args...)
+	if err == nil || !strings.Contains(err.Error(), "当前不可执行") || len(confirmed.history) != 0 {
+		t.Fatalf("confirmed unavailable error=%v calls=%v", err, confirmed.history)
+	}
+}
+
+func TestCrossPlatformCoverageDINGCompatibilityWritesRequireConfirmationAndExecute(t *testing.T) {
+	sendArgs := []string{"--users", "D-fixture", "--content", "fixture", "--type", "call", "--uuid", "fixture-uuid"}
+	unconfirmedSend := &dingCoverageCaller{responses: map[string][]string{}}
+	if err := runDingRoot(t, SendPersonal, unconfirmedSend, false, sendArgs...); err == nil || len(unconfirmedSend.history) != 0 {
+		t.Fatalf("unconfirmed send error=%v calls=%v", err, unconfirmedSend.history)
+	}
+	confirmedSend := &dingCoverageCaller{responses: map[string][]string{
+		"send_personal_ding": {`{"success":true,"result":{"openDingId":"ding-fixture"}}`},
+	}}
+	if err := runDingRoot(t, SendPersonal, confirmedSend, true, sendArgs...); err != nil {
+		t.Fatalf("confirmed send failed: %v", err)
+	}
+	if strings.Join(confirmedSend.history, ",") != "send_personal_ding" || len(confirmedSend.arguments) != 1 {
+		t.Fatalf("confirmed send calls=%v args=%v", confirmedSend.history, confirmedSend.arguments)
+	}
+	sendParams := confirmedSend.arguments[0]
+	users, _ := sendParams["receiverOpenDingTalkIds"].([]string)
+	if strings.Join(users, ",") != "D-fixture" || sendParams["content"] != "fixture" || sendParams["remindType"] != "PHONE" || sendParams["uuid"] != "fixture-uuid" {
+		t.Fatalf("confirmed send params=%#v", sendParams)
+	}
+
+	invalidType := &dingCoverageCaller{responses: map[string][]string{}}
+	if err := runDingRoot(t, SendPersonal, invalidType, true, "--users", "D-fixture", "--content", "fixture", "--type", "other"); err == nil || len(invalidType.history) != 0 {
+		t.Fatalf("invalid type error=%v calls=%v", err, invalidType.history)
+	}
+
+	recallArgs := []string{"--id", "ding-fixture"}
+	unconfirmedRecall := &dingCoverageCaller{responses: map[string][]string{}}
+	if err := runDingRoot(t, RecallPersonal, unconfirmedRecall, false, recallArgs...); err == nil || len(unconfirmedRecall.history) != 0 {
+		t.Fatalf("unconfirmed recall error=%v calls=%v", err, unconfirmedRecall.history)
+	}
+	confirmedRecall := &dingCoverageCaller{responses: map[string][]string{
+		"recall_personal_ding": {`{"success":true,"result":true}`},
+	}}
+	if err := runDingRoot(t, RecallPersonal, confirmedRecall, true, recallArgs...); err != nil {
+		t.Fatalf("confirmed recall failed: %v", err)
+	}
+	if strings.Join(confirmedRecall.history, ",") != "recall_personal_ding" || confirmedRecall.arguments[0]["openDingId"] != "ding-fixture" {
+		t.Fatalf("confirmed recall calls=%v args=%v", confirmedRecall.history, confirmedRecall.arguments)
 	}
 }
 

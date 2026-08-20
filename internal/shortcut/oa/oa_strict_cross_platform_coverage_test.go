@@ -499,7 +499,10 @@ func TestCrossPlatformCoverageOAReadShortcutBranches(t *testing.T) {
 	})
 
 	t.Run("search empty query", func(t *testing.T) {
-		expectError(t, SearchForms, map[string][]string{}, "--query", " ")
+		caller := expectError(t, SearchForms, map[string][]string{}, "--query", " ")
+		if len(caller.history) != 0 {
+			t.Fatalf("blank query made calls: %v", caller.history)
+		}
 	})
 	t.Run("search call failure", func(t *testing.T) {
 		expectError(t, SearchForms, map[string][]string{"search_form": {"__ERROR__"}}, "--query", "fixture")
@@ -508,7 +511,10 @@ func TestCrossPlatformCoverageOAReadShortcutBranches(t *testing.T) {
 		expectError(t, SearchForms, map[string][]string{"search_form": {`{"success":true,"result":{}}`}}, "--query", "fixture")
 	})
 	t.Run("search known nonempty", func(t *testing.T) {
-		expectSuccess(t, SearchForms, map[string][]string{"search_form": {`{"success":true,"result":[{"processCode":"p","processName":"fixture"}]}`}}, "--query", "fixture")
+		caller := expectSuccess(t, SearchForms, map[string][]string{"search_form": {`{"success":true,"result":[{"processCode":"p","processName":"fixture"}]}`}}, "--query", " fixture ")
+		if got := caller.arguments[0]["query"]; got != "fixture" {
+			t.Fatalf("normalized query=%#v, want fixture", got)
+		}
 	})
 	t.Run("search legitimate empty", func(t *testing.T) {
 		expectSuccess(t, SearchForms, map[string][]string{"search_form": {`{"success":true,"result":[]}`}}, "--query", "guaranteed-zero-fixture")

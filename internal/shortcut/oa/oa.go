@@ -172,14 +172,14 @@ var SearchForms = shortcut.Shortcut{
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"query"}, Description: "--query 去除空白后不能为空"}},
 	Tips:        []string{`dws oa +search-forms --query 报销`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		if rt.Str("query") == "" {
+		if strings.TrimSpace(rt.Str("query")) == "" {
 			return apperrors.NewValidation("--query 不能为空")
 		}
 		return nil
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		const operation = "oa/search_form"
-		data, err := rt.CallMCPData("oa", "search_form", map[string]any{"query": rt.Str("query")})
+		data, err := rt.CallMCPData("oa", "search_form", map[string]any{"query": strings.TrimSpace(rt.Str("query"))})
 		if err != nil {
 			return err
 		}

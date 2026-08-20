@@ -6,6 +6,7 @@ package ding
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -98,10 +99,10 @@ var ReceiverStatus = shortcut.Shortcut{
 	},
 }
 
-var SendPersonal = unavailableDingWrite(
+var SendPersonal = compatibilityDingWrite(
 	"+send-personal", "以本人身份发送 DING 给指定人",
 	"需要以当前用户身份向明确的 openDingTalkId 接收人发送 DING 时使用；下游提供稳定接收人身份与可查询撤回终态前不可执行。",
-	shortcut.RiskWrite, false, true,
+	shortcut.RiskWrite, false,
 	[]shortcut.Flag{
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "接收人 openDingTalkId 列表 (CSV)", Required: true},
 		{Name: "content", Type: shortcut.FlagString, Desc: "消息内容", Required: true},
@@ -113,12 +114,27 @@ var SendPersonal = unavailableDingWrite(
 		{Name: "content", Property: "content"}, {Name: "type", Property: "type"}, {Name: "uuid", Property: "uuid"},
 	},
 	"dws ding +send-personal --users <VALUES> --content <CONTENT>",
+	func(rt *shortcut.RuntimeContext) error {
+		remindType, err := dingPersonalRemindType(rt.Str("type"))
+		if err != nil {
+			return err
+		}
+		params := map[string]any{
+			"receiverOpenDingTalkIds": rt.StrSlice("users"),
+			"content":                 rt.Str("content"),
+			"remindType":              remindType,
+		}
+		if rt.Changed("uuid") {
+			params["uuid"] = rt.Str("uuid")
+		}
+		return rt.CallMCP("send_personal_ding", params)
+	},
 )
 
 var SendByMessage = unavailableDingWrite(
 	"+send-by-message", "针对某条消息发起 DING 提醒",
 	"需要把指定聊天消息转成应用内、短信或电话 DING 时使用；对应 lark-cli 的三种 urgent 任务，但接收人稳定身份与精确撤回终态仍缺失。",
-	shortcut.RiskWrite, false, false,
+	shortcut.RiskWrite, false,
 	[]shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "openConversationId", Required: true},
 		{Name: "message-id", Type: shortcut.FlagString, Desc: "openMessageId", Required: true},
@@ -134,25 +150,51 @@ var SendByMessage = unavailableDingWrite(
 	"dws ding +send-by-message --group <GROUP_ID> --message-id <MESSAGE_ID> --users <VALUES>",
 )
 
-var RecallPersonal = unavailableDingWrite(
+var RecallPersonal = compatibilityDingWrite(
 	"+recall-personal", "撤回本人发起的 DING",
 	"需要撤回本人发出的 DING 时使用；必须能按稳定目标精确读回撤回终态且证明没有残留通知，当前下游尚不满足。",
-	shortcut.RiskHighWrite, true, true,
+	shortcut.RiskHighWrite, true,
 	[]shortcut.Flag{{Name: "id", Type: shortcut.FlagString, Desc: "openDingId", Required: true}},
 	[]contract.ParamDecl{{Name: "id", Property: "id"}},
 	"dws ding +recall-personal --id <DING_ID>",
+	func(rt *shortcut.RuntimeContext) error {
+		return rt.CallMCP("recall_personal_ding", map[string]any{"openDingId": rt.Str("id")})
+	},
 )
 
-func unavailableDingWrite(command, description, intent string, risk shortcut.Risk, destructive, schemaCompatible bool, flags []shortcut.Flag, params []contract.ParamDecl, example string) shortcut.Shortcut {
+func compatibilityDingWrite(command, description, intent string, risk shortcut.Risk, destructive bool, flags []shortcut.Flag, params []contract.ParamDecl, example string, execute func(*shortcut.RuntimeContext) error) shortcut.Shortcut {
 	return shortcut.Shortcut{
 		Service: "ding", Command: command, Product: "im",
 		Description: description, Intent: intent, Risk: risk,
 		Safety: dingWriteSafety(destructive), OutputRollout: output.RolloutUnifiedActive,
-		Contract: dingContract(command, description, intent, schemaCompatible, nil, nil, params, example),
+		Contract: dingContract(command, description, intent, true, nil, nil, params, example),
+		Flags:    flags, Tips: []string{example}, Execute: execute,
+	}
+}
+
+func unavailableDingWrite(command, description, intent string, risk shortcut.Risk, destructive bool, flags []shortcut.Flag, params []contract.ParamDecl, example string) shortcut.Shortcut {
+	return shortcut.Shortcut{
+		Service: "ding", Command: command, Product: "im",
+		Description: description, Intent: intent, Risk: risk,
+		Safety: dingWriteSafety(destructive), OutputRollout: output.RolloutUnifiedActive,
+		Contract: dingContract(command, description, intent, false, nil, nil, params, example),
 		Flags:    flags, Tips: []string{example},
 		Execute: func(*shortcut.RuntimeContext) error {
 			return dingUnavailable("ding/" + command)
 		},
+	}
+}
+
+func dingPersonalRemindType(value string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "app":
+		return "APP", nil
+	case "sms":
+		return "SMS", nil
+	case "call":
+		return "PHONE", nil
+	default:
+		return "", apperrors.NewValidation("--type 必须是 app、sms 或 call")
 	}
 }
 
