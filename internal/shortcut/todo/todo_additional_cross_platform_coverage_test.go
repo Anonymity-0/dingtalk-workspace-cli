@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"testing"
@@ -313,10 +314,18 @@ func TestCrossPlatformCoverageTodoCreateAndUpdate(t *testing.T) {
 	}
 	updateSuccess := &todoCoverageCaller{responses: map[string][]string{
 		"update_todo_task": {`{"success":true}`},
-		"get_todo_detail":  {`{"success":true,"result":{"todoDetailModel":{"taskId":"task-1","subject":"x","priority":40}}}`},
+		"get_todo_detail":  {`{"success":true,"result":{"todoDetailModel":{"taskId":"task-1","subject":"x","priority":40,"dueTime":1786932000000}}}`},
 	}}
-	if err := runTodoCoverage(t, Update, updateSuccess, "--task-id", "task-1", "--title", "x", "--priority", "40", "--yes"); err != nil {
+	if err := runTodoCoverage(t, Update, updateSuccess, "--task-id", "task-1", "--title", "x", "--priority", "40", "--due", todoCoverageTime, "--yes"); err != nil {
 		t.Fatal(err)
+	}
+	if todoUpdateFieldMatches("dueTime", float64(1786932000000), int64(1786932000001)) {
+		t.Fatal("different dueTime milliseconds matched")
+	}
+	for _, value := range []any{1786932000000.5, "not-a-number", uint64(math.MaxInt64) + 1} {
+		if _, ok := todoExactInteger(value); ok {
+			t.Fatalf("invalid integer accepted: %#v", value)
+		}
 	}
 }
 
