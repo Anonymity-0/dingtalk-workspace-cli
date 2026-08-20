@@ -18,7 +18,7 @@
 
 进程退出码为零不能替代业务证据。采用 `doc.operation.v1` 的 shortcut 回执固定提供 `contractVersion/ok/status/complete/operation/steps/data/warnings/compensation`；`target/failures/verification` 只有实际操作返回时才能消费，不是通用字段。`+import` 使用现有导入回执，成功时检查 `success=true`、`taskId`、`documentUrl`、`documentName` 与 `documentType`，不要要求不存在的 `status/steps`。业务 `status` 不应与框架外层 `outcome` 混为一谈。
 
-优先级从高到低为：稳定返回 ID/任务 ID → 写后读回匹配 → 明确服务端终态 → 仅 transport/退出码。只有前三类中与该操作匹配的证据足够时才报告成功；Runtime 已给出充分回读证据时，不为“再确认一次”重复请求。
+稳定返回 ID/任务 ID 只用于定位目标、恢复流程或继续查询，不能单独证明写操作成功。成功证据优先级从高到低为：与该操作匹配的明确服务端成功终态 → 契约要求的写后读回匹配 → 仅 transport/退出码；异步任务必须使用返回的任务 ID 查询到成功终态。只有成功终态成立且所有必要回读均匹配时才报告成功；`partial_success`、`unknown`、未完成任务或仅返回资源/任务 ID 都不得报告完成。Runtime 已给出充分回读证据时，不为“再确认一次”重复请求。
 
 ## 分页与完整性
 
