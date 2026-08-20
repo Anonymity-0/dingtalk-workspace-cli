@@ -176,7 +176,6 @@ dws aitable +datasource-create --base-id BASE_ID --datasource-type OA \
 | `--auto` | 否 | 是否开启自动同步，默认 false |
 | `--auto-sync-setting` | 否 | 自动同步频率配置 JSON 字符串，仅 --auto=true 时生效 |
 | `--field-ids` | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
-| `--conflict-strategy` | 否 | 冲突策略：0=覆盖（默认），1=跳过 |
 
 返回新建数据源表 tableId 和同步任务 taskId。创建后自动触发一次全量同步，需用 `+datasource-sync-status` 查最终结果。
 

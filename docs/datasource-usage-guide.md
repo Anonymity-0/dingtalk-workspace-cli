@@ -114,7 +114,6 @@ dws aitable +datasource-create [flags]
 | `--source-config` | string | 是 | 源配置 JSON 字符串（格式见下方） |
 | `--auto` | bool | 否 | 是否开启自动同步，默认 false |
 | `--field-ids` | stringSlice | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
-| `--conflict-strategy` | int | 否 | 冲突策略：0=覆盖（默认），1=跳过 |
 
 ### source-config 格式（审批类）
 
@@ -439,6 +438,4 @@ dws aitable +datasource-get-config ... -f table
 
 6. **创建即同步**：`+datasource-create` 和 `+datasource-update` 在操作完成后会自动触发一次同步，无需额外调用 `+datasource-sync`。
 
-7. **冲突策略**：创建时如果目标 Base 下已存在数据源表，`--conflict-strategy 0`（默认）会覆盖已有配置，`--conflict-strategy 1` 则会跳过（保留已有配置）。
-
-8. **自动同步**：`--auto` 开启后，数据源表会按服务端策略自动定期同步。关闭后仅能通过 `+datasource-sync` 手动触发。注意：同步频率由服务端策略控制，CLI 暂不支持自定义频率。
+7. **自动同步**：`--auto` 开启后，数据源表会按服务端策略自动定期同步。关闭后仅能通过 `+datasource-sync` 手动触发。注意：同步频率由服务端策略控制，CLI 暂不支持自定义频率。
