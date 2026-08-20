@@ -39,13 +39,14 @@ func oaFirstPageOnly(rt *shortcut.RuntimeContext, tool, collection string, param
 var PendingApprovals = shortcut.Shortcut{
 	Service: "oa", Command: "+pending", Product: "oa",
 	Description:   "只读列出待我审批的审批任务并投影为可读列表（只看不批）",
-	Intent:        "兼容入口：读取近三个月待处理审批的首个完整页；无法证明完整或缺少非空 fixture 时保持 unavailable。",
+	Intent:        "兼容入口：读取近三个月待处理审批的首个完整页；无法证明完整或缺少非空 fixture 时不进入 Agent 公开发现。",
 	Risk:          shortcut.RiskRead,
 	Safety:        oaReadSafety(),
 	OutputRollout: output.RolloutUnifiedActive,
 	Contract: oaContract(
 		"+pending", "只读列出待我审批的审批任务并投影为可读列表（只看不批）",
 		"兼容旧的待审批摘要入口；新调用优先使用支持显式时间和页码的 +list-pending。",
+		true,
 		oaCollectionResult("pending", "严格验证的待审批摘要"), nil,
 		[]contract.ParamDecl{{Name: "limit", Property: "limit"}}, "dws oa +pending --limit 10",
 	),
@@ -78,6 +79,7 @@ var DoneApprovals = shortcut.Shortcut{
 	Contract: oaContract(
 		"+done-approvals", "只读列出我已处理过的审批任务（审批历史）并投影为可读列表",
 		"兼容旧的已处理审批摘要入口；需要翻页或搜索时使用 +list-executed。",
+		true,
 		oaCollectionResult("done", "严格验证的已处理审批摘要"), nil,
 		[]contract.ParamDecl{{Name: "limit", Property: "limit"}}, "dws oa +done-approvals --limit 10",
 	),
@@ -109,6 +111,7 @@ var MyInitiated = shortcut.Shortcut{
 	Contract: oaContract(
 		"+my-initiated", "列出我发起（提交）的审批单据",
 		"需要兼容旧的 initiated 输出字段时使用；一般列表与分页可直接使用 +list-submitted。",
+		true,
 		oaCollectionResult("initiated", "严格验证的已发起审批实例页"), oaPagePagination("page"),
 		[]contract.ParamDecl{{Name: "query", Property: "query"}, {Name: "page", Property: "page"}, {Name: "limit", Property: "limit"}},
 		"dws oa +my-initiated --page 1 --limit 20", "dws oa +my-initiated --query 报销",
@@ -169,13 +172,14 @@ func oaMatchApprovals(items []map[string]any, keyword string) []oaApprovalMatch 
 var Approve = shortcut.Shortcut{
 	Service: "oa", Command: "+approve-by", Product: "oa",
 	Description:   "按关键词把我的一条待审批单据一键通过（自动定位实例与任务 ID）",
-	Intent:        "高风险兼容编排：完整读取并唯一匹配待办、唯一解析 taskId、确认后同意，再精确读回该 taskId 已不在待处理集合；没有安全 fixture 前保持 unavailable。",
+	Intent:        "高风险兼容编排：完整读取并唯一匹配待办、唯一解析 taskId、确认后同意，再精确读回该 taskId 已不在待处理集合；没有安全 fixture 前不进入 Agent 公开发现。",
 	Risk:          shortcut.RiskHighWrite,
 	Safety:        oaWriteSafety(),
 	OutputRollout: output.RolloutUnifiedActive,
 	Contract: oaContract(
 		"+approve-by", "按关键词把我的一条待审批单据一键通过（自动定位实例与任务 ID）",
 		"仅在用户明确确认同意、关键词唯一定位实例且任务读回可验证时使用；任何歧义、分页不完整或读回失败都会阻止成功。",
+		true,
 		oaWriteResult("同意审批并通过精确任务读回验证"), nil,
 		[]contract.ParamDecl{{Name: "keyword", Property: "query"}, {Name: "comment", Property: "remark"}},
 		"dws oa +approve-by --keyword 报销",

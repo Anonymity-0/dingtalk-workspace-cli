@@ -65,9 +65,15 @@ func oaWriteSafety() contract.SafetySpec {
 	return contract.SafetySpec{Effect: "write", Risk: "high", Confirmation: "user_required", Idempotency: "unknown"}
 }
 
-func oaContract(command, description, intent string, result *contract.ResultSpec, pagination *contract.PaginationSpec, params []contract.ParamDecl, examples ...string) corecmd.ContractDecl {
+func oaContract(command, description, intent string, available bool, result *contract.ResultSpec, pagination *contract.PaginationSpec, params []contract.ParamDecl, examples ...string) corecmd.ContractDecl {
 	name := "shortcut_" + strings.ReplaceAll(strings.TrimPrefix(command, "+"), "-", "_")
 	cliPath := "oa " + command
+	availability := contract.InterfaceUnavailable
+	interfaceReason := strings.TrimSpace(intent)
+	if available {
+		availability = contract.InterfaceAvailable
+		interfaceReason = oaCompositeReason
+	}
 	return corecmd.ContractDecl{
 		Description: description,
 		Result:      result,
@@ -77,7 +83,7 @@ func oaContract(command, description, intent string, result *contract.ResultSpec
 			ProductID: "oa", Name: name, CanonicalPath: "oa." + name,
 			CLIPath: cliPath, PrimaryCLIPath: cliPath,
 		},
-		Interface: &contract.InterfaceSpec{Mode: contract.InterfaceModeComposite, Availability: contract.InterfaceAvailable, Reason: oaCompositeReason},
+		Interface: &contract.InterfaceSpec{Mode: contract.InterfaceModeComposite, Availability: availability, Reason: interfaceReason},
 		Selection: contract.SelectionSpec{
 			AgentSummary: description,
 			UseWhen:      []string{intent},

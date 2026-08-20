@@ -56,6 +56,7 @@ var ListPending = shortcut.Shortcut{
 		"+list-pending",
 		"查询待我处理的审批（时间范围为 epoch 毫秒）",
 		"需要按时间范围读取待我审批的实例，并取得稳定 processInstanceId 时使用；没有安全非空待办 fixture 前不会进入公开发现。",
+		true,
 		oaCollectionResult("instances", "严格验证的待处理审批实例页"),
 		oaPagePagination("page"),
 		[]contract.ParamDecl{
@@ -115,7 +116,8 @@ var ListForms = shortcut.Shortcut{
 	OutputRollout: output.RolloutUnifiedActive,
 	Contract: oaContract(
 		"+list-forms", "获取当前用户可见的审批表单列表",
-		"需要枚举可发起审批定义并取得稳定 processCode 时使用；当前下游不返回可验证 continuation，故保持 unavailable。",
+		"需要枚举可发起审批定义并取得稳定 processCode 时使用；当前下游不返回可验证 continuation，故不进入 Agent 公开发现。",
+		true,
 		oaCollectionResult("forms", "严格验证的可见审批表单页"), oaPagePagination("cursor"),
 		[]contract.ParamDecl{{Name: "cursor", Property: "cursor"}, {Name: "limit", Property: "limit"}},
 		"dws oa +list-forms --cursor 0 --limit 100",
@@ -164,6 +166,7 @@ var SearchForms = shortcut.Shortcut{
 	Contract: oaContract(
 		"+search-forms", "按关键字模糊搜索当前用户可见的审批表单",
 		"已知审批定义关键字，需要取得一个或多个稳定 processCode 时使用；要无条件遍历全部定义不要使用本命令。",
+		true,
 		oaCollectionResult("forms", "严格验证的审批表单搜索结果"), nil,
 		[]contract.ParamDecl{{Name: "query", Property: "query"}},
 		"dws oa +search-forms --query 报销",
@@ -196,7 +199,7 @@ func oaNumberedInstanceShortcut(command, tool, description, intent string) short
 		Service: "oa", Command: command, Product: "oa",
 		Description: description, Intent: intent, Risk: shortcut.RiskRead,
 		Safety: oaReadSafety(), OutputRollout: output.RolloutUnifiedActive,
-		Contract: oaContract(command, description, intent,
+		Contract: oaContract(command, description, intent, true,
 			oaCollectionResult("instances", description), oaPagePagination("page"),
 			[]contract.ParamDecl{{Name: "page", Property: "page"}, {Name: "limit", Property: "limit"}, {Name: "query", Property: "query"}},
 			"dws oa "+command+" --page 1 --limit 20"),

@@ -94,6 +94,10 @@ func TestCrossPlatformCoverageOAContractsAreTypedAndUnified(t *testing.T) {
 	if Approve.Safety.Confirmation != "user_required" || Approve.Risk != shortcut.RiskHighWrite {
 		t.Fatal("+approve-by must require explicit high-risk confirmation")
 	}
+	unavailable := oaContract("+fixture-unavailable", "fixture unavailable", "reviewed fixture is unavailable", false, oaCollectionResult("items", "fixture items"), nil, nil)
+	if unavailable.Interface == nil || unavailable.Interface.Availability != "unavailable" || unavailable.Interface.Reason != "reviewed fixture is unavailable" {
+		t.Fatalf("unavailable OA contract interface=%+v", unavailable.Interface)
+	}
 	for _, declaration := range []shortcut.Shortcut{ListPending, ListForms, ListExecuted, ListSubmitted, ListCc, MyInitiated} {
 		if declaration.Contract.Pagination == nil {
 			t.Errorf("%s lacks Pagination", declaration.Command)

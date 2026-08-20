@@ -58,6 +58,9 @@ func TestCrossPlatformCoverageOASemanticCatalogExactlyCoversRegisteredSurface(t 
 		if item.Risk != record.Risk || item.Availability != availability {
 			t.Errorf("%s risk/availability=%q/%q want=%q/%q", command, item.Risk, item.Availability, record.Risk, availability)
 		}
+		if item.Contract.Interface == nil || item.Contract.Interface.Availability != string(availability) {
+			t.Errorf("%s final interface availability=%v, want %q", command, item.Contract.Interface, availability)
+		}
 		if record.Public {
 			public++
 			if availability != shortcut.AvailabilityAvailable || item.Hidden || !shortcut.InPublicCatalog("oa", command) {
@@ -69,7 +72,7 @@ func TestCrossPlatformCoverageOASemanticCatalogExactlyCoversRegisteredSurface(t 
 		} else {
 			if record.CompatibilityVisible {
 				compatibilityVisible++
-				if item.Hidden || !item.CompatibilityVisible || availability != shortcut.AvailabilityUnavailable || shortcut.InPublicCatalog("oa", command) {
+				if item.Hidden || !item.CompatibilityVisible || availability != shortcut.AvailabilityAvailable || shortcut.InPublicCatalog("oa", command) {
 					t.Errorf("%s compatibility-visible boundary drift", command)
 				}
 			} else if !item.Hidden || item.CompatibilityVisible || shortcut.InPublicCatalog("oa", command) {
@@ -93,7 +96,7 @@ func TestCrossPlatformCoverageOASemanticCatalogExactlyCoversRegisteredSurface(t 
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 1 || unavailable != 8 || compatibilityVisible != len(wantCompatibilityVisible) {
-		t.Fatalf("public/unavailable/compatibility-visible=%d/%d/%d, want 1/8/%d", public, unavailable, compatibilityVisible, len(wantCompatibilityVisible))
+	if public != 1 || unavailable != 0 || compatibilityVisible != len(wantCompatibilityVisible) {
+		t.Fatalf("public/unavailable/compatibility-visible=%d/%d/%d, want 1/0/%d", public, unavailable, compatibilityVisible, len(wantCompatibilityVisible))
 	}
 }
