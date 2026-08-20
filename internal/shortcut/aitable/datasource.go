@@ -72,11 +72,10 @@ var DatasourceCreate = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID（通过 +base-list / +base-search 获取）", Required: true},
 		{Name: "datasource-type", Type: shortcut.FlagString, Desc: "数据源类型，目前支持审批（OA）", Required: true},
-		{Name: "source-config", Type: shortcut.FlagString, Desc: "源配置 JSON 字符串。字段分为两类：须从 +datasource-list-sources 结果原样透传的字段（必填）：processCode（审批流程编码）、name（展示名称）、iconUrl（图标 URL）、url（跳转链接）；调用方自行设置的字段：dataType（必填，time_range/start_time/recent_time）、recentDays（dataType=recent_time 时有效，7d/30d/1y，默认 30d）、startDate（dataType=time_range/start_time 时有效，yyyy-MM-dd，默认 30 天前）、endDate（dataType=time_range 时有效，yyyy-MM-dd，默认当天）、keepRemovedFields（是否保留已删除字段，默认 false）、splitParentTableField（是否拆分父表字段）", Required: true},
+		{Name: "source-config", Type: shortcut.FlagString, Desc: "源配置 JSON 字符串。字段分为两类：须从 +datasource-list-sources 结果原样透传的字段（必填）：processCode（审批流程编码）、name（展示名称）、iconUrl（图标 URL）、url（跳转链接）；调用方自行设置的字段：dataType（必填，time_range/start_time/recent_time）、recentDays（dataType=recent_time 时有效，7d/30d/1y，默认 30d）、startDate（dataType=time_range/start_time 时有效，yyyy-MM-dd，默认 30 天前）、endDate（dataType=time_range 时有效，yyyy-MM-dd，默认当天）、keepRemovedFields（是否保留已删除字段，默认 false）。约定：syncAll 固定为 true；splitParentTableField 与 enableDataSyncOaDetailList 为下游内部字段，无需传入", Required: true},
 		{Name: "auto", Type: shortcut.FlagBool, Desc: "是否开启自动同步，默认 false"},
 		{Name: "field-ids", Type: shortcut.FlagStringSlice, Desc: "需要同步的字段 ID 列表，不传时同步全部字段"},
-		{Name: "conflict-strategy", Type: shortcut.FlagInt, Desc: "冲突策略：0=覆盖（默认），1=跳过"},
-		{Name: "auto-sync-setting", Type: shortcut.FlagString, Desc: "自动同步频率配置 JSON 字符串，仅在 --auto=true 时生效。字段：syncType（必填，hourly|schedule）、hourlyInterval（hourly 时必填，正整数小时）、scheduleType（schedule 时必填，day/week/month）、timeValue（schedule 时必填，HH:mm）、selectedMonthDays（month 时可选）、selectedWeekdays（week 时可选）、skipNonWorkingDay（可选，默认 false）。不传时使用下游默认自动同步策略"},
+		{Name: "auto-sync-setting", Type: shortcut.FlagString, Desc: "自动同步频率配置 JSON 字符串，仅在 --auto=true 时生效。字段：syncType（必填，hourly=按小时间隔，scheduled=定时触发）、hourlyInterval（syncType=hourly 时必填，正整数小时）、scheduleType（syncType=scheduled 时必填，daily/weekly/monthly）、timeValue（syncType=scheduled 时必填，HH:mm）、selectedMonthDays（scheduleType=monthly 时必填，每月几号触发，1-31）、selectedWeekdays（scheduleType=weekly 时必填，每周哪几天触发，1=周一…7=周日）、skipNonWorkingDay（可选，默认 false）。不传时使用下游默认自动同步策略"},
 	},
 	Tips: []string{
 		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
@@ -96,9 +95,6 @@ var DatasourceCreate = shortcut.Shortcut{
 		}
 		if rt.Changed("field-ids") {
 			params["fieldIds"] = rt.StrSlice("field-ids")
-		}
-		if rt.Changed("conflict-strategy") {
-			params["syncConflictStrategy"] = rt.Int("conflict-strategy")
 		}
 		if rt.Changed("auto-sync-setting") {
 			if _, err := parseJSONObject("auto-sync-setting", rt.Str("auto-sync-setting")); err != nil {
@@ -156,10 +152,10 @@ var DatasourceUpdate = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},
 		{Name: "table-id", Type: shortcut.FlagString, Desc: "已存在的数据源表 ID（通过 +base-get / +table-list 获取，仅允许传入 sync=true 的数据源表）", Required: true},
-		{Name: "source-config", Type: shortcut.FlagString, Desc: "可选。新的源配置 JSON 字符串。不传时保持原有配置不变；传入时整体覆盖。字段分为两类：须从 +datasource-list-sources 结果原样透传的字段（必填）：processCode（审批流程编码）、name（展示名称）、iconUrl（图标 URL）、url（跳转链接）；调用方自行设置的字段：dataType（必填，time_range/start_time/recent_time）、recentDays（dataType=recent_time 时有效，7d/30d/1y，默认 30d）、startDate（dataType=time_range/start_time 时有效，yyyy-MM-dd，默认 30 天前）、endDate（dataType=time_range 时有效，yyyy-MM-dd，默认当天）、keepRemovedFields（默认 false）、splitParentTableField（是否拆分父表字段）"},
+		{Name: "source-config", Type: shortcut.FlagString, Desc: "可选。新的源配置 JSON 字符串。不传时保持原有配置不变；传入时整体覆盖。字段分为两类：须从 +datasource-list-sources 结果原样透传的字段（必填）：processCode（审批流程编码）、name（展示名称）、iconUrl（图标 URL）、url（跳转链接）；调用方自行设置的字段：dataType（必填，time_range/start_time/recent_time）、recentDays（dataType=recent_time 时有效，7d/30d/1y，默认 30d）、startDate（dataType=time_range/start_time 时有效，yyyy-MM-dd，默认 30 天前）、endDate（dataType=time_range 时有效，yyyy-MM-dd，默认当天）、keepRemovedFields（默认 false）。约定：syncAll 固定为 true；splitParentTableField 与 enableDataSyncOaDetailList 为下游内部字段，无需传入"},
 		{Name: "auto", Type: shortcut.FlagBool, Desc: "是否开启自动同步，不传时保持原有设置"},
 		{Name: "field-ids", Type: shortcut.FlagStringSlice, Desc: "需要同步的字段 ID 列表，不传时同步全部字段"},
-			{Name: "auto-sync-setting", Type: shortcut.FlagString, Desc: "自动同步频率配置 JSON 字符串，仅在 --auto=true 时生效。字段：syncType（必填，hourly|schedule）、hourlyInterval（hourly 时必填，正整数小时）、scheduleType（schedule 时必填，day|week|month）、timeValue（schedule 时必填，HH:mm）、selectedMonthDays（month 时可选）、selectedWeekdays（week 时可选）、skipNonWorkingDay（可选，默认 false）。不传时保持原有自动同步频率配置"},
+			{Name: "auto-sync-setting", Type: shortcut.FlagString, Desc: "自动同步频率配置 JSON 字符串，仅在 --auto=true 时生效。字段：syncType（必填，hourly=按小时间隔，scheduled=定时触发）、hourlyInterval（syncType=hourly 时必填，正整数小时）、scheduleType（syncType=scheduled 时必填，daily/weekly/monthly）、timeValue（syncType=scheduled 时必填，HH:mm）、selectedMonthDays（scheduleType=monthly 时必填，每月几号触发，1-31）、selectedWeekdays（scheduleType=weekly 时必填，每周哪几天触发，1=周一…7=周日）、skipNonWorkingDay（可选，默认 false）。不传时保持原有自动同步频率配置"},
 	},
 	Tips: []string{
 		`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --auto`,
@@ -201,7 +197,7 @@ var DatasourceSync = shortcut.Shortcut{
 	Service:     "aitable",
 	Command:     "+datasource-sync",
 	Product:     serverMain,
-	Description: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，每张表独立提交，部分失败不影响其他表。返回结果包含文档链接，用户可打开文档查看同步进度与最终数据。同步运行中（errorCode=4014）属于幂等冲突，会被标记为 failed 并允许调用方稍后重试。非数据源表（sync=false）不能用此工具触发同步，会以参数错误返回。",
+	Description: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，每张表独立提交，部分失败不影响其他表。该工具仅触发任务即返回，不会等待同步完成。返回结果包含文档链接，用户可打开文档查看同步进度与最终数据。同步运行中（errorCode=4014）属于幂等冲突，会被标记为 failed 并允许调用方稍后重试。非数据源表（sync=false）不能用此工具触发同步，会以参数错误返回。",
 	Intent:      "当用户需要手动触发已有数据源表的同步（而非创建或更新配置）时使用。同步任务 ID 可通过 +datasource-sync-status 查询结果。",
 	Risk:        shortcut.RiskWrite,
 	Safety: contract.SafetySpec{
@@ -216,14 +212,14 @@ var DatasourceSync = shortcut.Shortcut{
 			CLIPath:        "aitable +datasource-sync",
 			PrimaryCLIPath: "aitable +datasource-sync",
 		},
-		Description: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，每张表独立提交，部分失败不影响其他表。返回结果包含文档链接，用户可打开文档查看同步进度与最终数据。同步运行中（errorCode=4014）属于幂等冲突，会被标记为 failed 并允许调用方稍后重试。非数据源表（sync=false）不能用此工具触发同步，会以参数错误返回。",
+		Description: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，每张表独立提交，部分失败不影响其他表。该工具仅触发任务即返回，不会等待同步完成。返回结果包含文档链接，用户可打开文档查看同步进度与最终数据。同步运行中（errorCode=4014）属于幂等冲突，会被标记为 failed 并允许调用方稍后重试。非数据源表（sync=false）不能用此工具触发同步，会以参数错误返回。",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
 			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
 		Selection: contract.SelectionSpec{
-			AgentSummary: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，部分失败不影响其他表。返回文档链接；errorCode=4014 为幂等冲突可重试；非数据源表（sync=false）会以参数错误返回。",
+			AgentSummary: "对指定 AI 表格中的数据源表触发一次手动同步。单次最多 5 张表，部分失败不影响其他表。仅触发即返回。返回文档链接；errorCode=4014 为幂等冲突可重试；非数据源表（sync=false）会以参数错误返回。",
 			UseWhen:      []string{"当用户需要手动触发已有数据源表的数据同步时"},
 			AvoidWhen: []string{
 				"需要创建新数据源表时（改用 +datasource-create）",
