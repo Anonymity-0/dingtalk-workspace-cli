@@ -246,9 +246,26 @@ func TestCrossPlatformCoverageMinutesUploadFailureAndSuccessBranchesE2E(t *testi
 		"minutes/get_minutes_basic_info":  {`{"success":true,"result":{"taskUuid":"u1","title":"ok"}}`},
 	}
 	success := &minutesE2ECaller{responses: base}
-	payload, _, err := runMinutesAlignmentCLI(t, success, "minutes", "+upload", "--file", file, "--title", "T", "--template-id", "tpl", "--input-language", "zh", "--enable-message-card", "--yes")
+	payload, _, err := runMinutesAlignmentCLI(t, success, "minutes", "+upload", "--file", file, "--title", "T", "--template-id", "tpl", "--input-language", "zh")
 	if err != nil || payload["complete"] != true || payload["verified"] != true {
 		t.Fatalf("upload payload=%#v err=%v", payload, err)
+	}
+	createArgs := success.arguments["minutes/create_upload_session"][0]
+	if option, _ := createArgs["minutesOption"].(map[string]any); option["enableMessageCard"] != nil {
+		t.Fatalf("pure upload enabled message card: %#v", createArgs)
+	}
+	notify := &minutesE2ECaller{responses: base}
+	payload, _, err = runMinutesAlignmentCLI(t, notify, "minutes", "+upload-and-notify", "--file", file, "--title", "T", "--yes")
+	if err != nil || payload["complete"] != true {
+		t.Fatalf("upload-and-notify payload=%#v err=%v", payload, err)
+	}
+	notifyArgs := notify.arguments["minutes/create_upload_session"][0]
+	if option, _ := notifyArgs["minutesOption"].(map[string]any); option["enableMessageCard"] != true {
+		t.Fatalf("notifying upload args=%#v", notifyArgs)
+	}
+	legacy := &minutesE2ECaller{}
+	if _, _, err := runMinutesAlignmentCLI(t, legacy, "minutes", "+upload", "--file", file, "--enable-message-card"); err == nil || !strings.Contains(err.Error(), "+upload-and-notify") || len(legacy.counts) != 0 {
+		t.Fatalf("legacy message flag err=%v calls=%#v", err, legacy.counts)
 	}
 
 	cases := []struct {

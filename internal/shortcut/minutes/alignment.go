@@ -104,32 +104,64 @@ var Download = shortcut.Shortcut{
 
 var Upload = shortcut.Shortcut{
 	Service: "minutes", Command: "+upload", Product: "minutes",
-	Description: "把本地音视频完整上传并创建听记，失败时取消会话",
-	Intent:      "需要从本地音视频直接创建听记时使用；完成 create、预签名 PUT、complete 和最终详情读回，不需要中转 Drive。",
+	Description: "把本地音视频完整上传并创建听记，不发送额外消息",
+	Intent:      "需要从本地音视频直接创建听记时使用；完成 create、预签名 PUT、complete 和最终详情读回，不需要中转 Drive，也不会推送闪记卡片。",
 	Risk:        shortcut.RiskWrite,
-	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
-	Contract: withMinutesDryRun(minutesContract("+upload", "把本地音视频完整上传并创建听记，失败时取消会话",
-		"用户有本地音视频，希望直接上传生成听记并取得可读回的 taskUuid 时使用",
-		[]string{"只需要管理已有 upload session 时使用原子 upload create/complete/cancel", "文件为空、过大或不希望创建远端听记时不要执行"},
+	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown"},
+	Contract: withMinutesDryRun(minutesContract("+upload", "把本地音视频完整上传并创建听记，不发送额外消息",
+		"用户有本地音视频，希望直接上传生成听记并取得可读回的 taskUuid，且不需要额外消息通知时使用",
+		[]string{"需要推送闪记卡片时使用 +upload-and-notify", "只需要管理已有 upload session 时使用原子 upload create/complete/cancel", "文件为空、过大或不希望创建远端听记时不要执行"},
 		[]string{`dws minutes +upload --file ./meeting.mp3 --title "项目周会"`, `dws minutes +upload --file ./meeting.mp4 --input-language zh`}), contract.DryRunPreviewPlan, false),
-	Flags: []shortcut.Flag{
-		{Name: "file", Type: shortcut.FlagString, Desc: "本地音视频文件", Required: true},
-		{Name: "title", Type: shortcut.FlagString, Desc: "听记标题"},
-		{Name: "template-id", Type: shortcut.FlagString, Desc: "纪要模板 ID"},
-		{Name: "input-language", Type: shortcut.FlagString, Desc: "ASR 输入语言"},
-		{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "生成后推送闪记卡片"},
-		{Name: "complete-timeout", Type: shortcut.FlagInt, Default: "90", Desc: "等待服务端确认上传完成的秒数"},
-		{Name: "poll-interval", Type: shortcut.FlagInt, Default: "2", Desc: "complete 重试间隔秒数"},
-	},
+	Flags:       minutesUploadFlags(true),
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"complete-timeout", "poll-interval"}, Description: "--complete-timeout 和 --poll-interval 必须大于 0"}},
 	Tips:        []string{`dws minutes +upload --file ./meeting.mp3 --title "项目周会"`, `dws minutes +upload --file ./meeting.mp4 --input-language zh`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Changed("enable-message-card") {
+			return apperrors.NewValidation("--enable-message-card 已迁移：需要通知时请使用 +upload-and-notify")
+		}
 		if rt.Int("complete-timeout") <= 0 || rt.Int("poll-interval") <= 0 {
 			return apperrors.NewValidation("--complete-timeout 和 --poll-interval 必须大于 0")
 		}
 		return nil
 	},
 	Execute: executeMinutesUpload,
+}
+
+var UploadAndNotify = shortcut.Shortcut{
+	Service: "minutes", Command: "+upload-and-notify", Product: "minutes",
+	Description: "上传本地音视频创建听记，并在生成后推送闪记卡片",
+	Intent:      "用户明确要求从本地媒体创建听记且额外收到闪记卡片通知时使用；通知副作用与普通上传分开确认。",
+	Risk:        shortcut.RiskWrite,
+	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
+	Contract: withMinutesDryRun(minutesContract("+upload-and-notify", "上传本地音视频创建听记，并在生成后推送闪记卡片",
+		"用户明确要求上传音视频创建听记，并希望额外收到闪记卡片通知时使用",
+		[]string{"不需要消息通知时使用 +upload", "只需要管理已有 upload session 时使用原子 upload create-and-notify/complete/cancel"},
+		[]string{`dws minutes +upload-and-notify --file ./meeting.mp3 --title "项目周会"`}), contract.DryRunPreviewPlan, false),
+	Flags:       minutesUploadFlags(false),
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"complete-timeout", "poll-interval"}, Description: "--complete-timeout 和 --poll-interval 必须大于 0"}},
+	Tips:        []string{`dws minutes +upload-and-notify --file ./meeting.mp3 --title "项目周会"`},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Int("complete-timeout") <= 0 || rt.Int("poll-interval") <= 0 {
+			return apperrors.NewValidation("--complete-timeout 和 --poll-interval 必须大于 0")
+		}
+		return nil
+	},
+	Execute: executeMinutesUploadAndNotify,
+}
+
+func minutesUploadFlags(includeLegacyMessageFlag bool) []shortcut.Flag {
+	flags := []shortcut.Flag{
+		{Name: "file", Type: shortcut.FlagString, Desc: "本地音视频文件", Required: true},
+		{Name: "title", Type: shortcut.FlagString, Desc: "听记标题"},
+		{Name: "template-id", Type: shortcut.FlagString, Desc: "纪要模板 ID"},
+		{Name: "input-language", Type: shortcut.FlagString, Desc: "ASR 输入语言"},
+		{Name: "complete-timeout", Type: shortcut.FlagInt, Default: "90", Desc: "等待服务端确认上传完成的秒数"},
+		{Name: "poll-interval", Type: shortcut.FlagInt, Default: "2", Desc: "complete 重试间隔秒数"},
+	}
+	if includeLegacyMessageFlag {
+		flags = append(flags, shortcut.Flag{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "[已迁移] 请使用 +upload-and-notify", Hidden: true})
+	}
+	return flags
 }
 
 var Update = shortcut.Shortcut{
@@ -328,19 +360,27 @@ func executeMinutesDownload(rt *shortcut.RuntimeContext) error {
 }
 
 func executeMinutesUpload(rt *shortcut.RuntimeContext) error {
-	payload, err := performMinutesUpload(rt)
+	payload, err := performMinutesUpload(rt, false)
 	if err != nil {
 		return err
 	}
 	return rt.Output(payload)
 }
 
-func performMinutesUpload(rt *shortcut.RuntimeContext) (map[string]any, error) {
+func executeMinutesUploadAndNotify(rt *shortcut.RuntimeContext) error {
+	payload, err := performMinutesUpload(rt, true)
+	if err != nil {
+		return err
+	}
+	return rt.Output(payload)
+}
+
+func performMinutesUpload(rt *shortcut.RuntimeContext, enableMessageCard bool) (map[string]any, error) {
 	info, err := os.Stat(rt.Str("file"))
 	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 {
 		return nil, apperrors.NewValidation("--file 必须是非空普通文件")
 	}
-	plan := map[string]any{"operation": "minutes.upload", "fileName": info.Name(), "sizeBytes": info.Size(), "title": rt.Str("title")}
+	plan := map[string]any{"operation": "minutes.upload", "fileName": info.Name(), "sizeBytes": info.Size(), "title": rt.Str("title"), "messageCard": enableMessageCard}
 	if rt.DryRun() {
 		return minutesDryRunPayload(contract.DryRunPreviewPlan, "minutes.upload", plan), nil
 	}
@@ -355,8 +395,8 @@ func performMinutesUpload(rt *shortcut.RuntimeContext) (map[string]any, error) {
 	if value := strings.TrimSpace(rt.Str("input-language")); value != "" {
 		option["inputLanguage"] = value
 	}
-	if rt.Changed("enable-message-card") {
-		option["enableMessageCard"] = rt.Bool("enable-message-card")
+	if enableMessageCard {
+		option["enableMessageCard"] = true
 	}
 	if len(option) > 0 {
 		params["minutesOption"] = option
@@ -729,5 +769,5 @@ func speakerCounts(paragraphs []map[string]any) map[string]int {
 }
 
 func init() {
-	shortcut.Register(finalizeMinutesShortcuts(Search, Download, Upload, Update, ApplyPermission, Summary, SpeakerReplace)...)
+	shortcut.Register(finalizeMinutesShortcuts(Search, Download, Upload, UploadAndNotify, Update, ApplyPermission, Summary, SpeakerReplace)...)
 }

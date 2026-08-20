@@ -219,6 +219,43 @@ func TestCrossPlatformCoverageMinutesUploadAndPermissionDryRunDoNotWriteE2E(t *t
 	}
 }
 
+func TestCrossPlatformCoverageMinutesShortcutConfirmationPolicyE2E(t *testing.T) {
+	for _, value := range []shortcut.Shortcut{Upload, UploadAndAnalyze, Mindmap, SpeakerInsights, PrepareASR} {
+		if value.Safety.Confirmation != "not_required" {
+			t.Errorf("%s confirmation=%q, want not_required", value.Command, value.Safety.Confirmation)
+		}
+	}
+	for _, value := range []shortcut.Shortcut{UploadAndNotify, SyncASR} {
+		if value.Safety.Confirmation != "user_required" {
+			t.Errorf("%s confirmation=%q, want user_required", value.Command, value.Safety.Confirmation)
+		}
+	}
+
+	file := filepath.Join(t.TempDir(), "notify.wav")
+	if err := os.WriteFile(file, []byte("audio"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name string
+		args []string
+	}{
+		{name: "upload notify", args: []string{"minutes", "+upload-and-notify", "--file", file}},
+		{name: "sync asr", args: []string{"minutes", "+sync-asr", "--words", "DWS"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &minutesE2ECaller{}
+			_, _, err := runMinutesAlignmentCLI(t, caller, test.args...)
+			var typed *apperrors.Error
+			if !errors.As(err, &typed) || typed.Reason != "confirmation_required" {
+				t.Fatalf("unconfirmed error=%#v", err)
+			}
+			if len(caller.counts) != 0 {
+				t.Fatalf("remote calls before confirmation=%#v", caller.counts)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageMinutesUploadUnknownCompletionPreservesSessionE2E(t *testing.T) {
 	work := t.TempDir()
 	file := filepath.Join(work, "response-loss.wav")

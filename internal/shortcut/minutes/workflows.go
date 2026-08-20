@@ -64,10 +64,10 @@ var UploadAndAnalyze = shortcut.Shortcut{
 	Description: "本地音视频直传听记并等待分析产物，可选思维导图和发言人洞察",
 	Intent:      "从本地媒体一次完成 upload create/PUT/complete/read-back，再等待选定听记产物；后续分析失败仍返回已创建 taskUuid 和恢复动作。",
 	Risk:        shortcut.RiskWrite,
-	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
+	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown"},
 	Contract: withMinutesDryRun(minutesContract("+upload-and-analyze", "本地音视频直传听记并等待分析产物，可选思维导图和发言人洞察",
 		"有本地音视频且希望一次创建听记、等待基础分析，并可继续生成思维导图或发言人洞察时使用",
-		[]string{"只需上传时使用 +upload；已有 taskUuid 时分别使用 +detail/+mindmap/+speaker-insights"},
+		[]string{"只需上传时使用 +upload；已有 taskUuid 时分别使用 +detail/+mindmap/+speaker-insights", "需要闪记卡片通知时先使用 +upload-and-notify，再用本命令的 --resume-id 恢复分析"},
 		[]string{`dws minutes +upload-and-analyze --file ./meeting.mp3 --title "项目周会"`, `dws minutes +upload-and-analyze --file ./meeting.mp4 --artifacts transcript,summary --mindmap`}), contract.DryRunPreviewPlan, false),
 	Flags: []shortcut.Flag{
 		{Name: "file", Type: shortcut.FlagString, Desc: "本地音视频文件；与 --resume-id 二选一"},
@@ -75,7 +75,7 @@ var UploadAndAnalyze = shortcut.Shortcut{
 		{Name: "title", Type: shortcut.FlagString, Desc: "听记标题"},
 		{Name: "template-id", Type: shortcut.FlagString, Desc: "纪要模板 ID"},
 		{Name: "input-language", Type: shortcut.FlagString, Desc: "ASR 输入语言"},
-		{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "生成后推送闪记卡片"},
+		{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "[已迁移] 先使用 +upload-and-notify，再用 --resume-id 恢复分析", Hidden: true},
 		{Name: "complete-timeout", Type: shortcut.FlagInt, Default: "90", Desc: "上传 complete 超时秒数"},
 		{Name: "poll-interval", Type: shortcut.FlagInt, Default: "3", Desc: "轮询间隔秒数"},
 		{Name: "wait-timeout", Type: shortcut.FlagInt, Default: "180", Desc: "等待分析产物秒数"},
@@ -90,6 +90,9 @@ var UploadAndAnalyze = shortcut.Shortcut{
 	},
 	Tips: []string{`dws minutes +upload-and-analyze --file ./meeting.mp3 --title "项目周会"`, `dws minutes +upload-and-analyze --file ./meeting.mp4 --artifacts transcript,summary --mindmap`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Changed("enable-message-card") {
+			return apperrors.NewValidation("--enable-message-card 已迁移：先使用 +upload-and-notify，再用 +upload-and-analyze --resume-id <taskUuid> 恢复分析")
+		}
 		if rt.Int("complete-timeout") <= 0 {
 			return apperrors.NewValidation("--complete-timeout 必须大于 0")
 		}
@@ -103,7 +106,7 @@ var Mindmap = shortcut.Shortcut{
 	Description: "创建听记思维导图并轮询到明确成功、失败或超时",
 	Intent:      "已有 taskUuid 且需要思维导图时使用；创建只执行一次，随后只轮询 taskStatus，失败/超时均返回非零和可继续查询的 taskUuid。",
 	Risk:        shortcut.RiskWrite,
-	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
+	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown"},
 	Contract: withMinutesDryRun(minutesContract("+mindmap", "创建听记思维导图并轮询到明确成功、失败或超时",
 		"听记内容已就绪，需要触发并等待平台思维导图产物时使用",
 		[]string{"只查询已经触发的任务状态时使用原子 mind-graph status；短音频或无有效内容可能明确失败"},
@@ -125,7 +128,7 @@ var SpeakerInsights = shortcut.Shortcut{
 	Description: "创建发言人段落总结并轮询结果，保留异步任务恢复句柄",
 	Intent:      "需要按发言人汇总听记内容时使用；严格要求 create 返回 taskId，读取未就绪时有界重试，失败或超时返回 taskId/taskUuid。",
 	Risk:        shortcut.RiskWrite,
-	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
+	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown"},
 	Contract: withMinutesDryRun(minutesContract("+speaker-insights", "创建发言人段落总结并轮询结果，保留异步任务恢复句柄",
 		"逐字稿已有多位发言人，需要触发并读取平台发言人段落总结时使用",
 		[]string{"只改发言人昵称时使用 +speaker-replace；无有效发言内容时平台可能不生成结果"},
@@ -145,20 +148,43 @@ var SpeakerInsights = shortcut.Shortcut{
 
 var PrepareASR = shortcut.Shortcut{
 	Service: "minutes", Command: "+prepare-asr", Product: "minutes",
-	Description: "读取个人热词、计算差异、按需新增并可显式同步删除后读回验证",
-	Intent:      "录音/上传前准备 ASR 专有词表；默认只增加缺失热词，只有 --sync 才删除未出现在目标集合中的现有热词。",
+	Description: "读取个人热词、只新增缺失项并读回验证",
+	Intent:      "录音/上传前追加 ASR 专有词表；只增加缺失热词，不删除现有热词。需要精确同步并删除多余热词时改用 +sync-asr。",
 	Risk:        shortcut.RiskWrite,
-	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "idempotent"},
-	Contract: withMinutesDryRun(minutesContract("+prepare-asr", "按需新增个人热词并可显式同步删除后读回验证；dry-run 不访问远端",
-		"录音或上传前要补充人名、项目名等 ASR 热词，并希望看到差异和最终读回验证时使用",
-		[]string{"只查看现有热词时使用原子 hot-word list；不明确接受删除时不要使用 --sync"},
-		[]string{`dws minutes +prepare-asr --words "DWS,听记"`, `dws minutes +prepare-asr --words "DWS,听记" --sync`}), contract.DryRunPreviewPlan, false),
+	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "idempotent"},
+	Contract: withMinutesDryRun(minutesContract("+prepare-asr", "只新增缺失的个人热词并读回验证；dry-run 不访问远端",
+		"录音或上传前要追加人名、项目名等 ASR 热词，且不应删除任何现有热词时使用",
+		[]string{"只查看现有热词时使用原子 hot-word list；需要删除多余热词并精确同步时使用 +sync-asr"},
+		[]string{`dws minutes +prepare-asr --words "DWS,听记"`}), contract.DryRunPreviewPlan, false),
 	Flags: []shortcut.Flag{
 		{Name: "words", Type: shortcut.FlagStringSlice, Desc: "目标热词，逗号分隔", Required: true},
-		{Name: "sync", Type: shortcut.FlagBool, Desc: "删除目标集合之外的现有热词"},
+		{Name: "sync", Type: shortcut.FlagBool, Desc: "[已迁移] 请使用 +sync-asr", Hidden: true},
 	},
-	Tips:    []string{`dws minutes +prepare-asr --words "DWS,听记"`, `dws minutes +prepare-asr --words "DWS,听记" --sync`},
+	Tips: []string{`dws minutes +prepare-asr --words "DWS,听记"`},
+	Validate: func(rt *shortcut.RuntimeContext) error {
+		if rt.Changed("sync") {
+			return apperrors.NewValidation("--sync 已迁移：需要删除多余热词时请使用 +sync-asr")
+		}
+		return nil
+	},
 	Execute: executeMinutesPrepareASR,
+}
+
+var SyncASR = shortcut.Shortcut{
+	Service: "minutes", Command: "+sync-asr", Product: "minutes",
+	Description: "把个人热词精确同步为目标集合，删除多余项后读回验证",
+	Intent:      "用户明确要求个人 ASR 热词与目标集合完全一致时使用；会新增缺失项并删除目标集合外的现有热词。",
+	Risk:        shortcut.RiskHighWrite,
+	Safety:      contract.SafetySpec{Effect: "destructive", Risk: "high", Confirmation: "user_required", Idempotency: "idempotent"},
+	Contract: withMinutesDryRun(minutesContract("+sync-asr", "把个人热词精确同步为目标集合，删除多余项后读回验证",
+		"用户明确接受删除目标集合之外的现有热词，并要求最终热词集合完全一致时使用",
+		[]string{"只需追加缺失热词时使用 +prepare-asr；未确认删除范围时不要同步"},
+		[]string{`dws minutes +sync-asr --words "DWS,听记"`}), contract.DryRunPreviewPlan, false),
+	Flags: []shortcut.Flag{
+		{Name: "words", Type: shortcut.FlagStringSlice, Desc: "同步后的完整目标热词集合，逗号分隔", Required: true},
+	},
+	Tips:    []string{`dws minutes +sync-asr --words "DWS,听记"`},
+	Execute: executeMinutesSyncASR,
 }
 
 var ExportPack = shortcut.Shortcut{
@@ -217,8 +243,8 @@ var Unshare = shortcut.Shortcut{
 	Service: "minutes", Command: "+unshare", Product: "minutes",
 	Description: "按成员逐项移除一个或多个听记权限，输出可审计的部分写入 ledger",
 	Intent:      "所有者明确要撤销稳定成员 UID 的听记访问时使用；默认首错停止，任何部分失败都返回非零。",
-	Risk:        shortcut.RiskWrite,
-	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
+	Risk:        shortcut.RiskHighWrite,
+	Safety:      contract.SafetySpec{Effect: "destructive", Risk: "high", Confirmation: "user_required", Idempotency: "unknown"},
 	Contract: withMinutesDryRun(minutesContract("+unshare", "按成员逐项移除一个或多个听记权限，输出可审计的部分写入 ledger",
 		"听记所有者已确认稳定 member UID，需要撤销其对一个或多个听记的访问权限时使用",
 		[]string{"要授权时使用 +share；成员或听记 ID 未确认时不要撤销"},
@@ -287,7 +313,7 @@ func executeMinutesUploadAndAnalyze(rt *shortcut.RuntimeContext) error {
 		upload := map[string]any{"operation": "minutes.upload", "resume": rt.Str("resume-id") != "", "taskUuid": rt.Str("resume-id"), "executed": false}
 		if rt.Str("resume-id") == "" {
 			var err error
-			upload, err = performMinutesUpload(rt)
+			upload, err = performMinutesUpload(rt, false)
 			if err != nil {
 				return err
 			}
@@ -298,7 +324,7 @@ func executeMinutesUploadAndAnalyze(rt *shortcut.RuntimeContext) error {
 	upload := map[string]any{"operation": "minutes.upload", "complete": true, "resumed": true, "taskUuid": id, "verified": true}
 	if id == "" {
 		var err error
-		upload, err = performMinutesUpload(rt)
+		upload, err = performMinutesUpload(rt, false)
 		if err != nil {
 			return err
 		}
@@ -442,10 +468,22 @@ func speakerSummaryPending(err error) bool {
 }
 
 func executeMinutesPrepareASR(rt *shortcut.RuntimeContext) error {
+	return executeMinutesASR(rt, false)
+}
+
+func executeMinutesSyncASR(rt *shortcut.RuntimeContext) error {
+	return executeMinutesASR(rt, true)
+}
+
+func executeMinutesASR(rt *shortcut.RuntimeContext, syncMode bool) error {
 	desired := uniqueStrings(rt.StrSlice("words"))
+	operation := "minutes.prepare_asr"
+	if syncMode {
+		operation = "minutes.sync_asr"
+	}
 	if rt.DryRun() {
-		return rt.Output(minutesDryRunPayload(contract.DryRunPreviewPlan, "minutes.prepare_asr", map[string]any{
-			"desired": desired, "sync": rt.Bool("sync"), "remotePreconditions": []string{"read current hot words", "compute additions and deletions", "apply writes", "read back exact set"},
+		return rt.Output(minutesDryRunPayload(contract.DryRunPreviewPlan, operation, map[string]any{
+			"desired": desired, "sync": syncMode, "remotePreconditions": []string{"read current hot words", "compute additions and deletions", "apply writes", "read back exact set"},
 		}))
 	}
 	currentData, err := rt.CallMCPData("minutes", "list_my_hotwords", map[string]any{})
@@ -458,10 +496,10 @@ func executeMinutesPrepareASR(rt *shortcut.RuntimeContext) error {
 	}
 	toAdd := stringDifference(desired, current)
 	toDelete := []string{}
-	if rt.Bool("sync") {
+	if syncMode {
 		toDelete = stringDifference(current, desired)
 	}
-	plan := map[string]any{"operation": "minutes.prepare_asr", "before": current, "desired": desired, "add": toAdd, "delete": toDelete, "sync": rt.Bool("sync")}
+	plan := map[string]any{"operation": operation, "before": current, "desired": desired, "add": toAdd, "delete": toDelete, "sync": syncMode}
 	stages := []map[string]any{}
 	if len(toAdd) > 0 {
 		data, writeErr := rt.CallMCPWriteDataStrict("minutes", "add_personal_hot_word", map[string]any{"hotWordList": toAdd})
@@ -499,7 +537,7 @@ func executeMinutesPrepareASR(rt *shortcut.RuntimeContext) error {
 	}
 	missing := stringDifference(desired, verified)
 	unexpected := []string{}
-	if rt.Bool("sync") {
+	if syncMode {
 		unexpected = stringDifference(verified, desired)
 	}
 	plan["complete"], plan["verified"], plan["after"], plan["stages"] = len(missing) == 0 && len(unexpected) == 0, len(missing) == 0 && len(unexpected) == 0, verified, stages
@@ -856,5 +894,5 @@ func writeJSONFile(path string, value any) error {
 }
 
 func init() {
-	shortcut.Register(finalizeMinutesShortcuts(RecordWrapUp, UploadAndAnalyze, Mindmap, SpeakerInsights, PrepareASR, ExportPack, Share, Unshare)...)
+	shortcut.Register(finalizeMinutesShortcuts(RecordWrapUp, UploadAndAnalyze, Mindmap, SpeakerInsights, PrepareASR, SyncASR, ExportPack, Share, Unshare)...)
 }
