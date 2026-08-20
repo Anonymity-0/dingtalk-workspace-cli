@@ -370,7 +370,7 @@ dws aitable +datasource-get-config \
 dws aitable +datasource-update \
   --base-id BASE123 \
   --table-id TBL456 \
-  --source-config '{"processCode":"PROC-NEW","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
+  --source-config '{"processCode":"PROC-NEW","name":"新审批模板","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
 
 # 2. 查询同步状态
 dws aitable +datasource-sync-status \

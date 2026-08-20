@@ -8551,6 +8551,14 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	datasourceGetFieldsCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
 	datasourceGetFieldsCmd.Flags().String("source-config", "", "源配置 JSON 字符串，需含 processCode、name、iconUrl、url、dataType 及对应时间字段 (必填)")
 
+	validateAutoSyncSetting := func(raw string) error {
+		var v any
+		if err := json.Unmarshal([]byte(raw), &v); err != nil || v == nil {
+			return fmt.Errorf("--auto-sync-setting must be a valid JSON object: %w", err)
+		}
+		return nil
+	}
+
 	datasourceCreateCmd := &cobra.Command{
 		Use:     "create",
 		Short:   "创建数据源表并触发首次同步",
@@ -8569,6 +8577,15 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				"datasourceType": mustGetFlag(cmd, "datasource-type"),
 				"sourceConfig":   mustGetFlag(cmd, "source-config"),
 				"auto":           auto,
+			}
+			if v, _ := cmd.Flags().GetString("field-ids"); v != "" {
+				toolArgs["fieldIds"] = parseCSVValues(v)
+			}
+			if v, _ := cmd.Flags().GetString("auto-sync-setting"); v != "" {
+				if err := validateAutoSyncSetting(v); err != nil {
+					return err
+				}
+				toolArgs["autoSyncSetting"] = v
 			}
 			return callAitableTool("create_datasource", toolArgs)
 		},
@@ -8596,6 +8613,8 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				{Name: "datasource-type", Property: "datasourceType", Required: boolPtr(true)},
 				{Name: "source-config", Property: "sourceConfig", Required: boolPtr(true)},
 				{Name: "auto", Property: "auto"},
+				{Name: "field-ids", Property: "fieldIds", InterfaceType: "array"},
+				{Name: "auto-sync-setting", Property: "autoSyncSetting"},
 			},
 		},
 	})
@@ -8603,6 +8622,8 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	datasourceCreateCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
 	datasourceCreateCmd.Flags().String("source-config", "", "源配置 JSON 字符串，须从 list-sources 原样透传 processCode/name/iconUrl/url，并设置 dataType 及对应时间字段 (必填)")
 	datasourceCreateCmd.Flags().Bool("auto", false, "是否开启自动同步，默认 false；创建新数据源表时始终下发给下游")
+	datasourceCreateCmd.Flags().String("field-ids", "", "需要同步的字段 ID 列表，逗号分隔；不传时同步全部字段")
+	datasourceCreateCmd.Flags().String("auto-sync-setting", "", "自动同步频率配置 JSON 字符串，仅在 --auto=true 时生效。字段：syncType（必填，hourly/scheduled）、hourlyInterval（syncType=hourly 时必填）、scheduleType（syncType=scheduled 时必填，daily/weekly/monthly）、timeValue（HH:mm）、selectedMonthDays（scheduleType=monthly 时）、selectedWeekdays（scheduleType=weekly 时）、skipNonWorkingDay")
 
 	datasourceUpdateCmd := &cobra.Command{
 		Use:     "update",
@@ -8627,8 +8648,17 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				auto, _ := cmd.Flags().GetBool("auto")
 				toolArgs["auto"] = auto
 			}
-			if !cmd.Flags().Changed("source-config") && !cmd.Flags().Changed("auto") {
-				return fmt.Errorf("至少需要一个配置变更：--source-config 或 --auto；仅触发同步请使用 datasource sync")
+			if v, _ := cmd.Flags().GetString("field-ids"); v != "" {
+				toolArgs["fieldIds"] = parseCSVValues(v)
+			}
+			if v, _ := cmd.Flags().GetString("auto-sync-setting"); v != "" {
+				if err := validateAutoSyncSetting(v); err != nil {
+					return err
+				}
+				toolArgs["autoSyncSetting"] = v
+			}
+			if !cmd.Flags().Changed("source-config") && !cmd.Flags().Changed("auto") && !cmd.Flags().Changed("field-ids") && !cmd.Flags().Changed("auto-sync-setting") {
+				return fmt.Errorf("至少需要一个配置变更：--source-config、--auto、--field-ids 或 --auto-sync-setting；仅触发同步请使用 datasource sync")
 			}
 			return callAitableTool("update_datasource_config", toolArgs)
 		},
@@ -8659,6 +8689,8 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				{Name: "table-id", Property: "tableId", Required: boolPtr(true)},
 				{Name: "source-config", Property: "sourceConfig"},
 				{Name: "auto", Property: "auto"},
+				{Name: "field-ids", Property: "fieldIds", InterfaceType: "array"},
+				{Name: "auto-sync-setting", Property: "autoSyncSetting"},
 			},
 		},
 	})
@@ -8666,6 +8698,8 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	datasourceUpdateCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
 	datasourceUpdateCmd.Flags().String("source-config", "", "可选。新的源配置 JSON 字符串，不传时保持原配置；传入时整体覆盖，须含 processCode、name、iconUrl、url、dataType 及对应时间字段")
 	datasourceUpdateCmd.Flags().Bool("auto", false, "可选。是否开启自动同步；仅显式设置时下发给下游，省略时保持原设置")
+	datasourceUpdateCmd.Flags().String("field-ids", "", "需要同步的字段 ID 列表，逗号分隔；不传时同步全部字段")
+	datasourceUpdateCmd.Flags().String("auto-sync-setting", "", "可选。自动同步频率配置 JSON 字符串，仅在显式设置 --auto=true 时生效；省略时保持原有自动同步频率配置。字段：syncType（必填，hourly/scheduled）、hourlyInterval（syncType=hourly 时必填）、scheduleType（syncType=scheduled 时必填，daily/weekly/monthly）、timeValue（HH:mm）、selectedMonthDays（scheduleType=monthly 时）、selectedWeekdays（scheduleType=weekly 时）、skipNonWorkingDay")
 
 	datasourceSyncCmd := &cobra.Command{
 		Use:     "sync",
