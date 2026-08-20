@@ -31,7 +31,7 @@ dws 新增了 7 个 AI 表格数据源同步管理指令，用于将外部数据
 dws aitable +datasource-list-sources [flags]
 ```
 
-列出指定数据源类型可用的来源信息。OA 审批类型返回当前 Base 可用的审批数据源条目（`sources` 数组，当前通常为单条），用于构造 `+datasource-create` / `+datasource-update` / `+datasource-get-fields` 的 `--source-config`。
+列出指定数据源类型可用的来源信息。OA 审批类型返回当前 Base 可用的审批数据源条目（`sources` 数组，当前通常为单条），用于构造 `+datasource-create` / `+datasource-update` / `+datasource-get-fields` 的 `--source-config`。OA 场景下每条 source 的 `result` 字段是 JSON 字符串，需解析后得到 `approvals` 数组，再从中提取目标模板的 `processCode`、`name`、`iconUrl`、`url`。
 
 ### 参数
 
@@ -43,7 +43,7 @@ dws aitable +datasource-list-sources [flags]
 ### 示例
 
 ```bash
-# 列出审批数据源来源，获取 result（即 processCode）
+# 列出审批数据源来源，获取 result（JSON，解析后得到 approvals[].processCode）
 dws aitable +datasource-list-sources \
   --base-id BASE123 \
   --datasource-type OA
@@ -55,14 +55,11 @@ dws aitable +datasource-list-sources \
 
 | 字段 | 说明 |
 |------|------|
-| `result` | 数据源标识，OA 场景即 `processCode`，用于 `--source-config` 中的 `processCode` |
+| `result` | OA 审批场景为 JSON 字符串，解析后得到 `approvals` 数组；每个 approval 含 `processCode`、`name`、`iconUrl`、`url` |
 | `sourceType` | 数据源类型编号（OA 对应内部枚举值 2） |
-| `name` | OA 审批模板展示名称，创建/更新 `sourceConfig` 时须原样透传 |
-| `iconUrl` | OA 审批图标 URL，创建/更新 `sourceConfig` 时须原样透传 |
-| `url` | OA 审批跳转链接，创建/更新 `sourceConfig` 时须原样透传 |
 | `sourceUrl` | 数据源访问链接，可选 |
 
-将 `result` 作为 `processCode`，并将 `name`、`iconUrl`、`url` 原样填入 `--source-config` 即可创建或更新数据源。
+`result` 本身不是 `processCode`，需要解析出 `approvals` 数组，再取目标模板的 `processCode`、`name`、`iconUrl`、`url` 原样填入 `--source-config`。
 
 ---
 
@@ -114,6 +111,7 @@ dws aitable +datasource-create [flags]
 | `--datasource-type` | string | 是 | 数据源类型，目前支持审批（OA） |
 | `--source-config` | string | 是 | 源配置 JSON 字符串（格式见下方） |
 | `--auto` | bool | 否 | 是否开启自动同步，默认 false |
+| `--auto-sync-setting` | string | 否 | 自动同步频率配置 JSON 字符串，仅在 `--auto=true` 时生效，格式见下方 |
 | `--field-ids` | stringSlice | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
 
 ### source-config 格式（审批类）
@@ -141,6 +139,22 @@ dws aitable +datasource-create [flags]
 | `recent_time` | `recentDays` | 同步近 N 天数据（7d/30d/1y） |
 | `start_time` | `startDate` | 同步从某日期至今的数据 |
 | `time_range` | `startDate` + `endDate` | 同步指定日期范围内的数据 |
+
+### auto-sync-setting 格式
+
+`--auto-sync-setting` 仅在 `--auto=true` 时生效，用于指定自动同步频率。不传时使用下游默认策略。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `syncType` | string | 是 | `hourly`（按小时间隔）/ `scheduled`（定时触发） |
+| `hourlyInterval` | int | hourly 时必填 | 正整数，小时间隔 |
+| `scheduleType` | string | scheduled 时必填 | `daily` / `weekly` / `monthly` |
+| `timeValue` | string | scheduled 时必填 | 触发时间，格式 `HH:mm` |
+| `selectedMonthDays` | int[] | monthly 时必填 | 每月几号触发，1-31 |
+| `selectedWeekdays` | int[] | weekly 时必填 | 每周哪几天触发，1=周一…7=周日 |
+| `skipNonWorkingDay` | bool | 否 | 是否跳过非工作日，默认 false |
+
+示例：`{"syncType":"scheduled","scheduleType":"daily","timeValue":"09:00"}`
 
 ### 示例
 
@@ -188,6 +202,7 @@ dws aitable +datasource-update [flags]
 | `--table-id` | string | 是 | 已存在的数据源表 ID（由 `+datasource-create` 返回） |
 | `--source-config` | string | 否 | 新的源配置 JSON 字符串，不传时保持原有配置。结构同 `+datasource-create` |
 | `--auto` | bool | 否 | 是否开启自动同步，不传时保持原有设置 |
+| `--auto-sync-setting` | string | 否 | 自动同步频率配置 JSON 字符串，仅在 `--auto=true` 时生效；不传时保持原频率配置 |
 | `--field-ids` | stringSlice | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
 
 ### 示例

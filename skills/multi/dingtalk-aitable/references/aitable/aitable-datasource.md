@@ -95,15 +95,15 @@ Step 5    (后续) 更新配置       +datasource-update --base-id <B> --table-i
 
 | 字段 | 必填 | 说明 |
 |------|------|------|
-| syncType | 是 | `hourly`（按小时间隔）/ `schedule`（定时触发） |
+| syncType | 是 | `hourly`（按小时间隔）/ `scheduled`（定时触发） |
 | hourlyInterval | hourly 时 | 正整数，小时间隔 |
-| scheduleType | schedule 时 | `day` / `week` / `month` |
-| timeValue | schedule 时 | `HH:mm` 触发时间 |
-| selectedMonthDays | month 时可选 | 每月几号触发 |
-| selectedWeekdays | week 时可选 | 每周哪几天触发 |
+| scheduleType | scheduled 时 | `daily` / `weekly` / `monthly` |
+| timeValue | scheduled 时 | `HH:mm` 触发时间 |
+| selectedMonthDays | monthly 时必填 | 每月几号触发，1-31 |
+| selectedWeekdays | weekly 时必填 | 每周哪几天触发，1=周一…7=周日 |
 | skipNonWorkingDay | 否 | 是否跳过非工作日，默认 false |
 
-示例：`{"syncType":"schedule","scheduleType":"day","timeValue":"09:00"}`
+示例：`{"syncType":"scheduled","scheduleType":"daily","timeValue":"09:00"}`
 
 ## 命令详情
 
@@ -164,7 +164,7 @@ dws aitable +datasource-create --base-id BASE_ID --datasource-type OA \
 # 开启自动同步 + 自定义频率
 dws aitable +datasource-create --base-id BASE_ID --datasource-type OA \
   --source-config '...' --auto \
-  --auto-sync-setting '{"syncType":"schedule","scheduleType":"day","timeValue":"09:00"}' \
+  --auto-sync-setting '{"syncType":"scheduled","scheduleType":"daily","timeValue":"09:00"}' \
   --format json
 ```
 
