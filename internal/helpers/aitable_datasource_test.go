@@ -183,14 +183,14 @@ func TestAitableDatasourceGetFieldsRejectsMissingSourceConfig(t *testing.T) {
 func TestAitableDatasourceGetFieldsSuccess(t *testing.T) {
 	caller, err := runAitableDatasourceCommand(t, "get-fields",
 		"--base-id", "BASE123", "--datasource-type", "OA",
-		"--source-config", `{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}`)
+		"--source-config", `{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}`)
 	if err != nil {
 		t.Fatalf("get-fields should succeed: %v", err)
 	}
 	if len(caller.calls) != 1 || caller.calls[0].tool != "get_datasource_fields" {
 		t.Fatalf("unexpected calls: %#v", caller.calls)
 	}
-	if caller.calls[0].args["sourceConfig"] != `{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}` {
+	if caller.calls[0].args["sourceConfig"] != `{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}` {
 		t.Fatalf("sourceConfig not passed as raw string: %v", caller.calls[0].args["sourceConfig"])
 	}
 }
@@ -206,7 +206,7 @@ func TestAitableDatasourceCreateRejectsMissingSourceConfig(t *testing.T) {
 func TestAitableDatasourceCreateSuccess(t *testing.T) {
 	caller, err := runAitableDatasourceCommand(t, "create",
 		"--base-id", "BASE123", "--datasource-type", "OA",
-		"--source-config", `{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}`)
+		"--source-config", `{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}`)
 	if err != nil {
 		t.Fatalf("create should succeed: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestAitableDatasourceCreateSuccess(t *testing.T) {
 func TestAitableDatasourceCreateWithAuto(t *testing.T) {
 	caller, err := runAitableDatasourceCommand(t, "create",
 		"--base-id", "BASE123", "--datasource-type", "OA",
-		"--source-config", `{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}`,
+		"--source-config", `{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}`,
 		"--auto")
 	if err != nil {
 		t.Fatalf("create with --auto should succeed: %v", err)
@@ -252,11 +252,11 @@ func TestAitableDatasourceUpdateWithAutoOnly(t *testing.T) {
 func TestAitableDatasourceUpdateWithSourceConfig(t *testing.T) {
 	caller, err := runAitableDatasourceCommand(t, "update",
 		"--base-id", "BASE123", "--table-id", "TBL456",
-		"--source-config", `{"processCode":"PROC-YYYY","dataType":"recent_time","recentDays":"30d"}`)
+		"--source-config", `{"processCode":"PROC-YYYY","name":"出差申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}`)
 	if err != nil {
 		t.Fatalf("update with source-config should succeed: %v", err)
 	}
-	if caller.calls[0].args["sourceConfig"] != `{"processCode":"PROC-YYYY","dataType":"recent_time","recentDays":"30d"}` {
+	if caller.calls[0].args["sourceConfig"] != `{"processCode":"PROC-YYYY","name":"出差申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}` {
 		t.Fatalf("sourceConfig not passed as raw string: %v", caller.calls[0].args["sourceConfig"])
 	}
 }

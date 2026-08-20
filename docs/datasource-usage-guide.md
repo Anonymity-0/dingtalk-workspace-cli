@@ -57,11 +57,12 @@ dws aitable +datasource-list-sources \
 |------|------|
 | `result` | 数据源标识，OA 场景即 `processCode`，用于 `--source-config` 中的 `processCode` |
 | `sourceType` | 数据源类型编号（OA 对应内部枚举值 2） |
+| `name` | OA 审批模板展示名称，创建/更新 `sourceConfig` 时须原样透传 |
 | `iconUrl` | OA 审批图标 URL，创建/更新 `sourceConfig` 时须原样透传 |
 | `url` | OA 审批跳转链接，创建/更新 `sourceConfig` 时须原样透传 |
 | `sourceUrl` | 数据源访问链接，可选 |
 
-将 `result` 作为 `processCode`，并将 `iconUrl`、`url` 原样填入 `--source-config` 即可创建或更新数据源。
+将 `result` 作为 `processCode`，并将 `name`、`iconUrl`、`url` 原样填入 `--source-config` 即可创建或更新数据源。
 
 ---
 
@@ -88,7 +89,7 @@ dws aitable +datasource-get-fields [flags]
 dws aitable +datasource-get-fields \
   --base-id BASE123 \
   --datasource-type OA \
-  --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
+  --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
 ```
 
 ### 返回值
@@ -122,13 +123,13 @@ dws aitable +datasource-create [flags]
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `processCode` | string | 是 | 审批模板编码，对应 `+datasource-list-sources` 返回的 `result` |
-| `dataType` | string | 是 | 数据时间范围类型：`time_range` / `start_time` / `recent_time` |
+| `name` | string | 是 | 数据源展示名称，须从 `+datasource-list-sources` 结果原样透传 |
 | `iconUrl` | string | 是 | OA 审批图标 URL，须从 `+datasource-list-sources` 结果原样透传 |
 | `url` | string | 是 | OA 审批跳转链接，须从 `+datasource-list-sources` 结果原样透传 |
+| `dataType` | string | 是 | 数据时间范围类型：`time_range` / `start_time` / `recent_time` |
 | `recentDays` | string | 当 dataType=recent_time 时必填 | 近 N 天：`7d` / `30d` / `1y` |
 | `startDate` | string | 当 dataType=time_range 或 start_time 时必填 | 起始日期，格式 `yyyy-MM-dd` |
 | `endDate` | string | 当 dataType=time_range 时必填 | 结束日期，格式 `yyyy-MM-dd` |
-| `name` | string | 否 | 数据源表显示名称（用作创建的表名） |
 | `keepRemovedFields` | bool | 否 | 是否保留已删除字段，默认 false |
 
 > 注：`splitParentTableField`、`enableDataSyncOaDetailList` 等字段为下游内部字段，无需传入，下游自动处理。
@@ -148,20 +149,20 @@ dws aitable +datasource-create [flags]
 dws aitable +datasource-create \
   --base-id BASE123 \
   --datasource-type OA \
-  --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
+  --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
 
 # 指定日期范围创建并开启自动同步
 dws aitable +datasource-create \
   --base-id BASE123 \
   --datasource-type OA \
-  --source-config '{"processCode":"PROC-XXXX","dataType":"time_range","startDate":"2025-01-01","endDate":"2025-12-31","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' \
+  --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"time_range","startDate":"2025-01-01","endDate":"2025-12-31","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' \
   --auto
 
 # 指定同步字段（仅同步部分字段，field-ids 可通过 +datasource-get-fields 获取）
 dws aitable +datasource-create \
   --base-id BASE123 \
   --datasource-type OA \
-  --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' \
+  --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' \
   --field-ids fldAAA,fldBBB,fldCCC
 ```
 
@@ -196,7 +197,7 @@ dws aitable +datasource-update [flags]
 dws aitable +datasource-update \
   --base-id BASE123 \
   --table-id TBL456 \
-  --source-config '{"processCode":"PROC-YYYY","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
+  --source-config '{"processCode":"PROC-YYYY","name":"出差申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
 
 # 开启自动同步
 dws aitable +datasource-update \
@@ -326,13 +327,13 @@ dws aitable +datasource-list-sources \
 dws aitable +datasource-get-fields \
   --base-id BASE123 \
   --datasource-type OA \
-  --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
+  --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
 
 # 3. 创建数据源表（创建后自动触发首次同步）
 dws aitable +datasource-create \
   --base-id BASE123 \
   --datasource-type OA \
-  --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
+  --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
 # → 返回 tableId=TBL456, taskId=TASK001
 
 # 4. 查询首次同步是否完成
@@ -432,7 +433,7 @@ dws aitable +datasource-get-config ... -f table
 
 3. **datasource-type 透传**：CLI 层不对 `--datasource-type` 做枚举校验，目前一期仅支持 `OA`（审批）。后续支持其他类型时由服务端控制，CLI 无需修改。
 
-4. **source-config 格式**：`--source-config` 必须是合法 JSON 字符串。审批数据源需要 `processCode`（对应 `+datasource-list-sources` 返回的 `result`）、`dataType`（时间范围类型）、`iconUrl` 与 `url`（须从 `+datasource-list-sources` 结果原样透传），并按 `dataType` 提供对应的时间参数（`recentDays` / `startDate` / `endDate`）。
+4. **source-config 格式**：`--source-config` 必须是合法 JSON 字符串。审批数据源需要原样透传 `processCode`（对应 `+datasource-list-sources` 返回的 `result`）、`name`、`iconUrl`、`url`，设置 `dataType`（时间范围类型），并按 `dataType` 提供对应的时间参数（`recentDays` / `startDate` / `endDate`）。
 
 5. **同步限制**：`+datasource-sync` 单次最多 5 张表；`+datasource-sync-status` 单次最多查询 5 个任务 ID。
 

@@ -66,8 +66,8 @@ var DatasourceCreate = shortcut.Shortcut{
 				"仅需触发已有数据源表的同步时（改用 +datasource-sync）",
 			},
 			Examples: []string{
-				`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
-				`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"time_range","startDate":"2025-01-01","endDate":"2025-12-31","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' --auto`,
+				`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+				`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"time_range","startDate":"2025-01-01","endDate":"2025-12-31","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' --auto`,
 			},
 		},
 	},
@@ -80,8 +80,8 @@ var DatasourceCreate = shortcut.Shortcut{
 		{Name: "auto-sync-setting", Type: shortcut.FlagString, Desc: "自动同步频率配置 JSON 字符串，仅在 --auto=true 时生效。字段：syncType（必填，hourly=按小时间隔，scheduled=定时触发）、hourlyInterval（syncType=hourly 时必填，正整数小时）、scheduleType（syncType=scheduled 时必填，daily/weekly/monthly）、timeValue（syncType=scheduled 时必填，HH:mm）、selectedMonthDays（scheduleType=monthly 时必填，每月几号触发，1-31）、selectedWeekdays（scheduleType=weekly 时必填，每周哪几天触发，1=周一…7=周日）、skipNonWorkingDay（可选，默认 false）。不传时使用下游默认自动同步策略"},
 	},
 	Tips: []string{
-		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
-		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"time_range","startDate":"2025-01-01","endDate":"2025-12-31","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' --auto`,
+		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+		`dws aitable +datasource-create --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"time_range","startDate":"2025-01-01","endDate":"2025-12-31","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}' --auto`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		if _, err := parseJSONObject("source-config", rt.Str("source-config")); err != nil {
@@ -147,7 +147,7 @@ var DatasourceUpdate = shortcut.Shortcut{
 			},
 			Examples: []string{
 				`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --auto`,
-				`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --source-config '{"processCode":"PROC-YYYY","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+				`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --source-config '{"processCode":"PROC-YYYY","name":"出差申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 			},
 		},
 	},
@@ -161,7 +161,7 @@ var DatasourceUpdate = shortcut.Shortcut{
 	},
 	Tips: []string{
 		`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --auto`,
-		`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --source-config '{"processCode":"PROC-YYYY","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+		`dws aitable +datasource-update --base-id BASE123 --table-id TBL456 --source-config '{"processCode":"PROC-YYYY","name":"出差申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{
@@ -475,17 +475,17 @@ var DatasourceGetFields = shortcut.Shortcut{
 				"需要创建数据源表时（改用 +datasource-create）",
 			},
 			Examples: []string{
-				`dws aitable +datasource-get-fields --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+				`dws aitable +datasource-get-fields --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 			},
 		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},
 		{Name: "datasource-type", Type: shortcut.FlagString, Desc: "数据源类型，目前支持审批（OA）", Required: true},
-		{Name: "source-config", Type: shortcut.FlagString, Desc: "源配置 JSON 字符串。结构同 +datasource-create 的 --source-config，需含 processCode、dataType、iconUrl、url 及对应时间字段", Required: true},
+		{Name: "source-config", Type: shortcut.FlagString, Desc: "源配置 JSON 字符串。结构同 +datasource-create 的 --source-config，需含 processCode、name、iconUrl、url、dataType 及对应时间字段", Required: true},
 	},
 	Tips: []string{
-		`dws aitable +datasource-get-fields --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+		`dws aitable +datasource-get-fields --base-id BASE123 --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		if _, err := parseJSONObject("source-config", rt.Str("source-config")); err != nil {

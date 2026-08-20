@@ -8511,7 +8511,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	datasourceGetFieldsCmd := &cobra.Command{
 		Use:     "get-fields",
 		Short:   "获取数据源可同步字段列表",
-		Example: `  dws aitable datasource get-fields --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}'`,
+		Example: `  dws aitable datasource get-fields --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "datasource-type", "source-config"); err != nil {
 				return err
@@ -8543,18 +8543,18 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				AgentSummary: "获取指定数据源来源的可同步字段列表（字段 ID/名称/类型/是否主键）。",
 				UseWhen:      []string{"创建或更新数据源前需要查看可同步字段以决定 field-ids 时"},
 				AvoidWhen:    []string{"列出可用来源用 datasource list-sources"},
-				Examples:     []string{`dws aitable datasource get-fields --base-id <BASE_ID> --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}'`},
+				Examples:     []string{`dws aitable datasource get-fields --base-id <BASE_ID> --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`},
 			},
 		},
 	})
 	datasourceGetFieldsCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceGetFieldsCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
-	datasourceGetFieldsCmd.Flags().String("source-config", "", "源配置 JSON 字符串，需含 processCode、dataType 等字段 (必填)")
+	datasourceGetFieldsCmd.Flags().String("source-config", "", "源配置 JSON 字符串，需含 processCode、name、iconUrl、url、dataType 及对应时间字段 (必填)")
 
 	datasourceCreateCmd := &cobra.Command{
 		Use:     "create",
 		Short:   "创建数据源表并触发首次同步",
-		Example: `  dws aitable datasource create --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}'`,
+		Example: `  dws aitable datasource create --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "datasource-type", "source-config"); err != nil {
 				return err
@@ -8591,7 +8591,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				AgentSummary: "为指定 Base 创建数据源表并触发首次全量同步，返回新建表 ID 和同步任务 ID。",
 				UseWhen:      []string{"需要将外部数据源接入 AI 表格、创建新的数据源表时"},
 				AvoidWhen:    []string{"已有数据源表改配置用 datasource update；仅触发同步用 datasource sync"},
-				Examples:     []string{`dws aitable datasource create --base-id <BASE_ID> --datasource-type OA --source-config '{"processCode":"PROC-XXXX","dataType":"recent_time","recentDays":"30d"}'`},
+				Examples:     []string{`dws aitable datasource create --base-id <BASE_ID> --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
@@ -8603,7 +8603,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	})
 	datasourceCreateCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceCreateCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
-	datasourceCreateCmd.Flags().String("source-config", "", "源配置 JSON 字符串 (必填)")
+	datasourceCreateCmd.Flags().String("source-config", "", "源配置 JSON 字符串，须从 list-sources 原样透传 processCode/name/iconUrl/url，并设置 dataType 及对应时间字段 (必填)")
 	datasourceCreateCmd.Flags().Bool("auto", false, "是否开启自动同步")
 
 	datasourceUpdateCmd := &cobra.Command{
@@ -8648,7 +8648,10 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				AgentSummary: "更新已有数据源表的同步配置并触发一次同步。",
 				UseWhen:      []string{"需要修改已有数据源表的配置（更换模板、调整字段、开关自动同步）时"},
 				AvoidWhen:    []string{"创建新数据源表用 datasource create；仅触发同步用 datasource sync"},
-				Examples:     []string{"dws aitable datasource update --base-id <BASE_ID> --table-id <TABLE_ID> --auto"},
+				Examples: []string{
+					"dws aitable datasource update --base-id <BASE_ID> --table-id <TABLE_ID> --auto",
+					`dws aitable datasource update --base-id <BASE_ID> --table-id <TABLE_ID> --source-config '{"processCode":"PROC-YYYY","name":"出差申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+				},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
@@ -8660,7 +8663,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	})
 	datasourceUpdateCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceUpdateCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
-	datasourceUpdateCmd.Flags().String("source-config", "", "新的源配置 JSON 字符串（可选，整体覆盖）")
+	datasourceUpdateCmd.Flags().String("source-config", "", "可选。新的源配置 JSON 字符串，传入时整体覆盖，须含 processCode、name、iconUrl、url、dataType 及对应时间字段")
 	datasourceUpdateCmd.Flags().Bool("auto", false, "是否开启自动同步")
 
 	datasourceSyncCmd := &cobra.Command{
