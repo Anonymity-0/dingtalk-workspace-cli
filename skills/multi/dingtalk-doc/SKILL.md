@@ -1,6 +1,6 @@
 ---
 name: dingtalk-doc
-description: 钉钉在线文字文档（adoc）的查找、创建、读取、编辑、块、评论、媒体、导入导出、版本、模板、权限与分享；本地文件转在线文档、“传上去后在线改”或协作编辑归 dingtalk-doc。保留原文件及文件夹管理归 dingtalk-drive，知识库节点归 dingtalk-wiki，原生 .md/axls 归 dingtalk-misc，able 归 dingtalk-aitable。命令前缀：dws doc。
+description: 钉钉在线文字文档（adoc）的查找创建、读写、文档信息、白板卡片、附件、评论、媒体、导入导出、版本、模板、权限分享；本地文件转在线文档或协作编辑归 dingtalk-doc。原文件/文件夹归 dingtalk-drive，知识库归 dingtalk-wiki，原生 .md/axls 归 dingtalk-misc，able 归 dingtalk-aitable。前缀：dws doc。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -51,7 +51,7 @@ metadata:
 | 本地文件转在线文档 | `dws doc +import --file <相对路径>` | “传上去/放进文件夹”不改变路由；在线改、协作编辑或转换用 import，仅保留原文件切 `dingtalk-drive` |
 | 封面/背景 | `+resource-update/+resource-delete`；`+background-update/+background-delete` | 写后 `+inspect --include-style`；禁查 Catalog |
 | 浏览模板 | `dws doc +template-list [--source MY\|PUBLIC]` | “我的/我这边”只查 MY；明确公开才查 PUBLIC；“有哪些/全部”翻页至完整 |
-| 搜索模板 | `dws doc +template-search --query <关键词> [--source MY\|PUBLIC]` | 继承来源；零命中停止，禁止拿无关模板替代；多候选消歧 |
+| 搜索模板 | `dws doc +template-search --query <名称或关键词>` | 来源可选 MY/PUBLIC；零命中停止，禁止拿无关模板替代；多候选消歧 |
 | 从模板创建 | `dws doc +create-from-template --template-id <唯一ID>` | 已有唯一 templateId 才创建；不重复 list/search |
 | 创建评论或聚合待处理评论 | `dws doc +comment-create [--selection]` / `+review` | 划词统一用 `+comment-create`；后续操作使用真实 `commentKey` |
 | 添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | 先读取现有权限；姓名歧义或 profile 不一致时禁止写入 |
@@ -70,10 +70,10 @@ metadata:
 
 ## 参数与安全边界
 
-- `@file`：文件暂存 cwd 后传 `@相对路径`；生成文本优先 `--content -`；禁绝对路径和 `..`。
+- `@file`：已有或临时文件先暂存到 cwd；传 `@相对路径`，禁绝对路径和 `..`。
 - `doc +update` 的动作由 `--command` 指定；block 操作的 ID 必须来自 `+fetch --detail with-ids` 或真实 block 列表。
-- Schema 门禁：路由/参数/安全语义明确时直用；只有 leaf 参数、确认或契约漂移时查一次精确 compact Schema；禁用产品级/`--all`。
-- 消费本页或精确 Schema 的 `confirmation`：`user_required` 且原请求/预授权已确认目标、动作、参数时，首调即加 `--yes`；否则预览/询问；禁止靠失败探测。
+- Schema 门禁：不确定时仅查一次精确 leaf：`--fields use_when,avoid_when,parameters,constraints,confirmation`；禁用产品级/`--all`。准备 Help 时，本轮仅查一次。
+- 消费本页或精确 Schema 的 `confirmation`：`user_required` 且原请求/预授权已确认目标、动作、参数时，首调即加 `--yes`；否则预览/询问；禁止靠失败探测门禁。
 - JSONML 顶层必须是单个非空元素；禁止 `[[...]]` 元素数组包裹。
 
 ## 按需加载
@@ -84,7 +84,7 @@ Golden Route 已给出命令且参数足够时，禁止读取 reference。其余
 |---|---|
 | 低频/无 shortcut 意图消歧 | [intent-guide.md](references/intent-guide.md) / [doc.md](references/doc.md) 对应章节 |
 | 分页、`partial_success`、`status=unknown` 或恢复 | [contracts.md](references/contracts.md) |
-| 长文创作、局部读取或精准改写策略 | [create](references/doc/doc-create.md) / [read](references/doc/doc-read.md) / [update](references/doc/doc-update.md) |
+| 复杂 JSONML、长文或局部精准读写 | [create](references/doc/doc-create.md) / [read](references/doc/doc-read.md) / [update](references/doc/doc-update.md) |
 | block/划词评论/媒体/封面/背景高级参数 | [block](references/doc/doc-block.md) / [comment](references/doc/doc-comment.md) / [media](references/doc/doc-media.md) |
 | 导出/导入失败恢复 | [export](references/doc/doc-export.md) / [import](references/doc/doc-import.md) |
 
@@ -101,7 +101,7 @@ Golden Route 已给出命令且参数足够时，禁止读取 reference。其余
 
 ## 跨产品边界
 
-- 普通文件、目录、纯上传下载、节点存储权限 → `dingtalk-drive`；文档空间原文件用 `drive upload --workspace`，在线协作转换用 `doc +import --workspace`
+- 普通文件/目录/纯上传下载/节点权限 → `dingtalk-drive`；保留原文件用原子命令 `dws drive upload --workspace`，在线转换用 `doc +import --workspace`
 - 知识库空间、节点层级和成员管理 → `dingtalk-wiki`
 - 原生 `.md` 文件读取和编辑 → `dingtalk-misc`
 - `axls` / `able` → 对应电子表格或多维表 Skill
