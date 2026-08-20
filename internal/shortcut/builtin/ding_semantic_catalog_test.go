@@ -32,7 +32,12 @@ func TestCrossPlatformCoverageDINGSemanticCatalogExactlyCoversRegisteredSurface(
 	if source.Service != "ding" || len(registered) != 5 || len(source.Shortcuts) != 5 {
 		t.Fatalf("service/registered/catalog=%s/%d/%d, want ding/5/5", source.Service, len(registered), len(source.Shortcuts))
 	}
-	public, unavailable := 0, 0
+	wantCompatibilityVisible := map[string]bool{
+		"+list":            true,
+		"+recall-personal": true,
+		"+send-personal":   true,
+	}
+	public, unavailable, compatibilityVisible := 0, 0, 0
 	var missing, stale []string
 	for command, item := range registered {
 		record, ok := source.Shortcuts[command]
@@ -59,12 +64,20 @@ func TestCrossPlatformCoverageDINGSemanticCatalogExactlyCoversRegisteredSurface(
 				t.Errorf("%s lacks public Contract/Safety/Result/unified output", command)
 			}
 		} else {
-			if !item.Hidden || shortcut.InPublicCatalog("ding", command) {
-				t.Errorf("%s nonpublic shortcut is visible", command)
+			if record.CompatibilityVisible {
+				compatibilityVisible++
+				if item.Hidden || !item.CompatibilityVisible || availability != shortcut.AvailabilityUnavailable || shortcut.InPublicCatalog("ding", command) {
+					t.Errorf("%s compatibility-visible boundary drift", command)
+				}
+			} else if !item.Hidden || item.CompatibilityVisible || shortcut.InPublicCatalog("ding", command) {
+				t.Errorf("%s nonpublic shortcut visibility drift", command)
 			}
 			if availability == shortcut.AvailabilityUnavailable {
 				unavailable++
 			}
+		}
+		if record.CompatibilityVisible != wantCompatibilityVisible[command] {
+			t.Errorf("%s compatibility-visible=%v, want %v", command, record.CompatibilityVisible, wantCompatibilityVisible[command])
 		}
 	}
 	for command := range source.Shortcuts {
@@ -77,7 +90,7 @@ func TestCrossPlatformCoverageDINGSemanticCatalogExactlyCoversRegisteredSurface(
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 1 || unavailable != 4 {
-		t.Fatalf("public/unavailable=%d/%d, want 1/4", public, unavailable)
+	if public != 1 || unavailable != 4 || compatibilityVisible != len(wantCompatibilityVisible) {
+		t.Fatalf("public/unavailable/compatibility-visible=%d/%d/%d, want 1/4/%d", public, unavailable, compatibilityVisible, len(wantCompatibilityVisible))
 	}
 }

@@ -8,6 +8,7 @@
       "semantic_delta": "严格验证 success、result.dingMessages、稳定 openDingId 与 hasMore/nextCursor；exact Shortcut 已完成已知非空与保证零项证明，但真实续页返回停滞 cursor，严格实现拒绝虚假分页并保持不可用。",
       "risk": "read",
       "public": false,
+      "compatibility_visible": true,
       "reviewed": true
     },
     "+receiver-status": {
@@ -23,6 +24,7 @@
       "semantic_delta": "已修正 app/sms/call 到 APP/SMS/PHONE 的下游枚举映射；隔离自收件 APP fixture 返回稳定 openDingId 并可按该 ID 读回，但接收项只有显示名而没有稳定接收人身份，且撤回无可查询终态，保持不可用。",
       "risk": "write",
       "public": false,
+      "compatibility_visible": true,
       "reviewed": true
     },
     "+send-by-message": {
@@ -37,6 +39,7 @@
       "semantic_delta": "个人 DING 撤回返回布尔成功但不回显目标或终态；撤回后精确接收状态仍保留原记录，而消息列表分页已知不可靠，不能把首屏缺席解释为全局终态，保持不可用。",
       "risk": "high-risk-write",
       "public": false,
+      "compatibility_visible": true,
       "reviewed": true
     }
   }

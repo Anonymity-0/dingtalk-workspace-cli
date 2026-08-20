@@ -8,6 +8,7 @@
       "semantic_delta": "严格验证 success、result.values、稳定 processInstanceId 与 hasMore；known-nonempty exact/raw 的 7 个稳定身份一致，但 guaranteed-zero-query 的 raw 响应缺少 hasMore，收紧后拒绝并保持不可用。",
       "risk": "read",
       "public": false,
+      "compatibility_visible": true,
       "reviewed": true
     },
     "+list-submitted": {
@@ -15,6 +16,7 @@
       "semantic_delta": "严格返回已发起审批实例及页完整性；known-nonempty exact/raw 的 14 个稳定身份一致，但 guaranteed-zero-query 的 raw 响应缺少 hasMore，不能把空数组推断为终页，保持不可用。",
       "risk": "read",
       "public": false,
+      "compatibility_visible": true,
       "reviewed": true
     },
     "+my-initiated": {
@@ -23,6 +25,7 @@
       "risk": "read",
       "primary": "+list-submitted",
       "public": false,
+      "compatibility_visible": true,
       "reviewed": true
     },
     "+search-forms": {
@@ -47,6 +50,7 @@
       "semantic_delta": "真实非空页不返回 continuation，且 cursor 0/1 的集合高度重叠；严格实现拒绝缺失或停滞游标，下游修复前不可公开。",
       "risk": "read",
       "public": false,
+      "compatibility_visible": true,
       "reviewed": true
     },
     "+list-pending": {
@@ -54,6 +58,7 @@
       "semantic_delta": "严格待办投影与分页已实现；exact Shortcut 与同参数 atomic/raw 均隔离到 success=true 但 result.values=null，错型集合被拒绝，且当前没有安全非空待审批 fixture。",
       "risk": "read",
       "public": false,
+      "compatibility_visible": true,
       "reviewed": true
     },
     "+pending": {
@@ -69,6 +74,7 @@
       "semantic_delta": "严格抄送列表与分页校验已实现；exact Shortcut 和同参数 atomic/raw 隔离到错型业务状态与 null 集合，不能把响应解释为空页，且当前没有安全非空抄送 fixture。",
       "risk": "read",
       "public": false,
+      "compatibility_visible": true,
       "reviewed": true
     },
     "+approve-by": {
