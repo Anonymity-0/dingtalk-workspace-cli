@@ -201,8 +201,8 @@ dws aitable +datasource-update [flags]
 | `--base-id` | string | 是 | 目标 Base ID |
 | `--table-id` | string | 是 | 已存在的数据源表 ID（由 `+datasource-create` 返回） |
 | `--source-config` | string | 否 | 新的源配置 JSON 字符串，不传时保持原有配置。结构同 `+datasource-create` |
-| `--auto` | bool | 否 | 是否开启自动同步，默认 false；无论是否传入，CLI 都会把该字段下发给下游 |
-| `--auto-sync-setting` | string | 否 | 自动同步频率配置 JSON 字符串，仅在 `--auto=true` 时生效；不传时保持原频率配置 |
+| `--auto` | bool | 否 | 是否开启自动同步；仅显式设置时下发给下游，省略时保持原有自动同步开关不变 |
+| `--auto-sync-setting` | string | 否 | 自动同步频率配置 JSON 字符串，仅在显式设置 `--auto=true` 时生效；省略时保持原频率配置 |
 | `--field-ids` | stringSlice | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
 
 ### 示例
@@ -272,7 +272,7 @@ dws aitable +datasource-sync \
 dws aitable +datasource-sync-status [flags]
 ```
 
-查询数据源表的同步任务状态。与 `+datasource-sync` / `+datasource-create` / `+datasource-update` 配对使用——这些指令触发同步后返回任务 ID，本指令通过任务 ID 查询最终结果。
+按任务 ID 查询数据源表的同步任务状态。与 `+datasource-sync` / `+datasource-create` / `+datasource-update` 配对使用——这些指令触发同步后返回任务 ID，本指令通过任务 ID 查询最终结果。
 
 ### 参数
 
@@ -280,16 +280,11 @@ dws aitable +datasource-sync-status [flags]
 |------|------|------|------|
 | `--base-id` | string | 是 | 目标 Base ID |
 | `--table-id` | string | 是 | 数据源表 ID |
-| `--task-ids` | stringSlice | 否 | 待查询的同步任务 ID 列表（1-5 个），不传时查询最近一次 |
+| `--task-ids` | stringSlice | 是 | 待查询的同步任务 ID 列表（1-5 个） |
 
 ### 示例
 
 ```bash
-# 查询最近一次同步状态
-dws aitable +datasource-sync-status \
-  --base-id BASE123 \
-  --table-id TBL456
-
 # 按任务 ID 查询（批量，最多 5 个）
 dws aitable +datasource-sync-status \
   --base-id BASE123 \
@@ -372,10 +367,11 @@ dws aitable +datasource-update \
   --table-id TBL456 \
   --source-config '{"processCode":"PROC-NEW","name":"新审批模板","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'
 
-# 2. 查询同步状态
+# 2. 查询同步状态（更新后会返回新的 taskId）
 dws aitable +datasource-sync-status \
   --base-id BASE123 \
-  --table-id TBL456
+  --table-id TBL456 \
+  --task-ids TASK002
 ```
 
 ### 场景三：手动触发日常同步
@@ -386,10 +382,11 @@ dws aitable +datasource-sync \
   --base-id BASE123 \
   --table-ids TBL456
 
-# 查询结果
+# 查询结果（sync 会返回 taskId）
 dws aitable +datasource-sync-status \
   --base-id BASE123 \
-  --table-id TBL456
+  --table-id TBL456 \
+  --task-ids TASK001
 ```
 
 ### 场景四：开启自动同步后确认
@@ -454,4 +451,4 @@ dws aitable +datasource-get-config ... -f table
 
 6. **创建即同步**：`+datasource-create` 和 `+datasource-update` 在操作完成后会自动触发一次同步，无需额外调用 `+datasource-sync`。
 
-7. **自动同步**：`--auto` 开启后，数据源表会按服务端策略自动定期同步。关闭后仅能通过 `+datasource-sync` 手动触发。注意：同步频率由服务端策略控制，CLI 暂不支持自定义频率。
+7. **自动同步**：`--auto` 开启后，数据源表会按 `--auto-sync-setting` 指定的频率自动定期同步；未指定频率时使用服务端默认策略。关闭 `--auto` 后仅能通过 `+datasource-sync` 手动触发。

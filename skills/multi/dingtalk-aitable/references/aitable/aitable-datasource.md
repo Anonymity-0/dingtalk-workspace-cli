@@ -215,7 +215,7 @@ dws aitable +datasource-sync --base-id BASE_ID --table-ids TBL1,TBL2 --format js
 
 返回结果包含文档链接，可打开查看同步进度。每张表独立提交，部分失败不影响其他表。
 
-### +datasource-sync-status — 查询同步状态
+### +datasource-sync-status — 按任务 ID 查询同步状态
 
 ```bash
 dws aitable +datasource-sync-status --base-id BASE_ID --table-id TABLE_ID --task-ids TASK1,TASK2 --format json
@@ -225,7 +225,7 @@ dws aitable +datasource-sync-status --base-id BASE_ID --table-id TABLE_ID --task
 |------|------|------|
 | `--base-id` | 是 | 目标 Base ID |
 | `--table-id` | 是 | 数据源表 ID（sync=true） |
-| `--task-ids` | 否 | 同步任务 ID 列表（由 create/update/sync 返回），最多 5 个；不传返回 IDLE |
+| `--task-ids` | 是 | 同步任务 ID 列表（由 create/update/sync 返回），1-5 个 |
 
 任务状态：`RUNNING`（进行中）、`FINISHED`（完成）、`FAILED`（失败，含 errorCode + errorMessage）。
 
@@ -250,7 +250,6 @@ dws aitable +datasource-get-config --base-id BASE_ID --table-id TABLE_ID --forma
 | 非数据源表触发 sync | 参数错误返回 | 确认 table 的 sync=true，用 `+base-get` / `+table-list` 检查 |
 | sourceConfig 缺必填字段 | 创建/更新失败 | 检查 processCode/name/iconUrl/url 是否从 list-sources 原样透传 |
 | dataType 与时间字段不匹配 | 创建失败 | recent_time 需 recentDays；time_range 需 startDate+endDate；start_time 需 startDate |
-| sync-status 不传 taskId | 返回 IDLE | 下游不支持无 taskId 查询，先触发同步获取 taskId |
 
 ## 能力边界
 

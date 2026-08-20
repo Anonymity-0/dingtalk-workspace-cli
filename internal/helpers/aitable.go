@@ -8508,12 +8508,26 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	datasourceListSourcesCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceListSourcesCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
 
+	validateJSONObject := func(flag, raw string) error {
+		var v any
+		if err := json.Unmarshal([]byte(raw), &v); err != nil || v == nil {
+			return fmt.Errorf("--%s must be a valid JSON object: %w", flag, err)
+		}
+		return nil
+	}
+	validateAutoSyncSetting := func(raw string) error {
+		return validateJSONObject("auto-sync-setting", raw)
+	}
+
 	datasourceGetFieldsCmd := &cobra.Command{
 		Use:     "get-fields",
 		Short:   "获取数据源可同步字段列表",
 		Example: `  dws aitable datasource get-fields --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "datasource-type", "source-config"); err != nil {
+				return err
+			}
+			if err := validateJSONObject("source-config", mustGetFlag(cmd, "source-config")); err != nil {
 				return err
 			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
@@ -8551,20 +8565,15 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 	datasourceGetFieldsCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
 	datasourceGetFieldsCmd.Flags().String("source-config", "", "源配置 JSON 字符串，需含 processCode、name、iconUrl、url、dataType 及对应时间字段 (必填)")
 
-	validateAutoSyncSetting := func(raw string) error {
-		var v any
-		if err := json.Unmarshal([]byte(raw), &v); err != nil || v == nil {
-			return fmt.Errorf("--auto-sync-setting must be a valid JSON object: %w", err)
-		}
-		return nil
-	}
-
 	datasourceCreateCmd := &cobra.Command{
 		Use:     "create",
 		Short:   "创建数据源表并触发首次同步",
 		Example: `  dws aitable datasource create --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "datasource-type", "source-config"); err != nil {
+				return err
+			}
+			if err := validateJSONObject("source-config", mustGetFlag(cmd, "source-config")); err != nil {
 				return err
 			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
@@ -8642,6 +8651,9 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				"tableId": mustGetFlag(cmd, "table-id"),
 			}
 			if cmd.Flags().Changed("source-config") {
+				if err := validateJSONObject("source-config", mustGetFlag(cmd, "source-config")); err != nil {
+					return err
+				}
 				toolArgs["sourceConfig"] = mustGetFlag(cmd, "source-config")
 			}
 			if cmd.Flags().Changed("auto") {
@@ -8752,26 +8764,24 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 
 	datasourceSyncStatusCmd := &cobra.Command{
 		Use:     "sync-status",
-		Short:   "查询数据源同步任务状态",
+		Short:   "按任务 ID 查询数据源同步任务状态",
 		Example: `  dws aitable datasource sync-status --base-id BASE_ID --table-id TABLE_ID --task-ids TASK1,TASK2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateRequiredFlags(cmd, "table-id"); err != nil {
+			if err := validateRequiredFlags(cmd, "table-id", "task-ids"); err != nil {
 				return err
 			}
 			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
 			if err != nil {
 				return err
 			}
+			ids := parseCSVValues(mustGetFlag(cmd, "task-ids"))
+			if len(ids) < 1 || len(ids) > 5 {
+				return fmt.Errorf("--task-ids requires 1-5 task IDs, got %d", len(ids))
+			}
 			toolArgs := map[string]any{
 				"baseId":  baseID,
 				"tableId": mustGetFlag(cmd, "table-id"),
-			}
-			if cmd.Flags().Changed("task-ids") {
-				ids := parseCSVValues(mustGetFlag(cmd, "task-ids"))
-				if len(ids) > 5 {
-					return fmt.Errorf("--task-ids allows at most 5 task IDs, got %d", len(ids))
-				}
-				toolArgs["taskIds"] = ids
+				"taskIds": ids,
 			}
 			return callAitableTool("get_datasource_sync_status", toolArgs)
 		},
@@ -8786,24 +8796,24 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				CLIPath:        "aitable datasource sync-status",
 				PrimaryCLIPath: "aitable datasource sync-status",
 			},
-			Description: "查询数据源同步任务状态（RUNNING/FINISHED/FAILED）。",
+			Description: "按任务 ID 查询数据源同步任务状态（RUNNING/FINISHED/FAILED）。",
 			Interface:   aitableMCPInterface("get_datasource_sync_status"),
 			Selection: contract.SelectionSpec{
-				AgentSummary: "批量查询数据源同步任务状态（RUNNING/FINISHED/FAILED），与 sync/create/update 触发后配对使用。",
-				UseWhen:      []string{"触发同步后需要查询任务是否完成时"},
+				AgentSummary: "按任务 ID 批量查询数据源同步任务状态（RUNNING/FINISHED/FAILED），与 sync/create/update 触发后配对使用。",
+				UseWhen:      []string{"触发同步后需要按任务 ID 查询任务是否完成时"},
 				AvoidWhen:    []string{"触发同步用 datasource sync"},
 				Examples:     []string{"dws aitable datasource sync-status --base-id <BASE_ID> --table-id <TABLE_ID> --task-ids TASK1"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
 				{Name: "table-id", Property: "tableId", Required: boolPtr(true)},
-				{Name: "task-ids", Property: "taskIds"},
+				{Name: "task-ids", Property: "taskIds", Required: boolPtr(true)},
 			},
 		},
 	})
 	datasourceSyncStatusCmd.Flags().String("base-id", "", "Base ID (必填)")
 	datasourceSyncStatusCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
-	datasourceSyncStatusCmd.Flags().String("task-ids", "", "待查询的同步任务 ID 列表，逗号分隔，最多 5 个（可选）")
+	datasourceSyncStatusCmd.Flags().String("task-ids", "", "待查询的同步任务 ID 列表，逗号分隔，1-5 个 (必填)")
 
 	datasourceCmd.AddCommand(
 		datasourceGetConfigCmd, datasourceListSourcesCmd, datasourceGetFieldsCmd,

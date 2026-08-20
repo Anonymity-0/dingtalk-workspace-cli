@@ -264,8 +264,8 @@ var DatasourceSyncStatus = shortcut.Shortcut{
 	Service:     "aitable",
 	Command:     "+datasource-sync-status",
 	Product:     serverMain,
-	Description: "查询指定数据源表的同步任务状态。与 +datasource-sync / +datasource-create / +datasource-update 配对使用：这些指令触发同步后返回 taskId，本指令通过 taskId 查询最终结果。支持批量查询（单次最多 5 个 taskId），整体仍返回 success；需遍历 tasks 数组按单条 status 判断真实结果。任务状态包括：RUNNING（同步进行中）、FINISHED（同步完成）、FAILED（同步失败）。失败时会返回 errorCode 和 errorMessage 供排查。",
-	Intent:      "当用户触发同步后需要查询同步是否完成、成功或失败时使用。支持批量查询（单次最多 5 个任务 ID），不传 taskId 返回 IDLE 状态（下游暂不支持无 taskId 查询，建议先触发同步获取 taskId 再查询）。",
+	Description: "按任务 ID 查询指定数据源表的同步任务状态。与 +datasource-sync / +datasource-create / +datasource-update 配对使用：这些指令触发同步后返回 taskId，本指令通过 taskId 查询最终结果。支持批量查询（单次最多 5 个 taskId），整体仍返回 success；需遍历 tasks 数组按单条 status 判断真实结果。任务状态包括：RUNNING（同步进行中）、FINISHED（同步完成）、FAILED（同步失败）。失败时会返回 errorCode 和 errorMessage 供排查。",
+	Intent:      "当用户触发同步后需要按 taskId 查询同步是否完成、成功或失败时使用。支持批量查询（单次最多 5 个任务 ID）。",
 	Risk:        shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
@@ -279,45 +279,41 @@ var DatasourceSyncStatus = shortcut.Shortcut{
 			CLIPath:        "aitable +datasource-sync-status",
 			PrimaryCLIPath: "aitable +datasource-sync-status",
 		},
-		Description: "查询指定数据源表的同步任务状态。与 +datasource-sync / +datasource-create / +datasource-update 配对使用：这些指令触发同步后返回 taskId，本指令通过 taskId 查询最终结果。支持批量查询（单次最多 5 个 taskId），整体仍返回 success；需遍历 tasks 数组按单条 status 判断真实结果。任务状态包括：RUNNING（同步进行中）、FINISHED（同步完成）、FAILED（同步失败）。失败时会返回 errorCode 和 errorMessage 供排查。",
+		Description: "按任务 ID 查询指定数据源表的同步任务状态。与 +datasource-sync / +datasource-create / +datasource-update 配对使用：这些指令触发同步后返回 taskId，本指令通过 taskId 查询最终结果。支持批量查询（单次最多 5 个 taskId），整体仍返回 success；需遍历 tasks 数组按单条 status 判断真实结果。任务状态包括：RUNNING（同步进行中）、FINISHED（同步完成）、FAILED（同步失败）。失败时会返回 errorCode 和 errorMessage 供排查。",
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
 			Availability: "available",
 			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
 		Selection: contract.SelectionSpec{
-			AgentSummary: "查询指定数据源表的同步任务状态。与 +datasource-sync / +datasource-create / +datasource-update 配对使用：这些指令触发同步后返回 taskId，本指令通过 taskId 查询最终结果。支持批量查询（单次最多 5 个 taskId），整体仍返回 success；需遍历 tasks 数组按单条 status 判断真实结果。任务状态包括：RUNNING（同步进行中）、FINISHED（同步完成）、FAILED（同步失败）。失败时会返回 errorCode 和 errorMessage 供排查。",
-			UseWhen:      []string{"当用户触发同步后需要查询同步是否完成、成功或失败时使用。支持批量查询（单次最多 5 个任务 ID），不传 taskId 返回 IDLE 状态（下游暂不支持无 taskId 查询，建议先触发同步获取 taskId 再查询）。"},
+			AgentSummary: "按任务 ID 查询指定数据源表的同步任务状态。与 +datasource-sync / +datasource-create / +datasource-update 配对使用：这些指令触发同步后返回 taskId，本指令通过 taskId 查询最终结果。支持批量查询（单次最多 5 个 taskId），整体仍返回 success；需遍历 tasks 数组按单条 status 判断真实结果。任务状态包括：RUNNING（同步进行中）、FINISHED（同步完成）、FAILED（同步失败）。失败时会返回 errorCode 和 errorMessage 供排查。",
+			UseWhen:      []string{"当用户触发同步后需要按 taskId 查询同步是否完成、成功或失败时使用。支持批量查询（单次最多 5 个任务 ID）。"},
 			AvoidWhen: []string{
 				"需要触发同步时（改用 +datasource-sync）",
 			},
 			Examples: []string{
 				`dws aitable +datasource-sync-status --base-id BASE123 --table-id TBL456 --task-ids TASK1,TASK2`,
-				`dws aitable +datasource-sync-status --base-id BASE123 --table-id TBL456`,
 			},
 		},
 	},
 	Flags: []shortcut.Flag{
 		{Name: "base-id", Type: shortcut.FlagString, Desc: "目标 Base ID", Required: true},
 		{Name: "table-id", Type: shortcut.FlagString, Desc: "数据源表 ID（通过 +base-get / +table-list 获取，仅允许传入 sync=true 的表）", Required: true},
-		{Name: "task-ids", Type: shortcut.FlagStringSlice, Desc: "可选。待查询的同步任务 ID 列表（由 +datasource-sync / +datasource-create / +datasource-update 返回）。单次最多 5 个，超出请拆分多次调用。不传时返回 IDLE 状态（下游暂不支持无 taskId 查询，建议先触发同步获取 taskId 再调用）"},
+		{Name: "task-ids", Type: shortcut.FlagStringSlice, Desc: "待查询的同步任务 ID 列表（由 +datasource-sync / +datasource-create / +datasource-update 返回）。单次最多 5 个，超出请拆分多次调用。", Required: true},
 	},
 	Tips: []string{
 		`dws aitable +datasource-sync-status --base-id BASE123 --table-id TBL456 --task-ids TASK1,TASK2`,
-		`dws aitable +datasource-sync-status --base-id BASE123 --table-id TBL456`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{
 			"baseId":  rt.Str("base-id"),
 			"tableId": rt.Str("table-id"),
 		}
-		if rt.Changed("task-ids") {
-			taskIDs := rt.StrSlice("task-ids")
-			if len(taskIDs) > 5 {
-				return fmt.Errorf("--task-ids allows at most 5 task IDs, got %d", len(taskIDs))
-			}
-			params["taskIds"] = taskIDs
+		taskIDs := rt.StrSlice("task-ids")
+		if len(taskIDs) < 1 || len(taskIDs) > 5 {
+			return fmt.Errorf("--task-ids requires 1-5 task IDs, got %d", len(taskIDs))
 		}
+		params["taskIds"] = taskIDs
 		data, err := rt.CallMCPData(serverMain, "get_datasource_sync_status", params)
 		if err != nil {
 			return err

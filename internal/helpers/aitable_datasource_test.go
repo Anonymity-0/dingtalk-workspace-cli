@@ -95,8 +95,8 @@ func TestAitableDatasourceSyncStatusRejectsTooManyTaskIDs(t *testing.T) {
 	_, err := runAitableDatasourceCommand(t, "sync-status",
 		"--base-id", "BASE123", "--table-id", "TBL456",
 		"--task-ids", "TK1,TK2,TK3,TK4,TK5,TK6")
-	if err == nil || !strings.Contains(err.Error(), "at most 5") {
-		t.Fatalf("error = %v, want at most 5 limit", err)
+	if err == nil || !strings.Contains(err.Error(), "requires 1-5") {
+		t.Fatalf("error = %v, want 1-5 limit", err)
 	}
 }
 
@@ -112,17 +112,11 @@ func TestAitableDatasourceSyncStatusAcceptsFiveTaskIDs(t *testing.T) {
 	}
 }
 
-func TestAitableDatasourceSyncStatusWithoutTaskIDs(t *testing.T) {
-	caller, err := runAitableDatasourceCommand(t, "sync-status",
+func TestAitableDatasourceSyncStatusRequiresTaskIDs(t *testing.T) {
+	_, err := runAitableDatasourceCommand(t, "sync-status",
 		"--base-id", "BASE123", "--table-id", "TBL456")
-	if err != nil {
-		t.Fatalf("no task-ids should succeed: %v", err)
-	}
-	if len(caller.calls) != 1 {
-		t.Fatalf("expected 1 call, got %d", len(caller.calls))
-	}
-	if _, ok := caller.calls[0].args["taskIds"]; ok {
-		t.Fatal("taskIds should not be set when --task-ids not provided")
+	if err == nil || !strings.Contains(err.Error(), "task-ids") {
+		t.Fatalf("error = %v, want task-ids required", err)
 	}
 }
 
@@ -180,6 +174,15 @@ func TestAitableDatasourceGetFieldsRejectsMissingSourceConfig(t *testing.T) {
 	}
 }
 
+func TestAitableDatasourceGetFieldsRejectsInvalidSourceConfig(t *testing.T) {
+	_, err := runAitableDatasourceCommand(t, "get-fields",
+		"--base-id", "BASE123", "--datasource-type", "OA",
+		"--source-config", `not-json`)
+	if err == nil || !strings.Contains(err.Error(), "source-config") {
+		t.Fatalf("error = %v, want source-config validation error", err)
+	}
+}
+
 func TestAitableDatasourceGetFieldsSuccess(t *testing.T) {
 	caller, err := runAitableDatasourceCommand(t, "get-fields",
 		"--base-id", "BASE123", "--datasource-type", "OA",
@@ -200,6 +203,15 @@ func TestAitableDatasourceCreateRejectsMissingSourceConfig(t *testing.T) {
 		"--base-id", "BASE123", "--datasource-type", "OA")
 	if err == nil || !strings.Contains(err.Error(), "source-config") {
 		t.Fatalf("error = %v, want source-config required", err)
+	}
+}
+
+func TestAitableDatasourceCreateRejectsInvalidSourceConfig(t *testing.T) {
+	_, err := runAitableDatasourceCommand(t, "create",
+		"--base-id", "BASE123", "--datasource-type", "OA",
+		"--source-config", `not-json`)
+	if err == nil || !strings.Contains(err.Error(), "source-config") {
+		t.Fatalf("error = %v, want source-config validation error", err)
 	}
 }
 
@@ -267,6 +279,15 @@ func TestAitableDatasourceUpdateRejectsMissingTableID(t *testing.T) {
 	_, err := runAitableDatasourceCommand(t, "update", "--base-id", "BASE123")
 	if err == nil || !strings.Contains(err.Error(), "table-id") {
 		t.Fatalf("error = %v, want table-id required", err)
+	}
+}
+
+func TestAitableDatasourceUpdateRejectsInvalidSourceConfig(t *testing.T) {
+	_, err := runAitableDatasourceCommand(t, "update",
+		"--base-id", "BASE123", "--table-id", "TBL456",
+		"--source-config", `not-json`)
+	if err == nil || !strings.Contains(err.Error(), "source-config") {
+		t.Fatalf("error = %v, want source-config validation error", err)
 	}
 }
 
