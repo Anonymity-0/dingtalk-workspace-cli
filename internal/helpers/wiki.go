@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -428,7 +429,7 @@ func newWikiCommand() *cobra.Command {
 	})
 
 	// space create flags
-	spaceCreateCmd.Flags().String("name", "", "知识库名称 (必填，不超过 100 字符)")
+	spaceCreateCmd.Flags().String("name", "", "知识库名称 (必填，不超过 32 字符)")
 	spaceCreateCmd.Flags().String("desc", "", "知识库描述 (选填，不超过 500 字符)")
 	spaceCreateCmd.Flags().String("icon", "", "知识库图标标识 (选填)")
 
@@ -557,13 +558,17 @@ func newWikiCommand() *cobra.Command {
 			if err := validateRequiredFlags(cmd, "role"); err != nil {
 				return err
 			}
+			role := normalizePermissionRole(mustGetFlag(cmd, "role"))
+			if role == "OWNER" {
+				return apperrors.NewValidation("OWNER 角色不可通过 wiki member add 添加")
+			}
 			userIds, err := collectUserIDs(cmd)
 			if err != nil {
 				return err
 			}
 			return callMCPTool("add_member", map[string]any{
 				"workspaceId": workspaceID,
-				"roleId":      normalizePermissionRole(mustGetFlag(cmd, "role")),
+				"roleId":      role,
 				"userIds":     userIds,
 			})
 		},
@@ -696,7 +701,7 @@ func newWikiCommand() *cobra.Command {
 		Short:   "查询知识库成员列表",
 		Long: `查询指定知识库的成员列表，返回每位成员的 userId、姓名、角色等信息。
 
-注意：底层不支持游标分页，--limit 仅控制单次返回的最大条数（最大 200）。
+注意：底层不支持游标分页，--limit 仅控制单次返回的最大条数（最大 50）。
 若结果被截断（出参 truncated=true），可通过 --filter-role 收窄查询范围；
 ORG 类型授权不会出现在查询结果中。`,
 		Example: `  dws wiki member list --workspace <workspaceId>
@@ -717,6 +722,9 @@ ORG 类型授权不会出现在查询结果中。`,
 				limit, _ = cmd.Flags().GetInt("max-results")
 			}
 			if limit > 0 {
+				if limit > 50 {
+					return fmt.Errorf("--limit 不能超过 50；底层成员接口不提供游标续页")
+				}
 				toolArgs["maxResults"] = limit
 			}
 			if v := mustGetFlag(cmd, "filter-role"); v != "" {
@@ -762,7 +770,7 @@ ORG 类型授权不会出现在查询结果中。`,
 	})
 
 	memberListCmd.Flags().String("workspace", "", "知识库 ID 或 URL (必填)")
-	memberListCmd.Flags().Int("limit", 30, "返回成员数上限，默认 30，最大 200")
+	memberListCmd.Flags().Int("limit", 30, "返回成员数上限，默认 30，最大 50；底层不支持游标续页")
 	memberListCmd.Flags().Int("max-results", 0, "")
 	_ = memberListCmd.Flags().MarkHidden("max-results")
 	memberListCmd.Flags().String("filter-role", "", "按角色过滤（逗号分隔）：OWNER / MANAGER / EDITOR / DOWNLOADER / READER")

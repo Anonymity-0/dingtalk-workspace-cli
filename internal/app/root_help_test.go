@@ -53,6 +53,49 @@ func TestRootHelpHidesCompatibilityOnlyCommands(t *testing.T) {
 	}
 }
 
+func TestRootHelpShowsFeedbackEntry(t *testing.T) {
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--help"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("root help: %v\n%s", err, out.String())
+	}
+	help := out.String()
+	// The label stays Chinese regardless of the host locale: the rest of this
+	// listing is hardcoded Chinese, so a translated label would show up as a
+	// lone English line on any host whose LANG is not zh_*.
+	for _, want := range []string{"Feedback:", "使用体验反馈问卷", feedbackFormURL} {
+		if !strings.Contains(help, want) {
+			t.Fatalf("root help missing %q:\n%s", want, help)
+		}
+	}
+	// The form URL is longer than the help rule width; it must stay on a
+	// single unbroken line so terminals keep recognizing it as a hyperlink.
+	if !strings.Contains(help, "\n    "+feedbackFormURL+"\n") {
+		t.Fatalf("feedback URL must occupy one unwrapped line:\n%s", help)
+	}
+}
+
+// The feedback entry is deliberately root-only: this CLI is driven mostly by
+// AI agents, and repeating a survey link in every subcommand help would be
+// pure context noise. Guard the boundary so a future refactor cannot move the
+// rendering into the shared subcommand help path unnoticed.
+func TestSubcommandHelpOmitsFeedbackEntry(t *testing.T) {
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"chat", "--help"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("chat help: %v\n%s", err, out.String())
+	}
+	if help := out.String(); strings.Contains(help, feedbackFormURL) {
+		t.Fatalf("subcommand help must not carry the feedback URL:\n%s", help)
+	}
+}
+
 func TestCalendarEventCreateHelpKeepsRoomsStringMetavar(t *testing.T) {
 	cmd := NewRootCommand()
 	var out bytes.Buffer
@@ -94,8 +137,8 @@ func TestRootKeepsMainBranchChatCompatibilityCommands(t *testing.T) {
 	}{
 		{args: []string{"chat", "send", "--group", "cid-stable", "--text", "hello"}, hint: "dws chat message send"},
 		{args: []string{"im", "send", "--group", "cid-stable", "--text", "hello"}, hint: "dws chat message send"},
-		{args: []string{"chat", "history", "--group", "cid-stable", "--limit", "20"}, hint: "dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"},
-		{args: []string{"im", "history", "--group", "cid-stable", "--limit", "20"}, hint: "dws chat message list --group <GROUP_OPEN_CONVERSATION_ID>"},
+		{args: []string{"chat", "history", "--group", "cid-stable", "--limit", "20"}, hint: "dws chat message list --conversation-id <GROUP_OPEN_CONVERSATION_ID>"},
+		{args: []string{"im", "history", "--group", "cid-stable", "--limit", "20"}, hint: "dws chat message list --conversation-id <GROUP_OPEN_CONVERSATION_ID>"},
 	} {
 		command := NewRootCommand()
 		command.SilenceErrors = true
@@ -221,7 +264,7 @@ func TestRootChatMediaUploadWithoutAppCredentialsReturnsMigrationValidation(t *t
 	}
 
 	got := output.String() + "\n" + err.Error()
-	for _, want := range []string{"已下线", "chat message send --msg-type file --file-path"} {
+	for _, want := range []string{"已下线", "chat message send --msg-type file --file"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("chat media upload migration output missing %q:\n%s", want, got)
 		}
@@ -396,7 +439,7 @@ func TestChatFileUploadDownlinedButMessageFileSendStays(t *testing.T) {
 		t.Fatalf("chat file upload error = nil, want downline error\n%s", got)
 	}
 	got = got + "\n" + err.Error()
-	for _, want := range []string{"已下线", "upload_conversation_file_by_url", "chat message send --msg-type file --file-path"} {
+	for _, want := range []string{"已下线", "upload_conversation_file_by_url", "chat message send --msg-type file --file"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("chat file upload output missing %q:\n%s", want, got)
 		}
@@ -415,6 +458,53 @@ func TestCalendarEventListDryRunPreviewsOnly(t *testing.T) {
 	for _, want := range []string{"list_calendar_events", "startTime", "endTime"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("calendar dry-run output missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestCalendarEventShareInfoDryRunPreviewsOnly(t *testing.T) {
+	got, err := executeRootCaptureStdout(t, []string{
+		"--dry-run", "calendar", "event", "share-info",
+		"--id", "EVT_001",
+		"--language", "zh-CN",
+		"--calendar-id", "primary",
+	})
+	if err != nil {
+		t.Fatalf("calendar event share-info --dry-run error = %v\n%s", err, got)
+	}
+	for _, want := range []string{"get_event_share_info", "eventId", "EVT_001", "zh-CN", "primary"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("calendar event share-info dry-run output missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestCalendarEventShareInfoRequiresEventID(t *testing.T) {
+	got, err := executeRootCaptureStdout(t, []string{
+		"--dry-run", "calendar", "event", "share-info",
+	})
+	if err == nil {
+		t.Fatalf("calendar event share-info without --id: expected error, got nil\n%s", got)
+	}
+	if strings.Contains(got, "\"executed\": true") {
+		t.Fatalf("share-info without --id must not execute:\n%s", got)
+	}
+}
+
+func TestCalendarEventShareInfoOmitsOptionalArgs(t *testing.T) {
+	got, err := executeRootCaptureStdout(t, []string{
+		"--dry-run", "calendar", "event", "share-info",
+		"--id", "EVT_001",
+	})
+	if err != nil {
+		t.Fatalf("calendar event share-info --dry-run with only --id error = %v\n%s", err, got)
+	}
+	if !strings.Contains(got, "\"eventId\"") {
+		t.Fatalf("calendar event share-info dry-run output missing eventId:\n%s", got)
+	}
+	for _, unwanted := range []string{"\"calendarId\"", "\"language\""} {
+		if strings.Contains(got, unwanted) {
+			t.Fatalf("calendar event share-info dry-run with only --id should not contain %q:\n%s", unwanted, got)
 		}
 	}
 }

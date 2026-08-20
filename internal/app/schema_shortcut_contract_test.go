@@ -16,12 +16,12 @@ import (
 )
 
 const (
-	publicShortcutCount = 399
+	publicShortcutCount = 422
 	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
 	// including the hidden historical minutes.shortcut_minutes_search contract.
-	schemaPublishedShortcutCount = 401
+	schemaPublishedShortcutCount = 447
 	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
-	publiclyDeliveredShortcutCount = 399
+	publiclyDeliveredShortcutCount = 422
 )
 
 func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
@@ -114,7 +114,7 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 
 	product := executeShortcutSchemaQuery(t, "chat")
 	productPayload, _ := product["product"].(map[string]any)
-	if got, want := int(product["count"].(float64)), 217; got != want {
+	if got, want := int(product["count"].(float64)), 220; got != want {
 		t.Fatalf("schema chat count = %d, want %d", got, want)
 	}
 	summaries := schemaContractObjectSlice(productPayload["tools"])
@@ -138,6 +138,148 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 	assertSchemaSummarySafety(t, summaryByCLIPath, "chat data-auth cross-org", "write", "high", "user_required")
 	assertSchemaSummarySafety(t, summaryByCLIPath, "chat group share-invite", "write", "medium", "user_required")
 	assertChatCatalogCompleteLeafContracts(t)
+}
+
+func TestChatPersonalEmotionSchemaDeclaresUnpinnedIMAdapter(t *testing.T) {
+	for _, tc := range []struct {
+		cliPath string
+		params  map[string]string
+	}{
+		{
+			cliPath: "chat emotion list",
+		},
+		{
+			cliPath: "chat emotion send",
+			params: map[string]string{
+				"media-id":         "mediaId",
+				"emotion-id":       "emotionId",
+				"group":            "openConversationId",
+				"open-dingtalk-id": "receiverOpenDingTalkId",
+				"idempotency-key":  "uuid",
+			},
+		},
+		{
+			cliPath: "chat emotion favorite",
+			params: map[string]string{
+				"media-id":               "mediaId",
+				"name":                   "name",
+				"source-conversation-id": "sourceConversationId",
+				"source-message-id":      "sourceMessageId",
+			},
+		},
+	} {
+		t.Run(tc.cliPath, func(t *testing.T) {
+			leaf := executeShortcutSchemaQuery(t, "--cli-path", tc.cliPath)
+			if got := schemaContractString(leaf["interface_mode"]); got != "composite" {
+				t.Fatalf("%s interface_mode = %q, want composite", tc.cliPath, got)
+			}
+			reason := schemaContractString(leaf["interface_reason"])
+			if !strings.Contains(reason, "Reviewed unpinned remote adapter") {
+				t.Fatalf("%s interface_reason = %q", tc.cliPath, reason)
+			}
+			parameters := schemaContractMap(leaf["parameters"])
+			for name, want := range tc.params {
+				parameter := parameters[name]
+				if parameter == nil {
+					t.Fatalf("%s missing --%s parameter: %#v", tc.cliPath, name, parameters)
+				}
+				if got := schemaContractString(parameter["property"]); got != want {
+					t.Fatalf("%s --%s property = %q, want %q", tc.cliPath, name, got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageAITableTableBootstrapPublishesResultContract(t *testing.T) {
+	leaf := executeShortcutSchemaQuery(t, "--cli-path", "aitable +table-bootstrap")
+	result, _ := leaf["result"].(map[string]any)
+	if got, want := schemaContractStringSlice(result["outcomes"]), []string{"success", "failure"}; !schemaContractJSONEqual(got, want) {
+		t.Fatalf("aitable +table-bootstrap outcomes = %#v, want %#v", got, want)
+	}
+	dataSchema, _ := result["data_schema"].(map[string]any)
+	properties := schemaContractMap(dataSchema["properties"])
+	status := properties["status"]
+	if got, want := schemaContractStringSlice(status["enum"]), []string{"success", "planned", "partial_success", "unknown"}; !schemaContractJSONEqual(got, want) {
+		t.Fatalf("aitable +table-bootstrap status enum = %#v, want %#v", got, want)
+	}
+	for _, property := range []string{"contractVersion", "operation", "executed", "retryable", "plan", "completedSteps", "verification", "checkpoint", "knownSideEffects", "result"} {
+		if properties[property] == nil {
+			t.Errorf("aitable +table-bootstrap final Result data_schema is missing %q", property)
+		}
+	}
+}
+
+func TestDeliveryWikiSpaceSearchDeclaresCompatibilityAdapter(t *testing.T) {
+	leaf := executeShortcutSchemaQuery(t, "--cli-path", "wiki +space-search")
+	if got := schemaContractString(leaf["interface_mode"]); got != "composite" {
+		t.Fatalf("wiki +space-search interface_mode = %q, want composite", got)
+	}
+	reason := schemaContractString(leaf["interface_reason"])
+	for _, fragment := range []string{"query/limit", "search_wikiSpaces.keyword/pageSize", "versioned Schema migration"} {
+		if !strings.Contains(reason, fragment) {
+			t.Fatalf("wiki +space-search interface_reason = %q, want fragment %q", reason, fragment)
+		}
+	}
+	parameters := schemaContractMap(leaf["parameters"])
+	for name, want := range map[string]string{"query": "query", "limit": "limit"} {
+		parameter := parameters[name]
+		if parameter == nil {
+			t.Fatalf("wiki +space-search missing --%s parameter: %#v", name, parameters)
+		}
+		if got := schemaContractString(parameter["property"]); got != want {
+			t.Fatalf("wiki +space-search --%s property = %q, want compatibility value %q", name, got, want)
+		}
+	}
+}
+
+func TestAllShortcutsWikiSchemaExamplesIncludeRequiredParameters(t *testing.T) {
+	tools := deliverySchemaAllToolsForHelpFlagTest(t, NewRootCommand())
+	checked := 0
+	for _, declared := range shortcut.All() {
+		if declared.Service != "wiki" || declared.UserDefined || !shortcut.InPublicCatalog(declared.Service, declared.Command) {
+			continue
+		}
+		checked++
+		canonical := shortcutSchemaCanonical(declared)
+		tool := tools[canonical]
+		if tool == nil {
+			t.Fatalf("delivery schema --all is missing %s", canonical)
+		}
+		examples := schemaContractStringSlice(tool["examples"])
+		if len(examples) == 0 {
+			t.Fatalf("%s has no delivered examples", canonical)
+		}
+		for _, example := range examples {
+			argv, err := cli.ParseAgentExampleArgv(example)
+			if err != nil {
+				t.Fatalf("%s example %q is not valid argv: %v", canonical, example, err)
+			}
+			for _, flag := range declared.Flags {
+				if !flag.Required {
+					continue
+				}
+				names := append([]string{flag.Name}, flag.Aliases...)
+				if !schemaExampleHasLongFlag(argv, names...) {
+					t.Errorf("%s example %q is missing required --%s", canonical, example, flag.Name)
+				}
+			}
+		}
+	}
+	if checked != 20 {
+		t.Fatalf("checked Wiki shortcut examples = %d, want 20", checked)
+	}
+}
+
+func schemaExampleHasLongFlag(argv []string, names ...string) bool {
+	for _, argument := range argv {
+		for _, name := range names {
+			if argument == "--"+name || strings.HasPrefix(argument, "--"+name+"=") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func assertSchemaSummarySafety(
@@ -207,7 +349,11 @@ func assertChatCatalogCompleteLeafContracts(t testing.TB) {
 	})
 
 	auditJoin := executeShortcutSchemaQuery(t, "--cli-path", "chat group audit-join-validation")
+	assertSchemaLeafParameterRequired(t, auditJoin, "chat group audit-join-validation", "conversation-id", true)
 	assertSchemaLeafParameterEnum(t, auditJoin, "chat group audit-join-validation", "status", []string{"AuditApprove", "AuditDelete"})
+	if parameters := schemaContractMap(auditJoin["parameters"]); parameters["group"] != nil {
+		t.Fatalf("chat group audit-join-validation publishes hidden --group alias: %#v", parameters["group"])
+	}
 }
 
 func assertSchemaLeafParameterRequired(t testing.TB, leaf map[string]any, cliPath, name string, want bool) {

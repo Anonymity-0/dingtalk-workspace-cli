@@ -184,11 +184,11 @@ candidate SHA。
 `check-interface-baseline.sh` 不再作为本地或 CI 的兼容性审批入口，也不能用于批准
 flag 迁移。
 
-Schema compatibility 使用同一组 base、stable、candidate refs 和同一份 base-owned flag
-migration ledger。merge-base-owned checker 分别规范化 merge-base 与 stable 的完整
-Schema，并让 candidate 对两份历史 contract 独立执行检查；它只把已通过 Interface
-lifecycle 的 exact rename 规范化到当前历史副本，不会维护第二份 allowlist，也不会
-放宽其他 Schema 历史字段。
+Schema compatibility 使用同一组 base、stable、candidate refs，以及 base-owned flag
+与 command migration ledgers。merge-base-owned checker 分别规范化 merge-base 与
+stable 的完整 Schema，并让 candidate 对两份历史 contract 独立执行检查；它只把已通过
+Interface lifecycle 的 exact rename、command move 或 flag extraction 规范化到当前历史
+副本，不会维护第二份 allowlist，也不会放宽其他 Schema 历史字段。
 
 For a release-seal branch that archives rendered fragments:
 
@@ -201,8 +201,21 @@ base_ref=$(git merge-base HEAD origin/main)
 standard PR, CI derives changed packages and their reverse-dependency test
 closure, then generates candidate and merge-base profiles with the same test
 scope and `coverpkg`. High-risk and protected-main runs use the complete
-profiles. Supporting and (when platform-selected) native profiles are
-generated before the aggregate `Coverage` context evaluates them. The
+profiles. The complete candidate profile is produced by disjoint per-shard
+helper jobs (`scripts/ci/test-packages.sh list-coverage`, kept serial with
+`-p 1` inside each shard; `verify` proves the shard union equals the
+full-suite scope exactly once) and concatenated in the aggregate job before
+enforcement. The complete merge-base profile is restored from an exact-key
+cache written by the last green `main` push of that same commit (key:
+merge-base SHA plus resolved Go version); any miss falls back to recomputing
+it in a merge-base worktree. The trusted `main` producer and PR consumer use
+the same dedicated cache profile path because GitHub includes that path in the
+cache version; the runtime-facing candidate and baseline filenames remain
+separate. Near-miss reuse is forbidden — the caches carry no prefix restore
+keys, because a neighbouring commit's profile would compare the candidate
+against the wrong baseline. Supporting and (when
+platform-selected) native profiles are generated before the aggregate
+`Coverage` context evaluates them. The
 aggregate and native gates require 100% coverage for changed executable Go
 statements. Overall coverage remains an unrounded, zero-tolerance,
 scope-matched merge-base non-regression check. Candidate and baseline profiles
