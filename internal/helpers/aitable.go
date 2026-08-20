@@ -8676,8 +8676,8 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				return err
 			}
 			tableIDs := parseCSVValues(mustGetFlag(cmd, "table-ids"))
-			if len(tableIDs) == 0 {
-				return fmt.Errorf("--table-ids must not be empty\n  hint: provide comma-separated tableIds")
+			if len(tableIDs) < 1 || len(tableIDs) > 5 {
+				return fmt.Errorf("--table-ids requires 1-5 table IDs, got %d", len(tableIDs))
 			}
 			return callAitableTool("run_datasource_sync", map[string]any{
 				"baseId":   baseID,
@@ -8730,6 +8730,9 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 			}
 			if cmd.Flags().Changed("task-ids") {
 				ids := parseCSVValues(mustGetFlag(cmd, "task-ids"))
+				if len(ids) > 5 {
+					return fmt.Errorf("--task-ids allows at most 5 task IDs, got %d", len(ids))
+				}
 				toolArgs["taskIds"] = ids
 			}
 			return callAitableTool("get_datasource_sync_status", toolArgs)

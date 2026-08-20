@@ -21,6 +21,8 @@
 package aitable
 
 import (
+	"fmt"
+
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -240,9 +242,13 @@ var DatasourceSync = shortcut.Shortcut{
 		`dws aitable +datasource-sync --base-id BASE123 --table-ids TBL1`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		tableIDs := rt.StrSlice("table-ids")
+		if len(tableIDs) < 1 || len(tableIDs) > 5 {
+			return fmt.Errorf("--table-ids requires 1-5 table IDs, got %d", len(tableIDs))
+		}
 		params := map[string]any{
 			"baseId":   rt.Str("base-id"),
-			"tableIds": rt.StrSlice("table-ids"),
+			"tableIds": tableIDs,
 		}
 		data, err := rt.CallMCPData(serverMain, "run_datasource_sync", params)
 		if err != nil {
@@ -305,7 +311,11 @@ var DatasourceSyncStatus = shortcut.Shortcut{
 			"tableId": rt.Str("table-id"),
 		}
 		if rt.Changed("task-ids") {
-			params["taskIds"] = rt.StrSlice("task-ids")
+			taskIDs := rt.StrSlice("task-ids")
+			if len(taskIDs) > 5 {
+				return fmt.Errorf("--task-ids allows at most 5 task IDs, got %d", len(taskIDs))
+			}
+			params["taskIds"] = taskIDs
 		}
 		data, err := rt.CallMCPData(serverMain, "get_datasource_sync_status", params)
 		if err != nil {
