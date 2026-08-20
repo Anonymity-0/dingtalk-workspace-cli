@@ -23,6 +23,10 @@ if str(_scripts_dir) not in sys.path:
 from minutes_list_parse import uuid_title_pairs_from_payload
 
 
+class DWSCommandError(RuntimeError):
+    """DWS 没有返回可用 JSON；调用方不得把它解释成空业务结果。"""
+
+
 def run_dws(
     args: List[str], dry_run: bool = False,
 ) -> Optional[Any]:
@@ -34,14 +38,35 @@ def run_dws(
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=60
         )
-        if result.returncode != 0:
-            print(f"错误：{result.stderr.strip()}", file=sys.stderr)
-            return None
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        raise DWSCommandError(str(exc)) from exc
+    if result.returncode != 0:
+        detail = result.stderr.strip() or f"退出码 {result.returncode}"
+        raise DWSCommandError(detail)
+    try:
         return json.loads(result.stdout)
-    except (subprocess.TimeoutExpired, json.JSONDecodeError,
-            FileNotFoundError) as e:
-        print(f"错误：{e}", file=sys.stderr)
-        return None
+    except json.JSONDecodeError as exc:
+        raise DWSCommandError(f"DWS 返回的不是合法 JSON：{exc}") from exc
+
+
+def summary_text_from_payload(payload: Any) -> str:
+    """兼容当前 Runtime 的 result.fullSummary 与历史直接字段。"""
+    if isinstance(payload, str):
+        return payload
+    if not isinstance(payload, dict):
+        return ''
+    inner = payload.get('result', payload)
+    if isinstance(inner, str):
+        return inner
+    if not isinstance(inner, dict):
+        return ''
+    value = (inner.get('fullSummary') or inner.get('summary')
+             or inner.get('content'))
+    if isinstance(value, str):
+        return value
+    if value is not None:
+        return json.dumps(value, ensure_ascii=False)
+    return json.dumps(inner, ensure_ascii=False)
 
 
 def main():
@@ -88,15 +113,7 @@ def main():
             'minutes', 'get', 'summary',
             '--id', uuid, '--format', 'json',
         ])
-        summary_text = ''
-        if summary_data:
-            if isinstance(summary_data, str):
-                summary_text = summary_data
-            elif isinstance(summary_data, dict):
-                summary_text = (summary_data.get('summary')
-                                or summary_data.get('content')
-                                or json.dumps(summary_data,
-                                              ensure_ascii=False))
+        summary_text = summary_text_from_payload(summary_data)
 
         output_lines.append(f"## {i}. {title}\n")
         if summary_text:
@@ -115,4 +132,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except DWSCommandError as exc:
+        print(f"错误：{exc}", file=sys.stderr)
+        sys.exit(1)

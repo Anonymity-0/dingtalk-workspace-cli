@@ -23,6 +23,10 @@ if str(_scripts_dir) not in sys.path:
 from minutes_list_parse import uuid_title_pairs_from_payload
 
 
+class DWSCommandError(RuntimeError):
+    """DWS 没有返回可用 JSON；调用方不得把它解释成空业务结果。"""
+
+
 def run_dws(
     args: List[str], dry_run: bool = False,
 ) -> Optional[Any]:
@@ -34,14 +38,33 @@ def run_dws(
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=60
         )
-        if result.returncode != 0:
-            print(f"错误：{result.stderr.strip()}", file=sys.stderr)
-            return None
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        raise DWSCommandError(str(exc)) from exc
+    if result.returncode != 0:
+        detail = result.stderr.strip() or f"退出码 {result.returncode}"
+        raise DWSCommandError(detail)
+    try:
         return json.loads(result.stdout)
-    except (subprocess.TimeoutExpired, json.JSONDecodeError,
-            FileNotFoundError) as e:
-        print(f"错误：{e}", file=sys.stderr)
-        return None
+    except json.JSONDecodeError as exc:
+        raise DWSCommandError(f"DWS 返回的不是合法 JSON：{exc}") from exc
+
+
+def todo_items_from_payload(payload: Any) -> List[Any]:
+    """兼容当前 Runtime 的 actions/dingtalkTodoList 与历史 todos。"""
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        return []
+    inner = payload.get('result', payload)
+    if isinstance(inner, list):
+        return inner
+    if not isinstance(inner, dict):
+        return []
+    for key in ('actions', 'dingtalkTodoList', 'todos'):
+        items = inner.get(key)
+        if isinstance(items, list):
+            return items
+    return []
 
 
 def main():
@@ -53,6 +76,23 @@ def main():
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
 
+    if args.dry_run:
+        if args.id:
+            run_dws([
+                'minutes', 'get', 'todos',
+                '--id', args.id, '--format', 'json',
+            ], dry_run=True)
+        else:
+            run_dws([
+                'minutes', 'list', 'mine',
+                '--max', str(args.max), '--format', 'json',
+            ], dry_run=True)
+            run_dws([
+                'minutes', 'get', 'todos',
+                '--id', '<TASK_UUID>', '--format', 'json',
+            ], dry_run=True)
+        return
+
     uuids_with_titles = []
     if args.id:
         uuids_with_titles = [(args.id, args.id)]
@@ -62,13 +102,7 @@ def main():
             'minutes', 'list', 'mine',
             '--max', str(args.max),
             '--format', 'json',
-        ], dry_run=args.dry_run)
-        if args.dry_run:
-            run_dws([
-                'minutes', 'get', 'todos',
-                '--id', '<TASK_UUID>', '--format', 'json',
-            ], dry_run=True)
-            return
+        ])
         if not data:
             return
         uuids_with_titles = uuid_title_pairs_from_payload(data)
@@ -82,22 +116,14 @@ def main():
         ])
         if not todos_data:
             continue
-        if isinstance(todos_data, list):
-            items = todos_data
-        elif isinstance(todos_data, dict):
-            inner = todos_data.get('result', todos_data)
-            if isinstance(inner, dict):
-                items = inner.get('todos', [])
-            elif isinstance(inner, list):
-                items = inner
-            else:
-                items = []
-        else:
-            items = []
+        items = todo_items_from_payload(todos_data)
         for t in items:
             if isinstance(t, dict):
-                t['_source'] = title
-        all_todos.extend(items)
+                item = dict(t)
+                item['_source'] = title
+                all_todos.append(item)
+            else:
+                all_todos.append(t)
 
     print(f"\n📋 听记待办汇总")
     print('=' * 50)
@@ -121,4 +147,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except DWSCommandError as exc:
+        print(f"错误：{exc}", file=sys.stderr)
+        sys.exit(1)

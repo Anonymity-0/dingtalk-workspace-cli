@@ -50,14 +50,14 @@ var Transcript = shortcut.Shortcut{
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent",
 	},
-	Contract: minutesSmartContract(
+	Contract: withMinutesTranscriptResult(minutesSmartContract(
 		"+transcript",
 		"读取指定或最新听记的完整逐字稿",
 		"需要读取逐字稿并自动追完 nextToken、去重段落，同时看到 complete/pages/nextToken 完整性证据时使用；不传 --id 时严格选择最新听记。",
 		[]string{"只需单个原始分页响应时使用底层转写命令；需要汇总多个制品时使用 +detail"},
 		[]string{"dws minutes +transcript --id <taskUuid>", "dws minutes +transcript --keyword 周会"},
 		nil,
-	),
+	)),
 	Flags: []shortcut.Flag{
 		{Name: "id", Type: shortcut.FlagString, Desc: "听记 taskUuid；不传时选择我最新的一条"},
 		{Name: "keyword", Type: shortcut.FlagString, Desc: "按关键字过滤听记（可选）", Required: false},

@@ -17,7 +17,7 @@ def _unwrap_rows(payload: Any) -> List[Any]:
             return value
         if isinstance(value, dict):
             for inner_key in (
-                'items', 'list', 'records', 'minutes',
+                'itemList', 'items', 'list', 'records', 'minutes',
             ):
                 inner = value.get(inner_key)
                 if isinstance(inner, list):
