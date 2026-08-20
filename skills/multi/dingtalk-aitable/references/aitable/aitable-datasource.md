@@ -142,7 +142,7 @@ dws aitable +datasource-list-sources --base-id BASE_ID --datasource-type OA --fo
 
 ```bash
 dws aitable +datasource-get-fields --base-id BASE_ID --datasource-type OA \
-  --source-config '{"processCode":"PROC-xxxx","dataType":"recent_time","recentDays":"30d","iconUrl":"...","url":"..."}' \
+  --source-config '{"processCode":"PROC-xxxx","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"...","url":"..."}' \
   --format json
 ```
 

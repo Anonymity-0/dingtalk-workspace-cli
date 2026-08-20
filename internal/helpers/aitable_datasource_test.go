@@ -238,6 +238,17 @@ func TestAitableDatasourceUpdateRejectsMissingTableID(t *testing.T) {
 	}
 }
 
+func TestAitableDatasourceUpdateRejectsNoChanges(t *testing.T) {
+	caller, err := runAitableDatasourceCommand(t, "update",
+		"--base-id", "BASE123", "--table-id", "TBL456")
+	if err == nil || !strings.Contains(err.Error(), "至少需要一个配置变更") {
+		t.Fatalf("error = %v, want at least one config change required", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("MCP should not be called when no changes provided")
+	}
+}
+
 func TestAitableDatasourceUpdateWithAutoOnly(t *testing.T) {
 	caller, err := runAitableDatasourceCommand(t, "update",
 		"--base-id", "BASE123", "--table-id", "TBL456", "--auto")

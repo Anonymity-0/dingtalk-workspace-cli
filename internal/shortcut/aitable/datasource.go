@@ -184,6 +184,9 @@ var DatasourceUpdate = shortcut.Shortcut{
 			}
 			params["autoSyncSetting"] = rt.Str("auto-sync-setting")
 		}
+		if !rt.Changed("source-config") && !rt.Changed("auto") && !rt.Changed("field-ids") && !rt.Changed("auto-sync-setting") {
+			return fmt.Errorf("至少需要一个配置变更：--source-config、--auto、--field-ids 或 --auto-sync-setting；仅触发同步请使用 +datasource-sync")
+		}
 		data, err := rt.CallMCPData(serverMain, "update_datasource_config", params)
 		if err != nil {
 			return err

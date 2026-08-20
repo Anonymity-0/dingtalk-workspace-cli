@@ -8627,6 +8627,9 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 				auto, _ := cmd.Flags().GetBool("auto")
 				toolArgs["auto"] = auto
 			}
+			if !cmd.Flags().Changed("source-config") && !cmd.Flags().Changed("auto") {
+				return fmt.Errorf("至少需要一个配置变更：--source-config 或 --auto；仅触发同步请使用 datasource sync")
+			}
 			return callAitableTool("update_datasource_config", toolArgs)
 		},
 	}
