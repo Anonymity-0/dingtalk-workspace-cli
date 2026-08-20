@@ -86,7 +86,7 @@ var InboxList = shortcut.Shortcut{
 		"需要按明确时间范围读取别人发给我的日志摘要并取得稳定 reportId 时使用；后端必须提供可验证的终止或严格前进 cursor。",
 		reportCollectionResult("reports", "严格验证的收件箱日志页"), reportPagination(),
 		[]contract.ParamDecl{
-			{Name: "start", Property: "startTime"}, {Name: "end", Property: "endTime"},
+			{Name: "start", Property: "start"}, {Name: "end", Property: "end"},
 			{Name: "cursor", Property: "cursor"}, {Name: "size", Property: "size"},
 			{Name: "sender-user-ids", Property: "senderUserIds", InterfaceType: "array"},
 		},
@@ -153,9 +153,9 @@ var OutboxList = shortcut.Shortcut{
 		reportCollectionResult("reports", "严格验证的发件箱日志页"), reportPagination(),
 		[]contract.ParamDecl{
 			{Name: "cursor", Property: "cursor"}, {Name: "size", Property: "size"},
-			{Name: "start", Property: "startTime"}, {Name: "end", Property: "endTime"},
-			{Name: "modified-start", Property: "modifiedStartTime"}, {Name: "modified-end", Property: "modifiedEndTime"},
-			{Name: "template-name", Property: "report_template_name"},
+			{Name: "start", Property: "start"}, {Name: "end", Property: "end"},
+			{Name: "modified-start", Property: "modifiedStart"}, {Name: "modified-end", Property: "modifiedEnd"},
+			{Name: "template-name", Property: "templateName"},
 		},
 		"dws report +outbox-list --cursor 0 --size 20",
 	),

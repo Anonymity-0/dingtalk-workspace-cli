@@ -59,10 +59,10 @@ var ListPending = shortcut.Shortcut{
 		oaCollectionResult("instances", "严格验证的待处理审批实例页"),
 		oaPagePagination("page"),
 		[]contract.ParamDecl{
-			{Name: "start", Property: "starTime"},
-			{Name: "end", Property: "endTime"},
-			{Name: "page", Property: "pageNum"},
-			{Name: "limit", Property: "pageSize"},
+			{Name: "start", Property: "start"},
+			{Name: "end", Property: "end"},
+			{Name: "page", Property: "page"},
+			{Name: "limit", Property: "limit"},
 			{Name: "query", Property: "query"},
 		},
 		"dws oa +list-pending --start 1741536000000 --end 1741622399000 --page 1 --limit 20",
@@ -117,7 +117,7 @@ var ListForms = shortcut.Shortcut{
 		"+list-forms", "获取当前用户可见的审批表单列表",
 		"需要枚举可发起审批定义并取得稳定 processCode 时使用；当前下游不返回可验证 continuation，故保持 unavailable。",
 		oaCollectionResult("forms", "严格验证的可见审批表单页"), oaPagePagination("cursor"),
-		[]contract.ParamDecl{{Name: "cursor", Property: "cursor"}, {Name: "limit", Property: "pageSize"}},
+		[]contract.ParamDecl{{Name: "cursor", Property: "cursor"}, {Name: "limit", Property: "limit"}},
 		"dws oa +list-forms --cursor 0 --limit 100",
 	),
 	Flags: []shortcut.Flag{
@@ -198,7 +198,7 @@ func oaNumberedInstanceShortcut(command, tool, description, intent string) short
 		Safety: oaReadSafety(), OutputRollout: output.RolloutUnifiedActive,
 		Contract: oaContract(command, description, intent,
 			oaCollectionResult("instances", description), oaPagePagination("page"),
-			[]contract.ParamDecl{{Name: "page", Property: "pageNumber"}, {Name: "limit", Property: "pageSize"}, {Name: "query", Property: "query"}},
+			[]contract.ParamDecl{{Name: "page", Property: "page"}, {Name: "limit", Property: "limit"}, {Name: "query", Property: "query"}},
 			"dws oa "+command+" --page 1 --limit 20"),
 		Flags: []shortcut.Flag{
 			{Name: "page", Type: shortcut.FlagString, Default: "1", Desc: "分页页码；--page 必须大于 0"},

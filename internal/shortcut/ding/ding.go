@@ -29,7 +29,7 @@ var List = shortcut.Shortcut{
 	),
 	Flags: []shortcut.Flag{
 		{Name: "cursor", Type: shortcut.FlagInt, Desc: "分页游标，首次不传或传 0"},
-		{Name: "type", Type: shortcut.FlagString, Default: "ALL", Desc: "DING 类型", Enum: []string{"ALL", "UNREAD", "SEND", "NEW_COMMENT", "DELETED"}},
+		{Name: "type", Type: shortcut.FlagString, Default: "ALL", Desc: "DING 类型：ALL、UNREAD、SEND、NEW_COMMENT 或 DELETED"},
 	},
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"cursor"}, Description: "--cursor 不能小于 0，续页响应必须返回严格前进的正整数 nextCursor"}},
 	Tips:        []string{"dws ding +list --type ALL", "dws ding +list --type DELETED"},
@@ -74,7 +74,7 @@ var ReceiverStatus = shortcut.Shortcut{
 		"+receiver-status", "查询 DING 消息接收人已读状态",
 		"已经从 +list 取得稳定 openDingId，需要确认该 DING 的接收状态时使用；这是精确 ID 查询，不是消息搜索。",
 		true, dingReceiverResult(), nil,
-		[]contract.ParamDecl{{Name: "ding-id", Property: "openDingId"}},
+		[]contract.ParamDecl{{Name: "ding-id", Property: "dingId"}},
 		"dws ding +receiver-status --ding-id <DING_ID>",
 	),
 	Flags: []shortcut.Flag{{Name: "ding-id", Type: shortcut.FlagString, Desc: "openDingId", Required: true}},
@@ -101,16 +101,16 @@ var ReceiverStatus = shortcut.Shortcut{
 var SendPersonal = unavailableDingWrite(
 	"+send-personal", "以本人身份发送 DING 给指定人",
 	"需要以当前用户身份向明确的 openDingTalkId 接收人发送 DING 时使用；下游提供稳定接收人身份与可查询撤回终态前不可执行。",
-	shortcut.RiskWrite, false,
+	shortcut.RiskWrite, false, true,
 	[]shortcut.Flag{
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "接收人 openDingTalkId 列表 (CSV)", Required: true},
 		{Name: "content", Type: shortcut.FlagString, Desc: "消息内容", Required: true},
-		{Name: "type", Type: shortcut.FlagString, Default: "app", Desc: "提醒方式", Enum: []string{"app", "sms", "call"}},
+		{Name: "type", Type: shortcut.FlagString, Default: "app", Desc: "提醒方式：app、sms 或 call"},
 		{Name: "uuid", Type: shortcut.FlagString, Desc: "幂等键"},
 	},
 	[]contract.ParamDecl{
-		{Name: "users", Property: "receiverOpenDingTalkIds", InterfaceType: "array"},
-		{Name: "content", Property: "content"}, {Name: "type", Property: "remindType"}, {Name: "uuid", Property: "uuid"},
+		{Name: "users", Property: "users", InterfaceType: "array"},
+		{Name: "content", Property: "content"}, {Name: "type", Property: "type"}, {Name: "uuid", Property: "uuid"},
 	},
 	"dws ding +send-personal --users <VALUES> --content <CONTENT>",
 )
@@ -118,7 +118,7 @@ var SendPersonal = unavailableDingWrite(
 var SendByMessage = unavailableDingWrite(
 	"+send-by-message", "针对某条消息发起 DING 提醒",
 	"需要把指定聊天消息转成应用内、短信或电话 DING 时使用；对应 lark-cli 的三种 urgent 任务，但接收人稳定身份与精确撤回终态仍缺失。",
-	shortcut.RiskWrite, false,
+	shortcut.RiskWrite, false, false,
 	[]shortcut.Flag{
 		{Name: "group", Type: shortcut.FlagString, Desc: "openConversationId", Required: true},
 		{Name: "message-id", Type: shortcut.FlagString, Desc: "openMessageId", Required: true},
@@ -137,18 +137,18 @@ var SendByMessage = unavailableDingWrite(
 var RecallPersonal = unavailableDingWrite(
 	"+recall-personal", "撤回本人发起的 DING",
 	"需要撤回本人发出的 DING 时使用；必须能按稳定目标精确读回撤回终态且证明没有残留通知，当前下游尚不满足。",
-	shortcut.RiskHighWrite, true,
+	shortcut.RiskHighWrite, true, true,
 	[]shortcut.Flag{{Name: "id", Type: shortcut.FlagString, Desc: "openDingId", Required: true}},
-	[]contract.ParamDecl{{Name: "id", Property: "openDingId"}},
+	[]contract.ParamDecl{{Name: "id", Property: "id"}},
 	"dws ding +recall-personal --id <DING_ID>",
 )
 
-func unavailableDingWrite(command, description, intent string, risk shortcut.Risk, destructive bool, flags []shortcut.Flag, params []contract.ParamDecl, example string) shortcut.Shortcut {
+func unavailableDingWrite(command, description, intent string, risk shortcut.Risk, destructive, schemaCompatible bool, flags []shortcut.Flag, params []contract.ParamDecl, example string) shortcut.Shortcut {
 	return shortcut.Shortcut{
 		Service: "ding", Command: command, Product: "im",
 		Description: description, Intent: intent, Risk: risk,
 		Safety: dingWriteSafety(destructive), OutputRollout: output.RolloutUnifiedActive,
-		Contract: dingContract(command, description, intent, false, nil, nil, params, example),
+		Contract: dingContract(command, description, intent, schemaCompatible, nil, nil, params, example),
 		Flags:    flags, Tips: []string{example},
 		Execute: func(*shortcut.RuntimeContext) error {
 			return dingUnavailable("ding/" + command)

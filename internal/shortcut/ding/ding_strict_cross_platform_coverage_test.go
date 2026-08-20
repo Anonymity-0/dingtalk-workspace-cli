@@ -93,10 +93,13 @@ func TestCrossPlatformCoverageDINGContractsAreStrictTypedAndUnified(t *testing.T
 			t.Errorf("%s is not interface-available", declaration.Command)
 		}
 	}
-	for _, declaration := range []shortcut.Shortcut{SendPersonal, SendByMessage, RecallPersonal} {
-		if declaration.Safety.Confirmation != "user_required" || declaration.Contract.Interface == nil || declaration.Contract.Interface.Availability != "unavailable" {
-			t.Errorf("%s write safety/interface drift", declaration.Command)
+	for _, declaration := range []shortcut.Shortcut{SendPersonal, RecallPersonal} {
+		if declaration.Safety.Confirmation != "user_required" || declaration.Contract.Interface == nil || declaration.Contract.Interface.Availability != "available" {
+			t.Errorf("%s compatibility-visible write safety/interface drift", declaration.Command)
 		}
+	}
+	if SendByMessage.Safety.Confirmation != "user_required" || SendByMessage.Contract.Interface == nil || SendByMessage.Contract.Interface.Availability != "unavailable" {
+		t.Errorf("%s write safety/interface drift", SendByMessage.Command)
 	}
 	if List.Contract.Pagination == nil {
 		t.Fatal("+list lacks cursor pagination")
