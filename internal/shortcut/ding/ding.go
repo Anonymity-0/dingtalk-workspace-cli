@@ -101,7 +101,7 @@ var ReceiverStatus = shortcut.Shortcut{
 
 var SendPersonal = compatibilityDingWrite(
 	"+send-personal", "以本人身份发送 DING 给指定人",
-	"需要以当前用户身份向明确的 openDingTalkId 接收人发送 DING 时使用；下游提供稳定接收人身份与可查询撤回终态前不可执行。",
+	"仅为历史 CLI 兼容保留：明确确认后按原有参数发送；因接收人稳定身份与撤回终态尚不可验证，不进入 Agent 公共发现。",
 	shortcut.RiskWrite, false,
 	[]shortcut.Flag{
 		{Name: "users", Type: shortcut.FlagStringSlice, Desc: "接收人 openDingTalkId 列表 (CSV)", Required: true},
@@ -152,7 +152,7 @@ var SendByMessage = unavailableDingWrite(
 
 var RecallPersonal = compatibilityDingWrite(
 	"+recall-personal", "撤回本人发起的 DING",
-	"需要撤回本人发出的 DING 时使用；必须能按稳定目标精确读回撤回终态且证明没有残留通知，当前下游尚不满足。",
+	"仅为历史 CLI 兼容保留：明确确认后按稳定 openDingId 撤回；因终态与残留通知尚不可查询验证，不进入 Agent 公共发现。",
 	shortcut.RiskHighWrite, true,
 	[]shortcut.Flag{{Name: "id", Type: shortcut.FlagString, Desc: "openDingId", Required: true}},
 	[]contract.ParamDecl{{Name: "id", Property: "id"}},
@@ -163,11 +163,13 @@ var RecallPersonal = compatibilityDingWrite(
 )
 
 func compatibilityDingWrite(command, description, intent string, risk shortcut.Risk, destructive bool, flags []shortcut.Flag, params []contract.ParamDecl, example string, execute func(*shortcut.RuntimeContext) error) shortcut.Shortcut {
+	declaration := dingContract(command, description, intent, true, nil, nil, params, example)
+	declaration.Interface.Reason = dingCompatibilityWriteReason
 	return shortcut.Shortcut{
 		Service: "ding", Command: command, Product: "im",
 		Description: description, Intent: intent, Risk: risk,
 		Safety: dingWriteSafety(destructive), OutputRollout: output.RolloutUnifiedActive,
-		Contract: dingContract(command, description, intent, true, nil, nil, params, example),
+		Contract: declaration,
 		Flags:    flags, Tips: []string{example}, Execute: execute,
 	}
 }

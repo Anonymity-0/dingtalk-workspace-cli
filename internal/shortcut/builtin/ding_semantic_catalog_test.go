@@ -37,6 +37,11 @@ func TestCrossPlatformCoverageDINGSemanticCatalogExactlyCoversRegisteredSurface(
 		"+recall-personal": true,
 		"+send-personal":   true,
 	}
+	wantCompatibilityAvailability := map[string]shortcut.Availability{
+		"+list":            shortcut.AvailabilityUnavailable,
+		"+recall-personal": shortcut.AvailabilityAvailable,
+		"+send-personal":   shortcut.AvailabilityAvailable,
+	}
 	public, unavailable, compatibilityVisible := 0, 0, 0
 	var missing, stale []string
 	for command, item := range registered {
@@ -66,7 +71,7 @@ func TestCrossPlatformCoverageDINGSemanticCatalogExactlyCoversRegisteredSurface(
 		} else {
 			if record.CompatibilityVisible {
 				compatibilityVisible++
-				if item.Hidden || !item.CompatibilityVisible || availability != shortcut.AvailabilityUnavailable || shortcut.InPublicCatalog("ding", command) {
+				if item.Hidden || !item.CompatibilityVisible || availability != wantCompatibilityAvailability[command] || shortcut.InPublicCatalog("ding", command) {
 					t.Errorf("%s compatibility-visible boundary drift", command)
 				}
 			} else if !item.Hidden || item.CompatibilityVisible || shortcut.InPublicCatalog("ding", command) {
@@ -90,7 +95,7 @@ func TestCrossPlatformCoverageDINGSemanticCatalogExactlyCoversRegisteredSurface(
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if public != 1 || unavailable != 4 || compatibilityVisible != len(wantCompatibilityVisible) {
-		t.Fatalf("public/unavailable/compatibility-visible=%d/%d/%d, want 1/4/%d", public, unavailable, compatibilityVisible, len(wantCompatibilityVisible))
+	if public != 1 || unavailable != 2 || compatibilityVisible != len(wantCompatibilityVisible) {
+		t.Fatalf("public/unavailable/compatibility-visible=%d/%d/%d, want 1/2/%d", public, unavailable, compatibilityVisible, len(wantCompatibilityVisible))
 	}
 }

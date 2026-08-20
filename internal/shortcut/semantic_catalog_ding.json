@@ -21,8 +21,9 @@
     },
     "+send-personal": {
       "disposition": "semantic_adapter",
-      "semantic_delta": "已修正 app/sms/call 到 APP/SMS/PHONE 的下游枚举映射；隔离自收件 APP fixture 返回稳定 openDingId 并可按该 ID 读回，但接收项只有显示名而没有稳定接收人身份，且撤回无可查询终态，保持不可用。",
+      "semantic_delta": "历史 CLI 兼容入口在用户确认后保持可执行，并修正 app/sms/call 到 APP/SMS/PHONE 的下游枚举映射；因接收项没有稳定接收人身份且撤回无可查询终态，不进入 Agent 公共发现。",
       "risk": "write",
+      "availability": "available",
       "public": false,
       "compatibility_visible": true,
       "reviewed": true
@@ -36,8 +37,9 @@
     },
     "+recall-personal": {
       "disposition": "semantic_adapter",
-      "semantic_delta": "个人 DING 撤回返回布尔成功但不回显目标或终态；撤回后精确接收状态仍保留原记录，而消息列表分页已知不可靠，不能把首屏缺席解释为全局终态，保持不可用。",
+      "semantic_delta": "历史 CLI 兼容入口在用户确认后保持可执行；个人 DING 撤回只返回布尔成功且不回显终态，不能作为 Agent 可验证写能力，因此不进入公共发现。",
       "risk": "high-risk-write",
+      "availability": "available",
       "public": false,
       "compatibility_visible": true,
       "reviewed": true

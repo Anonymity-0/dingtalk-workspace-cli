@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	dingCompositeReason        = "Reviewed DING Shortcut composite: the executable CLI owns strict business-success validation, exact collection paths, stable DING identity checks, truthful pagination, and unified output projection."
-	dingWriteUnavailableReason = "DING mutation is unavailable to Agents until the downstream exposes stable receiver identities and a queryable recall terminal state; isolated self-fixtures already prove stable DING receipts but cannot prove those two facts."
+	dingCompositeReason          = "Reviewed DING Shortcut composite: the executable CLI owns strict business-success validation, exact collection paths, stable DING identity checks, truthful pagination, and unified output projection."
+	dingCompatibilityWriteReason = "Historical DING CLI write compatibility: the command remains executable behind user confirmation, but it is excluded from Agent public discovery because receiver identity and recall terminal-state verification are incomplete."
+	dingWriteUnavailableReason   = "DING mutation is unavailable to Agents until the downstream exposes stable receiver identities and a queryable recall terminal state; isolated self-fixtures already prove stable DING receipts but cannot prove those two facts."
 )
 
 type dingPageEvidence struct {

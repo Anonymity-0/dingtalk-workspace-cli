@@ -142,11 +142,12 @@ func loadSemanticCatalog(raw []byte, out map[string]semanticCatalogRecord) {
 				command, record.Availability))
 		}
 		// A command that was already part of the visible CLI contract cannot be
-		// hidden in the same feature change merely because Agent publication is
-		// withdrawn. This narrow fact preserves historical discovery/argv while
-		// the unavailable Interface and public=false keep it out of Agent routes.
-		if record.CompatibilityVisible && (record.Public || record.Availability != AvailabilityUnavailable) {
-			panic(fmt.Sprintf("semantic catalog command %q can be compatibility-visible only when non-public and unavailable", command))
+		// hidden merely because Agent publication is withdrawn. Compatibility
+		// visibility owns only historical CLI discovery; availability independently
+		// records whether that compatibility path still executes. public=false keeps
+		// both available and unavailable compatibility leaves out of Agent routes.
+		if record.CompatibilityVisible && record.Public {
+			panic(fmt.Sprintf("semantic catalog command %q cannot be both public and compatibility-visible", command))
 		}
 		key := publicCatalogKey(source.Service, command)
 		if _, exists := out[key]; exists {
