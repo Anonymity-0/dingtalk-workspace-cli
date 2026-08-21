@@ -103,6 +103,11 @@ func encodeSheetChangesetTransport(t *testing.T, logical string) string {
 	if err := decoder.Decode(&object); err != nil {
 		t.Fatalf("decode logical changeset fixture: %v", err)
 	}
+	return encodeSheetChangesetTransportObject(t, object)
+}
+
+func encodeSheetChangesetTransportObject(t *testing.T, object map[string]any) string {
+	t.Helper()
 	changesets, ok := object["changesets"]
 	if !ok {
 		t.Fatal("logical changeset fixture missing changesets")
@@ -120,7 +125,85 @@ func encodeSheetChangesetTransport(t *testing.T, logical string) string {
 	return string(encoded)
 }
 
-func TestSheetRevisionGetPassesNodeURLAndPreservesJSONResult(t *testing.T) {
+func decodeSheetChangesetLogicalObject(t *testing.T, logical string) map[string]any {
+	t.Helper()
+	decoder := json.NewDecoder(strings.NewReader(logical))
+	decoder.UseNumber()
+	var object map[string]any
+	if err := decoder.Decode(&object); err != nil {
+		t.Fatalf("decode logical changeset fixture: %v", err)
+	}
+	return object
+}
+
+const sheetChangesetAuditLogicalResponse = `{
+	"success":true,
+	"logId":"trace-audit",
+	"schemaVersion":2,
+	"changeSemantics":"FORWARD_ONLY",
+	"latestRevision":12,
+	"startRevision":10,
+	"endRevision":12,
+	"summary":{
+		"changeCount":3,
+		"completeChangeCount":1,
+		"partialChangeCount":1,
+		"unsupportedChangeCount":1,
+		"containsStateReset":true,
+		"containsIncompleteChanges":true,
+		"affectedSheets":[
+			{"sheetId":"sheet-a","sheetName":"Alpha","ranges":["C3"]},
+			{"sheetId":"sheet-b","sheetName":"Beta","ranges":["A1","B2"]}
+		]
+	},
+	"changesets":[
+		{
+			"revision":11,
+			"createTime":"2026-08-21T10:00:00+08:00",
+			"isSelfEdit":true,
+			"eventType":"EDIT",
+			"detailsStatus":"UNAVAILABLE",
+			"changes":[
+				{
+					"type":"RANGE_CONTENT_SET",
+					"targets":[
+						{"scope":"RANGE","sheetId":"sheet-b","sheetName":"Beta","a1Range":"B2","role":"AFFECTED"},
+						{"scope":"RANGE","sheetId":"sheet-b","sheetName":"Beta","a1Range":"A1","role":"DESTINATION"},
+						{"scope":"WORKBOOK","role":"AFFECTED"}
+					],
+					"details":{},
+					"detailsStatus":"COMPLETE",
+					"omissions":[]
+				},
+				{
+					"type":"RANGE_STYLE_SET",
+					"targets":[{"scope":"RANGE","sheetId":"sheet-a","sheetName":"Alpha","a1Range":"C3","role":"AFFECTED"}],
+					"details":{},
+					"detailsStatus":"PARTIAL",
+					"omissions":[{"code":"DETAILS_NOT_FULLY_INTERPRETED"}]
+				},
+				{
+					"type":"UNSUPPORTED_CHANGE",
+					"targets":[{"scope":"RANGE","sheetId":"sheet-source","a1Range":"D4","role":"SOURCE"}],
+					"details":{},
+					"detailsStatus":"UNAVAILABLE",
+					"omissions":[{"code":"UNKNOWN_ACTION"}]
+				}
+			]
+		},
+		{
+			"revision":12,
+			"createTime":"2026-08-21T10:01:00+08:00",
+			"isSelfEdit":false,
+			"eventType":"STATE_RESET",
+			"detailsStatus":"COMPLETE",
+			"reset":{"type":"OVERWRITE","targetStatus":"NOT_APPLICABLE"},
+			"changes":[]
+		}
+	]
+}`
+
+func TestCrossPlatformCoverageSheetRevisionGetPassesNodeURLAndPreservesJSONResult(t *testing.T) {
 	const response = `{"success":true,"logId":"trace-revision","revision":142,"futureField":{"kept":true,"largeInteger":9007199254740993}}`
 	caller := &sheetRevisionTestCaller{responses: map[string]string{sheetRevisionGetRemoteTool: response}}
 	nodeURL := "https://alidocs.dingtalk.com/spreadsheetv2/key/path?sheet=one"
@@ -145,7 +228,7 @@ func TestSheetRevisionGetPassesNodeURLAndPreservesJSONResult(t *testing.T) {
 	}
 }
 
-func TestSheetChangesetGetAcceptsZeroStartAndOmitsOptionalEnd(t *testing.T) {
+func TestCrossPlatformCoverageSheetChangesetGetAcceptsZeroStartAndOmitsOptionalEnd(t *testing.T) {
 	const logicalResponse = `{
 		"success":true,
 		"logId":"trace-changeset",
@@ -208,9 +291,9 @@ func TestSheetChangesetGetAcceptsZeroStartAndOmitsOptionalEnd(t *testing.T) {
 	}
 }
 
-func TestSheetChangesetGetSendsNumericEndRevision(t *testing.T) {
+func TestCrossPlatformCoverageSheetChangesetGetSendsNumericEndRevision(t *testing.T) {
 	caller := &sheetRevisionTestCaller{responses: map[string]string{
-		sheetChangesetGetRemoteTool: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-changeset","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":121,"startRevision":120,"endRevision":121,"summary":{"changeCount":0,"completeChangeCount":0,"partialChangeCount":0,"unsupportedChangeCount":0,"containsStateReset":false,"containsIncompleteChanges":false,"affectedSheets":[]},"changesets":[]}`),
+		sheetChangesetGetRemoteTool: encodeSheetChangesetTransport(t, `{"success":true,"logId":"trace-changeset","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":121,"startRevision":120,"endRevision":121,"summary":{"changeCount":0,"completeChangeCount":0,"partialChangeCount":0,"unsupportedChangeCount":0,"containsStateReset":false,"containsIncompleteChanges":false,"affectedSheets":[]},"changesets":[{"revision":121,"createTime":"2026-08-21T10:00:00+08:00","isSelfEdit":true,"eventType":"EDIT","detailsStatus":"COMPLETE","changes":[]}]}`),
 	}}
 	_, err := executeSheetRevisionCommand(t, caller, newSheetChangesetGetCmd(),
 		"--node", "node-1", "--start-revision", "120", "--end-revision", "121")
@@ -223,9 +306,130 @@ func TestSheetChangesetGetSendsNumericEndRevision(t *testing.T) {
 	}
 }
 
-func TestDecodeSheetChangesetTransportAcceptsLegacyArray(t *testing.T) {
+func TestCrossPlatformCoverageSheetChangesetGetAcceptsConsistentIntervalAndSummary(t *testing.T) {
+	caller := &sheetRevisionTestCaller{responses: map[string]string{
+		sheetChangesetGetRemoteTool: encodeSheetChangesetTransport(t, sheetChangesetAuditLogicalResponse),
+	}}
+	got, err := executeSheetRevisionCommand(t, caller, newSheetChangesetGetCmd(),
+		"--node", "node-1", "--start-revision", "10", "--end-revision", "12")
+	if err != nil {
+		t.Fatalf("consistent changeset response returned error: %v", err)
+	}
+	assertSheetRevisionJSONEqual(t, got, sheetChangesetAuditLogicalResponse)
+}
+
+func TestCrossPlatformCoverageSheetChangesetGetRejectsIntervalAndSummaryDrift(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   []string
+		mutate func(map[string]any)
+		want   string
+	}{
+		{
+			name: "wrong response start", want: "与请求值 10 不一致",
+			args:   []string{"--node", "node-1", "--start-revision", "10", "--end-revision", "12"},
+			mutate: func(object map[string]any) { object["startRevision"] = json.Number("9") },
+		},
+		{
+			name: "wrong explicit response end", want: "与请求值 12 不一致",
+			args:   []string{"--node", "node-1", "--start-revision", "10", "--end-revision", "12"},
+			mutate: func(object map[string]any) { object["endRevision"] = json.Number("11") },
+		},
+		{
+			name: "omitted end is not latest", want: "必须等于 $.latestRevision",
+			args:   []string{"--node", "node-1", "--start-revision", "10"},
+			mutate: func(object map[string]any) { object["endRevision"] = json.Number("11") },
+		},
+		{
+			name: "response span too large", want: "响应区间超过 20 个 revision",
+			args: []string{"--node", "node-1", "--start-revision", "10"},
+			mutate: func(object map[string]any) {
+				object["endRevision"] = json.Number("31")
+				object["latestRevision"] = json.Number("31")
+			},
+		},
+		{
+			name: "missing revision", want: "无法完整覆盖 (10,12]",
+			args: []string{"--node", "node-1", "--start-revision", "10", "--end-revision", "12"},
+			mutate: func(object map[string]any) {
+				changesets := object["changesets"].([]any)
+				object["changesets"] = changesets[1:]
+			},
+		},
+		{
+			name: "out of order revisions", want: "期望连续 revision 11",
+			args: []string{"--node", "node-1", "--start-revision", "10", "--end-revision", "12"},
+			mutate: func(object map[string]any) {
+				changesets := object["changesets"].([]any)
+				object["changesets"] = []any{changesets[1], changesets[0]}
+			},
+		},
+		{
+			name: "fractional changeset revision", want: "必须是非负整数",
+			args: []string{"--node", "node-1", "--start-revision", "10", "--end-revision", "12"},
+			mutate: func(object map[string]any) {
+				object["changesets"].([]any)[0].(map[string]any)["revision"] = json.Number("11.5")
+			},
+		},
+		{
+			name: "fractional summary count", want: "$.summary.changeCount 必须是非负整数",
+			args: []string{"--node", "node-1", "--start-revision", "10", "--end-revision", "12"},
+			mutate: func(object map[string]any) {
+				object["summary"].(map[string]any)["changeCount"] = json.Number("3.5")
+			},
+		},
+		{
+			name: "forged summary count", want: "复算结果不一致",
+			args: []string{"--node", "node-1", "--start-revision", "10", "--end-revision", "12"},
+			mutate: func(object map[string]any) {
+				object["summary"].(map[string]any)["changeCount"] = json.Number("2")
+			},
+		},
+		{
+			name: "forged incomplete flag", want: "复算结果不一致",
+			args: []string{"--node", "node-1", "--start-revision", "10", "--end-revision", "12"},
+			mutate: func(object map[string]any) {
+				object["summary"].(map[string]any)["containsIncompleteChanges"] = false
+			},
+		},
+		{
+			name: "forged affected sheets", want: "复算结果不一致",
+			args: []string{"--node", "node-1", "--start-revision", "10", "--end-revision", "12"},
+			mutate: func(object map[string]any) {
+				object["summary"].(map[string]any)["affectedSheets"] = []any{}
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			object := decodeSheetChangesetLogicalObject(t, sheetChangesetAuditLogicalResponse)
+			test.mutate(object)
+			caller := &sheetRevisionTestCaller{responses: map[string]string{
+				sheetChangesetGetRemoteTool: encodeSheetChangesetTransportObject(t, object),
+			}}
+			got, err := executeSheetRevisionCommand(t, caller, newSheetChangesetGetCmd(), test.args...)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want containing %q", err, test.want)
+			}
+			var apiErr *apperrors.Error
+			if !errors.As(err, &apiErr) || apiErr.Reason != "invalid_tool_response" ||
+				apiErr.Operation != "sheet/"+sheetChangesetGetRemoteTool || apiErr.FailureStage != "response_validation" {
+				t.Fatalf("audit drift error = %#v", err)
+			}
+			if strings.TrimSpace(got) != "" {
+				t.Fatalf("audit drift emitted a success envelope: %s", got)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageDecodeSheetChangesetTransportAcceptsLegacyArray(t *testing.T) {
 	const response = `{"success":true,"logId":"trace-legacy","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":9007199254740993,"startRevision":9007199254740992,"endRevision":9007199254740993,"summary":{"changeCount":0,"completeChangeCount":0,"partialChangeCount":0,"unsupportedChangeCount":0,"containsStateReset":false,"containsIncompleteChanges":false,"affectedSheets":[]},"changesets":[{"revision":9007199254740993,"createTime":"2026-08-20T10:00:00+08:00","isSelfEdit":true,"eventType":"EDIT","detailsStatus":"COMPLETE","changes":[]}]}`
-	decoded, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool, response)
+	decoded, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool, map[string]any{
+		"startRevision": int64(9007199254740992),
+		"endRevision":   int64(9007199254740993),
+	}, response)
 	if err != nil {
 		t.Fatalf("decode legacy array: %v", err)
 	}
@@ -237,7 +441,7 @@ func TestDecodeSheetChangesetTransportAcceptsLegacyArray(t *testing.T) {
 	}
 }
 
-func TestDecodeSheetChangesetTransportRejectsInvalidJSONStrings(t *testing.T) {
+func TestCrossPlatformCoverageDecodeSheetChangesetTransportRejectsInvalidJSONStrings(t *testing.T) {
 	tests := []struct {
 		name string
 		raw  string
@@ -253,14 +457,15 @@ func TestDecodeSheetChangesetTransportRejectsInvalidJSONStrings(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool, test.raw); err == nil {
+			if _, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool,
+				map[string]any{"startRevision": int64(0)}, test.raw); err == nil {
 				t.Fatalf("decode %s unexpectedly succeeded", test.raw)
 			}
 		})
 	}
 }
 
-func TestDecodeSheetRevisionProtocolFailuresHaveMCPResponseMetadata(t *testing.T) {
+func TestCrossPlatformCoverageDecodeSheetRevisionProtocolFailuresHaveMCPResponseMetadata(t *testing.T) {
 	tests := []struct {
 		name      string
 		tool      string
@@ -280,7 +485,7 @@ func TestDecodeSheetRevisionProtocolFailuresHaveMCPResponseMetadata(t *testing.T
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := decodeSheetRevisionResult(test.tool, test.response)
+			_, err := decodeSheetRevisionResult(test.tool, map[string]any{"startRevision": int64(0)}, test.response)
 			var apiErr *apperrors.Error
 			if !errors.As(err, &apiErr) || apiErr.Origin != "mcp" ||
 				apiErr.FailureStage != "response_validation" || apiErr.Reason != "invalid_tool_response" ||
@@ -294,9 +499,10 @@ func TestDecodeSheetRevisionProtocolFailuresHaveMCPResponseMetadata(t *testing.T
 	}
 }
 
-func TestDecodeSheetChangesetTransportRejectsBusinessFailure(t *testing.T) {
+func TestCrossPlatformCoverageDecodeSheetChangesetTransportRejectsBusinessFailure(t *testing.T) {
 	const response = `{"success":false,"logId":"trace","errorCode":"UPSTREAM","errorMsg":"failed"}`
-	_, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool, response)
+	_, err := decodeSheetRevisionResult(sheetChangesetGetRemoteTool,
+		map[string]any{"startRevision": int64(0)}, response)
 	var cliErr *CLIError
 	if !errors.As(err, &cliErr) || cliErr.Code != CodeMCPToolError ||
 		cliErr.Operation != "sheet/"+sheetChangesetGetRemoteTool {
@@ -307,7 +513,7 @@ func TestDecodeSheetChangesetTransportRejectsBusinessFailure(t *testing.T) {
 	}
 }
 
-func TestSheetRevisionCommandsRejectInvalidResponsesWithoutSuccessEnvelope(t *testing.T) {
+func TestCrossPlatformCoverageSheetRevisionCommandsRejectInvalidResponsesWithoutSuccessEnvelope(t *testing.T) {
 	tests := []struct {
 		name     string
 		tool     string
@@ -357,7 +563,7 @@ func TestSheetRevisionCommandsRejectInvalidResponsesWithoutSuccessEnvelope(t *te
 	}
 }
 
-func TestSheetRevisionCommandsRejectPublishedResultContractDrift(t *testing.T) {
+func TestCrossPlatformCoverageSheetRevisionCommandsRejectPublishedResultContractDrift(t *testing.T) {
 	validSummary := `"summary":{"changeCount":0,"completeChangeCount":0,"partialChangeCount":0,"unsupportedChangeCount":0,"containsStateReset":false,"containsIncompleteChanges":false,"affectedSheets":[]}`
 	validChangesetPrefix := `"success":true,"logId":"trace-contract","schemaVersion":2,"changeSemantics":"FORWARD_ONLY","latestRevision":1,"startRevision":0,"endRevision":1,`
 	validChangesets := `"changesets":[]`
@@ -465,7 +671,7 @@ func TestSheetRevisionCommandsRejectPublishedResultContractDrift(t *testing.T) {
 	}
 }
 
-func TestValidateSheetPublishedResultCoversDefensiveFailures(t *testing.T) {
+func TestCrossPlatformCoverageValidateSheetPublishedResultCoversDefensiveFailures(t *testing.T) {
 	if err := validateSheetPublishedResult("unknown-tool", map[string]any{}); err == nil {
 		t.Fatal("unknown tool unexpectedly accepted")
 	}
@@ -481,8 +687,8 @@ func TestValidateSheetPublishedResultCoversDefensiveFailures(t *testing.T) {
 	}
 }
 
-func TestDecodeSheetRevisionEmptyResponseHasStructuredRetryableError(t *testing.T) {
-	_, err := decodeSheetRevisionResult(sheetRevisionGetRemoteTool, " \n ")
+func TestCrossPlatformCoverageDecodeSheetRevisionEmptyResponseHasStructuredRetryableError(t *testing.T) {
+	_, err := decodeSheetRevisionResult(sheetRevisionGetRemoteTool, nil, " \n ")
 	var apiErr *apperrors.Error
 	if !errors.As(err, &apiErr) || apiErr.Reason != "empty_tool_response" ||
 		apiErr.Operation != "sheet/"+sheetRevisionGetRemoteTool ||
@@ -491,7 +697,7 @@ func TestDecodeSheetRevisionEmptyResponseHasStructuredRetryableError(t *testing.
 	}
 }
 
-func TestNormalizeSheetChangesetTransportRejectsOversizedString(t *testing.T) {
+func TestCrossPlatformCoverageNormalizeSheetChangesetTransportRejectsOversizedString(t *testing.T) {
 	data := map[string]any{
 		"success":        true,
 		"changesetsJson": strings.Repeat("x", sheetChangesetJSONMaxBytes+1),
@@ -501,7 +707,7 @@ func TestNormalizeSheetChangesetTransportRejectsOversizedString(t *testing.T) {
 	}
 }
 
-func TestSheetChangesetGetDryRunPreviewsWithoutCallingMCP(t *testing.T) {
+func TestCrossPlatformCoverageSheetChangesetGetDryRunPreviewsWithoutCallingMCP(t *testing.T) {
 	caller := &sheetRevisionTestCaller{dryRun: true, responses: map[string]string{}}
 	got, err := executeSheetRevisionCommand(t, caller, newSheetChangesetGetCmd(),
 		"--node", "node-1", "--start-revision", "0", "--dry-run")
@@ -528,7 +734,7 @@ func TestSheetChangesetGetDryRunPreviewsWithoutCallingMCP(t *testing.T) {
 	}
 }
 
-func TestSheetChangesetGetRejectsInvalidRangesBeforeDispatch(t *testing.T) {
+func TestCrossPlatformCoverageSheetChangesetGetRejectsInvalidRangesBeforeDispatch(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -558,7 +764,7 @@ func TestSheetChangesetGetRejectsInvalidRangesBeforeDispatch(t *testing.T) {
 	}
 }
 
-func TestSheetRevisionCommandsPublishHelpAndReviewedContracts(t *testing.T) {
+func TestCrossPlatformCoverageSheetRevisionCommandsPublishHelpAndReviewedContracts(t *testing.T) {
 	root := newSheetCommand()
 	for _, name := range []string{"revision-get", "changeset-get"} {
 		command, _, err := root.Find([]string{name})
@@ -611,7 +817,7 @@ func TestSheetRevisionCommandsPublishHelpAndReviewedContracts(t *testing.T) {
 	}
 }
 
-func TestSheetRevisionResultSchemasUseMCPNumberAndChangesetV2(t *testing.T) {
+func TestCrossPlatformCoverageSheetRevisionResultSchemasUseMCPNumberAndChangesetV2(t *testing.T) {
 	var revisionSchema map[string]any
 	if err := json.Unmarshal(sheetRevisionResult.DataSchema, &revisionSchema); err != nil {
 		t.Fatalf("decode revision Result schema: %v", err)

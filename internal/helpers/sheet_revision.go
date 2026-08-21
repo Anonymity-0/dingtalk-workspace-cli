@@ -17,6 +17,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -350,14 +352,14 @@ func callSheetRevisionResult(cmd *cobra.Command, tool string, args map[string]an
 	if err != nil {
 		return nil, err
 	}
-	data, err := decodeSheetRevisionResult(tool, raw)
+	data, err := decodeSheetRevisionResult(tool, args, raw)
 	if err != nil {
 		return nil, err
 	}
 	return output.Success(data), nil
 }
 
-func decodeSheetRevisionResult(tool, raw string) (any, error) {
+func decodeSheetRevisionResult(tool string, request map[string]any, raw string) (any, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, invalidSheetRevisionResponse(tool,
 			"MCP sheet read tool returned no non-empty text content",
@@ -414,6 +416,16 @@ func decodeSheetRevisionResult(tool, raw string) (any, error) {
 			"invalid_tool_response",
 			false,
 		)
+	}
+	if tool == sheetChangesetGetRemoteTool {
+		if err := validateSheetChangesetAudit(request, object); err != nil {
+			return nil, invalidSheetRevisionResponse(tool,
+				fmt.Sprintf("MCP sheet read tool returned changeset data that does not match the requested interval or its summary: %v%s",
+					err, sheetResultLogIDSuffix(object)),
+				"invalid_tool_response",
+				false,
+			)
+		}
 	}
 	return object, nil
 }
@@ -546,6 +558,171 @@ func validateSheetPublishedResultWithSchema(tool string, object map[string]any,
 		}
 	}
 	return nil
+}
+
+type sheetChangesetSummaryAudit struct {
+	changeCount               int64
+	completeChangeCount       int64
+	partialChangeCount        int64
+	unsupportedChangeCount    int64
+	containsStateReset        bool
+	containsIncompleteChanges bool
+	affectedSheets            []sheetChangesetAffectedSheetAudit
+}
+
+type sheetChangesetAffectedSheetAudit struct {
+	sheetID   string
+	sheetName string
+	ranges    []string
+}
+
+type sheetChangesetAffectedSheetAccumulator struct {
+	sheetName string
+	ranges    map[string]struct{}
+}
+
+func validateSheetChangesetAudit(request, object map[string]any) error {
+	requestStart := request["startRevision"].(int64)
+	responseStart, _ := sheetNonNegativeInteger(object["startRevision"])
+	responseEnd, _ := sheetNonNegativeInteger(object["endRevision"])
+	latest, _ := sheetNonNegativeInteger(object["latestRevision"])
+	if responseStart != requestStart {
+		return fmt.Errorf("$.startRevision=%d，与请求值 %d 不一致", responseStart, requestStart)
+	}
+	if requestEnd, exists := request["endRevision"]; exists {
+		if responseEnd != requestEnd.(int64) {
+			return fmt.Errorf("$.endRevision=%d，与请求值 %d 不一致", responseEnd, requestEnd)
+		}
+	} else if responseEnd != latest {
+		return fmt.Errorf("省略 endRevision 时 $.endRevision=%d，必须等于 $.latestRevision=%d", responseEnd, latest)
+	}
+	if responseEnd-responseStart > sheetChangesetMaxSpan {
+		return fmt.Errorf("响应区间超过 %d 个 revision", sheetChangesetMaxSpan)
+	}
+
+	changesets := object["changesets"].([]any)
+	wantCount := responseEnd - responseStart
+	if int64(len(changesets)) != wantCount {
+		return fmt.Errorf("$.changesets 数量为 %d，无法完整覆盖 (%d,%d]", len(changesets), responseStart, responseEnd)
+	}
+	for index, rawChangeset := range changesets {
+		changeset := rawChangeset.(map[string]any)
+		revision, err := sheetNonNegativeInteger(changeset["revision"])
+		if err != nil {
+			return fmt.Errorf("$.changesets[%d].revision %v", index, err)
+		}
+		expected := responseStart + int64(index) + 1
+		if revision != expected {
+			return fmt.Errorf("$.changesets[%d].revision=%d，期望连续 revision %d", index, revision, expected)
+		}
+	}
+
+	actualSummary, err := parseSheetChangesetSummaryAudit(object["summary"].(map[string]any))
+	if err != nil {
+		return err
+	}
+	expectedSummary := summarizeSheetChangesetsForAudit(changesets)
+	if !reflect.DeepEqual(actualSummary, expectedSummary) {
+		return fmt.Errorf("$.summary 与 $.changesets 复算结果不一致")
+	}
+	return nil
+}
+
+func parseSheetChangesetSummaryAudit(raw map[string]any) (sheetChangesetSummaryAudit, error) {
+	fields := []string{"changeCount", "completeChangeCount", "partialChangeCount", "unsupportedChangeCount"}
+	counts := make([]int64, len(fields))
+	for index, field := range fields {
+		value, err := sheetNonNegativeInteger(raw[field])
+		if err != nil {
+			return sheetChangesetSummaryAudit{}, fmt.Errorf("$.summary.%s %v", field, err)
+		}
+		counts[index] = value
+	}
+
+	result := sheetChangesetSummaryAudit{
+		changeCount:               counts[0],
+		completeChangeCount:       counts[1],
+		partialChangeCount:        counts[2],
+		unsupportedChangeCount:    counts[3],
+		containsStateReset:        raw["containsStateReset"].(bool),
+		containsIncompleteChanges: raw["containsIncompleteChanges"].(bool),
+	}
+	for _, rawSheet := range raw["affectedSheets"].([]any) {
+		sheet := rawSheet.(map[string]any)
+		rawRanges := sheet["ranges"].([]any)
+		affected := sheetChangesetAffectedSheetAudit{
+			sheetID: sheet["sheetId"].(string),
+			ranges:  make([]string, 0, len(rawRanges)),
+		}
+		affected.sheetName, _ = sheet["sheetName"].(string)
+		for _, rawRange := range rawRanges {
+			affected.ranges = append(affected.ranges, rawRange.(string))
+		}
+		result.affectedSheets = append(result.affectedSheets, affected)
+	}
+	return result, nil
+}
+
+func summarizeSheetChangesetsForAudit(changesets []any) sheetChangesetSummaryAudit {
+	result := sheetChangesetSummaryAudit{}
+	affected := map[string]*sheetChangesetAffectedSheetAccumulator{}
+	for _, rawChangeset := range changesets {
+		changeset := rawChangeset.(map[string]any)
+		result.containsStateReset = result.containsStateReset || changeset["eventType"] == "STATE_RESET"
+		result.containsIncompleteChanges = result.containsIncompleteChanges || changeset["detailsStatus"] != "COMPLETE"
+		for _, rawChange := range changeset["changes"].([]any) {
+			change := rawChange.(map[string]any)
+			result.changeCount++
+			switch change["detailsStatus"] {
+			case "COMPLETE":
+				result.completeChangeCount++
+			case "PARTIAL":
+				result.partialChangeCount++
+			}
+			if change["type"] == "UNSUPPORTED_CHANGE" {
+				result.unsupportedChangeCount++
+			}
+			for _, rawTarget := range change["targets"].([]any) {
+				target := rawTarget.(map[string]any)
+				if target["role"] == "SOURCE" {
+					continue
+				}
+				sheetID, _ := target["sheetId"].(string)
+				if strings.TrimSpace(sheetID) == "" {
+					continue
+				}
+				accumulator := affected[sheetID]
+				if accumulator == nil {
+					accumulator = &sheetChangesetAffectedSheetAccumulator{ranges: map[string]struct{}{}}
+					affected[sheetID] = accumulator
+				}
+				if sheetName, ok := target["sheetName"].(string); ok && strings.TrimSpace(sheetName) != "" {
+					accumulator.sheetName = sheetName
+				}
+				if a1Range, ok := target["a1Range"].(string); ok && strings.TrimSpace(a1Range) != "" {
+					accumulator.ranges[a1Range] = struct{}{}
+				}
+			}
+		}
+	}
+
+	sheetIDs := make([]string, 0, len(affected))
+	for sheetID := range affected {
+		sheetIDs = append(sheetIDs, sheetID)
+	}
+	sort.Strings(sheetIDs)
+	for _, sheetID := range sheetIDs {
+		accumulator := affected[sheetID]
+		ranges := make([]string, 0, len(accumulator.ranges))
+		for a1Range := range accumulator.ranges {
+			ranges = append(ranges, a1Range)
+		}
+		sort.Strings(ranges)
+		result.affectedSheets = append(result.affectedSheets, sheetChangesetAffectedSheetAudit{
+			sheetID: sheetID, sheetName: accumulator.sheetName, ranges: ranges,
+		})
+	}
+	return result
 }
 
 func sheetNonNegativeInteger(value any) (int64, error) {
