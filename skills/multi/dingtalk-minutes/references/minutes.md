@@ -142,6 +142,8 @@ dws minutes <group> <leaf> --help
 | `minutes permission add` | 所有者/管理员给稳定 member UID 授权 | `user_required` |
 | `minutes permission remove` | 所有者/管理员撤销稳定 member UID 权限 | `user_required`，destructive/high |
 
+`permission add` 的 `--policy` 是必填参数，没有默认值。用户未指定权限类型时，先确认要管理员、所有者、可编辑、可查看下载还是仅查看；即使确认选择“仅查看”，命令中仍必须显式传入 `--policy 4`。
+
 权限 policy 的数字/枚举、覆盖与子资源参数以精确 leaf Schema 为准；根路径优先用 `+apply-permission`、`+share`、`+unshare` 的语义化参数。只有姓名时先用 Contact/AI Search 解析为同组织稳定 UID，不能把姓名或手机号直接写入 member UID。
 
 ## 9. 标签与语音备忘
