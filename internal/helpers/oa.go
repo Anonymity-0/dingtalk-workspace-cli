@@ -153,6 +153,56 @@ func callOAAttachmentResultCtx(ctx context.Context, tool string, args map[string
 	return output.Success(result), nil
 }
 
+// validateOAAttachmentCommitResult 校验 commit_attachment_upload_info 的原始 result
+// 包含构造 DDAttachment 所需的全部必需字段。当字段缺失或类型错误时返回 Validation 错误，
+// 避免 Agent 拿到空 fileId 后组装无效的审批表单。
+func validateOAAttachmentCommitResult(result any) error {
+	resultMap, ok := result.(map[string]any)
+	if !ok || resultMap == nil {
+		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值 result 不是有效的 JSON 对象")
+	}
+
+	// spaceId — 接受 string 或 number
+	switch v := resultMap["spaceId"].(type) {
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 spaceId")
+		}
+	case float64:
+		// numeric spaceId is acceptable
+	case json.Number:
+		// numeric spaceId is acceptable
+	default:
+		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 spaceId")
+	}
+
+	// fileName — must be non-empty string
+	if s, ok := resultMap["fileName"].(string); !ok || strings.TrimSpace(s) == "" {
+		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 fileName")
+	}
+
+	// fileSize — must be > 0 (number)
+	switch v := resultMap["fileSize"].(type) {
+	case float64:
+		if v <= 0 {
+			return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值字段 fileSize 必须大于 0")
+		}
+	case json.Number:
+		if f, err := v.Float64(); err != nil || f <= 0 {
+			return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值字段 fileSize 必须大于 0")
+		}
+	default:
+		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 fileSize")
+	}
+
+	// fileId — must be non-empty string
+	if s, ok := resultMap["fileId"].(string); !ok || strings.TrimSpace(s) == "" {
+		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 fileId")
+	}
+
+	return nil
+}
+
 // parseOAAttachmentUploadInfo 解析 oa/init_attachment_upload_info 的返回，提取首个上传地址、
 // 签名请求头与 uploadKey。OA 的返回结构为 result.resourceUrls([]string)、result.headers(object)、
 // result.uploadKey(string)，与钉盘 doc 的 resourceUrl（单数）不同，因此单独实现。
@@ -285,8 +335,8 @@ func runOAAttachmentUpload(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	// Step 3: 提交上传信息完成入库，并以统一输出渲染 commit 结果。
-	result, err := callOAAttachmentResultCtx(ctx, "commit_attachment_upload_info", map[string]any{
+	// Step 3: 提交上传信息完成入库，校验必需字段后以统一输出渲染 commit 结果。
+	commitData, err := CallMCPToolDataOnServer(ctx, "oa", "commit_attachment_upload_info", map[string]any{
 		"fileName":  fileName,
 		"uploadKey": uploadKey,
 		"fileSize":  float64(fileSize),
@@ -294,7 +344,15 @@ func runOAAttachmentUpload(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return output.StoreResult(cmd.Context(), result)
+	commitResp, ok := commitData.(map[string]any)
+	if !ok {
+		return apperrors.NewInternal("oa/commit_attachment_upload_info 返回值不是 JSON 对象")
+	}
+	commitResult, _ := commitResp["result"]
+	if err := validateOAAttachmentCommitResult(commitResult); err != nil {
+		return err
+	}
+	return output.StoreResult(cmd.Context(), output.Success(commitResult))
 }
 
 func newOAAttachmentCommand() *cobra.Command {

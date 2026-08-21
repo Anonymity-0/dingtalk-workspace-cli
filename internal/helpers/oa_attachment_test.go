@@ -737,6 +737,279 @@ func TestCrossPlatformCoverageOAAttachmentUploadHTTPPutError(t *testing.T) {
 	}
 }
 
+// TestCrossPlatformCoverageOAAttachmentUploadMalformedCommitResponse 校验 commit 返回
+// 缺少必需字段时命令报错（而不是包装为成功）。
+func TestCrossPlatformCoverageOAAttachmentUploadMalformedCommitResponse(t *testing.T) {
+	tests := []struct {
+		name           string
+		commitResponse string
+		wantErr        string
+	}{
+		{
+			name:           "result is null",
+			commitResponse: `{"success":true,"result":null}`,
+			wantErr:        "不是有效的 JSON 对象",
+		},
+		{
+			name:           "result is empty object",
+			commitResponse: `{"success":true,"result":{}}`,
+			wantErr:        "spaceId",
+		},
+		{
+			name:           "missing fileId",
+			commitResponse: `{"success":true,"result":{"spaceId":"123","fileName":"a.pdf","fileSize":100}}`,
+			wantErr:        "fileId",
+		},
+		{
+			name:           "empty fileId",
+			commitResponse: `{"success":true,"result":{"spaceId":"123","fileName":"a.pdf","fileSize":100,"fileId":""}}`,
+			wantErr:        "fileId",
+		},
+		{
+			name:           "missing spaceId",
+			commitResponse: `{"success":true,"result":{"fileName":"a.pdf","fileSize":100,"fileId":"file-1"}}`,
+			wantErr:        "spaceId",
+		},
+		{
+			name:           "fileSize is zero",
+			commitResponse: `{"success":true,"result":{"spaceId":"123","fileName":"a.pdf","fileSize":0,"fileId":"file-1"}}`,
+			wantErr:        "fileSize",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			filePath, _ := writeOAAttachmentTempFile(t, "commit-validate.pdf", "data")
+			put := mockOAAttachmentPut(t)
+
+			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+				{text: oaUploadInitResponse},
+				{text: test.commitResponse},
+			}}
+			_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+				"approval", "attachment", "upload",
+				"--file", filePath,
+				"--file-name", "commit-validate.pdf",
+				"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+			)
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", test.wantErr)
+			}
+			if !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("error = %v, want substring %q", err, test.wantErr)
+			}
+			// init + commit = 2 MCP calls
+			if caller.calls != 2 {
+				t.Fatalf("MCP calls = %d, want 2 (init + commit)", caller.calls)
+			}
+			// PUT should have been called (init succeeded)
+			if put.calls != 1 {
+				t.Fatalf("httpPutFile called %d times, want 1", put.calls)
+			}
+		})
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentValidateCommitResultDirect 直接调用
+// validateOAAttachmentCommitResult 覆盖所有分支路径，包括通过 end-to-end 流不可达的
+// json.Number 类型分支。
+func TestCrossPlatformCoverageOAAttachmentValidateCommitResultDirect(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   any
+		wantErr string // empty means expect nil error
+	}{
+		// result 不是 map
+		{name: "result is string", input: "hello", wantErr: "不是有效的 JSON 对象"},
+		{name: "result is array", input: []any{"x"}, wantErr: "不是有效的 JSON 对象"},
+		{name: "result is number", input: float64(42), wantErr: "不是有效的 JSON 对象"},
+		{name: "result is nil", input: nil, wantErr: "不是有效的 JSON 对象"},
+
+		// spaceId — 空字符串
+		{name: "spaceId empty string", input: map[string]any{
+			"spaceId": "", "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1",
+		}, wantErr: "spaceId"},
+		{name: "spaceId whitespace only", input: map[string]any{
+			"spaceId": "   ", "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1",
+		}, wantErr: "spaceId"},
+
+		// spaceId — json.Number（通过 UseNumber 解码的数字）
+		{name: "spaceId json.Number", input: map[string]any{
+			"spaceId": json.Number("27827223951"), "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1",
+		}, wantErr: ""},
+
+		// spaceId — float64（正常路径）
+		{name: "spaceId float64", input: map[string]any{
+			"spaceId": float64(123), "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1",
+		}, wantErr: ""},
+
+		// spaceId — 非法类型
+		{name: "spaceId bool", input: map[string]any{
+			"spaceId": true, "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1",
+		}, wantErr: "spaceId"},
+
+		// fileName — 非 string 类型
+		{name: "fileName is number", input: map[string]any{
+			"spaceId": "123", "fileName": float64(99), "fileSize": float64(100), "fileId": "file-1",
+		}, wantErr: "fileName"},
+		{name: "fileName is nil", input: map[string]any{
+			"spaceId": "123", "fileName": nil, "fileSize": float64(100), "fileId": "file-1",
+		}, wantErr: "fileName"},
+		{name: "fileName empty", input: map[string]any{
+			"spaceId": "123", "fileName": "", "fileSize": float64(100), "fileId": "file-1",
+		}, wantErr: "fileName"},
+
+		// fileSize — json.Number 有效
+		{name: "fileSize json.Number valid", input: map[string]any{
+			"spaceId": "123", "fileName": "a.pdf", "fileSize": json.Number("200"), "fileId": "file-1",
+		}, wantErr: ""},
+
+		// fileSize — json.Number 无效（<= 0）
+		{name: "fileSize json.Number zero", input: map[string]any{
+			"spaceId": "123", "fileName": "a.pdf", "fileSize": json.Number("0"), "fileId": "file-1",
+		}, wantErr: "fileSize"},
+		{name: "fileSize json.Number negative", input: map[string]any{
+			"spaceId": "123", "fileName": "a.pdf", "fileSize": json.Number("-5"), "fileId": "file-1",
+		}, wantErr: "fileSize"},
+		{name: "fileSize json.Number invalid", input: map[string]any{
+			"spaceId": "123", "fileName": "a.pdf", "fileSize": json.Number("abc"), "fileId": "file-1",
+		}, wantErr: "fileSize"},
+
+		// fileSize — 非法类型（default 分支）
+		{name: "fileSize is string", input: map[string]any{
+			"spaceId": "123", "fileName": "a.pdf", "fileSize": "100", "fileId": "file-1",
+		}, wantErr: "fileSize"},
+		{name: "fileSize is nil", input: map[string]any{
+			"spaceId": "123", "fileName": "a.pdf", "fileSize": nil, "fileId": "file-1",
+		}, wantErr: "fileSize"},
+
+		// fileId — 非 string 类型
+		{name: "fileId is number", input: map[string]any{
+			"spaceId": "123", "fileName": "a.pdf", "fileSize": float64(100), "fileId": float64(99),
+		}, wantErr: "fileId"},
+		{name: "fileId whitespace", input: map[string]any{
+			"spaceId": "123", "fileName": "a.pdf", "fileSize": float64(100), "fileId": "  ",
+		}, wantErr: "fileId"},
+
+		// 全部通过
+		{name: "all valid string types", input: map[string]any{
+			"spaceId": "123", "fileName": "report.pdf", "fileSize": float64(512), "fileId": "file-abc",
+		}, wantErr: ""},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateOAAttachmentCommitResult(test.input)
+			if test.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", test.wantErr)
+			}
+			if !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("error = %v, want substring %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentUploadEmptyFilePath 覆盖 runOAAttachmentUpload
+// 中 --file 传了但值为空字符串的分支（cobra MarkFlagRequired 只拦截未传，不拦截空值）。
+func TestCrossPlatformCoverageOAAttachmentUploadEmptyFilePath(t *testing.T) {
+	mockOAAttachmentPut(t)
+	caller := &scriptedToolCaller{format: "json"}
+	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", "",
+	)
+	if err == nil || !strings.Contains(err.Error(), "--file 不能为空") {
+		t.Fatalf("error = %v, want --file empty error", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("MCP calls = %d, want 0", caller.calls)
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentUploadInitCallError 覆盖 runOAAttachmentUpload
+// 中 callMCPToolReturnTextOnServer（init 步）返回错误的分支。
+func TestCrossPlatformCoverageOAAttachmentUploadInitCallError(t *testing.T) {
+	filePath, _ := writeOAAttachmentTempFile(t, "init-err.pdf", "data")
+	put := mockOAAttachmentPut(t)
+
+	caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+		{err: errors.New("injected init failure")},
+	}}
+	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", filePath,
+		"--file-name", "init-err.pdf",
+		"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+	)
+	if err == nil {
+		t.Fatal("expected error from init call failure, got nil")
+	}
+	if caller.calls != 1 {
+		t.Fatalf("MCP calls = %d, want 1 (init attempted)", caller.calls)
+	}
+	if put.calls != 0 {
+		t.Fatalf("PUT calls = %d, want 0", put.calls)
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentUploadCommitNonObject 覆盖 runOAAttachmentUpload
+// 中 commitData 不是 map[string]any 的分支（line 348）。
+func TestCrossPlatformCoverageOAAttachmentUploadCommitNonObject(t *testing.T) {
+	filePath, _ := writeOAAttachmentTempFile(t, "commit-nonobj.pdf", "data")
+	mockOAAttachmentPut(t)
+
+	caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+		{text: oaUploadInitResponse},
+		// commit 返回一个 JSON 字符串而非对象
+		{text: `"not an object"`},
+	}}
+	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", filePath,
+		"--file-name", "commit-nonobj.pdf",
+		"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+	)
+	if err == nil || !strings.Contains(err.Error(), "不是 JSON 对象") {
+		t.Fatalf("error = %v, want commit non-object error", err)
+	}
+	if caller.calls != 2 {
+		t.Fatalf("MCP calls = %d, want 2 (init + commit)", caller.calls)
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentUploadMalformedInitJSON 覆盖
+// parseOAAttachmentUploadInfo 中 json.Unmarshal 失败分支（init 返回非法 JSON）。
+func TestCrossPlatformCoverageOAAttachmentUploadMalformedInitJSON(t *testing.T) {
+	filePath, _ := writeOAAttachmentTempFile(t, "bad-init.pdf", "data")
+	put := mockOAAttachmentPut(t)
+
+	caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+		{text: `{not valid json`},
+	}}
+	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+		"approval", "attachment", "upload",
+		"--file", filePath,
+		"--file-name", "bad-init.pdf",
+		"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+	)
+	if err == nil || !strings.Contains(err.Error(), "解析 init_attachment_upload_info 返回失败") {
+		t.Fatalf("error = %v, want parse failure", err)
+	}
+	if caller.calls != 1 {
+		t.Fatalf("MCP calls = %d, want 1 (init only)", caller.calls)
+	}
+	if put.calls != 0 {
+		t.Fatalf("PUT calls = %d, want 0", put.calls)
+	}
+}
+
 // TestCrossPlatformCoverageOAAttachmentUploadCommitError 脚本化 init 返回合法、
 // commit 返回错误，覆盖 callOAAttachmentResultCtx（commit 步）失败分支：
 // PUT 发生一次，init+commit 均尝试（共 2 次 MCP 调用），命令报错。
