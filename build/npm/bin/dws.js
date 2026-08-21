@@ -28,7 +28,20 @@ const forwardedSignals = ["SIGINT", "SIGTERM"];
 function forwardSignal(signal) {
   forwardedSignal = signal;
   if (child.exitCode === null && child.signalCode === null) {
-    child.kill(signal);
+    if (process.platform === "win32") {
+      child.kill(signal);
+      return;
+    }
+    try {
+      // detached makes the vendor PID the leader of its POSIX process group.
+      // Signal the whole group so any subprocesses inherit the same shutdown.
+      process.kill(-child.pid, signal);
+    } catch (error) {
+      // The group may have completed between the state check and kill.
+      if (error.code !== "ESRCH") {
+        throw error;
+      }
+    }
   }
 }
 

@@ -176,7 +176,7 @@ func TestNPMWrapperForwardsSIGTERMToVendor(t *testing.T) {
 	}
 }
 
-func TestNPMWrapperForwardsForegroundGroupSIGINTOnce(t *testing.T) {
+func TestNPMWrapperForwardsForegroundGroupSIGINTToVendorGroupOnce(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX foreground process-group signal contract")
 	}
@@ -206,10 +206,31 @@ func TestNPMWrapperForwardsForegroundGroupSIGINTOnce(t *testing.T) {
 
 	pidPath := filepath.Join(root, "child.pid")
 	signalPath := filepath.Join(root, "child.signal")
+	descendantPIDPath := filepath.Join(root, "descendant.pid")
+	descendantSignalPath := filepath.Join(root, "descendant.signal")
 	vendorPath := filepath.Join(vendorDir, "dws")
 	vendorScript := `#!/usr/bin/env node
 "use strict";
 const fs = require("fs");
+const childProcess = require("child_process");
+const descendantSource = String.raw` + "`" + `
+"use strict";
+const fs = require("fs");
+let exiting = false;
+process.on("SIGINT", () => {
+  fs.appendFileSync(process.env.DWS_TEST_DESCENDANT_SIGNAL_FILE, "INT\n");
+  if (!exiting) {
+    exiting = true;
+    setTimeout(() => process.exit(0), 250);
+  }
+});
+fs.writeFileSync(process.env.DWS_TEST_DESCENDANT_PID_FILE, String(process.pid));
+setInterval(() => {}, 1000);
+` + "`" + `;
+childProcess.spawn(process.execPath, ["-e", descendantSource], {
+  stdio: "inherit",
+  env: process.env,
+});
 let exiting = false;
 process.on("SIGINT", () => {
   fs.appendFileSync(process.env.DWS_TEST_SIGNAL_FILE, "INT\n");
@@ -229,6 +250,8 @@ setInterval(() => {}, 1000);
 	cmd.Env = append(os.Environ(),
 		"DWS_TEST_CHILD_PID_FILE="+pidPath,
 		"DWS_TEST_SIGNAL_FILE="+signalPath,
+		"DWS_TEST_DESCENDANT_PID_FILE="+descendantPIDPath,
+		"DWS_TEST_DESCENDANT_SIGNAL_FILE="+descendantSignalPath,
 	)
 	configureIsolatedProcessGroup(cmd)
 	if err := cmd.Start(); err != nil {
@@ -236,8 +259,10 @@ setInterval(() => {}, 1000);
 	}
 
 	childPID := waitForPIDFile(t, pidPath)
+	descendantPID := waitForPIDFile(t, descendantPIDPath)
 	t.Cleanup(func() {
 		_ = exec.Command("kill", "-TERM", strconv.Itoa(childPID)).Run()
+		_ = exec.Command("kill", "-TERM", strconv.Itoa(descendantPID)).Run()
 	})
 	wrapperGroup, err := processGroupID(cmd.Process.Pid)
 	if err != nil {
@@ -249,6 +274,13 @@ setInterval(() => {}, 1000);
 	}
 	if childGroup == wrapperGroup {
 		t.Fatalf("vendor process group = wrapper process group %d; foreground signal would be duplicated", childGroup)
+	}
+	descendantGroup, err := processGroupID(descendantPID)
+	if err != nil {
+		t.Fatalf("descendant process group: %v", err)
+	}
+	if descendantGroup != childGroup {
+		t.Fatalf("descendant process group = %d, want vendor process group %d", descendantGroup, childGroup)
 	}
 
 	if err := signalProcessGroup(wrapperGroup, syscall.SIGINT); err != nil {
@@ -273,9 +305,15 @@ setInterval(() => {}, 1000);
 	if got := strings.Fields(string(signalData)); len(got) != 1 || got[0] != "INT" {
 		t.Fatalf("vendor signals = %q, want exactly one INT", got)
 	}
-	if err := exec.Command("kill", "-0", strconv.Itoa(childPID)).Run(); err == nil {
-		t.Fatalf("vendor process %d is still running after npm wrapper exited", childPID)
+	descendantSignalData, err := os.ReadFile(descendantSignalPath)
+	if err != nil {
+		t.Fatalf("vendor descendant did not record SIGINT: %v", err)
 	}
+	if got := strings.Fields(string(descendantSignalData)); len(got) != 1 || got[0] != "INT" {
+		t.Fatalf("vendor descendant signals = %q, want exactly one INT", got)
+	}
+	waitForProcessExit(t, childPID, "vendor")
+	waitForProcessExit(t, descendantPID, "vendor descendant")
 }
 
 func waitForPIDFile(t *testing.T, path string) int {
@@ -293,6 +331,18 @@ func waitForPIDFile(t *testing.T, path string) int {
 	}
 	t.Fatalf("timed out waiting for vendor pid file %s", path)
 	return 0
+}
+
+func waitForProcessExit(t *testing.T, pid int, label string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if err := exec.Command("kill", "-0", strconv.Itoa(pid)).Run(); err != nil {
+			return
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	t.Fatalf("%s process %d is still running after npm wrapper exited", label, pid)
 }
 
 func TestPackageManagerVerifierCoversSpecificAndFallbackSkillRoots(t *testing.T) {
