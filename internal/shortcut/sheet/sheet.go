@@ -191,6 +191,10 @@ var Read = shortcut.Shortcut{
 			{Name: "range", Property: "range"},
 			{Name: "value-render-option", Property: "valueRenderOption"},
 		},
+		DryRun: &contract.DryRunSpec{
+			PreviewKind: contract.DryRunPreviewRequest,
+			RemoteReads: false,
+		},
 		Result: &contract.ResultSpec{
 			Outcomes:       []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
 			DataSchema:     json.RawMessage(`{"type":"object","description":"完整且未截断的单元格范围","properties":{"cells":{"type":"array","description":"与行列坐标对齐的二维单元格对象数组","items":{"type":"array","description":"一行单元格对象","items":{"type":"object","description":"单元格结构化数据","additionalProperties":true}}},"colIndices":{"type":"array","description":"与 cells 列对齐的 A1 列标","items":{"type":"string"}},"rowIndices":{"type":"array","description":"与 cells 行对齐的一基行号","items":{"type":"integer"}},"complete":{"type":"boolean","description":"结果已证明完整；成功结果恒为 true"},"hasMore":{"type":"boolean","description":"服务端截断标记；成功结果恒为 false"},"truncationReasons":{"type":"array","description":"截断原因；成功结果恒为空数组","items":{"type":"string"}},"resolvedRange":{"type":"string","description":"服务解析后的请求范围"},"returnedRange":{"type":"string","description":"服务实际返回的范围"},"message":{"type":"string","description":"可选服务说明"}},"required":["cells","colIndices","rowIndices","complete","hasMore","truncationReasons"],"additionalProperties":false}`),
@@ -230,6 +234,9 @@ var Read = shortcut.Shortcut{
 		}
 		if rt.Changed("value-render-option") {
 			params["valueRenderOption"] = rt.Str("value-render-option")
+		}
+		if rt.DryRun() {
+			return rt.CallMCP("get_cell_infos", params)
 		}
 		data, err := rt.CallMCPData("sheet", "get_cell_infos", params)
 		if err != nil {

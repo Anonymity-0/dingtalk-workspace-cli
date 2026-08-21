@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -237,6 +238,15 @@ func TestCrossPlatformCoverageSheetShortcutsValidateBeforeCallsAndUseExactTools(
 		t.Fatalf("read arguments=%#v", readCaller.arguments)
 	}
 
+	dryRun := &sheetCoverageCaller{responses: map[string][]string{}}
+	if err := runSheetCoverage(t, Read, dryRun,
+		"--node", "node", "--sheet-id", "sheet-1", "--range", "A1:A1", "--value-render-option", "raw_value", "--dry-run"); err != nil {
+		t.Fatalf("read dry-run: %v", err)
+	}
+	if len(dryRun.history) != 0 {
+		t.Fatalf("read dry-run reached remote calls=%v", dryRun.history)
+	}
+
 	readFailure := &sheetCoverageCaller{
 		responses: map[string][]string{},
 		failures:  map[string]error{"get_cell_infos": errors.New("fixture transport failure")},
@@ -287,6 +297,9 @@ func TestCrossPlatformCoverageSheetPublicContractsAreReviewedAndUnified(t *testi
 		if declaration.Safety.Confirmation != "not_required" || declaration.Safety.Effect != "read" {
 			t.Errorf("%s safety=%+v", declaration.Command, declaration.Safety)
 		}
+	}
+	if Read.Contract.DryRun == nil || Read.Contract.DryRun.PreviewKind != contract.DryRunPreviewRequest || Read.Contract.DryRun.RemoteReads {
+		t.Errorf("read dry-run contract=%+v", Read.Contract.DryRun)
 	}
 	for _, test := range []struct {
 		declaration    shortcut.Shortcut
