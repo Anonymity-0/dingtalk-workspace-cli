@@ -77,7 +77,7 @@ CLI 会把服务端 `resultJson` 字符串解析为结构化 JSON。白板命令
 
 ```bash
 dws whiteboard +update --node <DOC_ID> --part-id <PART_ID> \
-  --source ./whiteboard.json --format json
+  --source @whiteboard.json --format json
 ```
 
 `+update` 会严格验证终态 receipt、请求节点到真实节点的映射，并对同一 `nodeId` / `partId` 执行独立读回；不需要再以手写原子命令拼装验证链。
