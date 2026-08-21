@@ -11,9 +11,13 @@ metadata:
 
 # 钉钉待办 Skill
 
-## 执行前提
+## 执行契约
 
-执行任何 `dws` 操作前，先完整读取 [`dingtalk-shared`](../dingtalk-shared/SKILL.md)。已命中下表时直接走 Golden Route；只有需要低频原子能力或参数细节时，才读取 [todo.md](references/todo.md)。一次最多加载一个操作 Reference。
+- 执行第一个 `dws` 操作前完整读取 [`dingtalk-shared`](../dingtalk-shared/SKILL.md)；当前任务已加载则不重复读取。
+- 先把请求拆成有序步骤，再逐步选入口。已知命令直接执行，不先查 Help、Schema 或 Shortcut Catalog；只有当前 leaf 的 flag 或安全语义确实不明时才查精确 leaf。
+- 所有命令加 `--format json`，按结构化业务返回判断结果。后续 ID 只取自本次真实返回；零匹配、多匹配或类型不明时停止并消歧。
+- 写操作遵循最终 Runtime gate。需要确认时先说明对象、动作和影响，用户确认后才追加 `--yes`；不要把 `--yes` 写入存储示例。
+- 写后必须核验。非幂等写超时、缺少稳定 ID 或读回失败时先查询对账，禁止盲目重放。
 
 <!-- VISIBLE_SHORTCUTS_START -->
 ## Shortcuts（无专用脚本/recipe 时优先）
@@ -42,14 +46,25 @@ metadata:
 | `dws todo +update` | write | 更新待办并读回验证 |
 <!-- VISIBLE_SHORTCUTS_END -->
 
+## 路由优先级
+
+上面的通用 Shortcut 优先规则只适用于**一个 Shortcut 完整覆盖当前步骤**的情况。不要因为请求里出现“创建”就默认使用 `+remind` / `+create`。
+
+1. **先选创建入口**：按姓名指派用 `+assign` / `+assign-multi`；给自己记一条且后续只有搜索、详情或清理时用 `+remind`；已有真实 `userId` 且只需创建、回读和清理时用 `+create`。
+2. **组合生命周期从原子创建开始**：创建后还要按状态/优先级/角色/日期/页码列举，或继续更新、完成/重开、提醒、评论、附件、成员、子待办、标签，或一次创建多个对象时，使用 `todo task create`。不要用创建 Shortcut 代替第一步。
+3. **后续按步骤选最窄入口**：聚合、搜索和核验完整由 Shortcut 覆盖时使用 `+get-my-tasks`、`+get-related-tasks`、`+due-today`、`+overdue`、`+search`、`+get`、`+complete`、`+reopen`、`+update`、`+comment`、`+reminder` 或 `+list-*`；需要原子特有参数、动态子资源 ID、多对象或中间状态时用原子命令。
+4. **确定性批量/汇总使用脚本**：批量创建、今天/明天/本周汇总、逾期扫描分别使用 bundled script。
+5. **跨步骤只传稳定 ID**：Shortcut 与原子命令可以共存，但只传递规范化后的 `taskId`、`commentId`、`attachmentId`、`tagCode`、`userId`；不要假设两类入口的完整返回结构相同。
+
 ## Golden Routes
 
 | 用户意图 | 首选入口 | 关键结果 / 边界 |
 |---|---|---|
-| “给我自己记一条待办” | `dws todo +remind --task "<标题>" [--at "<截止ISO>"] --format json` | 自动解析当前用户；`--at` 是截止时间，不是提醒时间 |
+| 给自己创建，随后只搜索、看详情或清理 | `dws todo +remind --task "<标题>" [--at "<截止ISO>"] --format json` | 自动解析当前用户；`--at` 是截止时间，不是提醒时间 |
 | “给张三建待办” | `dws todo +assign --to "张三" --task "<标题>" --format json` | 姓名必须唯一解析后才创建 |
 | “给张三、李四建同一条待办” | `dws todo +assign-multi --to "张三,李四" --task "<标题>" --format json` | 任一姓名不唯一则零写入 |
-| 已有 `userId`，创建普通待办 | `dws todo +create --title "<标题>" --executors <USER_ID> [--due "<截止ISO>"] [--priority 10\|20\|30\|40] --format json` | 返回稳定 `taskId`，并读回核验标题 |
+| 已有 `userId`，只创建、回读和清理 | `dws todo +create --title "<标题>" --executors <USER_ID> [--due "<截止ISO>"] [--priority 10\|20\|30\|40] --format json` | 返回稳定 `taskId`，并读回核验标题 |
+| 创建后还要筛选、变更资源或创建多个对象 | `dws todo task create --title "<标题>" --executors <USER_ID> ... --format json` | 从 `result.taskId` 进入组合生命周期；不要以 `+remind` / `+create` 起步 |
 | 今天到期 / 已逾期 | `dws todo +due-today --format json` / `dws todo +overdue --format json` | 均有界拉全分页；空集合也是成功结果 |
 | 当前组织下我的执行待办 | `dws todo +get-my-tasks --all --status false --format json` | `--all` 达到 40 页仍未耗尽会失败，不伪装完整 |
 | 与我相关的全部待办 | `dws todo +get-related-tasks --format json` | 创建人、执行人、参与人三种角色并集，按 `taskId` 去重 |
@@ -66,15 +81,22 @@ metadata:
 
 ## 低频原子能力
 
-以下场景没有等价的公开 Shortcut，确认目标 ID 后再读取 [todo.md](references/todo.md) 对应小节：
+组合请求先读 [组合生命周期](references/02-task.md)。以下常用原子命令已审定，直接执行，不要先猜别名或查 Help：
 
-- 循环待办、子待办创建；
-- 删除待办、评论、附件或标签；
-- 增删执行人、参与人；
-- 上传附件；
-- 标签创建、更新、绑定与查询。
+| 意图 | 命令骨架 |
+|---|---|
+| 解析自己 / 姓名 | `dws contact user get-self --format json` / `dws aisearch person --query "<姓名>" --dimension name --format json` |
+| 创建 / 子待办 | `dws todo task create ...` / `dws todo task create-sub --parent-id <PARENT_ID> --title "<标题>" --executors <USER_ID> ...` |
+| 列表 / 详情 | `dws todo task list [--status true\|false] [--priority ...] [--role-types ...] [--page N --size N] ...` / `dws todo task get --task-id <TASK_ID>` |
+| 更新 / 完成或重开 | `dws todo task update --task-id <TASK_ID> ...` / `dws todo task done --task-id <TASK_ID> --status true\|false` |
+| 增删执行人 / 参与人 | `task add-executor` / `task remove-executor` / `task add-participant` / `task remove-participant`，均传真实 `taskId` 与 `userId` |
+| 评论 | `comment add` / `comment list` / `comment delete`；删除使用列表返回的真实 `commentId` |
+| 附件 | `task add-attachment --file <绝对路径>` / `task list-attachment` / `task remove-attachment` |
+| 提醒 | `task add-reminder` 添加单条；`task reset-reminder` 替换全部或清空 |
+| 标签 | `tag create` / `tag list` / `tag update` / `tag add` / `tag delete`；只使用真实 `tagCode` |
+| 删除待办 | `dws todo task delete --task-id <TASK_ID> --format json` |
 
-删除类操作必须由用户确认；不要在存储示例里写 `--yes`。附件上传会真实传输本地文件，不能用来试探权限。
+删除类操作必须由用户确认；若用户在当前请求中已明确授权“办完后删除/清理本次创建对象”，该授权只覆盖本次记录的精确 ID。附件上传会真实传输本地文件，不能用来试探权限。
 
 ## 关键约束
 
@@ -82,6 +104,9 @@ metadata:
 - 待办公开命令统一使用 `--task-id`；`--id` / `--ids` 只是隐藏兼容别名，不要写入新命令或示例。
 - 优先级：低=10、普通=20、较高/高/重要=30、紧急/最高/P0=40。
 - `--due` / `+remind --at` 表示 deadline；独立 reminder 必须走 `+reminder`。
+- 自定义时间提醒的原子 flag 是 `--reminder-time-stamp`；不要把 Shortcut 的 `--at` 套到 `task add-reminder`。
+- `task list` 使用 `--status`，不要写 `--done`；详情是 `task get`，不存在 `task detail`。
+- “待办标签”始终属于 Todo，使用 `dws todo tag ...`；绝不能解释成 Git tag、通讯录标签或其他产品标签。
 - 创建和评论是非幂等写。超时、缺少稳定 ID 或读回失败时保留“可能已提交/未核验”状态，先查询对账，禁止盲目重放。
 - 所有命令加 `--format json`；写 Shortcut 按 Runtime 安全契约确认，确认前不得自行附加 `--yes`。
 - 会后行动项来自听记时先走 `dingtalk-minutes`；OA 审批走 `dingtalk-misc`；时间块和会议走 `dingtalk-calendar`。

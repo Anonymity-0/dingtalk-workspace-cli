@@ -52,8 +52,55 @@ class TodoSkillAlignmentTest(unittest.TestCase):
             with self.subTest(route=route):
                 self.assertIn(route, skill)
         self.assertIn("## Golden Routes", skill)
-        self.assertIn("一次最多加载一个操作 Reference", skill)
+        self.assertIn("只有当前 leaf 的 flag 或安全语义确实不明时才查精确 leaf", skill)
         self.assertLessEqual(len(skill.encode("utf-8")), 16000)
+
+    def test_composite_lifecycle_starts_with_atomic_create(self):
+        skill = (TODO_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        lifecycle = (TODO_ROOT / "references" / "02-task.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("组合生命周期从原子创建开始", skill)
+        self.assertIn("不要用创建 Shortcut 代替第一步", skill)
+        self.assertIn("dws todo task create --title", lifecycle)
+        self.assertIn("dws contact user get-self --format json", lifecycle)
+        self.assertIn(
+            'task create-sub --parent-id <PARENT_ID> --title "<标题>" --executors <USER_ID>',
+            lifecycle,
+        )
+        self.assertNotIn("dws contact me --format json", lifecycle)
+
+    def test_step_routing_keeps_shortcuts_and_dynamic_id_boundaries(self):
+        lifecycle = (TODO_ROOT / "references" / "02-task.md").read_text(
+            encoding="utf-8"
+        )
+        for route in (
+            "+get-my-tasks",
+            "+get-related-tasks",
+            "+due-today",
+            "+overdue",
+            "+search",
+            "+get",
+            "+complete",
+            "+reopen",
+            "+update",
+            "+comment",
+            "+reminder",
+            "+list-sub",
+            "+list-attachment",
+        ):
+            with self.subTest(route=route):
+                self.assertIn(route, lifecycle)
+        for stable_id in (
+            "taskId",
+            "commentId",
+            "attachmentId",
+            "tagCode",
+            "userId",
+        ):
+            with self.subTest(stable_id=stable_id):
+                self.assertIn(stable_id, lifecycle)
+        self.assertIn("禁止运行 `git tag`", lifecycle)
 
     def test_golden_route_table_keeps_exactly_three_columns(self):
         skill = (TODO_ROOT / "SKILL.md").read_text(encoding="utf-8")
@@ -61,6 +108,21 @@ class TodoSkillAlignmentTest(unittest.TestCase):
         for row in (line for line in table.splitlines() if line.startswith("|")):
             with self.subTest(row=row):
                 self.assertEqual(5, len(re.split(r"(?<!\\)\|", row)), row)
+
+    def test_all_markdown_tables_keep_consistent_column_counts(self):
+        for document in TODO_ROOT.rglob("*.md"):
+            expected_columns = None
+            for line_number, line in enumerate(
+                document.read_text(encoding="utf-8").splitlines(), start=1
+            ):
+                if line.startswith("|") and line.endswith("|"):
+                    columns = len(re.split(r"(?<!\\)\|", line))
+                    if expected_columns is None:
+                        expected_columns = columns
+                    with self.subTest(document=document.name, line=line_number):
+                        self.assertEqual(expected_columns, columns, line)
+                else:
+                    expected_columns = None
 
     def test_references_are_todo_only_and_reminder_contract_is_consistent(self):
         combined = "\n".join(
