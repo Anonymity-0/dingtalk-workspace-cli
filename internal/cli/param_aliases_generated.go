@@ -3765,7 +3765,7 @@ var generatedParamAliases = []ParamAliasEntry{
 			"start-block": "start-block-id",
 			"url":         "node",
 		},
-		Blocked:   []string{"comment-id", "comment-key", "content-format", "dentry-id", "doc-format", "folder", "folder-id", "id", "job-id", "name", "parent-id", "range", "role", "space-id", "task-id", "template-id", "version", "workspace", "workspace-id"},
+		Blocked:   []string{"comment-id", "comment-key", "content-format", "dentry-id", "doc-format", "folder", "folder-id", "id", "job-id", "name", "parent-id", "range", "role", "space-id", "task-id", "template-id", "workspace", "workspace-id"},
 		Ambiguous: []string{"block-id"},
 	},
 	{

@@ -48,7 +48,7 @@ dws doc +version-revert --node <DOC_ID> --version <N> --format json
 
 `+version-save/list/revert` 分别用于快照、浏览和恢复，命中后直接执行，不预读 Help。`+history-*` 仅兼容已有调用，不用于新的 Agent 选路。重要内容更新优先使用 `+checkpoint-update`，不要手工编排保存、写入和回读。回滚必须确认，以 leaf Schema 与 Runtime gate 为准。
 
-只读某个历史版本的内容而不回滚时，用 `dws doc +fetch --node <DOC_ID> --revision <N>`（版本号同样来自 `+version-list`，`0` 表示初始版本，需要文档编辑权限）；不要为了看历史内容而执行回滚。互联网公开文档（含密码保护）的读取见 [doc-read.md](doc/doc-read.md) 的 `--password`。
+只读某个历史版本的内容时，用 `dws doc +fetch --node <DOC_ID> --version <N>`（版本号同样来自 `+version-list`，`0` 表示初始版本，需要文档编辑权限）；整体恢复到历史版本才用 `+version-revert`（危险操作，需确认）。互联网公开文档（含密码保护）的读取见 [doc-read.md](doc/doc-read.md) 的 `--password`。
 
 ## 权限与分享
 

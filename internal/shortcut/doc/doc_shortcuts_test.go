@@ -1072,7 +1072,8 @@ func TestCrossPlatformCoverageDocContentValidationAndPureHelpers(t *testing.T) {
 		{Create, []string{"--name", "n", "--content", `{}`, "--doc-format", "jsonml"}},
 		{Create, []string{"--name", "n", "--content", `[]`, "--doc-format", "jsonml"}},
 		{Create, []string{"--name", "n", "--content", `[["p",{},"x"]]`, "--doc-format", "jsonml"}},
-		{Fetch, []string{"--node", "n", "--revision", "-2"}},
+		{Fetch, []string{"--node", "n", "--revision", "7"}},
+		{Fetch, []string{"--node", "n", "--version", "-2"}},
 		{Fetch, []string{"--node", "n", "--scope", "keyword"}},
 		{Update, []string{"--node", "n"}},
 		{Update, []string{"--command", "append", "--content", "x", "--yes"}},
@@ -1104,7 +1105,7 @@ func TestCrossPlatformCoverageDocContentValidationAndPureHelpers(t *testing.T) {
 	}
 
 	fetchAccess := &docCoverageCaller{}
-	if err := runDocCoverage(t, Fetch, fetchAccess, "--node", "n", "--revision", "7", "--password", "pw"); err != nil {
+	if err := runDocCoverage(t, Fetch, fetchAccess, "--node", "n", "--version", "7", "--password", "pw"); err != nil {
 		t.Fatalf("fetch with access params failed: %v", err)
 	}
 	if len(fetchAccess.history) != 1 ||
@@ -1115,13 +1116,13 @@ func TestCrossPlatformCoverageDocContentValidationAndPureHelpers(t *testing.T) {
 	}
 
 	fetchZero := &docCoverageCaller{}
-	if err := runDocCoverage(t, Fetch, fetchZero, "--node", "n", "--revision", "0"); err != nil {
-		t.Fatalf("fetch with zero revision failed: %v", err)
+	if err := runDocCoverage(t, Fetch, fetchZero, "--node", "n", "--version", "0"); err != nil {
+		t.Fatalf("fetch with zero version failed: %v", err)
 	}
 	if len(fetchZero.history) != 1 ||
 		fetchZero.history[0].tool != "get_document_content" ||
 		fetchZero.history[0].params["historyVersion"] != 0 {
-		t.Fatalf("fetch zero revision (initial version) was not forwarded: %#v", fetchZero.history)
+		t.Fatalf("fetch zero version (initial version) was not forwarded: %#v", fetchZero.history)
 	}
 
 	for _, value := range []any{
