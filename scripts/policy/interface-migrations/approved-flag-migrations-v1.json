@@ -71,13 +71,29 @@
       "command": "dws chat message send-by-bot",
       "legacy": {
         "name": "file-path",
-        "before": {"present": true, "type": "string", "scope": "local"},
-        "after": {"present": true, "type": "string", "hidden": true, "scope": "local", "alias_of": "file"}
+        "before": {
+          "present": true,
+          "type": "string",
+          "scope": "local"
+        },
+        "after": {
+          "present": true,
+          "type": "string",
+          "hidden": true,
+          "scope": "local",
+          "alias_of": "file"
+        }
       },
       "canonical": {
         "name": "file",
-        "before": {"present": false},
-        "after": {"present": true, "type": "string", "scope": "local"}
+        "before": {
+          "present": false
+        },
+        "after": {
+          "present": true,
+          "type": "string",
+          "scope": "local"
+        }
       },
       "state": "pending",
       "reason": "Preserve legacy argv compatibility while making the canonical flag the only visible parameter."
@@ -86,13 +102,29 @@
       "command": "dws chat message send-by-bot",
       "legacy": {
         "name": "text",
-        "before": {"present": true, "type": "string", "scope": "local"},
-        "after": {"present": true, "type": "string", "hidden": true, "scope": "local", "alias_of": "content"}
+        "before": {
+          "present": true,
+          "type": "string",
+          "scope": "local"
+        },
+        "after": {
+          "present": true,
+          "type": "string",
+          "hidden": true,
+          "scope": "local",
+          "alias_of": "content"
+        }
       },
       "canonical": {
         "name": "content",
-        "before": {"present": false},
-        "after": {"present": true, "type": "string", "scope": "local"}
+        "before": {
+          "present": false
+        },
+        "after": {
+          "present": true,
+          "type": "string",
+          "scope": "local"
+        }
       },
       "state": "pending",
       "reason": "Preserve legacy argv compatibility while making the canonical flag the only visible parameter."
