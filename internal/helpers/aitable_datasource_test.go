@@ -442,3 +442,21 @@ func TestAitableDatasourceUpdateRejectsEmptyExplicitAutoSyncSetting(t *testing.T
 		t.Fatalf("MCP should not be called when empty auto-sync-setting is rejected")
 	}
 }
+
+func TestAitableDatasourceGetFieldsRejectsMissingBaseID(t *testing.T) {
+	_, err := runAitableDatasourceCommand(t, "get-fields",
+		"--datasource-type", "OA",
+		"--source-config", `{"processCode":"P","name":"N","dataType":"recent_time","iconUrl":"u","url":"v"}`)
+	if err == nil || !strings.Contains(err.Error(), "base-id") {
+		t.Fatalf("error = %v, want base-id required", err)
+	}
+}
+
+func TestAitableDatasourceCreateRejectsMissingBaseID(t *testing.T) {
+	_, err := runAitableDatasourceCommand(t, "create",
+		"--datasource-type", "OA",
+		"--source-config", `{"processCode":"P","name":"N","dataType":"recent_time","iconUrl":"u","url":"v"}`)
+	if err == nil || !strings.Contains(err.Error(), "base-id") {
+		t.Fatalf("error = %v, want base-id required", err)
+	}
+}
