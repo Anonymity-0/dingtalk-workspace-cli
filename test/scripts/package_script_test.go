@@ -176,6 +176,108 @@ func TestNPMWrapperForwardsSIGTERMToVendor(t *testing.T) {
 	}
 }
 
+func TestNPMWrapperForwardsForegroundGroupSIGINTOnce(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX foreground process-group signal contract")
+	}
+	nodePath, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is required to exercise the npm wrapper")
+	}
+
+	root := t.TempDir()
+	binDir := filepath.Join(root, "bin")
+	vendorDir := filepath.Join(root, "vendor")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	wrapperData, err := os.ReadFile(filepath.Join("..", "..", "build", "npm", "bin", "dws.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrapperPath := filepath.Join(binDir, "dws.js")
+	if err := os.WriteFile(wrapperPath, wrapperData, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	pidPath := filepath.Join(root, "child.pid")
+	signalPath := filepath.Join(root, "child.signal")
+	vendorPath := filepath.Join(vendorDir, "dws")
+	vendorScript := `#!/usr/bin/env node
+"use strict";
+const fs = require("fs");
+let exiting = false;
+process.on("SIGINT", () => {
+  fs.appendFileSync(process.env.DWS_TEST_SIGNAL_FILE, "INT\n");
+  if (!exiting) {
+    exiting = true;
+    setTimeout(() => process.exit(0), 250);
+  }
+});
+fs.writeFileSync(process.env.DWS_TEST_CHILD_PID_FILE, String(process.pid));
+setInterval(() => {}, 1000);
+`
+	if err := os.WriteFile(vendorPath, []byte(vendorScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(nodePath, wrapperPath)
+	cmd.Env = append(os.Environ(),
+		"DWS_TEST_CHILD_PID_FILE="+pidPath,
+		"DWS_TEST_SIGNAL_FILE="+signalPath,
+	)
+	configureIsolatedProcessGroup(cmd)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	childPID := waitForPIDFile(t, pidPath)
+	t.Cleanup(func() {
+		_ = exec.Command("kill", "-TERM", strconv.Itoa(childPID)).Run()
+	})
+	wrapperGroup, err := processGroupID(cmd.Process.Pid)
+	if err != nil {
+		t.Fatalf("wrapper process group: %v", err)
+	}
+	childGroup, err := processGroupID(childPID)
+	if err != nil {
+		t.Fatalf("vendor process group: %v", err)
+	}
+	if childGroup == wrapperGroup {
+		t.Fatalf("vendor process group = wrapper process group %d; foreground signal would be duplicated", childGroup)
+	}
+
+	if err := signalProcessGroup(wrapperGroup, syscall.SIGINT); err != nil {
+		t.Fatalf("signal foreground process group: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("signal-terminated npm wrapper returned success")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("npm wrapper did not exit after foreground SIGINT")
+	}
+
+	signalData, err := os.ReadFile(signalPath)
+	if err != nil {
+		t.Fatalf("vendor did not record SIGINT: %v", err)
+	}
+	if got := strings.Fields(string(signalData)); len(got) != 1 || got[0] != "INT" {
+		t.Fatalf("vendor signals = %q, want exactly one INT", got)
+	}
+	if err := exec.Command("kill", "-0", strconv.Itoa(childPID)).Run(); err == nil {
+		t.Fatalf("vendor process %d is still running after npm wrapper exited", childPID)
+	}
+}
+
 func waitForPIDFile(t *testing.T, path string) int {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)

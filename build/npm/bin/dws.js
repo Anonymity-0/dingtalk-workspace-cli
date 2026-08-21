@@ -15,6 +15,10 @@ if (!fs.existsSync(binaryPath)) {
 
 const child = childProcess.spawn(binaryPath, process.argv.slice(2), {
   stdio: "inherit",
+  // A POSIX terminal broadcasts Ctrl-C to its foreground process group. Keep
+  // the vendor binary in a separate group so the wrapper can forward exactly
+  // one signal instead of adding a duplicate to that broadcast.
+  detached: process.platform !== "win32",
 });
 
 let spawnFailed = false;
