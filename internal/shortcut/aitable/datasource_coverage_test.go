@@ -46,7 +46,7 @@ func runDatasourceShortcutCLI(t *testing.T, caller *datasourceCoverageCaller, ar
 
 // ── DatasourceCreate error paths ─────────────────────────────────────────────
 
-func TestDatasourceCreateRejectsInvalidSourceConfig(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceCreateRejectsInvalidSourceConfig(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{},
 		"+datasource-create", "--base-id", "BASE1", "--datasource-type", "OA",
 		"--source-config", "not-json")
@@ -55,7 +55,7 @@ func TestDatasourceCreateRejectsInvalidSourceConfig(t *testing.T) {
 	}
 }
 
-func TestDatasourceCreateRejectsInvalidAutoSyncSetting(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceCreateRejectsInvalidAutoSyncSetting(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{},
 		"+datasource-create", "--base-id", "BASE1", "--datasource-type", "OA",
 		"--source-config", `{"processCode":"P","name":"N","dataType":"recent_time","iconUrl":"u","url":"v"}`,
@@ -65,7 +65,7 @@ func TestDatasourceCreateRejectsInvalidAutoSyncSetting(t *testing.T) {
 	}
 }
 
-func TestDatasourceCreatePropagatesCallMCPError(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceCreatePropagatesCallMCPError(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{err: errors.New("mcp-error")},
 		"+datasource-create", "--base-id", "BASE1", "--datasource-type", "OA",
 		"--source-config", `{"processCode":"P","name":"N","dataType":"recent_time","iconUrl":"u","url":"v"}`)
@@ -74,7 +74,7 @@ func TestDatasourceCreatePropagatesCallMCPError(t *testing.T) {
 	}
 }
 
-func TestDatasourceCreateRejectsEmptyFieldIDs(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceCreateRejectsEmptyFieldIDs(t *testing.T) {
 	caller := &datasourceCoverageCaller{}
 	err := runDatasourceShortcutCLI(t, caller,
 		"+datasource-create", "--base-id", "BASE1", "--datasource-type", "OA",
@@ -88,7 +88,7 @@ func TestDatasourceCreateRejectsEmptyFieldIDs(t *testing.T) {
 	}
 }
 
-func TestDatasourceCreateRejectsEmptyAutoSyncSetting(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceCreateRejectsEmptyAutoSyncSetting(t *testing.T) {
 	caller := &datasourceCoverageCaller{}
 	err := runDatasourceShortcutCLI(t, caller,
 		"+datasource-create", "--base-id", "BASE1", "--datasource-type", "OA",
@@ -104,7 +104,7 @@ func TestDatasourceCreateRejectsEmptyAutoSyncSetting(t *testing.T) {
 
 // ── DatasourceUpdate error paths ─────────────────────────────────────────────
 
-func TestDatasourceUpdateRejectsInvalidSourceConfig(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceUpdateRejectsInvalidSourceConfig(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{},
 		"+datasource-update", "--base-id", "BASE1", "--table-id", "TBL1",
 		"--source-config", "not-json")
@@ -113,7 +113,7 @@ func TestDatasourceUpdateRejectsInvalidSourceConfig(t *testing.T) {
 	}
 }
 
-func TestDatasourceUpdateRejectsInvalidAutoSyncSetting(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceUpdateRejectsInvalidAutoSyncSetting(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{},
 		"+datasource-update", "--base-id", "BASE1", "--table-id", "TBL1",
 		"--auto-sync-setting", "not-json")
@@ -122,7 +122,7 @@ func TestDatasourceUpdateRejectsInvalidAutoSyncSetting(t *testing.T) {
 	}
 }
 
-func TestDatasourceUpdateRejectsNoChanges(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceUpdateRejectsNoChanges(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{},
 		"+datasource-update", "--base-id", "BASE1", "--table-id", "TBL1")
 	if err == nil || !strings.Contains(err.Error(), "至少需要一个配置变更") {
@@ -130,7 +130,7 @@ func TestDatasourceUpdateRejectsNoChanges(t *testing.T) {
 	}
 }
 
-func TestDatasourceUpdatePropagatesCallMCPError(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceUpdatePropagatesCallMCPError(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{err: errors.New("mcp-error")},
 		"+datasource-update", "--base-id", "BASE1", "--table-id", "TBL1", "--auto")
 	if err == nil || !strings.Contains(err.Error(), "mcp-error") {
@@ -138,7 +138,7 @@ func TestDatasourceUpdatePropagatesCallMCPError(t *testing.T) {
 	}
 }
 
-func TestDatasourceUpdateRejectsEmptyFieldIDs(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceUpdateRejectsEmptyFieldIDs(t *testing.T) {
 	caller := &datasourceCoverageCaller{}
 	err := runDatasourceShortcutCLI(t, caller,
 		"+datasource-update", "--base-id", "BASE1", "--table-id", "TBL1",
@@ -151,7 +151,7 @@ func TestDatasourceUpdateRejectsEmptyFieldIDs(t *testing.T) {
 	}
 }
 
-func TestDatasourceUpdateRejectsEmptyAutoSyncSetting(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceUpdateRejectsEmptyAutoSyncSetting(t *testing.T) {
 	caller := &datasourceCoverageCaller{}
 	err := runDatasourceShortcutCLI(t, caller,
 		"+datasource-update", "--base-id", "BASE1", "--table-id", "TBL1",
@@ -166,7 +166,7 @@ func TestDatasourceUpdateRejectsEmptyAutoSyncSetting(t *testing.T) {
 
 // ── DatasourceSync error paths ────────────────────────────────────────────────
 
-func TestDatasourceSyncShortcutRejectsTooManyTableIDs(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceSyncShortcutRejectsTooManyTableIDs(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{},
 		"+datasource-sync", "--base-id", "BASE1", "--table-ids", "T1,T2,T3,T4,T5,T6")
 	if err == nil || !strings.Contains(err.Error(), "1-5") {
@@ -174,7 +174,7 @@ func TestDatasourceSyncShortcutRejectsTooManyTableIDs(t *testing.T) {
 	}
 }
 
-func TestDatasourceSyncShortcutPropagatesCallMCPError(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceSyncShortcutPropagatesCallMCPError(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{err: errors.New("mcp-error")},
 		"+datasource-sync", "--base-id", "BASE1", "--table-ids", "TBL1")
 	if err == nil || !strings.Contains(err.Error(), "mcp-error") {
@@ -184,7 +184,7 @@ func TestDatasourceSyncShortcutPropagatesCallMCPError(t *testing.T) {
 
 // ── DatasourceSyncStatus error paths ─────────────────────────────────────────
 
-func TestDatasourceSyncStatusShortcutRejectsTooManyTaskIDs(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceSyncStatusShortcutRejectsTooManyTaskIDs(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{},
 		"+datasource-sync-status", "--base-id", "BASE1", "--table-id", "TBL1",
 		"--task-ids", "T1,T2,T3,T4,T5,T6")
@@ -193,7 +193,7 @@ func TestDatasourceSyncStatusShortcutRejectsTooManyTaskIDs(t *testing.T) {
 	}
 }
 
-func TestDatasourceSyncStatusShortcutPropagatesCallMCPError(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceSyncStatusShortcutPropagatesCallMCPError(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{err: errors.New("mcp-error")},
 		"+datasource-sync-status", "--base-id", "BASE1", "--table-id", "TBL1",
 		"--task-ids", "TASK1")
@@ -204,7 +204,7 @@ func TestDatasourceSyncStatusShortcutPropagatesCallMCPError(t *testing.T) {
 
 // ── DatasourceGetConfig error path ───────────────────────────────────────────
 
-func TestDatasourceGetConfigShortcutPropagatesCallMCPError(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceGetConfigShortcutPropagatesCallMCPError(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{err: errors.New("mcp-error")},
 		"+datasource-get-config", "--base-id", "BASE1", "--table-id", "TBL1")
 	if err == nil || !strings.Contains(err.Error(), "mcp-error") {
@@ -214,7 +214,7 @@ func TestDatasourceGetConfigShortcutPropagatesCallMCPError(t *testing.T) {
 
 // ── DatasourceListSources error path ─────────────────────────────────────────
 
-func TestDatasourceListSourcesShortcutPropagatesCallMCPError(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceListSourcesShortcutPropagatesCallMCPError(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{err: errors.New("mcp-error")},
 		"+datasource-list-sources", "--base-id", "BASE1", "--datasource-type", "OA")
 	if err == nil || !strings.Contains(err.Error(), "mcp-error") {
@@ -224,7 +224,7 @@ func TestDatasourceListSourcesShortcutPropagatesCallMCPError(t *testing.T) {
 
 // ── DatasourceGetFields error paths ──────────────────────────────────────────
 
-func TestDatasourceGetFieldsShortcutRejectsInvalidSourceConfig(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceGetFieldsShortcutRejectsInvalidSourceConfig(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{},
 		"+datasource-get-fields", "--base-id", "BASE1", "--datasource-type", "OA",
 		"--source-config", "not-json")
@@ -233,7 +233,7 @@ func TestDatasourceGetFieldsShortcutRejectsInvalidSourceConfig(t *testing.T) {
 	}
 }
 
-func TestDatasourceGetFieldsShortcutPropagatesCallMCPError(t *testing.T) {
+func TestCrossPlatformCoverageDatasourceGetFieldsShortcutPropagatesCallMCPError(t *testing.T) {
 	err := runDatasourceShortcutCLI(t, &datasourceCoverageCaller{err: errors.New("mcp-error")},
 		"+datasource-get-fields", "--base-id", "BASE1", "--datasource-type", "OA",
 		"--source-config", `{"processCode":"P","name":"N","dataType":"recent_time","iconUrl":"u","url":"v"}`)
