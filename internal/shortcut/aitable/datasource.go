@@ -94,13 +94,21 @@ var DatasourceCreate = shortcut.Shortcut{
 		}
 		params["auto"] = rt.Bool("auto")
 		if rt.Changed("field-ids") {
+			v := rt.Str("field-ids")
+			if v == "" {
+				return fmt.Errorf("--field-ids 显式提供时不能为空，如需保持默认请勿传入")
+			}
 			params["fieldIds"] = rt.StrSlice("field-ids")
 		}
 		if rt.Changed("auto-sync-setting") {
-			if _, err := parseJSONObject("auto-sync-setting", rt.Str("auto-sync-setting")); err != nil {
+			v := rt.Str("auto-sync-setting")
+			if v == "" {
+				return fmt.Errorf("--auto-sync-setting 显式提供时不能为空，如需保持默认请勿传入")
+			}
+			if _, err := parseJSONObject("auto-sync-setting", v); err != nil {
 				return err
 			}
-			params["autoSyncSetting"] = rt.Str("auto-sync-setting")
+			params["autoSyncSetting"] = v
 		}
 		data, err := rt.CallMCPData(serverMain, "create_datasource", params)
 		if err != nil {
@@ -176,13 +184,21 @@ var DatasourceUpdate = shortcut.Shortcut{
 			params["auto"] = rt.Bool("auto")
 		}
 		if rt.Changed("field-ids") {
+			v := rt.Str("field-ids")
+			if v == "" {
+				return fmt.Errorf("--field-ids 显式提供时不能为空，如需保持默认请勿传入")
+			}
 			params["fieldIds"] = rt.StrSlice("field-ids")
 		}
 		if rt.Changed("auto-sync-setting") {
-			if _, err := parseJSONObject("auto-sync-setting", rt.Str("auto-sync-setting")); err != nil {
+			v := rt.Str("auto-sync-setting")
+			if v == "" {
+				return fmt.Errorf("--auto-sync-setting 显式提供时不能为空，如需保持默认请勿传入")
+			}
+			if _, err := parseJSONObject("auto-sync-setting", v); err != nil {
 				return err
 			}
-			params["autoSyncSetting"] = rt.Str("auto-sync-setting")
+			params["autoSyncSetting"] = v
 		}
 		if !rt.Changed("source-config") && !rt.Changed("auto") && !rt.Changed("field-ids") && !rt.Changed("auto-sync-setting") {
 			return fmt.Errorf("至少需要一个配置变更：--source-config、--auto、--field-ids 或 --auto-sync-setting；仅触发同步请使用 +datasource-sync")

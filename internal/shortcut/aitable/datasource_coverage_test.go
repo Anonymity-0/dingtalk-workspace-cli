@@ -14,11 +14,13 @@ import (
 )
 
 type datasourceCoverageCaller struct {
-	err  error
-	resp string
+	err   error
+	resp  string
+	calls int
 }
 
 func (c *datasourceCoverageCaller) CallTool(_ context.Context, _, _ string, _ map[string]any) (*edition.ToolResult, error) {
+	c.calls++
 	if c.err != nil {
 		return nil, c.err
 	}
@@ -72,6 +74,34 @@ func TestDatasourceCreatePropagatesCallMCPError(t *testing.T) {
 	}
 }
 
+func TestDatasourceCreateRejectsEmptyFieldIDs(t *testing.T) {
+	caller := &datasourceCoverageCaller{}
+	err := runDatasourceShortcutCLI(t, caller,
+		"+datasource-create", "--base-id", "BASE1", "--datasource-type", "OA",
+		"--source-config", `{"processCode":"P","name":"N","dataType":"recent_time","iconUrl":"u","url":"v"}`,
+		"--field-ids", "")
+	if err == nil || !strings.Contains(err.Error(), "field-ids") {
+		t.Fatalf("error = %v, want field-ids empty error", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("MCP should not be called when empty field-ids is rejected, got %d calls", caller.calls)
+	}
+}
+
+func TestDatasourceCreateRejectsEmptyAutoSyncSetting(t *testing.T) {
+	caller := &datasourceCoverageCaller{}
+	err := runDatasourceShortcutCLI(t, caller,
+		"+datasource-create", "--base-id", "BASE1", "--datasource-type", "OA",
+		"--source-config", `{"processCode":"P","name":"N","dataType":"recent_time","iconUrl":"u","url":"v"}`,
+		"--auto-sync-setting", "")
+	if err == nil || !strings.Contains(err.Error(), "auto-sync-setting") {
+		t.Fatalf("error = %v, want auto-sync-setting empty error", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("MCP should not be called when empty auto-sync-setting is rejected, got %d calls", caller.calls)
+	}
+}
+
 // ── DatasourceUpdate error paths ─────────────────────────────────────────────
 
 func TestDatasourceUpdateRejectsInvalidSourceConfig(t *testing.T) {
@@ -105,6 +135,32 @@ func TestDatasourceUpdatePropagatesCallMCPError(t *testing.T) {
 		"+datasource-update", "--base-id", "BASE1", "--table-id", "TBL1", "--auto")
 	if err == nil || !strings.Contains(err.Error(), "mcp-error") {
 		t.Fatalf("error = %v, want mcp-error", err)
+	}
+}
+
+func TestDatasourceUpdateRejectsEmptyFieldIDs(t *testing.T) {
+	caller := &datasourceCoverageCaller{}
+	err := runDatasourceShortcutCLI(t, caller,
+		"+datasource-update", "--base-id", "BASE1", "--table-id", "TBL1",
+		"--field-ids", "")
+	if err == nil || !strings.Contains(err.Error(), "field-ids") {
+		t.Fatalf("error = %v, want field-ids empty error", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("MCP should not be called when empty field-ids is rejected, got %d calls", caller.calls)
+	}
+}
+
+func TestDatasourceUpdateRejectsEmptyAutoSyncSetting(t *testing.T) {
+	caller := &datasourceCoverageCaller{}
+	err := runDatasourceShortcutCLI(t, caller,
+		"+datasource-update", "--base-id", "BASE1", "--table-id", "TBL1",
+		"--auto-sync-setting", "")
+	if err == nil || !strings.Contains(err.Error(), "auto-sync-setting") {
+		t.Fatalf("error = %v, want auto-sync-setting empty error", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("MCP should not be called when empty auto-sync-setting is rejected, got %d calls", caller.calls)
 	}
 }
 
