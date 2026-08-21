@@ -6,6 +6,29 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.60-beta.1] - 2026-08-21
+
+### Changed
+
+- **OA, DING, and Report shortcuts** — hardens response, identity, pagination, and confirmation contracts; publishes verified form search, receiver status, and report read workflows while withholding shortcuts that lack trustworthy downstream evidence.
+
+- **Stable release sealing** — directly preparing a stable release now renders and archives release fragments merged after its beta baseline, avoiding a forced extra beta solely to consume pending notes.
+
+### Fixed
+
+- **Calendar empty windows** (#1074) — returns a legitimate empty result when the service emits its exact exhausted empty-event sentinel.
+- **Task update verification** (#1074) — compares due-time readback as exact milliseconds so committed updates are no longer reported as failures.
+- **Comment reaction validation** (#1074) — narrows accepted reaction input to reviewed DingTalk emoji names and rejects Unicode emoji and unsupported names such as `like` and `heart` before the RPC.
+
+- **OAuth refresh falls back to the organization mirror** — when the server rejects the
+  current identity's `refresh_token` with the reviewed `invalidParameter.authCode.notFound`
+  business code, `dws` now retries once with the still-valid token mirrored in the same
+  organization's slot (same corp, matching or backfilled user identity) before giving up,
+  and writes the rotated credential back to both the identity and the organization slots so
+  the fallback stays usable on later refreshes. Transient failures and direct-mode HTTP
+  rejections without a reviewed business code do not trigger the fallback.
+
+
 ## [1.0.59] - 2026-08-20
 
 This release promotes the sealed `v1.0.59-beta.5` contents to stable.
