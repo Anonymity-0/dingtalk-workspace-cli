@@ -1,5 +1,7 @@
 # Minutes 低频意图与产品边界
 
+> 返回入口：[DingTalk Minutes Skill](../SKILL.md) · [Reference 与脚本索引](minutes.md)
+
 本文件只承接不在根 Skill Golden Route 展开的低频能力。命令参数或 Safety 不确定时读取对应 compact leaf Schema；不要因此加载 Minutes 全量 Catalog。
 
 ## 低频能力路由
@@ -13,6 +15,8 @@
 | “把摘要、关键词、完整逐字稿、待办归档成一包” | `dws minutes +export-pack --id <taskUuid> --output <新目录>` | 逐字稿必须完整；所有必需产物验证后才原子发布目录；目标目录已存在时拒绝覆盖 |
 | “归档时也带媒体” | `dws minutes +export-pack ... --include-media` | manifest 不保存签名 URL；媒体未就绪导致归档不完整时必须明确失败 |
 | “按标签找听记/查语音备忘” | 对应 `minutes tag ...` / `minutes audio-memo list` 原子命令 | 属于长尾查询；先读取精确 leaf Schema，不把标签 ID 或分页参数猜出来 |
+
+需要根据逐字稿总结指定发言人的内容时读取 [发言人匹配流程](10-minutes-speaker-match.md)；用户已经确认“匿名发言人 → 姓名”的对应关系、准备执行标注替换时读取 [发言人纠正流程](11-minutes-speaker-correct.md)。两者都不能凭职位、语言风格或列表顺序自动认定身份。
 
 ## 目标匹配
 

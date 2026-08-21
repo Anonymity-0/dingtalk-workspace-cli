@@ -1,6 +1,7 @@
 """Minutes 示例脚本的离线 Contract 回归测试。"""
 
 import io
+import re
 import subprocess
 import sys
 import unittest
@@ -10,6 +11,9 @@ from unittest import mock
 
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
+SKILL_DIR = SCRIPTS_DIR.parent
+SKILL_FILE = SKILL_DIR / 'SKILL.md'
+REFERENCES_DIR = SKILL_DIR / 'references'
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -19,6 +23,58 @@ from minutes_list_parse import uuid_title_pairs_from_payload
 
 
 class MinutesScriptContractTest(unittest.TestCase):
+    def test_reference_graph_has_no_dead_or_orphaned_files(self):
+        markdown_files = [SKILL_FILE, *sorted(REFERENCES_DIR.rglob('*.md'))]
+        markdown_link = re.compile(r'\[[^\]]+\]\(([^)]+)\)')
+        graph = {path.resolve(): set() for path in markdown_files}
+        linked_scripts = set()
+
+        for source in markdown_files:
+            for raw_target in markdown_link.findall(
+                source.read_text(encoding='utf-8')
+            ):
+                target = raw_target.split('#', 1)[0].strip()
+                if not target or '://' in target or target.startswith('mailto:'):
+                    continue
+                resolved = (source.parent / target).resolve()
+                self.assertTrue(
+                    resolved.exists(),
+                    f'dead link: {source.relative_to(SKILL_DIR)} -> {target}',
+                )
+                if resolved in graph:
+                    graph[source.resolve()].add(resolved)
+                if resolved.parent == SCRIPTS_DIR.resolve():
+                    linked_scripts.add(resolved)
+
+        reachable = set()
+        pending = [SKILL_FILE.resolve()]
+        while pending:
+            current = pending.pop()
+            if current in reachable:
+                continue
+            reachable.add(current)
+            pending.extend(graph.get(current, ()))
+
+        orphaned = sorted(
+            str(path.relative_to(SKILL_DIR))
+            for path in graph
+            if path != SKILL_FILE.resolve() and path not in reachable
+        )
+        self.assertEqual(orphaned, [], f'orphan references: {orphaned}')
+
+        production_scripts = {
+            path.resolve()
+            for path in SCRIPTS_DIR.glob('*.py')
+            if not path.name.startswith('test_')
+        }
+        missing_scripts = sorted(
+            path.name for path in production_scripts - linked_scripts
+        )
+        self.assertEqual(
+            missing_scripts, [],
+            f'production scripts missing from references: {missing_scripts}',
+        )
+
     def test_list_parser_accepts_runtime_item_list(self):
         payload = {
             'result': {

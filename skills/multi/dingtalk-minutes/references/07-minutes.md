@@ -1,5 +1,7 @@
 # Minutes 复杂流程
 
+> 返回入口：[DingTalk Minutes Skill](../SKILL.md) · [Reference 与脚本索引](minutes.md)
+
 只在根 Skill 已确定属于 ASR、上传恢复、异步生成或批量权限 workflow 时读取本文件。普通搜索、详情、逐字稿、标题或摘要修改直接按根 Skill Golden Route 执行。
 
 ## 1. ASR 热词

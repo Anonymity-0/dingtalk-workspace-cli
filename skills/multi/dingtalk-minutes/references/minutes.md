@@ -1,6 +1,33 @@
 # Minutes 原子命令参考
 
+> 返回入口：[DingTalk Minutes Skill](../SKILL.md)
+
 本文件只在必须使用原子命令、需要确认 URL/参数边界，或 Shortcut 无法表达底层控制时读取。Golden Route 已能完成任务时不要降级为手写多步原子调用。
+
+## Reference 与脚本索引
+
+本页同时是 Minutes 的二级导航页。根 Skill 只链接任务级入口；需要继续下钻时，从这里进入一个最精确的 Reference，不要一次预读多个文件。
+
+| 任务 | Reference |
+|---|---|
+| ASR、上传恢复、异步生成、录音收尾、批量权限 | [07-minutes.md](07-minutes.md) |
+| 发言人/文本替换、媒体下载、离线导出、标签等低频意图 | [intent-guide.md](intent-guide.md) |
+| 总结指定发言人的内容并处理匿名发言人候选 | [10-minutes-speaker-match.md](10-minutes-speaker-match.md) |
+| 用户确认对应关系后的发言人标注与替换 | [11-minutes-speaker-correct.md](11-minutes-speaker-correct.md) |
+| 兼容旧调用方式的轻量 Recipe 索引 | [lite-recipes.md](lite-recipes.md) |
+| 旧 Recipe 仍需遵守的分页、ID 与批量约束 | [recipes/conventions.md](recipes/conventions.md) |
+
+### 辅助脚本
+
+以下文件仍随 Skill 交付，所以必须可发现；但它们不是 Golden Route。当前 Runtime 有对应 Shortcut 时优先 Shortcut，只有用户明确要求使用仓库脚本、或兼容旧调用方时才运行脚本。
+
+| 文件 | 定位 | 当前边界 |
+|---|---|---|
+| [minutes_recent_summary.py](../scripts/minutes_recent_summary.py) | 汇总最近若干条“我创建的”听记摘要 | 可直接运行；固定使用 `mine`，不能代替 `+search --scope all` 或具名目标定位 |
+| [minutes_extract_todos.py](../scripts/minutes_extract_todos.py) | 汇总指定听记或最近若干条“我创建的”听记行动项 | 可直接运行；指定 ID 优先，范围不明确时不要用默认 `mine` 猜用户意图 |
+| [minutes_list_parse.py](../scripts/minutes_list_parse.py) | 兼容 Runtime 列表响应并提取 `taskUuid/title` | 内部解析模块，由前两个脚本导入，不是独立命令 |
+
+两个可执行脚本的 `--dry-run` 只打印计划且不得调用 DWS；DWS 失败、非法 JSON 与合法空结果必须分开。脚本没有覆盖完整分页、目标消歧与跨 scope 聚合，因此不能用脚本输出声称“全部听记”。
 
 命令前缀统一为 `dws minutes`。结构化读取加 `--format json`；参数不确定时查询精确 leaf：
 
