@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -681,40 +680,34 @@ func TestCrossPlatformCoverageOAAttachmentUploadDryRunDoesNotCallRemoteOrPut(t *
 	}
 }
 
-// TestCrossPlatformCoverageOAAttachmentUploadMD5Failure 触发 stat 成功但读取失败的文件，
-// 覆盖 runOAAttachmentUpload 中 fileMD5Hex 失败分支：命令报错且无任何远程/PUT 调用。
+// TestCrossPlatformCoverageOAAttachmentUploadMD5Failure injects a failing computeFileMD5 to
+// cover runOAAttachmentUpload's MD5 failure branch on all platforms (including Windows).
 func TestCrossPlatformCoverageOAAttachmentUploadMD5Failure(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod 0000 不能在 windows 上可靠地阻止读取")
-	}
-	filePath, _ := writeOAAttachmentTempFile(t, "unreadable.bin", "secret")
-	if err := os.Chmod(filePath, 0o000); err != nil {
-		t.Fatalf("chmod 0000: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(filePath, 0o600) })
-	// 若环境（如 root）仍可读取 0000 文件，该分支无法触发，跳过以避免偽成功。
-	if f, err := os.Open(filePath); err == nil {
-		_ = f.Close()
-		t.Skip("当前环境仍可读取 0000 文件，fileMD5Hex 失败分支无法触发")
-	}
-
+	filePath, _ := writeOAAttachmentTempFile(t, "test.bin", "hello")
 	put := mockOAAttachmentPut(t)
+
+	original := computeFileMD5
+	computeFileMD5 = func(string) (string, error) {
+		return "", errors.New("permission denied")
+	}
+	t.Cleanup(func() { computeFileMD5 = original })
+
 	caller := &scriptedToolCaller{format: "json"}
 	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
 		"approval", "attachment", "upload",
 		"--file", filePath,
 	)
 	if err == nil {
-		t.Fatal("expected md5 failure error, got nil")
+		t.Fatal("expected error from MD5 failure, got nil")
 	}
 	if !strings.Contains(err.Error(), "MD5") {
-		t.Fatalf("error = %v, want md5 failure", err)
+		t.Fatalf("error should mention MD5, got: %v", err)
 	}
 	if caller.calls != 0 {
-		t.Fatalf("md5 failure made %d MCP call(s), want 0", caller.calls)
+		t.Fatalf("expected 0 MCP calls when MD5 fails, got %d", caller.calls)
 	}
 	if put.calls != 0 {
-		t.Fatalf("md5 failure made %d PUT call(s), want 0", put.calls)
+		t.Fatalf("expected 0 PUT calls when MD5 fails, got %d", put.calls)
 	}
 }
 

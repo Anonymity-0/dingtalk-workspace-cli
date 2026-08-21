@@ -21,6 +21,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// computeFileMD5 is the function used to calculate file MD5. Tests can override via direct assignment.
+var computeFileMD5 = fileMD5Hex
+
 func decodeOARequest(raw string) (map[string]any, error) {
 	dec := json.NewDecoder(bytes.NewBufferString(raw))
 	dec.UseNumber()
@@ -217,7 +220,7 @@ func runOAAttachmentUpload(cmd *cobra.Command, _ []string) error {
 
 	md5Hex := strings.TrimSpace(mustGetFlag(cmd, "md5"))
 	if md5Hex == "" {
-		md5Hex, err = fileMD5Hex(filePath)
+		md5Hex, err = computeFileMD5(filePath)
 		if err != nil {
 			return apperrors.NewInternal(fmt.Sprintf("计算文件 MD5 失败: %v", err))
 		}
