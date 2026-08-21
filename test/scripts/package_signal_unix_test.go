@@ -3,8 +3,11 @@
 package scripts_test
 
 import (
+	"os"
 	"os/exec"
 	"syscall"
+
+	"github.com/creack/pty"
 )
 
 func configureIsolatedProcessGroup(cmd *exec.Cmd) {
@@ -17,4 +20,8 @@ func processGroupID(pid int) (int, error) {
 
 func signalProcessGroup(groupID int, signal syscall.Signal) error {
 	return syscall.Kill(-groupID, signal)
+}
+
+func startWithPTY(cmd *exec.Cmd) (*os.File, error) {
+	return pty.Start(cmd)
 }

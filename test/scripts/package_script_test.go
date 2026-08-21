@@ -3,9 +3,11 @@ package scripts_test
 import (
 	"archive/tar"
 	"archive/zip"
+	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -316,6 +318,89 @@ setInterval(() => {}, 1000);
 	waitForProcessExit(t, descendantPID, "vendor descendant")
 }
 
+func TestNPMWrapperPreservesInteractiveTTY(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX controlling-terminal contract")
+	}
+	nodePath, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is required to exercise the npm wrapper")
+	}
+
+	root := t.TempDir()
+	binDir := filepath.Join(root, "bin")
+	vendorDir := filepath.Join(root, "vendor")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	wrapperData, err := os.ReadFile(filepath.Join("..", "..", "build", "npm", "bin", "dws.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrapperPath := filepath.Join(binDir, "dws.js")
+	if err := os.WriteFile(wrapperPath, wrapperData, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	resultPath := filepath.Join(root, "interactive.result")
+	readyPath := filepath.Join(root, "interactive.ready")
+	vendorPath := filepath.Join(vendorDir, "dws")
+	vendorScript := "#!/bin/sh\n" +
+		"printf 'DWS prompt: ' > /dev/tty\n" +
+		"printf ready > \"$DWS_TEST_INTERACTIVE_READY\"\n" +
+		"IFS= read -r answer < /dev/tty\n" +
+		"printf '%s' \"$answer\" > \"$DWS_TEST_INTERACTIVE_RESULT\"\n"
+	if err := os.WriteFile(vendorPath, []byte(vendorScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(nodePath, wrapperPath)
+	cmd.Env = append(os.Environ(),
+		"DWS_TEST_INTERACTIVE_RESULT="+resultPath,
+		"DWS_TEST_INTERACTIVE_READY="+readyPath,
+	)
+	terminal, err := startWithPTY(cmd)
+	if err != nil {
+		t.Fatalf("start npm wrapper with PTY: %v", err)
+	}
+	defer terminal.Close()
+	t.Cleanup(func() { _ = cmd.Process.Kill() })
+	var output bytes.Buffer
+	outputDone := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(&output, terminal)
+		close(outputDone)
+	}()
+	waitForFile(t, readyPath)
+	if _, err := fmt.Fprintln(terminal, "confirmed"); err != nil {
+		t.Fatalf("write interactive input: %v", err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	var waitErr error
+	select {
+	case waitErr = <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("interactive npm wrapper did not exit after terminal input")
+	}
+	_ = terminal.Close()
+	<-outputDone
+	if waitErr != nil {
+		t.Fatalf("interactive npm wrapper: %v\noutput:\n%s", waitErr, output.String())
+	}
+	result, err := os.ReadFile(resultPath)
+	if err != nil {
+		t.Fatalf("interactive vendor did not record terminal input: %v\noutput:\n%s", err, output.String())
+	}
+	if got := strings.TrimSpace(string(result)); got != "confirmed" {
+		t.Fatalf("interactive input = %q, want confirmed\noutput:\n%s", got, output.String())
+	}
+}
+
 func waitForPIDFile(t *testing.T, path string) int {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -331,6 +416,18 @@ func waitForPIDFile(t *testing.T, path string) int {
 	}
 	t.Fatalf("timed out waiting for vendor pid file %s", path)
 	return 0
+}
+
+func waitForFile(t *testing.T, path string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(path); err == nil {
+			return
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for file %s", path)
 }
 
 func waitForProcessExit(t *testing.T, pid int, label string) {

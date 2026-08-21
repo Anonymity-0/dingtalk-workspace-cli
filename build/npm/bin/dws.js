@@ -13,12 +13,15 @@ if (!fs.existsSync(binaryPath)) {
   process.exit(1);
 }
 
+// Interactive commands must remain in the terminal's foreground session so
+// prompts can use /dev/tty. Non-interactive launches use a separate process
+// group, allowing a signal sent only to this wrapper to reach the full vendor
+// process tree exactly once.
+const isolateVendorProcessGroup = process.platform !== "win32" && !process.stdin.isTTY;
+
 const child = childProcess.spawn(binaryPath, process.argv.slice(2), {
   stdio: "inherit",
-  // A POSIX terminal broadcasts Ctrl-C to its foreground process group. Keep
-  // the vendor binary in a separate group so the wrapper can forward exactly
-  // one signal instead of adding a duplicate to that broadcast.
-  detached: process.platform !== "win32",
+  detached: isolateVendorProcessGroup,
 });
 
 let spawnFailed = false;
@@ -30,6 +33,15 @@ function forwardSignal(signal) {
   if (child.exitCode === null && child.signalCode === null) {
     if (process.platform === "win32") {
       child.kill(signal);
+      return;
+    }
+    if (!isolateVendorProcessGroup) {
+      // Ctrl-C is generated for the whole foreground process group, including
+      // the vendor. SIGTERM is not terminal-generated and still needs an
+      // explicit handoff when a process manager targets only this wrapper.
+      if (signal === "SIGTERM") {
+        child.kill(signal);
+      }
       return;
     }
     try {
