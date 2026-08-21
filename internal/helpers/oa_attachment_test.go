@@ -686,11 +686,9 @@ func TestCrossPlatformCoverageOAAttachmentUploadMD5Failure(t *testing.T) {
 	filePath, _ := writeOAAttachmentTempFile(t, "test.bin", "hello")
 	put := mockOAAttachmentPut(t)
 
-	original := computeFileMD5
-	computeFileMD5 = func(string) (string, error) {
+	testseam.Swap(t, &computeFileMD5, func(string) (string, error) {
 		return "", errors.New("permission denied")
-	}
-	t.Cleanup(func() { computeFileMD5 = original })
+	})
 
 	caller := &scriptedToolCaller{format: "json"}
 	_, err := executeOAAttachmentCommandCapturingOutput(t, caller,
