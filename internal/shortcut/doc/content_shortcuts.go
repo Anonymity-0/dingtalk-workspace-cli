@@ -1195,7 +1195,8 @@ func markdownServiceSemanticFingerprint(source string) (string, bool) {
 	sourceBytes := []byte(normalizeDocInputLineEndings(source))
 	document := docMarkdown.Parser().Parse(goldmarktext.NewReader(sourceBytes))
 	builder := markdownFingerprintBuilder{}
-	err := goldmarkast.Walk(document, func(node goldmarkast.Node, entering bool) (goldmarkast.WalkStatus, error) {
+	// The callback never returns an error, so Walk cannot fail here.
+	_ = goldmarkast.Walk(document, func(node goldmarkast.Node, entering bool) (goldmarkast.WalkStatus, error) {
 		if node.Kind() == goldmarkast.KindDocument {
 			return goldmarkast.WalkContinue, nil
 		}
@@ -1268,9 +1269,6 @@ func markdownServiceSemanticFingerprint(source string) (string, bool) {
 		}
 		return goldmarkast.WalkContinue, nil
 	})
-	if err != nil {
-		return "", false
-	}
 	builder.flushText()
 	return builder.value.String(), true
 }
