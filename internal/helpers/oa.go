@@ -154,53 +154,65 @@ func callOAAttachmentResultCtx(ctx context.Context, tool string, args map[string
 }
 
 // validateOAAttachmentCommitResult 校验 commit_attachment_upload_info 的原始 result
-// 包含构造 DDAttachment 所需的全部必需字段。当字段缺失或类型错误时返回 Validation 错误，
-// 避免 Agent 拿到空 fileId 后组装无效的审批表单。
-func validateOAAttachmentCommitResult(result any) error {
+// 包含构造 DDAttachment 所需的全部必需字段，并将 spaceId/fileSize 归一化为声明的 integer
+// 类型（int64），确保输出始终符合 ResultSpec schema。当字段缺失或类型错误时返回 Validation
+// 错误，避免 Agent 拿到空 fileId 后组装无效的审批表单。
+func validateOAAttachmentCommitResult(result any) (map[string]any, error) {
 	resultMap, ok := result.(map[string]any)
 	if !ok || resultMap == nil {
-		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值 result 不是有效的 JSON 对象")
+		return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值 result 不是有效的 JSON 对象")
 	}
 
-	// spaceId — 接受 string 或 number
+	// spaceId — 接受 string 或 number，归一化为 int64
 	switch v := resultMap["spaceId"].(type) {
 	case string:
 		if strings.TrimSpace(v) == "" {
-			return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 spaceId")
+			return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 spaceId")
 		}
+		parsed, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+		if err != nil {
+			return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值字段 spaceId 不是有效整数")
+		}
+		resultMap["spaceId"] = parsed
 	case float64:
-		// numeric spaceId is acceptable
+		// numeric spaceId — keep as-is (already matches JSON number)
 	case json.Number:
-		// numeric spaceId is acceptable
+		parsed, err := v.Int64()
+		if err != nil {
+			return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值字段 spaceId 不是有效整数")
+		}
+		resultMap["spaceId"] = parsed
 	default:
-		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 spaceId")
+		return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 spaceId")
 	}
 
 	// fileName — must be non-empty string
 	if s, ok := resultMap["fileName"].(string); !ok || strings.TrimSpace(s) == "" {
-		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 fileName")
+		return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 fileName")
 	}
 
-	// fileSize — must be > 0 (number)
+	// fileSize — must be > 0 (number)，归一化 json.Number → int64
 	switch v := resultMap["fileSize"].(type) {
 	case float64:
 		if v <= 0 {
-			return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值字段 fileSize 必须大于 0")
+			return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值字段 fileSize 必须大于 0")
 		}
 	case json.Number:
-		if f, err := v.Float64(); err != nil || f <= 0 {
-			return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值字段 fileSize 必须大于 0")
+		parsed, err := v.Int64()
+		if err != nil || parsed <= 0 {
+			return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值字段 fileSize 必须大于 0")
 		}
+		resultMap["fileSize"] = parsed
 	default:
-		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 fileSize")
+		return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 fileSize")
 	}
 
 	// fileId — must be non-empty string
 	if s, ok := resultMap["fileId"].(string); !ok || strings.TrimSpace(s) == "" {
-		return apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 fileId")
+		return nil, apperrors.NewValidation("oa/commit_attachment_upload_info 返回值缺少必需字段 fileId")
 	}
 
-	return nil
+	return resultMap, nil
 }
 
 // parseOAAttachmentUploadInfo 解析 oa/init_attachment_upload_info 的返回，提取首个上传地址、
@@ -349,10 +361,11 @@ func runOAAttachmentUpload(cmd *cobra.Command, _ []string) error {
 		return apperrors.NewInternal("oa/commit_attachment_upload_info 返回值不是 JSON 对象")
 	}
 	commitResult, _ := commitResp["result"]
-	if err := validateOAAttachmentCommitResult(commitResult); err != nil {
+	normalized, err := validateOAAttachmentCommitResult(commitResult)
+	if err != nil {
 		return err
 	}
-	return output.StoreResult(cmd.Context(), output.Success(commitResult))
+	return output.StoreResult(cmd.Context(), output.Success(normalized))
 }
 
 func newOAAttachmentCommand() *cobra.Command {

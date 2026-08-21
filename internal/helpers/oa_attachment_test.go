@@ -899,7 +899,7 @@ func TestCrossPlatformCoverageOAAttachmentValidateCommitResultDirect(t *testing.
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := validateOAAttachmentCommitResult(test.input)
+			_, err := validateOAAttachmentCommitResult(test.input)
 			if test.wantErr == "" {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -1007,6 +1007,149 @@ func TestCrossPlatformCoverageOAAttachmentUploadMalformedInitJSON(t *testing.T) 
 	}
 	if put.calls != 0 {
 		t.Fatalf("PUT calls = %d, want 0", put.calls)
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentValidateCommitResultNormalization 验证
+// validateOAAttachmentCommitResult 对 spaceId/fileSize 的归一化行为。
+func TestCrossPlatformCoverageOAAttachmentValidateCommitResultNormalization(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       map[string]any
+		wantSpaceID any
+		wantSize    any
+		wantErr     string
+	}{
+		{
+			name:        "string spaceId normalized to int64",
+			input:       map[string]any{"spaceId": "27827223951", "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1"},
+			wantSpaceID: int64(27827223951),
+			wantSize:    float64(100),
+		},
+		{
+			name:    "non-numeric string spaceId returns error",
+			input:   map[string]any{"spaceId": "abc", "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1"},
+			wantErr: "spaceId",
+		},
+		{
+			name:    "float string spaceId returns error",
+			input:   map[string]any{"spaceId": "12.5", "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1"},
+			wantErr: "spaceId",
+		},
+		{
+			name:        "json.Number spaceId normalized to int64",
+			input:       map[string]any{"spaceId": json.Number("27827223951"), "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1"},
+			wantSpaceID: int64(27827223951),
+			wantSize:    float64(100),
+		},
+		{
+			name:    "json.Number spaceId non-integer returns error",
+			input:   map[string]any{"spaceId": json.Number("12.5"), "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1"},
+			wantErr: "spaceId",
+		},
+		{
+			name:        "json.Number fileSize normalized to int64",
+			input:       map[string]any{"spaceId": float64(123), "fileName": "a.pdf", "fileSize": json.Number("2048"), "fileId": "file-1"},
+			wantSpaceID: float64(123),
+			wantSize:    int64(2048),
+		},
+		{
+			name:        "float64 spaceId unchanged",
+			input:       map[string]any{"spaceId": float64(27827223951), "fileName": "a.pdf", "fileSize": float64(100), "fileId": "file-1"},
+			wantSpaceID: float64(27827223951),
+			wantSize:    float64(100),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			normalized, err := validateOAAttachmentCommitResult(test.input)
+			if test.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", test.wantErr)
+				}
+				if !strings.Contains(err.Error(), test.wantErr) {
+					t.Fatalf("error = %v, want substring %q", err, test.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if normalized["spaceId"] != test.wantSpaceID {
+				t.Fatalf("spaceId = %v (%T), want %v (%T)", normalized["spaceId"], normalized["spaceId"], test.wantSpaceID, test.wantSpaceID)
+			}
+			if normalized["fileSize"] != test.wantSize {
+				t.Fatalf("fileSize = %v (%T), want %v (%T)", normalized["fileSize"], normalized["fileSize"], test.wantSize, test.wantSize)
+			}
+		})
+	}
+}
+
+// TestCrossPlatformCoverageOAAttachmentUploadOutputContract 验证端到端上传命令
+// 输出 JSON 中 spaceId 始终为 number（即使 commit 返回字符串 spaceId）。
+func TestCrossPlatformCoverageOAAttachmentUploadOutputContract(t *testing.T) {
+	tests := []struct {
+		name           string
+		commitResponse string
+		wantSpaceID    float64 // JSON decode 后 number → float64
+	}{
+		{
+			name:           "spaceId as number",
+			commitResponse: `{"result":{"spaceId":27827223951,"fileName":"合同.pdf","fileSize":17,"fileType":"pdf","fileId":"file-abc"},"success":true}`,
+			wantSpaceID:    float64(27827223951),
+		},
+		{
+			name:           "spaceId as string",
+			commitResponse: `{"result":{"spaceId":"27827223951","fileName":"合同.pdf","fileSize":17,"fileType":"pdf","fileId":"file-abc"},"success":true}`,
+			wantSpaceID:    float64(27827223951),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			const content = "output-contract-data"
+			filePath, _ := writeOAAttachmentTempFile(t, "contract.pdf", content)
+			mockOAAttachmentPut(t)
+
+			caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+				{text: oaUploadInitResponse},
+				{text: test.commitResponse},
+			}}
+			stdout, err := executeOAAttachmentCommandCapturingOutput(t, caller,
+				"approval", "attachment", "upload",
+				"--file", filePath,
+				"--file-name", "合同.pdf",
+				"--md5", "d41d8cd98f00b204e9800998ecf8427e",
+			)
+			if err != nil {
+				t.Fatalf("execute command: %v", err)
+			}
+
+			var envelope map[string]any
+			if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+				t.Fatalf("decode unified output: %v", err)
+			}
+			if envelope["ok"] != true || envelope["outcome"] != "success" {
+				t.Fatalf("unified envelope = %#v", envelope)
+			}
+			data, ok := envelope["data"].(map[string]any)
+			if !ok {
+				t.Fatalf("unified data missing: %#v", envelope)
+			}
+			// spaceId must be a number in the JSON output
+			spaceID, ok := data["spaceId"].(float64)
+			if !ok {
+				t.Fatalf("spaceId is not a number: %v (%T)", data["spaceId"], data["spaceId"])
+			}
+			if spaceID != test.wantSpaceID {
+				t.Fatalf("spaceId = %v, want %v", spaceID, test.wantSpaceID)
+			}
+			// fileSize must also be a number
+			if _, ok := data["fileSize"].(float64); !ok {
+				t.Fatalf("fileSize is not a number: %v (%T)", data["fileSize"], data["fileSize"])
+			}
+		})
 	}
 }
 
