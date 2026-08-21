@@ -261,7 +261,8 @@ var DatasourceSync = shortcut.Shortcut{
 		`dws aitable +datasource-sync --base-id BASE123 --table-ids TBL1`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		tableIDs := rt.StrSlice("table-ids")
+		rawTableIDs := rt.StrSlice("table-ids")
+		tableIDs := trimNonEmpty(rawTableIDs)
 		if len(tableIDs) < 1 || len(tableIDs) > 5 {
 			return fmt.Errorf("--table-ids requires 1-5 table IDs, got %d", len(tableIDs))
 		}
@@ -327,7 +328,8 @@ var DatasourceSyncStatus = shortcut.Shortcut{
 			"baseId":  rt.Str("base-id"),
 			"tableId": rt.Str("table-id"),
 		}
-		taskIDs := rt.StrSlice("task-ids")
+		rawTaskIDs := rt.StrSlice("task-ids")
+		taskIDs := trimNonEmpty(rawTaskIDs)
 		if len(taskIDs) < 1 || len(taskIDs) > 5 {
 			return fmt.Errorf("--task-ids requires 1-5 task IDs, got %d", len(taskIDs))
 		}

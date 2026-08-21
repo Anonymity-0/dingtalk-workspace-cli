@@ -264,6 +264,68 @@ func TestCrossPlatformCoverageDatasourceSyncStatusShortcutPropagatesCallMCPError
 	}
 }
 
+// ── DatasourceSync whitespace trimming ──────────────────────────────────────
+
+func TestCrossPlatformCoverageDatasourceSyncRejectsWhitespaceOnlyTableIDs(t *testing.T) {
+	caller := &datasourceCoverageCaller{}
+	err := runDatasourceShortcutCLI(t, caller,
+		"+datasource-sync", "--base-id", "BASE1", "--table-ids", " , ")
+	if err == nil || (!strings.Contains(err.Error(), "table-ids") && !strings.Contains(err.Error(), "1-5")) {
+		t.Fatalf("error = %v, want table-ids rejection", err)
+	}
+	if len(caller.argLog) != 0 {
+		t.Fatalf("MCP should not be called when whitespace-only table-ids is rejected, got %d calls", len(caller.argLog))
+	}
+}
+
+func TestCrossPlatformCoverageDatasourceSyncTrimsWhitespaceFromTableIDs(t *testing.T) {
+	caller := &datasourceCoverageCaller{}
+	err := runDatasourceShortcutCLI(t, caller,
+		"+datasource-sync", "--base-id", "BASE1", "--table-ids", " TBL1 , TBL2 ")
+	if err != nil {
+		t.Fatalf("sync with whitespace-padded --table-ids should succeed: %v", err)
+	}
+	if len(caller.argLog) != 1 {
+		t.Fatalf("expected exactly 1 MCP call, got %d", len(caller.argLog))
+	}
+	got, _ := caller.argLog[0]["tableIds"].([]string)
+	if len(got) != 2 || got[0] != "TBL1" || got[1] != "TBL2" {
+		t.Fatalf("tableIds = %#v, want [TBL1 TBL2]", got)
+	}
+}
+
+// ── DatasourceSyncStatus whitespace trimming ───────────────────────────────
+
+func TestCrossPlatformCoverageDatasourceSyncStatusRejectsWhitespaceOnlyTaskIDs(t *testing.T) {
+	caller := &datasourceCoverageCaller{}
+	err := runDatasourceShortcutCLI(t, caller,
+		"+datasource-sync-status", "--base-id", "BASE1", "--table-id", "TBL1",
+		"--task-ids", " , ")
+	if err == nil || (!strings.Contains(err.Error(), "task-ids") && !strings.Contains(err.Error(), "1-5")) {
+		t.Fatalf("error = %v, want task-ids rejection", err)
+	}
+	if len(caller.argLog) != 0 {
+		t.Fatalf("MCP should not be called when whitespace-only task-ids is rejected, got %d calls", len(caller.argLog))
+	}
+}
+
+func TestCrossPlatformCoverageDatasourceSyncStatusTrimsWhitespaceFromTaskIDs(t *testing.T) {
+	caller := &datasourceCoverageCaller{}
+	err := runDatasourceShortcutCLI(t, caller,
+		"+datasource-sync-status", "--base-id", "BASE1", "--table-id", "TBL1",
+		"--task-ids", " TASK1 , TASK2 ")
+	if err != nil {
+		t.Fatalf("sync-status with whitespace-padded --task-ids should succeed: %v", err)
+	}
+	if len(caller.argLog) != 1 {
+		t.Fatalf("expected exactly 1 MCP call, got %d", len(caller.argLog))
+	}
+	got, _ := caller.argLog[0]["taskIds"].([]string)
+	if len(got) != 2 || got[0] != "TASK1" || got[1] != "TASK2" {
+		t.Fatalf("taskIds = %#v, want [TASK1 TASK2]", got)
+	}
+}
+
 // ── DatasourceGetConfig error path ───────────────────────────────────────────
 
 func TestCrossPlatformCoverageDatasourceGetConfigShortcutPropagatesCallMCPError(t *testing.T) {

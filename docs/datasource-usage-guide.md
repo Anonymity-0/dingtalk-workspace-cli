@@ -327,11 +327,11 @@ dws aitable +datasource-get-config \
 # 0. 获取 Base ID
 dws aitable +base-search --query "我的项目表"
 
-# 1. 列出可用审批数据源来源，获取 result（即 processCode）
+# 1. 列出可用审批数据源来源，解析 result JSON 获取 approvals[].processCode
 dws aitable +datasource-list-sources \
   --base-id BASE123 \
   --datasource-type OA
-# → 返回 sources[0].result=PROC-XXXX
+# → 返回 sources[0].result 为 JSON 字符串，解析后取 approvals[0].processCode=PROC-XXXX
 
 # 2. 查看可同步字段（可选，用于指定 field-ids）
 dws aitable +datasource-get-fields \
@@ -439,13 +439,13 @@ dws aitable +datasource-get-config ... -f table
 
 ## 注意事项
 
-1. **推荐流程**：先 `+datasource-list-sources` 获取 `result`（即 processCode），再 `+datasource-get-fields` 查看可同步字段，最后 `+datasource-create` 创建数据源表。
+1. **推荐流程**：先 `+datasource-list-sources` 解析 `result` JSON 获取 `approvals[].processCode`，再 `+datasource-get-fields` 查看可同步字段，最后 `+datasource-create` 创建数据源表。
 
 2. **数据源表 vs 普通数据表**：`+datasource-create` 创建的是"数据源表"，它由数据源同步驱动数据写入。`+datasource-update` 和 `+datasource-sync` 仅适用于数据源表，不可对普通数据表使用。
 
 3. **datasource-type 透传**：CLI 层不对 `--datasource-type` 做枚举校验，目前一期仅支持 `OA`（审批）。后续支持其他类型时由服务端控制，CLI 无需修改。
 
-4. **source-config 格式**：`--source-config` 必须是合法 JSON 字符串。审批数据源需要原样透传 `processCode`（对应 `+datasource-list-sources` 返回的 `result`）、`name`、`iconUrl`、`url`，设置 `dataType`（时间范围类型），并按 `dataType` 提供对应的时间参数（`recentDays` / `startDate` / `endDate`）。
+4. **source-config 格式**：`--source-config` 必须是合法 JSON 字符串。审批数据源需要原样透传 `processCode`（从 `+datasource-list-sources` 返回的 `result` JSON 中解析 `approvals[]` 提取）、`name`、`iconUrl`、`url`，设置 `dataType`（时间范围类型），并按 `dataType` 提供对应的时间参数（`recentDays` / `startDate` / `endDate`）。
 
 5. **同步限制**：`+datasource-sync` 单次最多 5 张表；`+datasource-sync-status` 单次最多查询 5 个任务 ID。
 
