@@ -25,8 +25,10 @@ OpenNodes V1 的完整字段、节点类型、目录枚举和错误语义按需�
 2. `dws whiteboard +query --node <DOC_ID> --part-id <PART_ID> --format json` 保存并严格校验当前内容。
 3. 生成 OpenNodes V1 文件；不能把 query 响应直接回写。
 4. 向用户展示写入范围并取得确认。
-5. `dws whiteboard +update --node <DOC_ID> --part-id <PART_ID> --source <FILE> --yes --format json`；该 shortcut 会验证终态 receipt，并按同一白板执行独立读回。
+5. `dws whiteboard +update --node <DOC_ID> --part-id <PART_ID> --source <FILE> --format json`；该 shortcut 会验证终态 receipt，并按同一白板执行独立读回。
 6. 仅在需要人工审阅完整节点细节时，再执行一次 `+query`。
+
+执行层只能在已取得本次写入确认后添加 `--yes`；可复制的存储示例不得预置该参数。
 
 更新文件：
 

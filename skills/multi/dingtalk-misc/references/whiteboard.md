@@ -72,12 +72,12 @@ CLI 会把服务端 `resultJson` 字符串解析为结构化 JSON。白板命令
 
 - `overwrite=false`：追加，`nodes` 至少一个对象。
 - `overwrite=true`：整页重建，允许空数组；执行前必须先 query 保存当前内容。
-- 所有更新都是远端写入，必须先获得用户确认，再加 `--yes`。
+- 所有更新都是远端写入，必须先获得用户对本次写入的确认；存储示例不携带 `--yes`，执行层只能在确认后添加。
 - Query 返回不能直接作为 update 输入；真实节点 ID 不能用于局部修改。
 
 ```bash
 dws whiteboard +update --node <DOC_ID> --part-id <PART_ID> \
-  --source ./whiteboard.json --yes --format json
+  --source ./whiteboard.json --format json
 ```
 
 `+update` 会严格验证终态 receipt、请求节点到真实节点的映射，并对同一 `nodeId` / `partId` 执行独立读回；不需要再以手写原子命令拼装验证链。
