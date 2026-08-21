@@ -94,11 +94,12 @@ var DatasourceCreate = shortcut.Shortcut{
 		}
 		params["auto"] = rt.Bool("auto")
 		if rt.Changed("field-ids") {
-			v := rt.Str("field-ids")
-			if v == "" {
+			raw := rt.StrSlice("field-ids")
+			cleaned := trimNonEmpty(raw)
+			if len(cleaned) == 0 {
 				return fmt.Errorf("--field-ids 显式提供时不能为空，如需保持默认请勿传入")
 			}
-			params["fieldIds"] = rt.StrSlice("field-ids")
+			params["fieldIds"] = cleaned
 		}
 		if rt.Changed("auto-sync-setting") {
 			v := rt.Str("auto-sync-setting")
@@ -184,11 +185,12 @@ var DatasourceUpdate = shortcut.Shortcut{
 			params["auto"] = rt.Bool("auto")
 		}
 		if rt.Changed("field-ids") {
-			v := rt.Str("field-ids")
-			if v == "" {
+			raw := rt.StrSlice("field-ids")
+			cleaned := trimNonEmpty(raw)
+			if len(cleaned) == 0 {
 				return fmt.Errorf("--field-ids 显式提供时不能为空，如需保持默认请勿传入")
 			}
-			params["fieldIds"] = rt.StrSlice("field-ids")
+			params["fieldIds"] = cleaned
 		}
 		if rt.Changed("auto-sync-setting") {
 			v := rt.Str("auto-sync-setting")
