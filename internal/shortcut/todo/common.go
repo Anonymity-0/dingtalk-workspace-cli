@@ -5,6 +5,7 @@ package todo
 
 import (
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -317,7 +318,7 @@ func VerifyCreatedTodo(rt *shortcut.RuntimeContext, data map[string]any, operati
 	}
 	detail, err := readTodoDetail(rt, taskID)
 	if err != nil {
-		return "", nil, err
+		return "", nil, todoWriteVerificationError(operation, err)
 	}
 	if subject, _ := detail["subject"].(string); expectedSubject != "" && subject != expectedSubject {
 		return "", nil, todoWriteResponseError(operation, "verification_mismatch", "创建后读回的标题不一致")
@@ -333,7 +334,7 @@ func VerifyDoneStatus(rt *shortcut.RuntimeContext, data map[string]any, taskID s
 	}
 	detail, err := readTodoDetail(rt, taskID)
 	if err != nil {
-		return err
+		return todoWriteVerificationError("todo/update_todo_done_status", err)
 	}
 	actual, ok := detail["isDone"].(bool)
 	if !ok || actual != expected {
@@ -364,4 +365,35 @@ func todoWriteResponseError(operation, reason, message string) error {
 		apperrors.WithRetryable(false),
 		apperrors.WithReason(reason),
 	)
+}
+
+// todoWriteVerificationError upgrades a read-back failure after a confirmed
+// write receipt. It preserves the original reason and cause while making the
+// unsafe retry boundary explicit to callers.
+func todoWriteVerificationError(operation string, cause error) error {
+	reason := "write_verification_failed"
+	origin := "mcp"
+	var typed *apperrors.Error
+	if stderrors.As(cause, &typed) {
+		if strings.TrimSpace(typed.Reason) != "" {
+			reason = typed.Reason
+		}
+		if strings.TrimSpace(typed.Origin) != "" {
+			origin = typed.Origin
+		}
+	}
+	options := []apperrors.Option{
+		apperrors.WithOperation(operation),
+		apperrors.WithOrigin(origin),
+		apperrors.WithFailureStage("write_verification"),
+		apperrors.WithExecutionStarted(true),
+		apperrors.WithRetryable(false),
+		apperrors.WithReason(reason),
+		apperrors.WithCause(cause),
+	}
+	message := "写操作已提交，但读回核验失败；请先查询对账，禁止直接重试"
+	if typed != nil && typed.Category == apperrors.CategoryAuth {
+		return apperrors.NewAuth(message, options...)
+	}
+	return apperrors.NewAPI(message, options...)
 }

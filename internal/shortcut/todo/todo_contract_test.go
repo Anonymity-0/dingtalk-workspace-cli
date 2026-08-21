@@ -88,3 +88,31 @@ func TestCrossPlatformCoverageTodoWriteReceiptMarksExecutionStarted(t *testing.T
 		t.Fatalf("write failure safety = started %v retryable_set %v retryable %v", typed.ExecutionStarted, typed.RetryableSet, typed.Retryable)
 	}
 }
+
+func TestCrossPlatformCoverageTodoWriteVerificationPreservesReason(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		cause      error
+		wantReason string
+		wantOrigin string
+		wantType   apperrors.Category
+	}{
+		{"api", todoResponseError("todo/get_todo_detail", "missing_detail", "missing detail"), "missing_detail", "mcp", apperrors.CategoryAPI},
+		{"plain", errors.New("read timeout"), "write_verification_failed", "mcp", apperrors.CategoryAPI},
+		{"auth", apperrors.NewAuth("expired", apperrors.WithReason("auth_expired"), apperrors.WithOrigin("gateway")), "auth_expired", "gateway", apperrors.CategoryAuth},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := todoWriteVerificationError("todo/create_personal_todo", tc.cause)
+			var typed *apperrors.Error
+			if !errors.As(err, &typed) {
+				t.Fatalf("error type = %T, want *errors.Error", err)
+			}
+			if typed.Category != tc.wantType || typed.Reason != tc.wantReason || typed.Origin != tc.wantOrigin ||
+				typed.FailureStage != "write_verification" ||
+				typed.ExecutionStarted == nil || !*typed.ExecutionStarted ||
+				!typed.RetryableSet || typed.Retryable || !errors.Is(err, tc.cause) {
+				t.Fatalf("verification failure = %#v, cause preserved=%v", typed, errors.Is(err, tc.cause))
+			}
+		})
+	}
+}

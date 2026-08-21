@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
@@ -81,6 +82,18 @@ func todoRuntimeForTest(t *testing.T, declaration shortcut.Shortcut, values map[
 		}
 	}
 	return shortcut.RuntimeContextForTest(cmd, declaration)
+}
+
+func requireTodoExecutionStartedError(t *testing.T, err error, wantReason string) {
+	t.Helper()
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) {
+		t.Fatalf("error type = %T, want *errors.Error", err)
+	}
+	if typed.Reason != wantReason || typed.ExecutionStarted == nil || !*typed.ExecutionStarted ||
+		!typed.RetryableSet || typed.Retryable || typed.Cause == nil {
+		t.Fatalf("post-write failure = %#v", typed)
+	}
 }
 
 func TestCrossPlatformCoverageTodoCommonStrictBranches(t *testing.T) {
@@ -297,6 +310,12 @@ func TestCrossPlatformCoverageTodoCreateAndUpdate(t *testing.T) {
 	if err := runTodoCoverage(t, Create, createSuccess, "--title", "x", "--executors", "u", "--yes"); err != nil {
 		t.Fatal(err)
 	}
+	createReadFailure := &todoCoverageCaller{responses: map[string][]string{
+		"create_personal_todo": {`{"success":true,"result":{"taskId":"task-1"}}`},
+		"get_todo_detail":      {`{"success":true,"result":{}}`},
+	}}
+	err := runTodoCoverage(t, Create, createReadFailure, "--title", "x", "--executors", "u", "--yes")
+	requireTodoExecutionStartedError(t, err, "missing_detail")
 
 	updateCases := map[string]map[string][]string{
 		"call":       {"update_todo_task": {"__ERROR__"}},
@@ -463,6 +482,12 @@ func TestCrossPlatformCoverageTodoCommentAndReminder(t *testing.T) {
 	if err := runTodoCoverage(t, Comment, commentSuccess, "--task-id", "task-1", "--content", "body", "--yes"); err != nil {
 		t.Fatal(err)
 	}
+	commentReadFailure := &todoCoverageCaller{responses: map[string][]string{
+		"list_todo_comment": {emptyPage, `{"success":true,"result":{}}`},
+		"add_todo_comment":  {`{"success":true}`},
+	}}
+	err := runTodoCoverage(t, Comment, commentReadFailure, "--task-id", "task-1", "--content", "body", "--yes")
+	requireTodoExecutionStartedError(t, err, "missing_collection")
 
 	for name, args := range map[string][]string{
 		"none":          {"--task-id", "task-1", "--yes"},

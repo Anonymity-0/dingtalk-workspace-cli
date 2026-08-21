@@ -98,7 +98,7 @@ func createTodo(rt *shortcut.RuntimeContext) error {
 	}
 	detail, err := readTodoDetail(rt, taskID)
 	if err != nil {
-		return err
+		return todoWriteVerificationError("todo/create_personal_todo", err)
 	}
 	if subject, _ := detail["subject"].(string); subject != title {
 		return todoWriteResponseError("todo/create_personal_todo", "verification_mismatch", "创建后读回的标题不一致")
@@ -159,7 +159,7 @@ func updateTodo(rt *shortcut.RuntimeContext) error {
 	}
 	detail, err := readTodoDetail(rt, taskID)
 	if err != nil {
-		return err
+		return todoWriteVerificationError("todo/update_todo_task", err)
 	}
 	for key, expected := range request {
 		if key == "taskId" {
@@ -254,11 +254,11 @@ func setTodoDone(rt *shortcut.RuntimeContext, target bool) error {
 	}
 	detail, err := readTodoDetail(rt, taskID)
 	if err != nil {
-		return err
+		return todoWriteVerificationError("todo/update_todo_done_status", err)
 	}
 	done, ok := detail["isDone"].(bool)
 	if !ok || done != target {
-		return todoResponseError("todo/update_todo_done_status", "verification_mismatch", "完成状态读回不一致或缺失")
+		return todoWriteResponseError("todo/update_todo_done_status", "verification_mismatch", "完成状态读回不一致或缺失")
 	}
 	return rt.Output(map[string]any{"taskId": taskID, "isDone": target, "verified": true, "alreadyInTargetState": false})
 }
@@ -358,7 +358,7 @@ var Comment = shortcut.Shortcut{
 		}
 		after, err := listAllTodoComments(rt, taskID)
 		if err != nil {
-			return err
+			return todoWriteVerificationError("todo/add_todo_comment", err)
 		}
 		matches := make([]map[string]any, 0, 1)
 		for _, comment := range after {
