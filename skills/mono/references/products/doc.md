@@ -55,6 +55,8 @@ Example:
   dws doc read --node "https://alidocs.dingtalk.com/document/edit?dentryKey=<DENTRY_KEY>"
   dws doc read --node "https://alidocs.dingtalk.com/document/preview?dentryKey=<DENTRY_KEY>"
   dws doc read --node <DOC_ID> --content-format jsonml --scope outline
+  dws doc read --node <PUBLIC_URL> --password <ACCESS_PASSWORD>
+  dws doc read --node <DOC_ID> --version 3
 Flags:
       --node string             文档 ID 或 URL (必填)
       --content-format string   输出格式: markdown / jsonml
@@ -63,9 +65,11 @@ Flags:
       --max-depth int           筛选遍历最大深度，0 表示不限
       --start-block-id string   range / section 起始块 UUID
       --end-block-id string     range 结束块 UUID
+      --password string         互联网公开文档密码保护时的访问密码
+      --version int             读取指定历史版本（版本号从 doc version list 获取，0 表示初始版本）；缺省读最新版
 ```
 
-`--scope` 只适用于 `--content-format jsonml`，用于按大纲、块区间、单块子树或自定义 tag 局部读取。筛选结果是虚拟 JSONML fragment，只能剥壳后消费 children，不得把 fragment 容器整体写回。完整规则见 [`doc-read.md`](./doc/doc-read.md)。
+`--scope` 只适用于 `--content-format jsonml`，用于按大纲、块区间、单块子树或自定义 tag 局部读取。筛选结果是虚拟 JSONML fragment，只能剥壳后消费 children，不得把 fragment 容器整体写回。互联网公开文档（含密码保护）用 `--password`；读取历史版本内容用 `--version`（版本号来自 `dws doc version list`，0 表示初始版本，需要编辑权限）。完整规则见 [`doc-read.md`](./doc/doc-read.md)。
 
 ### 创建文档
 ```
