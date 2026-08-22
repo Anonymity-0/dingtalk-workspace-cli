@@ -4243,7 +4243,7 @@ var generatedParamAliases = []ParamAliasEntry{
 			"start-block": "start-block-id",
 			"url":         "node",
 		},
-		Blocked:   []string{"comment-id", "comment-key", "content-format", "dentry-id", "doc-format", "folder", "folder-id", "id", "job-id", "name", "parent-id", "range", "role", "space-id", "task-id", "template-id", "version", "workspace", "workspace-id"},
+		Blocked:   []string{"comment-id", "comment-key", "content-format", "dentry-id", "doc-format", "folder", "folder-id", "id", "job-id", "name", "parent-id", "range", "role", "space-id", "task-id", "template-id", "workspace", "workspace-id"},
 		Ambiguous: []string{"block-id"},
 	},
 	{
@@ -4859,7 +4859,7 @@ var generatedParamAliases = []ParamAliasEntry{
 			"output-path":      "output",
 			"save-path":        "output",
 		},
-		Blocked:   []string{"before-block-id", "comment-id", "comment-key", "content-file", "dentry-id", "file", "file-path", "folder", "folder-id", "job-id", "name", "parent-block-id", "parent-id", "ref-block-id", "reference-block-id", "revision", "role", "space-id", "task-id", "template-id", "version", "workspace", "workspace-id"},
+		Blocked:   []string{"before-block-id", "comment-id", "comment-key", "content-file", "dentry-id", "file", "file-path", "folder", "folder-id", "job-id", "name", "parent-block-id", "parent-id", "ref-block-id", "reference-block-id", "revision", "role", "space-id", "task-id", "template-id", "workspace", "workspace-id"},
 		Ambiguous: []string{"block-id"},
 	},
 	{
