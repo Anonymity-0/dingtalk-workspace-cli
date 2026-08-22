@@ -3853,7 +3853,9 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "filter-role", Property: "filterRoleIds"},
-				{Name: "limit", Property: "pageSize"},
+				// limit 不声明 Property：运行时经 cap 校验（1-50）转换为 pageSize，
+				// 属 CLI 分页输入而非 1:1 RPC property（reviewed mapping exclusion）。
+				{Name: "limit"},
 				{Name: "next-token", Property: "nextToken"},
 				{Name: "node", Property: "nodeId"},
 				{Name: "workspace", Property: "workspaceId"},
