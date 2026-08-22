@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-20T11:51:44.156046",
-  "count": 416,
+  "generated_at": "2026-08-21T10:07:48.251313",
+  "count": 418,
   "results": [
     {
       "suite": "semantic",
@@ -3634,18 +3634,24 @@
       "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "sheet",
       "command": "+list-sheets",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格要求 success=true、显式 sheets 数组、非空且唯一的 sheetId 与标题；提供完整标题本地精确筛选，因此可分别证明已知非空和合法零命中，未知结构绝不降级为空数组。",
+      "availability": "available"
     },
     {
-      "suite": "read",
+      "suite": "semantic",
       "service": "sheet",
       "command": "+read",
       "risk": "read",
-      "status": "real-ok"
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格校验 success、二维 cells、行列坐标与完成证据；服务返回 hasMore=true 时因没有可执行续页游标而失败关闭，保留 Sheet 读取与 AITable/Base 记录查询的产品边界。",
+      "availability": "available"
     },
     {
       "suite": "semantic",
@@ -3855,6 +3861,26 @@
       "status": "reviewed_available",
       "disposition": "primary_smart",
       "semantic_delta": "更新指定字段后读取详情逐字段核验。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "whiteboard",
+      "command": "+query",
+      "risk": "read",
+      "status": "reviewed_available",
+      "disposition": "semantic_adapter",
+      "semantic_delta": "严格投影要求 success=true、OpenNodes V1、显式 pages 数组、每页稳定 id 与显式 nodes 数组，并校验跨页节点身份及服务端完整性摘要。",
+      "availability": "available"
+    },
+    {
+      "suite": "semantic",
+      "service": "whiteboard",
+      "command": "+update",
+      "risk": "high-risk-write",
+      "status": "reviewed_available",
+      "disposition": "primary_smart",
+      "semantic_delta": "首次远端调用前完成 OpenNodes V1 校验与用户确认；写后要求 success=true、同一目标、非空终态回执、createdNodeIds/idMap 精确映射，再按真实节点身份独立 query 读回请求关键字段。",
       "availability": "available"
     },
     {
