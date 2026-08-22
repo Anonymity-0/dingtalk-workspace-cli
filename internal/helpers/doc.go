@@ -3533,6 +3533,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 	permissionAddCmd := &cobra.Command{
 		Use:   "add",
 		Short: "添加文档协作者",
+		Args:  cobra.NoArgs,
 		Long: `为指定文档（或文件夹/文件）添加一个或多个协作成员，并授予指定角色。
 
 两种传参方式（互斥）：
@@ -3553,15 +3554,17 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 
 注意：
 - OWNER 角色不可通过此接口添加。
+- 操作者须满足该节点配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 forbidden.accessDenied。
 - 单次请求最多 30 个成员，超出请分批调用。
-- --notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知（DEPT 和 TAG 不通知），默认 true。
+- --notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知（DEPT 和 TAG 不通知），默认 false；省略时 CLI 不向服务端发送该字段，服务端按不通知处理，需要通知请显式传 --notify。
 
 用户 uid 可通过「钉钉通讯录」相关命令检索，如:
   dws contact user search --keyword "姓名"`,
 		Example: `  dws doc permission add --node DOC_ID --users uid1 --role READER
   dws doc permission add --node DOC_ID --users uid1,uid2,uid3 --role EDITOR
   dws doc permission add --node "https://alidocs.dingtalk.com/i/nodes/xxx" --users uid1 --role MANAGER --workspace WS_ID
-  dws doc permission add --node DOC_ID --members '[{"type":"USER","id":"uid1","roleId":"READER","corpId":"xxx"},{"type":"DEPT","id":"deptId1","roleId":"EDITOR","corpId":"xxx"}]' --notify`,
+  dws doc permission add --node DOC_ID --members '[{"type":"USER","id":"uid1","roleId":"READER","corpId":"xxx"},{"type":"DEPT","id":"deptId1","roleId":"EDITOR","corpId":"xxx"}]' --notify
+  dws doc permission add --node DOC_ID --members '[{"type":"CONVERSATION","id":"cidXXX","roleId":"READER"},{"type":"TAG","id":"tagId1","roleId":"EDITOR","corpId":"xxx"}]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -3644,11 +3647,12 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 	permissionAddCmd.Flags().String("role", "", "权限角色: MANAGER / EDITOR / DOWNLOADER / READER (旧格式必填，大小写不敏感)")
 	permissionAddCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL（选填，仅用于辅助构造返回的 docUrl）")
 	permissionAddCmd.Flags().String("members", "", "成员列表 JSON 数组（新格式），支持 USER/DEPT/CONVERSATION/TAG 类型（TAG=角色组），与 --users 互斥")
-	permissionAddCmd.Flags().Bool("notify", true, "是否通知被添加的成员（仅 --members 新格式时生效）")
+	permissionAddCmd.Flags().Bool("notify", false, "是否通知被添加的成员（仅 --members 新格式时生效，需显式传入才通知）")
 
 	permissionUpdateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "更新文档协作者权限",
+		Args:  cobra.NoArgs,
 		Long: `更新指定节点已有协作者的权限角色。
 
 两种传参方式（互斥）：
@@ -3671,6 +3675,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 - OWNER 角色不可通过此接口变更。
 - 同一成员在同一节点只能拥有一个角色，变更后旧角色自动替换。
 - 若成员的角色来自父节点的权限继承（PASS_ON），且继承角色高于目标角色，接口会拒绝操作。
+- 操作者须满足该节点配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 forbidden.accessDenied。
 - --notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知，默认 false。
 
 仅可更新已存在协作关系的用户，新增协作者请使用 dws doc permission add。`,
@@ -3767,7 +3772,8 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 
 底层一次性返回全量成员后在内存中按 pageSize 分页，支持通过 nextToken 翻页。
 出参包含 totalCount（全量成员总数）、hasMore（是否还有下一页）和 nextToken（下一页游标）。
-当 hasMore 为 true 时，传入下一次请求的 --next-token 即可获取下一页。`,
+当 hasMore 为 true 时，传入下一次请求的 --next-token 即可获取下一页。
+操作者需满足该节点配置的权限管理最低角色要求，权限不足返回 forbidden.accessDenied。`,
 		Example: `  dws doc permission list --node DOC_ID
   dws doc permission list --node DOC_ID --limit 50
   dws doc permission list --node DOC_ID --filter-role MANAGER,EDITOR
@@ -3780,12 +3786,10 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 			toolArgs := map[string]any{
 				"nodeId": nodeID,
 			}
-			if cmd.Flags().Changed("limit") {
-				limit, _ := cmd.Flags().GetInt("limit")
-				toolArgs["pageSize"] = limit
-			} else if cmd.Flags().Changed("max-results") {
-				limit, _ := cmd.Flags().GetInt("max-results")
-				toolArgs["pageSize"] = limit
+			if size, ok, err := permissionPageSizeFromFlags(cmd); err != nil {
+				return err
+			} else if ok {
+				toolArgs["pageSize"] = size
 			}
 			if v := flagOrFallback(cmd, "next-token", "cursor", "page-token"); v != "" {
 				toolArgs["nextToken"] = v
@@ -3831,6 +3835,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 				{Name: "node", Property: "nodeId"},
 				{Name: "workspace", Property: "workspaceId"},
 			},
+			Pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "next-token"},
 		},
 	})
 
@@ -3862,7 +3867,7 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 
 注意：
 - OWNER 角色不可通过此接口移除。
-- 操作者需在该节点具备 EDITOR 及以上角色（OWNER / MANAGER / EDITOR）。
+- 操作者须满足该节点配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 forbidden.accessDenied。
 - 单次请求最多 30 个成员，超出请分批调用。
 
 用户 uid 可通过「钉钉通讯录」相关命令检索，如:
@@ -5306,4 +5311,24 @@ func validateMembersExclusivity(cmd *cobra.Command) error {
 		return fmt.Errorf("--members 新格式下不需要 --role，每个 member 携带独立 roleId")
 	}
 	return nil
+}
+
+// permissionPageSizeFromFlags resolves and validates the page size for the
+// permission / member list commands. Both --limit and the hidden
+// --max-results alias map to the server pageSize, whose accepted range is
+// 1..50 (the backend rejects pageSize > 50 with
+// invalidRequest.inputArgs.invalid, and non-positive values are invalid).
+// It returns (size, true, nil) when a page size was explicitly provided.
+func permissionPageSizeFromFlags(cmd *cobra.Command) (int, bool, error) {
+	for _, name := range []string{"limit", "max-results"} {
+		if !cmd.Flags().Changed(name) {
+			continue
+		}
+		size, _ := cmd.Flags().GetInt(name)
+		if size < 1 || size > 50 {
+			return 0, false, fmt.Errorf("--%s 取值范围为 1..50（服务端 pageSize 上限 50），当前值 %d", name, size)
+		}
+		return size, true, nil
+	}
+	return 0, false, nil
 }

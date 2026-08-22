@@ -2042,6 +2042,7 @@ func newDriveCommand() *cobra.Command {
 	drivePermAddCmd := &cobra.Command{
 		Use:   "add",
 		Short: "添加协作者",
+		Args:  cobra.NoArgs,
 		Long: `为文档空间节点添加协作成员并授予指定角色。
 
 两种传参方式（互斥）：
@@ -2055,7 +2056,8 @@ func newDriveCommand() *cobra.Command {
   TAG           角色标签（也称角色组），id 为角色标签 ID，需携带 corpId。当用户要求"添加角色组"或"添加角色标签"时使用此类型
 
 支持的角色: MANAGER / EDITOR / DOWNLOADER / READER
---notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知（DEPT 和 TAG 不通知），默认 true。`,
+--notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知（DEPT 和 TAG 不通知），默认 false。
+省略 --notify 时 CLI 不向服务端发送该字段，服务端按不通知处理；需要通知请显式传 --notify。`,
 		Example: `  dws drive permission add --node DOC_ID --users uid1 --role READER
   dws drive permission add --node DOC_ID --users uid1,uid2 --role EDITOR
   dws drive permission add --node DOC_ID --members '[{"type":"USER","id":"uid1","roleId":"READER","corpId":"xxx"}]' --notify
@@ -2145,11 +2147,12 @@ func newDriveCommand() *cobra.Command {
 	drivePermAddCmd.Flags().String("role", "", "角色: MANAGER / EDITOR / DOWNLOADER / READER (旧格式必填)")
 	drivePermAddCmd.Flags().String("workspace", "", "知识库 ID (选填)")
 	drivePermAddCmd.Flags().String("members", "", "成员列表 JSON 数组（新格式），支持 USER/DEPT/CONVERSATION/TAG 类型（TAG=角色组），与 --users 互斥")
-	drivePermAddCmd.Flags().Bool("notify", true, "是否通知被添加的成员（仅 --members 新格式时生效）")
+	drivePermAddCmd.Flags().Bool("notify", false, "是否通知被添加的成员（仅 --members 新格式时生效，需显式传入才通知）")
 
 	drivePermUpdateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "更新协作者权限",
+		Args:  cobra.NoArgs,
 		Long: `更新文档空间节点已有协作者的权限角色。
 
 两种传参方式（互斥）：
@@ -2268,12 +2271,10 @@ func newDriveCommand() *cobra.Command {
 				return err
 			}
 			toolArgs := map[string]any{"nodeId": nodeID}
-			if cmd.Flags().Changed("limit") {
-				limit, _ := cmd.Flags().GetInt("limit")
-				toolArgs["pageSize"] = limit
-			} else if cmd.Flags().Changed("max-results") {
-				limit, _ := cmd.Flags().GetInt("max-results")
-				toolArgs["pageSize"] = limit
+			if size, ok, err := permissionPageSizeFromFlags(cmd); err != nil {
+				return err
+			} else if ok {
+				toolArgs["pageSize"] = size
 			}
 			if v := flagOrFallback(cmd, "next-token", "cursor", "page-token"); v != "" {
 				toolArgs["nextToken"] = v
@@ -2322,6 +2323,7 @@ func newDriveCommand() *cobra.Command {
 				{Name: "node", Property: "nodeId"},
 				{Name: "workspace", Property: "workspaceId"},
 			},
+			Pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "next-token"},
 		},
 	})
 	drivePermListCmd.Flags().String("node", "", "目标节点 ID 或 URL (必填)")

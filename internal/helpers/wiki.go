@@ -529,6 +529,7 @@ func newWikiCommand() *cobra.Command {
 	memberAddCmd := &cobra.Command{
 		Use:   "add",
 		Short: "添加知识库成员",
+		Args:  cobra.NoArgs,
 		Long: `为指定知识库添加一个或多个成员，并授予指定角色。
 
 两种传参方式（互斥）：
@@ -549,9 +550,9 @@ func newWikiCommand() *cobra.Command {
 
 注意：
 - OWNER 角色不可通过此接口添加，知识库创建者默认为所有者。
-- 操作者需具备知识库的 OWNER 或 MANAGER 权限。
+- 操作者须满足该知识库配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 forbidden.accessDenied。
 - 单次请求最多 30 个成员，超出请分批调用。
-- --notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知（DEPT 和 TAG 不通知），默认 true。
+- --notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知（DEPT 和 TAG 不通知），默认 false；省略时 CLI 不向服务端发送该字段，服务端按不通知处理，需要通知请显式传 --notify。
 
 支持通过 --workspace 传入知识库 ID 或知识库 URL，系统自动识别。
 用户 uid 可通过「钉钉通讯录」相关命令检索，如:
@@ -559,7 +560,8 @@ func newWikiCommand() *cobra.Command {
 		Example: `  dws wiki member add --workspace <workspaceId> --users uid1 --role READER
   dws wiki member add --workspace <workspaceId> --users uid1,uid2,uid3 --role EDITOR
   dws wiki member add --workspace "https://alidocs.dingtalk.com/i/spaces/xxx/overview" --users uid1 --role MANAGER
-  dws wiki member add --workspace <workspaceId> --members '[{"type":"USER","id":"uid1","roleId":"READER","corpId":"xxx"},{"type":"DEPT","id":"deptId1","roleId":"EDITOR","corpId":"xxx"}]' --notify`,
+  dws wiki member add --workspace <workspaceId> --members '[{"type":"USER","id":"uid1","roleId":"READER","corpId":"xxx"},{"type":"DEPT","id":"deptId1","roleId":"EDITOR","corpId":"xxx"}]' --notify
+  dws wiki member add --workspace <workspaceId> --members '[{"type":"CONVERSATION","id":"cidXXX","roleId":"READER"},{"type":"TAG","id":"tagId1","roleId":"EDITOR","corpId":"xxx"}]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workspaceID, err := mustFlagOrFallback(cmd, "workspace", "workspace-id")
 			if err != nil {
@@ -649,11 +651,12 @@ func newWikiCommand() *cobra.Command {
 	_ = memberAddCmd.Flags().MarkHidden("user")
 	memberAddCmd.Flags().String("role", "", "权限角色: MANAGER / EDITOR / DOWNLOADER / READER (旧格式必填，大小写不敏感)")
 	memberAddCmd.Flags().String("members", "", "成员列表 JSON 数组（新格式），支持 USER/DEPT/CONVERSATION/TAG 类型（TAG=角色组），与 --users 互斥")
-	memberAddCmd.Flags().Bool("notify", true, "是否通知被添加的成员（仅 --members 新格式时生效）")
+	memberAddCmd.Flags().Bool("notify", false, "是否通知被添加的成员（仅 --members 新格式时生效，需显式传入才通知）")
 
 	memberUpdateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "更新知识库成员权限",
+		Args:  cobra.NoArgs,
 		Long: `更新指定知识库已有成员的角色。
 
 两种传参方式（互斥）：
@@ -675,7 +678,7 @@ func newWikiCommand() *cobra.Command {
 注意：
 - OWNER 角色不可通过此接口变更。
 - 同一成员在同一知识库只能拥有一个角色，变更后旧角色自动替换。
-- 操作者需具备知识库的 OWNER 或 MANAGER 权限。
+- 操作者须满足该知识库配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 forbidden.accessDenied。
 - --notify 仅在 --members 新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知，默认 false。
 
 仅可更新已存在成员关系的成员，新增成员请使用 dws wiki member add。`,
@@ -768,6 +771,7 @@ func newWikiCommand() *cobra.Command {
 底层一次性返回全量成员后在内存中按 pageSize 分页，支持通过 nextToken 翻页。
 出参包含 totalCount（全量成员总数）、hasMore（是否还有下一页）和 nextToken（下一页游标）。
 当 hasMore 为 true 时，传入下一次请求的 --next-token 即可获取下一页。
+操作者需满足该知识库配置的权限管理最低角色要求，权限不足返回 forbidden.accessDenied。
 ORG 类型授权不会出现在查询结果中。`,
 		Example: `  dws wiki member list --workspace <workspaceId>
   dws wiki member list --workspace <workspaceId> --limit 50
@@ -781,12 +785,10 @@ ORG 类型授权不会出现在查询结果中。`,
 			toolArgs := map[string]any{
 				"workspaceId": workspaceID,
 			}
-			if cmd.Flags().Changed("limit") {
-				limit, _ := cmd.Flags().GetInt("limit")
-				toolArgs["pageSize"] = limit
-			} else if cmd.Flags().Changed("max-results") {
-				limit, _ := cmd.Flags().GetInt("max-results")
-				toolArgs["pageSize"] = limit
+			if size, ok, err := permissionPageSizeFromFlags(cmd); err != nil {
+				return err
+			} else if ok {
+				toolArgs["pageSize"] = size
 			}
 			if v := flagOrFallback(cmd, "next-token", "cursor", "page-token"); v != "" {
 				toolArgs["nextToken"] = v
@@ -831,6 +833,7 @@ ORG 类型授权不会出现在查询结果中。`,
 				{Name: "next-token", Property: "nextToken"},
 				{Name: "workspace", Property: "workspaceId"},
 			},
+			Pagination: &contract.PaginationSpec{Kind: contract.PaginationKindCursor, CursorParameter: "next-token"},
 		},
 	})
 
@@ -860,7 +863,7 @@ ORG 类型授权不会出现在查询结果中。`,
 
 注意：
 - OWNER 角色不可通过此接口移除。
-- 操作者需具备知识库的 OWNER 或 MANAGER 权限。
+- 操作者须满足该知识库配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 forbidden.accessDenied。
 - 单次请求最多 30 个成员，超出请分批调用。`,
 		Example: `  dws wiki member remove --workspace <workspaceId> --users uid1
   dws wiki member remove --workspace <workspaceId> --users uid1,uid2,uid3

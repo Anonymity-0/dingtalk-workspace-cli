@@ -594,6 +594,7 @@ Flags:
 用户说"回收站/查看回收站/回收站列表/回收站里有什么" → `recycle list`
 用户说"恢复文件/还原删除的文件/从回收站恢复/还原回收站文件" → `recycle restore`
 用户说"给文档授权/分享权限" → `permission add`
+用户说"授权并通知对方/加权限后告知他/通知一下被授权的人" → `permission add --members ... --notify`（未提通知需求时不传 `--notify`）
 用户说"公开文件/互联网公开/设置公开/让互联网所有人可访问" → `publish set`
 用户说"关闭公开/取消公开/取消互联网访问" → `publish unset`
 用户说"查看公开状态/是否公开/发布状态" → `publish get`
@@ -609,6 +610,13 @@ Flags:
 **drive upload vs doc upload**: 文件上传统一走 `drive upload`。上传到知识库/文档空间时加 `--workspace` 参数。
 
 **drive permission vs wiki member**: "给某篇文档/文件授权" → `drive permission add`（节点级）；"给某个知识库整体加成员" → `wiki member add`（空间级）
+
+**通知意图 → `--notify`**（默认不通知，省略时 CLI 不向服务端发送该字段）：
+- 用户明确要求“通知 / 告知 / 提醒对方 / 让他知道” → 追加 `--notify`
+- 用户明确要求“不要通知 / 别提醒 / 悄悄加 / 不要打扰” → 追加 `--notify=false`
+- 用户没提通知需求 → **不传该 flag**，保持不通知；不要自行补上 `--notify`
+- `--notify` 仅在 `--members` 新格式下生效；旧格式 `--users` 下传了也不会生效，有通知需求必须改用 `--members`
+- 仅 USER 和 CONVERSATION 类型成员会收到通知；被授权对象是 DEPT / TAG 时通知不会送达，**需主动向用户说明这一点**，不要默不作声
 
 **创建在线文档/表格/脑图**: drive 不支持创建文件，需走 `wiki node create --type <type>`（创建空节点）或 `doc create`（创建并写入内容）。
 
@@ -723,7 +731,7 @@ Flags:
       --users string         用户 userId 列表，逗号分隔 (旧格式)
       --role string          角色: MANAGER / EDITOR / DOWNLOADER / READER (旧格式必填)
       --members string       成员列表 JSON 数组（新格式），支持 USER/DEPT/CONVERSATION/TAG 类型（TAG=角色组），与 --users 互斥
-      --notify bool          是否通知被添加/变更的成员 (仅 --members 新格式时生效，add 默认 true，update 默认 false)
+      --notify bool          是否通知被添加/变更的成员 (仅 --members 新格式时生效，add / update 均默认 false)
       --limit int            返回成员数上限 (仅 list，默认 30，最大 50)
       --filter-role string   按角色过滤 (仅 list)
       --next-token string    分页游标，首次不传，后续传入上一次返回的 nextToken (仅 list)
@@ -741,7 +749,8 @@ Flags:
 > - `TAG` — 角色标签（也称角色组），id 为角色标签 ID，需携带 `corpId`。当用户要求"添加角色组"或"添加角色标签"时使用此类型
 >
 > **重要约束**：
-> - `--notify` 仅在新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知（DEPT 和 TAG 不通知），add 默认 true，update 默认 false
+> - `--notify` 仅在新格式时生效，仅对 USER 和 CONVERSATION 类型成员发送通知（DEPT 和 TAG 不通知），add / update 均默认 false；省略时不会向服务端发送该字段，需要通知请显式传 `--notify`
+> - 操作者须满足该节点配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 `forbidden.accessDenied`
 > - 单次请求最多 30 个成员，超出请分批调用
 > - list 命令底层一次性返回全量成员后在内存中按 pageSize 分页，当 `hasMore` 为 true 时，传入 `--next-token` 即可获取下一页
 
