@@ -2,7 +2,7 @@
 category: Added
 ---
 
-- **Permission and member list pagination** (#1065) — `drive/doc permission
+- **Permission and member list pagination** (#1085) — `drive/doc permission
   list` and `wiki member list` now accept `--next-token` to follow the
   server-side cursor (output carries `totalCount`/`hasMore`/`nextToken`) and
   map `--limit` to `pageSize` capped at 50 instead of the rejected `maxResults

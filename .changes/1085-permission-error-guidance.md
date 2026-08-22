@@ -2,7 +2,7 @@
 category: Changed
 ---
 
-- **Permission error guidance and error rendering** (#1065) —
+- **Permission error guidance and error rendering** (#1085) —
   `forbidden.accessDenied` and other permission-denied responses now exit with
   the `AUTH_PERMISSION_DENIED` code and carry apply-permission guidance
   (`dws drive permission apply-info` / `dws drive permission apply`) instead of
