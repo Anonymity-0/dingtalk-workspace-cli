@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
 
@@ -757,7 +758,7 @@ func requireRequestedValue(expected, actual any, path string) error {
 	}
 	if expectedNumber, expectedOK := numericValue(expected); expectedOK {
 		actualNumber, actualOK := numericValue(actual)
-		if !actualOK || expectedNumber != actualNumber {
+		if !actualOK || expectedNumber.Cmp(actualNumber) != 0 {
 			return responsecheck.Error(serverWhiteboard+"/"+toolUpdate, "readback_field_mismatch", fmt.Sprintf("%s 数值读回不一致", path))
 		}
 		return nil
@@ -768,17 +769,20 @@ func requireRequestedValue(expected, actual any, path string) error {
 	return nil
 }
 
-func numericValue(value any) (float64, bool) {
+func numericValue(value any) (*big.Rat, bool) {
 	switch typed := value.(type) {
 	case json.Number:
-		parsed, err := typed.Float64()
-		return parsed, err == nil
+		parsed, ok := new(big.Rat).SetString(typed.String())
+		return parsed, ok
 	case float64:
-		return typed, !math.IsNaN(typed) && !math.IsInf(typed, 0)
+		if math.IsNaN(typed) || math.IsInf(typed, 0) {
+			return nil, false
+		}
+		return new(big.Rat).SetFloat64(typed), true
 	case int:
-		return float64(typed), true
+		return new(big.Rat).SetInt64(int64(typed)), true
 	default:
-		return 0, false
+		return nil, false
 	}
 }
 

@@ -577,6 +577,8 @@ func TestCrossPlatformCoverageWhiteboardReadbackComparatorAndScalarMatrices(t *t
 		{"number wrong type", json.Number("1"), "1", true},
 		{"number mismatch", json.Number("1"), float64(2), true},
 		{"number equal cross type", json.Number("1"), int(1), false},
+		{"large adjacent JSON integers mismatch", json.Number("9007199254740992"), json.Number("9007199254740993"), true},
+		{"large JSON integer equal", json.Number("9007199254740993"), json.Number("9007199254740993"), false},
 		{"scalar mismatch", "one", "two", true},
 		{"scalar equal", "same", "same", false},
 	}
@@ -591,7 +593,7 @@ func TestCrossPlatformCoverageWhiteboardReadbackComparatorAndScalarMatrices(t *t
 		value any
 		ok    bool
 	}{
-		{json.Number("1.5"), true}, {json.Number("bad"), false},
+		{json.Number("1.5"), true}, {json.Number("1e3"), true}, {json.Number("bad"), false},
 		{float64(1), true}, {math.NaN(), false}, {math.Inf(1), false},
 		{int(1), true}, {"1", false},
 	} {
