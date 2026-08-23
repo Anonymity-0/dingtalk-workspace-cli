@@ -4,6 +4,7 @@
 package contact
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -285,15 +286,31 @@ func TestCrossPlatformCoverageContactInputConstraintsFailBeforeRemoteCall(t *tes
 }
 
 func TestCrossPlatformCoverageListRolesCompatibilityUsesStrictLegacyMCP(t *testing.T) {
-	caller := &contactCaller{payload: `{"success":true,"result":[{"groupName":"Fixture group","labels":[{"labelId":1,"name":"Fixture role"}]}]}`}
+	caller := &contactCaller{payload: `{"success":true,"result":[{"groupName":"Fixture group","labels":[{"labelId":1,"name":"Fixture role"},{"labelId":null,"name":""}]}]}`}
 	helpers.InitDepsForTest(t, caller)
 	declaration := ListRoles
 	declaration.OutputRollout = output.RolloutLegacyOnly
-	if err := declaration.Execute(shortcut.RuntimeContextForTest(&cobra.Command{Use: declaration.Command}, declaration)); err != nil {
+	command := &cobra.Command{Use: declaration.Command}
+	var stdout bytes.Buffer
+	command.SetOut(&stdout)
+	if err := declaration.Execute(shortcut.RuntimeContextForTest(command, declaration)); err != nil {
 		t.Fatalf("list roles compatibility call: %v", err)
 	}
 	if caller.calls != 1 || caller.product != "contact" || caller.tool != "get_org_labels" || len(caller.args) != 0 {
 		t.Fatalf("list roles mapping = calls:%d product:%q tool:%q args:%#v", caller.calls, caller.product, caller.tool, caller.args)
+	}
+	var payload struct {
+		Count int              `json:"count"`
+		Roles []map[string]any `json:"roles"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("decode list roles output: %v", err)
+	}
+	if payload.Count != 2 || len(payload.Roles) != 2 || payload.Roles[0]["labelName"] != "Fixture role" {
+		t.Fatalf("legacy role output drift: %#v", payload)
+	}
+	if value, present := payload.Roles[1]["labelId"]; !present || value != nil || payload.Roles[1]["labelName"] != "" {
+		t.Fatalf("reviewed placeholder was not preserved: %#v", payload.Roles[1])
 	}
 
 	caller.calls = 0
@@ -406,10 +423,13 @@ func TestCrossPlatformCoverageContactFollowingsAndRolesRejectBadElements(t *test
 		"success": true,
 		"result": []any{map[string]any{
 			"groupName": "Fixture group",
-			"labels":    []any{map[string]any{"labelId": float64(1), "name": "Fixture role"}},
+			"labels": []any{
+				map[string]any{"labelId": float64(1), "name": "Fixture role"},
+				map[string]any{"labelId": nil, "name": ""},
+			},
 		}},
 	}, "contact/roles")
-	if err != nil || len(roles) != 1 || roles[0]["labelId"] != int64(1) {
+	if err != nil || len(roles) != 2 || roles[0]["labelId"] != int64(1) || roles[0]["labelName"] != "Fixture role" || roles[1]["labelId"] != nil || roles[1]["labelName"] != "" {
 		t.Fatalf("strict roles = %#v, err=%v", roles, err)
 	}
 	for _, broken := range []map[string]any{
@@ -421,7 +441,7 @@ func TestCrossPlatformCoverageContactFollowingsAndRolesRejectBadElements(t *test
 		{"success": true, "result": []any{map[string]any{"groupName": "Fixture"}}},
 		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": map[string]any{}}}},
 		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": []any{"bad"}}}},
-		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": []any{map[string]any{"labelId": nil, "name": ""}}}}},
+		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": []any{map[string]any{"labelId": nil}}}}},
 		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": []any{map[string]any{"labelId": float64(1), "name": "One"}, map[string]any{"labelId": float64(1), "name": "Duplicate"}}}}},
 	} {
 		if got, parseErr := strictRoles(broken, "contact/roles"); parseErr == nil {

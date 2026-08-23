@@ -365,16 +365,29 @@ func strictRoles(data map[string]any, operation string) ([]map[string]any, error
 			if !ok || label == nil {
 				return nil, responsecheck.Error(operation, "malformed_item", fmt.Sprintf("响应 result[%d].labels[%d] 应为对象，实际为 %T", groupIndex, labelIndex, rawLabel))
 			}
-			id, ok := contactInt64(label["labelId"])
-			name := contactString(label, "name")
-			if !ok || id <= 0 || name == "" {
+			rawID, idPresent := label["labelId"]
+			rawName, namePresent := label["name"]
+			name, nameIsString := rawName.(string)
+			name = strings.TrimSpace(name)
+			// The legacy get_org_labels response can contain one reviewed empty
+			// placeholder inside an otherwise valid group. Preserve that row for
+			// CLI compatibility instead of rejecting every valid role in the
+			// response. This exception is intentionally confined to the hidden,
+			// legacy-only +list-roles path; public role-based shortcuts remain
+			// fail-closed on malformed identities.
+			if idPresent && rawID == nil && namePresent && nameIsString && name == "" {
+				out = append(out, map[string]any{"labelId": nil, "labelName": ""})
+				continue
+			}
+			id, idOK := contactInt64(rawID)
+			if !idOK || id <= 0 || !namePresent || !nameIsString || name == "" {
 				return nil, responsecheck.Error(operation, "malformed_item", fmt.Sprintf("响应 result[%d].labels[%d] 缺少有效 labelId/name", groupIndex, labelIndex))
 			}
 			if seen[id] {
 				return nil, responsecheck.Error(operation, "duplicate_stable_identity", fmt.Sprintf("响应包含重复 labelId（分组 %d，索引 %d）", groupIndex, labelIndex))
 			}
 			seen[id] = true
-			out = append(out, map[string]any{"labelId": id, "name": name, "groupName": groupName})
+			out = append(out, map[string]any{"labelId": id, "labelName": name})
 		}
 	}
 	return out, nil
