@@ -196,7 +196,7 @@ func TestCrossPlatformCoverageByMobileUsesDedicatedExactLookupBeforeDetail(t *te
 	if err := declaration.Execute(shortcut.RuntimeContextForTest(command, declaration)); err != nil {
 		t.Fatalf("by-mobile known execution: %v", err)
 	}
-	if len(caller.calls) != 2 || caller.calls[0].tool != "search_user_by_mobile" || caller.calls[0].args["mobile"] != "+86 138-0013-8000" || caller.calls[1].tool != "get_user_info_by_user_ids" {
+	if len(caller.calls) != 2 || caller.calls[0].tool != "search_user_by_mobile" || caller.calls[0].args["mobile"] != "8613800138000" || caller.calls[1].tool != "get_user_info_by_user_ids" {
 		t.Fatalf("by-mobile calls = %#v", caller.calls)
 	}
 

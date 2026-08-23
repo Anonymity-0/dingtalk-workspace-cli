@@ -140,11 +140,24 @@ func TestCrossPlatformCoverageContactSearchMobileUsesReviewedObjectShape(t *test
 	}
 	declaration := SearchMobile
 	declaration.OutputRollout = output.RolloutLegacyOnly
+	if err := declaration.Validate(shortcut.RuntimeContextForTest(cmd, declaration)); err != nil {
+		t.Fatalf("formatted mobile validation: %v", err)
+	}
 	if err := declaration.Execute(shortcut.RuntimeContextForTest(cmd, declaration)); err != nil {
 		t.Fatalf("search-mobile: %v", err)
 	}
-	if caller.calls != 1 || caller.product != "contact" || caller.history[0].tool != "search_user_by_mobile" || caller.history[0].args["mobile"] != "+86 138-0013-8000" {
+	if caller.calls != 1 || caller.product != "contact" || caller.history[0].tool != "search_user_by_mobile" || caller.history[0].args["mobile"] != "8613800138000" {
 		t.Fatalf("mapping = calls:%d product:%q history:%#v", caller.calls, caller.product, caller.history)
+	}
+	caller.errors = nil
+
+	caller.calls, caller.history = 0, nil
+	caller.errors = map[string]error{"search_user_by_mobile": errors.New("lookup unavailable")}
+	if err := declaration.Execute(shortcut.RuntimeContextForTest(cmd, declaration)); err == nil {
+		t.Fatal("search-mobile swallowed the exact lookup transport error")
+	}
+	if caller.calls != 1 || caller.history[0].args["mobile"] != "8613800138000" {
+		t.Fatalf("transport failure mapping = calls:%d history:%#v", caller.calls, caller.history)
 	}
 	caller.errors = nil
 

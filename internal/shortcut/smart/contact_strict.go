@@ -169,10 +169,11 @@ func strictResolveContactUser(rt *shortcut.RuntimeContext, name string) (contact
 }
 
 func strictResolveContactUserByMobile(rt *shortcut.RuntimeContext, mobile string) (contactUser, map[string]any, error) {
-	if _, err := normalizeContactSmartMobile(mobile); err != nil {
+	normalizedMobile, err := normalizeContactSmartMobile(mobile)
+	if err != nil {
 		return contactUser{}, nil, responsecheck.Error("contact/by-mobile", "invalid_mobile", "--mobile 必须是至少 6 位数字的手机号，可包含国家码、空格、连字符或括号")
 	}
-	lookup, err := rt.CallMCPData("contact", "search_user_by_mobile", map[string]any{"mobile": mobile})
+	lookup, err := rt.CallMCPData("contact", "search_user_by_mobile", map[string]any{"mobile": normalizedMobile})
 	if err != nil {
 		return contactUser{}, nil, err
 	}

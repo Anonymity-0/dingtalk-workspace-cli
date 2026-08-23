@@ -21,6 +21,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/responsecheck"
 )
 
 // GetSelf 获取当前登录用户信息（我是谁 / 本人）。
@@ -259,11 +260,12 @@ var SearchMobile = shortcut.Shortcut{
 		if err := rt.RequireAll("mobile"); err != nil {
 			return err
 		}
-		if err := validateContactMobile(rt, "contact/search_user_by_mobile", "mobile"); err != nil {
-			return err
+		mobile, err := normalizeContactMobile(rt.Str("mobile"))
+		if err != nil {
+			return responsecheck.Error("contact/search_user_by_mobile", "invalid_mobile", "--mobile 必须是至少 6 位数字的手机号，可包含国家码、空格、连字符或括号")
 		}
 		data, err := rt.CallMCPData("contact", "search_user_by_mobile", map[string]any{
-			"mobile": rt.Str("mobile"),
+			"mobile": mobile,
 		})
 		if err != nil {
 			return err
