@@ -590,3 +590,125 @@ func TestCrossPlatformCoverageNullToolResponseRendersEmptyObject(t *testing.T) {
 		})
 	}
 }
+
+// ──────────────────────────────────────────────────────
+// update / remove 的 --members 装配与 --users 解析失败分支
+//
+// add 的 members+notify 透传已有
+// TestPermissionAddNotifyDefaultMatchesWireBehavior 覆盖；这里补齐
+// update（members + notify）与 doc/wiki remove（members）的同构分支，
+// 以及各产品 add/update/remove 中 collectUserIDs 的错误路径：
+// --users 传纯空白时 flagOrFallback 视为已提供（非空字符串），
+// 但 parseCommentMentionIds 过滤空白后为空，collectUserIDs 必须报错
+// 而不是向服务端发送空 userIds。
+// ──────────────────────────────────────────────────────
+
+func TestCrossPlatformCoveragePermissionUpdateWithMembers(t *testing.T) {
+	type updateCase struct {
+		name   string
+		root   func() *cobra.Command
+		path   []string
+		target []string
+		tool   string
+	}
+	cases := []updateCase{
+		{"drive", newDriveCommand, []string{"permission", "update"}, []string{"--node", "n1"}, "update_permission"},
+		{"doc", newDocCommand, []string{"permission", "update"}, []string{"--node", "n1"}, "update_permission"},
+		{"wiki", newWikiCommand, []string{"member", "update"}, []string{"--workspace", "ws1"}, "update_member"},
+	}
+	const members = `[{"type":"USER","id":"u1","roleId":"READER","corpId":"c1"}]`
+	for _, uc := range cases {
+		t.Run(uc.name+" passes members and notify", func(t *testing.T) {
+			caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":[]}`}}}
+			installScriptedCaller(t, caller)
+			args := append(append([]string{}, uc.path...), uc.target...)
+			args = append(args, "--members", members, "--notify")
+			if err := executePR868Command(t, uc.root(), args...); err != nil {
+				t.Fatalf("update --members: %v", err)
+			}
+			if caller.tool != uc.tool {
+				t.Fatalf("tool=%q, want %q", caller.tool, uc.tool)
+			}
+			got, ok := caller.args["members"].([]map[string]any)
+			if !ok || len(got) != 1 || got[0]["id"] != "u1" || got[0]["roleId"] != "READER" {
+				t.Fatalf("members=%#v", caller.args["members"])
+			}
+			if notify, ok := caller.args["notify"].(bool); !ok || !notify {
+				t.Fatalf("notify=%#v, want true for bare --notify", caller.args["notify"])
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoveragePermissionRemoveWithMembersProducts(t *testing.T) {
+	// drive remove 已由 TestPermissionRemoveWithMembers 覆盖；这里补 doc/wiki。
+	type removeCase struct {
+		name   string
+		root   func() *cobra.Command
+		path   []string
+		target []string
+		tool   string
+	}
+	cases := []removeCase{
+		{"doc", newDocCommand, []string{"permission", "remove"}, []string{"--node", "n1"}, "remove_permission"},
+		{"wiki", newWikiCommand, []string{"member", "remove"}, []string{"--workspace", "ws1"}, "remove_member"},
+	}
+	for _, rc := range cases {
+		t.Run(rc.name+" passes members", func(t *testing.T) {
+			caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":[]}`}}}
+			installScriptedCaller(t, caller)
+			args := append(append([]string{}, rc.path...), rc.target...)
+			args = append(args, "--members", `[{"type":"CONVERSATION","id":"cid1"}]`)
+			if err := executePR868Command(t, rc.root(), args...); err != nil {
+				t.Fatalf("remove --members: %v", err)
+			}
+			if caller.tool != rc.tool {
+				t.Fatalf("tool=%q, want %q", caller.tool, rc.tool)
+			}
+			got, ok := caller.args["members"].([]map[string]any)
+			if !ok || len(got) != 1 || got[0]["id"] != "cid1" {
+				t.Fatalf("members=%#v", caller.args["members"])
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoveragePermissionUsersBlankParseError(t *testing.T) {
+	type blankCase struct {
+		name     string
+		root     func() *cobra.Command
+		path     []string
+		target   []string
+		needRole bool
+	}
+	cases := []blankCase{
+		{"drive add", newDriveCommand, []string{"permission", "add"}, []string{"--node", "n1"}, true},
+		{"drive update", newDriveCommand, []string{"permission", "update"}, []string{"--node", "n1"}, true},
+		{"drive remove", newDriveCommand, []string{"permission", "remove"}, []string{"--node", "n1"}, false},
+		{"doc add", newDocCommand, []string{"permission", "add"}, []string{"--node", "n1"}, true},
+		{"doc update", newDocCommand, []string{"permission", "update"}, []string{"--node", "n1"}, true},
+		{"doc remove", newDocCommand, []string{"permission", "remove"}, []string{"--node", "n1"}, false},
+		{"wiki add", newWikiCommand, []string{"member", "add"}, []string{"--workspace", "ws1"}, true},
+		{"wiki update", newWikiCommand, []string{"member", "update"}, []string{"--workspace", "ws1"}, true},
+		{"wiki remove", newWikiCommand, []string{"member", "remove"}, []string{"--workspace", "ws1"}, false},
+	}
+	for _, bc := range cases {
+		t.Run(bc.name+" rejects blank --users", func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			installScriptedCaller(t, caller)
+			args := append(append([]string{}, bc.path...), bc.target...)
+			args = append(args, "--users", " ")
+			if bc.needRole {
+				// add/update 的旧格式分支在 collectUserIDs 之前校验必填 --role。
+				args = append(args, "--role", "READER")
+			}
+			err := executePR868Command(t, bc.root(), args...)
+			if err == nil || !strings.Contains(err.Error(), "--users is required") {
+				t.Fatalf("expected --users is required error, got %v", err)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("MCP must not be called when --users resolves empty, called %d times", caller.calls)
+			}
+		})
+	}
+}
