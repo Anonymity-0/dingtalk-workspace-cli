@@ -569,23 +569,40 @@ func TestPermissionAddNotifyDefaultMatchesWireBehavior(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────
-// 服务端对 permission/member update/remove 等操作可能返回字面 "null"
-// （操作成功但无返回数据）。CLI 必须将其渲染为空对象 {}，
-// 避免 Agent/下游把 null 当作对象解析时失败。
+// 服务端对已确认“空响应=写成功”契约的 permission/member update/remove
+// 工具可能返回字面 "null"（操作成功但无返回数据）。CLI 仅对这几个
+// 工具将其渲染为空对象 {}，避免 Agent/下游把 null 当作对象解析时失败；
+// 其它工具的合法 null 保持原样输出，公共渲染器的机器输出契约不变。
 // ──────────────────────────────────────────────────────
 
 func TestCrossPlatformCoverageNullToolResponseRendersEmptyObject(t *testing.T) {
+	// nullOnSuccessTools 集合内：null 适配为 {}
 	for _, format := range []string{"json", "raw"} {
-		t.Run(format, func(t *testing.T) {
+		t.Run("adapted_"+format, func(t *testing.T) {
+			caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: "null"}}, format: format}
+			installScriptedCaller(t, caller)
+			out := &bytes.Buffer{}
+			deps.Out.w = out
+			if err := callMCPToolInternalOptsContext(context.Background(), "drive", "update_permission", nil, false); err != nil {
+				t.Fatalf("null tool response should render as {}: %v", err)
+			}
+			if got := strings.TrimSpace(out.String()); got != "{}" {
+				t.Errorf("format %s renders %q, want {}", format, got)
+			}
+		})
+	}
+	// 集合外的工具：null 原样输出，不再被公共渲染路径改写为 {}
+	for _, format := range []string{"json", "raw"} {
+		t.Run("passthrough_"+format, func(t *testing.T) {
 			caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: "null"}}, format: format}
 			installScriptedCaller(t, caller)
 			out := &bytes.Buffer{}
 			deps.Out.w = out
 			if err := callMCPToolInternalOptsContext(context.Background(), "drive", "update_node_permission", nil, false); err != nil {
-				t.Fatalf("null tool response should render as {}: %v", err)
+				t.Fatalf("null passthrough should not error: %v", err)
 			}
-			if got := strings.TrimSpace(out.String()); got != "{}" {
-				t.Errorf("format %s renders %q, want {}", format, got)
+			if got := strings.TrimSpace(out.String()); got != "null" {
+				t.Errorf("format %s renders %q, want null unchanged", format, got)
 			}
 		})
 	}

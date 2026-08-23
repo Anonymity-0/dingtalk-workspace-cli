@@ -130,8 +130,12 @@ func TestCrossPlatformCoverageBusinessSuggestionsAndResponseClassification(t *te
 		"MCP不存在":                                      "未注册",
 		"参数错误":                                        "input parameters",
 		"param error":                                 "input parameters",
-		"无权限访问":                                       "权限申请",
-		"权限不足":                                        "权限申请",
+		// 非文档类权限文本不再给出 drive permission apply 指引。
+		"无权限访问": "Verify your account",
+		"权限不足":  "Verify your account",
+		// 权限关键词叠加文档特征（文档权限码/角色门槛）时保留 apply 指引。
+		"您没有权限访问该文档 (forbidden.no.auth)": "权限申请",
+		"无权限访问：需要您具备 MANAGER 及以上角色":      "权限申请",
 	}
 	for input, want := range suggestions {
 		if got := suggestForBusinessErrorText(input); !strings.Contains(got, want) {
@@ -170,20 +174,49 @@ func TestCrossPlatformCoverageBusinessSuggestionsAndResponseClassification(t *te
 			t.Errorf("accessDenied guidance missing: message=%q suggestion=%q", cli.Message, cli.Suggestion)
 		}
 	}
+	// 文档节点权限错误码（drive/get_dentry NO_PERMISSION）同样拿到 apply 指引。
+	for _, code := range []string{"NO_PERMISSION", "forbidden.no.auth"} {
+		err := ClassifyToolResultContent(map[string]any{"code": code, "success": false, "errorMsg": "no permission"})
+		cli, ok := err.(*CLIError)
+		if !ok || cli.Code != CodeAuthPermission || !strings.Contains(cli.Suggestion, "permission apply") {
+			t.Errorf("document code %s classified as %#v, want AUTH_PERMISSION_DENIED with apply guidance", code, err)
+		}
+	}
+	// 非文档产品的权限错误保留产品专属建议（邮件）或通用提示，
+	// 不得被改写为 drive 文档权限申请指引。
+	mail := ClassifyToolResultContent(map[string]any{"success": false, "errorMsg": "User has no permission to access this email"})
+	if cli, ok := mail.(*CLIError); !ok || cli.Code != CodeAuthPermission ||
+		!strings.Contains(cli.Suggestion, "mailbox list") || strings.Contains(cli.Suggestion, "permission apply") {
+		t.Errorf("mail permission error classified as %#v, want mailbox hint without apply guidance", mail)
+	}
+	generic := ClassifyToolResultContent(map[string]any{"success": false, "code": "FORBIDDEN", "errorMsg": "群权限不足"})
+	if cli, ok := generic.(*CLIError); !ok || cli.Code != CodeAuthPermission ||
+		!strings.Contains(cli.Suggestion, "Verify your account") || strings.Contains(cli.Suggestion, "permission apply") {
+		t.Errorf("generic permission error classified as %#v, want product-neutral suggestion", generic)
+	}
 
 	for _, tc := range []struct {
-		text string
-		kind string
+		text    string
+		kind    string
+		suggHas string
 	}{
-		{"not-json", "nil"},
-		{"null", "nil"},
-		{`{"errorCode":"USER_TOKEN_ILLEGAL"}`, "cli"},
-		{`{"error":"Missing service_id or access_key"}`, "cli"},
-		{`{"code":"PAT_HIGH_RISK_NO_PERMISSION","extra":{"class":"x","keep":1}}`, "pat"},
-		{`{"success":false,"errorMsg":"rate limit"}`, "cli"},
-		{`{"success":false,"code":"forbidden.accessDenied","errorMsg":"需要您具备 MANAGER 及以上角色","logId":"abc123"}`, "authperm"},
-		{`{"success":false,"errorMsg":"members[0].id 对应的用户不存在"}`, "cli"},
-		{`{"success":true}`, "nil"},
+		{"not-json", "nil", ""},
+		{"null", "nil", ""},
+		{`{"errorCode":"USER_TOKEN_ILLEGAL"}`, "cli", ""},
+		{`{"error":"Missing service_id or access_key"}`, "cli", ""},
+		{`{"code":"PAT_HIGH_RISK_NO_PERMISSION","extra":{"class":"x","keep":1}}`, "pat", ""},
+		{`{"success":false,"errorMsg":"rate limit"}`, "cli", ""},
+		{`{"success":false,"code":"forbidden.accessDenied","errorMsg":"需要您具备 MANAGER 及以上角色","logId":"abc123"}`, "authperm", "permission apply"},
+		// 非文档产品的权限错误：分类为 AUTH_PERMISSION_DENIED，但建议保持
+		// 产品专属（邮件 mailbox）或通用提示，不带文档 apply 指引。
+		{`{"success":false,"errorMsg":"User has no permission to access this email"}`, "authperm", "mailbox list"},
+		{`{"success":false,"code":"FORBIDDEN","errorMsg":"群权限不足"}`, "authperm", "Verify your account"},
+		{`{"success":false,"code":"FORBIDDEN"}`, "authperm", "Verify your account"},
+		// 文档/知识库角色门槛文案与文档权限码文本：apply 指引保留。
+		{`{"success":false,"errorMsg":"需要您具备 MANAGER 及以上角色"}`, "authperm", "permission apply"},
+		{`{"success":false,"errorMsg":"forbidden.no.auth: 你无权访问该文档"}`, "authperm", "permission apply"},
+		{`{"success":false,"errorMsg":"members[0].id 对应的用户不存在"}`, "cli", ""},
+		{`{"success":true}`, "nil", ""},
 	} {
 		err := ClassifyMCPResponseText(tc.text)
 		switch tc.kind {
@@ -199,6 +232,10 @@ func TestCrossPlatformCoverageBusinessSuggestionsAndResponseClassification(t *te
 			cli, ok := err.(*CLIError)
 			if !ok || cli.Code != CodeAuthPermission {
 				t.Errorf("ClassifyMCPResponseText(%s) = %#v, want AUTH_PERMISSION_DENIED", tc.text, err)
+				continue
+			}
+			if !strings.Contains(cli.Suggestion, tc.suggHas) {
+				t.Errorf("ClassifyMCPResponseText(%s) suggestion = %q, want it to contain %q", tc.text, cli.Suggestion, tc.suggHas)
 			}
 		case "pat":
 			if _, ok := err.(*PATError); !ok {

@@ -445,14 +445,18 @@ func callMCPToolInternalOptsContext(ctx context.Context, explicitServerID, toolN
 			var errBody map[string]any
 			if json.Unmarshal([]byte(c.Text), &errBody) == nil {
 				// errBody == nil 表示文本为 "null"，服务端返回了空响应。
-				// 这在某些操作（如 permission/member update/remove）中是正常的——操作成功但无返回数据。
-				// 将 null 转换为空对象 {} 输出，避免消费方解析 null 时出错。
+				// 仅对已确认“空响应=写成功”契约的 permission/member update/remove
+				// 工具适配为空对象 {}，避免消费方解析 null 时出错；其它工具的
+				// 合法 null 保持原样输出，不改变未版本化的机器输出契约。
 				if errBody == nil {
-					if deps.Caller.Format() == "json" {
-						return printJSON(map[string]any{})
+					if nullOnSuccessTools[toolName] {
+						if deps.Caller.Format() == "json" {
+							return printJSON(map[string]any{})
+						}
+						deps.Out.PrintRaw("{}")
+						return nil
 					}
-					deps.Out.PrintRaw("{}")
-					return nil
+					return renderLegacyMCPText(toolName, c.Text, unescapeHTML)
 				}
 				// 网关层错误（如 token 过期）
 				if _, ok := getDWSGatewayErrorCode(errBody); ok {
@@ -477,6 +481,18 @@ func callMCPToolInternalOptsContext(ctx context.Context, explicitServerID, toolN
 	}
 	// 无 text 类型内容时，将整个 result 对象序列化为 JSON 输出
 	return printJSON(result)
+}
+
+// nullOnSuccessTools lists MCP tools whose server contract is confirmed to
+// return a literal JSON null for successful no-payload writes (permission /
+// member update/remove). Only these get the null→{} adaptation; every other
+// tool keeps its raw null output so the shared machine-output contract stays
+// unchanged.
+var nullOnSuccessTools = map[string]bool{
+	"update_permission": true,
+	"remove_permission": true,
+	"update_member":     true,
+	"remove_member":     true,
 }
 
 // RenderLegacyMCPText renders an already-fetched MCP text response through the

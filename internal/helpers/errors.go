@@ -408,10 +408,77 @@ func suggestForBusinessErrorText(text string) string {
 		strings.Contains(text, "没有权限") || strings.Contains(text, "权限不足") ||
 		strings.Contains(text, "no permission") || strings.Contains(text, "permission denied") ||
 		strings.Contains(text, "FORBIDDEN"):
-		return permissionApplyGuidance
+		return permissionDeniedSuggestion(text)
 	default:
 		return ""
 	}
+}
+
+// documentPermissionServerCodes are permission-denied codes that originate from
+// drive/doc/wiki node access or member-role management. Only these (plus their
+// role-threshold messages) justify the dws drive permission apply-* guidance;
+// generic permission failures from other products (mail, chat, approval,
+// contacts, ...) must keep a product-neutral suggestion instead of being told
+// to run document permission commands that cannot fix their problem.
+var documentPermissionServerCodes = map[string]bool{
+	"NO_PERMISSION":          true,
+	"forbidden.no.auth":      true,
+	"forbidden.accessDenied": true,
+}
+
+// documentPermissionErrorText reports whether a permission-denied message is
+// specific to document/wiki permission (drive/doc/wiki), e.g. the role
+// threshold wording emitted by the member-management APIs or the document
+// permission error codes embedded in the message text.
+func documentPermissionErrorText(text string) bool {
+	if text == "" {
+		return false
+	}
+	lower := strings.ToLower(text)
+	return strings.Contains(lower, "forbidden.no.auth") ||
+		strings.Contains(lower, "forbidden.accessdenied") ||
+		strings.Contains(text, "需要您具备") || strings.Contains(text, "及以上角色")
+}
+
+// isDocumentPermissionError reports whether a permission-denied body is
+// specific to document/wiki access, where applying for access via
+// dws drive permission apply-* is the actionable next step.
+func isDocumentPermissionError(body map[string]any) bool {
+	for _, key := range []string{"code", "errorCode", "server_error_code"} {
+		if code, ok := body[key].(string); ok && documentPermissionServerCodes[code] {
+			return true
+		}
+	}
+	return documentPermissionErrorText(businessErrorMessage(body))
+}
+
+// genericPermissionSuggestion is the product-neutral suggestion for
+// permission-denied errors that are not specific to document/wiki access.
+const genericPermissionSuggestion = "Verify your account has permission for this resource"
+
+// permissionDeniedSuggestion picks between document apply-permission guidance
+// and a product-neutral hint: only document/wiki-specific errors point at
+// dws drive permission apply-*, so other products never get a misleading
+// document-permission suggestion.
+func permissionDeniedSuggestion(text string) string {
+	if documentPermissionErrorText(text) {
+		return permissionApplyGuidance
+	}
+	return genericPermissionSuggestion
+}
+
+// permissionDeniedSuggestionFor resolves the suggestion for a permission-denied
+// body: document/wiki-specific errors get the apply-permission guidance; other
+// products keep their product-specific suggestion (e.g. the mail mailbox hint)
+// or fall back to the product-neutral hint.
+func permissionDeniedSuggestionFor(body map[string]any) string {
+	if isDocumentPermissionError(body) {
+		return permissionApplyGuidance
+	}
+	if suggestion := suggestForBusinessError(body); suggestion != "" {
+		return suggestion
+	}
+	return genericPermissionSuggestion
 }
 
 // ClassifyToolResultContent checks a raw MCP tool result content map for
@@ -438,12 +505,15 @@ func ClassifyToolResultContent(content map[string]any) error {
 
 	// Permission-denied business errors: surface apply-permission guidance before
 	// the framework's generic rendering swallows it (e.g. drive/get_dentry NO_PERMISSION).
+	// Guidance is limited to document/wiki-specific errors; other products keep
+	// the product-neutral suggestion.
 	if isNoPermissionError(content) {
+		suggestion := permissionDeniedSuggestionFor(content)
 		raw, _ := json.Marshal(content)
 		return &CLIError{
 			Code:       CodeAuthPermission,
 			Message:    businessErrorDisplayMessage(content, string(raw)),
-			Suggestion: permissionApplyGuidance,
+			Suggestion: suggestion,
 		}
 	}
 	return nil
@@ -511,7 +581,7 @@ func ClassifyMCPResponseText(text string) error {
 		return &CLIError{
 			Code:       CodeAuthPermission,
 			Message:    text,
-			Suggestion: permissionApplyGuidance,
+			Suggestion: permissionDeniedSuggestionFor(body),
 		}
 	}
 
