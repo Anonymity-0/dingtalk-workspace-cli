@@ -80,6 +80,18 @@ dws minutes <group> <leaf> --help
 
 完整逐字稿优先 `+transcript`；它跨页去重并返回 `complete/pages/nextToken/failurePage`。`+detail` 适合一次读取多种产物；任何所选产物失败都属于 partial，不把 bundle 说成完整。
 
+需要核对多条命中的 basic 时，不要只抽查第一条：
+
+```text
+dws minutes +detail --ids <uuid1,uuid2> --artifacts basic --format json
+```
+
+结果必须逐项覆盖请求 ID；缺项或失败项如实保留。当前 basic 投影没有逐条 `orgName` 时，应说明归属字段不可得；当前 profile 的 `corpName` 只能证明执行上下文，不能证明每条听记的创建组织或归属。
+
+多听记、多来源或跨产品任务先建立逐来源证据台账：`requested` 记录用户要求的输入，`resolved` 记录已锁定的 `taskUuid`/来源 ID，`missing` 记录未找到的输入，`artifacts` 记录每条实际取得的内容，`status` 记录 `succeeded/partial/failed/unknown`。任一必需来源缺失时整体不能称完整；后续跨产品 Skill 只能接收有来源 ID 的真实产物，不能把已找到的子集写成全部。
+
+内容型结论必须与逐条 artifact 对齐。只有 `title/basic` 时可以列出标题、时间等元数据，不能生成摘要、关键词、主题或内容分类；只有取得该条真实 `summary/transcript/keywords` 后，才能对相应内容做归纳。
+
 ## 4. 更新与录音控制
 
 | 原子命令 | 效果 | 当前 confirmation |
@@ -92,6 +104,15 @@ dws minutes <group> <leaf> --help
 | `minutes record stop` | 永久停止指定 taskUuid | `user_required` |
 
 标题与纪要推荐分别使用 `+update`、`+summary`，因为它们包含预检/读回验证。更新纪要时先读取当前完整正文，保留原有 Markdown 图片和用户未要求改变的内容，再写回完整目标内容。
+
+仅预览标题变化时，先读取当前标题，再调用本地计划；`+update --dry-run` 本身不访问远端，所以 `before` 必须来自前一条真实 basic 读取：
+
+```text
+dws minutes +detail --id <taskUuid> --artifacts basic --format json
+dws minutes +update --id <taskUuid> --title "<目标标题>" --dry-run --format json
+```
+
+最终展示 `当前标题 → 目标标题`、`executed=false` 和同一 taskUuid 后即结束。用户说“不实际写入”时不得继续索要写入确认、追加 `--yes`、真实改名或再以还原补救。
 
 录音 start 的成功回执不一定含可控制的 taskUuid。只有响应明确提供 `taskUuid`，并由 Shortcut 返回 `controlReady=true`，才能执行 pause/resume/stop；不能通过“最新听记”或列表第一条猜测绑定。
 

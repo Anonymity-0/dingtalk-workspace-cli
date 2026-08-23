@@ -43,10 +43,10 @@ metadata:
 | 浏览我创建、共享给我或全部可访问听记 | `+list-mine` / `+list-shared` / `+list-all` | 默认是可续拉预览；要声称完整必须加 `--page-all` 并检查 `complete=true`。用户只说“我的听记”不等于明确 `mine`，范围不清时用 `all` |
 | 看我最新创建的一条 | `dws minutes +latest [--keyword <关键词>]` | 只在用户明确说“最新”时用；不能用它替代具名目标搜索，也不能在录音 start 后拿 latest 猜新录音 ID |
 | 读取基础信息、摘要或关键词 | `dws minutes +detail --id <taskUuid> --artifacts basic,summary,keywords` | 只读取需要的产物；任一产物失败都按 partial/非零处理，不把缺失项说成空内容 |
-| 读取完整逐字稿 | `dws minutes +transcript --id <taskUuid>` | 默认追完分页；只有用户明确只要一页时使用 `--single-page`。交付前检查 `complete/pages/nextToken` |
+| 读取逐字稿 | `dws minutes +transcript --id <taskUuid> [--direction 1] [--single-page]` | 默认正序并追完分页；倒序必须传 `--direction 1`，用户明确只要第一页时传 `--single-page`，不得随后自动续页。交付前检查 `direction/complete/pages/nextToken` |
 | 读取行动项 | `dws minutes +action-items --id <taskUuid>` | 只有受支持字段明确返回空数组才能说“没有待办”；`unsupported_shape`、字段解析失败或工具失败都不是空结果。需要创建钉钉待办时再切 `dingtalk-todo` |
 | 把摘要、关键词、完整逐字稿和行动项归档到本地 | `dws minutes +export-pack --id <taskUuid> --output <新相对目录>` | 要带媒体时加 `--include-media`；必须由 `published/path/manifest/files` 证明落盘，只有建目录、计划或文件名不能称已生成 |
-| 修改标题 | `dws minutes +update --id <taskUuid> --title "<新标题>"` | 先锁定真实 ID，按 Runtime confirmation 执行，写后读回验证 |
+| 修改或预览标题 | `dws minutes +update --id <taskUuid> --title "<新标题>"` | 真实修改按 Runtime confirmation 执行并读回；用户只要预览时先读 basic，再加 `--dry-run`，展示“当前值 → 目标值”后停止，不追加 `--yes` |
 | 覆盖纪要正文 | `dws minutes +summary --id <taskUuid> --content @<相对文件>` | `content` 是完整目标正文，不是局部 patch；按 Runtime confirmation 执行，并保护图片引用、读回全文 |
 | 上传音视频生成听记 | `dws minutes +upload --file <相对路径>` | 普通上传不发送额外消息；用户明确要闪记卡片时改用 `+upload-and-notify`，需要等待分析产物时用 `+upload-and-analyze` |
 | 真实开始、暂停、继续或停止录音 | `+record-start` / `+record-pause` / `+record-resume` / `+record-stop` | 这组入口会真实执行。start 返回 `accepted=true, bound=false` 或 `controlReady=false` 时，报告“已受理但未绑定”并停止：不得重试 start，也不得用 `+latest`、列表第一条或时间最近项猜 ID。结束并等待产物用 `+record-wrap-up` |
@@ -73,8 +73,13 @@ dws minutes +list-all --page-all --format json
 ## 目标与完整性
 
 - 目标锁定优先级：用户给出的 `taskUuid`/URL > 精确标题 > 标题包含或语义相关候选。相似候选可展示，但候选差异明显或多个候选都合理时必须停下来消歧；分页未完成本身不是目标歧义。
+- 用户说“先确认/核对目标”默认要求用真实 basic 字段完成证据核对，不自动变成等待用户回复的会话门禁。目标唯一、分页完整且后续均为只读时，展示标题、时间、归属等核对证据后在同一轮继续；只有用户明确要求“等我确认后再继续”或仍有多个合理候选时才暂停。
+- 纯能力、规则或错误说明且没有唯一真实目标时直接解释，不猜对象；用户明确要求核对且目标唯一时必须真实读取，不能只展示命令。
 - `mine` 仅表示我创建的，`shared` 仅表示共享给我的；`all` 表示 accessible 聚合目标。不得声称后端单个 noLimit 端点天然等于 `mine + shared`。
 - 列表或逐字稿只有 `complete=true` 才能称为“全部/完整”。全量请求遇到有效 continuation 时继续；只有 `nextToken` 缺失、cursor 停滞/循环、达到 `page-limit` 或后页失败时才停止，并保留不完整证据。
+- 用户要求核对、汇总“这些/每条/全部”命中项时，必须覆盖完整命中集合；可用 `dws minutes +detail --ids <uuid1,uuid2> --artifacts basic --format json` 批量核对，并逐项保留失败。只检查第一条不能代表全体；响应没有逐条归属或组织字段时如实说明不可得，不能用当前 profile 的组织名代替每条听记的归属。
+- 多听记、多来源或跨产品汇总按每个 `taskUuid`/来源 ID 保留 `requested/resolved/missing/artifacts/status`；缺输入或必需产物时整体按 partial，不用已找到项代表全部。
+- 内容归纳必须来自每条真实 `summary/transcript/keywords`；只有 `title/basic` 时只列元数据，不生成摘要、关键词或分类。
 - `partial_success`、异步 `pending`、超时和未知写入结果不是成功。按结果中的恢复句柄继续，不能重放已成功步骤。
 
 ## 安全边界
@@ -82,6 +87,7 @@ dws minutes +list-all --page-all --format json
 - 是否确认以 leaf Schema 与 Runtime gate 为准，不根据“看起来像写操作”自行推断。标题、纪要、录音控制、权限授权/申请/撤销、发言人或文本替换等当前要求确认。
 - 普通上传、思维导图、发言人洞察和仅追加 ASR 热词当前不额外要求确认；上传并发送闪记卡片、精确同步并删除热词、撤权等副作用更大的入口单独处理。
 - `--dry-run` 必须返回明确的 dry-run/request 证据且不调用远端；录音预览按上方原子入口执行。任何入口若拒绝 dry-run，必须报告“不支持预览”，不得把拦截或普通执行称为预演成功。
+- 用户明确要求“仅预览/不实际写入”时，任务在真实现状读取、dry-run 计划和差异交付后结束；不得继续请求写入确认，也不得为了验证预览而执行真实写入后再还原。
 - 分享/撤权使用稳定成员 UID，不能把姓名、手机号或跨组织 ID 直接当 UID；同一目标解析、读取、写入和验证必须使用同一 profile。
 
 ## 按需加载

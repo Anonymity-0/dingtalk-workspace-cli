@@ -154,6 +154,69 @@ class MinutesScriptContractTest(unittest.TestCase):
         self.assertIn('dws minutes +share --id <taskUuid>', workflow_reference)
         self.assertIn('dws minutes +unshare --id <taskUuid>', workflow_reference)
 
+    def test_phase3_bad_case_guidance_is_general_and_executable(self):
+        skill = SKILL_FILE.read_text(encoding='utf-8')
+        intent_guide = (REFERENCES_DIR / 'intent-guide.md').read_text(
+            encoding='utf-8'
+        )
+        minutes_reference = (REFERENCES_DIR / 'minutes.md').read_text(
+            encoding='utf-8'
+        )
+        workflow_reference = (REFERENCES_DIR / '07-minutes.md').read_text(
+            encoding='utf-8'
+        )
+
+        for fact in (
+            '--direction 1',
+            '等我确认后再继续',
+            'dws minutes +detail --ids <uuid1,uuid2> --artifacts basic',
+            '不能用当前 profile 的组织名代替每条听记的归属',
+            '不得为了验证预览而执行真实写入后再还原',
+            '纯能力、规则或错误说明',
+            'requested/resolved/missing/artifacts/status',
+            '只有 `title/basic` 时只列元数据',
+        ):
+            self.assertIn(fact, skill)
+
+        self.assertIn('不查询 Help、不编造替换词', intent_guide)
+        self.assertIn('逐来源证据台账', minutes_reference)
+        self.assertIn(
+            '不能生成摘要、关键词、主题或内容分类',
+            minutes_reference,
+        )
+        self.assertIn(
+            'dws minutes +update --id <taskUuid> --title "<目标标题>" --dry-run',
+            minutes_reference,
+        )
+        self.assertIn('当前 profile 的 `corpName`', minutes_reference)
+        self.assertIn(
+            'dws minutes hot-word list --format json', workflow_reference
+        )
+        self.assertIn(
+            'dws minutes +list-mine --page-all --format json',
+            workflow_reference,
+        )
+        self.assertIn('不能通过真实 create 后 cancel 来伪造预览', workflow_reference)
+        for case_id in (
+            '0052',
+            '0060',
+            '0066',
+            '0068',
+            '0070',
+            '0071',
+            '0110',
+            '0121',
+            '0132',
+            '0136',
+            '0137',
+            '0142',
+            '0145',
+        ):
+            self.assertNotIn(case_id, skill)
+            self.assertNotIn(case_id, intent_guide)
+            self.assertNotIn(case_id, minutes_reference)
+            self.assertNotIn(case_id, workflow_reference)
+
 
 if __name__ == '__main__':
     unittest.main()
