@@ -26,7 +26,7 @@ dws doc +update --node <DOC_ID> --command block_delete --block-id <BLOCK_ID>
 dws doc block insert --node <DOC_ID> --heading "发布说明 v1.0" --level 1 --ref-block <FIRST_BLOCK_ID> --where before --format json
 ```
 
-插入后按回执中的新 block ID 执行 `dws doc block list --node <DOC_ID> --block-id <NEW_BLOCK_ID> --format json`，同时验证 `blockType=heading`、`heading.level=1` 和标题文字。修改现有标题才使用 `doc block update --block-id ... --heading ... --level ...`；不要用普通文字替换改变块类型。
+插入后按回执中的新 block ID 执行 `dws doc block list --node <DOC_ID> --block-id <NEW_BLOCK_ID> --format json`，同时验证 `blockType=heading`、回读投影 `heading.level="heading-1"` 和标题文字。CLI 写入仍使用数值参数 `--level 1`。修改现有标题才使用 `doc block update --block-id ... --heading ... --level ...`；不要用普通文字替换改变块类型。
 
 ## 富结构专家路径
 

@@ -50,7 +50,7 @@ block ID 必须来自 `+fetch --detail with-ids` 或真实 block 列表，禁止
 dws doc block insert --node <DOC_ID> --heading "发布说明 v1.0" --level 1 --ref-block <FIRST_BLOCK_ID> --where before --format json
 ```
 
-从插入回执取新 block ID，再用 `doc block list --block-id <NEW_BLOCK_ID> --format json` 验证 `blockType=heading` 且 `heading.level=1`。只核对可见文字不算结构验收。已有标题改级别或改文字时使用结构化 `doc block update --heading/--level`；更多块边界见 [`doc-block.md`](doc-block.md)。
+从插入回执取新 block ID，再用 `doc block list --block-id <NEW_BLOCK_ID> --format json` 验证 `blockType=heading` 且回读投影 `heading.level="heading-1"`；CLI 写入参数仍是 `--level 1`。只核对可见文字不算结构验收。已有标题改级别或改文字时使用结构化 `doc block update --heading/--level`；更多块边界见 [`doc-block.md`](doc-block.md)。
 
 ## 最小改写决策
 
