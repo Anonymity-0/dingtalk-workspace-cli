@@ -414,14 +414,15 @@ func suggestForBusinessErrorText(text string) string {
 	}
 }
 
-// documentPermissionServerCodes are permission-denied codes that originate from
-// drive/doc/wiki node access or member-role management. Only these (plus their
-// role-threshold messages) justify the dws drive permission apply-* guidance;
-// generic permission failures from other products (mail, chat, approval,
-// contacts, ...) must keep a product-neutral suggestion instead of being told
-// to run document permission commands that cannot fix their problem.
+// documentPermissionServerCodes are permission-denied codes that are
+// demonstrably drive-specific (their identity carries the forbidden.* domain
+// prefix). Only these (plus the document/wiki role-threshold message wording)
+// justify the dws drive permission apply-* guidance. Generic code names such
+// as NO_PERMISSION and FORBIDDEN are deliberately excluded: attendance
+// (get-self-setting) and event-subscription tools have been observed returning
+// NO_PERMISSION, so keying guidance on it would mislead non-document products
+// exactly the way this classification tries to avoid.
 var documentPermissionServerCodes = map[string]bool{
-	"NO_PERMISSION":          true,
 	"forbidden.no.auth":      true,
 	"forbidden.accessDenied": true,
 }
@@ -504,9 +505,9 @@ func ClassifyToolResultContent(content map[string]any) error {
 	}
 
 	// Permission-denied business errors: surface apply-permission guidance before
-	// the framework's generic rendering swallows it (e.g. drive/get_dentry NO_PERMISSION).
-	// Guidance is limited to document/wiki-specific errors; other products keep
-	// the product-neutral suggestion.
+	// the framework's generic rendering swallows it. Guidance is limited to
+	// document/wiki-specific signals (forbidden.* codes or role-threshold
+	// wording); other products keep the product-neutral suggestion.
 	if isNoPermissionError(content) {
 		suggestion := permissionDeniedSuggestionFor(content)
 		raw, _ := json.Marshal(content)

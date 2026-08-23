@@ -174,13 +174,25 @@ func TestCrossPlatformCoverageBusinessSuggestionsAndResponseClassification(t *te
 			t.Errorf("accessDenied guidance missing: message=%q suggestion=%q", cli.Message, cli.Suggestion)
 		}
 	}
-	// 文档节点权限错误码（drive/get_dentry NO_PERMISSION）同样拿到 apply 指引。
-	for _, code := range []string{"NO_PERMISSION", "forbidden.no.auth"} {
+	// 带 forbidden.* 域名的权限码是 drive 专属，单独出现即可拿到 apply 指引。
+	for _, code := range []string{"forbidden.no.auth"} {
 		err := ClassifyToolResultContent(map[string]any{"code": code, "success": false, "errorMsg": "no permission"})
 		cli, ok := err.(*CLIError)
 		if !ok || cli.Code != CodeAuthPermission || !strings.Contains(cli.Suggestion, "permission apply") {
 			t.Errorf("document code %s classified as %#v, want AUTH_PERMISSION_DENIED with apply guidance", code, err)
 		}
+	}
+	// 通用码名 NO_PERMISSION 不再单独触发文档 apply 指引（回归测试）：
+	// 考勤 get-self-setting、事件订阅等非文档工具也会返回该码。
+	nonDoc := ClassifyToolResultContent(map[string]any{"code": "NO_PERMISSION", "success": false, "errorMsg": "no permission"})
+	if cli, ok := nonDoc.(*CLIError); !ok || cli.Code != CodeAuthPermission ||
+		!strings.Contains(cli.Suggestion, "Verify your account") || strings.Contains(cli.Suggestion, "permission apply") {
+		t.Errorf("NO_PERMISSION classified as %#v, want product-neutral suggestion without apply guidance", nonDoc)
+	}
+	// NO_PERMISSION 叠加文档特征文本（角色门槛）时仍保留 apply 指引。
+	docCombo := ClassifyToolResultContent(map[string]any{"code": "NO_PERMISSION", "success": false, "errorMsg": "需要您具备 MANAGER 及以上角色"})
+	if cli, ok := docCombo.(*CLIError); !ok || cli.Code != CodeAuthPermission || !strings.Contains(cli.Suggestion, "permission apply") {
+		t.Errorf("NO_PERMISSION with document wording classified as %#v, want apply guidance", docCombo)
 	}
 	// 非文档产品的权限错误保留产品专属建议（邮件）或通用提示，
 	// 不得被改写为 drive 文档权限申请指引。
@@ -212,9 +224,11 @@ func TestCrossPlatformCoverageBusinessSuggestionsAndResponseClassification(t *te
 		{`{"success":false,"errorMsg":"User has no permission to access this email"}`, "authperm", "mailbox list"},
 		{`{"success":false,"code":"FORBIDDEN","errorMsg":"群权限不足"}`, "authperm", "Verify your account"},
 		{`{"success":false,"code":"FORBIDDEN"}`, "authperm", "Verify your account"},
+		{`{"success":false,"code":"NO_PERMISSION","errorMsg":"no permission"}`, "authperm", "Verify your account"},
 		// 文档/知识库角色门槛文案与文档权限码文本：apply 指引保留。
 		{`{"success":false,"errorMsg":"需要您具备 MANAGER 及以上角色"}`, "authperm", "permission apply"},
 		{`{"success":false,"errorMsg":"forbidden.no.auth: 你无权访问该文档"}`, "authperm", "permission apply"},
+		{`{"success":false,"code":"NO_PERMISSION","errorMsg":"需要您具备 MANAGER 及以上角色"}`, "authperm", "permission apply"},
 		{`{"success":false,"errorMsg":"members[0].id 对应的用户不存在"}`, "cli", ""},
 		{`{"success":true}`, "nil", ""},
 	} {
