@@ -78,12 +78,12 @@ func TestCrossPlatformCoverageAiSearchValidationAndExecutionBranches(t *testing.
 	command.Flags().StringSlice("dimensions", []string{"name"}, "")
 	runtime := shortcut.RuntimeContextForTest(command, declaration)
 	caller.err = errors.New("transport")
-	if err := executeSearch(runtime, "enterprise_person_search", map[string]any{"keyword": "fixture"}, []string{"userId"}); err == nil {
+	if err := executeSearchForSource(runtime, "enterprise_person_search", map[string]any{"keyword": "fixture"}, []string{"userId"}, "user"); err == nil {
 		t.Fatal("transport failure returned success")
 	}
 	caller.err = nil
 	caller.payload = `{"success":true}`
-	if err := executeSearch(runtime, "enterprise_person_search", map[string]any{"keyword": "fixture"}, []string{"userId"}); err == nil {
+	if err := executeSearchForSource(runtime, "enterprise_person_search", map[string]any{"keyword": "fixture"}, []string{"userId"}, "user"); err == nil {
 		t.Fatal("projection failure returned success")
 	}
 	caller.err = errors.New("transport")
@@ -253,6 +253,18 @@ func TestCrossPlatformCoverageAiSearchExactShortcutMapping(t *testing.T) {
 	if !ok || strings.Join(dimensions, ",") != "name,duty" {
 		t.Fatalf("dimensions = %#v", caller.args["dimension"])
 	}
+
+	caller.calls = 0
+	caller.payload = `{"success":true,"result":[{"sourceType":"im","url":"https://example.invalid/non-person-resource"}]}`
+	driftCommand := &cobra.Command{Use: "+search-person"}
+	driftCommand.Flags().String("query", "fixture", "")
+	driftCommand.Flags().StringSlice("dimensions", []string{"name"}, "")
+	if err := declaration.Execute(shortcut.RuntimeContextForTest(driftCommand, declaration)); err == nil || !strings.Contains(err.Error(), "来源") {
+		t.Fatalf("non-user source was not rejected: %v", err)
+	}
+	if caller.calls != 1 || caller.tool != "enterprise_person_search" {
+		t.Fatalf("source drift call = count:%d tool:%q", caller.calls, caller.tool)
+	}
 }
 
 func TestCrossPlatformCoverageAiSearchEnterpriseHardenedMapperSourceGuard(t *testing.T) {
@@ -323,6 +335,12 @@ func TestCrossPlatformCoverageAiSearchCatalogAndContracts(t *testing.T) {
 	var schema map[string]any
 	if err := json.Unmarshal(public.Contract.Result.DataSchema, &schema); err != nil || schema["type"] != "object" {
 		t.Fatalf("search-person result schema invalid: schema=%v err=%v", schema, err)
+	}
+	matches := schema["properties"].(map[string]any)["matches"].(map[string]any)
+	items := matches["items"].(map[string]any)
+	sourceType := items["properties"].(map[string]any)["sourceType"].(map[string]any)
+	if got, ok := sourceType["enum"].([]any); !ok || len(got) != 1 || got[0] != "user" {
+		t.Fatalf("search-person sourceType enum = %#v", sourceType["enum"])
 	}
 	if registered["+search-person"].Hidden || registered["+search-person"].Availability != shortcut.AvailabilityAvailable {
 		t.Fatalf("search-person visibility/availability = hidden:%v availability:%q", registered["+search-person"].Hidden, registered["+search-person"].Availability)
