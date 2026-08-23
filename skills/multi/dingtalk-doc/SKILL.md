@@ -1,6 +1,6 @@
 ---
 name: dingtalk-doc
-description: 钉钉在线文字文档（adoc）本体及其内容的操作：查找、创建、读取、文档信息、编辑、块、评论、附件与媒体、白板卡片、导入、导出(docx/markdown/pdf)、版本、模板、协作者权限、分享及Markdown/JSONML写入。不包括：文档空间与钉盘的文件管理（归 dingtalk-drive，doc 同名原子命令已弃用）、知识库空间与节点管理（归 dingtalk-wiki）、原生 .md 文件读写（归 dingtalk-misc）、电子表格 axls（归 dingtalk-misc）、AI 表格 able（归 dingtalk-aitable）。命令前缀：dws doc。
+description: 钉钉在线文字文档（adoc）：查找、创建、读取、信息、编辑、块、评论、媒体、白板卡片、导入导出（docx/markdown/pdf）、版本、模板、权限、分享和 Markdown/JSONML 写入。文件管理归 dingtalk-drive，知识库归 dingtalk-wiki，原生 .md 与 axls 归 dingtalk-misc，able 归 dingtalk-aitable。命令前缀：dws doc。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -35,44 +35,44 @@ metadata:
 
 ## Golden Route
 
-走最小入口：ID/URL 直用；标题先搜索，唯一命中再执行。成本顺序：稳定 ID → shortcut → 局部读 → 精确写；禁以产品 Schema、全文或原子命令起步。
+走最小入口：ID/URL 直用；标题先搜索、唯一命中再执行。顺序：稳定 ID → shortcut → 局部读 → 精确写；禁以产品 Schema、全文或原子命令起步。
 
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
 | <!-- dws-intent: doc.search.by_title -->按标题或主题定位文档 | `dws doc +search --query <关键词>` | 检查候选类型与分页；需要正文时再用真实 `nodeId` 执行 `+fetch` |
 | 最近访问文档 | `dws doc +search`（省略 `--query`） | `--limit` 为每页量，`--max-items` 为总上限；完整集合才加 `--page-all` 并检查 `complete` |
-| <!-- dws-intent: doc.content.read -->已知 ID/URL 读取正文或局部内容 | `dws doc +fetch --node <ID或URL>` | 具体术语直用 `keyword`；章节先 `outline` 再 `section`；只有整篇任务才用默认 `full` |
+| <!-- dws-intent: doc.content.read -->已知 ID/URL 读取正文或局部内容 | `dws doc +fetch --node <ID或URL>` | 术语用 `keyword`；章节 `outline` → `section`；整篇才用 `full` |
 | 聚合查看信息、权限、版本、媒体或评论 | `dws doc +inspect --node <ID或URL>` | 仅打开任务所需的 `--include-*`，不要默认全取 |
-| 新建在线文字文档并写入内容 | `dws doc +create --name <标题> --content @<相对文件>` | 先在本地完成正文；Runtime 负责 Markdown 分片和回读，禁止 Agent 自行拆成多次远程写入 |
-| <!-- dws-intent: doc.content.update -->追加、覆盖或精确编辑 block | `dws doc +update --node <ID或URL> --command <动作>` | 唯一文本直接 `str_replace`；章节/block 先局部取 ID 再精准修改；整篇覆盖才用 overwrite |
+| 新建在线文字文档并写入内容 | `dws doc +create --name <标题> --content @<相对文件>` | 正文先本地完成；Runtime 分片回读，Agent 禁拆成多次远程写 |
+| <!-- dws-intent: doc.content.update -->追加、覆盖或精确编辑 block | `dws doc +update --node <ID或URL> --command <动作>` | 唯一文本 `str_replace`；章节/block 局部取 ID；整篇才 overwrite |
 | 重要内容更新且需要恢复点 | `dws doc +checkpoint-update` | 自动保存版本、更新并回读；检查 `steps` 和 `compensation` |
 | 版本操作 | `dws doc +version-save --node` / `dws doc +version-list --node` / `dws doc +version-revert --node --version` | 快照/列表/回滚 |
 | <!-- dws-intent: doc.export.format -->导出为 docx/markdown/pdf | `dws doc +export --export-format <格式>` | 格式必须显式指定；普通文件下载切 `dingtalk-drive` |
-| <!-- dws-intent: doc.import.local_file -->本地文件转在线文档 | `dws doc +import --file <相对路径>` | “传上去/放进文件夹”不改变路由；在线改、协作编辑或转换用 import，仅保留原文件切 `dingtalk-drive` |
+| <!-- dws-intent: doc.import.local_file -->本地文件转在线文档 | `dws doc +import --file <相对路径>` | 位置措辞不改路由；在线转换用 import，仅保留原文件用 `dingtalk-drive` |
 | 封面/背景 | `+resource-update/+resource-delete`；`+background-update/+background-delete` | 写后 `+inspect --include-style`；禁查 Catalog |
 | 浏览模板 | `dws doc +template-list [--source MY\|PUBLIC]` | “我的/我这边”只查 MY；明确公开才查 PUBLIC；“有哪些/全部”翻页至完整 |
 | 搜索模板 | `dws doc +template-search --query <名称或关键词>` | 来源可选 MY/PUBLIC；零命中停止，禁止拿无关模板替代；多候选消歧 |
 | 从模板创建 | `dws doc +create-from-template --template-id <唯一ID>` | 已有唯一 templateId 才创建；不重复 list/search |
 | 创建评论或聚合待处理评论 | `dws doc +comment-create [--selection]` / `+review` | 划词统一用 `+comment-create`；后续操作使用真实 `commentKey` |
-| <!-- dws-intent: doc.access.grant -->添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to <姓名列表,逗号分隔>` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；没有 --user-ids；先读取现有权限；姓名歧义或 profile 不一致时禁止写入 |
-| <!-- dws-intent: doc.share.link_only -->只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | canonical（`+share-doc` 仅兼容）；收件人已有权限时用它，不要改走 `+grant-and-share`；普通文本私信走 `dws chat +dm` |
-| 授权后向多人分享链接 | `dws doc +grant-and-share` | 需变更权限时才用（必填 `--node`，`--role` 默认 READER）；返回逐人执行账本，部分失败不等于整体成功 |
+| <!-- dws-intent: doc.access.grant -->添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；无 `--user-ids`；先读权限，歧义/profile 不一致禁写 |
+| <!-- dws-intent: doc.share.link_only -->只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | canonical（`+share-doc` 兼容）；已有权限用它，普通私信用 `dws chat +dm` |
+| 授权后向多人分享链接 | `dws doc +grant-and-share` | 仅需改权限时用（必填 `--node`，role 默认 READER）；检查逐人账本和部分失败 |
 | <!-- dws-intent: doc.media.insert -->插入或下载正文媒体 | `dws doc +media-insert/+media-download` | 本地路径必须位于工作目录；下载默认 no-clobber |
 
 ## 关键结果语义
 
-- 保留真实 `nodeId`、URL、资源类型和容器；同轮创建后直接复用返回 ID，禁止再按标题或钉盘搜索。
-- 先消费完整回执；Runtime 已分片/回读时不重复读取。只有局部验收、`partial_success` 或 commit-unknown 才再 `+fetch`。
+- 保留真实 `nodeId`、URL、资源类型和容器；同轮创建后复用返回 ID，禁再按标题或钉盘搜索。
+- 先消费完整回执；Runtime 已分片/回读时不重复读，仅局部验收、`partial_success` 或 commit-unknown 再 `+fetch`。
 - 状态恢复：`partial_success` 只补未完成步骤；`unknown` 先回读、不重试写；`retryable` 仅限明确未开始；权限/参数/认证失败停止。
 - 仅在结果明确且关键内容回读匹配后报告写入完成。
-- 搜索/列表检查 `complete`、`hasMore`、cursor 和失败项。“有哪些/列出/全部”逐页至完整；只有示例/前 N 条可提前停止并声明范围。
-- `+import` 已含上传、转换和轮询；成功检查 `success=true`、`taskId`、`documentUrl`。超时或中断保留 `taskId`、查询原任务，禁止重导。
+- 搜索/列表检查 `complete`、`hasMore`、cursor 和失败项；“全部”逐页完成，示例/前 N 条可提前停止并声明范围。
+- `+import` 含上传、转换和轮询；成功检查 `success/taskId/documentUrl`；中断保留 `taskId`、查原任务，禁重导。
 - 导出/下载仅用工作目录相对路径，默认不覆盖并原子落盘。
 
 ## 参数与安全边界
 
-- `@file`：已有或临时文件先暂存到 cwd；传 `@相对路径`，禁绝对路径和 `..`。
-- `doc +update` 的动作由 `--command` 指定；block 操作的 ID 必须来自 `+fetch --detail with-ids` 或真实 block 列表。
+- `@file`：文件先暂存到 cwd 后传相对路径；生成文本优先 `--content -`；禁绝对路径和 `..`。
+- `doc +update` 用 `--command` 指定动作；block ID 必须来自 `+fetch --detail with-ids` 或真实列表。
 - Schema 门禁：不确定时仅查一次精确 leaf：`--fields use_when,avoid_when,parameters,constraints,confirmation`；禁用产品级/`--all`。准备 Help 时，本轮仅查一次。
 - 消费本页或精确 Schema 的 `confirmation`：`user_required` 且原请求/预授权已确认目标、动作、参数时，首调即加 `--yes`；否则预览/询问；禁止靠失败探测门禁。
 - JSONML 顶层必须是单个非空元素；禁止 `[[...]]` 元素数组包裹。
@@ -94,7 +94,7 @@ Golden Route 已给出命令且参数足够时，禁止读取 reference。其余
 ## 错误最短路径
 
 1. 零命中、多候选、类型不明或分页不完整：停止后续写入，展示候选或 continuation；禁止默认第一项。
-2. Help 不参与选路；按上方门禁先消费一次精确 leaf Schema。只有真实 `unknown flag`/契约漂移后才查一次 leaf Help；`unknown command` 只查一次 shortcut 清单，禁止试探后缀和 `dws doc --help | grep/head`。
+2. Help 不选路；先读一次精确 leaf Schema。仅真实 `unknown flag`/契约漂移查一次 leaf Help；`unknown command` 查一次 shortcut 清单，禁试探后缀或 `dws doc --help | grep/head`。
 3. `REVISION_CONFLICT`：重新读取当前 revision，展示差异；未经用户确认不得改成无 revision 覆盖。
 4. `doc_write_commit_unknown`：先回读；禁止自动重试创建或追加。
 5. 认证、权限或 profile 错误：只读 `dingtalk-shared` 对应 reference，不用底层命令绕过。
@@ -102,9 +102,9 @@ Golden Route 已给出命令且参数足够时，禁止读取 reference。其余
 
 ## 跨产品边界
 
-- 按姓名、工号、部门或职责等线索查找人员或解析 userId → `dingtalk-aisearch`；只有已经拿到完整 userId 后补查部门、职位或邮箱才走 `dingtalk-contact`
-- 普通文件、目录、纯上传下载、节点存储权限 → `dingtalk-drive`；文档空间原文件用 `drive upload --workspace`，在线协作转换用 `doc +import --workspace`
-- 在线文档节点的复制、移动与模板另存 → `dingtalk-drive` 的 `drive +copy` / `drive +move`；doc 同名 `+copy`/`+move` 仅兼容保留
+- 姓名/工号/部门/职责找人或解析 userId → `dingtalk-aisearch`；已有完整 userId 后补详情才用 `dingtalk-contact`
+- 普通文件/目录/上传下载/存储权限 → `dingtalk-drive`；原文件用 `drive upload --workspace`，在线转换用 `doc +import --workspace`
+- 文档节点复制、移动、模板另存 → `dingtalk-drive +copy/+move`；doc 同名命令仅兼容
 - 知识库空间、节点层级和成员管理 → `dingtalk-wiki`
 - 原生 `.md` 文件读取和编辑 → `dingtalk-misc`
 - `axls` / `able` → 对应电子表格或多维表 Skill
