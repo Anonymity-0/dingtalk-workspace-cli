@@ -135,13 +135,17 @@ func (*aisearchCaller) Fields() string { return "" }
 func (*aisearchCaller) JQ() string     { return "" }
 
 func TestCrossPlatformCoverageAiSearchRejectsFalseSuccessAndBadCollections(t *testing.T) {
-	valid := map[string]any{"success": true, "result": []any{map[string]any{"sourceType": "user", "userId": "u1"}}}
-	items, err := projectSearch(valid, "aisearch/test", []string{"userId"})
-	if err != nil || len(items) != 1 {
-		t.Fatalf("valid response rejected: items=%v err=%v", items, err)
+	for identity, value := range map[string]string{
+		"userId": "user-fixture", "openDingTalkId": "open-fixture", "url": "https://example.invalid/user-fixture",
+	} {
+		valid := map[string]any{"success": true, "result": []any{map[string]any{"sourceType": "user", identity: value}}}
+		items, err := projectSearch(valid, "aisearch/test", []string{"userId", "openDingTalkId", "url"})
+		if err != nil || len(items) != 1 || items[0][identity] != value {
+			t.Fatalf("valid %s identity rejected: items=%v err=%v", identity, items, err)
+		}
 	}
 	explicitEmpty := map[string]any{"success": true, "result": []any{}}
-	items, err = projectSearch(explicitEmpty, "aisearch/test", []string{"userId"})
+	items, err := projectSearch(explicitEmpty, "aisearch/test", []string{"userId"})
 	if err != nil || len(items) != 0 {
 		t.Fatalf("explicit empty rejected: items=%v err=%v", items, err)
 	}
@@ -341,6 +345,17 @@ func TestCrossPlatformCoverageAiSearchCatalogAndContracts(t *testing.T) {
 	sourceType := items["properties"].(map[string]any)["sourceType"].(map[string]any)
 	if got, ok := sourceType["enum"].([]any); !ok || len(got) != 1 || got[0] != "user" {
 		t.Fatalf("search-person sourceType enum = %#v", sourceType["enum"])
+	}
+	identityAlternatives, ok := items["anyOf"].([]any)
+	if !ok || len(identityAlternatives) != 3 {
+		t.Fatalf("search-person stable identity anyOf = %#v", items["anyOf"])
+	}
+	for index, identity := range []string{"userId", "openDingTalkId", "url"} {
+		branch, branchOK := identityAlternatives[index].(map[string]any)
+		required, requiredOK := branch["required"].([]any)
+		if !branchOK || !requiredOK || len(required) != 1 || required[0] != identity {
+			t.Fatalf("search-person stable identity anyOf[%d] = %#v, want required %q", index, identityAlternatives[index], identity)
+		}
 	}
 	if registered["+search-person"].Hidden || registered["+search-person"].Availability != shortcut.AvailabilityAvailable {
 		t.Fatalf("search-person visibility/availability = hidden:%v availability:%q", registered["+search-person"].Hidden, registered["+search-person"].Availability)
