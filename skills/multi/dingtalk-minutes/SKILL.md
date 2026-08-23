@@ -44,28 +44,44 @@ metadata:
 | 看我最新创建的一条 | `dws minutes +latest [--keyword <关键词>]` | 只在用户明确说“最新”时用；不能用它替代具名目标搜索，也不能在录音 start 后拿 latest 猜新录音 ID |
 | 读取基础信息、摘要或关键词 | `dws minutes +detail --id <taskUuid> --artifacts basic,summary,keywords` | 只读取需要的产物；任一产物失败都按 partial/非零处理，不把缺失项说成空内容 |
 | 读取完整逐字稿 | `dws minutes +transcript --id <taskUuid>` | 默认追完分页；只有用户明确只要一页时使用 `--single-page`。交付前检查 `complete/pages/nextToken` |
-| 读取行动项 | `dws minutes +action-items --id <taskUuid>` | 没有待办与读取失败必须区分；需要创建钉钉待办时再切 `dingtalk-todo` |
+| 读取行动项 | `dws minutes +action-items --id <taskUuid>` | 只有受支持字段明确返回空数组才能说“没有待办”；`unsupported_shape`、字段解析失败或工具失败都不是空结果。需要创建钉钉待办时再切 `dingtalk-todo` |
+| 把摘要、关键词、完整逐字稿和行动项归档到本地 | `dws minutes +export-pack --id <taskUuid> --output <新相对目录>` | 要带媒体时加 `--include-media`；必须由 `published/path/manifest/files` 证明落盘，只有建目录、计划或文件名不能称已生成 |
 | 修改标题 | `dws minutes +update --id <taskUuid> --title "<新标题>"` | 先锁定真实 ID，按 Runtime confirmation 执行，写后读回验证 |
 | 覆盖纪要正文 | `dws minutes +summary --id <taskUuid> --content @<相对文件>` | `content` 是完整目标正文，不是局部 patch；按 Runtime confirmation 执行，并保护图片引用、读回全文 |
 | 上传音视频生成听记 | `dws minutes +upload --file <相对路径>` | 普通上传不发送额外消息；用户明确要闪记卡片时改用 `+upload-and-notify`，需要等待分析产物时用 `+upload-and-analyze` |
-| 开始、暂停、继续或停止实时录音 | `+record-start` / `+record-pause` / `+record-resume` / `+record-stop` | start 后只有 `controlReady=true` 且返回 `taskUuid` 才能继续控制；否则报告“已受理但未绑定”并停止。结束并等待产物用 `+record-wrap-up` |
+| 真实开始、暂停、继续或停止录音 | `+record-start` / `+record-pause` / `+record-resume` / `+record-stop` | 这组入口会真实执行。start 返回 `accepted=true, bound=false` 或 `controlReady=false` 时，报告“已受理但未绑定”并停止：不得重试 start，也不得用 `+latest`、列表第一条或时间最近项猜 ID。结束并等待产物用 `+record-wrap-up` |
+| 只预览录音请求，不实际执行 | `dws minutes record start --dry-run --format json` | 使用对应的原子 `minutes record start|pause|resume|stop` leaf；start 的 `--session-id` 可选，pause/resume/stop 必须传真实 `--id`。不要把被拒绝的 Shortcut dry-run 描述成预览成功 |
 | 生成或继续思维导图 | `dws minutes +mindmap --id <taskUuid>` | 创建后有界轮询；超时或未知状态保留恢复信息，用 `--resume` 继续，不重复创建 |
 | 生成或继续发言人洞察 | `dws minutes +speaker-insights --id <taskUuid>` | 有界轮询；保留 `taskId`，恢复时用 `--resume [--task-id <ID>]`，不重复创建 |
 | 当前用户申请查看/下载/编辑权限 | `dws minutes +apply-permission --id <taskUuid> --permission view|download|edit` | 这是“我申请访问”，不是所有者给别人授权；按 Runtime confirmation 执行 |
 | 所有者给成员授权或撤权 | `dws minutes +share ...` / `dws minutes +unshare ...` | 先用通讯录把姓名解析为同组织稳定 UID；撤权是破坏性操作。批量结果必须保留逐成员 ledger 和失败项 |
 
+### 搜索与列表执行胶囊
+
+用户要求“全部、所有、完整、汇总整个范围”时，首轮直接使用 `--page-all`：
+
+```text
+dws minutes +search --query "<关键词>" --scope all --page-all --format json
+dws minutes +search --start "<RFC3339>" --end "<RFC3339>" --scope mine --page-all --format json
+dws minutes +list-mine --page-all --format json
+dws minutes +list-shared --page-all --format json
+dws minutes +list-all --page-all --format json
+```
+
+只有用户明确要第一页、预览或样本时才省略 `--page-all`，并如实保留 `complete=false/nextToken`。有时间窗必须使用 `+search`，因为 `+list-*` 不接受 `--start/--end`。
+
 ## 目标与完整性
 
-- 目标锁定优先级：用户给出的 `taskUuid`/URL > 精确标题 > 标题包含或语义相关候选。相似候选可展示，但候选差异明显、多个候选都合理或分页未完成时必须停下来消歧。
+- 目标锁定优先级：用户给出的 `taskUuid`/URL > 精确标题 > 标题包含或语义相关候选。相似候选可展示，但候选差异明显或多个候选都合理时必须停下来消歧；分页未完成本身不是目标歧义。
 - `mine` 仅表示我创建的，`shared` 仅表示共享给我的；`all` 表示 accessible 聚合目标。不得声称后端单个 noLimit 端点天然等于 `mine + shared`。
-- 列表或逐字稿只有 `complete=true` 才能称为“全部/完整”。`hasMore`、`nextToken`、页数上限、cursor 循环或某页失败都要保留为不完整证据。
+- 列表或逐字稿只有 `complete=true` 才能称为“全部/完整”。全量请求遇到有效 continuation 时继续；只有 `nextToken` 缺失、cursor 停滞/循环、达到 `page-limit` 或后页失败时才停止，并保留不完整证据。
 - `partial_success`、异步 `pending`、超时和未知写入结果不是成功。按结果中的恢复句柄继续，不能重放已成功步骤。
 
 ## 安全边界
 
 - 是否确认以 leaf Schema 与 Runtime gate 为准，不根据“看起来像写操作”自行推断。标题、纪要、录音控制、权限授权/申请/撤销、发言人或文本替换等当前要求确认。
 - 普通上传、思维导图、发言人洞察和仅追加 ASR 热词当前不额外要求确认；上传并发送闪记卡片、精确同步并删除热词、撤权等副作用更大的入口单独处理。
-- `--dry-run` 必须只返回计划且不调用远端；某入口没有声明 dry-run 时，不得把普通执行称为预演。
+- `--dry-run` 必须返回明确的 dry-run/request 证据且不调用远端；录音预览按上方原子入口执行。任何入口若拒绝 dry-run，必须报告“不支持预览”，不得把拦截或普通执行称为预演成功。
 - 分享/撤权使用稳定成员 UID，不能把姓名、手机号或跨组织 ID 直接当 UID；同一目标解析、读取、写入和验证必须使用同一 profile。
 
 ## 按需加载
@@ -80,7 +96,7 @@ Golden Route 参数足够时直接执行，不预读 Reference。每个 Case 最
 
 ## 错误最短路径
 
-1. 零命中、多候选、ID 类型不明或分页不完整：停止并返回候选/nextToken/complete 等证据。
+1. 零命中、多候选或 ID 类型不明：停止并返回候选证据。全量请求分页未完成但有有效 continuation 时继续；只有 token 缺失/停滞/循环、达到页数上限或后页失败时停止并返回 `nextToken/complete` 等证据。
 2. 认证、权限、profile 或 confirmation 错误：按 `dingtalk-shared` 对应错误 Reference 处理；不更换 scope、账号或写命令碰运气。
 3. 异步超时或部分成功：保留 `taskUuid/taskId/sessionId/checkpoint`，只恢复未完成阶段；未知写入先读回，不能自动重试。
 

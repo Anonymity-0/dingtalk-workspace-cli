@@ -94,11 +94,32 @@ dws minutes +record-wrap-up --id <taskUuid> --artifacts summary,transcript
 
 ### 4.2 批量执行
 
-- `--id` 与 `--ids` 二选一；听记和成员各最多 50 个。
-- `--failure-policy stop` 默认首错停止；显式 `continue` 时仍须把任何失败作为 partial/非零交付。
-- 每一项都保留 taskUuid、memberUid、动作、成功/失败与错误原因；未知写入结果先读回，不重放整个批次。
-- `+unshare` 是 destructive/high；执行前明确听记、成员和失去的权限范围。`+share`、`+apply-permission` 也按 Runtime confirmation 执行。
+`+share` 的精确业务参数是 `--id|--ids`、`--member-uids`、必填的 `--permission view|download|edit`，以及可选的 `--cover`、`--sub-resources OrigContent|Summary|Analysis|Note`、`--failure-policy stop|continue`：
 
-### 4.3 dry-run
+```text
+dws minutes +share --id <taskUuid> --member-uids <uid1,uid2> --permission view --failure-policy stop --format json
+dws minutes +share --ids <uuid1,uuid2> --member-uids <uid> --permission edit --cover --sub-resources OrigContent,Summary --failure-policy continue --format json
+```
 
-这些权限 Shortcut 的 dry-run 只展示目标组合与将执行的动作，不调用远端，也不证明成员存在或当前权限状态。只有完成真实解析、确认并执行后，才能声明权限已改变。
+`+unshare` 的精确业务参数是 `--id|--ids`、`--member-uids` 和可选的 `--failure-policy stop|continue`；它没有 `--permission`、`--cover` 或 `--sub-resources`：
+
+```text
+dws minutes +unshare --id <taskUuid> --member-uids <uid1,uid2> --failure-policy stop --format json
+dws minutes +unshare --ids <uuid1,uuid2> --member-uids <uid> --failure-policy continue --format json
+```
+
+- `--id` 与 `--ids` 必须且只能选一个；听记 taskUuid 和成员 UID 去重后各为 `1..50` 个。
+- `+share --permission` 必填、没有默认值：`edit=policy 2`、`download=policy 3`、`view=policy 4`。管理员 `0`、所有者 `1` 只能走 `minutes permission add --policy 0|1`。
+- `--failure-policy` 默认 `stop`，首个成员失败后停止；显式 `continue` 才继续其他成员。任何失败都必须作为 partial/非零交付，并保留失败与未执行成员。
+- `+unshare` 是 destructive/high；执行前明确听记、成员和撤权影响。`+share`、`+apply-permission` 同样执行 Runtime 的 `user_required` confirmation。
+- `+apply-permission` 只接受单个 `--id` 和必填的 `--permission view|download|edit`，目标固定为当前登录用户，不接受 `--member-uids`。
+
+### 4.3 验证边界
+
+当前没有公开的 `minutes permission list/get/inspect` 命令。真实执行后，`+share/+unshare` 可输出逐成员成功、失败和未执行 ledger，但成功项只表示写接口已确认接收；即使 `+unshare` 执行前读取了听记基本信息，也没有读到成员的最终权限。
+
+因此权限结果必须按 `verification.mode=write_ack_only`、`verified=false` 交付。不要把 ledger 中的 `complete=true`、听记基本信息、dry-run 计划或退出码解释为“已读回验证权限生效”；也不要为了验证而重放授权或撤权请求。
+
+### 4.4 dry-run
+
+这些权限 Shortcut 的 dry-run 只展示目标组合与将执行的动作，不调用远端，也不证明听记、成员或当前权限状态。真实执行后也只能声明“写调用已确认接收”，不能声明“已读回最终权限”。

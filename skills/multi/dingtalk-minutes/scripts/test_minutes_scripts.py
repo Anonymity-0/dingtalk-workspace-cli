@@ -118,6 +118,42 @@ class MinutesScriptContractTest(unittest.TestCase):
             'dws minutes get summary --id <TASK_UUID>', rendered
         )
 
+    def test_phase2_execution_capsules_and_capability_boundaries(self):
+        skill = SKILL_FILE.read_text(encoding='utf-8')
+        intent_guide = (REFERENCES_DIR / 'intent-guide.md').read_text(
+            encoding='utf-8'
+        )
+        minutes_reference = (REFERENCES_DIR / 'minutes.md').read_text(
+            encoding='utf-8'
+        )
+        workflow_reference = (REFERENCES_DIR / '07-minutes.md').read_text(
+            encoding='utf-8'
+        )
+
+        for command in (
+            'dws minutes +search --query "<关键词>" --scope all --page-all',
+            'dws minutes +list-mine --page-all --format json',
+            'dws minutes +list-shared --page-all --format json',
+            'dws minutes +list-all --page-all --format json',
+            'dws minutes +export-pack --id <taskUuid>',
+            'dws minutes record start --dry-run --format json',
+        ):
+            self.assertIn(command, skill)
+        self.assertNotIn('+record-start --dry-run', skill)
+
+        self.assertIn('--pair "旧词1=>新词1"', intent_guide)
+        self.assertIn('total` 是替换规则数', intent_guide)
+        self.assertIn('minutes tag query --tag-id <tagId>', intent_guide)
+        self.assertNotIn('+replace-batch ...', intent_guide)
+        self.assertNotIn('minutes tag ...', intent_guide)
+
+        self.assertIn('无公开 `permission list/get/inspect` 命令', minutes_reference)
+        self.assertIn('`0` | 管理员', minutes_reference)
+        self.assertIn('`4` | 仅查看', minutes_reference)
+        self.assertIn('verification.mode=write_ack_only', minutes_reference)
+        self.assertIn('dws minutes +share --id <taskUuid>', workflow_reference)
+        self.assertIn('dws minutes +unshare --id <taskUuid>', workflow_reference)
+
 
 if __name__ == '__main__':
     unittest.main()

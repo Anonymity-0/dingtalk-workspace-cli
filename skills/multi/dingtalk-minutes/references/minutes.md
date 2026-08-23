@@ -136,15 +136,37 @@ dws minutes <group> <leaf> --help
 
 ## 8. 权限
 
-| 原子命令 | 身份语义 | 当前 confirmation |
-|---|---|---|
-| `minutes permission apply` | 当前用户为自己申请访问权限 | `user_required` |
-| `minutes permission add` | 所有者/管理员给稳定 member UID 授权 | `user_required` |
-| `minutes permission remove` | 所有者/管理员撤销稳定 member UID 权限 | `user_required`，destructive/high |
+### 8.1 当前能力边界
 
-`permission add` 的 `--policy` 是必填参数，没有默认值。用户未指定权限类型时，先确认要管理员、所有者、可编辑、可查看下载还是仅查看；即使确认选择“仅查看”，命令中仍必须显式传入 `--policy 4`。
+| 用户要做的事 | 当前公开入口 | 能否完成 | 边界 |
+|---|---|---:|---|
+| 当前登录用户为自己申请访问 | `minutes permission apply` / `+apply-permission` | 是 | 只支持编辑、查看下载、仅查看 |
+| 所有者/管理员给稳定 member UID 授权 | `minutes permission add` / `+share` | 是 | 原子命令支持 policy `0..4`；Shortcut 只支持 `edit/download/view` |
+| 所有者/管理员撤销稳定 member UID 权限 | `minutes permission remove` / `+unshare` | 是 | destructive/high，必须确认 |
+| 列出、读取或检查一条听记当前的成员权限 | 无公开 `permission list/get/inspect` 命令 | 否 | 不得用基本信息、写入回执或 dry-run 冒充权限读回 |
+| 删除整条听记 | 无公开 Minutes delete 命令 | 否 | `permission remove` 只撤权；`hot-word delete` 只删除个人热词，都不能替代删除听记 |
 
-权限 policy 的数字/枚举、覆盖与子资源参数以精确 leaf Schema 为准；根路径优先用 `+apply-permission`、`+share`、`+unshare` 的语义化参数。只有姓名时先用 Contact/AI Search 解析为同组织稳定 UID，不能把姓名或手机号直接写入 member UID。
+### 8.2 policy 映射
+
+| `--policy` | 权限 | `permission add` | `permission apply` | Shortcut 语义值 |
+|---:|---|---:|---:|---|
+| `0` | 管理员 | 支持 | 不支持 | 无；需要时使用原子命令 |
+| `1` | 所有者 | 支持 | 不支持 | 无；需要时使用原子命令 |
+| `2` | 可编辑 | 支持 | 支持 | `edit` |
+| `3` | 可查看/下载 | 支持 | 支持 | `download` |
+| `4` | 仅查看 | 支持 | 支持 | `view` |
+
+`permission add` 的 `--policy` 是必填参数，没有默认值；`permission apply --policy` 也必须显式传入，只接受 `2..4`。用户未指定权限类型时先询问，不得把空值解释成 `0`，也不得擅自选择“仅查看”；即使确认选择“仅查看”，命令中仍必须显式传入 `--policy 4`。示例：
+
+```text
+dws minutes permission add --ids <uuid1,uuid2> --member-uids <uid1,uid2> --policy 3
+dws minutes permission remove --ids <uuid1,uuid2> --member-uids <uid1,uid2>
+dws minutes permission apply --id <taskUuid> --policy 4
+```
+
+根路径优先用 `+apply-permission`、`+share`、`+unshare` 的语义化参数；完整参数见 [07-minutes.md](07-minutes.md#4-权限-workflow)。只有姓名时先用 Contact/AI Search 解析为同组织稳定 UID，不能把姓名、手机号、userId、openId 或跨组织 UID 直接当作 member UID。
+
+当前没有公开权限读取接口，因此权限写入成功最多证明服务端接受了这次写调用。交付边界按 `verification.mode=write_ack_only`、`verified=false` 表述；这两个值描述证据等级，不代表 Runtime 一定已经返回同名字段。`+share/+unshare` 的逐成员 `complete` ledger 仍只是写入回执，不能声称已读回最终权限状态。
 
 ## 9. 标签与语音备忘
 
@@ -160,6 +182,6 @@ dws minutes <group> <leaf> --help
 
 - 成功必须由结构化业务结果与结果契约共同证明，不只看退出码或 `success=true`。
 - 列表、逐字稿、批量读取必须保留分页与完整性事实；页数上限、cursor 循环、缺 nextToken 或某页失败都返回不完整/非零。
-- 写操作完成后按稳定 ID 读回；未知写入先检查状态，不重放整个请求。
+- 有公开读取接口的写操作完成后按稳定 ID 读回；权限写入当前没有公开读回入口，只能报告 `write_ack_only`、`verified=false`，未知结果不得重放整个请求。
 - 权限、上传、异步任务和批量替换必须保留部分成功 ledger 与恢复句柄。
 - Runtime confirmation 与 compact Schema 是最终权威；若本文与当前 leaf Schema 冲突，使用更安全解释并报告 contract drift。
