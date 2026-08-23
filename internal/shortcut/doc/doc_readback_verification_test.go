@@ -43,7 +43,7 @@ func TestCrossPlatformCoverageDocReadbackRetriesStaleContent(t *testing.T) {
 	}
 }
 
-func TestCompactDocVerificationKeepsBoundedContentEvidence(t *testing.T) {
+func TestCrossPlatformCoverageCompactDocVerificationKeepsBoundedContentEvidence(t *testing.T) {
 	expected := "新增结论：本周发布完成"
 	readback := strings.Repeat("历史正文\n", 2000) + expected
 	summary := compactDocVerification(map[string]any{"markdown": readback}, expected, "append", "markdown", nil)

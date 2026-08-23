@@ -70,7 +70,7 @@ func executeDocImportCommand(t *testing.T, caller *sheetImportCaller, cfg import
 	return output.String(), err
 }
 
-func TestDocImportDefaultTargetIsResolvedAndVerified(t *testing.T) {
+func TestCrossPlatformCoverageDocImportDefaultTargetIsResolvedAndVerified(t *testing.T) {
 	filePath := writeImportFixture(t, "md")
 	caller := &sheetImportCaller{responses: map[string][]string{
 		"list_wikiSpaces":       {`{"success":true,"result":{"wikiSpaces":[{"workspaceId":"my-space","name":"我的文档"}]}}`},
@@ -188,7 +188,7 @@ func TestCrossPlatformCoverageDocImportCancellationReturnsExecutableRecoveryComm
 	}
 }
 
-func TestDocImportPlacementMismatchIsPartialSuccess(t *testing.T) {
+func TestCrossPlatformCoverageDocImportPlacementMismatchIsPartialSuccess(t *testing.T) {
 	filePath := writeImportFixture(t, "md")
 	caller := &sheetImportCaller{responses: map[string][]string{
 		"create_import_session": {`{"sessionId":"session-1","uploadUrl":"https://upload.test/file"}`},
@@ -213,7 +213,7 @@ func TestDocImportPlacementMismatchIsPartialSuccess(t *testing.T) {
 	}
 }
 
-func TestParsePersonalDocWorkspaceIDRejectsAmbiguousResponse(t *testing.T) {
+func TestCrossPlatformCoverageParsePersonalDocWorkspaceIDRejectsAmbiguousResponse(t *testing.T) {
 	for _, text := range []string{
 		`{`,
 		`{"wikiSpaces":[]}`,
