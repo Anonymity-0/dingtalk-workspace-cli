@@ -11,6 +11,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ const manifestRelativePath = "scripts/policy/multi-doc-skill-chain/testdata/inte
 var (
 	intentIDPattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
 	reasonCodePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	sha256Pattern     = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	intentMarker      = regexp.MustCompile(`<!--\s*dws-intent:\s*([a-z0-9][a-z0-9._-]*)\s*-->`)
 	markdownLink      = regexp.MustCompile(`\]\(([^)#\s]+\.md)(?:#[^)]*)?\)`)
 	mainGetwd         = os.Getwd
@@ -41,10 +43,12 @@ var (
 )
 
 type routeManifest struct {
-	Version         int           `json:"version"`
-	MarkerRoots     []string      `json:"marker_roots"`
-	OrphanAllowlist []string      `json:"orphan_allowlist,omitempty"`
-	Intents         []intentRoute `json:"intents"`
+	Version                  int               `json:"version"`
+	MarkerRoots              []string          `json:"marker_roots"`
+	OrphanAllowlist          []string          `json:"orphan_allowlist,omitempty"`
+	ProtectedReferenceRoots  []string          `json:"protected_reference_roots"`
+	ProtectedReferenceSHA256 map[string]string `json:"protected_reference_sha256"`
+	Intents                  []intentRoute     `json:"intents"`
 }
 
 type intentRoute struct {
@@ -84,6 +88,15 @@ func run(rootPath string, root *cobra.Command, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 2
+	}
+	protectedFailures := validateProtectedReferences(rootPath, manifest)
+	sort.Strings(protectedFailures)
+	if len(protectedFailures) > 0 {
+		fmt.Fprintf(stderr, "protected doc Reference check failed (%d problems):\n", len(protectedFailures))
+		for _, failure := range protectedFailures {
+			fmt.Fprintf(stderr, "  - %s\n", failure)
+		}
+		return 1
 	}
 	effective, err := buildEffective(root)
 	if err != nil {
@@ -134,6 +147,80 @@ func loadManifest(path string) (routeManifest, error) {
 		return routeManifest{}, fmt.Errorf("decode doc intent route manifest: %w", err)
 	}
 	return manifest, nil
+}
+
+func validateProtectedReferences(rootPath string, manifest routeManifest) []string {
+	var failures []string
+	if len(manifest.ProtectedReferenceRoots) == 0 {
+		return append(failures, "protected_reference_roots must not be empty")
+	}
+	if len(manifest.ProtectedReferenceSHA256) == 0 {
+		return append(failures, "protected_reference_sha256 must not be empty")
+	}
+
+	rootPrefixes := make([]string, 0, len(manifest.ProtectedReferenceRoots))
+	for _, root := range manifest.ProtectedReferenceRoots {
+		root = filepath.ToSlash(strings.TrimSpace(root))
+		if !safeRepositoryPath(root) {
+			failures = append(failures, fmt.Sprintf("invalid protected reference root %q", root))
+			continue
+		}
+		rootPrefixes = append(rootPrefixes, strings.TrimSuffix(root, "/")+"/")
+		absoluteRoot := filepath.Join(rootPath, filepath.FromSlash(root))
+		err := filepath.WalkDir(absoluteRoot, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			relative, relErr := filepath.Rel(rootPath, path)
+			if relErr != nil {
+				return relErr
+			}
+			relative = filepath.ToSlash(relative)
+			if _, reviewed := manifest.ProtectedReferenceSHA256[relative]; !reviewed {
+				failures = append(failures, fmt.Sprintf("unreviewed file in protected reference root: %s", relative))
+			}
+			return nil
+		})
+		if err != nil {
+			failures = append(failures, fmt.Sprintf("scan protected reference root %s: %v", root, err))
+		}
+	}
+
+	for relative, expected := range manifest.ProtectedReferenceSHA256 {
+		relative = filepath.ToSlash(strings.TrimSpace(relative))
+		if !safeRepositoryPath(relative) {
+			failures = append(failures, fmt.Sprintf("invalid protected reference path %q", relative))
+			continue
+		}
+		insideRoot := false
+		for _, prefix := range rootPrefixes {
+			if strings.HasPrefix(relative, prefix) {
+				insideRoot = true
+				break
+			}
+		}
+		if !insideRoot {
+			failures = append(failures, fmt.Sprintf("protected hash path is outside declared roots: %s", relative))
+			continue
+		}
+		if !sha256Pattern.MatchString(expected) {
+			failures = append(failures, fmt.Sprintf("protected reference %s has invalid sha256 %q", relative, expected))
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(rootPath, filepath.FromSlash(relative)))
+		if err != nil {
+			failures = append(failures, fmt.Sprintf("read protected reference %s: %v", relative, err))
+			continue
+		}
+		actual := fmt.Sprintf("%x", sha256.Sum256(data))
+		if actual != expected {
+			failures = append(failures, fmt.Sprintf("protected reference %s sha256 = %s, want %s", relative, actual, expected))
+		}
+	}
+	return failures
 }
 
 func validateManifest(rootPath string, manifest routeManifest, tools map[string]toolFact) []string {

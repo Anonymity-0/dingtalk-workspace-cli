@@ -280,7 +280,7 @@ callout 是块级元素，**Markdown 草稿阶段不支持**。创建后用 `doc
 **形态优先级（按 [doc-update-workflow.md §1.3](./doc-update-workflow.md)）**：
 
 1. **首选 JSONML**：`doc block insert --content-format jsonml --element '["container",{"uuid":"...","subType":"colorBlocks","metadata":{"bgcolor":"...","border":"..."}},["p",...]]'`，bgcolor/border 取本文 §5 颜色表
-2. **次选 element JSON**：`doc block insert --element '{"blockType":"callout","callout":{...}}'`，字段以精确 leaf Schema 为准；JSONML 节点完整结构见 [doc-jsonml-schema.md](../format/doc-jsonml-schema.md) 的 `container[subType="colorBlocks"]`，可复制范例见 [doc-jsonml-cookbook.md](../format/doc-jsonml-cookbook.md)
+2. **次选 element JSON**：`doc block insert --element '{"blockType":"callout","callout":{...}}'`，字段以 [doc.md](../../doc.md) 为准；JSONML 节点完整结构见 [doc-jsonml-schema.md](../format/doc-jsonml-schema.md) 的 `container[subType="colorBlocks"]`，可复制范例见 [doc-jsonml-cookbook.md](../format/doc-jsonml-cookbook.md)
 
 ### 4.8 分栏（精修阶段）
 
@@ -332,7 +332,7 @@ dws doc +media-insert --node <nodeId> --file ./diagram.png
 
 调用规则：
 
-- callout 字段格式以 [doc-jsonml-schema.md](../format/doc-jsonml-schema.md) 为准
+- callout 字段格式以 [doc.md](../../doc.md) / [doc-jsonml-schema.md](../format/doc-jsonml-schema.md) 为准
 - 调 `doc block insert --element` 插入 callout 前若字段名不确定，先用 `doc block list --node <id> --block-type callout` 抓现有实例确认字段
 - 颜色属性值只接受 hex；**禁止**把语义名（如 `light-blue`）当属性值
 - 关键指标用加粗 + ↑↓ 或 +/- 同时标注方向（不仅依赖颜色，兼容色觉无障碍）
