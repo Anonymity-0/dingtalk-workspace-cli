@@ -158,7 +158,7 @@ func TestDocImportDefaultResolutionFailureIsNotStarted(t *testing.T) {
 	}
 }
 
-func TestDocImportCancellationReturnsExecutableRecoveryCommand(t *testing.T) {
+func TestCrossPlatformCoverageDocImportCancellationReturnsExecutableRecoveryCommand(t *testing.T) {
 	filePath := writeImportFixture(t, "md")
 	caller := &sheetImportCaller{responses: map[string][]string{
 		"list_wikiSpaces":       {`{"result":{"wikiSpaces":[{"workspaceId":"my-space","name":"我的文档"}]}}`},
