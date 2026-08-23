@@ -12,4 +12,11 @@ category: Added
   the server request unless passed explicitly, so member grants no longer notify
   recipients by default. These commands also declare cursor pagination
   (`next-token`) in the Agent schema contract, mirroring the internal CLI parity
-  change.
+  change. Because a single batch remove can revoke access for up to 30
+  USER/DEPT/CONVERSATION/TAG members — where departments, chats, and role
+  groups can indirectly affect many more users — `drive/doc permission
+  remove` and `wiki member remove` now declare
+  `confirmation=user_required` and gate the actual tool call behind user
+  confirmation (`--yes`, an interactive yes, or `--dry-run` preview); their
+  confirmation-gate failure now also passes through verbatim instead of being
+  reclassified as a permission-denied or unclassified error.

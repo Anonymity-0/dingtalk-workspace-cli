@@ -140,8 +140,12 @@ func TestPermissionListPagination(t *testing.T) {
 func TestPermissionRemoveWithMembers(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":[]}`}}}
 	installScriptedCaller(t, caller)
-	if err := executePR868Command(t, newDriveCommand(), "permission", "remove", "--node", "n1",
-		"--members", `[{"type":"CONVERSATION","id":"cid1"}]`); err != nil {
+	// remove 是 destructive 入口：Safety confirmation=user_required，测试里
+	// 注入根级 --yes 后直接确认执行（参数装配本身由下方断言验证）。
+	root := newDriveCommand()
+	root.PersistentFlags().Bool("yes", false, "confirm high-risk operation")
+	if err := executePR868Command(t, root, "permission", "remove", "--node", "n1",
+		"--members", `[{"type":"CONVERSATION","id":"cid1"}]`, "--yes"); err != nil {
 		t.Fatalf("permission remove --members: %v", err)
 	}
 	if caller.tool != "remove_permission" {
@@ -674,9 +678,12 @@ func TestCrossPlatformCoveragePermissionRemoveWithMembersProducts(t *testing.T) 
 		t.Run(rc.name+" passes members", func(t *testing.T) {
 			caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"result":[]}`}}}
 			installScriptedCaller(t, caller)
+			// remove 需用户确认（confirmation=user_required）：注入根级 --yes。
+			root := rc.root()
+			root.PersistentFlags().Bool("yes", false, "confirm high-risk operation")
 			args := append(append([]string{}, rc.path...), rc.target...)
-			args = append(args, "--members", `[{"type":"CONVERSATION","id":"cid1"}]`)
-			if err := executePR868Command(t, rc.root(), args...); err != nil {
+			args = append(args, "--members", `[{"type":"CONVERSATION","id":"cid1"}]`, "--yes")
+			if err := executePR868Command(t, root, args...); err != nil {
 				t.Fatalf("remove --members: %v", err)
 			}
 			if caller.tool != rc.tool {

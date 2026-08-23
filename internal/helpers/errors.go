@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 )
 
 const (
@@ -132,6 +134,13 @@ func WrapErrorWithOperation(err error, operation string) error {
 		return err
 	}
 	if _, ok := err.(*PATError); ok {
+		return err
+	}
+	// 框架确认门禁错误（deferred ConfirmSafety 从 CallTool 返回）必须原样透传：
+	// “加 --yes 重试”的语义只能由 reason=confirmation_required 表达，文本分类会
+	// 误路由（commandPath 含 "permission" 的命令会被判成 AUTH_PERMISSION_DENIED，
+	// 其余则丢失 reason 退化为 UNCLASSIFIED）。
+	if apperrors.IsConfirmationRequired(err) {
 		return err
 	}
 	msg := err.Error()
