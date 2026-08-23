@@ -2404,7 +2404,7 @@ func newDriveCommand() *cobra.Command {
     },
     "policies":{
       "type":"array",
-      "description":"仅包含支持的策略项，未下发或不受支持的策略不会返回；node_spread_scope 仅文件夹类节点返回",
+      "description":"仅包含支持的策略项，未下发或不受支持的策略不会返回；node_spread_scope 仅文件夹类节点返回；allowedValues 为当前可设置的取值，disabledValues 为当前不可设置的取值及原因，两者互斥",
       "items":{
         "type":"object",
         "description":"权限策略项",
@@ -2413,10 +2413,22 @@ func newDriveCommand() *cobra.Command {
           "name":{"type":"string","description":"策略的中文名称，文案与产品权限设置页一致；为确定性字段，只要该策略返回就必带"},
           "description":{"type":"string","description":"策略的含义说明，解释该策略管控的行为及各取值的语义；为确定性字段，只要该策略返回就必带"},
           "value":{"type":["string","null"],"description":"取值随策略类型不同：开关型（external_share、external_share_manager_only、member_invite_org_only、permission_apply、external_permission_apply、watermark、node_move_forbidden）为 ENABLED/DISABLED；阈值型（member_invite、comment）为 READER_AND_ABOVE/DOWNLOADER_AND_ABOVE/EDITOR_AND_ABOVE/MANAGER_AND_ABOVE，阈值型（node_spread、online_content_copy）为 DOWNLOADER_AND_ABOVE/EDITOR_AND_ABOVE/MANAGER_AND_ABOVE/NOBODY，均表示不低于该角色才允许对应操作，NOBODY 表示所有人禁止；二值型（node_spread_scope）：ALL_NODES=下载与传播限制对所有文档生效，PREVIEWABLE_ONLY=仅对可预览的文档（在线文档、图片视频等）生效；未知值时为 null"},
-          "inherited":{"type":["boolean","null"],"description":"true 表示该策略值继承自上级（父节点/知识库）配置；未下发时为 null"},
+          "disabledValues":{
+            "type":"array",
+            "description":"该策略当前不可设置的取值及禁用原因（与 allowedValues 互斥）；为确定性字段，恒返回，无被禁取值时为空数组",
+            "items":{
+              "type":"object",
+              "properties":{
+                "value":{"type":"string","description":"被禁档位的取值（与 value 同一值域）"},
+                "reason":{"type":["string","null"],"description":"服务端按请求语言返回的禁用原因文案，仅供展示理解，可为 null"}
+              },
+              "required":["value"],
+              "additionalProperties":true
+            }
+          },
           "allowedValues":{"type":["array","null"],"items":{"type":"string"},"description":"该策略当前可设置的取值（与 value 同一值域），未下发时为 null"}
         },
-        "required":["code","name","description"],
+        "required":["code","name","description","disabledValues"],
         "additionalProperties":true
       }
     }

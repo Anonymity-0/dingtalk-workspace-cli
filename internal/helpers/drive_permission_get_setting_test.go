@@ -131,16 +131,18 @@ func TestCrossPlatformCoverageDrivePermissionGetSettingResultContract(t *testing
 		t.Fatalf("policies = %#v, want array schema", properties["policies"])
 	}
 	policiesDescription, _ := policies["description"].(string)
-	if !strings.Contains(policiesDescription, "未下发或不受支持的策略不会返回") || !strings.Contains(policiesDescription, "node_spread_scope 仅文件夹类节点返回") {
-		t.Fatalf("policies description = %q", policiesDescription)
+	for _, fragment := range []string{"未下发或不受支持的策略不会返回", "node_spread_scope 仅文件夹类节点返回", "两者互斥"} {
+		if !strings.Contains(policiesDescription, fragment) {
+			t.Fatalf("policies description missing %q: %s", fragment, policiesDescription)
+		}
 	}
 	items, ok := policies["items"].(map[string]any)
 	if !ok {
 		t.Fatalf("policies items = %#v", policies["items"])
 	}
-	assertSchemaRequired(t, items, "code", "name", "description")
+	assertSchemaRequired(t, items, "code", "name", "description", "disabledValues")
 	itemProperties := schemaProperties(t, items)
-	if got := sortedContractSchemaKeys(itemProperties); !reflect.DeepEqual(got, []string{"allowedValues", "code", "description", "inherited", "name", "value"}) {
+	if got := sortedContractSchemaKeys(itemProperties); !reflect.DeepEqual(got, []string{"allowedValues", "code", "description", "disabledValues", "name", "value"}) {
 		t.Fatalf("policy item properties = %#v", got)
 	}
 	code, ok := itemProperties["code"].(map[string]any)
@@ -174,12 +176,34 @@ func TestCrossPlatformCoverageDrivePermissionGetSettingResultContract(t *testing
 			t.Fatalf("policy item %s description = %q", field, entryDescription)
 		}
 	}
-	inherited, ok := itemProperties["inherited"].(map[string]any)
-	if !ok {
-		t.Fatalf("inherited = %#v", itemProperties["inherited"])
+	disabledValues, ok := itemProperties["disabledValues"].(map[string]any)
+	if !ok || disabledValues["type"] != "array" {
+		t.Fatalf("disabledValues = %#v, want array schema", itemProperties["disabledValues"])
 	}
-	if inheritedDescription, _ := inherited["description"].(string); !strings.Contains(inheritedDescription, "继承自上级") {
-		t.Fatalf("inherited description = %q", inherited["description"])
+	disabledValuesDescription, _ := disabledValues["description"].(string)
+	for _, fragment := range []string{"与 allowedValues 互斥", "恒返回", "空数组"} {
+		if !strings.Contains(disabledValuesDescription, fragment) {
+			t.Fatalf("disabledValues description missing %q: %s", fragment, disabledValuesDescription)
+		}
+	}
+	disabledItems, ok := disabledValues["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("disabledValues items = %#v", disabledValues["items"])
+	}
+	assertSchemaRequired(t, disabledItems, "value")
+	disabledItemProperties := schemaProperties(t, disabledItems)
+	if got := sortedContractSchemaKeys(disabledItemProperties); !reflect.DeepEqual(got, []string{"reason", "value"}) {
+		t.Fatalf("disabledValues item properties = %#v", got)
+	}
+	if disabledValue, ok := disabledItemProperties["value"].(map[string]any); !ok || disabledValue["type"] != "string" {
+		t.Fatalf("disabledValues value = %#v, want string schema", disabledItemProperties["value"])
+	}
+	reason, ok := disabledItemProperties["reason"].(map[string]any)
+	if !ok {
+		t.Fatalf("disabledValues reason = %#v", disabledItemProperties["reason"])
+	}
+	if types, ok := reason["type"].([]any); !ok || len(types) != 2 || types[0] != "string" || types[1] != "null" {
+		t.Fatalf("disabledValues reason type = %#v, want [string null]", reason["type"])
 	}
 	allowedValues, ok := itemProperties["allowedValues"].(map[string]any)
 	if !ok {

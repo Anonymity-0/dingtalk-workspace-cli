@@ -761,7 +761,8 @@ Flags:
 get-setting 返回字段说明：
 - `permissionMode` — INHERITED（继承上级）/ INDEPENDENT（独立管理），未知时为 null
 - `shareScope` — `visibility`（PRIVATE/ORGANIZATION/PUBLIC）；`partnerIncluded`、`defaultRole`、`canSearch`、`canRecommend` 仅 ORGANIZATION 有意义；`linkShare`：`requirePassword`（密码明文不返回）、`expireAt`/`expireDays`（未设置为 null）、`forCurrentNode`
-- `policies[]` — 每项含 `code`（策略码）、`name`/`description`（中文名与值语义说明，随行必带）、`value`（当前值）、`inherited`（true=继承上级配置）、`allowedValues`（可设置值域）；未下发或不支持的策略不返回；`node_spread_scope` 仅文件夹类节点返回
+- `policies[]` — 每项含 `code`（策略码）、`name`/`description`（中文名与值语义说明，随行必带）、`value`（当前值）、`disabledValues`（不可设置取值列表）、`allowedValues`（可设置值域，与 disabledValues 互斥）；未下发或不支持的策略不返回；`node_spread_scope` 仅文件夹类节点返回
+- `disabledValues[]` — 每项含 `value`（被禁档位取值，与 value 同一值域）与 `reason`（服务端按请求语言返回的禁用原因文案，仅供展示理解，可为 null）；恒返回，无被禁档位时为空数组；示例：`{"value": "READER_AND_ABOVE", "reason": "企业安全策略要求不可低于可下载角色"}`
 - `value` 按策略分型：开关型（external_share、external_share_manager_only、member_invite_org_only、permission_apply、external_permission_apply、watermark、node_move_forbidden）为 ENABLED/DISABLED；member_invite、comment 为 READER/DOWNLOADER/EDITOR/MANAGER_AND_ABOVE（无 NOBODY）；node_spread、online_content_copy 为 DOWNLOADER/EDITOR/MANAGER_AND_ABOVE 或 NOBODY（无 READER_AND_ABOVE）；node_spread_scope 为 ALL_NODES（限制对所有文档生效）/ PREVIEWABLE_ONLY（仅对可预览的文档生效）
 - `name`/`description` 示例（文案与产品权限设置页一致）：external_share「添加企业外协作者」：是否允许添加企业外的人为协作者（ENABLED=允许，DISABLED=禁止）；node_spread「谁可以下载、创建副本、打印」：允许哪些角色及以上的用户下载、创建副本、打印；NOBODY=所有人禁止下载、创建副本、打印；node_move_forbidden「禁止移动」：是否禁止移动到其他知识库或团队共享文件夹（ENABLED=禁止移动，DISABLED=允许移动）
 - 方向语义：NOBODY=该操作对所有人禁止；XXX_AND_ABOVE=不低于该角色才允许
