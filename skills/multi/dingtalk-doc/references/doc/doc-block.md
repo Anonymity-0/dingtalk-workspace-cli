@@ -18,6 +18,16 @@ dws doc +update --node <DOC_ID> --command block_delete --block-id <BLOCK_ID>
 
 `block-id` 必须来自真实 `+fetch --detail with-ids`、`+review` 或原子 block 列表返回。确认、写入与验证统一由 `+update` 处理，正常成功不追加整篇回读。
 
+## 标题块例外
+
+新增 heading 必须使用结构化插入，不能把 `# 标题` 作为 Markdown 传给 `block_replace`。例如在首块前新增一级标题：
+
+```bash
+dws doc block insert --node <DOC_ID> --heading "发布说明 v1.0" --level 1 --ref-block <FIRST_BLOCK_ID> --where before --format json
+```
+
+插入后按回执中的新 block ID 执行 `dws doc block list --node <DOC_ID> --block-id <NEW_BLOCK_ID> --format json`，同时验证 `blockType=heading`、`heading.level=1` 和标题文字。修改现有标题才使用 `doc block update --block-id ... --heading ... --level ...`；不要用普通文字替换改变块类型。
+
 ## 富结构专家路径
 
 只有需要 shortcut 未公开的 callout、分栏、复杂表格或 JSONML element 参数时：

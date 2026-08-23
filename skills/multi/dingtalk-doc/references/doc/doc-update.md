@@ -40,6 +40,18 @@ block ID 必须来自 `+fetch --detail with-ids` 或真实 block 列表，禁止
 
 `--expected-revision` 只允许 `--command overwrite --doc-format jsonml`。Markdown、append 和 block 接口没有服务端原子 revision 契约，禁止用写前读取模拟乐观锁。
 
+## 新增结构化标题
+
+“新增/插入标题”与“修改现有块文字”不是同一动作。`+update block_replace --content "# 标题"` 会替换原块并可能落成普通 paragraph，不能用它冒充 heading。
+
+需要在已有首块前新增标题时，先用 `+fetch --detail with-ids` 取得真实首块 ID，再走结构化插入：
+
+```bash
+dws doc block insert --node <DOC_ID> --heading "发布说明 v1.0" --level 1 --ref-block <FIRST_BLOCK_ID> --where before --format json
+```
+
+从插入回执取新 block ID，再用 `doc block list --block-id <NEW_BLOCK_ID> --format json` 验证 `blockType=heading` 且 `heading.level=1`。只核对可见文字不算结构验收。已有标题改级别或改文字时使用结构化 `doc block update --heading/--level`；更多块边界见 [`doc-block.md`](doc-block.md)。
+
 ## 最小改写决策
 
 | 已知条件 | 推荐路径 | 成本与成功率理由 |
