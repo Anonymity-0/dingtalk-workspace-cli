@@ -102,6 +102,7 @@ Golden Route 已给出命令且参数足够时，禁止读取 reference。其余
 
 ## 跨产品边界
 
+- 按姓名、工号、部门或职责等线索查找人员或解析 userId → `dingtalk-aisearch`；只有已经拿到完整 userId 后补查部门、职位或邮箱才走 `dingtalk-contact`
 - 普通文件、目录、纯上传下载、节点存储权限 → `dingtalk-drive`；文档空间原文件用 `drive upload --workspace`，在线协作转换用 `doc +import --workspace`
 - 在线文档节点的复制、移动与模板另存 → `dingtalk-drive` 的 `drive +copy` / `drive +move`；doc 同名 `+copy`/`+move` 仅兼容保留
 - 知识库空间、节点层级和成员管理 → `dingtalk-wiki`
