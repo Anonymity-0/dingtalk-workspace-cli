@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -338,6 +339,14 @@ func TestCrossPlatformCoverageMinutesSpeakerInsightsRequiresTaskAndResultE2E(t *
 }
 
 func TestCrossPlatformCoverageMinutesPrepareASRDiffWritesAndReadbackE2E(t *testing.T) {
+	migrated := &minutesE2ECaller{}
+	if payload, output, err := runMinutesAlignmentCLI(t, migrated, "minutes", "+prepare-asr", "--words", "DWS", "--sync", "--yes"); err == nil || !strings.Contains(err.Error(), "--sync 已迁移") || payload != nil || output != "" {
+		t.Fatalf("legacy --sync was not rejected by validation: payload=%#v output=%q err=%v", payload, output, err)
+	}
+	if len(migrated.counts) != 0 {
+		t.Fatalf("legacy --sync reached MCP before migration error: calls=%#v", migrated.counts)
+	}
+
 	caller := &minutesE2ECaller{responses: map[string][]string{
 		"minutes/list_my_hotwords": {
 			`{"success":true,"result":{"hotWordList":["已有"],"currentCount":1}}`,

@@ -159,6 +159,26 @@ func TestCrossPlatformCoverageAITableTableBootstrapPublishesResultContract(t *te
 	}
 }
 
+func TestDeliveryMinutesASRMigrationContract(t *testing.T) {
+	prepare := executeShortcutSchemaQuery(t, "--cli-path", "minutes +prepare-asr")
+	prepareParameters := schemaContractMap(prepare["parameters"])
+	if prepareParameters["sync"] != nil {
+		t.Fatalf("minutes +prepare-asr publishes hidden --sync: %#v", prepareParameters["sync"])
+	}
+	if got := prepare["constraints"]; got != nil {
+		t.Fatalf("minutes +prepare-asr publishes a constraint for hidden --sync: %#v", got)
+	}
+
+	syncASR := executeShortcutSchemaQuery(t, "--cli-path", "minutes +sync-asr")
+	for field, want := range map[string]string{
+		"effect": "destructive", "risk": "high", "confirmation": "user_required", "idempotency": "idempotent",
+	} {
+		if got := schemaContractString(syncASR[field]); got != want {
+			t.Errorf("minutes +sync-asr %s = %q, want %q", field, got, want)
+		}
+	}
+}
+
 func TestDeliveryWikiSpaceSearchDeclaresCompatibilityAdapter(t *testing.T) {
 	leaf := executeShortcutSchemaQuery(t, "--cli-path", "wiki +space-search")
 	if got := schemaContractString(leaf["interface_mode"]); got != "composite" {
