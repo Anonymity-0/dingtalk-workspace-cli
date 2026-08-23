@@ -4285,8 +4285,8 @@ CLI 内部自动完成全部流程:
   3. 确认导入（触发格式转换）
   4. 渐进式退避轮询等待完成（最多约 5 分钟）
 
-如果轮询超时仍未完成，会输出 taskId 供后续手动查询:
-  dws doc import get --task-id <taskId>`,
+如果轮询超时或中断，会输出包含原目标的完整命令供后续手动查询，例如:
+  dws doc import get --task-id <taskId> --workspace <原目标WORKSPACE_ID>`,
 		Example: `  # 导入 Word 文档
   dws doc import --file ./report.docx
 
@@ -4351,7 +4351,7 @@ CLI 内部自动完成全部流程:
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "根据 taskId 查询文档导入任务的执行结果",
-				UseWhen:      []string{"已有 doc import 超时结果及其完整 next_command，需要续查同一 taskId 并验证原 folder/workspace 落点时"},
+				UseWhen:      []string{"已有 doc import 超时或中断结果及其完整 next_command，需要续查同一 taskId 并验证原 folder/workspace 落点时"},
 				AvoidWhen:    []string{"发起导入用 doc import（若入口可用）；不要用本命令代替导入"},
 				Examples:     []string{"dws doc import get --task-id <TASK_ID> --workspace <WORKSPACE_ID> --format json"},
 			},

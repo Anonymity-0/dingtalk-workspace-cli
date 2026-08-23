@@ -704,7 +704,7 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 	if err != nil {
 		var timeoutErr *importPollTimeoutError
 		if !errors.As(err, &timeoutErr) {
-			return err
+			return fmt.Errorf("%w；任务已经提交，可使用 %s 继续查询", err, importRecoveryCommand(cfg, taskID, file))
 		}
 		if cfg.timeoutAsResult {
 			if !jsonMode {

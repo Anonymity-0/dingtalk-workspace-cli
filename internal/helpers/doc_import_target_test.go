@@ -158,6 +158,36 @@ func TestDocImportDefaultResolutionFailureIsNotStarted(t *testing.T) {
 	}
 }
 
+func TestDocImportCancellationReturnsExecutableRecoveryCommand(t *testing.T) {
+	filePath := writeImportFixture(t, "md")
+	caller := &sheetImportCaller{responses: map[string][]string{
+		"list_wikiSpaces":       {`{"result":{"wikiSpaces":[{"workspaceId":"my-space","name":"我的文档"}]}}`},
+		"create_import_session": {`{"sessionId":"session-1","uploadUrl":"https://upload.test/file"}`},
+		"confirm_import":        {`{"taskId":"task-1"}`},
+	}}
+	cfg := fastDocImportConfig()
+	cfg.poll.wait = func(context.Context, time.Duration) error { return context.Canceled }
+
+	_, err := executeDocImportCommand(t, caller, cfg, "--file", filePath)
+	if err == nil {
+		t.Fatal("expected cancellation error")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancellation error = %v, want errors.Is(context.Canceled)", err)
+	}
+	for _, want := range []string{
+		"导入轮询被取消",
+		"dws doc import get --task-id task-1 --workspace my-space",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("cancellation error = %q, want %q", err, want)
+		}
+	}
+	if len(caller.calls) != 3 || caller.calls[0].tool != "list_wikiSpaces" || caller.calls[2].tool != "confirm_import" {
+		t.Fatalf("calls = %#v", caller.calls)
+	}
+}
+
 func TestDocImportPlacementMismatchIsPartialSuccess(t *testing.T) {
 	filePath := writeImportFixture(t, "md")
 	caller := &sheetImportCaller{responses: map[string][]string{
