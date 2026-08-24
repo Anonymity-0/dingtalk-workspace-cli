@@ -1985,7 +1985,6 @@ func newCollegeContactCommand() *cobra.Command {
 			}
 			input["staffIds"] = staffIDs
 
-
 			// 可选 int64
 			for _, pair := range []struct {
 				flag string
@@ -3696,7 +3695,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--alumni-dept-id 须为整数: %w", err)
 			}
 
-
 			return callMCPToolOnServer("college-contact", "delete_alumnus", map[string]any{
 				"input": map[string]any{
 					"staffId":      staffId,
@@ -3782,7 +3780,6 @@ func newCollegeContactCommand() *cobra.Command {
 			if len(staffIds) == 0 {
 				return fmt.Errorf("--staff-ids 不能为空列表")
 			}
-
 
 			return callMCPToolOnServer("college-contact", "delete_alumni_invite_record", map[string]any{
 				"input": map[string]any{
@@ -3914,7 +3911,6 @@ func newCollegeContactCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("--alumni-dept-id 须为整数: %w", err)
 			}
-
 
 			return callMCPToolOnServer("college-contact", "disband_alumni_group", map[string]any{
 				"input": map[string]any{
@@ -4796,7 +4792,6 @@ func newCollegeContactCommand() *cobra.Command {
 				input["requestNo"] = strings.TrimSpace(v)
 			}
 
-
 			return callMCPToolOnServer("college-contact", "commit_graduate", map[string]any{
 				"input": input,
 			})
@@ -4873,7 +4868,6 @@ func newCollegeContactCommand() *cobra.Command {
 			if v, _ := cmd.Flags().GetString("request-no"); strings.TrimSpace(v) != "" {
 				input["requestNo"] = strings.TrimSpace(v)
 			}
-
 
 			return callMCPToolOnServer("college-contact", "all_graduate", map[string]any{
 				"input": input,
@@ -4958,7 +4952,6 @@ func newCollegeContactCommand() *cobra.Command {
 			if len(staffIds) == 0 {
 				return fmt.Errorf("--staff-ids 不能为空列表")
 			}
-
 
 			return callMCPToolOnServer("college-contact", "batch_graduate", map[string]any{
 				"input": map[string]any{
@@ -5047,7 +5040,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--staff-ids 不能为空列表")
 			}
 
-
 			return callMCPToolOnServer("college-contact", "delete_and_graduate", map[string]any{
 				"input": map[string]any{
 					"deptId":   deptId,
@@ -5134,7 +5126,6 @@ func newCollegeContactCommand() *cobra.Command {
 			if len(staffIds) == 0 {
 				return fmt.Errorf("--staff-ids 不能为空列表")
 			}
-
 
 			return callMCPToolOnServer("college-contact", "batch_delete_pending", map[string]any{
 				"input": map[string]any{
@@ -5234,7 +5225,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--graduate-year 须为整数: %w", err)
 			}
 
-
 			return callMCPToolOnServer("college-contact", "batch_update_pending", map[string]any{
 				"input": map[string]any{
 					"deptId":       deptId,
@@ -5326,7 +5316,6 @@ func newCollegeContactCommand() *cobra.Command {
 			if v, _ := cmd.Flags().GetString("request-no"); strings.TrimSpace(v) != "" {
 				input["requestNo"] = strings.TrimSpace(v)
 			}
-
 
 			return callMCPToolOnServer("college-contact", "commit_restore", map[string]any{
 				"input": input,
@@ -5676,7 +5665,6 @@ func newCollegeContactCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("--rule-id 须为整数: %w", err)
 			}
-
 
 			return callMCPToolOnServer("college-contact", "delete_group_rule", map[string]any{
 				"input": map[string]any{"ruleId": ruleID},

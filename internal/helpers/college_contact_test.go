@@ -147,7 +147,6 @@ func TestCrossPlatformCoverageCollegeContactDestructive_ProceedsWithYes(t *testi
 	}
 }
 
-
 // withCollegeContactCaller installs a dry-run capture caller so happy-path
 // command execution exercises each RunE up to the callMCPToolOnServer dispatch
 // without requiring a live MCP transport. In dry-run mode destructive
