@@ -603,6 +603,9 @@ Flags:
 用户说"把钉盘文件夹拉到本地/下载整个文件夹/镜像/同步到本地/pull" → `pull`
 用户说"把本地文件夹传到钉盘/推送整个文件夹/上传目录/同步到云端/push" → `push`
 用户说"双向同步/两边同步/本地和云盘互相同步/让两边一致/sync" → `sync`（默认两侧都变更时跳过；要覆盖须显式给 `--on-conflict` 并加 `--yes`）
+用户说"存储容量/企业盘用量/剩余空间/用了多少空间" → `quota`（默认企业级；应用列表用 `quota apps`），完整规则见 [`drive-storage.md`](./drive/drive-storage.md)
+用户说"异步任务/任务状态/任务查询/导出结果查询" → `task get`（统一入口，`--type export|import|copy|move`），完整规则见 [`drive-task.md`](./drive/drive-task.md)
+用户说"导出为 xlsx/pptx"或不确定文档类型 → `export`（通用导出入口，自动识别类型），完整规则见 [`drive-export.md`](./drive/drive-export.md)
 
 关键区分: drive(文件管理) vs doc(文档内容读写) vs wiki(空间管理)
 
@@ -701,6 +704,8 @@ Flags:
 权限要求：copy 需对源文档有"阅读"权限且对目标文件夹有"编辑"权限；move 需对源文档有"管理"权限且对目标文件夹有"编辑"权限；rename 需对文档有"编辑"权限。
 
 > **字段选择**：`drive list` 返回中有 `dentryId`（数字格式）和 `fileId`（UUID 格式），**必须使用 `fileId`（UUID 格式）**作为 `--node` 和 `--folder` 参数值。
+
+> **异步任务自动轮询**：服务端返回 `taskId` 时，copy/move 会自动轮询直至终态（渐进式退避：2s×5 → 5s×5 → 10s×10 → 15s×10，上限 30 次约 5 分钟）。轮询可随时 Ctrl-C 中断，服务端任务不会中止；超时或中断后用 `dws drive task get --type copy|move --id <taskId>` 查询兜底，任务状态枚举与查询入口区分详见 [`drive/drive-task.md`](./drive/drive-task.md)。`PARTIAL_FAILED` 时同样可用该命令查明细。
 
 ### 创建文件夹（文档空间）
 
@@ -802,7 +807,7 @@ Flags:
 - `pendingApproval` — true=已提交审批待生效，false/null=无需审批或已直接生效
 - `docUrl` — 文件访问链接
 
-> **注意**：导出钉盘在线文档到本地可使用 `dws drive export`（通用导出，支持 docx/xlsx/pptx/pdf/markdown）；`doc export` 与 `sheet export` 是分别针对在线文档与在线表格的产品级入口。
+> **注意**：导出钉盘在线文档到本地可使用 `dws drive export`（通用导出，支持 docx/xlsx/pptx/pdf/markdown），完整规则见 [`drive/drive-export.md`](./drive/drive-export.md)；`doc export` 与 `sheet export` 是分别针对在线文档与在线表格的产品级入口。
 > 导出/复制/移动的自动轮询过程可随时用 Ctrl-C 中断；已提交的服务端任务不会中止，之后可用 `dws drive task get` 查询任务状态。
 
 ### 目标位置参数规则
