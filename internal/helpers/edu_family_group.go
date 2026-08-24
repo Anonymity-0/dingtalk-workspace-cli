@@ -33,19 +33,19 @@ func newEduFamilyGroupCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:    "edu-familygroup",
 		Short:  "家庭群",
 		Long:   `钉钉家庭群管理：家庭群查询/创建、孩子管理、家长邀请、学生应用权限控制等。`,
 		Hidden: true,
 		RunE:   groupRunE,
-	}
+	})
 
 	// ════════════════════════════════════════════════════════════
 	// group 子命令组 — 家庭群读操作
 	// ════════════════════════════════════════════════════════════
 
-	groupCmd := &cobra.Command{Use: "group", Short: "家庭群查询", RunE: groupRunE}
+	groupCmd := newGroupCommand(&cobra.Command{Use: "group", Short: "家庭群查询", RunE: groupRunE})
 
 	groupCheckExistsCmd := &cobra.Command{
 		Use:   "check-exists",
@@ -158,7 +158,7 @@ func newEduFamilyGroupCommand() *cobra.Command {
 	// manage 子命令组 — 家庭群写操作
 	// ════════════════════════════════════════════════════════════
 
-	manageCmd := &cobra.Command{Use: "manage", Short: "家庭群管理", RunE: groupRunE}
+	manageCmd := newGroupCommand(&cobra.Command{Use: "manage", Short: "家庭群管理", RunE: groupRunE})
 
 	manageCreateCmd := &cobra.Command{
 		Use:   "create",

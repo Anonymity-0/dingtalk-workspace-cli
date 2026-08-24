@@ -39,7 +39,7 @@ func newConferenceCommand() *cobra.Command {
 直接发起会议、邀请入会、会中控制请在钉钉客户端操作；如需预约日程，请改用 dws calendar event create。`,
 		RunE: runUnavailable,
 	}
-	markGroup(root)
+	newHybridGroupCommand(root)
 
 	meetingCmd := newGroupCommand(&cobra.Command{Use: "meeting", Short: "会议管理（已下线）", RunE: groupRunE})
 

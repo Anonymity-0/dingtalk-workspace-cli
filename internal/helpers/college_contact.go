@@ -28,19 +28,19 @@ func newCollegeContactCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:    "college-contact",
 		Short:  "高校通讯录",
 		Long:   `钉钉高校通讯录扩展：查询高校组织架构/院系/师生信息等。`,
 		Hidden: true,
 		RunE:   groupRunE,
-	}
+	})
 
 	// ════════════════════════════════════════════════════════════
 	// dept 子命令组 — 部门管理
 	// ════════════════════════════════════════════════════════════
 
-	deptCmd := &cobra.Command{Use: "dept", Short: "部门管理", RunE: groupRunE}
+	deptCmd := newGroupCommand(&cobra.Command{Use: "dept", Short: "部门管理", RunE: groupRunE})
 
 	getStandardStructureCmd := &cobra.Command{
 		Use:   "get-standard-structure",
@@ -1574,7 +1574,7 @@ func newCollegeContactCommand() *cobra.Command {
 	// employee 子命令组 — 员工管理
 	// ════════════════════════════════════════════════════════════
 
-	employeeCmd := &cobra.Command{Use: "employee", Short: "员工管理", RunE: groupRunE}
+	employeeCmd := newGroupCommand(&cobra.Command{Use: "employee", Short: "员工管理", RunE: groupRunE})
 
 	getEmployeeDetailCmd := &cobra.Command{
 		Use:   "get-detail",
@@ -2654,7 +2654,7 @@ func newCollegeContactCommand() *cobra.Command {
 	// alumni 子命令组 — 校友管理
 	// ════════════════════════════════════════════════════════════
 
-	alumniCmd := &cobra.Command{Use: "alumni", Short: "校友管理", RunE: groupRunE}
+	alumniCmd := newGroupCommand(&cobra.Command{Use: "alumni", Short: "校友管理", RunE: groupRunE})
 
 	getAlumniDeptTreeCmd := &cobra.Command{
 		Use:   "get-dept-tree",
@@ -4120,7 +4120,7 @@ func newCollegeContactCommand() *cobra.Command {
 	// graduate 子命令组 — 毕业年级管理
 	// ════════════════════════════════════════════════════════════
 
-	graduateCmd := &cobra.Command{Use: "graduate", Short: "毕业年级管理", RunE: groupRunE}
+	graduateCmd := newGroupCommand(&cobra.Command{Use: "graduate", Short: "毕业年级管理", RunE: groupRunE})
 
 	// ── query-graduate-years ──────────────────────────────────
 	queryGraduateYearsCmd := &cobra.Command{
@@ -5346,11 +5346,11 @@ func newCollegeContactCommand() *cobra.Command {
 	commitRestoreCmd.Flags().String("request-no", "", "异步任务请求号")
 
 	// ── group 子命令组 ────────────────────────────────────────
-	groupCmd := &cobra.Command{
+	groupCmd := newGroupCommand(&cobra.Command{
 		Use:   "group",
 		Short: "规则管理",
 		RunE:  groupRunE,
-	}
+	})
 
 	// ── query-group-rule ─────────────────────────────────────
 	queryGroupRuleCmd := &cobra.Command{

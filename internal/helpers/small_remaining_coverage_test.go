@@ -10,6 +10,7 @@ import (
 	"time"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -22,8 +23,13 @@ func TestCrossPlatformCoverageSheetAndMinutesSmallRemainingBranches(t *testing.T
 	group := &cobra.Command{Use: "range", Run: func(*cobra.Command, []string) {}}
 	group.AddCommand(&cobra.Command{Use: "read", Run: func(*cobra.Command, []string) {}})
 	root.AddCommand(group)
-	attachUnknownSubcommandGuard(root)
-	err := root.RunE(root, []string{"read"})
+	err := cmdutil.NewCommandResolution(
+		root,
+		"read",
+		cmdutil.ResolutionUnknownSubcommand,
+		cmdutil.SuggestDescendantSubcommands(root, "read"),
+		"",
+	).Err()
 	var structured *apperrors.Error
 	if !errors.As(err, &structured) || structured.Reason != "unknown_subcommand" || !strings.Contains(structured.Hint, "range read") {
 		t.Fatalf("deep suggestion err=%#v", err)
@@ -35,8 +41,13 @@ func TestCrossPlatformCoverageSheetAndMinutesSmallRemainingBranches(t *testing.T
 		group.AddCommand(&cobra.Command{Use: "read", Run: func(*cobra.Command, []string) {}})
 		bounded.AddCommand(group)
 	}
-	attachUnknownSubcommandGuard(bounded)
-	err = bounded.RunE(bounded, []string{"read"})
+	err = cmdutil.NewCommandResolution(
+		bounded,
+		"read",
+		cmdutil.ResolutionUnknownSubcommand,
+		cmdutil.SuggestDescendantSubcommands(bounded, "read"),
+		"",
+	).Err()
 	if !errors.As(err, &structured) {
 		t.Fatalf("bounded deep suggestion error = %T %v", err, err)
 	}

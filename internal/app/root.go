@@ -30,6 +30,7 @@ import (
 
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
@@ -924,6 +925,11 @@ func newRootCommandWithMode(rootCtx context.Context, engine *pipeline.Engine, lo
 			return nil
 		},
 	}
+	corecmd.ApplyGroupPolicy(root, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
 
 	bindPersistentFlags(root, flags)
 
@@ -935,30 +941,42 @@ func newRootCommandWithMode(rootCtx context.Context, engine *pipeline.Engine, lo
 	patCaller := newRecordingToolCaller(newToolCallerAdapter(runner, flags))
 	mcpCmd.AddCommand(newMCPURLGroup(patCaller))
 
-	utilityGroup := func(command *cobra.Command) *cobra.Command {
-		cmdutil.MarkGroup(command)
+	navigationGroup := func(command *cobra.Command) *cobra.Command {
+		corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+			Mode:        corecmd.GroupNavigationOnly,
+			Positionals: corecmd.PositionalsReject,
+			Recovery:    corecmd.RecoverySibling,
+		})
+		return command
+	}
+	hybridGroup := func(command *cobra.Command) *cobra.Command {
+		corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+			Mode:        corecmd.GroupHybrid,
+			Positionals: corecmd.PositionalsReject,
+			Recovery:    corecmd.RecoverySibling,
+		})
 		return command
 	}
 
 	utilityCommands := []*cobra.Command{
-		utilityGroup(newAuthCommand(patCaller)),
-		utilityGroup(newProfileCommand()),
+		navigationGroup(newAuthCommand(patCaller)),
+		navigationGroup(newProfileCommand()),
 		newAPICommand(flags),
-		utilityGroup(newSkillCommand()),
-		utilityGroup(newCacheCommand()),
+		navigationGroup(newSkillCommand()),
+		hybridGroup(newCacheCommand()),
 		newCatalogCommand(),
-		utilityGroup(newConfigCommand()),
+		navigationGroup(newConfigCommand()),
 		newDoctorCommand(),
-		utilityGroup(newRecoveryCommand()),
-		utilityGroup(newEventCommand(flags)),
-		utilityGroup(newAuditCommand()),
+		hybridGroup(newRecoveryCommand()),
+		navigationGroup(newEventCommand(flags)),
+		navigationGroup(newAuditCommand()),
 		newCompletionCommand(root),
 		newUpgradeCommand(),
 		newVersionCommand(),
 		newPluginCommand(),
-		utilityGroup(usage.NewShortcutCommand()),
+		navigationGroup(usage.NewShortcutCommand()),
 		schemaCmd,
-		utilityGroup(mcpCmd),
+		navigationGroup(mcpCmd),
 	}
 	root.AddCommand(utilityCommands...)
 

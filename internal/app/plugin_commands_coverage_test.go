@@ -507,7 +507,8 @@ func TestPluginConstraintGroupAndRootHelpers(t *testing.T) {
 	mergePluginRoot(nil, root)
 	mergePluginRoot(root, nil)
 	destination := &cobra.Command{Use: "plugin", Aliases: []string{"one"}}
-	source := &cobra.Command{Use: "plugin", Aliases: []string{"one", "two"}}
+	source := cobracmd.NewGroupCommand("plugin", "plugin")
+	source.Aliases = []string{"one", "two"}
 	source.AddCommand(&cobra.Command{Use: "leaf"})
 	mergePluginRoot(destination, source)
 	if !reflect.DeepEqual(destination.Aliases, []string{"one", "two"}) || requireOptionalPluginChild(destination, "leaf") == nil {

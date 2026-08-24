@@ -4,10 +4,12 @@
 package cmdutil
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -52,9 +54,12 @@ func TestCrossPlatformCoverageGroupRunERemainsConciseWithoutSuggestions(t *testi
 	}
 
 	err := GroupRunE(group, []string{"zzzzz"})
-	if err == nil || strings.Contains(err.Error(), "available:") || !strings.Contains(err.Error(), "dws demo --help") {
+	var structured *apperrors.Error
+	if !errors.As(err, &structured) || structured.Reason != string(ResolutionUnknownSubcommand) ||
+		strings.Contains(structured.Hint, "available:") || structured.Hint != "Run 'dws demo --help' for the full list" {
 		t.Fatalf("GroupRunE() error = %v, want concise parent-help guidance", err)
 	}
+	assertResolutionDetails(t, structured, "zzzzz", []string{})
 }
 
 func TestCrossPlatformCoverageFormatSubcommandSuggestionHintDefensivelyBoundsInput(t *testing.T) {
@@ -125,5 +130,50 @@ func TestCrossPlatformCoverageSuggestSubcommandsRankingTieBreakers(t *testing.T)
 	)
 	if got := SuggestSubcommands(lengthDelta, "abc"); !slices.Equal(got, []string{"axc", "ab"}) {
 		t.Fatalf("length-delta ranking = %#v", got)
+	}
+}
+
+func TestCrossPlatformCoverageSuggestDescendantSubcommandsExactCanonicalAliasSortedAndBounded(t *testing.T) {
+	root := &cobra.Command{Use: "sheet"}
+	addGroup := func(name string, hidden bool) *cobra.Command {
+		group := &cobra.Command{Use: name, Hidden: hidden, Run: func(*cobra.Command, []string) {}}
+		root.AddCommand(group)
+		return group
+	}
+	addLeaf := func(group *cobra.Command, use string, aliases []string, hidden, runnable bool) {
+		leaf := &cobra.Command{Use: use, Aliases: aliases, Hidden: hidden}
+		if runnable {
+			leaf.Run = func(*cobra.Command, []string) {}
+		}
+		group.AddCommand(leaf)
+	}
+
+	// Insert matching paths deliberately out of order. The visible alias match
+	// must teach its canonical path, and the result must be sorted before it is
+	// capped at the shared three-suggestion limit.
+	addLeaf(addGroup("zeta", false), "read", nil, false, true)
+	addLeaf(addGroup("gamma", false), "read", nil, false, true)
+	addLeaf(addGroup("alpha", false), "fetch", []string{"read"}, false, true)
+	addLeaf(addGroup("beta", false), "read", nil, false, true)
+
+	// These paths sort before the expected results if they leak through, so the
+	// assertion also proves hidden and unavailable descendants are excluded
+	// before bounding rather than merely falling beyond the cap.
+	addLeaf(addGroup("aaa-hidden-group", true), "read", nil, false, true)
+	addLeaf(addGroup("aab-unavailable", false), "read", nil, false, false)
+	addLeaf(addGroup("aac-hidden-leaf", false), "read", nil, true, true)
+
+	want := []string{"alpha fetch", "beta read", "gamma read"}
+	if got := SuggestDescendantSubcommands(root, " READ "); !slices.Equal(got, want) {
+		t.Fatalf("SuggestDescendantSubcommands() = %#v, want %#v", got, want)
+	}
+	if got := SuggestDescendantSubcommands(root, "rea"); len(got) != 0 {
+		t.Fatalf("fuzzy descendant suggestions = %#v, want exact matching only", got)
+	}
+	if got := SuggestDescendantSubcommands(nil, "read"); got != nil {
+		t.Fatalf("nil parent suggestions = %#v", got)
+	}
+	if got := SuggestDescendantSubcommands(root, " \t "); len(got) != 0 {
+		t.Fatalf("blank candidate suggestions = %#v", got)
 	}
 }

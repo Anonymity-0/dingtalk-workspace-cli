@@ -9,7 +9,7 @@ import (
 
 // newSheetTemplateCmd builds the `dws sheet template` command group.
 func newSheetTemplateCmd() *cobra.Command {
-	templateCmd := newGroupCommand(&cobra.Command{
+	templateCmd := newDeepGroupCommand(&cobra.Command{
 		Use:   "template",
 		Short: "表格模板管理",
 		RunE:  groupRunE,
@@ -204,8 +204,6 @@ func newSheetTemplateCmd() *cobra.Command {
 	for _, child := range templateCmd.Commands() {
 		RegisterCrossProductAliases(child)
 	}
-
-	attachUnknownSubcommandGuard(templateCmd)
 
 	return templateCmd
 }

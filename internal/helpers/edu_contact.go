@@ -32,19 +32,19 @@ func newEduContactCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:    "edu-contact",
 		Short:  "家校通讯录",
 		Long:   `钉钉家校通讯录扩展：查询学校组织/班级/家庭关系/教师信息等。`,
 		Hidden: true,
 		RunE:   groupRunE,
-	}
+	})
 
 	// ════════════════════════════════════════════════════════════
 	// school 子命令组 — 学校/组织级查询
 	// ════════════════════════════════════════════════════════════
 
-	schoolCmd := &cobra.Command{Use: "school", Short: "学校/组织管理", RunE: groupRunE}
+	schoolCmd := newGroupCommand(&cobra.Command{Use: "school", Short: "学校/组织管理", RunE: groupRunE})
 
 	schoolRolesCmd := &cobra.Command{
 		Use:   "roles",
@@ -315,7 +315,7 @@ func newEduContactCommand() *cobra.Command {
 	// class 子命令组 — 班级级查询
 	// ════════════════════════════════════════════════════════════
 
-	classCmd := &cobra.Command{Use: "class", Short: "班级管理", RunE: groupRunE}
+	classCmd := newGroupCommand(&cobra.Command{Use: "class", Short: "班级管理", RunE: groupRunE})
 
 	classDetailCmd := &cobra.Command{
 		Use:   "detail",
@@ -1632,7 +1632,7 @@ func newEduContactCommand() *cobra.Command {
 	// family 子命令组 — 家庭关系查询
 	// ════════════════════════════════════════════════════════════
 
-	familyCmd := &cobra.Command{Use: "family", Short: "家庭关系查询", RunE: groupRunE}
+	familyCmd := newGroupCommand(&cobra.Command{Use: "family", Short: "家庭关系查询", RunE: groupRunE})
 
 	familyChildrenCmd := &cobra.Command{
 		Use:   "children",
@@ -1720,7 +1720,7 @@ func newEduContactCommand() *cobra.Command {
 	// teacher 子命令组 — 教师查询
 	// ════════════════════════════════════════════════════════════
 
-	teacherCmd := &cobra.Command{Use: "teacher", Short: "教师管理", RunE: groupRunE}
+	teacherCmd := newGroupCommand(&cobra.Command{Use: "teacher", Short: "教师管理", RunE: groupRunE})
 
 	teacherClassesCmd := &cobra.Command{
 		Use:   "classes",

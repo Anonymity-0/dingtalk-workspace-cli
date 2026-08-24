@@ -3721,7 +3721,7 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 			return callAitableTool("get_views", toolArgs)
 		},
 	}
-	markGroup(viewGetCmd)
+	newHybridGroupCommand(viewGetCmd)
 
 	// ─── view get <attr> 子命令：按属性投影 view 响应 ──────────────
 	// card/timebar/aggregate 需要 viewType 校验；filter/sort/group/visible-fields/field-widths 不需要。
@@ -4115,7 +4115,7 @@ fieldWidths 仅支持 Grid 视图。
 			return callAitableTool("update_view", toolArgs)
 		},
 	}
-	markGroup(viewUpdateCmd)
+	newHybridGroupCommand(viewUpdateCmd)
 
 	// ─── view update <attr> 子命令：按属性局部更新 ────────────────────
 

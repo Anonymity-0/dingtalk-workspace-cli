@@ -15,20 +15,19 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
 // Re-export shared command helpers as package-level aliases so existing product
 // files continue to compile with their current (unexported) call sites. This
-// avoids a mass-rename while keeping command-error classification in pipeline
-// and the remaining reusable utilities in cmdutil.
+// avoids a mass-rename while keeping reusable command-resolution and flag
+// utilities in cmdutil.
 var (
-	groupRunE                       = pipeline.GroupRunE
-	hintSubCmd                      = pipeline.HintSubCmd
-	markGroup                       = cmdutil.MarkGroup
+	groupRunE                       = cmdutil.GroupRunE
+	hintSubCmd                      = cmdutil.HintSubCmd
 	mustGetFlag                     = cmdutil.MustGetFlag
 	flagOrFallback                  = cmdutil.FlagOrFallback
 	mustFlagOrFallback              = cmdutil.MustFlagOrFallback
@@ -40,11 +39,37 @@ var (
 	helperAfter                     = time.After
 )
 
-// newGroupCommand declares a navigation-only command container. The explicit
-// identity lets pre-parse command recovery take precedence over child flags
-// without inferring group semantics from the shape of the Cobra tree.
+// newGroupCommand declares the ordinary navigation policy used by helper
+// command containers. The unified framework compiles this declaration into
+// Cobra behavior and command-resolution metadata.
 func newGroupCommand(command *cobra.Command) *cobra.Command {
-	markGroup(command)
+	corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
+	return command
+}
+
+// newDeepGroupCommand declares a navigation container whose typo recovery may
+// teach exact descendant paths (for example sheet read -> sheet range read).
+func newDeepGroupCommand(command *cobra.Command) *cobra.Command {
+	corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoveryDeep,
+	})
+	return command
+}
+
+// newHybridGroupCommand declares a business command that also owns children.
+// Its existing RunE remains the command's default action.
+func newHybridGroupCommand(command *cobra.Command) *cobra.Command {
+	corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupHybrid,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
 	return command
 }
 

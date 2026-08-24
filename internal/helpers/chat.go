@@ -2766,7 +2766,7 @@ func newChatCommand() *cobra.Command {
 			return callMCPTool("get_group_members", toolArgs)
 		},
 	}
-	markGroup(chatGroupMembersCmd)
+	newHybridGroupCommand(chatGroupMembersCmd)
 
 	chatGroupMembersAddBotCmd := &cobra.Command{
 		Use:   "add-bot",

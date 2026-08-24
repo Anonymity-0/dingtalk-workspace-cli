@@ -272,6 +272,27 @@ func TestCrossPlatformCoverageCLISmokeCommandTypoGuidance(t *testing.T) {
 			wantSuggestion: "read",
 		},
 		{
+			name:           "sheet deep path guidance",
+			args:           []string{"sheet", "read", "--format", "json"},
+			wantInput:      "read",
+			wantHelp:       "dws sheet --help",
+			wantSuggestion: "range read",
+		},
+		{
+			name:           "hybrid doc import typo",
+			args:           []string{"doc", "import", "gte", "--format", "json"},
+			wantInput:      "gte",
+			wantHelp:       "dws doc import --help",
+			wantSuggestion: "get",
+		},
+		{
+			name:           "hybrid sheet import typo",
+			args:           []string{"sheet", "import", "gte", "--format", "json"},
+			wantInput:      "gte",
+			wantHelp:       "dws sheet import --help",
+			wantSuggestion: "get",
+		},
+		{
 			name:      "shared compatibility hint",
 			args:      []string{"todo", "create", "--format", "json"},
 			wantInput: "create",

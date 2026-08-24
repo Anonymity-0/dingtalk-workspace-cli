@@ -116,6 +116,49 @@ func SuggestSubcommands(parent *cobra.Command, candidate string) []string {
 	return suggestions
 }
 
+// SuggestDescendantSubcommands returns bounded relative paths for available
+// descendants whose canonical name or alias exactly matches candidate. It is
+// the reviewed deep-recovery mode used by hierarchical products such as
+// Sheet, where a model may omit an intermediate group (`sheet read` instead
+// of `sheet range read`). Fuzzy ranking remains a sibling concern so a large
+// subtree cannot drown the user in speculative paths.
+func SuggestDescendantSubcommands(parent *cobra.Command, candidate string) []string {
+	if parent == nil {
+		return nil
+	}
+	candidate = strings.ToLower(strings.TrimSpace(candidate))
+	if candidate == "" {
+		return []string{}
+	}
+
+	paths := make([]string, 0)
+	var walk func(*cobra.Command, []string)
+	walk = func(command *cobra.Command, prefix []string) {
+		for _, child := range command.Commands() {
+			if !child.IsAvailableCommand() {
+				continue
+			}
+			path := append(append([]string(nil), prefix...), child.Name())
+			matched := strings.EqualFold(strings.TrimSpace(child.Name()), candidate)
+			if !matched {
+				for _, alias := range child.Aliases {
+					if strings.EqualFold(strings.TrimSpace(alias), candidate) {
+						matched = true
+						break
+					}
+				}
+			}
+			if matched {
+				paths = append(paths, strings.Join(path, " "))
+			}
+			walk(child, path)
+		}
+	}
+	walk(parent, nil)
+	sort.Strings(paths)
+	return normalizeCommandSuggestions(paths)
+}
+
 // FormatSubcommandSuggestionHint renders bounded suggestions and always keeps
 // the full-list recovery action visible in the same hint.
 func FormatSubcommandSuggestionHint(parent *cobra.Command, suggestions []string, fallback string) string {
@@ -123,8 +166,9 @@ func FormatSubcommandSuggestionHint(parent *cobra.Command, suggestions []string,
 		suggestions = suggestions[:MaxCommandSuggestions]
 	}
 	paths := make([]string, 0, len(suggestions))
+	parentPath := commandResolutionParentPath(parent)
 	for _, suggestion := range suggestions {
-		paths = append(paths, fmt.Sprintf("%q", parent.CommandPath()+" "+suggestion))
+		paths = append(paths, fmt.Sprintf("%q", parentPath+" "+suggestion))
 	}
 	var hint string
 	switch len(paths) {

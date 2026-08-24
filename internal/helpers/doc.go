@@ -4260,7 +4260,7 @@ CLI 内部自动完成全部流程：
 	_ = exportCmd.Flags().MarkHidden("file-id")
 
 	exportCmd.AddCommand(exportGetCmd)
-	markGroup(exportCmd)
+	newHybridGroupCommand(exportCmd)
 
 	// ── import: 文件导入为在线文档（一体化：上传→转换→轮询）──────────────
 	importCmd := &cobra.Command{
@@ -4357,6 +4357,7 @@ CLI 内部自动完成全部流程:
 	})
 	importGetCmd.Flags().String("task-id", "", "导入任务 ID (必填)")
 	importCmd.AddCommand(importGetCmd)
+	newHybridGroupCommand(importCmd)
 
 	// ── doc version 子命令组 ──
 	versionCmd := newGroupCommand(&cobra.Command{

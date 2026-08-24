@@ -32,19 +32,19 @@ func newEduAppCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:    "edu-app",
 		Short:  "家校应用",
 		Long:   `钉钉家校应用：AI消息总结、家校任务查询、成绩单管理、通知确认、奖状颁发、作业管理等。`,
 		Hidden: true,
 		RunE:   groupRunE,
-	}
+	})
 
 	// ════════════════════════════════════════════════════════════
 	// message 子命令组 — AI 消息
 	// ════════════════════════════════════════════════════════════
 
-	messageCmd := &cobra.Command{Use: "message", Short: "AI 消息管理", RunE: groupRunE}
+	messageCmd := newGroupCommand(&cobra.Command{Use: "message", Short: "AI 消息管理", RunE: groupRunE})
 
 	messageSummaryListCmd := &cobra.Command{
 		Use:   "summary-list",
@@ -128,7 +128,7 @@ func newEduAppCommand() *cobra.Command {
 	// task 子命令组 — 家校任务
 	// ════════════════════════════════════════════════════════════
 
-	taskCmd := &cobra.Command{Use: "task", Short: "家校任务管理", RunE: groupRunE}
+	taskCmd := newGroupCommand(&cobra.Command{Use: "task", Short: "家校任务管理", RunE: groupRunE})
 
 	taskPublishListCmd := &cobra.Command{
 		Use:   "publish-list",
@@ -339,7 +339,7 @@ func newEduAppCommand() *cobra.Command {
 	// report 子命令组 — 成绩单
 	// ════════════════════════════════════════════════════════════
 
-	reportCmd := &cobra.Command{Use: "report", Short: "成绩单管理", RunE: groupRunE}
+	reportCmd := newGroupCommand(&cobra.Command{Use: "report", Short: "成绩单管理", RunE: groupRunE})
 
 	reportGetCmd := &cobra.Command{
 		Use:   "get",
@@ -673,7 +673,7 @@ func newEduAppCommand() *cobra.Command {
 	// notice 子命令组 — 通知
 	// ════════════════════════════════════════════════════════════
 
-	noticeCmd := &cobra.Command{Use: "notice", Short: "通知管理", RunE: groupRunE}
+	noticeCmd := newGroupCommand(&cobra.Command{Use: "notice", Short: "通知管理", RunE: groupRunE})
 
 	noticeConfirmCmd := &cobra.Command{
 		Use:   "confirm",
@@ -1252,7 +1252,7 @@ func newEduAppCommand() *cobra.Command {
 	// circle 子命令组 — 班级圈
 	// ════════════════════════════════════════════════════════════
 
-	circleCmd := &cobra.Command{Use: "circle", Short: "班级圈管理", RunE: groupRunE}
+	circleCmd := newGroupCommand(&cobra.Command{Use: "circle", Short: "班级圈管理", RunE: groupRunE})
 
 	circlePostsCmd := &cobra.Command{
 		Use:   "posts",
@@ -1326,7 +1326,7 @@ func newEduAppCommand() *cobra.Command {
 	// card 子命令组 — 打卡
 	// ════════════════════════════════════════════════════════════
 
-	cardCmd := &cobra.Command{Use: "card", Short: "打卡管理", RunE: groupRunE}
+	cardCmd := newGroupCommand(&cobra.Command{Use: "card", Short: "打卡管理", RunE: groupRunE})
 
 	cardUpdateCmd := &cobra.Command{
 		Use:   "update",
@@ -1698,7 +1698,7 @@ func newEduAppCommand() *cobra.Command {
 	// diploma 子命令组 — 奖状
 	// ════════════════════════════════════════════════════════════
 
-	diplomaCmd := &cobra.Command{Use: "diploma", Short: "奖状管理", RunE: groupRunE}
+	diplomaCmd := newGroupCommand(&cobra.Command{Use: "diploma", Short: "奖状管理", RunE: groupRunE})
 
 	diplomaCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -2290,7 +2290,7 @@ func newEduAppCommand() *cobra.Command {
 	// homework 子命令组 — 作业
 	// ════════════════════════════════════════════════════════════
 
-	homeworkCmd := &cobra.Command{Use: "homework", Short: "作业管理", RunE: groupRunE}
+	homeworkCmd := newGroupCommand(&cobra.Command{Use: "homework", Short: "作业管理", RunE: groupRunE})
 
 	homeworkCreateCmd := &cobra.Command{
 		Use:   "create",

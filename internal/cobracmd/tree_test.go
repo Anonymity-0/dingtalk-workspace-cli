@@ -14,8 +14,10 @@
 package cobracmd
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/spf13/cobra"
 )
 
@@ -143,20 +145,290 @@ func TestNewGroupCommand(t *testing.T) {
 		t.Fatalf("Short = %q, want %q", cmd.Short, "my group description")
 	}
 	if cmd.Args == nil {
-		t.Fatal("Args should be set (cobra.NoArgs)")
+		t.Fatal("Args should be set (cobra.ArbitraryArgs)")
 	}
-	// Verify Args rejects arguments.
-	if err := cmd.Args(cmd, []string{"extra"}); err == nil {
-		t.Fatal("expected Args to reject extra arguments")
+	// Args must reach the shared resolver instead of Cobra's generic arg error.
+	if err := cmd.Args(cmd, []string{"extra"}); err != nil {
+		t.Fatalf("Args intercepted command resolution: %v", err)
 	}
 	// Verify RunE is set and returns help (no error for valid invocation).
 	if cmd.RunE == nil {
 		t.Fatal("RunE should not be nil")
 	}
+	policy, ok, err := corecmd.GroupPolicyFor(cmd)
+	if err != nil || !ok || policy != (corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	}) {
+		t.Fatalf("GroupPolicyFor() = %+v, %v, %v", policy, ok, err)
+	}
 	// RunE calls cmd.Help() which should not error.
 	if err := cmd.RunE(cmd, nil); err != nil {
 		t.Fatalf("RunE returned unexpected error: %v", err)
 	}
+	if err := cmd.RunE(cmd, []string{"extra"}); err == nil || !strings.Contains(err.Error(), "unknown subcommand") {
+		t.Fatalf("RunE typo error = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageValidateGroupTree(t *testing.T) {
+	t.Run("valid final tree", func(t *testing.T) {
+		root := NewGroupCommand("dws", "root")
+		nested := NewGroupCommand("nested", "nested")
+		nested.AddCommand(&cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }})
+		root.AddCommand(nested)
+		if err := ValidateGroupTree(root); err != nil {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("nil tree", func(t *testing.T) {
+		if err := ValidateGroupTree(nil); err == nil || !strings.Contains(err.Error(), "nil") {
+			t.Fatalf("ValidateGroupTree(nil) = %v", err)
+		}
+	})
+
+	t.Run("children require declaration", func(t *testing.T) {
+		root := &cobra.Command{Use: "dws"}
+		root.AddCommand(&cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }})
+		if err := ValidateGroupTree(root); err == nil || !strings.Contains(err.Error(), "no GroupPolicy") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("leaf rejects stale declaration", func(t *testing.T) {
+		leaf := NewGroupCommand("stale", "stale")
+		if err := ValidateGroupTree(leaf); err == nil || !strings.Contains(err.Error(), "retains GroupPolicy") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("deep policy on a leaf is still a stale group declaration", func(t *testing.T) {
+		leaf := &cobra.Command{Use: "stale-deep"}
+		corecmd.ApplyGroupPolicy(leaf, corecmd.GroupPolicy{
+			Mode: corecmd.GroupNavigationOnly, Positionals: corecmd.PositionalsReject, Recovery: corecmd.RecoveryDeep,
+		})
+		if err := ValidateGroupTree(leaf); err == nil || !strings.Contains(err.Error(), "retains GroupPolicy") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("declared group must stay runnable", func(t *testing.T) {
+		root := NewGroupCommand("dws", "root")
+		root.AddCommand(&cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }})
+		root.RunE = nil
+		root.Run = nil
+		if err := ValidateGroupTree(root); err == nil || !strings.Contains(err.Error(), "not runnable") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("rejected positionals require compiled Args behavior", func(t *testing.T) {
+		root := NewGroupCommand("dws", "root")
+		root.AddCommand(&cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }})
+		root.Args = nil
+		if err := ValidateGroupTree(root); err == nil || !strings.Contains(err.Error(), "compiled Args") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("allowed positionals require explicit Args contract", func(t *testing.T) {
+		root := &cobra.Command{Use: "dws", RunE: func(*cobra.Command, []string) error { return nil }}
+		corecmd.ApplyGroupPolicy(root, corecmd.GroupPolicy{
+			Mode: corecmd.GroupHybrid, Positionals: corecmd.PositionalsAllow, Recovery: corecmd.RecoveryDisabled,
+		})
+		root.AddCommand(&cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }})
+		if err := ValidateGroupTree(root); err == nil || !strings.Contains(err.Error(), "explicit Args") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("validation does not execute positional contracts", func(t *testing.T) {
+		calls := 0
+		root := &cobra.Command{
+			Use: "dws",
+			Args: func(*cobra.Command, []string) error {
+				calls++
+				return nil
+			},
+			RunE: func(*cobra.Command, []string) error { return nil },
+		}
+		corecmd.ApplyGroupPolicy(root, corecmd.GroupPolicy{
+			Mode: corecmd.GroupHybrid, Positionals: corecmd.PositionalsAllow, Recovery: corecmd.RecoveryDisabled,
+		})
+		root.AddCommand(&cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }})
+		if err := ValidateGroupTree(root); err != nil {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+		if calls != 0 {
+			t.Fatalf("ValidateGroupTree executed Args %d times", calls)
+		}
+	})
+
+	t.Run("deep recovery requires available descendants", func(t *testing.T) {
+		root := &cobra.Command{Use: "dws"}
+		corecmd.ApplyGroupPolicy(root, corecmd.GroupPolicy{
+			Mode: corecmd.GroupNavigationOnly, Positionals: corecmd.PositionalsReject, Recovery: corecmd.RecoveryDeep,
+		})
+		root.AddCommand(&cobra.Command{Use: "hidden", Hidden: true, RunE: func(*cobra.Command, []string) error { return nil }})
+		if err := ValidateGroupTree(root); err == nil || !strings.Contains(err.Error(), "available descendant") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+}
+
+func TestCrossPlatformCoverageMergeCommandTreeGroupPolicy(t *testing.T) {
+	t.Run("copies source declaration", func(t *testing.T) {
+		dst := &cobra.Command{Use: "root"}
+		src := NewGroupCommand("root", "source")
+		MergeCommandTree(dst, src)
+		policy, ok, err := corecmd.GroupPolicyFor(dst)
+		if err != nil || !ok || policy.Recovery != corecmd.RecoverySibling {
+			t.Fatalf("merged policy = %+v, %v, %v", policy, ok, err)
+		}
+	})
+
+	t.Run("typed destination accepts metadata-only source", func(t *testing.T) {
+		dst := NewGroupCommand("root", "destination")
+		src := &cobra.Command{Use: "root", Long: "source details"}
+		MergeCommandTree(dst, src)
+		if dst.Long != "source details" {
+			t.Fatalf("Long = %q", dst.Long)
+		}
+	})
+
+	t.Run("accepts identical declarations", func(t *testing.T) {
+		dst := NewGroupCommand("root", "destination")
+		src := NewGroupCommand("root", "source")
+		MergeCommandTree(dst, src)
+	})
+
+	t.Run("neutral scaffold preserves owning hybrid deep policy", func(t *testing.T) {
+		businessCalled := false
+		dst := &cobra.Command{
+			Use: "root",
+			RunE: func(*cobra.Command, []string) error {
+				businessCalled = true
+				return nil
+			},
+		}
+		want := corecmd.GroupPolicy{
+			Mode: corecmd.GroupHybrid, Positionals: corecmd.PositionalsReject, Recovery: corecmd.RecoveryDeep,
+		}
+		corecmd.ApplyGroupPolicy(dst, want)
+		dst.AddCommand(&cobra.Command{Use: "native", RunE: func(*cobra.Command, []string) error { return nil }})
+
+		src := NewGroupCommand("root", "neutral scaffold")
+		src.AddCommand(&cobra.Command{Use: "overlay", RunE: func(*cobra.Command, []string) error { return nil }})
+		MergeCommandTree(dst, src)
+
+		got, ok, err := corecmd.GroupPolicyFor(dst)
+		if err != nil || !ok || got != want {
+			t.Fatalf("merged owning policy = %+v, %v, %v; want %+v", got, ok, err, want)
+		}
+		if ChildByName(dst, "overlay") == nil {
+			t.Fatal("neutral scaffold child was not merged")
+		}
+		if err := dst.RunE(dst, nil); err != nil || !businessCalled {
+			t.Fatalf("owning Hybrid RunE was not preserved: called=%v err=%v", businessCalled, err)
+		}
+	})
+
+	t.Run("rejects conflicting declarations", func(t *testing.T) {
+		dst := NewGroupCommand("root", "destination")
+		src := &cobra.Command{Use: "root"}
+		corecmd.ApplyGroupPolicy(src, corecmd.GroupPolicy{
+			Mode: corecmd.GroupNavigationOnly, Positionals: corecmd.PositionalsReject, Recovery: corecmd.RecoveryDisabled,
+		})
+		defer func() {
+			got := recover()
+			if got == nil || !strings.Contains(got.(string), "conflicting GroupPolicy") {
+				t.Fatalf("MergeCommandTree panic = %v", got)
+			}
+		}()
+		MergeCommandTree(dst, src)
+	})
+
+	t.Run("hybrid deep target rejects non-neutral source", func(t *testing.T) {
+		dst := &cobra.Command{Use: "root", RunE: func(*cobra.Command, []string) error { return nil }}
+		corecmd.ApplyGroupPolicy(dst, corecmd.GroupPolicy{
+			Mode: corecmd.GroupHybrid, Positionals: corecmd.PositionalsReject, Recovery: corecmd.RecoveryDeep,
+		})
+		src := &cobra.Command{Use: "root"}
+		corecmd.ApplyGroupPolicy(src, corecmd.GroupPolicy{
+			Mode: corecmd.GroupNavigationOnly, Positionals: corecmd.PositionalsReject, Recovery: corecmd.RecoveryDeep,
+		})
+		defer func() {
+			got := recover()
+			if got == nil || !strings.Contains(got.(string), "conflicting GroupPolicy") {
+				t.Fatalf("MergeCommandTree panic = %v", got)
+			}
+		}()
+		MergeCommandTree(dst, src)
+	})
+
+	t.Run("does not overwrite undeclared runnable destination", func(t *testing.T) {
+		dst := &cobra.Command{Use: "root", RunE: func(*cobra.Command, []string) error { return nil }}
+		src := NewGroupCommand("root", "source")
+		defer func() {
+			got := recover()
+			if got == nil || !strings.Contains(got.(string), "behavior-bearing leaf") {
+				t.Fatalf("MergeCommandTree panic = %v", got)
+			}
+		}()
+		MergeCommandTree(dst, src)
+	})
+
+	t.Run("does not swallow runnable leaf source into group destination", func(t *testing.T) {
+		dst := NewGroupCommand("root", "destination")
+		dst.AddCommand(&cobra.Command{Use: "native", RunE: func(*cobra.Command, []string) error { return nil }})
+		src := &cobra.Command{Use: "root", RunE: func(*cobra.Command, []string) error { return nil }}
+		src.Flags().String("source-only", "", "must not be silently discarded")
+		defer func() {
+			got := recover()
+			if got == nil || !strings.Contains(got.(string), "behavior-bearing leaf") {
+				t.Fatalf("MergeCommandTree panic = %v", got)
+			}
+		}()
+		MergeCommandTree(dst, src)
+	})
+
+	t.Run("does not swallow parse behavior from source into group destination", func(t *testing.T) {
+		dst := NewGroupCommand("root", "destination")
+		src := &cobra.Command{Use: "root", Args: cobra.NoArgs}
+		defer func() {
+			got := recover()
+			if got == nil || !strings.Contains(got.(string), "behavior-bearing leaf") {
+				t.Fatalf("MergeCommandTree panic = %v", got)
+			}
+		}()
+		MergeCommandTree(dst, src)
+	})
+
+	t.Run("rejects undeclared destination group", func(t *testing.T) {
+		dst := &cobra.Command{Use: "root"}
+		dst.AddCommand(&cobra.Command{Use: "child"})
+		defer func() {
+			got := recover()
+			if got == nil || !strings.Contains(got.(string), "destination command") || !strings.Contains(got.(string), "no GroupPolicy") {
+				t.Fatalf("MergeCommandTree panic = %v", got)
+			}
+		}()
+		MergeCommandTree(dst, &cobra.Command{Use: "root"})
+	})
+
+	t.Run("rejects undeclared source group", func(t *testing.T) {
+		src := &cobra.Command{Use: "root"}
+		src.AddCommand(&cobra.Command{Use: "child"})
+		defer func() {
+			got := recover()
+			if got == nil || !strings.Contains(got.(string), "source command") || !strings.Contains(got.(string), "no GroupPolicy") {
+				t.Fatalf("MergeCommandTree panic = %v", got)
+			}
+		}()
+		MergeCommandTree(&cobra.Command{Use: "root"}, src)
+	})
 }
 
 func TestNewHiddenGroupCommand(t *testing.T) {
@@ -341,11 +613,11 @@ func TestMergeCommandTree(t *testing.T) {
 
 	t.Run("child merge recursive", func(t *testing.T) {
 		t.Parallel()
-		dst := &cobra.Command{Use: "root"}
+		dst := NewGroupCommand("root", "destination")
 		dstChild := &cobra.Command{Use: "sub", Short: ""}
 		dst.AddCommand(dstChild)
 
-		src := &cobra.Command{Use: "root"}
+		src := NewGroupCommand("root", "source")
 		srcChild := &cobra.Command{Use: "sub", Short: "Merged short"}
 		src.AddCommand(srcChild)
 
@@ -361,12 +633,12 @@ func TestMergeCommandTree(t *testing.T) {
 
 	t.Run("leaf replacement by higher priority", func(t *testing.T) {
 		t.Parallel()
-		dst := &cobra.Command{Use: "root"}
+		dst := NewGroupCommand("root", "destination")
 		dstLeaf := &cobra.Command{Use: "leaf", Short: "old"}
 		SetOverridePriority(dstLeaf, 1)
 		dst.AddCommand(dstLeaf)
 
-		src := &cobra.Command{Use: "root"}
+		src := NewGroupCommand("root", "source")
 		srcLeaf := &cobra.Command{Use: "leaf", Short: "new"}
 		SetOverridePriority(srcLeaf, 5)
 		src.AddCommand(srcLeaf)
@@ -383,10 +655,10 @@ func TestMergeCommandTree(t *testing.T) {
 
 	t.Run("new child addition", func(t *testing.T) {
 		t.Parallel()
-		dst := &cobra.Command{Use: "root"}
+		dst := NewGroupCommand("root", "destination")
 		dst.AddCommand(&cobra.Command{Use: "existing"})
 
-		src := &cobra.Command{Use: "root"}
+		src := NewGroupCommand("root", "source")
 		src.AddCommand(&cobra.Command{Use: "brand-new", Short: "added"})
 
 		MergeCommandTree(dst, src)

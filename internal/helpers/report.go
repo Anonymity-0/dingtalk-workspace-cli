@@ -386,7 +386,7 @@ func newReportCommand() *cobra.Command {
 	addReportListFlags(inboxListCmd)
 
 	inboxCmd.AddCommand(inboxListCmd)
-	markGroup(inboxCmd)
+	newHybridGroupCommand(inboxCmd)
 
 	// === outbox subtree（我发出的日报）===
 	outboxCmd := newGroupCommand(&cobra.Command{Use: "outbox", Short: "发件箱（我发出的日报）", RunE: groupRunE})

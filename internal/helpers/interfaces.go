@@ -21,7 +21,6 @@ import (
 	"sync"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/executor"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -74,10 +73,6 @@ func buildCommands(factories []Factory, runner executor.Runner) []*cobra.Command
 	for _, factory := range factories {
 		handler := factory()
 		command := handler.Command(runner)
-		// A public helper Factory owns one product root. Product roots are
-		// positional-free command containers even when they also provide a
-		// flag-driven default action (for example aisearch).
-		cmdutil.MarkGroup(command)
 		out = append(out, command)
 	}
 	sort.Slice(out, func(i, j int) bool {

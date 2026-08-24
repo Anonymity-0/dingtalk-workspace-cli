@@ -32,10 +32,10 @@ import (
 // SetArgs so that Cobra's subsequent ExecuteC uses the corrected
 // values.
 //
-// Explicit +shortcut tokens and annotated group subcommands are validated
-// before flag parsing so an unknown command cannot be misreported as an
-// unknown flag on its nearest parent. Other unresolved paths remain Cobra's
-// responsibility.
+// Explicit +shortcut tokens and groups whose typed GroupPolicy enables
+// recovery are validated before flag parsing so an unknown command cannot be
+// misreported as an unknown flag on its nearest parent. Other unresolved paths
+// remain Cobra's responsibility.
 func RunPreParse(root *cobra.Command, engine *Engine) error {
 	_, err := RunPreParseArgs(root, engine, os.Args[1:])
 	return err

@@ -210,7 +210,7 @@ func newAisearchCommand() *cobra.Command {
 			return groupRunE(cmd, args)
 		},
 	}
-	markGroup(root)
+	newHybridGroupCommand(root)
 
 	// root 和 person 各自定义同一组本地 flag，这样：
 	//   - dws aisearch --query xxx           ← root 自己能解析

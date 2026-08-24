@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
@@ -346,6 +347,21 @@ func commandFallbackPipelineRoot() (*cobra.Command, *string) {
 	group := &cobra.Command{Use: "group"}
 	group.AddCommand(cmdutil.HintSubCmd("search", "use dws chat search"))
 	chat.AddCommand(good, other, search, group)
+	corecmd.ApplyGroupPolicy(group, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
+	corecmd.ApplyGroupPolicy(chat, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
+	corecmd.ApplyGroupPolicy(root, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
 	root.AddCommand(chat)
 	return root, executed
 }
