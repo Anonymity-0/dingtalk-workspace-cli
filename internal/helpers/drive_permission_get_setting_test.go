@@ -114,7 +114,9 @@ func TestCrossPlatformCoverageDrivePermissionGetSettingResultContract(t *testing
 	if got := sortedContractSchemaKeys(shareScopeProperties); !reflect.DeepEqual(got, []string{"canRecommend", "canSearch", "defaultRole", "linkShare", "partnerIncluded", "visibility"}) {
 		t.Fatalf("shareScope properties = %#v", got)
 	}
-	assertSchemaRequired(t, shareScope, "linkShare")
+	if _, ok := shareScope["required"]; ok {
+		t.Fatalf("shareScope required = %#v, want none (linkShare is only returned when link sharing is configured)", shareScope["required"])
+	}
 	if got := schemaEnumValues(t, shareScopeProperties["visibility"].(map[string]any)); !reflect.DeepEqual(got, []string{"PRIVATE", "ORGANIZATION", "PUBLIC", "<null>"}) {
 		t.Fatalf("visibility enum = %#v", got)
 	}

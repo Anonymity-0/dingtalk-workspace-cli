@@ -2389,7 +2389,7 @@ func newDriveCommand() *cobra.Command {
         "canRecommend":{"type":"boolean","description":"仅 visibility=ORGANIZATION 时有意义。"},
         "linkShare":{
           "type":"object",
-          "description":"链接分享设置",
+          "description":"链接分享设置；仅开启链接分享时返回，未开启时该字段不返回",
           "properties":{
             "requirePassword":{"type":"boolean","description":"true 表示通过链接访问需要提供密码。密码明文不会返回。"},
             "expireAt":{"type":["integer","null"],"description":"秒级 Unix 时间戳，未设置过期时为 null。"},
@@ -2399,7 +2399,6 @@ func newDriveCommand() *cobra.Command {
           "additionalProperties":true
         }
       },
-      "required":["linkShare"],
       "additionalProperties":true
     },
     "policies":{
