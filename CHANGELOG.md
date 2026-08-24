@@ -54,6 +54,8 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 - **Sheet revision changesets** — adds read-only commands for querying the current workbook revision and reviewing Agent-readable changes between revisions, with guidance for distinguishing revisions from saved history versions and safely selecting rollback targets.
 
+- **Sheet floating images** — supports creating or replacing a floating image directly from a local file with `create-float-image --file` and `update-float-image --file`, while retaining the existing `--src` workflow.
+
 ### Changed
 
 - **AiSearch and Contact shortcuts** (#1083) — adds strict people search and reviewed unified results; people results must use the live-reviewed `person` source, and exact mobile lookups normalize accepted formatting before calling the dedicated mobile interface. Agent/public discovery keeps `contact +list-roles`, `contact +list-roster-fields`, `contact +get-roster`, and incomplete Live routes unavailable rather than publishing ambiguous results, while the historical Contact CLI commands retain legacy MCP execution and real error propagation. The legacy role-list projection preserves the service's reviewed null placeholder without exposing that ambiguous row through Agent Result contracts.
