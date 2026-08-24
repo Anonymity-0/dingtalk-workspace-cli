@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -376,18 +377,20 @@ var Update = shortcut.Shortcut{
 	Command:     "+update",
 	Product:     productDoc,
 	Description: "追加、覆盖或按 block 精确更新文档内容",
-	Intent:      "当用户要修改已有在线文字文档时使用；支持整篇 append/overwrite、block 插入/替换/删除，以及受限的唯一纯文本 str_replace，所有模式统一经过静态确认门禁。",
+	Intent:      "当用户要修改已有在线文字文档时使用；支持整篇 append/overwrite、在参考 block 前后插入段落或标题、block 替换/删除，以及受限的唯一纯文本 str_replace，所有模式统一经过静态确认门禁。",
 	Risk:        shortcut.RiskWrite,
 	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
 	Contract: docContract("+update", "追加、覆盖或按 block 精确更新文档内容",
-		"当用户要修改已有在线文字文档时使用；支持整篇 append/overwrite、block 插入/替换/删除，以及受限的唯一纯文本 str_replace，所有模式统一经过静态确认门禁。",
-		[]string{`dws doc +update --node <DOC_ID> --command append --content "补充说明"`, `dws doc +update --node <DOC_ID> --command block_replace --block-id <BLOCK_ID> --content "新内容"`},
+		"当用户要修改已有在线文字文档时使用；支持整篇 append/overwrite、在参考 block 前后插入段落或标题、block 替换/删除，以及受限的唯一纯文本 str_replace，所有模式统一经过静态确认门禁。",
+		[]string{`dws doc +update --node <DOC_ID> --command append --content "补充说明"`, `dws doc +update --node <DOC_ID> --command block_insert_before --before-block-id <BLOCK_ID> --content "发布说明" --heading-level 1`},
 		contract.ParamDecl{Name: "node", Property: "node"},
 		contract.ParamDecl{Name: "command", Property: "command"},
 		contract.ParamDecl{Name: "content", Property: "content"},
 		contract.ParamDecl{Name: "doc-format", Property: "docFormat"},
 		contract.ParamDecl{Name: "block-id", Property: "blockId"},
 		contract.ParamDecl{Name: "after-block-id", Property: "afterBlockId"},
+		contract.ParamDecl{Name: "before-block-id", Property: "beforeBlockId"},
+		contract.ParamDecl{Name: "heading-level", Property: "headingLevel"},
 		contract.ParamDecl{Name: "old", Property: "old"},
 		contract.ParamDecl{Name: "new", Property: "new"},
 		contract.ParamDecl{Name: "expected-revision", Property: "expectedRevision"},
@@ -395,16 +398,18 @@ var Update = shortcut.Shortcut{
 		contract.ParamDecl{Name: "text", Property: "content"}),
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true, Aliases: []string{"doc"}, AliasesVisible: true},
-		{Name: "command", Type: shortcut.FlagString, Desc: "更新动作；不能为空", Enum: []string{"append", "overwrite", "block_insert_after", "block_replace", "block_delete", "str_replace", "block_copy_insert_after"}},
+		{Name: "command", Type: shortcut.FlagString, Desc: "更新动作；不能为空", Enum: []string{"append", "overwrite", "block_insert_before", "block_insert_after", "block_replace", "block_delete", "str_replace", "block_copy_insert_after"}},
 		{Name: "content", Type: shortcut.FlagString, Desc: docRequiredContentInputDescription, Aliases: []string{"text"}, AliasesVisible: true},
 		{Name: "doc-format", Type: shortcut.FlagString, Default: "markdown", Desc: "内容格式", Enum: []string{"markdown", "jsonml"}},
 		{Name: "block-id", Type: shortcut.FlagString, Desc: "目标或源 block ID；相关动作要求时不能为空"},
 		{Name: "after-block-id", Type: shortcut.FlagString, Desc: "插入位置参考 block ID；相关动作要求时不能为空"},
+		{Name: "before-block-id", Type: shortcut.FlagString, Desc: "向前插入时的位置参考 block ID；block_insert_before 要求不能为空"},
+		{Name: "heading-level", Type: shortcut.FlagInt, Desc: "将插入内容写为指定级别标题（1-6）；仅支持 Markdown block_insert_before/block_insert_after"},
 		{Name: "old", Type: shortcut.FlagString, Desc: "str_replace 原文字，不能为空"},
 		{Name: "new", Type: shortcut.FlagString, Desc: "str_replace 新文字；--old 不能为空，新值可为空但参数必须显式提供"},
 		{Name: "expected-revision", Type: shortcut.FlagInt, Desc: "仅 overwrite+jsonml：传给服务端执行原子 revision 条件写"},
 	},
-	Tips: []string{`dws doc +update --node <DOC_ID> --command append --content "补充说明"`, `dws doc +update --node <DOC_ID> --command block_replace --block-id <BLOCK_ID> --content "新内容"`},
+	Tips: []string{`dws doc +update --node <DOC_ID> --command append --content "补充说明"`, `dws doc +update --node <DOC_ID> --command block_insert_before --before-block-id <BLOCK_ID> --content "发布说明" --heading-level 1`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		command := rt.Str("command")
 		if rt.StrFirst("node", "doc") == "" {
@@ -414,7 +419,7 @@ var Update = shortcut.Shortcut{
 			return apperrors.NewValidation("缺少 --command")
 		}
 		switch command {
-		case "append", "overwrite", "block_insert_after", "block_replace":
+		case "append", "overwrite", "block_insert_before", "block_insert_after", "block_replace":
 			if rt.StrFirst("content", "text") == "" {
 				return apperrors.NewValidation("该更新动作的 --content 不能为空")
 			}
@@ -431,6 +436,21 @@ var Update = shortcut.Shortcut{
 				return apperrors.NewValidation("该 block 操作必须提供 --after-block-id")
 			}
 		}
+		if command == "block_insert_before" && rt.Str("before-block-id") == "" {
+			return apperrors.NewValidation("--command block_insert_before 必须提供 --before-block-id")
+		}
+		if rt.Changed("heading-level") {
+			level := rt.Int("heading-level")
+			if command != "block_insert_before" && command != "block_insert_after" {
+				return apperrors.NewValidation("--heading-level 仅支持 block_insert_before/block_insert_after")
+			}
+			if rt.Str("doc-format") != "markdown" {
+				return apperrors.NewValidation("--heading-level 仅支持 --doc-format markdown")
+			}
+			if level < 1 || level > 6 {
+				return apperrors.NewValidation("--heading-level 必须在 1-6 之间")
+			}
+		}
 		if command == "str_replace" && (rt.Str("old") == "" || !rt.Changed("new")) {
 			return apperrors.NewValidation("--command str_replace 必须同时提供 --old 和 --new")
 		}
@@ -442,7 +462,7 @@ var Update = shortcut.Shortcut{
 		}
 		return nil
 	},
-	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"command", "content", "block-id", "after-block-id", "old", "new"}, Description: "依 command 校验，所需文本或 block 参数不能为空"}},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"command", "content", "block-id", "after-block-id", "before-block-id", "old", "new"}, Description: "依 command 校验，所需文本或 block 参数不能为空"}},
 	Execute:     executeUpdate,
 }
 
@@ -592,7 +612,7 @@ func executeUpdate(rt *shortcut.RuntimeContext) error {
 		switch command {
 		case "overwrite":
 			content, err = validateJSONMLBody(rt.Command(), content)
-		case "block_insert_after", "block_replace":
+		case "block_insert_before", "block_insert_after", "block_replace":
 			content, err = validateJSONMLNode(rt.Command(), content)
 		}
 		if err != nil {
@@ -601,6 +621,12 @@ func executeUpdate(rt *shortcut.RuntimeContext) error {
 	}
 	nodeID := rt.StrFirst("node", "doc")
 	plan := map[string]any{"nodeId": nodeID, "command": command, "blockId": rt.Str("block-id"), "afterBlockId": rt.Str("after-block-id"), "contentBytes": len(content)}
+	if beforeBlockID := rt.Str("before-block-id"); beforeBlockID != "" {
+		plan["beforeBlockId"] = beforeBlockID
+	}
+	if rt.Changed("heading-level") {
+		plan["headingLevel"] = rt.Int("heading-level")
+	}
 	if rt.Changed("expected-revision") {
 		plan["expectedRevision"] = rt.Int("expected-revision")
 		plan["optimisticCheck"] = "server_enforced"
@@ -625,19 +651,26 @@ func executeUpdate(rt *shortcut.RuntimeContext) error {
 			params["markdown"] = content
 		}
 		return executeVerifiedDocContentMutation(rt, params, node, content, command, rt.Str("doc-format"))
-	case "block_insert_after":
+	case "block_insert_before", "block_insert_after":
 		verificationFormat := blockVerificationFormat(rt.Str("doc-format"))
-		params := map[string]any{"nodeId": node, "referenceBlockId": rt.Str("after-block-id"), "where": "after"}
+		where := "after"
+		referenceBlockID := rt.Str("after-block-id")
+		if command == "block_insert_before" {
+			where = "before"
+			referenceBlockID = rt.Str("before-block-id")
+		}
+		params := map[string]any{"nodeId": node, "referenceBlockId": referenceBlockID, "where": where}
 		if rt.Str("doc-format") == "jsonml" {
 			params["format"], params["jsonml"] = "jsonml", content
+		} else if rt.Changed("heading-level") {
+			params["element"] = map[string]any{"blockType": "heading", "heading": map[string]any{"text": content, "level": strconv.Itoa(rt.Int("heading-level"))}}
 		} else {
 			params["element"] = map[string]any{"blockType": "paragraph", "paragraph": map[string]any{"text": content}}
 		}
-		referenceBlockID := rt.Str("after-block-id")
 		return executeVerifiedDocMutation(rt, "doc.update", "insert_document_block", params, node,
 			"list_document_blocks", map[string]any{"nodeId": node, "format": verificationFormat, "__allBlocks": true},
 			func(result, data map[string]any) bool {
-				return verifyInsertedBlock(result, data, referenceBlockID, content, rt.Str("doc-format"))
+				return verifyInsertedBlock(result, data, referenceBlockID, where, content, rt.Str("doc-format"), rt.Int("heading-level"))
 			})
 	case "block_replace":
 		blockID := rt.Str("block-id")
@@ -762,7 +795,7 @@ func executeBlockCopy(rt *shortcut.RuntimeContext, nodeID string) error {
 		map[string]any{"nodeId": nodeID, "referenceBlockId": referenceBlockID, "where": "after", "element": block}, nodeID,
 		"list_document_blocks", map[string]any{"nodeId": nodeID, "format": "element", "__allBlocks": true},
 		func(result, data map[string]any) bool {
-			return verifyInsertedCanonicalBlock(result, data, referenceBlockID, expectedContent, "markdown")
+			return verifyInsertedCanonicalBlockContent(result, data, referenceBlockID, expectedContent, "markdown")
 		})
 }
 
@@ -1336,8 +1369,8 @@ func stripReadbackDocumentTitle(content string) string {
 	return strings.Join(lines, "\n")
 }
 
-func verifyInsertedBlock(result, data map[string]any, referenceBlockID, expected, format string) bool {
-	return verifyInsertedCanonicalBlock(result, data, referenceBlockID, normalizeDocumentContentForVerification(expected, format), format)
+func verifyInsertedBlock(result, data map[string]any, referenceBlockID, where, expected, format string, headingLevel int) bool {
+	return verifyInsertedCanonicalBlock(result, data, referenceBlockID, where, normalizeDocumentContentForVerification(expected, format), format, headingLevel)
 }
 
 func blockVerificationFormat(format string) string {
@@ -1347,20 +1380,77 @@ func blockVerificationFormat(format string) string {
 	return "element"
 }
 
-func verifyInsertedCanonicalBlock(result, data map[string]any, referenceBlockID, expected, format string) bool {
-	if insertedID := nestedString(result, "blockId", "elementId", "id"); insertedID != "" {
-		if blockContentEquals(data, insertedID, expected, format) {
-			return true
-		}
-	}
+func verifyInsertedCanonicalBlock(result, data map[string]any, referenceBlockID, where, expected, format string, headingLevel int) bool {
 	blocks := orderedCanonicalBlocks(data, format)
-	for index, block := range blocks {
-		if canonicalBlockIdentity(block, format) != referenceBlockID || index+1 >= len(blocks) {
+	for referenceIndex, block := range blocks {
+		if canonicalBlockIdentity(block, format) != referenceBlockID {
 			continue
 		}
-		return canonicalBlockContent(blocks[index+1], format) == expected
+		insertedIndex := referenceIndex + 1
+		if where == "before" {
+			insertedIndex = referenceIndex - 1
+		}
+		if insertedIndex < 0 || insertedIndex >= len(blocks) {
+			return false
+		}
+		inserted := blocks[insertedIndex]
+		if insertedID := nestedString(result, "blockId", "elementId", "id"); insertedID != "" && canonicalBlockIdentity(inserted, format) != insertedID {
+			return false
+		}
+		if canonicalBlockContent(inserted, format) != expected {
+			return false
+		}
+		return headingLevel == 0 || canonicalHeadingLevel(inserted) == headingLevel
 	}
 	return false
+}
+
+// Copy insertion keeps compatibility with servers that return only the newly
+// inserted block in readback. Ordinary before/after insertion uses the stricter
+// positional verifier above because placement is part of that command's result.
+func verifyInsertedCanonicalBlockContent(result, data map[string]any, referenceBlockID, expected, format string) bool {
+	if insertedID := nestedString(result, "blockId", "elementId", "id"); insertedID != "" && blockContentEquals(data, insertedID, expected, format) {
+		return true
+	}
+	return verifyInsertedCanonicalBlock(result, data, referenceBlockID, "after", expected, format, 0)
+}
+
+func canonicalHeadingLevel(value any) int {
+	block, ok := value.(map[string]any)
+	if !ok {
+		return 0
+	}
+	if element, ok := block["element"].(map[string]any); ok {
+		block = element
+	}
+	if blockType, _ := block["blockType"].(string); blockType != "" && blockType != "heading" {
+		return 0
+	}
+	heading, ok := block["heading"].(map[string]any)
+	if !ok {
+		return 0
+	}
+	switch level := heading["level"].(type) {
+	case int:
+		return level
+	case float64:
+		if level == float64(int(level)) {
+			return int(level)
+		}
+	case json.Number:
+		parsed, err := level.Int64()
+		if err == nil {
+			return int(parsed)
+		}
+	case string:
+		normalized := strings.TrimSpace(level)
+		normalized = strings.TrimPrefix(normalized, "heading-")
+		parsed, err := strconv.Atoi(normalized)
+		if err == nil {
+			return parsed
+		}
+	}
+	return 0
 }
 
 func blockContentEquals(data map[string]any, blockID, expected, format string) bool {

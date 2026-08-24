@@ -5,6 +5,7 @@ package doc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"strings"
@@ -141,10 +142,42 @@ func TestCrossPlatformCoverageDocFinalCommonAndCanonicalBranches(t *testing.T) {
 	if len(orderedCanonicalBlocks(elementTree, "element")) != 2 || canonicalBlockIdentity(elementTree, "element") != "" || canonicalBlockIdentity("bad", "element") != "" {
 		t.Fatal("element canonical traversal failed")
 	}
-	if !verifyInsertedCanonicalBlock(map[string]any{"blockId": "new"}, elementTree, "ref", "after", "element") ||
-		!verifyInsertedCanonicalBlock(map[string]any{}, elementTree, "ref", "after", "element") ||
-		verifyInsertedCanonicalBlock(map[string]any{}, elementTree, "new", "after", "element") {
+	if !verifyInsertedCanonicalBlock(map[string]any{"blockId": "new"}, elementTree, "ref", "after", "after", "element", 0) ||
+		!verifyInsertedCanonicalBlock(map[string]any{}, elementTree, "ref", "after", "after", "element", 0) ||
+		verifyInsertedCanonicalBlock(map[string]any{}, elementTree, "new", "after", "after", "element", 0) {
 		t.Fatal("inserted block verification branch contract failed")
+	}
+	if verifyInsertedCanonicalBlock(map[string]any{"blockId": "other"}, elementTree, "ref", "after", "after", "element", 0) {
+		t.Fatal("inserted block with mismatched result ID verified")
+	}
+	if verifyInsertedCanonicalBlock(map[string]any{"blockId": "new"}, elementTree, "ref", "after", "wrong", "element", 0) {
+		t.Fatal("inserted block with mismatched content verified")
+	}
+	if !verifyInsertedCanonicalBlockContent(map[string]any{}, elementTree, "ref", "after", "element") {
+		t.Fatal("copy insertion positional fallback failed")
+	}
+	for _, tc := range []struct {
+		name  string
+		value any
+		want  int
+	}{
+		{name: "non map", value: "heading", want: 0},
+		{name: "element wrapper", value: map[string]any{"element": map[string]any{"blockType": "heading", "heading": map[string]any{"level": "1"}}}, want: 1},
+		{name: "non heading", value: map[string]any{"blockType": "paragraph", "heading": map[string]any{"level": "1"}}, want: 0},
+		{name: "missing heading", value: map[string]any{"blockType": "heading"}, want: 0},
+		{name: "integer", value: map[string]any{"heading": map[string]any{"level": 1}}, want: 1},
+		{name: "integral float", value: map[string]any{"heading": map[string]any{"level": float64(2)}}, want: 2},
+		{name: "fractional float", value: map[string]any{"heading": map[string]any{"level": 2.5}}, want: 0},
+		{name: "valid json number", value: map[string]any{"heading": map[string]any{"level": json.Number("3")}}, want: 3},
+		{name: "invalid json number", value: map[string]any{"heading": map[string]any{"level": json.Number("bad")}}, want: 0},
+		{name: "invalid string", value: map[string]any{"heading": map[string]any{"level": "bad"}}, want: 0},
+		{name: "unsupported level", value: map[string]any{"heading": map[string]any{"level": true}}, want: 0},
+	} {
+		t.Run("heading level "+tc.name, func(t *testing.T) {
+			if got := canonicalHeadingLevel(tc.value); got != tc.want {
+				t.Fatalf("canonicalHeadingLevel(%#v) = %d, want %d", tc.value, got, tc.want)
+			}
+		})
 	}
 	if blockContentEquals(map[string]any{}, "missing", "after", "element") {
 		t.Fatal("missing block matched")
