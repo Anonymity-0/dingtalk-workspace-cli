@@ -5,8 +5,11 @@ package helpers
 
 import (
 	"io"
+	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func withEduAppCaller(t *testing.T) *recruitCaptureCaller {
@@ -397,4 +400,104 @@ func TestCrossPlatformCoverageEduAppDispatch(t *testing.T) {
 			t.Fatalf("shouldSendUpdateMsg = %v, want true", input["shouldSendUpdateMsg"])
 		}
 	})
+}
+
+// newEduAppConfirmRoot 模拟真实运行时的根命令：核心框架在 rootCmd 上注册
+// 全局 persistent --yes flag，叶子命令通过合并后的 Flags() 读取。
+func newEduAppConfirmRoot() *cobra.Command {
+	root := &cobra.Command{Use: "dws"}
+	root.PersistentFlags().BoolP("yes", "y", false, "跳过确认提示")
+	root.AddCommand(newEduAppCommand())
+	return root
+}
+
+// TestCrossPlatformCoverageEduAppDestructiveConfirmGate 对 edu-app 每个
+// user_required 破坏性叶子做成对验证：
+//   - 未显式确认：返回 confirmation_required 错误，且 caller 调用次数为零。
+//   - 显式确认后：恰好一次 MCP 调用，且 productID、tool、完整参数均准确。
+func TestCrossPlatformCoverageEduAppDestructiveConfirmGate(t *testing.T) {
+	cases := []struct {
+		name      string
+		args      []string
+		wantTool  string
+		wantInput map[string]any
+	}{
+		{
+			"notice delete",
+			[]string{"edu-app", "notice", "delete", "--notice-id", "12345"},
+			"delete_notice",
+			map[string]any{"noticeId": int64(12345)},
+		},
+		{
+			"notice delete with user-name",
+			[]string{"edu-app", "notice", "delete", "--notice-id", "12345", "--user-name", "张三"},
+			"delete_notice",
+			map[string]any{"noticeId": int64(12345), "userName": "张三"},
+		},
+		{
+			"homework delete",
+			[]string{"edu-app", "homework", "delete", "--homework-id", "12345"},
+			"delete_homework",
+			map[string]any{"homeworkId": int64(12345)},
+		},
+		{
+			"diploma delete",
+			[]string{"edu-app", "diploma", "delete", "--diploma-id", "12345"},
+			"delete_diploma",
+			map[string]any{"diplomaId": int64(12345)},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name+"/rejected_without_yes", func(t *testing.T) {
+			caller := &recruitCaptureCaller{dryRun: false}
+			InitDepsForTest(t, caller)
+			deps.Out.w = io.Discard
+
+			root := newEduAppConfirmRoot()
+			root.SetArgs(tc.args)
+			err := root.Execute()
+			if err == nil {
+				t.Fatalf("expected confirm-gate error without --yes, got nil")
+			}
+			if !strings.Contains(err.Error(), "需要用户确认") {
+				t.Fatalf("expected confirmation gate error, got: %v", err)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("caller should not be invoked without --yes, got %d calls", len(caller.calls))
+			}
+		})
+
+		t.Run(tc.name+"/dispatched_with_yes", func(t *testing.T) {
+			caller := &recruitCaptureCaller{dryRun: false}
+			InitDepsForTest(t, caller)
+			deps.Out.w = io.Discard
+
+			root := newEduAppConfirmRoot()
+			root.SetArgs(append(append([]string{}, tc.args...), "--yes"))
+			if err := root.Execute(); err != nil {
+				t.Fatalf("Execute() with --yes error = %v", err)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("expected exactly 1 MCP call with --yes, got %d", len(caller.calls))
+			}
+			if caller.calls[0].productID != "edu-app" {
+				t.Errorf("productID = %q, want %q", caller.calls[0].productID, "edu-app")
+			}
+			if caller.calls[0].tool != tc.wantTool {
+				t.Errorf("tool = %q, want %q", caller.calls[0].tool, tc.wantTool)
+			}
+			gotArgs := caller.calls[0].args
+			if len(gotArgs) != 1 {
+				t.Fatalf("args should carry exactly the \"input\" key, got %v", gotArgs)
+			}
+			gotInput, ok := gotArgs["input"].(map[string]any)
+			if !ok {
+				t.Fatalf("args[\"input\"] should be map[string]any, got %T", gotArgs["input"])
+			}
+			if !reflect.DeepEqual(gotInput, tc.wantInput) {
+				t.Errorf("input = %#v, want %#v", gotInput, tc.wantInput)
+			}
+		})
+	}
 }

@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -502,43 +503,165 @@ func TestCrossPlatformCoverageCollegeContactValidationErrors(t *testing.T) {
 	}
 }
 
-// TestCollegeContactDestructiveConfirmGate covers the `return err` branch of
-// every destructive leaf command's confirm gate. A non-dry-run caller is
-// installed (so collegeContactConfirmDestructive does not short-circuit) and
-// each command is run with valid required flags but without --yes, so the
-// confirm gate returns an error that the RunE closure propagates.
+// TestCrossPlatformCoverageCollegeContactDestructiveConfirmGate verifies every
+// user_required destructive leaf in a paired manner:
+//   - Without --yes: returns confirmation_required error AND caller is never invoked (zero calls).
+//   - With --yes: proceeds to MCP dispatch with exactly one call AND the correct
+//     productID, tool name, and complete argument payload.
 func TestCrossPlatformCoverageCollegeContactDestructiveConfirmGate(t *testing.T) {
-	caller := &recruitCaptureCaller{dryRun: false}
-	InitDepsForTest(t, caller)
-	deps.Out.w = io.Discard
-
-	cases := [][]string{
-		{"college-contact", "alumni", "delete-dept", "--alumni-dept-id", "1"},
-		{"college-contact", "alumni", "remove-alumnus", "--staff-id", "S1", "--alumni-dept-id", "1"},
-		{"college-contact", "alumni", "cancel-invite", "--alumni-dept-id", "1", "--staff-ids", "s1,s2"},
-		{"college-contact", "alumni", "disband-group", "--alumni-dept-id", "1"},
-		{"college-contact", "graduate", "commit-graduate", "--graduate-dept-ids", "1,2", "--graduate-year", "2026"},
-		{"college-contact", "graduate", "all-graduate", "--graduate-year", "2026"},
-		{"college-contact", "graduate", "batch-graduate", "--dept-id", "1", "--staff-ids", "s1,s2"},
-		{"college-contact", "graduate", "delete-and-graduate", "--dept-id", "1", "--staff-ids", "s1,s2"},
-		{"college-contact", "graduate", "batch-delete-pending", "--dept-id", "1", "--staff-ids", "s1,s2"},
-		{"college-contact", "graduate", "batch-update-pending", "--dept-id", "1", "--staff-ids", "s1,s2", "--graduate-year", "2026"},
-		{"college-contact", "graduate", "commit-restore", "--graduate-dept-ids", "1,2"},
-		{"college-contact", "group", "delete-group-rule", "--rule-id", "1"},
-		{"college-contact", "group", "execute-group-rule"},
+	type destructiveCase struct {
+		name      string
+		args      []string
+		wantTool  string
+		wantInput map[string]any
 	}
 
-	for _, args := range cases {
-		root := newCollegeContactTestRoot()
-		root.SetArgs(args)
-		err := root.Execute()
-		if err == nil {
-			t.Errorf("%v: expected confirm-gate error without --yes, got nil", args)
-			continue
-		}
-		if !strings.Contains(err.Error(), "需要用户确认") {
-			t.Errorf("%v: expected confirmation gate error, got: %v", args, err)
-		}
+	cases := []destructiveCase{
+		{
+			"dept delete",
+			[]string{"college-contact", "dept", "delete", "--dept-id", "123"},
+			"delete_college_contact_dept",
+			map[string]any{"deptId": int64(123)},
+		},
+		{
+			"employee remove",
+			[]string{"college-contact", "employee", "remove", "--staff-ids", "S1,S2"},
+			"remove_employee",
+			map[string]any{"staffIds": []string{"S1", "S2"}},
+		},
+		{
+			"alumni delete-dept",
+			[]string{"college-contact", "alumni", "delete-dept", "--alumni-dept-id", "1"},
+			"delete_alumni_dept",
+			map[string]any{"alumniDeptId": int64(1)},
+		},
+		{
+			"alumni remove-alumnus",
+			[]string{"college-contact", "alumni", "remove-alumnus", "--staff-id", "S1", "--alumni-dept-id", "1"},
+			"delete_alumnus",
+			map[string]any{"staffId": "S1", "alumniDeptId": int64(1)},
+		},
+		{
+			"alumni cancel-invite",
+			[]string{"college-contact", "alumni", "cancel-invite", "--alumni-dept-id", "1", "--staff-ids", "s1,s2"},
+			"delete_alumni_invite_record",
+			map[string]any{"alumniDeptId": int64(1), "staffIds": []string{"s1", "s2"}},
+		},
+		{
+			"alumni disband-group",
+			[]string{"college-contact", "alumni", "disband-group", "--alumni-dept-id", "1"},
+			"disband_alumni_group",
+			map[string]any{"alumniDeptId": int64(1)},
+		},
+		{
+			"graduate commit-graduate",
+			[]string{"college-contact", "graduate", "commit-graduate", "--graduate-dept-ids", "1,2", "--graduate-year", "2026"},
+			"commit_graduate",
+			map[string]any{"graduateDeptIds": []int64{1, 2}, "graduateYear": int64(2026)},
+		},
+		{
+			"graduate all-graduate",
+			[]string{"college-contact", "graduate", "all-graduate", "--graduate-year", "2026"},
+			"all_graduate",
+			map[string]any{"graduateYear": int64(2026)},
+		},
+		{
+			"graduate batch-graduate",
+			[]string{"college-contact", "graduate", "batch-graduate", "--dept-id", "1", "--staff-ids", "s1,s2"},
+			"batch_graduate",
+			map[string]any{"deptId": int64(1), "staffIds": []string{"s1", "s2"}},
+		},
+		{
+			"graduate delete-and-graduate",
+			[]string{"college-contact", "graduate", "delete-and-graduate", "--dept-id", "1", "--staff-ids", "s1,s2"},
+			"delete_and_graduate",
+			map[string]any{"deptId": int64(1), "staffIds": []string{"s1", "s2"}},
+		},
+		{
+			"graduate batch-delete-pending",
+			[]string{"college-contact", "graduate", "batch-delete-pending", "--dept-id", "1", "--staff-ids", "s1,s2"},
+			"batch_delete_pending",
+			map[string]any{"deptId": int64(1), "staffIds": []string{"s1", "s2"}},
+		},
+		{
+			"graduate batch-update-pending",
+			[]string{"college-contact", "graduate", "batch-update-pending", "--dept-id", "1", "--staff-ids", "s1,s2", "--graduate-year", "2026"},
+			"batch_update_pending",
+			map[string]any{"deptId": int64(1), "staffIds": []string{"s1", "s2"}, "graduateYear": int64(2026)},
+		},
+		{
+			"graduate commit-restore",
+			[]string{"college-contact", "graduate", "commit-restore", "--graduate-dept-ids", "1,2"},
+			"commit_restore",
+			map[string]any{"graduateDeptIds": []int64{1, 2}},
+		},
+		{
+			"group delete-group-rule",
+			[]string{"college-contact", "group", "delete-group-rule", "--rule-id", "1"},
+			"delete_group_rule",
+			map[string]any{"ruleId": int64(1)},
+		},
+		{
+			"group execute-group-rule",
+			[]string{"college-contact", "group", "execute-group-rule"},
+			"execute_group_rule",
+			map[string]any{},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name+"/rejected_without_yes", func(t *testing.T) {
+			caller := &recruitCaptureCaller{dryRun: false}
+			InitDepsForTest(t, caller)
+			deps.Out.w = io.Discard
+
+			root := newCollegeContactTestRoot()
+			root.SetArgs(tc.args)
+			err := root.Execute()
+			if err == nil {
+				t.Fatalf("expected confirm-gate error without --yes, got nil")
+			}
+			if !strings.Contains(err.Error(), "需要用户确认") {
+				t.Fatalf("expected confirmation gate error, got: %v", err)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("caller should not be invoked without --yes, got %d calls", len(caller.calls))
+			}
+		})
+
+		t.Run(tc.name+"/dispatched_with_yes", func(t *testing.T) {
+			caller := &recruitCaptureCaller{dryRun: false}
+			InitDepsForTest(t, caller)
+			deps.Out.w = io.Discard
+
+			root := newCollegeContactTestRoot()
+			argsWithYes := append(append([]string{}, tc.args...), "--yes")
+			root.SetArgs(argsWithYes)
+			err := root.Execute()
+			if err != nil {
+				t.Fatalf("Execute() with --yes error = %v", err)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("expected exactly 1 MCP call with --yes, got %d", len(caller.calls))
+			}
+			if caller.calls[0].productID != "college-contact" {
+				t.Errorf("productID = %q, want %q", caller.calls[0].productID, "college-contact")
+			}
+			if caller.calls[0].tool != tc.wantTool {
+				t.Errorf("tool = %q, want %q", caller.calls[0].tool, tc.wantTool)
+			}
+			gotArgs := caller.calls[0].args
+			if len(gotArgs) != 1 {
+				t.Fatalf("args should carry exactly the \"input\" key, got %v", gotArgs)
+			}
+			gotInput, ok := gotArgs["input"].(map[string]any)
+			if !ok {
+				t.Fatalf("args[\"input\"] should be map[string]any, got %T", gotArgs["input"])
+			}
+			if !reflect.DeepEqual(gotInput, tc.wantInput) {
+				t.Errorf("input = %#v, want %#v", gotInput, tc.wantInput)
+			}
+		})
 	}
 }
 
