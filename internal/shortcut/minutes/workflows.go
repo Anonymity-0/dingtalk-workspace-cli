@@ -64,10 +64,10 @@ var UploadAndAnalyze = shortcut.Shortcut{
 	Description: "本地音视频直传听记并等待分析产物，可选思维导图和发言人洞察",
 	Intent:      "从本地媒体一次完成 upload create/PUT/complete/read-back，再等待选定听记产物；后续分析失败仍返回已创建 taskUuid 和恢复动作。",
 	Risk:        shortcut.RiskWrite,
-	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown"},
+	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
 	Contract: withMinutesDryRun(minutesContract("+upload-and-analyze", "本地音视频直传听记并等待分析产物，可选思维导图和发言人洞察",
 		"有本地音视频且希望一次创建听记、等待基础分析，并可继续生成思维导图或发言人洞察时使用",
-		[]string{"只需上传时使用 +upload；已有 taskUuid 时分别使用 +detail/+mindmap/+speaker-insights", "需要闪记卡片通知时先使用 +upload-and-notify，再用本命令的 --resume-id 恢复分析"},
+		[]string{"只需上传时使用 +upload；已有 taskUuid 且只读取现有产物时使用 +detail/+transcript；生成思维导图或发言人洞察时分别使用 +mindmap/+speaker-insights", "需要闪记卡片通知时先使用 +upload-and-notify；只有确实需要有界等待时才使用本命令的 --resume-id"},
 		[]string{`dws minutes +upload-and-analyze --file ./meeting.mp3 --title "项目周会"`, `dws minutes +upload-and-analyze --file ./meeting.mp4 --artifacts transcript,summary --mindmap`}), contract.DryRunPreviewPlan, false),
 	Flags: []shortcut.Flag{
 		{Name: "file", Type: shortcut.FlagString, Desc: "本地音视频文件；与 --resume-id 二选一"},
@@ -75,7 +75,7 @@ var UploadAndAnalyze = shortcut.Shortcut{
 		{Name: "title", Type: shortcut.FlagString, Desc: "听记标题"},
 		{Name: "template-id", Type: shortcut.FlagString, Desc: "纪要模板 ID"},
 		{Name: "input-language", Type: shortcut.FlagString, Desc: "ASR 输入语言"},
-		{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "[已迁移] 先使用 +upload-and-notify，再用 --resume-id 恢复分析", Hidden: true},
+		{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "[兼容提示] 已迁移：先使用 +upload-and-notify，再按需读取或恢复分析"},
 		{Name: "complete-timeout", Type: shortcut.FlagInt, Default: "90", Desc: "上传 complete 超时秒数"},
 		{Name: "poll-interval", Type: shortcut.FlagInt, Default: "3", Desc: "轮询间隔秒数"},
 		{Name: "wait-timeout", Type: shortcut.FlagInt, Default: "180", Desc: "等待分析产物秒数"},
@@ -158,9 +158,10 @@ var PrepareASR = shortcut.Shortcut{
 		[]string{`dws minutes +prepare-asr --words "DWS,听记"`}), contract.DryRunPreviewPlan, false),
 	Flags: []shortcut.Flag{
 		{Name: "words", Type: shortcut.FlagStringSlice, Desc: "目标热词，逗号分隔", Required: true},
-		{Name: "sync", Type: shortcut.FlagBool, Desc: "[已迁移] 请使用 +sync-asr", Hidden: true},
+		{Name: "sync", Type: shortcut.FlagBool, Desc: "[兼容提示] 已迁移，请使用 +sync-asr"},
 	},
-	Tips: []string{`dws minutes +prepare-asr --words "DWS,听记"`},
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"sync"}, Description: "旧 --sync 已迁移；精确同步请使用 +sync-asr"}},
+	Tips:        []string{`dws minutes +prepare-asr --words "DWS,听记"`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
 		if rt.Changed("sync") {
 			return apperrors.NewValidation("--sync 已迁移：需要删除多余热词时请使用 +sync-asr")

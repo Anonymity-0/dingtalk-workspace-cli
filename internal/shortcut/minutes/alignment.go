@@ -109,7 +109,7 @@ var Upload = shortcut.Shortcut{
 	Description: "把本地音视频完整上传并创建听记，不发送额外消息",
 	Intent:      "需要从本地音视频直接创建听记时使用；完成 create、预签名 PUT、complete 和最终详情读回，不需要中转 Drive，也不会推送闪记卡片。",
 	Risk:        shortcut.RiskWrite,
-	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown"},
+	Safety:      contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown"},
 	Contract: withMinutesDryRun(minutesContract("+upload", "把本地音视频完整上传并创建听记，不发送额外消息",
 		"用户有本地音视频，希望直接上传生成听记并取得可读回的 taskUuid，且不需要额外消息通知时使用",
 		[]string{"需要推送闪记卡片时使用 +upload-and-notify", "只需要管理已有 upload session 时使用原子 upload create/complete/cancel", "文件为空、过大或不希望创建远端听记时不要执行"},
@@ -161,7 +161,7 @@ func minutesUploadFlags(includeLegacyMessageFlag bool) []shortcut.Flag {
 		{Name: "poll-interval", Type: shortcut.FlagInt, Default: "2", Desc: "complete 重试间隔秒数"},
 	}
 	if includeLegacyMessageFlag {
-		flags = append(flags, shortcut.Flag{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "[已迁移] 请使用 +upload-and-notify", Hidden: true})
+		flags = append(flags, shortcut.Flag{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "[兼容提示] 已迁移，请使用 +upload-and-notify"})
 	}
 	return flags
 }

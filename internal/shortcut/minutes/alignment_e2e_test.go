@@ -257,12 +257,12 @@ func TestCrossPlatformCoverageMinutesUploadAndPermissionDryRunDoNotWriteE2E(t *t
 }
 
 func TestCrossPlatformCoverageMinutesShortcutConfirmationPolicyE2E(t *testing.T) {
-	for _, value := range []shortcut.Shortcut{Upload, UploadAndAnalyze, Mindmap, SpeakerInsights, PrepareASR} {
+	for _, value := range []shortcut.Shortcut{Mindmap, SpeakerInsights, PrepareASR} {
 		if value.Safety.Confirmation != "not_required" {
 			t.Errorf("%s confirmation=%q, want not_required", value.Command, value.Safety.Confirmation)
 		}
 	}
-	for _, value := range []shortcut.Shortcut{UploadAndNotify, SyncASR} {
+	for _, value := range []shortcut.Shortcut{Upload, UploadAndAnalyze, UploadAndNotify, SyncASR} {
 		if value.Safety.Confirmation != "user_required" {
 			t.Errorf("%s confirmation=%q, want user_required", value.Command, value.Safety.Confirmation)
 		}
@@ -276,6 +276,8 @@ func TestCrossPlatformCoverageMinutesShortcutConfirmationPolicyE2E(t *testing.T)
 		name string
 		args []string
 	}{
+		{name: "upload", args: []string{"minutes", "+upload", "--file", file}},
+		{name: "upload and analyze", args: []string{"minutes", "+upload-and-analyze", "--file", file}},
 		{name: "upload notify", args: []string{"minutes", "+upload-and-notify", "--file", file}},
 		{name: "sync asr", args: []string{"minutes", "+sync-asr", "--words", "DWS"}},
 	} {

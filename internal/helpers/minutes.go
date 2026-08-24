@@ -1523,8 +1523,7 @@ func newMinutesCommand() *cobra.Command {
 	uploadCreateCmd.Flags().String("title", "", "听记标题，不传时默认使用文件名去掉后缀 (可选)")
 	uploadCreateCmd.Flags().String("template-id", "", "纪要生成使用的模板 ID (可选)")
 	uploadCreateCmd.Flags().String("input-language", "", "ASR 识别的源语言 (可选)")
-	uploadCreateCmd.Flags().Bool("enable-message-card", false, "[已迁移] 请使用 upload create-and-notify")
-	_ = uploadCreateCmd.Flags().MarkHidden("enable-message-card")
+	uploadCreateCmd.Flags().Bool("enable-message-card", false, "[兼容提示] 已迁移，请使用 upload create-and-notify")
 
 	uploadCreateAndNotifyCmd := &cobra.Command{
 		Use:   "create-and-notify",

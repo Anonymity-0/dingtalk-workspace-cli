@@ -213,11 +213,11 @@ func TestCrossPlatformCoverageAITableTableBootstrapPublishesResultContract(t *te
 func TestDeliveryMinutesASRMigrationContract(t *testing.T) {
 	prepare := executeShortcutSchemaQuery(t, "--cli-path", "minutes +prepare-asr")
 	prepareParameters := schemaContractMap(prepare["parameters"])
-	if prepareParameters["sync"] != nil {
-		t.Fatalf("minutes +prepare-asr publishes hidden --sync: %#v", prepareParameters["sync"])
+	if prepareParameters["sync"] == nil {
+		t.Fatal("minutes +prepare-asr must keep public --sync visible as a migration compatibility flag")
 	}
-	if got := prepare["constraints"]; got != nil {
-		t.Fatalf("minutes +prepare-asr publishes a constraint for hidden --sync: %#v", got)
+	if description := schemaContractString(prepareParameters["sync"]["description"]); !strings.Contains(description, "精确同步请使用 +sync-asr") {
+		t.Fatalf("minutes +prepare-asr --sync migration constraint evidence = %q", description)
 	}
 
 	syncASR := executeShortcutSchemaQuery(t, "--cli-path", "minutes +sync-asr")
