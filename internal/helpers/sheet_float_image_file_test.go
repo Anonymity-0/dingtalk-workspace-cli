@@ -377,7 +377,7 @@ func TestCrossPlatformCoverageFloatImageHTTPPut(t *testing.T) {
 		defer destination.Close()
 		source := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 			response.Header().Set("Location", destination.URL+"/location-secret")
-			response.WriteHeader(http.StatusTemporaryRedirect)
+			response.WriteHeader(http.StatusFound)
 		}))
 		defer source.Close()
 		client := newFloatImageUploadClient()
@@ -385,7 +385,7 @@ func TestCrossPlatformCoverageFloatImageHTTPPut(t *testing.T) {
 			t.Fatalf("timeout = %v", client.Timeout)
 		}
 		err := putFloatImageFileWithClient(context.Background(), client, source.URL, local)
-		if err == nil || !strings.Contains(err.Error(), "HTTP 307") || strings.Contains(err.Error(), "location-secret") || destinationCalls != 0 {
+		if err == nil || !strings.Contains(err.Error(), "HTTP 302") || strings.Contains(err.Error(), "location-secret") || destinationCalls != 0 {
 			t.Fatalf("redirect error/calls = %v/%d", err, destinationCalls)
 		}
 	})
