@@ -19,7 +19,7 @@ const (
 	publicShortcutCount = 424
 	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
 	// including reviewed hidden compatibility and unavailable contracts.
-	schemaPublishedShortcutCount = 462
+	schemaPublishedShortcutCount = 468
 	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
 	publiclyDeliveredShortcutCount = 424
 )

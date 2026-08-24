@@ -203,7 +203,7 @@ dws aitable +datasource-update [flags]
 | `--source-config` | string | 否 | 新的源配置 JSON 字符串，不传时保持原有配置。结构同 `+datasource-create` |
 | `--auto` | bool | 否 | 是否开启自动同步；仅显式设置时下发给下游，省略时保持原有自动同步开关不变 |
 | `--auto-sync-setting` | string | 否 | 自动同步频率配置 JSON 字符串，仅在显式设置 `--auto=true` 时生效；省略时保持原频率配置 |
-| `--field-ids` | stringSlice | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
+| `--field-ids` | stringSlice | 否 | 需要同步的字段 ID 列表，不传时保持现有字段配置 |
 
 ### 示例
 

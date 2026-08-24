@@ -198,7 +198,7 @@ dws aitable +datasource-update --base-id BASE_ID --table-id TABLE_ID \
 | `--source-config` | 否 | 新的源配置 JSON 字符串，不传时保持原配置；传入时整体覆盖 |
 | `--auto` | 否 | 是否开启自动同步，不传时保持原设置 |
 | `--auto-sync-setting` | 否 | 自动同步频率配置 JSON 字符串，仅 --auto=true 时生效；不传时保持原频率配置 |
-| `--field-ids` | 否 | 需要同步的字段 ID 列表，不传时同步全部字段 |
+| `--field-ids` | 否 | 需要同步的字段 ID 列表，不传时保持现有字段配置 |
 
 更新后自动触发一次全量同步，返回新 taskId。
 
