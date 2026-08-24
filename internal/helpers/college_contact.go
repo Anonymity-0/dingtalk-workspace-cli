@@ -516,7 +516,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "创建部门",
 				UseWhen:      []string{"需要创建部门时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept create --super-id 12345 --stru-dept-id 12345"},
+				Examples:     []string{"dws college-contact dept create --super-id 100 --stru-dept-id 200 --name 计算机学院 --dept-type college --create-dept-group true"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "super-id", Property: "input.superId", Required: boolPtr(true)},
@@ -653,7 +653,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "更新部门",
 				UseWhen:      []string{"需要更新部门时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept update --dept-id 12345 --dept-type standard"},
+				Examples:     []string{"dws college-contact dept update --dept-id 12345 --dept-type college"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -688,8 +688,7 @@ func newCollegeContactCommand() *cobra.Command {
 注意：删除操作不可逆。非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact dept delete --dept-id 12345 --dry-run
-  dws college-contact dept delete --dept-id 12345 -y
-  dws college-contact dept delete --dept-id 12345 -y -f json`,
+  dws college-contact dept delete --dept-id 12345 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			deptIDRaw, _ := cmd.Flags().GetString("dept-id")
 			deptIDRaw = strings.TrimSpace(deptIDRaw)
@@ -810,7 +809,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "批量修改部门类型",
 				UseWhen:      []string{"需要批量修改部门类型时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept batch-update-type --dept-ids 12345 --target-dept-type standard"},
+				Examples:     []string{"dws college-contact dept batch-update-type --dept-ids 12345 --target-dept-type college"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-ids", Property: "input.deptIds", Required: boolPtr(true)},
@@ -1897,7 +1896,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "添加员工",
 				UseWhen:      []string{"需要添加员工时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee add --emp-type standard --main-dept-id 12345"},
+				Examples:     []string{"dws college-contact employee add --emp-type college_student --main-dept-id 100 --exclusive-account true --name 张三 --mobile 13800138000"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "emp-type", Property: "input.empType", Required: boolPtr(true)},
@@ -1962,8 +1961,7 @@ func newCollegeContactCommand() *cobra.Command {
 注意：移除操作不可逆。非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact employee remove --staff-ids S12345,S12346 --dry-run
-  dws college-contact employee remove --staff-ids S12345 -y
-  dws college-contact employee remove --staff-ids S12345,S12346 -y -f json`,
+  dws college-contact employee remove --staff-ids S12345,S12346 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			input := map[string]any{}
 
@@ -2859,7 +2857,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询校友列表",
 				UseWhen:      []string{"需要查询校友列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni list --alumni-dept-id 12345 --order-field test"},
+				Examples:     []string{"dws college-contact alumni list --alumni-dept-id 12345 --order-field dept_entry --ordering asc"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -3297,8 +3295,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact alumni delete-dept --alumni-dept-id 12345 --dry-run
-  dws college-contact alumni delete-dept --alumni-dept-id 12345 -y
-  dws college-contact alumni delete-dept --alumni-dept-id 12345 -y -f json`,
+  dws college-contact alumni delete-dept --alumni-dept-id 12345 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			alumniDeptIdRaw, _ := cmd.Flags().GetString("alumni-dept-id")
 			alumniDeptIdRaw = strings.TrimSpace(alumniDeptIdRaw)
@@ -3524,7 +3521,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "添加校友",
 				UseWhen:      []string{"需要添加校友时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni add-alumnus --dept-ids 12345"},
+				Examples:     []string{"dws college-contact alumni add-alumnus --name 张三 --mobile 13800138000 --dept-ids 12345,67890"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "input.name", Required: boolPtr(false)},
@@ -3641,7 +3638,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "更新校友信息",
 				UseWhen:      []string{"需要更新校友信息时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni update-alumnus --dept-ids 12345"},
+				Examples:     []string{"dws college-contact alumni update-alumnus --staff-id staff001 --name 张三 --dept-ids 12345,67890"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "staff-id", Property: "input.staffId", Required: boolPtr(false)},
@@ -3676,8 +3673,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact alumni remove-alumnus --staff-id staff001 --alumni-dept-id 12345 --dry-run
-  dws college-contact alumni remove-alumnus --staff-id staff001 --alumni-dept-id 12345 -y
-  dws college-contact alumni remove-alumnus --staff-id staff001 --alumni-dept-id 12345 -y -f json`,
+  dws college-contact alumni remove-alumnus --staff-id staff001 --alumni-dept-id 12345 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			staffId, _ := cmd.Flags().GetString("staff-id")
 			staffId = strings.TrimSpace(staffId)
@@ -3752,8 +3748,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact alumni cancel-invite --alumni-dept-id 12345 --staff-ids staff001,staff002 --dry-run
-  dws college-contact alumni cancel-invite --alumni-dept-id 12345 --staff-ids staff001 -y
-  dws college-contact alumni cancel-invite --alumni-dept-id 12345 --staff-ids staff001 -y -f json`,
+  dws college-contact alumni cancel-invite --alumni-dept-id 12345 --staff-ids staff001,staff002 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			alumniDeptIdRaw, _ := cmd.Flags().GetString("alumni-dept-id")
 			alumniDeptIdRaw = strings.TrimSpace(alumniDeptIdRaw)
@@ -3899,8 +3894,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact alumni disband-group --alumni-dept-id 12345 --dry-run
-  dws college-contact alumni disband-group --alumni-dept-id 12345 -y
-  dws college-contact alumni disband-group --alumni-dept-id 12345 -y -f json`,
+  dws college-contact alumni disband-group --alumni-dept-id 12345 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			alumniDeptIdRaw, _ := cmd.Flags().GetString("alumni-dept-id")
 			alumniDeptIdRaw = strings.TrimSpace(alumniDeptIdRaw)
@@ -4750,8 +4744,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact graduate commit-graduate --graduate-dept-ids 12345,12346 --graduate-year 2026 --dry-run
-  dws college-contact graduate commit-graduate --graduate-dept-ids 12345,12346 --graduate-year 2026 -y
-  dws college-contact graduate commit-graduate --graduate-dept-ids 12345,12346 --graduate-year 2026 --request-no xxx123 -y -f json`,
+  dws college-contact graduate commit-graduate --graduate-dept-ids 12345,12346 --graduate-year 2026 --request-no xxx123 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			raw, _ := cmd.Flags().GetString("graduate-dept-ids")
 			raw = strings.TrimSpace(raw)
@@ -4851,8 +4844,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact graduate all-graduate --graduate-year 2026 --dry-run
-  dws college-contact graduate all-graduate --graduate-year 2026 -y
-  dws college-contact graduate all-graduate --graduate-year 2026 --request-no xxx123 -y -f json`,
+  dws college-contact graduate all-graduate --graduate-year 2026 --request-no xxx123 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			graduateYearRaw, _ := cmd.Flags().GetString("graduate-year")
 			graduateYearRaw = strings.TrimSpace(graduateYearRaw)
@@ -4924,8 +4916,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact graduate batch-graduate --dept-id 12345 --staff-ids staff001,staff002 --dry-run
-  dws college-contact graduate batch-graduate --dept-id 12345 --staff-ids staff001,staff002 -y
-  dws college-contact graduate batch-graduate --dept-id 12345 --staff-ids staff001,staff002 -y -f json`,
+  dws college-contact graduate batch-graduate --dept-id 12345 --staff-ids staff001,staff002 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			deptIdRaw, _ := cmd.Flags().GetString("dept-id")
 			deptIdRaw = strings.TrimSpace(deptIdRaw)
@@ -5011,8 +5002,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact graduate delete-and-graduate --dept-id 12345 --staff-ids staff001,staff002 --dry-run
-  dws college-contact graduate delete-and-graduate --dept-id 12345 --staff-ids staff001,staff002 -y
-  dws college-contact graduate delete-and-graduate --dept-id 12345 --staff-ids staff001,staff002 -y -f json`,
+  dws college-contact graduate delete-and-graduate --dept-id 12345 --staff-ids staff001,staff002 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			deptIdRaw, _ := cmd.Flags().GetString("dept-id")
 			deptIdRaw = strings.TrimSpace(deptIdRaw)
@@ -5098,8 +5088,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact graduate batch-delete-pending --dept-id 12345 --staff-ids staff001,staff002 --dry-run
-  dws college-contact graduate batch-delete-pending --dept-id 12345 --staff-ids staff001,staff002 -y
-  dws college-contact graduate batch-delete-pending --dept-id 12345 --staff-ids staff001,staff002 -y -f json`,
+  dws college-contact graduate batch-delete-pending --dept-id 12345 --staff-ids staff001,staff002 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			deptIdRaw, _ := cmd.Flags().GetString("dept-id")
 			deptIdRaw = strings.TrimSpace(deptIdRaw)
@@ -5186,8 +5175,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact graduate batch-update-pending --dept-id 12345 --staff-ids staff001,staff002 --graduate-year 2026 --dry-run
-  dws college-contact graduate batch-update-pending --dept-id 12345 --staff-ids staff001,staff002 --graduate-year 2026 -y
-  dws college-contact graduate batch-update-pending --dept-id 12345 --staff-ids staff001,staff002 --graduate-year 2026 -y -f json`,
+  dws college-contact graduate batch-update-pending --dept-id 12345 --staff-ids staff001,staff002 --graduate-year 2026 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			deptIdRaw, _ := cmd.Flags().GetString("dept-id")
 			deptIdRaw = strings.TrimSpace(deptIdRaw)
@@ -5258,7 +5246,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "批量更新待毕业学生",
 				UseWhen:      []string{"需要批量更新待毕业学生时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate batch-update-pending --dept-id 12345 --staff-ids 12345"},
+				Examples:     []string{"dws college-contact graduate batch-update-pending --dept-id 12345 --staff-ids staff001,staff002 --graduate-year 2026"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -5288,8 +5276,7 @@ func newCollegeContactCommand() *cobra.Command {
 非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact graduate commit-restore --graduate-dept-ids 12345,12346 --dry-run
-  dws college-contact graduate commit-restore --graduate-dept-ids 12345,12346 -y
-  dws college-contact graduate commit-restore --graduate-dept-ids 12345,12346 --request-no xxx123 -y -f json`,
+  dws college-contact graduate commit-restore --graduate-dept-ids 12345,12346 --request-no xxx123 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			raw, _ := cmd.Flags().GetString("graduate-dept-ids")
 			raw = strings.TrimSpace(raw)
@@ -5627,7 +5614,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "创建规则",
 				UseWhen:      []string{"需要创建规则时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group create-group-rule --name 测试 --tag-code test"},
+				Examples:     []string{"dws college-contact group create-group-rule --name 毕业生分组 --tag-code T001 --dept-type college"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "input.name", Required: boolPtr(true)},
@@ -5653,8 +5640,7 @@ func newCollegeContactCommand() *cobra.Command {
 注意：删除操作不可逆。非 --dry-run 预览时必须显式传入 --yes 才会真实执行，
 未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact group delete-group-rule --rule-id 1 --dry-run
-  dws college-contact group delete-group-rule --rule-id 1 -y
-  dws college-contact group delete-group-rule --rule-id 1 -y -f json`,
+  dws college-contact group delete-group-rule --rule-id 1 --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ruleIDRaw, _ := cmd.Flags().GetString("rule-id")
 			ruleIDRaw = strings.TrimSpace(ruleIDRaw)
@@ -5886,8 +5872,7 @@ func newCollegeContactCommand() *cobra.Command {
 注意：执行会对成员产生批量变更，影响范围大。非 --dry-run 预览时必须显式传入
 --yes 才会真实执行，未传 --yes 直接拒绝；请在向用户展示操作摘要并获得确认后再追加 --yes。`,
 		Example: `  dws college-contact group execute-group-rule --dry-run
-  dws college-contact group execute-group-rule -y
-  dws college-contact group execute-group-rule -y -f json`,
+  dws college-contact group execute-group-rule --dry-run -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			return callMCPToolOnServer("college-contact", "execute_group_rule", map[string]any{
