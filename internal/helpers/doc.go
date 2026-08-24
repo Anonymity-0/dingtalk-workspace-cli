@@ -1429,9 +1429,14 @@ func newDocCommand() *cobra.Command {
 	readCmd := &cobra.Command{
 		Use:   "read",
 		Short: "读取文档内容 (Markdown)",
-		Long:  `获取文档内容，以 Markdown 格式返回。支持传入文档 URL 或 ID。`,
+		Long: `获取文档内容，以 Markdown 格式返回。支持传入文档 URL 或 ID。
+
+互联网公开文档（含开启密码保护的）可传入公开链接；设置了访问密码时通过 --password 提供。
+--version 读取指定历史版本内容（版本号从 dws doc version list 获取，0 表示文档初始版本，需要文档编辑权限）；缺省读最新版。`,
 		Example: `  dws doc read --node DOC_ID
-  dws doc read --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>"`,
+  dws doc read --node "https://alidocs.dingtalk.com/i/nodes/<DOC_UUID>"
+  dws doc read --node PUBLIC_URL --password <ACCESS_PASSWORD>
+  dws doc read --node DOC_ID --version 3`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 			if err != nil {
@@ -1440,6 +1445,15 @@ func newDocCommand() *cobra.Command {
 			if err := validateDocFormat(cmd, []string{"", "markdown", "jsonml"}, "doc read",
 				"dws doc read --node DOC_ID --content-format jsonml"); err != nil {
 				return err
+			}
+			password, _ := cmd.Flags().GetString("password")
+			historyVersion := 0
+			historyVersionSet := cmd.Flags().Changed("version")
+			if historyVersionSet {
+				historyVersion, _ = cmd.Flags().GetInt("version")
+				if historyVersion < 0 {
+					return fmt.Errorf("--version 必须为非负整数历史版本号（0 表示初始版本，版本号从 dws doc version list 获取），当前值: %d", historyVersion)
+				}
 			}
 			format, _ := cmd.Flags().GetString("content-format")
 			scope, _ := cmd.Flags().GetString("scope")
@@ -1481,15 +1495,18 @@ func newDocCommand() *cobra.Command {
 					startBlockID,
 					endBlockID,
 					outputPath,
+					password,
+					historyVersion,
+					historyVersionSet,
 				)
 			}
 			if format == "jsonml" {
 				outputPath, _ := cmd.Flags().GetString("output")
-				return runDocReadJsonML(cmd, nodeID, outputPath)
+				return runDocReadJsonML(nodeID, outputPath, password, historyVersion, historyVersionSet)
 			}
-			return callMCPTool("get_document_content", map[string]any{
-				"nodeId": nodeID,
-			})
+			toolArgs := map[string]any{"nodeId": nodeID}
+			applyDocReadAccessParams(toolArgs, password, historyVersion, historyVersionSet)
+			return callMCPTool("get_document_content", toolArgs)
 		},
 	}
 	DeclareLeafMetadata(readCmd, LeafSpec{
@@ -1516,6 +1533,8 @@ func newDocCommand() *cobra.Command {
 				UseWhen: []string{
 					"用户要读取钉钉在线文字文档(adoc)正文（Markdown）时",
 					"用户直接粘贴文档 URL 且无其他指令时（默认读内容）",
+					"互联网公开文档（含设置密码保护的公开链接）时配合 --password 提供访问密码",
+					"要读取指定历史版本内容时用 --version（版本号来自 doc version list，0 表示初始版本，需要编辑权限）",
 					"只需标题大纲、指定块区间/单块或特定 JSONML tags 时使用 --content-format jsonml 与 --scope",
 				},
 				AvoidWhen: []string{
@@ -1533,9 +1552,11 @@ func newDocCommand() *cobra.Command {
 				{Name: "content-format", Property: "format", Required: boolPtr(false)},
 				{Name: "end-block-id", Required: boolPtr(false)},
 				{Name: "max-depth", Required: boolPtr(false), InterfaceType: "integer"},
+				{Name: "password", Property: "password", Required: boolPtr(false)},
 				{Name: "scope", Required: boolPtr(false)},
 				{Name: "start-block-id", Required: boolPtr(false), RequiredWhen: "--scope=range or --scope=section"},
 				{Name: "tags", Required: boolPtr(false), RequiredWhen: "--scope=tags"},
+				{Name: "version", Property: "historyVersion", Required: boolPtr(false), InterfaceType: "integer"},
 			},
 		},
 	})
@@ -2680,6 +2701,8 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 	readCmd.Flags().Int("max-depth", 0, "筛选遍历最大深度, 0 表示不限(仅 --scope 时生效)")
 	readCmd.Flags().String("start-block-id", "", "range/section 起始块 ID(节点 uuid); scope=range/section 时必填")
 	readCmd.Flags().String("end-block-id", "", "range 结束块 ID(节点 uuid); \"-1\"或空=到文档末尾(仅 scope=range 生效)")
+	readCmd.Flags().String("password", "", "互联网公开文档开启密码保护时的访问密码；普通文档无需传入")
+	readCmd.Flags().Int("version", 0, "读取指定历史版本内容(版本号从 doc version list 获取, 0 表示初始版本, 需要文档编辑权限)；缺省读最新版")
 	cli.AnnotateRuntimeFlagEnum(readCmd, "scope", "outline", "range", "section", "tags")
 	cli.AnnotateRuntimeFlagRequiredWhen(readCmd, "tags", "--scope=tags")
 	cli.AnnotateRuntimeFlagRequiredWhen(readCmd, "start-block-id", "--scope=range or --scope=section")
@@ -4752,16 +4775,30 @@ func wrapDocDeprecatedToTarget(cmd *cobra.Command, targetCmd string) {
 	}
 }
 
+// applyDocReadAccessParams 把 doc read 的访问参数（互联网公开文档密码、历史版本号）
+// 附加到 get_document_content 请求上；空密码或未显式设置版本时不发送对应字段，
+// 显式 --version 0 表示读取文档初始版本。
+func applyDocReadAccessParams(args map[string]any, password string, historyVersion int, historyVersionSet bool) {
+	if password != "" {
+		args["password"] = password
+	}
+	if historyVersionSet && historyVersion >= 0 {
+		args["historyVersion"] = historyVersion
+	}
+}
+
 // resolveContentFromFlags 从 --content-file / --content-path / --content / --markdown 获取文档内容。
 // 优先级：--content-file/--content-path > --content > --markdown（已弃用别名，向后兼容）。
-func runDocReadJsonML(_ *cobra.Command, nodeID string, outputPath string) error {
+func runDocReadJsonML(nodeID, outputPath, password string, historyVersion int, historyVersionSet bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	resultText, err := callMCPToolReturnText(ctx, "get_document_content", map[string]any{
+	toolArgs := map[string]any{
 		"nodeId": nodeID,
 		"format": "jsonml",
-	})
+	}
+	applyDocReadAccessParams(toolArgs, password, historyVersion, historyVersionSet)
+	resultText, err := callMCPToolReturnText(ctx, "get_document_content", toolArgs)
 	if err != nil {
 		return err
 	}
@@ -4813,7 +4850,7 @@ func runDocReadJsonML(_ *cobra.Command, nodeID string, outputPath string) error 
 
 // runDocReadScope calls get_document_content with JSONML filtering parameters
 // and preserves the returned read-only fragment container.
-func runDocReadScope(nodeID, scope, tags string, maxDepth int, maxDepthSet bool, startBlockID, endBlockID, outputPath string) error {
+func runDocReadScope(nodeID, scope, tags string, maxDepth int, maxDepthSet bool, startBlockID, endBlockID, outputPath, password string, historyVersion int, historyVersionSet bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
@@ -4833,6 +4870,7 @@ func runDocReadScope(nodeID, scope, tags string, maxDepth int, maxDepthSet bool,
 	if endBlockID != "" && scope == "range" {
 		args["endBlockId"] = endBlockID
 	}
+	applyDocReadAccessParams(args, password, historyVersion, historyVersionSet)
 
 	resultText, err := callMCPToolReturnTextOnServer(ctx, "doc", "get_document_content", args)
 	if err != nil {

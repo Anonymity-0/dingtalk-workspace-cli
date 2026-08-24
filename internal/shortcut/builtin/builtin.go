@@ -41,6 +41,7 @@ import (
 	_ "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/sheet"
 	_ "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/smart"
 	_ "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/todo"
+	_ "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/whiteboard"
 	_ "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/wiki"
 
 	"github.com/spf13/cobra"
