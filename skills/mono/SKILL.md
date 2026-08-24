@@ -43,11 +43,12 @@ cli_version: ">=1.0.15"
 
 | 服务 | shortcut 数 | multi skill |
 |---|---:|---|
-| `aitable` | 93 | `dingtalk-aitable` |
+| `aisearch` | 1 | `—` |
+| `aitable` | 100 | `dingtalk-aitable` |
 | `attendance` | 8 | `dingtalk-misc` |
 | `calendar` | 27 | `dingtalk-calendar` |
 | `chat` | 98 | `dingtalk-chat` |
-| `contact` | 14 | `dingtalk-contact` |
+| `contact` | 13 | `dingtalk-contact` |
 | `devapp` | 19 | `dingtalk-misc` |
 | `ding` | 1 | `dingtalk-misc` |
 | `doc` | 45 | `dingtalk-doc` |
@@ -55,9 +56,11 @@ cli_version: ">=1.0.15"
 | `mail` | 8 | `dingtalk-mail` |
 | `minutes` | 27 | `dingtalk-minutes` |
 | `oa` | 1 | `dingtalk-misc` |
+| `pat` | 1 | `dingtalk-misc` |
 | `report` | 4 | `dingtalk-misc` |
 | `sheet` | 2 | `dingtalk-misc` |
 | `todo` | 21 | `dingtalk-todo` |
+| `whiteboard` | 2 | `dingtalk-misc` |
 | `wiki` | 20 | `dingtalk-wiki` |
 <!-- VISIBLE_SHORTCUTS_OVERVIEW_END -->
 

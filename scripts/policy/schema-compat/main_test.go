@@ -415,6 +415,39 @@ func TestSchemaCompatibilityRejectsContractDrift(t *testing.T) {
 	}
 }
 
+func TestSchemaCompatibilityAcceptsReviewedRemoveConfirmationHardening(t *testing.T) {
+	oldTool := baselineContract().Products["doc"].Tools["doc.create"]
+	newTool := oldTool
+	newTool.Confirmation = "user_required"
+
+	for _, toolPath := range []string{
+		"doc/doc.remove_permission",
+		"drive/drive.permission_remove",
+		"wiki/wiki.remove_member",
+	} {
+		if failures := checkToolCompatibility(toolPath, oldTool, newTool); len(failures) != 0 {
+			t.Fatalf("reviewed confirmation hardening for %s failures = %v", toolPath, failures)
+		}
+	}
+	if failures := checkToolCompatibility("doc/doc.other_remove", oldTool, newTool); len(failures) == 0 {
+		t.Fatal("unreviewed confirmation hardening unexpectedly passed")
+	}
+
+	// A reviewed tool is only exempt for the exact reviewed transition: an
+	// unrelated field drift on the same tool must still be reported.
+	riskTool := oldTool
+	riskTool.Risk = "high"
+	if failures := checkToolCompatibility("doc/doc.remove_permission", oldTool, riskTool); len(failures) == 0 {
+		t.Fatal("reviewed tool risk drift unexpectedly passed")
+	}
+
+	oldTool.Confirmation = "user_required"
+	newTool.Confirmation = "not_required"
+	if failures := checkToolCompatibility("doc/doc.remove_permission", oldTool, newTool); len(failures) == 0 {
+		t.Fatal("reviewed tool confirmation weakening unexpectedly passed")
+	}
+}
+
 func TestMergeContracts(t *testing.T) {
 	historical := baselineContract()
 	current := cloneContract(historical)
