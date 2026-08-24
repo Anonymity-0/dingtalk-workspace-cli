@@ -815,6 +815,12 @@ var reviewedConstraintTransition = map[string]map[string]string{
 	"doc/doc.shortcut_import": {
 		`{"require_one_of":[["folder","workspace"]]}`: "",
 	},
+	// PR #1105 adds local --file as an alternative to the historically required
+	// --src input. Every historical --src invocation remains valid; publishing
+	// both groups makes the final Schema express the runtime's exact-one rule.
+	"sheet/sheet.create_float_image": {
+		"": `{"mutually_exclusive":[["file","src"]],"require_one_of":[["file","src"]]}`,
+	},
 }
 
 func compatibleReviewedConstraintTransition(toolPath string, oldTool, newTool toolSchema) bool {
