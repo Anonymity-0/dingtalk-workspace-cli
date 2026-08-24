@@ -4316,9 +4316,10 @@ CLI 内部自动完成全部流程:
 		Short: "查询导入任务结果（手动兜底）",
 		Long: `根据 taskId 查询文档导入任务的执行结果。
 通常不需要手动调用，dws doc import 会自动完成轮询。
-仅在导入命令超时或中断后，用于手动查询任务状态。必须同时提供原导入
-目标（--folder 或 --workspace），以便 completed 后回读验证真实落点；优先
-直接复制超时结果中的完整 next_command。
+仅在导入命令超时或中断后，用于手动查询任务状态。建议直接复制导入结果
+中的完整 next_command；其中携带的原目标（--folder 或 --workspace）用于在
+completed 后回读验证真实落点。只传 taskId 仍可查询 processing/failed，
+但 completed 时会返回未验证错误，不会误报成功。
 
 任务状态:
   processing  转换中
@@ -4358,9 +4359,8 @@ CLI 内部自动完成全部流程:
 		},
 	})
 	importGetCmd.Flags().String("task-id", "", "导入任务 ID (必填)")
-	importGetCmd.Flags().String("folder", "", "原导入目标文件夹 ID 或 URL（与 --workspace 至少提供一个，用于落点验证）")
-	importGetCmd.Flags().String("workspace", "", "原导入目标知识库 ID 或 URL（与 --folder 至少提供一个，用于落点验证）")
-	importGetCmd.MarkFlagsOneRequired("folder", "workspace")
+	importGetCmd.Flags().String("folder", "", "原导入目标文件夹 ID 或 URL（completed 后落点验证需要）")
+	importGetCmd.Flags().String("workspace", "", "原导入目标知识库 ID 或 URL（completed 后落点验证需要）")
 	importCmd.AddCommand(importGetCmd)
 	newHybridGroupCommand(importCmd)
 

@@ -325,20 +325,87 @@ func TestCrossPlatformCoverageDocImportGetVerifiesOriginalTarget(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageDocImportGetRequiresOriginalTarget(t *testing.T) {
+func TestCrossPlatformCoverageDocImportGetTaskIDOnlyQueriesProcessing(t *testing.T) {
 	previousDeps := deps
-	t.Cleanup(func() { deps = previousDeps })
-	caller := &sheetImportCaller{responses: map[string][]string{}}
+	previousArgs := os.Args
+	t.Cleanup(func() {
+		deps = previousDeps
+		os.Args = previousArgs
+	})
+	os.Args = []string{"dws", "doc"}
+	caller := &sheetImportCaller{responses: map[string][]string{
+		"query_import_task": {`{"status":"processing","taskId":"task-2"}`},
+	}}
+	if err := runDocCoverageCommand(t, caller, "import", "get", "--task-id=task-2"); err != nil {
+		t.Fatalf("taskId-only processing query: %v", err)
+	}
+	if len(caller.calls) != 1 || caller.calls[0].tool != "query_import_task" {
+		t.Fatalf("calls = %#v", caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageDocImportGetCompletedWithoutTargetIsUnverified(t *testing.T) {
+	previousDeps := deps
+	previousArgs := os.Args
+	t.Cleanup(func() {
+		deps = previousDeps
+		os.Args = previousArgs
+	})
+	os.Args = []string{"dws", "doc"}
+	caller := &sheetImportCaller{responses: map[string][]string{
+		"query_import_task": {`{"status":"completed","documentUrl":"https://alidocs.dingtalk.com/i/nodes/node-2"}`},
+	}}
 	InitDeps(caller)
 	cmd := &cobra.Command{Use: "get"}
 	cmd.Flags().String("task-id", "task-2", "")
 	cmd.Flags().String("folder", "", "")
 	cmd.Flags().String("workspace", "", "")
-	if err := runImportGetCommand(cmd, docImportFlowConfig()); err == nil || !strings.Contains(err.Error(), "完整 next_command") {
-		t.Fatalf("missing target error = %v", err)
+	err := runImportGetCommand(cmd, docImportFlowConfig())
+	if err == nil {
+		t.Fatal("completed task without verification target unexpectedly succeeded")
 	}
-	if len(caller.calls) != 0 {
-		t.Fatalf("missing target reached MCP: %#v", caller.calls)
+	var structured *apperrors.Error
+	if !errors.As(err, &structured) {
+		t.Fatalf("error type = %T, want *errors.Error", err)
+	}
+	if structured.Reason != "doc_import_verification_target_required" || structured.Details["taskStatus"] != "completed" || structured.Details["verified"] != false || structured.Details["nodeId"] != "node-2" {
+		t.Fatalf("structured error = %#v", structured)
+	}
+	if structured.ExecutionStarted == nil || !*structured.ExecutionStarted {
+		t.Fatalf("ExecutionStarted = %#v, want true", structured.ExecutionStarted)
+	}
+	if len(caller.calls) != 1 || caller.calls[0].tool != "query_import_task" {
+		t.Fatalf("calls = %#v", caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageDocImportGetInvalidJSONFailsClosed(t *testing.T) {
+	previousDeps := deps
+	previousArgs := os.Args
+	t.Cleanup(func() {
+		deps = previousDeps
+		os.Args = previousArgs
+	})
+	os.Args = []string{"dws", "doc"}
+	caller := &sheetImportCaller{responses: map[string][]string{
+		"query_import_task": {`not-json`},
+	}}
+	InitDeps(caller)
+	cmd := &cobra.Command{Use: "get"}
+	cmd.Flags().String("task-id", "task-2", "")
+	cmd.Flags().String("folder", "", "")
+	cmd.Flags().String("workspace", "space-2", "")
+	err := runImportGetCommand(cmd, docImportFlowConfig())
+	if err == nil {
+		t.Fatal("invalid query response unexpectedly succeeded")
+	}
+	for _, want := range []string{
+		"解析导入任务响应失败",
+		"dws doc import get --task-id task-2 --workspace space-2",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %q, want %q", err, want)
+		}
 	}
 }
 
