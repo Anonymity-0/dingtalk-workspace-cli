@@ -26,13 +26,13 @@ dws doc +update --node <DOC_ID> --command block_delete --block-id <BLOCK_ID>
 dws doc block insert --node <DOC_ID> --heading "发布说明 v1.0" --level 1 --ref-block <FIRST_BLOCK_ID> --where before --format json
 ```
 
-插入后按回执中的新 block ID 执行 `dws doc block list --node <DOC_ID> --block-id <NEW_BLOCK_ID> --format json`，同时验证 `blockType=heading`、回读投影 `heading.level="heading-1"` 和标题文字。CLI 写入仍使用数值参数 `--level 1`。修改现有标题才使用 `doc block update --block-id ... --heading ... --level ...`；不要用普通文字替换改变块类型。
+插入回执有稳定新 block ID 时，用 `dws doc block list --node <DOC_ID> --block-id <NEW_BLOCK_ID> --format json` 定点验证；回执只有插入 index 时，只执行一次 `dws doc block list --node <DOC_ID> --content-format jsonml --format json`，按该 index 验证 `blockType=heading`、`heading.level="heading-1"` 和标题文字。`block list` 没有 `--limit`，禁止 Help/试错；一次完整 JSONML 列表已满足结构验收时立即终止。CLI 写入仍使用数值参数 `--level 1`。修改现有标题才使用 `doc block update --block-id ... --heading ... --level ...`；不要用普通文字替换改变块类型。
 
 ## 富结构专家路径
 
 只有需要 shortcut 未公开的 callout、分栏、复杂表格或 JSONML element 参数时：
 
-1. 按需读取 [JSONML schema](format/doc-jsonml-schema.md) 或 [cookbook](format/doc-jsonml-cookbook.md)，不要两者都预加载。
+1. 按需读取 [JSONML schema](format/doc-jsonml-schema.md) 或 [cookbook](format/doc-jsonml-cookbook.md)，不要两者都预加载；用户已明确结构时优先 cookbook 的可执行样例。
 2. 读取精确 `doc block` leaf Schema，确认当前 flags。
 3. 用原子 block 命令只改目标块；JSONML update 的 uuid 必须等于目标 block ID。
 

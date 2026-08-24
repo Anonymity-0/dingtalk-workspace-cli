@@ -39,11 +39,11 @@ metadata:
 
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
-| <!-- dws-intent: doc.search.by_title -->按标题或主题定位文档 | `dws doc +search --query <关键词>` | 检查候选类型与分页；需要正文时再用真实 `nodeId` 执行 `+fetch` |
+| <!-- dws-intent: doc.search.by_title -->按标题或主题定位文档 | `dws doc +search --query <精确标题>` | `complete=true,count=0,failures=[]` 即权威零命中：如实报告；禁缩词、跨产品、无 query/无端 `--page-all` |
 | 最近访问文档 | `dws doc +search`（省略 `--query`） | `--limit` 为每页量，`--max-items` 为总上限；完整集合才加 `--page-all` 并检查 `complete` |
 | <!-- dws-intent: doc.content.read -->已知 ID/URL 读取正文或局部内容 | `dws doc +fetch --node <ID或URL>` | 术语用 `keyword`；章节 `outline` → `section`；整篇才用 `full` |
 | 聚合查看信息、权限、版本、媒体或评论 | `dws doc +inspect --node <ID或URL>` | 仅打开任务所需的 `--include-*`，不要默认全取 |
-| 新建在线文字文档并写入内容 | `dws doc +create --name <标题> --content @<相对文件>` | 正文先本地完成；Runtime 分片回读，Agent 禁拆成多次远程写 |
+| 新建在线文字文档并写入内容 | `dws doc +create --name <标题> --content <短文本\|-\|@相对文件>` | stdin 用 `-`，禁 `@-`；Runtime 分片回读，禁拆成多次远程写 |
 | <!-- dws-intent: doc.content.update -->追加、覆盖或精确编辑 block | `dws doc +update --node <ID或URL> --command <动作>` | 唯一文本 `str_replace`；章节/block 局部取 ID；整篇才 overwrite |
 | 重要内容更新且需要恢复点 | `dws doc +checkpoint-update` | 自动保存版本、更新并回读；检查 `steps` 和 `compensation` |
 | 版本操作 | `dws doc +version-save --node` / `dws doc +version-list --node` / `dws doc +version-revert --node --version` | 快照/列表/回滚 |
@@ -55,7 +55,7 @@ metadata:
 | 从模板创建 | `dws doc +create-from-template --template-id <唯一ID>` | 已有唯一 templateId 才创建；不重复 list/search |
 | 创建评论或聚合待处理评论 | `dws doc +comment-create [--selection]` / `+review` | 划词统一用 `+comment-create`；后续操作使用真实 `commentKey` |
 | <!-- dws-intent: doc.access.grant -->添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；无 `--user-ids`；先读权限，歧义/profile 不一致禁写 |
-| <!-- dws-intent: doc.share.link_only -->只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | canonical（`+share-doc` 兼容）；已有权限用它，普通私信用 `dws chat +dm` |
+| <!-- dws-intent: doc.share.link_only -->只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | 内置姓名解析；仅歧义时 aisearch，禁预查人；普通私信用 chat |
 | 授权后向多人分享链接 | `dws doc +grant-and-share` | 仅需改权限时用（必填 `--node`，role 默认 READER）；检查逐人账本和部分失败 |
 | <!-- dws-intent: doc.media.insert -->插入或下载正文媒体 | `dws doc +media-insert/+media-download` | 本地路径必须位于工作目录；下载默认 no-clobber |
 
@@ -66,8 +66,8 @@ metadata:
 - 状态恢复：`partial_success` 只补未完成步骤；`unknown` 先回读、不重试写；`retryable` 仅限明确未开始；权限/参数/认证失败停止。
 - 仅在结果明确且关键内容回读匹配后报告写入完成。
 - 搜索/列表检查 `complete`、`hasMore`、cursor 和失败项；“全部”逐页完成，示例/前 N 条可提前停止并声明范围。
-- `+import` 含上传、转换和轮询；成功检查 `success/taskId/documentUrl`；中断保留 `taskId`、查原任务，禁重导。
-- 导出/下载仅用工作目录相对路径，默认不覆盖并原子落盘。
+- `+import` 成功后直接复用 `documentUrl/nodeId`，禁 Drive 重定位；中断保留 `taskId`、查原任务，禁重导。
+- 导出/下载用 cwd 相对路径；`+export` 返回 `localPath` 且 `sizeBytes>0` 即终态，禁再 `ls/stat`。
 
 ## 参数与安全边界
 
