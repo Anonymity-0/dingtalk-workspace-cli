@@ -68,6 +68,12 @@ func TestCrossPlatformCoveragePersonalVoIPEventListSchemaAndValidation(t *testin
 			t.Fatalf("VoIP schema property %s = %#v", name, properties[name])
 		}
 	}
+	for _, name := range []string{"caller_uid", "callee_uid"} {
+		property := properties[name].(map[string]any)
+		if property["type"] != "string" {
+			t.Fatalf("VoIP schema property %s type = %#v, want string", name, property["type"])
+		}
+	}
 
 	if err := validatePersonalBusinessEventOptions(personal.EventVoIPCallReceiveInvite, personalConsumeOptions{}); err != nil {
 		t.Fatalf("VoIP event without target/filter options error = %v", err)

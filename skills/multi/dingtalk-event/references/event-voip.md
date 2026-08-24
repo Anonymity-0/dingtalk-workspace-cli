@@ -44,9 +44,9 @@ dws event consume user_voip_call_receive_invite --flatten -f ndjson
   "org_id": 0,
   "target_uid": 0,
   "call_id": "...",
-  "caller_uid": 0,
+  "caller_uid": "0147333457361236773",
   "caller_corp_id": "ding...",
-  "callee_uid": 0,
+  "callee_uid": "digital-3559506650",
   "callee_corp_id": "ding...",
   "call_type": "conference",
   "room_id": "...",
@@ -58,6 +58,7 @@ dws event consume user_voip_call_receive_invite --flatten -f ndjson
 
 - `event_id` 是 transport 事件 ID；`biz_id` 是业务事件唯一 ID，同一事件重试时保持不变，业务去重优先使用 `biz_id`。
 - `target_uid` 是订阅并接收邀请的用户；正常情况下与 `callee_uid` 指向同一被叫用户。
+- `caller_uid` 与 `callee_uid` 按服务端协议以字符串输出，必须保留前导 `0`、连字符等原始内容，不要转换为数字。滚动发布期间 DWS 仍兼容旧的 Long payload，并统一投影为字符串。
 - `room_code` 是敏感入会码，只能用于当前通话入会，不应写入日志、文档或聊天消息，也不得转发给无关人员。
 - `create_time` 与 `event_time` 都是毫秒时间戳；前者是通话邀请创建时间，后者是业务事件时间。
 - payload 缺失、body 缺失、`bizid` 为空或无法解析时，consume 会在 stderr 输出 warning，并把原始 transport envelope 写到 stdout，避免静默丢事件。

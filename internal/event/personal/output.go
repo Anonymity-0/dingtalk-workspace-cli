@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/event/transport"
@@ -222,9 +223,9 @@ type VoIPCallReceiveInviteOutput struct {
 	OrgID        int64  `json:"org_id" description:"事件所属组织 ID"`
 	TargetUID    int64  `json:"target_uid" description:"订阅并接收邀请的目标用户 UID"`
 	CallID       string `json:"call_id" description:"通话会话 ID"`
-	CallerUID    int64  `json:"caller_uid" description:"主叫用户 UID"`
+	CallerUID    string `json:"caller_uid" description:"主叫用户标识，按上游协议保留字符串原值"`
 	CallerCorpID string `json:"caller_corp_id" description:"主叫用户所属组织 corpId"`
-	CalleeUID    int64  `json:"callee_uid" description:"被叫用户 UID"`
+	CalleeUID    string `json:"callee_uid" description:"被叫用户标识，按上游协议保留字符串原值"`
 	CalleeCorpID string `json:"callee_corp_id" description:"被叫用户所属组织 corpId"`
 	CallType     string `json:"call_type" description:"通话类型；值以服务端实际推送为准"`
 	RoomID       string `json:"room_id" description:"会议房间 ID"`
@@ -368,15 +369,35 @@ type personalVoIPCallReceiveInvitePayload struct {
 }
 
 type personalVoIPCallReceiveInviteBody struct {
-	CallID       string `json:"callId"`
-	CallerUID    int64  `json:"callerUid"`
-	CallerCorpID string `json:"callerCorpId"`
-	CalleeUID    int64  `json:"calleeUid"`
-	CalleeCorpID string `json:"calleeCorpId"`
-	CallType     string `json:"callType"`
-	RoomID       string `json:"roomId"`
-	RoomCode     string `json:"roomCode"`
-	CreateTime   int64  `json:"createTime"`
+	CallID       string             `json:"callId"`
+	CallerUID    voIPUserIdentifier `json:"callerUid"`
+	CallerCorpID string             `json:"callerCorpId"`
+	CalleeUID    voIPUserIdentifier `json:"calleeUid"`
+	CalleeCorpID string             `json:"calleeCorpId"`
+	CallType     string             `json:"callType"`
+	RoomID       string             `json:"roomId"`
+	RoomCode     string             `json:"roomCode"`
+	CreateTime   int64              `json:"createTime"`
+}
+
+// voIPUserIdentifier preserves the String contract introduced by the VoIP
+// provider while accepting legacy Long payloads during a rolling deployment.
+// The stable flattened output is always a string.
+type voIPUserIdentifier string
+
+func (id *voIPUserIdentifier) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err == nil {
+		*id = voIPUserIdentifier(value)
+		return nil
+	}
+
+	var legacy int64
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		return fmt.Errorf("VoIP user identifier must be a string or legacy integer: %w", err)
+	}
+	*id = voIPUserIdentifier(strconv.FormatInt(legacy, 10))
+	return nil
 }
 
 func (b *personalReactionBody) UnmarshalJSON(data []byte) error {
@@ -531,9 +552,9 @@ func projectVoIPCallReceiveInviteEvent(ev transport.Event, base baseEventOutput,
 		OrgID:        payload.OrgID,
 		TargetUID:    payload.UID,
 		CallID:       payload.Body.CallID,
-		CallerUID:    payload.Body.CallerUID,
+		CallerUID:    string(payload.Body.CallerUID),
 		CallerCorpID: payload.Body.CallerCorpID,
-		CalleeUID:    payload.Body.CalleeUID,
+		CalleeUID:    string(payload.Body.CalleeUID),
 		CalleeCorpID: payload.Body.CalleeCorpID,
 		CallType:     payload.Body.CallType,
 		RoomID:       payload.Body.RoomID,

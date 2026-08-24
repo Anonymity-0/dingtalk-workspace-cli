@@ -218,9 +218,9 @@ func personalVoIPData() string {
 			"filterSubId":"internal-filter",
 			"body":{
 				"callId":"call-1",
-				"callerUid":1000000001,
+				"callerUid":"0147333457361236773",
 				"callerCorpId":"ding-caller-corp",
-				"calleeUid":3559506650,
+				"calleeUid":"digital-3559506650",
 				"calleeCorpId":"ding-callee-corp",
 				"callType":"conference",
 				"roomId":"room-1",
@@ -624,9 +624,9 @@ func TestCrossPlatformCoverageProjectOutputVoIPCallReceiveInvite(t *testing.T) {
 		OrgID:        21001,
 		TargetUID:    3559506650,
 		CallID:       "call-1",
-		CallerUID:    1000000001,
+		CallerUID:    "0147333457361236773",
 		CallerCorpID: "ding-caller-corp",
-		CalleeUID:    3559506650,
+		CalleeUID:    "digital-3559506650",
 		CalleeCorpID: "ding-callee-corp",
 		CallType:     "conference",
 		RoomID:       "room-1",
@@ -645,6 +645,26 @@ func TestCrossPlatformCoverageProjectOutputVoIPCallReceiveInvite(t *testing.T) {
 	if !strings.Contains(string(encoded), `"biz_id":"VOIP_room-1_3559506650"`) || strings.Contains(string(encoded), "filterSubId") {
 		t.Fatalf("flattened VoIP output = %s, want biz_id without internal filterSubId", encoded)
 	}
+	if !strings.Contains(string(encoded), `"caller_uid":"0147333457361236773"`) || !strings.Contains(string(encoded), `"callee_uid":"digital-3559506650"`) {
+		t.Fatalf("flattened VoIP output = %s, want string caller_uid/callee_uid", encoded)
+	}
+}
+
+func TestCrossPlatformCoverageProjectOutputVoIPAcceptsLegacyNumericUserIdentifiers(t *testing.T) {
+	legacy := strings.Replace(personalVoIPData(), `"callerUid":"0147333457361236773"`, `"callerUid":1000000001`, 1)
+	legacy = strings.Replace(legacy, `"calleeUid":"digital-3559506650"`, `"calleeUid":3559506650`, 1)
+
+	projected, err := ProjectOutput(transport.Event{EventType: EventVoIPCallReceiveInvite, Data: legacy})
+	if err != nil {
+		t.Fatalf("ProjectOutput() legacy numeric identifiers error = %v", err)
+	}
+	got, ok := projected.(VoIPCallReceiveInviteOutput)
+	if !ok {
+		t.Fatalf("ProjectOutput() type = %T, want VoIPCallReceiveInviteOutput", projected)
+	}
+	if got.CallerUID != "1000000001" || got.CalleeUID != "3559506650" {
+		t.Fatalf("ProjectOutput() legacy identifiers = %q/%q", got.CallerUID, got.CalleeUID)
+	}
 }
 
 func TestCrossPlatformCoverageProjectOutputRejectsInvalidVoIPPayload(t *testing.T) {
@@ -656,6 +676,7 @@ func TestCrossPlatformCoverageProjectOutputRejectsInvalidVoIPPayload(t *testing.
 		{name: "missing", want: "payload is missing"},
 		{name: "missing body", payload: `,"payload":{"bizid":"biz-1"}`, want: "payload body is missing"},
 		{name: "missing bizid", payload: `,"payload":{"body":{"callId":"call-1"}}`, want: "bizid is required"},
+		{name: "invalid caller uid type", payload: `,"payload":{"bizid":"biz-1","body":{"callerUid":{}}}`, want: "VoIP user identifier must be a string or legacy integer"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
