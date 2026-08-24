@@ -43,17 +43,17 @@ metadata:
 | 最近访问文档 | `dws doc +search`（省略 `--query`） | `--limit` 为每页量，`--max-items` 为总上限；完整集合才加 `--page-all` 并检查 `complete` |
 | <!-- dws-intent: doc.content.read -->已知 ID/URL 读取正文或局部内容 | `dws doc +fetch --node <ID或URL>` | 术语用 `keyword`；章节 `outline` → `section`；整篇才用 `full` |
 | 聚合查看信息、权限、版本、媒体或评论 | `dws doc +inspect --node <ID或URL>` | 仅打开任务所需的 `--include-*`，不要默认全取 |
-| 新建在线文字文档并写入内容 | `dws doc +create --name <标题> --content <短文本\|-\|@相对文件>` | stdin 用 `-`，禁 `@-`；Runtime 分片回读，禁拆成多次远程写 |
+| 新建在线文字文档并写入内容 | `dws doc +create --name <标题> --content <文本\|-\|@文件> [--folder <ID>\|--workspace <ID>]` | 指定位置复用真实 ID，二者互斥；`-`=stdin，禁 `@-`；Runtime 分片回读，不拆写 |
 | <!-- dws-intent: doc.content.update -->追加、覆盖或精确编辑 block | `dws doc +update --node <ID或URL> --command <动作>` | 唯一文本 `str_replace`；章节/block 局部取 ID；整篇才 overwrite |
 | 重要内容更新且需要恢复点 | `dws doc +checkpoint-update` | 自动保存版本、更新并回读；检查 `steps` 和 `compensation` |
 | 版本操作 | `dws doc +version-save --node` / `dws doc +version-list --node` / `dws doc +version-revert --node --version` | 快照/列表/回滚 |
 | <!-- dws-intent: doc.export.format -->导出为 docx/markdown/pdf | `dws doc +export --export-format <格式>` | 格式必须显式指定；普通文件下载切 `dingtalk-drive` |
-| <!-- dws-intent: doc.import.local_file -->本地文件转在线文档 | `dws doc +import --file <相对路径>` | 位置措辞不改路由；在线转换用 import，仅保留原文件用 `dingtalk-drive` |
+| <!-- dws-intent: doc.import.local_file -->本地文件转在线文档 | `dws doc +import --file <相对路径> [--folder <ID>\|--workspace <ID>]` | 位置不改路由；指定位置复用真实 ID，二者互斥；未指定才由 Runtime 取默认根；仅保留原文件走 `dingtalk-drive` |
 | 封面/背景 | `+resource-update/+resource-delete`；`+background-update/+background-delete` | 写后 `+inspect --include-style`；禁查 Catalog |
 | 浏览模板 | `dws doc +template-list [--source MY\|PUBLIC]` | “我的/我这边”只查 MY；明确公开才查 PUBLIC；“有哪些/全部”翻页至完整 |
 | 搜索模板 | `dws doc +template-search --query <名称或关键词>` | 来源可选 MY/PUBLIC；零命中停止，禁止拿无关模板替代；多候选消歧 |
 | 从模板创建 | `dws doc +create-from-template --template-id <唯一ID>` | 已有唯一 templateId 才创建；不重复 list/search |
-| 创建评论或聚合待处理评论 | `dws doc +comment-create [--selection]` / `+review` | 划词统一用 `+comment-create`；后续操作使用真实 `commentKey` |
+| 创建/查评论 | `dws doc +comment-create --node <ID或URL> --content <文字> [--selection <原文>]` / `+review --node <ID或URL>` | node/content 必填；划词也用 `+comment-create`；续操作复用 `commentKey` |
 | <!-- dws-intent: doc.access.grant -->添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；无 `--user-ids`；先读权限，歧义/profile 不一致禁写 |
 | <!-- dws-intent: doc.share.link_only -->只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | 内置姓名解析；仅歧义时 aisearch，禁预查人；普通私信用 chat |
 | 授权后向多人分享链接 | `dws doc +grant-and-share` | 仅需改权限时用（必填 `--node`，role 默认 READER）；检查逐人账本和部分失败 |
@@ -61,13 +61,13 @@ metadata:
 
 ## 关键结果语义
 
-- 保留真实 `nodeId`、URL、资源类型和容器；同轮创建后复用返回 ID，禁再按标题或钉盘搜索。
-- 先消费完整回执；Runtime 已分片/回读时不重复读，仅局部验收、`partial_success` 或 commit-unknown 再 `+fetch`。
+- 保留真实 `nodeId`/URL/类型/容器；复用 ID，禁标题/钉盘重搜。
+- 用完整回执；Runtime 回读后不复读；仅局部验收、`partial_success`/commit-unknown 再 `+fetch`。
 - 状态恢复：`partial_success` 只补未完成步骤；`unknown` 先回读、不重试写；`retryable` 仅限明确未开始；权限/参数/认证失败停止。
-- 仅在结果明确且关键内容回读匹配后报告写入完成。
-- 搜索/列表检查 `complete`、`hasMore`、cursor 和失败项；“全部”逐页完成，示例/前 N 条可提前停止并声明范围。
-- `+import` 成功后直接复用 `documentUrl/nodeId`，禁 Drive 重定位；中断保留 `taskId`、查原任务，禁重导。
-- 导出/下载用 cwd 相对路径；`+export` 返回 `localPath` 且 `sizeBytes>0` 即终态，禁再 `ls/stat`。
+- 结果明确且回读匹配才报完成。
+- 搜索/列表检查 `complete`/`hasMore`/cursor/失败项；“全部”翻完页，前 N 条须声明范围。
+- `+import` 后复用 `documentUrl/nodeId`，禁 Drive 重找；中断以 `taskId` 查原任务，禁重导。
+- 导出/下载用 cwd 相对路径；`+export` 有 `localPath` 且 `sizeBytes>0` 即终态，禁 `ls/stat`。
 
 ## 参数与安全边界
 
