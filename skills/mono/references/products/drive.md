@@ -621,7 +621,7 @@ Flags:
 
 **创建在线文档/表格/脑图**: drive 不支持创建文件，需走 `wiki node create --type <type>`（创建空节点）或 `doc create`（创建并写入内容）。
 
-**导出文档/导出为Word**: 导出是内容层操作，走 `doc export`，不属于 drive。
+**导出文档/导出为Word**: 钉盘在线文档（存储在钉盘里的文档）的导出走 `drive export`；文档内容层操作走 `doc export`。
 
 把图片/文件发到群里一般直接用 `chat message send --msg-type file --file <本地路径>`（见 [chat.md](./chat.md)），无需先经 drive 上传。
 
@@ -803,6 +803,7 @@ Flags:
 - `docUrl` — 文件访问链接
 
 > **注意**：导出钉盘在线文档到本地可使用 `dws drive export`（通用导出，支持 docx/xlsx/pptx/pdf/markdown）；`doc export` 与 `sheet export` 是分别针对在线文档与在线表格的产品级入口。
+> 导出/复制/移动的自动轮询过程可随时用 Ctrl-C 中断；已提交的服务端任务不会中止，之后可用 `dws drive task get` 查询任务状态。
 
 ### 目标位置参数规则
 
