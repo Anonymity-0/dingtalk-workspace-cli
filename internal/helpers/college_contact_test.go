@@ -140,27 +140,13 @@ func TestCrossPlatformCoverageCollegeContactDestructive_ProceedsWithYes(t *testi
 		err, panicked := runDestructiveLeaf(t, args...)
 		if !panicked {
 			// 未 panic 意味着未到达 MCP 调用层；若返回的仍是门禁错误则为拦截失败
-			if err != nil && strings.Contains(err.Error(), "不可逆操作") {
+			if err != nil && strings.Contains(err.Error(), "需要用户确认") {
 				t.Fatalf("%v: 已传 --yes 仍被门禁拦截: %v", args, err)
 			}
 		}
 	}
 }
 
-func TestCrossPlatformCoverageCollegeContactConfirmDestructive_Helper(t *testing.T) {
-	// 无 yes flag（零值安全兼底）→ 拒绝
-	bare := &cobra.Command{Use: "x"}
-	if err := collegeContactConfirmDestructive(bare, "删除部门"); err == nil {
-		t.Error("无 --yes 应拒绝执行")
-	}
-
-	// yes=true → 放行
-	withYes := &cobra.Command{Use: "x"}
-	withYes.Flags().Bool("yes", true, "")
-	if err := collegeContactConfirmDestructive(withYes, "删除部门"); err != nil {
-		t.Errorf("已传 --yes 应放行，got: %v", err)
-	}
-}
 
 // withCollegeContactCaller installs a dry-run capture caller so happy-path
 // command execution exercises each RunE up to the callMCPToolOnServer dispatch
@@ -551,8 +537,8 @@ func TestCrossPlatformCoverageCollegeContactDestructiveConfirmGate(t *testing.T)
 			t.Errorf("%v: expected confirm-gate error without --yes, got nil", args)
 			continue
 		}
-		if !strings.Contains(err.Error(), "不可逆操作") {
-			t.Errorf("%v: expected 不可逆操作 gate error, got: %v", args, err)
+		if !strings.Contains(err.Error(), "需要用户确认") {
+			t.Errorf("%v: expected confirmation gate error, got: %v", args, err)
 		}
 	}
 }

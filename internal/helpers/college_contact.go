@@ -700,9 +700,6 @@ func newCollegeContactCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("--dept-id 须为整数: %w", err)
 			}
-			if err := collegeContactConfirmDestructive(cmd, "删除部门"); err != nil {
-				return err
-			}
 			return callMCPToolOnServer("college-contact", "delete_college_contact_dept", map[string]any{
 				"input": map[string]any{"deptId": deptID},
 			})
@@ -1988,9 +1985,6 @@ func newCollegeContactCommand() *cobra.Command {
 			}
 			input["staffIds"] = staffIDs
 
-			if err := collegeContactConfirmDestructive(cmd, "移除员工"); err != nil {
-				return err
-			}
 
 			// 可选 int64
 			for _, pair := range []struct {
@@ -3316,9 +3310,6 @@ func newCollegeContactCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("--alumni-dept-id 须为整数: %w", err)
 			}
-			if err := collegeContactConfirmDestructive(cmd, "删除校友部门"); err != nil {
-				return err
-			}
 			return callMCPToolOnServer("college-contact", "delete_alumni_dept", map[string]any{
 				"input": map[string]any{"alumniDeptId": alumniDeptId},
 			})
@@ -3705,9 +3696,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--alumni-dept-id 须为整数: %w", err)
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "删除校友"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "delete_alumnus", map[string]any{
 				"input": map[string]any{
@@ -3795,9 +3783,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--staff-ids 不能为空列表")
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "取消校友邀请"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "delete_alumni_invite_record", map[string]any{
 				"input": map[string]any{
@@ -3930,9 +3915,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--alumni-dept-id 须为整数: %w", err)
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "解散校友群"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "disband_alumni_group", map[string]any{
 				"input": map[string]any{
@@ -4814,9 +4796,6 @@ func newCollegeContactCommand() *cobra.Command {
 				input["requestNo"] = strings.TrimSpace(v)
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "提交毕业"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "commit_graduate", map[string]any{
 				"input": input,
@@ -4827,7 +4806,7 @@ func newCollegeContactCommand() *cobra.Command {
 	DeclareLeafMetadata(commitGraduateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "non_idempotent",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -4895,9 +4874,6 @@ func newCollegeContactCommand() *cobra.Command {
 				input["requestNo"] = strings.TrimSpace(v)
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "全部毕业"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "all_graduate", map[string]any{
 				"input": input,
@@ -4908,7 +4884,7 @@ func newCollegeContactCommand() *cobra.Command {
 	DeclareLeafMetadata(allGraduateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "non_idempotent",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -4983,9 +4959,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--staff-ids 不能为空列表")
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "批量毕业"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "batch_graduate", map[string]any{
 				"input": map[string]any{
@@ -4999,7 +4972,7 @@ func newCollegeContactCommand() *cobra.Command {
 	DeclareLeafMetadata(batchGraduateCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "non_idempotent",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5074,9 +5047,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--staff-ids 不能为空列表")
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "删除并毕业"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "delete_and_graduate", map[string]any{
 				"input": map[string]any{
@@ -5165,9 +5135,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--staff-ids 不能为空列表")
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "批量删除待毕业学生"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "batch_delete_pending", map[string]any{
 				"input": map[string]any{
@@ -5267,9 +5234,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--graduate-year 须为整数: %w", err)
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "批量更新待毕业学生"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "batch_update_pending", map[string]any{
 				"input": map[string]any{
@@ -5284,7 +5248,7 @@ func newCollegeContactCommand() *cobra.Command {
 	DeclareLeafMetadata(batchUpdatePendingCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "non_idempotent",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5363,9 +5327,6 @@ func newCollegeContactCommand() *cobra.Command {
 				input["requestNo"] = strings.TrimSpace(v)
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "提交恢复"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "commit_restore", map[string]any{
 				"input": input,
@@ -5376,7 +5337,7 @@ func newCollegeContactCommand() *cobra.Command {
 	DeclareLeafMetadata(commitRestoreCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "non_idempotent",
+			Confirmation: "user_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -5716,9 +5677,6 @@ func newCollegeContactCommand() *cobra.Command {
 				return fmt.Errorf("--rule-id 须为整数: %w", err)
 			}
 
-			if err := collegeContactConfirmDestructive(cmd, "删除规则"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "delete_group_rule", map[string]any{
 				"input": map[string]any{"ruleId": ruleID},
@@ -5943,9 +5901,6 @@ func newCollegeContactCommand() *cobra.Command {
   dws college-contact group execute-group-rule -y
   dws college-contact group execute-group-rule -y -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := collegeContactConfirmDestructive(cmd, "立即执行规则"); err != nil {
-				return err
-			}
 
 			return callMCPToolOnServer("college-contact", "execute_group_rule", map[string]any{
 				"input": map[string]any{},
@@ -5991,22 +5946,4 @@ func newCollegeContactCommand() *cobra.Command {
 	root.AddCommand(deptCmd, employeeCmd, alumniCmd, graduateCmd, groupCmd)
 
 	return root
-}
-
-// collegeContactConfirmDestructive 是不可逆操作（删除部门/移除员工）的安全门禁：
-//   - 全局 --dry-run 仅预览不执行，直接放行；
-//   - 显式传入全局 --yes/-y 视为已确认，放行；
-//   - 其余情况拒绝执行，避免误操作产生不可逆变更。
-//
-// 全局 flag 由核心框架注册在 rootCmd 上，cobra 执行时会将 persistent flag
-// 合并进叶子命令的 Flags()；若 flag 不存在（如单测环境），GetBool 返回零值，
-// 默认拒绝执行，保持安全兼底。
-func collegeContactConfirmDestructive(cmd *cobra.Command, action string) error {
-	if deps != nil && deps.Caller != nil && deps.Caller.DryRun() {
-		return nil
-	}
-	if yes, _ := cmd.Flags().GetBool("yes"); yes {
-		return nil
-	}
-	return fmt.Errorf("%s为不可逆操作：请先向用户展示操作摘要并获得明确同意，确认后追加 --yes 执行，或使用 --dry-run 预览", action)
 }
