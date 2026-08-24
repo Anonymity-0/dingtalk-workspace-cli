@@ -1,6 +1,6 @@
 ---
 name: dingtalk-doc
-description: 钉钉在线文字文档（adoc）：查找、创建、读取、信息、编辑、块、评论、媒体、白板卡片、导入导出（docx/markdown/pdf）、版本、模板、权限、分享和 Markdown/JSONML 写入。文件管理归 dingtalk-drive，知识库归 dingtalk-wiki，原生 .md 与 axls 归 dingtalk-misc，able 归 dingtalk-aitable。命令前缀：dws doc。
+description: 钉钉在线文字文档（adoc）：查找、创建、读取、信息、编辑、块、评论、附件与媒体、白板卡片、导入导出（docx/markdown/pdf）、版本、模板、权限、分享和 Markdown/JSONML 写入。文件管理归 dingtalk-drive，知识库归 dingtalk-wiki，原生 .md 与 axls 归 dingtalk-misc，able 归 dingtalk-aitable。命令前缀：dws doc。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -57,7 +57,7 @@ metadata:
 | <!-- dws-intent: doc.access.grant -->添加/调整/移除协作者权限 | `dws doc +access-grant/+access-change/+access-revoke` | `--to` 必填；`--role` 默认 READER（READER\|DOWNLOADER\|EDITOR\|MANAGER）；无 `--user-ids`；先读权限，歧义/profile 不一致禁写 |
 | <!-- dws-intent: doc.share.link_only -->只发链接不改权限 | `dws doc +share --to <姓名[,姓名]> --url <URL> [--note <附言>]` | 内置姓名解析；仅歧义时 aisearch，禁预查人；普通私信用 chat |
 | 授权后向多人分享链接 | `dws doc +grant-and-share` | 仅需改权限时用（必填 `--node`，role 默认 READER）；检查逐人账本和部分失败 |
-| <!-- dws-intent: doc.media.insert -->插入或下载正文媒体 | `dws doc +media-insert/+media-download` | 本地路径必须位于工作目录；下载默认 no-clobber |
+| <!-- dws-intent: doc.media.insert -->把文件/PPT/PDF 作为正文附件 | `dws doc +media-insert --node <DOC_ID> --file <相对路径>` | 正文附件走 Doc；`drive +upload` 仅入库存储，不会插入正文 |
 
 ## 关键结果语义
 
@@ -103,7 +103,7 @@ Golden Route 已给出命令且参数足够时，禁止读取 reference。其余
 ## 跨产品边界
 
 - 姓名/工号/部门/职责找人或解析 userId → `dingtalk-aisearch`；已有完整 userId 后补详情才用 `dingtalk-contact`
-- 普通文件/目录/上传下载/存储权限 → `dingtalk-drive`；原文件用 `drive upload --workspace`，在线转换用 `doc +import --workspace`
+- 普通文件/目录存储与上传下载 → `dingtalk-drive`；“放进/附到这篇文档”是正文附件 → `doc +media-insert`；在线转换 → `doc +import`
 - 文档节点复制、移动、模板另存 → `dingtalk-drive +copy/+move`；doc 同名命令仅兼容
 - 知识库空间、节点层级和成员管理 → `dingtalk-wiki`
 - 原生 `.md` 文件读取和编辑 → `dingtalk-misc`
