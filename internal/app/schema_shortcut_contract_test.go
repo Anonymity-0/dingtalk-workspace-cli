@@ -16,12 +16,12 @@ import (
 )
 
 const (
-	publicShortcutCount = 435
+	publicShortcutCount = 425
 	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
-	// including the hidden historical minutes.shortcut_minutes_search contract.
-	schemaPublishedShortcutCount = 438
+	// including reviewed hidden compatibility and unavailable contracts.
+	schemaPublishedShortcutCount = 482
 	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
-	publiclyDeliveredShortcutCount = 435
+	publiclyDeliveredShortcutCount = 425
 )
 
 func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
@@ -114,7 +114,7 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 
 	product := executeShortcutSchemaQuery(t, "chat")
 	productPayload, _ := product["product"].(map[string]any)
-	if got, want := int(product["count"].(float64)), 217; got != want {
+	if got, want := int(product["count"].(float64)), 220; got != want {
 		t.Fatalf("schema chat count = %d, want %d", got, want)
 	}
 	summaries := schemaContractObjectSlice(productPayload["tools"])
@@ -138,6 +138,57 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 	assertSchemaSummarySafety(t, summaryByCLIPath, "chat data-auth cross-org", "write", "high", "user_required")
 	assertSchemaSummarySafety(t, summaryByCLIPath, "chat group share-invite", "write", "medium", "user_required")
 	assertChatCatalogCompleteLeafContracts(t)
+}
+
+func TestChatPersonalEmotionSchemaDeclaresUnpinnedIMAdapter(t *testing.T) {
+	for _, tc := range []struct {
+		cliPath string
+		params  map[string]string
+	}{
+		{
+			cliPath: "chat emotion list",
+		},
+		{
+			cliPath: "chat emotion send",
+			params: map[string]string{
+				"media-id":         "mediaId",
+				"emotion-id":       "emotionId",
+				"group":            "openConversationId",
+				"open-dingtalk-id": "receiverOpenDingTalkId",
+				"idempotency-key":  "uuid",
+			},
+		},
+		{
+			cliPath: "chat emotion favorite",
+			params: map[string]string{
+				"media-id":               "mediaId",
+				"name":                   "name",
+				"source-conversation-id": "sourceConversationId",
+				"source-message-id":      "sourceMessageId",
+			},
+		},
+	} {
+		t.Run(tc.cliPath, func(t *testing.T) {
+			leaf := executeShortcutSchemaQuery(t, "--cli-path", tc.cliPath)
+			if got := schemaContractString(leaf["interface_mode"]); got != "composite" {
+				t.Fatalf("%s interface_mode = %q, want composite", tc.cliPath, got)
+			}
+			reason := schemaContractString(leaf["interface_reason"])
+			if !strings.Contains(reason, "Reviewed unpinned remote adapter") {
+				t.Fatalf("%s interface_reason = %q", tc.cliPath, reason)
+			}
+			parameters := schemaContractMap(leaf["parameters"])
+			for name, want := range tc.params {
+				parameter := parameters[name]
+				if parameter == nil {
+					t.Fatalf("%s missing --%s parameter: %#v", tc.cliPath, name, parameters)
+				}
+				if got := schemaContractString(parameter["property"]); got != want {
+					t.Fatalf("%s --%s property = %q, want %q", tc.cliPath, name, got, want)
+				}
+			}
+		})
+	}
 }
 
 func TestCrossPlatformCoverageAITableTableBootstrapPublishesResultContract(t *testing.T) {
@@ -220,6 +271,60 @@ func TestAllShortcutsWikiSchemaExamplesIncludeRequiredParameters(t *testing.T) {
 	}
 }
 
+func TestAllShortcutsAITableDatasourceExamplesSourceConfigHasRequiredMembers(t *testing.T) {
+	tools := deliverySchemaAllToolsForHelpFlagTest(t, NewRootCommand())
+	requiredSourceConfigMembers := []string{"processCode", "name", "iconUrl", "url"}
+	checked := 0
+	for _, declared := range shortcut.All() {
+		if declared.Service != "aitable" || declared.UserDefined || !shortcut.InPublicCatalog(declared.Service, declared.Command) {
+			continue
+		}
+		if !strings.HasPrefix(declared.Command, "+datasource-") {
+			continue
+		}
+		if declared.Command != "+datasource-create" && declared.Command != "+datasource-update" && declared.Command != "+datasource-get-fields" {
+			continue
+		}
+		checked++
+		canonical := shortcutSchemaCanonical(declared)
+		tool := tools[canonical]
+		if tool == nil {
+			t.Fatalf("delivery schema --all is missing %s", canonical)
+		}
+		examples := schemaContractStringSlice(tool["examples"])
+		if len(examples) == 0 {
+			t.Fatalf("%s has no delivered examples", canonical)
+		}
+		for _, example := range examples {
+			if !strings.Contains(example, "--source-config") {
+				continue
+			}
+			argv, err := cli.ParseAgentExampleArgv(example)
+			if err != nil {
+				t.Fatalf("%s example %q is not valid argv: %v", canonical, example, err)
+			}
+			sourceConfig := schemaExampleFlagValue(argv, "source-config")
+			if sourceConfig == "" {
+				t.Errorf("%s example %q contains --source-config but has no value", canonical, example)
+				continue
+			}
+			var cfg map[string]any
+			if err := json.Unmarshal([]byte(sourceConfig), &cfg); err != nil {
+				t.Errorf("%s example %q has invalid source-config JSON: %v", canonical, example, err)
+				continue
+			}
+			for _, member := range requiredSourceConfigMembers {
+				if _, ok := cfg[member]; !ok {
+					t.Errorf("%s example %q source-config is missing required member %q", canonical, example, member)
+				}
+			}
+		}
+	}
+	if checked != 3 {
+		t.Fatalf("checked aitable datasource source-config examples = %d, want 3", checked)
+	}
+}
+
 func schemaExampleHasLongFlag(argv []string, names ...string) bool {
 	for _, argument := range argv {
 		for _, name := range names {
@@ -229,6 +334,25 @@ func schemaExampleHasLongFlag(argv []string, names ...string) bool {
 		}
 	}
 	return false
+}
+
+func schemaExampleFlagValue(argv []string, name string) string {
+	prefix := "--" + name + "="
+	for _, argument := range argv {
+		if argument == "--"+name {
+			continue
+		}
+		if strings.HasPrefix(argument, prefix) {
+			return strings.TrimPrefix(argument, prefix)
+		}
+	}
+	// Value may be in the next argv entry: `--flag value` form.
+	for i := 0; i < len(argv)-1; i++ {
+		if argv[i] == "--"+name {
+			return argv[i+1]
+		}
+	}
+	return ""
 }
 
 func assertSchemaSummarySafety(
