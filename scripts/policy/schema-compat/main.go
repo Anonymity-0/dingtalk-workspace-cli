@@ -1869,6 +1869,24 @@ func normalizeSchemaCommandMigrations(
 		normalizedProduct := normalized.Products[migration.Schema.ProductID]
 		normalizedTool := normalizedProduct.Tools[migration.Schema.SourceToolID]
 		switch migration.Kind {
+		case interfacesnapshot.CommandMigrationAvailability:
+			change := migration.Schema.Availability
+			if change != nil && oldTool.Availability == change.After && newSource.Availability == change.After {
+				continue
+			}
+			if change == nil || oldTool.Availability != change.Before || newSource.Availability != change.After {
+				return schemaContract{}, fmt.Errorf(
+					"approved availability hardening %q does not match Schema availability %q -> %q",
+					migration.Legacy.Command,
+					oldTool.Availability,
+					newSource.Availability,
+				)
+			}
+			if newSource.PrimaryCLIPath != legacyPath {
+				continue
+			}
+			normalizedTool.Availability = newSource.Availability
+
 		case interfacesnapshot.CommandMigrationMove:
 			if newSource.PrimaryCLIPath != replacementPath {
 				continue
