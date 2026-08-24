@@ -595,6 +595,7 @@ Flags:
 用户说"恢复文件/还原删除的文件/从回收站恢复/还原回收站文件" → `recycle restore`
 用户说"给文档授权/分享权限" → `permission add`
 用户说"授权并通知对方/加权限后告知他/通知一下被授权的人" → `permission add --members ... --notify`（未提通知需求时不传 `--notify`）
+用户说"权限设置/权限模式/分享范围/水印等策略配置" → `permission get-setting`
 用户说"公开文件/互联网公开/设置公开/让互联网所有人可访问" → `publish set`
 用户说"关闭公开/取消公开/取消互联网访问" → `publish unset`
 用户说"查看公开状态/是否公开/发布状态" → `publish get`
@@ -724,6 +725,7 @@ Usage:
   dws drive permission update --node <ID> --members '[{"type":"CONVERSATION","id":"cidXXX","roleId":"READER"}]'
   dws drive permission list --node <ID>
   dws drive permission list --node <ID> --limit 50 --next-token <上次返回的 nextToken>
+  dws drive permission get-setting --node <ID>
   dws drive permission remove --node <ID> --users uid1
   dws drive permission remove --node <ID> --members '[{"type":"USER","id":"uid1","corpId":"xxx"},{"type":"DEPT","id":"deptId1","corpId":"xxx"}]'
 Flags:
@@ -753,6 +755,17 @@ Flags:
 > - 操作者须满足该节点配置的权限管理最低角色要求（默认 MANAGER，可配置为 EDITOR 等），权限不足返回 `forbidden.accessDenied`
 > - 单次请求最多 30 个成员，超出请分批调用
 > - list 命令底层一次性返回全量成员后在内存中按 pageSize 分页，当 `hasMore` 为 true 时，传入 `--next-token` 即可获取下一页
+
+`get-setting` 返回节点权限配置（不是成员清单）：`permissionMode`（INHERITED 继承上级 / INDEPENDENT 独立管理）、`shareScope`（可见范围与链接分享设置）、`policies`（水印、组织外分享、添加成员门槛等策略列表）。查询协作者清单仍用 `permission list`。
+
+get-setting 返回字段说明：
+- `permissionMode` — INHERITED（继承上级）/ INDEPENDENT（独立管理），未知时为 null
+- `shareScope` — `visibility`（PRIVATE/ORGANIZATION/PUBLIC）；`partnerIncluded`、`defaultRole`、`canSearch`、`canRecommend` 仅 ORGANIZATION 有意义；`linkShare`（仅开启链接分享时返回）：`requirePassword`（密码明文不返回）、`expireAt`/`expireDays`（未设置为 null）、`forCurrentNode`
+- `policies[]` — 每项含 `code`（策略码）、`name`/`description`（中文名与值语义说明，随行必带）、`value`（当前值）、`disabledValues`（不可设置取值列表）、`allowedValues`（可设置值域，与 disabledValues 互斥）；未下发或不支持的策略不返回；`node_spread_scope` 仅文件夹类节点返回
+- `disabledValues[]` — 每项含 `value`（被禁档位取值，与 value 同一值域）与 `reason`（服务端按请求语言返回的禁用原因文案，仅供展示理解，可为 null）；恒返回，无被禁档位时为空数组；示例：`{"value": "READER_AND_ABOVE", "reason": "企业安全策略要求不可低于可下载角色"}`
+- `value` 按策略分型：开关型（external_share、external_share_manager_only、member_invite_org_only、permission_apply、external_permission_apply、watermark、node_move_forbidden）为 ENABLED/DISABLED；member_invite、comment 为 READER_AND_ABOVE/DOWNLOADER_AND_ABOVE/EDITOR_AND_ABOVE/MANAGER_AND_ABOVE（无 NOBODY）；node_spread、online_content_copy 为 DOWNLOADER_AND_ABOVE/EDITOR_AND_ABOVE/MANAGER_AND_ABOVE 或 NOBODY（无 READER_AND_ABOVE）；node_spread_scope 为 ALL_NODES（限制对所有文档生效）/ PREVIEWABLE_ONLY（仅对可预览的文档生效）
+- `name`/`description` 示例（文案与产品权限设置页一致）：external_share「添加企业外协作者」：是否允许添加企业外的人为协作者（ENABLED=允许，DISABLED=禁止）；node_spread「谁可以下载、创建副本、打印」：允许哪些角色及以上的用户下载、创建副本、打印；NOBODY=所有人禁止下载、创建副本、打印；node_move_forbidden「禁止移动」：是否禁止移动到其他知识库或团队共享文件夹（ENABLED=禁止移动，DISABLED=允许移动）
+- 方向语义：NOBODY=该操作对所有人禁止；XXX_AND_ABOVE=不低于该角色才允许
 
 ### 文件互联网公开发布
 
