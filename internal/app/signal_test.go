@@ -81,6 +81,13 @@ func TestFrameworkSignalRedeliveryFallbackAndInterruptionMethods(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageProcessInterruptionRejectsNestedDetail(t *testing.T) {
+	interrupted := &processInterruption{signal: syscall.SIGINT}
+	if got := interrupted.withCancellationDetail(&processInterruption{signal: syscall.SIGTERM}); got != interrupted {
+		t.Fatalf("nested interruption changed the primary signal error: %v", got)
+	}
+}
+
 func TestFrameworkManageProcessSignalsNilAndEscalation(t *testing.T) {
 	signals := make(chan os.Signal, 3)
 	stopped, escalated := false, make(chan os.Signal, 1)
