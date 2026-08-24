@@ -5,21 +5,23 @@ package smart
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/minutesdata"
 )
 
 func minutesTranscriptResult() *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{
 			contract.ResultOutcomeSuccess,
-			contract.ResultOutcomePartialFailure,
 			contract.ResultOutcomeFailure,
 		},
-		DataSchema: json.RawMessage(`{"type":"object","description":"带分页完整性证据的听记逐字稿","properties":{"taskUuid":{"type":"string","description":"听记稳定 taskUuid"},"direction":{"type":"string","description":"逐字稿段落排序方向"},"complete":{"type":"boolean","description":"是否已证明逐字稿分页读取完整"},"pages":{"type":"integer","description":"本次实际读取的分页数量"},"paragraphCount":{"type":"integer","description":"跨页去重后的逐字稿段落数量"},"duplicateCount":{"type":"integer","description":"跨页读取时移除的重复段落数量"},"paragraphList":{"type":"array","description":"跨页去重后的逐字稿段落","items":{"type":"object","description":"一条逐字稿段落","additionalProperties":true}},"nextToken":{"type":"string","description":"单页读取或失败恢复时可继续使用的分页 token"},"failurePage":{"type":"integer","description":"分页读取失败所在的页码"},"failure":{"type":"string","description":"分页读取失败原因"}},"required":["taskUuid","direction","complete","pages","paragraphCount","duplicateCount","paragraphList"],"additionalProperties":true}`),
+		DataSchema: json.RawMessage(`{"type":"object","description":"带分页完整性证据的听记逐字稿","properties":{"taskUuid":{"type":"string","description":"听记稳定 taskUuid"},"direction":{"type":"string","description":"逐字稿段落排序方向"},"complete":{"type":"boolean","description":"是否已证明逐字稿分页读取完整"},"pages":{"type":"integer","description":"本次实际读取的分页数量"},"paragraphCount":{"type":"integer","description":"跨页去重后的逐字稿段落数量"},"duplicateCount":{"type":"integer","description":"跨页读取时移除的重复段落数量"},"paragraphList":{"type":"array","description":"跨页去重后的逐字稿段落","items":{"type":"object","description":"一条逐字稿段落","additionalProperties":true}}},"required":["taskUuid","direction","complete","pages","paragraphCount","duplicateCount","paragraphList"],"additionalProperties":true}`),
 	}
 }
 
@@ -48,6 +50,67 @@ func withMinutesTranscriptResult(decl corecmd.ContractDecl) corecmd.ContractDecl
 	decl.Result = minutesTranscriptResult()
 	decl.Pagination = minutesTranscriptPagination()
 	return decl
+}
+
+func outputMinutesTranscriptResult(rt *shortcut.RuntimeContext, payload map[string]any, result minutesdata.TranscriptResult, readErr error) error {
+	if !output.UsesUnifiedResult(rt.Command()) {
+		if err := rt.Output(payload); err != nil {
+			return err
+		}
+		if readErr != nil {
+			taskUUID, _ := payload["taskUuid"].(string)
+			return minutesTranscriptReadError(taskUUID, result, readErr)
+		}
+		return nil
+	}
+
+	business := make(map[string]any, len(payload))
+	for key, value := range payload {
+		if key == "nextToken" {
+			continue
+		}
+		business[key] = value
+	}
+	meta := &output.Meta{Count: output.NewCount(len(result.Paragraphs))}
+	pagination, paginationErr := output.NewPagination(result.Complete, result.NextToken)
+	if paginationErr == nil {
+		pagination.Pages = result.Pages
+		pagination.Items = len(result.Paragraphs)
+		meta.Pagination = pagination
+	}
+	if readErr != nil {
+		taskUUID, _ := payload["taskUuid"].(string)
+		details := map[string]any{
+			"taskUuid":       taskUUID,
+			"pages":          result.Pages,
+			"paragraphCount": len(result.Paragraphs),
+			"cause":          readErr.Error(),
+		}
+		if result.NextToken != "" {
+			details["nextToken"] = result.NextToken
+		}
+		options := []output.ResultOption{output.WithMeta(meta)}
+		if paginationErr != nil {
+			options = nil
+		}
+		started := true
+		return output.StoreResult(rt.Command().Context(), output.Failure(&output.ErrorInfo{
+			Type:             "api",
+			Subtype:          "minutes_transcript_incomplete",
+			Message:          fmt.Sprintf("逐字稿读取不完整：已读取 %d 页、%d 个段落", result.Pages, len(result.Paragraphs)),
+			Hint:             "使用 meta.pagination.next_token 继续读取；若该字段缺失，请从当前听记首页重试。",
+			Operation:        "minutes/get_minutes_transcription",
+			Origin:           "mcp",
+			Stage:            "pagination",
+			ExecutionStarted: &started,
+			Details:          details,
+			TechnicalDetail:  readErr.Error(),
+		}, options...))
+	}
+	if paginationErr != nil {
+		return fmt.Errorf("minutes transcript pagination result is invalid: %w", paginationErr)
+	}
+	return output.StoreResult(rt.Command().Context(), output.Success(business, output.WithMeta(meta)))
 }
 
 func minutesSmartContract(command, description, useWhen string, avoidWhen, examples, aliases []string) corecmd.ContractDecl {

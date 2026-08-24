@@ -5,10 +5,12 @@ package minutes
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -16,10 +18,9 @@ func minutesListResult() *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{
 			contract.ResultOutcomeSuccess,
-			contract.ResultOutcomePartialFailure,
 			contract.ResultOutcomeFailure,
 		},
-		DataSchema: json.RawMessage(`{"type":"object","description":"带范围与完整性证据的听记列表","properties":{"scope":{"type":"string","description":"本次列表的产品范围"},"count":{"type":"integer","description":"本次返回的去重听记数量"},"scannedCount":{"type":"integer","description":"标题过滤前扫描到的去重听记数量"},"minutes":{"type":"array","description":"稳定投影后的听记条目","items":{"type":"object","description":"包含稳定 taskUuid 的听记条目","additionalProperties":true}},"pages":{"type":"integer","description":"本次实际读取的页数"},"complete":{"type":"boolean","description":"是否已证明目标产品范围完整"},"endpointExhausted":{"type":"boolean","description":"本次调用的服务端分页端点是否耗尽"},"nextToken":{"type":"string","description":"单页预览可继续读取的分页 token"},"nextAction":{"type":"string","description":"当前结果不完整时的安全继续方式"},"scopeLedger":{"type":"array","description":"accessible 聚合时各范围的完整性台账","items":{"type":"object","description":"一个底层范围的分页与结果状态","additionalProperties":true}}},"required":["scope","count","minutes","pages","complete","endpointExhausted"],"additionalProperties":true}`),
+		DataSchema: json.RawMessage(`{"type":"object","description":"带范围与完整性证据的听记列表","properties":{"scope":{"type":"string","description":"本次列表的产品范围"},"count":{"type":"integer","description":"本次返回的去重听记数量"},"scannedCount":{"type":"integer","description":"标题过滤前扫描到的去重听记数量"},"minutes":{"type":"array","description":"稳定投影后的听记条目","items":{"type":"object","description":"包含稳定 taskUuid 的听记条目","additionalProperties":true}},"pages":{"type":"integer","description":"本次实际读取的页数"},"complete":{"type":"boolean","description":"是否已证明目标产品范围完整"},"nextAction":{"type":"string","description":"当前结果不完整时的安全继续方式"},"scopeLedger":{"type":"array","description":"accessible 聚合时各范围的完整性台账","items":{"type":"object","description":"一个底层范围的分页与结果状态","additionalProperties":true}}},"required":["scope","count","minutes","pages","complete"],"additionalProperties":true}`),
 	}
 }
 
@@ -78,6 +79,75 @@ func withMinutesListResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
 	decl.Pagination = minutesCursorPagination()
 	return decl
 }
+
+// outputMinutesListResult keeps the business payload and the framework cursor
+// metadata separate. Legacy projection is retained for defensive direct use,
+// while the five published Minutes pagination routes use the unified result.
+func outputMinutesListResult(rt *shortcut.RuntimeContext, payload map[string]any, result minutesListCollection, readErr error) error {
+	if !output.UsesUnifiedResult(rt.Command()) {
+		if err := rt.Output(payload); err != nil {
+			return err
+		}
+		return readErr
+	}
+
+	business := make(map[string]any, len(payload))
+	for key, value := range payload {
+		if key == "endpointExhausted" || key == "nextToken" {
+			continue
+		}
+		business[key] = value
+	}
+
+	meta := &output.Meta{Count: output.NewCount(len(result.Rows))}
+	pagination, paginationErr := output.NewPagination(result.EndpointExhausted, result.NextToken)
+	_, aggregateResult := payload["scopeLedger"]
+	if readErr != nil && aggregateResult {
+		// The token belongs to one internal mine/shared leg and cannot be passed
+		// safely to the public aggregate command's --cursor flag.
+		pagination = nil
+		paginationErr = fmt.Errorf("aggregate pagination cannot publish an internal scope cursor")
+	}
+	if paginationErr == nil {
+		pagination.Pages = result.Pages
+		pagination.Items = len(result.Rows)
+		meta.Pagination = pagination
+	}
+	if readErr != nil {
+		details := map[string]any{
+			"pages":     result.Pages,
+			"itemCount": len(result.Rows),
+			"cause":     readErr.Error(),
+		}
+		if result.NextToken != "" && !aggregateResult {
+			details["nextToken"] = result.NextToken
+		}
+		options := []output.ResultOption{output.WithMeta(meta)}
+		hint := "使用 meta.pagination.next_token 继续读取；若该字段缺失，请从未完成的范围首页重试。"
+		if paginationErr != nil {
+			meta.Pagination = nil
+			hint = "当前聚合范围没有可安全复用的公开 cursor；请重新执行同一条 --page-all 命令。"
+		}
+		return output.StoreResult(rt.Command().Context(), output.Failure(&output.ErrorInfo{
+			Type:             "api",
+			Subtype:          "minutes_pagination_incomplete",
+			Message:          fmt.Sprintf("听记分页读取不完整：已读取 %d 页、%d 条听记", result.Pages, len(result.Rows)),
+			Hint:             hint,
+			Operation:        "minutes/list_by_keyword_and_time_range",
+			Origin:           "mcp",
+			Stage:            "pagination",
+			ExecutionStarted: boolPointer(true),
+			Details:          details,
+			TechnicalDetail:  readErr.Error(),
+		}, options...))
+	}
+	if paginationErr != nil {
+		return fmt.Errorf("minutes pagination result is invalid: %w", paginationErr)
+	}
+	return output.StoreResult(rt.Command().Context(), output.Success(business, output.WithMeta(meta)))
+}
+
+func boolPointer(value bool) *bool { return &value }
 
 func withMinutesRecordResult(decl corecmd.ContractDecl) corecmd.ContractDecl {
 	decl.Result = minutesRecordResult()

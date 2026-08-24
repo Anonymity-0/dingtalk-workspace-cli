@@ -19,6 +19,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/localio"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/spf13/cobra"
@@ -36,10 +37,23 @@ func runMinutesAlignmentCLIWithWriter(t *testing.T, caller *minutesE2ECaller, wr
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.PersistentFlags().String("format", "json", "")
 	root.AddCommand(shortcut.Commands()...)
+	ctx, _ := output.WithResultStore(context.Background())
+	root.SetContext(ctx)
 	root.SetOut(writer)
 	root.SetErr(&bytes.Buffer{})
 	root.SetArgs(args)
-	return root.Execute()
+	executed, err := root.ExecuteC()
+	if err != nil || !output.UsesUnifiedResult(executed) {
+		return err
+	}
+	code, _, emitErr := output.EmitStoredResult(executed)
+	if emitErr != nil {
+		return emitErr
+	}
+	if code != 0 {
+		return fmt.Errorf("command result exit code %d", code)
+	}
+	return nil
 }
 
 func TestCrossPlatformCoverageMinutesAlignmentValidationAndHelpers(t *testing.T) {
@@ -133,12 +147,15 @@ func TestCrossPlatformCoverageMinutesSearchFailureAndCursorBranchesE2E(t *testin
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			payload, _, err := runMinutesAlignmentCLI(t, test.caller, test.args...)
+			payload, raw, err := runMinutesAlignmentCLI(t, test.caller, test.args...)
 			if (err != nil) != test.wantError {
 				t.Fatalf("payload=%#v err=%v", payload, err)
 			}
-			if test.wantNext != "" && payload["nextToken"] != test.wantNext {
-				t.Fatalf("payload=%#v", payload)
+			if test.wantNext != "" {
+				pagination := minutesPaginationFromOutput(t, raw)
+				if pagination["next_token"] != test.wantNext || pagination["endpoint_exhausted"] != false {
+					t.Fatalf("pagination=%#v payload=%#v", pagination, payload)
+				}
 			}
 		})
 	}

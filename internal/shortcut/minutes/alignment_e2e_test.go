@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -17,6 +18,7 @@ import (
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/localio"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -80,19 +82,49 @@ func runMinutesAlignmentCLI(t *testing.T, caller *minutesE2ECaller, args ...stri
 	root.PersistentFlags().Bool("dry-run", false, "")
 	root.PersistentFlags().String("format", "json", "")
 	root.AddCommand(shortcut.Commands()...)
+	ctx, _ := output.WithResultStore(context.Background())
+	root.SetContext(ctx)
 	var stdout bytes.Buffer
 	root.SetOut(&stdout)
 	root.SetErr(&bytes.Buffer{})
 	root.SetArgs(args)
-	err := root.Execute()
+	executed, err := root.ExecuteC()
+	if err == nil && output.UsesUnifiedResult(executed) {
+		code, _, emitErr := output.EmitStoredResult(executed)
+		if emitErr != nil {
+			err = emitErr
+		} else if code != 0 {
+			err = fmt.Errorf("command result exit code %d", code)
+		}
+	}
 	if stdout.Len() == 0 {
 		return nil, "", err
 	}
-	var payload map[string]any
-	if decodeErr := json.Unmarshal(stdout.Bytes(), &payload); decodeErr != nil {
+	var envelope map[string]any
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &envelope); decodeErr != nil {
 		t.Fatalf("decode output %q: %v", stdout.String(), decodeErr)
 	}
-	return payload, stdout.String(), err
+	if payload, ok := envelope["data"].(map[string]any); ok {
+		return payload, stdout.String(), err
+	}
+	return envelope, stdout.String(), err
+}
+
+func minutesPaginationFromOutput(t *testing.T, raw string) map[string]any {
+	t.Helper()
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+		t.Fatalf("decode pagination envelope %q: %v", raw, err)
+	}
+	meta, ok := envelope["meta"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing meta in envelope: %#v", envelope)
+	}
+	pagination, ok := meta["pagination"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing meta.pagination in envelope: %#v", envelope)
+	}
+	return pagination
 }
 
 func TestCrossPlatformCoverageMinutesSearchPaginatesFiltersAndRejectsUnknownE2E(t *testing.T) {
@@ -102,9 +134,13 @@ func TestCrossPlatformCoverageMinutesSearchPaginatesFiltersAndRejectsUnknownE2E(
 			`{"success":true,"result":{"itemList":[{"uuid":"u1","title":"周会 A","startTime":1},{"uuid":"u3","title":"周会 B","startTime":3}],"hasNext":false}}`,
 		},
 	}}
-	payload, _, err := runMinutesAlignmentCLI(t, caller, "minutes", "+search", "--query", "周会", "--scope", "mine", "--page-all")
+	payload, raw, err := runMinutesAlignmentCLI(t, caller, "minutes", "+search", "--query", "周会", "--scope", "mine", "--page-all")
 	if err != nil || payload["count"] != float64(2) || payload["scannedCount"] != float64(3) || payload["pages"] != float64(2) || payload["complete"] != true {
 		t.Fatalf("search payload=%#v err=%v", payload, err)
+	}
+	pagination := minutesPaginationFromOutput(t, raw)
+	if pagination["endpoint_exhausted"] != true || pagination["pages"] != float64(2) || pagination["items"] != float64(2) {
+		t.Fatalf("search pagination=%#v", pagination)
 	}
 	if calls := caller.arguments["minutes/list_by_keyword_and_time_range"]; len(calls) != 2 || calls[1]["nextToken"] != "n2" {
 		t.Fatalf("search calls=%#v", calls)

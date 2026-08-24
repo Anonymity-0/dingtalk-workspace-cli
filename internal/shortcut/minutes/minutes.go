@@ -20,6 +20,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/minutesdata"
 )
@@ -32,12 +33,13 @@ const listeningNoteCmdTool = "执行听记指令-发起AI听记录音"
 // ── list ────────────────────────────────────────────────────────────────────
 
 var ListMine = shortcut.Shortcut{
-	Service:     "minutes",
-	Command:     "+list-mine",
-	Product:     "minutes",
-	Description: "查询我创建的听记列表",
-	Intent:      "当你想找回自己发起或录制的某次听记（会议纪要），却只记得大概的标题关键字时使用；可按关键字筛选并分页，返回自己创建的听记列表及其 taskUuid，便于后续查看摘要、转写或待办。",
-	Risk:        shortcut.RiskRead,
+	OutputRollout: output.RolloutUnifiedActive,
+	Service:       "minutes",
+	Command:       "+list-mine",
+	Product:       "minutes",
+	Description:   "查询我创建的听记列表",
+	Intent:        "当你想找回自己发起或录制的某次听记（会议纪要），却只记得大概的标题关键字时使用；可按关键字筛选并分页，返回自己创建的听记列表及其 taskUuid，便于后续查看摘要、转写或待办。",
+	Risk:          shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
@@ -81,12 +83,13 @@ var ListMine = shortcut.Shortcut{
 }
 
 var ListShared = shortcut.Shortcut{
-	Service:     "minutes",
-	Command:     "+list-shared",
-	Product:     "minutes",
-	Description: "查询他人共享给我的听记列表",
-	Intent:      "当你要找同事分享给你的会议听记、想快速定位别人共享过来的纪要时使用；可按关键字筛选并分页，返回他人共享给你的听记列表及 taskUuid。",
-	Risk:        shortcut.RiskRead,
+	OutputRollout: output.RolloutUnifiedActive,
+	Service:       "minutes",
+	Command:       "+list-shared",
+	Product:       "minutes",
+	Description:   "查询他人共享给我的听记列表",
+	Intent:        "当你要找同事分享给你的会议听记、想快速定位别人共享过来的纪要时使用；可按关键字筛选并分页，返回他人共享给你的听记列表及 taskUuid。",
+	Risk:          shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
@@ -130,12 +133,13 @@ var ListShared = shortcut.Shortcut{
 }
 
 var ListAll = shortcut.Shortcut{
-	Service:     "minutes",
-	Command:     "+list-all",
-	Product:     "minutes",
-	Description: "预览或完整查询我有权限访问的听记列表",
-	Intent:      "当你不确定某条听记是自己创建还是别人共享时使用；默认只返回可续拉预览且不声称 accessible 完整，显式 --page-all 才分别追完「我创建的」和「共享给我的」、按 taskUuid 去重，并在两个范围都耗尽后交付 complete=true。",
-	Risk:        shortcut.RiskRead,
+	OutputRollout: output.RolloutUnifiedActive,
+	Service:       "minutes",
+	Command:       "+list-all",
+	Product:       "minutes",
+	Description:   "预览或完整查询我有权限访问的听记列表",
+	Intent:        "当你不确定某条听记是自己创建还是别人共享时使用；默认只返回可续拉预览且不声称 accessible 完整，显式 --page-all 才分别追完「我创建的」和「共享给我的」、按 taskUuid 去重，并在两个范围都耗尽后交付 complete=true。",
+	Risk:          shortcut.RiskRead,
 	Safety: contract.SafetySpec{
 		Effect: "read", Risk: "low",
 		Confirmation: "not_required", Idempotency: "idempotent",
@@ -224,10 +228,7 @@ func callList(rt *shortcut.RuntimeContext, scope, belonging string) error {
 	if scope == "all" && !rt.Bool("page-all") {
 		payload["nextAction"] = "dws minutes +list-all --page-all"
 	}
-	if outputErr := rt.Output(payload); outputErr != nil {
-		return outputErr
-	}
-	return err
+	return outputMinutesListResult(rt, payload, result, err)
 }
 
 func callAccessibleList(rt *shortcut.RuntimeContext, extra map[string]any) error {
@@ -240,10 +241,7 @@ func callAccessibleList(rt *shortcut.RuntimeContext, extra map[string]any) error
 	if err != nil {
 		payload["nextAction"] = "retry the incomplete scope with its reported nextToken"
 	}
-	if outputErr := rt.Output(payload); outputErr != nil {
-		return outputErr
-	}
-	return err
+	return outputMinutesListResult(rt, payload, result, err)
 }
 
 func collectAccessibleMinutes(rt *shortcut.RuntimeContext, extra map[string]any) (minutesListCollection, []map[string]any, error) {
@@ -268,7 +266,11 @@ func collectAccessibleMinutes(rt *shortcut.RuntimeContext, extra map[string]any)
 			seenIDs[id] = true
 			rows = append(rows, row)
 		}
-		ledger = append(ledger, map[string]any{"scope": item.scope, "pages": part.Pages, "count": len(part.Rows), "complete": part.Complete, "nextToken": part.NextToken})
+		ledgerEntry := map[string]any{"scope": item.scope, "pages": part.Pages, "count": len(part.Rows), "complete": part.Complete}
+		if part.NextToken != "" {
+			ledgerEntry["nextToken"] = part.NextToken
+		}
+		ledger = append(ledger, ledgerEntry)
 		if err != nil {
 			return minutesListCollection{Rows: rows, Pages: pages, Complete: false, EndpointExhausted: false, NextToken: part.NextToken}, ledger, err
 		}

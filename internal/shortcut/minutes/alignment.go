@@ -16,6 +16,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/localio"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/minutesdata"
 )
@@ -26,7 +27,8 @@ var (
 )
 
 var Search = shortcut.Shortcut{
-	Service: "minutes", Command: "+search", Product: "minutes",
+	OutputRollout: output.RolloutUnifiedActive,
+	Service:       "minutes", Command: "+search", Product: "minutes",
 	Description: "按范围、标题关键词和时间搜索听记，支持安全全量翻页",
 	Intent:      "需要按标题关键词或时间范围搜索自己创建、他人共享或全部可访问听记时使用；对后端返回再做确定性标题匹配，返回稳定 taskUuid 投影与完整性信息。",
 	Risk:        shortcut.RiskRead,
@@ -309,10 +311,7 @@ func executeMinutesSearch(rt *shortcut.RuntimeContext) error {
 	if readErr != nil {
 		payload["nextAction"] = "resume the incomplete scope from its reported nextToken"
 	}
-	if outputErr := rt.Output(payload); outputErr != nil {
-		return outputErr
-	}
-	return readErr
+	return outputMinutesListResult(rt, payload, result, readErr)
 }
 
 func executeMinutesDownload(rt *shortcut.RuntimeContext) error {

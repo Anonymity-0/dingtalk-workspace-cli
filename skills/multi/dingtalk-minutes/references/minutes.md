@@ -57,7 +57,7 @@ dws minutes <group> <leaf> --help
 | `minutes list shared` | 共享给我的 | 单页接口；继续读取必须透传真实 cursor/nextToken |
 | `minutes list all` | 后端 noLimit 视图 | 不能仅凭该端点宣称等于完整 `mine + shared` |
 
-完整检索优先用 `+search --page-all` 或 `+list-* --page-all`，因为 Shortcut 会统一返回 `scope/count/minutes/pages/complete/endpointExhausted/nextToken`。原子列表只有一页，必须解析真实 `itemList`，不能把未知响应形态当空数组。
+完整检索优先用 `+search --page-all` 或 `+list-* --page-all`。这些 Shortcut 使用统一结果信封：业务集合与范围完整性位于 `data.scope/count/minutes/pages/complete`，端点耗尽与续页信息位于 `meta.pagination.endpoint_exhausted/next_token`。原子列表只有一页，必须解析真实 `itemList`，不能把未知响应形态当空数组。
 
 定位规则：
 
@@ -78,7 +78,7 @@ dws minutes <group> <leaf> --help
 | `minutes get audio --id <taskUuid>` | 临时媒体 URL | URL 敏感且会过期，不长期记录 |
 | `minutes get batch --ids <uuid1,uuid2>` | 多条基础详情 | 批量结果逐项对应 ID，缺项不能算全成功 |
 
-完整逐字稿优先 `+transcript`；它跨页去重并返回 `complete/pages/nextToken/failurePage`。`+detail` 适合一次读取多种产物；任何所选产物失败都属于 partial，不把 bundle 说成完整。
+完整逐字稿优先 `+transcript`；它跨页去重，业务完整性位于 `data.complete/data.pages`，续页状态位于 `meta.pagination`，分页中断返回失败信封。`+detail` 适合一次读取多种产物；任何所选产物失败都属于 partial，不把 bundle 说成完整。
 
 需要核对多条命中的 basic 时，不要只抽查第一条：
 

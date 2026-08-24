@@ -43,7 +43,7 @@ metadata:
 | 浏览我创建、共享给我或全部可访问听记 | `+list-mine` / `+list-shared` / `+list-all` | 默认是可续拉预览；要声称完整必须加 `--page-all` 并检查 `complete=true`。用户只说“我的听记”不等于明确 `mine`，范围不清时用 `all` |
 | 看我最新创建的一条 | `dws minutes +latest [--keyword <关键词>]` | 只在用户明确说“最新”时用；不能用它替代具名目标搜索，也不能在录音 start 后拿 latest 猜新录音 ID |
 | 读取基础信息、摘要或关键词 | `dws minutes +detail --id <taskUuid> --artifacts basic,summary,keywords` | 只读取需要的产物；任一产物失败都按 partial/非零处理，不把缺失项说成空内容 |
-| 读取逐字稿 | `dws minutes +transcript --id <taskUuid> [--direction 1] [--single-page]` | 默认正序并追完分页；倒序必须传 `--direction 1`，用户明确只要第一页时传 `--single-page`，不得随后自动续页。交付前检查 `direction/complete/pages/nextToken` |
+| 读取逐字稿 | `dws minutes +transcript --id <taskUuid> [--direction 1] [--single-page]` | 默认正序并追完分页；倒序必须传 `--direction 1`，用户明确只要第一页时传 `--single-page`，不得随后自动续页。交付前检查 `data.direction/data.complete/data.pages` 与 `meta.pagination` |
 | 读取行动项 | `dws minutes +action-items --id <taskUuid>` | 只有受支持字段明确返回空数组才能说“没有待办”；`unsupported_shape`、字段解析失败或工具失败都不是空结果。需要创建钉钉待办时再切 `dingtalk-todo` |
 | 把摘要、关键词、完整逐字稿和行动项归档到本地 | `dws minutes +export-pack --id <taskUuid> --output <新相对目录>` | 要带媒体时加 `--include-media`；必须由 `published/path/manifest/files` 证明落盘，只有建目录、计划或文件名不能称已生成 |
 | 修改或预览标题 | `dws minutes +update --id <taskUuid> --title "<新标题>"` | 真实修改按 Runtime confirmation 执行并读回；用户只要预览时先读 basic，再加 `--dry-run`，展示“当前值 → 目标值”后停止，不追加 `--yes` |
@@ -68,7 +68,7 @@ dws minutes +list-shared --page-all --format json
 dws minutes +list-all --page-all --format json
 ```
 
-只有用户明确要第一页、预览或样本时才省略 `--page-all`，并如实保留 `complete=false/nextToken`。有时间窗必须使用 `+search`，因为 `+list-*` 不接受 `--start/--end`。
+只有用户明确要第一页、预览或样本时才省略 `--page-all`，并如实保留 `data.complete=false` 与 `meta.pagination.next_token`。有时间窗必须使用 `+search`，因为 `+list-*` 不接受 `--start/--end`。
 
 ## 目标与完整性
 
@@ -76,7 +76,7 @@ dws minutes +list-all --page-all --format json
 - 用户说“先确认/核对目标”默认要求用真实 basic 字段完成证据核对，不自动变成等待用户回复的会话门禁。目标唯一、分页完整且后续均为只读时，展示标题、时间、归属等核对证据后在同一轮继续；只有用户明确要求“等我确认后再继续”或仍有多个合理候选时才暂停。
 - 纯能力、规则或错误说明且没有唯一真实目标时直接解释，不猜对象；用户明确要求核对且目标唯一时必须真实读取，不能只展示命令。
 - `mine` 仅表示我创建的，`shared` 仅表示共享给我的；`all` 表示 accessible 聚合目标。不得声称后端单个 noLimit 端点天然等于 `mine + shared`。
-- 列表或逐字稿只有 `complete=true` 才能称为“全部/完整”。全量请求遇到有效 continuation 时继续；只有 `nextToken` 缺失、cursor 停滞/循环、达到 `page-limit` 或后页失败时才停止，并保留不完整证据。
+- 列表或逐字稿只有 `data.complete=true` 才能称为“全部/完整”。全量请求遇到 `meta.pagination.next_token` 时继续；只有 token 缺失、cursor 停滞/循环、达到 `page-limit` 或后页失败时才停止，并保留失败信封或不完整证据。
 - 用户要求核对、汇总“这些/每条/全部”命中项时，必须覆盖完整命中集合；可用 `dws minutes +detail --ids <uuid1,uuid2> --artifacts basic --format json` 批量核对，并逐项保留失败。只检查第一条不能代表全体；响应没有逐条归属或组织字段时如实说明不可得，不能用当前 profile 的组织名代替每条听记的归属。
 - 多听记、多来源或跨产品汇总按每个 `taskUuid`/来源 ID 保留 `requested/resolved/missing/artifacts/status`；缺输入或必需产物时整体按 partial，不用已找到项代表全部。
 - 内容归纳必须来自每条真实 `summary/transcript/keywords`；只有 `title/basic` 时只列元数据，不生成摘要、关键词或分类。
@@ -102,7 +102,7 @@ Golden Route 参数足够时直接执行，不预读 Reference。每个 Case 最
 
 ## 错误最短路径
 
-1. 零命中、多候选或 ID 类型不明：停止并返回候选证据。全量请求分页未完成但有有效 continuation 时继续；只有 token 缺失/停滞/循环、达到页数上限或后页失败时停止并返回 `nextToken/complete` 等证据。
+1. 零命中、多候选或 ID 类型不明：停止并返回候选证据。全量请求分页未完成但有有效 continuation 时继续；只有 token 缺失/停滞/循环、达到页数上限或后页失败时停止并返回 `data.complete`、`meta.pagination` 或失败信封等证据。
 2. 认证、权限、profile 或 confirmation 错误：按 `dingtalk-shared` 对应错误 Reference 处理；不更换 scope、账号或写命令碰运气。
 3. 异步超时或部分成功：保留 `taskUuid/taskId/sessionId/checkpoint`，只恢复未完成阶段；未知写入先读回，不能自动重试。
 
