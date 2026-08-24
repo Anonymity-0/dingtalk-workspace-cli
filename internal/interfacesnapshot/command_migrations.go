@@ -21,6 +21,7 @@ const (
 
 	CommandMigrationMove           = "command_move"
 	CommandMigrationFlagExtraction = "flag_extraction"
+	CommandMigrationAvailability   = "schema_availability_hardening"
 )
 
 // CommandMigrationManifest governs compatibility-preserving surface moves that
@@ -64,6 +65,12 @@ type CommandMigrationSchema struct {
 	SourceToolID      string                      `json:"source_tool_id"`
 	ReplacementToolID string                      `json:"replacement_tool_id"`
 	Parameters        []CommandParameterMigration `json:"parameters"`
+	Availability      *CommandAvailabilityChange  `json:"availability,omitempty"`
+}
+
+type CommandAvailabilityChange struct {
+	Before string `json:"before"`
+	After  string `json:"after"`
 }
 
 type CommandParameterMigration struct {
@@ -126,14 +133,23 @@ func (m CommandMigrationManifest) Validate() error {
 }
 
 func (m CommandMigration) validate() error {
-	if m.Kind != CommandMigrationMove && m.Kind != CommandMigrationFlagExtraction {
+	if m.Kind != CommandMigrationMove && m.Kind != CommandMigrationFlagExtraction && m.Kind != CommandMigrationAvailability {
 		return fmt.Errorf("invalid kind %q", m.Kind)
 	}
-	if !isExactCommandPath(m.Legacy.Command) || !isExactCommandPath(m.Replacement.Command) {
-		return fmt.Errorf("legacy and replacement must be exact command paths rooted at dws")
-	}
-	if m.Legacy.Command == m.Replacement.Command {
-		return fmt.Errorf("legacy and replacement command paths must differ")
+	if m.Kind == CommandMigrationAvailability {
+		if !isExactCommandPath(m.Legacy.Command) {
+			return fmt.Errorf("legacy must be an exact command path rooted at dws")
+		}
+		if m.Replacement != (CommandMigrationSide{}) {
+			return fmt.Errorf("schema_availability_hardening must not declare replacement")
+		}
+	} else {
+		if !isExactCommandPath(m.Legacy.Command) || !isExactCommandPath(m.Replacement.Command) {
+			return fmt.Errorf("legacy and replacement must be exact command paths rooted at dws")
+		}
+		if m.Legacy.Command == m.Replacement.Command {
+			return fmt.Errorf("legacy and replacement command paths must differ")
+		}
 	}
 	if strings.TrimSpace(m.Reason) == "" || m.Reason != strings.TrimSpace(m.Reason) {
 		return fmt.Errorf("migration must include a non-empty trimmed reason")
@@ -141,12 +157,15 @@ func (m CommandMigration) validate() error {
 	if m.State != CommandMigrationPending && m.State != CommandMigrationConsumed {
 		return fmt.Errorf("invalid state %q", m.State)
 	}
-	for label, state := range map[string]CommandMigrationState{
-		"legacy before":      m.Legacy.Before,
-		"legacy after":       m.Legacy.After,
-		"replacement before": m.Replacement.Before,
-		"replacement after":  m.Replacement.After,
-	} {
+	states := map[string]CommandMigrationState{
+		"legacy before": m.Legacy.Before,
+		"legacy after":  m.Legacy.After,
+	}
+	if m.Kind != CommandMigrationAvailability {
+		states["replacement before"] = m.Replacement.Before
+		states["replacement after"] = m.Replacement.After
+	}
+	for label, state := range states {
 		if err := state.validate(label); err != nil {
 			return err
 		}
@@ -155,7 +174,8 @@ func (m CommandMigration) validate() error {
 		!m.Legacy.After.Present || !m.Legacy.After.Runnable {
 		return fmt.Errorf("legacy command must remain runnable and start visible")
 	}
-	if m.Replacement.Before.Present || !m.Replacement.After.Present || !m.Replacement.After.Runnable || m.Replacement.After.Hidden {
+	if m.Kind != CommandMigrationAvailability &&
+		(m.Replacement.Before.Present || !m.Replacement.After.Present || !m.Replacement.After.Runnable || m.Replacement.After.Hidden) {
 		return fmt.Errorf("replacement command must migrate exactly from absent to visible runnable")
 	}
 	if err := m.Schema.validate(m.Kind); err != nil {
@@ -214,6 +234,13 @@ func (m CommandMigration) validate() error {
 		if m.LegacyFlag.Before.NoOpt != wantNoOpt || m.LegacyFlag.After.NoOpt != wantNoOpt {
 			return fmt.Errorf("flag_extraction legacy_flag no_opt must equal replacement constant %q", wantNoOpt)
 		}
+	case CommandMigrationAvailability:
+		if !m.Legacy.After.Hidden {
+			return fmt.Errorf("schema_availability_hardening legacy command must migrate exactly from visible to hidden")
+		}
+		if m.LegacyFlag != (CommandMigrationFlag{}) {
+			return fmt.Errorf("schema_availability_hardening must not declare legacy_flag")
+		}
 	}
 	return nil
 }
@@ -259,9 +286,8 @@ func (f CommandMigrationFlag) validate() error {
 
 func (s CommandMigrationSchema) validate(kind string) error {
 	for label, value := range map[string]string{
-		"product_id":          s.ProductID,
-		"source_tool_id":      s.SourceToolID,
-		"replacement_tool_id": s.ReplacementToolID,
+		"product_id":     s.ProductID,
+		"source_tool_id": s.SourceToolID,
 	} {
 		if !isExactSchemaIdentifier(value) {
 			return fmt.Errorf("schema %s must be an exact identifier", label)
@@ -269,6 +295,21 @@ func (s CommandMigrationSchema) validate(kind string) error {
 	}
 	if s.Parameters == nil {
 		return fmt.Errorf("schema parameters must be an array")
+	}
+	if kind == CommandMigrationAvailability {
+		if s.ReplacementToolID != "" || len(s.Parameters) != 0 {
+			return fmt.Errorf("schema_availability_hardening must not declare a replacement tool or parameter mappings")
+		}
+		if s.Availability == nil || s.Availability.Before != "available" || s.Availability.After != "unavailable" {
+			return fmt.Errorf("schema_availability_hardening requires availability available to unavailable")
+		}
+		return nil
+	}
+	if !isExactSchemaIdentifier(s.ReplacementToolID) {
+		return fmt.Errorf("schema replacement_tool_id must be an exact identifier")
+	}
+	if s.Availability != nil {
+		return fmt.Errorf("%s must not declare schema availability", kind)
 	}
 	seenFrom := map[string]bool{}
 	seenTo := map[string]bool{}
@@ -344,6 +385,9 @@ func (m CommandMigration) key() string {
 }
 
 func (m CommandMigration) displayKey() string {
+	if m.Kind == CommandMigrationAvailability {
+		return fmt.Sprintf("%s %q", m.Kind, m.Legacy.Command)
+	}
 	return fmt.Sprintf("%s %q -> %q", m.Kind, m.Legacy.Command, m.Replacement.Command)
 }
 
@@ -401,7 +445,7 @@ func AuthorizeCommandMigrations(
 func validateCommandMoveLegacyLeaves(snapshot Snapshot, manifest CommandMigrationManifest) error {
 	commands := commandIndex(snapshot)
 	for _, migration := range manifest.Migrations {
-		if migration.Kind != CommandMigrationMove {
+		if migration.Kind != CommandMigrationMove && migration.Kind != CommandMigrationAvailability {
 			continue
 		}
 		if _, present := commands[migration.Legacy.Command]; !present {
@@ -409,7 +453,7 @@ func validateCommandMoveLegacyLeaves(snapshot Snapshot, manifest CommandMigratio
 		}
 		for _, command := range snapshot.Commands {
 			if strings.HasPrefix(command.Path, migration.Legacy.Command+" ") {
-				return fmt.Errorf("command_move legacy command %q must be a leaf", migration.Legacy.Command)
+				return fmt.Errorf("%s legacy command %q must be a leaf", migration.Kind, migration.Legacy.Command)
 			}
 		}
 	}
@@ -524,6 +568,15 @@ func sameCommandMigrationApproval(left, right CommandMigration) bool {
 func matchCommandMigrationPhase(snapshot Snapshot, migration CommandMigration) commandMigrationPhase {
 	commands := commandIndex(snapshot)
 	legacy := commandMigrationStateForCommand(commands, migration.Legacy.Command)
+	if migration.Kind == CommandMigrationAvailability {
+		if legacy == migration.Legacy.Before {
+			return commandMigrationBefore
+		}
+		if legacy == migration.Legacy.After {
+			return commandMigrationAfter
+		}
+		return commandMigrationPartial
+	}
 	replacement := commandMigrationStateForCommand(commands, migration.Replacement.Command)
 	before := legacy == migration.Legacy.Before && replacement == migration.Replacement.Before
 	after := legacy == migration.Legacy.After && replacement == migration.Replacement.After
@@ -626,6 +679,10 @@ func commandMigrationAuthorizesChange(current, reference Snapshot, change Change
 		}
 		switch migration.Kind {
 		case CommandMigrationMove:
+			if change.Kind == "command_became_hidden" && change.Flag == "" {
+				return true
+			}
+		case CommandMigrationAvailability:
 			if change.Kind == "command_became_hidden" && change.Flag == "" {
 				return true
 			}
