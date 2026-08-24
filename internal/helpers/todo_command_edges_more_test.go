@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -47,7 +48,6 @@ func TestCrossPlatformCoverageTodoCreateAndListCommandEdges(t *testing.T) {
 		{"task", "create", "--title", "x", "--executors", "u", "--remind-at", validDate},
 		{"task", "create", "--title", "x", "--executors", "u", "--due", "bad"},
 		{"task", "create", "--title", "x", "--executors", "u", "--priority", "bad"},
-		{"task", "create", "--title", "x", "--executors", "u", "--priority", "25"},
 		{"task", "create-sub", "--title", "x", "--executors", "u", "--parent-id", "abc"},
 		{"task", "create-sub", "--title", "x", "--executors", "u", "--parent-id", "1", "--remind-at", validDate},
 		{"task", "create-sub", "--title", "x", "--executors", "u", "--parent-id", "1", "--due", "bad"},
@@ -79,7 +79,7 @@ func TestCrossPlatformCoverageTodoCreateAndListCommandEdges(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageTodoRejectsEmptyExecutorCSVAndInvalidPriorityBeforeCall(t *testing.T) {
+func TestCrossPlatformCoverageTodoRejectsEmptyExecutorCSVAndNonNumericPriorityBeforeCall(t *testing.T) {
 	tests := []struct {
 		name   string
 		reason string
@@ -90,9 +90,6 @@ func TestCrossPlatformCoverageTodoRejectsEmptyExecutorCSVAndInvalidPriorityBefor
 		{name: "add empty executors", reason: "invalid_executors", args: []string{"task", "add-executor", "--task-id", "1", "--executors", ",,,"}},
 		{name: "remove empty executors", reason: "invalid_executors", args: []string{"task", "remove-executor", "--task-id", "1", "--executors", ",,,"}},
 		{name: "create nonnumeric priority", reason: "invalid_priority", args: []string{"task", "create", "--title", "x", "--executors", "u", "--priority", "normal"}},
-		{name: "create unsupported priority", reason: "invalid_priority", args: []string{"task", "create", "--title", "x", "--executors", "u", "--priority", "25"}},
-		{name: "create-sub unsupported priority", reason: "invalid_priority", args: []string{"task", "create-sub", "--parent-id", "1", "--title", "x", "--executors", "u", "--priority", "25"}},
-		{name: "update unsupported priority", reason: "invalid_priority", args: []string{"task", "update", "--task-id", "1", "--priority", "25"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -112,18 +109,31 @@ func TestCrossPlatformCoverageTodoRejectsEmptyExecutorCSVAndInvalidPriorityBefor
 	}
 }
 
-func TestCrossPlatformCoverageTodoCreateAcceptsNormalPriority(t *testing.T) {
-	caller := &scriptedToolCaller{}
-	if err := executeTodoEdge(t, caller, "task", "create", "--title", "x", "--executors", "u", "--priority", "20"); err != nil {
-		t.Fatalf("create priority 20: %v", err)
+func TestCrossPlatformCoverageTodoCreateAcceptsNumericPriority(t *testing.T) {
+	for _, priority := range []string{"20", "25"} {
+		t.Run(priority, func(t *testing.T) {
+			caller := &scriptedToolCaller{}
+			if err := executeTodoEdge(t, caller, "task", "create", "--title", "x", "--executors", "u", "--priority", priority); err != nil {
+				t.Fatalf("create priority %s: %v", priority, err)
+			}
+			if caller.calls != 1 || caller.tool != "create_personal_todo" {
+				t.Fatalf("calls = %d tool = %q", caller.calls, caller.tool)
+			}
+			request, ok := caller.args["PersonalTodoCreateVO"].(map[string]any)
+			if !ok || request["priority"] != mustTodoAtoi(t, priority) {
+				t.Fatalf("request = %#v, want priority %s", caller.args, priority)
+			}
+		})
 	}
-	if caller.calls != 1 || caller.tool != "create_personal_todo" {
-		t.Fatalf("calls = %d tool = %q", caller.calls, caller.tool)
+}
+
+func mustTodoAtoi(t *testing.T, value string) int {
+	t.Helper()
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		t.Fatalf("parse %q: %v", value, err)
 	}
-	request, ok := caller.args["PersonalTodoCreateVO"].(map[string]any)
-	if !ok || request["priority"] != 20 {
-		t.Fatalf("request = %#v, want priority 20", caller.args)
-	}
+	return parsed
 }
 
 func TestCrossPlatformCoverageTodoSimpleCommandValidationAndSuccessEdges(t *testing.T) {

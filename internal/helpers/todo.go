@@ -160,7 +160,7 @@ func newTodoCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "due", Property: "PersonalTodoCreateVO.dueTime"},
 				{Name: "executors", Property: "PersonalTodoCreateVO.executorIds", Description: "执行者 userId 列表；逗号分隔，解析后至少包含一个非空值"},
-				{Name: "priority", Property: "PersonalTodoCreateVO.priority", Enum: []string{"10", "20", "30", "40"}},
+				{Name: "priority", Property: "PersonalTodoCreateVO.priority"},
 				{Name: "recurrence", Property: "PersonalTodoCreateVO.recurrence"},
 				{Name: "title", Property: "PersonalTodoCreateVO.subject"},
 			},
@@ -261,7 +261,7 @@ func newTodoCommand() *cobra.Command {
 				{Name: "due", Property: "PersonalTodoCreateVO.dueTime"},
 				{Name: "executors", Property: "PersonalTodoCreateVO.executorIds", Description: "执行者 userId 列表；逗号分隔，解析后至少包含一个非空值"},
 				{Name: "parent-id", Property: "PersonalTodoCreateVO.parentId"},
-				{Name: "priority", Property: "PersonalTodoCreateVO.priority", Enum: []string{"10", "20", "30", "40"}},
+				{Name: "priority", Property: "PersonalTodoCreateVO.priority"},
 				{Name: "recurrence", Property: "PersonalTodoCreateVO.recurrence"},
 				{Name: "title", Property: "PersonalTodoCreateVO.subject"},
 			},
@@ -434,7 +434,7 @@ func newTodoCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "done", Property: "TodoUpdateRequest.isDone"},
 				{Name: "due", Property: "TodoUpdateRequest.dueTime"},
-				{Name: "priority", Property: "TodoUpdateRequest.priority", Enum: []string{"10", "20", "30", "40"}},
+				{Name: "priority", Property: "TodoUpdateRequest.priority"},
 				{Name: "task-id", Property: "TodoUpdateRequest.taskId"},
 				{Name: "title", Property: "TodoUpdateRequest.subject"},
 			},
@@ -1928,15 +1928,12 @@ func parseRequiredTodoIDs(flagName, value string) ([]string, error) {
 func parseTodoPriority(value string) (int, error) {
 	priority, err := strconv.Atoi(strings.TrimSpace(value))
 	if err == nil {
-		switch priority {
-		case 10, 20, 30, 40:
-			return priority, nil
-		}
+		return priority, nil
 	}
 	return 0, apperrors.NewValidation(
-		"--priority 仅接受 10/20/30/40",
+		"--priority 必须是整数",
 		apperrors.WithReason("invalid_priority"),
-		apperrors.WithHint("优先级映射：10=低、20=普通、30=较高、40=紧急"),
+		apperrors.WithHint("常用优先级映射：10=低、20=普通、30=较高、40=紧急"),
 		apperrors.WithExecutionStarted(false),
 		apperrors.WithRetryable(false),
 	)
