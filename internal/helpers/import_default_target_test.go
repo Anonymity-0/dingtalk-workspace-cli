@@ -1,0 +1,240 @@
+// Copyright 2026 Alibaba Group
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package helpers
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"os"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
+)
+
+type docImportTargetCall struct {
+	server string
+	tool   string
+	args   map[string]any
+}
+
+type docImportTargetCaller struct {
+	responses map[string][]scriptedToolStep
+	calls     []docImportTargetCall
+	dryRun    bool
+}
+
+func (c *docImportTargetCaller) CallTool(_ context.Context, server, tool string, args map[string]any) (*edition.ToolResult, error) {
+	c.calls = append(c.calls, docImportTargetCall{server: server, tool: tool, args: args})
+	steps := c.responses[tool]
+	if len(steps) == 0 {
+		return nil, errors.New("unexpected tool call " + server + "/" + tool)
+	}
+	step := steps[0]
+	c.responses[tool] = steps[1:]
+	if step.err != nil {
+		return nil, step.err
+	}
+	return textToolResult(step.text), nil
+}
+
+func (*docImportTargetCaller) Format() string { return "json" }
+func (c *docImportTargetCaller) DryRun() bool { return c.dryRun }
+func (*docImportTargetCaller) Fields() string { return "" }
+func (*docImportTargetCaller) JQ() string     { return "" }
+
+func successfulDocImportResponses() map[string][]scriptedToolStep {
+	return map[string][]scriptedToolStep{
+		"create_import_session": {{text: `{"sessionId":"session-1","uploadUrl":"https://upload.example.test/object"}`}},
+		"confirm_import":        {{text: `{"taskId":"task-1"}`}},
+		"query_import_task":     {{text: `{"status":"completed","documentUrl":"https://alidocs.dingtalk.com/i/nodes/node-1","documentName":"Sales","documentType":"0"}`}},
+	}
+}
+
+func runDocImportTargetFlow(t *testing.T, caller *docImportTargetCaller, fileExt, folder, workspace string) (map[string]any, error) {
+	t.Helper()
+	previousDeps := deps
+	previousArgs := os.Args
+	t.Cleanup(func() {
+		deps = previousDeps
+		os.Args = previousArgs
+		SetHTTPPutFile(nil)
+	})
+
+	InitDeps(caller)
+	var output bytes.Buffer
+	deps.Out.w = &output
+	deps.Out.errW = io.Discard
+	os.Args = []string{"dws", "doc"}
+	SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
+
+	cmd := htmlFallbackCommand(t, writeImportFixture(t, fileExt))
+	if folder != "" {
+		if err := cmd.Flags().Set("folder", folder); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if workspace != "" {
+		if err := cmd.Flags().Set("workspace", workspace); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := docImportFlowConfig()
+	cfg.poll.maxPolls = 1
+	cfg.poll.interval = func(int) time.Duration { return 0 }
+	cfg.poll.wait = func(context.Context, time.Duration) error { return nil }
+	err := runImportCommand(cmd, nil, cfg)
+	if err != nil {
+		return nil, err
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(output.Bytes(), &payload); err != nil {
+		t.Fatalf("doc import output is not JSON: %v\n%s", err, output.String())
+	}
+	return payload, nil
+}
+
+func assertImportPreflightError(t *testing.T, err error) {
+	t.Helper()
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || typed.Category != apperrors.CategoryValidation {
+		t.Fatalf("error = %T %v, want validation error", err, err)
+	}
+	if typed.ExecutionStarted == nil || *typed.ExecutionStarted {
+		t.Fatalf("execution_started = %#v, want false", typed.ExecutionStarted)
+	}
+}
+
+func TestCrossPlatformCoverageDocImportResolvesUniqueOrgRootBeforeWrite(t *testing.T) {
+	responses := successfulDocImportResponses()
+	responses["list_spaces"] = []scriptedToolStep{{text: `{"success":true,"result":{"items":[{"spaceId":"29218217248","rootFolderId":"root-folder-1","spaceType":"orgSpace"}]}}`}}
+	caller := &docImportTargetCaller{responses: responses}
+
+	payload, err := runDocImportTargetFlow(t, caller, "docx", "", "")
+	if err != nil {
+		t.Fatalf("doc import returned error: %v", err)
+	}
+	if len(caller.calls) != 4 {
+		t.Fatalf("calls = %#v, want resolver plus three import calls", caller.calls)
+	}
+	if got := caller.calls[0]; got.server != "drive" || got.tool != "list_spaces" || !reflect.DeepEqual(got.args, map[string]any{"spaceType": "orgSpace"}) {
+		t.Fatalf("resolver call = %#v", got)
+	}
+	if got := caller.calls[1]; got.server != "doc" || got.tool != "create_import_session" || got.args["targetFolderId"] != "root-folder-1" {
+		t.Fatalf("create session call = %#v", got)
+	}
+	if _, exists := caller.calls[1].args["workspaceId"]; exists {
+		t.Fatalf("default root must use targetFolderId, got %#v", caller.calls[1].args)
+	}
+	if payload["success"] != true || payload["targetSource"] != "default_org_root" || payload["targetFolderId"] != "root-folder-1" {
+		t.Fatalf("target receipt missing: %#v", payload)
+	}
+}
+
+func TestCrossPlatformCoverageDocImportExplicitTargetSkipsResolver(t *testing.T) {
+	tests := []struct {
+		name       string
+		folder     string
+		workspace  string
+		wantKey    string
+		wantValue  string
+		wantSource string
+	}{
+		{name: "folder", folder: "folder-1", wantKey: "targetFolderId", wantValue: "folder-1", wantSource: "explicit_folder"},
+		{name: "workspace", workspace: "workspace-1", wantKey: "workspaceId", wantValue: "workspace-1", wantSource: "explicit_workspace"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &docImportTargetCaller{responses: successfulDocImportResponses()}
+			payload, err := runDocImportTargetFlow(t, caller, "docx", test.folder, test.workspace)
+			if err != nil {
+				t.Fatalf("doc import returned error: %v", err)
+			}
+			if len(caller.calls) != 3 || caller.calls[0].tool != "create_import_session" {
+				t.Fatalf("explicit target unexpectedly resolved defaults: %#v", caller.calls)
+			}
+			if caller.calls[0].args[test.wantKey] != test.wantValue {
+				t.Fatalf("session args = %#v", caller.calls[0].args)
+			}
+			if payload[test.wantKey] != test.wantValue || payload["targetSource"] != test.wantSource {
+				t.Fatalf("target receipt = %#v", payload)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageDocImportRejectsAmbiguousOrMissingDefaultBeforeWrite(t *testing.T) {
+	t.Run("folder and workspace conflict", func(t *testing.T) {
+		caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{}}
+		_, err := runDocImportTargetFlow(t, caller, "docx", "folder-1", "workspace-1")
+		assertImportPreflightError(t, err)
+		if len(caller.calls) != 0 {
+			t.Fatalf("conflict made remote calls: %#v", caller.calls)
+		}
+	})
+
+	for _, test := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "invalid json", body: `{`, want: "无法解析"},
+		{name: "missing items", body: `{"result":{}}`, want: "缺少 items"},
+		{name: "zero spaces", body: `{"result":{"items":[]}}`, want: "0 个 orgSpace"},
+		{name: "multiple spaces", body: `{"result":{"items":[{"rootFolderId":"a"},{"rootFolderId":"b"}]}}`, want: "2 个 orgSpace"},
+		{name: "missing root folder", body: `{"result":{"items":[{"spaceType":"orgSpace"}]}}`, want: "未返回 rootFolderId"},
+		{name: "wrong type", body: `{"result":{"items":[{"spaceType":"mySpace","rootFolderId":"root"}]}}`, want: "不是 orgSpace"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{"list_spaces": {{text: test.body}}}}
+			_, err := runDocImportTargetFlow(t, caller, "docx", "", "")
+			assertImportPreflightError(t, err)
+			if !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want containing %q", err, test.want)
+			}
+			if len(caller.calls) != 1 || caller.calls[0].tool != "list_spaces" {
+				t.Fatalf("failure must stop before create_import_session: %#v", caller.calls)
+			}
+		})
+	}
+
+	t.Run("resolver API failure", func(t *testing.T) {
+		caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{"list_spaces": {{err: errors.New("permission denied")}}}}
+		_, err := runDocImportTargetFlow(t, caller, "docx", "", "")
+		assertImportPreflightError(t, err)
+		if !strings.Contains(err.Error(), "显式提供") || len(caller.calls) != 1 {
+			t.Fatalf("error/calls = %v / %#v", err, caller.calls)
+		}
+	})
+}
+
+func TestCrossPlatformCoverageDocImportDryRunDefersDefaultTargetRead(t *testing.T) {
+	caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{}, dryRun: true}
+	payload, err := runDocImportTargetFlow(t, caller, "docx", "", "")
+	if err != nil {
+		t.Fatalf("dry-run returned error: %v", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("dry-run made remote calls: %#v", caller.calls)
+	}
+	if payload["targetSource"] != "default_org_root" || payload["targetResolution"] != "deferred" || payload["executed"] != false {
+		t.Fatalf("dry-run target plan = %#v", payload)
+	}
+}

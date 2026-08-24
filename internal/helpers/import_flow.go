@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -53,6 +54,9 @@ type importFlowConfig struct {
 	folderFlags          []string
 	workspaceFlags       []string
 	requireTarget        bool
+	exclusiveTarget      bool
+	defaultTargetSource  string
+	resolveDefaultTarget func(context.Context) (importTarget, error)
 	serverID             string
 	includeNodeID        bool
 	timeoutAsResult      bool
@@ -66,12 +70,19 @@ type importFlowConfig struct {
 }
 
 type preparedImportFile struct {
-	path      string
-	name      string
-	extension string
-	size      int64
+	path         string
+	name         string
+	extension    string
+	size         int64
+	folder       string
+	workspace    string
+	targetSource string
+}
+
+type importTarget struct {
 	folder    string
 	workspace string
+	source    string
 }
 
 func defaultImportPollPolicy() importPollPolicy {
@@ -101,6 +112,9 @@ func docImportFlowConfig() importFlowConfig {
 		supportedFormatsText: "docx, doc, xlsx, xls, md, txt, xmind, mark",
 		folderFlags:          []string{"folder", "folder-id"},
 		workspaceFlags:       []string{"workspace", "workspace-id"},
+		exclusiveTarget:      true,
+		defaultTargetSource:  "default_org_root",
+		resolveDefaultTarget: resolveDefaultDocImportTarget,
 		nextCommand:          "dws doc import get --task-id %s",
 		poll:                 defaultImportPollPolicy(),
 		// 白名单外的格式改走文档空间的文件上传链路
@@ -108,6 +122,58 @@ func docImportFlowConfig() importFlowConfig {
 		// 目标 flags（--folder/--workspace）与 import 同构，链路不中断。
 		uploadFallback: true,
 	}
+}
+
+func importTargetValidationError(message string, cause error) error {
+	options := []apperrors.Option{
+		apperrors.WithOperation("doc.import.resolve_target"),
+		apperrors.WithReason("import_target_unresolved"),
+		apperrors.WithExecutionStarted(false),
+		apperrors.WithRetryable(false),
+		apperrors.WithActions("显式提供 --folder <目标文件夹ID> 或 --workspace <目标知识库ID> 后重新执行"),
+	}
+	if cause != nil {
+		options = append(options, apperrors.WithCause(cause))
+	}
+	return apperrors.NewValidation(message, options...)
+}
+
+func parseDefaultDocImportTarget(text string) (importTarget, error) {
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(text), &payload); err != nil {
+		return importTarget{}, importTargetValidationError("无法解析当前组织的默认文档根目录；请显式提供 --folder 或 --workspace", err)
+	}
+	if result, ok := payload["result"].(map[string]any); ok {
+		payload = result
+	}
+	items, ok := payload["items"].([]any)
+	if !ok {
+		return importTarget{}, importTargetValidationError("当前组织空间响应缺少 items，无法确定默认导入位置；请显式提供 --folder 或 --workspace", nil)
+	}
+	if len(items) != 1 {
+		return importTarget{}, importTargetValidationError(fmt.Sprintf("当前组织返回 %d 个 orgSpace，无法唯一确定默认导入位置；请显式提供 --folder 或 --workspace", len(items)), nil)
+	}
+	item, ok := items[0].(map[string]any)
+	if !ok {
+		return importTarget{}, importTargetValidationError("当前组织唯一 orgSpace 的返回结构无效；请显式提供 --folder 或 --workspace", nil)
+	}
+	if spaceType, _ := item["spaceType"].(string); spaceType != "" && spaceType != "orgSpace" {
+		return importTarget{}, importTargetValidationError(fmt.Sprintf("默认空间类型为 %q，不是 orgSpace；请显式提供 --folder 或 --workspace", spaceType), nil)
+	}
+	rootFolderID, _ := item["rootFolderId"].(string)
+	rootFolderID = strings.TrimSpace(rootFolderID)
+	if rootFolderID == "" {
+		return importTarget{}, importTargetValidationError("当前组织唯一 orgSpace 未返回 rootFolderId；请显式提供 --folder 或 --workspace", nil)
+	}
+	return importTarget{folder: rootFolderID, source: "default_org_root"}, nil
+}
+
+func resolveDefaultDocImportTarget(ctx context.Context) (importTarget, error) {
+	text, err := callMCPToolReturnTextOnServer(ctx, "drive", "list_spaces", map[string]any{"spaceType": "orgSpace"})
+	if err != nil {
+		return importTarget{}, importTargetValidationError("无法读取当前组织的默认文档根目录；请显式提供 --folder 或 --workspace", err)
+	}
+	return parseDefaultDocImportTarget(text)
 }
 
 func sheetImportFlowConfig() importFlowConfig {
@@ -189,18 +255,45 @@ func prepareImportFile(cmd *cobra.Command, args []string, cfg importFlowConfig) 
 	}
 	folder := importFlagValue(cmd, cfg.folderFlags...)
 	workspace := importFlagValue(cmd, cfg.workspaceFlags...)
+	if cfg.exclusiveTarget && folder != "" && workspace != "" {
+		return preparedImportFile{}, importTargetValidationError("--folder 与 --workspace 不能同时提供；请选择一个明确的导入目标", nil)
+	}
 	if cfg.requireTarget && folder == "" && workspace == "" {
 		return preparedImportFile{}, fmt.Errorf("--folder-token 与 --workspace 至少需要提供一个（导入目标位置）")
 	}
+	targetSource := ""
+	if folder != "" {
+		targetSource = "explicit_folder"
+	} else if workspace != "" {
+		targetSource = "explicit_workspace"
+	}
 
 	return preparedImportFile{
-		path:      filePath,
-		name:      name,
-		extension: extension,
-		size:      fileInfo.Size(),
-		folder:    folder,
-		workspace: workspace,
+		path:         filePath,
+		name:         name,
+		extension:    extension,
+		size:         fileInfo.Size(),
+		folder:       folder,
+		workspace:    workspace,
+		targetSource: targetSource,
 	}, nil
+}
+
+func addImportTargetReceipt(result map[string]any, file preparedImportFile, deferredSource string) {
+	if file.folder != "" {
+		result["targetFolderId"] = file.folder
+	}
+	if file.workspace != "" {
+		result["workspaceId"] = file.workspace
+	}
+	if file.targetSource != "" {
+		result["targetSource"] = file.targetSource
+		return
+	}
+	if deferredSource != "" {
+		result["targetSource"] = deferredSource
+		result["targetResolution"] = "deferred"
+	}
 }
 
 func (cfg importFlowConfig) callTool(ctx context.Context, toolName string, args map[string]any) (string, error) {
@@ -330,7 +423,7 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 
 	if deps.Caller.DryRun() {
 		if jsonMode {
-			return deps.Out.PrintJSON(map[string]any{
+			result := map[string]any{
 				"dry_run":      true,
 				"executed":     false,
 				"preview_kind": "plan",
@@ -339,7 +432,9 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 				"name":         file.name,
 				"format":       file.extension,
 				"size":         file.size,
-			})
+			}
+			addImportTargetReceipt(result, file, cfg.defaultTargetSource)
+			return deps.Out.PrintJSON(result)
 		}
 		deps.Out.PrintKeyValue("操作", cfg.operation)
 		deps.Out.PrintKeyValue("文件", file.path)
@@ -352,6 +447,18 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 	ctx := cmd.Context()
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	if file.folder == "" && file.workspace == "" && cfg.resolveDefaultTarget != nil {
+		target, err := cfg.resolveDefaultTarget(ctx)
+		if err != nil {
+			return err
+		}
+		if target.folder == "" && target.workspace == "" {
+			return importTargetValidationError("默认导入目标解析结果为空；请显式提供 --folder 或 --workspace", nil)
+		}
+		file.folder = target.folder
+		file.workspace = target.workspace
+		file.targetSource = target.source
 	}
 
 	if !jsonMode {
@@ -455,6 +562,7 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 		"documentName": documentName,
 		"documentType": documentType,
 	}
+	addImportTargetReceipt(finalResult, file, "")
 	if cfg.includeNodeID {
 		finalResult["nodeId"] = extractNodeIDFromDocURL(documentURL)
 	}

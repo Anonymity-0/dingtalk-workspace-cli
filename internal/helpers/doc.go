@@ -4307,13 +4307,14 @@ CLI 内部自动完成全部流程:
 		},
 	}
 	importCmd.Flags().String("file", "", "本地文件路径 (必填)")
-	importCmd.Flags().String("folder", "", "目标文件夹 ID 或 URL (可选；folder/workspace 都不传时导入到默认根目录)")
-	importCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL (可选；folder/workspace 都不传时导入到默认根目录)")
+	importCmd.Flags().String("folder", "", "目标文件夹 ID 或 URL (可选；与 workspace 互斥；在线转换格式都不传时解析当前组织唯一 orgSpace 根目录)")
+	importCmd.Flags().String("workspace", "", "目标知识库 ID 或 URL (可选；与 folder 互斥；在线转换格式都不传时解析当前组织唯一 orgSpace 根目录)")
 	importCmd.Flags().StringP("name", "n", "", "导入后文档名称 (可选，默认取文件名)")
 	importCmd.Flags().String("folder-id", "", "")
 	_ = importCmd.Flags().MarkHidden("folder-id")
 	importCmd.Flags().String("workspace-id", "", "")
 	_ = importCmd.Flags().MarkHidden("workspace-id")
+	importCmd.MarkFlagsMutuallyExclusive("folder", "workspace")
 
 	importGetCmd := &cobra.Command{
 		Use:   "get",

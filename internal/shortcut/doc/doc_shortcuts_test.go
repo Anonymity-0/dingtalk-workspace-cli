@@ -1365,6 +1365,16 @@ func TestCrossPlatformCoverageDocHistoryTemplateReviewAndMedia(t *testing.T) {
 	if err := runDocCoverage(t, Import, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--file", "media.bin", "--dry-run"); err != nil {
 		t.Fatalf("import to default root failed: %v", err)
 	}
+	foundImportTargetExclusion := false
+	for _, constraint := range Import.Constraints {
+		if constraint.Kind == shortcut.ConstraintMutuallyExclusive && reflect.DeepEqual(constraint.Flags, []string{"folder", "workspace"}) {
+			foundImportTargetExclusion = true
+			break
+		}
+	}
+	if !foundImportTargetExclusion {
+		t.Fatal("doc +import must publish folder/workspace mutual exclusion")
+	}
 	if err := runDocCoverage(t, Export, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--node", "n", "--output", "out.docx", "--dry-run"); err != nil {
 		t.Fatalf("export default format failed: %v", err)
 	}
