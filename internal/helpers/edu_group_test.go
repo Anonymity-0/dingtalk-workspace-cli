@@ -20,7 +20,7 @@ func withEduGroupCaller(t *testing.T) *recruitCaptureCaller {
 	return caller
 }
 
-func TestEduGroupHappyPaths(t *testing.T) {
+func TestCrossPlatformCoverageEduGroupHappyPaths(t *testing.T) {
 	cases := [][]string{
 		{"student-group", "info", "--dept-id", "123"},
 		{"student-group", "exists", "--dept-id", "123"},
@@ -49,7 +49,7 @@ func TestEduGroupHappyPaths(t *testing.T) {
 	}
 }
 
-func TestEduGroupMissingRequiredFlags(t *testing.T) {
+func TestCrossPlatformCoverageEduGroupMissingRequiredFlags(t *testing.T) {
 	// Each dept-id command must reject an absent --dept-id, covering its own
 	// error branch as well as the shared eduGroupRequiredIntFlag empty case.
 	deptIDCommands := [][]string{
@@ -76,7 +76,7 @@ func TestEduGroupMissingRequiredFlags(t *testing.T) {
 	}
 }
 
-func TestEduGroupFlagValidation(t *testing.T) {
+func TestCrossPlatformCoverageEduGroupFlagValidation(t *testing.T) {
 	t.Run("non-integer dept-id", func(t *testing.T) {
 		withEduGroupCaller(t)
 		cmd := newEduGroupCommand()
@@ -141,7 +141,7 @@ func TestEduGroupFlagValidation(t *testing.T) {
 	})
 }
 
-func TestEduGroupParseHelpers(t *testing.T) {
+func TestCrossPlatformCoverageEduGroupParseHelpers(t *testing.T) {
 	if got := eduGroupParseCSV(" a , , b "); len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Fatalf("eduGroupParseCSV = %#v", got)
 	}
@@ -164,7 +164,7 @@ func withEduGroupDispatchCaller(t *testing.T) *recruitCaptureCaller {
 	return caller
 }
 
-func TestEduGroupDispatch(t *testing.T) {
+func TestCrossPlatformCoverageEduGroupDispatch(t *testing.T) {
 	t.Run("student-group info dispatches get_class_group_info", func(t *testing.T) {
 		caller := withEduGroupDispatchCaller(t)
 		cmd := newEduGroupCommand()

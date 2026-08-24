@@ -26,7 +26,7 @@ func runEduApp(t *testing.T, args ...string) error {
 
 // TestEduAppHappyPathsFullFlags exercises each leaf command with every flag
 // populated, so all optional-field branches and the dispatch line are covered.
-func TestEduAppHappyPathsFullFlags(t *testing.T) {
+func TestCrossPlatformCoverageEduAppHappyPathsFullFlags(t *testing.T) {
 	cases := [][]string{
 		{"message", "summary-list", "--class-id", "1", "--cid", "c", "--target-role", "guardian", "--status", "0"},
 
@@ -105,7 +105,7 @@ func TestEduAppHappyPathsFullFlags(t *testing.T) {
 
 // TestEduAppZeroPagination drives the pagination defaulting branches (page<=0 /
 // page-size<=0 / the >0 else arms) that the positive-value happy paths skip.
-func TestEduAppZeroPagination(t *testing.T) {
+func TestCrossPlatformCoverageEduAppZeroPagination(t *testing.T) {
 	cases := [][]string{
 		{"report", "by-teacher", "--page", "0", "--limit", "0"},
 		{"report", "by-student-list", "--class-id", "c", "--student-id", "u1", "--page", "0", "--limit", "0"},
@@ -129,7 +129,7 @@ func TestEduAppZeroPagination(t *testing.T) {
 	}
 }
 
-func TestEduAppErrorPaths(t *testing.T) {
+func TestCrossPlatformCoverageEduAppErrorPaths(t *testing.T) {
 	cases := []struct {
 		name string
 		args []string
@@ -241,7 +241,7 @@ func TestEduAppErrorPaths(t *testing.T) {
 	}
 }
 
-func TestEduAppParseHelpers(t *testing.T) {
+func TestCrossPlatformCoverageEduAppParseHelpers(t *testing.T) {
 	if got := eduAppParseCSV(" a , , b "); len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Fatalf("eduAppParseCSV = %#v", got)
 	}
@@ -262,7 +262,7 @@ func withEduAppDispatchCaller(t *testing.T) *recruitCaptureCaller {
 	return caller
 }
 
-func TestEduAppDispatch(t *testing.T) {
+func TestCrossPlatformCoverageEduAppDispatch(t *testing.T) {
 	t.Run("message summary-list dispatches get_ai_message_summary_list", func(t *testing.T) {
 		caller := withEduAppDispatchCaller(t)
 		cmd := newEduAppCommand()

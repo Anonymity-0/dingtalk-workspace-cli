@@ -16,7 +16,7 @@ func newTestEduContactRoot() *cobra.Command {
 // 命令注册测试 — 验证所有子命令路径是否正确注册
 // ──────────────────────────────────────────────────────────
 
-func TestEduContactCommandTree(t *testing.T) {
+func TestCrossPlatformCoverageEduContactCommandTree(t *testing.T) {
 	root := newTestEduContactRoot()
 
 	paths := [][]string{
@@ -72,7 +72,7 @@ func executeCommand(root *cobra.Command, args ...string) error {
 	return root.Execute()
 }
 
-func TestClassSearchByTeacher_MissingName(t *testing.T) {
+func TestCrossPlatformCoverageClassSearchByTeacher_MissingName(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "search-by-teacher")
 	if err == nil {
@@ -80,7 +80,7 @@ func TestClassSearchByTeacher_MissingName(t *testing.T) {
 	}
 }
 
-func TestClassAddTeachers_MissingDeptId(t *testing.T) {
+func TestCrossPlatformCoverageClassAddTeachers_MissingDeptId(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "add-teachers", "--teacher-user-ids", "uid1")
 	if err == nil {
@@ -88,7 +88,7 @@ func TestClassAddTeachers_MissingDeptId(t *testing.T) {
 	}
 }
 
-func TestClassAddTeachers_MissingTeacherUserIds(t *testing.T) {
+func TestCrossPlatformCoverageClassAddTeachers_MissingTeacherUserIds(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "add-teachers", "--dept-id", "12345")
 	if err == nil {
@@ -96,7 +96,7 @@ func TestClassAddTeachers_MissingTeacherUserIds(t *testing.T) {
 	}
 }
 
-func TestClassAddTeachers_InvalidIsAdviser(t *testing.T) {
+func TestCrossPlatformCoverageClassAddTeachers_InvalidIsAdviser(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "add-teachers", "--dept-id", "12345", "--teacher-user-ids", "uid1", "--is-adviser", "3")
 	if err == nil {
@@ -104,7 +104,7 @@ func TestClassAddTeachers_InvalidIsAdviser(t *testing.T) {
 	}
 }
 
-func TestClassMoveStudent_MissingOriginClassId(t *testing.T) {
+func TestCrossPlatformCoverageClassMoveStudent_MissingOriginClassId(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "move-student", "--student-user-ids", "uid1", "--target-class-id", "67890")
 	if err == nil {
@@ -112,7 +112,7 @@ func TestClassMoveStudent_MissingOriginClassId(t *testing.T) {
 	}
 }
 
-func TestClassMoveStudent_MissingStudentUserIds(t *testing.T) {
+func TestCrossPlatformCoverageClassMoveStudent_MissingStudentUserIds(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "move-student", "--origin-class-id", "12345", "--target-class-id", "67890")
 	if err == nil {
@@ -120,7 +120,7 @@ func TestClassMoveStudent_MissingStudentUserIds(t *testing.T) {
 	}
 }
 
-func TestClassUpdateStudentMobile_MissingMobile(t *testing.T) {
+func TestCrossPlatformCoverageClassUpdateStudentMobile_MissingMobile(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "update-student-mobile", "--dept-id", "12345", "--student-user-id", "uid1")
 	if err == nil {
@@ -128,7 +128,7 @@ func TestClassUpdateStudentMobile_MissingMobile(t *testing.T) {
 	}
 }
 
-func TestClassDeleteStudents_MissingDeptId(t *testing.T) {
+func TestCrossPlatformCoverageClassDeleteStudents_MissingDeptId(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "delete-students", "--student-user-ids", "uid1")
 	if err == nil {
@@ -136,7 +136,7 @@ func TestClassDeleteStudents_MissingDeptId(t *testing.T) {
 	}
 }
 
-func TestClassDeleteStudents_MissingStudentUserIds(t *testing.T) {
+func TestCrossPlatformCoverageClassDeleteStudents_MissingStudentUserIds(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "delete-students", "--dept-id", "12345")
 	if err == nil {
@@ -144,7 +144,7 @@ func TestClassDeleteStudents_MissingStudentUserIds(t *testing.T) {
 	}
 }
 
-func TestClassAddUnofficialStudent_MissingDeptId(t *testing.T) {
+func TestCrossPlatformCoverageClassAddUnofficialStudent_MissingDeptId(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "add-unofficial-student", "--student-staff-ids", "sid1")
 	if err == nil {
@@ -152,7 +152,7 @@ func TestClassAddUnofficialStudent_MissingDeptId(t *testing.T) {
 	}
 }
 
-func TestClassAddUnofficialStudent_MissingStaffIds(t *testing.T) {
+func TestCrossPlatformCoverageClassAddUnofficialStudent_MissingStaffIds(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "add-unofficial-student", "--dept-id", "12345")
 	if err == nil {
@@ -160,7 +160,7 @@ func TestClassAddUnofficialStudent_MissingStaffIds(t *testing.T) {
 	}
 }
 
-func TestClassUpdateStudent_MissingClassId(t *testing.T) {
+func TestCrossPlatformCoverageClassUpdateStudent_MissingClassId(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "update-student", "--student-user-id", "uid1", "--student-name", "张三", "--append-patriarch")
 	if err == nil {
@@ -168,7 +168,7 @@ func TestClassUpdateStudent_MissingClassId(t *testing.T) {
 	}
 }
 
-func TestClassUpdateStudent_MissingStudentUserId(t *testing.T) {
+func TestCrossPlatformCoverageClassUpdateStudent_MissingStudentUserId(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "update-student", "--class-id", "12345", "--student-name", "张三", "--append-patriarch")
 	if err == nil {
@@ -176,7 +176,7 @@ func TestClassUpdateStudent_MissingStudentUserId(t *testing.T) {
 	}
 }
 
-func TestClassUpdateStudent_InvalidPatriarchsJSON(t *testing.T) {
+func TestCrossPlatformCoverageClassUpdateStudent_InvalidPatriarchsJSON(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "update-student", "--class-id", "12345", "--student-user-id", "uid1", "--patriarchs", "invalid-json", "--append-patriarch")
 	if err == nil {
@@ -184,7 +184,7 @@ func TestClassUpdateStudent_InvalidPatriarchsJSON(t *testing.T) {
 	}
 }
 
-func TestClassUpdateStudentNumber_MissingStudentNumber(t *testing.T) {
+func TestCrossPlatformCoverageClassUpdateStudentNumber_MissingStudentNumber(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "update-student-number", "--class-id", "12345", "--student-user-id", "uid1")
 	if err == nil {
@@ -192,7 +192,7 @@ func TestClassUpdateStudentNumber_MissingStudentNumber(t *testing.T) {
 	}
 }
 
-func TestClassUpdateInfo_MissingClassId(t *testing.T) {
+func TestCrossPlatformCoverageClassUpdateInfo_MissingClassId(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "update-info", "--nick", "火箭班")
 	if err == nil {
@@ -200,7 +200,7 @@ func TestClassUpdateInfo_MissingClassId(t *testing.T) {
 	}
 }
 
-func TestClassUpdateInfo_GroupNameWithoutConversationId(t *testing.T) {
+func TestCrossPlatformCoverageClassUpdateInfo_GroupNameWithoutConversationId(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "update-info", "--class-id", "12345", "--group-name", "测试群")
 	if err == nil {
@@ -208,7 +208,7 @@ func TestClassUpdateInfo_GroupNameWithoutConversationId(t *testing.T) {
 	}
 }
 
-func TestClassDeleteTeacher_MissingTeacherUserId(t *testing.T) {
+func TestCrossPlatformCoverageClassDeleteTeacher_MissingTeacherUserId(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "delete-teacher", "--class-id", "12345")
 	if err == nil {
@@ -216,7 +216,7 @@ func TestClassDeleteTeacher_MissingTeacherUserId(t *testing.T) {
 	}
 }
 
-func TestClassModifyStudentInfo_MissingBothNickAndPatriarch(t *testing.T) {
+func TestCrossPlatformCoverageClassModifyStudentInfo_MissingBothNickAndPatriarch(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "modify-student-info", "--dept-id", "12345", "--target-user-id", "uid1")
 	if err == nil {
@@ -224,7 +224,7 @@ func TestClassModifyStudentInfo_MissingBothNickAndPatriarch(t *testing.T) {
 	}
 }
 
-func TestClassModifyStudentInfo_PatriarchWithoutRelation(t *testing.T) {
+func TestCrossPlatformCoverageClassModifyStudentInfo_PatriarchWithoutRelation(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "modify-student-info", "--dept-id", "12345", "--target-user-id", "uid1", "--patriarch-user-id", "pid1")
 	if err == nil {
@@ -232,7 +232,7 @@ func TestClassModifyStudentInfo_PatriarchWithoutRelation(t *testing.T) {
 	}
 }
 
-func TestClassAddStudent_MissingStudentName(t *testing.T) {
+func TestCrossPlatformCoverageClassAddStudent_MissingStudentName(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "add-student", "--dept-id", "12345", "--student-mobile", "13800138000")
 	if err == nil {
@@ -240,7 +240,7 @@ func TestClassAddStudent_MissingStudentName(t *testing.T) {
 	}
 }
 
-func TestClassAddStudent_MissingMobile(t *testing.T) {
+func TestCrossPlatformCoverageClassAddStudent_MissingMobile(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "add-student", "--dept-id", "12345", "--student-name", "张三")
 	if err == nil {
@@ -248,7 +248,7 @@ func TestClassAddStudent_MissingMobile(t *testing.T) {
 	}
 }
 
-func TestClassAddStudent_InvalidMotherJSON(t *testing.T) {
+func TestCrossPlatformCoverageClassAddStudent_InvalidMotherJSON(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "class", "add-student", "--dept-id", "12345", "--student-name", "张三", "--mother", "bad-json")
 	if err == nil {
@@ -256,7 +256,7 @@ func TestClassAddStudent_InvalidMotherJSON(t *testing.T) {
 	}
 }
 
-func TestTeacherUpdateCourse_MissingTeacherClassInfos(t *testing.T) {
+func TestCrossPlatformCoverageTeacherUpdateCourse_MissingTeacherClassInfos(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "teacher", "update-course")
 	if err == nil {
@@ -264,7 +264,7 @@ func TestTeacherUpdateCourse_MissingTeacherClassInfos(t *testing.T) {
 	}
 }
 
-func TestTeacherUpdateCourse_InvalidJSON(t *testing.T) {
+func TestCrossPlatformCoverageTeacherUpdateCourse_InvalidJSON(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "teacher", "update-course", "--teacher-class-infos", "not-json")
 	if err == nil {
@@ -272,7 +272,7 @@ func TestTeacherUpdateCourse_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestTeacherUpdateCourse_EmptyArray(t *testing.T) {
+func TestCrossPlatformCoverageTeacherUpdateCourse_EmptyArray(t *testing.T) {
 	root := newTestEduContactRoot()
 	err := executeCommand(root, "teacher", "update-course", "--teacher-class-infos", "[]")
 	if err == nil {
@@ -296,7 +296,7 @@ func withEduContactCaller(t *testing.T) *recruitCaptureCaller {
 	return caller
 }
 
-func TestEduContactHappyPaths(t *testing.T) {
+func TestCrossPlatformCoverageEduContactHappyPaths(t *testing.T) {
 	withEduContactCaller(t)
 	cases := [][]string{
 		// school
@@ -371,7 +371,7 @@ func TestEduContactHappyPaths(t *testing.T) {
 
 // TestEduContactErrorPathsRemaining covers validation branches not exercised by
 // the existing error tests, ensuring 100% changed-code coverage.
-func TestEduContactErrorPathsRemaining(t *testing.T) {
+func TestCrossPlatformCoverageEduContactErrorPathsRemaining(t *testing.T) {
 	cases := []struct {
 		name string
 		args []string
@@ -447,7 +447,7 @@ func withEduContactDispatchCaller(t *testing.T) *recruitCaptureCaller {
 	return caller
 }
 
-func TestEduContactDispatch(t *testing.T) {
+func TestCrossPlatformCoverageEduContactDispatch(t *testing.T) {
 	t.Run("class detail dispatches get_class_detail with deptId", func(t *testing.T) {
 		caller := withEduContactDispatchCaller(t)
 		root := newEduContactCommand()

@@ -17,7 +17,7 @@ func withEduFamilyGroupCaller(t *testing.T) *recruitCaptureCaller {
 	return caller
 }
 
-func TestEduFamilyGroupHappyPaths(t *testing.T) {
+func TestCrossPlatformCoverageEduFamilyGroupHappyPaths(t *testing.T) {
 	cases := [][]string{
 		{"group", "check-exists", "--uid", "1", "--group-name", "小明一家"},
 		{"group", "list-children", "--uid", "1"},
@@ -45,7 +45,7 @@ func TestEduFamilyGroupHappyPaths(t *testing.T) {
 	}
 }
 
-func TestEduFamilyGroupErrorPaths(t *testing.T) {
+func TestCrossPlatformCoverageEduFamilyGroupErrorPaths(t *testing.T) {
 	cases := []struct {
 		name string
 		args []string
@@ -94,7 +94,7 @@ func TestEduFamilyGroupErrorPaths(t *testing.T) {
 	}
 }
 
-func TestEduFamilyGroupValidateChildren(t *testing.T) {
+func TestCrossPlatformCoverageEduFamilyGroupValidateChildren(t *testing.T) {
 	valid := []any{map[string]any{
 		"name":     "小明",
 		"students": []any{map[string]any{"corpId": "c", "staffId": "s"}},
@@ -124,7 +124,7 @@ func TestEduFamilyGroupValidateChildren(t *testing.T) {
 	}
 }
 
-func TestEduFamilyGroupValidateStudents(t *testing.T) {
+func TestCrossPlatformCoverageEduFamilyGroupValidateStudents(t *testing.T) {
 	valid := []any{map[string]any{"schoolOrgId": float64(111), "studentStaffId": "stu001"}}
 	if err := eduFamilyGroupValidateStudents(valid); err != nil {
 		t.Fatalf("valid students error = %v", err)
@@ -156,7 +156,7 @@ func withEduFamilyGroupDispatchCaller(t *testing.T) *recruitCaptureCaller {
 	return caller
 }
 
-func TestEduFamilyGroupDispatch(t *testing.T) {
+func TestCrossPlatformCoverageEduFamilyGroupDispatch(t *testing.T) {
 	t.Run("check-exists", func(t *testing.T) {
 		caller := withEduFamilyGroupDispatchCaller(t)
 		cmd := newEduFamilyGroupCommand()

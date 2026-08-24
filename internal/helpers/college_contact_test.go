@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestCollegeContactCommand_Structure(t *testing.T) {
+func TestCrossPlatformCoverageCollegeContactCommand_Structure(t *testing.T) {
 	cmd := newCollegeContactCommand()
 
 	if cmd.Name() != "college-contact" {
@@ -73,7 +73,7 @@ func TestCollegeContactCommand_Structure(t *testing.T) {
 	}
 }
 
-func TestCollegeContactCommand_FindPath(t *testing.T) {
+func TestCrossPlatformCoverageCollegeContactCommand_FindPath(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	root.AddCommand(newCollegeContactCommand())
 
@@ -112,7 +112,7 @@ func runDestructiveLeaf(t *testing.T, args ...string) (err error, panicked bool)
 	return err, false
 }
 
-func TestCollegeContactDestructive_RejectedWithoutYes(t *testing.T) {
+func TestCrossPlatformCoverageCollegeContactDestructive_RejectedWithoutYes(t *testing.T) {
 	cases := [][]string{
 		{"college-contact", "dept", "delete", "--dept-id", "12345"},
 		{"college-contact", "employee", "remove", "--staff-ids", "S12345,S12346"},
@@ -131,7 +131,7 @@ func TestCollegeContactDestructive_RejectedWithoutYes(t *testing.T) {
 	}
 }
 
-func TestCollegeContactDestructive_ProceedsWithYes(t *testing.T) {
+func TestCrossPlatformCoverageCollegeContactDestructive_ProceedsWithYes(t *testing.T) {
 	cases := [][]string{
 		{"college-contact", "dept", "delete", "--dept-id", "12345", "--yes"},
 		{"college-contact", "employee", "remove", "--staff-ids", "S12345", "--yes"},
@@ -147,7 +147,7 @@ func TestCollegeContactDestructive_ProceedsWithYes(t *testing.T) {
 	}
 }
 
-func TestCollegeContactConfirmDestructive_Helper(t *testing.T) {
+func TestCrossPlatformCoverageCollegeContactConfirmDestructive_Helper(t *testing.T) {
 	// 无 yes flag（零值安全兼底）→ 拒绝
 	bare := &cobra.Command{Use: "x"}
 	if err := collegeContactConfirmDestructive(bare, "删除部门"); err == nil {
@@ -176,7 +176,7 @@ func withCollegeContactCaller(t *testing.T) *recruitCaptureCaller {
 
 // TestCollegeContactHappyPaths runs every leaf command with required flags only
 // and with all optional flags populated, expecting a nil error (dry-run preview).
-func TestCollegeContactHappyPaths(t *testing.T) {
+func TestCrossPlatformCoverageCollegeContactHappyPaths(t *testing.T) {
 	withCollegeContactCaller(t)
 
 	cases := [][]string{
@@ -301,7 +301,7 @@ func TestCollegeContactHappyPaths(t *testing.T) {
 // TestCollegeContactValidationErrors exercises every validation-error branch:
 // missing required flags, non-integer int flags, invalid bool flags, and
 // empty-after-split CSV lists. Each case must return a non-nil error.
-func TestCollegeContactValidationErrors(t *testing.T) {
+func TestCrossPlatformCoverageCollegeContactValidationErrors(t *testing.T) {
 	withCollegeContactCaller(t)
 
 	cases := [][]string{
@@ -522,7 +522,7 @@ func TestCollegeContactValidationErrors(t *testing.T) {
 // installed (so collegeContactConfirmDestructive does not short-circuit) and
 // each command is run with valid required flags but without --yes, so the
 // confirm gate returns an error that the RunE closure propagates.
-func TestCollegeContactDestructiveConfirmGate(t *testing.T) {
+func TestCrossPlatformCoverageCollegeContactDestructiveConfirmGate(t *testing.T) {
 	caller := &recruitCaptureCaller{dryRun: false}
 	InitDepsForTest(t, caller)
 	deps.Out.w = io.Discard
@@ -570,7 +570,7 @@ func withCollegeContactDispatchCaller(t *testing.T) *recruitCaptureCaller {
 
 // TestCollegeContactDispatch verifies that representative commands from each
 // group dispatch to the correct MCP tool with the expected productID and args.
-func TestCollegeContactDispatch(t *testing.T) {
+func TestCrossPlatformCoverageCollegeContactDispatch(t *testing.T) {
 	type dispatchCase struct {
 		name      string
 		args      []string
