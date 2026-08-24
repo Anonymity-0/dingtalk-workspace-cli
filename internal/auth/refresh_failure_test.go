@@ -293,6 +293,51 @@ func TestCrossPlatformCoverageLegacyGlobalSlotRejectsBlankUserIDForMultiAccountC
 	}
 }
 
+func TestCrossPlatformCoverageLegacyGlobalSlotRejectsBlankSelectedUserIDForMultiAccountCorp(t *testing.T) {
+	selected := &TokenData{
+		AccessToken:  "expired-identity-access",
+		RefreshToken: "rejected-identity-refresh",
+		ExpiresAt:    time.Now().Add(-time.Hour),
+		RefreshExpAt: time.Now().Add(time.Hour),
+		CorpID:       "corp-v1039-blank-selected",
+		Source:       "mcp",
+	}
+	legacy := &TokenData{
+		AccessToken:  "valid-legacy-global-access",
+		RefreshToken: "valid-legacy-global-refresh",
+		ExpiresAt:    time.Now().Add(time.Hour),
+		RefreshExpAt: time.Now().Add(24 * time.Hour),
+		CorpID:       selected.CorpID,
+		Source:       "mcp",
+	}
+	rejection := &MCPTokenExchangeError{Code: legacyMCPRefreshRejectedCode, Message: "authCode not found"}
+
+	testseam.Swap(t, &oauthAcquireLock, func(context.Context, string) (*DualLock, error) { return &DualLock{}, nil })
+	testseam.Swap(t, &oauthLoadTokenLocked, func(string, string) (*TokenData, error) { return selected, nil })
+	testseam.Swap(t, &oauthRefreshToken, func(*OAuthProvider, context.Context, *TokenData) (*TokenData, error) { return nil, rejection })
+	testseam.Swap(t, &tokenLoadKeychain, func() (*TokenData, error) { return legacy, nil })
+	testseam.Swap(t, &tokenLoadProfiles, func(string) (*ProfilesConfig, error) {
+		return &ProfilesConfig{Version: profilesVersion, Profiles: []Profile{
+			{Name: "Blank A", CorpID: selected.CorpID, UserID: ""},
+			{Name: "Blank B", CorpID: selected.CorpID, UserID: ""},
+		}}, nil
+	})
+	testseam.Swap(t, &tokenLoadKeychainForCorpID, func(string) (*TokenData, error) { return nil, ErrTokenDataNotFound })
+	saved := false
+	testseam.Swap(t, &oauthSaveTokenLocked, func(string, *TokenData) error {
+		saved = true
+		return nil
+	})
+
+	_, err := NewOAuthProvider(t.TempDir(), nil).lockedRefresh(context.Background())
+	if !errors.Is(err, rejection) {
+		t.Fatalf("lockedRefresh() error = %v, want original rejection", err)
+	}
+	if saved {
+		t.Fatal("legacy global recovery saved a blank-selected token for a multi-account organization")
+	}
+}
+
 func TestCrossPlatformCoverageLegacyGlobalSlotRejectsDifferentUserID(t *testing.T) {
 	selected := &TokenData{
 		AccessToken:  "expired-identity-access",
@@ -711,8 +756,11 @@ func TestCrossPlatformCoverageLegacyGlobalCandidateMatchingBoundaries(t *testing
 	}
 
 	blankSelected := &TokenData{CorpID: selected.CorpID}
+	testseam.Swap(t, &tokenLoadProfiles, func(string) (*ProfilesConfig, error) {
+		return &ProfilesConfig{Version: profilesVersion, Profiles: []Profile{{Name: "Blank User", CorpID: selected.CorpID}}}, nil
+	})
 	if !legacyGlobalRefreshCandidateMatches(configDir, blankSelected, &TokenData{CorpID: selected.CorpID}) {
-		t.Fatal("both blank user IDs should match")
+		t.Fatal("both blank user IDs should match only through the single-profile guard")
 	}
 	if legacyGlobalRefreshCandidateMatches(configDir, blankSelected, &TokenData{CorpID: selected.CorpID, UserID: "user-other"}) {
 		t.Fatal("blank selected with non-blank legacy accepted")
@@ -720,8 +768,5 @@ func TestCrossPlatformCoverageLegacyGlobalCandidateMatchingBoundaries(t *testing
 
 	if legacyGlobalBlankUserIDMatchesSingleProfile(configDir, "", selected.UserID) {
 		t.Fatal("blank corp accepted by single-profile check")
-	}
-	if legacyGlobalBlankUserIDMatchesSingleProfile(configDir, selected.CorpID, "") {
-		t.Fatal("blank user accepted by single-profile check")
 	}
 }

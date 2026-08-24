@@ -905,22 +905,22 @@ func (p *OAuthProvider) recoverRefreshFromLegacyGlobalSlot(ctx context.Context, 
 	if selected == nil {
 		return nil, refreshErr
 	}
-	slog.Debug("auth.refresh.legacy_recovery.triggered",
+	logging.AuthDebug("auth.refresh.legacy_recovery.triggered",
 		"corp_id", strings.TrimSpace(selected.CorpID),
 		"user_id", strings.TrimSpace(selected.UserID),
 		"refresh_error_code", exchangeErr.Code,
 	)
 	legacy, loadErr := tokenLoadKeychain()
 	if loadErr != nil {
-		slog.Debug("auth.refresh.legacy_recovery.failed", "step", "load_legacy", "error", loadErr)
+		logging.AuthDebug("auth.refresh.legacy_recovery.failed", "step", "load_legacy", "error", loadErr)
 		return nil, refreshErr
 	}
 	if legacy == nil {
-		slog.Debug("auth.refresh.legacy_recovery.failed", "step", "load_legacy", "reason", "empty_legacy")
+		logging.AuthDebug("auth.refresh.legacy_recovery.failed", "step", "load_legacy", "reason", "empty_legacy")
 		return nil, refreshErr
 	}
 	if !legacyGlobalRefreshCandidateMatches(p.configDir, selected, legacy) {
-		slog.Debug("auth.refresh.legacy_recovery.failed",
+		logging.AuthDebug("auth.refresh.legacy_recovery.failed",
 			"step", "candidate_mismatch",
 			"legacy_corp_id", strings.TrimSpace(legacy.CorpID),
 			"legacy_user_id", strings.TrimSpace(legacy.UserID),
@@ -936,30 +936,30 @@ func (p *OAuthProvider) recoverRefreshFromLegacyGlobalSlot(ctx context.Context, 
 	}
 	if recovered.IsAccessTokenValid() {
 		if err := oauthSaveTokenLocked(p.configDir, &recovered); err != nil {
-			slog.Debug("auth.refresh.legacy_recovery.failed", "step", "save", "error", err)
+			logging.AuthDebug("auth.refresh.legacy_recovery.failed", "step", "save", "error", err)
 			return nil, refreshErr
 		}
-		slog.Debug("auth.refresh.legacy_recovery.success", "via", "valid_access_token")
+		logging.AuthDebug("auth.refresh.legacy_recovery.success", "via", "valid_access_token")
 		return &recovered, nil
 	}
 	if !recovered.IsRefreshTokenValid() {
-		slog.Debug("auth.refresh.legacy_recovery.failed", "step", "refresh_expired")
+		logging.AuthDebug("auth.refresh.legacy_recovery.failed", "step", "refresh_expired")
 		return nil, refreshErr
 	}
 	if strings.TrimSpace(recovered.RefreshToken) == strings.TrimSpace(selected.RefreshToken) {
-		slog.Debug("auth.refresh.legacy_recovery.failed", "step", "same_refresh_token")
+		logging.AuthDebug("auth.refresh.legacy_recovery.failed", "step", "same_refresh_token")
 		return nil, refreshErr
 	}
 	if err := preflightTokenRefreshPersistence(p.configDir, &recovered); err != nil {
-		slog.Debug("auth.refresh.legacy_recovery.failed", "step", "preflight", "error", err)
+		logging.AuthDebug("auth.refresh.legacy_recovery.failed", "step", "preflight", "error", err)
 		return nil, refreshErr
 	}
 	refreshed, recoverErr := oauthRefreshToken(p, ctx, &recovered)
 	if recoverErr != nil {
-		slog.Debug("auth.refresh.legacy_recovery.failed", "step", "refresh", "error", recoverErr)
+		logging.AuthDebug("auth.refresh.legacy_recovery.failed", "step", "refresh", "error", recoverErr)
 		return nil, refreshErr
 	}
-	slog.Debug("auth.refresh.legacy_recovery.success", "via", "refresh")
+	logging.AuthDebug("auth.refresh.legacy_recovery.success", "via", "refresh")
 	return refreshed, nil
 }
 
@@ -974,9 +974,6 @@ func legacyGlobalRefreshCandidateMatches(configDir string, selected, legacy *Tok
 	}
 	selectedUserID := strings.TrimSpace(selected.UserID)
 	legacyUserID := strings.TrimSpace(legacy.UserID)
-	if selectedUserID == "" {
-		return legacyUserID == ""
-	}
 	if legacyUserID != "" {
 		return legacyUserID == selectedUserID
 	}
@@ -984,17 +981,17 @@ func legacyGlobalRefreshCandidateMatches(configDir string, selected, legacy *Tok
 }
 
 func legacyGlobalBlankUserIDMatchesSingleProfile(configDir, corpID, userID string) bool {
-	if strings.TrimSpace(corpID) == "" || strings.TrimSpace(userID) == "" {
+	if strings.TrimSpace(corpID) == "" {
 		return false
 	}
 	cfg, err := tokenLoadProfiles(configDir)
 	if err != nil || cfg == nil {
-		slog.Debug("auth.refresh.legacy_recovery.blank_user_rejected", "reason", "profiles_error", "error", err)
+		logging.AuthDebug("auth.refresh.legacy_recovery.blank_user_rejected", "reason", "profiles_error", "error", err)
 		return false
 	}
 	profiles := profilesForCorpID(cfg, corpID)
 	if len(profiles) != 1 {
-		slog.Debug("auth.refresh.legacy_recovery.blank_user_rejected",
+		logging.AuthDebug("auth.refresh.legacy_recovery.blank_user_rejected",
 			"reason", "multi_profile",
 			"corp_id", strings.TrimSpace(corpID),
 			"profile_count", len(profiles),
@@ -1009,7 +1006,7 @@ func legacyGlobalBlankUserIDMatchesSingleProfile(configDir, corpID, userID strin
 	if profile != nil {
 		profileUserID = strings.TrimSpace(profile.UserID)
 	}
-	slog.Debug("auth.refresh.legacy_recovery.blank_user_rejected",
+	logging.AuthDebug("auth.refresh.legacy_recovery.blank_user_rejected",
 		"reason", "identity_mismatch",
 		"selected_user_id", strings.TrimSpace(userID),
 		"profile_user_id", profileUserID,
