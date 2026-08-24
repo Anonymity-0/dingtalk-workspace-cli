@@ -274,6 +274,18 @@ func TestCrossPlatformCoverageMarkdownScanRegionGrouping(t *testing.T) {
 			[]regionKind{regionHTML, regionParagraph}},
 		{"html type 1 spans blank lines", "<script>\n\nstill script\n</script>\n\nafter",
 			[]regionKind{regionHTML, regionParagraph}},
+		// Each type-1 tag must end at its OWN closer, not only </script>; a
+		// mis-terminated <pre>/<style>/<textarea> would swallow everything after it.
+		{"html type 1 pre ends at its own closer", "<pre>\ncode\n</pre>\n\nafter",
+			[]regionKind{regionHTML, regionParagraph}},
+		{"html type 1 style ends at its own closer", "<style>\n.x{}\n</style>\n\nafter",
+			[]regionKind{regionHTML, regionParagraph}},
+		{"html type 1 textarea ends at its own closer", "<textarea>\nhi\n</textarea>\n\nafter",
+			[]regionKind{regionHTML, regionParagraph}},
+		{"html type 2 comment ends at its own terminator", "<!-- note -->\n\nafter",
+			[]regionKind{regionHTML, regionParagraph}},
+		{"html type 2 comment without a terminator runs to end of input", "<!--\nunclosed comment",
+			[]regionKind{regionHTML}},
 		{"indented code spans a blank line", "    one\n\n    two\n\nplain",
 			[]regionKind{regionIndentedCode, regionParagraph}},
 		{"link reference definition is a leaf", "[ref]: https://example.com\n\npara",
@@ -303,6 +315,46 @@ func TestCrossPlatformCoverageMarkdownScanRegionGrouping(t *testing.T) {
 						t.Errorf("line %d claims region %d, want %d", k, scan.lines[k].region, i)
 					}
 				}
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageMarkdownScanHTMLRepairDetection(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		content string
+		repair  bool
+		closer  string
+	}{
+		{"pre is repairable", "<pre>\na\nb\n</pre>", true, "</pre>"},
+		{"style is repairable", "<style>\n.a{}\n.b{}\n</style>", true, "</style>"},
+		{"textarea is repairable", "<textarea>\na\nb\n</textarea>", true, "</textarea>"},
+		{"multi-line opening tag is repairable", "<pre\n class=\"c\">\na\nb\n</pre>", true, "</pre>"},
+		{"script is never repaired", "<script>\na\nb\n</script>", false, ""},
+		{"div is not repairable", "<div>\na\nb\n</div>", false, ""},
+		{"single-line pre has no interior", "<pre>x</pre>\n\ntail", false, ""},
+		{"unterminated pre is not repaired", "<pre>\na\nb", false, ""},
+		{"pre without a closing '>' is not repaired", "<pre\nno gt ever here", false, ""},
+		{"<presentation> is not <pre>", "<presentation>\na\n</presentation>", false, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			scan := scanMarkdownStructure(tc.content)
+			var html *region
+			for i := range scan.regions {
+				if scan.regions[i].kind == regionHTML {
+					html = &scan.regions[i]
+					break
+				}
+			}
+			if html == nil {
+				t.Fatalf("no HTML region in %q (regions=%d)", tc.content, len(scan.regions))
+			}
+			if html.htmlRepair != tc.repair {
+				t.Errorf("htmlRepair = %v, want %v", html.htmlRepair, tc.repair)
+			}
+			if html.htmlRepair && html.htmlCloser != tc.closer {
+				t.Errorf("htmlCloser = %q, want %q", html.htmlCloser, tc.closer)
 			}
 		})
 	}

@@ -115,6 +115,11 @@ type region struct {
 	delim  srcSpan
 	// regionList
 	ordered bool
+	// regionHTML repair (only for <pre>/<style>/<textarea>; never <script>)
+	htmlRepair      bool
+	htmlOpen        srcSpan // the full opening tag, including a multi-line one
+	htmlOpenEndLine int     // line index the opening tag's '>' sits on
+	htmlCloser      string  // e.g. "</pre>"
 }
 
 type candidateKind uint8
@@ -132,10 +137,12 @@ const (
 	candRegionBoundary
 	candIndentedCodeLine
 	candHTMLLine
-	// The two hard kinds are synthesized on demand by hardCandidate and never
+	candHTMLRepair
+	// The hard kinds are synthesized on demand by hardCandidate and never
 	// stored in the candidate list.
 	candHardWhitespace
 	candHardRune
+	candHardHTML
 )
 
 type splitCandidate struct {
@@ -514,7 +521,8 @@ func (s *markdownScan) groupOneRegion(i int) int {
 	case lineListItemStart:
 		return s.groupList(i)
 	case lineHTMLStart:
-		return s.groupSimple(i, s.htmlEnd(i), region{kind: regionHTML})
+		last := s.htmlEnd(i)
+		return s.groupSimple(i, last, s.htmlRegion(i, last))
 	case lineATXHeading, lineThematicBreakOther, lineLinkRefDef:
 		return s.groupSimple(i, i, region{kind: regionLeaf})
 	case lineThematicBreakDash:
@@ -600,6 +608,20 @@ func (s *markdownScan) htmlEnd(i int) int {
 		}
 		return last
 	}
+	if s.lines[i].htmlKind == 1 {
+		// Type 1 covers <script>, <pre>, <style> and <textarea>, each with its own
+		// closing tag. CommonMark ends the block on the first line containing any
+		// of the four closers, so searching for a single fixed tag (e.g. only
+		// </script>) would let a <pre>/<style>/<textarea> block swallow the rest
+		// of the document — including a following table, which would then be split
+		// without its header re-emitted.
+		for k := i; k < len(s.lines); k++ {
+			if lineHasType1Closer(strings.ToLower(s.lineText(k))) {
+				return k
+			}
+		}
+		return len(s.lines) - 1
+	}
 	closer := htmlCloser(s.lines[i].htmlKind)
 	for k := i; k < len(s.lines); k++ {
 		if strings.Contains(strings.ToLower(s.lineText(k)), closer) {
@@ -609,6 +631,19 @@ func (s *markdownScan) htmlEnd(i int) int {
 	return len(s.lines) - 1
 }
 
+// lineHasType1Closer reports whether a lowercased line contains any of the four
+// CommonMark type-1 HTML closing tags. Type 1 ends on whichever appears first,
+// regardless of which opened the block.
+func lineHasType1Closer(lower string) bool {
+	return strings.Contains(lower, "</script>") ||
+		strings.Contains(lower, "</pre>") ||
+		strings.Contains(lower, "</style>") ||
+		strings.Contains(lower, "</textarea>")
+}
+
+// htmlCloser returns the terminator for HTML block types 2-5. Type 1 is handled
+// by lineHasType1Closer in htmlEnd (it has four possible closers, not one), and
+// types 6-7 end at a blank line; do not route those through here.
 func htmlCloser(kind uint8) string {
 	switch kind {
 	case 2:
@@ -622,6 +657,62 @@ func htmlCloser(kind uint8) string {
 	default:
 		return "</script>"
 	}
+}
+
+// htmlRegion builds a regionHTML, enabling <pre>/<style>/<textarea> repair when
+// the block has the canonical shape: a self-contained opening tag, a matching
+// closer on the last line, and at least one line of interior between them.
+// <script> is deliberately never repaired — splitting JavaScript across <script>
+// tags reliably breaks execution. Anything irregular falls back to a plain
+// regionHTML (line-boundary split, no reopen).
+func (s *markdownScan) htmlRegion(first, last int) region {
+	r := region{kind: regionHTML}
+	tag, ok := htmlType1RepairTag(strings.ToLower(strings.TrimSpace(s.lineText(first))))
+	if !ok {
+		return r
+	}
+	openEndOff, openEndLine, found := s.htmlTagEnd(first)
+	if !found || openEndLine >= last {
+		return r
+	}
+	closer := "</" + tag + ">"
+	if !strings.Contains(strings.ToLower(s.lineText(last)), closer) {
+		return r // not cleanly terminated by the matching closer
+	}
+	r.htmlRepair = true
+	r.htmlOpen = srcSpan{s.lines[first].start, openEndOff}
+	r.htmlOpenEndLine = openEndLine
+	r.htmlCloser = closer
+	return r
+}
+
+// htmlType1RepairTag returns the tag name when the line opens a repairable type-1
+// block. The tag must be followed by whitespace, '>' or end of line so that e.g.
+// "<presentation" is not mistaken for "<pre".
+func htmlType1RepairTag(lower string) (string, bool) {
+	for _, tag := range []string{"pre", "style", "textarea"} {
+		p := "<" + tag
+		if !strings.HasPrefix(lower, p) {
+			continue
+		}
+		rest := lower[len(p):]
+		if rest == "" || rest[0] == ' ' || rest[0] == '\t' || rest[0] == '>' {
+			return tag, true
+		}
+	}
+	return "", false
+}
+
+// htmlTagEnd finds the '>' that closes the tag opening on line `first`, which may
+// sit on a later line. It returns the byte offset just past the '>' and its line.
+func (s *markdownScan) htmlTagEnd(first int) (offset, line int, ok bool) {
+	for k := first; k < len(s.lines); k++ {
+		text := s.content[s.lines[k].start:s.lineTextEnd(k)]
+		if idx := strings.IndexByte(text, '>'); idx >= 0 {
+			return s.lines[k].start + idx + 1, k, true
+		}
+	}
+	return 0, 0, false
 }
 
 func (s *markdownScan) groupList(i int) int {
@@ -753,7 +844,7 @@ func (s *markdownScan) candidateAt(i int) (splitCandidate, bool) {
 		return splitCandidate{
 			offset: li.start, runeIdx: li.runeStart, line: int32(i + 1),
 			region: regionIdx, tier: tier, kind: kind,
-			keepTrailing: kind == candFenceBody,
+			keepTrailing: kind == candFenceBody || kind == candHTMLRepair,
 		}, true
 	}
 
@@ -832,9 +923,18 @@ func (s *markdownScan) candidateAt(i int) (splitCandidate, bool) {
 			return mk(tierSoft, candIndentedCodeLine, -1)
 		}
 	case regionHTML:
-		// Splitting raw HTML leaves unbalanced tags either way; a line boundary
-		// is strictly less destructive than the mid-line cut we would otherwise
-		// fall back to.
+		r := &s.regions[reg]
+		if r.htmlRepair {
+			if i <= r.htmlOpenEndLine {
+				// Never cut inside the opening tag (it may span several lines).
+				return splitCandidate{}, false
+			}
+			// B2 — close the tag here and reopen it (with any attributes) on the
+			// next chunk, exactly like a code fence.
+			return mk(tierRepair, candHTMLRepair, reg)
+		}
+		// Other tags are not repaired: a line boundary is less destructive than a
+		// mid-line cut, but the tags may no longer balance.
 		return mk(tierSoft, candHTMLLine, -1)
 	}
 	return splitCandidate{}, false
@@ -846,12 +946,13 @@ func (r region) firstLineIndent(s *markdownScan) int { return s.lines[r.firstLin
 // regionSpansBlanks reports whether blank lines inside this region belong to it,
 // which disqualifies them as safe boundaries.
 func (s *markdownScan) regionSpansBlanks(idx int32) bool {
-	switch s.regions[idx].kind {
-	case regionFence, regionIndentedCode, regionList:
-		return true
-	default:
-		return false
+	r := s.regions[idx]
+	if r.kind == regionHTML {
+		// Type-1 blocks (<script>/<pre>/<style>/<textarea>) run through blank
+		// lines, so an interior blank is content, not a safe boundary.
+		return s.lines[r.firstLine].htmlKind == 1
 	}
+	return r.kind == regionFence || r.kind == regionIndentedCode || r.kind == regionList
 }
 
 // interruptsParagraph reports whether the construct starting at line i can
@@ -910,6 +1011,15 @@ func (s *markdownScan) injectionAt(offset int) (prefix, suffix string) {
 		// only reachable when the limit is smaller than the header.
 		if body := r.firstLine + 2; body <= r.lastLine && offset >= s.lines[body].start {
 			return s.span(r.header) + "\n" + s.span(r.delim) + "\n", ""
+		}
+	case regionHTML:
+		// <pre>/<style>/<textarea>: reopen the (possibly multi-line) opening tag
+		// on the chunk that starts here and close it on the chunk that ends here,
+		// exactly like a fence. Only interior lines past the opening tag qualify.
+		if r.htmlRepair {
+			if body := r.htmlOpenEndLine + 1; body <= r.lastLine && offset >= s.lines[body].start {
+				return s.span(r.htmlOpen) + "\n", r.htmlCloser
+			}
 		}
 	}
 	return "", ""

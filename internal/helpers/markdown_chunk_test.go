@@ -436,6 +436,11 @@ func TestCrossPlatformCoverageMarkdownChunkInvariantsOnSeededCorpus(t *testing.T
 		func(n int) string { return "a\r\nb\rc" },
 		func(n int) string { return "<div>\nhtml body\n</div>" },
 		func(n int) string { return "<script>\n\nstill script\n</script>" },
+		func(n int) string { return "<pre>\n" + strings.Repeat("pre line\n", 1+n%4) + "</pre>" },
+		func(n int) string { return "<pre>\nfirst\n\nafter blank\n</pre>" },
+		func(n int) string { return "<pre\n  class=\"c\">\n" + strings.Repeat("x\n", 1+n%3) + "</pre>" },
+		func(n int) string { return "<style>\n" + strings.Repeat(".a{b:1}\n", 1+n%3) + "</style>" },
+		func(n int) string { return "<textarea>\n" + strings.Repeat("row\n", 1+n%3) + "</textarea>" },
 		func(n int) string { return "[ref]: https://example.com/x" },
 	}
 	limits := []int{1, 2, 3, 7, 17, 64, 200}
@@ -630,6 +635,130 @@ func TestCrossPlatformCoverageMarkdownChunkDegradationBookkeeping(t *testing.T) 
 		}
 		if !sawInjectedContinuation {
 			t.Error("expected at least one continuation chunk carrying the re-emitted header")
+		}
+	})
+
+	t.Run("closed pre block does not swallow a following oversized table", func(t *testing.T) {
+		// Regression for the type-1 HTML closer bug: <pre>/<style>/<textarea> were
+		// all classified as type 1 but the terminator search only looked for
+		// </script>, so a closed <pre> block swallowed the rest of the document.
+		// A following oversized table would then be cut as HTML lines with no
+		// header re-emitted, leaving invalid tables downstream.
+		header := "| a | b |\n|---|---|\n"
+		table := header + strings.Repeat("| 1 | 2 |\n", 12)
+		for _, open := range []string{"<pre>", "<style>", "<textarea>"} {
+			closer := strings.Replace(open, "<", "</", 1)
+			content := open + "\ninner\n" + closer + "\n\n" + table
+			plan := SplitMarkdownForAppend(content, 40)
+
+			kinds := strings.Join(degradationKinds(plan), ",")
+			if !strings.Contains(kinds, "table_split") {
+				t.Errorf("%s: table was not split as a table (degradations=%q)", open, kinds)
+			}
+			if strings.Contains(kinds, "html_block_split") {
+				t.Errorf("%s: table was cut as HTML lines (degradations=%q)", open, kinds)
+			}
+			// Every continuation chunk of the table carries the re-emitted header.
+			for i, chunk := range plan.Chunks {
+				if i > 0 && strings.Contains(chunk, "| 1 | 2 |") && !strings.HasPrefix(chunk, header) {
+					t.Errorf("%s: chunk %d has table rows without the header: %q", open, i, chunk)
+				}
+			}
+		}
+	})
+}
+
+func TestCrossPlatformCoverageMarkdownChunkHTMLRepair(t *testing.T) {
+	t.Run("pre style textarea reopen and close on every chunk", func(t *testing.T) {
+		for _, tc := range []struct{ open, close string }{
+			{"<pre>", "</pre>"}, {"<style>", "</style>"}, {"<textarea>", "</textarea>"},
+		} {
+			content := tc.open + "\n" + strings.Repeat("row\n", 8) + tc.close
+			// Limit large enough for the injected tags plus one content line.
+			plan := SplitMarkdownForAppend(content, len(tc.open)+len(tc.close)+8)
+			if len(plan.Chunks) < 2 {
+				t.Fatalf("%s: expected a split, got %d", tc.open, len(plan.Chunks))
+			}
+			for i, chunk := range plan.Chunks {
+				if !strings.HasPrefix(chunk, tc.open) {
+					t.Errorf("%s: chunk %d not reopened: %q", tc.open, i, chunk)
+				}
+				if !strings.HasSuffix(chunk, tc.close) {
+					t.Errorf("%s: chunk %d not closed: %q", tc.open, i, chunk)
+				}
+			}
+			for _, d := range plan.Degradations {
+				if d.Kind != "html_block_split" || d.Tier != "repair" || d.InjectedPrefix == "" {
+					t.Errorf("%s: degradation = %#v", tc.open, d)
+				}
+			}
+			// Content recoverable after stripping the injected tags.
+			if got := dropWhitespace(strings.Join(stripInjections(plan), "")); got != dropWhitespace(content) {
+				t.Errorf("%s: content changed after strip: %q", tc.open, got)
+			}
+		}
+	})
+
+	t.Run("multi-line opening tag is reopened in full", func(t *testing.T) {
+		open := "<pre\n  class=\"code\"\n  id=\"x\">"
+		content := open + "\n" + strings.Repeat("content line\n", 6) + "</pre>"
+		plan := SplitMarkdownForAppend(content, 60)
+		if len(plan.Chunks) < 2 {
+			t.Fatalf("expected a split, got %d", len(plan.Chunks))
+		}
+		for i, chunk := range plan.Chunks {
+			if i > 0 && !strings.HasPrefix(chunk, open) {
+				t.Errorf("chunk %d did not reopen the full multi-line tag: %q", i, chunk)
+			}
+			if n := utf8.RuneCountInString(chunk); n > 60 {
+				t.Errorf("chunk %d is %d runes, over the limit", i, n)
+			}
+		}
+	})
+
+	t.Run("interior blank line is preserved, never a silent safe split", func(t *testing.T) {
+		content := "<pre>\nbefore\n\nafter\n</pre>"
+		plan := SplitMarkdownForAppend(content, 16)
+		if len(plan.Chunks) < 2 {
+			t.Fatalf("expected a split, got %d", len(plan.Chunks))
+		}
+		// The blank inside the pre must not be treated as a boundary-free safe
+		// cut: splitting inside a <pre> must be reported, and content survives.
+		if len(plan.Degradations) == 0 {
+			t.Error("splitting inside a <pre> must be reported, not silent")
+		}
+		if got := dropWhitespace(strings.Join(stripInjections(plan), "")); got != dropWhitespace(content) {
+			t.Errorf("blank line lost: %q", got)
+		}
+	})
+
+	t.Run("script is never repaired", func(t *testing.T) {
+		content := "<script>\n" + strings.Repeat("var x=1\n", 6) + "</script>"
+		plan := SplitMarkdownForAppend(content, 20)
+		if len(plan.Chunks) < 2 {
+			t.Fatalf("expected a split, got %d", len(plan.Chunks))
+		}
+		for i, chunk := range plan.Chunks {
+			if i > 0 && strings.HasPrefix(chunk, "<script>") {
+				t.Errorf("chunk %d reopened <script> — script must not be repaired: %q", i, chunk)
+			}
+		}
+		for _, d := range plan.Degradations {
+			if d.Tier == "repair" && d.Kind == "html_block_split" {
+				t.Errorf("script was repaired: %#v", d)
+			}
+		}
+	})
+
+	t.Run("oversized single HTML line reports html_tag_hard_split with upload guidance", func(t *testing.T) {
+		content := "<div>" + strings.Repeat("x", 60) + "</div>"
+		plan := SplitMarkdownForAppend(content, 20)
+		if !strings.Contains(strings.Join(degradationKinds(plan), ","), "html_tag_hard_split") {
+			t.Fatalf("expected html_tag_hard_split, got %v", degradationKinds(plan))
+		}
+		joined := strings.Join(plan.Warnings(), " ")
+		if !strings.Contains(joined, "upload") && !strings.Contains(joined, "media insert") {
+			t.Errorf("warning must point at upload: %q", joined)
 		}
 	})
 }
