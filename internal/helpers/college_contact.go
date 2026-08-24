@@ -112,7 +112,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询高校标准架构信息",
 				UseWhen:      []string{"需要查询高校标准架构信息时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept get-standard-structure --help"},
+				Examples:     []string{"dws college-contact dept get-standard-structure --format json"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(false)},
@@ -194,7 +194,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询部门详情",
 				UseWhen:      []string{"需要查询部门详情时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept get-detail --help"},
+				Examples:     []string{"dws college-contact dept get-detail --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -276,7 +276,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询部门链",
 				UseWhen:      []string{"需要查询部门链时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept get-chain --help"},
+				Examples:     []string{"dws college-contact dept get-chain --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -359,7 +359,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "搜索通讯录",
 				UseWhen:      []string{"需要搜索通讯录时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept search --help"},
+				Examples:     []string{"dws college-contact dept search --dept-id 12345 --keyword 计算机"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -516,7 +516,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "创建部门",
 				UseWhen:      []string{"需要创建部门时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept create --help"},
+				Examples:     []string{"dws college-contact dept create --super-id 12345 --stru-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "super-id", Property: "input.superId", Required: boolPtr(true)},
@@ -653,7 +653,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "更新部门",
 				UseWhen:      []string{"需要更新部门时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept update --help"},
+				Examples:     []string{"dws college-contact dept update --dept-id 12345 --dept-type standard"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -732,7 +732,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "删除部门",
 				UseWhen:      []string{"需要删除部门时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept delete --help"},
+				Examples:     []string{"dws college-contact dept delete --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -813,7 +813,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "批量修改部门类型",
 				UseWhen:      []string{"需要批量修改部门类型时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept batch-update-type --help"},
+				Examples:     []string{"dws college-contact dept batch-update-type --dept-ids 12345 --target-dept-type standard"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-ids", Property: "input.deptIds", Required: boolPtr(true)},
@@ -960,7 +960,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询部门员工列表",
 				UseWhen:      []string{"需要查询部门员工列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee list-employees --help"},
+				Examples:     []string{"dws college-contact employee list-employees --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -1135,7 +1135,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询未接受邀请的员工列表",
 				UseWhen:      []string{"需要查询未接受邀请的员工列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee list-unaccepted --help"},
+				Examples:     []string{"dws college-contact employee list-unaccepted --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -1310,7 +1310,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询未激活的员工列表",
 				UseWhen:      []string{"需要查询未激活的员工列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee list-unactive --help"},
+				Examples:     []string{"dws college-contact employee list-unactive --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -1424,7 +1424,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询高校概览统计",
 				UseWhen:      []string{"需要查询高校概览统计时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact dept overview --help"},
+				Examples:     []string{"dws college-contact dept overview --format json"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(false)},
@@ -1514,7 +1514,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询升级状态",
 				UseWhen:      []string{"需要查询升级状态时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee upgrade-status --help"},
+				Examples:     []string{"dws college-contact employee upgrade-status --format json"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(false)},
@@ -1568,7 +1568,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "启动升级",
 				UseWhen:      []string{"需要启动升级时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee start-upgrade --help"},
+				Examples:     []string{"dws college-contact employee start-upgrade --format json"},
 			},
 			Parameters: []contract.ParamDecl{},
 		},
@@ -1713,7 +1713,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询员工详情",
 				UseWhen:      []string{"需要查询员工详情时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee get-detail --help"},
+				Examples:     []string{"dws college-contact employee get-detail --staff-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "staff-id", Property: "input.staffId", Required: boolPtr(true)},
@@ -1900,7 +1900,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "添加员工",
 				UseWhen:      []string{"需要添加员工时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee add --help"},
+				Examples:     []string{"dws college-contact employee add --emp-type standard --main-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "emp-type", Property: "input.empType", Required: boolPtr(true)},
@@ -2078,7 +2078,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "移除员工",
 				UseWhen:      []string{"需要移除员工时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee remove --help"},
+				Examples:     []string{"dws college-contact employee remove --staff-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "staff-ids", Property: "input.staffIds", Required: boolPtr(true)},
@@ -2258,7 +2258,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "变更员工类型",
 				UseWhen:      []string{"需要变更员工类型时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee change-type --help"},
+				Examples:     []string{"dws college-contact employee change-type --staff-id 12345 --emp-type standard"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "staff-id", Property: "input.staffId", Required: boolPtr(true)},
@@ -2442,7 +2442,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "变更员工部门",
 				UseWhen:      []string{"需要变更员工部门时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee change-dept --help"},
+				Examples:     []string{"dws college-contact employee change-dept --staff-id 12345 --target-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "staff-id", Property: "input.staffId", Required: boolPtr(true)},
@@ -2619,7 +2619,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "发送激活短信",
 				UseWhen:      []string{"需要发送激活短信时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact employee send-active-sms --help"},
+				Examples:     []string{"dws college-contact employee send-active-sms --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -2712,7 +2712,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询校友部门树",
 				UseWhen:      []string{"需要查询校友部门树时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni get-dept-tree --help"},
+				Examples:     []string{"dws college-contact alumni get-dept-tree --alumni-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -2769,7 +2769,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询校友部门详情",
 				UseWhen:      []string{"需要查询校友部门详情时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni get-info --help"},
+				Examples:     []string{"dws college-contact alumni get-info --alumni-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -2866,7 +2866,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询校友列表",
 				UseWhen:      []string{"需要查询校友列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni list --help"},
+				Examples:     []string{"dws college-contact alumni list --alumni-dept-id 12345 --order-field test"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -2927,7 +2927,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询校友详情",
 				UseWhen:      []string{"需要查询校友详情时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni query --help"},
+				Examples:     []string{"dws college-contact alumni query --staff-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "staff-id", Property: "input.staffId", Required: boolPtr(true)},
@@ -3002,7 +3002,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "搜索校友",
 				UseWhen:      []string{"需要搜索校友时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni search --help"},
+				Examples:     []string{"dws college-contact alumni search --keyword 计算机"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "keyword", Property: "input.keyword", Required: boolPtr(true)},
@@ -3085,7 +3085,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询未接受邀请的校友列表",
 				UseWhen:      []string{"需要查询未接受邀请的校友列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni list-unaccepted --help"},
+				Examples:     []string{"dws college-contact alumni list-unaccepted --alumni-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -3148,7 +3148,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询校友群",
 				UseWhen:      []string{"需要查询校友群时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni get-group --help"},
+				Examples:     []string{"dws college-contact alumni get-group --alumni-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -3213,7 +3213,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "创建校友子部门",
 				UseWhen:      []string{"需要创建校友子部门时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni create-dept --help"},
+				Examples:     []string{"dws college-contact alumni create-dept --alumni-dept-id 12345 --dept-name 测试"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -3280,7 +3280,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "更新校友部门",
 				UseWhen:      []string{"需要更新校友部门时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni update-dept --help"},
+				Examples:     []string{"dws college-contact alumni update-dept --alumni-dept-id 12345 --dept-name 测试"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -3348,7 +3348,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "删除校友部门",
 				UseWhen:      []string{"需要删除校友部门时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni delete-dept --help"},
+				Examples:     []string{"dws college-contact alumni delete-dept --alumni-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -3427,7 +3427,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "设置校友部门负责人",
 				UseWhen:      []string{"需要设置校友部门负责人时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni update-managers --help"},
+				Examples:     []string{"dws college-contact alumni update-managers --alumni-dept-id 12345 --admin-user-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -3534,7 +3534,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "添加校友",
 				UseWhen:      []string{"需要添加校友时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni add-alumnus --help"},
+				Examples:     []string{"dws college-contact alumni add-alumnus --dept-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "input.name", Required: boolPtr(false)},
@@ -3651,7 +3651,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "更新校友信息",
 				UseWhen:      []string{"需要更新校友信息时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni update-alumnus --help"},
+				Examples:     []string{"dws college-contact alumni update-alumnus --dept-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "staff-id", Property: "input.staffId", Required: boolPtr(false)},
@@ -3741,7 +3741,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "删除校友",
 				UseWhen:      []string{"需要删除校友时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni remove-alumnus --help"},
+				Examples:     []string{"dws college-contact alumni remove-alumnus --staff-id 12345 --alumni-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "staff-id", Property: "input.staffId", Required: boolPtr(true)},
@@ -3831,7 +3831,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "取消校友邀请",
 				UseWhen:      []string{"需要取消校友邀请时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni cancel-invite --help"},
+				Examples:     []string{"dws college-contact alumni cancel-invite --alumni-dept-id 12345 --staff-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -3895,7 +3895,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "创建校友群",
 				UseWhen:      []string{"需要创建校友群时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni create-group --help"},
+				Examples:     []string{"dws college-contact alumni create-group --alumni-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -3965,7 +3965,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "解散校友群",
 				UseWhen:      []string{"需要解散校友群时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni disband-group --help"},
+				Examples:     []string{"dws college-contact alumni disband-group --alumni-dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "alumni-dept-id", Property: "input.alumniDeptId", Required: boolPtr(true)},
@@ -4012,7 +4012,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询毕业生校友组织",
 				UseWhen:      []string{"需要查询毕业生校友组织时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni get-alumni-org-from-graduate --help"},
+				Examples:     []string{"dws college-contact alumni get-alumni-org-from-graduate --format json"},
 			},
 			Parameters: []contract.ParamDecl{},
 		},
@@ -4066,7 +4066,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "创建校友会组织",
 				UseWhen:      []string{"需要创建校友会组织时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni create-alumni-org --help"},
+				Examples:     []string{"dws college-contact alumni create-alumni-org --org-name 测试"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "org-name", Property: "input.orgName", Required: boolPtr(true)},
@@ -4134,7 +4134,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "添加校友会组织管理员",
 				UseWhen:      []string{"需要添加校友会组织管理员时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact alumni add-alumni-org-main-admins --help"},
+				Examples:     []string{"dws college-contact alumni add-alumni-org-main-admins --admin-user-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "admin-user-ids", Property: "input.adminUserIds", Required: boolPtr(true)},
@@ -4187,7 +4187,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询毕业年级列表",
 				UseWhen:      []string{"需要查询毕业年级列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate query-graduate-years --help"},
+				Examples:     []string{"dws college-contact graduate query-graduate-years --format json"},
 			},
 			Parameters: []contract.ParamDecl{},
 		},
@@ -4255,7 +4255,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询待毕业部门列表",
 				UseWhen:      []string{"需要查询待毕业部门列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate query-graduate-depts --help"},
+				Examples:     []string{"dws college-contact graduate query-graduate-depts --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -4319,7 +4319,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询毕业子部门列表",
 				UseWhen:      []string{"需要查询毕业子部门列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate query-graduate-sub-depts --help"},
+				Examples:     []string{"dws college-contact graduate query-graduate-sub-depts --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -4402,7 +4402,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "分页查询待毕业学生列表",
 				UseWhen:      []string{"需要分页查询待毕业学生列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate query-page-graduate-users --help"},
+				Examples:     []string{"dws college-contact graduate query-page-graduate-users --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -4472,7 +4472,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询异步任务执行结果",
 				UseWhen:      []string{"需要查询异步任务执行结果时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate get-task-result --help"},
+				Examples:     []string{"dws college-contact graduate get-task-result --request-no test"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "request-no", Property: "input.requestNo", Required: boolPtr(true)},
@@ -4521,7 +4521,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询校友组织信息",
 				UseWhen:      []string{"需要查询校友组织信息时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate get-alumni-org --help"},
+				Examples:     []string{"dws college-contact graduate get-alumni-org --format json"},
 			},
 			Parameters: []contract.ParamDecl{},
 		},
@@ -4579,7 +4579,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询可恢复子部门列表",
 				UseWhen:      []string{"需要查询可恢复子部门列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate query-restore-sub-depts --help"},
+				Examples:     []string{"dws college-contact graduate query-restore-sub-depts --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -4660,7 +4660,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询部门可恢复员工列表",
 				UseWhen:      []string{"需要查询部门可恢复员工列表时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate query-dept-deleted-emps --help"},
+				Examples:     []string{"dws college-contact graduate query-dept-deleted-emps --dept-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -4741,7 +4741,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "搜索毕业部门与员工",
 				UseWhen:      []string{"需要搜索毕业部门与员工时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate search-graduate --help"},
+				Examples:     []string{"dws college-contact graduate search-graduate --keyword 计算机"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "keyword", Property: "input.keyword", Required: boolPtr(true)},
@@ -4847,7 +4847,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "提交毕业",
 				UseWhen:      []string{"需要提交毕业时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate commit-graduate --help"},
+				Examples:     []string{"dws college-contact graduate commit-graduate --graduate-dept-ids 12345 --graduate-year 2024"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "graduate-dept-ids", Property: "input.graduateDeptIds", Required: boolPtr(true)},
@@ -4928,7 +4928,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "全部毕业",
 				UseWhen:      []string{"需要全部毕业时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate all-graduate --help"},
+				Examples:     []string{"dws college-contact graduate all-graduate --graduate-year 2024"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "graduate-year", Property: "input.graduateYear", Required: boolPtr(true)},
@@ -5019,7 +5019,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "批量毕业",
 				UseWhen:      []string{"需要批量毕业时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate batch-graduate --help"},
+				Examples:     []string{"dws college-contact graduate batch-graduate --dept-id 12345 --staff-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -5110,7 +5110,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "删除并毕业",
 				UseWhen:      []string{"需要删除并毕业时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate delete-and-graduate --help"},
+				Examples:     []string{"dws college-contact graduate delete-and-graduate --dept-id 12345 --staff-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -5201,7 +5201,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "批量删除待毕业学生",
 				UseWhen:      []string{"需要批量删除待毕业学生时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate batch-delete-pending --help"},
+				Examples:     []string{"dws college-contact graduate batch-delete-pending --dept-id 12345 --staff-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -5304,7 +5304,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "批量更新待毕业学生",
 				UseWhen:      []string{"需要批量更新待毕业学生时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate batch-update-pending --help"},
+				Examples:     []string{"dws college-contact graduate batch-update-pending --dept-id 12345 --staff-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "dept-id", Property: "input.deptId", Required: boolPtr(true)},
@@ -5396,7 +5396,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "提交恢复",
 				UseWhen:      []string{"需要提交恢复时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact graduate commit-restore --help"},
+				Examples:     []string{"dws college-contact graduate commit-restore --graduate-dept-ids 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "graduate-dept-ids", Property: "input.graduateDeptIds", Required: boolPtr(true)},
@@ -5477,7 +5477,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询规则",
 				UseWhen:      []string{"需要查询规则时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group query-group-rule --help"},
+				Examples:     []string{"dws college-contact group query-group-rule --format json"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "input.name", Required: boolPtr(false)},
@@ -5528,7 +5528,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询规则调度",
 				UseWhen:      []string{"需要查询规则调度时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group get-group-rule-schedule --help"},
+				Examples:     []string{"dws college-contact group get-group-rule-schedule --format json"},
 			},
 			Parameters: []contract.ParamDecl{},
 		},
@@ -5591,7 +5591,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "查询规则预览数据",
 				UseWhen:      []string{"需要查询规则预览数据时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group query-preview-data --help"},
+				Examples:     []string{"dws college-contact group query-preview-data --format json"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "offset", Property: "input.offset", Required: boolPtr(false)},
@@ -5677,7 +5677,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "创建规则",
 				UseWhen:      []string{"需要创建规则时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group create-group-rule --help"},
+				Examples:     []string{"dws college-contact group create-group-rule --name 测试 --tag-code test"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "input.name", Required: boolPtr(true)},
@@ -5749,7 +5749,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "删除规则",
 				UseWhen:      []string{"需要删除规则时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group delete-group-rule --help"},
+				Examples:     []string{"dws college-contact group delete-group-rule --rule-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "rule-id", Property: "input.ruleId", Required: boolPtr(true)},
@@ -5807,7 +5807,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "启用规则",
 				UseWhen:      []string{"需要启用规则时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group enable-group-rule --help"},
+				Examples:     []string{"dws college-contact group enable-group-rule --rule-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "rule-id", Property: "input.ruleId", Required: boolPtr(true)},
@@ -5865,7 +5865,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "停用规则",
 				UseWhen:      []string{"需要停用规则时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group disable-group-rule --help"},
+				Examples:     []string{"dws college-contact group disable-group-rule --rule-id 12345"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "rule-id", Property: "input.ruleId", Required: boolPtr(true)},
@@ -5920,7 +5920,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "设置规则调度",
 				UseWhen:      []string{"需要设置规则调度时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group set-group-rule-schedule --help"},
+				Examples:     []string{"dws college-contact group set-group-rule-schedule --format json"},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "cron", Property: "input.cron", Required: boolPtr(false)},
@@ -5976,7 +5976,7 @@ func newCollegeContactCommand() *cobra.Command {
 				AgentSummary: "立即执行规则",
 				UseWhen:      []string{"需要立即执行规则时"},
 				AvoidWhen:    []string{"与高校通讯录无关的操作"},
-				Examples:     []string{"dws college-contact group execute-group-rule --help"},
+				Examples:     []string{"dws college-contact group execute-group-rule --format json"},
 			},
 			Parameters: []contract.ParamDecl{},
 		},
