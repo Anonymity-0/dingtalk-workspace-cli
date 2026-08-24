@@ -137,7 +137,7 @@ dws minutes +update --id <taskUuid> --title "<目标标题>" --dry-run --format 
 | `minutes hot-word delete` | 删除热词 | `user_required`，destructive/high |
 | `minutes replace-text` | 替换一条听记中的文本 | `user_required` |
 
-普通“补充热词”优先 `+prepare-asr`，它只新增缺失项。只有用户明确要求最终集合完全一致并接受删除多余项时使用 `+sync-asr`。批量文本替换优先 `+replace-batch`，保留逐项验证和失败 ledger。
+普通“补充热词”优先 `+prepare-asr`，它只新增缺失项。只有用户明确要求最终集合完全一致并接受删除多余项时使用 `+sync-asr`；旧 `+prepare-asr --sync` 保持公开以提供迁移提示，但不会调用 MCP。批量文本替换优先 `+replace-batch`，保留逐项验证和失败 ledger。
 
 ## 7. Upload session
 
@@ -149,6 +149,8 @@ dws minutes +update --id <taskUuid> --title "<目标标题>" --dry-run --format 
 | `minutes upload cancel` | 取消已知 session | `not_required` |
 
 正常本地文件上传优先 `+upload` 或 `+upload-and-notify`，由 Shortcut 管理 create、PUT、complete、取消和读回。原子流程必须保存真实 sessionId/上传地址/taskUuid：
+
+`minutes upload create --enable-message-card` 保持公开以提供兼容迁移提示，但不会创建 session；需要通知时使用 `minutes upload create-and-notify`。`+upload[ --enable-message-card]` 和 `+upload-and-analyze --enable-message-card` 也不会执行旧通知副作用，并在各自通用 Runtime confirmation 之后返回迁移提示。真实执行 `+upload` 和 `+upload-and-analyze` 必须遵循确认门禁，不能因为不发送消息就绕过创建听记的确认。
 
 1. create 或 create-and-notify。
 2. 按服务端返回的预签名地址上传文件，不记录该地址。

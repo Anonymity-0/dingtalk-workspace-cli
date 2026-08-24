@@ -42,13 +42,13 @@ metadata:
 | 按标题或时间找听记 | `dws minutes +search --scope all --query "<关键词>" --page-all` | `scope` 可选 `mine/shared/all`；至少提供 query/start/end 之一。`all --page-all` 分别追完 mine/shared 后去重，不把单个 noLimit 端点当完整全集 |
 | 浏览我创建、共享给我或全部可访问听记 | `+list-mine` / `+list-shared` / `+list-all` | 默认是可续拉预览；要声称完整必须加 `--page-all` 并检查 `complete=true`。用户只说“我的听记”不等于明确 `mine`，范围不清时用 `all` |
 | 看我最新创建的一条 | `dws minutes +latest [--keyword <关键词>]` | 只在用户明确说“最新”时用；不能用它替代具名目标搜索，也不能在录音 start 后拿 latest 猜新录音 ID |
-| 读取基础信息、摘要或关键词 | `dws minutes +detail --id <taskUuid> --artifacts basic,summary,keywords` | 只读取需要的产物；任一产物失败都按 partial/非零处理，不把缺失项说成空内容 |
-| 读取逐字稿 | `dws minutes +transcript --id <taskUuid> [--direction 1] [--single-page]` | 默认正序并追完分页；倒序必须传 `--direction 1`，用户明确只要第一页时传 `--single-page`，不得随后自动续页。交付前检查 `data.direction/data.complete/data.pages` 与 `meta.pagination` |
+| 读取基础信息、摘要或关键词 | `dws minutes +detail --id <taskUuid> --artifacts basic,summary,keywords` | 已有 taskUuid 且只读取现有产物时直接使用，不要进入上传 workflow；任一产物失败都按 partial/非零处理，不把缺失项说成空内容 |
+| 读取逐字稿 | `dws minutes +transcript --id <taskUuid> [--direction 1] [--single-page]` | 已有 taskUuid 且只读取逐字稿时直接使用，不要借 `+upload-and-analyze --resume-id` 代读。默认正序并追完分页；倒序必须传 `--direction 1`，用户明确只要第一页时传 `--single-page`，不得随后自动续页。交付前检查 `data.direction/data.complete/data.pages` 与 `meta.pagination` |
 | 读取行动项 | `dws minutes +action-items --id <taskUuid>` | 只有受支持字段明确返回空数组才能说“没有待办”；`unsupported_shape`、字段解析失败或工具失败都不是空结果。需要创建钉钉待办时再切 `dingtalk-todo` |
 | 把摘要、关键词、完整逐字稿和行动项归档到本地 | `dws minutes +export-pack --id <taskUuid> --output <新相对目录>` | 要带媒体时加 `--include-media`；必须由 `published/path/manifest/files` 证明落盘，只有建目录、计划或文件名不能称已生成 |
 | 修改或预览标题 | `dws minutes +update --id <taskUuid> --title "<新标题>"` | 真实修改按 Runtime confirmation 执行并读回；用户只要预览时先读 basic，再加 `--dry-run`，展示“当前值 → 目标值”后停止，不追加 `--yes` |
 | 覆盖纪要正文 | `dws minutes +summary --id <taskUuid> --content @<相对文件>` | `content` 是完整目标正文，不是局部 patch；按 Runtime confirmation 执行，并保护图片引用、读回全文 |
-| 上传音视频生成听记 | `dws minutes +upload --file <相对路径>` | 普通上传不发送额外消息；用户明确要闪记卡片时改用 `+upload-and-notify`，需要等待分析产物时用 `+upload-and-analyze` |
+| 上传音视频生成听记 | `dws minutes +upload --file <相对路径>` | 真实执行会上传文件并创建远端听记，必须按 Runtime confirmation；用户明确要闪记卡片时改用 `+upload-and-notify`，需要上传后等待分析产物时用 `+upload-and-analyze` |
 | 真实开始、暂停、继续或停止录音 | `+record-start` / `+record-pause` / `+record-resume` / `+record-stop` | 这组入口会真实执行。start 返回 `accepted=true, bound=false` 或 `controlReady=false` 时，报告“已受理但未绑定”并停止：不得重试 start，也不得用 `+latest`、列表第一条或时间最近项猜 ID。结束并等待产物用 `+record-wrap-up` |
 | 只预览录音请求，不实际执行 | `dws minutes record start --dry-run --format json` | 使用对应的原子 `minutes record start|pause|resume|stop` leaf；start 的 `--session-id` 可选，pause/resume/stop 必须传真实 `--id`。不要把被拒绝的 Shortcut dry-run 描述成预览成功 |
 | 生成或继续思维导图 | `dws minutes +mindmap --id <taskUuid>` | 创建后有界轮询；超时或未知状态保留恢复信息，用 `--resume` 继续，不重复创建 |
@@ -85,7 +85,8 @@ dws minutes +list-all --page-all --format json
 ## 安全边界
 
 - 是否确认以 leaf Schema 与 Runtime gate 为准，不根据“看起来像写操作”自行推断。标题、纪要、录音控制、权限授权/申请/撤销、发言人或文本替换等当前要求确认。
-- 普通上传、思维导图、发言人洞察和仅追加 ASR 热词当前不额外要求确认；上传并发送闪记卡片、精确同步并删除热词、撤权等副作用更大的入口单独处理。
+- `+upload` 与 `+upload-and-analyze` 即使不发送消息，仍会上传本地媒体并创建远端听记，真实执行必须按 Runtime confirmation；`--dry-run` 仍可在零远端调用下预览。上传并发送闪记卡片、精确同步并删除热词、撤权等副作用更大的入口继续单独处理。
+- 思维导图、发言人洞察和仅追加 ASR 热词当前不额外要求确认；旧 `--sync` / `--enable-message-card` 只保留为公开迁移提示，不得当作可执行 Golden Route，也不得绕过新入口的确认策略。
 - `--dry-run` 必须返回明确的 dry-run/request 证据且不调用远端；录音预览按上方原子入口执行。任何入口若拒绝 dry-run，必须报告“不支持预览”，不得把拦截或普通执行称为预演成功。
 - 用户明确要求“仅预览/不实际写入”时，任务在真实现状读取、dry-run 计划和差异交付后结束；不得继续请求写入确认，也不得为了验证预览而执行真实写入后再还原。
 - 分享/撤权使用稳定成员 UID，不能把姓名、手机号或跨组织 ID 直接当 UID；同一目标解析、读取、写入和验证必须使用同一 profile。

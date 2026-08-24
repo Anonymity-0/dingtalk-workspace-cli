@@ -13,7 +13,7 @@
 | 只查看当前 ASR 热词 / “识别词配置” | `dws minutes hot-word list --format json` | 不需要 | 原子只读；返回当前账号的识别词配置，不是某个音频的转写结果 |
 | 删除一个或多个已知热词 | `dws minutes hot-word delete --words "<热词1,热词2>"` | 需要 | 先锁定准确词值，不模糊删除 |
 
-`+prepare-asr --sync` 已迁移并会直接报错。需要删除时必须显式改用 `+sync-asr`，不能把“准备热词”解释成“覆盖整个词表”。两个 Shortcut 的 `--dry-run` 都只输出本地计划，不读取或写入远端；要比较真实差异时先读取词表，再单独执行目标入口。
+`+prepare-asr --sync` 作为已发布参数保持公开可见，但只返回迁移提示且在任何 MCP 调用前停止。需要删除时必须显式改用 `+sync-asr`，不能把“准备热词”解释成“覆盖整个词表”。两个 Shortcut 的 `--dry-run` 都只输出本地计划，不读取或写入远端；要比较真实差异时先读取词表，再单独执行目标入口。
 
 用户说“先核对识别词/词表”时，默认指当前 ASR 热词配置，必须实际执行 `hot-word list`，不能只展示命令。如果用户明确要核对某个音频最终识别出的文字，则必须真实上传并等待转写；upload dry-run 做不到这一点。用户同时要求“不实际创建听记”时，以不写入为最高边界，如实说明两项要求不能同时满足，不能通过真实 create 后 cancel 来伪造预览。
 
@@ -23,9 +23,9 @@
 
 | 目标 | 推荐入口 | 结果边界 |
 |---|---|---|
-| 上传并创建听记，不发送额外消息 | `dws minutes +upload --file <相对路径> [--title <标题>]` | 完成 create、文件 PUT、complete 和详情读回；失败时取消可取消的 session |
+| 上传并创建听记，不发送额外消息 | `dws minutes +upload --file <相对路径> [--title <标题>]` | 真实执行需要确认；完成 create、文件 PUT、complete 和详情读回，失败时取消可取消的 session |
 | 上传并额外发送闪记卡片 | `dws minutes +upload-and-notify --file <相对路径> [--title <标题>]` | 通知副作用独立确认；不要再给 `+upload` 传旧 `--enable-message-card` |
-| 上传并等待摘要/逐字稿等分析产物 | `dws minutes +upload-and-analyze --file <相对路径> --artifacts summary,transcript` | 有界等待；可加 `--mindmap` / `--speaker-insights`；不要把 pending/timeout 说成完成 |
+| 上传并等待摘要/逐字稿等分析产物 | `dws minutes +upload-and-analyze --file <相对路径> --artifacts summary,transcript` | 真实执行需要确认；有界等待，可加 `--mindmap` / `--speaker-insights`，不要把 pending/timeout 说成完成 |
 
 用户要求预览上传，并明确要求核对热词配置或比较听记列表是否变化时，执行以下可验证流程；没有这些额外要求时不必增加读操作：
 
@@ -40,13 +40,20 @@ dws minutes +list-mine --page-all --format json
 - dry-run 只证明请求计划与 `executed=false`，不会创建 session、听记或 ASR 结果。前后列表按 `taskUuid` 集合比较；不能只比较数量或第一页。
 - 没有真实文件、文件字节数或 sessionId 时，停止在相应前置门禁；不得调用 create/complete。用户要求确认“没有生成新听记”时，仍需用真实列表证据回答，不能仅由“我没有调用上传”推断列表事实。
 
-如果先使用 `+upload-and-notify` 已拿到 `taskUuid`，后续需要分析时使用：
+如果已有 `taskUuid`，并且只需要读取当前已经生成的摘要与逐字稿，直接使用只读入口：
+
+```text
+dws minutes +detail --id <taskUuid> --artifacts basic,summary,keywords --format json
+dws minutes +transcript --id <taskUuid> --format json
+```
+
+不要仅因资源最初来自上传就再次进入上传 workflow。只有产物尚未就绪、确实需要有界轮询时，才使用：
 
 ```text
 dws minutes +upload-and-analyze --resume-id <taskUuid> --artifacts summary,transcript
 ```
 
-这只恢复分析，不重复上传或再次通知。`+upload-and-analyze --enable-message-card` 已迁移并会报错。
+`--resume-id` 分支不重复上传或再次通知，但 `+upload-and-analyze` 是同时包含新上传分支的混合入口，因此仍按该命令的 Runtime confirmation 执行。`+upload-and-analyze --enable-message-card` 作为公开兼容参数不再执行旧通知副作用；通过该命令的通用确认门禁后会返回迁移提示，需要通知时使用 `+upload-and-notify`。
 
 ### 2.2 原子 upload session
 
@@ -54,7 +61,7 @@ dws minutes +upload-and-analyze --resume-id <taskUuid> --artifacts summary,trans
 
 | 阶段 | 原子命令 | 关键句柄 |
 |---|---|---|
-| 创建普通 session | `dws minutes upload create ...` | 保存 session/upload URL 等真实返回 |
+| 创建普通 session | `dws minutes upload create ...` | 保存 session/upload URL 等真实返回；旧 `--enable-message-card` 只返回迁移提示 |
 | 创建并通知 | `dws minutes upload create-and-notify ...` | 需要确认；不要用普通 create 模拟通知 |
 | 完成 session | `dws minutes upload complete ...` | 只对已知 session 执行，保留最终 taskUuid |
 | 取消 session | `dws minutes upload cancel ...` | 取消失败或状态未知时停止，不能谎报已清理 |
