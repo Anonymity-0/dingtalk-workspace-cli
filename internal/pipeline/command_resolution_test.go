@@ -185,6 +185,36 @@ func TestCrossPlatformCoverageHintSubCmdReturnsTypedRecovery(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageHintSubCmdAndGroupRunEDefensiveBranches(t *testing.T) {
+	standaloneHint := HintSubCmd("send", " \t ")
+	structured := requireCommandResolutionError(t, standaloneHint.RunE(standaloneHint, nil), "unknown_subcommand")
+	if structured.Hint != "Run 'send --help' for the full list" {
+		t.Fatalf("standalone empty hint = %q", structured.Hint)
+	}
+
+	root := &cobra.Command{Use: "dws"}
+	group := &cobra.Command{Use: "demo"}
+	group.AddCommand(&cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}})
+	root.AddCommand(group)
+	structured = requireCommandResolutionError(t, GroupRunE(group, []string{"lisst"}), "unknown_subcommand")
+	if structured.Details["input"] != "lisst" {
+		t.Fatalf("GroupRunE() details.input = %#v", structured.Details["input"])
+	}
+	suggestions, ok := structured.Details["suggestions"].([]string)
+	if !ok || len(suggestions) != 1 || suggestions[0] != "list" {
+		t.Fatalf("GroupRunE() details.suggestions = %#v", structured.Details["suggestions"])
+	}
+
+	var help strings.Builder
+	group.SetOut(&help)
+	if err := GroupRunE(group, nil); err != nil {
+		t.Fatalf("GroupRunE() help error = %v", err)
+	}
+	if output := help.String(); !strings.Contains(output, "Usage:") || !strings.Contains(output, "list") {
+		t.Fatalf("GroupRunE() help output = %q", output)
+	}
+}
+
 func requireCommandResolutionError(t *testing.T, err error, reason string) *apperrors.Error {
 	t.Helper()
 	var structured *apperrors.Error

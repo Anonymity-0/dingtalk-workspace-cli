@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -26,6 +27,22 @@ func TestCrossPlatformCoverageSheetAndMinutesSmallRemainingBranches(t *testing.T
 	var structured *apperrors.Error
 	if !errors.As(err, &structured) || structured.Reason != "unknown_subcommand" || !strings.Contains(structured.Hint, "range read") {
 		t.Fatalf("deep suggestion err=%#v", err)
+	}
+
+	bounded := &cobra.Command{Use: "sheet"}
+	for _, name := range []string{"alpha", "beta", "delta", "gamma"} {
+		group := &cobra.Command{Use: name}
+		group.AddCommand(&cobra.Command{Use: "read", Run: func(*cobra.Command, []string) {}})
+		bounded.AddCommand(group)
+	}
+	attachUnknownSubcommandGuard(bounded)
+	err = bounded.RunE(bounded, []string{"read"})
+	if !errors.As(err, &structured) {
+		t.Fatalf("bounded deep suggestion error = %T %v", err, err)
+	}
+	suggestions, ok := structured.Details["suggestions"].([]string)
+	if !ok || !slices.Equal(suggestions, []string{"alpha read", "beta read", "delta read"}) {
+		t.Fatalf("bounded deep suggestions = %#v", structured.Details["suggestions"])
 	}
 
 	installScriptedCaller(t, &scriptedToolCaller{dry: true})

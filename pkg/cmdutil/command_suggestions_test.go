@@ -65,4 +65,65 @@ func TestCrossPlatformCoverageFormatSubcommandSuggestionHintDefensivelyBoundsInp
 	if strings.Count(hint, `"dws demo `) != MaxCommandSuggestions || strings.Contains(hint, "four") {
 		t.Fatalf("unbounded formatted hint = %q", hint)
 	}
+	if hint := FormatSubcommandSuggestionHint(group, []string{"one"}, "fallback"); hint != `Did you mean "dws demo one"? (fallback)` {
+		t.Fatalf("single suggestion hint = %q", hint)
+	}
+}
+
+func TestCrossPlatformCoverageSuggestSubcommandsDefensiveInputs(t *testing.T) {
+	if got := SuggestSubcommands(nil, "candidate"); got != nil {
+		t.Fatalf("SuggestSubcommands(nil) = %#v, want nil", got)
+	}
+
+	group := &cobra.Command{Use: "demo"}
+	group.AddCommand(&cobra.Command{
+		Use:     "target",
+		Aliases: []string{""},
+		Run:     func(*cobra.Command, []string) {},
+	})
+	if got := SuggestSubcommands(group, " \t "); len(got) != 0 {
+		t.Fatalf("empty candidate suggestions = %#v", got)
+	}
+	if got := SuggestSubcommands(group, "target"); !slices.Equal(got, []string{"target"}) {
+		t.Fatalf("empty alias changed canonical suggestion = %#v", got)
+	}
+
+	blankGroup := &cobra.Command{Use: "demo", SuggestionsMinimumDistance: 100}
+	blankGroup.AddCommand(&cobra.Command{Use: "", Run: func(*cobra.Command, []string) {}})
+	if got := SuggestSubcommands(blankGroup, "candidate"); len(got) != 0 {
+		t.Fatalf("blank command identity suggestions = %#v", got)
+	}
+}
+
+func TestCrossPlatformCoverageSuggestSubcommandsRankingTieBreakers(t *testing.T) {
+	newGroup := func() *cobra.Command {
+		return &cobra.Command{Use: "demo", SuggestionsMinimumDistance: 100}
+	}
+
+	explicit := newGroup()
+	explicit.AddCommand(
+		&cobra.Command{Use: "reviewed", SuggestFor: []string{"legacy"}, Run: func(*cobra.Command, []string) {}},
+		&cobra.Command{Use: "ordinary", Run: func(*cobra.Command, []string) {}},
+	)
+	if got := SuggestSubcommands(explicit, "legacy"); len(got) < 2 || got[0] != "reviewed" {
+		t.Fatalf("explicit ranking = %#v", got)
+	}
+
+	prefix := newGroup()
+	prefix.AddCommand(
+		&cobra.Command{Use: "alpha", Run: func(*cobra.Command, []string) {}},
+		&cobra.Command{Use: "xlp", Run: func(*cobra.Command, []string) {}},
+	)
+	if got := SuggestSubcommands(prefix, "alp"); len(got) < 2 || got[0] != "alpha" {
+		t.Fatalf("prefix ranking = %#v", got)
+	}
+
+	lengthDelta := newGroup()
+	lengthDelta.AddCommand(
+		&cobra.Command{Use: "ab", Run: func(*cobra.Command, []string) {}},
+		&cobra.Command{Use: "axc", Run: func(*cobra.Command, []string) {}},
+	)
+	if got := SuggestSubcommands(lengthDelta, "abc"); !slices.Equal(got, []string{"axc", "ab"}) {
+		t.Fatalf("length-delta ranking = %#v", got)
+	}
 }

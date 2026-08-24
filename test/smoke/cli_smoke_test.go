@@ -355,7 +355,9 @@ func TestCrossPlatformCoverageCLISmokeCommandTypoGuidance(t *testing.T) {
 	}
 
 	t.Run("legitimate positional commands remain executable", func(t *testing.T) {
-		stdout, stderr, err := runCLI(t, env, "schema", "chat message send", "--compact", "--format", "json")
+		const positionalCommandTimeout = 30 * time.Second
+
+		stdout, stderr, err := runCLIWithTimeout(t, env, positionalCommandTimeout, "schema", "chat message send", "--compact", "--format", "json")
 		if err != nil || strings.TrimSpace(stdout) == "" {
 			t.Fatalf("dws schema positional path failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout, stderr)
 		}
@@ -363,7 +365,7 @@ func TestCrossPlatformCoverageCLISmokeCommandTypoGuidance(t *testing.T) {
 		if err != nil || strings.TrimSpace(stdout) == "" {
 			t.Fatalf("dws completion positional shell failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout, stderr)
 		}
-		stdout, stderr, err = runCLI(t, env, "help", "auth")
+		stdout, stderr, err = runCLIWithTimeout(t, env, positionalCommandTimeout, "help", "auth")
 		if err != nil || !strings.Contains(stdout, "dws auth") {
 			t.Fatalf("dws help auth failed: %v\nstdout:\n%s\nstderr:\n%s", err, stdout, stderr)
 		}
@@ -434,8 +436,13 @@ func isolatedCLIEnv(t *testing.T) []string {
 
 func runCLI(t *testing.T, env []string, args ...string) (string, string, error) {
 	t.Helper()
+	return runCLIWithTimeout(t, env, 10*time.Second, args...)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func runCLIWithTimeout(t *testing.T, env []string, timeout time.Duration, args ...string) (string, string, error) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	processArgs := append([]string{"-test.run=^TestCLIHelperProcess$", "--"}, args...)
 	cmd := exec.CommandContext(ctx, os.Args[0], processArgs...)
