@@ -15,6 +15,35 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type reviewedProtectionTestHandler struct{}
+
+func (reviewedProtectionTestHandler) Name() string { return "reviewed-protection-test" }
+
+func (reviewedProtectionTestHandler) Phase() Phase { return PreParse }
+
+func (reviewedProtectionTestHandler) ResolveFlagProtection(command, flag string) (FlagProtection, bool) {
+	if (command == "dws aisearch" || command == "dws chat") && flag == "types" {
+		return FlagProtectionBlocked, true
+	}
+	return "", false
+}
+
+func (reviewedProtectionTestHandler) Handle(ctx *Context) error {
+	if ctx.Command == "dws aisearch" || ctx.Command == "dws chat" {
+		ctx.ProtectFlag("types", FlagProtectionBlocked)
+	}
+	if ctx.Command == "dws aisearch enterprise" {
+		for index, argument := range ctx.Args {
+			if argument != "--leaf-typz" {
+				continue
+			}
+			ctx.Args[index] = "--leaf-type"
+			ctx.AddCorrection("reviewed-protection-test", PreParse, "leaf-type", argument, "--leaf-type", "test")
+		}
+	}
+	return nil
+}
+
 func TestCrossPlatformCoverageValidateUnresolvedCommandClassifiesShortcutBeforeFlags(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	chat := &cobra.Command{Use: "chat"}
@@ -129,6 +158,98 @@ func TestCrossPlatformCoverageRunPreParseArgsValidatesCommandsWithoutHandlersAnd
 	validRoot.AddCommand(validChat)
 	if ctx, err := RunPreParseArgs(validRoot, nil, []string{"chat", "+chat-messages"}); ctx != nil || err != nil {
 		t.Fatalf("valid shortcut = %#v, %v", ctx, err)
+	}
+}
+
+func TestCrossPlatformCoverageRunPreParseArgsKeepsUnknownFlagValuesOutOfCommandResolution(t *testing.T) {
+	root := &cobra.Command{Use: "dws"}
+	root.PersistentFlags().Bool("yes", false, "")
+	aisearch := &cobra.Command{Use: "aisearch", RunE: func(*cobra.Command, []string) error { return nil }}
+	aisearch.Flags().String("query", "", "")
+	aisearch.AddCommand(&cobra.Command{Use: "enterprise", Run: func(*cobra.Command, []string) {}})
+	corecmd.ApplyGroupPolicy(aisearch, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupHybrid,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
+	root.AddCommand(aisearch)
+	engine := NewEngine()
+	engine.Register(reviewedProtectionTestHandler{})
+	frozenParentTraversal := []string{"aisearch", "--"}
+	if got := argsForCommandTraversal(root, []string{"aisearch", "enterprise"}); !slices.Equal(got, []string{"aisearch", "enterprise"}) {
+		t.Fatalf("default command traversal = %v", got)
+	}
+
+	guarded := []string{"aisearch", "--types", "FIXTURE_VALUE"}
+	if got := argsForCommandTraversalForEngine(root, engine, guarded); !slices.Equal(got, frozenParentTraversal) {
+		t.Fatalf("guarded flag traversal = %v, want %v", got, frozenParentTraversal)
+	}
+	if ctx, err := RunPreParseArgs(root, engine, guarded); err != nil || ctx == nil || ctx.Command != "dws aisearch" || !ctx.IsFlagProtected("types") {
+		t.Fatalf("guarded flag value entered command resolution: context=%#v error=%v", ctx, err)
+	}
+
+	// A protected flag value can also be spelled exactly like a child. Command
+	// traversal must not guess which meaning the user intended.
+	guardedChildValue := []string{"aisearch", "--types", "enterprise"}
+	if got := argsForCommandTraversalForEngine(root, engine, guardedChildValue); !slices.Equal(got, frozenParentTraversal) {
+		t.Fatalf("guarded child-name value traversal = %v, want %v", got, frozenParentTraversal)
+	}
+	if ctx, err := RunPreParseArgs(root, engine, guardedChildValue); err != nil || ctx == nil || ctx.Command != "dws aisearch" {
+		t.Fatalf("guarded child-name value entered command resolution: context=%#v error=%v", ctx, err)
+	}
+	for _, guardedBooleanValue := range [][]string{
+		{"aisearch", "--types", "false", "enterprise"},
+		{"aisearch", "--types=false", "enterprise"},
+	} {
+		if got := argsForCommandTraversalForEngine(root, engine, guardedBooleanValue); !slices.Equal(got, frozenParentTraversal) {
+			t.Fatalf("guarded boolean-like value traversal = %v, want %v", got, frozenParentTraversal)
+		}
+		if ctx, err := RunPreParseArgs(root, engine, guardedBooleanValue); err != nil || ctx == nil || ctx.Command != "dws aisearch" {
+			t.Fatalf("guarded boolean-like value selected wrong command: context=%#v error=%v", ctx, err)
+		}
+	}
+	guardedAfterLocalValue := []string{"aisearch", "--unknown-query", "Alice", "--types", "enterprise"}
+	if got := argsForCommandTraversalForEngine(root, engine, guardedAfterLocalValue); !slices.Equal(got, frozenParentTraversal) {
+		t.Fatalf("guarded flag after local value traversal = %v, want %v", got, frozenParentTraversal)
+	}
+	if ctx, err := RunPreParseArgs(root, engine, guardedAfterLocalValue); err != nil || ctx == nil || ctx.Command != "dws aisearch" {
+		t.Fatalf("guarded flag after local value selected wrong command: context=%#v error=%v", ctx, err)
+	}
+	legitimateParentFlag := []string{"aisearch", "--query", "Alice", "enterprise", "--types", "document", "--leaf-typz", "value"}
+	if ctx, err := RunPreParseArgs(root, engine, legitimateParentFlag); err != nil || ctx == nil || ctx.Command != "dws aisearch enterprise" ||
+		!slices.Contains(ctx.Args, "--leaf-type") {
+		t.Fatalf("parent flag/value prevented leaf resolution: context=%#v error=%v", ctx, err)
+	}
+
+	// Leading fuzzy root flags remain useful because no command path is
+	// ambiguous yet. Once a group has resolved, the same fuzzy spelling is
+	// preserved for the semantic flag pipeline instead of being consumed here.
+	if got := argsForCommandTraversalForEngine(root, engine, []string{"--yess", "aisearch", "enterprise"}); !slices.Equal(got, []string{"aisearch", "enterprise"}) {
+		t.Fatalf("leading fuzzy boolean traversal = %v", got)
+	}
+	if got := argsForCommandTraversalForEngine(root, engine, []string{"aisearch", "--yess", "enterprise"}); !slices.Equal(got, []string{"aisearch", "enterprise"}) {
+		t.Fatalf("fuzzy boolean after group traversal = %v", got)
+	}
+	if got := argsForCommandTraversalForEngine(root, engine, []string{"aisearch", "--yess", "false", "enterprise"}); !slices.Equal(got, []string{"aisearch", "enterprise"}) {
+		t.Fatalf("fuzzy boolean value before child traversal = %v", got)
+	}
+	leafArgs := []string{"aisearch", "--yess", "enterprise", "--leaf-typz", "value"}
+	if ctx, err := RunPreParseArgs(root, engine, leafArgs); err != nil || ctx == nil || ctx.Command != "dws aisearch enterprise" ||
+		!slices.Contains(ctx.Args, "--leaf-type") {
+		t.Fatalf("fuzzy root flag skipped leaf handler: context=%#v error=%v", ctx, err)
+	}
+
+	_, err := RunPreParseArgs(root, engine, []string{"aisearch", "--yes", "enterprize"})
+	requireCommandResolutionError(t, err, string(cmdutil.ResolutionUnknownSubcommand))
+	_, err = RunPreParseArgs(root, engine, []string{"aisearch", "enterprize", "--types", "enterprise"})
+	structured := requireCommandResolutionError(t, err, string(cmdutil.ResolutionUnknownSubcommand))
+	if suggestions, ok := structured.Details["suggestions"].([]string); !ok || !slices.Equal(suggestions, []string{"enterprise"}) {
+		t.Fatalf("typo before protected flag suggestions = %#v", structured.Details["suggestions"])
+	}
+	_, err = RunPreParseArgs(root, engine, []string{"aisearch", "--query", "Alice", "enterprize", "--types", "enterprise"})
+	structured = requireCommandResolutionError(t, err, string(cmdutil.ResolutionUnknownSubcommand))
+	if suggestions, ok := structured.Details["suggestions"].([]string); !ok || !slices.Equal(suggestions, []string{"enterprise"}) {
+		t.Fatalf("typo after parent flag suggestions = %#v", structured.Details["suggestions"])
 	}
 }
 

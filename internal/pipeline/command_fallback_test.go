@@ -41,6 +41,24 @@ func TestCrossPlatformCoverageRunPreParseArgsRewritesReviewedCommandBeforeFlags(
 	}
 }
 
+func TestCrossPlatformCoverageCommandFallbackPrecedesLaterProtectedFlag(t *testing.T) {
+	root, _ := commandFallbackPipelineRoot()
+	root.PersistentFlags().Bool("yes", false, "")
+	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
+		"chat +bad": {From: "chat +bad", Mode: "rewrite", To: "chat +good"},
+	})
+	engine.Register(reviewedProtectionTestHandler{})
+	raw := []string{"chat", "+bad", "--types", "value"}
+	ctx, err := RunPreParseArgs(root, engine, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"chat", "+good", "--types", "value"}
+	if ctx == nil || ctx.Command != "dws chat +good" || !reflect.DeepEqual(ctx.Args, want) {
+		t.Fatalf("fallback before protected flag = %#v, want args=%v", ctx, want)
+	}
+}
+
 func TestCrossPlatformCoverageRunPreParseArgsRewritesMultiTokenPathAroundPersistentFlags(t *testing.T) {
 	root, executed := commandFallbackPipelineRoot()
 	engine := commandFallbackPipelineEngine(map[string]CommandPathFallback{
