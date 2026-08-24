@@ -413,17 +413,28 @@ func TestCrossPlatformCoverageMediaFailuresKeepStableIDsAndForbidPathEscape(t *t
 
 func TestCrossPlatformCoverageMediaResourceIDValidationIsPublished(t *testing.T) {
 	for _, declaration := range []shortcut.Shortcut{MediaDownload, MediaPreview} {
-		found := false
+		foundConstraint := false
 		for _, constraint := range declaration.Constraints {
 			if constraint.Kind == shortcut.ConstraintCustom &&
 				reflect.DeepEqual(constraint.Flags, []string{"resource-id"}) &&
 				strings.Contains(constraint.Description, "UUID") {
-				found = true
+				foundConstraint = true
 				break
 			}
 		}
-		if !found {
+		if !foundConstraint {
 			t.Errorf("doc %s must publish resource-id UUID validation as a custom constraint", declaration.Command)
+		}
+
+		foundDescription := false
+		for _, flag := range declaration.Flags {
+			if flag.Name == "resource-id" && strings.Contains(flag.Desc, "--resource-id 必须是附件回执返回的 UUID") {
+				foundDescription = true
+				break
+			}
+		}
+		if !foundDescription {
+			t.Errorf("doc %s must publish resource-id UUID validation in the flag description", declaration.Command)
 		}
 	}
 }

@@ -70,7 +70,7 @@ var MediaDownload = shortcut.Shortcut{
 		[]string{`dws doc +media-download --node <DOC_ID> --resource-id <RESOURCE_ID> --output ./downloads/`}),
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true},
-		{Name: "resource-id", Type: shortcut.FlagString, Desc: "附件 resourceId", Required: true},
+		{Name: "resource-id", Type: shortcut.FlagString, Desc: "附件 resourceId；--resource-id 必须是附件回执返回的 UUID", Required: true},
 		{Name: "output", Type: shortcut.FlagString, Default: ".", Desc: "工作目录内相对路径（文件或目录）"},
 	},
 	Validate: func(rt *shortcut.RuntimeContext) error {
@@ -98,7 +98,7 @@ var MediaPreview = shortcut.Shortcut{
 		[]string{`dws doc +media-preview --node <DOC_ID> --resource-id <RESOURCE_ID>`}),
 	Flags: []shortcut.Flag{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true},
-		{Name: "resource-id", Type: shortcut.FlagString, Desc: "附件 resourceId", Required: true},
+		{Name: "resource-id", Type: shortcut.FlagString, Desc: "附件 resourceId；--resource-id 必须是附件回执返回的 UUID", Required: true},
 	},
 	Validate:    func(rt *shortcut.RuntimeContext) error { return validateDocResourceID(rt.Str("resource-id")) },
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"resource-id"}, Description: "--resource-id 必须是附件回执返回的 UUID"}},
