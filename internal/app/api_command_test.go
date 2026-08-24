@@ -294,7 +294,7 @@ func TestResolveRawAPICredentialsUsesAtomicSourcePairs(t *testing.T) {
 		},
 		{
 			name:     "app config missing secret",
-			configID: "config-id", configSecret: "",
+			configID: "missing-secret-id", configSecret: "",
 			wantErr: "本地应用配置不完整",
 		},
 		{
@@ -377,6 +377,65 @@ func TestResolveRawAPICredentialsRejectsUnreadableSecretRef(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), missingSecretPath) {
 		t.Fatalf("unreadable SecretRef error leaked backend details: %v", err)
+	}
+}
+
+func TestRawAPICommandUsesAppConfigPairEndToEnd(t *testing.T) {
+	oldResolver := resolveRawAPICredentials
+	oldProvider := newAppTokenProvider
+	oldClient := newRawAPIClient
+	t.Cleanup(func() {
+		resolveRawAPICredentials = oldResolver
+		newAppTokenProvider = oldProvider
+		newRawAPIClient = oldClient
+	})
+	resolveRawAPICredentials = resolveRawAPICredentialsFromSources
+	t.Setenv(authpkg.EnvClientID, "")
+	t.Setenv(authpkg.EnvClientSecret, "")
+	dir := t.TempDir()
+	t.Setenv("DWS_CONFIG_DIR", dir)
+	secretPath := filepath.Join(dir, "client-secret")
+	if err := os.WriteFile(secretPath, []byte("paired-secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writeRawAPIAppConfig(t, dir, "paired-client", map[string]any{"source": "file", "id": secretPath})
+
+	newAppTokenProvider = func(configDir, clientID, clientSecret string) appTokenGetter {
+		if configDir != dir || clientID != "paired-client" || clientSecret != "paired-secret" {
+			t.Fatalf("provider credentials: dir=%q id=%q secret_matches=%t", configDir, clientID, clientSecret == "paired-secret")
+		}
+		return fakeAppTokenGetter{token: "temporary-app-token"}
+	}
+	newRawAPIClient = func(token, baseURL string) *apiclient.APIClient {
+		if token != "temporary-app-token" || baseURL != "" {
+			t.Fatalf("raw client inputs: token_matches=%t base=%q", token == "temporary-app-token", baseURL)
+		}
+		client := apiclient.NewClient(token, baseURL)
+		client.HTTPClient.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.Header.Get("x-acs-dingtalk-access-token") != "temporary-app-token" {
+				t.Fatal("App Token was not injected into the new OpenAPI header")
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(`{"count":1}`)),
+				Request:    req,
+			}, nil
+		})
+		return client
+	}
+
+	flags := &GlobalFlags{Format: "json"}
+	cmd := newAPICommand(flags)
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"GET", "/v1.0/microApp/allApps"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"count": 1`) {
+		t.Fatalf("raw response = %q", out.String())
 	}
 }
 

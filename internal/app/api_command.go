@@ -50,11 +50,7 @@ var newAppTokenProvider = func(configDir, appKey, appSecret string) appTokenGett
 
 var newRawAPIClient = apiclient.NewClient
 
-type rawAPICredentials struct {
-	ClientID     string
-	ClientSecret string
-	Source       string
-}
+type rawAPICredentials = authpkg.AppCredentialPair
 
 var resolveRawAPICredentials = resolveRawAPICredentialsFromSources
 
@@ -79,6 +75,8 @@ oapi.dingtalk.com:
   完整 --client-id/--client-secret > 完整 DWS_CLIENT_ID/DWS_CLIENT_SECRET > 完整 app config。
 同一来源只提供一项会明确失败，绝不会与其他来源拼接。
 单次 flags/env 不持久化 Client Secret；获取到的 App Token 会按 Client ID 独立缓存。
+成功的 dws auth login 会保存其实际使用的完整凭证对；历史 client-secret 槽位会迁移到 appsecret:<clientID>。
+新旧 Client Secret 槽位值冲突时拒绝调用并要求重新登录，不猜测正确值。
 隐藏 --token 仅临时使用调用方提供的 App Token，不持久化、不自动刷新。
 通过 MCP 默认凭证登录获取的加密 token 不支持 raw API 调用。
 
@@ -388,52 +386,19 @@ func resolveRawAPIToken(ctx context.Context, explicitToken, flagClientID, flagCl
 }
 
 func resolveRawAPICredentialsFromSources(flagClientID, flagClientSecret, configDir string) (rawAPICredentials, error) {
-	flagIDSet := rawAPICredentialSet(flagClientID)
-	flagSecretSet := rawAPICredentialSet(flagClientSecret)
-	if flagIDSet != flagSecretSet {
-		return rawAPICredentials{}, apperrors.NewAuth("--client-id 和 --client-secret 必须同时提供；不会与环境变量或 app config 混用")
-	}
-	if flagIDSet {
-		return validateRawAPICredentialPair(flagClientID, flagClientSecret, "flag")
-	}
-
-	envClientID := os.Getenv(authpkg.EnvClientID)
-	envClientSecret := os.Getenv(authpkg.EnvClientSecret)
-	envIDSet := rawAPICredentialSet(envClientID)
-	envSecretSet := rawAPICredentialSet(envClientSecret)
-	if envIDSet != envSecretSet {
-		return rawAPICredentials{}, apperrors.NewAuth("DWS_CLIENT_ID 和 DWS_CLIENT_SECRET 必须同时设置；不会与 app config 混用")
-	}
-	if envIDSet {
-		return validateRawAPICredentialPair(envClientID, envClientSecret, "env")
-	}
-
-	clientID, clientSecret, clientIDSource, clientSecretSource, err := authpkg.ResolveAppCredentialsStrict(configDir)
+	credentials, err := authpkg.ResolveAppCredentialPair(configDir, flagClientID, flagClientSecret)
 	if err != nil {
 		return rawAPICredentials{}, classifyRawAPIAppConfigError(err)
 	}
-	if clientIDSource != authpkg.CredentialSourceAppConfig ||
-		(clientSecretSource != authpkg.CredentialSourceKeychain && clientSecretSource != authpkg.CredentialSourcePlainConfig) {
-		return rawAPICredentials{}, apperrors.NewAuth("本地应用配置的 Client ID 和 Client Secret 来源不一致，已拒绝混用")
-	}
-	return validateRawAPICredentialPair(clientID, clientSecret, "app_config")
-}
-
-func validateRawAPICredentialPair(clientID, clientSecret, source string) (rawAPICredentials, error) {
-	trimmedClientID := strings.TrimSpace(clientID)
-	if trimmedClientID == "" || strings.TrimSpace(clientSecret) == "" ||
-		strings.HasPrefix(trimmedClientID, "<") || strings.HasPrefix(strings.TrimSpace(clientSecret), "<") {
-		return rawAPICredentials{}, apperrors.NewAuth(fmt.Sprintf("%s 凭证不完整或仍为占位符，Client ID 和 Client Secret 必须同时提供有效值", source))
-	}
-	return rawAPICredentials{
-		ClientID:     trimmedClientID,
-		ClientSecret: clientSecret,
-		Source:       source,
-	}, nil
+	return credentials, nil
 }
 
 func classifyRawAPIAppConfigError(err error) error {
 	switch {
+	case errors.Is(err, authpkg.ErrFlagCredentialPairIncomplete):
+		return apperrors.NewAuth("--client-id 和 --client-secret 必须同时提供；不会与环境变量或 app config 混用")
+	case errors.Is(err, authpkg.ErrEnvCredentialPairIncomplete):
+		return apperrors.NewAuth("DWS_CLIENT_ID 和 DWS_CLIENT_SECRET 必须同时设置；不会与 app config 混用")
 	case errors.Is(err, authpkg.ErrAppConfigMissing):
 		return apperrors.NewAuth(
 			"缺少应用凭证。dws api 需要完整的 Client ID/Client Secret pair。\n\n" +
@@ -447,11 +412,11 @@ func classifyRawAPIAppConfigError(err error) error {
 		return apperrors.NewAuth("本地应用配置不完整，缺少 Client ID 或 Client Secret；请完整设置环境变量 pair、CLI pair，或重新配置自有应用凭证")
 	case errors.Is(err, authpkg.ErrSecretResolve):
 		return apperrors.NewAuth("无法从 Keychain 解析 Client Secret；请检查 Keychain 状态，或同时设置 DWS_CLIENT_ID 和 DWS_CLIENT_SECRET")
+	case errors.Is(err, authpkg.ErrClientSecretConflict):
+		return apperrors.NewAuth("检测到新旧 Client Secret 存储值冲突；为避免使用错误凭证已拒绝调用，请重新执行 dws auth login")
+	case strings.Contains(err.Error(), "placeholders"):
+		return apperrors.NewAuth("应用凭证不完整或仍为占位符，Client ID 和 Client Secret 必须同时提供有效值")
 	default:
 		return apperrors.NewAuth(fmt.Sprintf("解析本地应用凭证失败: %v", err))
 	}
-}
-
-func rawAPICredentialSet(value string) bool {
-	return strings.TrimSpace(value) != ""
 }

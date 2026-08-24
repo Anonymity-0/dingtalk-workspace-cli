@@ -569,7 +569,9 @@ See `skills/multi/dingtalk-event/SKILL.md` for the Agent workflow and supported 
 
 > **Prerequisite**: Must login with your own app credentials (see [Custom App mode](#getting-started)). Encrypted tokens from MCP default-credential login are not supported for raw API calls.
 
-Client ID and Client Secret are resolved only as one complete pair, in this order: complete `--client-id/--client-secret` > complete `DWS_CLIENT_ID/DWS_CLIENT_SECRET` > complete app config. A half-configured source fails explicitly and is never combined with another source. One-shot flags/env do not persist the App Secret, while the acquired App Token is cached under `app-token:<clientID>`; the hidden `--token` accepts a temporary caller-supplied App Token and neither persists nor refreshes it.
+Client ID and Client Secret are resolved only as one complete pair, in this order: complete `--client-id/--client-secret` > complete `DWS_CLIENT_ID/DWS_CLIENT_SECRET` > complete app config. A half-configured source fails explicitly and is never combined with another source. Flags/env used directly by `dws api` are one-shot and do not persist the App Secret; flags/env used by a successful `dws auth login` are persisted as that exact pair for OAuth refresh and later Raw API calls. The acquired App Token is cached under `app-token:<clientID>`; the hidden `--token` accepts a temporary caller-supplied App Token and neither persists nor refreshes it.
+
+Client Secrets use the canonical Keychain slot `appsecret:<clientID>`, distinct from OAuth User Tokens and App Tokens. Existing plaintext app config and historical `client-secret:<clientID>` entries are migrated automatically. If the old and new slots disagree, DWS fails closed and asks for a new login instead of guessing.
 
 ```bash
 # Login (first time only)

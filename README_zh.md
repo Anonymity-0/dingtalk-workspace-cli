@@ -563,7 +563,9 @@ Agent 工作流和事件参数详见 `skills/multi/dingtalk-event/SKILL.md`。
 
 > **前置条件**：必须使用自有应用凭证登录（见[自建应用模式](#开始使用)）。通过 MCP 默认凭证登录 不支持 raw API 调用。
 
-Client ID/Client Secret 必须来自同一完整凭证对，优先级为：完整 `--client-id/--client-secret` > 完整 `DWS_CLIENT_ID/DWS_CLIENT_SECRET` > 完整 app config。任一来源只提供一项都会明确失败，不会与其他来源拼接。单次 flags/env 不持久化 AppSecret，但获取到的 App Token 会按 `app-token:<clientID>` 缓存；隐藏 `--token` 仅临时使用调用方提供的 App Token，不持久化、不自动刷新。
+Client ID/Client Secret 必须来自同一完整凭证对，优先级为：完整 `--client-id/--client-secret` > 完整 `DWS_CLIENT_ID/DWS_CLIENT_SECRET` > 完整 app config。任一来源只提供一项都会明确失败，不会与其他来源拼接。直接用于 `dws api` 的 flags/env 仅对本次调用生效，不持久化 AppSecret；成功执行 `dws auth login` 时使用的 flags/env 则会按实际使用的完整 pair 持久化，供 OAuth 刷新和后续 Raw API 使用。获取到的 App Token 会按 `app-token:<clientID>` 缓存；隐藏 `--token` 仅临时使用调用方提供的 App Token，不持久化、不自动刷新。
+
+Client Secret 统一使用 Keychain 槽位 `appsecret:<clientID>`，与 OAuth User Token、App Token 完全隔离。历史明文 app config 和 `client-secret:<clientID>` 会自动迁移；新旧槽位值不一致时 fail closed，要求重新登录，不猜测正确值。
 
 ```bash
 # 登录（仅首次）

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/keychain"
 	configpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/config"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -56,14 +57,15 @@ var (
 )
 
 var (
-	appConfigStoreSecret       = StoreSecret
-	appConfigMarshalIndent     = json.MarshalIndent
-	appConfigAtomicWrite       = helpers.AtomicWriteJSON
-	appConfigReadFile          = os.ReadFile
-	appConfigRemove            = os.Remove
-	appConfigLoad              = LoadAppConfig
-	appConfigResolveSecret     = ResolveSecret
-	appConfigBeforeResolveLock = func() {}
+	appConfigStoreSecret             = StoreSecret
+	appConfigMarshalIndent           = json.MarshalIndent
+	appConfigAtomicWrite             = helpers.AtomicWriteJSON
+	appConfigReadFile                = os.ReadFile
+	appConfigRemove                  = os.Remove
+	appConfigLoad                    = LoadAppConfig
+	appConfigResolveSecret           = ResolveSecret
+	appConfigRemoveCredentialEntries = keychain.RemoveAccountEntriesWithPrefixes
+	appConfigBeforeResolveLock       = func() {}
 )
 
 // Cached resolved credentials (avoid repeated keychain access).
@@ -131,6 +133,14 @@ func SaveAppConfig(configDir string, config *AppConfig) error {
 	if err := appConfigAtomicWrite(path, append(data, '\n')); err != nil {
 		return fmt.Errorf("writing app config: %w", err)
 	}
+	// Only delete the historical slot after the canonical reference is durably
+	// present in app.json. This ordering prevents a failed config write from
+	// leaving an explicit legacy SecretRef dangling.
+	if isCanonicalClientSecretRef(config.ClientSecret, config.ClientID) {
+		if err := authKeychainRemove(keychain.Service, legacyClientSecretAccountKey(config.ClientID)); err != nil {
+			slog.Warn("auth: failed to remove legacy Client Secret slot", "client_id", config.ClientID, "error", err)
+		}
+	}
 	cleanupLegacySiblingAppConfig(configDir, config)
 
 	// Update cache
@@ -179,6 +189,14 @@ func DeleteAppConfig(configDir string) error {
 	if existing != nil {
 		RemoveSecretStore(existing.ClientSecret)
 	}
+	// Explicit auth reset removes every application credential namespace,
+	// including orphaned slots from older app.json versions and App Tokens.
+	credentialCleanupErr := appConfigRemoveCredentialEntries(
+		keychain.Service,
+		secretKeyPrefix,
+		clientSecretPrefix,
+		appTokenPrefix,
+	)
 
 	// Remove config file
 	path := GetAppConfigPath(configDir)
@@ -198,6 +216,9 @@ func DeleteAppConfig(configDir string) error {
 	cachedResolvedSecret = ""
 	cachedResolvedMu.Unlock()
 
+	if credentialCleanupErr != nil {
+		return fmt.Errorf("removing application credential entries: %w", credentialCleanupErr)
+	}
 	return nil
 }
 

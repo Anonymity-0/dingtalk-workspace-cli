@@ -91,6 +91,8 @@ func deviceGetAdminsForLoginRegion(ctx context.Context, accessToken string, regi
 type DeviceFlowProvider struct {
 	configDir        string
 	clientID         string
+	credentials      *AppCredentialPair
+	credentialErr    error
 	scope            string
 	baseURL          string
 	terminalBaseURL  string
@@ -103,9 +105,10 @@ type DeviceFlowProvider struct {
 }
 
 func NewDeviceFlowProvider(configDir string, logger *slog.Logger) *DeviceFlowProvider {
-	return &DeviceFlowProvider{
+	pair, err := resolveOAuthCredentialPair(configDir)
+	p := &DeviceFlowProvider{
 		configDir:       configDir,
-		clientID:        ClientID(),
+		credentialErr:   err,
 		scope:           DefaultScopes,
 		baseURL:         DefaultDeviceBaseURL,
 		terminalBaseURL: GetMCPBaseURL(),
@@ -113,6 +116,14 @@ func NewDeviceFlowProvider(configDir string, logger *slog.Logger) *DeviceFlowPro
 		Output:          os.Stderr,
 		httpClient:      &http.Client{Timeout: 30 * time.Second},
 	}
+	if pair != nil {
+		copy := *pair
+		p.credentials = &copy
+		p.clientID = copy.ClientID
+	} else {
+		p.clientID = ClientID()
+	}
+	return p
 }
 
 func (p *DeviceFlowProvider) SetBaseURL(baseURL string) {
@@ -210,18 +221,33 @@ type serviceResult struct {
 // overrides intentionally skip this reset.
 func (p *DeviceFlowProvider) resetCredentialState() {
 	p.clientID = ""
+	p.credentials = nil
 	clientMu.Lock()
+	if clientIDFromMCP {
+		runtimeClientID = ""
+	}
 	clientIDFromMCP = false
 	clientMu.Unlock()
 }
 
 func (p *DeviceFlowProvider) Login(ctx context.Context) (*TokenData, error) {
+	pair, pairErr := resolveOAuthCredentialPair(p.configDir)
+	p.credentials = nil
+	p.credentialErr = pairErr
+	if pair != nil {
+		copy := *pair
+		p.credentials = &copy
+		p.clientID = copy.ClientID
+	}
+	if p.credentialErr != nil {
+		return nil, fmt.Errorf("应用凭证配置无效: %w", p.credentialErr)
+	}
 	if err := prepareLoginPersistence(p.configDir); err != nil {
 		return nil, fmt.Errorf("%s: %w", i18n.T("本地登录态无法安全更新"), err)
 	}
 
-	if runtimeClientID, _, ok := getCompleteRuntimeCredentials(); ok {
-		p.clientID = runtimeClientID
+	if p.credentials != nil {
+		p.clientID = p.credentials.ClientID
 		clientMu.Lock()
 		clientIDFromMCP = false
 		clientMu.Unlock()
@@ -291,6 +317,7 @@ func (p *DeviceFlowProvider) loginOnce(ctx context.Context, attempt int) (*Token
 	oauthProvider := &OAuthProvider{
 		configDir:        p.configDir,
 		clientID:         p.clientID,
+		credentials:      p.credentials,
 		logger:           p.logger,
 		IdentityEnricher: p.IdentityEnricher,
 		LoginRegion:      p.LoginRegion,
@@ -386,18 +413,8 @@ func (p *DeviceFlowProvider) loginOnce(ctx context.Context, attempt int) (*Token
 		return nil, fmt.Errorf("%s: %w", i18n.T("保存 token 失败"), err)
 	}
 
-	// Persist app credentials (with secret) if using custom client credentials.
-	// MUST run BEFORE os.Setenv below to avoid env-matching short circuit.
+	// Persist the exact pair snapshotted before authorization began.
 	oauthProvider.persistAppConfigIfNeeded()
-
-	// Always persist clientId to app.json so future process startups
-	// can load it via ResolveAppCredentials and populate DWS_CLIENT_ID env.
-	if p.clientID != "" {
-		_ = os.Setenv("DWS_CLIENT_ID", p.clientID)
-		if !deviceHasAppConfig(p.configDir) {
-			_ = deviceSaveAppConfig(p.configDir, &AppConfig{ClientID: p.clientID})
-		}
-	}
 
 	return tokenData, nil
 }
