@@ -125,9 +125,13 @@ func TestCrossPlatformCoverageMinutesUploadAndAnalyzeBranchesE2E(t *testing.T) {
 			`{"success":true,"result":{"taskUuid":"u2","title":"uploaded"}}`,
 		},
 	}}
-	payload, _, err = runMinutesAlignmentCLI(t, upload, "minutes", "+upload-and-analyze", "--file", file, "--artifacts", "basic", "--yes")
+	payload, _, err = runMinutesAlignmentCLI(t, upload, "minutes", "+upload-and-analyze", "--file", file, "--artifacts", "basic", "--enable-message-card", "--yes")
 	if err != nil || payload["taskUuid"] != "u2" || payload["complete"] != true {
 		t.Fatalf("fresh upload payload=%#v err=%v", payload, err)
+	}
+	createArgs := upload.arguments["minutes/create_upload_session"][0]
+	if option, _ := createArgs["minutesOption"].(map[string]any); option["enableMessageCard"] != true {
+		t.Fatalf("legacy upload-and-analyze message flag args=%#v", createArgs)
 	}
 }
 

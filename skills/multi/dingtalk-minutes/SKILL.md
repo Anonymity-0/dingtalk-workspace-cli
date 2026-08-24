@@ -86,7 +86,7 @@ dws minutes +list-all --page-all --format json
 
 - 是否确认以 leaf Schema 与 Runtime gate 为准，不根据“看起来像写操作”自行推断。标题、纪要、录音控制、权限授权/申请/撤销、发言人或文本替换等当前要求确认。
 - `+upload` 与 `+upload-and-analyze` 即使不发送消息，仍会上传本地媒体并创建远端听记，真实执行必须按 Runtime confirmation；`--dry-run` 仍可在零远端调用下预览。上传并发送闪记卡片、精确同步并删除热词、撤权等副作用更大的入口继续单独处理。
-- 思维导图、发言人洞察和仅追加 ASR 热词当前不额外要求确认；旧 `--sync` / `--enable-message-card` 只保留为公开迁移提示，不得当作可执行 Golden Route，也不得绕过新入口的确认策略。
+- 思维导图、发言人洞察和仅追加 ASR 热词当前不额外要求确认。旧 `+upload --enable-message-card` 与 `+upload-and-analyze --enable-message-card` 继续作为可执行兼容入口，并遵循各自 Shortcut 的确认门禁；新调用仍推荐 `+upload-and-notify`。原子 `minutes upload create --enable-message-card` 与旧 `--sync` 只保留为公开迁移提示，不得当作可执行 Golden Route。
 - `--dry-run` 必须返回明确的 dry-run/request 证据且不调用远端；录音预览按上方原子入口执行。任何入口若拒绝 dry-run，必须报告“不支持预览”，不得把拦截或普通执行称为预演成功。
 - 用户明确要求“仅预览/不实际写入”时，任务在真实现状读取、dry-run 计划和差异交付后结束；不得继续请求写入确认，也不得为了验证预览而执行真实写入后再还原。
 - 分享/撤权使用稳定成员 UID，不能把姓名、手机号或跨组织 ID 直接当 UID；同一目标解析、读取、写入和验证必须使用同一 profile。

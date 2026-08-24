@@ -150,7 +150,7 @@ dws minutes +update --id <taskUuid> --title "<目标标题>" --dry-run --format 
 
 正常本地文件上传优先 `+upload` 或 `+upload-and-notify`，由 Shortcut 管理 create、PUT、complete、取消和读回。原子流程必须保存真实 sessionId/上传地址/taskUuid：
 
-`minutes upload create --enable-message-card` 保持公开以提供兼容迁移提示，但不会创建 session；需要通知时使用 `minutes upload create-and-notify`。`+upload[ --enable-message-card]` 和 `+upload-and-analyze --enable-message-card` 也不会执行旧通知副作用，并在各自通用 Runtime confirmation 之后返回迁移提示。真实执行 `+upload` 和 `+upload-and-analyze` 必须遵循确认门禁，不能因为不发送消息就绕过创建听记的确认。
+`minutes upload create --enable-message-card` 当前仍是原子命令迁移提示；需要通知时使用 `minutes upload create-and-notify`。Shortcut 层的旧 `+upload --enable-message-card` 和 `+upload-and-analyze --enable-message-card` 则继续执行原有通知语义，并遵循各自通用 Runtime confirmation；新调用优先使用 `+upload-and-notify`。真实执行 `+upload` 和 `+upload-and-analyze` 必须遵循确认门禁，不能因为不发送消息就绕过创建听记的确认。
 
 1. create 或 create-and-notify。
 2. 按服务端返回的预签名地址上传文件，不记录该地址。

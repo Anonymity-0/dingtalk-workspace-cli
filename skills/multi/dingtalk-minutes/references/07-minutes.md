@@ -24,7 +24,7 @@
 | 目标 | 推荐入口 | 结果边界 |
 |---|---|---|
 | 上传并创建听记，不发送额外消息 | `dws minutes +upload --file <相对路径> [--title <标题>]` | 真实执行需要确认；完成 create、文件 PUT、complete 和详情读回，失败时取消可取消的 session |
-| 上传并额外发送闪记卡片 | `dws minutes +upload-and-notify --file <相对路径> [--title <标题>]` | 通知副作用独立确认；不要再给 `+upload` 传旧 `--enable-message-card` |
+| 上传并额外发送闪记卡片 | `dws minutes +upload-and-notify --file <相对路径> [--title <标题>]` | 推荐新入口；旧 `+upload --enable-message-card` 仍可执行并遵循 `+upload` 的确认门禁 |
 | 上传并等待摘要/逐字稿等分析产物 | `dws minutes +upload-and-analyze --file <相对路径> --artifacts summary,transcript` | 真实执行需要确认；有界等待，可加 `--mindmap` / `--speaker-insights`，不要把 pending/timeout 说成完成 |
 
 用户要求预览上传，并明确要求核对热词配置或比较听记列表是否变化时，执行以下可验证流程；没有这些额外要求时不必增加读操作：
@@ -53,7 +53,7 @@ dws minutes +transcript --id <taskUuid> --format json
 dws minutes +upload-and-analyze --resume-id <taskUuid> --artifacts summary,transcript
 ```
 
-`--resume-id` 分支不重复上传或再次通知，但 `+upload-and-analyze` 是同时包含新上传分支的混合入口，因此仍按该命令的 Runtime confirmation 执行。`+upload-and-analyze --enable-message-card` 作为公开兼容参数不再执行旧通知副作用；通过该命令的通用确认门禁后会返回迁移提示，需要通知时使用 `+upload-and-notify`。
+`--resume-id` 分支不重复上传或再次通知，但 `+upload-and-analyze` 是同时包含新上传分支的混合入口，因此仍按该命令的 Runtime confirmation 执行。旧 `+upload-and-analyze --enable-message-card` 继续执行原有通知语义并遵循同一确认门禁；新调用需要通知时优先使用 `+upload-and-notify`，再按需读取或恢复分析。
 
 ### 2.2 原子 upload session
 

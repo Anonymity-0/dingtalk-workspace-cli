@@ -75,7 +75,7 @@ var UploadAndAnalyze = shortcut.Shortcut{
 		{Name: "title", Type: shortcut.FlagString, Desc: "听记标题"},
 		{Name: "template-id", Type: shortcut.FlagString, Desc: "纪要模板 ID"},
 		{Name: "input-language", Type: shortcut.FlagString, Desc: "ASR 输入语言"},
-		{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "[兼容提示] 已迁移：先使用 +upload-and-notify，再按需读取或恢复分析"},
+		{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "兼容入口：上传后推送闪记卡片；新调用推荐先使用 +upload-and-notify"},
 		{Name: "complete-timeout", Type: shortcut.FlagInt, Default: "90", Desc: "上传 complete 超时秒数"},
 		{Name: "poll-interval", Type: shortcut.FlagInt, Default: "3", Desc: "轮询间隔秒数"},
 		{Name: "wait-timeout", Type: shortcut.FlagInt, Default: "180", Desc: "等待分析产物秒数"},
@@ -90,9 +90,6 @@ var UploadAndAnalyze = shortcut.Shortcut{
 	},
 	Tips: []string{`dws minutes +upload-and-analyze --file ./meeting.mp3 --title "项目周会"`, `dws minutes +upload-and-analyze --file ./meeting.mp4 --artifacts transcript,summary --mindmap`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		if rt.Changed("enable-message-card") {
-			return apperrors.NewValidation("--enable-message-card 已迁移：先使用 +upload-and-notify，再用 +upload-and-analyze --resume-id <taskUuid> 恢复分析")
-		}
 		if rt.Int("complete-timeout") <= 0 {
 			return apperrors.NewValidation("--complete-timeout 必须大于 0")
 		}

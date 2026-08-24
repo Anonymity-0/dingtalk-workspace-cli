@@ -280,9 +280,14 @@ func TestCrossPlatformCoverageMinutesUploadFailureAndSuccessBranchesE2E(t *testi
 	if option, _ := notifyArgs["minutesOption"].(map[string]any); option["enableMessageCard"] != true {
 		t.Fatalf("notifying upload args=%#v", notifyArgs)
 	}
-	legacy := &minutesE2ECaller{}
-	if _, _, err := runMinutesAlignmentCLI(t, legacy, "minutes", "+upload", "--file", file, "--enable-message-card", "--yes"); err == nil || !strings.Contains(err.Error(), "+upload-and-notify") || len(legacy.counts) != 0 {
-		t.Fatalf("legacy message flag err=%v calls=%#v", err, legacy.counts)
+	legacy := &minutesE2ECaller{responses: base}
+	payload, _, err = runMinutesAlignmentCLI(t, legacy, "minutes", "+upload", "--file", file, "--enable-message-card", "--yes")
+	if err != nil || payload["complete"] != true {
+		t.Fatalf("legacy message flag payload=%#v err=%v", payload, err)
+	}
+	legacyArgs := legacy.arguments["minutes/create_upload_session"][0]
+	if option, _ := legacyArgs["minutesOption"].(map[string]any); option["enableMessageCard"] != true {
+		t.Fatalf("legacy message flag args=%#v", legacyArgs)
 	}
 
 	cases := []struct {

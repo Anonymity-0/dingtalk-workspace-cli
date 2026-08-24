@@ -118,9 +118,6 @@ var Upload = shortcut.Shortcut{
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"complete-timeout", "poll-interval"}, Description: "--complete-timeout 和 --poll-interval 必须大于 0"}},
 	Tips:        []string{`dws minutes +upload --file ./meeting.mp3 --title "项目周会"`, `dws minutes +upload --file ./meeting.mp4 --input-language zh`},
 	Validate: func(rt *shortcut.RuntimeContext) error {
-		if rt.Changed("enable-message-card") {
-			return apperrors.NewValidation("--enable-message-card 已迁移：需要通知时请使用 +upload-and-notify")
-		}
 		if rt.Int("complete-timeout") <= 0 || rt.Int("poll-interval") <= 0 {
 			return apperrors.NewValidation("--complete-timeout 和 --poll-interval 必须大于 0")
 		}
@@ -161,7 +158,7 @@ func minutesUploadFlags(includeLegacyMessageFlag bool) []shortcut.Flag {
 		{Name: "poll-interval", Type: shortcut.FlagInt, Default: "2", Desc: "complete 重试间隔秒数"},
 	}
 	if includeLegacyMessageFlag {
-		flags = append(flags, shortcut.Flag{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "[兼容提示] 已迁移，请使用 +upload-and-notify"})
+		flags = append(flags, shortcut.Flag{Name: "enable-message-card", Type: shortcut.FlagBool, Desc: "兼容入口：上传后推送闪记卡片；新调用推荐 +upload-and-notify"})
 	}
 	return flags
 }
@@ -379,7 +376,9 @@ func performMinutesUpload(rt *shortcut.RuntimeContext, enableMessageCard bool) (
 	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 {
 		return nil, apperrors.NewValidation("--file 必须是非空普通文件")
 	}
-	plan := map[string]any{"operation": "minutes.upload", "fileName": info.Name(), "sizeBytes": info.Size(), "title": rt.Str("title"), "messageCard": enableMessageCard}
+	messageCardSet := enableMessageCard || rt.Changed("enable-message-card")
+	messageCardValue := enableMessageCard || rt.Bool("enable-message-card")
+	plan := map[string]any{"operation": "minutes.upload", "fileName": info.Name(), "sizeBytes": info.Size(), "title": rt.Str("title"), "messageCard": messageCardValue}
 	if rt.DryRun() {
 		return minutesDryRunPayload(contract.DryRunPreviewPlan, "minutes.upload", plan), nil
 	}
@@ -394,8 +393,8 @@ func performMinutesUpload(rt *shortcut.RuntimeContext, enableMessageCard bool) (
 	if value := strings.TrimSpace(rt.Str("input-language")); value != "" {
 		option["inputLanguage"] = value
 	}
-	if enableMessageCard {
-		option["enableMessageCard"] = true
+	if messageCardSet {
+		option["enableMessageCard"] = messageCardValue
 	}
 	if len(option) > 0 {
 		params["minutesOption"] = option
