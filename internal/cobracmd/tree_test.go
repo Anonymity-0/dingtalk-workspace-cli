@@ -278,6 +278,62 @@ func TestCrossPlatformCoverageValidateGroupTree(t *testing.T) {
 	})
 }
 
+func TestCrossPlatformCoverageValidateGroupTreeFailsClosedOnCorruption(t *testing.T) {
+	t.Run("malformed policy metadata", func(t *testing.T) {
+		root := &cobra.Command{
+			Use: "dws",
+			Annotations: map[string]string{
+				"dws.internal.corecmd.group_policy.v1": "malformed",
+			},
+		}
+		if err := ValidateGroupTree(root); err == nil || !strings.Contains(err.Error(), "invalid GroupPolicy metadata") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("navigation-only execution hook changed", func(t *testing.T) {
+		root := NewGroupCommand("dws", "root")
+		root.AddCommand(&cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }})
+		root.RunE = nil
+		root.Run = func(*cobra.Command, []string) {}
+		if err := ValidateGroupTree(root); err == nil || !strings.Contains(err.Error(), "does not retain framework help execution") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("hybrid business execution hook removed", func(t *testing.T) {
+		root := &cobra.Command{Use: "dws", RunE: func(*cobra.Command, []string) error { return nil }}
+		corecmd.ApplyGroupPolicy(root, corecmd.GroupPolicy{
+			Mode: corecmd.GroupHybrid, Positionals: corecmd.PositionalsReject, Recovery: corecmd.RecoveryDisabled,
+		})
+		root.AddCommand(&cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }})
+		root.RunE = nil
+		root.Run = func(*cobra.Command, []string) {}
+		if err := ValidateGroupTree(root); err == nil || !strings.Contains(err.Error(), "lost its business RunE") {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("nested validation error is propagated", func(t *testing.T) {
+		root := NewGroupCommand("dws", "root")
+		root.AddCommand(NewGroupCommand("stale", "stale"))
+		if err := ValidateGroupTree(root); err == nil || !strings.Contains(err.Error(), `leaf command "dws stale" retains GroupPolicy`) {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+
+	t.Run("deep recovery accepts an available descendant", func(t *testing.T) {
+		root := &cobra.Command{Use: "dws"}
+		corecmd.ApplyGroupPolicy(root, corecmd.GroupPolicy{
+			Mode: corecmd.GroupNavigationOnly, Positionals: corecmd.PositionalsReject, Recovery: corecmd.RecoveryDeep,
+		})
+		root.AddCommand(&cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }})
+		if err := ValidateGroupTree(root); err != nil {
+			t.Fatalf("ValidateGroupTree() = %v", err)
+		}
+	})
+}
+
 func TestCrossPlatformCoverageMergeCommandTreeGroupPolicy(t *testing.T) {
 	t.Run("copies source declaration", func(t *testing.T) {
 		dst := &cobra.Command{Use: "root"}
@@ -428,6 +484,59 @@ func TestCrossPlatformCoverageMergeCommandTreeGroupPolicy(t *testing.T) {
 			}
 		}()
 		MergeCommandTree(&cobra.Command{Use: "root"}, src)
+	})
+}
+
+func TestCrossPlatformCoverageMergeCommandTreeFailsClosedOnCorruption(t *testing.T) {
+	mustPanic := func(t *testing.T, want string, fn func()) {
+		t.Helper()
+		defer func() {
+			got := recover()
+			message, ok := got.(string)
+			if !ok || !strings.Contains(message, want) {
+				t.Fatalf("panic = %v, want substring %q", got, want)
+			}
+		}()
+		fn()
+	}
+
+	malformed := func() *cobra.Command {
+		return &cobra.Command{
+			Use: "root",
+			Annotations: map[string]string{
+				"dws.internal.corecmd.group_policy.v1": "malformed",
+			},
+		}
+	}
+
+	t.Run("malformed destination policy", func(t *testing.T) {
+		mustPanic(t, "destination command", func() {
+			MergeCommandTree(malformed(), &cobra.Command{Use: "root"})
+		})
+	})
+
+	t.Run("malformed source policy", func(t *testing.T) {
+		mustPanic(t, "source command", func() {
+			MergeCommandTree(&cobra.Command{Use: "root"}, malformed())
+		})
+	})
+
+	t.Run("local flag prevents placeholder merge", func(t *testing.T) {
+		dst := NewGroupCommand("root", "destination")
+		src := &cobra.Command{Use: "root"}
+		src.Flags().String("local", "", "local parse behavior")
+		mustPanic(t, "behavior-bearing leaf", func() {
+			MergeCommandTree(dst, src)
+		})
+	})
+
+	t.Run("persistent flag prevents placeholder merge", func(t *testing.T) {
+		dst := NewGroupCommand("root", "destination")
+		src := &cobra.Command{Use: "root"}
+		src.PersistentFlags().String("persistent", "", "inherited parse behavior")
+		mustPanic(t, "behavior-bearing leaf", func() {
+			MergeCommandTree(dst, src)
+		})
 	})
 }
 

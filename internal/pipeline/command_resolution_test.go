@@ -132,6 +132,19 @@ func TestCrossPlatformCoverageValidateUnresolvedCommandClassifiesOnlyExplicitCon
 	}
 }
 
+func TestCrossPlatformCoverageValidateUnresolvedCommandRejectsInvalidGroupPolicyMetadata(t *testing.T) {
+	group := &cobra.Command{Use: "broken"}
+	applyTestNavigationGroup(group)
+	for key := range group.Annotations {
+		group.Annotations[key] = "navigation_only|reject|unexpected"
+	}
+
+	err := validateUnresolvedCommand(group, []string{"typo"})
+	if err == nil || !strings.Contains(err.Error(), "invalid group recovery policy") {
+		t.Fatalf("validateUnresolvedCommand() error = %v", err)
+	}
+}
+
 func TestCrossPlatformCoverageRunPreParseArgsValidatesCommandsWithoutHandlersAndPrimesPresentation(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
 	root.PersistentFlags().String("format", "table", "")

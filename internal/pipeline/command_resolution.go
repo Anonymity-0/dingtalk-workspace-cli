@@ -48,8 +48,6 @@ func validateUnresolvedCommand(target *cobra.Command, remaining []string) error 
 			suggestions = deep
 		}
 	}
-	if policy.Recovery == corecmd.RecoverySibling || policy.Recovery == corecmd.RecoveryDeep {
-		return cmdutil.NewCommandResolution(target, candidate, reason, suggestions, "").Err()
-	}
-	return nil
+	// ValidateGroupPolicy and the guard above leave only sibling/deep recovery.
+	return cmdutil.NewCommandResolution(target, candidate, reason, suggestions, "").Err()
 }

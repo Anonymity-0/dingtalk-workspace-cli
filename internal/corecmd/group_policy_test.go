@@ -81,6 +81,14 @@ func TestCrossPlatformCoverageApplyAndReadGroupPolicy(t *testing.T) {
 	if err := cmd.RunE(cmd, []string{"extra"}); err == nil || !strings.Contains(err.Error(), "unknown subcommand") {
 		t.Fatalf("navigation recovery error = %v", err)
 	}
+	var help strings.Builder
+	cmd.SetOut(&help)
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatalf("navigation help error = %v", err)
+	}
+	if output := help.String(); !strings.Contains(output, "Usage:") {
+		t.Fatalf("navigation help output = %q", output)
+	}
 	// Re-applying the same declaration is idempotent.
 	ApplyGroupPolicy(cmd, policy)
 
@@ -93,6 +101,10 @@ func TestCrossPlatformCoverageApplyAndReadGroupPolicy(t *testing.T) {
 	leaf := &cobra.Command{Use: "leaf"}
 	if got, ok, err := GroupPolicyFor(leaf); err != nil || ok || !got.IsZero() {
 		t.Fatalf("leaf GroupPolicyFor() = %+v, %v, %v", got, ok, err)
+	}
+	annotatedLeaf := &cobra.Command{Use: "annotated-leaf", Annotations: map[string]string{"unrelated": "metadata"}}
+	if got, ok, err := GroupPolicyFor(annotatedLeaf); err != nil || ok || !got.IsZero() {
+		t.Fatalf("annotated leaf GroupPolicyFor() = %+v, %v, %v", got, ok, err)
 	}
 }
 
@@ -261,6 +273,11 @@ func TestCrossPlatformCoverageApplyGroupPolicyFailsClosed(t *testing.T) {
 	}
 	mustPanic("nil command", "nil command", func() { ApplyGroupPolicy(nil, GroupPolicy{}) })
 	mustPanic("zero policy", "zero GroupPolicy", func() { ApplyGroupPolicy(&cobra.Command{Use: "leaf"}, GroupPolicy{}) })
+	mustPanic("invalid policy", "invalid GroupPolicy", func() {
+		ApplyGroupPolicy(&cobra.Command{Use: "broken"}, GroupPolicy{
+			Mode: GroupHybrid, Positionals: "unexpected", Recovery: RecoveryDisabled,
+		})
+	})
 	mustPanic("hybrid must run", "must declare RunE", func() {
 		ApplyGroupPolicy(&cobra.Command{Use: "hybrid"}, GroupPolicy{
 			Mode: GroupHybrid, Positionals: PositionalsReject, Recovery: RecoverySibling,
@@ -271,16 +288,36 @@ func TestCrossPlatformCoverageApplyGroupPolicyFailsClosed(t *testing.T) {
 		ApplyGroupPolicy(cmd, GroupPolicy{Mode: GroupNavigationOnly, Positionals: PositionalsReject, Recovery: RecoverySibling})
 		ApplyGroupPolicy(cmd, GroupPolicy{Mode: GroupNavigationOnly, Positionals: PositionalsReject, Recovery: RecoveryDisabled})
 	})
+	mustPanic("invalid existing metadata", "invalid GroupPolicy metadata", func() {
+		cmd := &cobra.Command{
+			Use: "broken",
+			Annotations: map[string]string{
+				groupPolicyAnnotation: "hybrid|reject|unexpected",
+			},
+		}
+		ApplyGroupPolicy(cmd, GroupPolicy{Mode: GroupNavigationOnly, Positionals: PositionalsReject, Recovery: RecoverySibling})
+	})
 }
 
 func TestCrossPlatformCoverageGroupPolicyForRejectsMalformedPrivateMetadata(t *testing.T) {
-	cmd := &cobra.Command{
-		Use: "broken",
-		Annotations: map[string]string{
-			groupPolicyAnnotation: "hybrid|reject",
-		},
-	}
-	if _, ok, err := GroupPolicyFor(cmd); err == nil || ok || !strings.Contains(err.Error(), "malformed") {
-		t.Fatalf("GroupPolicyFor malformed = ok %v, err %v", ok, err)
+	for name, test := range map[string]struct {
+		encoded string
+		needle  string
+	}{
+		"malformed":      {encoded: "hybrid|reject", needle: "malformed"},
+		"invalid policy": {encoded: "hybrid|reject|unexpected", needle: "recovery"},
+		"zero policy":    {encoded: "||", needle: "must not be zero"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			cmd := &cobra.Command{
+				Use: "broken",
+				Annotations: map[string]string{
+					groupPolicyAnnotation: test.encoded,
+				},
+			}
+			if _, ok, err := GroupPolicyFor(cmd); err == nil || ok || !strings.Contains(err.Error(), test.needle) {
+				t.Fatalf("GroupPolicyFor(%q) = ok %v, err %v; want %q", test.encoded, ok, err, test.needle)
+			}
+		})
 	}
 }

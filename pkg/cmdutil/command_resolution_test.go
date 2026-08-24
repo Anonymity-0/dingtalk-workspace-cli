@@ -122,6 +122,63 @@ func TestCrossPlatformCoverageCommandResolutionDefensiveFallbacks(t *testing.T) 
 	}
 }
 
+func TestCrossPlatformCoverageCommandResolutionHelperBranches(t *testing.T) {
+	group := &cobra.Command{Use: "group"}
+	group.AddCommand(&cobra.Command{Use: "leaf", Run: func(*cobra.Command, []string) {}})
+	var help strings.Builder
+	group.SetOut(&help)
+	group.SetErr(&help)
+	if err := GroupRunE(group, nil); err != nil {
+		t.Fatalf("GroupRunE help error = %v", err)
+	}
+	if output := help.String(); !strings.Contains(output, "Usage:") {
+		t.Fatalf("GroupRunE help output = %q", output)
+	}
+
+	hint := HintSubCmd("mistake", "use canonical")
+	structured := requireTypedCommandResolution(t, hint.RunE(hint, nil), ResolutionUnknownSubcommand)
+	if structured.Message != `unknown subcommand "mistake" for "mistake"` {
+		t.Fatalf("detached hint Message = %q", structured.Message)
+	}
+
+	nameFallback := &cobra.Command{
+		Use:         "fallback",
+		Annotations: map[string]string{cobra.CommandDisplayNameAnnotation: "   "},
+	}
+	if got := commandResolutionParentPath(nameFallback); got != "fallback" {
+		t.Fatalf("commandResolutionParentPath name fallback = %q", got)
+	}
+	emptyFallback := &cobra.Command{
+		Annotations: map[string]string{cobra.CommandDisplayNameAnnotation: ""},
+	}
+	if got := commandResolutionParentPath(emptyFallback); got != "dws" {
+		t.Fatalf("commandResolutionParentPath empty fallback = %q", got)
+	}
+
+	parent := &cobra.Command{Use: "parent"}
+	child := &cobra.Command{Use: "canonical", Aliases: []string{"alias"}}
+	parent.AddCommand(child)
+	if hasExactChildCommand(nil, "canonical") {
+		t.Fatal("nil parent reported an exact child")
+	}
+	for _, candidate := range []string{"canonical", "alias"} {
+		if !hasExactChildCommand(parent, candidate) {
+			t.Fatalf("hasExactChildCommand(%q) = false", candidate)
+		}
+	}
+	if hasExactChildCommand(parent, "missing") {
+		t.Fatal("missing child reported as exact")
+	}
+
+	root := &cobra.Command{Use: "dws"}
+	service := &cobra.Command{Use: "service"}
+	service.AddCommand(&cobra.Command{Use: "ordinary"})
+	root.AddCommand(service)
+	if isTopLevelShortcutService(nil) || isTopLevelShortcutService(root) || isTopLevelShortcutService(service) {
+		t.Fatal("non-shortcut command classified as a top-level shortcut service")
+	}
+}
+
 func requireTypedCommandResolution(t *testing.T, err error, reason ResolutionReason) *apperrors.Error {
 	t.Helper()
 	var structured *apperrors.Error
