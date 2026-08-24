@@ -775,21 +775,24 @@ get-setting 返回字段说明：
 
 ```
 Usage:
-  dws drive publish set --node <fileId> [--permission READER|DOWNLOADER|EDITOR]
+  dws drive publish set --node <fileId> [--permission READER|DOWNLOADER|EDITOR] [--password Ab12] [--expire-days N]
   dws drive publish unset --node <fileId>
   dws drive publish get --node <fileId>
 Example:
   dws drive publish set --node <dentryUuid>
   dws drive publish set --node <dentryUuid> --permission READER
+  dws drive publish set --node <dentryUuid> --password Ab12 --expire-days 7
   dws drive publish get --node <dentryUuid>
   dws drive publish unset --node <dentryUuid>
 Flags:
       --node string         目标文件 ID (dentryUuid) 或 URL (必填)
       --permission string   公开后的权限: READER(仅可查看) / DOWNLOADER(可查看和下载，默认) / EDITOR(可编辑)，仅 set 有效
+      --password string     公开访问密码: 4 位字母或数字 (如 Ab12)，仅 set 有效；显式传空串清除密码保护
+      --expire-days int     公开有效期天数: 正整数=N 天后过期，0=永久有效，仅 set 有效
 ```
 
 子命令说明：
-- `publish set` — [危险] 设置文件为互联网公开，可选指定公开权限
+- `publish set` — [危险] 设置文件为互联网公开，可选指定公开权限、访问密码与有效期
 - `publish unset` — [危险] 关闭文件互联网公开
 - `publish get` — 查询文件当前的公开发布状态
 
@@ -799,7 +802,7 @@ Flags:
 - `pendingApproval` — true=已提交审批待生效，false/null=无需审批或已直接生效
 - `docUrl` — 文件访问链接
 
-> **注意**：`drive export` 不存在。导出仅对自研文档 (adoc) 有意义，属于内容层操作，应使用 `doc export`。
+> **注意**：导出钉盘在线文档到本地可使用 `dws drive export`（通用导出，支持 docx/xlsx/pptx/pdf/markdown）；`doc export` 与 `sheet export` 是分别针对在线文档与在线表格的产品级入口。
 
 ### 目标位置参数规则
 

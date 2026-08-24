@@ -182,7 +182,7 @@ func pollCopyMoveTask(ctx context.Context, taskType, taskID string) (*TaskResult
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("任务轮询被取消 (taskId=%s): %w", taskID, ctx.Err())
-		case <-time.After(interval):
+		case <-helperAfter(interval):
 		}
 
 		result, err := QueryTask(ctx, taskID, taskType)
@@ -226,9 +226,9 @@ func pollCopyMoveTask(ctx context.Context, taskType, taskID string) (*TaskResult
 // The submit call is routed to the doc server (copy_document/move_document
 // are registered there); the polling query is routed to the drive server
 // (query_task is registered on dingpan).
-func runNodeTransferWithAsyncPoll(mcpToolName string, toolArgs map[string]any) error {
-	ctx := context.Background()
-
+// ctx is expected to come from cmd.Context() so Ctrl-C / parent timeouts abort
+// both the submit call and the polling loop.
+func runNodeTransferWithAsyncPoll(ctx context.Context, mcpToolName string, toolArgs map[string]any) error {
 	text, err := callMCPToolReturnTextOnServer(ctx, "doc", mcpToolName, toolArgs)
 	if err != nil {
 		return err

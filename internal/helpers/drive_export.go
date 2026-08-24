@@ -17,7 +17,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -70,7 +69,7 @@ func pollDriveExportJob(ctx context.Context, jobID string) (downloadURL string, 
 		select {
 		case <-ctx.Done():
 			return "", "", fmt.Errorf("导出轮询被取消 (taskId=%s): %w", jobID, ctx.Err())
-		case <-time.After(interval):
+		case <-helperAfter(interval):
 		}
 
 		result, queryErr := QueryTask(ctx, jobID, "export")
@@ -95,9 +94,9 @@ func pollDriveExportJob(ctx context.Context, jobID string) (downloadURL string, 
 		case TaskStatusTimeout:
 			return "", "", fmt.Errorf("导出任务超时 (taskId=%s)", jobID)
 		case TaskStatusPending, TaskStatusProcessing:
+			// NormalizeStatus only ever produces the six enum values handled
+			// by the cases above, so no default branch is reachable.
 			printTaskProgress(fmt.Sprintf("  [%d/%d] 状态: PROCESSING", attempt, maxPolls))
-		default:
-			printTaskProgress(fmt.Sprintf("  [%d/%d] 状态: %s（视为处理中）", attempt, maxPolls, result.Status))
 		}
 	}
 
@@ -131,7 +130,7 @@ func inferExportFormatFromDocInfo(ctx context.Context, nodeID string) string {
 
 // runDriveExport is the RunE for `dws drive export`.
 func runDriveExport(cmd *cobra.Command, _ []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 	node, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "doc-id", "file-id")
 	if err != nil {
 		return err
@@ -166,14 +165,10 @@ func runDriveExport(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Auto-detect from document info when the format was not explicitly chosen.
+	// inferExportFormatFromDocInfo never returns an empty format (it falls back
+	// to "docx" itself), so no separate empty-format fallback is needed here.
 	if !formatExplicit {
-		detected := inferExportFormatFromDocInfo(ctx, node)
-		if detected != "" {
-			format = detected
-		}
-	}
-	if format == "" {
-		format = "docx"
+		format = inferExportFormatFromDocInfo(ctx, node)
 	}
 
 	fileExt, ok := supportedExportFormats[format]
@@ -264,7 +259,7 @@ func runDriveExportGet(cmd *cobra.Command, _ []string) error {
 
 	// query_task is registered on the drive (dingpan) MCP server; route there
 	// explicitly to avoid resolveProductID misrouting under doc/sheet context.
-	result, err := QueryTask(context.Background(), taskID, "export")
+	result, err := QueryTask(cmd.Context(), taskID, "export")
 	if err != nil {
 		return err
 	}

@@ -1713,7 +1713,7 @@ func newDriveCommand() *cobra.Command {
 				toolArgs["workspaceId"] = v
 			}
 			// 服务端可能返回异步任务（taskId），此时自动轮询 query_task 直至终态。
-			return runNodeTransferWithAsyncPoll("copy_document", toolArgs)
+			return runNodeTransferWithAsyncPoll(cmd.Context(), "copy_document", toolArgs)
 		},
 	}
 	DeclareLeafMetadata(driveCopyCmd, LeafSpec{
@@ -1791,7 +1791,7 @@ func newDriveCommand() *cobra.Command {
 				toolArgs["workspaceId"] = v
 			}
 			// 服务端可能返回异步任务（taskId），此时自动轮询 query_task 直至终态。
-			return runNodeTransferWithAsyncPoll("move_document", toolArgs)
+			return runNodeTransferWithAsyncPoll(cmd.Context(), "move_document", toolArgs)
 		},
 	}
 	DeclareLeafMetadata(driveMoveCmd, LeafSpec{
@@ -2169,7 +2169,7 @@ func newDriveCommand() *cobra.Command {
 			}
 
 			// query_task 工具注册在 drive (dingpan) MCP server 上，需显式路由。
-			result, err := QueryTask(context.Background(), taskID, taskType)
+			result, err := QueryTask(cmd.Context(), taskID, taskType)
 			if err != nil {
 				return err
 			}
@@ -3230,17 +3230,13 @@ func newDriveCommand() *cobra.Command {
   显式传空（--password ""）可关闭已有密码保护；不传则不改变密码设置。
 有效期 (--expire-days): 正整数=N天后过期，0=永久有效，不传=保持原值不变，负数会报错。
 注意：密码和有效期的支持情况取决于节点类型和组织策略，不支持时服务端会返回友好提示。`,
-		Example: `  dws drive publish set --node <fileId> --yes
-  dws drive publish set --node <fileId> --permission READER --yes
-  dws drive publish set --node <fileId> --password Ab12 --expire-days 7 --yes
-  dws drive publish set --node <fileId>                        # 交互式确认`,
+		Example: `  dws drive publish set --node <fileId> --format json
+  dws drive publish set --node <fileId> --password Ab12 --expire-days 7 --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
-			if err != nil {
-				return err
-			}
+			// LeafSpec.Validate 已在本 RunE 之前确认 node 非空，这里直接取值。
+			nodeID := flagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
 
-			// permission 枚举校验（fail-fast，在确认前执行）
+			// permission 枚举校验（fail-fast）
 			permVal := mustGetFlag(cmd, "permission")
 			if permVal != "" {
 				validPermissions := map[string]bool{"READER": true, "DOWNLOADER": true, "EDITOR": true}
@@ -3330,6 +3326,10 @@ func newDriveCommand() *cobra.Command {
 					"dws drive publish set --node <fileId> --permission READER --format json",
 				},
 			},
+			Parameters: []contract.ParamDecl{
+				{Name: "password", Property: "password"},
+				{Name: "expire-days", Property: "expireDays"},
+			},
 		},
 	})
 	drivePublishSetCmd.Flags().String("node", "", "目标文件 ID (dentryUuid) 或 URL (必填)")
@@ -3345,10 +3345,8 @@ func newDriveCommand() *cobra.Command {
 		Example: `  dws drive publish unset --node <fileId> --yes
   dws drive publish unset --node <fileId>          # 交互式确认`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nodeID, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
-			if err != nil {
-				return err
-			}
+			// LeafSpec.Validate 已在本 RunE 之前确认 node 非空，这里直接取值。
+			nodeID := flagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
 			return callMCPTool("set_file_publish", map[string]any{
 				"fileId":    nodeID,
 				"published": false,
