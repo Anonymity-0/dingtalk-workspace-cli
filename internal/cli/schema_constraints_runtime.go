@@ -98,6 +98,7 @@ func init() {
 	registerRequireOneOf("sheet.update_filter_view", "name", "range", "criteria")
 	RegisterRuntimeSchemaConstraints("sheet.create_float_image", RuntimeSchemaConstraints{
 		MutuallyExclusive: [][]string{{"file", "src"}},
+		RequireOneOf:      [][]string{{"file", "src"}},
 	})
 	RegisterRuntimeSchemaConstraints("sheet.update_float_image", RuntimeSchemaConstraints{
 		MutuallyExclusive: [][]string{{"file", "src"}},

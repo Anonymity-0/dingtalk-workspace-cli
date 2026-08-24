@@ -41,10 +41,7 @@ func TestSheetFloatImageLocalFileFinalSchema(t *testing.T) {
 		t.Fatalf("create --src compatibility metadata = %#v", src)
 	}
 	assertSchemaContractConstraintGroup(t, create, "mutually_exclusive", []string{"file", "src"})
-	createConstraints, _ := create["constraints"].(map[string]any)
-	if groups, ok := createConstraints["require_one_of"].([]any); ok && len(groups) != 0 {
-		t.Fatalf("create unexpectedly publishes require_one_of: %#v", groups)
-	}
+	assertSchemaContractConstraintGroup(t, create, "require_one_of", []string{"file", "src"})
 
 	update := payload.Tools["sheet.update_float_image"]
 	if update == nil {
