@@ -292,20 +292,30 @@ func SafeFilename(preferredName, rawURL string) string {
 	return "download"
 }
 
-// ValidateDownloadURL accepts only public DingTalk and Aliyun OSS HTTPS hosts.
+// ValidateDownloadURL accepts HTTPS download URLs on the default port. Hosts
+// must be domain names, never IP literals or userinfo URLs; SSRF protection is
+// enforced at dial time by the public-IP policy in secureHTTPClient.
 func ValidateDownloadURL(rawURL string) (*url.URL, error) {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
 		return nil, fmt.Errorf("下载地址必须是受信任域名上的 HTTPS URL")
 	}
 	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
-	if host == "" || net.ParseIP(host) != nil || !allowedDownloadHost(host) {
-		return nil, fmt.Errorf("下载地址域名 %q 不属于受信任的钉钉或 OSS 域名", host)
+	if host == "" || net.ParseIP(host) != nil {
+		return nil, fmt.Errorf("下载地址不允许使用 IP 直连，必须是 HTTPS 域名")
 	}
 	if port := parsed.Port(); port != "" && port != "443" {
 		return nil, fmt.Errorf("下载地址只允许 HTTPS 默认端口")
 	}
 	return parsed, nil
+}
+
+// SecureHTTPClient returns a download client enforcing the same dial-time
+// public-IP policy and redirect hygiene as Download. Product shortcuts that
+// own their local-file workflow (e.g. chat message resources) share it so
+// download URL trust decisions stay in one place.
+func SecureHTTPClient() *http.Client {
+	return secureHTTPClient()
 }
 
 func secureHTTPClient() *http.Client {
@@ -371,11 +381,6 @@ func downloadOrigin(parsed *url.URL) string {
 	}
 	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
 	return strings.ToLower(parsed.Scheme) + "://" + net.JoinHostPort(host, port)
-}
-
-func allowedDownloadHost(host string) bool {
-	return host == "dingtalk.com" || strings.HasSuffix(host, ".dingtalk.com") ||
-		(strings.HasSuffix(host, ".aliyuncs.com") && strings.Contains(host, "oss") && !strings.Contains(host, "internal"))
 }
 
 func publicIP(ip net.IP) bool {

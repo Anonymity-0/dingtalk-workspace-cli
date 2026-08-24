@@ -64,6 +64,11 @@ func TestCrossPlatformCoverageDownloadURLAndPublicIPPolicy(t *testing.T) {
 	valid := []string{
 		"https://alidocs.dingtalk.com/file.docx",
 		"https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/file.md",
+		// 域名白名单已移除：任意 HTTPS 域名在 URL 校验层放行，
+		// SSRF 防护由拨号层的公网 IP 强制校验承担。
+		"https://ddoss.ijingbo.chambroad.com/file.doc",
+		"https://evil.example/file.docx",
+		"https://oss-cn-hangzhou-internal.aliyuncs.com/file.docx",
 	}
 	for _, raw := range valid {
 		if _, err := ValidateDownloadURL(raw); err != nil {
@@ -73,8 +78,6 @@ func TestCrossPlatformCoverageDownloadURLAndPublicIPPolicy(t *testing.T) {
 	invalid := []string{
 		"http://alidocs.dingtalk.com/file.docx",
 		"https://127.0.0.1/file.docx",
-		"https://evil.example/file.docx",
-		"https://oss-cn-hangzhou-internal.aliyuncs.com/file.docx",
 		"https://user@alidocs.dingtalk.com/file.docx",
 		"https://alidocs.dingtalk.com:8443/file.docx",
 	}
@@ -363,7 +366,7 @@ func TestCrossPlatformCoverageSecureHTTPClientAndFilesystemEdges(t *testing.T) {
 	if err := client.CheckRedirect(&http.Request{URL: mustURL(t, "https://download.dingtalk.com/x")}, make([]*http.Request, 5)); err == nil {
 		t.Fatal("redirect limit accepted")
 	}
-	if err := client.CheckRedirect(&http.Request{URL: mustURL(t, "https://evil.example/x")}, nil); err == nil {
+	if err := client.CheckRedirect(&http.Request{URL: mustURL(t, "http://evil.example/x")}, nil); err == nil {
 		t.Fatal("unsafe redirect accepted")
 	}
 	if err := client.CheckRedirect(&http.Request{URL: mustURL(t, "https://download.dingtalk.com/x")}, nil); err != nil {
