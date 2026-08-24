@@ -96,7 +96,10 @@ func newTodoCommand() *cobra.Command {
 				return err
 			}
 			executorsStr := mustGetFlag(cmd, "executors")
-			executorIds := parseExecutorIds(executorsStr)
+			executorIds, err := parseRequiredTodoIDs("executors", executorsStr)
+			if err != nil {
+				return err
+			}
 			toolArgs := map[string]any{
 				"PersonalTodoCreateVO": map[string]any{
 					"subject":     flagOrFallback(cmd, "title", "subject", "content"),
@@ -111,9 +114,11 @@ func newTodoCommand() *cobra.Command {
 				toolArgs["PersonalTodoCreateVO"].(map[string]any)["dueTime"] = ms
 			}
 			if v, _ := cmd.Flags().GetString("priority"); v != "" {
-				if n, err := strconv.Atoi(v); err == nil {
-					toolArgs["PersonalTodoCreateVO"].(map[string]any)["priority"] = n
+				n, err := parseTodoPriority(v)
+				if err != nil {
+					return err
 				}
+				toolArgs["PersonalTodoCreateVO"].(map[string]any)["priority"] = n
 			}
 			if v, _ := cmd.Flags().GetString("recurrence"); v != "" {
 				toolArgs["PersonalTodoCreateVO"].(map[string]any)["recurrence"] = v
@@ -154,8 +159,8 @@ func newTodoCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "due", Property: "PersonalTodoCreateVO.dueTime"},
-				{Name: "executors", Property: "PersonalTodoCreateVO.executorIds"},
-				{Name: "priority", Property: "PersonalTodoCreateVO.priority"},
+				{Name: "executors", Property: "PersonalTodoCreateVO.executorIds", Description: "执行者 userId 列表；逗号分隔，解析后至少包含一个非空值"},
+				{Name: "priority", Property: "PersonalTodoCreateVO.priority", Enum: []string{"10", "20", "30", "40"}},
 				{Name: "recurrence", Property: "PersonalTodoCreateVO.recurrence"},
 				{Name: "title", Property: "PersonalTodoCreateVO.subject"},
 			},
@@ -190,7 +195,10 @@ func newTodoCommand() *cobra.Command {
 				}
 			}
 			executorsStr := mustGetFlag(cmd, "executors")
-			executorIds := parseExecutorIds(executorsStr)
+			executorIds, err := parseRequiredTodoIDs("executors", executorsStr)
+			if err != nil {
+				return err
+			}
 			toolArgs := map[string]any{
 				"PersonalTodoCreateVO": map[string]any{
 					"subject":     flagOrFallback(cmd, "title", "subject", "content"),
@@ -206,9 +214,11 @@ func newTodoCommand() *cobra.Command {
 				toolArgs["PersonalTodoCreateVO"].(map[string]any)["dueTime"] = ms
 			}
 			if v, _ := cmd.Flags().GetString("priority"); v != "" {
-				if n, err := strconv.Atoi(v); err == nil {
-					toolArgs["PersonalTodoCreateVO"].(map[string]any)["priority"] = n
+				n, err := parseTodoPriority(v)
+				if err != nil {
+					return err
 				}
+				toolArgs["PersonalTodoCreateVO"].(map[string]any)["priority"] = n
 			}
 			if v, _ := cmd.Flags().GetString("recurrence"); v != "" {
 				toolArgs["PersonalTodoCreateVO"].(map[string]any)["recurrence"] = v
@@ -249,9 +259,9 @@ func newTodoCommand() *cobra.Command {
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "due", Property: "PersonalTodoCreateVO.dueTime"},
-				{Name: "executors", Property: "PersonalTodoCreateVO.executorIds"},
+				{Name: "executors", Property: "PersonalTodoCreateVO.executorIds", Description: "执行者 userId 列表；逗号分隔，解析后至少包含一个非空值"},
 				{Name: "parent-id", Property: "PersonalTodoCreateVO.parentId"},
-				{Name: "priority", Property: "PersonalTodoCreateVO.priority"},
+				{Name: "priority", Property: "PersonalTodoCreateVO.priority", Enum: []string{"10", "20", "30", "40"}},
 				{Name: "recurrence", Property: "PersonalTodoCreateVO.recurrence"},
 				{Name: "title", Property: "PersonalTodoCreateVO.subject"},
 			},
@@ -376,9 +386,11 @@ func newTodoCommand() *cobra.Command {
 				inner["dueTime"] = ms
 			}
 			if v, _ := cmd.Flags().GetString("priority"); v != "" {
-				if n, err := strconv.Atoi(v); err == nil {
-					inner["priority"] = n
+				n, err := parseTodoPriority(v)
+				if err != nil {
+					return err
 				}
+				inner["priority"] = n
 			}
 			if v, _ := cmd.Flags().GetString("done"); v != "" {
 				inner["isDone"] = v == "true"
@@ -422,7 +434,7 @@ func newTodoCommand() *cobra.Command {
 			Parameters: []contract.ParamDecl{
 				{Name: "done", Property: "TodoUpdateRequest.isDone"},
 				{Name: "due", Property: "TodoUpdateRequest.dueTime"},
-				{Name: "priority", Property: "TodoUpdateRequest.priority"},
+				{Name: "priority", Property: "TodoUpdateRequest.priority", Enum: []string{"10", "20", "30", "40"}},
 				{Name: "task-id", Property: "TodoUpdateRequest.taskId"},
 				{Name: "title", Property: "TodoUpdateRequest.subject"},
 			},
@@ -630,7 +642,10 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 				return err
 			}
 			executorsStr := mustGetFlag(cmd, "executors")
-			executorIds := parseExecutorIds(executorsStr)
+			executorIds, err := parseRequiredTodoIDs("executors", executorsStr)
+			if err != nil {
+				return err
+			}
 			return callMCPTool("add_task_executors", map[string]any{
 				"todoExecutorsAddRequest": map[string]any{
 					"taskId":      mustGetFlag(cmd, "task-id"),
@@ -672,7 +687,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "executors", Property: "todoExecutorsAddRequest.executorIds"},
+				{Name: "executors", Property: "todoExecutorsAddRequest.executorIds", Description: "执行者 userId 列表；逗号分隔，解析后至少包含一个非空值"},
 				{Name: "task-id", Property: "todoExecutorsAddRequest.taskId"},
 			},
 		},
@@ -688,7 +703,10 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 				return err
 			}
 			executorsStr := mustGetFlag(cmd, "executors")
-			executorIds := parseExecutorIds(executorsStr)
+			executorIds, err := parseRequiredTodoIDs("executors", executorsStr)
+			if err != nil {
+				return err
+			}
 			return callMCPTool("remove_task_executors", map[string]any{
 				"todoExecutorsRemoveRequest": map[string]any{
 					"taskId":      mustGetFlag(cmd, "task-id"),
@@ -729,7 +747,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "executors", Property: "todoExecutorsRemoveRequest.executorIds"},
+				{Name: "executors", Property: "todoExecutorsRemoveRequest.executorIds", Description: "执行者 userId 列表；逗号分隔，解析后至少包含一个非空值"},
 				{Name: "task-id", Property: "todoExecutorsRemoveRequest.taskId"},
 			},
 		},
@@ -1189,14 +1207,14 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 	}
 
 	todoTaskCreateCmd.Flags().String("title", "", "待办标题 (必填)")
-	todoTaskCreateCmd.Flags().String("executors", "", "执行者 userId 列表 (必填)")
+	todoTaskCreateCmd.Flags().String("executors", "", "执行者 userId 列表，逗号分隔且至少一个非空值 (必填)")
 	todoTaskCreateCmd.Flags().String("due", "", "截止时间 ISO-8601 (如 2026-03-10T18:00:00+08:00)")
 	todoTaskCreateCmd.Flags().String("priority", "", "优先级: 10低/20普通/30较高/40紧急")
 	todoTaskCreateCmd.Flags().String("recurrence", "", "循环待办 (需先设置 --due); 格式: DTSTART:20260320T100000Z\\nRRULE:FREQ=DAILY;INTERVAL=1")
 
 	todoTaskCreateSubCmd.Flags().String("parent-id", "", "父待办任务 ID (必填)")
 	todoTaskCreateSubCmd.Flags().String("title", "", "子待办标题 (必填)")
-	todoTaskCreateSubCmd.Flags().String("executors", "", "执行者 userId 列表 (必填)")
+	todoTaskCreateSubCmd.Flags().String("executors", "", "执行者 userId 列表，逗号分隔且至少一个非空值 (必填)")
 	todoTaskCreateSubCmd.Flags().String("due", "", "截止时间 ISO-8601 (如 2026-03-10T18:00:00+08:00)")
 	todoTaskCreateSubCmd.Flags().String("priority", "", "优先级: 10低/20普通/30较高/40紧急")
 	todoTaskCreateSubCmd.Flags().String("recurrence", "", "循环待办 (需先设置 --due); 格式: DTSTART:20260320T100000Z\\nRRULE:FREQ=DAILY;INTERVAL=1")
@@ -1235,9 +1253,9 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 	_ = todoTaskCmd.PersistentFlags().MarkHidden("remind-at")
 
 	todoTaskAddExecutorCmd.Flags().String("task-id", "", "待办任务 ID (必填)")
-	todoTaskAddExecutorCmd.Flags().String("executors", "", "执行者 userId 列表 (必填)")
+	todoTaskAddExecutorCmd.Flags().String("executors", "", "执行者 userId 列表，逗号分隔且至少一个非空值 (必填)")
 	todoTaskRemoveExecutorCmd.Flags().String("task-id", "", "待办任务 ID (必填)")
-	todoTaskRemoveExecutorCmd.Flags().String("executors", "", "执行者 userId 列表 (必填)")
+	todoTaskRemoveExecutorCmd.Flags().String("executors", "", "执行者 userId 列表，逗号分隔且至少一个非空值 (必填)")
 	todoTaskAddParticipantCmd.Flags().String("task-id", "", "待办任务 ID (必填)")
 	todoTaskAddParticipantCmd.Flags().String("participants", "", "参与人 userId 列表 (必填)")
 	todoTaskRemoveParticipantCmd.Flags().String("task-id", "", "待办任务 ID (必填)")
@@ -1891,6 +1909,37 @@ func parseExecutorIds(s string) []string {
 		}
 	}
 	return ids
+}
+
+func parseRequiredTodoIDs(flagName, value string) ([]string, error) {
+	ids := parseExecutorIds(value)
+	if len(ids) > 0 {
+		return ids, nil
+	}
+	return nil, apperrors.NewValidation(
+		fmt.Sprintf("--%s 至少需要一个非空 userId", flagName),
+		apperrors.WithReason("invalid_"+strings.ReplaceAll(flagName, "-", "_")),
+		apperrors.WithHint(fmt.Sprintf("使用 --%s <USER_ID>[,<USER_ID>...] 指定至少一个执行人", flagName)),
+		apperrors.WithExecutionStarted(false),
+		apperrors.WithRetryable(false),
+	)
+}
+
+func parseTodoPriority(value string) (int, error) {
+	priority, err := strconv.Atoi(strings.TrimSpace(value))
+	if err == nil {
+		switch priority {
+		case 10, 20, 30, 40:
+			return priority, nil
+		}
+	}
+	return 0, apperrors.NewValidation(
+		"--priority 仅接受 10/20/30/40",
+		apperrors.WithReason("invalid_priority"),
+		apperrors.WithHint("优先级映射：10=低、20=普通、30=较高、40=紧急"),
+		apperrors.WithExecutionStarted(false),
+		apperrors.WithRetryable(false),
+	)
 }
 
 type todoLocalFileMeta struct {
