@@ -1400,8 +1400,17 @@ func TestCrossPlatformCoverageDocHistoryTemplateReviewAndMedia(t *testing.T) {
 			break
 		}
 	}
-	if !foundImportTargetExclusion {
-		t.Fatal("doc +import must publish folder/workspace mutual exclusion")
+	if foundImportTargetExclusion {
+		t.Fatal("doc +import must not publish a new typed folder/workspace mutex before the base schema accepts it")
+	}
+	importTargetDescriptions := map[string]bool{"folder": false, "workspace": false}
+	for _, flag := range Import.Flags {
+		if _, ok := importTargetDescriptions[flag.Name]; ok && strings.Contains(flag.Desc, "互斥") {
+			importTargetDescriptions[flag.Name] = true
+		}
+	}
+	if !importTargetDescriptions["folder"] || !importTargetDescriptions["workspace"] {
+		t.Fatal("doc +import folder/workspace descriptions must continue to publish their runtime mutual exclusion")
 	}
 	if err := runDocCoverage(t, Export, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--node", "n", "--output", "out.docx", "--dry-run"); err != nil {
 		t.Fatalf("export default format failed: %v", err)

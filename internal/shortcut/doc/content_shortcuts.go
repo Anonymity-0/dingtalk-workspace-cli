@@ -517,7 +517,6 @@ var Import = shortcut.Shortcut{
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"file"}, Description: "--file 必须是工作目录内已存在且不通过符号链接逃逸的相对路径"},
-		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"folder", "workspace"}},
 	},
 	Tips:     []string{`dws doc +import --file ./report.docx`, `dws doc +import --file ./notes.md --workspace <WORKSPACE_ID> --name "会议纪要"`},
 	Validate: func(rt *shortcut.RuntimeContext) error { return validateWorkspaceInputPath("file", rt.Str("file")) },
