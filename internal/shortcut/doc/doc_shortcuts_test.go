@@ -132,6 +132,31 @@ func runDocCoveragePath(t *testing.T, declaration shortcut.Shortcut, caller *doc
 	return root.Execute()
 }
 
+func TestCrossPlatformCoverageCommentReplyRejectsUnsupportedEmojiBeforeRPC(t *testing.T) {
+	for _, content := range []string{"😄", "乱码"} {
+		caller := &docCoverageCaller{responses: map[string][]map[string]any{}}
+		err := runDocCoverage(t, CommentReply, caller,
+			"--node", "node-1", "--comment-key", "comment-1",
+			"--content", content, "--emoji", "--yes")
+		if err == nil {
+			t.Fatalf("unsupported reaction %q accepted", content)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("unsupported reaction %q reached RPC %d time(s)", content, caller.calls)
+		}
+	}
+
+	caller := &docCoverageCaller{responses: map[string][]map[string]any{}}
+	if err := runDocCoverage(t, CommentReply, caller,
+		"--node", "node-1", "--comment-key", "comment-1",
+		"--content", "鼓掌", "--emoji", "--yes"); err != nil {
+		t.Fatal(err)
+	}
+	if caller.calls != 1 || caller.history[0].params["emoji"] != true {
+		t.Fatalf("valid reaction call = %#v", caller.history)
+	}
+}
+
 func TestCrossPlatformCoverageRevisionSelectionAndKeywordUseLiveShapes(t *testing.T) {
 	revisionPayload := map[string]any{"data": map[string]any{"revision": json.Number("9")}}
 	if got, ok := nestedRevision(revisionPayload); !ok || got != 9 {
@@ -1072,7 +1097,8 @@ func TestCrossPlatformCoverageDocContentValidationAndPureHelpers(t *testing.T) {
 		{Create, []string{"--name", "n", "--content", `{}`, "--doc-format", "jsonml"}},
 		{Create, []string{"--name", "n", "--content", `[]`, "--doc-format", "jsonml"}},
 		{Create, []string{"--name", "n", "--content", `[["p",{},"x"]]`, "--doc-format", "jsonml"}},
-		{Fetch, []string{"--node", "n", "--revision", "1"}},
+		{Fetch, []string{"--node", "n", "--revision", "7"}},
+		{Fetch, []string{"--node", "n", "--version", "-2"}},
 		{Fetch, []string{"--node", "n", "--scope", "keyword"}},
 		{Update, []string{"--node", "n"}},
 		{Update, []string{"--command", "append", "--content", "x", "--yes"}},
@@ -1101,6 +1127,27 @@ func TestCrossPlatformCoverageDocContentValidationAndPureHelpers(t *testing.T) {
 	}
 	if len(revision.history) < 1 || revision.history[0].tool != "update_document" || revision.history[0].params["revision"] != 7 {
 		t.Fatalf("expected revision was not forwarded atomically: %#v", revision.history)
+	}
+
+	fetchAccess := &docCoverageCaller{}
+	if err := runDocCoverage(t, Fetch, fetchAccess, "--node", "n", "--version", "7", "--password", "pw"); err != nil {
+		t.Fatalf("fetch with access params failed: %v", err)
+	}
+	if len(fetchAccess.history) != 1 ||
+		fetchAccess.history[0].tool != "get_document_content" ||
+		fetchAccess.history[0].params["historyVersion"] != 7 ||
+		fetchAccess.history[0].params["password"] != "pw" {
+		t.Fatalf("fetch access params were not forwarded: %#v", fetchAccess.history)
+	}
+
+	fetchZero := &docCoverageCaller{}
+	if err := runDocCoverage(t, Fetch, fetchZero, "--node", "n", "--version", "0"); err != nil {
+		t.Fatalf("fetch with zero version failed: %v", err)
+	}
+	if len(fetchZero.history) != 1 ||
+		fetchZero.history[0].tool != "get_document_content" ||
+		fetchZero.history[0].params["historyVersion"] != 0 {
+		t.Fatalf("fetch zero version (initial version) was not forwarded: %#v", fetchZero.history)
 	}
 
 	for _, value := range []any{

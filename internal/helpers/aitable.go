@@ -7,6 +7,8 @@ import (
 	"io"
 	"math"
 	"os"
+	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -124,6 +126,83 @@ func resolveWorkflowDSL(cmd *cobra.Command) (map[string]any, error) {
 		return nil, fmt.Errorf("--dsl must be a JSON object, got null")
 	}
 	return dsl, nil
+}
+
+// executeAitableWorkflowPublish executes a publish exactly once, then requires
+// the reviewed valid/flowId envelope before rendering any success output.
+// create_workflow is non-idempotent, so transport uncertainty is never retried.
+func executeAitableWorkflowPublish(toolName string, args map[string]any) error {
+	if deps.Caller.DryRun() {
+		return callMCPToolOnServer("aitable", toolName, args)
+	}
+	raw, err := callMCPToolReturnTextOnServer(context.Background(), "aitable", toolName, args)
+	if err != nil {
+		return err
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(raw), &envelope); err != nil || envelope == nil {
+		return fmt.Errorf("%s response is not a JSON object", toolName)
+	}
+	valid, validFound, flowID, err := strictAitableWorkflowPublishResult(envelope)
+	if err != nil {
+		return fmt.Errorf("%s response validation failed: %w", toolName, err)
+	}
+	if !validFound {
+		return fmt.Errorf("%s response is missing valid", toolName)
+	}
+	if !valid {
+		return fmt.Errorf("%s returned valid=false; inspect issues and correct the workflow DSL", toolName)
+	}
+	if flowID == "" {
+		return fmt.Errorf("%s response is missing a non-empty flowId", toolName)
+	}
+	return RenderLegacyMCPText(toolName, raw)
+}
+
+func strictAitableWorkflowPublishResult(envelope map[string]any) (valid bool, validFound bool, flowID string, err error) {
+	var visit func(map[string]any) error
+	visit = func(object map[string]any) error {
+		if raw, exists := object["valid"]; exists {
+			value, ok := raw.(bool)
+			if !ok {
+				return fmt.Errorf("valid must be boolean, got %T", raw)
+			}
+			if validFound && valid != value {
+				return fmt.Errorf("conflicting valid values")
+			}
+			valid, validFound = value, true
+		}
+		for _, key := range []string{"flowId", "workflowId"} {
+			raw, exists := object[key]
+			if !exists {
+				continue
+			}
+			value, ok := raw.(string)
+			value = strings.TrimSpace(value)
+			if !ok || value == "" {
+				return fmt.Errorf("%s must be a non-empty string", key)
+			}
+			if flowID != "" && flowID != value {
+				return fmt.Errorf("conflicting workflow IDs")
+			}
+			flowID = value
+		}
+		for _, key := range []string{"data", "result", "response"} {
+			if nested, ok := object[key].(map[string]any); ok {
+				if err := visit(nested); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if envelope == nil {
+		return false, false, "", fmt.Errorf("empty response")
+	}
+	if err := visit(envelope); err != nil {
+		return false, false, "", err
+	}
+	return valid, validFound, flowID, nil
 }
 
 func validateWorkflowRunFlags(cmd *cobra.Command, _ []string) error {
@@ -1182,6 +1261,290 @@ func runAitableViewUpdateArray(cmd *cobra.Command, blockKey string) error {
 		return err
 	}
 	return callUpdateViewWithBlock(baseID, tableID, viewID, blockKey, cfgMap[blockKey], nil)
+}
+
+func runAitableViewUpdateFilter(cmd *cobra.Command) error {
+	baseID, tableID, viewID, _, err := viewUpdateCommonPreflight(cmd, "filter", nil, false)
+	if err != nil {
+		return err
+	}
+	jsonStr, _ := cmd.Flags().GetString("json")
+	if jsonStr == "" {
+		return fmt.Errorf("必须指定 --json 传入 filter JSON 数组")
+	}
+	var parsed any
+	if err := json.Unmarshal([]byte(jsonStr), &parsed); err != nil {
+		return fmt.Errorf("--json 解析失败: %v", err)
+	}
+	cfgMap := map[string]any{"filter": parsed}
+	if err := normalizeViewConfigBlock(cfgMap); err != nil {
+		return err
+	}
+	filter, _ := cfgMap["filter"].([]any)
+	fieldTypes, err := loadAitableFieldTypes(context.Background(), baseID, tableID)
+	if err != nil {
+		return err
+	}
+	if err := validateAitableViewFilter(filter, fieldTypes); err != nil {
+		return err
+	}
+	toolArgs := map[string]any{
+		"baseId": baseID, "tableId": tableID, "viewId": viewID,
+		"config": map[string]any{"filter": filter},
+	}
+	if deps.Caller.DryRun() {
+		return deps.Out.PrintJSON(map[string]any{
+			"dry_run": true, "executed": false, "tool": "update_view", "arguments": toolArgs,
+		})
+	}
+	if _, err := callMCPToolReturnTextOnServer(context.Background(), "aitable", "update_view", toolArgs); err != nil {
+		return err
+	}
+	var actual any
+	var readBackErr error
+	for attempt := 0; attempt < aitableViewFilterReadbackAttempts; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<(attempt-1)) * time.Second
+			if backoff > 8*time.Second {
+				backoff = 8 * time.Second
+			}
+			aitableViewFilterReadbackSleep(backoff)
+		}
+		view, _, err := getViewRaw(context.Background(), baseID, tableID, viewID)
+		if err != nil {
+			readBackErr = err
+			continue
+		}
+		actualViewID, _ := view["viewId"].(string)
+		if actualViewID != viewID {
+			readBackErr = fmt.Errorf("update_view read-back returned viewId %q, want %q", actualViewID, viewID)
+			continue
+		}
+		actual = walkViewPath(view, "filter")
+		if persistedViewFilterMatches(actual, filter) {
+			readBackErr = nil
+			break
+		}
+		readBackErr = fmt.Errorf("update_view filter read-back mismatch: got %s, want %s", compactJSON(actual), compactJSON(filter))
+	}
+	if readBackErr != nil {
+		return &CLIError{Code: CodeMCPToolError, Message: readBackErr.Error(), Suggestion: "重新读取 view get filter，确认服务端支持所用字段类型和操作符后再试"}
+	}
+	return deps.Out.PrintJSON(map[string]any{
+		"success": true,
+		"data":    map[string]any{"baseId": baseID, "tableId": tableID, "viewId": viewID, "filter": filter, "verified": true},
+	})
+}
+
+const aitableViewFilterReadbackAttempts = 6
+
+var aitableViewFilterReadbackSleep = time.Sleep
+
+func persistedViewFilterMatches(actual any, expected []any) bool {
+	if reflect.DeepEqual(actual, expected) {
+		return true
+	}
+	root, ok := actual.(map[string]any)
+	if !ok || root["operator"] != "and" {
+		return false
+	}
+	operands, ok := root["operands"].([]any)
+	return ok && reflect.DeepEqual(operands, expected)
+}
+
+func loadAitableFieldTypes(ctx context.Context, baseID, tableID string) (map[string]string, error) {
+	raw, err := callMCPReadToolReturnTextOnServer(ctx, "aitable", "get_fields", map[string]any{"baseId": baseID, "tableId": tableID})
+	if err != nil {
+		return nil, err
+	}
+	var payload any
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		return nil, fmt.Errorf("get_fields response is not valid JSON: %v", err)
+	}
+	fields, ok := findAitableObjectList(payload, "fields", "fieldList")
+	if !ok {
+		return nil, fmt.Errorf("get_fields response is missing the fields collection")
+	}
+	types := make(map[string]string, len(fields))
+	for index, field := range fields {
+		fieldID, _ := field["fieldId"].(string)
+		if strings.TrimSpace(fieldID) == "" {
+			fieldID, _ = field["id"].(string)
+		}
+		fieldType, _ := field["type"].(string)
+		if strings.TrimSpace(fieldType) == "" {
+			fieldType, _ = field["fieldType"].(string)
+		}
+		if strings.TrimSpace(fieldID) == "" || strings.TrimSpace(fieldType) == "" {
+			return nil, fmt.Errorf("get_fields field %d is missing fieldId or type", index)
+		}
+		types[strings.TrimSpace(fieldID)] = strings.TrimSpace(fieldType)
+	}
+	return types, nil
+}
+
+func findAitableObjectList(value any, names ...string) ([]map[string]any, bool) {
+	wanted := make([]string, 0, len(names))
+	seen := make(map[string]bool, len(names))
+	for _, name := range names {
+		name = strings.ToLower(name)
+		if !seen[name] {
+			wanted = append(wanted, name)
+			seen[name] = true
+		}
+	}
+	var walk func(any) ([]map[string]any, bool)
+	walk = func(current any) ([]map[string]any, bool) {
+		switch typed := current.(type) {
+		case map[string]any:
+			keys := make([]string, 0, len(typed))
+			for key := range typed {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, name := range wanted {
+				for _, key := range keys {
+					if !strings.EqualFold(key, name) {
+						continue
+					}
+					items, ok := typed[key].([]any)
+					if !ok {
+						return nil, false
+					}
+					out := make([]map[string]any, 0, len(items))
+					for _, item := range items {
+						object, ok := item.(map[string]any)
+						if !ok {
+							return nil, false
+						}
+						out = append(out, object)
+					}
+					return out, true
+				}
+			}
+			for _, key := range keys {
+				if found, ok := walk(typed[key]); ok {
+					return found, true
+				}
+			}
+		case []any:
+			for _, child := range typed {
+				if found, ok := walk(child); ok {
+					return found, true
+				}
+			}
+		}
+		return nil, false
+	}
+	return walk(value)
+}
+
+func validateAitableViewFilter(filter []any, fieldTypes map[string]string) error {
+	for index, raw := range filter {
+		condition, ok := raw.(map[string]any)
+		if !ok {
+			return fmt.Errorf("filter[%d] must be an object", index)
+		}
+		if err := validateAitableViewFilterCondition(condition, fieldTypes); err != nil {
+			return fmt.Errorf("filter[%d]: %w", index, err)
+		}
+	}
+	return nil
+}
+
+func validateAitableViewFilterCondition(condition map[string]any, fieldTypes map[string]string) error {
+	operator, _ := condition["operator"].(string)
+	operator = strings.TrimSpace(operator)
+	if operator == "" || !validFilterOperators[operator] {
+		return fmt.Errorf("unsupported operator %q", operator)
+	}
+	operands, ok := condition["operands"].([]any)
+	if !ok {
+		return fmt.Errorf("operator %s requires an operands array", operator)
+	}
+	if operator == "and" || operator == "or" {
+		return fmt.Errorf("logical operator %s is not supported by the persisted view protocol; pass a flat array of leaf conditions (combined as AND)", operator)
+	}
+	wantOperands := 2
+	if operator == "exist" || operator == "un_exist" {
+		wantOperands = 1
+	}
+	if len(operands) != wantOperands {
+		return fmt.Errorf("operator %s requires %d operands", operator, wantOperands)
+	}
+	fieldID, ok := operands[0].(string)
+	fieldID = strings.TrimSpace(fieldID)
+	if !ok || fieldID == "" {
+		return fmt.Errorf("operator %s requires a fieldId as its first operand", operator)
+	}
+	fieldType, exists := fieldTypes[fieldID]
+	if !exists {
+		return fmt.Errorf("filter references unknown fieldId %q", fieldID)
+	}
+	if isAitableDateFieldType(fieldType) && !isAitableDateFilterOperator(operator) {
+		return fmt.Errorf("operator %s is invalid for %s field %s; use date_eq/before/after/not_before/not_after/exist/un_exist", operator, fieldType, fieldID)
+	}
+	if operator == "any_of" || operator == "all_of" || operator == "none_of" {
+		if !strings.EqualFold(fieldType, "multipleSelect") && !strings.EqualFold(fieldType, "multiSelect") {
+			return fmt.Errorf("operator %s requires a multipleSelect field, got %s", operator, fieldType)
+		}
+		if operator == "any_of" {
+			if values, ok := operands[1].([]any); ok {
+				if err := validateAitableMultiSelectOptionNames(values); err != nil {
+					return err
+				}
+				return fmt.Errorf("multipleSelect any_of with multiple values is not supported by the persisted view protocol; use one scalar option or separate views")
+			}
+		}
+		if err := validateAitableMultiSelectFilterValue(operands[1]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateAitableMultiSelectOptionNames(values []any) error {
+	if len(values) == 0 {
+		return fmt.Errorf("multipleSelect any_of array must not be empty")
+	}
+	for index, value := range values {
+		text, ok := value.(string)
+		text = strings.TrimSpace(text)
+		if !ok || text == "" {
+			return fmt.Errorf("multipleSelect any_of value %d must be a non-empty option-name string", index)
+		}
+	}
+	return nil
+}
+
+func isAitableDateFieldType(fieldType string) bool {
+	return strings.EqualFold(fieldType, "date") ||
+		strings.EqualFold(fieldType, "createdTime") ||
+		strings.EqualFold(fieldType, "lastModifiedTime")
+}
+
+func isAitableDateFilterOperator(operator string) bool {
+	switch operator {
+	case "date_eq", "before", "after", "not_before", "not_after", "exist", "un_exist":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateAitableMultiSelectFilterValue(value any) error {
+	if typed, ok := value.(string); ok && strings.TrimSpace(typed) != "" {
+		return nil
+	}
+	return fmt.Errorf("multipleSelect filter value must be one option-name string; the persisted view protocol does not support a multi-value OR expression")
+}
+
+func compactJSON(value any) string {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Sprintf("%#v", value)
+	}
+	return string(raw)
 }
 
 func newAitableCommand() *cobra.Command {
@@ -4076,7 +4439,7 @@ colorConfigs (JSON 数组) / officialHoliday (bool)。`,
 若传对象会自动 wrap 为数组；其他非法格式拒绝。`,
 		Example: `  dws aitable view update filter --view-id VIEW_ID --json '[{"operator":"and","operands":[{"operator":"eq","operands":["fldX","value"]}]}]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAitableViewUpdateArray(cmd, "filter")
+			return runAitableViewUpdateFilter(cmd)
 		},
 	}
 	DeclareLeafMetadata(viewUpdateFilterCmd, LeafSpec{
@@ -5282,7 +5645,7 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			}
 			// create_workflow is non-idempotent. Bypass the retry wrapper to
 			// prevent an uncertain first response from creating a duplicate.
-			return callMCPToolOnServer("aitable", "create_workflow", toolArgs)
+			return executeAitableWorkflowPublish("create_workflow", toolArgs)
 		},
 	}
 	DeclareLeafMetadata(workflowCreateCmd, LeafSpec{
@@ -5376,7 +5739,7 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 			if locale, _ := cmd.Flags().GetString("locale"); strings.TrimSpace(locale) != "" {
 				toolArgs["locale"] = locale
 			}
-			return callAitableTool("update_workflow", toolArgs)
+			return executeAitableWorkflowPublish("update_workflow", toolArgs)
 		},
 	}
 	DeclareLeafMetadata(workflowUpdateCmd, LeafSpec{
@@ -8059,6 +8422,416 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 		sectionMoveNodeCmd,
 	)
 
+	// ── datasource: 数据源同步管理 ──────────────────────────────
+
+	datasourceCmd := &cobra.Command{Use: "datasource", Short: "数据源同步管理", RunE: groupRunE}
+
+	datasourceGetConfigCmd := &cobra.Command{
+		Use:     "get-config",
+		Short:   "获取数据源表同步配置",
+		Example: `  dws aitable datasource get-config --base-id BASE_ID --table-id TABLE_ID`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "table-id"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			return callAitableTool("get_datasource_config", map[string]any{
+				"baseId":  baseID,
+				"tableId": mustGetFlag(cmd, "table-id"),
+			})
+		},
+	}
+	DeclareLeafMetadata(datasourceGetConfigCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_get_config",
+				CanonicalPath:  "aitable.datasource_get_config",
+				CLIPath:        "aitable datasource get-config",
+				PrimaryCLIPath: "aitable datasource get-config",
+			},
+			Description: "获取数据源表的同步配置信息。",
+			Interface:   aitableMCPInterface("get_datasource_config"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取数据源表的同步配置信息。",
+				UseWhen:      []string{"查看已有数据源表的配置详情时"},
+				AvoidWhen:    []string{"更新配置用 datasource update；查询同步状态用 datasource sync-status"},
+				Examples:     []string{"dws aitable datasource get-config --base-id <BASE_ID> --table-id <TABLE_ID>"},
+			},
+		},
+	})
+	datasourceGetConfigCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceGetConfigCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
+
+	datasourceListSourcesCmd := &cobra.Command{
+		Use:     "list-sources",
+		Short:   "列出可用数据源来源",
+		Example: `  dws aitable datasource list-sources --base-id BASE_ID --datasource-type OA`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "datasource-type"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			return callAitableTool("list_datasource_sources", map[string]any{
+				"baseId":         baseID,
+				"datasourceType": mustGetFlag(cmd, "datasource-type"),
+			})
+		},
+	}
+	DeclareLeafMetadata(datasourceListSourcesCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_list_sources",
+				CanonicalPath:  "aitable.datasource_list_sources",
+				CLIPath:        "aitable datasource list-sources",
+				PrimaryCLIPath: "aitable datasource list-sources",
+			},
+			Description: "列出指定 Base 下可用的数据源条目。",
+			Interface:   aitableMCPInterface("list_datasource_sources"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "列出指定 Base 下可用的数据源条目（OA 审批模板等）。",
+				UseWhen:      []string{"创建或更新数据源前需要查看可用来源时"},
+				AvoidWhen:    []string{"获取字段结构用 datasource get-fields"},
+				Examples:     []string{"dws aitable datasource list-sources --base-id <BASE_ID> --datasource-type OA"},
+			},
+		},
+	})
+	datasourceListSourcesCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceListSourcesCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
+
+	validateJSONObject := func(flag, raw string) error {
+		var v any
+		if err := json.Unmarshal([]byte(raw), &v); err != nil {
+			return fmt.Errorf("--%s must be a valid JSON object: %w", flag, err)
+		}
+		if _, ok := v.(map[string]any); !ok {
+			return fmt.Errorf("--%s must be a JSON object, got %T", flag, v)
+		}
+		return nil
+	}
+	validateAutoSyncSetting := func(raw string) error {
+		return validateJSONObject("auto-sync-setting", raw)
+	}
+
+	datasourceGetFieldsCmd := &cobra.Command{
+		Use:     "get-fields",
+		Short:   "获取数据源可同步字段列表",
+		Example: `  dws aitable datasource get-fields --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "datasource-type", "source-config"); err != nil {
+				return err
+			}
+			if err := validateJSONObject("source-config", mustGetFlag(cmd, "source-config")); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			return callAitableTool("get_datasource_fields", map[string]any{
+				"baseId":         baseID,
+				"datasourceType": mustGetFlag(cmd, "datasource-type"),
+				"sourceConfig":   mustGetFlag(cmd, "source-config"),
+			})
+		},
+	}
+	DeclareLeafMetadata(datasourceGetFieldsCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_get_fields",
+				CanonicalPath:  "aitable.datasource_get_fields",
+				CLIPath:        "aitable datasource get-fields",
+				PrimaryCLIPath: "aitable datasource get-fields",
+			},
+			Description: "获取指定数据源来源的可同步字段列表。",
+			Interface:   aitableMCPInterface("get_datasource_fields"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "获取指定数据源来源的可同步字段列表（字段 ID/名称/类型/是否主键）。",
+				UseWhen:      []string{"创建或更新数据源前需要查看可同步字段以决定 field-ids 时"},
+				AvoidWhen:    []string{"列出可用来源用 datasource list-sources"},
+				Examples:     []string{`dws aitable datasource get-fields --base-id <BASE_ID> --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`},
+			},
+		},
+	})
+	datasourceGetFieldsCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceGetFieldsCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
+	datasourceGetFieldsCmd.Flags().String("source-config", "", "源配置 JSON 字符串，需含 processCode、name、iconUrl、url、dataType 及对应时间字段 (必填)")
+
+	datasourceCreateCmd := &cobra.Command{
+		Use:     "create",
+		Short:   "创建数据源表并触发首次同步",
+		Example: `  dws aitable datasource create --base-id BASE_ID --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "datasource-type", "source-config"); err != nil {
+				return err
+			}
+			if err := validateJSONObject("source-config", mustGetFlag(cmd, "source-config")); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			auto, _ := cmd.Flags().GetBool("auto")
+			toolArgs := map[string]any{
+				"baseId":         baseID,
+				"datasourceType": mustGetFlag(cmd, "datasource-type"),
+				"sourceConfig":   mustGetFlag(cmd, "source-config"),
+				"auto":           auto,
+			}
+			if v, _ := cmd.Flags().GetString("field-ids"); v != "" {
+				toolArgs["fieldIds"] = parseCSVValues(v)
+			}
+			if v, _ := cmd.Flags().GetString("auto-sync-setting"); v != "" {
+				if err := validateAutoSyncSetting(v); err != nil {
+					return err
+				}
+				toolArgs["autoSyncSetting"] = v
+			}
+			return callAitableTool("create_datasource", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(datasourceCreateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_create",
+				CanonicalPath:  "aitable.datasource_create",
+				CLIPath:        "aitable datasource create",
+				PrimaryCLIPath: "aitable datasource create",
+			},
+			Description: "为指定 Base 创建数据源表并触发首次全量同步。",
+			Interface:   aitableMCPInterface("create_datasource"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "为指定 Base 创建数据源表并触发首次全量同步，返回新建表 ID 和同步任务 ID。",
+				UseWhen:      []string{"需要将外部数据源接入 AI 表格、创建新的数据源表时"},
+				AvoidWhen:    []string{"已有数据源表改配置用 datasource update；仅触发同步用 datasource sync"},
+				Examples:     []string{`dws aitable datasource create --base-id <BASE_ID> --datasource-type OA --source-config '{"processCode":"PROC-XXXX","name":"采购申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "datasource-type", Property: "datasourceType", Required: boolPtr(true)},
+				{Name: "source-config", Property: "sourceConfig", Required: boolPtr(true)},
+				{Name: "auto", Property: "auto"},
+				{Name: "field-ids", Property: "fieldIds", InterfaceType: "array"},
+				{Name: "auto-sync-setting", Property: "autoSyncSetting"},
+			},
+		},
+	})
+	datasourceCreateCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceCreateCmd.Flags().String("datasource-type", "", "数据源类型，目前支持 OA (必填)")
+	datasourceCreateCmd.Flags().String("source-config", "", "源配置 JSON 字符串，须从 list-sources 原样透传 processCode/name/iconUrl/url，并设置 dataType 及对应时间字段 (必填)")
+	datasourceCreateCmd.Flags().Bool("auto", false, "是否开启自动同步，默认 false；创建新数据源表时始终下发给下游")
+	datasourceCreateCmd.Flags().String("field-ids", "", "需要同步的字段 ID 列表，逗号分隔；不传时同步全部字段")
+	datasourceCreateCmd.Flags().String("auto-sync-setting", "", "自动同步频率配置 JSON 字符串，仅在 --auto=true 时生效。字段：syncType（必填，hourly/scheduled）、hourlyInterval（syncType=hourly 时必填）、scheduleType（syncType=scheduled 时必填，daily/weekly/monthly）、timeValue（HH:mm）、selectedMonthDays（scheduleType=monthly 时）、selectedWeekdays（scheduleType=weekly 时）、skipNonWorkingDay")
+
+	datasourceUpdateCmd := &cobra.Command{
+		Use:     "update",
+		Short:   "更新数据源表同步配置并触发同步",
+		Example: `  dws aitable datasource update --base-id BASE_ID --table-id TABLE_ID --auto`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "table-id"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			toolArgs := map[string]any{
+				"baseId":  baseID,
+				"tableId": mustGetFlag(cmd, "table-id"),
+			}
+			if cmd.Flags().Changed("source-config") {
+				if err := validateJSONObject("source-config", mustGetFlag(cmd, "source-config")); err != nil {
+					return err
+				}
+				toolArgs["sourceConfig"] = mustGetFlag(cmd, "source-config")
+			}
+			if cmd.Flags().Changed("auto") {
+				auto, _ := cmd.Flags().GetBool("auto")
+				toolArgs["auto"] = auto
+			}
+			if cmd.Flags().Changed("field-ids") {
+				v := mustGetFlag(cmd, "field-ids")
+				if v == "" {
+					return fmt.Errorf("--field-ids 显式提供时不能为空，如需保持默认请勿传入")
+				}
+				toolArgs["fieldIds"] = parseCSVValues(v)
+			}
+			if cmd.Flags().Changed("auto-sync-setting") {
+				v := mustGetFlag(cmd, "auto-sync-setting")
+				if v == "" {
+					return fmt.Errorf("--auto-sync-setting 显式提供时不能为空，如需保持默认请勿传入")
+				}
+				if err := validateAutoSyncSetting(v); err != nil {
+					return err
+				}
+				toolArgs["autoSyncSetting"] = v
+			}
+			if !cmd.Flags().Changed("source-config") && !cmd.Flags().Changed("auto") && !cmd.Flags().Changed("field-ids") && !cmd.Flags().Changed("auto-sync-setting") {
+				return fmt.Errorf("至少需要一个配置变更：--source-config、--auto、--field-ids 或 --auto-sync-setting；仅触发同步请使用 datasource sync")
+			}
+			return callAitableTool("update_datasource_config", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(datasourceUpdateCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_update",
+				CanonicalPath:  "aitable.datasource_update",
+				CLIPath:        "aitable datasource update",
+				PrimaryCLIPath: "aitable datasource update",
+			},
+			Description: "更新已有数据源表的同步配置并触发一次同步。",
+			Interface:   aitableMCPInterface("update_datasource_config"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "更新已有数据源表的同步配置并触发一次同步。",
+				UseWhen:      []string{"需要修改已有数据源表的配置（更换模板、调整字段、开关自动同步）时"},
+				AvoidWhen:    []string{"创建新数据源表用 datasource create；仅触发同步用 datasource sync"},
+				Examples: []string{
+					"dws aitable datasource update --base-id <BASE_ID> --table-id <TABLE_ID> --auto",
+					`dws aitable datasource update --base-id <BASE_ID> --table-id <TABLE_ID> --source-config '{"processCode":"PROC-YYYY","name":"出差申请","dataType":"recent_time","recentDays":"30d","iconUrl":"https://example.com/icon.png","url":"https://example.com/oa"}'`,
+				},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "table-id", Property: "tableId", Required: boolPtr(true)},
+				{Name: "source-config", Property: "sourceConfig"},
+				{Name: "auto", Property: "auto"},
+				{Name: "field-ids", Property: "fieldIds", InterfaceType: "array"},
+				{Name: "auto-sync-setting", Property: "autoSyncSetting"},
+			},
+		},
+	})
+	datasourceUpdateCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceUpdateCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
+	datasourceUpdateCmd.Flags().String("source-config", "", "可选。新的源配置 JSON 字符串，不传时保持原配置；传入时整体覆盖，须含 processCode、name、iconUrl、url、dataType 及对应时间字段")
+	datasourceUpdateCmd.Flags().Bool("auto", false, "可选。是否开启自动同步；仅显式设置时下发给下游，省略时保持原设置")
+	datasourceUpdateCmd.Flags().String("field-ids", "", "需要同步的字段 ID 列表，逗号分隔；不传时保持现有配置（创建时默认为全部字段）")
+	datasourceUpdateCmd.Flags().String("auto-sync-setting", "", "可选。自动同步频率配置 JSON 字符串，仅在显式设置 --auto=true 时生效；省略时保持原有自动同步频率配置。字段：syncType（必填，hourly/scheduled）、hourlyInterval（syncType=hourly 时必填）、scheduleType（syncType=scheduled 时必填，daily/weekly/monthly）、timeValue（HH:mm）、selectedMonthDays（scheduleType=monthly 时）、selectedWeekdays（scheduleType=weekly 时）、skipNonWorkingDay")
+
+	datasourceSyncCmd := &cobra.Command{
+		Use:     "sync",
+		Short:   "触发数据源表手动同步",
+		Example: `  dws aitable datasource sync --base-id BASE_ID --table-ids TBL1,TBL2`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "table-ids"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			tableIDs := parseCSVValues(mustGetFlag(cmd, "table-ids"))
+			if len(tableIDs) < 1 || len(tableIDs) > 5 {
+				return fmt.Errorf("--table-ids requires 1-5 table IDs, got %d", len(tableIDs))
+			}
+			return callAitableTool("run_datasource_sync", map[string]any{
+				"baseId":   baseID,
+				"tableIds": tableIDs,
+			})
+		},
+	}
+	DeclareLeafMetadata(datasourceSyncCmd, LeafSpec{
+		Safety: aitableSafetyWrite(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_sync",
+				CanonicalPath:  "aitable.datasource_sync",
+				CLIPath:        "aitable datasource sync",
+				PrimaryCLIPath: "aitable datasource sync",
+			},
+			Description: "对已有数据源表触发手动同步（单次最多 5 张），仅触发即返回。",
+			Interface:   aitableMCPInterface("run_datasource_sync"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "对已有数据源表触发手动同步（单次最多 5 张），仅触发即返回同步任务 ID。",
+				UseWhen:      []string{"需要手动触发已有数据源表的数据同步时"},
+				AvoidWhen:    []string{"创建新数据源表用 datasource create；更新配置用 datasource update"},
+				Examples:     []string{"dws aitable datasource sync --base-id <BASE_ID> --table-ids TBL1,TBL2"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "table-ids", Property: "tableIds", Required: boolPtr(true)},
+			},
+		},
+	})
+	datasourceSyncCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceSyncCmd.Flags().String("table-ids", "", "待触发同步的数据源表 ID 列表，逗号分隔，1-5 个 (必填)")
+
+	datasourceSyncStatusCmd := &cobra.Command{
+		Use:     "sync-status",
+		Short:   "按任务 ID 查询数据源同步任务状态",
+		Example: `  dws aitable datasource sync-status --base-id BASE_ID --table-id TABLE_ID --task-ids TASK1,TASK2`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateRequiredFlags(cmd, "table-id", "task-ids"); err != nil {
+				return err
+			}
+			baseID, err := mustFlagOrFallback(cmd, "base-id", "base")
+			if err != nil {
+				return err
+			}
+			ids := parseCSVValues(mustGetFlag(cmd, "task-ids"))
+			if len(ids) < 1 || len(ids) > 5 {
+				return fmt.Errorf("--task-ids requires 1-5 task IDs, got %d", len(ids))
+			}
+			toolArgs := map[string]any{
+				"baseId":  baseID,
+				"tableId": mustGetFlag(cmd, "table-id"),
+				"taskIds": ids,
+			}
+			return callAitableTool("get_datasource_sync_status", toolArgs)
+		},
+	}
+	DeclareLeafMetadata(datasourceSyncStatusCmd, LeafSpec{
+		Safety: aitableSafetyRead(),
+		Contract: LeafContract{
+			Identity: contract.ToolIdentitySpec{
+				ProductID:      "aitable",
+				Name:           "datasource_sync_status",
+				CanonicalPath:  "aitable.datasource_sync_status",
+				CLIPath:        "aitable datasource sync-status",
+				PrimaryCLIPath: "aitable datasource sync-status",
+			},
+			Description: "按任务 ID 查询数据源同步任务状态（RUNNING/FINISHED/FAILED）。",
+			Interface:   aitableMCPInterface("get_datasource_sync_status"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "按任务 ID 批量查询数据源同步任务状态（RUNNING/FINISHED/FAILED），与 sync/create/update 触发后配对使用。",
+				UseWhen:      []string{"触发同步后需要按任务 ID 查询任务是否完成时"},
+				AvoidWhen:    []string{"触发同步用 datasource sync"},
+				Examples:     []string{"dws aitable datasource sync-status --base-id <BASE_ID> --table-id <TABLE_ID> --task-ids TASK1"},
+			},
+			Parameters: []contract.ParamDecl{
+				{Name: "base-id", Property: "baseId", Required: boolPtr(true)},
+				{Name: "table-id", Property: "tableId", Required: boolPtr(true)},
+				{Name: "task-ids", Property: "taskIds", Required: boolPtr(true)},
+			},
+		},
+	})
+	datasourceSyncStatusCmd.Flags().String("base-id", "", "Base ID (必填)")
+	datasourceSyncStatusCmd.Flags().String("table-id", "", "数据源表 ID (必填)")
+	datasourceSyncStatusCmd.Flags().String("task-ids", "", "待查询的同步任务 ID 列表，逗号分隔，1-5 个 (必填)")
+
+	datasourceCmd.AddCommand(
+		datasourceGetConfigCmd, datasourceListSourcesCmd, datasourceGetFieldsCmd,
+		datasourceCreateCmd, datasourceUpdateCmd,
+		datasourceSyncCmd, datasourceSyncStatusCmd,
+	)
+
 	// 组装 aitable 命令树
 	root.AddCommand(
 		baseCmd, tableCmd, fieldCmd,
@@ -8069,6 +8842,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 		attachmentCmd, templateCmd,
 		advpermCmd,
 		sectionCmd,
+		datasourceCmd,
 	)
 
 	// 批量注册 --base 作为 --base-id 的隐藏别名
