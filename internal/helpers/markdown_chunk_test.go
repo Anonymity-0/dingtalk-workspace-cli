@@ -757,8 +757,8 @@ func TestCrossPlatformCoverageMarkdownChunkHTMLRepair(t *testing.T) {
 			t.Fatalf("expected html_tag_hard_split, got %v", degradationKinds(plan))
 		}
 		joined := strings.Join(plan.Warnings(), " ")
-		if !strings.Contains(joined, "upload") && !strings.Contains(joined, "media insert") {
-			t.Errorf("warning must point at upload: %q", joined)
+		if !strings.Contains(joined, "doc import") {
+			t.Errorf("warning must point at dws doc import: %q", joined)
 		}
 	})
 }

@@ -328,9 +328,9 @@ func degradationFor(kind candidateKind) (string, string, string) {
 	case candIndentedCodeLine:
 		return "indented_code_split", "soft", "缩进代码块被拆成多个代码块"
 	case candHTMLLine:
-		return "html_block_split", "soft", "HTML 块被拆开，标签可能不再配对；内容很大时建议存成文件后用 dws doc media insert 或 dws drive +upload 上传"
+		return "html_block_split", "soft", "HTML 块被拆开，标签可能不再配对；内容很大时建议存成文件后用 dws doc import 导入"
 	case candHTMLRepair:
-		return "html_block_split", "repair", "<pre>/<style>/<textarea> 块被拆成多个，每片各自重开并闭合标签；内容很大时可改用 dws doc media insert 或 dws drive +upload"
+		return "html_block_split", "repair", "<pre>/<style>/<textarea> 块被拆成多个，每片各自重开并闭合标签；内容很大时可存成文件后用 dws doc import 导入"
 	case candOrderedListItem:
 		return "ordered_list_split", "repair", "有序列表被拆开，后续分片的编号可能从 1 重新开始"
 	case candTableRow:
@@ -342,7 +342,7 @@ func degradationFor(kind candidateKind) (string, string, string) {
 	case candHardRune:
 		return "hard_rune_split", "rune", "单行长度超过上限，已按字符硬切"
 	case candHardHTML:
-		return "html_tag_hard_split", "rune", "HTML 内容无法在不破坏标签的前提下切分，已硬切；建议存成文件后用 dws doc media insert 或 dws drive +upload 上传"
+		return "html_tag_hard_split", "rune", "HTML 内容无法在不破坏标签的前提下切分，已硬切；建议将内容存成文件后用 dws doc import 导入"
 	default:
 		return "", "", "" // tierSafe boundaries change nothing
 	}
