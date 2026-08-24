@@ -9,11 +9,11 @@ import (
 
 // newSheetTemplateCmd builds the `dws sheet template` command group.
 func newSheetTemplateCmd() *cobra.Command {
-	templateCmd := &cobra.Command{
+	templateCmd := newGroupCommand(&cobra.Command{
 		Use:   "template",
 		Short: "表格模板管理",
 		RunE:  groupRunE,
-	}
+	})
 
 	templateListCmd := &cobra.Command{
 		Use:   "list",

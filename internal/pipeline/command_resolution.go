@@ -5,7 +5,6 @@ package pipeline
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -13,14 +12,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const maxCommandSuggestions = 3
-
 // validateUnresolvedCommand gives command identity precedence over flag
 // parsing. Cobra otherwise falls back to the nearest parent when a child is
 // unknown, so a later flag can incorrectly turn an invented command into an
 // "unknown flag" error on that parent.
 //
-// Only two unambiguous command containers are handled here:
+// Only explicit, unambiguous command containers are handled here:
+//   - the root command, which has no positional contract;
 //   - a top-level service followed by an explicit +shortcut token; and
 //   - a command explicitly annotated as a group container.
 //
@@ -34,11 +32,17 @@ func validateUnresolvedCommand(target *cobra.Command, remaining []string) error 
 	if candidate == "" || candidate == "--" || strings.HasPrefix(candidate, "-") {
 		return nil
 	}
+	// Cobra registers its built-in `help [command]` lazily during ExecuteC,
+	// after this pre-parse traversal runs. Preserve that reserved root entry so
+	// `dws help auth` reaches Cobra instead of being classified as a typo.
+	if target == target.Root() && candidate == "help" {
+		return nil
+	}
 
 	if isExplicitShortcutCandidate(target, candidate) {
 		return unknownShortcutError(target, candidate)
 	}
-	if cmdutil.IsGroup(target) {
+	if target == target.Root() || cmdutil.IsGroup(target) {
 		return unknownSubcommandError(target, candidate)
 	}
 	return nil
@@ -61,83 +65,70 @@ func isExplicitShortcutCandidate(target *cobra.Command, candidate string) bool {
 }
 
 func unknownShortcutError(parent *cobra.Command, candidate string) error {
-	action := fmt.Sprintf("Run '%s shortcut list --service %s --format json'", parent.Root().Name(), parent.Name())
+	helpAction := fmt.Sprintf("Run '%s --help' for the full list", parent.CommandPath())
+	listAction := fmt.Sprintf("Run '%s shortcut list --service %s --format json'", parent.Root().Name(), parent.Name())
+	suggestions := cmdutil.SuggestSubcommands(parent, candidate)
 	return apperrors.NewValidation(
 		fmt.Sprintf("unknown shortcut %q for %q", candidate, parent.CommandPath()),
 		apperrors.WithReason("unknown_shortcut"),
-		apperrors.WithHint(commandSuggestionHint(parent, candidate, action)),
-		apperrors.WithActions(action),
+		apperrors.WithHint(cmdutil.FormatSubcommandSuggestionHint(parent, suggestions, helpAction)),
+		apperrors.WithActions(helpAction, listAction),
+		apperrors.WithDetails(commandSuggestionDetails(candidate, suggestions)),
 	)
 }
 
 func unknownSubcommandError(parent *cobra.Command, candidate string) error {
-	action := fmt.Sprintf("Run '%s --help' to see available subcommands", parent.CommandPath())
+	action := fmt.Sprintf("Run '%s --help' for the full list", parent.CommandPath())
+	suggestions := cmdutil.SuggestSubcommands(parent, candidate)
 	return apperrors.NewValidation(
 		fmt.Sprintf("unknown subcommand %q for %q", candidate, parent.CommandPath()),
 		apperrors.WithReason("unknown_subcommand"),
-		apperrors.WithHint(commandSuggestionHint(parent, candidate, action)),
+		apperrors.WithHint(cmdutil.FormatSubcommandSuggestionHint(parent, suggestions, action)),
 		apperrors.WithActions(action),
+		apperrors.WithDetails(commandSuggestionDetails(candidate, suggestions)),
 	)
 }
 
-func commandSuggestionHint(parent *cobra.Command, candidate, fallback string) string {
-	suggestions := commandSuggestions(parent, candidate)
-	if len(suggestions) > maxCommandSuggestions {
-		suggestions = suggestions[:maxCommandSuggestions]
-	}
-	paths := make([]string, 0, len(suggestions))
-	for _, suggestion := range suggestions {
-		paths = append(paths, fmt.Sprintf("%q", parent.CommandPath()+" "+suggestion))
-	}
-	switch len(paths) {
-	case 0:
-		return fallback
-	case 1:
-		return "Did you mean " + paths[0] + "?"
-	default:
-		return "Did you mean one of: " + strings.Join(paths, ", ") + "?"
+func commandSuggestionDetails(candidate string, suggestions []string) map[string]any {
+	return map[string]any{
+		"input":       candidate,
+		"suggestions": suggestions,
 	}
 }
 
-// commandSuggestions mirrors Cobra's suggestion rules without mutating
-// SuggestionsMinimumDistance. Cobra only installs its default distance inside
-// the final error renderer; this guard runs earlier and must remain safe for
-// command trees shared by concurrent tests and callers.
-func commandSuggestions(parent *cobra.Command, candidate string) []string {
-	if parent == nil {
-		return nil
+// HintSubCmd creates a hidden compatibility command for a known wrong path.
+// It preserves cmdutil's hint-only identity while returning the same typed
+// validation contract as fuzzy unknown-subcommand recovery.
+func HintSubCmd(use, authoredHint string) *cobra.Command {
+	command := cmdutil.HintSubCmd(use, authoredHint)
+	command.RunE = func(cmd *cobra.Command, _ []string) error {
+		parent := cmd.Parent()
+		if parent == nil {
+			parent = cmd.Root()
+		}
+		parentPath := parent.CommandPath()
+		action := fmt.Sprintf("Run '%s --help' for the full list", parentPath)
+		hint := strings.TrimSpace(authoredHint)
+		if hint == "" {
+			hint = action
+		} else {
+			hint += " (" + action + ")"
+		}
+		return apperrors.NewValidation(
+			fmt.Sprintf("unknown subcommand %q for %q", cmd.Name(), parentPath),
+			apperrors.WithReason("unknown_subcommand"),
+			apperrors.WithHint(hint),
+			apperrors.WithActions(action),
+			apperrors.WithDetails(commandSuggestionDetails(cmd.Name(), []string{})),
+		)
 	}
-	minimumDistance := parent.SuggestionsMinimumDistance
-	if minimumDistance <= 0 {
-		minimumDistance = 2
+	return command
+}
+
+// GroupRunE is the structured group handler used by the DWS command tree.
+func GroupRunE(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		return unknownSubcommandError(cmd, strings.TrimSpace(args[0]))
 	}
-	lowerCandidate := strings.ToLower(candidate)
-	shortcutOnly := strings.HasPrefix(candidate, "+")
-	seen := make(map[string]bool)
-	var suggestions []string
-	for _, child := range parent.Commands() {
-		if !child.IsAvailableCommand() {
-			continue
-		}
-		name := child.Name()
-		if shortcutOnly && !strings.HasPrefix(name, "+") {
-			continue
-		}
-		matched := cmdutil.LevenshteinDist(lowerCandidate, strings.ToLower(name)) <= minimumDistance ||
-			strings.HasPrefix(strings.ToLower(name), lowerCandidate)
-		if !matched {
-			for _, explicit := range child.SuggestFor {
-				if strings.EqualFold(candidate, explicit) {
-					matched = true
-					break
-				}
-			}
-		}
-		if matched && !seen[name] {
-			seen[name] = true
-			suggestions = append(suggestions, name)
-		}
-	}
-	sort.Strings(suggestions)
-	return suggestions
+	return cmd.Help()
 }

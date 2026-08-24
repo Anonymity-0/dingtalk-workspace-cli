@@ -24,6 +24,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
@@ -471,6 +472,11 @@ func TestCrossPlatformCoverageBuildGroupsByService(t *testing.T) {
 	}
 	if got := len(byName["calendar"].Commands()); got != 1 {
 		t.Errorf("calendar has %d leaves, want 1", got)
+	}
+	for name, command := range byName {
+		if !cmdutil.IsGroup(command) {
+			t.Errorf("%s shortcut service parent is not marked as a command group", name)
+		}
 	}
 }
 

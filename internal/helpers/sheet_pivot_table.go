@@ -134,11 +134,11 @@ func readPivotProperties(raw string, requireValues bool) (map[string]any, error)
 }
 
 func newPivotTableCmd() *cobra.Command {
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:   "pivot-table",
 		Short: "透视表管理",
 		RunE:  groupRunE,
-	}
+	})
 
 	listCmd := &cobra.Command{
 		Use:   "list",

@@ -11,6 +11,8 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -18,10 +20,9 @@ import (
 // dws calendar — 日历产品命令组
 // ──────────────────────────────────────────────────────────
 
-// calendarInfoHintSubCmd builds a hidden disambiguation subcommand that prints
-// a warning-level "Did you mean" hint to stderr (instead of returning an Error)
-// and exits 0. Scoped to calendar.go on purpose so the shared cmdutil.HintSubCmd
-// used by other products keeps returning errors as before.
+// calendarInfoHintSubCmd builds a hidden disambiguation subcommand that returns
+// the shared typed validation error while preserving Calendar's reviewed
+// replacement guidance.
 //
 // The `suggestion` argument should be the bare corrected command (no leading
 // "use:" / "hint:" prefix); the helper wraps it with the standard "Did you
@@ -29,14 +30,6 @@ import (
 func calendarInfoHintSubCmd(use, suggestion string) *cobra.Command {
 	c := hintSubCmd(use, suggestion)
 	c.DisableFlagParsing = true
-	c.RunE = func(cmd *cobra.Command, args []string) error {
-		fmt.Fprintf(os.Stderr, "warning: command %q does not exist\n  hint: %s\t %s\n more: %s \n",
-			cmd.Parent().CommandPath()+" "+use,
-			suggestion,
-			"[MUST] use --help to see command detail",
-			"'dws calendar --help' to see all available commands")
-		return nil
-	}
 	return c
 }
 
@@ -56,6 +49,7 @@ func calendarInfoHintSubCmd(use, suggestion string) *cobra.Command {
 // child's RunE as usual; this fallback only fires when resolution stops at
 // `group` with leftover args.
 func installUnknownVerbFallback(group *cobra.Command) {
+	cmdutil.MarkGroup(group)
 	group.FParseErrWhitelist.UnknownFlags = true
 	group.Args = cobra.ArbitraryArgs
 
@@ -92,8 +86,7 @@ func installUnknownVerbFallback(group *cobra.Command) {
 		// Unknown flags whitelisted by pflag may leak into args. Pick the first
 		// non-flag token as the offending verb.
 		if bad := findUnknownVerb(cmd, args); bad != "" {
-			printUnknownSubcmdError(cmd, bad)
-			return nil
+			return groupRunE(cmd, []string{bad})
 		}
 		// No unknown verb found. Since FParseErrWhitelist.UnknownFlags silently
 		// swallows bad flags, scan the original os.Args for flags unregistered
@@ -140,22 +133,10 @@ func findUnknownVerb(cmd *cobra.Command, args []string) string {
 	return ""
 }
 
-// printUnknownSubcmdError prints the standard "unknown subcommand" error to
-// stderr with available commands and a did-you-mean hint.
+// printUnknownSubcmdError renders the shared bounded diagnostic for Cobra's
+// HelpFunc path, which cannot return the structured error to its caller.
 func printUnknownSubcmdError(cmd *cobra.Command, bad string) {
-	var available []string
-	for _, c := range cmd.Commands() {
-		if !c.Hidden && c.Name() != "help" {
-			available = append(available, c.Name())
-		}
-	}
-	fmt.Fprintf(os.Stderr, "Error: unknown subcommand %q for %q\n", bad, cmd.CommandPath())
-	fmt.Fprintf(os.Stderr, "  available: %s\n", strings.Join(available, ", "))
-	if s := cmd.SuggestionsFor(bad); len(s) > 0 {
-		fmt.Fprintf(os.Stderr, "  hint: did you mean %q\n", cmd.CommandPath()+" "+s[0])
-	} else {
-		fmt.Fprintf(os.Stderr, "  hint: %s --help\n", cmd.CommandPath())
-	}
+	_ = apperrors.PrintHuman(cmd.ErrOrStderr(), groupRunE(cmd, []string{bad}))
 }
 
 // stripCommandPrefix strips the first `depth` non-flag tokens from args.
@@ -224,7 +205,7 @@ func newCalendarCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:   "calendar",
 		Short: "日历日程 / 会议室 / 闲忙",
 		Long: `管理钉钉日历：日程、参会人、会议室、闲忙、附件、日历本、访问权限。调用前必须先使用 --help 查看参数结构。
@@ -238,11 +219,11 @@ func newCalendarCommand() *cobra.Command {
   dws calendar book        [list|get|search|update]          日历本管理
   dws calendar acl         [list|add|delete]                 日历访问权限管理`,
 		RunE: groupRunE,
-	}
+	})
 
 	// ── event: 日程 ─────────────────────────────────────────────
 
-	eventCmd := &cobra.Command{Use: "event", Short: "日程管理", RunE: groupRunE}
+	eventCmd := newGroupCommand(&cobra.Command{Use: "event", Short: "日程管理", RunE: groupRunE})
 
 	eventListCmd := &cobra.Command{
 		Use:   "list",
@@ -816,13 +797,13 @@ func newCalendarCommand() *cobra.Command {
 
 	// ── attendee: 参会人 (曾用名: participant) ─────────────────
 
-	participantCmd := &cobra.Command{
+	participantCmd := newGroupCommand(&cobra.Command{
 		Use:     "attendee",
 		Aliases: []string{"participant"},
 		Short:   "日程参会人管理",
 		Long:    "管理日程的参会人。alias：`participant`，仍作为别名保留，历史调用无需改动。",
 		RunE:    groupRunE,
-	}
+	})
 
 	participantListCmd := &cobra.Command{
 		Use:     "list",
@@ -1008,7 +989,7 @@ func newCalendarCommand() *cobra.Command {
 
 	// ── room: 会议室 ────────────────────────────────────────────
 
-	roomCmd := &cobra.Command{Use: "room", Short: "会议室管理", RunE: groupRunE}
+	roomCmd := newGroupCommand(&cobra.Command{Use: "room", Short: "会议室管理", RunE: groupRunE})
 
 	roomSearchCmd := &cobra.Command{
 		Use:   "search",
@@ -1352,7 +1333,7 @@ func newCalendarCommand() *cobra.Command {
 
 	// ── busy: 闲忙 ──────────────────────────────────────────────
 
-	busyCmd := &cobra.Command{Use: "busy", Short: "闲忙查询", RunE: groupRunE}
+	busyCmd := newGroupCommand(&cobra.Command{Use: "busy", Short: "闲忙查询", RunE: groupRunE})
 
 	busySearchCmd := &cobra.Command{
 		Use:   "search",
@@ -1444,7 +1425,7 @@ func newCalendarCommand() *cobra.Command {
 
 	// ── attachment: 附件 ────────────────────────────────────────
 
-	attachmentCmd := &cobra.Command{Use: "attachment", Short: "日程附件管理", RunE: groupRunE}
+	attachmentCmd := newGroupCommand(&cobra.Command{Use: "attachment", Short: "日程附件管理", RunE: groupRunE})
 
 	attachmentAddCmd := &cobra.Command{
 		Use:   "add",
@@ -1529,7 +1510,7 @@ func newCalendarCommand() *cobra.Command {
 
 	// ── acl: 日历访问权限 ─────────────────────────────────────────
 
-	aclCmd := &cobra.Command{Use: "acl", Short: "管理我的日历访问权限（共享给他人）", RunE: groupRunE}
+	aclCmd := newGroupCommand(&cobra.Command{Use: "acl", Short: "管理我的日历访问权限（共享给他人）", RunE: groupRunE})
 
 	aclListCmd := &cobra.Command{
 		Use:     "list",
@@ -1619,7 +1600,7 @@ func newCalendarCommand() *cobra.Command {
 
 	// ── book: 日历本 ────────────────────────────────────────────
 
-	bookCmd := &cobra.Command{Use: "book", Short: "日历本管理（我能看哪些日历）", RunE: groupRunE}
+	bookCmd := newGroupCommand(&cobra.Command{Use: "book", Short: "日历本管理（我能看哪些日历）", RunE: groupRunE})
 
 	bookListCmd := &cobra.Command{
 		Use:   "list",

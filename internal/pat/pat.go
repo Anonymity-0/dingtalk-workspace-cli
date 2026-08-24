@@ -20,6 +20,7 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cobracmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -87,8 +88,9 @@ DINGTALK_AGENT（可选，仅供 x-dingtalk-agent 使用）：
   它不参与 claw-type 派生，也不参与 host-owned PAT 判定。
 
 DWS_CHANNEL 只用于上游 channelCode。`,
-		RunE: cmdutil.GroupRunE,
+		RunE: pipeline.GroupRunE,
 	}
+	cmdutil.MarkGroup(patCmd)
 
 	patCmd.AddCommand(newChmodCommand(c))
 	patCmd.AddCommand(newBrowserPolicyCommand())

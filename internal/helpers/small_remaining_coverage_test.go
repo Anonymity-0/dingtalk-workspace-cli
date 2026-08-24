@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -21,8 +22,10 @@ func TestCrossPlatformCoverageSheetAndMinutesSmallRemainingBranches(t *testing.T
 	group.AddCommand(&cobra.Command{Use: "read", Run: func(*cobra.Command, []string) {}})
 	root.AddCommand(group)
 	attachUnknownSubcommandGuard(root)
-	if err := root.RunE(root, []string{"read"}); err == nil || !strings.Contains(err.Error(), "range read") {
-		t.Fatalf("deep suggestion err=%v", err)
+	err := root.RunE(root, []string{"read"})
+	var structured *apperrors.Error
+	if !errors.As(err, &structured) || structured.Reason != "unknown_subcommand" || !strings.Contains(structured.Hint, "range read") {
+		t.Fatalf("deep suggestion err=%#v", err)
 	}
 
 	installScriptedCaller(t, &scriptedToolCaller{dry: true})

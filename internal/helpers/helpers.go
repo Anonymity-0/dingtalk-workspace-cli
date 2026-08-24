@@ -16,17 +16,19 @@ import (
 	"github.com/spf13/pflag"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/pipeline"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
-// Re-export cmdutil functions as package-level aliases so that existing product
-// files continue to compile with their current (unexported) call sites.
-// This avoids a mass-rename in 22 product files while still consolidating the
-// implementations in pkg/cmdutil.
+// Re-export shared command helpers as package-level aliases so existing product
+// files continue to compile with their current (unexported) call sites. This
+// avoids a mass-rename while keeping command-error classification in pipeline
+// and the remaining reusable utilities in cmdutil.
 var (
-	groupRunE                       = cmdutil.GroupRunE
-	hintSubCmd                      = cmdutil.HintSubCmd
+	groupRunE                       = pipeline.GroupRunE
+	hintSubCmd                      = pipeline.HintSubCmd
+	markGroup                       = cmdutil.MarkGroup
 	mustGetFlag                     = cmdutil.MustGetFlag
 	flagOrFallback                  = cmdutil.FlagOrFallback
 	mustFlagOrFallback              = cmdutil.MustFlagOrFallback
@@ -37,6 +39,14 @@ var (
 	helperSleep                     = time.Sleep
 	helperAfter                     = time.After
 )
+
+// newGroupCommand declares a navigation-only command container. The explicit
+// identity lets pre-parse command recovery take precedence over child flags
+// without inferring group semantics from the shape of the Cobra tree.
+func newGroupCommand(command *cobra.Command) *cobra.Command {
+	markGroup(command)
+	return command
+}
 
 // Deps holds shared dependencies injected from the host application.
 type Deps struct {

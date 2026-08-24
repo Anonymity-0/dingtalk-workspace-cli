@@ -375,12 +375,12 @@ func newDriveCommand() *cobra.Command {
 			},
 		},
 	})
-	driveCmd := &cobra.Command{
+	driveCmd := newGroupCommand(&cobra.Command{
 		Use:   "drive",
 		Short: "钉盘文件管理",
 		Long:  `钉盘：列出文件/文件夹、获取元数据和统计信息、创建快捷方式、下载、上传及管理文件。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	driveListCmd := &cobra.Command{
 		Use:   "list",
@@ -2030,14 +2030,14 @@ func newDriveCommand() *cobra.Command {
 	driveShortcutCmd.Flags().String("workspace", "", "目标知识库 ID (可选)")
 
 	// ── drive permission (文档节点权限管理) ──
-	drivePermissionCmd := &cobra.Command{
+	drivePermissionCmd := newGroupCommand(&cobra.Command{
 		Use:     "permission",
 		Aliases: []string{"perm"},
 		Short:   "文档节点权限管理",
 		Long: `管理文档空间节点的协作权限：添加、更新、查询、移除协作者。
 注意: 仅适用于文档空间节点，不适用于钉盘文件。`,
 		RunE: groupRunE,
-	}
+	})
 
 	drivePermAddCmd := &cobra.Command{
 		Use:   "add",
@@ -2806,12 +2806,12 @@ func newDriveCommand() *cobra.Command {
 	_ = driveRenameCmd.Flags().MarkHidden("title")
 
 	// ── drive recycle 子命令组 ──
-	recycleCmd := &cobra.Command{
+	recycleCmd := newGroupCommand(&cobra.Command{
 		Use:   "recycle",
 		Short: "钉盘回收站管理",
 		Long:  `管理钉盘回收站：查看回收站列表、还原回收项。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	recycleListCmd := &cobra.Command{
 		Use:     "list",
@@ -2921,7 +2921,7 @@ func newDriveCommand() *cobra.Command {
 	// ── deprecated 代理命令（Phase 2：从 doc 迁移，保留兼容，警告引导到新命令）──
 
 	// folder create → dws wiki node create --type folder
-	driveFolderCmd := &cobra.Command{Use: "folder", Short: "文件夹管理（deprecated）", RunE: groupRunE}
+	driveFolderCmd := newGroupCommand(&cobra.Command{Use: "folder", Short: "文件夹管理（deprecated）", RunE: groupRunE})
 	driveFolderCreateCmd := &cobra.Command{
 		Use:   "create",
 		Short: "创建文件夹（deprecated）",
@@ -2951,12 +2951,12 @@ func newDriveCommand() *cobra.Command {
 	driveFolderCmd.AddCommand(driveFolderCreateCmd)
 
 	// ── drive publish (文件互联网公开发布管理) ──
-	drivePublishCmd := &cobra.Command{
+	drivePublishCmd := newGroupCommand(&cobra.Command{
 		Use:   "publish",
 		Short: "文件互联网公开发布管理",
 		Long:  `管理文件的互联网公开发布状态：设置公开、关闭公开、查询公开状态。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	drivePublishSetCmd := &cobra.Command{
 		Use:   "set",
@@ -3251,11 +3251,11 @@ func newDriveCommand() *cobra.Command {
 	_ = driveRecentCmd.Flags().MarkHidden("page-token")
 
 	// ── drive star (文档收藏管理) ──
-	driveStarCmd := &cobra.Command{
+	driveStarCmd := newGroupCommand(&cobra.Command{
 		Use:   "star",
 		Short: "文档收藏管理",
 		RunE:  groupRunE,
-	}
+	})
 	driveStarAddCmd := &cobra.Command{
 		Use:     "add",
 		Short:   "收藏文档",

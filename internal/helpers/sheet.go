@@ -2,9 +2,12 @@ package helpers
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -328,8 +331,8 @@ func attachSheetConfirmationGuard(root *cobra.Command, path, operation, targetHi
 //     未知 flag 连同其值一起被静默消化；
 //  2. Args=ArbitraryArgs —— 允许把剩余位置参数交给 RunE 处理；
 //  3. RunE —— 取 args[0] 作为拼错的子命令名，先在后代命令里查找完全同名的叶子
-//     （能把 `sheet read` 精准引导到 `sheet range read`），找不到再退回 cobra
-//     自带的同级编辑距离建议；最终返回 error 以保证 exit!=0。
+//     （能把 `sheet read` 精准引导到 `sheet range read`），找不到再退回共享的
+//     有界同级编辑距离建议；最终返回 error 以保证 exit!=0。
 //
 // 仅挂在分组型父命令（sheet/range/filter-view）上，不会影响已在 cobra Find 阶段
 // 精确匹配到的合法叶子命令。
@@ -347,20 +350,26 @@ func attachUnknownSubcommandGuard(cmd *cobra.Command) {
 			return c.Help()
 		}
 		name := args[0]
-		var buf strings.Builder
-		fmt.Fprintf(&buf, "unknown command %q for %q", name, c.CommandPath())
 		suggestions := deepSuggestSubcommand(c, name)
 		if len(suggestions) == 0 {
-			suggestions = c.SuggestionsFor(name)
-		}
-		if len(suggestions) > 0 {
-			buf.WriteString("\n\nDid you mean this?")
-			for _, s := range suggestions {
-				fmt.Fprintf(&buf, "\n\t%s %s", c.CommandPath(), s)
+			suggestions = cmdutil.SuggestSubcommands(c, name)
+		} else {
+			sort.Strings(suggestions)
+			if len(suggestions) > cmdutil.MaxCommandSuggestions {
+				suggestions = suggestions[:cmdutil.MaxCommandSuggestions]
 			}
 		}
-		fmt.Fprintf(&buf, "\n\nRun '%s --help' for usage.", c.CommandPath())
-		return fmt.Errorf("%s", buf.String())
+		action := fmt.Sprintf("Run '%s --help' for the full list", c.CommandPath())
+		return apperrors.NewValidation(
+			fmt.Sprintf("unknown subcommand %q for %q", name, c.CommandPath()),
+			apperrors.WithReason("unknown_subcommand"),
+			apperrors.WithHint(cmdutil.FormatSubcommandSuggestionHint(c, suggestions, action)),
+			apperrors.WithActions(action),
+			apperrors.WithDetails(map[string]any{
+				"input":       name,
+				"suggestions": suggestions,
+			}),
+		)
 	}
 }
 

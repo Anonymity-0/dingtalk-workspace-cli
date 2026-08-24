@@ -28,18 +28,14 @@ import (
 const hintOnlyCommandAnnotation = "dws.command.hint_only"
 
 // GroupRunE is a reusable RunE for parent (group) commands that have no
-// business logic of their own. With args it returns an error listing available
-// subcommands; without args it shows help.
+// business logic of their own. With args it returns bounded typo guidance;
+// without args it shows help. DWS production trees use pipeline.GroupRunE so
+// the same diagnostic is also projected as a structured validation error.
 func GroupRunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
-		var names []string
-		for _, sub := range cmd.Commands() {
-			if !sub.Hidden {
-				names = append(names, sub.Name())
-			}
-		}
-		return fmt.Errorf("unknown subcommand %q for %q\n  available: %s\n  hint: %s --help",
-			args[0], cmd.CommandPath(), strings.Join(names, ", "), cmd.CommandPath())
+		fallback := fmt.Sprintf("Run '%s --help' for the full list", cmd.CommandPath())
+		return fmt.Errorf("unknown subcommand %q for %q\n  hint: %s",
+			args[0], cmd.CommandPath(), FormatSubcommandSuggestionHint(cmd, SuggestSubcommands(cmd, args[0]), fallback))
 	}
 	return cmd.Help()
 }

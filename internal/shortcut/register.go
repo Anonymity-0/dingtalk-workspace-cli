@@ -16,6 +16,7 @@ package shortcut
 import (
 	"sort"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -72,6 +73,7 @@ func build(shortcuts []Shortcut) []*cobra.Command {
 				Use:   s.Service,
 				Short: s.Service + " shortcuts",
 			}
+			cmdutil.MarkGroup(parent)
 			byService[s.Service] = parent
 			order = append(order, s.Service)
 		}

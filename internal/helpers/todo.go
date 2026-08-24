@@ -69,14 +69,14 @@ func newTodoCommand() *cobra.Command {
 			},
 		},
 	})
-	todoCmd := &cobra.Command{
+	todoCmd := newGroupCommand(&cobra.Command{
 		Use:   "todo",
 		Short: "待办任务管理",
 		Long:  `管理钉钉个人待办：创建、查询列表、查看详情、修改、标记完成、删除。`,
 		RunE:  groupRunE,
-	}
+	})
 
-	todoTaskCmd := &cobra.Command{Use: "task", Short: "创建 / 查询 / 更新 / 删除待办", RunE: groupRunE}
+	todoTaskCmd := newGroupCommand(&cobra.Command{Use: "task", Short: "创建 / 查询 / 更新 / 删除待办", RunE: groupRunE})
 
 	todoTaskCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -1303,7 +1303,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 	// dws todo comment — 待办评论
 	// 对应 MCP：add_todo_comment / list_todo_comment / delete_todo_comment
 	// ──────────────────────────────────────────────────────────
-	todoCommentCmd := &cobra.Command{Use: "comment", Short: "待办评论：新增 / 列表 / 删除", RunE: groupRunE}
+	todoCommentCmd := newGroupCommand(&cobra.Command{Use: "comment", Short: "待办评论：新增 / 列表 / 删除", RunE: groupRunE})
 
 	todoCommentAddCmd := &cobra.Command{
 		Use:   "add",
@@ -1474,7 +1474,7 @@ reset-reminder 写入的提醒规则。提醒写命令的成功响应只能作�
 	// dws todo tag — 待办标签
 	// 对应 MCP：tag_todo / delete_todo_tag / update_todo_tag / list_todo_tags / create_todo_tag
 	// ──────────────────────────────────────────────────────────
-	todoTagCmd := &cobra.Command{Use: "tag", Short: "待办标签：打标 / 列表 / 创建 / 更新 / 删除", RunE: groupRunE}
+	todoTagCmd := newGroupCommand(&cobra.Command{Use: "tag", Short: "待办标签：打标 / 列表 / 创建 / 更新 / 删除", RunE: groupRunE})
 
 	todoTagAddCmd := &cobra.Command{
 		Use:   "add",

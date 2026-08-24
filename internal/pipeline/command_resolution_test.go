@@ -28,10 +28,11 @@ func TestCrossPlatformCoverageValidateUnresolvedCommandClassifiesShortcutBeforeF
 	if structured.Message != `unknown shortcut "+chat-mesages" for "dws chat"` {
 		t.Fatalf("Message = %q", structured.Message)
 	}
-	if structured.Hint != `Did you mean "dws chat +chat-messages"?` {
+	if structured.Hint != `Did you mean "dws chat +chat-messages"? (Run 'dws chat --help' for the full list)` {
 		t.Fatalf("Hint = %q", structured.Hint)
 	}
-	if len(structured.Actions) != 1 || structured.Actions[0] != "Run 'dws shortcut list --service chat --format json'" {
+	if len(structured.Actions) != 2 || structured.Actions[0] != "Run 'dws chat --help' for the full list" ||
+		structured.Actions[1] != "Run 'dws shortcut list --service chat --format json'" {
 		t.Fatalf("Actions = %#v", structured.Actions)
 	}
 	if len(structured.AvailableFlags) != 0 {
@@ -53,21 +54,31 @@ func TestCrossPlatformCoverageValidateUnresolvedCommandClassifiesOnlyExplicitCon
 	if structured.Message != `unknown subcommand "search" for "dws dev app"` {
 		t.Fatalf("Message = %q", structured.Message)
 	}
-	if len(structured.Actions) != 1 || structured.Actions[0] != "Run 'dws dev app --help' to see available subcommands" {
+	if len(structured.Actions) != 1 || structured.Actions[0] != "Run 'dws dev app --help' for the full list" {
 		t.Fatalf("Actions = %#v", structured.Actions)
 	}
+	legacy := &cobra.Command{Use: "legacy", RunE: GroupRunE}
+	cmdutil.MarkGroup(legacy)
+	legacy.AddCommand(&cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}})
+	root.AddCommand(legacy)
+	requireCommandResolutionError(t, validateUnresolvedCommand(legacy, []string{"lisst", "--query", "x"}), "unknown_subcommand")
 
 	positional := &cobra.Command{Use: "schema [path]", Run: func(*cobra.Command, []string) {}}
 	root.AddCommand(positional)
+	positionalWithChild := &cobra.Command{Use: "query [term]", Args: cobra.ExactArgs(1), Run: func(*cobra.Command, []string) {}}
+	positionalWithChild.AddCommand(&cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}})
+	root.AddCommand(positionalWithChild)
 	for name, test := range map[string]struct {
 		target    *cobra.Command
 		remaining []string
 	}{
-		"legitimate positional": {target: positional, remaining: []string{"+chat-messages"}},
-		"flag remains a flag":   {target: app, remaining: []string{"--keyword", "x"}},
-		"dash terminator":       {target: app, remaining: []string{"--", "search"}},
-		"nil target":            {target: nil, remaining: []string{"search"}},
-		"empty remaining":       {target: app},
+		"cobra help command":                {target: root, remaining: []string{"help", "chat"}},
+		"legitimate positional":             {target: positional, remaining: []string{"+chat-messages"}},
+		"positional close to child command": {target: positionalWithChild, remaining: []string{"lis"}},
+		"flag remains a flag":               {target: app, remaining: []string{"--keyword", "x"}},
+		"dash terminator":                   {target: app, remaining: []string{"--", "search"}},
+		"nil target":                        {target: nil, remaining: []string{"search"}},
+		"empty remaining":                   {target: app},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := validateUnresolvedCommand(test.target, test.remaining); err != nil {
@@ -108,17 +119,17 @@ func TestCrossPlatformCoverageCommandSuggestionHintIsBoundedAndFallsBack(t *test
 	root := &cobra.Command{Use: "dws"}
 	group := &cobra.Command{Use: "demo", SuggestionsMinimumDistance: 100}
 	root.AddCommand(group)
-	for _, name := range []string{"alpha", "beta", "delta", "gamma"} {
+	for _, name := range []string{"aaa", "alpha", "alphi", "alphx"} {
 		group.AddCommand(&cobra.Command{Use: name, Run: func(*cobra.Command, []string) {}})
 	}
-	hint := commandSuggestionHint(group, "missing", "fallback")
-	if strings.Count(hint, `"dws demo `) != maxCommandSuggestions || strings.Contains(hint, "gamma") {
-		t.Fatalf("bounded hint = %q", hint)
+	hint := cmdutil.FormatSubcommandSuggestionHint(group, cmdutil.SuggestSubcommands(group, "alpho"), "fallback")
+	if strings.Count(hint, `"dws demo `) != cmdutil.MaxCommandSuggestions || strings.Contains(hint, `"dws demo aaa"`) || !strings.Contains(hint, `"dws demo alphx"`) {
+		t.Fatalf("nearest bounded hint = %q", hint)
 	}
 
 	empty := &cobra.Command{Use: "empty"}
 	root.AddCommand(empty)
-	if got := commandSuggestionHint(empty, "missing", "fallback"); got != "fallback" {
+	if got := cmdutil.FormatSubcommandSuggestionHint(empty, cmdutil.SuggestSubcommands(empty, "missing"), "fallback"); got != "fallback" {
 		t.Fatalf("fallback hint = %q", got)
 	}
 }
@@ -136,8 +147,8 @@ func TestCrossPlatformCoverageCommandResolutionDefensiveAndExplicitSuggestionPat
 	if isExplicitShortcutCandidate(group, "+missing") {
 		t.Fatal("nested command was treated as a top-level shortcut service")
 	}
-	if got := commandSuggestions(nil, "missing"); got != nil {
-		t.Fatalf("commandSuggestions(nil) = %#v", got)
+	if got := cmdutil.SuggestSubcommands(nil, "missing"); got != nil {
+		t.Fatalf("SuggestSubcommands(nil) = %#v", got)
 	}
 
 	service.SuggestionsMinimumDistance = 1
@@ -146,8 +157,31 @@ func TestCrossPlatformCoverageCommandResolutionDefensiveAndExplicitSuggestionPat
 		SuggestFor: []string{"invented"},
 		Run:        func(*cobra.Command, []string) {},
 	})
-	if got := commandSuggestions(service, "invented"); len(got) != 1 || got[0] != "canonical" {
+	if got := cmdutil.SuggestSubcommands(service, "invented"); len(got) != 1 || got[0] != "canonical" {
 		t.Fatalf("explicit SuggestFor suggestions = %#v", got)
+	}
+}
+
+func TestCrossPlatformCoverageHintSubCmdReturnsTypedRecovery(t *testing.T) {
+	root := &cobra.Command{Use: "dws"}
+	parent := &cobra.Command{Use: "chat"}
+	hint := HintSubCmd("send", "use: dws chat message send")
+	root.AddCommand(parent)
+	parent.AddCommand(hint)
+
+	err := hint.RunE(hint, nil)
+	var structured *apperrors.Error
+	if !stderrors.As(err, &structured) {
+		t.Fatalf("HintSubCmd error = %T %v", err, err)
+	}
+	if structured.Category != apperrors.CategoryValidation || structured.Reason != "unknown_subcommand" {
+		t.Fatalf("HintSubCmd error = %#v", structured)
+	}
+	if !strings.Contains(structured.Hint, "dws chat message send") || !strings.Contains(structured.Hint, "dws chat --help") {
+		t.Fatalf("HintSubCmd hint = %q", structured.Hint)
+	}
+	if !cmdutil.IsHintOnlyCommand(hint) {
+		t.Fatal("HintSubCmd lost hint-only identity")
 	}
 }
 

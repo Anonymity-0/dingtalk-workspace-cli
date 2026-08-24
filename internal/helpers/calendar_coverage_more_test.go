@@ -191,7 +191,9 @@ func TestCrossPlatformCoverageCalendarUnknownFallbackCoverage(t *testing.T) {
 
 	hint := calendarInfoHintSubCmd("query", "use search")
 	group.AddCommand(hint)
-	_ = hint.RunE(hint, nil)
+	if err := hint.RunE(hint, nil); err == nil {
+		t.Fatal("calendar compatibility hint succeeded")
+	}
 
 	oldArgs := os.Args
 	t.Cleanup(func() { os.Args = oldArgs })

@@ -935,25 +935,30 @@ func newRootCommandWithMode(rootCtx context.Context, engine *pipeline.Engine, lo
 	patCaller := newRecordingToolCaller(newToolCallerAdapter(runner, flags))
 	mcpCmd.AddCommand(newMCPURLGroup(patCaller))
 
+	utilityGroup := func(command *cobra.Command) *cobra.Command {
+		cmdutil.MarkGroup(command)
+		return command
+	}
+
 	utilityCommands := []*cobra.Command{
-		newAuthCommand(patCaller),
-		newProfileCommand(),
+		utilityGroup(newAuthCommand(patCaller)),
+		utilityGroup(newProfileCommand()),
 		newAPICommand(flags),
-		newSkillCommand(),
-		newCacheCommand(),
+		utilityGroup(newSkillCommand()),
+		utilityGroup(newCacheCommand()),
 		newCatalogCommand(),
-		newConfigCommand(),
+		utilityGroup(newConfigCommand()),
 		newDoctorCommand(),
-		newRecoveryCommand(),
-		newEventCommand(flags),
-		newAuditCommand(),
+		utilityGroup(newRecoveryCommand()),
+		utilityGroup(newEventCommand(flags)),
+		utilityGroup(newAuditCommand()),
 		newCompletionCommand(root),
 		newUpgradeCommand(),
 		newVersionCommand(),
 		newPluginCommand(),
-		usage.NewShortcutCommand(),
+		utilityGroup(usage.NewShortcutCommand()),
 		schemaCmd,
-		mcpCmd,
+		utilityGroup(mcpCmd),
 	}
 	root.AddCommand(utilityCommands...)
 
