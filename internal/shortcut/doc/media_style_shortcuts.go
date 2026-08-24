@@ -79,9 +79,12 @@ var MediaDownload = shortcut.Shortcut{
 		}
 		return localio.ValidateOutput(rt.Str("output"))
 	},
-	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"output"}, Description: "--output 必须是工作目录内相对路径；默认 no-clobber"}},
-	Tips:        []string{`dws doc +media-download --node <DOC_ID> --resource-id <RESOURCE_ID> --output ./downloads/`},
-	Execute:     executeMediaDownload,
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"resource-id"}, Description: "--resource-id 必须是附件回执返回的 UUID"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"output"}, Description: "--output 必须是工作目录内相对路径；默认 no-clobber"},
+	},
+	Tips:    []string{`dws doc +media-download --node <DOC_ID> --resource-id <RESOURCE_ID> --output ./downloads/`},
+	Execute: executeMediaDownload,
 }
 
 var MediaPreview = shortcut.Shortcut{
@@ -97,8 +100,9 @@ var MediaPreview = shortcut.Shortcut{
 		{Name: "node", Type: shortcut.FlagString, Desc: "文档 ID 或 URL", Required: true},
 		{Name: "resource-id", Type: shortcut.FlagString, Desc: "附件 resourceId", Required: true},
 	},
-	Validate: func(rt *shortcut.RuntimeContext) error { return validateDocResourceID(rt.Str("resource-id")) },
-	Tips: []string{`dws doc +media-preview --node <DOC_ID> --resource-id <RESOURCE_ID>`},
+	Validate:    func(rt *shortcut.RuntimeContext) error { return validateDocResourceID(rt.Str("resource-id")) },
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"resource-id"}, Description: "--resource-id 必须是附件回执返回的 UUID"}},
+	Tips:        []string{`dws doc +media-preview --node <DOC_ID> --resource-id <RESOURCE_ID>`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		if rt.DryRun() {
 			return rt.Output(docEnvelope("doc.media_preview", map[string]any{"executed": false, "nodeId": rt.Str("node"), "resourceId": rt.Str("resource-id"), "output": "managed_temp_dir"}))

@@ -411,6 +411,23 @@ func TestCrossPlatformCoverageMediaFailuresKeepStableIDsAndForbidPathEscape(t *t
 	}
 }
 
+func TestCrossPlatformCoverageMediaResourceIDValidationIsPublished(t *testing.T) {
+	for _, declaration := range []shortcut.Shortcut{MediaDownload, MediaPreview} {
+		found := false
+		for _, constraint := range declaration.Constraints {
+			if constraint.Kind == shortcut.ConstraintCustom &&
+				reflect.DeepEqual(constraint.Flags, []string{"resource-id"}) &&
+				strings.Contains(constraint.Description, "UUID") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("doc %s must publish resource-id UUID validation as a custom constraint", declaration.Command)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageDocCompositePartialWriteContracts(t *testing.T) {
 	assertPartial := func(t *testing.T, err error, reason, stage, nodeID string, wantSteps int) *apperrors.Error {
 		t.Helper()
