@@ -65,4 +65,4 @@
 |------|-------------|------|
 | `manage create` | `orgId`, `cid` | invite-parent / add-child 的 --org-id |
 | `group list-children` | 孩子 staffId | toggle-app 的 --child-staff-id |
-| `edu-contact family list` | 家长 uid | 所有 edu-familygroup 命令的 --uid |
+| `dws edu-contact family parents` | 家长 uid | 所有 edu-familygroup 命令的 --uid |

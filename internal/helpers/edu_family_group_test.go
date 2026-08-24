@@ -5,6 +5,7 @@ package helpers
 
 import (
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -281,6 +282,37 @@ func TestCrossPlatformCoverageEduFamilyGroupDispatch(t *testing.T) {
 		}
 		if input["open"] != true {
 			t.Fatalf("input[\"open\"] = %#v, want true", input["open"])
+		}
+	})
+
+	t.Run("add-child", func(t *testing.T) {
+		caller := withEduFamilyGroupDispatchCaller(t)
+		cmd := newEduFamilyGroupCommand()
+		cmd.SetArgs([]string{"manage", "add-child", "--org-id", "12345", "--uid", "67890",
+			"--name", "小明", "--mobile", "13900139000",
+			"--students", `[{"schoolOrgId":111,"studentStaffId":"stu001"}]`})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("Execute() = %v", err)
+		}
+		if caller.productID != "edu-familygroup" {
+			t.Fatalf("productID = %q, want %q", caller.productID, "edu-familygroup")
+		}
+		if caller.tool != "add_child_to_family_group" {
+			t.Fatalf("tool = %q, want %q", caller.tool, "add_child_to_family_group")
+		}
+		want := map[string]any{
+			"input": map[string]any{
+				"orgId":  int64(12345),
+				"uid":    int64(67890),
+				"name":   "小明",
+				"mobile": "13900139000",
+				"students": []any{
+					map[string]any{"schoolOrgId": float64(111), "studentStaffId": "stu001"},
+				},
+			},
+		}
+		if !reflect.DeepEqual(caller.args, want) {
+			t.Fatalf("args = %#v, want %#v", caller.args, want)
 		}
 	})
 }

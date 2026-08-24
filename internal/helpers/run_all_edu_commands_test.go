@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// TestRunAllEduCommands 逐条执行 5 个教育产品的全部 153 条叶子命令（dry-run 模式），
+// TestRunAllEduCommands 逐条执行 5 个教育产品的全部 156 条叶子命令（dry-run 模式），
 // 并打印每条命令对应的 MCP 工具名和参数。相当于在终端逐一执行 dws <cmd> --dry-run。
 func TestRunAllEduCommands(t *testing.T) {
 	type cmdCase struct {
@@ -19,7 +19,7 @@ func TestRunAllEduCommands(t *testing.T) {
 
 	allCmds := []cmdCase{
 		// ═══════════════════════════════════════════════════════════
-		// edu-contact: 26 commands
+		// edu-contact: 29 commands
 		// ═══════════════════════════════════════════════════════════
 		// school (6)
 		{"edu-contact", []string{"school", "roles"}},
@@ -28,7 +28,7 @@ func TestRunAllEduCommands(t *testing.T) {
 		{"edu-contact", []string{"school", "type"}},
 		{"edu-contact", []string{"school", "stats", "--statistics-type", "1"}},
 		{"edu-contact", []string{"school", "class-list"}},
-		// class (18)
+		// class (19)
 		{"edu-contact", []string{"class", "detail", "--dept-id", "12345"}},
 		{"edu-contact", []string{"class", "students", "--dept-id", "12345"}},
 		{"edu-contact", []string{"class", "teachers", "--dept-id", "12345"}},
