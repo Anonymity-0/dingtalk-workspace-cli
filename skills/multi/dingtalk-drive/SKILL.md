@@ -55,7 +55,7 @@ metadata:
 
 ### 低频入口
 
-- 删除/恢复：`+delete/+recycle-list/+recycle-restore`；版本：`+version-history/+version-get/+version-download/+version-revert`。
+- 删除已确认节点：`dws drive +delete --node <dentryUuid>`；恢复：`+recycle-list/+recycle-restore`；版本：`+version-history/+version-get/+version-download/+version-revert`。
 - 收藏：`+star-*`；公开状态：`+publish-get/+publish-unset`（`+publish-set` 不进入 Agent 路由）；统计/封面用 `+inspect`；快捷方式用 `+create-shortcut`。
 - 目录树只用有界 `+list` 逐层遍历。
 
