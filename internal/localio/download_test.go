@@ -512,10 +512,41 @@ func TestCrossPlatformCoverageSecureHTTPClientAndFilesystemEdges(t *testing.T) {
 
 func TestCrossPlatformCoverageSecureHTTPClientDisablesEnvironmentProxy(t *testing.T) {
 	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:3128")
-	transport := secureHTTPClient().Transport.(*http.Transport)
+	transport := SecureHTTPClient().Transport.(*http.Transport)
 	if transport.Proxy != nil {
 		t.Fatal("secure download client accepted an environment proxy")
 	}
+}
+
+func TestCrossPlatformCoverageSetSecureDownloadDialTargetForTest(t *testing.T) {
+	prevLookup, prevDial := lookupDownloadIPs, dialDownloadIP
+	t.Cleanup(func() { lookupDownloadIPs, dialDownloadIP = prevLookup, prevDial })
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	accepted := make(chan struct{})
+	go func() {
+		conn, acceptErr := listener.Accept()
+		if acceptErr == nil {
+			_ = conn.Close()
+		}
+		close(accepted)
+	}()
+
+	SetSecureDownloadDialTargetForTest(listener.Addr().String())
+	ips, err := lookupDownloadIPs(context.Background(), "download.dingtalk.com")
+	if err != nil || len(ips) != 1 || !publicIP(ips[0].IP) {
+		t.Fatalf("overridden lookup = %v, %v; want one public answer", ips, err)
+	}
+	conn, err := dialDownloadIP(context.Background(), "tcp", "8.8.8.8:443")
+	if err != nil {
+		t.Fatalf("overridden dial did not reach the fixture listener: %v", err)
+	}
+	_ = conn.Close()
+	<-accepted
 }
 
 func TestCrossPlatformCoverageSecureHTTPClientStripsCrossOriginHeaders(t *testing.T) {
