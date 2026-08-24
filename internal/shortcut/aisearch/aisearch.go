@@ -30,7 +30,7 @@ func aisearchResult(description string) *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
 		DataSchema: json.RawMessage(fmt.Sprintf(
-			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","minimum":0,"description":"当前响应中通过严格校验的命中数量"},"matches":{"type":"array","description":"通过 success、集合、元素和稳定身份校验的企业人员命中；该接口不发布分页或全局完整性承诺","items":{"type":"object","description":"带稳定身份且来源类型固定为 user 的企业人员命中","properties":{"userId":{"type":"string","minLength":1,"description":"稳定用户 ID"},"openDingTalkId":{"type":"string","minLength":1,"description":"稳定开放用户 ID"},"url":{"type":"string","minLength":1,"description":"稳定资源 URL"},"sourceType":{"type":"string","enum":["user"],"description":"已审核的企业人员来源类型"}},"required":["sourceType"],"anyOf":[{"required":["userId"]},{"required":["openDingTalkId"]},{"required":["url"]}],"additionalProperties":true}}},"required":["count","matches"],"additionalProperties":false}`,
+			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","minimum":0,"description":"当前响应中通过严格校验的命中数量"},"matches":{"type":"array","description":"通过 success、集合、元素和稳定身份校验的企业人员命中；该接口不发布分页或全局完整性承诺","items":{"type":"object","description":"带稳定身份且来源类型固定为 person 的企业人员命中","properties":{"userId":{"type":"string","minLength":1,"description":"稳定用户 ID"},"openDingTalkId":{"type":"string","minLength":1,"description":"稳定开放用户 ID"},"url":{"type":"string","minLength":1,"description":"稳定资源 URL"},"sourceType":{"type":"string","enum":["person"],"description":"已审核的企业人员来源类型"}},"required":["sourceType"],"anyOf":[{"required":["userId"]},{"required":["openDingTalkId"]},{"required":["url"]}],"additionalProperties":true}}},"required":["count","matches"],"additionalProperties":false}`,
 			description,
 		)),
 		SensitivePaths: []string{
@@ -106,7 +106,7 @@ var SearchPerson = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		return executeSearchForSource(rt, "enterprise_person_search", map[string]any{
 			"keyword": rt.Str("query"), "dimension": rt.StrSlice("dimensions"),
-		}, []string{"userId", "openDingTalkId", "url"}, "user")
+		}, []string{"userId", "openDingTalkId", "url"}, "person")
 	},
 }
 

@@ -78,12 +78,12 @@ func TestCrossPlatformCoverageAiSearchValidationAndExecutionBranches(t *testing.
 	command.Flags().StringSlice("dimensions", []string{"name"}, "")
 	runtime := shortcut.RuntimeContextForTest(command, declaration)
 	caller.err = errors.New("transport")
-	if err := executeSearchForSource(runtime, "enterprise_person_search", map[string]any{"keyword": "fixture"}, []string{"userId"}, "user"); err == nil {
+	if err := executeSearchForSource(runtime, "enterprise_person_search", map[string]any{"keyword": "fixture"}, []string{"userId"}, "person"); err == nil {
 		t.Fatal("transport failure returned success")
 	}
 	caller.err = nil
 	caller.payload = `{"success":true}`
-	if err := executeSearchForSource(runtime, "enterprise_person_search", map[string]any{"keyword": "fixture"}, []string{"userId"}, "user"); err == nil {
+	if err := executeSearchForSource(runtime, "enterprise_person_search", map[string]any{"keyword": "fixture"}, []string{"userId"}, "person"); err == nil {
 		t.Fatal("projection failure returned success")
 	}
 	caller.err = errors.New("transport")
@@ -116,9 +116,9 @@ func TestCrossPlatformCoverageAiSearchConflictingEvidenceAndIdentityNormalizatio
 		}
 	}
 	items, err := projectSearch(map[string]any{"success": true, "result": []any{map[string]any{
-		"sourceType": " user ", "userId": " stable ", "openDingTalkId": "   ", "url": nil,
+		"sourceType": " person ", "userId": " stable ", "openDingTalkId": "   ", "url": nil,
 	}}}, "aisearch/test", []string{"userId"})
-	if err != nil || len(items) != 1 || items[0]["sourceType"] != "user" || items[0]["userId"] != "stable" {
+	if err != nil || len(items) != 1 || items[0]["sourceType"] != "person" || items[0]["userId"] != "stable" {
 		t.Fatalf("identity normalization failed: items=%v err=%v", items, err)
 	}
 	if _, present := items[0]["openDingTalkId"]; present {
@@ -138,7 +138,7 @@ func TestCrossPlatformCoverageAiSearchRejectsFalseSuccessAndBadCollections(t *te
 	for identity, value := range map[string]string{
 		"userId": "user-fixture", "openDingTalkId": "open-fixture", "url": "https://example.invalid/user-fixture",
 	} {
-		valid := map[string]any{"success": true, "result": []any{map[string]any{"sourceType": "user", identity: value}}}
+		valid := map[string]any{"success": true, "result": []any{map[string]any{"sourceType": "person", identity: value}}}
 		items, err := projectSearch(valid, "aisearch/test", []string{"userId", "openDingTalkId", "url"})
 		if err != nil || len(items) != 1 || items[0][identity] != value {
 			t.Fatalf("valid %s identity rejected: items=%v err=%v", identity, items, err)
@@ -159,10 +159,10 @@ func TestCrossPlatformCoverageAiSearchRejectsFalseSuccessAndBadCollections(t *te
 		{"success": true, "result": map[string]any{}},
 		{"success": true, "result": []any{"bad"}},
 		{"success": true, "result": []any{map[string]any{}}},
-		{"success": true, "result": []any{map[string]any{"sourceType": "user"}}},
-		{"success": true, "result": []any{map[string]any{"sourceType": "user", "userId": 1}}},
-		{"success": true, "result": []any{map[string]any{"sourceType": "user", "userId": "same"}, map[string]any{"sourceType": "user", "userId": "same"}}},
-		{"success": true, "result": []any{map[string]any{"sourceType": "user", "userId": "good", "openDingTalkId": map[string]any{}}}},
+		{"success": true, "result": []any{map[string]any{"sourceType": "person"}}},
+		{"success": true, "result": []any{map[string]any{"sourceType": "person", "userId": 1}}},
+		{"success": true, "result": []any{map[string]any{"sourceType": "person", "userId": "same"}, map[string]any{"sourceType": "person", "userId": "same"}}},
+		{"success": true, "result": []any{map[string]any{"sourceType": "person", "userId": "good", "openDingTalkId": map[string]any{}}}},
 		{"success": true, "errorCode": "REMOTE_ERROR", "result": []any{}},
 		{"success": true, "errorMsg": "conflict", "result": []any{}},
 	}
@@ -229,7 +229,7 @@ func TestCrossPlatformCoverageUnavailableAiSearchMakesNoRemoteCall(t *testing.T)
 }
 
 func TestCrossPlatformCoverageAiSearchExactShortcutMapping(t *testing.T) {
-	caller := &aisearchCaller{payload: `{"success":true,"errorCode":null,"errorMsg":"","result":[{"sourceType":"user","userId":"stable-user"}]}`}
+	caller := &aisearchCaller{payload: `{"success":true,"errorCode":null,"errorMsg":"","result":[{"sourceType":"person","userId":"stable-user"}]}`}
 	helpers.InitDepsForTest(t, caller)
 
 	declaration := SearchPerson
@@ -264,7 +264,7 @@ func TestCrossPlatformCoverageAiSearchExactShortcutMapping(t *testing.T) {
 	driftCommand.Flags().String("query", "fixture", "")
 	driftCommand.Flags().StringSlice("dimensions", []string{"name"}, "")
 	if err := declaration.Execute(shortcut.RuntimeContextForTest(driftCommand, declaration)); err == nil || !strings.Contains(err.Error(), "来源") {
-		t.Fatalf("non-user source was not rejected: %v", err)
+		t.Fatalf("non-person source was not rejected: %v", err)
 	}
 	if caller.calls != 1 || caller.tool != "enterprise_person_search" {
 		t.Fatalf("source drift call = count:%d tool:%q", caller.calls, caller.tool)
@@ -343,7 +343,7 @@ func TestCrossPlatformCoverageAiSearchCatalogAndContracts(t *testing.T) {
 	matches := schema["properties"].(map[string]any)["matches"].(map[string]any)
 	items := matches["items"].(map[string]any)
 	sourceType := items["properties"].(map[string]any)["sourceType"].(map[string]any)
-	if got, ok := sourceType["enum"].([]any); !ok || len(got) != 1 || got[0] != "user" {
+	if got, ok := sourceType["enum"].([]any); !ok || len(got) != 1 || got[0] != "person" {
 		t.Fatalf("search-person sourceType enum = %#v", sourceType["enum"])
 	}
 	identityAlternatives, ok := items["anyOf"].([]any)

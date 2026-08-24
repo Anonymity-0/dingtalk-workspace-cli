@@ -299,7 +299,7 @@ func TestCrossPlatformCoverageContactInputConstraintsFailBeforeRemoteCall(t *tes
 }
 
 func TestCrossPlatformCoverageListRolesCompatibilityUsesStrictLegacyMCP(t *testing.T) {
-	caller := &contactCaller{payload: `{"success":true,"result":[{"groupName":"Fixture group","labels":[{"labelId":1,"name":"Fixture role"},{"labelId":null,"name":""}]}]}`}
+	caller := &contactCaller{payload: `{"success":true,"result":[{"groupName":"Fixture group","labels":[{"labelId":1,"name":"Fixture role"},{"labelId":null,"name":null}]}]}`}
 	helpers.InitDepsForTest(t, caller)
 	declaration := ListRoles
 	declaration.OutputRollout = output.RolloutLegacyOnly
@@ -322,7 +322,7 @@ func TestCrossPlatformCoverageListRolesCompatibilityUsesStrictLegacyMCP(t *testi
 	if payload.Count != 2 || len(payload.Roles) != 2 || payload.Roles[0]["labelName"] != "Fixture role" {
 		t.Fatalf("legacy role output drift: %#v", payload)
 	}
-	if value, present := payload.Roles[1]["labelId"]; !present || value != nil || payload.Roles[1]["labelName"] != "" {
+	if value, present := payload.Roles[1]["labelId"]; !present || value != nil || payload.Roles[1]["labelName"] != nil {
 		t.Fatalf("reviewed placeholder was not preserved: %#v", payload.Roles[1])
 	}
 
@@ -438,11 +438,11 @@ func TestCrossPlatformCoverageContactFollowingsAndRolesRejectBadElements(t *test
 			"groupName": "Fixture group",
 			"labels": []any{
 				map[string]any{"labelId": float64(1), "name": "Fixture role"},
-				map[string]any{"labelId": nil, "name": ""},
+				map[string]any{"labelId": nil, "name": nil},
 			},
 		}},
 	}, "contact/roles")
-	if err != nil || len(roles) != 2 || roles[0]["labelId"] != int64(1) || roles[0]["labelName"] != "Fixture role" || roles[1]["labelId"] != nil || roles[1]["labelName"] != "" {
+	if err != nil || len(roles) != 2 || roles[0]["labelId"] != int64(1) || roles[0]["labelName"] != "Fixture role" || roles[1]["labelId"] != nil || roles[1]["labelName"] != nil {
 		t.Fatalf("strict roles = %#v, err=%v", roles, err)
 	}
 	for _, broken := range []map[string]any{
@@ -455,6 +455,7 @@ func TestCrossPlatformCoverageContactFollowingsAndRolesRejectBadElements(t *test
 		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": map[string]any{}}}},
 		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": []any{"bad"}}}},
 		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": []any{map[string]any{"labelId": nil}}}}},
+		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": []any{map[string]any{"labelId": nil, "name": ""}}}}},
 		{"success": true, "result": []any{map[string]any{"groupName": "Fixture", "labels": []any{map[string]any{"labelId": float64(1), "name": "One"}, map[string]any{"labelId": float64(1), "name": "Duplicate"}}}}},
 	} {
 		if got, parseErr := strictRoles(broken, "contact/roles"); parseErr == nil {

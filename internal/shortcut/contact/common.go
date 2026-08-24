@@ -369,14 +369,14 @@ func strictRoles(data map[string]any, operation string) ([]map[string]any, error
 			rawName, namePresent := label["name"]
 			name, nameIsString := rawName.(string)
 			name = strings.TrimSpace(name)
-			// The legacy get_org_labels response can contain one reviewed empty
-			// placeholder inside an otherwise valid group. Preserve that row for
-			// CLI compatibility instead of rejecting every valid role in the
+			// The legacy get_org_labels response can contain one reviewed null
+			// placeholder inside an otherwise valid group. Preserve that row exactly
+			// for CLI compatibility instead of rejecting every valid role in the
 			// response. This exception is intentionally confined to the hidden,
 			// legacy-only +list-roles path; public role-based shortcuts remain
 			// fail-closed on malformed identities.
-			if idPresent && rawID == nil && namePresent && nameIsString && name == "" {
-				out = append(out, map[string]any{"labelId": nil, "labelName": ""})
+			if idPresent && rawID == nil && namePresent && rawName == nil {
+				out = append(out, map[string]any{"labelId": nil, "labelName": rawName})
 				continue
 			}
 			id, idOK := contactInt64(rawID)
