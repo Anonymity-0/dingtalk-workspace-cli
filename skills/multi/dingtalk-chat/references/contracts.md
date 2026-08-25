@@ -56,7 +56,7 @@ Bot 多群用 `--groups` 或 `--groups-file`，Runtime 去重后输出
 <!-- DWS_CAPABILITY_BOUNDARY_CONTRACT_START -->
 | capability | supported | current route / boundary |
 |---|---:|---|
-| `thread-write` | `false` | quote reply with +messages-reply; thread reading with +thread-replies |
+| `thread-write` | `true` | direct topic reply with chat topic reply; quoted reply in a topic container remains unsupported |
 | `bot-rich-media` | `false` | bot text/markdown, or current-user file/image send |
 | `card-action-callback` | `false` | streaming text card create/update only |
 | `resource-resume` | `false` | atomic whole-file download with explicit retry |

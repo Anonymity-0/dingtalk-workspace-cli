@@ -113,12 +113,12 @@ func TestCrossPlatformCoverageIMWorkflowContractsPublishRealPositiveAndNegativeB
 			t.Errorf("boundary %s lacks alternative", boundary.Capability)
 		}
 	}
-	for _, unsupported := range []string{"thread-write", "bot-rich-media", "card-action-callback", "resource-resume"} {
+	for _, unsupported := range []string{"bot-rich-media", "card-action-callback", "resource-resume"} {
 		if byName[unsupported] {
 			t.Errorf("unsupported boundary %s was advertised", unsupported)
 		}
 	}
-	for _, supported := range []string{"group-member-full-pagination", "group-owner-selection"} {
+	for _, supported := range []string{"thread-write", "group-member-full-pagination", "group-owner-selection"} {
 		if !byName[supported] {
 			t.Errorf("supported boundary %s was hidden", supported)
 		}
