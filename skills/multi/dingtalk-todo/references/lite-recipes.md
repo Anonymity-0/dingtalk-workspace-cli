@@ -62,7 +62,7 @@ dws todo +update --task-id <TASK_ID> --title "新标题" --format json
 ```bash
 python scripts/todo_daily_summary.py today
 python scripts/todo_overdue_check.py
-python scripts/todo_batch_create.py todos.json
+python scripts/todo_batch_create.py todos.json --dry-run
 ```
 
-批量脚本单批最多 30 条，输出逐项 ledger。`unknown` 表示写可能已提交，`unverified` 表示已有 `taskId` 但读回未通过；两者都需对账，不能自动重试。
+批量脚本单批最多 30 条。先用 dry-run 展示精确批次；取得用户对该批次的明确确认后，才向脚本传 `--yes` 进入执行模式。脚本只把 Runtime 确认传给逐条创建调用，回读不携带该标记。输出保留逐项 ledger；`unknown` 表示写可能已提交，`unverified` 表示已有 `taskId` 但读回未通过，两者都需对账，不能自动重试。

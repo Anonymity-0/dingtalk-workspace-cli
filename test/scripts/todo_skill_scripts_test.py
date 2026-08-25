@@ -226,34 +226,126 @@ class TodoBatchCreateTest(unittest.TestCase):
             )
             calls = []
 
-            def fake_run(args, dws="dws", **kwargs):
-                calls.append(args)
-                if args[:3] == ["todo", "task", "create"]:
-                    return {"result": {"taskId": "task-1"}}
-                return {
-                    "ok": True,
-                    "data": {
-                        "todoDetailModel": {
-                            "taskId": "task-1",
-                            "subject": "reviewed task",
-                        }
-                    },
-                }
+            def fake_subprocess_run(argv, **kwargs):
+                calls.append((argv, kwargs))
+                if argv[1:4] == ["todo", "task", "create"]:
+                    payload = {"result": {"taskId": "task-1"}}
+                else:
+                    payload = {
+                        "ok": True,
+                        "data": {
+                            "todoDetailModel": {
+                                "taskId": "task-1",
+                                "subject": "reviewed task",
+                            }
+                        },
+                    }
+                return mock.Mock(
+                    returncode=0,
+                    stdout=json.dumps(payload),
+                    stderr="",
+                )
 
             stdout = io.StringIO()
-            with mock.patch.object(BATCH, "run_dws_json", side_effect=fake_run):
+            with mock.patch.object(
+                BATCH.subprocess, "run", side_effect=fake_subprocess_run
+            ):
                 with contextlib.redirect_stdout(stdout):
-                    code = BATCH.run([str(source)])
+                    code = BATCH.run([str(source), "--yes", "--dws", "fake-dws"])
         self.assertEqual(0, code)
         self.assertEqual(2, len(calls))
-        due = calls[0][calls[0].index("--due") + 1]
-        self.assertIn("T23:59:59+08:00", due)
         self.assertEqual(
-            ["todo", "task", "get", "--task-id", "task-1"], calls[1][:5]
+            [
+                "fake-dws",
+                "todo",
+                "task",
+                "create",
+                "--title",
+                "reviewed task",
+                "--executors",
+                "user1",
+                "--priority",
+                "40",
+                "--due",
+                "2026-08-18T23:59:59+08:00",
+                "--format",
+                "json",
+                "--yes",
+            ],
+            calls[0][0],
         )
+        self.assertEqual(
+            [
+                "fake-dws",
+                "todo",
+                "task",
+                "get",
+                "--task-id",
+                "task-1",
+                "--format",
+                "json",
+            ],
+            calls[1][0],
+        )
+        for _, kwargs in calls:
+            self.assertTrue(kwargs["capture_output"])
+            self.assertTrue(kwargs["text"])
+            self.assertIs(BATCH.subprocess.DEVNULL, kwargs["stdin"])
+            self.assertEqual(120, kwargs["timeout"])
         payload = json.loads(stdout.getvalue())
         self.assertTrue(payload["complete"])
         self.assertEqual("verified", payload["ledger"][0]["status"])
+
+    def test_unconfirmed_batch_stops_before_first_dws_call(self):
+        with tempfile.TemporaryDirectory() as raw:
+            source = Path(raw) / "todos.json"
+            source.write_text(
+                '[{"title":"reviewed task","executors":"user1"}]',
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with mock.patch.object(BATCH.subprocess, "run") as run_dws:
+                with contextlib.redirect_stdout(stdout):
+                    code = BATCH.run([str(source)])
+        self.assertEqual(2, code)
+        run_dws.assert_not_called()
+        payload = json.loads(stdout.getvalue())
+        self.assertFalse(payload["complete"])
+        self.assertEqual("confirmation_required", payload["reason"])
+        self.assertFalse(payload["executionStarted"])
+
+    def test_dry_run_previews_exact_batch_without_confirmation_bypass(self):
+        with tempfile.TemporaryDirectory() as raw:
+            source = Path(raw) / "todos.json"
+            source.write_text(
+                '[{"title":"reviewed task","executors":"user1"}]',
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with mock.patch.object(BATCH.subprocess, "run") as run_dws:
+                with contextlib.redirect_stdout(stdout):
+                    code = BATCH.run([str(source), "--dry-run"])
+        self.assertEqual(0, code)
+        run_dws.assert_not_called()
+        payload = json.loads(stdout.getvalue())
+        self.assertTrue(payload["complete"])
+        self.assertTrue(payload["dryRun"])
+        self.assertEqual(
+            [
+                "dws",
+                "todo",
+                "task",
+                "create",
+                "--title",
+                "reviewed task",
+                "--executors",
+                "user1",
+                "--format",
+                "json",
+            ],
+            payload["ledger"][0]["command"],
+        )
+        self.assertNotIn("--yes", payload["ledger"][0]["command"])
 
     def test_possible_commit_is_preserved_as_unknown(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -265,7 +357,7 @@ class TodoBatchCreateTest(unittest.TestCase):
             stdout = io.StringIO()
             with mock.patch.object(BATCH, "run_dws_json", side_effect=failure):
                 with contextlib.redirect_stdout(stdout):
-                    code = BATCH.run([str(source)])
+                    code = BATCH.run([str(source), "--yes"])
         self.assertEqual(2, code)
         payload = json.loads(stdout.getvalue())
         self.assertEqual(1, payload["unknownCount"])

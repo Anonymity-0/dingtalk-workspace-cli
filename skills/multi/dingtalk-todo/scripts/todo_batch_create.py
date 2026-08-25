@@ -28,7 +28,11 @@ def run_dws_json(
 ) -> Dict[str, Any]:
     try:
         result = subprocess.run(
-            [dws, *args], capture_output=True, text=True, timeout=120
+            [dws, *args],
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            timeout=120,
         )
     except subprocess.TimeoutExpired as exc:
         raise ScriptError("dws timed out", commit_unknown=write_started) from exc
@@ -160,6 +164,11 @@ def run(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("input", type=Path)
     parser.add_argument("--dws", default="dws")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="confirm execution of the exact validated batch after user approval",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -170,6 +179,24 @@ def run(argv: Optional[List[str]] = None) -> int:
         items = validate(json.loads(args.input.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError, ScriptError) as exc:
         print(json.dumps({"complete": False, "error": str(exc)}, ensure_ascii=False))
+        return 2
+
+    if not args.dry_run and not args.yes:
+        print(
+            json.dumps(
+                {
+                    "complete": False,
+                    "dryRun": False,
+                    "reason": "confirmation_required",
+                    "executionStarted": False,
+                    "error": (
+                        "preview the exact batch with --dry-run; after the user "
+                        "confirms that batch, rerun with --yes"
+                    ),
+                },
+                ensure_ascii=False,
+            )
+        )
         return 2
 
     ledger: List[Dict[str, Any]] = []
@@ -193,6 +220,10 @@ def run(argv: Optional[List[str]] = None) -> int:
         if args.dry_run:
             ledger.append({"title": item["title"], "command": [args.dws, *create]})
             continue
+
+        # The script-level confirmation covers this exact validated batch. Pass the
+        # Runtime bypass only to the writes; readback remains an ordinary read.
+        create.append("--yes")
 
         entry: Dict[str, Any] = {"title": item["title"], "status": "unknown"}
         try:

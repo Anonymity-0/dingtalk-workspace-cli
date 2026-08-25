@@ -76,7 +76,7 @@ metadata:
 | 设置独立提醒 | `dws todo +reminder --task-id <TASK_ID> --base-time customTime --at "<提醒ISO>" --format json` | 上游无提醒查询接口，只能返回终端写回执，`verified=false` |
 | 基于截止时间提前提醒 | `dws todo +reminder --task-id <TASK_ID> --base-time dueTime --due-date-offset -30 --format json` | 待办必须已有截止时间；偏移单位为分钟 |
 | 清除全部提醒 | `dws todo +reminder --task-id <TASK_ID> --clear --format json` | 清除写操作；不能与提醒参数混用 |
-| 批量创建 | `python scripts/todo_batch_create.py <todos.json>` | 单批最多 30 条；保留逐项 `taskId`、verified/unverified/unknown 状态，不盲重试 |
+| 批量创建 | `python scripts/todo_batch_create.py <todos.json> --dry-run` | 先展示精确批次；用户确认后才进入执行模式，脚本仅对每条创建传递 Runtime 确认，并保留逐项状态 ledger |
 | 今天/明天/本周汇总 | `python scripts/todo_daily_summary.py today\|tomorrow\|week` | 走 `+get-my-tasks --all`，只纳入范围内且有截止时间的未完成待办 |
 
 ## 低频原子能力
