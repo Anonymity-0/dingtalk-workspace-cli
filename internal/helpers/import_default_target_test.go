@@ -201,6 +201,10 @@ func TestCrossPlatformCoverageDocImportRejectsAmbiguousOrMissingDefaultBeforeWri
 		{name: "multiple spaces", body: `{"result":{"items":[{"rootFolderId":"a"},{"rootFolderId":"b"}]}}`, want: "2 个 orgSpace"},
 		{name: "missing root folder", body: `{"result":{"items":[{"spaceType":"orgSpace"}]}}`, want: "未返回 rootFolderId"},
 		{name: "wrong type", body: `{"result":{"items":[{"spaceType":"mySpace","rootFolderId":"root"}]}}`, want: "不是 orgSpace"},
+		{name: "first page is not unique", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}],"nextToken":"page-2"}}`, want: "仍有下一页"},
+		{name: "has more without a usable cursor", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}],"hasMore":true}}`, want: "仍有下一页"},
+		{name: "invalid next token fails closed", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}],"nextToken":1}}`, want: "仍有下一页"},
+		{name: "invalid has more fails closed", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}],"hasMore":"true"}}`, want: "仍有下一页"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{"list_spaces": {{text: test.body}}}}
