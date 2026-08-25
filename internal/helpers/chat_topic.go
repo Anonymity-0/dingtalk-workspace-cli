@@ -74,12 +74,12 @@ func storeChatTopicDryRun(cmd *cobra.Command, product, tool string, arguments ma
 }
 
 func newChatTopicCommand(sendRunE func(*cobra.Command, []string) error) *cobra.Command {
-	topic := &cobra.Command{
+	topic := newGroupCommand(&cobra.Command{
 		Use:   "topic",
 		Short: "话题圈与话题管理",
 		Long:  "创建话题圈，发布、分页读取、直接回复和转发话题。话题圈使用 openTopicId，圈内一条具体话题使用 openConvThreadId。",
 		RunE:  groupRunE,
-	}
+	})
 
 	create := newChatTopicCreateCommand()
 	send := newChatTopicSendCommand("send", "open-topic-id", "话题圈 openTopicId", sendRunE)
