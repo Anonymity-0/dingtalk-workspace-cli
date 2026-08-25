@@ -440,11 +440,15 @@ func chatTopicPaginationMeta(operation string, data map[string]any, sourceItems 
 	if hasMore {
 		nextPage, _ := projection["nextPage"].(map[string]any)
 		nextToken, _ = nextPage["time"].(string)
-		if strings.TrimSpace(nextToken) == "" {
-			return nil, chatTopicPaginationError(operation, "下层响应无法生成可执行的下一页时间边界")
-		}
 	}
-	pagination, err := output.NewPagination(!hasMore, nextToken)
+	return newChatTopicPaginationMeta(operation, !hasMore, nextToken, businessCount)
+}
+
+func newChatTopicPaginationMeta(operation string, endpointExhausted bool, nextToken string, businessCount int) (*output.Meta, error) {
+	if !endpointExhausted && strings.TrimSpace(nextToken) == "" {
+		return nil, chatTopicPaginationError(operation, "下层响应无法生成可执行的下一页时间边界")
+	}
+	pagination, err := output.NewPagination(endpointExhausted, nextToken)
 	if err != nil {
 		return nil, chatTopicPaginationError(operation, err.Error())
 	}

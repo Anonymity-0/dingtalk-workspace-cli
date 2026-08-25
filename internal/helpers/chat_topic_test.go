@@ -9,7 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
@@ -127,6 +130,32 @@ func TestCrossPlatformCoverageAtomicTopicDryRunStoresOneResult(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageAtomicTopicLocalFileDryRunStoresPreview(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "fixture.txt")
+	if err := os.WriteFile(filePath, []byte("topic attachment"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	caller := &chatTopicCaller{dryRun: true}
+	stdout, err := executeAtomicTopicDryRun(t, caller,
+		"topic", "send", "--open-topic-id", "topic-1", "--msg-type", "file", "--file", filePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal(stdout, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := envelope["data"].(map[string]any)
+	arguments, _ := data["arguments"].(map[string]any)
+	if data["tool"] != "send_personal_message" || arguments["msgType"] != "file" || arguments["filePath"] != filePath || arguments["openConversationId"] != "topic-1" {
+		t.Fatalf("dry-run preview = %#v", data)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("dry-run calls = %#v", caller.calls)
+	}
+}
+
 func TestCrossPlatformCoverageAtomicTopicListsPublishPaginationInMeta(t *testing.T) {
 	for _, test := range []struct {
 		name      string
@@ -179,6 +208,25 @@ func TestCrossPlatformCoverageAtomicTopicListsPublishPaginationInMeta(t *testing
 			gotItems, _ := pagination["items"].(float64)
 			if pagination["endpoint_exhausted"] != false || pagination["next_token"] == "" || pagination["pages"] != float64(1) || gotItems != test.wantItems {
 				t.Fatalf("pagination = %#v", pagination)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageAtomicTopicPaginationRejectsInvalidState(t *testing.T) {
+	for _, test := range []struct {
+		name              string
+		endpointExhausted bool
+		nextToken         string
+	}{
+		{name: "resumable without token"},
+		{name: "exhausted with token", endpointExhausted: true, nextToken: "unexpected"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			meta, err := newChatTopicPaginationMeta("chat/list_topic_replies", test.endpointExhausted, test.nextToken, 0)
+			var typed *apperrors.Error
+			if meta != nil || err == nil || !errors.As(err, &typed) || typed.Reason != "invalid_pagination" {
+				t.Fatalf("meta=%#v error=%v", meta, err)
 			}
 		})
 	}
@@ -611,6 +659,92 @@ func TestCrossPlatformCoverageAtomicTopicQuoteGuardFailsClosedWhenConversationLo
 	}
 	if len(caller.calls) != 1 || caller.calls[0].tool != "list_messages_by_ids" {
 		t.Fatalf("quote guard reached write: %#v", caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageAtomicTopicCreatePropagatesWriteFailure(t *testing.T) {
+	caller := &chatTopicCaller{
+		responses: map[string]string{"contact/get_current_user_profile": `{"result":{"userId":"owner-1"}}`},
+		errors:    map[string]error{"im/create_group_conversation": errors.New("create unavailable")},
+	}
+	err := executeAtomicTopicCommand(t, caller,
+		"topic", "create", "--name", "话题圈", "--users", "user-1")
+	if err == nil || !strings.Contains(err.Error(), "create unavailable") {
+		t.Fatalf("error = %v", err)
+	}
+	if len(caller.calls) != 2 || caller.calls[1].tool != "create_group_conversation" {
+		t.Fatalf("calls = %#v", caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageAtomicTopicQuoteGuardConversationFailures(t *testing.T) {
+	messageResponse := `{"result":{"messages":[{"openMessageId":"message-1","openConversationId":"cid"}]}}`
+	for _, test := range []struct {
+		name                 string
+		conversationResponse string
+		conversationError    error
+	}{
+		{name: "lookup failure", conversationError: errors.New("conversation unavailable")},
+		{name: "invalid response", conversationResponse: `<html>bad gateway</html>`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &chatTopicCaller{
+				responses: map[string]string{
+					"im/list_messages_by_ids":    messageResponse,
+					"chat/get_conversation_info": test.conversationResponse,
+				},
+				errors: map[string]error{"chat/get_conversation_info": test.conversationError},
+			}
+			err := executeAtomicTopicCommand(t, caller,
+				"message", "reply", "--conversation-id", "cid", "--ref-msg-id", "message-1",
+				"--ref-sender", "DAAAAAAAAAAAiE", "--text", "普通引用")
+			var typed *apperrors.Error
+			if err == nil || !errors.As(err, &typed) || typed.Reason != "topic_quote_guard_unavailable" {
+				t.Fatalf("error = %v", err)
+			}
+			if len(caller.calls) != 2 || caller.calls[1].tool != "get_conversation_info" {
+				t.Fatalf("calls = %#v", caller.calls)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageAtomicTopicContainerStateVariants(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value any
+		want  topicContainerState
+	}{
+		{name: "nested bool true", value: map[string]any{"result": map[string]any{"convThreadEnabled": true}}, want: topicContainerTopic},
+		{name: "string true", value: map[string]any{"convThreadEnabled": " 1 "}, want: topicContainerTopic},
+		{name: "bool false", value: map[string]any{"convThreadEnabled": false}, want: topicContainerNonTopic},
+		{name: "string false", value: map[string]any{"convThreadEnabled": " FALSE "}, want: topicContainerNonTopic},
+		{name: "invalid string", value: map[string]any{"convThreadEnabled": "unknown"}, want: topicContainerUnknown},
+		{name: "invalid type", value: map[string]any{"convThreadEnabled": 1}, want: topicContainerUnknown},
+		{name: "nested array true", value: []any{map[string]any{"other": false}, map[string]any{"convThreadEnabled": "true"}}, want: topicContainerTopic},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := detectTopicContainerState(test.value); got != test.want {
+				t.Fatalf("state = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageAtomicTopicQuoteGuardRejectsTopicContainer(t *testing.T) {
+	caller := &chatTopicCaller{responses: map[string]string{
+		"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"message-1","openConversationId":"cid"}]}}`,
+		"chat/get_conversation_info": `{"result":{"convThreadEnabled":true}}`,
+	}}
+	err := executeAtomicTopicCommand(t, caller,
+		"message", "reply", "--conversation-id", "cid", "--ref-msg-id", "message-1",
+		"--ref-sender", "DAAAAAAAAAAAiE", "--text", "错误引用")
+	var typed *apperrors.Error
+	if err == nil || !errors.As(err, &typed) || typed.Reason != "topic_quote_reply_disabled" {
+		t.Fatalf("error = %v", err)
+	}
+	if len(caller.calls) != 2 || caller.calls[1].tool != "get_conversation_info" {
+		t.Fatalf("calls = %#v", caller.calls)
 	}
 }
 
