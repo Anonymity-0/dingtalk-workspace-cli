@@ -602,9 +602,8 @@ dws api POST https://oapi.dingtalk.com/topapi/v2/user/get \
   --data '{"userid":"<USER_ID>"}'
 
 # === General ===
-dws api GET /v1.0/microApp/allApps --page-all   # auto-paginate
-dws api GET /v1.0/microApp/allApps --dry-run     # preview request
-dws api GET /v1.0/microApp/allApps --jq '.agentId'  # jq filtering
+dws api GET /v1.0/microApp/allApps --dry-run             # preview request
+dws api GET /v1.0/microApp/allApps --jq '.appList | length'  # jq filtering
 
 # Read query/body JSON from files (use - for stdin)
 dws api GET /v1.0/example/resources --params @params.json

@@ -72,6 +72,30 @@ func TestParseQueryStringToJSON(t *testing.T) {
 	}
 }
 
+func TestAPIHelpUsesAppTokenCompatibleExamples(t *testing.T) {
+	t.Parallel()
+
+	help := newAPICommand(&GlobalFlags{}).Long
+	for _, forbidden := range []string{
+		"/v1.0/contact/users/me",
+		"/v1.0/calendar/users/me",
+	} {
+		if strings.Contains(help, forbidden) {
+			t.Errorf("API help must not advertise user-token example %q", forbidden)
+		}
+	}
+	for _, required := range []string{
+		"dws api GET /v1.0/microApp/allApps",
+		"dws api POST /v1.0/contact/users/search",
+		"dws api GET /v1.0/microApp/allApps --dry-run",
+		"dws api GET /v1.0/microApp/allApps --jq '.appList | length'",
+	} {
+		if !strings.Contains(help, required) {
+			t.Errorf("API help missing App Token-compatible example %q", required)
+		}
+	}
+}
+
 func TestRunAPI_QueryStringBlocked(t *testing.T) {
 	gf := &GlobalFlags{}
 	cmd := newAPICommand(gf)
@@ -106,7 +130,7 @@ func TestRunAPI_NoErrorWithoutQueryString(t *testing.T) {
 	cmd.SetErr(&stderr)
 	cmd.SetOut(&bytes.Buffer{})
 
-	cmd.SetArgs([]string{"GET", "/v1.0/contact/users/me"})
+	cmd.SetArgs([]string{"GET", "/v1.0/microApp/allApps"})
 	err := cmd.Execute()
 
 	errMsg := stderr.String()

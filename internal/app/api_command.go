@@ -83,16 +83,12 @@ oapi.dingtalk.com:
 示例:
   # === api.dingtalk.com ===
 
-  # 获取当前用户信息
-  dws api GET /v1.0/contact/users/me
+  # 获取企业所有应用列表
+  dws api GET /v1.0/microApp/allApps
 
   # 搜索用户 (POST + JSON body)
   dws api POST /v1.0/contact/users/search \
     --data '{"queryWord":"张三","offset":0,"size":10}'
-
-  # 创建日历事件
-  dws api POST /v1.0/calendar/users/me/calendars/primary/events \
-    --data '{"summary":"Team Meeting","start":{"dateTime":"2026-01-01T10:00:00+08:00"}}'
 
   # === oapi.dingtalk.com ===
 
@@ -111,14 +107,14 @@ oapi.dingtalk.com:
   dws api GET /v1.0/attendance/groups --page-all --page-limit 5
 
   # Dry-run 预览请求
-  dws api GET /v1.0/contact/users/me --dry-run
+  dws api GET /v1.0/microApp/allApps --dry-run
 
   # 上传文件（multipart，可附带文本字段）
   dws api POST /v1.0/example/upload --file media=./demo.png \
     --data '{"type":"image"}'
 
   # 使用 jq 过滤输出
-  dws api GET /v1.0/contact/users/me --jq '.nick'`,
+  dws api GET /v1.0/microApp/allApps --jq '.appList | length'`,
 		Args:              cobra.ExactArgs(2),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

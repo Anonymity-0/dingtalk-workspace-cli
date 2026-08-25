@@ -596,9 +596,8 @@ dws api POST https://oapi.dingtalk.com/topapi/v2/user/get \
   --data '{"userid":"<USER_ID>"}'
 
 # === 通用功能 ===
-dws api GET /v1.0/microApp/allApps --page-all   # 自动翻页
-dws api GET /v1.0/microApp/allApps --dry-run     # 预览请求
-dws api GET /v1.0/microApp/allApps --jq '.agentId'  # jq 过滤
+dws api GET /v1.0/microApp/allApps --dry-run             # 预览请求
+dws api GET /v1.0/microApp/allApps --jq '.appList | length'  # jq 过滤
 
 # 从 JSON 文件读取 query/body（也可用 - 从 stdin 读取）
 dws api GET /v1.0/example/resources --params @params.json
