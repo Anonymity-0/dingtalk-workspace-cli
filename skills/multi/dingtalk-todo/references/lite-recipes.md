@@ -65,4 +65,4 @@ python scripts/todo_overdue_check.py
 python scripts/todo_batch_create.py todos.json --dry-run
 ```
 
-批量脚本单批最多 30 条。先用 dry-run 展示精确批次；取得用户对该批次的明确确认后，才向脚本传 `--yes` 进入执行模式。脚本只把 Runtime 确认传给逐条创建调用，回读不携带该标记。输出保留逐项 ledger；`unknown` 表示写可能已提交，`unverified` 表示已有 `taskId` 但读回未通过，两者都需对账，不能自动重试。
+批量脚本单批最多 30 条。先用 dry-run 展示精确批次和稳定 `planDigest`；取得用户对该摘要的明确确认后，执行时必须同时传 `--confirm-digest <PLAN_DIGEST>` 与 `--yes`。脚本重新规范化输入并核对摘要，不匹配时零调用拒绝；匹配后只把 Runtime 确认传给逐条创建，回读不携带该标记。输出保留逐项 ledger；`unknown` 表示写可能已提交，`unverified` 表示已有 `taskId` 但读回未通过，两者都需对账，不能自动重试。

@@ -2,6 +2,7 @@
 """Create up to 30 Todo tasks, preserve every task ID, and verify each task."""
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -15,6 +16,7 @@ TIMEZONE = ZoneInfo("Asia/Shanghai")
 MAX_ITEMS = 30
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_PRIORITIES = {10, 20, 30, 40}
+PLAN_DIGEST_DOMAIN = b"dws-todo-batch-plan-v1\x00"
 
 
 class ScriptError(RuntimeError):
@@ -159,6 +161,18 @@ def validate(items: Any) -> List[Dict[str, Any]]:
     return validated
 
 
+def batch_plan_digest(items: List[Dict[str, Any]]) -> str:
+    canonical = json.dumps(
+        items,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    digest = hashlib.sha256(PLAN_DIGEST_DOMAIN + canonical).hexdigest()
+    return f"sha256:{digest}"
+
+
 def run(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
@@ -168,6 +182,10 @@ def run(argv: Optional[List[str]] = None) -> int:
         "--yes",
         action="store_true",
         help="confirm execution of the exact validated batch after user approval",
+    )
+    parser.add_argument(
+        "--confirm-digest",
+        help="planDigest from the user-approved dry-run output",
     )
     args = parser.parse_args(argv)
 
@@ -181,7 +199,8 @@ def run(argv: Optional[List[str]] = None) -> int:
         print(json.dumps({"complete": False, "error": str(exc)}, ensure_ascii=False))
         return 2
 
-    if not args.dry_run and not args.yes:
+    plan_digest = batch_plan_digest(items)
+    if not args.dry_run and (not args.yes or not args.confirm_digest):
         print(
             json.dumps(
                 {
@@ -191,7 +210,27 @@ def run(argv: Optional[List[str]] = None) -> int:
                     "executionStarted": False,
                     "error": (
                         "preview the exact batch with --dry-run; after the user "
-                        "confirms that batch, rerun with --yes"
+                        "confirms that planDigest, rerun with --yes and "
+                        "--confirm-digest <planDigest>"
+                    ),
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 2
+    if not args.dry_run and args.confirm_digest != plan_digest:
+        print(
+            json.dumps(
+                {
+                    "complete": False,
+                    "dryRun": False,
+                    "reason": "plan_mismatch",
+                    "executionStarted": False,
+                    "confirmedPlanDigest": args.confirm_digest,
+                    "actualPlanDigest": plan_digest,
+                    "error": (
+                        "the validated batch differs from the confirmed dry-run; "
+                        "preview again and obtain confirmation for the new planDigest"
                     ),
                 },
                 ensure_ascii=False,
@@ -270,6 +309,7 @@ def run(argv: Optional[List[str]] = None) -> int:
     output = {
         "complete": complete,
         "dryRun": args.dry_run,
+        "planDigest": plan_digest,
         "requestedCount": len(items),
         "verifiedCount": sum(item.get("status") == "verified" for item in ledger),
         "failedCount": sum(item.get("status") == "failed" for item in ledger),
