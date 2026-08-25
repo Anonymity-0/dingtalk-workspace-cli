@@ -16,6 +16,7 @@ package helpers
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -160,6 +161,71 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardVerifiesWrite(t *testing.T)
 		}
 		if caller.calls != 0 {
 			t.Fatalf("dry-run made %d calls", caller.calls)
+		}
+	})
+}
+
+func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
+	t.Run("a2ui payload uses a2ui update tool", func(t *testing.T) {
+		caller := &scriptedToolCaller{}
+		err := runNativeCardUpdate(t, caller,
+			"message", "update-card",
+			"--biz-id", "biz-1",
+			"--content", "[\"message1\",\"message2\"]",
+			"--flow-status", "9",
+			"--card-engine", "a2ui",
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		messages, ok := caller.args["a2uiMessages"].([]string)
+		wantArgs := map[string]any{
+			"bizId":        "biz-1",
+			"flowStatus":   9,
+			"a2uiMessages": []string{"message1", "message2"},
+		}
+		if caller.calls != 1 || caller.server != "im" || caller.tool != "update_a2ui_card" || !ok || !reflect.DeepEqual(messages, wantArgs["a2uiMessages"]) {
+			t.Fatalf("a2ui call = count:%d server:%q tool:%q args:%#v", caller.calls, caller.server, caller.tool, caller.args)
+		}
+		if caller.args["bizId"] != wantArgs["bizId"] || caller.args["flowStatus"] != wantArgs["flowStatus"] || caller.args["requestId"] == "" {
+			t.Fatalf("a2ui args = %#v", caller.args)
+		}
+	})
+
+	t.Run("streaming keeps old status range", func(t *testing.T) {
+		caller := &scriptedToolCaller{}
+		err := runNativeCardUpdate(t, caller,
+			"message", "update-card",
+			"--biz-id", "biz-1",
+			"--content", "完成",
+			"--flow-status", "6",
+			"--card-engine", "streaming",
+		)
+		if err == nil || !strings.Contains(err.Error(), "1-5") {
+			t.Fatalf("error = %v, want streaming status range", err)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("invalid streaming status made %d calls", caller.calls)
+		}
+	})
+
+	t.Run("a2ui validates content and status before call", func(t *testing.T) {
+		tests := [][]string{
+			{"--content", "plain", "--flow-status", "1"},
+			{"--content", "[\"message\"]", "--flow-status", "10"},
+			{"--content", "[1]", "--flow-status", "1"},
+		}
+		for _, extra := range tests {
+			caller := &scriptedToolCaller{}
+			args := []string{"message", "update-card", "--biz-id", "biz-1", "--card-engine", "a2ui"}
+			args = append(args, extra...)
+			err := runNativeCardUpdate(t, caller, args...)
+			if err == nil {
+				t.Fatalf("args %v unexpectedly succeeded", args)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("args %v made %d calls", args, caller.calls)
+			}
 		}
 	})
 }

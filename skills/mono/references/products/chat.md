@@ -2443,12 +2443,13 @@ dws chat message send --open-dingtalk-id <openDingTalkId> --content "这是本�
 dws chat message send --conversation-id <openConversationId> --msg-type image --media-id "@lQLPD4JNnliqBq3NBQDNA8Cw" --format json
 ```
 
-#### 创建并推送流式卡片 — 向群聊或单聊发送流式卡片消息
+#### 创建并推送卡片 — 向群聊或单聊发送 streaming/A2UI 卡片消息
 
 群聊传 --group，单聊传 --receiver，二者互斥。群聊创建时可通过 --at-open-dingtalk-ids @指定成员，或通过 --at-all @所有人。
 
 **注意：send-card 必须和 update-card 搭配使用。** 创建卡片时无需传入内容，后续通过 update-card 更新内容，最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。
-flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)。
+默认 `--card-engine streaming`，旧链路保持 `im.create_and_send_card` 不变。A2UI 使用 `--card-engine a2ui`，必须传 `--content` JSON 字符串数组，例如 `'["message1","message2"]'`；CLI 会生成 `a2uiMessages`，并用换行拼接为 `fallbackText`。A2UI 创建默认 `flowStatus=1(PROCESSING)`。
+flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；A2UI 更新接受 1-9，额外包含 6=中止(ABORTED)，7=超时(TIMEOUT)，8=确认中(CONFIRMING)，9=已确认(CONFIRMED)。
 ```
 Usage:
   dws chat message send-card [flags]
@@ -2457,19 +2458,23 @@ Example:
   dws chat message send-card --group <openConversationId> --at-open-dingtalk-ids <openDingTalkId>
   dws chat message send-card --group <openConversationId> --at-all
   dws chat message send-card --receiver <openDingTalkId>
+  dws chat message send-card --group <openConversationId> --card-engine a2ui --content '["message1","message2"]'
   # 查询群 ID: dws chat search --query "群名"
   # 查询人员: dws aisearch person --query "姓名" --dimension name
 Flags:
       --at-all                           群聊创建卡片时 @ 所有人（仅与 --group 一起使用）
       --at-open-dingtalk-ids string      群聊创建卡片时 @ 的 openDingTalkId 列表，逗号分隔（仅与 --group 一起使用）
+      --card-engine string               卡片引擎：streaming 或 a2ui（默认 streaming）
+      --content string                   A2UI 卡片消息 JSON 字符串数组（仅 --card-engine=a2ui 时必填）
       --group string                     群聊 openConversationId（群聊时必填，与 --receiver 互斥）
       --receiver string                  单聊接收者 openDingTalkId（单聊时必填，与 --group 互斥）
 ```
 
-#### 流式更新卡片内容 — 更新已发送的流式卡片内容
+#### 更新卡片内容 — 更新已发送的 streaming/A2UI 卡片内容
 
 --biz-id 为 send-card 返回的业务 ID，--flow-status 控制流式状态。
-flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)。
+默认 `--card-engine streaming`，旧链路保持 `im.update_streaming_card` 不变。A2UI 使用 `--card-engine a2ui`，`--content` 必须是 JSON 字符串数组并发送为 `a2uiMessages`。
+flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；a2ui 接受 1-9，额外包含 6=中止(ABORTED)，7=超时(TIMEOUT)，8=确认中(CONFIRMING)，9=已确认(CONFIRMED)。
 
 **最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。**
 更新结果不确定时不要再次执行更新；保留返回结果并告知用户。
@@ -2479,8 +2484,10 @@ Usage:
 Example:
   dws chat message update-card --biz-id <bizId> --content "更新的卡片内容" --flow-status 2
   dws chat message update-card --biz-id <bizId> --content "最终内容" --flow-status 3
+  dws chat message update-card --biz-id <bizId> --card-engine a2ui --content '["message1","message2"]' --flow-status 9
 Flags:
       --biz-id string    卡片业务 ID (必填)
+      --card-engine string 卡片引擎：streaming 或 a2ui（默认 streaming）
       --content string   卡片消息内容 (必填)
       --flow-status int  流式状态 (必填)
 ```
@@ -2550,8 +2557,8 @@ Flags:
 - `chat group quit` 退出群聊，需传 --group（openConversationId）
 - `chat group update-icon` 更新群头像，需传 --group（openConversationId）和由可信上游提供的有效 --icon-media-id（mediaId）；DWS CLI 不能从本地图片生成该 ID
 - `chat group update-settings` 更新群设置，需传 --group（openConversationId）、--setting-key（设置项 key）、--status（0=关闭 1=开启）
-- `chat message send-card` 创建并推送流式卡片，群聊传 --group，单聊传 --receiver，二者互斥；不传 content，后续通过 update-card 更新内容
-- `chat message update-card` 流式更新卡片内容，需传 --biz-id（创建卡片返回的业务 ID）、--content、--flow-status
+- `chat message send-card` 默认创建并推送 streaming 卡片，群聊传 --group，单聊传 --receiver，二者互斥；`--card-engine a2ui` 时必须传 JSON 字符串数组 `--content`
+- `chat message update-card` 默认流式更新卡片内容，需传 --biz-id（创建卡片返回的业务 ID）、--content、--flow-status；`--card-engine a2ui` 时 content 必须是 JSON 字符串数组且 flowStatus 可为 1-9
 - `chat message list-by-ids` 根据消息 ID 批量查询，--msg-ids 逗号分隔，最多 50 条
 - `chat message add-emoji` / `remove-emoji` 需传 --group（openConversationId）、--msg-id（openMsgId）、--emoji（表情名称）
 - `chat message add-text-emotion` / `remove-text-emotion` 需传 --group、--msg-id、--emotion-id、--emotion-name、--text、--background-id，六个参数全部必填

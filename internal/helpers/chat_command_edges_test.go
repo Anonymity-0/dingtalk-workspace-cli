@@ -607,6 +607,77 @@ func TestCrossPlatformCoverageChatSendCardHiddenAliasesMapToCanonicalPayload(t *
 	}
 }
 
+func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
+	previousDeps, previousArgs := deps, os.Args
+	os.Args = []string{"dws", "chat"}
+	t.Cleanup(func() { deps, os.Args = previousDeps, previousArgs })
+
+	t.Run("group payload uses a2ui card tool", func(t *testing.T) {
+		caller := &scriptedToolCaller{}
+		err := runChatCoverageCommand(t, caller,
+			"message", "send-card",
+			"--conversation-id=cid",
+			"--card-engine=a2ui",
+			"--content=[\"message1\",\"message2\"]",
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if caller.calls != 1 || caller.server != "im" || caller.tool != "create_a2ui_card" {
+			t.Fatalf("call = count:%d server:%q tool:%q args:%#v", caller.calls, caller.server, caller.tool, caller.args)
+		}
+		target, ok := caller.args["target"].(map[string]any)
+		if !ok || target["openConversationId"] != "cid" {
+			t.Fatalf("target = %#v", caller.args["target"])
+		}
+		messages, ok := caller.args["a2uiMessages"].([]string)
+		if !ok || !reflect.DeepEqual(messages, []string{"message1", "message2"}) {
+			t.Fatalf("a2uiMessages = %#v", caller.args["a2uiMessages"])
+		}
+		if caller.args["fallbackText"] != "message1\nmessage2" || caller.args["protocolVersion"] != "1.0" || caller.args["flowStatus"] != 1 {
+			t.Fatalf("args = %#v", caller.args)
+		}
+		if caller.args["requestId"] == "" || caller.args["bizCardId"] == "" {
+			t.Fatalf("missing generated ids: %#v", caller.args)
+		}
+	})
+
+	t.Run("direct message payload uses receiver uid target without local conversion", func(t *testing.T) {
+		caller := &scriptedToolCaller{}
+		err := runChatCoverageCommand(t, caller,
+			"message", "send-card",
+			"--open-dingtalk-id=D1",
+			"--card-engine=a2ui",
+			"--content=[\"message\"]",
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		target, ok := caller.args["target"].(map[string]any)
+		if caller.calls != 1 || caller.tool != "create_a2ui_card" || !ok || target["receiverUid"] != "D1" {
+			t.Fatalf("call = count:%d tool:%q target:%#v", caller.calls, caller.tool, caller.args["target"])
+		}
+	})
+
+	t.Run("invalid a2ui content makes no call", func(t *testing.T) {
+		for _, content := range []string{"", "plain text", "{\"message\":\"x\"}", "[1]"} {
+			caller := &scriptedToolCaller{}
+			err := runChatCoverageCommand(t, caller,
+				"message", "send-card",
+				"--conversation-id=cid",
+				"--card-engine=a2ui",
+				"--content="+content,
+			)
+			if err == nil {
+				t.Fatalf("content %q unexpectedly succeeded", content)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("content %q made %d calls", content, caller.calls)
+			}
+		}
+	})
+}
+
 func TestCrossPlatformCoverageChatGroupAuditJoinValidationUsesCanonicalAndAliasPayload(t *testing.T) {
 	previousDeps, previousArgs := deps, os.Args
 	os.Args = []string{"dws", "chat"}

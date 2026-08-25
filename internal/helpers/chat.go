@@ -24,8 +24,53 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/chatmsg"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
+
+const (
+	cardEngineStreaming = "streaming"
+	cardEngineA2UI      = "a2ui"
+
+	defaultA2UIFlowStatus = 1
+)
+
+func normalizeCardEngine(raw string) (string, error) {
+	engine := strings.ToLower(strings.TrimSpace(raw))
+	switch engine {
+	case "", cardEngineStreaming:
+		return cardEngineStreaming, nil
+	case cardEngineA2UI:
+		return cardEngineA2UI, nil
+	default:
+		return "", fmt.Errorf("--card-engine must be streaming or a2ui")
+	}
+}
+
+func validateCardFlowStatus(engine string, flowStatus int) error {
+	maxStatus := 5
+	if engine == cardEngineA2UI {
+		maxStatus = 9
+	}
+	if flowStatus < 1 || flowStatus > maxStatus {
+		return fmt.Errorf("--flow-status 必须在 1-%d 之间", maxStatus)
+	}
+	return nil
+}
+
+func parseA2UIMessages(raw string) ([]string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, fmt.Errorf("--content is required when --card-engine=a2ui")
+	}
+	var messages []string
+	if err := json.Unmarshal([]byte(raw), &messages); err != nil {
+		return nil, fmt.Errorf("--content must be a JSON string array when --card-engine=a2ui")
+	}
+	if len(messages) == 0 {
+		return nil, fmt.Errorf("--content must contain at least one message when --card-engine=a2ui")
+	}
+	return messages, nil
+}
 
 func resolveChatGroupRoleSetUserRoleIDs(cmd *cobra.Command) ([]string, error) {
 	roleIDChanged := cmd.Flags().Changed("role-id")
@@ -6239,14 +6284,20 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 
 注意：send-card 必须和 update-card 搭配使用。发送卡片后，使用返回的 bizId 调用 update-card 更新内容，
 最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。
-flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)。`,
+flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)。
+A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组，创建时默认 flowStatus=1(PROCESSING)。`,
 		Example: `  dws chat message send-card --conversation-id <openConversationId>
   dws chat message send-card --conversation-id <openConversationId> --at-open-dingtalk-ids <openDingTalkId>
   dws chat message send-card --conversation-id <openConversationId> --at-all
   dws chat message send-card --open-dingtalk-id <openDingTalkId>
+  dws chat message send-card --conversation-id <openConversationId> --card-engine a2ui --content '["message1","message2"]'
   # 查询群 ID: dws chat search --query "群名"
   # 查询人员: dws contact user search --keyword "姓名" --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cardEngine, err := normalizeCardEngine(mustGetFlag(cmd, "card-engine"))
+			if err != nil {
+				return err
+			}
 			groupID := flagOrFallback(cmd, "conversation-id", "group", "id", "chat")
 			receiver := flagOrFallback(cmd, "open-dingtalk-id", "receiver")
 			atOpenDingTalkIDs := uniqueNonEmptyStrings(parseCSVValues(mustGetFlag(cmd, "at-open-dingtalk-ids")))
@@ -6259,6 +6310,29 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			}
 			if groupID == "" && (len(atOpenDingTalkIDs) > 0 || atAll) {
 				return fmt.Errorf("--at-open-dingtalk-ids and --at-all are only supported with --conversation-id")
+			}
+			if cardEngine == cardEngineA2UI {
+				messages, err := parseA2UIMessages(mustGetFlag(cmd, "content"))
+				if err != nil {
+					return err
+				}
+				target := map[string]any{}
+				if groupID != "" {
+					target["openConversationId"] = groupID
+				}
+				if receiver != "" {
+					target["receiverUid"] = receiver
+				}
+				toolArgs := map[string]any{
+					"requestId":       uuid.NewString(),
+					"bizCardId":       uuid.NewString(),
+					"target":          target,
+					"protocolVersion": "1.0",
+					"flowStatus":      defaultA2UIFlowStatus,
+					"a2uiMessages":    messages,
+					"fallbackText":    strings.Join(messages, "\n"),
+				}
+				return callMCPToolOnServer("im", "create_a2ui_card", toolArgs)
 			}
 			toolArgs := map[string]any{}
 			if groupID != "" {
@@ -6295,9 +6369,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			},
 			Description: "创建并向群聊或单聊发送互动卡片；群聊创建时可 @成员或 @所有人",
 			Interface: &contract.InterfaceSpec{
-				Mode:         "mcp",
+				Mode:         "composite",
 				Availability: "available",
-				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "create_and_send_card"},
+				Reason:       "card-engine=streaming 调用 im.create_and_send_card；card-engine=a2ui 调用 im.create_a2ui_card",
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "创建并向群聊或单聊发送互动卡片；群聊创建时可 @成员或 @所有人",
@@ -6308,6 +6382,8 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			Parameters: []contract.ParamDecl{
 				{Name: "at-all", Property: "atAll", Required: boolPtr(false), InterfaceType: "boolean"},
 				{Name: "at-open-dingtalk-ids", Property: "atOpenDingTalkIds", Required: boolPtr(false), InterfaceType: "array"},
+				{Name: "card-engine", Property: "cardEngine", Required: boolPtr(false)},
+				{Name: "content", Property: "content", Required: boolPtr(false)},
 				{Name: "conversation-id", Property: "openConversationId"},
 				{Name: "group", Property: "openConversationId", Required: boolPtr(false)},
 				{Name: "open-dingtalk-id", Property: "receiverOpenDingTalkId"},
@@ -6319,6 +6395,8 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatMessageSendCardCmd.Flags().String("open-dingtalk-id", "", "单聊接收者 openDingTalkId（单聊时必填，与 --conversation-id 互斥）")
 	chatMessageSendCardCmd.Flags().String("receiver", "", "--open-dingtalk-id 的兼容别名")
 	_ = chatMessageSendCardCmd.Flags().MarkHidden("receiver")
+	chatMessageSendCardCmd.Flags().String("card-engine", cardEngineStreaming, "卡片引擎：streaming 或 a2ui（默认 streaming）")
+	chatMessageSendCardCmd.Flags().String("content", "", "A2UI 卡片消息 JSON 字符串数组（仅 --card-engine=a2ui 时必填）")
 	chatMessageSendCardCmd.Flags().String("at-open-dingtalk-ids", "", "群聊创建卡片时 @ 的 openDingTalkId 列表，逗号分隔（仅与 --conversation-id 一起使用）")
 	chatMessageSendCardCmd.Flags().Bool("at-all", false, "群聊创建卡片时 @ 所有人（仅与 --conversation-id 一起使用）")
 	cli.AnnotateRuntimeConstraints(chatMessageSendCardCmd, cli.RuntimeSchemaConstraints{
@@ -6331,11 +6409,17 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 		Short: "流式更新卡片内容",
 		Long: `更新已发送的流式卡片内容。--biz-id 为 send-card 返回的业务 ID，--flow-status 控制流式状态。
 
-flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)。
+A2UI 通过 --card-engine a2ui 启用，--content 必须是 JSON 字符串数组。
+flow-status 取值：streaming 为 1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成(FINISH)，4=执行中(EXECUTING)，5=错误(ERROR)；a2ui 额外接受 6=中止(ABORTED)，7=超时(TIMEOUT)，8=确认中(CONFIRMING)，9=已确认(CONFIRMED)。
 最后一次更新必须将 --flow-status 设为 3（finish），否则卡片会一直处于"生成中"的加载状态。`,
 		Example: `  dws chat message update-card --biz-id <bizId> --content "更新的卡片内容" --flow-status 2
-  dws chat message update-card --biz-id <bizId> --content "最终内容" --flow-status 3`,
+  dws chat message update-card --biz-id <bizId> --content "最终内容" --flow-status 3
+  dws chat message update-card --biz-id <bizId> --card-engine a2ui --content '["message1","message2"]' --flow-status 9`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cardEngine, err := normalizeCardEngine(mustGetFlag(cmd, "card-engine"))
+			if err != nil {
+				return err
+			}
 			if err := validateRequiredFlags(cmd, "biz-id", "content"); err != nil {
 				return err
 			}
@@ -6347,8 +6431,21 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 				return err
 			}
 			flowStatus, _ := cmd.Flags().GetInt("flow-status")
-			if flowStatus < 1 || flowStatus > 5 {
-				return fmt.Errorf("--flow-status 必须在 1-5 之间")
+			if err := validateCardFlowStatus(cardEngine, flowStatus); err != nil {
+				return err
+			}
+			if cardEngine == cardEngineA2UI {
+				messages, err := parseA2UIMessages(mustGetFlag(cmd, "content"))
+				if err != nil {
+					return err
+				}
+				params := map[string]any{
+					"requestId":    uuid.NewString(),
+					"bizId":        bizID,
+					"flowStatus":   flowStatus,
+					"a2uiMessages": messages,
+				}
+				return callMCPToolOnServer("im", "update_a2ui_card", params)
 			}
 			params := map[string]any{
 				"bizId":      bizID,
@@ -6405,9 +6502,9 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			},
 			Description: "更新已发送流式卡片的内容和状态",
 			Interface: &contract.InterfaceSpec{
-				Mode:         "mcp",
+				Mode:         "composite",
 				Availability: "available",
-				Ref:          &contract.InterfaceRefSpec{ProductID: "im", RPCName: "update_streaming_card"},
+				Reason:       "card-engine=streaming 调用 im.update_streaming_card；card-engine=a2ui 调用 im.update_a2ui_card",
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "更新已发送流式卡片的内容和状态",
@@ -6417,6 +6514,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "biz-id", Property: "bizId"},
+				{Name: "card-engine", Property: "cardEngine", Required: boolPtr(false)},
 				{Name: "content", Property: "msgContent"},
 				{Name: "flow-status", Property: "flowStatus"},
 			},
@@ -6427,6 +6525,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 	chatMessageUpdateCardCmd.Flags().String("content", "", "卡片消息内容 (必填)")
 	_ = chatMessageUpdateCardCmd.MarkFlagRequired("content")
 	chatMessageUpdateCardCmd.Flags().Int("flow-status", 0, "流式状态 (必填)")
+	chatMessageUpdateCardCmd.Flags().String("card-engine", cardEngineStreaming, "卡片引擎：streaming 或 a2ui（默认 streaming）")
 
 	// ── download-media：下载消息中的媒体资源（走 IM MCP）──────
 	chatMessageDownloadMediaCmd := &cobra.Command{
