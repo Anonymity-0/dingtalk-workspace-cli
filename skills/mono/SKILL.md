@@ -99,11 +99,6 @@ cli_version: ">=1.0.15"
 | `wiki`            | 知识库：空间创建/详情/列表/搜索 + 成员管理 + 知识库动态查询                | [wiki.md](./references/products/wiki.md)                       |
 | `whiteboard`      | 文档内嵌白板：读取 OpenNodes、追加节点、整页重建                           | [whiteboard.md](./references/products/whiteboard.md)           |
 | `recruit`         | 钉钉招聘：查询职位列表、获取职位详情、创建职位                              | [recruit.md](./references/products/recruit.md)                  |
-| `edu-app`         | 家校应用（教育版）：家校任务、班级消息摘要等教育场景应用能力                       | [edu-app.md](./references/products/edu-app.md)                  |
-| `edu-contact`     | 家校通讯录（教育版）：学校组织架构、班级列表等教育场景通讯录能力                    | [edu-contact.md](./references/products/edu-contact.md)          |
-| `edu-group`       | 家校群（师生群）：班级群/师生群的查询、创建、解散                              | [edu-group.md](./references/products/edu-group.md)             |
-| `edu-familygroup` | 家庭群：家庭群查询/创建、孩子管理、家长邀请、学生应用权限控制                      | [edu-familygroup.md](./references/products/edu-familygroup.md) |
-| `college-contact` | 高校通讯录：高校组织架构/院系部门管理(查询/创建/更新/删除)/师生员工管理(查询/添加/移除/变更类型与部门/激活短信)/通讯录搜索/概览统计/升级 | [college-contact.md](./references/products/college-contact.md) |
 | `event`           | 个人 IM/OA 事件：监听消息、群生命周期、审批任务与审批实例事件，NDJSON 输出（实时驱动 Agent）| [event.md](./references/products/event.md)                     |
 
 ## 意图判断决策树
@@ -173,8 +168,6 @@ cli_version: ">=1.0.15"
 | `oa` | `approval reject` | 拒绝待审批（需加明确理由） |
 | `todo` | `task delete` | 删除待办 |
 | `minutes` | `replace-text` | 全文批量替换转写与摘要 |
-| `college-contact` | `dept delete` | 删除高校部门，不可恢复 |
-| `college-contact` | `employee remove` | 移除高校员工，不可恢复 |
 
 ### 确认流程
 ```

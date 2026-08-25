@@ -64,8 +64,8 @@ git diff --check
 
 ## Reviewer Router GitHub App
 
-Reviewer requests and native auto-merge intentionally use different
-identities. The base-owned `pull_request_target` workflow may use its built-in
+Reviewer requests and merge authority intentionally use different identities.
+The base-owned `pull_request_target` workflow may use its built-in
 `GITHUB_TOKEN` to request reviewers, but it must mint a dedicated GitHub App
 installation token before enabling auto-merge. GitHub suppresses most workflow
 events created by the built-in token; using it for auto-merge prevents the
@@ -88,9 +88,10 @@ it:
   containing explicit boolean `false`, and reject every other present shape or
   value. They then bind the same ruleset node through GraphQL and require its
   non-null `updateAllowsFetchAndMerge` value to be exactly `false`;
-- give that ruleset exactly two bypass actors: the Reviewer Router App as an
-  `Integration` in `pull_request` mode, and `PeterGuy326` (ID `47820304`) in
-  `always` mode for Formula publication and break-glass recovery;
+- give that ruleset exactly three bypass actors: the Reviewer Router App as an
+  `Integration` in `pull_request` mode, plus `haofeng0705` (ID `30925823`) and
+  `PeterGuy326` (ID `47820304`) in `always` mode for Formula publication and
+  break-glass recovery;
 - never give the App bypass on `main-protection`, `main-quality`, or any other
   ruleset, and never reuse `HOMEBREW_PR_TOKEN`,
   `RELEASE_GOVERNANCE_TOKEN`, or a personal token for Reviewer Router.
@@ -116,7 +117,7 @@ the minted App independently requires `pull_requests_only` on that writer rule
 and `never` on every other active main ruleset. These identity-relative checks
 remain available to low-privilege tokens; GitHub deliberately hides the full
 `bypass_actors` list from callers without ruleset-write access. Operators must
-therefore inspect that list during rollout and keep it at the exact two actors
+therefore inspect that list during rollout and keep it at the exact three actors
 above. The required `Test` context then briefly waits for the concurrent
 router takeover and accepts only a null request or the configured App owner
 with exact fixed metadata. A null request is safe for this failure mode because
@@ -133,14 +134,38 @@ repository's reviewed `MERGE_MESSAGE` title plus `PR_TITLE` or `BLANK` body
 defaults. GitHub does not expose those merge-related settings to the read-only
 admission token: the classifier accepts only both exact reviewed values or the
 complete omission of both properties, and rejects partial omission, `null`, or
-any other value. Before any enable or reconcile mutation, the dedicated App's
-current-repository token (which has `Contents: write`) must observe both exact
-reviewed values. The dedicated App binds the mutation to the exact head OID and
-supplies a fixed safe headline and body, so GitHub cannot copy an unsafe PR
-title into its merge commit.
+any other value. Before any enable, reconcile, or merge mutation, the dedicated
+App's current-repository token (which has `Contents: write`) must observe both
+exact reviewed values. The dedicated App binds each mutation to the exact head
+OID and supplies a fixed safe headline and body, so GitHub cannot copy an unsafe
+PR title into its merge commit.
 After enabling, the workflow requires the owner to equal the token action's
 exact `<app-slug>[bot]` output. If the event base/head changes during the
 mutation window, it removes only that App-owned request and fails the run.
+The App-owned native auto-merge request is the reviewed automation intent, not
+the sole executor: GitHub's deferred auto-merge path does not reliably apply a
+GitHub App's pull-request-only ruleset bypass. A zero-permission approval-signal
+workflow converts submitted or dismissed reviews into `workflow_run`; completed
+admission workflows use the same trusted default-branch trigger. The serialized
+reconcile job treats `workflow_run` only as a wake-up signal: it never reads the
+triggering run's pull-request payload or artifacts and never checks out code
+from that run. It enumerates open `main` PRs again through the API, then
+revalidates the safe App owner, metadata, and ruleset boundary immediately
+before calling the synchronous PR merge endpoint with the exact current head
+SHA. The preflight requires exactly one repository-owned `main-protection`
+ruleset with one latest-head approval and exactly one repository-owned
+`main-quality` ruleset with the reviewed nine strict checks. The App must report
+`never` on both and on every other non-writer ruleset. Every required context
+must be bound to the GitHub Actions App (`integration_id=15368`); a missing,
+different, or duplicate context/source entry fails closed together with
+deletion or weakening of either gate. HTTP 405 means the PR is not ready,
+while 409 means its revision
+changed; either remains open for the next event. Other failures make
+reconciliation red. A concurrent native merge is accepted only after the final
+PR state proves the exact head, App identity, and non-empty merge SHA.
+A staggered twice-hourly schedule provides eventual recovery if a webhook or
+workflow completion is delayed, and `workflow_dispatch` remains the on-demand
+repair path.
 The break-glass publisher must preserve a safe final commit message;
 `[skip ci]`, `[ci skip]`, `[no ci]`, `[skip actions]`,
 `[actions skip]`, and a `skip-checks: true` trailer are forbidden outside the
@@ -153,24 +178,46 @@ the normal path; if break-glass merge is unavoidable, preserve a safe final
 message so the protected-main push CI remains the authoritative producer.
 
 After installing the App, the protected-main push that deploys this workflow
-runs reconciliation automatically. The job enumerates open, ready `main` PRs
+runs reconciliation automatically. Approval-signal and admission-workflow
+completions run the same serialized recovery path. The job enumerates open,
+ready `main` PRs
 with any non-App owner, unsafe App metadata, or workflow-skip metadata. It
 revalidates each base/head, converges a safe request to the exact dedicated-App
 owner and fixed message, and leaves a workflow-skipping request disabled for
 manual correction. It never enables auto-merge where the request was already
-null. A mid-migration failure leaves the affected PR disabled for a fresh
-routing event or break-glass merge. One PR failure is recorded
+null. Every exact safe App request is then attempted through the synchronous,
+SHA-bound merge endpoint; a server-declared not-ready result remains open for
+the next event. A mid-migration failure leaves the affected PR disabled for a
+fresh routing event or break-glass merge. One PR failure is recorded
 without preventing later legacy owners from being attempted; the batch ends
 red with a per-PR summary. Manually dispatch `Reviewer routing` from `main`
 until the failed count is zero.
+
+Disabling the App-owned auto-merge request before the reconcile job's final PR
+read leaves that PR manual-only. That final read is the cancellation
+linearization point: GitHub's merge API can condition atomically on the head SHA
+but not on the auto-merge request itself, so a disable racing after that read may
+lose to an already-issued merge request. To stop an in-flight attempt
+before the merge endpoint accepts it, close the PR or change its head; if the
+server observes that state first, it rejects the state/SHA-bound merge. No
+client-side action can revoke a merge that GitHub has already accepted.
+The endpoint has no equivalent expected-base parameter. The workflow therefore
+checks `base=main` and the repository before and after merge and fails any
+retargeted result, but a retarget racing after the final read cannot be made
+atomic client-side. Never retarget a PR while its App-owned intent is active:
+disable the request, wait until all running `Reviewer routing` reconciliation
+jobs finish, and only then change the base. Preventing a malicious same-instant
+retarget requires a GitHub-side branch/ruleset control rather than workflow
+code.
 
 A PR that introduces or rotates this identity still runs the old base-owned
 router. Install/configure the App and activate the exact writer ruleset first;
 this blocks its legacy `github-actions[bot]` request from writing `main`. After
 the governance PR's final push, disable that old request, confirm the live
 settings/ruleset contract and all required checks are green for the exact head,
-then have only `PeterGuy326` merge that head with the repository-generated safe
-merge message. Verify the resulting merge SHA has a `CI` run with `event=push`,
+then have only `haofeng0705` or `PeterGuy326` merge that head with the
+repository-generated safe merge message. Verify the resulting merge SHA has a
+`CI` run with `event=push`,
 a successful `Coverage` context, and an exact-SHA baseline cache under
 `refs/heads/main`. Confirm automatic reconciliation reports zero failures and
 zero non-App owners. Finally use a normal canary PR to verify that the dedicated
