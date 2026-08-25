@@ -93,10 +93,12 @@ func newChatTopicCommand(sendRunE func(*cobra.Command, []string) error) *cobra.C
 
 func newChatTopicCreateCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
-		Use:           "create",
-		Short:         "创建话题圈",
-		Long:          "创建一个话题圈，固定开启话题模式。返回结果使用 openTopicId。",
-		Example:       `  dws chat topic create --name "项目话题圈" --users userId1,userId2`,
+		Use:   "create",
+		Short: "创建话题圈",
+		Long: `创建一个话题圈，固定开启话题模式。返回结果使用 openTopicId。
+默认创建 INTERNAL 类型；成员包含外部联系人时，首次调用就使用 --type EXTERNAL，不要通过失败的创建请求试探成员类型。`,
+		Example: `  dws chat topic create --name "项目话题圈" --users userId1,userId2
+  dws chat topic create --name "外部协作话题圈" --users openDingTalkId1 --type EXTERNAL`,
 		OutputRollout: output.RolloutUnifiedActive,
 		Tool:          "create_group_conversation",
 		Flags: []LeafFlag{
@@ -122,9 +124,12 @@ func newChatTopicCreateCommand() *cobra.Command {
 			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "im", RPCName: "create_group_conversation"}},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "创建开启话题模式的群聊容器",
-				UseWhen:      []string{"用户明确要新建话题圈并已提供名称和成员时"},
-				AvoidWhen:    []string{"创建普通群聊时使用 chat group create"},
-				Examples:     []string{"dws chat topic create --name \"项目话题圈\" --users userId1,userId2"},
+				UseWhen:      []string{"用户明确要新建话题圈并已提供名称、成员和成员所属范围时；成员包含外部联系人则首次调用直接指定 --type EXTERNAL"},
+				AvoidWhen:    []string{"创建普通群聊时使用 chat group create；成员类型尚未确认时先只读解析，不要用创建请求试探 INTERNAL 或 EXTERNAL"},
+				Examples: []string{
+					"dws chat topic create --name \"项目话题圈\" --users userId1,userId2",
+					"dws chat topic create --name \"外部协作话题圈\" --users openDingTalkId1 --type EXTERNAL",
+				},
 			},
 			Parameters: []contract.ParamDecl{{Name: "name", Property: "groupName"}, {Name: "type", Property: "groupType"}, {Name: "users", Property: "groupMembers"}},
 			Result: &contract.ResultSpec{

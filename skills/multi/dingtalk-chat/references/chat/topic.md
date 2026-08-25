@@ -15,6 +15,8 @@
 | 已有完整 Topic 标识，分页读取一页回复 | `dws chat topic list-replies` |
 | 转发整条话题 | `dws chat topic forward` |
 
+创建前先用只读查询确认成员范围：成员都属于当前组织时使用默认 `INTERNAL`；成员包含外部联系人时，首次创建直接指定 `--type EXTERNAL`。不要通过失败的创建请求试探成员类型。
+
 ## 回复与读取
 
 `topic reply` 只向指定 `openConvThreadId` 追加回复，不使用消息引用回复，也不创建新的顶层话题。
