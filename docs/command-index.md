@@ -33,7 +33,7 @@ Every command inherits these flags (documented here once, not repeated per comma
 - [`dws aitable` — AI Tables](#dws-aitable) · 41 commands
 - [`dws attendance` — Attendance](#dws-attendance) · 4 commands
 - [`dws calendar` — Calendar](#dws-calendar) · 14 commands
-- [`dws chat` — Group Chat / IM](#dws-chat) · 26 commands
+- [`dws chat` — Group Chat / IM](#dws-chat) · 31 commands
 - [`dws contact` — Contact Directory](#dws-contact) · 6 commands
 - [`dws devdoc` — Open Platform Docs](#dws-devdoc) · 2 commands
 - [`dws ding` — DING Messages](#dws-ding) · 2 commands
@@ -134,7 +134,7 @@ _Calendar events, participants, meeting rooms, and busy-status queries._
 
 _Group chats, conversations, messages, and robot/webhook integrations._
 
-**26 commands**
+**38 commands**
 
 | Command | Description | When to use |
 |---|---|---|
@@ -155,7 +155,6 @@ _Group chats, conversations, messages, and robot/webhook integrations._
 | `dws chat message list-by-sender` | Fetch messages authored by a specific sender across both single and group chats. | When the agent needs to pull everything a particular colleague said recently. |
 | `dws chat message list-focused` | Fetch messages from users the current user has marked as "special focus" (starred contacts). | When the agent builds a priority-inbox view highlighting messages from important people. |
 | `dws chat message list-mentions` | Fetch messages where the current user was @-mentioned. | When the agent wants to surface items that explicitly require the user's attention. |
-| `dws chat message list-topic-replies` | Pull replies under a specific group topic thread. | When the agent needs the conversation tree of a threaded discussion rather than the flat message list. |
 | `dws chat message list-unread-conversations` | Fetch the list of conversations that currently have unread messages for the user. | When the agent builds a "catch me up" triage view of what still needs reading. |
 | `dws chat message recall-by-bot` | Recall (retract) a message previously sent by a robot in a group chat. | When the agent sent a bot message in error or with incorrect content and needs to withdraw it. |
 | `dws chat message search` | Search messages by keyword across the user's conversations. | When the agent needs to locate a specific statement or link the user remembers from chat history. |
@@ -164,6 +163,19 @@ _Group chats, conversations, messages, and robot/webhook integrations._
 | `dws chat message send-by-webhook` | Send a group message via a custom-robot incoming webhook URL. | When the agent needs to post to a group using a webhook without requiring full bot-permission setup. |
 | `dws chat search` | Search group conversations the user belongs to by group name keyword. | When the agent needs to resolve a group name to a conversation ID. |
 | `dws chat search-common` | Find group chats the current user and a specified other user both belong to. | When the agent needs an existing shared channel to contact another user without creating a new group. |
+| `dws chat thread create-group` | Create a group with Thread mode enabled. | When the agent needs a new topic-circle container rather than an ordinary group chat. |
+| `dws chat thread send` | Publish a new topic. | When the agent needs to create a new top-level discussion. |
+| `dws chat thread list` | List topic root messages and their `openConvThreadId` values. | When the agent needs to browse topic discussions in a conversation. |
+| `dws chat thread reply` | Append a direct reply to an `openConvThreadId`. | When the agent needs to reply inside an existing Thread without quoting a message. |
+| `dws chat thread list-replies` | List replies under an `openConvThreadId`. | When the agent needs one page of replies for a Thread. |
+| `dws chat thread forward` | Forward a complete Thread with its context. | When the agent needs to copy a Thread into another conversation. |
+| `dws chat thread recall-message` | Recall one message from a Thread. | When the agent needs to retract one Thread reply or root message. |
+| `dws chat thread add-emoji` | Add an emoji reaction to a Thread message. | When the agent needs to react to a Thread root or reply. |
+| `dws chat thread remove-emoji` | Remove the current user's emoji reaction from a Thread message. | When the agent needs to undo a Thread reaction. |
+| `dws chat thread list-emotion-replies` | List emoji and text-emotion replies for Thread messages. | When the agent needs reaction users or statistics for Thread messages. |
+| `dws chat thread add-text-emotion` | Add a text emotion to a Thread message. | When the agent needs to attach a known text status such as processing or resolved. |
+| `dws chat thread remove-text-emotion` | Remove a text emotion from a Thread message. | When the agent needs to clear a text status. |
+| `dws chat thread update-text-emotion` | Atomically replace a text emotion on a Thread message. | When the agent needs to change a Thread message status. |
 
 ## `dws contact` — Contact Directory
 
