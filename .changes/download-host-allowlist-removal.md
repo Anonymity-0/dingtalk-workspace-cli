@@ -3,20 +3,20 @@ category: Changed
 ---
 
 - **Download host trust policy** — retires the static DingTalk/OSS download
-  host allowlist and the dial-time public-IP refusal from both the shared
-  local download path (`drive +download`, `drive +version-download`,
-  doc/minutes artifact downloads) and the chat message-resource path
-  (`chat +messages-resource-download`, `--download-resources`). Download
-  URLs still require an HTTPS domain (IP literals and userinfo URLs stay
-  rejected) and now accept non-default HTTPS ports, because every dimension
-  of a dedicated-deployment storage endpoint — custom domain, port, and
-  network location — is decided by the customer deployment and cannot be
-  enumerated or configured client-side. Verified on a dedicated deployment
-  whose storage domain resolves to a customer-intranet address. Downloads
-  align with the official GUI client, which applies no client-side SSRF
+  host allowlist, the dial-time public-IP refusal, and the IP-literal
+  refusal from both the shared local download path (`drive +download`,
+  `drive +version-download`, doc/minutes artifact downloads) and the chat
+  message-resource path (`chat +messages-resource-download`,
+  `--download-resources`). Download URLs only require HTTPS without userinfo
+  and accept non-default HTTPS ports, because every dimension of a
+  dedicated-deployment storage endpoint — custom domain, port, and network
+  location — is decided by the customer deployment and cannot be enumerated
+  or configured client-side. Verified on a dedicated deployment whose
+  storage domain resolves to a customer-intranet address. Downloads align
+  with the official GUI client, which applies no client-side SSRF
   interception: download URLs only ever come from authenticated service
   responses (no command accepts a user-supplied URL), TLS hostname
-  verification pins the connection to the requested domain, redirects are
+  verification pins the connection to the requested host, redirects are
   re-validated per hop, and service credential headers are stripped once a
   redirect leaves the original origin.
 - **Upload host trust unchanged** — upload target URLs (`drive +upload`,

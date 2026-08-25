@@ -317,11 +317,12 @@ func isAliyunOSSHost(host string) bool {
 }
 
 // validateResourceDownloadURL enforces the shared localio download URL
-// policy: HTTPS domain names only, never IP literals or userinfo URLs.
-// Resource URLs are always resolved from an authenticated MCP response
-// (never user-supplied), and localio.SecureHTTPClient keeps TLS hostname
-// verification plus redirect credential hygiene, mirroring the official GUI
-// client which applies no client-side SSRF interception to downloads.
+// policy: HTTPS URLs without userinfo, on any host or port, IP literals
+// included. Resource URLs are always resolved from an authenticated MCP
+// response (never user-supplied), and localio.SecureHTTPClient keeps TLS
+// hostname verification plus redirect credential hygiene, mirroring the
+// official GUI client which applies no client-side SSRF interception to
+// downloads.
 func validateResourceDownloadURL(rawURL string) (*url.URL, error) {
 	parsed, err := localio.ValidateDownloadURL(rawURL)
 	if err != nil {

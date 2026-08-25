@@ -64,14 +64,16 @@ func TestCrossPlatformCoverageDownloadURLPolicy(t *testing.T) {
 	valid := []string{
 		"https://alidocs.dingtalk.com/file.docx",
 		"https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/file.md",
-		// 域名白名单已移除：任意 HTTPS 域名在 URL 校验层放行，
-		// SSRF 防护由拨号层的公网 IP 强制校验承担。
+		// 域名白名单、IP 直连拦截与拨号层公网 IP 校验均已移除：
+		// 任意 HTTPS 主机（含 IP 字面量）在 URL 校验层放行，对齐
+		// GUI 客户端（无客户端侧 SSRF 拦截）。
 		"https://ddoss.ijingbo.chambroad.com/file.doc",
-		// 专属部署存储域可服务在非默认端口；端口不是信任信号，
-		// 拨号层公网 IP 校验与端口号无关。
+		// 专属部署存储域可服务在非默认端口；端口不是信任信号。
 		"https://ddoss.ijingbo.chambroad.com:8443/file.doc",
 		"https://evil.example/file.docx",
 		"https://oss-cn-hangzhou-internal.aliyuncs.com/file.docx",
+		"https://127.0.0.1/file.docx",
+		"https://[::1]/file.docx",
 	}
 	for _, raw := range valid {
 		if _, err := ValidateDownloadURL(raw); err != nil {
@@ -80,7 +82,6 @@ func TestCrossPlatformCoverageDownloadURLPolicy(t *testing.T) {
 	}
 	invalid := []string{
 		"http://alidocs.dingtalk.com/file.docx",
-		"https://127.0.0.1/file.docx",
 		"https://user@alidocs.dingtalk.com/file.docx",
 		"http://alidocs.dingtalk.com:8443/file.docx",
 		"https://alidocs.dingtalk.com:NOTAPORT/file.docx",

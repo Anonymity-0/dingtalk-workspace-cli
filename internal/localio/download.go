@@ -290,20 +290,15 @@ func SafeFilename(preferredName, rawURL string) string {
 	return "download"
 }
 
-// ValidateDownloadURL accepts HTTPS download URLs on any port. Hosts must be
-// domain names, never IP literals or userinfo URLs; TLS hostname
-// verification in secureHTTPClient then pins the connection to the requested
-// domain. Dedicated-deployment storage domains legitimately use custom
-// domains, non-default ports, and customer-intranet addresses, so the port
-// and the resolved network location are not client-side trust signals.
+// ValidateDownloadURL accepts HTTPS download URLs on any host and port, IP
+// literals included — mirroring the official GUI client, which applies no
+// client-side SSRF interception to downloads. Only userinfo URLs stay
+// rejected; TLS hostname verification in secureHTTPClient pins the
+// connection to the requested host and redirects are re-validated per hop.
 func ValidateDownloadURL(rawURL string) (*url.URL, error) {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
-	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
-		return nil, fmt.Errorf("下载地址必须是受信任域名上的 HTTPS URL")
-	}
-	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
-	if host == "" || net.ParseIP(host) != nil {
-		return nil, fmt.Errorf("下载地址不允许使用 IP 直连，必须是 HTTPS 域名")
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil {
+		return nil, fmt.Errorf("下载地址必须是合法的 HTTPS URL")
 	}
 	return parsed, nil
 }

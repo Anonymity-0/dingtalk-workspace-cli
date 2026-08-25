@@ -188,19 +188,19 @@ func TestCrossPlatformCoverageResourceDownloadValidationAndInfo(t *testing.T) {
 			t.Errorf("isAliyunOSSHost(%q) = %v, want %v", host, got, want)
 		}
 	}
-	// Host trust is no longer a static allowlist: any HTTPS domain (including
-	// dedicated-deployment download hosts) passes URL validation, while IP
-	// literals, userinfo URLs, and plain HTTP stay rejected. Non-default HTTPS
-	// ports are accepted: dedicated storage domains legitimately serve on them
-	// and SSRF protection is enforced at dial time by localio.SecureHTTPClient.
+	// Host trust is no longer a static allowlist: any HTTPS host (including
+	// dedicated-deployment download hosts and IP literals) passes URL
+	// validation, while userinfo URLs and plain HTTP stay rejected.
+	// Non-default HTTPS ports are accepted: dedicated storage domains
+	// legitimately serve on them.
 	for rawURL, wantOK := range map[string]bool{
 		"https://download.dingtalk.com/file":               true,
 		"https://bucket.oss-cn-hangzhou.aliyuncs.com/file": true,
 		"https://ddoss.tenant.example.com/file":            true,
 		"https://ddoss.tenant.example.com:8443/file":       true,
+		"https://203.0.113.5/file":                         true,
 		"http://download.dingtalk.com/file":                false,
 		"http://download.dingtalk.com:8443/file":           false,
-		"https://203.0.113.5/file":                         false,
 		"https://user:secret@download.dingtalk.com/file":   false,
 	} {
 		if _, err := validateResourceDownloadURL(rawURL); (err == nil) != wantOK {
@@ -426,13 +426,6 @@ func TestCrossPlatformCoverageDownloadResourceHTTPFailures(t *testing.T) {
 	if _, err := downloadResourceAtomically(context.Background(), resourceResponseClient(200, "x", 2), "https://download.dingtalk.com/file", nil, dest, false); err == nil {
 		t.Fatal("content-length mismatch was accepted")
 	}
-	nilClientDest := filepath.Join(t.TempDir(), "nil-client")
-	if _, err := downloadResourceAtomically(
-		context.Background(), nil, "https://203.0.113.5/file",
-		map[string]string{"X-Test": "ok"}, nilClientDest, true,
-	); err == nil {
-		t.Fatal("nil-client path accepted an IP-literal URL")
-	}
 }
 
 func TestCrossPlatformCoverageDownloadResourceDedicatedHostWithHeaders(t *testing.T) {
@@ -467,11 +460,18 @@ func TestCrossPlatformCoverageDownloadResourceNilClientUsesSecureDefault(t *test
 			}, nil
 		})}
 	}
-	if _, err := downloadResourceAtomically(
-		context.Background(), nil, "https://download.dingtalk.com/file", nil,
-		filepath.Join(t.TempDir(), "nil-secure"), false,
-	); err != nil {
-		t.Fatal(err)
+	// IP-literal download hosts pass the same host-agnostic HTTPS policy as
+	// domain hosts: the GUI client applies no client-side SSRF interception.
+	for _, resourceURL := range []string{
+		"https://download.dingtalk.com/file",
+		"https://203.0.113.5/file",
+	} {
+		if _, err := downloadResourceAtomically(
+			context.Background(), nil, resourceURL, nil,
+			filepath.Join(t.TempDir(), "nil-secure"), false,
+		); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if !served {
 		t.Fatal("nil client did not route through the secure default client")
