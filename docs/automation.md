@@ -84,8 +84,10 @@ it:
   targeting only `refs/heads/main`, with exactly one `Restrict updates` rule
   (`update_allows_fetch_and_merge: false`). GitHub may project that strict
   value through the read APIs as `{type: "update"}` with `parameters` omitted;
-  consumers accept only that omission or an explicit boolean `false`, and
-  reject every present non-false value;
+  consumers accept only that exact omission or a one-field `parameters` object
+  containing explicit boolean `false`, and reject every other present shape or
+  value. They then bind the same ruleset node through GraphQL and require its
+  non-null `updateAllowsFetchAndMerge` value to be exactly `false`;
 - give that ruleset exactly two bypass actors: the Reviewer Router App as an
   `Integration` in `pull_request` mode, and `PeterGuy326` (ID `47820304`) in
   `always` mode for Formula publication and break-glass recovery;

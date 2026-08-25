@@ -446,18 +446,48 @@ jobs:
             const writerRuleset = writerRulesets[0];
             const writerIncludes = writerRuleset.conditions?.ref_name?.include || [];
             const writerExcludes = writerRuleset.conditions?.ref_name?.exclude || [];
-            // GitHub's read projection omits parameters when this update-rule
-            // exception is disabled. Accept only that omission or exact false;
-            // reject a present null/non-boolean field instead of weakening the gate.
+            // GitHub's read projection omits the entire parameters property
+            // when this exception is disabled. Accept only that exact omission
+            // or a one-field object containing exact false.
             function isStrictUpdateRule(rule) {
               if (rule?.type !== 'update') {
                 return false;
               }
-              const updateAllowsFetchAndMerge =
-                rule.parameters?.update_allows_fetch_and_merge;
+              if (!Object.prototype.hasOwnProperty.call(rule, 'parameters')) {
+                return true;
+              }
+              const parameters = rule.parameters;
+              if (
+                parameters === null ||
+                typeof parameters !== 'object' ||
+                Array.isArray(parameters)
+              ) {
+                return false;
+              }
+              const parameterKeys = Object.keys(parameters);
               return (
-                updateAllowsFetchAndMerge === undefined ||
-                updateAllowsFetchAndMerge === false
+                parameterKeys.length === 1 &&
+                parameterKeys[0] === 'update_allows_fetch_and_merge' &&
+                parameters.update_allows_fetch_and_merge === false
+              );
+            }
+            function isStrictGraphQLUpdateRule(restRuleset, graphRuleset) {
+              const restRulesetID = Number(restRuleset?.id);
+              const graphRulesetID = Number(graphRuleset?.databaseId);
+              const graphRules = graphRuleset?.rules;
+              const graphRule = graphRules?.nodes?.[0];
+              return (
+                Number.isSafeInteger(restRulesetID) &&
+                restRulesetID > 0 &&
+                graphRulesetID === restRulesetID &&
+                graphRuleset.name === restRuleset.name &&
+                graphRuleset.enforcement === 'ACTIVE' &&
+                graphRuleset.target === 'BRANCH' &&
+                graphRules?.totalCount === 1 &&
+                graphRules.nodes?.length === 1 &&
+                graphRule?.type === 'UPDATE' &&
+                graphRule.parameters?.__typename === 'UpdateParameters' &&
+                graphRule.parameters.updateAllowsFetchAndMerge === false
               );
             }
             if (
@@ -466,12 +496,44 @@ jobs:
               writerIncludes.length !== 1 ||
               writerIncludes[0] !== 'refs/heads/main' ||
               writerExcludes.length !== 0 ||
+              typeof writerRuleset.node_id !== 'string' ||
+              !writerRuleset.node_id ||
               writerRuleset.rules?.length !== 1 ||
               !isStrictUpdateRule(writerRuleset.rules[0]) ||
               writerRuleset.current_user_can_bypass !== 'pull_requests_only'
             ) {
               throw new Error(
                 'Reviewer Router App requires the exact repository-owned main writer rule with pull-request-only bypass.',
+              );
+            }
+            const {node: graphWriterRuleset} = await github.graphql(
+              `query ReviewerRouterWriterRule($rulesetID: ID!) {
+                node(id: $rulesetID) {
+                  ... on RepositoryRuleset {
+                    databaseId
+                    name
+                    enforcement
+                    target
+                    rules(first: 2) {
+                      totalCount
+                      nodes {
+                        type
+                        parameters {
+                          __typename
+                          ... on UpdateParameters {
+                            updateAllowsFetchAndMerge
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`,
+              {rulesetID: writerRuleset.node_id},
+            );
+            if (!isStrictGraphQLUpdateRule(writerRuleset, graphWriterRuleset)) {
+              throw new Error(
+                'Reviewer Router App requires GraphQL to expose one strict UPDATE rule with updateAllowsFetchAndMerge=false.',
               );
             }
             for (const ruleset of activeMainRulesets) {
@@ -736,18 +798,48 @@ jobs:
             const writerRuleset = writerRulesets[0];
             const writerIncludes = writerRuleset.conditions?.ref_name?.include || [];
             const writerExcludes = writerRuleset.conditions?.ref_name?.exclude || [];
-            // GitHub's read projection omits parameters when this update-rule
-            // exception is disabled. Accept only that omission or exact false;
-            // reject a present null/non-boolean field instead of weakening the gate.
+            // GitHub's read projection omits the entire parameters property
+            // when this exception is disabled. Accept only that exact omission
+            // or a one-field object containing exact false.
             function isStrictUpdateRule(rule) {
               if (rule?.type !== 'update') {
                 return false;
               }
-              const updateAllowsFetchAndMerge =
-                rule.parameters?.update_allows_fetch_and_merge;
+              if (!Object.prototype.hasOwnProperty.call(rule, 'parameters')) {
+                return true;
+              }
+              const parameters = rule.parameters;
+              if (
+                parameters === null ||
+                typeof parameters !== 'object' ||
+                Array.isArray(parameters)
+              ) {
+                return false;
+              }
+              const parameterKeys = Object.keys(parameters);
               return (
-                updateAllowsFetchAndMerge === undefined ||
-                updateAllowsFetchAndMerge === false
+                parameterKeys.length === 1 &&
+                parameterKeys[0] === 'update_allows_fetch_and_merge' &&
+                parameters.update_allows_fetch_and_merge === false
+              );
+            }
+            function isStrictGraphQLUpdateRule(restRuleset, graphRuleset) {
+              const restRulesetID = Number(restRuleset?.id);
+              const graphRulesetID = Number(graphRuleset?.databaseId);
+              const graphRules = graphRuleset?.rules;
+              const graphRule = graphRules?.nodes?.[0];
+              return (
+                Number.isSafeInteger(restRulesetID) &&
+                restRulesetID > 0 &&
+                graphRulesetID === restRulesetID &&
+                graphRuleset.name === restRuleset.name &&
+                graphRuleset.enforcement === 'ACTIVE' &&
+                graphRuleset.target === 'BRANCH' &&
+                graphRules?.totalCount === 1 &&
+                graphRules.nodes?.length === 1 &&
+                graphRule?.type === 'UPDATE' &&
+                graphRule.parameters?.__typename === 'UpdateParameters' &&
+                graphRule.parameters.updateAllowsFetchAndMerge === false
               );
             }
             if (
@@ -756,12 +848,44 @@ jobs:
               writerIncludes.length !== 1 ||
               writerIncludes[0] !== 'refs/heads/main' ||
               writerExcludes.length !== 0 ||
+              typeof writerRuleset.node_id !== 'string' ||
+              !writerRuleset.node_id ||
               writerRuleset.rules?.length !== 1 ||
               !isStrictUpdateRule(writerRuleset.rules[0]) ||
               writerRuleset.current_user_can_bypass !== 'pull_requests_only'
             ) {
               throw new Error(
                 'Reviewer Router App requires the exact repository-owned main writer rule with pull-request-only bypass.',
+              );
+            }
+            const {node: graphWriterRuleset} = await github.graphql(
+              `query ReviewerRouterWriterRule($rulesetID: ID!) {
+                node(id: $rulesetID) {
+                  ... on RepositoryRuleset {
+                    databaseId
+                    name
+                    enforcement
+                    target
+                    rules(first: 2) {
+                      totalCount
+                      nodes {
+                        type
+                        parameters {
+                          __typename
+                          ... on UpdateParameters {
+                            updateAllowsFetchAndMerge
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`,
+              {rulesetID: writerRuleset.node_id},
+            );
+            if (!isStrictGraphQLUpdateRule(writerRuleset, graphWriterRuleset)) {
+              throw new Error(
+                'Reviewer Router App requires GraphQL to expose one strict UPDATE rule with updateAllowsFetchAndMerge=false.',
               );
             }
             for (const ruleset of activeMainRulesets) {
