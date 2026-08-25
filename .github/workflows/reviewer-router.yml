@@ -405,6 +405,43 @@ jobs:
               );
             }
             const expectedAppOwner = `${appSlug}[bot]`;
+            const {data: repository} = await github.rest.repos.get({owner, repo});
+            function classifyMergeDefaults(repository) {
+              if (
+                repository === null ||
+                typeof repository !== 'object' ||
+                Array.isArray(repository)
+              ) {
+                return 'invalid';
+              }
+              const hasTitle = Object.prototype.hasOwnProperty.call(
+                repository,
+                'merge_commit_title',
+              );
+              const hasMessage = Object.prototype.hasOwnProperty.call(
+                repository,
+                'merge_commit_message',
+              );
+              if (!hasTitle && !hasMessage) {
+                return 'omitted';
+              }
+              if (!hasTitle || !hasMessage) {
+                return 'invalid';
+              }
+              if (
+                repository.merge_commit_title === 'MERGE_MESSAGE' &&
+                ['PR_TITLE', 'BLANK'].includes(repository.merge_commit_message)
+              ) {
+                return 'reviewed';
+              }
+              return 'invalid';
+            }
+            const mergeDefaultsProjection = classifyMergeDefaults(repository);
+            if (mergeDefaultsProjection !== 'reviewed') {
+              throw new Error(
+                'Dedicated Reviewer Router App cannot verify the reviewed repository merge-message defaults.',
+              );
+            }
             const repositorySource = `${owner}/${repo}`.toLowerCase();
             const appliedRules = await github.paginate(
               'GET /repos/{owner}/{repo}/rules/branches/{branch}',
@@ -757,6 +794,43 @@ jobs:
               );
             }
             const expectedAppOwner = `${appSlug}[bot]`;
+            const {data: repository} = await github.rest.repos.get({owner, repo});
+            function classifyMergeDefaults(repository) {
+              if (
+                repository === null ||
+                typeof repository !== 'object' ||
+                Array.isArray(repository)
+              ) {
+                return 'invalid';
+              }
+              const hasTitle = Object.prototype.hasOwnProperty.call(
+                repository,
+                'merge_commit_title',
+              );
+              const hasMessage = Object.prototype.hasOwnProperty.call(
+                repository,
+                'merge_commit_message',
+              );
+              if (!hasTitle && !hasMessage) {
+                return 'omitted';
+              }
+              if (!hasTitle || !hasMessage) {
+                return 'invalid';
+              }
+              if (
+                repository.merge_commit_title === 'MERGE_MESSAGE' &&
+                ['PR_TITLE', 'BLANK'].includes(repository.merge_commit_message)
+              ) {
+                return 'reviewed';
+              }
+              return 'invalid';
+            }
+            const mergeDefaultsProjection = classifyMergeDefaults(repository);
+            if (mergeDefaultsProjection !== 'reviewed') {
+              throw new Error(
+                'Dedicated Reviewer Router App cannot verify the reviewed repository merge-message defaults.',
+              );
+            }
             const repositorySource = `${owner}/${repo}`.toLowerCase();
             const appliedRules = await github.paginate(
               'GET /repos/{owner}/{repo}/rules/branches/{branch}',

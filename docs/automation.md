@@ -130,7 +130,12 @@ silently re-enabling the request, leaving it available only to the designated
 break-glass identity. The required `Test` context rejects GitHub workflow-skip
 directives in the PR title or an existing auto-merge request and verifies the
 repository's reviewed `MERGE_MESSAGE` title plus `PR_TITLE` or `BLANK` body
-defaults. The dedicated App binds the mutation to the exact head OID and
+defaults. GitHub does not expose those merge-related settings to the read-only
+admission token: the classifier accepts only both exact reviewed values or the
+complete omission of both properties, and rejects partial omission, `null`, or
+any other value. Before any enable or reconcile mutation, the dedicated App's
+current-repository token (which has `Contents: write`) must observe both exact
+reviewed values. The dedicated App binds the mutation to the exact head OID and
 supplies a fixed safe headline and body, so GitHub cannot copy an unsafe PR
 title into its merge commit.
 After enabling, the workflow requires the owner to equal the token action's

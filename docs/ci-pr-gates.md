@@ -179,7 +179,12 @@ the same ruleset node through GraphQL and requires its non-null
 own built-in token to report
 `current_user_can_bypass: never`. The minted App separately requires
 `pull_requests_only` on that writer rule and `never` on every other active main
-ruleset before it can enable or reconcile auto-merge. GitHub hides the complete
+ruleset before it can enable or reconcile auto-merge. The read-only `Test`
+token may receive a repository projection with both merge-default properties
+omitted; it accepts only that complete omission or exact `MERGE_MESSAGE` plus
+`PR_TITLE`/`BLANK`, while partial or malformed projections fail closed. The
+minted App's `Contents: write` token must observe the exact reviewed defaults
+before either mutation path proceeds. GitHub hides the complete
 `bypass_actors` list from low-privilege callers, so the rollout audit must still
 keep the writer list at exactly the Reviewer App plus `PeterGuy326` (ID
 `47820304`). The required check finally accepts a null or exact App-owned

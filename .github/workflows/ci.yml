@@ -954,14 +954,47 @@ jobs:
             const skipWorkflowPattern =
               /\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]|\bskip-checks\s*:\s*true\b/i;
             const {data: repository} = await github.rest.repos.get({owner, repo});
-            if (
-              repository.merge_commit_title !== 'MERGE_MESSAGE' ||
-              !['PR_TITLE', 'BLANK'].includes(repository.merge_commit_message)
-            ) {
+            function classifyMergeDefaults(repository) {
+              if (
+                repository === null ||
+                typeof repository !== 'object' ||
+                Array.isArray(repository)
+              ) {
+                return 'invalid';
+              }
+              const hasTitle = Object.prototype.hasOwnProperty.call(
+                repository,
+                'merge_commit_title',
+              );
+              const hasMessage = Object.prototype.hasOwnProperty.call(
+                repository,
+                'merge_commit_message',
+              );
+              if (!hasTitle && !hasMessage) {
+                return 'omitted';
+              }
+              if (!hasTitle || !hasMessage) {
+                return 'invalid';
+              }
+              if (
+                repository.merge_commit_title === 'MERGE_MESSAGE' &&
+                ['PR_TITLE', 'BLANK'].includes(repository.merge_commit_message)
+              ) {
+                return 'reviewed';
+              }
+              return 'invalid';
+            }
+            const mergeDefaultsProjection = classifyMergeDefaults(repository);
+            if (mergeDefaultsProjection === 'invalid') {
               core.setFailed(
-                'Repository merge-message defaults changed from their reviewed values.',
+                'Repository merge-message defaults are malformed or changed from their reviewed values.',
               );
               return;
+            }
+            if (mergeDefaultsProjection === 'omitted') {
+              core.info(
+                'Read-only CI cannot observe repository merge-message defaults; exact validation is delegated to the dedicated App.',
+              );
             }
 
             const appliedRules = await github.paginate(
