@@ -32,7 +32,7 @@
 2. **先读结构再动结构**：合并、冻结、行列分组、行高列宽、隐藏行列、最后非空边界都属于工作表结构信息，先读 `dws sheet info --node <ID> --sheet-id <SHEET_ID> --format json`；分组回读加 `--include groups`，行高、列宽和隐藏行列按需加 `--include row_heights,col_widths,hidden_rows,hidden_cols`。
 3. **按目的选择读取方式**：快速看值和大表分批用 `csv-get`；需要 `columns` / `data` / `dtypes` / `formats` 用 `table-get`；需要公式、样式、数据验证、超链接、富文本等 per-cell 元数据用 `range read`。
 4. **写返回不等于完成**：任何写操作完成后都要用独立读命令回读确认。值写入用 `csv-get` / `range read` / `table-get`，结构变更用 `sheet info`，对象类操作用对应 `list` / `get`。
-5. **大批量 CSV 值/公式不要拼大 JSON**：超过 5 行或 20 个单元格、且不需要富格式对象时优先 `csv-put`；字段值以 `=` 开头按公式解析，前加单引号写入以 `=` 开头的字面文本；需要 table/dataframe 语义时用 `table-put`。
+5. **大批量 CSV 值/公式不要拼大 JSON**：超过 5 行或 20 个单元格、且不需要富格式对象时优先 `csv-put`；要求保留前导零、日期字符串等普通文本时加 `--auto-convert=false`，但首字符为 `=` 的字段仍按公式解析，`'=...` 保留为普通文本；需要按列 `dtypes` / `formats` 的 table/dataframe 语义时用 `table-put`。
 6. **公式写入后分层校验**：写公式前读 [sheet-formula](./sheet/sheet-formula.md)。写后先用 `range read --value-render-option formula` 确认公式文本，再用 `formula-verify` 聚合扫描计算错误；需要确认业务数值时再用 `raw_value` 抽样对账。
 7. **专用操作用专用命令**：搜索用 `find`、替换用 `replace`、清空用 `range clear`、排序用 `range sort`、复制/移动区域用 `range copy-to` / `range move-to`，不要用 `range read` + `range update` 客户端模拟。
 8. **大整数按文本写**：超过 `9007199254740991` 的整数、长数字 ID、订单号、手机号等需要逐位精确的值，不要按 JSON number 或 `int64` / `uint64` 写入；用字符串值 + `object` dtype + 文本格式 `@`。
@@ -45,7 +45,7 @@
 | 按表格结构读写列名、类型、格式 | `table-get` / `table-put` | [sheet-read-data](sheet/sheet-read-data.md)、[sheet-write-data](sheet/sheet-write-data.md) | 把 table spec 塞进 `batch-update` |
 | 少量精确写入、公式对象、超链接、富文本、数据验证 | `range update` | [sheet-write-data](sheet/sheet-write-data.md)、[sheet-formula](sheet/sheet-formula.md) | 用 `append` 写公式，或用 `csv-put` 写富格式 |
 | 校验公式错误 / 全表公式检查 | `formula-verify` | [sheet-formula](sheet/sheet-formula.md) | 全表 `range read` 后由 Agent 自行枚举错误值 |
-| 批量 CSV 值/公式写入 / CSV 粘贴 | `csv-put` | [sheet-write-data](sheet/sheet-write-data.md)、[sheet-formula](sheet/sheet-formula.md) | 为大块 CSV 数据手写巨大 `--values` JSON |
+| 批量 CSV 值/公式写入 / CSV 粘贴 / 保留日期或编号原始文本 | `csv-put`；文本保真时加 `--auto-convert=false` | [sheet-write-data](sheet/sheet-write-data.md)、[sheet-formula](sheet/sheet-formula.md) | 为大块 CSV 数据手写巨大 `--values` JSON；把 `--auto-convert=false` 误解为禁用公式 |
 | 追加记录到末尾 | `append` | [sheet-write-data](sheet/sheet-write-data.md) | 手算最后一行后 `range update` |
 | 查找 / 替换 | `find` / `replace` | [sheet-search-replace](sheet/sheet-search-replace.md) | 读全表后本地过滤或手写替换 |
 | 清空 / 排序 / 填充 / 复制移动区域 | `range clear` / `range sort` / `range fill` / `range copy-to` / `range move-to` | [sheet-range-operations](sheet/sheet-range-operations.md) | 用读写组合模拟服务端原子操作 |
@@ -105,7 +105,7 @@
 8. **hyperlink 三语义**：不传 `hyperlink` 字段=保留原整格超链接；`hyperlink:{type:"none"}`=显式清除；`hyperlink:{type:"path"/"sheet"/"range",link,...}`=覆盖。不要用 `hyperlink:null`，该写法不能可靠表达清除
 9. **样式写法**：cell-level 样式用 `cellStyles` 或 `range set-style`；richText 片段级样式才用子项 `style`。不要在 `type:"text"` 顶层使用旧 `style` 字段
 10. **用专用命令不用组合模拟**：搜索→`find`、替换→`replace`、清空→`range clear`、排序→`range sort`、填充→`range fill`、复制区域→`range copy-to`、移动区域→`range move-to`、移动行列→`move-dimension`
-11. **大批量 CSV 值/公式用 `csv-put`**（>5 行或 >20 单元格，且无需富格式），不用 `range update`；需要 dataframe/table 语义（列名、dtypes、formats、跨 sheet specs）时用 `table-get` / `table-put`
+11. **大批量 CSV 值/公式用 `csv-put`**（>5 行或 >20 单元格，且无需富格式），不用 `range update`。用户要求“保留前导零 / 不要转日期 / 按文本原样导入 / 禁止类型推断”时加 `--auto-convert=false`；它只影响非公式字段，`=...` 仍是公式，`'=...` 是保留前置单引号的普通文本。普通导入省略该参数；需要明确列级 dtypes/formats/跨 sheet specs 时用 `table-get` / `table-put`
 12. **单元格图片用 `write-image`**（`range update` 不支持图片参数）
 13. **`export` / `import create` 禁止自行轮询**（命令会自动等待结果，最长约 5 分钟）；导入超时只按返回的 `next_command` 调用 `import get`，导出失败或超时直接转述，不自动重调
 14. **单次调用上限**：`range update` / `set-style` 行数 ≤ 1000，单元格总数建议 ≤ 5000（硬限 30000）

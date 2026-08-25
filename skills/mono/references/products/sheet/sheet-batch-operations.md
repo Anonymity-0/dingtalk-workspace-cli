@@ -84,7 +84,8 @@ Example:
     {"toolName":"merge-cells","input":{"sheet-id":"Sheet1","range":"A1:B1","merge-type":"mergeAll"}},
     {"toolName":"update-dimension","input":{"sheet-id":"Sheet1","dimension":"ROWS","start-index":"1","length":1,"pixel-size":40}},
     {"toolName":"group-dimension","input":{"sheet-id":"Sheet1","range":"3:7","group-state":"expand"}},
-    {"toolName":"set-dropdown","input":{"sheet-id":"Sheet1","range":"C2:C100","source-sheet-id":"SourceSheet","source-range":"T1:T3"}}
+    {"toolName":"set-dropdown","input":{"sheet-id":"Sheet1","range":"C2:C100","source-sheet-id":"SourceSheet","source-range":"T1:T3"}},
+    {"toolName":"csv-put","input":{"sheet-id":"Sheet1","start-cell":"E1","csv":"001,2026/8/1,=1+1,\u0027=1+1","auto-convert":false}}
   ]'
   dws sheet batch-update --node <NODE_ID> --continue-on-error --operations '[...]'
 Flags:
@@ -101,7 +102,8 @@ Notes:
   - --continue-on-error: 宽松模式，遇失败继续执行后续操作（已执行的子操作不回滚）
   - operations 最多 20 条
   - 当需要对多个区域执行相同清除时，优先使用 `range batch-clear`（更简洁）
-  - `csv-put` 子操作与独立命令语义一致：CSV 字段值以 `=` 开头时按公式解析；前加单引号时写入以 `=` 开头的字面文本
+  - `csv-put` 子操作与独立命令语义一致：`input` 使用 CLI flag 名 `"auto-convert":false` 关闭非公式字段自动转换，向服务端透传为 `autoConvert:false`。首字符为 `=` 的字段仍按公式解析；`'=...` 是普通文本并保留前置单引号。缺省或 `true` 保持现有自动类型转换行为
+  - 明确列级 `dtypes` / `formats` 时不要把 `table-put` 塞入 batch；在 batch 外单独执行 `table-put`
   - `set-dropdown` 的 `input` 中，Inline 使用 `options`；SourceRange 使用 `source-sheet-id` + `source-range`，两种模式必须且只能选一个。顶层 `colors` / `source-colors` 会被拒绝；Inline 颜色写在 `options[].color`，SourceRange 颜色写入暂不支持
   - `set-dropdown` SourceRange 在已验证的重命名、引用前插入行/列、删除引用前行的场景会自动调整；已验证的 `move-dimension` 会使其变为 `invalid`。其他未覆盖删除/移动场景后先回读，仅 `invalid` 时重新选源写入
   - `source-range` 按 `toolName` 解释：`set-dropdown` 中是下拉候选项来源；`range fill` / `range copy-to` / `range move-to` 中是待填充、复制或移动的数据源区域

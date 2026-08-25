@@ -8,6 +8,8 @@
 - 【强制】`--sheet-id` 必填：即使是单工作表也不能省略，不要参照 `range read` 的默认行为；未知时先执行 `dws sheet list --node <NODE_ID> --format json` 获取 `sheetId`，禁止凭空臆测为 `Sheet1`、`sheet1`、`0`、`default` 等
 - 注意：如果用户的目的是替换文本、移动行列、追加空行空列、清空区域、排序、填充、复制区域或移动区域，请勿使用 `range update`，必须使用对应的专用命令（`replace`/`move-dimension`/`add-dimension`/`range clear`/`range sort`/`range fill`/`range copy-to`/`range move-to`）
 - **批量 CSV 值/公式写入优先用 `csv-put`**：当写入场景同时满足以下条件时，必须优先使用 `csv-put` 而非 `range update`：(1) 不需要超链接、dataValidation、cellStyles 或 richText；(2) 数据量较大（超过 5 行或超过 20 个单元格）；(3) 数据来源为表格/CSV 文本/结构化文本。`csv-put` 无需手动构造二维 JSON 数组，字段值以 `=` 开头时按公式解析，并支持自动扩容
+- **文本保真时关闭自动转换**：用户要求“保留前导零 / 不要转日期 / 按文本原样导入 / 禁止类型推断”时，给 `csv-put` 添加 `--auto-convert=false`。它只关闭非公式字段的类型推断；RFC 4180 解码后首字符为 `=` 的字段仍是公式，`'=...` 和前面有空格的 ` =...` 都是普通文本并保留原始字符
+- 用户未提出文本保真要求，或明确希望自动识别数字、日期、百分比、布尔时，省略 `--auto-convert`，使用默认 `true`。不要给所有 `csv-put` 无条件添加该参数
 
 用户说"写入结构化 table/dataframe/带列类型和格式的数据/跨 sheet 写入表格":
 - 写入结构化 table → `table-put`
@@ -27,7 +29,7 @@
 
 - `range update` 面向精确单元格对象写入：适合少量公式、超链接、dataValidation、richText、少量 cellStyles 和 `{}` 跳过；必须自己提供 `--sheet-id`、`--range` 和维度完全匹配的二维 cell 对象
 - `append` 面向简单追加行：自动定位到末尾，只写原始值，不支持样式、公式、超链接或数据验证
-- `csv-put` 面向大批量 CSV 值/公式导入：输入 CSV 文本，写入指定起点；字段值以 `=` 开头时按公式解析，前加单引号时写入以 `=` 开头的字面文本；不保留 dtype/format 协议，也不支持富格式
+- `csv-put` 面向大批量 CSV 值/公式导入：输入 CSV 文本，写入指定起点；默认自动识别普通字段类型。需要严格保留日期字符串、前导零、尾随零、科学计数等原始文本时传 `--auto-convert=false`；这不会禁用公式，首字符为 `=` 的字段仍按公式解析，`'=...` 则作为普通文本保留前置单引号。`csv-put` 不提供按列 dtype/format 协议，也不支持富格式
 - `table-put` 面向 dataframe/table 数据交换：输入 `columns` / `data` / `dtypes` / `formats`，可一次写多个 sheet，适合和 `table-get` 往返；不支持 dataValidation、hyperlink、richText、附件或图片
 
 **四种写入命令能力对比**：
@@ -42,7 +44,8 @@
 | `{}` 跳过（保留原值） | 支持 | 不适用 | 不适用 | 不支持，按 table 矩阵写入 |
 | `dataValidation`（下拉/复选框） | 支持 | 不支持 | 不支持 | 不支持 |
 | 原始值（纯数字/字符串/布尔/null） | 支持 | 支持 | 支持 | 支持 |
-| 列级 dtype / number format | 手工写 cellStyles | 不支持 | 自动识别为主 | 支持 `dtypes` / `formats` |
+| 非公式字段自动类型推断 | 由 cell object 决定 | 不适用 | 默认开启；`--auto-convert=false` 时全部按文本原样写入 | 由 `dtypes` / `formats` 明确控制 |
+| 列级 dtype / number format | 手工写 cellStyles | 不支持 | 不支持；有明确列类型要求时改用 `table-put` | 支持 `dtypes` / `formats` |
 | 自动定位末尾 | 不支持 | 支持 | 不支持 | `mode:"append"` 支持 |
 | 自动扩容行列 | 不支持 | 支持 | 支持 | 支持 |
 | 跨 sheet 一次写入 | 不支持 | 不支持 | 不支持 | 支持 `sheets[]` |
@@ -126,6 +129,11 @@ Example:
   dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell A1 \
     --csv "=1+1,'=1+1"
 
+  # 保留编号和日期字符串，同时让带逗号的公式继续执行
+  dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell A1 \
+    --auto-convert=false \
+    --csv $'id,date,total\n001,2026/8/1,"=SUM(1,2)"'
+
   dws sheet csv-put --node <NODE_ID> --sheet-id <SHEET_ID> --start-cell B2 \
     --csv @data.csv --allow-overwrite
 
@@ -139,13 +147,17 @@ Flags:
       --sheet-id string     工作表 ID 或名称 (必填)
       --csv string          CSV 文本、@文件路径 或 - 表示 stdin (必填)
       --start-cell string   起始单元格，A1 表示法 (必填)
+      --auto-convert bool   自动推断非公式 CSV 字段的数字、日期、布尔等类型；设为 false 时按文本原样写入，= 开头仍作为公式 (默认 true)
       --allow-overwrite     允许覆盖已有数据 (默认 false)
 ```
 
 将 RFC 4180 格式的 CSV 文本写入指定工作表的指定单元格位置。
 - **分隔符必须是英文逗号 `,`**（ASCII 0x2C），禁止使用中文逗号 `，`（U+FF0C）。中文逗号不会被识别为分隔符，会导致整行被写入同一个单元格。生成 CSV 内容时务必检查分隔符
-- 写入值和公式，不支持样式/批注。字段值以 `=` 开头时默认按公式解析；如需写入以 `=` 开头的字面文本，在字段值前加单引号（例如 `'=1+1`）
-- 数字/日期/百分数由表格系统自动识别类型（如 `95` 存为数字，`2025-03-01` 存为日期）
+- 写入值和公式，不支持样式/批注。RFC 4180 解码后的字段首字符为 `=` 时按公式解析；公式中含逗号时必须像 `"=SUM(1,2)"` 一样用 CSV 双引号包裹
+- `--auto-convert` 默认 `true`：数字/日期/百分数/布尔由表格系统沿用现有规则自动识别（如 `95` 存为数字）
+- `--auto-convert=false`：除首字符为 `=` 的公式外，其他字段全部按普通文本原样写入，不 trim、不做 locale 或数字/日期转换。`001`、`12.10`、`1E3`、`2026/8/1`、`85%`、`TRUE` 均保持原始文本
+- 需要写入字面 `=...` 时在字段前加单引号（例如 `'=1+1`）；在 `--auto-convert=false` 下它是普通文本，前置单引号也会持久化保留
+- 用户要求按列指定日期类型、数字精度、number format 或跨 sheet table spec 时，改用 `table-put` 的 `dtypes` / `formats`，不要用 `csv-put` 模拟 typed table
 - 自动扩容行列：CSV 数据超出当前工作表维度时自动追加行/列
 - 与 `range update` 不同，目标区域如含合并单元格，`csv-put` 会打散合并并写入 CSV 数据
 - 若需要保留原有合并结构，写入前先用 `sheet info` 记录 `mergedRanges`，写入后用 `merge-cells` 恢复对应区域

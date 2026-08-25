@@ -65,11 +65,25 @@ func translateBatchOp(op map[string]any) (map[string]any, error) {
 			return nil, err
 		}
 	}
+	if toolName == "csv-put" {
+		if err := validateBatchCsvPutInput(input); err != nil {
+			return nil, err
+		}
+	}
 
 	return map[string]any{
 		"toolName": mapping.mcpTool,
 		"input":    mapping.build(input),
 	}, nil
+}
+
+func validateBatchCsvPutInput(input map[string]any) error {
+	if value, exists := input["auto-convert"]; exists {
+		if _, ok := value.(bool); !ok {
+			return fmt.Errorf("csv-put: auto-convert 必须是布尔值 true 或 false")
+		}
+	}
+	return nil
 }
 
 func validateBatchSetDropdownInput(input map[string]any) error {
@@ -283,6 +297,9 @@ func BuildCsvPutArgs(input map[string]any) map[string]any {
 	if v, ok := input["allow-overwrite"]; ok {
 		args["allowOverwrite"] = v
 	}
+	if v, ok := input["auto-convert"]; ok {
+		args["autoConvert"] = v
+	}
 	return args
 }
 
@@ -465,8 +482,9 @@ range fill/copy-to/move-to 中表示待填充、复制或移动的数据源区�
   range fill / range copy-to / add-dimension / delete-dimension / move-dimension
   group-dimension / ungroup-dimension
   set-dropdown / delete-dropdown / csv-put / delete-float-image
-其中 csv-put 与独立命令语义一致：CSV 字段值以 = 开头时按公式解析，
-前加单引号（例如 "'=1+1"）时写入以 = 开头的字面文本。
+其中 csv-put 与独立命令语义一致：input 可传 "auto-convert":false，关闭非公式
+字段的自动类型转换；CSV 字段值以 = 开头时仍按公式解析，其他字段按普通文本
+原样写入（例如 "'=1+1" 会保留前置单引号）。缺省或 true 保持现有自动转换行为。
 set-dropdown 不接受顶层 colors/source-colors；Inline 颜色应写在 options[].color，
 SourceRange 颜色写入暂不支持。
 
@@ -484,7 +502,7 @@ dws sheet group-dimension 命令。
     {"toolName":"range clear","input":{"sheet-id":"Sheet1","range":"A1:B3","type":"content"}},
     {"toolName":"range update","input":{"sheet-id":"Sheet1","range":"A1","values":[[{"type":"text","text":"hello"}]]}},
     {"toolName":"merge-cells","input":{"sheet-id":"Sheet1","range":"A1:B1","merge-type":"mergeAll"}},
-    {"toolName":"csv-put","input":{"sheet-id":"Sheet1","start-cell":"C1","csv":"=1+1,\u0027=1+1"}}
+    {"toolName":"csv-put","input":{"sheet-id":"Sheet1","start-cell":"C1","csv":"001,2026/8/1,=1+1,\u0027=1+1","auto-convert":false}}
   ]' --yes
 
   # 宽松模式
