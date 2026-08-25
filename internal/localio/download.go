@@ -389,6 +389,15 @@ func publicIP(ip net.IP) bool {
 		return false
 	}
 	addr = addr.Unmap()
+	// NAT64 (RFC 6052 well-known prefix): the gateway forwards traffic to the
+	// IPv4 address embedded in the last 32 bits, so that address is the real
+	// destination. Validate it instead of rejecting the whole prefix, which
+	// would break legitimate DNS64 answers for IPv4-only download hosts on
+	// IPv6-only networks.
+	if nat64WellKnownPrefix.Contains(addr) {
+		embedded := addr.As16()
+		return publicIP(net.IP(embedded[12:16]))
+	}
 	if !addr.IsGlobalUnicast() || addr.IsPrivate() || addr.IsLoopback() || addr.IsLinkLocalUnicast() || addr.IsMulticast() || addr.IsUnspecified() {
 		return false
 	}
@@ -400,6 +409,11 @@ func publicIP(ip net.IP) bool {
 	return true
 }
 
+// nat64WellKnownPrefix is checked separately in publicIP: the embedded IPv4
+// address is extracted and re-validated so DNS64 answers for public hosts
+// keep working while embedded internal addresses are rejected.
+var nat64WellKnownPrefix = netip.MustParsePrefix("64:ff9b::/96")
+
 var nonPublicPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("0.0.0.0/8"),       // "this network"; reaches localhost on Linux
 	netip.MustParsePrefix("100.64.0.0/10"),   // carrier-grade NAT
@@ -410,7 +424,9 @@ var nonPublicPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("198.51.100.0/24"), // TEST-NET-2
 	netip.MustParsePrefix("203.0.113.0/24"),  // TEST-NET-3
 	netip.MustParsePrefix("240.0.0.0/4"),     // reserved
+	netip.MustParsePrefix("64:ff9b:1::/48"),  // NAT64 local-use (RFC 8215); IPv4 embedding is deployment-specific
 	netip.MustParsePrefix("100::/64"),        // IPv6 discard-only
+	netip.MustParsePrefix("2001::/32"),       // Teredo; embeds a tunneled IPv4 destination
 	netip.MustParsePrefix("2001:db8::/32"),   // IPv6 documentation
 	netip.MustParsePrefix("2002::/16"),       // 6to4
 	netip.MustParsePrefix("3fff::/20"),       // IPv6 documentation (RFC 9637)

@@ -21,4 +21,8 @@ category: Changed
   request; redirects leaving the original host still strip them. The
   dial-time non-public IP policy also covers additional IANA
   special-purpose ranges (`0.0.0.0/8`, `192.88.99.0/24`, `100::/64`,
-  `2002::/16`, `3fff::/20`, `5f00::/16`).
+  `2002::/16`, `3fff::/20`, `5f00::/16`) and IPv4-embedded IPv6 transition
+  ranges: NAT64 well-known prefix answers (`64:ff9b::/96`) are re-validated
+  against their embedded IPv4 address so DNS64 keeps working while embedded
+  internal addresses are refused, and NAT64 local-use (`64:ff9b:1::/48`) and
+  Teredo (`2001::/32`) answers are refused outright.

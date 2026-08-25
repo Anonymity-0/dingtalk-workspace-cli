@@ -89,12 +89,17 @@ func TestCrossPlatformCoverageDownloadURLAndPublicIPPolicy(t *testing.T) {
 
 	for _, raw := range []string{"127.0.0.1", "10.0.0.1", "100.64.0.1", "192.0.2.1", "198.51.100.1", "203.0.113.1", "224.0.0.1", "2001:db8::1",
 		// IANA 特殊用途段：0.0.0.0/8 在 Linux 上可达本机，其余均非全球可达。
-		"0.0.0.1", "0.255.255.255", "192.88.99.1", "100::1", "2002::1", "3fff::1", "5f00::1"} {
+		"0.0.0.1", "0.255.255.255", "192.88.99.1", "100::1", "2002::1", "3fff::1", "5f00::1",
+		// IPv4 嵌入式 IPv6 转换段：NAT64 well-known 前缀按嵌入 IPv4 复检，
+		// 内嵌回环/私网/特殊段必须拒绝；local-use 前缀与 Teredo 整段拒绝。
+		"64:ff9b::7f00:1", "64:ff9b::a00:1", "64:ff9b::c0a8:101", "64:ff9b::a9fe:a9fe", "64:ff9b:1::1", "2001::1"} {
 		if publicIP(net.ParseIP(raw)) {
 			t.Errorf("publicIP(%s) = true", raw)
 		}
 	}
-	for _, raw := range []string{"8.8.8.8", "1.1.1.1", "2606:4700:4700::1111"} {
+	for _, raw := range []string{"8.8.8.8", "1.1.1.1", "2606:4700:4700::1111",
+		// DNS64 对公网 IPv4-only 域名合成的 NAT64 地址必须放行。
+		"64:ff9b::808:808"} {
 		if !publicIP(net.ParseIP(raw)) {
 			t.Errorf("publicIP(%s) = false", raw)
 		}
@@ -390,6 +395,20 @@ func TestCrossPlatformCoverageSecureHTTPClientAndFilesystemEdges(t *testing.T) {
 		})
 		if _, err := transport.DialContext(context.Background(), "tcp", "download.dingtalk.com:443"); err == nil {
 			t.Fatal("private DNS answer accepted")
+		}
+	})
+	t.Run("nat64 answer embedding loopback", func(t *testing.T) {
+		// 恶意域名把 AAAA 解析到内嵌 127.0.0.1 的 NAT64 well-known 地址：
+		// 必须在拨号前失败，且完全不发起 dial。
+		testseam.Swap(t, &lookupDownloadIPs, func(context.Context, string) ([]net.IPAddr, error) {
+			return []net.IPAddr{{IP: net.ParseIP("64:ff9b::7f00:1")}}, nil
+		})
+		testseam.Swap(t, &dialDownloadIP, func(context.Context, string, string) (net.Conn, error) {
+			t.Error("dial attempted for a NAT64 answer embedding a loopback IPv4")
+			return nil, errors.New("blocked")
+		})
+		if _, err := transport.DialContext(context.Background(), "tcp", "download.dingtalk.com:443"); err == nil {
+			t.Fatal("NAT64 answer embedding a loopback IPv4 accepted")
 		}
 	})
 	t.Run("public dial fallback and success", func(t *testing.T) {
