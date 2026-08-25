@@ -190,16 +190,18 @@ func TestCrossPlatformCoverageResourceDownloadValidationAndInfo(t *testing.T) {
 	}
 	// Host trust is no longer a static allowlist: any HTTPS domain (including
 	// dedicated-deployment download hosts) passes URL validation, while IP
-	// literals, userinfo URLs, non-default ports, and plain HTTP stay rejected.
-	// SSRF protection is enforced at dial time by localio.SecureHTTPClient.
+	// literals, userinfo URLs, and plain HTTP stay rejected. Non-default HTTPS
+	// ports are accepted: dedicated storage domains legitimately serve on them
+	// and SSRF protection is enforced at dial time by localio.SecureHTTPClient.
 	for rawURL, wantOK := range map[string]bool{
 		"https://download.dingtalk.com/file":               true,
 		"https://bucket.oss-cn-hangzhou.aliyuncs.com/file": true,
 		"https://ddoss.tenant.example.com/file":            true,
+		"https://ddoss.tenant.example.com:8443/file":       true,
 		"http://download.dingtalk.com/file":                false,
+		"http://download.dingtalk.com:8443/file":           false,
 		"https://203.0.113.5/file":                         false,
 		"https://user:secret@download.dingtalk.com/file":   false,
-		"https://download.dingtalk.com:8443/file":          false,
 	} {
 		if _, err := validateResourceDownloadURL(rawURL); (err == nil) != wantOK {
 			t.Errorf("validateResourceDownloadURL(%q) error = %v, want ok=%v", rawURL, err, wantOK)

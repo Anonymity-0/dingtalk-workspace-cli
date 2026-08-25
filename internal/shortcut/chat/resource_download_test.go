@@ -83,7 +83,7 @@ func TestCrossPlatformCoverageResourceDownloadInfo(t *testing.T) {
 	for _, resourceURL := range []string{
 		"https://127.0.0.1/file",
 		"https://user:secret@download.dingtalk.com/file",
-		"https://download.dingtalk.com:8443/file",
+		"http://download.dingtalk.com:8443/file",
 	} {
 		if _, _, err := resourceDownloadInfo(
 			map[string]any{"resourceUrl": resourceURL},
@@ -94,9 +94,12 @@ func TestCrossPlatformCoverageResourceDownloadInfo(t *testing.T) {
 	// The static host allowlist is retired: dedicated-deployment download
 	// hosts pass the same host-agnostic HTTPS policy as DingTalk/OSS hosts;
 	// SSRF protection moved to dial time (localio.SecureHTTPClient).
+	// Non-default HTTPS ports are accepted too: dedicated storage domains
+	// legitimately serve on them and the dial-time policy is port-agnostic.
 	for _, resourceURL := range []string{
 		"https://download.dingtalk.com/file",
 		"https://ddoss.tenant.example.com/file",
+		"https://ddoss.tenant.example.com:8443/file",
 	} {
 		if _, _, err := resourceDownloadInfo(
 			map[string]any{"resourceUrl": resourceURL},

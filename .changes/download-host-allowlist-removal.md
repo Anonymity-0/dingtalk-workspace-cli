@@ -6,8 +6,11 @@ category: Changed
   host allowlist from both the shared local download path (`drive +download`,
   `drive +version-download`, doc/minutes artifact downloads) and the chat
   message-resource path (`chat +messages-resource-download`,
-  `--download-resources`). Download URLs still require an HTTPS domain on the
-  default port (IP literals and userinfo URLs stay rejected), and SSRF
+  `--download-resources`). Download URLs still require an HTTPS domain (IP
+  literals and userinfo URLs stay rejected), and non-default HTTPS ports are
+  now accepted because dedicated-deployment storage domains legitimately
+  serve on them; the port is not a trust signal and the dial-time SSRF policy
+  is port-agnostic. SSRF
   protection now happens at dial time through a shared public-IP policy that
   refuses hosts resolving to private, loopback, link-local, or otherwise
   non-public addresses. Dedicated-deployment storage domains now download

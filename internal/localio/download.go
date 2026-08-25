@@ -292,9 +292,12 @@ func SafeFilename(preferredName, rawURL string) string {
 	return "download"
 }
 
-// ValidateDownloadURL accepts HTTPS download URLs on the default port. Hosts
-// must be domain names, never IP literals or userinfo URLs; SSRF protection is
-// enforced at dial time by the public-IP policy in secureHTTPClient.
+// ValidateDownloadURL accepts HTTPS download URLs on any port. Hosts must be
+// domain names, never IP literals or userinfo URLs; SSRF protection is
+// enforced at dial time by the public-IP policy in secureHTTPClient, which is
+// port-agnostic because the destination IP is what determines reachability.
+// Dedicated-deployment storage domains legitimately serve HTTPS on
+// non-default ports, so the port is not a trust signal.
 func ValidateDownloadURL(rawURL string) (*url.URL, error) {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
@@ -303,9 +306,6 @@ func ValidateDownloadURL(rawURL string) (*url.URL, error) {
 	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
 	if host == "" || net.ParseIP(host) != nil {
 		return nil, fmt.Errorf("下载地址不允许使用 IP 直连，必须是 HTTPS 域名")
-	}
-	if port := parsed.Port(); port != "" && port != "443" {
-		return nil, fmt.Errorf("下载地址只允许 HTTPS 默认端口")
 	}
 	return parsed, nil
 }

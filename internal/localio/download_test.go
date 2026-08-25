@@ -67,6 +67,9 @@ func TestCrossPlatformCoverageDownloadURLAndPublicIPPolicy(t *testing.T) {
 		// 域名白名单已移除：任意 HTTPS 域名在 URL 校验层放行，
 		// SSRF 防护由拨号层的公网 IP 强制校验承担。
 		"https://ddoss.ijingbo.chambroad.com/file.doc",
+		// 专属部署存储域可服务在非默认端口；端口不是信任信号，
+		// 拨号层公网 IP 校验与端口号无关。
+		"https://ddoss.ijingbo.chambroad.com:8443/file.doc",
 		"https://evil.example/file.docx",
 		"https://oss-cn-hangzhou-internal.aliyuncs.com/file.docx",
 	}
@@ -79,7 +82,8 @@ func TestCrossPlatformCoverageDownloadURLAndPublicIPPolicy(t *testing.T) {
 		"http://alidocs.dingtalk.com/file.docx",
 		"https://127.0.0.1/file.docx",
 		"https://user@alidocs.dingtalk.com/file.docx",
-		"https://alidocs.dingtalk.com:8443/file.docx",
+		"http://alidocs.dingtalk.com:8443/file.docx",
+		"https://alidocs.dingtalk.com:NOTAPORT/file.docx",
 	}
 	for _, raw := range invalid {
 		if _, err := ValidateDownloadURL(raw); err == nil {
@@ -589,6 +593,17 @@ func TestCrossPlatformCoverageSecureHTTPClientStripsCrossOriginHeaders(t *testin
 	}
 	if sameOrigin.Header.Get("X-Oss-Security-Token") == "" {
 		t.Fatal("same-origin redirect unexpectedly stripped request headers")
+	}
+
+	sameHostNonDefaultPort := &http.Request{
+		URL:    mustURL(t, "https://download.dingtalk.com:8443/next"),
+		Header: original.Header.Clone(),
+	}
+	if err := client.CheckRedirect(sameHostNonDefaultPort, []*http.Request{original}); err != nil {
+		t.Fatal(err)
+	}
+	if len(sameHostNonDefaultPort.Header) != 0 {
+		t.Fatal("port change is a cross-origin redirect; headers must be stripped")
 	}
 
 	crossOrigin := &http.Request{
