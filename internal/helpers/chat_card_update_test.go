@@ -172,7 +172,7 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 			"message", "update-card",
 			"--biz-id", "biz-1",
 			"--content", "[\"message1\",\"message2\"]",
-			"--flow-status", "9",
+			"--flow-status", "FINISH",
 			"--card-engine", "a2ui",
 		)
 		if err != nil {
@@ -181,7 +181,7 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 		messages, ok := caller.args["a2uiMessages"].([]string)
 		wantArgs := map[string]any{
 			"bizId":        "biz-1",
-			"flowStatus":   9,
+			"flowStatus":   "FINISH",
 			"a2uiMessages": []string{"message1", "message2"},
 		}
 		if caller.calls != 1 || caller.server != "im" || caller.tool != "update_a2ui_card" || !ok || !reflect.DeepEqual(messages, wantArgs["a2uiMessages"]) {
@@ -189,6 +189,9 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 		}
 		if caller.args["bizId"] != wantArgs["bizId"] || caller.args["flowStatus"] != wantArgs["flowStatus"] || caller.args["requestId"] == "" {
 			t.Fatalf("a2ui args = %#v", caller.args)
+		}
+		if annotations, ok := caller.args["a2uiAnnotations"].([]any); !ok || len(annotations) != 0 {
+			t.Fatalf("a2uiAnnotations = %#v", caller.args["a2uiAnnotations"])
 		}
 	})
 
@@ -212,7 +215,7 @@ func TestCrossPlatformCoverageNativeMessageUpdateCardA2UIEngine(t *testing.T) {
 	t.Run("a2ui validates content and status before call", func(t *testing.T) {
 		tests := [][]string{
 			{"--content", "plain", "--flow-status", "1"},
-			{"--content", "[\"message\"]", "--flow-status", "10"},
+			{"--content", "[\"message\"]", "--flow-status", "BAD_STATUS"},
 			{"--content", "[1]", "--flow-status", "1"},
 		}
 		for _, extra := range tests {

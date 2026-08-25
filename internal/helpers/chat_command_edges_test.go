@@ -623,18 +623,17 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if caller.calls != 1 || caller.server != "im" || caller.tool != "create_a2ui_card" {
+		if caller.calls != 1 || caller.server != "im" || caller.tool != "create_and_send_a2ui_card" {
 			t.Fatalf("call = count:%d server:%q tool:%q args:%#v", caller.calls, caller.server, caller.tool, caller.args)
 		}
-		target, ok := caller.args["target"].(map[string]any)
-		if !ok || target["openConversationId"] != "cid" {
-			t.Fatalf("target = %#v", caller.args["target"])
+		if caller.args["openConversationId"] != "cid" {
+			t.Fatalf("openConversationId = %#v", caller.args["openConversationId"])
 		}
 		messages, ok := caller.args["a2uiMessages"].([]string)
 		if !ok || !reflect.DeepEqual(messages, []string{"message1", "message2"}) {
 			t.Fatalf("a2uiMessages = %#v", caller.args["a2uiMessages"])
 		}
-		if caller.args["fallbackText"] != "message1\nmessage2" || caller.args["protocolVersion"] != "1.0" || caller.args["flowStatus"] != 1 {
+		if caller.args["summary"] != "message1\nmessage2" || caller.args["protocolVersion"] != "1.0" || caller.args["flowStatus"] != "PROCESSING" {
 			t.Fatalf("args = %#v", caller.args)
 		}
 		if caller.args["requestId"] == "" || caller.args["bizCardId"] == "" {
@@ -642,7 +641,7 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 		}
 	})
 
-	t.Run("direct message payload uses receiver uid target without local conversion", func(t *testing.T) {
+	t.Run("direct message payload uses receiver open dingtalk id target without local conversion", func(t *testing.T) {
 		caller := &scriptedToolCaller{}
 		err := runChatCoverageCommand(t, caller,
 			"message", "send-card",
@@ -653,9 +652,8 @@ func TestCrossPlatformCoverageChatNativeSendCardA2UIEngine(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		target, ok := caller.args["target"].(map[string]any)
-		if caller.calls != 1 || caller.tool != "create_a2ui_card" || !ok || target["receiverUid"] != "D1" {
-			t.Fatalf("call = count:%d tool:%q target:%#v", caller.calls, caller.tool, caller.args["target"])
+		if caller.calls != 1 || caller.tool != "create_and_send_a2ui_card" || caller.args["receiverOpenDingTalkId"] != "D1" {
+			t.Fatalf("call = count:%d tool:%q args:%#v", caller.calls, caller.tool, caller.args)
 		}
 	})
 
