@@ -21,6 +21,23 @@ const reviewerRouterRequiredRulesetHelpers = `function hasExactStringSet(values,
     expected.every(value => values.includes(value))
   );
 }
+function hasExactRequiredStatusChecks(checks) {
+  if (
+    !Array.isArray(checks) ||
+    checks.length !== requiredCheckContexts.length
+  ) {
+    return false;
+  }
+  const contexts = checks.map(check => check?.context);
+  return (
+    new Set(contexts).size === requiredCheckContexts.length &&
+    checks.every(
+      check =>
+        requiredCheckContexts.includes(check?.context) &&
+        check?.integration_id === requiredCheckIntegrationID,
+    )
+  );
+}
 function hasExactMainRulesetScope(ruleset) {
   const includes = ruleset?.conditions?.ref_name?.include;
   const excludes = ruleset?.conditions?.ref_name?.exclude;
@@ -80,13 +97,12 @@ function isExactMainQualityRuleset(ruleset) {
     return false;
   }
   const parameters = ruleset.rules[0].parameters;
-  const contexts = parameters?.required_status_checks?.map(
-    check => check?.context,
-  );
   return (
     parameters?.strict_required_status_checks_policy === true &&
     parameters.do_not_enforce_on_create === false &&
-    hasExactStringSet(contexts, requiredCheckContexts)
+    hasExactRequiredStatusChecks(
+      parameters.required_status_checks,
+    )
   );
 }`
 
@@ -122,6 +138,7 @@ func TestReviewerRouterRequiresExactApprovalAndQualityRulesets(t *testing.T) {
 			t.Errorf("approval/quality ruleset helper count = %d, want 1", got)
 		}
 		for _, marker := range []string{
+			"const requiredCheckIntegrationID = 15368;",
 			"protectionRulesets.length !== 1",
 			"protectionRulesets[0].current_user_can_bypass !== 'never'",
 			"!isExactMainProtectionRuleset(protectionRulesets[0])",
@@ -129,7 +146,7 @@ func TestReviewerRouterRequiresExactApprovalAndQualityRulesets(t *testing.T) {
 			"qualityRulesets[0].current_user_can_bypass !== 'never'",
 			"!isExactMainQualityRuleset(qualityRulesets[0])",
 			"exact non-bypassable main-protection approval ruleset",
-			"exact non-bypassable main-quality ruleset with nine strict checks",
+			"exact non-bypassable main-quality ruleset with nine strict GitHub Actions checks",
 		} {
 			if !strings.Contains(script, marker) {
 				t.Errorf("reconciliation script is missing live ruleset contract marker %q", marker)
@@ -153,6 +170,7 @@ const requiredCheckContexts = [
   'CLI Smoke',
   'Mock MCP',
 ];
+const requiredCheckIntegrationID = 15368;
 ` + reviewerRouterRequiredRulesetHelpers + `
 const clone = value => JSON.parse(JSON.stringify(value));
 const scope = {
@@ -193,7 +211,10 @@ const quality = {
     parameters: {
       do_not_enforce_on_create: false,
       strict_required_status_checks_policy: true,
-      required_status_checks: requiredCheckContexts.map(context => ({context})),
+      required_status_checks: requiredCheckContexts.map(context => ({
+        context,
+        integration_id: requiredCheckIntegrationID,
+      })),
     },
   }],
 };
@@ -249,8 +270,23 @@ candidate = clone(quality);
 candidate.rules[0].parameters.required_status_checks[8].context = 'Lint';
 invalidQuality.push(['duplicate check', candidate]);
 candidate = clone(quality);
-candidate.rules[0].parameters.required_status_checks.push({context: 'Unexpected'});
+candidate.rules[0].parameters.required_status_checks.push({
+  context: 'Unexpected',
+  integration_id: requiredCheckIntegrationID,
+});
 invalidQuality.push(['extra check', candidate]);
+candidate = clone(quality);
+delete candidate.rules[0].parameters.required_status_checks[0].integration_id;
+invalidQuality.push(['missing integration', candidate]);
+candidate = clone(quality);
+candidate.rules[0].parameters.required_status_checks[0].integration_id = 1;
+invalidQuality.push(['wrong integration', candidate]);
+candidate = clone(quality);
+candidate.rules[0].parameters.required_status_checks[8] = {
+  context: 'Lint',
+  integration_id: 1,
+};
+invalidQuality.push(['duplicate context from another integration', candidate]);
 for (const [name, value] of invalidQuality) {
   if (isExactMainQualityRuleset(value)) {
     throw new Error(name + ' main-quality ruleset was accepted');

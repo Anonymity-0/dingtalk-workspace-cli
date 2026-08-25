@@ -850,12 +850,33 @@ jobs:
               'CLI Smoke',
               'Mock MCP',
             ];
+            // GitHub Actions is the sole reviewed producer for every required
+            // context. A context-only ruleset can be satisfied by another App
+            // or a legacy commit status with the same name.
+            const requiredCheckIntegrationID = 15368;
             function hasExactStringSet(values, expected) {
               return (
                 Array.isArray(values) &&
                 values.length === expected.length &&
                 new Set(values).size === expected.length &&
                 expected.every(value => values.includes(value))
+              );
+            }
+            function hasExactRequiredStatusChecks(checks) {
+              if (
+                !Array.isArray(checks) ||
+                checks.length !== requiredCheckContexts.length
+              ) {
+                return false;
+              }
+              const contexts = checks.map(check => check?.context);
+              return (
+                new Set(contexts).size === requiredCheckContexts.length &&
+                checks.every(
+                  check =>
+                    requiredCheckContexts.includes(check?.context) &&
+                    check?.integration_id === requiredCheckIntegrationID,
+                )
               );
             }
             function hasExactMainRulesetScope(ruleset) {
@@ -917,13 +938,12 @@ jobs:
                 return false;
               }
               const parameters = ruleset.rules[0].parameters;
-              const contexts = parameters?.required_status_checks?.map(
-                check => check?.context,
-              );
               return (
                 parameters?.strict_required_status_checks_policy === true &&
                 parameters.do_not_enforce_on_create === false &&
-                hasExactStringSet(contexts, requiredCheckContexts)
+                hasExactRequiredStatusChecks(
+                  parameters.required_status_checks,
+                )
               );
             }
             // GitHub's read projection omits the entire parameters property
@@ -1077,7 +1097,7 @@ jobs:
                 !isExactMainQualityRuleset(qualityRulesets[0])
               ) {
                 throw new Error(
-                  'Reviewer Router App requires the exact non-bypassable main-quality ruleset with nine strict checks.',
+                  'Reviewer Router App requires the exact non-bypassable main-quality ruleset with nine strict GitHub Actions checks.',
                 );
               }
               for (const ruleset of activeMainRulesets) {

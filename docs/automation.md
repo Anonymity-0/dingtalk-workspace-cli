@@ -155,8 +155,10 @@ before calling the synchronous PR merge endpoint with the exact current head
 SHA. The preflight requires exactly one repository-owned `main-protection`
 ruleset with one latest-head approval and exactly one repository-owned
 `main-quality` ruleset with the reviewed nine strict checks. The App must report
-`never` on both and on every other non-writer ruleset, so deletion or weakening
-of either gate fails closed before merge. HTTP 405 means the PR is not ready,
+`never` on both and on every other non-writer ruleset. Every required context
+must be bound to the GitHub Actions App (`integration_id=15368`); a missing,
+different, or duplicate context/source entry fails closed together with
+deletion or weakening of either gate. HTTP 405 means the PR is not ready,
 while 409 means its revision
 changed; either remains open for the next event. Other failures make
 reconciliation red. A concurrent native merge is accepted only after the final

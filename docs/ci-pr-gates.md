@@ -214,8 +214,10 @@ each attempt it revalidates the App's ruleset boundary and PR intent, supplies
 the current head SHA, and treats server-declared not-ready or
 concurrent-revision responses as retriable. The live preflight requires the
 exact repository-owned approval ruleset and exact nine-check strict quality
-ruleset, with the App unable to bypass either; a missing, disabled, or weakened
-gate fails closed before merge. GitHub—not the workflow—decides whether the
+ruleset, with every context bound to the GitHub Actions App
+(`integration_id=15368`) and the Reviewer Router App unable to bypass either;
+a missing, disabled, incorrectly sourced, or weakened gate fails closed before
+merge. GitHub—not the workflow—decides whether the
 merge is admissible. A staggered twice-hourly schedule provides eventual
 recovery, and a manual `workflow_dispatch` from `main` is the immediate
 idempotent retry path.
@@ -403,7 +405,9 @@ tool、parameter、mapping、positional execution、constraint 与 safety 语义
 
 The `main` quality ruleset must enable strict required-status-check policy
 (`strict_required_status_checks_policy=true`) so a PR is revalidated whenever
-`main` advances. It must require these exact contexts and no legacy aliases:
+`main` advances. Every entry must select the GitHub Actions App
+(`integration_id=15368`), not “any source”. It must require these exact
+context/source pairs and no legacy aliases:
 
 - `Lint`
 - `Test`
