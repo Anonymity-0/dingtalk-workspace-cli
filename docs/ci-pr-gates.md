@@ -312,11 +312,12 @@ the same dedicated cache profile path because GitHub includes that path in the
 cache version; the runtime-facing candidate and baseline filenames remain
 separate. Near-miss reuse is forbidden — the caches carry no prefix restore
 keys, because a neighbouring commit's profile would compare the candidate
-against the wrong baseline. CI concurrency is keyed by PR number plus exact
-event base/head SHA. Duplicate runs for that exact revision may cancel each
-other, but a later revision cannot kill an earlier cold-cache producer. Main
-runs use the pushed SHA, so a newer main push cannot cancel a predecessor's
-producer.
+against the wrong baseline. PR concurrency is keyed by PR number, so a later
+revision cancels the stale run instead of letting obsolete test matrices
+compete with the replacement for hosted runners. If cancellation interrupts a
+cold-cache fallback, the latest run recomputes the same exact merge-base
+profile authoritatively. Main concurrency remains keyed by pushed SHA, so a
+newer main push cannot cancel a predecessor's producer.
 
 Every supported main advancement path has an exact-SHA producer. The required
 `Test` context rejects GitHub workflow-skip directives in PR and auto-merge
