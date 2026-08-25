@@ -479,6 +479,7 @@ func evaluateCommandMigrationLifecycle(
 	}
 	authorityByKey := commandMigrationIndex(authority)
 	candidateByKey := commandMigrationIndex(candidate)
+	amendedCandidateKeys := make(map[string]bool)
 	authorizations := make([]CommandMigration, 0, len(authority.Migrations))
 	for _, approved := range authority.Migrations {
 		basePhase := matchCommandMigrationPhase(mergeBase, approved)
@@ -490,6 +491,29 @@ func evaluateCommandMigrationLifecycle(
 			return nil, fmt.Errorf("approved command migration %s is %s in %s, want exact %s state for %s", approved.displayKey(), basePhase, label, wantBase, approved.State)
 		}
 		proposed, exists := candidateByKey[approved.key()]
+		if !exists && approved.State == CommandMigrationPending {
+			amendment, found, err := findPendingCommandMigrationAmendment(approved, candidate)
+			if err != nil {
+				return nil, err
+			}
+			if found {
+				if amendment.State != CommandMigrationPending {
+					return nil, fmt.Errorf("candidate amendment of pending command migration %s must remain pending", approved.displayKey())
+				}
+				if matchCommandMigrationPhase(current, approved) != commandMigrationBefore ||
+					matchCommandMigrationPhase(current, amendment) != commandMigrationBefore {
+					return nil, fmt.Errorf("candidate cannot amend pending command migration %s after applying an interface change", approved.displayKey())
+				}
+				if matchCommandMigrationPhase(mergeBase, amendment) != commandMigrationBefore {
+					return nil, fmt.Errorf("candidate amendment of pending command migration %s does not match the merge-base before state", approved.displayKey())
+				}
+				if amendedCandidateKeys[amendment.key()] {
+					return nil, fmt.Errorf("candidate command migration %s amends more than one pending approval", amendment.displayKey())
+				}
+				amendedCandidateKeys[amendment.key()] = true
+				continue
+			}
+		}
 		if exists && !sameCommandMigrationApproval(approved, proposed) &&
 			!isPendingAvailabilityCompatibilityRefinement(approved, proposed) {
 			return nil, fmt.Errorf("candidate modified base-owned command migration %s", approved.displayKey())
@@ -564,6 +588,9 @@ func evaluateCommandMigrationLifecycle(
 		if _, exists := authorityByKey[proposed.key()]; exists {
 			continue
 		}
+		if amendedCandidateKeys[proposed.key()] {
+			continue
+		}
 		if proposed.State != CommandMigrationPending {
 			return nil, fmt.Errorf("candidate-added command migration %s must start pending", proposed.displayKey())
 		}
@@ -589,6 +616,34 @@ func sameCommandMigrationApproval(left, right CommandMigration) bool {
 	left.State = ""
 	right.State = ""
 	return reflect.DeepEqual(left, right)
+}
+
+func findPendingCommandMigrationAmendment(approved CommandMigration, candidate CommandMigrationManifest) (CommandMigration, bool, error) {
+	var found CommandMigration
+	matches := 0
+	for _, proposed := range candidate.Migrations {
+		if proposed.key() == approved.key() || !samePendingCommandMigrationLineage(approved, proposed) {
+			continue
+		}
+		found = proposed
+		matches++
+	}
+	if matches > 1 {
+		return CommandMigration{}, false, fmt.Errorf("candidate declares multiple amendments for pending command migration %s", approved.displayKey())
+	}
+	return found, matches == 1, nil
+}
+
+func samePendingCommandMigrationLineage(approved, proposed CommandMigration) bool {
+	if approved.State != CommandMigrationPending ||
+		(approved.Kind != CommandMigrationMove && approved.Kind != CommandMigrationFlagExtraction) {
+		return false
+	}
+	return approved.Kind == proposed.Kind &&
+		reflect.DeepEqual(approved.Legacy, proposed.Legacy) &&
+		reflect.DeepEqual(approved.LegacyFlag, proposed.LegacyFlag) &&
+		approved.Schema.ProductID == proposed.Schema.ProductID &&
+		approved.Schema.SourceToolID == proposed.Schema.SourceToolID
 }
 
 func isVisibleToHiddenAvailabilityMigration(migration CommandMigration) bool {

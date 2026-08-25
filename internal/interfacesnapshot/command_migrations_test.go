@@ -591,6 +591,31 @@ func TestCrossPlatformCoverageCommandMigrationLifecycleEdges(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoveragePendingCommandMigrationAmendmentRequiresGovernanceOnlyChange(t *testing.T) {
+	before := commandMigrationSnapshot(false, false)
+	approved := singleCommandMigrationManifest(CommandMigrationPending)
+	amended := retargetPendingCommandMigrationManifest(approved, CommandMigrationPending)
+
+	if got, err := AuthorizeCommandMigrations(before, map[string]Snapshot{"main": before, "stable": before}, approved, amended); err != nil || len(got) != 0 {
+		t.Fatalf("governance-only pending amendment=%#v, %v", got, err)
+	}
+
+	consumed := retargetPendingCommandMigrationManifest(approved, CommandMigrationConsumed)
+	if _, err := AuthorizeCommandMigrations(before, map[string]Snapshot{"main": before, "stable": before}, approved, consumed); err == nil || !strings.Contains(err.Error(), "must remain pending") {
+		t.Fatalf("amendment consumption error=%v, want pending-only rejection", err)
+	}
+
+	after := commandMigrationSnapshot(true, false)
+	for index := range after.Commands {
+		if after.Commands[index].Path == "dws chat topic new" {
+			after.Commands[index].Path = "dws chat thread new"
+		}
+	}
+	if _, err := AuthorizeCommandMigrations(after, map[string]Snapshot{"main": before, "stable": before}, approved, amended); err == nil || !strings.Contains(err.Error(), "after applying an interface change") {
+		t.Fatalf("self-authorizing amendment error=%v, want governance-only rejection", err)
+	}
+}
+
 func TestCrossPlatformCoverageCommandMigrationLifecycleAndExactFiltering(t *testing.T) {
 	before := commandMigrationSnapshot(false, false)
 	after := commandMigrationSnapshot(true, false)
@@ -887,6 +912,15 @@ func modifiedCommandManifest(source CommandMigrationManifest) CommandMigrationMa
 	modified.Migrations = append([]CommandMigration(nil), source.Migrations...)
 	modified.Migrations[0].Reason = "Modified reason."
 	return modified
+}
+
+func retargetPendingCommandMigrationManifest(source CommandMigrationManifest, state string) CommandMigrationManifest {
+	retargeted := source
+	retargeted.Migrations = append([]CommandMigration(nil), source.Migrations...)
+	retargeted.Migrations[0].Replacement.Command = "dws chat thread new"
+	retargeted.Migrations[0].State = state
+	retargeted.Migrations[0].Reason = "Retarget the pending migration before changing the command surface."
+	return retargeted
 }
 
 func commandMigrationSnapshot(after, removeUnrelated bool) Snapshot {

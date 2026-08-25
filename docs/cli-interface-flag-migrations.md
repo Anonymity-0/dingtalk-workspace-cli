@@ -106,6 +106,8 @@ replacement 必须保留 source 已发布的 dry-run 能力：历史 `dry_run` �
 
 跨命令清单复用下文同一套 `pending → consumed → inert/cleanup` 生命周期。治理 PR 只能新增 `pending` 且产品 surface 必须仍是 before；后续产品 PR 才能一次性切到 after 并改为 `consumed`。candidate 新增的 pending 记录不能批准自己的改动。
 
+已经登记但尚未消费的迁移如果需要改目标，必须先走独立治理 PR。该 PR 只能把同一 legacy 命令、kind、legacy 状态、legacy flag、产品与 source tool 谱系下的记录替换为新的 `pending` 记录，并且新旧迁移在 merge-base 和 candidate 都必须保持精确 before surface。治理 PR 不得同时隐藏旧入口、发布 replacement 或把记录改为 `consumed`；这些 interface 变化仍由后续产品 PR 消费。
+
 当前首批 pending 记录覆盖 `chat topic` 收口：`chat group create --thread` 拆到 `chat topic create`，以及 `chat message list-topic-replies` / `forward-topic` 迁到对应的 `chat topic` 命令。前一条完整登记 `name` / `type` / `users` 的同名承接，以及 `thread` → `convThreadEnabled=true` 的常量承接。产品 PR 消费这些记录时只能把三条 `state` 改为 `consumed`，不得改写其 before、after、Schema mapping、constant 或 reason。
 
 ## 两阶段迁移与回执清理
