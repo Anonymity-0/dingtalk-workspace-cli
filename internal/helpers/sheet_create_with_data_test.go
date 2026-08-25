@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -39,15 +41,13 @@ func runCreate(t *testing.T, caller *scriptedToolCaller, flags map[string]string
 	return cmd.RunE(cmd, nil)
 }
 
-// createOKSteps 是「建表 → 探活/定位默认表 → 写数据 → 回读校验」的成功响应序列。
-// resolveFirstSheetID 在 waitSheetWritable 和随后的定位里各调一次 get_all_sheets。
+// createOKSteps 是「建表 → 探活并取得默认 sheetId → 写数据 → 回读校验」的成功响应序列。
 func createOKSteps(csvReadback string) []scriptedToolStep {
 	return []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1","docUrl":"https://alidocs.test/i/nodes/NODE_1"}`}, // create_workspace_sheet
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},                 // waitSheetWritable 探活
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},                 // resolveFirstSheetID
-		{text: `{"success":true}`},                                                   // set_range_from_csv
-		{text: `{"csv":"` + csvReadback + `"}`},                                      // get_range_as_csv 回读
+		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},                 // 探活并复用 sheetId
+		{text: `{"success":true}`},              // set_range_from_csv
+		{text: `{"csv":"` + csvReadback + `"}`}, // get_range_as_csv 回读
 	}
 }
 
@@ -465,12 +465,46 @@ func TestSheetCreateWithValuesWritesAndVerifies(t *testing.T) {
 	if err := runCreate(t, caller, map[string]string{"name": "名单", "values": `[["姓名","分数"],["张三",90]]`}); err != nil {
 		t.Fatalf("create with values: %v", err)
 	}
-	// create → 探活 → 定位默认表 → 写 csv → 回读
-	if caller.calls != 5 {
-		t.Fatalf("calls = %d, want 5", caller.calls)
+	// create → 探活并复用 sheetId → 写 csv → 回读
+	if caller.calls != 4 {
+		t.Fatalf("calls = %d, want 4", caller.calls)
 	}
 	if caller.tool != "get_range_as_csv" {
 		t.Fatalf("last tool = %q, want get_range_as_csv (回读校验)", caller.tool)
+	}
+}
+
+func TestCrossPlatformCoverageSheetCreateReturnsProbedSheetID(t *testing.T) {
+	caller := &scriptedToolCaller{format: "json", steps: createOKSteps("[row=1]姓名,分数")}
+	installScriptedCaller(t, caller)
+	installImmediateTiming(t)
+	installSheetProductArgs(t)
+
+	var stdout bytes.Buffer
+	deps.Out.w = &stdout
+	cmd := newSheetCreateWithDataCmd()
+	if err := cmd.Flags().Set("name", "名单"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Flags().Set("values", `[["姓名","分数"],["张三",90]]`); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatalf("create with values: %v", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("parse output %q: %v", stdout.String(), err)
+	}
+	if result["nodeId"] != "NODE_1" || result["sheetId"] != "SHEET_1" {
+		t.Fatalf("result = %#v, want nodeId=NODE_1 sheetId=SHEET_1", result)
+	}
+	if result["docUrl"] != "https://alidocs.test/i/nodes/NODE_1" {
+		t.Fatalf("original create response field was lost: %#v", result)
+	}
+	if caller.calls != 4 {
+		t.Fatalf("calls = %d, want 4（返回 sheetId 不得新增远程调用）", caller.calls)
 	}
 }
 
@@ -488,7 +522,6 @@ func TestSheetCreateWithSheetsRenamesDefaultThenTablePut(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1"}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 		{text: `{"success":true}`}, // update_sheet 重命名默认表
 		{text: `{"success":true}`}, // table_put
 		// 回读校验阶段：先取 name→sheetId，再逐表回读
@@ -502,9 +535,9 @@ func TestSheetCreateWithSheetsRenamesDefaultThenTablePut(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("create with sheets: %v", err)
 	}
-	// create → 探活 → 定位默认表 → 重命名 → table_put → 取 name 映射 → 两表各回读一次
-	if caller.calls != 8 {
-		t.Fatalf("calls = %d, want 8", caller.calls)
+	// create → 探活并复用 sheetId → 重命名 → table_put → 取 name 映射 → 两表各回读一次
+	if caller.calls != 7 {
+		t.Fatalf("calls = %d, want 7", caller.calls)
 	}
 }
 
@@ -515,12 +548,14 @@ func TestSheetCreateWithSheetsVerifiesEachSheetLanded(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1"}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 		{text: `{"success":true}`},
 		{text: `{"success":true}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"一月"},{"sheetId":"SHEET_2","name":"二月"}]}`},
 		{text: `{"csv":"[row=1] 项目\n"}`}, // 一月 非空
-		{text: `{"csv":""}`},             // 二月 回读为空
+		{text: `{"csv":""}`},             // 二月第 1 次回读为空
+		{text: `{"csv":""}`},             // 有界重试仍为空
+		{text: `{"csv":""}`},
+		{text: `{"csv":""}`},
 	}}
 	err := runCreate(t, caller, map[string]string{
 		"name":   "报表",
@@ -539,7 +574,6 @@ func TestSheetCreateWithSheetsVerifiesEachSheetLanded(t *testing.T) {
 	missing := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1"}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 		{text: `{"success":true}`},
 		{text: `{"success":true}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"一月"}]}`}, // 缺二月
@@ -557,7 +591,6 @@ func TestSheetCreateWithSheetsVerifiesEachSheetLanded(t *testing.T) {
 	empty := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1"}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 		{text: `{"success":true}`},
 		{text: `{"success":true}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"有数据"},{"sheetId":"SHEET_2","name":"空表"}]}`},
@@ -569,8 +602,8 @@ func TestSheetCreateWithSheetsVerifiesEachSheetLanded(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("无数据工作表不应触发回读失败: %v", err)
 	}
-	if empty.calls != 7 {
-		t.Fatalf("calls = %d, want 7（空表不回读，只 6 步编排 + 有数据表 1 次回读）", empty.calls)
+	if empty.calls != 6 {
+		t.Fatalf("calls = %d, want 6（探活 sheetId 复用，空表不回读）", empty.calls)
 	}
 }
 
@@ -631,7 +664,6 @@ func TestResolveSheetIDsByNameFailures(t *testing.T) {
 func TestSheetCreateWithSheetsReadbackListFailureSurfacesNodeID(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1"}`},
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 		{text: `{"success":true}`},
 		{text: `{"success":true}`},
@@ -696,7 +728,7 @@ func TestSheetCreateFailuresSurfaceNodeIDForRecovery(t *testing.T) {
 			name:  "write-values-failed",
 			flags: valuesFlags,
 			steps: []scriptedToolStep{
-				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets}, {text: okSheets},
+				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets},
 				{err: errors.New("write failed")},
 			},
 			want:     "但写入数据失败",
@@ -706,9 +738,10 @@ func TestSheetCreateFailuresSurfaceNodeIDForRecovery(t *testing.T) {
 			name:  "readback-empty-means-not-persisted",
 			flags: valuesFlags,
 			steps: []scriptedToolStep{
-				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets}, {text: okSheets},
+				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets},
 				{text: `{"success":true}`},
 				{text: `{"csv":"[row=1] , ,"}`}, // 去掉行号前缀与分隔符后为空
+				{text: `{"csv":""}`}, {text: `{"csv":""}`}, {text: `{"csv":""}`},
 			},
 			want:     "初始数据写入未生效",
 			wantNode: true,
@@ -717,7 +750,7 @@ func TestSheetCreateFailuresSurfaceNodeIDForRecovery(t *testing.T) {
 			name:  "readback-call-failed",
 			flags: valuesFlags,
 			steps: []scriptedToolStep{
-				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets}, {text: okSheets},
+				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets},
 				{text: `{"success":true}`},
 				{err: errors.New("readback boom")},
 			},
@@ -728,7 +761,7 @@ func TestSheetCreateFailuresSurfaceNodeIDForRecovery(t *testing.T) {
 			name:  "rename-default-sheet-failed",
 			flags: sheetsFlags,
 			steps: []scriptedToolStep{
-				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets}, {text: okSheets},
+				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets},
 				{err: errors.New("rename failed")},
 			},
 			want:     "重命名默认工作表失败",
@@ -738,7 +771,7 @@ func TestSheetCreateFailuresSurfaceNodeIDForRecovery(t *testing.T) {
 			name:  "table-put-failed",
 			flags: sheetsFlags,
 			steps: []scriptedToolStep{
-				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets}, {text: okSheets},
+				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets},
 				{text: `{"success":true}`},
 				{err: errors.New("table_put failed")},
 			},
@@ -766,7 +799,7 @@ func TestSheetCreateFailuresSurfaceNodeIDForRecovery(t *testing.T) {
 func TestSheetCreateStyleApplicationFailureReportsIndex(t *testing.T) {
 	okSheets := `{"sheets":[{"sheetId":"SHEET_1"}]}`
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
-		{text: `{"nodeId":"NODE_1"}`}, {text: okSheets}, {text: okSheets},
+		{text: `{"nodeId":"NODE_1"}`}, {text: okSheets},
 		{text: `{"success":true}`},          // set_range_from_csv
 		{text: `{"csv":"[row=1]a"}`},        // 回读通过
 		{err: errors.New("style rejected")}, // set_cell_range 失败
@@ -787,9 +820,9 @@ func TestSheetCreateStyleApplicationFailureReportsIndex(t *testing.T) {
 
 func TestSheetCreateAppliesStylesInReviewedOrder(t *testing.T) {
 	okSheets := `{"sheets":[{"sheetId":"SHEET_1"}]}`
-	// 建表(1) 探活(1) 定位(1) 写值(1) 回读(1) + 样式 4 次 = 9
+	// 建表(1) 探活并复用 ID(1) 写值(1) 回读(1) + 样式 4 次 = 8
 	steps := []scriptedToolStep{
-		{text: `{"nodeId":"NODE_1"}`}, {text: okSheets}, {text: okSheets},
+		{text: `{"nodeId":"NODE_1"}`}, {text: okSheets},
 		{text: `{"success":true}`}, {text: `{"csv":"[row=1]a"}`},
 	}
 	for i := 0; i < 4; i++ {
@@ -807,8 +840,8 @@ func TestSheetCreateAppliesStylesInReviewedOrder(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("create with full styles: %v", err)
 	}
-	if caller.calls != 9 {
-		t.Fatalf("calls = %d, want 9", caller.calls)
+	if caller.calls != 8 {
+		t.Fatalf("calls = %d, want 8", caller.calls)
 	}
 	// 顺序约定：cell_styles → row_sizes → col_sizes → cell_merges，合并最后
 	if caller.tool != "merge_cells" {
@@ -1079,11 +1112,29 @@ func TestWaitSheetWritableRetriesThenSucceeds(t *testing.T) {
 		{text: `{"sheets":[{"sheetId":"S1"}]}`},
 	}}
 	installScriptedCaller(t, caller)
-	if err := waitSheetWritable(context.Background(), "N"); err != nil {
+	sheetID, err := waitSheetWritable(context.Background(), "N")
+	if err != nil {
 		t.Fatalf("waitSheetWritable: %v", err)
+	}
+	if sheetID != "S1" {
+		t.Fatalf("sheetID = %q, want S1", sheetID)
 	}
 	if caller.calls != 3 {
 		t.Fatalf("calls = %d, want 3（前两次失败后重试成功）", caller.calls)
+	}
+}
+
+func TestWaitSheetWritableHonorsCancelledContext(t *testing.T) {
+	installSheetProductArgs(t)
+	caller := &scriptedToolCaller{}
+	installScriptedCaller(t, caller)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := waitSheetWritable(ctx, "N"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+	if caller.calls != 0 {
+		t.Fatalf("calls = %d, want 0 after cancellation", caller.calls)
 	}
 }
 
@@ -1115,6 +1166,72 @@ func TestVerifyRangeNotEmpty(t *testing.T) {
 				t.Fatalf("err = %v, want contains %q", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestVerifyRangeNotEmptyWithRetryConvergesWithoutRewriting(t *testing.T) {
+	installSheetProductArgs(t)
+	installImmediateTiming(t)
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"csv":""}`},
+		{text: `{"csv":""}`},
+		{text: `{"csv":"[row=1] ready"}`},
+	}}
+	installScriptedCaller(t, caller)
+	if err := verifyRangeNotEmptyWithRetry(context.Background(), "N", "S", "A1"); err != nil {
+		t.Fatal(err)
+	}
+	if caller.calls != 3 || caller.tool != "get_range_as_csv" {
+		t.Fatalf("calls=%d tool=%q, want three read-only probes", caller.calls, caller.tool)
+	}
+}
+
+func TestCrossPlatformCoverageSheetReadbackRetriesShareBackoffAcrossSheets(t *testing.T) {
+	installSheetProductArgs(t)
+	waits := 0
+	testseam.Swap(t, &helperAfter, func(time.Duration) <-chan time.Time {
+		waits++
+		ch := make(chan time.Time, 1)
+		ch <- time.Now()
+		return ch
+	})
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"csv":""}`},                   // 第一轮：一月为空
+		{text: `{"csv":""}`},                   // 第一轮：二月为空
+		{text: `{"csv":"[row=1] ready"}`},      // 第二轮：一月可见
+		{text: `{"csv":""}`},                   // 第二轮：二月仍为空
+		{text: `{"csv":"[row=1] eventually"}`}, // 第三轮：二月可见
+	}}
+	installScriptedCaller(t, caller)
+	err := verifyRangesNotEmptyWithRetry(context.Background(), "N", []sheetReadbackProbe{
+		{sheetID: "S1", rangeAddr: "A1", label: `工作表 "一月"`},
+		{sheetID: "S2", rangeAddr: "A1", label: `工作表 "二月"`},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if caller.calls != 5 {
+		t.Fatalf("calls=%d, want only pending sheets retried across three rounds", caller.calls)
+	}
+	if waits != 2 {
+		t.Fatalf("waits=%d, want two workflow-level waits instead of per-sheet waits", waits)
+	}
+}
+
+func TestVerifyRangeNotEmptyWithRetryStopsOnPermanentError(t *testing.T) {
+	installSheetProductArgs(t)
+	installImmediateTiming(t)
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{err: errors.New("permission denied")},
+		{text: `{"csv":"[row=1] should-not-be-read"}`},
+	}}
+	installScriptedCaller(t, caller)
+	err := verifyRangeNotEmptyWithRetry(context.Background(), "N", "S", "A1")
+	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "permission denied") {
+		t.Fatalf("err = %v, want permanent error", err)
+	}
+	if caller.calls != 1 {
+		t.Fatalf("calls=%d, want permanent error to stop after one probe", caller.calls)
 	}
 }
 
@@ -1250,17 +1367,43 @@ func TestSheetCreateResizeTypeDefaultsToPixel(t *testing.T) {
 	}
 }
 
-// 定位默认工作表失败（探活已过、随后 get_all_sheets 失败）必须带上 nodeId。
-func TestSheetCreateReportsDefaultSheetLookupFailureWithNodeID(t *testing.T) {
-	caller := &scriptedToolCaller{steps: []scriptedToolStep{
-		{text: `{"nodeId":"NODE_1"}`},                                // create_workspace_sheet
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`}, // waitSheetWritable 探活
-		{err: errors.New("boom")},                                    // resolveFirstSheetID 失败
-	}}
-	err := runCreate(t, caller, map[string]string{"name": "X", "values": `[["a"]]`})
-	if err == nil || !strings.Contains(err.Error(), "定位默认工作表失败") ||
-		!strings.Contains(err.Error(), "NODE_1") {
-		t.Fatalf("err = %v, want lookup failure carrying nodeId", err)
+func TestSheetCreateReusesProbeSheetID(t *testing.T) {
+	recorder, err := runCreateRecording(t, &scriptedToolCaller{steps: createOKSteps("[row=1]a")}, map[string]string{
+		"name": "X", "values": `[["a"]]`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.scriptedToolCaller.calls != 4 {
+		t.Fatalf("calls = %d, want 4", recorder.scriptedToolCaller.calls)
+	}
+	writeArgs := recorder.argsFor("set_range_from_csv")
+	if writeArgs == nil || writeArgs["sheetId"] != "SHEET_1" {
+		t.Fatalf("write args=%#v, want probed SHEET_1", writeArgs)
+	}
+}
+
+func TestSheetCreatePropagatesCommandContext(t *testing.T) {
+	key := sheetCreateContextKey("request")
+	caller := &sheetCreateContextCaller{
+		scriptedToolCaller: &scriptedToolCaller{steps: createOKSteps("[row=1]a")},
+		key:                key, want: "trace-1",
+	}
+	testseam.Protect(t, &deps)
+	InitDeps(caller)
+	deps.Out.w = io.Discard
+	deps.Out.errW = io.Discard
+	installImmediateTiming(t)
+	installSheetProductArgs(t)
+	cmd := newSheetCreateWithDataCmd()
+	cmd.SetContext(context.WithValue(context.Background(), key, "trace-1"))
+	_ = cmd.Flags().Set("name", "X")
+	_ = cmd.Flags().Set("values", `[["a"]]`)
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatal(err)
+	}
+	if caller.missing {
+		t.Fatal("at least one Sheet MCP call lost the command context")
 	}
 }
 
@@ -1269,7 +1412,6 @@ func TestSheetCreateSheetsAppliesStylesBySheetName(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1"}`},                                // create_workspace_sheet
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`}, // 探活
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`}, // resolveFirstSheetID
 		{text: `{"success":true}`},                                   // update_sheet 重命名
 		{text: `{"success":true}`},                                   // table_put
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"一月"}]}`},     // resolveSheetIDsByName
@@ -1516,7 +1658,6 @@ func TestSheetCreatePreservesLargeIntegerLiterals(t *testing.T) {
 		rec, err := runCreateRecording(t, &scriptedToolCaller{steps: []scriptedToolStep{
 			{text: `{"nodeId":"NODE_1"}`},
 			{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
-			{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 			{text: `{"success":true}`},
 			{text: `{"success":true}`},
 			{text: `{"sheets":[{"sheetId":"SHEET_1","name":"a"}]}`}, // resolveSheetIDsByName
@@ -1581,6 +1722,22 @@ func TestCellToStringKeepsJSONNumberVerbatim(t *testing.T) {
 type callRecorder struct {
 	*scriptedToolCaller
 	calls []recordedCall
+}
+
+type sheetCreateContextKey string
+
+type sheetCreateContextCaller struct {
+	*scriptedToolCaller
+	key     sheetCreateContextKey
+	want    any
+	missing bool
+}
+
+func (caller *sheetCreateContextCaller) CallTool(ctx context.Context, serverID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	if ctx.Value(caller.key) != caller.want {
+		caller.missing = true
+	}
+	return caller.scriptedToolCaller.CallTool(ctx, serverID, toolName, args)
 }
 
 type recordedCall struct {
