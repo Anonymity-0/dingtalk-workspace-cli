@@ -6,12 +6,13 @@ package pat
 import (
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cobracmd"
 	"github.com/spf13/cobra"
 )
 
 func TestCrossPlatformCoverageRegisterCommandsMergesExistingPATShortcutGroup(t *testing.T) {
 	root := &cobra.Command{Use: "dws"}
-	shortcutGroup := &cobra.Command{Use: "pat", Short: "pat shortcuts"}
+	shortcutGroup := cobracmd.NewGroupCommand("pat", "pat shortcuts")
 	shortcutGroup.AddCommand(&cobra.Command{Use: "+fixture"})
 	root.AddCommand(&cobra.Command{Use: "aaa-other"})
 	root.AddCommand(shortcutGroup)

@@ -40,6 +40,8 @@ SEMANTIC_PATHS = [
     ROOT / "internal" / "shortcut" / "semantic_catalog_devdoc.json",
     ROOT / "internal" / "shortcut" / "semantic_catalog_hrbrain.json",
     ROOT / "internal" / "shortcut" / "semantic_catalog_pat.json",
+    ROOT / "internal" / "shortcut" / "semantic_catalog_devapp.json",
+    ROOT / "internal" / "shortcut" / "semantic_catalog_agoal.json",
 ]
 
 

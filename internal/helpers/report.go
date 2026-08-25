@@ -64,7 +64,7 @@ func newReportCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:     "report",
 		Aliases: []string{"log"},
 		Short:   "钉钉日志（OA 周报应用 / 日志模版填报）",
@@ -84,10 +84,10 @@ func newReportCommand() *cobra.Command {
 
 别名：dws log 等价 dws report（注意：此处 log 特指 OA 周报应用，不是通用日志/记录）。`,
 		RunE: groupRunE,
-	}
+	})
 
 	// === template subtree（template list 不变；新增 template get；template detail 转 deprecated alias）===
-	templateCmd := &cobra.Command{Use: "template", Short: "日志模版", RunE: groupRunE}
+	templateCmd := newGroupCommand(&cobra.Command{Use: "template", Short: "日志模版", RunE: groupRunE})
 
 	templateListCmd := &cobra.Command{
 		Use:     "list",
@@ -179,7 +179,7 @@ func newReportCommand() *cobra.Command {
 	templateCmd.AddCommand(templateListCmd, templateGetCmd, templateDetailCmd)
 
 	// === entry subtree（单条日报操作 — get / stats / submit）===
-	entryCmd := &cobra.Command{Use: "entry", Short: "日志条目（单条日报操作 — get / stats / submit）", RunE: groupRunE}
+	entryCmd := newGroupCommand(&cobra.Command{Use: "entry", Short: "日志条目（单条日报操作 — get / stats / submit）", RunE: groupRunE})
 
 	entryGetCmd := &cobra.Command{
 		Use:   "get",
@@ -390,9 +390,10 @@ func newReportCommand() *cobra.Command {
 	addReportListFlags(inboxListCmd)
 
 	inboxCmd.AddCommand(inboxListCmd)
+	newHybridGroupCommand(inboxCmd)
 
 	// === outbox subtree（我发出的日报）===
-	outboxCmd := &cobra.Command{Use: "outbox", Short: "发件箱（我发出的日报）", RunE: groupRunE}
+	outboxCmd := newGroupCommand(&cobra.Command{Use: "outbox", Short: "发件箱（我发出的日报）", RunE: groupRunE})
 
 	outboxListCmd := &cobra.Command{
 		Use:   "list",
