@@ -279,9 +279,15 @@ func TestCrossPlatformCoverageDrivePublishSetValidation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := executeDriveEdge(t, &scriptedToolCaller{}, append(tc.args, "--yes")...)
+			// 校验发生在 LeafSpec.Validate（确认门之前）：无需 --yes、不触发
+			// 交互确认，0 次工具调用即返回错误。
+			caller := &scriptedToolCaller{}
+			err := executeDriveEdge(t, caller, tc.args...)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("tool calls = %d, want 0 (validation must precede any call)", caller.calls)
 			}
 		})
 	}
@@ -423,13 +429,40 @@ func TestCrossPlatformCoverageDriveQuotaAppsCommand(t *testing.T) {
 		}
 	})
 
-	t.Run("unknown order by omitted", func(t *testing.T) {
+	t.Run("unknown order by rejected", func(t *testing.T) {
+		// 无效排序字段直接报错（fail-fast），不再静默省略 orderBy。
 		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"success":true}`}}}
-		if err := executeDriveEdge(t, caller, "quota", "apps", "--order-by", "nope"); err != nil {
-			t.Fatal(err)
+		err := executeDriveEdge(t, caller, "quota", "apps", "--order-by", "nope")
+		if err == nil || !strings.Contains(err.Error(), "--order-by 值无效") {
+			t.Fatalf("error = %v, want --order-by rejection", err)
 		}
-		if _, present := caller.args["orderBy"]; present {
-			t.Fatalf("orderBy should be omitted for unknown field: %#v", caller.args)
+		if caller.calls != 0 {
+			t.Fatalf("tool calls = %d, want 0", caller.calls)
+		}
+	})
+
+	t.Run("invalid limit rejected", func(t *testing.T) {
+		// 显式传值越界（0 / 负数 / 超过 50）直接报错；未传时保持默认 20 语义。
+		for _, limit := range []string{"0", "-1", "51"} {
+			caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"success":true}`}}}
+			err := executeDriveEdge(t, caller, "quota", "apps", "--limit", limit)
+			if err == nil || !strings.Contains(err.Error(), "--limit 值无效") {
+				t.Fatalf("limit %s: error = %v, want --limit rejection", limit, err)
+			}
+			if caller.calls != 0 {
+				t.Fatalf("limit %s: tool calls = %d, want 0", limit, caller.calls)
+			}
+		}
+	})
+
+	t.Run("unknown order rejected", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{{text: `{"success":true}`}}}
+		err := executeDriveEdge(t, caller, "quota", "apps", "--order", "up")
+		if err == nil || !strings.Contains(err.Error(), "--order 值无效") {
+			t.Fatalf("error = %v, want --order rejection", err)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("tool calls = %d, want 0", caller.calls)
 		}
 	})
 }

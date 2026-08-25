@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -277,10 +278,38 @@ func TestCrossPlatformCoverageRunDriveExportFlow(t *testing.T) {
 
 	t.Run("dry run prints preview", func(t *testing.T) {
 		for _, extra := range [][]string{{}, {"--output", "out.docx"}, {"--async"}, {"--output", "out.docx", "--async"}} {
+			caller := &scriptedToolCaller{dry: true}
 			args := append([]string{"export", "--node", "n1", "--export-format", "docx", "--dry-run"}, extra...)
-			if err := executeDriveEdge(t, &scriptedToolCaller{dry: true}, args...); err != nil {
+			if err := executeDriveEdge(t, caller, args...); err != nil {
 				t.Fatalf("dry-run %v: %v", extra, err)
 			}
+			if caller.calls != 0 {
+				t.Fatalf("dry-run %v: tool calls = %d, want 0", extra, caller.calls)
+			}
+		}
+	})
+
+	t.Run("dry run without explicit format skips detection", func(t *testing.T) {
+		// dry-run 早退必须先于格式自动探测：探测会真实调用远端
+		// get_document_info，而 dry-run 不允许任何远端调用。
+		caller := &scriptedToolCaller{dry: true}
+		if err := executeDriveEdge(t, caller, "export", "--node", "n1", "--dry-run"); err != nil {
+			t.Fatal(err)
+		}
+		if caller.calls != 0 || len(caller.argsLog) != 0 {
+			t.Fatalf("dry-run made remote calls: calls=%d argsLog=%v", caller.calls, caller.argsLog)
+		}
+	})
+
+	t.Run("dry run with unsupported explicit format fails fast", func(t *testing.T) {
+		// 显式格式的合法性校验先于 dry-run 预览：非法输入在预览阶段同样报错。
+		caller := &scriptedToolCaller{dry: true}
+		err := executeDriveEdge(t, caller, "export", "--node", "n1", "--export-format", "txt", "--dry-run")
+		if err == nil || !strings.Contains(err.Error(), "不支持的导出格式") {
+			t.Fatalf("error = %v, want unsupported format", err)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("dry-run calls = %d, want 0", caller.calls)
 		}
 	})
 
@@ -318,13 +347,34 @@ func TestCrossPlatformCoverageRunDriveExportFlow(t *testing.T) {
 		}
 	})
 
-	t.Run("no output prints download url", func(t *testing.T) {
+	t.Run("no output prints single json result", func(t *testing.T) {
 		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{submitOK, queryOK}}
-		if err := executeDriveEdge(t, caller, "export", "--node", "n1", "--export-format", "docx"); err != nil {
+		out, err := executeDriveCommandCapture(t, caller, "export", "--node", "n1", "--export-format", "docx")
+		if err != nil {
 			t.Fatal(err)
 		}
 		if len(caller.toolLog) != 2 {
 			t.Fatalf("calls = %v", caller.toolLog)
+		}
+		// json 模式：stdout 必须是单一可解析 JSON 结果对象（taskId/downloadUrl，
+		// camelCase），不能混入纯文本行。
+		var payload map[string]any
+		if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+			t.Fatalf("json-mode output is not parseable JSON: %v\n%s", err, out.String())
+		}
+		if payload["success"] != true || payload["taskId"] != "job-9" || payload["downloadUrl"] != "https://x.test/report.docx" {
+			t.Fatalf("payload = %#v", payload)
+		}
+	})
+
+	t.Run("no output non json keeps key value lines", func(t *testing.T) {
+		caller := &scriptedToolCaller{format: "table", steps: []scriptedToolStep{submitOK, queryOK}}
+		out, err := executeDriveCommandCapture(t, caller, "export", "--node", "n1", "--export-format", "docx")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "taskId:") || !strings.Contains(out.String(), "downloadUrl:") {
+			t.Fatalf("table output = %q, want taskId/downloadUrl key-value lines", out.String())
 		}
 	})
 

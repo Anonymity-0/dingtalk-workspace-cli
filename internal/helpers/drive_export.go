@@ -164,31 +164,42 @@ func runDriveExport(cmd *cobra.Command, _ []string) error {
 		format = "markdown"
 	}
 
-	// Auto-detect from document info when the format was not explicitly chosen.
-	// inferExportFormatFromDocInfo never returns an empty format (it falls back
-	// to "docx" itself), so no separate empty-format fallback is needed here.
-	if !formatExplicit {
-		format = inferExportFormatFromDocInfo(ctx, node)
-	}
-
-	fileExt, ok := supportedExportFormats[format]
-	if !ok {
-		return fmt.Errorf("不支持的导出格式: %s", format)
+	// 显式指定的格式先于 dry-run 校验：dry-run 是一次忠实预览，非法格式应
+	// 与真实执行同样 fail-fast（且不发起任何远端调用）。
+	if formatExplicit {
+		if _, ok := supportedExportFormats[format]; !ok {
+			return fmt.Errorf("不支持的导出格式: %s", format)
+		}
 	}
 
 	// ── DryRun preview ──
+	// 必须位于格式自动探测之前：探测会真实调用远端 get_document_info，而
+	// dry-run 不允许任何远端调用。未显式指定格式时只标注自动探测语义。
 	if deps.Caller.DryRun() {
 		deps.Out.PrintKeyValue("操作", "导出通用文档（提交+轮询+下载）")
 		deps.Out.PrintKeyValue("通用文档", node)
 		if outputPath != "" {
 			deps.Out.PrintKeyValue("输出", outputPath)
 		}
-		deps.Out.PrintKeyValue("格式", format)
+		if formatExplicit {
+			deps.Out.PrintKeyValue("格式", format)
+		} else {
+			deps.Out.PrintKeyValue("格式", "自动探测（执行时按文档类型推断）")
+		}
 		if asyncMode {
 			deps.Out.PrintKeyValue("异步模式", "是")
 		}
 		return nil
 	}
+
+	// Auto-detect from document info when the format was not explicitly chosen.
+	// inferExportFormatFromDocInfo never returns an empty or unsupported format
+	// (it falls back to "docx" itself), and explicit formats were validated
+	// above, so the resolved format needs no further validation here.
+	if !formatExplicit {
+		format = inferExportFormatFromDocInfo(ctx, node)
+	}
+	fileExt := supportedExportFormats[format]
 
 	// ── Step 1: submit export job ──
 	printTaskProgress("[1/3] 提交导出任务...")
@@ -227,7 +238,19 @@ func runDriveExport(cmd *cobra.Command, _ []string) error {
 	}
 
 	// ── No output path: print downloadUrl and exit ──
+	// json 模式下 stdout 只输出单一 JSON 结果对象（taskId/downloadUrl，camelCase），
+	// 保持机器可解析；结构对齐 sheet export 无 --output 分支的
+	// {"success":true,...,"downloadUrl":...} 既有惯例。时效性提示始终走
+	// stderr（printTaskProgress），不污染 stdout。
 	if outputPath == "" {
+		if deps.Caller.Format() == "json" {
+			printTaskProgress("导出完成。downloadUrl 具有时效性，请尽快下载。")
+			return deps.Out.PrintJSON(map[string]any{
+				"success":     true,
+				"taskId":      jobID,
+				"downloadUrl": downloadURL,
+			})
+		}
 		deps.Out.PrintKeyValue("taskId", jobID)
 		deps.Out.PrintKeyValue("downloadUrl", downloadURL)
 		printTaskProgress("导出完成。downloadUrl 具有时效性，请尽快下载。")

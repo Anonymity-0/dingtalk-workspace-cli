@@ -2044,6 +2044,20 @@ func newDriveCommand() *cobra.Command {
   dws drive quota apps --cursor <nextToken>
   dws drive quota apps --order-by used-quota --order desc`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// fail-fast 参数校验：无效值直接报错（帮助文本已声明合法值域），
+			// 绝不静默丢弃或改写。--limit 用 Changed 区分显式传值与默认 20。
+			if cmd.Flags().Changed("limit") {
+				if v, _ := cmd.Flags().GetInt("limit"); v <= 0 || v > 50 {
+					return fmt.Errorf("--limit 值无效：%d，必须为 1-50 之间的整数", v)
+				}
+			}
+			if v, _ := cmd.Flags().GetString("order-by"); v != "" && mapOrderByToCamelCase(v) == "" {
+				return fmt.Errorf("--order-by 值无效：%s，必须为 used-quota、standard-used-quota 或 exclusive-used-quota", v)
+			}
+			if v, _ := cmd.Flags().GetString("order"); v != "" && v != "asc" && v != "desc" {
+				return fmt.Errorf("--order 值无效：%s，必须为 asc 或 desc", v)
+			}
+
 			toolArgs := map[string]any{}
 			if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
 				toolArgs["maxResults"] = float64(v)
@@ -3235,36 +3249,15 @@ func newDriveCommand() *cobra.Command {
 		Example: `  dws drive publish set --node <fileId> --format json
   dws drive publish set --node <fileId> --password Ab12 --expire-days 7 --format json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// LeafSpec.Validate 已在本 RunE 之前确认 node 非空，这里直接取值。
+			// LeafSpec.Validate 已在本 RunE 之前（先于确认门）完成 node/permission/
+			// password/expire-days 校验，这里直接取值装配参数。
 			nodeID := flagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
-
-			// permission 枚举校验（fail-fast）
 			permVal := mustGetFlag(cmd, "permission")
-			if permVal != "" {
-				validPermissions := map[string]bool{"READER": true, "DOWNLOADER": true, "EDITOR": true}
-				if !validPermissions[permVal] {
-					return fmt.Errorf("--permission 值无效：%s，必须为 READER、DOWNLOADER 或 EDITOR", permVal)
-				}
-			}
 
 			// 密码操作类型（三态：keep / set / clear）
 			pwdChanged := cmd.Flags().Changed("password")
 			pwdVal := mustGetFlag(cmd, "password")
-			if pwdChanged && pwdVal != "" {
-				matched := regexp.MustCompile(`^[A-Za-z0-9]{4}$`).MatchString(pwdVal)
-				if !matched {
-					return fmt.Errorf("密码必须为 4 位字母或数字组合（如 ab3D）")
-				}
-			}
-
-			// 负数有效期会导致 expireDays 字段缺失，服务端 PUT 语义下被设为永久公开。
 			expireChanged := cmd.Flags().Changed("expire-days")
-			if expireChanged {
-				expireDaysVal, _ := cmd.Flags().GetInt("expire-days")
-				if expireDaysVal < 0 {
-					return fmt.Errorf("--expire-days 不能为负数，请传入正整数（如 7）或 0（表示永久有效）")
-				}
-			}
 
 			toolArgs := map[string]any{
 				"fileId":    nodeID,
@@ -3284,7 +3277,7 @@ func newDriveCommand() *cobra.Command {
 				}
 			}
 
-			// expireDays 三值：0=永久, N=N天, 负数已在上方 fail-fast 校验拦截
+			// expireDays 三值：0=永久, N=N天（负数已在 Validate fail-fast 拦截）
 			if expireChanged {
 				expireDaysVal, _ := cmd.Flags().GetInt("expire-days")
 				toolArgs["expireDays"] = expireDaysVal
@@ -3299,7 +3292,37 @@ func newDriveCommand() *cobra.Command {
 		},
 		Validate: func(cmd *cobra.Command, args []string) error {
 			_, err := mustFlagOrFallback(cmd, "node", "url", "id", "node-id", "file-id")
-			return err
+			if err != nil {
+				return err
+			}
+			// 以下三项校验与 node 校验同处 Validate（RunE 包装器内先于
+			// ConfirmSafety 执行）：非法参数在触发确认或远端调用之前 fail-fast。
+
+			// permission 枚举校验（fail-fast）
+			permVal := mustGetFlag(cmd, "permission")
+			if permVal != "" {
+				validPermissions := map[string]bool{"READER": true, "DOWNLOADER": true, "EDITOR": true}
+				if !validPermissions[permVal] {
+					return fmt.Errorf("--permission 值无效：%s，必须为 READER、DOWNLOADER 或 EDITOR", permVal)
+				}
+			}
+
+			// 密码格式校验（三态中的 set：非空才校验；空串=清除密码，合法）
+			if cmd.Flags().Changed("password") {
+				if pwdVal := mustGetFlag(cmd, "password"); pwdVal != "" {
+					if !regexp.MustCompile(`^[A-Za-z0-9]{4}$`).MatchString(pwdVal) {
+						return fmt.Errorf("密码必须为 4 位字母或数字组合（如 ab3D）")
+					}
+				}
+			}
+
+			// 负数有效期会导致 expireDays 字段缺失，服务端 PUT 语义下被设为永久公开。
+			if cmd.Flags().Changed("expire-days") {
+				if expireDaysVal, _ := cmd.Flags().GetInt("expire-days"); expireDaysVal < 0 {
+					return fmt.Errorf("--expire-days 不能为负数，请传入正整数（如 7）或 0（表示永久有效）")
+				}
+			}
+			return nil
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
