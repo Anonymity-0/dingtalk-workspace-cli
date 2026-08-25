@@ -102,17 +102,25 @@ func sourceFieldFixture() map[string]any {
 	return map[string]any{"fieldId": "sf1", "fieldName": "状态", "type": "text"}
 }
 
+func sourcePrimaryDocFixture() map[string]any {
+	return map[string]any{"fieldId": "sp0", "fieldName": "主文档", "type": "primaryDoc"}
+}
+
 func targetFieldFixture() map[string]any {
 	return map[string]any{"fieldId": "tf1", "fieldName": "状态", "type": "text"}
 }
 
+func targetPrimaryDocFixture() map[string]any {
+	return map[string]any{"fieldId": "tp0", "fieldName": "主文档", "type": "primaryDoc"}
+}
+
 func TestCrossPlatformCoverageTableCopyStructureAndRecordsE2E(t *testing.T) {
 	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
-		{text: mustJSONText(t, map[string]any{"fields": []any{sourceFieldFixture()}})},
+		{text: mustJSONText(t, map[string]any{"fields": []any{sourcePrimaryDocFixture(), sourceFieldFixture()}})},
 		{text: `{"records":[{"recordId":"sr1","cells":{"sf1":"完成"}}]}`},
 		{text: `{"data":{"tableId":"target-table"}}`},
-		{text: mustJSONText(t, map[string]any{"fields": []any{targetFieldFixture()}})},
-		{text: `{"createdRecords":[{"recordId":"tr1"}]}`},
+		{text: mustJSONText(t, map[string]any{"fields": []any{targetPrimaryDocFixture(), targetFieldFixture()}})},
+		{text: `{"data":{"newRecordIds":["tr1"]}}`},
 		{text: `{"records":[{"recordId":"tr1","cells":{"tf1":"完成"}}]}`},
 	}}
 	out, err := runAITableCompositeCLI(t, caller, "+table-copy",
@@ -121,7 +129,7 @@ func TestCrossPlatformCoverageTableCopyStructureAndRecordsE2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("table copy error = %v", err)
 	}
-	for _, want := range []string{`"targetTableId": "target-table"`, `"fieldCount": 1`, `"recordCount": 1`, `"status": "verified"`} {
+	for _, want := range []string{`"targetTableId": "target-table"`, `"fieldCount": 2`, `"recordCount": 1`, `"status": "verified"`} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("table copy output missing %s: %s", want, out)
 		}
@@ -158,7 +166,7 @@ func TestCrossPlatformCoverageTableCopyUnknownResponsesAreNotSuccessE2E(t *testi
 			{text: `{"records":[{"recordId":"sr1","cells":{"sf1":"完成"}}]}`},
 			{text: `{"tableId":"target"}`},
 			{text: mustJSONText(t, map[string]any{"fields": []any{targetFieldFixture()}})},
-			{text: `{}`},
+			{text: `{"data":{"newRecordIds":[]}}`},
 		}}
 		out, err := runAITableCompositeCLI(t, caller, "+table-copy",
 			"--source-base-id", "b1", "--source-table-id", "t1", "--target-base-id", "b2", "--new-name", "copy", "--include-records", "--yes")

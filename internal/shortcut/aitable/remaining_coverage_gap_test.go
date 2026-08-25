@@ -286,11 +286,11 @@ func TestCrossPlatformCoverageWorkflowDeployValidationAndFailureStagesE2E(t *tes
 		{name: "invalid DSL", dsl: `{`},
 		{name: "wrong DSL version", dsl: `{"version":"v0"}`},
 		{name: "update preflight error", dsl: workflowDSLFixture, extra: []string{"--workflow-id", "w"}, steps: []upsertByKeyStep{{err: errors.New("preflight failed")}}},
-		{name: "update target not found", dsl: workflowDSLFixture, extra: []string{"--workflow-id", "w"}, steps: []upsertByKeyStep{{text: `{"flowId":"other"}`}}},
+		{name: "update target not found", dsl: workflowDSLFixture, extra: []string{"--workflow-id", "w"}, steps: []upsertByKeyStep{{text: `{"flowId":"other","flowSchema":{}}`}}},
 		{name: "publish missing ID", dsl: workflowDSLFixture, steps: []upsertByKeyStep{{text: `{"valid":true}`}}},
 		{name: "publish ID wrong type", dsl: workflowDSLFixture, steps: []upsertByKeyStep{{text: `{"valid":true,"flowId":1}`}}},
 		{name: "read-back error", dsl: workflowDSLFixture, steps: []upsertByKeyStep{{text: `{"valid":true,"flowId":"w"}`}, {err: errors.New("read failed")}}},
-		{name: "read-back wrong ID", dsl: workflowDSLFixture, steps: []upsertByKeyStep{{text: `{"valid":true,"flowId":"w"}`}, {text: `{"flowId":"other"}`}}},
+		{name: "read-back wrong ID", dsl: workflowDSLFixture, steps: []upsertByKeyStep{{text: `{"valid":true,"flowId":"w"}`}, {text: `{"flowId":"other","flowSchema":{}}`}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -313,7 +313,7 @@ func TestCrossPlatformCoverageWorkflowDeployValidationAndFailureStagesE2E(t *tes
 
 func TestCrossPlatformCoverageWorkflowEnableErrorCanStillBeVerifiedE2E(t *testing.T) {
 	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
-		{text: `{"valid":true,"flowId":"w"}`}, {text: `{"flowId":"w"}`},
+		{text: `{"valid":true,"flowId":"w"}`}, {text: `{"flowSchema":{}}`},
 		{err: errors.New("enable reply failed")}, {text: `{"list":[{"flowId":"w","enabled":true}]}`},
 	}}
 	out, err := runAITableCompositeCLI(t, caller, "+workflow-deploy", "--base-id", "base", "--dsl", workflowDSLFixture, "--enable", "--yes")
@@ -330,7 +330,7 @@ func TestCrossPlatformCoverageWorkflowListFailureShapesE2E(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
-				{text: `{"valid":true,"flowId":"w"}`}, {text: `{"flowId":"w"}`}, {text: `{"enabled":true}`}, step,
+				{text: `{"valid":true,"flowId":"w"}`}, {text: `{"flowSchema":{}}`}, {text: `{"enabled":true}`}, step,
 			}}
 			out, err := runAITableCompositeCLI(t, caller, "+workflow-deploy", "--base-id", "base", "--dsl", workflowDSLFixture, "--enable", "--yes")
 			if err == nil || out != "" {
@@ -350,7 +350,7 @@ func TestCrossPlatformCoverageWorkflowListPaginationAndBoundE2E(t *testing.T) {
 		case 0:
 			return `{"valid":true,"flowId":"w"}`, nil
 		case 1:
-			return `{"flowId":"w"}`, nil
+			return `{"flowSchema":{}}`, nil
 		case 2:
 			return `{"enabled":true}`, nil
 		case 3:
@@ -370,7 +370,7 @@ func TestCrossPlatformCoverageWorkflowListPaginationAndBoundE2E(t *testing.T) {
 			return `{"valid":true,"flowId":"w"}`, nil
 		}
 		if index == 1 {
-			return `{"flowId":"w"}`, nil
+			return `{"flowSchema":{}}`, nil
 		}
 		if index == 2 {
 			return `{"enabled":true}`, nil
@@ -387,6 +387,16 @@ func TestCrossPlatformCoverageWorkflowPureResponseHelpers(t *testing.T) {
 	if _, _, _, err := workflowPublishResult(nil); err == nil {
 		t.Fatal("nil publish result must fail")
 	}
+	detail, err := workflowDetail(map[string]any{"data": map[string]any{"name": "提醒", "flowSchema": map[string]any{}}}, "w", "提醒")
+	if err != nil || detail["name"] != "提醒" {
+		t.Fatalf("workflow detail without echoed ID = %#v, %v", detail, err)
+	}
+	if _, err := workflowDetail(map[string]any{"flowId": "other", "flowSchema": map[string]any{}}, "w", ""); err == nil {
+		t.Fatal("workflow detail with conflicting ID must fail")
+	}
+	if _, err := workflowDetail(map[string]any{"name": "提醒"}, "w", "提醒"); err == nil {
+		t.Fatal("workflow detail without flowSchema must fail")
+	}
 	if value, found := findBoolByKeys(map[string]any{"data": []any{map[string]any{"enabled": true}}}, "enabled"); !found || !value {
 		t.Fatal("nested bool not found")
 	}
@@ -402,5 +412,11 @@ func TestCrossPlatformCoverageWorkflowPureResponseHelpers(t *testing.T) {
 	}
 	if workflowIsRunning(map[string]any{"status": "STOP", "enabled": false}) {
 		t.Fatal("stopped workflow must not be running")
+	}
+	if running, known := workflowRunningState(map[string]any{"status": "STOP"}); running || !known {
+		t.Fatalf("stopped workflow state = running:%v known:%v", running, known)
+	}
+	if running, known := workflowRunningState(map[string]any{"name": "unknown"}); running || known {
+		t.Fatalf("unknown workflow state = running:%v known:%v", running, known)
 	}
 }
