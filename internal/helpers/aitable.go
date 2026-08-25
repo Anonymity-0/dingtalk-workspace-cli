@@ -1562,7 +1562,7 @@ func newAitableCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:   "aitable",
 		Short: "AI 表格操作",
 		Long: `管理钉钉 AI 表格：Base 管理、数据表、字段、记录、视图、表单、仪表盘、图表、导入导出。
@@ -1586,11 +1586,11 @@ func newAitableCommand() *cobra.Command {
   dws aitable section    [create|rename|delete|reorder|list-empty|list-nodes|move-node]  文件夹与节点管理`,
 		RunE:                       groupRunE,
 		SuggestionsMinimumDistance: 2, // Enable "Did you mean ...?" for typos
-	}
+	})
 
 	// ── base: Base 管理 ─────────────────────────────────────────
 
-	baseCmd := &cobra.Command{Use: "base", Short: "Base 管理", RunE: groupRunE}
+	baseCmd := newGroupCommand(&cobra.Command{Use: "base", Short: "Base 管理", RunE: groupRunE})
 
 	baseGetPrimaryDocIdCmd := &cobra.Command{
 		Use:   "get-primary-doc-id",
@@ -1952,7 +1952,7 @@ MCP 层不会会自动解析 URL，必须直接传入 dentryUuid 以避免报错
 
 	// ── table: 数据表管理 ───────────────────────────────────────
 
-	tableCmd := &cobra.Command{Use: "table", Short: "数据表管理", RunE: groupRunE}
+	tableCmd := newGroupCommand(&cobra.Command{Use: "table", Short: "数据表管理", RunE: groupRunE})
 
 	tableGetCmd := &cobra.Command{
 		Use:   "get",
@@ -2223,7 +2223,7 @@ config 结构参考：
 
 	// ── field: 字段管理 ─────────────────────────────────────────
 
-	fieldCmd := &cobra.Command{Use: "field", Short: "字段管理", RunE: groupRunE}
+	fieldCmd := newGroupCommand(&cobra.Command{Use: "field", Short: "字段管理", RunE: groupRunE})
 
 	fieldGetCmd := &cobra.Command{
 		Use:   "get",
@@ -2582,7 +2582,7 @@ newFieldName、config、aiConfig 至少传入一项。
 
 	// ── record: 记录管理 ────────────────────────────────────────
 
-	recordCmd := &cobra.Command{Use: "record", Short: "记录管理", RunE: groupRunE}
+	recordCmd := newGroupCommand(&cobra.Command{Use: "record", Short: "记录管理", RunE: groupRunE})
 
 	recordQueryCmd := &cobra.Command{
 		Use:   "query",
@@ -3564,7 +3564,7 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 
 	// ── template: 模板搜索 ──────────────────────────────────────
 
-	templateCmd := &cobra.Command{Use: "template", Short: "模板搜索", RunE: groupRunE}
+	templateCmd := newGroupCommand(&cobra.Command{Use: "template", Short: "模板搜索", RunE: groupRunE})
 
 	templateSearchCmd := &cobra.Command{
 		Use:   "search",
@@ -3613,7 +3613,7 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 
 	// ── attachment: 附件管理 ──────────────────────────────────────
 
-	attachmentCmd := &cobra.Command{Use: "attachment", Short: "附件管理", RunE: groupRunE}
+	attachmentCmd := newGroupCommand(&cobra.Command{Use: "attachment", Short: "附件管理", RunE: groupRunE})
 
 	attachmentUploadCmd := &cobra.Command{
 		Use:   "upload",
@@ -3690,7 +3690,7 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 
 	// ── view: 视图管理 ───────────────────────────────────────────
 
-	viewCmd := &cobra.Command{Use: "view", Short: "视图管理", RunE: groupRunE}
+	viewCmd := newGroupCommand(&cobra.Command{Use: "view", Short: "视图管理", RunE: groupRunE})
 
 	viewGetCmd := &cobra.Command{
 		Use:   "get",
@@ -3721,6 +3721,7 @@ fieldId 必须是 primaryDoc 类型的字段。`,
 			return callAitableTool("get_views", toolArgs)
 		},
 	}
+	newHybridGroupCommand(viewGetCmd)
 
 	// ─── view get <attr> 子命令：按属性投影 view 响应 ──────────────
 	// card/timebar/aggregate 需要 viewType 校验；filter/sort/group/visible-fields/field-widths 不需要。
@@ -4114,6 +4115,7 @@ fieldWidths 仅支持 Grid 视图。
 			return callAitableTool("update_view", toolArgs)
 		},
 	}
+	newHybridGroupCommand(viewUpdateCmd)
 
 	// ─── view update <attr> 子命令：按属性局部更新 ────────────────────
 
@@ -5058,9 +5060,9 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 
 	// ── form: 表单管理 ──────────────────────────────────────────
 
-	formCmd := &cobra.Command{Use: "form", Short: "表单管理", RunE: groupRunE}
-	formFieldCmd := &cobra.Command{Use: "field", Short: "表单字段管理", RunE: groupRunE}
-	formShareCmd := &cobra.Command{Use: "share", Short: "表单分享管理", RunE: groupRunE}
+	formCmd := newGroupCommand(&cobra.Command{Use: "form", Short: "表单管理", RunE: groupRunE})
+	formFieldCmd := newGroupCommand(&cobra.Command{Use: "field", Short: "表单字段管理", RunE: groupRunE})
+	formShareCmd := newGroupCommand(&cobra.Command{Use: "share", Short: "表单分享管理", RunE: groupRunE})
 
 	formListCmd := &cobra.Command{
 		Use:     "list",
@@ -5312,7 +5314,7 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 
 	// ── form questions: 表单题目（form 视角的字段管理，等价于 field create / field delete） ──
 
-	formQuestionsCmd := &cobra.Command{Use: "questions", Short: "表单题目管理（等价于 field create / delete）", RunE: groupRunE}
+	formQuestionsCmd := newGroupCommand(&cobra.Command{Use: "questions", Short: "表单题目管理（等价于 field create / delete）", RunE: groupRunE})
 
 	formQuestionsCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -5607,11 +5609,11 @@ locked 为 true 表示视图已锁定，false 表示未锁定。`,
 
 	// ── workflow: 自动化工作流管理 ────────────────────────────────
 
-	workflowCmd := &cobra.Command{
+	workflowCmd := newGroupCommand(&cobra.Command{
 		Use:   "workflow",
 		Short: "自动化工作流管理（创建 / 更新 / 启停 / 执行 / 历史 / 查询）",
 		RunE:  groupRunE,
-	}
+	})
 
 	workflowCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -6066,7 +6068,7 @@ valid=false 仍表示 DSL 校验或发布未通过，必须读取 issues 修正�
 
 	// ── dashboard: 仪表盘管理 ────────────────────────────────────
 
-	dashboardCmd := &cobra.Command{Use: "dashboard", Short: "仪表盘管理", RunE: groupRunE}
+	dashboardCmd := newGroupCommand(&cobra.Command{Use: "dashboard", Short: "仪表盘管理", RunE: groupRunE})
 
 	dashboardConfigExampleCmd := &cobra.Command{
 		Use:   "config-example",
@@ -6361,7 +6363,7 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 
 	// ── dashboard share: 仪表盘分享管理 ────────────────────────────
 
-	dashboardShareCmd := &cobra.Command{Use: "share", Short: "仪表盘分享管理", RunE: groupRunE}
+	dashboardShareCmd := newGroupCommand(&cobra.Command{Use: "share", Short: "仪表盘分享管理", RunE: groupRunE})
 
 	dashboardShareGetCmd := &cobra.Command{
 		Use:   "get",
@@ -6463,7 +6465,7 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 
 	// ── chart: 图表管理 ──────────────────────────────────────────
 
-	chartCmd := &cobra.Command{Use: "chart", Short: "图表管理", RunE: groupRunE}
+	chartCmd := newGroupCommand(&cobra.Command{Use: "chart", Short: "图表管理", RunE: groupRunE})
 
 	chartWidgetsExampleCmd := &cobra.Command{
 		Use:   "widgets-example",
@@ -6702,7 +6704,7 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 
 	// ── chart share: 图表分享管理 ────────────────────────────────
 
-	chartShareCmd := &cobra.Command{Use: "share", Short: "图表分享管理", RunE: groupRunE}
+	chartShareCmd := newGroupCommand(&cobra.Command{Use: "share", Short: "图表分享管理", RunE: groupRunE})
 
 	chartShareGetCmd := &cobra.Command{
 		Use:   "get",
@@ -6806,7 +6808,7 @@ layout 数组里每项含图表的新位置（row/col/width/height）。`,
 
 	// ── export / import: 数据导入导出 ────────────────────────────
 
-	exportCmd := &cobra.Command{Use: "export", Short: "数据导出", RunE: groupRunE}
+	exportCmd := newGroupCommand(&cobra.Command{Use: "export", Short: "数据导出", RunE: groupRunE})
 
 	exportDataCmd := &cobra.Command{
 		Use:   "data",
@@ -6911,11 +6913,11 @@ export-format 可选值：excel、attachment、excel_and_attachment、excel_with
 		},
 	})
 
-	importCmd := &cobra.Command{Use: "import", Short: "数据导入", RunE: groupRunE}
+	importCmd := newGroupCommand(&cobra.Command{Use: "import", Short: "数据导入", RunE: groupRunE})
 
 	// ── advperm: 高级权限 / 自定义角色 ────────────────────────────
 
-	advpermCmd := &cobra.Command{Use: "advperm", Short: "高级权限管理（开关 / 角色查看与删除）", RunE: groupRunE}
+	advpermCmd := newGroupCommand(&cobra.Command{Use: "advperm", Short: "高级权限管理（开关 / 角色查看与删除）", RunE: groupRunE})
 
 	advpermEnableCmd := &cobra.Command{
 		Use:   "enable",
@@ -7392,7 +7394,7 @@ role-get 自行 merge）。
 
 	// ── section: 文件夹与节点管理（导航树组织） ──────────────────────────────
 
-	sectionCmd := &cobra.Command{Use: "section", Short: "文件夹与节点管理", RunE: groupRunE}
+	sectionCmd := newGroupCommand(&cobra.Command{Use: "section", Short: "文件夹与节点管理", RunE: groupRunE})
 
 	sectionCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -8424,7 +8426,7 @@ parentSectionId 为空串表示该节点在 Base 根目录下。
 
 	// ── datasource: 数据源同步管理 ──────────────────────────────
 
-	datasourceCmd := &cobra.Command{Use: "datasource", Short: "数据源同步管理", RunE: groupRunE}
+	datasourceCmd := newGroupCommand(&cobra.Command{Use: "datasource", Short: "数据源同步管理", RunE: groupRunE})
 
 	datasourceGetConfigCmd := &cobra.Command{
 		Use:     "get-config",

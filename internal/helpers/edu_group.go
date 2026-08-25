@@ -31,19 +31,19 @@ func newEduGroupCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:    "edu-group",
 		Short:  "家校群",
 		Long:   `钉钉家校群管理：师生群查询/创建/解散、班级群会话信息查询、批量操作等。`,
 		Hidden: true,
 		RunE:   groupRunE,
-	}
+	})
 
 	// ════════════════════════════════════════════════════════════
 	// student-group 子命令组 — 师生群管理
 	// ════════════════════════════════════════════════════════════
 
-	studentGroupCmd := &cobra.Command{Use: "student-group", Short: "师生群管理", RunE: groupRunE}
+	studentGroupCmd := newGroupCommand(&cobra.Command{Use: "student-group", Short: "师生群管理", RunE: groupRunE})
 
 	studentGroupInfoCmd := &cobra.Command{
 		Use:   "info",
@@ -395,7 +395,7 @@ func newEduGroupCommand() *cobra.Command {
 	// class-group 子命令组 — 班级群（家校群）会话管理
 	// ════════════════════════════════════════════════════════════
 
-	classGroupCmd := &cobra.Command{Use: "class-group", Short: "班级群会话管理", RunE: groupRunE}
+	classGroupCmd := newGroupCommand(&cobra.Command{Use: "class-group", Short: "班级群会话管理", RunE: groupRunE})
 
 	classGroupConversationIDCmd := &cobra.Command{
 		Use:   "conversation-id",
@@ -606,7 +606,7 @@ func newEduGroupCommand() *cobra.Command {
 	// batch 子命令组 — 批量操作
 	// ════════════════════════════════════════════════════════════
 
-	batchCmd := &cobra.Command{Use: "batch", Short: "批量操作", RunE: groupRunE}
+	batchCmd := newGroupCommand(&cobra.Command{Use: "batch", Short: "批量操作", RunE: groupRunE})
 
 	batchCheckClassGroupCmd := &cobra.Command{
 		Use:   "check-student-group",
