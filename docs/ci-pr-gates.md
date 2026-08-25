@@ -25,6 +25,26 @@ current PR head. Its Files API read is bracketed by base/head revision checks,
 so a synchronize race fails closed. The same workflow supplies a successful
 `AI Behavior` check run on protected `main` pushes for release governance.
 
+## Draft pull-request feedback
+
+A Draft pull request runs the independent `Draft CI` workflow instead of the
+nine formal admission contexts. Its single `Draft Fast Gate` provides bounded
+development feedback: it verifies the synthetic merge identity, package plan,
+formatting, `go vet`, Actions syntax, reviewer routing, installer smoke, build,
+release-fragment lifecycle, and lightweight repository policy.
+
+The Draft result is not Code Admission and is never a substitute for `Lint`,
+`Test`, `Coverage`, `Policy`, `Edition`, `Interface Integrity`, `AI Behavior`,
+`CLI Smoke`, or `Mock MCP`. Those exact contexts remain absent while the pull
+request is Draft. Marking it ready for review starts the complete tier-selected
+admission on the current head SHA; only that run can satisfy the ruleset.
+
+Converting a ready pull request back to Draft creates a new skipped formal CI
+run in the same revision concurrency group, cancelling any in-progress heavy
+admission work, and starts `Draft Fast Gate`. A later `ready_for_review` event
+runs the full admission again. Editing only a Draft title or body does not
+consume a runner; changing its base branch does revalidate the synthetic merge.
+
 ## Exact CHANGELOG-only fast path
 
 A pull request qualifies only when GitHub reports exactly one changed file,

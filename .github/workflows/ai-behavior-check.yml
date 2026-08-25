@@ -2,7 +2,7 @@ name: Code Admission — AI Behavior
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
   push:
     branches:
       - main
@@ -15,6 +15,9 @@ permissions:
 jobs:
   ai-behavior-check:
     name: AI Behavior
+    # Draft feedback is intentionally separate from all formal admission
+    # contexts. Re-evaluate the same head when ready_for_review is emitted.
+    if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

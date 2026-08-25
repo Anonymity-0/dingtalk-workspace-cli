@@ -5,7 +5,7 @@ on:
     branches:
       - main
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, edited, auto_merge_enabled, auto_merge_disabled]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited, auto_merge_enabled, auto_merge_disabled]
 
 permissions:
   contents: read
@@ -21,6 +21,10 @@ concurrency:
 jobs:
   lint:
     name: Lint
+    # Draft revisions use the isolated Draft CI workflow. Keeping the formal
+    # admission contexts absent prevents a fast preview on the same commit from
+    # being mistaken for the nine checks required after ready_for_review.
+    if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
