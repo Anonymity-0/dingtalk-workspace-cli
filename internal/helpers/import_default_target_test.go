@@ -199,6 +199,7 @@ func TestCrossPlatformCoverageDocImportRejectsAmbiguousOrMissingDefaultBeforeWri
 		{name: "missing items", body: `{"result":{}}`, want: "缺少 items"},
 		{name: "zero spaces", body: `{"result":{"items":[]}}`, want: "0 个 orgSpace"},
 		{name: "multiple spaces", body: `{"result":{"items":[{"rootFolderId":"a"},{"rootFolderId":"b"}]}}`, want: "2 个 orgSpace"},
+		{name: "invalid space item", body: `{"result":{"items":[1]}}`, want: "返回结构无效"},
 		{name: "missing root folder", body: `{"result":{"items":[{"spaceType":"orgSpace"}]}}`, want: "未返回 rootFolderId"},
 		{name: "wrong type", body: `{"result":{"items":[{"spaceType":"mySpace","rootFolderId":"root"}]}}`, want: "不是 orgSpace"},
 		{name: "first page is not unique", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}],"nextToken":"page-2"}}`, want: "仍有下一页"},
@@ -224,6 +225,30 @@ func TestCrossPlatformCoverageDocImportRejectsAmbiguousOrMissingDefaultBeforeWri
 		_, err := runDocImportTargetFlow(t, caller, "docx", "", "")
 		assertImportPreflightError(t, err)
 		if !strings.Contains(err.Error(), "显式提供") || len(caller.calls) != 1 {
+			t.Fatalf("error/calls = %v / %#v", err, caller.calls)
+		}
+	})
+
+	t.Run("resolver returns an empty target", func(t *testing.T) {
+		previousDeps := deps
+		previousArgs := os.Args
+		t.Cleanup(func() {
+			deps = previousDeps
+			os.Args = previousArgs
+		})
+		caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{}}
+		InitDeps(caller)
+		deps.Out.w = io.Discard
+		deps.Out.errW = io.Discard
+		os.Args = []string{"dws", "doc"}
+		cmd := htmlFallbackCommand(t, writeImportFixture(t, "docx"))
+		cfg := docImportFlowConfig()
+		cfg.resolveDefaultTarget = func(context.Context) (importTarget, error) {
+			return importTarget{}, nil
+		}
+		err := runImportCommand(cmd, nil, cfg)
+		assertImportPreflightError(t, err)
+		if !strings.Contains(err.Error(), "解析结果为空") || len(caller.calls) != 0 {
 			t.Fatalf("error/calls = %v / %#v", err, caller.calls)
 		}
 	})
