@@ -184,8 +184,16 @@ ruleset before it can enable, reconcile, or synchronously merge. The read-only
 `Test`
 token may receive a repository projection with both merge-default properties
 omitted; it accepts only that complete omission or exact `MERGE_MESSAGE` plus
-`PR_TITLE`/`BLANK`, while partial or malformed projections fail closed. The
-minted App's `Contents: write` token must observe the exact reviewed defaults
+`PR_TITLE`/`BLANK`, while partial or malformed projections fail closed.
+The same unprivileged `pull_request` job may receive an empty repository-variable
+projection for an external fork. Only when the event head repository differs
+from the base repository does it substitute the exact reviewed public slug
+`dingtalk-dws-reviewer-router` for identity comparison. An empty variable on a
+same-repository PR and every malformed non-empty value still fail closed. This
+fallback neither mints a token nor grants merge authority; the base-owned
+Router continues to require its minted App slug to equal the repository
+variable before any mutation. The minted App's `Contents: write` token must
+observe the exact reviewed defaults
 before either mutation path proceeds. GitHub hides the complete
 `bypass_actors` list from low-privilege callers, so the rollout audit must still
 keep the writer list at exactly the Reviewer App, `haofeng0705` (ID
