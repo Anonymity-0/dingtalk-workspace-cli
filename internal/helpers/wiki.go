@@ -160,14 +160,14 @@ func newWikiCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:   "wiki",
 		Short: "知识库 / 空间管理 / 节点管理 / 成员管理 / 动态查询",
 		Long:  `管理钉钉文档知识库：空间管理（创建/查看/列出/搜索/删除）、节点管理（列出/创建/复制/移动/删除）、成员管理（添加/更新/列出/移除）、动态查询（知识库活动动态）。`,
 		RunE:  groupRunE,
-	}
+	})
 
-	spaceCmd := &cobra.Command{Use: "space", Short: "知识库管理", RunE: groupRunE}
+	spaceCmd := newGroupCommand(&cobra.Command{Use: "space", Short: "知识库管理", RunE: groupRunE})
 
 	spaceCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -519,12 +519,12 @@ func newWikiCommand() *cobra.Command {
 	spaceCmd.AddCommand(spaceCreateCmd, spaceGetCmd, spaceListCmd, spaceSearchCmd, spaceDeleteCmd)
 
 	// ── member (知识库成员管理) ───────────────────────────────
-	memberCmd := &cobra.Command{
+	memberCmd := newGroupCommand(&cobra.Command{
 		Use:   "member",
 		Short: "知识库成员管理",
 		Long:  `管理钉钉知识库的成员：添加成员、更新成员权限、查询成员列表、移除成员。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	memberAddCmd := &cobra.Command{
 		Use:   "add",
@@ -954,12 +954,12 @@ ORG 类型授权不会出现在查询结果中。`,
 	// ── node (知识库节点管理) ─────────────────────────────────
 	// 对齐飞书 cli-lark wiki node 设计：内建 list/create/copy/move/delete，
 	// 一跳直达 doc MCP server，不再经过 proxy chain。
-	nodeCmd := &cobra.Command{
+	nodeCmd := newGroupCommand(&cobra.Command{
 		Use:   "node",
 		Short: "知识库节点管理",
 		Long:  `管理钉钉知识库中的节点（文档/文件夹/表格等）：列出、创建、复制、移动、删除。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	nodeListCmd := &cobra.Command{
 		Use:     "list",
@@ -1415,12 +1415,12 @@ ORG 类型授权不会出现在查询结果中。`,
 	root.AddCommand(nodeCmd)
 
 	// ── feed (知识库动态查询) ─────────────────────────────────
-	feedCmd := &cobra.Command{
+	feedCmd := newGroupCommand(&cobra.Command{
 		Use:   "feed",
 		Short: "知识库动态查询",
 		Long:  `查询知识库的动态：谁在什么时间更新/上传/评论了哪些文档。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	feedListCmd := &cobra.Command{
 		Use:     "list",
@@ -1536,14 +1536,14 @@ ORG 类型授权不会出现在查询结果中。`,
 	)
 
 	// ── [PROXY] wiki file/doc * → doc * (兼容旧路径) ──
-	fileGroup := &cobra.Command{Use: "file", Hidden: true, RunE: groupRunE}
+	fileGroup := newGroupCommand(&cobra.Command{Use: "file", Hidden: true, RunE: groupRunE})
 	fileGroup.AddCommand(
 		proxySubCmd("list", "doc", "list", nil),                                                 // [PROXY] wiki file list → doc list
 		proxySubCmd("search", "doc", "search", map[string]string{"workspace": "workspace-ids"}), // [PROXY] wiki file search → doc search
 	)
 	root.AddCommand(fileGroup)
 
-	docGroup := &cobra.Command{Use: "doc", Hidden: true, RunE: groupRunE}
+	docGroup := newGroupCommand(&cobra.Command{Use: "doc", Hidden: true, RunE: groupRunE})
 	docGroup.AddCommand(
 		proxySubCmd("list", "doc", "list", nil),                                                 // [PROXY] wiki doc list → doc list
 		proxySubCmd("read", "doc", "read", nil),                                                 // [PROXY] wiki doc read → doc read
