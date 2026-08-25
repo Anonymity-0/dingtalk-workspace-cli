@@ -938,7 +938,15 @@ jobs:
             const pullNumber = context.payload.pull_request.number;
             const eventHeadSha = context.payload.pull_request.head.sha;
             const eventBaseSha = context.payload.pull_request.base.sha;
-            const appSlug = process.env.REVIEWER_ROUTER_APP_SLUG?.trim();
+            const configuredAppSlug = process.env.REVIEWER_ROUTER_APP_SLUG?.trim();
+            const reviewedForkAppSlug = 'dingtalk-dws-reviewer-router';
+            const pullHeadRepository =
+              context.payload.pull_request.head.repo.full_name?.toLowerCase();
+            const baseRepository = `${owner}/${repo}`.toLowerCase();
+            const isForkPull =
+              Boolean(pullHeadRepository) && pullHeadRepository !== baseRepository;
+            const appSlug =
+              configuredAppSlug || (isForkPull ? reviewedForkAppSlug : '');
             if (
               !appSlug ||
               appSlug !== appSlug.toLowerCase() ||
@@ -948,6 +956,11 @@ jobs:
                 'Reviewer Router App slug repository variable is missing or unsafe.',
               );
               return;
+            }
+            if (!configuredAppSlug) {
+              core.info(
+                `Fork pull request cannot read the repository App slug variable; using the reviewed public slug ${reviewedForkAppSlug}.`,
+              );
             }
             const expectedAppOwner = `${appSlug}[bot]`;
             const writerRulesetName = 'main-merge-writers';
