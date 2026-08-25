@@ -30,16 +30,17 @@ import (
 const manifestRelativePath = "scripts/policy/multi-doc-skill-chain/testdata/intent_routes.json"
 
 var (
-	intentIDPattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
-	reasonCodePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-	sha256Pattern     = regexp.MustCompile(`^[0-9a-f]{64}$`)
-	intentMarker      = regexp.MustCompile(`<!--\s*dws-intent:\s*([a-z0-9][a-z0-9._-]*)\s*-->`)
-	markdownLink      = regexp.MustCompile(`\]\(([^)#\s]+\.md)(?:#[^)]*)?\)`)
-	mainGetwd         = os.Getwd
-	mainExit          = os.Exit
-	markerOpen        = os.Open
-	buildEffective    = cli.BuildEffectiveCommandRegistry
-	bindEffective     = cli.BindEffectiveCommandRegistry
+	intentIDPattern    = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
+	reasonCodePattern  = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	sha256Pattern      = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	intentMarker       = regexp.MustCompile(`<!--\s*dws-intent:\s*([a-z0-9][a-z0-9._-]*)\s*-->`)
+	markdownLink       = regexp.MustCompile(`\]\(([^)#\s]+\.md)(?:#[^)]*)?\)`)
+	mainGetwd          = os.Getwd
+	mainExit           = os.Exit
+	markerOpen         = os.Open
+	repositoryRelative = filepath.Rel
+	buildEffective     = cli.BuildEffectiveCommandRegistry
+	bindEffective      = cli.BindEffectiveCommandRegistry
 )
 
 type routeManifest struct {
@@ -174,7 +175,7 @@ func validateProtectedReferences(rootPath string, manifest routeManifest) []stri
 			if entry.IsDir() {
 				return nil
 			}
-			relative, relErr := filepath.Rel(rootPath, path)
+			relative, relErr := repositoryRelative(rootPath, path)
 			if relErr != nil {
 				return relErr
 			}
