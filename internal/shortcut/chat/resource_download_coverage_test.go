@@ -433,6 +433,24 @@ func TestCrossPlatformCoverageDownloadResourceHTTPFailures(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageDownloadResourceDedicatedHostWithHeaders(t *testing.T) {
+	// 专属部署域名 + 服务端凭据头是真实生产场景（部分专属大客）：
+	// URL 与凭据头由同一已认证 MCP 响应成对下发，首跳按原样转发，
+	// 不得因域名不在静态可信集而拒绝或剥离。
+	for _, headers := range []map[string]string{
+		{"Authorization": "signed"},
+		nil,
+	} {
+		dest := filepath.Join(t.TempDir(), "resource")
+		if _, err := downloadResourceAtomically(
+			context.Background(), resourceResponseClient(200, "ok", 2),
+			"https://ddoss.ijingbo.chambroad.com/file", headers, dest, false,
+		); err != nil {
+			t.Fatalf("dedicated host download (headers=%v) = %v", headers, err)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageDownloadResourceNilClientUsesSecureDefault(t *testing.T) {
 	resetResourceDownloadHooks(t)
 	served := false

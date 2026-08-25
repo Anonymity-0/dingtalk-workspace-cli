@@ -401,14 +401,20 @@ func publicIP(ip net.IP) bool {
 }
 
 var nonPublicPrefixes = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),       // "this network"; reaches localhost on Linux
 	netip.MustParsePrefix("100.64.0.0/10"),   // carrier-grade NAT
 	netip.MustParsePrefix("192.0.0.0/24"),    // IETF protocol assignments
 	netip.MustParsePrefix("192.0.2.0/24"),    // TEST-NET-1
+	netip.MustParsePrefix("192.88.99.0/24"),  // deprecated 6to4 relay anycast
 	netip.MustParsePrefix("198.18.0.0/15"),   // benchmark networks
 	netip.MustParsePrefix("198.51.100.0/24"), // TEST-NET-2
 	netip.MustParsePrefix("203.0.113.0/24"),  // TEST-NET-3
 	netip.MustParsePrefix("240.0.0.0/4"),     // reserved
+	netip.MustParsePrefix("100::/64"),        // IPv6 discard-only
 	netip.MustParsePrefix("2001:db8::/32"),   // IPv6 documentation
+	netip.MustParsePrefix("2002::/16"),       // 6to4
+	netip.MustParsePrefix("3fff::/20"),       // IPv6 documentation (RFC 9637)
+	netip.MustParsePrefix("5f00::/16"),       // SRv6 SIDs
 }
 
 func ensureSafeParent(root *os.Root, parent string) error {

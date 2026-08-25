@@ -215,3 +215,26 @@ func TestCrossPlatformCoveragePutFileRejectsRedirectAndInvalidFileE2E(t *testing
 		t.Fatal("missing file accepted")
 	}
 }
+
+func TestCrossPlatformCoverageUploadURLTrustPolicy(t *testing.T) {
+	for _, raw := range []string{"https://upload.dingtalk.com/x", "https://bucket.oss-cn-hangzhou.aliyuncs.com/key"} {
+		if err := validateUploadURL(raw); err != nil {
+			t.Errorf("validateUploadURL(%q): %v", raw, err)
+		}
+	}
+	// 上传将本地文件字节向外发布，保持白名单移除前的静态可信域名边界。
+	for _, raw := range []string{
+		"http://upload.dingtalk.com/x",
+		"https://evil.example/x",
+		"https://ddoss.ijingbo.chambroad.com/x",
+		"https://bucket.oss-cn-hangzhou-internal.aliyuncs.com/key",
+		"https://evildingtalk.com/x",
+	} {
+		if err := validateUploadURL(raw); err == nil {
+			t.Errorf("validateUploadURL(%q) unexpectedly succeeded", raw)
+		}
+	}
+	if !trustedUploadHost("download.dingtalk.com.") {
+		t.Error("trailing-dot trusted host rejected")
+	}
+}

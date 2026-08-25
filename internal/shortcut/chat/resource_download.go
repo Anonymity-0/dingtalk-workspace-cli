@@ -504,6 +504,11 @@ func downloadResourceAtomically(
 	if err != nil {
 		return 0, err
 	}
+	// The resource URL and any credential headers are issued together by the
+	// same authenticated MCP response, so the initial request forwards them
+	// as-is even for dedicated-deployment storage hosts. The attack surface
+	// is a redirect leaving the original host, which the header-stripping
+	// CheckRedirect below covers.
 	clientCopy := *client
 	client = &clientCopy
 	originalRedirect := client.CheckRedirect

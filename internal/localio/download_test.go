@@ -87,7 +87,9 @@ func TestCrossPlatformCoverageDownloadURLAndPublicIPPolicy(t *testing.T) {
 		}
 	}
 
-	for _, raw := range []string{"127.0.0.1", "10.0.0.1", "100.64.0.1", "192.0.2.1", "198.51.100.1", "203.0.113.1", "224.0.0.1", "2001:db8::1"} {
+	for _, raw := range []string{"127.0.0.1", "10.0.0.1", "100.64.0.1", "192.0.2.1", "198.51.100.1", "203.0.113.1", "224.0.0.1", "2001:db8::1",
+		// IANA 特殊用途段：0.0.0.0/8 在 Linux 上可达本机，其余均非全球可达。
+		"0.0.0.1", "0.255.255.255", "192.88.99.1", "100::1", "2002::1", "3fff::1", "5f00::1"} {
 		if publicIP(net.ParseIP(raw)) {
 			t.Errorf("publicIP(%s) = true", raw)
 		}
