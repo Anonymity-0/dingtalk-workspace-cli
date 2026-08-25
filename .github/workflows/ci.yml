@@ -1013,13 +1013,26 @@ jobs:
             const writerRuleset = writerRulesets[0];
             const writerIncludes = writerRuleset.conditions?.ref_name?.include || [];
             const writerExcludes = writerRuleset.conditions?.ref_name?.exclude || [];
+            // GitHub's read projection omits parameters when this update-rule
+            // exception is disabled. Accept only that omission or exact false;
+            // reject a present null/non-boolean field instead of weakening the gate.
+            function isStrictUpdateRule(rule) {
+              if (rule?.type !== 'update') {
+                return false;
+              }
+              const updateAllowsFetchAndMerge =
+                rule.parameters?.update_allows_fetch_and_merge;
+              return (
+                updateAllowsFetchAndMerge === undefined ||
+                updateAllowsFetchAndMerge === false
+              );
+            }
             if (
               writerIncludes.length !== 1 ||
               writerIncludes[0] !== 'refs/heads/main' ||
               writerExcludes.length !== 0 ||
               writerRuleset.rules?.length !== 1 ||
-              writerRuleset.rules[0].type !== 'update' ||
-              writerRuleset.rules[0].parameters?.update_allows_fetch_and_merge !== false ||
+              !isStrictUpdateRule(writerRuleset.rules[0]) ||
               writerRuleset.current_user_can_bypass !== 'never'
             ) {
               core.setFailed(

@@ -82,7 +82,10 @@ it:
 - set repository secret `REVIEWER_ROUTER_APP_PRIVATE_KEY` to its private key;
 - create one active repository branch ruleset named `main-merge-writers`,
   targeting only `refs/heads/main`, with exactly one `Restrict updates` rule
-  (`update_allows_fetch_and_merge: false`);
+  (`update_allows_fetch_and_merge: false`). GitHub may project that strict
+  value through the read APIs as `{type: "update"}` with `parameters` omitted;
+  consumers accept only that omission or an explicit boolean `false`, and
+  reject every present non-false value;
 - give that ruleset exactly two bypass actors: the Reviewer Router App as an
   `Integration` in `pull_request` mode, and `PeterGuy326` (ID `47820304`) in
   `always` mode for Formula publication and break-glass recovery;

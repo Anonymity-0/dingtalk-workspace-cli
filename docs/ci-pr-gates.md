@@ -170,7 +170,10 @@ silently skip the merge commit's protected-main CI and baseline-cache
 producer. Token minting or takeover fails closed without falling back to
 `GITHUB_TOKEN`: the unsafe request is cleared before credentials are read, and
 the required `Test` context live-verifies the exact `main-merge-writers` update
-rule and requires its own built-in token to report
+rule. GitHub's read APIs may omit `parameters` for the strict
+`update_allows_fetch_and_merge: false` value, so the gate accepts only that
+omission or an explicit boolean `false` and rejects every present non-false
+value. It also requires its own built-in token to report
 `current_user_can_bypass: never`. The minted App separately requires
 `pull_requests_only` on that writer rule and `never` on every other active main
 ruleset before it can enable or reconcile auto-merge. GitHub hides the complete
