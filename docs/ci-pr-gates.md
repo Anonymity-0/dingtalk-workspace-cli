@@ -309,9 +309,12 @@ merged SHA even if a human or integration changes the merge message after PR
 checks finish. Skip directives alone do not suppress `pull_request_target`,
 subject to GitHub's separate security-sensitive branch-name restriction above.
 That job executes no PR code and only dispatches after binding the exact
-closed/merged PR head, base, merge SHA, and `main` containment. Because GitHub
-makes default-branch caches read-only to `pull_request_target`, the dispatcher first
-waits up to one minute for a run from the exact protected
+closed-event PR number and stable head SHA to merged-PR facts
+(`merged_at`, `base.ref`, and `merge_commit_sha`) and proving `main`
+containment. It does not compare the later REST `base.sha`, which follows the
+live base branch after merge. Because GitHub makes default-branch caches
+read-only to `pull_request_target`, the dispatcher first waits up to one minute
+for a run from the exact protected
 `.github/workflows/ci.yml` workflow and exits when that normal producer exists.
 A successful main CI hard-verifies the exact key itself. A completed
 non-success run starts a separate base-owned `workflow_run` dispatcher, which

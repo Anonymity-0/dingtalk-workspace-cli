@@ -53,7 +53,7 @@ jobs:
             const fullCommit = /^[0-9a-f]{40}$/;
             const pullNumber = Number(eventPull?.number);
             const headSha = eventPull?.head?.sha;
-            const baseSha = eventPull?.base?.sha;
+            const baseRef = eventPull?.base?.ref;
             const mergeCommitSha = eventPull?.merge_commit_sha;
             if (
               context.payload.repository?.full_name !==
@@ -62,10 +62,31 @@ jobs:
               !Number.isSafeInteger(pullNumber) ||
               pullNumber <= 0 ||
               !fullCommit.test(headSha || '') ||
-              !fullCommit.test(baseSha || '') ||
+              baseRef !== 'main' ||
               !fullCommit.test(mergeCommitSha || '')
             ) {
               throw new Error('closed PR event has an invalid repository or revision identity');
+            }
+
+            // REST base.sha follows the live base branch and can move after
+            // merge. Bind the closed event's stable PR head snapshot and merge
+            // facts, then authorize the target through main containment.
+            function isStableMergedPRIdentity(
+              currentPull,
+              pullNumber,
+              headSha,
+              mergeCommitSha,
+            ) {
+              return (
+                currentPull?.number === pullNumber &&
+                currentPull.state === 'closed' &&
+                currentPull.merged === true &&
+                typeof currentPull.merged_at === 'string' &&
+                currentPull.merged_at.length > 0 &&
+                currentPull.base?.ref === 'main' &&
+                currentPull.head?.sha === headSha &&
+                currentPull.merge_commit_sha === mergeCommitSha
+              );
             }
 
             const {data: currentPull} = await github.rest.pulls.get({
@@ -73,16 +94,12 @@ jobs:
               repo,
               pull_number: pullNumber,
             });
-            if (
-              currentPull.number !== pullNumber ||
-              currentPull.state !== 'closed' ||
-              currentPull.merged !== true ||
-              !currentPull.merged_at ||
-              currentPull.base.ref !== 'main' ||
-              currentPull.base.sha !== baseSha ||
-              currentPull.head.sha !== headSha ||
-              currentPull.merge_commit_sha !== mergeCommitSha
-            ) {
+            if (!isStableMergedPRIdentity(
+              currentPull,
+              pullNumber,
+              headSha,
+              mergeCommitSha,
+            )) {
               throw new Error(`PR #${pullNumber} no longer matches the merged-main event`);
             }
 
@@ -174,7 +191,6 @@ jobs:
                 source: 'merged_pr',
                 pull_number: String(pullNumber),
                 head_sha: headSha,
-                base_sha: baseSha,
                 merge_commit_sha: mergeCommitSha,
                 source_run_id: String(context.runId),
               },
@@ -338,6 +354,27 @@ jobs:
               );
             }
 
+            // The dispatcher froze the stable PR head snapshot in this payload.
+            // Do not re-read mutable base.sha; bind the head and stable merge
+            // facts, then prove protected-main containment below.
+            function isStableMergedPRIdentity(
+              currentPull,
+              pullNumber,
+              headSha,
+              mergeCommitSha,
+            ) {
+              return (
+                currentPull?.number === pullNumber &&
+                currentPull.state === 'closed' &&
+                currentPull.merged === true &&
+                typeof currentPull.merged_at === 'string' &&
+                currentPull.merged_at.length > 0 &&
+                currentPull.base?.ref === 'main' &&
+                currentPull.head?.sha === headSha &&
+                currentPull.merge_commit_sha === mergeCommitSha
+              );
+            }
+
             let targetSha;
             if (context.eventName === 'repository_dispatch') {
               const payload = context.payload.client_payload || {};
@@ -349,13 +386,11 @@ jobs:
                 const rawPullNumber = String(payload.pull_number || '');
                 const pullNumber = Number(rawPullNumber);
                 const headSha = payload.head_sha;
-                const baseSha = payload.base_sha;
                 targetSha = payload.merge_commit_sha;
                 if (
                   !/^[1-9][0-9]*$/.test(rawPullNumber) ||
                   !Number.isSafeInteger(pullNumber) ||
                   !fullCommit.test(headSha || '') ||
-                  !fullCommit.test(baseSha || '') ||
                   !fullCommit.test(targetSha || '')
                 ) {
                   throw new Error('coverage-baseline-repair payload has an invalid PR identity');
@@ -365,16 +400,12 @@ jobs:
                   repo,
                   pull_number: pullNumber,
                 });
-                if (
-                  currentPull.number !== pullNumber ||
-                  currentPull.state !== 'closed' ||
-                  currentPull.merged !== true ||
-                  !currentPull.merged_at ||
-                  currentPull.base.ref !== 'main' ||
-                  currentPull.base.sha !== baseSha ||
-                  currentPull.head.sha !== headSha ||
-                  currentPull.merge_commit_sha !== targetSha
-                ) {
+                if (!isStableMergedPRIdentity(
+                  currentPull,
+                  pullNumber,
+                  headSha,
+                  targetSha,
+                )) {
                   throw new Error(
                     `repair payload no longer matches merged PR #${pullNumber}`,
                   );

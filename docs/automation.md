@@ -216,8 +216,11 @@ repairing the producer. Never add a prefix `restore-keys` fallback to this path.
 
 `Coverage Baseline Repair` is the independent safety net for every merged PR.
 Its base-owned `pull_request_target: closed` job never checks out or executes PR
-content: it binds the closed event to the current merged PR, verifies the exact
-head/base/merge SHA and `main` containment, then emits only a
+content: it binds the closed event's PR number and stable head SHA to the
+current merged-PR facts (`merged_at`, `base.ref`, and `merge_commit_sha`) and
+proves that merge commit is contained in `main`. It deliberately does not
+compare REST `base.sha`, because that field follows the live base branch and
+can move after the merge. Only then does it emit a
 `coverage-baseline-repair` repository dispatch. Workflow-skip directives alone
 do not suppress `pull_request_target`, subject to GitHub's separate
 security-sensitive branch-name restriction described above. The low-trust

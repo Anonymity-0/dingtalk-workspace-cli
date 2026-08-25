@@ -511,12 +511,15 @@ func TestCoverageBaselineRepairContract(t *testing.T) {
 		"pull-requests: read",
 		"actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b",
 		"context.payload.repository?.default_branch !== 'main'",
-		"currentPull.state !== 'closed'",
-		"currentPull.merged !== true",
-		"currentPull.base.ref !== 'main'",
-		"currentPull.base.sha !== baseSha",
-		"currentPull.head.sha !== headSha",
-		"currentPull.merge_commit_sha !== mergeCommitSha",
+		"currentPull.state === 'closed'",
+		"currentPull.merged === true",
+		"typeof currentPull.merged_at === 'string'",
+		"const baseRef = eventPull?.base?.ref;",
+		"baseRef !== 'main'",
+		"currentPull.base?.ref === 'main'",
+		"isStableMergedPRIdentity(",
+		"currentPull.head?.sha === headSha",
+		"currentPull.merge_commit_sha === mergeCommitSha",
 		"for (let attempt = 1; attempt <= 6; attempt += 1)",
 		"setTimeout(resolve, 5000)",
 		"basehead: `${targetSha}...${branch.commit.sha}`",
@@ -544,7 +547,6 @@ func TestCoverageBaselineRepairContract(t *testing.T) {
 		"source: 'merged_pr'",
 		"pull_number: String(pullNumber)",
 		"head_sha: headSha",
-		"base_sha: baseSha",
 		"merge_commit_sha: mergeCommitSha",
 	} {
 		if !strings.Contains(dispatcher, want) {
@@ -557,12 +559,19 @@ func TestCoverageBaselineRepairContract(t *testing.T) {
 	if ciWorkflowLookup < 0 || pushRunLookup <= ciWorkflowLookup || repairDispatch <= pushRunLookup {
 		t.Error("merged-PR dispatcher must bind the fixed CI workflow before exhausting exact push-run lookup and dispatch")
 	}
+	stableIdentityCheck := strings.Index(dispatcher, "if (!isStableMergedPRIdentity(")
+	mainContainmentCheck := strings.Index(dispatcher, "await requireMainContainment(mergeCommitSha)")
+	if stableIdentityCheck < 0 || mainContainmentCheck <= stableIdentityCheck || repairDispatch <= mainContainmentCheck {
+		t.Error("merged-PR dispatcher must prove stable PR identity and main containment before dispatch")
+	}
 	for _, forbidden := range []string{
 		"actions/checkout@",
 		"actions/cache/",
 		"actions/setup-go@",
 		"go test ",
 		"github.event.pull_request.head.ref",
+		"currentPull.base.sha",
+		"base_sha",
 		"secrets.",
 	} {
 		if strings.Contains(dispatcher, forbidden) {
@@ -643,14 +652,14 @@ func TestCoverageBaselineRepairContract(t *testing.T) {
 		"payload.source === 'merged_pr'",
 		"payload.pull_number",
 		"payload.head_sha",
-		"payload.base_sha",
 		"payload.merge_commit_sha",
-		"currentPull.state !== 'closed'",
-		"currentPull.merged !== true",
-		"currentPull.base.ref !== 'main'",
-		"currentPull.base.sha !== baseSha",
-		"currentPull.head.sha !== headSha",
-		"currentPull.merge_commit_sha !== targetSha",
+		"currentPull.state === 'closed'",
+		"currentPull.merged === true",
+		"typeof currentPull.merged_at === 'string'",
+		"currentPull.base?.ref === 'main'",
+		"isStableMergedPRIdentity(",
+		"currentPull.head?.sha === headSha",
+		"currentPull.merge_commit_sha === mergeCommitSha",
 		"payload.source === 'failed_ci'",
 		"payload.workflow_run_id",
 		"payload.workflow_run_attempt",
@@ -700,6 +709,8 @@ func TestCoverageBaselineRepairContract(t *testing.T) {
 	for _, forbidden := range []string{
 		"restore-keys",
 		"github.event.pull_request.head.ref",
+		"currentPull.base.sha",
+		"base_sha",
 		"HOMEBREW_PR_TOKEN",
 		"RELEASE_GOVERNANCE_TOKEN",
 		"REVIEWER_ROUTER_APP_PRIVATE_KEY",
@@ -714,6 +725,14 @@ func TestCoverageBaselineRepairContract(t *testing.T) {
 	}
 	if strings.Count(producer, "key: dws-coverage-full-v2-${{ steps.resolve-target.outputs.target_sha }}-go${{ steps.setup-go.outputs.go-version }}") != 3 {
 		t.Error("coverage repair restore, save, and verification must share one exact target key")
+	}
+	stablePayloadIdentityCheck := strings.Index(producer, "if (!isStableMergedPRIdentity(")
+	mainPayloadContainmentCheck := strings.Index(producer, "await requireMainContainment(targetSha)")
+	resolvedTargetOutput := strings.Index(producer, "core.setOutput('target_sha', targetSha)")
+	if stablePayloadIdentityCheck < 0 ||
+		mainPayloadContainmentCheck <= stablePayloadIdentityCheck ||
+		resolvedTargetOutput <= mainPayloadContainmentCheck {
+		t.Error("merged-PR producer must prove stable payload identity and main containment before resolving checkout target")
 	}
 	validateIndex := strings.Index(producer, "name: Resolve trusted main repair target")
 	checkoutIndex := strings.Index(producer, "name: Check out exact protected-main target")
