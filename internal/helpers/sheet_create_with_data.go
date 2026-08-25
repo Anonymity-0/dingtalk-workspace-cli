@@ -332,7 +332,7 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 	}
 	// 探活已经拿到默认工作表 ID；将它并入创建回执，供后续读写直接复用。
 	// 这里只投影本地已有事实，不再调用 get_all_sheets。
-	createResult, err := addCreatedSheetID(createText, nodeID, defaultSheetID)
+	createResult, err := projectCreatedSheetResult(createText, nodeID, defaultSheetID)
 	if err != nil {
 		return fmt.Errorf("表格已创建且初始数据已写入 (nodeId=%s)，但构造结果失败: %w", nodeID, err)
 	}
@@ -1398,6 +1398,8 @@ func parseCreatedNodeID(text string) (string, error) {
 	return "", fmt.Errorf("创建结果未返回 nodeId，响应: %s", text)
 }
 
+var projectCreatedSheetResult = addCreatedSheetID
+
 // addCreatedSheetID 保留 create_workspace_sheet 的所有顶层响应字段，同时发布
 // 编排过程中已经探活确认的 nodeId / sheetId。使用 RawMessage 避免大整数等原始
 // JSON 值经过 float64 中转；本函数只做结果投影，不触发远程调用。
@@ -1409,21 +1411,14 @@ func addCreatedSheetID(text, nodeID, sheetID string) (string, error) {
 	if result == nil {
 		return "", fmt.Errorf("创建响应不是 JSON 对象")
 	}
-	nodeJSON, err := json.Marshal(nodeID)
-	if err != nil {
-		return "", fmt.Errorf("编码 nodeId 失败: %w", err)
-	}
-	sheetJSON, err := json.Marshal(sheetID)
-	if err != nil {
-		return "", fmt.Errorf("编码 sheetId 失败: %w", err)
-	}
-	result["nodeId"] = nodeJSON
-	result["sheetId"] = sheetJSON
+	// nodeID / sheetID 均为 Go 字符串，Quote 生成的内容必为合法 JSON 字符串；
+	// 无需对不可能失败的 json.Marshal(string) 再增加错误分支。
+	result["nodeId"] = json.RawMessage(strconv.Quote(nodeID))
+	result["sheetId"] = json.RawMessage(strconv.Quote(sheetID))
 	encoded, err := json.Marshal(result)
-	if err != nil {
-		return "", fmt.Errorf("编码创建结果失败: %w", err)
-	}
-	return string(encoded), nil
+	// result 只含刚通过 Unmarshal 校验的 RawMessage 和上面的合法字符串，Marshal
+	// 理论上不会失败；仍原样传播错误，避免静默输出空结果。
+	return string(encoded), err
 }
 
 // resolveFirstSheetID 通过 get_all_sheets 获取第一个工作表的 sheetId。

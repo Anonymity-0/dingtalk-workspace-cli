@@ -508,6 +508,17 @@ func TestCrossPlatformCoverageSheetCreateReturnsProbedSheetID(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageSheetCreateReportsProjectionFailure(t *testing.T) {
+	testseam.Swap(t, &projectCreatedSheetResult, func(string, string, string) (string, error) {
+		return "", errors.New("projection failed")
+	})
+	caller := &scriptedToolCaller{format: "json", steps: createOKSteps("[row=1]姓名,分数")}
+	err := runCreate(t, caller, map[string]string{"name": "名单", "values": `[["姓名","分数"],["张三",90]]`})
+	if err == nil || !strings.Contains(err.Error(), "构造结果失败") {
+		t.Fatalf("err = %v, want projection failure", err)
+	}
+}
+
 func TestSheetCreateWithValuesDryRunNeverCallsRemote(t *testing.T) {
 	caller := &scriptedToolCaller{dry: true}
 	if err := runCreate(t, caller, map[string]string{"name": "X", "values": `[[1]]`}); err != nil {
@@ -1215,6 +1226,35 @@ func TestCrossPlatformCoverageSheetReadbackRetriesShareBackoffAcrossSheets(t *te
 	}
 	if waits != 2 {
 		t.Fatalf("waits=%d, want two workflow-level waits instead of per-sheet waits", waits)
+	}
+}
+
+func TestCrossPlatformCoverageSheetReadbackRetryBoundaries(t *testing.T) {
+	if err := verifyRangesNotEmptyWithRetry(context.Background(), "N", nil); err != nil {
+		t.Fatalf("empty probes: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	testseam.Swap(t, &helperAfter, func(time.Duration) <-chan time.Time {
+		cancel()
+		return make(chan time.Time)
+	})
+	if err := waitSheetRetryDelay(ctx, time.Second); !errors.Is(err, context.Canceled) {
+		t.Fatalf("wait cancellation err = %v, want context.Canceled", err)
+	}
+
+	ctx, cancel = context.WithCancel(context.Background())
+	cancel()
+	if err := verifyRangesNotEmptyWithRetry(ctx, "N", []sheetReadbackProbe{{sheetID: "S1", rangeAddr: "A1"}}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("retry cancellation err = %v, want context.Canceled", err)
+	}
+}
+
+func TestCrossPlatformCoverageAddCreatedSheetIDRejectsInvalidResponses(t *testing.T) {
+	for _, text := range []string{"{", "null"} {
+		if _, err := addCreatedSheetID(text, "N", "S"); err == nil {
+			t.Fatalf("addCreatedSheetID(%q) returned success", text)
+		}
 	}
 }
 

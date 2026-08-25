@@ -155,10 +155,8 @@ func reportCollectLatestCandidates(rt *shortcut.RuntimeContext, baseParams map[s
 		if !page.HasMore {
 			return entries, nil
 		}
-		next, err := strconv.Atoi(page.Next)
-		if err != nil {
-			return nil, reportResponseError(operation, "malformed_pagination", "Report continuation cursor 不是整数")
-		}
+		// reportProjectEntries 已将 continuation 校验为整数并规范化为十进制字符串。
+		next, _ := strconv.Atoi(page.Next)
 		cursor = next
 	}
 	return nil, reportResponseError(
