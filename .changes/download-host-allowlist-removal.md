@@ -18,7 +18,10 @@ category: Changed
 - **Upload host trust unchanged** — upload target URLs (`drive +upload`,
   minutes audio upload) keep the pre-existing public DingTalk/OSS trusted
   host requirement through a dedicated upload validator, so removing the
-  download allowlist does not widen where local file bytes can be sent.
+  download allowlist does not widen where local file bytes can be sent;
+  the validator also keeps the pre-existing default-port-only HTTPS rule
+  (DingTalk/OSS upload endpoints always serve on 443, so non-default ports
+  accepted for dedicated-deployment downloads stay anomalous for uploads).
   Download credential headers are issued together with the download URL by
   the same authenticated service response and follow it as-is on the first
   request; redirects leaving the original host still strip them. The

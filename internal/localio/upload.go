@@ -27,6 +27,13 @@ var (
 		if !trustedUploadHost(parsed.Hostname()) {
 			return fmt.Errorf("上传地址域名 %q 不属于受信任的钉钉或 OSS 域名", parsed.Hostname())
 		}
+		// Ditto for the port: DingTalk/OSS upload endpoints always serve HTTPS
+		// on the default port, so a non-default port is anomalous for uploads
+		// even though dedicated-deployment download domains legitimately use
+		// one. Keep the upload boundary identical to the pre-removal policy.
+		if port := parsed.Port(); port != "" && port != "443" {
+			return fmt.Errorf("上传地址只允许 HTTPS 默认端口")
+		}
 		return nil
 	}
 	openUploadFile   = os.Open
