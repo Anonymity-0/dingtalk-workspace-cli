@@ -154,7 +154,15 @@ func TestCrossPlatformCoveragePollDriveExportJobTerminalStates(t *testing.T) {
 					t.Fatalf("url=%q name=%q err=%v", url, name, err)
 				}
 			}},
-		{"success after query failure", []scriptedToolStep{{err: errors.New("temporary")}, {text: `{"status":"SUCCESS","resultUrl":"https://x.test/f.docx"}`}},
+		// 网络类错误（NETWORK_TIMEOUT）属临时性故障：继续轮询直到成功。
+		{"success after query failure", []scriptedToolStep{{err: &CLIError{Code: CodeNetworkTimeout, Message: "request timed out"}}, {text: `{"status":"SUCCESS","resultUrl":"https://x.test/f.docx"}`}},
+			func(t *testing.T, url, name string, err error) {
+				if err != nil || url != "https://x.test/f.docx" {
+					t.Fatalf("url=%q err=%v", url, err)
+				}
+			}},
+		// 响应解析失败（网关临时返回非 JSON 错误页）同样归入可重试。
+		{"parse failure keeps polling", []scriptedToolStep{{text: `{`}, {text: `{"status":"SUCCESS","resultUrl":"https://x.test/f.docx"}`}},
 			func(t *testing.T, url, name string, err error) {
 				if err != nil || url != "https://x.test/f.docx" {
 					t.Fatalf("url=%q err=%v", url, err)
@@ -206,6 +214,17 @@ func TestCrossPlatformCoveragePollDriveExportJobTerminalStates(t *testing.T) {
 			func(t *testing.T, url, name string, err error) {
 				if err == nil || !strings.Contains(err.Error(), "导出任务超时：已轮询 30 次仍在处理中") {
 					t.Fatalf("error = %v", err)
+				}
+			}},
+		// 30 次查询全部遭遇网络错误：超时兜底消息必须带上最后一次查询错误，
+		// 而不是只报超时掩盖真实故障。
+		{"poll cap retains last query error", []scriptedToolStep{{err: &CLIError{Code: CodeNetworkTimeout, Message: "request timed out"}}},
+			func(t *testing.T, url, name string, err error) {
+				if err == nil || !strings.Contains(err.Error(), "导出任务超时：已轮询 30 次仍在处理中") {
+					t.Fatalf("error = %v", err)
+				}
+				if !strings.Contains(err.Error(), "最后一次查询错误") || !strings.Contains(err.Error(), "request timed out") {
+					t.Fatalf("timeout error must retain the last query error: %v", err)
 				}
 			}},
 	}
@@ -344,6 +363,36 @@ func TestCrossPlatformCoverageRunDriveExportFlow(t *testing.T) {
 			"export", "--node", "n1", "--export-format", "docx")
 		if err == nil || !strings.Contains(err.Error(), "denied") {
 			t.Fatalf("error = %v", err)
+		}
+	})
+
+	// 确定性业务错误（MCP_TOOL_ERROR）：立即上抛，不盲等轮询上限。
+	t.Run("deterministic query error aborts polling", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{
+			submitOK,
+			{err: &CLIError{Code: CodeMCPToolError, Message: "task not found"}},
+		}}
+		err := executeDriveEdge(t, caller, "export", "--node", "n1", "--export-format", "docx")
+		if err == nil || !strings.Contains(err.Error(), "查询导出任务失败") || !strings.Contains(err.Error(), "task not found") {
+			t.Fatalf("error = %v, want 查询导出任务失败 wrapping task not found", err)
+		}
+		if caller.calls != 2 {
+			t.Fatalf("tool calls = %d, want 2 (submit + single query, no blind retry)", caller.calls)
+		}
+	})
+
+	// 鉴权类错误（AUTH_TOKEN_EXPIRED）：同样立即上抛。
+	t.Run("auth query error aborts polling", func(t *testing.T) {
+		caller := &scriptedToolCaller{steps: []scriptedToolStep{
+			submitOK,
+			{err: &CLIError{Code: CodeAuthTokenExpired, Message: "Token 已过期或验证失败"}},
+		}}
+		err := executeDriveEdge(t, caller, "export", "--node", "n1", "--export-format", "docx")
+		if err == nil || !strings.Contains(err.Error(), "查询导出任务失败") || !strings.Contains(err.Error(), "AUTH_TOKEN_EXPIRED") {
+			t.Fatalf("error = %v, want 查询导出任务失败 wrapping AUTH_TOKEN_EXPIRED", err)
+		}
+		if caller.calls != 2 {
+			t.Fatalf("tool calls = %d, want 2 (submit + single query, no blind retry)", caller.calls)
 		}
 	})
 

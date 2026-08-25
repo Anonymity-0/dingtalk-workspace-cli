@@ -12,6 +12,7 @@ package helpers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -51,6 +52,19 @@ func driveExportCallTool(ctx context.Context, tool string, args map[string]any) 
 	return callMCPToolReturnTextOnServer(ctx, "doc", tool, args)
 }
 
+// isRetryableTaskQueryError 判断轮询中的 query_task 错误是否为临时性传输故障。
+// 仅网络类错误与响应解析失败（网关临时返回非 JSON 错误页）继续重试；
+// 业务/鉴权类确定性错误立即上抛，避免用户空等约 5 分钟后原始错误被掩盖。
+func isRetryableTaskQueryError(err error) bool {
+	var cliErr *CLIError
+	if errors.As(err, &cliErr) {
+		return cliErr.Code == CodeNetworkTimeout || cliErr.Code == CodeNetworkUnreachable
+	}
+	// checkTaskBusinessError 的确定性业务错误（裸 error）立即退出；
+	// 解析失败更可能是网关临时故障（如 5xx 错误页），归入可重试。
+	return strings.HasPrefix(err.Error(), "解析 query_task 响应失败")
+}
+
 // pollDriveExportJob polls the unified query_task tool (drive endpoint) with
 // progressive backoff until the job reaches a terminal state or the 30-attempt
 // cap is hit.
@@ -59,8 +73,16 @@ func driveExportCallTool(ctx context.Context, tool string, args map[string]any) 
 //   - SUCCESS → returns (ResultURL, ResultName)
 //   - FAILED / PARTIAL_FAILED / TIMEOUT → returns an error
 //   - PENDING / PROCESSING / unknown → keep polling
+//
+// Query errors go through isRetryableTaskQueryError: transient network
+// failures and response-parse failures keep polling (the last error is
+// retained and appended to the timeout message), while deterministic
+// business/auth errors abort immediately instead of burning the ~5-minute
+// polling cap and masking the original error with a timeout.
 func pollDriveExportJob(ctx context.Context, jobID string) (downloadURL string, fileName string, err error) {
 	const maxPolls = 30
+
+	var lastQueryErr error
 
 	for attempt := 1; attempt <= maxPolls; attempt++ {
 		interval := taskPollInterval(attempt)
@@ -74,6 +96,10 @@ func pollDriveExportJob(ctx context.Context, jobID string) (downloadURL string, 
 
 		result, queryErr := QueryTask(ctx, jobID, "export")
 		if queryErr != nil {
+			if !isRetryableTaskQueryError(queryErr) {
+				return "", "", fmt.Errorf("查询导出任务失败 (taskId=%s): %w", jobID, queryErr)
+			}
+			lastQueryErr = queryErr
 			printTaskProgress(fmt.Sprintf("  [%d/%d] 查询失败，将继续轮询: %v", attempt, maxPolls, queryErr))
 			continue
 		}
@@ -100,6 +126,9 @@ func pollDriveExportJob(ctx context.Context, jobID string) (downloadURL string, 
 		}
 	}
 
+	if lastQueryErr != nil {
+		return "", "", fmt.Errorf("导出任务超时：已轮询 %d 次仍在处理中 (taskId=%s)，请稍后使用 dws drive task get --type export --id %s 手动查询；最后一次查询错误: %v", maxPolls, jobID, jobID, lastQueryErr)
+	}
 	return "", "", fmt.Errorf("导出任务超时：已轮询 %d 次仍在处理中 (taskId=%s)，请稍后使用 dws drive task get --type export --id %s 手动查询", maxPolls, jobID, jobID)
 }
 

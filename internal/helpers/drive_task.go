@@ -216,12 +216,25 @@ func pollCopyMoveTask(ctx context.Context, taskType, taskID string) (*TaskResult
 	return nil, fmt.Errorf("任务仍在处理中 (taskId=%s)，请稍后使用 dws drive task get --type %s --id %s 手动查询", taskID, taskType, taskID)
 }
 
+// driveTaskPartialFailure 在 copy/move 异步任务 PARTIAL_FAILED 终态时返回：
+// 结构化 TaskResult 已打印到 stdout（含失败明细），这里只负责以 exit=1 退出并向
+// stderr 输出一行简短说明（与 drive pull/push 的 drivePartialFailure 模式一致）。
+type driveTaskPartialFailure struct{ taskType, taskID string }
+
+func (e *driveTaskPartialFailure) Error() string {
+	return fmt.Sprintf("drive %s: task %s partially failed", e.taskType, e.taskID)
+}
+func (e *driveTaskPartialFailure) RawStderr() string { return e.Error() }
+func (e *driveTaskPartialFailure) ExitCode() int     { return 1 }
+
 // runNodeTransferWithAsyncPoll executes copy_document/move_document and
 // handles the async scenario automatically:
 //   - synchronous completion (no taskId): passthrough, byte-identical to the
 //     callMCPTool printing path
 //   - async (taskId returned): announce then poll query_task, print the
-//     normalized TaskResult JSON on completion
+//     normalized TaskResult JSON on completion; PARTIAL_FAILED still prints
+//     the TaskResult JSON but returns driveTaskPartialFailure so the CLI
+//     exits 1 (partial success is not success, same as drive pull/push)
 //
 // The submit call is routed to the doc server (copy_document/move_document
 // are registered there); the polling query is routed to the drive server
@@ -269,7 +282,13 @@ func runNodeTransferWithAsyncPoll(ctx context.Context, mcpToolName string, toolA
 				printTaskProgress("复制完成")
 			}
 		}
-		return deps.Out.PrintJSON(result)
+		if printErr := deps.Out.PrintJSON(result); printErr != nil {
+			return printErr
+		}
+		if result.Status == TaskStatusPartialFailed {
+			return &driveTaskPartialFailure{taskType: taskType, taskID: taskID}
+		}
+		return nil
 	}
 
 	// Synchronous: mirror the callMCPTool success output path.

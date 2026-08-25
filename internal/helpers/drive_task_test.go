@@ -302,11 +302,37 @@ func TestCrossPlatformCoverageRunNodeTransferWithAsyncPoll(t *testing.T) {
 			},
 		}
 		installScriptedCaller(t, caller)
-		if err := runNodeTransferWithAsyncPoll(context.Background(), "copy_document", map[string]any{"nodeId": "n1"}); err != nil {
-			t.Fatal(err)
+		err := runNodeTransferWithAsyncPoll(context.Background(), "copy_document", map[string]any{"nodeId": "n1"})
+		// PARTIAL_FAILED：结构化 TaskResult 仍打印到 stdout，但命令必须以
+		// 非零退出码结束（errors.As 提取分型，参照 drive pull 的断言写法）。
+		var pf *driveTaskPartialFailure
+		if !errors.As(err, &pf) {
+			t.Fatalf("expected *driveTaskPartialFailure, got %T %v", err, err)
+		}
+		if pf.taskType != "copy" || pf.taskID != "t12" {
+			t.Errorf("partial failure = %#v, want copy/t12", pf)
+		}
+		if pf.ExitCode() != 1 || pf.RawStderr() == "" {
+			t.Errorf("exit code = %d, stderr = %q, want exit 1 with non-empty stderr", pf.ExitCode(), pf.RawStderr())
 		}
 		if len(caller.serverLog) != 2 {
 			t.Fatalf("calls = %v", caller.serverLog)
+		}
+	})
+
+	// stdout 写失败（如管道破裂）：PrintJSON 的写错误必须上抛，不能被吞掉
+	//（与 drive pull/push/sync 的 printFailurePropagates 契约一致）。
+	t.Run("async print failure propagates", func(t *testing.T) {
+		installScriptedCaller(t, &scriptedToolCaller{
+			format: "json",
+			steps: []scriptedToolStep{
+				{text: `{"taskId":"t13"}`},
+				{text: `{"status":"SUCCESS"}`},
+			},
+		})
+		deps.Out.w = failingWriter{}
+		if err := runNodeTransferWithAsyncPoll(context.Background(), "copy_document", map[string]any{"nodeId": "n1"}); err == nil {
+			t.Fatal("expected the PrintJSON writer failure to propagate")
 		}
 	})
 
