@@ -538,7 +538,8 @@ jobs:
     # where the Schema partition alone owned most of the wall clock. The
     # app-<partition> names are pinned to the helper's partition set by
     # TestCIAppRacePartitionMatrixMatchesHelper, so a partition can never lose
-    # its job silently.
+    # its job silently. The CrossPlatformCoverage-heavy C range is split again
+    # to retain headroom on runners reclaimed near the five-minute mark.
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -546,7 +547,11 @@ jobs:
         shard:
           - app-schema
           - app-a-b
-          - app-c
+          - app-c-a-l
+          - app-c-m-o
+          - app-c-p-r
+          - app-c-s-z
+          - app-c-other
           - app-d-r
           - app-s-z-example-fuzz
           - generators
@@ -682,7 +687,8 @@ jobs:
     # partitions run concurrently and each releases its framework registries
     # when the process exits; cli/smoke need headroom beyond go test -timeout for
     # setup + assembly. The app-<partition> names are pinned to the helper's
-    # partition set by TestCIAppRacePartitionMatrixMatchesHelper.
+    # partition set by TestCIAppRacePartitionMatrixMatchesHelper. The
+    # CrossPlatformCoverage-heavy C range is split again for runner headroom.
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -690,7 +696,11 @@ jobs:
         shard:
           - app-schema
           - app-a-b
-          - app-c
+          - app-c-a-l
+          - app-c-m-o
+          - app-c-p-r
+          - app-c-s-z
+          - app-c-other
           - app-d-r
           - app-s-z-example-fuzz
           - generators
@@ -1923,7 +1933,10 @@ jobs:
     name: Policy
     needs: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Full policy regenerates and validates the runtime Schema several times.
+    # Keep job-level headroom for large reviewed command-surface additions;
+    # individual policy gates retain their own fail-closed checks.
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
