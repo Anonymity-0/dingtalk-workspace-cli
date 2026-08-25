@@ -815,6 +815,12 @@ var reviewedConstraintTransition = map[string]map[string]string{
 	"doc/doc.shortcut_import": {
 		`{"require_one_of":[["folder","workspace"]]}`: "",
 	},
+	// PR #1105 adds local --file as an alternative to the historically required
+	// --src input. Every historical --src invocation remains valid; publishing
+	// both groups makes the final Schema express the runtime's exact-one rule.
+	"sheet/sheet.create_float_image": {
+		"": `{"mutually_exclusive":[["file","src"]],"require_one_of":[["file","src"]]}`,
+	},
 }
 
 func compatibleReviewedConstraintTransition(toolPath string, oldTool, newTool toolSchema) bool {
@@ -1869,6 +1875,24 @@ func normalizeSchemaCommandMigrations(
 		normalizedProduct := normalized.Products[migration.Schema.ProductID]
 		normalizedTool := normalizedProduct.Tools[migration.Schema.SourceToolID]
 		switch migration.Kind {
+		case interfacesnapshot.CommandMigrationAvailability:
+			change := migration.Schema.Availability
+			if change != nil && oldTool.Availability == change.After && newSource.Availability == change.After {
+				continue
+			}
+			if change == nil || oldTool.Availability != change.Before || newSource.Availability != change.After {
+				return schemaContract{}, fmt.Errorf(
+					"approved availability hardening %q does not match Schema availability %q -> %q",
+					migration.Legacy.Command,
+					oldTool.Availability,
+					newSource.Availability,
+				)
+			}
+			if newSource.PrimaryCLIPath != legacyPath {
+				continue
+			}
+			normalizedTool.Availability = newSource.Availability
+
 		case interfacesnapshot.CommandMigrationMove:
 			if newSource.PrimaryCLIPath != replacementPath {
 				continue
