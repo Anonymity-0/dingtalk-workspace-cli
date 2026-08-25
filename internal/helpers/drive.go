@@ -2110,6 +2110,7 @@ func newDriveCommand() *cobra.Command {
 	})
 
 	driveQuotaCmd.AddCommand(driveQuotaAppsCmd)
+	newHybridGroupCommand(driveQuotaCmd)
 
 	// ── drive task 子命令组（异步任务统一查询入口）──
 	taskCmd := &cobra.Command{
@@ -2219,6 +2220,7 @@ func newDriveCommand() *cobra.Command {
 		},
 	})
 	taskCmd.AddCommand(taskGetCmd)
+	newGroupCommand(taskCmd)
 
 	driveShortcutCmd := &cobra.Command{
 		Use:   "shortcut",

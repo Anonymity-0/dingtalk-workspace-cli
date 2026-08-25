@@ -474,6 +474,7 @@ CLI 内部自动完成全部流程：
 	})
 
 	exportCmd.AddCommand(exportGetCmd)
+	newHybridGroupCommand(exportCmd)
 
 	return exportCmd
 }
