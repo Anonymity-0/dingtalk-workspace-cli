@@ -164,7 +164,7 @@ func TestCrossPlatformCoverageDocDelegationAuthDeniedWithMessage(t *testing.T) {
 	if len(inner.calls) != 1 {
 		t.Fatalf("calls = %d, want 1 (original tool must not run)", len(inner.calls))
 	}
-	if d.checked["doc.update_document"] {
+	if d.checked["doc.update_document.n1"] {
 		t.Fatal("denied toolKey must not be marked checked")
 	}
 }
@@ -334,7 +334,7 @@ func TestCrossPlatformCoverageDocDelegationAuthMarkdownOverwriteRealSeam(t *test
 	if inner.calls[0].args["nodeId"] != "node-42" {
 		t.Fatalf("check args = %#v, want nodeId promoted from overwriteFileId", inner.calls[0].args)
 	}
-	if !d.checked["drive.get_upload_info"] {
+	if !d.checked["drive.get_upload_info.node-42"] {
 		t.Fatal("drive.get_upload_info must be marked checked after the passing check")
 	}
 
@@ -359,7 +359,7 @@ func TestCrossPlatformCoverageDocDelegationAuthMarkdownOverwriteRealSeam(t *test
 	if !errors.As(err, &typed) || typed.Category != apperrors.CategoryAPI || typed.Reason != "delegation_denied" {
 		t.Fatalf("error = %v, want API-category delegation_denied like the doc domain", err)
 	}
-	if d2.checked["drive.get_upload_info"] {
+	if d2.checked["drive.get_upload_info.node-42"] {
 		t.Fatal("denied toolKey must not be marked checked")
 	}
 
@@ -657,5 +657,178 @@ func TestCrossPlatformCoverageDocDelegationAuthInstallKeepsReadCapability(t *tes
 	}
 	if deps.Caller != edition.ToolCaller(readInner) {
 		t.Fatalf("deps.Caller after Execute = %T, want restored inner caller", deps.Caller)
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthChainsRootPersistentPreRunE is a
+// guard test verifying that installDocDelegationAuth's PersistentPreRunE
+// explicitly chains the root command's PersistentPreRunE. Without chaining,
+// cobra's nearest-ancestor semantics would shadow the root hook (which handles
+// --output/--debug/--profile/agent metadata validation/diagnostics) for every
+// leaf under the five doc-business product groups.
+func TestCrossPlatformCoverageDocDelegationAuthChainsRootPersistentPreRunE(t *testing.T) {
+	var rootHookCallCount int
+	rootCmd := &cobra.Command{
+		Use: "dws",
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			rootHookCallCount++
+			return nil
+		},
+	}
+	rootCmd.SetOut(io.Discard)
+	rootCmd.SetErr(io.Discard)
+
+	groups := []string{"doc", "drive", "markdown", "sheet", "wiki"}
+	for _, name := range groups {
+		group := &cobra.Command{Use: name}
+		installDocDelegationAuth(group)
+		leaf := &cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }}
+		group.AddCommand(leaf)
+		rootCmd.AddCommand(group)
+	}
+
+	for _, name := range groups {
+		rootHookCallCount = 0
+		rootCmd.SetArgs([]string{name, "leaf"})
+		if err := rootCmd.Execute(); err != nil {
+			t.Fatalf("%s/leaf: Execute() error = %v", name, err)
+		}
+		if rootHookCallCount != 1 {
+			t.Fatalf("%s/leaf: root PersistentPreRunE call count = %d, want 1 (must not be shadowed by installDocDelegationAuth)", name, rootHookCallCount)
+		}
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthRootHookErrorPropagates verifies
+// that when the root's PersistentPreRunE returns an error, it propagates and
+// blocks the delegation auth and the command execution.
+func TestCrossPlatformCoverageDocDelegationAuthRootHookErrorPropagates(t *testing.T) {
+	rootErr := errors.New("root hook validation failed")
+	rootCmd := &cobra.Command{
+		Use: "dws",
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			return rootErr
+		},
+	}
+	rootCmd.SetOut(io.Discard)
+	rootCmd.SetErr(io.Discard)
+
+	var leafRan bool
+	group := &cobra.Command{Use: "doc"}
+	installDocDelegationAuth(group)
+	leaf := &cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error {
+		leafRan = true
+		return nil
+	}}
+	group.AddCommand(leaf)
+	rootCmd.AddCommand(group)
+
+	rootCmd.SetArgs([]string{"doc", "leaf"})
+	err := rootCmd.Execute()
+	if !errors.Is(err, rootErr) {
+		t.Fatalf("Execute() error = %v, want root hook error propagated", err)
+	}
+	if leafRan {
+		t.Fatal("leaf RunE must not execute when root hook fails")
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthDedupDifferentNodeIds verifies
+// that calls to the same tool with different nodeIds each trigger a separate
+// check_capability verification (node-scoped cache granularity).
+func TestCrossPlatformCoverageDocDelegationAuthDedupDifferentNodeIds(t *testing.T) {
+	inner := newDocDelegationTestCaller()
+	d := newDocDelegationAuthDecorator(inner)
+	ctx := context.Background()
+
+	// First call: doc.update_document with nodeId "n1"
+	if _, err := d.CallTool(ctx, "doc", "update_document", map[string]any{"nodeId": "n1"}); err != nil {
+		t.Fatalf("CallTool(n1) error = %v", err)
+	}
+	// Second call: same tool, different nodeId "n2" → must trigger new check
+	if _, err := d.CallTool(ctx, "doc", "update_document", map[string]any{"nodeId": "n2"}); err != nil {
+		t.Fatalf("CallTool(n2) error = %v", err)
+	}
+	// Third call: same tool, same nodeId "n1" → deduplicated (no new check)
+	if _, err := d.CallTool(ctx, "doc", "update_document", map[string]any{"nodeId": "n1"}); err != nil {
+		t.Fatalf("CallTool(n1 repeat) error = %v", err)
+	}
+
+	var checks int
+	var checkNodeIds []string
+	for _, call := range inner.calls {
+		if call.tool == checkCapTool {
+			checks++
+			checkNodeIds = append(checkNodeIds, call.args["nodeId"].(string))
+		}
+	}
+	if checks != 2 {
+		t.Fatalf("check calls = %d, want 2 (one per distinct nodeId)", checks)
+	}
+	if checkNodeIds[0] != "n1" || checkNodeIds[1] != "n2" {
+		t.Fatalf("check nodeIds = %v, want [n1, n2]", checkNodeIds)
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthExtractNodeIDParentAndFolder
+// verifies that extractNodeId recognizes parentId and folderId as node-level
+// identifiers used by drive.list_files and doc.list_nodes respectively.
+func TestCrossPlatformCoverageDocDelegationAuthExtractNodeIDParentAndFolder(t *testing.T) {
+	cases := []struct {
+		name string
+		args map[string]any
+		want string
+	}{
+		{"parentId only", map[string]any{"parentId": "p1"}, "p1"},
+		{"folderId only", map[string]any{"folderId": "f1"}, "f1"},
+		{"parentId beats workspace keys", map[string]any{"workspaceId": "w1", "parentId": "p1"}, "p1"},
+		{"folderId beats workspace keys", map[string]any{"spaceId": "s1", "folderId": "f1"}, "f1"},
+		{"nodeId beats parentId", map[string]any{"parentId": "p1", "nodeId": "n1"}, "n1"},
+		{"fileId beats folderId", map[string]any{"folderId": "f1", "fileId": "ff"}, "ff"},
+		{"parentId before folderId", map[string]any{"folderId": "f1", "parentId": "p1"}, "p1"},
+		// walkRemoteDir 真实入参：list_files 带 spaceId+parentId，parentId 优先
+		{"drive list_files real seam", map[string]any{"spaceId": "sp-1", "parentId": "folder-uuid", "maxResults": float64(200)}, "folder-uuid"},
+		// doc.list_nodes 真实入参：带 workspaceId+folderId
+		{"doc list_nodes real seam", map[string]any{"workspaceId": "ws-1", "folderId": "folder-node", "pageSize": float64(50)}, "folder-node"},
+	}
+	for _, tc := range cases {
+		if got := extractNodeId(tc.args); got != tc.want {
+			t.Fatalf("%s: extractNodeId(%#v) = %q, want %q", tc.name, tc.args, got, tc.want)
+		}
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthParentIdTriggersNodeScopedCheck
+// verifies that a drive.list_files call with parentId triggers a node-scoped
+// check_capability with the parentId promoted to nodeId, and that subsequent
+// calls with a different parentId trigger a new check.
+func TestCrossPlatformCoverageDocDelegationAuthParentIdTriggersNodeScopedCheck(t *testing.T) {
+	inner := newDocDelegationTestCaller()
+	d := newDocDelegationAuthDecorator(inner)
+	ctx := context.Background()
+
+	// First list_files with parentId "folder-A"
+	args1 := map[string]any{"spaceId": "sp-1", "parentId": "folder-A", "maxResults": float64(200)}
+	if _, err := d.CallTool(ctx, "drive", "list_files", args1); err != nil {
+		t.Fatalf("CallTool(folder-A) error = %v", err)
+	}
+	// Second list_files with parentId "folder-B" → new check
+	args2 := map[string]any{"spaceId": "sp-1", "parentId": "folder-B", "maxResults": float64(200)}
+	if _, err := d.CallTool(ctx, "drive", "list_files", args2); err != nil {
+		t.Fatalf("CallTool(folder-B) error = %v", err)
+	}
+	// Third list_files with parentId "folder-A" → deduplicated
+	if _, err := d.CallTool(ctx, "drive", "list_files", args1); err != nil {
+		t.Fatalf("CallTool(folder-A repeat) error = %v", err)
+	}
+
+	var checks []string
+	for _, call := range inner.calls {
+		if call.tool == checkCapTool {
+			checks = append(checks, call.args["nodeId"].(string))
+		}
+	}
+	if len(checks) != 2 || checks[0] != "folder-A" || checks[1] != "folder-B" {
+		t.Fatalf("check nodeIds = %v, want [folder-A, folder-B]", checks)
 	}
 }

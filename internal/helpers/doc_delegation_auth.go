@@ -25,10 +25,11 @@ import (
 )
 
 // FlagPrincipalUserID is the persistent flag that enables doc-business
-// delegation auth: when set, every doc-business tool call is preceded by a
-// check_capability verification on behalf of the principal. Granting the
-// capability to the current logged-in identity is an out-of-band action
-// performed by the principal; the CLI never calls grant_capability.
+// delegation auth: when set, the first invocation of each doc-business tool
+// key per node within a session is gated by a check_capability verification
+// on behalf of the principal. Granting the capability to the current
+// logged-in identity is an out-of-band action performed by the principal;
+// the CLI never calls grant_capability.
 const (
 	FlagPrincipalUserID = "principal-user-id"
 	// capabilityServerID is the helper-only drive-internal server hosting the
@@ -69,13 +70,16 @@ var docBusinessServers = map[string]bool{
 // 因此这里只需按优先级取第一个非空 string：
 //   - 优先级 1（节点/文件标识）：nodeId → fileId → node_id → overwriteFileId
 //     → overwriteNodeId（覆盖上传场景下 step1 入参排他地携带 overwrite 键，
-//     缺失时 check 请求不带 nodeId、会被服务端 52600007 误拒）
+//     缺失时 check 请求不带 nodeId、会被服务端 52600007 误拒）→ parentId
+//     （drive.list_files 按文件夹 dentryUuid 导航）→ folderId（doc.list_nodes
+//     按知识库文件夹导航）
 //   - 优先级 2（知识库/空间标识）：workspaceId → spaceId → workspace_id → space_id
 //
 // 全部缺失时返回 ""（调用方仍会发起鉴权，由服务端返回明确错误）。
 func extractNodeId(args map[string]any) string {
 	for _, key := range []string{
 		"nodeId", "fileId", "node_id", "overwriteFileId", "overwriteNodeId",
+		"parentId", "folderId",
 		"workspaceId", "spaceId", "workspace_id", "space_id",
 	} {
 		if v, ok := args[key].(string); ok && v != "" {
@@ -86,7 +90,7 @@ func extractNodeId(args map[string]any) string {
 }
 
 // docDelegationAuthCaller decorates edition.ToolCaller: before the first call
-// of each doc-business toolKey it verifies the delegation via
+// of each doc-business tool key per node it verifies the delegation via
 // check_capability for the principal, then passes the original call through.
 // Non-doc-business servers bypass the verification.
 type docDelegationAuthCaller struct {
@@ -105,20 +109,28 @@ func wrapDocDelegationAuthCaller(d *docDelegationAuthCaller, inner edition.ToolC
 	return d
 }
 
-// ensureDelegationAuth runs the delegation-auth check once per toolKey for
-// doc-business servers; repeated calls of the same toolKey are deduplicated.
+// ensureDelegationAuth runs the delegation-auth check once per tool-key+node
+// combination for doc-business servers; repeated calls with the same tool key
+// and node ID are deduplicated. When nodeId is empty the cache key falls back
+// to tool-key level, preserving backward-compatible behavior for calls that
+// do not carry a node identifier.
 func (d *docDelegationAuthCaller) ensureDelegationAuth(ctx context.Context, serverID, toolName string, args map[string]any) error {
 	if !docBusinessServers[serverID] {
 		return nil
 	}
 	toolKey := serverID + "." + toolName
-	if d.checked[toolKey] {
+	nodeID := extractNodeId(args)
+	cacheKey := toolKey
+	if nodeID != "" {
+		cacheKey = toolKey + "." + nodeID
+	}
+	if d.checked[cacheKey] {
 		return nil
 	}
 	if err := d.performDelegationAuth(ctx, toolKey, args); err != nil {
 		return err
 	}
-	d.checked[toolKey] = true
+	d.checked[cacheKey] = true
 	return nil
 }
 
@@ -253,6 +265,9 @@ func (d *docDelegationAuthReadCaller) CallReadTool(ctx context.Context, serverID
 // flag，并通过 PersistentPreRunE 在 flag 非空时把 deps.Caller 包装为委托鉴权
 // 装饰器（参考 leaf.go 中 contractConfirmCaller 的包装还原模式，执行结束后由
 // cobra.OnFinalize 还原）。dry-run 下跳过装饰。
+//
+// 闭包内显式链式调用根命令的 PersistentPreRunE 以避免 cobra 就近匹配语义遮蔽
+// 根 hook（--output/--debug/--profile/agent 元数据校验/诊断日志）。
 func installDocDelegationAuth(cmd *cobra.Command) {
 	// Hidden per upstream flag policy: a non-Schema invocable flag must stay
 	// out of help/Schema (see corecmd FlagSpec.Hidden "hide the real flag from
@@ -262,6 +277,19 @@ func installDocDelegationAuth(cmd *cobra.Command) {
 	cmd.PersistentFlags().String(FlagPrincipalUserID, "", "委托鉴权：指定委托人用户 ID")
 	_ = cmd.PersistentFlags().MarkHidden(FlagPrincipalUserID)
 	cmd.PersistentPreRunE = func(c *cobra.Command, args []string) error {
+		// Chain the root command's PersistentPreRunE: cobra only executes the
+		// nearest ancestor's PersistentPreRunE, so without explicit chaining
+		// the root's --output/--debug/--profile/agent metadata validation and
+		// diagnostic logging would be shadowed for every leaf under this
+		// product group. Guard: skip when the root IS this command (test
+		// scenarios where installDocDelegationAuth is called on the root
+		// itself) to avoid infinite recursion.
+		if rootCmd := c.Root(); rootCmd != cmd && rootCmd.PersistentPreRunE != nil {
+			if err := rootCmd.PersistentPreRunE(c, args); err != nil {
+				return err
+			}
+		}
+
 		principalID, _ := c.Flags().GetString(FlagPrincipalUserID)
 		principalID = strings.TrimSpace(principalID)
 		if principalID == "" {
