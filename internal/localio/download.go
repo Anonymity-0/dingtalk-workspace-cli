@@ -12,7 +12,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"os"
 	pathpkg "path"
@@ -35,8 +34,7 @@ type downloadTempFile interface {
 
 var (
 	createDownloadTemp = createDownloadTempInRoot
-	lookupDownloadIPs  = net.DefaultResolver.LookupIPAddr
-	dialDownloadIP     = (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext
+	secureDialContext  = (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext
 	localGetwd         = os.Getwd
 	localAbs           = filepath.Abs
 	localEvalSymlinks  = filepath.EvalSymlinks
@@ -293,11 +291,11 @@ func SafeFilename(preferredName, rawURL string) string {
 }
 
 // ValidateDownloadURL accepts HTTPS download URLs on any port. Hosts must be
-// domain names, never IP literals or userinfo URLs; SSRF protection is
-// enforced at dial time by the public-IP policy in secureHTTPClient, which is
-// port-agnostic because the destination IP is what determines reachability.
-// Dedicated-deployment storage domains legitimately serve HTTPS on
-// non-default ports, so the port is not a trust signal.
+// domain names, never IP literals or userinfo URLs; TLS hostname
+// verification in secureHTTPClient then pins the connection to the requested
+// domain. Dedicated-deployment storage domains legitimately use custom
+// domains, non-default ports, and customer-intranet addresses, so the port
+// and the resolved network location are not client-side trust signals.
 func ValidateDownloadURL(rawURL string) (*url.URL, error) {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
@@ -310,45 +308,26 @@ func ValidateDownloadURL(rawURL string) (*url.URL, error) {
 	return parsed, nil
 }
 
-// SecureHTTPClient returns a download client enforcing the same dial-time
-// public-IP policy and redirect hygiene as Download. Product shortcuts that
-// own their local-file workflow (e.g. chat message resources) share it so
-// download URL trust decisions stay in one place.
+// SecureHTTPClient returns a download client enforcing the same URL policy
+// and redirect hygiene as Download. Product shortcuts that own their
+// local-file workflow (e.g. chat message resources) share it so download URL
+// trust decisions stay in one place.
 func SecureHTTPClient() *http.Client {
 	return secureHTTPClient()
 }
 
 func secureHTTPClient() *http.Client {
 	transport := &http.Transport{
-		// Do not use environment proxies here. DialContext must resolve and dial
-		// the validated download host itself; with a proxy it would receive the
-		// proxy address and could not enforce the target host's public-IP policy.
+		// Dial the service-issued host directly, ignoring environment proxies:
+		// dedicated-deployment storage may live on customer intranets that are
+		// only reachable without a proxy, and TLS hostname verification always
+		// runs against the requested host. Download URLs never come from
+		// user input — every command resolves them through an authenticated
+		// MCP response first, mirroring the official GUI client which applies
+		// no client-side SSRF interception to downloads.
 		Proxy: nil,
 		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(address)
-			if err != nil {
-				return nil, err
-			}
-			ips, err := lookupDownloadIPs(ctx, host)
-			if err != nil {
-				return nil, err
-			}
-			for _, resolved := range ips {
-				if !publicIP(resolved.IP) {
-					return nil, fmt.Errorf("下载域名解析到非公网地址 %s", resolved.IP)
-				}
-			}
-			// Dial the already validated address, not the hostname, to avoid a
-			// second DNS lookup opening a rebinding window.
-			var lastErr error
-			for _, resolved := range ips {
-				conn, dialErr := dialDownloadIP(ctx, network, net.JoinHostPort(resolved.IP.String(), port))
-				if dialErr == nil {
-					return conn, nil
-				}
-				lastErr = dialErr
-			}
-			return nil, lastErr
+			return secureDialContext(ctx, network, address)
 		},
 	}
 	client := &http.Client{Transport: transport, Timeout: downloadTimeout}
@@ -381,56 +360,6 @@ func downloadOrigin(parsed *url.URL) string {
 	}
 	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
 	return strings.ToLower(parsed.Scheme) + "://" + net.JoinHostPort(host, port)
-}
-
-func publicIP(ip net.IP) bool {
-	addr, ok := netip.AddrFromSlice(ip)
-	if !ok {
-		return false
-	}
-	addr = addr.Unmap()
-	// NAT64 (RFC 6052 well-known prefix): the gateway forwards traffic to the
-	// IPv4 address embedded in the last 32 bits, so that address is the real
-	// destination. Validate it instead of rejecting the whole prefix, which
-	// would break legitimate DNS64 answers for IPv4-only download hosts on
-	// IPv6-only networks.
-	if nat64WellKnownPrefix.Contains(addr) {
-		embedded := addr.As16()
-		return publicIP(net.IP(embedded[12:16]))
-	}
-	if !addr.IsGlobalUnicast() || addr.IsPrivate() || addr.IsLoopback() || addr.IsLinkLocalUnicast() || addr.IsMulticast() || addr.IsUnspecified() {
-		return false
-	}
-	for _, prefix := range nonPublicPrefixes {
-		if prefix.Contains(addr) {
-			return false
-		}
-	}
-	return true
-}
-
-// nat64WellKnownPrefix is checked separately in publicIP: the embedded IPv4
-// address is extracted and re-validated so DNS64 answers for public hosts
-// keep working while embedded internal addresses are rejected.
-var nat64WellKnownPrefix = netip.MustParsePrefix("64:ff9b::/96")
-
-var nonPublicPrefixes = []netip.Prefix{
-	netip.MustParsePrefix("0.0.0.0/8"),       // "this network"; reaches localhost on Linux
-	netip.MustParsePrefix("100.64.0.0/10"),   // carrier-grade NAT
-	netip.MustParsePrefix("192.0.0.0/24"),    // IETF protocol assignments
-	netip.MustParsePrefix("192.0.2.0/24"),    // TEST-NET-1
-	netip.MustParsePrefix("192.88.99.0/24"),  // deprecated 6to4 relay anycast
-	netip.MustParsePrefix("198.18.0.0/15"),   // benchmark networks
-	netip.MustParsePrefix("198.51.100.0/24"), // TEST-NET-2
-	netip.MustParsePrefix("203.0.113.0/24"),  // TEST-NET-3
-	netip.MustParsePrefix("240.0.0.0/4"),     // reserved
-	netip.MustParsePrefix("64:ff9b:1::/48"),  // NAT64 local-use (RFC 8215); IPv4 embedding is deployment-specific
-	netip.MustParsePrefix("100::/64"),        // IPv6 discard-only
-	netip.MustParsePrefix("2001::/32"),       // Teredo; embeds a tunneled IPv4 destination
-	netip.MustParsePrefix("2001:db8::/32"),   // IPv6 documentation
-	netip.MustParsePrefix("2002::/16"),       // 6to4
-	netip.MustParsePrefix("3fff::/20"),       // IPv6 documentation (RFC 9637)
-	netip.MustParsePrefix("5f00::/16"),       // SRv6 SIDs
 }
 
 func ensureSafeParent(root *os.Root, parent string) error {
