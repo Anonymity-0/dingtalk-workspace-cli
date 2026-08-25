@@ -15,15 +15,16 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
-// Re-export cmdutil functions as package-level aliases so that existing product
-// files continue to compile with their current (unexported) call sites.
-// This avoids a mass-rename in 22 product files while still consolidating the
-// implementations in pkg/cmdutil.
+// Re-export shared command helpers as package-level aliases so existing product
+// files continue to compile with their current (unexported) call sites. This
+// avoids a mass-rename while keeping reusable command-resolution and flag
+// utilities in cmdutil.
 var (
 	groupRunE                       = cmdutil.GroupRunE
 	hintSubCmd                      = cmdutil.HintSubCmd
@@ -37,6 +38,40 @@ var (
 	helperSleep                     = time.Sleep
 	helperAfter                     = time.After
 )
+
+// newGroupCommand declares the ordinary navigation policy used by helper
+// command containers. The unified framework compiles this declaration into
+// Cobra behavior and command-resolution metadata.
+func newGroupCommand(command *cobra.Command) *cobra.Command {
+	corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
+	return command
+}
+
+// newDeepGroupCommand declares a navigation container whose typo recovery may
+// teach exact descendant paths (for example sheet read -> sheet range read).
+func newDeepGroupCommand(command *cobra.Command) *cobra.Command {
+	corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoveryDeep,
+	})
+	return command
+}
+
+// newHybridGroupCommand declares a business command that also owns children.
+// Its existing RunE remains the command's default action.
+func newHybridGroupCommand(command *cobra.Command) *cobra.Command {
+	corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupHybrid,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
+	return command
+}
 
 // Deps holds shared dependencies injected from the host application.
 type Deps struct {

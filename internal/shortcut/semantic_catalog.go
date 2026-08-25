@@ -73,6 +73,12 @@ var hrbrainSemanticCatalogJSON []byte
 //go:embed semantic_catalog_pat.json
 var patSemanticCatalogJSON []byte
 
+//go:embed semantic_catalog_devapp.json
+var devAppSemanticCatalogJSON []byte
+
+//go:embed semantic_catalog_agoal.json
+var agoalSemanticCatalogJSON []byte
+
 type semanticCatalogFile struct {
 	Version      int                              `json:"version"`
 	Service      string                           `json:"service"`
@@ -113,6 +119,8 @@ var reviewedSemanticCatalog = mustLoadSemanticCatalogs(
 	devdocSemanticCatalogJSON,
 	hrbrainSemanticCatalogJSON,
 	patSemanticCatalogJSON,
+	devAppSemanticCatalogJSON,
+	agoalSemanticCatalogJSON,
 )
 
 func mustLoadSemanticCatalogs(sources ...[]byte) map[string]semanticCatalogRecord {
