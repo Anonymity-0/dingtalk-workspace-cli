@@ -614,6 +614,39 @@ func TestCrossPlatformCoveragePendingCommandMigrationAmendmentRequiresGovernance
 	if _, err := AuthorizeCommandMigrations(after, map[string]Snapshot{"main": before, "stable": before}, approved, amended); err == nil || !strings.Contains(err.Error(), "after applying an interface change") {
 		t.Fatalf("self-authorizing amendment error=%v, want governance-only rejection", err)
 	}
+
+	multipleAmendments := amended
+	multipleAmendments.Migrations = append([]CommandMigration(nil), amended.Migrations...)
+	secondAmendment := cloneCommandMigration(amended.Migrations[0])
+	secondAmendment.Replacement.Command = "dws chat thread alternate"
+	multipleAmendments.Migrations = append(multipleAmendments.Migrations, secondAmendment)
+	if _, err := AuthorizeCommandMigrations(before, map[string]Snapshot{"main": before, "stable": before}, approved, multipleAmendments); err == nil || !strings.Contains(err.Error(), "multiple amendments") {
+		t.Fatalf("multiple amendments error=%v, want ambiguity rejection", err)
+	}
+
+	baseWithAmendedTarget := before
+	baseWithAmendedTarget.Commands = append(append([]Command(nil), before.Commands...), testCommand("dws chat thread new", Flag{Name: "new-id", Type: "string", Required: true}))
+	if _, err := AuthorizeCommandMigrations(before, map[string]Snapshot{"main": baseWithAmendedTarget, "stable": before}, approved, amended); err == nil || !strings.Contains(err.Error(), "merge-base before state") {
+		t.Fatalf("merge-base amendment error=%v, want before-state rejection", err)
+	}
+
+	twoApprovals := approved
+	twoApprovals.Migrations = append([]CommandMigration(nil), approved.Migrations...)
+	secondApproval := cloneCommandMigration(approved.Migrations[0])
+	secondApproval.Replacement.Command = "dws chat topic alternate"
+	twoApprovals.Migrations = append(twoApprovals.Migrations, secondApproval)
+	if _, err := AuthorizeCommandMigrations(before, map[string]Snapshot{"main": before, "stable": before}, twoApprovals, amended); err == nil || !strings.Contains(err.Error(), "amends more than one") {
+		t.Fatalf("shared amendment error=%v, want one-to-one rejection", err)
+	}
+
+	candidateWithReceipt := amended
+	candidateWithReceipt.Migrations = append([]CommandMigration{approved.Migrations[0]}, amended.Migrations...)
+	if _, found, err := findPendingCommandMigrationAmendment(approved.Migrations[0], candidateWithReceipt); err != nil || !found {
+		t.Fatalf("amendment lookup with retained receipt found=%t, err=%v", found, err)
+	}
+	if samePendingCommandMigrationLineage(commandMigrationManifest(CommandMigrationConsumed).Migrations[0], amended.Migrations[0]) {
+		t.Fatal("consumed migration matched pending amendment lineage")
+	}
 }
 
 func TestCrossPlatformCoverageCommandMigrationLifecycleAndExactFiltering(t *testing.T) {
