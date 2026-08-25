@@ -339,7 +339,7 @@ func runImportUploadFallback(cmd *cobra.Command, cfg importFlowConfig, file prep
 
 	if deps.Caller.DryRun() {
 		if jsonMode {
-			return deps.Out.PrintJSON(map[string]any{
+			result := map[string]any{
 				"dry_run":             true,
 				"executed":            false,
 				"preview_kind":        "plan",
@@ -351,7 +351,9 @@ func runImportUploadFallback(cmd *cobra.Command, cfg importFlowConfig, file prep
 				"name":                uploadName,
 				"format":              file.extension,
 				"size":                file.size,
-			})
+			}
+			addImportTargetReceipt(result, file, cfg.defaultTargetSource)
+			return deps.Out.PrintJSON(result)
 		}
 		deps.Out.PrintKeyValue("操作", "上传文件到钉钉文档（doc import 回退）")
 		deps.Out.PrintKeyValue("文件", file.path)
@@ -381,7 +383,7 @@ func runImportUploadFallback(cmd *cobra.Command, cfg importFlowConfig, file prep
 	if err != nil {
 		return err
 	}
-	return deps.Out.PrintJSON(map[string]any{
+	result := map[string]any{
 		"success":             true,
 		"operation":           "上传文件到钉钉文档",
 		"requested_operation": cfg.operation,
@@ -391,7 +393,9 @@ func runImportUploadFallback(cmd *cobra.Command, cfg importFlowConfig, file prep
 		"format":              file.extension,
 		"dentry_id":           dentryID,
 		"result":              commit,
-	})
+	}
+	addImportTargetReceipt(result, file, "")
+	return deps.Out.PrintJSON(result)
 }
 
 // uploadCommitIDKeys 是 commit_uploaded_file 响应中可作为文件标识的字段，
@@ -427,13 +431,13 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 	if err != nil {
 		return err
 	}
-	// 非回退配置的白名单外文件已在 prepareImportFile 中按基线顺序拒绝
-	if cfg.uploadFallback && !cfg.supportedFormats[file.extension] {
-		return runImportUploadFallback(cmd, cfg, file)
-	}
+	useUploadFallback := cfg.uploadFallback && !cfg.supportedFormats[file.extension]
 	jsonMode := deps.Caller.Format() == "json"
 
 	if deps.Caller.DryRun() {
+		if useUploadFallback {
+			return runImportUploadFallback(cmd, cfg, file)
+		}
 		if jsonMode {
 			result := map[string]any{
 				"dry_run":      true,
@@ -471,6 +475,12 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 		file.folder = target.folder
 		file.workspace = target.workspace
 		file.targetSource = target.source
+	}
+	// 非回退配置的白名单外文件已在 prepareImportFile 中按基线顺序拒绝。
+	// 回退上传与在线转换共享同一目标解析，避免仅因扩展名不同而绕过
+	// 默认 orgSpace 唯一性校验或落入服务端隐式位置。
+	if useUploadFallback {
+		return runImportUploadFallback(cmd, cfg, file)
 	}
 
 	if !jsonMode {

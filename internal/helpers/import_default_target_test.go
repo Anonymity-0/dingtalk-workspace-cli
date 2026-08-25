@@ -255,15 +255,56 @@ func TestCrossPlatformCoverageDocImportRejectsAmbiguousOrMissingDefaultBeforeWri
 }
 
 func TestCrossPlatformCoverageDocImportDryRunDefersDefaultTargetRead(t *testing.T) {
-	caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{}, dryRun: true}
-	payload, err := runDocImportTargetFlow(t, caller, "docx", "", "")
-	if err != nil {
-		t.Fatalf("dry-run returned error: %v", err)
+	for _, extension := range []string{"docx", "html"} {
+		t.Run(extension, func(t *testing.T) {
+			caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{}, dryRun: true}
+			payload, err := runDocImportTargetFlow(t, caller, extension, "", "")
+			if err != nil {
+				t.Fatalf("dry-run returned error: %v", err)
+			}
+			if len(caller.calls) != 0 {
+				t.Fatalf("dry-run made remote calls: %#v", caller.calls)
+			}
+			if payload["targetSource"] != "default_org_root" || payload["targetResolution"] != "deferred" || payload["executed"] != false {
+				t.Fatalf("dry-run target plan = %#v", payload)
+			}
+			if extension == "html" && payload["fallback"] != "upload" {
+				t.Fatalf("fallback dry-run markers = %#v", payload)
+			}
+		})
 	}
-	if len(caller.calls) != 0 {
-		t.Fatalf("dry-run made remote calls: %#v", caller.calls)
-	}
-	if payload["targetSource"] != "default_org_root" || payload["targetResolution"] != "deferred" || payload["executed"] != false {
-		t.Fatalf("dry-run target plan = %#v", payload)
-	}
+}
+
+func TestCrossPlatformCoverageDocImportFallbackResolvesDefaultBeforeUpload(t *testing.T) {
+	t.Run("unique org root is passed to upload and returned in receipt", func(t *testing.T) {
+		caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{
+			"list_spaces":          {{text: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root-folder-1"}]}}`}},
+			"get_file_upload_info": {{text: `{"resourceUrl":"https://upload.example.test/object","uploadKey":"key-1"}`}},
+			"commit_uploaded_file": {{text: `{"dentryUuid":"node-1","name":"page.html"}`}},
+		}}
+		payload, err := runDocImportTargetFlow(t, caller, "html", "", "")
+		if err != nil {
+			t.Fatalf("fallback import returned error: %v", err)
+		}
+		if len(caller.calls) != 3 || caller.calls[0].tool != "list_spaces" || caller.calls[2].tool != "commit_uploaded_file" {
+			t.Fatalf("fallback calls = %#v", caller.calls)
+		}
+		if got := caller.calls[2].args["folderId"]; got != "root-folder-1" {
+			t.Fatalf("commit folderId = %v, want root-folder-1", got)
+		}
+		if payload["targetFolderId"] != "root-folder-1" || payload["targetSource"] != "default_org_root" || payload["fallback"] != "upload" {
+			t.Fatalf("fallback target receipt = %#v", payload)
+		}
+	})
+
+	t.Run("ambiguous org roots stop before upload", func(t *testing.T) {
+		caller := &docImportTargetCaller{responses: map[string][]scriptedToolStep{
+			"list_spaces": {{text: `{"result":{"items":[{"rootFolderId":"a"},{"rootFolderId":"b"}]}}`}},
+		}}
+		_, err := runDocImportTargetFlow(t, caller, "html", "", "")
+		assertImportPreflightError(t, err)
+		if len(caller.calls) != 1 || caller.calls[0].tool != "list_spaces" {
+			t.Fatalf("ambiguous fallback must stop before upload: %#v", caller.calls)
+		}
+	})
 }
