@@ -33,6 +33,7 @@ Report 查询优先使用下方严格 Shortcut；它们会校验响应、稳定 
 | 意图 | 首选命令 | 关键约束 |
 |---|---|---|
 | 列出收到的日志 | `dws report +inbox-list --start <ISO> --end <ISO> --cursor 0 --size 20 --format json` | 从返回的 `reports[]` 使用稳定 `reportId`；模板名筛选在当前返回页本地完成 |
+| 按发件人列出收到的日志 | 先 `dws aisearch person --query "<姓名>" --dimension name --format json`，再 `dws report +inbox-list --start <ISO> --end <ISO> --sender-user-ids <USER_ID> --cursor 0 --size 20 --format json` | 只过滤当前 profile 的收件箱；人员零命中或多候选时停止并消歧，禁止默认选择第一项或改查他人的发件箱 |
 | 列出自己发出的日志 | `dws report +outbox-list --start <ISO> --end <ISO> --template-name <NAME> --cursor 0 --size 20 --format json` | 创建/修改时间窗最多 20 天；模板明确时服务端过滤 |
 | 自己最近一篇日志详情 | `dws report +report-latest --format json` | 需要模板关键词时加 `--keyword <TEXT>` |
 | 搜索模板 | `dws report +template-search --query <TEXT> --format json` | 返回当前用户模板中的匹配项和稳定 `templateId` |
@@ -60,10 +61,15 @@ Report 查询优先使用下方严格 Shortcut；它们会校验响应、稳定 
 ## 收件箱：范围、筛选与分页
 
 1. 把“最近 N 天”“今天”等自然语言按 `Asia/Shanghai` 转成带 `+08:00` 的 ISO-8601 起止时间。
-2. 每页 `--size` 最大为 20；默认使用 20。若用户要“全部”，只沿当前响应中真实存在且严格前进的 continuation cursor 翻页，直到响应证明 endpoint exhausted；禁止用 50/100 绕过分页。
-3. Shortcut 没有模板 flag。按 `templateName` 在每个已返回页本地筛选，并继续翻真实续页；不要因为第一页没有目标模板就跨产品搜索。
-4. “最近一篇/两篇”先在限定范围内收集匹配项，再按真实 `createTime` 排序，最后对选中的 `reportId` 调 `entry get`。不要用列表摘要冒充正文。
-5. 返回零条或服务端已穷尽时停止。只有用户明确要求，才扩大时间窗；扩大后仍使用 Report 收件箱。
+2. 按发件人筛选时，先用 `aisearch person` 在同一 profile 下解析稳定 `userId/staffId`，再把唯一 ID 传给 `--sender-user-ids`；零命中、多候选或身份不完整时停止并消歧，禁止选择第一项。
+3. 每页 `--size` 最大为 20；默认使用 20。若用户要“全部”，只沿当前响应中真实存在且严格前进的 continuation cursor 翻页，直到响应证明 endpoint exhausted；禁止用 50/100 绕过分页。
+4. Shortcut 没有模板 flag。按 `templateName` 在每个已返回页本地筛选，并继续翻真实续页；不要因为第一页没有目标模板就跨产品搜索。
+5. “最近一篇/两篇”先在限定范围内收集匹配项，再按真实 `createTime` 排序，最后对选中的 `reportId` 调 `entry get`。不要用列表摘要冒充正文。
+6. 返回零条或服务端已穷尽时停止。只有用户明确要求，才扩大时间窗；扩大后仍使用 Report 收件箱。
+
+### 今日/最近收到的日志摘要脚本
+
+用户只需要今天或最近几天的收件箱摘要时，可执行 [`report_received_today.py`](../scripts/report_received_today.py)：`python3 scripts/report_received_today.py --days <N>`。脚本使用 `+inbox-list`，最多扫描 10 页、200 条并受总超时约束；命令失败、响应不完整或达到上限时返回非零状态，不得解释成空结果。脚本不读取每篇正文；用户需要正文时，从摘要中选择明确的 `reportId` 后只调用一次 `entry get`。
 
 ## 模板列表与比较
 

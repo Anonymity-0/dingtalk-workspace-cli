@@ -14,7 +14,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
-SCRIPT = (
+MULTI_SCRIPT = (
     ROOT
     / "skills"
     / "multi"
@@ -22,10 +22,18 @@ SCRIPT = (
     / "scripts"
     / "report_received_today.py"
 )
-SPEC = importlib.util.spec_from_file_location("report_received_today", SCRIPT)
-assert SPEC and SPEC.loader
-REPORT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(REPORT)
+MONO_SCRIPT = ROOT / "skills" / "mono" / "scripts" / "report_received_today.py"
+
+
+def load_report_module(path: Path, name: str):
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+REPORT = load_report_module(MULTI_SCRIPT, "report_received_today_multi")
 
 
 def inbox_page(reports: list[dict], *, complete: bool, next_token: int = 0) -> dict:
@@ -47,6 +55,12 @@ def inbox_page(reports: list[dict], *, complete: bool, next_token: int = 0) -> d
 
 
 class ReportReceivedTodayTest(unittest.TestCase):
+    def test_mono_multi_scripts_are_identical_and_executable(self) -> None:
+        self.assertEqual(MONO_SCRIPT.read_bytes(), MULTI_SCRIPT.read_bytes())
+        self.assertNotEqual(MONO_SCRIPT.stat().st_mode & 0o111, 0)
+        self.assertNotEqual(MULTI_SCRIPT.stat().st_mode & 0o111, 0)
+        load_report_module(MONO_SCRIPT, "report_received_today_mono")
+
     def test_query_window_clamps_first_second_after_midnight(self) -> None:
         now = datetime(2026, 8, 26, 0, 0, 0, 500000, tzinfo=REPORT.SHANGHAI)
         start, end = REPORT.query_window(1, now)

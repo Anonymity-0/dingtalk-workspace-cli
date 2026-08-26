@@ -150,6 +150,9 @@ omit_global:
 # Reviewed file pairs. Most are byte-identical; layout-only link differences
 # must be declared as data-driven substitutions.
 paired_files:
+  - mono: scripts/report_received_today.py
+    multi: dingtalk-misc/scripts/report_received_today.py
+    mode: identical
   - mono: references/products/sheet.md
     multi: dingtalk-misc/references/sheet.md
     mode: link-normalized
@@ -177,9 +180,5 @@ orphan_scripts_allowlist:
   - path: dingtalk-minutes/scripts/minutes_list_parse.py
     disposition: defer
     reason: "pending doc reference"
-  - path: dingtalk-misc/scripts/report_received_today.py
-    disposition: defer
-    reason: "pending report.md reference"
-
 # Skills allowed to omit references/ directory.
 skills_without_references_allowlist: []
