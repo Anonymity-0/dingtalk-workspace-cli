@@ -362,7 +362,7 @@ var paramAliasCandidateCompleteCommands = map[string][]string{
 	"devapp +member-remove":                {"devapp", "+member-remove", "--unified-app-id", "app-1", "--member-type", "DEVELOPER", "--user-ids", "user-1,user-2", "--yes"},
 	"devapp +permission-list":              {"devapp", "+permission-list", "--unified-app-id", "app-1", "--api-status", "PUBLISHED", "--scope-type", "APP"},
 	"devapp +robot-get":                    {"devapp", "+robot-get", "--unified-app-id", "app-1"},
-	"devapp +robot-config":                 {"devapp", "+robot-config", "--unified-app-id", "app-1", "--name", "Fixture Robot", "--desc", "Fixture Description", "--yes"},
+	"devapp +robot-config":                 {"devapp", "+robot-config", "--unified-app-id", "app-1", "--name", "Fixture Robot", "--desc", "Fixture Description", "--skills", "skill-1,skill-2", "--yes"},
 	"devapp +robot-disable":                {"devapp", "+robot-disable", "--unified-app-id", "app-1", "--yes"},
 	"devapp +robot-enable":                 {"devapp", "+robot-enable", "--unified-app-id", "app-1", "--yes"},
 	"devapp +update":                       {"devapp", "+update", "--unified-app-id", "app-1", "--name", "Fixture App", "--desc", "Fixture Description", "--yes"},

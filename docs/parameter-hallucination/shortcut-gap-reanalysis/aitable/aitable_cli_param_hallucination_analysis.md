@@ -2,7 +2,7 @@
 
 ## 1. 结论
 
-冻结基线为 `origin/main@5f906bf8b61bc54a75f6c2b46219a1deb682b600`。本轮覆盖 11 个此前未进入正式参数兜底范围的公开 Shortcut；识别出 0 个可直接自动兜底、11 个只能部分兜底、0 个只应增加保护的命令，其中高风险写入或敏感读取 5 个。
+冻结基线为 `origin/main@f4474b57eb1db23b1638b9574be2f5dca368a360`。本轮覆盖 11 个此前未进入正式参数兜底范围的公开 Shortcut；识别出 0 个可直接自动兜底、11 个只能部分兜底、0 个只应增加保护的命令，其中高风险写入或敏感读取 5 个。
 
 候选草稿没有写入正式 `internal/cli/param_concepts.json`。所有映射均满足：源参数不是该命令真实 flag、目标是该命令真实 flag、实体/角色/值域/基数一致、值原样传递、不绕过确认。
 
@@ -14,13 +14,13 @@
 | 2 | `aitable +table-bootstrap` | `base-id,name,fields` | fields 定义 JSON 与 field-ids 列表不是同一实体 | 复用 base_id；定义 JSON 仅命令级别名；field-ids 阻断 | 部分兜底 | 高 |
 | 3 | `aitable +url-resolve` | `url,verify` | URL 与拆出的 base/table/view/record ID 不能互换 | URL 角色别名可映射；独立 ID 阻断 | 部分兜底 | 中 |
 | 4 | `aitable +resolve-base` | `name,fuzzy` | 名称唯一解析与关键词搜索是不同执行语义 | base-name 可映射；query/keyword/base-id 阻断 | 部分兜底 | 中 |
-| 5 | `aitable +datasource-create` | `base-id,datasource-type,source-config,auto,field-ids,auto-sync-setting` | sourceConfig、自动同步配置、字段 ID 列表三种结构并存 | 复用/新增跨命令 concept；generic config/json 和单字段 ID 阻断 | 部分兜底 | 高 |
-| 6 | `aitable +datasource-update` | `base-id,table-id,source-config,auto,field-ids,auto-sync-setting` | 两个 ID + 两类 JSON + 字段列表角色冲突 | 按实体 concept 绑定；generic id/config 保护 | 部分兜底 | 高 |
+| 5 | `aitable +datasource-create` | `base-id,datasource-type,source-config,auto,field-ids,auto-sync-setting` | sourceConfig、自动同步配置、字段 ID 列表三种结构并存 | 仅明确 sourceConfig 拼写进入 concept；宽泛 datasource-config 保持歧义，generic config/json 和单字段 ID 阻断 | 部分兜底 | 高 |
+| 6 | `aitable +datasource-update` | `base-id,table-id,source-config,auto,field-ids,auto-sync-setting` | 两个 ID + 两类 JSON + 字段列表角色冲突 | 按实体 concept 绑定；宽泛 datasource-config 无法选择 JSON 角色，保持歧义 | 部分兜底 | 高 |
 | 7 | `aitable +datasource-sync` | `base-id,table-ids` | 同步要求列表，不能把单个 table-id 自动扩成列表 | 仅角色完整复数别名；单数阻断 | 部分兜底 | 高 |
 | 8 | `aitable +datasource-sync-status` | `base-id,table-id,task-ids` | 单表 ID 与任务 ID 列表并存 | 复用 base/table concept；任务列表仅角色完整别名；单任务阻断 | 部分兜底 | 中 |
 | 9 | `aitable +datasource-get-config` | `base-id,table-id` | 返回的配置容易被误当成请求参数 | 仅绑定两个 ID；source-config/data/json 阻断 | 部分兜底 | 中 |
 | 10 | `aitable +datasource-list-sources` | `base-id,datasource-type` | 目录 source 与 sourceConfig 容易混淆 | data-source-type 可映射；source-config 阻断 | 部分兜底 | 中 |
-| 11 | `aitable +datasource-get-fields` | `base-id,datasource-type,source-config` | field-ids 是输出，不是请求字段；config 角色不完整 | 绑定 sourceConfig；field-ids 阻断；generic config 歧义 | 部分兜底 | 中 |
+| 11 | `aitable +datasource-get-fields` | `base-id,datasource-type,source-config` | field-ids 是输出，不是请求字段；config 角色不完整 | 仅明确 sourceConfig 拼写可绑定；field-ids 阻断，宽泛 datasource-config 保持歧义 | 部分兜底 | 中 |
 
 ## 3. 可直接解决的方案
 
@@ -31,7 +31,7 @@
 | `base_id` | 扩展既有 concept 命令范围 | `aitable +table-bootstrap`、`aitable +datasource-create`、`aitable +datasource-update`、`aitable +datasource-sync`、`aitable +datasource-sync-status`、`aitable +datasource-get-config`、`aitable +datasource-list-sources`、`aitable +datasource-get-fields` |
 | `table_id` | 扩展既有 concept 命令范围 | `aitable +datasource-update`、`aitable +datasource-sync-status`、`aitable +datasource-get-config` |
 | `aitable_field_ids` | 新增（跨命令复用） | `aitable +field-get`、`aitable +record-query`、`aitable +datasource-create`、`aitable +datasource-update` |
-| `aitable_datasource_config_json` | 新增（跨命令复用） | `aitable +datasource-create`、`aitable +datasource-update`、`aitable +datasource-get-fields` |
+| `aitable_datasource_config_json` | 新增（跨命令复用；仅 `source-config` / `source-config-json`） | `aitable +datasource-create`、`aitable +datasource-update`、`aitable +datasource-get-fields` |
 
 ### 3.2 命令级 Override
 

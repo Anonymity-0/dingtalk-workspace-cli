@@ -2,7 +2,7 @@
 
 ## 1. 结论
 
-冻结基线为 `origin/main@5f906bf8b61bc54a75f6c2b46219a1deb682b600`。本轮覆盖 18 个此前未进入正式参数兜底范围的公开 Shortcut；识别出 2 个可直接自动兜底、14 个只能部分兜底、2 个只应增加保护的命令，其中高风险写入或敏感读取 8 个。
+冻结基线为 `origin/main@f4474b57eb1db23b1638b9574be2f5dca368a360`。本轮覆盖 18 个此前未进入正式参数兜底范围的公开 Shortcut；识别出 2 个可直接自动兜底、14 个只能部分兜底、2 个只应增加保护的命令，其中高风险写入或敏感读取 8 个。
 
 候选草稿没有写入正式 `internal/cli/param_concepts.json`。所有映射均满足：源参数不是该命令真实 flag、目标是该命令真实 flag、实体/角色/值域/基数一致、值原样传递、不绕过确认。
 
@@ -13,7 +13,7 @@
 | 1 | `chat +conversation-list` | `limit,cursor` | 整数 cursor 与 token/page 模型不等价 | limit concept；next-cursor 命令级映射；token/page 阻断 | 部分兜底 | 中 |
 | 2 | `chat +conversation-list-top` | `limit,cursor,type` | 整数 cursor + 本地会话类型枚举 | 分页有限兜底；泛化 conversation-type 保持歧义 | 部分兜底 | 中 |
 | 3 | `chat +chat-search` | `query,limit,page-size,cursor,page-token` | 两组公开同义 real flags 并存，额外 generic alias 无法选 canonical | query 可兜底；size/next-cursor 等设歧义 | 部分兜底 | 中 |
-| 4 | `chat +chat-list-mine` | `role,limit` | limit 是总量上限且没有 cursor；role 是枚举 | size 别名可归一；cursor 阻断；type 歧义 | 部分兜底 | 中 |
+| 4 | `chat +chat-list-mine` | `role,limit` | limit 是总量上限且没有 cursor；role 是枚举 | 仅 `max-results` / `max-result` 归一到总量上限；分页式命名阻断，generic size/type 保持歧义 | 部分兜底 | 中 |
 | 5 | `chat +chat-list-all` | `limit,cursor` | opaque cursor 与页码/offset 冲突 | 复用 pagination_size/page_cursor；page/offset 阻断 | 可自动兜底 | 低 |
 | 6 | `chat +chat-list-join-requests` | `limit,cursor` | opaque cursor 与页码/offset 冲突 | 复用 pagination_size/page_cursor；page/offset 阻断 | 可自动兜底 | 低 |
 | 7 | `chat +chat-list` | `types,page-size,limit,page-token,cursor` | 两组真实兼容参数并存；types 是列表枚举 | 不再造第三 canonical；generic size/cursor/type 歧义 | 仅保护 | 中 |
@@ -36,7 +36,7 @@
 | Concept | 处理 | 命令范围 |
 |---|---|---|
 | `search_query` | 扩展既有 concept 命令范围 | `chat +chat-search` |
-| `pagination_size` | 扩展既有 concept 命令范围 | `chat +conversation-list`、`chat +conversation-list-top`、`chat +chat-list-mine`、`chat +chat-list-all`、`chat +chat-list-join-requests`、`chat +at-me`、`chat +my-groups` |
+| `pagination_size` | 扩展既有 concept 命令范围 | `chat +conversation-list`、`chat +conversation-list-top`、`chat +chat-list-all`、`chat +chat-list-join-requests`、`chat +at-me`、`chat +my-groups` |
 | `page_cursor` | 扩展既有 concept 命令范围 | `chat +chat-list-all`、`chat +chat-list-join-requests`、`chat +at-me`、`chat +my-groups` |
 | `content_text` | 扩展既有 concept 命令范围 | `chat +messages-create-text-emotion`、`chat +messages-send-card`、`chat +messages-update-card`、`chat +broadcast`、`chat +dm` |
 | `open_conversation_id` | 扩展既有 concept 命令范围 | `chat +messages-recall`、`chat +messages-send-card`、`chat +thread-replies` |
@@ -68,14 +68,14 @@
 | `chat +my-groups` | bind/scoped_aliases/block/ambiguous 按命令事实独立评审 |
 | `chat +thread-replies` | bind/scoped_aliases/block/ambiguous 按命令事实独立评审 |
 
-候选新增 66 条 PreParse 验证 fixture，覆盖 alias/canonical、block 与 ambiguous 三类路径。candidate-only 完整命令模板位于 `internal/app/param_alias_payload_equivalence_test.go`，正式候选未启用时不会扩大既有测试范围。
+候选新增 67 条 PreParse 验证 fixture，覆盖 alias/canonical、block 与 ambiguous 三类路径。candidate-only 完整命令模板位于 `internal/app/param_alias_payload_equivalence_test.go`，正式候选未启用时不会扩大既有测试范围。
 
 ## 4. 当前不能自动解决
 
 - `chat +conversation-list`：整数 cursor 与 token/page 模型不等价。候选只处理“值不变且角色明确”的别名；其余通过 block/ambiguous 停止，不做查找、转换、枚举翻译或单复数扩展。
 - `chat +conversation-list-top`：整数 cursor + 本地会话类型枚举。候选只处理“值不变且角色明确”的别名；其余通过 block/ambiguous 停止，不做查找、转换、枚举翻译或单复数扩展。
 - `chat +chat-search`：两组公开同义 real flags 并存，额外 generic alias 无法选 canonical。候选只处理“值不变且角色明确”的别名；其余通过 block/ambiguous 停止，不做查找、转换、枚举翻译或单复数扩展。
-- `chat +chat-list-mine`：limit 是总量上限且没有 cursor；role 是枚举。候选只处理“值不变且角色明确”的别名；其余通过 block/ambiguous 停止，不做查找、转换、枚举翻译或单复数扩展。
+- `chat +chat-list-mine`：limit 是总量上限且没有 cursor；仅角色完整的 `max-results` / `max-result` 保留原值映射，`page-size` / `per-page` 阻断，generic `size` / `take` / `top` 保持歧义。
 - `chat +chat-list`：两组真实兼容参数并存；types 是列表枚举。候选只处理“值不变且角色明确”的别名；其余通过 block/ambiguous 停止，不做查找、转换、枚举翻译或单复数扩展。
 - `chat +messages-recall`：会话 ID、消息 ID、发送 openTaskId、threadId 角色冲突。候选只处理“值不变且角色明确”的别名；其余通过 block/ambiguous 停止，不做查找、转换、枚举翻译或单复数扩展。
 - `chat +messages-query-send-status`：openTaskId 不是 openMessageId，也不是 Todo taskId。候选只处理“值不变且角色明确”的别名；其余通过 block/ambiguous 停止，不做查找、转换、枚举翻译或单复数扩展。
@@ -100,7 +100,7 @@
 
 - 变更 concept：`search_query`、`pagination_size`、`page_cursor`、`content_text`、`open_conversation_id`、`open_message_id`、`user_id`、`user_ids`、`robot_code`。
 - 新增 command override：18 条。
-- 新增 fixture：66 条。
+- 新增 fixture：67 条。
 - 新 concept 仅在同一实体跨多个命令重复出现时建立；单命令或单角色字段全部下沉到 command override。
 - 没有新增 role-free 的 `id`、`name`、`status`、`config`、`content` concept。
 
