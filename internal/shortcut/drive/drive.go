@@ -58,6 +58,9 @@ var List = shortcut.Shortcut{
 		{Name: "folder", Type: shortcut.FlagString, Desc: "父节点 ID (dentryUuid)，不传则列出空间根目录"},
 		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "每页返回数量 (默认 20，最大 50)"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，首次不传"},
+		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动连续读取后续页，默认只读一页"},
+		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "自动翻页最多读取页数"},
+		{Name: "max-items", Type: shortcut.FlagInt, Default: "500", Desc: "自动翻页最多累计条目数"},
 		{Name: "order-by", Type: shortcut.FlagString, Desc: "排序字段: createTime|modifyTime|name"},
 		{Name: "order", Type: shortcut.FlagString, Desc: "排序方向: asc|desc (默认 desc)"},
 		{Name: "thumbnail", Type: shortcut.FlagBool, Desc: "是否返回缩略图信息"},
@@ -67,15 +70,12 @@ var List = shortcut.Shortcut{
 		`dws drive +list --folder <dentryUuid> --order-by name --order asc`,
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		params := map[string]any{"maxResults": rt.Int("limit")}
+		params := map[string]any{}
 		if rt.Changed("space-id") {
 			params["spaceId"] = rt.Str("space-id")
 		}
 		if rt.Changed("folder") {
 			params["parentId"] = rt.Str("folder")
-		}
-		if rt.Changed("cursor") {
-			params["nextToken"] = rt.Str("cursor")
 		}
 		if rt.Changed("order-by") {
 			params["orderBy"] = rt.Str("order-by")
@@ -86,23 +86,31 @@ var List = shortcut.Shortcut{
 		if rt.Bool("thumbnail") {
 			params["withThumbnail"] = true
 		}
-		data, err := rt.CallMCPData("drive", "list_files", params)
-		if err != nil {
-			return err
-		}
-		items, page, err := requireDriveCollection(data, "drive/list_files", "items", "files", "dentries", "entries", "nodes", "list")
-		if err != nil {
-			return err
-		}
-		files := projectDriveRows(items, map[string][]string{
-			"name":     {"name", "fileName", "dentryName", "title"},
-			"type":     {"type", "dentryType", "fileType", "spaceType"},
-			"nodeId":   {"fileId", "dentryUuid", "nodeId", "id"},
-			"dentryId": {"dentryId"},
-			"fileSize": {"fileSize", "size", "byteSize", "length"},
+		out, err := collectDrivePages(rt, params, drivePageOptions{
+			PageAll:        rt.Bool("page-all"),
+			PageSize:       rt.Int("limit"),
+			MaxPages:       rt.Int("max-pages"),
+			MaxItems:       rt.Int("max-items"),
+			Cursor:         rt.Str("cursor"),
+			Server:         "drive",
+			Tool:           "list_files",
+			OutputKey:      "files",
+			PageSizeParam:  "maxResults",
+			CursorParam:    "nextToken",
+			CollectionKeys: []string{"items", "files", "dentries", "entries", "nodes", "list"},
+			Project: func(items []any) []map[string]any {
+				return projectDriveRows(items, map[string][]string{
+					"name":     {"name", "fileName", "dentryName", "title"},
+					"type":     {"type", "dentryType", "fileType", "spaceType"},
+					"nodeId":   {"fileId", "dentryUuid", "nodeId", "id"},
+					"dentryId": {"dentryId"},
+					"fileSize": {"fileSize", "size", "byteSize", "length"},
+				})
+			},
 		})
-		out := map[string]any{"count": len(files), "files": files}
-		addDrivePagination(out, page)
+		if err != nil {
+			return err
+		}
 		return rt.Output(out)
 	},
 }
@@ -269,8 +277,11 @@ var Search = shortcut.Shortcut{
 		{Name: "created-to", Type: shortcut.FlagInt, Desc: "创建时间截止 (毫秒时间戳，含)"},
 		{Name: "modified-from", Type: shortcut.FlagInt, Desc: "修改时间起始 (毫秒时间戳，含)"},
 		{Name: "modified-to", Type: shortcut.FlagInt, Desc: "修改时间截止 (毫秒时间戳，含)"},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量 (默认 10，最大 30)"},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "10", Desc: "每页返回数量 (默认 10，最大 30)"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，从上次返回的 nextCursor 获取"},
+		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动连续读取后续页，默认只读一页"},
+		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "自动翻页最多读取页数"},
+		{Name: "max-items", Type: shortcut.FlagInt, Default: "500", Desc: "自动翻页最多累计条目数"},
 	},
 	Tips: []string{
 		`dws drive +search --query "季度汇报"`,
@@ -302,30 +313,32 @@ var Search = shortcut.Shortcut{
 		if rt.Changed("modified-to") {
 			params["modifiedTimeTo"] = rt.Int("modified-to")
 		}
-		if rt.Changed("limit") {
-			params["pageSize"] = rt.Int("limit")
-		}
-		if rt.Changed("cursor") {
-			params["pageToken"] = rt.Str("cursor")
-		}
-		data, err := rt.CallMCPData("drive", "search_files", params)
-		if err != nil {
-			return err
-		}
-		items, page, err := requireDriveCollection(data, "drive/search_files", "items", "files", "dentries", "entries", "nodes", "list")
-		if err != nil {
-			return err
-		}
-		files := projectDriveRows(items, map[string][]string{
-			"name":      {"name", "fileName", "dentryName", "title"},
-			"type":      {"type", "dentryType", "fileType", "spaceType"},
-			"nodeId":    {"fileId", "dentryUuid", "nodeId", "id"},
-			"dentryId":  {"dentryId"},
-			"fileSize":  {"fileSize", "size", "byteSize", "length"},
-			"creatorId": {"creatorId", "creatorUserId", "creator", "creatorUid"},
+		out, err := collectDrivePages(rt, params, drivePageOptions{
+			PageAll:        rt.Bool("page-all"),
+			PageSize:       rt.Int("limit"),
+			MaxPages:       rt.Int("max-pages"),
+			MaxItems:       rt.Int("max-items"),
+			Cursor:         rt.Str("cursor"),
+			Server:         "drive",
+			Tool:           "search_files",
+			OutputKey:      "files",
+			PageSizeParam:  "pageSize",
+			CursorParam:    "pageToken",
+			CollectionKeys: []string{"items", "files", "dentries", "entries", "nodes", "list"},
+			Project: func(items []any) []map[string]any {
+				return projectDriveRows(items, map[string][]string{
+					"name":      {"name", "fileName", "dentryName", "title"},
+					"type":      {"type", "dentryType", "fileType", "spaceType"},
+					"nodeId":    {"fileId", "dentryUuid", "nodeId", "id"},
+					"dentryId":  {"dentryId"},
+					"fileSize":  {"fileSize", "size", "byteSize", "length"},
+					"creatorId": {"creatorId", "creatorUserId", "creator", "creatorUid"},
+				})
+			},
 		})
-		out := map[string]any{"count": len(files), "files": files}
-		addDrivePagination(out, page)
+		if err != nil {
+			return err
+		}
 		return rt.Output(out)
 	},
 }
@@ -620,8 +633,11 @@ var Recent = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "operate-type", Type: shortcut.FlagInt, Desc: "操作类型: 0=最近访问(默认), 1=最近编辑"},
 		{Name: "creator-type", Type: shortcut.FlagInt, Desc: "创建人过滤: 0=全部, 1=我创建, 2=他人创建"},
-		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页数量 (默认 20，最大 20)"},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "每页数量 (默认 20，最大 20)"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标 (从上次结果的 nextCursor 获取)"},
+		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动连续读取后续页，默认只读一页"},
+		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "自动翻页最多读取页数"},
+		{Name: "max-items", Type: shortcut.FlagInt, Default: "500", Desc: "自动翻页最多累计条目数"},
 	},
 	Tips: []string{
 		`dws drive +recent`,
@@ -635,32 +651,34 @@ var Recent = shortcut.Shortcut{
 		if rt.Changed("creator-type") {
 			params["creatorType"] = rt.Int("creator-type")
 		}
-		if rt.Changed("limit") {
-			params["maxResults"] = rt.Int("limit")
-		}
-		if rt.Changed("cursor") {
-			params["nextToken"] = rt.Str("cursor")
-		}
 		// Project the verbose raw response (logId + per-item giant docUrl noise)
 		// down to a clean {count, items:[…], nextCursor, hasMore}.
-		data, err := rt.CallMCPData("doc", "get_recent_list", params)
-		if err != nil {
-			return err
-		}
-		items, page, err := requireDriveCollection(data, "doc/get_recent_list", "recentItems")
-		if err != nil {
-			return err
-		}
-		rows := projectDriveRows(items, map[string][]string{
-			"name":        {"name"},
-			"nodeType":    {"nodeType"},
-			"contentType": {"contentType"},
-			"accessTime":  {"accessTime"},
-			"docUrl":      {"docUrl"},
-			"nodeId":      {"nodeId"},
+		out, err := collectDrivePages(rt, params, drivePageOptions{
+			PageAll:        rt.Bool("page-all"),
+			PageSize:       rt.Int("limit"),
+			MaxPages:       rt.Int("max-pages"),
+			MaxItems:       rt.Int("max-items"),
+			Cursor:         rt.Str("cursor"),
+			Server:         "doc",
+			Tool:           "get_recent_list",
+			OutputKey:      "items",
+			PageSizeParam:  "maxResults",
+			CursorParam:    "nextToken",
+			CollectionKeys: []string{"recentItems"},
+			Project: func(items []any) []map[string]any {
+				return projectDriveRows(items, map[string][]string{
+					"name":        {"name"},
+					"nodeType":    {"nodeType"},
+					"contentType": {"contentType"},
+					"accessTime":  {"accessTime"},
+					"docUrl":      {"docUrl"},
+					"nodeId":      {"nodeId"},
+				})
+			},
 		})
-		out := map[string]any{"count": len(rows), "items": rows}
-		addDrivePagination(out, page)
+		if err != nil {
+			return err
+		}
 		return rt.Output(out)
 	},
 }

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/localio"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
@@ -31,12 +32,19 @@ type driveCoverageCaller struct {
 	mu        sync.Mutex
 	responses map[string][]string
 	history   []string
+	calls     []driveCoverageCall
 }
 
-func (caller *driveCoverageCaller) CallTool(_ context.Context, _, tool string, _ map[string]any) (*edition.ToolResult, error) {
+type driveCoverageCall struct {
+	tool string
+	args map[string]any
+}
+
+func (caller *driveCoverageCaller) CallTool(_ context.Context, _, tool string, args map[string]any) (*edition.ToolResult, error) {
 	caller.mu.Lock()
 	defer caller.mu.Unlock()
 	caller.history = append(caller.history, tool)
+	caller.calls = append(caller.calls, driveCoverageCall{tool: tool, args: cloneDriveMap(args)})
 	queue := caller.responses[tool]
 	if len(queue) == 0 {
 		return nil, errors.New("missing fake response for " + tool)
@@ -136,6 +144,17 @@ func TestCrossPlatformCoverageDriveCreateAndInspectReadback(t *testing.T) {
 	}}
 	if err := runDriveCoverage(t, CreateFolder, mismatch, "--name", "wanted"); err == nil || !strings.Contains(err.Error(), "读回名称") {
 		t.Fatalf("readback mismatch error = %v", err)
+	} else {
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) {
+			t.Fatalf("readback mismatch type = %T", err)
+		}
+		if typed.ExecutionStarted == nil || !*typed.ExecutionStarted || typed.Retryable || typed.Reason != "readback_mismatch" {
+			t.Fatalf("readback mismatch metadata = %#v", typed)
+		}
+		if typed.Details["nodeId"] != "folder-2" || typed.Details["retrySafe"] != false {
+			t.Fatalf("readback mismatch details = %#v", typed.Details)
+		}
 	}
 
 	partial := &driveCoverageCaller{responses: map[string][]string{
@@ -146,6 +165,97 @@ func TestCrossPlatformCoverageDriveCreateAndInspectReadback(t *testing.T) {
 	err := runDriveCoverage(t, Inspect, partial, "--node", "n1", "--include-stats", "--include-publish")
 	if err == nil || !strings.Contains(err.Error(), "部分读取") {
 		t.Fatalf("inspect partial error = %v", err)
+	}
+
+	metadataOnlyStats := &driveCoverageCaller{responses: map[string][]string{
+		"get_file_info":  {`{"success":true,"result":{"fileId":"n2","name":"x"}}`},
+		"get_node_stats": {`{"success":true,"contentType":"document","name":"x","message":"no statistics"}`},
+	}}
+	err = runDriveCoverage(t, Inspect, metadataOnlyStats, "--node", "n2", "--include-stats")
+	if err == nil || !strings.Contains(err.Error(), "部分读取") {
+		t.Fatalf("metadata-only stats error = %v", err)
+	}
+}
+
+func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
+	tests := []struct {
+		name        string
+		declaration shortcut.Shortcut
+		tool        string
+		args        []string
+		responses   []string
+		cursorParam string
+		sizeParam   string
+	}{
+		{
+			name: "list", declaration: List, tool: "list_files",
+			args: []string{"--limit", "2", "--page-all", "--max-pages", "3", "--max-items", "3"},
+			responses: []string{
+				`{"success":true,"items":[{"fileId":"n1"},{"fileId":"n2"}],"hasMore":true,"nextToken":"c2"}`,
+				`{"success":true,"items":[{"fileId":"n2"},{"fileId":"n3"}],"hasMore":false}`,
+			},
+			cursorParam: "nextToken", sizeParam: "maxResults",
+		},
+		{
+			name: "search", declaration: Search, tool: "search_files",
+			args: []string{"--query", "x", "--limit", "2", "--page-all", "--max-pages", "3", "--max-items", "3"},
+			responses: []string{
+				`{"success":true,"items":[{"fileId":"n1"},{"fileId":"n2"}],"hasMore":true,"nextPageToken":"c2"}`,
+				`{"success":true,"items":[{"fileId":"n3"}],"hasMore":false}`,
+			},
+			cursorParam: "pageToken", sizeParam: "pageSize",
+		},
+		{
+			name: "recent", declaration: Recent, tool: "get_recent_list",
+			args: []string{"--limit", "2", "--page-all", "--max-pages", "3", "--max-items", "3"},
+			responses: []string{
+				`{"success":true,"recentItems":[{"nodeId":"n1"},{"nodeId":"n2"}],"hasMore":true,"nextCursor":"c2"}`,
+				`{"success":true,"recentItems":[{"nodeId":"n3"}],"hasMore":false}`,
+			},
+			cursorParam: "nextToken", sizeParam: "maxResults",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &driveCoverageCaller{responses: map[string][]string{tc.tool: tc.responses}}
+			if err := runDriveCoverage(t, tc.declaration, caller, tc.args...); err != nil {
+				t.Fatal(err)
+			}
+			if len(caller.calls) != 2 {
+				t.Fatalf("calls = %#v", caller.calls)
+			}
+			if caller.calls[0].args[tc.sizeParam] != 2 || caller.calls[1].args[tc.sizeParam] != 1 {
+				t.Fatalf("page sizes = %#v, %#v", caller.calls[0].args, caller.calls[1].args)
+			}
+			if caller.calls[1].args[tc.cursorParam] != "c2" {
+				t.Fatalf("second page args = %#v", caller.calls[1].args)
+			}
+		})
+	}
+
+	stalled := &driveCoverageCaller{responses: map[string][]string{
+		"list_files": {
+			`{"success":true,"items":[{"fileId":"n1"}],"hasMore":true,"nextToken":"same"}`,
+			`{"success":true,"items":[{"fileId":"n2"}],"hasMore":true,"nextToken":"same"}`,
+		},
+	}}
+	err := runDriveCoverage(t, List, stalled, "--limit", "1", "--page-all", "--cursor", "start")
+	var typed *apperrors.Error
+	if err == nil || !errors.As(err, &typed) || typed.Reason != "drive_pagination_stalled_cursor" {
+		t.Fatalf("stalled cursor error = %#v", err)
+	}
+
+	maxPages := &driveCoverageCaller{responses: map[string][]string{
+		"list_files": {
+			`{"success":true,"items":[{"fileId":"n1"}],"hasMore":true,"nextToken":"c2"}`,
+			`{"success":true,"items":[{"fileId":"n2"}],"hasMore":true,"nextToken":"c3"}`,
+		},
+	}}
+	if err := runDriveCoverage(t, List, maxPages, "--limit", "1", "--page-all", "--max-pages", "2", "--max-items", "10"); err != nil {
+		t.Fatal(err)
+	}
+	if len(maxPages.calls) != 2 {
+		t.Fatalf("max-pages calls = %#v", maxPages.calls)
 	}
 }
 
@@ -197,6 +307,15 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 			err := runDriveCoverage(t, Upload, caller, "--file", "input.bin", "--yes")
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+			if tc.name == "prefix-only remote name" {
+				var typed *apperrors.Error
+				if !errors.As(err, &typed) || typed.ExecutionStarted == nil || !*typed.ExecutionStarted || typed.Retryable {
+					t.Fatalf("upload mismatch metadata = %#v", err)
+				}
+				if typed.Details["nodeId"] != "uploaded-4" || typed.Details["requestedName"] != "input.bin" {
+					t.Fatalf("upload mismatch details = %#v", typed.Details)
+				}
 			}
 		})
 	}
