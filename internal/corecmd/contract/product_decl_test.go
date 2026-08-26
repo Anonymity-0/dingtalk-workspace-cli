@@ -19,6 +19,12 @@ func TestCrossPlatformCoverageProductDeclRegistryRoundTrip(t *testing.T) {
 
 	RegisterProductDecl(ProductDecl{
 		ID: " sample ",
+		HelpReferences: HelpReferences{
+			RelatedSkills: []string{" dingtalk-sample ", "dingtalk-sample"},
+			Documentation: []HelpDocumentation{
+				SkillDocumentation(" Sample guide ", "dingtalk-sample", "references/sample.md"),
+			},
+		},
 		Selection: ProductSelectionDecl{
 			AgentSummary: "Manage samples",
 			UseWhen:      []string{"target is a sample"},
@@ -31,6 +37,17 @@ func TestCrossPlatformCoverageProductDeclRegistryRoundTrip(t *testing.T) {
 	got, ok := LookupProductDecl("sample")
 	if !ok || got.ID != "sample" || got.Selection.AgentSummary != "Manage samples" {
 		t.Fatalf("LookupProductDecl = %#v, ok=%v", got, ok)
+	}
+	if len(got.HelpReferences.RelatedSkills) != 1 || got.HelpReferences.RelatedSkills[0] != "dingtalk-sample" ||
+		len(got.HelpReferences.Documentation) != 1 || got.HelpReferences.Documentation[0].Label != "Sample guide" ||
+		got.HelpReferences.Documentation[0].URL != "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli/blob/main/skills/multi/dingtalk-sample/references/sample.md" {
+		t.Fatalf("normalized HelpReferences = %#v", got.HelpReferences)
+	}
+	got.HelpReferences.RelatedSkills[0] = "mutated"
+	got.HelpReferences.Documentation[0].Label = "mutated"
+	again, _ := LookupProductDecl("sample")
+	if again.HelpReferences.RelatedSkills[0] != "dingtalk-sample" || again.HelpReferences.Documentation[0].Label != "Sample guide" {
+		t.Fatalf("LookupProductDecl leaked mutable HelpReferences: %#v", again.HelpReferences)
 	}
 	ids := RegisteredProductDeclIDs()
 	found := false
@@ -76,4 +93,23 @@ func TestCrossPlatformCoverageProductDeclRegisterPanicsOnIncompleteSelection(t *
 		}
 	}()
 	RegisterProductDecl(ProductDecl{ID: "broken"})
+}
+
+func TestCrossPlatformCoverageProductDeclRejectsInvalidHelpDocumentation(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("expected panic for non-HTTPS Help documentation")
+		}
+	}()
+	RegisterProductDecl(ProductDecl{
+		ID: "invalid-help",
+		Selection: ProductSelectionDecl{
+			AgentSummary: "invalid Help fixture",
+			UseWhen:      []string{"test invalid Help"},
+			AvoidWhen:    []string{"production"},
+		},
+		HelpReferences: HelpReferences{
+			Documentation: []HelpDocumentation{{Label: "invalid", URL: "http://example.com"}},
+		},
+	})
 }
