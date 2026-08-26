@@ -105,3 +105,56 @@ func TestCrossPlatformCoverageWindowsPrefixCleanupFailureEdges(t *testing.T) {
 		t.Fatal("prefix cleanup delete failure succeeded")
 	}
 }
+
+func TestCrossPlatformCoverageWindowsPrefixCleanupSkipsMalformedAccountNames(t *testing.T) {
+	t.Setenv(TestNamespaceEnv, t.TempDir())
+	service := "prefix-malformed-" + t.Name()
+	keyPath := registryPathForService(service)
+	const malformedName = "%%%invalid-account%%%"
+	const matchingAccount = "appsecret:client"
+	const unrelatedAccount = "auth-token:corp"
+
+	writeRawRegistryNamedString(t, service, malformedName, "malformed")
+	writeRawRegistryString(t, service, matchingAccount, "matching")
+	writeRawRegistryString(t, service, unrelatedAccount, "unrelated")
+	t.Cleanup(func() {
+		k, err := registry.OpenKey(registry.CURRENT_USER, keyPath, registry.QUERY_VALUE|registry.SET_VALUE)
+		if err != nil {
+			return
+		}
+		if names, readErr := k.ReadValueNames(-1); readErr == nil {
+			for _, name := range names {
+				_ = k.DeleteValue(name)
+			}
+		}
+		_ = k.Close()
+		_ = registry.DeleteKey(registry.CURRENT_USER, keyPath)
+	})
+
+	if err := registryRemoveAccountEntriesWithPrefixes(service, []string{"appsecret:"}); err != nil {
+		t.Fatalf("prefix cleanup = %v", err)
+	}
+
+	k, err := registry.OpenKey(registry.CURRENT_USER, keyPath, registry.QUERY_VALUE)
+	if err != nil {
+		t.Fatalf("open cleaned registry = %v", err)
+	}
+	defer k.Close()
+	names, err := k.ReadValueNames(-1)
+	if err != nil {
+		t.Fatalf("list cleaned registry = %v", err)
+	}
+	present := make(map[string]bool, len(names))
+	for _, name := range names {
+		present[name] = true
+	}
+	if present[valueNameForAccount(matchingAccount)] {
+		t.Fatal("matching account was not removed")
+	}
+	if !present[malformedName] {
+		t.Fatal("malformed account name was not skipped")
+	}
+	if !present[valueNameForAccount(unrelatedAccount)] {
+		t.Fatal("unrelated account was removed")
+	}
+}

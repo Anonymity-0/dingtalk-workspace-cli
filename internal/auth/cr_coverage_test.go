@@ -19,6 +19,16 @@ import (
 )
 
 func TestCrossPlatformCoverageAppCredentialExplicitAndDerivedFailureBranches(t *testing.T) {
+	t.Run("malformed app config", func(t *testing.T) {
+		isolateAppCredentialKeychain(t)
+		dir := t.TempDir()
+		if err := os.WriteFile(GetAppConfigPath(dir), []byte("{"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ResolveAppConfigCredentialPair(dir); err == nil || !strings.Contains(err.Error(), "load app config") {
+			t.Fatalf("malformed app config error = %v", err)
+		}
+	})
 	t.Run("strict resolver trims explicit secret", func(t *testing.T) {
 		isolateAppCredentialKeychain(t)
 		dir := t.TempDir()
