@@ -17,7 +17,9 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
@@ -865,11 +867,15 @@ func TestCrossPlatformCoverageDocDelegationAuthParentIdTriggersNodeScopedCheck(t
 
 // TestCrossPlatformCoverageDocDelegationAuthDryRunStillChecks verifies that
 // when the inner caller reports DryRun()=true, the decorator is still installed
-// and ensureDelegationAuth triggers a check_capability call on CallReadTool.
-// dry-run 下 CallTool 的底层在真正调 deps.Caller.CallTool 之前就已 return
-// （打印预览），走不到装饰器的 CallTool；但 CallReadTool 仍会被拦截。
+// and ensureDelegationAuth triggers a check_capability call. In dry-run mode,
+// performDelegationAuth routes check_capability through CallReadTool (not
+// CallTool) because the inner implements ReadToolCaller — this avoids the
+// EchoRunner returning {"dry_run":true} which would always deny.
 func TestCrossPlatformCoverageDocDelegationAuthDryRunStillChecks(t *testing.T) {
-	readInner := &docDelegationReadTestCaller{docDelegationTestCaller: newDocDelegationTestCaller(), readRes: textToolResult(`{"ok":true}`)}
+	// readRes serves both check_capability (via ReadTool in dry-run) and the
+	// actual get_document passthrough: the mock returns the same result for
+	// all CallReadTool invocations regardless of tool name.
+	readInner := &docDelegationReadTestCaller{docDelegationTestCaller: newDocDelegationTestCaller(), readRes: textToolResult(`{"allowed":true}`)}
 	readInner.dry = true
 	d := newDocDelegationAuthDecorator(readInner)
 	wrapped := wrapDocDelegationAuthCaller(d, readInner).(*docDelegationAuthReadCaller)
@@ -880,12 +886,23 @@ func TestCrossPlatformCoverageDocDelegationAuthDryRunStillChecks(t *testing.T) {
 	if result != readInner.readRes {
 		t.Fatalf("CallReadTool() result = %#v, want read passthrough", result)
 	}
-	// Even in dry-run, check_capability was invoked.
-	if len(readInner.calls) != 1 || readInner.calls[0].tool != checkCapTool {
-		t.Fatalf("calls = %#v, want one check_capability call even in dry-run", readInner.calls)
+	// In dry-run with ReadToolCaller, check_capability goes through the read
+	// channel (not CallTool). readCalls should have 2 entries: check +
+	// passthrough; regular calls should have 0.
+	if len(readInner.calls) != 0 {
+		t.Fatalf("calls = %#v, want 0 (check_capability routes via ReadTool in dry-run)", readInner.calls)
 	}
-	if readInner.calls[0].args["nodeId"] != "n1" {
-		t.Fatalf("check args = %#v, want nodeId n1", readInner.calls[0].args)
+	if len(readInner.readCalls) != 2 {
+		t.Fatalf("readCalls = %d, want 2 (check_capability + get_document)", len(readInner.readCalls))
+	}
+	if readInner.readCalls[0].tool != checkCapTool {
+		t.Fatalf("readCalls[0] = %#v, want check_capability", readInner.readCalls[0])
+	}
+	if readInner.readCalls[0].args["nodeId"] != "n1" {
+		t.Fatalf("check args = %#v, want nodeId n1", readInner.readCalls[0].args)
+	}
+	if readInner.readCalls[1].tool != "get_document" {
+		t.Fatalf("readCalls[1] = %#v, want get_document passthrough", readInner.readCalls[1])
 	}
 }
 
@@ -925,5 +942,277 @@ func TestCrossPlatformCoverageDocDelegationAuthNoNodeRejectsLocally(t *testing.T
 	}
 	if len(readInner.readCalls) != 0 {
 		t.Fatalf("read readCalls = %d, want 0 (read blocked on not-supported)", len(readInner.readCalls))
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthDryRunCallToolAlsoChecks verifies
+// the full dry-run pre-check path: when helpers' dry-run branch calls
+// deps.Caller.CallTool, the delegation-auth decorator intercepts and routes
+// the check_capability call through the ReadTool channel (because inner
+// reports DryRun()=true and implements ReadToolCaller).
+func TestCrossPlatformCoverageDocDelegationAuthDryRunCallToolAlsoChecks(t *testing.T) {
+	readInner := &docDelegationReadTestCaller{
+		docDelegationTestCaller: newDocDelegationTestCaller(),
+		readRes:                 textToolResult(`{"allowed":true}`),
+	}
+	readInner.dry = true
+	d := newDocDelegationAuthDecorator(readInner)
+	wrapped := wrapDocDelegationAuthCaller(d, readInner)
+
+	// Simulate the dry-run pre-check path: helpers calls deps.Caller.CallTool
+	// which hits the decorator's CallTool → ensureDelegationAuth →
+	// performDelegationAuth → inner.DryRun()=true → CallReadTool.
+	result, err := wrapped.CallTool(context.Background(), "doc", "update_document", map[string]any{"nodeId": "n1"})
+	if err != nil {
+		t.Fatalf("CallTool() error = %v", err)
+	}
+	// The passthrough result comes from CallTool on the base caller (not read channel).
+	if result != readInner.passRes {
+		t.Fatalf("CallTool() result = %#v, want passthrough result", result)
+	}
+
+	// Verify check_capability was routed to ReadTool channel.
+	if len(readInner.readCalls) != 1 {
+		t.Fatalf("readCalls = %d, want 1 (check_capability via ReadTool)", len(readInner.readCalls))
+	}
+	rc := readInner.readCalls[0]
+	if rc.server != capabilityServerID || rc.tool != checkCapTool {
+		t.Fatalf("readCall[0] = %s/%s, want %s/%s", rc.server, rc.tool, capabilityServerID, checkCapTool)
+	}
+	if rc.args["userId"] != "u-principal" || rc.args["mcpToolKey"] != "doc.update_document" || rc.args["nodeId"] != "n1" {
+		t.Fatalf("readCall[0] args = %#v, want correct check_capability params", rc.args)
+	}
+
+	// The base CallTool still gets the passthrough call.
+	var passthroughCalls int
+	for _, c := range readInner.calls {
+		if c.tool != checkCapTool {
+			passthroughCalls++
+		}
+	}
+	if passthroughCalls != 1 {
+		t.Fatalf("passthrough calls = %d, want 1", passthroughCalls)
+	}
+
+	// check_capability must NOT appear on the regular CallTool channel
+	// (it should only go through ReadTool in dry-run).
+	for _, c := range readInner.calls {
+		if c.tool == checkCapTool {
+			t.Fatalf("check_capability must not go through regular CallTool in dry-run, but found: %#v", c)
+		}
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthDryRunFallbackNoReadCaller verifies
+// that when the inner caller does NOT implement ReadToolCaller but is in
+// dry-run mode, performDelegationAuth falls back to CallTool for the check.
+func TestCrossPlatformCoverageDocDelegationAuthDryRunFallbackNoReadCaller(t *testing.T) {
+	inner := newDocDelegationTestCaller()
+	inner.dry = true
+	d := newDocDelegationAuthDecorator(inner)
+
+	result, err := d.CallTool(context.Background(), "doc", "update_document", map[string]any{"nodeId": "n1"})
+	if err != nil {
+		t.Fatalf("CallTool() error = %v", err)
+	}
+	if result != inner.passRes {
+		t.Fatalf("CallTool() result = %#v, want passthrough", result)
+	}
+	// check_capability goes through regular CallTool (fallback path).
+	if len(inner.calls) != 2 || inner.calls[0].tool != checkCapTool {
+		t.Fatalf("calls = %#v, want [check_capability, update_document]", inner.calls)
+	}
+}
+
+// concurrentSafeTestCaller wraps docDelegationTestCaller with a mutex to make
+// CallTool safe for concurrent use in the race test (the production decorator's
+// checked map is the real subject under test, not the mock).
+type concurrentSafeTestCaller struct {
+	mu    sync.Mutex
+	inner *docDelegationTestCaller
+}
+
+func (c *concurrentSafeTestCaller) CallTool(ctx context.Context, serverID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.inner.CallTool(ctx, serverID, toolName, args)
+}
+func (c *concurrentSafeTestCaller) Format() string { return c.inner.Format() }
+func (c *concurrentSafeTestCaller) DryRun() bool   { return c.inner.DryRun() }
+func (c *concurrentSafeTestCaller) Fields() string { return c.inner.Fields() }
+func (c *concurrentSafeTestCaller) JQ() string     { return c.inner.JQ() }
+
+// TestCrossPlatformCoverageDocDelegationAuthConcurrentSafe uses -race detection
+// (go test -race) to verify that concurrent CallTool invocations on the same
+// decorator do not race on the checked map.
+func TestCrossPlatformCoverageDocDelegationAuthConcurrentSafe(t *testing.T) {
+	safeInner := &concurrentSafeTestCaller{inner: newDocDelegationTestCaller()}
+	d := &docDelegationAuthCaller{inner: safeInner, principalID: "u-principal", checked: map[string]bool{}}
+
+	const goroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			nodeID := "n1" // same node → exercises both read and write on checked map
+			if idx%2 == 0 {
+				nodeID = "n2" // different node → exercises write path
+			}
+			_, _ = d.CallTool(context.Background(), "doc", "update_document", map[string]any{"nodeId": nodeID})
+		}(i)
+	}
+	wg.Wait()
+
+	// Basic sanity: both nodes must be checked.
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !d.checked["doc.update_document.n1"] || !d.checked["doc.update_document.n2"] {
+		t.Fatalf("checked = %#v, want both n1 and n2 marked", d.checked)
+	}
+}
+
+// docDelegationHelpersTestCaller is a minimal ToolCaller+ReadToolCaller for
+// testing the helpers.go dryRunValidator integration path. Unlike the main
+// mock, it returns valid empty values for JQ/Fields to avoid triggering jq
+// evaluation errors in PrintJSON.
+type docDelegationHelpersTestCaller struct {
+	calls     []docDelegationCall
+	readCalls []docDelegationCall
+	checkRes  *edition.ToolResult
+	readRes   *edition.ToolResult
+}
+
+func (c *docDelegationHelpersTestCaller) CallTool(_ context.Context, serverID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	c.calls = append(c.calls, docDelegationCall{server: serverID, tool: toolName, args: args})
+	if toolName == checkCapTool {
+		return c.checkRes, nil
+	}
+	return textToolResult(`{"ok":true}`), nil
+}
+func (c *docDelegationHelpersTestCaller) CallReadTool(_ context.Context, serverID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	c.readCalls = append(c.readCalls, docDelegationCall{server: serverID, tool: toolName, args: args})
+	return c.readRes, nil
+}
+func (*docDelegationHelpersTestCaller) Format() string { return "json" }
+func (*docDelegationHelpersTestCaller) DryRun() bool   { return true }
+func (*docDelegationHelpersTestCaller) Fields() string { return "" }
+func (*docDelegationHelpersTestCaller) JQ() string     { return "" }
+
+// TestCrossPlatformCoverageDocDelegationAuthDryRunHelpersPreCheck verifies the
+// helpers.go integration: when deps.Caller is a delegation auth decorator in
+// dry-run mode, callMCPToolInternalOptsContext's dry-run branch triggers
+// ensureDelegationAuth via the dryRunValidator interface BEFORE rendering the
+// preview. This covers the full end-to-end path from helpers → decorator →
+// check_capability (via ReadTool in dry-run).
+func TestCrossPlatformCoverageDocDelegationAuthDryRunHelpersPreCheck(t *testing.T) {
+	inner := &docDelegationHelpersTestCaller{
+		checkRes: textToolResult(`{"allowed":true}`),
+		readRes:  textToolResult(`{"allowed":true}`),
+	}
+	d := &docDelegationAuthCaller{inner: inner, principalID: "u-principal", checked: map[string]bool{}}
+	wrapped := wrapDocDelegationAuthCaller(d, inner)
+	out, _ := installHelpersCoreDeps(t, wrapped)
+
+	// Call a doc-business tool through the helpers layer in dry-run mode.
+	err := callMCPToolOnServer("doc", "update_document", map[string]any{"nodeId": "n1"})
+	if err != nil {
+		t.Fatalf("callMCPToolOnServer() error = %v", err)
+	}
+
+	// Verify check_capability went through ReadTool channel.
+	if len(inner.readCalls) != 1 {
+		t.Fatalf("readCalls = %d, want 1 (check_capability via ReadTool)", len(inner.readCalls))
+	}
+	if inner.readCalls[0].tool != checkCapTool {
+		t.Fatalf("readCalls[0] = %#v, want check_capability", inner.readCalls[0])
+	}
+	if inner.readCalls[0].args["nodeId"] != "n1" {
+		t.Fatalf("check args = %#v, want nodeId n1", inner.readCalls[0].args)
+	}
+
+	// Verify no actual MCP CallTool calls were made (dry-run returns early
+	// after the pre-check, no inner.CallTool passthrough).
+	if len(inner.calls) != 0 {
+		t.Fatalf("calls = %d, want 0 (dry-run must not call inner.CallTool)", len(inner.calls))
+	}
+
+	// Verify dry-run preview was rendered.
+	if !strings.Contains(out.String(), "dry_run") {
+		t.Fatalf("output = %q, want dry-run JSON preview", out.String())
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthDryRunHelpersPreCheckDenied verifies
+// that when the delegation auth check denies in dry-run mode, the helpers layer
+// returns the error and does NOT render the preview.
+func TestCrossPlatformCoverageDocDelegationAuthDryRunHelpersPreCheckDenied(t *testing.T) {
+	inner := &docDelegationHelpersTestCaller{
+		checkRes: textToolResult(`{"allowed":true}`),
+		readRes:  textToolResult(`{"allowed":false,"denialReason":"NO_PERM","denialMessage":"denied"}`),
+	}
+	d := &docDelegationAuthCaller{inner: inner, principalID: "u-principal", checked: map[string]bool{}}
+	wrapped := wrapDocDelegationAuthCaller(d, inner)
+	out, _ := installHelpersCoreDeps(t, wrapped)
+
+	err := callMCPToolOnServer("doc", "update_document", map[string]any{"nodeId": "n1"})
+	if err == nil {
+		t.Fatal("callMCPToolOnServer() error = nil, want denial")
+	}
+	if !strings.HasPrefix(err.Error(), "[DELEGATION_AUTH_DENIED]") {
+		t.Fatalf("error = %q, want [DELEGATION_AUTH_DENIED] prefix", err.Error())
+	}
+
+	// No preview should be rendered on denial.
+	if strings.Contains(out.String(), "dry_run") || strings.Contains(out.String(), "DRY-RUN") {
+		t.Fatalf("output = %q, must not render preview on denial", out.String())
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthDryRunHelpersPreCheckResolvesProduct
+// verifies the dry-run pre-check path when NO explicit serverID is passed:
+// callMCPToolContext forwards an empty explicitServerID, so the pre-check must
+// fall back to resolveProductID() (reading the product name from os.Args) to
+// determine the server ID before invoking the delegation auth validator. This
+// covers the resolveProductID() branch inside the dry-run pre-check.
+func TestCrossPlatformCoverageDocDelegationAuthDryRunHelpersPreCheckResolvesProduct(t *testing.T) {
+	inner := &docDelegationHelpersTestCaller{
+		checkRes: textToolResult(`{"allowed":true}`),
+		readRes:  textToolResult(`{"allowed":true}`),
+	}
+	d := &docDelegationAuthCaller{inner: inner, principalID: "u-principal", checked: map[string]bool{}}
+	wrapped := wrapDocDelegationAuthCaller(d, inner)
+	out, _ := installHelpersCoreDeps(t, wrapped)
+
+	// resolveProductID scans os.Args for a known product command name; "doc"
+	// maps to server ID "doc" in cmdToProduct.
+	oldArgs := os.Args
+	t.Cleanup(func() { os.Args = oldArgs })
+	os.Args = []string{"dws", "doc", "update-document"}
+
+	// callMCPToolContext passes "" as explicitServerID, forcing the pre-check
+	// to call resolveProductID().
+	err := callMCPToolContext(context.Background(), "update_document", map[string]any{"nodeId": "n1"})
+	if err != nil {
+		t.Fatalf("callMCPToolContext() error = %v", err)
+	}
+
+	// The check must have been routed with the resolved server ID "doc".
+	if len(inner.readCalls) != 1 {
+		t.Fatalf("readCalls = %d, want 1 (check_capability via ReadTool)", len(inner.readCalls))
+	}
+	if inner.readCalls[0].tool != checkCapTool {
+		t.Fatalf("readCalls[0] = %#v, want check_capability", inner.readCalls[0])
+	}
+	// mcpToolKey must be "doc.update_document" proving resolveProductID
+	// returned "doc" as the server ID.
+	if inner.readCalls[0].args["mcpToolKey"] != "doc.update_document" {
+		t.Fatalf("check mcpToolKey = %#v, want doc.update_document (resolveProductID resolved doc)", inner.readCalls[0].args["mcpToolKey"])
+	}
+	if len(inner.calls) != 0 {
+		t.Fatalf("calls = %d, want 0 (dry-run must not call inner.CallTool)", len(inner.calls))
+	}
+	if !strings.Contains(out.String(), "dry_run") {
+		t.Fatalf("output = %q, want dry-run JSON preview", out.String())
 	}
 }

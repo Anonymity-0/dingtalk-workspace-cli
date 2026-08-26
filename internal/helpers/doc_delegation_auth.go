@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -94,11 +95,20 @@ func extractNodeId(args map[string]any) string {
 	return ""
 }
 
+// dryRunValidator is a package-internal interface satisfied by delegation auth
+// decorators. helpers.go's dry-run branch uses it to trigger check_capability
+// validation before rendering the preview — without calling inner.CallTool
+// (which would be a no-op via EchoRunner but would pollute test recordings).
+type dryRunValidator interface {
+	ensureDelegationAuth(ctx context.Context, serverID, toolName string, args map[string]any) error
+}
+
 // docDelegationAuthCaller decorates edition.ToolCaller: before the first call
 // of each doc-business tool key per node it verifies the delegation via
 // check_capability for the principal, then passes the original call through.
 // Non-doc-business servers bypass the verification.
 type docDelegationAuthCaller struct {
+	mu          sync.Mutex
 	inner       edition.ToolCaller
 	principalID string
 	checked     map[string]bool
@@ -129,13 +139,18 @@ func (d *docDelegationAuthCaller) ensureDelegationAuth(ctx context.Context, serv
 	if nodeID != "" {
 		cacheKey = toolKey + "." + nodeID
 	}
+	d.mu.Lock()
 	if d.checked[cacheKey] {
+		d.mu.Unlock()
 		return nil
 	}
+	d.mu.Unlock()
 	if err := d.performDelegationAuth(ctx, toolKey, args); err != nil {
 		return err
 	}
+	d.mu.Lock()
 	d.checked[cacheKey] = true
+	d.mu.Unlock()
 	return nil
 }
 
@@ -170,7 +185,22 @@ func (d *docDelegationAuthCaller) performDelegationAuth(ctx context.Context, too
 		"nodeId":     nodeID,
 	}
 
-	result, err := d.inner.CallTool(ctx, capabilityServerID, checkCapTool, checkArgs)
+	// In dry-run mode, CallTool goes through EchoRunner which returns
+	// {"dry_run":true} — parseCheckResult would not find "allowed" and would
+	// always deny. check_capability is a pure read-only verification, so we
+	// route it through CallReadTool (which bypasses the write barrier and
+	// issues a real network request) when available.
+	var result *edition.ToolResult
+	var err error
+	if d.inner.DryRun() {
+		if rc, ok := d.inner.(edition.ReadToolCaller); ok {
+			result, err = rc.CallReadTool(ctx, capabilityServerID, checkCapTool, checkArgs)
+		} else {
+			result, err = d.inner.CallTool(ctx, capabilityServerID, checkCapTool, checkArgs)
+		}
+	} else {
+		result, err = d.inner.CallTool(ctx, capabilityServerID, checkCapTool, checkArgs)
+	}
 	if err != nil {
 		msg := fmt.Sprintf("委托鉴权校验失败: %v", err)
 		check := apperrors.NewAPI(msg,
