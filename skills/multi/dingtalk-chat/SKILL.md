@@ -114,7 +114,7 @@ metadata:
 | 卡片公开 Schema 边界 | [card/schema.md](references/card/schema.md) |
 | 只有上述 reference 仍无法定位的原子能力 | [chat.md](references/chat.md) 的对应章节 |
 
-不要预加载这些 reference。完整 Shortcut Catalog 只在根路由和精确 reference 都无法定位低频能力时使用。
+不要预加载 reference。Shortcut Catalog 只在根路由和精确 reference 都无法定位低频能力时使用。
 
 ## 错误最短路径
 
