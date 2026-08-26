@@ -44,7 +44,7 @@ metadata:
 | 查看节点类型和元数据 | `dws drive +inspect --node <dentryUuid>` | 按需加 stats/publish/cover，不为普通列表强制调用 |
 | 下载普通文件 | `dws drive +download --node <dentryUuid> --output <相对路径>` | 当前 shortcut 接受 ID；在线文档用 `doc +export` |
 | 上传新文件或覆盖普通文件 | `dws drive +upload --file <相对路径>` | 新建可加 folder；覆盖改加 node，二者互斥 |
-| 管理普通文件全局评论 | `dws drive comment list/create/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply` | 复用 Doc/Sheet 新评论链路；固定全文 `global`，不支持划词、单元格或 mention |
+| 管理普通文件全局评论 | `dws drive comment list-v2/create-v2/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply` | 复用 Doc/Sheet 新评论链路；旧 `list/create` 已 deprecated；固定全文 `global`，不支持划词、单元格或 mention |
 | 创建文件夹 | `dws drive +create-folder --name <名称> [--folder <ID>]` | Shortcut 已提交并读回 |
 | 复制在线文档节点 | `dws drive +copy --node <ID> [--folder <目标ID>]` | 普通钉盘文件会被拒绝；Base 结构复制走 AITable `+base-copy --base-id <ID> --target-folder-id <真实ID> --only-struct` |
 | 移动节点 | `dws drive +move --node <ID> --folder <目标ID>` | 破坏性变更，按 Runtime confirmation |

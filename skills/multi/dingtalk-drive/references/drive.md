@@ -62,13 +62,15 @@ dws drive +recycle-restore --id <recycleItemId>
 
 普通 PDF、DOCX、XLSX 等本地文件使用 `dws drive comment`，复用 Doc/Sheet 的新评论服务链路。当前固定为文件级全文评论 `topicId=global`，不支持划词、单元格、页码、anchor 或 mention。
 
+旧 `drive comment list/create` 保留旧评论服务的行为和输出，仅作 deprecated 兼容入口。Agent 必须使用下面的 `list-v2/create-v2` 进入新评论体系。
+
 ```bash
-dws drive comment list --node <dentryUuid> --format json
-dws drive comment create --node <dentryUuid> --content "请补充结论"
+dws drive comment list-v2 --node <dentryUuid> --format json
+dws drive comment create-v2 --node <dentryUuid> --content "请补充结论"
 dws drive comment list-replies --node <dentryUuid> --comment-key <commentKey> --format json
 ```
 
-完整生命周期包括 `list/create/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply`。分页游标必须原样回传；写操作按 Runtime confirmation 执行，后续操作的 `commentKey` 必须来自真实返回。
+完整生命周期包括 `list-v2/create-v2/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply`。分页游标必须原样回传；`list-v2` 每页上限为 50，超过上限直接报错；写操作按 Runtime confirmation 执行，后续操作的 `commentKey` 必须来自真实返回。
 
 ## 公开状态
 
