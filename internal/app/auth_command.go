@@ -440,8 +440,7 @@ func applyAuthLoginGuideAction(cmd *cobra.Command, configDir string, action auth
 		if err != nil {
 			return err
 		}
-		authpkg.SetClientID(clientID)
-		authpkg.SetClientSecret(clientSecret)
+		authpkg.SetClientCredentials(clientID, clientSecret)
 		// The provider snapshots this pair before authorization and persists it
 		// only after the login succeeds. A cancelled/failed browser flow must not
 		// overwrite the last known-good application configuration.

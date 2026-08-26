@@ -3,11 +3,9 @@ package app
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -18,47 +16,6 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/mcptypes"
 	"github.com/spf13/cobra"
 )
-
-func appRPCServer(t *testing.T, initOK, listOK bool) *httptest.Server {
-	t.Helper()
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			ID     int    `json:"id"`
-			Method string `json:"method"`
-		}
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		w.Header().Set("Content-Type", "application/json")
-		switch req.Method {
-		case "initialize":
-			if !initOK {
-				_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": req.ID, "error": map[string]any{"code": -32601, "message": "init"}})
-				return
-			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": map[string]any{"protocolVersion": "2025-03-26"}})
-		case "tools/list":
-			if !listOK {
-				_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": req.ID, "error": map[string]any{"code": -1, "message": "list"}})
-				return
-			}
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"jsonrpc": "2.0",
-				"id":      req.ID,
-				"result": map[string]any{
-					"tools": []any{map[string]any{
-						"name":        "tool",
-						"description": "desc",
-						"inputSchema": map[string]any{
-							"properties": map[string]any{"id": map[string]any{"type": "string"}},
-							"required":   []any{"id", 1, ""},
-						},
-					}},
-				},
-			})
-		default:
-			_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": map[string]any{}})
-		}
-	}))
-}
 
 func TestCrossPlatformCoveragePluginAuthCoverage(t *testing.T) {
 	fallback := pluginAuthFromServerDescriptor(mcptypes.ServerDescriptor{Key: "fallback", Endpoint: "%", AuthHeaders: map[string]string{"Authorization": "token"}})

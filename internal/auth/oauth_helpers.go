@@ -184,7 +184,7 @@ func (p *OAuthProvider) refreshWithRefreshToken(ctx context.Context, data *Token
 		return nil, fmt.Errorf("无法刷新 token: Client Secret 存储冲突或不可读，请重新登录: %w", secretErr)
 	}
 	if clientSecret == "" {
-		pair, pairErr := ResolveAppCredentialPair(p.configDir, "", "")
+		pair, pairErr := resolveAppCredentialPairWithoutMigration(p.configDir, "", "")
 		if pairErr == nil && (clientID == "" || pair.ClientID == clientID) {
 			clientID = pair.ClientID
 			clientSecret = pair.ClientSecret
@@ -194,7 +194,7 @@ func (p *OAuthProvider) refreshWithRefreshToken(ctx context.Context, data *Token
 		// Complete an app.json-aware historical-slot migration when this token's
 		// client ID is also the active custom application. Errors are handled by
 		// the strict refresh credential checks above or on the next explicit use.
-		if pair, pairErr := ResolveAppConfigCredentialPair(p.configDir); pairErr == nil && pair.ClientID == clientID {
+		if pair, pairErr := resolveAppConfigCredentialPair(p.configDir, false); pairErr == nil && pair.ClientID == clientID {
 			clientSecret = pair.ClientSecret
 		}
 	}

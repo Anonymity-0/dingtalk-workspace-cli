@@ -561,7 +561,7 @@ Agent 工作流和事件参数详见 `skills/multi/dingtalk-event/SKILL.md`。
 
 `dws api` 让你直接调用支持企业内部应用 App Token 的钉钉服务端 OpenAPI，无需 SDK，Token 自动获取和刷新。
 
-> **前置条件**：必须使用自有应用凭证登录（见[自建应用模式](#开始使用)）。通过 MCP 默认凭证登录 不支持 raw API 调用。
+> **前置条件**：必须提供一对完整的自有应用 Client ID/Client Secret，可来自本次 flags、环境变量或成功登录后保存的 app config（见[自建应用模式](#开始使用)）。仅通过 MCP 默认凭证登录不支持 Raw API 调用。
 
 Client ID/Client Secret 必须来自同一完整凭证对，优先级为：完整 `--client-id/--client-secret` > 完整 `DWS_CLIENT_ID/DWS_CLIENT_SECRET` > 完整 app config。任一来源只提供一项都会明确失败，不会与其他来源拼接。直接用于 `dws api` 的 flags/env 仅对本次调用生效，不持久化 AppSecret；成功执行 `dws auth login` 时使用的 flags/env 则会按实际使用的完整 pair 持久化，供 OAuth 刷新和后续 Raw API 使用。获取到的 App Token 会按 `app-token:<clientID>` 缓存；隐藏 `--token` 仅临时使用调用方提供的 App Token，不持久化、不自动刷新。
 
@@ -599,14 +599,13 @@ dws api POST https://oapi.dingtalk.com/topapi/v2/user/get \
 dws api GET /v1.0/microApp/allApps --dry-run             # 预览请求
 dws api GET /v1.0/microApp/allApps --jq '.appList | length'  # jq 过滤
 
-# 从 JSON 文件读取 query/body（也可用 - 从 stdin 读取）
-dws api GET /v1.0/example/resources --params @params.json
-dws api POST /v1.0/example/resources --data @request.json
+# 从文件读取 JSON body（--params 也支持 @file；也可用 - 从 stdin 读取）
+dws api POST https://oapi.dingtalk.com/topapi/v2/department/listsubid \
+  --data @department-request.json --dry-run
 
-# 单文件流式 multipart 上传；--data 顶层字段转为文本 form field
-dws api POST /v1.0/example/files \
-  --file media=./demo.png \
-  --data '{"type":"image"}'
+# 单文件流式 multipart 上传；--data 顶层字段转为文本 form field；先 dry-run 核对
+dws api POST https://oapi.dingtalk.com/media/upload \
+  --data '{"type":"image"}' --file media=./demo.png --dry-run
 ```
 
 | 特性 | 说明 |

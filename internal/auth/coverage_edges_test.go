@@ -30,43 +30,6 @@ type errorReader struct{}
 
 func (errorReader) Read([]byte) (int, error) { return 0, errors.New("read") }
 
-type duplicateFailAfterWriter struct {
-	remaining int
-}
-
-func (w *duplicateFailAfterWriter) Write(p []byte) (int, error) {
-	if w.remaining <= 0 {
-		return 0, errors.New("write")
-	}
-	if len(p) > w.remaining {
-		n := w.remaining
-		w.remaining = 0
-		return n, errors.New("write")
-	}
-	w.remaining -= len(p)
-	return len(p), nil
-}
-
-type duplicateFakePortableTemp struct {
-	name      string
-	writeErr  error
-	chmodErr  error
-	syncErr   error
-	closeErr  error
-	closeCall int
-}
-
-func (f *duplicateFakePortableTemp) Write(p []byte) (int, error) {
-	if f.writeErr != nil {
-		return 0, f.writeErr
-	}
-	return len(p), nil
-}
-func (f *duplicateFakePortableTemp) Name() string            { return f.name }
-func (f *duplicateFakePortableTemp) Chmod(os.FileMode) error { return f.chmodErr }
-func (f *duplicateFakePortableTemp) Sync() error             { return f.syncErr }
-func (f *duplicateFakePortableTemp) Close() error            { f.closeCall++; return f.closeErr }
-
 type fakeSecureTemp struct {
 	name     string
 	writeErr error

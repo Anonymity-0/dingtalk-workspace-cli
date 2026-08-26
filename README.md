@@ -567,7 +567,7 @@ See `skills/multi/dingtalk-event/SKILL.md` for the Agent workflow and supported 
 
 `dws api` lets you call server-side DingTalk OpenAPIs that support an internal-app App Token, without an SDK. Tokens are automatically acquired and refreshed.
 
-> **Prerequisite**: Must login with your own app credentials (see [Custom App mode](#getting-started)). Encrypted tokens from MCP default-credential login are not supported for raw API calls.
+> **Prerequisite**: Provide one complete custom-app Client ID/Client Secret pair through one-shot flags, environment variables, or app config saved by a successful login (see [Custom App mode](#getting-started)). MCP default-credential login alone does not support Raw API calls.
 
 Client ID and Client Secret are resolved only as one complete pair, in this order: complete `--client-id/--client-secret` > complete `DWS_CLIENT_ID/DWS_CLIENT_SECRET` > complete app config. A half-configured source fails explicitly and is never combined with another source. Flags/env used directly by `dws api` are one-shot and do not persist the App Secret; flags/env used by a successful `dws auth login` are persisted as that exact pair for OAuth refresh and later Raw API calls. The acquired App Token is cached under `app-token:<clientID>`; the hidden `--token` accepts a temporary caller-supplied App Token and neither persists nor refreshes it.
 
@@ -605,14 +605,13 @@ dws api POST https://oapi.dingtalk.com/topapi/v2/user/get \
 dws api GET /v1.0/microApp/allApps --dry-run             # preview request
 dws api GET /v1.0/microApp/allApps --jq '.appList | length'  # jq filtering
 
-# Read query/body JSON from files (use - for stdin)
-dws api GET /v1.0/example/resources --params @params.json
-dws api POST /v1.0/example/resources --data @request.json
+# Read a JSON body from a file (--params also accepts @file; use - for stdin)
+dws api POST https://oapi.dingtalk.com/topapi/v2/department/listsubid \
+  --data @department-request.json --dry-run
 
-# Stream one multipart file; top-level --data fields become text form fields
-dws api POST /v1.0/example/files \
-  --file media=./demo.png \
-  --data '{"type":"image"}'
+# Stream one multipart file; top-level --data fields become text form fields; review a dry-run first
+dws api POST https://oapi.dingtalk.com/media/upload \
+  --data '{"type":"image"}' --file media=./demo.png --dry-run
 ```
 
 | Feature | Details |

@@ -103,15 +103,12 @@ oapi.dingtalk.com:
 
   # === 通用功能 ===
 
-  # 分页获取所有结果
-  dws api GET /v1.0/attendance/groups --page-all --page-limit 5
-
   # Dry-run 预览请求
   dws api GET /v1.0/microApp/allApps --dry-run
 
-  # 上传文件（multipart，可附带文本字段）
-  dws api POST /v1.0/example/upload --file media=./demo.png \
-    --data '{"type":"image"}'
+  # 上传媒体文件（旧 OAPI multipart；先 dry-run 核对）
+  dws api POST https://oapi.dingtalk.com/media/upload \
+    --data '{"type":"image"}' --file media=./demo.png --dry-run
 
   # 使用 jq 过滤输出
   dws api GET /v1.0/microApp/allApps --jq '.appList | length'`,
@@ -300,7 +297,14 @@ func runAPI(cmd *cobra.Command, args []string, gf *GlobalFlags, af *apiFlags) er
 	if err != nil {
 		return apperrors.NewAPI(fmt.Sprintf("API 请求失败: %v", err))
 	}
-	return apiclient.HandleResponse(resp, respOpts)
+	if err := apiclient.HandleResponse(resp, respOpts); err != nil {
+		var responseErr *apiclient.ResponseError
+		if errors.As(err, &responseErr) {
+			return apperrors.NewAPI(err.Error())
+		}
+		return err
+	}
+	return nil
 }
 
 // runPaginated executes a paginated API request and outputs all results.
@@ -310,7 +314,7 @@ func runPaginated(ctx context.Context, client *apiclient.APIClient, req apiclien
 		PageDelay: af.pageDelay,
 		LogWriter: opts.ErrOut,
 	})
-	if err != nil && len(pages) == 0 {
+	if err != nil {
 		return apperrors.NewAPI(fmt.Sprintf("分页请求失败: %v", err))
 	}
 
@@ -410,6 +414,8 @@ func classifyRawAPIAppConfigError(err error) error {
 		return apperrors.NewAuth("无法从 Keychain 解析 Client Secret；请检查 Keychain 状态，或同时设置 DWS_CLIENT_ID 和 DWS_CLIENT_SECRET")
 	case errors.Is(err, authpkg.ErrClientSecretConflict):
 		return apperrors.NewAuth("检测到新旧 Client Secret 存储值冲突；为避免使用错误凭证已拒绝调用，请重新执行 dws auth login")
+	case errors.Is(err, authpkg.ErrClientSecretRefMismatch):
+		return apperrors.NewAuth("本地应用配置中的 Client Secret 引用与 Client ID 不匹配；为避免跨应用混用已拒绝调用，请重新执行 dws auth login")
 	case strings.Contains(err.Error(), "placeholders"):
 		return apperrors.NewAuth("应用凭证不完整或仍为占位符，Client ID 和 Client Secret 必须同时提供有效值")
 	default:

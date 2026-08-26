@@ -83,10 +83,8 @@ func (c *APIClient) PaginateAll(ctx context.Context, req RawAPIRequest, opts Pag
 			if pageCount == 1 {
 				return nil, parseErr
 			}
-			// Non-first page parse failure: warn the caller so users aren't
-			// silently left with incomplete data.
-			logf(opts.LogWriter, "[pagination] ⚠ 第 %d 页解析失败，停止翻页并返回已获取的 %d 页数据: %v\n", pageCount, pageCount-1, parseErr)
-			return allResults, nil
+			// Never report a partial page set as a successful complete result.
+			return allResults, fmt.Errorf("分页第 %d 页解析失败 (已获取 %d 页结果): %w", pageCount, pageCount-1, parseErr)
 		}
 
 		allResults = append(allResults, result)

@@ -14,6 +14,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -65,6 +66,7 @@ var (
 	appConfigLoad                    = LoadAppConfig
 	appConfigResolveSecret           = ResolveSecret
 	appConfigRemoveCredentialEntries = keychain.RemoveAccountEntriesWithPrefixes
+	appConfigAcquireDualLock         = AcquireDualLock
 	appConfigBeforeResolveLock       = func() {}
 )
 
@@ -109,6 +111,18 @@ func LoadAppConfig(configDir string) (*AppConfig, error) {
 // If the client secret is a plain string, it will be stored in keychain
 // and the config file will contain a reference to it.
 func SaveAppConfig(configDir string, config *AppConfig) error {
+	lock, err := appConfigAcquireDualLock(context.Background(), configDir)
+	if err != nil {
+		return fmt.Errorf("locking app config: %w", err)
+	}
+	defer lock.Release()
+	return saveAppConfigLocked(configDir, config)
+}
+
+// saveAppConfigLocked persists app config while the caller holds the shared
+// auth dual lock. Keeping the lock outside the keychain→app.json→legacy-slot
+// sequence makes credential replacement atomic across DWS processes.
+func saveAppConfigLocked(configDir string, config *AppConfig) error {
 	// Store plain secret in keychain, convert to reference
 	if config.ClientSecret.IsPlain() && config.ClientID != "" {
 		storedRef, err := appConfigStoreSecret(config.ClientID, config.ClientSecret)
@@ -184,6 +198,15 @@ func cleanupLegacySiblingAppConfig(configDir string, config *AppConfig) {
 
 // DeleteAppConfig removes the app configuration and associated keychain secrets.
 func DeleteAppConfig(configDir string) error {
+	lock, err := appConfigAcquireDualLock(context.Background(), configDir)
+	if err != nil {
+		return fmt.Errorf("locking app config reset: %w", err)
+	}
+	defer lock.Release()
+	return deleteAppConfigLocked(configDir)
+}
+
+func deleteAppConfigLocked(configDir string) error {
 	// Load existing config to clean up keychain
 	existing, _ := LoadAppConfig(configDir)
 	if existing != nil {

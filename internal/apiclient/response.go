@@ -38,10 +38,38 @@ type ResponseOptions struct {
 	ErrOut     io.Writer     // stderr
 }
 
+// ResponseError marks failures caused by the remote HTTP/business response.
+// Local rendering, jq validation, and download filesystem failures deliberately
+// remain unwrapped so the CLI can preserve their validation/internal category.
+type ResponseError struct {
+	Err error
+}
+
+func (e *ResponseError) Error() string {
+	if e == nil || e.Err == nil {
+		return "API response error"
+	}
+	return e.Err.Error()
+}
+
+func (e *ResponseError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
+func newResponseError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &ResponseError{Err: err}
+}
+
 // HandleResponse routes response processing based on Content-Type and status code.
 func HandleResponse(resp *RawAPIResponse, opts ResponseOptions) error {
 	if resp == nil {
-		return fmt.Errorf("API 返回空响应")
+		return newResponseError(fmt.Errorf("API 返回空响应"))
 	}
 	defer func() {
 		if resp.BodyReader != nil {
@@ -56,9 +84,9 @@ func HandleResponse(resp *RawAPIResponse, opts ResponseOptions) error {
 	if resp.StatusCode >= 400 && !isJSON {
 		body, err := readBoundedResponse(resp)
 		if err != nil {
-			return fmt.Errorf("API 请求失败 (HTTP %d): %w", resp.StatusCode, err)
+			return newResponseError(fmt.Errorf("API 请求失败 (HTTP %d): %w", resp.StatusCode, err))
 		}
-		return fmt.Errorf("API 请求失败 (HTTP %d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return newResponseError(fmt.Errorf("API 请求失败 (HTTP %d): %s", resp.StatusCode, strings.TrimSpace(string(body))))
 	}
 
 	// JSON response
@@ -75,21 +103,21 @@ func HandleResponse(resp *RawAPIResponse, opts ResponseOptions) error {
 func handleJSONResponse(resp *RawAPIResponse, opts ResponseOptions) error {
 	body, err := readBoundedResponse(resp)
 	if err != nil {
-		return err
+		return newResponseError(err)
 	}
 	if len(body) == 0 {
-		return fmt.Errorf("API 返回空响应体 (HTTP %d)，如需下载文件请使用 --output 参数", resp.StatusCode)
+		return newResponseError(fmt.Errorf("API 返回空响应体 (HTTP %d)，如需下载文件请使用 --output 参数", resp.StatusCode))
 	}
 
 	var payload any
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return fmt.Errorf("解析 JSON 响应失败: %w", err)
+		return newResponseError(fmt.Errorf("解析 JSON 响应失败: %w", err))
 	}
 
 	// Check for DingTalk business error: {"errcode": xxx, "errmsg": "xxx"}
 	requestID := firstHeader(resp.Header, "x-acs-request-id", "x-acs-dingtalk-request-id", "x-request-id")
 	if apiErr := checkDingTalkErrorWithRequestID(payload, resp.StatusCode, requestID); apiErr != nil {
-		return apiErr
+		return newResponseError(apiErr)
 	}
 
 	return output.WriteFiltered(opts.Out, opts.Format, payload, opts.Fields, opts.JqExpr)

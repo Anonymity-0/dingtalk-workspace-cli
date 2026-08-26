@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/keychain"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func isolateAppCredentialKeychain(t *testing.T) map[string]string {
@@ -162,6 +163,17 @@ func TestResolveAppConfigCredentialPairFailsClosed(t *testing.T) {
 	if err != nil && strings.Contains(err.Error(), "fallback-must-not-run") {
 		t.Fatalf("error leaked secret: %v", err)
 	}
+
+	dir = t.TempDir()
+	entries[secretAccountKey("other-id")] = "other-secret"
+	writeCredentialConfig(t, dir, "expected-id", SecretInput{Ref: &SecretRef{Source: "keychain", ID: secretAccountKey("other-id")}})
+	_, err = ResolveAppConfigCredentialPair(dir)
+	if !errors.Is(err, ErrClientSecretRefMismatch) {
+		t.Fatalf("mismatched keychain ref error = %v", err)
+	}
+	if err != nil && strings.Contains(err.Error(), "other-secret") {
+		t.Fatalf("mismatched keychain ref error leaked secret: %v", err)
+	}
 }
 
 func TestExplicitFileSecretDoesNotRequireKeychain(t *testing.T) {
@@ -197,6 +209,70 @@ func TestLegacyCleanupFailureKeepsResolvedPairUsable(t *testing.T) {
 	}
 	if entries[secretAccountKey("cleanup-id")] != "cleanup-secret" {
 		t.Fatal("canonical write did not complete before cleanup failure")
+	}
+}
+
+func TestClientSecretMigrationDoesNotOverwriteConcurrentLoginPair(t *testing.T) {
+	entries := isolateAppCredentialKeychain(t)
+	t.Setenv(EnvClientID, "")
+	t.Setenv(EnvClientSecret, "")
+	dir := t.TempDir()
+	entries[legacyClientSecretAccountKey("same-id")] = "old-secret"
+	writeCredentialConfig(t, dir, "same-id", SecretInput{})
+
+	migrationReached := make(chan struct{})
+	allowMigration := make(chan struct{})
+	testseam.Swap(t, &appCredentialsBeforeMigrationLock, func() {
+		close(migrationReached)
+		<-allowMigration
+	})
+	type result struct {
+		pair AppCredentialPair
+		err  error
+	}
+	resultCh := make(chan result, 1)
+	go func() {
+		pair, err := ResolveAppConfigCredentialPair(dir)
+		resultCh <- result{pair: pair, err: err}
+	}()
+	<-migrationReached
+
+	if err := SaveAppConfig(dir, &AppConfig{ClientID: "same-id", ClientSecret: PlainSecret("new-secret")}); err != nil {
+		t.Fatal(err)
+	}
+	close(allowMigration)
+	got := <-resultCh
+	if got.err != nil || got.pair.ClientSecret != "old-secret" {
+		t.Fatalf("in-flight resolver pair = %#v, %v", got.pair, got.err)
+	}
+
+	cfg, err := LoadAppConfig(dir)
+	if err != nil || cfg == nil || !isCanonicalClientSecretRef(cfg.ClientSecret, "same-id") {
+		t.Fatalf("concurrent login config = %#v, %v", cfg, err)
+	}
+	if entries[secretAccountKey("same-id")] != "new-secret" {
+		t.Fatal("stale migration overwrote the newly logged-in Client Secret")
+	}
+}
+
+func TestCredentialResolutionWithoutMigrationLeavesLegacyStateUntouched(t *testing.T) {
+	entries := isolateAppCredentialKeychain(t)
+	t.Setenv(EnvClientID, "")
+	t.Setenv(EnvClientSecret, "")
+	dir := t.TempDir()
+	entries[legacyClientSecretAccountKey("legacy-id")] = "legacy-secret"
+	writeCredentialConfig(t, dir, "legacy-id", SecretInput{})
+
+	pair, err := resolveAppCredentialPairWithoutMigration(dir, "", "")
+	if err != nil || pair.ClientSecret != "legacy-secret" {
+		t.Fatalf("non-migrating pair = %#v, %v", pair, err)
+	}
+	if entries[secretAccountKey("legacy-id")] != "" {
+		t.Fatal("non-migrating resolver wrote the canonical slot")
+	}
+	cfg, err := LoadAppConfig(dir)
+	if err != nil || cfg == nil || !cfg.ClientSecret.IsZero() {
+		t.Fatalf("non-migrating resolver changed app config: %#v, %v", cfg, err)
 	}
 }
 
@@ -263,6 +339,54 @@ func TestOAuthConstructorsDoNotMutateCredentialEnvironment(t *testing.T) {
 	_ = NewDeviceFlowProvider(dir, nil)
 	if os.Getenv(EnvClientID) != "" || os.Getenv(EnvClientSecret) != "" {
 		t.Fatalf("constructors mutated env: id=%q secret_set=%t", os.Getenv(EnvClientID), os.Getenv(EnvClientSecret) != "")
+	}
+}
+
+func TestExplicitRuntimePairClearsStaleMCPMarker(t *testing.T) {
+	isolateAppCredentialKeychain(t)
+	t.Setenv(EnvClientID, "")
+	t.Setenv(EnvClientSecret, "")
+	SetClientIDFromMCP("managed-client")
+	SetClientID("explicit-client")
+	SetClientSecret("explicit-secret")
+
+	pair, err := resolveOAuthCredentialPair(t.TempDir())
+	if err != nil || pair == nil || pair.ClientID != "explicit-client" || pair.ClientSecret != "explicit-secret" {
+		t.Fatalf("explicit pair after MCP marker = %#v, %v", pair, err)
+	}
+	if IsClientIDFromMCP() {
+		t.Fatal("explicit runtime Client ID retained the stale MCP marker")
+	}
+}
+
+func TestMCPRuntimeTupleCannotPolluteLaterAppConfigPair(t *testing.T) {
+	isolateAppCredentialKeychain(t)
+	t.Setenv(EnvClientID, "")
+	t.Setenv(EnvClientSecret, "")
+	dir := t.TempDir()
+	writeCredentialConfig(t, dir, "config-client", PlainSecret("config-secret"))
+
+	SetClientCredentials("previous-direct-client", "previous-direct-secret")
+	SetClientIDFromMCP("managed-client")
+	if _, secret := getRuntimeCredentials(); secret != "" {
+		t.Fatal("MCP runtime Client ID retained a previous direct-mode Client Secret")
+	}
+
+	pair, err := resolveOAuthCredentialPair(dir)
+	if err != nil || pair == nil || pair.ClientID != "config-client" || pair.ClientSecret != "config-secret" {
+		t.Fatalf("app config pair after MCP = %#v, %v", pair, err)
+	}
+	if id, secret := getRuntimeCredentials(); id != "" || secret != "" || IsClientIDFromMCP() {
+		t.Fatalf("stale MCP runtime tuple remains: id=%q has_secret=%t from_mcp=%t", id, secret != "", IsClientIDFromMCP())
+	}
+
+	oauthProvider := NewOAuthProvider(dir, nil)
+	deviceProvider := NewDeviceFlowProvider(dir, nil)
+	if oauthProvider.credentials == nil || oauthProvider.credentials.ClientID != "config-client" {
+		t.Fatalf("second OAuth provider credentials = %#v", oauthProvider.credentials)
+	}
+	if deviceProvider.credentials == nil || deviceProvider.credentials.ClientID != "config-client" {
+		t.Fatalf("device provider credentials = %#v", deviceProvider.credentials)
 	}
 }
 

@@ -29,21 +29,15 @@ dws devdoc article search --query "<接口中文名或业务场景>" --format js
 - `--dry-run` 只显示脱敏认证占位符，不读取 `@file`、上传文件或 stdin，也不访问 Keychain/网络。
 - 不自动重试 Raw 写请求；错误后先保留 HTTP 状态、`errcode/code`、`errmsg/message` 与 requestId，再根据官方文档判断。
 
-示例形态（path 和字段必须来自当次官方文档，不可照抄猜测）：
+已核对的命令形态仍只用于 dry-run；实际任务必须重新读取当次官方详情页：
 
 ```bash
-dws api GET /v1.0/example/resources \
-  --params '{"nextToken":"...","maxResults":20}' \
+dws api POST https://oapi.dingtalk.com/topapi/v2/department/listsubid \
+  --data @department-request.json \
   --dry-run
 
-dws api POST /v1.0/example/resources \
-  --data @request.json \
-  --dry-run
-
-dws api POST /v1.0/example/files \
-  --file media=./demo.png \
-  --data '{"type":"image"}' \
-  --dry-run
+dws api POST https://oapi.dingtalk.com/media/upload \
+  --data '{"type":"image"}' --file media=./demo.png --dry-run
 ```
 
 ## 信任与保密边界

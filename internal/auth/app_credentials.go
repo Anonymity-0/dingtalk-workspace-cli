@@ -14,6 +14,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -22,6 +23,8 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/keychain"
 )
+
+var appCredentialsBeforeMigrationLock = func() {}
 
 // AppCredentialPair is an atomic application credential. ClientID and
 // ClientSecret are always selected from the same source.
@@ -37,6 +40,7 @@ var (
 	ErrFlagCredentialPairIncomplete = errors.New("--client-id and --client-secret must be provided together")
 	ErrEnvCredentialPairIncomplete  = errors.New("DWS_CLIENT_ID and DWS_CLIENT_SECRET must be set together")
 	ErrClientSecretConflict         = errors.New("canonical and legacy Client Secret slots conflict; log in again")
+	ErrClientSecretRefMismatch      = errors.New("app config Client Secret reference does not match Client ID")
 )
 
 // ResolveAppCredentialPair resolves one complete pair without mixing sources.
@@ -57,11 +61,25 @@ func ResolveAppCredentialPair(configDir, flagClientID, flagClientSecret string) 
 // an explicit, damaged custom-application configuration before falling back to
 // managed MCP credentials.
 func ResolveAppConfigCredentialPair(configDir string) (AppCredentialPair, error) {
-	id, secret, _, _, err := resolveAppConfigCredentials(configDir)
+	return resolveAppConfigCredentialPair(configDir, true)
+}
+
+func resolveAppConfigCredentialPair(configDir string, migrate bool) (AppCredentialPair, error) {
+	id, secret, _, _, err := resolveAppConfigCredentialsMode(configDir, migrate)
 	if err != nil {
 		return AppCredentialPair{}, err
 	}
 	return validateAppCredentialPair(id, secret, string(CredentialSourceAppConfig))
+}
+
+func resolveAppCredentialPairWithoutMigration(configDir, flagClientID, flagClientSecret string) (AppCredentialPair, error) {
+	if pair, selected, err := credentialPairFromValues(flagClientID, flagClientSecret, string(CredentialSourceFlag), ErrFlagCredentialPairIncomplete); selected || err != nil {
+		return pair, err
+	}
+	if pair, selected, err := credentialPairFromValues(os.Getenv(EnvClientID), os.Getenv(EnvClientSecret), string(CredentialSourceEnv), ErrEnvCredentialPairIncomplete); selected || err != nil {
+		return pair, err
+	}
+	return resolveAppConfigCredentialPair(configDir, false)
 }
 
 func credentialPairFromValues(clientID, clientSecret, source string, incompleteErr error) (AppCredentialPair, bool, error) {
@@ -91,6 +109,14 @@ func resolveAppConfigCredentials(configDir string) (
 	clientIDSource, secretSource CredentialSource,
 	err error,
 ) {
+	return resolveAppConfigCredentialsMode(configDir, true)
+}
+
+func resolveAppConfigCredentialsMode(configDir string, migrate bool) (
+	clientID, secret string,
+	clientIDSource, secretSource CredentialSource,
+	err error,
+) {
 	cfg, err := LoadAppConfig(configDir)
 	if err != nil {
 		return "", "", CredentialSourceUnknown, CredentialSourceUnknown, fmt.Errorf("load app config: %w", err)
@@ -107,6 +133,11 @@ func resolveAppConfigCredentials(configDir string) (
 	// An explicit value is authoritative. If it is damaged, do not silently
 	// fall back to a derived keychain slot and hide the broken app.json.
 	if !cfg.ClientSecret.IsZero() {
+		if cfg.ClientSecret.Ref != nil && cfg.ClientSecret.Ref.Source == "keychain" &&
+			!isCanonicalClientSecretRef(cfg.ClientSecret, clientID) &&
+			!isLegacyClientSecretRef(cfg.ClientSecret, clientID) {
+			return "", "", CredentialSourceUnknown, CredentialSourceUnknown, ErrClientSecretRefMismatch
+		}
 		wasPlain := cfg.ClientSecret.IsPlain()
 		resolved, resolveErr := ResolveSecret(cfg.ClientSecret)
 		if resolveErr != nil {
@@ -129,7 +160,9 @@ func resolveAppConfigCredentials(configDir string) (
 			if canonicalErr == nil && legacyErr == nil && canonical != "" && legacy != "" && canonical != legacy {
 				return "", "", CredentialSourceUnknown, CredentialSourceUnknown, ErrClientSecretConflict
 			}
-			migrateAppConfigSecret(configDir, cfg, resolved, legacy != "")
+			if migrate {
+				migrateAppConfigSecret(configDir, cfg, resolved)
+			}
 		case isCanonicalClientSecretRef(cfg.ClientSecret, clientID):
 			legacy, legacyErr := authKeychainGet(keychain.Service, legacyClientSecretAccountKey(clientID))
 			if legacyErr != nil {
@@ -138,8 +171,8 @@ func resolveAppConfigCredentials(configDir string) (
 			if legacy != "" && legacy != resolved {
 				return "", "", CredentialSourceUnknown, CredentialSourceUnknown, ErrClientSecretConflict
 			}
-			if legacy != "" {
-				migrateAppConfigSecret(configDir, cfg, resolved, true)
+			if legacy != "" && migrate {
+				migrateAppConfigSecret(configDir, cfg, resolved)
 			}
 		case isLegacyClientSecretRef(cfg.ClientSecret, clientID):
 			canonical, canonicalErr := secretKeychainGet(keychain.Service, secretAccountKey(clientID))
@@ -149,7 +182,9 @@ func resolveAppConfigCredentials(configDir string) (
 			if canonical != "" && canonical != resolved {
 				return "", "", CredentialSourceUnknown, CredentialSourceUnknown, ErrClientSecretConflict
 			}
-			migrateAppConfigSecret(configDir, cfg, resolved, true)
+			if migrate {
+				migrateAppConfigSecret(configDir, cfg, resolved)
+			}
 		}
 		return clientID, resolved, clientIDSource, secretSource, nil
 	}
@@ -168,10 +203,14 @@ func resolveAppConfigCredentials(configDir string) (
 	switch {
 	case canonical != "":
 		secret = canonical
-		migrateAppConfigSecret(configDir, cfg, canonical, legacy != "")
+		if migrate {
+			migrateAppConfigSecret(configDir, cfg, canonical)
+		}
 	case legacy != "":
 		secret = legacy
-		migrateAppConfigSecret(configDir, cfg, legacy, true)
+		if migrate {
+			migrateAppConfigSecret(configDir, cfg, legacy)
+		}
 	default:
 		return "", "", clientIDSource, CredentialSourceUnknown, ErrClientSecretEmpty
 	}
@@ -195,23 +234,72 @@ func isLegacyClientSecretRef(input SecretInput, clientID string) bool {
 // migrateAppConfigSecret deliberately keeps a resolved credential usable when
 // best-effort cleanup fails. The warning contains identifiers and error causes,
 // never the secret value.
-func migrateAppConfigSecret(configDir string, cfg *AppConfig, secret string, removeLegacy bool) {
+func migrateAppConfigSecret(configDir string, cfg *AppConfig, secret string) {
 	if cfg == nil || strings.TrimSpace(cfg.ClientID) == "" || strings.TrimSpace(secret) == "" {
+		return
+	}
+	appCredentialsBeforeMigrationLock()
+	lock, err := appConfigAcquireDualLock(context.Background(), configDir)
+	if err != nil {
+		slog.Warn("auth: failed to lock Client Secret migration", "client_id", cfg.ClientID, "error", err)
+		return
+	}
+	defer lock.Release()
+
+	// Another login may have replaced app.json while this resolver waited for
+	// the lock. Re-resolve under the lock and never write an observed old secret
+	// over a newer complete pair.
+	current, loadErr := LoadAppConfig(configDir)
+	if loadErr != nil || current == nil || strings.TrimSpace(current.ClientID) != strings.TrimSpace(cfg.ClientID) {
+		if loadErr != nil {
+			slog.Warn("auth: failed to re-read app config before Client Secret migration", "client_id", cfg.ClientID, "error", loadErr)
+		}
+		return
+	}
+	currentSecret, resolveErr := resolveConfigSecretWithoutMigration(current)
+	if resolveErr != nil || currentSecret != secret {
+		if resolveErr != nil {
+			slog.Warn("auth: failed to revalidate Client Secret migration", "client_id", cfg.ClientID, "error", resolveErr)
+		}
 		return
 	}
 	if err := secretKeychainSet(keychain.Service, secretAccountKey(cfg.ClientID), secret); err != nil {
 		slog.Warn("auth: failed to migrate Client Secret to canonical slot", "client_id", cfg.ClientID, "error", err)
 		return
 	}
-	updated := *cfg
+	updated := *current
 	updated.ClientSecret = SecretInput{Ref: &SecretRef{Source: "keychain", ID: secretAccountKey(cfg.ClientID)}}
-	if err := SaveAppConfig(configDir, &updated); err != nil {
+	if err := saveAppConfigLocked(configDir, &updated); err != nil {
 		slog.Warn("auth: failed to update app config after Client Secret migration", "client_id", cfg.ClientID, "error", err)
-		return
 	}
-	if removeLegacy {
-		if err := authKeychainRemove(keychain.Service, legacyClientSecretAccountKey(cfg.ClientID)); err != nil {
-			slog.Warn("auth: failed to remove legacy Client Secret slot", "client_id", cfg.ClientID, "error", err)
+}
+
+func resolveConfigSecretWithoutMigration(cfg *AppConfig) (string, error) {
+	if cfg == nil || strings.TrimSpace(cfg.ClientID) == "" {
+		return "", ErrClientIDEmpty
+	}
+	clientID := strings.TrimSpace(cfg.ClientID)
+	if !cfg.ClientSecret.IsZero() {
+		if cfg.ClientSecret.Ref != nil && cfg.ClientSecret.Ref.Source == "keychain" &&
+			!isCanonicalClientSecretRef(cfg.ClientSecret, clientID) &&
+			!isLegacyClientSecretRef(cfg.ClientSecret, clientID) {
+			return "", ErrClientSecretRefMismatch
 		}
+		secret, err := ResolveSecret(cfg.ClientSecret)
+		if err != nil {
+			return "", fmt.Errorf("%w: explicit app config secret cannot be resolved", ErrSecretResolve)
+		}
+		return secret, nil
 	}
+	canonical, canonicalErr, legacy, legacyErr := readDerivedSecretSlots(clientID)
+	if canonicalErr != nil || legacyErr != nil {
+		return "", ErrSecretResolve
+	}
+	if canonical != "" && legacy != "" && canonical != legacy {
+		return "", ErrClientSecretConflict
+	}
+	if canonical != "" {
+		return canonical, nil
+	}
+	return legacy, nil
 }

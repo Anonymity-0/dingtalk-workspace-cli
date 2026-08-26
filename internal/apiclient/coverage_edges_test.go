@@ -19,10 +19,6 @@ type failingReader struct{ err error }
 
 func (r failingReader) Read([]byte) (int, error) { return 0, r.err }
 
-type failingWriter struct{ err error }
-
-func (w failingWriter) Write([]byte) (int, error) { return 0, w.err }
-
 func TestCrossPlatformCoverageDryRunAndParseCoverageEdges(t *testing.T) {
 	for _, tc := range []struct {
 		base string
@@ -230,7 +226,7 @@ func TestCrossPlatformCoveragePaginationControlFlowEdges(t *testing.T) {
 		}
 		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/plain"}}, Body: io.NopCloser(strings.NewReader("bad"))}, nil
 	})
-	if pages, err := client.PaginateAll(context.Background(), RawAPIRequest{Method: "GET", Path: "/x"}, PaginationOptions{PageDelay: 1, LogWriter: &logs}); err != nil || len(pages) != 1 || !strings.Contains(logs.String(), "解析失败") {
+	if pages, err := client.PaginateAll(context.Background(), RawAPIRequest{Method: "GET", Path: "/x"}, PaginationOptions{PageDelay: 1, LogWriter: &logs}); err == nil || len(pages) != 1 || !strings.Contains(err.Error(), "第 2 页解析失败") {
 		t.Fatalf("later parse failure pages=%d logs=%q err=%v", len(pages), logs.String(), err)
 	}
 

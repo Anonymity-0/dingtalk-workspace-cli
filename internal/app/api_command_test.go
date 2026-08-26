@@ -27,7 +27,9 @@ import (
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/apiclient"
 	authpkg "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/auth"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 )
 
 func TestParseQueryStringToJSON(t *testing.T) {
@@ -79,6 +81,8 @@ func TestAPIHelpUsesAppTokenCompatibleExamples(t *testing.T) {
 	for _, forbidden := range []string{
 		"/v1.0/contact/users/me",
 		"/v1.0/calendar/users/me",
+		"/v1.0/attendance/groups",
+		"/v1.0/example/",
 	} {
 		if strings.Contains(help, forbidden) {
 			t.Errorf("API help must not advertise user-token example %q", forbidden)
@@ -89,6 +93,8 @@ func TestAPIHelpUsesAppTokenCompatibleExamples(t *testing.T) {
 		"dws api POST /v1.0/contact/users/search",
 		"dws api GET /v1.0/microApp/allApps --dry-run",
 		"dws api GET /v1.0/microApp/allApps --jq '.appList | length'",
+		"dws api POST https://oapi.dingtalk.com/media/upload",
+		"--data '{\"type\":\"image\"}' --file media=./demo.png --dry-run",
 	} {
 		if !strings.Contains(help, required) {
 			t.Errorf("API help missing App Token-compatible example %q", required)
@@ -405,15 +411,7 @@ func TestResolveRawAPICredentialsRejectsUnreadableSecretRef(t *testing.T) {
 }
 
 func TestRawAPICommandUsesAppConfigPairEndToEnd(t *testing.T) {
-	oldResolver := resolveRawAPICredentials
-	oldProvider := newAppTokenProvider
-	oldClient := newRawAPIClient
-	t.Cleanup(func() {
-		resolveRawAPICredentials = oldResolver
-		newAppTokenProvider = oldProvider
-		newRawAPIClient = oldClient
-	})
-	resolveRawAPICredentials = resolveRawAPICredentialsFromSources
+	testseam.Swap(t, &resolveRawAPICredentials, resolveRawAPICredentialsFromSources)
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	dir := t.TempDir()
@@ -424,13 +422,13 @@ func TestRawAPICommandUsesAppConfigPairEndToEnd(t *testing.T) {
 	}
 	writeRawAPIAppConfig(t, dir, "paired-client", map[string]any{"source": "file", "id": secretPath})
 
-	newAppTokenProvider = func(configDir, clientID, clientSecret string) appTokenGetter {
+	testseam.Swap(t, &newAppTokenProvider, func(configDir, clientID, clientSecret string) appTokenGetter {
 		if configDir != dir || clientID != "paired-client" || clientSecret != "paired-secret" {
 			t.Fatalf("provider credentials: dir=%q id=%q secret_matches=%t", configDir, clientID, clientSecret == "paired-secret")
 		}
 		return fakeAppTokenGetter{token: "temporary-app-token"}
-	}
-	newRawAPIClient = func(token, baseURL string) *apiclient.APIClient {
+	})
+	testseam.Swap(t, &newRawAPIClient, func(token, baseURL string) *apiclient.APIClient {
 		if token != "temporary-app-token" || baseURL != "" {
 			t.Fatalf("raw client inputs: token_matches=%t base=%q", token == "temporary-app-token", baseURL)
 		}
@@ -447,7 +445,7 @@ func TestRawAPICommandUsesAppConfigPairEndToEnd(t *testing.T) {
 			}, nil
 		})
 		return client
-	}
+	})
 
 	flags := &GlobalFlags{Format: "json"}
 	cmd := newAPICommand(flags)
@@ -461,6 +459,100 @@ func TestRawAPICommandUsesAppConfigPairEndToEnd(t *testing.T) {
 	if !strings.Contains(out.String(), `"count": 1`) {
 		t.Fatalf("raw response = %q", out.String())
 	}
+}
+
+func TestRunAPINonPaginatedResponseErrorsAreTypedAPI(t *testing.T) {
+	testseam.Swap(t, &newRawAPIClient, func(token, baseURL string) *apiclient.APIClient {
+		client := apiclient.NewClient(token, baseURL)
+		client.HTTPClient.Transport = apiRoundTripper(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusBadRequest,
+				Header: http.Header{
+					"Content-Type":     []string{"application/json"},
+					"X-Acs-Request-Id": []string{"request-1"},
+				},
+				Body:    io.NopCloser(strings.NewReader(`{"code":"MissingqueryWord","message":"queryWord is required"}`)),
+				Request: req,
+			}, nil
+		})
+		return client
+	})
+
+	cmd := newAPICommand(&GlobalFlags{Token: "temporary-app-token", Format: "json"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"POST", "/v1.0/contact/users/search", "--data", `{}`})
+	err := cmd.Execute()
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || typed.Category != apperrors.CategoryAPI || typed.ExitCode() != apperrors.ExitCodeAPI {
+		t.Fatalf("response error = %#v, want typed API error", err)
+	}
+	if !strings.Contains(err.Error(), "MissingqueryWord") || !strings.Contains(err.Error(), "request-1") {
+		t.Fatalf("response error lost business diagnostics: %v", err)
+	}
+}
+
+func TestRunAPINonPaginatedPreservesLocalErrorCategories(t *testing.T) {
+	t.Run("invalid jq remains validation", func(t *testing.T) {
+		testseam.Swap(t, &newRawAPIClient, func(token, baseURL string) *apiclient.APIClient {
+			client := apiclient.NewClient(token, baseURL)
+			client.HTTPClient.Transport = apiRoundTripper(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(`{"ok":true}`)),
+					Request:    req,
+				}, nil
+			})
+			return client
+		})
+
+		cmd := newAPICommand(&GlobalFlags{Token: "temporary-app-token", Format: "json", JQ: "["})
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+		cmd.SetArgs([]string{"GET", "/v1.0/microApp/allApps"})
+		err := cmd.Execute()
+		var typed *apperrors.Error
+		if !errors.As(err, &typed) || typed.Category != apperrors.CategoryValidation || typed.ExitCode() != apperrors.ExitCodeValidation {
+			t.Fatalf("invalid jq error = %#v, want validation error", err)
+		}
+	})
+
+	t.Run("download filesystem failure is not API", func(t *testing.T) {
+		testseam.Swap(t, &newRawAPIClient, func(token, baseURL string) *apiclient.APIClient {
+			client := apiclient.NewClient(token, baseURL)
+			client.HTTPClient.Transport = apiRoundTripper(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": []string{"application/octet-stream"}},
+					Body:       io.NopCloser(strings.NewReader("binary")),
+					Request:    req,
+				}, nil
+			})
+			return client
+		})
+
+		blockedParent := filepath.Join(t.TempDir(), "not-a-directory")
+		if err := os.WriteFile(blockedParent, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		cmd := newAPICommand(&GlobalFlags{
+			Token:  "temporary-app-token",
+			Format: "json",
+			Output: filepath.Join(blockedParent, "download.bin"),
+		})
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+		cmd.SetArgs([]string{"GET", "/v1.0/download"})
+		err := cmd.Execute()
+		if err == nil {
+			t.Fatal("download to invalid local path succeeded")
+		}
+		var typed *apperrors.Error
+		if errors.As(err, &typed) && typed.Category == apperrors.CategoryAPI {
+			t.Fatalf("local download error was misclassified as API: %v", err)
+		}
+	})
 }
 
 func TestResolveRawAPITokenPassesOneResolvedPairToProvider(t *testing.T) {
@@ -575,5 +667,40 @@ func TestRunPaginatedPreservesPagePayloadArray(t *testing.T) {
 	}
 	if len(pages) != 2 || pages[0]["next_token"] != "page-2" {
 		t.Fatalf("page payload shape changed: %#v", pages)
+	}
+}
+
+func TestRunPaginatedFailsClosedAfterPartialPages(t *testing.T) {
+	client := apiclient.NewClient("app-token", "")
+	page := 0
+	client.HTTPClient.Transport = apiRoundTripper(func(*http.Request) (*http.Response, error) {
+		page++
+		status := http.StatusOK
+		body := `{"items":[{"id":"1"}],"has_more":true,"next_token":"page-2"}`
+		if page == 2 {
+			status = http.StatusBadGateway
+			body = `{"code":"UpstreamFailure","message":"retry later"}`
+		}
+		return &http.Response{
+			StatusCode: status,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(body)),
+		}, nil
+	})
+	var out bytes.Buffer
+	err := runPaginated(context.Background(), client, apiclient.RawAPIRequest{
+		Method: http.MethodGet,
+		Path:   "/v1.0/paginated/resources",
+	}, &apiFlags{pageLimit: 10, pageDelay: 1}, apiclient.ResponseOptions{
+		Format: output.FormatJSON,
+		Out:    &out,
+		ErrOut: io.Discard,
+	})
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || typed.Category != apperrors.CategoryAPI {
+		t.Fatalf("pagination error = %#v, want typed API error", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("partial pages must not be emitted as success: %q", out.String())
 	}
 }

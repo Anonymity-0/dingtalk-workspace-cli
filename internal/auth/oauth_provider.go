@@ -57,12 +57,10 @@ var (
 	oauthCheckStatus = func(p *OAuthProvider, ctx context.Context, token string) (*CLIAuthStatus, error) {
 		return p.CheckCLIAuthEnabled(ctx, token)
 	}
-	oauthGetAdmins     = GetSuperAdmins
-	oauthSendApply     = SendCliAuthApply
-	oauthSaveToken     = SaveTokenData
-	oauthHasAppConfig  = HasAppConfig
-	oauthSaveAppConfig = SaveAppConfig
-	oauthRefreshToken  = func(p *OAuthProvider, ctx context.Context, data *TokenData) (*TokenData, error) {
+	oauthGetAdmins    = GetSuperAdmins
+	oauthSendApply    = SendCliAuthApply
+	oauthSaveToken    = SaveTokenData
+	oauthRefreshToken = func(p *OAuthProvider, ctx context.Context, data *TokenData) (*TokenData, error) {
 		return p.refreshWithRefreshToken(ctx, data)
 	}
 	oauthSleep = time.Sleep
@@ -139,10 +137,12 @@ func resolveOAuthCredentialPair(configDir string) (*AppCredentialPair, error) {
 		if err != nil {
 			return nil, err
 		}
+		clearMCPRuntimeCredentials()
 		return &pair, nil
 	}
 	pair, err := ResolveAppConfigCredentialPair(configDir)
 	if err == nil {
+		clearMCPRuntimeCredentials()
 		return &pair, nil
 	}
 	if errors.Is(err, ErrAppConfigMissing) || errors.Is(err, ErrClientIDEmpty) || errors.Is(err, ErrClientSecretEmpty) {
@@ -178,12 +178,7 @@ func (p *OAuthProvider) snapshotCredentialPair() {
 func (p *OAuthProvider) resetCredentialState() {
 	p.clientID = ""
 	p.credentials = nil
-	clientMu.Lock()
-	if clientIDFromMCP {
-		runtimeClientID = ""
-	}
-	clientIDFromMCP = false
-	clientMu.Unlock()
+	clearRuntimeCredentials()
 }
 
 func (p *OAuthProvider) output() io.Writer {
@@ -243,9 +238,7 @@ func (p *OAuthProvider) Login(ctx context.Context, force bool) (*TokenData, erro
 	// Fall through: full browser OAuth flow.
 	if p.credentials != nil {
 		p.clientID = p.credentials.ClientID
-		clientMu.Lock()
-		clientIDFromMCP = false
-		clientMu.Unlock()
+		clearMCPRuntimeCredentials()
 	} else {
 		// Defensive reset: clear any stale credential state from previous login
 		// methods so we can re-fetch clientID from MCP. This ensures --force

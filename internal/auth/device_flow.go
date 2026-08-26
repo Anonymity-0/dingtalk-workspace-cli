@@ -222,12 +222,7 @@ type serviceResult struct {
 func (p *DeviceFlowProvider) resetCredentialState() {
 	p.clientID = ""
 	p.credentials = nil
-	clientMu.Lock()
-	if clientIDFromMCP {
-		runtimeClientID = ""
-	}
-	clientIDFromMCP = false
-	clientMu.Unlock()
+	clearRuntimeCredentials()
 }
 
 func (p *DeviceFlowProvider) Login(ctx context.Context) (*TokenData, error) {
@@ -248,9 +243,7 @@ func (p *DeviceFlowProvider) Login(ctx context.Context) (*TokenData, error) {
 
 	if p.credentials != nil {
 		p.clientID = p.credentials.ClientID
-		clientMu.Lock()
-		clientIDFromMCP = false
-		clientMu.Unlock()
+		clearMCPRuntimeCredentials()
 	} else {
 		// Defensive reset: clear any stale credential state from previous login
 		// methods (OAuth scan, PAT, etc.) so we can re-fetch from MCP. This
