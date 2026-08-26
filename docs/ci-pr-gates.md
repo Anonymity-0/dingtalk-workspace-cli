@@ -150,10 +150,11 @@ outstanding change requester is preferred for continuity.
 The branch rulesets keep one human approval and all nine strict required
 contexts, require someone other than the latest pusher to approve after the
 most recent head update, and restrict `main` updates to the dedicated Reviewer
-Router App in pull-request mode plus the designated Formula publisher in
-always/break-glass mode. Repository auto-merge is enabled for ready PRs, so the
-App-owned request merges after that approval and the current revision's nine
-checks are green. If `main` advances, strict checks rerun before merge. The
+Router App in pull-request mode plus the designated Formula publishers and
+break-glass identities. Repository auto-merge is enabled for ready PRs, so the
+App-owned request records the automation intent while the App's synchronous
+merge path waits for that approval and the current revision's nine green
+checks. If `main` advances, strict checks rerun before merge. The
 reviewer routing job uses the built-in `GITHUB_TOKEN` to request reviewers with
 `Contents: read` and `Pull requests: write`. A separate base-owned cleanup job
 isolates the merge-authority permissions (`Contents: write` and `Pull
@@ -179,15 +180,25 @@ the same ruleset node through GraphQL and requires its non-null
 own built-in token to report
 `current_user_can_bypass: never`. The minted App separately requires
 `pull_requests_only` on that writer rule and `never` on every other active main
-ruleset before it can enable or reconcile auto-merge. The read-only `Test`
+ruleset before it can enable, reconcile, or synchronously merge. The read-only
+`Test`
 token may receive a repository projection with both merge-default properties
 omitted; it accepts only that complete omission or exact `MERGE_MESSAGE` plus
-`PR_TITLE`/`BLANK`, while partial or malformed projections fail closed. The
-minted App's `Contents: write` token must observe the exact reviewed defaults
+`PR_TITLE`/`BLANK`, while partial or malformed projections fail closed.
+The same unprivileged `pull_request` job may receive an empty repository-variable
+projection for an external fork. Only when the event head repository differs
+from the base repository does it substitute the exact reviewed public slug
+`dingtalk-dws-reviewer-router` for identity comparison. An empty variable on a
+same-repository PR and every malformed non-empty value still fail closed. This
+fallback neither mints a token nor grants merge authority; the base-owned
+Router continues to require its minted App slug to equal the repository
+variable before any mutation. The minted App's `Contents: write` token must
+observe the exact reviewed defaults
 before either mutation path proceeds. GitHub hides the complete
 `bypass_actors` list from low-privilege callers, so the rollout audit must still
-keep the writer list at exactly the Reviewer App plus `PeterGuy326` (ID
-`47820304`). The required check finally accepts a null or exact App-owned
+keep the writer list at exactly the Reviewer App, `haofeng0705` (ID
+`30925823`), and `PeterGuy326` (ID `47820304`). The required check finally
+accepts a null or exact App-owned
 request after a short takeover grace period. Null is safe from the suppressed
 event path because the built-in Actions identity cannot update `main`; other
 permitted identities produce either a main push or the trusted closed-PR
@@ -198,11 +209,44 @@ for readiness, title, and merge-request changes. Router does not react to
 human can deliberately leave the PR manual-only for break-glass handling.
 Reviewer routing remains available. The protected-main push that deploys the
 workflow automatically migrates every open, ready non-App request and repairs
-unsafe App metadata; it disables workflow-skipping requests for correction. A
-manual `workflow_dispatch` from `main` is the idempotent retry path.
+unsafe App metadata; it disables workflow-skipping requests for correction.
+Because GitHub's deferred native auto-merge path does not reliably apply an
+App's pull-request-only ruleset bypass, a zero-permission approval-signal
+workflow and completed `CI` / `Code Admission — AI Behavior` workflows wake the
+same trusted default-branch reconciliation through `workflow_run`. That event
+is only a wake-up signal: the privileged job does not consume its pull-request
+payload or artifacts and does not check out the triggering run's code. It
+re-enumerates open `main` PRs through the API and attempts only an exact
+App-owned request through the synchronous PR merge endpoint. Immediately before
+each attempt it revalidates the App's ruleset boundary and PR intent, supplies
+the current head SHA, and treats server-declared not-ready or
+concurrent-revision responses as retriable. The live preflight requires the
+exact repository-owned approval ruleset and exact nine-check strict quality
+ruleset, with every context bound to the GitHub Actions App
+(`integration_id=15368`) and the Reviewer Router App unable to bypass either;
+a missing, disabled, incorrectly sourced, or weakened gate fails closed before
+merge. GitHub—not the workflow—decides whether the
+merge is admissible. A staggered twice-hourly schedule provides eventual
+recovery, and a manual `workflow_dispatch` from `main` is the immediate
+idempotent retry path.
 Reconciliation never enables an originally null request. The reviewer router
 is orchestration, not a quality context, and
 must not be added to the ruleset.
+
+Disabling the App-owned request before the reconcile job's final PR read keeps
+the PR manual-only. GitHub can atomically bind the subsequent merge to the head
+SHA, but it cannot bind that call to the auto-merge intent; a disable racing
+after the final read may therefore lose to the in-flight merge. Closing the PR
+or changing its head blocks the attempt only if GitHub observes that state
+before accepting the merge endpoint call; no client-side action can revoke a
+merge that the server has already accepted.
+
+The merge endpoint has no expected-base precondition. Reconciliation checks
+that the base is this repository's `main` immediately before and after the call,
+but a retarget racing after the final read is not atomically preventable in the
+workflow. Operators must disable the App-owned intent and wait for all running
+`Reviewer routing` reconciliation jobs to finish before retargeting a PR; a
+stronger adversarial guarantee requires a GitHub-side branch/ruleset control.
 
 GitHub may omit `pull_request_target` for security-sensitive head branch names,
 including names that look like commit SHAs. Those PRs cannot use Router App
@@ -268,11 +312,12 @@ the same dedicated cache profile path because GitHub includes that path in the
 cache version; the runtime-facing candidate and baseline filenames remain
 separate. Near-miss reuse is forbidden — the caches carry no prefix restore
 keys, because a neighbouring commit's profile would compare the candidate
-against the wrong baseline. CI concurrency is keyed by PR number plus exact
-event base/head SHA. Duplicate runs for that exact revision may cancel each
-other, but a later revision cannot kill an earlier cold-cache producer. Main
-runs use the pushed SHA, so a newer main push cannot cancel a predecessor's
-producer.
+against the wrong baseline. PR concurrency is keyed by PR number, so a later
+revision cancels the stale run instead of letting obsolete test matrices
+compete with the replacement for hosted runners. If cancellation interrupts a
+cold-cache fallback, the latest run recomputes the same exact merge-base
+profile authoritatively. Main concurrency remains keyed by pushed SHA, so a
+newer main push cannot cancel a predecessor's producer.
 
 Every supported main advancement path has an exact-SHA producer. The required
 `Test` context rejects GitHub workflow-skip directives in PR and auto-merge
@@ -369,7 +414,9 @@ tool、parameter、mapping、positional execution、constraint 与 safety 语义
 
 The `main` quality ruleset must enable strict required-status-check policy
 (`strict_required_status_checks_policy=true`) so a PR is revalidated whenever
-`main` advances. It must require these exact contexts and no legacy aliases:
+`main` advances. Every entry must select the GitHub Actions App
+(`integration_id=15368`), not “any source”. It must require these exact
+context/source pairs and no legacy aliases:
 
 - `Lint`
 - `Test`

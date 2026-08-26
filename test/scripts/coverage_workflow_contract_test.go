@@ -136,19 +136,19 @@ func TestCoverageWorkflowShardsAndBaselineCache(t *testing.T) {
 	}
 	admission := string(data)
 	for _, want := range []string{
-		"group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}-{1}-{2}', github.event.pull_request.number, github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('push-{0}', github.sha) }}",
+		"group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('push-{0}', github.sha) }}",
 		"cancel-in-progress: true",
 	} {
 		if !strings.Contains(admission, want) {
-			t.Errorf("CI workflow missing exact-revision producer contract %q", want)
+			t.Errorf("CI workflow missing latest-PR/exact-main producer contract %q", want)
 		}
 	}
 	for _, forbidden := range []string{
+		"format('pr-{0}-{1}-{2}'",
 		"github.event.pull_request.number || github.ref",
-		"github.event.pull_request.number || github.sha",
 	} {
 		if strings.Contains(admission, forbidden) {
-			t.Errorf("CI producers must not share the coarse concurrency identity %q", forbidden)
+			t.Errorf("CI workflow retains a stale concurrency identity %q", forbidden)
 		}
 	}
 
