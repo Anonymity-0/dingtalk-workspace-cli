@@ -167,11 +167,17 @@ ruleset with one latest-head approval and exactly one repository-owned
 `never` on both and on every other non-writer ruleset. Every required context
 must be bound to the GitHub Actions App (`integration_id=15368`); a missing,
 different, or duplicate context/source entry fails closed together with
-deletion or weakening of either gate. HTTP 405 means the PR is not ready,
-while 409 means its revision
-changed; either remains open for the next event. Other failures make
-reconciliation red. A concurrent native merge is accepted only after the final
-PR state proves the exact head, App identity, and non-empty merge SHA.
+deletion or weakening of either gate. A final PR state that is explicitly
+`behind` remains open for the next event without calling the merge endpoint.
+HTTP 405 means the PR is not ready, while 409 means its revision changed; both
+remain retriable. GitHub can also return HTTP 403 with
+`Resource not accessible by integration` for this protected, behind-main merge
+denial. That response is retriable only when a same-token read proves the PR is
+still open at the exact expected head and repository-owned `main` base with
+`mergeable=true` and `mergeable_state=behind`. Every other 403 and all other
+failures make reconciliation red. A concurrent native merge is accepted only
+after the final PR state proves the exact head, App identity, and non-empty
+merge SHA.
 A staggered twice-hourly schedule provides eventual recovery if a webhook or
 workflow completion is delayed, and `workflow_dispatch` remains the on-demand
 repair path.
