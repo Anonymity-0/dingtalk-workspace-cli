@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 )
 
@@ -4472,8 +4471,7 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 				},
 			},
 			Parameters: []contract.ParamDecl{
-				{Name: "plan-id", Property: "planId"},
-				{Name: "result-id", Property: "resultId"},
+				{Name: "plan-id", Required: boolPtr(true)},
 			},
 		},
 	})
@@ -4485,10 +4483,6 @@ statsType 统计类型支持：week（周统计）、month（月统计）。`,
 	bossCheckCmd.Flags().Int("absent-min", 0, "缺勤时长（分钟）（可选）")
 	bossCheckCmd.Flags().String("remark", "", "备注，最长500字符（可选）")
 	bossCheckCmd.Flags().Bool("user-say-yes", false, "用户已确认，跳过交互式确认提示")
-	bossCheckCmd.MarkFlagsOneRequired("plan-id", "result-id")
-	cli.AnnotateRuntimeConstraints(bossCheckCmd, cli.RuntimeSchemaConstraints{
-		RequireOneOf: [][]string{{"plan-id", "result-id"}},
-	})
 
 	root.AddCommand(
 		attendanceRecordCmd,

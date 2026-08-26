@@ -5,7 +5,6 @@ package helpers
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"reflect"
 	"strings"
@@ -174,32 +173,6 @@ func TestAttendanceSummaryKeepsHiddenDeprecatedTagNameCompatibility(t *testing.T
 	}
 	if !reflect.DeepEqual(call.args, want) {
 		t.Fatalf("tool args = %#v, want %#v", call.args, want)
-	}
-}
-
-func TestAttendanceBossCheckPublishesPlanOrResultIDConstraint(t *testing.T) {
-	root := newAttendanceCommand()
-	bossCheck, _, err := root.Find([]string{"boss-check"})
-	if err != nil {
-		t.Fatalf("find attendance boss-check: %v", err)
-	}
-	var constraints struct {
-		RequireOneOf [][]string `json:"require_one_of"`
-	}
-	raw := bossCheck.Annotations["dws.schema.constraints"]
-	if err := json.Unmarshal([]byte(raw), &constraints); err != nil {
-		t.Fatalf("decode boss-check constraints %q: %v", raw, err)
-	}
-	if want := [][]string{{"plan-id", "result-id"}}; !reflect.DeepEqual(constraints.RequireOneOf, want) {
-		t.Fatalf("boss-check require_one_of = %#v, want %#v", constraints.RequireOneOf, want)
-	}
-
-	caller, err := runAttendanceSearchCommand(t, "boss-check", "--remark", "missing target")
-	if err == nil || !strings.Contains(err.Error(), "at least one") {
-		t.Fatalf("boss-check without target error = %v, want at-least-one validation", err)
-	}
-	if len(caller.calls) != 0 {
-		t.Fatalf("boss-check without target calls = %#v, want no backend call", caller.calls)
 	}
 }
 
