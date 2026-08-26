@@ -40,7 +40,7 @@ Report 查询优先使用下方严格 Shortcut；它们会校验响应、稳定 
 | 读取模板字段 | `dws report template get --name <EXACT_NAME> --format json` | 先确认名称唯一，不猜字段 |
 | 读取单篇正文 | `dws report entry get --report-id <REPORT_ID> --format json` | ID 必须来自本任务内同 profile 的列表或提交结果 |
 | 读取已读统计 | `dws report entry stats --report-id <REPORT_ID> --format json` | 不用标题代替 ID |
-| 提交一篇日志 | `dws report entry submit --template-id <TEMPLATE_ID> --contents - --format json` | 先读取模板字段；通过 stdin 传 JSON |
+| 提交一篇日志 | `dws report entry submit --template-id <TEMPLATE_ID> --contents - --to-user-ids <USER_ID[,USER_ID...]> --format json` | 先读取模板字段并解析至少一个明确收件人；`--to-user-ids` 必填，禁止空值或猜测 |
 
 对已经由本文件定位的命令，不要再执行 `help` 或 `shortcut list`。
 
@@ -76,9 +76,10 @@ Report 查询优先使用下方严格 Shortcut；它们会校验响应、稳定 
 
 1. 用 `+template-search` 或一次 `template list` 唯一定位模板；有重名或近似名时先消歧。
 2. 用 `template get --name <EXACT_NAME>` 读取字段定义，按返回顺序和字段名构造 `contents`；不要猜键名。
-3. 首选 `--contents -` 从 stdin 传入 JSON。需要文件时，只使用当前工作目录内的相对路径，例如 `--contents-file ./report.json`；不要传工作区外 `/tmp/...` 等绝对路径。
-4. 调 `entry submit`，记录返回的 `reportId` 和成功状态。普通创建不额外加确认 flag。
-5. 用返回的 `reportId` 调一次 `entry get` 验证模板、字段和值；若还需证明它出现在发件箱，再用窄时间窗的 `+outbox-list`，不要扫描无关产品。
+3. 解析用户明确指定的收件人，并在同一 profile 下取得至少一个真实 `userId`；零命中或多候选时先消歧，禁止把姓名、手机号或猜测值直接当成 `userId`。
+4. 首选 `--contents -` 从 stdin 传入 JSON。需要文件时，只使用当前工作目录内的相对路径，例如 `--contents-file ./report.json`；不要传工作区外 `/tmp/...` 等绝对路径。
+5. 调 `entry submit --to-user-ids <USER_ID[,USER_ID...]>`，记录返回的 `reportId` 和成功状态。该 flag 必填且不能为空：无收件人的请求即使服务端返回成功，日志也对任何人不可见；普通创建不额外加确认 flag。
+6. 用返回的 `reportId` 调一次 `entry get` 验证模板、字段和值；若还需证明它出现在发件箱，再用窄时间窗的 `+outbox-list`，不要扫描无关产品。
 
 `contents` 必须是 JSON 数组，每项包含 `key`、`sort`、`content`、`contentType`、`type`，并与模板实际字段一致。内容来自用户提供或可直接推导的事实；缺失业务内容时先向用户确认，不编造日报正文。
 
@@ -95,7 +96,7 @@ Report 查询优先使用下方严格 Shortcut；它们会校验响应、稳定 
 
 ## 最短错误恢复
 
-- `validation_error`：只修正报错指出的时间、分页或必填参数后重试一次。
+- `validation_error`：只修正报错指出的时间、分页或必填参数后重试一次；缺失或空白 `--to-user-ids` 时先取得明确收件人的真实 `userId`，不要填占位值绕过校验。
 - `not_found`：检查本任务取得的稳定 ID 和 profile；不要跨产品猜目标。
 - `permission_denied` / `auth_required`：停止业务重试，报告所需权限或登录状态。
 - 响应结构或 flag 漂移：先读该精确 leaf 的 compact Schema；只有仍显示 Cobra 不匹配时再读同一 leaf Help。
