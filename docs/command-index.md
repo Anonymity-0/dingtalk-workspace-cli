@@ -3,7 +3,7 @@
 Every runtime command the `dws` CLI exposes when loaded with the **pre** environment configuration.
 
 - **Products**: 13
-- **Total commands**: 168
+- **Total commands**: 180
 - **Generated from**: `internal/plugin` command descriptors — the same code path the CLI uses at runtime.
 
 > Auto-generated. Update plugin descriptors in `internal/plugin/`, not this file.
@@ -33,7 +33,7 @@ Every command inherits these flags (documented here once, not repeated per comma
 - [`dws aitable` — AI Tables](#dws-aitable) · 41 commands
 - [`dws attendance` — Attendance](#dws-attendance) · 4 commands
 - [`dws calendar` — Calendar](#dws-calendar) · 14 commands
-- [`dws chat` — Group Chat / IM](#dws-chat) · 31 commands
+- [`dws chat` — Group Chat / IM](#dws-chat) · 38 commands
 - [`dws contact` — Contact Directory](#dws-contact) · 6 commands
 - [`dws devdoc` — Open Platform Docs](#dws-devdoc) · 2 commands
 - [`dws ding` — DING Messages](#dws-ding) · 2 commands

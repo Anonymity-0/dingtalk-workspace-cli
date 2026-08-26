@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -32,18 +33,26 @@ type chatThreadCall struct {
 }
 
 type chatThreadCaller struct {
-	calls     []chatThreadCall
-	responses map[string]string
-	errors    map[string]error
-	dryRun    bool
+	calls          []chatThreadCall
+	responses      map[string]string
+	responseQueues map[string][]string
+	errors         map[string]error
+	dryRun         bool
 }
 
 func (c *chatThreadCaller) CallTool(_ context.Context, product, tool string, args map[string]any) (*edition.ToolResult, error) {
 	c.calls = append(c.calls, chatThreadCall{product: product, tool: tool, args: args})
-	if err := c.errors[product+"/"+tool]; err != nil {
+	key := product + "/" + tool
+	if err := c.errors[key]; err != nil {
 		return nil, err
 	}
-	text := c.responses[product+"/"+tool]
+	text := ""
+	if queue := c.responseQueues[key]; len(queue) > 0 {
+		text = queue[0]
+		c.responseQueues[key] = queue[1:]
+	} else {
+		text = c.responses[key]
+	}
 	if text == "" {
 		text = `{"success":true}`
 	}
@@ -481,6 +490,15 @@ func TestCrossPlatformCoverageChatThreadKeepsPreSplitPrimaryParameters(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageChatThreadNonConversationTargetKeepsHiddenMapping(t *testing.T) {
+	command := newChatThreadSendCommand("reply", "thread-id", "Thread openConvThreadId", nil)
+	target := command.Flags().Lookup("thread-id")
+	mapping := command.Flags().Lookup("conversation-id")
+	if target == nil || mapping == nil || !mapping.Hidden {
+		t.Fatalf("target=%#v internal mapping=%#v", target, mapping)
+	}
+}
+
 func TestCrossPlatformCoverageAtomicThreadReplyUsesDirectThreadTarget(t *testing.T) {
 	caller := &chatThreadCaller{}
 	err := executeAtomicThreadCommand(t, caller,
@@ -714,7 +732,8 @@ func TestCrossPlatformCoverageAtomicThreadCompatibilityMappings(t *testing.T) {
 
 func TestCrossPlatformCoverageAtomicThreadQuoteReplyIsRejectedBeforeWrite(t *testing.T) {
 	caller := &chatThreadCaller{responses: map[string]string{
-		"im/list_messages_by_ids": `{"result":{"messages":[{"openMessageId":"root-1","openConvThreadId":"thread-1"}]}}`,
+		"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"root-1","openConversationId":"topic-1","openConvThreadId":"thread-1"}]}}`,
+		"chat/get_conversation_info": `{"result":{"convThreadEnabled":true}}`,
 	}}
 	err := executeAtomicThreadCommand(t, caller,
 		"message", "reply", "--conversation-id", "topic-1", "--ref-msg-id", "root-1",
@@ -723,14 +742,15 @@ func TestCrossPlatformCoverageAtomicThreadQuoteReplyIsRejectedBeforeWrite(t *tes
 	if err == nil || !errors.As(err, &typed) || typed.Reason != "topic_quote_reply_disabled" {
 		t.Fatalf("error = %v", err)
 	}
-	if len(caller.calls) != 1 || caller.calls[0].tool != "list_messages_by_ids" {
+	if len(caller.calls) != 2 || caller.calls[1].tool != "get_conversation_info" {
 		t.Fatalf("quote guard reached write: %#v", caller.calls)
 	}
 }
 
 func TestCrossPlatformCoverageAtomicThreadBotQuoteReplyIsRejectedBeforeWrite(t *testing.T) {
 	caller := &chatThreadCaller{responses: map[string]string{
-		"im/list_messages_by_ids": `{"result":{"messages":[{"openMessageId":"root-1","openConvThreadId":"thread-1"}]}}`,
+		"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"root-1","openConversationId":"topic-1","openConvThreadId":"thread-1"}]}}`,
+		"chat/get_conversation_info": `{"result":{"convThreadEnabled":true}}`,
 	}}
 	err := executeAtomicThreadCommand(t, caller,
 		"message", "send-by-bot", "--robot-code", "robot-1", "--conversation-id", "topic-1",
@@ -739,8 +759,24 @@ func TestCrossPlatformCoverageAtomicThreadBotQuoteReplyIsRejectedBeforeWrite(t *
 	if err == nil || !errors.As(err, &typed) || typed.Reason != "topic_quote_reply_disabled" {
 		t.Fatalf("error = %v", err)
 	}
-	if len(caller.calls) != 1 || caller.calls[0].tool != "list_messages_by_ids" {
+	if len(caller.calls) != 2 || caller.calls[1].tool != "get_conversation_info" {
 		t.Fatalf("bot quote guard reached write: %#v", caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageAtomicThreadQuoteReplyAllowsOrdinaryGroupThreadMessage(t *testing.T) {
+	caller := &chatThreadCaller{responses: map[string]string{
+		"im/list_messages_by_ids":    `{"result":{"messages":[{"openMessageId":"reply-1","openConversationId":"group-1","openConvThreadId":"thread-1"}]}}`,
+		"chat/get_conversation_info": `{"result":{"openConversationId":"group-1","convThreadEnabled":false}}`,
+	}}
+	if err := executeAtomicThreadCommand(t, caller,
+		"message", "reply", "--conversation-id", "group-1", "--ref-msg-id", "reply-1",
+		"--ref-sender", "DAAAAAAAAAAAiE", "--text", "普通群 Thread 引用回复"); err != nil {
+		t.Fatal(err)
+	}
+	if len(caller.calls) != 3 || caller.calls[0].tool != "list_messages_by_ids" ||
+		caller.calls[1].tool != "get_conversation_info" || caller.calls[2].tool != "send_personal_message" {
+		t.Fatalf("calls = %#v", caller.calls)
 	}
 }
 
@@ -809,6 +845,34 @@ func TestCrossPlatformCoverageAtomicThreadQuoteGuardFailsClosedWhenMessageLookup
 	}
 	if len(caller.calls) != 1 || caller.calls[0].tool != "list_messages_by_ids" {
 		t.Fatalf("quote guard reached write: %#v", caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageAtomicThreadQuoteGuardRejectsInvalidMessageResults(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		response string
+	}{
+		{name: "invalid response", response: `<html>bad gateway</html>`},
+		{name: "requested message missing", response: `{"result":{"messages":[{"openMessageId":"other-message"}]}}`},
+		{name: "conversation missing", response: `{"result":{"messages":[{"openMessageId":"root-1"}]}}`},
+		{name: "different conversation", response: `{"result":{"messages":[{"openMessageId":"root-1","openConversationId":"other-group"}]}}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &chatThreadCaller{responses: map[string]string{
+				"im/list_messages_by_ids": test.response,
+			}}
+			err := executeAtomicThreadCommand(t, caller,
+				"message", "reply", "--conversation-id", "topic-1", "--ref-msg-id", "root-1",
+				"--ref-sender", "DAAAAAAAAAAAiE", "--text", "错误引用")
+			var typed *apperrors.Error
+			if err == nil || !errors.As(err, &typed) || typed.Reason != "topic_quote_guard_unavailable" {
+				t.Fatalf("error = %v", err)
+			}
+			if len(caller.calls) != 1 || caller.calls[0].tool != "list_messages_by_ids" {
+				t.Fatalf("quote guard reached conversation lookup or write: %#v", caller.calls)
+			}
+		})
 	}
 }
 
@@ -941,6 +1005,190 @@ func TestCrossPlatformCoverageChatThreadReplyMessageKeepsParentConversationSeman
 	}
 	if !reflect.DeepEqual(caller.calls[2].args, wantLookup) {
 		t.Fatalf("reply lookup args = %#v, want %#v", caller.calls[2].args, wantLookup)
+	}
+}
+
+func TestCrossPlatformCoverageAtomicThreadOwnershipPaginationFailures(t *testing.T) {
+	messageLookup := `{"result":{"messages":[{"openMessageId":"reply-1","openConversationId":"parent-1"}]}}`
+	page := func(messageID string, cursor int64) string {
+		return fmt.Sprintf(`{"result":{"messages":[{"openMessageId":%q}],"hasMore":true,"nextCursor":%q}}`, messageID, fmt.Sprint(cursor))
+	}
+	pageLimitResponses := func(prefix string) []string {
+		responses := make([]string, 100)
+		for i := range responses {
+			responses[i] = page(fmt.Sprintf("%s-%d", prefix, i), 1787000000000+int64(i))
+		}
+		return responses
+	}
+	run := func(t *testing.T, caller *chatThreadCaller, conversationID string) error {
+		t.Helper()
+		return executeAtomicThreadCommand(t, caller,
+			"thread", "add-emoji", "--conversation-id", conversationID,
+			"--message-id", "reply-1", "--emoji", "赞")
+	}
+	assertReason := func(t *testing.T, err error, want string) {
+		t.Helper()
+		var typed *apperrors.Error
+		if err == nil || !errors.As(err, &typed) || typed.Reason != want {
+			t.Fatalf("error = %v, want reason %q", err, want)
+		}
+	}
+	countCalls := func(caller *chatThreadCaller, tool string) int {
+		count := 0
+		for _, call := range caller.calls {
+			if call.tool == tool {
+				count++
+			}
+		}
+		return count
+	}
+
+	t.Run("direct reply lookup call error", func(t *testing.T) {
+		want := errors.New("reply lookup unavailable")
+		caller := &chatThreadCaller{
+			responses: map[string]string{"im/list_messages_by_ids": messageLookup},
+			errors:    map[string]error{"chat/list_topic_replies": want},
+		}
+		if err := run(t, caller, "thread-1"); !errors.Is(err, want) {
+			t.Fatalf("error = %v, want %v", err, want)
+		}
+	})
+
+	for _, test := range []struct {
+		name     string
+		response string
+		reason   string
+	}{
+		{name: "direct reply invalid JSON", response: `<html>bad gateway</html>`, reason: "thread_response_invalid"},
+		{name: "direct reply missing pagination state", response: `{"result":{"messages":[]}}`, reason: "thread_response_invalid"},
+		{name: "direct reply exhausted", response: `{"result":{"messages":[],"hasMore":false}}`, reason: "message_not_in_thread"},
+		{name: "direct reply stuck cursor", response: page("other-reply", 1787000000000), reason: "thread_response_invalid"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &chatThreadCaller{responses: map[string]string{
+				"im/list_messages_by_ids": messageLookup,
+				"chat/list_topic_replies": test.response,
+			}}
+			assertReason(t, run(t, caller, "thread-1"), test.reason)
+		})
+	}
+
+	t.Run("direct reply page limit", func(t *testing.T) {
+		caller := &chatThreadCaller{
+			responses: map[string]string{"im/list_messages_by_ids": messageLookup},
+			responseQueues: map[string][]string{
+				"chat/list_topic_replies": pageLimitResponses("other-reply"),
+			},
+		}
+		assertReason(t, run(t, caller, "thread-1"), "thread_response_invalid")
+		if got := countCalls(caller, "list_topic_replies"); got != 100 {
+			t.Fatalf("reply page calls = %d, want 100", got)
+		}
+	})
+
+	t.Run("conversation lookup call error", func(t *testing.T) {
+		want := errors.New("conversation lookup unavailable")
+		caller := &chatThreadCaller{
+			responses: map[string]string{"im/list_messages_by_ids": messageLookup},
+			errors:    map[string]error{"chat/list_conversation_message_v2": want},
+		}
+		if err := run(t, caller, "parent-1"); !errors.Is(err, want) {
+			t.Fatalf("error = %v, want %v", err, want)
+		}
+	})
+
+	t.Run("conversation reply lookup call error", func(t *testing.T) {
+		want := errors.New("nested reply lookup unavailable")
+		caller := &chatThreadCaller{
+			responses: map[string]string{
+				"im/list_messages_by_ids":           messageLookup,
+				"chat/list_conversation_message_v2": `{"result":{"messages":[{"openMessageId":"root-1","openConvThreadId":"thread-1"}],"hasMore":false}}`,
+			},
+			errors: map[string]error{"chat/list_topic_replies": want},
+		}
+		if err := run(t, caller, "parent-1"); !errors.Is(err, want) {
+			t.Fatalf("error = %v, want %v", err, want)
+		}
+	})
+
+	for _, test := range []struct {
+		name     string
+		response string
+		reason   string
+	}{
+		{name: "conversation invalid JSON", response: `<html>bad gateway</html>`, reason: "thread_response_invalid"},
+		{name: "conversation missing pagination state", response: `{"result":{"messages":[]}}`, reason: "thread_response_invalid"},
+		{name: "conversation exhausted", response: `{"result":{"messages":[],"hasMore":false}}`, reason: "message_not_in_thread"},
+		{name: "conversation stuck cursor", response: page("ordinary", 1787000000000), reason: "thread_response_invalid"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &chatThreadCaller{responses: map[string]string{
+				"im/list_messages_by_ids":           messageLookup,
+				"chat/list_conversation_message_v2": test.response,
+			}}
+			assertReason(t, run(t, caller, "parent-1"), test.reason)
+		})
+	}
+
+	t.Run("conversation page limit", func(t *testing.T) {
+		caller := &chatThreadCaller{
+			responses: map[string]string{"im/list_messages_by_ids": messageLookup},
+			responseQueues: map[string][]string{
+				"chat/list_conversation_message_v2": pageLimitResponses("ordinary"),
+			},
+		}
+		assertReason(t, run(t, caller, "parent-1"), "thread_response_invalid")
+		if got := countCalls(caller, "list_conversation_message_v2"); got != 100 {
+			t.Fatalf("conversation page calls = %d, want 100", got)
+		}
+	})
+
+	t.Run("conversation thread limit", func(t *testing.T) {
+		messages := make([]map[string]any, 101)
+		for i := range messages {
+			messages[i] = map[string]any{
+				"openMessageId":    fmt.Sprintf("root-%d", i),
+				"openConvThreadId": fmt.Sprintf("thread-%d", i),
+			}
+		}
+		encoded, err := json.Marshal(map[string]any{"result": map[string]any{"messages": messages, "hasMore": false}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		caller := &chatThreadCaller{responses: map[string]string{
+			"im/list_messages_by_ids":           messageLookup,
+			"chat/list_conversation_message_v2": string(encoded),
+			"chat/list_topic_replies":           `{"result":{"messages":[],"hasMore":false}}`,
+		}}
+		assertReason(t, run(t, caller, "parent-1"), "thread_response_invalid")
+		if got := countCalls(caller, "list_topic_replies"); got != 100 {
+			t.Fatalf("thread reply checks = %d, want 100", got)
+		}
+	})
+}
+
+func TestCrossPlatformCoverageChatThreadEmotionCommandsRewriteParentConversation(t *testing.T) {
+	messageResponse := `{"result":{"messages":[{"openMessageId":"message-1","openConversationId":"parent-1","openConvThreadId":"thread-1"}]}}`
+	for _, test := range []struct {
+		name     string
+		args     []string
+		wantTool string
+	}{
+		{name: "add emoji", args: []string{"thread", "add-emoji", "--conversation-id", "thread-1", "--message-id", "message-1", "--emoji", "赞"}, wantTool: "add_emoji_reaction"},
+		{name: "remove emoji", args: []string{"thread", "remove-emoji", "--conversation-id", "thread-1", "--message-id", "message-1", "--emoji", "赞"}, wantTool: "remove_emoji_reaction"},
+		{name: "add text emotion", args: []string{"thread", "add-text-emotion", "--conversation-id", "thread-1", "--message-id", "message-1", "--emotion-id", "emotion-1", "--emotion-name", "处理中", "--text", "处理中", "--background-id", "bg-1"}, wantTool: "add_text_emotion"},
+		{name: "remove text emotion", args: []string{"thread", "remove-text-emotion", "--conversation-id", "thread-1", "--message-id", "message-1", "--emotion-id", "emotion-1", "--emotion-name", "处理中", "--text", "处理中", "--background-id", "bg-1"}, wantTool: "remove_text_emotion"},
+		{name: "update text emotion", args: []string{"thread", "update-text-emotion", "--conversation-id", "thread-1", "--message-id", "message-1", "--old-emotion-id", "emotion-old", "--emotion-id", "emotion-new", "--emotion-name", "已完成", "--text", "已完成", "--background-id", "bg-2"}, wantTool: "update_text_emotion"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &chatThreadCaller{responses: map[string]string{"im/list_messages_by_ids": messageResponse}}
+			if err := executeAtomicThreadCommand(t, caller, test.args...); err != nil {
+				t.Fatal(err)
+			}
+			if len(caller.calls) != 2 || caller.calls[1].tool != test.wantTool || caller.calls[1].args["openConversationId"] != "parent-1" {
+				t.Fatalf("calls = %#v", caller.calls)
+			}
+		})
 	}
 }
 

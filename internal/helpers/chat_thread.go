@@ -1026,12 +1026,8 @@ func guardTopicQuoteReply(cmd *cobra.Command, openConversationID, openMessageID 
 	if err := json.Unmarshal([]byte(raw), &messageData); err != nil {
 		return topicQuoteGuardUnavailable("im/list_messages_by_ids", "被引用消息响应无法解析，已阻止发送")
 	}
-	isTopicMessage, err := topicQuoteMessageState(messageData, openMessageID)
-	if err != nil {
+	if err := validateTopicQuoteMessage(messageData, openConversationID, openMessageID); err != nil {
 		return topicQuoteGuardUnavailable("im/list_messages_by_ids", "无法确认被引用消息的会话与话题归属，已阻止发送")
-	}
-	if isTopicMessage {
-		return topicQuoteReplyDisabledError()
 	}
 	raw, err = callMCPToolReturnTextOnServer(cmd.Context(), "chat", "get_conversation_info", map[string]any{
 		"openConversationId": openConversationID,
@@ -1052,15 +1048,22 @@ func guardTopicQuoteReply(cmd *cobra.Command, openConversationID, openMessageID 
 	return nil
 }
 
-func topicQuoteMessageState(data map[string]any, openMessageID string) (bool, error) {
+func validateTopicQuoteMessage(data map[string]any, openConversationID, openMessageID string) error {
+	wantConversationID := strings.TrimSpace(openConversationID)
 	for _, message := range chatmsg.ListMessageItems(data) {
 		if chatmsg.StableMessageID(message) != strings.TrimSpace(openMessageID) {
 			continue
 		}
-		threadID := strings.TrimSpace(fmt.Sprint(chatmsg.ThreadID(message)))
-		return threadID != "" && threadID != "<nil>", nil
+		messageConversationID := strings.TrimSpace(fmt.Sprint(chatmsg.ConversationID(message)))
+		if messageConversationID == "" || messageConversationID == "<nil>" {
+			return fmt.Errorf("message %s did not include an openConversationId", openMessageID)
+		}
+		if messageConversationID != wantConversationID {
+			return fmt.Errorf("message %s belongs to conversation %s, not %s", openMessageID, messageConversationID, wantConversationID)
+		}
+		return nil
 	}
-	return false, fmt.Errorf("message %s was not returned", openMessageID)
+	return fmt.Errorf("message %s was not returned", openMessageID)
 }
 
 type topicContainerState uint8
