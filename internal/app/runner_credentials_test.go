@@ -46,6 +46,7 @@ func TestCrossPlatformCoverageRootCredentialFlagsReplacePriorRuntimeTupleAtomica
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	t.Cleanup(CloseFileLogger)
 	t.Cleanup(func() { authpkg.SetClientCredentials("", "") })
 
 	authpkg.SetClientCredentials("old-client", "old-secret")
@@ -83,6 +84,7 @@ func TestCrossPlatformCoverageRootCredentialFlagsAreScopedToEachExecuteCInvocati
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	t.Cleanup(CloseFileLogger)
 	t.Cleanup(func() { authpkg.SetClientCredentials("", "") })
 
 	root := NewRootCommand(t.Context())
@@ -119,6 +121,7 @@ func TestCrossPlatformCoverageRootCredentialFlagsAreClearedAfterExecutionErrors(
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	t.Cleanup(CloseFileLogger)
 	t.Cleanup(func() { authpkg.SetClientCredentials("", "") })
 
 	root := NewRootCommand(t.Context())
@@ -162,6 +165,7 @@ func TestCrossPlatformCoverageRootCredentialFlagsAreClearedOnPreRunExitPaths(t *
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	t.Cleanup(CloseFileLogger)
 	t.Cleanup(func() { authpkg.SetClientCredentials("", "") })
 
 	assertNextInvocationDoesNotReuse := func(t *testing.T, root *cobra.Command, args []string, wantErr bool, leakedID, leakedSecret string) {
@@ -219,6 +223,7 @@ func TestCrossPlatformCoverageRootCredentialFlagsAreClearedOnPreRunExitPaths(t *
 
 func TestCrossPlatformCoverageRootVersionPreservesCobraEarlyExitCompatibility(t *testing.T) {
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
+	t.Cleanup(CloseFileLogger)
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	t.Setenv(envDWSAgentHost, "invalid-agent-host")

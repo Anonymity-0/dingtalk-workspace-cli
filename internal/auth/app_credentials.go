@@ -144,7 +144,8 @@ func resolveAppConfigCredentialsMode(configDir string, migrate bool) (
 		if resolveErr != nil {
 			return "", "", CredentialSourceUnknown, CredentialSourceUnknown, fmt.Errorf("%w: explicit app config secret cannot be resolved", ErrSecretResolve)
 		}
-		if strings.TrimSpace(resolved) == "" {
+		resolved = strings.TrimSpace(resolved)
+		if resolved == "" {
 			return "", "", clientIDSource, CredentialSourceUnknown, ErrClientSecretEmpty
 		}
 

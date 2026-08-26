@@ -177,8 +177,12 @@ func checkDingTalkErrorWithRequestID(payload any, statusCode int, headerRequestI
 				return fmt.Errorf("API 业务错误 (code: %s, HTTP %d%s): %s", code, statusCode, requestSuffix, message)
 			}
 		}
+	}
 
-		// Also check HTTP error status even if no errcode/code field.
+	// Preserve the historical generic-error boundary for responses without a
+	// DingTalk error code. A 1xx/3xx JSON body without an error envelope remains
+	// raw output; top-level code envelopes above are still errors on any non-2xx.
+	if statusCode >= http.StatusBadRequest {
 		errmsg := firstString(obj, "errmsg", "message", "error")
 		if errmsg != "" {
 			return fmt.Errorf("API 请求失败 (HTTP %d%s): %s", statusCode, requestSuffix, errmsg)

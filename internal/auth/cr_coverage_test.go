@@ -19,6 +19,15 @@ import (
 )
 
 func TestCrossPlatformCoverageAppCredentialExplicitAndDerivedFailureBranches(t *testing.T) {
+	t.Run("strict resolver trims explicit secret", func(t *testing.T) {
+		isolateAppCredentialKeychain(t)
+		dir := t.TempDir()
+		writeCredentialConfig(t, dir, "id", PlainSecret("  padded-secret  "))
+		_, secret, _, _, err := ResolveAppCredentialsStrict(dir)
+		if err != nil || secret != "padded-secret" {
+			t.Fatalf("strict explicit secret = %q, %v", secret, err)
+		}
+	})
 	t.Run("empty explicit secret", func(t *testing.T) {
 		isolateAppCredentialKeychain(t)
 		dir := t.TempDir()

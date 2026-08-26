@@ -287,6 +287,15 @@ func TestCrossPlatformCoverageErrorsAndCamelCasePagination(t *testing.T) {
 	if err != nil || !strings.Contains(successOut.String(), `"code": "A100"`) {
 		t.Fatalf("successful payload with business code = %q, %v", successOut.String(), err)
 	}
+	var redirectOut bytes.Buffer
+	err = HandleResponse(&RawAPIResponse{
+		StatusCode: http.StatusNotModified,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       []byte(`{"name":"cached-dept"}`),
+	}, ResponseOptions{Format: output.FormatJSON, Out: &redirectOut, ErrOut: io.Discard})
+	if err != nil || !strings.Contains(redirectOut.String(), `"name": "cached-dept"`) {
+		t.Fatalf("generic 3xx payload compatibility = %q, %v", redirectOut.String(), err)
+	}
 
 	header := http.Header{"Content-Type": []string{"application/json"}}
 	_, more, token, err := parsePaginatedResponse(&RawAPIResponse{
