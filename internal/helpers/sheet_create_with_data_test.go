@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
@@ -1178,6 +1179,25 @@ func TestWaitSheetWritableHonorsCancelledContext(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageWaitSheetRetryDelayCancellationDuringWait(t *testing.T) {
+	started := make(chan struct{})
+	blocked := make(chan time.Time)
+	testseam.Swap(t, &helperAfter, func(time.Duration) <-chan time.Time {
+		close(started)
+		return blocked
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- waitSheetRetryDelay(ctx, time.Second)
+	}()
+	<-started
+	cancel()
+	if err := <-errCh; !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+}
+
 func TestVerifyRangeNotEmpty(t *testing.T) {
 	installSheetProductArgs(t)
 	cases := []struct {
@@ -1231,6 +1251,16 @@ func TestCrossPlatformCoverageAddCreatedSheetIDRejectsInvalidResponses(t *testin
 		if _, err := addCreatedSheetID(text, "N", "S"); err == nil {
 			t.Fatalf("addCreatedSheetID(%q) returned success", text)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageAddCreatedSheetIDReportsWrappedMarshalFailure(t *testing.T) {
+	testseam.Swap(t, &marshalCreatedSheetJSON, func(any) ([]byte, error) {
+		return nil, errors.New("marshal failed")
+	})
+	if _, err := addCreatedSheetID(`{"result":{"nodeId":"server-node"}}`, "N", "S"); err == nil ||
+		!strings.Contains(err.Error(), "编码创建响应 result 失败") {
+		t.Fatalf("err = %v, want wrapped result marshal failure", err)
 	}
 }
 

@@ -1409,7 +1409,10 @@ func parseCreatedNodeID(text string) (string, error) {
 	return "", fmt.Errorf("创建结果未返回 nodeId，响应: %s", text)
 }
 
-var projectCreatedSheetResult = addCreatedSheetID
+var (
+	projectCreatedSheetResult = addCreatedSheetID
+	marshalCreatedSheetJSON   = json.Marshal
+)
 
 // addCreatedSheetID 保留 create_workspace_sheet 的完整响应信封，同时发布编排
 // 过程中已经探活确认的 nodeId / sheetId。对象型 result 同时保留旧的
@@ -1433,7 +1436,7 @@ func addCreatedSheetID(text, nodeID, sheetID string) (string, error) {
 		if err := json.Unmarshal(wrapped, &business); err == nil && business != nil {
 			business["nodeId"] = nodeJSON
 			business["sheetId"] = sheetJSON
-			encodedBusiness, err := json.Marshal(business)
+			encodedBusiness, err := marshalCreatedSheetJSON(business)
 			if err != nil {
 				return "", fmt.Errorf("编码创建响应 result 失败: %w", err)
 			}
@@ -1448,7 +1451,7 @@ func addCreatedSheetID(text, nodeID, sheetID string) (string, error) {
 	// 顶层稳定 ID 以探活事实为准；非对象 result 仍按原样保留。
 	envelope["nodeId"] = nodeJSON
 	envelope["sheetId"] = sheetJSON
-	encoded, err := json.Marshal(envelope)
+	encoded, err := marshalCreatedSheetJSON(envelope)
 	// envelope 只含刚通过 Unmarshal 校验的 RawMessage 和上面的合法字符串，Marshal
 	// 理论上不会失败；仍原样传播错误，避免静默输出空结果。
 	return string(encoded), err
