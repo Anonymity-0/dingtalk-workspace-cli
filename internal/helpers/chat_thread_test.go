@@ -491,6 +491,53 @@ func TestCrossPlatformCoverageChatThreadPublishesCanonicalParameters(t *testing.
 	}
 }
 
+func TestCrossPlatformCoverageChatThreadParametersMatchLegacyDefinitions(t *testing.T) {
+	root := newChatCommand()
+	for _, test := range []struct {
+		name       string
+		legacyPath []string
+		threadLeaf string
+	}{
+		{name: "create-group", legacyPath: []string{"group", "create"}, threadLeaf: "create-group"},
+		{name: "send", legacyPath: []string{"message", "send"}, threadLeaf: "send"},
+		{name: "list", legacyPath: []string{"message", "list"}, threadLeaf: "list"},
+		{name: "reply", legacyPath: []string{"message", "send"}, threadLeaf: "reply"},
+		{name: "list-replies", legacyPath: []string{"message", "list-topic-replies"}, threadLeaf: "list-replies"},
+		{name: "forward", legacyPath: []string{"message", "forward-topic"}, threadLeaf: "forward"},
+		{name: "recall-message", legacyPath: []string{"message", "recall"}, threadLeaf: "recall-message"},
+		{name: "add-emoji", legacyPath: []string{"message", "add-emoji"}, threadLeaf: "add-emoji"},
+		{name: "remove-emoji", legacyPath: []string{"message", "remove-emoji"}, threadLeaf: "remove-emoji"},
+		{name: "list-emotion-replies", legacyPath: []string{"message", "list-emotion-replies"}, threadLeaf: "list-emotion-replies"},
+		{name: "add-text-emotion", legacyPath: []string{"message", "add-text-emotion"}, threadLeaf: "add-text-emotion"},
+		{name: "remove-text-emotion", legacyPath: []string{"message", "remove-text-emotion"}, threadLeaf: "remove-text-emotion"},
+		{name: "update-text-emotion", legacyPath: []string{"message", "update-text-emotion"}, threadLeaf: "update-text-emotion"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			legacy, remaining, err := root.Find(test.legacyPath)
+			if err != nil || len(remaining) != 0 {
+				t.Fatalf("find legacy %v: command=%v remaining=%v error=%v", test.legacyPath, legacy, remaining, err)
+			}
+			thread, remaining, err := root.Find([]string{"thread", test.threadLeaf})
+			if err != nil || len(remaining) != 0 {
+				t.Fatalf("find thread %s: command=%v remaining=%v error=%v", test.threadLeaf, thread, remaining, err)
+			}
+			thread.LocalNonPersistentFlags().VisitAll(func(flag *pflag.Flag) {
+				if flag.Name == "help" || flag.Hidden {
+					return
+				}
+				legacyFlag := legacy.Flags().Lookup(flag.Name)
+				if legacyFlag == nil {
+					t.Errorf("thread --%s has no same-named legacy parameter in %v", flag.Name, test.legacyPath)
+					return
+				}
+				if legacyFlag.Value.Type() != flag.Value.Type() || legacyFlag.DefValue != flag.DefValue {
+					t.Errorf("--%s metadata: legacy=(%s,%q) thread=(%s,%q)", flag.Name, legacyFlag.Value.Type(), legacyFlag.DefValue, flag.Value.Type(), flag.DefValue)
+				}
+			})
+		})
+	}
+}
+
 func TestCrossPlatformCoverageChatThreadTopicParametersMatchLegacyEntrypoints(t *testing.T) {
 	root := newChatCommand()
 	for _, test := range []struct {
