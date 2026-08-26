@@ -22,10 +22,12 @@ Sheet 操作先读必要范围、做最小修改，再用匹配读命令回读�
 
 | 用户或资源 | 路由 |
 |---|---|
-| 明确说“在线电子表格/工作表/单元格/A1/公式/图表/透视表/版本/xlsx” | `dws sheet`，即使用户同时说“结构化整理”“表头”“记录”也不要改走 AITable |
+| 明确说“在线电子表格/工作表/单元格/A1/公式/图表/透视表/版本” | `dws sheet`，即使用户同时说“结构化整理”“表头”“记录”也不要改走 AITable |
 | 明确说 Base/多维表/字段类型/记录视图，且没有 Sheet 原生操作 | `dws aitable` |
 | 在线富文本文档 | `dws doc` |
-| 本地或 Drive 中的 xlsx/xls/xlsm/csv 文件 | 下载到本地处理；不要对二进制文件调用 Sheet 子命令 |
+| 本地 xlsx/xls，用户要转换为在线表格 | `dws sheet import create`；当前只支持 xlsx/xls |
+| Drive 中的 xlsx/xls，用户要转换为在线表格 | 先用 `dws drive download` 下载到本地相对路径，再执行 `dws sheet import create`；不要把二进制节点传给工作表命令 |
+| 只做本地分析，或文件是 xlsm/csv | 留在本地处理；当前 `sheet import` 不支持 xlsm/csv |
 
 `sheet` 仅支持在线电子表格（`contentType=ALIDOC`、`extension=axls`）。只有用户给出未知类型 URL/ID 时才调用一次 `dws drive info --node <URL_OR_ID> --format json` 探测；刚由 `sheet create` 返回的资源无需再次 probe。`spreadsheetv2` URL 原样传入 `--node`，不要截短。
 
@@ -40,8 +42,13 @@ Sheet 操作先读必要范围、做最小修改，再用匹配读命令回读�
 | 只建空表格 | `dws sheet create --name <NAME> --format json` |
 | 新建并写入初始二维数据 | `dws sheet create-with-data --name <NAME> --values '<2D_JSON>' --format json` |
 | 新建多个 typed 工作表 | `dws sheet create-with-data --name <NAME> --sheets '<SPECS_JSON>' --format json` |
+| 浏览当前可用模板 | `dws sheet template list --format json` |
+| 按关键词搜索模板 | `dws sheet template search --query <TEXT> --format json` |
+| 用模板创建在线表格 | `dws sheet template apply --template-id <TEMPLATE_ID> --name <NAME> --format json` |
 
 有初始数据时优先 `create-with-data`，它会创建、定位默认工作表、写入并读回，减少独立调用。空表才用 `create`。后续始终复用返回的真实 `nodeId`；不要从 URL 文本或历史会话猜 ID。
+
+模板意图先用 `list` 或 `search` 取得唯一的真实 `templateId`；零个或多个候选时停止并消歧，不能把模板名称猜成 ID。`apply` 会新建在线表格，后续复用其返回的节点信息；不要再执行一次普通 `sheet create`。
 
 ### 2. 定位工作表
 
@@ -106,6 +113,7 @@ dws drive +delete --node <NODE_ID> --format json
 
 | 当前执行阶段 | 本阶段唯一子 reference | 原生命令族 |
 |---|---|---|
+| 浏览、搜索或应用模板 | 本文件创建闭环（无需子 reference） | `template list/search/apply` |
 | 工作表增删改、冻结、合并边界、网格线 | [sheet-workbook](sheet/sheet-workbook.md) | `new` / `update` / `copy` / `delete-sheet` / `info` |
 | 读取元数据、分页、大范围值 | [sheet-read-data](sheet/sheet-read-data.md) | `csv-get` / `table-get` / `range read` |
 | 富格式值、超链接、数据验证、typed 写入 | [sheet-write-data](sheet/sheet-write-data.md) | `range update` / `csv-put` / `table-put` / `append` |

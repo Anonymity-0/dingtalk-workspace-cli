@@ -29,7 +29,7 @@
 - 用 {} 跳过单元格并保留原值；清空单个格传 {"type":"text","text":""}，清空整片范围用 range clear。
 - 单元格级 hyperlink 与 richText 片段链接不要混用。取消整格链接使用 `hyperlink:{"type":"none"}`；不传 hyperlink 表示保留原链接，不能用 null 猜测清除语义。
 - richText 仅在确实需要多片段样式、片段链接、附件或图片时使用；媒体 resourceId/resourceUrl 必须来自本任务 media-upload 的真实返回。
-- dataValidation 的内联选项和 sourceRange 二选一。sourceRange 使用 {"sheetId":"真实ID","a1Notation":"A1:A3"}，不能传猜测名称。
+- dataValidation 是三态：不传表示保留原规则；传 `{"dataValidation":{"type":"none"}}` 表示清除；传 `dropdown` 或 `checkbox` 表示写入新规则。dropdown 的 `options` 与 `sourceRange` 必须且只能传一个；sourceRange 使用 `{"sheetId":"真实ID","a1Notation":"A1:A3"}`，不能传猜测名称。
 - cellStyles 适合“写值时顺带给少量格设置样式”，也可单独传 `{"cellStyles":{...}}` 只改样式并保留原值；整片统一样式进入 sheet-style-format 阶段。
 - 公式以 = 开头；需要字面量等号时前加单引号。
 - 单次建议不超过 1000 行、5000 个单元格；总量不得超过当前命令契约的 30000 单元格。超出时按连续不重叠范围拆分，每块分别回读。
