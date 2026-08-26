@@ -204,6 +204,8 @@ func TestCrossPlatformCoverageDocImportRejectsAmbiguousOrMissingDefaultBeforeWri
 		{name: "wrong type", body: `{"result":{"items":[{"spaceType":"mySpace","rootFolderId":"root"}]}}`, want: "不是 orgSpace"},
 		{name: "first page is not unique", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}],"nextToken":"page-2"}}`, want: "仍有下一页"},
 		{name: "has more without a usable cursor", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}],"hasMore":true}}`, want: "仍有下一页"},
+		{name: "outer next token", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}]},"nextToken":"page-2"}`, want: "仍有下一页"},
+		{name: "outer has more", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}]},"hasMore":true}`, want: "仍有下一页"},
 		{name: "invalid next token fails closed", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}],"nextToken":1}}`, want: "仍有下一页"},
 		{name: "invalid has more fails closed", body: `{"result":{"items":[{"spaceType":"orgSpace","rootFolderId":"root"}],"hasMore":"true"}}`, want: "仍有下一页"},
 	} {

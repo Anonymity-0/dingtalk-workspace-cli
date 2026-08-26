@@ -143,6 +143,18 @@ func parseDefaultDocImportTarget(text string) (importTarget, error) {
 	if err := json.Unmarshal([]byte(text), &payload); err != nil {
 		return importTarget{}, importTargetValidationError("无法解析当前组织的默认文档根目录；请显式提供 --folder 或 --workspace", err)
 	}
+	if nextToken, exists := payload["nextToken"]; exists && nextToken != nil {
+		token, ok := nextToken.(string)
+		if !ok || strings.TrimSpace(token) != "" {
+			return importTarget{}, importTargetValidationError("当前组织空间列表仍有下一页，无法证明默认导入位置唯一；请显式提供 --folder 或 --workspace", nil)
+		}
+	}
+	if hasMore, exists := payload["hasMore"]; exists && hasMore != nil {
+		more, ok := hasMore.(bool)
+		if !ok || more {
+			return importTarget{}, importTargetValidationError("当前组织空间列表仍有下一页，无法证明默认导入位置唯一；请显式提供 --folder 或 --workspace", nil)
+		}
+	}
 	if result, ok := payload["result"].(map[string]any); ok {
 		payload = result
 	}
