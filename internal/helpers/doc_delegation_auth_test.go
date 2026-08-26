@@ -110,17 +110,39 @@ func TestCrossPlatformCoverageDocDelegationAuthCheckSuccessFlow(t *testing.T) {
 	}
 }
 
-func TestCrossPlatformCoverageDocDelegationAuthNoNodeIDStillCallsCheck(t *testing.T) {
+func TestCrossPlatformCoverageDocDelegationAuthNoNodeIDRejectsLocally(t *testing.T) {
 	inner := newDocDelegationTestCaller()
 	d := newDocDelegationAuthDecorator(inner)
-	if _, err := d.CallTool(context.Background(), "drive", "list_files", map[string]any{"limit": 20}); err != nil {
-		t.Fatalf("CallTool() error = %v", err)
+	_, err := d.CallTool(context.Background(), "drive", "list_files", map[string]any{"limit": 20})
+	if err == nil {
+		t.Fatal("CallTool() error = nil, want DELEGATION_AUTH_NOT_SUPPORTED")
 	}
-	if len(inner.calls) != 2 {
-		t.Fatalf("calls = %d, want 2 (check, original)", len(inner.calls))
+	if !strings.HasPrefix(err.Error(), "[DELEGATION_AUTH_NOT_SUPPORTED]") {
+		t.Fatalf("Error() = %q, want [DELEGATION_AUTH_NOT_SUPPORTED] prefix", err.Error())
 	}
-	if _, exists := inner.calls[0].args["nodeId"]; exists {
-		t.Fatalf("check args should omit nodeId: %#v", inner.calls[0].args)
+	if !strings.Contains(err.Error(), "缺少节点标识参数") {
+		t.Fatalf("Error() = %q, want message about missing node identifier", err.Error())
+	}
+	if !strings.Contains(err.Error(), "u-principal") {
+		t.Fatalf("Error() = %q, want principal ID in message", err.Error())
+	}
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) || typed.Category != apperrors.CategoryValidation {
+		t.Fatalf("error = %v, want structured validation-category error", err)
+	}
+	if typed.Reason != "delegation_not_supported" {
+		t.Fatalf("Reason = %q, want delegation_not_supported", typed.Reason)
+	}
+	if code := apperrors.ExitCode(err); code != apperrors.ExitCodeValidation {
+		t.Fatalf("ExitCode() = %d, want %d", code, apperrors.ExitCodeValidation)
+	}
+	// Must not call any remote service
+	if len(inner.calls) != 0 {
+		t.Fatalf("calls = %d, want 0 (no remote call on missing node)", len(inner.calls))
+	}
+	// CLIError shell must pass through WrapErrorWithOperation unchanged
+	if passthrough := WrapErrorWithOperation(err, "drive/list_files"); passthrough != err {
+		t.Fatalf("WrapErrorWithOperation() = %v, want the not-supported error passed through unchanged", passthrough)
 	}
 }
 
@@ -173,7 +195,7 @@ func TestCrossPlatformCoverageDocDelegationAuthDeniedFallsBackToReason(t *testin
 	inner := newDocDelegationTestCaller()
 	inner.checkRes = textToolResult(`{"allowed":false,"denialReason":"NO_PERM","denialMessage":"  "}`)
 	d := newDocDelegationAuthDecorator(inner)
-	_, err := d.CallTool(context.Background(), "doc", "update_document", nil)
+	_, err := d.CallTool(context.Background(), "doc", "update_document", map[string]any{"nodeId": "n1"})
 	if err == nil || !strings.Contains(err.Error(), "NO_PERM") {
 		t.Fatalf("error = %v, want fallback to denialReason", err)
 	}
@@ -271,10 +293,10 @@ func TestCrossPlatformCoverageDocDelegationAuthDifferentToolKeysEachChecked(t *t
 	inner := newDocDelegationTestCaller()
 	d := newDocDelegationAuthDecorator(inner)
 	ctx := context.Background()
-	if _, err := d.CallTool(ctx, "doc", "update_document", nil); err != nil {
+	if _, err := d.CallTool(ctx, "doc", "update_document", map[string]any{"nodeId": "n1"}); err != nil {
 		t.Fatalf("CallTool(doc) error = %v", err)
 	}
-	if _, err := d.CallTool(ctx, "wiki", "create_wikiSpace", nil); err != nil {
+	if _, err := d.CallTool(ctx, "wiki", "create_wikiSpace", map[string]any{"nodeId": "n2"}); err != nil {
 		t.Fatalf("CallTool(wiki) error = %v", err)
 	}
 	var checkKeys []string
@@ -378,7 +400,7 @@ func TestCrossPlatformCoverageDocDelegationAuthCheckCallFails(t *testing.T) {
 	// 的 "tool" 模式重分类成 MCP_TOOL_ERROR，外壳必须阻止这种重包装。
 	inner.checkErr = errors.New("tool check boom")
 	d := newDocDelegationAuthDecorator(inner)
-	_, err := d.CallTool(context.Background(), "doc", "update_document", nil)
+	_, err := d.CallTool(context.Background(), "doc", "update_document", map[string]any{"nodeId": "n1"})
 	if err == nil {
 		t.Fatal("CallTool() error = nil, want wrapped check failure")
 	}
@@ -451,7 +473,7 @@ func TestCrossPlatformCoverageDocDelegationAuthCheckResponseInvalid(t *testing.T
 		inner := newDocDelegationTestCaller()
 		inner.checkRes = tc.result
 		d := newDocDelegationAuthDecorator(inner)
-		_, err := d.CallTool(context.Background(), "doc", "update_document", nil)
+		_, err := d.CallTool(context.Background(), "doc", "update_document", map[string]any{"nodeId": "n1"})
 		if err == nil || !strings.Contains(err.Error(), tc.wantSub) {
 			t.Fatalf("%s: error = %v, want message containing %q", tc.name, err, tc.wantSub)
 		}
@@ -531,7 +553,7 @@ func TestCrossPlatformCoverageDocDelegationAuthReadCallDenied(t *testing.T) {
 	readInner.checkRes = textToolResult(`{"allowed":false,"denialReason":"NO_PERM"}`)
 	d := newDocDelegationAuthDecorator(readInner)
 	wrapped := wrapDocDelegationAuthCaller(d, readInner).(*docDelegationAuthReadCaller)
-	_, err := wrapped.CallReadTool(context.Background(), "wiki", "list_nodes", nil)
+	_, err := wrapped.CallReadTool(context.Background(), "wiki", "list_nodes", map[string]any{"nodeId": "n1"})
 	if err == nil {
 		t.Fatal("CallReadTool() error = nil, want denial")
 	}
@@ -595,7 +617,7 @@ func TestCrossPlatformCoverageDocDelegationAuthInstallDepsNotInitialized(t *test
 	}
 }
 
-func TestCrossPlatformCoverageDocDelegationAuthInstallDryRunSkipsDecorator(t *testing.T) {
+func TestCrossPlatformCoverageDocDelegationAuthInstallDryRunStillWraps(t *testing.T) {
 	inner := newDocDelegationTestCaller()
 	inner.dry = true
 	installHelpersCoreDeps(t, inner)
@@ -608,8 +630,16 @@ func TestCrossPlatformCoverageDocDelegationAuthInstallDryRunSkipsDecorator(t *te
 	if err := root.Execute(); err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
-	if seen != edition.ToolCaller(inner) {
-		t.Fatalf("deps.Caller during dry-run RunE = %T, want undecorated caller", seen)
+	// After removing the dry-run early return, the decorator is always installed.
+	decorated, ok := seen.(*docDelegationAuthCaller)
+	if !ok {
+		t.Fatalf("deps.Caller during dry-run RunE = %T, want *docDelegationAuthCaller (decorator installed even in dry-run)", seen)
+	}
+	if decorated.principalID != "u1" {
+		t.Fatalf("principalID = %q, want %q", decorated.principalID, "u1")
+	}
+	if !decorated.inner.DryRun() {
+		t.Fatal("inner.DryRun() = false, want true (decorator wraps a dry-run caller)")
 	}
 }
 
@@ -830,5 +860,70 @@ func TestCrossPlatformCoverageDocDelegationAuthParentIdTriggersNodeScopedCheck(t
 	}
 	if len(checks) != 2 || checks[0] != "folder-A" || checks[1] != "folder-B" {
 		t.Fatalf("check nodeIds = %v, want [folder-A, folder-B]", checks)
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthDryRunStillChecks verifies that
+// when the inner caller reports DryRun()=true, the decorator is still installed
+// and ensureDelegationAuth triggers a check_capability call on CallReadTool.
+// dry-run 下 CallTool 的底层在真正调 deps.Caller.CallTool 之前就已 return
+// （打印预览），走不到装饰器的 CallTool；但 CallReadTool 仍会被拦截。
+func TestCrossPlatformCoverageDocDelegationAuthDryRunStillChecks(t *testing.T) {
+	readInner := &docDelegationReadTestCaller{docDelegationTestCaller: newDocDelegationTestCaller(), readRes: textToolResult(`{"ok":true}`)}
+	readInner.dry = true
+	d := newDocDelegationAuthDecorator(readInner)
+	wrapped := wrapDocDelegationAuthCaller(d, readInner).(*docDelegationAuthReadCaller)
+	result, err := wrapped.CallReadTool(context.Background(), "doc", "get_document", map[string]any{"nodeId": "n1"})
+	if err != nil {
+		t.Fatalf("CallReadTool() error = %v", err)
+	}
+	if result != readInner.readRes {
+		t.Fatalf("CallReadTool() result = %#v, want read passthrough", result)
+	}
+	// Even in dry-run, check_capability was invoked.
+	if len(readInner.calls) != 1 || readInner.calls[0].tool != checkCapTool {
+		t.Fatalf("calls = %#v, want one check_capability call even in dry-run", readInner.calls)
+	}
+	if readInner.calls[0].args["nodeId"] != "n1" {
+		t.Fatalf("check args = %#v, want nodeId n1", readInner.calls[0].args)
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthNoNodeRejectsLocally verifies
+// that when args contain no recognizable node identifier, the decorator
+// returns DELEGATION_AUTH_NOT_SUPPORTED immediately without any remote call,
+// including via the read channel.
+func TestCrossPlatformCoverageDocDelegationAuthNoNodeRejectsLocally(t *testing.T) {
+	// Write channel: CallTool
+	inner := newDocDelegationTestCaller()
+	d := newDocDelegationAuthDecorator(inner)
+	_, err := d.CallTool(context.Background(), "doc", "search_documents", map[string]any{"query": "hello"})
+	if err == nil {
+		t.Fatal("CallTool() error = nil, want DELEGATION_AUTH_NOT_SUPPORTED")
+	}
+	var cliErr *CLIError
+	if !errors.As(err, &cliErr) || cliErr.Code != codeDelegationNotSupported {
+		t.Fatalf("error = %v, want CLIError code %q", err, codeDelegationNotSupported)
+	}
+	if len(inner.calls) != 0 {
+		t.Fatalf("calls = %d, want 0 (no remote call)", len(inner.calls))
+	}
+
+	// Read channel: CallReadTool
+	readInner := &docDelegationReadTestCaller{docDelegationTestCaller: newDocDelegationTestCaller(), readRes: textToolResult(`{"ok":true}`)}
+	d2 := newDocDelegationAuthDecorator(readInner)
+	wrapped := wrapDocDelegationAuthCaller(d2, readInner).(*docDelegationAuthReadCaller)
+	_, err = wrapped.CallReadTool(context.Background(), "wiki", "search_nodes", map[string]any{"keyword": "foo"})
+	if err == nil {
+		t.Fatal("CallReadTool() error = nil, want DELEGATION_AUTH_NOT_SUPPORTED")
+	}
+	if !errors.As(err, &cliErr) || cliErr.Code != codeDelegationNotSupported {
+		t.Fatalf("read error = %v, want CLIError code %q", err, codeDelegationNotSupported)
+	}
+	if len(readInner.calls) != 0 {
+		t.Fatalf("read inner calls = %d, want 0 (no remote call)", len(readInner.calls))
+	}
+	if len(readInner.readCalls) != 0 {
+		t.Fatalf("read readCalls = %d, want 0 (read blocked on not-supported)", len(readInner.readCalls))
 	}
 }

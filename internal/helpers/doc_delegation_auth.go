@@ -50,6 +50,11 @@ const (
 	// JSON 模式 → INPUT_INVALID_JSON 退出码 3、其余 → UNCLASSIFIED 退出码 5，
 	// 同类故障退出码分裂），外壳则统一保证 category=api 与退出码 1。
 	codeDelegationCheckFailed = "DELEGATION_AUTH_CHECK_FAILED"
+	// codeDelegationNotSupported 是不含节点标识参数（如搜索/列表/创建类命令）
+	// 在 --principal-user-id 已启用时本地直接返回的错误码。此类命令缺少
+	// nodeId，无法进行 per-node 委托鉴权，客户端在调用服务端之前即拦截。
+	// 外壳 Cause 为 CategoryValidation，退出码 3（输入校验错误）。
+	codeDelegationNotSupported = "DELEGATION_AUTH_NOT_SUPPORTED"
 )
 
 // docBusinessServers 文档业务域服务器白名单：仅这些 server 上的工具调用会触发
@@ -75,7 +80,7 @@ var docBusinessServers = map[string]bool{
 //     按知识库文件夹导航）
 //   - 优先级 2（知识库/空间标识）：workspaceId → spaceId → workspace_id → space_id
 //
-// 全部缺失时返回 ""（调用方仍会发起鉴权，由服务端返回明确错误）。
+// 全部缺失时返回 ""（调用方直接返回 DELEGATION_AUTH_NOT_SUPPORTED 本地错误）。
 func extractNodeId(args map[string]any) string {
 	for _, key := range []string{
 		"nodeId", "fileId", "node_id", "overwriteFileId", "overwriteNodeId",
@@ -111,9 +116,9 @@ func wrapDocDelegationAuthCaller(d *docDelegationAuthCaller, inner edition.ToolC
 
 // ensureDelegationAuth runs the delegation-auth check once per tool-key+node
 // combination for doc-business servers; repeated calls with the same tool key
-// and node ID are deduplicated. When nodeId is empty the cache key falls back
-// to tool-key level, preserving backward-compatible behavior for calls that
-// do not carry a node identifier.
+// and node ID are deduplicated. When nodeId is empty, performDelegationAuth
+// returns DELEGATION_AUTH_NOT_SUPPORTED immediately (no remote call). For
+// calls with a valid node identifier, the cache key is tool-key + nodeId.
 func (d *docDelegationAuthCaller) ensureDelegationAuth(ctx context.Context, serverID, toolName string, args map[string]any) error {
 	if !docBusinessServers[serverID] {
 		return nil
@@ -147,17 +152,24 @@ func (d *docDelegationAuthCaller) CallTool(ctx context.Context, serverID, toolNa
 // capability server via the inner caller (using inner avoids recursing into
 // this decorator). grant_capability 是委托人给当前登录身份授权的带外动作，
 // CLI 以当前登录身份运行、无法交换成委托人身份，因此不调用 grant；委托人已
-// 在服务端完成授权，这里仅执行 check 校验。nodeId 为空时仍发起调用，让服务端
-// 返回明确错误（52600007）。
+// 在服务端完成授权，这里仅执行 check 校验。nodeId 为空时直接返回本地
+// DELEGATION_AUTH_NOT_SUPPORTED 错误，不透传到服务端。
 func (d *docDelegationAuthCaller) performDelegationAuth(ctx context.Context, toolKey string, args map[string]any) error {
 	nodeID := extractNodeId(args)
+	if nodeID == "" {
+		msg := fmt.Sprintf("当前命令不支持委托鉴权：缺少节点标识参数（--principal-user-id %s）", d.principalID)
+		return &CLIError{
+			Code:    codeDelegationNotSupported,
+			Message: msg,
+			Cause:   apperrors.NewValidation(msg, apperrors.WithReason("delegation_not_supported")),
+		}
+	}
 	checkArgs := map[string]any{
 		"userId":     d.principalID,
 		"mcpToolKey": toolKey,
+		"nodeId":     nodeID,
 	}
-	if nodeID != "" {
-		checkArgs["nodeId"] = nodeID
-	}
+
 	result, err := d.inner.CallTool(ctx, capabilityServerID, checkCapTool, checkArgs)
 	if err != nil {
 		msg := fmt.Sprintf("委托鉴权校验失败: %v", err)
@@ -264,7 +276,7 @@ func (d *docDelegationAuthReadCaller) CallReadTool(ctx context.Context, serverID
 // installDocDelegationAuth 在文档业务域根命令上注册 --principal-user-id 持久
 // flag，并通过 PersistentPreRunE 在 flag 非空时把 deps.Caller 包装为委托鉴权
 // 装饰器（参考 leaf.go 中 contractConfirmCaller 的包装还原模式，执行结束后由
-// cobra.OnFinalize 还原）。dry-run 下跳过装饰。
+// cobra.OnFinalize 还原）。dry-run 下装饰器同样安装，确保预览与执行行为一致。
 //
 // 闭包内显式链式调用根命令的 PersistentPreRunE 以避免 cobra 就近匹配语义遮蔽
 // 根 hook（--output/--debug/--profile/agent 元数据校验/诊断日志）。
@@ -300,9 +312,6 @@ func installDocDelegationAuth(cmd *cobra.Command) {
 				Code:    CodeMCPToolError,
 				Message: "MCP caller is not initialized",
 			}
-		}
-		if deps.Caller.DryRun() {
-			return nil
 		}
 		prev := deps.Caller
 		d := &docDelegationAuthCaller{
