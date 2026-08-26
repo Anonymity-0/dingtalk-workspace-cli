@@ -14,8 +14,10 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/helpers"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/google/uuid"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -65,10 +67,10 @@ func readShortcutContent(rt *shortcut.RuntimeContext, flag string) (string, erro
 		if err != nil {
 			return "", apperrors.NewValidation(fmt.Sprintf("--%s: 读取 stdin 失败: %v", flag, err))
 		}
-		return string(data), nil
+		return normalizeDocInputLineEndings(string(data)), nil
 	}
 	if !strings.HasPrefix(raw, "@") {
-		return raw, nil
+		return normalizeDocInputLineEndings(raw), nil
 	}
 	path := strings.TrimSpace(strings.TrimPrefix(raw, "@"))
 	if path == "" || filepath.IsAbs(path) {
@@ -94,7 +96,11 @@ func readShortcutContent(rt *shortcut.RuntimeContext, flag string) (string, erro
 	if err != nil {
 		return "", apperrors.NewValidation(fmt.Sprintf("--%s: 读取文件 %q 失败: %v", flag, path, err))
 	}
-	return string(data), nil
+	return normalizeDocInputLineEndings(string(data)), nil
+}
+
+func normalizeDocInputLineEndings(content string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(content, "\r\n", "\n"), "\r", "\n")
 }
 
 func validateWorkspaceInputPath(flag, raw string) error {
@@ -121,7 +127,23 @@ func validateWorkspaceInputPath(flag, raw string) error {
 	return nil
 }
 
-func validateJSONML(raw string) (string, error) {
+func validateJSONMLBody(cmd *cobra.Command, raw string) (string, error) {
+	normalized, err := helpers.PrepareDocJSONMLBody(cmd, raw)
+	if err != nil {
+		return "", shortcutJSONMLValidationError(err)
+	}
+	return validateJSONMLElement(normalized)
+}
+
+func validateJSONMLNode(cmd *cobra.Command, raw string) (string, error) {
+	normalized, err := helpers.PrepareDocJSONMLNode(cmd, raw)
+	if err != nil {
+		return "", shortcutJSONMLValidationError(err)
+	}
+	return validateJSONMLElement(normalized)
+}
+
+func validateJSONMLElement(raw string) (string, error) {
 	var value any
 	if err := json.Unmarshal([]byte(raw), &value); err != nil {
 		return "", apperrors.NewValidation(fmt.Sprintf("JSONML 解析失败: %v", err))
@@ -139,8 +161,13 @@ func validateJSONML(raw string) (string, error) {
 	if tag, ok := root[0].(string); !ok || strings.TrimSpace(tag) == "" {
 		return "", apperrors.NewValidation("JSONML 第一个元素必须是非空标签名")
 	}
-	normalized, _ := json.Marshal(value) // decoded JSON trees are always marshalable
-	return string(normalized), nil
+	return raw, nil
+}
+
+func shortcutJSONMLValidationError(err error) error {
+	message := strings.ReplaceAll(err.Error(), "--content-format", "--doc-format")
+	message = strings.ReplaceAll(message, "--element", "--content")
+	return apperrors.NewValidation(message)
 }
 
 func docEnvelope(operation string, data any, steps ...map[string]any) map[string]any {

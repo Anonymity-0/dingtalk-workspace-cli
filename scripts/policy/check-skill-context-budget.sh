@@ -15,8 +15,8 @@ chat_target_bytes=10000
 chat_max_overage_percent=10
 chat_max_bytes=$((chat_target_bytes * (100 + chat_max_overage_percent) / 100))
 doc_target_bytes=11000
-doc_min_headroom_bytes=0
-doc_max_bytes=$((doc_target_bytes - doc_min_headroom_bytes))
+doc_max_overage_percent=0
+doc_max_bytes=$((doc_target_bytes * (100 + doc_max_overage_percent) / 100))
 event_max_bytes=10000
 runtime_contract_max_bytes=3000
 
@@ -30,7 +30,7 @@ fi
 doc_bytes="$(wc -c < "$doc_skill" | tr -d ' ')"
 if [ "$doc_bytes" -gt "$doc_max_bytes" ]; then
 	printf '%s\n' \
-		"skill context budget exceeded: $doc_skill is ${doc_bytes} bytes (target ${doc_target_bytes}, required headroom ${doc_min_headroom_bytes}, max ${doc_max_bytes})" >&2
+		"skill context budget exceeded: $doc_skill is ${doc_bytes} bytes (target ${doc_target_bytes}, max ${doc_max_bytes} with ${doc_max_overage_percent}% allowance)" >&2
 	exit 1
 fi
 
@@ -212,4 +212,4 @@ if grep -Fq "充分阅读产品参考文件" "$mono_skill"; then
 fi
 
 printf '%s\n' \
-	"skill context budget: ok (chat_bytes=$chat_bytes target=$chat_target_bytes max=$chat_max_bytes allowance=${chat_max_overage_percent}% doc_bytes=$doc_bytes doc_target=$doc_target_bytes doc_headroom=$((doc_target_bytes - doc_bytes)) required_doc_headroom=$doc_min_headroom_bytes doc_max=$doc_max_bytes event_bytes=$event_bytes event_max=$event_max_bytes runtime_contract_bytes=$runtime_contract_bytes runtime_contract_max=$runtime_contract_max_bytes shortcut_rows=$shortcut_rows doc_shortcut_rows=$doc_shortcut_rows)"
+	"skill context budget: ok (chat_bytes=$chat_bytes chat_target=$chat_target_bytes chat_max=$chat_max_bytes chat_allowance=${chat_max_overage_percent}% doc_bytes=$doc_bytes doc_target=$doc_target_bytes doc_max=$doc_max_bytes doc_allowance=${doc_max_overage_percent}% event_bytes=$event_bytes event_max=$event_max_bytes runtime_contract_bytes=$runtime_contract_bytes runtime_contract_max=$runtime_contract_max_bytes shortcut_rows=$shortcut_rows doc_shortcut_rows=$doc_shortcut_rows)"

@@ -322,14 +322,14 @@ func TestCrossPlatformCoverageSheetImportGetDryRunJSONIsSingleDocument(t *testin
 	}
 }
 
-func TestDocImportConfigDeclaresDefaultTargetResolution(t *testing.T) {
+func TestDocImportConfigPreservesFormatsAndEnablesDefaultTargetVerification(t *testing.T) {
 	cfg := docImportFlowConfig()
 	for _, ext := range []string{"docx", "doc", "xlsx", "xls", "md", "txt", "xmind", "mark"} {
 		if !cfg.supportedFormats[ext] {
 			t.Errorf("doc import no longer supports %s", ext)
 		}
 	}
-	if cfg.requireTarget || cfg.includeNodeID || cfg.timeoutAsResult || !cfg.exclusiveTarget || cfg.resolveDefaultTarget == nil || cfg.defaultTargetSource != "default_org_root" {
+	if cfg.requireTarget || !cfg.includeNodeID || cfg.timeoutAsResult || !cfg.exclusiveTarget || cfg.resolveDefaultTarget == nil || cfg.defaultTargetSource != "default_org_root" || !cfg.verifyPlacement {
 		t.Fatalf("doc import compatibility changed: %#v", cfg)
 	}
 }

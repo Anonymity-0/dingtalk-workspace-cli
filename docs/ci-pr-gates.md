@@ -22,8 +22,38 @@ the nine contracts above.
 `AI Behavior` is evaluated by a `pull_request_target` workflow that never
 checks out or executes PR code. It writes the exact `AI Behavior` status to the
 current PR head. Its Files API read is bracketed by base/head revision checks,
-so a synchronize race fails closed. The same workflow supplies a successful
-`AI Behavior` check run on protected `main` pushes for release governance.
+and Ready/Draft state transitions cancel older evaluations and verify the live
+state, so a synchronize or state race fails closed. A Draft revision publishes
+an explicit failing `AI Behavior` status; marking it Ready first replaces that
+status with `pending` and only then evaluates the normal policy. The same
+workflow supplies a successful `AI Behavior` check run on protected `main`
+pushes for release governance.
+
+## Draft pull-request feedback
+
+A Draft pull request runs the independent `Draft CI` workflow. Its single
+`Draft Fast Gate` provides bounded development feedback: it verifies the
+synthetic merge identity, package plan, formatting, `go vet`, Actions syntax,
+reviewer routing, installer smoke, build, release-fragment lifecycle, and
+lightweight repository policy.
+
+The Draft result is not Code Admission and is never a substitute for `Lint`,
+`Test`, `Coverage`, `Policy`, `Edition`, `Interface Integrity`, `AI Behavior`,
+`CLI Smoke`, or `Mock MCP`. GitHub records conditionally skipped formal jobs as
+successful checks, so absence alone is not a safe admission boundary. The
+base-owned `AI Behavior` status therefore fails every Draft revision explicitly;
+because it is one of the nine required contexts, skipped formal jobs cannot
+satisfy the ruleset. Marking the pull request Ready changes that status to
+`pending` before policy evaluation and starts complete tier-selected admission
+on the current head SHA. Merge remains blocked until all nine contexts succeed.
+
+Converting a ready pull request back to Draft creates a new skipped formal CI
+run in the same PR concurrency group, cancelling any in-progress heavy
+admission work; it also replaces `AI Behavior` with a failing Draft status and
+starts `Draft Fast Gate`. A later `ready_for_review` event cancels any remaining
+Draft validation, marks `AI Behavior` pending, and runs full admission again.
+Editing only a Draft title or body does not consume a runner; changing its base
+branch revalidates the synthetic merge.
 
 ## Exact CHANGELOG-only fast path
 

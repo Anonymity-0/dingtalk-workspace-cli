@@ -590,6 +590,7 @@ func TestCrossPlatformCoverageDocJSONMLBlockVerificationUsesJSONMLReadback(t *te
 		response string
 	}{
 		{name: "insert", command: "block_insert_after", blockArg: "--after-block-id", response: `["root",{},["p",{"uuid":"ref"},"before"],["p",{"uuid":"id-1"},"after"]]`},
+		{name: "insert before", command: "block_insert_before", blockArg: "--before-block-id", response: `["root",{},["p",{"uuid":"id-1"},"after"],["p",{"uuid":"ref"},"before"]]`},
 		{name: "replace", command: "block_replace", blockArg: "--block-id", response: `["root",{},["p",{"uuid":"target"},"after"]]`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -608,6 +609,86 @@ func TestCrossPlatformCoverageDocJSONMLBlockVerificationUsesJSONMLReadback(t *te
 			}
 			if got := caller.history[len(caller.history)-1].params["format"]; got != "jsonml" {
 				t.Fatalf("verification format = %#v, want jsonml", got)
+			}
+		})
+	}
+}
+
+func TestCrossPlatformCoverageDocUpdateInsertsHeadingBeforeReference(t *testing.T) {
+	testseam.Swap(t, &docVerifyDelays, []time.Duration{})
+	const title = "发布说明 v1.0"
+	readback := func(level any, before bool) map[string]any {
+		heading := map[string]any{"id": "new", "blockType": "heading", "heading": map[string]any{"text": title, "level": level}}
+		reference := map[string]any{"id": "ref", "blockType": "paragraph", "paragraph": map[string]any{"text": "原标题"}}
+		blocks := []any{heading, reference}
+		if !before {
+			blocks = []any{reference, heading}
+		}
+		return map[string]any{"blocks": blocks, "hasMore": false}
+	}
+
+	t.Run("success", func(t *testing.T) {
+		caller := &docCoverageCaller{responses: map[string][]map[string]any{
+			"insert_document_block": {{"blockId": "new"}},
+			"list_document_blocks":  {readback("heading-1", true)},
+		}}
+		if err := runDocCoverage(t, Update, caller,
+			"--node", "n", "--command", "block_insert_before", "--before-block-id", "ref",
+			"--content", title, "--heading-level", "1", "--yes"); err != nil {
+			t.Fatal(err)
+		}
+		if len(caller.history) != 2 || caller.history[0].tool != "insert_document_block" || caller.history[1].tool != "list_document_blocks" {
+			t.Fatalf("calls = %#v", caller.history)
+		}
+		params := caller.history[0].params
+		if params["referenceBlockId"] != "ref" || params["where"] != "before" {
+			t.Fatalf("placement params = %#v", params)
+		}
+		element, _ := params["element"].(map[string]any)
+		heading, _ := element["heading"].(map[string]any)
+		if element["blockType"] != "heading" || heading["text"] != title || heading["level"] != "1" {
+			t.Fatalf("heading element = %#v", element)
+		}
+	})
+
+	t.Run("after success", func(t *testing.T) {
+		caller := &docCoverageCaller{responses: map[string][]map[string]any{
+			"insert_document_block": {{"blockId": "new"}},
+			"list_document_blocks":  {readback("heading-1", false)},
+		}}
+		if err := runDocCoverage(t, Update, caller,
+			"--node", "n", "--command", "block_insert_after", "--after-block-id", "ref",
+			"--content", title, "--heading-level", "1", "--yes"); err != nil {
+			t.Fatal(err)
+		}
+		if caller.history[0].params["where"] != "after" {
+			t.Fatalf("placement params = %#v", caller.history[0].params)
+		}
+		element, _ := caller.history[0].params["element"].(map[string]any)
+		heading, _ := element["heading"].(map[string]any)
+		if heading["level"] != "1" {
+			t.Fatalf("heading level wire value = %#v, want string %q", heading["level"], "1")
+		}
+	})
+
+	for _, test := range []struct {
+		name     string
+		readback map[string]any
+	}{
+		{name: "wrong position", readback: readback("heading-1", false)},
+		{name: "wrong heading level", readback: readback("heading-2", true)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			caller := &docCoverageCaller{responses: map[string][]map[string]any{
+				"insert_document_block": {{"blockId": "new"}},
+				"list_document_blocks":  {test.readback},
+			}}
+			err := runDocCoverage(t, Update, caller,
+				"--node", "n", "--command", "block_insert_before", "--before-block-id", "ref",
+				"--content", title, "--heading-level", "1", "--yes")
+			var typed *apperrors.Error
+			if !errors.As(err, &typed) || typed.Reason != "doc_write_verification_failed" {
+				t.Fatalf("error = %#v, want readback verification failure", err)
 			}
 		})
 	}
@@ -1083,6 +1164,7 @@ func TestCrossPlatformCoverageDocContentCommandsAndFailureBoundaries(t *testing.
 		{"update append", Update, []string{"--node", "n", "--command", "append", "--content", "x", "--yes"}},
 		{"update overwrite jsonml", Update, []string{"--node", "n", "--command", "overwrite", "--content", `["root",{}]`, "--doc-format", "jsonml", "--yes"}},
 		{"update insert text", Update, []string{"--node", "n", "--command", "block_insert_after", "--after-block-id", "b", "--content", "x", "--yes"}},
+		{"update insert heading before", Update, []string{"--node", "n", "--command", "block_insert_before", "--before-block-id", "b", "--content", "x", "--heading-level", "1", "--yes"}},
 		{"update insert jsonml", Update, []string{"--node", "n", "--command", "block_insert_after", "--after-block-id", "b", "--content", `["p",{},"x"]`, "--doc-format", "jsonml", "--yes"}},
 		{"update replace text", Update, []string{"--node", "n", "--command", "block_replace", "--block-id", "b", "--content", "x", "--yes"}},
 		{"update replace jsonml", Update, []string{"--node", "n", "--command", "block_replace", "--block-id", "b", "--content", `["p",{},"x"]`, "--doc-format", "jsonml", "--yes"}},
@@ -1119,6 +1201,8 @@ func TestCrossPlatformCoverageDocContentCommandsAndFailureBoundaries(t *testing.
 				caller.responses["get_document_content"] = []map[string]any{{"markdown": "existing\nx"}}
 			case "update insert text":
 				caller.responses["list_document_blocks"] = []map[string]any{{"items": []any{map[string]any{"id": "b", "text": "reference"}, map[string]any{"id": "id-1", "text": "x"}}}}
+			case "update insert heading before":
+				caller.responses["list_document_blocks"] = []map[string]any{{"items": []any{map[string]any{"id": "id-1", "blockType": "heading", "heading": map[string]any{"text": "x", "level": 1}}, map[string]any{"id": "b", "text": "reference"}}}}
 			case "update insert jsonml":
 				caller.responses["list_document_blocks"] = []map[string]any{{"jsonml": `["root",{},["p",{"uuid":"b"},"reference"],["p",{"uuid":"id-1"},"x"]]`}}
 			case "update replace text":
@@ -1175,7 +1259,7 @@ func TestCrossPlatformCoverageUpdateContractAndPreflight(t *testing.T) {
 	if !flags["node"].Required || flags["command"].Required {
 		t.Fatalf("unconditional required flags: node=%v command=%v", flags["node"].Required, flags["command"].Required)
 	}
-	for _, name := range []string{"content", "block-id", "after-block-id", "old", "new"} {
+	for _, name := range []string{"content", "block-id", "after-block-id", "before-block-id", "heading-level", "old", "new"} {
 		if got := flags[name].RequiredWhen; got != "" {
 			t.Errorf("--%s RequiredWhen = %q, want compatibility-safe custom constraint", name, got)
 		}
@@ -1199,6 +1283,11 @@ func TestCrossPlatformCoverageUpdateContractAndPreflight(t *testing.T) {
 	}{
 		{name: "missing command", args: []string{"--node", "n"}, want: "--command"},
 		{name: "insert missing reference", args: []string{"--node", "n", "--command", "block_insert_after", "--content", "x"}, want: "--after-block-id"},
+		{name: "insert before missing reference", args: []string{"--node", "n", "--command", "block_insert_before", "--content", "x"}, want: "--before-block-id"},
+		{name: "heading on non-insert", args: []string{"--node", "n", "--command", "overwrite", "--content", "x", "--heading-level", "1"}, want: "仅支持 block_insert_before/block_insert_after"},
+		{name: "heading with jsonml", args: []string{"--node", "n", "--command", "block_insert_before", "--before-block-id", "b", "--content", `["h1",{},"x"]`, "--doc-format", "jsonml", "--heading-level", "1"}, want: "仅支持 --doc-format markdown"},
+		{name: "heading level too low", args: []string{"--node", "n", "--command", "block_insert_before", "--before-block-id", "b", "--content", "x", "--heading-level", "0"}, want: "必须在 1-6 之间"},
+		{name: "heading level too high", args: []string{"--node", "n", "--command", "block_insert_after", "--after-block-id", "b", "--content", "x", "--heading-level", "7"}, want: "必须在 1-6 之间"},
 		{name: "copy missing reference", args: []string{"--node", "n", "--command", "block_copy_insert_after", "--block-id", "b"}, want: "--after-block-id"},
 		{name: "jsonml append", args: []string{"--node", "n", "--command", "append", "--content", `["root",{}]`, "--doc-format", "jsonml"}, want: "JSONML 当前不支持 append"},
 		{name: "revision without server CAS path", args: []string{"--node", "n", "--command", "append", "--content", "x", "--expected-revision", "1"}, want: "仅支持 --command overwrite --doc-format jsonml"},
@@ -1298,14 +1387,20 @@ func TestCrossPlatformCoverageDocContentValidationAndPureHelpers(t *testing.T) {
 	} {
 		_, _ = nestedRevision(value)
 	}
-	if _, err := validateJSONML(`[`); err == nil {
+	if _, err := validateJSONMLBody(&cobra.Command{}, `[`); err == nil {
 		t.Fatal("invalid jsonml succeeded")
 	}
-	if _, err := validateJSONML(`{}`); err == nil {
+	if _, err := validateJSONMLBody(&cobra.Command{}, `{}`); err == nil {
 		t.Fatal("object jsonml succeeded")
 	}
-	if _, err := validateJSONML(`[["p",{},"x"]]`); err == nil {
+	if _, err := validateJSONMLNode(&cobra.Command{}, `[["p",{},"x"]]`); err == nil {
 		t.Fatal("nested element-array jsonml succeeded")
+	}
+	if _, err := validateJSONMLBody(&cobra.Command{}, `["p",{}]`); err == nil || !strings.Contains(err.Error(), `"root"`) {
+		t.Fatalf("non-root document jsonml error = %v", err)
+	}
+	if _, err := validateJSONMLNode(&cobra.Command{}, `["p",{}]`); err != nil {
+		t.Fatalf("single block jsonml failed: %v", err)
 	}
 	if nestedMap(map[string]any{"result": map[string]any{"data": map[string]any{"x": 1}}})["x"] != 1 {
 		t.Fatal("nestedMap did not unwrap")

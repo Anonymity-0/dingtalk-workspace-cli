@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -64,6 +65,7 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 	uploadSteps := []scriptedToolStep{
 		{text: `{"resourceUrl":"https://upload.example.test/object","uploadKey":"key-1"}`},
 		{text: `{"dentryUuid":"node-1","name":"sales.html"}`},
+		{text: `{"nodeId":"node-1","workspaceId":"ws-1","folderId":"folder-abc","name":"sales.html"}`},
 	}
 
 	t.Run("html upload fallback emits marked json without legacy warnings", func(t *testing.T) {
@@ -82,20 +84,20 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 		if err := runImportCommand(cmd, nil, docImportFallbackTestConfig()); err != nil {
 			t.Fatalf("runImportCommand() error = %v, want upload fallback success", err)
 		}
-		if caller.calls != 2 || caller.tool != "commit_uploaded_file" {
-			t.Fatalf("fallback calls = %d last tool = %q, want 2 calls ending in commit_uploaded_file", caller.calls, caller.tool)
+		if caller.calls != 3 || caller.tool != "get_document_info" {
+			t.Fatalf("fallback calls = %d last tool = %q, want readback after commit", caller.calls, caller.tool)
 		}
-		if got := caller.args["workspaceId"]; got != "ws-1" {
+		if got := caller.argsLog[1]["workspaceId"]; got != "ws-1" {
 			t.Fatalf("commit workspaceId = %v, want ws-1", got)
 		}
-		if got := caller.args["name"]; got != "sales.html" {
+		if got := caller.argsLog[1]["name"]; got != "sales.html" {
 			t.Fatalf("commit name = %v, want original file name with extension", got)
 		}
 		var payload map[string]any
 		if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
 			t.Fatalf("fallback result must be one JSON document: %v\n%s", err, stdout.String())
 		}
-		if payload["success"] != true || payload["fallback"] != "upload" || payload["converted"] != false {
+		if payload["success"] != true || payload["fallback"] != "upload" || payload["converted"] != false || payload["verified"] != true {
 			t.Fatalf("fallback markers missing: %#v", payload)
 		}
 		if payload["dentry_id"] != "node-1" {
@@ -109,6 +111,63 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 		}
 		if strings.Contains(warnings.String(), "deprecated") {
 			t.Fatalf("fallback must not emit the doc upload deprecation warning, got %q", warnings.String())
+		}
+	})
+
+	t.Run("fallback resolves and verifies the default organization root", func(t *testing.T) {
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+			{text: `{"result":{"items":[{"rootFolderId":"root-folder","spaceType":"orgSpace"}]}}`},
+			{text: `{"resourceUrl":"https://upload.example.test/object","uploadKey":"key-1"}`},
+			{text: `{"dentryUuid":"node-default","name":"sales.pdf"}`},
+			{text: `{"nodeId":"node-default","folderId":"root-folder","name":"sales.pdf"}`},
+		}}
+		installScriptedCaller(t, caller)
+		var stdout bytes.Buffer
+		deps.Out.w = &stdout
+		SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
+		t.Cleanup(func() { SetHTTPPutFile(nil) })
+
+		cmd := htmlFallbackCommand(t, writeImportFixture(t, "pdf"))
+		if err := runImportCommand(cmd, nil, docImportFlowConfig()); err != nil {
+			t.Fatalf("runImportCommand() error = %v", err)
+		}
+		if strings.Join(caller.toolLog, ",") != "list_spaces,get_file_upload_info,commit_uploaded_file,get_document_info" {
+			t.Fatalf("fallback calls = %#v", caller.toolLog)
+		}
+		if got := caller.argsLog[2]["folderId"]; got != "root-folder" {
+			t.Fatalf("default commit folderId = %#v", got)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		target, _ := payload["target"].(map[string]any)
+		if payload["verified"] != true || target["source"] != "default_org_root" || target["folderId"] != "root-folder" {
+			t.Fatalf("fallback result = %#v", payload)
+		}
+	})
+
+	t.Run("fallback does not report success when placement readback mismatches", func(t *testing.T) {
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
+			{text: `{"resourceUrl":"https://upload.example.test/object","uploadKey":"key-1"}`},
+			{text: `{"dentryUuid":"node-mismatch"}`},
+			{text: `{"nodeId":"node-mismatch","workspaceId":"wrong-space"}`},
+		}}
+		installScriptedCaller(t, caller)
+		var stdout bytes.Buffer
+		deps.Out.w = &stdout
+		SetHTTPPutFile(func(context.Context, string, map[string]string, string, int64) error { return nil })
+		t.Cleanup(func() { SetHTTPPutFile(nil) })
+
+		cmd := htmlFallbackCommand(t, writeImportFixture(t, "pdf"))
+		_ = cmd.Flags().Set("workspace", "expected-space")
+		err := runImportCommand(cmd, nil, docImportFlowConfig())
+		var structured *apperrors.Error
+		if !errors.As(err, &structured) || structured.Reason != "doc_import_placement_unverified" {
+			t.Fatalf("placement mismatch error = %#v", err)
+		}
+		if stdout.Len() != 0 {
+			t.Fatalf("placement mismatch emitted success output: %s", stdout.String())
 		}
 	})
 
@@ -142,11 +201,12 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 			t.Cleanup(func() { SetHTTPPutFile(nil) })
 
 			cmd := htmlFallbackCommand(t, writeImportFixture(t, ext))
-			if err := runImportCommand(cmd, nil, docImportFallbackTestConfig()); err != nil {
+			_ = cmd.Flags().Set("workspace", "ws-1")
+			if err := runImportCommand(cmd, nil, docImportFlowConfig()); err != nil {
 				t.Fatalf("runImportCommand(%s) error = %v, want upload fallback success", ext, err)
 			}
-			if caller.tool != "commit_uploaded_file" {
-				t.Fatalf("%s last tool = %q, want commit_uploaded_file", ext, caller.tool)
+			if caller.tool != "get_document_info" {
+				t.Fatalf("%s last tool = %q, want get_document_info", ext, caller.tool)
 			}
 		}
 	})
@@ -159,11 +219,12 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 
 		path := writeImportFixture(t, "HTM")
 		cmd := htmlFallbackCommand(t, "")
-		if err := runImportCommand(cmd, []string{path}, docImportFallbackTestConfig()); err != nil {
+		_ = cmd.Flags().Set("workspace", "ws-1")
+		if err := runImportCommand(cmd, []string{path}, docImportFlowConfig()); err != nil {
 			t.Fatalf("runImportCommand() error = %v, want upload fallback success", err)
 		}
-		if caller.tool != "commit_uploaded_file" {
-			t.Fatalf("last tool = %q, want commit_uploaded_file", caller.tool)
+		if caller.tool != "get_document_info" {
+			t.Fatalf("last tool = %q, want get_document_info", caller.tool)
 		}
 	})
 
@@ -180,7 +241,7 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 		if err := runImportCommand(cmd, nil, docImportFallbackTestConfig()); err != nil {
 			t.Fatalf("runImportCommand() error = %v, want upload fallback success", err)
 		}
-		if got := caller.args["folderId"]; got != "folder-abc" {
+		if got := caller.argsLog[1]["folderId"]; got != "folder-abc" {
 			t.Fatalf("commit folderId = %v, want folder-abc from --folder-id alias", got)
 		}
 	})
@@ -198,7 +259,8 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 			t.Fatal(err)
 		}
 		cmd := htmlFallbackCommand(t, noExt)
-		if err := runImportCommand(cmd, nil, docImportFallbackTestConfig()); err != nil {
+		_ = cmd.Flags().Set("workspace", "ws-1")
+		if err := runImportCommand(cmd, nil, docImportFlowConfig()); err != nil {
 			t.Fatalf("runImportCommand() error = %v, want upload fallback success", err)
 		}
 		if !strings.Contains(warnings.String(), "无扩展名") {
@@ -306,7 +368,8 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 				t.Cleanup(func() { SetHTTPPutFile(nil) })
 
 				cmd := htmlFallbackCommand(t, writeImportFixture(t, "html"))
-				err := runImportCommand(cmd, nil, docImportFallbackTestConfig())
+				_ = cmd.Flags().Set("workspace", "ws-1")
+				err := runImportCommand(cmd, nil, docImportFlowConfig())
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 					t.Fatalf("runImportCommand() error = %v, want %q", err, tc.wantErr)
 				}
@@ -334,7 +397,8 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 				t.Cleanup(func() { SetHTTPPutFile(nil) })
 
 				cmd := htmlFallbackCommand(t, writeImportFixture(t, "html"))
-				err := runImportCommand(cmd, nil, docImportFallbackTestConfig())
+				_ = cmd.Flags().Set("workspace", "ws-1")
+				err := runImportCommand(cmd, nil, docImportFlowConfig())
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 					t.Fatalf("runImportCommand() error = %v, want %q", err, tc.wantErr)
 				}
@@ -346,6 +410,7 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{
 			{text: `{"resourceUrl":"https://upload.example.test/object","uploadKey":"key-1"}`},
 			{text: `{"result":{"dentryUuid":"nested-node-9"}}`},
+			{text: `{"fileId":"nested-node-9","workspaceId":"ws-1"}`},
 		}}
 		installScriptedCaller(t, caller)
 		var stdout bytes.Buffer
@@ -354,7 +419,8 @@ func TestCrossPlatformCoverageDocImportHTMLUploadRedirect(t *testing.T) {
 		t.Cleanup(func() { SetHTTPPutFile(nil) })
 
 		cmd := htmlFallbackCommand(t, writeImportFixture(t, "html"))
-		if err := runImportCommand(cmd, nil, docImportFallbackTestConfig()); err != nil {
+		_ = cmd.Flags().Set("workspace", "ws-1")
+		if err := runImportCommand(cmd, nil, docImportFlowConfig()); err != nil {
 			t.Fatalf("runImportCommand() error = %v", err)
 		}
 		var payload map[string]any

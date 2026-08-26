@@ -40,17 +40,17 @@ ID/URL 直用;标题先搜索,唯一命中再执行.顺序:稳定 ID → shortcu
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
 | <!-- dws-intent: doc.search.by_title -->按标题或主题定位文档 | `dws doc +search --query <精确标题>` | `complete=true,count=0,failures=[]` 即权威零命中：如实报告；禁缩词、跨产品、无 query/无端 `--page-all` |
-| 最近访问文档 | `dws doc +search`（省略 `--query`） | `--limit` 为每页量,`--max-items` 为总上限;完整集合才加 `--page-all` 并检查 `complete` |
+| 最近访问或最近编辑文档 | 加载 `dingtalk-drive`，执行 `dws drive +recent [--operate-type 1] --limit <N>` | 默认最近访问，`1` 为最近编辑；不要用 `doc +search` 替代最近列表 |
 | <!-- dws-intent: doc.content.read -->已知 ID/URL 读取正文或局部内容 | `dws doc +fetch --node <ID或URL>` | 术语用 `keyword`;章节 `outline` → `section`;整篇才用 `full` |
-| 聚合查看信息、权限、版本、媒体或评论 | `dws doc +inspect --node <ID或URL>` | 仅打开任务所需的 `--include-*`,不要默认全取 |
+| 聚合查看信息、权限、版本、媒体或评论 | `dws doc +inspect --node <ID或URL>` | 基础元信息默认返回；样式、权限、历史、媒体、评论才用对应 `--include-*`，无 `--include-info` |
 | 新建在线文字文档并写入内容 | `dws doc +create --name <标题> --content <文本\|-\|@文件> [--folder <ID>\|--workspace <ID>]` | 指定位置复用真实 ID,二者互斥;`-`=stdin,禁 `@-`;Runtime 分片回读,不拆写 |
 | <!-- dws-intent: doc.content.update -->追加、覆盖或精确编辑 block | `dws doc +update --node <ID或URL> --command <动作>` | 唯一文本 `str_replace`;章节/block 局部取 ID;整篇才 overwrite |
 | 重要内容更新且需要恢复点 | `dws doc +checkpoint-update` | 自动保存版本,更新并回读;检查 `steps` 和 `compensation` |
 | 版本操作 | `dws doc +version-save --node` / `dws doc +version-list --node` / `dws doc +version-revert --node --version` | 快照/列表/回滚 |
 | <!-- dws-intent: doc.export.format -->导出为 docx/markdown/pdf | `dws doc +export --export-format <格式>` | 格式必须显式指定;普通文件下载切 `dingtalk-drive` |
-| <!-- dws-intent: doc.import.local_file -->本地文件转在线文档 | `dws doc +import --file <相对路径> [--folder <ID>\|--workspace <ID>]` | 位置不改路由;指定位置复用真实 ID，二者互斥；未指定才由 Runtime 取默认根；仅保留原文件走 `dingtalk-drive` |
+| <!-- dws-intent: doc.import.local_file -->本地文件转在线文档 | `dws doc +import --file <相对路径> [--folder <ID>\|--workspace <ID>]` | 指定位置复用真实 ID且二者互斥；未指定才解析唯一组织根目录；成功须回读验证落点；仅保留原文件走 `dingtalk-drive` |
 | 封面/背景 | `+resource-update/+resource-delete`；`+background-update/+background-delete` | 写后 `+inspect --include-style`；禁查 Catalog |
-| 浏览模板 | `dws doc +template-list [--source MY\|PUBLIC]` | “我的/我这边”只查 MY；明确公开才查 PUBLIC；“有哪些/全部”翻页至完整 |
+| 浏览模板 | `dws doc +template-list [--source MY\|PUBLIC] [--page-all]` | “我的/我这边”只查 MY；明确公开才查 PUBLIC；“有哪些/全部”加 `--page-all` 并检查 `complete` |
 | 搜索模板 | `dws doc +template-search --query <名称或关键词>` | 来源可选 MY/PUBLIC；零命中停止，禁止拿无关模板替代；多候选消歧 |
 | 从模板创建 | `dws doc +create-from-template --template-id <唯一ID>` | 已有唯一 templateId 才创建；不重复 list/search |
 | 创建/查评论 | `dws doc +comment-create --node <ID或URL> --content <文字> [--selection <原文>]` / `+review --node <ID或URL>` | node/content 必填；划词也用 `+comment-create`；续操作复用 `commentKey` |
@@ -66,7 +66,7 @@ ID/URL 直用;标题先搜索,唯一命中再执行.顺序:稳定 ID → shortcu
 - 恢复：`partial_success` 只补未完成；`unknown` 先回读、禁重写；`retryable` 仅限明确未开始；权限/参数/认证失败即停。
 - 结果明确且回读匹配才报完成。
 - 搜索/列表检查 `complete`/`hasMore`/cursor/失败项；“全部”翻完页，前 N 条须声明范围。
-- `+import` 后复用 `documentUrl/nodeId`，禁 Drive 重找；中断以 `taskId` 查原任务，禁重导。
+- `+import` 检查 `success=true`、`verified=true`、`taskId/nodeId/documentUrl`；复用返回 ID，禁 Drive 重找；中断查原任务，禁重导。
 - 导出/下载用 cwd 相对路径；`+export` 有 `localPath` 且 `sizeBytes>0` 即终态，禁 `ls/stat`。
 
 ## 参数与安全边界

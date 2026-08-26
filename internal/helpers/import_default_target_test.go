@@ -100,6 +100,26 @@ func runDocImportTargetFlow(t *testing.T, caller *docImportTargetCaller, fileExt
 	cfg.poll.maxPolls = 1
 	cfg.poll.interval = func(int) time.Duration { return 0 }
 	cfg.poll.wait = func(context.Context, time.Duration) error { return nil }
+	if !caller.dryRun {
+		if _, exists := caller.responses["get_document_info"]; !exists {
+			verifiedFolder := folder
+			if verifiedFolder == "" && workspace == "" {
+				verifiedFolder = "root-folder-1"
+			}
+			info := map[string]any{"nodeId": "node-1"}
+			if verifiedFolder != "" {
+				info["folderId"] = verifiedFolder
+			}
+			if workspace != "" {
+				info["workspaceId"] = workspace
+			}
+			encoded, err := json.Marshal(info)
+			if err != nil {
+				t.Fatal(err)
+			}
+			caller.responses["get_document_info"] = []scriptedToolStep{{text: string(encoded)}}
+		}
+	}
 	err := runImportCommand(cmd, nil, cfg)
 	if err != nil {
 		return nil, err
@@ -131,8 +151,8 @@ func TestCrossPlatformCoverageDocImportResolvesUniqueOrgRootBeforeWrite(t *testi
 	if err != nil {
 		t.Fatalf("doc import returned error: %v", err)
 	}
-	if len(caller.calls) != 4 {
-		t.Fatalf("calls = %#v, want resolver plus three import calls", caller.calls)
+	if len(caller.calls) != 5 {
+		t.Fatalf("calls = %#v, want resolver, three import calls, and placement readback", caller.calls)
 	}
 	if got := caller.calls[0]; got.server != "drive" || got.tool != "list_spaces" || !reflect.DeepEqual(got.args, map[string]any{"spaceType": "orgSpace"}) {
 		t.Fatalf("resolver call = %#v", got)
@@ -167,7 +187,7 @@ func TestCrossPlatformCoverageDocImportExplicitTargetSkipsResolver(t *testing.T)
 			if err != nil {
 				t.Fatalf("doc import returned error: %v", err)
 			}
-			if len(caller.calls) != 3 || caller.calls[0].tool != "create_import_session" {
+			if len(caller.calls) != 4 || caller.calls[0].tool != "create_import_session" || caller.calls[3].tool != "get_document_info" {
 				t.Fatalf("explicit target unexpectedly resolved defaults: %#v", caller.calls)
 			}
 			if caller.calls[0].args[test.wantKey] != test.wantValue {
@@ -288,7 +308,7 @@ func TestCrossPlatformCoverageDocImportFallbackResolvesDefaultBeforeUpload(t *te
 		if err != nil {
 			t.Fatalf("fallback import returned error: %v", err)
 		}
-		if len(caller.calls) != 3 || caller.calls[0].tool != "list_spaces" || caller.calls[2].tool != "commit_uploaded_file" {
+		if len(caller.calls) != 4 || caller.calls[0].tool != "list_spaces" || caller.calls[2].tool != "commit_uploaded_file" || caller.calls[3].tool != "get_document_info" {
 			t.Fatalf("fallback calls = %#v", caller.calls)
 		}
 		if got := caller.calls[2].args["folderId"]; got != "root-folder-1" {
