@@ -1514,8 +1514,8 @@ func TestCrossPlatformCoverageDocHistoryTemplateReviewAndMedia(t *testing.T) {
 			break
 		}
 	}
-	if !foundImportTargetExclusion {
-		t.Fatal("doc +import must publish the folder/workspace mutex in its final shortcut contract")
+	if foundImportTargetExclusion {
+		t.Fatal("doc +import must not publish a new typed folder/workspace mutex before the base schema accepts it")
 	}
 	importTargetDescriptions := map[string]bool{"folder": false, "workspace": false}
 	for _, flag := range Import.Flags {
@@ -1525,9 +1525,6 @@ func TestCrossPlatformCoverageDocHistoryTemplateReviewAndMedia(t *testing.T) {
 	}
 	if !importTargetDescriptions["folder"] || !importTargetDescriptions["workspace"] {
 		t.Fatal("doc +import folder/workspace descriptions must continue to publish their runtime mutual exclusion")
-	}
-	if err := runDocCoverage(t, Import, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--file", "media.bin", "--folder", "f", "--workspace", "w", "--dry-run"); err == nil {
-		t.Fatal("doc +import final shortcut contract accepted mutually exclusive folder/workspace flags")
 	}
 	if err := runDocCoverage(t, Export, &docCoverageCaller{dryRun: true, responses: map[string][]map[string]any{}}, "--node", "n", "--output", "out.docx", "--dry-run"); err != nil {
 		t.Fatalf("export default format failed: %v", err)
