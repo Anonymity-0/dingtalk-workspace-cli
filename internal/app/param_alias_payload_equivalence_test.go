@@ -1591,7 +1591,7 @@ func paramAliasExpectedCaptureBoundaryError(command string, err error) bool {
 	case "chat +messages-resource-download":
 		return strings.Contains(err.Error(), "资源下载接口未返回合法的 HTTPS 下载地址")
 	case "drive +download", "drive +version-download":
-		return strings.Contains(err.Error(), "下载地址必须是受信任域名上的 HTTPS URL")
+		return strings.Contains(err.Error(), "下载地址必须是合法的 HTTPS URL")
 	case "drive +upload":
 		return strings.Contains(err.Error(), "incomplete drive upload credentials")
 	default:
