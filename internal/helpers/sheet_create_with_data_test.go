@@ -1251,9 +1251,40 @@ func TestCrossPlatformCoverageSheetReadbackRetryBoundaries(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageAddCreatedSheetIDRejectsInvalidResponses(t *testing.T) {
-	for _, text := range []string{"{", "null", `{"result":null}`, `{"result":[]}`} {
+	for _, text := range []string{"{", "null"} {
 		if _, err := addCreatedSheetID(text, "N", "S"); err == nil {
 			t.Fatalf("addCreatedSheetID(%q) returned success", text)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageAddCreatedSheetIDKeepsOuterObjectForNonObjectResult(t *testing.T) {
+	for _, text := range []string{
+		`{"nodeId":"server-node","docUrl":"https://example.test/sheet","result":null}`,
+		`{"nodeId":"server-node","docUrl":"https://example.test/sheet","result":[]}`,
+		`{"nodeId":"server-node","docUrl":"https://example.test/sheet","result":"ok"}`,
+		`{"nodeId":"server-node","docUrl":"https://example.test/sheet","result":0}`,
+	} {
+		got, err := addCreatedSheetID(text, "probed-node", "probed-sheet")
+		if err != nil {
+			t.Fatalf("addCreatedSheetID(%s): %v", text, err)
+		}
+		var result map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(got), &result); err != nil {
+			t.Fatal(err)
+		}
+		for key, want := range map[string]string{
+			"nodeId":  "probed-node",
+			"sheetId": "probed-sheet",
+			"docUrl":  "https://example.test/sheet",
+		} {
+			var value string
+			if err := json.Unmarshal(result[key], &value); err != nil || value != want {
+				t.Fatalf("%s = %q, err=%v; want %q in %s", key, value, err, want, got)
+			}
+		}
+		if _, ok := result["result"]; !ok {
+			t.Fatalf("outer business result field was dropped: %s", got)
 		}
 	}
 }

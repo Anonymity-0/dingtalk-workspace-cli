@@ -1414,10 +1414,13 @@ func addCreatedSheetID(text, nodeID, sheetID string) (string, error) {
 	}
 	if wrapped, ok := result["result"]; ok {
 		var unwrapped map[string]json.RawMessage
-		if err := json.Unmarshal(wrapped, &unwrapped); err != nil || unwrapped == nil {
-			return "", fmt.Errorf("创建响应 result 不是 JSON 对象")
+		// 与 unwrapSheetResult 保持同一层选择规则：只有 result 确实是
+		// JSON object 时才把它视为 transport wrapper。null、数组、字符串或
+		// 数字都只是外层业务对象中的普通字段，继续投影外层回执，不能在创建、
+		// 写入和校验都成功后因一个非对象 result 字段丢失 nodeId/sheetId。
+		if err := json.Unmarshal(wrapped, &unwrapped); err == nil && unwrapped != nil {
+			result = unwrapped
 		}
-		result = unwrapped
 	}
 	// nodeID / sheetID 均为 Go 字符串，Quote 生成的内容必为合法 JSON 字符串；
 	// 无需对不可能失败的 json.Marshal(string) 再增加错误分支。

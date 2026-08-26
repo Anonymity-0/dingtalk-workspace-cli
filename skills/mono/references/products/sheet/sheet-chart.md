@@ -42,7 +42,7 @@ properties 顶层必须同时包含 position、dimensions、chart，可选 offse
 |---|---|
 | `title` | `show:boolean`、`text:string` |
 | `legend` | `show:boolean`；`pos` 仅为 `t` / `b` / `l` / `r` / `none` |
-| `catAx` / `valAx` | `show:boolean`、`pos:l/t/b/r`、`titleConfig:{show,title}`、`axisMin:number|null`、`axisMax:number|null`、`splitLine:boolean`、`minorSplitLine:boolean`、`axisLabel:boolean`、`axisLine:boolean` |
+| `catAx` / `valAx` | `show:boolean`、`pos:l/t/b/r`、`titleConfig:{show,title}`、`axisMin` / `axisMax` 为 `number` / `null`、`splitLine:boolean`、`minorSplitLine:boolean`、`axisLabel:boolean`、`axisLine:boolean` |
 
 未列出的字段或枚举以精确 leaf Schema 为准，不猜测；更新时仍须先读完整对象再整体回写。
 

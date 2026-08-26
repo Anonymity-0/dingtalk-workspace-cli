@@ -66,4 +66,30 @@ func TestCrossPlatformCoverageSheetSkillRoutesImportTemplatesAndValidation(t *te
 			}
 		}
 	}
+
+	chartReferences := []string{
+		filepath.Join(root, "skills", "multi", "dingtalk-misc", "references", "sheet", "sheet-chart.md"),
+		filepath.Join(root, "skills", "mono", "references", "products", "sheet", "sheet-chart.md"),
+	}
+	for _, path := range chartReferences {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		text := string(content)
+		for _, required := range []string{
+			"`axisMin` / `axisMax` 为 `number` / `null`",
+			"`splitLine:boolean`",
+			"`minorSplitLine:boolean`",
+			"`axisLabel:boolean`",
+			"`axisLine:boolean`",
+		} {
+			if !strings.Contains(text, required) {
+				t.Errorf("%s missing chart axis contract %q", path, required)
+			}
+		}
+		if strings.Contains(text, "number|null") {
+			t.Errorf("%s contains an unescaped GFM table separator", path)
+		}
+	}
 }
