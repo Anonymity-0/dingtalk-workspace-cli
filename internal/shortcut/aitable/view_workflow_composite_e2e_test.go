@@ -146,6 +146,44 @@ func TestCrossPlatformCoverageViewPresetAmbiguousOrMismatchedIsNotSuccessE2E(t *
 	})
 }
 
+func TestCrossPlatformCoverageViewPresetNormalizationHelpers(t *testing.T) {
+	if !presetViewMatches(
+		map[string]any{"viewType": "Grid"},
+		"Grid",
+		map[string]any{"filter": []any{}, "sort": []any{}, "group": []any{}},
+	) {
+		t.Fatal("missing persisted empty filter/sort/group should match requested empties")
+	}
+	normalized := normalizePresetViewConfig(map[string]any{"sort": nil, "group": nil, "other": "value"})
+	if sortItems, ok := normalized["sort"].([]any); !ok || len(sortItems) != 0 {
+		t.Fatalf("normalized nil sort = %#v", normalized["sort"])
+	}
+	if groupItems, ok := normalized["group"].([]any); !ok || len(groupItems) != 0 || normalized["other"] != "value" {
+		t.Fatalf("normalized nil group/default = %#v", normalized)
+	}
+	if filter, ok := normalizePresetViewFilter(nil).(map[string]any); !ok || filter["operator"] != "and" {
+		t.Fatalf("normalized nil filter = %#v", filter)
+	}
+	group := map[string]any{"operator": "and", "operands": []any{map[string]any{"fieldId": "f1"}}}
+	if filter, ok := normalizePresetViewFilter([]any{group}).(map[string]any); !ok || filter["operator"] != "and" {
+		t.Fatalf("normalized single filter group = %#v", filter)
+	}
+	if items, ok := normalizePresetViewFilter([]any{"not-a-group"}).([]any); !ok || len(items) != 1 {
+		t.Fatalf("non-group filter list changed = %#v", items)
+	}
+	if !emptyPresetViewConfigValue("sort", []any{}) || emptyPresetViewConfigValue("sort", "bad") {
+		t.Fatal("sort empty equivalence mismatch")
+	}
+	if !emptyPresetViewConfigValue("filter", map[string]any{"operator": "and", "operands": []any{}}) {
+		t.Fatal("empty filter group was not recognized")
+	}
+	if emptyPresetViewConfigValue("filter", map[string]any{"operator": "or", "operands": []any{}}) ||
+		emptyPresetViewConfigValue("filter", map[string]any{"operator": "and", "operands": "bad"}) ||
+		emptyPresetViewConfigValue("other", nil) {
+		t.Fatal("non-empty preset config was accepted as empty")
+	}
+}
+
 func TestCrossPlatformCoverageWorkflowDeployCreateEnableAndVerifyE2E(t *testing.T) {
 	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
 		{text: `{"data":{"valid":true,"flowId":"w1","issues":[]}}`},
@@ -184,6 +222,18 @@ func TestCrossPlatformCoverageWorkflowDeployReportsActualStateWithoutEnableE2E(t
 	}
 	if strings.Contains(out, `"enable": false`) || len(caller.calls) != 3 {
 		t.Fatalf("workflow request intent/status projection = output:%q calls:%#v", out, caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageWorkflowDeployWithoutEnableToleratesStatusReadFailureE2E(t *testing.T) {
+	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+		{text: `{"data":{"valid":true,"flowId":"w1","issues":[]}}`},
+		{text: `{"data":{"name":"提醒","flowSchema":{}}}`},
+		{err: errors.New("list unavailable")},
+	}}
+	out, err := runAITableCompositeCLI(t, caller, "+workflow-deploy", "--base-id", "base", "--dsl", workflowDSLFixture, "--yes")
+	if err != nil || !strings.Contains(out, "workflow status could not be read from list") || strings.Contains(out, `"running"`) {
+		t.Fatalf("workflow status fallback = output:%q err:%v", out, err)
 	}
 }
 

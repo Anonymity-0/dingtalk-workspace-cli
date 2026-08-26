@@ -181,6 +181,27 @@ func TestCrossPlatformCoverageTableCopyRetriesEventuallyConsistentRecordReadback
 	}
 }
 
+func TestCrossPlatformCoverageTableCopyReadbackWaitFailureStopsSafelyE2E(t *testing.T) {
+	waitErr := errors.New("read-back wait cancelled")
+	testseam.Swap(t, &tableCopyRecordReadbackWait, func(context.Context, time.Duration) error {
+		return waitErr
+	})
+	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+		{text: mustJSONText(t, map[string]any{"fields": []any{sourceFieldFixture()}})},
+		{text: `{"records":[{"recordId":"sr1","cells":{"sf1":"完成"}}]}`},
+		{text: `{"data":{"tableId":"target-table"}}`},
+		{text: mustJSONText(t, map[string]any{"fields": []any{targetFieldFixture()}})},
+		{text: `{"data":{"newRecordIds":["tr1"]}}`},
+		{text: `{"records":[]}`},
+	}}
+	out, err := runAITableCompositeCLI(t, caller, "+table-copy",
+		"--source-base-id", "source-base", "--source-table-id", "source-table",
+		"--target-base-id", "target-base", "--new-name", "任务副本", "--include-records", "--yes")
+	if err == nil || out != "" || !errors.Is(err, waitErr) {
+		t.Fatalf("read-back wait failure = output:%q err:%v", out, err)
+	}
+}
+
 func TestCrossPlatformCoverageTableCopyReadbackExhaustionPreservesKnownCreatedIDsE2E(t *testing.T) {
 	waits := make([]time.Duration, 0)
 	testseam.Swap(t, &tableCopyRecordReadbackWait, func(_ context.Context, delay time.Duration) error {

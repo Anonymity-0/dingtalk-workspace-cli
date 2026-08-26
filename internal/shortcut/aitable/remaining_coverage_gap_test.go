@@ -394,6 +394,15 @@ func TestCrossPlatformCoverageWorkflowPureResponseHelpers(t *testing.T) {
 	if _, err := workflowDetail(map[string]any{"flowId": "other", "flowSchema": map[string]any{}}, "w", ""); err == nil {
 		t.Fatal("workflow detail with conflicting ID must fail")
 	}
+	if _, err := workflowDetail(map[string]any{"flowId": 1, "flowSchema": map[string]any{}}, "w", ""); err == nil {
+		t.Fatal("workflow detail with non-string ID must fail")
+	}
+	if _, err := workflowDetail(map[string]any{"flowSchema": "bad"}, "w", ""); err == nil {
+		t.Fatal("workflow detail with malformed flowSchema must fail")
+	}
+	if _, err := workflowDetail(map[string]any{"name": "其他", "flowSchema": map[string]any{}}, "w", "提醒"); err == nil {
+		t.Fatal("workflow detail with unexpected name must fail")
+	}
 	if _, err := workflowDetail(map[string]any{"name": "提醒"}, "w", "提醒"); err == nil {
 		t.Fatal("workflow detail without flowSchema must fail")
 	}
