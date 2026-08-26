@@ -17,6 +17,8 @@ MAX_ITEMS = 30
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_PRIORITIES = {10, 20, 30, 40}
 PLAN_DIGEST_DOMAIN = b"dws-todo-batch-plan-v1\x00"
+MIN_EPOCH_MILLISECONDS = 1_000_000_000_000
+MAX_EPOCH_MILLISECONDS = 9_999_999_999_999
 
 
 class ScriptError(RuntimeError):
@@ -97,8 +99,15 @@ def normalize_due(value: Any) -> Optional[str]:
         return None
     raw = str(value).strip()
     if raw.isdigit():
+        milliseconds = int(raw)
+        if not MIN_EPOCH_MILLISECONDS <= milliseconds <= MAX_EPOCH_MILLISECONDS:
+            raise ScriptError(
+                "epoch-millisecond due time must be a 13-digit value "
+                f"between {MIN_EPOCH_MILLISECONDS} and {MAX_EPOCH_MILLISECONDS}: "
+                f"{raw}"
+            )
         try:
-            return datetime.fromtimestamp(int(raw) / 1000, TIMEZONE).isoformat()
+            return datetime.fromtimestamp(milliseconds / 1000, TIMEZONE).isoformat()
         except (OSError, OverflowError, ValueError) as exc:
             raise ScriptError(f"invalid epoch-millisecond due time: {raw}") from exc
     if len(raw) == 10:

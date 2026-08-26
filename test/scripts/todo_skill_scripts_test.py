@@ -448,6 +448,45 @@ class TodoBatchCreateTest(unittest.TestCase):
         self.assertEqual(confirmed_digest, payload["confirmedPlanDigest"])
         self.assertNotEqual(confirmed_digest, payload["actualPlanDigest"])
 
+    def test_short_numeric_due_stops_before_first_dws_call(self):
+        for due in ("0", "123", "2026", "0000000000123"):
+            with self.subTest(due=due), tempfile.TemporaryDirectory() as raw:
+                source = Path(raw) / "todos.json"
+                source.write_text(
+                    json.dumps(
+                        [
+                            {
+                                "title": "must not be created",
+                                "executors": "user1",
+                                "due": due,
+                            }
+                        ]
+                    ),
+                    encoding="utf-8",
+                )
+                stdout = io.StringIO()
+                with mock.patch.object(BATCH.subprocess, "run") as run_dws:
+                    with contextlib.redirect_stdout(stdout):
+                        code = BATCH.run(
+                            [
+                                str(source),
+                                "--yes",
+                                "--confirm-digest",
+                                "sha256:" + "0" * 64,
+                            ]
+                        )
+                self.assertEqual(2, code)
+                run_dws.assert_not_called()
+                payload = json.loads(stdout.getvalue())
+                self.assertFalse(payload["complete"])
+                self.assertIn("13-digit", payload["error"])
+
+    def test_modern_epoch_millisecond_due_is_accepted(self):
+        self.assertEqual(
+            "2025-01-01T08:00:00+08:00",
+            BATCH.normalize_due("1735689600000"),
+        )
+
     def test_possible_commit_is_preserved_as_unknown(self):
         with tempfile.TemporaryDirectory() as raw:
             source = Path(raw) / "todos.json"
