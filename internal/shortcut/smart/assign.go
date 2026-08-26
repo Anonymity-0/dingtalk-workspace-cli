@@ -53,7 +53,7 @@ var Assign = shortcut.Shortcut{
 			PrimaryCLIPath: "todo +assign",
 		},
 		Description: "按姓名给某人创建并指派一条待办（自动解析 userId）",
-		DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewPlan, RemoteReads: false},
+		DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewPlan, RemoteReads: true},
 		Result:      &contract.ResultSpec{Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess}, DataSchema: json.RawMessage(`{"type":"object","description":"已验证的单人指派待办","properties":{"taskId":{"type":"string","description":"新待办稳定 taskId"},"subject":{"type":"string","description":"待办标题"},"executorId":{"type":"string","description":"解析出的执行人 userId"},"verified":{"type":"boolean","description":"是否完成详情读回核验"}},"required":["taskId","subject","executorId","verified"],"additionalProperties":false}`)},
 		Interface: &contract.InterfaceSpec{
 			Mode:         "composite",
@@ -61,10 +61,11 @@ var Assign = shortcut.Shortcut{
 			Reason:       "Reviewed built-in shortcut adapter: the executable CLI owns validation, optional multi-step orchestration, output projection, and confirmation; the complete command contract is not represented by one pinned MCP interface_ref.",
 		},
 		Selection: contract.SelectionSpec{
-			AgentSummary: "按姓名给某人创建并指派一条待办（自动解析 userId）",
-			UseWhen:      []string{"当你想把一件事指派给某位同事、但只知道对方姓名不想先查 userId 时使用；内部先按姓名解析出唯一 userId，再创建待办并把 TA 设为执行人。会真实创建待办。"},
-			AvoidWhen:    []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
-			Examples:     []string{"dws todo +assign --to 张三 --task \"整理周报\""},
+			AgentSummary:        "按姓名给某人创建并指派一条待办（自动解析 userId）",
+			UseWhen:             []string{"当你想把一件事指派给某位同事、但只知道对方姓名不想先查 userId 时使用；内部先按姓名解析出唯一 userId，再创建待办并把 TA 设为执行人。会真实创建待办。"},
+			AvoidWhen:           []string{"需要该 Shortcut 未公开的底层参数、原始响应或不同执行语义时，改用对应原子命令"},
+			Examples:            []string{"dws todo +assign --to 张三 --task \"整理周报\""},
+			ExampleDispositions: todoStatefulPreviewExampleDispositions(),
 		},
 	},
 	Flags: []shortcut.Flag{
@@ -85,18 +86,17 @@ var Assign = shortcut.Shortcut{
 				return err
 			}
 		}
-		if rt.DryRun() {
-			preview := map[string]any{"dryRun": true, "executed": false, "preview_kind": "plan", "subject": task, "assigneeQuery": name}
-			if dueProvided {
-				preview["dueTime"] = dueMillis
-			}
-			return rt.Output(preview)
-		}
-
 		// Step 1 — resolve the assignee name to a unique userId.
 		user, err := resolveUser(rt, name)
 		if err != nil {
 			return err
+		}
+		if rt.DryRun() {
+			preview := map[string]any{"dryRun": true, "executed": false, "preview_kind": "plan", "subject": task, "assigneeQuery": name, "executorId": user.userID}
+			if dueProvided {
+				preview["dueTime"] = dueMillis
+			}
+			return rt.Output(preview)
 		}
 
 		// Step 2 — create the todo with that user as executor. create_personal_todo

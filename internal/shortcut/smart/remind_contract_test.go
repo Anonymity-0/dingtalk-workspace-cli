@@ -73,16 +73,20 @@ func TestRemindShortcutRejectsInvalidAtBeforeTodoCreate(t *testing.T) {
 func TestTodoCreateShortcutsPreserveEpochZeroDueTime(t *testing.T) {
 	const epoch = "1970-01-01T00:00:00Z"
 	tests := []struct {
-		name     string
-		flag     string
-		dryArgs  []string
-		liveArgs []string
+		name         string
+		flag         string
+		dryArgs      []string
+		liveArgs     []string
+		drySteps     map[string][]calendarSmartTestStep
+		wantDryCalls int
 	}{
 		{
-			name:     "assign due",
-			flag:     "due",
-			dryArgs:  []string{"todo", "+assign", "--to", "张三", "--task", "交周报", "--due", epoch, "--dry-run", "--yes"},
-			liveArgs: []string{"todo", "+assign", "--to", "张三", "--task", "交周报", "--due", epoch, "--yes"},
+			name:         "assign due",
+			flag:         "due",
+			dryArgs:      []string{"todo", "+assign", "--to", "张三", "--task", "交周报", "--due", epoch, "--dry-run", "--yes"},
+			liveArgs:     []string{"todo", "+assign", "--to", "张三", "--task", "交周报", "--due", epoch, "--yes"},
+			drySteps:     map[string][]calendarSmartTestStep{"contact/search_contact_by_key_word": {{text: smartContact().text}}},
+			wantDryCalls: 1,
 		},
 		{
 			name:     "remind at",
@@ -94,7 +98,7 @@ func TestTodoCreateShortcutsPreserveEpochZeroDueTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			previewCaller := &calendarSmartTestCaller{}
+			previewCaller := &calendarSmartTestCaller{steps: tt.drySteps}
 			preview, _, err := runCalendarSmartCLI(t, previewCaller, tt.dryArgs...)
 			if err != nil {
 				t.Fatalf("dry-run with --%s: %v", tt.flag, err)
@@ -102,8 +106,11 @@ func TestTodoCreateShortcutsPreserveEpochZeroDueTime(t *testing.T) {
 			if got, exists := preview["dueTime"]; !exists || got != float64(0) {
 				t.Fatalf("dry-run dueTime = %#v, exists=%v, want numeric zero", got, exists)
 			}
-			if len(previewCaller.calls) != 0 {
-				t.Fatalf("dry-run tool calls = %#v, want none", previewCaller.calls)
+			if got := len(previewCaller.calls); got != tt.wantDryCalls {
+				t.Fatalf("dry-run tool calls = %#v", previewCaller.calls)
+			}
+			if previewCaller.counts["todo/create_personal_todo"] != 0 {
+				t.Fatalf("dry-run attempted a write: %#v", previewCaller.calls)
 			}
 
 			fake := &platformCoverageCaller{}
