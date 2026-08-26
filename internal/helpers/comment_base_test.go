@@ -14,14 +14,45 @@
 package helpers
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 	"github.com/spf13/cobra"
 )
+
+type commentRepliesCaller struct {
+	responses []string
+	calls     []docCommentMutationCall
+	dryRun    bool
+}
+
+func (c *commentRepliesCaller) CallTool(_ context.Context, productID, toolName string, args map[string]any) (*edition.ToolResult, error) {
+	copied := make(map[string]any, len(args))
+	for key, value := range args {
+		copied[key] = value
+	}
+	c.calls = append(c.calls, docCommentMutationCall{productID: productID, toolName: toolName, args: copied})
+	response := `{"result":{"scope":"DIRECT","replyList":[],"complete":true,"scannedCount":0,"stopReason":"END"}}`
+	if index := len(c.calls) - 1; index < len(c.responses) {
+		response = c.responses[index]
+	}
+	return &edition.ToolResult{Content: []edition.ContentBlock{{Type: "text", Text: response}}}, nil
+}
+
+func (*commentRepliesCaller) Format() string { return "json" }
+func (c *commentRepliesCaller) DryRun() bool { return c.dryRun }
+func (*commentRepliesCaller) Fields() string { return "" }
+func (*commentRepliesCaller) JQ() string     { return "" }
 
 func executeCommentBaseCommand(t *testing.T, caller *docCommentMutationCaller, surface string, args ...string) error {
 	t.Helper()
@@ -36,9 +67,12 @@ func executeCommentBaseCommand(t *testing.T, caller *docCommentMutationCaller, s
 	deps.Out.w = io.Discard
 	os.Args = []string{"dws", surface}
 	var cmd *cobra.Command
-	if surface == "sheet" {
+	switch surface {
+	case "sheet":
 		cmd = newSheetCommand()
-	} else {
+	case "drive":
+		cmd = newDriveCommand()
+	default:
 		cmd = newDocCommand()
 	}
 	cmd.PersistentFlags().Bool("yes", false, "skip confirmation")
@@ -48,21 +82,179 @@ func executeCommentBaseCommand(t *testing.T, caller *docCommentMutationCaller, s
 	return cmd.Execute()
 }
 
-func TestCrossPlatformCoverageCommentBaseCommandsRegisteredForDocAndSheet(t *testing.T) {
+func executeCommentRepliesCommand(t *testing.T, caller *commentRepliesCaller, surface string, args ...string) (map[string]any, error) {
+	t.Helper()
+	previousDeps := deps
+	previousArgs := os.Args
+	defer func() {
+		deps = previousDeps
+		os.Args = previousArgs
+	}()
+
+	InitDeps(caller)
+	deps.Out.w = io.Discard
+	os.Args = []string{"dws", surface}
+	var cmd *cobra.Command
+	switch surface {
+	case "sheet":
+		cmd = newSheetCommand()
+	case "drive":
+		cmd = newDriveCommand()
+	default:
+		cmd = newDocCommand()
+	}
+	cmd.PersistentFlags().Bool("yes", false, "skip confirmation")
+	cmd.PersistentFlags().String("format", "json", "output format")
+	ctx, _ := output.WithResultStore(context.Background())
+	cmd.SetContext(ctx)
+	cmd.PersistentPostRunE = func(executed *cobra.Command, _ []string) error {
+		_, _, err := output.EmitStoredResult(executed)
+		return err
+	}
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs(args)
+	err := cmd.ExecuteContext(ctx)
+	if stdout.Len() == 0 {
+		return nil, err
+	}
+	var payload map[string]any
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &payload); decodeErr != nil {
+		t.Fatalf("stdout is not JSON: %q: %v", stdout.String(), decodeErr)
+	}
+	return payload, err
+}
+
+func TestCrossPlatformCoverageCommentBaseCommandsRegisteredForDocSheetAndDrive(t *testing.T) {
 	for _, surface := range []struct {
 		name string
 		cmd  *cobra.Command
 	}{
 		{name: "doc", cmd: newDocCommand()},
 		{name: "sheet", cmd: newSheetCommand()},
+		{name: "drive", cmd: newDriveCommand()},
 	} {
-		for _, leaf := range []string{"batch-query", "resolve", "restore", "react-reply"} {
+		for _, leaf := range []string{"batch-query", "resolve", "restore", "react-reply", "list-replies"} {
 			cmd, remaining, err := surface.cmd.Find([]string{"comment", leaf})
 			if err != nil || len(remaining) != 0 {
 				t.Fatalf("dws %s comment %s not registered: cmd=%v remaining=%v err=%v",
 					surface.name, leaf, cmd, remaining, err)
 			}
 		}
+	}
+}
+
+func TestCrossPlatformCoverageCommentListRepliesProjectsTwoPages(t *testing.T) {
+	caller := &commentRepliesCaller{responses: []string{
+		`{"result":{"scope":"DIRECT","topicId":"global","commentKey":"root-1","replyList":[{"commentKey":"reply-1","replyToCommentKey":"root-1","content":"first","creatorId":"u-1","createTime":100,"updateTime":101,"isEmoji":false}],"complete":false,"nextPageToken":"cursor-2","scannedCount":300,"stopReason":"SCAN_LIMIT"}}`,
+		`{"result":{"scope":"DIRECT","topicId":"global","commentKey":"root-1","replyList":[{"commentKey":"reply-2","replyToCommentKey":"root-1","content":"鼓掌","isEmoji":true}],"complete":true,"scannedCount":17,"stopReason":"END"}}`,
+	}}
+
+	first, err := executeCommentRepliesCommand(t, caller, "doc",
+		"comment", "list-replies", "--node", "doc-1", "--topic-id", "global",
+		"--comment-key", "root-1", "--page-size", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := executeCommentRepliesCommand(t, caller, "sheet",
+		"comment", "list-replies", "--node", "sheet-1", "--topic-id", "global",
+		"--comment-key", "root-1", "--page-token", "cursor-2", "--page-size", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantCalls := []docCommentMutationCall{
+		{productID: commentServer, toolName: commentListRepliesTool, args: map[string]any{
+			"nodeId": "doc-1", "topicId": "global", "commentKey": "root-1", "pageSize": 1,
+		}},
+		{productID: commentServer, toolName: commentListRepliesTool, args: map[string]any{
+			"nodeId": "sheet-1", "topicId": "global", "commentKey": "root-1", "pageSize": 1, "pageToken": "cursor-2",
+		}},
+	}
+	if !reflect.DeepEqual(caller.calls, wantCalls) {
+		t.Fatalf("calls = %#v, want %#v", caller.calls, wantCalls)
+	}
+
+	firstData := first["data"].(map[string]any)
+	if firstData["scope"] != "DIRECT" || firstData["complete"] != false ||
+		firstData["scannedCount"] != float64(300) || firstData["stopReason"] != "SCAN_LIMIT" {
+		t.Fatalf("first data = %#v", firstData)
+	}
+	firstPagination := first["meta"].(map[string]any)["pagination"].(map[string]any)
+	if firstPagination["endpoint_exhausted"] != false || firstPagination["next_token"] != "cursor-2" {
+		t.Fatalf("first pagination = %#v", firstPagination)
+	}
+
+	secondData := second["data"].(map[string]any)
+	secondReplies := secondData["replies"].([]any)
+	if len(secondReplies) != 1 || secondReplies[0].(map[string]any)["isEmoji"] != true {
+		t.Fatalf("second replies = %#v", secondReplies)
+	}
+	secondPagination := second["meta"].(map[string]any)["pagination"].(map[string]any)
+	if secondPagination["endpoint_exhausted"] != true {
+		t.Fatalf("second pagination = %#v", secondPagination)
+	}
+}
+
+func TestCrossPlatformCoverageCommentListRepliesPublishesSchemaContract(t *testing.T) {
+	for _, surface := range []struct {
+		name string
+		cmd  *cobra.Command
+	}{
+		{name: "doc", cmd: newDocCommand()},
+		{name: "sheet", cmd: newSheetCommand()},
+		{name: "drive", cmd: newDriveCommand()},
+	} {
+		leaf, remaining, err := surface.cmd.Find([]string{"comment", "list-replies"})
+		if err != nil || len(remaining) != 0 {
+			t.Fatalf("%s list-replies lookup: remaining=%v err=%v", surface.name, remaining, err)
+		}
+		final, ok := contractfinal.RuntimeContractFinal(leaf)
+		if !ok || final.Identity == nil || final.Interface == nil || final.Result == nil || final.Pagination == nil {
+			t.Fatalf("%s list-replies incomplete ContractFinal: %#v", surface.name, final)
+		}
+		if final.Identity.CanonicalPath != surface.name+".list_replies" ||
+			final.Interface.Ref == nil || final.Interface.Ref.ProductID != commentServer || final.Interface.Ref.RPCName != commentListRepliesTool {
+			t.Fatalf("%s identity/interface = %#v", surface.name, final)
+		}
+		if final.Pagination.Kind != contract.PaginationKindCursor || final.Pagination.CursorParameter != "page-token" ||
+			final.Pagination.MetaPath != contract.PaginationMetaPath {
+			t.Fatalf("%s pagination = %#v", surface.name, final.Pagination)
+		}
+		if output.CommandRollout(leaf) != output.RolloutUnifiedActive {
+			t.Fatalf("%s rollout = %s", surface.name, output.CommandRollout(leaf))
+		}
+	}
+}
+
+func TestCrossPlatformCoverageDriveCommentListRepliesInjectsGlobalTopic(t *testing.T) {
+	caller := &commentRepliesCaller{responses: []string{
+		`{"result":{"scope":"DIRECT","topicId":"global","commentKey":"root-1","replyList":[],"complete":true,"scannedCount":0,"stopReason":"END"}}`,
+	}}
+	payload, err := executeCommentRepliesCommand(t, caller, "drive",
+		"comment", "list-replies", "--node", "file-1",
+		"--comment-key", "root-1", "--page-size", "20")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantArgs := map[string]any{
+		"nodeId": "file-1", "topicId": driveCommentGlobalTopic,
+		"commentKey": "root-1", "pageSize": 20,
+	}
+	if len(caller.calls) != 1 || caller.calls[0].toolName != commentListRepliesTool ||
+		!reflect.DeepEqual(caller.calls[0].args, wantArgs) {
+		t.Fatalf("calls = %#v, want args %#v", caller.calls, wantArgs)
+	}
+	data := payload["data"].(map[string]any)
+	if data["topicId"] != driveCommentGlobalTopic {
+		t.Fatalf("Drive list-replies topicId = %#v", data["topicId"])
+	}
+	leaf, _, _ := newDriveCommand().Find([]string{"comment", "list-replies"})
+	if leaf.Flags().Lookup("topic-id") != nil {
+		t.Fatal("Drive list-replies unexpectedly exposes --topic-id")
 	}
 }
 
@@ -82,6 +274,30 @@ func TestCrossPlatformCoverageDocCommentBatchQueryMapsStructuredRefs(t *testing.
 			"comments": []map[string]any{
 				{"topicId": "global", "commentKey": "comment-1"},
 				{"topicId": "topic-2", "commentKey": "comment-2"},
+			},
+		},
+	}
+	if len(caller.calls) != 1 || !reflect.DeepEqual(caller.calls[0], want) {
+		t.Fatalf("calls = %#v, want %#v", caller.calls, want)
+	}
+}
+
+func TestCrossPlatformCoverageDriveCommentBatchQueryInjectsGlobalTopic(t *testing.T) {
+	caller := &docCommentMutationCaller{}
+	err := executeCommentBaseCommand(t, caller, "drive",
+		"comment", "batch-query", "--node", "file-1",
+		"--comment-key", "comment-1", "--comment-key", "comment-2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := docCommentMutationCall{
+		productID: commentServer,
+		toolName:  "batch_query_comments",
+		args: map[string]any{
+			"nodeId": "file-1",
+			"comments": []map[string]any{
+				{"topicId": driveCommentGlobalTopic, "commentKey": "comment-1"},
+				{"topicId": driveCommentGlobalTopic, "commentKey": "comment-2"},
 			},
 		},
 	}
