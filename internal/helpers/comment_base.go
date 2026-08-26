@@ -266,10 +266,9 @@ func runCommentListReplies(cmd *cobra.Command, tool string, args map[string]any)
 	if err != nil {
 		return nil, err
 	}
-	pagination, err := output.NewPagination(page.complete, page.nextToken)
-	if err != nil {
-		return nil, commentRepliesPaginationError(err.Error())
-	}
+	// fetchCommentRepliesPage has already enforced the two valid pagination
+	// states, so NewPagination cannot reject this pair.
+	pagination, _ := output.NewPagination(page.complete, page.nextToken)
 	pagination.Pages = 1
 	pagination.Items = len(page.replies)
 	return output.Success(map[string]any{

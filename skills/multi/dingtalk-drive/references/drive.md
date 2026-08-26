@@ -65,7 +65,7 @@ dws drive +recycle-restore --id <recycleItemId>
 ```bash
 dws drive comment list --node <dentryUuid> --format json
 dws drive comment create --node <dentryUuid> --content "请补充结论"
-dws drive comment list-replies --node <dentryUuid> --topic-id global --comment-key <commentKey> --format json
+dws drive comment list-replies --node <dentryUuid> --comment-key <commentKey> --format json
 ```
 
 完整生命周期包括 `list/create/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply`。分页游标必须原样回传；写操作按 Runtime confirmation 执行，后续操作的 `commentKey` 必须来自真实返回。

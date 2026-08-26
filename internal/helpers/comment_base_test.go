@@ -199,6 +199,127 @@ func TestCrossPlatformCoverageCommentListRepliesProjectsTwoPages(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageCommentListRepliesDryRunAndNullReplyList(t *testing.T) {
+	dryRunCaller := &commentRepliesCaller{dryRun: true}
+	dryRun, err := executeCommentRepliesCommand(t, dryRunCaller, "doc",
+		"comment", "list-replies", "--node", "doc-1", "--topic-id", "global",
+		"--comment-key", "root-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dryRunCaller.calls) != 0 {
+		t.Fatalf("dry-run reached MCP: %#v", dryRunCaller.calls)
+	}
+	dryRunData := dryRun["data"].(map[string]any)
+	if dryRunData["scope"] != "DIRECT" || dryRunData["complete"] != true ||
+		dryRunData["scannedCount"] != float64(0) {
+		t.Fatalf("dry-run data = %#v", dryRunData)
+	}
+
+	nullCaller := &commentRepliesCaller{responses: []string{
+		`{"result":{"scope":"DIRECT","replyList":null,"complete":true,"scannedCount":0,"stopReason":"END"}}`,
+	}}
+	nullList, err := executeCommentRepliesCommand(t, nullCaller, "sheet",
+		"comment", "list-replies", "--node", "sheet-1", "--topic-id", "global",
+		"--comment-key", "root-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nullData := nullList["data"].(map[string]any)
+	if replies, ok := nullData["replies"].([]any); !ok || len(replies) != 0 {
+		t.Fatalf("null replyList projection = %#v", nullData["replies"])
+	}
+}
+
+func TestCrossPlatformCoverageCommentListRepliesRejectsMalformedResponses(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		extra    []string
+		message  string
+	}{
+		{
+			name:     "missing complete",
+			response: `{"scope":"DIRECT","replyList":[],"scannedCount":0,"stopReason":"END"}`,
+			message:  "complete",
+		},
+		{
+			name:     "missing reply list",
+			response: `{"scope":"DIRECT","complete":true,"scannedCount":0,"stopReason":"END"}`,
+			message:  "replyList",
+		},
+		{
+			name:     "reply list is not array",
+			response: `{"scope":"DIRECT","replyList":{},"complete":true,"scannedCount":0,"stopReason":"END"}`,
+			message:  "回复列表不是数组",
+		},
+		{
+			name:     "reply item is not object",
+			response: `{"scope":"DIRECT","replyList":[1],"complete":true,"scannedCount":0,"stopReason":"END"}`,
+			message:  "不是对象",
+		},
+		{
+			name:     "reply missing comment key",
+			response: `{"scope":"DIRECT","replyList":[{"replyToCommentKey":"root-1","isEmoji":false}],"complete":true,"scannedCount":0,"stopReason":"END"}`,
+			message:  "commentKey",
+		},
+		{
+			name:     "reply missing parent key",
+			response: `{"scope":"DIRECT","replyList":[{"commentKey":"reply-1","isEmoji":false}],"complete":true,"scannedCount":0,"stopReason":"END"}`,
+			message:  "replyToCommentKey",
+		},
+		{
+			name:     "reply missing emoji marker",
+			response: `{"scope":"DIRECT","replyList":[{"commentKey":"reply-1","replyToCommentKey":"root-1"}],"complete":true,"scannedCount":0,"stopReason":"END"}`,
+			message:  "isEmoji",
+		},
+		{
+			name:     "next token is not string",
+			response: `{"scope":"DIRECT","replyList":[],"complete":false,"nextPageToken":1,"scannedCount":0,"stopReason":"PAGE_SIZE"}`,
+			message:  "nextPageToken",
+		},
+		{
+			name:     "missing next token",
+			response: `{"scope":"DIRECT","replyList":[],"complete":false,"scannedCount":0,"stopReason":"PAGE_SIZE"}`,
+			message:  "没有 nextPageToken",
+		},
+		{
+			name:     "cursor does not advance",
+			response: `{"scope":"DIRECT","replyList":[],"complete":false,"nextPageToken":"same","scannedCount":0,"stopReason":"PAGE_SIZE"}`,
+			extra:    []string{"--page-token", "same"},
+			message:  "游标未前进",
+		},
+		{
+			name:     "negative scanned count",
+			response: `{"scope":"DIRECT","replyList":[],"complete":true,"scannedCount":-1,"stopReason":"END"}`,
+			message:  "scannedCount",
+		},
+		{
+			name:     "invalid stop reason",
+			response: `{"scope":"DIRECT","replyList":[],"complete":true,"scannedCount":0,"stopReason":"BAD"}`,
+			message:  "stopReason",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &commentRepliesCaller{responses: []string{tc.response}}
+			args := []string{
+				"comment", "list-replies", "--node", "doc-1", "--topic-id", "global",
+				"--comment-key", "root-1",
+			}
+			args = append(args, tc.extra...)
+			payload, err := executeCommentRepliesCommand(t, caller, "doc", args...)
+			if err == nil || !strings.Contains(err.Error(), tc.message) {
+				t.Fatalf("error = %v, want message containing %q; payload=%#v", err, tc.message, payload)
+			}
+			if len(caller.calls) != 1 {
+				t.Fatalf("MCP calls = %#v", caller.calls)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageCommentListRepliesPublishesSchemaContract(t *testing.T) {
 	for _, surface := range []struct {
 		name string
@@ -409,5 +530,14 @@ func TestCrossPlatformCoverageParseCommentRefsRejectsInvalidShapeAndLimit(t *tes
 	}
 	if _, err := parseCommentRefs(tooMany); err == nil {
 		t.Fatal("101 refs returned nil error")
+	}
+}
+
+func TestCrossPlatformCoverageParseDriveCommentKeysRejectsEmptyInput(t *testing.T) {
+	if _, err := parseDriveCommentKeys(nil); err == nil {
+		t.Fatal("missing Drive comment keys returned nil error")
+	}
+	if _, err := parseDriveCommentKeys([]string{"  "}); err == nil {
+		t.Fatal("blank Drive comment key returned nil error")
 	}
 }

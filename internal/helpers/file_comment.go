@@ -18,13 +18,16 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/spf13/cobra"
 )
 
 const (
-	driveCommentGlobalTopic = "global"
-	driveCommentMaxPageSize = 50
+	driveCommentGlobalTopic         = "global"
+	driveCommentMaxPageSize         = 50
+	legacyDriveCommentMaxPageSize   = 200
+	legacyDriveCommentContentLength = 2099
 )
 
 var driveCommentListResultSchema = json.RawMessage(`{
@@ -76,6 +79,41 @@ func driveCommentNodeFlag() LeafFlag {
 	}
 }
 
+// list/create predate the shared Doc/Sheet comment RPCs. Keep their published
+// CLI and Schema parameter identities stable while the execution adapter below
+// translates them to the new service request.
+func legacyDriveCommentNodeFlag() LeafFlag {
+	return LeafFlag{
+		Name: "node", Usage: "文件 ID (dentryUuid)、数字 dentry ID 或钉盘文件 URL", Required: true,
+		Aliases: []string{"url", "id", "node-id", "file-id"}, Bind: "fileId", Trim: true,
+	}
+}
+
+func legacyDriveCommentSpaceIDFlag() LeafFlag {
+	return LeafFlag{
+		Name: "space-id", Usage: "钉盘空间 ID；仅数字 dentry ID 必填", Bind: "spaceId",
+		OmitEmpty: true, Trim: true, RequiredWhen: "--node is a numeric dentry ID",
+	}
+}
+
+func legacyDriveCommentIdentity(name, cliLeaf string) contract.ToolIdentitySpec {
+	return contract.ToolIdentitySpec{
+		ProductID:      "drive",
+		Name:           name,
+		CanonicalPath:  "drive." + name,
+		CLIPath:        "drive comment " + cliLeaf,
+		PrimaryCLIPath: "drive comment " + cliLeaf,
+	}
+}
+
+func legacyDriveCommentInterface(rpc string) *contract.InterfaceSpec {
+	return &contract.InterfaceSpec{
+		Mode:         "composite",
+		Availability: "available",
+		Reason:       "The CLI preserves the historical Drive comment contract and adapts it to doc-comment/" + rpc + ".",
+	}
+}
+
 // newDriveFileCommentCmd exposes the same new-comment RPC chain used by Doc
 // and Sheet. Drive comments are always file-level global comments backed by
 // objectId=dentryUuid and bizCode=DENTRY; the server enforces that identity.
@@ -101,29 +139,33 @@ func newDriveFileCommentCmd() *cobra.Command {
 		Server: commentServer,
 		Tool:   "list_comments",
 		Flags: []LeafFlag{
-			driveCommentNodeFlag(),
-			{Name: "space-id", Usage: "兼容旧 Drive 评论命令；新评论链路仅使用 --node", Bind: "spaceId", OmitEmpty: true, Trim: true},
-			{Name: "limit", Usage: "每页评论数，范围 1-50", Kind: LeafInt, Default: "50", Aliases: []string{"page-size"}, Bind: "pageSize"},
+			legacyDriveCommentNodeFlag(),
+			legacyDriveCommentSpaceIDFlag(),
+			{Name: "limit", Usage: "每页评论数，范围 1-200", Kind: LeafInt, Default: "200", Aliases: []string{"page-size"}, Bind: "maxResults"},
 			{Name: "cursor", Usage: "分页游标，取自上页 nextToken", Bind: "nextToken", OmitEmpty: true, Trim: true},
-			{Name: "all", Usage: "兼容旧 Drive 评论命令；新评论链路请使用 --cursor 逐页读取", Kind: LeafBool, Bind: "all"},
-			{Name: "scope", Usage: "兼容旧范围参数: all / whole / partial；新 Drive 评论仅支持全局评论", Default: "all", Bind: "scope", Trim: true, Enum: []string{"all", "whole", "partial"}},
+			{Name: "all", Usage: "兼容保留的旧自动翻页参数；新评论请使用 --cursor 逐页读取", Kind: LeafBool, Bind: "all"},
+			{Name: "scope", Usage: "兼容旧评论范围: all / whole / partial；新服务不支持 partial", Default: "all", Bind: "scope", Trim: true, Enum: []string{"all", "whole", "partial"}},
 			{Name: "resolve-status", Usage: "解决状态: resolved / unresolved", Bind: "resolveStatus", OmitEmpty: true, Trim: true, Enum: []string{"resolved", "unresolved"}},
 		},
 		Constraints: []LeafConstraint{
-			{Kind: "custom", Flags: []string{"limit"}, Description: "--limit 必须在 1-50 之间"},
+			{Kind: LeafMutuallyExclusive, Flags: []string{"all", "cursor"}, Description: "--all 与 --cursor 互斥"},
+			{Kind: LeafMutuallyExclusive, Flags: []string{"all", "limit"}, Description: "--all 与显式 --limit/--page-size 互斥"},
+			{Kind: "custom", Flags: []string{"limit"}, Description: "--limit/--page-size 必须在 1-200 之间"},
+			{Kind: "custom", Flags: []string{"cursor"}, Description: "--cursor 使用服务端返回的游标"},
 		},
 		ConstParams: map[string]any{"commentType": driveCommentGlobalTopic},
 		Safety: contract.SafetySpec{
 			Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
-			Identity:    commentIdentity("drive", "list_comments", "list"),
+			Identity:    legacyDriveCommentIdentity("list_file_comments", "list"),
 			Description: "查询 Drive 本地文件的新体系全局评论列表",
+			DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewRequest},
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
 				DataSchema: driveCommentListResultSchema,
 			},
-			Interface: commentInterface("list_comments"),
+			Interface: legacyDriveCommentInterface("list_comments"),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "查询 Drive 本地文件的全局评论，返回 commentKey 和解决状态",
 				UseWhen: []string{
@@ -152,21 +194,25 @@ func newDriveFileCommentCmd() *cobra.Command {
 		Server:  commentServer,
 		Tool:    "create_comment",
 		Flags: []LeafFlag{
-			driveCommentNodeFlag(),
-			{Name: "space-id", Usage: "兼容旧 Drive 评论命令；新评论链路仅使用 --node", Bind: "spaceId", OmitEmpty: true, Trim: true},
-			{Name: "content", Usage: "评论纯文本内容", Required: true, Bind: "content"},
+			legacyDriveCommentNodeFlag(),
+			legacyDriveCommentSpaceIDFlag(),
+			{Name: "content", Usage: "评论纯文本内容，UTF-16 长度不超过 2099", Required: true, Bind: "content"},
+		},
+		Constraints: []LeafConstraint{
+			{Kind: "custom", Flags: []string{"content"}, Description: "--content 去除首尾空白后必须非空，且 UTF-16 长度不超过 2099"},
 		},
 		Safety: contract.SafetySpec{
-			Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "non_idempotent",
+			Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
-			Identity:    commentIdentity("drive", "create_comment", "create"),
+			Identity:    legacyDriveCommentIdentity("create_file_comment", "create"),
 			Description: "在 Drive 本地文件上创建全局纯文本评论",
+			DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewRequest},
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
 				DataSchema: driveCommentMutationResultSchema,
 			},
-			Interface: commentInterface("create_comment"),
+			Interface: legacyDriveCommentInterface("create_comment"),
 			Selection: contract.SelectionSpec{
 				AgentSummary: "在 Drive 本地文件上创建一条全局评论",
 				UseWhen:      []string{"用户明确要求在本地文件上留下文件级评论时"},
@@ -285,14 +331,17 @@ func newDriveFileCommentCmd() *cobra.Command {
 }
 
 func validateDriveCommentList(cmd *cobra.Command, _ []string) error {
+	if err := validateLegacyDriveCommentNodeSpace(cmd); err != nil {
+		return err
+	}
 	limit, _ := cmd.Flags().GetInt("limit")
 	if !cmd.Flags().Changed("limit") && cmd.Flags().Changed("page-size") {
 		limit, _ = cmd.Flags().GetInt("page-size")
 	}
-	if limit < 1 || limit > driveCommentMaxPageSize {
+	if limit < 1 || limit > legacyDriveCommentMaxPageSize {
 		return &CLIError{
 			Code:    CodeInvalidParam,
-			Message: fmt.Sprintf("--limit 必须在 1-%d 之间", driveCommentMaxPageSize),
+			Message: fmt.Sprintf("--limit/--page-size 必须在 1-%d 之间", legacyDriveCommentMaxPageSize),
 		}
 	}
 	if all, _ := cmd.Flags().GetBool("all"); all {
@@ -312,9 +361,22 @@ func validateDriveCommentList(cmd *cobra.Command, _ []string) error {
 
 // callDriveCommentNewService keeps the historical CLI flag surface without
 // leaking legacy-only arguments into the shared Doc/Sheet comment contract.
-// --page-size is declared as an alias of --limit and is therefore already
-// projected to pageSize before this adapter runs.
+// list/create retain their historical Schema parameter properties, so this
+// adapter also translates fileId/maxResults to nodeId/pageSize. The shared
+// service caps one request at 50 comments.
 func callDriveCommentNewService(cmd *cobra.Command, tool string, args map[string]any) error {
+	if fileID, ok := args["fileId"]; ok {
+		args["nodeId"] = fileID
+		delete(args, "fileId")
+	}
+	if maxResults, ok := args["maxResults"]; ok {
+		pageSize, ok := maxResults.(int)
+		if ok && pageSize > driveCommentMaxPageSize {
+			pageSize = driveCommentMaxPageSize
+		}
+		args["pageSize"] = pageSize
+		delete(args, "maxResults")
+	}
 	delete(args, "spaceId")
 	delete(args, "all")
 	delete(args, "scope")
@@ -322,9 +384,54 @@ func callDriveCommentNewService(cmd *cobra.Command, tool string, args map[string
 }
 
 func validateDriveCommentContent(cmd *cobra.Command, _ []string) error {
+	if cmd.Name() == "create" {
+		if err := validateLegacyDriveCommentNodeSpace(cmd); err != nil {
+			return err
+		}
+	}
 	content, _ := cmd.Flags().GetString("content")
 	if strings.TrimSpace(content) == "" {
 		return &CLIError{Code: CodeInvalidParam, Message: "--content 去除首尾空白后不能为空"}
 	}
+	if cmd.Name() == "create" && driveCommentUTF16Length(content) > legacyDriveCommentContentLength {
+		return &CLIError{
+			Code:    CodeInputTooLarge,
+			Message: fmt.Sprintf("--content 最多 %d 个 UTF-16 代码单元", legacyDriveCommentContentLength),
+		}
+	}
 	return nil
+}
+
+func validateLegacyDriveCommentNodeSpace(cmd *cobra.Command) error {
+	node := corecmd.EffectiveValue(cmd, legacyDriveCommentNodeFlag())
+	if node == "" || !allDriveCommentASCIIDigits(node) {
+		return nil
+	}
+	if corecmd.EffectiveValue(cmd, legacyDriveCommentSpaceIDFlag()) == "" {
+		return &CLIError{Code: CodeInvalidParam, Message: "--node 为数字 dentry ID 时必须同时提供 --space-id"}
+	}
+	return nil
+}
+
+func driveCommentUTF16Length(value string) int {
+	length := 0
+	for _, r := range value {
+		length++
+		if r > 0xffff {
+			length++
+		}
+	}
+	return length
+}
+
+func allDriveCommentASCIIDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
