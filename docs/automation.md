@@ -132,10 +132,12 @@ the built-in Actions identity cannot pass the writer rule; other permitted
 identities emit either a protected-main push or the trusted closed-PR repair.
 Draft PRs skip this identity check; the explicit `ready_for_review` trigger
 reruns admission when they become merge-eligible,
-while `edited` and `auto_merge_enabled` rerun both workflows when the PR title
-or merge request changes. A human `auto_merge_disabled` event reruns CI without
-silently re-enabling the request, leaving it available only to the designated
-break-glass identity. The required `Test` context rejects GitHub workflow-skip
+while `edited` reruns admission and Router when the PR title changes.
+`auto_merge_enabled` wakes only the lightweight base-owned Router; it does not
+restart full admission for the unchanged head SHA. A human
+`auto_merge_disabled` event starts neither workflow, so the request remains
+manual-only for the designated break-glass identity. The required `Test`
+context rejects GitHub workflow-skip
 directives in the PR title or an existing auto-merge request and verifies the
 repository's reviewed `MERGE_MESSAGE` title plus `PR_TITLE` or `BLANK` body
 defaults. GitHub does not expose those merge-related settings to the read-only

@@ -788,8 +788,19 @@ func TestCodeAdmissionEnforcesReviewerRouterWriterBoundary(t *testing.T) {
 		t.Fatalf("ReadFile(ci.yml) error = %v", err)
 	}
 	workflow := string(data)
-	if !strings.Contains(workflow, "pull_request:\n    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited, auto_merge_enabled, auto_merge_disabled]") {
-		t.Error("CI must rerun admission when Draft state or merge metadata changes")
+	if !strings.Contains(workflow, "pull_request:\n    # Auto-merge metadata is governed by the base-owned Reviewer Router.") ||
+		!strings.Contains(workflow, "types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]") {
+		t.Error("CI must rerun admission only when the revision, readiness, or reviewed title changes")
+	}
+	headerEnd := strings.Index(workflow, "\npermissions:\n")
+	if headerEnd < 0 {
+		t.Fatal("CI workflow missing permissions boundary")
+	}
+	triggerHeader := workflow[:headerEnd]
+	for _, forbidden := range []string{"auto_merge_enabled", "auto_merge_disabled"} {
+		if strings.Contains(triggerHeader, forbidden) {
+			t.Errorf("CI pull_request triggers must not include metadata-only event %q", forbidden)
+		}
 	}
 	start := strings.Index(workflow, "\n  test:\n")
 	end := strings.Index(workflow, "\n  test-darwin:\n")
