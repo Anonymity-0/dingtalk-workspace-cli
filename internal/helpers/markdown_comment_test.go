@@ -70,6 +70,10 @@ func TestCrossPlatformCoverageMarkdownCommentExposesListOnly(t *testing.T) {
 	if final.Interface.Ref.ProductID != commentServer || final.Interface.Ref.RPCName != "list_comments" {
 		t.Fatalf("markdown comment list interface = %#v", final.Interface.Ref)
 	}
+	if final.Selection == nil ||
+		!strings.Contains(strings.Join(final.Selection.AvoidWhen, "\n"), "drive comment list-v2") {
+		t.Fatalf("markdown comment routing does not send ordinary files to Drive list-v2: %#v", final.Selection)
+	}
 }
 
 func TestCrossPlatformCoverageMarkdownCommentListUsesDocCommentRPCAndInlineFilter(t *testing.T) {

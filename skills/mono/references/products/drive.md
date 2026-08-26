@@ -615,7 +615,7 @@ Flags:
 用户说"搜索钉盘文件/钉盘里找个文件/查找某个钉盘文件/钉盘中搜索" → `search`
 用户说"文件详情/文件信息" → `info`
 用户说"文件阅读量/编辑量/评论数/下载数/节点统计" → `stats`
-用户说"给这个 PDF/附件/普通文件评论、回复评论、解决评论、恢复评论、删除评论" → `comment list/create/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply`
+用户说"给这个 PDF/附件/普通文件评论、回复评论、解决评论、恢复评论、删除评论" → `comment list-v2/create-v2/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply`（仅在用户明确要求旧评论兼容行为时使用 deprecated 的 `list/create`）
 用户说"给文件创建快捷方式/放一个链接到目标文件夹" → `shortcut`
 用户说"下载文件" → `download` 指定 `--output` 保存到本地
 用户说"新建文件夹/创建目录" → `mkdir`（钉盘空间）/ `wiki node create --type folder`（文档空间）

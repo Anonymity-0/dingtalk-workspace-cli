@@ -113,7 +113,7 @@ commentKey，topicId 从列表结果中取得。`,
 				},
 				AvoidWhen: []string{
 					"在线富文本文档评论使用 dws doc comment list",
-					"普通非 Markdown 文件评论使用 dws drive comment list",
+					"普通非 Markdown 文件评论使用 dws drive comment list-v2",
 				},
 				Examples: []string{
 					"dws markdown comment list --node <nodeId> --format json",

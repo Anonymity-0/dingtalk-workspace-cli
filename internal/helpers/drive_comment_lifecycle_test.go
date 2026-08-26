@@ -93,6 +93,12 @@ func TestCrossPlatformCoverageDriveCommentRegistersLegacyAndAllTenNewCommands(t 
 			final.Interface.Ref.RPCName != expected.rpc {
 			t.Fatalf("drive comment %s interface = %#v, want %s/%s", leaf, final.Interface.Ref, commentServer, expected.rpc)
 		}
+		if leaf == "list-replies" || leaf == "batch-query" {
+			if final.Selection == nil ||
+				!strings.Contains(strings.Join(final.Selection.AvoidWhen, "\n"), "drive comment list-v2") {
+				t.Fatalf("drive comment %s selection does not route commentKey lookup through list-v2: %#v", leaf, final.Selection)
+			}
+		}
 	}
 }
 

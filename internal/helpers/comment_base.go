@@ -178,7 +178,7 @@ pageSize 只限制本次最多返回多少条直接子回复，不保证凑满�
 		example = "  dws drive comment list-replies --node <dentryUuid> --comment-key <COMMENT_KEY> --page-size 20 --format json"
 		agentSummary = "使用 commentKey 分页读取 Drive 文件评论的直接子回复；topic 固定为 global"
 		avoidWhen = []string{
-			"尚未取得 commentKey 时先使用 drive comment list",
+			"尚未取得 commentKey 时先使用 drive comment list-v2",
 			"只需首屏回复时不要自动续页或递归",
 		}
 		examples = []string{
@@ -446,7 +446,7 @@ func newCommentBatchQueryCommand(surface string) *cobra.Command {
 输入顺序，不存在的评论返回 found=false。不要传入 topicId 或旧 commentId。`
 		example = "  dws drive comment batch-query --node <dentryUuid> --comment-key <COMMENT_KEY> --comment-key <COMMENT_KEY> --format json"
 		agentSummary = "已知多个 commentKey 时，一次获取 Drive 文件全局评论详情"
-		avoidWhen = []string{"尚未取得 commentKey 时先使用 drive comment list"}
+		avoidWhen = []string{"尚未取得 commentKey 时先使用 drive comment list-v2"}
 		selectionExample = "dws drive comment batch-query --node <dentryUuid> --comment-key <COMMENT_KEY> --format json"
 		parameters = []contract.ParamDecl{
 			{Name: "node", Property: "nodeId"},
