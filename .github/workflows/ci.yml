@@ -11,10 +11,11 @@ permissions:
   contents: read
 
 concurrency:
-  # Only duplicate runs for the exact PR base/head revision cancel each other.
-  # A later revision must not kill an earlier cold-cache producer, and every
-  # protected-main SHA keeps an independent producer run.
-  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}-{1}-{2}', github.event.pull_request.number, github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('push-{0}', github.sha) }}
+  # Keep only the latest revision of a pull request: a stale run must not
+  # compete with its replacement for hosted runners. A replacement that sees
+  # a cold baseline cache recomputes it authoritatively. Protected-main pushes
+  # remain keyed by exact SHA so every potential merge base has a producer.
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('push-{0}', github.sha) }}
   cancel-in-progress: true
 
 jobs:
