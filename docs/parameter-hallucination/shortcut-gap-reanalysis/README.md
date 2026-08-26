@@ -1,6 +1,6 @@
 # Shortcut 参数幻觉缺口复核汇总
 
-冻结基线：`origin/main@f4474b57eb1db23b1638b9574be2f5dca368a360`。本轮覆盖 42 个此前未进入正式参数兜底范围的公开 Shortcut，正式 `internal/cli/param_concepts.json` 未修改。
+分析冻结基线：`origin/main@f4474b57eb1db23b1638b9574be2f5dca368a360`。本轮覆盖 42 个此前未进入正式参数兜底范围的公开 Shortcut；修订候选现已合入正式 `internal/cli/param_concepts.json`，并语义重放到 `origin/main@e9de6856d1ec989c9eb8063f2f131db48879179a`。
 
 | 产品 | 命令数 | 变更 concept 数 | 新增 override | 新增 fixture | 报告 | 完整候选 |
 |---|---:|---:|---:|---:|---|---|
@@ -19,4 +19,4 @@
 - [x] 每产品独立 Markdown 与完整候选草稿。
 - [x] 每产品五页中文 XLSX（已渲染逐页目视并扫描公式错误）。
 - [x] 候选逐产品生成、PreParse、alias/canonical、block/ambiguous、非目标别名回归和仓库政策验证。
-- [ ] 正式表落地（本分支明确不执行，待评审）。
+- [x] 正式表落地、重新生成，并合并最新 main；保留 main 的 `chat thread forward` / `chat thread list-replies` 命令迁移。

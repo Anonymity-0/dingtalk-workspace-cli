@@ -11,6 +11,7 @@
 - 关键收紧：`chat +chat-list-mine` 不再复用分页大小；AITable datasource 配置 concept 仅保留明确 sourceConfig 拼写；DevApp `skill-names` 保持歧义
 - Whiteboard：因官方别名生成源树未覆盖 runnable leaf，本轮不写入任何 Whiteboard 候选变更
 - 合并验证：Chat/AITable 已纳入确认门检查，四个有候选规则的产品均补最终 transport payload 代表用例；DevApp `skill-list` 的完整模板显式携带 canonical `--skills`
+- 正式落地：已写入 `internal/cli/param_concepts.json` 并重新生成；随后语义重放到 `origin/main@e9de6856d1ec989c9eb8063f2f131db48879179a`，保留 main 的 `chat thread forward` / `chat thread list-replies` 迁移
 
 完整草稿：[`param_concepts.json`](./param_concepts.json)。同目录 [`param_concepts.schema.json`](./param_concepts.schema.json) 是冻结基线 Schema 的字节一致副本，可按 JSON 中的 `$schema` 相对路径独立校验。
 
@@ -23,4 +24,4 @@
 
 ## 边界
 
-该文件是基于冻结基线正式表合并五份独立候选后的完整草稿，不是生产配置。本次没有修改 `internal/cli/param_concepts.json`。
+该文件保留基于冻结基线合并五份独立候选后的评审快照；生产配置已在本分支合入 `internal/cli/param_concepts.json`，并在最新 main 上重新生成和验证。

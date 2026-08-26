@@ -4,7 +4,7 @@
 
 冻结基线为 `origin/main@f4474b57eb1db23b1638b9574be2f5dca368a360`。本轮覆盖 2 个此前未进入正式参数兜底范围的公开 Shortcut；识别出 0 个可直接自动兜底、0 个只能部分兜底、2 个只应增加保护的命令，其中高风险写入或敏感读取 1 个。
 
-候选草稿没有写入正式 `internal/cli/param_concepts.json`。所有映射均满足：源参数不是该命令真实 flag、目标是该命令真实 flag、实体/角色/值域/基数一致、值原样传递、不绕过确认。
+本报告中的修订候选已完成正式落地复核；Whiteboard 因官方别名生成源树仍未覆盖 runnable leaf，正式 `internal/cli/param_concepts.json` 继续保持零条 Whiteboard 规则。其余产品规则已重放到最新 main。
 
 ## 2. 参数问题明细
 
@@ -27,7 +27,7 @@
 |---|---|
 | — | 本产品当前不具备可达的参数别名落地点 |
 
-候选新增 0 条 PreParse 验证 fixture，覆盖 alias/canonical、block 与 ambiguous 三类路径。candidate-only 完整命令模板位于 `internal/app/param_alias_payload_equivalence_test.go`，正式候选未启用时不会扩大既有测试范围。
+Whiteboard 正式规则仍新增 0 条 PreParse fixture；完整命令模板保留在 `internal/app/param_alias_payload_equivalence_test.go`，用于确认不可达边界没有被误放开。
 
 ## 4. 当前不能自动解决
 
@@ -58,9 +58,9 @@
 - Help/Cobra：冻结提交重新构建的 `./dws <command> --help`。
 - Runtime Schema：同一二进制 `./dws schema --cli-path <path> --compact -f json`。
 - Skill：`skills/multi` 下对应产品 reference。
-- 正式表：`internal/cli/param_concepts.json`，候选基于其完整复制。
+- 正式表：评审候选基于冻结基线完整复制；当前分支正式落地时继续保留 Whiteboard 零变更结论。
 - 已通过：JSON/Schema、`go generate ./internal/cli`、全部既有与新增 PreParse fixture、alias/canonical、block/ambiguous、candidate-only 完整命令模板、移除 `--yes` 的确认不可绕过测试、非目标别名回归、`check-generated-drift.sh`、`check-schema-catalog.sh`。
-- 隔离脚本每次验证后恢复正式 JSON 与生成文件；工作树中的正式表保持零差异。
+- 评审阶段在隔离副本验证；正式落地阶段重新生成并确认 Whiteboard 仍不可达、无 stale override。
 
 ## 8. 可复用流程
 
@@ -69,4 +69,4 @@
 3. 先判断是否已有可复用 concept；只在跨命令重复实体时新增 concept。
 4. 角色局部差异下沉到 command override；需要查找/转换/扩展时拒绝 alias。
 5. 为正向 alias、canonical 不变、block、ambiguous 与非目标命令补 fixture 和完整命令模板。
-6. 在隔离副本替换候选，生成并跑全套门禁；正式表只在评审通过后另行落地。
+6. 在隔离副本验证候选；评审通过后合入其余四产品规则、重新生成并合并最新 main。
