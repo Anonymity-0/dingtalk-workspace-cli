@@ -55,13 +55,9 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ### Fixed
 
-- **Pull request CI scheduling** — stops metadata-only auto-merge enable and disable events from restarting the complete admission graph for an unchanged commit, while the base-owned Reviewer Router continues to enforce merge authority.
-
 - **Command typo guidance** — returns a validation error with up to three nearest command suggestions and the parent `--help` entry instead of printing the full command list.
 
 - **Document shortcut reliability** — adds bounded pagination for document and template listings, supports verified paragraph or heading insertion before a reference block, tolerates service-only Markdown layout normalization during write verification, and resolves and verifies the default “My Documents” import target.
-
-- **Fork pull-request admission** — keeps the read-only Reviewer Router identity check fail-closed while allowing external contributors' CI to use the reviewed public App slug when GitHub withholds repository variables.
 
 - **Markdown append chunking rewritten around safe split positions** — long markdown is now split so that every chunk is a complete, self-contained top-level block sequence, which is what `update_document mode=append` requires: the server inserts a brand new structure per call and cannot continue the previous one. Split points are chosen strictly by how much they change the rendered document — fully safe boundaries (blank lines, block starts that interrupt a paragraph) before boundaries that need repair (a table's rows now carry a re-emitted header and delimiter row; a fenced code block is closed and reopened with its original marker and info string) before boundaries that merely restructure (long paragraphs, list items) before a hard character cut. Within a tier the latest boundary in the window wins, since all chunks land in the same document. Every boundary that changes the rendered structure is reported in a new `degradations` field instead of being applied silently.
 - **Fixed markdown chunking dropping a newline** — the previous splitter rebuilt block text from lines and lost one `\n` whenever the content's last line began a heading, table or code fence, so `"para\n# Title"` was written as `"para# Title"` and the heading stopped being a heading. Roughly one in five randomly generated documents was affected. The new splitter slices by offset and never rebuilds text, making content preservation structural.
@@ -69,12 +65,6 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 - **Fixed readback verification comparing against content the server never receives** — `doc +create` / `doc +update` verified the readback against the raw input, so any repaired boundary (and, previously, any paragraph split) failed verification on large documents. Verification now compares against the document the chunk plan says the server should hold.
 - **Unified four markdown write paths onto one splitter** — `doc create` / `doc update`, `doc +create` / `doc +update` and `doc +checkpoint-update` now share `helpers.SplitMarkdownForAppend` and one limit constant (30000 runes), replacing two independent implementations plus one path that never chunked at all. `doc +checkpoint-update` accepts `@file` and stdin content, so oversized input was reachable there while the equivalent `doc +update` chunked. `doc +doc-append` takes `--text` from argv only and now rejects oversized input with a pointer to `doc +update` rather than sending one oversized call.
 - **`doc update --index` now fails closed when the content requires chunking** — each chunk creates an unpredictable number of blocks, so the insertion point for later chunks is unknowable; the flag was previously accepted and silently ignored.
-
-- **Reviewer Router recovery** — keeps exact App-owned PRs that are behind `main` retriable when GitHub reports the protected merge denial as `Resource not accessible by integration`, while preserving every other 403 as a hard failure.
-
-- **Reviewer Router merge authority** — moves fail-closed writer-rule and auto-merge ownership validation into the trusted base-owned Router before App credentials are read, preparing metadata-only auto-merge changes to stop restarting the full CI suite without weakening protected-main admission or exact-SHA cache production.
-
-- **Reviewer Router merge recovery** — retries exact App-owned merge intents through a SHA-bound synchronous merge after GitHub has enforced approval and nine GitHub Actions source-bound required checks.
 
 ### Security
 
