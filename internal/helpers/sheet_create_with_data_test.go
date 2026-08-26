@@ -12,8 +12,8 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
@@ -563,10 +563,7 @@ func TestSheetCreateWithSheetsVerifiesEachSheetLanded(t *testing.T) {
 		{text: `{"success":true}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"一月"},{"sheetId":"SHEET_2","name":"二月"}]}`},
 		{text: `{"csv":"[row=1] 项目\n"}`}, // 一月 非空
-		{text: `{"csv":""}`},             // 二月第 1 次回读为空
-		{text: `{"csv":""}`},             // 有界重试仍为空
-		{text: `{"csv":""}`},
-		{text: `{"csv":""}`},
+		{text: `{"csv":""}`},             // 二月单次回读为空
 	}}
 	err := runCreate(t, caller, map[string]string{
 		"name":   "报表",
@@ -575,7 +572,7 @@ func TestSheetCreateWithSheetsVerifiesEachSheetLanded(t *testing.T) {
 	if err == nil {
 		t.Fatal("二月回读为空应报错，而非静默成功")
 	}
-	for _, want := range []string{"NODE_1", "二月", "写入未生效", "table-put"} {
+	for _, want := range []string{"NODE_1", "二月", "写入未生效"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("错误信息缺少 %q: %v", want, err)
 		}
@@ -752,7 +749,6 @@ func TestSheetCreateFailuresSurfaceNodeIDForRecovery(t *testing.T) {
 				{text: `{"nodeId":"NODE_1"}`}, {text: okSheets},
 				{text: `{"success":true}`},
 				{text: `{"csv":"[row=1] , ,"}`}, // 去掉行号前缀与分隔符后为空
-				{text: `{"csv":""}`}, {text: `{"csv":""}`}, {text: `{"csv":""}`},
 			},
 			want:     "初始数据写入未生效",
 			wantNode: true,
@@ -826,6 +822,39 @@ func TestSheetCreateStyleApplicationFailureReportsIndex(t *testing.T) {
 	// 数据已写入成功，错误信息必须同时说明这一点
 	if !strings.Contains(err.Error(), "数据已写入") || !strings.Contains(err.Error(), "NODE_1") {
 		t.Fatalf("err = %v, want to state data was written and carry nodeId", err)
+	}
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) {
+		t.Fatalf("err = %T, want structured app error", err)
+	}
+	if typed.Operation != "sheet.create_with_data" || typed.Reason != "sheet_create_with_data_style_commit_unknown" ||
+		typed.FailureStage != "apply_styles" || !typed.RetryableSet || typed.Retryable {
+		t.Fatalf("typed error = %#v", typed)
+	}
+	if typed.Details["status"] != "partial_success" || typed.Details["nodeId"] != "NODE_1" ||
+		typed.Details["sheetId"] != "SHEET_1" || typed.Details["retryCreateSafe"] != false {
+		t.Fatalf("details = %#v", typed.Details)
+	}
+}
+
+func TestCrossPlatformCoverageSheetCreateWriteFailureIsNotBlindlyRetryable(t *testing.T) {
+	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"nodeId":"NODE_1"}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1"}]}`},
+		{err: errors.New("write timeout")},
+	}}
+	err := runCreate(t, caller, map[string]string{"name": "X", "values": `[["a"]]`})
+	var typed *apperrors.Error
+	if !errors.As(err, &typed) {
+		t.Fatalf("err = %v, want structured app error", err)
+	}
+	if typed.Reason != "sheet_create_with_data_write_commit_unknown" || typed.FailureStage != "write" ||
+		!typed.RetryableSet || typed.Retryable {
+		t.Fatalf("typed error = %#v", typed)
+	}
+	if typed.Details["status"] != "unknown" || typed.Details["nodeId"] != "NODE_1" ||
+		typed.Details["sheetId"] != "SHEET_1" || typed.Details["retryCreateSafe"] != false {
+		t.Fatalf("details = %#v", typed.Details)
 	}
 }
 
@@ -1180,73 +1209,20 @@ func TestVerifyRangeNotEmpty(t *testing.T) {
 	}
 }
 
-func TestVerifyRangeNotEmptyWithRetryConvergesWithoutRewriting(t *testing.T) {
-	installSheetProductArgs(t)
-	installImmediateTiming(t)
+func TestCrossPlatformCoverageSheetCreateReadbackMatchesMainSingleAttempt(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
+		{text: `{"nodeId":"NODE_1"}`},
+		{text: `{"sheets":[{"sheetId":"SHEET_1"}]}`},
+		{text: `{"success":true}`},
 		{text: `{"csv":""}`},
-		{text: `{"csv":""}`},
-		{text: `{"csv":"[row=1] ready"}`},
+		{text: `{"csv":"[row=1] would-only-appear-on-retry"}`},
 	}}
-	installScriptedCaller(t, caller)
-	if err := verifyRangeNotEmptyWithRetry(context.Background(), "N", "S", "A1"); err != nil {
-		t.Fatal(err)
+	err := runCreate(t, caller, map[string]string{"name": "X", "values": `[["a"]]`})
+	if err == nil || !strings.Contains(err.Error(), "初始数据写入未生效") {
+		t.Fatalf("err = %v, want first empty readback to fail", err)
 	}
-	if caller.calls != 3 || caller.tool != "get_range_as_csv" {
-		t.Fatalf("calls=%d tool=%q, want three read-only probes", caller.calls, caller.tool)
-	}
-}
-
-func TestCrossPlatformCoverageSheetReadbackRetriesShareBackoffAcrossSheets(t *testing.T) {
-	installSheetProductArgs(t)
-	waits := 0
-	testseam.Swap(t, &helperAfter, func(time.Duration) <-chan time.Time {
-		waits++
-		ch := make(chan time.Time, 1)
-		ch <- time.Now()
-		return ch
-	})
-	caller := &scriptedToolCaller{steps: []scriptedToolStep{
-		{text: `{"csv":""}`},                   // 第一轮：一月为空
-		{text: `{"csv":""}`},                   // 第一轮：二月为空
-		{text: `{"csv":"[row=1] ready"}`},      // 第二轮：一月可见
-		{text: `{"csv":""}`},                   // 第二轮：二月仍为空
-		{text: `{"csv":"[row=1] eventually"}`}, // 第三轮：二月可见
-	}}
-	installScriptedCaller(t, caller)
-	err := verifyRangesNotEmptyWithRetry(context.Background(), "N", []sheetReadbackProbe{
-		{sheetID: "S1", rangeAddr: "A1", label: `工作表 "一月"`},
-		{sheetID: "S2", rangeAddr: "A1", label: `工作表 "二月"`},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if caller.calls != 5 {
-		t.Fatalf("calls=%d, want only pending sheets retried across three rounds", caller.calls)
-	}
-	if waits != 2 {
-		t.Fatalf("waits=%d, want two workflow-level waits instead of per-sheet waits", waits)
-	}
-}
-
-func TestCrossPlatformCoverageSheetReadbackRetryBoundaries(t *testing.T) {
-	if err := verifyRangesNotEmptyWithRetry(context.Background(), "N", nil); err != nil {
-		t.Fatalf("empty probes: %v", err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	testseam.Swap(t, &helperAfter, func(time.Duration) <-chan time.Time {
-		cancel()
-		return make(chan time.Time)
-	})
-	if err := waitSheetRetryDelay(ctx, time.Second); !errors.Is(err, context.Canceled) {
-		t.Fatalf("wait cancellation err = %v, want context.Canceled", err)
-	}
-
-	ctx, cancel = context.WithCancel(context.Background())
-	cancel()
-	if err := verifyRangesNotEmptyWithRetry(ctx, "N", []sheetReadbackProbe{{sheetID: "S1", rangeAddr: "A1"}}); !errors.Is(err, context.Canceled) {
-		t.Fatalf("retry cancellation err = %v, want context.Canceled", err)
+	if caller.calls != 4 {
+		t.Fatalf("calls = %d, want create + probe + write + one readback", caller.calls)
 	}
 }
 
@@ -1289,7 +1265,7 @@ func TestCrossPlatformCoverageAddCreatedSheetIDKeepsOuterObjectForNonObjectResul
 	}
 }
 
-func TestCrossPlatformCoverageAddCreatedSheetIDUnwrapsBusinessResult(t *testing.T) {
+func TestCrossPlatformCoverageAddCreatedSheetIDPreservesLegacyEnvelopeAndProjectsTopLevel(t *testing.T) {
 	got, err := addCreatedSheetID(
 		`{"requestId":"outer","result":{"nodeId":"server-node","docUrl":"https://example.test/sheet","large":9007199254740993}}`,
 		"probed-node",
@@ -1302,11 +1278,9 @@ func TestCrossPlatformCoverageAddCreatedSheetIDUnwrapsBusinessResult(t *testing.
 	if err := json.Unmarshal([]byte(got), &result); err != nil {
 		t.Fatal(err)
 	}
-	if _, wrapped := result["result"]; wrapped {
-		t.Fatalf("result must be flattened, got %s", got)
-	}
-	if _, leaked := result["requestId"]; leaked {
-		t.Fatalf("transport envelope must not leak into business result, got %s", got)
+	var requestID string
+	if err := json.Unmarshal(result["requestId"], &requestID); err != nil || requestID != "outer" {
+		t.Fatalf("requestId = %q, err=%v; want outer in %s", requestID, err, got)
 	}
 	for key, want := range map[string]string{
 		"nodeId":  "probed-node",
@@ -1321,22 +1295,18 @@ func TestCrossPlatformCoverageAddCreatedSheetIDUnwrapsBusinessResult(t *testing.
 	if string(result["large"]) != "9007199254740993" {
 		t.Fatalf("large = %s, want exact integer", result["large"])
 	}
-}
-
-func TestVerifyRangeNotEmptyWithRetryStopsOnPermanentError(t *testing.T) {
-	installSheetProductArgs(t)
-	installImmediateTiming(t)
-	caller := &scriptedToolCaller{steps: []scriptedToolStep{
-		{err: errors.New("permission denied")},
-		{text: `{"csv":"[row=1] should-not-be-read"}`},
-	}}
-	installScriptedCaller(t, caller)
-	err := verifyRangeNotEmptyWithRetry(context.Background(), "N", "S", "A1")
-	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "permission denied") {
-		t.Fatalf("err = %v, want permanent error", err)
+	var legacy map[string]json.RawMessage
+	if err := json.Unmarshal(result["result"], &legacy); err != nil {
+		t.Fatalf("legacy result missing or invalid: %v; output=%s", err, got)
 	}
-	if caller.calls != 1 {
-		t.Fatalf("calls=%d, want permanent error to stop after one probe", caller.calls)
+	for key, want := range map[string]string{"nodeId": "probed-node", "sheetId": "probed-sheet", "docUrl": "https://example.test/sheet"} {
+		var value string
+		if err := json.Unmarshal(legacy[key], &value); err != nil || value != want {
+			t.Fatalf("legacy result.%s = %q, err=%v; want %q in %s", key, value, err, want, got)
+		}
+	}
+	if string(legacy["large"]) != "9007199254740993" {
+		t.Fatalf("legacy result.large = %s, want exact integer", legacy["large"])
 	}
 }
 
@@ -1566,7 +1536,6 @@ func TestSheetCreateMergeTypeAcceptsEveryLegalForm(t *testing.T) {
 func TestSheetCreateVerifiesFirstNonEmptyCellNotAlwaysA1(t *testing.T) {
 	caller := &scriptedToolCaller{steps: []scriptedToolStep{
 		{text: `{"nodeId":"NODE_1"}`},
-		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 		{text: `{"sheets":[{"sheetId":"SHEET_1","name":"Sheet1"}]}`},
 		{text: `{"success":true}`},
 		{text: `{"csv":"[row=1] 姓名\n"}`}, // 回读 B1 命中"姓名"

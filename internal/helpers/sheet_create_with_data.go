@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +44,9 @@ func newSheetCreateWithDataCmd() *cobra.Command {
 
 创建空表格请用 dws sheet create（单次调用）；本命令是多步编排：
   create_workspace_sheet → 等待文档就绪 → 定位默认工作表 → 写入数据 → 回读校验 → 应用样式
-中途失败会带上已创建的 nodeId 报错，便于续做或删除。
+create / write / style 是多个远程步骤，不是原子事务。创建后的失败会返回已创建的
+nodeId、已探活的 sheetId（若有）、失败阶段和提交状态；先读回确认现状并只补失败步骤，
+不要整体重跑 create-with-data，以免生成重复工作簿。
 
 创建位置优先级: --folder > --workspace > 默认 (我的文档根目录)
 
@@ -129,7 +132,7 @@ func newSheetCreateWithDataCmd() *cobra.Command {
 					contract.ResultOutcomeSuccess,
 					contract.ResultOutcomeFailure,
 				},
-				DataSchema: json.RawMessage(`{"type":"object","description":"已创建并完成初始数据回读校验的在线电子表格","properties":{"nodeId":{"type":"string","description":"新建在线电子表格的稳定节点 ID"},"sheetId":{"type":"string","description":"探活阶段确认可写并供后续命令直接复用的默认工作表 ID"},"docUrl":{"type":"string","description":"新建在线电子表格的访问链接"}},"required":["nodeId","sheetId"],"additionalProperties":true}`),
+				DataSchema: json.RawMessage(`{"type":"object","description":"已创建并完成初始数据回读校验的在线电子表格；顶层字段供新消费者使用，旧 result 包装与外层 requestId 原样兼容","properties":{"nodeId":{"type":"string","description":"新建在线电子表格的稳定节点 ID"},"sheetId":{"type":"string","description":"探活阶段确认可写并供后续命令直接复用的默认工作表 ID"},"docUrl":{"type":"string","description":"新建在线电子表格的访问链接"},"result":{"description":"上游存在时原样兼容的旧结果字段；对象包装内包含同一 nodeId / sheetId"},"requestId":{"description":"上游响应存在时保留的请求 ID"}},"required":["nodeId","sheetId"],"additionalProperties":true}`),
 			},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
@@ -255,20 +258,30 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 	// 新建文档服务端仍在初始化，需先探活；否则写入可能返回成功但数据不落盘
 	defaultSheetID, err := waitSheetWritable(ctx, nodeID)
 	if err != nil {
-		return fmt.Errorf("表格已创建 (nodeId=%s)，但等待文档就绪失败: %w", nodeID, err)
+		return sheetCreateWithDataStateError(
+			nodeID, "", "wait_writable", "sheet_create_with_data_initialization_failed", "partial_success",
+			fmt.Sprintf("表格已创建 (nodeId=%s)，但等待文档就绪失败", nodeID), err, nil,
+		)
 	}
 	progress("开始写入初始数据 ...")
 
 	if useValues {
 		if err := writeValuesToSheet(ctx, nodeID, defaultSheetID, values); err != nil {
-			return fmt.Errorf("表格已创建 (nodeId=%s)，但写入数据失败: %w", nodeID, err)
+			return sheetCreateWithDataStateError(
+				nodeID, defaultSheetID, "write", "sheet_create_with_data_write_commit_unknown", "unknown",
+				fmt.Sprintf("表格已创建 (nodeId=%s)，但写入数据失败，服务端提交状态未知", nodeID), err, nil,
+			)
 		}
 		// 回读校验：防"返回成功但未落盘"（新建文档初始化竞态）。
 		// 必须校验输入里第一个**非空**的单元格，不能死盯 A1 ——
 		// [["","姓名"],[1,"张三"]] 这类首格为空的合法数据会被误报成写入失败。
 		probeCell := firstNonEmptyValuesCell(values)
-		if err := verifyRangeNotEmptyWithRetry(ctx, nodeID, defaultSheetID, probeCell); err != nil {
-			return fmt.Errorf("表格已创建 (nodeId=%s)，但初始数据写入未生效: %w；请对该文档重新执行 csv-put/range update 补写", nodeID, err)
+		if err := verifyRangeNotEmpty(ctx, nodeID, defaultSheetID, probeCell); err != nil {
+			return sheetCreateWithDataStateError(
+				nodeID, defaultSheetID, "verify_write", "sheet_create_with_data_write_verification_failed", "unknown",
+				fmt.Sprintf("表格已创建 (nodeId=%s)，但初始数据写入未生效", nodeID), err,
+				map[string]any{"probeRange": probeCell, "writeRequestSucceeded": true},
+			)
 		}
 	} else {
 		// 复用默认工作表承载第一个 sheet：先把默认表重命名为 sheets[0].name，
@@ -278,22 +291,33 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 		if err := callMCPToolSilent(ctx, "update_sheet", map[string]any{
 			"nodeId": nodeID, "sheetId": defaultSheetID, "title": firstName,
 		}); err != nil {
-			return fmt.Errorf("表格已创建 (nodeId=%s)，但重命名默认工作表失败: %w", nodeID, err)
+			return sheetCreateWithDataStateError(
+				nodeID, defaultSheetID, "rename_default_sheet", "sheet_create_with_data_rename_commit_unknown", "unknown",
+				fmt.Sprintf("表格已创建 (nodeId=%s)，但重命名默认工作表失败", nodeID), err,
+				map[string]any{"targetSheetName": firstName},
+			)
 		}
 		if err := callMCPToolSilent(ctx, "table_put", map[string]any{
 			"nodeId": nodeID,
 			"sheets": sheetSpecs,
 		}); err != nil {
-			return fmt.Errorf("表格已创建 (nodeId=%s)，但写入初始数据失败: %w", nodeID, err)
+			return sheetCreateWithDataStateError(
+				nodeID, defaultSheetID, "write", "sheet_create_with_data_write_commit_unknown", "unknown",
+				fmt.Sprintf("表格已创建 (nodeId=%s)，但写入初始数据失败，服务端提交状态未知", nodeID), err,
+				map[string]any{"sheetCount": len(sheetSpecs)},
+			)
 		}
-		// 分轮回读校验：table_put 可能返回成功但在新建文档初始化竞态下数据未落盘，
+		// 逐表回读校验：table_put 可能返回成功但在新建文档初始化竞态下数据未落盘，
 		// 与 --values 分支同源的问题。table_put 会按 name 复用/新建工作表，因此
 		// 重取一次 name→sheetId 映射，再按每个 spec 的首个预期非空单元格回读。
 		sheetIDByName, err := resolveSheetIDsByName(ctx, nodeID)
 		if err != nil {
-			return fmt.Errorf("表格已创建 (nodeId=%s)，数据已提交但无法回读校验（获取工作表列表失败）: %w；请自行确认各工作表数据是否落盘，必要时用 sheet table-put 补写", nodeID, err)
+			return sheetCreateWithDataStateError(
+				nodeID, defaultSheetID, "verify_write", "sheet_create_with_data_write_verification_failed", "unknown",
+				fmt.Sprintf("表格已创建 (nodeId=%s)，数据已提交但无法回读校验（获取工作表列表失败）", nodeID), err,
+				map[string]any{"writeRequestSucceeded": true},
+			)
 		}
-		probes := make([]sheetReadbackProbe, 0, len(sheetSpecs))
 		for _, spec := range sheetSpecs {
 			name, _ := spec["name"].(string)
 			probeCell, hasContent := firstNonEmptySheetSpecCell(spec)
@@ -302,14 +326,20 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 			}
 			sid, ok := sheetIDByName[name]
 			if !ok {
-				return fmt.Errorf("表格已创建 (nodeId=%s)，但写入后未找到工作表 %q，其初始数据可能未落盘；请用 sheet table-put 对该文档补写", nodeID, name)
+				return sheetCreateWithDataStateError(
+					nodeID, defaultSheetID, "verify_write", "sheet_create_with_data_sheet_missing_after_write", "unknown",
+					fmt.Sprintf("表格已创建 (nodeId=%s)，但写入后未找到工作表 %q，其初始数据可能未落盘", nodeID, name),
+					fmt.Errorf("工作表 %q 不在写后列表中", name),
+					map[string]any{"sheetName": name, "writeRequestSucceeded": true},
+				)
 			}
-			probes = append(probes, sheetReadbackProbe{
-				sheetID: sid, rangeAddr: probeCell, label: fmt.Sprintf("工作表 %q", name),
-			})
-		}
-		if err := verifyRangesNotEmptyWithRetry(ctx, nodeID, probes); err != nil {
-			return fmt.Errorf("表格已创建 (nodeId=%s)，但一个或多个工作表的初始数据写入未生效: %w；请用 sheet table-put 对该文档补写", nodeID, err)
+			if err := verifyRangeNotEmpty(ctx, nodeID, sid, probeCell); err != nil {
+				return sheetCreateWithDataStateError(
+					nodeID, defaultSheetID, "verify_write", "sheet_create_with_data_write_verification_failed", "unknown",
+					fmt.Sprintf("表格已创建 (nodeId=%s)，但工作表 %q 的初始数据写入未生效", nodeID, name), err,
+					map[string]any{"sheetName": name, "targetSheetId": sid, "probeRange": probeCell, "writeRequestSucceeded": true},
+				)
+			}
 		}
 	}
 
@@ -325,7 +355,11 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 				targetSheet = ops.Name
 			}
 			if err := applyStyleOps(ctx, nodeID, targetSheet, ops); err != nil {
-				return fmt.Errorf("表格已创建且数据已写入 (nodeId=%s)，但 --styles[%d] 应用失败: %w", nodeID, i, err)
+				return sheetCreateWithDataStateError(
+					nodeID, defaultSheetID, "apply_styles", "sheet_create_with_data_style_commit_unknown", "partial_success",
+					fmt.Sprintf("表格已创建且数据已写入 (nodeId=%s)，但 --styles[%d] 应用失败", nodeID, i), err,
+					map[string]any{"dataWritten": true, "failedStyleIndex": i, "targetSheet": targetSheet},
+				)
 			}
 		}
 		progress("样式应用完成。")
@@ -334,10 +368,52 @@ func runCreateSheetWithData(cmd *cobra.Command, createArgs map[string]any, value
 	// 这里只投影本地已有事实，不再调用 get_all_sheets。
 	createResult, err := projectCreatedSheetResult(createText, nodeID, defaultSheetID)
 	if err != nil {
-		return fmt.Errorf("表格已创建且初始数据已写入 (nodeId=%s)，但构造结果失败: %w", nodeID, err)
+		return sheetCreateWithDataStateError(
+			nodeID, defaultSheetID, "project_result", "sheet_create_with_data_result_projection_failed", "partial_success",
+			fmt.Sprintf("表格已创建且初始数据已写入 (nodeId=%s)，但构造结果失败", nodeID), err,
+			map[string]any{"dataWritten": true},
+		)
 	}
 	deps.Out.PrintRaw(createResult)
 	return nil
+}
+
+// sheetCreateWithDataStateError describes the recoverable state of this
+// non-transactional workflow. Once create_workspace_sheet succeeds, replaying
+// the whole command can duplicate a workbook. The error therefore carries the
+// stable resource identities and explicitly disables automatic retry.
+func sheetCreateWithDataStateError(nodeID, sheetID, stage, reason, status, message string, cause error, extra map[string]any) error {
+	details := map[string]any{
+		"contractVersion": "sheet.create_with_data.v1",
+		"status":          status,
+		"nodeId":          nodeID,
+		"failedStage":     stage,
+		"created":         true,
+		"retryCreateSafe": false,
+	}
+	if sheetID != "" {
+		details["sheetId"] = sheetID
+	}
+	for key, value := range extra {
+		details[key] = value
+	}
+	if cause != nil {
+		message = fmt.Sprintf("%s: %v", message, cause)
+	}
+	return apperrors.NewAPI(
+		message,
+		apperrors.WithOperation("sheet.create_with_data"),
+		apperrors.WithReason(reason),
+		apperrors.WithFailureStage(stage),
+		apperrors.WithExecutionStarted(true),
+		apperrors.WithRetryable(false),
+		apperrors.WithActions(
+			"使用 details.nodeId / details.sheetId 读取当前工作簿并确认实际状态",
+			"只补做失败或缺失的步骤；不要重新执行 create-with-data",
+		),
+		apperrors.WithDetails(details),
+		apperrors.WithCause(cause),
+	)
 }
 
 // parseCreateSheetSpecs 解析 --sheets 为 table_put 的 sheet spec 数组，并校验每个条目带 name。
@@ -1244,8 +1320,6 @@ func valuesHaveContent(values [][]any) bool {
 	return false
 }
 
-var errSheetReadbackNotVisible = errors.New("sheet readback not visible")
-
 // verifyRangeNotEmpty 回读校验目标区域确实写入了数据（防"返回成功但未落盘"）。
 // 返回 nil 表示已确认非空；无法确认时返回错误说明。
 func verifyRangeNotEmpty(ctx context.Context, nodeID, sheetID, rangeAddr string) error {
@@ -1264,72 +1338,9 @@ func verifyRangeNotEmpty(ctx context.Context, nodeID, sheetID, rangeAddr string)
 	stripped := strings.NewReplacer(",", "", "\n", "", " ", "").Replace(
 		regexpRowPrefix.ReplaceAllString(csvText, ""))
 	if strings.TrimSpace(stripped) == "" {
-		return fmt.Errorf("%w: 数据未落盘（回读为空）", errSheetReadbackNotVisible)
+		return fmt.Errorf("数据未落盘（回读为空）")
 	}
 	return nil
-}
-
-type sheetReadbackProbe struct {
-	sheetID   string
-	rangeAddr string
-	label     string
-}
-
-func (probe sheetReadbackProbe) displayLabel() string {
-	if strings.TrimSpace(probe.label) != "" {
-		return probe.label
-	}
-	return fmt.Sprintf("sheetId %q", probe.sheetID)
-}
-
-// verifyRangesNotEmptyWithRetry 对一组写后只读校验共享有界退避轮次。它不会
-// 重放写入：每一轮只回读仍为空的目标，整组目标仅共同等待 250ms、500ms、1s，
-// 避免多个工作表分别承担完整退避时间。
-func verifyRangesNotEmptyWithRetry(ctx context.Context, nodeID string, probes []sheetReadbackProbe) error {
-	if len(probes) == 0 {
-		return nil
-	}
-	delays := []time.Duration{0, 250 * time.Millisecond, 500 * time.Millisecond, 1 * time.Second}
-	pending := append([]sheetReadbackProbe(nil), probes...)
-	for _, delay := range delays {
-		if err := waitSheetRetryDelay(ctx, delay); err != nil {
-			return err
-		}
-		nextPending := make([]sheetReadbackProbe, 0, len(pending))
-		for _, probe := range pending {
-			err := verifyRangeNotEmpty(ctx, nodeID, probe.sheetID, probe.rangeAddr)
-			if err == nil {
-				continue
-			}
-			// 只有“写入回执已返回、但读模型仍为空”属于可收敛的最终一致性
-			// 状态。权限、认证、参数、协议解析和网络错误均立即返回。
-			if !errors.Is(err, errSheetReadbackNotVisible) {
-				return fmt.Errorf("%s 回读校验失败: %w", probe.displayLabel(), err)
-			}
-			nextPending = append(nextPending, probe)
-		}
-		if len(nextPending) == 0 {
-			return nil
-		}
-		pending = nextPending
-	}
-	labels := make([]string, 0, len(pending))
-	for _, probe := range pending {
-		labels = append(labels, probe.displayLabel())
-	}
-	notVisible := fmt.Errorf("%w: 数据未落盘（回读为空）", errSheetReadbackNotVisible)
-	return fmt.Errorf(
-		"写后回读在 %d 次有界尝试后仍未确认落盘（%s）: %w",
-		len(delays), strings.Join(labels, "、"), notVisible,
-	)
-}
-
-// verifyRangeNotEmptyWithRetry 保留单目标入口；单表与多表使用完全相同的
-// 可见性判定和重试边界。
-func verifyRangeNotEmptyWithRetry(ctx context.Context, nodeID, sheetID, rangeAddr string) error {
-	return verifyRangesNotEmptyWithRetry(ctx, nodeID, []sheetReadbackProbe{{
-		sheetID: sheetID, rangeAddr: rangeAddr,
-	}})
 }
 
 // regexpRowPrefix 匹配 csv-get 的 [row=N] 行号前缀。
@@ -1400,34 +1411,45 @@ func parseCreatedNodeID(text string) (string, error) {
 
 var projectCreatedSheetResult = addCreatedSheetID
 
-// addCreatedSheetID 保留 create_workspace_sheet 的业务响应字段，同时发布编排
-// 过程中已经探活确认的 nodeId / sheetId。MCP 返回 result 包装时，投影必须与
-// parseCreatedNodeID 读取同一层。使用 RawMessage 避免大整数经 float64 中转；
-// 本函数只做结果投影，不触发远程调用。
+// addCreatedSheetID 保留 create_workspace_sheet 的完整响应信封，同时发布编排
+// 过程中已经探活确认的 nodeId / sheetId。对象型 result 同时保留旧的
+// .result.nodeId 路径并投影顶层字段；外层 requestId 也不丢失。使用 RawMessage
+// 避免大整数经 float64 中转；本函数只做结果投影，不触发远程调用。
 func addCreatedSheetID(text, nodeID, sheetID string) (string, error) {
-	var result map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(text), &result); err != nil {
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(text), &envelope); err != nil {
 		return "", fmt.Errorf("解析创建响应失败: %w", err)
 	}
-	if result == nil {
+	if envelope == nil {
 		return "", fmt.Errorf("创建响应不是 JSON 对象")
 	}
-	if wrapped, ok := result["result"]; ok {
-		var unwrapped map[string]json.RawMessage
+	nodeJSON := json.RawMessage(strconv.Quote(nodeID))
+	sheetJSON := json.RawMessage(strconv.Quote(sheetID))
+	if wrapped, ok := envelope["result"]; ok {
+		var business map[string]json.RawMessage
 		// 与 unwrapSheetResult 保持同一层选择规则：只有 result 确实是
-		// JSON object 时才把它视为 transport wrapper。null、数组、字符串或
-		// 数字都只是外层业务对象中的普通字段，继续投影外层回执，不能在创建、
-		// 写入和校验都成功后因一个非对象 result 字段丢失 nodeId/sheetId。
-		if err := json.Unmarshal(wrapped, &unwrapped); err == nil && unwrapped != nil {
-			result = unwrapped
+		// JSON object 时才把它视为 transport wrapper。为兼容已有脚本，包装
+		// 本身继续保留；同时把业务字段补到顶层，供新消费者直接读取。
+		if err := json.Unmarshal(wrapped, &business); err == nil && business != nil {
+			business["nodeId"] = nodeJSON
+			business["sheetId"] = sheetJSON
+			encodedBusiness, err := json.Marshal(business)
+			if err != nil {
+				return "", fmt.Errorf("编码创建响应 result 失败: %w", err)
+			}
+			envelope["result"] = encodedBusiness
+			for key, value := range business {
+				if _, exists := envelope[key]; !exists {
+					envelope[key] = value
+				}
+			}
 		}
 	}
-	// nodeID / sheetID 均为 Go 字符串，Quote 生成的内容必为合法 JSON 字符串；
-	// 无需对不可能失败的 json.Marshal(string) 再增加错误分支。
-	result["nodeId"] = json.RawMessage(strconv.Quote(nodeID))
-	result["sheetId"] = json.RawMessage(strconv.Quote(sheetID))
-	encoded, err := json.Marshal(result)
-	// result 只含刚通过 Unmarshal 校验的 RawMessage 和上面的合法字符串，Marshal
+	// 顶层稳定 ID 以探活事实为准；非对象 result 仍按原样保留。
+	envelope["nodeId"] = nodeJSON
+	envelope["sheetId"] = sheetJSON
+	encoded, err := json.Marshal(envelope)
+	// envelope 只含刚通过 Unmarshal 校验的 RawMessage 和上面的合法字符串，Marshal
 	// 理论上不会失败；仍原样传播错误，避免静默输出空结果。
 	return string(encoded), err
 }

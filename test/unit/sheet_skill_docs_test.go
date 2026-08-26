@@ -35,6 +35,9 @@ func TestCrossPlatformCoverageSheetSkillRoutesImportTemplatesAndValidation(t *te
 			"dws sheet template search",
 			"dws sheet template apply",
 			"唯一的真实 `templateId`",
+			"`details.status` 为 `unknown` 或 `partial_success`",
+			"不得整体重跑 `create-with-data`",
+			"不得自动删除已写数据",
 		} {
 			if !strings.Contains(text, required) {
 				t.Errorf("%s missing Sheet route contract %q", path, required)

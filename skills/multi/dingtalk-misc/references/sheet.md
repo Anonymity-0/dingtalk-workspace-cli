@@ -159,5 +159,6 @@ dws drive +delete --node <NODE_ID> --format json
 - 参数校验失败：只修正错误指出的 leaf 参数后重试一次；不要改读父级 Help。
 - `hasMore=true` / 截断：按 `returnedRange` 分块续读；不得把部分结果声称为完整。CSV 落盘默认失败关闭。
 - 导出 xlsx 失败或超时：不要重复提交 `sheet export`；保留在线文档并报告。
+- `create-with-data` 在 create / write / style 间不是原子事务。若错误 `details.status` 为 `unknown` 或 `partial_success`，复用 `details.nodeId` / `details.sheetId` 读回现状，只补失败步骤；不得整体重跑 `create-with-data`，也不得自动删除已写数据。
 - 写入部分成功：先读回确定真实状态，再续做缺失部分；不要盲目重放非幂等创建。
 - 权限或认证失败：停止业务重试并报告；不要切换产品绕过权限。
