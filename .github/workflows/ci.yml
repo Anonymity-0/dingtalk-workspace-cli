@@ -1303,6 +1303,8 @@ jobs:
           echo "COVERAGE_BASE_REF=$base_ref" >> "$GITHUB_ENV"
 
       - name: Run and enforce macOS changed-code coverage
+        env:
+          COVERAGE_PLATFORM_TIMEOUT: 15m
         run: make coverage-gate-platform BASE_REF="$COVERAGE_BASE_REF" PROFILE=coverage-darwin.txt
 
       - name: Upload macOS coverage artifact
