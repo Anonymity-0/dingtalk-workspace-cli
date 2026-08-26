@@ -709,8 +709,8 @@ func TestCodeAdmissionEnforcesReviewerRouterWriterBoundary(t *testing.T) {
 		t.Fatalf("ReadFile(ci.yml) error = %v", err)
 	}
 	workflow := string(data)
-	if !strings.Contains(workflow, "pull_request:\n    types: [opened, synchronize, reopened, ready_for_review, edited, auto_merge_enabled, auto_merge_disabled]") {
-		t.Error("CI must rerun admission when a draft becomes ready or merge metadata changes")
+	if !strings.Contains(workflow, "pull_request:\n    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited, auto_merge_enabled, auto_merge_disabled]") {
+		t.Error("CI must rerun admission when Draft state or merge metadata changes")
 	}
 	start := strings.Index(workflow, "\n  test:\n")
 	end := strings.Index(workflow, "\n  test-darwin:\n")
