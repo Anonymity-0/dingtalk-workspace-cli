@@ -255,7 +255,7 @@ func ExecuteWithTelemetry() (exitCode int, commandPath string, errorMessage stri
 		}
 		var publicationErr *outputPublicationError
 		if err == nil || !stderrors.As(err, &publicationErr) {
-			err = interrupted
+			err = interrupted.withCancellationDetail(err)
 		}
 	}
 	if err != nil {
