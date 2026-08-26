@@ -327,6 +327,33 @@ type DriveUploadRequest struct {
 	MIMEType      string
 }
 
+// DocSpaceUploadRequest describes the document-space upload transaction used
+// by curated shortcuts. The document-space API deliberately uses workspaceId,
+// folderId and overwriteNodeId rather than the similarly named Drive fields.
+type DocSpaceUploadRequest struct {
+	FilePath      string
+	FileName      string
+	FileSize      int64
+	WorkspaceID   string
+	FolderID      string
+	OverwriteNode string
+	Convert       bool
+}
+
+func parseUploadCommitData(operation, text string) (map[string]any, error) {
+	if strings.TrimSpace(text) == "" {
+		return nil, fmt.Errorf("%s returned no business result; remote effect is unknown", operation)
+	}
+	var result map[string]any
+	if err := json.Unmarshal([]byte(text), &result); err != nil {
+		return nil, fmt.Errorf("parse %s response: %w", operation, err)
+	}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("%s returned an empty JSON object; remote effect is unknown", operation)
+	}
+	return result, nil
+}
+
 // UploadDriveFileData runs credentials -> OSS PUT -> commit exactly once and
 // returns the parsed commit response without rendering it. Unlike the legacy
 // leaf helper, this path fails when the commit has no non-empty JSON response;
@@ -380,17 +407,59 @@ func UploadDriveFileData(ctx context.Context, request DriveUploadRequest) (map[s
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(commitText) == "" {
-		return nil, fmt.Errorf("commit_upload returned no business result; remote effect is unknown")
+	return parseUploadCommitData("commit_upload", commitText)
+}
+
+// UploadDocSpaceFileData runs credentials -> OSS PUT -> commit exactly once
+// on the doc MCP server and returns the parsed commit response without
+// rendering it. It is intentionally separate from UploadDriveFileData so the
+// two target domains cannot silently exchange similarly named identifiers.
+func UploadDocSpaceFileData(ctx context.Context, request DocSpaceUploadRequest) (map[string]any, error) {
+	if strings.TrimSpace(request.FilePath) == "" || strings.TrimSpace(request.FileName) == "" || request.FileSize <= 0 || strings.TrimSpace(request.WorkspaceID) == "" {
+		return nil, fmt.Errorf("invalid document-space upload request")
 	}
-	var result map[string]any
-	if err := json.Unmarshal([]byte(commitText), &result); err != nil {
-		return nil, fmt.Errorf("parse commit_upload response: %w", err)
+	if request.OverwriteNode != "" && request.FolderID != "" {
+		return nil, fmt.Errorf("document-space overwriteNode and folderId are mutually exclusive")
 	}
-	if len(result) == 0 {
-		return nil, fmt.Errorf("commit_upload returned an empty JSON object; remote effect is unknown")
+
+	credentialArgs := map[string]any{"workspaceId": request.WorkspaceID}
+	if request.OverwriteNode != "" {
+		credentialArgs["overwriteNodeId"] = request.OverwriteNode
+		credentialArgs["name"] = request.FileName
+	} else if request.FolderID != "" {
+		credentialArgs["folderId"] = request.FolderID
 	}
-	return result, nil
+	credentialText, err := callMCPToolReturnTextOnServer(ctx, "doc", "get_file_upload_info", credentialArgs)
+	if err != nil {
+		return nil, err
+	}
+	resourceURL, uploadKey, headers, err := parseUploadInfo(credentialText)
+	if err != nil {
+		return nil, err
+	}
+	if err := httpPutFile(ctx, resourceURL, headers, request.FilePath, request.FileSize); err != nil {
+		return nil, err
+	}
+
+	commitArgs := map[string]any{
+		"uploadKey":   uploadKey,
+		"name":        request.FileName,
+		"fileSize":    float64(request.FileSize),
+		"workspaceId": request.WorkspaceID,
+	}
+	if request.OverwriteNode != "" {
+		commitArgs["overwriteNodeId"] = request.OverwriteNode
+	} else if request.FolderID != "" {
+		commitArgs["folderId"] = request.FolderID
+	}
+	if request.Convert {
+		commitArgs["convertToOnlineDoc"] = true
+	}
+	commitText, err := callMCPToolReturnTextOnServer(ctx, "doc", "commit_uploaded_file", commitArgs)
+	if err != nil {
+		return nil, err
+	}
+	return parseUploadCommitData("commit_uploaded_file", commitText)
 }
 
 func newDriveCommand() *cobra.Command {

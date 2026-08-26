@@ -803,6 +803,86 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 	}
 }
 
+func TestCrossPlatformCoverageDriveUploadRoutesWorkspaceToDocSpace(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.WriteFile("notes.txt", []byte("workspace-file"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("workspace upload uses doc transaction and readback", func(t *testing.T) {
+		var request helpers.DocSpaceUploadRequest
+		testseam.Swap(t, &uploadDocSpaceFile, func(_ context.Context, got helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			request = got
+			return map[string]any{"success": true, "result": map[string]any{"nodeId": "doc-file-1"}}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"success":true,"result":{"nodeId":"doc-file-1","workspaceId":"wiki-1","name":"notes","extension":"txt"}}`},
+		}}
+		if err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes"); err != nil {
+			t.Fatal(err)
+		}
+		if request.WorkspaceID != "wiki-1" || request.FileName != "notes.txt" || request.FileSize != 14 {
+			t.Fatalf("doc-space request = %#v", request)
+		}
+		if strings.Join(caller.history, ",") != "get_document_info" {
+			t.Fatalf("readback history = %v, want doc/get_document_info only", caller.history)
+		}
+	})
+
+	t.Run("workspace upload rejects a returned size mismatch", func(t *testing.T) {
+		testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			return map[string]any{"success": true, "nodeId": "doc-file-size"}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"nodeId":"doc-file-size","workspaceId":"wiki-1","name":"notes","extension":"txt","fileSize":13}`},
+		}}
+		err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes")
+		if err == nil || !strings.Contains(err.Error(), "与本地文件大小 14 不一致") {
+			t.Fatalf("workspace size mismatch error = %v", err)
+		}
+	})
+
+	t.Run("custom doc-space name inherits local extension", func(t *testing.T) {
+		var request helpers.DocSpaceUploadRequest
+		testseam.Swap(t, &uploadDocSpaceFile, func(_ context.Context, got helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			request = got
+			return map[string]any{"success": true, "nodeId": "doc-file-2"}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"nodeId":"doc-file-2","workspaceId":"wiki-1","name":"renamed.txt","fileSize":14}`},
+		}}
+		if err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--file-name", "renamed", "--workspace", "wiki-1", "--yes"); err != nil {
+			t.Fatal(err)
+		}
+		if request.FileName != "renamed.txt" {
+			t.Fatalf("doc-space file name = %q, want extension-preserving name", request.FileName)
+		}
+	})
+
+	t.Run("workspace readback is required", func(t *testing.T) {
+		testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			return map[string]any{"success": true, "nodeId": "doc-file-3"}, nil
+		})
+		caller := &driveCoverageCaller{responses: map[string][]string{
+			"get_document_info": {`{"nodeId":"doc-file-3","name":"notes.txt","fileSize":14}`},
+		}}
+		err := runDriveCoverage(t, Upload, caller, "--file", "notes.txt", "--workspace", "wiki-1", "--yes")
+		if err == nil || !strings.Contains(err.Error(), "缺少 workspaceId") {
+			t.Fatalf("missing workspace readback error = %v", err)
+		}
+	})
+
+	for _, args := range [][]string{
+		{"--file", "notes.txt", "--workspace", "wiki-1", "--space-id", "drive-1", "--yes"},
+		{"--file", "notes.txt", "--workspace", "wiki-1", "--folder", "f1", "--node", "n1", "--yes"},
+	} {
+		caller := &driveCoverageCaller{responses: map[string][]string{}}
+		if err := runDriveCoverage(t, Upload, caller, args...); err == nil || len(caller.history) != 0 {
+			t.Fatalf("conflicting upload args accepted: args=%v err=%v history=%v", args, err, caller.history)
+		}
+	}
+}
+
 func TestCrossPlatformCoverageDriveCopyPreservesSchemaProperties(t *testing.T) {
 	want := map[string]string{
 		"folder":    "folder",
