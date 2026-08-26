@@ -3,7 +3,7 @@
 Every runtime command the `dws` CLI exposes when loaded with the **pre** environment configuration.
 
 - **Products**: 13
-- **Total commands**: 163
+- **Total commands**: 168
 - **Generated from**: `internal/plugin` command descriptors — the same code path the CLI uses at runtime.
 
 > Auto-generated. Update plugin descriptors in `internal/plugin/`, not this file.
@@ -38,7 +38,7 @@ Every command inherits these flags (documented here once, not repeated per comma
 - [`dws devdoc` — Open Platform Docs](#dws-devdoc) · 2 commands
 - [`dws ding` — DING Messages](#dws-ding) · 2 commands
 - [`dws doc` — DingTalk Doc](#dws-doc) · 21 commands
-- [`dws drive` — DingTalk Drive](#dws-drive) · 6 commands
+- [`dws drive` — DingTalk Drive](#dws-drive) · 11 commands
 - [`dws minutes` — AI Minutes](#dws-minutes) · 19 commands
 - [`dws oa` — OA Approval](#dws-oa) · 12 commands
 - [`dws report` — Reports](#dws-report) · 7 commands
@@ -239,15 +239,20 @@ _DingTalk Doc: search, browse, read/write, upload/download, files, folders, bloc
 
 _DingTalk Drive file and folder management._
 
-**6 commands**
+**11 commands**
 
 | Command | Description | When to use |
 |---|---|---|
 | `dws drive commit` | Commit a file upload to DingTalk Drive after the binary has been pushed to the presigned URL. | When the agent finalizes a Drive upload step; pairs with `drive upload-info`. |
 | `dws drive download` | Fetch a temporary download URL for a file stored in DingTalk Drive. | When the agent needs to retrieve a Drive-hosted file for local use or for handing to another service. |
+| `dws drive export` | Export an online doc from DingTalk Drive to a local file in docx/xlsx/markdown/pdf/pptx; submits the export task, polls it, and downloads the result in one step. | When the agent needs the general export entry: exporting to xlsx/pptx or exporting a doc whose type is uncertain. |
+| `dws drive export get` | Query a Drive export task by task ID and return a normalized TaskResult. | When the agent submitted an export with `--async` or the polling timed out and needs to check the export task. |
 | `dws drive info` | Retrieve metadata for a file or folder in DingTalk Drive. | When the agent inspects a Drive node before downloading, moving, or listing around it. |
 | `dws drive list` | List the files and subfolders of a DingTalk Drive folder. | When the agent needs to enumerate Drive contents to find or pick items. |
 | `dws drive mkdir` | Create a new folder in DingTalk Drive. | When the agent organizes Drive output into a fresh folder before uploading files. |
+| `dws drive quota` | Query enterprise storage quota at the enterprise (default), app (`--app`), or space (`--space`) level. | When the agent checks DingTalk Drive storage usage or remaining space. |
+| `dws drive quota apps` | List app-level storage usage across the enterprise with paging and sorting. | When the agent inventories which apps consume Drive storage or walks the full app list page by page. |
+| `dws drive task get` | Query an async task by ID and type (`export\|import\|copy\|move`) and return a normalized TaskResult. | When the agent needs the terminal state of an export/import/copy/move task after a timeout or interruption. |
 | `dws drive upload-info` | Obtain a presigned upload URL and token for pushing a local file into DingTalk Drive. | When the agent starts a Drive upload; pairs with `drive commit` to finalize. |
 
 ## `dws minutes` — AI Minutes
