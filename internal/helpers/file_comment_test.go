@@ -145,19 +145,34 @@ func TestCrossPlatformCoverageDriveCommentFirstFiveUseSharedNewCommentRPCs(t *te
 	}
 }
 
-func TestCrossPlatformCoverageDriveCommentRemovesLegacyFlagsAndRejectsInvalidInput(t *testing.T) {
+func TestCrossPlatformCoverageDriveCommentKeepsLegacyFlagSurfaceAndRejectsInvalidInput(t *testing.T) {
 	group := newDriveFileCommentCmd()
 	listCmd, _, _ := group.Find([]string{"list"})
-	for _, legacy := range []string{"space-id", "scope", "all", "type", "page-size"} {
-		if listCmd.Flags().Lookup(legacy) != nil {
-			t.Errorf("drive comment list still exposes legacy --%s", legacy)
+	for _, legacy := range []string{"space-id", "scope", "all", "page-size"} {
+		if listCmd.Flags().Lookup(legacy) == nil {
+			t.Errorf("drive comment list lost compatibility --%s", legacy)
 		}
 	}
 	createCmd, _, _ := group.Find([]string{"create"})
-	for _, unsupported := range []string{"space-id", "mention", "mentioned-open-conversation-id", "anchor"} {
+	if createCmd.Flags().Lookup("space-id") == nil {
+		t.Error("drive comment create lost compatibility --space-id")
+	}
+	for _, unsupported := range []string{"mention", "mentioned-open-conversation-id", "anchor"} {
 		if createCmd.Flags().Lookup(unsupported) != nil {
 			t.Errorf("drive comment create exposes unsupported --%s", unsupported)
 		}
+	}
+
+	compatCaller := &docCommentMutationCaller{}
+	if err := executeDriveCommentCommand(t, compatCaller,
+		"comment", "list", "--node", "file-1", "--space-id", "123", "--scope", "whole", "--page-size", "20"); err != nil {
+		t.Fatal(err)
+	}
+	wantCompatArgs := map[string]any{
+		"nodeId": "file-1", "pageSize": 20, "commentType": driveCommentGlobalTopic,
+	}
+	if len(compatCaller.calls) != 1 || !reflect.DeepEqual(compatCaller.calls[0].args, wantCompatArgs) {
+		t.Fatalf("compatibility flags leaked to new RPC: calls=%#v want=%#v", compatCaller.calls, wantCompatArgs)
 	}
 
 	caller := &docCommentMutationCaller{}
@@ -168,6 +183,14 @@ func TestCrossPlatformCoverageDriveCommentRemovesLegacyFlagsAndRejectsInvalidInp
 	if err := executeDriveCommentCommand(t, caller,
 		"comment", "create", "--node", "file-1", "--content", "   "); err == nil || !strings.Contains(err.Error(), "不能为空") {
 		t.Fatalf("blank content error = %v", err)
+	}
+	if err := executeDriveCommentCommand(t, caller,
+		"comment", "list", "--node", "file-1", "--all"); err == nil || !strings.Contains(err.Error(), "--cursor") {
+		t.Fatalf("legacy all error = %v", err)
+	}
+	if err := executeDriveCommentCommand(t, caller,
+		"comment", "list", "--node", "file-1", "--scope", "partial"); err == nil || !strings.Contains(err.Error(), "全局评论") {
+		t.Fatalf("legacy partial scope error = %v", err)
 	}
 	if len(caller.calls) != 0 {
 		t.Fatalf("invalid inputs reached MCP: %#v", caller.calls)

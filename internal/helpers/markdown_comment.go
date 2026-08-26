@@ -61,7 +61,7 @@ var markdownCommentListResultSchema = json.RawMessage(`{
 // Both products call the same neutral doc-comment MCP contract, while command
 // identity, help, selection and exposed lifecycle remain Markdown-owned.
 func newMarkdownCommentCmd() *cobra.Command {
-	commentCmd := &cobra.Command{
+	commentCmd := newGroupCommand(&cobra.Command{
 		Use:   "comment",
 		Short: "Markdown 评论",
 		Long: `读取原生 Markdown 文件的新体系评论，支持全文和划词评论。
@@ -69,7 +69,7 @@ func newMarkdownCommentCmd() *cobra.Command {
 当前阶段仅开放列表读取；评论写操作暂不在 markdown 产品下暴露。评论 ID 使用
 commentKey，topicId 从列表结果中取得。`,
 		RunE: groupRunE,
-	}
+	})
 
 	listCmd := NewLeafCommand(LeafSpec{
 		Use:   "list",

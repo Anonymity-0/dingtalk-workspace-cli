@@ -86,8 +86,8 @@ func newDriveFileCommentCmd() *cobra.Command {
 		Long: `管理 Drive 本地文件的新体系全局评论。全部命令复用 Doc/Sheet 评论链路，
 评论 ID 使用 commentKey，服务端固定 topicId=global。
 
-不支持单元格、划词、页码、anchor、scope 或 mention；旧 commentId、space-id
-和数字分页游标不适用于本命令。`,
+不支持单元格、划词、页码、anchor 或 mention。旧 space-id、scope、all
+和 page-size 参数仅保留 CLI 兼容性；新评论链路使用 nodeId 和 opaque 游标分页。`,
 		RunE: groupRunE,
 	})
 
@@ -102,8 +102,11 @@ func newDriveFileCommentCmd() *cobra.Command {
 		Tool:   "list_comments",
 		Flags: []LeafFlag{
 			driveCommentNodeFlag(),
-			{Name: "limit", Usage: "每页评论数，范围 1-50", Kind: LeafInt, Default: "50", Bind: "pageSize"},
+			{Name: "space-id", Usage: "兼容旧 Drive 评论命令；新评论链路仅使用 --node", Bind: "spaceId", OmitEmpty: true, Trim: true},
+			{Name: "limit", Usage: "每页评论数，范围 1-50", Kind: LeafInt, Default: "50", Aliases: []string{"page-size"}, Bind: "pageSize"},
 			{Name: "cursor", Usage: "分页游标，取自上页 nextToken", Bind: "nextToken", OmitEmpty: true, Trim: true},
+			{Name: "all", Usage: "兼容旧 Drive 评论命令；新评论链路请使用 --cursor 逐页读取", Kind: LeafBool, Bind: "all"},
+			{Name: "scope", Usage: "兼容旧范围参数: all / whole / partial；新 Drive 评论仅支持全局评论", Default: "all", Bind: "scope", Trim: true, Enum: []string{"all", "whole", "partial"}},
 			{Name: "resolve-status", Usage: "解决状态: resolved / unresolved", Bind: "resolveStatus", OmitEmpty: true, Trim: true, Enum: []string{"resolved", "unresolved"}},
 		},
 		Constraints: []LeafConstraint{
@@ -138,6 +141,7 @@ func newDriveFileCommentCmd() *cobra.Command {
 			},
 		},
 		Validate: validateDriveCommentList,
+		Call:     callDriveCommentNewService,
 	})
 
 	createCmd := NewLeafCommand(LeafSpec{
@@ -149,6 +153,7 @@ func newDriveFileCommentCmd() *cobra.Command {
 		Tool:    "create_comment",
 		Flags: []LeafFlag{
 			driveCommentNodeFlag(),
+			{Name: "space-id", Usage: "兼容旧 Drive 评论命令；新评论链路仅使用 --node", Bind: "spaceId", OmitEmpty: true, Trim: true},
 			{Name: "content", Usage: "评论纯文本内容", Required: true, Bind: "content"},
 		},
 		Safety: contract.SafetySpec{
@@ -173,6 +178,7 @@ func newDriveFileCommentCmd() *cobra.Command {
 			},
 		},
 		Validate: validateDriveCommentContent,
+		Call:     callDriveCommentNewService,
 	})
 
 	replyCmd := NewLeafCommand(LeafSpec{
@@ -280,13 +286,39 @@ func newDriveFileCommentCmd() *cobra.Command {
 
 func validateDriveCommentList(cmd *cobra.Command, _ []string) error {
 	limit, _ := cmd.Flags().GetInt("limit")
+	if !cmd.Flags().Changed("limit") && cmd.Flags().Changed("page-size") {
+		limit, _ = cmd.Flags().GetInt("page-size")
+	}
 	if limit < 1 || limit > driveCommentMaxPageSize {
 		return &CLIError{
 			Code:    CodeInvalidParam,
 			Message: fmt.Sprintf("--limit 必须在 1-%d 之间", driveCommentMaxPageSize),
 		}
 	}
+	if all, _ := cmd.Flags().GetBool("all"); all {
+		return &CLIError{
+			Code:    CodeInvalidParam,
+			Message: "--all 仅用于旧 Drive 评论链路；新评论请根据 nextToken 使用 --cursor 逐页读取",
+		}
+	}
+	if scope, _ := cmd.Flags().GetString("scope"); scope == "partial" {
+		return &CLIError{
+			Code:    CodeInvalidParam,
+			Message: "--scope=partial 仅用于旧 Drive 局部评论；新 Drive 评论仅支持全局评论",
+		}
+	}
 	return nil
+}
+
+// callDriveCommentNewService keeps the historical CLI flag surface without
+// leaking legacy-only arguments into the shared Doc/Sheet comment contract.
+// --page-size is declared as an alias of --limit and is therefore already
+// projected to pageSize before this adapter runs.
+func callDriveCommentNewService(cmd *cobra.Command, tool string, args map[string]any) error {
+	delete(args, "spaceId")
+	delete(args, "all")
+	delete(args, "scope")
+	return callMCPToolOnServer(commentServer, tool, args)
 }
 
 func validateDriveCommentContent(cmd *cobra.Command, _ []string) error {
