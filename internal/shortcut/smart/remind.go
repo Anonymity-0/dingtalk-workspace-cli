@@ -85,7 +85,8 @@ var Remind = shortcut.Shortcut{
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		task := strings.TrimSpace(rt.Str("task"))
 		var dueMillis int64
-		if rt.Changed("at") {
+		atProvided := rt.Changed("at")
+		if atProvided {
 			var err error
 			dueMillis, err = shortcutRemindParseMillis("at", rt.Str("at"))
 			if err != nil {
@@ -94,7 +95,7 @@ var Remind = shortcut.Shortcut{
 		}
 		if rt.DryRun() {
 			preview := map[string]any{"dryRun": true, "executed": false, "preview_kind": "plan", "subject": task, "executor": "current_user"}
-			if dueMillis != 0 {
+			if atProvided {
 				preview["dueTime"] = dueMillis
 			}
 			return rt.Output(preview)
@@ -117,7 +118,7 @@ var Remind = shortcut.Shortcut{
 		// Optional due time. The todo helper feeds --due through
 		// parseISOTimeToMillis and stores dueTime as epoch milliseconds (int64),
 		// so we do the same here rather than passing a raw string.
-		if dueMillis != 0 {
+		if atProvided {
 			vo["dueTime"] = dueMillis
 		}
 

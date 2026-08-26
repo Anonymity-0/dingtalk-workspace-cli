@@ -77,7 +77,8 @@ var Assign = shortcut.Shortcut{
 		name := strings.TrimSpace(rt.Str("to"))
 		task := strings.TrimSpace(rt.Str("task"))
 		var dueMillis int64
-		if rt.Changed("due") {
+		dueProvided := rt.Changed("due")
+		if dueProvided {
 			var err error
 			dueMillis, err = shortcutRemindParseMillis("due", rt.Str("due"))
 			if err != nil {
@@ -86,7 +87,7 @@ var Assign = shortcut.Shortcut{
 		}
 		if rt.DryRun() {
 			preview := map[string]any{"dryRun": true, "executed": false, "preview_kind": "plan", "subject": task, "assigneeQuery": name}
-			if dueMillis != 0 {
+			if dueProvided {
 				preview["dueTime"] = dueMillis
 			}
 			return rt.Output(preview)
@@ -104,7 +105,7 @@ var Assign = shortcut.Shortcut{
 			"subject":     task,
 			"executorIds": []string{user.userID},
 		}
-		if dueMillis != 0 {
+		if dueProvided {
 			vo["dueTime"] = dueMillis
 		}
 		params := map[string]any{
