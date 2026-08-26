@@ -217,6 +217,18 @@ func TestCrossPlatformCoverageDriveCommentCreateRequiresExplicitConfirmation(t *
 	}
 }
 
+func TestCrossPlatformCoverageDriveCommentRejectsBlankV2Content(t *testing.T) {
+	caller := &docCommentMutationCaller{}
+	err := executeDriveCommentCommand(t, caller,
+		"comment", "create-v2", "--node", "file-1", "--content", " \t ", "--yes")
+	if err == nil || !strings.Contains(err.Error(), "不能为空") {
+		t.Fatalf("blank v2 content error = %v", err)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("blank v2 content reached MCP: %#v", caller.calls)
+	}
+}
+
 func TestCrossPlatformCoverageDriveLegacyDeprecatedHelpStaysOnStdout(t *testing.T) {
 	caller := &fileCommentTestCaller{}
 	stdout, err := executeFileCommentCommand(t, caller, "", "drive", "comment", "list", "--help")
