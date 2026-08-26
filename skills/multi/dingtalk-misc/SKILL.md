@@ -13,7 +13,9 @@ metadata:
 
 ## 前置条件 — 执行操作前必读
 
-> **CRITICAL — 执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dingtalk-shared`](../dingtalk-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
+> **CRITICAL — 除下述明确考勤例外外，执行任何 `dws` 操作前，MUST 先用 Read 工具完整读取 [`dingtalk-shared`](../dingtalk-shared/SKILL.md)。**该轻量文件包含全局执行契约、安全底线及 shared references 的按需加载导航；不要预加载其全部 references。
+>
+> **明确考勤例外**：请求是单一、清晰的 attendance 任务时，直接按产品索引读取一份最匹配的 `attendance*.md`；这些 Reference 已包含该任务所需的执行契约，不要重复预读 `dingtalk-shared`。只有出现跨产品编排、profile/认证问题、未知全局错误或 Reference 明确指向 shared 时，才按需读取 shared 对应内容。
 
 本 skill 打包低频长尾产品，命令前缀各不相同。**不要**把这份 SKILL.md 当作命令细节来源——它只负责路由；命中某个产品后，务必读取该产品的 `references/<product>.md` 获取 Usage / Example / Flags / 危险操作确认 / 跨产品协作等完整信息。
 
@@ -22,7 +24,7 @@ metadata:
 | 触发关键词 | 一句话范围 | 命令前缀 | 详细参考 |
 |---|---|---|---|
 | OA / 审批 / 待处理审批 / 同意 / 拒绝 / 撤销 / 已发起审批 | OA 审批：待处理/详情/同意/拒绝/撤销/已发起/批量审批 | `dws oa` | [oa.md](references/oa.md) |
-| 考勤 / 打卡记录 / 排班 / 班次 / 考勤报表 / 考勤组 | 考勤记录、打卡查询、排班、考勤组、报表导出 | `dws attendance` | [attendance.md](references/attendance.md) |
+| 考勤 / 打卡 / 班次 / 考勤组 / 排班 / 考勤报表 / 假期余额 | 考勤记录、规则与配置、排班、报表、假期 | `dws attendance` | 日常查询/规则/设置：[attendance.md](references/attendance.md)；排班导入或排班表导出：[attendance-schedule.md](references/attendance-schedule.md)；考勤 Excel/报表导出：[attendance-report.md](references/attendance-report.md)；假期/余额：[attendance-vacation.md](references/attendance-vacation.md) |
 | 直播 / 我的直播 / 直播列表 | 直播列表与直播记录查询 | `dws live` | [live.md](references/live.md) |
 | DING / 紧急通知 / 电话DING / 短信DING / 必达消息 | DING 紧急消息（应用内/短信/电话），个人DING | `dws ding` | [ding.md](references/ding.md) |
 | 开放平台应用 / 企业内部应用 / 应用成员 / 应用权限 / 应用版本 / agentId / clientId / 机器人配置 / 版本发布 / connect | 开放平台企业内部应用的查询、创建、修改、成员权限、机器人与版本管理 | `dws dev` / `dws devapp` | [devapp.md](references/devapp.md) |
@@ -42,6 +44,9 @@ metadata:
 ## 说明
 
 - 每个产品的意图表、危险操作确认、硬约束、跨产品协作和短流程均在其 `references/<product>.md` 内，命中产品后必须读取，不要只凭本表推测命令。
+- **考勤例外**：按索引表直接读取一份最匹配的 `attendance*.md`；不要先读 `attendance.md` 再读排班、报表或假期专项 Reference。只有一个任务确实跨两个独立考勤域时，才加载第二份。
+- 考勤性能优化只允许减少重复的 shared/Reference/Help/Schema 加载和重复远程查询；禁止为节省 token 省略用户要求的记录、业务字段、分页、失败项、warning 或写后验证。需要“全部/完整”结论时必须保留并检查 endpoint exhaustion/总数等完整性证据。
+- 考勤命令路径、flag、约束和返回声明以当前 live Cobra/Contract/精确 leaf Schema 为权威；attendance Reference 只维护业务路由、能力边界和工作流。已知命令直接执行，确有不确定性时最多读取一次精确 compact leaf，避免复制命令全集造成信息漂移。
 - 产品自己的局部意图消歧文档命名为 `references/<product>-intent-guide.md`，不是共享的 `references/intent-guide.md`。
 - 各产品之间跨产品协作若指向本包内的其它产品，已在对应 `references/<product>.md` 里写成"见本包 references/X.md"，无需切换 skill；若指向 top10 独立产品（如 `chat`/`aisearch`/`doc`），仍按 `dingtalk-<product>` 切换 skill。
 - `scripts/` 下 yida / finance / `aiapp_create_and_poll.py` 等见 [unsupported-scripts.md](references/unsupported-scripts.md)；默认不要当正式能力调用。
