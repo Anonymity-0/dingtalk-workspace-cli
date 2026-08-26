@@ -288,6 +288,26 @@ func TestCrossPlatformCoverageChatThreadSurfaceAndLegacyCompatibility(t *testing
 	if !reflect.DeepEqual(visible, want) {
 		t.Fatalf("visible thread commands = %#v, want %#v", visible, want)
 	}
+	for _, path := range [][]string{
+		{"message", "send"},
+		{"message", "list"},
+		{"message", "reply"},
+		{"message", "recall"},
+		{"message", "add-emoji"},
+		{"message", "remove-emoji"},
+		{"message", "list-emotion-replies"},
+		{"message", "add-text-emotion"},
+		{"message", "remove-text-emotion"},
+		{"message", "update-text-emotion"},
+	} {
+		command, remaining, findErr := root.Find(path)
+		if findErr != nil || len(remaining) != 0 || command.Hidden || !command.Runnable() {
+			t.Fatalf("generic message path %v must stay public and runnable: command=%v remaining=%v hidden=%v runnable=%v error=%v", path, command, remaining, command != nil && command.Hidden, command != nil && command.Runnable(), findErr)
+		}
+		if _, ok := contractfinal.RuntimeContractFinal(command); !ok {
+			t.Fatalf("generic message path %v lost its Schema declaration", path)
+		}
+	}
 	for _, path := range [][]string{{"message", "list-topic-replies"}, {"message", "forward-topic"}} {
 		command, _, findErr := root.Find(path)
 		if findErr != nil || !command.Hidden || !command.Runnable() {
