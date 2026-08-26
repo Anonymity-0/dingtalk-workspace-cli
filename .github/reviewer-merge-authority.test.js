@@ -10,6 +10,7 @@ const {
   hasWorkflowSkipDirective,
   isStrictGraphQLUpdateRule,
   isStrictUpdateRule,
+  requiresManualWorkflowMerge,
   reviewedAppSlug,
   safeMergeMetadata,
   verifyBuiltInWriterBoundary,
@@ -85,6 +86,24 @@ assert.equal(hasWorkflowSkipDirective({title: 'unsafe [actions skip]'}), true);
 assert.equal(
   hasWorkflowSkipDirective({title: 'normal', auto_merge: {commit_message: 'skip-checks: true'}}),
   true,
+);
+assert.equal(
+  requiresManualWorkflowMerge([
+    {filename: '.github/reviewer-router.js'},
+    {filename: 'internal/app/app.go'},
+  ]),
+  false,
+);
+assert.equal(
+  requiresManualWorkflowMerge([
+    {filename: 'docs/ci-pr-gates.md'},
+    {filename: '.github/workflows/ci.yml'},
+  ]),
+  true,
+);
+assert.throws(
+  () => requiresManualWorkflowMerge([{filename: ''}]),
+  /non-empty filename/,
 );
 
 assert.equal(classifyMergeDefaults({}), 'omitted');

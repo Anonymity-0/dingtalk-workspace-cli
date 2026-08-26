@@ -296,6 +296,7 @@ jobs:
       # cannot update main before touching App credentials. Missing credentials
       # or authority drift then fail closed with manual merge intact.
       - name: Verify and normalize merge authority
+        id: merge-authority
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           REVIEWER_ROUTER_APP_SLUG: ${{ vars.REVIEWER_ROUTER_APP_SLUG }}
@@ -309,10 +310,13 @@ jobs:
             const {
               classifyAutoMergeRequest,
               hasWorkflowSkipDirective,
+              requiresManualWorkflowMerge,
               reviewedAppSlug,
               safeMergeMetadata,
               verifyBuiltInWriterBoundary,
             } = require('./.github/reviewer-merge-authority.js');
+
+            core.setOutput('enable-app-auto-merge', 'false');
 
             async function getExactPull(phase) {
               const {data: currentPull} = await github.rest.pulls.get({
@@ -395,6 +399,25 @@ jobs:
                   `PR #${pullNumber} title or merge metadata contains a GitHub workflow-skip directive.`,
                 );
               }
+              const changedFiles = await github.paginate(
+                github.rest.pulls.listFiles,
+                {owner, repo, pull_number: pullNumber, per_page: 100},
+              );
+              if (requiresManualWorkflowMerge(changedFiles)) {
+                if (currentPull.auto_merge) {
+                  currentPull = await disableAutoMerge(
+                    currentPull,
+                    'workflow-change manual-only cleanup',
+                  );
+                  if (!currentPull) {
+                    return;
+                  }
+                }
+                core.notice(
+                  `PR #${pullNumber} changes .github/workflows/**; GitHub Apps without workflows permission cannot enable auto-merge, so this PR remains manual-only.`,
+                );
+                return;
+              }
 
               const {mergeDefaultsProjection} =
                 await verifyBuiltInWriterBoundary({github, owner, repo});
@@ -423,6 +446,7 @@ jobs:
               core.info(
                 `Verified built-in merge authority for PR #${pullNumber}; auto-merge=${finalRequest}.`,
               );
+              core.setOutput('enable-app-auto-merge', 'true');
             } catch (error) {
               const latestPull = await getExactPull('failure cleanup');
               if (latestPull?.auto_merge) {
@@ -438,6 +462,7 @@ jobs:
             }
       - name: Mint Reviewer Router GitHub App token
         id: reviewer-router-token
+        if: steps.merge-authority.outputs.enable-app-auto-merge == 'true'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.REVIEWER_ROUTER_APP_CLIENT_ID }}
@@ -447,6 +472,7 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
       - name: Enable auto-merge with dedicated App
+        if: steps.merge-authority.outputs.enable-app-auto-merge == 'true'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           MINTED_REVIEWER_ROUTER_APP_SLUG: ${{ steps.reviewer-router-token.outputs.app-slug }}
@@ -1176,6 +1202,32 @@ jobs:
             await assertReviewerRouterRulesetBoundary();
             const skipWorkflowPattern =
               /\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]|\bskip-checks\s*:\s*true\b/i;
+            function requiresManualWorkflowMerge(files) {
+              if (!Array.isArray(files)) {
+                throw new Error('pull request files must be an array');
+              }
+              return files.some(file => {
+                if (
+                  file === null ||
+                  typeof file !== 'object' ||
+                  Array.isArray(file) ||
+                  typeof file.filename !== 'string' ||
+                  !file.filename
+                ) {
+                  throw new Error(
+                    'pull request file entry must contain a non-empty filename',
+                  );
+                }
+                return file.filename.startsWith('.github/workflows/');
+              });
+            }
+            async function pullRequiresManualWorkflowMerge(pullNumber) {
+              const files = await github.paginate(
+                github.rest.pulls.listFiles,
+                {owner, repo, pull_number: pullNumber, per_page: 100},
+              );
+              return requiresManualWorkflowMerge(files);
+            }
             const openPulls = await github.paginate(github.rest.pulls.list, {
               owner,
               repo,
@@ -1383,6 +1435,20 @@ jobs:
                   continue;
                 }
 
+                if (await pullRequiresManualWorkflowMerge(candidate.number)) {
+                  stage = 'workflow-change manual-only cleanup';
+                  await disableAutoMerge(
+                    candidate.number,
+                    currentPull.node_id,
+                    stage,
+                  );
+                  skipped += 1;
+                  core.notice(
+                    `PR #${candidate.number} changes .github/workflows/**; cleared auto-merge and left it manual-only.`,
+                  );
+                  continue;
+                }
+
                 stage = skipRequested
                   ? 'disable workflow-skipping auto-merge request'
                   : currentOwner === expectedAppOwner
@@ -1572,6 +1638,20 @@ jobs:
                   skipped += 1;
                   core.info(
                     `PR #${candidate.number} changed before synchronous merge; skipped.`,
+                  );
+                  continue;
+                }
+
+                if (await pullRequiresManualWorkflowMerge(candidate.number)) {
+                  stage = 'workflow-change synchronous-merge cleanup';
+                  await disableAutoMerge(
+                    candidate.number,
+                    currentPull.node_id,
+                    stage,
+                  );
+                  skipped += 1;
+                  core.notice(
+                    `PR #${candidate.number} changes .github/workflows/**; cleared the App request and left it manual-only.`,
                   );
                   continue;
                 }

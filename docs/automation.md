@@ -77,6 +77,9 @@ it:
 
 - install it only on `DingTalk-Real-AI/dingtalk-workspace-cli`;
 - grant only `Contents: read and write` and `Pull requests: read and write`;
+- do not grant `Workflows: read and write`. A PR that changes
+  `.github/workflows/**` is deliberately left manual-only, because allowing the
+  merge App to update workflow files would broaden its release and CI authority;
 - set repository variable `REVIEWER_ROUTER_APP_CLIENT_ID` to its client ID;
 - set `REVIEWER_ROUTER_APP_SLUG` to its exact lowercase slug;
 - set repository secret `REVIEWER_ROUTER_APP_PRIVATE_KEY` to its private key;
@@ -109,7 +112,12 @@ including REST/GraphQL agreement and
 failure clears a remaining request; a mint or permission failure therefore
 leaves that PR manual-only. The built-in token's `Contents: write` permission
 is isolated to this trusted normalization job and is never used to enable
-auto-merge; review routing keeps `Contents: read`. During staged rollout, the
+auto-merge. Before minting an App token, it lists the exact PR revision's files;
+when `.github/workflows/**` changes, it records an explicit manual-only notice
+and skips both token minting and auto-merge enablement. Reconciliation clears
+any older App request before leaving the PR manual-only, so scheduled recovery
+cannot re-enable or synchronously merge it. Review routing keeps `Contents:
+read`. During staged rollout, the
 required `Test` context independently repeats the built-in boundary and live
 request checks as a shadow assertion. Before enabling or reconciling auto-merge,
 the minted App independently requires `pull_requests_only` on that writer rule

@@ -193,7 +193,11 @@ the live event base/head. Before reading App credentials, its built-in token
 normalizes every request that is not already owned by the reviewed App with the
 fixed headline/body, rejects workflow-skip metadata, and proves that the exact
 repository-owned `main-merge-writers` rule denies that token any bypass. It
-never enables auto-merge. Any authority failure clears a remaining request and
+never enables auto-merge. A PR that changes `.github/workflows/**` is an
+explicit manual-only case: the trusted step skips App token minting and
+auto-merge enablement instead of granting the App `Workflows` permission, and
+reconciliation clears any older App-owned request rather than merging it. Any
+authority failure clears a remaining request and
 leaves the PR manual-only. The job then mints a current-repository installation token
 for the dedicated Reviewer Router GitHub App, proves its emitted slug matches
 the reviewed `REVIEWER_ROUTER_APP_SLUG`, rechecks the App-side ruleset boundary, and

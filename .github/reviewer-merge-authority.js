@@ -36,6 +36,24 @@ function hasWorkflowSkipDirective(pullRequest) {
   return mergeTexts(pullRequest).some(value => SKIP_WORKFLOW_PATTERN.test(value));
 }
 
+function requiresManualWorkflowMerge(files) {
+  if (!Array.isArray(files)) {
+    throw new Error('pull request files must be an array');
+  }
+  return files.some(file => {
+    if (
+      file === null ||
+      typeof file !== 'object' ||
+      Array.isArray(file) ||
+      typeof file.filename !== 'string' ||
+      !file.filename
+    ) {
+      throw new Error('pull request file entry must contain a non-empty filename');
+    }
+    return file.filename.startsWith('.github/workflows/');
+  });
+}
+
 function classifyAutoMergeRequest({
   pullRequest,
   expectedAppOwner,
@@ -241,6 +259,7 @@ module.exports = {
   hasWorkflowSkipDirective,
   isStrictGraphQLUpdateRule,
   isStrictUpdateRule,
+  requiresManualWorkflowMerge,
   reviewedAppSlug,
   safeMergeMetadata,
   verifyBuiltInWriterBoundary,
