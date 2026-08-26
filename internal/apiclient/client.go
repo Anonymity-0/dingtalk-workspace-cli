@@ -55,6 +55,15 @@ var AllowedMethods = map[string]bool{
 
 var newHTTPRequest = http.NewRequestWithContext
 
+var (
+	multipartWriteField = func(writer *multipart.Writer, key, value string) error {
+		return writer.WriteField(key, value)
+	}
+	multipartCreateFormFile = func(writer *multipart.Writer, fieldName, filename string) (io.Writer, error) {
+		return writer.CreateFormFile(fieldName, filename)
+	}
+)
+
 // RawAPIRequest describes a raw API request to DingTalk OpenAPI.
 type RawAPIRequest struct {
 	Method string         // GET, POST, PUT, PATCH, DELETE
@@ -248,11 +257,11 @@ func newMultipartBody(upload *FileUpload, fileReader io.Reader, data any) (io.Re
 				writeErr = fmt.Errorf("编码 multipart 字段 %q 失败: %w", key, valueErr)
 				return
 			}
-			if writeErr = mw.WriteField(key, value); writeErr != nil {
+			if writeErr = multipartWriteField(mw, key, value); writeErr != nil {
 				return
 			}
 		}
-		part, partErr := mw.CreateFormFile(fieldName, filepath.Base(filename))
+		part, partErr := multipartCreateFormFile(mw, fieldName, filepath.Base(filename))
 		if partErr != nil {
 			writeErr = partErr
 			return

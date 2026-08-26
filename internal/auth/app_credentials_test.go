@@ -59,7 +59,7 @@ func writeCredentialConfig(t *testing.T, dir, clientID string, secret SecretInpu
 	}
 }
 
-func TestResolveAppCredentialPairAtomicPriority(t *testing.T) {
+func TestCrossPlatformCoverageResolveAppCredentialPairAtomicPriority(t *testing.T) {
 	isolateAppCredentialKeychain(t)
 	dir := t.TempDir()
 	writeCredentialConfig(t, dir, "config-id", PlainSecret("config-secret"))
@@ -72,6 +72,13 @@ func TestResolveAppCredentialPairAtomicPriority(t *testing.T) {
 	}
 	if pair.ClientID != "flag-id" || pair.ClientSecret != "flag-secret" || pair.Source != "flag" {
 		t.Fatalf("flag pair = %#v", pair)
+	}
+	pair, err = ResolveAppCredentialPair(dir, "  trimmed-id  ", "  trimmed-secret  ")
+	if err != nil || pair.ClientID != "trimmed-id" || pair.ClientSecret != "trimmed-secret" {
+		t.Fatalf("trimmed flag pair = %#v, %v", pair, err)
+	}
+	if _, err := ResolveAppCredentialPair(dir, "<client-id>", "<client-secret>"); !errors.Is(err, ErrCredentialPlaceholders) {
+		t.Fatalf("placeholder error = %v", err)
 	}
 
 	if _, err := ResolveAppCredentialPair(dir, "flag-only", ""); !errors.Is(err, ErrFlagCredentialPairIncomplete) {
@@ -89,7 +96,19 @@ func TestResolveAppCredentialPairAtomicPriority(t *testing.T) {
 	}
 }
 
-func TestResolveAppConfigCredentialPairMigratesDerivedSlots(t *testing.T) {
+func TestCrossPlatformCoverageSaveClientSecretRepairsLegacyConflict(t *testing.T) {
+	entries := isolateAppCredentialKeychain(t)
+	entries[secretAccountKey("repair-id")] = "stale-canonical"
+	entries[legacyClientSecretAccountKey("repair-id")] = "stale-legacy"
+	if err := SaveClientSecret(" repair-id ", " fresh-secret "); err != nil {
+		t.Fatal(err)
+	}
+	if entries[secretAccountKey("repair-id")] != "fresh-secret" || entries[legacyClientSecretAccountKey("repair-id")] != "" {
+		t.Fatalf("repaired secret slots = %#v", entries)
+	}
+}
+
+func TestCrossPlatformCoverageResolveAppConfigCredentialPairMigratesDerivedSlots(t *testing.T) {
 	entries := isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "")
 	t.Setenv(EnvClientSecret, "")
@@ -139,7 +158,7 @@ func TestResolveAppConfigCredentialPairMigratesDerivedSlots(t *testing.T) {
 	})
 }
 
-func TestResolveAppConfigCredentialPairFailsClosed(t *testing.T) {
+func TestCrossPlatformCoverageResolveAppConfigCredentialPairFailsClosed(t *testing.T) {
 	entries := isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "")
 	t.Setenv(EnvClientSecret, "")
@@ -176,7 +195,7 @@ func TestResolveAppConfigCredentialPairFailsClosed(t *testing.T) {
 	}
 }
 
-func TestExplicitFileSecretDoesNotRequireKeychain(t *testing.T) {
+func TestCrossPlatformCoverageExplicitFileSecretDoesNotRequireKeychain(t *testing.T) {
 	isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "")
 	t.Setenv(EnvClientSecret, "")
@@ -195,7 +214,7 @@ func TestExplicitFileSecretDoesNotRequireKeychain(t *testing.T) {
 	}
 }
 
-func TestLegacyCleanupFailureKeepsResolvedPairUsable(t *testing.T) {
+func TestCrossPlatformCoverageLegacyCleanupFailureKeepsResolvedPairUsable(t *testing.T) {
 	entries := isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "")
 	t.Setenv(EnvClientSecret, "")
@@ -212,7 +231,7 @@ func TestLegacyCleanupFailureKeepsResolvedPairUsable(t *testing.T) {
 	}
 }
 
-func TestClientSecretMigrationDoesNotOverwriteConcurrentLoginPair(t *testing.T) {
+func TestCrossPlatformCoverageClientSecretMigrationDoesNotOverwriteConcurrentLoginPair(t *testing.T) {
 	entries := isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "")
 	t.Setenv(EnvClientSecret, "")
@@ -255,7 +274,7 @@ func TestClientSecretMigrationDoesNotOverwriteConcurrentLoginPair(t *testing.T) 
 	}
 }
 
-func TestCredentialResolutionWithoutMigrationLeavesLegacyStateUntouched(t *testing.T) {
+func TestCrossPlatformCoverageCredentialResolutionWithoutMigrationLeavesLegacyStateUntouched(t *testing.T) {
 	entries := isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "")
 	t.Setenv(EnvClientSecret, "")
@@ -276,7 +295,7 @@ func TestCredentialResolutionWithoutMigrationLeavesLegacyStateUntouched(t *testi
 	}
 }
 
-func TestOAuthCredentialSnapshotPersistsFlagsAndEnvOnlyAfterSuccessHook(t *testing.T) {
+func TestCrossPlatformCoverageOAuthCredentialSnapshotPersistsFlagsAndEnvOnlyAfterSuccessHook(t *testing.T) {
 	entries := isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "env-id")
 	t.Setenv(EnvClientSecret, "env-secret")
@@ -309,7 +328,7 @@ func TestOAuthCredentialSnapshotPersistsFlagsAndEnvOnlyAfterSuccessHook(t *testi
 	}
 }
 
-func TestOAuthSilentLoginDoesNotPersistUnvalidatedReplacementPair(t *testing.T) {
+func TestCrossPlatformCoverageOAuthSilentLoginDoesNotPersistUnvalidatedReplacementPair(t *testing.T) {
 	isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "replacement-id")
 	t.Setenv(EnvClientSecret, "replacement-secret")
@@ -329,7 +348,7 @@ func TestOAuthSilentLoginDoesNotPersistUnvalidatedReplacementPair(t *testing.T) 
 	}
 }
 
-func TestOAuthConstructorsDoNotMutateCredentialEnvironment(t *testing.T) {
+func TestCrossPlatformCoverageOAuthConstructorsDoNotMutateCredentialEnvironment(t *testing.T) {
 	isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "")
 	t.Setenv(EnvClientSecret, "")
@@ -342,7 +361,7 @@ func TestOAuthConstructorsDoNotMutateCredentialEnvironment(t *testing.T) {
 	}
 }
 
-func TestExplicitRuntimePairClearsStaleMCPMarker(t *testing.T) {
+func TestCrossPlatformCoverageExplicitRuntimePairClearsStaleMCPMarker(t *testing.T) {
 	isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "")
 	t.Setenv(EnvClientSecret, "")
@@ -359,7 +378,7 @@ func TestExplicitRuntimePairClearsStaleMCPMarker(t *testing.T) {
 	}
 }
 
-func TestMCPRuntimeTupleCannotPolluteLaterAppConfigPair(t *testing.T) {
+func TestCrossPlatformCoverageMCPRuntimeTupleCannotPolluteLaterAppConfigPair(t *testing.T) {
 	isolateAppCredentialKeychain(t)
 	t.Setenv(EnvClientID, "")
 	t.Setenv(EnvClientSecret, "")
@@ -390,7 +409,7 @@ func TestMCPRuntimeTupleCannotPolluteLaterAppConfigPair(t *testing.T) {
 	}
 }
 
-func TestDeleteAppConfigSweepsAllApplicationCredentialNamespaces(t *testing.T) {
+func TestCrossPlatformCoverageDeleteAppConfigSweepsAllApplicationCredentialNamespaces(t *testing.T) {
 	oldCleanup := appConfigRemoveCredentialEntries
 	var gotService string
 	var gotPrefixes []string

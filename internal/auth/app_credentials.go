@@ -41,6 +41,7 @@ var (
 	ErrEnvCredentialPairIncomplete  = errors.New("DWS_CLIENT_ID and DWS_CLIENT_SECRET must be set together")
 	ErrClientSecretConflict         = errors.New("canonical and legacy Client Secret slots conflict; log in again")
 	ErrClientSecretRefMismatch      = errors.New("app config Client Secret reference does not match Client ID")
+	ErrCredentialPlaceholders       = errors.New("credentials contain placeholders")
 )
 
 // ResolveAppCredentialPair resolves one complete pair without mixing sources.
@@ -99,9 +100,9 @@ func validateAppCredentialPair(clientID, clientSecret, source string) (AppCreden
 	id := strings.TrimSpace(clientID)
 	secret := strings.TrimSpace(clientSecret)
 	if id == "" || secret == "" || strings.HasPrefix(id, "<") || strings.HasPrefix(secret, "<") {
-		return AppCredentialPair{}, fmt.Errorf("%s credentials are incomplete or contain placeholders", source)
+		return AppCredentialPair{}, fmt.Errorf("%s credentials are incomplete: %w", source, ErrCredentialPlaceholders)
 	}
-	return AppCredentialPair{ClientID: id, ClientSecret: clientSecret, Source: source}, nil
+	return AppCredentialPair{ClientID: id, ClientSecret: secret, Source: source}, nil
 }
 
 func resolveAppConfigCredentials(configDir string) (

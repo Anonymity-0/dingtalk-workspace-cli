@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestNewCommandRunnerDoesNotBackfillCredentialEnvironment(t *testing.T) {
+func TestCrossPlatformCoverageNewCommandRunnerDoesNotBackfillCredentialEnvironment(t *testing.T) {
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	authpkg.SetClientID("persisted-looking-id")
@@ -42,7 +42,7 @@ func TestNewCommandRunnerDoesNotBackfillCredentialEnvironment(t *testing.T) {
 	}
 }
 
-func TestRootCredentialFlagsReplacePriorRuntimeTupleAtomically(t *testing.T) {
+func TestCrossPlatformCoverageRootCredentialFlagsReplacePriorRuntimeTupleAtomically(t *testing.T) {
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -79,7 +79,7 @@ func TestRootCredentialFlagsReplacePriorRuntimeTupleAtomically(t *testing.T) {
 	}
 }
 
-func TestRootCredentialFlagsAreScopedToEachExecuteCInvocation(t *testing.T) {
+func TestCrossPlatformCoverageRootCredentialFlagsAreScopedToEachExecuteCInvocation(t *testing.T) {
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -115,7 +115,7 @@ func TestRootCredentialFlagsAreScopedToEachExecuteCInvocation(t *testing.T) {
 	}
 }
 
-func TestRootCredentialFlagsAreClearedAfterExecutionErrors(t *testing.T) {
+func TestCrossPlatformCoverageRootCredentialFlagsAreClearedAfterExecutionErrors(t *testing.T) {
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -158,7 +158,7 @@ func TestRootCredentialFlagsAreClearedAfterExecutionErrors(t *testing.T) {
 	}
 }
 
-func TestRootCredentialFlagsAreClearedOnPreRunExitPaths(t *testing.T) {
+func TestCrossPlatformCoverageRootCredentialFlagsAreClearedOnPreRunExitPaths(t *testing.T) {
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
@@ -217,7 +217,7 @@ func TestRootCredentialFlagsAreClearedOnPreRunExitPaths(t *testing.T) {
 	})
 }
 
-func TestRootVersionPreservesCobraEarlyExitCompatibility(t *testing.T) {
+func TestCrossPlatformCoverageRootVersionPreservesCobraEarlyExitCompatibility(t *testing.T) {
 	t.Setenv("DWS_CONFIG_DIR", t.TempDir())
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
@@ -282,6 +282,25 @@ func TestRootVersionPreservesCobraEarlyExitCompatibility(t *testing.T) {
 	}
 	if observed.clientSecret == "version-secret" {
 		t.Fatal("ordinary invocation reused --version Client Secret")
+	}
+}
+
+func TestCrossPlatformCoverageRootInvocationNilGuardsAndDefaultHelp(t *testing.T) {
+	consumeCredentialInvocationFlags(nil, nil, nil)
+	consumeRootVersionInvocationFlag(nil, nil)
+	installInvocationExitHandlers(nil, nil, nil, nil)
+
+	root := newRootPresentationCommand()
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	if root.RunE == nil {
+		t.Fatal("root default RunE is missing")
+	}
+	if err := root.RunE(root, nil); err != nil {
+		t.Fatalf("root default help: %v", err)
+	}
+	if err := runRootHelp(root, nil); err != nil {
+		t.Fatalf("root help helper: %v", err)
 	}
 }
 

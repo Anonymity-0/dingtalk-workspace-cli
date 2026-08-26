@@ -962,7 +962,7 @@ func newRootCommandWithMode(rootCtx context.Context, engine *pipeline.Engine, lo
 		// public flag and output in RunE so it crosses the normal invocation
 		// boundary instead.
 		Version: "",
-		RunE:    func(cmd *cobra.Command, args []string) error { return cmd.Help() },
+		RunE:    runRootHelp,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			rootVersionShortCircuit = false
 			consumeRootVersionInvocationFlag(cmd.Root(), &rootVersionRequested)
@@ -2255,4 +2255,8 @@ func newPipelineEngine() *pipeline.Engine {
 		handlers.PostResponseHandler{},
 	)
 	return engine
+}
+
+func runRootHelp(cmd *cobra.Command, _ []string) error {
+	return cmd.Help()
 }

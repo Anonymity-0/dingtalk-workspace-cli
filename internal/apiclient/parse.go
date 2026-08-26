@@ -145,7 +145,7 @@ func ParseFileSpec(raw string) (*FileUpload, error) {
 		return nil, nil
 	}
 	field, path := "file", raw
-	if before, after, found := strings.Cut(raw, "="); found {
+	if before, after, found := strings.Cut(raw, "="); found && isExplicitFileField(before) {
 		field, path = strings.TrimSpace(before), strings.TrimSpace(after)
 	}
 	if field == "" || path == "" {
@@ -165,6 +165,14 @@ func ParseFileSpec(raw string) (*FileUpload, error) {
 		filename = filepath.Base(path)
 	}
 	return &FileUpload{FieldName: field, Path: path, FileName: filename}, nil
+}
+
+func isExplicitFileField(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return true
+	}
+	return !strings.ContainsAny(value, `/\\`)
 }
 
 // stripSingleQuotes removes a leading and trailing single quote pair.

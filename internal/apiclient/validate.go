@@ -57,10 +57,6 @@ func ValidateTargetHost(fullURL string) error {
 			host,
 		)
 	}
-	authority := strings.ToLower(parsed.Host)
-	if authority != host && authority != host+":443" {
-		return fmt.Errorf("安全限制: 请求 URL authority %q 非法", parsed.Host)
-	}
 	return nil
 }
 

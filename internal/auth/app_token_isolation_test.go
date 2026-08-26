@@ -21,7 +21,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/keychain"
 )
 
-func TestAppTokenUserTokenAndClientSecretNamespacesAreIsolated(t *testing.T) {
+func TestCrossPlatformCoverageAppTokenUserTokenAndClientSecretNamespacesAreIsolated(t *testing.T) {
 	clientID := "app-key-1"
 	appTokenAccount := appTokenPrefix + clientID
 	userTokenAccounts := []string{
@@ -40,7 +40,7 @@ func TestAppTokenUserTokenAndClientSecretNamespacesAreIsolated(t *testing.T) {
 	}
 }
 
-func TestAppTokenRedirectPolicyIsSameOriginHTTPSOnly(t *testing.T) {
+func TestCrossPlatformCoverageAppTokenRedirectPolicyIsSameOriginHTTPSOnly(t *testing.T) {
 	original, _ := http.NewRequest(http.MethodPost, AppAccessTokenURL, nil)
 	same, _ := http.NewRequest(http.MethodPost, "https://api.dingtalk.com/v1.0/oauth2/accessToken2", nil)
 	if err := appTokenRedirectPolicy(same, []*http.Request{original}); err != nil {

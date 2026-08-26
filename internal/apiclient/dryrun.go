@@ -47,21 +47,32 @@ func PrintDryRun(w io.Writer, req RawAPIRequest, baseURL, token string) error {
 		fmt.Fprintf(w, "%-12s%s\n", "Params:", deferredSourceLabel(req.ParamsSource))
 	}
 
-	if req.Data != nil {
-		dataJSON, err := json.MarshalIndent(req.Data, "            ", "  ")
-		if err == nil {
-			fmt.Fprintf(w, "%-12s%s\n", "Body:", string(dataJSON))
-		}
-	}
-	if req.DataSource != "" {
-		fmt.Fprintf(w, "%-12s%s\n", "Body:", deferredSourceLabel(req.DataSource))
-	}
 	if req.File != nil {
+		fmt.Fprintf(w, "%-12s%s\n", "Content-Type:", "multipart/form-data; boundary=<generated at send time>")
+		if req.Data != nil {
+			dataJSON, err := json.MarshalIndent(req.Data, "            ", "  ")
+			if err == nil {
+				fmt.Fprintf(w, "%-12s%s\n", "Form fields:", string(dataJSON))
+			}
+		}
+		if req.DataSource != "" {
+			fmt.Fprintf(w, "%-12s%s\n", "Form fields:", deferredSourceLabel(req.DataSource))
+		}
 		path := req.File.Path
 		if path == "-" {
 			path = "<stdin>"
 		}
 		fmt.Fprintf(w, "%-12s%s=%s (not opened)\n", "File:", req.File.FieldName, path)
+	} else {
+		if req.Data != nil {
+			dataJSON, err := json.MarshalIndent(req.Data, "            ", "  ")
+			if err == nil {
+				fmt.Fprintf(w, "%-12s%s\n", "Body:", string(dataJSON))
+			}
+		}
+		if req.DataSource != "" {
+			fmt.Fprintf(w, "%-12s%s\n", "Body:", deferredSourceLabel(req.DataSource))
+		}
 	}
 
 	if IsLegacyAPI(fullURL) {

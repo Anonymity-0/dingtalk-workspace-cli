@@ -184,7 +184,7 @@ func TestRemoveAuthTokenEntriesPreservesOtherAccounts(t *testing.T) {
 	}
 }
 
-func TestRemoveAccountEntriesWithPrefixesPreservesUnrelatedAccounts(t *testing.T) {
+func TestCrossPlatformCoverageRemoveAccountEntriesWithPrefixesPreservesUnrelatedAccounts(t *testing.T) {
 	service := "test-prefix-cleanup"
 	entries := map[string]string{
 		"appsecret:client-a":     "secret-a",

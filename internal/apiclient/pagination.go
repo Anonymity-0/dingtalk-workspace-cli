@@ -93,10 +93,6 @@ func (c *APIClient) PaginateAll(ctx context.Context, req RawAPIRequest, opts Pag
 			logf(opts.LogWriter, "[pagination] 数据获取完成 (共 %d 页)\n", pageCount)
 			break
 		}
-		if continuation.Value == "" || continuation.RequestKey == "" {
-			return allResults, fmt.Errorf("分页第 %d 页返回 hasMore=true，但 continuation 不明确，已停止以避免重复请求", pageCount)
-		}
-
 		// Inject the next page token into the request.
 		req, parseErr = injectPageTokenWithKey(req, continuation)
 		if parseErr != nil {

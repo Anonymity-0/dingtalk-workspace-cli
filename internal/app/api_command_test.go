@@ -74,7 +74,7 @@ func TestParseQueryStringToJSON(t *testing.T) {
 	}
 }
 
-func TestAPIHelpUsesAppTokenCompatibleExamples(t *testing.T) {
+func TestCrossPlatformCoverageAPIHelpUsesAppTokenCompatibleExamples(t *testing.T) {
 	t.Parallel()
 
 	help := newAPICommand(&GlobalFlags{}).Long
@@ -102,7 +102,7 @@ func TestAPIHelpUsesAppTokenCompatibleExamples(t *testing.T) {
 	}
 }
 
-func TestRunAPI_QueryStringBlocked(t *testing.T) {
+func TestCrossPlatformCoverageRunAPIQueryStringBlocked(t *testing.T) {
 	gf := &GlobalFlags{}
 	cmd := newAPICommand(gf)
 
@@ -155,7 +155,7 @@ func (g failingAppTokenGetter) GetToken(context.Context) (string, error) {
 	return "", errors.New("token provider must not run")
 }
 
-func TestRunAPIDryRunHasZeroCredentialFileAndNetworkSideEffects(t *testing.T) {
+func TestCrossPlatformCoverageRunAPIDryRunHasZeroCredentialFileAndNetworkSideEffects(t *testing.T) {
 	oldProvider := newAppTokenProvider
 	oldResolver := resolveRawAPICredentials
 	t.Cleanup(func() {
@@ -198,7 +198,7 @@ func TestRunAPIDryRunHasZeroCredentialFileAndNetworkSideEffects(t *testing.T) {
 	}
 }
 
-func TestAPIFileFlagCompatibilityAndValidation(t *testing.T) {
+func TestCrossPlatformCoverageAPIFileFlagCompatibilityAndValidation(t *testing.T) {
 	gf := &GlobalFlags{DryRun: true}
 	cmd := newAPICommand(gf)
 	flag := cmd.Flags().Lookup("file")
@@ -242,7 +242,98 @@ func TestAPIFileFlagCompatibilityAndValidation(t *testing.T) {
 	}
 }
 
-func TestResolveRawAPIExplicitTokenIsTemporaryAppToken(t *testing.T) {
+func TestCrossPlatformCoverageAPIRemainingValidationAndClassificationBranches(t *testing.T) {
+	testCases := []struct {
+		name string
+		gf   GlobalFlags
+		af   apiFlags
+		want string
+	}{
+		{"unsafe file", GlobalFlags{DryRun: true}, apiFlags{file: "bad\u200bfile"}, "危险 Unicode"},
+		{"invalid file spec", GlobalFlags{DryRun: true}, apiFlags{file: "field="}, "--file 格式"},
+		{"fragment", GlobalFlags{DryRun: true}, apiFlags{}, "fragment"},
+		{"invalid dry params", GlobalFlags{DryRun: true}, apiFlags{params: "{"}, "解析 --params"},
+		{"invalid dry data", GlobalFlags{DryRun: true}, apiFlags{data: "{"}, "解析 --data"},
+		{"dry multipart scalar", GlobalFlags{DryRun: true}, apiFlags{data: `[]`, file: "demo.bin"}, "JSON object"},
+		{"live multipart scalar", GlobalFlags{Token: "temporary"}, apiFlags{data: `[]`, file: "demo.bin"}, "JSON object"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := "/v1.0/test"
+			if tc.name == "fragment" {
+				path = "/v1.0/test#fragment"
+			}
+			cmd := newAPICommand(&tc.gf)
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			err := runAPI(cmd, []string{"POST", path}, &tc.gf, &tc.af)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("runAPI error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		err  error
+		want string
+	}{
+		{authpkg.ErrClientSecretConflict, "存储值冲突"},
+		{authpkg.ErrClientSecretRefMismatch, "引用与 Client ID 不匹配"},
+		{errors.New("unexpected resolver failure"), "解析本地应用凭证失败"},
+	} {
+		if got := classifyRawAPIAppConfigError(tc.err); got == nil || !strings.Contains(got.Error(), tc.want) {
+			t.Errorf("classifyRawAPIAppConfigError(%v) = %v", tc.err, got)
+		}
+	}
+}
+
+func TestCrossPlatformCoverageAPIFileStdinIsAttachedOnlyForLiveRequest(t *testing.T) {
+	originalStdin := os.Stdin
+	stdin, err := os.CreateTemp(t.TempDir(), "stdin-*.bin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stdin.WriteString("streamed"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stdin.Seek(0, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+	os.Stdin = stdin
+	t.Cleanup(func() {
+		os.Stdin = originalStdin
+		_ = stdin.Close()
+	})
+
+	testseam.Swap(t, &newRawAPIClient, func(token, baseURL string) *apiclient.APIClient {
+		client := apiclient.NewClient(token, baseURL)
+		client.HTTPClient.Transport = apiRoundTripper(func(req *http.Request) (*http.Response, error) {
+			if err := req.ParseMultipartForm(1024); err != nil {
+				t.Fatal(err)
+			}
+			file, _, err := req.FormFile("file")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer file.Close()
+			body, _ := io.ReadAll(file)
+			if string(body) != "streamed" {
+				t.Fatalf("stdin upload body = %q", body)
+			}
+			return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"ok":true}`)), Request: req}, nil
+		})
+		return client
+	})
+	cmd := newAPICommand(&GlobalFlags{Token: "temporary", Format: "json"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"POST", "/v1.0/test", "--file", "-"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCrossPlatformCoverageResolveRawAPIExplicitTokenIsTemporaryAppToken(t *testing.T) {
 	oldResolver := resolveRawAPICredentials
 	oldProvider := newAppTokenProvider
 	t.Cleanup(func() {
@@ -264,7 +355,7 @@ func TestResolveRawAPIExplicitTokenIsTemporaryAppToken(t *testing.T) {
 	}
 }
 
-func TestResolveRawAPICredentialsUsesAtomicSourcePairs(t *testing.T) {
+func TestCrossPlatformCoverageResolveRawAPICredentialsUsesAtomicSourcePairs(t *testing.T) {
 	tests := []struct {
 		name          string
 		flagID        string
@@ -375,7 +466,7 @@ func TestResolveRawAPICredentialsUsesAtomicSourcePairs(t *testing.T) {
 	}
 }
 
-func TestResolveRawAPICredentialsSupportsFileSecretRef(t *testing.T) {
+func TestCrossPlatformCoverageResolveRawAPICredentialsSupportsFileSecretRef(t *testing.T) {
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	configDir := t.TempDir()
@@ -394,7 +485,7 @@ func TestResolveRawAPICredentialsSupportsFileSecretRef(t *testing.T) {
 	}
 }
 
-func TestResolveRawAPICredentialsRejectsUnreadableSecretRef(t *testing.T) {
+func TestCrossPlatformCoverageResolveRawAPICredentialsRejectsUnreadableSecretRef(t *testing.T) {
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
 	configDir := t.TempDir()
@@ -410,7 +501,7 @@ func TestResolveRawAPICredentialsRejectsUnreadableSecretRef(t *testing.T) {
 	}
 }
 
-func TestRawAPICommandUsesAppConfigPairEndToEnd(t *testing.T) {
+func TestCrossPlatformCoverageRawAPICommandUsesAppConfigPairEndToEnd(t *testing.T) {
 	testseam.Swap(t, &resolveRawAPICredentials, resolveRawAPICredentialsFromSources)
 	t.Setenv(authpkg.EnvClientID, "")
 	t.Setenv(authpkg.EnvClientSecret, "")
@@ -461,7 +552,7 @@ func TestRawAPICommandUsesAppConfigPairEndToEnd(t *testing.T) {
 	}
 }
 
-func TestRunAPINonPaginatedResponseErrorsAreTypedAPI(t *testing.T) {
+func TestCrossPlatformCoverageRunAPINonPaginatedResponseErrorsAreTypedAPI(t *testing.T) {
 	testseam.Swap(t, &newRawAPIClient, func(token, baseURL string) *apiclient.APIClient {
 		client := apiclient.NewClient(token, baseURL)
 		client.HTTPClient.Transport = apiRoundTripper(func(req *http.Request) (*http.Response, error) {
@@ -492,7 +583,7 @@ func TestRunAPINonPaginatedResponseErrorsAreTypedAPI(t *testing.T) {
 	}
 }
 
-func TestRunAPINonPaginatedPreservesLocalErrorCategories(t *testing.T) {
+func TestCrossPlatformCoverageRunAPINonPaginatedPreservesLocalErrorCategories(t *testing.T) {
 	t.Run("invalid jq remains validation", func(t *testing.T) {
 		testseam.Swap(t, &newRawAPIClient, func(token, baseURL string) *apiclient.APIClient {
 			client := apiclient.NewClient(token, baseURL)
@@ -555,7 +646,7 @@ func TestRunAPINonPaginatedPreservesLocalErrorCategories(t *testing.T) {
 	})
 }
 
-func TestResolveRawAPITokenPassesOneResolvedPairToProvider(t *testing.T) {
+func TestCrossPlatformCoverageResolveRawAPITokenPassesOneResolvedPairToProvider(t *testing.T) {
 	oldResolver := resolveRawAPICredentials
 	oldProvider := newAppTokenProvider
 	t.Cleanup(func() {
@@ -581,7 +672,7 @@ func TestResolveRawAPITokenPassesOneResolvedPairToProvider(t *testing.T) {
 	}
 }
 
-func TestResolveRawAPITokenRejectsHalfPairsBeforeProvider(t *testing.T) {
+func TestCrossPlatformCoverageResolveRawAPITokenRejectsHalfPairsBeforeProvider(t *testing.T) {
 	oldResolver := resolveRawAPICredentials
 	oldProvider := newAppTokenProvider
 	t.Cleanup(func() {
@@ -634,7 +725,7 @@ type apiRoundTripper func(*http.Request) (*http.Response, error)
 
 func (f apiRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
-func TestRunPaginatedPreservesPagePayloadArray(t *testing.T) {
+func TestCrossPlatformCoverageRunPaginatedPreservesPagePayloadArray(t *testing.T) {
 	client := apiclient.NewClient("app-token", "")
 	page := 0
 	client.HTTPClient.Transport = apiRoundTripper(func(*http.Request) (*http.Response, error) {
@@ -670,7 +761,7 @@ func TestRunPaginatedPreservesPagePayloadArray(t *testing.T) {
 	}
 }
 
-func TestRunPaginatedFailsClosedAfterPartialPages(t *testing.T) {
+func TestCrossPlatformCoverageRunPaginatedFailsClosedAfterPartialPages(t *testing.T) {
 	client := apiclient.NewClient("app-token", "")
 	page := 0
 	client.HTTPClient.Transport = apiRoundTripper(func(*http.Request) (*http.Response, error) {

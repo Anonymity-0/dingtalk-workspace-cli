@@ -506,12 +506,17 @@ func legacyClientSecretAccountKey(clientID string) string {
 // SaveClientSecret stores the client secret for a specific client ID.
 // This is called during login to snapshot the credentials used.
 func SaveClientSecret(clientID, clientSecret string) error {
+	clientID = strings.TrimSpace(clientID)
+	clientSecret = strings.TrimSpace(clientSecret)
 	if clientID == "" || clientSecret == "" {
 		return nil // Nothing to save
 	}
 	account := secretAccountKey(clientID)
 	if err := authKeychainSet(keychain.Service, account, clientSecret); err != nil {
 		return fmt.Errorf("save client secret: %w", err)
+	}
+	if err := authKeychainRemove(keychain.Service, legacyClientSecretAccountKey(clientID)); err != nil {
+		slog.Warn("auth: failed to remove legacy Client Secret slot after save", "client_id", clientID, "error", err)
 	}
 	return nil
 }
@@ -548,6 +553,9 @@ func LoadClientSecretStrict(clientID string) (string, error) {
 	}
 	if err := authKeychainSet(keychain.Service, secretAccountKey(clientID), legacy); err != nil {
 		return legacy, nil
+	}
+	if err := authKeychainRemove(keychain.Service, legacyClientSecretAccountKey(clientID)); err != nil {
+		slog.Warn("auth: failed to remove legacy Client Secret slot after load migration", "client_id", clientID, "error", err)
 	}
 	return legacy, nil
 }

@@ -732,9 +732,24 @@ func TestCrossPlatformCoverageOAuthRefreshAndParsingEdges(t *testing.T) {
 	if err := SaveClientSecret("direct", "secret"); err != nil {
 		t.Fatal(err)
 	}
+	// A stale explicit app.json value for the same client ID must not replace
+	// the secret snapshotted for the token being refreshed.
+	writeCredentialConfig(t, dir, "direct", PlainSecret("stale-app-config-secret"))
+	var refreshClientSecret string
+	p.httpClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var body map[string]string
+		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		refreshClientSecret = body["clientSecret"]
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(responseBody)), Header: make(http.Header)}, nil
+	})}
 	updated, err := p.refreshWithRefreshToken(context.Background(), original)
 	if err != nil || updated.CorpID != "corp" || updated.PersistentCode != "pc" || updated.CorpName != "Original" {
 		t.Fatalf("direct refresh = %#v, %v", updated, err)
+	}
+	if refreshClientSecret != "secret" {
+		t.Fatalf("refresh Client Secret = %q, want token snapshot secret", refreshClientSecret)
 	}
 	missing := &TokenData{ClientID: "missing-client", RefreshToken: "refresh"}
 	SetClientID("")

@@ -45,6 +45,14 @@ type ResponseError struct {
 	Err error
 }
 
+var (
+	responseCreateTemp = os.CreateTemp
+	responseFileSync   = func(file *os.File) error { return file.Sync() }
+	responseFileClose  = func(file *os.File) error { return file.Close() }
+	responseChmod      = os.Chmod
+	responseReplace    = atomicReplace
+)
+
 func (e *ResponseError) Error() string {
 	if e == nil || e.Err == nil {
 		return "API response error"
@@ -155,18 +163,22 @@ func checkDingTalkErrorWithRequestID(payload any, statusCode int, headerRequestI
 			return fmt.Errorf("API 业务错误 (errcode: %s, HTTP %d%s): %s", code, statusCode, requestSuffix, errmsg)
 		}
 	}
-	if codeValue, hasCode := obj["code"]; hasCode {
-		if code, nonzero := errorCode(codeValue); nonzero {
-			message := firstString(obj, "message", "errmsg", "error")
-			if message == "" {
-				message = "unknown error"
+	// New OpenAPI error envelopes use top-level code on non-2xx responses.
+	// Successful payloads may also have an unrelated business field named code,
+	// so preserve the historical 2xx behavior and only interpret it as an error
+	// when the HTTP status already indicates failure.
+	if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
+		if codeValue, hasCode := obj["code"]; hasCode {
+			if code, nonzero := errorCode(codeValue); nonzero {
+				message := firstString(obj, "message", "errmsg", "error")
+				if message == "" {
+					message = "unknown error"
+				}
+				return fmt.Errorf("API 业务错误 (code: %s, HTTP %d%s): %s", code, statusCode, requestSuffix, message)
 			}
-			return fmt.Errorf("API 业务错误 (code: %s, HTTP %d%s): %s", code, statusCode, requestSuffix, message)
 		}
-	}
 
-	// Also check HTTP error status even if no errcode field
-	if statusCode >= 400 {
+		// Also check HTTP error status even if no errcode/code field.
 		errmsg := firstString(obj, "errmsg", "message", "error")
 		if errmsg != "" {
 			return fmt.Errorf("API 请求失败 (HTTP %d%s): %s", statusCode, requestSuffix, errmsg)
@@ -201,7 +213,7 @@ func handleBinaryResponse(resp *RawAPIResponse, opts ResponseOptions) error {
 	if closeFn != nil {
 		defer closeFn()
 	}
-	tmp, err := os.CreateTemp(dir, "."+filepath.Base(outputPath)+"-*.part")
+	tmp, err := responseCreateTemp(dir, "."+filepath.Base(outputPath)+"-*.part")
 	if err != nil {
 		return fmt.Errorf("创建临时下载文件失败: %w", err)
 	}
@@ -217,16 +229,16 @@ func handleBinaryResponse(resp *RawAPIResponse, opts ResponseOptions) error {
 	if err != nil {
 		return fmt.Errorf("写入下载文件失败: %w", err)
 	}
-	if err := tmp.Sync(); err != nil {
+	if err := responseFileSync(tmp); err != nil {
 		return fmt.Errorf("同步下载文件失败: %w", err)
 	}
-	if err := tmp.Close(); err != nil {
+	if err := responseFileClose(tmp); err != nil {
 		return fmt.Errorf("关闭下载文件失败: %w", err)
 	}
-	if err := os.Chmod(tmpPath, 0o644); err != nil {
+	if err := responseChmod(tmpPath, 0o644); err != nil {
 		return fmt.Errorf("设置下载文件权限失败: %w", err)
 	}
-	if err := atomicReplace(tmpPath, outputPath); err != nil {
+	if err := responseReplace(tmpPath, outputPath); err != nil {
 		return fmt.Errorf("原子替换下载文件失败: %w", err)
 	}
 	committed = true

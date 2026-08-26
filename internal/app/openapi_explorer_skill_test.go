@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func TestOpenAPIExplorerSkillDiscoveryAndSafetyContract(t *testing.T) {
+func TestCrossPlatformCoverageOpenAPIExplorerSkillDiscoveryAndSafetyContract(t *testing.T) {
 	paths := []string{
 		filepath.Join("..", "..", "skills", "multi", "dingtalk-misc", "references", "openapi-explorer.md"),
 		filepath.Join("..", "..", "skills", "mono", "references", "products", "openapi-explorer.md"),

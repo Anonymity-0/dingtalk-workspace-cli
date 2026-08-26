@@ -29,7 +29,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/config"
 )
 
-func TestLegacyCompatibilityGoldenRequests(t *testing.T) {
+func TestCrossPlatformCoverageLegacyCompatibilityGoldenRequests(t *testing.T) {
 	methods := []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
 	for _, method := range methods {
 		t.Run(method, func(t *testing.T) {
@@ -74,7 +74,7 @@ func TestLegacyCompatibilityGoldenRequests(t *testing.T) {
 	}
 }
 
-func TestLegacyCompatibilityGoldenOAPITokenInjection(t *testing.T) {
+func TestCrossPlatformCoverageLegacyCompatibilityGoldenOAPITokenInjection(t *testing.T) {
 	client := NewClient("legacy-app-token", "")
 	client.HTTPClient.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		if req.URL.Hostname() != "oapi.dingtalk.com" || req.URL.Query().Get(LegacyAuthParam) != "legacy-app-token" {
@@ -96,7 +96,7 @@ func TestLegacyCompatibilityGoldenOAPITokenInjection(t *testing.T) {
 	_ = resp.BodyReader.Close()
 }
 
-func TestTargetValidationAndLegacyDetectionAreExact(t *testing.T) {
+func TestCrossPlatformCoverageTargetValidationAndLegacyDetectionAreExact(t *testing.T) {
 	allowed := []string{
 		"https://api.dingtalk.com/v1.0/test",
 		"https://api.dingtalk.com:443/v1.0/test",
@@ -124,7 +124,7 @@ func TestTargetValidationAndLegacyDetectionAreExact(t *testing.T) {
 	}
 }
 
-func TestRedirectPolicyRejectsCredentialLeaks(t *testing.T) {
+func TestCrossPlatformCoverageRedirectPolicyRejectsCredentialLeaks(t *testing.T) {
 	original, _ := http.NewRequest(http.MethodGet, "https://api.dingtalk.com/v1.0/start", nil)
 	for _, target := range []string{
 		"https://oapi.dingtalk.com/topapi/target",
@@ -142,7 +142,7 @@ func TestRedirectPolicyRejectsCredentialLeaks(t *testing.T) {
 	}
 }
 
-func TestClientDoesNotFollowCrossOriginRedirectWithToken(t *testing.T) {
+func TestCrossPlatformCoverageClientDoesNotFollowCrossOriginRedirectWithToken(t *testing.T) {
 	client := NewClient("sensitive-app-token", "")
 	calls := 0
 	client.HTTPClient.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -165,7 +165,7 @@ func TestClientDoesNotFollowCrossOriginRedirectWithToken(t *testing.T) {
 	}
 }
 
-func TestJSONAtFileAndMultipartStreaming(t *testing.T) {
+func TestCrossPlatformCoverageJSONAtFileAndMultipartStreaming(t *testing.T) {
 	dir := t.TempDir()
 	paramsPath := filepath.Join(dir, "params.json")
 	if err := os.WriteFile(paramsPath, []byte(`{"cursor":"c1"}`), 0o600); err != nil {
@@ -211,9 +211,17 @@ func TestJSONAtFileAndMultipartStreaming(t *testing.T) {
 	_ = resp.BodyReader.Close()
 }
 
-func TestMultipartRejectsHeaderInjectionNames(t *testing.T) {
+func TestCrossPlatformCoverageMultipartRejectsHeaderInjectionNames(t *testing.T) {
 	if _, err := ParseFileSpec("bad\nfield=demo.txt"); err == nil {
 		t.Fatal("multipart field newline should fail")
+	}
+	defaultField, err := ParseFileSpec("./a=b.png")
+	if err != nil || defaultField.FieldName != "file" || defaultField.Path != "./a=b.png" {
+		t.Fatalf("path containing equals = %#v, %v", defaultField, err)
+	}
+	explicitField, err := ParseFileSpec("media=./a=b.png")
+	if err != nil || explicitField.FieldName != "media" || explicitField.Path != "./a=b.png" {
+		t.Fatalf("explicit field with equals path = %#v, %v", explicitField, err)
 	}
 	if _, _, err := newMultipartBody(
 		&FileUpload{FieldName: "file", FileName: "demo.txt", Reader: strings.NewReader("x")},
@@ -224,7 +232,7 @@ func TestMultipartRejectsHeaderInjectionNames(t *testing.T) {
 	}
 }
 
-func TestResponseLimitsStreamingDownloadAndSafeFilename(t *testing.T) {
+func TestCrossPlatformCoverageResponseLimitsStreamingDownloadAndSafeFilename(t *testing.T) {
 	large := bytes.Repeat([]byte("x"), config.MaxResponseBodySize+1)
 	err := HandleResponse(&RawAPIResponse{
 		StatusCode: 200,
@@ -258,7 +266,7 @@ func TestResponseLimitsStreamingDownloadAndSafeFilename(t *testing.T) {
 	}
 }
 
-func TestErrorsAndCamelCasePagination(t *testing.T) {
+func TestCrossPlatformCoverageErrorsAndCamelCasePagination(t *testing.T) {
 	err := HandleResponse(&RawAPIResponse{
 		StatusCode: 400,
 		Header: http.Header{
@@ -269,6 +277,15 @@ func TestErrorsAndCamelCasePagination(t *testing.T) {
 	}, ResponseOptions{Format: output.FormatJSON, Out: io.Discard, ErrOut: io.Discard})
 	if err == nil || !strings.Contains(err.Error(), "InvalidParameter") || !strings.Contains(err.Error(), "req-123") {
 		t.Fatalf("structured error = %v", err)
+	}
+	var successOut bytes.Buffer
+	err = HandleResponse(&RawAPIResponse{
+		StatusCode: 200,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       []byte(`{"code":"A100","name":"dept-a"}`),
+	}, ResponseOptions{Format: output.FormatJSON, Out: &successOut, ErrOut: io.Discard})
+	if err != nil || !strings.Contains(successOut.String(), `"code": "A100"`) {
+		t.Fatalf("successful payload with business code = %q, %v", successOut.String(), err)
 	}
 
 	header := http.Header{"Content-Type": []string{"application/json"}}
@@ -288,9 +305,17 @@ func TestErrorsAndCamelCasePagination(t *testing.T) {
 	if err == nil {
 		t.Fatal("ambiguous continuation must fail closed")
 	}
+	_, _, _, err = parsePaginatedResponse(&RawAPIResponse{
+		StatusCode: 200,
+		Header:     header,
+		Body:       []byte(`{"hasMore":true,"next_token":"same","nextToken":"same"}`),
+	})
+	if err == nil {
+		t.Fatal("continuation request-key ambiguity must fail closed even when values match")
+	}
 }
 
-func TestSameHTTPSOrigin(t *testing.T) {
+func TestCrossPlatformCoverageSameHTTPSOrigin(t *testing.T) {
 	a, _ := url.Parse("https://api.dingtalk.com/v1.0/a")
 	b, _ := url.Parse("https://API.DINGTALK.COM:443/v1.0/b")
 	if !sameHTTPSOrigin(a, b) {

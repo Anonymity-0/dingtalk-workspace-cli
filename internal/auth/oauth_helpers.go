@@ -192,10 +192,11 @@ func (p *OAuthProvider) refreshWithRefreshToken(ctx context.Context, data *Token
 	}
 	if clientSecret != "" {
 		// Complete an app.json-aware historical-slot migration when this token's
-		// client ID is also the active custom application. Errors are handled by
-		// the strict refresh credential checks above or on the next explicit use.
-		if pair, pairErr := resolveAppConfigCredentialPair(p.configDir, false); pairErr == nil && pair.ClientID == clientID {
-			clientSecret = pair.ClientSecret
+		// client ID is also the active custom application. Never replace the
+		// credential already selected for this token with stale app.json data.
+		if pair, pairErr := resolveAppConfigCredentialPair(p.configDir, false); pairErr == nil &&
+			pair.ClientID == clientID && pair.ClientSecret == clientSecret {
+			_, _ = ResolveAppConfigCredentialPair(p.configDir)
 		}
 	}
 

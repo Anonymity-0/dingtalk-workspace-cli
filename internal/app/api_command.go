@@ -413,10 +413,10 @@ func classifyRawAPIAppConfigError(err error) error {
 	case errors.Is(err, authpkg.ErrSecretResolve):
 		return apperrors.NewAuth("无法从 Keychain 解析 Client Secret；请检查 Keychain 状态，或同时设置 DWS_CLIENT_ID 和 DWS_CLIENT_SECRET")
 	case errors.Is(err, authpkg.ErrClientSecretConflict):
-		return apperrors.NewAuth("检测到新旧 Client Secret 存储值冲突；为避免使用错误凭证已拒绝调用，请重新执行 dws auth login")
+		return apperrors.NewAuth("检测到新旧 Client Secret 存储值冲突；为避免使用错误凭证已拒绝调用。请使用完整 --client-id/--client-secret 重新执行 dws auth login，或执行 dws auth reset 后重新登录")
 	case errors.Is(err, authpkg.ErrClientSecretRefMismatch):
 		return apperrors.NewAuth("本地应用配置中的 Client Secret 引用与 Client ID 不匹配；为避免跨应用混用已拒绝调用，请重新执行 dws auth login")
-	case strings.Contains(err.Error(), "placeholders"):
+	case errors.Is(err, authpkg.ErrCredentialPlaceholders):
 		return apperrors.NewAuth("应用凭证不完整或仍为占位符，Client ID 和 Client Secret 必须同时提供有效值")
 	default:
 		return apperrors.NewAuth(fmt.Sprintf("解析本地应用凭证失败: %v", err))
