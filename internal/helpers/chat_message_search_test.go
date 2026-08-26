@@ -695,7 +695,7 @@ func (c *chatChangedContractCaller) CallTool(_ context.Context, productID, toolN
 	text := `{}`
 	if toolName == "list_messages_by_ids" {
 		messageID := args["openMsgIds"].([]string)[0]
-		text = `{"result":[{"openMessageId":"` + messageID + `"}]}`
+		text = `{"result":[{"openMessageId":"` + messageID + `","openConversationId":"cid"}]}`
 	}
 	if toolName == "get_conversation_info" {
 		text = `{"result":{"openConversationId":"` + args["openConversationId"].(string) + `","convThreadEnabled":false}}`

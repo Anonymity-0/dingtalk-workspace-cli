@@ -23,6 +23,7 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -454,7 +455,7 @@ func flagUsage(flag *pflag.Flag) string {
 	return flag.Usage
 }
 
-func TestCrossPlatformCoverageChatThreadKeepsPreSplitPrimaryParameters(t *testing.T) {
+func TestCrossPlatformCoverageChatThreadPublishesCanonicalParameters(t *testing.T) {
 	root := newChatCommand()
 	wantByLeaf := map[string][]string{
 		"create-group":         {"name", "type", "users"},
@@ -485,8 +486,63 @@ func TestCrossPlatformCoverageChatThreadKeepsPreSplitPrimaryParameters(t *testin
 		sort.Strings(got)
 		sort.Strings(want)
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("chat thread %s public flags = %v, want pre-split flags %v", leaf, got, want)
+			t.Errorf("chat thread %s public flags = %v, want canonical flags %v", leaf, got, want)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageChatThreadTopicParametersMatchLegacyEntrypoints(t *testing.T) {
+	root := newChatCommand()
+	for _, test := range []struct {
+		name       string
+		legacyPath []string
+		threadPath []string
+		flags      []string
+	}{
+		{
+			name:       "create group thread flag",
+			legacyPath: []string{"group", "create"},
+			threadPath: []string{"thread", "create-group"},
+			flags:      []string{"name", "users", "type"},
+		},
+		{
+			name:       "list topic replies",
+			legacyPath: []string{"message", "list-topic-replies"},
+			threadPath: []string{"thread", "list-replies"},
+			flags:      []string{"conversation-id", "topic-id", "time", "limit", "direction", "forward"},
+		},
+		{
+			name:       "forward topic",
+			legacyPath: []string{"message", "forward-topic"},
+			threadPath: []string{"thread", "forward"},
+			flags:      []string{"src-msg-id", "src-conversation-id", "src-thread-id", "dest-conversation-id"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			legacy, remaining, err := root.Find(test.legacyPath)
+			if err != nil || len(remaining) != 0 {
+				t.Fatalf("find legacy %v: command=%v remaining=%v error=%v", test.legacyPath, legacy, remaining, err)
+			}
+			thread, remaining, err := root.Find(test.threadPath)
+			if err != nil || len(remaining) != 0 {
+				t.Fatalf("find thread %v: command=%v remaining=%v error=%v", test.threadPath, thread, remaining, err)
+			}
+			for _, name := range test.flags {
+				legacyFlag := legacy.Flags().Lookup(name)
+				threadFlag := thread.Flags().Lookup(name)
+				if legacyFlag == nil || threadFlag == nil {
+					t.Fatalf("--%s presence: legacy=%v thread=%v", name, legacyFlag != nil, threadFlag != nil)
+				}
+				if legacyFlag.Value.Type() != threadFlag.Value.Type() || legacyFlag.DefValue != threadFlag.DefValue || legacyFlag.Hidden != threadFlag.Hidden {
+					t.Errorf("--%s metadata: legacy=(%s,%q,hidden=%v) thread=(%s,%q,hidden=%v)", name, legacyFlag.Value.Type(), legacyFlag.DefValue, legacyFlag.Hidden, threadFlag.Value.Type(), threadFlag.DefValue, threadFlag.Hidden)
+				}
+				_, legacyRequired := legacyFlag.Annotations[cobra.BashCompOneRequiredFlag]
+				_, threadRequired := threadFlag.Annotations[cobra.BashCompOneRequiredFlag]
+				if legacyRequired != threadRequired {
+					t.Errorf("--%s required marker: legacy=%v thread=%v", name, legacyRequired, threadRequired)
+				}
+			}
+		})
 	}
 }
 
@@ -770,7 +826,7 @@ func TestCrossPlatformCoverageAtomicThreadQuoteReplyAllowsOrdinaryGroupThreadMes
 		"chat/get_conversation_info": `{"result":{"openConversationId":"group-1","convThreadEnabled":false}}`,
 	}}
 	if err := executeAtomicThreadCommand(t, caller,
-		"message", "reply", "--conversation-id", "group-1", "--ref-msg-id", "reply-1",
+		"message", "reply", "--group", "group-1", "--ref-msg-id", "reply-1",
 		"--ref-sender", "DAAAAAAAAAAAiE", "--text", "普通群 Thread 引用回复"); err != nil {
 		t.Fatal(err)
 	}

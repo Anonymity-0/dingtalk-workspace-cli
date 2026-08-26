@@ -26,7 +26,8 @@ type nativePrimaryParamCall struct {
 }
 
 type nativePrimaryParamCaller struct {
-	calls []nativePrimaryParamCall
+	calls                 []nativePrimaryParamCall
+	messageConversationID string
 }
 
 func (c *nativePrimaryParamCaller) CallTool(_ context.Context, server, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -38,7 +39,11 @@ func (c *nativePrimaryParamCaller) CallTool(_ context.Context, server, tool stri
 
 	switch tool {
 	case "list_messages_by_ids":
-		return textToolResult(`{"result":{"messages":[{"openMessageId":"mid"}]}}`), nil
+		conversationID := c.messageConversationID
+		if conversationID == "" {
+			conversationID = "cid"
+		}
+		return textToolResult(fmt.Sprintf(`{"result":{"messages":[{"openMessageId":"mid","openConversationId":%q}]}}`, conversationID)), nil
 	case "get_conversation_info":
 		return textToolResult(`{"result":{"convThreadEnabled":false}}`), nil
 	case "init_conversation_file_upload", "init_todo_file_upload":
@@ -262,7 +267,7 @@ func TestNativePrimaryParamTextPayloadCompatibility(t *testing.T) {
 	t.Run("chat message reply conversation-id to group", func(t *testing.T) {
 		for _, spelling := range nativePrimaryParamSpellings("group", "conversation-id") {
 			t.Run(spelling.name, func(t *testing.T) {
-				caller := &nativePrimaryParamCaller{}
+				caller := &nativePrimaryParamCaller{messageConversationID: spelling.want}
 				args := []string{"message", "reply", "--ref-msg-id", "mid", "--ref-sender", helperCurrentDOpenID, "--content", "fixed-content"}
 				args = append(args, spelling.args...)
 				if err := runChatCoverageCommand(t, caller, args...); err != nil {

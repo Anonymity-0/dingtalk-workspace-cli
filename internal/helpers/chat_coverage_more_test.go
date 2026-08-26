@@ -454,7 +454,7 @@ func TestCrossPlatformCoverageChatBotRichMediaCoverage(t *testing.T) {
 	t.Run("group Markdown reference reply", func(t *testing.T) {
 		const senderOpenDingTalkID = "DAAAAAAAAAAAiE"
 		caller := &scriptedToolCaller{steps: []scriptedToolStep{
-			{text: `{"result":[{"openMessageId":"message-id"}]}`},
+			{text: `{"result":[{"openMessageId":"message-id","openConversationId":"group"}]}`},
 			{text: `{"result":{"openConversationId":"group","convThreadEnabled":false}}`},
 			{text: `{}`},
 		}}
@@ -475,7 +475,7 @@ func TestCrossPlatformCoverageChatBotRichMediaCoverage(t *testing.T) {
 
 	t.Run("group reference reply resolves sender user ID", func(t *testing.T) {
 		caller := &scriptedToolCaller{steps: []scriptedToolStep{
-			{text: `{"result":[{"openMessageId":"message-id"}]}`},
+			{text: `{"result":[{"openMessageId":"message-id","openConversationId":"group"}]}`},
 			{text: `{"result":{"openConversationId":"group","convThreadEnabled":false}}`},
 			{text: `{"result":[{"userId":"sender-user","openDingTalkId":"D-sender"}]}`},
 			{text: `{}`},

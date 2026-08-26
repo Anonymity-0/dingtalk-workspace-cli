@@ -7018,7 +7018,7 @@ flow-status 取值：1=处理中(PROCESSING)，2=输入中(INPUTTING)，3=完成
 			if err := validateRequiredFlags(cmd, "group", "ref-msg-id", "ref-sender", "content"); err != nil {
 				return err
 			}
-			if err := guardTopicQuoteReply(cmd, mustGetFlag(cmd, "conversation-id"), mustGetFlag(cmd, "ref-msg-id")); err != nil {
+			if err := guardTopicQuoteReply(cmd, mustGetFlag(cmd, "group"), mustGetFlag(cmd, "ref-msg-id")); err != nil {
 				return err
 			}
 			refSender := mustGetFlag(cmd, "ref-sender")
