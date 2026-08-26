@@ -146,7 +146,7 @@
           "scope": "local"
         }
       },
-      "state": "pending",
+      "state": "consumed",
       "reason": "无接收人的日志提交服务端仍返回成功但日志对任何人都不可见；仅在 dws CLI 侧将 --to-user-ids 提升为必填，openAPI create_report 保持可选（bug 85724185）"
     },
     {
@@ -166,7 +166,7 @@
           "scope": "local"
         }
       },
-      "state": "pending",
+      "state": "consumed",
       "reason": "废弃别名 dws report create（含 dws log create 拼写）与 dws report entry submit 共用 addReportCreateFlags，required 提升必须两侧一致；openAPI create_report 保持可选（bug 85724185）"
     }
   ]
