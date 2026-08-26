@@ -237,11 +237,25 @@ var paramAliasCompleteCommands = map[string][]string{
 // param_concepts.json: inactive candidate templates are ignored, while every
 // command becomes mandatory as soon as one of its reviewed aliases is active.
 var paramAliasCandidateCompleteCommands = map[string][]string{
+	"agoal contract detail":                {"agoal", "contract", "detail", "--contract-id", "contract-1"},
+	"agoal contract update":                {"agoal", "contract", "update", "--contract-id", "contract-1", "--dimensions", `[{"id":"dimension-1","title":"Fixture Dimension","weight":100,"objectives":[]}]`},
+	"agoal obj-template create-or-update":  {"agoal", "obj-template", "create-or-update", "--template-id", "template-1", "--dimensions", `[{"title":"Fixture Dimension","weight":100}]`},
+	"agoal obj-template list":              {"agoal", "obj-template", "list", "--keyword", "fixture", "--page", "2", "--page-size", "7"},
+	"agoal report list-statistics":         {"agoal", "report", "list-statistics", "--keyword", "Fixture Rule"},
+	"agoal report submit-detail":           {"agoal", "report", "submit-detail", "--template-id", "template-1", "--submit-state", "ON_TIME", "--query-date", "2026-06-18T00:00:00+08:00"},
+	"agoal scorecard detail":               {"agoal", "scorecard", "detail", "--dept-id", "dept-1", "--selected-time", "2026-01-01T00:00:00+08:00"},
+	"agoal scorecard entity-detail":        {"agoal", "scorecard", "entity-detail", "--sc-id", "scorecard-1", "--entity-id", "entity-1"},
+	"agoal strategy detail":                {"agoal", "strategy", "detail", "--profile-id", "profile-1"},
+	"agoal user objectives":                {"agoal", "user", "objectives", "--user-id", "user-1", "--rule-id", "rule-1", "--period-ids", "period-1,period-2"},
+	"agoal user rules":                     {"agoal", "user", "rules", "--user-id", "user-1"},
 	"aisearch":                             {"aisearch", "--query", "Fixture User", "--dimension", "name"},
 	"aisearch +search-person":              {"aisearch", "+search-person", "--query", "Fixture User", "--dimensions", "name"},
 	"aisearch behavior":                    {"aisearch", "behavior", "--queries", "fixture", "--types", "im", "--behavior-type", "send", "--chat-scope", "Fixture Group", "--direction", "我->Fixture User", "--time-range", "本周"},
 	"aisearch enterprise":                  {"aisearch", "enterprise", "--queries", "fixture", "--types", "document", "--time-range", "本周"},
 	"aisearch person":                      {"aisearch", "person", "--query", "Fixture User", "--dimension", "name"},
+	"audit export":                         {"audit", "export", "--since", "2026-03-01", "--until", "2026-03-10", "--format", "jsonl", "--output", "/tmp/dws-audit-export-fixture.jsonl"},
+	"audit tail":                           {"audit", "tail", "--lines", "7", "--output", "/tmp/dws-audit-tail-fixture.jsonl"},
+	"audit verify":                         {"audit", "verify", "--file", "../../go.mod", "--output", "/tmp/dws-audit-verify-fixture.json"},
 	"contact +by-mobile":                   {"contact", "+by-mobile", "--mobile", "13800138000"},
 	"contact +list-dept-members":           {"contact", "+list-dept-members", "--depts", "1,2"},
 	"contact +list-followings":             {"contact", "+list-followings", "--open-id", "open-fixture-1"},
@@ -267,7 +281,66 @@ var paramAliasCandidateCompleteCommands = map[string][]string{
 	"contact user update":                  {"contact", "user", "update", "--user-id", "user-1", "--org-user-name", "Fixture User", "--depts", `[{"deptId":1}]`, "--yes"},
 	"contact user update-ownness":          {"contact", "user", "update-ownness", "--user-id", "user-1", "--ownness-text", "Fixture Status", "--yes"},
 	"contact user update-self":             {"contact", "user", "update-self", "--avatar-file-id", "file-1", "--nick", "Fixture Nick", "--yes"},
+	"dev app create":                       {"dev", "app", "create", "--name", "Fixture App", "--desc", "Fixture Description", "--yes"},
+	"dev app credentials get":              {"dev", "app", "credentials", "get", "--unified-app-id", "app-1"},
+	"dev app delete":                       {"dev", "app", "delete", "--unified-app-id", "app-1", "--confirm-name", "Fixture App", "--yes"},
+	"dev app disable":                      {"dev", "app", "disable", "--unified-app-id", "app-1", "--yes"},
+	"dev app enable":                       {"dev", "app", "enable", "--unified-app-id", "app-1", "--yes"},
+	"dev app event list":                   {"dev", "app", "event", "list", "--unified-app-id", "app-1", "--cursor", "cursor-1"},
+	"dev app event subscribe":              {"dev", "app", "event", "subscribe", "--unified-app-id", "app-1", "--event-codes", "chat_message_received", "--yes"},
+	"dev app event unsubscribe":            {"dev", "app", "event", "unsubscribe", "--unified-app-id", "app-1", "--event-codes", "chat_message_received", "--yes"},
+	"dev app list":                         {"dev", "app", "list", "--robot-name", "Fixture Robot"},
+	"dev app member add":                   {"dev", "app", "member", "add", "--unified-app-id", "app-1", "--member-type", "DEVELOPER", "--user-ids", "user-1,user-2", "--yes"},
+	"dev app member list":                  {"dev", "app", "member", "list", "--unified-app-id", "app-1"},
+	"dev app member remove":                {"dev", "app", "member", "remove", "--unified-app-id", "app-1", "--member-type", "DEVELOPER", "--user-ids", "user-1,user-2", "--yes"},
+	"dev app permission add":               {"dev", "app", "permission", "add", "--unified-app-id", "app-1", "--scope-values", "Contact.User.Read", "--yes"},
+	"dev app permission remove":            {"dev", "app", "permission", "remove", "--unified-app-id", "app-1", "--scope-values", "Contact.User.Read", "--yes"},
+	"dev app robot config":                 {"dev", "app", "robot", "config", "--unified-app-id", "app-1", "--i18n-description", `{"zh_CN":"Fixture Robot"}`, "--yes"},
+	"dev app robot disable":                {"dev", "app", "robot", "disable", "--unified-app-id", "app-1", "--yes"},
+	"dev app robot enable":                 {"dev", "app", "robot", "enable", "--unified-app-id", "app-1", "--yes"},
+	"dev app robot get":                    {"dev", "app", "robot", "get", "--unified-app-id", "app-1"},
+	"dev app robot result":                 {"dev", "app", "robot", "result", "--task-id", "task-1"},
+	"dev app robot submit":                 {"dev", "app", "robot", "submit", "--name", "Fixture Agent", "--desc", "Fixture robot description", "--robot-name", "Fixture Robot", "--yes"},
+	"dev app security config":              {"dev", "app", "security", "config", "--unified-app-id", "app-1", "--redirect-urls", "https://example.test/callback", "--yes"},
+	"dev app update":                       {"dev", "app", "update", "--unified-app-id", "app-1", "--name", "Fixture App", "--desc", "Fixture Description", "--yes"},
+	"dev app version check-approval":       {"dev", "app", "version", "check-approval", "--unified-app-id", "app-1", "--version-id", "version-1"},
+	"dev app version create":               {"dev", "app", "version", "create", "--unified-app-id", "app-1", "--version", "1.0.1", "--desc", "Fixture Version", "--yes"},
+	"dev app version get":                  {"dev", "app", "version", "get", "--unified-app-id", "app-1", "--version-id", "version-1"},
+	"dev app version list":                 {"dev", "app", "version", "list", "--unified-app-id", "app-1", "--cursor", "cursor-1"},
+	"dev app version publish":              {"dev", "app", "version", "publish", "--unified-app-id", "app-1", "--version-id", "version-1", "--yes"},
+	"dev app version status":               {"dev", "app", "version", "status", "--unified-app-id", "app-1", "--version-id", "version-1"},
+	"dev app webapp config":                {"dev", "app", "webapp", "config", "--unified-app-id", "app-1", "--pc-homepage-url", "https://example.test/app", "--yes"},
+	"dev app webapp get":                   {"dev", "app", "webapp", "get", "--unified-app-id", "app-1"},
+	"dev connect restart":                  {"dev", "connect", "restart", "--robot-client-id", "robot-client-1"},
+	"dev connect status":                   {"dev", "connect", "status", "--robot-client-id", "robot-client-1"},
+	"dev connect stop":                     {"dev", "connect", "stop", "--robot-client-id", "robot-client-1"},
+	"dev doc search":                       {"dev", "doc", "search", "--query", "fixture", "--page", "2"},
 	"devdoc +search-docs":                  {"devdoc", "+search-docs", "--query", "fixture", "--page", "2", "--size", "7"},
+	"devapp +create":                       {"devapp", "+create", "--name", "Fixture App", "--desc", "Fixture Description", "--yes"},
+	"devapp +delete":                       {"devapp", "+delete", "--unified-app-id", "app-1", "--yes"},
+	"devapp +disable":                      {"devapp", "+disable", "--unified-app-id", "app-1", "--yes"},
+	"devapp +enable":                       {"devapp", "+enable", "--unified-app-id", "app-1", "--yes"},
+	"devapp +event-list":                   {"devapp", "+event-list", "--unified-app-id", "app-1", "--cursor", "cursor-1"},
+	"devapp +get":                          {"devapp", "+get", "--unified-app-id", "app-1"},
+	"devapp +list":                         {"devapp", "+list", "--app-key", "app-key-1"},
+	"devapp +member-add":                   {"devapp", "+member-add", "--unified-app-id", "app-1", "--member-type", "DEVELOPER", "--user-ids", "user-1,user-2", "--yes"},
+	"devapp +member-list":                  {"devapp", "+member-list", "--unified-app-id", "app-1", "--user-id", "user-1"},
+	"devapp +member-remove":                {"devapp", "+member-remove", "--unified-app-id", "app-1", "--member-type", "DEVELOPER", "--user-ids", "user-1,user-2", "--yes"},
+	"devapp +permission-list":              {"devapp", "+permission-list", "--unified-app-id", "app-1", "--api-status", "PUBLISHED", "--scope-type", "APP"},
+	"devapp +robot-get":                    {"devapp", "+robot-get", "--unified-app-id", "app-1"},
+	"devapp +update":                       {"devapp", "+update", "--unified-app-id", "app-1", "--name", "Fixture App", "--desc", "Fixture Description", "--yes"},
+	"devapp +version-check-approval":       {"devapp", "+version-check-approval", "--unified-app-id", "app-1", "--version-id", "version-1"},
+	"devapp +version-get":                  {"devapp", "+version-get", "--unified-app-id", "app-1", "--version-id", "version-1"},
+	"devapp +version-list":                 {"devapp", "+version-list", "--unified-app-id", "app-1", "--cursor", "cursor-1"},
+	"devapp +version-status":               {"devapp", "+version-status", "--unified-app-id", "app-1", "--version-id", "version-1"},
+	"devapp +webapp-config":                {"devapp", "+webapp-config", "--unified-app-id", "app-1", "--pc-homepage-url", "https://example.test/app", "--yes"},
+	"devapp +webapp-get":                   {"devapp", "+webapp-get", "--unified-app-id", "app-1"},
+	"event +listen-im":                     {"event", "+listen-im", "--user", "user-1", "--events", "message,reaction", "--query", "fixture", "--duration", "1s", "--max-events", "1"},
+	"event consume":                        {"event", "consume", "--subscribe-id", "subscription-1", "--user", "user-1", "--group", "fixture-conversation", "--query", "fixture", "--output-dir", "/tmp/dws-event-fixture", "--filter-json", `{"rules":[]}`},
+	"event list":                           {"event", "list", "--category", "im", "--include-pending"},
+	"event schema":                         {"event", "schema", "--flatten"},
+	"event status":                         {"event", "status", "--event", "im_message_received", "--status", "active", "--subscribe-id", "subscription-1"},
+	"event stop":                           {"event", "stop", "--all", "--yes"},
 	"hrbrain +get-pool":                    {"hrbrain", "+get-pool", "--pool-code", "pool-1"},
 	"hrbrain +list-pool-employees":         {"hrbrain", "+list-pool-employees", "--pool-code", "pool-1", "--page", "2", "--page-size", "7"},
 	"hrbrain +list-pools":                  {"hrbrain", "+list-pools", "--keyword", "fixture", "--labels", "label-a,label-b", "--page", "2", "--page-size", "7"},
@@ -335,6 +408,9 @@ var paramAliasCandidateCompleteCommands = map[string][]string{
 	"report +outbox-list":                  {"report", "+outbox-list", "--size", "7"},
 	"report +report-latest":                {"report", "+report-latest", "--keyword", "Fixture", "--start", "2026-03-01T00:00:00+08:00", "--end", "2026-03-10T00:00:00+08:00"},
 	"report +template-search":              {"report", "+template-search", "--query", "fixture"},
+	"recruit job create":                   {"recruit", "job", "create", "--from", "testdata/recruit_job.json", "--yes"},
+	"recruit job get":                      {"recruit", "job", "get", "--job-id", "job-1"},
+	"recruit job list":                     {"recruit", "job", "list", "--job-ids", "job-1,job-2", "--creator-user-ids", "user-1,user-2", "--keyword", "fixture", "--cursor", "cursor-1", "--size", "7"},
 	"sheet +list-sheets":                   {"sheet", "+list-sheets", "--node", "node-1"},
 	"sheet +read":                          {"sheet", "+read", "--node", "node-1", "--sheet-id", "Sheet1"},
 
@@ -397,6 +473,18 @@ var paramAliasCandidateCompleteCommands = map[string][]string{
 // that case the shared command template above cannot contain every canonical
 // flag at once, so select a fixture-specific complete invocation here.
 var paramAliasCompleteCommandVariants = map[string]map[string][]string{
+	"dev app get": {
+		"app-key": {"dev", "app", "get", "--app-key", "app-key-1"},
+	},
+	"event +listen-im": {
+		"open-dingtalk-id": {"event", "+listen-im", "--open-dingtalk-id", appFixtureCurrentDOpenID, "--events", "message,reaction", "--query", "fixture", "--duration", "1s", "--max-events", "1"},
+		"user-query":       {"event", "+listen-im", "--user-query", "Fixture User", "--events", "message,reaction", "--query", "fixture", "--duration", "1s", "--max-events", "1"},
+		"chat-id":          {"event", "+listen-im", "--chat-id", "fixture-conversation", "--events", "message,reaction", "--query", "fixture", "--duration", "1s", "--max-events", "1"},
+		"chat-query":       {"event", "+listen-im", "--chat-query", "Fixture Group", "--events", "message,reaction", "--query", "fixture", "--duration", "1s", "--max-events", "1"},
+	},
+	"event consume": {
+		"open-dingtalk-id": {"event", "consume", "--subscribe-id", "subscription-1", "--open-dingtalk-id", appFixtureCurrentDOpenID, "--group", "fixture-conversation", "--query", "fixture", "--output-dir", "/tmp/dws-event-fixture", "--filter-json", `{"rules":[]}`},
+	},
 	"markdown create": {
 		"file": {"markdown", "create", "--file", "../../README.md", "--name", "fixture.md", "--space-id", "space-1"},
 	},
@@ -1106,7 +1194,8 @@ func TestCrossPlatformCoverageReviewedProductTemplatedParamAliasesCannotBypassCo
 		product, _, _ := strings.Cut(fixture.Command, " ")
 		switch product {
 		case "attendance", "mail", "oa", "ding", "report", "sheet", "whiteboard", "markdown",
-			"aisearch", "contact", "live", "devdoc", "hrbrain", "pat":
+			"aisearch", "contact", "live", "devdoc", "hrbrain", "pat",
+			"agoal", "audit", "dev", "devapp", "event", "mcp", "recruit":
 		default:
 			continue
 		}
@@ -1502,7 +1591,7 @@ func paramAliasExpectedCaptureBoundaryError(command string, err error) bool {
 	case "chat +messages-resource-download":
 		return strings.Contains(err.Error(), "资源下载接口未返回合法的 HTTPS 下载地址")
 	case "drive +download", "drive +version-download":
-		return strings.Contains(err.Error(), "下载地址必须是受信任域名上的 HTTPS URL")
+		return strings.Contains(err.Error(), "下载地址必须是合法的 HTTPS URL")
 	case "drive +upload":
 		return strings.Contains(err.Error(), "incomplete drive upload credentials")
 	default:
