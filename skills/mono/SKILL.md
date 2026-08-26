@@ -86,7 +86,7 @@ cli_version: ">=1.0.15"
 | `devdoc`          | 开放平台文档：搜索开发文档                                        | [devdoc.md](./references/products/devdoc.md)                   |
 | `ding`            | DING消息：发送/撤回（应用内/短信/电话）                              | [ding.md](./references/products/ding.md)                       |
 | `doc`             | 钉钉文档：搜索/浏览/读写/块级编辑/评论/文件创建/复制/移动/重命名/**删除/导出 docx/权限管理/媒体上传下载**       | [doc.md](./references/products/doc.md)                         |
-| `drive`           | 钉钉云盘：文件列表/元数据/文件夹/上传(两步)/下载/本地与钉盘文件夹差异比较(status)/拉取到本地(pull)/推送到钉盘(push)/双向同步(sync)                        | [drive.md](./references/products/drive.md)                     |
+| `drive`           | 钉钉云盘：文件列表/元数据/文件夹/上传(两步)/下载/本地与钉盘文件夹差异比较(status)/拉取到本地(pull)/推送到钉盘(push)/双向同步(sync)/互联网公开发布(publish)/分享链接密码与有效期 | [drive.md](./references/products/drive.md)                     |
 | `hrbrain`         | 组织大脑：人才池管理/员工档案专项模块查询（元数据/批量数据/标签/职业历程/绩效）/结构化高级人才搜索（原始条件表达式）；区别于 `contact` 的基础通讯录档案与 `aisearch` 的通用语义找人 | [hrbrain.md](./references/products/hrbrain.md)                 |
 | `markdown`        | 原生 Markdown 文件：读取/创建/对比/全量覆盖/局部替换/评论列表           | [markdown.md](./references/products/markdown.md)               |
 | `minutes`         | AI听记：听记列表/摘要/关键词/转写/待办/思维导图/发言人/发言人段落总结/热词/录音控制/成员权限/上传 | [minutes.md](./references/products/minutes.md)                 |
@@ -114,7 +114,7 @@ cli_version: ">=1.0.15"
 用户提到"开发/API/调用错误 文档" → `devdoc`
 用户提到"DING/紧急消息/电话提醒" → `ding`
 用户提到"钉钉文档/云文档/知识库/读写文档/块级编辑/文档评论/文档复制移动" → `doc`
-用户提到"云盘/文件存储/文件上传下载/文件夹" → `drive`
+用户提到"云盘/文件存储/文件上传下载/文件夹/互联网公开/分享链接密码/公开有效期" → `drive`
 用户提到"人才池/储备干部池/员工档案元数据或批量模块数据/职业历程/绩效记录/员工标签/组织大脑/结构化人才搜索(高级条件表达式)" → `hrbrain`（区别于 `aisearch` 的通用语义找人与 `contact` 的基础通讯录档案）
 用户提到"原生 Markdown 文件/.md 文件/读取 Markdown 原文/覆盖 Markdown/局部替换 Markdown/Markdown 评论" → `markdown`
 用户提到"听记/AI听记/会议纪要/转写/摘要/思维导图/发言人/热词" → `minutes`
