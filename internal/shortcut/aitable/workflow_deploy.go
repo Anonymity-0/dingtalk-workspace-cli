@@ -60,8 +60,12 @@ func executeWorkflowDeploy(rt *shortcut.RuntimeContext) error {
 		if preflightErr != nil {
 			return preflightErr
 		}
-		if _, detailErr := workflowDetail(preflight, workflowID, ""); detailErr != nil {
-			return fmt.Errorf("get_workflow preflight response is invalid: %w", detailErr)
+		if _, detailErr := workflowDetail(preflight, workflowID); detailErr != nil {
+			return apperrors.NewValidation(
+				"get_workflow preflight response is invalid: "+detailErr.Error(),
+				apperrors.WithReason("target_not_found"),
+				apperrors.WithExecutionStarted(false),
+			)
 		}
 	}
 	result := newCompositeResult("workflow_deploy")
@@ -98,7 +102,7 @@ func executeWorkflowDeploy(rt *shortcut.RuntimeContext) error {
 	result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": tool, "workflowId": workflowID})
 	readBack, verifyErr := rt.CallMCPData(serverHelper, "get_workflow", map[string]any{"baseId": baseID, "workflowId": workflowID})
 	if verifyErr == nil {
-		_, verifyErr = workflowDetail(readBack, workflowID, stringValue(dsl, "name"))
+		_, verifyErr = workflowDetail(readBack, workflowID)
 	}
 	if verifyErr != nil {
 		result.Status = "partial_success"
@@ -144,10 +148,10 @@ func executeWorkflowDeploy(rt *shortcut.RuntimeContext) error {
 }
 
 // workflowDetail validates the reviewed get_workflow response envelopes. The
-// service scopes the request by workflowId but does not echo that ID in the
-// successful detail payload. An explicit ID must agree; a missing ID is valid
-// when a well-formed flowSchema establishes that a workflow detail was read.
-func workflowDetail(data map[string]any, requestedID, expectedName string) (map[string]any, error) {
+// service scopes the request by workflowId but does not always echo that ID or
+// flowSchema in the successful payload. A matching explicit ID or a
+// well-formed flowSchema establishes a detail; any explicit ID must agree.
+func workflowDetail(data map[string]any, requestedID string) (map[string]any, error) {
 	objects := []map[string]any{data}
 	for index := 0; index < len(objects); index++ {
 		for _, envelope := range []string{"data", "result", "response"} {
@@ -156,7 +160,8 @@ func workflowDetail(data map[string]any, requestedID, expectedName string) (map[
 			}
 		}
 	}
-	var detail map[string]any
+	var idDetail map[string]any
+	var schemaDetail map[string]any
 	for _, object := range objects {
 		for _, key := range []string{"flowId", "workflowId"} {
 			raw, exists := object[key]
@@ -171,25 +176,26 @@ func workflowDetail(data map[string]any, requestedID, expectedName string) (map[
 			if requestedID != "" && id != requestedID {
 				return nil, fmt.Errorf("get_workflow returned workflow ID %s, want %s", id, requestedID)
 			}
+			if idDetail == nil {
+				idDetail = object
+			}
 		}
 		if raw, exists := object["flowSchema"]; exists {
 			if _, ok := raw.(map[string]any); !ok {
 				return nil, fmt.Errorf("get_workflow flowSchema must be an object, got %T", raw)
 			}
-			if detail == nil {
-				detail = object
+			if schemaDetail == nil {
+				schemaDetail = object
 			}
 		}
 	}
-	if detail == nil {
-		return nil, fmt.Errorf("get_workflow response is missing flowSchema")
+	if schemaDetail != nil {
+		return schemaDetail, nil
 	}
-	if expectedName != "" {
-		if actualName := strings.TrimSpace(stringValue(detail, "name")); actualName != "" && actualName != expectedName {
-			return nil, fmt.Errorf("get_workflow returned workflow name %q, want %q", actualName, expectedName)
-		}
+	if idDetail != nil {
+		return idDetail, nil
 	}
-	return detail, nil
+	return nil, fmt.Errorf("get_workflow response is missing both a matching workflow ID and flowSchema")
 }
 
 func workflowVerification(workflowID string, workflow map[string]any, valid bool) map[string]any {
@@ -306,11 +312,6 @@ func readWorkflowFromList(rt *shortcut.RuntimeContext, baseID, workflowID string
 		}
 	}
 	return nil, fmt.Errorf("workflow list exceeded 10000 entries")
-}
-
-func workflowIsRunning(workflow map[string]any) bool {
-	running, _ := workflowRunningState(workflow)
-	return running
 }
 
 func workflowRunningState(workflow map[string]any) (bool, bool) {

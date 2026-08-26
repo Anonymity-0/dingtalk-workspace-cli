@@ -147,7 +147,7 @@ func executeViewPresetApply(rt *shortcut.RuntimeContext) error {
 		}
 	}
 	if verifyErr != nil {
-		effectConfirmed := action == "create" && viewID != "" || action == "update" && writeErr == nil
+		effectConfirmed := (action == "create" && viewID != "") || (action == "update" && writeErr == nil)
 		if effectConfirmed {
 			result.Status = "partial_success"
 			result.KnownEffects = append(result.KnownEffects, map[string]any{"tool": tool, "viewId": viewID, "name": name})

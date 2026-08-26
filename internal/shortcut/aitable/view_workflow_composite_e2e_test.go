@@ -225,6 +225,18 @@ func TestCrossPlatformCoverageWorkflowDeployReportsActualStateWithoutEnableE2E(t
 	}
 }
 
+func TestCrossPlatformCoverageWorkflowDeployAcceptsEchoedIDWithoutFlowSchemaE2E(t *testing.T) {
+	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+		{text: `{"data":{"valid":true,"flowId":"w1","issues":[]}}`},
+		{text: `{"data":{"flowId":"w1","name":"提醒(1)"}}`},
+		{text: `{"data":{"list":[{"flowId":"w1","status":"STOP"}]}}`},
+	}}
+	out, err := runAITableCompositeCLI(t, caller, "+workflow-deploy", "--base-id", "base", "--dsl", workflowDSLFixture, "--yes")
+	if err != nil || !strings.Contains(out, `"status": "verified"`) || !strings.Contains(out, `"running": false`) {
+		t.Fatalf("workflow echoed-ID detail = output:%q err:%v", out, err)
+	}
+}
+
 func TestCrossPlatformCoverageWorkflowDeployWithoutEnableToleratesStatusReadFailureE2E(t *testing.T) {
 	caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
 		{text: `{"data":{"valid":true,"flowId":"w1","issues":[]}}`},
@@ -248,6 +260,19 @@ func TestCrossPlatformCoverageWorkflowDeployUpdateAndInvalidResponsesE2E(t *test
 		out, err := runAITableCompositeCLI(t, caller, "+workflow-deploy", "--base-id", "base", "--workflow-id", "w1", "--dsl", workflowDSLFixture, "--yes")
 		if err != nil || !strings.Contains(out, `"action": "update"`) || !strings.Contains(out, `"running": true`) || len(caller.calls) != 4 || caller.calls[1].tool != "update_workflow" {
 			t.Fatalf("workflow update = output:%q err:%v calls:%#v", out, err, caller.calls)
+		}
+	})
+
+	t.Run("update accepts echoed ID without flowSchema and normalized name", func(t *testing.T) {
+		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+			{text: `{"data":{"flowId":"w1","name":"旧名称"}}`},
+			{text: `{"valid":true,"flowId":"w1"}`},
+			{text: `{"flowId":"w1","name":"提醒(1)"}`},
+			{text: `{"list":[{"flowId":"w1","status":"RUNNING"}]}`},
+		}}
+		out, err := runAITableCompositeCLI(t, caller, "+workflow-deploy", "--base-id", "base", "--workflow-id", "w1", "--dsl", workflowDSLFixture, "--yes")
+		if err != nil || !strings.Contains(out, `"action": "update"`) || !strings.Contains(out, `"running": true`) {
+			t.Fatalf("workflow update echoed-ID detail = output:%q err:%v calls:%#v", out, err, caller.calls)
 		}
 	})
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
@@ -301,6 +302,13 @@ func TestCrossPlatformCoverageWorkflowDeployValidationAndFailureStagesE2E(t *tes
 			if err == nil || out != "" {
 				t.Fatalf("workflow failure = output:%q err:%v", out, err)
 			}
+			if tc.name == "update target not found" {
+				var typed *apperrors.Error
+				if !errors.As(err, &typed) || typed.ExitCode() != apperrors.ExitCodeValidation ||
+					typed.Reason != "target_not_found" || typed.ExecutionStarted == nil || *typed.ExecutionStarted {
+					t.Fatalf("update preflight error contract = %#v", err)
+				}
+			}
 		})
 	}
 
@@ -387,24 +395,29 @@ func TestCrossPlatformCoverageWorkflowPureResponseHelpers(t *testing.T) {
 	if _, _, _, err := workflowPublishResult(nil); err == nil {
 		t.Fatal("nil publish result must fail")
 	}
-	detail, err := workflowDetail(map[string]any{"data": map[string]any{"name": "提醒", "flowSchema": map[string]any{}}}, "w", "提醒")
+	detail, err := workflowDetail(map[string]any{"data": map[string]any{"name": "提醒", "flowSchema": map[string]any{}}}, "w")
 	if err != nil || detail["name"] != "提醒" {
 		t.Fatalf("workflow detail without echoed ID = %#v, %v", detail, err)
 	}
-	if _, err := workflowDetail(map[string]any{"flowId": "other", "flowSchema": map[string]any{}}, "w", ""); err == nil {
+	idOnly, err := workflowDetail(map[string]any{"data": map[string]any{"flowId": "w", "name": "提醒"}}, "w")
+	if err != nil || idOnly["flowId"] != "w" {
+		t.Fatalf("workflow detail with echoed ID only = %#v, %v", idOnly, err)
+	}
+	nameNormalized, err := workflowDetail(map[string]any{"flowId": "w", "flowSchema": map[string]any{}, "name": "提醒(1)"}, "w")
+	if err != nil || nameNormalized["name"] != "提醒(1)" {
+		t.Fatalf("workflow detail with normalized name = %#v, %v", nameNormalized, err)
+	}
+	if _, err := workflowDetail(map[string]any{"flowId": "other", "flowSchema": map[string]any{}}, "w"); err == nil {
 		t.Fatal("workflow detail with conflicting ID must fail")
 	}
-	if _, err := workflowDetail(map[string]any{"flowId": 1, "flowSchema": map[string]any{}}, "w", ""); err == nil {
+	if _, err := workflowDetail(map[string]any{"flowId": 1, "flowSchema": map[string]any{}}, "w"); err == nil {
 		t.Fatal("workflow detail with non-string ID must fail")
 	}
-	if _, err := workflowDetail(map[string]any{"flowSchema": "bad"}, "w", ""); err == nil {
+	if _, err := workflowDetail(map[string]any{"flowSchema": "bad"}, "w"); err == nil {
 		t.Fatal("workflow detail with malformed flowSchema must fail")
 	}
-	if _, err := workflowDetail(map[string]any{"name": "其他", "flowSchema": map[string]any{}}, "w", "提醒"); err == nil {
-		t.Fatal("workflow detail with unexpected name must fail")
-	}
-	if _, err := workflowDetail(map[string]any{"name": "提醒"}, "w", "提醒"); err == nil {
-		t.Fatal("workflow detail without flowSchema must fail")
+	if _, err := workflowDetail(map[string]any{"name": "提醒"}, "w"); err == nil {
+		t.Fatal("workflow detail without ID or flowSchema must fail")
 	}
 	if value, found := findBoolByKeys(map[string]any{"data": []any{map[string]any{"enabled": true}}}, "enabled"); !found || !value {
 		t.Fatal("nested bool not found")
@@ -415,12 +428,9 @@ func TestCrossPlatformCoverageWorkflowPureResponseHelpers(t *testing.T) {
 	for _, workflow := range []map[string]any{
 		{"status": "enabled"}, {"state": "active"}, {"isEnabled": true},
 	} {
-		if !workflowIsRunning(workflow) {
-			t.Fatalf("workflow should be running: %#v", workflow)
+		if running, known := workflowRunningState(workflow); !running || !known {
+			t.Fatalf("workflow should be running: %#v (running:%v known:%v)", workflow, running, known)
 		}
-	}
-	if workflowIsRunning(map[string]any{"status": "STOP", "enabled": false}) {
-		t.Fatal("stopped workflow must not be running")
 	}
 	if running, known := workflowRunningState(map[string]any{"status": "STOP"}); running || !known {
 		t.Fatalf("stopped workflow state = running:%v known:%v", running, known)
