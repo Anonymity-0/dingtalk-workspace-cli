@@ -4285,8 +4285,8 @@ CLI 内部自动完成全部流程:
   3. 确认导入（触发格式转换）
   4. 渐进式退避轮询等待完成（最多约 5 分钟）
 
-如果轮询超时仍未完成，会输出 taskId 供后续手动查询:
-  dws doc import get --task-id <taskId>`,
+如果轮询超时或中断，会输出包含原目标的完整命令供后续手动查询，例如:
+  dws doc import get --task-id <taskId> --workspace <原目标WORKSPACE_ID>`,
 		Example: `  # 导入 Word 文档
   dws doc import --file ./report.docx
 
@@ -4316,13 +4316,16 @@ CLI 内部自动完成全部流程:
 		Short: "查询导入任务结果（手动兜底）",
 		Long: `根据 taskId 查询文档导入任务的执行结果。
 通常不需要手动调用，dws doc import 会自动完成轮询。
-仅在导入命令超时或中断后，用于手动查询任务状态。
+仅在导入命令超时或中断后，用于手动查询任务状态。建议直接复制导入结果
+中的完整 next_command；其中携带的原目标（--folder 或 --workspace）用于在
+completed 后回读验证真实落点。只传 taskId 仍可查询 processing/failed，
+但 completed 时会返回未验证错误，不会误报成功。
 
 任务状态:
   processing  转换中
   completed   导入成功，返回 documentUrl
   failed      导入失败`,
-		Example: `  dws doc import get --task-id <TASK_ID>`,
+		Example: `  dws doc import get --task-id <TASK_ID> --workspace <WORKSPACE_ID>`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runImportGetCommand(cmd, docImportFlowConfig())
 		},
@@ -4349,13 +4352,15 @@ CLI 内部自动完成全部流程:
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "根据 taskId 查询文档导入任务的执行结果",
-				UseWhen:      []string{"查询文档导入任务结果（已有 taskId，导入超时/中断后兜底）时"},
+				UseWhen:      []string{"已有 doc import 超时或中断结果及其完整 next_command，需要续查同一 taskId 并验证原 folder/workspace 落点时"},
 				AvoidWhen:    []string{"发起导入用 doc import（若入口可用）；不要用本命令代替导入"},
-				Examples:     []string{"dws doc import get --task-id <TASK_ID> --format json"},
+				Examples:     []string{"dws doc import get --task-id <TASK_ID> --workspace <WORKSPACE_ID> --format json"},
 			},
 		},
 	})
 	importGetCmd.Flags().String("task-id", "", "导入任务 ID (必填)")
+	importGetCmd.Flags().String("folder", "", "原导入目标文件夹 ID 或 URL（completed 后落点验证需要）")
+	importGetCmd.Flags().String("workspace", "", "原导入目标知识库 ID 或 URL（completed 后落点验证需要）")
 	importCmd.AddCommand(importGetCmd)
 	newHybridGroupCommand(importCmd)
 
