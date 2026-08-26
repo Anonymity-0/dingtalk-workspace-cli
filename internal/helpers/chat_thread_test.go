@@ -381,6 +381,70 @@ func TestCrossPlatformCoverageChatThreadSurfaceAndLegacyCompatibility(t *testing
 	}
 }
 
+func TestCrossPlatformCoverageChatThreadHelpExplainsRoutingAndIdentifiers(t *testing.T) {
+	root := newChatCommand()
+	for _, test := range []struct {
+		path []string
+		want []string
+	}{
+		{path: []string{"thread"}, want: []string{"普通群和话题圈", "create-group", "父群 openConversationId", "Thread 的 openConvThreadId", "list-replies"}},
+		{path: []string{"thread", "create-group"}, want: []string{"开启 Thread 模式", "当前登录用户会自动加入", "已有普通群或话题圈"}},
+		{path: []string{"thread", "send"}, want: []string{"普通群和话题圈", "父群 openConversationId", "openTaskId"}},
+		{path: []string{"thread", "reply"}, want: []string{"普通群和话题圈", "Thread 的 openConvThreadId", "不是父群 ID"}},
+		{path: []string{"thread", "list"}, want: []string{"Thread 主消息", "不返回某个 Thread 的逐条回复", "chat thread list-replies"}},
+		{path: []string{"thread", "list-replies"}, want: []string{"逐条回复", "父群 openConversationId", "chat +thread-replies --page-all"}},
+		{path: []string{"thread", "forward"}, want: []string{"不支持从话题圈向另一个话题圈", "可转发到普通群"}},
+		{path: []string{"thread", "recall-message"}, want: []string{"主消息或回复", "Thread 归属", "openConvThreadId"}},
+		{path: []string{"thread", "list-emotion-replies"}, want: []string{"emoji reaction", "文字表情（状态）", "chat thread list-replies"}},
+		{path: []string{"thread", "add-text-emotion"}, want: []string{"chat message create-text-emotion", "emotion-id", "background-id"}},
+		{path: []string{"thread", "remove-text-emotion"}, want: []string{"添加时的实际值", "Thread 归属"}},
+		{path: []string{"thread", "update-text-emotion"}, want: []string{"old-emotion-id", "create-text-emotion 返回的新值"}},
+	} {
+		command, remaining, err := root.Find(test.path)
+		if err != nil || len(remaining) != 0 {
+			t.Fatalf("find chat %v: command=%v remaining=%v error=%v", test.path, command, remaining, err)
+		}
+		var help bytes.Buffer
+		command.SetOut(&help)
+		command.SetErr(&help)
+		if err := command.Help(); err != nil {
+			t.Fatalf("render chat %v help: %v", test.path, err)
+		}
+		for _, want := range test.want {
+			if !strings.Contains(help.String(), want) {
+				t.Errorf("chat %v help = %q, want substring %q", test.path, help.String(), want)
+			}
+		}
+	}
+
+	for _, test := range []struct {
+		path []string
+		flag string
+		want string
+	}{
+		{path: []string{"thread", "reply"}, flag: "conversation-id", want: "Thread 子会话 openConvThreadId"},
+		{path: []string{"thread", "add-text-emotion"}, flag: "emotion-id", want: "create-text-emotion 返回的 emotionId"},
+		{path: []string{"thread", "remove-text-emotion"}, flag: "background-id", want: "已添加文字表情的 backgroundId"},
+		{path: []string{"thread", "update-text-emotion"}, flag: "old-emotion-id", want: "当前文字表情的 emotionId"},
+	} {
+		command, _, err := root.Find(test.path)
+		if err != nil {
+			t.Fatalf("find chat %v: %v", test.path, err)
+		}
+		flag := command.Flags().Lookup(test.flag)
+		if flag == nil || !strings.Contains(flag.Usage, test.want) {
+			t.Errorf("chat %v --%s help = %q, want substring %q", test.path, test.flag, flagUsage(flag), test.want)
+		}
+	}
+}
+
+func flagUsage(flag *pflag.Flag) string {
+	if flag == nil {
+		return ""
+	}
+	return flag.Usage
+}
+
 func TestCrossPlatformCoverageChatThreadKeepsPreSplitPrimaryParameters(t *testing.T) {
 	root := newChatCommand()
 	wantByLeaf := map[string][]string{

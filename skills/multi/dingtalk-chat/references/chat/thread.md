@@ -2,7 +2,7 @@
 
 > 返回入口：[DingTalk Chat Skill](../../SKILL.md)
 
-话题是一条主消息及其回复线，使用 `openConvThreadId` 标识；承载话题的会话使用 `openConversationId`。命令沿用拆分前 `chat group` / `chat message` 的参数名称。
+话题（Thread）是一条主消息及其回复线，可以位于普通群或话题圈中，使用 `openConvThreadId` 标识；承载话题的父群使用 `openConversationId`。命令沿用拆分前 `chat group` / `chat message` 的参数名称。只有需要新建话题圈时才使用 `create-group`，已有群中的话题可直接使用其余 `chat thread` 命令。
 
 ## 入口选择
 
@@ -29,9 +29,11 @@
 
 用户需要逐条查看、列出或概括具体回复内容时，使用 `thread list-replies`；只浏览话题主消息时使用 `thread list`。需要自动读取全部页面、排序或下载资源时，使用 `+thread-replies` Shortcut。
 
+整条 Thread 可转发到普通群；当前不支持从话题圈向另一个话题圈转发整条 Thread。
+
 ## 消息操作
 
-撤回、emoji 和文字表情命令沿用对应 `chat message` 命令的主参数。Runtime 会先读取消息并校验其属于 Thread，再执行操作；批量查询会逐条校验 `--msg-ids`。
+撤回、emoji 和文字表情命令沿用对应 `chat message` 命令的主参数。Runtime 会先读取消息并校验其属于 Thread，再执行操作；批量查询会逐条校验 `--msg-ids`。文字表情的 `emotionId`、`backgroundId`、名称和文字使用 `chat message create-text-emotion` 返回的实际值；移除时使用已添加的值，更新时用 `--old-emotion-id` 传当前值、其余表情参数传新值。
 
 ## 完成与错误
 

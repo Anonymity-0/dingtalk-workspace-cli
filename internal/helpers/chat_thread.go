@@ -64,8 +64,8 @@ func storeChatThreadDryRun(cmd *cobra.Command, product, tool string, arguments m
 func newChatThreadCommand(sendRunE func(*cobra.Command, []string) error) *cobra.Command {
 	thread := newGroupCommand(&cobra.Command{
 		Use:   "thread",
-		Short: "话题与话题圈管理",
-		Long:  "创建话题圈，并发布、分页读取、直接回复和操作话题。命令参数保持原 chat group/message 命令的会话与 Thread ID 命名。",
+		Short: "群聊话题（Thread）管理",
+		Long:  "Thread 表示群聊中的一条话题主消息及其回复。以下命令同时适用于普通群和话题圈中的 Thread；只有 create-group 用于新建话题圈。发布新话题时传父群 openConversationId，直接回复时传该 Thread 的 openConvThreadId。list 浏览话题主消息，list-replies 读取某个话题的逐条回复。",
 		RunE:  groupRunE,
 	})
 
@@ -92,7 +92,7 @@ func newChatThreadCreateCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
 		Use:           "create-group",
 		Short:         "创建话题圈",
-		Long:          "创建一个固定开启 Thread 模式的群聊。",
+		Long:          "创建一个开启 Thread 模式的群聊（话题圈）。当前登录用户会自动加入，--users 中的重复成员会去重。已有普通群或话题圈中的 Thread 可直接使用 send、list、reply 等命令。",
 		Example:       `  dws chat thread create-group --name "项目话题圈" --users userId1,userId2`,
 		OutputRollout: output.RolloutUnifiedActive,
 		Tool:          "create_group_conversation",
@@ -137,17 +137,19 @@ func newChatThreadCreateCommand() *cobra.Command {
 
 func newChatThreadSendCommand(use, targetFlag, targetDescription string, sendRunE func(*cobra.Command, []string) error) *cobra.Command {
 	description := "发布一条新话题"
+	longDescription := "在指定父群会话中发布一条新话题，普通群和话题圈均可使用。--conversation-id 传父群 openConversationId。"
 	identityName := "send_thread"
 	canonical := "chat.send_thread"
 	if use == "reply" {
 		description = "向指定 openConvThreadId 直接追加回复（非引用回复）"
+		longDescription = "向已有 Thread 直接追加回复（非引用回复），普通群和话题圈均可使用。--conversation-id 传该 Thread 的 openConvThreadId，而不是父群 ID。"
 		identityName = "reply_thread"
 		canonical = "chat.reply_thread"
 	}
 	cmd := &cobra.Command{
 		Use:     use,
 		Short:   description,
-		Long:    description + "。支持文本或 Markdown、已有 mediaId 图片，以及本地 file/audio/video；发送后立即返回 openTaskId，不在命令内轮询状态。",
+		Long:    longDescription + "支持文本或 Markdown、已有 mediaId 图片，以及本地 file/audio/video；发送后立即返回 openTaskId，不在命令内轮询状态。",
 		Example: fmt.Sprintf("  dws chat thread %s --%s <%s> --content \"内容\"", use, targetFlag, targetFlag),
 		Args:    cobra.MaximumNArgs(1),
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
@@ -166,7 +168,7 @@ func newChatThreadSendCommand(use, targetFlag, targetDescription string, sendRun
 			Selection: contract.SelectionSpec{
 				AgentSummary: description,
 				UseWhen:      []string{description + "，并沿用异步 openTaskId 发送契约时"},
-				AvoidWhen:    []string{"普通群聊或单聊消息使用 chat message send；引用回复普通消息使用 chat message reply"},
+				AvoidWhen:    []string{"不创建 Thread 的普通群聊或单聊消息使用 chat message send；引用回复普通消息使用 chat message reply"},
 				Examples:     []string{fmt.Sprintf("dws chat thread %s --%s <%s> --content \"内容\"", use, targetFlag, targetFlag)},
 			},
 			Parameters: []contract.ParamDecl{
@@ -229,8 +231,8 @@ func registerChatThreadSendFlags(cmd *cobra.Command, targetFlag, targetDescripti
 func newChatThreadListCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
-		Short:   "列出会话里的话题",
-		Long:    "分页读取指定会话的消息，每次返回一页，并只保留包含 openConvThreadId 的 Thread 主消息。续页状态通过统一结果的 meta.pagination 返回。",
+		Short:   "分页列出群聊中的话题主消息",
+		Long:    "分页读取普通群或话题圈中的 Thread 主消息，用于浏览话题列表或概览，不返回某个 Thread 的逐条回复。--conversation-id 传父群 openConversationId；每次返回一页，续页状态通过统一结果的 meta.pagination 返回。如需读取具体回复，使用 chat thread list-replies。",
 		Example: `  dws chat thread list --conversation-id <openConversationId> --limit 50`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			conversationID := mustGetFlag(cmd, "conversation-id")
@@ -322,7 +324,7 @@ func newChatThreadListRepliesCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list-replies",
 		Short:   "分页读取指定 Thread 的回复",
-		Long:    "分页读取指定话题的回复，每次返回一页。--conversation-id 指定父会话，--topic-id 指定 openConvThreadId；需要自动读取全部页面时使用现有的 chat +thread-replies --page-all。",
+		Long:    "分页读取一个 Thread 的逐条回复，普通群和话题圈均可使用。--conversation-id 传父群 openConversationId，--topic-id 传该 Thread 的 openConvThreadId。每次返回一页；如需自动读取全部页面、排序或下载资源，可使用 chat +thread-replies --page-all。",
 		Example: `  dws chat thread list-replies --conversation-id <openConversationId> --topic-id <openConvThreadId>`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			forward, err := resolveMessageForward(cmd, false)
@@ -580,12 +582,12 @@ func newChatThreadRecallMessageCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
 		Use:     "recall-message",
 		Short:   "撤回 Thread 中的一条消息",
-		Long:    "先确认消息属于 Thread，再撤回当前用户发送的这一条消息。",
+		Long:    "撤回当前用户在 Thread 中发送的一条主消息或回复。命令会先校验 Thread 归属；--conversation-id 可传父群 openConversationId，处理回复时也可传该 Thread 的 openConvThreadId。",
 		Example: `  dws chat thread recall-message --conversation-id <openConversationId> --message-id <openMessageId>`,
 		Server:  "im",
 		Tool:    "recall_message",
 		Flags: []LeafFlag{
-			{Name: "conversation-id", Usage: "会话 openConversationId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
+			{Name: "conversation-id", Usage: "父群 openConversationId；处理回复时也可传 Thread openConvThreadId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
 			{Name: "message-id", Usage: "消息 openMessageId (必填)", Required: true, MarkRequired: true, Bind: "openMessageId"},
 		},
 		Safety: contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown"},
@@ -619,10 +621,10 @@ func newChatThreadAddEmojiCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
 		Use:     "add-emoji",
 		Short:   "给 Thread 消息添加 emoji",
-		Long:    "确认消息属于 Thread 后，为主消息或回复添加 emoji reaction。",
+		Long:    "为 Thread 主消息或回复添加 emoji reaction，普通群和话题圈均可使用。命令会先校验消息的 Thread 归属；文字状态请使用 add-text-emotion。",
 		Example: `  dws chat thread add-emoji --conversation-id <openConversationId> --message-id <openMessageId> --emoji "赞"`,
 		Flags: []LeafFlag{
-			{Name: "conversation-id", Usage: "会话 openConversationId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
+			{Name: "conversation-id", Usage: "父群 openConversationId；处理回复时也可传 Thread openConvThreadId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
 			{Name: "message-id", Usage: "消息 openMessageId (必填)", Required: true, MarkRequired: true, Bind: "openMsgId"},
 			{Name: "emoji", Usage: "emoji 表情名称 (必填)", Required: true, MarkRequired: true, Bind: "emojiName"},
 		},
@@ -657,10 +659,10 @@ func newChatThreadRemoveEmojiCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
 		Use:     "remove-emoji",
 		Short:   "移除 Thread 消息上的 emoji",
-		Long:    "确认消息属于 Thread 后，移除当前用户添加的 emoji reaction。",
+		Long:    "移除当前用户在 Thread 主消息或回复上添加的 emoji reaction，普通群和话题圈均可使用。命令会先校验消息的 Thread 归属。",
 		Example: `  dws chat thread remove-emoji --conversation-id <openConversationId> --message-id <openMessageId> --emoji "赞"`,
 		Flags: []LeafFlag{
-			{Name: "conversation-id", Usage: "会话 openConversationId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
+			{Name: "conversation-id", Usage: "父群 openConversationId；处理回复时也可传 Thread openConvThreadId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
 			{Name: "message-id", Usage: "消息 openMessageId (必填)", Required: true, MarkRequired: true, Bind: "openMsgId"},
 			{Name: "emoji", Usage: "emoji 表情名称 (必填)", Required: true, MarkRequired: true, Bind: "emojiName"},
 		},
@@ -694,8 +696,8 @@ func newChatThreadRemoveEmojiCommand() *cobra.Command {
 func newChatThreadListEmotionRepliesCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
 		Use:     "list-emotion-replies",
-		Short:   "查询 Thread 消息的表情回复",
-		Long:    "批量确认消息属于 Thread 后，查询对应 emoji 和文字表情回复。",
+		Short:   "查询 Thread 消息的 emoji 与文字状态",
+		Long:    "查询一批 Thread 主消息或回复上的 emoji reaction 与文字表情（状态）。命令会先逐条校验 Thread 归属；如需读取回复正文，使用 chat thread list-replies。",
 		Example: `  dws chat thread list-emotion-replies --msg-ids msgId1,msgId2`,
 		Flags: []LeafFlag{{Name: "msg-ids", Usage: "消息 ID 列表，逗号分隔 (必填)", Required: true, MarkRequired: true, Bind: "openMessageIds", Transform: func(raw string) (any, error) {
 			return parseCSVValues(raw), nil
@@ -726,16 +728,16 @@ func newChatThreadListEmotionRepliesCommand() *cobra.Command {
 func newChatThreadAddTextEmotionCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
 		Use:     "add-text-emotion",
-		Short:   "给 Thread 消息添加文字表情",
-		Long:    "确认消息属于 Thread 后，添加已有的文字表情。",
+		Short:   "给 Thread 消息添加文字表情或状态",
+		Long:    "给 Thread 主消息或回复添加已有的文字表情（可用作“处理中”等状态）。emotion-id、background-id、名称和文字使用 chat message create-text-emotion 返回的实际值；命令会先校验 Thread 归属。",
 		Example: `  dws chat thread add-text-emotion --conversation-id <openConversationId> --message-id <openMessageId> --emotion-id <emotionId> --emotion-name "处理中" --text "处理中" --background-id im_bg_5`,
 		Flags: []LeafFlag{
-			{Name: "conversation-id", Usage: "会话 openConversationId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
+			{Name: "conversation-id", Usage: "父群 openConversationId；处理回复时也可传 Thread openConvThreadId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
 			{Name: "message-id", Usage: "消息 openMessageId (必填)", Required: true, MarkRequired: true, Bind: "openMsgId"},
-			{Name: "emotion-id", Usage: "表情 ID (必填)", Required: true, MarkRequired: true, Bind: "emotionId"},
-			{Name: "emotion-name", Usage: "表情名称 (必填)", Required: true, MarkRequired: true, Bind: "emotionName"},
-			{Name: "text", Usage: "文字内容 (必填)", Required: true, MarkRequired: true, Bind: "text"},
-			{Name: "background-id", Usage: "背景 ID (必填)", Required: true, MarkRequired: true, Bind: "backgroundId"},
+			{Name: "emotion-id", Usage: "create-text-emotion 返回的 emotionId (必填)", Required: true, MarkRequired: true, Bind: "emotionId"},
+			{Name: "emotion-name", Usage: "create-text-emotion 返回的表情名称 (必填)", Required: true, MarkRequired: true, Bind: "emotionName"},
+			{Name: "text", Usage: "create-text-emotion 返回的文字内容 (必填)", Required: true, MarkRequired: true, Bind: "text"},
+			{Name: "background-id", Usage: "create-text-emotion 返回的 backgroundId (必填)", Required: true, MarkRequired: true, Bind: "backgroundId"},
 		},
 		Safety: contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown"},
 		Contract: LeafContract{
@@ -771,16 +773,16 @@ func newChatThreadAddTextEmotionCommand() *cobra.Command {
 func newChatThreadRemoveTextEmotionCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
 		Use:     "remove-text-emotion",
-		Short:   "移除 Thread 消息上的文字表情",
-		Long:    "确认消息属于 Thread 后，移除指定文字表情。",
+		Short:   "移除 Thread 消息上的文字表情或状态",
+		Long:    "移除 Thread 主消息或回复上已添加的文字表情（状态）。emotion-id、background-id、名称和文字须使用添加时的实际值；命令会先校验 Thread 归属。",
 		Example: `  dws chat thread remove-text-emotion --conversation-id <openConversationId> --message-id <openMessageId> --emotion-id <emotionId> --emotion-name "处理中" --text "处理中" --background-id im_bg_5`,
 		Flags: []LeafFlag{
-			{Name: "conversation-id", Usage: "会话 openConversationId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
+			{Name: "conversation-id", Usage: "父群 openConversationId；处理回复时也可传 Thread openConvThreadId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
 			{Name: "message-id", Usage: "消息 openMessageId (必填)", Required: true, MarkRequired: true, Bind: "openMsgId"},
-			{Name: "emotion-id", Usage: "表情 ID (必填)", Required: true, MarkRequired: true, Bind: "emotionId"},
-			{Name: "emotion-name", Usage: "表情名称 (必填)", Required: true, MarkRequired: true, Bind: "emotionName"},
-			{Name: "text", Usage: "文字内容 (必填)", Required: true, MarkRequired: true, Bind: "text"},
-			{Name: "background-id", Usage: "背景 ID (必填)", Required: true, MarkRequired: true, Bind: "backgroundId"},
+			{Name: "emotion-id", Usage: "已添加文字表情的 emotionId (必填)", Required: true, MarkRequired: true, Bind: "emotionId"},
+			{Name: "emotion-name", Usage: "已添加文字表情的名称 (必填)", Required: true, MarkRequired: true, Bind: "emotionName"},
+			{Name: "text", Usage: "已添加文字表情的文字内容 (必填)", Required: true, MarkRequired: true, Bind: "text"},
+			{Name: "background-id", Usage: "已添加文字表情的 backgroundId (必填)", Required: true, MarkRequired: true, Bind: "backgroundId"},
 		},
 		Safety: contract.SafetySpec{Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "idempotent"},
 		Contract: LeafContract{
@@ -816,17 +818,17 @@ func newChatThreadRemoveTextEmotionCommand() *cobra.Command {
 func newChatThreadUpdateTextEmotionCommand() *cobra.Command {
 	return NewLeafCommand(LeafSpec{
 		Use:     "update-text-emotion",
-		Short:   "更新 Thread 消息上的文字表情",
-		Long:    "确认消息属于 Thread 后，把已有文字表情原子替换为新的文字表情。",
+		Short:   "更新 Thread 消息上的文字表情或状态",
+		Long:    "把 Thread 主消息或回复上的已有文字表情（状态）原子替换为新值。old-emotion-id 传当前 emotionId，其余表情字段传 chat message create-text-emotion 返回的新值；命令会先校验 Thread 归属。",
 		Example: `  dws chat thread update-text-emotion --conversation-id <openConversationId> --message-id <openMessageId> --old-emotion-id <oldEmotionId> --emotion-id <emotionId> --emotion-name "已完成" --text "已完成" --background-id im_bg_5`,
 		Flags: []LeafFlag{
-			{Name: "conversation-id", Usage: "会话 openConversationId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
+			{Name: "conversation-id", Usage: "父群 openConversationId；处理回复时也可传 Thread openConvThreadId (必填)", Required: true, MarkRequired: true, Bind: "openConversationId"},
 			{Name: "message-id", Usage: "消息 openMessageId (必填)", Required: true, MarkRequired: true, Bind: "openMsgId"},
-			{Name: "old-emotion-id", Usage: "待更新的原表情 ID (必填)", Required: true, MarkRequired: true, Bind: "oldEmotionId"},
-			{Name: "emotion-id", Usage: "新表情 ID (必填)", Required: true, MarkRequired: true, Bind: "emotionId"},
-			{Name: "emotion-name", Usage: "新表情名称 (必填)", Required: true, MarkRequired: true, Bind: "emotionName"},
-			{Name: "text", Usage: "新文字内容 (必填)", Required: true, MarkRequired: true, Bind: "text"},
-			{Name: "background-id", Usage: "新背景 ID (必填)", Required: true, MarkRequired: true, Bind: "backgroundId"},
+			{Name: "old-emotion-id", Usage: "当前文字表情的 emotionId (必填)", Required: true, MarkRequired: true, Bind: "oldEmotionId"},
+			{Name: "emotion-id", Usage: "新文字表情的 emotionId (必填)", Required: true, MarkRequired: true, Bind: "emotionId"},
+			{Name: "emotion-name", Usage: "新文字表情的名称 (必填)", Required: true, MarkRequired: true, Bind: "emotionName"},
+			{Name: "text", Usage: "新文字表情的文字内容 (必填)", Required: true, MarkRequired: true, Bind: "text"},
+			{Name: "background-id", Usage: "新文字表情的 backgroundId (必填)", Required: true, MarkRequired: true, Bind: "backgroundId"},
 		},
 		Safety: contract.SafetySpec{Effect: "write", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent"},
 		Contract: LeafContract{
@@ -946,7 +948,7 @@ func newChatThreadForwardCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "forward",
 		Short:   "转发 Thread 到目标会话",
-		Long:    "使用源 Thread 主消息、源会话、openConvThreadId 和目标会话转发整条 Thread 并保留上下文。",
+		Long:    "使用源 Thread 主消息、父群 openConversationId、openConvThreadId 和目标会话转发整条 Thread 并保留上下文。当前不支持从话题圈向另一个话题圈转发整条 Thread；可转发到普通群。",
 		Example: `  dws chat thread forward --src-msg-id <messageId> --src-conversation-id <openConversationId> --src-thread-id <openConvThreadId> --dest-conversation-id <openConversationId>`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			args := map[string]any{
