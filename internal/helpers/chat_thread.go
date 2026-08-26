@@ -282,8 +282,16 @@ func newChatThreadListCommand() *cobra.Command {
 			Identity:    contract.ToolIdentitySpec{ProductID: "chat", Name: "list_threads", CanonicalPath: "chat.list_threads", CLIPath: "chat thread list", PrimaryCLIPath: "chat thread list"},
 			Description: "分页读取会话中的话题主消息",
 			Interface:   &contract.InterfaceSpec{Mode: "composite", Availability: "available", Reason: "读取 list_conversation_message_v2 后只投影包含 openConvThreadId 的话题主消息。"},
-			Selection:   contract.SelectionSpec{AgentSummary: "分页读取会话中的话题主消息", UseWhen: []string{"已知会话 ID 并需要浏览其中的话题时"}, AvoidWhen: []string{"读取不区分话题的会话消息时使用 chat message list"}, Examples: []string{"dws chat thread list --conversation-id <openConversationId> --limit 50"}},
-			Parameters:  []contract.ParamDecl{{Name: "conversation-id", Property: "openconversation_id"}, {Name: "time", Property: "time"}, {Name: "direction", Property: "forward"}, {Name: "limit", Property: "limit"}},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "分页读取会话中的话题主消息",
+				UseWhen:      []string{"已知会话 ID 并需要浏览其中的话题主消息时"},
+				AvoidWhen: []string{
+					"读取不区分话题的会话消息时使用 chat message list",
+					"需要逐条查看某个 Thread 的回复正文时使用 chat thread list-replies",
+				},
+				Examples: []string{"dws chat thread list --conversation-id <openConversationId> --limit 50"},
+			},
+			Parameters: []contract.ParamDecl{{Name: "conversation-id", Property: "openconversation_id"}, {Name: "time", Property: "time"}, {Name: "direction", Property: "forward"}, {Name: "limit", Property: "limit"}},
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess},
 				DataSchema: json.RawMessage(`{"type":"object","description":"群会话中的一页 Thread 主消息","properties":{"topics":{"type":"array","description":"包含 openConvThreadId 的 Thread 主消息","items":{"type":"object","description":"Thread 主消息","additionalProperties":true}},"count":{"type":"integer","description":"当前页 Thread 数量"}},"required":["topics","count"],"additionalProperties":true}`),
@@ -372,8 +380,16 @@ func newChatThreadListRepliesCommand() *cobra.Command {
 			Identity:    contract.ToolIdentitySpec{ProductID: "chat", Name: "list_topic_replies", CanonicalPath: "chat.list_topic_replies", CLIPath: "chat thread list-replies", PrimaryCLIPath: "chat thread list-replies"},
 			Description: "分页读取指定 openConvThreadId 的回复",
 			Interface:   &contract.InterfaceSpec{Mode: "mcp", Availability: "available", Ref: &contract.InterfaceRefSpec{ProductID: "chat", RPCName: "list_topic_replies"}},
-			Selection:   contract.SelectionSpec{AgentSummary: "分页读取指定 Thread 的回复", UseWhen: []string{"已知父会话 ID 与 openConvThreadId 并需要查看回复时"}, AvoidWhen: []string{"浏览 Thread 主消息时使用 chat thread list"}, Examples: []string{"dws chat thread list-replies --conversation-id <openConversationId> --topic-id <openConvThreadId>"}},
-			Parameters:  []contract.ParamDecl{{Name: "conversation-id", Property: "openconversationId"}, {Name: "topic-id", Property: "topicId"}, {Name: "time", Property: "startTime"}, {Name: "direction", Property: "forward"}, {Name: "limit", Property: "pageSize"}},
+			Selection: contract.SelectionSpec{
+				AgentSummary: "分页读取指定 Thread 的回复",
+				UseWhen: []string{
+					"已知父会话 ID 与 openConvThreadId 并需要查看回复内容时",
+					"需要逐条列出某个话题当前存在的回复或核实具体回复是否仍存在时",
+				},
+				AvoidWhen: []string{"只浏览 Thread 主消息而不读取回复时使用 chat thread list"},
+				Examples:  []string{"dws chat thread list-replies --conversation-id <openConversationId> --topic-id <openConvThreadId>"},
+			},
+			Parameters: []contract.ParamDecl{{Name: "conversation-id", Property: "openconversationId"}, {Name: "topic-id", Property: "topicId"}, {Name: "time", Property: "startTime"}, {Name: "direction", Property: "forward"}, {Name: "limit", Property: "pageSize"}},
 			Result: &contract.ResultSpec{
 				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess},
 				DataSchema: json.RawMessage(`{"type":"object","description":"指定话题的一页回复","properties":{"openConversationId":{"type":"string","description":"父会话 openConversationId"},"openConvThreadId":{"type":"string","description":"话题 openConvThreadId"},"replies":{"type":"array","description":"当前页回复","items":{"type":"object","description":"话题回复","additionalProperties":true}},"count":{"type":"integer","description":"当前页回复数量"}},"required":["openConversationId","openConvThreadId","replies","count"],"additionalProperties":true}`),

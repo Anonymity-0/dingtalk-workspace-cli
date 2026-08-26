@@ -557,7 +557,7 @@ Flags:
   - --group 的别名: --id, --chat, --conversation-id (均可替代 --group)
   - 翻页：hasMore=true 时，用结果中的边界 createTime 作为下次 --time
   - 处理引用回复时读取 quotedMessage，不要只看回复正文；合并转发与图片引用的原消息内容也在该上下文中
-  - 话题圈是群会话容器，使用 `openConversationId`；群内一条 Thread 使用 `openConvThreadId`。浏览主话题使用 `dws chat thread list --conversation-id <openConversationId>`；读取回复串使用 `dws chat thread list-replies --conversation-id <openConversationId> --topic-id <openConvThreadId>`。
+  - 话题圈是群会话容器，使用 `openConversationId`；群内一条 Thread 使用 `openConvThreadId`。浏览主话题使用 `dws chat thread list --conversation-id <openConversationId>`；需要逐条查看回复正文或核实具体回复是否仍存在时，使用 `dws chat thread list-replies --conversation-id <openConversationId> --topic-id <openConvThreadId>`。
 ```
 
 #### 以当前用户身份发送消息 — --group 群聊 / --user 或 --open-dingtalk-id 单聊
@@ -828,6 +828,8 @@ Flags:
 #### 拉取话题回复消息列表
 
 分页查询指定话题的回复，每次返回一页。`conversation-id` 指定父会话，`topic-id` 指定 `openConvThreadId`；需要自动读取全部页面时使用现有的 `dws chat +thread-replies --page-all`。
+
+用户需要逐条查看、列出或概括具体回复内容时，使用本命令；只浏览话题主消息时使用 `thread list`。需要自动读取全部页面、排序或下载资源时，使用 `chat +thread-replies --page-all`。
 ```
 Usage:
   dws chat thread list-replies [flags]
@@ -2112,7 +2114,7 @@ Flags:
 用户说"搜索消息里的关键词/包含XX的消息" → `chat message search-advanced --query "<关键词>"`（首选，严格超集）
 用户说"我和某人的共同群" → `chat search-common --nicks "<昵称1>,<昵称2>"`
 用户说"未读会话列表" → `chat message list-unread-conversations`
-用户说"群里某条话题的回复" → `chat thread list-replies --conversation-id <openConversationId> --topic-id <openConvThreadId>`
+用户说"群里某条话题的回复/逐条列出当前回复/撤回后看看具体还剩哪些回复" → `chat thread list-replies --conversation-id <openConversationId> --topic-id <openConvThreadId>`
 用户说"置顶会话/置顶消息" → `chat list-top-conversations` 列会话 → 再 `chat message list --group <id>` 拉消息（两步）
 
 用户说"建群/创建群聊" → `chat group create`
@@ -2141,7 +2143,7 @@ Flags:
 用户说"撤回机器人发的消息/机器人撤回消息" → `chat message recall-by-bot`（通过机器人接口撤回机器人发出的消息，需要 robot-code + processQueryKey）
 用户说"Webhook 发消息/告警消息" → `chat message send-by-webhook`
 用户说"回复话题" → `chat thread reply --conversation-id <openConvThreadId>`
-用户说"查看话题回复/拉取话题回复" → `chat thread list-replies`
+用户说"查看话题回复/拉取话题回复/列出每条回复内容/核实某条回复是否还在" → `chat thread list-replies`
 用户说"所有消息/全部会话消息/拉取全部消息/时间范围内消息/我的消息/我今天的消息/查我的钉钉消息/最近的消息" → `chat message list-all`
 用户说"特别关注人的消息/关注的人的消息/星标联系人的消息" → `chat message list-focused`
 用户说"消息已读未读/谁看了消息/查读状态/消息读取状态" → `chat message read-status`

@@ -27,6 +27,8 @@
 
 已有父会话 `openConversationId` 和 Thread `openConvThreadId` 且只需读取一页时，使用 `thread list-replies --conversation-id ... --topic-id ...`。需要按主消息自动解析、全量翻页、排序或下载资源时，使用 `+thread-replies` Shortcut。
 
+用户需要逐条查看、列出或概括具体回复内容时，使用 `thread list-replies`；只浏览话题主消息时使用 `thread list`。需要自动读取全部页面、排序或下载资源时，使用 `+thread-replies` Shortcut。
+
 ## 消息操作
 
 撤回、emoji 和文字表情命令沿用对应 `chat message` 命令的主参数。Runtime 会先读取消息并校验其属于 Thread，再执行操作；批量查询会逐条校验 `--msg-ids`。

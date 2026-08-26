@@ -43,7 +43,7 @@
 | "查看我今天的所有消息" | 全量会话消息 | `chat message list-all` | `chat message list` | 用户未指定具体会话时用 list-all（跨所有会话），指定了具体群或人时用 list |
 | "搜一下消息里的changefree链接" | 消息搜索 | `chat +search-msg` | `chat message search-advanced` | Shortcut 支持关键词、发送者、会话、消息类型、时间窗、全量翻页和批量富化 |
 | "按发送者搜索/指定多个群搜索/多维度搜消息" | 多维度搜索消息 | `chat +search-msg` | `chat message search-advanced` | 需要原子响应结构时才降级 |
-| "查看这条话题的所有回复" | 话题回复 | `chat +thread-replies` | `chat thread list-replies` | 已知 threadId/topicId 时自动投影回复人、正文和时间 |
+| "逐条列出这条话题的回复/撤回后具体还剩哪些回复" | 话题回复 | `chat thread list-replies` | `chat +thread-replies --page-all` | 已知父会话 ID 与 openConvThreadId 时直接查询；需要全量翻页、排序或资源下载再用 Shortcut |
 | "把这些消息里的附件下载下来" | 消息资源下载 | 查询 Shortcut 的 `--download-resources` | `resourceRefs.shortcut` 返回的下载命令 | 先用查询结果的 resourceRefs；单资源再执行返回的可运行参数 |
 | "消息发没发成功/查询消息发送状态" | 查询消息发送状态 | `chat message query-send-status` | — | 需要 send 返回的 openTaskId |
 | "编辑/撤回我刚发的消息" | 发后编辑/撤回 | `send` → `query-send-status` → `edit` / `recall` | 按消息内容反查 | 使用 send 返回的 openTaskId 直接获取两个后续 ID |
