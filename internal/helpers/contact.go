@@ -184,11 +184,16 @@ func newContactDeptCreateCommand() *cobra.Command {
 func newContactLabelCreateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "创建角色",
-		Long: `在指定父标签组下创建角色（标签）。--name 为角色名称，--parent-id 为父标签组ID（0 表示根标签组）。
+		Short: "创建角色或角色组",
+		Long: `创建通讯录角色（标签）或角色组，通过 --type 显式确认创建类型。
+
+--type role  创建角色：必须通过 --parent-id 指定所属角色组 ID（可用 label list 查询）。
+--type group 创建角色组：无需 --parent-id，服务端固定挂在根层级（parentId=-1）。
+parentId 不接受 0；-1 仅表示根层级角色组，创建角色时必须传真实角色组 ID。
+
 该写操作执行前需要确认，自动化场景在用户明确授权后传 --yes。`,
-		Example: `  dws contact label create --name "管理员" --parent-id 0
-  dws contact label create --name "财务" --parent 12345`,
+		Example: `  dws contact label create --name "管理员" --type role --parent-id 12345
+  dws contact label create --name "管理层" --type group`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := validateRequiredFlagWithAliases(cmd, "name", "label-name", "labelName"); err != nil {
@@ -198,13 +203,35 @@ func newContactLabelCreateCommand() *cobra.Command {
 			if name == "" {
 				return fmt.Errorf("--%s 不能为空", contactFirstSetFlagName(cmd, "name", "label-name", "labelName"))
 			}
-			if err := validateRequiredFlagWithAliases(cmd, "parent-id", "parentId", "parent", "label-parent-id", "labelParentId"); err != nil {
+			if err := validateRequiredFlagWithAliases(cmd, "type", "create-type", "label-type", "createType", "labelType"); err != nil {
 				return err
 			}
-			parentIDRaw := strings.TrimSpace(flagOrFallback(cmd, "parent-id", "parentId", "parent", "label-parent-id", "labelParentId"))
-			parentID, err := strconv.ParseInt(parentIDRaw, 10, 64)
-			if err != nil {
-				return fmt.Errorf("--parent-id must be an integer: %w", err)
+			createType := strings.TrimSpace(flagOrFallback(cmd, "type", "create-type", "label-type", "createType", "labelType"))
+			switch createType {
+			case "role", "group":
+			default:
+				return fmt.Errorf("--type 仅支持 role（角色）或 group（角色组），当前值 %q", createType)
+			}
+			parentIDSupplied := contactAnyFlagChanged(cmd, "parent-id", "parentId", "parent", "label-parent-id", "labelParentId")
+			var parentID int64
+			if createType == "role" {
+				if !parentIDSupplied {
+					return fmt.Errorf("创建角色（--type role）必须通过 --parent-id 指定所属角色组 ID；若要创建角色组请改用 --type group")
+				}
+				parentIDRaw := strings.TrimSpace(flagOrFallback(cmd, "parent-id", "parentId", "parent", "label-parent-id", "labelParentId"))
+				var err error
+				parentID, err = strconv.ParseInt(parentIDRaw, 10, 64)
+				if err != nil {
+					return fmt.Errorf("--%s must be an integer: %w", contactFirstSetFlagName(cmd, "parent-id", "parentId", "parent", "label-parent-id", "labelParentId"), err)
+				}
+				if parentID <= 0 {
+					return fmt.Errorf("--parent-id 必须是有效的角色组 ID（正整数）；创建角色组请改用 --type group（无需 --parent-id）")
+				}
+			} else if parentIDSupplied {
+				return fmt.Errorf("创建角色组（--type group）无需 --parent-id，服务端固定挂在根层级；若要在指定组下创建角色请改用 --type role")
+			}
+			if createType == "group" {
+				parentID = -1
 			}
 			return callMCPTool("add_label", map[string]any{
 				"parentId": parentID,
@@ -214,10 +241,15 @@ func newContactLabelCreateCommand() *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().String("name", "", "角色名称 (必填)")
+	cmd.Flags().String("name", "", "角色或角色组名称 (必填)")
 	cmd.Flags().String("label-name", "", "--name 的别名")
 	_ = cmd.Flags().MarkHidden("label-name")
-	cmd.Flags().String("parent-id", "", "父标签组 ID (必填，0 表示根标签组)")
+	cmd.Flags().String("type", "", "创建类型 (必填)：role 角色（需 --parent-id 指定所属角色组），group 角色组（挂在根层级）")
+	cmd.Flags().String("create-type", "", "--type 的别名")
+	cmd.Flags().String("label-type", "", "--type 的别名")
+	_ = cmd.Flags().MarkHidden("create-type")
+	_ = cmd.Flags().MarkHidden("label-type")
+	cmd.Flags().String("parent-id", "", "所属角色组 ID（--type role 时必填，正整数）")
 	cmd.Flags().String("parentId", "", "--parent-id 的别名")
 	cmd.Flags().String("parent", "", "--parent-id 的别名")
 	cmd.Flags().String("label-parent-id", "", "--parent-id 的别名")
@@ -226,7 +258,7 @@ func newContactLabelCreateCommand() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("parent")
 	_ = cmd.Flags().MarkHidden("label-parent-id")
 	_ = cmd.Flags().MarkHidden("labelParentId")
-	cli.AnnotateRuntimeRequiredFlags(cmd, "name", "parent-id")
+	cli.AnnotateRuntimeRequiredFlags(cmd, "name", "type")
 	return cmd
 }
 
@@ -865,21 +897,29 @@ func newContactCommand() *cobra.Command {
 				CLIPath:        "contact label create",
 				PrimaryCLIPath: "contact label create",
 			},
-			Description: "在指定父标签组下创建角色（标签）",
+			Description: "创建通讯录角色（标签）或角色组：--type role 在指定角色组下创建角色，--type group 创建根层级角色组",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: json.RawMessage(`{"type":"object","description":"标签创建结果","properties":{"result":{"type":"object","description":"调用结果","properties":{"id":{"type":"integer","description":"新建角色或角色组的标签 ID"}},"required":["id"]},"success":{"type":"boolean","description":"是否创建成功"},"errorCode":{"type":"string","description":"错误码"},"errorMsg":{"type":"string","description":"错误信息"}},"required":["success"],"additionalProperties":true}`),
+			},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
-				Reason:       "Reviewed unpinned remote adapter: the executable CLI maps label creation flags to contact/add_label, which is absent from the pinned MCP metadata snapshot.",
+				Reason:       "The executable CLI composes the add_label MCP tool call manually: label creation requires type-dependent parentId semantics (role requires a real group id, group passes -1) that the flag mapping layer owns.",
 			},
 			Selection: contract.SelectionSpec{
-				AgentSummary: "在指定父标签组下创建角色（标签）",
-				UseWhen:      []string{"用户明确要求新建角色，且已确认角色名称和父标签组ID"},
-				AvoidWhen:    []string{"当前 CLI 暂不支持修改已有角色；仅查找角色应使用 contact label get 或 contact label list"},
-				Examples:     []string{"dws contact label create --name \"管理员\" --parent-id 0"},
+				AgentSummary: "创建通讯录角色（标签）或角色组",
+				UseWhen:      []string{"用户明确要求新建角色（--type role，需角色组 ID）或新建角色组（--type group，挂在根层级）"},
+				AvoidWhen:    []string{"修改已有角色名称应使用 contact label update；仅查找角色应使用 contact label get 或 contact label list"},
+				Examples: []string{
+					"dws contact label create --name \"管理员\" --type role --parent-id 12345",
+					"dws contact label create --name \"管理层\" --type group",
+				},
 			},
 			Parameters: []contract.ParamDecl{
 				{Name: "name", Property: "labelModel.name", Required: boolPtr(true)},
-				{Name: "parent-id", Property: "parentId", Required: boolPtr(true), InterfaceType: "integer"},
+				{Name: "type", Required: boolPtr(true), Enum: []string{"role", "group"}, Description: "创建类型：role 角色（--parent-id 必填），group 角色组（固定根层级 parentId=-1）"},
+				{Name: "parent-id", Property: "parentId", Required: boolPtr(false), InterfaceType: "integer", RequiredWhen: "type=role", Description: "所属角色组 ID（正整数）；--type group 时禁止传"},
 			},
 		},
 	})
