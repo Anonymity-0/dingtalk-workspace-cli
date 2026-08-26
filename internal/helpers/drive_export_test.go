@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -239,6 +240,25 @@ func TestCrossPlatformCoveragePollDriveExportJobTerminalStates(t *testing.T) {
 
 // ── runDriveExport 命令级：格式解析 / dry-run / 三步流程 ──
 
+// executeDriveExportFailingWriter 以永远写失败的 stdout writer 执行 drive 命令，
+// 用于断言 PrintJSON 的写错误被上抛而非静默吞掉（对齐 drive pull/push/sync 契约）。
+func executeDriveExportFailingWriter(t *testing.T, caller *scriptedToolCaller, args ...string) error {
+	t.Helper()
+	previousDeps := deps
+	t.Cleanup(func() { deps = previousDeps })
+	InitDeps(caller)
+	deps.Out.w = failingWriter{}
+	deps.Out.errW = io.Discard
+	root := newDriveCommand()
+	installExampleGlobalFlags(root)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs(args)
+	return root.Execute()
+}
+
 func TestCrossPlatformCoverageRunDriveExportFlow(t *testing.T) {
 	installImmediateTiming(t)
 
@@ -467,6 +487,62 @@ func TestCrossPlatformCoverageRunDriveExportFlow(t *testing.T) {
 			t.Fatalf("error = %v", err)
 		}
 	})
+
+	t.Run("file output prints single json result", func(t *testing.T) {
+		oldGet := httpGetFile
+		httpGetFile = func(context.Context, string, map[string]string, string) error { return nil }
+		t.Cleanup(func() { httpGetFile = oldGet })
+		target := filepath.Join(t.TempDir(), "target.docx")
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{submitOK, queryOK}}
+		out, err := executeDriveCommandCapture(t, caller, "export", "--node", "n1", "--export-format", "docx", "--output", target)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// json 模式：下载完成后 stdout 必须是单一可解析结果对象
+		// （success/taskId/outputPath/downloadUrl，camelCase）。
+		var payload map[string]any
+		if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+			t.Fatalf("json-mode output is not parseable JSON: %v\n%s", err, out.String())
+		}
+		if payload["success"] != true || payload["taskId"] != "job-9" ||
+			payload["outputPath"] != target || payload["downloadUrl"] != "https://x.test/report.docx" {
+			t.Fatalf("payload = %#v", payload)
+		}
+	})
+
+	t.Run("file output table mode omits json", func(t *testing.T) {
+		oldGet := httpGetFile
+		httpGetFile = func(context.Context, string, map[string]string, string) error { return nil }
+		t.Cleanup(func() { httpGetFile = oldGet })
+		target := filepath.Join(t.TempDir(), "target.docx")
+		caller := &scriptedToolCaller{format: "table", steps: []scriptedToolStep{submitOK, queryOK}}
+		out, err := executeDriveCommandCapture(t, caller, "export", "--node", "n1", "--export-format", "docx", "--output", target)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// table 模式：下载进度走 stderr，stdout 不应混入结果 JSON。
+		if strings.TrimSpace(out.String()) != "" {
+			t.Fatalf("table-mode stdout = %q, want empty", out.String())
+		}
+	})
+
+	t.Run("file output json print failure propagates", func(t *testing.T) {
+		oldGet := httpGetFile
+		httpGetFile = func(context.Context, string, map[string]string, string) error { return nil }
+		t.Cleanup(func() { httpGetFile = oldGet })
+		target := filepath.Join(t.TempDir(), "target.docx")
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{submitOK, queryOK}}
+		if err := executeDriveExportFailingWriter(t, caller, "export", "--node", "n1", "--export-format", "docx", "--output", target); err == nil {
+			t.Fatal("expected the PrintJSON writer failure to propagate")
+		}
+	})
+
+	t.Run("async print failure propagates", func(t *testing.T) {
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{submitOK}}
+		if err := executeDriveExportFailingWriter(t, caller, "export", "--node", "n1", "--export-format", "docx", "--async"); err == nil {
+			t.Fatal("expected the PrintJSON writer failure to propagate")
+		}
+	})
 }
 
 // ── runDriveExportGet：参数校验 / dry-run / 查询链路 ──
@@ -510,6 +586,13 @@ func TestCrossPlatformCoverageDriveExportGetCommand(t *testing.T) {
 		}
 		if caller.args["taskId"] != "job-2" {
 			t.Fatalf("taskId arg = %v", caller.args["taskId"])
+		}
+	})
+
+	t.Run("query print failure propagates", func(t *testing.T) {
+		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"status":"SUCCESS","resultUrl":"https://x.test/f.docx"}`}}}
+		if err := executeDriveExportFailingWriter(t, caller, "export", "get", "--task-id", "job-1"); err == nil {
+			t.Fatal("expected the PrintJSON writer failure to propagate")
 		}
 	})
 }

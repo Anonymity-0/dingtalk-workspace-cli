@@ -253,10 +253,12 @@ func runDriveExport(cmd *cobra.Command, _ []string) error {
 			Status:  TaskStatusPending,
 			Message: "任务已提交，请稍后查询",
 		}
-		deps.Out.PrintJSON(result)
+		// 后续查询提示走 stderr（printTaskProgress），不污染 stdout；结构化
+		// TaskResult 打印到 stdout 并将其写错误上抛（对齐仓库
+		// return deps.Out.PrintJSON(...) 惯例，避免管道破裂时静默吞错）。
 		printTaskProgress("异步模式：使用以下命令查询状态：")
 		printTaskProgress(fmt.Sprintf("  dws drive task get --type export --id %s", jobID))
-		return nil
+		return deps.Out.PrintJSON(result)
 	}
 
 	// ── Step 2: progressive backoff polling ──
@@ -293,6 +295,18 @@ func runDriveExport(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("文件下载失败 (taskId=%s): %w", jobID, err)
 	}
 	printTaskProgress(fmt.Sprintf("导出完成: %s", outputPath))
+
+	// json 模式下 stdout 输出单一结果对象（taskId/outputPath/downloadUrl，
+	// camelCase），保持机器可解析；结构对齐 sheet export 下载完成分支的
+	// {"success":true,...} 既有惯例。进度提示始终走 stderr（printTaskProgress）。
+	if deps.Caller.Format() == "json" {
+		return deps.Out.PrintJSON(map[string]any{
+			"success":     true,
+			"taskId":      jobID,
+			"outputPath":  outputPath,
+			"downloadUrl": downloadURL,
+		})
+	}
 	return nil
 }
 
@@ -315,8 +329,7 @@ func runDriveExportGet(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	deps.Out.PrintJSON(result)
-	return nil
+	return deps.Out.PrintJSON(result)
 }
 
 // inferExportFilename extracts a safe local filename from a download URL.
