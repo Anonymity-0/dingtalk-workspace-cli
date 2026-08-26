@@ -64,17 +64,33 @@ func TestDraftPRCIWorkflowContract(t *testing.T) {
 	for _, want := range []string{
 		"ready_for_review",
 		"converted_to_draft",
-		"if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}",
+		"group: ai-behavior-${{ github.event_name == 'pull_request_target' && format('pr-{0}', github.event.pull_request.number) || format('push-{0}', github.sha) }}",
+		"cancel-in-progress: true",
+		"const expectedDraft = pullRequest.draft;",
+		"pull.draft !== expectedDraft",
+		"if (before.draft)",
+		"await setStatus('failure', 'Draft PR; mark Ready to run Code Admission');",
+		"Draft pull requests are not eligible for Code Admission.",
 	} {
 		if !strings.Contains(aiBehavior, want) {
 			t.Errorf("AI Behavior workflow missing Draft boundary %q", want)
 		}
 	}
+	if strings.Contains(aiBehavior, "if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}") {
+		t.Error("AI Behavior must run and publish a failing status for Draft revisions")
+	}
+	pendingIndex := strings.Index(aiBehavior, "await setStatus('pending', 'Evaluating AI-generated PR boundaries');")
+	draftCheckIndex := strings.Index(aiBehavior, "if (before.draft)")
+	draftFailureIndex := strings.Index(aiBehavior, "await setStatus('failure', 'Draft PR; mark Ready to run Code Admission');")
+	labelPolicyIndex := strings.Index(aiBehavior, "const labels = before.labels.map")
+	if pendingIndex < 0 || draftCheckIndex <= pendingIndex || draftFailureIndex <= draftCheckIndex || labelPolicyIndex <= draftFailureIndex {
+		t.Error("AI Behavior must publish pending, fail Draft, then evaluate Ready-only label policy")
+	}
 
 	draft := read(".github/workflows/draft-ci.yml")
 	for _, want := range []string{
 		"name: Draft CI",
-		"types: [opened, synchronize, reopened, converted_to_draft, edited]",
+		"types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]",
 		"format('noop-{0}', github.run_id)",
 		"format('pr-{0}', github.event.pull_request.number)",
 		"cancel-in-progress: true",
@@ -91,7 +107,7 @@ func TestDraftPRCIWorkflowContract(t *testing.T) {
 		`git diff --check "$PR_BASE_SHA" HEAD`,
 		`./scripts/policy/check-release-fragments.sh "$PR_BASE_SHA" HEAD`,
 		"Draft Fast Gate is development feedback, not Code Admission.",
-		"Mark this PR ready for review to run the nine required contexts.",
+		"AI Behavior remains failed until this PR is Ready and fully admitted.",
 	} {
 		if !strings.Contains(draft, want) {
 			t.Errorf("Draft CI workflow missing contract %q", want)

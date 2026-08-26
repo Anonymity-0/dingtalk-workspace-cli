@@ -2,7 +2,7 @@ name: Draft CI
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, converted_to_draft, edited]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
 
 permissions:
   contents: read
@@ -99,5 +99,5 @@ jobs:
         run: |
           printf '%s\n' \
             'Draft Fast Gate is development feedback, not Code Admission.' \
-            'Mark this PR ready for review to run the nine required contexts.' \
+            'AI Behavior remains failed until this PR is Ready and fully admitted.' \
             >> "$GITHUB_STEP_SUMMARY"

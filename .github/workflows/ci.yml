@@ -21,9 +21,9 @@ concurrency:
 jobs:
   lint:
     name: Lint
-    # Draft revisions use the isolated Draft CI workflow. Keeping the formal
-    # admission contexts absent prevents a fast preview on the same commit from
-    # being mistaken for the nine checks required after ready_for_review.
+    # Draft revisions use the isolated Draft CI workflow. Skip the heavy
+    # admission graph; the base-owned AI Behavior status fails Draft revisions
+    # so these successful skipped checks cannot authorize a merge.
     if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
