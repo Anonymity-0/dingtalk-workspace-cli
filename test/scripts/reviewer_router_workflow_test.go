@@ -91,6 +91,42 @@ func TestReviewerRouterWorkflowContract(t *testing.T) {
 			t.Errorf("reviewer routing policy is missing contract marker %q", want)
 		}
 	}
+	authorityPolicyPath := filepath.Join(filepath.Dir(filepath.Dir(path)), "reviewer-merge-authority.js")
+	authorityPolicy, err := os.ReadFile(authorityPolicyPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", authorityPolicyPath, err)
+	}
+	for _, want := range []string{
+		"function classifyAutoMergeRequest",
+		"function classifyMergeDefaults",
+		"function hasWorkflowSkipDirective",
+		"function isStrictGraphQLUpdateRule",
+		"function isStrictUpdateRule",
+		"function reviewedAppSlug",
+		"function safeMergeMetadata",
+		"async function verifyBuiltInWriterBoundary",
+		"GET /repos/{owner}/{repo}/rules/branches/{branch}",
+		"GET /repos/{owner}/{repo}/rulesets/{ruleset_id}",
+		"ruleset.name === writerRulesetName",
+		"writerIncludes[0] !== 'refs/heads/main'",
+		"writerExcludes.length !== 0",
+		"writerRuleset.rules?.length !== 1",
+		"writerRuleset.current_user_can_bypass !== 'never'",
+		"query ReviewerRouterWriterRule($rulesetID: ID!)",
+		"!isStrictGraphQLUpdateRule(writerRuleset, graphWriterRuleset)",
+	} {
+		if !strings.Contains(string(authorityPolicy), want) {
+			t.Errorf("reviewer merge-authority policy is missing contract marker %q", want)
+		}
+	}
+	for _, forbidden := range []string{
+		"REVIEWER_ROUTER_APP_PRIVATE_KEY",
+		"enablePullRequestAutoMerge",
+	} {
+		if strings.Contains(string(authorityPolicy), forbidden) {
+			t.Errorf("reviewer merge-authority policy must not contain %q", forbidden)
+		}
+	}
 
 	if len(workflow.On) != 5 {
 		t.Fatalf("workflow triggers = %v, want routing plus review/check-driven reconciliation", workflow.On)
@@ -174,15 +210,18 @@ func TestReviewerRouterWorkflowContract(t *testing.T) {
 	if !reflect.DeepEqual(autoMergeJob.Permissions, wantAutoPermissions) {
 		t.Fatalf("manage-auto-merge permissions = %v, want exactly %v", autoMergeJob.Permissions, wantAutoPermissions)
 	}
-	if len(autoMergeJob.Steps) != 3 ||
-		autoMergeJob.Steps[0].Uses != githubScriptSHA ||
-		autoMergeJob.Steps[1].ID != "reviewer-router-token" ||
-		autoMergeJob.Steps[1].Uses != appTokenSHA ||
-		autoMergeJob.Steps[2].Uses != githubScriptSHA {
-		t.Fatalf("manage-auto-merge steps = %#v, want unsafe-owner cleanup before dedicated App enable", autoMergeJob.Steps)
+	if len(autoMergeJob.Steps) != 4 ||
+		autoMergeJob.Steps[0].Uses != checkoutSHA ||
+		autoMergeJob.Steps[0].With["ref"] != "${{ github.event.pull_request.base.sha }}" ||
+		autoMergeJob.Steps[0].With["persist-credentials"] != "false" ||
+		autoMergeJob.Steps[1].Uses != githubScriptSHA ||
+		autoMergeJob.Steps[2].ID != "reviewer-router-token" ||
+		autoMergeJob.Steps[2].Uses != appTokenSHA ||
+		autoMergeJob.Steps[3].Uses != githubScriptSHA {
+		t.Fatalf("manage-auto-merge steps = %#v, want trusted base policy, built-in authority verification, then dedicated App enable", autoMergeJob.Steps)
 	}
 
-	appToken := autoMergeJob.Steps[1]
+	appToken := autoMergeJob.Steps[2]
 	if len(appToken.With) != 6 {
 		t.Fatalf("reviewer-router token inputs = %v, want exactly the reviewed repository scope and two permissions", appToken.With)
 	}
@@ -253,41 +292,55 @@ func TestReviewerRouterWorkflowContract(t *testing.T) {
 		}
 	}
 
-	cleanupStep := autoMergeJob.Steps[0]
-	if _, ok := cleanupStep.With["github-token"]; ok {
-		t.Error("unsafe-owner cleanup must use only the job-scoped built-in token")
+	authorityStep := autoMergeJob.Steps[1]
+	if authorityStep.Name != "Verify and normalize merge authority" {
+		t.Fatalf("merge-authority step name = %q", authorityStep.Name)
 	}
-	cleanupScript := cleanupStep.With["script"]
+	if _, ok := authorityStep.With["github-token"]; ok {
+		t.Error("merge-authority verification must use only the job-scoped built-in token")
+	}
+	if got, want := authorityStep.Env["REVIEWER_ROUTER_APP_SLUG"], "${{ vars.REVIEWER_ROUTER_APP_SLUG }}"; got != want {
+		t.Fatalf("merge-authority App slug = %q, want %q", got, want)
+	}
+	authorityScript := authorityStep.With["script"]
 	for _, want := range []string{
+		"require('./.github/reviewer-merge-authority.js')",
+		"classifyAutoMergeRequest",
+		"hasWorkflowSkipDirective",
+		"reviewedAppSlug",
+		"safeMergeMetadata",
+		"verifyBuiltInWriterBoundary",
+		"getExactPull('initial read')",
 		"currentPull.head.sha !== eventHeadSha",
 		"currentPull.base.sha !== eventBaseSha",
 		"currentPull.state !== 'open'",
 		"currentPull.draft",
 		"currentPull.base.ref !== 'main'",
-		"const unsafeOwner = 'github-actions[bot]'",
-		"const skipWorkflowPattern =",
-		"currentPull.title",
-		"currentPull.auto_merge?.commit_title",
-		"currentPull.auto_merge?.commit_message",
-		"const skipRequested =",
-		"enabledBy !== unsafeOwner",
+		"initialRequest === 'unsafe'",
+		"pre-credential normalization",
 		"disablePullRequestAutoMerge",
-		"cleanedPull.auto_merge",
-		"Cleared workflow-skipping auto-merge metadata",
+		"hasWorkflowSkipDirective(currentPull)",
+		"mergeDefaultsProjection === 'omitted'",
+		"await verifyBuiltInWriterBoundary({github, owner, repo})",
+		"getExactPull('final authority read')",
+		"finalRequest === 'unsafe'",
+		"getExactPull('failure cleanup')",
+		"fail-closed authority cleanup",
+		"Verified built-in merge authority",
 		"throw new Error",
 	} {
-		if !strings.Contains(cleanupScript, want) {
-			t.Errorf("unsafe-owner cleanup is missing contract marker %q", want)
+		if !strings.Contains(authorityScript, want) {
+			t.Errorf("merge-authority verification is missing contract marker %q", want)
 		}
 	}
-	if strings.Contains(cleanupScript, "enablePullRequestAutoMerge") {
-		t.Error("built-in cleanup token must never enable auto-merge")
+	if strings.Contains(authorityScript, "enablePullRequestAutoMerge") {
+		t.Error("built-in merge-authority token must never enable auto-merge")
 	}
-	if got := strings.Count(cleanupScript, "const skipWorkflowPattern ="); got != 1 {
-		t.Errorf("unsafe-request cleanup skip-workflow pattern declarations = %d, want exactly 1", got)
+	if strings.Contains(authorityScript, "REVIEWER_ROUTER_APP_PRIVATE_KEY") {
+		t.Error("merge-authority verification must run before and without App credentials")
 	}
 
-	autoMergeStep := autoMergeJob.Steps[2]
+	autoMergeStep := autoMergeJob.Steps[3]
 	if got, want := autoMergeStep.With["github-token"], "${{ steps.reviewer-router-token.outputs.token }}"; got != want {
 		t.Fatalf("auto-merge github-token = %q, want %q", got, want)
 	}
