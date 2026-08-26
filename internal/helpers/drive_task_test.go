@@ -381,6 +381,17 @@ func TestCrossPlatformCoverageDriveTaskGetCommand(t *testing.T) {
 		}
 	})
 
+	t.Run("dry run rejects unsupported task type before preview", func(t *testing.T) {
+		caller := &scriptedToolCaller{dry: true}
+		err := executeDriveEdge(t, caller, "task", "get", "--type", "sync", "--id", "t1", "--dry-run")
+		if err == nil || !strings.Contains(err.Error(), "不支持的任务类型") {
+			t.Fatalf("error = %v", err)
+		}
+		if caller.calls != 0 {
+			t.Fatalf("expected zero tool calls, got %d", caller.calls)
+		}
+	})
+
 	t.Run("query success prints task result", func(t *testing.T) {
 		caller := &scriptedToolCaller{format: "json", steps: []scriptedToolStep{{text: `{"status":"SUCCESS","resultUrl":"https://x.test/f.docx"}`}}}
 		if err := executeDriveEdge(t, caller, "task", "get", "--type", "export", "--id", "t1", "--format", "json"); err != nil {

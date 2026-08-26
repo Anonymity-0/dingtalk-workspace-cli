@@ -2170,17 +2170,17 @@ func newDriveCommand() *cobra.Command {
 			taskID := mustGetFlag(cmd, "id")
 			taskType := mustGetFlag(cmd, "type")
 
+			switch taskType {
+			case "export", "import", "copy", "move":
+			default:
+				return fmt.Errorf("不支持的任务类型: %s，当前支持: export|import|copy|move", taskType)
+			}
+
 			if deps.Caller.DryRun() {
 				deps.Out.PrintKeyValue("操作", "查询异步任务")
 				deps.Out.PrintKeyValue("类型", taskType)
 				deps.Out.PrintKeyValue("ID", taskID)
 				return nil
-			}
-
-			switch taskType {
-			case "export", "import", "copy", "move":
-			default:
-				return fmt.Errorf("不支持的任务类型: %s，当前支持: export|import|copy|move", taskType)
 			}
 
 			// query_task 工具注册在 drive (dingpan) MCP server 上，需显式路由。
