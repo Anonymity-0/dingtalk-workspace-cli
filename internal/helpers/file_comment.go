@@ -14,563 +14,285 @@
 package helpers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
-	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
 const (
-	fileCommentServer           = "doc-comment"
-	listFileCommentsTool        = "list_file_comments"
-	createFileCommentTool       = "create_file_comment"
-	fileCommentMaxPageSize      = 200
-	fileCommentMaxAutoPages     = 10
-	fileCommentMaxContentLength = 2099
+	driveCommentGlobalTopic = "global"
+	driveCommentMaxPageSize = 50
 )
 
-type fileCommentPage struct {
-	nodeID     string
-	total      any
-	hasMore    bool
-	nextCursor string
-	comments   []map[string]any
+var driveCommentListResultSchema = json.RawMessage(`{
+  "type":"object",
+  "description":"Drive 本地文件的全局评论列表",
+  "properties":{
+    "commentList":{
+      "type":"array",
+      "description":"当前页的文件级全局评论",
+      "items":{
+        "type":"object",
+        "description":"一条全局评论",
+        "properties":{
+          "commentKey":{"type":"string","description":"评论生命周期唯一标识"},
+          "isGlobal":{"type":"boolean","description":"固定为 true"},
+          "topicId":{"type":"string","description":"固定为 global"},
+          "isSolved":{"type":"boolean","description":"是否已解决"},
+          "content":{"type":["string","null"],"description":"评论纯文本内容"},
+          "creatorId":{"type":["string","null"],"description":"创建者用户 ID"},
+          "createTime":{"type":["integer","null"],"description":"创建时间，毫秒时间戳"},
+          "updateTime":{"type":["integer","null"],"description":"更新时间，毫秒时间戳"}
+        },
+        "required":["commentKey","isGlobal","topicId","isSolved"],
+        "additionalProperties":true
+      }
+    },
+    "hasMore":{"type":"boolean","description":"是否还有下一页"},
+    "nextToken":{"type":["string","null"],"description":"下一页 opaque 游标"}
+  },
+  "required":["commentList","hasMore"],
+  "additionalProperties":true
+}`)
+
+var driveCommentMutationResultSchema = json.RawMessage(`{
+  "type":"object",
+  "description":"Drive 本地文件评论写操作结果",
+  "properties":{
+    "commentKey":{"type":"string","description":"创建或操作的评论唯一标识"},
+    "message":{"type":["string","null"],"description":"操作结果消息"}
+  },
+  "required":["commentKey"],
+  "additionalProperties":true
+}`)
+
+func driveCommentNodeFlag() LeafFlag {
+	return LeafFlag{
+		Name: "node", Usage: "Drive 本地文件 ID (dentryUuid) 或文件 URL", Required: true,
+		Aliases: []string{"url", "id", "node-id", "doc-id", "file-id"}, Bind: "nodeId", Trim: true,
+	}
 }
 
-func fileCommentNodeFlag() LeafFlag {
-	return LeafFlag{Name: "node", Usage: "文件 ID (dentryUuid)、数字 dentry ID 或钉盘文件 URL", Required: true, Aliases: []string{"url", "id", "node-id", "file-id"}, Bind: "fileId", Trim: true}
-}
-
-func fileCommentSpaceIDFlag() LeafFlag {
-	return LeafFlag{Name: "space-id", Usage: "钉盘空间 ID；仅数字 dentry ID 必填", Bind: "spaceId", OmitEmpty: true, Trim: true, RequiredWhen: "--node is a numeric dentry ID"}
-}
-
-// newDriveFileCommentCmd follows the existing resource-first comment surface:
-// doc comment, sheet comment, and drive comment. The public command belongs to
-// Drive, while the implementation routes to the shared doc-comment MCP server.
+// newDriveFileCommentCmd exposes the same new-comment RPC chain used by Doc
+// and Sheet. Drive comments are always file-level global comments backed by
+// objectId=dentryUuid and bizCode=DENTRY; the server enforces that identity.
 func newDriveFileCommentCmd() *cobra.Command {
 	commentCmd := newGroupCommand(&cobra.Command{
 		Use:   "comment",
-		Short: "普通文件评论管理",
-		Long:  "管理钉盘普通预览文件的评论：查询评论列表或创建全文纯文本评论。",
-		RunE:  groupRunE,
+		Short: "Drive 本地文件全局评论管理",
+		Long: `管理 Drive 本地文件的新体系全局评论。全部命令复用 Doc/Sheet 评论链路，
+评论 ID 使用 commentKey，服务端固定 topicId=global。
+
+不支持单元格、划词、页码、anchor、scope 或 mention；旧 commentId、space-id
+和数字分页游标不适用于本命令。`,
+		RunE: groupRunE,
 	})
 
 	listCmd := NewLeafCommand(LeafSpec{
 		Use:   "list",
-		Short: "查询普通文件评论列表",
-		Long: `查询钉盘普通预览文件的评论。支持 dentryUuid、钉盘文件 URL，以及配合
---space-id 使用的数字 dentry ID。支持的文件类型由服务端判定。
-
-默认返回一页；--all 固定按每页 200 条自动翻页，最多 10 页。--scope 在 CLI
-侧按服务端返回的统一 anchor 过滤；total 始终表示文件的全部有效评论数，count
-表示本次输出且符合 scope 的评论数。`,
+		Short: "查询本地文件全局评论列表",
+		Long: `查询 Drive 本地文件的新体系全局评论。每页最多 50 条；--cursor 必须
+原样使用上一页返回的 nextToken，不要把 opaque 游标当作数字处理。`,
 		Example: `  dws drive comment list --node <dentryUuid> --format json
-  dws drive comment list --node <dentryUuid> --all --format json`,
-		Tool: listFileCommentsTool,
+  dws drive comment list --node <dentryUuid> --resolve-status unresolved --limit 20 --format json`,
+		Server: commentServer,
+		Tool:   "list_comments",
 		Flags: []LeafFlag{
-			fileCommentNodeFlag(),
-			fileCommentSpaceIDFlag(),
-			{Name: "limit", Usage: "每页评论数，范围 1-200", Kind: LeafInt, Default: "200", Aliases: []string{"page-size"}, Bind: "maxResults"},
-			{Name: "cursor", Usage: "分页游标，取自上页 nextCursor", Bind: "nextToken", OmitEmpty: true, Trim: true},
-			{Name: "all", Usage: "自动拉取全部评论，最多 10 页 / 2000 条", Kind: LeafBool, Bind: "all"},
-			{Name: "scope", Usage: "评论范围: all(全部) / whole(全文) / partial(历史局部)", Default: "all", Bind: "scope", Trim: true, Enum: []string{"all", "whole", "partial"}},
+			driveCommentNodeFlag(),
+			{Name: "limit", Usage: "每页评论数，范围 1-50", Kind: LeafInt, Default: "50", Bind: "pageSize"},
+			{Name: "cursor", Usage: "分页游标，取自上页 nextToken", Bind: "nextToken", OmitEmpty: true, Trim: true},
+			{Name: "resolve-status", Usage: "解决状态: resolved / unresolved", Bind: "resolveStatus", OmitEmpty: true, Trim: true, Enum: []string{"resolved", "unresolved"}},
 		},
 		Constraints: []LeafConstraint{
-			{Kind: LeafMutuallyExclusive, Flags: []string{"all", "cursor"}, Description: "--all 与 --cursor 互斥"},
-			{Kind: LeafMutuallyExclusive, Flags: []string{"all", "limit"}, Description: "--all 与显式 --limit/--page-size 互斥"},
-			{Kind: "custom", Flags: []string{"limit"}, Description: "--limit/--page-size 必须在 1-200 之间"},
-			{Kind: "custom", Flags: []string{"cursor"}, Description: "--cursor 必须是服务端返回的非负数字游标"},
+			{Kind: "custom", Flags: []string{"limit"}, Description: "--limit 必须在 1-50 之间"},
 		},
+		ConstParams: map[string]any{"commentType": driveCommentGlobalTopic},
 		Safety: contract.SafetySpec{
-			Effect: "read", Risk: "low",
-			Confirmation: "not_required", Idempotency: "idempotent",
+			Effect: "read", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent",
 		},
 		Contract: LeafContract{
-			Identity: contract.ToolIdentitySpec{
-				ProductID:      "drive",
-				Name:           "list_file_comments",
-				CanonicalPath:  "drive.list_file_comments",
-				CLIPath:        "drive comment list",
-				PrimaryCLIPath: "drive comment list",
+			Identity:    commentIdentity("drive", "list_comments", "list"),
+			Description: "查询 Drive 本地文件的新体系全局评论列表",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: driveCommentListResultSchema,
 			},
-			Description: "查询钉盘普通预览文件评论，支持安全分页聚合和全文/局部范围过滤",
-			DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewRequest},
-			Interface: &contract.InterfaceSpec{
-				Mode:         "composite",
-				Availability: "available",
-				Reason:       "The CLI wraps doc-comment/list_file_comments with bounded auto-pagination, cursor anomaly guards, local anchor-scope filtering, and a stable output projection, so no single direct MCP interface represents the complete command contract.",
-			},
+			Interface: commentInterface("list_comments"),
 			Selection: contract.SelectionSpec{
-				AgentSummary: "查询 PDF、DOCX、XLSX 等钉盘普通预览文件上的评论",
+				AgentSummary: "查询 Drive 本地文件的全局评论，返回 commentKey 和解决状态",
 				UseWhen: []string{
-					"用户要查看普通文件上的全文评论或历史高亮/矩形评论时",
-					"需要从评论列表取得 commentId、作者、时间和统一 anchor，或用 --all 拉取完整列表时",
+					"用户要查看 PDF、DOCX、XLSX、图片等 Drive 本地文件的新体系评论时",
+					"需要取得 commentKey 以继续回复、修改、解决、恢复或删除时",
 				},
 				AvoidWhen: []string{
-					"在线文字文档评论使用 dws doc comment list",
-					"在线表格单元格评论使用 dws sheet comment list",
+					"在线文档使用 dws doc comment list；在线表格单元格评论使用 dws sheet comment list",
+					"只需要评论数量统计时使用 dws drive stats",
 				},
 				Examples: []string{
 					"dws drive comment list --node <dentryUuid> --format json",
-					"dws drive comment list --node <dentryUuid> --all --format json",
+					"dws drive comment list --node <dentryUuid> --resolve-status unresolved --limit 20 --format json",
 				},
 			},
 		},
-		Validate: validateFileCommentList,
-		Call:     runFileCommentList,
+		Validate: validateDriveCommentList,
 	})
 
 	createCmd := NewLeafCommand(LeafSpec{
-		Use:   "create",
-		Short: "创建普通文件全文评论",
-		Long: `在钉盘普通预览文件上创建一条全文纯文本评论。当前不支持 @人、通知选项或
-局部锚点；content 按服务端规则使用 UTF-16 长度计数，最多 2099。`,
+		Use:     "create",
+		Short:   "创建本地文件全局评论",
+		Long:    "在 Drive 本地文件上创建一条新体系全局纯文本评论；不支持 mention 或局部锚点。",
 		Example: `  dws drive comment create --node <dentryUuid> --content "请补充最终结论" --format json`,
-		Tool:    createFileCommentTool,
+		Server:  commentServer,
+		Tool:    "create_comment",
 		Flags: []LeafFlag{
-			fileCommentNodeFlag(),
-			fileCommentSpaceIDFlag(),
-			{Name: "content", Usage: "全文评论内容，纯文本且 UTF-16 长度不超过 2099", Required: true, Bind: "content"},
-		},
-		Constraints: []LeafConstraint{
-			{Kind: "custom", Flags: []string{"content"}, Description: "--content 去除首尾空白后必须非空，且 UTF-16 长度不超过 2099"},
+			driveCommentNodeFlag(),
+			{Name: "content", Usage: "评论纯文本内容", Required: true, Bind: "content"},
 		},
 		Safety: contract.SafetySpec{
-			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "non_idempotent",
 		},
 		Contract: LeafContract{
-			Identity: contract.ToolIdentitySpec{
-				ProductID:      "drive",
-				Name:           "create_file_comment",
-				CanonicalPath:  "drive.create_file_comment",
-				CLIPath:        "drive comment create",
-				PrimaryCLIPath: "drive comment create",
+			Identity:    commentIdentity("drive", "create_comment", "create"),
+			Description: "在 Drive 本地文件上创建全局纯文本评论",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: driveCommentMutationResultSchema,
 			},
-			Description: "在钉盘普通预览文件上创建一条全文纯文本评论",
-			DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewRequest},
-			Interface: &contract.InterfaceSpec{
-				Mode:         "composite",
-				Availability: "available",
-				Reason:       "The CLI wraps doc-comment/create_file_comment with exact local content validation, runtime confirmation, and a stable flattened output projection, so no single direct MCP interface represents the complete command contract.",
-			},
+			Interface: commentInterface("create_comment"),
 			Selection: contract.SelectionSpec{
-				AgentSummary: "在 PDF、DOCX、XLSX 等钉盘普通预览文件上创建全文纯文本评论",
-				UseWhen: []string{
-					"用户明确要求在普通文件上留下不绑定具体位置的评论时",
-				},
+				AgentSummary: "在 Drive 本地文件上创建一条全局评论",
+				UseWhen:      []string{"用户明确要求在本地文件上留下文件级评论时"},
 				AvoidWhen: []string{
-					"在线文字文档评论使用 dws doc comment create",
-					"在线表格单元格评论使用 dws sheet comment create；当前普通文件评论不支持 @人或局部锚点",
+					"在线文档全文评论使用 dws doc comment create",
+					"Drive 本地文件不支持 @用户、@群、单元格或局部锚点",
 				},
-				Examples: []string{
-					"dws drive comment create --node <dentryUuid> --content \"请补充最终结论\" --format json",
-				},
+				Examples: []string{"dws drive comment create --node <dentryUuid> --content \"请补充最终结论\" --format json"},
 			},
 		},
-		Validate: validateFileCommentCreate,
-		Call:     runFileCommentCreate,
+		Validate: validateDriveCommentContent,
 	})
 
-	commentCmd.AddCommand(listCmd, createCmd)
+	replyCmd := NewLeafCommand(LeafSpec{
+		Use:     "reply",
+		Short:   "回复本地文件评论",
+		Long:    "回复一条 Drive 本地文件全局评论。commentKey 从 create/list/list-replies 返回结果取得；表情回应请用 react-reply。",
+		Example: `  dws drive comment reply --node <dentryUuid> --comment-key <COMMENT_KEY> --content "已确认" --format json`,
+		Server:  commentServer,
+		Tool:    "reply_comment",
+		Flags: []LeafFlag{
+			driveCommentNodeFlag(),
+			{Name: "comment-key", Usage: "被回复评论的 commentKey", Required: true, Bind: "replyCommentKey", Trim: true},
+			{Name: "content", Usage: "回复纯文本内容", Required: true, Bind: "content"},
+		},
+		ConstParams: map[string]any{"emoji": false},
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low", Confirmation: "not_required", Idempotency: "non_idempotent",
+		},
+		Contract: LeafContract{
+			Identity:    commentIdentity("drive", "reply_comment", "reply"),
+			Description: "回复 Drive 本地文件全局评论",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: driveCommentMutationResultSchema,
+			},
+			Interface: commentInterface("reply_comment"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "用纯文本回复已有 Drive 文件评论",
+				UseWhen:      []string{"用户要回复一条已有 Drive 文件评论，且已取得 commentKey 时"},
+				AvoidWhen:    []string{"新建根评论使用 create；表情回应使用 react-reply；Drive 不支持 mention"},
+				Examples:     []string{"dws drive comment reply --node <dentryUuid> --comment-key <COMMENT_KEY> --content \"已确认\" --format json"},
+			},
+		},
+		Validate: validateDriveCommentContent,
+	})
+
+	updateCmd := NewLeafCommand(LeafSpec{
+		Use:     "update",
+		Short:   "更新本地文件评论",
+		Long:    "更新 Drive 本地文件中一条全局评论或回复的纯文本内容。",
+		Example: `  dws drive comment update --node <dentryUuid> --comment-key <COMMENT_KEY> --content "已按最新结论修正" --format json`,
+		Server:  commentServer,
+		Tool:    "update_comment",
+		Flags: []LeafFlag{
+			driveCommentNodeFlag(),
+			{Name: "comment-key", Usage: "待更新评论的 commentKey", Required: true, Bind: "commentKey", Trim: true},
+			{Name: "content", Usage: "更新后的纯文本内容", Required: true, Bind: "content"},
+		},
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "low", Confirmation: "not_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity:    commentIdentity("drive", "update_comment", "update"),
+			Description: "更新 Drive 本地文件全局评论内容",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: driveCommentMutationResultSchema,
+			},
+			Interface: commentInterface("update_comment"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "修改已有 Drive 文件评论或回复的文字内容",
+				UseWhen:      []string{"用户明确要求修改一条已有 Drive 文件评论，且已取得 commentKey 时"},
+				AvoidWhen:    []string{"回复评论使用 reply；改变解决状态使用 resolve/restore；Drive 不支持 mention"},
+				Examples:     []string{"dws drive comment update --node <dentryUuid> --comment-key <COMMENT_KEY> --content \"已修正\" --format json"},
+			},
+		},
+		Validate: validateDriveCommentContent,
+	})
+
+	deleteCmd := NewLeafCommand(LeafSpec{
+		Use:     "delete",
+		Short:   "永久删除本地文件评论",
+		Long:    "永久删除 Drive 本地文件中的一条评论或回复。操作不可恢复，执行前必须获得用户确认。",
+		Example: `  dws drive comment delete --node <dentryUuid> --comment-key <COMMENT_KEY> --format json`,
+		Server:  commentServer,
+		Tool:    "delete_comment",
+		Flags: []LeafFlag{
+			driveCommentNodeFlag(),
+			{Name: "comment-key", Usage: "待删除评论的 commentKey", Required: true, Bind: "commentKey", Trim: true},
+		},
+		Safety: contract.SafetySpec{
+			Effect: "write", Risk: "medium", Confirmation: "user_required", Idempotency: "idempotent",
+		},
+		Contract: LeafContract{
+			Identity:    commentIdentity("drive", "delete_comment", "delete"),
+			Description: "永久删除 Drive 本地文件评论或回复",
+			Result: &contract.ResultSpec{
+				Outcomes:   []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
+				DataSchema: driveCommentMutationResultSchema,
+			},
+			Interface: commentInterface("delete_comment"),
+			Selection: contract.SelectionSpec{
+				AgentSummary: "永久删除一条 Drive 文件评论或回复",
+				UseWhen:      []string{"用户明确要求永久删除指定 Drive 文件评论，且已确认目标 commentKey 时"},
+				AvoidWhen:    []string{"只需改内容使用 update；标记已解决使用 resolve；未确认目标时不要删除"},
+				Examples:     []string{"dws drive comment delete --node <dentryUuid> --comment-key <COMMENT_KEY> --format json"},
+			},
+		},
+	})
+
+	commentCmd.AddCommand(listCmd, createCmd, replyCmd, updateCmd, deleteCmd)
+	commentCmd.AddCommand(newCommentBaseCommands("drive")...)
 	return commentCmd
 }
 
-func validateFileCommentList(cmd *cobra.Command, _ []string) error {
-	if err := validateFileCommentNodeSpace(cmd); err != nil {
-		return err
-	}
+func validateDriveCommentList(cmd *cobra.Command, _ []string) error {
 	limit, _ := cmd.Flags().GetInt("limit")
-	if cmd.Flags().Changed("page-size") {
-		limit, _ = cmd.Flags().GetInt("page-size")
-	}
-	if limit < 1 || limit > fileCommentMaxPageSize {
+	if limit < 1 || limit > driveCommentMaxPageSize {
 		return &CLIError{
 			Code:    CodeInvalidParam,
-			Message: fmt.Sprintf("--limit/--page-size 必须在 1-%d 之间", fileCommentMaxPageSize),
-		}
-	}
-	if cursor, _ := cmd.Flags().GetString("cursor"); strings.TrimSpace(cursor) != "" {
-		cursor = strings.TrimSpace(cursor)
-		if !allASCIIDigits(cursor) {
-			return &CLIError{Code: CodeInvalidParam, Message: "--cursor 必须是服务端返回的非负数字游标"}
-		}
-		if _, err := strconv.ParseInt(cursor, 10, 64); err != nil {
-			return &CLIError{Code: CodeInvalidParam, Message: "--cursor 超出 64 位整数范围"}
+			Message: fmt.Sprintf("--limit 必须在 1-%d 之间", driveCommentMaxPageSize),
 		}
 	}
 	return nil
 }
 
-func validateFileCommentCreate(cmd *cobra.Command, _ []string) error {
-	if err := validateFileCommentNodeSpace(cmd); err != nil {
-		return err
-	}
+func validateDriveCommentContent(cmd *cobra.Command, _ []string) error {
 	content, _ := cmd.Flags().GetString("content")
 	if strings.TrimSpace(content) == "" {
 		return &CLIError{Code: CodeInvalidParam, Message: "--content 去除首尾空白后不能为空"}
 	}
-	length := fileCommentUTF16Length(content)
-	if length > fileCommentMaxContentLength {
-		return &CLIError{
-			Code:    CodeInputTooLarge,
-			Message: fmt.Sprintf("--content 最多 %d 个 UTF-16 代码单元，当前为 %d", fileCommentMaxContentLength, length),
-		}
-	}
 	return nil
-}
-
-func validateFileCommentNodeSpace(cmd *cobra.Command) error {
-	node := corecmd.EffectiveValue(cmd, fileCommentNodeFlag())
-	if !allASCIIDigits(node) {
-		return nil
-	}
-	if spaceID := corecmd.EffectiveValue(cmd, fileCommentSpaceIDFlag()); spaceID == "" {
-		return &CLIError{
-			Code:    CodeInvalidParam,
-			Message: "--node 为数字 dentry ID 时必须同时提供 --space-id",
-		}
-	}
-	return nil
-}
-
-func fileCommentUTF16Length(value string) int {
-	length := 0
-	for _, r := range value {
-		length++
-		if r > 0xffff {
-			length++
-		}
-	}
-	return length
-}
-
-func allASCIIDigits(value string) bool {
-	if value == "" {
-		return false
-	}
-	for _, r := range value {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
-}
-
-func runFileCommentList(cmd *cobra.Command, tool string, args map[string]any) error {
-	fetchAll, _ := args["all"].(bool)
-	scope, _ := args["scope"].(string)
-	if scope == "" {
-		scope = "all"
-	}
-	request := fileCommentMCPArgs(args)
-	if fetchAll {
-		request["maxResults"] = fileCommentMaxPageSize
-		delete(request, "nextToken")
-	}
-	if deps != nil && deps.Caller != nil && deps.Caller.DryRun() {
-		return callMCPToolOnServer(fileCommentServer, tool, request)
-	}
-
-	if !fetchAll {
-		page, err := fetchFileCommentPage(tool, request)
-		if err != nil {
-			return err
-		}
-		if err := validateFileCommentNextCursor(page, stringArg(request, "nextToken")); err != nil {
-			return err
-		}
-		page.comments = filterFileCommentsByScope(page.comments, scope)
-		return output.WriteCommandPayload(cmd, fileCommentListPayload(page, scope), output.FormatJSON)
-	}
-
-	var aggregate fileCommentPage
-	aggregate.comments = make([]map[string]any, 0)
-	seenCursors := map[string]bool{}
-	currentCursor := ""
-	for pageNumber := 0; pageNumber < fileCommentMaxAutoPages; pageNumber++ {
-		if currentCursor == "" {
-			delete(request, "nextToken")
-		} else {
-			request["nextToken"] = currentCursor
-		}
-		page, err := fetchFileCommentPage(tool, request)
-		if err != nil {
-			return err
-		}
-		if pageNumber == 0 {
-			aggregate.nodeID = page.nodeID
-			aggregate.total = page.total
-		}
-		aggregate.comments = append(aggregate.comments, filterFileCommentsByScope(page.comments, scope)...)
-		if !page.hasMore {
-			aggregate.hasMore = false
-			aggregate.nextCursor = ""
-			return output.WriteCommandPayload(cmd, fileCommentListPayload(aggregate, scope), output.FormatJSON)
-		}
-		if err := validateFileCommentNextCursor(page, currentCursor); err != nil {
-			return err
-		}
-		if seenCursors[page.nextCursor] {
-			return fileCommentPaginationError("分页游标发生循环，结果可能不完整")
-		}
-		seenCursors[page.nextCursor] = true
-		currentCursor = page.nextCursor
-	}
-	return fileCommentPaginationError(fmt.Sprintf("自动翻页达到 %d 页上限但服务端仍返回 hasMore=true，结果可能不完整", fileCommentMaxAutoPages))
-}
-
-func runFileCommentCreate(cmd *cobra.Command, tool string, args map[string]any) error {
-	request := fileCommentMCPArgs(args)
-	if deps != nil && deps.Caller != nil && deps.Caller.DryRun() {
-		return callMCPToolOnServer(fileCommentServer, tool, request)
-	}
-	raw, err := callMCPToolReturnTextOnServer(context.Background(), fileCommentServer, tool, request)
-	if err != nil {
-		return err
-	}
-	payload, err := decodeFileCommentPayload(tool, raw)
-	if err != nil {
-		return err
-	}
-	nodeID, ok := nonEmptyStringField(payload, "fileId")
-	if !ok {
-		return invalidFileCommentResponse(tool, "缺少 fileId", nil)
-	}
-	comment, ok := payload["comment"].(map[string]any)
-	if !ok {
-		return invalidFileCommentResponse(tool, "缺少 comment 对象", nil)
-	}
-	if err := validateFileCommentItem(tool, "comment", comment); err != nil {
-		return err
-	}
-	out := map[string]any{"nodeId": nodeID}
-	for key, value := range projectFileComment(comment) {
-		out[key] = value
-	}
-	return output.WriteCommandPayload(cmd, out, output.FormatJSON)
-}
-
-func fileCommentMCPArgs(args map[string]any) map[string]any {
-	out := make(map[string]any, len(args))
-	for key, value := range args {
-		switch key {
-		case "all", "scope":
-			continue
-		default:
-			out[key] = value
-		}
-	}
-	return out
-}
-
-func fetchFileCommentPage(tool string, request map[string]any) (fileCommentPage, error) {
-	raw, err := callMCPToolReturnTextOnServer(context.Background(), fileCommentServer, tool, request)
-	if err != nil {
-		return fileCommentPage{}, err
-	}
-	payload, err := decodeFileCommentPayload(tool, raw)
-	if err != nil {
-		return fileCommentPage{}, err
-	}
-	nodeID, ok := nonEmptyStringField(payload, "fileId")
-	if !ok {
-		return fileCommentPage{}, invalidFileCommentResponse(tool, "缺少 fileId", nil)
-	}
-	total, ok := payload["total"]
-	if !ok {
-		return fileCommentPage{}, invalidFileCommentResponse(tool, "缺少 total", nil)
-	}
-	hasMore, ok := payload["hasMore"].(bool)
-	if !ok {
-		return fileCommentPage{}, invalidFileCommentResponse(tool, "缺少布尔字段 hasMore", nil)
-	}
-	nextCursor := ""
-	if value, exists := payload["nextToken"]; exists && value != nil {
-		var stringValue bool
-		nextCursor, stringValue = value.(string)
-		if !stringValue {
-			return fileCommentPage{}, invalidFileCommentResponse(tool, "nextToken 不是字符串", nil)
-		}
-	}
-	rawItems, exists := payload["items"]
-	if !exists {
-		return fileCommentPage{}, invalidFileCommentResponse(tool, "缺少 items", nil)
-	}
-	items, ok := rawItems.([]any)
-	if rawItems == nil {
-		items = []any{}
-		ok = true
-	}
-	if !ok {
-		return fileCommentPage{}, invalidFileCommentResponse(tool, "items 不是数组", nil)
-	}
-	comments := make([]map[string]any, 0, len(items))
-	for index, item := range items {
-		comment, ok := item.(map[string]any)
-		if !ok {
-			return fileCommentPage{}, invalidFileCommentResponse(tool, fmt.Sprintf("items[%d] 不是对象", index), nil)
-		}
-		if err := validateFileCommentItem(tool, fmt.Sprintf("items[%d]", index), comment); err != nil {
-			return fileCommentPage{}, err
-		}
-		comments = append(comments, projectFileComment(comment))
-	}
-	return fileCommentPage{
-		nodeID: nodeID, total: total, hasMore: hasMore,
-		nextCursor: strings.TrimSpace(nextCursor), comments: comments,
-	}, nil
-}
-
-func decodeFileCommentPayload(tool, raw string) (map[string]any, error) {
-	if strings.TrimSpace(raw) == "" {
-		return nil, invalidFileCommentResponse(tool, "返回为空", nil)
-	}
-	var payload map[string]any
-	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-		return nil, invalidFileCommentResponse(tool, "返回不是有效 JSON", err)
-	}
-	for depth := 0; depth < 2; depth++ {
-		if _, ok := payload["fileId"]; ok {
-			break
-		}
-		var nested map[string]any
-		for _, key := range []string{"result", "data"} {
-			if value, ok := payload[key].(map[string]any); ok {
-				nested = value
-				break
-			}
-		}
-		if nested == nil {
-			break
-		}
-		payload = nested
-	}
-	return payload, nil
-}
-
-func projectFileComment(comment map[string]any) map[string]any {
-	out := map[string]any{}
-	for _, key := range []string{"commentId", "parentCommentId", "content", "createdAt", "updatedAt", "options", "anchor"} {
-		if value, ok := comment[key]; ok {
-			out[key] = value
-		}
-	}
-	if value, ok := comment["commentCustomType"]; ok {
-		out["customType"] = value
-	}
-	creator := map[string]any{}
-	for source, target := range map[string]string{
-		"creatorId": "userId", "creatorName": "name", "creatorAvatar": "avatar",
-	} {
-		if value, ok := comment[source]; ok {
-			creator[target] = value
-		}
-	}
-	if len(creator) > 0 {
-		out["creator"] = creator
-	}
-	return out
-}
-
-func validateFileCommentItem(tool, path string, comment map[string]any) error {
-	if _, ok := nonEmptyStringField(comment, "commentId"); !ok {
-		return invalidFileCommentResponse(tool, path+" 缺少 commentId", nil)
-	}
-	if _, ok := comment["anchor"].(map[string]any); !ok {
-		return invalidFileCommentResponse(tool, path+" 缺少 anchor 对象", nil)
-	}
-	return nil
-}
-
-func filterFileCommentsByScope(comments []map[string]any, scope string) []map[string]any {
-	if scope == "" || scope == "all" {
-		return comments
-	}
-	out := make([]map[string]any, 0, len(comments))
-	for _, comment := range comments {
-		anchor, _ := comment["anchor"].(map[string]any)
-		commentScope, _ := anchor["scope"].(string)
-		if commentScope == scope {
-			out = append(out, comment)
-		}
-	}
-	return out
-}
-
-func fileCommentListPayload(page fileCommentPage, scope string) map[string]any {
-	comments := page.comments
-	if comments == nil {
-		comments = make([]map[string]any, 0)
-	}
-	nextCursor := any(nil)
-	if page.nextCursor != "" {
-		nextCursor = page.nextCursor
-	}
-	return map[string]any{
-		"nodeId":     page.nodeID,
-		"total":      page.total,
-		"count":      len(page.comments),
-		"hasMore":    page.hasMore,
-		"nextCursor": nextCursor,
-		"complete":   !page.hasMore,
-		"scope":      scope,
-		"comments":   comments,
-	}
-}
-
-func validateFileCommentNextCursor(page fileCommentPage, currentCursor string) error {
-	if !page.hasMore {
-		return nil
-	}
-	if page.nextCursor == "" {
-		return fileCommentPaginationError("服务端返回 hasMore=true 但 nextCursor 为空，结果可能不完整")
-	}
-	if !allASCIIDigits(page.nextCursor) {
-		return fileCommentPaginationError("服务端返回的 nextCursor 不是非负数字游标，结果可能不完整")
-	}
-	if _, err := strconv.ParseInt(page.nextCursor, 10, 64); err != nil {
-		return fileCommentPaginationError("服务端返回的 nextCursor 超出 64 位整数范围，结果可能不完整")
-	}
-	if page.nextCursor == currentCursor {
-		return fileCommentPaginationError("服务端分页游标未前进，结果可能不完整")
-	}
-	return nil
-}
-
-func fileCommentPaginationError(message string) error {
-	return &CLIError{
-		Code:       CodeContentTruncated,
-		Message:    message,
-		Suggestion: "请稍后重试，或去掉 --all 后使用服务端返回的 --cursor 分页读取",
-		Operation:  fileCommentServer + "/" + listFileCommentsTool,
-	}
-}
-
-func invalidFileCommentResponse(tool, reason string, cause error) error {
-	return &CLIError{
-		Code:       CodeMCPToolError,
-		Message:    fmt.Sprintf("%s 返回结构异常：%s", tool, reason),
-		Suggestion: "请确认 doc-comment MCP 与当前 DWS 契约一致",
-		Operation:  fileCommentServer + "/" + tool,
-		Cause:      cause,
-	}
-}
-
-func nonEmptyStringField(payload map[string]any, key string) (string, bool) {
-	value, ok := payload[key].(string)
-	value = strings.TrimSpace(value)
-	return value, ok && value != ""
-}
-
-func stringArg(args map[string]any, key string) string {
-	value, _ := args[key].(string)
-	return strings.TrimSpace(value)
 }
