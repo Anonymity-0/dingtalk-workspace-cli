@@ -1400,9 +1400,10 @@ func parseCreatedNodeID(text string) (string, error) {
 
 var projectCreatedSheetResult = addCreatedSheetID
 
-// addCreatedSheetID 保留 create_workspace_sheet 的所有顶层响应字段，同时发布
-// 编排过程中已经探活确认的 nodeId / sheetId。使用 RawMessage 避免大整数等原始
-// JSON 值经过 float64 中转；本函数只做结果投影，不触发远程调用。
+// addCreatedSheetID 保留 create_workspace_sheet 的业务响应字段，同时发布编排
+// 过程中已经探活确认的 nodeId / sheetId。MCP 返回 result 包装时，投影必须与
+// parseCreatedNodeID 读取同一层。使用 RawMessage 避免大整数经 float64 中转；
+// 本函数只做结果投影，不触发远程调用。
 func addCreatedSheetID(text, nodeID, sheetID string) (string, error) {
 	var result map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(text), &result); err != nil {
@@ -1410,6 +1411,13 @@ func addCreatedSheetID(text, nodeID, sheetID string) (string, error) {
 	}
 	if result == nil {
 		return "", fmt.Errorf("创建响应不是 JSON 对象")
+	}
+	if wrapped, ok := result["result"]; ok {
+		var unwrapped map[string]json.RawMessage
+		if err := json.Unmarshal(wrapped, &unwrapped); err != nil || unwrapped == nil {
+			return "", fmt.Errorf("创建响应 result 不是 JSON 对象")
+		}
+		result = unwrapped
 	}
 	// nodeID / sheetID 均为 Go 字符串，Quote 生成的内容必为合法 JSON 字符串；
 	// 无需对不可能失败的 json.Marshal(string) 再增加错误分支。

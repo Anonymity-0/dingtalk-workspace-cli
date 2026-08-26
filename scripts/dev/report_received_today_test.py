@@ -7,6 +7,7 @@ import importlib.util
 import subprocess
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
@@ -46,6 +47,25 @@ def inbox_page(reports: list[dict], *, complete: bool, next_token: int = 0) -> d
 
 
 class ReportReceivedTodayTest(unittest.TestCase):
+    def test_query_window_clamps_first_second_after_midnight(self) -> None:
+        now = datetime(2026, 8, 26, 0, 0, 0, 500000, tzinfo=REPORT.SHANGHAI)
+        start, end = REPORT.query_window(1, now)
+        self.assertEqual(start.isoformat(), "2026-08-26T00:00:00+08:00")
+        self.assertEqual(end.isoformat(), "2026-08-26T00:00:01+08:00")
+        self.assertGreater(end, start)
+
+    def test_query_window_freezes_at_current_whole_second(self) -> None:
+        now = datetime(2026, 8, 26, 9, 8, 7, 654321, tzinfo=REPORT.SHANGHAI)
+        start, end = REPORT.query_window(3, now)
+        self.assertEqual(start.isoformat(), "2026-08-24T00:00:00+08:00")
+        self.assertEqual(end.isoformat(), "2026-08-26T09:08:07+08:00")
+
+    def test_format_create_time_uses_shanghai_timezone(self) -> None:
+        self.assertEqual(
+            REPORT.format_create_time(0), "1970-01-01 08:00:00 +0800"
+        )
+        self.assertEqual(REPORT.format_create_time("unknown"), "unknown")
+
     def test_nonzero_error_keeps_structured_error_and_stderr_bounded(self) -> None:
         result = subprocess.CompletedProcess(
             ["dws"],

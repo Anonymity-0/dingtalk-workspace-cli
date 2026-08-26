@@ -11,6 +11,8 @@
 
 不要为了样式重写已有值。值与样式可分阶段：先写值并回读，再设置样式并验证。
 
+`sheet create-with-data --styles` 的顶层单项只接受 `name`、`cell_styles`、`row_sizes`、`col_sizes`、`cell_merges`；未知键会在创建前拒绝。每项至少包含一种样式操作，且数据写入后的样式阶段按上述顺序执行、不是原子事务。
+
 ## 区域样式
 
     dws sheet range set-style       --node <NODE_ID> --sheet-id <SHEET_ID> --range "A1:D1"       --bg-color "#FFF2CC" --font-weight bold --h-align center       --word-wrap autoWrap --format json

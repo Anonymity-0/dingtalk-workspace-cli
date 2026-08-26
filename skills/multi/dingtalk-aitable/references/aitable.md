@@ -69,16 +69,16 @@ Base；同名对象零命中或多候选时停止，不能把名称、URL 末段
 |---|---|
 | `aitable view list` / `get` | 原始视图目录或完整配置 |
 | `aitable view create` / `duplicate` / `delete` / `lock` | Shortcut 未发布的视图生命周期与锁定字段 |
-| `aitable view get aggregate|card|field-widths|fill-color-rule|filter|frozen-cols|group|lock|row-height|sort|timebar|visible-fields` | 读取单个视图配置面 |
-| `aitable view update aggregate|card|field-widths|fill-color-rule|filter|frozen-cols|group|name|row-height|sort|timebar|visible-fields` | 更新一个已完整读取的视图配置面 |
+| `aitable view get aggregate` / `card` / `field-widths` / `fill-color-rule` / `filter` / `frozen-cols` / `group` / `lock` / `row-height` / `sort` / `timebar` / `visible-fields` | 读取单个视图配置面 |
+| `aitable view update aggregate` / `card` / `field-widths` / `fill-color-rule` / `filter` / `frozen-cols` / `group` / `name` / `row-height` / `sort` / `timebar` / `visible-fields` | 更新一个已完整读取的视图配置面 |
 | `aitable form list` / `get` / `create` / `update` / `delete` | 表单视图原子生命周期 |
-| `aitable form field list|update|hide` | 表单字段顺序、展示和隐藏 |
-| `aitable form questions create|delete` | 表单题目原子写入 |
-| `aitable form share get|update` | 表单分享配置 |
+| `aitable form field list` / `update` / `hide` | 表单字段顺序、展示和隐藏 |
+| `aitable form questions create` / `delete` | 表单题目原子写入 |
+| `aitable form share get` / `update` | 表单分享配置 |
 | `aitable dashboard get` / `create` / `update` / `delete` / `arrange` | 仪表盘原始配置和布局 |
-| `aitable dashboard share get|update` | 仪表盘分享配置 |
+| `aitable dashboard share get` / `update` | 仪表盘分享配置 |
 | `aitable chart get` / `create` / `update` / `delete` | 图表原始配置和生命周期 |
-| `aitable chart share get|update` | 图表分享配置 |
+| `aitable chart share get` / `update` | 图表分享配置 |
 
 视图更新是配置面写入，不是字段本体修改。调整可见列前读取完整有序 fieldId 数组并固定主字段；
 创建或更新图表前使用 `aitable chart widgets-example` 获取当前合法配置，不猜 config。

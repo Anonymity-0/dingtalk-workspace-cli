@@ -1251,10 +1251,44 @@ func TestCrossPlatformCoverageSheetReadbackRetryBoundaries(t *testing.T) {
 }
 
 func TestCrossPlatformCoverageAddCreatedSheetIDRejectsInvalidResponses(t *testing.T) {
-	for _, text := range []string{"{", "null"} {
+	for _, text := range []string{"{", "null", `{"result":null}`, `{"result":[]}`} {
 		if _, err := addCreatedSheetID(text, "N", "S"); err == nil {
 			t.Fatalf("addCreatedSheetID(%q) returned success", text)
 		}
+	}
+}
+
+func TestCrossPlatformCoverageAddCreatedSheetIDUnwrapsBusinessResult(t *testing.T) {
+	got, err := addCreatedSheetID(
+		`{"requestId":"outer","result":{"nodeId":"server-node","docUrl":"https://example.test/sheet","large":9007199254740993}}`,
+		"probed-node",
+		"probed-sheet",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(got), &result); err != nil {
+		t.Fatal(err)
+	}
+	if _, wrapped := result["result"]; wrapped {
+		t.Fatalf("result must be flattened, got %s", got)
+	}
+	if _, leaked := result["requestId"]; leaked {
+		t.Fatalf("transport envelope must not leak into business result, got %s", got)
+	}
+	for key, want := range map[string]string{
+		"nodeId":  "probed-node",
+		"sheetId": "probed-sheet",
+		"docUrl":  "https://example.test/sheet",
+	} {
+		var value string
+		if err := json.Unmarshal(result[key], &value); err != nil || value != want {
+			t.Fatalf("%s = %q, err=%v; want %q in %s", key, value, err, want, got)
+		}
+	}
+	if string(result["large"]) != "9007199254740993" {
+		t.Fatalf("large = %s, want exact integer", result["large"])
 	}
 }
 

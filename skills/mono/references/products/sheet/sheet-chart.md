@@ -36,7 +36,15 @@ properties 顶层必须同时包含 position、dimensions、chart，可选 offse
 - chart.series 必须是非空数组；每项都必须有非空的 value 范围数组。series.name 可引用表头格，category 是类别范围数组。
 - series/name/category 使用 A1 表示法；不带工作表前缀时使用 `--sheet-id` 对应工作表。引用跨表数据时显式带工作表前缀，不从当前名称猜测。
 
-复杂轴、图例、颜色等字段只在用户需要时加入，不确定时读取 chart create 的 compact Schema；不得从其他表格产品照搬字段。
+复杂轴、图例、颜色等字段只在用户需要时加入，不确定时读取 chart create 的 compact Schema；不得从其他表格产品照搬字段。当前常用配置面：
+
+| 对象 | 已知字段与枚举 |
+|---|---|
+| `title` | `show:boolean`、`text:string` |
+| `legend` | `show:boolean`；`pos` 仅为 `t` / `b` / `l` / `r` / `none` |
+| `catAx` / `valAx` | `show:boolean`、`pos:l/t/b/r`、`titleConfig:{show,title}`、`axisMin:number|null`、`axisMax:number|null`、`splitLine:boolean`、`minorSplitLine:boolean`、`axisLabel:boolean`、`axisLine:boolean` |
+
+未列出的字段或枚举以精确 leaf Schema 为准，不猜测；更新时仍须先读完整对象再整体回写。
 
 创建后保存返回 chartId，并验证：
 

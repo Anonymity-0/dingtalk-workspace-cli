@@ -39,6 +39,27 @@ class InboxScanResult(NamedTuple):
     visible_items: list[dict[str, Any]]
 
 
+def query_window(days: int, now: datetime | None = None) -> tuple[datetime, datetime]:
+    """冻结查询时间窗，并保证午夜调度也得到严格递增的范围。"""
+    current = now or datetime.now(SHANGHAI)
+    start = (current - timedelta(days=days - 1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    end = current.replace(microsecond=0)
+    if end <= start:
+        end = start + timedelta(seconds=1)
+    return start, end
+
+
+def format_create_time(value: Any) -> str:
+    """把服务端 epoch 毫秒转换为带时区的可读时间，未知形态如实保留。"""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return datetime.fromtimestamp(value / 1000, SHANGHAI).strftime(
+            "%Y-%m-%d %H:%M:%S %z"
+        )
+    return str(value or "")
+
+
 def clip_detail(value: Any, limit: int = MAX_ERROR_DETAIL_CHARS) -> str:
     """把诊断压到固定上限，避免响应正文进入错误日志或模型上下文。"""
     if isinstance(value, (dict, list)):
@@ -240,12 +261,8 @@ def main() -> int:
             f"--display-limit must be between 1 and {MAX_REPORTS}"
         )
 
-    now = datetime.now(SHANGHAI)
-    start = (now - timedelta(days=args.days - 1)).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
     # 以调用开始时刻冻结查询窗，避免分页过程中把未来新增条目插进结果集。
-    end = now.replace(microsecond=0)
+    start, end = query_window(args.days)
     label = "今天" if args.days == 1 else f"最近 {args.days} 天"
 
     if args.dry_run:
@@ -276,7 +293,7 @@ def main() -> int:
         template = item.get("templateName") or "日志"
         print(
             f"- {template} | {creator} | "
-            f"{item.get('createTime', '')} | {item['reportId']}"
+            f"{format_create_time(item.get('createTime'))} | {item['reportId']}"
         )
     if len(scan.visible_items) < scan.total_count:
         print(

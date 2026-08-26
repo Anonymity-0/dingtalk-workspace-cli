@@ -60,7 +60,7 @@ Report 查询优先使用下方严格 Shortcut；它们会校验响应、稳定 
 ## 收件箱：范围、筛选与分页
 
 1. 把“最近 N 天”“今天”等自然语言按 `Asia/Shanghai` 转成带 `+08:00` 的 ISO-8601 起止时间。
-2. 默认每页 `--size 20`；若用户要“全部”，只沿当前响应中真实存在且严格前进的 continuation cursor 翻页，直到响应证明 endpoint exhausted。
+2. 每页 `--size` 最大为 20；默认使用 20。若用户要“全部”，只沿当前响应中真实存在且严格前进的 continuation cursor 翻页，直到响应证明 endpoint exhausted；禁止用 50/100 绕过分页。
 3. Shortcut 没有模板 flag。按 `templateName` 在每个已返回页本地筛选，并继续翻真实续页；不要因为第一页没有目标模板就跨产品搜索。
 4. “最近一篇/两篇”先在限定范围内收集匹配项，再按真实 `createTime` 排序，最后对选中的 `reportId` 调 `entry get`。不要用列表摘要冒充正文。
 5. 返回零条或服务端已穷尽时停止。只有用户明确要求，才扩大时间窗；扩大后仍使用 Report 收件箱。
@@ -81,7 +81,7 @@ Report 查询优先使用下方严格 Shortcut；它们会校验响应、稳定 
 5. 调 `entry submit --to-user-ids <USER_ID[,USER_ID...]>`，记录返回的 `reportId` 和成功状态。该 flag 必填且不能为空：无收件人的请求即使服务端返回成功，日志也对任何人不可见；普通创建不额外加确认 flag。
 6. 用返回的 `reportId` 调一次 `entry get` 验证模板、字段和值；若还需证明它出现在发件箱，再用窄时间窗的 `+outbox-list`，不要扫描无关产品。
 
-`contents` 必须是 JSON 数组，每项包含 `key`、`sort`、`content`、`contentType`、`type`，并与模板实际字段一致。内容来自用户提供或可直接推导的事实；缺失业务内容时先向用户确认，不编造日报正文。
+`contents` 必须是 JSON 数组，每项包含 `key`、`sort`、`content`、`contentType`、`type`，并与模板实际字段一致；编码后的 JSON 上限为 10MB，超出时精简内容或拆成多篇独立日志，不能把一次提交拆成多个片段。内容来自用户提供或可直接推导的事实；缺失业务内容时先向用户确认，不编造日报正文。
 
 ## 结果与断言
 
