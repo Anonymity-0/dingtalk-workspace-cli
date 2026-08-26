@@ -201,6 +201,26 @@ func TestCrossPlatformCoverageAtomicThreadCreateNormalizesConversationID(t *test
 	}
 }
 
+func TestCrossPlatformCoverageAtomicThreadCreatePreservesOpaqueResult(t *testing.T) {
+	caller := &chatThreadCaller{responses: map[string]string{
+		"contact/get_current_user_profile": `{"result":{"userId":"owner-1"}}`,
+		"im/create_group_conversation":     `{"result":"accepted"}`,
+	}}
+	stdout, err := executeAtomicThreadCommandOutput(t, caller,
+		"thread", "create-group", "--name", "话题圈", "--users", "user-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal(stdout, &envelope); err != nil {
+		t.Fatalf("decode output %q: %v", stdout, err)
+	}
+	data, ok := envelope["data"].(map[string]any)
+	if !ok || data["result"] != "accepted" {
+		t.Fatalf("data = %#v", envelope["data"])
+	}
+}
+
 func TestCrossPlatformCoverageAtomicThreadListsPublishPaginationInMeta(t *testing.T) {
 	for _, test := range []struct {
 		name      string
