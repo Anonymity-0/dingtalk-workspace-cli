@@ -49,7 +49,6 @@ var Search = shortcut.Shortcut{
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"query", "start", "end"}},
-		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"cursor", "page-all"}},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"limit", "page-limit"}, Description: "--limit/--page-limit 必须大于 0"},
 		{Kind: shortcut.ConstraintCustom, Flags: []string{"start", "end"}, Description: "时间必须是 RFC3339 且开始时间不能晚于结束时间"},
 	},

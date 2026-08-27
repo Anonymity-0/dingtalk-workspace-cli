@@ -563,7 +563,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(minutesUpdateTitleCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -677,7 +677,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(minutesRecordStartCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -727,7 +727,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(minutesRecordPauseCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -780,7 +780,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(minutesRecordResumeCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -833,7 +833,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(minutesRecordStopCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -902,7 +902,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(minutesUpdateSummaryCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -1086,7 +1086,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(speakerReplaceCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -1359,8 +1359,8 @@ func newMinutesCommand() *cobra.Command {
 	}
 	DeclareLeafMetadata(hotWordDeleteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
-			Effect: "destructive", Risk: "high",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -1418,7 +1418,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(replaceTextCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -1513,6 +1513,7 @@ func newMinutesCommand() *cobra.Command {
 				},
 			},
 			Parameters: []contract.ParamDecl{
+				{Name: "enable-message-card", Property: "minutesOption.enableMessageCard"},
 				{Name: "input-language", Property: "minutesOption.inputLanguage"},
 				{Name: "template-id", Property: "minutesOption.templateId"},
 			},
@@ -1719,9 +1720,6 @@ func newMinutesCommand() *cobra.Command {
   dws minutes permission add --ids <uuid> --member-uids 123456 --policy 2 --cover
   dws minutes permission add --ids <uuid> --member-uids 123456 --policy 3 --sub-resources "OrigContent,Summary"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateMinutesPermissionAdd(cmd, args); err != nil {
-				return err
-			}
 			v := flagOrFallback(cmd, "ids", "uuids", "task-uuids")
 			policyID, _ := strconv.ParseInt(mustGetFlag(cmd, "policy"), 10, 64)
 
@@ -1752,7 +1750,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(permissionAddCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -1810,9 +1808,6 @@ func newMinutesCommand() *cobra.Command {
 		Example: `  dws minutes permission remove --ids <uuid1,uuid2> --member-uids 123456,789012
   dws minutes permission remove --ids <uuid> --member-uids 123456`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateMinutesPermissionRemove(cmd, args); err != nil {
-				return err
-			}
 			v := flagOrFallback(cmd, "ids", "uuids", "task-uuids")
 			memberUids := parseCSVValues(mustGetFlag(cmd, "member-uids"))
 
@@ -1824,8 +1819,8 @@ func newMinutesCommand() *cobra.Command {
 	}
 	DeclareLeafMetadata(permissionRemoveCmd, LeafSpec{
 		Safety: contract.SafetySpec{
-			Effect: "destructive", Risk: "high",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Effect: "write", Risk: "medium",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
@@ -1881,9 +1876,6 @@ func newMinutesCommand() *cobra.Command {
 		Example: `  dws minutes permission apply --id <taskUuid> --policy 4
   dws minutes permission apply --id <taskUuid> --policy 2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateMinutesPermissionApply(cmd, args); err != nil {
-				return err
-			}
 			policyID, _ := cmd.Flags().GetInt("policy")
 
 			return callMCPTool("apply_minutes_permission", map[string]any{
@@ -1895,7 +1887,7 @@ func newMinutesCommand() *cobra.Command {
 	DeclareLeafMetadata(permissionApplyCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "user_required", Idempotency: "unknown",
+			Confirmation: "not_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{

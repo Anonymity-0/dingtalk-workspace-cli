@@ -8,10 +8,10 @@
 
 | 用户意图 | 推荐入口 | 是否确认 | 关键语义 |
 |---|---|---|---|
-| “录音前加上这些专有词”“补充热词” | `dws minutes +prepare-asr --words "DWS,听记"` | 当前不需要 | 只新增缺失热词，不删除现有项；读回验证 |
+| “录音前加上这些专有词”“补充热词” | `dws minutes +prepare-asr --words "DWS,听记"` | 需要 | 只新增缺失热词，不删除现有项；读回验证 |
 | “让热词最终只保留这组”“精确同步热词” | `dws minutes +sync-asr --words "DWS,听记"` | 需要，且先说明会删除目标集合外热词 | 新增缺失项并删除多余项；属于 destructive/high |
 | 只查看当前 ASR 热词 / “识别词配置” | `dws minutes hot-word list --format json` | 不需要 | 原子只读；返回当前账号的识别词配置，不是某个音频的转写结果 |
-| 删除一个或多个已知热词 | `dws minutes hot-word delete --words "<热词1,热词2>"` | 需要 | 先锁定准确词值，不模糊删除 |
+| 删除一个或多个已知热词 | `dws minutes hot-word delete --words "<热词1,热词2>"` | 原子入口历史 `not_required` | 仅作兼容底层入口；推荐需要确认且能读回验证的 `+sync-asr`，不模糊删除 |
 
 `+prepare-asr --sync` 作为已发布参数保持公开可见，但只返回迁移提示且在任何 MCP 调用前停止。需要删除时必须显式改用 `+sync-asr`，不能把“准备热词”解释成“覆盖整个词表”。两个 Shortcut 的 `--dry-run` 都只输出本地计划，不读取或写入远端；要比较真实差异时先读取词表，再单独执行目标入口。
 
@@ -77,6 +77,7 @@ dws minutes +mindmap --id <taskUuid>
 ```
 
 - 首次执行负责 create + 有界轮询。
+- 真实执行遵循 `user_required`；`--resume` 沿用同一命令级门禁。
 - 返回 pending/timeout 时保留 taskUuid；继续检查用 `--resume`，不重复 create。
 - 只有明确终态成功才声称已生成；失败和无法解析的状态返回非零。
 
@@ -87,6 +88,7 @@ dws minutes +speaker-insights --id <taskUuid>
 ```
 
 - 首次执行保存 create 返回的异步 `taskId`。
+- 真实执行遵循 `user_required`；`--resume` 沿用同一命令级门禁。
 - 超时后使用 `--resume [--task-id <taskId>]` 继续轮询。
 - `taskId` 缺失、状态未知或结果不可解析时保留恢复信息并停止，不再次创建任务。
 
@@ -133,7 +135,7 @@ dws minutes +unshare --ids <uuid1,uuid2> --member-uids <uid> --failure-policy co
 - `--id` 与 `--ids` 必须且只能选一个；听记 taskUuid 和成员 UID 去重后各为 `1..50` 个。
 - `+share --permission` 必填、没有默认值：`edit=policy 2`、`download=policy 3`、`view=policy 4`。管理员 `0`、所有者 `1` 只能走 `minutes permission add --policy 0|1`。
 - `--failure-policy` 默认 `stop`，首个成员失败后停止；显式 `continue` 才继续其他成员。任何失败都必须作为 partial/非零交付，并保留失败与未执行成员。
-- `+unshare` 是 destructive/high；执行前明确听记、成员和撤权影响。`+share`、`+apply-permission` 同样执行 Runtime 的 `user_required` confirmation。
+- `+unshare` 是 write/medium、`user_required`；执行前明确听记、成员和撤权影响。`+share`、`+apply-permission` 同样执行 Runtime 的 `user_required` confirmation。对应原子 permission 命令只保留历史兼容 Contract，不作为绕过确认的推荐路径。
 - `+apply-permission` 只接受单个 `--id` 和必填的 `--permission view|download|edit`，目标固定为当前登录用户，不接受 `--member-uids`。
 
 ### 4.3 验证边界

@@ -257,12 +257,7 @@ func TestCrossPlatformCoverageMinutesUploadAndPermissionDryRunDoNotWriteE2E(t *t
 }
 
 func TestCrossPlatformCoverageMinutesShortcutConfirmationPolicyE2E(t *testing.T) {
-	for _, value := range []shortcut.Shortcut{Mindmap, SpeakerInsights, PrepareASR} {
-		if value.Safety.Confirmation != "not_required" {
-			t.Errorf("%s confirmation=%q, want not_required", value.Command, value.Safety.Confirmation)
-		}
-	}
-	for _, value := range []shortcut.Shortcut{Upload, UploadAndAnalyze, UploadAndNotify, SyncASR} {
+	for _, value := range []shortcut.Shortcut{Upload, UploadAndAnalyze, UploadAndNotify, Mindmap, SpeakerInsights, PrepareASR, SyncASR} {
 		if value.Safety.Confirmation != "user_required" {
 			t.Errorf("%s confirmation=%q, want user_required", value.Command, value.Safety.Confirmation)
 		}

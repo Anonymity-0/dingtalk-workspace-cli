@@ -215,6 +215,10 @@ func TestCrossPlatformCoverageMinutesUploadFailureAndSuccessBranchesE2E(t *testi
 	if err := os.WriteFile(file, []byte("audio"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	invalidTiming := &minutesE2ECaller{}
+	if _, _, err := runMinutesAlignmentCLI(t, invalidTiming, "minutes", "+upload-and-notify", "--file", file, "--complete-timeout", "0", "--yes"); err == nil || len(invalidTiming.counts) != 0 {
+		t.Fatalf("invalid upload timing accepted: err=%v calls=%#v", err, invalidTiming.counts)
+	}
 	if payload, output, err := runMinutesAlignmentCLI(t, &minutesE2ECaller{}, "minutes", "+upload", "--file", t.TempDir(), "--yes"); err == nil || payload != nil || output != "" {
 		t.Fatalf("directory upload accepted: %#v %q %v", payload, output, err)
 	}

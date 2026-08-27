@@ -4,11 +4,16 @@
 package minutes
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
+	"github.com/spf13/cobra"
 )
 
 func TestCrossPlatformCoverageMinutesPublishedListRoutesUseUnifiedPagination(t *testing.T) {
@@ -108,6 +113,25 @@ func TestCrossPlatformCoverageMinutesAccessiblePreviewNeverClaimsUnionCompleteE2
 }
 
 func TestCrossPlatformCoverageMinutesListPaginationFailsClosedE2E(t *testing.T) {
+	t.Run("invalid limits", func(t *testing.T) {
+		for _, args := range [][]string{
+			{"minutes", "+list-mine", "--limit", "0"},
+			{"minutes", "+list-shared", "--page-limit", "0"},
+		} {
+			caller := &minutesE2ECaller{}
+			if _, _, err := runMinutesAlignmentCLI(t, caller, args...); err == nil || len(caller.counts) != 0 {
+				t.Fatalf("invalid limits accepted: args=%v err=%v calls=%#v", args, err, caller.counts)
+			}
+		}
+	})
+
+	t.Run("aggregate first scope failure", func(t *testing.T) {
+		caller := &minutesE2ECaller{failAt: map[string]int{"minutes/list_by_keyword_and_time_range": 1}}
+		if _, _, err := runMinutesAlignmentCLI(t, caller, "minutes", "+list-all", "--page-all"); err == nil {
+			t.Fatal("first aggregate scope failure accepted")
+		}
+	})
+
 	t.Run("missing token", func(t *testing.T) {
 		caller := &minutesE2ECaller{responses: map[string][]string{
 			"minutes/list_by_keyword_and_time_range": {`{"success":true,"result":{"itemList":[],"hasNext":true}}`},
@@ -169,4 +193,30 @@ func TestCrossPlatformCoverageMinutesListPaginationFailsClosedE2E(t *testing.T) 
 			t.Fatalf("cursor conflict err=%v calls=%#v", err, caller.counts)
 		}
 	})
+}
+
+func TestCrossPlatformCoverageMinutesListResultDefensiveBranches(t *testing.T) {
+	legacy := &cobra.Command{Use: "legacy"}
+	var legacyOut bytes.Buffer
+	legacy.SetOut(&legacyOut)
+	legacyRT := shortcut.RuntimeContextForTest(legacy, ListMine)
+	readErr := errors.New("fixture read failure")
+	if err := outputMinutesListResult(legacyRT, map[string]any{"scope": "mine"}, minutesListCollection{}, readErr); !errors.Is(err, readErr) {
+		t.Fatalf("legacy read error=%v", err)
+	}
+
+	failing := &cobra.Command{Use: "legacy-failing"}
+	failing.SetOut(minutesFailWriter{})
+	if err := outputMinutesListResult(shortcut.RuntimeContextForTest(failing, ListMine), map[string]any{"scope": "mine"}, minutesListCollection{}, nil); err == nil {
+		t.Fatal("legacy output failure accepted")
+	}
+
+	unified := &cobra.Command{Use: "unified"}
+	ctx, _ := output.WithResultStore(context.Background())
+	unified.SetContext(ctx)
+	output.SetCommandRollout(unified, output.RolloutUnifiedActive)
+	invalid := minutesListCollection{EndpointExhausted: true, NextToken: "unexpected"}
+	if err := outputMinutesListResult(shortcut.RuntimeContextForTest(unified, ListMine), map[string]any{"scope": "mine"}, invalid, nil); err == nil {
+		t.Fatal("inconsistent unified pagination accepted")
+	}
 }

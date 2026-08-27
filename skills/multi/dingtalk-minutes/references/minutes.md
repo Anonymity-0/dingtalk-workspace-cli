@@ -96,14 +96,14 @@ dws minutes +detail --ids <uuid1,uuid2> --artifacts basic --format json
 
 | 原子命令 | 效果 | 当前 confirmation |
 |---|---|---|
-| `minutes update title` | 修改听记标题 | `user_required` |
-| `minutes update summary` | 全量覆盖纪要正文 | `user_required` |
-| `minutes record start` | 发起实时录音 | `user_required` |
-| `minutes record pause` | 暂停指定 taskUuid | `user_required` |
-| `minutes record resume` | 恢复指定 taskUuid | `user_required` |
-| `minutes record stop` | 永久停止指定 taskUuid | `user_required` |
+| `minutes update title` | 修改听记标题 | `not_required`（历史兼容原子入口） |
+| `minutes update summary` | 全量覆盖纪要正文 | `not_required`（历史兼容原子入口） |
+| `minutes record start` | 发起实时录音 | `not_required`（历史兼容原子入口） |
+| `minutes record pause` | 暂停指定 taskUuid | `not_required`（历史兼容原子入口） |
+| `minutes record resume` | 恢复指定 taskUuid | `not_required`（历史兼容原子入口） |
+| `minutes record stop` | 永久停止指定 taskUuid | `not_required`（历史兼容原子入口） |
 
-标题与纪要推荐分别使用 `+update`、`+summary`，因为它们包含预检/读回验证。更新纪要时先读取当前完整正文，保留原有 Markdown 图片和用户未要求改变的内容，再写回完整目标内容。
+标题与纪要推荐分别使用仍执行 `user_required` 门禁的 `+update`、`+summary`，因为它们包含预检/读回验证。原子入口不得作为绕过确认的降级路径。更新纪要时先读取当前完整正文，保留原有 Markdown 图片和用户未要求改变的内容，再写回完整目标内容。
 
 仅预览标题变化时，先读取当前标题，再调用本地计划；`+update --dry-run` 本身不访问远端，所以 `before` 必须来自前一条真实 basic 读取：
 
@@ -122,7 +122,7 @@ dws minutes +update --id <taskUuid> --title "<目标标题>" --dry-run --format 
 |---|---|---|
 | `minutes mind-graph create --id <taskUuid>` | 创建思维导图异步任务 | `not_required` |
 | `minutes mind-graph status --id <taskUuid>` | 查询任务状态 | `not_required` |
-| `minutes speaker replace ...` | 替换逐字稿发言人昵称 | `user_required` |
+| `minutes speaker replace ...` | 替换逐字稿发言人昵称 | `not_required`（历史兼容原子入口） |
 | `minutes speaker summary create --ids <IDs>` | 创建发言人段落总结 | `not_required` |
 | `minutes speaker summary get --ids <IDs>` | 查询发言人总结 | `not_required` |
 
@@ -134,10 +134,10 @@ dws minutes +update --id <taskUuid> --title "<目标标题>" --dry-run --format 
 |---|---|---|
 | `minutes hot-word list` | 查看个人热词 | `not_required` |
 | `minutes hot-word add` | 新增热词 | `not_required` |
-| `minutes hot-word delete` | 删除热词 | `user_required`，destructive/high |
-| `minutes replace-text` | 替换一条听记中的文本 | `user_required` |
+| `minutes hot-word delete` | 删除热词 | `not_required`，write/medium（历史兼容原子入口） |
+| `minutes replace-text` | 替换一条听记中的文本 | `not_required`（历史兼容原子入口） |
 
-普通“补充热词”优先 `+prepare-asr`，它只新增缺失项。只有用户明确要求最终集合完全一致并接受删除多余项时使用 `+sync-asr`；旧 `+prepare-asr --sync` 保持公开以提供迁移提示，但不会调用 MCP。批量文本替换优先 `+replace-batch`，保留逐项验证和失败 ledger。
+普通“补充热词”优先需要确认的 `+prepare-asr`，它只新增缺失项。只有用户明确要求最终集合完全一致并接受删除多余项时使用 `+sync-asr`；旧 `+prepare-asr --sync` 保持公开以提供迁移提示，但不会调用 MCP。批量文本替换优先仍要求确认的 `+replace-batch`，保留逐项验证和失败 ledger；不得为了绕过确认改用原子 delete/replace。
 
 ## 7. Upload session
 
@@ -163,9 +163,9 @@ dws minutes +update --id <taskUuid> --title "<目标标题>" --dry-run --format 
 
 | 用户要做的事 | 当前公开入口 | 能否完成 | 边界 |
 |---|---|---:|---|
-| 当前登录用户为自己申请访问 | `minutes permission apply` / `+apply-permission` | 是 | 只支持编辑、查看下载、仅查看 |
-| 所有者/管理员给稳定 member UID 授权 | `minutes permission add` / `+share` | 是 | 原子命令支持 policy `0..4`；Shortcut 只支持 `edit/download/view` |
-| 所有者/管理员撤销稳定 member UID 权限 | `minutes permission remove` / `+unshare` | 是 | destructive/high，必须确认 |
+| 当前登录用户为自己申请访问 | `minutes permission apply` / `+apply-permission` | 是 | 原子入口保留历史 `not_required`；推荐 `+apply-permission`，要求确认且只支持编辑、查看下载、仅查看 |
+| 所有者/管理员给稳定 member UID 授权 | `minutes permission add` / `+share` | 是 | 原子入口保留历史 `not_required` 且支持 policy `0..4`；推荐 `+share`，要求确认且只支持 `edit/download/view` |
+| 所有者/管理员撤销稳定 member UID 权限 | `minutes permission remove` / `+unshare` | 是 | 原子入口为历史 write/medium、`not_required`；推荐 `+unshare` 为 write/medium、`user_required` |
 | 列出、读取或检查一条听记当前的成员权限 | 无公开 `permission list/get/inspect` 命令 | 否 | 不得用基本信息、写入回执或 dry-run 冒充权限读回 |
 | 删除整条听记 | 无公开 Minutes delete 命令 | 否 | `permission remove` 只撤权；`hot-word delete` 只删除个人热词，都不能替代删除听记 |
 
