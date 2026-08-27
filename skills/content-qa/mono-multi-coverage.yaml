@@ -154,6 +154,9 @@ omit_global:
 # Reviewed file pairs. Most are byte-identical; layout-only link differences
 # must be declared as data-driven substitutions.
 paired_files:
+  - mono: scripts/report_received_today.py
+    multi: dingtalk-misc/scripts/report_received_today.py
+    mode: identical
   - mono: scripts/minutes_recent_summary.py
     multi: dingtalk-minutes/scripts/minutes_recent_summary.py
     mode: identical
@@ -182,9 +185,6 @@ orphan_scripts_allowlist:
   - path: dingtalk-aitable/scripts/aitable_import_via_task.py
     disposition: defer
     reason: "helper referenced indirectly / pending doc"
-  - path: dingtalk-misc/scripts/report_received_today.py
-    disposition: defer
-    reason: "pending report.md reference"
 
 # Exact repository-relative paths retired from Skill delivery. Reintroducing
 # any path is a content-contract failure, even if a Markdown page links it.
