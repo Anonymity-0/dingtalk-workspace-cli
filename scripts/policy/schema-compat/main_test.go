@@ -1035,7 +1035,7 @@ func TestCrossPlatformCoverageSchemaCompatReviewedTodoConstraintTransitions(t *t
 		},
 		{
 			path: "todo/todo.shortcut_reminder",
-			want: `{"mutually_exclusive":[["clear","base-time"],["clear","due-date-offset","at"]],"require_one_of":[["clear","base-time"]]}`,
+			want: `{"mutually_exclusive":[["clear","base-time"]],"require_one_of":[["clear","base-time"]]}`,
 		},
 	}
 
