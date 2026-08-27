@@ -930,12 +930,6 @@ function New-PublishedSkillLinkRecord {
     return [pscustomobject]@{ Path = $Path; LinkSignature = $signature }
 }
 
-function New-PublishedSkillCopyRecord {
-    param([string]$Path, [string]$Source)
-    Assert-SkillPathCopy -Source $Source -Destination $Path
-    return [pscustomobject]@{ Path = $Path; Source = $Source }
-}
-
 function Remove-PublishedSkillPathSafely {
     param($Record)
     $path = [string]$Record.Path
@@ -1455,7 +1449,8 @@ function Install-MonoToBase {
         }
 
         Move-SkillPath -Source $stagedSkill -Destination $dest
-        $published += New-PublishedSkillCopyRecord -Path $dest -Source $SkillSrc
+        $published += [pscustomobject]@{ Path = $dest; Source = $SkillSrc }
+        Assert-SkillPathCopy -Source $SkillSrc -Destination $dest
     } catch {
         $transactionError = $_
         if (!(Restore-MultiSkillSet -Published $published -Backups $backups)) {
