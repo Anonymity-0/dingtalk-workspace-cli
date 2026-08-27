@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -66,24 +65,30 @@ func (*chatThreadCaller) Fields() string { return "" }
 func (*chatThreadCaller) JQ() string     { return "" }
 
 func executeAtomicThreadCommand(t *testing.T, caller *chatThreadCaller, args ...string) error {
+	_, err := executeAtomicThreadCommandOutput(t, caller, args...)
+	return err
+}
+
+func executeAtomicThreadCommandOutput(t *testing.T, caller *chatThreadCaller, args ...string) ([]byte, error) {
 	t.Helper()
 	testseam.Protect(t, &deps)
 	InitDeps(caller)
-	deps.Out.w = io.Discard
-	deps.Out.errW = io.Discard
+	var stdout, stderr bytes.Buffer
+	deps.Out.w = &stdout
+	deps.Out.errW = &stderr
 	root := newChatCommand()
 	root.SilenceErrors = true
 	root.SilenceUsage = true
-	root.SetOut(io.Discard)
-	root.SetErr(io.Discard)
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
 	root.SetArgs(args)
 	ctx, _ := output.WithResultStore(context.Background())
 	executed, err := root.ExecuteContextC(ctx)
 	if err != nil {
-		return err
+		return stdout.Bytes(), err
 	}
 	_, _, err = output.EmitStoredResult(executed)
-	return err
+	return stdout.Bytes(), err
 }
 
 func executeAtomicThreadDryRun(t *testing.T, caller *chatThreadCaller, args ...string) ([]byte, error) {
@@ -160,6 +165,59 @@ func TestCrossPlatformCoverageAtomicThreadCreatePropagatesBackendError(t *testin
 		"thread", "create-group", "--name", "话题圈", "--users", "user-1")
 	if !errors.Is(err, want) {
 		t.Fatalf("error = %v, want %v", err, want)
+	}
+}
+
+func TestCrossPlatformCoverageAtomicThreadCreateNormalizesConversationID(t *testing.T) {
+	caller := &chatThreadCaller{responses: map[string]string{
+		"contact/get_current_user_profile": `{"result":{"userId":"owner-1"}}`,
+		"im/create_group_conversation":     `{"result":{"openCid":"topic-1","cid":"internal-cid","name":"话题圈"}}`,
+	}}
+	stdout, err := executeAtomicThreadCommandOutput(t, caller,
+		"thread", "create-group", "--name", "话题圈", "--users", "user-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal(stdout, &envelope); err != nil {
+		t.Fatalf("decode output %q: %v", stdout, err)
+	}
+	data, ok := envelope["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("data = %#v", envelope["data"])
+	}
+	result, ok := data["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("result = %#v", data["result"])
+	}
+	if result["openConversationId"] != "topic-1" {
+		t.Fatalf("openConversationId = %#v", result["openConversationId"])
+	}
+	if _, exists := result["openCid"]; exists {
+		t.Fatalf("openCid leaked in result: %#v", result)
+	}
+	if _, exists := result["cid"]; exists {
+		t.Fatalf("cid leaked in result: %#v", result)
+	}
+}
+
+func TestCrossPlatformCoverageAtomicThreadCreatePreservesOpaqueResult(t *testing.T) {
+	caller := &chatThreadCaller{responses: map[string]string{
+		"contact/get_current_user_profile": `{"result":{"userId":"owner-1"}}`,
+		"im/create_group_conversation":     `{"result":"accepted"}`,
+	}}
+	stdout, err := executeAtomicThreadCommandOutput(t, caller,
+		"thread", "create-group", "--name", "话题圈", "--users", "user-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal(stdout, &envelope); err != nil {
+		t.Fatalf("decode output %q: %v", stdout, err)
+	}
+	data, ok := envelope["data"].(map[string]any)
+	if !ok || data["result"] != "accepted" {
+		t.Fatalf("data = %#v", envelope["data"])
 	}
 }
 
