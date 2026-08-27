@@ -143,6 +143,12 @@ func buildBatchUpdateToolArgs(nodeID string, operations []any, continueOnError b
 	return args, nil
 }
 
+// buildBatchUpdateToolArgsForCommand is the command-boundary seam for the
+// three CLI surfaces that emit batch_update. Production always uses the pure
+// builder above; tests replace this seam to prove every command propagates a
+// local JSON encoding failure without attempting a remote write.
+var buildBatchUpdateToolArgsForCommand = buildBatchUpdateToolArgs
+
 func validateBatchCsvPutInput(input map[string]any) error {
 	if value, exists := input["auto-convert"]; exists {
 		if _, ok := value.(bool); !ok {
@@ -1578,7 +1584,7 @@ number/boolean 类型；--dry-run 展示的是这个带转义的实际远端参�
 				translated = append(translated, top)
 			}
 			continueOnError, _ := cmd.Flags().GetBool("continue-on-error")
-			toolArgs, err := buildBatchUpdateToolArgs(mustGetFlag(cmd, "node"), translated, continueOnError)
+			toolArgs, err := buildBatchUpdateToolArgsForCommand(mustGetFlag(cmd, "node"), translated, continueOnError)
 			if err != nil {
 				return err
 			}
@@ -1637,7 +1643,7 @@ func newRangeBatchClearCmd() *cobra.Command {
 					},
 				})
 			}
-			toolArgs, err := buildBatchUpdateToolArgs(mustGetFlag(cmd, "node"), operations, false)
+			toolArgs, err := buildBatchUpdateToolArgsForCommand(mustGetFlag(cmd, "node"), operations, false)
 			if err != nil {
 				return err
 			}

@@ -671,7 +671,7 @@ func newRangeBatchSetStyleCmd() *cobra.Command {
 			}
 
 			continueOnError, _ := cmd.Flags().GetBool("continue-on-error")
-			toolArgs, err := buildBatchUpdateToolArgs(node, operations, continueOnError)
+			toolArgs, err := buildBatchUpdateToolArgsForCommand(node, operations, continueOnError)
 			if err != nil {
 				return err
 			}
