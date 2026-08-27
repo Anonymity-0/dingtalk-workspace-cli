@@ -55,25 +55,9 @@ Todo 事件也不进入 `+listen-im`。三个公开 EventKey 使用 `--role-type
 
 自然姓名和群名由 CLI 内部唯一解析：零命中或多候选返回结构化失败，在创建任何订阅前停止。`--dry-run` 走同一解析链。解析、监听、状态和停止必须使用同一个 `--profile`，不得跨组织搬运 ID。
 
-### 兼容 EventKey 索引
+### EventKey 索引
 
-`+listen-im` 覆盖高频路径；只有需要精确底层控制时才直接使用以下 16 个 EventKey：
-
-```text
-user_im_message_receive_at
-user_im_message_receive_o2o        user_im_message_receive_user
-user_im_message_receive_group      user_im_message_receive_o2o_all
-user_im_message_receive_group_all  user_im_message_read_o2o
-user_im_message_read_group         user_im_message_recall_o2o
-user_im_message_recall_group       user_im_message_reaction_o2o
-user_im_message_reaction_group     user_im_group_updated
-user_im_group_member_added         user_im_group_member_exited
-user_im_group_disbanded
-```
-
-七个 OA EventKey 及其输出字段见 [OA 事件参考](references/event-oa.md)；三个 Todo EventKey 及其 `roleTypes` 和输出字段见 [Todo 事件参考](references/event-todo.md)。
-
-用户类事件传 `--user` 或 `--open-dingtalk-id`，群类事件传 `--group`。群生命周期输出可含 `operator_open_dingtalk_id` 和 `members`；成员项使用 `open_dingtalk_id`。精确组合、兼容性和 Filter 规则见 reference。
+16 个 IM EventKey、目标参数和组合约束见 [EventKey 索引](references/event-im-keys.md)；七个 OA EventKey 见 [OA 事件参考](references/event-oa.md)；三个 Todo EventKey 及其 `roleTypes` 见 [Todo 事件参考](references/event-todo.md)。
 
 ## 公开层与内部统一边界
 
@@ -108,13 +92,6 @@ kind + events + target
 - 这套 `0/2/1` 是 **Agent/host** 编排预算，适用于全部 26 个公开个人 EventKey（16 个 IM + 7 个 OA + 3 个 Todo）：`retryable=false` 对应 `max_additional_attempts=0`；`retryable=true` 对应 `max_additional_attempts=2`；`retryable=unknown` 对应 `max_additional_attempts=1`。它不是 CLI 持久化硬总次数上限；每次调用最多创建一次，进程内不会自动重试，CLI 也不持久化或计算跨调用的 Agent/host 尝试次数。
 - 重试必须遵守 `retry_after_seconds` / `next_retry_at`。遇到 `in_flight`、`cooldown`、`terminal_hold` 不并发或递归重启同一逻辑订阅，也不换 `subscribe_id` / `trace_id` 绕过保护。
 - 认证、profile、订阅保护状态和 bus 排障按失败类型读取 [订阅运维](references/event-im-operations.md)，不要在正常路径预加载完整运维手册。
-
-### 本地订阅保护契约
-
-- open 版状态路径为 `~/.dws/events/open/personal_stream/<identity_hash>/personal_subscription_attempts.json`；设置 `DWS_CONFIG_DIR` 后根目录随之变化。
-- identity 目录权限为 `0700`；`personal_subscription_attempts.json` 与 `personal_subscription_attempts.lock` 权限为 `0600`。
-- 连续 `24h` 无失败后重置计数；`terminal_hold` 持续 `1h`。优先等待 `next_retry_at`，不要把删状态当常规重试。
-- 仅在确认该 identity 没有订阅创建进程的紧急恢复场景，只删除 `personal_subscription_attempts.json`，不要删除 lock 文件。该操作会清空该 identity 的全部保护记录，而非单个事件。
 
 ## 何时查询 Schema
 
