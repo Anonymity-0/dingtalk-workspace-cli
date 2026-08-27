@@ -827,6 +827,16 @@ var reviewedConstraintTransition = map[string]map[string]string{
 	// runtime's exact-one rule.
 	"chat/chat.favorite_personal_emotion": {
 		"": `{"mutually_exclusive":[["media-id","file-path"]],"require_one_of":[["media-id","file-path"]]}`,
+	// PR #1042 publishes the Todo Shortcut constraints already enforced by
+	// runtime validation. The Reminder transition is intentionally limited to
+	// clear/base-time exactly-one; historically accepted extra time arguments
+	// remain compatible and are ignored by the runtime branch that does not use
+	// them.
+	"todo/todo.shortcut_update": {
+		"": `{"require_one_of":[["title","due","priority"]]}`,
+	},
+	"todo/todo.shortcut_reminder": {
+		"": `{"mutually_exclusive":[["clear","base-time"]],"require_one_of":[["clear","base-time"]]}`,
 	},
 }
 
