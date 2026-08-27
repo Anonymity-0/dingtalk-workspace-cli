@@ -1,9 +1,15 @@
 package helpers
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
+	"image"
+	"image/color"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"os"
 	"path/filepath"
@@ -265,11 +271,15 @@ type personalEmotionUploadCaller struct {
 	favoriteCalls []map[string]any
 	uploadArgs    []map[string]any
 	uploadCalls   int
+	uploadServer  string
+	uploadTool    string
 }
 
 func (c *personalEmotionUploadCaller) CallTool(ctx context.Context, server, tool string, args map[string]any) (*edition.ToolResult, error) {
-	if server == "im" && tool == "upload_media" {
+	if server == personalEmotionUploadServerID && tool == personalEmotionUploadMediaTool {
 		c.uploadCalls++
+		c.uploadServer = server
+		c.uploadTool = tool
 		copied := make(map[string]any, len(args))
 		for key, value := range args {
 			copied[key] = value
@@ -304,6 +314,69 @@ func writePersonalEmotionTestImage(t *testing.T, name string, size int) string {
 	return filePath
 }
 
+func writeLargePersonalEmotionPNG(t *testing.T) (string, []byte) {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 1600, 1600))
+	seed := uint32(1)
+	for y := 0; y < img.Bounds().Dy(); y++ {
+		for x := 0; x < img.Bounds().Dx(); x++ {
+			seed = seed*1664525 + 1013904223
+			img.SetRGBA(x, y, color.RGBA{
+				R: uint8(seed >> 24),
+				G: uint8(seed >> 16),
+				B: uint8(seed >> 8),
+				A: 255,
+			})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	if buf.Len() <= int(personalEmotionImageMaxBytes) {
+		t.Fatalf("test PNG size = %d, want > %d", buf.Len(), personalEmotionImageMaxBytes)
+	}
+	filePath := filepath.Join(t.TempDir(), "large.png")
+	if err := os.WriteFile(filePath, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return filePath, buf.Bytes()
+}
+
+func writeLargePersonalEmotionGIF(t *testing.T) (string, []byte) {
+	t.Helper()
+	palette := make(color.Palette, 0, 256)
+	for i := 0; i < 256; i++ {
+		palette = append(palette, color.RGBA{R: uint8(i), G: uint8(255 - i), B: uint8((i * 37) % 256), A: 255})
+	}
+	anim := &gif.GIF{LoopCount: 0}
+	seed := uint32(7)
+	for frameIndex := 0; frameIndex < 30; frameIndex++ {
+		frame := image.NewPaletted(image.Rect(0, 0, 360, 360), palette)
+		for y := 0; y < 360; y++ {
+			for x := 0; x < 360; x++ {
+				seed = seed*1664525 + 1013904223
+				frame.SetColorIndex(x, y, uint8(seed>>24))
+			}
+		}
+		anim.Image = append(anim.Image, frame)
+		anim.Delay = append(anim.Delay, 8)
+		anim.Disposal = append(anim.Disposal, gif.DisposalBackground)
+	}
+	var buf bytes.Buffer
+	if err := gif.EncodeAll(&buf, anim); err != nil {
+		t.Fatal(err)
+	}
+	if buf.Len() <= int(personalEmotionImageMaxBytes) {
+		t.Fatalf("test GIF size = %d, want > %d", buf.Len(), personalEmotionImageMaxBytes)
+	}
+	filePath := filepath.Join(t.TempDir(), "large.gif")
+	if err := os.WriteFile(filePath, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return filePath, buf.Bytes()
+}
+
 func executePersonalEmotionCallerCommand(t *testing.T, caller edition.ToolCaller, args ...string) error {
 	t.Helper()
 	installHelpersCoreDeps(t, caller)
@@ -317,9 +390,9 @@ func executePersonalEmotionCallerCommand(t *testing.T, caller edition.ToolCaller
 }
 
 func TestChatEmotionFavoriteFilePathUploadsThenFavorites(t *testing.T) {
-	// AC-01: --file-path 先经 im/upload_media (chat_image) 取 mediaIdV1，再复用收藏链路。
+	// AC-01: --file-path 先经钉钉文件服务 upload_media (chat_image) 取 mediaId，再复用收藏链路。
 	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 16)
-	caller := &personalEmotionUploadCaller{uploadText: `{"success":true,"logId":"log-1","mediaIdV2":"$v2$","mediaIdV1":"@v1-media"}`}
+	caller := &personalEmotionUploadCaller{uploadText: `{"success":true,"logId":"log-1","mediaIdV2":"$v2-media","mediaIdV2Url":"https://down.dingtalk.com/ddmedia/v2.jpg","message":"图片上传成功。","imageType":"png","bizType":"chat_image"}`}
 	err := executePersonalEmotionCallerCommand(t, caller,
 		"emotion", "favorite",
 		"--file-path", imagePath,
@@ -330,6 +403,9 @@ func TestChatEmotionFavoriteFilePathUploadsThenFavorites(t *testing.T) {
 	}
 	if caller.uploadCalls != 1 {
 		t.Fatalf("upload calls = %d, want 1", caller.uploadCalls)
+	}
+	if caller.uploadServer != personalEmotionUploadServerID || caller.uploadTool != personalEmotionUploadMediaTool {
+		t.Fatalf("upload target = %s/%s, want %s/%s", caller.uploadServer, caller.uploadTool, personalEmotionUploadServerID, personalEmotionUploadMediaTool)
 	}
 	imageData, readErr := os.ReadFile(imagePath)
 	if readErr != nil {
@@ -346,9 +422,65 @@ func TestChatEmotionFavoriteFilePathUploadsThenFavorites(t *testing.T) {
 	if len(caller.favoriteCalls) != 1 {
 		t.Fatalf("favorite calls = %d, want 1", len(caller.favoriteCalls))
 	}
-	want := map[string]any{"mediaId": "@v1-media", "name": "本地表情"}
+	want := map[string]any{"mediaId": "$v2-media", "name": "本地表情"}
 	if !reflect.DeepEqual(caller.favoriteCalls[0], want) {
 		t.Fatalf("favorite args = %#v, want %#v", caller.favoriteCalls[0], want)
+	}
+}
+
+func TestChatEmotionFavoriteFilePathCompressesLargePNGBeforeUpload(t *testing.T) {
+	// AC-01b: 超过 2MB 的静态图先本地压缩，再以压缩后的 jpg 内容上传。
+	imagePath, original := writeLargePersonalEmotionPNG(t)
+	caller := &personalEmotionUploadCaller{uploadText: `{"success":true,"mediaIdV2":"$v2-media"}`}
+	err := executePersonalEmotionCallerCommand(t, caller, "emotion", "favorite", "--file-path", imagePath)
+	if err != nil {
+		t.Fatalf("large png favorite returned error: %v", err)
+	}
+	if caller.uploadCalls != 1 || len(caller.favoriteCalls) != 1 {
+		t.Fatalf("calls: upload=%d favorite=%d", caller.uploadCalls, len(caller.favoriteCalls))
+	}
+	if got := caller.uploadArgs[0]["imageType"]; got != "jpg" {
+		t.Fatalf("compressed imageType = %v, want jpg", got)
+	}
+	content, err := base64.StdEncoding.DecodeString(caller.uploadArgs[0]["content"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(content) > int(personalEmotionImageMaxBytes) || len(content) >= len(original) {
+		t.Fatalf("compressed size = %d original = %d limit = %d", len(content), len(original), personalEmotionImageMaxBytes)
+	}
+	if _, err := jpeg.Decode(bytes.NewReader(content)); err != nil {
+		t.Fatalf("compressed content is not jpeg: %v", err)
+	}
+}
+
+func TestChatEmotionFavoriteFilePathCompressesLargeGIFKeepingAnimation(t *testing.T) {
+	// AC-01c: 超过 2MB 的 GIF 压缩后仍以 gif 上传，并保留多帧动图。
+	imagePath, original := writeLargePersonalEmotionGIF(t)
+	caller := &personalEmotionUploadCaller{uploadText: `{"success":true,"mediaIdV2":"$v2-media"}`}
+	err := executePersonalEmotionCallerCommand(t, caller, "emotion", "favorite", "--file-path", imagePath)
+	if err != nil {
+		t.Fatalf("large gif favorite returned error: %v", err)
+	}
+	if caller.uploadCalls != 1 || len(caller.favoriteCalls) != 1 {
+		t.Fatalf("calls: upload=%d favorite=%d", caller.uploadCalls, len(caller.favoriteCalls))
+	}
+	if got := caller.uploadArgs[0]["imageType"]; got != "gif" {
+		t.Fatalf("compressed imageType = %v, want gif", got)
+	}
+	content, err := base64.StdEncoding.DecodeString(caller.uploadArgs[0]["content"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(content) > int(personalEmotionImageMaxBytes) || len(content) >= len(original) {
+		t.Fatalf("compressed size = %d original = %d limit = %d", len(content), len(original), personalEmotionImageMaxBytes)
+	}
+	anim, err := gif.DecodeAll(bytes.NewReader(content))
+	if err != nil {
+		t.Fatalf("compressed content is not gif: %v", err)
+	}
+	if len(anim.Image) < 2 {
+		t.Fatalf("compressed gif frames = %d, want animated", len(anim.Image))
 	}
 }
 
@@ -375,6 +507,10 @@ func TestChatEmotionFavoriteFilePathRejectsInvalidLocalFiles(t *testing.T) {
 	if err := os.WriteFile(oversizePath, make([]byte, personalEmotionImageMaxBytes+1), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	tooLargePath := filepath.Join(t.TempDir(), "too-large.png")
+	if err := os.WriteFile(tooLargePath, make([]byte, personalEmotionImageAutoCompressBytes+1), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name    string
 		path    string
@@ -382,7 +518,8 @@ func TestChatEmotionFavoriteFilePathRejectsInvalidLocalFiles(t *testing.T) {
 	}{
 		{name: "missing file", path: filepath.Join(t.TempDir(), "absent.png"), wantErr: "cannot read local image"},
 		{name: "directory", path: t.TempDir(), wantErr: "directory"},
-		{name: "oversize", path: oversizePath, wantErr: "exceeds the 10MB limit"},
+		{name: "oversize decode failure", path: oversizePath, wantErr: "automatic compression failed"},
+		{name: "too large for automatic compression", path: tooLargePath, wantErr: "exceeds the 10MB automatic compression limit"},
 		{name: "unsupported extension", path: writePersonalEmotionTestImage(t, "pic.tiff", 4), wantErr: "only supports"},
 		{name: "no extension", path: writePersonalEmotionTestImage(t, "plainfile", 4), wantErr: "only supports"},
 	}
@@ -455,18 +592,22 @@ func TestChatEmotionFavoriteFilePathUploadFailureSurfacesServerError(t *testing.
 	}
 }
 
-func TestChatEmotionFavoriteFilePathRequiresMediaIDV1(t *testing.T) {
-	// C-01: mediaIdV1 缺失 fail-closed，不降级 V2、不执行收藏。
+func TestChatEmotionFavoriteFilePathFallsBackToMediaIDV2(t *testing.T) {
+	// C-01: 新文件服务只返回 mediaIdV2 时，直接使用 V2 mediaId 进入收藏。
 	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 8)
 	caller := &personalEmotionUploadCaller{
 		uploadText: `{"success":true,"mediaIdV2":"$v2$","mediaIdV1":"","logId":"log-2"}`,
 	}
 	err := executePersonalEmotionCallerCommand(t, caller, "emotion", "favorite", "--file-path", imagePath)
-	if err == nil || !strings.Contains(err.Error(), "mediaIdV1") {
-		t.Fatalf("error = %v, want mediaIdV1 fail-closed message", err)
+	if err != nil {
+		t.Fatalf("mediaIdV2 fallback failed: %v", err)
 	}
-	if caller.uploadCalls != 1 || len(caller.favoriteCalls) != 0 {
-		t.Fatalf("calls after missing V1: upload=%d favorite=%d", caller.uploadCalls, len(caller.favoriteCalls))
+	if caller.uploadCalls != 1 || len(caller.favoriteCalls) != 1 {
+		t.Fatalf("calls after V2 fallback: upload=%d favorite=%d", caller.uploadCalls, len(caller.favoriteCalls))
+	}
+	want := map[string]any{"mediaId": "$v2$"}
+	if !reflect.DeepEqual(caller.favoriteCalls[0], want) {
+		t.Fatalf("favorite args = %#v, want %#v", caller.favoriteCalls[0], want)
 	}
 }
 
@@ -564,8 +705,8 @@ func TestPersonalEmotionImageFileValidation(t *testing.T) {
 	if err := os.WriteFile(overPath, make([]byte, personalEmotionImageMaxBytes+1), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := validatePersonalEmotionImageFile(overPath); err == nil {
-		t.Fatal("oversize accepted")
+	if size, imageType, err := validatePersonalEmotionImageFile(overPath); err != nil || size != personalEmotionImageMaxBytes+1 || imageType != "png" {
+		t.Fatalf("oversize extension validation: size=%d imageType=%q err=%v", size, imageType, err)
 	}
 	boundaryPath := filepath.Join(dir, "exact.png")
 	if err := os.WriteFile(boundaryPath, make([]byte, personalEmotionImageMaxBytes), 0o600); err != nil {
@@ -580,9 +721,12 @@ func TestPersonalEmotionImageFileValidation(t *testing.T) {
 }
 
 func TestPersonalEmotionUploadMediaIDParsing(t *testing.T) {
-	// 解析层表测：success=false 透传错误字段；V1 缺失 fail-closed；正常路径取 mediaIdV1。
+	// 解析层表测：success=false 透传错误字段；V1 优先；V1 缺失时兼容新文件服务 mediaIdV2。
 	if got, err := parsePersonalEmotionUploadMediaID(`{"success":true,"mediaIdV1":"@v1","mediaIdV2":"$v2$"}`); err != nil || got != "@v1" {
 		t.Fatalf("happy path = %q, %v", got, err)
+	}
+	if got, err := parsePersonalEmotionUploadMediaID(`{"bizType":"chat_image","mediaIdV2":"$iwElAqNqcGcDAQTR","mediaIdV2Url":"https://down.dingtalk.com/ddmedia/iwElAqNqcGcDAQTR.jpg","success":true,"logId":"2103f43517878108447396157e0854","message":"图片上传成功。","imageType":"jpg"}`); err != nil || got != "$iwElAqNqcGcDAQTR" {
+		t.Fatalf("mediaIdV2 path = %q, %v", got, err)
 	}
 	_, err := parsePersonalEmotionUploadMediaID(`{"success":false,"errorCode":"internalError","errorMsg":"uploadAuthFile failed","logId":"log-3"}`)
 	if err == nil {
@@ -593,8 +737,8 @@ func TestPersonalEmotionUploadMediaIDParsing(t *testing.T) {
 			t.Fatalf("error %q missing %q", err, want)
 		}
 	}
-	if _, err := parsePersonalEmotionUploadMediaID(`{"success":true,"mediaIdV2":"$v2$"}`); err == nil {
-		t.Fatal("missing mediaIdV1 accepted")
+	if _, err := parsePersonalEmotionUploadMediaID(`{"success":true}`); err == nil {
+		t.Fatal("missing mediaId accepted")
 	}
 	if _, err := parsePersonalEmotionUploadMediaID(`not-json`); err == nil {
 		t.Fatal("non-JSON accepted")

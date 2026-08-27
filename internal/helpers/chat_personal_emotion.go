@@ -1,13 +1,20 @@
 package helpers
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
+	"image"
+	"image/color"
+	"image/gif"
+	"image/jpeg"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	_ "image/png"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/cli"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
@@ -15,7 +22,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const personalEmotionUnpinnedReason = "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."
+const (
+	personalEmotionUnpinnedReason     = "Reviewed unpinned remote adapter: this executable CLI wrapper calls a remote helper that is absent from the pinned MCP metadata snapshot; no single pinned semantically equivalent interface_ref can represent the command."
+	personalEmotionUploadServerID     = "dingtalk-file"
+	personalEmotionUploadMediaTool    = "upload_media"
+	personalEmotionUploadMediaDisplay = personalEmotionUploadServerID + "/" + personalEmotionUploadMediaTool
+)
 
 func newChatEmotionCommand() *cobra.Command {
 	cmd := newGroupCommand(&cobra.Command{
@@ -129,7 +141,7 @@ func newChatEmotionFavoriteCommand() *cobra.Command {
 		RunE: runChatEmotionFavorite,
 	}
 	cmd.Flags().String("media-id", "", "待收藏 mediaId；与 --file-path 二选一必填")
-	cmd.Flags().String("file-path", "", "本地图片路径 (jpg/jpeg/png/gif/webp/bmp，≤10MB)；与 --media-id 二选一必填")
+	cmd.Flags().String("file-path", "", "本地图片路径 (jpg/jpeg/png/gif/webp/bmp，≤10MB；超过2MB会先自动压缩)；与 --media-id 二选一必填")
 	cmd.Flags().String("name", "", "表情名称")
 	cmd.Flags().String("source-conversation-id", "", "来源会话 ID；需与 --source-message-id 成对指定")
 	cmd.Flags().String("source-message-id", "", "来源消息 ID；需与 --source-conversation-id 成对指定")
@@ -171,6 +183,9 @@ func runChatEmotionFavorite(cmd *cobra.Command, _ []string) error {
 			deps.Out.PrintKeyValue("文件", image.path)
 			deps.Out.PrintKeyValue("大小", fmt.Sprintf("%d bytes", image.size))
 			deps.Out.PrintKeyValue("图片类型", image.imageType)
+			if image.compressed {
+				deps.Out.PrintKeyValue("预处理", "已自动压缩到 2MB 以内")
+			}
 			return nil
 		}
 		uploadedMediaID, err := uploadPersonalEmotionImage(cmd.Context(), image)
@@ -246,10 +261,15 @@ func validatePersonalEmotionSourcePair(sourceConversationID, sourceMessageID str
 	return nil
 }
 
-const personalEmotionImageMaxBytes = 10 * 1024 * 1024
+const (
+	personalEmotionImageMaxBytes          = 2 * 1024 * 1024
+	personalEmotionImageAutoCompressBytes = 10 * 1024 * 1024
+	personalEmotionImageMinCompressWidth  = 64
+	personalEmotionImageMinCompressHeight = 64
+)
 
 // personalEmotionImageTypes maps lowercased file extensions to the
-// im/upload_media imageType enum. jpg and jpeg stay distinct values because
+// upload_media imageType enum. jpg and jpeg stay distinct values because
 // the remote tool echoes them separately.
 var personalEmotionImageTypes = map[string]string{
 	".jpg":  "jpg",
@@ -266,10 +286,11 @@ func personalEmotionImageType(ext string) (string, bool) {
 }
 
 type personalEmotionImage struct {
-	path      string
-	size      int64
-	imageType string
-	content   string
+	path       string
+	size       int64
+	imageType  string
+	content    string
+	compressed bool
 }
 
 func validatePersonalEmotionImageFile(filePath string) (int64, string, error) {
@@ -280,12 +301,12 @@ func validatePersonalEmotionImageFile(filePath string) (int64, string, error) {
 	if info.IsDir() {
 		return 0, "", fmt.Errorf("--file-path points to a directory, expected an image file: %s", filePath)
 	}
-	if info.Size() > personalEmotionImageMaxBytes {
-		return 0, "", fmt.Errorf("--file-path image size %d bytes exceeds the 10MB limit: %s", info.Size(), filePath)
-	}
 	imageType, ok := personalEmotionImageType(filepath.Ext(filePath))
 	if !ok {
 		return 0, "", fmt.Errorf("--file-path only supports jpg/jpeg/png/gif/webp/bmp images, got: %s", filePath)
+	}
+	if info.Size() > personalEmotionImageAutoCompressBytes {
+		return 0, "", fmt.Errorf("--file-path image size %d bytes exceeds the 10MB automatic compression limit: %s；文件过大，自动压缩耗时长且容易失真，可让 AI 先压缩图片到 2MB 以内后再重试，GIF 需要保留动图帧", info.Size(), filePath)
 	}
 	return info.Size(), imageType, nil
 }
@@ -300,14 +321,236 @@ func loadPersonalEmotionImageFile(filePath string) (*personalEmotionImage, error
 		return nil, fmt.Errorf("--file-path cannot read local image %s: %w", filePath, err)
 	}
 	if int64(len(data)) > personalEmotionImageMaxBytes {
-		return nil, fmt.Errorf("--file-path image size %d bytes exceeds the 10MB limit: %s", len(data), filePath)
+		compressed, compressedImageType, err := compressPersonalEmotionImage(data, imageType)
+		if err != nil {
+			return nil, fmt.Errorf("--file-path image size %d bytes exceeds the 2MB limit and automatic compression failed: %w；可让 AI 先压缩图片到 2MB 以内后再重试，GIF 需要保留动图帧", len(data), err)
+		}
+		data = compressed
+		imageType = compressedImageType
+		size = int64(len(data))
+		if size > personalEmotionImageMaxBytes {
+			return nil, fmt.Errorf("--file-path image size %d bytes exceeds the 2MB limit after automatic compression；可让 AI 先压缩图片到 2MB 以内后再重试，GIF 需要保留动图帧", size)
+		}
+		return &personalEmotionImage{
+			path:       filePath,
+			size:       size,
+			imageType:  imageType,
+			content:    base64.StdEncoding.EncodeToString(data),
+			compressed: true,
+		}, nil
 	}
 	return &personalEmotionImage{
 		path:      filePath,
-		size:      size,
+		size:      int64(len(data)),
 		imageType: imageType,
 		content:   base64.StdEncoding.EncodeToString(data),
 	}, nil
+}
+
+func compressPersonalEmotionImage(data []byte, imageType string) ([]byte, string, error) {
+	switch imageType {
+	case "jpg", "jpeg", "png":
+		compressed, err := compressPersonalEmotionStillImage(data)
+		return compressed, "jpg", err
+	case "gif":
+		compressed, err := compressPersonalEmotionGIF(data)
+		return compressed, "gif", err
+	default:
+		return nil, "", fmt.Errorf("%s 暂不支持自动压缩", imageType)
+	}
+}
+
+func compressPersonalEmotionStillImage(data []byte) ([]byte, error) {
+	src, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("图片解码失败: %w", err)
+	}
+	bounds := src.Bounds()
+	srcWidth, srcHeight := bounds.Dx(), bounds.Dy()
+	for _, quality := range []int{88, 84, 80, 76, 72, 68} {
+		for _, percent := range []int{100, 92, 84, 76, 68, 60, 52, 44, 36, 30, 25} {
+			width := maxInt(personalEmotionImageMinCompressWidth, srcWidth*percent/100)
+			height := maxInt(personalEmotionImageMinCompressHeight, srcHeight*percent/100)
+			scaled := resizeBilinear(src, width, height)
+			var out bytes.Buffer
+			if err := jpeg.Encode(&out, scaled, &jpeg.Options{Quality: quality}); err != nil {
+				return nil, fmt.Errorf("图片压缩失败: %w", err)
+			}
+			if int64(out.Len()) <= personalEmotionImageMaxBytes {
+				return out.Bytes(), nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("压缩后仍超过 2MB")
+}
+
+func compressPersonalEmotionGIF(data []byte) ([]byte, error) {
+	src, err := gif.DecodeAll(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("GIF 解码失败: %w", err)
+	}
+	if len(src.Image) == 0 {
+		return nil, fmt.Errorf("GIF 没有可压缩的动图帧")
+	}
+	srcWidth, srcHeight := src.Config.Width, src.Config.Height
+	if srcWidth <= 0 || srcHeight <= 0 {
+		return nil, fmt.Errorf("GIF 尺寸无效")
+	}
+	for _, frameStep := range []int{1, 2, 3, 4} {
+		for _, percent := range []int{100, 92, 84, 76, 68, 60, 52, 44, 36, 30, 25} {
+			width := maxInt(personalEmotionImageMinCompressWidth, srcWidth*percent/100)
+			height := maxInt(personalEmotionImageMinCompressHeight, srcHeight*percent/100)
+			compressed := encodePersonalEmotionGIFCandidate(src, width, height, frameStep)
+			if len(compressed.Image) < 2 && len(src.Image) > 1 {
+				continue
+			}
+			var out bytes.Buffer
+			if err := gif.EncodeAll(&out, compressed); err != nil {
+				return nil, fmt.Errorf("GIF 压缩失败: %w", err)
+			}
+			if int64(out.Len()) <= personalEmotionImageMaxBytes {
+				return out.Bytes(), nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("压缩后仍超过 2MB")
+}
+
+func encodePersonalEmotionGIFCandidate(src *gif.GIF, width, height, frameStep int) *gif.GIF {
+	indexes := personalEmotionGIFFrameIndexes(len(src.Image), frameStep)
+	compressed := clonePersonalEmotionGIFMeta(src, width, height)
+	compressed.Delay = make([]int, 0, len(indexes))
+	compressed.Disposal = make([]byte, 0, len(indexes))
+	for pos, frameIndex := range indexes {
+		frame := src.Image[frameIndex]
+		scaled := resizeBilinear(frame, width, height)
+		paletted := image.NewPaletted(scaled.Bounds(), frame.Palette)
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				paletted.Set(x, y, scaled.At(x, y))
+			}
+		}
+		compressed.Image = append(compressed.Image, paletted)
+		compressed.Delay = append(compressed.Delay, personalEmotionGIFDelay(src.Delay, frameIndex, indexes, pos))
+		compressed.Disposal = append(compressed.Disposal, personalEmotionGIFDisposal(src.Disposal, frameIndex))
+	}
+	return compressed
+}
+
+func personalEmotionGIFFrameIndexes(frameCount, step int) []int {
+	if step < 1 {
+		step = 1
+	}
+	indexes := make([]int, 0, (frameCount+step-1)/step)
+	for i := 0; i < frameCount; i += step {
+		indexes = append(indexes, i)
+	}
+	if frameCount > 1 && len(indexes) < 2 {
+		indexes = append(indexes, frameCount-1)
+	}
+	return indexes
+}
+
+func personalEmotionGIFDelay(delays []int, frameIndex int, indexes []int, pos int) int {
+	if len(delays) == 0 {
+		return 0
+	}
+	nextIndex := len(delays)
+	if pos+1 < len(indexes) {
+		nextIndex = indexes[pos+1]
+	}
+	total := 0
+	for i := frameIndex; i < nextIndex && i < len(delays); i++ {
+		total += delays[i]
+	}
+	return total
+}
+
+func personalEmotionGIFDisposal(disposals []byte, frameIndex int) byte {
+	if frameIndex >= 0 && frameIndex < len(disposals) {
+		return disposals[frameIndex]
+	}
+	return 0
+}
+
+func resizeBilinear(src image.Image, width, height int) *image.RGBA {
+	dst := image.NewRGBA(image.Rect(0, 0, width, height))
+	bounds := src.Bounds()
+	srcWidth, srcHeight := bounds.Dx(), bounds.Dy()
+	if srcWidth <= 1 || srcHeight <= 1 || width <= 1 || height <= 1 {
+		return resizeNearest(src, width, height)
+	}
+	for y := 0; y < height; y++ {
+		fy := float64(y) * float64(srcHeight-1) / float64(height-1)
+		y0 := int(fy)
+		y1 := minInt(y0+1, srcHeight-1)
+		wy := fy - float64(y0)
+		for x := 0; x < width; x++ {
+			fx := float64(x) * float64(srcWidth-1) / float64(width-1)
+			x0 := int(fx)
+			x1 := minInt(x0+1, srcWidth-1)
+			wx := fx - float64(x0)
+			c00 := color.RGBAModel.Convert(src.At(bounds.Min.X+x0, bounds.Min.Y+y0)).(color.RGBA)
+			c10 := color.RGBAModel.Convert(src.At(bounds.Min.X+x1, bounds.Min.Y+y0)).(color.RGBA)
+			c01 := color.RGBAModel.Convert(src.At(bounds.Min.X+x0, bounds.Min.Y+y1)).(color.RGBA)
+			c11 := color.RGBAModel.Convert(src.At(bounds.Min.X+x1, bounds.Min.Y+y1)).(color.RGBA)
+			dst.SetRGBA(x, y, bilinearColor(c00, c10, c01, c11, wx, wy))
+		}
+	}
+	return dst
+}
+
+func bilinearColor(c00, c10, c01, c11 color.RGBA, wx, wy float64) color.RGBA {
+	return color.RGBA{
+		R: bilinearChannel(c00.R, c10.R, c01.R, c11.R, wx, wy),
+		G: bilinearChannel(c00.G, c10.G, c01.G, c11.G, wx, wy),
+		B: bilinearChannel(c00.B, c10.B, c01.B, c11.B, wx, wy),
+		A: bilinearChannel(c00.A, c10.A, c01.A, c11.A, wx, wy),
+	}
+}
+
+func bilinearChannel(c00, c10, c01, c11 uint8, wx, wy float64) uint8 {
+	top := float64(c00)*(1-wx) + float64(c10)*wx
+	bottom := float64(c01)*(1-wx) + float64(c11)*wx
+	return uint8(top*(1-wy) + bottom*wy + 0.5)
+}
+
+func resizeNearest(src image.Image, width, height int) *image.RGBA {
+	dst := image.NewRGBA(image.Rect(0, 0, width, height))
+	bounds := src.Bounds()
+	srcWidth, srcHeight := bounds.Dx(), bounds.Dy()
+	for y := 0; y < height; y++ {
+		srcY := bounds.Min.Y + y*srcHeight/height
+		for x := 0; x < width; x++ {
+			srcX := bounds.Min.X + x*srcWidth/width
+			dst.Set(x, y, src.At(srcX, srcY))
+		}
+	}
+	return dst
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func clonePersonalEmotionGIFMeta(src *gif.GIF, width, height int) *gif.GIF {
+	return &gif.GIF{
+		Delay:           append([]int(nil), src.Delay...),
+		LoopCount:       src.LoopCount,
+		Disposal:        append([]byte(nil), src.Disposal...),
+		Config:          image.Config{ColorModel: color.Palette(nil), Width: width, Height: height},
+		BackgroundIndex: src.BackgroundIndex,
+	}
 }
 
 func uploadPersonalEmotionImage(ctx context.Context, image *personalEmotionImage) (string, error) {
@@ -316,13 +559,13 @@ func uploadPersonalEmotionImage(ctx context.Context, image *personalEmotionImage
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
-	text, err := callMCPToolReturnTextOnServer(ctx, "im", "upload_media", map[string]any{
+	text, err := callMCPToolReturnTextOnServer(ctx, personalEmotionUploadServerID, personalEmotionUploadMediaTool, map[string]any{
 		"content":   image.content,
 		"imageType": image.imageType,
 		"bizType":   "chat_image",
 	})
 	if err != nil {
-		return "", fmt.Errorf("上传本地图片到 im/upload_media 失败: %w", err)
+		return "", fmt.Errorf("上传本地图片到 %s 失败: %w", personalEmotionUploadMediaDisplay, err)
 	}
 	return parsePersonalEmotionUploadMediaID(text)
 }
@@ -338,7 +581,7 @@ func parsePersonalEmotionUploadMediaID(text string) (string, error) {
 		Message   string `json:"message"`
 	}
 	if err := unmarshalJSONUseNumber(text, &payload); err != nil {
-		return "", fmt.Errorf("im/upload_media 返回值无法解析为 JSON: %w", err)
+		return "", fmt.Errorf("%s 返回值无法解析为 JSON: %w", personalEmotionUploadMediaDisplay, err)
 	}
 	if !payload.Success {
 		detail := strings.TrimSpace(payload.ErrorMsg)
@@ -355,11 +598,14 @@ func parsePersonalEmotionUploadMediaID(text string) (string, error) {
 		if logID := strings.TrimSpace(payload.LogID); logID != "" {
 			detail = strings.TrimSpace(detail + " (logId=" + logID + ")")
 		}
-		return "", fmt.Errorf("im/upload_media 上传失败: %s", detail)
+		return "", fmt.Errorf("%s 上传失败: %s", personalEmotionUploadMediaDisplay, detail)
 	}
 	mediaID := strings.TrimSpace(payload.MediaIDV1)
 	if mediaID == "" {
-		return "", fmt.Errorf("im/upload_media 返回 success=true 但缺少 mediaIdV1 (mediaIdV2=%s)；个人收藏表情链路要求 V1 mediaId，拒绝降级使用 V2", strings.TrimSpace(payload.MediaIDV2))
+		mediaID = strings.TrimSpace(payload.MediaIDV2)
+	}
+	if mediaID == "" {
+		return "", fmt.Errorf("%s 返回 success=true 但缺少 mediaIdV1/mediaIdV2", personalEmotionUploadMediaDisplay)
 	}
 	return mediaID, nil
 }
@@ -399,13 +645,13 @@ func personalEmotionFavoriteContract() LeafContract {
 			ProductID: "chat", Name: "favorite_personal_emotion",
 			CanonicalPath: "chat.favorite_personal_emotion", CLIPath: "chat emotion favorite", PrimaryCLIPath: "chat emotion favorite",
 		},
-		Description: "将 mediaId 或本地图片新增到当前用户的个人收藏表情（本地图片经 im/upload_media 上传后收藏）",
+		Description: "将 mediaId 或本地图片新增到当前用户的个人收藏表情（本地图片经钉钉文件服务 upload_media 上传后收藏）",
 		Interface: &contract.InterfaceSpec{
 			Mode: "composite", Availability: "available", Reason: personalEmotionUnpinnedReason,
 		},
 		Selection: contract.SelectionSpec{
 			AgentSummary: "新增当前用户的个人收藏表情，支持已有 mediaId 或本地图片文件",
-			UseWhen:      []string{"用户要把一个 mediaId 或本地图片文件 (jpg/jpeg/png/gif/webp/bmp，≤10MB) 收藏为个人表情时"},
+			UseWhen:      []string{"用户要把一个 mediaId 或本地图片文件 (jpg/jpeg/png/gif/webp/bmp，≤10MB；超过2MB会先自动压缩) 收藏为个人表情时"},
 			AvoidWhen:    []string{"收藏消息使用 chat message add-favorite"},
 			Examples: []string{
 				`dws chat emotion favorite --media-id <mediaId> --name "赞"`,
