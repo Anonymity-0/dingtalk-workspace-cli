@@ -241,10 +241,12 @@ request after a short takeover grace period. Null is safe from the suppressed
 event path because the built-in Actions identity cannot update `main`; other
 permitted identities produce either a main push or the trusted closed-PR
 repair. Drafts skip the identity step, while `ready_for_review`, `edited`,
-`auto_merge_enabled`, and `auto_merge_disabled` explicitly start fresh admission
-for readiness, title, and merge-request changes. Router does not react to
-`auto_merge_disabled`, so a
-human can deliberately leave the PR manual-only for break-glass handling.
+and revision events explicitly start fresh admission for readiness, title, and
+code changes. `auto_merge_enabled` wakes only the lightweight base-owned
+Router; because it does not change the head SHA, it reuses the existing nine
+admission results instead of restarting the full graph. Neither CI nor Router
+reacts to `auto_merge_disabled`, so a human can deliberately leave the PR
+manual-only for break-glass handling.
 Reviewer routing remains available. The protected-main push that deploys the
 workflow automatically migrates every open, ready non-App request and repairs
 unsafe App metadata; it disables workflow-skipping requests for correction.
@@ -258,7 +260,12 @@ re-enumerates open `main` PRs through the API and attempts only an exact
 App-owned request through the synchronous PR merge endpoint. Immediately before
 each attempt it revalidates the App's ruleset boundary and PR intent, supplies
 the current head SHA, and treats server-declared not-ready or
-concurrent-revision responses as retriable. The live preflight requires the
+concurrent-revision responses as retriable. An exact behind-main state is also
+retriable before the merge request. If GitHub instead reports that same state
+as HTTP 403 `Resource not accessible by integration`, reconciliation recovers
+only after a same-token read proves the unchanged open head, repository-owned
+`main` base, and exact behind mergeability; every other 403 remains a hard
+failure. The live preflight requires the
 exact repository-owned approval ruleset and exact nine-check strict quality
 ruleset, with every context bound to the GitHub Actions App
 (`integration_id=15368`) and the Reviewer Router App unable to bypass either;

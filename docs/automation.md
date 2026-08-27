@@ -132,10 +132,12 @@ the built-in Actions identity cannot pass the writer rule; other permitted
 identities emit either a protected-main push or the trusted closed-PR repair.
 Draft PRs skip this identity check; the explicit `ready_for_review` trigger
 reruns admission when they become merge-eligible,
-while `edited` and `auto_merge_enabled` rerun both workflows when the PR title
-or merge request changes. A human `auto_merge_disabled` event reruns CI without
-silently re-enabling the request, leaving it available only to the designated
-break-glass identity. The required `Test` context rejects GitHub workflow-skip
+while `edited` reruns admission and Router when the PR title changes.
+`auto_merge_enabled` wakes only the lightweight base-owned Router; it does not
+restart full admission for the unchanged head SHA. A human
+`auto_merge_disabled` event starts neither workflow, so the request remains
+manual-only for the designated break-glass identity. The required `Test`
+context rejects GitHub workflow-skip
 directives in the PR title or an existing auto-merge request and verifies the
 repository's reviewed `MERGE_MESSAGE` title plus `PR_TITLE` or `BLANK` body
 defaults. GitHub does not expose those merge-related settings to the read-only
@@ -165,11 +167,17 @@ ruleset with one latest-head approval and exactly one repository-owned
 `never` on both and on every other non-writer ruleset. Every required context
 must be bound to the GitHub Actions App (`integration_id=15368`); a missing,
 different, or duplicate context/source entry fails closed together with
-deletion or weakening of either gate. HTTP 405 means the PR is not ready,
-while 409 means its revision
-changed; either remains open for the next event. Other failures make
-reconciliation red. A concurrent native merge is accepted only after the final
-PR state proves the exact head, App identity, and non-empty merge SHA.
+deletion or weakening of either gate. A final PR state that is explicitly
+`behind` remains open for the next event without calling the merge endpoint.
+HTTP 405 means the PR is not ready, while 409 means its revision changed; both
+remain retriable. GitHub can also return HTTP 403 with
+`Resource not accessible by integration` for this protected, behind-main merge
+denial. That response is retriable only when a same-token read proves the PR is
+still open at the exact expected head and repository-owned `main` base with
+`mergeable=true` and `mergeable_state=behind`. Every other 403 and all other
+failures make reconciliation red. A concurrent native merge is accepted only
+after the final PR state proves the exact head, App identity, and non-empty
+merge SHA.
 A staggered twice-hourly schedule provides eventual recovery if a webhook or
 workflow completion is delayed, and `workflow_dispatch` remains the on-demand
 repair path.

@@ -5,7 +5,10 @@ on:
     branches:
       - main
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited, auto_merge_enabled, auto_merge_disabled]
+    # Auto-merge metadata is governed by the base-owned Reviewer Router. It
+    # does not change the head SHA, so it must not restart this full admission
+    # graph or evict useful in-flight work for the same revision.
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
 
 permissions:
   contents: read
@@ -1300,6 +1303,8 @@ jobs:
           echo "COVERAGE_BASE_REF=$base_ref" >> "$GITHUB_ENV"
 
       - name: Run and enforce macOS changed-code coverage
+        env:
+          COVERAGE_PLATFORM_TIMEOUT: 15m
         run: make coverage-gate-platform BASE_REF="$COVERAGE_BASE_REF" PROFILE=coverage-darwin.txt
 
       - name: Upload macOS coverage artifact

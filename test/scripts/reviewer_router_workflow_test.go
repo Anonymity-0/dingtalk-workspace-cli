@@ -622,6 +622,7 @@ func TestReviewerRouterWorkflowContract(t *testing.T) {
 		"finalPull.base.repo?.full_name?.toLowerCase() !== repositorySource",
 		"!hasSafeAppMergeIntent(",
 		"changed at final synchronous merge preflight",
+		"is behind main at final synchronous merge preflight",
 		"github.rest.pulls.merge",
 		"sha: expectedHeadSha",
 		"merge_method: 'merge'",
@@ -633,8 +634,12 @@ func TestReviewerRouterWorkflowContract(t *testing.T) {
 		"typeof mergeResult.sha !== 'string'",
 		"GitHub returned a successful merge without a merge commit SHA",
 		"responseMergeSha = requireSuccessfulMergeResponse(mergeResult)",
-		"![404, 405, 409].includes(status)",
+		"![403, 404, 405, 409].includes(status)",
 		"function classifyMergeAttemptRecovery(",
+		"error.message,",
+		"errorMessage === 'Resource not accessible by integration'",
+		"latestPull.mergeable === true",
+		"latestPull.mergeable_state === 'behind'",
 		"return {outcome: 'merged', finalState}",
 		"return {outcome: 'closed'}",
 		"return {outcome: 'not_ready'}",
@@ -788,8 +793,19 @@ func TestCodeAdmissionEnforcesReviewerRouterWriterBoundary(t *testing.T) {
 		t.Fatalf("ReadFile(ci.yml) error = %v", err)
 	}
 	workflow := string(data)
-	if !strings.Contains(workflow, "pull_request:\n    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited, auto_merge_enabled, auto_merge_disabled]") {
-		t.Error("CI must rerun admission when Draft state or merge metadata changes")
+	if !strings.Contains(workflow, "pull_request:\n    # Auto-merge metadata is governed by the base-owned Reviewer Router.") ||
+		!strings.Contains(workflow, "types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]") {
+		t.Error("CI must rerun admission only when the revision, readiness, or reviewed title changes")
+	}
+	headerEnd := strings.Index(workflow, "\npermissions:\n")
+	if headerEnd < 0 {
+		t.Fatal("CI workflow missing permissions boundary")
+	}
+	triggerHeader := workflow[:headerEnd]
+	for _, forbidden := range []string{"auto_merge_enabled", "auto_merge_disabled"} {
+		if strings.Contains(triggerHeader, forbidden) {
+			t.Errorf("CI pull_request triggers must not include metadata-only event %q", forbidden)
+		}
 	}
 	start := strings.Index(workflow, "\n  test:\n")
 	end := strings.Index(workflow, "\n  test-darwin:\n")
