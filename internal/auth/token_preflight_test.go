@@ -173,6 +173,192 @@ func TestExactOrgCurrentRefreshRejectsUnreadableOrgMirror(t *testing.T) {
 	}
 }
 
+func TestSaveLoginTokenDataRepairsTargetOrgCiphertextMismatch(t *testing.T) {
+	cleanupKeychain(t)
+	t.Setenv(keychain.DisableKeychainEnv, "1")
+	configDir := t.TempDir()
+	legacy := testToken("legacy-readable", "corp_login_repair", "Login Repair Org")
+	legacy.UserID = ""
+	if err := SaveProfiles(configDir, &ProfilesConfig{
+		Version:        profilesVersion,
+		CurrentProfile: legacy.CorpID,
+		Profiles: []Profile{{
+			Name:     legacy.CorpName,
+			CorpID:   legacy.CorpID,
+			CorpName: legacy.CorpName,
+		}},
+	}); err != nil {
+		t.Fatalf("SaveProfiles() error = %v", err)
+	}
+	if err := SaveTokenDataKeychain(legacy); err != nil {
+		t.Fatalf("SaveTokenDataKeychain(legacy) error = %v", err)
+	}
+	dekPath := filepath.Join(keychain.StorageDir(keychain.Service), "dek")
+	primaryDEK, err := os.ReadFile(dekPath)
+	if err != nil {
+		t.Fatalf("ReadFile(primary DEK) error = %v", err)
+	}
+	if err := os.WriteFile(dekPath, bytes.Repeat([]byte{0x6d}, 32), 0o600); err != nil {
+		t.Fatalf("WriteFile(alternate DEK) error = %v", err)
+	}
+	staleOrg := testToken("stale-unreadable", legacy.CorpID, legacy.CorpName)
+	if err := SaveTokenDataKeychainForCorpID(staleOrg.CorpID, staleOrg); err != nil {
+		t.Fatalf("SaveTokenDataKeychainForCorpID(stale) error = %v", err)
+	}
+	if err := os.WriteFile(dekPath, primaryDEK, 0o600); err != nil {
+		t.Fatalf("restore primary DEK error = %v", err)
+	}
+	if _, err := LoadTokenDataKeychainForCorpID(legacy.CorpID); !keychain.IsCiphertextKeyMismatch(err) {
+		t.Fatalf("LoadTokenDataKeychainForCorpID() error = %v, want ciphertext mismatch", err)
+	}
+
+	incoming := testToken("fresh-login", legacy.CorpID, legacy.CorpName)
+	incoming.UserID = ""
+	if err := SaveLoginTokenData(configDir, incoming); err != nil {
+		t.Fatalf("SaveLoginTokenData() error = %v", err)
+	}
+	assertOrganizationTokenAccessForTest(t, incoming.CorpID, incoming.AccessToken, "")
+	global, err := LoadTokenDataKeychain()
+	if err != nil {
+		t.Fatalf("LoadTokenDataKeychain() error = %v", err)
+	}
+	if global.AccessToken != incoming.AccessToken {
+		t.Fatalf("global token = %q, want %q", global.AccessToken, incoming.AccessToken)
+	}
+}
+
+func TestSaveLoginTokenDataRepairsAllThreeSlotsOnCiphertextMismatch(t *testing.T) {
+	cleanupKeychain(t)
+	t.Setenv(keychain.DisableKeychainEnv, "1")
+	configDir := t.TempDir()
+	legacy := testToken("legacy-unreadable", "corp_global_gate", "Global Gate Org")
+	legacy.UserID = ""
+	if err := SaveProfiles(configDir, &ProfilesConfig{
+		Version:        profilesVersion,
+		CurrentProfile: legacy.CorpID,
+		Profiles: []Profile{{
+			Name:     legacy.CorpName,
+			CorpID:   legacy.CorpID,
+			CorpName: legacy.CorpName,
+		}},
+	}); err != nil {
+		t.Fatalf("SaveProfiles() error = %v", err)
+	}
+	// Seed the keychain storage so the primary DEK exists before it is read,
+	// then remove the seeded slot so both slots below are fresh writes under
+	// the alternate DEK (overwriting an existing slot re-validates its DEK).
+	if err := SaveTokenDataKeychain(legacy); err != nil {
+		t.Fatalf("SaveTokenDataKeychain(legacy) error = %v", err)
+	}
+	if err := DeleteTokenDataKeychain(); err != nil {
+		t.Fatalf("DeleteTokenDataKeychain() error = %v", err)
+	}
+	dekPath := filepath.Join(keychain.StorageDir(keychain.Service), "dek")
+	primaryDEK, err := os.ReadFile(dekPath)
+	if err != nil {
+		t.Fatalf("ReadFile(primary DEK) error = %v", err)
+	}
+	// Encrypt both the global mirror and the target org slot with an alternate
+	// DEK so neither can be decrypted once the primary DEK is restored.
+	if err := os.WriteFile(dekPath, bytes.Repeat([]byte{0x6d}, 32), 0o600); err != nil {
+		t.Fatalf("WriteFile(alternate DEK) error = %v", err)
+	}
+	if err := SaveTokenDataKeychain(legacy); err != nil {
+		t.Fatalf("SaveTokenDataKeychain(legacy, alternate DEK) error = %v", err)
+	}
+	staleOrg := testToken("stale-unreadable", legacy.CorpID, legacy.CorpName)
+	if err := SaveTokenDataKeychainForCorpID(staleOrg.CorpID, staleOrg); err != nil {
+		t.Fatalf("SaveTokenDataKeychainForCorpID(stale) error = %v", err)
+	}
+	if err := os.WriteFile(dekPath, primaryDEK, 0o600); err != nil {
+		t.Fatalf("restore primary DEK error = %v", err)
+	}
+	if _, err := LoadTokenDataKeychain(); !keychain.IsCiphertextKeyMismatch(err) {
+		t.Fatalf("LoadTokenDataKeychain() error = %v, want ciphertext mismatch", err)
+	}
+	if _, err := LoadTokenDataKeychainForCorpID(legacy.CorpID); !keychain.IsCiphertextKeyMismatch(err) {
+		t.Fatalf("LoadTokenDataKeychainForCorpID() error = %v, want ciphertext mismatch", err)
+	}
+
+	incoming := testToken("fresh-login", legacy.CorpID, legacy.CorpName)
+	incoming.UserID = ""
+	if err := SaveLoginTokenData(configDir, incoming); err != nil {
+		t.Fatalf("SaveLoginTokenData() error = %v", err)
+	}
+	// The repair must clear all three mismatch slots so the new token lands.
+	global, err := LoadTokenDataKeychain()
+	if err != nil {
+		t.Fatalf("LoadTokenDataKeychain() error = %v", err)
+	}
+	if global.AccessToken != incoming.AccessToken {
+		t.Fatalf("global token = %q, want %q", global.AccessToken, incoming.AccessToken)
+	}
+	assertOrganizationTokenAccessForTest(t, incoming.CorpID, incoming.AccessToken, "")
+}
+
+func TestSaveLoginTokenDataRepairAbortsUntouchedOnTransientReadError(t *testing.T) {
+	cleanupKeychain(t)
+	t.Setenv(keychain.DisableKeychainEnv, "1")
+	configDir := t.TempDir()
+	legacy := testToken("legacy-readable", "corp_transient_guard", "Transient Guard Org")
+	legacy.UserID = ""
+	if err := SaveProfiles(configDir, &ProfilesConfig{
+		Version:        profilesVersion,
+		CurrentProfile: legacy.CorpID,
+		Profiles: []Profile{{
+			Name:     legacy.CorpName,
+			CorpID:   legacy.CorpID,
+			CorpName: legacy.CorpName,
+		}},
+	}); err != nil {
+		t.Fatalf("SaveProfiles() error = %v", err)
+	}
+	// Seed the keychain storage so the primary DEK exists, then re-encrypt the
+	// global slot under an alternate DEK so the check phase flags it for removal.
+	if err := SaveTokenDataKeychain(legacy); err != nil {
+		t.Fatalf("SaveTokenDataKeychain(legacy) error = %v", err)
+	}
+	if err := DeleteTokenDataKeychain(); err != nil {
+		t.Fatalf("DeleteTokenDataKeychain() error = %v", err)
+	}
+	dekPath := filepath.Join(keychain.StorageDir(keychain.Service), "dek")
+	primaryDEK, err := os.ReadFile(dekPath)
+	if err != nil {
+		t.Fatalf("ReadFile(primary DEK) error = %v", err)
+	}
+	if err := os.WriteFile(dekPath, bytes.Repeat([]byte{0x6d}, 32), 0o600); err != nil {
+		t.Fatalf("WriteFile(alternate DEK) error = %v", err)
+	}
+	if err := SaveTokenDataKeychain(legacy); err != nil {
+		t.Fatalf("SaveTokenDataKeychain(legacy, alternate DEK) error = %v", err)
+	}
+	if err := os.WriteFile(dekPath, primaryDEK, 0o600); err != nil {
+		t.Fatalf("restore primary DEK error = %v", err)
+	}
+
+	// A transient read error on the org slot must abort the repair before the
+	// mismatch global slot is removed.
+	origGet := authKeychainGet
+	defer func() { authKeychainGet = origGet }()
+	transientErr := errors.New("transient keychain I/O failure")
+	authKeychainGet = func(service, account string) (string, error) {
+		if account == TokenAccountForCorpID(legacy.CorpID) {
+			return "", transientErr
+		}
+		return origGet(service, account)
+	}
+
+	incoming := testToken("fresh-login", legacy.CorpID, legacy.CorpName)
+	incoming.UserID = ""
+	if err := SaveLoginTokenData(configDir, incoming); err == nil {
+		t.Fatal("SaveLoginTokenData() error = nil, want transient read failure")
+	}
+	// No removal may have run: the global slot keeps its mismatch ciphertext.
+	if _, err := LoadTokenDataKeychain(); !keychain.IsCiphertextKeyMismatch(err) {
+		t.Fatalf("LoadTokenDataKeychain() after abort error = %v, want preserved ciphertext mismatch", err)
+	}
+}
+
 func TestExactNonOrgCurrentRefreshIgnoresUnreadableOrgMirror(t *testing.T) {
 	cleanupKeychain(t)
 	t.Setenv(keychain.DisableKeychainEnv, "1")
