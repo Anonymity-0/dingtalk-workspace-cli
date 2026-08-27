@@ -55,7 +55,7 @@ cli_version: ">=1.0.15"
 | `doc` | 45 | `dingtalk-doc` |
 | `drive` | 28 | `dingtalk-drive` |
 | `mail` | 8 | `dingtalk-mail` |
-| `minutes` | 27 | `dingtalk-minutes` |
+| `minutes` | 29 | `dingtalk-minutes` |
 | `oa` | 1 | `dingtalk-misc` |
 | `pat` | 1 | `dingtalk-misc` |
 | `report` | 4 | `dingtalk-misc` |

@@ -64,7 +64,7 @@ RUNTIME_CONTRACT_END = "<!-- DWS_RUNTIME_CONTRACT_END -->"
 # here only after verifying that the product skill has its own reviewed routing
 # section and intent table; compacting a sparse skill without an alternative
 # route would make its shortcuts harder to discover.
-COMPACT_PRODUCT_SERVICES = {"aitable", "chat", "doc", "drive"}
+COMPACT_PRODUCT_SERVICES = {"aitable", "chat", "doc", "drive", "minutes"}
 
 
 def md_escape(value: Any) -> str:
@@ -217,6 +217,7 @@ def update_runtime_contract(check: bool) -> list[Path]:
     targets = [
         ROOT / "skills" / "multi" / "dingtalk-chat" / "SKILL.md",
         ROOT / "skills" / "multi" / "dingtalk-doc" / "SKILL.md",
+        ROOT / "skills" / "multi" / "dingtalk-minutes" / "SKILL.md",
         SHARED_SKILL,
         ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "report.md",
         ROOT / "skills" / "multi" / "dingtalk-misc" / "references" / "sheet.md",
