@@ -176,6 +176,12 @@ func TestCrossPlatformCoverageContactUpdateCommandsMapMCPArguments(t *testing.T)
 			wantArgs: map[string]any{"labelIds": []int64{1, 2}, "staffIds": []string{"u1", "u2"}},
 		},
 		{
+			name:     "add label members with blank id list",
+			args:     []string{"label", "add-members", "--id", " ", "--users", "u1", "--yes"},
+			toolName: "add_label_members",
+			wantArgs: map[string]any{"labelIds": []int64(nil), "staffIds": []string{"u1"}},
+		},
+		{
 			name:     "remove label members",
 			args:     []string{"label", "remove-members", "--id", "1,2", "--users", "u1,u2", "--yes"},
 			toolName: "remove_label_members",
@@ -206,8 +212,20 @@ func TestCrossPlatformCoverageContactUpdateCommandsMapMCPArguments(t *testing.T)
 			wantArgs: map[string]any{"orgEmpAttrModels": []map[string]any{{"code": "rank", "orgSelfTag": int64(0), "clientDisplay": true, "isSearch": true}}},
 		},
 		{
+			name:     "update ext field with blank org self tag",
+			args:     []string{"ext-field", "update", "--code", "rank", "--org-self-tag", " ", "--client-display", "true", "--is-search", "true", "--yes"},
+			toolName: "update_org_ext_attrs",
+			wantArgs: map[string]any{"orgEmpAttrModels": []map[string]any{{"code": "rank", "orgSelfTag": int64(1), "clientDisplay": true, "isSearch": true}}},
+		},
+		{
 			name:     "delete ext field",
 			args:     []string{"ext-field", "delete", "--code", "rank", "--yes"},
+			toolName: "remove_org_ext_attrs",
+			wantArgs: map[string]any{"orgEmpAttrModels": []map[string]any{{"code": "rank", "orgSelfTag": int64(1), "toDelete": true}}},
+		},
+		{
+			name:     "delete ext field with blank org self tag",
+			args:     []string{"ext-field", "delete", "--code", "rank", "--org-self-tag", " ", "--yes"},
 			toolName: "remove_org_ext_attrs",
 			wantArgs: map[string]any{"orgEmpAttrModels": []map[string]any{{"code": "rank", "orgSelfTag": int64(1), "toDelete": true}}},
 		},
@@ -309,10 +327,13 @@ func TestCrossPlatformCoverageContactUpdateCommandsValidateInput(t *testing.T) {
 		{"label add-members missing id", []string{"label", "add-members", "--users", "u1", "--yes"}, "required"},
 		{"label add-members missing users", []string{"label", "add-members", "--id", "123", "--yes"}, "required"},
 		{"label add-members invalid id", []string{"label", "add-members", "--id", "bad", "--users", "u1", "--yes"}, "不是有效整数"},
+		{"label add-members blank users", []string{"label", "add-members", "--id", "123", "--users", " ", "--yes"}, "至少需要一个成员 ID"},
 		{"label remove-members missing id", []string{"label", "remove-members", "--users", "u1", "--yes"}, "required"},
+		{"label remove-members blank users", []string{"label", "remove-members", "--id", "123", "--users", " ", "--yes"}, "至少需要一个成员 ID"},
 		{"label update-member-scope missing user", []string{"label", "update-member-scope", "--id", "123", "--depts", "1", "--yes"}, "required"},
 		{"label update-member-scope missing id", []string{"label", "update-member-scope", "--user", "u1", "--depts", "1", "--yes"}, "required"},
 		{"label update-member-scope missing depts", []string{"label", "update-member-scope", "--user", "u1", "--id", "123", "--yes"}, "required"},
+		{"label update-member-scope blank user", []string{"label", "update-member-scope", "--user", " ", "--id", "123", "--depts", "1", "--yes"}, "不能为空"},
 		{"ext-field create missing name", []string{"ext-field", "create", "--yes"}, "required"},
 		{"ext-field create blank name", []string{"ext-field", "create", "--name", " ", "--yes"}, "不能为空"},
 		{"ext-field update missing code", []string{"ext-field", "update", "--client-display", "true", "--is-search", "false", "--yes"}, "required"},
@@ -320,8 +341,10 @@ func TestCrossPlatformCoverageContactUpdateCommandsValidateInput(t *testing.T) {
 		{"ext-field update missing client-display", []string{"ext-field", "update", "--code", "rank", "--is-search", "false", "--yes"}, "required"},
 		{"ext-field update invalid bool", []string{"ext-field", "update", "--code", "rank", "--client-display", "yes", "--is-search", "false", "--yes"}, "boolean"},
 		{"ext-field update missing is-search", []string{"ext-field", "update", "--code", "rank", "--client-display", "true", "--yes"}, "required"},
+		{"ext-field update invalid org self tag", []string{"ext-field", "update", "--code", "rank", "--org-self-tag", "bad", "--client-display", "true", "--is-search", "false", "--yes"}, "必须是整数"},
 		{"ext-field delete missing code", []string{"ext-field", "delete", "--yes"}, "required"},
 		{"ext-field delete blank code", []string{"ext-field", "delete", "--code", " ", "--yes"}, "不能为空"},
+		{"ext-field delete invalid org self tag", []string{"ext-field", "delete", "--code", "rank", "--org-self-tag", "bad", "--yes"}, "必须是整数"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
