@@ -1549,15 +1549,14 @@ number/boolean 类型；--dry-run 展示的是这个带转义的实际远端参�
 
 完整映射表见:
   dingtalk-workspace/references/products/sheet/sheet-batch-operations.md`,
-		Example: `  # 批量清除 + 写入 + 合并（执行前须获得用户明确确认）
-  dws sheet batch-update --node NODE_ID --operations '[
+		Example: `  dws sheet batch-update --node NODE_ID --operations '[
     {"toolName":"range clear","input":{"sheet-id":"Sheet1","range":"A1:B3","type":"content"}},
     {"toolName":"range update","input":{"sheet-id":"Sheet1","range":"A1","values":[[{"type":"text","text":"hello"}]]}},
     {"toolName":"merge-cells","input":{"sheet-id":"Sheet1","range":"A1:B1","merge-type":"mergeAll"}},
     {"toolName":"csv-put","input":{"sheet-id":"Sheet1","start-cell":"C1","csv":"001,2026/8/1,=1+1,\u0027=1+1","auto-convert":false}}
   ]'
 
-  # 宽松模式（执行前须获得用户明确确认）
+  # 宽松模式
   dws sheet batch-update --node NODE_ID --continue-on-error --operations '[...]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "node", "operations"); err != nil {
