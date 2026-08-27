@@ -266,12 +266,17 @@ func TestCrossPlatformCoverageHRbrainPaginationFailsClosed(t *testing.T) {
 	if err != nil || len(items) != 0 || page.HasMore || page.TotalCount != 0 {
 		t.Fatalf("live content page: items=%#v page=%+v err=%v", items, page, err)
 	}
+	items, page, err = hrbrainProjectPoolsPage(valid, "hrbrain/list_talent_pools", 1, 1)
+	if err != nil || len(items) != 1 || !page.HasMore {
+		t.Fatalf("legacy result page: items=%#v page=%+v err=%v", items, page, err)
+	}
 	brokenContent := []map[string]any{
 		{"result": nil, "content": map[string]any{"pools": []any{}}},
 		{"success": false, "result": nil, "content": map[string]any{"pools": []any{}}},
 		{"success": true, "result": nil},
 		{"success": true, "result": nil, "content": map[string]any{"currentPage": float64(1), "pageSize": float64(20), "totalCount": float64(0)}},
 		{"success": true, "result": nil, "content": map[string]any{"pools": "bad", "currentPage": float64(1), "pageSize": float64(20), "totalCount": float64(0)}},
+		{"success": true, "result": nil, "content": map[string]any{"pools": []any{map[string]any{}}, "currentPage": float64(1), "pageSize": float64(20), "totalCount": float64(1)}},
 		{"success": true, "result": nil, "content": map[string]any{"pools": []any{}, "currentPage": float64(2), "pageSize": float64(20), "totalCount": float64(0)}},
 		{"success": true, "result": nil, "content": map[string]any{"pools": []any{}, "currentPage": float64(1), "pageSize": float64(20), "totalCount": float64(-1)}},
 	}
@@ -331,6 +336,7 @@ func TestCrossPlatformCoverageHRbrainExecutionFailuresAndContinuation(t *testing
 		"object wrong id":      {declaration: GetPool, args: []string{"--pool-code", "pool"}, response: `{"success":true,"result":{"poolCode":"other"}}`},
 		"collection transport": {declaration: ProfileLabels, args: []string{"--staff-ids", "worker"}, err: errors.New("transport")},
 		"collection malformed": {declaration: ProfileLabels, args: []string{"--staff-ids", "worker"}, response: `{"success":true,"result":null}`},
+		"pools transport":      {declaration: ListPools, err: errors.New("transport")},
 		"page transport":       {declaration: SearchEmployees, args: []string{"--keyword", "worker"}, err: errors.New("transport")},
 		"page malformed":       {declaration: SearchEmployees, args: []string{"--keyword", "worker"}, response: `{"success":true,"result":null}`},
 	} {

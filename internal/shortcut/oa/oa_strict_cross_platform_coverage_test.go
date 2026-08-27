@@ -502,6 +502,9 @@ func TestCrossPlatformCoverageOAReadShortcutBranches(t *testing.T) {
 			t.Fatalf("list forms params=%#v want=%#v", caller.arguments[0], want)
 		}
 	})
+	t.Run("list-forms rejects response larger than requested window", func(t *testing.T) {
+		expectError(t, ListForms, map[string][]string{"list_user_visible_process": {`{"success":true,"result":{"processCodeList":[{"processCode":"p1","processName":"one"},{"processCode":"p2","processName":"two"},{"processCode":"p3","processName":"three"}]}}`}}, "--limit", "2")
+	})
 
 	t.Run("search empty query", func(t *testing.T) {
 		caller := expectError(t, SearchForms, map[string][]string{}, "--query", " ")
