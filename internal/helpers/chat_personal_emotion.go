@@ -884,7 +884,7 @@ func uploadPersonalEmotionImage(ctx context.Context, image *personalEmotionImage
 	text, err := callMCPToolReturnTextOnServer(ctx, personalEmotionUploadServerID, personalEmotionUploadMediaTool, map[string]any{
 		"content":   image.content,
 		"imageType": image.imageType,
-		"bizType":   "chat_image",
+		"bizType":   "chat_emoticon",
 	})
 	if err != nil {
 		return "", fmt.Errorf("上传本地图片到 %s 失败: %w", personalEmotionUploadMediaDisplay, err)

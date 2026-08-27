@@ -435,9 +435,9 @@ func executePersonalEmotionCallerCommand(t *testing.T, caller edition.ToolCaller
 }
 
 func TestChatEmotionFavoriteFilePathUploadsThenFavorites(t *testing.T) {
-	// AC-01: --file-path 先经钉钉文件服务 upload_media (chat_image) 取 mediaId，再复用收藏链路。
+	// AC-01: --file-path 先经钉钉文件服务 upload_media (chat_emoticon) 取 mediaId，再复用收藏链路。
 	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 16)
-	caller := &personalEmotionUploadCaller{uploadText: `{"success":true,"logId":"log-1","mediaIdV2":"$v2-media","mediaIdV2Url":"https://down.dingtalk.com/ddmedia/v2.jpg","message":"图片上传成功。","imageType":"png","bizType":"chat_image"}`}
+	caller := &personalEmotionUploadCaller{uploadText: `{"success":true,"logId":"log-1","mediaIdV2":"$v2-media","mediaIdV2Url":"https://down.dingtalk.com/ddmedia/v2.jpg","message":"图片上传成功。","imageType":"png","bizType":"chat_emoticon"}`}
 	err := executePersonalEmotionCallerCommand(t, caller,
 		"emotion", "favorite",
 		"--file-path", imagePath,
@@ -459,7 +459,7 @@ func TestChatEmotionFavoriteFilePathUploadsThenFavorites(t *testing.T) {
 	wantUpload := map[string]any{
 		"content":   base64.StdEncoding.EncodeToString(imageData),
 		"imageType": "png",
-		"bizType":   "chat_image",
+		"bizType":   "chat_emoticon",
 	}
 	if !reflect.DeepEqual(caller.uploadArgs[0], wantUpload) {
 		t.Fatalf("upload args = %#v, want %#v", caller.uploadArgs[0], wantUpload)
@@ -1157,7 +1157,7 @@ func TestPersonalEmotionUploadMediaIDParsing(t *testing.T) {
 	if got, err := parsePersonalEmotionUploadMediaID(`{"success":true,"mediaIdV1":"@v1","mediaIdV2":"$v2$"}`); err != nil || got != "@v1" {
 		t.Fatalf("happy path = %q, %v", got, err)
 	}
-	if got, err := parsePersonalEmotionUploadMediaID(`{"bizType":"chat_image","mediaIdV2":"$iwElAqNqcGcDAQTR","mediaIdV2Url":"https://down.dingtalk.com/ddmedia/iwElAqNqcGcDAQTR.jpg","success":true,"logId":"2103f43517878108447396157e0854","message":"图片上传成功。","imageType":"jpg"}`); err != nil || got != "$iwElAqNqcGcDAQTR" {
+	if got, err := parsePersonalEmotionUploadMediaID(`{"bizType":"chat_emoticon","mediaIdV2":"$iwElAqNqcGcDAQTR","mediaIdV2Url":"https://down.dingtalk.com/ddmedia/iwElAqNqcGcDAQTR.jpg","success":true,"logId":"2103f43517878108447396157e0854","message":"图片上传成功。","imageType":"jpg"}`); err != nil || got != "$iwElAqNqcGcDAQTR" {
 		t.Fatalf("mediaIdV2 path = %q, %v", got, err)
 	}
 	_, err := parsePersonalEmotionUploadMediaID(`{"success":false,"errorCode":"internalError","errorMsg":"uploadAuthFile failed","logId":"log-3"}`)
