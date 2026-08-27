@@ -48,6 +48,7 @@ func runChatThreadCreate(cmd *cobra.Command, toolArgs map[string]any) error {
 	if err := json.Unmarshal([]byte(raw), &resp); err != nil {
 		return chatThreadResponseValidationError("im/create_group_conversation", err)
 	}
+	normalizeChatGroupCreateResponse(resp)
 	return output.StoreResult(cmd.Context(), output.Success(resp))
 }
 
