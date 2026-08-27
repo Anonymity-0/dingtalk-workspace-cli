@@ -82,10 +82,11 @@ func createTodo(rt *shortcut.RuntimeContext) error {
 		}
 		vo["priority"] = priority
 	}
+	params := map[string]any{"PersonalTodoCreateVO": vo}
 	if rt.DryRun() {
-		return rt.Output(map[string]any{"dryRun": true, "executed": false, "operation": "create", "subject": title})
+		return todoWriteRequestPreview(rt, "create", "create_personal_todo", params)
 	}
-	data, err := rt.CallMCPWriteDataStrict("todo", "create_personal_todo", map[string]any{"PersonalTodoCreateVO": vo})
+	data, err := rt.CallMCPWriteDataStrict("todo", "create_personal_todo", params)
 	if err != nil {
 		return err
 	}
@@ -147,10 +148,11 @@ func updateTodo(rt *shortcut.RuntimeContext) error {
 		}
 		request["priority"] = priority
 	}
+	params := map[string]any{"TodoUpdateRequest": request}
 	if rt.DryRun() {
-		return rt.Output(map[string]any{"dryRun": true, "executed": false, "operation": "update", "taskId": taskID})
+		return todoWriteRequestPreview(rt, "update", "update_todo_task", params)
 	}
-	data, err := rt.CallMCPWriteDataStrict("todo", "update_todo_task", map[string]any{"TodoUpdateRequest": request})
+	data, err := rt.CallMCPWriteDataStrict("todo", "update_todo_task", params)
 	if err != nil {
 		return err
 	}
@@ -226,13 +228,15 @@ var Update = shortcut.Shortcut{
 		{Name: "due", Type: shortcut.FlagString, Desc: "新截止时间（ISO8601）"},
 		{Name: "priority", Type: shortcut.FlagInt, Desc: "新优先级；--priority 仅接受 10/20/30/40"},
 	},
-	Execute: updateTodo,
+	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintAtLeastOne, Flags: []string{"title", "due", "priority"}}},
+	Execute:     updateTodo,
 }
 
 func setTodoDone(rt *shortcut.RuntimeContext, target bool) error {
 	taskID := rt.Str("task-id")
+	params := map[string]any{"taskId": taskID, "isDone": strconv.FormatBool(target)}
 	if rt.DryRun() {
-		return rt.Output(map[string]any{"dryRun": true, "executed": false, "taskId": taskID, "isDone": target})
+		return todoWriteRequestPreview(rt, "set-done", "update_todo_done_status", params)
 	}
 	before, err := readTodoDetail(rt, taskID)
 	if err != nil {
@@ -245,7 +249,7 @@ func setTodoDone(rt *shortcut.RuntimeContext, target bool) error {
 	if current == target {
 		return rt.Output(map[string]any{"taskId": taskID, "isDone": target, "verified": true, "alreadyInTargetState": true})
 	}
-	data, err := rt.CallMCPWriteDataStrict("todo", "update_todo_done_status", map[string]any{"taskId": taskID, "isDone": strconv.FormatBool(target)})
+	data, err := rt.CallMCPWriteDataStrict("todo", "update_todo_done_status", params)
 	if err != nil {
 		return err
 	}
@@ -338,8 +342,9 @@ var Comment = shortcut.Shortcut{
 		if content == "" {
 			return apperrors.NewValidation("--content 不能为空")
 		}
+		params := map[string]any{"taskId": taskID, "content": content}
 		if rt.DryRun() {
-			return rt.Output(map[string]any{"dryRun": true, "executed": false, "taskId": taskID})
+			return todoWriteRequestPreview(rt, "comment", "add_todo_comment", params)
 		}
 		before, err := listAllTodoComments(rt, taskID)
 		if err != nil {
@@ -349,7 +354,7 @@ var Comment = shortcut.Shortcut{
 		for _, comment := range before {
 			beforeIDs[todoStableString(comment, "commentId", "id")] = true
 		}
-		data, err := rt.CallMCPWriteDataStrict("todo", "add_todo_comment", map[string]any{"taskId": taskID, "content": content})
+		data, err := rt.CallMCPWriteDataStrict("todo", "add_todo_comment", params)
 		if err != nil {
 			return err
 		}
@@ -417,36 +422,27 @@ var Reminder = shortcut.Shortcut{
 		{Name: "due-date-offset", Type: shortcut.FlagInt, Desc: "相对截止时间的分钟偏移"},
 		{Name: "at", Type: shortcut.FlagString, Desc: "customTime 的 ISO8601 时间"},
 	},
+	Constraints: []shortcut.Constraint{
+		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"clear", "base-time"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"clear", "due-date-offset", "at"}},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"base-time", "due-date-offset", "at"}, Description: "dueTime 要求 --due-date-offset 且禁止 --at；customTime 要求 --at 且禁止 --due-date-offset"},
+	},
+	Validate: validateTodoReminder,
 	Execute: func(rt *shortcut.RuntimeContext) error {
+		if err := validateTodoReminder(rt); err != nil {
+			return err
+		}
 		taskID := rt.Str("task-id")
 		clear := rt.Bool("clear")
 		baseTime := rt.Str("base-time")
-		if clear == (baseTime != "") {
-			return apperrors.NewValidation("必须且只能选择 --clear 或 --base-time")
-		}
-		if clear && (rt.Changed("due-date-offset") || rt.Changed("at")) {
-			return apperrors.NewValidation("--clear 不能与 --due-date-offset 或 --at 同时使用")
-		}
 		tool := "reset_todo_reminder"
 		params := map[string]any{"todoReminderUpdateRequest": map[string]any{"taskId": taskID, "reminderRules": []any{}}}
 		action := "clear"
 		if !clear {
 			request := map[string]any{"taskId": taskID, "baseTime": baseTime}
 			if baseTime == "dueTime" {
-				if !rt.Changed("due-date-offset") {
-					return apperrors.NewValidation("--base-time=dueTime 要求 --due-date-offset")
-				}
-				if rt.Changed("at") {
-					return apperrors.NewValidation("--base-time=dueTime 不能同时提供 --at")
-				}
 				request["dueDateOffset"] = strconv.Itoa(rt.Int("due-date-offset"))
 			} else {
-				if !rt.Changed("at") {
-					return apperrors.NewValidation("--base-time=customTime 要求 --at")
-				}
-				if rt.Changed("due-date-offset") {
-					return apperrors.NewValidation("--base-time=customTime 不能同时提供 --due-date-offset")
-				}
 				millis, err := parseTodoMillis("at", rt.Str("at"))
 				if err != nil {
 					return err
@@ -458,7 +454,7 @@ var Reminder = shortcut.Shortcut{
 			action = "set"
 		}
 		if rt.DryRun() {
-			return rt.Output(map[string]any{"taskId": taskID, "action": action, "terminalReceipt": false, "verified": false, "dryRun": true})
+			return todoWriteRequestPreview(rt, action+"-reminder", tool, params)
 		}
 		data, err := rt.CallMCPWriteDataStrict("todo", tool, params)
 		if err != nil {
@@ -469,6 +465,41 @@ var Reminder = shortcut.Shortcut{
 		}
 		return rt.Output(map[string]any{"taskId": taskID, "action": action, "terminalReceipt": true, "verified": false})
 	},
+}
+
+func validateTodoReminder(rt *shortcut.RuntimeContext) error {
+	clear := rt.Bool("clear")
+	baseTime := rt.Str("base-time")
+	if clear == (baseTime != "") {
+		return apperrors.NewValidation("必须且只能选择 --clear 或 --base-time")
+	}
+	if clear && (rt.Changed("due-date-offset") || rt.Changed("at")) {
+		return apperrors.NewValidation("--clear 不能与 --due-date-offset 或 --at 同时使用")
+	}
+	if baseTime == "dueTime" {
+		if !rt.Changed("due-date-offset") {
+			return apperrors.NewValidation("--base-time=dueTime 要求 --due-date-offset")
+		}
+		if rt.Changed("at") {
+			return apperrors.NewValidation("--base-time=dueTime 不能同时提供 --at")
+		}
+	}
+	if baseTime == "customTime" {
+		if !rt.Changed("at") {
+			return apperrors.NewValidation("--base-time=customTime 要求 --at")
+		}
+		if rt.Changed("due-date-offset") {
+			return apperrors.NewValidation("--base-time=customTime 不能同时提供 --due-date-offset")
+		}
+	}
+	return nil
+}
+
+func todoWriteRequestPreview(rt *shortcut.RuntimeContext, operation, tool string, params map[string]any) error {
+	return rt.Output(map[string]any{
+		"dryRun": true, "executed": false, "operation": operation,
+		"tool": tool, "params": params,
+	})
 }
 
 var UploadAttachment = shortcut.Shortcut{

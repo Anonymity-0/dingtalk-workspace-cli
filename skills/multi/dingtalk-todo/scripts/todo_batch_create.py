@@ -6,13 +6,12 @@ import hashlib
 import json
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
-from zoneinfo import ZoneInfo
 
 
-TIMEZONE = ZoneInfo("Asia/Shanghai")
+TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
 MAX_ITEMS = 30
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_PRIORITIES = {10, 20, 30, 40}

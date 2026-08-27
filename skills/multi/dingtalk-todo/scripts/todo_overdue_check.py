@@ -5,12 +5,11 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
-from zoneinfo import ZoneInfo
 
 
-TIMEZONE = ZoneInfo("Asia/Shanghai")
+TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
 
 
 class ScriptError(RuntimeError):

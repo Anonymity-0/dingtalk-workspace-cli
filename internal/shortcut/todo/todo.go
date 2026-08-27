@@ -74,10 +74,15 @@ var GetMyTasks = shortcut.Shortcut{
 		{Name: "all", Type: shortcut.FlagBool, Desc: "遍历全部分页；--max-pages 仅用于 --all，且必须在 1-40"},
 		{Name: "max-pages", Type: shortcut.FlagInt, Default: "40", Desc: "--all 的最大页数；--max-pages 仅用于 --all，且必须在 1-40"},
 	},
-	Tips: []string{`dws todo +get-my-tasks --status false --priority 40,30`},
+	Constraints: []shortcut.Constraint{{
+		Kind: shortcut.ConstraintCustom, Flags: []string{"all", "max-pages"},
+		Description: "显式 --max-pages 仅能与 --all 一起使用",
+	}},
+	Validate: validateGetMyTasks,
+	Tips:     []string{`dws todo +get-my-tasks --status false --priority 40,30`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
-		if rt.Changed("max-pages") && !rt.Bool("all") {
-			return todoResponseError("todo/+get-my-tasks", "invalid_page_limit", "--max-pages 只能与 --all 一起使用")
+		if err := validateGetMyTasks(rt); err != nil {
+			return err
 		}
 		page, err := strconv.Atoi(rt.Str("page"))
 		if err != nil || page < 1 {
@@ -150,6 +155,13 @@ var GetMyTasks = shortcut.Shortcut{
 		}
 		return rt.Output(map[string]any{"count": len(cards), "todos": cards, "page": page, "size": size, "hasMore": hasMore})
 	},
+}
+
+func validateGetMyTasks(rt *shortcut.RuntimeContext) error {
+	if rt.Changed("max-pages") && !rt.Bool("all") {
+		return todoResponseError("todo/+get-my-tasks", "invalid_page_limit", "--max-pages 只能与 --all 一起使用")
+	}
+	return nil
 }
 
 func getMyTasksProjectStrict(data map[string]any) ([]map[string]any, error) {

@@ -19,6 +19,12 @@ sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[2]
 TODO_ROOT = ROOT / "skills" / "multi" / "dingtalk-todo"
+MONO_SCRIPTS = ROOT / "skills" / "mono" / "scripts"
+TODO_SCRIPT_NAMES = (
+    "todo_batch_create.py",
+    "todo_daily_summary.py",
+    "todo_overdue_check.py",
+)
 
 
 def load_script(filename):
@@ -37,6 +43,15 @@ BATCH = load_script("todo_batch_create.py")
 
 
 class TodoSkillAlignmentTest(unittest.TestCase):
+    def test_mono_and_multi_todo_scripts_stay_identical_and_stdlib_only(self):
+        for filename in TODO_SCRIPT_NAMES:
+            with self.subTest(filename=filename):
+                multi = (TODO_ROOT / "scripts" / filename).read_text(encoding="utf-8")
+                mono = (MONO_SCRIPTS / filename).read_text(encoding="utf-8")
+                self.assertEqual(multi, mono)
+                self.assertNotIn("zoneinfo", multi)
+                self.assertNotIn("ZoneInfo", multi)
+
     def test_golden_routes_prefer_verified_shortcuts(self):
         skill = (TODO_ROOT / "SKILL.md").read_text(encoding="utf-8")
         for route in (

@@ -10,6 +10,7 @@ import (
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
 func TestCrossPlatformCoverageTodoStrictCollectionsDistinguishEmptyFromMalformed(t *testing.T) {
@@ -75,6 +76,24 @@ func TestAllShortcutsTodoLifecycleContractsAreComplete(t *testing.T) {
 	}
 	if text := string(Reminder.Contract.Result.DataSchema); !strings.Contains(text, `"verified"`) || !strings.Contains(Reminder.Intent, "verified=false") {
 		t.Fatalf("reminder must publish terminal-only verification boundary: %s / %s", text, Reminder.Intent)
+	}
+}
+
+func TestTodoRuntimeRelationshipsArePublishedAsConstraints(t *testing.T) {
+	if len(Update.Constraints) != 1 || Update.Constraints[0].Kind != shortcut.ConstraintAtLeastOne ||
+		strings.Join(Update.Constraints[0].Flags, ",") != "title,due,priority" {
+		t.Fatalf("update constraints = %#v", Update.Constraints)
+	}
+	if GetMyTasks.Validate == nil || len(GetMyTasks.Constraints) != 1 ||
+		GetMyTasks.Constraints[0].Kind != shortcut.ConstraintCustom ||
+		strings.Join(GetMyTasks.Constraints[0].Flags, ",") != "all,max-pages" {
+		t.Fatalf("get-my-tasks constraints = %#v validate=%v", GetMyTasks.Constraints, GetMyTasks.Validate != nil)
+	}
+	if Reminder.Validate == nil || len(Reminder.Constraints) != 3 ||
+		Reminder.Constraints[0].Kind != shortcut.ConstraintExactlyOne ||
+		Reminder.Constraints[1].Kind != shortcut.ConstraintMutuallyExclusive ||
+		Reminder.Constraints[2].Kind != shortcut.ConstraintCustom {
+		t.Fatalf("reminder constraints = %#v validate=%v", Reminder.Constraints, Reminder.Validate != nil)
 	}
 }
 
