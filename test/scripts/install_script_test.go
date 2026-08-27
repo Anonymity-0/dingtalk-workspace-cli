@@ -590,7 +590,8 @@ $copyPath = Join-Path $root 'published-copy'
 New-Item -ItemType Directory -Path $copySource -Force | Out-Null
 Set-Content -LiteralPath (Join-Path $copySource 'SKILL.md') -Value 'transaction copy'
 Copy-SkillPathLexically -Source $copySource -Destination $copyPath
-$copyRecord = New-PublishedSkillCopyRecord -Path $copyPath -Source $copySource
+$copyRecord = [pscustomobject]@{ Path = $copyPath; Source = $copySource }
+Assert-SkillPathCopy -Source $copySource -Destination $copyPath
 Remove-SkillPathLexically -Path $copyPath
 New-Item -ItemType Directory -Path $copyPath -Force | Out-Null
 Set-Content -LiteralPath (Join-Path $copyPath 'concurrent-copy-data.txt') -Value 'keep'
