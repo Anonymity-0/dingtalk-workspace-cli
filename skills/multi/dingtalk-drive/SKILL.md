@@ -1,6 +1,6 @@
 ---
 name: dingtalk-drive
-description: 钉钉文件管理（存储层，覆盖钉盘与文档空间）。Use when 用户说 钉盘/文档空间/我的文档中的普通文件或文件夹、查找/上传/下载/复制/移动/重命名/删除/回收站/权限/元信息，或本地与钉盘文件夹比较、拉取、推送、双向同步；也承接在线文档节点的存储管理。文档正文编辑与导出走 dingtalk-doc；明确的知识库空间及空间内节点组织走 dingtalk-wiki。命令前缀：dws drive。
+description: 钉钉文件管理（存储层，覆盖钉盘与文档空间）。Use when 用户说 钉盘/文档空间/我的文档中的普通文件或文件夹、查找/上传/下载/复制/移动/重命名/删除/回收站/权限/评论/元信息，或本地与钉盘文件夹比较、拉取、推送、双向同步；也承接在线文档节点的存储管理。文档正文编辑与导出走 dingtalk-doc；明确的知识库空间及空间内节点组织走 dingtalk-wiki。命令前缀：dws drive。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -44,6 +44,7 @@ metadata:
 | 查看节点类型和元数据 | `dws drive +inspect --node <dentryUuid>` | 按需加 stats/publish/cover，不为普通列表强制调用 |
 | 下载普通文件 | `dws drive +download --node <dentryUuid> --output <相对路径>` | 当前 shortcut 接受 ID；在线文档用 `doc +export` |
 | 上传新文件或覆盖普通文件 | `dws drive +upload --file <相对路径>` | 新建可加 folder；覆盖改加 node，二者互斥 |
+| 管理普通文件全局评论 | `dws drive comment list-v2/create-v2/reply/update/delete/batch-query/list-replies/resolve/restore/react-reply` | 复用 Doc/Sheet 新评论链路；旧 `list/create` 已 deprecated；固定全文 `global`，不支持划词、单元格或 mention |
 | 创建文件夹 | `dws drive +create-folder --name <名称> [--folder <ID>]` | Shortcut 已提交并读回 |
 | 复制在线文档节点 | `dws drive +copy --node <ID> [--folder <目标ID>]` | 普通钉盘文件会被拒绝；Base 结构复制走 AITable `+base-copy --base-id <ID> --target-folder-id <真实ID> --only-struct` |
 | 移动节点 | `dws drive +move --node <ID> --folder <目标ID>` | 破坏性变更，按 Runtime confirmation |
