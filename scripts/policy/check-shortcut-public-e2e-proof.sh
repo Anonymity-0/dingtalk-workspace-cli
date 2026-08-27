@@ -220,9 +220,36 @@ run_pat_browser_policy_default() {
   printf '%s\n' 'PAT-BROWSER-POLICY-CLEANUP-ABSENCE-PASS'
 }
 
+run_hrbrain_list_pools_reviewed_empty_page() {
+  schema_output="$($BINARY schema --cli-path 'hrbrain +list-pools' --compact --format json)"
+  printf '%s' "$schema_output" | jq -e '
+    type == "object" and
+    .cli_path == "hrbrain +list-pools" and
+    .effect == "read" and
+    .risk == "low" and
+    .confirmation == "not_required" and
+    .idempotency == "idempotent" and
+    .availability == "available" and
+    .interface_mode == "composite" and
+    (.result | type == "object") and
+    (.result.outcomes | type == "array" and index("success") != null and index("failure") != null) and
+    (.result.data_schema.required | sort == ["complete", "count", "currentPage", "items", "pageSize", "totalCount"])
+  ' >/dev/null || fail "hrbrain +list-pools compact contract is incomplete"
+
+  (cd "$ROOT" && DWS_PACKAGE_VERSION="${DWS_PACKAGE_VERSION:-0.0.0-test}" "$GO_BINARY" test -count=1 ./internal/shortcut/hrbrain -run '^TestCrossPlatformCoverageHRbrainListPoolsAcceptsReviewedLiveContentPage$' >/dev/null) ||
+    fail "hrbrain +list-pools reviewed live-shape exact/raw proof failed"
+
+  printf '%s\n' 'HRBRAIN-LIST-POOLS-EXACT-TERMINAL-RECEIPT-PASS'
+  printf '%s\n' 'HRBRAIN-LIST-POOLS-RAW-ATOMIC-BINDING-PASS'
+  printf '%s\n' 'HRBRAIN-LIST-POOLS-LEGITIMATE-EMPTY-COMPLETION-PASS'
+}
+
 while IFS=$'\t' read -r service command proof_case; do
   [ -n "$service" ] || continue
   case "$service $command $proof_case" in
+    'hrbrain +list-pools hrbrain_list_pools_reviewed_empty_page')
+      proof_output="$(run_hrbrain_list_pools_reviewed_empty_page)"
+      ;;
     'pat +browser-policy pat_browser_policy_default')
       proof_output="$(run_pat_browser_policy_default)"
       ;;

@@ -495,7 +495,7 @@ func TestCrossPlatformCoverageOAReadShortcutBranches(t *testing.T) {
 	t.Run("list-forms empty page proves exhaustion", func(t *testing.T) {
 		expectSuccess(t, ListForms, map[string][]string{"list_user_visible_process": {`{"success":true,"result":{"processCodeList":[]}}`}})
 	})
-	t.Run("list-forms nonempty page advances by returned count", func(t *testing.T) {
+	t.Run("list-forms nonempty page advances by requested window", func(t *testing.T) {
 		caller := expectSuccess(t, ListForms, map[string][]string{"list_user_visible_process": {`{"success":true,"result":{"processCodeList":[{"processCode":"p","processName":"fixture"}]}}`}}, "--cursor", "1", "--limit", "2")
 		want := map[string]any{"cursor": 1, "pageSize": 2}
 		if !reflect.DeepEqual(caller.arguments[0], want) {

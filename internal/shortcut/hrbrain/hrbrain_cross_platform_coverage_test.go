@@ -4,7 +4,9 @@
 package hrbrain
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"math"
@@ -57,6 +59,12 @@ func (*hrbrainParityCaller) JQ() string     { return "" }
 
 func runHRbrainCoverage(t *testing.T, declaration shortcut.Shortcut, caller edition.ToolCaller, args ...string) error {
 	t.Helper()
+	_, err := runHRbrainCoverageOutput(t, declaration, caller, args...)
+	return err
+}
+
+func runHRbrainCoverageOutput(t *testing.T, declaration shortcut.Shortcut, caller edition.ToolCaller, args ...string) (string, error) {
+	t.Helper()
 	helpers.InitDepsForTest(t, caller)
 	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
 	root.PersistentFlags().Bool("yes", false, "")
@@ -65,12 +73,17 @@ func runHRbrainCoverage(t *testing.T, declaration shortcut.Shortcut, caller edit
 	service := &cobra.Command{Use: "hrbrain"}
 	service.AddCommand(corecmd.New(shortcut.FromShortcut(declaration)))
 	root.AddCommand(service)
-	root.SetOut(io.Discard)
+	var stdout bytes.Buffer
+	root.SetOut(&stdout)
 	root.SetErr(io.Discard)
 	ctx, _ := output.WithResultStore(context.Background())
 	root.SetContext(ctx)
 	root.SetArgs(append([]string{"hrbrain", declaration.Command}, args...))
-	return root.Execute()
+	executed, err := root.ExecuteC()
+	if err == nil {
+		_, _, err = output.EmitStoredResult(executed)
+	}
+	return stdout.String(), err
 }
 
 func TestCrossPlatformCoverageHRbrainDeclarationsStayTyped(t *testing.T) {
@@ -99,11 +112,42 @@ func TestCrossPlatformCoverageHRbrainDeclarationsStayTyped(t *testing.T) {
 
 func TestCrossPlatformCoverageHRbrainListPoolsAcceptsReviewedLiveContentPage(t *testing.T) {
 	caller := &hrbrainParityCaller{response: `{"success":true,"result":null,"content":{"currentPage":1,"pageSize":20,"pools":[],"totalCount":0}}`}
-	if err := runHRbrainCoverage(t, ListPools, caller); err != nil {
+	stdout, err := runHRbrainCoverageOutput(t, ListPools, caller)
+	if err != nil {
 		t.Fatalf("list-pools live content page failed: %v", err)
 	}
-	if caller.calls != 1 {
-		t.Fatalf("list-pools calls = %d", caller.calls)
+	if caller.calls != 1 || caller.server != "hrbrain" || caller.tool != "list_talent_pools" {
+		t.Fatalf("list-pools atomic route = calls:%d server:%q tool:%q", caller.calls, caller.server, caller.tool)
+	}
+	wantParams := map[string]any{"currentPage": 1, "pageSize": 20}
+	if !reflect.DeepEqual(caller.params, wantParams) {
+		t.Fatalf("list-pools atomic params = %#v, want %#v", caller.params, wantParams)
+	}
+	var envelope struct {
+		OK      bool   `json:"ok"`
+		Outcome string `json:"outcome"`
+		Data    struct {
+			Count       int           `json:"count"`
+			Items       []interface{} `json:"items"`
+			CurrentPage int           `json:"currentPage"`
+			PageSize    int           `json:"pageSize"`
+			TotalCount  int           `json:"totalCount"`
+			Complete    bool          `json:"complete"`
+		} `json:"data"`
+		Meta struct {
+			Pagination struct {
+				EndpointExhausted bool   `json:"endpoint_exhausted"`
+				NextToken         string `json:"next_token"`
+			} `json:"pagination"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+		t.Fatalf("decode list-pools terminal receipt %q: %v", stdout, err)
+	}
+	if !envelope.OK || envelope.Outcome != "success" || envelope.Data.Count != 0 || len(envelope.Data.Items) != 0 ||
+		envelope.Data.CurrentPage != 1 || envelope.Data.PageSize != 20 || envelope.Data.TotalCount != 0 || !envelope.Data.Complete ||
+		!envelope.Meta.Pagination.EndpointExhausted || envelope.Meta.Pagination.NextToken != "" {
+		t.Fatalf("list-pools terminal receipt = %#v", envelope)
 	}
 }
 
