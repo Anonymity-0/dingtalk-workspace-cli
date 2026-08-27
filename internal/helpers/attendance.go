@@ -149,15 +149,14 @@ func normalizeScheduleRangeDateInLocation(dateStr, paramName string, loc *time.L
 	if t, err := time.ParseInLocation(dateTimeLayout, dateStr, loc); err == nil {
 		return t.Format("2006-01-02 15:04:05"), t, nil
 	}
-	if _, err := time.ParseInLocation("2006-01-02", dateStr, loc); err == nil {
+	if day, err := time.ParseInLocation("2006-01-02", dateStr, loc); err == nil {
 		boundary := dateStr + " 00:00:00"
+		hour, minute, second := 0, 0, 0
 		if strings.Contains(strings.ToLower(paramName), "end") {
 			boundary = dateStr + " 23:59:59"
+			hour, minute, second = 23, 59, 59
 		}
-		t, err := time.ParseInLocation(dateTimeLayout, boundary, loc)
-		if err != nil {
-			return "", time.Time{}, fmt.Errorf("invalid --%s boundary: %w", paramName, err)
-		}
+		t := time.Date(day.Year(), day.Month(), day.Day(), hour, minute, second, 0, loc)
 		return boundary, t, nil
 	}
 	return "", time.Time{}, fmt.Errorf("invalid --%s format, use YYYY-MM-DD or YYYY-MM-DD HH:mm:ss (e.g. 2026-04-01)", paramName)
