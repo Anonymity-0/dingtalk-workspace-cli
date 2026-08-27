@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contractfinal"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -300,5 +301,31 @@ func TestCrossPlatformCoverageAttendanceScheduleGetSerializesDateStrings(t *test
 	}
 	if len(caller.calls) != 0 {
 		t.Fatalf("reversed range calls = %#v, want none", caller.calls)
+	}
+}
+
+func TestCrossPlatformCoverageAttendanceScheduleDateOnlyEndPreservesDSTCalendarDay(t *testing.T) {
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatalf("load DST timezone: %v", err)
+	}
+
+	for _, date := range []string{
+		"2026-03-08", // spring forward: 23-hour day
+		"2026-11-01", // fall back: 25-hour day
+	} {
+		t.Run(date, func(t *testing.T) {
+			want := date + " 23:59:59"
+			got, parsed, err := normalizeScheduleRangeDateInLocation(date, "end", loc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != want {
+				t.Fatalf("normalized end = %q, want %q", got, want)
+			}
+			if gotParsed := parsed.In(loc).Format("2006-01-02 15:04:05"); gotParsed != want {
+				t.Fatalf("parsed end = %q, want %q", gotParsed, want)
+			}
+		})
 	}
 }
