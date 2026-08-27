@@ -37,7 +37,7 @@ metadata:
 
 | 用户意图 | 唯一推荐入口 | 关键边界 |
 |---|---|---|
-| 全局按名称或关键词找文件 | `dws drive +search --query <关键词>` | 多候选停止；在线文档正文搜索走 `doc +search` |
+| 全局按名称或关键词找文件 | `dws drive +search --query <关键词>` | 多候选停止；Drive 搜索没有 Doc 的 `--page-all`，按真实 nextCursor 翻页；在线文档正文搜索走 `doc +search` |
 | 浏览根目录或已知文件夹 | `dws drive +list [--folder <dentryUuid>]` | 默认一页，处理 nextCursor |
 | 发现钉盘企业空间或“我的文件”空间 | `dws wiki space list --type <orgSpace\|mySpace> --format json` | Drive 只读前置；orgSpace 按 nextToken 续页，取 spaceId/rootFolderId 后回到 Drive |
 | 查看最近访问/编辑 | `dws drive +recent [--operate-type 1] --limit <N>` | 1=最近编辑；默认最近访问 |
@@ -56,7 +56,7 @@ metadata:
 
 ### 低频入口
 
-- 删除/恢复：`+delete/+recycle-list/+recycle-restore`；版本：`+version-history/+version-get/+version-download/+version-revert`。
+- 删除已确认节点：`dws drive +delete --node <dentryUuid>`；恢复：`+recycle-list/+recycle-restore`；版本：`+version-history/+version-get/+version-download/+version-revert`。
 - 收藏：`+star-*`；公开状态：`+publish-get/+publish-unset`（`+publish-set` 不进入 Agent 路由）；统计/封面用 `+inspect`；快捷方式用 `+create-shortcut`。
 - 目录树只用有界 `+list` 逐层遍历。
 
@@ -69,7 +69,9 @@ metadata:
 - 只有名称：`+search` → 唯一候选的 nodeId → 目标命令；不得自动选择第一项。
 - 只有文件夹层级：从最近的已知 folder ID 开始 `+list`，不要从根目录无界递归。
 - 上传新文件：单条 `+upload`；不要退回 upload-info + 手写 HTTP + commit。
+- 导出后上传：`doc +export` 首次就指定最终本地文件名，直接复用回执 `localPath`，首次正式 `drive +upload` 带已获授权的 `--yes`；禁止上传后再 rename。
 - copy/move/rename/create-folder 已内置写后读取时，不再由 Agent重复执行 `+inspect`。
+- 已知 nodeId 的重命名直接 `+rename`，不先 Catalog、Help 或 search；ALIDOC 的逻辑标题由 shortcut 内部文档读回验证。
 - 文件夹方向已明确时直接 `status/pull/push/sync`，不先 status；写操作先用完全相同参数 dry-run，再正式执行。
 - 搜索结果 `type=able` 后按业务动词重路由：结构复制/删除/Base 内操作走 AITable。结构复制按当前 leaf 提供源 Base ID 和真实 `--target-folder-id`；缺少目标 ID 时停止，不猜根 ID或发明 `--target-root`。
 - `+inspect/+download/+list` 只保证 dentryUuid；只有 URL 时先用 `dws drive info --node <URL> --format json` 解析并核对 nodeId。
@@ -117,7 +119,7 @@ Golden Route 参数足够时禁止读取 reference。其余最多读取一个精
 
 ## 跨产品边界
 
-- 普通文件/文件夹及在线文档节点的存储管理 → Drive；正文/内容分别走 Doc、Sheet、AITable。
+- 普通文件/文件夹及在线文档节点的存储管理 → Drive；把文件作为附件放进某篇文档正文走 Doc `+media-insert`，其他正文/内容分别走 Doc、Sheet、AITable。
 - able 外层移动/重命名走 Drive；结构复制、Base 删除（`+base-delete`）及 Base 内操作走 AITable。
 - 明确知识库 workspace 层级 → Wiki；泛称“文档空间/我的文档”仍走 Drive。
 - 钉盘存储空间发现例外地复用 managed `dws wiki space list --type orgSpace|mySpace`；只取真实 spaceId/rootFolderId 后回到 Drive。spaceId 用于空间参数，rootFolderId 才可作为空间根目录 folder；`orgWikiSpace/myWikiSpace` 返回 workspaceId，不能混入 Drive 参数。
