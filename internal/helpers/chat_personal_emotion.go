@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/color/palette"
 	"image/gif"
 	"image/jpeg"
 	"io"
@@ -624,20 +625,138 @@ func encodePersonalEmotionGIFCandidate(src *gif.GIF, width, height, frameStep in
 	compressed := clonePersonalEmotionGIFMeta(src, width, height)
 	compressed.Delay = make([]int, 0, len(indexes))
 	compressed.Disposal = make([]byte, 0, len(indexes))
-	for pos, frameIndex := range indexes {
-		frame := src.Image[frameIndex]
-		scaled := resizeBilinear(frame, width, height)
-		paletted := image.NewPaletted(scaled.Bounds(), frame.Palette)
-		for y := 0; y < height; y++ {
-			for x := 0; x < width; x++ {
-				paletted.Set(x, y, scaled.At(x, y))
+	canvas := image.NewRGBA(image.Rect(0, 0, src.Config.Width, src.Config.Height))
+	var saved *image.RGBA
+	nextSampled := 0
+	for frameIndex, frame := range src.Image {
+		// 先应用上一帧 disposal，再为本帧保存 Previous 快照，顺序不可换。
+		if frameIndex > 0 {
+			switch personalEmotionGIFDisposal(src.Disposal, frameIndex-1) {
+			case gif.DisposalBackground:
+				personalEmotionGIFClearRect(canvas, src.Image[frameIndex-1].Rect)
+			case gif.DisposalPrevious:
+				if saved != nil {
+					copy(canvas.Pix, saved.Pix)
+				}
 			}
 		}
-		compressed.Image = append(compressed.Image, paletted)
-		compressed.Delay = append(compressed.Delay, personalEmotionGIFDelay(src.Delay, frameIndex, indexes, pos))
-		compressed.Disposal = append(compressed.Disposal, personalEmotionGIFDisposal(src.Disposal, frameIndex))
+		if personalEmotionGIFDisposal(src.Disposal, frameIndex) == gif.DisposalPrevious {
+			if saved == nil {
+				saved = image.NewRGBA(canvas.Bounds())
+			}
+			copy(saved.Pix, canvas.Pix)
+		}
+		drawPersonalEmotionGIFPartialFrame(canvas, frame)
+		if nextSampled < len(indexes) && indexes[nextSampled] == frameIndex {
+			scaled := resizeBilinear(canvas, width, height)
+			compressed.Image = append(compressed.Image, personalEmotionGIFPalettizeSnapshot(scaled))
+			compressed.Delay = append(compressed.Delay, personalEmotionGIFDelay(src.Delay, frameIndex, indexes, nextSampled))
+			compressed.Disposal = append(compressed.Disposal, gif.DisposalNone)
+			nextSampled++
+		}
 	}
 	return compressed
+}
+
+func drawPersonalEmotionGIFPartialFrame(canvas *image.RGBA, frame *image.Paletted) {
+	rect := frame.Rect.Intersect(canvas.Bounds())
+	for y := rect.Min.Y; y < rect.Max.Y; y++ {
+		for x := rect.Min.X; x < rect.Max.X; x++ {
+			r, g, b, a := frame.At(x, y).RGBA()
+			if a == 0 {
+				continue
+			}
+			canvas.SetRGBA(x, y, color.RGBA{R: uint8(r >> 8), G: uint8(g >> 8), B: uint8(b >> 8), A: uint8(a >> 8)})
+		}
+	}
+}
+
+func personalEmotionGIFClearRect(canvas *image.RGBA, rect image.Rectangle) {
+	rect = rect.Intersect(canvas.Bounds())
+	for y := rect.Min.Y; y < rect.Max.Y; y++ {
+		for x := rect.Min.X; x < rect.Max.X; x++ {
+			canvas.SetRGBA(x, y, color.RGBA{})
+		}
+	}
+}
+
+func personalEmotionGIFPalettizeSnapshot(snapshot *image.RGBA) *image.Paletted {
+	bounds := snapshot.Bounds()
+	colors, transparentIndex := personalEmotionGIFSnapshotPalette(snapshot)
+	paletted := image.NewPaletted(bounds, colors)
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			c := snapshot.RGBAAt(x, y)
+			if c.A < 128 {
+				paletted.SetColorIndex(x, y, uint8(transparentIndex))
+				continue
+			}
+			opaque := color.RGBA{
+				R: uint8(uint32(c.R) * 255 / uint32(c.A)),
+				G: uint8(uint32(c.G) * 255 / uint32(c.A)),
+				B: uint8(uint32(c.B) * 255 / uint32(c.A)),
+				A: 255,
+			}
+			paletted.SetColorIndex(x, y, uint8(colors.Index(opaque)))
+		}
+	}
+	return paletted
+}
+
+func personalEmotionGIFSnapshotPalette(snapshot *image.RGBA) (color.Palette, int) {
+	bounds := snapshot.Bounds()
+	distinct := make([]color.RGBA, 0, 256)
+	seen := make(map[color.RGBA]struct{}, 256)
+	hasTransparent := false
+	overflow := false
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			c := snapshot.RGBAAt(x, y)
+			if c.A < 128 {
+				hasTransparent = true
+				continue
+			}
+			opaque := color.RGBA{
+				R: uint8(uint32(c.R) * 255 / uint32(c.A)),
+				G: uint8(uint32(c.G) * 255 / uint32(c.A)),
+				B: uint8(uint32(c.B) * 255 / uint32(c.A)),
+				A: 255,
+			}
+			if _, ok := seen[opaque]; ok {
+				continue
+			}
+			if len(distinct) >= 256 {
+				overflow = true
+				continue
+			}
+			seen[opaque] = struct{}{}
+			distinct = append(distinct, opaque)
+		}
+	}
+	transparentCount := 0
+	if hasTransparent {
+		transparentCount = 1
+	}
+	if overflow || len(distinct)+transparentCount > 256 {
+		if hasTransparent {
+			return append(color.Palette{color.RGBA{}}, palette.Plan9[:255]...), 0
+		}
+		return append(color.Palette(nil), palette.Plan9...), -1
+	}
+	if len(distinct) == 0 {
+		return color.Palette{color.RGBA{}}, 0
+	}
+	colors := make(color.Palette, 0, len(distinct)+transparentCount)
+	if hasTransparent {
+		colors = append(colors, color.RGBA{})
+	}
+	for _, c := range distinct {
+		colors = append(colors, c)
+	}
+	if hasTransparent {
+		return colors, 0
+	}
+	return colors, -1
 }
 
 func personalEmotionGIFFrameIndexes(frameCount, step int) []int {
