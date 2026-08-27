@@ -821,6 +821,15 @@ var reviewedConstraintTransition = map[string]map[string]string{
 	"sheet/sheet.create_float_image": {
 		"": `{"mutually_exclusive":[["file","src"]],"require_one_of":[["file","src"]]}`,
 	},
+	// PR #1042 publishes the Todo Shortcut constraints already enforced by
+	// runtime validation. This makes invalid update/reminder combinations fail
+	// during Agent planning without changing any previously valid invocation.
+	"todo/todo.shortcut_update": {
+		"": `{"require_one_of":[["title","due","priority"]]}`,
+	},
+	"todo/todo.shortcut_reminder": {
+		"": `{"mutually_exclusive":[["clear","base-time"],["clear","due-date-offset","at"]],"require_one_of":[["clear","base-time"]]}`,
+	},
 }
 
 func compatibleReviewedConstraintTransition(toolPath string, oldTool, newTool toolSchema) bool {

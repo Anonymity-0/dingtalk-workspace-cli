@@ -1024,6 +1024,40 @@ func TestCrossPlatformCoverageSchemaCompatReviewedConstraintTransition(t *testin
 	}
 }
 
+func TestCrossPlatformCoverageSchemaCompatReviewedTodoConstraintTransitions(t *testing.T) {
+	tests := []struct {
+		path string
+		want string
+	}{
+		{
+			path: "todo/todo.shortcut_update",
+			want: `{"require_one_of":[["title","due","priority"]]}`,
+		},
+		{
+			path: "todo/todo.shortcut_reminder",
+			want: `{"mutually_exclusive":[["clear","base-time"],["clear","due-date-offset","at"]],"require_one_of":[["clear","base-time"]]}`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.path, func(t *testing.T) {
+			oldTool := toolSchema{}
+			newTool := toolSchema{Constraints: test.want}
+			if !compatibleReviewedConstraintTransition(test.path, oldTool, newTool) {
+				t.Fatal("reviewed Todo runtime constraint transition must be accepted")
+			}
+			if failures := checkToolCompatibility(test.path, oldTool, newTool); len(failures) != 0 {
+				t.Fatalf("reviewed Todo constraint transition failed: %v", failures)
+			}
+
+			newTool.Constraints = `{}`
+			if compatibleReviewedConstraintTransition(test.path, oldTool, newTool) {
+				t.Fatal("unlisted Todo constraint target unexpectedly passed")
+			}
+		})
+	}
+}
+
 // Clearing a property through the reviewed mapping exclusion table is the one
 // accepted shape, mirroring the interface_type retirement allowance. A leaf
 // whose backing RPC moved to a nested payload has no honest flat property to
