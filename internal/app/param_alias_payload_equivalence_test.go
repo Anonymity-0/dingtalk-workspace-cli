@@ -470,7 +470,7 @@ var paramAliasCandidateCompleteCommands = map[string][]string{
 	"minutes list mine":           {"minutes", "list", "mine", "--start", "2026-03-10T00:00:00+08:00"},
 	"minutes replace-text":        {"minutes", "replace-text", "--id", "u1", "--search", "old", "--replace", "new"},
 	"minutes tag query":           {"minutes", "tag", "query", "--tag-id", "tag-1"},
-	"minutes update title":        {"minutes", "update", "title", "--id", "u1", "--title", "Fixture Minutes"},
+	"minutes update title":        {"minutes", "update", "title", "--id", "u1", "--title", "Fixture Minutes", "--yes"},
 	"minutes upload complete":     {"minutes", "upload", "complete", "--session-id", "session-1"},
 	"todo +assign":                {"todo", "+assign", "--task", "Fixture Todo", "--to", "Fixture User", "--yes"},
 	"todo +assign-multi":          {"todo", "+assign-multi", "--task", "Fixture Todo", "--to", "Fixture User,User Two", "--yes"},
