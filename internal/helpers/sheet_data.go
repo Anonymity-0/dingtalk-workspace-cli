@@ -152,25 +152,29 @@ sheetId 支持传入工作表 ID 或工作表名称，可通过 sheet list 获�
   # 删除匹配内容（替换为空）
   dws sheet replace --node NODE_ID --sheet-id SHEET_ID --find "临时" --replacement ""`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			toolArgs := map[string]any{
-				"nodeId":      mustGetFlag(cmd, "node"),
-				"sheetId":     mustGetFlag(cmd, "sheet-id"),
-				"text":        mustGetFlag(cmd, "find"),
-				"replaceText": mustGetFlag(cmd, "replacement"),
+			input := map[string]any{
+				"sheet-id":    mustGetFlag(cmd, "sheet-id"),
+				"find":        mustGetFlag(cmd, "find"),
+				"replacement": mustGetFlag(cmd, "replacement"),
 			}
 			if v, _ := cmd.Flags().GetString("range"); v != "" {
-				toolArgs["range"] = v
+				input["range"] = v
 			}
 			matchCase, _ := cmd.Flags().GetBool("match-case")
-			toolArgs["matchCase"] = matchCase
+			input["match-case"] = matchCase
 			matchEntireCell, _ := cmd.Flags().GetBool("match-entire-cell")
-			toolArgs["matchEntireCell"] = matchEntireCell
+			input["match-entire-cell"] = matchEntireCell
 			useRegExp, _ := cmd.Flags().GetBool("use-regexp")
-			toolArgs["useRegExp"] = useRegExp
+			input["use-regexp"] = useRegExp
 			matchFormula, _ := cmd.Flags().GetBool("match-formula")
-			toolArgs["matchFormulaText"] = matchFormula
+			input["match-formula"] = matchFormula
 			includeHidden, _ := cmd.Flags().GetBool("include-hidden")
-			toolArgs["includeHidden"] = includeHidden
+			input["include-hidden"] = includeHidden
+			toolArgs, err := BuildBatchReplaceArgs(input)
+			if err != nil {
+				return err
+			}
+			toolArgs["nodeId"] = mustGetFlag(cmd, "node")
 			return callMCPTool("replace_all", toolArgs)
 		},
 	}

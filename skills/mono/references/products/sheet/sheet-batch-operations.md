@@ -39,15 +39,15 @@
 - 需要先插入行列再写入数据时（`add-dimension` + `range update` / `csv-put`）
 - 需要对多个区域执行不同写入操作时（多次 `range update` + `range clear` 等组合）
 
-当同一工具需要对多个区域重复调用时，**推荐**改用 `batch-update` 合并为单次请求——`batch-update` 是原子提交（要么全成功要么整批回滚）；逐个调用非原子，中途失败会留下半成品。
+当同一工具需要对多个区域重复调用时，**推荐**改用 `batch-update` 合并为单次请求——默认严格模式是原子提交（要么全成功要么整批回滚）；显式使用 `--continue-on-error` 时则保留已成功操作。逐个调用同样非原子，中途失败会留下半成品。
 
 **不可放进 `--operations` 的操作**（强行写入会被校验拒或行为未定义）：
 - `range read` / `csv-get` / `table-get`（读取操作，不在 batch dispatch 表中；结构化 table 回读需在 batch 外单独调用）
 - `table-put`（当前 `batch-update` 不支持结构化 table 写入；请直接调用独立 `dws sheet table-put`）
-- `range sort` / `range move-to`（尚未支持，后续版本补充）
-- `write-image` / `media-upload` / `create-float-image` / `update-float-image`（需本地上传或依赖前置上传句柄）
-- `set-style` / `range batch-set-style`（自身已是批量入口，不可再嵌套）
-- `find` / `replace`（尚未支持，后续版本补充）
+- `write-image` / `media-upload`（本地文件上传不进入事务；先上传，再把 URL 交给后续批次）
+- `range batch-set-style`（自身已经是批量入口，不可嵌套；单区域样式请用 `range set-style`）
+- `find`（读取操作；`replace` 已支持）
+- `copy`、`chart create/update`、`pivot-table create/update`（返回值或复杂映射尚未纳入 batch 契约）
 - `export`（异步轮询操作）
 - `sheet list` / `sheet info`（只读操作）
 
@@ -73,7 +73,7 @@ Notes:
   - 不同区域可以属于不同工作表
 ```
 
-### 批量更新（原子事务）
+### 批量更新（默认原子事务）
 ```
 Usage:
   dws sheet batch-update [flags]
@@ -97,6 +97,13 @@ toolName 用 CLI 命令名，input 的键用 CLI flag 名去掉 --：
   range fill / range copy-to / add-dimension / delete-dimension / move-dimension
   group-dimension / ungroup-dimension
   set-dropdown / delete-dropdown / csv-put / delete-float-image
+  range set-style / replace / insert-dimension / range move-to / range sort
+  new / delete-sheet / update / show-gridline / hide-gridline
+  chart delete / pivot-table delete
+  cond-format create / cond-format update / cond-format delete
+  filter create / filter update / filter delete
+  filter-view create / filter-view update / filter-view delete
+  create-float-image / update-float-image
 Notes:
   - 默认严格事务模式：任一子操作失败 → 整批回滚到初始状态
   - --continue-on-error: 宽松模式，遇失败继续执行后续操作（已执行的子操作不回滚）
@@ -107,9 +114,14 @@ Notes:
   - `set-dropdown` 的 `input` 中，Inline 使用 `options`；SourceRange 使用 `source-sheet-id` + `source-range`，两种模式必须且只能选一个。顶层 `colors` / `source-colors` 会被拒绝；Inline 颜色写在 `options[].color`，SourceRange 颜色写入暂不支持
   - `set-dropdown` SourceRange 在已验证的重命名、引用前插入行/列、删除引用前行的场景会自动调整；已验证的 `move-dimension` 会使其变为 `invalid`。其他未覆盖删除/移动场景后先回读，仅 `invalid` 时重新选源写入
   - `source-range` 按 `toolName` 解释：`set-dropdown` 中是下拉候选项来源；`range fill` / `range copy-to` / `range move-to` 中是待填充、复制或移动的数据源区域
+  - `delete-dimension` / `move-dimension` 的位置参数与独立命令一致：`ROWS` 使用 1-based 行号，`COLUMNS` 使用列字母；DWS 会转成 batch API 的 0-based 索引，不要提前减 1
   - 典型场景：先插入行列再写入数据、先清除再写入、批量合并+调整行高列宽
   - `group-dimension` 在 batch 中只适合默认展开分组；需要 `--group-state fold` 时请使用独立 `dws sheet group-dimension`
   - `table-put` 不支持放进 batch-update；结构化 table 请用独立 `dws sheet table-put`
+  - 新增子操作会在 CLI 和服务端同时严格校验字段名与 JSON 类型；整数、布尔值不能写成字符串，未知字段会被拒绝
+  - `create-float-image` / `update-float-image` 在 batch 中只接受 `src` URL，不接受 `file`；本地文件请先执行 `media-upload`
+  - batch 不支持 `$ref`，也不能让后序子操作引用前序 create 的结果。create 类成功结果会在对应 `results[].data` 原样返回（包含 ID 时可供下一次请求使用）
+  - `update` 改名或 `delete-sheet` 后，后序子操作若仍按旧名称定位会失败；严格模式整批回滚，宽松模式保留此前成功结果。跨操作关联优先使用稳定的 sheet ID
 ```
 
 ### 子操作定位规则
@@ -142,8 +154,13 @@ CLI 在发送请求前执行以下本地校验（不消耗网络请求）：
 | `toolName` 必须是支持的 CLI 命令名 | `unsupported toolName "xxx"` | 传 `"batch-update"`（禁止嵌套）或拼写错误 |
 | 禁止嵌套 `batch-update` | 同上（`batch-update` 不在 dispatch 表中，自动拦截） | `toolName: "batch-update"` |
 | 禁止 `table-put` / `table-get` | `unsupported toolName "table-put"` | 结构化 table 应使用独立 `table-put` |
+| 新增操作拒绝未知字段 | `unknown field` | 在 `input` 中传 `$ref`、`node` 或拼错字段名 |
+| 新增操作严格校验 JSON 类型 | `必须是整数/布尔值/字符串` | 把 `length: 2` 写成 `length: \"2\"` |
+| 浮动图片不接受本地文件 | 指引先用 `media-upload` | `create-float-image` 中传 `file` |
 
-> `input` 内的字段（如 `sheet-id`、`range`、`values` 等）由服务端校验，CLI 不提前拦截——传入空值或缺失必填字段时，请求会到达服务端再返回错误。
+> 新增的 P0/P1 子操作在 CLI 发请求前完成字段与类型校验；原有兼容子操作仍可能把部分业务规则留给服务端校验。
+
+用户侧始终传 `--operations`，不新增 `--operations-json` flag。CLI 会在本地解析、校验并翻译后，把最终 MCP 操作数组编码到远端 `operationsJson` string，以保持 number/boolean 类型不被平台泛型映射改写。`--dry-run` 的 `arguments.operationsJson` 因此会显示为带转义的 JSON 字符串，这是实际请求形态。CLI 不会同时发送旧 `operations`，也不会在写失败后换入口自动重试。
 
 ### --continue-on-error 行为
 
@@ -165,7 +182,7 @@ Cause: The requested resource was not found by the identifier 'NonExistentSheet'
 ```
 
 **宽松模式下**，返回 `results` 数组，逐个标注每个子操作的成功/失败状态：
-- 成功的子操作：`success: true` + `message`
+- 成功的子操作：`success: true` + `message`；创建类操作还会原样返回可选 `data`（例如服务端生成的 ID）
 - 失败的子操作：`success: false` + `errorCode` + `errorMsg`
 - 顶层 `success: true`（batch 本身完成执行，只是部分子操作失败）
 
@@ -191,6 +208,19 @@ Cause: The requested resource was not found by the identifier 'NonExistentSheet'
 | `delete-dropdown` | [sheet-dropdown](./sheet-dropdown.md) |
 | `csv-put` | [sheet-write-data](./sheet-write-data.md) |
 | `delete-float-image` | [sheet-media-image](./sheet-media-image.md) |
+| `range set-style` | [sheet-style-format](./sheet-style-format.md) |
+| `replace` | [sheet-search-replace](./sheet-search-replace.md) |
+| `insert-dimension` | [sheet-dimension-operations](./sheet-dimension-operations.md) |
+| `range move-to` | [sheet-range-operations](./sheet-range-operations.md) |
+| `range sort` | [sheet-range-operations](./sheet-range-operations.md) |
+| `new` / `delete-sheet` / `update` | [sheet-workbook](./sheet-workbook.md) |
+| `show-gridline` / `hide-gridline` | [sheet-style-format](./sheet-style-format.md) |
+| `chart delete` | [sheet-chart](./sheet-chart.md) |
+| `pivot-table delete` | [sheet-pivot-table](./sheet-pivot-table.md) |
+| `cond-format create/update/delete` | [sheet-conditional-format](./sheet-conditional-format.md) |
+| `filter create/update/delete` | [sheet-filter](./sheet-filter.md) |
+| `filter-view create/update/delete` | [sheet-filter-view](./sheet-filter-view.md) |
+| `create-float-image` / `update-float-image` | [sheet-media-image](./sheet-media-image.md) |
 
 ## 典型组合场景
 
@@ -275,7 +305,7 @@ Cause: The requested resource was not found by the identifier 'NonExistentSheet'
 
 - ★ **`--sheet-id` 获取规范（强制）**：`sheetId` 未知时必须先通过 `dws sheet list --node <NODE_ID> --format json` 查询真实的 `sheetId` / 工作表名称后再调用，禁止凭空编造（如臆测为 `Sheet1`、`sheet1`、`0`、`default` 等）
 - ★ **需要对多个区域执行相同清除操作时，用 `range batch-clear`**：一次原子请求清除多个区域（可跨工作表），失败时整批回滚
-- ★ **需要组合多个不同写操作（清除+写入等）时，用 `batch-update`**：原子事务，任一操作失败则整批回滚，避免留下半成品
+- ★ **需要组合多个不同写操作（清除+写入等）时，用 `batch-update`**：默认严格模式是原子事务，任一操作失败则整批回滚；`--continue-on-error` 会保留已成功操作
 - ★ **table 写入不进 batch-update**：当前 `batch-update` 不支持结构化 table 写入；结构化 table 请直接调用 `dws sheet table-put`
 - ★ **批次完成后必须回读校验**：值写入用 `range read` 或 `csv-get` 抽样回读受影响区域；结构变更用 `sheet info` 回读
 - ★ **`batch-update` 不支持嵌套**：`--operations` 中的 `toolName` 必须是原子操作，不可再嵌套 `batch-update`
