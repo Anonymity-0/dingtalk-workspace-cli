@@ -6,6 +6,161 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
 
 ## [Unreleased]
 
+## [1.0.60-beta.3] - 2026-08-26
+
+### Added
+
+- **Drive sync batch 2** (#1086) — Five synchronized enhancements aligned with closed-source MR 28427926 / 28769810 / 28967420 / 28972632:
+  - **drive quota + quota apps** (#573): `drive quota` queries enterprise storage (org/app/space levels); `drive quota apps` lists application storage usage with pagination and sorting
+  - **drive task get + copy/move auto-polling** (#543, #496): unified `drive task get --type <export|import|copy|move> --id <taskId>` queries async task status via `query_task` (drive MCP); `drive copy/move` now auto-poll `query_task` when server returns `taskId` and print normalized `TaskResult` JSON on completion
+  - **drive export** (#593): universal export command supporting all doc types (adoc/axls/appt) with auto-format detection, progressive-backoff polling, and optional `--async` mode; `drive export get` queries export task status
+  - **publish set password/expire-days** (#584): `drive publish set` accepts `--password` (4-char alphanumeric, empty to clear) and `--expire-days` (N=days, 0=permanent); client-side validation of --permission/--password/--expire-days runs before the confirmation gate
+  - **doc-whiteboard.md** (#571): added `skills/mono/references/products/doc/doc-whiteboard.md` documenting whiteboard card insertion, deletion, and post-insert verification workflow
+
+### Changed
+
+- **Download host trust policy** — retires the static DingTalk/OSS download
+  host allowlist, the dial-time public-IP refusal, and the IP-literal
+  refusal from both the shared local download path (`drive +download`,
+  `drive +version-download`, doc/minutes artifact downloads) and the chat
+  message-resource path (`chat +messages-resource-download`,
+  `--download-resources`). Download URLs only require HTTPS without userinfo
+  and accept non-default HTTPS ports, because every dimension of a
+  dedicated-deployment storage endpoint — custom domain, port, and network
+  location — is decided by the customer deployment and cannot be enumerated
+  or configured client-side. Verified on a dedicated deployment whose
+  storage domain resolves to a customer-intranet address. Downloads align
+  with the official GUI client, which applies no client-side SSRF
+  interception: download URLs only ever come from authenticated service
+  responses (no command accepts a user-supplied URL), TLS hostname
+  verification pins the connection to the requested host, redirects are
+  re-validated per hop, and service credential headers are stripped once a
+  redirect leaves the original origin.
+- **Upload host trust unchanged** — upload target URLs (`drive +upload`,
+  minutes audio upload) keep the pre-existing public DingTalk/OSS trusted
+  host requirement through a dedicated upload validator, so removing the
+  download allowlist does not widen where local file bytes can be sent;
+  the validator also keeps the pre-existing default-port-only HTTPS rule
+  (DingTalk/OSS upload endpoints always serve on 443, so non-default ports
+  accepted for dedicated-deployment downloads stay anomalous for uploads).
+  Download credential headers are issued together with the download URL by
+  the same authenticated service response and follow it as-is on the first
+  request; redirects leaving the original host still strip them.
+
+- **report entry submit requires recipients** — `dws report entry submit`（及废弃别名 `dws report create`）的 `--to-user-ids` 从可选提升为必填：无接收人的日志提交在服务端仍返回成功，但日志对任何接收人都不可见。openAPI `create_report` 的 `toUserIds` 参数保持可选不动，规则仅在 dws CLI 侧收紧——Cobra required 拦截未传场景，RunE 内对空值/纯分隔符（如 `--to-user-ids ","`）同样 fail-closed 拒绝。修复 [#85724185](https://project.aone.alibaba-inc.com/v2/project/2170318/bug/85724185)。
+
+### Removed
+
+- **Education and college vendor extensions removed** — removes `dws edu-contact`, `dws edu-group`, `dws edu-app`, `dws edu-familygroup`, and `dws college-contact` from the CLI, Schema, bundled Skills, and open-edition MCP endpoint registry. Future DWS packages no longer expose these five command surfaces.
+
+### Fixed
+
+- **Pull request CI scheduling** — stops metadata-only auto-merge enable and disable events from restarting the complete admission graph for an unchanged commit, while the base-owned Reviewer Router continues to enforce merge authority.
+
+- **Command typo guidance** — returns a validation error with up to three nearest command suggestions and the parent `--help` entry instead of printing the full command list.
+
+- **Document shortcut reliability** — adds bounded pagination for document and template listings, supports verified paragraph or heading insertion before a reference block, tolerates service-only Markdown layout normalization during write verification, and resolves and verifies the default “My Documents” import target.
+
+- **Fork pull-request admission** — keeps the read-only Reviewer Router identity check fail-closed while allowing external contributors' CI to use the reviewed public App slug when GitHub withholds repository variables.
+
+- **Markdown append chunking rewritten around safe split positions** — long markdown is now split so that every chunk is a complete, self-contained top-level block sequence, which is what `update_document mode=append` requires: the server inserts a brand new structure per call and cannot continue the previous one. Split points are chosen strictly by how much they change the rendered document — fully safe boundaries (blank lines, block starts that interrupt a paragraph) before boundaries that need repair (a table's rows now carry a re-emitted header and delimiter row; a fenced code block is closed and reopened with its original marker and info string) before boundaries that merely restructure (long paragraphs, list items) before a hard character cut. Within a tier the latest boundary in the window wins, since all chunks land in the same document. Every boundary that changes the rendered structure is reported in a new `degradations` field instead of being applied silently.
+- **Fixed markdown chunking dropping a newline** — the previous splitter rebuilt block text from lines and lost one `\n` whenever the content's last line began a heading, table or code fence, so `"para\n# Title"` was written as `"para# Title"` and the heading stopped being a heading. Roughly one in five randomly generated documents was affected. The new splitter slices by offset and never rebuilds text, making content preservation structural.
+- **Fixed oversized tables and code blocks being cut mid-cell and mid-fence** — the hard-split path never received the block type, so it cut at arbitrary character boundaries despite claiming to preserve table and code block integrity.
+- **Fixed readback verification comparing against content the server never receives** — `doc +create` / `doc +update` verified the readback against the raw input, so any repaired boundary (and, previously, any paragraph split) failed verification on large documents. Verification now compares against the document the chunk plan says the server should hold.
+- **Unified four markdown write paths onto one splitter** — `doc create` / `doc update`, `doc +create` / `doc +update` and `doc +checkpoint-update` now share `helpers.SplitMarkdownForAppend` and one limit constant (30000 runes), replacing two independent implementations plus one path that never chunked at all. `doc +checkpoint-update` accepts `@file` and stdin content, so oversized input was reachable there while the equivalent `doc +update` chunked. `doc +doc-append` takes `--text` from argv only and now rejects oversized input with a pointer to `doc +update` rather than sending one oversized call.
+- **`doc update --index` now fails closed when the content requires chunking** — each chunk creates an unpredictable number of blocks, so the insertion point for later chunks is unknowable; the flag was previously accepted and silently ignored.
+
+- **Reviewer Router recovery** — keeps exact App-owned PRs that are behind `main` retriable when GitHub reports the protected merge denial as `Resource not accessible by integration`, while preserving every other 403 as a hard failure.
+
+- **Reviewer Router merge authority** — moves fail-closed writer-rule and auto-merge ownership validation into the trusted base-owned Router before App credentials are read, preparing metadata-only auto-merge changes to stop restarting the full CI suite without weakening protected-main admission or exact-SHA cache production.
+
+- **Reviewer Router merge recovery** — retries exact App-owned merge intents through a SHA-bound synchronous merge after GitHub has enforced approval and nine GitHub Actions source-bound required checks.
+
+### Security
+
+- **DWS OpenAPI escape hatch** ([Aone #84603971](https://project.aone.alibaba-inc.com/v2/project/2125919/req/84603971)) — Preserves the existing `dws api <METHOD> <PATH>` command, five HTTP methods, flags and defaults, App Token cache, new/legacy host token injection, raw successful JSON, and paginated page arrays. Adds `--params/--data @file`, single-file streaming `--file [field=]path` multipart requests, camelCase pagination fields, and official `open.dingtalk.com/llms.txt` discovery guidance in the misc and mono Skills. Resolves Client ID and Client Secret only as a complete flag, environment, or app-config pair; one-shot Raw API flag/environment credentials remain ephemeral, while successful custom-app OAuth login persists its exact pair. Migrates plaintext and legacy `client-secret:<clientID>` values to `appsecret:<clientID>` after the canonical reference is durably stored, and fails closed on conflicting values. Dry-run no longer requires credentials and still performs no Keychain, deferred-file, or network access. Pagination now fails closed instead of returning partial pages, and rejects ambiguous continuation request keys. Non-2xx OpenAPI errors expose top-level `code` and request ID details without treating a successful payload's business `code` field as an error. Security tightening rejects HTTP, non-443 ports, cross-origin or HTTPS-downgrade redirects, sanitizes server-provided download filenames, bounds JSON/error bodies, and atomically streams binary downloads through a temporary file.
+
+
+## [1.0.60-beta.2] - 2026-08-24
+
+### Added
+
+- **Drive permission get-setting** (#1056) — adds `dws drive permission get-setting --node <ID>` to inspect a document-space node's permission settings (permission mode, share scope, and permission policies) in one call.
+
+- **Whiteboard shortcuts** (#1082) — adds strict query and confirmed update workflows with stable-target receipts and exact readback verification.
+- **Sheet shortcut hardening** (#1082) — makes worksheet listing and cell-range reads fail closed on malformed, ambiguous, or truncated responses, publishes a closed reviewed output shape, and preserves non-executing `--dry-run` previews for range reads.
+
+- **Permission and member list pagination** (#1085) — `drive/doc permission
+  list` and `wiki member list` now accept `--next-token` to follow the
+  server-side cursor (output carries `totalCount`/`hasMore`/`nextToken`) and
+  map `--limit` to `pageSize` capped at 50 instead of the rejected `maxResults
+  200` path; `permission add/update/remove` and `wiki member add/update/remove`
+  additionally accept a `--members` JSON array covering USER/DEPT/CONVERSATION/TAG
+  grantee types. The optional `--notify` defaults to `false` and is omitted from
+  the server request unless passed explicitly, so member grants no longer notify
+  recipients by default. These commands also declare cursor pagination
+  (`next-token`) in the Agent schema contract, mirroring the internal CLI parity
+  change. Because a single batch remove can revoke access for up to 30
+  USER/DEPT/CONVERSATION/TAG members — where departments, chats, and role
+  groups can indirectly affect many more users — `drive/doc permission
+  remove` and `wiki member remove` now declare
+  `confirmation=user_required` and gate the actual tool call behind user
+  confirmation (`--yes`, an interactive yes, or `--dry-run` preview); their
+  confirmation-gate failure now also passes through verbatim instead of being
+  reclassified as a permission-denied or unclassified error.
+
+- **Agoal scorecard search-entities** — `dws agoal scorecard search-entities` searches scorecard metrics and key items by keyword, returning matching entity info (scorecard ID, entity ID, entity type, title, owning team) with optional `--page`/`--page-size` pagination.
+
+- **AITable datasource shortcuts** — adds 7 shortcuts for datasource sync management (`+datasource-create`, `+datasource-update`, `+datasource-sync`, `+datasource-sync-status`, `+datasource-get-config`, `+datasource-list-sources`, `+datasource-get-fields`) and updates the `dingtalk-aitable` skill with routing rules and a new `aitable-datasource.md` reference guide.
+
+- **Doc public-link and historical-version reads** — `dws doc read` forwards
+  the reviewed `password` (internet-public documents with password protection)
+  and `historyVersion` (read content as of a listed historical version; `0`
+  denotes the document's initial version) parameters on the markdown, JSONML,
+  and scope read paths via `--password` / `--version`; `dws doc +fetch` gains
+  `--password` and `--version` with the same `historyVersion` forwarding, while
+  `--revision` stays rejected with explicit guidance: revision is the document
+  edit revision returned by JSONML reads for `+update --expected-revision`
+  conditional writes, not a historical version number.
+
+- **Edu & College vendor extensions** — adds five hidden vendor extension commands for education scenarios: `dws edu-contact` (school/class/family/teacher contact management), `dws edu-group` (student/class group lifecycle), `dws edu-app` (homework, notices, report cards, diplomas, class circles), `dws edu-familygroup` (family group management, child binding, app permissions), and `dws college-contact` (university dept/employee/alumni/graduate management). All route to dedicated MCP servers via `callMCPToolOnServer`.
+
+- **OA approval attachment upload** — `dws oa approval attachment upload --file <path>` uploads a local file as an approval attachment in one command: it initializes the upload credential (MCP `oa/init_attachment_upload_info`), HTTP PUTs the file to OSS, then commits it (MCP `oa/commit_attachment_upload_info`). `--file-name` defaults to the file's base name and `--md5` is auto-computed when omitted.
+
+- **Sheet revision changesets** — adds read-only commands for querying the current workbook revision and reviewing Agent-readable changes between revisions, with guidance for distinguishing revisions from saved history versions and safely selecting rollback targets.
+
+- **Sheet floating images** — supports creating or replacing a floating image directly from a local file with `create-float-image --file` and `update-float-image --file`, while retaining the existing `--src` workflow.
+
+### Changed
+
+- **AiSearch and Contact shortcuts** (#1083) — adds strict people search and reviewed unified results; people results must use the live-reviewed `person` source, and exact mobile lookups normalize accepted formatting before calling the dedicated mobile interface. Agent/public discovery keeps `contact +list-roles`, `contact +list-roster-fields`, `contact +get-roster`, and incomplete Live routes unavailable rather than publishing ambiguous results, while the historical Contact CLI commands retain legacy MCP execution and real error propagation. The legacy role-list projection preserves the service's reviewed null placeholder without exposing that ambiguous row through Agent Result contracts.
+
+- **Permission error guidance and error rendering** (#1085) —
+  permission-denied responses now exit with the `AUTH_PERMISSION_DENIED` code
+  instead of a generic business-error rendering; document/wiki-specific errors
+  (the drive-specific codes `forbidden.accessDenied` / `forbidden.no.auth`,
+  or the role-threshold wording like
+  “需要您具备 MANAGER 及以上角色”) carry apply-permission guidance
+  (`dws drive permission apply-info` / `dws drive permission apply`), while
+  permission failures carrying only generic code names (`FORBIDDEN`,
+  `NO_PERMISSION` — also returned by attendance and event-subscription tools)
+  or other products' wording keep their product-specific or
+  product-neutral suggestion instead of a misleading document-permission hint;
+  member-validation failures such as
+  “用户不存在/不属于当前组织” are classified as tool errors with a
+  `--members`-with-`corpId` suggestion instead of a misleading
+  resource-not-found error; business error output now surfaces the backend
+  message with `code`/`logId` appended for traceability; and the
+  `update_permission` / `remove_permission` / `update_member` /
+  `remove_member` tools — whose servers return a literal `null` on successful
+  no-payload writes — now render `{}` so downstream JSON consumers do not fail
+  parsing `null`; other tools keep raw `null` output unchanged.
+
+### Fixed
+
+- **Legacy global slot recovery** — recovers a rejected identity refresh from the legacy global keychain slot when the organization mirror is absent, with strict corp/user matching so blank-user legacy tokens only recover for single-account organizations.
+
+
 ## [1.0.60-beta.1] - 2026-08-21
 
 ### Changed

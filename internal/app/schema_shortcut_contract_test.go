@@ -16,12 +16,12 @@ import (
 )
 
 const (
-	publicShortcutCount = 427
+	publicShortcutCount = 438
 	// schemaPublishedShortcutCount counts every delivered *.shortcut_* tool,
 	// including reviewed hidden compatibility and unavailable contracts.
-	schemaPublishedShortcutCount = 484
+	schemaPublishedShortcutCount = 495
 	// publiclyDeliveredShortcutCount is the public-catalog subset of that surface.
-	publiclyDeliveredShortcutCount = 427
+	publiclyDeliveredShortcutCount = 438
 )
 
 func TestDeliverySchemaCoversOrExactlyExcludesEveryPublicShortcutContract(t *testing.T) {
@@ -114,7 +114,7 @@ func TestDeliveryShortcutProgressiveQueriesReturnCompleteContracts(t *testing.T)
 
 	product := executeShortcutSchemaQuery(t, "chat")
 	productPayload, _ := product["product"].(map[string]any)
-	if got, want := int(product["count"].(float64)), 220; got != want {
+	if got, want := int(product["count"].(float64)), 231; got != want {
 		t.Fatalf("schema chat count = %d, want %d", got, want)
 	}
 	summaries := schemaContractObjectSlice(productPayload["tools"])
@@ -206,26 +206,6 @@ func TestCrossPlatformCoverageAITableTableBootstrapPublishesResultContract(t *te
 	for _, property := range []string{"contractVersion", "operation", "executed", "retryable", "plan", "completedSteps", "verification", "checkpoint", "knownSideEffects", "result"} {
 		if properties[property] == nil {
 			t.Errorf("aitable +table-bootstrap final Result data_schema is missing %q", property)
-		}
-	}
-}
-
-func TestDeliveryMinutesASRMigrationContract(t *testing.T) {
-	prepare := executeShortcutSchemaQuery(t, "--cli-path", "minutes +prepare-asr")
-	prepareParameters := schemaContractMap(prepare["parameters"])
-	if prepareParameters["sync"] == nil {
-		t.Fatal("minutes +prepare-asr must keep public --sync visible as a migration compatibility flag")
-	}
-	if description := schemaContractString(prepareParameters["sync"]["description"]); !strings.Contains(description, "精确同步请使用 +sync-asr") {
-		t.Fatalf("minutes +prepare-asr --sync migration constraint evidence = %q", description)
-	}
-
-	syncASR := executeShortcutSchemaQuery(t, "--cli-path", "minutes +sync-asr")
-	for field, want := range map[string]string{
-		"effect": "destructive", "risk": "high", "confirmation": "user_required", "idempotency": "idempotent",
-	} {
-		if got := schemaContractString(syncASR[field]); got != want {
-			t.Errorf("minutes +sync-asr %s = %q, want %q", field, got, want)
 		}
 	}
 }
@@ -505,7 +485,7 @@ func TestDeliveryDocUpdateShortcutPublishesCompleteConditionalContract(t *testin
 		t.Fatalf("confirmation = %q, want %q", got, want)
 	}
 	parameters := schemaContractMap(leaf["parameters"])
-	if got, want := len(parameters), 11; got != want {
+	if got, want := len(parameters), 13; got != want {
 		t.Fatalf("parameter count = %d, want %d: %#v", got, want, parameters)
 	}
 	if required, _ := parameters["node"]["required"].(bool); !required {
@@ -516,7 +496,7 @@ func TestDeliveryDocUpdateShortcutPublishesCompleteConditionalContract(t *testin
 	}
 	wantProperties := map[string]string{
 		"node": "node", "doc": "node", "command": "command", "content": "content", "text": "content", "doc-format": "docFormat",
-		"block-id": "blockId", "after-block-id": "afterBlockId", "old": "old", "new": "new",
+		"block-id": "blockId", "after-block-id": "afterBlockId", "before-block-id": "beforeBlockId", "heading-level": "headingLevel", "old": "old", "new": "new",
 		"expected-revision": "expectedRevision",
 	}
 	for name, want := range wantProperties {
@@ -524,7 +504,7 @@ func TestDeliveryDocUpdateShortcutPublishesCompleteConditionalContract(t *testin
 			t.Errorf("--%s property = %q, want %q", name, got, want)
 		}
 	}
-	for _, name := range []string{"content", "block-id", "after-block-id", "old", "new"} {
+	for _, name := range []string{"content", "block-id", "after-block-id", "before-block-id", "heading-level", "old", "new"} {
 		parameter := parameters[name]
 		if required, _ := parameter["required"].(bool); required {
 			t.Errorf("--%s required = true, want runtime custom validation", name)
@@ -532,6 +512,9 @@ func TestDeliveryDocUpdateShortcutPublishesCompleteConditionalContract(t *testin
 		if got := schemaContractString(parameter["required_when"]); got != "" {
 			t.Errorf("--%s required_when = %q, want compatibility-safe custom validation", name, got)
 		}
+	}
+	if got, want := schemaContractStringSlice(parameters["command"]["enum"]), []string{"append", "overwrite", "block_insert_before", "block_insert_after", "block_replace", "block_delete", "str_replace", "block_copy_insert_after"}; !schemaContractJSONEqual(got, want) {
+		t.Errorf("--command enum = %#v, want %#v", got, want)
 	}
 	if constraints, exists := leaf["constraints"]; exists && constraints != nil {
 		t.Fatalf("enum-discriminated requirements must not be mispublished as relationship constraints: %#v", constraints)

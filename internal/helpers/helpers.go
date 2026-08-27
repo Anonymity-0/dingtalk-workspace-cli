@@ -15,15 +15,16 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd"
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/cmdutil"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
-// Re-export cmdutil functions as package-level aliases so that existing product
-// files continue to compile with their current (unexported) call sites.
-// This avoids a mass-rename in 22 product files while still consolidating the
-// implementations in pkg/cmdutil.
+// Re-export shared command helpers as package-level aliases so existing product
+// files continue to compile with their current (unexported) call sites. This
+// avoids a mass-rename while keeping reusable command-resolution and flag
+// utilities in cmdutil.
 var (
 	groupRunE                       = cmdutil.GroupRunE
 	hintSubCmd                      = cmdutil.HintSubCmd
@@ -37,6 +38,40 @@ var (
 	helperSleep                     = time.Sleep
 	helperAfter                     = time.After
 )
+
+// newGroupCommand declares the ordinary navigation policy used by helper
+// command containers. The unified framework compiles this declaration into
+// Cobra behavior and command-resolution metadata.
+func newGroupCommand(command *cobra.Command) *cobra.Command {
+	corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
+	return command
+}
+
+// newDeepGroupCommand declares a navigation container whose typo recovery may
+// teach exact descendant paths (for example sheet read -> sheet range read).
+func newDeepGroupCommand(command *cobra.Command) *cobra.Command {
+	corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupNavigationOnly,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoveryDeep,
+	})
+	return command
+}
+
+// newHybridGroupCommand declares a business command that also owns children.
+// Its existing RunE remains the command's default action.
+func newHybridGroupCommand(command *cobra.Command) *cobra.Command {
+	corecmd.ApplyGroupPolicy(command, corecmd.GroupPolicy{
+		Mode:        corecmd.GroupHybrid,
+		Positionals: corecmd.PositionalsReject,
+		Recovery:    corecmd.RecoverySibling,
+	})
+	return command
+}
 
 // Deps holds shared dependencies injected from the host application.
 type Deps struct {
@@ -397,6 +432,20 @@ func callMCPToolInternalOptsContext(ctx context.Context, explicitServerID, toolN
 
 	// DryRun 模式：仅预览工具名和参数，不实际调用 MCP Server
 	if deps.Caller.DryRun() {
+		// Pre-check: let decoration layers (e.g. delegation auth) validate
+		// before rendering the preview. Only fires when the caller implements
+		// the package-internal dryRunValidator interface (i.e. the delegation
+		// auth decorator is installed); undecorated callers skip this entirely.
+		if v, ok := deps.Caller.(dryRunValidator); ok {
+			preCheckServerID := explicitServerID
+			if preCheckServerID == "" {
+				preCheckServerID = resolveProductID()
+			}
+			if err := v.ensureDelegationAuth(ctx, preCheckServerID, toolName, args); err != nil {
+				return err
+			}
+		}
+
 		if deps.Caller.Format() == "json" {
 			return deps.Out.PrintJSON(map[string]any{
 				"dry_run":   true,
