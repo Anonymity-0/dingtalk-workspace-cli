@@ -739,7 +739,7 @@ func TestBuildRuleParamAllEvents(t *testing.T) {
 	}
 }
 
-func TestBuildRuleParamTodoEvents(t *testing.T) {
+func TestCrossPlatformCoverageBuildRuleParamTodoEvents(t *testing.T) {
 	for _, eventKey := range []string{EventTodoTaskCreated, EventTodoTaskUpdated, EventTodoTaskDeleted} {
 		t.Run(eventKey+"/default", func(t *testing.T) {
 			rule, param, err := BuildRuleParam(eventKey, RuleOptions{})
@@ -762,10 +762,11 @@ func TestBuildRuleParamTodoEvents(t *testing.T) {
 			}
 		})
 		for name, opts := range map[string]RuleOptions{
-			"invalid-role":   {RoleTypes: []string{"owner"}},
-			"duplicate-role": {RoleTypes: []string{"creator", "creator"}},
-			"user":           {UserID: "staff-1"},
-			"group":          {GroupID: "cid-1"},
+			"invalid-role":     {RoleTypes: []string{"owner"}},
+			"duplicate-role":   {RoleTypes: []string{"creator", "creator"}},
+			"user":             {UserID: "staff-1"},
+			"open-dingtalk-id": {OpenDingTalkID: "open-id-1"},
+			"group":            {GroupID: "cid-1"},
 		} {
 			t.Run(eventKey+"/"+name, func(t *testing.T) {
 				if _, _, err := BuildRuleParam(eventKey, opts); err == nil {
@@ -773,6 +774,14 @@ func TestBuildRuleParamTodoEvents(t *testing.T) {
 				}
 			})
 		}
+	}
+	_, param, err := BuildRuleParam(EventTodoTaskCreated, RuleOptions{RoleTypes: []string{"creator,,participant"}})
+	if err != nil {
+		t.Fatalf("BuildRuleParam() empty role segment error = %v", err)
+	}
+	want := map[string]any{"roleTypes": []string{"creator", "participant"}}
+	if !reflect.DeepEqual(param, want) {
+		t.Fatalf("empty role segment param = %#v, want %#v", param, want)
 	}
 	if _, _, err := BuildRuleParam(EventMention, RuleOptions{RoleTypes: []string{"creator"}}); err == nil || !strings.Contains(err.Error(), "--role-types is not supported") {
 		t.Fatalf("non-Todo role-types error = %v", err)

@@ -159,3 +159,25 @@ func TestProjectOutputTodoRequiresTaskID(t *testing.T) {
 		t.Fatalf("ProjectOutput() fallback = %#v, want original envelope", projected)
 	}
 }
+
+func TestCrossPlatformCoverageProjectTodoEventRejectsMalformedAndUnknownPayloads(t *testing.T) {
+	ev := transport.Event{EventType: EventTodoTaskCreated}
+	base := baseEventOutput{Type: EventTodoTaskCreated}
+
+	projected, err := projectTodoEvent(ev, base, json.RawMessage(`{`))
+	if err == nil || !strings.Contains(err.Error(), "decode personal Todo payload") {
+		t.Fatalf("projectTodoEvent() malformed error = %v", err)
+	}
+	if got, ok := projected.(transport.Event); !ok || got.EventType != ev.EventType {
+		t.Fatalf("projectTodoEvent() malformed fallback = %#v, want original envelope", projected)
+	}
+
+	base.Type = "user_todo_task_unknown"
+	projected, err = projectTodoEvent(ev, base, json.RawMessage(`{"body":{"taskId":"123456"}}`))
+	if err == nil || !strings.Contains(err.Error(), "unsupported personal Todo event type") {
+		t.Fatalf("projectTodoEvent() unknown error = %v", err)
+	}
+	if got, ok := projected.(transport.Event); !ok || got.EventType != ev.EventType {
+		t.Fatalf("projectTodoEvent() unknown fallback = %#v, want original envelope", projected)
+	}
+}
