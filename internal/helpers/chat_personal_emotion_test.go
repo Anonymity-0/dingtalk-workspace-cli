@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -17,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -666,6 +668,32 @@ func TestChatEmotionFavoriteFilePathDryRunStaysLocal(t *testing.T) {
 	}
 }
 
+func TestChatEmotionFavoriteFilePathDryRunReportsCompression(t *testing.T) {
+	imagePath, _ := writeLargePersonalEmotionPNG(t)
+	caller := &personalEmotionUploadCaller{uploadText: `{"success":true,"mediaIdV1":"@v1"}`}
+	installHelpersCoreDeps(t, &dryRunPersonalEmotionCaller{delegate: caller})
+	var out bytes.Buffer
+	deps.Out.w = &out
+	root := newChatCommand()
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	if root.PersistentFlags().Lookup("dry-run") == nil {
+		root.PersistentFlags().Bool("dry-run", false, "preview without executing")
+	}
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs([]string{"emotion", "favorite", "--file-path", imagePath, "--dry-run"})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("dry-run compressed image returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "已自动压缩到 2MB 以内") {
+		t.Fatalf("dry-run output missing compression marker: %s", out.String())
+	}
+	if caller.uploadCalls != 0 || len(caller.favoriteCalls) != 0 {
+		t.Fatalf("dry-run reached MCP: upload=%d favorite=%d", caller.uploadCalls, len(caller.favoriteCalls))
+	}
+}
+
 func TestPersonalEmotionImageFileValidation(t *testing.T) {
 	// T1 纯函数表测：扩展名映射（含大小写归一、jpg/jpeg 区分）与 stat 级校验。
 	for ext, want := range map[string]string{
@@ -720,6 +748,36 @@ func TestPersonalEmotionImageFileValidation(t *testing.T) {
 	}
 }
 
+func TestPersonalEmotionLoadImageFileCoversReadAndCompressionBoundaries(t *testing.T) {
+	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 8)
+	testseam.Swap(t, &personalEmotionOSReadFile, func(string) ([]byte, error) {
+		return nil, errors.New("read denied")
+	})
+	if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "read denied") {
+		t.Fatalf("read failure error = %v", err)
+	}
+}
+
+func TestPersonalEmotionLoadImageFileRejectsStillOversizeAfterCompression(t *testing.T) {
+	imagePath := writePersonalEmotionTestImage(t, "large.png", int(personalEmotionImageMaxBytes)+1)
+	testseam.Swap(t, &personalEmotionOSReadFile, func(string) ([]byte, error) {
+		return bytes.Repeat([]byte{1}, int(personalEmotionImageMaxBytes)+1), nil
+	})
+	testseam.Swap(t, &personalEmotionCompress, func([]byte, string) ([]byte, string, error) {
+		return bytes.Repeat([]byte{2}, int(personalEmotionImageMaxBytes)+1), "jpg", nil
+	})
+	if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "after automatic compression") {
+		t.Fatalf("oversize-after-compression error = %v", err)
+	}
+}
+
+func TestPersonalEmotionCompressionRejectsUnsupportedLargeImageType(t *testing.T) {
+	imagePath := writePersonalEmotionTestImage(t, "large.webp", int(personalEmotionImageMaxBytes)+1)
+	if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "webp 暂不支持自动压缩") {
+		t.Fatalf("unsupported compression error = %v", err)
+	}
+}
+
 func TestPersonalEmotionUploadMediaIDParsing(t *testing.T) {
 	// 解析层表测：success=false 透传错误字段；V1 优先；V1 缺失时兼容新文件服务 mediaIdV2。
 	if got, err := parsePersonalEmotionUploadMediaID(`{"success":true,"mediaIdV1":"@v1","mediaIdV2":"$v2$"}`); err != nil || got != "@v1" {
@@ -742,5 +800,127 @@ func TestPersonalEmotionUploadMediaIDParsing(t *testing.T) {
 	}
 	if _, err := parsePersonalEmotionUploadMediaID(`not-json`); err == nil {
 		t.Fatal("non-JSON accepted")
+	}
+}
+
+func TestPersonalEmotionUploadMediaIDParsingFallbackErrorDetails(t *testing.T) {
+	if _, err := parsePersonalEmotionUploadMediaID(`{"success":false,"message":"server says no"}`); err == nil || !strings.Contains(err.Error(), "server says no") {
+		t.Fatalf("message fallback error = %v", err)
+	}
+	if _, err := parsePersonalEmotionUploadMediaID(`{"success":false}`); err == nil || !strings.Contains(err.Error(), "服务端未返回错误详情") {
+		t.Fatalf("empty failure detail error = %v", err)
+	}
+}
+
+func TestPersonalEmotionUploadImageUsesBackgroundForNilContextAndWrapsUploadError(t *testing.T) {
+	installHelpersCoreDeps(t, &personalEmotionUploadCaller{uploadErr: errors.New("network down")})
+	_, err := uploadPersonalEmotionImage(nil, &personalEmotionImage{
+		path:      "sticker.png",
+		size:      1,
+		imageType: "png",
+		content:   base64.StdEncoding.EncodeToString([]byte("x")),
+	})
+	if err == nil || !strings.Contains(err.Error(), "network down") {
+		t.Fatalf("upload error = %v", err)
+	}
+}
+
+func TestPersonalEmotionGIFCompressionBoundaryErrors(t *testing.T) {
+	decodeErr := errors.New("decode nope")
+	testseam.Swap(t, &personalEmotionGIFDecodeAll, func(io.Reader) (*gif.GIF, error) {
+		return nil, decodeErr
+	})
+	if _, err := compressPersonalEmotionGIF([]byte("bad")); err == nil || !strings.Contains(err.Error(), "decode nope") {
+		t.Fatalf("gif decode error = %v", err)
+	}
+
+	testseam.Swap(t, &personalEmotionGIFDecodeAll, func(io.Reader) (*gif.GIF, error) {
+		return &gif.GIF{}, nil
+	})
+	if _, err := compressPersonalEmotionGIF([]byte("empty")); err == nil || !strings.Contains(err.Error(), "没有可压缩") {
+		t.Fatalf("gif empty error = %v", err)
+	}
+
+	testseam.Swap(t, &personalEmotionGIFDecodeAll, func(io.Reader) (*gif.GIF, error) {
+		return &gif.GIF{Image: []*image.Paletted{image.NewPaletted(image.Rect(0, 0, 1, 1), color.Palette{color.Black})}}, nil
+	})
+	if _, err := compressPersonalEmotionGIF([]byte("invalid-size")); err == nil || !strings.Contains(err.Error(), "尺寸无效") {
+		t.Fatalf("gif invalid size error = %v", err)
+	}
+}
+
+func TestPersonalEmotionGIFCompressionEncodeAndSizeFailures(t *testing.T) {
+	smallGIF := &gif.GIF{
+		Image: []*image.Paletted{
+			image.NewPaletted(image.Rect(0, 0, 2, 2), color.Palette{color.Black, color.White}),
+			image.NewPaletted(image.Rect(0, 0, 2, 2), color.Palette{color.Black, color.White}),
+		},
+		Delay:    []int{1, 1},
+		Disposal: []byte{gif.DisposalNone, gif.DisposalNone},
+		Config:   image.Config{Width: 2, Height: 2},
+	}
+	testseam.Swap(t, &personalEmotionGIFDecodeAll, func(io.Reader) (*gif.GIF, error) {
+		return smallGIF, nil
+	})
+	testseam.Swap(t, &personalEmotionGIFEncodeAll, func(io.Writer, *gif.GIF) error {
+		return errors.New("encode nope")
+	})
+	if _, err := compressPersonalEmotionGIF([]byte("gif")); err == nil || !strings.Contains(err.Error(), "encode nope") {
+		t.Fatalf("gif encode error = %v", err)
+	}
+
+	testseam.Swap(t, &personalEmotionGIFEncodeAll, func(w io.Writer, _ *gif.GIF) error {
+		_, err := w.Write(bytes.Repeat([]byte{3}, int(personalEmotionImageMaxBytes)+1))
+		return err
+	})
+	if _, err := compressPersonalEmotionGIF([]byte("gif")); err == nil || !strings.Contains(err.Error(), "压缩后仍超过") {
+		t.Fatalf("gif oversize error = %v", err)
+	}
+}
+
+func TestPersonalEmotionStillCompressionEncodeAndSizeFailures(t *testing.T) {
+	var src bytes.Buffer
+	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	if err := png.Encode(&src, img); err != nil {
+		t.Fatal(err)
+	}
+
+	testseam.Swap(t, &personalEmotionJPEGEncode, func(io.Writer, image.Image, *jpeg.Options) error {
+		return errors.New("jpeg nope")
+	})
+	if _, err := compressPersonalEmotionStillImage(src.Bytes()); err == nil || !strings.Contains(err.Error(), "jpeg nope") {
+		t.Fatalf("jpeg encode error = %v", err)
+	}
+
+	testseam.Swap(t, &personalEmotionJPEGEncode, func(w io.Writer, _ image.Image, _ *jpeg.Options) error {
+		_, err := w.Write(bytes.Repeat([]byte{4}, int(personalEmotionImageMaxBytes)+1))
+		return err
+	})
+	if _, err := compressPersonalEmotionStillImage(src.Bytes()); err == nil || !strings.Contains(err.Error(), "压缩后仍超过") {
+		t.Fatalf("still oversize error = %v", err)
+	}
+}
+
+func TestPersonalEmotionImageMathAndResizeBoundaries(t *testing.T) {
+	if got := maxInt(2, 1); got != 2 {
+		t.Fatalf("maxInt larger first = %d", got)
+	}
+	img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+	img.SetRGBA(0, 0, color.RGBA{R: 10, G: 20, B: 30, A: 255})
+	resized := resizeBilinear(img, 2, 2)
+	if got := resized.RGBAAt(1, 1); got.R != 10 || got.G != 20 || got.B != 30 || got.A != 255 {
+		t.Fatalf("nearest fallback color = %#v", got)
+	}
+	if indexes := personalEmotionGIFFrameIndexes(1, 0); !reflect.DeepEqual(indexes, []int{0}) {
+		t.Fatalf("frame indexes step floor = %v", indexes)
+	}
+	if indexes := personalEmotionGIFFrameIndexes(2, 4); !reflect.DeepEqual(indexes, []int{0, 1}) {
+		t.Fatalf("frame indexes keeps animation = %v", indexes)
+	}
+	if delay := personalEmotionGIFDelay(nil, 0, []int{0}, 0); delay != 0 {
+		t.Fatalf("empty delay = %d", delay)
+	}
+	if disposal := personalEmotionGIFDisposal(nil, 0); disposal != 0 {
+		t.Fatalf("missing disposal = %d", disposal)
 	}
 }

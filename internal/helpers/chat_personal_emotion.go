@@ -276,6 +276,15 @@ var personalEmotionImageTypes = map[string]string{
 	".bmp":  "bmp",
 }
 
+var (
+	personalEmotionOSStat       = os.Stat
+	personalEmotionOSReadFile   = os.ReadFile
+	personalEmotionCompress     = compressPersonalEmotionImage
+	personalEmotionGIFDecodeAll = gif.DecodeAll
+	personalEmotionGIFEncodeAll = gif.EncodeAll
+	personalEmotionJPEGEncode   = jpeg.Encode
+)
+
 func personalEmotionImageType(ext string) (string, bool) {
 	imageType, ok := personalEmotionImageTypes[strings.ToLower(strings.TrimSpace(ext))]
 	return imageType, ok
@@ -290,7 +299,7 @@ type personalEmotionImage struct {
 }
 
 func validatePersonalEmotionImageFile(filePath string) (int64, string, error) {
-	info, err := os.Stat(filePath)
+	info, err := personalEmotionOSStat(filePath)
 	if err != nil {
 		return 0, "", fmt.Errorf("--file-path cannot read local image %s: %w", filePath, err)
 	}
@@ -312,12 +321,12 @@ func loadPersonalEmotionImageFile(filePath string) (*personalEmotionImage, error
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(filePath)
+	data, err := personalEmotionOSReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("--file-path cannot read local image %s: %w", filePath, err)
 	}
 	if int64(len(data)) > personalEmotionImageMaxBytes {
-		compressed, compressedImageType, err := compressPersonalEmotionImage(data, imageType)
+		compressed, compressedImageType, err := personalEmotionCompress(data, imageType)
 		if err != nil {
 			return nil, fmt.Errorf("--file-path image size %d bytes exceeds the 2MB limit and automatic compression failed: %w；可让 AI 先压缩图片到 2MB 以内后再重试，GIF 需要保留动图帧", len(data), err)
 		}
@@ -369,7 +378,7 @@ func compressPersonalEmotionStillImage(data []byte) ([]byte, error) {
 			height := maxInt(personalEmotionImageMinCompressHeight, srcHeight*percent/100)
 			scaled := resizeBilinear(src, width, height)
 			var out bytes.Buffer
-			if err := jpeg.Encode(&out, scaled, &jpeg.Options{Quality: quality}); err != nil {
+			if err := personalEmotionJPEGEncode(&out, scaled, &jpeg.Options{Quality: quality}); err != nil {
 				return nil, fmt.Errorf("图片压缩失败: %w", err)
 			}
 			if int64(out.Len()) <= personalEmotionImageMaxBytes {
@@ -381,7 +390,7 @@ func compressPersonalEmotionStillImage(data []byte) ([]byte, error) {
 }
 
 func compressPersonalEmotionGIF(data []byte) ([]byte, error) {
-	src, err := gif.DecodeAll(bytes.NewReader(data))
+	src, err := personalEmotionGIFDecodeAll(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("GIF 解码失败: %w", err)
 	}
@@ -397,11 +406,8 @@ func compressPersonalEmotionGIF(data []byte) ([]byte, error) {
 			width := maxInt(personalEmotionImageMinCompressWidth, srcWidth*percent/100)
 			height := maxInt(personalEmotionImageMinCompressHeight, srcHeight*percent/100)
 			compressed := encodePersonalEmotionGIFCandidate(src, width, height, frameStep)
-			if len(compressed.Image) < 2 && len(src.Image) > 1 {
-				continue
-			}
 			var out bytes.Buffer
-			if err := gif.EncodeAll(&out, compressed); err != nil {
+			if err := personalEmotionGIFEncodeAll(&out, compressed); err != nil {
 				return nil, fmt.Errorf("GIF 压缩失败: %w", err)
 			}
 			if int64(out.Len()) <= personalEmotionImageMaxBytes {
