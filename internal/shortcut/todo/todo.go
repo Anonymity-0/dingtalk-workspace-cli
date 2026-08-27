@@ -76,7 +76,7 @@ var GetMyTasks = shortcut.Shortcut{
 	},
 	Constraints: []shortcut.Constraint{{
 		Kind: shortcut.ConstraintCustom, Flags: []string{"all", "max-pages"},
-		Description: "显式 --max-pages 仅能与 --all 一起使用",
+		Description: "--max-pages 仅用于 --all，且必须在 1-40",
 	}},
 	Validate: validateGetMyTasks,
 	Tips:     []string{`dws todo +get-my-tasks --status false --priority 40,30`},

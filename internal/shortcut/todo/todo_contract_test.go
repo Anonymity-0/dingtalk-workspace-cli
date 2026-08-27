@@ -89,10 +89,9 @@ func TestTodoRuntimeRelationshipsArePublishedAsConstraints(t *testing.T) {
 		strings.Join(GetMyTasks.Constraints[0].Flags, ",") != "all,max-pages" {
 		t.Fatalf("get-my-tasks constraints = %#v validate=%v", GetMyTasks.Constraints, GetMyTasks.Validate != nil)
 	}
-	if Reminder.Validate == nil || len(Reminder.Constraints) != 3 ||
+	if Reminder.Validate == nil || len(Reminder.Constraints) != 2 ||
 		Reminder.Constraints[0].Kind != shortcut.ConstraintExactlyOne ||
-		Reminder.Constraints[1].Kind != shortcut.ConstraintMutuallyExclusive ||
-		Reminder.Constraints[2].Kind != shortcut.ConstraintCustom {
+		Reminder.Constraints[1].Kind != shortcut.ConstraintCustom {
 		t.Fatalf("reminder constraints = %#v validate=%v", Reminder.Constraints, Reminder.Validate != nil)
 	}
 }

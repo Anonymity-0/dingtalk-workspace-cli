@@ -406,6 +406,8 @@ func listAllTodoComments(rt *shortcut.RuntimeContext, taskID string) ([]map[stri
 	return nil, todoResponseError("todo/list_todo_comment", "pagination_limit_reached", "评论列表达到 40 页仍未耗尽，拒绝把不完整列表用于写后验证")
 }
 
+const todoReminderDependencyConstraint = "dueTime 要求 --due-date-offset；customTime 要求 --at；无关时间参数兼容忽略"
+
 var Reminder = shortcut.Shortcut{
 	OutputRollout: output.RolloutUnifiedActive,
 	Service:       "todo", Command: "+reminder", Product: "todo",
@@ -418,14 +420,13 @@ var Reminder = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "task-id", Type: shortcut.FlagString, Desc: "待办 taskId", Required: true},
 		{Name: "clear", Type: shortcut.FlagBool, Desc: "清除全部提醒规则"},
-		{Name: "base-time", Type: shortcut.FlagString, Enum: []string{"dueTime", "customTime"}, Desc: "提醒基准"},
-		{Name: "due-date-offset", Type: shortcut.FlagInt, Desc: "相对截止时间的分钟偏移"},
-		{Name: "at", Type: shortcut.FlagString, Desc: "customTime 的 ISO8601 时间"},
+		{Name: "base-time", Type: shortcut.FlagString, Enum: []string{"dueTime", "customTime"}, Desc: "提醒基准；" + todoReminderDependencyConstraint},
+		{Name: "due-date-offset", Type: shortcut.FlagInt, Desc: "相对截止时间的分钟偏移；" + todoReminderDependencyConstraint},
+		{Name: "at", Type: shortcut.FlagString, Desc: "customTime 的 ISO8601 时间；" + todoReminderDependencyConstraint},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintExactlyOne, Flags: []string{"clear", "base-time"}},
-		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"clear", "due-date-offset", "at"}},
-		{Kind: shortcut.ConstraintCustom, Flags: []string{"base-time", "due-date-offset", "at"}, Description: "dueTime 要求 --due-date-offset 且禁止 --at；customTime 要求 --at 且禁止 --due-date-offset"},
+		{Kind: shortcut.ConstraintCustom, Flags: []string{"base-time", "due-date-offset", "at"}, Description: todoReminderDependencyConstraint},
 	},
 	Validate: validateTodoReminder,
 	Execute: func(rt *shortcut.RuntimeContext) error {
@@ -473,23 +474,14 @@ func validateTodoReminder(rt *shortcut.RuntimeContext) error {
 	if clear == (baseTime != "") {
 		return apperrors.NewValidation("必须且只能选择 --clear 或 --base-time")
 	}
-	if clear && (rt.Changed("due-date-offset") || rt.Changed("at")) {
-		return apperrors.NewValidation("--clear 不能与 --due-date-offset 或 --at 同时使用")
-	}
 	if baseTime == "dueTime" {
 		if !rt.Changed("due-date-offset") {
 			return apperrors.NewValidation("--base-time=dueTime 要求 --due-date-offset")
-		}
-		if rt.Changed("at") {
-			return apperrors.NewValidation("--base-time=dueTime 不能同时提供 --at")
 		}
 	}
 	if baseTime == "customTime" {
 		if !rt.Changed("at") {
 			return apperrors.NewValidation("--base-time=customTime 要求 --at")
-		}
-		if rt.Changed("due-date-offset") {
-			return apperrors.NewValidation("--base-time=customTime 不能同时提供 --due-date-offset")
 		}
 	}
 	return nil

@@ -645,18 +645,52 @@ func TestCrossPlatformCoverageTodoCommentAndReminder(t *testing.T) {
 	requireTodoExecutionStartedError(t, err, "missing_collection")
 
 	for name, args := range map[string][]string{
-		"none":          {"--task-id", "task-1", "--yes"},
-		"both":          {"--task-id", "task-1", "--clear", "--base-time", "dueTime", "--yes"},
-		"clear-offset":  {"--task-id", "task-1", "--clear", "--due-date-offset", "-30", "--yes"},
-		"due-offset":    {"--task-id", "task-1", "--base-time", "dueTime", "--yes"},
-		"due-at":        {"--task-id", "task-1", "--base-time", "dueTime", "--due-date-offset", "-30", "--at", todoCoverageTime, "--yes"},
-		"custom-at":     {"--task-id", "task-1", "--base-time", "customTime", "--yes"},
-		"custom-offset": {"--task-id", "task-1", "--base-time", "customTime", "--at", todoCoverageTime, "--due-date-offset", "-30", "--yes"},
-		"custom-value":  {"--task-id", "task-1", "--base-time", "customTime", "--at", "bad", "--yes"},
+		"none":         {"--task-id", "task-1", "--yes"},
+		"both":         {"--task-id", "task-1", "--clear", "--base-time", "dueTime", "--yes"},
+		"due-offset":   {"--task-id", "task-1", "--base-time", "dueTime", "--yes"},
+		"custom-at":    {"--task-id", "task-1", "--base-time", "customTime", "--yes"},
+		"custom-value": {"--task-id", "task-1", "--base-time", "customTime", "--at", "bad", "--yes"},
 	} {
 		t.Run("reminder-"+name, func(t *testing.T) {
 			if err := runTodoCoverage(t, Reminder, &todoCoverageCaller{responses: map[string][]string{}}, args...); err == nil {
 				t.Fatal("bad reminder arguments accepted")
+			}
+		})
+	}
+	for _, tc := range []struct {
+		name       string
+		args       []string
+		requestKey string
+		ignoredKey string
+	}{
+		{
+			name:       "clear-offset",
+			args:       []string{"--task-id", "task-1", "--clear", "--due-date-offset", "-30", "--dry-run", "--yes"},
+			requestKey: "todoReminderUpdateRequest", ignoredKey: "dueDateOffset",
+		},
+		{
+			name:       "due-at",
+			args:       []string{"--task-id", "task-1", "--base-time", "dueTime", "--due-date-offset", "-30", "--at", todoCoverageTime, "--dry-run", "--yes"},
+			requestKey: "todoReminderAddRequest", ignoredKey: "reminderTimeStamp",
+		},
+		{
+			name:       "custom-offset",
+			args:       []string{"--task-id", "task-1", "--base-time", "customTime", "--at", todoCoverageTime, "--due-date-offset", "-30", "--dry-run", "--yes"},
+			requestKey: "todoReminderAddRequest", ignoredKey: "dueDateOffset",
+		},
+	} {
+		t.Run("reminder-compatible-"+tc.name, func(t *testing.T) {
+			preview := runTodoUnifiedCoverage(t, Reminder, &todoCoverageCaller{responses: map[string][]string{}}, tc.args...)
+			params, ok := preview["params"].(map[string]any)
+			if !ok {
+				t.Fatalf("preview params = %#v", preview["params"])
+			}
+			request, ok := params[tc.requestKey].(map[string]any)
+			if !ok {
+				t.Fatalf("preview request %s = %#v", tc.requestKey, params[tc.requestKey])
+			}
+			if _, exists := request[tc.ignoredKey]; exists {
+				t.Fatalf("historically ignored %s reached request: %#v", tc.ignoredKey, request)
 			}
 		})
 	}
