@@ -40,8 +40,15 @@ func TestCrossPlatformCoverageHRbrainSemanticCatalogExactlyCoversRegisteredSurfa
 			missing = append(missing, command)
 			continue
 		}
-		if record.Public || record.Availability != "" || !record.Reviewed || !item.SemanticReviewed || item.Availability != shortcut.AvailabilityUnavailable || !item.Hidden {
-			t.Errorf("%s availability/review drift", command)
+		if command == "+list-pools" {
+			if !record.Public || record.Availability != shortcut.AvailabilityAvailable || item.Availability != shortcut.AvailabilityAvailable || item.Hidden {
+				t.Errorf("%s available/public drift", command)
+			}
+		} else if record.Public || record.Availability != "" || item.Availability != shortcut.AvailabilityUnavailable || !item.Hidden {
+			t.Errorf("%s unavailable/private drift", command)
+		}
+		if !record.Reviewed || !item.SemanticReviewed {
+			t.Errorf("%s review drift", command)
 		}
 		if strings.TrimSpace(item.SemanticDelta) == "" || item.SemanticDelta != record.SemanticDelta {
 			t.Errorf("%s semantic delta drift", command)
@@ -51,6 +58,10 @@ func TestCrossPlatformCoverageHRbrainSemanticCatalogExactlyCoversRegisteredSurfa
 		}
 		if item.Contract.Interface == nil || strings.Contains(item.Contract.Interface.Reason, "shortcut_defect") {
 			t.Errorf("%s lacks a reviewed non-Shortcut blocker", command)
+		} else if command == "+list-pools" {
+			if item.Contract.Interface.Availability != "available" || item.Contract.Interface.Reason != "Reviewed HRbrain composite: list_talent_pools returns success=true with an explicit content.pools page and matching currentPage/pageSize/totalCount; the Shortcut validates that business page and projects framework pagination." {
+				t.Errorf("%s available interface drift: %+v", command, item.Contract.Interface)
+			}
 		} else if strings.Contains(item.Contract.Interface.Reason, "classified=adapter_business_service") {
 			blockerCounts["adapter_business_service"]++
 		} else if strings.Contains(item.Contract.Interface.Reason, "classified=tenant_fixture") {
@@ -69,7 +80,7 @@ func TestCrossPlatformCoverageHRbrainSemanticCatalogExactlyCoversRegisteredSurfa
 	if len(missing) > 0 || len(stale) > 0 {
 		t.Fatalf("catalog mismatch: missing=%v stale=%v", missing, stale)
 	}
-	if blockerCounts["adapter_business_service"] != 9 || blockerCounts["tenant_fixture"] != 2 {
+	if blockerCounts["adapter_business_service"] != 8 || blockerCounts["tenant_fixture"] != 2 {
 		t.Fatalf("blocker counts = %#v", blockerCounts)
 	}
 }

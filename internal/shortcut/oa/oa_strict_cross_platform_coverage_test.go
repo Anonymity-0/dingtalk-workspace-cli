@@ -149,24 +149,27 @@ func TestCrossPlatformCoverageOAPaginationFailsClosed(t *testing.T) {
 	if err != nil || !page.HasMore || page.Next != "3" {
 		t.Fatalf("numbered continuation=%+v err=%v", page, err)
 	}
-	if _, err := oaCursorPage(map[string]any{}, "oa/cursor", 0); err == nil {
-		t.Fatal("cursor response without pagination was accepted")
+
+	page, err = oaCursorProbePage("oa/cursor", 99, 7, 2)
+	if err != nil || !page.Known || !page.HasMore || page.Next != "106" {
+		t.Fatalf("offset continuation=%+v err=%v", page, err)
 	}
-	if _, err := oaCursorPage(map[string]any{"hasMore": true}, "oa/cursor", 0); err == nil {
-		t.Fatal("hasMore without nextCursor was accepted")
+	page, err = oaCursorProbePage("oa/cursor", 106, 7, 0)
+	if err != nil || !page.Known || page.HasMore || page.Next != "" {
+		t.Fatalf("empty-page exhaustion=%+v err=%v", page, err)
 	}
-	if _, err := oaCursorPage(map[string]any{"hasMore": true, "nextCursor": float64(1)}, "oa/cursor", 1); err == nil {
-		t.Fatal("stalled cursor was accepted")
+	if _, err := oaCursorProbePage("oa/cursor", -1, 1, 1); err == nil {
+		t.Fatal("negative cursor was accepted")
 	}
-	if _, err := oaCursorPage(map[string]any{"hasMore": true, "nextCursor": float64(1)}, "oa/cursor", 2); err == nil {
-		t.Fatal("backward cursor was accepted")
+	if _, err := oaCursorProbePage("oa/cursor", 0, 1, -1); err == nil {
+		t.Fatal("negative item count was accepted")
 	}
-	if _, err := oaCursorPage(map[string]any{"hasMore": true, "nextCursor": "not-a-number"}, "oa/cursor", 1); err == nil {
-		t.Fatal("non-integer cursor was accepted")
+	if _, err := oaCursorProbePage("oa/cursor", 0, 1, 2); err == nil {
+		t.Fatal("response larger than requested window was accepted")
 	}
-	page, err = oaCursorPage(map[string]any{"hasMore": true, "nextCursor": float64(2)}, "oa/cursor", 1)
-	if err != nil || page.Next != "2" {
-		t.Fatalf("cursor continuation=%+v err=%v", page, err)
+	maxInt := int(^uint(0) >> 1)
+	if _, err := oaCursorProbePage("oa/cursor", maxInt, 1, 1); err == nil {
+		t.Fatal("overflowing cursor was accepted")
 	}
 }
 
@@ -353,22 +356,10 @@ func TestCrossPlatformCoverageOACommonHelperBranches(t *testing.T) {
 		}
 	}
 
-	for name, fixture := range map[string]map[string]any{
-		"wrong cursor hasMore": {"hasMore": "true"},
-		"terminal conflict":    {"hasMore": false, "nextCursor": 1},
-	} {
-		if page, err := oaCursorPage(fixture, "oa/cursor", 0); err == nil {
-			t.Errorf("%s returned %+v", name, page)
-		}
-	}
-	terminal, err := oaCursorPage(map[string]any{"hasMore": false}, "oa/cursor", 0)
-	if err != nil || !terminal.Known || terminal.HasMore || terminal.Next != "" {
-		t.Fatalf("terminal cursor=%+v err=%v", terminal, err)
-	}
 	if _, err := oaHasMorePage(map[string]any{"hasMore": true}, "oa/page", 0); err == nil {
 		t.Fatal("continuation from invalid current page was accepted")
 	}
-	terminal, err = oaHasMorePage(map[string]any{"hasMore": false}, "oa/page", 1)
+	terminal, err := oaHasMorePage(map[string]any{"hasMore": false}, "oa/page", 1)
 	if err != nil || !terminal.Known || terminal.HasMore {
 		t.Fatalf("terminal numbered page=%+v err=%v", terminal, err)
 	}
@@ -501,11 +492,15 @@ func TestCrossPlatformCoverageOAReadShortcutBranches(t *testing.T) {
 	t.Run("list-forms null result fails closed", func(t *testing.T) {
 		expectError(t, ListForms, map[string][]string{"list_user_visible_process": {`{"success":true,"result":null}`}})
 	})
-	t.Run("list-forms pagination failure", func(t *testing.T) {
-		expectError(t, ListForms, map[string][]string{"list_user_visible_process": {`{"success":true,"result":{"processCodeList":[]}}`}})
+	t.Run("list-forms empty page proves exhaustion", func(t *testing.T) {
+		expectSuccess(t, ListForms, map[string][]string{"list_user_visible_process": {`{"success":true,"result":{"processCodeList":[]}}`}})
 	})
-	t.Run("list-forms success", func(t *testing.T) {
-		expectSuccess(t, ListForms, map[string][]string{"list_user_visible_process": {`{"success":true,"result":{"hasMore":true,"nextCursor":2,"processCodeList":[{"processCode":"p","processName":"fixture"}]}}`}}, "--cursor", "1", "--limit", "2")
+	t.Run("list-forms nonempty page advances by returned count", func(t *testing.T) {
+		caller := expectSuccess(t, ListForms, map[string][]string{"list_user_visible_process": {`{"success":true,"result":{"processCodeList":[{"processCode":"p","processName":"fixture"}]}}`}}, "--cursor", "1", "--limit", "2")
+		want := map[string]any{"cursor": 1, "pageSize": 2}
+		if !reflect.DeepEqual(caller.arguments[0], want) {
+			t.Fatalf("list forms params=%#v want=%#v", caller.arguments[0], want)
+		}
 	})
 
 	t.Run("search empty query", func(t *testing.T) {

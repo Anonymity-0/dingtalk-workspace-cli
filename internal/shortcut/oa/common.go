@@ -28,7 +28,7 @@ func oaCollectionResult(collection, description string) *contract.ResultSpec {
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess, contract.ResultOutcomeFailure},
 		DataSchema: json.RawMessage(fmt.Sprintf(
-			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","description":"当前响应中的有效审批记录数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"严格验证后的 OA 审批业务记录","additionalProperties":true}},"complete":{"type":"boolean","description":"服务端分页证据是否证明结果完整"}},"required":["count",%q,"complete"],"additionalProperties":true}`,
+			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","description":"当前响应中的有效审批记录数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"严格验证后的 OA 审批业务记录","additionalProperties":true}},"complete":{"type":"boolean","description":"是否已有可信终止证据证明当前分页遍历完成"}},"required":["count",%q,"complete"],"additionalProperties":true}`,
 			description, collection, description, collection,
 		)),
 		SensitivePaths: []string{collection + ".title", collection + ".originatorName", collection + ".formValueVOS", collection + ".userId"},
@@ -326,37 +326,6 @@ func oaProjectTasks(data map[string]any, operation string) ([]map[string]any, er
 	return tasks, nil
 }
 
-func oaCursorPage(result map[string]any, operation string, current int) (oaPageEvidence, error) {
-	raw, present := result["hasMore"]
-	if !present {
-		return oaPageEvidence{}, oaResponseError(operation, "missing_pagination", "游标响应缺少 hasMore；不能把当前页当作完整结果")
-	}
-	hasMore, ok := raw.(bool)
-	if !ok {
-		return oaPageEvidence{}, oaResponseError(operation, "malformed_pagination", "OA 响应 hasMore 应为布尔值")
-	}
-	page := oaPageEvidence{Known: true, HasMore: hasMore}
-	next := oaScalarString(result["nextCursor"])
-	if !hasMore {
-		if next != "" {
-			return oaPageEvidence{}, oaResponseError(operation, "conflicting_pagination", "hasMore=false 但 nextCursor 非空")
-		}
-		return page, nil
-	}
-	if next == "" {
-		return oaPageEvidence{}, oaResponseError(operation, "missing_next_cursor", "hasMore=true 但缺少 nextCursor")
-	}
-	nextValue, err := strconv.Atoi(next)
-	if err != nil {
-		return oaPageEvidence{}, oaResponseError(operation, "malformed_pagination", "nextCursor 应为整数")
-	}
-	if nextValue <= current {
-		return oaPageEvidence{}, oaResponseError(operation, "stalled_cursor", "nextCursor 没有严格前进")
-	}
-	page.Next = next
-	return page, nil
-}
-
 func oaHasMorePage(result map[string]any, operation string, currentPage int) (oaPageEvidence, error) {
 	raw, present := result["hasMore"]
 	if !present {
@@ -374,6 +343,24 @@ func oaHasMorePage(result map[string]any, operation string, currentPage int) (oa
 		page.Next = strconv.Itoa(currentPage + 1)
 	}
 	return page, nil
+}
+
+// oaCursorProbePage models an offset endpoint that does not publish hasMore or
+// a next cursor. The service filters each requested scan window, so a non-empty
+// page advances by the requested limit rather than the smaller returned count.
+// Only an explicit empty page proves endpoint exhaustion.
+func oaCursorProbePage(operation string, currentCursor, limit, count int) (oaPageEvidence, error) {
+	if currentCursor < 0 || limit <= 0 || count < 0 || count > limit {
+		return oaPageEvidence{}, oaResponseError(operation, "invalid_pagination", "游标、请求窗口或响应条目数无效")
+	}
+	if count == 0 {
+		return oaPageEvidence{Known: true}, nil
+	}
+	next := currentCursor + limit
+	if next <= currentCursor {
+		return oaPageEvidence{}, oaResponseError(operation, "stalled_cursor", "下一游标没有严格前进")
+	}
+	return oaPageEvidence{Known: true, HasMore: true, Next: strconv.Itoa(next)}, nil
 }
 
 func outputOAPage(rt *shortcut.RuntimeContext, collection string, items []map[string]any, page oaPageEvidence) error {

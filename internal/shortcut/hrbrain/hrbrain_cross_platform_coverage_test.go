@@ -73,12 +73,12 @@ func runHRbrainCoverage(t *testing.T, declaration shortcut.Shortcut, caller edit
 	return root.Execute()
 }
 
-func TestCrossPlatformCoverageHRbrainDeclarationsStayUnavailableAndTyped(t *testing.T) {
+func TestCrossPlatformCoverageHRbrainDeclarationsStayTyped(t *testing.T) {
 	declarations := []shortcut.Shortcut{
-		ListPools, GetPool, ListPoolEmployees, ProfileMetadata, QueryProfile, ProfileLabels,
+		GetPool, ListPoolEmployees, ProfileMetadata, QueryProfile, ProfileLabels,
 		ProfileCareer, ProfilePerformance, SearchEmployees, SearchEmployeesStructured, SearchFields,
 	}
-	if len(declarations) != 11 {
+	if len(declarations) != 10 {
 		t.Fatalf("declarations = %d", len(declarations))
 	}
 	for _, declaration := range declarations {
@@ -92,11 +92,24 @@ func TestCrossPlatformCoverageHRbrainDeclarationsStayUnavailableAndTyped(t *test
 			t.Errorf("%s lacks unavailable interface and Safety", declaration.Command)
 		}
 	}
+	if ListPools.Hidden || ListPools.Availability != shortcut.AvailabilityAvailable || ListPools.Contract.Interface == nil || ListPools.Contract.Interface.Availability != "available" {
+		t.Fatalf("+list-pools must be public/available after live content page validation: %+v", ListPools.Contract.Interface)
+	}
+}
+
+func TestCrossPlatformCoverageHRbrainListPoolsAcceptsReviewedLiveContentPage(t *testing.T) {
+	caller := &hrbrainParityCaller{response: `{"success":true,"result":null,"content":{"currentPage":1,"pageSize":20,"pools":[],"totalCount":0}}`}
+	if err := runHRbrainCoverage(t, ListPools, caller); err != nil {
+		t.Fatalf("list-pools live content page failed: %v", err)
+	}
+	if caller.calls != 1 {
+		t.Fatalf("list-pools calls = %d", caller.calls)
+	}
 }
 
 func TestCrossPlatformCoverageHRbrainBlockersAreClassifiedWithoutShortcutDefects(t *testing.T) {
 	commands := []string{
-		ListPools.Command, GetPool.Command, ListPoolEmployees.Command, ProfileMetadata.Command,
+		GetPool.Command, ListPoolEmployees.Command, ProfileMetadata.Command,
 		QueryProfile.Command, ProfileLabels.Command, ProfileCareer.Command, ProfilePerformance.Command,
 		SearchEmployees.Command, SearchEmployeesStructured.Command, SearchFields.Command,
 	}
@@ -115,13 +128,13 @@ func TestCrossPlatformCoverageHRbrainBlockersAreClassifiedWithoutShortcutDefects
 			t.Fatalf("%s has unknown blocker classification %q", command, reason)
 		}
 	}
-	if counts[hrbrainBlockerAdapterBusiness] != 9 || counts[hrbrainBlockerTenantFixture] != 2 {
+	if counts[hrbrainBlockerAdapterBusiness] != 8 || counts[hrbrainBlockerTenantFixture] != 2 {
 		t.Fatalf("blocker counts = %#v", counts)
 	}
 }
 
 func TestCrossPlatformCoverageHRbrainExactParameterProjectionForAllElevenShortcuts(t *testing.T) {
-	pageResponse := `{"success":true,"result":{"items":[{"poolCode":"pool"}],"currentPage":1,"pageSize":20,"totalCount":1,"hasMore":false}}`
+	pageResponse := `{"success":true,"result":null,"content":{"pools":[{"poolCode":"pool"}],"currentPage":1,"pageSize":20,"totalCount":1}}`
 	employeePageResponse := `{"success":true,"result":{"items":[{"workNo":"worker"}],"currentPage":1,"pageSize":20,"totalCount":1,"hasMore":false}}`
 	queryItems := []any{map[string]any{"modelCode": "model", "fields": []any{"field"}}}
 	structuredFields := []any{map[string]any{"label": "field", "value": "field"}}
@@ -204,6 +217,28 @@ func TestCrossPlatformCoverageHRbrainPaginationFailsClosed(t *testing.T) {
 			t.Errorf("broken page %d accepted: items=%#v evidence=%+v", index, got, evidence)
 		}
 	}
+
+	liveContent := map[string]any{"success": true, "result": nil, "content": map[string]any{
+		"pools": []any{}, "currentPage": float64(1), "pageSize": float64(20), "totalCount": float64(0),
+	}}
+	items, page, err = hrbrainProjectPoolsPage(liveContent, "hrbrain/list_talent_pools", 1, 20)
+	if err != nil || len(items) != 0 || page.HasMore || page.TotalCount != 0 {
+		t.Fatalf("live content page: items=%#v page=%+v err=%v", items, page, err)
+	}
+	brokenContent := []map[string]any{
+		{"result": nil, "content": map[string]any{"pools": []any{}}},
+		{"success": false, "result": nil, "content": map[string]any{"pools": []any{}}},
+		{"success": true, "result": nil},
+		{"success": true, "result": nil, "content": map[string]any{"currentPage": float64(1), "pageSize": float64(20), "totalCount": float64(0)}},
+		{"success": true, "result": nil, "content": map[string]any{"pools": "bad", "currentPage": float64(1), "pageSize": float64(20), "totalCount": float64(0)}},
+		{"success": true, "result": nil, "content": map[string]any{"pools": []any{}, "currentPage": float64(2), "pageSize": float64(20), "totalCount": float64(0)}},
+		{"success": true, "result": nil, "content": map[string]any{"pools": []any{}, "currentPage": float64(1), "pageSize": float64(20), "totalCount": float64(-1)}},
+	}
+	for index, payload := range brokenContent {
+		if got, evidence, err := hrbrainProjectPoolsPage(payload, "hrbrain/list_talent_pools", 1, 20); err == nil {
+			t.Errorf("broken live content %d accepted: items=%#v evidence=%+v", index, got, evidence)
+		}
+	}
 }
 
 func TestCrossPlatformCoverageHRbrainStructuredInputsRejectBadShapes(t *testing.T) {
@@ -277,7 +312,7 @@ func TestCrossPlatformCoverageHRbrainExecutionFailuresAndContinuation(t *testing
 		t.Fatalf("continuing calls = %d", continuing.calls)
 	}
 
-	optionalPool := &hrbrainParityCaller{response: `{"success":true,"result":{"items":[{"poolCode":"pool"}],"currentPage":1,"pageSize":20,"totalCount":1,"hasMore":false}}`}
+	optionalPool := &hrbrainParityCaller{response: `{"success":true,"result":null,"content":{"pools":[{"poolCode":"pool"}],"currentPage":1,"pageSize":20,"totalCount":1}}`}
 	if err := runHRbrainCoverage(t, ListPools, optionalPool,
 		"--keyword", "pool", "--pool-type", "type", "--creator", "creator", "--labels", "one,two"); err != nil {
 		t.Fatal(err)
