@@ -498,6 +498,52 @@ func TestSchemaCompatibilityAcceptsMultiFieldConfirmationHardening(t *testing.T)
 	}
 }
 
+func TestSchemaCompatibilityRejectsPartialMultiFieldMigration(t *testing.T) {
+	oldTool := baselineContract().Products["doc"].Tools["doc.create"]
+	oldTool.Confirmation = "not_required"
+	oldTool.Risk = "medium"
+	oldTool.Effect = "write"
+
+	// Only risk tightened, confirmation unchanged: partial migration must fail
+	// for a tool whose reviewed set requires confirmation + risk together.
+	partialRisk := oldTool
+	partialRisk.Risk = "high"
+	for _, toolPath := range []string{
+		"calendar/calendar.remove_calendar_participant",
+		"chat/chat.remove_group_member",
+		"doc/doc.update_permission",
+	} {
+		if failures := checkToolCompatibility(toolPath, oldTool, partialRisk); len(failures) == 0 {
+			t.Fatalf("partial migration (risk only) for %s unexpectedly passed", toolPath)
+		}
+	}
+
+	// Only confirmation tightened, risk unchanged: also partial.
+	partialConfirmation := oldTool
+	partialConfirmation.Confirmation = "user_required"
+	for _, toolPath := range []string{
+		"calendar/calendar.remove_calendar_participant",
+		"chat/chat.remove_group_member",
+	} {
+		if failures := checkToolCompatibility(toolPath, oldTool, partialConfirmation); len(failures) == 0 {
+			t.Fatalf("partial migration (confirmation only) for %s unexpectedly passed", toolPath)
+		}
+	}
+
+	// For a 3-field tool (confirmation + risk + effect), only 2 of 3 must fail.
+	partialDestructive := oldTool
+	partialDestructive.Confirmation = "user_required"
+	partialDestructive.Risk = "high"
+	for _, toolPath := range []string{
+		"calendar/calendar.delete_calendar_event",
+		"minutes/minutes.replace_minutes_text",
+	} {
+		if failures := checkToolCompatibility(toolPath, oldTool, partialDestructive); len(failures) == 0 {
+			t.Fatalf("partial migration (confirmation+risk without effect) for %s unexpectedly passed", toolPath)
+		}
+	}
+}
+
 func TestMergeContracts(t *testing.T) {
 	historical := baselineContract()
 	current := cloneContract(historical)

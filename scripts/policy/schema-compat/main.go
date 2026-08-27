@@ -752,7 +752,7 @@ func checkCompatibility(baseline, current schemaContract) []string {
 
 func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []string {
 	var failures []string
-	for _, field := range []struct {
+	fields := []struct {
 		name string
 		old  string
 		new  string
@@ -764,8 +764,15 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 		{name: "risk", old: oldTool.Risk, new: newTool.Risk},
 		{name: "confirmation", old: oldTool.Confirmation, new: newTool.Confirmation},
 		{name: "idempotency", old: oldTool.Idempotency, new: newTool.Idempotency},
-	} {
-		if field.old != field.new && !isReviewedCompatibilityException(toolPath, field.name, field.old, field.new) {
+	}
+	var actual []toolTransition
+	for _, field := range fields {
+		if field.old != field.new {
+			actual = append(actual, toolTransition{field: field.name, old: field.old, new_: field.new})
+		}
+	}
+	for _, field := range fields {
+		if field.old != field.new && !isReviewedCompatibilityException(toolPath, field.name, field.old, field.new, actual) {
 			failures = append(failures, fmt.Sprintf("schema tool %q changed %s", toolPath, field.name))
 		}
 	}
@@ -801,7 +808,41 @@ func checkToolCompatibility(toolPath string, oldTool, newTool toolSchema) []stri
 	return failures
 }
 
-func isReviewedCompatibilityException(toolPath, field, oldValue, newValue string) bool {
+// toolTransition captures a single field's old→new change for atomic matching.
+type toolTransition struct {
+	field string
+	old   string
+	new_  string
+}
+
+// reviewedExceptionSetFullyMatched reports whether every registered exception
+// for toolPath is present in the actual transitions. The set is atomic: a
+// partial migration (e.g. only risk tightened, confirmation unchanged) must
+// not borrow individual exceptions from a reviewed complete hardening.
+func reviewedExceptionSetFullyMatched(toolPath string, actual []toolTransition) bool {
+	exceptions := reviewedCompatibilityExceptions[toolPath]
+	if len(exceptions) == 0 {
+		return true
+	}
+	for _, ex := range exceptions {
+		found := false
+		for _, tr := range actual {
+			if tr.field == ex.Field && tr.old == ex.Old && tr.new_ == ex.New {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func isReviewedCompatibilityException(toolPath, field, oldValue, newValue string, actual []toolTransition) bool {
+	if !reviewedExceptionSetFullyMatched(toolPath, actual) {
+		return false
+	}
 	for _, exception := range reviewedCompatibilityExceptions[toolPath] {
 		if exception.Field == field && exception.Old == oldValue && exception.New == newValue {
 			return true
