@@ -358,9 +358,12 @@ function Assert-SkillPathCopy {
         }
         return
     }
-    if ((Get-SkillPathPermissionFingerprint -Path $Source) -ne
-        (Get-SkillPathPermissionFingerprint -Path $Destination)) {
-        throw "Skill 路径权限不一致: $Source != $Destination"
+    $nativeWindows = $env:OS -eq "Windows_NT" -or $PSVersionTable.PSEdition -eq "Desktop"
+    if (-not $nativeWindows) {
+        if ((Get-SkillPathPermissionFingerprint -Path $Source) -ne
+            (Get-SkillPathPermissionFingerprint -Path $Destination)) {
+            throw "Skill 路径权限不一致: $Source != $Destination"
+        }
     }
     if ($sourceItem.PSIsContainer) {
         $sourceChildren = @(Get-ChildItem -LiteralPath $Source -Force -ErrorAction Stop | Sort-Object -Property Name)
@@ -1662,7 +1665,8 @@ function Install-MultiToBase {
         foreach ($skillDir in $skillDirs) {
             $dest = Join-Path $BaseDir $skillDir.Name
             Move-SkillPath -Source (Join-Path $stageRoot $skillDir.Name) -Destination $dest
-            $published += New-PublishedSkillCopyRecord -Path $dest -Source $skillDir.FullName
+            $published += [pscustomobject]@{ Path = $dest; Source = $skillDir.FullName }
+            Assert-SkillPathCopy -Source $skillDir.FullName -Destination $dest
         }
     } catch {
         $transactionError = $_
