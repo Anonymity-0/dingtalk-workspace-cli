@@ -173,6 +173,24 @@ func runDocUpload(cmd *cobra.Command, _ []string) error {
 	}
 
 	if deps.Caller.DryRun() {
+		// dry-run 委托预检：与真实执行 (get_file_upload_info) 一致，被拒/校验
+		// 失败则直接返回错误、不出预览。precheckArgs 复刻真实 step1Args 形态并
+		// 额外带 name/fileSize，使 uploadActionParam{fileName,fileSize} 随预检上送。
+		precheckArgs := map[string]any{
+			"fileSize": float64(fileSize),
+		}
+		if name != "" {
+			precheckArgs["name"] = name
+		}
+		if folder != "" {
+			precheckArgs["folderId"] = folder
+		}
+		if workspace != "" {
+			precheckArgs["workspaceId"] = workspace
+		}
+		if err := markdownDryRunDelegationPrecheck(cmd, "doc", "get_file_upload_info", precheckArgs); err != nil {
+			return err
+		}
 		deps.Out.PrintKeyValue("操作", "上传文件到钉钉文档")
 		deps.Out.PrintKeyValue("文件", filePath)
 		deps.Out.PrintKeyValue("名称", name)

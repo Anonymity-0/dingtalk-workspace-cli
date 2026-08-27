@@ -111,6 +111,29 @@ func runDriveUpload(cmd *cobra.Command, _ []string) error {
 	}
 
 	if deps.Caller.DryRun() {
+		// dry-run 委托预检：与真实执行 (uploadToDrive→get_upload_info) 一致，
+		// 被拒/校验失败则直接返回错误、不出预览。principal 为空时 helper
+		// 内部短路返回 nil。precheckArgs 复刻真实 step1Args 形态，使
+		// uploadActionParam{fileName,fileSize} 随预检上送。
+		mimeType, _ := cmd.Flags().GetString("mime-type")
+		precheckArgs := map[string]any{
+			"fileName": fileName,
+			"fileSize": float64(fileSize),
+		}
+		if spaceID != "" {
+			precheckArgs["spaceId"] = spaceID
+		}
+		if mimeType != "" {
+			precheckArgs["mimeType"] = mimeType
+		}
+		if overwriteNodeID != "" {
+			precheckArgs["overwriteFileId"] = overwriteNodeID
+		} else if parentID != "" {
+			precheckArgs["parentId"] = parentID
+		}
+		if err := markdownDryRunDelegationPrecheck(cmd, "drive", "get_upload_info", precheckArgs); err != nil {
+			return err
+		}
 		if deps.Caller.Format() == "json" {
 			return deps.Out.PrintJSON(map[string]any{
 				"dry_run":      true,
@@ -166,6 +189,26 @@ func runDriveUploadToDocSpace(cmd *cobra.Command, filePath, fileName string, fil
 	}
 
 	if deps.Caller.DryRun() {
+		// dry-run 委托预检：与真实执行 (uploadToDocSpace→get_file_upload_info)
+		// 一致，被拒/校验失败则直接返回错误、不出预览。precheckArgs 复刻真实
+		// step1Args 形态，使 uploadActionParam{fileName,fileSize} 随预检上送。
+		precheckArgs := map[string]any{
+			"fileSize": float64(fileSize),
+		}
+		if fileName != "" {
+			precheckArgs["name"] = fileName
+		}
+		if workspaceID != "" {
+			precheckArgs["workspaceId"] = workspaceID
+		}
+		if overwriteNodeID != "" {
+			precheckArgs["overwriteNodeId"] = overwriteNodeID
+		} else if folder != "" {
+			precheckArgs["folderId"] = folder
+		}
+		if err := markdownDryRunDelegationPrecheck(cmd, "doc", "get_file_upload_info", precheckArgs); err != nil {
+			return err
+		}
 		if deps.Caller.Format() == "json" {
 			return deps.Out.PrintJSON(map[string]any{
 				"dry_run":      true,
@@ -4369,13 +4412,17 @@ func uploadToDrive(ctx context.Context, filePath, fileName string, fileSize int6
 // explicit server routing. overwriteNodeID changes both MCP steps to overwrite
 // mode and deliberately excludes folderId.
 func uploadToDocSpace(ctx context.Context, filePath, fileName string, fileSize int64, workspaceID, folderID, overwriteNodeID string, convert bool) error {
-	step1Args := map[string]any{}
+	step1Args := map[string]any{
+		"fileSize": float64(fileSize),
+	}
+	if fileName != "" {
+		step1Args["name"] = fileName
+	}
 	if workspaceID != "" {
 		step1Args["workspaceId"] = workspaceID
 	}
 	if overwriteNodeID != "" {
 		step1Args["overwriteNodeId"] = overwriteNodeID
-		step1Args["name"] = fileName
 	} else if folderID != "" {
 		step1Args["folderId"] = folderID
 	}

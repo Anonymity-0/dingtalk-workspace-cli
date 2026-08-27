@@ -633,6 +633,35 @@ func parseUploadCommitResult(text string) (map[string]any, string, error) {
 	return nil, "", fmt.Errorf("上传入库响应缺少文件标识（%s 均为空），无法确认文件已入库；原始响应: %s", strings.Join(uploadCommitIDKeys, "/"), trimmed)
 }
 
+// importSessionArgs 构造 create_import_session 的入参，执行路径与 dry-run 委托
+// 预检共用，保证委托鉴权预检覆盖的就是执行时发起的首个业务调用（参数一致，
+// 避免两处手写漂移）。
+func importSessionArgs(file preparedImportFile) map[string]any {
+	args := map[string]any{
+		"fileName": file.name,
+		"suffix":   file.extension,
+		"fileSize": file.size,
+	}
+	if file.folder != "" {
+		args["targetFolderId"] = file.folder
+	}
+	if file.workspace != "" {
+		args["workspaceId"] = file.workspace
+	}
+	return args
+}
+
+// importServerID 返回 create_import_session 实际路由到的 server：cfg.serverID
+// 显式指定时用它（sheet import → "doc"），否则回退 "doc"（doc import 经产品
+// 推断落到 doc server）。委托装饰器按 serverID 命中 docBusinessServers 白名单，
+// 故 dry-run 预检必须传入具体 server 而非空串（空串不在白名单会被直接放行）。
+func (cfg importFlowConfig) importServerID() string {
+	if cfg.serverID != "" {
+		return cfg.serverID
+	}
+	return "doc"
+}
+
 func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) error {
 	file, err := prepareImportFile(cmd, args, cfg)
 	if err != nil {
@@ -644,6 +673,14 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 	if deps.Caller.DryRun() {
 		if uploadFallback {
 			return runImportUploadFallback(cmd, cfg, file)
+		}
+		// 二期：dry-run 也与执行路径一致地触发 create_import_session 委托预检，
+		// 使 --principal-user-id 场景下会被拒绝的导入在预览渲染前即被拦截。
+		// 保守起见 dry-run 不做远程默认目标解析（与 markdown parity 及“普通
+		// dry-run 无远程读”一致）：无显式目标时 sessionArgs 不含节点标识，
+		// 委托装饰器返回 NOT_SUPPORTED（已知 parity 限制）。
+		if err := markdownDryRunDelegationPrecheck(cmd, cfg.importServerID(), "create_import_session", importSessionArgs(file)); err != nil {
+			return err
 		}
 		if jsonMode {
 			result := map[string]any{
@@ -693,17 +730,7 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 	if !jsonMode {
 		deps.Out.PrintInfo("[1/4] 创建导入会话...")
 	}
-	sessionArgs := map[string]any{
-		"fileName": file.name,
-		"suffix":   file.extension,
-		"fileSize": file.size,
-	}
-	if file.folder != "" {
-		sessionArgs["targetFolderId"] = file.folder
-	}
-	if file.workspace != "" {
-		sessionArgs["workspaceId"] = file.workspace
-	}
+	sessionArgs := importSessionArgs(file)
 
 	sessionText, err := cfg.callTool(ctx, "create_import_session", sessionArgs)
 	if err != nil {
