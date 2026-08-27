@@ -146,10 +146,6 @@ func newChatEmotionFavoriteCommand() *cobra.Command {
 	cmd.Flags().String("source-conversation-id", "", "来源会话 ID；需与 --source-message-id 成对指定")
 	cmd.Flags().String("source-message-id", "", "来源消息 ID；需与 --source-conversation-id 成对指定")
 	cmd.MarkFlagsMutuallyExclusive("media-id", "file-path")
-	cli.AnnotateRuntimeConstraints(cmd, cli.RuntimeSchemaConstraints{
-		MutuallyExclusive: [][]string{{"media-id", "file-path"}},
-		RequireOneOf:      [][]string{{"media-id", "file-path"}},
-	})
 	DeclareLeafMetadata(cmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium", Confirmation: "not_required", Idempotency: "unknown",
