@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"image"
 	"image/color"
@@ -265,6 +266,9 @@ const (
 	personalEmotionImageAutoCompressBytes = 10 * 1024 * 1024
 	personalEmotionImageMinCompressWidth  = 64
 	personalEmotionImageMinCompressHeight = 64
+	personalEmotionImageMaxDimension      = 8192
+	personalEmotionImageMaxPixels         = 32_000_000
+	personalEmotionGIFMaxFramePixels      = 64_000_000
 )
 
 // personalEmotionImageTypes maps lowercased file extensions to the
@@ -283,8 +287,12 @@ var (
 	personalEmotionOSStat       = os.Stat
 	personalEmotionOpenFile     = openPersonalEmotionFile
 	personalEmotionCompress     = compressPersonalEmotionImage
+	personalEmotionDecodeConfig = image.DecodeConfig
 	personalEmotionWebPDecode   = webp.Decode
+	personalEmotionWebPConfig   = webp.DecodeConfig
 	personalEmotionBMPDecode    = bmp.Decode
+	personalEmotionBMPConfig    = bmp.DecodeConfig
+	personalEmotionGIFConfig    = gif.DecodeConfig
 	personalEmotionGIFDecodeAll = gif.DecodeAll
 	personalEmotionGIFEncodeAll = gif.EncodeAll
 	personalEmotionJPEGEncode   = jpeg.Encode
@@ -392,14 +400,157 @@ func loadPersonalEmotionImageFile(filePath string) (*personalEmotionImage, error
 func compressPersonalEmotionImage(data []byte, imageType string) ([]byte, string, error) {
 	switch imageType {
 	case "jpg", "jpeg", "png", "webp", "bmp":
+		if err := validatePersonalEmotionImagePixels(data, imageType); err != nil {
+			return nil, "", err
+		}
 		compressed, err := compressPersonalEmotionStillImage(data, imageType)
 		return compressed, "jpg", err
 	case "gif":
+		if err := validatePersonalEmotionImagePixels(data, imageType); err != nil {
+			return nil, "", err
+		}
 		compressed, err := compressPersonalEmotionGIF(data)
 		return compressed, "gif", err
 	default:
 		return nil, "", fmt.Errorf("%s 暂不支持自动压缩", imageType)
 	}
+}
+
+func validatePersonalEmotionImagePixels(data []byte, imageType string) error {
+	cfg, err := decodePersonalEmotionImageConfig(data, imageType)
+	if err != nil {
+		return fmt.Errorf("图片尺寸读取失败: %w", err)
+	}
+	if err := validatePersonalEmotionPixelBudget(int64(cfg.Width), int64(cfg.Height), personalEmotionImageMaxPixels); err != nil {
+		return err
+	}
+	if imageType == "gif" {
+		if err := validatePersonalEmotionGIFFramePixels(data); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func decodePersonalEmotionImageConfig(data []byte, imageType string) (image.Config, error) {
+	reader := bytes.NewReader(data)
+	switch imageType {
+	case "webp":
+		return personalEmotionWebPConfig(reader)
+	case "bmp":
+		return personalEmotionBMPConfig(reader)
+	case "gif":
+		return personalEmotionGIFConfig(reader)
+	default:
+		cfg, _, err := personalEmotionDecodeConfig(reader)
+		return cfg, err
+	}
+}
+
+func validatePersonalEmotionPixelBudget(width, height, maxPixels int64) error {
+	if width <= 0 || height <= 0 {
+		return fmt.Errorf("图片像素尺寸无效")
+	}
+	if width > personalEmotionImageMaxDimension || height > personalEmotionImageMaxDimension {
+		return fmt.Errorf("图片像素尺寸过大，超过自动压缩安全限制；可让 AI 先缩小图片尺寸后再重试")
+	}
+	if width > maxPixels/height {
+		return fmt.Errorf("图片像素尺寸过大，超过自动压缩安全限制；可让 AI 先缩小图片尺寸后再重试")
+	}
+	return nil
+}
+
+func validatePersonalEmotionGIFFramePixels(data []byte) error {
+	reader := bytes.NewReader(data)
+	header := make([]byte, 13)
+	if _, err := io.ReadFull(reader, header); err != nil {
+		return fmt.Errorf("GIF 头部读取失败: %w", err)
+	}
+	if string(header[:3]) != "GIF" {
+		return fmt.Errorf("GIF 头部无效")
+	}
+	if header[10]&0x80 != 0 {
+		if err := skipPersonalEmotionGIFBytes(reader, personalEmotionGIFColorTableBytes(header[10])); err != nil {
+			return err
+		}
+	}
+	totalPixels := int64(0)
+	for {
+		blockType, err := reader.ReadByte()
+		if err != nil {
+			return fmt.Errorf("GIF 数据读取失败: %w", err)
+		}
+		switch blockType {
+		case 0x2c:
+			if err := addPersonalEmotionGIFFramePixels(reader, &totalPixels); err != nil {
+				return err
+			}
+		case 0x21:
+			if _, err := reader.ReadByte(); err != nil {
+				return fmt.Errorf("GIF 扩展块读取失败: %w", err)
+			}
+			if err := skipPersonalEmotionGIFSubBlocks(reader); err != nil {
+				return err
+			}
+		case 0x3b:
+			return nil
+		default:
+			return fmt.Errorf("GIF 数据块无效")
+		}
+	}
+}
+
+func addPersonalEmotionGIFFramePixels(reader *bytes.Reader, totalPixels *int64) error {
+	descriptor := make([]byte, 9)
+	if _, err := io.ReadFull(reader, descriptor); err != nil {
+		return fmt.Errorf("GIF 帧描述读取失败: %w", err)
+	}
+	width := int64(binary.LittleEndian.Uint16(descriptor[4:6]))
+	height := int64(binary.LittleEndian.Uint16(descriptor[6:8]))
+	if width <= 0 || height <= 0 || width > personalEmotionGIFMaxFramePixels/height {
+		return fmt.Errorf("图片像素尺寸过大，超过自动压缩安全限制；可让 AI 先缩小图片尺寸后再重试")
+	}
+	framePixels := width * height
+	if *totalPixels > personalEmotionGIFMaxFramePixels-framePixels {
+		return fmt.Errorf("图片像素尺寸过大，超过自动压缩安全限制；可让 AI 先缩小图片尺寸后再重试")
+	}
+	*totalPixels += framePixels
+	if descriptor[8]&0x80 != 0 {
+		if err := skipPersonalEmotionGIFBytes(reader, personalEmotionGIFColorTableBytes(descriptor[8])); err != nil {
+			return err
+		}
+	}
+	if _, err := reader.ReadByte(); err != nil {
+		return fmt.Errorf("GIF 图像数据读取失败: %w", err)
+	}
+	return skipPersonalEmotionGIFSubBlocks(reader)
+}
+
+func personalEmotionGIFColorTableBytes(packed byte) int64 {
+	return 3 * (1 << ((packed & 0x07) + 1))
+}
+
+func skipPersonalEmotionGIFSubBlocks(reader *bytes.Reader) error {
+	for {
+		size, err := reader.ReadByte()
+		if err != nil {
+			return fmt.Errorf("GIF 子块读取失败: %w", err)
+		}
+		if size == 0 {
+			return nil
+		}
+		if err := skipPersonalEmotionGIFBytes(reader, int64(size)); err != nil {
+			return err
+		}
+	}
+}
+
+func skipPersonalEmotionGIFBytes(reader *bytes.Reader, n int64) error {
+	if n < 0 || int64(reader.Len()) < n {
+		return fmt.Errorf("GIF 数据不完整")
+	}
+	_, _ = reader.Seek(n, io.SeekCurrent)
+	return nil
 }
 
 func compressPersonalEmotionStillImage(data []byte, imageType string) ([]byte, error) {

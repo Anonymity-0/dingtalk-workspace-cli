@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"image"
@@ -907,6 +908,9 @@ func TestPersonalEmotionLoadImageFileCompressesLargeWebPAndBMP(t *testing.T) {
 			name:      "large.webp",
 			imageType: "webp",
 			decode: func(t *testing.T) {
+				testseam.Swap(t, &personalEmotionWebPConfig, func(io.Reader) (image.Config, error) {
+					return image.Config{Width: 128, Height: 128}, nil
+				})
 				testseam.Swap(t, &personalEmotionWebPDecode, func(io.Reader) (image.Image, error) {
 					return image.NewRGBA(image.Rect(0, 0, 128, 128)), nil
 				})
@@ -916,6 +920,9 @@ func TestPersonalEmotionLoadImageFileCompressesLargeWebPAndBMP(t *testing.T) {
 			name:      "large.bmp",
 			imageType: "bmp",
 			decode: func(t *testing.T) {
+				testseam.Swap(t, &personalEmotionBMPConfig, func(io.Reader) (image.Config, error) {
+					return image.Config{Width: 128, Height: 128}, nil
+				})
 				testseam.Swap(t, &personalEmotionBMPDecode, func(io.Reader) (image.Image, error) {
 					return image.NewRGBA(image.Rect(0, 0, 128, 128)), nil
 				})
@@ -941,6 +948,208 @@ func TestPersonalEmotionLoadImageFileCompressesLargeWebPAndBMP(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPersonalEmotionCompressionRejectsOversizeStaticImageConfigBeforeDecode(t *testing.T) {
+	for _, imageType := range []string{"jpg", "png"} {
+		t.Run(imageType, func(t *testing.T) {
+			testseam.Swap(t, &personalEmotionDecodeConfig, func(io.Reader) (image.Config, string, error) {
+				return image.Config{Width: personalEmotionImageMaxDimension + 1, Height: 1}, imageType, nil
+			})
+			if _, _, err := compressPersonalEmotionImage([]byte("oversize-config"), imageType); err == nil || !strings.Contains(err.Error(), "像素尺寸过大") {
+				t.Fatalf("oversize %s config error = %v", imageType, err)
+			}
+		})
+	}
+}
+
+func TestPersonalEmotionCompressionRejectsOversizeWebPAndBMPBeforeDecode(t *testing.T) {
+	for _, tc := range []struct {
+		imageType string
+		config    func(*testing.T)
+		decode    func(*testing.T)
+	}{
+		{
+			imageType: "webp",
+			config: func(t *testing.T) {
+				testseam.Swap(t, &personalEmotionWebPConfig, func(io.Reader) (image.Config, error) {
+					return image.Config{Width: 8000, Height: 5000}, nil
+				})
+			},
+			decode: func(t *testing.T) {
+				testseam.Swap(t, &personalEmotionWebPDecode, func(io.Reader) (image.Image, error) {
+					t.Fatal("webp full decode should not run after oversize config")
+					return nil, nil
+				})
+			},
+		},
+		{
+			imageType: "bmp",
+			config: func(t *testing.T) {
+				testseam.Swap(t, &personalEmotionBMPConfig, func(io.Reader) (image.Config, error) {
+					return image.Config{Width: 8000, Height: 5000}, nil
+				})
+			},
+			decode: func(t *testing.T) {
+				testseam.Swap(t, &personalEmotionBMPDecode, func(io.Reader) (image.Image, error) {
+					t.Fatal("bmp full decode should not run after oversize config")
+					return nil, nil
+				})
+			},
+		},
+	} {
+		t.Run(tc.imageType, func(t *testing.T) {
+			tc.config(t)
+			tc.decode(t)
+			if _, _, err := compressPersonalEmotionImage([]byte("oversize-config"), tc.imageType); err == nil || !strings.Contains(err.Error(), "像素尺寸过大") {
+				t.Fatalf("oversize %s config error = %v", tc.imageType, err)
+			}
+		})
+	}
+}
+
+func TestPersonalEmotionPixelBudgetRejectsInvalidAndOverflowingSizes(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		width       int64
+		height      int64
+		wantMessage string
+	}{
+		{name: "zero", width: 0, height: 1, wantMessage: "尺寸无效"},
+		{name: "dimension", width: personalEmotionImageMaxDimension + 1, height: 1, wantMessage: "像素尺寸过大"},
+		{name: "pixels", width: 8000, height: 5000, wantMessage: "像素尺寸过大"},
+		{name: "overflow", width: 1<<62 + 1, height: 4, wantMessage: "像素尺寸过大"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := validatePersonalEmotionPixelBudget(tc.width, tc.height, personalEmotionImageMaxPixels); err == nil || !strings.Contains(err.Error(), tc.wantMessage) {
+				t.Fatalf("pixel budget error = %v, want %q", err, tc.wantMessage)
+			}
+		})
+	}
+}
+
+func TestPersonalEmotionCompressionRejectsOversizeGIFBeforeDecodeAll(t *testing.T) {
+	data := buildPersonalEmotionGIFHeaderTestData(t, [][2]uint16{{1, 1}})
+	testseam.Swap(t, &personalEmotionGIFConfig, func(io.Reader) (image.Config, error) {
+		return image.Config{Width: personalEmotionImageMaxDimension + 1, Height: 1}, nil
+	})
+	testseam.Swap(t, &personalEmotionGIFDecodeAll, func(io.Reader) (*gif.GIF, error) {
+		t.Fatal("gif DecodeAll should not run after oversize logical config")
+		return nil, nil
+	})
+	if _, _, err := compressPersonalEmotionImage(data, "gif"); err == nil || !strings.Contains(err.Error(), "像素尺寸过大") {
+		t.Fatalf("oversize gif logical config error = %v", err)
+	}
+}
+
+func TestPersonalEmotionCompressionRejectsOversizeGIFFramePixelsBeforeDecodeAll(t *testing.T) {
+	data := buildPersonalEmotionGIFHeaderTestData(t, [][2]uint16{{8000, 8000}, {8000, 8000}})
+	testseam.Swap(t, &personalEmotionGIFConfig, func(io.Reader) (image.Config, error) {
+		return image.Config{Width: 1, Height: 1}, nil
+	})
+	testseam.Swap(t, &personalEmotionGIFDecodeAll, func(io.Reader) (*gif.GIF, error) {
+		t.Fatal("gif DecodeAll should not run after oversize frame pixels")
+		return nil, nil
+	})
+	if _, _, err := compressPersonalEmotionImage(data, "gif"); err == nil || !strings.Contains(err.Error(), "像素尺寸过大") {
+		t.Fatalf("oversize gif frame pixels error = %v", err)
+	}
+}
+
+func TestPersonalEmotionGIFFramePixelScannerBoundaries(t *testing.T) {
+	if err := validatePersonalEmotionGIFFramePixels(buildPersonalEmotionGIFHeaderTestData(t, [][2]uint16{{2, 3}})); err != nil {
+		t.Fatalf("small gif frame scan failed: %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels(buildPersonalEmotionGIFHeaderTestDataWithColorTablesAndExtension(t)); err != nil {
+		t.Fatalf("gif color table and extension scan failed: %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels([]byte("bad")); err == nil || !strings.Contains(err.Error(), "头部") {
+		t.Fatalf("bad gif header error = %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels([]byte("notgif89a0000000")); err == nil || !strings.Contains(err.Error(), "头部无效") {
+		t.Fatalf("invalid gif signature error = %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels(buildPersonalEmotionGIFLogicalHeader()); err == nil || !strings.Contains(err.Error(), "数据读取") {
+		t.Fatalf("missing block type error = %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels([]byte{'G', 'I', 'F', '8', '9', 'a', 1, 0, 1, 0, 0x80, 0, 0}); err == nil || !strings.Contains(err.Error(), "数据不完整") {
+		t.Fatalf("truncated global color table error = %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels(append(buildPersonalEmotionGIFLogicalHeader(), 0x00)); err == nil || !strings.Contains(err.Error(), "数据块无效") {
+		t.Fatalf("invalid gif block error = %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels(append(buildPersonalEmotionGIFLogicalHeader(), 0x21)); err == nil || !strings.Contains(err.Error(), "扩展块") {
+		t.Fatalf("truncated extension label error = %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels(append(buildPersonalEmotionGIFLogicalHeader(), 0x21, 0xf9)); err == nil || !strings.Contains(err.Error(), "子块") {
+		t.Fatalf("truncated extension subblock error = %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels(append(buildPersonalEmotionGIFLogicalHeader(), 0x2c, 0, 0)); err == nil || !strings.Contains(err.Error(), "帧描述") {
+		t.Fatalf("truncated descriptor error = %v", err)
+	}
+	if err := validatePersonalEmotionGIFFramePixels(buildPersonalEmotionGIFHeaderTestData(t, [][2]uint16{{0, 1}})); err == nil || !strings.Contains(err.Error(), "像素尺寸过大") {
+		t.Fatalf("zero-size frame error = %v", err)
+	}
+	missingImageData := append(buildPersonalEmotionGIFLogicalHeader(), 0x2c, 0, 0, 0, 0, 2, 0, 3, 0, 0)
+	if err := validatePersonalEmotionGIFFramePixels(missingImageData); err == nil || !strings.Contains(err.Error(), "图像数据") {
+		t.Fatalf("missing lzw data error = %v", err)
+	}
+	incompleteSubBlock := append(buildPersonalEmotionGIFLogicalHeader(), 0x2c, 0, 0, 0, 0, 2, 0, 3, 0, 0, 2, 2, 1)
+	if err := validatePersonalEmotionGIFFramePixels(incompleteSubBlock); err == nil || !strings.Contains(err.Error(), "数据不完整") {
+		t.Fatalf("incomplete image subblock error = %v", err)
+	}
+	incompleteLocalTable := append(buildPersonalEmotionGIFLogicalHeader(), 0x2c, 0, 0, 0, 0, 2, 0, 3, 0, 0x80)
+	if err := validatePersonalEmotionGIFFramePixels(incompleteLocalTable); err == nil || !strings.Contains(err.Error(), "数据不完整") {
+		t.Fatalf("incomplete local color table error = %v", err)
+	}
+	truncated := buildPersonalEmotionGIFHeaderTestData(t, [][2]uint16{{2, 3}})
+	truncated = truncated[:len(truncated)-2]
+	if err := validatePersonalEmotionGIFFramePixels(truncated); err == nil {
+		t.Fatal("truncated gif data accepted")
+	}
+	if err := skipPersonalEmotionGIFBytes(bytes.NewReader(nil), -1); err == nil || !strings.Contains(err.Error(), "数据不完整") {
+		t.Fatalf("negative skip error = %v", err)
+	}
+}
+
+func buildPersonalEmotionGIFHeaderTestData(t *testing.T, frames [][2]uint16) []byte {
+	t.Helper()
+	var data bytes.Buffer
+	data.Write(buildPersonalEmotionGIFLogicalHeader())
+	for _, frame := range frames {
+		data.WriteByte(0x2c)
+		_ = binary.Write(&data, binary.LittleEndian, uint16(0))
+		_ = binary.Write(&data, binary.LittleEndian, uint16(0))
+		_ = binary.Write(&data, binary.LittleEndian, frame[0])
+		_ = binary.Write(&data, binary.LittleEndian, frame[1])
+		data.WriteByte(0)
+		data.WriteByte(2)
+		data.WriteByte(0)
+	}
+	data.WriteByte(0x3b)
+	return data.Bytes()
+}
+
+func buildPersonalEmotionGIFLogicalHeader() []byte {
+	return []byte{'G', 'I', 'F', '8', '9', 'a', 1, 0, 1, 0, 0, 0, 0}
+}
+
+func buildPersonalEmotionGIFHeaderTestDataWithColorTablesAndExtension(t *testing.T) []byte {
+	t.Helper()
+	var data bytes.Buffer
+	data.Write([]byte{'G', 'I', 'F', '8', '9', 'a', 1, 0, 1, 0, 0x80, 0, 0})
+	data.Write([]byte{0, 0, 0, 255, 255, 255})
+	data.Write([]byte{0x21, 0xf9, 4, 0, 0, 0, 0, 0})
+	data.WriteByte(0x2c)
+	_ = binary.Write(&data, binary.LittleEndian, uint16(0))
+	_ = binary.Write(&data, binary.LittleEndian, uint16(0))
+	_ = binary.Write(&data, binary.LittleEndian, uint16(2))
+	_ = binary.Write(&data, binary.LittleEndian, uint16(3))
+	data.WriteByte(0x80)
+	data.Write([]byte{0, 0, 0, 255, 255, 255})
+	data.Write([]byte{2, 1, 0, 0})
+	data.WriteByte(0x3b)
+	return data.Bytes()
 }
 
 func TestPersonalEmotionUploadMediaIDParsing(t *testing.T) {
@@ -1044,6 +1253,10 @@ func TestPersonalEmotionGIFCompressionEncodeAndSizeFailures(t *testing.T) {
 }
 
 func TestPersonalEmotionStillCompressionEncodeAndSizeFailures(t *testing.T) {
+	if _, err := compressPersonalEmotionStillImage([]byte("bad"), "png"); err == nil || !strings.Contains(err.Error(), "图片解码失败") {
+		t.Fatalf("still decode error = %v", err)
+	}
+
 	var src bytes.Buffer
 	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
 	if err := png.Encode(&src, img); err != nil {
