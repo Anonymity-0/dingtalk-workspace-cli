@@ -532,6 +532,25 @@ func rangeBatchClearCoverageCommand() *cobra.Command {
 	return cmd
 }
 
+func TestCrossPlatformCoverageSheetBatchDestructiveExamplesDoNotBypassConfirmation(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		cmd  *cobra.Command
+	}{
+		{name: "batch update", cmd: newBatchUpdateCmd()},
+		{name: "batch clear", cmd: newRangeBatchClearCmd()},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if strings.Contains(test.cmd.Example, "--yes") {
+				t.Fatalf("stored destructive example bypasses confirmation:\n%s", test.cmd.Example)
+			}
+			if !strings.Contains(test.cmd.Long, "获得用户确认后加 --yes") {
+				t.Fatalf("help must explain how to proceed after explicit confirmation:\n%s", test.cmd.Long)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageSheetBatchUpdateCommandRemainingCoverage(t *testing.T) {
 	for _, args := range [][]string{
 		nil,

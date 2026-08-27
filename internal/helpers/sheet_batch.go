@@ -1549,16 +1549,16 @@ number/boolean 类型；--dry-run 展示的是这个带转义的实际远端参�
 
 完整映射表见:
   dingtalk-workspace/references/products/sheet/sheet-batch-operations.md`,
-		Example: `  # 批量清除 + 写入 + 合并（获得用户确认后加 --yes）
+		Example: `  # 批量清除 + 写入 + 合并（执行前须获得用户明确确认）
   dws sheet batch-update --node NODE_ID --operations '[
     {"toolName":"range clear","input":{"sheet-id":"Sheet1","range":"A1:B3","type":"content"}},
     {"toolName":"range update","input":{"sheet-id":"Sheet1","range":"A1","values":[[{"type":"text","text":"hello"}]]}},
     {"toolName":"merge-cells","input":{"sheet-id":"Sheet1","range":"A1:B1","merge-type":"mergeAll"}},
     {"toolName":"csv-put","input":{"sheet-id":"Sheet1","start-cell":"C1","csv":"001,2026/8/1,=1+1,\u0027=1+1","auto-convert":false}}
-  ]' --yes
+  ]'
 
-  # 宽松模式
-  dws sheet batch-update --node NODE_ID --continue-on-error --operations '[...]' --yes`,
+  # 宽松模式（执行前须获得用户明确确认）
+  dws sheet batch-update --node NODE_ID --continue-on-error --operations '[...]'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "node", "operations"); err != nil {
 				return err
@@ -1608,8 +1608,8 @@ func newRangeBatchClearCmd() *cobra.Command {
 每个 --ranges 项必须包含工作表前缀（格式: "SheetName!A1:B3"）。
 不同区域可以属于不同工作表。
 真实执行必须获得用户确认后加 --yes；--dry-run 仅预览且不调用远程接口。`,
-		Example: `  dws sheet range batch-clear --node NODE_ID --ranges '["Sheet1!A1:B3","Sheet2!C1:D5"]' --yes
-  dws sheet range batch-clear --node NODE_ID --ranges '["Sheet1!A1:Z1000"]' --type all --yes`,
+		Example: `  dws sheet range batch-clear --node NODE_ID --ranges '["Sheet1!A1:B3","Sheet2!C1:D5"]'
+  dws sheet range batch-clear --node NODE_ID --ranges '["Sheet1!A1:Z1000"]' --type all`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateRequiredFlags(cmd, "node", "ranges"); err != nil {
 				return err
