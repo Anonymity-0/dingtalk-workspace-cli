@@ -260,10 +260,12 @@ func TestEmitResultHumanFailureRendersRecoveryGuidance(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	_, err := EmitResult(cmd, Failure(&ErrorInfo{
-		Type:    "auth",
-		Message: "token expired",
-		Hint:    "check login status",
-		Actions: []string{"dws auth status", "dws doctor --json"},
+		Type:         "auth",
+		Message:      "token expired",
+		Hint:         "check login status",
+		FriendlyHint: "renew the affected credential",
+		ActionURL:    "https://example.com/auth/recovery",
+		Actions:      []string{"", "dws auth status", "dws doctor --json"},
 	}))
 	if err != nil {
 		t.Fatalf("EmitResult: %v", err)
@@ -272,6 +274,8 @@ func TestEmitResultHumanFailureRendersRecoveryGuidance(t *testing.T) {
 	for _, want := range []string{
 		"Error: token expired",
 		"Hint: check login status",
+		"Hint: renew the affected credential",
+		"Action: 处理入口: https://example.com/auth/recovery",
 		"Action: dws auth status",
 		"Action: dws doctor\n",
 	} {
