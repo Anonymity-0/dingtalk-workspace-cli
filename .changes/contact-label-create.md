@@ -2,4 +2,5 @@
 category: Added
 ---
 
-- **Contact label create** — `dws contact label create --name <名称> --type role --parent-id <角色组ID>` creates a new role (label) under the specified parent label group; `--type group` creates a root-level label group and must omit `--parent-id` (the CLI passes parentId=-1). `--parent-id` only accepts a real group id (never 0) and is required for `--type role`. The command calls the `add_label` MCP tool and requires confirmation; use `--yes` only after explicit user confirmation.
+- **Contact label management** — adds `dws contact label update`, `dws contact label delete`, `dws contact label add-members`, `dws contact label remove-members`, and `dws contact label update-member-scope` to modify, delete, add/remove members, and adjust member scope for contact labels (roles). Also updates `dws contact label create` to require an explicit `--type role|group`: `--type role` requires `--parent-id` with a real label group ID; `--type group` creates a root-level label group and must omit `--parent-id` (the CLI passes `parentId=-1`).
+- **Contact custom field management** — adds `dws contact ext-field create`, `dws contact ext-field update`, and `dws contact ext-field delete` to manage organization custom employee fields (`add_org_ext_attrs`, `update_org_ext_attrs`, `remove_org_ext_attrs`).
