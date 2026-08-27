@@ -24,7 +24,7 @@ import (
 const (
 	hrbrainBlockerAdapterBusiness = "adapter_business_service"
 	hrbrainBlockerTenantFixture   = "tenant_fixture"
-	hrbrainListPoolsReason        = "Reviewed HRbrain composite: list_talent_pools returns success=true with an explicit content.pools page and matching currentPage/pageSize/totalCount; the Shortcut validates that business page and projects framework pagination."
+	hrbrainListPoolsReason        = "classified=" + hrbrainBlockerTenantFixture + "; exact and raw calls now accept the explicit content.pools business page and prove a legitimate empty result, but no safe nonempty pool fixture exists to prove stable pool identity and pagination."
 )
 
 func hrbrainUnavailableReason(command string) string {
@@ -138,7 +138,7 @@ func hrbrainBase(command, description, intent string, result *contract.ResultSpe
 
 var ListPools = func() shortcut.Shortcut {
 	declaration := hrbrainBase(
-		"+list-pools", "查询组织大脑人才池列表", "需要按名称、类型、创建人或标签发现人才池时使用；严格验证 content.pools 与分页字段后返回人才池页。",
+		"+list-pools", "查询组织大脑人才池列表", "需要按名称、类型、创建人或标签发现人才池时使用；严格验证 content.pools 与分页字段，但在获得安全非空人才池 fixture 前保持 unavailable。",
 		hrbrainPageResult("严格校验的人才池搜索页"), hrbrainPagination(),
 		[]shortcut.Flag{
 			{Name: "keyword", Type: shortcut.FlagString, Desc: "人才池名称关键词"},
@@ -155,10 +155,6 @@ var ListPools = func() shortcut.Shortcut {
 		},
 		`dws hrbrain +list-pools --page 1 --page-size 20 --format json`,
 	)
-	declaration.Hidden = false
-	declaration.Availability = shortcut.AvailabilityAvailable
-	declaration.Contract.Interface = &contract.InterfaceSpec{Mode: contract.InterfaceModeComposite, Availability: contract.InterfaceAvailable, Reason: hrbrainListPoolsReason}
-	declaration.Contract.Selection.AvoidWhen = []string{"已知 poolCode 并需要读取单个人才池详情时使用 +get-pool；基础通讯录人员查询使用 contact"}
 	declaration.Constraints = hrbrainPageConstraints()
 	declaration.Validate = hrbrainValidatePage
 	declaration.Execute = func(rt *shortcut.RuntimeContext) error {

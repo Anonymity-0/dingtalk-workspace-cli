@@ -86,12 +86,12 @@ func runHRbrainCoverageOutput(t *testing.T, declaration shortcut.Shortcut, calle
 	return stdout.String(), err
 }
 
-func TestCrossPlatformCoverageHRbrainDeclarationsStayTyped(t *testing.T) {
+func TestCrossPlatformCoverageHRbrainDeclarationsStayUnavailableAndTyped(t *testing.T) {
 	declarations := []shortcut.Shortcut{
-		GetPool, ListPoolEmployees, ProfileMetadata, QueryProfile, ProfileLabels,
+		ListPools, GetPool, ListPoolEmployees, ProfileMetadata, QueryProfile, ProfileLabels,
 		ProfileCareer, ProfilePerformance, SearchEmployees, SearchEmployeesStructured, SearchFields,
 	}
-	if len(declarations) != 10 {
+	if len(declarations) != 11 {
 		t.Fatalf("declarations = %d", len(declarations))
 	}
 	for _, declaration := range declarations {
@@ -104,9 +104,6 @@ func TestCrossPlatformCoverageHRbrainDeclarationsStayTyped(t *testing.T) {
 		if strings.TrimSpace(declaration.Safety.Effect) == "" || declaration.Contract.Interface == nil || declaration.Contract.Interface.Availability != "unavailable" {
 			t.Errorf("%s lacks unavailable interface and Safety", declaration.Command)
 		}
-	}
-	if ListPools.Hidden || ListPools.Availability != shortcut.AvailabilityAvailable || ListPools.Contract.Interface == nil || ListPools.Contract.Interface.Availability != "available" {
-		t.Fatalf("+list-pools must be public/available after live content page validation: %+v", ListPools.Contract.Interface)
 	}
 }
 
@@ -153,7 +150,7 @@ func TestCrossPlatformCoverageHRbrainListPoolsAcceptsReviewedLiveContentPage(t *
 
 func TestCrossPlatformCoverageHRbrainBlockersAreClassifiedWithoutShortcutDefects(t *testing.T) {
 	commands := []string{
-		GetPool.Command, ListPoolEmployees.Command, ProfileMetadata.Command,
+		ListPools.Command, GetPool.Command, ListPoolEmployees.Command, ProfileMetadata.Command,
 		QueryProfile.Command, ProfileLabels.Command, ProfileCareer.Command, ProfilePerformance.Command,
 		SearchEmployees.Command, SearchEmployeesStructured.Command, SearchFields.Command,
 	}
@@ -172,7 +169,7 @@ func TestCrossPlatformCoverageHRbrainBlockersAreClassifiedWithoutShortcutDefects
 			t.Fatalf("%s has unknown blocker classification %q", command, reason)
 		}
 	}
-	if counts[hrbrainBlockerAdapterBusiness] != 8 || counts[hrbrainBlockerTenantFixture] != 2 {
+	if counts[hrbrainBlockerAdapterBusiness] != 8 || counts[hrbrainBlockerTenantFixture] != 3 {
 		t.Fatalf("blocker counts = %#v", counts)
 	}
 }

@@ -10,8 +10,8 @@
     {
       "service": "hrbrain",
       "source_total": 11,
-      "public": 1,
-      "unavailable": 10
+      "public": 0,
+      "unavailable": 11
     },
     {
       "service": "pat",
@@ -21,19 +21,6 @@
     }
   ],
   "public_shortcuts": [
-    {
-      "service": "hrbrain",
-      "command": "+list-pools",
-      "owning_atomic": "hrbrain/list_talent_pools",
-      "proof_class": "list",
-      "proof_case": "hrbrain_list_pools_reviewed_empty_page",
-      "stable_target": "reviewed-live-empty-pool-page",
-      "pass_labels": [
-        "HRBRAIN-LIST-POOLS-EXACT-TERMINAL-RECEIPT-PASS",
-        "HRBRAIN-LIST-POOLS-RAW-ATOMIC-BINDING-PASS",
-        "HRBRAIN-LIST-POOLS-LEGITIMATE-EMPTY-COMPLETION-PASS"
-      ]
-    },
     {
       "service": "pat",
       "command": "+browser-policy",
