@@ -1273,7 +1273,7 @@ Flags:
       --source-conversation-id string    来源会话 ID，需与 --source-message-id 成对指定
       --source-message-id string         来源消息 ID，需与 --source-conversation-id 成对指定
 ```
-`--media-id` 与 `--file-path` 二选一必填，同时传会被互斥拦截。传 `--file-path` 时 CLI 先做本地校验（文件存在、非目录、大小 ≤10MB、扩展名为 jpg/jpeg/png/gif/webp/bmp，大小写不敏感），再经 `im/upload_media`（bizType=chat_image）上传取得 mediaIdV1 后走与 `--media-id` 完全相同的收藏链路；上传成功但收藏失败时会提示已上传的 mediaId，可用 `--media-id` 重试而无需重新上传。大图（接近 10MB）上传耗时较长，建议追加 `--timeout 120` 以上。
+`--media-id` 与 `--file-path` 二选一必填，同时传会被互斥拦截。传 `--file-path` 时 CLI 先做本地校验（文件存在、非目录、大小 ≤10MB、扩展名为 jpg/jpeg/png/gif/webp/bmp，大小写不敏感），再经 `dingtalk-file/upload_media`（bizType=chat_emoticon）上传取得 mediaId（优先 mediaIdV1，缺失时用 mediaIdV2）后走与 `--media-id` 完全相同的收藏链路；上传成功但收藏失败时会提示已上传的 mediaId，可用 `--media-id` 重试而无需重新上传。大图（接近 10MB）上传耗时较长，建议追加 `--timeout 120` 以上。
 
 ### list-top-conversations (置顶会话)
 
