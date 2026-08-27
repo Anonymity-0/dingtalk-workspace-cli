@@ -501,6 +501,19 @@ func TestCrossPlatformCoverageMailTemplateCreateOwnNegativeBranches(t *testing.T
 			t.Fatalf("draft mismatch error=%v calls=%d", err, len(caller.calls))
 		}
 	})
+
+	for _, flag := range []string{"--is-draft", "--draft"} {
+		t.Run("explicit draft missing readback "+flag, func(t *testing.T) {
+			caller := &mailWriteContractCaller{responses: map[string][]string{
+				"create_user_message_template": {`{"success":true,"id":"template-1"}`},
+				"get_user_message_template":    {goodReadback},
+			}, errors: map[string]error{}}
+			err := runConfirmedMailWriteContract(t, caller, "mail", "+template-create", "--email", "sender@example.invalid", "--name", "name", "--subject", "subject", "--body", "body", flag)
+			if err == nil || len(caller.calls) != 2 {
+				t.Fatalf("missing draft readback error=%v calls=%d", err, len(caller.calls))
+			}
+		})
+	}
 }
 
 func TestCrossPlatformCoverageMailTemplateUpdateOwnNegativeBranches(t *testing.T) {

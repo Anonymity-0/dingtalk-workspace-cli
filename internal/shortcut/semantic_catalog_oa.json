@@ -50,7 +50,7 @@
     },
     "+list-forms": {
       "disposition": "semantic_adapter",
-      "semantic_delta": "真实端点按零基 cursor/limit 扫描并在窗口内过滤可见项，不返回 hasMore/nextCursor，totalCount 固定为 -1。Shortcut 严格验证 success、数组和稳定 processCode；非空页按请求 limit 推进且保持 incomplete，只有显式空页证明 endpoint_exhausted。",
+      "semantic_delta": "真实非空页不返回 continuation，且 cursor 0/1 的集合高度重叠；严格实现拒绝缺失、畸形、停滞或倒退游标，下游修复前不进入 Agent 公开发现。",
       "risk": "read",
       "availability": "available",
       "public": false,

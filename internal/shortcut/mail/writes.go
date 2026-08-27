@@ -338,6 +338,7 @@ var TemplateCreate = shortcut.Shortcut{
 	},
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		isDraft := mailRequestedTemplateDraftMode(rt)
+		draftModeExplicit := rt.Changed("is-draft") || rt.Changed("draft")
 		params := map[string]any{"email": rt.Str("email"), "name": rt.Str("name"), "subject": rt.Str("subject"), "body": rt.Str("body"), "isDraft": isDraft}
 		if rt.DryRun() {
 			return rt.Output(map[string]any{"value": map[string]any{"dryRun": true, "executed": false, "operation": "mail/create_user_message_template", "isDraft": isDraft}})
@@ -362,6 +363,8 @@ var TemplateCreate = shortcut.Shortcut{
 		}
 		if draft, present, err := mailTemplateDraftMode(verified); err != nil {
 			return err
+		} else if draftModeExplicit && !present {
+			return mailResponseError("mail/create_user_message_template", "missing_verification_field", "显式草稿模式请求缺少 isDraft 读回证据")
 		} else if present && draft != isDraft {
 			return mailResponseError("mail/create_user_message_template", "verification_mismatch", "模板读回 isDraft 与请求不一致")
 		}

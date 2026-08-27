@@ -110,21 +110,21 @@ var ListPending = shortcut.Shortcut{
 var ListForms = shortcut.Shortcut{
 	Service: "oa", Command: "+list-forms", Product: "oa",
 	Description:   "获取当前用户可见的审批表单列表",
-	Intent:        "按零基扫描偏移读取当前用户可发起的审批表单；下游不发布 hasMore/nextCursor，非空页按请求窗口推进，只有空页证明遍历完成。",
+	Intent:        "按服务端游标读取当前用户可发起的审批表单；缺少 hasMore/nextCursor 或游标不前进时失败，不把重复首页宣称为完整列表。",
 	Risk:          shortcut.RiskRead,
 	Safety:        oaReadSafety(),
 	OutputRollout: output.RolloutUnifiedActive,
 	Contract: oaContract(
 		"+list-forms", "获取当前用户可见的审批表单列表",
-		"需要分页枚举当前用户可发起的审批定义并取得稳定 processCode 时使用；按 meta.pagination.next_token 续页，直到空页给出 endpoint_exhausted=true。",
+		"需要枚举可发起审批定义并取得稳定 processCode 时使用；当前下游不返回可验证 continuation，故不进入 Agent 公开发现。",
 		true,
 		oaCollectionResult("forms", "严格验证的可见审批表单页"), oaPagePagination("cursor"),
 		[]contract.ParamDecl{{Name: "cursor", Property: "cursor"}, {Name: "limit", Property: "limit"}},
 		"dws oa +list-forms --cursor 0 --limit 100",
 	),
 	Flags: []shortcut.Flag{
-		{Name: "cursor", Type: shortcut.FlagInt, Default: "0", Desc: "零基偏移游标，首次传 0，续页使用响应 next_token"},
-		{Name: "limit", Type: shortcut.FlagInt, Default: "100", Desc: "每页大小，取值范围 1-100"},
+		{Name: "cursor", Type: shortcut.FlagInt, Default: "0", Desc: "分页游标，首次传 0"},
+		{Name: "limit", Type: shortcut.FlagInt, Default: "100", Desc: "每页大小，最大 100"},
 	},
 	Constraints: []shortcut.Constraint{{Kind: shortcut.ConstraintCustom, Flags: []string{"cursor", "limit"}, Description: "--cursor 不能小于 0；--limit 必须在 1-100"}},
 	Tips:        []string{`dws oa +list-forms --cursor 0 --limit 100`},
@@ -147,7 +147,8 @@ var ListForms = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		page, err := oaCursorProbePage(operation, rt.Int("cursor"), rt.Int("limit"), len(forms))
+		result, _ := data["result"].(map[string]any)
+		page, err := oaCursorPage(result, operation, rt.Int("cursor"))
 		if err != nil {
 			return err
 		}

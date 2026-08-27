@@ -242,9 +242,9 @@ var generatedCommandPathFallbacks = []CommandPathFallback{
 	{
 		From:         "oa +list-processes",
 		Mode:         "ambiguous",
-		Candidates:   []string{"oa +list-forms", "oa +search-forms", "oa approval list-submitted", "oa approval list-initiated"},
+		Candidates:   []string{"oa +search-forms", "oa approval list-submitted", "oa approval list-initiated"},
 		Reviewed:     true,
-		ReviewReason: "20260827 live review confirms list_user_visible_process scans by offset/limit, filters the requested window, and omits continuation fields; +list-forms now advances by the requested window and requires an empty-page exhaustion probe, so it is again a valid definition-list candidate. Process can still mean a searchable approval definition or an initiated instance, so stop and present the reviewed routes.",
+		ReviewReason: "20260818 review keeps +list-forms unavailable because its live response lacks trustworthy continuation and removes +my-initiated from discovery because guaranteed-zero responses omit hasMore; process can still mean a searchable approval definition or an instance initiated by the current user, so stop and present the public keyword-search or exact atomic initiated routes.",
 	},
 }
 
