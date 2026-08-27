@@ -5,21 +5,29 @@ on:
     branches:
       - main
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, edited, auto_merge_enabled, auto_merge_disabled]
+    # Auto-merge metadata is governed by the base-owned Reviewer Router. It
+    # does not change the head SHA, so it must not restart this full admission
+    # graph or evict useful in-flight work for the same revision.
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
 
 permissions:
   contents: read
 
 concurrency:
-  # Only duplicate runs for the exact PR base/head revision cancel each other.
-  # A later revision must not kill an earlier cold-cache producer, and every
-  # protected-main SHA keeps an independent producer run.
-  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}-{1}-{2}', github.event.pull_request.number, github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('push-{0}', github.sha) }}
+  # Keep only the latest revision of a pull request: a stale run must not
+  # compete with its replacement for hosted runners. A replacement that sees
+  # a cold baseline cache recomputes it authoritatively. Protected-main pushes
+  # remain keyed by exact SHA so every potential merge base has a producer.
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('push-{0}', github.sha) }}
   cancel-in-progress: true
 
 jobs:
   lint:
     name: Lint
+    # Draft revisions use the isolated Draft CI workflow. Skip the heavy
+    # admission graph; the base-owned AI Behavior status fails Draft revisions
+    # so these successful skipped checks cannot authorize a merge.
+    if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -512,9 +520,11 @@ jobs:
         if: steps.classify.outputs.changelog_only != 'true' && steps.classify.outputs.docs_only != 'true'
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
-      - name: Test reviewer routing policy
+      - name: Test reviewer routing and merge authority policy
         if: steps.classify.outputs.changelog_only != 'true' && steps.classify.outputs.docs_only != 'true'
-        run: node .github/reviewer-routing.test.js
+        run: |
+          node .github/reviewer-routing.test.js
+          node .github/reviewer-merge-authority.test.js
 
       - name: Test npm installer smoke (prune, backup, publish)
         if: steps.classify.outputs.changelog_only != 'true' && steps.classify.outputs.docs_only != 'true'
@@ -938,7 +948,15 @@ jobs:
             const pullNumber = context.payload.pull_request.number;
             const eventHeadSha = context.payload.pull_request.head.sha;
             const eventBaseSha = context.payload.pull_request.base.sha;
-            const appSlug = process.env.REVIEWER_ROUTER_APP_SLUG?.trim();
+            const configuredAppSlug = process.env.REVIEWER_ROUTER_APP_SLUG?.trim();
+            const reviewedForkAppSlug = 'dingtalk-dws-reviewer-router';
+            const pullHeadRepository =
+              context.payload.pull_request.head.repo.full_name?.toLowerCase();
+            const baseRepository = `${owner}/${repo}`.toLowerCase();
+            const isForkPull =
+              Boolean(pullHeadRepository) && pullHeadRepository !== baseRepository;
+            const appSlug =
+              configuredAppSlug || (isForkPull ? reviewedForkAppSlug : '');
             if (
               !appSlug ||
               appSlug !== appSlug.toLowerCase() ||
@@ -948,6 +966,11 @@ jobs:
                 'Reviewer Router App slug repository variable is missing or unsafe.',
               );
               return;
+            }
+            if (!configuredAppSlug) {
+              core.info(
+                `Fork pull request cannot read the repository App slug variable; using the reviewed public slug ${reviewedForkAppSlug}.`,
+              );
             }
             const expectedAppOwner = `${appSlug}[bot]`;
             const writerRulesetName = 'main-merge-writers';
@@ -1280,6 +1303,8 @@ jobs:
           echo "COVERAGE_BASE_REF=$base_ref" >> "$GITHUB_ENV"
 
       - name: Run and enforce macOS changed-code coverage
+        env:
+          COVERAGE_PLATFORM_TIMEOUT: 15m
         run: make coverage-gate-platform BASE_REF="$COVERAGE_BASE_REF" PROFILE=coverage-darwin.txt
 
       - name: Upload macOS coverage artifact
