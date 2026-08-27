@@ -57,20 +57,7 @@ Todo 事件也不进入 `+listen-im`。三个公开 EventKey 使用 `--role-type
 
 ### EventKey 索引
 
-16 个 IM EventKey、目标参数和组合约束见 [EventKey 索引](references/event-im-keys.md)；七个 OA EventKey 见 [OA 事件参考](references/event-oa.md)；三个 Todo EventKey 及其 `roleTypes` 见 [Todo 事件参考](references/event-todo.md)。
-
-## 公开层与内部统一边界
-
-`+listen-im` 是意图编译层，不是第二套事件系统。它只负责：
-
-```text
-kind + events + target
-→ typed resolver
-→ 确定 EventKey 集合
-→ 一次 event consume 生命周期
-```
-
-订阅创建/复用、单 bus、多 consumer、ready marker、扁平 NDJSON、超时/取消、部分失败回滚和退出清理全部复用现有 Runtime。低频 EventKey、群生命周期、OA 审批、Todo、Filter DSL、原始 envelope、复用 subscribe_id 等仍由 `event consume` 承担。
+16 个 EventKey 的目标与组合约束见 [EventKey 索引](references/event-im-keys.md)。兼容键包括 `user_im_message_receive_o2o_all`、`user_im_message_receive_group_all`、`user_im_group_updated`、`user_im_group_member_added`、`user_im_group_member_exited`、`user_im_group_disbanded`；群输出可含 `operator_open_dingtalk_id`、`members[].open_dingtalk_id`。OA 见 [OA 事件参考](references/event-oa.md)，Todo 见 [Todo 事件参考](references/event-todo.md)。
 
 ## 运行与结果契约
 
@@ -92,6 +79,10 @@ kind + events + target
 - 这套 `0/2/1` 是 **Agent/host** 编排预算，适用于全部 26 个公开个人 EventKey（16 个 IM + 7 个 OA + 3 个 Todo）：`retryable=false` 对应 `max_additional_attempts=0`；`retryable=true` 对应 `max_additional_attempts=2`；`retryable=unknown` 对应 `max_additional_attempts=1`。它不是 CLI 持久化硬总次数上限；每次调用最多创建一次，进程内不会自动重试，CLI 也不持久化或计算跨调用的 Agent/host 尝试次数。
 - 重试必须遵守 `retry_after_seconds` / `next_retry_at`。遇到 `in_flight`、`cooldown`、`terminal_hold` 不并发或递归重启同一逻辑订阅，也不换 `subscribe_id` / `trace_id` 绕过保护。
 - 认证、profile、订阅保护状态和 bus 排障按失败类型读取 [订阅运维](references/event-im-operations.md)，不要在正常路径预加载完整运维手册。
+
+### 本地订阅保护
+
+状态在 `~/.dws/events/open/personal_stream/<identity_hash>/personal_subscription_attempts.json`（`DWS_CONFIG_DIR` 改根）；目录 `0700`，`personal_subscription_attempts.json` 与 `personal_subscription_attempts.lock` 为 `0600`。连续 `24h` 无失败后重置，`terminal_hold` 为 `1h`。紧急恢复只删除 `personal_subscription_attempts.json`，不要删除 lock 文件；这会清空该 identity 的全部保护记录。
 
 ## 何时查询 Schema
 
