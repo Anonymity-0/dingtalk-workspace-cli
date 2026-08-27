@@ -37,9 +37,9 @@ func newMarkdownCommand() *cobra.Command {
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "markdown",
 		Selection: contract.ProductSelectionDecl{
-			AgentSummary: "跨钉盘与文档空间创建、获取、覆盖、局部修补和读取原生 Markdown 评论列表",
+			AgentSummary: "跨钉盘与文档空间创建、获取、对比、覆盖、局部修补和读取原生 Markdown 评论列表",
 			UseWhen: []string{
-				"目标是原生 .md 文件，并需要在 Drive/Doc 路由间安全处理内容时",
+				"目标是原生 .md 文件，需要安全创建、读取、比较版本或本地草稿、覆盖、局部修改内容或查看 Markdown 评论时",
 			},
 			AvoidWhen: []string{
 				"在线文档正文操作使用 doc；普通二进制文件上传下载使用 drive",
@@ -232,8 +232,9 @@ func newMarkdownCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "创建原生 .md 文件",
 		Long: `创建原生 Markdown 文件。--content 支持字面值、@file 和 -（stdin），
-也可通过 --file 直接上传本地 .md 文件。--space-id 显式走钉盘；
-默认及 --workspace 走文档空间。`,
+也可通过 --file 直接上传本地 .md 文件。--space-id 显式走钉盘，
+--workspace 显式走文档空间；仅传 --folder 时自动识别文件夹所在域。
+不传目标参数时默认创建到文档空间根目录。`,
 		Example: `  dws markdown create --name README.md --content "# Hello"
   dws markdown create --file ./README.md --space-id <spaceId>
   dws markdown create --file ./README.md --workspace <workspaceId>`,
@@ -242,7 +243,7 @@ func newMarkdownCreateCmd() *cobra.Command {
 	cmd.Flags().String("name", "", "文件名，必须以 .md 结尾（--content 模式必填）")
 	cmd.Flags().String("content", "", "Markdown 内容；支持字面值、@file、-（stdin）；与 --file 互斥")
 	cmd.Flags().String("file", "", "本地 .md 文件路径；与 --content 互斥")
-	cmd.Flags().String("folder", "", "父文件夹 ID (可选)")
+	cmd.Flags().String("folder", "", "父文件夹 ID（未指定空间参数时自动识别所在域）")
 	cmd.Flags().String("workspace", "", "文档空间/知识库 ID (可选，与 --space-id 互斥)")
 	cmd.Flags().String("space-id", "", "钉盘空间 ID (可选，与 --workspace 互斥)")
 	RegisterCrossProductAliases(cmd)
@@ -376,7 +377,11 @@ func runMarkdownCreate(cmd *cobra.Command, _ []string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	if spaceID != "" {
+	useDocServer, err := resolveMarkdownCreateTarget(ctx, folderID, spaceID, workspaceID)
+	if err != nil {
+		return err
+	}
+	if !useDocServer {
 		return uploadToDrive(ctx, uploadPath, nameFlag, info.Size(), spaceID, folderID, "", "text/markdown")
 	}
 	return uploadToDocSpace(ctx, uploadPath, nameFlag, info.Size(), workspaceID, folderID, "", false)
@@ -412,8 +417,8 @@ func newMarkdownOverwriteCmd() *cobra.Command {
 		Long: `用本地 .md 文件或 --content 覆盖远程原生 Markdown 文件。
 默认需要确认；命令级 --dry-run 会下载当前内容并输出差异。
 根命令的全局 --dry-run 只做无网络参数预览。`,
-		Example: `  dws markdown overwrite --node <id> --file ./updated.md --yes
-  dws markdown overwrite --node <id> --content "# New" --name README.md --dry-run`,
+		Example: `  dws markdown overwrite --node <id> --content "# New" --name README.md --dry-run
+  dws markdown overwrite --node <id> --file ./updated.md`,
 		RunE: runMarkdownOverwrite,
 	}
 	cmd.Flags().String("node", "", "目标文件 ID (必填)")
@@ -595,8 +600,8 @@ func newMarkdownPatchCmd() *cobra.Command {
 		Long: `下载远程 Markdown，执行字面量或 RE2 正则替换，再覆盖上传。
 零匹配不会写入，替换后为空会报错；默认需要确认。
 命令级 --dry-run 会显示 before/after 差异，全局 --dry-run 不访问网络。`,
-		Example: `  dws markdown patch --node <id> --pattern old --content new --yes
-  dws markdown patch --node <id> --pattern "v\\d+" --content v2 --regex --dry-run`,
+		Example: `  dws markdown patch --node <id> --pattern old --content new --dry-run
+  dws markdown patch --node <id> --pattern "v\\d+" --content v2 --regex`,
 		RunE: runMarkdownPatch,
 	}
 	cmd.Flags().String("node", "", "目标文件 ID (必填)")
@@ -817,6 +822,36 @@ func resolveMarkdownRoute(ctx context.Context, nodeID, spaceID, workspaceID stri
 			return false, err
 		}
 		return domain == "doc", nil
+	}
+}
+
+// resolveMarkdownCreateTarget chooses the upload service without changing the
+// established default destination. Explicit space flags are authoritative;
+// only a standalone --folder requires a read-only cross-domain probe.
+func resolveMarkdownCreateTarget(ctx context.Context, folderID, spaceID, workspaceID string) (bool, error) {
+	if spaceID != "" && workspaceID != "" {
+		return false, fmt.Errorf("--space-id 与 --workspace 互斥，不可同时指定")
+	}
+	switch {
+	case spaceID != "":
+		return false, nil
+	case workspaceID != "":
+		return true, nil
+	case folderID == "":
+		return true, nil
+	}
+
+	domain, err := resolveFileDomain(ctx, folderID)
+	if err != nil {
+		return false, fmt.Errorf("无法根据 --folder %s 自动识别 Markdown 创建目标域: %w", folderID, err)
+	}
+	switch domain {
+	case "drive":
+		return false, nil
+	case "doc":
+		return true, nil
+	default:
+		return false, fmt.Errorf("无法根据 --folder %s 自动识别 Markdown 创建目标域: 未知域 %q", folderID, domain)
 	}
 }
 
