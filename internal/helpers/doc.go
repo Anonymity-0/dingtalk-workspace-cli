@@ -1166,7 +1166,7 @@ func newDocCommand() *cobra.Command {
 			},
 		},
 	})
-	root := &cobra.Command{
+	root := newGroupCommand(&cobra.Command{
 		Use:   "doc",
 		Short: "钉钉文档管理",
 		Long: `管理钉钉文档：浏览、读写、块级编辑、导出、导入、模板管理。
@@ -1190,7 +1190,8 @@ func newDocCommand() *cobra.Command {
 
 文件管理（搜索/列表/上传/下载/复制/移动/重命名/删除/权限）已迁移到 dws drive。`,
 		RunE: groupRunE,
-	}
+	})
+	installDocDelegationAuth(root)
 
 	searchCmd := &cobra.Command{
 		Use:   "search",
@@ -1826,7 +1827,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	})
 
-	fileCmd := &cobra.Command{Use: "file", Short: "文件管理", RunE: groupRunE}
+	fileCmd := newGroupCommand(&cobra.Command{Use: "file", Short: "文件管理", RunE: groupRunE})
 
 	fileCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -1904,7 +1905,7 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	})
 
-	folderCmd := &cobra.Command{Use: "folder", Short: "文件夹管理", RunE: groupRunE}
+	folderCmd := newGroupCommand(&cobra.Command{Use: "folder", Short: "文件夹管理", RunE: groupRunE})
 
 	folderCreateCmd := &cobra.Command{
 		Use:   "create",
@@ -2063,12 +2064,12 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 		},
 	})
 
-	blockCmd := &cobra.Command{
+	blockCmd := newGroupCommand(&cobra.Command{
 		Use:   "block",
 		Short: "块级编辑",
 		Long:  `对文档进行块级别的精细编辑：查询、插入、更新、删除块元素。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	blockListCmd := &cobra.Command{
 		Use:   "list",
@@ -2844,12 +2845,12 @@ WARNING: --mode overwrite 为破坏性写入，会清空原文档全部内容。
 	_ = renameCmd.Flags().MarkHidden("title")
 
 	// ── media (文档媒体/附件) ────────────────────────────────
-	mediaCmd := &cobra.Command{
+	mediaCmd := newGroupCommand(&cobra.Command{
 		Use:   "media",
 		Short: "文档媒体 / 附件管理",
 		Long:  `管理钉钉文档中的媒体资源和附件：上传附件并插入文档、下载文档内的附件等。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	mediaDownloadCmd := &cobra.Command{
 		Use:   "download",
@@ -3036,12 +3037,12 @@ resourceId 需通过 dws doc block list 获取：查询目标文档的块列表�
 	mediaCmd.AddCommand(mediaDownloadCmd, mediaUploadCmd, mediaInsertCmd)
 
 	// ── comment (文档评论) ──────────────────────────────────
-	commentCmd := &cobra.Command{
+	commentCmd := newGroupCommand(&cobra.Command{
 		Use:   "comment",
 		Short: "文档评论 / 评论管理",
 		Long:  `管理钉钉文档的评论：查询评论列表、创建评论、回复评论。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	commentListCmd := &cobra.Command{
 		Use:   "list",
@@ -3545,13 +3546,13 @@ commentKey可从 dws doc comment create 或 dws doc comment list 返回结果中
 	commentCmd.AddCommand(newCommentBaseCommands("doc")...)
 
 	// ── permission (文档协作权限) ────────────────────────────
-	permissionCmd := &cobra.Command{
+	permissionCmd := newGroupCommand(&cobra.Command{
 		Use:     "permission",
 		Aliases: []string{"perm"},
 		Short:   "文档协作权限管理",
 		Long:    `管理钉钉文档的协作者权限：添加协作者、更新协作者权限、查询协作者列表。`,
 		RunE:    groupRunE,
-	}
+	})
 
 	permissionAddCmd := &cobra.Command{
 		Use:   "add",
@@ -4260,6 +4261,7 @@ CLI 内部自动完成全部流程：
 	_ = exportCmd.Flags().MarkHidden("file-id")
 
 	exportCmd.AddCommand(exportGetCmd)
+	newHybridGroupCommand(exportCmd)
 
 	// ── import: 文件导入为在线文档（一体化：上传→转换→轮询）──────────────
 	importCmd := &cobra.Command{
@@ -4284,8 +4286,8 @@ CLI 内部自动完成全部流程:
   3. 确认导入（触发格式转换）
   4. 渐进式退避轮询等待完成（最多约 5 分钟）
 
-如果轮询超时仍未完成，会输出 taskId 供后续手动查询:
-  dws doc import get --task-id <taskId>`,
+如果轮询超时或中断，会输出包含原目标的完整命令供后续手动查询，例如:
+  dws doc import get --task-id <taskId> --workspace <原目标WORKSPACE_ID>`,
 		Example: `  # 导入 Word 文档
   dws doc import --file ./report.docx
 
@@ -4315,13 +4317,16 @@ CLI 内部自动完成全部流程:
 		Short: "查询导入任务结果（手动兜底）",
 		Long: `根据 taskId 查询文档导入任务的执行结果。
 通常不需要手动调用，dws doc import 会自动完成轮询。
-仅在导入命令超时或中断后，用于手动查询任务状态。
+仅在导入命令超时或中断后，用于手动查询任务状态。建议直接复制导入结果
+中的完整 next_command；其中携带的原目标（--folder 或 --workspace）用于在
+completed 后回读验证真实落点。只传 taskId 仍可查询 processing/failed，
+但 completed 时会返回未验证错误，不会误报成功。
 
 任务状态:
   processing  转换中
   completed   导入成功，返回 documentUrl
   failed      导入失败`,
-		Example: `  dws doc import get --task-id <TASK_ID>`,
+		Example: `  dws doc import get --task-id <TASK_ID> --workspace <WORKSPACE_ID>`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runImportGetCommand(cmd, docImportFlowConfig())
 		},
@@ -4348,22 +4353,25 @@ CLI 内部自动完成全部流程:
 			},
 			Selection: contract.SelectionSpec{
 				AgentSummary: "根据 taskId 查询文档导入任务的执行结果",
-				UseWhen:      []string{"查询文档导入任务结果（已有 taskId，导入超时/中断后兜底）时"},
+				UseWhen:      []string{"已有 doc import 超时或中断结果及其完整 next_command，需要续查同一 taskId 并验证原 folder/workspace 落点时"},
 				AvoidWhen:    []string{"发起导入用 doc import（若入口可用）；不要用本命令代替导入"},
-				Examples:     []string{"dws doc import get --task-id <TASK_ID> --format json"},
+				Examples:     []string{"dws doc import get --task-id <TASK_ID> --workspace <WORKSPACE_ID> --format json"},
 			},
 		},
 	})
 	importGetCmd.Flags().String("task-id", "", "导入任务 ID (必填)")
+	importGetCmd.Flags().String("folder", "", "原导入目标文件夹 ID 或 URL（completed 后落点验证需要）")
+	importGetCmd.Flags().String("workspace", "", "原导入目标知识库 ID 或 URL（completed 后落点验证需要）")
 	importCmd.AddCommand(importGetCmd)
+	newHybridGroupCommand(importCmd)
 
 	// ── doc version 子命令组 ──
-	versionCmd := &cobra.Command{
+	versionCmd := newGroupCommand(&cobra.Command{
 		Use:   "version",
 		Short: "文档历史版本管理",
 		Long:  `管理钉钉在线文档（adoc）的历史版本：手动保存、查看版本列表、回滚到指定版本。`,
 		RunE:  groupRunE,
-	}
+	})
 
 	versionSaveCmd := &cobra.Command{
 		Use:     "save",
@@ -4549,7 +4557,7 @@ CLI 内部自动完成全部流程:
 	versionCmd.AddCommand(versionSaveCmd, versionListCmd, versionRevertCmd)
 
 	// ── template 子命令组 ──────────────────────────────────────────────────────
-	templateCmd := &cobra.Command{Use: "template", Short: "文档模板管理", RunE: groupRunE}
+	templateCmd := newGroupCommand(&cobra.Command{Use: "template", Short: "文档模板管理", RunE: groupRunE})
 
 	templateListCmd := &cobra.Command{
 		Use:   "list",
