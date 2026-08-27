@@ -9,6 +9,7 @@ import (
 	"image/color"
 	"image/gif"
 	"image/jpeg"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +21,8 @@ import (
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/corecmd/contract"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut/targetresolver"
 	"github.com/spf13/cobra"
+	"golang.org/x/image/bmp"
+	"golang.org/x/image/webp"
 )
 
 const (
@@ -278,12 +281,24 @@ var personalEmotionImageTypes = map[string]string{
 
 var (
 	personalEmotionOSStat       = os.Stat
-	personalEmotionOSReadFile   = os.ReadFile
+	personalEmotionOpenFile     = openPersonalEmotionFile
 	personalEmotionCompress     = compressPersonalEmotionImage
+	personalEmotionWebPDecode   = webp.Decode
+	personalEmotionBMPDecode    = bmp.Decode
 	personalEmotionGIFDecodeAll = gif.DecodeAll
 	personalEmotionGIFEncodeAll = gif.EncodeAll
 	personalEmotionJPEGEncode   = jpeg.Encode
 )
+
+type personalEmotionReadableFile interface {
+	io.Reader
+	Stat() (os.FileInfo, error)
+	Close() error
+}
+
+func openPersonalEmotionFile(filePath string) (personalEmotionReadableFile, error) {
+	return os.Open(filePath)
+}
 
 func personalEmotionImageType(ext string) (string, bool) {
 	imageType, ok := personalEmotionImageTypes[strings.ToLower(strings.TrimSpace(ext))]
@@ -306,6 +321,9 @@ func validatePersonalEmotionImageFile(filePath string) (int64, string, error) {
 	if info.IsDir() {
 		return 0, "", fmt.Errorf("--file-path points to a directory, expected an image file: %s", filePath)
 	}
+	if !info.Mode().IsRegular() {
+		return 0, "", fmt.Errorf("--file-path points to a non-regular file, expected an image file: %s", filePath)
+	}
 	imageType, ok := personalEmotionImageType(filepath.Ext(filePath))
 	if !ok {
 		return 0, "", fmt.Errorf("--file-path only supports jpg/jpeg/png/gif/webp/bmp images, got: %s", filePath)
@@ -321,9 +339,28 @@ func loadPersonalEmotionImageFile(filePath string) (*personalEmotionImage, error
 	if err != nil {
 		return nil, err
 	}
-	data, err := personalEmotionOSReadFile(filePath)
+	file, err := personalEmotionOpenFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("--file-path cannot read local image %s: %w", filePath, err)
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("--file-path cannot inspect local image %s: %w", filePath, err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("--file-path points to a directory, expected an image file: %s", filePath)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("--file-path points to a non-regular file, expected an image file: %s", filePath)
+	}
+	data, err := io.ReadAll(io.LimitReader(file, personalEmotionImageAutoCompressBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("--file-path cannot read local image %s: %w", filePath, err)
+	}
+	size = int64(len(data))
+	if size > personalEmotionImageAutoCompressBytes {
+		return nil, fmt.Errorf("--file-path image size %d bytes exceeds the 10MB automatic compression limit: %s；文件过大，自动压缩耗时长且容易失真，可让 AI 先压缩图片到 2MB 以内后再重试，GIF 需要保留动图帧", size, filePath)
 	}
 	if int64(len(data)) > personalEmotionImageMaxBytes {
 		compressed, compressedImageType, err := personalEmotionCompress(data, imageType)
@@ -354,8 +391,8 @@ func loadPersonalEmotionImageFile(filePath string) (*personalEmotionImage, error
 
 func compressPersonalEmotionImage(data []byte, imageType string) ([]byte, string, error) {
 	switch imageType {
-	case "jpg", "jpeg", "png":
-		compressed, err := compressPersonalEmotionStillImage(data)
+	case "jpg", "jpeg", "png", "webp", "bmp":
+		compressed, err := compressPersonalEmotionStillImage(data, imageType)
 		return compressed, "jpg", err
 	case "gif":
 		compressed, err := compressPersonalEmotionGIF(data)
@@ -365,8 +402,8 @@ func compressPersonalEmotionImage(data []byte, imageType string) ([]byte, string
 	}
 }
 
-func compressPersonalEmotionStillImage(data []byte) ([]byte, error) {
-	src, _, err := image.Decode(bytes.NewReader(data))
+func compressPersonalEmotionStillImage(data []byte, imageType string) ([]byte, error) {
+	src, err := decodePersonalEmotionStillImage(data, imageType)
 	if err != nil {
 		return nil, fmt.Errorf("图片解码失败: %w", err)
 	}
@@ -387,6 +424,19 @@ func compressPersonalEmotionStillImage(data []byte) ([]byte, error) {
 		}
 	}
 	return nil, fmt.Errorf("压缩后仍超过 2MB")
+}
+
+func decodePersonalEmotionStillImage(data []byte, imageType string) (image.Image, error) {
+	reader := bytes.NewReader(data)
+	switch imageType {
+	case "webp":
+		return personalEmotionWebPDecode(reader)
+	case "bmp":
+		return personalEmotionBMPDecode(reader)
+	default:
+		src, _, err := image.Decode(reader)
+		return src, err
+	}
 }
 
 func compressPersonalEmotionGIF(data []byte) ([]byte, error) {

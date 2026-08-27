@@ -17,6 +17,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
@@ -276,6 +277,47 @@ type personalEmotionUploadCaller struct {
 	uploadServer  string
 	uploadTool    string
 }
+
+type personalEmotionTestFile struct {
+	info    os.FileInfo
+	data    []byte
+	readErr error
+	statErr error
+}
+
+func (f *personalEmotionTestFile) Read(p []byte) (int, error) {
+	if f.readErr != nil {
+		return 0, f.readErr
+	}
+	if len(f.data) == 0 {
+		return 0, io.EOF
+	}
+	n := copy(p, f.data)
+	f.data = f.data[n:]
+	return n, nil
+}
+
+func (f *personalEmotionTestFile) Stat() (os.FileInfo, error) {
+	if f.statErr != nil {
+		return nil, f.statErr
+	}
+	return f.info, nil
+}
+
+func (f *personalEmotionTestFile) Close() error { return nil }
+
+type personalEmotionTestFileInfo struct {
+	name string
+	size int64
+	mode os.FileMode
+}
+
+func (i personalEmotionTestFileInfo) Name() string       { return i.name }
+func (i personalEmotionTestFileInfo) Size() int64        { return i.size }
+func (i personalEmotionTestFileInfo) Mode() os.FileMode  { return i.mode }
+func (i personalEmotionTestFileInfo) ModTime() time.Time { return time.Time{} }
+func (i personalEmotionTestFileInfo) IsDir() bool        { return i.mode.IsDir() }
+func (i personalEmotionTestFileInfo) Sys() any           { return nil }
 
 func (c *personalEmotionUploadCaller) CallTool(ctx context.Context, server, tool string, args map[string]any) (*edition.ToolResult, error) {
 	if server == personalEmotionUploadServerID && tool == personalEmotionUploadMediaTool {
@@ -729,6 +771,14 @@ func TestPersonalEmotionImageFileValidation(t *testing.T) {
 	if _, _, err := validatePersonalEmotionImageFile(dir); err == nil {
 		t.Fatal("directory accepted")
 	}
+	t.Run("non_regular_stat", func(t *testing.T) {
+		testseam.Swap(t, &personalEmotionOSStat, func(string) (os.FileInfo, error) {
+			return personalEmotionTestFileInfo{name: "pipe.png", mode: os.ModeNamedPipe}, nil
+		})
+		if _, _, err := validatePersonalEmotionImageFile(filepath.Join(dir, "pipe.png")); err == nil || !strings.Contains(err.Error(), "non-regular") {
+			t.Fatalf("non-regular stat file error = %v", err)
+		}
+	})
 	overPath := filepath.Join(dir, "big.png")
 	if err := os.WriteFile(overPath, make([]byte, personalEmotionImageMaxBytes+1), 0o600); err != nil {
 		t.Fatal(err)
@@ -748,20 +798,90 @@ func TestPersonalEmotionImageFileValidation(t *testing.T) {
 	}
 }
 
+func TestPersonalEmotionLoadImageFileCoversOpenAndInspectFailures(t *testing.T) {
+	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 8)
+	testseam.Swap(t, &personalEmotionOpenFile, func(string) (personalEmotionReadableFile, error) {
+		return nil, errors.New("open denied")
+	})
+	if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "open denied") {
+		t.Fatalf("open failure error = %v", err)
+	}
+
+	t.Run("stat_error", func(t *testing.T) {
+		testseam.Swap(t, &personalEmotionOpenFile, func(string) (personalEmotionReadableFile, error) {
+			return &personalEmotionTestFile{statErr: errors.New("stat denied")}, nil
+		})
+		if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "stat denied") {
+			t.Fatalf("opened stat failure error = %v", err)
+		}
+	})
+
+	t.Run("opened_directory", func(t *testing.T) {
+		testseam.Swap(t, &personalEmotionOpenFile, func(string) (personalEmotionReadableFile, error) {
+			return &personalEmotionTestFile{
+				info: personalEmotionTestFileInfo{name: "sticker.png", mode: os.ModeDir},
+			}, nil
+		})
+		if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "directory") {
+			t.Fatalf("opened directory error = %v", err)
+		}
+	})
+}
+
 func TestPersonalEmotionLoadImageFileCoversReadAndCompressionBoundaries(t *testing.T) {
 	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 8)
-	testseam.Swap(t, &personalEmotionOSReadFile, func(string) ([]byte, error) {
-		return nil, errors.New("read denied")
+	info, err := os.Stat(imagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &personalEmotionOpenFile, func(string) (personalEmotionReadableFile, error) {
+		return &personalEmotionTestFile{info: info, readErr: errors.New("read denied")}, nil
 	})
 	if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "read denied") {
 		t.Fatalf("read failure error = %v", err)
 	}
 }
 
+func TestPersonalEmotionLoadImageFileRejectsOpenedNonRegularFile(t *testing.T) {
+	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 8)
+	testseam.Swap(t, &personalEmotionOpenFile, func(string) (personalEmotionReadableFile, error) {
+		return &personalEmotionTestFile{
+			info: personalEmotionTestFileInfo{name: "sticker.png", mode: os.ModeNamedPipe},
+		}, nil
+	})
+	if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "non-regular") {
+		t.Fatalf("non-regular opened file error = %v", err)
+	}
+}
+
+func TestPersonalEmotionLoadImageFileRejectsActualReadBeyondAutoCompressLimit(t *testing.T) {
+	imagePath := writePersonalEmotionTestImage(t, "sticker.png", 8)
+	info, err := os.Stat(imagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &personalEmotionOpenFile, func(string) (personalEmotionReadableFile, error) {
+		return &personalEmotionTestFile{
+			info: info,
+			data: bytes.Repeat([]byte{1}, int(personalEmotionImageAutoCompressBytes)+1),
+		}, nil
+	})
+	if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "10MB automatic compression limit") {
+		t.Fatalf("actual oversize read error = %v", err)
+	}
+}
+
 func TestPersonalEmotionLoadImageFileRejectsStillOversizeAfterCompression(t *testing.T) {
 	imagePath := writePersonalEmotionTestImage(t, "large.png", int(personalEmotionImageMaxBytes)+1)
-	testseam.Swap(t, &personalEmotionOSReadFile, func(string) ([]byte, error) {
-		return bytes.Repeat([]byte{1}, int(personalEmotionImageMaxBytes)+1), nil
+	info, err := os.Stat(imagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testseam.Swap(t, &personalEmotionOpenFile, func(string) (personalEmotionReadableFile, error) {
+		return &personalEmotionTestFile{
+			info: info,
+			data: bytes.Repeat([]byte{1}, int(personalEmotionImageMaxBytes)+1),
+		}, nil
 	})
 	testseam.Swap(t, &personalEmotionCompress, func([]byte, string) ([]byte, string, error) {
 		return bytes.Repeat([]byte{2}, int(personalEmotionImageMaxBytes)+1), "jpg", nil
@@ -771,10 +891,55 @@ func TestPersonalEmotionLoadImageFileRejectsStillOversizeAfterCompression(t *tes
 	}
 }
 
-func TestPersonalEmotionCompressionRejectsUnsupportedLargeImageType(t *testing.T) {
-	imagePath := writePersonalEmotionTestImage(t, "large.webp", int(personalEmotionImageMaxBytes)+1)
-	if _, err := loadPersonalEmotionImageFile(imagePath); err == nil || !strings.Contains(err.Error(), "webp 暂不支持自动压缩") {
+func TestPersonalEmotionCompressionRejectsUnknownLargeImageType(t *testing.T) {
+	if _, _, err := compressPersonalEmotionImage([]byte("data"), "svg"); err == nil || !strings.Contains(err.Error(), "svg 暂不支持自动压缩") {
 		t.Fatalf("unsupported compression error = %v", err)
+	}
+}
+
+func TestPersonalEmotionLoadImageFileCompressesLargeWebPAndBMP(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		imageType string
+		decode    func(*testing.T)
+	}{
+		{
+			name:      "large.webp",
+			imageType: "webp",
+			decode: func(t *testing.T) {
+				testseam.Swap(t, &personalEmotionWebPDecode, func(io.Reader) (image.Image, error) {
+					return image.NewRGBA(image.Rect(0, 0, 128, 128)), nil
+				})
+			},
+		},
+		{
+			name:      "large.bmp",
+			imageType: "bmp",
+			decode: func(t *testing.T) {
+				testseam.Swap(t, &personalEmotionBMPDecode, func(io.Reader) (image.Image, error) {
+					return image.NewRGBA(image.Rect(0, 0, 128, 128)), nil
+				})
+			},
+		},
+	} {
+		t.Run(tc.imageType, func(t *testing.T) {
+			tc.decode(t)
+			imagePath := writePersonalEmotionTestImage(t, tc.name, int(personalEmotionImageMaxBytes)+1)
+			image, err := loadPersonalEmotionImageFile(imagePath)
+			if err != nil {
+				t.Fatalf("large %s compression failed: %v", tc.imageType, err)
+			}
+			if !image.compressed || image.imageType != "jpg" || image.size > personalEmotionImageMaxBytes {
+				t.Fatalf("compressed image = %+v, want jpg <= 2MB", image)
+			}
+			content, err := base64.StdEncoding.DecodeString(image.content)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := jpeg.Decode(bytes.NewReader(content)); err != nil {
+				t.Fatalf("compressed %s content is not jpeg: %v", tc.imageType, err)
+			}
+		})
 	}
 }
 
@@ -888,7 +1053,7 @@ func TestPersonalEmotionStillCompressionEncodeAndSizeFailures(t *testing.T) {
 	testseam.Swap(t, &personalEmotionJPEGEncode, func(io.Writer, image.Image, *jpeg.Options) error {
 		return errors.New("jpeg nope")
 	})
-	if _, err := compressPersonalEmotionStillImage(src.Bytes()); err == nil || !strings.Contains(err.Error(), "jpeg nope") {
+	if _, err := compressPersonalEmotionStillImage(src.Bytes(), "png"); err == nil || !strings.Contains(err.Error(), "jpeg nope") {
 		t.Fatalf("jpeg encode error = %v", err)
 	}
 
@@ -896,7 +1061,7 @@ func TestPersonalEmotionStillCompressionEncodeAndSizeFailures(t *testing.T) {
 		_, err := w.Write(bytes.Repeat([]byte{4}, int(personalEmotionImageMaxBytes)+1))
 		return err
 	})
-	if _, err := compressPersonalEmotionStillImage(src.Bytes()); err == nil || !strings.Contains(err.Error(), "压缩后仍超过") {
+	if _, err := compressPersonalEmotionStillImage(src.Bytes(), "png"); err == nil || !strings.Contains(err.Error(), "压缩后仍超过") {
 		t.Fatalf("still oversize error = %v", err)
 	}
 }
