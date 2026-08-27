@@ -9,7 +9,7 @@
 | 给姓名发简单文本 | `+dm` | 先查人再原子发送 |
 | 给群名发简单文本 | `+send-to-group` | 先搜群再原子发送 |
 | 文件、Bot、Webhook、复杂 @、幂等 | `+messages-send` | 为不同身份各走一套原子入口 |
-| 读取或导出指定会话，可附带发送者姓名 | `+chat-messages`；姓名用非必填 `--sender-query` | 无稳定 ID 返回全部，有则读后筛选；不补跑搜索 |
+| 读取或导出指定会话，可附带发送者姓名 | `+chat-messages`；姓名用非必填 `--sender-query` | 解析成功后读后筛选；解析失败抑制未过滤消息并返回错误；不补跑搜索 |
 | 直接按发送者、关键词、@对象或消息类型搜索 | `+search-msg` | 条件检索优先，可限定单个或跨多个会话 |
 | 已知消息 IDs 取详情 | `+messages-mget` | 重新搜索关键词 |
 | @我的消息 | `+at-me` | 全量消息后本地猜测 @ |
@@ -17,6 +17,10 @@
 | 引用回复一条消息 | `+messages-reply` | 普通发送 |
 | 单条/合并/话题转发 | `+messages-forward` / `+messages-combine-forward` / `+messages-forward-topic` | 复制正文重新发送 |
 | 流式卡片创建或更新 | `+messages-send-card` / `+messages-update-card` | 普通 text/Markdown 发送 |
+
+## Topic 选择
+
+话题与话题圈的创建、发布、浏览、回复、互动和整条转发统一读取 [thread.md](chat/thread.md)，不从普通消息入口选路。
 
 ## 对象层级
 

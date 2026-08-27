@@ -11,11 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package corecmd is the shared, dispatch-agnostic base for building leaf
-// commands. It concentrates flag registration, the alias/env/default effective
-// value fallback chain, required validation, cross-flag constraint declaration
-// checks + runtime enforcement, SafetySpec-driven confirmation, toolArgs
-// assembly, and Agent Runtime Schema projection.
+// Package corecmd is the shared, dispatch-agnostic base for building commands.
+// It concentrates typed group policy, flag registration, the alias/env/default
+// effective value fallback chain, required validation, cross-flag constraint
+// declaration checks + runtime enforcement, SafetySpec-driven confirmation,
+// toolArgs assembly, and Agent Runtime Schema projection.
 //
 // Declaration vs execution (framework rule):
 //
@@ -230,9 +230,12 @@ const (
 //   - Validate / PostMount — orchestration only; must not register business flags
 //     or assemble business params that belong in Flags/ConstParams.
 //
-// Exactly one of RunE / Invoke / Orchestrate must be set; New validates this at
-// construction time. corecmd stays dispatch-agnostic and never calls a backend:
-// the adapters (FromLeafSpec / FromShortcut) supply the body.
+// Exactly one of RunE / Invoke / ResultInvoke / Orchestrate must be set; New
+// validates this at construction time. Non-leaf commands are declared
+// separately through ApplyGroupPolicy so leaf execution fields can never be
+// configured and then silently ignored. corecmd stays dispatch-agnostic and
+// never calls a backend: the adapters (FromLeafSpec / FromShortcut) supply the
+// body.
 type Spec struct {
 	Use           string
 	Short         string
@@ -259,7 +262,8 @@ type Spec struct {
 	// backend call).
 	ConfirmFirst bool
 	// ConstParams are fixed toolArgs merged after flag assembly (e.g. precheckOnly).
-	// They are payload declaration, not user flags, and never satisfy Required.
+	// They are payload declaration, not user flags, never satisfy Required, and
+	// require an Invoke or ResultInvoke dispatcher that consumes assembled args.
 	ConstParams map[string]any
 	// Contract is the authoring-time leaf contract declaration (selection /
 	// interface / parameters / dry-run / identity). When non-empty, embed
@@ -371,7 +375,9 @@ func (c *Ctx) Yes() bool { return BoolFlag(c.cmd, "yes") }
 // malformed spec can never run the pipeline — write-confirmation prompt
 // included — and then silently exit 0 having done nothing.
 func New(spec Spec) *cobra.Command {
+	spec.ConstParams = cloneConstParams(spec.ConstParams)
 	validateDispatchDecl(spec)
+	validateConstParamsDecl(spec)
 	validateSafetySpec(spec)
 	validateContractDecl(spec)
 	validateInputSpecs(spec.Use, spec.Flags)
@@ -399,6 +405,7 @@ func New(spec Spec) *cobra.Command {
 	if spec.PostMount != nil {
 		spec.PostMount(cmd)
 	}
+	attachInterfaceBoolConstParams(cmd, spec.ConstParams)
 	if spec.OutputRollout != "" {
 		output.SetCommandRollout(cmd, spec.OutputRollout)
 	}
@@ -460,6 +467,17 @@ func New(spec Spec) *cobra.Command {
 		return spec.Invoke(ctx, toolArgs)
 	}
 	return cmd
+}
+
+func cloneConstParams(params map[string]any) map[string]any {
+	if params == nil {
+		return nil
+	}
+	frozen := make(map[string]any, len(params))
+	for key, value := range params {
+		frozen[key] = value
+	}
+	return frozen
 }
 
 // ConfirmFirstAnnotation marks commands whose Spec declared ConfirmFirst. The
@@ -534,6 +552,21 @@ func validateDispatchDecl(spec Spec) {
 		panic(fmt.Sprintf(
 			"command %q sets ConfirmFirst but Safety.Confirmation is not user_required",
 			spec.Use))
+	}
+}
+
+func validateConstParamsDecl(spec Spec) {
+	if len(spec.ConstParams) == 0 {
+		return
+	}
+	if spec.Invoke == nil && spec.ResultInvoke == nil {
+		panic(fmt.Sprintf("command %q ConstParams require Invoke or ResultInvoke", spec.Use))
+	}
+	for _, flag := range spec.Flags {
+		key := bindKey(flag)
+		if _, conflicts := spec.ConstParams[key]; conflicts {
+			panic(fmt.Sprintf("command %q ConstParams key %q conflicts with flag --%s", spec.Use, key, flag.Name))
+		}
 	}
 }
 

@@ -132,6 +132,7 @@ func TestClientCreateRuleBasedSubscriptionsUsesDocumentedRuleParam(t *testing.T)
 		{"oa_approval_task_finished", EventOAApprovalTaskFinished, RuleOptions{}, map[string]any{}},
 		{"oa_approval_task_redirected", EventOAApprovalTaskRedirected, RuleOptions{}, map[string]any{}},
 		{"oa_approval_instance_started", EventOAApprovalInstanceStarted, RuleOptions{}, map[string]any{}},
+		{"oa_approval_instance_cc", EventOAApprovalInstanceCC, RuleOptions{}, map[string]any{}},
 		{"oa_approval_instance_terminated", EventOAApprovalInstanceTerminated, RuleOptions{}, map[string]any{}},
 		{"oa_approval_instance_finished", EventOAApprovalInstanceFinished, RuleOptions{}, map[string]any{}},
 		{"todo_task_create/all_roles", EventTodoTaskCreated, RuleOptions{}, map[string]any{"roleTypes": []any{"creator", "executor", "participant"}}},

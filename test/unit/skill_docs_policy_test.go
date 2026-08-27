@@ -280,7 +280,7 @@ func TestEventSkillFrontmatterAdvertisesGroupMemberLifecycle(t *testing.T) {
 			"群成员加入",
 			"群成员退出",
 			"审批任务创建/完成/转交",
-			"审批实例发起/终止/完成",
+			"审批实例发起/抄送/终止/完成",
 			"待办创建/更新/删除",
 		} {
 			if !strings.Contains(frontmatter, required) {
@@ -308,7 +308,7 @@ func TestStandaloneEventSkillOwnsAllPersonalEventContracts(t *testing.T) {
 		"<!-- dws-intent: event.listen.oa -->",
 		"<!-- dws-intent: event.listen.todo -->",
 		"16 个 EventKey",
-		"25 个公开个人 EventKey",
+		"26 个公开个人 EventKey",
 	} {
 		if !strings.Contains(string(skillContent), required) {
 			t.Errorf("%s missing standalone event contract %q", skillPath, required)
@@ -363,6 +363,7 @@ func TestStandaloneEventSkillOwnsAllPersonalEventContracts(t *testing.T) {
 		"user_oa_approval_task_finished",
 		"user_oa_approval_task_redirected",
 		"user_oa_approval_instance_started",
+		"user_oa_approval_instance_cc",
 		"user_oa_approval_instance_terminated",
 		"user_oa_approval_instance_finished",
 		"user_todo_task_create",
