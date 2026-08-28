@@ -71,6 +71,26 @@ var docBusinessServers = map[string]bool{
 	"wiki": true, "doc-comment": true,
 }
 
+// delegationFlowContinuationTools 是多步业务流程的「续调」工具白名单：这些调用
+// 在结构上只携带流程句柄（sessionId/taskId/uploadId 等），不携带节点标识，但其
+// 所属操作已在流程首个携带节点的调用处完成 check_capability 委托鉴权——import
+// 的 create_import_session 带 targetFolderId/workspaceId，上传的 get_upload_info
+// /get_file_upload_info 带 parentId/folderId。因此当这些工具在 nodeId 为空时命中
+// 委托装饰器，直接放行（跳过 check），避免把「已授权操作的流程续调」误判为
+// DELEGATION_AUTH_NOT_SUPPORTED。该错误码的一期语义仅用于拦截搜索/列表/创建等
+// 独立无节点命令，续调不属此列。dry-run 只触发流程首个调用，故此缺陷仅在真实
+// 执行（非 dry-run）时暴露。
+//   - confirm_import       : import 确认导入（doc/sheet import 第 3 步，仅带 sessionId）
+//   - query_import_task     : import 轮询/查询任务状态（仅带 taskId）
+//   - commit_upload         : drive 上传入库（get_upload_info 之后；节点缺失时的续调）
+//   - commit_uploaded_file  : doc 文档空间上传入库（get_file_upload_info 之后）
+var delegationFlowContinuationTools = map[string]bool{
+	"confirm_import":       true,
+	"query_import_task":    true,
+	"commit_upload":        true,
+	"commit_uploaded_file": true,
+}
+
 // extractNodeId 从工具入参中提取资源标识。服务端 nodeId 统一承载节点
 // （dentryUuid/URL）与知识库（纯数字 ID/URL），由服务端自动识别类型分流，
 // 因此这里只需按优先级取第一个非空 string：
@@ -173,6 +193,15 @@ func (d *docDelegationAuthCaller) CallTool(ctx context.Context, serverID, toolNa
 func (d *docDelegationAuthCaller) performDelegationAuth(ctx context.Context, toolKey string, args map[string]any) error {
 	nodeID := extractNodeId(args)
 	if nodeID == "" {
+		// 已授权操作的流程续调（见 delegationFlowContinuationTools 注释）：其操作
+		// 已在流程首个携带节点的调用处鉴权，续调无节点标识时放行而非误拒。
+		toolName := toolKey
+		if parts := strings.SplitN(toolKey, ".", 2); len(parts) == 2 {
+			toolName = parts[1]
+		}
+		if delegationFlowContinuationTools[toolName] {
+			return nil
+		}
 		msg := fmt.Sprintf("当前命令不支持委托鉴权：缺少节点标识参数（--principal-user-id %s）", d.principalID)
 		return &CLIError{
 			Code:    codeDelegationNotSupported,

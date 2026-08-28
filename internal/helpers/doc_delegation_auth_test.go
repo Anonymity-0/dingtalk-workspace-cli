@@ -2159,3 +2159,142 @@ func assertUploadActionParam(t *testing.T, checkArgs map[string]any, wantFileNam
 		t.Fatalf("uploadActionParam = %#v, want fileSize present", param)
 	}
 }
+
+// countCheckCapabilityCalls 统计脚本化 caller 中 check_capability 的调用次数，
+// 供续调放行测试断言「续调未触发额外远程鉴权」。
+func countCheckCapabilityCalls(calls []docDelegationCall) int {
+	n := 0
+	for _, c := range calls {
+		if c.tool == checkCapTool {
+			n++
+		}
+	}
+	return n
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthImportContinuationAllowed drives the
+// real (non-dry-run) import chain: create_import_session carries the target
+// node and is gated by check_capability; the follow-up confirm_import and
+// query_import_task continuations carry only sessionId/taskId (no node) yet must
+// be allowed to pass through instead of being rejected as NOT_SUPPORTED.
+func TestCrossPlatformCoverageDocDelegationAuthImportContinuationAllowed(t *testing.T) {
+	inner := newDocDelegationTestCaller()
+	d := newDocDelegationAuthDecorator(inner)
+	ctx := context.Background()
+
+	// Step 1: create_import_session — carries targetFolderId, gated by check.
+	if _, err := d.CallTool(ctx, "doc", "create_import_session", map[string]any{
+		"targetFolderId": "folder-1", "fileName": "f", "suffix": "md", "fileSize": int64(3),
+	}); err != nil {
+		t.Fatalf("create_import_session error = %v", err)
+	}
+	if got := countCheckCapabilityCalls(inner.calls); got != 1 {
+		t.Fatalf("check_capability calls after session = %d, want 1", got)
+	}
+
+	// Step 2: confirm_import — only sessionId, no node. Must be allowed.
+	res2, err := d.CallTool(ctx, "doc", "confirm_import", map[string]any{"sessionId": "s1"})
+	if err != nil {
+		t.Fatalf("confirm_import continuation error = %v, want allowed", err)
+	}
+	if res2 != inner.passRes {
+		t.Fatalf("confirm_import result = %#v, want passthrough", res2)
+	}
+
+	// Step 3: query_import_task — only taskId, no node. Must be allowed.
+	res3, err := d.CallTool(ctx, "doc", "query_import_task", map[string]any{"taskId": "t1"})
+	if err != nil {
+		t.Fatalf("query_import_task continuation error = %v, want allowed", err)
+	}
+	if res3 != inner.passRes {
+		t.Fatalf("query_import_task result = %#v, want passthrough", res3)
+	}
+
+	// Continuations must NOT trigger any extra check_capability round-trip.
+	if got := countCheckCapabilityCalls(inner.calls); got != 1 {
+		t.Fatalf("total check_capability calls = %d, want 1 (only the session)", got)
+	}
+	// calls: check + create_import_session + confirm_import + query_import_task.
+	if len(inner.calls) != 4 {
+		t.Fatalf("inner calls = %d, want 4", len(inner.calls))
+	}
+	if inner.calls[2].tool != "confirm_import" || inner.calls[3].tool != "query_import_task" {
+		t.Fatalf("continuation passthrough order = %q,%q", inner.calls[2].tool, inner.calls[3].tool)
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthUploadCommitContinuationAllowed
+// drives the real upload chain: the first credential call carries the node and
+// is gated by check_capability; the commit continuation carrying no node must be
+// allowed. Covers both drive (get_upload_info→commit_upload) and doc
+// (commit_uploaded_file) commit tools.
+func TestCrossPlatformCoverageDocDelegationAuthUploadCommitContinuationAllowed(t *testing.T) {
+	inner := newDocDelegationTestCaller()
+	d := newDocDelegationAuthDecorator(inner)
+	ctx := context.Background()
+
+	// drive get_upload_info — carries parentId, gated by check.
+	if _, err := d.CallTool(ctx, "drive", "get_upload_info", map[string]any{
+		"parentId": "p1", "fileName": "f.txt", "fileSize": int64(5),
+	}); err != nil {
+		t.Fatalf("get_upload_info error = %v", err)
+	}
+	if got := countCheckCapabilityCalls(inner.calls); got != 1 {
+		t.Fatalf("check_capability calls after get_upload_info = %d, want 1", got)
+	}
+
+	// drive commit_upload — no node (only uploadId). Must be allowed.
+	if res, err := d.CallTool(ctx, "drive", "commit_upload", map[string]any{
+		"uploadId": "u1", "fileName": "f.txt", "fileSize": int64(5),
+	}); err != nil {
+		t.Fatalf("commit_upload continuation error = %v, want allowed", err)
+	} else if res != inner.passRes {
+		t.Fatalf("commit_upload result = %#v, want passthrough", res)
+	}
+
+	// doc commit_uploaded_file — no node (only uploadKey/name). Must be allowed.
+	if res, err := d.CallTool(ctx, "doc", "commit_uploaded_file", map[string]any{
+		"uploadKey": "k1", "name": "f.txt",
+	}); err != nil {
+		t.Fatalf("commit_uploaded_file continuation error = %v, want allowed", err)
+	} else if res != inner.passRes {
+		t.Fatalf("commit_uploaded_file result = %#v, want passthrough", res)
+	}
+
+	// No commit continuation should trigger an extra check_capability round-trip.
+	if got := countCheckCapabilityCalls(inner.calls); got != 1 {
+		t.Fatalf("total check_capability calls = %d, want 1 (only get_upload_info)", got)
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthContinuationExemptionKeepsIndependentBlocked
+// guards the exemption boundary: node-less INDEPENDENT commands (search / create)
+// that are NOT flow continuations must still be rejected as NOT_SUPPORTED, so the
+// exemption set never leaks blanket bypass to real independent write commands.
+func TestCrossPlatformCoverageDocDelegationAuthContinuationExemptionKeepsIndependentBlocked(t *testing.T) {
+	ctx := context.Background()
+	cases := []struct {
+		server string
+		tool   string
+		args   map[string]any
+	}{
+		{"doc", "search_documents", map[string]any{"query": "x"}},
+		{"wiki", "search_nodes", map[string]any{"keyword": "y"}},
+		{"doc", "create_document", map[string]any{"name": "no-parent"}},
+	}
+	for _, tc := range cases {
+		inner := newDocDelegationTestCaller()
+		d := newDocDelegationAuthDecorator(inner)
+		_, err := d.CallTool(ctx, tc.server, tc.tool, tc.args)
+		if err == nil {
+			t.Fatalf("%s/%s error = nil, want DELEGATION_AUTH_NOT_SUPPORTED", tc.server, tc.tool)
+		}
+		var cliErr *CLIError
+		if !errors.As(err, &cliErr) || cliErr.Code != codeDelegationNotSupported {
+			t.Fatalf("%s/%s error = %v, want CLIError code %q", tc.server, tc.tool, err, codeDelegationNotSupported)
+		}
+		if len(inner.calls) != 0 {
+			t.Fatalf("%s/%s inner calls = %d, want 0 (blocked before any remote call)", tc.server, tc.tool, len(inner.calls))
+		}
+	}
+}
