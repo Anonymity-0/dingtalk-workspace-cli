@@ -2226,10 +2226,13 @@ func uploadConversationLocalFile(ctx context.Context, targetArgs map[string]any,
 }
 
 func uploadConversationFileOnlyResult(cmd *cobra.Command, _ string, args map[string]any) (output.CommandResult, error) {
-	if rawURL := stringFromJSONScalar(args["url"]); rawURL != "" {
+	if cmd.Flags().Changed("url") {
 		return nil, fmt.Errorf("--url 仅为历史兼容保留，远程 URL 代传当前不受支持；请先下载到工作目录，再使用 --file")
 	}
-	filePath := stringFromJSONScalar(args["filePath"])
+	filePath, err := apperrors.SafeInputPath(stringFromJSONScalar(args["filePath"]))
+	if err != nil {
+		return nil, err
+	}
 	fileName := stringFromJSONScalar(args["fileName"])
 	md5Value := stringFromJSONScalar(args["md5"])
 	meta, err := buildConversationLocalFileMeta(filePath, fileName, md5Value)
@@ -5287,10 +5290,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 			{Name: "conversation-id", Usage: "群聊 openConversationId", Aliases: []string{"group", "id", "chat"}, Bind: "openConversationId", Trim: true, OmitEmpty: true},
 			{Name: "user", Usage: "单聊对方 userId", Aliases: []string{"userId"}, Bind: "userId", Trim: true, OmitEmpty: true},
 			{Name: "open-dingtalk-id", Usage: "单聊对方 openDingTalkId", Bind: "openDingTalkId", Trim: true, OmitEmpty: true},
-			{Name: "file", Usage: "工作目录内的本地文件路径（必填）", Aliases: []string{"file-path"}, Bind: "filePath", Required: true, Trim: true, Format: "file-path", Transform: func(raw string) (any, error) {
-				return apperrors.SafeInputPath(raw)
-			}},
-			{Name: "url", Usage: "远程文件 URL（仅为历史兼容保留，当前不受支持）", Bind: "url", Trim: true, OmitEmpty: true},
+			{Name: "file", Usage: "工作目录内的本地文件路径（必填）", Aliases: []string{"file-path", "url"}, Bind: "filePath", Required: true, Trim: true, Format: "file-path"},
 			{Name: "file-name", Usage: "上传后的文件名；省略时使用本地文件名", Bind: "fileName", Trim: true, OmitEmpty: true},
 			{Name: "md5", Usage: "文件 MD5；省略时由 CLI 计算", Bind: "md5", Trim: true, OmitEmpty: true},
 			{Name: "idempotency-key", Usage: "幂等键", Aliases: []string{"uuid"}, Bind: "uuid", Trim: true, OmitEmpty: true},
@@ -5333,7 +5333,6 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				{Name: "user", Property: "userId", Required: boolPtr(false), InterfaceType: "string"},
 				{Name: "open-dingtalk-id", Property: "openDingTalkId", Required: boolPtr(false), InterfaceType: "string"},
 				{Name: "file", Property: "filePath", Required: boolPtr(true), InterfaceType: "string"},
-				{Name: "url", Property: "url", InterfaceType: "string"},
 				{Name: "file-name", Property: "fileName", InterfaceType: "string"},
 				{Name: "md5", Property: "md5", InterfaceType: "string"},
 				{Name: "idempotency-key", Property: "uuid", InterfaceType: "string"},
@@ -5344,11 +5343,6 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 			},
 		},
 	})
-	// --uuid 在历史命令中是公开标志；保留可见性，同时继续复用统一的
-	// idempotency-key 绑定，避免破坏已有脚本和帮助契约。
-	if legacyUUID := chatFileUploadCmd.Flags().Lookup("uuid"); legacyUUID != nil {
-		legacyUUID.Hidden = false
-	}
 	chatFileCmd.AddCommand(chatFileUploadCmd)
 
 	// ── category 子命令（会话分组，走 IM MCP）───────────────────

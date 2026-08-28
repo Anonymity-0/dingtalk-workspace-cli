@@ -629,9 +629,13 @@ func TestChatFileUploadRestoredForLocalFilesOnly(t *testing.T) {
 			t.Fatalf("chat file upload missing flag --%s", flag)
 		}
 	}
-	for _, flag := range []string{"url", "uuid"} {
-		if upload.Flags().Lookup(flag).Hidden {
-			t.Fatalf("chat file upload compatibility flag --%s must remain visible", flag)
+	for legacy, canonical := range map[string]string{"url": "file", "uuid": "idempotency-key"} {
+		flag := upload.Flags().Lookup(legacy)
+		if !flag.Hidden {
+			t.Fatalf("chat file upload compatibility flag --%s must remain hidden", legacy)
+		}
+		if got := flag.Annotations[runtimeannotate.AnnotationFlagAliasOf]; len(got) != 1 || got[0] != canonical {
+			t.Fatalf("chat file upload --%s alias_of = %#v, want %s", legacy, got, canonical)
 		}
 	}
 
