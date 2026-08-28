@@ -100,9 +100,22 @@ func readAllConversationMessages(cmd *cobra.Command, opts pagedCommandOptions, s
 	stopReason := "source_complete"
 	truncatedByPageLimit := false
 	truncatedByResultLimit := false
+	paginationKnown := true
 	var nextPage map[string]any
+	userLimit, hasUserLimit := params["limit"].(int)
 
 	for pagesFetched < opts.pageLimit {
+		if opts.maxItems > 0 {
+			// Clamp each page to the remaining --max-items budget so an
+			// honouring lower layer can never overshoot into in-page
+			// truncation; the post-loop trim stays a violation safety net.
+			remaining := opts.maxItems - len(allItems)
+			if hasUserLimit && userLimit < remaining {
+				params["limit"] = userLimit
+			} else {
+				params["limit"] = remaining
+			}
+		}
 		raw, err := CallMCPToolDataOnServer(cmd.Context(), serverID, toolName, params)
 		if err != nil {
 			if pagesFetched == 0 {
@@ -144,6 +157,7 @@ func readAllConversationMessages(cmd *cobra.Command, opts pagedCommandOptions, s
 				"page": pagesFetched, "stage": "pagination",
 				"error": "下层未返回可靠的 hasMore，无法证明结果完整",
 			})
+			paginationKnown = false
 			stopReason = "pagination_error"
 			break
 		}
@@ -162,6 +176,7 @@ func readAllConversationMessages(cmd *cobra.Command, opts pagedCommandOptions, s
 				"page": pagesFetched, "stage": "pagination",
 				"error": "下层返回 hasMore=true，但 nextCursor 无效或当前页没有消息",
 			})
+			paginationKnown = false
 			stopReason = "pagination_error"
 			break
 		}
@@ -170,6 +185,7 @@ func readAllConversationMessages(cmd *cobra.Command, opts pagedCommandOptions, s
 				"page": pagesFetched, "stage": "pagination",
 				"error": "毫秒 nextCursor 停滞，继续翻页将重复同一结果集",
 			})
+			paginationKnown = false
 			stopReason = "pagination_error"
 			break
 		}
@@ -201,14 +217,17 @@ func readAllConversationMessages(cmd *cobra.Command, opts pagedCommandOptions, s
 	}
 
 	if opts.maxItems > 0 && len(allItems) > opts.maxItems {
+		// Lower layer violated the clamped limit. Truncate to the requested
+		// budget, but publish no resume boundary: the page-tail cursor would
+		// skip the dropped tail messages, so the safe answer is no nextPage.
 		allItems = allItems[:opts.maxItems]
 		truncatedByResultLimit = true
 		stopReason = "result_limit"
-		hasMore = true
+		nextPage = nil
 	}
 	payload := chatmsg.NewMessageListPayload(allItems)
 	payload["pagesFetched"] = pagesFetched
-	payload["paginationKnown"] = true
+	payload["paginationKnown"] = paginationKnown
 	payload["complete"] = complete && len(failures) == 0 && !truncatedByResultLimit
 	payload["hasMore"] = hasMore
 	payload["stopReason"] = stopReason
