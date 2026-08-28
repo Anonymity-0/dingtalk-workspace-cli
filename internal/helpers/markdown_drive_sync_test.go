@@ -472,7 +472,7 @@ func TestMarkdownCreateDriveAndDocRouting(t *testing.T) {
 	}
 }
 
-func TestMarkdownCreateFolderAutoRouting(t *testing.T) {
+func TestCrossPlatformCoverageMarkdownCreateFolderAutoRouting(t *testing.T) {
 	t.Run("drive folder selects drive upload", func(t *testing.T) {
 		caller := &markdownDriveCaller{
 			format: "json",
@@ -576,7 +576,14 @@ func TestMarkdownCreateFolderAutoRouting(t *testing.T) {
 	})
 }
 
-func TestMarkdownCreateTargetExplicitRoutesBypassFolderProbe(t *testing.T) {
+func TestCrossPlatformCoverageMarkdownCreateTargetExplicitRoutesBypassFolderProbe(t *testing.T) {
+	t.Run("conflicting explicit routes fail closed", func(t *testing.T) {
+		got, err := resolveMarkdownCreateTarget(context.Background(), "folder", "space", "workspace")
+		if err == nil || got {
+			t.Fatalf("useDoc=%v err=%v, want false with an error", got, err)
+		}
+	})
+
 	tests := []struct {
 		name        string
 		folderID    string

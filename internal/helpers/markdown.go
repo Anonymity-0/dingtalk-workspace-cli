@@ -845,14 +845,7 @@ func resolveMarkdownCreateTarget(ctx context.Context, folderID, spaceID, workspa
 	if err != nil {
 		return false, fmt.Errorf("无法根据 --folder %s 自动识别 Markdown 创建目标域: %w", folderID, err)
 	}
-	switch domain {
-	case "drive":
-		return false, nil
-	case "doc":
-		return true, nil
-	default:
-		return false, fmt.Errorf("无法根据 --folder %s 自动识别 Markdown 创建目标域: 未知域 %q", folderID, domain)
-	}
+	return domain == "doc", nil
 }
 
 func markdownRemoteName(nodeID string, useDocServer bool) (string, error) {
@@ -991,11 +984,14 @@ func markdownOverwriteRouteTarget(nodeID, workspaceID string) (string, string, m
 }
 
 // markdownCreateDelegationTarget mirrors runMarkdownCreate's first delegated
-// call - the upload step1 (uploadToDrive/uploadToDocSpace get_upload_info /
-// get_file_upload_info) - replicating its step1 args exactly so extractNodeId
-// resolves the same space/folder/workspace scope:
-//   - --space-id -> drive.get_upload_info    {fileName, fileSize, spaceId, mimeType, [parentId]}
-//   - otherwise  -> doc.get_file_upload_info {[workspaceId], [folderId]}
+// call. Explicit routes begin at upload step1, while a standalone --folder
+// first probes Drive before falling back to Doc. Keeping dry-run on that probe
+// target preserves its no-network preview while authorizing the same first
+// capability that a real invocation will use:
+//   - --space-id  -> drive.get_upload_info    {fileName, fileSize, spaceId, mimeType, [parentId]}
+//   - --workspace -> doc.get_file_upload_info {workspaceId, [folderId]}
+//   - --folder    -> drive.get_file_info      {fileId}
+//   - no target   -> doc.get_file_upload_info {}
 //
 // A create with neither space/workspace/folder yields empty doc args, so
 // extractNodeId returns "" and the precheck reports DELEGATION_AUTH_NOT_SUPPORTED
@@ -1013,6 +1009,9 @@ func markdownCreateDelegationTarget(fileName string, fileSize int64, folderID, s
 			args["parentId"] = folderID
 		}
 		return "drive", "get_upload_info", args
+	}
+	if workspaceID == "" && folderID != "" {
+		return "drive", "get_file_info", map[string]any{"fileId": folderID}
 	}
 	args := map[string]any{}
 	if workspaceID != "" {
