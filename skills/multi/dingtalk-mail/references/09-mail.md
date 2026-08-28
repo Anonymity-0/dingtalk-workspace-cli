@@ -30,11 +30,11 @@
 | `mail-attachment-list` | `mail attachment list --email <邮箱> --id <messageId>` → 列举指定邮件的附件 |
 | `mail-attachment-download` | 1. `mail attachment list --email <邮箱> --id <messageId>` → 取附件 `id` 和 `name`<br>2. `mail attachment download --email <邮箱> --message-id <messageId> --attachment-id <attachmentId> --name <文件名>` |
 | `mail-batch-move` | `mail message batch-move --email <邮箱> --ids <id1,id2,...> --folder <folderId>`（常用 folderId: 2=收件箱, 6=已删除） |
-| `mail-batch-delete` | `mail message batch-delete --email <邮箱> --ids <id1,id2,...> --yes`（**危险操作，须先确认**） |
+| `mail-batch-delete` | 确认前仅展示 `mail message batch-delete --email <邮箱> --ids <id1,id2,...>` 和精确目标并停止；明确确认后由执行流程对相同参数追加 `--yes` |
 | `mail-draft-create` | `mail draft create --from <邮箱> --subject "<标题>"` → 取 `messageId`（可选 `--to`、`--content`、`--cc`） |
 | `mail-draft-update` | `mail draft update --from <邮箱> --id <draftId> --subject "<新标题>"`（可选 `--content`、`--to`、`--cc`） |
 | `mail-draft-send` | `mail draft send --from <邮箱> --id <draftId>` |
-| `mail-contact-create-delete` | 1. `mail contact create ...` 并复用返回 `contactId`<br>2. 向用户展示精确待删 `contactId` 和数量，**停止并取得明确确认；确认前禁止调用删除命令**<br>3. 确认后仅用已展示且获确认的 ID 执行 `mail contact batch-delete --email <邮箱> --contact-ids <confirmed-id1,confirmed-id2,...> --yes`<br>4. 一次 `mail contact list` 回读；不要切到通讯录/contact API |
+| `mail-contact-create-delete` | 1. `mail contact create ...` 并复用返回 `contactId`<br>2. 向用户展示精确待删 `contactId`、数量和不含确认参数的 `mail contact batch-delete --email <邮箱> --contact-ids <confirmed-id1,confirmed-id2,...>`，**停止并取得明确确认；确认前禁止调用删除命令**<br>3. 确认后仅用已展示且获确认的 ID，由执行流程对相同命令追加 `--yes`<br>4. 一次 `mail contact list` 回读；不要切到通讯录/contact API |
 
 ## Full / 多步组合
 
