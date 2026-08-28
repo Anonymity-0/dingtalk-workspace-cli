@@ -180,6 +180,7 @@ func TestChatPersonalEmotionSchemaDeclaresUnpinnedIMAdapter(t *testing.T) {
 			cliPath: "chat emotion favorite",
 			params: map[string]string{
 				"media-id":               "mediaId",
+				"file-path":              "",
 				"name":                   "name",
 				"source-conversation-id": "sourceConversationId",
 				"source-message-id":      "sourceMessageId",
