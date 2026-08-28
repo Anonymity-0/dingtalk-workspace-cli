@@ -137,7 +137,7 @@ func contactParseInt64WithAliases(cmd *cobra.Command, primary string, aliases ..
 func contactParseInt64Slice(raw string) ([]int64, error) {
 	parts := parseCSVValues(raw)
 	if len(parts) == 0 {
-		return nil, nil
+		return nil, errors.New("至少需要一个有效整数值")
 	}
 	out := make([]int64, 0, len(parts))
 	for _, p := range parts {
@@ -156,7 +156,11 @@ func contactParseInt64SliceWithAliases(cmd *cobra.Command, primary string, alias
 		return nil, err
 	}
 	raw := strings.TrimSpace(flagOrFallback(cmd, primary, aliases...))
-	return contactParseInt64Slice(raw)
+	out, err := contactParseInt64Slice(raw)
+	if err != nil {
+		return nil, fmt.Errorf("--%s %w", contactFirstSetFlagName(cmd, append([]string{primary}, aliases...)...), err)
+	}
+	return out, nil
 }
 
 // contactParseBoolWithAliases 从主 flag 或别名中读取布尔值。
