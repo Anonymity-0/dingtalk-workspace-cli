@@ -532,7 +532,7 @@ func TestRenderPersonalEmotionFavoriteWithMediaIDHandlesLegacyShapes(t *testing.
 	if err := renderPersonalEmotionFavoriteWithMediaID(`not-json`, "$uploaded-media"); err != nil {
 		t.Fatalf("render non-json error = %v", err)
 	}
-	if got := out.String(); got != "not-json" {
+	if got := out.String(); got != "not-json\n" {
 		t.Fatalf("non-json output = %q, want raw text", got)
 	}
 }
