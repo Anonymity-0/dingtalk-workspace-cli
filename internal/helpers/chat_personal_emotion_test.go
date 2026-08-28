@@ -1283,6 +1283,12 @@ func TestPersonalEmotionImageMathAndResizeBoundaries(t *testing.T) {
 	if got := maxInt(2, 1); got != 2 {
 		t.Fatalf("maxInt larger first = %d", got)
 	}
+	if got := minInt(1, 2); got != 1 {
+		t.Fatalf("minInt smaller first = %d", got)
+	}
+	if got := minInt(2, 1); got != 1 {
+		t.Fatalf("minInt smaller second = %d", got)
+	}
 	img := image.NewRGBA(image.Rect(0, 0, 1, 1))
 	img.SetRGBA(0, 0, color.RGBA{R: 10, G: 20, B: 30, A: 255})
 	resized := resizeBilinear(img, 2, 2)
