@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	apperrors "github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/errors"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/shortcut"
 )
 
@@ -26,6 +27,19 @@ type drivePageOptions struct {
 	Project        func([]any) []map[string]any
 }
 
+type drivePageResult struct {
+	Business          map[string]any
+	EndpointExhausted bool
+	NextToken         string
+	Pages             int
+	Items             int
+}
+
+type drivePaginationErrorCursors struct {
+	Request string
+	Retry   string
+}
+
 func drivePageSize(rt *shortcut.RuntimeContext, flag string, fallback int) int {
 	if rt.Changed(flag) {
 		return rt.Int(flag)
@@ -33,7 +47,31 @@ func drivePageSize(rt *shortcut.RuntimeContext, flag string, fallback int) int {
 	return fallback
 }
 
-func collectDrivePages(rt *shortcut.RuntimeContext, base map[string]any, options drivePageOptions) (map[string]any, error) {
+func validateDriveAutoPagination(rt *shortcut.RuntimeContext) error {
+	if !rt.Bool("page-all") {
+		if rt.Changed("max-pages") || rt.Changed("max-items") {
+			return fmt.Errorf("--max-pages/--max-items 仅与 --page-all 一起使用")
+		}
+		return nil
+	}
+	if rt.Int("max-pages") <= 0 {
+		return fmt.Errorf("--max-pages 必须大于 0")
+	}
+	if rt.Int("max-items") <= 0 {
+		return fmt.Errorf("--max-items 必须大于 0")
+	}
+	return nil
+}
+
+func driveAutoPaginationConstraints() []shortcut.Constraint {
+	return []shortcut.Constraint{{
+		Kind:        shortcut.ConstraintCustom,
+		Flags:       []string{"page-all", "max-pages", "max-items"},
+		Description: "--max-pages/--max-items 仅与 --page-all 一起使用，且必须大于 0",
+	}}
+}
+
+func collectDrivePages(rt *shortcut.RuntimeContext, base map[string]any, options drivePageOptions) (drivePageResult, error) {
 	if options.MaxPages <= 0 {
 		options.MaxPages = 20
 	}
@@ -52,14 +90,9 @@ func collectDrivePages(rt *shortcut.RuntimeContext, base map[string]any, options
 	if cursor != "" {
 		seenCursors[cursor] = true
 	}
-	complete := false
-	truncated := false
-	stopReason := ""
-	nextCursor := ""
-	hasMore := false
 	pagesRead := 0
 
-	for page := 1; page <= pageLimit; page++ {
+	for page := 1; ; page++ {
 		remaining := options.MaxItems - len(items)
 		requestPageSize := options.PageSize
 		if requestPageSize > remaining {
@@ -72,12 +105,15 @@ func collectDrivePages(rt *shortcut.RuntimeContext, base map[string]any, options
 		}
 		data, err := rt.CallMCPData(options.Server, options.Tool, params)
 		if err != nil {
-			return nil, drivePaginationError(options, "page_read_failed", err, page, items, cursor)
+			return drivePageResult{}, drivePaginationError(options, "page_read_failed", err, page, items, drivePaginationErrorCursors{
+				Request: cursor,
+				Retry:   cursor,
+			})
 		}
 		pagesRead++
 		rawItems, pageState, err := requireDriveCollection(data, options.Server+"/"+options.Tool, options.CollectionKeys...)
 		if err != nil {
-			return nil, drivePaginationError(options, "invalid_page", err, page, items, cursor)
+			return drivePageResult{}, drivePaginationError(options, "invalid_page", err, page, items, drivePaginationErrorCursors{Request: cursor})
 		}
 		projected := options.Project(rawItems)
 		pageItems := make([]map[string]any, 0, len(projected))
@@ -93,7 +129,7 @@ func collectDrivePages(rt *shortcut.RuntimeContext, base map[string]any, options
 			pageItems = append(pageItems, item)
 		}
 		if len(pageItems) > remaining {
-			return nil, drivePaginationError(options, "page_size_exceeded", nil, page, items, cursor)
+			return drivePageResult{}, drivePaginationError(options, "page_size_exceeded", nil, page, items, drivePaginationErrorCursors{Request: cursor})
 		}
 		for _, item := range pageItems {
 			if key := drivePageItemKey(item); key != "" {
@@ -103,86 +139,89 @@ func collectDrivePages(rt *shortcut.RuntimeContext, base map[string]any, options
 		}
 
 		pageHasMore, hasMoreKnown, next := drivePageState(pageState)
-		nextCursor = strings.TrimSpace(next)
-		switch {
-		case hasMoreKnown:
-			hasMore = pageHasMore
-			complete = !pageHasMore
-		case nextCursor != "":
-			hasMore = true
-		case len(projected) < requestPageSize:
-			complete = true
-		default:
-			hasMore = true
-			stopReason = "pagination_unproven"
-		}
-		if len(items) >= options.MaxItems && hasMore {
-			truncated = true
-			stopReason = "max_items"
-		}
-		if truncated {
-			complete = false
-			hasMore = true
+		nextCursor := strings.TrimSpace(next)
+		if hasMoreKnown && !pageHasMore && nextCursor != "" {
+			return drivePageResult{}, drivePaginationError(options, "inconsistent_state", nil, page, items, drivePaginationErrorCursors{Request: cursor})
 		}
 
-		if truncated || complete || !options.PageAll {
-			break
+		endpointExhausted := false
+		switch {
+		case hasMoreKnown && !pageHasMore:
+			endpointExhausted = true
+		case hasMoreKnown && pageHasMore && nextCursor == "":
+			return drivePageResult{}, drivePaginationError(options, "missing_next_cursor", nil, page, items, drivePaginationErrorCursors{Request: cursor})
+		case nextCursor != "":
+		case len(projected) < requestPageSize:
+			endpointExhausted = true
+		default:
+			return drivePageResult{}, drivePaginationError(options, "pagination_unproven", nil, page, items, drivePaginationErrorCursors{Request: cursor})
 		}
-		if stopReason == "pagination_unproven" {
-			return nil, drivePaginationError(options, stopReason, nil, page, items, cursor)
+
+		if !endpointExhausted && seenCursors[nextCursor] {
+			return drivePageResult{}, drivePaginationError(options, "stalled_cursor", nil, page, items, drivePaginationErrorCursors{Request: cursor})
 		}
-		if nextCursor == "" {
-			return nil, drivePaginationError(options, "missing_next_cursor", nil, page, items, cursor)
+
+		result := drivePageResult{
+			Business:          map[string]any{options.OutputKey: items},
+			EndpointExhausted: endpointExhausted,
+			NextToken:         nextCursor,
+			Pages:             pagesRead,
+			Items:             len(items),
 		}
-		if seenCursors[nextCursor] {
-			return nil, drivePaginationError(options, "stalled_cursor", nil, page, items, nextCursor)
+		if endpointExhausted || !options.PageAll || len(items) >= options.MaxItems || page == pageLimit {
+			return result, nil
 		}
+
 		seenCursors[nextCursor] = true
 		cursor = nextCursor
-		if page == pageLimit {
-			truncated = true
-			stopReason = "max_pages"
-		}
 	}
-
-	return map[string]any{
-		"contractVersion": "drive.list.v1",
-		"status":          "success",
-		"count":           len(items),
-		options.OutputKey: items,
-		"pagesRead":       pagesRead,
-		"complete":        complete,
-		"truncated":       truncated,
-		"hasMore":         hasMore,
-		"nextCursor":      nextCursor,
-		"stopReason":      stopReason,
-		"failures":        []map[string]any{},
-	}, nil
 }
 
-func drivePaginationError(options drivePageOptions, reason string, cause error, page int, items []map[string]any, cursor string) error {
+func outputDrivePageResult(rt *shortcut.RuntimeContext, result drivePageResult) error {
+	pagination, err := output.NewPagination(result.EndpointExhausted, result.NextToken)
+	if err != nil {
+		return fmt.Errorf("drive pagination result is invalid: %w", err)
+	}
+	pagination.Pages = result.Pages
+	pagination.Items = result.Items
+	meta := &output.Meta{
+		Count:      output.NewCount(result.Items),
+		Pagination: pagination,
+	}
+	return output.StoreResult(rt.Command().Context(), output.Success(result.Business, output.WithMeta(meta)))
+}
+
+func drivePaginationError(options drivePageOptions, reason string, cause error, page int, items []map[string]any, cursors drivePaginationErrorCursors) error {
 	message := fmt.Sprintf("%s 分页未完成，已在第 %d 页停止", options.Tool, page)
 	if cause != nil {
 		message += ": " + cause.Error()
+	}
+	details := map[string]any{
+		"contractVersion": "drive.list.v1",
+		"status":          "partial_success",
+		"complete":        false,
+		"reason":          reason,
+		"page":            page,
+		"count":           len(items),
+		options.OutputKey: items,
+	}
+	if cursors.Request != "" {
+		details["requestCursor"] = cursors.Request
+	}
+	actions := []string{"缩小查询范围后重新执行"}
+	if cursors.Retry != "" {
+		details["retryCursor"] = cursors.Retry
+		actions = append([]string{"使用 retryCursor 重试当前页"}, actions...)
 	}
 	return apperrors.NewAPI(
 		message,
 		apperrors.WithOperation(options.Server+"/"+options.Tool),
 		apperrors.WithReason("drive_pagination_"+reason),
 		apperrors.WithFailureStage("pagination"),
-		apperrors.WithExecutionStarted(false),
+		apperrors.WithExecutionStarted(true),
 		apperrors.WithRetryable(cause != nil),
-		apperrors.WithActions("保留 nextCursor 后继续读取", "缩小查询范围后重试"),
-		apperrors.WithDetails(map[string]any{
-			"contractVersion": "drive.list.v1",
-			"status":          "partial_success",
-			"complete":        false,
-			"reason":          reason,
-			"page":            page,
-			"nextCursor":      cursor,
-			"count":           len(items),
-			options.OutputKey: items,
-		}),
+		apperrors.WithActions(actions...),
+		apperrors.WithDetails(details),
 		apperrors.WithCause(cause),
 	)
 }

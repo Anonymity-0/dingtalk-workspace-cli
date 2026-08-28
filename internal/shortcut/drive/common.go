@@ -60,7 +60,7 @@ func driveCollectionResult(collection, description string) *contract.ResultSpec 
 	return &contract.ResultSpec{
 		Outcomes: []contract.ResultOutcome{contract.ResultOutcomeSuccess},
 		DataSchema: json.RawMessage(fmt.Sprintf(
-			`{"type":"object","description":%q,"properties":{"count":{"type":"integer","description":"本次返回的有效结果数量"},%q:{"type":"array","description":%q,"items":{"type":"object","description":"Drive 资源条目","additionalProperties":true}},"pagesRead":{"type":"integer","description":"本次实际读取页数"},"complete":{"type":"boolean","description":"是否已经读取到服务端末页"},"truncated":{"type":"boolean","description":"是否因 max-pages 或 max-items 上限提前停止"},"stopReason":{"type":"string","description":"提前停止或分页不可证明的原因"},"nextCursor":{"type":"string","description":"下一页游标"},"hasMore":{"type":"boolean","description":"服务端是否仍有下一页"}},"required":["count",%q,"pagesRead","complete","truncated"],"additionalProperties":true}`,
+			`{"type":"object","description":%q,"properties":{%q:{"type":"array","description":%q,"items":{"type":"object","description":"Drive 资源条目","additionalProperties":true}}},"required":[%q],"additionalProperties":false}`,
 			description, collection, description, collection,
 		)),
 	}

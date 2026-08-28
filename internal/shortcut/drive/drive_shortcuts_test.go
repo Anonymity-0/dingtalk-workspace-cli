@@ -4,6 +4,7 @@
 package drive
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -68,8 +69,19 @@ func driveJSON(value any) string {
 
 func runDriveCoverage(t *testing.T, declaration shortcut.Shortcut, caller *driveCoverageCaller, args ...string) error {
 	t.Helper()
+	return runDriveCoverageTo(t, declaration, caller, io.Discard, args...)
+}
+
+func runDriveCoverageRaw(t *testing.T, declaration shortcut.Shortcut, caller *driveCoverageCaller, args ...string) (string, error) {
+	t.Helper()
+	var stdout bytes.Buffer
+	err := runDriveCoverageTo(t, declaration, caller, &stdout, args...)
+	return stdout.String(), err
+}
+
+func runDriveCoverageTo(t *testing.T, declaration shortcut.Shortcut, caller *driveCoverageCaller, writer io.Writer, args ...string) error {
+	t.Helper()
 	helpers.InitDeps(caller)
-	declaration.OutputRollout = output.RolloutLegacyOnly
 	root := &cobra.Command{Use: "dws", SilenceErrors: true, SilenceUsage: true}
 	root.PersistentFlags().Bool("yes", false, "")
 	root.PersistentFlags().Bool("dry-run", false, "")
@@ -77,10 +89,23 @@ func runDriveCoverage(t *testing.T, declaration shortcut.Shortcut, caller *drive
 	service := &cobra.Command{Use: "drive"}
 	service.AddCommand(corecmd.New(shortcut.FromShortcut(declaration)))
 	root.AddCommand(service)
-	root.SetOut(io.Discard)
+	ctx, _ := output.WithResultStore(context.Background())
+	root.SetContext(ctx)
+	root.SetOut(writer)
 	root.SetErr(io.Discard)
 	root.SetArgs(append([]string{"drive", declaration.Command}, args...))
-	return root.Execute()
+	executed, err := root.ExecuteC()
+	if err != nil || !output.UsesUnifiedResult(executed) {
+		return err
+	}
+	code, _, emitErr := output.EmitStoredResult(executed)
+	if emitErr != nil {
+		return emitErr
+	}
+	if code != 0 {
+		return fmt.Errorf("command result exit code %d", code)
+	}
+	return nil
 }
 
 func TestCrossPlatformCoverageDriveCollectionsRejectFalseEmptySuccess(t *testing.T) {
@@ -261,6 +286,12 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 	if err == nil || !errors.As(err, &typed) || typed.Reason != "drive_pagination_stalled_cursor" {
 		t.Fatalf("stalled cursor error = %#v", err)
 	}
+	if typed.Details["nextCursor"] != nil || typed.Details["retryCursor"] != nil || typed.Details["requestCursor"] != "same" {
+		t.Fatalf("stalled cursor exposed an unsafe continuation: details=%#v", typed.Details)
+	}
+	if strings.Contains(strings.Join(typed.Actions, " "), "nextCursor") {
+		t.Fatalf("stalled cursor actions recommend an unsafe continuation: %#v", typed.Actions)
+	}
 
 	maxPages := &driveCoverageCaller{responses: map[string][]string{
 		"list_files": {
@@ -281,13 +312,6 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 		responses []string
 		want      string
 	}{
-		{
-			name: "non-positive bounds use defensive defaults",
-			args: []string{"--limit", "1", "--page-all", "--max-pages", "0", "--max-items", "0"},
-			responses: []string{
-				`{"success":true,"items":[{"name":"anonymous"}],"hasMore":false}`,
-			},
-		},
 		{
 			name: "server exceeds requested page size",
 			args: []string{"--limit", "2", "--page-all", "--max-items", "1"},
@@ -333,6 +357,162 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageDriveUnifiedPaginationContract(t *testing.T) {
+	tests := []struct {
+		name        string
+		declaration shortcut.Shortcut
+		tool        string
+		args        []string
+		outputKey   string
+		responses   []string
+	}{
+		{
+			name: "list", declaration: List, tool: "list_files", outputKey: "files",
+			args: []string{"--limit", "1", "--page-all"},
+			responses: []string{
+				`{"success":true,"items":[{"fileId":"list-1"}],"hasMore":true,"nextToken":"list-c2"}`,
+				`{"success":true,"items":[{"fileId":"list-2"}],"hasMore":false}`,
+			},
+		},
+		{
+			name: "search", declaration: Search, tool: "search_files", outputKey: "files",
+			args: []string{"--query", "synthetic", "--limit", "1", "--page-all"},
+			responses: []string{
+				`{"success":true,"items":[{"fileId":"search-1"}],"hasMore":true,"nextPageToken":"search-c2"}`,
+				`{"success":true,"items":[{"fileId":"search-2"}],"hasMore":false}`,
+			},
+		},
+		{
+			name: "recent", declaration: Recent, tool: "get_recent_list", outputKey: "items",
+			args: []string{"--limit", "1", "--page-all"},
+			responses: []string{
+				`{"success":true,"recentItems":[{"nodeId":"recent-1"}],"hasMore":true,"nextCursor":"recent-c2"}`,
+				`{"success":true,"recentItems":[{"nodeId":"recent-2"}],"hasMore":false}`,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &driveCoverageCaller{responses: map[string][]string{tc.tool: tc.responses}}
+			raw, err := runDriveCoverageRaw(t, tc.declaration, caller, tc.args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var envelope map[string]any
+			if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+				t.Fatalf("decode output %q: %v", raw, err)
+			}
+			data, _ := envelope["data"].(map[string]any)
+			rows, _ := data[tc.outputKey].([]any)
+			if len(rows) != 2 {
+				t.Fatalf("business data=%#v", data)
+			}
+			for _, leaked := range []string{"count", "pagesRead", "complete", "truncated", "hasMore", "nextCursor", "stopReason"} {
+				if _, found := data[leaked]; found {
+					t.Fatalf("business data leaked pagination field %q: %#v", leaked, data)
+				}
+			}
+			meta, _ := envelope["meta"].(map[string]any)
+			pagination, _ := meta["pagination"].(map[string]any)
+			if meta["count"] != float64(2) || pagination["endpoint_exhausted"] != true || pagination["pages"] != float64(2) || pagination["items"] != float64(2) || pagination["next_token"] != nil {
+				t.Fatalf("meta=%#v", meta)
+			}
+		})
+	}
+
+	limited := &driveCoverageCaller{responses: map[string][]string{
+		"list_files": {`{"success":true,"items":[{"fileId":"limited-1"}],"hasMore":true,"nextToken":"limited-c2"}`},
+	}}
+	raw, err := runDriveCoverageRaw(t, List, limited, "--limit", "1", "--page-all", "--max-pages", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	meta, _ := envelope["meta"].(map[string]any)
+	pagination, _ := meta["pagination"].(map[string]any)
+	if pagination["endpoint_exhausted"] != false || pagination["next_token"] != "limited-c2" {
+		t.Fatalf("bounded pagination=%#v", pagination)
+	}
+}
+
+func TestCrossPlatformCoverageDrivePaginationValidationAndSchema(t *testing.T) {
+	for _, declaration := range []shortcut.Shortcut{List, Search, Recent} {
+		if declaration.OutputRollout != output.RolloutUnifiedActive || declaration.Contract.Pagination == nil || declaration.Validate == nil || len(declaration.Constraints) != 1 {
+			t.Fatalf("%s pagination declaration is incomplete: rollout=%q pagination=%v validate=%v constraints=%#v", declaration.Command, declaration.OutputRollout, declaration.Contract.Pagination != nil, declaration.Validate != nil, declaration.Constraints)
+		}
+		dataSchema := string(declaration.Contract.Result.DataSchema)
+		for _, leaked := range []string{`"pagesRead"`, `"complete"`, `"truncated"`, `"hasMore"`, `"nextCursor"`, `"stopReason"`} {
+			if strings.Contains(dataSchema, leaked) {
+				t.Fatalf("%s data_schema leaked pagination field %s: %s", declaration.Command, leaked, dataSchema)
+			}
+		}
+
+		baseArgs := []string{}
+		if declaration.Command == "+search" {
+			baseArgs = []string{"--query", "synthetic"}
+		}
+		for _, invalid := range [][]string{
+			{"--max-pages", "2"},
+			{"--max-items", "2"},
+			{"--page-all", "--max-pages", "0"},
+			{"--page-all", "--max-pages", "-1"},
+			{"--page-all", "--max-items", "0"},
+			{"--page-all", "--max-items", "-1"},
+		} {
+			caller := &driveCoverageCaller{}
+			args := append(append([]string{}, baseArgs...), invalid...)
+			if err := runDriveCoverage(t, declaration, caller, args...); err == nil || len(caller.history) != 0 {
+				t.Fatalf("%s accepted invalid pagination args %v: err=%v calls=%#v", declaration.Command, args, err, caller.history)
+			}
+		}
+	}
+}
+
+func TestCrossPlatformCoverageDrivePaginationRejectsContradictionsWithoutUnsafeCursor(t *testing.T) {
+	contradictory := &driveCoverageCaller{responses: map[string][]string{
+		"list_files": {`{"success":true,"items":[],"hasMore":false,"nextToken":"stale"}`},
+	}}
+	err := runDriveCoverage(t, List, contradictory, "--page-all")
+	var typed *apperrors.Error
+	if err == nil || !errors.As(err, &typed) || typed.Reason != "drive_pagination_inconsistent_state" {
+		t.Fatalf("contradictory pagination error=%#v", err)
+	}
+	if typed.Details["nextCursor"] != nil || strings.Contains(strings.Join(typed.Actions, " "), "nextCursor") {
+		t.Fatalf("contradictory pagination exposed unsafe continuation: details=%#v actions=%#v", typed.Details, typed.Actions)
+	}
+
+	failedSecondPage := &driveCoverageCaller{responses: map[string][]string{
+		"list_files": {
+			`{"success":true,"items":[{"fileId":"first"}],"hasMore":true,"nextToken":"retry-c2"}`,
+			`__ERROR__`,
+		},
+	}}
+	err = runDriveCoverage(t, List, failedSecondPage, "--limit", "1", "--page-all")
+	typed = nil
+	if err == nil || !errors.As(err, &typed) || typed.Reason != "drive_pagination_page_read_failed" {
+		t.Fatalf("second page failure=%#v", err)
+	}
+	if typed.Details["retryCursor"] != "retry-c2" || typed.Details["nextCursor"] != nil || !strings.Contains(strings.Join(typed.Actions, " "), "retryCursor") {
+		t.Fatalf("retry cursor semantics=%#v actions=%#v", typed.Details, typed.Actions)
+	}
+	if typed.ExecutionStarted == nil || !*typed.ExecutionStarted {
+		t.Fatalf("pagination failure execution state=%#v", typed.ExecutionStarted)
+	}
+
+	cmd := &cobra.Command{Use: "unified"}
+	ctx, _ := output.WithResultStore(context.Background())
+	cmd.SetContext(ctx)
+	output.SetCommandRollout(cmd, output.RolloutUnifiedActive)
+	rt := shortcut.RuntimeContextForTest(cmd, List)
+	if err := outputDrivePageResult(rt, drivePageResult{Business: map[string]any{"files": []any{}}, EndpointExhausted: true, NextToken: "contradictory"}); err == nil {
+		t.Fatal("output accepted exhausted pagination with a continuation token")
 	}
 }
 

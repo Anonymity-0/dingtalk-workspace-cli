@@ -58,9 +58,9 @@ var List = shortcut.Shortcut{
 		{Name: "folder", Type: shortcut.FlagString, Desc: "父节点 ID (dentryUuid)，不传则列出空间根目录"},
 		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "每页返回数量 (默认 20，最大 50)"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，首次不传"},
-		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动连续读取后续页，默认只读一页"},
-		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "自动翻页最多读取页数"},
-		{Name: "max-items", Type: shortcut.FlagInt, Default: "500", Desc: "自动翻页最多累计条目数"},
+		{Name: "page-all", Type: shortcut.FlagBool, Desc: "有界读取全部后续页；--max-pages/--max-items 仅在 --page-all 时生效且必须大于 0"},
+		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "--page-all 最多读取页数，必须大于 0"},
+		{Name: "max-items", Type: shortcut.FlagInt, Default: "500", Desc: "--page-all 最多累计条目数，必须大于 0"},
 		{Name: "order-by", Type: shortcut.FlagString, Desc: "排序字段: createTime|modifyTime|name"},
 		{Name: "order", Type: shortcut.FlagString, Desc: "排序方向: asc|desc (默认 desc)"},
 		{Name: "thumbnail", Type: shortcut.FlagBool, Desc: "是否返回缩略图信息"},
@@ -69,6 +69,8 @@ var List = shortcut.Shortcut{
 		`dws drive +list --limit 20`,
 		`dws drive +list --folder <dentryUuid> --order-by name --order asc`,
 	},
+	Validate:    validateDriveAutoPagination,
+	Constraints: driveAutoPaginationConstraints(),
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{}
 		if rt.Changed("space-id") {
@@ -111,7 +113,7 @@ var List = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return rt.Output(out)
+		return outputDrivePageResult(rt, out)
 	},
 }
 
@@ -279,14 +281,16 @@ var Search = shortcut.Shortcut{
 		{Name: "modified-to", Type: shortcut.FlagInt, Desc: "修改时间截止 (毫秒时间戳，含)"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量 (默认 10，最大 30)"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，从上次返回的 nextCursor 获取"},
-		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动连续读取后续页，默认只读一页"},
-		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "自动翻页最多读取页数"},
-		{Name: "max-items", Type: shortcut.FlagInt, Default: "500", Desc: "自动翻页最多累计条目数"},
+		{Name: "page-all", Type: shortcut.FlagBool, Desc: "有界读取全部后续页；--max-pages/--max-items 仅在 --page-all 时生效且必须大于 0"},
+		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "--page-all 最多读取页数，必须大于 0"},
+		{Name: "max-items", Type: shortcut.FlagInt, Default: "500", Desc: "--page-all 最多累计条目数，必须大于 0"},
 	},
 	Tips: []string{
 		`dws drive +search --query "季度汇报"`,
 		`dws drive +search --query "合同" --target file --extensions pdf,docx`,
 	},
+	Validate:    validateDriveAutoPagination,
+	Constraints: driveAutoPaginationConstraints(),
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{"keyword": rt.Str("query")}
 		if rt.Changed("target") {
@@ -339,7 +343,7 @@ var Search = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return rt.Output(out)
+		return outputDrivePageResult(rt, out)
 	},
 }
 
@@ -635,14 +639,16 @@ var Recent = shortcut.Shortcut{
 		{Name: "creator-type", Type: shortcut.FlagInt, Desc: "创建人过滤: 0=全部, 1=我创建, 2=他人创建"},
 		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页数量 (默认 20，最大 20)"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标 (从上次结果的 nextCursor 获取)"},
-		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动连续读取后续页，默认只读一页"},
-		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "自动翻页最多读取页数"},
-		{Name: "max-items", Type: shortcut.FlagInt, Default: "500", Desc: "自动翻页最多累计条目数"},
+		{Name: "page-all", Type: shortcut.FlagBool, Desc: "有界读取全部后续页；--max-pages/--max-items 仅在 --page-all 时生效且必须大于 0"},
+		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "--page-all 最多读取页数，必须大于 0"},
+		{Name: "max-items", Type: shortcut.FlagInt, Default: "500", Desc: "--page-all 最多累计条目数，必须大于 0"},
 	},
 	Tips: []string{
 		`dws drive +recent`,
 		`dws drive +recent --operate-type 1 --creator-type 1`,
 	},
+	Validate:    validateDriveAutoPagination,
+	Constraints: driveAutoPaginationConstraints(),
 	Execute: func(rt *shortcut.RuntimeContext) error {
 		params := map[string]any{}
 		if rt.Changed("operate-type") {
@@ -679,7 +685,7 @@ var Recent = shortcut.Shortcut{
 		if err != nil {
 			return err
 		}
-		return rt.Output(out)
+		return outputDrivePageResult(rt, out)
 	},
 }
 
