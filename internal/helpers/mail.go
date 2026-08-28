@@ -3298,7 +3298,7 @@ user 对象字段：
 	DeclareLeafMetadata(contactBatchDeleteCmd, LeafSpec{
 		Safety: contract.SafetySpec{
 			Effect: "write", Risk: "medium",
-			Confirmation: "not_required", Idempotency: "unknown",
+			Confirmation: "user_required", Idempotency: "unknown",
 		},
 		Contract: LeafContract{
 			Identity: contract.ToolIdentitySpec{
