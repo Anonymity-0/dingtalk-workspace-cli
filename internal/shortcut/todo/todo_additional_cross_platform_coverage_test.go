@@ -657,6 +657,9 @@ func TestCrossPlatformCoverageTodoCommentAndReminder(t *testing.T) {
 			}
 		})
 	}
+	if err := Reminder.Execute(todoRuntimeForTest(t, Reminder, map[string]string{"task-id": "task-1"})); err == nil {
+		t.Fatal("direct reminder execution without an action accepted")
+	}
 	for _, tc := range []struct {
 		name       string
 		args       []string
@@ -805,6 +808,9 @@ func TestCrossPlatformCoverageTodoGetMyTasksAndListLeaves(t *testing.T) {
 				t.Fatal("bad list arguments accepted")
 			}
 		})
+	}
+	if err := GetMyTasks.Execute(todoRuntimeForTest(t, GetMyTasks, map[string]string{"max-pages": "1"})); err == nil {
+		t.Fatal("direct list execution with --max-pages but without --all accepted")
 	}
 	for name, response := range map[string]string{
 		"call":       "__ERROR__",
