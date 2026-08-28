@@ -277,7 +277,7 @@ var Search = shortcut.Shortcut{
 		{Name: "created-to", Type: shortcut.FlagInt, Desc: "创建时间截止 (毫秒时间戳，含)"},
 		{Name: "modified-from", Type: shortcut.FlagInt, Desc: "修改时间起始 (毫秒时间戳，含)"},
 		{Name: "modified-to", Type: shortcut.FlagInt, Desc: "修改时间截止 (毫秒时间戳，含)"},
-		{Name: "limit", Type: shortcut.FlagInt, Default: "10", Desc: "每页返回数量 (默认 10，最大 30)"},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页返回数量 (默认 10，最大 30)"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标，从上次返回的 nextCursor 获取"},
 		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动连续读取后续页，默认只读一页"},
 		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "自动翻页最多读取页数"},
@@ -315,7 +315,7 @@ var Search = shortcut.Shortcut{
 		}
 		out, err := collectDrivePages(rt, params, drivePageOptions{
 			PageAll:        rt.Bool("page-all"),
-			PageSize:       rt.Int("limit"),
+			PageSize:       drivePageSize(rt, "limit", 10),
 			MaxPages:       rt.Int("max-pages"),
 			MaxItems:       rt.Int("max-items"),
 			Cursor:         rt.Str("cursor"),
@@ -633,7 +633,7 @@ var Recent = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "operate-type", Type: shortcut.FlagInt, Desc: "操作类型: 0=最近访问(默认), 1=最近编辑"},
 		{Name: "creator-type", Type: shortcut.FlagInt, Desc: "创建人过滤: 0=全部, 1=我创建, 2=他人创建"},
-		{Name: "limit", Type: shortcut.FlagInt, Default: "20", Desc: "每页数量 (默认 20，最大 20)"},
+		{Name: "limit", Type: shortcut.FlagInt, Desc: "每页数量 (默认 20，最大 20)"},
 		{Name: "cursor", Type: shortcut.FlagString, Desc: "分页游标 (从上次结果的 nextCursor 获取)"},
 		{Name: "page-all", Type: shortcut.FlagBool, Desc: "自动连续读取后续页，默认只读一页"},
 		{Name: "max-pages", Type: shortcut.FlagInt, Default: "20", Desc: "自动翻页最多读取页数"},
@@ -655,7 +655,7 @@ var Recent = shortcut.Shortcut{
 		// down to a clean {count, items:[…], nextCursor, hasMore}.
 		out, err := collectDrivePages(rt, params, drivePageOptions{
 			PageAll:        rt.Bool("page-all"),
-			PageSize:       rt.Int("limit"),
+			PageSize:       drivePageSize(rt, "limit", 20),
 			MaxPages:       rt.Int("max-pages"),
 			MaxItems:       rt.Int("max-items"),
 			Cursor:         rt.Str("cursor"),

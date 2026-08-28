@@ -26,6 +26,13 @@ type drivePageOptions struct {
 	Project        func([]any) []map[string]any
 }
 
+func drivePageSize(rt *shortcut.RuntimeContext, flag string, fallback int) int {
+	if rt.Changed(flag) {
+		return rt.Int(flag)
+	}
+	return fallback
+}
+
 func collectDrivePages(rt *shortcut.RuntimeContext, base map[string]any, options drivePageOptions) (map[string]any, error) {
 	if options.MaxPages <= 0 {
 		options.MaxPages = 20

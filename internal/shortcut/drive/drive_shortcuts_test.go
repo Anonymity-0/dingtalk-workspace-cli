@@ -259,6 +259,38 @@ func TestCrossPlatformCoverageDriveBoundedAutoPagination(t *testing.T) {
 	}
 }
 
+func TestCrossPlatformCoverageDrivePaginationPreservesImplicitPageSizes(t *testing.T) {
+	tests := []struct {
+		name        string
+		declaration shortcut.Shortcut
+		tool        string
+		args        []string
+		sizeParam   string
+		wantSize    int
+	}{
+		{name: "search", declaration: Search, tool: "search_files", args: []string{"--query", "x"}, sizeParam: "pageSize", wantSize: 10},
+		{name: "recent", declaration: Recent, tool: "get_recent_list", sizeParam: "maxResults", wantSize: 20},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, flag := range tc.declaration.Flags {
+				if flag.Name == "limit" && flag.Default != "" {
+					t.Fatalf("limit default = %q, want existing implicit default", flag.Default)
+				}
+			}
+			caller := &driveCoverageCaller{responses: map[string][]string{
+				tc.tool: {`{"success":true,"items":[],"recentItems":[],"hasMore":false}`},
+			}}
+			if err := runDriveCoverage(t, tc.declaration, caller, tc.args...); err != nil {
+				t.Fatal(err)
+			}
+			if len(caller.calls) != 1 || caller.calls[0].args[tc.sizeParam] != tc.wantSize {
+				t.Fatalf("calls = %#v, want %s=%d", caller.calls, tc.sizeParam, tc.wantSize)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(t *testing.T) {
 	var outputFlag *shortcut.Flag
 	for i := range Download.Flags {
