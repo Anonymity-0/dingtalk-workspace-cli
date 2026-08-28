@@ -1308,3 +1308,449 @@ func TestPersonalEmotionImageMathAndResizeBoundaries(t *testing.T) {
 		t.Fatalf("missing disposal = %d", disposal)
 	}
 }
+
+type personalEmotionGIFTestFrame struct {
+	rect     image.Rectangle
+	palette  color.Palette
+	fill     func(x, y int) uint8 // 每像素调色板索引
+	disposal byte
+	delay    int
+}
+
+func encodePersonalEmotionTestGIF(t *testing.T, canvasW, canvasH int, frames []personalEmotionGIFTestFrame) *gif.GIF {
+	t.Helper()
+	anim := &gif.GIF{LoopCount: 0}
+	for _, spec := range frames {
+		frame := image.NewPaletted(spec.rect, spec.palette)
+		for y := spec.rect.Min.Y; y < spec.rect.Max.Y; y++ {
+			for x := spec.rect.Min.X; x < spec.rect.Max.X; x++ {
+				frame.SetColorIndex(x, y, spec.fill(x, y))
+			}
+		}
+		anim.Image = append(anim.Image, frame)
+		anim.Delay = append(anim.Delay, spec.delay)
+		anim.Disposal = append(anim.Disposal, spec.disposal)
+	}
+	anim.Config = image.Config{Width: canvasW, Height: canvasH}
+	var buf bytes.Buffer
+	if err := gif.EncodeAll(&buf, anim); err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := gif.DecodeAll(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return decoded
+}
+
+func requirePersonalEmotionGIFColor(t *testing.T, img image.Image, x, y int, want color.RGBA) {
+	t.Helper()
+	got, ok := color.RGBAModel.Convert(img.At(x, y)).(color.RGBA)
+	if !ok || got != want {
+		t.Fatalf("pixel(%d,%d) = %+v, want %+v", x, y, img.At(x, y), want)
+	}
+}
+
+func requirePersonalEmotionGIFTransparentEntry(t *testing.T, frame *image.Paletted) {
+	t.Helper()
+	for _, c := range frame.Palette {
+		if _, _, _, a := c.RGBA(); a == 0 {
+			return
+		}
+	}
+	t.Fatalf("frame palette = %v, want transparent entry", frame.Palette)
+}
+
+func TestPersonalEmotionGIFCompressionPreservesPartialFrameOffsets(t *testing.T) {
+	// 非 (0,0) 局部帧必须先合成到逻辑画布再整体缩放，不能把帧矩形自身拉成整幅。
+	red := color.RGBA{R: 255, A: 255}
+	blue := color.RGBA{B: 255, A: 255}
+	src := encodePersonalEmotionTestGIF(t, 100, 100, []personalEmotionGIFTestFrame{
+		{
+			rect:     image.Rect(0, 0, 100, 100),
+			palette:  color.Palette{red},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+		{
+			rect:     image.Rect(25, 25, 75, 75),
+			palette:  color.Palette{blue},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+	})
+	compressed := encodePersonalEmotionGIFCandidate(src, 50, 50, 1)
+	if len(compressed.Image) != 2 {
+		t.Fatalf("output frames = %d, want 2", len(compressed.Image))
+	}
+	for i, frame := range compressed.Image {
+		if frame.Bounds() != image.Rect(0, 0, 50, 50) {
+			t.Fatalf("frame %d bounds = %v, want (0,0)-(50,50)", i, frame.Bounds())
+		}
+		if disposal := compressed.Disposal[i]; disposal != gif.DisposalNone {
+			t.Fatalf("frame %d disposal = %d, want %d", i, disposal, gif.DisposalNone)
+		}
+	}
+	requirePersonalEmotionGIFColor(t, compressed.Image[0], 5, 5, red)
+	requirePersonalEmotionGIFColor(t, compressed.Image[1], 5, 5, red)
+	requirePersonalEmotionGIFColor(t, compressed.Image[1], 25, 25, blue)
+
+	var srcBytes bytes.Buffer
+	if err := gif.EncodeAll(&srcBytes, src); err != nil {
+		t.Fatal(err)
+	}
+	compressedBytes, err := compressPersonalEmotionGIF(srcBytes.Bytes())
+	if err != nil {
+		t.Fatalf("compressPersonalEmotionGIF failed: %v", err)
+	}
+	decoded, err := gif.DecodeAll(bytes.NewReader(compressedBytes))
+	if err != nil {
+		t.Fatalf("compressed gif decode failed: %v", err)
+	}
+	if len(decoded.Image) != 2 {
+		t.Fatalf("decoded frames = %d, want 2", len(decoded.Image))
+	}
+	requirePersonalEmotionGIFColor(t, decoded.Image[1], 5, 5, red)
+	requirePersonalEmotionGIFColor(t, decoded.Image[1], 50, 50, blue)
+}
+
+func TestPersonalEmotionGIFCompressionCompositesIncrementalFrames(t *testing.T) {
+	// 增量更新帧按帧矩形叠加合成，后帧只覆盖自身矩形，未重叠区域保留。
+	red := color.RGBA{R: 255, A: 255}
+	blue := color.RGBA{B: 255, A: 255}
+	green := color.RGBA{G: 255, A: 255}
+	src := encodePersonalEmotionTestGIF(t, 100, 100, []personalEmotionGIFTestFrame{
+		{
+			rect:     image.Rect(0, 0, 100, 100),
+			palette:  color.Palette{red},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+		{
+			rect:     image.Rect(25, 25, 75, 75),
+			palette:  color.Palette{blue},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+		{
+			rect:     image.Rect(10, 10, 40, 40),
+			palette:  color.Palette{green},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+	})
+	compressed := encodePersonalEmotionGIFCandidate(src, 50, 50, 1)
+	if len(compressed.Image) != 3 {
+		t.Fatalf("output frames = %d, want 3", len(compressed.Image))
+	}
+	for i, frame := range compressed.Image {
+		if frame.Bounds() != image.Rect(0, 0, 50, 50) {
+			t.Fatalf("frame %d bounds = %v, want (0,0)-(50,50)", i, frame.Bounds())
+		}
+		if disposal := compressed.Disposal[i]; disposal != gif.DisposalNone {
+			t.Fatalf("frame %d disposal = %d, want %d", i, disposal, gif.DisposalNone)
+		}
+	}
+	requirePersonalEmotionGIFColor(t, compressed.Image[1], 5, 5, red)
+	requirePersonalEmotionGIFColor(t, compressed.Image[2], 8, 8, green)
+	requirePersonalEmotionGIFColor(t, compressed.Image[2], 25, 25, blue)
+	requirePersonalEmotionGIFColor(t, compressed.Image[2], 45, 45, red)
+}
+
+func TestPersonalEmotionGIFCompressionAppliesDisposalBackground(t *testing.T) {
+	// DisposalBackground 帧显示结束后，其帧矩形在逻辑画布上恢复为透明。
+	red := color.RGBA{R: 255, A: 255}
+	blue := color.RGBA{B: 255, A: 255}
+	src := encodePersonalEmotionTestGIF(t, 100, 100, []personalEmotionGIFTestFrame{
+		{
+			rect:     image.Rect(0, 0, 100, 100),
+			palette:  color.Palette{red},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+		{
+			rect:     image.Rect(25, 25, 75, 75),
+			palette:  color.Palette{blue},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalBackground,
+			delay:    5,
+		},
+		{
+			rect:     image.Rect(90, 90, 92, 92),
+			palette:  color.Palette{red},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+	})
+	compressed := encodePersonalEmotionGIFCandidate(src, 50, 50, 1)
+	if len(compressed.Image) != 3 {
+		t.Fatalf("output frames = %d, want 3", len(compressed.Image))
+	}
+	for i, frame := range compressed.Image {
+		if frame.Bounds() != image.Rect(0, 0, 50, 50) {
+			t.Fatalf("frame %d bounds = %v, want (0,0)-(50,50)", i, frame.Bounds())
+		}
+		if disposal := compressed.Disposal[i]; disposal != gif.DisposalNone {
+			t.Fatalf("frame %d disposal = %d, want %d", i, disposal, gif.DisposalNone)
+		}
+	}
+	requirePersonalEmotionGIFColor(t, compressed.Image[2], 25, 25, color.RGBA{})
+	requirePersonalEmotionGIFColor(t, compressed.Image[2], 5, 5, red)
+	requirePersonalEmotionGIFTransparentEntry(t, compressed.Image[2])
+}
+
+func TestPersonalEmotionGIFCompressionAppliesDisposalPrevious(t *testing.T) {
+	// DisposalPrevious 帧显示结束后，逻辑画布恢复到该帧绘制前的快照。
+	red := color.RGBA{R: 255, A: 255}
+	blue := color.RGBA{B: 255, A: 255}
+	src := encodePersonalEmotionTestGIF(t, 100, 100, []personalEmotionGIFTestFrame{
+		{
+			rect:     image.Rect(0, 0, 100, 100),
+			palette:  color.Palette{red},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+		{
+			rect:     image.Rect(25, 25, 75, 75),
+			palette:  color.Palette{blue},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalPrevious,
+			delay:    5,
+		},
+		{
+			rect:     image.Rect(90, 90, 92, 92),
+			palette:  color.Palette{red},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+	})
+	compressed := encodePersonalEmotionGIFCandidate(src, 50, 50, 1)
+	if len(compressed.Image) != 3 {
+		t.Fatalf("output frames = %d, want 3", len(compressed.Image))
+	}
+	for i, frame := range compressed.Image {
+		if frame.Bounds() != image.Rect(0, 0, 50, 50) {
+			t.Fatalf("frame %d bounds = %v, want (0,0)-(50,50)", i, frame.Bounds())
+		}
+		if disposal := compressed.Disposal[i]; disposal != gif.DisposalNone {
+			t.Fatalf("frame %d disposal = %d, want %d", i, disposal, gif.DisposalNone)
+		}
+	}
+	requirePersonalEmotionGIFColor(t, compressed.Image[2], 25, 25, red)
+	requirePersonalEmotionGIFColor(t, compressed.Image[2], 45, 45, red)
+}
+
+func TestPersonalEmotionGIFCompressionPreservesTransparentPixels(t *testing.T) {
+	// 源帧透明像素压缩后仍是透明，不得退化为不透明黑。
+	red := color.RGBA{R: 255, A: 255}
+	transparentRed := color.Palette{color.RGBA{}, red}
+	fillRedBlock := func(block image.Rectangle) func(x, y int) uint8 {
+		return func(x, y int) uint8 {
+			if image.Pt(x, y).In(block) {
+				return 1
+			}
+			return 0
+		}
+	}
+	src := encodePersonalEmotionTestGIF(t, 100, 100, []personalEmotionGIFTestFrame{
+		{
+			rect:     image.Rect(0, 0, 100, 100),
+			palette:  transparentRed,
+			fill:     fillRedBlock(image.Rect(25, 25, 75, 75)),
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+		{
+			rect:     image.Rect(0, 0, 100, 100),
+			palette:  transparentRed,
+			fill:     fillRedBlock(image.Rect(50, 50, 90, 90)),
+			disposal: gif.DisposalNone,
+			delay:    5,
+		},
+	})
+	compressed := encodePersonalEmotionGIFCandidate(src, 50, 50, 1)
+	if len(compressed.Image) != 2 {
+		t.Fatalf("output frames = %d, want 2", len(compressed.Image))
+	}
+	for i, frame := range compressed.Image {
+		if frame.Bounds() != image.Rect(0, 0, 50, 50) {
+			t.Fatalf("frame %d bounds = %v, want (0,0)-(50,50)", i, frame.Bounds())
+		}
+		if disposal := compressed.Disposal[i]; disposal != gif.DisposalNone {
+			t.Fatalf("frame %d disposal = %d, want %d", i, disposal, gif.DisposalNone)
+		}
+	}
+	requirePersonalEmotionGIFTransparentEntry(t, compressed.Image[0])
+	requirePersonalEmotionGIFColor(t, compressed.Image[0], 5, 5, color.RGBA{})
+	requirePersonalEmotionGIFColor(t, compressed.Image[0], 25, 25, red)
+	requirePersonalEmotionGIFColor(t, compressed.Image[1], 5, 5, color.RGBA{})
+	requirePersonalEmotionGIFColor(t, compressed.Image[1], 30, 30, red)
+}
+
+func TestPersonalEmotionGIFCompressionKeepsFullFrameGIFBehavior(t *testing.T) {
+	// 存量 (0,0) 全幅帧 GIF 的抽帧与 delay 合并行为保持不变。
+	red := color.RGBA{R: 255, A: 255}
+	blue := color.RGBA{B: 255, A: 255}
+	green := color.RGBA{G: 255, A: 255}
+	src := encodePersonalEmotionTestGIF(t, 100, 100, []personalEmotionGIFTestFrame{
+		{
+			rect:     image.Rect(0, 0, 100, 100),
+			palette:  color.Palette{red},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    10,
+		},
+		{
+			rect:     image.Rect(0, 0, 100, 100),
+			palette:  color.Palette{blue},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    20,
+		},
+		{
+			rect:     image.Rect(0, 0, 100, 100),
+			palette:  color.Palette{green},
+			fill:     func(x, y int) uint8 { return 0 },
+			disposal: gif.DisposalNone,
+			delay:    30,
+		},
+	})
+	compressed := encodePersonalEmotionGIFCandidate(src, 50, 50, 2)
+	if len(compressed.Image) != 2 {
+		t.Fatalf("output frames = %d, want 2", len(compressed.Image))
+	}
+	for i, frame := range compressed.Image {
+		if frame.Bounds() != image.Rect(0, 0, 50, 50) {
+			t.Fatalf("frame %d bounds = %v, want (0,0)-(50,50)", i, frame.Bounds())
+		}
+		if disposal := compressed.Disposal[i]; disposal != gif.DisposalNone {
+			t.Fatalf("frame %d disposal = %d, want %d", i, disposal, gif.DisposalNone)
+		}
+	}
+	requirePersonalEmotionGIFColor(t, compressed.Image[0], 25, 25, red)
+	requirePersonalEmotionGIFColor(t, compressed.Image[1], 25, 25, green)
+	if !reflect.DeepEqual(compressed.Delay, []int{30, 30}) {
+		t.Fatalf("delay = %v, want [30 30]", compressed.Delay)
+	}
+}
+
+func writeLargePersonalEmotionPartialFrameGIF(t *testing.T) (string, []byte) {
+	t.Helper()
+	noisePalette := make(color.Palette, 0, 256)
+	for i := 0; i < 256; i++ {
+		noisePalette = append(noisePalette, color.RGBA{R: uint8(i), G: uint8(255 - i), B: uint8((i * 37) % 256), A: 255})
+	}
+	anim := &gif.GIF{LoopCount: 0}
+	seed := uint32(7)
+	for frameIndex := 0; frameIndex < 30; frameIndex++ {
+		frame := image.NewPaletted(image.Rect(0, 0, 360, 360), noisePalette)
+		for y := 0; y < 360; y++ {
+			for x := 0; x < 360; x++ {
+				seed = seed*1664525 + 1013904223
+				frame.SetColorIndex(x, y, uint8(seed>>24))
+			}
+		}
+		anim.Image = append(anim.Image, frame)
+		anim.Delay = append(anim.Delay, 8)
+		anim.Disposal = append(anim.Disposal, gif.DisposalBackground)
+	}
+	redFrame := image.NewPaletted(image.Rect(0, 0, 360, 360), color.Palette{color.RGBA{R: 255, A: 255}})
+	for y := 0; y < 360; y++ {
+		for x := 0; x < 360; x++ {
+			redFrame.SetColorIndex(x, y, 0)
+		}
+	}
+	anim.Image = append(anim.Image, redFrame)
+	anim.Delay = append(anim.Delay, 8)
+	anim.Disposal = append(anim.Disposal, gif.DisposalNone)
+	magentaFrame := image.NewPaletted(image.Rect(25, 25, 75, 75), color.Palette{color.RGBA{R: 255, B: 255, A: 255}})
+	for y := 25; y < 75; y++ {
+		for x := 25; x < 75; x++ {
+			magentaFrame.SetColorIndex(x, y, 0)
+		}
+	}
+	anim.Image = append(anim.Image, magentaFrame)
+	anim.Delay = append(anim.Delay, 8)
+	anim.Disposal = append(anim.Disposal, gif.DisposalNone)
+	anim.Config = image.Config{Width: 360, Height: 360}
+	var buf bytes.Buffer
+	if err := gif.EncodeAll(&buf, anim); err != nil {
+		t.Fatal(err)
+	}
+	if buf.Len() <= int(personalEmotionImageMaxBytes) {
+		t.Fatalf("test partial-frame GIF size = %d, want > %d", buf.Len(), personalEmotionImageMaxBytes)
+	}
+	filePath := filepath.Join(t.TempDir(), "large-partial.gif")
+	if err := os.WriteFile(filePath, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return filePath, buf.Bytes()
+}
+
+func TestChatEmotionFavoriteFilePathCompressesPartialFrameGIF(t *testing.T) {
+	// >2MB 且含非零偏移局部帧的 GIF 压缩后输出整幅快照，局部帧不得被拉成整幅。
+	imagePath, original := writeLargePersonalEmotionPartialFrameGIF(t)
+	caller := &personalEmotionUploadCaller{uploadText: `{"success":true,"mediaIdV2":"$v2-media"}`}
+	err := executePersonalEmotionCallerCommand(t, caller, "emotion", "favorite", "--file-path", imagePath)
+	if err != nil {
+		t.Fatalf("large partial-frame gif favorite returned error: %v", err)
+	}
+	if caller.uploadCalls != 1 || len(caller.favoriteCalls) != 1 {
+		t.Fatalf("calls: upload=%d favorite=%d", caller.uploadCalls, len(caller.favoriteCalls))
+	}
+	if got := caller.uploadArgs[0]["imageType"]; got != "gif" {
+		t.Fatalf("compressed imageType = %v, want gif", got)
+	}
+	content, err := base64.StdEncoding.DecodeString(caller.uploadArgs[0]["content"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(content) > int(personalEmotionImageMaxBytes) || len(content) >= len(original) {
+		t.Fatalf("compressed size = %d original = %d limit = %d", len(content), len(original), personalEmotionImageMaxBytes)
+	}
+	anim, err := gif.DecodeAll(bytes.NewReader(content))
+	if err != nil {
+		t.Fatalf("compressed content is not gif: %v", err)
+	}
+	if len(anim.Image) < 2 {
+		t.Fatalf("compressed gif frames = %d, want animated", len(anim.Image))
+	}
+	full := image.Rect(0, 0, anim.Config.Width, anim.Config.Height)
+	magentaFrames := 0
+	for i, frame := range anim.Image {
+		if frame.Bounds() != full {
+			t.Fatalf("frame %d bounds = %v, want %v", i, frame.Bounds(), full)
+		}
+		if disposal := anim.Disposal[i]; disposal != gif.DisposalNone {
+			t.Fatalf("frame %d disposal = %d, want %d", i, disposal, gif.DisposalNone)
+		}
+		hasMagenta := false
+		for y := full.Min.Y; y < full.Max.Y && !hasMagenta; y++ {
+			for x := full.Min.X; x < full.Max.X; x++ {
+				if r, g, b, a := frame.At(x, y).RGBA(); r == 0xffff && g == 0 && b == 0xffff && a == 0xffff {
+					hasMagenta = true
+					break
+				}
+			}
+		}
+		if !hasMagenta {
+			continue
+		}
+		magentaFrames++
+		if r, g, b, a := frame.At(0, 0).RGBA(); r == 0xffff && g == 0 && b == 0xffff && a == 0xffff {
+			t.Fatalf("frame %d stretches the partial magenta block to the full canvas", i)
+		}
+	}
+	if magentaFrames == 0 {
+		t.Fatal("no output frame contains the partial magenta block")
+	}
+}
