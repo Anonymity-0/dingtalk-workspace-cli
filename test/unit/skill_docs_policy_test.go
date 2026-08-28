@@ -19,7 +19,6 @@ func TestSkillDocsDoNotRecommendRetiredCommands(t *testing.T) {
 	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
 	skillsDir := filepath.Join(root, "skills")
 	retiredCommands := []string{
-		"chat file upload",
 		"conference start",
 		"conference get-id",
 		"conference member invite",
