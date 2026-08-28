@@ -308,6 +308,7 @@ func TestCrossPlatformCoverageUploadDocSpaceFileDataStrictTransaction(t *testing
 		{name: "invalid request", request: DocSpaceUploadRequest{}, want: "invalid document-space upload request"},
 		{name: "folder overwrite conflict", request: DocSpaceUploadRequest{FilePath: "f", FileName: "f", FileSize: 1, WorkspaceID: "w", FolderID: "folder", OverwriteNode: "node"}, want: "mutually exclusive"},
 		{name: "credential failure", request: request, steps: []scriptedToolStep{{err: errors.New("credentials")}}, want: "credentials"},
+		{name: "credential parse failure", request: request, steps: []scriptedToolStep{{text: `{}`}}, want: "incomplete upload credentials"},
 		{name: "put failure", request: request, steps: []scriptedToolStep{{text: credential}}, putErr: errors.New("put failed"), want: "put failed"},
 		{name: "commit failure", request: request, steps: []scriptedToolStep{{text: credential}, {err: errors.New("commit failed")}}, want: "commit failed"},
 		{name: "empty commit", request: request, steps: []scriptedToolStep{{text: credential}, {text: " "}}, want: "no business result"},
