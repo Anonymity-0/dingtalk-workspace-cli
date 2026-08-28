@@ -1512,6 +1512,29 @@ func TestCrossPlatformCoverageDelegationOptionsCopyMove(t *testing.T) {
 	})
 }
 
+func TestCrossPlatformCoverageDelegationOptionsSetFilePublish(t *testing.T) {
+	t.Run("published true injects shareScopeSetParam WEB(9)", func(t *testing.T) {
+		opts := buildDelegationOptions("drive.set_file_publish", map[string]any{"published": true}, "")
+		param, ok := opts["shareScopeSetParam"].(map[string]any)
+		if !ok || len(opts) != 1 {
+			t.Fatalf("options = %#v, want single shareScopeSetParam", opts)
+		}
+		if param["targetScope"] != 9 {
+			t.Fatalf("targetScope = %#v (%T), want int(9)", param["targetScope"], param["targetScope"])
+		}
+	})
+	t.Run("published false yields nil", func(t *testing.T) {
+		if opts := buildDelegationOptions("drive.set_file_publish", map[string]any{"published": false}, ""); opts != nil {
+			t.Fatalf("options = %#v, want nil", opts)
+		}
+	})
+	t.Run("missing published yields nil", func(t *testing.T) {
+		if opts := buildDelegationOptions("drive.set_file_publish", map[string]any{"fileId": "f-1"}, ""); opts != nil {
+			t.Fatalf("options = %#v, want nil", opts)
+		}
+	})
+}
+
 func TestCrossPlatformCoverageDelegationOptionsPermissionFormats(t *testing.T) {
 	t.Run("new members format maps directly", func(t *testing.T) {
 		opts := buildDelegationOptions("doc.add_permission", map[string]any{

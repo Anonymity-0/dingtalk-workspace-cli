@@ -427,6 +427,10 @@ func buildDelegationOptions(toolKey string, args map[string]any, corpID string) 
 		if members := buildPermissionTargetMembers(args, corpID); members != nil {
 			return map[string]any{"permissionManageParam": map[string]any{"targetMembers": members}}
 		}
+	case "set_file_publish":
+		if p := buildShareScopeSetParam(args); p != nil {
+			return p
+		}
 	}
 	return nil
 }
@@ -511,6 +515,17 @@ func buildImportActionParam(args map[string]any) map[string]any {
 		param["fileSize"] = size
 	}
 	return param
+}
+
+// buildShareScopeSetParam 构造 set_file_publish 的 shareScopeSetParam（v3 契约）。
+// drive publish set→published=true→互联网公开(WEB=9)，注入 targetScope:9 前置管控；
+// published=false（unset/缩小范围）或缺失→返回 nil（不做范围管控、不注入 options）。
+// ORG(1) 无对应 CLI 命令，本期不覆盖。targetScope 用整数字面量（契约 type:number）。
+func buildShareScopeSetParam(args map[string]any) map[string]any {
+	if published, ok := args["published"].(bool); ok && published {
+		return map[string]any{"shareScopeSetParam": map[string]any{"targetScope": 9}}
+	}
+	return nil
 }
 
 // buildTransferTargetNodeId 解析 copy/move 的目标节点：优先 targetFolderId，
