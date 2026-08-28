@@ -61,7 +61,7 @@ metadata:
 |---|---|
 | 已知消息 ID 批量读取详情 | `dws chat +messages-mget` |
 | 已知资源引用单独下载 | `dws chat +messages-resource-download` |
-| 上传本地文件到会话空间且不发消息 | `dws chat conversation-file upload --conversation-id <cid> --file <路径>`；返回 `dentryId`/`spaceId`，不支持 URL |
+| 只上传会话文件，不发消息 | `dws chat conversation-file upload --conversation-id <cid> --file <路径>`；返回文件 ID，仅本地路径 |
 | 按关键词搜索群 | `dws chat +chat-search` |
 | 查看消息收藏 | `dws chat +flag-list` |
 | <!-- dws-intent: chat.reply.quote -->引用回复 | 人：`dws chat +messages-reply`；成功结果保留新消息/会话/投递与原消息来源上下文。Bot 群：`dws chat message send-by-bot --conversation-id <cid> --reply <mid> --ref-sender <sid>` |
