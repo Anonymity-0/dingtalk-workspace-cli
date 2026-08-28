@@ -624,13 +624,15 @@ func TestChatFileUploadRestoredForLocalFilesOnly(t *testing.T) {
 	if upload.Hidden {
 		t.Fatal("chat file upload should be visible")
 	}
-	for _, flag := range []string{"conversation-id", "group", "user", "open-dingtalk-id", "file", "file-path", "file-name", "md5", "idempotency-key", "uuid"} {
+	for _, flag := range []string{"conversation-id", "group", "user", "open-dingtalk-id", "file", "file-path", "url", "file-name", "md5", "idempotency-key", "uuid"} {
 		if upload.Flags().Lookup(flag) == nil {
 			t.Fatalf("chat file upload missing flag --%s", flag)
 		}
 	}
-	if upload.Flags().Lookup("url") != nil {
-		t.Fatal("chat file upload must not restore the retired --url transport")
+	for _, flag := range []string{"url", "uuid"} {
+		if upload.Flags().Lookup(flag).Hidden {
+			t.Fatalf("chat file upload compatibility flag --%s must remain visible", flag)
+		}
 	}
 
 	send := mustFindCommand(t, root, "chat", "message", "send")

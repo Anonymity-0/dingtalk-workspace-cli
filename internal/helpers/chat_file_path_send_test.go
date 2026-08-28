@@ -152,10 +152,14 @@ func TestCrossPlatformCoverageChatFileUploadOnlyDryRunSkipsRemoteCalls(t *testin
 }
 
 func TestCrossPlatformCoverageChatFileUploadOnlyRejectsRetiredURLPath(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.WriteFile("report.pdf", []byte("pdf payload"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	caller := &chatFilePathCaller{}
 	got, err := executeChatFilePathCommand(t, caller,
-		"file", "upload", "--conversation-id=cid", "--url=https://example.com/report.pdf", "--format=json")
-	if err == nil || !strings.Contains(err.Error(), "unknown flag: --url") {
+		"file", "upload", "--conversation-id=cid", "--file=report.pdf", "--url=https://example.com/report.pdf", "--format=json")
+	if err == nil || !strings.Contains(err.Error(), "--url 仅为历史兼容保留") {
 		t.Fatalf("url upload error = %v\n%s", err, got)
 	}
 	if len(caller.calls) != 0 {
