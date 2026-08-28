@@ -16,9 +16,9 @@ func TestMailMultiDestructiveAndAttachmentContracts(t *testing.T) {
 	content := string(data)
 
 	confirmation := strings.Index(content, "确认前禁止调用删除命令")
-	deleteCall := strings.Index(content, "mail contact batch-delete --email <邮箱>")
+	deleteCall := strings.Index(content, "mail contact batch-delete --email <邮箱> --ids <confirmed-id1,confirmed-id2,...> --yes")
 	if confirmation < 0 || deleteCall < 0 || confirmation > deleteCall {
-		t.Fatal("mail contact deletion must stop for confirmation before showing the executable delete call")
+		t.Fatal("mail contact deletion must stop for confirmation before showing the exact confirmed-ID delete call")
 	}
 	for _, required := range []string{
 		"仅用已展示且获确认的 ID",
