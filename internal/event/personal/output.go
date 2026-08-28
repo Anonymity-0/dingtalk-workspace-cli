@@ -242,7 +242,6 @@ type VoIPCallReceiveInviteOutput struct {
 	CalleeCorpID string `json:"callee_corp_id" description:"被叫用户所属组织 corpId"`
 	CallType     string `json:"call_type" description:"通话类型；值以服务端实际推送为准"`
 	RoomID       string `json:"room_id" description:"会议房间 ID"`
-	RoomCode     string `json:"room_code" description:"敏感入会码，仅用于当前通话入会，不应记录或转发"`
 	CreateTime   int64  `json:"create_time" description:"通话邀请创建时间" format:"timestamp_ms"`
 	EventTime    int64  `json:"event_time" description:"通话邀请事件业务时间" format:"timestamp_ms"`
 }
@@ -389,7 +388,6 @@ type personalVoIPCallReceiveInviteBody struct {
 	CalleeCorpID string             `json:"calleeCorpId"`
 	CallType     string             `json:"callType"`
 	RoomID       string             `json:"roomId"`
-	RoomCode     string             `json:"roomCode"`
 	CreateTime   int64              `json:"createTime"`
 }
 
@@ -460,11 +458,20 @@ func (b *personalGroupMemberBody) UnmarshalJSON(data []byte) error {
 }
 
 // ProjectOutput converts the transport envelope into the stable personal
-// event output. On malformed Data it returns the original envelope together
-// with an error; the formatter logs the warning and still emits that envelope.
+// event output. On malformed VoIP data it returns metadata-only output so
+// sensitive invitation fields cannot leak through the projection fallback;
+// legacy event families keep their original-envelope fallback behavior.
 func ProjectOutput(ev transport.Event) (any, error) {
 	data, err := decodePersonalEventData(ev.Data)
 	if err != nil {
+		if isVoIPEvent(ev.EventType) {
+			return baseEventOutput{
+				Type:        ev.EventType,
+				EventID:     ev.EventID,
+				Timestamp:   ev.EventBornTime,
+				SubscribeID: ev.SubscribeID,
+			}, fmt.Errorf("decode personal event data: %w", err)
+		}
 		return ev, fmt.Errorf("decode personal event data: %w", err)
 	}
 
@@ -540,19 +547,19 @@ func ProjectOutput(ev transport.Event) (any, error) {
 	case isOAEvent(eventType):
 		return projectOAApprovalEvent(ev, base, data.Payload)
 	case isVoIPEvent(eventType):
-		return projectVoIPCallReceiveInviteEvent(ev, base, data.Payload)
+		return projectVoIPCallReceiveInviteEvent(base, data.Payload)
 	default:
 		return ev, fmt.Errorf("unsupported personal event type %q", eventType)
 	}
 }
 
-func projectVoIPCallReceiveInviteEvent(ev transport.Event, base baseEventOutput, raw json.RawMessage) (any, error) {
+func projectVoIPCallReceiveInviteEvent(base baseEventOutput, raw json.RawMessage) (any, error) {
 	var payload personalVoIPCallReceiveInvitePayload
 	if err := decodeRequiredPayload(raw, &payload); err != nil {
-		return ev, fmt.Errorf("decode personal VoIP payload: %w", err)
+		return base, fmt.Errorf("decode personal VoIP payload: %w", err)
 	}
 	if strings.TrimSpace(payload.BizID) == "" {
-		return ev, fmt.Errorf("decode personal VoIP payload: bizid is required")
+		return base, fmt.Errorf("decode personal VoIP payload: bizid is required")
 	}
 
 	return VoIPCallReceiveInviteOutput{
@@ -571,7 +578,6 @@ func projectVoIPCallReceiveInviteEvent(ev transport.Event, base baseEventOutput,
 		CalleeCorpID: payload.Body.CalleeCorpID,
 		CallType:     payload.Body.CallType,
 		RoomID:       payload.Body.RoomID,
-		RoomCode:     payload.Body.RoomCode,
 		CreateTime:   payload.Body.CreateTime,
 		EventTime:    payload.EventTime,
 	}, nil

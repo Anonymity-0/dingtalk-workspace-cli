@@ -647,7 +647,6 @@ func TestCrossPlatformCoverageProjectOutputVoIPCallReceiveInvite(t *testing.T) {
 		CalleeCorpID: "ding-callee-corp",
 		CallType:     "conference",
 		RoomID:       "room-1",
-		RoomCode:     "sensitive-code",
 		CreateTime:   1780630479000,
 		EventTime:    1780630479123,
 	}
@@ -659,8 +658,8 @@ func TestCrossPlatformCoverageProjectOutputVoIPCallReceiveInvite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal() error = %v", err)
 	}
-	if !strings.Contains(string(encoded), `"biz_id":"VOIP_room-1_3559506650"`) || strings.Contains(string(encoded), "filterSubId") {
-		t.Fatalf("flattened VoIP output = %s, want biz_id without internal filterSubId", encoded)
+	if !strings.Contains(string(encoded), `"biz_id":"VOIP_room-1_3559506650"`) || strings.Contains(string(encoded), "filterSubId") || strings.Contains(string(encoded), "sensitive-code") || strings.Contains(string(encoded), "room_code") {
+		t.Fatalf("flattened VoIP output = %s, want biz_id without internal or sensitive fields", encoded)
 	}
 	if !strings.Contains(string(encoded), `"caller_uid":"0147333457361236773"`) || !strings.Contains(string(encoded), `"callee_uid":"digital-3559506650"`) {
 		t.Fatalf("flattened VoIP output = %s, want string caller_uid/callee_uid", encoded)
@@ -692,7 +691,7 @@ func TestCrossPlatformCoverageProjectOutputRejectsInvalidVoIPPayload(t *testing.
 	}{
 		{name: "missing", want: "payload is missing"},
 		{name: "missing body", payload: `,"payload":{"bizid":"biz-1"}`, want: "payload body is missing"},
-		{name: "missing bizid", payload: `,"payload":{"body":{"callId":"call-1"}}`, want: "bizid is required"},
+		{name: "missing bizid", payload: `,"payload":{"body":{"callId":"call-1","roomCode":"sensitive-code"}}`, want: "bizid is required"},
 		{name: "invalid caller uid type", payload: `,"payload":{"bizid":"biz-1","body":{"callerUid":{}}}`, want: "VoIP user identifier must be a string or legacy integer"},
 	}
 	for _, tt := range tests {
@@ -706,10 +705,48 @@ func TestCrossPlatformCoverageProjectOutputRejectsInvalidVoIPPayload(t *testing.
 			if err == nil || !strings.Contains(err.Error(), tt.want) || !strings.Contains(err.Error(), "decode personal VoIP payload") {
 				t.Fatalf("ProjectOutput() error = %v, want VoIP context and %q", err, tt.want)
 			}
-			if got, ok := projected.(transport.Event); !ok || !reflect.DeepEqual(got, ev) {
-				t.Fatalf("ProjectOutput() fallback = %#v, want %#v", projected, ev)
+			wantFallback := baseEventOutput{Type: EventVoIPCallReceiveInvite, EventID: "outer-event"}
+			if got, ok := projected.(baseEventOutput); !ok || !reflect.DeepEqual(got, wantFallback) {
+				t.Fatalf("ProjectOutput() fallback = %#v, want %#v", projected, wantFallback)
+			}
+			encoded, marshalErr := json.Marshal(projected)
+			if marshalErr != nil {
+				t.Fatalf("Marshal(fallback) error = %v", marshalErr)
+			}
+			if strings.Contains(string(encoded), "sensitive-code") || strings.Contains(string(encoded), "roomCode") {
+				t.Fatalf("ProjectOutput() fallback leaked room code: %s", encoded)
 			}
 		})
+	}
+}
+
+func TestCrossPlatformCoverageProjectOutputVoIPMalformedEnvelopeUsesSafeFallback(t *testing.T) {
+	ev := transport.Event{
+		EventID:       "outer-event",
+		EventBornTime: 1780630479124,
+		EventType:     EventVoIPCallReceiveInvite,
+		SubscribeID:   "outer-sub",
+		Data:          `not-json-sensitive-code`,
+	}
+	projected, err := ProjectOutput(ev)
+	if err == nil || !strings.Contains(err.Error(), "decode personal event data") {
+		t.Fatalf("ProjectOutput() error = %v, want data decode context", err)
+	}
+	want := baseEventOutput{
+		Type:        EventVoIPCallReceiveInvite,
+		EventID:     "outer-event",
+		Timestamp:   1780630479124,
+		SubscribeID: "outer-sub",
+	}
+	if got, ok := projected.(baseEventOutput); !ok || !reflect.DeepEqual(got, want) {
+		t.Fatalf("ProjectOutput() fallback = %#v, want %#v", projected, want)
+	}
+	encoded, marshalErr := json.Marshal(projected)
+	if marshalErr != nil {
+		t.Fatalf("Marshal(fallback) error = %v", marshalErr)
+	}
+	if strings.Contains(string(encoded), "sensitive-code") {
+		t.Fatalf("ProjectOutput() fallback leaked malformed data: %s", encoded)
 	}
 }
 

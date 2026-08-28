@@ -114,7 +114,7 @@ func TestCrossPlatformCoverageVoIPEventCatalogDefinitionAndSchema(t *testing.T) 
 	wantProperties := []string{
 		"type", "event_id", "timestamp", "subscribe_id", "biz_id", "corp_id", "org_id", "target_uid",
 		"call_id", "caller_uid", "caller_corp_id", "callee_uid", "callee_corp_id", "call_type",
-		"room_id", "room_code", "create_time", "event_time",
+		"room_id", "create_time", "event_time",
 	}
 	if len(properties) != len(wantProperties) {
 		t.Fatalf("schema.properties = %#v, want exactly %d fields", properties, len(wantProperties))
@@ -124,9 +124,8 @@ func TestCrossPlatformCoverageVoIPEventCatalogDefinitionAndSchema(t *testing.T) 
 			t.Fatalf("schema.properties.%s = %#v, want object", name, properties[name])
 		}
 	}
-	roomCode := properties["room_code"].(map[string]any)
-	if !strings.Contains(roomCode["description"].(string), "敏感") {
-		t.Fatalf("room_code description = %#v, want sensitive handling guidance", roomCode)
+	if _, ok := properties["room_code"]; ok {
+		t.Fatalf("schema.properties unexpectedly exposes sensitive room_code: %#v", properties["room_code"])
 	}
 }
 

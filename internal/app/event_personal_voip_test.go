@@ -63,10 +63,13 @@ func TestCrossPlatformCoveragePersonalVoIPEventListSchemaAndValidation(t *testin
 	if !ok {
 		t.Fatalf("VoIP schema properties = %#v", schemaBody["properties"])
 	}
-	for _, name := range []string{"biz_id", "call_id", "caller_uid", "callee_uid", "room_id", "room_code", "event_time"} {
+	for _, name := range []string{"biz_id", "call_id", "caller_uid", "callee_uid", "room_id", "event_time"} {
 		if _, ok := properties[name].(map[string]any); !ok {
 			t.Fatalf("VoIP schema property %s = %#v", name, properties[name])
 		}
+	}
+	if _, ok := properties["room_code"]; ok {
+		t.Fatalf("VoIP schema unexpectedly exposes sensitive room_code: %#v", properties["room_code"])
 	}
 	for _, name := range []string{"caller_uid", "callee_uid"} {
 		property := properties[name].(map[string]any)
