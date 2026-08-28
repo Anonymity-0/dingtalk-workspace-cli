@@ -2298,3 +2298,179 @@ func TestCrossPlatformCoverageDocDelegationAuthContinuationExemptionKeepsIndepen
 		}
 	}
 }
+
+// TestCrossPlatformCoverageDocDelegationAuthIndependentContinuationToolBlocked
+// guards the P2-3 security fix: the flow-continuation tool NAMES
+// (confirm_import / query_import_task / commit_upload / commit_uploaded_file)
+// can also be issued by INDEPENDENT commands with no preceding node-bearing
+// check (e.g. `doc import get` / `sheet import get` fire query_import_task with
+// only a taskId; a manual `drive commit` fires commit_upload). Without a prior
+// sessionAuthorized first step, these node-less calls must fall back to
+// DELEGATION_AUTH_NOT_SUPPORTED rather than be blanket-exempted — otherwise the
+// delegation check is entirely bypassed and the tool runs as the current login
+// identity (delegation bypass).
+func TestCrossPlatformCoverageDocDelegationAuthIndependentContinuationToolBlocked(t *testing.T) {
+	ctx := context.Background()
+	cases := []struct {
+		name   string
+		server string
+		tool   string
+		args   map[string]any
+	}{
+		{"independent import get (query_import_task, taskId only)", "doc", "query_import_task", map[string]any{"taskId": "t1"}},
+		{"independent sheet import get (query_import_task, taskId only)", "doc", "query_import_task", map[string]any{"taskId": "t2"}},
+		{"manual confirm_import (sessionId only)", "doc", "confirm_import", map[string]any{"sessionId": "s1"}},
+		{"manual drive commit (commit_upload, uploadId only)", "drive", "commit_upload", map[string]any{"uploadId": "u1", "fileName": "f.txt", "fileSize": int64(5)}},
+		{"manual commit_uploaded_file (uploadKey only)", "doc", "commit_uploaded_file", map[string]any{"uploadKey": "k1", "name": "f.txt"}},
+	}
+	for _, tc := range cases {
+		inner := newDocDelegationTestCaller()
+		d := newDocDelegationAuthDecorator(inner)
+		// No preceding node-bearing check → sessionAuthorized stays false.
+		_, err := d.CallTool(ctx, tc.server, tc.tool, tc.args)
+		if err == nil {
+			t.Fatalf("%s: error = nil, want DELEGATION_AUTH_NOT_SUPPORTED (must not bypass)", tc.name)
+		}
+		var cliErr *CLIError
+		if !errors.As(err, &cliErr) || cliErr.Code != codeDelegationNotSupported {
+			t.Fatalf("%s: error = %v, want CLIError code %q", tc.name, err, codeDelegationNotSupported)
+		}
+		if len(inner.calls) != 0 {
+			t.Fatalf("%s: inner calls = %d, want 0 (blocked before any remote call)", tc.name, len(inner.calls))
+		}
+	}
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthSessionAuthorizedIsPerDecorator
+// verifies sessionAuthorized is scoped to a single decorator instance: a
+// node-bearing allowed check on one decorator must NOT authorize node-less
+// continuations on a DIFFERENT decorator (no cross-session leakage).
+func TestCrossPlatformCoverageDocDelegationAuthSessionAuthorizedIsPerDecorator(t *testing.T) {
+	ctx := context.Background()
+
+	// Decorator A performs a node-bearing allowed check → sessionAuthorized.
+	innerA := newDocDelegationTestCaller()
+	dA := newDocDelegationAuthDecorator(innerA)
+	if _, err := dA.CallTool(ctx, "doc", "create_import_session", map[string]any{
+		"targetFolderId": "folder-1", "fileName": "f", "suffix": "md", "fileSize": int64(3),
+	}); err != nil {
+		t.Fatalf("decorator A create_import_session error = %v", err)
+	}
+
+	// Decorator B (fresh session) sees a node-less continuation. Must be blocked.
+	innerB := newDocDelegationTestCaller()
+	dB := newDocDelegationAuthDecorator(innerB)
+	_, err := dB.CallTool(ctx, "doc", "query_import_task", map[string]any{"taskId": "t1"})
+	if err == nil {
+		t.Fatal("decorator B query_import_task error = nil, want NOT_SUPPORTED (no cross-session leakage)")
+	}
+	var cliErr *CLIError
+	if !errors.As(err, &cliErr) || cliErr.Code != codeDelegationNotSupported {
+		t.Fatalf("decorator B error = %v, want CLIError code %q", err, codeDelegationNotSupported)
+	}
+	if len(innerB.calls) != 0 {
+		t.Fatalf("decorator B inner calls = %d, want 0", len(innerB.calls))
+	}
+}
+
+// TestCrossPlatformCoverageImportUploadFallbackDryRunDelegationParity guards the
+// P2-1 fix: when the input format falls outside the import whitelist, doc import
+// falls back to the doc-space file-upload链路 whose first real call is
+// doc.get_file_upload_info. The dry-run branch of runImportUploadFallback must
+// run markdownDryRunDelegationPrecheck on that first call BEFORE rendering any
+// warning/preview, so a --principal-user-id run that would be rejected at the
+// real get_file_upload_info is intercepted rather than falsely previewed as
+// executable.
+func TestCrossPlatformCoverageImportUploadFallbackDryRunDelegationParity(t *testing.T) {
+	t.Run("allowed principal previews upload fallback after delegation check", func(t *testing.T) {
+		inner := &optionsImportDryRunCaller{checkRes: textToolResult(`{"allowed":true}`)}
+		d := newDocDelegationAuthDecorator(inner)
+		out, _ := installHelpersCoreDeps(t, d)
+
+		// pdf is outside the import whitelist → uploadFallback path.
+		cmd := importDryRunCommand(t, writeImportFixture(t, "pdf"), "ws-1", "u-principal")
+		if err := runImportCommand(cmd, nil, docImportFlowConfig()); err != nil {
+			t.Fatalf("runImportCommand() error = %v", err)
+		}
+		check := inner.calls[0]
+		if check.tool != checkCapTool || check.args["mcpToolKey"] != "doc.get_file_upload_info" {
+			t.Fatalf("check call = %#v, want doc.get_file_upload_info gate", check.args)
+		}
+		if check.args["nodeId"] != "ws-1" {
+			t.Fatalf("check nodeId = %v, want ws-1 (workspaceId)", check.args["nodeId"])
+		}
+		opts, ok := check.args["options"].(map[string]any)
+		if !ok {
+			t.Fatalf("check args = %#v, want uploadActionParam options", check.args)
+		}
+		if _, ok := opts["uploadActionParam"].(map[string]any); !ok {
+			t.Fatalf("options = %#v, want uploadActionParam", opts)
+		}
+		if !strings.Contains(out.String(), `"dry_run": true`) || !strings.Contains(out.String(), `"fallback": "upload"`) {
+			t.Fatalf("preview = %q, want upload-fallback dry-run preview after allowed check", out.String())
+		}
+	})
+
+	t.Run("denied principal blocks upload fallback preview", func(t *testing.T) {
+		inner := &optionsImportDryRunCaller{checkRes: textToolResult(`{"allowed":false,"denialMessage":"未授权"}`)}
+		d := newDocDelegationAuthDecorator(inner)
+		out, _ := installHelpersCoreDeps(t, d)
+
+		cmd := importDryRunCommand(t, writeImportFixture(t, "pdf"), "ws-1", "u-principal")
+		err := runImportCommand(cmd, nil, docImportFlowConfig())
+		if err == nil || !strings.HasPrefix(err.Error(), "[DELEGATION_AUTH_DENIED]") {
+			t.Fatalf("runImportCommand() error = %v, want DELEGATION_AUTH_DENIED", err)
+		}
+		if strings.Contains(out.String(), "dry_run") || strings.Contains(out.String(), "fallback") {
+			t.Fatalf("preview = %q, want no preview when upload fallback denied", out.String())
+		}
+	})
+
+	t.Run("no principal keeps upload fallback preview without any check", func(t *testing.T) {
+		inner := &optionsImportDryRunCaller{checkRes: textToolResult(`{"allowed":true}`)}
+		d := newDocDelegationAuthDecorator(inner)
+		out, _ := installHelpersCoreDeps(t, d)
+
+		cmd := importDryRunCommand(t, writeImportFixture(t, "pdf"), "ws-1", "")
+		if err := runImportCommand(cmd, nil, docImportFlowConfig()); err != nil {
+			t.Fatalf("runImportCommand() error = %v", err)
+		}
+		for _, c := range inner.calls {
+			if c.tool == checkCapTool {
+				t.Fatalf("unexpected check_capability call without principal: %#v", c)
+			}
+		}
+		if !strings.Contains(out.String(), `"dry_run": true`) || !strings.Contains(out.String(), `"fallback": "upload"`) {
+			t.Fatalf("preview = %q, want upload-fallback dry-run preview", out.String())
+		}
+	})
+}
+
+// TestCrossPlatformCoverageDocDelegationAuthDefaultTargetListSpacesBlocked
+// documents the P2-2 finding: resolving the default import target on the REAL
+// execution path calls drive.list_spaces with only {spaceType}, i.e. no node
+// identifier. Under delegation (--principal-user-id) that node-less call is
+// rejected as DELEGATION_AUTH_NOT_SUPPORTED by the same decorator, BEFORE the
+// import ever starts. Hence a delegated import without an explicit
+// --folder/--workspace is blocked at list_spaces on the real path exactly as
+// the dry-run precheck blocks it at create_import_session — the dry-run
+// rejection is faithful parity, not an over-strict dry-run limitation. Letting
+// dry-run "resolve then allow" would require exempting node-less list_spaces,
+// which would reopen the very delegation bypass the continuation-exemption
+// hardening closes; therefore P2-2 is intentionally NOT changed.
+func TestCrossPlatformCoverageDocDelegationAuthDefaultTargetListSpacesBlocked(t *testing.T) {
+	inner := newDocDelegationTestCaller()
+	d := newDocDelegationAuthDecorator(inner)
+	// Mirror resolveDefaultDocImportTarget's real call: node-less list_spaces.
+	_, err := d.CallTool(context.Background(), "drive", "list_spaces", map[string]any{"spaceType": "orgSpace"})
+	if err == nil {
+		t.Fatal("list_spaces error = nil, want DELEGATION_AUTH_NOT_SUPPORTED (default-target resolution is node-less under delegation)")
+	}
+	var cliErr *CLIError
+	if !errors.As(err, &cliErr) || cliErr.Code != codeDelegationNotSupported {
+		t.Fatalf("list_spaces error = %v, want CLIError code %q", err, codeDelegationNotSupported)
+	}
+	if len(inner.calls) != 0 {
+		t.Fatalf("inner calls = %d, want 0 (blocked before any remote call)", len(inner.calls))
+	}
+}

@@ -521,9 +521,6 @@ func runImportUploadFallback(cmd *cobra.Command, cfg importFlowConfig, file prep
 	if label == "" {
 		label = "无扩展名"
 	}
-	deps.Out.PrintWarning(fmt.Sprintf(
-		"%s 文件不支持转换为在线文档（支持: %s），已自动改走文件上传链路，以原文件形式存入解析出的文档目标位置；如需在线文档，请先将内容转换为 md 后重新执行 doc import；上传到钉盘请用 dws drive upload",
-		label, cfg.supportedFormatsText))
 
 	// prepareImportFile 的 name 去掉了扩展名；上传保留原始文件名形态
 	uploadName := file.name
@@ -531,6 +528,23 @@ func runImportUploadFallback(cmd *cobra.Command, cfg importFlowConfig, file prep
 		uploadName += "." + file.extension
 	}
 	jsonMode := deps.Caller.Format() == "json"
+
+	// 回退上传真实执行的首个调用是 doc.get_file_upload_info；dry-run 在渲染任何
+	// warning/preview 前与之一致地先做委托预检，避免带 --principal-user-id 时
+	// dry-run 宣称可执行、而真实执行在首个 get_file_upload_info 即被拒的偏差。被拒
+	// 即 return（不输出预览）。真实执行无需在此预检：get_file_upload_info 调用本身
+	// 会被委托装饰器把关；未设 --principal-user-id 或非 dry-run caller 时该预检为
+	// no-op。预检参数复用 docFileUploadInfoArgs，与真实首个调用参数一致。
+	if deps.Caller.DryRun() {
+		precheckArgs := docFileUploadInfoArgs(uploadName, file.size, file.folder, file.workspace, "")
+		if err := markdownDryRunDelegationPrecheck(cmd, cfg.importServerID(), "get_file_upload_info", precheckArgs); err != nil {
+			return err
+		}
+	}
+
+	deps.Out.PrintWarning(fmt.Sprintf(
+		"%s 文件不支持转换为在线文档（支持: %s），已自动改走文件上传链路，以原文件形式存入解析出的文档目标位置；如需在线文档，请先将内容转换为 md 后重新执行 doc import；上传到钉盘请用 dws drive upload",
+		label, cfg.supportedFormatsText))
 
 	if deps.Caller.DryRun() {
 		if jsonMode {
@@ -676,9 +690,14 @@ func runImportCommand(cmd *cobra.Command, args []string, cfg importFlowConfig) e
 		}
 		// 二期：dry-run 也与执行路径一致地触发 create_import_session 委托预检，
 		// 使 --principal-user-id 场景下会被拒绝的导入在预览渲染前即被拦截。
-		// 保守起见 dry-run 不做远程默认目标解析（与 markdown parity 及“普通
-		// dry-run 无远程读”一致）：无显式目标时 sessionArgs 不含节点标识，
-		// 委托装饰器返回 NOT_SUPPORTED（已知 parity 限制）。
+		// 无显式 --folder/--workspace 时 sessionArgs 不含节点标识，委托装饰器
+		// 返回 NOT_SUPPORTED——这与真实执行在委托下的结果一致（faithful parity）
+		// 而非仅 dry-run 的收紧：真实执行解析默认目标走 resolveDefaultDocImportTarget
+		// →drive.list_spaces，该调用同样无节点标识，在委托装饰器处先于 import
+		// 被判 NOT_SUPPORTED。因此 dry-run 不做远程默认目标解析：一则 dry-run 下
+		// list_spaces 经普通 CallTool 只回 echo 无法解析，二则若为放行而豁免无节点
+		// 的 list_spaces，将重新打开独立无节点调用的委托旁路（与续调有条件豁免的
+		// 安全约束冲突）。委托场景需显式提供 --folder/--workspace。
 		if err := markdownDryRunDelegationPrecheck(cmd, cfg.importServerID(), "create_import_session", importSessionArgs(file)); err != nil {
 			return err
 		}

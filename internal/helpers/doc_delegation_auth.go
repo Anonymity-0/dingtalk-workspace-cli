@@ -76,10 +76,14 @@ var docBusinessServers = map[string]bool{
 // 所属操作已在流程首个携带节点的调用处完成 check_capability 委托鉴权——import
 // 的 create_import_session 带 targetFolderId/workspaceId，上传的 get_upload_info
 // /get_file_upload_info 带 parentId/folderId。因此当这些工具在 nodeId 为空时命中
-// 委托装饰器，直接放行（跳过 check），避免把「已授权操作的流程续调」误判为
-// DELEGATION_AUTH_NOT_SUPPORTED。该错误码的一期语义仅用于拦截搜索/列表/创建等
-// 独立无节点命令，续调不属此列。dry-run 只触发流程首个调用，故此缺陷仅在真实
-// 执行（非 dry-run）时暴露。
+// 委托装饰器，【有条件】放行——仅当本 session 已有一次「带节点的首步检查通过」
+// （sessionAuthorized，见 performDelegationAuth）时才跳过 check，避免把「已授权
+// 操作的流程续调」误判为 DELEGATION_AUTH_NOT_SUPPORTED。反之，这些工具名也可
+// 被独立命令发起（doc import get / sheet import get 仅带 taskId → query_import_task；
+// 手动 drive commit → commit_upload），此时无前置授权，必须落回 NOT_SUPPORTED，
+// 杜绝无条件放行造成的委托旁路。该错误码的一期语义仅用于拦截搜索/列表/创建等
+// 独立无节点命令，无前置授权的续调工具同样不得放行。dry-run 只触发流程首个
+// 调用，故续调缺陷仅在真实执行（非 dry-run）时暴露。
 //   - confirm_import       : import 确认导入（doc/sheet import 第 3 步，仅带 sessionId）
 //   - query_import_task     : import 轮询/查询任务状态（仅带 taskId）
 //   - commit_upload         : drive 上传入库（get_upload_info 之后；节点缺失时的续调）
@@ -133,6 +137,12 @@ type docDelegationAuthCaller struct {
 	inner       edition.ToolCaller
 	principalID string
 	checked     map[string]bool
+	// sessionAuthorized 记录本进程/本 session 内是否已有一次「带节点的首步
+	// 检查通过（allowed）」。它是无节点「流程续调」有条件豁免的前提：只有证明
+	// 同 session 首步已鉴权通过，续调（confirm_import/query_import_task/commit_*）
+	// 才放行；独立调用（无前置带节点检查）落回 NOT_SUPPORTED，杜绝委托旁路。
+	// 与 checked 共用同一把 mu 保护。
+	sessionAuthorized bool
 }
 
 // wrapDocDelegationAuthCaller keeps the optional edition.ReadToolCaller
@@ -193,14 +203,21 @@ func (d *docDelegationAuthCaller) CallTool(ctx context.Context, serverID, toolNa
 func (d *docDelegationAuthCaller) performDelegationAuth(ctx context.Context, toolKey string, args map[string]any) error {
 	nodeID := extractNodeId(args)
 	if nodeID == "" {
-		// 已授权操作的流程续调（见 delegationFlowContinuationTools 注释）：其操作
-		// 已在流程首个携带节点的调用处鉴权，续调无节点标识时放行而非误拒。
+		// 流程续调有条件豁免（见 delegationFlowContinuationTools 注释）：续调是
+		// 「已授权操作的延续」，必须证明同 session 首步已带节点鉴权通过
+		// （sessionAuthorized）才放行；否则（独立命令无前置授权）落回 NOT_SUPPORTED，
+		// 杜绝独立 query/commit 旁路委托校验。
 		toolName := toolKey
 		if parts := strings.SplitN(toolKey, ".", 2); len(parts) == 2 {
 			toolName = parts[1]
 		}
 		if delegationFlowContinuationTools[toolName] {
-			return nil
+			d.mu.Lock()
+			authorized := d.sessionAuthorized
+			d.mu.Unlock()
+			if authorized {
+				return nil
+			}
 		}
 		msg := fmt.Sprintf("当前命令不支持委托鉴权：缺少节点标识参数（--principal-user-id %s）", d.principalID)
 		return &CLIError{
@@ -250,7 +267,15 @@ func (d *docDelegationAuthCaller) performDelegationAuth(ctx context.Context, too
 		)
 		return &CLIError{Code: codeDelegationCheckFailed, Message: msg, Cause: check}
 	}
-	return parseCheckResult(d.principalID, result)
+	if err := parseCheckResult(d.principalID, result); err != nil {
+		return err
+	}
+	// 本次为带节点（nodeID!=""）的首步检查且已通过：标记 session 已鉴权，
+	// 供后续无节点「流程续调」有条件放行（见 delegationFlowContinuationTools）。
+	d.mu.Lock()
+	d.sessionAuthorized = true
+	d.mu.Unlock()
+	return nil
 }
 
 // checkCapabilityResponse mirrors the check_capability response payload.
