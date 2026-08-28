@@ -1361,6 +1361,36 @@ func requirePersonalEmotionGIFTransparentEntry(t *testing.T, frame *image.Palett
 	t.Fatalf("frame palette = %v, want transparent entry", frame.Palette)
 }
 
+func TestPersonalEmotionGIFSnapshotPaletteBoundaries(t *testing.T) {
+	transparent := image.NewRGBA(image.Rect(0, 0, 1, 1))
+	colors, transparentIndex := personalEmotionGIFSnapshotPalette(transparent)
+	if len(colors) != 1 || transparentIndex != 0 {
+		t.Fatalf("transparent palette len=%d transparentIndex=%d", len(colors), transparentIndex)
+	}
+
+	overflowOpaque := image.NewRGBA(image.Rect(0, 0, 17, 16))
+	for i := 0; i < 17*16; i++ {
+		overflowOpaque.SetRGBA(i%17, i/17, color.RGBA{R: uint8(i), G: uint8(i >> 8), B: uint8(i >> 4), A: 255})
+	}
+	colors, transparentIndex = personalEmotionGIFSnapshotPalette(overflowOpaque)
+	if len(colors) != 256 || transparentIndex != -1 {
+		t.Fatalf("opaque overflow palette len=%d transparentIndex=%d", len(colors), transparentIndex)
+	}
+
+	overflowTransparent := image.NewRGBA(image.Rect(0, 0, 17, 16))
+	for i := 0; i < 17*16; i++ {
+		alpha := uint8(255)
+		if i == 0 {
+			alpha = 0
+		}
+		overflowTransparent.SetRGBA(i%17, i/17, color.RGBA{R: uint8(i), G: uint8(i >> 8), B: uint8(i >> 4), A: alpha})
+	}
+	colors, transparentIndex = personalEmotionGIFSnapshotPalette(overflowTransparent)
+	if len(colors) != 256 || transparentIndex != 0 {
+		t.Fatalf("transparent overflow palette len=%d transparentIndex=%d", len(colors), transparentIndex)
+	}
+}
+
 func TestPersonalEmotionGIFCompressionPreservesPartialFrameOffsets(t *testing.T) {
 	// 非 (0,0) 局部帧必须先合成到逻辑画布再整体缩放，不能把帧矩形自身拉成整幅。
 	red := color.RGBA{R: 255, A: 255}
