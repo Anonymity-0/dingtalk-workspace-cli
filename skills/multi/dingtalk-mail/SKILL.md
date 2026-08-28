@@ -97,7 +97,7 @@ metadata:
 
 - 已被本页或 `09-mail.md` 精确覆盖的命令，直接执行；不要先探测 `contact`、`api`、`auth`、`profile`、Help 或 Schema。仅在命令真实报参数错误后，读取该命令的 leaf Help 一次。
 - 多条件 KQL 必须用显式 `AND`，例如收件箱附件邮件：`hasAttachments:true AND folderId:2`；不要把相邻条件当作隐式 AND。
-- 下载附件时，搜索后按相关性最多检查 3 个候选的 `attachment list`；下载命中附件并做一次本地存在性/大小检查后立即停止。3 个候选均无附件时如实说明，不改搜扩展名、不翻页穷举。
+- 用户只要首个或任一单附件时，初始搜索后按相关性最多检查 3 个候选的 `attachment list`，下载命中附件并做一次本地存在性/大小检查后停止；若均未命中，只能说明已检查范围并询问是否继续翻页，不能断言不存在。用户要求全部/批量附件时，遍历全部匹配页和邮件，再逐个下载每个附件。
 - “创建/删除邮箱联系人”属于邮箱个人通讯录，固定走 `dws mail contact create/list/batch-delete`，不要切到 `dingtalk-contact`。只有“按人名解析邮件收件地址”才走下方跨产品协作。
 - 用户要求用当前时间生成唯一标题且未指定显示格式时，使用紧凑格式 `date +%H%M%S`；只有用户明确要求 `HH:mm:ss` 等格式时才原样保留。
 - 批量删除邮件在用户确认后直接执行 `dws mail message batch-delete ... --yes --format json`；整会话移入已删除走 `dws mail thread batch-trash ... --yes --format json`。操作成功后只做一次针对原 ID 或唯一主题的回读，结果符合预期即停止。

@@ -8,7 +8,7 @@
 - **KQL 语法强制**：邮件搜索的查询条件**只能**通过 `--query` 参数以 KQL 语法传入（如 `subject:周报`），多条件必须写显式 `AND`（如 `hasAttachments:true AND folderId:2`）；**禁止臆造** `--subject`、`--sender`、`--from-address` 等不存在的 flag。详见 [mail.md](./mail.md) 中 KQL 查询字段说明。
 - **邮箱地址前置**：大部分邮件命令需要 `--email` 或 `--from` 参数，执行前**必须**先通过 `mail mailbox list` 获取当前用户邮箱，禁止猜测邮箱地址。
 - **查找他人邮箱**：需要获取某人邮箱地址时，**不要用 `mailbox list`**（只返回自己的），必须走三路并发查询流程（见 [mail.md](./mail.md) 中「查找他人邮箱地址」章节）。
-- **附件下载三步走**：先 `message search` 搜索邮件获取 messageId，再按相关性最多检查 3 个候选的 `attachment list`，最后逐个 `attachment download` 下载命中的附件；完成一次本地文件检查后停止。**不存在 `download_batch` / `download_all` 等批量下载命令，禁止编造，也不要用扩展名搜索或翻页穷举代替停止**。
+- **附件下载三步走**：先 `message search` 搜索邮件获取 messageId，再 `attachment list` 取附件 ID 和文件名，最后逐个 `attachment download`。用户只要首个/任一单附件时，初始最多检查 3 个相关候选；均未命中只能说明已检查范围并询问是否继续，不能断言不存在。用户要求全部/批量附件时，必须沿搜索游标遍历全部匹配页和邮件，再逐个下载每个附件。**不存在 `download_batch` / `download_all` 等批量下载命令，禁止编造**。
 - **危险操作确认**：`batch-delete` 执行前必须向用户确认，同意后加 `--yes`。
 
 ## 与其他场景消歧
@@ -34,13 +34,13 @@
 | `mail-draft-create` | `mail draft create --from <邮箱> --subject "<标题>"` → 取 `messageId`（可选 `--to`、`--content`、`--cc`） |
 | `mail-draft-update` | `mail draft update --from <邮箱> --id <draftId> --subject "<新标题>"`（可选 `--content`、`--to`、`--cc`） |
 | `mail-draft-send` | `mail draft send --from <邮箱> --id <draftId>` |
-| `mail-contact-create-delete` | `mail contact create ...` → 复用返回 `contactId` → `mail contact batch-delete --email <邮箱> --ids <id1,id2,...> --yes` → 一次 `mail contact list` 回读；不要切到通讯录/contact API |
+| `mail-contact-create-delete` | 1. `mail contact create ...` 并复用返回 `contactId`<br>2. 向用户展示精确待删 `contactId` 和数量，**停止并取得明确确认；确认前禁止调用删除命令**<br>3. 确认后仅用已展示且获确认的 ID 执行 `mail contact batch-delete --email <邮箱> --ids <confirmed-id1,confirmed-id2,...> --yes`<br>4. 一次 `mail contact list` 回读；不要切到通讯录/contact API |
 
 ## Full / 多步组合
 
 | Recipe | 行动指南（固定路线） |
 |--------|---------------------|
-| search-and-download-attachment | 1. `mail mailbox list` → 取邮箱<br>2. `mail message search --email <邮箱> --query "<KQL>" --limit 10` → 取 `messageId` 列表；多条件用显式 `AND`<br>3. 按相关性最多对 3 封执行 `mail attachment list --email <邮箱> --id <messageId>`，命中即取 `id` 和 `name`<br>4. 逐个执行 `mail attachment download --email <邮箱> --message-id <messageId> --attachment-id <attachmentId> --name <文件名>`，做一次本地存在性/大小检查后停止（**仅支持逐个下载，不存在批量下载命令**） |
+| search-and-download-attachment | 1. `mail mailbox list` → 取邮箱<br>2. `mail message search --email <邮箱> --query "<KQL>" --limit 10`；多条件用显式 `AND`<br>3. 首个/任一单附件：按相关性最多检查 3 个候选，命中后进入第 4 步；未命中则说明范围并询问是否继续翻页<br>4. 全部/批量附件：沿 `nextCursor` 遍历全部匹配页，对每封执行 `attachment list`<br>5. 对命中附件逐个执行 `mail attachment download --email <邮箱> --message-id <messageId> --attachment-id <attachmentId> --name <文件名>`；单附件做一次本地检查后停止，全部/批量请求完成全部逐项下载（**不存在批量下载命令**） |
 | search-reply-forward | 1. `mail mailbox list` → 取邮箱<br>2. `mail message search --email <邮箱> --query "<KQL>" --limit 10` → 取 `messageId`<br>3. 展示搜索结果供用户选择<br>4. 按用户指示执行 reply / reply-all / forward（参见 lite `mail-reply-forward`） |
 | batch-mail-cleanup | 1. `mail mailbox list` → 取邮箱<br>2. `mail message search --email <邮箱> --query "<KQL>" --limit 100` → 取多个 `messageId`<br>3. 展示列表供用户确认<br>4. `mail message batch-move --email <邮箱> --ids <id1,id2,...> --folder 6 ` 移到已删除；或 `batch-delete` 永久删除 |
 | send-to-person-by-name | 1. `mail mailbox list` → 取发件邮箱<br>2. 走「查找他人邮箱地址」三路并发查询获取收件人邮箱（见 [mail.md](./mail.md)）<br>3. `mail message send --from <发件邮箱> --to <收件邮箱> --subject "<标题>" --content "<内容>"` |
