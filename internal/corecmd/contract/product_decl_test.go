@@ -95,21 +95,36 @@ func TestCrossPlatformCoverageProductDeclRegisterPanicsOnIncompleteSelection(t *
 	RegisterProductDecl(ProductDecl{ID: "broken"})
 }
 
-func TestCrossPlatformCoverageProductDeclRejectsInvalidHelpDocumentation(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("expected panic for non-HTTPS Help documentation")
-		}
-	}()
-	RegisterProductDecl(ProductDecl{
-		ID: "invalid-help",
-		Selection: ProductSelectionDecl{
-			AgentSummary: "invalid Help fixture",
-			UseWhen:      []string{"test invalid Help"},
-			AvoidWhen:    []string{"production"},
-		},
-		HelpReferences: HelpReferences{
-			Documentation: []HelpDocumentation{{Label: "invalid", URL: "http://example.com"}},
+func TestCrossPlatformCoverageProductDeclNormalizesHelpReferenceEdges(t *testing.T) {
+	empty := normalizeHelpReferences("empty", HelpReferences{})
+	if empty.RelatedSkills != nil || empty.Documentation != nil {
+		t.Fatalf("empty HelpReferences = %#v, want nil slices", empty)
+	}
+
+	deduplicated := normalizeHelpReferences("sample", HelpReferences{
+		Documentation: []HelpDocumentation{
+			{Label: "Primary", URL: "https://example.com/guide"},
+			{Label: "Duplicate", URL: "https://example.com/guide"},
 		},
 	})
+	if len(deduplicated.Documentation) != 1 || deduplicated.Documentation[0].Label != "Primary" {
+		t.Fatalf("deduplicated Documentation = %#v", deduplicated.Documentation)
+	}
+
+	for _, tc := range []struct {
+		name string
+		doc  HelpDocumentation
+	}{
+		{name: "missing label", doc: HelpDocumentation{URL: "https://example.com/guide"}},
+		{name: "non HTTPS URL", doc: HelpDocumentation{Label: "invalid", URL: "http://example.com"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatalf("normalizeHelpReferences(%#v) did not panic", tc.doc)
+				}
+			}()
+			normalizeHelpReferences("invalid-help", HelpReferences{Documentation: []HelpDocumentation{tc.doc}})
+		})
+	}
 }
