@@ -723,15 +723,38 @@ func TestCrossPlatformCoverageDriveDownloadAndUploadRequireArtifactsAndReadback(
 	if err := os.WriteFile("input.bin", []byte("actual-drive-bytes"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	testseam.Swap(t, &uploadDriveFile, func(context.Context, helpers.DriveUploadRequest) (map[string]any, error) {
+	var uploadRequest helpers.DriveUploadRequest
+	testseam.Swap(t, &uploadDriveFile, func(_ context.Context, got helpers.DriveUploadRequest) (map[string]any, error) {
+		uploadRequest = got
 		return map[string]any{"success": true, "result": map[string]any{"fileId": "uploaded-1"}}, nil
 	})
 	uploadCaller := &driveCoverageCaller{responses: map[string][]string{
 		"get_file_info": {`{"success":true,"result":{"fileId":"uploaded-1","name":"input.bin","fileSize":18}}`},
 	}}
-	if err := runDriveCoverage(t, Upload, uploadCaller, "--file", "input.bin", "--yes"); err != nil {
+	if err := runDriveCoverage(t, Upload, uploadCaller, "--file", "input.bin", "--space-id", "drive-1", "--mime-type", "application/octet-stream", "--yes"); err != nil {
 		t.Fatal(err)
 	}
+	if uploadRequest.SpaceID != "drive-1" || uploadRequest.MIMEType != "application/octet-stream" {
+		t.Fatalf("drive upload request = %#v, want explicit space and MIME type", uploadRequest)
+	}
+
+	t.Run("drive dry run reports explicit mime type", func(t *testing.T) {
+		caller := &driveCoverageCaller{responses: map[string][]string{}}
+		var stdout strings.Builder
+		if err := runDriveCoverageTo(t, Upload, caller, &stdout, "--file", "input.bin", "--mime-type", "application/octet-stream", "--dry-run"); err != nil {
+			t.Fatal(err)
+		}
+		var preview map[string]any
+		if err := json.Unmarshal([]byte(stdout.String()), &preview); err != nil {
+			t.Fatalf("decode drive dry-run output %q: %v", stdout.String(), err)
+		}
+		if preview["mimeType"] != "application/octet-stream" {
+			t.Fatalf("drive dry-run output = %#v, want explicit MIME type", preview)
+		}
+		if len(caller.history) != 0 {
+			t.Fatalf("drive dry-run reached MCP: %v", caller.history)
+		}
+	})
 	if _, _, err := resolveDriveUploadInput("../escape.bin"); err == nil {
 		t.Fatal("upload path escape was accepted")
 	}
@@ -866,6 +889,28 @@ func TestCrossPlatformCoverageDriveUploadRoutesWorkspaceToDocSpace(t *testing.T)
 		}
 		if len(caller.history) != 0 {
 			t.Fatalf("workspace dry-run reached MCP: %v", caller.history)
+		}
+	})
+
+	t.Run("workspace rejects mime type before upload", func(t *testing.T) {
+		uploadCalled := false
+		testseam.Swap(t, &uploadDocSpaceFile, func(context.Context, helpers.DocSpaceUploadRequest) (map[string]any, error) {
+			uploadCalled = true
+			return map[string]any{"nodeId": "unexpected"}, nil
+		})
+		for _, args := range [][]string{
+			{"--file", "notes.txt", "--workspace", "wiki-1", "--mime-type", "text/plain", "--yes"},
+			{"--file", "notes.txt", "--workspace", "wiki-1", "--mime-type", "text/plain", "--dry-run"},
+		} {
+			uploadCalled = false
+			caller := &driveCoverageCaller{responses: map[string][]string{}}
+			err := runDriveCoverage(t, Upload, caller, args...)
+			if err == nil || !strings.Contains(err.Error(), "--workspace") || !strings.Contains(err.Error(), "--mime-type") {
+				t.Fatalf("workspace MIME conflict error = %v, want both flag names", err)
+			}
+			if uploadCalled || len(caller.history) != 0 {
+				t.Fatalf("workspace MIME conflict reached upload: helper=%v history=%v", uploadCalled, caller.history)
+			}
 		}
 	})
 

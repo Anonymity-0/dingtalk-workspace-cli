@@ -435,7 +435,7 @@ var Upload = shortcut.Shortcut{
 	Contract: driveContract(
 		"+upload", "从工作目录上传普通文件到钉盘或文档空间并读回验证",
 		"把工作目录内普通文件上传到钉盘，或用 --workspace 上传为知识库/文档空间中的独立文件节点，并验证远端节点 ID、名称和目标空间；服务端提供大小时同时校验大小。",
-		[]string{"在线文档导入转换使用 doc +import；作为在线文档正文附件使用 doc +media-insert；--space-id 与 --workspace 属于不同目标域，不可同时使用；覆盖已有文件必须显式 --node"},
+		[]string{"在线文档导入转换使用 doc +import；作为在线文档正文附件使用 doc +media-insert；--space-id 与 --workspace 属于不同目标域，不可同时使用；--mime-type 仅适用于钉盘上传，不能与 --workspace 同时使用；覆盖已有文件必须显式 --node"},
 		[]string{`dws drive +upload --file report.pdf`, `dws drive +upload --file notes.txt --workspace <workspaceId>`},
 		driveObjectResult("上传并读回验证后的远端文件"), nil,
 		contract.ParamDecl{Name: "workspace", Property: "workspaceId"},
@@ -445,15 +445,16 @@ var Upload = shortcut.Shortcut{
 	Flags: []shortcut.Flag{
 		{Name: "file", Type: shortcut.FlagString, Desc: "工作目录内的相对文件路径", Required: true},
 		{Name: "file-name", Type: shortcut.FlagString, Desc: "远端显示名称，默认使用本地文件名"},
-		{Name: "mime-type", Type: shortcut.FlagString, Desc: "MIME 类型"},
+		{Name: "mime-type", Type: shortcut.FlagString, Desc: "钉盘上传的 MIME 类型；不能与 --workspace 同时使用"},
 		{Name: "space-id", Type: shortcut.FlagString, Desc: "钉盘空间 ID"},
-		{Name: "workspace", Type: shortcut.FlagString, Desc: "知识库或文档空间 workspaceId；与 --space-id 互斥"},
+		{Name: "workspace", Type: shortcut.FlagString, Desc: "知识库或文档空间 workspaceId；与 --space-id、--mime-type 互斥"},
 		{Name: "folder", Type: shortcut.FlagString, Desc: "目标域内的父文件夹 ID"},
 		{Name: "node", Type: shortcut.FlagString, Desc: "覆盖目标文件 ID"},
 	},
 	Constraints: []shortcut.Constraint{
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"folder", "node"}},
 		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"space-id", "workspace"}},
+		{Kind: shortcut.ConstraintMutuallyExclusive, Flags: []string{"workspace", "mime-type"}},
 	},
 	Tips: []string{`dws drive +upload --file report.pdf`, `dws drive +upload --file notes.txt --workspace <workspaceId>`},
 	Execute: func(rt *shortcut.RuntimeContext) error {
@@ -479,6 +480,9 @@ var Upload = shortcut.Shortcut{
 				if value != "" {
 					preview[key] = value
 				}
+			}
+			if mimeType := rt.Str("mime-type"); mimeType != "" {
+				preview["mimeType"] = mimeType
 			}
 			return rt.Output(preview)
 		}
