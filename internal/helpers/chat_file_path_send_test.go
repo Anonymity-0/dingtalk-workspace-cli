@@ -1,15 +1,20 @@
 package helpers
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/output"
+	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/internal/testseam"
 	"github.com/DingTalk-Real-AI/dingtalk-workspace-cli/pkg/edition"
 )
 
@@ -22,6 +27,7 @@ type chatFilePathCall struct {
 type chatFilePathCaller struct {
 	sequence []string
 	calls    []chatFilePathCall
+	dryRun   bool
 }
 
 func (c *chatFilePathCaller) CallTool(_ context.Context, server, tool string, args map[string]any) (*edition.ToolResult, error) {
@@ -45,9 +51,117 @@ func (c *chatFilePathCaller) CallTool(_ context.Context, server, tool string, ar
 }
 
 func (*chatFilePathCaller) Format() string { return "json" }
-func (*chatFilePathCaller) DryRun() bool   { return false }
+func (c *chatFilePathCaller) DryRun() bool { return c.dryRun }
 func (*chatFilePathCaller) Fields() string { return "" }
 func (*chatFilePathCaller) JQ() string     { return "" }
+
+func executeChatFilePathCommand(t *testing.T, caller *chatFilePathCaller, args ...string) (string, error) {
+	t.Helper()
+	testseam.Protect(t, &deps)
+	InitDeps(caller)
+	var stdout bytes.Buffer
+	deps.Out.w = &stdout
+	deps.Out.errW = io.Discard
+	root := newChatCommand()
+	installExampleGlobalFlags(root)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	root.SetOut(&stdout)
+	root.SetErr(io.Discard)
+	root.SetArgs(args)
+	ctx, _ := output.WithResultStore(context.Background())
+	executed, err := root.ExecuteContextC(ctx)
+	if err != nil {
+		return stdout.String(), err
+	}
+	_, _, err = output.EmitStoredResult(executed)
+	return stdout.String(), err
+}
+
+func TestCrossPlatformCoverageChatFileUploadOnlyUsesCurrentUploadSequence(t *testing.T) {
+	t.Chdir(t.TempDir())
+	payload := []byte("pdf payload")
+	if err := os.WriteFile("report.pdf", payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	caller := &chatFilePathCaller{}
+	testseam.Swap(t, &httpPutFile, func(_ context.Context, resourceURL string, headers map[string]string, localPath string, fileSize int64) error {
+		caller.sequence = append(caller.sequence, "HTTP PUT")
+		if resourceURL != "https://upload.example/file" || headers["x-upload"] != "yes" {
+			t.Fatalf("upload credentials = %q, %#v", resourceURL, headers)
+		}
+		if filepath.Base(localPath) != "report.pdf" || fileSize != int64(len(payload)) {
+			t.Fatalf("upload file = %q (%d)", localPath, fileSize)
+		}
+		return nil
+	})
+
+	got, err := executeChatFilePathCommand(t, caller,
+		"file", "upload", "--conversation-id=cid", "--file=report.pdf", "--format=json")
+	if err != nil {
+		t.Fatalf("chat file upload: %v\n%s", err, got)
+	}
+	wantSequence := []string{"init_conversation_file_upload", "HTTP PUT", "commit_conversation_file_upload"}
+	if !reflect.DeepEqual(caller.sequence, wantSequence) {
+		t.Fatalf("call sequence = %#v, want %#v", caller.sequence, wantSequence)
+	}
+	for _, call := range caller.calls {
+		if call.tool == "send_personal_message" {
+			t.Fatalf("upload-only command sent a message: %#v", caller.calls)
+		}
+	}
+	if len(caller.calls) != 2 || caller.calls[0].args["openConversationId"] != "cid" || caller.calls[1].args["openConversationId"] != "cid" {
+		t.Fatalf("upload calls = %#v", caller.calls)
+	}
+
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(got), &envelope); err != nil {
+		t.Fatalf("decode output: %v\n%s", err, got)
+	}
+	data, _ := envelope["data"].(map[string]any)
+	if data["dentryId"] != float64(123) || data["spaceId"] != float64(456) ||
+		data["fileName"] != "report.pdf" || data["fileType"] != "pdf" || data["fileSize"] != float64(len(payload)) {
+		t.Fatalf("upload data = %#v", data)
+	}
+}
+
+func TestCrossPlatformCoverageChatFileUploadOnlyDryRunSkipsRemoteCalls(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.WriteFile("report.pdf", []byte("pdf payload"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	caller := &chatFilePathCaller{dryRun: true}
+	got, err := executeChatFilePathCommand(t, caller,
+		"file", "upload", "--open-dingtalk-id="+helperCurrentDOpenID, "--file=report.pdf", "--format=json")
+	if err != nil {
+		t.Fatalf("chat file upload dry-run: %v\n%s", err, got)
+	}
+	if len(caller.calls) != 0 || len(caller.sequence) != 0 {
+		t.Fatalf("dry-run made remote calls: %#v / %#v", caller.calls, caller.sequence)
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(got), &envelope); err != nil {
+		t.Fatalf("decode dry-run output: %v\n%s", err, got)
+	}
+	data, _ := envelope["data"].(map[string]any)
+	target, _ := data["target"].(map[string]any)
+	if envelope["dry_run"] != true || data["executed"] != false || target["openDingTalkId"] != helperCurrentDOpenID {
+		t.Fatalf("dry-run envelope = %#v", envelope)
+	}
+}
+
+func TestCrossPlatformCoverageChatFileUploadOnlyRejectsRetiredURLPath(t *testing.T) {
+	caller := &chatFilePathCaller{}
+	got, err := executeChatFilePathCommand(t, caller,
+		"file", "upload", "--conversation-id=cid", "--url=https://example.com/report.pdf", "--format=json")
+	if err == nil || !strings.Contains(err.Error(), "unknown flag: --url") {
+		t.Fatalf("url upload error = %v\n%s", err, got)
+	}
+	if len(caller.calls) != 0 {
+		t.Fatalf("retired URL path made remote calls: %#v", caller.calls)
+	}
+}
 
 func TestChatMessageSendFilePathUsesWukongUploadSequence(t *testing.T) {
 	previousDeps, previousPut, previousArgs := deps, httpPutFile, os.Args

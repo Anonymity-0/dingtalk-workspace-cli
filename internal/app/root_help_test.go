@@ -614,20 +614,23 @@ func TestRootKeepsContactWukongCompatibilityCommands(t *testing.T) {
 	}
 }
 
-func TestChatFileUploadDownlinedButMessageFileSendStays(t *testing.T) {
+func TestChatFileUploadRestoredForLocalFilesOnly(t *testing.T) {
 	root := NewRootCommand()
 	fileCmd := mustFindCommand(t, root, "chat", "file")
-	if !fileCmd.Hidden {
-		t.Fatal("chat file should be hidden after upload_conversation_file_by_url downline")
+	if fileCmd.Hidden {
+		t.Fatal("chat file should be visible")
 	}
 	upload := mustFindCommand(t, root, "chat", "file", "upload")
-	if !upload.Hidden {
-		t.Fatal("chat file upload should be hidden after downline")
+	if upload.Hidden {
+		t.Fatal("chat file upload should be visible")
 	}
-	for _, flag := range []string{"group", "url", "file", "file-name"} {
+	for _, flag := range []string{"conversation-id", "group", "user", "open-dingtalk-id", "file", "file-path", "file-name", "md5", "idempotency-key", "uuid"} {
 		if upload.Flags().Lookup(flag) == nil {
-			t.Fatalf("chat file upload missing compatibility flag --%s", flag)
+			t.Fatalf("chat file upload missing flag --%s", flag)
 		}
+	}
+	if upload.Flags().Lookup("url") != nil {
+		t.Fatal("chat file upload must not restore the retired --url transport")
 	}
 
 	send := mustFindCommand(t, root, "chat", "message", "send")
@@ -651,21 +654,6 @@ func TestChatFileUploadDownlinedButMessageFileSendStays(t *testing.T) {
 		t.Fatalf("chat message send --uuid alias_origin = %#v, want %s", got, runtimeannotate.FlagAliasOriginCorecmdV1)
 	}
 
-	got, err := executeRootCaptureStdout(t, []string{
-		"chat", "file", "upload",
-		"--group", "cid",
-		"--url", "https://example.com/report.pdf",
-		"--file-name", "report.pdf",
-	})
-	if err == nil {
-		t.Fatalf("chat file upload error = nil, want downline error\n%s", got)
-	}
-	got = got + "\n" + err.Error()
-	for _, want := range []string{"已下线", "upload_conversation_file_by_url", "chat message send --msg-type file --file"} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("chat file upload output missing %q:\n%s", want, got)
-		}
-	}
 }
 
 func TestCalendarEventListDryRunPreviewsOnly(t *testing.T) {
