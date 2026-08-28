@@ -98,6 +98,34 @@ func TestCrossPlatformCoverageRecordUpsertCreateAcceptsSelectReadBackProjectionE
 	}
 }
 
+func TestCrossPlatformCoverageRecordSelectTypeLoadFailuresE2E(t *testing.T) {
+	records := []map[string]any{{
+		"recordId": "r1",
+		"cells":    map[string]any{"status": "跟进中"},
+	}}
+	cases := []struct {
+		name      string
+		fieldStep upsertByKeyStep
+	}{
+		{name: "tool error", fieldStep: upsertByKeyStep{err: errors.New("get fields failed")}},
+		{name: "missing collection", fieldStep: upsertByKeyStep{text: `{}`}},
+		{name: "no usable field types", fieldStep: upsertByKeyStep{text: `{"fields":[{"fieldId":"","type":""}]}`}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			caller := &upsertByKeyCaller{steps: []upsertByKeyStep{
+				{text: `{"updatedCount":1}`},
+				{text: `{"records":[{"recordId":"r1","cells":{"status":{"id":"opt-1","name":"跟进中"}}}]}`},
+				tc.fieldStep,
+			}}
+			out, err := runRecordBatchCLI(t, caller, "+record-update", records)
+			if err == nil || out != "" || len(caller.calls) != 3 || caller.calls[2].tool != "get_fields" {
+				t.Fatalf("select field type failure = output:%q err:%v calls:%#v", out, err, caller.calls)
+			}
+		})
+	}
+}
+
 func TestCrossPlatformCoverageRecordDeleteDryRunAndDualFailureE2E(t *testing.T) {
 	caller := &upsertByKeyCaller{dryRun: true}
 	out, err := runRecordDeleteCLI(t, caller, []string{"r1"}, "--dry-run")
@@ -331,6 +359,19 @@ func TestCrossPlatformCoverageRecordBatchPureHelpers(t *testing.T) {
 	); err == nil {
 		t.Fatal("unmatched created cells must fail")
 	}
+	if err := matchCreatedCells(
+		[]map[string]any{
+			{"cells": map[string]any{"f": 1}},
+			{"cells": map[string]any{"f": 2}},
+		},
+		[]map[string]any{
+			{"recordId": "r1", "cells": map[string]any{"f": 1}},
+			{"recordId": "r2", "cells": map[string]any{"f": 2}},
+		},
+		nil,
+	); err != nil {
+		t.Fatalf("ordered created cells = %v", err)
+	}
 	ids := createdRecordIDs(map[string]any{"createdIds": []any{" r1 ", "r1", map[string]any{"record_id": "r2"}}})
 	if strings.Join(ids, ",") != "r1,r2" {
 		t.Fatalf("created IDs = %#v", ids)
@@ -353,6 +394,15 @@ func TestCrossPlatformCoverageRecordBatchPureHelpers(t *testing.T) {
 		"multipleSelect",
 	) {
 		t.Fatal("recordCellValueEqual matched different selection lists")
+	}
+	if recordCellValueEqual([]any{"one"}, []any{"one", "two"}, "multipleSelect") {
+		t.Fatal("recordCellValueEqual matched selection lists with different lengths")
+	}
+	if recordCellsMayNeedSelectionTypes(map[string]any{}, map[string]any{"f": "value"}) {
+		t.Fatal("recordCellsMayNeedSelectionTypes accepted a record without cells")
+	}
+	if !selectionProjectionShapes("value", map[string]any{"id": "option-id", "name": "value"}) {
+		t.Fatal("selectionProjectionShapes missed scalar read-back for an object write")
 	}
 }
 

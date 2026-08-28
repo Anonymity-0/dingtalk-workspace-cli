@@ -175,6 +175,15 @@ func TestCrossPlatformCoverageBaseCopyRequiresNewIDAndExactReadBackE2E(t *testin
 		}
 	})
 
+	t.Run("rejects target metadata for a different node", func(t *testing.T) {
+		caller := &upsertByKeyCaller{steps: []upsertByKeyStep{{text: `{"data":{"nodeId":"other-folder","type":"folder"}}`}}}
+		out, err := runAITableCompositeCLI(t, caller, "+base-copy", "--base-id", "source", "--target-folder-id", "folder", "--yes")
+		var typed *apperrors.Error
+		if err == nil || out != "" || len(caller.calls) != 1 || !errors.As(err, &typed) || typed.Reason != "target_not_supported" || typed.Retryable {
+			t.Fatalf("different target metadata = output:%q err:%#v calls:%#v", out, err, caller.calls)
+		}
+	})
+
 	t.Run("rejects URL target before transport", func(t *testing.T) {
 		caller := &upsertByKeyCaller{}
 		out, err := runAITableCompositeCLI(t, caller, "+base-copy", "--base-id", "source", "--target-folder-id", "https://example.test/folder", "--yes")
