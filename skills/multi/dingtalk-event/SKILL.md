@@ -1,6 +1,6 @@
 ---
 name: dingtalk-event
-description: 钉钉个人 IM、OA 审批与 VoIP 通话事件长连接监听。Use when 用户说监听消息/@我/某人/某群/全部消息、已读/撤回/reaction、群成员加入/群成员退出/群状态变化、审批任务创建/完成/转交、审批实例发起/抄送/终止/完成，或在收到 VoIP 通话邀请时触发处理。命令前缀：dws event。
+description: 钉钉个人 IM、OA 审批与 VoIP 通话邀请事件长连接监听。Use when 用户说监听消息/@我/某人/某群/全部消息、已读/撤回/reaction、群成员加入/群成员退出/群状态变化，或监听审批任务创建/完成/转交、审批实例发起/抄送/终止/完成。命令前缀：dws event。
 metadata:
   cli_version: ">=0.2.14"
   category: product
@@ -9,21 +9,19 @@ metadata:
       - dws
 ---
 
-# 钉钉个人 IM、OA 审批与 VoIP 通话事件
+# 钉钉个人实时事件
 
 > **前置：执行 `dws` 前必须完整读取 [`dingtalk-shared`](../dingtalk-shared/SKILL.md)。**Shared references 仅按需加载。
 
-本 Skill 只负责未来个人 IM/OA/VoIP 实时事件；发送和历史消息走 `dingtalk-chat`，审批查询与处理走 `dingtalk-misc` 的 OA，开放平台应用事件配置走其 DevApp。子 reference 按需加载。
+本 Skill 负责未来个人 IM、OA 与 VoIP 实时事件；发送和历史消息走 `dingtalk-chat`，审批查询与处理走 `dingtalk-misc` 的 OA，开放平台应用事件配置走其 DevApp。子 reference 按需加载。
 
-实时监听必须使用事件长连接，不写轮询脚本，不用历史消息或审批列表查询模拟事件。高频 IM 意图优先交给 `dws event +listen-im`；它在 CLI 内解析自然目标、选择 EventKey，并复用现有订阅与 bus 生命周期。OA 审批和 VoIP 通话邀请事件使用显式 `dws event consume`。
+实时监听必须使用事件长连接，不写轮询脚本，不用历史消息或审批列表查询模拟事件。高频 IM 意图优先交给 `dws event +listen-im`；它在 CLI 内解析自然目标、选择 EventKey，并复用现有订阅与 bus 生命周期。OA/VoIP 使用显式 `dws event consume`。
 
 <!-- dws-intent: event.listen.im -->消息、reaction、已读和撤回的默认监听入口是 `dws event +listen-im`；
 只有群生命周期、Filter DSL、原始 envelope 或底层订阅控制才使用
 `event consume` fallback。
 
 <!-- dws-intent: event.listen.oa -->OA 审批任务与审批实例的实时变化使用 `dws event consume`；查询或操作已有审批走 `dws oa`，不要用轮询模拟事件。
-
-当前用户收到 VoIP 通话邀请时使用 `dws event consume user_voip_call_receive_invite --flatten -f ndjson`；不要添加用户、群或消息过滤参数。
 
 ## Golden Route
 
@@ -37,8 +35,7 @@ metadata:
 | 群改名、成员进退、群解散 | 读取 [EventKey 索引](references/event-im-keys.md)，使用精确 `event consume` EventKey |
 | OA 审批任务或实例事件 | 读取 [OA 事件参考](references/event-oa.md)，使用精确 `event consume` EventKey |
 | 查看 OA 事件目录 | `dws event list --category oa` |
-| 收到语音通话邀请时触发处理 | 读取 [VoIP 事件参考](references/event-voip.md)，消费 `user_voip_call_receive_invite` |
-| 查看 VoIP 事件目录 | `dws event list --category voip` |
+| VoIP 通话邀请 | 读取 [VoIP 事件参考](references/event-voip.md)，使用精确 `event consume` EventKey |
 | 已知 EventKey 或需要底层订阅控制 | `dws event consume`；参数与约束以 leaf Schema 为准 |
 | 查看状态 / 停止 | `dws event status` / `dws event stop <subscribe_id> --dry-run`，确认后再 `--yes` |
 
@@ -50,8 +47,6 @@ metadata:
 - `--query` 只用于纯 `message` 监听；混入 reaction/read/recall 时不得使用。
 
 OA 事件不进入 `+listen-im`。七个公开 OA EventKey 都订阅当前 OAuth 用户相关的全部审批事件，使用 `ruleType=all`、`filterRule={}`；不接受 `--user`、`--open-dingtalk-id`、`--group`、`--query` 或 `--filter-json`。七项可放入同一个 consume，每项建立独立订阅并共享 bus。
-
-VoIP 事件也不进入 `+listen-im`。`user_voip_call_receive_invite` 订阅当前 OAuth 用户收到的通话邀请，使用 `ruleType=all`、`filterRule={}`，同样不接受目标或消息过滤参数。
 
 自然姓名和群名由 CLI 内部唯一解析：零命中或多候选返回结构化失败，在创建任何订阅前停止。`--dry-run` 走同一解析链。解析、监听、状态和停止必须使用同一个 `--profile`，不得跨组织搬运 ID。
 
@@ -73,8 +68,6 @@ user_im_group_disbanded
 
 七个 OA EventKey 及其输出字段见 [OA 事件参考](references/event-oa.md)。
 
-VoIP EventKey、通话字段和敏感入会码处理见 [VoIP 事件参考](references/event-voip.md)。
-
 用户类事件传 `--user` 或 `--open-dingtalk-id`，群类事件传 `--group`。群生命周期输出可含 `operator_open_dingtalk_id` 和 `members`；成员项使用 `open_dingtalk_id`。精确组合、兼容性和 Filter 规则见 reference。
 
 ## 公开层与内部统一边界
@@ -88,7 +81,7 @@ kind + events + target
 → 一次 event consume 生命周期
 ```
 
-订阅创建/复用、单 bus、多 consumer、ready marker、扁平 NDJSON、超时/取消、部分失败回滚和退出清理全部复用现有 Runtime。低频 EventKey、群生命周期、OA 审批、VoIP 通话邀请、Filter DSL、原始 envelope、复用 subscribe_id 等仍由 `event consume` 承担。
+订阅创建/复用、单 bus、多 consumer、ready marker、扁平 NDJSON、超时/取消、部分失败回滚和退出清理全部复用现有 Runtime。低频 EventKey、群生命周期、OA 审批、Filter DSL、原始 envelope、复用 subscribe_id 等仍由 `event consume` 承担。
 
 ## 运行与结果契约
 
@@ -101,7 +94,6 @@ kind + events + target
 - 事件只负责监听；需要回复时按 [输出与 Chat 交接](references/event-im-output.md) 把真实 `conversation_id` 或 `sender_open_dingtalk_id` 交给 `dws chat +messages-send`，不要从显示名猜 ID。
 - 扁平消息/动作字段按事件类型读取：已读为 `reader_open_dingtalk_id`，撤回为 `recaller_open_dingtalk_id`，回应为 `reaction_name`、`operation_type`。媒体优先通过聊天读取命令加 `--download-resources`；已知消息 ID 的底层降级入口是 `dws chat message download-media`。
 - OA 扁平事件提供审批实例、任务和状态字段；字段差异、原始回退条件及与 OA 命令的稳定 ID 交接以 [OA 事件参考](references/event-oa.md) 为准。
-- VoIP 扁平事件提供 `biz_id`、主被叫、会议房间和时间字段；`room_code` 是敏感入会码，只用于当前通话入会，不记录或转发。详见 [VoIP 事件参考](references/event-voip.md)。
 
 ## 安全与失败处理
 
@@ -135,4 +127,3 @@ kind + events + target
 | 扁平字段与事件到 Chat 交接 | [event-im-output.md](references/event-im-output.md) | 解析事件或自动回复 |
 | Filter、status/stop、重试与排障 | [event-im-operations.md](references/event-im-operations.md) | 订阅控制或失败恢复 |
 | OA 审批事件 | [event-oa.md](references/event-oa.md) | 选择七个 OA EventKey、组合消费或解析审批字段 |
-| VoIP 通话邀请事件 | [event-voip.md](references/event-voip.md) | 监听来电邀请、解析通话字段或处理敏感入会码 |
