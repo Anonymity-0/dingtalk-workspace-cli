@@ -192,20 +192,7 @@ func runDriveUploadToDocSpace(cmd *cobra.Command, filePath, fileName string, fil
 		// dry-run 委托预检：与真实执行 (uploadToDocSpace→get_file_upload_info)
 		// 一致，被拒/校验失败则直接返回错误、不出预览。precheckArgs 复刻真实
 		// step1Args 形态，使 uploadActionParam{fileName,fileSize} 随预检上送。
-		precheckArgs := map[string]any{
-			"fileSize": float64(fileSize),
-		}
-		if fileName != "" {
-			precheckArgs["name"] = fileName
-		}
-		if workspaceID != "" {
-			precheckArgs["workspaceId"] = workspaceID
-		}
-		if overwriteNodeID != "" {
-			precheckArgs["overwriteNodeId"] = overwriteNodeID
-		} else if folder != "" {
-			precheckArgs["folderId"] = folder
-		}
+		precheckArgs := docFileUploadInfoArgs(fileName, fileSize, folder, workspaceID, overwriteNodeID)
 		if err := markdownDryRunDelegationPrecheck(cmd, "doc", "get_file_upload_info", precheckArgs); err != nil {
 			return err
 		}
@@ -4412,20 +4399,10 @@ func uploadToDrive(ctx context.Context, filePath, fileName string, fileSize int6
 // explicit server routing. overwriteNodeID changes both MCP steps to overwrite
 // mode and deliberately excludes folderId.
 func uploadToDocSpace(ctx context.Context, filePath, fileName string, fileSize int64, workspaceID, folderID, overwriteNodeID string, convert bool) error {
-	step1Args := map[string]any{
-		"fileSize": float64(fileSize),
-	}
-	if fileName != "" {
-		step1Args["name"] = fileName
-	}
-	if workspaceID != "" {
-		step1Args["workspaceId"] = workspaceID
-	}
-	if overwriteNodeID != "" {
-		step1Args["overwriteNodeId"] = overwriteNodeID
-	} else if folderID != "" {
-		step1Args["folderId"] = folderID
-	}
+	// 与 dry-run 预检 (runDriveUpload) 共用 docFileUploadInfoArgs，保证首个
+	// get_file_upload_info 调用即携带 name+fileSize，使 uploadActionParam 在
+	// PUT 之前的首个 capability 检查生效（预检参数 == 真实首个调用参数）。
+	step1Args := docFileUploadInfoArgs(fileName, fileSize, folderID, workspaceID, overwriteNodeID)
 
 	text, err := callMCPToolReturnTextOnServer(ctx, "doc", "get_file_upload_info", step1Args)
 	if err != nil {
