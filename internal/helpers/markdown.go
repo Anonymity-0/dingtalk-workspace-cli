@@ -36,6 +36,12 @@ func newMarkdownCommand() *cobra.Command {
 	// products.markdown). Catalog assembly stamps provenance contract_final.
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "markdown",
+		HelpReferences: contract.HelpReferences{
+			RelatedSkills: []string{"dingtalk-misc"},
+			Documentation: []contract.HelpDocumentation{
+				contract.SkillDocumentation("Markdown 深度指南", "dingtalk-misc", "references/markdown.md"),
+			},
+		},
 		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "跨钉盘与文档空间创建、获取、对比、覆盖、局部修补和读取原生 Markdown 评论列表",
 			UseWhen: []string{
