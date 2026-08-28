@@ -295,6 +295,12 @@ def run(argv: Optional[List[str]] = None) -> int:
                     ],
                     args.dws,
                 )
+                actual_identifier = first_string(detail, ("taskId", "todoTaskId"))
+                if actual_identifier != identifier:
+                    raise ScriptError(
+                        f"readback taskId mismatch: expected {identifier!r}, "
+                        f"got {actual_identifier!r}"
+                    )
                 actual_title = first_string(detail, ("subject", "title"))
                 if actual_title != item["title"]:
                     raise ScriptError(

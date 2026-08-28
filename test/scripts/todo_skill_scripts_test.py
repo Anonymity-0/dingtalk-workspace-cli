@@ -350,6 +350,44 @@ class TodoBatchCreateTest(unittest.TestCase):
         self.assertEqual(plan_digest, payload["planDigest"])
         self.assertEqual("verified", payload["ledger"][0]["status"])
 
+    def test_same_title_with_different_readback_id_is_unverified(self):
+        with tempfile.TemporaryDirectory() as raw:
+            source = Path(raw) / "todos.json"
+            source.write_text(
+                '[{"title":"same title","executors":"user1"}]', encoding="utf-8"
+            )
+            items = BATCH.validate(json.loads(source.read_text(encoding="utf-8")))
+            plan_digest = BATCH.batch_plan_digest(items)
+            responses = [
+                {"result": {"taskId": "task-1"}},
+                {
+                    "data": {
+                        "todoDetailModel": {
+                            "taskId": "task-2",
+                            "subject": "same title",
+                        }
+                    }
+                },
+            ]
+            stdout = io.StringIO()
+            with mock.patch.object(BATCH, "run_dws_json", side_effect=responses):
+                with contextlib.redirect_stdout(stdout):
+                    code = BATCH.run(
+                        [
+                            str(source),
+                            "--yes",
+                            "--confirm-digest",
+                            plan_digest,
+                        ]
+                    )
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(2, code)
+        self.assertFalse(payload["complete"])
+        self.assertEqual(1, payload["unverifiedCount"])
+        self.assertEqual("task-1", payload["ledger"][0]["taskId"])
+        self.assertEqual("unverified", payload["ledger"][0]["status"])
+        self.assertIn("readback taskId mismatch", payload["ledger"][0]["error"])
+
     def test_unconfirmed_batch_stops_before_first_dws_call(self):
         with tempfile.TemporaryDirectory() as raw:
             source = Path(raw) / "todos.json"
