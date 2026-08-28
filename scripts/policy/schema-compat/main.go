@@ -90,12 +90,6 @@ type reviewedCompatibilityException struct {
 // confirmation drift into a compatible change. Each tool may have multiple
 // field transitions (e.g. confirmation + risk + effect tightened together).
 var reviewedCompatibilityExceptions = map[string][]reviewedCompatibilityException{
-	// PR #1193 P1: contact batch-delete previously reached the remote tool
-	// without an explicit user gate. The runtime now blocks before CallTool and
-	// only forwards the confirmed contact IDs after --yes.
-	"mail/mail.batch_delete_user_mail_contacts": {
-		{Field: "confirmation", Old: "not_required", New: "user_required"},
-	},
 	// PR #1085: batch permission/member remove is destructive at container
 	// scope — one call can revoke access for up to 30 USER / DEPT /
 	// CONVERSATION / TAG members, and departments, chats, and role groups
