@@ -2246,9 +2246,11 @@ func uploadConversationFileOnlyResult(cmd *cobra.Command, _ string, args map[str
 	if err != nil {
 		return nil, err
 	}
-	targetArgs, err := buildConversationTargetArgs(cmd)
-	if err != nil {
-		return nil, err
+	targetArgs := map[string]any{}
+	for _, property := range []string{"openConversationId", "userId", "openDingTalkId"} {
+		if value := stringFromJSONScalar(args[property]); value != "" {
+			targetArgs[property] = value
+		}
 	}
 	if deps.Caller.DryRun() {
 		return output.Success(map[string]any{
@@ -5357,7 +5359,7 @@ chat message edit 或 chat message recall 的 --message-id 和 --conversation-id
 				PrimaryCLIPath: "chat conversation-file upload",
 			},
 			Description: "上传本地文件到会话文件空间但不发送聊天消息",
-			DryRun:      &contract.DryRunSpec{PreviewKind: "plan", RemoteReads: false},
+			DryRun:      &contract.DryRunSpec{PreviewKind: contract.DryRunPreviewRequest, RemoteReads: false},
 			Interface: &contract.InterfaceSpec{
 				Mode:         "composite",
 				Availability: "available",
