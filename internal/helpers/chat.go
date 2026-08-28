@@ -157,6 +157,16 @@ func projectChatMessagesPayload(data map[string]any, search bool) map[string]any
 		payload[key] = value
 	}
 	payload["messages"] = messages
+	if result, ok := data["result"].(map[string]any); ok {
+		if _, exists := result["messages"]; exists {
+			projectedResult := make(map[string]any, len(result))
+			for key, value := range result {
+				projectedResult[key] = value
+			}
+			projectedResult["messages"] = messages
+			payload["result"] = projectedResult
+		}
+	}
 	return payload
 }
 

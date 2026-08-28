@@ -516,6 +516,7 @@ func TestRootKeepsContactWukongCompatibilityCommands(t *testing.T) {
 	mustFindCommand(t, root, "contact", "label", "get")
 	mustFindCommand(t, root, "contact", "label", "list")
 	mustFindCommand(t, root, "contact", "label", "list-members")
+	mustFindCommand(t, root, "contact", "label", "create")
 	mustFindCommand(t, root, "contact", "label", "find")
 	mustFindCommand(t, root, "contact", "label", "search")
 	mustFindCommand(t, root, "contact", "label", "info")
@@ -548,6 +549,16 @@ func TestRootKeepsContactWukongCompatibilityCommands(t *testing.T) {
 			name: "label members",
 			args: []string{"--dry-run", "contact", "label", "list-members", "--id", "123"},
 			want: []string{"get_label_members_by_labelId", "labelId", "123"},
+		},
+		{
+			name: "label create role",
+			args: []string{"--dry-run", "contact", "label", "create", "--name", "管理员", "--type", "role", "--parent-id", "12345", "--yes"},
+			want: []string{"add_label", "parentId", "labelModel", "name", "管理员"},
+		},
+		{
+			name: "label create group",
+			args: []string{"--dry-run", "contact", "label", "create", "--name", "管理层", "--type", "group", "--yes"},
+			want: []string{"add_label", "parentId", "labelModel", "name", "管理层"},
 		},
 		{
 			name: "role shim",
