@@ -29,6 +29,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/) and th
   detect the Drive or Doc destination before upload, clarifies `markdown diff`
   parameter validation, and improves mono/multi Agent routing.
 
+- **Doc output compatibility** — preserves the empty pagination failure ledger and
+  lets completed import recovery report an unverified result when the original
+  target is unavailable.
+
 
 ## [1.0.61-beta.1] - 2026-08-28
 
