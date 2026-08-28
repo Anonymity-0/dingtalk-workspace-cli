@@ -2430,6 +2430,12 @@ func newChatCommand() *cobra.Command {
 	// products.chat). Catalog assembly stamps provenance contract_final.
 	contract.RegisterProductDecl(contract.ProductDecl{
 		ID: "chat",
+		HelpReferences: contract.HelpReferences{
+			RelatedSkills: []string{"dingtalk-chat"},
+			Documentation: []contract.HelpDocumentation{
+				contract.SkillDocumentation("聊天与消息深度指南", "dingtalk-chat", "references/chat.md"),
+			},
+		},
 		Selection: contract.ProductSelectionDecl{
 			AgentSummary: "管理钉钉会话、群聊、群成员、机器人、消息检索与发送",
 			UseWhen: []string{
